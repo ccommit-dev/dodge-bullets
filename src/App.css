@@ -63,6 +63,13 @@
   color: #94a3b8;
 }
 
+.controls-hint {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
 .cta {
   width: 100%;
   border: none;
@@ -99,8 +106,41 @@
   box-sizing: border-box;
 }
 
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .hud-score {
   font-size: 16px;
   font-weight: 600;
   color: #f8fafc;
+}
+
+.hud-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.hud-debug {
+  pointer-events: auto;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.65);
+  cursor: pointer;
+}
+
+.cta-ghost {
+  background: transparent;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.cta-ghost:active {
+  transform: scale(0.97);
 }
