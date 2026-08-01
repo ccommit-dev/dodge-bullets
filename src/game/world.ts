@@ -1,8 +1,9 @@
+import { createBulletPool, resetBullets, updateBullets } from "./bullets";
 import type { InputState } from "./input";
 import type { GameWorld, Player } from "./types";
 
 const PLAYER_RADIUS = 18;
-const KEYBOARD_SPEED = 420; // px / sec — feels instant on phone-sized screens
+const KEYBOARD_SPEED = 420; // px / sec
 
 export function createPlayer(width: number, height: number, safeBottom: number): Player {
   return {
@@ -27,7 +28,11 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     safeLeft,
     safeRight,
     player: createPlayer(width, height, safeBottom),
+    bullets: createBulletPool(),
+    spawnAccMs: 0,
     elapsedMs: 0,
+    dodged: 0,
+    score: 0,
   };
 }
 
@@ -55,35 +60,53 @@ export function clampPlayer(world: GameWorld): void {
   player.y = Math.min(Math.max(player.y, minY), Math.max(minY, maxY));
 }
 
+export function resetRun(world: GameWorld): void {
+  world.elapsedMs = 0;
+  world.spawnAccMs = 0;
+  world.dodged = 0;
+  world.score = 0;
+  resetBullets(world);
+  world.player.x = world.width / 2;
+  world.player.y = Math.min(world.height - world.safeBottom - 64, world.height * 0.78);
+  clampPlayer(world);
+}
+
+function computeScore(elapsedMs: number, dodged: number): number {
+  // 10 pts/sec survival + 10 pts per dodged bullet
+  return Math.floor(elapsedMs / 100) + dodged * 10;
+}
+
+/** @returns true if player was hit this frame */
 export function updateWorld(
   world: GameWorld,
   dtSec: number,
   running: boolean,
   input: InputState,
-): void {
-  if (!running) return;
+): boolean {
+  if (!running) return false;
   world.elapsedMs += dtSec * 1000;
 
   // Touch/pointer: follow finger immediately (no lag / lerp delay).
   if (input.pointerActive) {
     world.player.x = input.pointerX;
     world.player.y = input.pointerY;
-    clampPlayer(world);
-    return;
-  }
+  } else {
+    let dx = 0;
+    let dy = 0;
+    if (input.left) dx -= 1;
+    if (input.right) dx += 1;
+    if (input.up) dy -= 1;
+    if (input.down) dy += 1;
 
-  let dx = 0;
-  let dy = 0;
-  if (input.left) dx -= 1;
-  if (input.right) dx += 1;
-  if (input.up) dy -= 1;
-  if (input.down) dy += 1;
-
-  if (dx !== 0 || dy !== 0) {
-    const len = Math.hypot(dx, dy) || 1;
-    world.player.x += (dx / len) * KEYBOARD_SPEED * dtSec;
-    world.player.y += (dy / len) * KEYBOARD_SPEED * dtSec;
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy) || 1;
+      world.player.x += (dx / len) * KEYBOARD_SPEED * dtSec;
+      world.player.y += (dy / len) * KEYBOARD_SPEED * dtSec;
+    }
   }
 
   clampPlayer(world);
+  const hit = updateBullets(world, dtSec);
+  world.score = computeScore(world.elapsedMs, world.dodged);
+  return hit;
 }

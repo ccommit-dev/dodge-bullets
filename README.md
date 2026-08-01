@@ -41,6 +41,15 @@ lsof -nP -tiTCP:5173 -sTCP:LISTEN | xargs kill -9
 `granite.config.ts`의 `appName`, `brand.displayName`, `brand.icon`을  
 앱인토스 콘솔에 등록한 값과 동일하게 맞추세요.
 
+## Day 1-6 (SDK)
+
+- `granite.config.ts` `appName: dodgebullets` (콘솔과 동일)
+- 식별키: `getAnonymousKey` / `getUserKeyForGame` + 로컬 mock
+- 최고점: `Storage` 우선, 실패 시 `localStorage` (`dodgebullets:highScore:{hash}`)
+- Safe Area: `SafeAreaInsets` + CSS 폴백
+- 종료: 좌측 **종료** → 확인 모달 → `closeView()`
+- 광고/결제 코드 없음
+
 ## Day 1에서 건드릴 파일
 
 - `src/App.tsx` — 게임 상태 / 오버레이 / rAF 루프
