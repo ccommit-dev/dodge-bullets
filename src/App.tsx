@@ -9,38 +9,25 @@ import {
   setPointer,
   type InputState,
 } from "./game/input";
+import { createSoundController, loadSoundEnabled } from "./game/sound";
+import { loadHighScore, saveHighScore } from "./game/storage";
+import {
+  closeMiniApp,
+  lockScreenForGame,
+  normalizeInsets,
+  readSafeInsets,
+  resolveUserKey,
+  subscribeSafeInsets,
+  type SafeInsets,
+} from "./game/toss";
 import type { GameState, GameWorld } from "./game/types";
-import { createWorld, resizeWorld, updateWorld } from "./game/world";
+import { createWorld, resetRun, resizeWorld, updateWorld } from "./game/world";
 
-function readCssSafeInsets(): { top: number; right: number; bottom: number; left: number } {
-  const probe = document.createElement("div");
-  probe.style.cssText = [
-    "position:fixed",
-    "visibility:hidden",
-    "pointer-events:none",
-    "padding-top:env(safe-area-inset-top)",
-    "padding-right:env(safe-area-inset-right)",
-    "padding-bottom:env(safe-area-inset-bottom)",
-    "padding-left:env(safe-area-inset-left)",
-  ].join(";");
-  document.body.appendChild(probe);
-  const style = getComputedStyle(probe);
-  const insets = {
-    top: Number.parseFloat(style.paddingTop) || 0,
-    right: Number.parseFloat(style.paddingRight) || 0,
-    bottom: Number.parseFloat(style.paddingBottom) || 0,
-    left: Number.parseFloat(style.paddingLeft) || 0,
-  };
-  document.body.removeChild(probe);
-  return insets;
-}
-
-function applySafeInsetsToWorld(world: GameWorld): void {
-  const insets = readCssSafeInsets();
-  world.safeTop = Math.max(12, insets.top);
-  world.safeRight = Math.max(8, insets.right);
-  world.safeBottom = Math.max(12, insets.bottom);
-  world.safeLeft = Math.max(8, insets.left);
+function applyInsetsToWorld(world: GameWorld, insets: SafeInsets): void {
+  world.safeTop = insets.top;
+  world.safeRight = insets.right;
+  world.safeBottom = insets.bottom;
+  world.safeLeft = insets.left;
 }
 
 function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
@@ -55,11 +42,23 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const worldRef = useRef<GameWorld | null>(null);
   const inputRef = useRef<InputState>(createInputState());
+  const soundRef = useRef(createSoundController());
   const stateRef = useRef<GameState>("ready");
+  const scoreRef = useRef(0);
+  const userHashRef = useRef("mock-local-dev");
   const rafRef = useRef<number>(0);
   const lastTsRef = useRef<number>(0);
+  const insetsRef = useRef<SafeInsets>(normalizeInsets(null));
 
+  const [bootReady, setBootReady] = useState(false);
+  const [userKeySource, setUserKeySource] = useState<"sdk" | "mock">("mock");
   const [gameState, setGameState] = useState<GameState>("ready");
+  const [score, setScore] = useState(0);
+  const [lastScore, setLastScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
+  const [exitOpen, setExitOpen] = useState(false);
+  const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
 
   const syncState = useCallback((next: GameState) => {
     stateRef.current = next;
@@ -67,7 +66,34 @@ function App() {
     if (next !== "playing") {
       clearKeys(inputRef.current);
       setPointer(inputRef.current, false);
+      soundRef.current.stopBgm();
     }
+  }, []);
+
+  const unlockAudio = useCallback(async () => {
+    await soundRef.current.unlock();
+  }, []);
+
+  const toggleSound = useCallback(async () => {
+    await unlockAudio();
+    const next = !soundRef.current.isEnabled();
+    soundRef.current.setEnabled(next);
+    setSoundOn(next);
+    if (next && stateRef.current === "playing") {
+      soundRef.current.startBgm();
+    } else {
+      soundRef.current.stopBgm();
+    }
+  }, [unlockAudio]);
+
+  const applyInsets = useCallback((next: SafeInsets) => {
+    insetsRef.current = next;
+    setInsets(next);
+    document.documentElement.style.setProperty("--safe-top", `${next.top}px`);
+    document.documentElement.style.setProperty("--safe-right", `${next.right}px`);
+    document.documentElement.style.setProperty("--safe-bottom", `${next.bottom}px`);
+    document.documentElement.style.setProperty("--safe-left", `${next.left}px`);
+    if (worldRef.current) applyInsetsToWorld(worldRef.current, next);
   }, []);
 
   const fitCanvas = useCallback(() => {
@@ -92,18 +118,84 @@ function App() {
     } else {
       resizeWorld(worldRef.current, width, height, dpr);
     }
-    applySafeInsetsToWorld(worldRef.current);
+    applyInsetsToWorld(worldRef.current, insetsRef.current);
   }, []);
 
+  // Boot: user key + high score + safe area
   useEffect(() => {
+    let cancelled = false;
+    let unsub: () => void = () => undefined;
+
+    (async () => {
+      const [key, safe] = await Promise.all([
+        resolveUserKey(),
+        readSafeInsets(),
+        lockScreenForGame(),
+      ]);
+      if (cancelled) return;
+
+      userHashRef.current = key.hash;
+      setUserKeySource(key.source);
+      applyInsets(safe);
+      const best = await loadHighScore(key.hash);
+      if (cancelled) return;
+      setHighScore(best);
+      setBootReady(true);
+
+      unsub = await subscribeSafeInsets((next) => {
+        if (!cancelled) applyInsets(next);
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [applyInsets]);
+
+  useEffect(() => {
+    const sound = soundRef.current;
     fitCanvas();
 
-    const onResize = () => fitCanvas();
+    const onResize = () => {
+      void readSafeInsets().then(applyInsets);
+      fitCanvas();
+    };
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
 
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        sound.enterBackground();
+      } else {
+        sound.enterForeground();
+        if (stateRef.current === "playing" && sound.isEnabled()) {
+          sound.startBgm();
+        }
+      }
+    };
+    const onPageHide = () => sound.enterBackground();
+    const onPageShow = () => {
+      sound.enterForeground();
+      if (stateRef.current === "playing" && sound.isEnabled()) {
+        sound.startBgm();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
+
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return () => {
+        window.removeEventListener("resize", onResize);
+        window.removeEventListener("orientationchange", onResize);
+        document.removeEventListener("visibilitychange", onVisibility);
+        window.removeEventListener("pagehide", onPageHide);
+        window.removeEventListener("pageshow", onPageShow);
+      };
+    }
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (stateRef.current !== "playing") return;
@@ -152,7 +244,6 @@ function App() {
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerUp);
     canvas.addEventListener("touchmove", onTouchMove, { passive: false });
-    // iOS pinch-zoom / gesture interference
     document.addEventListener("gesturestart", onGesture, { passive: false });
     document.addEventListener("gesturechange", onGesture, { passive: false });
 
@@ -164,8 +255,32 @@ function App() {
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05);
         lastTsRef.current = ts;
 
-        updateWorld(world, dtSec, stateRef.current === "playing", inputRef.current);
+        const hit = updateWorld(
+          world,
+          dtSec,
+          stateRef.current === "playing",
+          inputRef.current,
+        );
         drawFrame(ctx, world);
+
+        if (stateRef.current === "playing" && world.score !== scoreRef.current) {
+          scoreRef.current = world.score;
+          setScore(world.score);
+        }
+
+        if (hit && stateRef.current === "playing") {
+          clearKeys(inputRef.current);
+          setPointer(inputRef.current, false);
+          sound.stopBgm();
+          sound.playHit();
+          const finalScore = world.score;
+          scoreRef.current = finalScore;
+          setScore(finalScore);
+          setLastScore(finalScore);
+          void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
+          stateRef.current = "gameover";
+          setGameState("gameover");
+        }
       }
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -174,8 +289,13 @@ function App() {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      sound.stopBgm();
+      sound.enterBackground();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
@@ -187,33 +307,61 @@ function App() {
       document.removeEventListener("gesturestart", onGesture);
       document.removeEventListener("gesturechange", onGesture);
     };
-  }, [fitCanvas]);
+  }, [applyInsets, fitCanvas]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
+    if (!bootReady) return;
+    await unlockAudio();
     const world = worldRef.current;
     if (world) {
-      world.elapsedMs = 0;
-      applySafeInsetsToWorld(world);
-      world.player.x = world.width / 2;
-      world.player.y = Math.min(world.height - world.safeBottom - 64, world.height * 0.78);
+      applyInsetsToWorld(world, insetsRef.current);
+      resetRun(world);
     }
+    scoreRef.current = 0;
+    setScore(0);
     clearKeys(inputRef.current);
     setPointer(inputRef.current, false);
     lastTsRef.current = 0;
+    soundRef.current.playStart();
     syncState("playing");
-  };
-
-  const handleGameOver = () => {
-    syncState("gameover");
+    soundRef.current.startBgm();
   };
 
   const handleRestart = () => {
-    handleStart();
+    void handleStart();
   };
 
   const handleBackToReady = () => {
+    soundRef.current.stopBgm();
     syncState("ready");
   };
+
+  const confirmExit = async () => {
+    soundRef.current.stopBgm();
+    soundRef.current.enterBackground();
+    setExitOpen(false);
+    await closeMiniApp();
+  };
+
+  const isNewRecord = lastScore > 0 && lastScore >= highScore;
+
+  const dockStyle = {
+    paddingTop: insets.top,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  } as const;
+
+  const soundToggle = (
+    <button
+      type="button"
+      className="sound-toggle"
+      onClick={() => void toggleSound()}
+      aria-pressed={soundOn}
+      aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
+    >
+      {soundOn ? "사운드 On" : "사운드 Off"}
+    </button>
+  );
 
   return (
     <div className="game-root">
@@ -223,16 +371,42 @@ function App() {
         aria-label="총알 피하기 게임 화면"
       />
 
-      {gameState === "ready" && (
+      {/* 좌측 상단 — 토스 닫기(우측 상단)와 겹치지 않음 */}
+      <div className="sound-dock" style={dockStyle}>
+        {soundToggle}
+        <button
+          type="button"
+          className="exit-toggle"
+          onClick={() => setExitOpen(true)}
+          aria-label="미니앱 종료"
+        >
+          종료
+        </button>
+      </div>
+
+      {!bootReady && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">총알 피하기</p>
+            <p className="brand">총알피하기</p>
+            <p className="subtitle">준비 중…</p>
+          </div>
+        </div>
+      )}
+
+      {bootReady && gameState === "ready" && (
+        <div className="game-overlay">
+          <div className="overlay-content">
+            <p className="brand">총알피하기</p>
             <h1 className="title">Dodge Bullets</h1>
             <p className="subtitle">위에서 내려오는 총알을 피하세요</p>
+            <p className="score-line">최고 점수 {highScore}</p>
             <p className="controls-hint">
               터치로 드래그 · 키보드 ←→↑↓ / WASD
             </p>
-            <button type="button" className="cta" onClick={handleStart}>
+            <p className="controls-hint">
+              식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"}
+            </p>
+            <button type="button" className="cta" onClick={() => void handleStart()}>
               게임 시작
             </button>
           </div>
@@ -240,15 +414,18 @@ function App() {
       )}
 
       {gameState === "playing" && (
-        <div className="hud safe-area">
+        <div
+          className="hud"
+          style={{
+            paddingTop: insets.top,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
+          }}
+        >
           <div className="hud-left">
-            <span className="hud-score">점수 0</span>
-            <span className="hud-hint">드래그 또는 WASD</span>
+            <span className="hud-score">점수 {score}</span>
+            <span className="hud-hint">최고 {highScore}</span>
           </div>
-          {/* Day 1-1: 상태 전환 확인용. Day 1-3에서 충돌로 대체 */}
-          <button type="button" className="hud-debug" onClick={handleGameOver}>
-            게임오버
-          </button>
         </div>
       )}
 
@@ -256,13 +433,35 @@ function App() {
         <div className="game-overlay">
           <div className="overlay-content">
             <p className="brand">게임 오버</p>
-            <h1 className="title">다시 도전?</h1>
-            <p className="subtitle">점수 0</p>
+            <h1 className="title">{isNewRecord ? "신기록!" : "다시 도전?"}</h1>
+            <p className="score-line">점수 {lastScore}</p>
+            <p className="subtitle">최고 점수 {highScore}</p>
             <button type="button" className="cta" onClick={handleRestart}>
               다시하기
             </button>
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               시작 화면
+            </button>
+          </div>
+        </div>
+      )}
+
+      {exitOpen && (
+        <div className="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title">
+          <div className="exit-card">
+            <h2 id="exit-title" className="exit-title">
+              게임을 종료할까요?
+            </h2>
+            <p className="exit-desc">진행 중인 판은 저장되지 않아요.</p>
+            <button type="button" className="cta" onClick={() => void confirmExit()}>
+              종료하기
+            </button>
+            <button
+              type="button"
+              className="cta cta-ghost"
+              onClick={() => setExitOpen(false)}
+            >
+              계속하기
             </button>
           </div>
         </div>

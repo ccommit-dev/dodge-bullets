@@ -1,7 +1,7 @@
 import type { GameWorld } from "./types";
 
 export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void {
-  const { width, height, player, safeTop, safeBottom } = world;
+  const { width, height, player, safeTop, safeBottom, bullets } = world;
 
   // Background
   ctx.fillStyle = "#0b1220";
@@ -15,7 +15,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  // Safe-area guide lines (subtle) — helps verify insets during Day 1
+  // Safe-area guide lines (subtle)
   ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -25,13 +25,22 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.lineTo(width, height - safeBottom);
   ctx.stroke();
 
-  // Placeholder player (circle)
+  // Bullets
+  ctx.fillStyle = "#f87171";
+  for (let i = 0; i < bullets.length; i++) {
+    const b = bullets[i];
+    if (!b.active) continue;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Player
   ctx.fillStyle = "#5eead4";
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
   ctx.fill();
 
-  // Small accent so movement is easy to see
   ctx.fillStyle = "#0b1220";
   ctx.beginPath();
   ctx.arc(player.x, player.y - player.radius * 0.25, player.radius * 0.35, 0, Math.PI * 2);
