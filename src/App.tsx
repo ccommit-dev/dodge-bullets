@@ -5,12 +5,29 @@ import {
   applyKeyDown,
   applyKeyUp,
   clearKeys,
+  consumeActionEdges,
   createInputState,
   setPointer,
   type InputState,
 } from "./game/input";
+import {
+  SHOP_MAX,
+  SHOP_META,
+  emptyShopLevels,
+  statsFromLevels,
+  upgradeCost,
+} from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { loadHighScore, saveHighScore } from "./game/storage";
+import { STAGES, getStage, isLastStage } from "./game/stages";
+import {
+  computeClearReward,
+  loadCoins,
+  loadHighScore,
+  loadShopLevels,
+  saveCoins,
+  saveHighScore,
+  saveShopLevels,
+} from "./game/storage";
 import {
   closeMiniApp,
   lockScreenForGame,
@@ -20,8 +37,15 @@ import {
   subscribeSafeInsets,
   type SafeInsets,
 } from "./game/toss";
-import type { GameState, GameWorld } from "./game/types";
-import { createWorld, resetRun, resizeWorld, updateWorld } from "./game/world";
+import type { GameState, GameWorld, ShopLevels, ShopUpgradeId } from "./game/types";
+import {
+  applyStats,
+  beginStage,
+  createWorld,
+  resetRun,
+  resizeWorld,
+  updateWorld,
+} from "./game/world";
 
 function applyInsetsToWorld(world: GameWorld, insets: SafeInsets): void {
   world.safeTop = insets.top;
@@ -49,21 +73,38 @@ function App() {
   const rafRef = useRef<number>(0);
   const lastTsRef = useRef<number>(0);
   const insetsRef = useRef<SafeInsets>(normalizeInsets(null));
+  const lastJumpAtRef = useRef(0);
 
+  const hudRemainSecRef = useRef(0);
+  const hudHpRef = useRef(1);
+  const hudMaxHpRef = useRef(1);
+  const coinsRef = useRef(0);
+  const shopLevelsRef = useRef<ShopLevels>(emptyShopLevels());
   const [bootReady, setBootReady] = useState(false);
   const [userKeySource, setUserKeySource] = useState<"sdk" | "mock">("mock");
   const [gameState, setGameState] = useState<GameState>("ready");
+  const [menuTab, setMenuTab] = useState<"play" | "shop">("play");
   const [score, setScore] = useState(0);
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
+  const [coins, setCoins] = useState(0);
+  const [coinGain, setCoinGain] = useState(0);
+  const [shopLevels, setShopLevels] = useState<ShopLevels>(() => emptyShopLevels());
+  const [stageIndex, setStageIndex] = useState(0);
+  const [stageLabel, setStageLabel] = useState(STAGES[0].name);
+  const [stageIntro, setStageIntro] = useState(STAGES[0].intro);
+  const [hp, setHp] = useState(1);
+  const [maxHp, setMaxHp] = useState(1);
+  const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
   const [exitOpen, setExitOpen] = useState(false);
   const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
+  const [allClear, setAllClear] = useState(false);
 
   const syncState = useCallback((next: GameState) => {
     stateRef.current = next;
     setGameState(next);
-    if (next !== "playing") {
+    if (next !== "playing" && next !== "intro") {
       clearKeys(inputRef.current);
       setPointer(inputRef.current, false);
       soundRef.current.stopBgm();
@@ -121,7 +162,6 @@ function App() {
     applyInsetsToWorld(worldRef.current, insetsRef.current);
   }, []);
 
-  // Boot: user key + high score + safe area
   useEffect(() => {
     let cancelled = false;
     let unsub: () => void = () => undefined;
@@ -137,9 +177,21 @@ function App() {
       userHashRef.current = key.hash;
       setUserKeySource(key.source);
       applyInsets(safe);
-      const best = await loadHighScore(key.hash);
+      const [best, savedCoins, levels] = await Promise.all([
+        loadHighScore(key.hash),
+        loadCoins(key.hash),
+        loadShopLevels(key.hash),
+      ]);
       if (cancelled) return;
       setHighScore(best);
+      setCoins(savedCoins);
+      coinsRef.current = savedCoins;
+      setShopLevels(levels);
+      shopLevelsRef.current = levels;
+      const stats = statsFromLevels(levels);
+      if (worldRef.current) applyStats(worldRef.current, stats);
+      setMaxHp(1 + stats.extraLives);
+      setHp(1 + stats.extraLives);
       setBootReady(true);
 
       unsub = await subscribeSafeInsets((next) => {
@@ -199,7 +251,11 @@ function App() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (stateRef.current !== "playing") return;
-      if (applyKeyDown(inputRef.current, e.code)) e.preventDefault();
+      if (applyKeyDown(inputRef.current, e.code)) {
+        if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") sound.playJump();
+        if (e.code === "ShiftLeft" || e.code === "ShiftRight") sound.playDash();
+        e.preventDefault();
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (applyKeyUp(inputRef.current, e.code)) e.preventDefault();
@@ -214,6 +270,13 @@ function App() {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       canvas.setPointerCapture(e.pointerId);
       const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY);
+      const now = performance.now();
+      // Double-tap near previous tap → jump
+      if (now - lastJumpAtRef.current < 280) {
+        inputRef.current.jumpPressed = true;
+        sound.playJump();
+      }
+      lastJumpAtRef.current = now;
       setPointer(inputRef.current, true, x, y);
       e.preventDefault();
     };
@@ -255,20 +318,42 @@ function App() {
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05);
         lastTsRef.current = ts;
 
-        const hit = updateWorld(
+        const event = updateWorld(
           world,
           dtSec,
           stateRef.current === "playing",
           inputRef.current,
         );
+        consumeActionEdges(inputRef.current);
         drawFrame(ctx, world);
 
-        if (stateRef.current === "playing" && world.score !== scoreRef.current) {
-          scoreRef.current = world.score;
-          setScore(world.score);
+        if (stateRef.current === "playing") {
+          if (world.score !== scoreRef.current) {
+            scoreRef.current = world.score;
+            setScore(world.score);
+          }
+          const stage = getStage(world.stageIndex);
+          const remain = Math.max(0, stage.durationMs - world.stageElapsedMs);
+          const remainSecNow = Math.ceil(remain / 1000);
+          if (remainSecNow !== hudRemainSecRef.current) {
+            hudRemainSecRef.current = remainSecNow;
+            setStageRemainMs(remain);
+          }
+          if (world.player.hp !== hudHpRef.current) {
+            hudHpRef.current = world.player.hp;
+            setHp(world.player.hp);
+          }
+          if (world.player.maxHp !== hudMaxHpRef.current) {
+            hudMaxHpRef.current = world.player.maxHp;
+            setMaxHp(world.player.maxHp);
+          }
         }
 
-        if (hit && stateRef.current === "playing") {
+        if (event.type === "hit" && stateRef.current === "playing") {
+          sound.playHit();
+        }
+
+        if (event.type === "dead" && stateRef.current === "playing") {
           clearKeys(inputRef.current);
           setPointer(inputRef.current, false);
           sound.stopBgm();
@@ -277,9 +362,38 @@ function App() {
           scoreRef.current = finalScore;
           setScore(finalScore);
           setLastScore(finalScore);
+          setAllClear(false);
           void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
           stateRef.current = "gameover";
           setGameState("gameover");
+        }
+
+        if (event.type === "clear" && stateRef.current === "playing") {
+          sound.stopBgm();
+          sound.playClear();
+          const stage = getStage(world.stageIndex);
+          const reward = computeClearReward(
+            stage.baseReward,
+            world.player.hp,
+            world.player.maxHp,
+            world.stageElapsedMs,
+            stage.durationMs,
+          );
+          setCoinGain(reward);
+          sound.playCoin();
+          void (async () => {
+            const nextCoins = await saveCoins(
+              userHashRef.current,
+              coinsRef.current + reward,
+            );
+            coinsRef.current = nextCoins;
+            setCoins(nextCoins);
+          })();
+          void saveHighScore(userHashRef.current, world.score).then(setHighScore);
+          setLastScore(world.score);
+          setAllClear(isLastStage(world.stageIndex));
+          stateRef.current = "clear";
+          setGameState("clear");
         }
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -309,31 +423,89 @@ function App() {
     };
   }, [applyInsets, fitCanvas]);
 
-  const handleStart = async () => {
+  const prepareWorldForStage = (index: number) => {
+    const world = worldRef.current;
+    if (!world) return;
+    applyInsetsToWorld(world, insetsRef.current);
+    applyStats(world, statsFromLevels(shopLevelsRef.current));
+    beginStage(world, index);
+    const stage = getStage(index);
+    setStageIndex(index);
+    setStageLabel(stage.name);
+    setStageIntro(stage.intro);
+    setStageRemainMs(stage.durationMs);
+    setHp(world.player.hp);
+    setMaxHp(world.player.maxHp);
+  };
+
+  const handleStart = async (fromStage = 0) => {
     if (!bootReady) return;
     await unlockAudio();
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
-      resetRun(world);
+      applyStats(world, statsFromLevels(shopLevelsRef.current));
+      resetRun(world, fromStage);
     }
+    prepareWorldForStage(fromStage);
     scoreRef.current = 0;
     setScore(0);
+    setCoinGain(0);
+    setAllClear(false);
     clearKeys(inputRef.current);
     setPointer(inputRef.current, false);
     lastTsRef.current = 0;
     soundRef.current.playStart();
+    syncState("intro");
+  };
+
+  const handleBeginPlay = () => {
+    lastTsRef.current = 0;
     syncState("playing");
     soundRef.current.startBgm();
   };
 
+  const handleNextStage = () => {
+    if (allClear) {
+      syncState("ready");
+      setMenuTab("play");
+      return;
+    }
+    const next = stageIndex + 1;
+    prepareWorldForStage(next);
+    lastTsRef.current = 0;
+    soundRef.current.playStart();
+    syncState("intro");
+  };
+
   const handleRestart = () => {
-    void handleStart();
+    void handleStart(stageIndex);
   };
 
   const handleBackToReady = () => {
     soundRef.current.stopBgm();
     syncState("ready");
+    setMenuTab("play");
+  };
+
+  const buyUpgrade = async (id: ShopUpgradeId) => {
+    await unlockAudio();
+    const level = shopLevels[id];
+    if (level >= SHOP_MAX[id]) return;
+    const cost = upgradeCost(id, level);
+    if (coins < cost) return;
+    const nextLevels = { ...shopLevels, [id]: level + 1 };
+    const nextCoins = coins - cost;
+    setShopLevels(nextLevels);
+    shopLevelsRef.current = nextLevels;
+    setCoins(nextCoins);
+    coinsRef.current = nextCoins;
+    soundRef.current.playBuy();
+    if (worldRef.current) applyStats(worldRef.current, statsFromLevels(nextLevels));
+    await Promise.all([
+      saveCoins(userHashRef.current, nextCoins),
+      saveShopLevels(userHashRef.current, nextLevels),
+    ]);
   };
 
   const confirmExit = async () => {
@@ -344,6 +516,8 @@ function App() {
   };
 
   const isNewRecord = lastScore > 0 && lastScore >= highScore;
+  const stage = getStage(stageIndex);
+  const remainSec = Math.ceil(stageRemainMs / 1000);
 
   const dockStyle = {
     paddingTop: insets.top,
@@ -351,29 +525,24 @@ function App() {
     paddingRight: insets.right,
   } as const;
 
-  const soundToggle = (
-    <button
-      type="button"
-      className="sound-toggle"
-      onClick={() => void toggleSound()}
-      aria-pressed={soundOn}
-      aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
-    >
-      {soundOn ? "사운드 On" : "사운드 Off"}
-    </button>
-  );
-
   return (
     <div className="game-root">
       <canvas
         ref={canvasRef}
         className="game-canvas"
-        aria-label="총알 피하기 게임 화면"
+        aria-label="졸라맨 화살 피하기 게임 화면"
       />
 
-      {/* 좌측 상단 — 토스 닫기(우측 상단)와 겹치지 않음 */}
       <div className="sound-dock" style={dockStyle}>
-        {soundToggle}
+        <button
+          type="button"
+          className="sound-toggle"
+          onClick={() => void toggleSound()}
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
+        >
+          {soundOn ? "사운드 On" : "사운드 Off"}
+        </button>
         <button
           type="button"
           className="exit-toggle"
@@ -395,36 +564,167 @@ function App() {
 
       {bootReady && gameState === "ready" && (
         <div className="game-overlay">
-          <div className="overlay-content">
+          <div className="overlay-content overlay-wide">
             <p className="brand">총알피하기</p>
-            <h1 className="title">Dodge Bullets</h1>
-            <p className="subtitle">위에서 내려오는 총알을 피하세요</p>
-            <p className="score-line">최고 점수 {highScore}</p>
-            <p className="controls-hint">
-              터치로 드래그 · 키보드 ←→↑↓ / WASD
-            </p>
-            <p className="controls-hint">
-              식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"}
-            </p>
-            <button type="button" className="cta" onClick={() => void handleStart()}>
-              게임 시작
+            <h1 className="title">Arrow Dodge</h1>
+            <p className="subtitle">졸라맨으로 화살을 피하고 스테이지를 클리어하세요</p>
+            <p className="score-line">코인 {coins} · 최고 {highScore}</p>
+
+            <div className="tab-row" role="tablist">
+              <button
+                type="button"
+                className={`tab ${menuTab === "play" ? "tab-active" : ""}`}
+                onClick={() => setMenuTab("play")}
+              >
+                플레이
+              </button>
+              <button
+                type="button"
+                className={`tab ${menuTab === "shop" ? "tab-active" : ""}`}
+                onClick={() => setMenuTab("shop")}
+              >
+                상점
+              </button>
+            </div>
+
+            {menuTab === "play" ? (
+              <>
+                <p className="controls-hint">
+                  드래그 이동 · 더블탭/스페이스 점프 · Shift 대시 · E 슬로우
+                </p>
+                <p className="controls-hint">
+                  식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"} · 스테이지 {STAGES.length}개
+                </p>
+                <button type="button" className="cta" onClick={() => void handleStart(0)}>
+                  스테이지 1 시작
+                </button>
+              </>
+            ) : (
+              <div className="shop-list">
+                {(Object.keys(SHOP_META) as ShopUpgradeId[]).map((id) => {
+                  const level = shopLevels[id];
+                  const max = SHOP_MAX[id];
+                  const cost = upgradeCost(id, level);
+                  const soldOut = level >= max;
+                  const canBuy = !soldOut && coins >= cost;
+                  return (
+                    <div key={id} className="shop-item">
+                      <div className="shop-item-text">
+                        <strong>
+                          {SHOP_META[id].name}{" "}
+                          <span className="shop-lv">
+                            Lv.{level}/{max}
+                          </span>
+                        </strong>
+                        <span>{SHOP_META[id].desc}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="shop-buy"
+                        disabled={!canBuy}
+                        onClick={() => void buyUpgrade(id)}
+                      >
+                        {soldOut ? "MAX" : `${cost}c`}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {gameState === "intro" && (
+        <div className="game-overlay">
+          <div className="overlay-content">
+            <p className="brand">STAGE {stage.id}</p>
+            <h1 className="title">{stageLabel}</h1>
+            <p className="subtitle">{stageIntro}</p>
+            <p className="score-line">목표 {Math.round(stage.durationMs / 1000)}초 생존</p>
+            <button type="button" className="cta" onClick={handleBeginPlay}>
+              시작
             </button>
           </div>
         </div>
       )}
 
       {gameState === "playing" && (
-        <div
-          className="hud"
-          style={{
-            paddingTop: insets.top,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
-          }}
-        >
-          <div className="hud-left">
-            <span className="hud-score">점수 {score}</span>
-            <span className="hud-hint">최고 {highScore}</span>
+        <>
+          <div
+            className="hud"
+            style={{
+              paddingTop: insets.top,
+              paddingLeft: insets.left,
+              paddingRight: insets.right,
+            }}
+          >
+            <div className="hud-left">
+              <span className="hud-score">
+                Stage {stage.id} · {remainSec}s
+              </span>
+              <span className="hud-hint">
+                점수 {score} · 코인 {coins} · HP {"♥".repeat(hp)}
+                {"♡".repeat(Math.max(0, maxHp - hp))}
+              </span>
+            </div>
+          </div>
+          <div
+            className="action-dock"
+            style={{
+              paddingBottom: insets.bottom,
+              paddingRight: insets.right,
+              paddingLeft: insets.left,
+            }}
+          >
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => {
+                inputRef.current.jumpPressed = true;
+                soundRef.current.playJump();
+              }}
+            >
+              점프
+            </button>
+            <button
+              type="button"
+              className="action-btn"
+              disabled={shopLevels.dash <= 0}
+              onClick={() => {
+                inputRef.current.dashPressed = true;
+                soundRef.current.playDash();
+              }}
+            >
+              대시
+            </button>
+            <button
+              type="button"
+              className="action-btn"
+              disabled={shopLevels.slowField <= 0}
+              onClick={() => {
+                inputRef.current.slowPressed = true;
+              }}
+            >
+              슬로우
+            </button>
+          </div>
+        </>
+      )}
+
+      {gameState === "clear" && (
+        <div className="game-overlay">
+          <div className="overlay-content">
+            <p className="brand">{allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
+            <h1 className="title">{allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
+            <p className="score-line">+{coinGain} 코인</p>
+            <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
+            <button type="button" className="cta" onClick={handleNextStage}>
+              {allClear ? "시작 화면" : "다음 스테이지"}
+            </button>
+            <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
+              상점 / 메뉴
+            </button>
           </div>
         </div>
       )}
@@ -435,9 +735,11 @@ function App() {
             <p className="brand">게임 오버</p>
             <h1 className="title">{isNewRecord ? "신기록!" : "다시 도전?"}</h1>
             <p className="score-line">점수 {lastScore}</p>
-            <p className="subtitle">최고 점수 {highScore}</p>
+            <p className="subtitle">
+              Stage {stage.id} · 최고 {highScore} · 코인 {coins}
+            </p>
             <button type="button" className="cta" onClick={handleRestart}>
-              다시하기
+              이 스테이지 다시
             </button>
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               시작 화면
@@ -452,15 +754,11 @@ function App() {
             <h2 id="exit-title" className="exit-title">
               게임을 종료할까요?
             </h2>
-            <p className="exit-desc">진행 중인 판은 저장되지 않아요.</p>
+            <p className="exit-desc">진행 중인 판은 저장되지 않아요. 코인·강화는 유지됩니다.</p>
             <button type="button" className="cta" onClick={() => void confirmExit()}>
               종료하기
             </button>
-            <button
-              type="button"
-              className="cta cta-ghost"
-              onClick={() => setExitOpen(false)}
-            >
+            <button type="button" className="cta cta-ghost" onClick={() => setExitOpen(false)}>
               계속하기
             </button>
           </div>

@@ -3,10 +3,14 @@ export type InputState = {
   right: boolean;
   up: boolean;
   down: boolean;
-  /** When true, player snaps toward pointerX/Y immediately. */
+  /** When true, horizontal follow toward pointerX. */
   pointerActive: boolean;
   pointerX: number;
   pointerY: number;
+  /** Edge-triggered actions consumed each frame by world update. */
+  jumpPressed: boolean;
+  dashPressed: boolean;
+  slowPressed: boolean;
 };
 
 export function createInputState(): InputState {
@@ -18,6 +22,9 @@ export function createInputState(): InputState {
     pointerActive: false,
     pointerX: 0,
     pointerY: 0,
+    jumpPressed: false,
+    dashPressed: false,
+    slowPressed: false,
   };
 }
 
@@ -30,7 +37,11 @@ function isMoveKey(code: string): boolean {
     code === "KeyA" ||
     code === "KeyD" ||
     code === "KeyW" ||
-    code === "KeyS"
+    code === "KeyS" ||
+    code === "Space" ||
+    code === "ShiftLeft" ||
+    code === "ShiftRight" ||
+    code === "KeyE"
   );
 }
 
@@ -47,11 +58,20 @@ export function applyKeyDown(input: InputState, code: string): boolean {
       break;
     case "ArrowUp":
     case "KeyW":
+    case "Space":
       input.up = true;
+      input.jumpPressed = true;
       break;
     case "ArrowDown":
     case "KeyS":
       input.down = true;
+      break;
+    case "ShiftLeft":
+    case "ShiftRight":
+      input.dashPressed = true;
+      break;
+    case "KeyE":
+      input.slowPressed = true;
       break;
   }
   return true;
@@ -70,6 +90,7 @@ export function applyKeyUp(input: InputState, code: string): boolean {
       break;
     case "ArrowUp":
     case "KeyW":
+    case "Space":
       input.up = false;
       break;
     case "ArrowDown":
@@ -85,6 +106,15 @@ export function clearKeys(input: InputState): void {
   input.right = false;
   input.up = false;
   input.down = false;
+  input.jumpPressed = false;
+  input.dashPressed = false;
+  input.slowPressed = false;
+}
+
+export function consumeActionEdges(input: InputState): void {
+  input.jumpPressed = false;
+  input.dashPressed = false;
+  input.slowPressed = false;
 }
 
 export function setPointer(

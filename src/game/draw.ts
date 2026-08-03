@@ -1,13 +1,52 @@
-import type { GameWorld } from "./types";
+import { drawStickman } from "./player";
+import type { Arrow, GameWorld } from "./types";
+
+function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
+  const cos = Math.cos(a.angle);
+  const sin = Math.sin(a.angle);
+  const half = a.length * 0.5;
+  const tx = a.x + cos * half;
+  const ty = a.y + sin * half;
+  const bx = a.x - cos * half;
+  const by = a.y - sin * half;
+  const px = -sin;
+  const py = cos;
+
+  ctx.strokeStyle = "#f87171";
+  ctx.fillStyle = "#fca5a5";
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+
+  // shaft
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.lineTo(tx, ty);
+  ctx.stroke();
+
+  // tip
+  ctx.beginPath();
+  ctx.moveTo(tx, ty);
+  ctx.lineTo(tx - cos * 9 + px * 4.5, ty - sin * 9 + py * 4.5);
+  ctx.lineTo(tx - cos * 9 - px * 4.5, ty - sin * 9 - py * 4.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // fletching
+  ctx.strokeStyle = "#fda4af";
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.lineTo(bx + cos * 6 + px * 5, by + sin * 6 + py * 5);
+  ctx.moveTo(bx, by);
+  ctx.lineTo(bx + cos * 6 - px * 5, by + sin * 6 - py * 5);
+  ctx.stroke();
+}
 
 export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void {
-  const { width, height, player, safeTop, safeBottom, bullets } = world;
+  const { width, height, safeTop, safeBottom, arrows, platforms, floorY } = world;
 
-  // Background
   ctx.fillStyle = "#0b1220";
   ctx.fillRect(0, 0, width, height);
 
-  // Soft vertical gradient for depth
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
   gradient.addColorStop(0, "rgba(30, 58, 95, 0.45)");
   gradient.addColorStop(0.55, "rgba(11, 18, 32, 0)");
@@ -15,7 +54,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  // Safe-area guide lines (subtle)
   ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -25,24 +63,26 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.lineTo(width, height - safeBottom);
   ctx.stroke();
 
-  // Bullets
-  ctx.fillStyle = "#f87171";
-  for (let i = 0; i < bullets.length; i++) {
-    const b = bullets[i];
-    if (!b.active) continue;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-    ctx.fill();
+  // Floor line
+  ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, floorY);
+  ctx.lineTo(width, floorY);
+  ctx.stroke();
+
+  // Platforms
+  for (let i = 0; i < platforms.length; i++) {
+    const pl = platforms[i];
+    ctx.fillStyle = "rgba(51, 65, 85, 0.95)";
+    ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
+    ctx.fillStyle = "rgba(94, 234, 212, 0.45)";
+    ctx.fillRect(pl.x, pl.y, pl.w, 3);
   }
 
-  // Player
-  ctx.fillStyle = "#5eead4";
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-  ctx.fill();
+  for (let i = 0; i < arrows.length; i++) {
+    if (arrows[i].active) drawArrow(ctx, arrows[i]);
+  }
 
-  ctx.fillStyle = "#0b1220";
-  ctx.beginPath();
-  ctx.arc(player.x, player.y - player.radius * 0.25, player.radius * 0.35, 0, Math.PI * 2);
-  ctx.fill();
+  drawStickman(ctx, world);
 }

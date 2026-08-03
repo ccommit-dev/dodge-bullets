@@ -1,16 +1,25 @@
-import { createBulletPool, resetBullets, updateBullets } from "./bullets";
+import { createArrowPool, resetArrows, updateArrows } from "./arrows";
 import type { InputState } from "./input";
-import type { GameWorld, Player } from "./types";
+import { createPlayer, GRAVITY, resetPlayer } from "./player";
+import { emptyShopLevels, statsFromLevels } from "./shop";
+import { getStage } from "./stages";
+import type { GameWorld, Platform, PlayerStats } from "./types";
 
-const PLAYER_RADIUS = 18;
-const KEYBOARD_SPEED = 420; // px / sec
+function floorYOf(height: number, safeBottom: number): number {
+  return height - safeBottom - 18;
+}
 
-export function createPlayer(width: number, height: number, safeBottom: number): Player {
-  return {
-    x: width / 2,
-    y: Math.min(height - safeBottom - 64, height * 0.78),
-    radius: PLAYER_RADIUS,
-  };
+function materializePlatforms(
+  world: GameWorld,
+  norms: Array<{ x: number; y: number; w: number; h: number }>,
+): Platform[] {
+  const playH = world.floorY - world.safeTop;
+  return norms.map((n) => ({
+    x: n.x * world.width,
+    y: world.safeTop + n.y * playH,
+    w: n.w * world.width,
+    h: Math.max(10, n.h * playH),
+  }));
 }
 
 export function createWorld(width: number, height: number, dpr: number): GameWorld {
@@ -18,8 +27,14 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
   const safeBottom = 12;
   const safeLeft = 8;
   const safeRight = 8;
+  const floorY = floorYOf(height, safeBottom);
+  const stats = statsFromLevels(emptyShopLevels());
+  const player = createPlayer(width, floorY);
+  player.maxHp = 1 + stats.extraLives;
+  player.hp = player.maxHp;
+  player.radius = 16 * stats.hitboxScale;
 
-  return {
+  const world: GameWorld = {
     width,
     height,
     dpr,
@@ -27,86 +42,235 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     safeBottom,
     safeLeft,
     safeRight,
-    player: createPlayer(width, height, safeBottom),
-    bullets: createBulletPool(),
+    player,
+    arrows: createArrowPool(),
+    platforms: [],
     spawnAccMs: 0,
+    stageElapsedMs: 0,
     elapsedMs: 0,
     dodged: 0,
     score: 0,
+    stageIndex: 0,
+    stageClear: false,
+    floorY,
+    stats,
+    animClock: 0,
   };
+  applyStageLayout(world);
+  return world;
+}
+
+export function applyStats(world: GameWorld, stats: PlayerStats): void {
+  world.stats = stats;
+  world.player.radius = 16 * stats.hitboxScale;
+}
+
+export function applyStageLayout(world: GameWorld): void {
+  const stage = getStage(world.stageIndex);
+  world.platforms = materializePlatforms(world, stage.platforms);
 }
 
 export function resizeWorld(world: GameWorld, width: number, height: number, dpr: number): void {
   const prevW = world.width || 1;
-  const prevH = world.height || 1;
   const nx = world.player.x / prevW;
-  const ny = world.player.y / prevH;
-
   world.width = width;
   world.height = height;
   world.dpr = dpr;
+  world.floorY = floorYOf(height, world.safeBottom);
   world.player.x = nx * width;
-  world.player.y = ny * height;
-  clampPlayer(world);
+  if (world.player.onGround) {
+    world.player.y = world.floorY - world.player.radius;
+  }
+  applyStageLayout(world);
+  clampX(world);
 }
 
-export function clampPlayer(world: GameWorld): void {
-  const { player, width, height, safeLeft, safeRight, safeTop, safeBottom } = world;
+function clampX(world: GameWorld): void {
+  const { player, width, safeLeft, safeRight } = world;
   const minX = safeLeft + player.radius;
   const maxX = width - safeRight - player.radius;
-  const minY = safeTop + player.radius;
-  const maxY = height - safeBottom - player.radius;
   player.x = Math.min(Math.max(player.x, minX), Math.max(minX, maxX));
-  player.y = Math.min(Math.max(player.y, minY), Math.max(minY, maxY));
 }
 
-export function resetRun(world: GameWorld): void {
+export function resetRun(world: GameWorld, stageIndex = 0): void {
+  world.stageIndex = stageIndex;
   world.elapsedMs = 0;
+  world.stageElapsedMs = 0;
   world.spawnAccMs = 0;
   world.dodged = 0;
   world.score = 0;
-  resetBullets(world);
-  world.player.x = world.width / 2;
-  world.player.y = Math.min(world.height - world.safeBottom - 64, world.height * 0.78);
-  clampPlayer(world);
+  world.stageClear = false;
+  world.animClock = 0;
+  world.floorY = floorYOf(world.height, world.safeBottom);
+  resetArrows(world);
+  resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
+  world.player.radius = 16 * world.stats.hitboxScale;
+  applyStageLayout(world);
 }
 
-function computeScore(elapsedMs: number, dodged: number): number {
-  // 10 pts/sec survival + 10 pts per dodged bullet
-  return Math.floor(elapsedMs / 100) + dodged * 10;
+export function beginStage(world: GameWorld, stageIndex: number): void {
+  world.stageIndex = stageIndex;
+  world.stageElapsedMs = 0;
+  world.spawnAccMs = 0;
+  world.stageClear = false;
+  resetArrows(world);
+  resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
+  world.player.radius = 16 * world.stats.hitboxScale;
+  applyStageLayout(world);
 }
 
-/** @returns true if player was hit this frame */
+function resolvePlatforms(world: GameWorld): void {
+  const p = world.player;
+  p.onGround = false;
+
+  // Floor
+  if (p.vy >= 0 && p.y + p.radius >= world.floorY) {
+    p.y = world.floorY - p.radius;
+    p.vy = 0;
+    p.onGround = true;
+  }
+
+  for (let i = 0; i < world.platforms.length; i++) {
+    const pl = world.platforms[i];
+    const withinX = p.x + p.radius * 0.4 > pl.x && p.x - p.radius * 0.4 < pl.x + pl.w;
+    const wasAbove = p.y + p.radius <= pl.y + 8;
+    const nowAt = p.y + p.radius >= pl.y && p.y + p.radius <= pl.y + pl.h + 12;
+    if (withinX && wasAbove && nowAt && p.vy >= 0) {
+      p.y = pl.y - p.radius;
+      p.vy = 0;
+      p.onGround = true;
+    }
+  }
+
+  // Ceiling / top clamp soft
+  if (p.y - p.radius < world.safeTop) {
+    p.y = world.safeTop + p.radius;
+    p.vy = Math.max(0, p.vy);
+  }
+}
+
+function computeScore(elapsedMs: number, dodged: number, stageIndex: number): number {
+  return Math.floor(elapsedMs / 100) + dodged * 10 + stageIndex * 50;
+}
+
+export type WorldEvent =
+  | { type: "none" }
+  | { type: "hit"; remainingHp: number }
+  | { type: "dead" }
+  | { type: "clear" };
+
+/** @returns gameplay event this frame */
 export function updateWorld(
   world: GameWorld,
   dtSec: number,
   running: boolean,
   input: InputState,
-): boolean {
-  if (!running) return false;
+): WorldEvent {
+  world.animClock += dtSec;
+  if (!running) return { type: "none" };
+
   world.elapsedMs += dtSec * 1000;
+  world.stageElapsedMs += dtSec * 1000;
 
-  // Touch/pointer: follow finger immediately (no lag / lerp delay).
-  if (input.pointerActive) {
-    world.player.x = input.pointerX;
-    world.player.y = input.pointerY;
-  } else {
-    let dx = 0;
-    let dy = 0;
-    if (input.left) dx -= 1;
-    if (input.right) dx += 1;
-    if (input.up) dy -= 1;
-    if (input.down) dy += 1;
+  const p = world.player;
+  const stats = world.stats;
+  p.animTime += dtSec;
+  if (p.invulnMs > 0) p.invulnMs = Math.max(0, p.invulnMs - dtSec * 1000);
+  if (p.dashCdMs > 0) p.dashCdMs = Math.max(0, p.dashCdMs - dtSec * 1000);
+  if (p.dashActiveMs > 0) p.dashActiveMs = Math.max(0, p.dashActiveMs - dtSec * 1000);
+  if (p.slowCdMs > 0) p.slowCdMs = Math.max(0, p.slowCdMs - dtSec * 1000);
+  if (p.slowActiveMs > 0) p.slowActiveMs = Math.max(0, p.slowActiveMs - dtSec * 1000);
 
-    if (dx !== 0 || dy !== 0) {
-      const len = Math.hypot(dx, dy) || 1;
-      world.player.x += (dx / len) * KEYBOARD_SPEED * dtSec;
-      world.player.y += (dy / len) * KEYBOARD_SPEED * dtSec;
+  // Horizontal control
+  if (p.anim !== "dead") {
+    if (p.dashActiveMs > 0) {
+      p.vx = p.facing * stats.dashSpeed;
+    } else if (input.pointerActive) {
+      const dx = input.pointerX - p.x;
+      p.vx = Math.max(-stats.moveSpeed, Math.min(stats.moveSpeed, dx * 8));
+      if (Math.abs(dx) > 4) p.facing = dx > 0 ? 1 : -1;
+    } else {
+      let dx = 0;
+      if (input.left) dx -= 1;
+      if (input.right) dx += 1;
+      p.vx = dx * stats.moveSpeed;
+      if (dx !== 0) p.facing = dx > 0 ? 1 : -1;
+    }
+
+    // Jump
+    if (input.jumpPressed && p.onGround) {
+      p.vy = -stats.jumpPower;
+      p.onGround = false;
+    }
+
+    // Dash
+    if (input.dashPressed && stats.dashUnlocked && p.dashCdMs <= 0 && p.dashActiveMs <= 0) {
+      p.dashActiveMs = stats.dashDurationMs;
+      p.dashCdMs = stats.dashCooldownMs;
+      p.invulnMs = Math.max(p.invulnMs, stats.dashIFramesMs);
+      if (!input.left && !input.right && !input.pointerActive) {
+        // keep facing
+      }
+    }
+
+    // Slow field
+    if (input.slowPressed && stats.slowUnlocked && p.slowCdMs <= 0 && p.slowActiveMs <= 0) {
+      p.slowActiveMs = stats.slowDurationMs;
+      p.slowCdMs = stats.slowCooldownMs;
     }
   }
 
-  clampPlayer(world);
-  const hit = updateBullets(world, dtSec);
-  world.score = computeScore(world.elapsedMs, world.dodged);
-  return hit;
+  // Integrate
+  p.x += p.vx * dtSec;
+  p.vy += GRAVITY * dtSec;
+  p.y += p.vy * dtSec;
+  clampX(world);
+  resolvePlatforms(world);
+
+  // Anim state
+  if (p.anim !== "dead" && p.anim !== "hit") {
+    if (!p.onGround) {
+      if (p.anim !== "air") {
+        p.anim = "air";
+        p.animTime = 0;
+      }
+    } else if (Math.abs(p.vx) > 20) {
+      if (p.anim !== "run") {
+        p.anim = "run";
+        p.animTime = 0;
+      }
+    } else if (p.anim !== "idle") {
+      p.anim = "idle";
+      p.animTime = 0;
+    }
+  } else if (p.anim === "hit" && p.animTime > 0.35 && p.hp > 0) {
+    p.anim = p.onGround ? "idle" : "air";
+    p.animTime = 0;
+  }
+
+  const arrowHit = updateArrows(world, dtSec);
+  world.score = computeScore(world.elapsedMs, world.dodged, world.stageIndex);
+
+  const stage = getStage(world.stageIndex);
+  if (!world.stageClear && world.stageElapsedMs >= stage.durationMs) {
+    world.stageClear = true;
+    return { type: "clear" };
+  }
+
+  if (arrowHit && p.hp > 0) {
+    p.hp -= 1;
+    p.anim = "hit";
+    p.animTime = 0;
+    p.invulnMs = 900;
+    p.vy = -280;
+    p.onGround = false;
+    if (p.hp <= 0) {
+      p.anim = "dead";
+      p.animTime = 0;
+      return { type: "dead" };
+    }
+    return { type: "hit", remainingHp: p.hp };
+  }
+
+  return { type: "none" };
 }

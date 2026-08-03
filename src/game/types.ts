@@ -1,17 +1,103 @@
-export type GameState = "ready" | "playing" | "gameover";
+export type GameState = "ready" | "intro" | "playing" | "clear" | "gameover";
+
+export type PlayerAnim = "idle" | "run" | "air" | "hit" | "dead";
 
 export type Player = {
   x: number;
   y: number;
+  vx: number;
+  vy: number;
+  /** Collision radius (torso). */
   radius: number;
+  onGround: boolean;
+  facing: 1 | -1;
+  anim: PlayerAnim;
+  animTime: number;
+  invulnMs: number;
+  hp: number;
+  maxHp: number;
+  dashCdMs: number;
+  dashActiveMs: number;
+  slowCdMs: number;
+  slowActiveMs: number;
 };
 
-export type Bullet = {
+export type Arrow = {
   active: boolean;
   x: number;
   y: number;
-  radius: number;
+  vx: number;
   vy: number;
+  /** Visual length in px. */
+  length: number;
+  /** Tip hit radius. */
+  hitRadius: number;
+  /** Movement angle in radians. */
+  angle: number;
+};
+
+export type Platform = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type ArrowPatternKind =
+  | "rain"
+  | "side"
+  | "cross"
+  | "sweep"
+  | "burst"
+  | "rest";
+
+export type ArrowPattern = {
+  kind: ArrowPatternKind;
+  /** Start offset within the stage (ms). */
+  atMs: number;
+  durationMs: number;
+  spawnMs?: number;
+  speed?: number;
+};
+
+export type StageDef = {
+  id: number;
+  name: string;
+  /** Survive this long to clear. */
+  durationMs: number;
+  baseReward: number;
+  speedMul: number;
+  spawnMul: number;
+  patterns: ArrowPattern[];
+  /** Platforms in normalized coords (0–1 of playfield). */
+  platforms: Array<{ x: number; y: number; w: number; h: number }>;
+  intro: string;
+};
+
+export type ShopUpgradeId =
+  | "moveSpeed"
+  | "jumpPower"
+  | "dash"
+  | "slowField"
+  | "extraLife";
+
+export type ShopLevels = Record<ShopUpgradeId, number>;
+
+export type PlayerStats = {
+  moveSpeed: number;
+  jumpPower: number;
+  dashUnlocked: boolean;
+  dashSpeed: number;
+  dashDurationMs: number;
+  dashCooldownMs: number;
+  dashIFramesMs: number;
+  slowUnlocked: boolean;
+  slowRadius: number;
+  slowFactor: number;
+  slowDurationMs: number;
+  slowCooldownMs: number;
+  extraLives: number;
+  hitboxScale: number;
 };
 
 export type GameWorld = {
@@ -23,11 +109,18 @@ export type GameWorld = {
   safeLeft: number;
   safeRight: number;
   player: Player;
-  bullets: Bullet[];
+  arrows: Arrow[];
+  platforms: Platform[];
   spawnAccMs: number;
+  /** Time inside current stage. */
+  stageElapsedMs: number;
+  /** Global run timer (score). */
   elapsedMs: number;
-  /** Dodged bullets that left the screen */
   dodged: number;
-  /** Survival + dodge combined score */
   score: number;
+  stageIndex: number;
+  stageClear: boolean;
+  floorY: number;
+  stats: PlayerStats;
+  animClock: number;
 };
