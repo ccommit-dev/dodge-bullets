@@ -47,6 +47,12 @@ export type SoundController = {
   enterForeground: () => void;
   playStart: () => void;
   playHit: () => void;
+  playJump: () => void;
+  playDash: () => void;
+  playWhoosh: () => void;
+  playClear: () => void;
+  playCoin: () => void;
+  playBuy: () => void;
   startBgm: () => void;
   stopBgm: () => void;
   dispose: () => void;
@@ -89,7 +95,7 @@ export function createSoundController(initialEnabled = loadSoundEnabled()): Soun
 
   const startBgmInternal = () => {
     if (!canPlay() || bgmTimer !== null || !ctx || !master) return;
-    const notes = [262, 330, 392, 330]; // soft C-E-G loop
+    const notes = [262, 330, 392, 330];
     bgmTimer = window.setInterval(() => {
       if (!canPlay() || !ctx || !master) return;
       playTone(ctx, master, {
@@ -150,6 +156,42 @@ export function createSoundController(initialEnabled = loadSoundEnabled()): Soun
       if (!canPlay() || !ctx || !master) return;
       playTone(ctx, master, { freq: 180, duration: 0.18, type: "square", gain: 0.06 });
       playTone(ctx, master, { freq: 120, duration: 0.22, type: "sawtooth", gain: 0.04 }, 0.04);
+    },
+
+    playJump() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 420, duration: 0.07, type: "triangle", gain: 0.05 });
+      playTone(ctx, master, { freq: 620, duration: 0.08, type: "triangle", gain: 0.04 }, 0.04);
+    },
+
+    playDash() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 880, duration: 0.05, type: "sawtooth", gain: 0.035 });
+      playTone(ctx, master, { freq: 240, duration: 0.1, type: "sine", gain: 0.03 }, 0.03);
+    },
+
+    playWhoosh() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 700, duration: 0.04, type: "triangle", gain: 0.02 });
+    },
+
+    playClear() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 523, duration: 0.1, type: "sine", gain: 0.06 });
+      playTone(ctx, master, { freq: 659, duration: 0.1, type: "sine", gain: 0.06 }, 0.08);
+      playTone(ctx, master, { freq: 784, duration: 0.16, type: "sine", gain: 0.07 }, 0.16);
+    },
+
+    playCoin() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 988, duration: 0.06, type: "square", gain: 0.04 });
+      playTone(ctx, master, { freq: 1319, duration: 0.08, type: "square", gain: 0.035 }, 0.05);
+    },
+
+    playBuy() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 392, duration: 0.07, type: "triangle", gain: 0.05 });
+      playTone(ctx, master, { freq: 523, duration: 0.1, type: "triangle", gain: 0.05 }, 0.06);
     },
 
     startBgm() {

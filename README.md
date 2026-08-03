@@ -41,6 +41,20 @@ lsof -nP -tiTCP:5173 -sTCP:LISTEN | xargs kill -9
 `granite.config.ts`의 `appName`, `brand.displayName`, `brand.icon`을  
 앱인토스 콘솔에 등록한 값과 동일하게 맞추세요.
 
+## 스테이지 · 상점 밸런스
+
+| Stage | 이름 | 생존 | 기본 보상 | 패턴 포인트 |
+|------|------|------|-----------|-------------|
+| 1 | 워밍업 | 22s | 50c | 느린 rain |
+| 2 | 횡풍 | 26s | 70c | side + rain |
+| 3 | 교차 | 28s | 90c | cross + 발판 |
+| 4 | 바닥쓸기 | 30s | 110c | sweep + burst |
+| 5 | 폭풍전야 | 32s | 140c | rest 후 burst |
+| 6 | 결전 | 36s | 180c | 전 패턴 조합 |
+
+상점 (코인만, 광고/결제 없음): 이동속도 / 점프력 / 대시 / 슬로우 / 여분생명  
+수치: `src/game/shop.ts` · 스테이지: `src/game/stages.ts`
+
 ## Day 1-6 (SDK)
 
 - `granite.config.ts` `appName: dodgebullets` (콘솔과 동일)
