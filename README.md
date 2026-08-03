@@ -45,13 +45,14 @@ lsof -nP -tiTCP:5173 -sTCP:LISTEN | xargs kill -9
 
 | Stage | 이름 | 생존 | 기본 보상 | 패턴 포인트 |
 |------|------|------|-----------|-------------|
-| 1 | 워밍업 | 22s | 50c | 느린 rain |
-| 2 | 횡풍 | 26s | 70c | side + rain |
-| 3 | 교차 | 28s | 90c | cross + 발판 |
-| 4 | 바닥쓸기 | 30s | 110c | sweep + burst |
-| 5 | 폭풍전야 | 32s | 140c | rest 후 burst |
-| 6 | 결전 | 36s | 180c | 전 패턴 조합 |
+| 1 | 워밍업 | 14s | 55c | 즉시 rain |
+| 2 | 횡풍 | 15s | 75c | side → rain |
+| 3 | 교차 | 16s | 95c | cross → burst |
+| 4 | 바닥쓸기 | 16s | 120c | sweep → burst |
+| 5 | 폭풍전야 | 17s | 150c | 0.5s rest 후 burst |
+| 6 | 결전 | 18s | 200c | 전 패턴 연속 |
 
+속도감: 긴 rest 제거 · 니어미스 콤보 · 인트로 0.75s 자동시작 · 기본 이동 상향  
 상점 (코인만, 광고/결제 없음): 이동속도 / 점프력 / 대시 / 슬로우 / 여분생명  
 수치: `src/game/shop.ts` · 스테이지: `src/game/stages.ts`
 

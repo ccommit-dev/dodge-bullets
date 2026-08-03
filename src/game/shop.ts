@@ -27,8 +27,8 @@ export const SHOP_META: Record<
   dash: {
     name: "공중 대시",
     desc: "Shift / 대시 버튼 — 짧은 무적 횡이동",
-    baseCost: 80,
-    costStep: 55,
+    baseCost: 60,
+    costStep: 45,
   },
   slowField: {
     name: "감속 자기장",
@@ -68,13 +68,13 @@ export function statsFromLevels(levels: ShopLevels): PlayerStats {
   const life = levels.extraLife;
 
   return {
-    moveSpeed: 320 + ms * 55,
-    jumpPower: 520 + jp * 55,
+    moveSpeed: 400 + ms * 60,
+    jumpPower: 560 + jp * 55,
     dashUnlocked: d > 0,
-    dashSpeed: 780 + d * 90,
-    dashDurationMs: 100 + d * 20,
-    dashCooldownMs: Math.max(700, 1600 - d * 140),
-    dashIFramesMs: 90 + d * 25,
+    dashSpeed: 920 + d * 100,
+    dashDurationMs: 120 + d * 22,
+    dashCooldownMs: Math.max(550, 1400 - d * 150),
+    dashIFramesMs: 100 + d * 25,
     slowUnlocked: s > 0,
     slowRadius: 70 + s * 18,
     slowFactor: Math.max(0.35, 0.72 - s * 0.06),
