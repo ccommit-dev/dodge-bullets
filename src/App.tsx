@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
+import { BeatGame } from "./BeatGame";
 import { drawFrame } from "./game/draw";
 import {
   applyKeyDown,
@@ -102,6 +103,18 @@ function App() {
   const [exitOpen, setExitOpen] = useState(false);
   const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
   const [allClear, setAllClear] = useState(false);
+  const [appMode, setAppMode] = useState<"hub" | "dodge" | "beat">("hub");
+  const appModeRef = useRef<"hub" | "dodge" | "beat">("hub");
+
+  const setMode = useCallback((mode: "hub" | "dodge" | "beat") => {
+    appModeRef.current = mode;
+    setAppMode(mode);
+    if (mode !== "dodge") {
+      soundRef.current.stopBgm();
+      clearKeys(inputRef.current);
+      setPointer(inputRef.current, false);
+    }
+  }, []);
 
   const syncState = useCallback((next: GameState) => {
     stateRef.current = next;
@@ -165,6 +178,12 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (appMode === "dodge") {
+      fitCanvas();
+    }
+  }, [appMode, fitCanvas]);
+
+  useEffect(() => {
     let cancelled = false;
     let unsub: () => void = () => undefined;
 
@@ -223,7 +242,7 @@ function App() {
         sound.enterBackground();
       } else {
         sound.enterForeground();
-        if (stateRef.current === "playing" && sound.isEnabled()) {
+        if (stateRef.current === "playing" && sound.isEnabled() && appModeRef.current === "dodge") {
           sound.startBgm();
         }
       }
@@ -231,7 +250,7 @@ function App() {
     const onPageHide = () => sound.enterBackground();
     const onPageShow = () => {
       sound.enterForeground();
-      if (stateRef.current === "playing" && sound.isEnabled()) {
+      if (stateRef.current === "playing" && sound.isEnabled() && appModeRef.current === "dodge") {
         sound.startBgm();
       }
     };
@@ -252,6 +271,7 @@ function App() {
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (appModeRef.current !== "dodge") return;
       if (stateRef.current !== "playing") return;
       if (applyKeyDown(inputRef.current, e.code)) {
         if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") sound.playJump();
@@ -268,6 +288,7 @@ function App() {
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      if (appModeRef.current !== "dodge") return;
       if (stateRef.current !== "playing") return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       canvas.setPointerCapture(e.pointerId);
@@ -283,6 +304,7 @@ function App() {
       e.preventDefault();
     };
     const onPointerMove = (e: PointerEvent) => {
+      if (appModeRef.current !== "dodge") return;
       if (stateRef.current !== "playing") return;
       if (!inputRef.current.pointerActive) return;
       const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY);
@@ -313,6 +335,10 @@ function App() {
     document.addEventListener("gesturechange", onGesture, { passive: false });
 
     const loop = (ts: number) => {
+      if (appModeRef.current !== "dodge") {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
       const world = worldRef.current;
       const ctx = canvasRef.current?.getContext("2d");
       if (world && ctx) {
@@ -401,9 +427,21 @@ function App() {
           })();
           void saveHighScore(userHashRef.current, world.score).then(setHighScore);
           setLastScore(world.score);
-          setAllClear(isLastStage(world.stageIndex));
-          stateRef.current = "clear";
-          setGameState("clear");
+          const last = isLastStage(world.stageIndex);
+          setAllClear(last);
+
+          // Stage 3+ and all mid clears: skip menu, keep flowing
+          if (!last) {
+            const next = world.stageIndex + 1;
+            prepareWorldForStage(next);
+            lastTsRef.current = 0;
+            sound.playStart();
+            stateRef.current = "intro";
+            setGameState("intro");
+          } else {
+            stateRef.current = "clear";
+            setGameState("clear");
+          }
         }
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -508,6 +546,13 @@ function App() {
     setMenuTab("play");
   };
 
+  const handleBackToHub = () => {
+    soundRef.current.stopBgm();
+    syncState("ready");
+    setMenuTab("play");
+    setMode("hub");
+  };
+
   const buyUpgrade = async (id: ShopUpgradeId) => {
     await unlockAudio();
     const level = shopLevels[id];
@@ -547,11 +592,13 @@ function App() {
 
   return (
     <div className="game-root">
-      <canvas
-        ref={canvasRef}
-        className="game-canvas"
-        aria-label="졸라맨 화살 피하기 게임 화면"
-      />
+      {appMode !== "beat" && (
+        <canvas
+          ref={canvasRef}
+          className="game-canvas"
+          aria-label="졸라맨 화살 피하기 게임 화면"
+        />
+      )}
 
       <div className="sound-dock" style={dockStyle}>
         <button
@@ -576,13 +623,61 @@ function App() {
       {!bootReady && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">총알피하기</p>
+            <p className="brand">미니게임 허브</p>
             <p className="subtitle">준비 중…</p>
           </div>
         </div>
       )}
 
-      {bootReady && gameState === "ready" && (
+      {bootReady && appMode === "hub" && (
+        <div className="game-overlay">
+          <div className="overlay-content overlay-wide">
+            <p className="brand">APPS IN TOSS</p>
+            <h1 className="title">게임 선택</h1>
+            <p className="subtitle">플레이할 게임을 고르세요</p>
+            <p className="score-line">코인 {coins} · 최고 {highScore}</p>
+
+            <button
+              type="button"
+              className="game-card"
+              onClick={() => {
+                syncState("ready");
+                setMode("dodge");
+              }}
+            >
+              <strong>졸라맨 총알피하기</strong>
+              <span>스테이지 · 상점 · 화살 회피</span>
+            </button>
+            <button
+              type="button"
+              className="game-card game-card-beat"
+              onClick={() => setMode("beat")}
+            >
+              <strong>비트박스 Orbit</strong>
+              <span>4/8/16비트 · 상중하 · 리듬 가시</span>
+            </button>
+            <p className="controls-hint">
+              식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {bootReady && appMode === "beat" && (
+        <BeatGame
+          insets={insets}
+          soundEnabled={soundOn}
+          userHash={userHashRef.current}
+          coins={coins}
+          onCoins={(n) => {
+            coinsRef.current = n;
+            setCoins(n);
+          }}
+          onBack={handleBackToHub}
+        />
+      )}
+
+      {bootReady && appMode === "dodge" && gameState === "ready" && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand">총알피하기</p>
@@ -617,6 +712,9 @@ function App() {
                 </p>
                 <button type="button" className="cta" onClick={() => void handleStart(0)}>
                   스테이지 1 시작
+                </button>
+                <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
+                  게임 선택
                 </button>
               </>
             ) : (
@@ -655,7 +753,7 @@ function App() {
         </div>
       )}
 
-      {gameState === "intro" && (
+      {appMode === "dodge" && gameState === "intro" && (
         <div className="game-overlay">
           <div className="overlay-content">
             <p className="brand">STAGE {stage.id}</p>
@@ -669,7 +767,7 @@ function App() {
         </div>
       )}
 
-      {gameState === "playing" && (
+      {appMode === "dodge" && gameState === "playing" && (
         <>
           <div
             className="hud"
@@ -734,7 +832,7 @@ function App() {
         </>
       )}
 
-      {gameState === "clear" && (
+      {appMode === "dodge" && gameState === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
             <p className="brand">{allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
@@ -751,7 +849,7 @@ function App() {
         </div>
       )}
 
-      {gameState === "gameover" && (
+      {appMode === "dodge" && gameState === "gameover" && (
         <div className="game-overlay">
           <div className="overlay-content">
             <p className="brand">게임 오버</p>
