@@ -1,9 +1,12 @@
 import { getStage } from "./stages";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
-const POOL_SIZE = 96;
+const POOL_SIZE = 120;
 const ARROW_LEN = 28;
 const HIT_R = 5;
+/** Tip within this band (beyond hit radius) counts as near-miss. */
+const NEAR_MISS_PAD = 22;
+const COMBO_WINDOW_MS = 1600;
 
 export function createArrowPool(size = POOL_SIZE): Arrow[] {
   const pool: Arrow[] = new Array(size);
@@ -17,6 +20,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       length: ARROW_LEN,
       hitRadius: HIT_R,
       angle: Math.PI / 2,
+      nearMissed: false,
     };
   }
   return pool;
@@ -25,6 +29,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
 export function resetArrows(world: GameWorld): void {
   for (let i = 0; i < world.arrows.length; i++) {
     world.arrows[i].active = false;
+    world.arrows[i].nearMissed = false;
   }
   world.spawnAccMs = 0;
 }
@@ -51,6 +56,7 @@ function activate(
   arrow.length = ARROW_LEN;
   arrow.hitRadius = HIT_R;
   arrow.angle = Math.atan2(vy, vx);
+  arrow.nearMissed = false;
 }
 
 function activePattern(world: GameWorld): ArrowPattern | null {
@@ -122,6 +128,12 @@ function tipPos(a: Arrow): { x: number; y: number } {
   };
 }
 
+function bumpCombo(world: GameWorld): void {
+  world.combo += 1;
+  if (world.combo > world.maxCombo) world.maxCombo = world.combo;
+  world.comboTimerMs = COMBO_WINDOW_MS;
+}
+
 /** @returns true if lethal hit this frame (hp already applied by caller path). */
 export function updateArrows(world: GameWorld, dtSec: number): boolean {
   const stage = getStage(world.stageIndex);
@@ -176,9 +188,17 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
     const pr = player.radius * world.stats.hitboxScale;
     const dx = tip.x - player.x;
     const dy = tip.y - player.y;
-    const r = a.hitRadius + pr;
-    if (dx * dx + dy * dy <= r * r) {
+    const distSq = dx * dx + dy * dy;
+    const hitR = a.hitRadius + pr;
+    if (distSq <= hitR * hitR) {
       hit = true;
+      continue;
+    }
+
+    const nearR = hitR + NEAR_MISS_PAD;
+    if (!a.nearMissed && distSq <= nearR * nearR) {
+      a.nearMissed = true;
+      bumpCombo(world);
     }
   }
 

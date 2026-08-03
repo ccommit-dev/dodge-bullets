@@ -132,6 +132,31 @@
   color: #94a3b8;
 }
 
+.combo-flash {
+  position: absolute;
+  top: calc(var(--safe-top, 0px) + 56px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.55);
+  pointer-events: none;
+  animation: combo-pop 0.25s ease-out;
+}
+
+@keyframes combo-pop {
+  from {
+    transform: translateX(-50%) scale(0.7);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
 .sound-dock {
   position: absolute;
   top: 0;

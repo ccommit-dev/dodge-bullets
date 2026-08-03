@@ -55,6 +55,9 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     floorY,
     stats,
     animClock: 0,
+    combo: 0,
+    maxCombo: 0,
+    comboTimerMs: 0,
   };
   applyStageLayout(world);
   return world;
@@ -101,6 +104,9 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.score = 0;
   world.stageClear = false;
   world.animClock = 0;
+  world.combo = 0;
+  world.maxCombo = 0;
+  world.comboTimerMs = 0;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -113,6 +119,8 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.stageElapsedMs = 0;
   world.spawnAccMs = 0;
   world.stageClear = false;
+  world.combo = 0;
+  world.comboTimerMs = 0;
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
@@ -149,8 +157,18 @@ function resolvePlatforms(world: GameWorld): void {
   }
 }
 
-function computeScore(elapsedMs: number, dodged: number, stageIndex: number): number {
-  return Math.floor(elapsedMs / 100) + dodged * 10 + stageIndex * 50;
+function computeScore(
+  elapsedMs: number,
+  dodged: number,
+  stageIndex: number,
+  combo: number,
+  maxCombo: number,
+): number {
+  const pace = Math.floor(elapsedMs / 70);
+  const dodgePts = dodged * 12;
+  const stagePts = stageIndex * 80;
+  const comboPts = Math.floor(combo * 4 + maxCombo * 6);
+  return pace + dodgePts + stagePts + comboPts;
 }
 
 export type WorldEvent =
@@ -187,7 +205,7 @@ export function updateWorld(
       p.vx = p.facing * stats.dashSpeed;
     } else if (input.pointerActive) {
       const dx = input.pointerX - p.x;
-      p.vx = Math.max(-stats.moveSpeed, Math.min(stats.moveSpeed, dx * 8));
+      p.vx = Math.max(-stats.moveSpeed, Math.min(stats.moveSpeed, dx * 14));
       if (Math.abs(dx) > 4) p.facing = dx > 0 ? 1 : -1;
     } else {
       let dx = 0;
@@ -249,7 +267,19 @@ export function updateWorld(
   }
 
   const arrowHit = updateArrows(world, dtSec);
-  world.score = computeScore(world.elapsedMs, world.dodged, world.stageIndex);
+
+  if (world.comboTimerMs > 0) {
+    world.comboTimerMs = Math.max(0, world.comboTimerMs - dtSec * 1000);
+    if (world.comboTimerMs <= 0) world.combo = 0;
+  }
+
+  world.score = computeScore(
+    world.elapsedMs,
+    world.dodged,
+    world.stageIndex,
+    world.combo,
+    world.maxCombo,
+  );
 
   const stage = getStage(world.stageIndex);
   if (!world.stageClear && world.stageElapsedMs >= stage.durationMs) {
@@ -261,9 +291,11 @@ export function updateWorld(
     p.hp -= 1;
     p.anim = "hit";
     p.animTime = 0;
-    p.invulnMs = 900;
-    p.vy = -280;
+    p.invulnMs = 520;
+    p.vy = -220;
     p.onGround = false;
+    world.combo = 0;
+    world.comboTimerMs = 0;
     if (p.hp <= 0) {
       p.anim = "dead";
       p.animTime = 0;

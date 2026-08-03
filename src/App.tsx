@@ -78,6 +78,7 @@ function App() {
   const hudRemainSecRef = useRef(0);
   const hudHpRef = useRef(1);
   const hudMaxHpRef = useRef(1);
+  const hudComboRef = useRef(0);
   const coinsRef = useRef(0);
   const shopLevelsRef = useRef<ShopLevels>(emptyShopLevels());
   const [bootReady, setBootReady] = useState(false);
@@ -95,6 +96,7 @@ function App() {
   const [stageIntro, setStageIntro] = useState(STAGES[0].intro);
   const [hp, setHp] = useState(1);
   const [maxHp, setMaxHp] = useState(1);
+  const [combo, setCombo] = useState(0);
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
   const [exitOpen, setExitOpen] = useState(false);
@@ -347,6 +349,13 @@ function App() {
             hudMaxHpRef.current = world.player.maxHp;
             setMaxHp(world.player.maxHp);
           }
+          if (world.combo !== hudComboRef.current) {
+            if (world.combo > hudComboRef.current && world.combo > 0 && world.combo % 5 === 0) {
+              sound.playWhoosh();
+            }
+            hudComboRef.current = world.combo;
+            setCombo(world.combo);
+          }
         }
 
         if (event.type === "hit" && stateRef.current === "playing") {
@@ -372,13 +381,14 @@ function App() {
           sound.stopBgm();
           sound.playClear();
           const stage = getStage(world.stageIndex);
-          const reward = computeClearReward(
-            stage.baseReward,
-            world.player.hp,
-            world.player.maxHp,
-            world.stageElapsedMs,
-            stage.durationMs,
-          );
+          const reward =
+            computeClearReward(
+              stage.baseReward,
+              world.player.hp,
+              world.player.maxHp,
+              world.stageElapsedMs,
+              stage.durationMs,
+            ) + Math.min(40, world.maxCombo * 2);
           setCoinGain(reward);
           sound.playCoin();
           void (async () => {
@@ -450,6 +460,8 @@ function App() {
     prepareWorldForStage(fromStage);
     scoreRef.current = 0;
     setScore(0);
+    setCombo(0);
+    hudComboRef.current = 0;
     setCoinGain(0);
     setAllClear(false);
     clearKeys(inputRef.current);
@@ -459,11 +471,19 @@ function App() {
     syncState("intro");
   };
 
-  const handleBeginPlay = () => {
+  const handleBeginPlay = useCallback(() => {
     lastTsRef.current = 0;
     syncState("playing");
     soundRef.current.startBgm();
-  };
+  }, [syncState]);
+
+  useEffect(() => {
+    if (gameState !== "intro") return;
+    const id = window.setTimeout(() => {
+      if (stateRef.current === "intro") handleBeginPlay();
+    }, 750);
+    return () => window.clearTimeout(id);
+  }, [gameState, stageIndex, handleBeginPlay]);
 
   const handleNextStage = () => {
     if (allClear) {
@@ -641,9 +661,9 @@ function App() {
             <p className="brand">STAGE {stage.id}</p>
             <h1 className="title">{stageLabel}</h1>
             <p className="subtitle">{stageIntro}</p>
-            <p className="score-line">목표 {Math.round(stage.durationMs / 1000)}초 생존</p>
+            <p className="score-line">목표 {Math.round(stage.durationMs / 1000)}초 · 0.7초 후 자동시작</p>
             <button type="button" className="cta" onClick={handleBeginPlay}>
-              시작
+              바로 시작
             </button>
           </div>
         </div>
@@ -662,12 +682,14 @@ function App() {
             <div className="hud-left">
               <span className="hud-score">
                 Stage {stage.id} · {remainSec}s
+                {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
                 점수 {score} · 코인 {coins} · HP {"♥".repeat(hp)}
                 {"♡".repeat(Math.max(0, maxHp - hp))}
               </span>
             </div>
+            {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
           </div>
           <div
             className="action-dock"

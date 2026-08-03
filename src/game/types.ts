@@ -34,6 +34,8 @@ export type Arrow = {
   hitRadius: number;
   /** Movement angle in radians. */
   angle: number;
+  /** Near-miss scored once per arrow. */
+  nearMissed: boolean;
 };
 
 export type Platform = {
@@ -123,4 +125,8 @@ export type GameWorld = {
   floorY: number;
   stats: PlayerStats;
   animClock: number;
+  /** Near-miss / tight dodge streak. */
+  combo: number;
+  maxCombo: number;
+  comboTimerMs: number;
 };
