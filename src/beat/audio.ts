@@ -29,7 +29,6 @@ function noiseBurst(
   src.stop(when + duration + 0.02);
 }
 
-/** Soft inhale / exhale whoosh */
 function breath(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
   noiseBurst(ctx, master, when, 0.16, 0.055 * gainScale, 400);
   const osc = ctx.createOscillator();
@@ -46,7 +45,6 @@ function breath(ctx: AudioContext, master: GainNode, when: number, gainScale: nu
   osc.stop(when + 0.18);
 }
 
-/** Classic rolling “pf / fire” lip bass + noise */
 function firebeat(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
@@ -68,7 +66,6 @@ function firebeat(ctx: AudioContext, master: GainNode, when: number, gainScale: 
   noiseBurst(ctx, master, when + 0.02, 0.05, 0.06 * gainScale, 2500);
 }
 
-/** Trumpet / throat-bass buzz */
 function trumpet(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
   const osc = ctx.createOscillator();
   const osc2 = ctx.createOscillator();
@@ -162,70 +159,92 @@ function rim(ctx: AudioContext, master: GainNode, when: number, gainScale: numbe
   osc.stop(when + 0.06);
 }
 
-function clubKick(ctx: AudioContext, out: AudioNode, when: number): void {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(110, when);
-  osc.frequency.exponentialRampToValueAtTime(42, when + 0.11);
-  gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(0.12, when + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
-  osc.connect(gain);
-  gain.connect(out);
-  osc.start(when);
-  osc.stop(when + 0.18);
-}
-
-function clubBass(
+function synthSound(
   ctx: AudioContext,
-  out: AudioNode,
+  master: GainNode,
+  sound: BeatSound,
   when: number,
-  frequency: number,
+  gainScale: number,
 ): void {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(frequency, when);
-  filter.type = "lowpass";
-  filter.frequency.value = 260;
-  filter.Q.value = 2.5;
-  gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(0.045, when + 0.015);
-  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.2);
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(out);
-  osc.start(when);
-  osc.stop(when + 0.22);
+  switch (sound) {
+    case "breath":
+      breath(ctx, master, when, gainScale);
+      break;
+    case "firebeat":
+      firebeat(ctx, master, when, gainScale);
+      break;
+    case "trumpet":
+      trumpet(ctx, master, when, gainScale);
+      break;
+    case "boots":
+      boots(ctx, master, when, gainScale);
+      break;
+    case "cats":
+      cats(ctx, master, when, gainScale);
+      break;
+    case "throat":
+      throat(ctx, master, when, gainScale);
+      break;
+    case "click":
+      click(ctx, master, when, gainScale);
+      break;
+    case "rim":
+      rim(ctx, master, when, gainScale);
+      break;
+  }
 }
 
 export type BeatboxPlayer = {
+  /** Loud lead — same synthesizer as the quiet lesson guide. */
   playSound: (sound: BeatSound, timingQuality?: number) => void;
+  /** Soft guide note so the player learns by matching the teacher. */
+  playGuide: (sound: BeatSound) => void;
+  /** Tiny metronome tick only — not a different club song. */
+  startMetronome: (bpm: number) => void;
+  stopMetronome: () => void;
+  /** @deprecated use startMetronome */
   startBacking: (bpm: number) => void;
   stopBacking: () => void;
   dispose: () => void;
 };
 
 /**
- * Club backing supplies only a quiet kick/bass foundation.
- * User actions remain the lead melody and beatbox performance.
+ * Lesson audio model:
+ * - Guide track quietly plays the stage's beatbox syllables on the grid
+ * - Player taps play the *same* syllable loudly
+ * - Metronome is a faint click so timing stays clear without competing BGM
  */
 export function createBeatboxPlayer(
   getCtx: () => AudioContext | null,
   getMaster: () => GainNode | null,
   isLive: () => boolean,
 ): BeatboxPlayer {
-  let backingTimer: number | null = null;
-  let backingStep = 0;
+  let metroTimer: number | null = null;
+  let metroStep = 0;
 
-  const stopBacking = () => {
-    if (backingTimer !== null) {
-      window.clearInterval(backingTimer);
-      backingTimer = null;
+  const stopMetronome = () => {
+    if (metroTimer !== null) {
+      window.clearInterval(metroTimer);
+      metroTimer = null;
     }
-    backingStep = 0;
+    metroStep = 0;
+  };
+
+  const startMetronome = (bpm: number) => {
+    stopMetronome();
+    if (!isLive()) return;
+    const intervalMs = 60_000 / bpm;
+    const tick = () => {
+      const ctx = getCtx();
+      const master = getMaster();
+      if (!ctx || !master || !isLive()) return;
+      const t = ctx.currentTime + 0.01;
+      // Soft click — downbeats a touch louder
+      noiseBurst(ctx, master, t, 0.018, metroStep % 4 === 0 ? 0.028 : 0.014, 7000);
+      metroStep += 1;
+    };
+    tick();
+    metroTimer = window.setInterval(tick, intervalMs);
   };
 
   return {
@@ -235,58 +254,24 @@ export function createBeatboxPlayer(
       const master = getMaster();
       if (!ctx || !master) return;
       const t = ctx.currentTime + 0.005;
-      const g = 0.45 + 0.55 * Math.max(0.2, Math.min(1, timingQuality));
-      switch (sound) {
-        case "breath":
-          breath(ctx, master, t, g);
-          break;
-        case "firebeat":
-          firebeat(ctx, master, t, g);
-          break;
-        case "trumpet":
-          trumpet(ctx, master, t, g);
-          break;
-        case "boots":
-          boots(ctx, master, t, g);
-          break;
-        case "cats":
-          cats(ctx, master, t, g);
-          break;
-        case "throat":
-          throat(ctx, master, t, g);
-          break;
-        case "click":
-          click(ctx, master, t, g);
-          break;
-        case "rim":
-          rim(ctx, master, t, g);
-          break;
-      }
+      const g = 0.55 + 0.55 * Math.max(0.2, Math.min(1, timingQuality));
+      synthSound(ctx, master, sound, t, g);
     },
-    startBacking(bpm) {
-      stopBacking();
+    playGuide(sound) {
       if (!isLive()) return;
-      const intervalMs = (60_000 / bpm) / 2;
-      const bassNotes = [55, 55, 65.41, 49];
-      const tick = () => {
-        const ctx = getCtx();
-        const master = getMaster();
-        if (!ctx || !master || !isLive()) return;
-        const t = ctx.currentTime + 0.01;
-        if (backingStep % 2 === 0) {
-          clubKick(ctx, master, t);
-          clubBass(ctx, master, t + 0.03, bassNotes[(backingStep / 2) % bassNotes.length]);
-        } else {
-          noiseBurst(ctx, master, t, 0.025, 0.018, 7500);
-        }
-        backingStep += 1;
-      };
-      tick();
-      backingTimer = window.setInterval(tick, intervalMs);
+      const ctx = getCtx();
+      const master = getMaster();
+      if (!ctx || !master) return;
+      const t = ctx.currentTime + 0.005;
+      // Same voice as player taps, but soft — "teacher" layer
+      synthSound(ctx, master, sound, t, 0.22);
     },
-    stopBacking,
+    startMetronome,
+    stopMetronome,
+    startBacking: startMetronome,
+    stopBacking: stopMetronome,
     dispose() {
-      stopBacking();
+      stopMetronome();
     },
   };
 }

@@ -1,3 +1,5 @@
+import { emptyBeatCosmetics, normalizeBeatCosmetics } from "../beat/shop";
+import type { BeatCosmetics } from "../beat/types";
 import { emptyShopLevels } from "./shop";
 import { storageGet, storageSet } from "./toss";
 import type { ShopLevels, ShopUpgradeId } from "./types";
@@ -14,6 +16,14 @@ function coinsKey(userHash: string): string {
 
 function shopKey(userHash: string): string {
   return `dodgebullets:shop:${userHash}`;
+}
+
+function beatCosmeticsKey(userHash: string): string {
+  return `dodgebullets:beatCosmetics:${userHash}`;
+}
+
+function beatUnlockKey(userHash: string): string {
+  return `dodgebullets:beatUnlock:${userHash}`;
 }
 
 export async function loadHighScore(userHash: string): Promise<number> {
@@ -86,6 +96,38 @@ export async function loadShopLevels(userHash: string): Promise<ShopLevels> {
 
 export async function saveShopLevels(userHash: string, levels: ShopLevels): Promise<void> {
   await storageSet(shopKey(userHash), JSON.stringify(levels));
+}
+
+export async function loadBeatCosmetics(userHash: string): Promise<BeatCosmetics> {
+  const raw = await storageGet(beatCosmeticsKey(userHash));
+  if (!raw) return emptyBeatCosmetics();
+  try {
+    return normalizeBeatCosmetics(JSON.parse(raw) as Partial<BeatCosmetics>);
+  } catch {
+    return emptyBeatCosmetics();
+  }
+}
+
+export async function saveBeatCosmetics(
+  userHash: string,
+  cosmetics: BeatCosmetics,
+): Promise<void> {
+  await storageSet(beatCosmeticsKey(userHash), JSON.stringify(normalizeBeatCosmetics(cosmetics)));
+}
+
+/** Highest stage index unlocked (0-based). Stage 0 always playable. */
+export async function loadBeatUnlock(userHash: string): Promise<number> {
+  const raw = await storageGet(beatUnlockKey(userHash));
+  if (!raw) return 0;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+export async function saveBeatUnlock(userHash: string, maxIndex: number): Promise<number> {
+  const prev = await loadBeatUnlock(userHash);
+  const next = Math.max(prev, Math.max(0, Math.floor(maxIndex)));
+  await storageSet(beatUnlockKey(userHash), String(next));
+  return next;
 }
 
 /** Stage clear reward: base + small HP/time leftovers. */

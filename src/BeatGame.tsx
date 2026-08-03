@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCampaignStage } from "./beat/tracks";
+import { BEAT_SHOP_ITEMS } from "./beat/shop";
 import { drawBeatFrame } from "./beat/draw";
+import { BEAT_TRACKS, getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
+import type { BeatCosmetics, RingSkinId, SpikeSkinId } from "./beat/types";
+import { BEAT_SOUND_LABEL } from "./beat/types";
 import {
   applyBeatInsets,
   createBeatSession,
@@ -10,11 +13,18 @@ import {
   updateBeatWorld,
   type BeatSession,
 } from "./beat/world";
-import { BEAT_SOUND_LABEL } from "./beat/types";
-import { computeClearReward, saveCoins, saveHighScore } from "./game/storage";
+import {
+  computeClearReward,
+  loadBeatCosmetics,
+  loadBeatUnlock,
+  saveBeatCosmetics,
+  saveBeatUnlock,
+  saveCoins,
+  saveHighScore,
+} from "./game/storage";
 import type { SafeInsets } from "./game/toss";
 
-type BeatUi = "menu" | "playing" | "clear" | "gameover";
+type BeatUi = "menu" | "playing" | "clear" | "gameover" | "shop";
 
 type Props = {
   insets: SafeInsets;
@@ -41,6 +51,8 @@ export function BeatGame({
   const coinsRef = useRef(coins);
   coinsRef.current = coins;
   const lastTapMs = useRef(0);
+  const cosmeticsRef = useRef<BeatCosmetics | null>(null);
+  const pendingClearRef = useRef(false);
 
   const [ui, setUi] = useState<BeatUi>("menu");
   const [score, setScore] = useState(0);
@@ -50,10 +62,13 @@ export function BeatGame({
   const [maxHp, setMaxHp] = useState(3);
   const [remainSec, setRemainSec] = useState(0);
   const [coinGain, setCoinGain] = useState(0);
-  const [trackLabel, setTrackLabel] = useState(() => getCampaignStage(0).name);
+  const [lessonTitle, setLessonTitle] = useState(() => getCampaignStage(0).lessonTitle);
   const [stageNo, setStageNo] = useState(1);
-  const [nextSoundLabel, setNextSoundLabel] = useState("부츠");
+  const [nextSoundLabel, setNextSoundLabel] = useState("킥(B)");
   const [lastSoundLabel, setLastSoundLabel] = useState("");
+  const [unlocked, setUnlocked] = useState(0);
+  const [cosmetics, setCosmetics] = useState<BeatCosmetics | null>(null);
+  const [shopMsg, setShopMsg] = useState("");
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
 
@@ -61,6 +76,18 @@ export function BeatGame({
     uiRef.current = next;
     setUi(next);
   }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const [u, c] = await Promise.all([
+        loadBeatUnlock(userHash),
+        loadBeatCosmetics(userHash),
+      ]);
+      setUnlocked(u);
+      setCosmetics(c);
+      cosmeticsRef.current = c;
+    })();
+  }, [userHash]);
 
   const fit = useCallback(() => {
     const canvas = canvasRef.current;
@@ -98,7 +125,6 @@ export function BeatGame({
     const fireTap = () => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       const now = performance.now();
-      // Debounce double-fire from pointer+click
       if (now - lastTapMs.current < 40) return;
       lastTapMs.current = now;
       performBeatTap(sessionRef.current);
@@ -106,7 +132,6 @@ export function BeatGame({
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
-      // Orbit or Beat: any direction key / space = reverse + beat
       if (
         e.code === "Space" ||
         e.code === "ArrowUp" ||
@@ -123,7 +148,6 @@ export function BeatGame({
       }
     };
 
-    // Instant feel: reverse on press, not release
     const onPointerDown = (e: PointerEvent) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -152,7 +176,7 @@ export function BeatGame({
           setMaxHp(w.maxHp);
           setRemainSec(Math.ceil(Math.max(0, w.durationMs - w.elapsedMs) / 1000));
           setStageNo(w.stageIndex + 1);
-          setTrackLabel(w.trackName);
+          setLessonTitle(w.lessonTitle);
           const nextL = BEAT_SOUND_LABEL[w.nextSound];
           if (nextL !== hudNextRef.current) {
             hudNextRef.current = nextL;
@@ -166,33 +190,31 @@ export function BeatGame({
             }
           }
 
-          if (event.type === "stage-clear") {
-            // Stage 3→4 and all mid clears: keep playing, no overlay
-            void saveHighScore(userHash, w.score);
-            const midReward = 25 + event.nextStage * 8;
-            void (async () => {
-              const next = await saveCoins(userHash, coinsRef.current + midReward);
-              coinsRef.current = next;
-              onCoins(next);
-            })();
-          }
-
           if (event.type === "dead") {
             setLastScore(w.score);
             void saveHighScore(userHash, w.score);
             syncUi("gameover");
           }
-          if (event.type === "clear") {
-            const base = 200;
+          if (event.type === "clear" && !pendingClearRef.current) {
+            pendingClearRef.current = true;
+            const track = session.track;
             const reward =
-              computeClearReward(base, w.hp, w.maxHp, w.elapsedMs, w.durationMs) +
-              Math.min(80, w.maxCombo * 3);
+              computeClearReward(
+                track.reward,
+                w.hp,
+                w.maxHp,
+                w.elapsedMs,
+                w.durationMs,
+              ) + Math.min(60, w.maxCombo * 2);
             setCoinGain(reward);
             setLastScore(w.score);
             void (async () => {
               const next = await saveCoins(userHash, coinsRef.current + reward);
               coinsRef.current = next;
               onCoins(next);
+              const unlockTo = Math.min(stageCount() - 1, w.stageIndex + 1);
+              setUnlocked((prev) => Math.max(prev, unlockTo));
+              await saveBeatUnlock(userHash, unlockTo);
             })();
             void saveHighScore(userHash, w.score);
             syncUi("clear");
@@ -220,16 +242,19 @@ export function BeatGame({
     };
   }, [onCoins, syncUi, userHash]);
 
-  const startCampaign = async (fromStage = 0) => {
+  const startStage = async (fromStage: number) => {
+    if (fromStage > unlocked) return;
     if (sessionRef.current) {
       disposeBeatSession(sessionRef.current);
       sessionRef.current = null;
     }
+    pendingClearRef.current = false;
     const canvas = canvasRef.current;
     const width = window.innerWidth;
     const height = window.innerHeight;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const track = getCampaignStage(fromStage);
+    const cos = cosmeticsRef.current;
     const session = await createBeatSession(
       width,
       height,
@@ -237,10 +262,11 @@ export function BeatGame({
       track.id,
       soundEnabled,
       fromStage,
+      cos ?? undefined,
     );
     applyBeatInsets(session.world, insets);
     sessionRef.current = session;
-    setTrackLabel(track.name);
+    setLessonTitle(track.lessonTitle);
     setStageNo(fromStage + 1);
     setScore(0);
     setCombo(0);
@@ -260,8 +286,46 @@ export function BeatGame({
     syncUi("playing");
   };
 
-  const handleStart = () => {
-    void startCampaign(0);
+  const buyOrEquip = async (kind: "ring" | "spike", id: string) => {
+    if (!cosmetics) return;
+    const item = BEAT_SHOP_ITEMS.find((i) => i.kind === kind && i.id === id);
+    if (!item) return;
+    const next = { ...cosmetics, ownedRings: [...cosmetics.ownedRings], ownedSpikes: [...cosmetics.ownedSpikes] };
+
+    if (kind === "ring") {
+      const rid = id as RingSkinId;
+      if (!next.ownedRings.includes(rid)) {
+        if (coinsRef.current < item.cost) {
+          setShopMsg("코인이 부족해요");
+          return;
+        }
+        const bal = await saveCoins(userHash, coinsRef.current - item.cost);
+        coinsRef.current = bal;
+        onCoins(bal);
+        next.ownedRings.push(rid);
+        setShopMsg(`${item.name} 구매!`);
+      }
+      next.ringSkin = rid;
+    } else {
+      const sid = id as SpikeSkinId;
+      if (!next.ownedSpikes.includes(sid)) {
+        if (coinsRef.current < item.cost) {
+          setShopMsg("코인이 부족해요");
+          return;
+        }
+        const bal = await saveCoins(userHash, coinsRef.current - item.cost);
+        coinsRef.current = bal;
+        onCoins(bal);
+        next.ownedSpikes.push(sid);
+        setShopMsg(`${item.name} 구매!`);
+      }
+      next.spikeSkin = sid;
+    }
+
+    setCosmetics(next);
+    cosmeticsRef.current = next;
+    await saveBeatCosmetics(userHash, next);
+    if (sessionRef.current) sessionRef.current.world.cosmetics = next;
   };
 
   const dockStyle = {
@@ -270,6 +334,8 @@ export function BeatGame({
     paddingRight: insets.right,
   } as const;
 
+  const totalStages = stageCount();
+
   return (
     <div className="beat-layer">
       <canvas ref={canvasRef} className="game-canvas" />
@@ -277,25 +343,93 @@ export function BeatGame({
       {ui === "menu" && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
-            <p className="brand beat-kicker">ORBIT OR BEAT</p>
+            <p className="brand beat-kicker">BEATBOX LESSON</p>
             <h1 className="title beat-title">ORBIT//BEAT</h1>
             <p className="subtitle">
-              원을 돌며 탭으로 반전 · 가시를 피하고 비트박스로 곡을 완성하세요
+              Bukbak 스타일 강좌 순서 · 가이드 소리 = 탭 소리 · 박자에 맞춰 배우세요
             </p>
-            <p className="score-line">STAGE 1 → 6 · 클리어하면 곧바로 다음 스테이지</p>
-            <p className="controls-hint">
-              화면 아무 곳이나 탭 / Space / 방향키 = 궤도 반전 + 비트 연주
-            </p>
-            <p className="controls-hint beat-legend">
-              <b className="legend-lit" />
-              밝게 빛나는 구간이 지금 달려가는 방향입니다. 그 위에 가시가 뜨면 탭해서 반대로
-              도세요.
-            </p>
-            <button type="button" className="cta beat-start" onClick={handleStart}>
-              PLAY FROM STAGE 1
-            </button>
-            <button type="button" className="cta cta-ghost" onClick={onBack}>
-              게임 선택
+            <p className="score-line">코인 {coins} · 해금 STAGE {unlocked + 1}/{totalStages}</p>
+            <div className="stage-grid">
+              {BEAT_TRACKS.map((t, i) => {
+                const locked = i > unlocked;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`stage-card ${locked ? "locked" : ""}`}
+                    disabled={locked}
+                    onClick={() => void startStage(i)}
+                  >
+                    <span className="stage-card-no">S{i + 1}</span>
+                    <span className="stage-card-name">{t.lessonTitle}</span>
+                    <span className="stage-card-desc">
+                      {locked ? "🔒 이전 스테이지 클리어" : t.desc}
+                    </span>
+                    <span className="stage-card-meta">
+                      {t.subdivision}비트 · {t.difficulty}
+                      {t.ringCount === 2 ? " · 이중원" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="menu-actions">
+              <button type="button" className="cta beat-start" onClick={() => void startStage(0)}>
+                STAGE 1 시작
+              </button>
+              <button type="button" className="cta cta-ghost" onClick={() => syncUi("shop")}>
+                비트 상점
+              </button>
+              <button type="button" className="cta cta-ghost" onClick={onBack}>
+                게임 선택
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ui === "shop" && cosmetics && (
+        <div className="game-overlay">
+          <div className="overlay-content overlay-wide">
+            <p className="brand beat-kicker">BEAT SHOP</p>
+            <h1 className="title">궤도 · 비트 꾸미기</h1>
+            <p className="subtitle">클리어 코인으로 링/화살표 비트를 커스텀하세요</p>
+            <p className="score-line">보유 {coins} 코인</p>
+            {shopMsg && <p className="shop-toast">{shopMsg}</p>}
+            <div className="beat-shop-list">
+              {BEAT_SHOP_ITEMS.map((item) => {
+                const owned =
+                  item.kind === "ring"
+                    ? cosmetics.ownedRings.includes(item.id)
+                    : cosmetics.ownedSpikes.includes(item.id);
+                const equipped =
+                  item.kind === "ring"
+                    ? cosmetics.ringSkin === item.id
+                    : cosmetics.spikeSkin === item.id;
+                return (
+                  <div key={`${item.kind}-${item.id}`} className="beat-shop-item">
+                    <div className="shop-item-text">
+                      <strong>
+                        {item.kind === "ring" ? "링" : "비트"} · {item.name}
+                      </strong>
+                      <span>{item.desc}</span>
+                      <span className="shop-lv">
+                        {owned ? (equipped ? "착용 중" : "보유") : `${item.cost} 코인`}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="shop-buy"
+                      onClick={() => void buyOrEquip(item.kind, item.id)}
+                    >
+                      {equipped ? "착용됨" : owned ? "착용" : "구매"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button type="button" className="cta" onClick={() => syncUi("menu")}>
+              스테이지 선택
             </button>
           </div>
         </div>
@@ -306,11 +440,11 @@ export function BeatGame({
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">
-                STAGE {stageNo}/6 · {remainSec}s
+                STAGE {stageNo}/{totalStages} · {remainSec}s
               </span>
               <span className="hud-hint">
-                {trackLabel} · NEXT {nextSoundLabel}
-                {lastSoundLabel ? ` · ${lastSoundLabel}` : ""} · HP {"♥".repeat(hp)}
+                {lessonTitle} · NEXT {nextSoundLabel}
+                {lastSoundLabel ? ` · YOU ${lastSoundLabel}` : ""} · HP {"♥".repeat(hp)}
                 {"♡".repeat(Math.max(0, maxHp - hp))}
               </span>
             </div>
@@ -334,8 +468,8 @@ export function BeatGame({
                 if (sessionRef.current) performBeatTap(sessionRef.current);
               }}
             >
-              <span>REVERSE</span>
-              <small>밝은 쪽으로 달리는 중</small>
+              <span>TAP = 연주</span>
+              <small>가이드와 같은 소리 · 밝은 쪽으로</small>
             </button>
           </div>
         </>
@@ -344,15 +478,25 @@ export function BeatGame({
       {ui === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">ALL CLEAR</p>
-            <h1 className="title">STAGE 6 클리어!</h1>
+            <p className="brand">STAGE CLEAR</p>
+            <h1 className="title">{lessonTitle}</h1>
             <p className="score-line">+{coinGain} 코인</p>
             <p className="subtitle">점수 {lastScore} · 보유 {coins}</p>
-            <button type="button" className="cta" onClick={handleStart}>
-              처음부터
+            <p className="controls-hint">강좌 한 단원 완료! 상점에서 링·비트를 꾸며보세요</p>
+            {!isLastCampaignStage(stageNo - 1) && stageNo <= unlocked && (
+              <button
+                type="button"
+                className="cta"
+                onClick={() => void startStage(stageNo)}
+              >
+                다음 스테이지
+              </button>
+            )}
+            <button type="button" className="cta beat-start" onClick={() => syncUi("shop")}>
+              비트 상점
             </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
-              메뉴
+              스테이지 선택
             </button>
           </div>
         </div>
@@ -364,19 +508,15 @@ export function BeatGame({
             <p className="brand">게임 오버</p>
             <h1 className="title">비트 아웃</h1>
             <p className="score-line">점수 {lastScore}</p>
-            <p className="subtitle">STAGE {stageNo}에서 아웃</p>
-            <button
-              type="button"
-              className="cta"
-              onClick={() => void startCampaign(Math.max(0, stageNo - 1))}
-            >
-              이 스테이지부터
-            </button>
-            <button type="button" className="cta cta-ghost" onClick={handleStart}>
-              STAGE 1부터
+            <p className="subtitle">{lessonTitle}</p>
+            <button type="button" className="cta" onClick={() => void startStage(stageNo - 1)}>
+              다시 도전
             </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
-              메뉴
+              스테이지 선택
+            </button>
+            <button type="button" className="cta cta-ghost" onClick={() => syncUi("shop")}>
+              비트 상점
             </button>
           </div>
         </div>
