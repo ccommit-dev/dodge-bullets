@@ -1,5 +1,6 @@
 import { emptyBeatCosmetics, normalizeBeatCosmetics } from "../beat/shop";
 import type { BeatCosmetics } from "../beat/types";
+import { emptyBeatRpg, normalizeBeatRpg, type BeatRpgProgress } from "../beat/rpg";
 import { emptyShopLevels } from "./shop";
 import { storageGet, storageSet } from "./toss";
 import type { ShopLevels, ShopUpgradeId } from "./types";
@@ -20,6 +21,10 @@ function shopKey(userHash: string): string {
 
 function beatCosmeticsKey(userHash: string): string {
   return `dodgebullets:beatCosmetics:${userHash}`;
+}
+
+function beatRpgKey(userHash: string): string {
+  return `dodgebullets:beatRpg:${userHash}`;
 }
 
 function beatUnlockKey(userHash: string): string {
@@ -127,6 +132,25 @@ export async function saveBeatUnlock(userHash: string, maxIndex: number): Promis
   const prev = await loadBeatUnlock(userHash);
   const next = Math.max(prev, Math.max(0, Math.floor(maxIndex)));
   await storageSet(beatUnlockKey(userHash), String(next));
+  return next;
+}
+
+export async function loadBeatRpg(userHash: string): Promise<BeatRpgProgress> {
+  const raw = await storageGet(beatRpgKey(userHash));
+  if (!raw) return emptyBeatRpg();
+  try {
+    return normalizeBeatRpg(JSON.parse(raw) as Partial<BeatRpgProgress>);
+  } catch {
+    return emptyBeatRpg();
+  }
+}
+
+export async function saveBeatRpg(
+  userHash: string,
+  progress: BeatRpgProgress,
+): Promise<BeatRpgProgress> {
+  const next = normalizeBeatRpg(progress);
+  await storageSet(beatRpgKey(userHash), JSON.stringify(next));
   return next;
 }
 

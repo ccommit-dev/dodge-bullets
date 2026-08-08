@@ -1,5 +1,11 @@
-import { createBeatboxPlayer, type BeatboxPlayer } from "./audio";
+import { createAudioChain, createBeatboxPlayer, type BeatboxPlayer } from "./audio";
 import { emptyBeatCosmetics } from "./shop";
+import {
+  hpBonusFromSkills,
+  timingBonusFromSkills,
+  type BeatSkills,
+  emptySkills,
+} from "./rpg";
 import {
   angularSpeedFor,
   buildChart,
@@ -12,18 +18,56 @@ import type {
   BeatChartStep,
   BeatCosmetics,
   BeatParticle,
+  BeatSound,
   BeatSpike,
   BeatWorld,
+  NoteLane,
 } from "./types";
 
+/** Which pad a syllable belongs to. Drawing and judging share this map. */
+const SOUND_LANE: Record<BeatSound, NoteLane> = {
+  boots: 0,
+  firebeat: 0,
+  throat: 0,
+  cats: 1,
+  click: 1,
+  breath: 1,
+  rim: 2,
+  trumpet: 2,
+};
+
+export function laneOfSound(sound: BeatSound): NoteLane {
+  return SOUND_LANE[sound];
+}
+
+/** Rail geometry shared by renderer, pads and particle bursts. */
+export function railGeometry(world: BeatWorld): {
+  horizonY: number;
+  hitY: number;
+  farHalf: number;
+  nearHalf: number;
+} {
+  return {
+    horizonY: Math.max(world.safeTop + 180, world.height * 0.34),
+    hitY: world.height - world.safeBottom - Math.max(150, world.height * 0.2),
+    farHalf: Math.min(45, world.width * 0.12),
+    nearHalf: Math.min(world.width * 0.46, 230),
+  };
+}
+
+/** Horizontal position of a lane at depth `eased` (0 = horizon, 1 = hit line). */
+export function laneXAt(world: BeatWorld, lane: NoteLane, eased: number): number {
+  const { farHalf, nearHalf } = railGeometry(world);
+  const spread = farHalf * 0.45 + (nearHalf * 0.62 - farHalf * 0.45) * eased;
+  return world.cx + (lane - 1) * spread;
+}
+
 const SPIKE_POOL = 48;
-const HIT_ANGLE = 0.12;
-const NEAR_ANGLE = 0.32;
-const TIMING_WINDOW = 0.45;
-const SPAWN_AHEAD_MIN = 1.0;
-const SPAWN_AHEAD_MAX = 1.5;
-const ESCAPE_CLEARANCE = 0.95;
-const SPIKE_LIFE_MS = 2400;
+/** Playhead advance per frame that means the render loop stalled, not played. */
+const MAX_JUMP_SEC = 0.5;
+/** Pad lit time after a press — the only input-driven visual. */
+export const PAD_FLASH_MS = 170;
+
 const CLEAR_FX_MS = 900;
 
 function makeSpikes(): BeatSpike[] {
@@ -124,6 +168,22 @@ export function createBeatWorld(
     zoomPulse: 0,
     clearFxMs: 0,
     cosmetics,
+    chart: [],
+    loopCounts: {
+      breath: 0,
+      firebeat: 0,
+      trumpet: 0,
+      boots: 0,
+      cats: 0,
+      throat: 0,
+      click: 0,
+      rim: 0,
+    },
+    lastOffsetMs: 0,
+    loopCompletion: 0,
+    laneFlashMs: [0, 0, 0],
+    hitSteps: new Set<number>(),
+    beatPosition: 0,
   };
   layout(world);
   return world;
@@ -152,37 +212,6 @@ export function applyBeatInsets(
   layout(world);
 }
 
-function acquireSpike(world: BeatWorld): BeatSpike | null {
-  for (let i = 0; i < world.spikes.length; i++) {
-    if (!world.spikes[i].active) return world.spikes[i];
-  }
-  return null;
-}
-
-function spawnSpike(world: BeatWorld, lane: 0 | 1): boolean {
-  const ahead = SPAWN_AHEAD_MIN + Math.random() * (SPAWN_AHEAD_MAX - SPAWN_AHEAD_MIN);
-  const angle = world.playerAngle + world.direction * ahead;
-
-  for (const other of world.spikes) {
-    if (!other.active) continue;
-    if (other.lane !== lane) continue;
-    const behind = signedDelta(other.angle, world.playerAngle) * world.direction < 0;
-    if (behind && angularDist(other.angle, world.playerAngle) < ESCAPE_CLEARANCE) {
-      return false;
-    }
-    if (angularDist(other.angle, angle) < 0.38) return false;
-  }
-
-  const s = acquireSpike(world);
-  if (!s) return false;
-  s.active = true;
-  s.angle = angle;
-  s.lane = world.ringCount === 1 ? 0 : lane;
-  s.ageMs = 0;
-  s.nearMissed = false;
-  return true;
-}
-
 export type BeatSession = {
   world: BeatWorld;
   chart: BeatChartStep[];
@@ -191,6 +220,13 @@ export type BeatSession = {
   ctx: AudioContext | null;
   master: GainNode | null;
   enabled: boolean;
+  skills: BeatSkills;
+  isSpar: boolean;
+  /** Perfect-ish locks this run (for RPG fame). */
+  lockHits: number;
+  taps: number;
+  hitSteps: Set<number>;
+  evaluatedStep: number;
 };
 
 export async function createBeatSession(
@@ -201,6 +237,8 @@ export async function createBeatSession(
   soundEnabled: boolean,
   stageIndex = 0,
   cosmetics: BeatCosmetics = emptyBeatCosmetics(),
+  skills: BeatSkills = emptySkills(),
+  isSpar = false,
 ): Promise<BeatSession> {
   const track = getTrack(trackId);
   const chart = buildChart(track);
@@ -213,6 +251,15 @@ export async function createBeatSession(
     stageIndex,
     cosmetics,
   );
+  world.chart = chart;
+
+  const bonusHp = hpBonusFromSkills(skills);
+  world.hp = Math.min(5, world.hp + bonusHp);
+  world.maxHp = world.hp;
+  if (isSpar) {
+    world.stageBannerText = `SPAR · ${track.lessonTitle}`;
+    world.lessonHint = "박자에 탭해 BGM 가이드 위에 리드를 겹치세요";
+  }
 
   let ctx: AudioContext | null = null;
   let master: GainNode | null = null;
@@ -221,9 +268,7 @@ export async function createBeatSession(
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     ctx = new AC();
-    master = ctx.createGain();
-    master.gain.value = 1;
-    master.connect(ctx.destination);
+    master = createAudioChain(ctx);
     if (ctx.state === "suspended") await ctx.resume();
   }
 
@@ -232,11 +277,32 @@ export async function createBeatSession(
     () => master,
     () => soundEnabled && !!ctx,
   );
-  box.startMetronome(track.bpm);
-  // First guide note — same syllable the player will reinforce on tap
-  if (chart[0]) box.playGuide(chart[0].sound);
 
-  return { world, chart, track, box, ctx, master, enabled: soundEnabled };
+  const session: BeatSession = {
+    world,
+    chart,
+    track,
+    box,
+    ctx,
+    master,
+    enabled: soundEnabled,
+    skills,
+    isSpar,
+    lockHits: 0,
+    taps: 0,
+    hitSteps: new Set<number>(),
+    evaluatedStep: 0,
+  };
+
+  // Audio-clock lesson BGM — same syllables the player will layer on tap.
+  // This fires up to LOOKAHEAD ahead of the sound, so it must never touch the
+  // playhead (stepIndex / beatPosition) or the note stream would jump forward.
+  box.startLessonTransport(track.bpm, world.stepSec, chart, (stepIndex, sound) => {
+    world.nextSound =
+      chart[Math.min(stepIndex + 1, chart.length - 1)]?.sound ?? sound;
+  });
+
+  return session;
 }
 
 export function disposeBeatSession(session: BeatSession): void {
@@ -253,75 +319,111 @@ function bumpCombo(world: BeatWorld, amount = 1): void {
 }
 
 /**
- * ONE button = reverse (+ lane flip on dual hard) + play the lesson syllable loudly.
- * Guide track already whispered the same sound — matching feels like learning.
+ * Hit the pad matching the lane of the note arriving at the MIX LINE.
+ * The lead is scheduled on that note's own grid time so it stacks with the guide.
  */
-export function performBeatMove(session: BeatSession): void {
+export function performBeatLane(session: BeatSession, lane: NoteLane): void {
   const world = session.world;
   if (world.dead || world.cleared) return;
 
-  world.direction = world.direction === 1 ? -1 : 1;
-  if (world.ringCount === 2 && world.difficulty === "hard") {
-    world.playerLane = world.playerLane === 0 ? 1 : 0;
-  }
-
-  const phase = world.stepAccSec / Math.max(0.001, world.stepSec);
-  const dist = Math.min(phase, 1 - phase);
-  const onBeat = dist <= TIMING_WINDOW;
-  const timingQuality = onBeat ? 1 - dist / TIMING_WINDOW : 0.4;
-
-  let idx = world.stepIndex;
-  if (phase > 0.5 && idx + 1 < session.chart.length) idx = world.stepIndex + 1;
-  idx = Math.min(idx, session.chart.length - 1);
-  const step = session.chart[idx];
-  if (!step) return;
-
-  session.box.playSound(step.sound, timingQuality);
-  world.lastSound = step.sound;
-  world.beatPulse = onBeat ? 1 : 0.65;
-  world.zoomPulse = onBeat ? 0.55 : 0.28;
-  world.shakeMs = Math.max(world.shakeMs, onBeat ? 90 : 40);
+  session.taps += 1;
+  world.laneFlashMs[lane] = PAD_FLASH_MS;
   world.performIndex += 1;
-  world.timingHint = onBeat ? 1 : 0.35;
-  world.judgeText = timingQuality > 0.72 ? "PERFECT" : onBeat ? "GREAT" : "GOOD";
-  world.judgeMs = 380;
-  spawnMoveParticles(world, onBeat ? 26 : 12, onBeat ? 185 : 300);
 
-  for (const s of world.spikes) {
-    if (!s.active) continue;
-    if (s.lane !== world.playerLane) continue;
-    let dAng = Math.abs(normalizeAngle(s.angle - world.playerAngle));
-    if (dAng > Math.PI) dAng = Math.PI * 2 - dAng;
-    if (dAng < NEAR_ANGLE) {
-      bumpCombo(world, 2);
-      world.score += 40;
-      world.judgeText = "CLUTCH";
-      spawnMoveParticles(world, 20, 45);
-      break;
+  const stepSec = world.stepSec;
+  // Judge against the same playhead the notes are drawn from.
+  const position =
+    session.enabled && session.box.isTransportRunning()
+      ? Math.max(world.beatPosition, session.box.getTransportPosition())
+      : world.beatPosition;
+
+  // Widest forgiving window, tightened so 16ths cannot claim a neighbour's note.
+  const windowSec = Math.min(
+    0.19 + timingBonusFromSkills(session.skills) * 0.2,
+    stepSec * 0.62,
+  );
+
+  let bestIndex = -1;
+  let bestDistSec = Infinity;
+  const from = Math.max(0, Math.floor(position) - 2);
+  const to = Math.min(session.chart.length - 1, Math.floor(position) + 3);
+  for (let i = from; i <= to; i++) {
+    const step = session.chart[i];
+    if (!step || laneOfSound(step.sound) !== lane) continue;
+    if (world.hitSteps.has(i)) continue;
+    const distSec = Math.abs(i - position) * stepSec;
+    if (distSec < bestDistSec) {
+      bestDistSec = distSec;
+      bestIndex = i;
     }
   }
 
-  if (onBeat) {
+  const onTime = bestIndex >= 0 && bestDistSec <= windowSec;
+  const lock = onTime ? Math.max(0, 1 - bestDistSec / windowSec) : 0;
+  const sound = onTime
+    ? session.chart[bestIndex].sound
+    : LANE_FALLBACK_SOUND[lane];
+
+  if (onTime) {
+    const offsetSec = (position - bestIndex) * stepSec;
+    world.lastOffsetMs = Math.round(offsetSec * 1000);
+    world.hitSteps.add(bestIndex);
+    session.hitSteps.add(bestIndex);
+    if (lock > 0.55) session.lockHits += 1;
+    world.loopCounts[sound] += 1;
+    const distinct = Object.values(world.loopCounts).filter((count) => count > 0).length;
+    const required = new Set(session.chart.map((step) => step.sound)).size;
+    world.loopCompletion = Math.min(1, distinct / Math.max(1, required));
+
+    // Schedule on the note's own grid time so guide and lead share one attack.
+    const gridWhen = session.box.isTransportRunning()
+      ? session.box.getTransportStepTime(bestIndex)
+      : 0;
+    session.box.playLead(sound, gridWhen, lock);
+
     bumpCombo(world, 1);
-    world.score += 18 + Math.floor(timingQuality * 14);
+    world.score += 18 + Math.floor(lock * 16);
+    world.judgeText = lock > 0.78 ? "PERFECT" : lock > 0.45 ? "GREAT" : "GOOD";
   } else {
-    world.score += 8;
+    world.lastOffsetMs = 0;
+    session.box.playLead(sound, 0, 0);
+    world.score += 2;
+    world.judgeText = "MISS";
+    world.combo = 0;
+    world.comboTimerMs = 0;
   }
 
-  const next = session.chart[Math.min(idx + 1, session.chart.length - 1)];
-  world.nextSound = next?.sound ?? step.sound;
+  world.lastSound = sound;
+  // Deliberately no beatPulse/zoom/shake here: the note stream and the
+  // BGM-driven stage must keep a steady tempo no matter how the player taps.
+  world.timingHint = onTime ? 1 : 0.25;
+  world.judgeMs = 380;
+  spawnMoveParticles(world, onTime ? 26 : 8, onTime ? LANE_HUE[lane] : 0, lane);
 }
 
-export function performBeatTap(session: BeatSession): void {
-  performBeatMove(session);
+/** Center pad — kept so pointer taps without a lane still play. */
+export function performBeatTap(session: BeatSession, lane: NoteLane = 1): void {
+  performBeatLane(session, lane);
 }
 
-export function reverseBeatDir(session: BeatSession): void {
-  performBeatMove(session);
-}
+const LANE_FALLBACK_SOUND: Record<NoteLane, BeatSound> = {
+  0: "boots",
+  1: "cats",
+  2: "rim",
+};
 
-function spawnMoveParticles(world: BeatWorld, count: number, hue: number): void {
-  const { x, y } = orbitPoint(world, world.playerAngle, world.playerLane);
+/** Matches LANE_ACCENT in draw.ts. */
+const LANE_HUE: Record<NoteLane, number> = { 0: 42, 1: 187, 2: 330 };
+
+function spawnMoveParticles(
+  world: BeatWorld,
+  count: number,
+  hue: number,
+  lane: NoteLane = 1,
+): void {
+  const { hitY } = railGeometry(world);
+  const x = laneXAt(world, lane, 1);
+  const y = hitY;
   let made = 0;
   for (let i = 0; i < world.particles.length && made < count; i++) {
     const p = world.particles[i];
@@ -367,12 +469,35 @@ export function updateBeatWorld(
     return { type: "none" };
   }
 
-  world.elapsedMs += dtSec * 1000;
+  // One playhead for everything. On the audio clock it is read straight from
+  // AudioContext time, so visuals can never drift from what you hear.
+  const stepMs = world.stepSec * 1000;
+  const onAudioClock = session.enabled && session.box.isTransportRunning();
+  let position = onAudioClock
+    ? session.box.getTransportPosition()
+    : (world.elapsedMs + dtSec * 1000) / stepMs;
+  if (onAudioClock && world.beatPosition > 0) {
+    // A throttled render loop lets audio time run away while no frame is drawn.
+    // Pull the transport back so the note stream stays continuous.
+    const jumpSec = (position - world.beatPosition) * world.stepSec;
+    if (jumpSec > MAX_JUMP_SEC) {
+      session.box.rebaseTransport(Math.floor(world.beatPosition));
+      position = world.beatPosition;
+    }
+  }
+  world.beatPosition = position;
+  world.elapsedMs = position * stepMs;
+
   if (world.invulnMs > 0) world.invulnMs = Math.max(0, world.invulnMs - dtSec * 1000);
   if (world.shakeMs > 0) world.shakeMs = Math.max(0, world.shakeMs - dtSec * 1000);
   if (world.comboTimerMs > 0) {
     world.comboTimerMs = Math.max(0, world.comboTimerMs - dtSec * 1000);
     if (world.comboTimerMs <= 0) world.combo = 0;
+  }
+  for (let lane = 0; lane < world.laneFlashMs.length; lane++) {
+    if (world.laneFlashMs[lane] > 0) {
+      world.laneFlashMs[lane] = Math.max(0, world.laneFlashMs[lane] - dtSec * 1000);
+    }
   }
   world.beatPulse = Math.max(0, world.beatPulse - dtSec * 2.8);
   world.timingHint = Math.max(0, world.timingHint - dtSec * 2.2);
@@ -400,63 +525,34 @@ export function updateBeatWorld(
     p.vy *= Math.pow(0.92, dtSec * 60);
   }
 
-  world.playerAngle += world.direction * world.angularSpeed * dtSec;
-
   let event: BeatEvent = { type: "none" };
 
-  world.stepAccSec += dtSec;
-  while (world.stepAccSec >= world.stepSec) {
-    world.stepAccSec -= world.stepSec;
-    const step = session.chart[world.stepIndex];
-    if (step) {
-      // Quiet teacher voice — identical synthesizer to player taps
-      session.box.playGuide(step.sound);
-      if (step.spike && spawnSpike(world, step.lane)) {
-        event = { type: "beat" };
-      }
-      if (world.stepIndex % world.subdivision === 0) {
-        world.beatPulse = Math.max(world.beatPulse, 0.35);
-      }
-    }
-    const upcoming = session.chart[Math.min(world.stepIndex + 1, session.chart.length - 1)];
+  const currentStep = Math.floor(position);
+  world.stepAccSec = (position - currentStep) * world.stepSec;
+  if (currentStep > world.stepIndex) {
+    world.stepIndex = currentStep;
+    const upcoming =
+      session.chart[Math.min(world.stepIndex + 1, session.chart.length - 1)];
     if (upcoming) world.nextSound = upcoming.sound;
-
-    world.stepIndex += 1;
-    if (world.stepIndex >= session.chart.length || world.elapsedMs >= world.durationMs) {
-      return beginClear(session);
+    if (world.stepIndex > 0 && world.stepIndex % world.subdivision === 0) {
+      event = { type: "beat" };
+      world.beatPulse = Math.max(world.beatPulse, 0.4);
     }
   }
 
-  if (world.elapsedMs >= world.durationMs) {
+  if (world.stepIndex >= session.chart.length || world.elapsedMs >= world.durationMs) {
     return beginClear(session);
   }
 
-  let hit = false;
-  for (let i = 0; i < world.spikes.length; i++) {
-    const s = world.spikes[i];
-    if (!s.active) continue;
-    s.ageMs += dtSec * 1000;
-
-    if (s.lane !== world.playerLane) {
-      if (s.ageMs > SPIKE_LIFE_MS) s.active = false;
-      continue;
-    }
-
-    const dAng = angularDist(s.angle, world.playerAngle);
-
-    if (dAng <= HIT_ANGLE && world.invulnMs <= 0) {
-      hit = true;
-      s.active = false;
-      continue;
-    }
-
-    if (!s.nearMissed && dAng <= NEAR_ANGLE && dAng > HIT_ANGLE) {
-      s.nearMissed = true;
-    }
-
-    if (s.ageMs > SPIKE_LIFE_MS) {
-      s.active = false;
-    }
+  // Notes are judged only after the late half of their window closes,
+  // so a slightly late pad hit still counts.
+  const lateGrace = 0.62;
+  let missed = false;
+  while (session.evaluatedStep < position - lateGrace) {
+    const index = session.evaluatedStep;
+    const step = session.chart[index];
+    if (step?.spike && !world.hitSteps.has(index)) missed = true;
+    session.evaluatedStep += 1;
   }
 
   world.score = Math.max(
@@ -468,11 +564,10 @@ export function updateBeatWorld(
       world.stageIndex * 80,
   );
 
-  if (hit) {
+  if (missed && world.invulnMs <= 0) {
     world.hp -= 1;
-    world.invulnMs = 750;
-    world.shakeMs = 280;
-    world.zoomPulse = 0.4;
+    world.invulnMs = 450;
+    world.shakeMs = 140;
     world.judgeText = "MISS";
     world.judgeMs = 520;
     spawnMoveParticles(world, 32, 345);
@@ -480,7 +575,7 @@ export function updateBeatWorld(
     world.comboTimerMs = 0;
     if (world.hp <= 0) {
       world.dead = true;
-      session.box.stopMetronome();
+      session.box.stopLessonTransport();
       return { type: "dead" };
     }
     return { type: "hit", hp: world.hp };
@@ -500,7 +595,7 @@ function beginClear(session: BeatSession): BeatEvent {
   world.stageBannerMs = CLEAR_FX_MS;
   world.beatPulse = 1;
   world.zoomPulse = 0.7;
-  session.box.stopMetronome();
+  session.box.stopLessonTransport();
   // Fanfare = last lesson sound loud
   const last = session.chart[Math.max(0, session.chart.length - 1)];
   if (last) session.box.playSound(last.sound, 1);
@@ -508,66 +603,3 @@ function beginClear(session: BeatSession): BeatEvent {
   return { type: "none" };
 }
 
-function normalizeAngle(a: number): number {
-  let x = a % (Math.PI * 2);
-  if (x < 0) x += Math.PI * 2;
-  return x;
-}
-
-function signedDelta(a: number, b: number): number {
-  let d = normalizeAngle(a) - normalizeAngle(b);
-  if (d > Math.PI) d -= Math.PI * 2;
-  if (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
-
-function angularDist(a: number, b: number): number {
-  return Math.abs(signedDelta(a, b));
-}
-
-/** Base ellipse tilt combined with live 3D pitch. */
-export function orbitTilt(world: BeatWorld): number {
-  return 0.55 + Math.sin(world.ringPitch + 0.4) * 0.12 + world.ringPitch * 0.35;
-}
-
-/**
- * Project an orbit angle through yaw/pitch/roll so the ring feels 3D.
- * lane 0 = outer ring, lane 1 = inner ring.
- */
-export function orbitPoint(
-  world: BeatWorld,
-  angle: number,
-  lane: 0 | 1 = 0,
-): { x: number; y: number; depth: number } {
-  const r = lane === 1 ? world.radius * 0.62 : world.radius;
-  const a = angle + world.ringYaw * 0.15;
-  const cos = Math.cos(a);
-  const sin = Math.sin(a);
-  // Local ring plane → rotate by pitch/roll
-  const x = cos * r;
-  const y = sin * r;
-  const z = 0;
-  const cp = Math.cos(world.ringPitch);
-  const sp = Math.sin(world.ringPitch);
-  const cr = Math.cos(world.ringRoll);
-  const sr = Math.sin(world.ringRoll);
-  // pitch around X
-  const y1 = y * cp - z * sp;
-  const z1 = y * sp + z * cp;
-  // roll around Z
-  const x2 = x * cr - y1 * sr;
-  const y2 = x * sr + y1 * cr;
-  const z2 = z1;
-  const perspective = 1 / (1 + z2 / (world.radius * 2.8));
-  return {
-    x: world.cx + x2 * perspective,
-    y: world.cy + y2 * perspective * orbitTilt(world),
-    depth: Math.max(0.55, Math.min(1.35, perspective * (0.85 + (sin * 0.5 + 0.5) * 0.3))),
-  };
-}
-
-export function playerPos(world: BeatWorld): { x: number; y: number; r: number } {
-  const p = orbitPoint(world, world.playerAngle, world.playerLane);
-  const r = world.playerLane === 1 ? world.radius * 0.62 : world.radius;
-  return { x: p.x, y: p.y, r };
-}
