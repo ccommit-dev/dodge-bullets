@@ -101,6 +101,45 @@ export type BeatWorld = {
   /** Clear fanfare countdown before UI takes over. */
   clearFxMs: number;
   cosmetics: BeatCosmetics;
+  /** Chart copy used by the 3D timing rail renderer. */
+  chart: BeatChartStep[];
+  /** Successful player layers by syllable. */
+  loopCounts: Record<BeatSound, number>;
+  /** Last lead offset from grid in milliseconds. */
+  lastOffsetMs: number;
+  /** 0..1 lesson loop completion from distinct sounds recorded. */
+  loopCompletion: number;
+  /** Pad flash per lane (0=B, 1=T, 2=K), milliseconds remaining. */
+  laneFlashMs: number[];
+  /** Chart indexes already consumed by the player. */
+  hitSteps: Set<number>;
+  /**
+   * The one continuous playhead, in fractional chart steps. Notes, judgement
+   * and the stage animation all read this so the stream never jumps.
+   */
+  beatPosition: number;
+};
+
+/** 0 = kick (B), 1 = hi-hat (T), 2 = snare (K) */
+export type NoteLane = 0 | 1 | 2;
+
+export const LANE_LABEL: Record<NoteLane, string> = {
+  0: "B 저음",
+  1: "T 하이햇",
+  2: "K 스네어",
+};
+
+/** Which syllables live on each pad, shown in the practice room. */
+export const LANE_MEMBERS: Record<NoteLane, string> = {
+  0: "킥 · 파이어빗 · 스로트",
+  1: "하이햇 · 클릭 · 숨소리",
+  2: "스네어 · 트럼펫",
+};
+
+export const LANE_KEYS: Record<NoteLane, string> = {
+  0: "A / ←",
+  1: "S / ↓ / Space",
+  2: "D / →",
 };
 
 export type BeatChartStep = {

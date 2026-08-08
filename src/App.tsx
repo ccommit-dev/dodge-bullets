@@ -601,15 +601,18 @@ function App() {
       )}
 
       <div className="sound-dock" style={dockStyle}>
-        <button
-          type="button"
-          className="sound-toggle"
-          onClick={() => void toggleSound()}
-          aria-pressed={soundOn}
-          aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
-        >
-          {soundOn ? "사운드 On" : "사운드 Off"}
-        </button>
+        {/* The beat game is the music itself, so it has no mute switch. */}
+        {appMode !== "beat" && (
+          <button
+            type="button"
+            className="sound-toggle"
+            onClick={() => void toggleSound()}
+            aria-pressed={soundOn}
+            aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
+          >
+            {soundOn ? "사운드 On" : "사운드 Off"}
+          </button>
+        )}
         <button
           type="button"
           className="exit-toggle"
@@ -653,8 +656,8 @@ function App() {
               className="game-card game-card-beat"
               onClick={() => setMode("beat")}
             >
-              <strong>비트박스 Orbit</strong>
-              <span>4/8/16비트 · 상중하 · 리듬 가시</span>
+              <strong>비트박스 Stage</strong>
+              <span>3D 비트 레일 · RPG 육성 · 실전 믹스</span>
             </button>
             <p className="controls-hint">
               식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"}
@@ -666,7 +669,7 @@ function App() {
       {bootReady && appMode === "beat" && (
         <BeatGame
           insets={insets}
-          soundEnabled={soundOn}
+          soundEnabled
           userHash={userHashRef.current}
           coins={coins}
           onCoins={(n) => {

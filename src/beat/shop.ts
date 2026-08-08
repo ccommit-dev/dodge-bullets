@@ -5,11 +5,11 @@ export type BeatShopItem =
   | { kind: "spike"; id: SpikeSkinId; name: string; desc: string; cost: number };
 
 export const BEAT_SHOP_ITEMS: BeatShopItem[] = [
-  { kind: "ring", id: "neon", name: "네온 시안", desc: "기본 궤도 스킨", cost: 0 },
-  { kind: "ring", id: "gold", name: "골드 링", desc: "따뜻한 금빛 궤도", cost: 80 },
-  { kind: "ring", id: "magenta", name: "마젠타 링", desc: "클럽 핑크 궤도", cost: 100 },
-  { kind: "ring", id: "ice", name: "아이스 링", desc: "차가운 파란 궤도", cost: 120 },
-  { kind: "ring", id: "ember", name: "엠버 링", desc: "불꽃 주황 궤도", cost: 140 },
+  { kind: "ring", id: "neon", name: "네온 시안", desc: "기본 3D 레일", cost: 0 },
+  { kind: "ring", id: "gold", name: "골드 레일", desc: "따뜻한 금빛 히트라인", cost: 80 },
+  { kind: "ring", id: "magenta", name: "마젠타 레일", desc: "클럽 핑크 레일", cost: 100 },
+  { kind: "ring", id: "ice", name: "아이스 레일", desc: "차가운 파란 레일", cost: 120 },
+  { kind: "ring", id: "ember", name: "엠버 레일", desc: "불꽃 주황 레일", cost: 140 },
   { kind: "spike", id: "triangle", name: "기본 삼각", desc: "기본 장애물", cost: 0 },
   { kind: "spike", id: "arrow", name: "화살표 비트", desc: "화살형 장애물", cost: 90 },
   { kind: "spike", id: "diamond", name: "다이아 비트", desc: "마름모 장애물", cost: 110 },

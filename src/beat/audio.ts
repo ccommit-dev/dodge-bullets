@@ -1,4 +1,5 @@
 import type { BeatSound } from "./types";
+import type { BeatChartStep } from "./types";
 
 function noiseBurst(
   ctx: AudioContext,
@@ -20,7 +21,7 @@ function noiseBurst(
   filter.type = "highpass";
   filter.frequency.value = hpFreq;
   const g = ctx.createGain();
-  g.gain.setValueAtTime(gain, when);
+  g.gain.setValueAtTime(Math.max(0.0001, gain), when);
   g.gain.exponentialRampToValueAtTime(0.0001, when + duration);
   src.connect(filter);
   filter.connect(g);
@@ -30,40 +31,40 @@ function noiseBurst(
 }
 
 function breath(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
-  noiseBurst(ctx, master, when, 0.16, 0.055 * gainScale, 400);
+  noiseBurst(ctx, master, when, 0.18, 0.07 * gainScale, 350);
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = "sine";
-  osc.frequency.setValueAtTime(180, when);
-  osc.frequency.exponentialRampToValueAtTime(90, when + 0.14);
+  osc.frequency.setValueAtTime(190, when);
+  osc.frequency.exponentialRampToValueAtTime(85, when + 0.15);
   g.gain.setValueAtTime(0.0001, when);
-  g.gain.exponentialRampToValueAtTime(0.04 * gainScale, when + 0.03);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
+  g.gain.exponentialRampToValueAtTime(0.055 * gainScale, when + 0.025);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.17);
   osc.connect(g);
   g.connect(master);
   osc.start(when);
-  osc.stop(when + 0.18);
+  osc.stop(when + 0.19);
 }
 
 function firebeat(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(110, when);
-  osc.frequency.exponentialRampToValueAtTime(42, when + 0.09);
+  osc.frequency.setValueAtTime(120, when);
+  osc.frequency.exponentialRampToValueAtTime(40, when + 0.1);
   g.gain.setValueAtTime(0.0001, when);
-  g.gain.exponentialRampToValueAtTime(0.16 * gainScale, when + 0.008);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.12);
+  g.gain.exponentialRampToValueAtTime(0.2 * gainScale, when + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.13);
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(900, when);
-  filter.frequency.exponentialRampToValueAtTime(220, when + 0.1);
+  filter.frequency.setValueAtTime(1100, when);
+  filter.frequency.exponentialRampToValueAtTime(200, when + 0.11);
   osc.connect(filter);
   filter.connect(g);
   g.connect(master);
   osc.start(when);
-  osc.stop(when + 0.14);
-  noiseBurst(ctx, master, when + 0.02, 0.05, 0.06 * gainScale, 2500);
+  osc.stop(when + 0.15);
+  noiseBurst(ctx, master, when + 0.015, 0.055, 0.08 * gainScale, 2200);
 }
 
 function trumpet(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
@@ -77,95 +78,114 @@ function trumpet(ctx: AudioContext, master: GainNode, when: number, gainScale: n
   osc2.frequency.setValueAtTime(226, when);
   osc2.frequency.exponentialRampToValueAtTime(146, when + 0.18);
   g.gain.setValueAtTime(0.0001, when);
-  g.gain.exponentialRampToValueAtTime(0.09 * gainScale, when + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.22);
+  g.gain.exponentialRampToValueAtTime(0.14 * gainScale, when + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.24);
   const filter = ctx.createBiquadFilter();
   filter.type = "bandpass";
-  filter.frequency.value = 700;
-  filter.Q.value = 4;
+  filter.frequency.value = 280;
+  filter.Q.value = 1.1;
   osc.connect(filter);
   osc2.connect(filter);
   filter.connect(g);
   g.connect(master);
   osc.start(when);
   osc2.start(when);
-  osc.stop(when + 0.24);
-  osc2.stop(when + 0.24);
+  osc.stop(when + 0.26);
+  osc2.stop(when + 0.26);
 }
 
 function boots(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = "sine";
-  osc.frequency.setValueAtTime(160, when);
-  osc.frequency.exponentialRampToValueAtTime(45, when + 0.14);
+  osc.frequency.setValueAtTime(170, when);
+  osc.frequency.exponentialRampToValueAtTime(42, when + 0.16);
   g.gain.setValueAtTime(0.0001, when);
-  g.gain.exponentialRampToValueAtTime(0.24 * gainScale, when + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.2);
+  g.gain.exponentialRampToValueAtTime(0.32 * gainScale, when + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.22);
   osc.connect(g);
   g.connect(master);
   osc.start(when);
-  osc.stop(when + 0.22);
+  osc.stop(when + 0.24);
 }
 
 function cats(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
-  noiseBurst(ctx, master, when, 0.09, 0.12 * gainScale, 1800);
+  noiseBurst(ctx, master, when, 0.1, 0.16 * gainScale, 1600);
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = "triangle";
-  osc.frequency.setValueAtTime(240, when);
-  g.gain.setValueAtTime(0.07 * gainScale, when);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.08);
+  osc.frequency.setValueAtTime(260, when);
+  g.gain.setValueAtTime(0.09 * gainScale, when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.09);
   osc.connect(g);
   g.connect(master);
   osc.start(when);
-  osc.stop(when + 0.1);
+  osc.stop(when + 0.11);
 }
 
 function throat(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(70, when);
-  osc.frequency.linearRampToValueAtTime(55, when + 0.15);
+  osc.frequency.setValueAtTime(75, when);
+  osc.frequency.linearRampToValueAtTime(52, when + 0.16);
   g.gain.setValueAtTime(0.0001, when);
-  g.gain.exponentialRampToValueAtTime(0.12 * gainScale, when + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.18);
+  g.gain.exponentialRampToValueAtTime(0.16 * gainScale, when + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.2);
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.value = 320;
+  filter.frequency.value = 360;
   osc.connect(filter);
   filter.connect(g);
   g.connect(master);
   osc.start(when);
-  osc.stop(when + 0.2);
+  osc.stop(when + 0.22);
 }
 
 function click(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
-  noiseBurst(ctx, master, when, 0.025, 0.07 * gainScale, 5000);
+  noiseBurst(ctx, master, when, 0.028, 0.1 * gainScale, 4800);
 }
 
 function rim(ctx: AudioContext, master: GainNode, when: number, gainScale: number): void {
-  noiseBurst(ctx, master, when, 0.04, 0.09 * gainScale, 3200);
+  noiseBurst(ctx, master, when, 0.045, 0.12 * gainScale, 2800);
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = "square";
-  osc.frequency.setValueAtTime(420, when);
-  g.gain.setValueAtTime(0.05 * gainScale, when);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+  osc.frequency.setValueAtTime(440, when);
+  g.gain.setValueAtTime(0.07 * gainScale, when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.055);
   osc.connect(g);
   g.connect(master);
   osc.start(when);
-  osc.stop(when + 0.06);
+  osc.stop(when + 0.07);
 }
+
+const SOUND_MAKEUP: Record<BeatSound, number> = {
+  boots: 1.15,
+  rim: 1.35,
+  cats: 1.25,
+  click: 1.2,
+  breath: 1.35,
+  firebeat: 1.2,
+  trumpet: 1.45,
+  throat: 1.3,
+};
+
+/** Bed / teacher layer — always audible as the lesson BGM. */
+const GUIDE_GAIN = 0.42;
+/** Player lead when locked on the grid — stacks on top of guide. */
+const LEAD_GAIN = 1.05;
+/** Off-grid tap — still audible but thinner. */
+const MISS_LEAD_GAIN = 0.45;
 
 function synthSound(
   ctx: AudioContext,
   master: GainNode,
   sound: BeatSound,
   when: number,
-  gainScale: number,
+  scale: number,
 ): void {
+  const gainScale = scale * SOUND_MAKEUP[sound];
   switch (sound) {
     case "breath":
       breath(ctx, master, when, gainScale);
@@ -194,57 +214,125 @@ function synthSound(
   }
 }
 
+export function createAudioChain(ctx: AudioContext): GainNode {
+  const input = ctx.createGain();
+  input.gain.value = 1;
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -8;
+  limiter.knee.value = 8;
+  limiter.ratio.value = 10;
+  limiter.attack.value = 0.002;
+  limiter.release.value = 0.15;
+  input.connect(limiter);
+  limiter.connect(ctx.destination);
+  return input;
+}
+
+export type LessonStepCallback = (stepIndex: number, sound: BeatSound, when: number) => void;
+
 export type BeatboxPlayer = {
-  /** Loud lead — same synthesizer as the quiet lesson guide. */
   playSound: (sound: BeatSound, timingQuality?: number) => void;
-  /** Soft guide note so the player learns by matching the teacher. */
-  playGuide: (sound: BeatSound) => void;
-  /** Tiny metronome tick only — not a different club song. */
+  playGuide: (sound: BeatSound, when?: number) => void;
+  startLessonTransport: (
+    bpm: number,
+    stepSec: number,
+    chart: BeatChartStep[],
+    onStep?: LessonStepCallback,
+  ) => void;
+  stopLessonTransport: () => void;
+  /** Current transport step (chart index about to play / just played). */
+  getTransportStep: () => number;
+  /** Phase within current step 0..1 from audio clock. */
+  getTransportPhase: () => number;
+  /** Fractional step position from the audio clock (e.g. 12.37). */
+  getTransportPosition: () => number;
+  /** Whether the audio-clock transport is running. */
+  isTransportRunning: () => boolean;
+  /** Play one syllable at an explicit grid time, stacking on the guide. */
+  playLead: (sound: BeatSound, when: number, lock: number) => void;
+  /** AudioContext time at which a chart step plays. */
+  getTransportStepTime: (stepIndex: number) => number;
+  /**
+   * Re-anchor the transport so `fromStep` plays now. Used when the render loop
+   * stalls (backgrounded tab) and the audio clock has run ahead of the game.
+   */
+  rebaseTransport: (fromStep: number) => void;
   startMetronome: (bpm: number) => void;
   stopMetronome: () => void;
-  /** @deprecated use startMetronome */
   startBacking: (bpm: number) => void;
   stopBacking: () => void;
   dispose: () => void;
 };
 
+const LOOKAHEAD_SEC = 0.12;
+const SCHEDULE_MS = 25;
+
 /**
- * Lesson audio model:
- * - Guide track quietly plays the stage's beatbox syllables on the grid
- * - Player taps play the *same* syllable loudly
- * - Metronome is a faint click so timing stays clear without competing BGM
+ * Lesson audio = continuous beatbox BGM (guide) + player lead mixed on the same syllables.
+ * Transport is driven by AudioContext time so taps can lock to the grid.
  */
 export function createBeatboxPlayer(
   getCtx: () => AudioContext | null,
   getMaster: () => GainNode | null,
   isLive: () => boolean,
 ): BeatboxPlayer {
-  let metroTimer: number | null = null;
-  let metroStep = 0;
+  let transportTimer: number | null = null;
+  let transportStartCtx = 0;
+  let stepSec = 0.5;
+  let chartRef: BeatChartStep[] = [];
+  let nextStepToSchedule = 0;
+  let onStepCb: LessonStepCallback | undefined;
+  let running = false;
 
-  const stopMetronome = () => {
-    if (metroTimer !== null) {
-      window.clearInterval(metroTimer);
-      metroTimer = null;
+  const stopLessonTransport = () => {
+    if (transportTimer !== null) {
+      window.clearInterval(transportTimer);
+      transportTimer = null;
     }
-    metroStep = 0;
+    running = false;
+    nextStepToSchedule = 0;
+    onStepCb = undefined;
   };
 
-  const startMetronome = (bpm: number) => {
-    stopMetronome();
-    if (!isLive()) return;
-    const intervalMs = 60_000 / bpm;
-    const tick = () => {
-      const ctx = getCtx();
-      const master = getMaster();
-      if (!ctx || !master || !isLive()) return;
-      const t = ctx.currentTime + 0.01;
-      // Soft click — downbeats a touch louder
-      noiseBurst(ctx, master, t, 0.018, metroStep % 4 === 0 ? 0.028 : 0.014, 7000);
-      metroStep += 1;
-    };
-    tick();
-    metroTimer = window.setInterval(tick, intervalMs);
+  const scheduleAhead = () => {
+    const ctx = getCtx();
+    const master = getMaster();
+    if (!ctx || !master || !isLive() || !running) return;
+    const horizon = ctx.currentTime + LOOKAHEAD_SEC;
+    while (nextStepToSchedule < chartRef.length) {
+      const when = transportStartCtx + nextStepToSchedule * stepSec;
+      if (when > horizon) break;
+      const step = chartRef[nextStepToSchedule];
+      if (step && when >= ctx.currentTime - 0.02) {
+        synthSound(ctx, master, step.sound, Math.max(when, ctx.currentTime + 0.001), GUIDE_GAIN);
+        onStepCb?.(nextStepToSchedule, step.sound, when);
+      }
+      nextStepToSchedule += 1;
+    }
+    if (nextStepToSchedule >= chartRef.length) {
+      // Keep transport clock alive until game ends the stage
+    }
+  };
+
+  const getTransportStep = () => {
+    const ctx = getCtx();
+    if (!ctx || !running || stepSec <= 0) return 0;
+    const elapsed = ctx.currentTime - transportStartCtx;
+    return Math.max(0, Math.min(chartRef.length, Math.floor(elapsed / stepSec)));
+  };
+
+  const getTransportPhase = () => {
+    const ctx = getCtx();
+    if (!ctx || !running || stepSec <= 0) return 0;
+    const elapsed = ctx.currentTime - transportStartCtx;
+    const phase = (elapsed / stepSec) % 1;
+    return phase < 0 ? 0 : phase;
+  };
+
+  const getTransportPosition = () => {
+    const ctx = getCtx();
+    if (!ctx || !running || stepSec <= 0) return 0;
+    return Math.max(0, (ctx.currentTime - transportStartCtx) / stepSec);
   };
 
   return {
@@ -253,25 +341,63 @@ export function createBeatboxPlayer(
       const ctx = getCtx();
       const master = getMaster();
       if (!ctx || !master) return;
-      const t = ctx.currentTime + 0.005;
-      const g = 0.55 + 0.55 * Math.max(0.2, Math.min(1, timingQuality));
-      synthSound(ctx, master, sound, t, g);
+      const g = LEAD_GAIN * (0.7 + 0.3 * Math.max(0.2, Math.min(1, timingQuality)));
+      synthSound(ctx, master, sound, ctx.currentTime + 0.003, g);
     },
-    playGuide(sound) {
+    playGuide(sound, when) {
       if (!isLive()) return;
       const ctx = getCtx();
       const master = getMaster();
       if (!ctx || !master) return;
-      const t = ctx.currentTime + 0.005;
-      // Same voice as player taps, but soft — "teacher" layer
-      synthSound(ctx, master, sound, t, 0.22);
+      synthSound(ctx, master, sound, when ?? ctx.currentTime + 0.003, GUIDE_GAIN);
     },
-    startMetronome,
-    stopMetronome,
-    startBacking: startMetronome,
-    stopBacking: stopMetronome,
+    startLessonTransport(bpm, stepSeconds, chart, onStep) {
+      stopLessonTransport();
+      if (!isLive()) return;
+      const ctx = getCtx();
+      if (!ctx) return;
+      void bpm;
+      stepSec = Math.max(0.05, stepSeconds);
+      chartRef = chart;
+      onStepCb = onStep;
+      transportStartCtx = ctx.currentTime + 0.06;
+      nextStepToSchedule = 0;
+      running = true;
+      scheduleAhead();
+      transportTimer = window.setInterval(scheduleAhead, SCHEDULE_MS);
+    },
+    stopLessonTransport,
+    getTransportStep,
+    getTransportPhase,
+    getTransportPosition,
+    getTransportStepTime: (stepIndex) => transportStartCtx + stepIndex * stepSec,
+    rebaseTransport(fromStep) {
+      const ctx = getCtx();
+      if (!ctx || !running || stepSec <= 0) return;
+      const step = Math.max(0, Math.floor(fromStep));
+      transportStartCtx = ctx.currentTime - step * stepSec;
+      nextStepToSchedule = step;
+    },
+    isTransportRunning: () => running,
+    playLead(sound, when, lock) {
+      if (!isLive()) return;
+      const ctx = getCtx();
+      const master = getMaster();
+      if (!ctx || !master) return;
+      const clamped = Math.max(0, Math.min(1, lock));
+      const gain = clamped > 0 ? LEAD_GAIN * (0.75 + 0.35 * clamped) : MISS_LEAD_GAIN;
+      synthSound(ctx, master, sound, Math.max(when, ctx.currentTime + 0.002), gain);
+    },
+    startMetronome() {
+      /* metronome replaced by lesson transport guide */
+    },
+    stopMetronome: stopLessonTransport,
+    startBacking() {
+      /* no club bed — lesson syllables are the BGM */
+    },
+    stopBacking: stopLessonTransport,
     dispose() {
-      stopMetronome();
+      stopLessonTransport();
     },
   };
 }
