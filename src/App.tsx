@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { BeatGame } from "./BeatGame";
+import { ForgeGame } from "./ForgeGame";
+import { TitansGame } from "./TitansGame";
 import { drawFrame } from "./game/draw";
 import {
   applyKeyDown,
@@ -63,6 +65,8 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
   };
 }
 
+type AppMode = "hub" | "dodge" | "beat" | "forge" | "titans";
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const worldRef = useRef<GameWorld | null>(null);
@@ -103,10 +107,10 @@ function App() {
   const [exitOpen, setExitOpen] = useState(false);
   const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
   const [allClear, setAllClear] = useState(false);
-  const [appMode, setAppMode] = useState<"hub" | "dodge" | "beat">("hub");
-  const appModeRef = useRef<"hub" | "dodge" | "beat">("hub");
+  const [appMode, setAppMode] = useState<AppMode>("hub");
+  const appModeRef = useRef<AppMode>("hub");
 
-  const setMode = useCallback((mode: "hub" | "dodge" | "beat") => {
+  const setMode = useCallback((mode: AppMode) => {
     appModeRef.current = mode;
     setAppMode(mode);
     if (mode !== "dodge") {
@@ -592,7 +596,7 @@ function App() {
 
   return (
     <div className="game-root">
-      {appMode !== "beat" && (
+      {appMode !== "beat" && appMode !== "forge" && appMode !== "titans" && (
         <canvas
           ref={canvasRef}
           className="game-canvas"
@@ -602,7 +606,7 @@ function App() {
 
       <div className="sound-dock" style={dockStyle}>
         {/* The beat game is the music itself, so it has no mute switch. */}
-        {appMode !== "beat" && (
+        {appMode !== "beat" && appMode !== "forge" && appMode !== "titans" && (
           <button
             type="button"
             className="sound-toggle"
@@ -659,6 +663,22 @@ function App() {
               <strong>비트박스 Stage</strong>
               <span>3D 비트 레일 · RPG 육성 · 실전 믹스</span>
             </button>
+            <button
+              type="button"
+              className="game-card game-card-forge"
+              onClick={() => setMode("forge")}
+            >
+              <strong>검 강화하기</strong>
+              <span>강화 · 판매 · 방지권 · 조각 조합</span>
+            </button>
+            <button
+              type="button"
+              className="game-card game-card-titans"
+              onClick={() => setMode("titans")}
+            >
+              <strong>탭 타이탄</strong>
+              <span>탭 RPG · 스테이지 · 검·동료·스킬</span>
+            </button>
             <p className="controls-hint">
               식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"}
             </p>
@@ -678,6 +698,14 @@ function App() {
           }}
           onBack={handleBackToHub}
         />
+      )}
+
+      {bootReady && appMode === "forge" && (
+        <ForgeGame insets={insets} userHash={userHashRef.current} onBack={handleBackToHub} />
+      )}
+
+      {bootReady && appMode === "titans" && (
+        <TitansGame insets={insets} userHash={userHashRef.current} onBack={handleBackToHub} />
       )}
 
       {bootReady && appMode === "dodge" && gameState === "ready" && (
