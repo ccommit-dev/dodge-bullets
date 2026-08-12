@@ -713,23 +713,129 @@ h1 em {
   clip-path: polygon(10% 0, 100% 50%, 10% 100%, 35% 50%);
 }
 .apple-symbol {
-  position: relative;
   width: 31px;
-  color: #fff;
-  font-size: 38px;
-  line-height: 24px;
-  text-align: center;
+  height: 31px;
+  fill: #fff;
+  flex: 0 0 auto;
 }
-.apple-symbol::after {
-  content: "";
-  position: absolute;
-  width: 8px;
-  height: 4px;
-  right: 4px;
-  top: -2px;
-  border-radius: 100% 0;
-  background: #fff;
-  transform: rotate(-35deg);
+.notify-form {
+  width: min(100%, 650px);
+  margin: 38px auto 0;
+  padding: 24px;
+  border: 1px solid rgba(94, 234, 212, 0.22);
+  border-radius: 18px;
+  background: rgba(6, 14, 25, 0.82);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  text-align: left;
+  backdrop-filter: blur(14px);
+}
+.notify-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.notify-heading strong {
+  font-size: 19px;
+}
+.notify-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.notify-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(94, 234, 212, 0.14);
+  color: var(--mint);
+  font-size: 25px;
+  box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.25);
+}
+.phone-field label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+}
+.phone-input-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 12px;
+  background: #070e19;
+}
+.phone-input-row:focus-within {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.1);
+}
+.phone-input-row > span {
+  padding: 0 13px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  font-size: 13px;
+}
+.phone-input-row input {
+  min-width: 0;
+  height: 50px;
+  padding: 0 14px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+}
+.phone-input-row input::placeholder {
+  color: #53647a;
+}
+.phone-input-row button {
+  height: 40px;
+  margin-right: 5px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--mint);
+  color: #06111e;
+  font-weight: 800;
+  cursor: pointer;
+}
+.field-message {
+  min-height: 18px;
+  margin: 7px 0 0;
+  color: #ff8792;
+  font-size: 11px;
+}
+.field-message.success {
+  color: var(--mint);
+}
+.consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.consent-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--mint);
+}
+.consent-row b {
+  margin-right: 4px;
+  color: var(--mint);
+}
+.notify-demo-note {
+  margin: 12px 0 0;
+  color: #55667c;
+  font-size: 10px;
 }
 footer {
   display: flex;
@@ -874,6 +980,17 @@ footer .logo {
   .store-button {
     width: 100%;
     justify-content: flex-start;
+  }
+  .notify-form {
+    padding: 19px;
+  }
+  .phone-input-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .phone-input-row button {
+    grid-column: 1 / -1;
+    width: calc(100% - 10px);
+    margin: 0 5px 5px;
   }
   footer {
     flex-direction: column;
