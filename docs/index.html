@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07111f" />
+    <meta
+      name="description"
+      content="피하고, 두드리고, 강화하고, 성장하는 네 가지 미니게임 아케이드 — DODGE LAB"
+    />
+    <meta
+      property="og:title"
+      content="DODGE LAB — 손끝으로 시작하는 네 가지 도전"
+    />
+    <meta
+      property="og:description"
+      content="총알 피하기부터 비트 RPG, 검 강화, 탭 타이탄까지 한 번에 즐겨보세요."
+    />
+    <meta property="og:url" content="https://ccommit-dev.github.io/dodge-bullets/" />
+    <meta
+      property="og:image"
+      content="https://ccommit-dev.github.io/dodge-bullets/assets/hero-arcade-v2.png"
+    />
+    <link rel="canonical" href="https://ccommit-dev.github.io/dodge-bullets/" />
+    <title>DODGE LAB — 미니게임 아케이드</title>
+    <link rel="icon" type="image/png" href="assets/app-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Pretendard:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="nav" aria-label="주요 메뉴">
+      <a class="logo" href="#top" aria-label="Dodge Lab 홈">
+        <span class="logo-mark" aria-hidden="true"><i></i></span>
+        <span class="logo-word">DODGE <b>LAB</b></span>
+      </a>
+      <nav>
+        <a href="#games">게임</a>
+        <a href="#features">특징</a>
+        <a class="nav-cta" href="#play">출시 알림</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-glow hero-glow-one"></div>
+        <div class="hero-glow hero-glow-two"></div>
+        <div class="hero-copy reveal">
+          <p class="eyebrow"><span></span> 4 GAMES · 1 ARCADE</p>
+          <h1>한 번의 터치,<br /><em>네 가지 쾌감.</em></h1>
+          <p class="hero-desc">
+            피하고, 박자를 만들고, 검을 벼리고, 거인을 쓰러뜨리세요. 짧게
+            시작해도 확실한 성장이 남는 손맛 중심 미니게임 아케이드.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#games">게임 둘러보기 <b>↓</b></a>
+            <a
+              class="button ghost"
+              href="https://github.com/ccommit-dev/dodge-bullets"
+              target="_blank"
+              rel="noreferrer"
+              >GitHub 보기</a
+            >
+          </div>
+          <ul class="hero-facts" aria-label="게임 특징">
+            <li><strong>4</strong><span>게임 모드</span></li>
+            <li><strong>1초</strong><span>즉시 플레이</span></li>
+            <li><strong>∞</strong><span>성장 가능성</span></li>
+          </ul>
+        </div>
+        <div class="hero-visual reveal">
+          <div class="poster-wrap">
+            <img
+              class="poster"
+              src="assets/hero-arcade-v2.png"
+              alt="보스전, 검 강화, 리듬 액션을 담은 네 가지 미니게임 대표 이미지"
+            />
+            <div class="float-card score-card">
+              <span>BEST SCORE</span><strong>12,480</strong><i>▲ 18%</i>
+            </div>
+            <div class="float-card combo-card">
+              <span>PERFECT</span><strong>32 COMBO</strong>
+            </div>
+            <div class="orbit orbit-a"></div>
+            <div class="orbit orbit-b"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ticker" aria-label="게임 키워드">
+        <div>
+          DODGE <i>✦</i> RHYTHM <i>✦</i> FORGE <i>✦</i> TITANS <i>✦</i> PLAY ·
+          GROW · REPEAT <i>✦</i>
+        </div>
+      </section>
+
+      <section class="games section" id="games">
+        <div class="section-heading reveal">
+          <p class="eyebrow"><span></span> CHOOSE YOUR GAME</p>
+          <h2>오늘은 어떤 손맛?</h2>
+          <p>
+            서로 다른 플레이, 하나로 이어지는 성장. 기분에 맞는 게임을 골라 바로
+            시작하세요.
+          </p>
+        </div>
+        <div class="game-grid">
+          <article class="game-card dodge-card reveal">
+            <div class="game-number">01</div>
+            <div class="game-badge">SURVIVAL</div>
+            <div class="game-art">
+              <img
+                src="assets/dodge-stickman-v2.png"
+                alt="네온 화살 사이를 역동적으로 피하는 졸라맨"
+              />
+            </div>
+            <div class="game-info">
+              <h3>총알 피하기</h3>
+              <p>
+                쏟아지는 위협 사이, 단 한 번의 드래그로 살아남아 최고 기록을
+                경신하세요.
+              </p>
+              <ul>
+                <li>빠른 회피</li>
+                <li>스테이지</li>
+                <li>아이템 강화</li>
+              </ul>
+            </div>
+          </article>
+          <article class="game-card beat-card reveal">
+            <div class="game-number">02</div>
+            <div class="game-badge">RHYTHM RPG</div>
+            <div class="abstract-art beat-art">
+              <div class="lane l1"></div>
+              <div class="lane l2"></div>
+              <div class="lane l3"></div>
+              <div class="note n1"></div>
+              <div class="note n2"></div>
+              <div class="note n3"></div>
+              <strong>BEAT<br />RPG</strong>
+            </div>
+            <div class="game-info">
+              <h3>비트박스 RPG</h3>
+              <p>
+                내가 누르는 버튼이 음악이 된다. 비트를 익히고 콤보를 쌓아 무대를
+                정복하세요.
+              </p>
+              <ul>
+                <li>실시간 사운드</li>
+                <li>콤보</li>
+                <li>커스텀 링</li>
+              </ul>
+            </div>
+          </article>
+          <article class="game-card forge-card reveal">
+            <div class="game-number">03</div>
+            <div class="game-badge">IDLE FORGE</div>
+            <div class="abstract-art forge-art">
+              <div class="sword">†</div>
+              <div class="spark s1">✦</div>
+              <div class="spark s2">✦</div>
+              <div class="spark s3">✦</div>
+              <strong>+12</strong>
+            </div>
+            <div class="game-info">
+              <h3>전설의 검 강화</h3>
+              <p>
+                두드릴수록 강해지는 나만의 검. 성공과 실패 사이 짜릿한 한 번을
+                선택하세요.
+              </p>
+              <ul>
+                <li>검 컬렉션</li>
+                <li>초고속 강화</li>
+                <li>재화 성장</li>
+              </ul>
+            </div>
+          </article>
+          <article class="game-card titan-card reveal">
+            <div class="game-number">04</div>
+            <div class="game-badge">TAP ACTION</div>
+            <div class="game-art titan-art">
+              <img src="assets/titan-hero.png" alt="탭 타이탄 영웅 캐릭터" />
+            </div>
+            <div class="game-info">
+              <h3>탭 타이탄</h3>
+              <p>
+                탭할 때마다 강력한 일격. 동료를 모으고 스킬을 깨워 끝없는
+                스테이지를 돌파하세요.
+              </p>
+              <ul>
+                <li>탭 액션</li>
+                <li>동료 소환</li>
+                <li>보스 전투</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="features section" id="features">
+        <div class="feature-visual reveal">
+          <div class="feature-stage">
+            <img
+              class="feature-main-art"
+              src="assets/dodge-stickman-v2.png"
+              alt="졸라맨이 네온 화살을 피하는 액션 장면"
+            />
+            <img
+              class="feature-side-art"
+              src="assets/hero-arcade-v2.png"
+              alt="검 강화, 보스전, 리듬게임을 담은 아케이드 장면"
+            />
+            <div class="feature-achievement">
+              <span>NEW RECORD</span><strong>12,480</strong><em>TOP 3%</em>
+            </div>
+          </div>
+        </div>
+        <div class="feature-copy reveal">
+          <p class="eyebrow"><span></span> BUILT FOR QUICK FUN</p>
+          <h2>짧게 해도,<br />성장은 선명하게.</h2>
+          <div class="feature-list">
+            <article>
+              <b>01</b>
+              <div>
+                <h3>설명 없이 바로</h3>
+                <p>터치와 키보드, 익숙한 조작만으로 첫 판부터 몰입합니다.</p>
+              </div>
+            </article>
+            <article>
+              <b>02</b>
+              <div>
+                <h3>매 판 달라지는 목표</h3>
+                <p>
+                  스테이지, 콤보, 강화, 동료 수집이 다음 플레이의 이유가 됩니다.
+                </p>
+              </div>
+            </article>
+            <article>
+              <b>03</b>
+              <div>
+                <h3>광고 없이 깔끔하게</h3>
+                <p>흐름을 끊는 광고 없이 게임의 핵심 재미에 집중합니다.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-section section" id="play">
+        <div class="cta-inner reveal">
+          <p class="eyebrow"><span></span> COMING TO MOBILE</p>
+          <h2>당신의 최고 기록은<br />아직 시작되지 않았다.</h2>
+          <p>Android와 iOS에서 곧 만나요. 언제 어디서든 가볍게 한 판.</p>
+          <div class="store-actions" aria-label="출시 예정 스토어">
+            <a
+              class="store-button"
+              href="https://github.com/ccommit-dev/dodge-bullets"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span class="play-symbol" aria-hidden="true"></span>
+              <span
+                ><small>COMING SOON ON</small><strong>Google Play</strong></span
+              >
+            </a>
+            <a
+              class="store-button"
+              href="https://github.com/ccommit-dev/dodge-bullets"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span class="apple-symbol" aria-hidden="true">●</span>
+              <span
+                ><small>COMING SOON ON THE</small
+                ><strong>App Store</strong></span
+              >
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="logo" href="#top">
+        <span class="logo-mark" aria-hidden="true"><i></i></span>
+        <span class="logo-word">DODGE <b>LAB</b></span>
+      </a>
+      <p>© 2026 DODGE LAB. ALL RIGHTS RESERVED.</p>
+      <a
+        href="https://github.com/ccommit-dev/dodge-bullets"
+        target="_blank"
+        rel="noreferrer"
+        >GitHub ↗</a
+      >
+    </footer>
+    <script src="app.js"></script>
+  </body>
+</html>
