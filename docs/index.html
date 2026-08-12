@@ -16,7 +16,10 @@
       property="og:description"
       content="총알 피하기부터 비트 RPG, 검 강화, 탭 타이탄까지 한 번에 즐겨보세요."
     />
-    <meta property="og:url" content="https://ccommit-dev.github.io/dodge-bullets/" />
+    <meta
+      property="og:url"
+      content="https://ccommit-dev.github.io/dodge-bullets/"
+    />
     <meta
       property="og:image"
       content="https://ccommit-dev.github.io/dodge-bullets/assets/hero-arcade-v2.png"
@@ -272,13 +275,60 @@
               target="_blank"
               rel="noreferrer"
             >
-              <span class="apple-symbol" aria-hidden="true">●</span>
+              <svg class="apple-symbol" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M16.7 12.8c0-2.5 2.1-3.7 2.2-3.8a4.8 4.8 0 0 0-3.8-2.1c-1.6-.2-3.1.9-3.9.9-.8 0-2-1-3.3-1-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.3 2.5 1.3-.1 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11.2 11.2 0 0 0 1.4-2.9 4.5 4.5 0 0 1-.9-4Zm-2.6-7.6A4.6 4.6 0 0 0 15.2 2a4.7 4.7 0 0 0-3.1 1.6A4.3 4.3 0 0 0 11 6.7a3.9 3.9 0 0 0 3.1-1.5Z"
+                />
+              </svg>
               <span
                 ><small>COMING SOON ON THE</small
                 ><strong>App Store</strong></span
               >
             </a>
           </div>
+          <form class="notify-form" id="notify-form" novalidate>
+            <div class="notify-heading">
+              <span class="notify-icon" aria-hidden="true">⌁</span>
+              <div>
+                <strong>출시 알림 받기</strong>
+                <p>스토어 출시일에 문자로 한 번만 알려드릴게요.</p>
+              </div>
+            </div>
+            <div class="phone-field">
+              <label for="notify-phone">휴대폰 번호</label>
+              <div class="phone-input-row">
+                <span>+82</span>
+                <input
+                  id="notify-phone"
+                  name="phone"
+                  type="tel"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  maxlength="13"
+                  placeholder="010-1234-5678"
+                  aria-describedby="phone-message"
+                  required
+                />
+                <button type="submit">알림 신청</button>
+              </div>
+              <p
+                class="field-message"
+                id="phone-message"
+                aria-live="polite"
+              ></p>
+            </div>
+            <label class="consent-row">
+              <input id="notify-consent" type="checkbox" required />
+              <span
+                ><b>필수</b> 출시 알림을 위한 휴대폰 번호 수집·이용에
+                동의합니다.</span
+              >
+            </label>
+            <p class="notify-demo-note">
+              현재는 화면 테스트용이며 번호가 서버로 전송되거나 저장되지
+              않습니다.
+            </p>
+          </form>
         </div>
       </section>
     </main>
