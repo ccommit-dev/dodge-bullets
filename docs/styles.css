@@ -684,6 +684,13 @@ h1 em {
   border-color: var(--mint);
   transform: translateY(-3px);
 }
+.store-button[aria-disabled="true"] {
+  cursor: default;
+}
+.store-button[aria-disabled="true"]:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: none;
+}
 .store-button small,
 .store-button strong {
   display: block;
