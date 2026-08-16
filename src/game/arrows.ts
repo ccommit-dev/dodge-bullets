@@ -21,6 +21,9 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       hitRadius: HIT_R,
       angle: Math.PI / 2,
       nearMissed: false,
+      warningMs: 0,
+      kind: "normal",
+      bounces: 0,
     };
   }
   return pool;
@@ -47,6 +50,8 @@ function activate(
   y: number,
   vx: number,
   vy: number,
+  kind: Arrow["kind"] = "normal",
+  warningMs = 400,
 ): void {
   arrow.active = true;
   arrow.x = x;
@@ -57,6 +62,11 @@ function activate(
   arrow.hitRadius = HIT_R;
   arrow.angle = Math.atan2(vy, vx);
   arrow.nearMissed = false;
+  arrow.warningMs = warningMs;
+  arrow.kind = kind;
+  arrow.bounces = kind === "ricochet" ? 1 : 0;
+  arrow.hitRadius = kind === "explosive" ? 10 : HIT_R;
+  arrow.length = kind === "explosive" ? 36 : ARROW_LEN;
 }
 
 function activePattern(world: GameWorld): ArrowPattern | null {
@@ -117,6 +127,61 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       activate(arrow, cx, world.safeTop - 20, (Math.random() - 0.5) * speed * 0.35, speed * 1.15);
       break;
     }
+    case "aimed": {
+      const fromLeft = Math.random() < 0.5;
+      const x = fromLeft ? -20 : world.width + 20;
+      const y = world.safeTop + 35 + Math.random() * Math.max(60, world.floorY * 0.35);
+      const targetX = world.player.x + world.player.vx * 0.28;
+      const targetY = world.player.y;
+      const dx = targetX - x;
+      const dy = targetY - y;
+      const len = Math.max(1, Math.hypot(dx, dy));
+      activate(arrow, x, y, (dx / len) * speed, (dy / len) * speed, "aimed", 480);
+      break;
+    }
+    case "fan": {
+      const originX = minX + Math.random() * spanX;
+      const originY = world.safeTop - 20;
+      const baseAngle = Math.atan2(world.player.y - originY, world.player.x - originX);
+      for (let i = -1; i <= 1; i++) {
+        const target = i === -1 ? arrow : acquire(world);
+        if (!target) continue;
+        const angle = baseAngle + i * 0.2;
+        activate(target, originX, originY, Math.cos(angle) * speed, Math.sin(angle) * speed, "fan", 460);
+      }
+      break;
+    }
+    case "ricochet": {
+      const fromLeft = Math.random() < 0.5;
+      const x = fromLeft ? -20 : world.width + 20;
+      const y = world.safeTop + 60 + Math.random() * Math.max(80, world.floorY - world.safeTop - 140);
+      activate(
+        arrow,
+        x,
+        y,
+        (fromLeft ? 1 : -1) * speed,
+        speed * (Math.random() < 0.5 ? 0.38 : -0.38),
+        "ricochet",
+        500,
+      );
+      break;
+    }
+    case "explosive": {
+      const originX = minX + Math.random() * spanX;
+      const dx = world.player.x - originX;
+      const dy = world.player.y - (world.safeTop - 20);
+      const len = Math.max(1, Math.hypot(dx, dy));
+      activate(
+        arrow,
+        originX,
+        world.safeTop - 20,
+        (dx / len) * speed * 0.86,
+        (dy / len) * speed * 0.86,
+        "explosive",
+        560,
+      );
+      break;
+    }
   }
 }
 
@@ -139,7 +204,11 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
   const stage = getStage(world.stageIndex);
   const pattern = activePattern(world);
 
-  if (pattern && pattern.kind !== "rest") {
+  // A short readable opening prevents a random spawn from ending a run before
+  // the player has seen the first telegraph and taken control.
+  if (world.stageElapsedMs < 2_000) {
+    world.spawnAccMs = 0;
+  } else if (pattern && pattern.kind !== "rest") {
     const spawnMs = (pattern.spawnMs ?? 700) / stage.spawnMul;
     world.spawnAccMs += dtSec * 1000;
     while (world.spawnAccMs >= spawnMs) {
@@ -160,6 +229,11 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
     const a = world.arrows[i];
     if (!a.active) continue;
 
+    if (a.warningMs > 0) {
+      a.warningMs = Math.max(0, a.warningMs - dtSec * 1000);
+      continue;
+    }
+
     let mul = 1;
     if (slow) {
       const dx = a.x - player.x;
@@ -169,6 +243,16 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
 
     a.x += a.vx * mul * dtSec;
     a.y += a.vy * mul * dtSec;
+    if (a.kind === "ricochet" && a.bounces > 0) {
+      if ((a.x < world.safeLeft + 8 && a.vx < 0) || (a.x > world.width - world.safeRight - 8 && a.vx > 0)) {
+        a.vx *= -1;
+        a.bounces -= 1;
+      }
+      if ((a.y < world.safeTop + 8 && a.vy < 0) || (a.y > world.floorY - 8 && a.vy > 0)) {
+        a.vy *= -1;
+        a.bounces -= 1;
+      }
+    }
     a.angle = Math.atan2(a.vy, a.vx || 0.0001);
 
     const out =

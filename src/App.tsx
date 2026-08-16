@@ -3,6 +3,14 @@ import "./App.css";
 import { BeatGame } from "./BeatGame";
 import { ForgeGame } from "./ForgeGame";
 import { TitansGame } from "./TitansGame";
+import { CharacterStatus } from "./CharacterStatus";
+import { emptyCharacterProgress, type CharacterProgress } from "./progression/model";
+import { dodgeClearReward } from "./progression/balance";
+import {
+  grantCharacterReward,
+  loadCharacterProgress,
+  migrateLegacyProgress,
+} from "./progression/storage";
 import { drawFrame } from "./game/draw";
 import {
   applyKeyDown,
@@ -65,7 +73,9 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
   };
 }
 
-type AppMode = "hub" | "dodge" | "beat" | "forge" | "titans";
+type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
+
+const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -79,6 +89,7 @@ function App() {
   const lastTsRef = useRef<number>(0);
   const insetsRef = useRef<SafeInsets>(normalizeInsets(null));
   const lastJumpAtRef = useRef(0);
+  const dodgeRunIdRef = useRef(`boot-${Date.now()}`);
 
   const hudRemainSecRef = useRef(0);
   const hudHpRef = useRef(1);
@@ -105,14 +116,19 @@ function App() {
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
   const [exitOpen, setExitOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
   const [allClear, setAllClear] = useState(false);
-  const [appMode, setAppMode] = useState<AppMode>("hub");
-  const appModeRef = useRef<AppMode>("hub");
+  const [extracted, setExtracted] = useState(false);
+  const [appMode, setAppMode] = useState<AppMode>("titans");
+  const [profileRefresh, setProfileRefresh] = useState(0);
+  const [progress, setProgress] = useState<CharacterProgress>(() => emptyCharacterProgress());
+  const appModeRef = useRef<AppMode>("titans");
 
   const setMode = useCallback((mode: AppMode) => {
     appModeRef.current = mode;
     setAppMode(mode);
+    setSettingsOpen(false);
     if (mode !== "dodge") {
       soundRef.current.stopBgm();
       clearKeys(inputRef.current);
@@ -202,10 +218,11 @@ function App() {
       userHashRef.current = key.hash;
       setUserKeySource(key.source);
       applyInsets(safe);
-      const [best, savedCoins, levels] = await Promise.all([
+      const [best, savedCoins, levels, character] = await Promise.all([
         loadHighScore(key.hash),
         loadCoins(key.hash),
         loadShopLevels(key.hash),
+        loadCharacterProgress(key.hash),
       ]);
       if (cancelled) return;
       setHighScore(best);
@@ -213,6 +230,7 @@ function App() {
       coinsRef.current = savedCoins;
       setShopLevels(levels);
       shopLevelsRef.current = levels;
+      setProgress(character);
       const stats = statsFromLevels(levels);
       if (worldRef.current) applyStats(worldRef.current, stats);
       setMaxHp(1 + stats.extraLives);
@@ -402,6 +420,7 @@ function App() {
           setScore(finalScore);
           setLastScore(finalScore);
           setAllClear(false);
+          setExtracted(false);
           void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
           stateRef.current = "gameover";
           setGameState("gameover");
@@ -428,11 +447,25 @@ function App() {
             );
             coinsRef.current = nextCoins;
             setCoins(nextCoins);
+            const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
+            const nextProgress = await grantCharacterReward(
+              userHashRef.current,
+              `dodge:${dodgeRunIdRef.current}:stage:${world.stageIndex}`,
+              {
+                exp: growth.exp,
+                sharedCoins: reward,
+                enhancementMaterials: growth.materials,
+                dodgeStage: world.stageIndex + 1,
+                lastContent: "dodge",
+              },
+            );
+            setProgress(nextProgress);
           })();
           void saveHighScore(userHashRef.current, world.score).then(setHighScore);
           setLastScore(world.score);
           const last = isLastStage(world.stageIndex);
           setAllClear(last);
+          setExtracted(false);
 
           // Stage 3+ and all mid clears: skip menu, keep flowing
           if (!last) {
@@ -493,6 +526,7 @@ function App() {
   const handleStart = async (fromStage = 0) => {
     if (!bootReady) return;
     await unlockAudio();
+    dodgeRunIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
@@ -506,6 +540,7 @@ function App() {
     hudComboRef.current = 0;
     setCoinGain(0);
     setAllClear(false);
+    setExtracted(false);
     clearKeys(inputRef.current);
     setPointer(inputRef.current, false);
     lastTsRef.current = 0;
@@ -528,7 +563,7 @@ function App() {
   }, [gameState, stageIndex, handleBeginPlay]);
 
   const handleNextStage = () => {
-    if (allClear) {
+    if (allClear || extracted) {
       syncState("ready");
       setMenuTab("play");
       return;
@@ -544,6 +579,42 @@ function App() {
     void handleStart(stageIndex);
   };
 
+  const handleExtract = () => {
+    const world = worldRef.current;
+    if (!world || stateRef.current !== "playing" || world.stageElapsedMs < 15_000) return;
+    const stage = getStage(world.stageIndex);
+    const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
+    const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2));
+    const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
+    soundRef.current.stopBgm();
+    soundRef.current.playCoin();
+    clearKeys(inputRef.current);
+    setPointer(inputRef.current, false);
+    stateRef.current = "clear";
+    setGameState("clear");
+    setExtracted(true);
+    setAllClear(false);
+    setCoinGain(reward);
+    setLastScore(world.score);
+    void (async () => {
+      const nextCoins = await saveCoins(userHashRef.current, coinsRef.current + reward);
+      coinsRef.current = nextCoins;
+      setCoins(nextCoins);
+      const nextProgress = await grantCharacterReward(
+        userHashRef.current,
+        `dodge:${dodgeRunIdRef.current}:extract:${world.stageIndex}`,
+        {
+          exp: Math.floor(growth.exp * survivalRatio * 0.65),
+          sharedCoins: reward,
+          enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6)),
+          dodgeStage: world.stageIndex + 1,
+          lastContent: "dodge",
+        },
+      );
+      setProgress(nextProgress);
+    })();
+  };
+
   const handleBackToReady = () => {
     soundRef.current.stopBgm();
     syncState("ready");
@@ -554,7 +625,9 @@ function App() {
     soundRef.current.stopBgm();
     syncState("ready");
     setMenuTab("play");
-    setMode("hub");
+    setProfileRefresh((value) => value + 1);
+    setMode("titans");
+    void migrateLegacyProgress(userHashRef.current, progress).then(setProgress);
   };
 
   const buyUpgrade = async (id: ShopUpgradeId) => {
@@ -575,6 +648,7 @@ function App() {
       saveCoins(userHashRef.current, nextCoins),
       saveShopLevels(userHashRef.current, nextLevels),
     ]);
+    setProgress((current) => ({ ...current, sharedCoins: nextCoins, updatedAt: Date.now() }));
   };
 
   const confirmExit = async () => {
@@ -584,9 +658,18 @@ function App() {
     await closeMiniApp();
   };
 
+  const openCommunity = () => {
+    if (!COMMUNITY_URL) return;
+    window.open(COMMUNITY_URL, "_blank", "noopener,noreferrer");
+    setSettingsOpen(false);
+  };
+
   const isNewRecord = lastScore > 0 && lastScore >= highScore;
   const stage = getStage(stageIndex);
   const remainSec = Math.ceil(stageRemainMs / 1000);
+  const expeditionElapsed = Math.max(0, stage.durationMs - stageRemainMs);
+  const expeditionRatio = Math.min(1, expeditionElapsed / stage.durationMs);
+  const threatLevel = expeditionRatio < 0.25 ? 1 : expeditionRatio < 0.5 ? 2 : expeditionRatio < 0.78 ? 3 : 4;
 
   const dockStyle = {
     paddingTop: insets.top,
@@ -605,85 +688,100 @@ function App() {
       )}
 
       <div className="sound-dock" style={dockStyle}>
-        {/* The beat game is the music itself, so it has no mute switch. */}
-        {appMode !== "beat" && appMode !== "forge" && appMode !== "titans" && (
-          <button
-            type="button"
-            className="sound-toggle"
-            onClick={() => void toggleSound()}
-            aria-pressed={soundOn}
-            aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
-          >
-            {soundOn ? "사운드 On" : "사운드 Off"}
-          </button>
+        {(appMode === "titans" || appMode === "profile") && (
+          <div className="settings-wrap">
+            <button
+              type="button"
+              className="settings-toggle"
+              onClick={() => setSettingsOpen((open) => !open)}
+              aria-expanded={settingsOpen}
+              aria-haspopup="menu"
+            >
+              <span aria-hidden="true">⚙</span> 설정
+            </button>
+            {settingsOpen && (
+              <div className="settings-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void toggleSound()}
+                  aria-pressed={soundOn}
+                >
+                  <span>사운드</span>
+                  <b>{soundOn ? "ON" : "OFF"}</b>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={openCommunity}
+                  disabled={!COMMUNITY_URL}
+                  title={COMMUNITY_URL ? "공식 카페 글 열기" : "카페 주소 설정이 필요합니다"}
+                >
+                  <span>카페 글 가기</span>
+                  <b>{COMMUNITY_URL ? "↗" : "준비 중"}</b>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="settings-exit"
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    setExitOpen(true);
+                  }}
+                >
+                  <span>게임 종료</span>
+                  <b>›</b>
+                </button>
+              </div>
+            )}
+          </div>
         )}
-        <button
-          type="button"
-          className="exit-toggle"
-          onClick={() => setExitOpen(true)}
-          aria-label="미니앱 종료"
-        >
-          종료
-        </button>
+        {appMode === "dodge" && (
+          <>
+            <button
+              type="button"
+              className="sound-toggle"
+              onClick={() => void toggleSound()}
+              aria-pressed={soundOn}
+              aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
+            >
+              {soundOn ? "사운드 On" : "사운드 Off"}
+            </button>
+            <button
+              type="button"
+              className="exit-toggle"
+              onClick={() => setExitOpen(true)}
+              aria-label="미니앱 종료"
+            >
+              종료
+            </button>
+          </>
+        )}
       </div>
 
       {!bootReady && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">미니게임 허브</p>
+            <p className="brand">통합 성장 허브</p>
             <p className="subtitle">준비 중…</p>
           </div>
         </div>
       )}
 
-      {bootReady && appMode === "hub" && (
-        <div className="game-overlay">
-          <div className="overlay-content overlay-wide">
-            <p className="brand">APPS IN TOSS</p>
-            <h1 className="title">게임 선택</h1>
-            <p className="subtitle">플레이할 게임을 고르세요</p>
-            <p className="score-line">코인 {coins} · 최고 {highScore}</p>
-
-            <button
-              type="button"
-              className="game-card"
-              onClick={() => {
-                syncState("ready");
-                setMode("dodge");
-              }}
-            >
-              <strong>졸라맨 총알피하기</strong>
-              <span>스테이지 · 상점 · 화살 회피</span>
-            </button>
-            <button
-              type="button"
-              className="game-card game-card-beat"
-              onClick={() => setMode("beat")}
-            >
-              <strong>비트박스 Stage</strong>
-              <span>3D 비트 레일 · RPG 육성 · 실전 믹스</span>
-            </button>
-            <button
-              type="button"
-              className="game-card game-card-forge"
-              onClick={() => setMode("forge")}
-            >
-              <strong>검 강화하기</strong>
-              <span>강화 · 판매 · 방지권 · 조각 조합</span>
-            </button>
-            <button
-              type="button"
-              className="game-card game-card-titans"
-              onClick={() => setMode("titans")}
-            >
-              <strong>탭 타이탄</strong>
-              <span>탭 RPG · 스테이지 · 검·동료·스킬</span>
-            </button>
-            <p className="controls-hint">
-              식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"}
-            </p>
-          </div>
-        </div>
+      {bootReady && appMode === "profile" && (
+        <CharacterStatus
+          insets={insets}
+          userHash={userHashRef.current}
+          coins={coins}
+          highScore={highScore}
+          progress={progress}
+          refreshKey={profileRefresh}
+          onOpenContent={(content) => {
+            if (content === "dodge") syncState("ready");
+            setMode(content);
+          }}
+          onBack={() => setMode("titans")}
+        />
       )}
 
       {bootReady && appMode === "beat" && (
@@ -705,7 +803,15 @@ function App() {
       )}
 
       {bootReady && appMode === "titans" && (
-        <TitansGame insets={insets} userHash={userHashRef.current} onBack={handleBackToHub} />
+        <TitansGame
+          insets={insets}
+          userHash={userHashRef.current}
+          forgedWeaponLevel={progress.equippedWeaponLevel}
+          onOpenContent={(content) => {
+            if (content === "dodge") syncState("ready");
+            setMode(content);
+          }}
+        />
       )}
 
       {bootReady && appMode === "dodge" && gameState === "ready" && (
@@ -745,7 +851,7 @@ function App() {
                   스테이지 1 시작
                 </button>
                 <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
-                  게임 선택
+                  타이탄 사냥터
                 </button>
               </>
             ) : (
@@ -817,6 +923,8 @@ function App() {
                 점수 {score} · 코인 {coins} · HP {"♥".repeat(hp)}
                 {"♡".repeat(Math.max(0, maxHp - hp))}
               </span>
+              <span className="threat-label">위험도 {"◆".repeat(threatLevel)}{"◇".repeat(4 - threatLevel)}</span>
+              <i className="expedition-progress"><b style={{ width: `${expeditionRatio * 100}%` }} /></i>
             </div>
             {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
           </div>
@@ -859,6 +967,14 @@ function App() {
             >
               슬로우
             </button>
+            <button
+              type="button"
+              className="action-btn extract-btn"
+              disabled={expeditionElapsed < 15_000}
+              onClick={handleExtract}
+            >
+              {expeditionElapsed < 15_000 ? `${Math.ceil((15_000 - expeditionElapsed) / 1000)}s` : "귀환"}
+            </button>
           </div>
         </>
       )}
@@ -866,12 +982,12 @@ function App() {
       {appMode === "dodge" && gameState === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">{allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
-            <h1 className="title">{allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
+            <p className="brand">{extracted ? "SAFE RETURN" : allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
+            <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
             <p className="score-line">+{coinGain} 코인</p>
             <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
             <button type="button" className="cta" onClick={handleNextStage}>
-              {allClear ? "시작 화면" : "다음 스테이지"}
+              {allClear || extracted ? "원정 준비" : "다음 스테이지"}
             </button>
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               상점 / 메뉴

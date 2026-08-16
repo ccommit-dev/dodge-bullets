@@ -4,6 +4,31 @@ export type TitanSkillId = "strike" | "crit" | "clone" | "warcry";
 
 export type TitanMonsterKind = "slime" | "goblin" | "wolf" | "ogre" | "dragon" | "boss";
 
+export type HuntingAreaDef = {
+  id: string;
+  name: string;
+  stageFrom: number;
+  stageTo: number;
+  normalKinds: Exclude<TitanMonsterKind, "boss">[];
+  bossName: string;
+  rewardMultiplier: number;
+  sky: string;
+  ground: string;
+  accent: string;
+};
+
+export const HUNTING_AREAS: HuntingAreaDef[] = [
+  { id: "meadow", name: "새벽 초원", stageFrom: 1, stageTo: 5, normalKinds: ["slime", "goblin"], bossName: "이끼 골렘", rewardMultiplier: 1, sky: "#155e75", ground: "#166534", accent: "#67e8f9" },
+  { id: "forest", name: "그림자 숲", stageFrom: 6, stageTo: 10, normalKinds: ["goblin", "wolf"], bossName: "월광 늑대왕", rewardMultiplier: 1.45, sky: "#1e3a5f", ground: "#14532d", accent: "#a7f3d0" },
+  { id: "ruins", name: "붉은 폐허", stageFrom: 11, stageTo: 15, normalKinds: ["wolf", "ogre"], bossName: "고대 오우거", rewardMultiplier: 2.05, sky: "#7f1d1d", ground: "#451a03", accent: "#fdba74" },
+  { id: "volcano", name: "용암 협곡", stageFrom: 16, stageTo: 23, normalKinds: ["ogre", "dragon"], bossName: "화염 비룡", rewardMultiplier: 3.1, sky: "#7c2d12", ground: "#3f1d16", accent: "#fb7185" },
+  { id: "abyss", name: "심연의 성", stageFrom: 24, stageTo: 9999, normalKinds: ["dragon", "wolf", "ogre"], bossName: "심연의 타이탄", rewardMultiplier: 5, sky: "#312e81", ground: "#1e1b4b", accent: "#c4b5fd" },
+];
+
+export function huntingArea(stage: number): HuntingAreaDef {
+  return HUNTING_AREAS.find((area) => stage >= area.stageFrom && stage <= area.stageTo) ?? HUNTING_AREAS[HUNTING_AREAS.length - 1];
+}
+
 export type TitanHeroDef = {
   id: TitanHeroId;
   name: string;
@@ -31,6 +56,7 @@ export type TitansSave = {
   heroes: Record<TitanHeroId, number>;
   totalKills: number;
   totalTaps: number;
+  lastActiveAt: number;
 };
 
 export const MOBS_PER_STAGE = 10;
@@ -141,6 +167,7 @@ export function defaultTitansSave(): TitansSave {
     heroes: emptyHeroLevels(),
     totalKills: 0,
     totalTaps: 0,
+    lastActiveAt: Date.now(),
   };
 }
 
@@ -161,7 +188,12 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     heroes,
     totalKills: n(value.totalKills, 0),
     totalTaps: n(value.totalTaps, 0),
+    lastActiveAt: n(value.lastActiveAt, Date.now(), Date.now()),
   };
+}
+
+export function playerIdleDps(swordLevel: number): number {
+  return Math.max(1, tapDamage(swordLevel) * 0.45);
 }
 
 export function formatGold(value: number): string {
@@ -181,6 +213,7 @@ export function killGold(stage: number, boss: boolean, chesterson: boolean): num
   const base = 5 * Math.pow(1.26, stage - 1);
   let gold = base * (boss ? 7.5 : 1);
   if (chesterson) gold *= 10;
+  gold *= huntingArea(stage).rewardMultiplier;
   return Math.max(1, Math.floor(gold));
 }
 
@@ -218,11 +251,11 @@ export function totalHeroDps(heroes: Record<TitanHeroId, number>): number {
 export function monsterKind(stage: number, boss: boolean, chesterson: boolean): TitanMonsterKind {
   if (boss) return "boss";
   if (chesterson) return "ogre";
-  const pool: TitanMonsterKind[] = ["slime", "goblin", "wolf", "ogre", "dragon"];
-  return pool[Math.min(pool.length - 1, Math.floor((stage - 1) / 4) % pool.length)];
+  const pool = huntingArea(stage).normalKinds;
+  return pool[(stage - 1) % pool.length];
 }
 
-export function monsterLabel(kind: TitanMonsterKind, chesterson: boolean): string {
+export function monsterLabel(kind: TitanMonsterKind, chesterson: boolean, stage = 1): string {
   if (chesterson) return "황금 상자 몬스터";
   switch (kind) {
     case "slime":
@@ -236,6 +269,6 @@ export function monsterLabel(kind: TitanMonsterKind, chesterson: boolean): strin
     case "dragon":
       return "새끼 용";
     case "boss":
-      return "타이탄 보스";
+      return huntingArea(stage).bossName;
   }
 }
