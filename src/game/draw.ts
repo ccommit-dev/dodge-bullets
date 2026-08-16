@@ -12,8 +12,22 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   const px = -sin;
   const py = cos;
 
-  ctx.strokeStyle = "#f87171";
-  ctx.fillStyle = "#fca5a5";
+  if (a.warningMs > 0) {
+    const pulse = 0.25 + 0.45 * (1 - a.warningMs / 560);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = a.kind === "explosive" ? "#fbbf24" : "#fb7185";
+    ctx.lineWidth = a.kind === "explosive" ? 9 : 3;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(a.x + cos * 900, a.y + sin * 900);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = a.kind === "explosive" ? "#f59e0b" : a.kind === "ricochet" ? "#c084fc" : "#f87171";
+  ctx.fillStyle = a.kind === "explosive" ? "#fde68a" : "#fca5a5";
   ctx.lineWidth = 2.4;
   ctx.lineCap = "round";
 
@@ -22,6 +36,13 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   ctx.moveTo(bx, by);
   ctx.lineTo(tx, ty);
   ctx.stroke();
+
+  if (a.kind === "explosive") {
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 9, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(251, 191, 36, 0.5)";
+    ctx.fill();
+  }
 
   // tip
   ctx.beginPath();

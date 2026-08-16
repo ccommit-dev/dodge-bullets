@@ -36,6 +36,9 @@ export type Arrow = {
   angle: number;
   /** Near-miss scored once per arrow. */
   nearMissed: boolean;
+  warningMs: number;
+  kind: "normal" | "aimed" | "fan" | "ricochet" | "explosive";
+  bounces: number;
 };
 
 export type Platform = {
@@ -51,6 +54,10 @@ export type ArrowPatternKind =
   | "cross"
   | "sweep"
   | "burst"
+  | "aimed"
+  | "fan"
+  | "ricochet"
+  | "explosive"
   | "rest";
 
 export type ArrowPattern = {

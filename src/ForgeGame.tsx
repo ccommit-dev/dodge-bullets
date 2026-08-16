@@ -12,6 +12,9 @@ import {
 } from "./forge/model";
 import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
+import { PROGRESSION_BALANCE } from "./progression/balance";
+import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
+import { CharacterAvatar } from "./ui/CharacterAvatar";
 
 /** Original delays were ~650/720ms; 3× faster ≈ 217/240. */
 const FORGE_MS = 220;
@@ -32,14 +35,16 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [view, setView] = useState<ForgeView>("title");
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [toast, setToast] = useState("");
+  const [materials, setMaterials] = useState(0);
   const timerRef = useRef<number | null>(null);
   const toastRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void loadForgeSave(userHash).then((loaded) => {
+    void Promise.all([loadForgeSave(userHash), loadCharacterProgress(userHash)]).then(([loaded, character]) => {
       if (cancelled) return;
       setSave(loaded);
+      setMaterials(character.enhancementMaterials);
       setPhase(loaded.pendingFailure ? "failure" : "idle");
       setView(loaded.pendingFailure || loaded.level > 0 || loaded.totalAttempts > 0 ? "forge" : "title");
       setReady(true);
@@ -58,6 +63,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
   const tier = tierAt(save.level);
   const chance = effectiveChance(tier, save.mode);
+  const boostedChance = Math.min(1, chance + (materials > 0 ? 0.08 : 0));
   const sell = effectiveSell(tier, save.mode);
   const ticketNeed = protectionCost(save.level);
   const maxed = save.level >= 15;
@@ -87,7 +93,15 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
   const enhance = () => {
     if (!canEnhance) return;
-    const success = Math.random() < chance;
+    const success = Math.random() < boostedChance;
+    if (materials > 0) {
+      setMaterials((value) => Math.max(0, value - 1));
+      void updateCharacterProgress(userHash, (current) => ({
+        ...current,
+        enhancementMaterials: Math.max(0, current.enhancementMaterials - 1),
+        lastContent: "forge",
+      }));
+    }
     setPhase("forging");
     setSave((prev) => ({
       ...prev,
@@ -98,6 +112,17 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       if (success) {
         setSave((prev) => {
           const nextLevel = Math.min(15, prev.level + 1);
+          void grantCharacterReward(userHash, `forge:${prev.totalAttempts}:${Date.now()}`, {
+            exp: PROGRESSION_BALANCE.forge.successExp + nextLevel * 2,
+            lastContent: "forge",
+          }).then(() =>
+            updateCharacterProgress(userHash, (current) => ({
+              ...current,
+              equippedWeaponLevel: Math.max(current.equippedWeaponLevel, nextLevel),
+              bestForgeLevel: Math.max(current.bestForgeLevel, nextLevel),
+              lastContent: "forge",
+            })),
+          );
           return {
             ...prev,
             level: nextLevel,
@@ -134,6 +159,11 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       pendingFailure: false,
     }));
     setPhase("idle");
+    void updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      enhancementMaterials: current.enhancementMaterials + gain,
+      lastContent: "forge",
+    }));
     flashToast(`검 조각 +${gain}`);
   };
 
@@ -187,6 +217,18 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     paddingLeft: Math.max(16, insets.left),
   };
 
+  const returnToHub = async () => {
+    await saveForgeSave(userHash, save);
+    await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      equippedWeaponLevel: Math.max(current.equippedWeaponLevel, save.level),
+      bestForgeLevel: Math.max(current.bestForgeLevel, save.bestLevel),
+      enhancementMaterials: Math.max(current.enhancementMaterials, materials),
+      lastContent: "forge",
+    }));
+    onBack();
+  };
+
   if (!ready) {
     return (
       <div className="forge-layer forge-loading">
@@ -198,8 +240,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   return (
     <div className="forge-layer" style={forgeStyle}>
       <header className="forge-header">
-        <button type="button" className="forge-back" onClick={onBack}>
-          ← 게임 선택
+        <button type="button" className="forge-back" onClick={() => void returnToHub()}>
+          ← 타이탄 사냥터
         </button>
         <div className="forge-wallet">
           <span>GOLD</span>
@@ -210,6 +252,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       {view === "title" ? (
         <main className="forge-title-screen">
           <p className="forge-kicker">THIRD GAME · BLACKSMITH</p>
+          <CharacterAvatar pose="forge" weaponLevel={save.level} size={86} className="content-hero-avatar" />
           <h1>검 강화하기</h1>
           <p className="forge-title-desc">
             강화 · 실패 시 방지권 · 조각 줍기 · 조합소
@@ -298,7 +341,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   </div>
                   <div>
                     <span>성공 확률</span>
-                    <strong>{maxed ? "—" : `${Math.round(chance * 1000) / 10}%`}</strong>
+                    <strong>{maxed ? "—" : `${Math.round(boostedChance * 1000) / 10}%`}</strong>
                   </div>
                   <div>
                     <span>판매 가격</span>
@@ -309,6 +352,10 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                     <strong>{save.tickets}장</strong>
                   </div>
                 </div>
+
+                <p className="forge-note">
+                  원정 재료 {materials}개 {materials > 0 ? "· 이번 강화 성공률 +8%" : "· 화살 원정에서 획득"}
+                </p>
 
                 <button
                   type="button"

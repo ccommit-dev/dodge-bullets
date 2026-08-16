@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
-  ATTACK_FRAMES,
+  ATTACK_SHEET,
   IDLE_FRAME_MS,
-  IDLE_FRAMES,
-  preloadFrames,
+  IDLE_SHEET,
+  SPRITE_FRAME_COUNT,
+  preloadTitanSheets,
 } from "./titans/anim";
 import {
   BOSS_TIME_SEC,
@@ -20,6 +21,8 @@ import {
   monsterHp,
   monsterKind,
   monsterLabel,
+  playerIdleDps,
+  huntingArea,
   stageClearBonus,
   swordUpgradeCost,
   tapDamage,
@@ -29,13 +32,18 @@ import {
   type TitanSkillId,
   type TitansSave,
 } from "./titans/model";
-import { Stickman } from "./titans/Stickman";
+import { AllyArt, MonsterArt } from "./titans/SpriteArt";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
+import { PROGRESSION_BALANCE } from "./progression/balance";
+import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
+import { SwordArt } from "./forge/swords";
+import { tierAt } from "./forge/model";
 
 type TitansGameProps = {
   insets: SafeInsets;
   userHash: string;
-  onBack: () => void;
+  forgedWeaponLevel?: number;
+  onOpenContent: (content: "dodge" | "beat" | "forge" | "profile") => void;
 };
 
 type ShopTab = "sword" | "heroes" | "skills";
@@ -50,7 +58,7 @@ type FloatText = {
 
 type FxBurst = {
   id: number;
-  kind: "slash" | "hit" | "ally";
+  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry";
   x: number;
   y: number;
   hue?: number;
@@ -68,7 +76,7 @@ function emptyCds(): CooldownMap {
   return { strike: 0, crit: 0, clone: 0, warcry: 0 };
 }
 
-export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>("sword");
@@ -90,6 +98,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
   });
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
   const [frameIdx, setFrameIdx] = useState(0);
+  const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
   const [allyPulse, setAllyPulse] = useState<Record<string, number>>({});
 
   const saveRef = useRef(save);
@@ -154,11 +163,14 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
 
   useEffect(() => {
     let cancelled = false;
-    preloadFrames(IDLE_FRAMES);
-    preloadFrames(ATTACK_FRAMES);
+    preloadTitanSheets();
     void loadTitansSave(userHash).then((loaded) => {
       if (cancelled) return;
-      setSave(loaded);
+      const awaySeconds = Math.min(4 * 60 * 60, Math.max(0, (Date.now() - loaded.lastActiveAt) / 1000));
+      const offlineGold = Math.floor((killGold(loaded.stage, false, false) * awaySeconds) / 10);
+      const resumed = { ...loaded, gold: loaded.gold + offlineGold, lastActiveAt: Date.now() };
+      setSave(resumed);
+      if (offlineGold > 0) setToast(`방치 보상 +${formatGold(offlineGold)} GOLD`);
       spawn(loaded.stage, 1, false);
       setReady(true);
     });
@@ -170,7 +182,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
 
   useEffect(() => {
     if (!ready) return;
-    void saveTitansSave(userHash, save);
+    void saveTitansSave(userHash, { ...save, lastActiveAt: Date.now() });
   }, [ready, save, userHash]);
 
   // Idle / attack sprite playback
@@ -190,12 +202,11 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
         setFrameIdx(0);
         acc = 0;
       }
-      const frames = attacking ? ATTACK_FRAMES : IDLE_FRAMES;
-      const step = attacking ? ATTACK_CLIP_MS / ATTACK_FRAMES.length : IDLE_FRAME_MS;
+      const step = attacking ? ATTACK_CLIP_MS / SPRITE_FRAME_COUNT : IDLE_FRAME_MS;
       if (acc >= step) {
         const steps = Math.floor(acc / step);
         acc -= steps * step;
-        setFrameIdx((i) => (i + steps) % frames.length);
+        setFrameIdx((i) => (i + steps) % SPRITE_FRAME_COUNT);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -214,7 +225,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
     setFx((prev) => [...prev.slice(-22), { id, kind, x, y, hue }]);
     window.setTimeout(() => {
       setFx((prev) => prev.filter((f) => f.id !== id));
-    }, kind === "slash" ? 320 : 420);
+    }, kind === "slash" ? 320 : kind === "hit" || kind === "ally" ? 420 : 850);
   };
 
   const pushFloat = (dmg: number, crit: boolean, clientX?: number, clientY?: number) => {
@@ -268,6 +279,18 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
       }));
 
       if (wasBoss) {
+        const clearedStage = s.stage;
+        void grantCharacterReward(userHash, `titans:${clearedStage}:${Date.now()}`, {
+          exp: PROGRESSION_BALANCE.titans.bossExpBase + clearedStage * 8,
+          lastContent: "titans",
+        }).then(() =>
+          updateCharacterProgress(userHash, (current) => ({
+            ...current,
+            titanBestStage: Math.max(current.titanBestStage, clearedStage + 1),
+            unlockedHuntingArea: Math.max(current.unlockedHuntingArea, clearedStage + 1),
+            lastContent: "titans",
+          })),
+        );
         flash(`보스 처치! +${formatGold(goldGain)}G · STAGE ${s.stage + 1}`);
         spawn(s.stage + 1, 1, false);
         return;
@@ -280,17 +303,17 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
         spawn(s.stage, waveRef.current + 1, false);
       }
     },
-    [spawn],
+    [spawn, userHash],
   );
 
-  const computeTapHit = () => {
+  const computeTapHit = useCallback(() => {
     const now = performance.now();
-    const base = tapDamage(saveRef.current.swordLevel);
+    const base = tapDamage(saveRef.current.swordLevel + Math.floor(forgedWeaponLevel * 1.5));
     const clone = now < buffsRef.current.cloneUntil ? 2 : 1;
     const critChance = 0.08 + (now < buffsRef.current.critUntil ? 0.45 : 0);
     const crit = Math.random() < critChance;
     return { dmg: base * clone * (crit ? 3.2 : 1), crit };
-  };
+  }, [forgedWeaponLevel]);
 
   const doTap = useCallback(
     (clientX?: number, clientY?: number) => {
@@ -300,7 +323,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
       applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap" });
     },
-    [applyDamage],
+    [applyDamage, computeTapHit],
   );
 
   // Hero auto DPS + boss timer + ally attack pulses
@@ -314,7 +337,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
       last = now;
 
       const war = now < buffsRef.current.warcryUntil ? 2.5 : 1;
-      const dps = totalHeroDps(saveRef.current.heroes) * war;
+      const dps = (totalHeroDps(saveRef.current.heroes) + playerIdleDps(saveRef.current.swordLevel)) * war;
       dpsAcc.current += dps * dt;
       if (dpsAcc.current >= 1) {
         const chunk = Math.floor(dpsAcc.current);
@@ -407,6 +430,9 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
     if (save.swordLevel < def.unlockSword) return;
     if (cdsRef.current[id] > 0) return;
     const now = performance.now();
+    setSkillVisual(id);
+    window.setTimeout(() => setSkillVisual((active) => (active === id ? null : active)), 820);
+    pushFx(id, 56, 44, id === "strike" ? 48 : id === "crit" ? 350 : id === "clone" ? 192 : 28);
     setCds((prev) => ({ ...prev, [id]: def.cooldownSec }));
     if (id === "strike") {
       playAttackAnim();
@@ -429,12 +455,13 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
   };
 
   const kind: TitanMonsterKind = monsterKind(save.stage, boss, chesterson);
-  const label = monsterLabel(kind, chesterson);
-  const dps = totalHeroDps(save.heroes);
-  const tap = tapDamage(save.swordLevel);
+  const area = huntingArea(save.stage);
+  const label = monsterLabel(kind, chesterson, save.stage);
+  const dps = totalHeroDps(save.heroes) + playerIdleDps(save.swordLevel);
+  const tap = tapDamage(save.swordLevel + Math.floor(forgedWeaponLevel * 1.5));
   const now = performance.now();
-  const frames = animMode === "attack" ? ATTACK_FRAMES : IDLE_FRAMES;
-  const heroSrc = frames[frameIdx % frames.length] ?? IDLE_FRAMES[0];
+  const heroSheet = animMode === "attack" ? ATTACK_SHEET : IDLE_SHEET;
+  const equippedTier = tierAt(Math.min(15, forgedWeaponLevel));
   const allies = useMemo(
     () => HEROES.filter((h) => save.heroes[h.id] > 0),
     [save.heroes],
@@ -458,14 +485,21 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
   return (
     <div className="titans-layer" style={pad}>
       <header className="titans-header">
-        <button type="button" className="titans-back" onClick={onBack}>
-          ← 게임 선택
+        <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
+          마이페이지
         </button>
         <div className="titans-wallet">
           <span>GOLD</span>
           <strong>{formatGold(save.gold)}</strong>
         </div>
       </header>
+
+      <nav className="titans-content-tabs" aria-label="성장 콘텐츠">
+        <button type="button" className="on">사냥터</button>
+        <button type="button" onClick={() => onOpenContent("dodge")}>화살 원정</button>
+        <button type="button" onClick={() => onOpenContent("beat")}>비트 수련</button>
+        <button type="button" onClick={() => onOpenContent("forge")}>대장간</button>
+      </nav>
 
       <div className="titans-stagebar">
         <div>
@@ -474,6 +508,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
             STAGE {save.stage}
             {boss ? " BOSS" : ` · ${wave}/${MOBS_PER_STAGE}`}
           </h1>
+          <small className="titans-area-name">{area.name} · STAGE {area.stageFrom}–{area.stageTo >= 9999 ? "∞" : area.stageTo}</small>
         </div>
         <div className="titans-best">
           최고
@@ -484,29 +519,48 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
       <section
         ref={fieldRef}
         className={`titans-field ${boss ? "boss" : ""} ${chesterson ? "chest" : ""}`}
+        style={{
+          "--area-sky": area.sky,
+          "--area-ground": area.ground,
+          "--area-accent": area.accent,
+        } as CSSProperties}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           doTap(e.clientX, e.clientY);
         }}
       >
-        <div className={`titans-hero ${animMode}`}>
-          <img src={heroSrc} alt="검의 주인" draggable={false} />
+        <div className={`titans-hero ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
+          <div
+            className="titan-2d-sprite"
+            role="img"
+            aria-label="검의 주인"
+            style={{
+              backgroundImage: `url(${heroSheet})`,
+              backgroundPosition: `${(frameIdx / (SPRITE_FRAME_COUNT - 1)) * 100}% 0`,
+            }}
+          />
+          <div className="titans-weapon-overlay" aria-label={`대장간 장착 무기 +${forgedWeaponLevel}`}>
+            <SwordArt
+              level={Math.min(15, forgedWeaponLevel)}
+              hue={equippedTier.hue}
+              name={equippedTier.name}
+            />
+            <b>FORGE +{forgedWeaponLevel}</b>
+          </div>
         </div>
 
         <div className="titans-allies">
-          {allies.map((h, i) => (
-            <Stickman
+          {allies.map((h) => (
+            <AllyArt
               key={`${h.id}-${allyPulse[h.id] ?? 0}`}
-              hue={h.hue}
-              name={h.name}
+              id={h.id}
               attacking
-              size={40 - Math.min(8, i)}
             />
           ))}
         </div>
 
         <div className={`titans-monster kind-${kind} ${monsterHit % 2 ? "hit" : ""}`}>
-          <div className="titans-monster-body" />
+          <MonsterArt kind={kind} area={area} boss={boss} />
           <strong>{label}</strong>
         </div>
 
@@ -617,7 +671,7 @@ export function TitansGame({ insets, userHash, onBack }: TitansGameProps) {
             const cost = heroUpgradeCost(h, lv);
             return (
               <article key={h.id} className="titans-card">
-                <Stickman hue={h.hue} name={h.name} size={36} attacking={lv > 0} />
+                <AllyArt id={h.id} attacking={lv > 0} />
                 <div>
                   <strong>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}

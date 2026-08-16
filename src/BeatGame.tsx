@@ -36,6 +36,9 @@ import {
   saveHighScore,
 } from "./game/storage";
 import type { SafeInsets } from "./game/toss";
+import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
+import { PROGRESSION_BALANCE } from "./progression/balance";
+import { AdventurerSprite } from "./ui/AdventurerSprite";
 
 type BeatUi = "menu" | "playing" | "clear" | "gameover" | "shop";
 
@@ -280,6 +283,18 @@ export function BeatGame({
                 rpgRef.current = grown;
                 setRpg(grown);
                 await saveBeatRpg(userHash, grown);
+                const rewardId = `beat:${track.id}:${Date.now()}`;
+                await grantCharacterReward(userHash, rewardId, {
+                  exp: PROGRESSION_BALANCE.beat.clearExp,
+                  sharedCoins: reward,
+                  lastContent: "beat",
+                });
+                await updateCharacterProgress(userHash, (current) => ({
+                  ...current,
+                  beatSkills: { ...grown.skills },
+                  skillPoints: Math.max(current.skillPoints, grown.sp),
+                  lastContent: "beat",
+                }));
                 setRpgGain(
                   `숙련↑ · SP+${session.isSpar ? 3 : 2} · 명성+${
                     (session.isSpar ? 12 : 6) + Math.round(perfectRatio * (session.isSpar ? 20 : 10))
@@ -438,6 +453,7 @@ export function BeatGame({
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand beat-kicker">PRACTICE ROOM</p>
+            <AdventurerSprite className="beat-menu-adventurer" />
             <h1 className="title beat-title">비트박스 연습실</h1>
             <p className="subtitle">
               배우고 싶은 비트를 골라 연습하세요 · 내려오는 노트의 레인 패드를 눌러 리드를 겹칩니다
@@ -521,7 +537,7 @@ export function BeatGame({
                 비트 상점
               </button>
               <button type="button" className="cta cta-ghost" onClick={onBack}>
-                게임 선택
+                타이탄 사냥터
               </button>
             </div>
           </div>
@@ -577,6 +593,7 @@ export function BeatGame({
 
       {ui === "playing" && (
         <>
+          <AdventurerSprite className="beat-stage-adventurer" />
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">

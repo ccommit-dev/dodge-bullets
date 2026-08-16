@@ -67,7 +67,7 @@ export function drawStickman(
   else if (p.anim === "hit") swing = Math.sin(t * 20) * 0.8;
   else if (p.anim === "dead") swing = 1.2;
 
-  const color = p.anim === "hit" || p.anim === "dead" ? "#fca5a5" : "#5eead4";
+  const color = p.anim === "hit" || p.anim === "dead" ? "#fca5a5" : "#e2e8f0";
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = 3.2;
@@ -84,6 +84,15 @@ export function drawStickman(
   ctx.arc(hx, hy, 7.5, 0, Math.PI * 2);
   ctx.stroke();
 
+  // Shared Dodge Lab identity: teal core and a slim equipped blade.
+  ctx.fillStyle = p.anim === "hit" ? "#fb7185" : "#5eead4";
+  ctx.shadowColor = p.anim === "hit" ? "#fb7185" : "#2dd4bf";
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(hx, bodyTop + 13, 3.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
   // torso
   ctx.beginPath();
   ctx.moveTo(hx, bodyTop);
@@ -93,6 +102,14 @@ export function drawStickman(
   // arms
   const ax = hx;
   const ay = bodyTop + 6;
+  ctx.strokeStyle = "#67e8f9";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(ax + 11 * facing, ay + 13);
+  ctx.lineTo(ax + 22 * facing, ay - 10);
+  ctx.stroke();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3.2;
   ctx.beginPath();
   ctx.moveTo(ax, ay);
   ctx.lineTo(ax - 12 * facing - swing * 8, ay + 14 + swing * 6);
