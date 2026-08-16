@@ -269,13 +269,14 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
     if (player.invulnMs > 0 || player.anim === "dead") continue;
 
     const tip = tipPos(a);
-    const pr = player.radius * world.stats.hitboxScale;
+    const pr = player.radius;
     const dx = tip.x - player.x;
     const dy = tip.y - player.y;
     const distSq = dx * dx + dy * dy;
     const hitR = a.hitRadius + pr;
     if (distSq <= hitR * hitR) {
       hit = true;
+      a.active = false;
       continue;
     }
 

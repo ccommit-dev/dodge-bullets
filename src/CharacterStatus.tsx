@@ -18,7 +18,8 @@ import {
   totalSkillMastery,
   type CharacterProgress,
 } from "./progression/model";
-import { CharacterAvatar } from "./ui/CharacterAvatar";
+import { EquippedCharacter } from "./ui/EquippedCharacter";
+import { ContentIcon } from "./ui/ContentIcon";
 
 type CharacterStatusProps = {
   insets: SafeInsets;
@@ -44,6 +45,12 @@ export function CharacterStatus({
   const [beat, setBeat] = useState<BeatRpgProgress | null>(null);
   const [forge, setForge] = useState<ForgeSave>(() => defaultForgeSave());
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
+  const [previewFrame, setPreviewFrame] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 180);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +72,7 @@ export function CharacterStatus({
     const allies = HEROES.filter((hero) => titans.heroes[hero.id] > 0).length;
     const power = Math.max(
       combatPower(progress),
-      tapDamage(titans.swordLevel) +
+      tapDamage(titans.equipmentTraining.weaponMastery) +
         Math.floor(totalHeroDps(titans.heroes)) +
         mastery * 3 +
         forge.bestLevel * 12,
@@ -111,7 +118,11 @@ export function CharacterStatus({
       </header>
 
       <section className="character-hero-card">
-        <CharacterAvatar weaponLevel={progress.equippedWeaponLevel} size={82} />
+        <div className="character-equipment-preview">
+          <div className="character-equipment-facing">
+            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} />
+          </div>
+        </div>
         <div className="character-identity">
           <span>Lv.{progress.level} · 통합 전투력</span>
           <strong>{summary.combatPower.toLocaleString()}</strong>
@@ -127,7 +138,7 @@ export function CharacterStatus({
 
       <section className="equipment-strip" aria-label="장착 장비">
         <div><small>무기</small><strong>+{progress.equippedWeaponLevel} {tierAt(Math.min(15, progress.equippedWeaponLevel)).name}</strong></div>
-        <div><small>방어구</small><strong>원정대 경갑</strong></div>
+        <div><small>견갑</small><strong>{progress.equippedShoulder ? ({ scout: "정찰 견갑", shadow: "그림자 견갑", ogre: "오우거 견갑", dragon: "용린 견갑" } as const)[progress.equippedShoulder] : "미장착"}</strong></div>
         <div><small>재료</small><strong>{progress.enhancementMaterials}개</strong></div>
       </section>
 
@@ -139,7 +150,7 @@ export function CharacterStatus({
 
       <div className="character-content-grid">
         <button type="button" className="status-card status-skill" onClick={() => onOpenContent("beat")}>
-          <span className="status-icon">◈</span>
+          <ContentIcon name="beat" className="status-icon" />
           <span className="status-copy">
             <small>스킬 수련</small>
             <strong>비트 숙련도 {summary.mastery}</strong>
@@ -149,7 +160,7 @@ export function CharacterStatus({
         </button>
 
         <button type="button" className="status-card status-wealth" onClick={() => onOpenContent("dodge")}>
-          <span className="status-icon">◆</span>
+          <ContentIcon name="dodge" className="status-icon" />
           <span className="status-copy">
             <small>재화 원정</small>
             <strong>코인 {Math.max(coins, progress.sharedCoins).toLocaleString()}</strong>
@@ -159,7 +170,7 @@ export function CharacterStatus({
         </button>
 
         <button type="button" className="status-card status-hunt" onClick={() => onOpenContent("titans")}>
-          <span className="status-icon">▲</span>
+          <ContentIcon name="hunt" className="status-icon" />
           <span className="status-copy">
             <small>레벨 · 사냥터</small>
             <strong>최고 사냥터 {titans.bestStage}</strong>
@@ -169,7 +180,7 @@ export function CharacterStatus({
         </button>
 
         <button type="button" className="status-card status-item" onClick={() => onOpenContent("forge")}>
-          <span className="status-icon">✦</span>
+          <ContentIcon name="forge" className="status-icon" />
           <span className="status-copy">
             <small>아이템 · 강화</small>
             <strong>+{forge.level} {tierAt(forge.level).name}</strong>

@@ -38,9 +38,16 @@ import {
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
-import { AdventurerSprite } from "./ui/AdventurerSprite";
+import type { ShoulderId } from "./progression/model";
 
 type BeatUi = "menu" | "playing" | "clear" | "gameover" | "shop";
+type DifficultyChoice = "easy" | "normal" | "hard" | "expert";
+const DIFFICULTY = {
+  easy: { label: "EASY", bpmMultiplier: .92, difficulty: "easy" as const, reward: 1 },
+  normal: { label: "NORMAL", bpmMultiplier: 1, difficulty: "medium" as const, reward: 1.35 },
+  hard: { label: "HARD", bpmMultiplier: 1.12, difficulty: "hard" as const, reward: 1.8 },
+  expert: { label: "EXPERT", bpmMultiplier: 1.26, difficulty: "hard" as const, reward: 2.5, force16: true },
+};
 
 /** Each pad has its own keys so the lane you see is the key you press. */
 const KEY_LANE: Record<string, NoteLane> = {
@@ -59,6 +66,12 @@ const KEY_LANE: Record<string, NoteLane> = {
 };
 
 const LANES: NoteLane[] = [0, 1, 2];
+const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }> = [
+  { id: "scout", name: "정찰 견갑", desc: "4비트 · 원정 특화" },
+  { id: "shadow", name: "그림자 견갑", desc: "8비트 · 치명 특화" },
+  { id: "ogre", name: "오우거 견갑", desc: "복합 비트 · 보스 특화" },
+  { id: "dragon", name: "용린 견갑", desc: "16비트 · 스킬 특화" },
+];
 
 type Props = {
   insets: SafeInsets;
@@ -111,6 +124,9 @@ export function BeatGame({
   const [shopMsg, setShopMsg] = useState("");
   const [hubMsg, setHubMsg] = useState("");
   const [practiceKind, setPracticeKind] = useState<"lesson" | "spar">("lesson");
+  const [difficultyChoice, setDifficultyChoice] = useState<DifficultyChoice>("normal");
+  const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
+  const [shoulderReward, setShoulderReward] = useState("");
   const slots = buildStageSlots(practiceKind);
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
@@ -256,14 +272,14 @@ export function BeatGame({
             pendingClearRef.current = true;
             const track = session.track;
             const slot = activeSlotRef.current;
-            const reward =
+            const reward = Math.round(
               computeClearReward(
                 track.reward + (session.isSpar ? 20 : 0),
                 w.hp,
                 w.maxHp,
                 w.elapsedMs,
                 w.durationMs,
-              ) + Math.min(60, w.maxCombo * 2);
+              ) * DIFFICULTY[difficultyChoice].reward + Math.min(60, w.maxCombo * 2));
             setCoinGain(reward);
             setLastScore(w.score);
             const perfectRatio =
@@ -289,12 +305,22 @@ export function BeatGame({
                   sharedCoins: reward,
                   lastContent: "beat",
                 });
-                await updateCharacterProgress(userHash, (current) => ({
-                  ...current,
-                  beatSkills: { ...grown.skills },
-                  skillPoints: Math.max(current.skillPoints, grown.sp),
-                  lastContent: "beat",
-                }));
+                const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0)));
+                let craftedNow = false;
+                const updated = await updateCharacterProgress(userHash, (current) => {
+                  const totalShards = current.shoulderShards + fragmentGain;
+                  const crafted = totalShards >= 100 && !current.ownedShoulders.includes(shoulderBlueprint);
+                  craftedNow = crafted;
+                  return {
+                    ...current,
+                    beatSkills: { ...grown.skills },
+                    skillPoints: Math.max(current.skillPoints, grown.sp),
+                    shoulderShards: crafted ? totalShards - 100 : totalShards,
+                    ownedShoulders: crafted ? [...current.ownedShoulders, shoulderBlueprint] : current.ownedShoulders,
+                    lastContent: "beat",
+                  };
+                });
+                setShoulderReward(craftedNow ? `${SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderBlueprint)?.name} 제작 완료!` : `공명 견갑 조각 +${fragmentGain} · 보유 ${updated.shoulderShards}`);
                 setRpgGain(
                   `숙련↑ · SP+${session.isSpar ? 3 : 2} · 명성+${
                     (session.isSpar ? 12 : 6) + Math.round(perfectRatio * (session.isSpar ? 20 : 10))
@@ -327,7 +353,7 @@ export function BeatGame({
         sessionRef.current = null;
       }
     };
-  }, [onCoins, syncUi, userHash]);
+  }, [difficultyChoice, onCoins, shoulderBlueprint, syncUi, userHash]);
 
   const startSlot = async (slot: PracticeSlot) => {
     if (!slot.track || !rpgRef.current) return;
@@ -364,6 +390,7 @@ export function BeatGame({
       cos ?? undefined,
       spent.skills,
       slot.kind === "spar",
+      DIFFICULTY[difficultyChoice],
     );
     applyBeatInsets(session.world, insets);
     sessionRef.current = session;
@@ -376,6 +403,7 @@ export function BeatGame({
     setRemainSec(Math.ceil(session.world.durationMs / 1000));
     setCoinGain(0);
     setRpgGain("");
+    setShoulderReward("");
     setLastSoundLabel("");
     setTimingOffset(0);
     setLoopCompletion(0);
@@ -453,7 +481,6 @@ export function BeatGame({
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand beat-kicker">PRACTICE ROOM</p>
-            <AdventurerSprite className="beat-menu-adventurer" />
             <h1 className="title beat-title">비트박스 연습실</h1>
             <p className="subtitle">
               배우고 싶은 비트를 골라 연습하세요 · 내려오는 노트의 레인 패드를 눌러 리드를 겹칩니다
@@ -465,8 +492,16 @@ export function BeatGame({
             </p>
             <p className="controls-hint">화면은 좌·중·우 3분할 탭으로도 연주됩니다</p>
             <p className="score-line">
-              코인 {coins} · 자유 연습 · 명성 {rpg.fame} · SP {rpg.sp}
+              코인 {coins} · 공명 제련 · 명성 {rpg.fame} · SP {rpg.sp}
             </p>
+            <div className="beat-blueprints" aria-label="견갑 도안 선택">
+              {SHOULDER_BLUEPRINTS.map((item) => (
+                <button key={item.id} type="button" className={shoulderBlueprint === item.id ? "on" : ""} onClick={() => setShoulderBlueprint(item.id)}>
+                  <span className={`blueprint-pauldron blueprint-${item.id}`} aria-hidden="true" />
+                  <b>{item.name}</b><small>{item.desc}</small>
+                </button>
+              ))}
+            </div>
             <div className="rpg-stats">
               {skillIds.map((id) => (
                 <div key={id} className="rpg-stat">
@@ -494,6 +529,12 @@ export function BeatGame({
                 </button>
               ))}
             </div>
+            <div className="beat-difficulty" aria-label="노래 난이도">
+              {(Object.keys(DIFFICULTY) as DifficultyChoice[]).map((id) => <button key={id} type="button" className={difficultyChoice === id ? "on" : ""} onClick={() => setDifficultyChoice(id)}>
+                <b>{DIFFICULTY[id].label}</b><small>보상 ×{DIFFICULTY[id].reward}</small>
+              </button>)}
+            </div>
+            <p className="controls-hint">오리지널 EDM 구성 · INTRO → BUILD UP → DROP → BREAK → FINAL DROP</p>
             <div className="schedule-list">
               {slots.map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
@@ -593,7 +634,6 @@ export function BeatGame({
 
       {ui === "playing" && (
         <>
-          <AdventurerSprite className="beat-stage-adventurer" />
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">
@@ -613,6 +653,7 @@ export function BeatGame({
                     ? `EARLY ${Math.abs(timingOffset)}ms`
                     : `LATE ${timingOffset}ms`}
               </span>
+              <span className="hud-hint">공명 제련 · {SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderBlueprint)?.name}</span>
             </div>
             <div className="beat-score">{score.toLocaleString()}</div>
             {combo >= 2 && <div className="combo-flash">COMBO x{combo}</div>}
@@ -633,7 +674,9 @@ export function BeatGame({
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (sessionRef.current) performBeatLane(sessionRef.current, lane);
+                  if (sessionRef.current) {
+                    performBeatLane(sessionRef.current, lane);
+                  }
                 }}
               >
                 <span>{LANE_LABEL[lane]}</span>
@@ -651,8 +694,9 @@ export function BeatGame({
             <h1 className="title">{lessonTitle}</h1>
             <p className="score-line">+{coinGain} 코인</p>
             {rpgGain && <p className="subtitle">{rpgGain}</p>}
+            {shoulderReward && <p className="shoulder-reward">{shoulderReward}</p>}
             <p className="subtitle">점수 {lastScore} · 보유 {coins}</p>
-            <p className="controls-hint">숙련도가 올랐습니다 · 상점에서 링·비트를 꾸며보세요</p>
+            <p className="controls-hint">정확도와 콤보가 높을수록 견갑 조각을 더 많이 획득합니다.</p>
             {!isLastCampaignStage(stageNo - 1) && (
               <button
                 type="button"
@@ -671,6 +715,9 @@ export function BeatGame({
             </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
               연습실
+            </button>
+            <button type="button" className="cta cta-ghost" onClick={onBack}>
+              사냥터로 돌아가기
             </button>
           </div>
         </div>
@@ -698,6 +745,9 @@ export function BeatGame({
             </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("shop")}>
               비트 상점
+            </button>
+            <button type="button" className="cta cta-ghost" onClick={onBack}>
+              사냥터로 돌아가기
             </button>
           </div>
         </div>

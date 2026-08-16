@@ -2,6 +2,18 @@ import type { GameWorld, Player } from "./types";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
+/** Source sheet faces left; multiply logical facing by this when drawing. */
+const EXPEDITION_NATIVE_FACING = -1;
+let expeditionHero: HTMLImageElement | null = null;
+
+function getExpeditionHero(): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  if (!expeditionHero) {
+    expeditionHero = new Image();
+    expeditionHero.src = "/titans/character/base/hero-idle.png";
+  }
+  return expeditionHero;
+}
 
 export function createPlayer(width: number, floorY: number): Player {
   return {
@@ -21,6 +33,7 @@ export function createPlayer(width: number, floorY: number): Player {
     dashActiveMs: 0,
     slowCdMs: 0,
     slowActiveMs: 0,
+    landingFxMs: 0,
   };
 }
 
@@ -40,6 +53,7 @@ export function resetPlayer(player: Player, width: number, floorY: number, extra
   player.dashActiveMs = 0;
   player.slowCdMs = 0;
   player.slowActiveMs = 0;
+  player.landingFxMs = 0;
 }
 
 export function drawStickman(
@@ -58,12 +72,67 @@ export function drawStickman(
   ctx.ellipse(p.x, floorY - 2, p.radius * 1.15 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  const hero = getExpeditionHero();
+  if (hero?.complete && hero.naturalWidth > 0) {
+    const frameWidth = hero.naturalWidth / 4;
+    const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
+    const frame = Math.floor(p.animTime * frameRate) % 4;
+    const drawHeight = p.radius * 4.7;
+    const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
+    ctx.save();
+    ctx.translate(p.x, p.y + p.radius);
+    ctx.scale(p.facing * EXPEDITION_NATIVE_FACING, 1);
+    if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
+    if (p.anim === "jump") { ctx.rotate(-0.08); ctx.scale(.94, 1.08); }
+    if (p.anim === "fall") { ctx.rotate(0.06); ctx.scale(1.04, .96); }
+    if (p.anim === "dash") ctx.rotate(-0.16);
+    if (p.anim === "skill") ctx.rotate(Math.sin(p.animTime * 24) * 0.04);
+    if (p.anim === "hit") ctx.globalAlpha = 0.62;
+    if (p.dashActiveMs > 0) {
+      for (let trail = 3; trail >= 1; trail--) {
+        ctx.globalAlpha = 0.1 * (4 - trail);
+        ctx.drawImage(hero, frame * frameWidth, 0, frameWidth, hero.naturalHeight, -drawWidth / 2 - trail * 13, -drawHeight, drawWidth, drawHeight);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(
+      hero,
+      frame * frameWidth,
+      0,
+      frameWidth,
+      hero.naturalHeight,
+      -drawWidth / 2,
+      -drawHeight,
+      drawWidth,
+      drawHeight,
+    );
+    ctx.restore();
+
+    if (p.landingFxMs > 0) {
+      const progress = 1 - p.landingFxMs / 180;
+      ctx.strokeStyle = `rgba(148, 163, 184, ${Math.max(0, .55 * (1 - progress))})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(p.x, floorY - 2, 12 + progress * 28, 3 + progress * 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (p.slowActiveMs > 0) {
+      ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, world.stats.slowRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    return;
+  }
+
   const t = p.animTime;
   const facing = p.facing;
   let swing = 0;
   if (p.anim === "run") swing = Math.sin(t * 12) * 0.55;
   else if (p.anim === "idle") swing = Math.sin(t * 3) * 0.08;
-  else if (p.anim === "air") swing = 0.35;
+  else if (p.anim === "jump" || p.anim === "fall") swing = 0.35;
   else if (p.anim === "hit") swing = Math.sin(t * 20) * 0.8;
   else if (p.anim === "dead") swing = 1.2;
 

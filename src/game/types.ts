@@ -1,6 +1,6 @@
 export type GameState = "ready" | "intro" | "playing" | "clear" | "gameover";
 
-export type PlayerAnim = "idle" | "run" | "air" | "hit" | "dead";
+export type PlayerAnim = "idle" | "run" | "jump" | "fall" | "dash" | "skill" | "hit" | "dead";
 
 export type Player = {
   x: number;
@@ -20,6 +20,7 @@ export type Player = {
   dashActiveMs: number;
   slowCdMs: number;
   slowActiveMs: number;
+  landingFxMs: number;
 };
 
 export type Arrow = {

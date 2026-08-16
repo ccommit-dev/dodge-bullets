@@ -239,8 +239,16 @@ export async function createBeatSession(
   cosmetics: BeatCosmetics = emptyBeatCosmetics(),
   skills: BeatSkills = emptySkills(),
   isSpar = false,
+  difficultyProfile?: { bpmMultiplier: number; difficulty: "easy" | "medium" | "hard"; force16?: boolean },
 ): Promise<BeatSession> {
-  const track = getTrack(trackId);
+  const baseTrack = getTrack(trackId);
+  const track = difficultyProfile ? {
+    ...baseTrack,
+    bpm: Math.round(baseTrack.bpm * difficultyProfile.bpmMultiplier),
+    difficulty: difficultyProfile.difficulty,
+    subdivision: difficultyProfile.force16 ? 16 as const : baseTrack.subdivision,
+    ringCount: difficultyProfile.difficulty === "easy" ? 1 as const : 2 as const,
+  } : baseTrack;
   const chart = buildChart(track);
   const world = createBeatWorld(
     width,
@@ -602,4 +610,3 @@ function beginClear(session: BeatSession): BeatEvent {
   for (const s of world.spikes) s.active = false;
   return { type: "none" };
 }
-

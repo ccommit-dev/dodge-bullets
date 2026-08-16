@@ -1,6 +1,8 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
 
-export const PROGRESSION_VERSION = 1;
+export const PROGRESSION_VERSION = 2;
+
+export type ShoulderId = "scout" | "shadow" | "ogre" | "dragon";
 
 export type CharacterProgress = {
   version: number;
@@ -10,6 +12,9 @@ export type CharacterProgress = {
   enhancementMaterials: number;
   equippedWeaponLevel: number;
   bestForgeLevel: number;
+  equippedShoulder: ShoulderId | null;
+  ownedShoulders: ShoulderId[];
+  shoulderShards: number;
   unlockedHuntingArea: number;
   dodgeBestStage: number;
   dodgeBestScore: number;
@@ -42,6 +47,9 @@ export function emptyCharacterProgress(): CharacterProgress {
     enhancementMaterials: 0,
     equippedWeaponLevel: 0,
     bestForgeLevel: 0,
+    equippedShoulder: null,
+    ownedShoulders: [],
+    shoulderShards: 0,
     unlockedHuntingArea: 1,
     dodgeBestStage: 1,
     dodgeBestScore: 0,
@@ -71,6 +79,13 @@ export function normalizeCharacterProgress(
   });
   const exp = integer(raw.exp, base.exp);
   const content = raw.lastContent;
+  const shoulderIds: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
+  const ownedShoulders = Array.isArray(raw.ownedShoulders)
+    ? raw.ownedShoulders.filter((id): id is ShoulderId => shoulderIds.includes(id as ShoulderId))
+    : [];
+  const equippedShoulder = shoulderIds.includes(raw.equippedShoulder as ShoulderId)
+    ? (raw.equippedShoulder as ShoulderId)
+    : null;
   return {
     version: PROGRESSION_VERSION,
     level: Math.max(levelFromExp(exp), integer(raw.level, base.level, 999)),
@@ -79,6 +94,9 @@ export function normalizeCharacterProgress(
     enhancementMaterials: integer(raw.enhancementMaterials, base.enhancementMaterials),
     equippedWeaponLevel: integer(raw.equippedWeaponLevel, base.equippedWeaponLevel, 9999),
     bestForgeLevel: integer(raw.bestForgeLevel, base.bestForgeLevel, 15),
+    equippedShoulder: equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : null,
+    ownedShoulders: [...new Set(ownedShoulders)],
+    shoulderShards: integer(raw.shoulderShards, 0),
     unlockedHuntingArea: Math.max(1, integer(raw.unlockedHuntingArea, 1, 9999)),
     dodgeBestStage: Math.max(1, integer(raw.dodgeBestStage, 1, 9999)),
     dodgeBestScore: integer(raw.dodgeBestScore, 0),
