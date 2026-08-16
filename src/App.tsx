@@ -4,12 +4,15 @@ import { BeatGame } from "./BeatGame";
 import { ForgeGame } from "./ForgeGame";
 import { TitansGame } from "./TitansGame";
 import { CharacterStatus } from "./CharacterStatus";
-import { emptyCharacterProgress, type CharacterProgress } from "./progression/model";
+import { AttendanceModal } from "./AttendanceModal";
+import { EventCenter } from "./EventCenter";
+import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { dodgeClearReward } from "./progression/balance";
 import {
   grantCharacterReward,
   loadCharacterProgress,
   migrateLegacyProgress,
+  updateCharacterProgress,
 } from "./progression/storage";
 import { drawFrame } from "./game/draw";
 import {
@@ -76,6 +79,15 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
+const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
+function statsWithShoulder(levels: ShopLevels, shoulder: ShoulderId | null) {
+  const stats = statsFromLevels(levels);
+  if (shoulder === "scout") stats.moveSpeed *= 1.03;
+  if (shoulder === "shadow") stats.dashCooldownMs *= .95;
+  if (shoulder === "ogre") stats.extraLives += 1;
+  if (shoulder === "dragon") stats.dashIFramesMs *= 1.1;
+  return stats;
+}
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -123,6 +135,9 @@ function App() {
   const [appMode, setAppMode] = useState<AppMode>("titans");
   const [profileRefresh, setProfileRefresh] = useState(0);
   const [progress, setProgress] = useState<CharacterProgress>(() => emptyCharacterProgress());
+  const [shoulderDrop, setShoulderDrop] = useState("");
+  const [attendanceOpen, setAttendanceOpen] = useState(true);
+  const [eventOpen, setEventOpen] = useState(false);
   const appModeRef = useRef<AppMode>("titans");
 
   const setMode = useCallback((mode: AppMode) => {
@@ -231,7 +246,7 @@ function App() {
       setShopLevels(levels);
       shopLevelsRef.current = levels;
       setProgress(character);
-      const stats = statsFromLevels(levels);
+      const stats = statsWithShoulder(levels, character.equippedShoulder);
       if (worldRef.current) applyStats(worldRef.current, stats);
       setMaxHp(1 + stats.extraLives);
       setHp(1 + stats.extraLives);
@@ -459,7 +474,21 @@ function App() {
                 lastContent: "dodge",
               },
             );
-            setProgress(nextProgress);
+            const shoulder = EXPEDITION_SHOULDERS[Math.min(3, world.stageIndex)];
+            const first = !nextProgress.ownedShoulders.includes(shoulder);
+            const dropped = first || Math.random() < (world.player.hp === world.player.maxHp ? .35 : .18);
+            if (dropped) {
+              const equipped = await updateCharacterProgress(userHashRef.current, (current) => ({
+                ...current,
+                ownedShoulders: [...new Set([...current.ownedShoulders, shoulder])],
+                shoulderShards: current.shoulderShards + (first ? 0 : 15 + world.stageIndex * 5),
+              }));
+              setProgress(equipped);
+              setShoulderDrop(first ? `${getStage(world.stageIndex).name} 견갑 획득!` : "중복 견갑 · 조각으로 변환");
+            } else {
+              setProgress(nextProgress);
+              setShoulderDrop("");
+            }
           })();
           void saveHighScore(userHashRef.current, world.score).then(setHighScore);
           setLastScore(world.score);
@@ -506,13 +535,15 @@ function App() {
       document.removeEventListener("gesturestart", onGesture);
       document.removeEventListener("gesturechange", onGesture);
     };
+  // The stage preparer reads mutable world refs and is intentionally not an effect dependency.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyInsets, fitCanvas]);
 
   const prepareWorldForStage = (index: number) => {
     const world = worldRef.current;
     if (!world) return;
     applyInsetsToWorld(world, insetsRef.current);
-    applyStats(world, statsFromLevels(shopLevelsRef.current));
+    applyStats(world, statsWithShoulder(shopLevelsRef.current, progress.equippedShoulder));
     beginStage(world, index);
     const stage = getStage(index);
     setStageIndex(index);
@@ -530,7 +561,7 @@ function App() {
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
-      applyStats(world, statsFromLevels(shopLevelsRef.current));
+      applyStats(world, statsWithShoulder(shopLevelsRef.current, progress.equippedShoulder));
       resetRun(world, fromStage);
     }
     prepareWorldForStage(fromStage);
@@ -643,7 +674,7 @@ function App() {
     setCoins(nextCoins);
     coinsRef.current = nextCoins;
     soundRef.current.playBuy();
-    if (worldRef.current) applyStats(worldRef.current, statsFromLevels(nextLevels));
+    if (worldRef.current) applyStats(worldRef.current, statsWithShoulder(nextLevels, progress.equippedShoulder));
     await Promise.all([
       saveCoins(userHashRef.current, nextCoins),
       saveShopLevels(userHashRef.current, nextLevels),
@@ -679,13 +710,12 @@ function App() {
 
   return (
     <div className="game-root">
-      {appMode !== "beat" && appMode !== "forge" && appMode !== "titans" && (
-        <canvas
-          ref={canvasRef}
-          className="game-canvas"
-          aria-label="졸라맨 화살 피하기 게임 화면"
-        />
-      )}
+      <canvas
+        ref={canvasRef}
+        className={`game-canvas ${appMode === "dodge" ? "is-active" : "is-inactive"}`}
+        aria-label="검의 주인 화살 원정 게임 화면"
+        aria-hidden={appMode !== "dodge"}
+      />
 
       <div className="sound-dock" style={dockStyle}>
         {(appMode === "titans" || appMode === "profile") && (
@@ -709,6 +739,12 @@ function App() {
                 >
                   <span>사운드</span>
                   <b>{soundOn ? "ON" : "OFF"}</b>
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}>
+                  <span>출석 이벤트</span><b>7일</b>
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setEventOpen(true); }}>
+                  <span>모험가 이벤트</span><b>NEW</b>
                 </button>
                 <button
                   type="button"
@@ -750,10 +786,10 @@ function App() {
             <button
               type="button"
               className="exit-toggle"
-              onClick={() => setExitOpen(true)}
-              aria-label="미니앱 종료"
+              onClick={handleBackToHub}
+              aria-label="타이탄 사냥터로 돌아가기"
             >
-              종료
+              사냥터로
             </button>
           </>
         )}
@@ -819,7 +855,7 @@ function App() {
           <div className="overlay-content overlay-wide">
             <p className="brand">총알피하기</p>
             <h1 className="title">Arrow Dodge</h1>
-            <p className="subtitle">졸라맨으로 화살을 피하고 스테이지를 클리어하세요</p>
+            <p className="subtitle">검의 주인과 함께 화살을 피하고 원정지를 돌파하세요</p>
             <p className="score-line">코인 {coins} · 최고 {highScore}</p>
 
             <div className="tab-row" role="tablist">
@@ -986,11 +1022,15 @@ function App() {
             <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
             <p className="score-line">+{coinGain} 코인</p>
             <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
+            {shoulderDrop && <p className="shop-toast">{shoulderDrop}</p>}
             <button type="button" className="cta" onClick={handleNextStage}>
               {allClear || extracted ? "원정 준비" : "다음 스테이지"}
             </button>
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               상점 / 메뉴
+            </button>
+            <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
+              사냥터로 돌아가기
             </button>
           </div>
         </div>
@@ -1011,6 +1051,9 @@ function App() {
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               시작 화면
             </button>
+            <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
+              사냥터로 돌아가기
+            </button>
           </div>
         </div>
       )}
@@ -1030,6 +1073,12 @@ function App() {
             </button>
           </div>
         </div>
+      )}
+      {bootReady && appMode === "titans" && (
+        <AttendanceModal userHash={userHashRef.current} open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} />
+      )}
+      {bootReady && appMode === "titans" && (
+        <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
       )}
     </div>
   );

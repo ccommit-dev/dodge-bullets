@@ -198,6 +198,8 @@ export function updateWorld(
   if (p.dashActiveMs > 0) p.dashActiveMs = Math.max(0, p.dashActiveMs - dtSec * 1000);
   if (p.slowCdMs > 0) p.slowCdMs = Math.max(0, p.slowCdMs - dtSec * 1000);
   if (p.slowActiveMs > 0) p.slowActiveMs = Math.max(0, p.slowActiveMs - dtSec * 1000);
+  if (p.landingFxMs > 0) p.landingFxMs = Math.max(0, p.landingFxMs - dtSec * 1000);
+  const wasOnGround = p.onGround;
 
   // Horizontal control
   if (p.anim !== "dead") {
@@ -246,10 +248,17 @@ export function updateWorld(
   resolvePlatforms(world);
 
   // Anim state
+  if (wasOnGround === false && p.onGround) p.landingFxMs = 180;
+
   if (p.anim !== "dead" && p.anim !== "hit") {
-    if (!p.onGround) {
-      if (p.anim !== "air") {
-        p.anim = "air";
+    if (p.dashActiveMs > 0) {
+      if (p.anim !== "dash") { p.anim = "dash"; p.animTime = 0; }
+    } else if (p.slowActiveMs > 0 && p.slowActiveMs > world.stats.slowDurationMs - 260) {
+      if (p.anim !== "skill") { p.anim = "skill"; p.animTime = 0; }
+    } else if (!p.onGround) {
+      const nextAnim = p.vy < 0 ? "jump" : "fall";
+      if (p.anim !== nextAnim) {
+        p.anim = nextAnim;
         p.animTime = 0;
       }
     } else if (Math.abs(p.vx) > 20) {
@@ -262,7 +271,7 @@ export function updateWorld(
       p.animTime = 0;
     }
   } else if (p.anim === "hit" && p.animTime > 0.35 && p.hp > 0) {
-    p.anim = p.onGround ? "idle" : "air";
+    p.anim = p.onGround ? "idle" : p.vy < 0 ? "jump" : "fall";
     p.animTime = 0;
   }
 

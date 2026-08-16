@@ -14,7 +14,8 @@ import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
-import { CharacterAvatar } from "./ui/CharacterAvatar";
+import { EquippedCharacter } from "./ui/EquippedCharacter";
+import type { ShoulderId } from "./progression/model";
 
 /** Original delays were ~650/720ms; 3× faster ≈ 217/240. */
 const FORGE_MS = 220;
@@ -26,7 +27,7 @@ type ForgeGameProps = {
   onBack: () => void;
 };
 
-type ForgeView = "title" | "forge" | "exchange";
+type ForgeView = "title" | "forge" | "exchange" | "armor";
 type ForgePhase = "idle" | "forging" | "success" | "failure" | "sold";
 
 export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
@@ -36,6 +37,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [toast, setToast] = useState("");
   const [materials, setMaterials] = useState(0);
+  const [ownedShoulders, setOwnedShoulders] = useState<ShoulderId[]>([]);
+  const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const timerRef = useRef<number | null>(null);
   const toastRef = useRef<number | null>(null);
 
@@ -45,6 +48,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       if (cancelled) return;
       setSave(loaded);
       setMaterials(character.enhancementMaterials);
+      setOwnedShoulders(character.ownedShoulders);
+      setEquippedShoulder(character.equippedShoulder);
       setPhase(loaded.pendingFailure ? "failure" : "idle");
       setView(loaded.pendingFailure || loaded.level > 0 || loaded.totalAttempts > 0 ? "forge" : "title");
       setReady(true);
@@ -224,9 +229,24 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       equippedWeaponLevel: Math.max(current.equippedWeaponLevel, save.level),
       bestForgeLevel: Math.max(current.bestForgeLevel, save.bestLevel),
       enhancementMaterials: Math.max(current.enhancementMaterials, materials),
+      equippedShoulder,
       lastContent: "forge",
     }));
     onBack();
+  };
+
+  const shoulderMeta: Array<{ id: ShoulderId; name: string; effect: string }> = [
+    { id: "scout", name: "정찰 견갑", effect: "이동속도 +3%" },
+    { id: "shadow", name: "그림자 견갑", effect: "대시 쿨타임 -5%" },
+    { id: "ogre", name: "오우거 철갑", effect: "추가 체력 +1" },
+    { id: "dragon", name: "화염 용린 견갑", effect: "피격 무적시간 +10%" },
+  ];
+
+  const equipShoulder = (id: ShoulderId | null) => {
+    if (id && !ownedShoulders.includes(id)) return;
+    setEquippedShoulder(id);
+    void updateCharacterProgress(userHash, (current) => ({ ...current, equippedShoulder: id, lastContent: "forge" }));
+    flashToast(id ? "견갑을 장착했습니다" : "견갑을 해제했습니다");
   };
 
   if (!ready) {
@@ -252,7 +272,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       {view === "title" ? (
         <main className="forge-title-screen">
           <p className="forge-kicker">THIRD GAME · BLACKSMITH</p>
-          <CharacterAvatar pose="forge" weaponLevel={save.level} size={86} className="content-hero-avatar" />
+          <EquippedCharacter mode="idle" frame={0} weaponLevel={save.level} shoulder={equippedShoulder} className="forge-character-preview" />
           <h1>검 강화하기</h1>
           <p className="forge-title-desc">
             강화 · 실패 시 방지권 · 조각 줍기 · 조합소
@@ -304,6 +324,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             >
               조합소
             </button>
+            <button type="button" className={view === "armor" ? "on" : ""} onClick={() => setView("armor")}>보호구</button>
           </div>
 
           {view === "forge" ? (
@@ -378,7 +399,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </button>
               </section>
             </>
-          ) : (
+          ) : view === "exchange" ? (
             <section className="forge-exchange">
               <div className="forge-inventory">
                 <div>
@@ -431,6 +452,21 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <p className="forge-note">
                 실패 후 「줍기」로 조각을 모으세요. 하드모드는 조각·판매가가 더 높습니다.
               </p>
+            </section>
+          ) : (
+            <section className="forge-panel armor-panel">
+              <h2>원정 견갑</h2>
+              <p>화살 원정 최초 클리어 또는 드롭으로 획득합니다.</p>
+              <button type="button" className="forge-sell" onClick={() => equipShoulder(null)}>보호구 해제</button>
+              {shoulderMeta.map((item) => {
+                const owned = ownedShoulders.includes(item.id);
+                const equipped = equippedShoulder === item.id;
+                return <article key={item.id} className="titans-card">
+                  <i className={`armor-preview armor-${item.id}`} />
+                  <div><strong>{item.name}</strong><p>{item.effect} · {owned ? "보유" : "미획득"}</p></div>
+                  <button type="button" disabled={!owned || equipped} onClick={() => equipShoulder(item.id)}>{equipped ? "장착 중" : "장착"}</button>
+                </article>;
+              })}
             </section>
           )}
         </main>

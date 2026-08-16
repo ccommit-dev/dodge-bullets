@@ -1,5 +1,5 @@
+import { EquippedCharacter } from "./EquippedCharacter";
+
 export function AdventurerSprite({ className = "" }: { className?: string }) {
-  return (
-    <div className={`adventurer-sprite ${className}`} role="img" aria-label="비트 수련 중인 검의 주인" />
-  );
+  return <EquippedCharacter mode="idle" frame={0} className={`adventurer-sprite ${className}`} />;
 }

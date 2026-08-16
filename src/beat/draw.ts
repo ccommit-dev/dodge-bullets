@@ -308,41 +308,6 @@ function drawStage3D(
   ctx.restore();
 }
 
-function drawNpc(ctx: CanvasRenderingContext2D, world: BeatWorld, pulse: number): void {
-  const x = world.cx;
-  const y = Math.max(world.safeTop + 110, world.height * 0.22);
-  const bob = Math.sin(world.elapsedMs * 0.008) * 3 + pulse * 4;
-  ctx.save();
-  ctx.translate(x, y - bob);
-  ctx.strokeStyle = "rgba(226,232,240,.82)";
-  ctx.lineWidth = 4;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.arc(0, -24, 14, 0, Math.PI * 2);
-  ctx.moveTo(0, -10);
-  ctx.lineTo(0, 30);
-  ctx.moveTo(0, 2);
-  ctx.lineTo(-24, 18);
-  ctx.moveTo(0, 3);
-  ctx.lineTo(24, 11);
-  ctx.moveTo(0, 30);
-  ctx.lineTo(-16, 55);
-  ctx.moveTo(0, 30);
-  ctx.lineTo(16, 55);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(29, 8, 5 + pulse * 2, 0, Math.PI * 2);
-  ctx.fillStyle = "#22d3ee";
-  ctx.shadowColor = "#22d3ee";
-  ctx.shadowBlur = 16 + pulse * 14;
-  ctx.fill();
-  ctx.font = "800 11px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(226,232,240,.72)";
-  ctx.fillText("GUIDE MC", 0, 74);
-  ctx.restore();
-}
-
 function drawLoopStack(ctx: CanvasRenderingContext2D, world: BeatWorld): void {
   const entries = (Object.entries(world.loopCounts) as [BeatSound, number][])
     .filter(([, count]) => count > 0)
@@ -377,7 +342,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   const { horizonY, hitY, farHalf, nearHalf } = railGeometry(world);
 
   drawStage3D(ctx, world, music, horizonY);
-  drawNpc(ctx, world, pulse);
+  // BeatGame layers the shared 2D adventurer over the former Guide MC position.
 
   ctx.save();
   ctx.beginPath();
