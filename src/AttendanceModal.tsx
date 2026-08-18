@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { storageGet, storageSet } from "./game/toss";
 import { updateCharacterProgress } from "./progression/storage";
 import type { CharacterProgress, ShoulderId } from "./progression/model";
+import { assetUrl } from "./asset";
 
 type AttendanceSave = { lastClaimDate: string | null; lastClaimTimestamp: number; consecutiveDays: number; boardIndex: number; totalDays: number };
 const rewards = [
@@ -45,7 +46,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHa
   return <div className="exit-modal attendance-modal" role="dialog" aria-modal="true">
     <div className="exit-card attendance-card">
       <p className="brand">DAILY CHECK</p><h2 className="exit-title">7일 출석 보상</h2>
-      <div className="attendance-grid">{rewards.map((reward, i) => <div key={`${reward.name}-${i}`} className={`${i === save.boardIndex ? "today" : ""} rarity-${reward.rarity}`}><b>DAY {i + 1}</b><img src={`/ui/attendance/${reward.icon}.png`} alt={reward.name} /><span>{reward.name} ×{reward.amount}</span></div>)}</div>
+      <div className="attendance-grid">{rewards.map((reward, i) => <div key={`${reward.name}-${i}`} className={`${i === save.boardIndex ? "today" : ""} rarity-${reward.rarity}`}><b>DAY {i + 1}</b><span className="attendance-reward-art"><img src={assetUrl(`ui/attendance/${reward.icon}.png`)} alt={reward.name} /></span><span>{reward.name} ×{reward.amount}</span></div>)}</div>
       {message && <p className="shop-toast">{message}</p>}
       <button type="button" className="cta" disabled={claimed} onClick={() => void claim()}>{claimed ? "오늘 출석 완료" : "오늘 보상 받기"}</button>
       <button type="button" className="cta cta-ghost" onClick={onClose}>닫기</button>
