@@ -661,7 +661,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     <div className="titans-layer" style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
-          <ContentIcon name="profile" /> 마이페이지
+          <span className="mypage-icon" aria-hidden="true" /> 마이페이지
         </button>
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong>{formatGold(save.gold)}</strong></span>
