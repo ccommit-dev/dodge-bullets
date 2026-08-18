@@ -3009,3 +3009,64 @@
 .evolution-guardian { filter:drop-shadow(0 0 10px rgba(59,130,246,.55)); }
 .evolution-arcane { filter:drop-shadow(0 0 12px rgba(168,85,247,.65)); }
 @media (max-width:560px) { .badge-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* Mobile game shell: keep controls readable in in-app browsers and safe areas. */
+.mypage-icon { position:relative; width:25px; height:25px; flex:0 0 25px; border:1px solid rgba(125,211,252,.55); border-radius:8px; background:rgba(14,116,144,.24); }
+.mypage-icon::before { content:""; position:absolute; left:50%; top:4px; width:7px; height:7px; transform:translateX(-50%); border-radius:50%; background:#bae6fd; }
+.mypage-icon::after { content:""; position:absolute; left:50%; bottom:4px; width:13px; height:7px; transform:translateX(-50%); border-radius:8px 8px 4px 4px; background:#bae6fd; }
+
+@media (max-width: 600px) {
+  .game-overlay { padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .overlay-content, .exit-card { max-height: calc(100dvh - max(28px, env(safe-area-inset-top)) - max(28px, env(safe-area-inset-bottom))); overflow-y:auto; overscroll-behavior:contain; }
+  .cta, .action-btn, .titans-tabs button, .titans-content-tabs button { min-height:44px; }
+
+  .titans-layer { padding-bottom:max(28px, calc(env(safe-area-inset-bottom) + 18px)) !important; overscroll-behavior-y:contain; }
+  .titans-header { width:100%; margin-top:52px; padding-left:0; gap:8px; }
+  .titans-back { min-width:0; padding:7px 8px; border:1px solid rgba(56,189,248,.32); border-radius:11px; background:rgba(8,20,36,.72); font-size:12px; white-space:nowrap; }
+  .titans-wallet { flex:0 0 auto; gap:6px; padding:7px 9px; }
+  .titans-wallet strong { font-size:12px; }
+  .titans-wallet .currency-icon { width:17px; height:17px; flex-basis:17px; }
+
+  .titans-content-tabs { width:100%; margin:8px auto; gap:2px; padding:3px; }
+  .titans-content-tabs button { min-width:0; min-height:48px; flex-direction:column; gap:1px; padding:4px 1px; font-size:9px; line-height:1.15; }
+  .titans-content-tabs .content-icon { width:25px; height:25px; }
+  .titans-stagebar { width:100%; align-items:flex-end; }
+  .titans-stagebar h1 { max-width:calc(100vw - 82px); overflow-wrap:anywhere; font-size:clamp(21px,7vw,28px); }
+
+  .titans-field { --hero-size:clamp(54px,15vw,66px); --ally-size:58px; --monster-size:94px; --boss-size:126px; width:100%; height:clamp(230px,36svh,330px); border-radius:15px; }
+  .titans-hp { left:12%; right:12%; }
+  .titans-monster { right:7%; }
+  .titans-allies { left:11%; }
+
+  .titans-skills-row { width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+  .titans-skill { min-height:58px; grid-template-columns:30px minmax(0,1fr); padding:6px 5px; }
+  .titans-skill .skill-icon { width:30px; height:30px; flex-basis:30px; }
+  .titans-skill .skill-icon svg { width:24px; height:24px; }
+  .titans-skill strong { font-size:9px; }
+  .titans-skill small { font-size:8px; white-space:nowrap; }
+
+  .titans-tabs { width:100%; gap:3px; }
+  .titans-tabs button { min-width:0; padding:7px 2px; font-size:10px; line-height:1.2; }
+  .titans-shop { width:100%; max-height:none; padding-bottom:max(16px,env(safe-area-inset-bottom)); }
+  .titans-card { min-width:0; gap:8px; padding:10px 8px; }
+  .titans-card strong { display:block; overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+  .titans-card p { font-size:9px; overflow-wrap:anywhere; }
+  .titans-card button { flex:0 0 auto; min-height:40px; padding:8px 9px; font-size:10px; }
+  .training-item-icon.weapon, .shoulder-icon { width:38px; height:38px; flex-basis:38px; }
+  .forge-jump-button { min-height:44px; }
+
+  .character-page { padding-bottom:max(28px,calc(env(safe-area-inset-bottom) + 20px)) !important; }
+  .character-header { align-items:center; }
+  .character-hero-card { grid-template-columns:70px minmax(0,1fr); padding:14px; }
+  .character-quick-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .evolution-tree { grid-template-columns:1fr; }
+  .beat-blueprints, .beat-difficulty { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .forge-shop-card { align-items:flex-start; }
+}
+
+@media (max-width: 380px) {
+  .titans-skills-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .titans-content-tabs button { font-size:8px; }
+  .titans-wallet { gap:3px; padding-inline:6px; }
+  .character-quick-stats { grid-template-columns:1fr; }
+}
