@@ -10,6 +10,17 @@ document
   .querySelectorAll(".reveal")
   .forEach((element) => observer.observe(element));
 
+// A file:// preview cannot execute a directory URL. Open the running Vite app
+// locally, while GitHub Pages opens the generated game entry file directly.
+const demoUrl =
+  window.location.protocol === "file:"
+    ? "http://localhost:5173/"
+    : new URL("game/index.html", window.location.href).href;
+
+document.querySelectorAll(".demo-link").forEach((link) => {
+  link.setAttribute("href", demoUrl);
+});
+
 const poster = document.querySelector(".poster");
 const visual = document.querySelector(".poster-wrap");
 if (poster && visual && matchMedia("(pointer: fine)").matches) {
