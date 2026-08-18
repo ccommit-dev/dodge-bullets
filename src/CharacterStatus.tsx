@@ -17,7 +17,10 @@ import {
   progressToNextLevel,
   totalSkillMastery,
   type CharacterProgress,
+  type EvolutionPath,
 } from "./progression/model";
+import { updateCharacterProgress } from "./progression/storage";
+import { BADGES, earnedBadgeIds } from "./progression/badges";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 
@@ -29,6 +32,7 @@ type CharacterStatusProps = {
   progress: CharacterProgress;
   refreshKey: number;
   onOpenContent: (content: "dodge" | "beat" | "forge" | "titans") => void;
+  onProgressChange: (progress: CharacterProgress) => void;
   onBack: () => void;
 };
 
@@ -40,12 +44,14 @@ export function CharacterStatus({
   progress,
   refreshKey,
   onOpenContent,
+  onProgressChange,
   onBack,
 }: CharacterStatusProps) {
   const [beat, setBeat] = useState<BeatRpgProgress | null>(null);
   const [forge, setForge] = useState<ForgeSave>(() => defaultForgeSave());
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
+  const [growthMessage, setGrowthMessage] = useState("");
 
   useEffect(() => {
     const id = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 180);
@@ -95,6 +101,40 @@ export function CharacterStatus({
     label: SKILL_LABEL[id],
     level: Math.max(beat?.skills[id] ?? 0, progress.beatSkills[id]),
   }));
+  const earnedBadges = earnedBadgeIds(progress);
+  const rebirthRequirement = 30 + progress.rebirthCount * 20;
+  const canRebirth = progress.titanBestStage >= rebirthRequirement;
+
+  const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
+    if (progress.rebirthCount < 1 || progress.evolutionPoints < 1) {
+      setGrowthMessage("환생 후 얻은 진화 포인트가 필요합니다.");
+      return;
+    }
+    const next = await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      evolutionPath: path,
+      evolutionPoints: Math.max(0, current.evolutionPoints - 1),
+    }));
+    onProgressChange(next);
+    setGrowthMessage("진화 계통이 적용되었습니다.");
+  };
+
+  const rebirth = async () => {
+    if (!canRebirth) {
+      setGrowthMessage(`사냥터 Stage ${rebirthRequirement}부터 환생할 수 있습니다.`);
+      return;
+    }
+    const crystals = Math.max(3, Math.floor(Math.sqrt(progress.titanBestStage) * 3));
+    const next = await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      rebirthCount: current.rebirthCount + 1,
+      inheritanceCrystals: current.inheritanceCrystals + crystals,
+      evolutionPoints: current.evolutionPoints + 1,
+      claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
+    }));
+    onProgressChange(next);
+    setGrowthMessage(`계승 완료 · 계승 결정 +${crystals}, 진화 포인트 +1`);
+  };
 
   return (
     <div
@@ -120,7 +160,7 @@ export function CharacterStatus({
       <section className="character-hero-card">
         <div className="character-equipment-preview">
           <div className="character-equipment-facing">
-            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} />
+            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} />
           </div>
         </div>
         <div className="character-identity">
@@ -134,6 +174,21 @@ export function CharacterStatus({
           <span><b>{titans.gold.toLocaleString()}</b> 사냥 골드</span>
           <span><b>{Math.max(beat?.sp ?? 0, progress.skillPoints)}</b> 스킬 포인트</span>
         </div>
+      </section>
+
+      <section className="legacy-growth">
+        <div className="legacy-heading"><div><small>COLLECTION</small><strong>모험 배지</strong></div><span>{earnedBadges.length}/{BADGES.length}</span></div>
+        <div className="badge-grid">
+          {BADGES.map((badge) => <div key={badge.id} className={`badge-chip ${earnedBadges.includes(badge.id) ? "earned" : "locked"}`} title={badge.condition}><b>{badge.icon}</b><span>{badge.name}<small>{badge.condition}</small></span></div>)}
+        </div>
+        <div className="legacy-heading"><div><small>REBIRTH · EVOLUTION</small><strong>계승과 진화</strong></div><span>결정 {progress.inheritanceCrystals}</span></div>
+        <div className="evolution-tree">
+          <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타·공격 특화</small></button>
+          <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존·견갑 특화</small></button>
+          <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>스킬·비트 특화</small></button>
+        </div>
+        <button type="button" className="rebirth-button" disabled={!canRebirth} onClick={() => void rebirth()}>환생 {progress.rebirthCount}회 · {canRebirth ? "계승 시작" : `Stage ${rebirthRequirement} 필요`}</button>
+        {growthMessage && <p className="growth-message">{growthMessage}</p>}
       </section>
 
       <section className="equipment-strip" aria-label="장착 장비">

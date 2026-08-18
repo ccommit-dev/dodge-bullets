@@ -1,4 +1,5 @@
 import type { GameWorld, Player } from "./types";
+import { assetUrl } from "../asset";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -10,7 +11,7 @@ function getExpeditionHero(): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   if (!expeditionHero) {
     expeditionHero = new Image();
-    expeditionHero.src = "/titans/character/base/hero-idle.png";
+    expeditionHero.src = assetUrl("titans/character/base/hero-idle.png");
   }
   return expeditionHero;
 }

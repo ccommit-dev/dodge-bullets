@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { storageGet, storageSet } from "./game/toss";
 import { combatPower, type CharacterProgress } from "./progression/model";
 import { updateCharacterProgress } from "./progression/storage";
+import { assetUrl } from "./asset";
 
 type EventTab = "daily" | "rift" | "weekly";
 type EventSave = { date: string; week: string; claimed: string[]; raidAttempts: number; raidBestDamage: number };
@@ -47,8 +48,8 @@ export function EventCenter({ userHash, progress, open, onClose, onUpdated }: { 
     <p className="brand">ADVENTURE EVENT</p><h2 className="exit-title">모험가 이벤트</h2>
     <div className="event-tabs">{(["daily","rift","weekly"] as EventTab[]).map(id => <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>{id === "daily" ? "오늘의 토벌령" : id === "rift" ? "차원 균열" : "주간 원정"}</button>)}</div>
     {tab === "daily" && <div className="event-list">{daily.map(m => { const key=`daily:${dateKey()}:${m.id}`; const done=m.value>=m.goal; return <article key={m.id}><div><b>{m.title}</b><span>{Math.min(m.goal,m.value)} / {m.goal}</span><i><em style={{width:`${Math.min(100,m.value/m.goal*100)}%`}} /></i></div><button disabled={!done || save.claimed.includes(key)} onClick={() => void claimMission(m.id)}>{save.claimed.includes(key) ? "완료" : "받기"}</button></article>;})}</div>}
-    {tab === "rift" && <section className="rift-event"><img src="/ui/attendance/event-chest.png" alt="차원 균열 보상"/><h3>심연의 균열 보스</h3><p>10초간 전투력을 집중해 최고 피해량에 도전합니다.</p><strong>{raidDamage ? `이번 피해 ${raidDamage.toLocaleString()}` : `최고 ${save.raidBestDamage.toLocaleString()}`}</strong><button className="cta" disabled={save.raidAttempts >= 3} onClick={() => void raid()}>도전 {save.raidAttempts}/3</button></section>}
-    {tab === "weekly" && <section className="weekly-event"><img src="/ui/attendance/event-chest.png" alt="주간 보상 상자"/><h3>주간 원정 패스</h3><p>사냥·원정·강화·비트 수련을 진행해 포인트를 모으세요.</p><strong>{weeklyPoints} / 8 POINT</strong><button className="cta" disabled={weeklyPoints < 8 || save.claimed.includes(`weekly:${weekKey()}:chest`)} onClick={() => void claimWeekly()}>주간 상자 받기</button></section>}
+    {tab === "rift" && <section className="rift-event"><img src={assetUrl("ui/attendance/event-chest.png")} alt="차원 균열 보상"/><h3>심연의 균열 보스</h3><p>10초간 전투력을 집중해 최고 피해량에 도전합니다.</p><strong>{raidDamage ? `이번 피해 ${raidDamage.toLocaleString()}` : `최고 ${save.raidBestDamage.toLocaleString()}`}</strong><button className="cta" disabled={save.raidAttempts >= 3} onClick={() => void raid()}>도전 {save.raidAttempts}/3</button></section>}
+    {tab === "weekly" && <section className="weekly-event"><img src={assetUrl("ui/attendance/event-chest.png")} alt="주간 보상 상자"/><h3>주간 원정 패스</h3><p>사냥·원정·강화·비트 수련을 진행해 포인트를 모으세요.</p><strong>{weeklyPoints} / 8 POINT</strong><button className="cta" disabled={weeklyPoints < 8 || save.claimed.includes(`weekly:${weekKey()}:chest`)} onClick={() => void claimWeekly()}>주간 상자 받기</button></section>}
     <button className="cta cta-ghost" onClick={onClose}>닫기</button>
   </div></div>;
 }

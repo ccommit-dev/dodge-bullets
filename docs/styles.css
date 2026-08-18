@@ -660,6 +660,13 @@ h1 em {
 .cta-inner .button {
   min-width: 220px;
 }
+.demo-play-action { display:flex; flex-direction:column; align-items:center; gap:9px; margin:28px auto 18px; }
+.demo-play-action p { margin:0; color:var(--muted); font-size:12px; }
+.demo-play-button { min-width:250px; border:1px solid rgba(94,234,212,.65); color:#06111e; background:linear-gradient(135deg,#5eead4,#67e8f9); box-shadow:0 18px 46px rgba(94,234,212,.24); }
+.demo-play-button>span:first-child { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; color:#5eead4; background:#07111f; }
+.demo-play-button small,.demo-play-button strong { display:block; text-align:left; }
+.demo-play-button small { font-size:8px; letter-spacing:.08em; }
+.demo-play-button strong { font-size:17px; }
 .store-actions {
   display: flex;
   justify-content: center;

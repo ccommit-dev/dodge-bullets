@@ -811,6 +811,7 @@ function App() {
           coins={coins}
           highScore={highScore}
           progress={progress}
+          onProgressChange={setProgress}
           refreshKey={profileRefresh}
           onOpenContent={(content) => {
             if (content === "dodge") syncState("ready");
@@ -871,7 +872,7 @@ function App() {
                 className={`tab ${menuTab === "shop" ? "tab-active" : ""}`}
                 onClick={() => setMenuTab("shop")}
               >
-                상점
+                원정대 보급소
               </button>
             </div>
 
@@ -892,6 +893,8 @@ function App() {
               </>
             ) : (
               <div className="shop-list">
+                <p className="brand">EXPEDITION SUPPLY</p>
+                <p className="subtitle">이동 훈련과 생존 장비를 준비해 더 위험한 원정에 도전하세요</p>
                 {(Object.keys(SHOP_META) as ShopUpgradeId[]).map((id) => {
                   const level = shopLevels[id];
                   const max = SHOP_MAX[id];
@@ -901,6 +904,7 @@ function App() {
                   return (
                     <div key={id} className="shop-item">
                       <div className="shop-item-text">
+                        <span className="shop-category">{SHOP_META[id].category}</span>
                         <strong>
                           {SHOP_META[id].name}{" "}
                           <span className="shop-lv">

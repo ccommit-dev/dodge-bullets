@@ -5,16 +5,16 @@ export type BeatShopItem =
   | { kind: "spike"; id: SpikeSkinId; name: string; desc: string; cost: number };
 
 export const BEAT_SHOP_ITEMS: BeatShopItem[] = [
-  { kind: "ring", id: "neon", name: "네온 시안", desc: "기본 3D 레일", cost: 0 },
-  { kind: "ring", id: "gold", name: "골드 레일", desc: "따뜻한 금빛 히트라인", cost: 80 },
-  { kind: "ring", id: "magenta", name: "마젠타 레일", desc: "클럽 핑크 레일", cost: 100 },
-  { kind: "ring", id: "ice", name: "아이스 레일", desc: "차가운 파란 레일", cost: 120 },
-  { kind: "ring", id: "ember", name: "엠버 레일", desc: "불꽃 주황 레일", cost: 140 },
-  { kind: "spike", id: "triangle", name: "기본 삼각", desc: "기본 장애물", cost: 0 },
-  { kind: "spike", id: "arrow", name: "화살표 비트", desc: "화살형 장애물", cost: 90 },
-  { kind: "spike", id: "diamond", name: "다이아 비트", desc: "마름모 장애물", cost: 110 },
-  { kind: "spike", id: "star", name: "스타 비트", desc: "별 모양 장애물", cost: 130 },
-  { kind: "spike", id: "bolt", name: "볼트 비트", desc: "번개형 장애물", cost: 150 },
+  { kind: "ring", id: "neon", name: "훈련 지휘 북", desc: "기본 전진 명령 음색", cost: 0 },
+  { kind: "ring", id: "gold", name: "황금 전진 북", desc: "행군 명령을 강조하는 묵직한 음색", cost: 80 },
+  { kind: "ring", id: "magenta", name: "공명의 전투 북", desc: "공격 명령용 선명한 음색", cost: 100 },
+  { kind: "ring", id: "ice", name: "빙결 수호 북", desc: "방어 명령용 차가운 음색", cost: 120 },
+  { kind: "ring", id: "ember", name: "용화염 지휘 북", desc: "필살 구간용 불꽃 음색", cost: 140 },
+  { kind: "spike", id: "triangle", name: "기본 구호", desc: "훈련용 화살표 명령", cost: 0 },
+  { kind: "spike", id: "arrow", name: "돌격 구호", desc: "전진·공격 화살표 장식", cost: 90 },
+  { kind: "spike", id: "diamond", name: "수호 구호", desc: "방어 화살표 장식", cost: 110 },
+  { kind: "spike", id: "star", name: "공명 구호", desc: "콤보 성공 화살표 장식", cost: 130 },
+  { kind: "spike", id: "bolt", name: "필살 구호", desc: "피버 명령 화살표 장식", cost: 150 },
 ];
 
 export function emptyBeatCosmetics(): BeatCosmetics {

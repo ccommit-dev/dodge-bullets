@@ -1,5 +1,7 @@
-export const IDLE_SHEET = "/titans/character/base/hero-idle.png";
-export const ATTACK_SHEET = "/titans/character/base/hero-attack.png";
+import { assetUrl } from "../asset";
+
+export const IDLE_SHEET = assetUrl("titans/character/base/hero-idle.png");
+export const ATTACK_SHEET = assetUrl("titans/character/base/hero-attack.png");
 export const SPRITE_FRAME_COUNT = 4;
 export const IDLE_FRAME_MS = 150;
 export const ATTACK_CLIP_MS = 420;
