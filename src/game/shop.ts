@@ -10,35 +10,40 @@ export const SHOP_MAX: Record<ShopUpgradeId, number> = {
 
 export const SHOP_META: Record<
   ShopUpgradeId,
-  { name: string; desc: string; baseCost: number; costStep: number }
+  { name: string; category: "이동 훈련" | "생존 장비"; desc: string; baseCost: number; costStep: number }
 > = {
   moveSpeed: {
-    name: "이동속도",
-    desc: "좌우 이동이 더 빨라져요",
+    name: "경량 장화",
+    category: "이동 훈련",
+    desc: "원정지에서 좌우 이동 속도가 증가해요",
     baseCost: 40,
     costStep: 35,
   },
   jumpPower: {
-    name: "점프력",
-    desc: "더 높이 뛰어 화살을 피해요",
+    name: "바람 망토",
+    category: "이동 훈련",
+    desc: "공중 제어력과 점프 높이가 증가해요",
     baseCost: 45,
     costStep: 40,
   },
   dash: {
-    name: "공중 대시",
-    desc: "Shift / 대시 버튼 — 짧은 무적 횡이동",
+    name: "그림자 부츠",
+    category: "이동 훈련",
+    desc: "Shift / 대시 버튼으로 짧은 무적 횡이동",
     baseCost: 60,
     costStep: 45,
   },
   slowField: {
-    name: "감속 자기장",
-    desc: "E / 슬로우 버튼 — 근처 화살 감속",
+    name: "시간 감속 장치",
+    category: "생존 장비",
+    desc: "E / 슬로우 버튼으로 근처 화살을 감속",
     baseCost: 90,
     costStep: 60,
   },
   extraLife: {
-    name: "여분 생명",
-    desc: "피격 시 버틸 수 있는 추가 하트",
+    name: "수호 부적",
+    category: "생존 장비",
+    desc: "치명적인 피격을 견디는 추가 하트",
     baseCost: 120,
     costStep: 100,
   },

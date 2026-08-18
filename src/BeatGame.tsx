@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { assetUrl } from "./asset";
 import { BEAT_SHOP_ITEMS } from "./beat/shop";
 import { drawBeatFrame } from "./beat/draw";
 import {
@@ -13,7 +14,7 @@ import {
 } from "./beat/rpg";
 import { getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
 import type { BeatCosmetics, NoteLane, RingSkinId, SpikeSkinId } from "./beat/types";
-import { BEAT_SOUND_LABEL, LANE_KEYS, LANE_LABEL, LANE_MEMBERS } from "./beat/types";
+import { BEAT_SOUND_LABEL, LANE_KEYS } from "./beat/types";
 import {
   applyBeatInsets,
   createBeatSession,
@@ -39,6 +40,8 @@ import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import type { ShoulderId } from "./progression/model";
+import { EquippedCharacter } from "./ui/EquippedCharacter";
+import { AllyArt } from "./titans/SpriteArt";
 
 type BeatUi = "menu" | "playing" | "clear" | "gameover" | "shop";
 type DifficultyChoice = "easy" | "normal" | "hard" | "expert";
@@ -65,13 +68,27 @@ const KEY_LANE: Record<string, NoteLane> = {
   Digit3: 2,
 };
 
-const LANES: NoteLane[] = [0, 1, 2];
+type BeatDirection = "left" | "down" | "up" | "right";
+const DIRECTIONS: Array<{ id: BeatDirection; symbol: string; key: string; lane: NoteLane }> = [
+  { id: "left", symbol: "←", key: "← / A", lane: 0 },
+  { id: "down", symbol: "↓", key: "↓ / S", lane: 1 },
+  { id: "up", symbol: "↑", key: "↑ / W", lane: 1 },
+  { id: "right", symbol: "→", key: "→ / D", lane: 2 },
+];
+const KEY_DIRECTION: Record<string, BeatDirection> = { KeyA:"left", ArrowLeft:"left", KeyS:"down", ArrowDown:"down", KeyW:"up", ArrowUp:"up", KeyD:"right", ArrowRight:"right" };
+const COMMANDS: Array<{ action: "march" | "attack" | "guard" | "focus"; arrows: BeatDirection[] }> = [
+  { action:"march", arrows:["left","left","right","left"] },
+  { action:"attack", arrows:["right","right","up","right"] },
+  { action:"guard", arrows:["down","down","left","down"] },
+  { action:"focus", arrows:["up","down","up","down"] },
+];
 const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }> = [
   { id: "scout", name: "정찰 견갑", desc: "4비트 · 원정 특화" },
   { id: "shadow", name: "그림자 견갑", desc: "8비트 · 치명 특화" },
   { id: "ogre", name: "오우거 견갑", desc: "복합 비트 · 보스 특화" },
   { id: "dragon", name: "용린 견갑", desc: "16비트 · 스킬 특화" },
 ];
+const CHAPTER_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 
 type Props = {
   insets: SafeInsets;
@@ -127,9 +144,39 @@ export function BeatGame({
   const [difficultyChoice, setDifficultyChoice] = useState<DifficultyChoice>("normal");
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
+  const [commandBeats, setCommandBeats] = useState<BeatDirection[]>([]);
+  const [partyAction, setPartyAction] = useState<"march" | "attack" | "guard" | "focus">("focus");
+  const [commandIndex, setCommandIndex] = useState(0);
+  const commandIndexRef = useRef(0);
+  const [beatEnemyHp, setBeatEnemyHp] = useState(100);
+  const [beatEnemyMaxHp, setBeatEnemyMaxHp] = useState(100);
+  const [fever, setFever] = useState(0);
+  const commandBeatsRef = useRef<BeatDirection[]>([]);
+  const beatEnemyHpRef = useRef(100);
   const slots = buildStageSlots(practiceKind);
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
+
+  const registerCommandBeat = useCallback((direction: BeatDirection) => {
+    const next = [...commandBeatsRef.current, direction].slice(-4);
+    commandBeatsRef.current = next;
+    setCommandBeats(next);
+    if (next.length < 4) return;
+    const command = COMMANDS[commandIndexRef.current % COMMANDS.length];
+    const matched = next.every((value, index) => value === command.arrows[index]);
+    const action = matched ? command.action : "focus";
+    setPartyAction(action);
+    setFever((value) => matched ? Math.min(100, value + 18) : Math.max(0, value - 20));
+    if (matched && (action === "attack" || action === "focus")) {
+      const damage = action === "attack" ? 34 : 16;
+      beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
+      setBeatEnemyHp(beatEnemyHpRef.current);
+    }
+    commandIndexRef.current += 1;
+    setCommandIndex(commandIndexRef.current);
+    commandBeatsRef.current = [];
+    window.setTimeout(() => setCommandBeats([]), 220);
+  }, []);
 
   const syncUi = useCallback((next: BeatUi) => {
     uiRef.current = next;
@@ -185,20 +232,24 @@ export function BeatGame({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const fireTap = (lane: NoteLane) => {
+    const fireTap = (lane: NoteLane, direction: BeatDirection) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       const now = performance.now();
       if (now - lastTapMs.current < 40) return;
       lastTapMs.current = now;
-      performBeatLane(sessionRef.current, lane);
+      const expected = COMMANDS[commandIndexRef.current % COMMANDS.length].arrows[commandBeatsRef.current.length];
+      const judgedLane = expected === direction ? laneOfSound(sessionRef.current.world.nextSound) : lane;
+      performBeatLane(sessionRef.current, judgedLane);
+      registerCommandBeat(direction);
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       if (e.repeat) return;
       const lane = KEY_LANE[e.code];
-      if (lane === undefined) return;
-      fireTap(lane);
+      const direction = KEY_DIRECTION[e.code];
+      if (lane === undefined || direction === undefined) return;
+      fireTap(lane, direction);
       e.preventDefault();
     };
 
@@ -209,7 +260,10 @@ export function BeatGame({
       canvas.setPointerCapture(e.pointerId);
       const rect = canvas.getBoundingClientRect();
       const ratio = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0.5;
-      fireTap(ratio < 0.34 ? 0 : ratio > 0.66 ? 2 : 1);
+      if (ratio < 0.25) fireTap(0, "left");
+      else if (ratio < 0.5) fireTap(1, "down");
+      else if (ratio < 0.75) fireTap(1, "up");
+      else fireTap(2, "right");
       e.preventDefault();
     };
 
@@ -306,21 +360,26 @@ export function BeatGame({
                   lastContent: "beat",
                 });
                 const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0)));
+                const chapterShoulder = CHAPTER_SHOULDERS[Math.min(CHAPTER_SHOULDERS.length - 1, Math.floor(w.stageIndex / 2))];
+                const isChapterBoss = w.stageIndex % 2 === 1;
+                const clearKey = `beat-chapter:${Math.floor(w.stageIndex / 2) + 1}:boss-clear`;
                 let craftedNow = false;
                 const updated = await updateCharacterProgress(userHash, (current) => {
-                  const totalShards = current.shoulderShards + fragmentGain;
-                  const crafted = totalShards >= 100 && !current.ownedShoulders.includes(shoulderBlueprint);
-                  craftedNow = crafted;
+                  const firstBossClear = isChapterBoss && !current.claimedRewards.includes(clearKey);
+                  const alreadyOwned = current.ownedShoulders.includes(chapterShoulder);
+                  craftedNow = firstBossClear && !alreadyOwned;
                   return {
                     ...current,
                     beatSkills: { ...grown.skills },
                     skillPoints: Math.max(current.skillPoints, grown.sp),
-                    shoulderShards: crafted ? totalShards - 100 : totalShards,
-                    ownedShoulders: crafted ? [...current.ownedShoulders, shoulderBlueprint] : current.ownedShoulders,
+                    shoulderShards: current.shoulderShards + (firstBossClear && !alreadyOwned ? 0 : fragmentGain),
+                    ownedShoulders: craftedNow ? [...current.ownedShoulders, chapterShoulder] : current.ownedShoulders,
+                    claimedRewards: firstBossClear ? [...current.claimedRewards, clearKey] : current.claimedRewards,
                     lastContent: "beat",
                   };
                 });
-                setShoulderReward(craftedNow ? `${SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderBlueprint)?.name} 제작 완료!` : `공명 견갑 조각 +${fragmentGain} · 보유 ${updated.shoulderShards}`);
+                const shoulderName = SHOULDER_BLUEPRINTS.find((item) => item.id === chapterShoulder)?.name;
+                setShoulderReward(craftedNow ? `${shoulderName} 최초 클리어 확정 획득!` : isChapterBoss && updated.ownedShoulders.includes(chapterShoulder) ? `${shoulderName} 보유 · 견갑 조각 +${fragmentGain}` : `공명 견갑 조각 +${fragmentGain} · 보유 ${updated.shoulderShards}`);
                 setRpgGain(
                   `숙련↑ · SP+${session.isSpar ? 3 : 2} · 명성+${
                     (session.isSpar ? 12 : 6) + Math.round(perfectRatio * (session.isSpar ? 20 : 10))
@@ -353,7 +412,7 @@ export function BeatGame({
         sessionRef.current = null;
       }
     };
-  }, [difficultyChoice, onCoins, shoulderBlueprint, syncUi, userHash]);
+  }, [difficultyChoice, onCoins, registerCommandBeat, shoulderBlueprint, syncUi, userHash]);
 
   const startSlot = async (slot: PracticeSlot) => {
     if (!slot.track || !rpgRef.current) return;
@@ -373,6 +432,7 @@ export function BeatGame({
     }
     pendingClearRef.current = false;
     activeSlotRef.current = slot;
+    setShoulderBlueprint(CHAPTER_SHOULDERS[Math.min(3, Math.floor(slot.stageIndex / 2))]);
 
     const canvas = canvasRef.current;
     const width = window.innerWidth;
@@ -407,6 +467,16 @@ export function BeatGame({
     setLastSoundLabel("");
     setTimingOffset(0);
     setLoopCompletion(0);
+    const enemyMax = 100 + slot.stageIndex * 35;
+    beatEnemyHpRef.current = enemyMax;
+    setBeatEnemyHp(enemyMax);
+    setBeatEnemyMaxHp(enemyMax);
+    setCommandIndex(0);
+    commandIndexRef.current = 0;
+    setCommandBeats([]);
+    commandBeatsRef.current = [];
+    setPartyAction("focus");
+    setFever(0);
     lastTsRef.current = 0;
     if (canvas) {
       canvas.width = Math.floor(width * dpr);
@@ -475,30 +545,26 @@ export function BeatGame({
 
   return (
     <div className="beat-layer">
-      <canvas ref={canvasRef} className="game-canvas" />
+      <canvas ref={canvasRef} className={`game-canvas ${ui === "playing" ? "beat-battle-canvas" : ""}`} />
 
       {ui === "menu" && rpg && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand beat-kicker">PRACTICE ROOM</p>
             <h1 className="title beat-title">비트박스 연습실</h1>
-            <p className="subtitle">
-              배우고 싶은 비트를 골라 연습하세요 · 내려오는 노트의 레인 패드를 눌러 리드를 겹칩니다
-            </p>
+            <p className="subtitle">화살표 4박자 명령으로 파티를 지휘하고 챕터 보스를 쓰러뜨리세요</p>
             <p className="controls-hint">
-              {LANES.map((lane) => `${LANE_KEYS[lane]} = ${LANE_LABEL[lane]}(${LANE_MEMBERS[lane]})`).join(
-                " · ",
-              )}
+              ←/A · ↓/S · ↑/W · →/D — 강조된 네 방향 명령을 박자에 맞춰 입력
             </p>
-            <p className="controls-hint">화면은 좌·중·우 3분할 탭으로도 연주됩니다</p>
+            <p className="controls-hint">모바일에서는 화면 아래 네 방향 버튼으로 파티를 지휘합니다</p>
             <p className="score-line">
               코인 {coins} · 공명 제련 · 명성 {rpg.fame} · SP {rpg.sp}
             </p>
-            <div className="beat-blueprints" aria-label="견갑 도안 선택">
+            <div className="beat-blueprints" aria-label="챕터 견갑 보상">
               {SHOULDER_BLUEPRINTS.map((item) => (
-                <button key={item.id} type="button" className={shoulderBlueprint === item.id ? "on" : ""} onClick={() => setShoulderBlueprint(item.id)}>
+                <button key={item.id} type="button" disabled>
                   <span className={`blueprint-pauldron blueprint-${item.id}`} aria-hidden="true" />
-                  <b>{item.name}</b><small>{item.desc}</small>
+                  <b>CH.{SHOULDER_BLUEPRINTS.indexOf(item)+1} {item.name}</b><small>보스 최초 클리어 확정</small>
                 </button>
               ))}
             </div>
@@ -534,7 +600,7 @@ export function BeatGame({
                 <b>{DIFFICULTY[id].label}</b><small>보상 ×{DIFFICULTY[id].reward}</small>
               </button>)}
             </div>
-            <p className="controls-hint">오리지널 EDM 구성 · INTRO → BUILD UP → DROP → BREAK → FINAL DROP</p>
+            <p className="controls-hint">전진 → 공격 → 방어 → 집중 · 명령 성공으로 FEVER를 유지하세요</p>
             <div className="schedule-list">
               {slots.map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
@@ -549,15 +615,13 @@ export function BeatGame({
                     onClick={() => void startSlot(slot)}
                   >
                     <span className="schedule-day">
-                      STAGE {slot.stageIndex + 1} · {slot.track.bpm}BPM ·{" "}
+                      CHAPTER {Math.floor(slot.stageIndex / 2)+1}-{slot.stageIndex % 2 + 1} · {slot.track.bpm}BPM ·{" "}
                       {slot.track.subdivision}비트
                       {recommended ? " · 추천" : ""}
                     </span>
                     <span className="schedule-title">{slot.title}</span>
                     <span className="schedule-hint">{done ? `오늘 완료 · ${slot.hint}` : slot.hint}</span>
-                    <span className="schedule-cost">
-                      {slot.kind === "spar" ? "스파링" : "레슨"} · +{slot.track.reward} 코인
-                    </span>
+                    <span className="schedule-cost">{slot.stageIndex % 2 === 1 ? `${SHOULDER_BLUEPRINTS[Math.min(3,Math.floor(slot.stageIndex/2))].name} 최초 확정` : "명령 훈련 · 견갑 조각"} · +{slot.track.reward} 코인</span>
                   </button>
                 );
               })}
@@ -575,7 +639,7 @@ export function BeatGame({
                 이어서 연습하기
               </button>
               <button type="button" className="cta cta-ghost" onClick={() => syncUi("shop")}>
-                비트 상점
+                전장의 악기 공방
               </button>
               <button type="button" className="cta cta-ghost" onClick={onBack}>
                 타이탄 사냥터
@@ -588,9 +652,9 @@ export function BeatGame({
       {ui === "shop" && cosmetics && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
-            <p className="brand beat-kicker">BEAT SHOP</p>
-            <h1 className="title">레일 · 노트 꾸미기</h1>
-            <p className="subtitle">클리어 코인으로 3D 레일과 비트 노트를 커스텀하세요</p>
+            <p className="brand beat-kicker">WAR DRUM WORKSHOP</p>
+            <h1 className="title">지휘 북 · 파티 구호</h1>
+            <p className="subtitle">전투 보상으로 명령 음색과 화살표 구호를 커스텀하세요</p>
             <p className="score-line">보유 {coins} 코인</p>
             {shopMsg && <p className="shop-toast">{shopMsg}</p>}
             <div className="beat-shop-list">
@@ -607,7 +671,7 @@ export function BeatGame({
                   <div key={`${item.kind}-${item.id}`} className="beat-shop-item">
                     <div className="shop-item-text">
                       <strong>
-                        {item.kind === "ring" ? "링" : "비트"} · {item.name}
+                        {item.kind === "ring" ? "지휘 북" : "파티 구호"} · {item.name}
                       </strong>
                       <span>{item.desc}</span>
                       <span className="shop-lv">
@@ -634,6 +698,12 @@ export function BeatGame({
 
       {ui === "playing" && (
         <>
+          <div className={`beat-command-party action-${partyAction}`} aria-live="polite">
+            <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>훈련 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
+            <div className="beat-command-track"><span className="beat-party-character"><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" ? commandIndex : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" ? commandIndex : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="훈련 몬스터" /></div>
+            <div className="beat-fever"><i style={{width:`${fever}%`}}/><span>FEVER {fever}%</span></div>
+            <div className="beat-command-readout"><strong>{COMMANDS[commandIndex % COMMANDS.length].action === "march" ? "전진" : COMMANDS[commandIndex % COMMANDS.length].action === "attack" ? "공격" : COMMANDS[commandIndex % COMMANDS.length].action === "guard" ? "방어" : "집중"}</strong><span>{COMMANDS[commandIndex % COMMANDS.length].arrows.map((direction,index) => <i key={`${commandIndex}-${index}`} className={commandBeats[index] === direction ? "done" : index === commandBeats.length ? "current" : ""}>{DIRECTIONS.find(item=>item.id===direction)?.symbol}</i>)}</span></div>
+          </div>
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">
@@ -666,21 +736,24 @@ export function BeatGame({
               paddingLeft: insets.left,
             }}
           >
-            {LANES.map((lane) => (
+            {DIRECTIONS.map((direction) => (
               <button
-                key={lane}
+                key={direction.id}
                 type="button"
-                className={`action-btn beat-pad beat-pad--${lane}`}
+                className={`action-btn beat-pad direction-${direction.id}`}
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   if (sessionRef.current) {
-                    performBeatLane(sessionRef.current, lane);
+                    const expected = COMMANDS[commandIndex % COMMANDS.length].arrows[commandBeatsRef.current.length];
+                    const judgedLane = expected === direction.id ? laneOfSound(sessionRef.current.world.nextSound) : direction.lane;
+                    performBeatLane(sessionRef.current, judgedLane);
+                    registerCommandBeat(direction.id);
                   }
                 }}
               >
-                <span>{LANE_LABEL[lane]}</span>
-                <small>{LANE_KEYS[lane]}</small>
+                <span>{direction.symbol}</span>
+                <small>{direction.key}</small>
               </button>
             ))}
           </div>

@@ -1,14 +1,16 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
 
-export const PROGRESSION_VERSION = 2;
+export const PROGRESSION_VERSION = 4;
 
 export type ShoulderId = "scout" | "shadow" | "ogre" | "dragon";
+export type EvolutionPath = "novice" | "swordmaster" | "guardian" | "arcane";
 
 export type CharacterProgress = {
   version: number;
   level: number;
   exp: number;
   sharedCoins: number;
+  redGems: number;
   enhancementMaterials: number;
   equippedWeaponLevel: number;
   bestForgeLevel: number;
@@ -22,6 +24,12 @@ export type CharacterProgress = {
   beatSkills: BeatSkills;
   skillPoints: number;
   claimedRewards: string[];
+  claimedBadges: string[];
+  equippedBadges: string[];
+  rebirthCount: number;
+  inheritanceCrystals: number;
+  evolutionPoints: number;
+  evolutionPath: EvolutionPath;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -44,6 +52,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     level: 1,
     exp: 0,
     sharedCoins: 0,
+    redGems: 0,
     enhancementMaterials: 0,
     equippedWeaponLevel: 0,
     bestForgeLevel: 0,
@@ -57,6 +66,12 @@ export function emptyCharacterProgress(): CharacterProgress {
     beatSkills: emptySkills(),
     skillPoints: 0,
     claimedRewards: [],
+    claimedBadges: [],
+    equippedBadges: [],
+    rebirthCount: 0,
+    inheritanceCrystals: 0,
+    evolutionPoints: 0,
+    evolutionPath: "novice",
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -79,6 +94,7 @@ export function normalizeCharacterProgress(
   });
   const exp = integer(raw.exp, base.exp);
   const content = raw.lastContent;
+  const evolutionPaths: EvolutionPath[] = ["novice", "swordmaster", "guardian", "arcane"];
   const shoulderIds: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
   const ownedShoulders = Array.isArray(raw.ownedShoulders)
     ? raw.ownedShoulders.filter((id): id is ShoulderId => shoulderIds.includes(id as ShoulderId))
@@ -91,6 +107,7 @@ export function normalizeCharacterProgress(
     level: Math.max(levelFromExp(exp), integer(raw.level, base.level, 999)),
     exp,
     sharedCoins: integer(raw.sharedCoins, base.sharedCoins),
+    redGems: integer(raw.redGems, base.redGems),
     enhancementMaterials: integer(raw.enhancementMaterials, base.enhancementMaterials),
     equippedWeaponLevel: integer(raw.equippedWeaponLevel, base.equippedWeaponLevel, 9999),
     bestForgeLevel: integer(raw.bestForgeLevel, base.bestForgeLevel, 15),
@@ -106,6 +123,18 @@ export function normalizeCharacterProgress(
     claimedRewards: Array.isArray(raw.claimedRewards)
       ? [...new Set(raw.claimedRewards.filter((id): id is string => typeof id === "string"))].slice(-500)
       : [],
+    claimedBadges: Array.isArray(raw.claimedBadges)
+      ? [...new Set(raw.claimedBadges.filter((id): id is string => typeof id === "string"))].slice(-100)
+      : [],
+    equippedBadges: Array.isArray(raw.equippedBadges)
+      ? [...new Set(raw.equippedBadges.filter((id): id is string => typeof id === "string"))].slice(0, 3)
+      : [],
+    rebirthCount: integer(raw.rebirthCount, 0, 999),
+    inheritanceCrystals: integer(raw.inheritanceCrystals, 0),
+    evolutionPoints: integer(raw.evolutionPoints, 0, 999),
+    evolutionPath: evolutionPaths.includes(raw.evolutionPath as EvolutionPath)
+      ? (raw.evolutionPath as EvolutionPath)
+      : "novice",
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
