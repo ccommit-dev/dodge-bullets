@@ -1,6 +1,7 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
+import { HUNTING_AREAS, huntingArea } from "../titans/model";
 
-export const PROGRESSION_VERSION = 4;
+export const PROGRESSION_VERSION = 5;
 
 export type ShoulderId = "scout" | "shadow" | "ogre" | "dragon";
 export type EvolutionPath = "novice" | "swordmaster" | "guardian" | "arcane";
@@ -14,12 +15,21 @@ export type CharacterProgress = {
   enhancementMaterials: number;
   equippedWeaponLevel: number;
   bestForgeLevel: number;
+  /** 무한 재련 등급 — +15 도달 후 반복 재련으로만 오른다. 방치 배율(M)에 붙는다. */
+  reforgeRank: number;
   equippedShoulder: ShoulderId | null;
   ownedShoulders: ShoulderId[];
   shoulderShards: number;
-  unlockedHuntingArea: number;
+  /**
+   * 개척한 사냥터 지역 인덱스 (1~5). 화살 원정 클리어로만 오른다.
+   * 구 `unlockedHuntingArea`는 이름과 달리 스테이지 번호를 담고 있어 그대로 쓸 수 없다 —
+   * v4→v5에서 `huntingArea()`로 지역 인덱스로 환산한다.
+   */
+  pioneeredArea: number;
   dodgeBestStage: number;
   dodgeBestScore: number;
+  /** 끝없는 성벽 최고 층 */
+  towerBestFloor: number;
   titanBestStage: number;
   beatSkills: BeatSkills;
   skillPoints: number;
@@ -30,6 +40,10 @@ export type CharacterProgress = {
   inheritanceCrystals: number;
   evolutionPoints: number;
   evolutionPath: EvolutionPath;
+  /** 출석 연속일 — 방치 시간 캡(T) 보너스에 쓰인다. */
+  attendanceStreak: number;
+  /** 마지막 방치 정산 시각 (구 `TitansSave.lastActiveAt`에서 승격) */
+  idleClaimedAt: number;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -56,12 +70,14 @@ export function emptyCharacterProgress(): CharacterProgress {
     enhancementMaterials: 0,
     equippedWeaponLevel: 0,
     bestForgeLevel: 0,
+    reforgeRank: 0,
     equippedShoulder: null,
     ownedShoulders: [],
     shoulderShards: 0,
-    unlockedHuntingArea: 1,
+    pioneeredArea: 1,
     dodgeBestStage: 1,
     dodgeBestScore: 0,
+    towerBestFloor: 0,
     titanBestStage: 1,
     beatSkills: emptySkills(),
     skillPoints: 0,
@@ -72,15 +88,45 @@ export function emptyCharacterProgress(): CharacterProgress {
     inheritanceCrystals: 0,
     evolutionPoints: 0,
     evolutionPath: "novice",
+    attendanceStreak: 0,
+    idleClaimedAt: Date.now(),
     lastContent: null,
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * v4 → v5 개척도 환산.
+ *
+ * 구 `unlockedHuntingArea`에는 **스테이지 번호**가 들어 있다
+ * (`titans.bestStage`, `clearedStage + 1`을 `Math.max`로 누적).
+ * 그대로 지역 인덱스로 읽으면 Stage 30 유저의 값 30이 "지역 30 개방"이 되어
+ * 게이트가 영구히 무력화된다. 그 스테이지가 속한 지역까지를 개척 완료로 인정해
+ * 이미 도달했던 곳은 돌려주고(소급 잠금 없음), 그 이후부터 게이트가 작동하게 한다.
+ */
+export function areaIndexFromLegacyStage(stage: number): number {
+  const safe = Math.max(1, Math.floor(stage));
+  const area = huntingArea(safe);
+  return HUNTING_AREAS.findIndex((candidate) => candidate.id === area.id) + 1;
 }
 
 function integer(value: unknown, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.max(0, Math.min(max, Math.floor(value)))
     : fallback;
+}
+
+/** v5 필드가 있으면 그대로, 없으면 구 `unlockedHuntingArea`(스테이지 번호)에서 환산. */
+function pioneeredAreaOf(raw: Partial<CharacterProgress> & { unlockedHuntingArea?: unknown }): number {
+  const stored = raw.pioneeredArea;
+  if (typeof stored === "number" && Number.isFinite(stored) && stored >= 1) {
+    return Math.max(1, Math.min(HUNTING_AREAS.length, Math.floor(stored)));
+  }
+  const legacy = raw.unlockedHuntingArea;
+  if (typeof legacy === "number" && Number.isFinite(legacy) && legacy >= 1) {
+    return areaIndexFromLegacyStage(legacy);
+  }
+  return 1;
 }
 
 export function normalizeCharacterProgress(
@@ -111,12 +157,14 @@ export function normalizeCharacterProgress(
     enhancementMaterials: integer(raw.enhancementMaterials, base.enhancementMaterials),
     equippedWeaponLevel: integer(raw.equippedWeaponLevel, base.equippedWeaponLevel, 9999),
     bestForgeLevel: integer(raw.bestForgeLevel, base.bestForgeLevel, 15),
+    reforgeRank: integer(raw.reforgeRank, 0, 999),
     equippedShoulder: equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : null,
     ownedShoulders: [...new Set(ownedShoulders)],
     shoulderShards: integer(raw.shoulderShards, 0),
-    unlockedHuntingArea: Math.max(1, integer(raw.unlockedHuntingArea, 1, 9999)),
+    pioneeredArea: pioneeredAreaOf(raw),
     dodgeBestStage: Math.max(1, integer(raw.dodgeBestStage, 1, 9999)),
     dodgeBestScore: integer(raw.dodgeBestScore, 0),
+    towerBestFloor: integer(raw.towerBestFloor, 0, 99999),
     titanBestStage: Math.max(1, integer(raw.titanBestStage, 1, 9999)),
     beatSkills,
     skillPoints: integer(raw.skillPoints, base.skillPoints),
@@ -135,6 +183,8 @@ export function normalizeCharacterProgress(
     evolutionPath: evolutionPaths.includes(raw.evolutionPath as EvolutionPath)
       ? (raw.evolutionPath as EvolutionPath)
       : "novice",
+    attendanceStreak: integer(raw.attendanceStreak, 0, 9999),
+    idleClaimedAt: integer(raw.idleClaimedAt, Date.now(), Date.now()),
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
