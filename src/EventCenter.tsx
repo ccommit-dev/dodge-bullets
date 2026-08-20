@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { storageGet, storageSet } from "./game/toss";
 import { combatPower, type CharacterProgress } from "./progression/model";
 import { updateCharacterProgress } from "./progression/storage";
-import { computeIdleYield, formatDuration, slotLevels } from "./progression/idle";
+import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
 import { resolveShadow, shadowOpponents, weekKey, type ShadowOpponent } from "./events/shadowArena";
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
 import { assetUrl } from "./asset";
@@ -129,7 +129,9 @@ export function EventCenter({
     () =>
       computeIdleYield(
         progress,
-        Math.max(1, progress.titanBestStage),
+        // 개척 게이트를 우회하지 못하게 방치와 같은 상한을 적용한다.
+        // 상한 없이 titanBestStage를 쓰면 미개척 지역의 지역 배율이 균열로 새어 나온다.
+        Math.max(1, Math.min(progress.titanBestStage, stageCeilingFor(progress.pioneeredArea))),
         unlockedEquipMap(progress),
         RIFT_SECONDS,
       ),
@@ -248,7 +250,7 @@ export function EventCenter({
             <img src={assetUrl("ui/attendance/event-chest.png")} alt="차원 균열 보상" />
             <h3>심연의 균열</h3>
             <p>
-              균열 하나가 <b>방치 {formatDuration(RIFT_SECONDS)}분</b>을 즉시 정산합니다.
+              균열 하나가 <b>방치 {formatDuration(RIFT_SECONDS)}</b>을 즉시 정산합니다.
               <br />
               현재 효율 {(riftYield.rate * 100).toFixed(0)}% · 배율 ×{riftYield.multiplier.toFixed(2)} 기준
             </p>
