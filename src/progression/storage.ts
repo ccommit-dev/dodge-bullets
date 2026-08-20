@@ -1,4 +1,4 @@
-import { loadBeatRpg, loadCoins, loadHighScore } from "../game/storage";
+import { loadBeatRpg, loadCoins, loadHighScore, saveCoins } from "../game/storage";
 import { storageGet, storageSet } from "../game/toss";
 import { loadForgeSave } from "../forge/storage";
 import { loadTitansSave } from "../titans/storage";
@@ -78,6 +78,23 @@ export async function migrateLegacyProgress(
     skillPoints: Math.max(current.skillPoints, beat.sp),
   });
   return saveCharacterProgress(userHash, next);
+}
+
+/**
+ * 지갑 잔고를 절대값으로 확정하는 **유일한** 쓰기 경로.
+ *
+ * `sharedCoins`가 단일 진실 소스이고 레거시 코인 키는 그 미러다.
+ * 한쪽만 쓰면 다음 로드에서 `Math.max`가 높은 쪽을 살려 소비가 취소된다 —
+ * 원정대 보급소·비트 상점 구매가 실제로 그렇게 환불되고 있었다.
+ * 잔고를 낮추는 코드는 반드시 이 함수를 거쳐야 한다.
+ */
+export async function setWalletBalance(
+  userHash: string,
+  balance: number,
+): Promise<CharacterProgress> {
+  const next = Math.max(0, Math.floor(balance));
+  await saveCoins(userHash, next);
+  return updateCharacterProgress(userHash, (current) => ({ ...current, sharedCoins: next }));
 }
 
 export async function updateCharacterProgress(

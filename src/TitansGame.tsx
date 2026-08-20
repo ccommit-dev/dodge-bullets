@@ -375,31 +375,42 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       const goldGain =
         killGold(s.stage, wasBoss, chestRef.current) + (wasBoss ? stageClearBonus(s.stage) : 0);
 
+      // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 화살 원정으로만 열린다.
+      // 스테이지 증가보다 **먼저** 판정해야 한다. 나중에 보면 이미 상한을 넘긴 뒤라
+      // 헤더는 다음 스테이지를 가리키는데 몬스터는 이전 스테이지가 나온다.
+      const gateBlocked =
+        wasBoss && s.stage >= stageCeilingFor(characterRef.current.pioneeredArea);
+      const advancing = wasBoss && !gateBlocked;
+
       setSave((prev) => ({
         ...prev,
         gold: prev.gold + goldGain,
         skillInventory: wasBoss ? { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + 1 } : prev.skillInventory,
         totalKills: prev.totalKills + 1,
-        bestStage: wasBoss ? Math.max(prev.bestStage, prev.stage + 1) : prev.bestStage,
-        stage: wasBoss ? prev.stage + 1 : prev.stage,
+        bestStage: advancing ? Math.max(prev.bestStage, prev.stage + 1) : prev.bestStage,
+        stage: advancing ? prev.stage + 1 : prev.stage,
       }));
 
       if (wasBoss) {
         setBossReady(false);
         const clearedStage = s.stage;
+        // 보스 처치 보상은 막혀도 그대로 준다 — 잡은 건 잡은 것이다.
         void grantCharacterReward(userHash, `titans:${clearedStage}:${Date.now()}`, {
           exp: PROGRESSION_BALANCE.titans.bossExpBase + clearedStage * 8,
           lastContent: "titans",
         }).then(() =>
           updateCharacterProgress(userHash, (current) => ({
             ...current,
-            titanBestStage: Math.max(current.titanBestStage, clearedStage + 1),
+            // 막혔으면 최고 기록도 올리지 않는다 — 벽 앞에서 파밍한다고
+            // titanBestStage가 상한 너머로 포화되면 프로필 표기가 어긋난다.
+            titanBestStage: advancing
+              ? Math.max(current.titanBestStage, clearedStage + 1)
+              : current.titanBestStage,
             // 개척도(pioneeredArea)는 여기서 올리지 않는다 — 화살 원정만 지역을 연다.
             lastContent: "titans",
           })),
         );
-        // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 화살 원정으로만 열린다.
-        if (s.stage >= stageCeilingFor(characterRef.current.pioneeredArea)) {
+        if (gateBlocked) {
           sfxGateBlocked();
           setGateNotice(true);
           flash(`${nextAreaName(characterRef.current.pioneeredArea) ?? "다음 지역"} 진입로가 막혀 있습니다`);
