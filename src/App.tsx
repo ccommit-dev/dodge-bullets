@@ -16,6 +16,7 @@ import {
   grantCharacterReward,
   loadCharacterProgress,
   migrateLegacyProgress,
+  setWalletBalance,
   updateCharacterProgress,
 } from "./progression/storage";
 import { drawFrame } from "./game/draw";
@@ -718,11 +719,13 @@ function App() {
     coinsRef.current = nextCoins;
     soundRef.current.playBuy();
     if (worldRef.current) applyStats(worldRef.current, statsWithShoulder(nextLevels, progress.equippedShoulder));
-    await Promise.all([
-      saveCoins(userHashRef.current, nextCoins),
+    // 잔고는 setWalletBalance로만 확정한다. setProgress는 React 상태만 바꿔
+    // 저장소에 남지 않으므로, 그대로 두면 리로드 시 소비가 취소된다.
+    const [nextProgress] = await Promise.all([
+      setWalletBalance(userHashRef.current, nextCoins),
       saveShopLevels(userHashRef.current, nextLevels),
     ]);
-    setProgress((current) => ({ ...current, sharedCoins: nextCoins, updatedAt: Date.now() }));
+    setProgress(nextProgress);
   };
 
   const confirmExit = async () => {

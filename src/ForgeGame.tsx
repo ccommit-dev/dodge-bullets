@@ -137,16 +137,21 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const enhance = () => {
     if (!canEnhance) return;
     const success = Math.random() < boostedChance;
-    if (materials > 0) {
-      setMaterials((value) => Math.max(0, value - 1));
-      void updateCharacterProgress(userHash, (current) => ({
-        ...current,
-        enhancementMaterials: Math.max(0, current.enhancementMaterials - 1),
-        lastContent: "forge",
-      }));
-    }
+    const spendMaterial = materials > 0;
+    if (spendMaterial) setMaterials((value) => Math.max(0, value - 1));
+    setCoins((value) => Math.max(0, value - tier.cost));
     setPhase("forging");
-    changeCoins(-tier.cost);
+    // 재료 차감과 골드 차감을 한 번의 갱신으로 묶는다.
+    // updateCharacterProgress는 load→modify→save라 두 번 나누면 인터리브 시
+    // 한쪽이 유실돼 공짜 강화가 된다.
+    void updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      sharedCoins: Math.max(0, current.sharedCoins - tier.cost),
+      enhancementMaterials: spendMaterial
+        ? Math.max(0, current.enhancementMaterials - 1)
+        : current.enhancementMaterials,
+      lastContent: "forge",
+    }));
     setSave((prev) => ({
       ...prev,
       totalAttempts: prev.totalAttempts + 1,
@@ -288,7 +293,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
   const resetSave = () => {
     if (!window.confirm("현재 모드 세이브를 초기화할까요?")) return;
-    const next = { ...defaultForgeSave(), mode: save.mode };
+    // goldMigrated를 유지한다 — 초기화할 때마다 개업 자금 50,000이 다시 지급되면
+    // 리셋 버튼이 무한 골드 수도꼭지가 된다.
+    const next = { ...defaultForgeSave(), mode: save.mode, goldMigrated: save.goldMigrated };
     setSave(next);
     setPhase("idle");
     setView("title");
