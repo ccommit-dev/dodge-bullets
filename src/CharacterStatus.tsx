@@ -20,6 +20,15 @@ import {
   type EvolutionPath,
 } from "./progression/model";
 import { updateCharacterProgress } from "./progression/storage";
+import {
+  IDLE,
+  idleCapHours,
+  idleMultiplier,
+  idleRate,
+  slotLevels,
+  stageCeilingFor,
+} from "./progression/idle";
+import { HUNTING_AREAS } from "./titans/model";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
@@ -176,16 +185,65 @@ export function CharacterStatus({
         </div>
       </section>
 
+      <section className="idle-panel">
+        <div className="legacy-heading">
+          <div>
+            <small>IDLE FORMULA</small>
+            <strong>방치 공식</strong>
+          </div>
+          <span>4개 콘텐츠가 변수 하나씩</span>
+        </div>
+        <p className="idle-panel-formula">
+          초당 산출 = killGold(<b>S</b>) × <b>R</b> × <b>M</b> · 누적 상한 <b>T</b>
+        </p>
+        <div className="idle-panel-grid">
+          <button type="button" className="idle-var var-S" onClick={() => onOpenContent("titans")}>
+            <span className="idle-var-key">S</span>
+            <b>Stage {titans.stage}</b>
+            <small>사냥터 · 상한 {stageCeilingFor(progress.pioneeredArea)}</small>
+            <em>
+              {progress.pioneeredArea} / {HUNTING_AREAS.length} 지역 개척
+            </em>
+          </button>
+          <button type="button" className="idle-var var-R" onClick={() => onOpenContent("beat")}>
+            <span className="idle-var-key">R</span>
+            <b>{(idleRate(progress, titans.skillInventory.equipped) * 100).toFixed(1)}%</b>
+            <small>연습실 · 최대 {IDLE.rateCap * 100}%</small>
+            <em>
+              슬롯{" "}
+              {(Object.values(slotLevels(progress)) as number[]).reduce((a, b) => a + b, 0)} / 15
+            </em>
+          </button>
+          <button type="button" className="idle-var var-M" onClick={() => onOpenContent("forge")}>
+            <span className="idle-var-key">M</span>
+            <b>×{idleMultiplier(progress).toFixed(2)}</b>
+            <small>대장간 · 최대 ×{IDLE.multCap}</small>
+            <em>
+              +{progress.bestForgeLevel} · 재련 {progress.reforgeRank} · 결정{" "}
+              {progress.inheritanceCrystals}
+            </em>
+          </button>
+          <button type="button" className="idle-var var-T" onClick={() => onOpenContent("dodge")}>
+            <span className="idle-var-key">T</span>
+            <b>{idleCapHours(progress)}시간</b>
+            <small>화살 원정 · 최대 {IDLE.hoursCap}시간</small>
+            <em>
+              원정 {Math.min(4, progress.dodgeBestStage)}/4 · 성벽 {progress.towerBestFloor}층
+            </em>
+          </button>
+        </div>
+      </section>
+
       <section className="legacy-growth">
         <div className="legacy-heading"><div><small>COLLECTION</small><strong>모험 배지</strong></div><span>{earnedBadges.length}/{BADGES.length}</span></div>
         <div className="badge-grid">
           {BADGES.map((badge) => <div key={badge.id} className={`badge-chip ${earnedBadges.includes(badge.id) ? "earned" : "locked"}`} title={badge.condition}><b>{badge.icon}</b><span>{badge.name}<small>{badge.condition}</small></span></div>)}
         </div>
-        <div className="legacy-heading"><div><small>REBIRTH · EVOLUTION</small><strong>계승과 진화</strong></div><span>결정 {progress.inheritanceCrystals}</span></div>
+        <div className="legacy-heading"><div><small>REBIRTH · EVOLUTION</small><strong>계승과 진화</strong></div><span>결정 {progress.inheritanceCrystals} · 배율 +{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)}</span></div>
         <div className="evolution-tree">
-          <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타·공격 특화</small></button>
-          <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존·견갑 특화</small></button>
-          <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>스킬·비트 특화</small></button>
+          <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타 · 방치 배율 +0.15</small></button>
+          <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존 · 방치 시간 +2h</small></button>
+          <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>비트 · 방치 효율 +3%p</small></button>
         </div>
         <button type="button" className="rebirth-button" disabled={!canRebirth} onClick={() => void rebirth()}>환생 {progress.rebirthCount}회 · {canRebirth ? "계승 시작" : `Stage ${rebirthRequirement} 필요`}</button>
         {growthMessage && <p className="growth-message">{growthMessage}</p>}

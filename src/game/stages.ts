@@ -75,10 +75,54 @@ export const STAGES: StageDef[] = [
   },
 ];
 
-export function getStage(index: number): StageDef {
-  return STAGES[Math.min(Math.max(0, index), STAGES.length - 1)];
+/**
+ * 끝없는 성벽 — 임플란트 타워 대응. 4스테이지를 전부 클리어하면 열린다.
+ *
+ * `stageIndex >= STAGES.length`를 성벽 층으로 해석해 `getStage`가 층을 즉석에서 만들어 낸다.
+ * 월드·화살 로직은 전부 `getStage(world.stageIndex)`만 보므로 등반 모드가 기존 루프에 그대로 얹힌다.
+ */
+export const TOWER_START_INDEX = STAGES.length;
+
+/** 층당 난이도 상승률. 1.04^25 ≈ 2.67배 — 25층이 한 사이클 느낌이 되도록 잡았다. */
+const TOWER_STEP = 1.04;
+
+export function isTowerIndex(index: number): boolean {
+  return index >= TOWER_START_INDEX;
 }
 
+/** stageIndex → 성벽 층(1-based). 일반 스테이지면 0. */
+export function towerFloorOf(index: number): number {
+  return isTowerIndex(index) ? index - TOWER_START_INDEX + 1 : 0;
+}
+
+export function towerIndexOf(floor: number): number {
+  return TOWER_START_INDEX + Math.max(1, Math.floor(floor)) - 1;
+}
+
+function towerStage(index: number): StageDef {
+  const floor = towerFloorOf(index);
+  const base = STAGES[STAGES.length - 1];
+  const scale = Math.pow(TOWER_STEP, floor);
+  return {
+    id: 100 + floor,
+    name: `끝없는 성벽 ${floor}층`,
+    // 층당 30초 고정 — 짧은 사이클을 반복해 "한 층만 더"가 되게 한다.
+    durationMs: 30_000,
+    baseReward: Math.floor(base.baseReward * (0.55 + floor * 0.12)),
+    speedMul: base.speedMul * scale,
+    spawnMul: base.spawnMul * scale,
+    intro: `${floor}층 · 30초 버티면 다음 층`,
+    platforms: base.platforms,
+    patterns: base.patterns,
+  };
+}
+
+export function getStage(index: number): StageDef {
+  if (isTowerIndex(index)) return towerStage(index);
+  return STAGES[Math.max(0, index)];
+}
+
+/** 일반 원정의 마지막 스테이지인지. 성벽에는 마지막이 없다. */
 export function isLastStage(index: number): boolean {
-  return index >= STAGES.length - 1;
+  return index === STAGES.length - 1;
 }

@@ -11,7 +11,12 @@ export type SwordTier = {
 };
 
 export type ForgeSave = {
+  /**
+   * 레거시 대장간 지갑. v5부터 대장간은 공유 골드(`CharacterProgress.sharedCoins`)를 쓴다.
+   * 이 값은 1회 이관 후 0이 되며 `goldMigrated`로 재이관을 막는다.
+   */
   gold: number;
+  goldMigrated: boolean;
   level: number;
   tickets: number;
   shards: number;
@@ -19,6 +24,8 @@ export type ForgeSave = {
   totalAttempts: number;
   mode: ForgeMode;
   pendingFailure: boolean;
+  /** 무한 재련 시도 횟수 (등급은 공유 진행도에 저장) */
+  reforgeAttempts: number;
 };
 
 export const FORGE_TIERS: SwordTier[] = [
@@ -40,9 +47,16 @@ export const FORGE_TIERS: SwordTier[] = [
   { level: 15, name: "초월자의 검", cost: 0, sell: 100_000_000, chance: 0, shards: 500, hue: 155 },
 ];
 
+/**
+ * 신규 유저의 대장간 개업 자금. 공유 골드가 0이면 첫 강화(300G)조차 못 하므로
+ * 최초 1회만 지급한다. 구 기본값 1,000,000은 공유 지갑에 그대로 넣으면 초반 인플레가 난다.
+ */
+export const FORGE_STARTER_COINS = 50_000;
+
 export function defaultForgeSave(): ForgeSave {
   return {
-    gold: 1_000_000,
+    gold: 0,
+    goldMigrated: false,
     level: 0,
     tickets: 2,
     shards: 0,
@@ -50,6 +64,7 @@ export function defaultForgeSave(): ForgeSave {
     totalAttempts: 0,
     mode: "steady",
     pendingFailure: false,
+    reforgeAttempts: 0,
   };
 }
 
@@ -62,6 +77,8 @@ export function normalizeForgeSave(value: Partial<ForgeSave> | null): ForgeSave 
       : fallback;
   return {
     gold: integer(value.gold, base.gold),
+    goldMigrated: value.goldMigrated === true,
+    reforgeAttempts: integer(value.reforgeAttempts, 0),
     level: integer(value.level, base.level, FORGE_TIERS.length - 1),
     tickets: integer(value.tickets, base.tickets, 999),
     shards: integer(value.shards, base.shards),
@@ -95,6 +112,23 @@ export function protectionCost(level: number): number {
 export function shardSwordCost(level: number): number {
   const tier = tierAt(level);
   return Math.max(40, tier.shards * 12);
+}
+
+/**
+ * 무한 재련 — +15(초월자의 검) 도달 후 열리는 반복 루프.
+ * 등급이 오를수록 비용은 지수로, 성공률은 완만하게 떨어져 파밍이 끝나지 않는다.
+ */
+export function reforgeCost(rank: number): number {
+  return Math.floor(2_000_000 * Math.pow(1.26, Math.max(0, rank)));
+}
+
+export function reforgeChance(rank: number): number {
+  return Math.max(0.08, 0.6 * Math.pow(0.965, Math.max(0, rank)));
+}
+
+/** 재련 실패 시 돌려받는 조각 — 완전 손실은 체감이 너무 나쁘다. */
+export function reforgeConsolationShards(rank: number): number {
+  return 20 + Math.floor(rank * 1.5);
 }
 
 export function formatGold(value: number): string {

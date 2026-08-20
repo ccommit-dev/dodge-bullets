@@ -3,6 +3,7 @@ import { storageGet, storageSet } from "../game/toss";
 import { loadForgeSave } from "../forge/storage";
 import { loadTitansSave } from "../titans/storage";
 import {
+  areaIndexFromLegacyStage,
   emptyCharacterProgress,
   levelFromExp,
   normalizeCharacterProgress,
@@ -53,7 +54,9 @@ export async function migrateLegacyProgress(
     enhancementMaterials: Math.max(current.enhancementMaterials, forge.shards),
     equippedWeaponLevel: Math.max(current.equippedWeaponLevel, forge.level),
     bestForgeLevel: Math.max(current.bestForgeLevel, forge.bestLevel),
-    unlockedHuntingArea: Math.max(current.unlockedHuntingArea, titans.bestStage),
+    // 진행도 레코드가 아예 없는 구 유저 — 사냥터 최고 기록이 속한 지역까지는 개척 완료로 인정한다.
+    // (소급 잠금 없음. 이후부터는 화살 원정만 개척도를 올린다.)
+    pioneeredArea: Math.max(current.pioneeredArea, areaIndexFromLegacyStage(titans.bestStage)),
     dodgeBestScore: Math.max(current.dodgeBestScore, highScore),
     titanBestStage: Math.max(current.titanBestStage, titans.bestStage),
     beatSkills: Object.fromEntries(

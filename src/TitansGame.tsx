@@ -34,7 +34,25 @@ import { AllyArt, MonsterArt } from "./titans/SpriteArt";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
-import type { ShoulderId } from "./progression/model";
+import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
+import {
+  BEAT_SKILL_BY_SLOT,
+  IDLE,
+  activeSlotLevelSum,
+  computeIdleYield,
+  idleBottleneck,
+  idleRate,
+  masteryToNextSlotLevel,
+  nextAreaName,
+  requiredDodgeStage,
+  slotLevels,
+  stageCeilingFor,
+  type IdleBottleneck,
+  type IdleYield,
+} from "./progression/idle";
+import { SKILL_LABEL } from "./beat/rpg";
+import { IdleReturnModal } from "./IdleReturnModal";
+import { sfxGateBlocked } from "./ui/sfx";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
@@ -113,10 +131,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
+  const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
+  const [idleReport, setIdleReport] = useState<{
+    result: IdleYield;
+    stage: number;
+    bottleneck: IdleBottleneck;
+  } | null>(null);
+  const [gateNotice, setGateNotice] = useState(false);
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
 
   const saveRef = useRef(save);
+  const characterRef = useRef(character);
   const waveRef = useRef(wave);
   const bossRef = useRef(boss);
   const chestRef = useRef(chesterson);
@@ -139,6 +165,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   useEffect(() => {
     saveRef.current = save;
   }, [save]);
+  useEffect(() => {
+    characterRef.current = character;
+  }, [character]);
   useEffect(() => {
     waveRef.current = wave;
   }, [wave]);
@@ -191,17 +220,33 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   useEffect(() => {
     let cancelled = false;
     preloadTitanSheets();
-    void Promise.all([loadTitansSave(userHash), loadCharacterProgress(userHash)]).then(([loaded, character]) => {
+    void Promise.all([loadTitansSave(userHash), loadCharacterProgress(userHash)]).then(([loaded, progress]) => {
       if (cancelled) return;
-      const awaySeconds = Math.min(4 * 60 * 60, Math.max(0, (Date.now() - loaded.lastActiveAt) / 1000));
-      const offlineGold = Math.floor((killGold(loaded.stage, false, false) * awaySeconds) / 10);
-      const resumed = { ...loaded, gold: loaded.gold + offlineGold, lastActiveAt: Date.now() };
-      setSave(resumed);
-      setEquippedShoulder(character.equippedShoulder);
-      setSkillPoints(character.skillPoints);
-      setRedGems(character.redGems);
-      if (offlineGold > 0) setToast(`방치 보상 +${formatGold(offlineGold)} GOLD`);
-      spawn(loaded.stage, 1, false);
+      // 개척하지 않은 지역으로는 진입할 수 없다 — 저장값이 앞서 있으면 경계로 되돌린다.
+      const ceiling = stageCeilingFor(progress.pioneeredArea);
+      const stage = Math.min(loaded.stage, ceiling);
+      const since = progress.idleClaimedAt || loaded.lastActiveAt;
+      const awaySeconds = Math.max(0, (Date.now() - since) / 1000);
+      const result = computeIdleYield(progress, stage, loaded.skillInventory.equipped, awaySeconds);
+
+      setSave({ ...loaded, stage, lastActiveAt: Date.now() });
+      setCharacter(progress);
+      setEquippedShoulder(progress.equippedShoulder);
+      setSkillPoints(progress.skillPoints);
+      setRedGems(progress.redGems);
+
+      // 1분 미만 이탈은 정산 화면을 띄우지 않는다 (탭 전환마다 모달이 뜨면 피로하다).
+      if (result.seconds >= 60 && result.gold > 0) {
+        setIdleReport({
+          result,
+          stage,
+          bottleneck: idleBottleneck(progress, result, stage, progress.pioneeredArea),
+        });
+      } else {
+        void updateCharacterProgress(userHash, (current) => ({ ...current, idleClaimedAt: Date.now() }));
+      }
+
+      spawn(stage, 1, false);
       setReady(true);
     });
     return () => {
@@ -216,6 +261,29 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     if (!ready) return;
     void saveTitansSave(userHash, { ...save, lastActiveAt: Date.now() });
   }, [ready, save, userHash]);
+
+  /** 방치 보상 확정 — 골드는 사냥터 저장에, EXP·강화석은 공유 진행도에 들어간다. */
+  const claimIdle = useCallback(
+    (then?: () => void) => {
+      const report = idleReport;
+      if (!report) return;
+      setIdleReport(null);
+      // 방치 골드는 공유 지갑(대장간 소비처)으로 간다.
+      // 사냥터 자체 골드(save.gold)는 액티브 전투 보상으로 남겨 방치가 플레이를 대체하지 않게 한다.
+      void updateCharacterProgress(userHash, (current) => ({
+        ...current,
+        sharedCoins: current.sharedCoins + report.result.gold,
+        exp: current.exp + report.result.exp,
+        enhancementMaterials: current.enhancementMaterials + report.result.materials,
+        idleClaimedAt: Date.now(),
+      })).then((next) => {
+        setCharacter(next);
+        setSkillPoints(next.skillPoints);
+        then?.();
+      });
+    },
+    [idleReport, userHash],
+  );
 
   // Idle / attack sprite playback
   useEffect(() => {
@@ -326,10 +394,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           updateCharacterProgress(userHash, (current) => ({
             ...current,
             titanBestStage: Math.max(current.titanBestStage, clearedStage + 1),
-            unlockedHuntingArea: Math.max(current.unlockedHuntingArea, clearedStage + 1),
+            // 개척도(pioneeredArea)는 여기서 올리지 않는다 — 화살 원정만 지역을 연다.
             lastContent: "titans",
           })),
         );
+        // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 화살 원정으로만 열린다.
+        if (s.stage >= stageCeilingFor(characterRef.current.pioneeredArea)) {
+          sfxGateBlocked();
+          setGateNotice(true);
+          flash(`${nextAreaName(characterRef.current.pioneeredArea) ?? "다음 지역"} 진입로가 막혀 있습니다`);
+          later(() => {
+            spawn(s.stage, 1, false);
+            battlePhaseRef.current = "combat";
+            setBattlePhase("combat");
+          }, 700);
+          return;
+        }
+
         flash(`STAGE ${s.stage} CLEAR! +${formatGold(goldGain)}G`);
         pendingStageRef.current = s.stage + 1;
         later(() => {
@@ -599,6 +680,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const toggleSkill = (id: TitanSkillId) => {
     const def = SKILLS.find((skill) => skill.id === id);
     if (!def || !save.skillInventory.learned.includes(id)) return;
+    // 슬롯은 연습실에서 해금한다 — 비트 숙련이 0레벨이면 장착할 수 없다.
+    const equippedNow = save.skillInventory.equipped[def.slot] === id;
+    if (!equippedNow && slotLevels(character)[def.slot] <= 0) {
+      const beatSkill = BEAT_SKILL_BY_SLOT[def.slot];
+      flash(`연습실에서 ${SKILL_LABEL[beatSkill]} 숙련 5를 먼저 올리세요`);
+      return;
+    }
     setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, equipped: { ...prev.skillInventory.equipped, [def.slot]: prev.skillInventory.equipped[def.slot] === id ? undefined : id } } }));
   };
 
@@ -891,11 +979,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
             const level = save.skillInventory.levels[sk.id];
             const upgradeCost = Math.floor(240 * Math.pow(1.75, Math.max(0, level - 1)));
-            return <article key={sk.id} className={`titans-card skill-learn-card ${equipped ? "equipped" : ""}`}>
+            const beatSkill = BEAT_SKILL_BY_SLOT[sk.slot];
+            const mastery = character.beatSkills[beatSkill];
+            const slotLevel = slotLevels(character)[sk.slot];
+            const toNext = masteryToNextSlotLevel(mastery);
+            return <article key={sk.id} className={`titans-card skill-learn-card ${equipped ? "equipped" : ""} ${slotLevel <= 0 ? "slot-locked" : ""}`}>
               <SkillIcon id={sk.id} />
               <div>
                 <strong>{sk.name} · {sk.slot} · {sk.element}</strong>
                 <p>{sk.desc} · Lv.{save.skillInventory.levels[sk.id]}/{sk.maxLevel}</p>
+                <small className={`slot-link ${slotLevel <= 0 ? "locked" : ""}`}>
+                  <em>{SKILL_LABEL[beatSkill]}</em> 숙련 {mastery} · 슬롯 {slotLevel > 0 ? `Lv.${slotLevel}` : "잠김"}
+                  {toNext !== null && ` · 다음까지 ${toNext}`}
+                  {slotLevel > 0 && ` · 방치 효율 +${(slotLevel * IDLE.ratePerSlotLevel * 100).toFixed(1)}%p`}
+                </small>
                 {!learned && <small>학습 비용 SP {sk.learnSpCost} · 코어 {sk.learnCoreCost}</small>}
               </div>
               <div className="skill-card-actions">
@@ -906,7 +1003,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </div>
             </article>
           })}
-        {tab === "skills" && <p className="skill-wallet">SP {skillPoints} · 스킬 코어 {save.skillInventory.skillCores} · 시동기 → 연계 A → 연계 B → 마무리 → 패시브</p>}
+        {tab === "skills" && (
+          <p className="skill-wallet">
+            SP {skillPoints} · 스킬 코어 {save.skillInventory.skillCores} · 시동기 → 연계 A → 연계 B → 마무리 → 패시브
+            <br />
+            <b>
+              활성 슬롯 합 {activeSlotLevelSum(character, save.skillInventory.equipped)} · 방치 효율{" "}
+              {(idleRate(character, save.skillInventory.equipped) * 100).toFixed(1)}% / {IDLE.rateCap * 100}%
+            </b>
+          </p>
+        )}
         {tab === "premium" && STORE_PRODUCTS.filter((product) => product.visible).map((product) => <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}</strong><p>{product.description}</p><small>{product.contents.join(" · ")}</small></div>
@@ -915,6 +1021,51 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       </section>
 
       {toast && <div className="titans-toast">{toast}</div>}
+
+      {idleReport && (
+        <IdleReturnModal
+          result={idleReport.result}
+          stage={idleReport.stage}
+          bottleneck={idleReport.bottleneck}
+          onClaim={() => claimIdle()}
+          onGoContent={(content) => claimIdle(() => onOpenContent(content))}
+        />
+      )}
+
+      {gateNotice && (
+        <div className="exit-modal gate-modal" role="dialog" aria-modal="true">
+          <div className="exit-card gate-card">
+            <div className="gate-doors" aria-hidden="true">
+              <span className="gate-door left" />
+              <span className="gate-door right" />
+              <span className="gate-seal">{character.pioneeredArea}/5</span>
+            </div>
+            <p className="brand">AREA LOCKED</p>
+            <h2 className="exit-title">{nextAreaName(character.pioneeredArea) ?? "미지의 영역"}</h2>
+            <p className="gate-desc">
+              정찰병이 길을 뚫어야 사냥터가 열립니다.
+              <br />
+              <b>화살 원정 Stage {requiredDodgeStage(character.pioneeredArea) ?? 4}</b>을 클리어하세요.
+            </p>
+            <p className="gate-reward">
+              개방 시 획득 배율 ×{huntingArea(stageCeilingFor(character.pioneeredArea) + 1).rewardMultiplier}
+            </p>
+            <button
+              type="button"
+              className="cta"
+              onClick={() => {
+                setGateNotice(false);
+                onOpenContent("dodge");
+              }}
+            >
+              화살 원정 출발 (30초)
+            </button>
+            <button type="button" className="cta cta-ghost" onClick={() => setGateNotice(false)}>
+              여기서 더 사냥하기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
