@@ -13,7 +13,13 @@ type Props = {
   onGoContent: (content: "dodge" | "beat" | "forge") => void;
 };
 
-/** 0 → target 카운트업. ease-out으로 붙어서 마지막 자리가 또렷하게 멈춘다. */
+/**
+ * 0 → target 카운트업. ease-out으로 붙어서 마지막 자리가 또렷하게 멈춘다.
+ *
+ * 탭이 백그라운드면 rAF가 아예 돌지 않아 숫자가 0에 멈춘다 — 유저 입장에서는
+ * 보상을 못 받은 것으로 보인다. 애니메이션 길이만큼 뒤에 최종값을 강제로 찍는
+ * 폴백 타이머를 함께 걸어 어떤 경우에도 정확한 값이 남게 한다.
+ */
 function useCountUp(target: number, durationMs = 900, delayMs = 0): number {
   const [value, setValue] = useState(0);
   const rafRef = useRef(0);
@@ -37,7 +43,11 @@ function useCountUp(target: number, durationMs = 900, delayMs = 0): number {
       else setValue(target);
     };
     rafRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafRef.current);
+    const settle = window.setTimeout(() => setValue(target), delayMs + durationMs + 120);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(settle);
+    };
   }, [target, durationMs, delayMs]);
   return value;
 }

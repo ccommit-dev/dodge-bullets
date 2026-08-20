@@ -246,8 +246,12 @@ function App() {
       ]);
       if (cancelled) return;
       setHighScore(best);
-      setCoins(savedCoins);
-      coinsRef.current = savedCoins;
+      // 지갑 권위는 sharedCoins다. 레거시 코인 키는 마이그레이션 하한으로만 쓰이므로
+      // (progression/storage.ts 참조) 부팅 시 진행도 쪽 잔고로 맞추고 레거시 키를 따라오게 한다.
+      const wallet = Math.max(savedCoins, character.sharedCoins);
+      setCoins(wallet);
+      coinsRef.current = wallet;
+      if (wallet !== savedCoins) void saveCoins(key.hash, wallet);
       setShopLevels(levels);
       shopLevelsRef.current = levels;
       setProgress(character);
@@ -267,6 +271,15 @@ function App() {
       unsub();
     };
   }, [applyInsets]);
+
+  // 지갑 단일화 — 다른 콘텐츠(방치 정산·대장간 이관)가 sharedCoins를 올리면
+  // 원정 코인 UI와 레거시 코인 키가 따라온다. 소비 경로는 둘을 함께 내리므로 여기서 no-op이 된다.
+  useEffect(() => {
+    if (!bootReady || progress.sharedCoins === coinsRef.current) return;
+    coinsRef.current = progress.sharedCoins;
+    setCoins(progress.sharedCoins);
+    void saveCoins(userHashRef.current, progress.sharedCoins);
+  }, [bootReady, progress.sharedCoins]);
 
   useEffect(() => {
     const sound = soundRef.current;
