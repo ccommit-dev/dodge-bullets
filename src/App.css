@@ -2214,6 +2214,8 @@
 .attendance-grid div { min-height: 104px; padding: 7px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid rgba(148,163,184,.2); border-radius: 10px; color: #94a3b8; background: rgba(15,23,42,.8); font-size: 9px; }
 .attendance-grid div.today { color: #082f49; border-color: #67e8f9; background: linear-gradient(135deg,#67e8f9,#fde047); box-shadow: 0 0 18px rgba(34,211,238,.3); }
 .attendance-grid b { font-size: 12px; }
+/* 수령 완료 안내 — 비활성 버튼만 두면 "왜 안 눌리는지"를 알 수 없다. */
+.attendance-next { margin: 2px 0 0; color: #94a3b8; font-size: 11px; }
 .attendance-reward-art { width: 58px; height: 58px; display: grid; place-items: center; overflow: hidden; }
 .attendance-grid img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; filter: drop-shadow(0 5px 5px rgba(0,0,0,.35)); }
 .attendance-grid div > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
