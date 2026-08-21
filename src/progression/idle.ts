@@ -235,11 +235,17 @@ export function idleBottleneck(
   pioneeredArea: number,
 ): IdleBottleneck {
   if (result.cappedOut) {
+    // T를 더 늘릴 수 없으면 dodge로 보내 봐야 소용이 없다.
+    // 그때는 자주 들어오는 것 말고 방법이 없으므로 균열(즉시 정산)로 안내한다.
+    const canExtend =
+      result.capHours < IDLE.hoursCap && progress.dodgeBestStage < DODGE_STAGE_COUNT;
     return {
       variable: "T",
       title: `방치 시간이 ${result.capHours}시간에서 잘렸습니다`,
-      hint: `화살 원정 Stage ${Math.min(4, progress.dodgeBestStage + 1)}을 클리어하면 +1시간`,
-      content: "dodge",
+      hint: canExtend
+        ? `화살 원정 Stage ${Math.min(DODGE_STAGE_COUNT, progress.dodgeBestStage + 1)} 클리어 → +1시간`
+        : `이미 최대 ${IDLE.hoursCap}시간입니다 · 차원 균열로 즉시 정산하세요`,
+      content: canExtend ? "dodge" : "titans",
     };
   }
   if (stage >= stageCeilingFor(pioneeredArea)) {
@@ -247,7 +253,7 @@ export function idleBottleneck(
     return {
       variable: "S",
       title: `${area ?? "다음 지역"} 앞에서 막혀 있습니다`,
-      hint: `화살 원정 Stage ${requiredDodgeStage(pioneeredArea) ?? 4}을 클리어해 길을 여세요`,
+      hint: `화살 원정 Stage ${requiredDodgeStage(pioneeredArea) ?? DODGE_STAGE_COUNT} 클리어 → 길이 열립니다`,
       content: "dodge",
     };
   }
