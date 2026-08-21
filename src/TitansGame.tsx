@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -45,7 +44,6 @@ import {
   idleRate,
   masteryToNextSlotLevel,
   nextAreaName,
-  requiredDodgeStage,
   slotLevels,
   stageCeilingFor,
   type IdleBottleneck,
@@ -53,6 +51,7 @@ import {
 } from "./progression/idle";
 import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
+import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked } from "./ui/sfx";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
@@ -1045,39 +1044,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       )}
 
       {gateNotice && (
-        <div className="exit-modal gate-modal" role="dialog" aria-modal="true">
-          <div className="exit-card gate-card">
-            <div className="gate-doors" aria-hidden="true">
-              <span className="gate-door left" />
-              <span className="gate-door right" />
-              <img className="gate-crest" src={assetUrl("ui/idle/gate-locked.svg")} alt="" />
-              <span className="gate-seal">{character.pioneeredArea}/5</span>
-            </div>
-            <p className="brand">AREA LOCKED</p>
-            <h2 className="exit-title">{nextAreaName(character.pioneeredArea) ?? "미지의 영역"}</h2>
-            <p className="gate-desc">
-              정찰병이 길을 뚫어야 사냥터가 열립니다.
-              <br />
-              <b>화살 원정 Stage {requiredDodgeStage(character.pioneeredArea) ?? 4}</b> 클리어가 필요합니다.
-            </p>
-            <p className="gate-reward">
-              개방 시 획득 배율 ×{huntingArea(stageCeilingFor(character.pioneeredArea) + 1).rewardMultiplier}
-            </p>
-            <button
-              type="button"
-              className="cta"
-              onClick={() => {
-                setGateNotice(false);
-                onOpenContent("dodge");
-              }}
-            >
-              화살 원정 출발 (30초)
-            </button>
-            <button type="button" className="cta cta-ghost" onClick={() => setGateNotice(false)}>
-              여기서 더 사냥하기
-            </button>
-          </div>
-        </div>
+        <AreaGateModal
+          pioneeredArea={character.pioneeredArea}
+          onGoDodge={() => {
+            setGateNotice(false);
+            onOpenContent("dodge");
+          }}
+          onDismiss={() => setGateNotice(false)}
+        />
       )}
     </div>
   );

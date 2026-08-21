@@ -265,10 +265,22 @@ export function idleBottleneck(
       content: "beat",
     };
   }
+  // M도 상한에 닿으면 더 올릴 수 없다 — 그때 대장간으로 보내면 헛걸음이다.
+  if (result.multiplier >= IDLE.multCap) {
+    return {
+      variable: "S",
+      title: `모든 배율이 최대입니다 (×${IDLE.multCap})`,
+      hint: "사냥터 스테이지를 올리는 것만이 남은 성장선입니다",
+      content: "titans",
+    };
+  }
   return {
     variable: "M",
     title: `산출 배율 ×${result.multiplier.toFixed(2)} · 최대 ×${IDLE.multCap}`,
-    hint: "대장간에서 무기를 강화하면 배율이 오릅니다",
+    hint:
+      progress.bestForgeLevel < 15
+        ? `대장간 강화 +${progress.bestForgeLevel} → +15 (강화 1단계당 +0.06)`
+        : "무한 재련으로 배율을 더 올릴 수 있습니다",
     content: "forge",
   };
 }
