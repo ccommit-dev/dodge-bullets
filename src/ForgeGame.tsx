@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
 import {
+  FORGE_STARTER_COINS,
   defaultForgeSave,
   effectiveChance,
   effectiveSell,
   formatGold,
   protectionCost,
+  reforgeChance,
+  reforgeConsolationShards,
+  reforgeCost,
   shardSwordCost,
   tierAt,
   type ForgeSave,
 } from "./forge/model";
+import { sfxReforge } from "./ui/sfx";
 import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -37,6 +43,10 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [toast, setToast] = useState("");
   const [materials, setMaterials] = useState(0);
+  /** 대장간 지갑 = 공유 골드. 방치 정산이 여기로 들어오고 강화가 여기서 빠진다. */
+  const [coins, setCoins] = useState(0);
+  const [reforgeRank, setReforgeRank] = useState(0);
+  const [reforgePhase, setReforgePhase] = useState<"idle" | "rolling" | "hit" | "miss">("idle");
   const [ownedShoulders, setOwnedShoulders] = useState<ShoulderId[]>([]);
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -44,14 +54,33 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([loadForgeSave(userHash), loadCharacterProgress(userHash)]).then(([loaded, character]) => {
+    void Promise.all([loadForgeSave(userHash), loadCharacterProgress(userHash)]).then(async ([loaded, character]) => {
       if (cancelled) return;
-      setSave(loaded);
-      setMaterials(character.enhancementMaterials);
-      setOwnedShoulders(character.ownedShoulders);
-      setEquippedShoulder(character.equippedShoulder);
-      setPhase(loaded.pendingFailure ? "failure" : "idle");
-      setView(loaded.pendingFailure || loaded.level > 0 || loaded.totalAttempts > 0 ? "forge" : "title");
+      let forge = loaded;
+      let progress = character;
+
+      // v4 → v5 지갑 통합. 구 대장간 골드를 공유 지갑으로 한 번만 옮긴다.
+      // 한 번도 강화하지 않은 세이브는 구 기본값(1,000,000)을 들고 있을 뿐이므로
+      // 이관 대신 개업 자금만 지급해 초반 인플레를 막는다.
+      if (!forge.goldMigrated) {
+        const carried = forge.totalAttempts > 0 ? forge.gold : FORGE_STARTER_COINS;
+        progress = await updateCharacterProgress(userHash, (current) => ({
+          ...current,
+          sharedCoins: current.sharedCoins + carried,
+        }));
+        forge = await saveForgeSave(userHash, { ...forge, gold: 0, goldMigrated: true });
+        if (carried > 0) flashToast(`대장간 지갑 통합 · 공유 골드 +${formatGold(carried)}`);
+      }
+
+      if (cancelled) return;
+      setSave(forge);
+      setCoins(progress.sharedCoins);
+      setReforgeRank(progress.reforgeRank);
+      setMaterials(progress.enhancementMaterials);
+      setOwnedShoulders(progress.ownedShoulders);
+      setEquippedShoulder(progress.equippedShoulder);
+      setPhase(forge.pendingFailure ? "failure" : "idle");
+      setView(forge.pendingFailure || forge.level > 0 || forge.totalAttempts > 0 ? "forge" : "title");
       setReady(true);
     });
     return () => {
@@ -72,7 +101,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const sell = effectiveSell(tier, save.mode);
   const ticketNeed = protectionCost(save.level);
   const maxed = save.level >= 15;
-  const canEnhance = !maxed && save.gold >= tier.cost && phase === "idle";
+  const canEnhance = !maxed && coins >= tier.cost && phase === "idle";
   const ticketPrice = 25_000 + save.tickets * 10_000;
   const swordCraftCost = shardSwordCost(3);
   const swordStyle = useMemo(
@@ -90,6 +119,16 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     toastRef.current = window.setTimeout(() => setToast(""), 1500);
   };
 
+  /** 공유 골드 증감 — 화면 상태와 저장소를 함께 움직인다. */
+  const changeCoins = (delta: number) => {
+    setCoins((value) => Math.max(0, value + delta));
+    void updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      sharedCoins: Math.max(0, current.sharedCoins + delta),
+      lastContent: "forge",
+    }));
+  };
+
   const startMode = (mode: ForgeSave["mode"]) => {
     setSave((prev) => ({ ...prev, mode }));
     setView("forge");
@@ -99,18 +138,23 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const enhance = () => {
     if (!canEnhance) return;
     const success = Math.random() < boostedChance;
-    if (materials > 0) {
-      setMaterials((value) => Math.max(0, value - 1));
-      void updateCharacterProgress(userHash, (current) => ({
-        ...current,
-        enhancementMaterials: Math.max(0, current.enhancementMaterials - 1),
-        lastContent: "forge",
-      }));
-    }
+    const spendMaterial = materials > 0;
+    if (spendMaterial) setMaterials((value) => Math.max(0, value - 1));
+    setCoins((value) => Math.max(0, value - tier.cost));
     setPhase("forging");
+    // 재료 차감과 골드 차감을 한 번의 갱신으로 묶는다.
+    // updateCharacterProgress는 load→modify→save라 두 번 나누면 인터리브 시
+    // 한쪽이 유실돼 공짜 강화가 된다.
+    void updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      sharedCoins: Math.max(0, current.sharedCoins - tier.cost),
+      enhancementMaterials: spendMaterial
+        ? Math.max(0, current.enhancementMaterials - 1)
+        : current.enhancementMaterials,
+      lastContent: "forge",
+    }));
     setSave((prev) => ({
       ...prev,
-      gold: prev.gold - tier.cost,
       totalAttempts: prev.totalAttempts + 1,
     }));
     timerRef.current = window.setTimeout(() => {
@@ -174,15 +218,17 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
   const sellSword = () => {
     if (save.level <= 0 || phase !== "idle") return;
-    setSave((prev) => ({ ...prev, gold: prev.gold + sell, level: 0 }));
+    changeCoins(sell);
+    setSave((prev) => ({ ...prev, level: 0 }));
     setPhase("sold");
     flashToast(`판매 완료 +${formatGold(sell)}G`);
     timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
   };
 
   const buyTicket = () => {
-    if (save.gold < ticketPrice) return;
-    setSave((prev) => ({ ...prev, gold: prev.gold - ticketPrice, tickets: prev.tickets + 1 }));
+    if (coins < ticketPrice) return;
+    changeCoins(-ticketPrice);
+    setSave((prev) => ({ ...prev, tickets: prev.tickets + 1 }));
     flashToast("방지권 +1");
   };
 
@@ -206,9 +252,51 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     flashToast("+3 강철 장검 조합 완료");
   };
 
+  /**
+   * 무한 재련 — +15 도달 후 열리는 반복 루프.
+   * 성공하면 재련 등급이 올라 방치 배율(M)에 영구히 붙고, 실패해도 조각을 돌려받는다.
+   * 강화와 달리 검 등급이 내려가지 않아 "끝이 없는" 파밍 지점이 된다.
+   */
+  const reforge = () => {
+    const cost = reforgeCost(reforgeRank);
+    if (save.level < 15 || coins < cost || reforgePhase !== "idle") return;
+    const success = Math.random() < reforgeChance(reforgeRank);
+    changeCoins(-cost);
+    setSave((prev) => ({ ...prev, reforgeAttempts: prev.reforgeAttempts + 1 }));
+    setReforgePhase("rolling");
+    timerRef.current = window.setTimeout(() => {
+      sfxReforge(success);
+      if (success) {
+        const nextRank = reforgeRank + 1;
+        setReforgeRank(nextRank);
+        setReforgePhase("hit");
+        void updateCharacterProgress(userHash, (current) => ({
+          ...current,
+          reforgeRank: Math.max(current.reforgeRank, nextRank),
+          lastContent: "forge",
+        }));
+        flashToast(`재련 성공 · 등급 ${nextRank} · 방치 배율 +${(nextRank * 0.02).toFixed(2)}`);
+      } else {
+        const shards = reforgeConsolationShards(reforgeRank);
+        setReforgePhase("miss");
+        setSave((prev) => ({ ...prev, shards: prev.shards + shards }));
+        setMaterials((value) => value + shards);
+        void updateCharacterProgress(userHash, (current) => ({
+          ...current,
+          enhancementMaterials: current.enhancementMaterials + shards,
+          lastContent: "forge",
+        }));
+        flashToast(`재련 실패 · 검 조각 +${shards}`);
+      }
+      timerRef.current = window.setTimeout(() => setReforgePhase("idle"), RESULT_MS * 2);
+    }, FORGE_MS * 2);
+  };
+
   const resetSave = () => {
     if (!window.confirm("현재 모드 세이브를 초기화할까요?")) return;
-    const next = { ...defaultForgeSave(), mode: save.mode };
+    // goldMigrated를 유지한다 — 초기화할 때마다 개업 자금 50,000이 다시 지급되면
+    // 리셋 버튼이 무한 골드 수도꼭지가 된다.
+    const next = { ...defaultForgeSave(), mode: save.mode, goldMigrated: save.goldMigrated };
     setSave(next);
     setPhase("idle");
     setView("title");
@@ -264,8 +352,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           ← 타이탄 사냥터
         </button>
         <div className="forge-wallet">
-          <span>GOLD</span>
-          <strong>{formatGold(save.gold)}</strong>
+          <span>공유 GOLD</span>
+          <strong>{formatGold(coins)}</strong>
         </div>
       </header>
 
@@ -386,6 +474,57 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 >
                   {maxed ? "최고 단계 달성" : phase === "forging" ? "두드리는 중…" : "강화하기"}
                 </button>
+
+                {maxed && (
+                  <section className={`reforge-panel reforge-${reforgePhase}`}>
+                    <div className="reforge-heading">
+                      <div className="reforge-title">
+                        <img src={assetUrl("ui/idle/anvil.svg")} alt="" aria-hidden="true" />
+                        <span>
+                          <small>ENDLESS REFORGE</small>
+                          <strong>무한 재련</strong>
+                        </span>
+                      </div>
+                      <span className="reforge-rank">등급 {reforgeRank}</span>
+                    </div>
+                    <p className="reforge-desc">
+                      검 등급은 내려가지 않습니다. 성공하면 방치 배율이 영구히 오릅니다.
+                    </p>
+                    <div className="reforge-stats">
+                      <div>
+                        <span>비용</span>
+                        <strong>{formatGold(reforgeCost(reforgeRank))}G</strong>
+                      </div>
+                      <div>
+                        <span>성공률</span>
+                        <strong>{Math.round(reforgeChance(reforgeRank) * 1000) / 10}%</strong>
+                      </div>
+                      <div>
+                        <span>현재 배율</span>
+                        <strong>+{(reforgeRank * 0.02).toFixed(2)}</strong>
+                      </div>
+                    </div>
+                    <div className="reforge-anvil" aria-hidden="true">
+                      <span className="reforge-spark" />
+                      <span className="reforge-spark" />
+                      <span className="reforge-spark" />
+                    </div>
+                    <button
+                      type="button"
+                      className="forge-button reforge-button"
+                      disabled={coins < reforgeCost(reforgeRank) || reforgePhase !== "idle"}
+                      onClick={reforge}
+                    >
+                      {reforgePhase === "rolling"
+                        ? "재련하는 중…"
+                        : reforgePhase === "hit"
+                          ? "재련 성공!"
+                          : reforgePhase === "miss"
+                            ? `실패 · 조각 +${reforgeConsolationShards(reforgeRank)}`
+                            : "재련하기"}
+                    </button>
+                  </section>
+                )}
                 <button
                   type="button"
                   className="forge-sell"
@@ -420,7 +559,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   <strong>강화 방지권</strong>
                   <p>실패 시 단계에 따라 1~5장 소모해 검을 살립니다.</p>
                 </div>
-                <button type="button" disabled={save.gold < ticketPrice} onClick={buyTicket}>
+                <button type="button" disabled={coins < ticketPrice} onClick={buyTicket}>
                   {formatGold(ticketPrice)}G
                 </button>
               </article>

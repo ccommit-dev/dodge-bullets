@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="귀환 정산">
+  <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7f3d0"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#5eead4" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#5eead4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#halo)"/>
+  <!-- 모래시계 프레임 -->
+  <rect x="17" y="9" width="30" height="4" rx="2" fill="url(#glass)"/>
+  <rect x="17" y="51" width="30" height="4" rx="2" fill="url(#glass)"/>
+  <path d="M21 13h22c0 8-8 12-8 19s8 11 8 19H21c0-8 8-12 8-19s-8-11-8-19z"
+        fill="#0f172a" stroke="url(#glass)" stroke-width="2.4" stroke-linejoin="round"/>
+  <!-- 위쪽 남은 모래 -->
+  <path d="M25 17h14c-.4 5.2-5.2 8.4-7 10.6C30.2 25.4 25.4 22.2 25 17z" fill="url(#sand)" opacity="0.9"/>
+  <!-- 아래 쌓인 모래 -->
+  <path d="M24.4 47h15.2c-1.2-5.6-5.4-8.4-7.6-11-2.2 2.6-6.4 5.4-7.6 11z" fill="url(#sand)"/>
+  <!-- 떨어지는 알갱이 -->
+  <rect x="31.2" y="30" width="1.6" height="7" rx="0.8" fill="#fcd34d"/>
+  <!-- 정산된 동전 -->
+  <ellipse cx="20" cy="55" rx="7" ry="5" fill="#f59e0b" stroke="#fde68a" stroke-width="2"/>
+  <ellipse cx="44" cy="56" rx="6" ry="4.4" fill="#d97706" stroke="#fcd34d" stroke-width="1.8"/>
+  <path d="M17 54c1.8-1.6 5-2 7.4-.6" fill="none" stroke="#fff7c2" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

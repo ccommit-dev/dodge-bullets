@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
+import "./idle.css";
+import { assetUrl } from "./asset";
 import { BeatGame } from "./BeatGame";
 import { ForgeGame } from "./ForgeGame";
 import { TitansGame } from "./TitansGame";
@@ -8,10 +10,15 @@ import { AttendanceModal } from "./AttendanceModal";
 import { EventCenter } from "./EventCenter";
 import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { dodgeClearReward } from "./progression/balance";
+import { HUNTING_AREAS } from "./titans/model";
+import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
+import { AreaUnlockBanner } from "./AreaUnlockBanner";
+import { IdleQaPanel } from "./dev/IdleQaPanel";
 import {
   grantCharacterReward,
   loadCharacterProgress,
   migrateLegacyProgress,
+  setWalletBalance,
   updateCharacterProgress,
 } from "./progression/storage";
 import { drawFrame } from "./game/draw";
@@ -32,7 +39,7 @@ import {
   upgradeCost,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { STAGES, getStage, isLastStage } from "./game/stages";
+import { STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf } from "./game/stages";
 import {
   computeClearReward,
   loadCoins,
@@ -136,6 +143,7 @@ function App() {
   const [profileRefresh, setProfileRefresh] = useState(0);
   const [progress, setProgress] = useState<CharacterProgress>(() => emptyCharacterProgress());
   const [shoulderDrop, setShoulderDrop] = useState("");
+  const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(true);
   const [eventOpen, setEventOpen] = useState(false);
   const appModeRef = useRef<AppMode>("titans");
@@ -241,8 +249,12 @@ function App() {
       ]);
       if (cancelled) return;
       setHighScore(best);
-      setCoins(savedCoins);
-      coinsRef.current = savedCoins;
+      // 지갑 권위는 sharedCoins다. 레거시 코인 키는 마이그레이션 하한으로만 쓰이므로
+      // (progression/storage.ts 참조) 부팅 시 진행도 쪽 잔고로 맞추고 레거시 키를 따라오게 한다.
+      const wallet = Math.max(savedCoins, character.sharedCoins);
+      setCoins(wallet);
+      coinsRef.current = wallet;
+      if (wallet !== savedCoins) void saveCoins(key.hash, wallet);
       setShopLevels(levels);
       shopLevelsRef.current = levels;
       setProgress(character);
@@ -262,6 +274,15 @@ function App() {
       unsub();
     };
   }, [applyInsets]);
+
+  // 지갑 단일화 — 다른 콘텐츠(방치 정산·대장간 이관)가 sharedCoins를 올리면
+  // 원정 코인 UI와 레거시 코인 키가 따라온다. 소비 경로는 둘을 함께 내리므로 여기서 no-op이 된다.
+  useEffect(() => {
+    if (!bootReady || progress.sharedCoins === coinsRef.current) return;
+    coinsRef.current = progress.sharedCoins;
+    setCoins(progress.sharedCoins);
+    void saveCoins(userHashRef.current, progress.sharedCoins);
+  }, [bootReady, progress.sharedCoins]);
 
   useEffect(() => {
     const sound = soundRef.current;
@@ -463,7 +484,7 @@ function App() {
             coinsRef.current = nextCoins;
             setCoins(nextCoins);
             const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
-            const nextProgress = await grantCharacterReward(
+            let nextProgress = await grantCharacterReward(
               userHashRef.current,
               `dodge:${dodgeRunIdRef.current}:stage:${world.stageIndex}`,
               {
@@ -474,6 +495,31 @@ function App() {
                 lastContent: "dodge",
               },
             );
+
+            // 원정 클리어 = 사냥터 지역 개척. Stage 1~4 → 지역 2~5.
+            const openedArea = Math.min(HUNTING_AREAS.length, world.stageIndex + 2);
+            if (nextProgress.pioneeredArea < openedArea) {
+              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
+                ...current,
+                pioneeredArea: Math.max(current.pioneeredArea, openedArea),
+              }));
+              sfxAreaUnlock();
+              setPioneeredAreaIndex(openedArea);
+            }
+
+            // 끝없는 성벽 — 층 기록은 방치 배율(M)로 환산된다. 100층당 ×+0.05.
+            const floor = towerFloorOf(world.stageIndex);
+            if (floor > 0) {
+              if (floor > nextProgress.towerBestFloor) {
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
+                  ...current,
+                  towerBestFloor: Math.max(current.towerBestFloor, floor),
+                }));
+              }
+              if (floor % 10 === 0) sfxTowerMilestone();
+              else sfxTowerFloor(floor);
+            }
+
             const shoulder = EXPEDITION_SHOULDERS[Math.min(3, world.stageIndex)];
             const first = !nextProgress.ownedShoulders.includes(shoulder);
             const dropped = first || Math.random() < (world.player.hp === world.player.maxHp ? .35 : .18);
@@ -675,11 +721,13 @@ function App() {
     coinsRef.current = nextCoins;
     soundRef.current.playBuy();
     if (worldRef.current) applyStats(worldRef.current, statsWithShoulder(nextLevels, progress.equippedShoulder));
-    await Promise.all([
-      saveCoins(userHashRef.current, nextCoins),
+    // 잔고는 setWalletBalance로만 확정한다. setProgress는 React 상태만 바꿔
+    // 저장소에 남지 않으므로, 그대로 두면 리로드 시 소비가 취소된다.
+    const [nextProgress] = await Promise.all([
+      setWalletBalance(userHashRef.current, nextCoins),
       saveShopLevels(userHashRef.current, nextLevels),
     ]);
-    setProgress((current) => ({ ...current, sharedCoins: nextCoins, updatedAt: Date.now() }));
+    setProgress(nextProgress);
   };
 
   const confirmExit = async () => {
@@ -695,8 +743,10 @@ function App() {
     setSettingsOpen(false);
   };
 
+  const qaMode = import.meta.env.DEV && new URLSearchParams(location.search).has("qa");
   const isNewRecord = lastScore > 0 && lastScore >= highScore;
   const stage = getStage(stageIndex);
+  const towerFloor = towerFloorOf(stageIndex);
   const remainSec = Math.ceil(stageRemainMs / 1000);
   const expeditionElapsed = Math.max(0, stage.durationMs - stageRemainMs);
   const expeditionRatio = Math.min(1, expeditionElapsed / stage.durationMs);
@@ -884,9 +934,51 @@ function App() {
                 <p className="controls-hint">
                   식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"} · 스테이지 {STAGES.length}개
                 </p>
+
+                <div className="pioneer-board">
+                  <p className="pioneer-heading">
+                    <b>개척 진척</b>
+                    <span>{progress.pioneeredArea} / {HUNTING_AREAS.length} 지역</span>
+                  </p>
+                  {STAGES.map((stage, index) => {
+                    const area = HUNTING_AREAS[index + 1];
+                    const opened = progress.pioneeredArea >= index + 2;
+                    const reachable = progress.dodgeBestStage >= index || index === 0;
+                    return (
+                      <button
+                        key={stage.id}
+                        type="button"
+                        className={`pioneer-row ${opened ? "opened" : ""} ${reachable ? "" : "far"}`}
+                        onClick={() => void handleStart(index)}
+                      >
+                        <span className="pioneer-stage">S{index + 1}</span>
+                        <span className="pioneer-name">{stage.name}</span>
+                        <span className="pioneer-area" style={opened ? { color: area.accent } : undefined}>
+                          {opened ? "개척 완료" : `→ ${area.name}`}
+                        </span>
+                        <span className="pioneer-mult">×{area.rewardMultiplier}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <button type="button" className="cta" onClick={() => void handleStart(0)}>
                   스테이지 1 시작
                 </button>
+                {progress.dodgeBestStage >= STAGES.length && (
+                  <button
+                    type="button"
+                    className="cta cta-tower"
+                    onClick={() => void handleStart(TOWER_START_INDEX)}
+                  >
+                    <img src={assetUrl("ui/idle/tower.svg")} alt="" aria-hidden="true" />
+                    <b>끝없는 성벽 등반</b>
+                    <small>
+                      최고 {progress.towerBestFloor}층 · 방치 배율 +
+                      {(Math.min(10, Math.floor(progress.towerBestFloor / 100)) * 0.05).toFixed(2)}
+                    </small>
+                  </button>
+                )}
                 <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
                   타이탄 사냥터
                 </button>
@@ -955,8 +1047,14 @@ function App() {
             }}
           >
             <div className="hud-left">
+              {towerFloor > 0 && (
+                <span className="hud-tower">
+                  성벽 {towerFloor}층
+                  {towerFloor > progress.towerBestFloor && <em> NEW</em>}
+                </span>
+              )}
               <span className="hud-score">
-                Stage {stage.id} · {remainSec}s
+                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {remainSec}s
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
@@ -1084,6 +1182,16 @@ function App() {
       {bootReady && appMode === "titans" && (
         <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
       )}
+
+      {pioneeredAreaIndex !== null && (
+        <AreaUnlockBanner
+          area={HUNTING_AREAS[pioneeredAreaIndex - 1]}
+          onDone={() => setPioneeredAreaIndex(null)}
+        />
+      )}
+
+      {/* 개발 전용 UI 점검 패널 — `?qa=1`. DEV 상수 뒤라 프로덕션 번들에서 제거된다. */}
+      {import.meta.env.DEV && qaMode && <IdleQaPanel userHash={userHashRef.current} />}
     </div>
   );
 }
