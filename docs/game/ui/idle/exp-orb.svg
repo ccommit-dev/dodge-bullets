@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="경험치">
+  <defs>
+    <radialGradient id="orbBody" cx="0.36" cy="0.3" r="0.78">
+      <stop offset="0" stop-color="#ecfeff"/>
+      <stop offset="0.35" stop-color="#a7f3d0"/>
+      <stop offset="0.72" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </radialGradient>
+    <radialGradient id="orbGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.55" stop-color="#2dd4bf" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#orbGlow)"/>
+  <circle cx="32" cy="32" r="20" fill="url(#orbBody)"/>
+  <!-- 내부 룬 -->
+  <path d="M32 20l8 7v10l-8 7-8-7V27z" fill="none" stroke="#ecfeff" stroke-width="1.6" stroke-opacity="0.75" stroke-linejoin="round"/>
+  <path d="M32 24v16M26 29l12 6M38 29l-12 6" stroke="#ecfeff" stroke-width="1.1" stroke-opacity="0.5" stroke-linecap="round"/>
+  <!-- 하이라이트 -->
+  <ellipse cx="25" cy="24" rx="6" ry="4" fill="#ffffff" opacity="0.55" transform="rotate(-28 25 24)"/>
+  <!-- 떠오르는 입자 -->
+  <circle cx="48" cy="20" r="2.2" fill="#5eead4" opacity="0.85"/>
+  <circle cx="15" cy="42" r="1.7" fill="#5eead4" opacity="0.7"/>
+  <circle cx="44" cy="47" r="1.4" fill="#a7f3d0" opacity="0.6"/>
+</svg>
