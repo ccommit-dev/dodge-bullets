@@ -1056,7 +1056,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             <p className="gate-desc">
               정찰병이 길을 뚫어야 사냥터가 열립니다.
               <br />
-              <b>화살 원정 Stage {requiredDodgeStage(character.pioneeredArea) ?? 4}</b>을 클리어하세요.
+              <b>화살 원정 Stage {requiredDodgeStage(character.pioneeredArea) ?? 4}</b> 클리어가 필요합니다.
             </p>
             <p className="gate-reward">
               개방 시 획득 배율 ×{huntingArea(stageCeilingFor(character.pioneeredArea) + 1).rewardMultiplier}

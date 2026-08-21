@@ -92,7 +92,9 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
   return (
     <div className={`exit-modal idle-modal ${claiming ? "is-claiming" : ""}`} role="dialog" aria-modal="true">
       <div className="exit-card idle-card">
-        <div className="idle-rays" aria-hidden="true" />
+        <div className="idle-rays-clip" aria-hidden="true">
+          <div className="idle-rays" />
+        </div>
         <p className="brand">IDLE REPORT</p>
         <h2 className="exit-title">귀환 정산</h2>
         <p className="idle-sub">
