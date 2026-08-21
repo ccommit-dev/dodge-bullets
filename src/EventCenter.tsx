@@ -247,7 +247,7 @@ export function EventCenter({
 
         {tab === "rift" && (
           <section className="rift-event">
-            <img src={assetUrl("ui/attendance/event-chest.png")} alt="차원 균열 보상" />
+            <img className="rift-crest" src={assetUrl("ui/idle/rift.svg")} alt="" aria-hidden="true" />
             <h3>심연의 균열</h3>
             <p>
               균열 하나가 <b>방치 {formatDuration(RIFT_SECONDS)}</b>을 즉시 정산합니다.
@@ -281,6 +281,7 @@ export function EventCenter({
 
         {tab === "weekly" && (
           <section className="weekly-event shadow-arena">
+            <img className="shadow-crest" src={assetUrl("ui/idle/shadow-seal.svg")} alt="" aria-hidden="true" />
             <h3>주간 랭크 시험</h3>
             <p className="shadow-note">
               실제 유저와의 대전이 아닙니다. 주차마다 고정되는 <b>그림자 상대</b> 3인과 전투력을 겨룹니다.

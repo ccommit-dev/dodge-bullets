@@ -95,6 +95,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
         <div className="idle-rays-clip" aria-hidden="true">
           <div className="idle-rays" />
         </div>
+        <img className="idle-crest" src={assetUrl("ui/idle/idle-report.svg")} alt="" aria-hidden="true" />
         <p className="brand">IDLE REPORT</p>
         <h2 className="exit-title">귀환 정산</h2>
         <p className="idle-sub">
@@ -115,7 +116,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
             <span>공유 골드</span>
           </article>
           <article style={{ animationDelay: "90ms" }}>
-            <span className="idle-exp-orb" aria-hidden="true" />
+            <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" aria-hidden="true" />
             <b>{exp.toLocaleString()}</b>
             <span>경험치</span>
           </article>
