@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="그림자 대전">
+  <defs>
+    <radialGradient id="sealGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.4" stop-color="#818cf8" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="figure" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#sealGlow)"/>
+  <!-- 봉인 원 -->
+  <circle cx="32" cy="32" r="25" fill="none" stroke="#a5b4fc" stroke-width="1.6" stroke-opacity="0.55"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#a5b4fc" stroke-width="0.9" stroke-opacity="0.32" stroke-dasharray="3 5"/>
+  <!-- 마주 선 두 그림자 -->
+  <g fill="url(#figure)">
+    <circle cx="23" cy="26" r="4.4"/>
+    <path d="M18.4 46c0-5.4 2-9.6 4.6-9.6s4.6 4.2 4.6 9.6z"/>
+    <circle cx="41" cy="26" r="4.4"/>
+    <path d="M36.4 46c0-5.4 2-9.6 4.6-9.6s4.6 4.2 4.6 9.6z"/>
+  </g>
+  <!-- 눈빛 -->
+  <circle cx="21.6" cy="26" r="1.1" fill="#c7d2fe"/>
+  <circle cx="42.4" cy="26" r="1.1" fill="#fda4af"/>
+  <!-- 교차하는 검 -->
+  <path d="M25 40L39 22" stroke="#c7d2fe" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.8"/>
+  <path d="M39 40L25 22" stroke="#fda4af" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.8"/>
+  <!-- 주간 인장 표식 -->
+  <path d="M32 8l2.2 4.4L39 13l-3.4 3.3.8 4.7-4.4-2.3-4.4 2.3.8-4.7L25 13l4.8-.6z" fill="#c4b5fd" opacity="0.9"/>
+</svg>
