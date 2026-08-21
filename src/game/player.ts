@@ -84,9 +84,20 @@ export function drawStickman(
     ctx.translate(p.x, p.y + p.radius);
     ctx.scale(p.facing * EXPEDITION_NATIVE_FACING, 1);
     if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
-    if (p.anim === "jump") { ctx.rotate(-0.08); ctx.scale(.94, 1.08); }
-    if (p.anim === "fall") { ctx.rotate(0.06); ctx.scale(1.04, .96); }
+    if (p.anim === "jump" || p.anim === "fall") {
+      // 고정 포즈(-0.08 / +0.06)는 정점과 착지에서 순간 전환되어 뚝 튄다.
+      // 수직 속도를 그대로 포즈로 환산하면 상승→정점→낙하가 한 곡선으로 이어진다.
+      // 분모 700은 기본 점프력(560)+α — 도약 직후 거의 최대 기울기가 나오는 값.
+      const k = Math.max(-1, Math.min(1, p.vy / 700));
+      ctx.rotate(k * 0.075);
+      ctx.scale(1 + k * 0.05, 1 - k * 0.07);
+    }
     if (p.anim === "dash") ctx.rotate(-0.16);
+    if (p.landingFxMs > 0 && p.onGround) {
+      // 착지 스쿼시 — 링 이펙트(landingFxMs)와 같은 타이밍으로 몸도 눌렸다 펴진다.
+      const s = p.landingFxMs / 180;
+      ctx.scale(1 + 0.07 * s, 1 - 0.09 * s);
+    }
     if (p.anim === "skill") ctx.rotate(Math.sin(p.animTime * 24) * 0.04);
     if (p.anim === "hit") ctx.globalAlpha = 0.62;
     if (p.dashActiveMs > 0) {
