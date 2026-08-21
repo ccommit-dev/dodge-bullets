@@ -37,7 +37,7 @@ import {
   saveHighScore,
 } from "./game/storage";
 import type { SafeInsets } from "./game/toss";
-import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
+import { grantCharacterReward, setWalletBalance, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import type { ShoulderId } from "./progression/model";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
@@ -505,7 +505,8 @@ export function BeatGame({
           setShopMsg("코인이 부족해요");
           return;
         }
-        const bal = await saveCoins(userHash, coinsRef.current - item.cost);
+        // 레거시 코인 키만 낮추면 다음 로드에서 sharedCoins가 살아나 구매가 취소된다.
+        const bal = (await setWalletBalance(userHash, coinsRef.current - item.cost)).sharedCoins;
         coinsRef.current = bal;
         onCoins(bal);
         next.ownedRings.push(rid);
@@ -519,7 +520,8 @@ export function BeatGame({
           setShopMsg("코인이 부족해요");
           return;
         }
-        const bal = await saveCoins(userHash, coinsRef.current - item.cost);
+        // 레거시 코인 키만 낮추면 다음 로드에서 sharedCoins가 살아나 구매가 취소된다.
+        const bal = (await setWalletBalance(userHash, coinsRef.current - item.cost)).sharedCoins;
         coinsRef.current = bal;
         onCoins(bal);
         next.ownedSpikes.push(sid);

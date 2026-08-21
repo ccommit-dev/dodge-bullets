@@ -209,7 +209,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
   const learned = Array.isArray(value.skillInventory?.learned)
     ? value.skillInventory.learned.filter((id): id is TitanSkillId => SKILLS.some((skill) => skill.id === id))
-    : SKILLS.filter((skill, index) => legacySword >= [1, 8, 15, 25, 30][index]).map((skill) => skill.id);
+    : SKILLS.filter((_skill, index) => legacySword >= [1, 8, 15, 25, 30][index]).map((skill) => skill.id);
   const levels = emptySkillLevels();
   for (const skill of SKILLS) levels[skill.id] = n(value.skillInventory?.levels?.[skill.id], learned.includes(skill.id) ? 1 : 0, skill.maxLevel);
   const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = {};

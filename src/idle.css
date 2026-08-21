@@ -1,0 +1,878 @@
+/*
+ * 방치 연계 UI — 귀환 정산 / 지역 게이트 / 개척 연출 / 무한 재련 / 그림자 대전.
+ * App.css가 이미 3,000줄을 넘어 새 시스템은 별도 파일로 분리한다.
+ * 토큰(--ui-*)은 .game-root에서 상속받는다.
+ */
+
+/* ─────────────────────────────  귀환 정산 모달  ───────────────────────────── */
+
+.idle-modal {
+  z-index: 60;
+  animation: idle-fade 220ms ease-out;
+}
+.idle-modal.is-claiming {
+  animation: idle-fade-out 260ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes idle-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes idle-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; transform: scale(1.02); }
+}
+
+.idle-card {
+  position: relative;
+  width: min(100%, 348px);
+  padding: 20px 18px 18px;
+  border: 1px solid rgba(94, 234, 212, 0.28);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(15, 33, 54, 0.97), rgba(9, 17, 30, 0.98));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  /*
+   * 세로는 스크롤 가능해야 한다 — App.css의 `.exit-card { overflow-y:auto }`를
+   * `overflow:hidden`으로 덮으면 작은 화면에서 카드가 길어졌을 때 아래 버튼에
+   * 손이 닿지 않는다. 장식(광선)은 별도 클리핑 래퍼가 가둔다.
+   */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100dvh - max(28px, env(safe-area-inset-top)) - max(28px, env(safe-area-inset-bottom)));
+  animation: idle-pop 340ms cubic-bezier(0.2, 1.1, 0.35, 1);
+}
+
+/* 광선은 카드보다 넓다 — 여기서 가둬 카드 자체의 가로 스크롤을 만들지 않는다. */
+.idle-rays-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@keyframes idle-pop {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 카드 뒤에서 천천히 도는 광선 — 보상 화면의 "쌓였다" 감각 */
+.idle-rays {
+  position: absolute;
+  top: -46%;
+  left: 50%;
+  width: 340px;
+  height: 340px;
+  margin-left: -170px;
+  will-change: transform;
+  background: conic-gradient(
+    from 0deg,
+    rgba(94, 234, 212, 0.16) 0deg 12deg,
+    transparent 12deg 40deg
+  );
+  animation: idle-rays-spin 16s linear infinite;
+  pointer-events: none;
+}
+@keyframes idle-rays-spin {
+  to { transform: rotate(360deg); }
+}
+
+.idle-sub {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+
+.idle-capped {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.34);
+  border-radius: 11px;
+  background: rgba(251, 191, 36, 0.09);
+  color: #fcd34d;
+  font-size: 11.5px;
+}
+.idle-capped span {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #fbbf24;
+  color: #0b1220;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.idle-loot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.idle-loot article {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 13px;
+  background: rgba(8, 18, 33, 0.72);
+  opacity: 0;
+  animation: loot-rise 420ms cubic-bezier(0.2, 1.1, 0.35, 1) forwards;
+}
+@keyframes loot-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.idle-loot article b {
+  color: #e2e8f0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.idle-loot article span {
+  color: #64748b;
+  font-size: 10px;
+}
+.idle-loot .currency-icon,
+.idle-loot img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+/* 정산 카드 상단 문장(紋章) — 모래시계 + 동전 */
+.idle-crest {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto -4px;
+  animation: crest-breathe 3.4s ease-in-out infinite;
+}
+@keyframes crest-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.03); }
+}
+
+.idle-factors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.idle-factors > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+.idle-factors small {
+  color: #64748b;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+.idle-factors i {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+}
+.idle-factors em {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2dd4bf, #5eead4);
+  transition: width 700ms cubic-bezier(0.2, 1, 0.35, 1);
+}
+.idle-factors strong {
+  color: #cbd5f5;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.idle-bottleneck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: rgba(8, 18, 33, 0.7);
+  text-align: left;
+}
+.idle-bottleneck.bottleneck-S { border-left-color: #fb7185; }
+.idle-bottleneck.bottleneck-R { border-left-color: #a78bfa; }
+.idle-bottleneck.bottleneck-M { border-left-color: #fbbf24; }
+.idle-bottleneck.bottleneck-T { border-left-color: #38bdf8; }
+.idle-bottleneck-tag {
+  flex: 0 0 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 800;
+}
+.idle-bottleneck b {
+  display: block;
+  color: #e2e8f0;
+  font-size: 12px;
+}
+.idle-bottleneck small {
+  display: block;
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 10.5px;
+}
+
+.idle-claim {
+  background: linear-gradient(135deg, #5eead4, #34d399);
+}
+
+/* ─────────────────────────────  지역 게이트 모달  ───────────────────────────── */
+
+.gate-card {
+  width: min(100%, 330px);
+  padding: 18px;
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(41, 17, 24, 0.96), rgba(10, 16, 28, 0.98));
+}
+
+.gate-doors {
+  position: relative;
+  height: 92px;
+  margin-bottom: 4px;
+  border-radius: 13px;
+  background: repeating-linear-gradient(90deg, #1e293b 0 8px, #172033 8px 16px);
+  overflow: hidden;
+}
+.gate-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: linear-gradient(180deg, #334155, #1e293b);
+  box-shadow: inset 0 0 0 2px rgba(148, 163, 184, 0.22);
+}
+.gate-door.left { left: 0; animation: gate-shove-l 1.4s ease-in-out infinite; }
+.gate-door.right { right: 0; animation: gate-shove-r 1.4s ease-in-out infinite; }
+@keyframes gate-shove-l {
+  0%, 100% { transform: translateX(0); }
+  46% { transform: translateX(-5px); }
+  54% { transform: translateX(1px); }
+}
+@keyframes gate-shove-r {
+  0%, 100% { transform: translateX(0); }
+  46% { transform: translateX(5px); }
+  54% { transform: translateX(-1px); }
+}
+/* 잠긴 성문 문장 — 문짝 사이에 얹혀 봉인처럼 보인다 */
+.gate-crest {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 58px;
+  height: 58px;
+  transform: translate(-50%, -54%);
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+}
+.gate-seal {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(9, 12, 20, 0.72);
+  color: #fda4af;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.gate-desc {
+  margin: 0;
+  color: #cbd5f5;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.gate-desc b { color: #fda4af; }
+.gate-reward {
+  margin: 0;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ─────────────────────────────  지역 개척 연출  ───────────────────────────── */
+
+.area-unlock {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.area-unlock.phase-out { animation: idle-fade-out 500ms ease-in forwards; }
+
+.area-unlock-bg,
+.area-unlock-scrim {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+.area-unlock-bg {
+  opacity: 0;
+  transform: scale(1.14);
+  transition: opacity 900ms ease-out, transform 2600ms ease-out;
+}
+.area-unlock.phase-reveal .area-unlock-bg,
+.area-unlock.phase-out .area-unlock-bg {
+  opacity: 1;
+  transform: scale(1);
+}
+.area-unlock-scrim { opacity: 0.62; }
+
+/* 성문 두 짝이 갈라지며 배경이 드러난다 */
+.area-gate-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 51%;
+  background:
+    repeating-linear-gradient(90deg, #0f172a 0 10px, #131d33 10px 20px),
+    #0b1220;
+  box-shadow: inset 0 0 0 3px rgba(148, 163, 184, 0.2);
+  transition: transform 1100ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.area-gate-half.left { left: 0; }
+.area-gate-half.right { right: 0; }
+.area-unlock.phase-reveal .area-gate-half.left,
+.area-unlock.phase-out .area-gate-half.left { transform: translateX(-101%); }
+.area-unlock.phase-reveal .area-gate-half.right,
+.area-unlock.phase-out .area-gate-half.right { transform: translateX(101%); }
+
+.area-unlock-copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 24px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 620ms ease-out 320ms, transform 620ms ease-out 320ms;
+}
+.area-unlock.phase-reveal .area-unlock-copy { opacity: 1; transform: none; }
+/* 개척 깃발 — 카피가 뜨기 직전에 꽂히는 느낌으로 살짝 늦게 들어온다 */
+.area-unlock-crest {
+  width: 76px;
+  height: 76px;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
+  transition: opacity 520ms ease-out 420ms, transform 520ms cubic-bezier(0.2, 1.2, 0.35, 1) 420ms;
+}
+.area-unlock.phase-reveal .area-unlock-crest,
+.area-unlock.phase-out .area-unlock-crest {
+  opacity: 1;
+  transform: none;
+}
+.area-unlock-copy h2 {
+  margin: 0;
+  font-size: clamp(28px, 9vw, 40px);
+  letter-spacing: 0.02em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+}
+.area-unlock-range {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+.area-unlock-mult {
+  margin: 0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.16);
+  color: #fcd34d;
+  font-size: 14px;
+  font-weight: 800;
+}
+.area-unlock-boss {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  color: #cbd5f5;
+  font-size: 11.5px;
+}
+.area-unlock-boss img { width: 22px; height: 22px; object-fit: contain; }
+
+/* ─────────────────────────────  개척 보드 (화살 원정 메뉴)  ───────────────────────────── */
+
+.pioneer-board {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px;
+  border: 1px solid var(--ui-line);
+  border-radius: 14px;
+  background: rgba(9, 18, 33, 0.66);
+}
+.pioneer-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 3px;
+}
+.pioneer-heading b { color: #e2e8f0; font-size: 12px; }
+.pioneer-heading span { color: #5eead4; font-size: 11px; font-weight: 700; }
+
+.pioneer-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto 36px;
+  align-items: center;
+  gap: 7px;
+  /* 프로젝트 규약: 좁은 화면 탭 타깃 최소 44px (App.css) */
+  min-height: 44px;
+  padding: 8px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5f5;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.pioneer-row.opened { border-color: rgba(94, 234, 212, 0.34); }
+.pioneer-row.far { opacity: 0.62; }
+.pioneer-stage {
+  display: grid;
+  place-items: center;
+  height: 21px;
+  border-radius: 6px;
+  background: rgba(94, 234, 212, 0.14);
+  color: #5eead4;
+  font-size: 10px;
+  font-weight: 800;
+}
+.pioneer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pioneer-area { color: #94a3b8; font-size: 10px; }
+.pioneer-mult { color: #fbbf24; font-size: 10.5px; font-weight: 700; text-align: right; }
+
+.cta-tower {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 10px;
+  padding-block: 11px;
+  text-align: left;
+  background: linear-gradient(135deg, #a78bfa, #818cf8);
+  color: #0b1220;
+}
+.cta-tower img {
+  grid-row: 1 / span 2;
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 2px 5px rgba(15, 12, 40, 0.45));
+}
+.cta-tower b { font-size: 15px; font-weight: 700; }
+.cta-tower small { font-size: 10.5px; font-weight: 600; opacity: 0.78; }
+
+.hud-tower {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.2);
+  color: #ddd6fe;
+  font-size: 11px;
+  font-weight: 700;
+}
+.hud-tower em {
+  color: #fcd34d;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  animation: tower-new-blink 900ms ease-in-out infinite;
+}
+@keyframes tower-new-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ─────────────────────────────  무한 재련  ───────────────────────────── */
+
+.reforge-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 4px;
+  padding: 13px;
+  border: 1px solid rgba(251, 146, 60, 0.32);
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(41, 22, 11, 0.82), rgba(12, 18, 30, 0.9));
+}
+.reforge-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.reforge-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.reforge-title img {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
+.reforge-rolling .reforge-title img {
+  animation: anvil-strike 480ms ease-in-out infinite;
+}
+@keyframes anvil-strike {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  40% { transform: translateY(-2px) rotate(-3deg); }
+  60% { transform: translateY(1px) rotate(2deg); }
+}
+.reforge-heading small {
+  display: block;
+  color: #fdba74;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+}
+.reforge-heading strong { color: #fed7aa; font-size: 15px; }
+.reforge-rank {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(251, 146, 60, 0.18);
+  color: #fdba74;
+  font-size: 11px;
+  font-weight: 800;
+}
+.reforge-desc { margin: 0; color: #94a3b8; font-size: 10.5px; line-height: 1.5; }
+.reforge-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.reforge-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 6px;
+  border-radius: 9px;
+  background: rgba(8, 18, 33, 0.6);
+}
+.reforge-stats span { color: #64748b; font-size: 9.5px; }
+.reforge-stats strong { color: #fed7aa; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.reforge-anvil {
+  position: relative;
+  height: 26px;
+}
+.reforge-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fdba74;
+  opacity: 0;
+}
+.reforge-rolling .reforge-spark {
+  animation: reforge-spark 480ms ease-out infinite;
+}
+.reforge-rolling .reforge-spark:nth-child(2) { animation-delay: 120ms; }
+.reforge-rolling .reforge-spark:nth-child(3) { animation-delay: 240ms; }
+@keyframes reforge-spark {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 34px)), calc(-50% - 18px)) scale(0.3); }
+}
+.reforge-spark:nth-child(2) { --dx: -30px; }
+.reforge-spark:nth-child(3) { --dx: 8px; }
+
+.reforge-hit { animation: reforge-flash 460ms ease-out; }
+@keyframes reforge-flash {
+  0% { box-shadow: 0 0 0 0 rgba(253, 186, 116, 0.6); }
+  100% { box-shadow: 0 0 0 22px rgba(253, 186, 116, 0); }
+}
+.reforge-miss { animation: reforge-shake 320ms ease-in-out; }
+@keyframes reforge-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.reforge-button {
+  background: linear-gradient(135deg, #fb923c, #f97316);
+  color: #1c1207;
+}
+
+/* ─────────────────────────────  비트 → 사냥터 슬롯 링크  ───────────────────────────── */
+
+.slot-link {
+  display: block;
+  margin-top: 3px;
+  color: #a78bfa;
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+.slot-link em { font-style: normal; font-weight: 800; }
+.slot-link.locked { color: #64748b; }
+.skill-learn-card.slot-locked { opacity: 0.74; }
+.skill-learn-card.slot-locked .skill-icon { filter: grayscale(0.7); }
+
+/* ─────────────────────────────  이벤트 센터  ───────────────────────────── */
+
+.axis-chip {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  margin-right: 6px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.axis-chip.axis-S { background: rgba(251, 113, 133, 0.2); color: #fda4af; }
+.axis-chip.axis-R { background: rgba(167, 139, 250, 0.2); color: #c4b5fd; }
+.axis-chip.axis-M { background: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+.axis-chip.axis-T { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+
+.rift-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+}
+.rift-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+  background: rgba(8, 18, 33, 0.66);
+}
+.rift-preview span { color: #64748b; font-size: 9.5px; }
+.rift-preview strong { color: #5eead4; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+.rift-crest {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto;
+  animation: rift-pulse 3s ease-in-out infinite;
+}
+@keyframes rift-pulse {
+  0%, 100% { transform: scale(1); filter: none; }
+  50% { transform: scale(1.05); filter: brightness(1.15); }
+}
+
+.shadow-crest {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+}
+
+.shadow-note {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+.shadow-note b { color: #c4b5fd; }
+.shadow-power { margin: 0; color: #cbd5f5; font-size: 12px; }
+.shadow-power strong { color: #5eead4; }
+
+.shadow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+.shadow-list article {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: rgba(10, 18, 33, 0.7);
+  text-align: left;
+}
+.shadow-list article.cleared { border-color: rgba(94, 234, 212, 0.35); }
+.shadow-figure {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 30%, rgba(148, 163, 184, 0.18), transparent 70%);
+  overflow: hidden;
+}
+.shadow-body {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 15px;
+  height: 26px;
+  margin-left: -7.5px;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  box-shadow: 0 0 12px rgba(30, 41, 59, 0.9);
+  animation: shadow-sway 2.6s ease-in-out infinite;
+}
+.shadow-body::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #0f172a;
+}
+@keyframes shadow-sway {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-2px) scaleY(1.03); }
+}
+.shadow-info small { display: block; color: #64748b; font-size: 9.5px; }
+.shadow-info b { display: block; color: #e2e8f0; font-size: 12.5px; }
+.shadow-info span { display: block; color: #94a3b8; font-size: 10px; }
+.shadow-info em {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+.shadow-info em.win { color: #5eead4; }
+.shadow-info em.lose { color: #fb7185; }
+.shadow-list button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 9px;
+  background: #5eead4;
+  color: #0b1220;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shadow-list button:disabled { background: rgba(148, 163, 184, 0.2); color: #64748b; cursor: default; }
+
+.attendance-streak {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 11px;
+}
+.attendance-streak em { color: #5eead4; font-style: normal; }
+
+/* ─────────────────────────────  캐릭터 시트 · 방치 공식 패널  ───────────────────────────── */
+
+.idle-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--ui-line);
+  border-radius: 16px;
+  background: rgba(11, 21, 38, 0.72);
+}
+.idle-panel-formula {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.idle-panel-formula b { color: #5eead4; }
+.idle-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.idle-var {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 11px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: rgba(8, 18, 33, 0.66);
+  text-align: left;
+  cursor: pointer;
+}
+.idle-var.var-S { border-left-color: #fb7185; }
+.idle-var.var-R { border-left-color: #a78bfa; }
+.idle-var.var-M { border-left-color: #fbbf24; }
+.idle-var.var-T { border-left-color: #38bdf8; }
+.idle-var-key {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  color: rgba(148, 163, 184, 0.4);
+  font-size: 15px;
+  font-weight: 800;
+}
+.idle-var b { color: #e2e8f0; font-size: 15px; font-variant-numeric: tabular-nums; }
+.idle-var small { color: #64748b; font-size: 9.5px; }
+.idle-var em { color: #94a3b8; font-size: 10px; font-style: normal; }
+
+@media (max-width: 380px) {
+  .idle-loot article b { font-size: 13px; }
+  .idle-factors strong { font-size: 11px; }
+  .idle-panel-grid { grid-template-columns: 1fr; }
+  .pioneer-row { grid-template-columns: 26px minmax(0, 1fr) auto; }
+  .pioneer-mult { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-rays,
+  .gate-door.left,
+  .gate-door.right,
+  .shadow-body,
+  .hud-tower em,
+  .reforge-spark,
+  .idle-crest,
+  .rift-crest,
+  .reforge-title img {
+    animation: none;
+  }
+  .area-unlock-crest {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+  .idle-card,
+  .idle-loot article,
+  .area-unlock-copy,
+  .area-gate-half,
+  .area-unlock-bg {
+    animation: none;
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
