@@ -13,6 +13,7 @@ import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS } from "./titans/model";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
+import { IdleQaPanel } from "./dev/IdleQaPanel";
 import {
   grantCharacterReward,
   loadCharacterProgress,
@@ -742,6 +743,7 @@ function App() {
     setSettingsOpen(false);
   };
 
+  const qaMode = import.meta.env.DEV && new URLSearchParams(location.search).has("qa");
   const isNewRecord = lastScore > 0 && lastScore >= highScore;
   const stage = getStage(stageIndex);
   const towerFloor = towerFloorOf(stageIndex);
@@ -1187,6 +1189,9 @@ function App() {
           onDone={() => setPioneeredAreaIndex(null)}
         />
       )}
+
+      {/* 개발 전용 UI 점검 패널 — `?qa=1`. DEV 상수 뒤라 프로덕션 번들에서 제거된다. */}
+      {import.meta.env.DEV && qaMode && <IdleQaPanel userHash={userHashRef.current} />}
     </div>
   );
 }
