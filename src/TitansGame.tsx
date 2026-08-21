@@ -157,6 +157,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>({ mia: 0, leon: .18, sera: .36, garen: .54, ari: .72, nox: .9 });
   const autoAttackAcc = useRef(0);
   const attackUntil = useRef(0);
+  const animResetRef = useRef(false);
   const animModeRef = useRef<"idle" | "attack">("idle");
   const battlePhaseRef = useRef<BattlePhase>("combat");
   const battleTimers = useRef<number[]>([]);
@@ -295,6 +296,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       const dt = now - last;
       last = now;
       acc += dt;
+      // 공격 시작 시 누적치를 비운다 — idle에서 남은 최대 150ms가 그대로 이월되면
+      // 와인드업(0번) 프레임이 간헐적으로 즉시 넘어가 펀치가 뚝 끊겨 보인다.
+      if (animResetRef.current) {
+        animResetRef.current = false;
+        acc = 0;
+      }
       const attacking = animModeRef.current === "attack" && now < attackUntil.current;
       if (!attacking && animModeRef.current === "attack") {
         animModeRef.current = "idle";
@@ -342,6 +349,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const playAttackAnim = () => {
     attackUntil.current = performance.now() + ATTACK_CLIP_MS;
     animModeRef.current = "attack";
+    animResetRef.current = true;
     setAnimMode("attack");
     setFrameIdx(0);
   };
@@ -357,7 +365,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       pushFloat(dealt, crit, opts?.clientX, opts?.clientY);
       setMonsterHit((n) => n + 1);
       setImpact(crit ? "critical" : "normal");
-      window.setTimeout(() => setImpact(null), crit ? 150 : 90);
+      // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
+      window.setTimeout(() => setImpact(null), crit ? 170 : 130);
       pushFx("hit", 72 + Math.random() * 10, 38 + Math.random() * 14);
       if (crit) pushFx("crit", 70, 40, 38);
 
@@ -524,6 +533,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           autoAttackAcc.current %= autoInterval;
           attackUntil.current = performance.now() + ATTACK_CLIP_MS;
           animModeRef.current = "attack";
+          animResetRef.current = true;
           setAnimMode("attack");
           setFrameIdx(0);
           pushFx("slash", 31, 45);
@@ -584,8 +594,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     let recoverTimer = 0;
     const trigger = () => {
       setMonsterAction("prepare");
-      prepareTimer = window.setTimeout(() => setMonsterAction("attack"), boss ? 360 : 220);
-      recoverTimer = window.setTimeout(() => setMonsterAction("idle"), boss ? 880 : 620);
+      // 타이밍 체인: 준비(0.32s 클립) → 타격(0.48s 클립) → 복귀.
+      // 기존 220/620ms는 준비를 클립 69%에서, 타격을 완료 80ms 전에 잘라
+      // 웅크리다 말고 돌진하다 마는 어색한 모션이 됐다. 클립 길이에 맞춘다.
+      prepareTimer = window.setTimeout(() => setMonsterAction("attack"), boss ? 360 : 320);
+      recoverTimer = window.setTimeout(() => setMonsterAction("idle"), boss ? 900 : 860);
     };
     const interval = window.setInterval(trigger, boss ? 2100 : 2900);
     const first = window.setTimeout(trigger, boss ? 900 : 1400);
@@ -822,7 +835,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           ))}
         </div>
 
-        <div className={`titans-monster kind-${kind} action-${monsterAction} ${monsterHit % 2 ? "hit" : ""} ${impact === "critical" ? "critical" : ""}`}>
+        {/*
+          피격 반동은 hit-a/hit-b를 번갈아 붙여 매 타격마다 CSS 애니메이션을 재시작한다.
+          단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
+          반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
+        */}
+        <div className={`titans-monster kind-${kind} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
           <MonsterArt kind={kind} area={area} boss={boss} golden={chesterson} />
           <strong>{label}</strong>
           {monsterAction === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}

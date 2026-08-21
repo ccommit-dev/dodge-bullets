@@ -2268,7 +2268,7 @@
 .titans-monster.kind-ogre.action-attack .titan-monster-art,.titans-monster.kind-boss.action-attack .titan-monster-art { animation-name:monster-smash; }
 .titans-monster.kind-dragon.action-attack .titan-monster-art { animation-name:monster-breath; }
 .monster-telegraph { position:absolute; left:50%; bottom:3px; width:72%; aspect-ratio:2.2; border:2px solid rgba(251,113,133,.8); border-radius:50%; transform:translateX(-50%); animation:monster-warning .45s ease-in-out infinite alternate; }
-.monster-attack-fx { position:absolute; right:62%; top:35%; width:64%; height:8px; border-radius:99px; background:linear-gradient(90deg,transparent,#fb7185,#fde68a); filter:drop-shadow(0 0 8px #ef4444); animation:monster-projectile .42s ease-out forwards; }
+.monster-attack-fx { position:absolute; right:62%; top:35%; width:64%; height:8px; border-radius:99px; background:linear-gradient(90deg,transparent,#fb7185,#fde68a); filter:drop-shadow(0 0 8px #ef4444); animation:monster-projectile .5s ease-out forwards; }
 .kind-dragon .monster-attack-fx,.kind-boss .monster-attack-fx { height:18px; background:linear-gradient(90deg,transparent,#f97316,#fde047); }
 @keyframes monster-breathe { 50% { transform:translateY(-3px) scale(1.015,.985); } }
 @keyframes monster-prepare { to { transform:translateX(5px) scale(.94,1.06); filter:brightness(1.18); } }
@@ -2278,19 +2278,25 @@
 @keyframes monster-smash { 35% { transform:translateY(-12px) rotate(6deg); } 65% { transform:translate(-12px,4px) rotate(-7deg) scale(1.08,.94); } }
 @keyframes monster-breath { 45% { transform:translateX(-12px) rotate(-4deg); filter:brightness(1.25) saturate(1.4); } }
 @keyframes monster-warning { to { opacity:.25; transform:translateX(-50%) scale(1.15); } }
-@keyframes monster-projectile { from { opacity:1; transform:translateX(0) scaleX(.4); } to { opacity:0; transform:translateX(-90px) scaleX(1.4); } }
+/* 이동량은 자기 폭 기준(%) — 고정 -90px는 몬스터와 영웅 사이 중간에서 소멸해 헛스윙처럼 보였다. */
+@keyframes monster-projectile { from { opacity:1; transform:translateX(0) scaleX(.4); } 80% { opacity:.95; } to { opacity:0; transform:translateX(-340%) scaleX(1.3); } }
 
-.titans-monster.hit {
-  animation: monster-hit-recoil .12s ease-out;
-  filter: brightness(1.4);
-}
-.titans-monster.critical { animation: monster-crit-recoil .16s ease-out; filter: brightness(1.65) saturate(1.5); }
+/*
+ * 피격 반동 — 같은 animation-name은 재적용해도 재시작하지 않아,
+ * 내용이 동일한 a/b 두 벌을 번갈아 써서 매 타격마다 반동이 재생되게 한다.
+ */
+.titans-monster.hit-a { animation: monster-hit-recoil-a .12s ease-out; filter: brightness(1.4); }
+.titans-monster.hit-b { animation: monster-hit-recoil-b .12s ease-out; filter: brightness(1.4); }
+.titans-monster.critical.hit-a { animation: monster-crit-recoil-a .16s ease-out; filter: brightness(1.65) saturate(1.5); }
+.titans-monster.critical.hit-b { animation: monster-crit-recoil-b .16s ease-out; filter: brightness(1.65) saturate(1.5); }
 .titans-field.phase-monster-death .titans-monster { animation: monster-defeat .36s ease-in forwards; pointer-events:none; }
 .titans-field.phase-boss-ready .titans-monster { opacity:0; pointer-events:none; }
 .titans-field.phase-stage-clear .titans-monster,
 .titans-field.phase-stage-exit .titans-monster { animation: monster-defeat .32s ease-in forwards; }
-@keyframes monster-hit-recoil { 45% { transform:translateX(4px) scale(.985); } }
-@keyframes monster-crit-recoil { 40% { transform:translateX(7px) scale(.97); } }
+@keyframes monster-hit-recoil-a { 45% { transform:translateX(4px) scale(.985); } }
+@keyframes monster-hit-recoil-b { 45% { transform:translateX(4px) scale(.985); } }
+@keyframes monster-crit-recoil-a { 40% { transform:translateX(7px) scale(.97); } }
+@keyframes monster-crit-recoil-b { 40% { transform:translateX(7px) scale(.97); } }
 @keyframes monster-defeat { to { opacity:0; transform:translateY(10px) scale(.72); filter:brightness(2) blur(3px); } }
 
 .titans-monster strong {
@@ -2311,9 +2317,13 @@
 
 .titans-allies { display: flex; align-items: flex-end; gap: 0; }
 .titan-ally-art { position: relative; width: var(--ally-size); aspect-ratio: 1; filter: drop-shadow(0 7px 6px rgba(0, 0, 0, 0.55)); transform-origin: 50% 92%; }
+/* 대기 호흡 — 영웅(스프라이트)·몬스터(breathe)만 움직이고 동료는 박제였다. */
+.ally-idle { width:100%; height:100%; transform-origin:50% 92%; animation: ally-idle-bob 1.7s ease-in-out infinite; }
+@keyframes ally-idle-bob { 50% { transform: translateY(-2.5px) scale(1.008,.992); } }
+.ally-swing { position:relative; width:100%; height:100%; transform-origin:50% 86%; }
 .titan-ally-art .ally-body { width: 100%; height: 100%; background-repeat: no-repeat; }
-.titan-ally-art.is-attacking .ally-body { animation:ally-body-strike .36s cubic-bezier(.2,.85,.25,1); transform-origin:50% 86%; }
-.titan-ally-art.is-attacking.ally-leon .ally-body,.titan-ally-art.is-attacking.ally-sera .ally-body { animation-name:ally-body-shot; }
+.ally-swing.is-attacking { animation:ally-body-strike .36s cubic-bezier(.2,.85,.25,1); }
+.ally-leon .ally-swing.is-attacking,.ally-sera .ally-swing.is-attacking { animation-name:ally-body-shot; }
 @keyframes ally-body-strike { 0% { transform:translateX(0) rotate(0); } 48% { transform:translateX(7px) rotate(2deg) scale(1.04); } 100% { transform:translateX(0) rotate(0); } }
 @keyframes ally-body-shot { 0%,100% { transform:translateX(0); } 45% { transform:translateX(4px) scale(.98,1.03); filter:brightness(1.18); } }
 .ally-weapon-mount { position:absolute; z-index:3; left:66%; top:52%; width:37%; height:52%; transform:translate(-50%,-88%) rotate(28deg); transform-origin:50% 88%; pointer-events:none; }
@@ -2324,8 +2334,8 @@
 .ally-garen .ally-weapon-mount { left:69%; top:57%; width:42%; transform:translate(-50%,-88%) rotate(34deg); }
 .ally-ari .ally-weapon-mount { left:67%; top:57%; width:34%; transform:translate(-50%,-88%) rotate(24deg); }.ally-ari .ally-weapon-part { stroke:#fb923c; filter:drop-shadow(0 0 5px #ef4444); }
 .ally-nox .ally-weapon-mount { left:54%; top:58%; width:52%; transform:translate(-50%,-82%); }.ally-nox .ally-weapon-part { stroke:#d8b4fe; }
-.titan-ally-art.is-attacking .ally-weapon-mount { animation: ally-weapon-slash .36s cubic-bezier(.2,.85,.25,1); }
-.titan-ally-art.is-attacking.ally-leon .ally-weapon-mount,.titan-ally-art.is-attacking.ally-sera .ally-weapon-mount { animation: ally-weapon-shot .36s cubic-bezier(.2,.85,.25,1); }
+.ally-swing.is-attacking .ally-weapon-mount { animation: ally-weapon-slash .36s cubic-bezier(.2,.85,.25,1); }
+.ally-leon .ally-swing.is-attacking .ally-weapon-mount,.ally-sera .ally-swing.is-attacking .ally-weapon-mount { animation: ally-weapon-shot .36s cubic-bezier(.2,.85,.25,1); }
 .ally-attack-fx { position:absolute; z-index:3; left:72%; top:33%; width:42%; height:42%; border:3px solid rgba(103,232,249,.75); border-left-color:transparent; border-bottom-color:transparent; border-radius:50%; animation: ally-fx .38s ease-out forwards; pointer-events:none; }
 .ally-attack-fx.ranged { width:55%; height:3px; top:51%; border:0; border-radius:99px; background:linear-gradient(90deg,#f8fafc,transparent); }
 @keyframes ally-weapon-slash { 0% { rotate:-38deg; } 55% { rotate:76deg; } 100% { rotate:0deg; } }
