@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import "./idle.css";
+import { assetUrl } from "./asset";
 import { BeatGame } from "./BeatGame";
 import { ForgeGame } from "./ForgeGame";
 import { TitansGame } from "./TitansGame";
@@ -968,7 +969,8 @@ function App() {
                     className="cta cta-tower"
                     onClick={() => void handleStart(TOWER_START_INDEX)}
                   >
-                    끝없는 성벽 등반
+                    <img src={assetUrl("ui/idle/tower.svg")} alt="" aria-hidden="true" />
+                    <b>끝없는 성벽 등반</b>
                     <small>
                       최고 {progress.towerBestFloor}층 · 방치 배율 +
                       {(Math.min(10, Math.floor(progress.towerBestFloor / 100)) * 0.05).toFixed(2)}

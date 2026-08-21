@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -1049,6 +1050,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             <div className="gate-doors" aria-hidden="true">
               <span className="gate-door left" />
               <span className="gate-door right" />
+              <img className="gate-crest" src={assetUrl("ui/idle/gate-locked.svg")} alt="" />
               <span className="gate-seal">{character.pioneeredArea}/5</span>
             </div>
             <p className="brand">AREA LOCKED</p>

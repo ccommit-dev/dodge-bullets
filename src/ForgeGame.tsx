@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
 import {
   FORGE_STARTER_COINS,
@@ -477,9 +478,12 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 {maxed && (
                   <section className={`reforge-panel reforge-${reforgePhase}`}>
                     <div className="reforge-heading">
-                      <div>
-                        <small>ENDLESS REFORGE</small>
-                        <strong>무한 재련</strong>
+                      <div className="reforge-title">
+                        <img src={assetUrl("ui/idle/anvil.svg")} alt="" aria-hidden="true" />
+                        <span>
+                          <small>ENDLESS REFORGE</small>
+                          <strong>무한 재련</strong>
+                        </span>
                       </div>
                       <span className="reforge-rank">등급 {reforgeRank}</span>
                     </div>

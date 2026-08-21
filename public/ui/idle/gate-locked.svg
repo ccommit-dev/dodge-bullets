@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="잠긴 지역">
+  <defs>
+    <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#475569"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="doorFace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <radialGradient id="lockGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fb7185" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#fb7185" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="34" r="30" fill="url(#lockGlow)"/>
+  <!-- 성벽 -->
+  <path d="M8 22h48v36H8z" fill="url(#stone)"/>
+  <path d="M8 22V14h7v8M22 22v-8h7v8M36 22v-8h7v8M50 22v-8h6v8" fill="url(#stone)"/>
+  <!-- 아치형 문 -->
+  <path d="M20 58V36a12 12 0 0 1 24 0v22z" fill="url(#doorFace)" stroke="#64748b" stroke-width="1.6"/>
+  <!-- 문짝 분할 + 판자 -->
+  <path d="M32 24v34" stroke="#64748b" stroke-width="1.8"/>
+  <path d="M24 34v24M28 30v28M36 30v28M40 34v24" stroke="#1e293b" stroke-width="1.1" stroke-opacity="0.9"/>
+  <!-- 리벳 -->
+  <circle cx="24" cy="42" r="1.2" fill="#94a3b8"/>
+  <circle cx="40" cy="42" r="1.2" fill="#94a3b8"/>
+  <circle cx="24" cy="52" r="1.2" fill="#94a3b8"/>
+  <circle cx="40" cy="52" r="1.2" fill="#94a3b8"/>
+  <!-- 봉인 자물쇠 -->
+  <path d="M27 40v-4a5 5 0 0 1 10 0v4" fill="none" stroke="#fda4af" stroke-width="2.4" stroke-linecap="round"/>
+  <rect x="24.5" y="40" width="15" height="12" rx="3" fill="#9f1239" stroke="#fda4af" stroke-width="1.8"/>
+  <circle cx="32" cy="45.4" r="1.9" fill="#fecdd3"/>
+  <path d="M32 47v3.2" stroke="#fecdd3" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
