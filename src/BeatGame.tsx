@@ -54,28 +54,22 @@ const KEY_LANE: Record<string, NoteLane> = {
   Digit1: 0,
   KeyS: 1,
   ArrowDown: 1,
-  KeyW: 1,
-  ArrowUp: 1,
-  Space: 1,
   Digit2: 1,
-  KeyD: 2,
-  ArrowRight: 2,
+  KeyW: 2,
+  ArrowUp: 2,
   Digit3: 2,
+  KeyD: 3,
+  ArrowRight: 3,
+  Space: 3,
+  Digit4: 3,
 };
 
 type BeatDirection = "left" | "down" | "up" | "right";
 const DIRECTIONS: Array<{ id: BeatDirection; symbol: string; key: string; lane: NoteLane }> = [
   { id: "left", symbol: "←", key: "← / A", lane: 0 },
   { id: "down", symbol: "↓", key: "↓ / S", lane: 1 },
-  { id: "up", symbol: "↑", key: "↑ / W", lane: 1 },
-  { id: "right", symbol: "→", key: "→ / D", lane: 2 },
-];
-const KEY_DIRECTION: Record<string, BeatDirection> = { KeyA:"left", ArrowLeft:"left", KeyS:"down", ArrowDown:"down", KeyW:"up", ArrowUp:"up", KeyD:"right", ArrowRight:"right" };
-const COMMANDS: Array<{ action: "march" | "attack" | "guard" | "focus"; arrows: BeatDirection[] }> = [
-  { action:"march", arrows:["left","left","right","left"] },
-  { action:"attack", arrows:["right","right","up","right"] },
-  { action:"guard", arrows:["down","down","left","down"] },
-  { action:"focus", arrows:["up","down","up","down"] },
+  { id: "up", symbol: "↑", key: "↑ / W", lane: 2 },
+  { id: "right", symbol: "→", key: "→ / D", lane: 3 },
 ];
 const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }> = [
   { id: "scout", name: "정찰 견갑", desc: "4비트 · 원정 특화" },
@@ -136,38 +130,77 @@ export function BeatGame({
   const [difficultyChoice, setDifficultyChoice] = useState<DifficultyChoice>("normal");
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
-  const [commandBeats, setCommandBeats] = useState<BeatDirection[]>([]);
   const [partyAction, setPartyAction] = useState<"march" | "attack" | "guard" | "focus">("focus");
-  const [commandIndex, setCommandIndex] = useState(0);
-  const commandIndexRef = useRef(0);
   const [beatEnemyHp, setBeatEnemyHp] = useState(100);
   const [beatEnemyMaxHp, setBeatEnemyMaxHp] = useState(100);
-  const [fever, setFever] = useState(0);
-  const commandBeatsRef = useRef<BeatDirection[]>([]);
+  const [dropCharge, setDropCharge] = useState(0);
+  const [instrumentLayers, setInstrumentLayers] = useState<[number, number, number, number]>([0, 0, 0, 0]);
+  const [dropFlash, setDropFlash] = useState(0);
+  const [raidUpgradeOpen, setRaidUpgradeOpen] = useState(false);
+  const [raidBuffs, setRaidBuffs] = useState({ kick: 0, allies: 0, drop: 0 });
   const beatEnemyHpRef = useRef(100);
+  const dropChargeRef = useRef(0);
+  const dropCountRef = useRef(0);
+  const upgradeRoundRef = useRef(0);
+  const raidUpgradeOpenRef = useRef(false);
+  const raidBuffRef = useRef({ kick: 0, allies: 0, drop: 0 });
+  const lastRaidTapRef = useRef({ lane: -1, at: 0 });
   const slots = buildStageSlots("lesson");
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
 
-  const registerCommandBeat = useCallback((direction: BeatDirection) => {
-    const next = [...commandBeatsRef.current, direction].slice(-4);
-    commandBeatsRef.current = next;
-    setCommandBeats(next);
-    if (next.length < 4) return;
-    const command = COMMANDS[commandIndexRef.current % COMMANDS.length];
-    const matched = next.every((value, index) => value === command.arrows[index]);
-    const action = matched ? command.action : "focus";
+  const playRaidLane = useCallback((lane: NoteLane) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    performBeatLane(session, lane);
+    const world = session.world;
+    const success = world.judgeText !== "MISS";
+    const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "march" : "focus";
     setPartyAction(action);
-    setFever((value) => matched ? Math.min(100, value + 18) : Math.max(0, value - 20));
-    if (matched && (action === "attack" || action === "focus")) {
-      const damage = action === "attack" ? 34 : 16;
-      beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
-      setBeatEnemyHp(beatEnemyHpRef.current);
+    if (!success) return;
+
+    setInstrumentLayers((current) => {
+      const next = [...current] as [number, number, number, number];
+      next[lane] = Math.min(4, next[lane] + 1);
+      return next;
+    });
+    const gain = world.judgeText === "PERFECT" ? 11 : world.judgeText === "GREAT" ? 8 : 5;
+    dropChargeRef.current = Math.min(100, dropChargeRef.current + gain);
+    const buff = lane === 0 ? raidBuffRef.current.kick : lane === 3 ? raidBuffRef.current.drop : raidBuffRef.current.allies;
+    let damage = [12, 16, 9, 20][lane] + buff * 7 + Math.floor(world.combo * .8);
+    const now = performance.now();
+    if (lastRaidTapRef.current.lane >= 0 && lastRaidTapRef.current.lane !== lane && now - lastRaidTapRef.current.at <= 120) {
+      damage += 24;
+      dropChargeRef.current = Math.min(100, dropChargeRef.current + 12);
+      world.zoomPulse = Math.max(world.zoomPulse, .38);
     }
-    commandIndexRef.current += 1;
-    setCommandIndex(commandIndexRef.current);
-    commandBeatsRef.current = [];
-    window.setTimeout(() => setCommandBeats([]), 220);
+    lastRaidTapRef.current = { lane, at: now };
+    if (lane === 3 && dropChargeRef.current >= 100) {
+      damage += 90 + world.combo * 2;
+      dropChargeRef.current = 0;
+      dropCountRef.current += 1;
+      setDropFlash((value) => value + 1);
+      world.zoomPulse = 1;
+      world.beatPulse = 1;
+      world.shakeMs = 260;
+      session.box.playSound("firebeat", 1);
+      session.box.playSound("trumpet", 1);
+      session.box.playSound("throat", 1);
+    }
+    setDropCharge(dropChargeRef.current);
+    beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
+    setBeatEnemyHp(beatEnemyHpRef.current);
+    if (beatEnemyHpRef.current === 0) world.elapsedMs = world.durationMs;
+  }, []);
+
+  const chooseRaidBuff = useCallback((kind: "kick" | "allies" | "drop") => {
+    const next = { ...raidBuffRef.current, [kind]: raidBuffRef.current[kind] + 1 };
+    raidBuffRef.current = next;
+    setRaidBuffs(next);
+    setRaidUpgradeOpen(false);
+    raidUpgradeOpenRef.current = false;
+    lastTsRef.current = 0;
+    void sessionRef.current?.ctx?.resume();
   }, []);
 
   const syncUi = useCallback((next: BeatUi) => {
@@ -223,38 +256,34 @@ export function BeatGame({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const fireTap = (lane: NoteLane, direction: BeatDirection) => {
+    const fireTap = (lane: NoteLane) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       const now = performance.now();
       if (now - lastTapMs.current < 40) return;
       lastTapMs.current = now;
-      const expected = COMMANDS[commandIndexRef.current % COMMANDS.length].arrows[commandBeatsRef.current.length];
-      const judgedLane = expected === direction ? laneOfSound(sessionRef.current.world.nextSound) : lane;
-      performBeatLane(sessionRef.current, judgedLane);
-      registerCommandBeat(direction);
+      playRaidLane(lane);
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       if (e.repeat) return;
       const lane = KEY_LANE[e.code];
-      const direction = KEY_DIRECTION[e.code];
-      if (lane === undefined || direction === undefined) return;
-      fireTap(lane, direction);
+      if (lane === undefined) return;
+      fireTap(lane);
       e.preventDefault();
     };
 
-    // Tap position picks the pad: left third = B, middle = T, right = K.
+    // Tap position picks one of the four instrument lanes.
     const onPointerDown = (e: PointerEvent) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       canvas.setPointerCapture(e.pointerId);
       const rect = canvas.getBoundingClientRect();
       const ratio = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0.5;
-      if (ratio < 0.25) fireTap(0, "left");
-      else if (ratio < 0.5) fireTap(1, "down");
-      else if (ratio < 0.75) fireTap(1, "up");
-      else fireTap(2, "right");
+      if (ratio < 0.25) fireTap(0);
+      else if (ratio < 0.5) fireTap(1);
+      else if (ratio < 0.75) fireTap(2);
+      else fireTap(3);
       e.preventDefault();
     };
 
@@ -295,6 +324,13 @@ export function BeatGame({
           setLessonTitle(w.lessonTitle);
           setTimingOffset(w.lastOffsetMs);
           setLoopCompletion(w.loopCompletion);
+          const upgradeRound = Math.min(3, Math.floor((w.elapsedMs / Math.max(1, w.durationMs)) * 4));
+          if (upgradeRound > upgradeRoundRef.current && !raidUpgradeOpenRef.current) {
+            upgradeRoundRef.current = upgradeRound;
+            raidUpgradeOpenRef.current = true;
+            setRaidUpgradeOpen(true);
+            void session.ctx?.suspend();
+          }
           const nextL = `${BEAT_SOUND_LABEL[w.nextSound]} → ${LANE_KEYS[laneOfSound(w.nextSound)]}`;
           if (nextL !== hudNextRef.current) {
             hudNextRef.current = nextL;
@@ -315,6 +351,8 @@ export function BeatGame({
           }
           if (event.type === "clear" && !pendingClearRef.current) {
             pendingClearRef.current = true;
+            beatEnemyHpRef.current = 0;
+            setBeatEnemyHp(0);
             const track = session.track;
             const slot = activeSlotRef.current;
             const reward = Math.round(
@@ -324,7 +362,7 @@ export function BeatGame({
                 w.maxHp,
                 w.elapsedMs,
                 w.durationMs,
-              ) * DIFFICULTY[difficultyChoice].reward + Math.min(60, w.maxCombo * 2));
+              ) * DIFFICULTY[difficultyChoice].reward + Math.min(60, w.maxCombo * 2) + dropCountRef.current * 12);
             setCoinGain(reward);
             setLastScore(w.score);
             const perfectRatio =
@@ -350,7 +388,7 @@ export function BeatGame({
                   sharedCoins: reward,
                   lastContent: "beat",
                 });
-                const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0)));
+                const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0) + Math.min(15, dropCountRef.current * 3)));
                 const chapterShoulder = CHAPTER_SHOULDERS[Math.min(CHAPTER_SHOULDERS.length - 1, Math.floor(w.stageIndex / 2))];
                 const isChapterBoss = w.stageIndex % 2 === 1;
                 const clearKey = `beat-chapter:${Math.floor(w.stageIndex / 2) + 1}:boss-clear`;
@@ -403,7 +441,7 @@ export function BeatGame({
         sessionRef.current = null;
       }
     };
-  }, [difficultyChoice, onCoins, registerCommandBeat, shoulderBlueprint, syncUi, userHash]);
+  }, [difficultyChoice, onCoins, playRaidLane, shoulderBlueprint, syncUi, userHash]);
 
   const startSlot = async (slot: PracticeSlot) => {
     if (!slot.track || !rpgRef.current) return;
@@ -458,16 +496,22 @@ export function BeatGame({
     setLastSoundLabel("");
     setTimingOffset(0);
     setLoopCompletion(0);
-    const enemyMax = 100 + slot.stageIndex * 35;
+    const enemyMax = 90 + slot.stageIndex * 24;
     beatEnemyHpRef.current = enemyMax;
     setBeatEnemyHp(enemyMax);
     setBeatEnemyMaxHp(enemyMax);
-    setCommandIndex(0);
-    commandIndexRef.current = 0;
-    setCommandBeats([]);
-    commandBeatsRef.current = [];
     setPartyAction("focus");
-    setFever(0);
+    setDropCharge(0);
+    dropChargeRef.current = 0;
+    dropCountRef.current = 0;
+    setInstrumentLayers([0, 0, 0, 0]);
+    setDropFlash(0);
+    setRaidUpgradeOpen(false);
+    raidUpgradeOpenRef.current = false;
+    setRaidBuffs({ kick: 0, allies: 0, drop: 0 });
+    raidBuffRef.current = { kick: 0, allies: 0, drop: 0 };
+    upgradeRoundRef.current = 0;
+    lastRaidTapRef.current = { lane: -1, at: 0 };
     lastTsRef.current = 0;
     if (canvas) {
       canvas.width = Math.floor(width * dpr);
@@ -493,10 +537,10 @@ export function BeatGame({
       {ui === "menu" && rpg && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
-            <p className="brand beat-kicker">PRACTICE ROOM</p>
-            <h1 className="title beat-title">공명 전투 훈련</h1>
-            <p className="subtitle">클럽 비트에 맞춰 네 방향 명령을 완성하고 견갑을 획득하세요</p>
-            <p className="controls-hint">키보드 ← ↓ ↑ → / A S W D · 모바일은 화면 아래 화살표</p>
+            <p className="brand beat-kicker">RESONANCE MARCH</p>
+            <h1 className="title beat-title">공명 행군 원정</h1>
+            <p className="subtitle">입력이 곧 음악과 공격이 됩니다. KICK·SNARE·HAT·BASS 레이어를 완성하고 DROP으로 보스를 브레이크하세요</p>
+            <p className="controls-hint">← KICK · ↓ SNARE · ↑ HAT · → BASS / A S W D</p>
             <p className="score-line">보유 골드 {coins.toLocaleString()} · SP {rpg.sp} · 명성 {rpg.fame}</p>
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
             <div className="beat-difficulty" aria-label="노래 난이도">
@@ -551,16 +595,16 @@ export function BeatGame({
 
       {ui === "playing" && (
         <>
-          <div className={`beat-command-party action-${partyAction}`} aria-live="polite">
-            <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>훈련 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
-            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" ? commandIndex : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" ? commandIndex : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="훈련 몬스터" /></div>
-            <div className="beat-fever"><i style={{width:`${fever}%`}}/><span>FEVER {fever}%</span></div>
-            <div className="beat-command-readout"><strong>{COMMANDS[commandIndex % COMMANDS.length].action === "march" ? "전진" : COMMANDS[commandIndex % COMMANDS.length].action === "attack" ? "공격" : COMMANDS[commandIndex % COMMANDS.length].action === "guard" ? "방어" : "집중"}</strong><span>{COMMANDS[commandIndex % COMMANDS.length].arrows.map((direction,index) => <i key={`${commandIndex}-${index}`} className={commandBeats[index] === direction ? "done" : index === commandBeats.length ? "current" : ""}>{DIRECTIONS.find(item=>item.id===direction)?.symbol}</i>)}</span></div>
+          <div key={dropFlash} className={`beat-command-party action-${partyAction} ${dropFlash > 0 ? "drop-burst" : ""}`} aria-live="polite">
+            <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
+            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "guard" ? score : 0}/><AllyArt id="leon" attacking pulse={partyAction === "march" ? score : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="레이드 몬스터" /></div>
+            <div className="beat-fever"><i style={{width:`${dropCharge}%`}}/><span>DROP {dropCharge}% {dropCharge >= 100 ? "· BASS를 눌러 궁극기" : ""}</span></div>
+            <div className="beat-layer-mixer">{["KICK 검격","SNARE 근접","HAT 원거리","BASS 궁극기"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
           </div>
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">
-                {activeSlotRef.current?.kind === "spar" ? "SPAR" : "LESSON"} {stageNo}/
+                {activeSlotRef.current?.kind === "spar" ? "SPAR" : "MARCH"} {stageNo}/
                 {totalStages} · {remainSec}s
               </span>
               <span className="hud-hint">
@@ -597,20 +641,29 @@ export function BeatGame({
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (sessionRef.current) {
-                    const expected = COMMANDS[commandIndex % COMMANDS.length].arrows[commandBeatsRef.current.length];
-                    const judgedLane = expected === direction.id ? laneOfSound(sessionRef.current.world.nextSound) : direction.lane;
-                    performBeatLane(sessionRef.current, judgedLane);
-                    registerCommandBeat(direction.id);
-                  }
+                  if (sessionRef.current) playRaidLane(direction.lane);
                 }}
               >
                 <span>{direction.symbol}</span>
-                <small>{direction.key}</small>
+                <small>{["KICK","SNARE","HAT","BASS"][direction.lane]} · {direction.key}</small>
               </button>
             ))}
           </div>
         </>
+      )}
+
+      {ui === "playing" && raidUpgradeOpen && (
+        <div className="game-overlay beat-upgrade-overlay">
+          <div className="overlay-content">
+            <p className="brand">16 BAR POWER UP</p>
+            <h2 className="title">다음 DROP을 강화하세요</h2>
+            <div className="beat-rogue-choices">
+              <button type="button" onClick={() => chooseRaidBuff("kick")}><b>⚔ KICK 검격</b><small>주인공 공격 +7 · Lv.{raidBuffs.kick}</small></button>
+              <button type="button" onClick={() => chooseRaidBuff("allies")}><b>✦ 동료 리믹스</b><small>근접·원거리 공격 +7 · Lv.{raidBuffs.allies}</small></button>
+              <button type="button" onClick={() => chooseRaidBuff("drop")}><b>◆ BASS OVERDRIVE</b><small>베이스·DROP 공격 +7 · Lv.{raidBuffs.drop}</small></button>
+            </div>
+          </div>
+        </div>
       )}
 
       {ui === "clear" && (
@@ -622,7 +675,7 @@ export function BeatGame({
             {rpgGain && <p className="subtitle">{rpgGain}</p>}
             {shoulderReward && <p className="shoulder-reward">{shoulderReward}</p>}
             <p className="subtitle">점수 {lastScore} · 보유 {coins}</p>
-            <p className="controls-hint">정확도와 콤보가 높을수록 견갑 조각을 더 많이 획득합니다.</p>
+            <p className="controls-hint">완성한 음악 레이어·정확도·DROP 횟수가 높을수록 견갑 조각 보상이 증가합니다.</p>
             {!isLastCampaignStage(stageNo - 1) && (
               <button
                 type="button"

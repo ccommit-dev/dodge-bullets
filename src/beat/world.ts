@@ -28,12 +28,12 @@ import type {
 const SOUND_LANE: Record<BeatSound, NoteLane> = {
   boots: 0,
   firebeat: 0,
-  throat: 0,
-  cats: 1,
-  click: 1,
-  breath: 1,
-  rim: 2,
-  trumpet: 2,
+  rim: 1,
+  trumpet: 1,
+  cats: 2,
+  click: 2,
+  breath: 2,
+  throat: 3,
 };
 
 export function laneOfSound(sound: BeatSound): NoteLane {
@@ -59,7 +59,7 @@ export function railGeometry(world: BeatWorld): {
 export function laneXAt(world: BeatWorld, lane: NoteLane, eased: number): number {
   const { farHalf, nearHalf } = railGeometry(world);
   const spread = farHalf * 0.45 + (nearHalf * 0.62 - farHalf * 0.45) * eased;
-  return world.cx + (lane - 1) * spread;
+  return world.cx + (lane - 1.5) * spread * 0.82;
 }
 
 const SPIKE_POOL = 48;
@@ -181,7 +181,7 @@ export function createBeatWorld(
     },
     lastOffsetMs: 0,
     loopCompletion: 0,
-    laneFlashMs: [0, 0, 0],
+    laneFlashMs: [0, 0, 0, 0],
     hitSteps: new Set<number>(),
     beatPosition: 0,
   };
@@ -284,6 +284,7 @@ export async function createBeatSession(
     () => ctx,
     () => master,
     () => soundEnabled && !!ctx,
+    () => world.loopCompletion,
   );
 
   const session: BeatSession = {
@@ -416,12 +417,13 @@ export function performBeatTap(session: BeatSession, lane: NoteLane = 1): void {
 
 const LANE_FALLBACK_SOUND: Record<NoteLane, BeatSound> = {
   0: "boots",
-  1: "cats",
-  2: "rim",
+  1: "rim",
+  2: "cats",
+  3: "throat",
 };
 
 /** Matches LANE_ACCENT in draw.ts. */
-const LANE_HUE: Record<NoteLane, number> = { 0: 42, 1: 187, 2: 330 };
+const LANE_HUE: Record<NoteLane, number> = { 0: 42, 1: 330, 2: 187, 3: 270 };
 
 function spawnMoveParticles(
   world: BeatWorld,

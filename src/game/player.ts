@@ -28,8 +28,8 @@ export function createPlayer(width: number, floorY: number): Player {
     anim: "idle",
     animTime: 0,
     invulnMs: 0,
-    hp: 1,
-    maxHp: 1,
+    hp: 3,
+    maxHp: 3,
     dashCdMs: 0,
     dashActiveMs: 0,
     slowCdMs: 0,
@@ -48,7 +48,7 @@ export function resetPlayer(player: Player, width: number, floorY: number, extra
   player.anim = "idle";
   player.animTime = 0;
   player.invulnMs = 0;
-  player.maxHp = 1 + extraLives;
+  player.maxHp = 3 + extraLives;
   player.hp = player.maxHp;
   player.dashCdMs = 0;
   player.dashActiveMs = 0;

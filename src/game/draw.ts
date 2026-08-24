@@ -1,4 +1,5 @@
 import { drawStickman } from "./player";
+import { getStage } from "./stages";
 import type { Arrow, GameWorld } from "./types";
 
 function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
@@ -16,18 +17,30 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     const pulse = 0.25 + 0.45 * (1 - a.warningMs / 560);
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.strokeStyle = a.kind === "explosive" ? "#fbbf24" : "#fb7185";
-    ctx.lineWidth = a.kind === "explosive" ? 9 : 3;
+    const warningColor = a.telegraph === "dash" ? "#38bdf8" : a.telegraph === "perfect" ? "#facc15" : a.telegraph === "blast" ? "#f97316" : "#fb3f5c";
+    ctx.strokeStyle = warningColor;
+    ctx.lineWidth = a.telegraph === "blast" ? 9 : 3;
     ctx.setLineDash([8, 8]);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(a.x + cos * 900, a.y + sin * 900);
-    ctx.stroke();
+    if (a.telegraph === "blast") {
+      ctx.beginPath();
+      ctx.ellipse(a.x, Math.max(a.y, ty), 34, 12, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(a.x + cos * 900, a.y + sin * 900);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.fillStyle = warningColor;
+    ctx.font = "800 11px system-ui";
+    const warningText = a.telegraph === "sniper" ? "저격 0.8" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "점프" : a.telegraph === "dash" ? "대시 관통" : "PERFECT";
+    ctx.fillText(warningText, Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x)), Math.max(18, Math.min(ctx.canvas.clientHeight - 18, a.y + 18)));
     ctx.restore();
   }
 
-  ctx.strokeStyle = a.kind === "explosive" ? "#f59e0b" : a.kind === "ricochet" ? "#c084fc" : "#f87171";
-  ctx.fillStyle = a.kind === "explosive" ? "#fde68a" : "#fca5a5";
+  ctx.strokeStyle = a.telegraph === "perfect" ? "#facc15" : a.kind === "explosive" ? "#f59e0b" : a.kind === "ricochet" ? "#38bdf8" : "#f87171";
+  ctx.fillStyle = a.telegraph === "perfect" ? "#fef08a" : a.kind === "explosive" ? "#fde68a" : "#fca5a5";
   ctx.lineWidth = 2.4;
   ctx.lineCap = "round";
 
@@ -119,16 +132,52 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.beginPath(); ctx.arc(enemyX + 18, enemyY - 18, 15, -1.2, 1.2); ctx.stroke();
   ctx.restore();
 
+  if (world.stageIndex === 3) {
+    ctx.save();
+    ctx.globalAlpha = 0.32 + Math.sin(world.animClock * 8) * 0.05;
+    ctx.fillStyle = "#7f1d1d";
+    ctx.beginPath();
+    ctx.arc(width - 18, floorY - 42, 42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fecaca";
+    ctx.font = "900 11px system-ui";
+    ctx.fillText("추격대장", width - 72, floorY - 88);
+    ctx.restore();
+  }
+
+  const stageProgress = world.stageElapsedMs / Math.max(1, getStage(world.stageIndex).durationMs);
+  if (world.chests === 0 && stageProgress >= 0.42 && stageProgress <= 0.78) {
+    const chestX = width * 0.7;
+    const chestY = floorY - 23;
+    ctx.save();
+    ctx.fillStyle = "#92400e";
+    ctx.strokeStyle = "#fde68a";
+    ctx.lineWidth = 3;
+    ctx.fillRect(chestX - 21, chestY - 17, 42, 27);
+    ctx.strokeRect(chestX - 21, chestY - 17, 42, 27);
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillRect(chestX - 4, chestY - 17, 8, 27);
+    ctx.font = "800 11px system-ui";
+    ctx.fillText("재료 상자", chestX - 27, chestY - 24);
+    ctx.restore();
+  }
+
   // 쳐낸 공격이 보급품으로 쌓이는 즉각적인 목표 피드백.
   ctx.save();
+  const trackerW = Math.min(190, width - world.safeLeft - world.safeRight - 24);
+  const trackerX = width - world.safeRight - trackerW - 12;
+  const trackerY = world.safeTop + 76;
   ctx.fillStyle = "rgba(8,47,73,.88)";
   ctx.strokeStyle = "#67e8f9";
   ctx.lineWidth = 2;
-  ctx.fillRect(world.safeLeft + 12, world.safeTop + 72, 132, 34);
-  ctx.strokeRect(world.safeLeft + 12, world.safeTop + 72, 132, 34);
+  ctx.fillRect(trackerX, trackerY, trackerW, 40);
+  ctx.strokeRect(trackerX, trackerY, trackerW, 40);
   ctx.fillStyle = "#e0f2fe";
-  ctx.font = "700 12px system-ui";
-  ctx.fillText(`반격 ${world.countered} · 보급 ${world.supplies}`, world.safeLeft + 22, world.safeTop + 94);
+  ctx.font = "700 11px system-ui";
+  ctx.fillText(`처치 ${world.enemyKills} · 완벽 ${world.perfectDodges} · 상자 ${world.chests}`, trackerX + 10, trackerY + 16);
+  ctx.font = "700 10px system-ui";
+  ctx.fillStyle = "#fde68a";
+  ctx.fillText(`보급 ${world.supplies} · 원정 인장 ${world.expeditionSeals}`, trackerX + 10, trackerY + 31);
   ctx.restore();
 
   for (let i = 0; i < arrows.length; i++) {

@@ -109,7 +109,7 @@ export type BeatWorld = {
   lastOffsetMs: number;
   /** 0..1 lesson loop completion from distinct sounds recorded. */
   loopCompletion: number;
-  /** Pad flash per lane (0=B, 1=T, 2=K), milliseconds remaining. */
+  /** Pad flash per lane (0=kick, 1=snare, 2=hat, 3=bass), milliseconds remaining. */
   laneFlashMs: number[];
   /** Chart indexes already consumed by the player. */
   hitSteps: Set<number>;
@@ -121,25 +121,28 @@ export type BeatWorld = {
 };
 
 /** 0 = kick (B), 1 = hi-hat (T), 2 = snare (K) */
-export type NoteLane = 0 | 1 | 2;
+export type NoteLane = 0 | 1 | 2 | 3;
 
 export const LANE_LABEL: Record<NoteLane, string> = {
-  0: "B 저음",
-  1: "T 하이햇",
-  2: "K 스네어",
+  0: "KICK 주인공",
+  1: "SNARE 근접 동료",
+  2: "HAT 원거리 동료",
+  3: "BASS 드롭",
 };
 
 /** Which syllables live on each pad, shown in the practice room. */
 export const LANE_MEMBERS: Record<NoteLane, string> = {
-  0: "킥 · 파이어빗 · 스로트",
-  1: "하이햇 · 클릭 · 숨소리",
-  2: "스네어 · 트럼펫",
+  0: "킥 · 파이어빗",
+  1: "스네어 · 트럼펫",
+  2: "하이햇 · 클릭 · 숨소리",
+  3: "스로트 · 베이스",
 };
 
 export const LANE_KEYS: Record<NoteLane, string> = {
   0: "A / ←",
-  1: "S / ↓ / Space",
-  2: "D / →",
+  1: "S / ↓",
+  2: "W / ↑",
+  3: "D / →",
 };
 
 export type BeatChartStep = {

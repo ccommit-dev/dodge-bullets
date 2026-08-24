@@ -40,8 +40,9 @@ const RING_PALETTE: Record<
 /** Pad accents shared with the DOM buttons so lane and key read as one thing. */
 const LANE_ACCENT: Record<NoteLane, string> = {
   0: "#fbbf24",
-  1: "#22d3ee",
-  2: "#f472b6",
+  1: "#f472b6",
+  2: "#22d3ee",
+  3: "#a78bfa",
 };
 
 const SOUND_SHORT: Record<BeatSound, string> = {
@@ -357,7 +358,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  for (let lane = 0 as NoteLane; lane <= 2; lane = (lane + 1) as NoteLane) {
+  for (let lane = 0 as NoteLane; lane <= 3; lane = (lane + 1) as NoteLane) {
     ctx.beginPath();
     ctx.moveTo(laneXAt(world, lane, 0), horizonY);
     ctx.lineTo(laneXAt(world, lane, 1), hitY);
@@ -405,12 +406,30 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const y = horizonY + (hitY - horizonY) * eased;
     const size = (5 + eased * 21) * (1 + overshoot * 1.6);
     const consumed = world.hitSteps.has(index);
+    const golden = (index + 1) % world.subdivision === 0;
+    const sustained = world.chart[index + 1] && laneOfSound(world.chart[index + 1].sound) === lane;
     ctx.save();
     ctx.translate(x, y);
     const fade = overshoot > 0 ? Math.max(0, 1 - overshoot / 0.24) : 1;
     ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed ? 0.3 : 1);
+    if (sustained && !consumed) {
+      ctx.strokeStyle = golden ? "rgba(250,204,21,.8)" : LANE_ACCENT[lane];
+      ctx.lineWidth = Math.max(3, size * .26);
+      ctx.globalAlpha *= .45;
+      ctx.beginPath();
+      ctx.moveTo(0, -size * .4);
+      ctx.lineTo(0, -size * 2.4);
+      ctx.stroke();
+      ctx.globalAlpha = (0.35 + eased * 0.65) * fade;
+    }
     ctx.beginPath();
-    if (step.spike) {
+    if (lane === 3) {
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size, 0);
+      ctx.lineTo(0, size);
+      ctx.lineTo(-size, 0);
+      ctx.closePath();
+    } else if (step.spike) {
       ctx.moveTo(0, -size);
       ctx.lineTo(size * 0.82, size * 0.65);
       ctx.lineTo(-size * 0.82, size * 0.65);
@@ -418,7 +437,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     } else {
       ctx.arc(0, 0, size * 0.72, 0, Math.PI * 2);
     }
-    ctx.fillStyle = consumed ? "#94a3b8" : LANE_ACCENT[lane];
+    ctx.fillStyle = consumed ? "#94a3b8" : golden ? "#facc15" : step.spike ? "#fb4f6d" : LANE_ACCENT[lane];
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 8 + eased * 18;
     ctx.fill();
@@ -451,12 +470,12 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   ctx.stroke();
   ctx.restore();
 
-  // Three pads under the line, one per lane, labelled with their keys.
-  const padLabel: Record<NoteLane, string> = { 0: "B", 1: "T", 2: "K" };
-  for (let lane = 0 as NoteLane; lane <= 2; lane = (lane + 1) as NoteLane) {
+  // Four instrument pads: every successful press adds a layer to the track.
+  const padLabel: Record<NoteLane, string> = { 0: "KICK", 1: "SNARE", 2: "HAT", 3: "BASS" };
+  for (let lane = 0 as NoteLane; lane <= 3; lane = (lane + 1) as NoteLane) {
     const x = laneXAt(world, lane, 1);
     const flash = Math.min(1, world.laneFlashMs[lane] / PAD_FLASH_MS);
-    const padW = Math.min(96, nearHalf * 0.58);
+    const padW = Math.min(88, nearHalf * 0.48);
     const padH = 34;
     ctx.save();
     ctx.translate(x, hitY + 24);
@@ -473,7 +492,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.textAlign = "center";
-    ctx.font = "900 14px system-ui, sans-serif";
+    ctx.font = "900 10px system-ui, sans-serif";
     ctx.fillStyle = "#f8fafc";
     ctx.fillText(padLabel[lane], 0, -1);
     ctx.font = "700 8px system-ui, sans-serif";

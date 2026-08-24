@@ -474,7 +474,8 @@ function App() {
               world.player.maxHp,
               world.stageElapsedMs,
               stage.durationMs,
-            ) + Math.min(40, world.maxCombo * 2) + world.supplies * 3;
+            ) + Math.min(40, world.maxCombo * 2) + world.supplies * 3
+              + world.enemyKills * 5 + world.perfectDodges * 8 + world.chests * 30 + world.expeditionSeals * 20;
           setCoinGain(reward);
           sound.playCoin();
           void (async () => {
@@ -491,7 +492,8 @@ function App() {
               {
                 exp: growth.exp,
                 sharedCoins: reward,
-                enhancementMaterials: growth.materials + Math.floor(world.supplies / 8),
+                enhancementMaterials: growth.materials + Math.floor(world.supplies / 8)
+                  + world.enemyKills + world.perfectDodges * 2 + world.chests * 4,
                 dodgeStage: world.stageIndex + 1,
                 lastContent: "dodge",
               },
@@ -662,7 +664,8 @@ function App() {
     if (!world || stateRef.current !== "playing" || world.stageElapsedMs < 15_000) return;
     const stage = getStage(world.stageIndex);
     const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
-    const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2));
+  const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2
+    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24));
     const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
     soundRef.current.stopBgm();
     soundRef.current.playCoin();
@@ -684,7 +687,8 @@ function App() {
         {
           exp: Math.floor(growth.exp * survivalRatio * 0.65),
           sharedCoins: reward,
-          enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6) + Math.floor(world.supplies / 10)),
+          enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6)
+            + Math.floor(world.supplies / 10) + world.enemyKills + world.perfectDodges + world.chests * 3),
           dodgeStage: world.stageIndex + 1,
           lastContent: "dodge",
         },
@@ -940,7 +944,7 @@ function App() {
             {menuTab === "play" ? (
               <>
                 <p className="controls-hint">
-                  드래그 이동 · 더블탭/스페이스 점프 · Shift 대시 · E 검격 반격
+                  전진 · 더블탭/스페이스 점프 · Shift 대시 관통 · E 검격 반격
                 </p>
                 <p className="controls-hint">
                   식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"} · 스테이지 {STAGES.length}개
@@ -1039,7 +1043,7 @@ function App() {
             <p className="brand">STAGE {stage.id}</p>
             <h1 className="title">{stageLabel}</h1>
             <p className="subtitle">{stageIntro}</p>
-            <p className="score-line">목표 {Math.round(stage.durationMs / 1000)}초 · 0.7초 후 자동시작</p>
+            <p className="score-line">제한 {Math.round(stage.durationMs / 1000)}초 · 경고를 읽고 상자를 회수해 탈출</p>
             <button type="button" className="cta" onClick={handleBeginPlay}>
               바로 시작
             </button>
@@ -1134,6 +1138,12 @@ function App() {
             <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
             <p className="score-line">+{coinGain} 코인</p>
             <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
+            {!extracted && worldRef.current && (
+              <p className="controls-hint">
+                철광석 ×{worldRef.current.enemyKills} · 속성 결정 ×{worldRef.current.perfectDodges} · 정제 강철 ×{worldRef.current.chests * 4} · 원정 인장 ×{worldRef.current.expeditionSeals}
+                {worldRef.current.player.hp === worldRef.current.player.maxHp ? " · 노히트 설계도 판정" : ""}
+              </p>
+            )}
             {shoulderDrop && <p className="shop-toast">{shoulderDrop}</p>}
             <button type="button" className="cta" onClick={handleNextStage}>
               {allClear || extracted ? "원정 준비" : "다음 스테이지"}

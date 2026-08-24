@@ -40,6 +40,7 @@ export type Arrow = {
   warningMs: number;
   kind: "normal" | "aimed" | "fan" | "ricochet" | "explosive";
   bounces: number;
+  telegraph: "sniper" | "blast" | "charge" | "aerial" | "dash" | "perfect";
 };
 
 export type Platform = {
@@ -140,4 +141,8 @@ export type GameWorld = {
   /** 검격으로 쳐낸 투사체 수와 회수한 원정 보급품. */
   countered: number;
   supplies: number;
+  enemyKills: number;
+  perfectDodges: number;
+  chests: number;
+  expeditionSeals: number;
 };
