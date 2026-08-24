@@ -11,10 +11,10 @@ export const STAGES: StageDef[] = [
   {
     id: 1,
     name: "외곽 초소 돌파",
-    durationMs: 30_000,
+    durationMs: 32_000,
     baseReward: 370,
-    speedMul: 1,
-    spawnMul: 1,
+    speedMul: 0.86,
+    spawnMul: 0.78,
     intro: "전진·점프·검격 반격으로 보급품을 확보하고 초소를 돌파하세요",
     platforms: [],
     patterns: [
@@ -27,10 +27,10 @@ export const STAGES: StageDef[] = [
   {
     id: 2,
     name: "붉은 협곡 추격전",
-    durationMs: 34_000,
+    durationMs: 38_000,
     baseReward: 580,
-    speedMul: 1.08,
-    spawnMul: 1.14,
+    speedMul: 0.94,
+    spawnMul: 0.9,
     intro: "궁수의 조준 사격을 쳐내고 기습대를 따돌리세요",
     platforms,
     patterns: [
@@ -43,10 +43,10 @@ export const STAGES: StageDef[] = [
   {
     id: 3,
     name: "왕실 사격장 탈환",
-    durationMs: 38_000,
+    durationMs: 44_000,
     baseReward: 850,
-    speedMul: 1.16,
-    spawnMul: 1.22,
+    speedMul: 1.02,
+    spawnMul: 1.02,
     intro: "발판을 넘고 폭발 화살을 반격해 정예 보급 상자를 탈환하세요",
     platforms,
     patterns: [
@@ -59,10 +59,10 @@ export const STAGES: StageDef[] = [
   {
     id: 4,
     name: "검은 성문 탈출",
-    durationMs: 45_000,
+    durationMs: 60_000,
     baseReward: 1_220,
-    speedMul: 1.24,
-    spawnMul: 1.3,
+    speedMul: 1.1,
+    spawnMul: 1.12,
     intro: "추격대의 모든 공격을 돌파하고 제한 시간 안에 성문을 탈출하세요",
     platforms,
     patterns: [
@@ -70,7 +70,8 @@ export const STAGES: StageDef[] = [
       { kind: "ricochet", atMs: 9_000, durationMs: 10_000, spawnMs: 500, speed: 435 },
       { kind: "fan", atMs: 19_000, durationMs: 10_000, spawnMs: 620, speed: 455 },
       { kind: "explosive", atMs: 29_000, durationMs: 11_000, spawnMs: 520, speed: 470 },
-      { kind: "burst", atMs: 40_000, durationMs: 5_000, spawnMs: 88, speed: 535 },
+      { kind: "cross", atMs: 40_000, durationMs: 10_000, spawnMs: 210, speed: 505 },
+      { kind: "burst", atMs: 50_000, durationMs: 10_000, spawnMs: 96, speed: 545 },
     ],
   },
 ];

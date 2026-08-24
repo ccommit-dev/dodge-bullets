@@ -30,7 +30,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
   const floorY = floorYOf(height, safeBottom);
   const stats = statsFromLevels(emptyShopLevels());
   const player = createPlayer(width, floorY);
-  player.maxHp = 1 + stats.extraLives;
+  player.maxHp = 3 + stats.extraLives;
   player.hp = player.maxHp;
   player.radius = 16 * stats.hitboxScale;
 
@@ -60,6 +60,10 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     comboTimerMs: 0,
     countered: 0,
     supplies: 0,
+    enemyKills: 0,
+    perfectDodges: 0,
+    chests: 0,
+    expeditionSeals: 0,
   };
   applyStageLayout(world);
   return world;
@@ -111,6 +115,10 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.comboTimerMs = 0;
   world.countered = 0;
   world.supplies = 0;
+  world.enemyKills = 0;
+  world.perfectDodges = 0;
+  world.chests = 0;
+  world.expeditionSeals = 0;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -127,6 +135,10 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.comboTimerMs = 0;
   world.countered = 0;
   world.supplies = 0;
+  world.enemyKills = 0;
+  world.perfectDodges = 0;
+  world.chests = 0;
+  world.expeditionSeals = 0;
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
@@ -283,6 +295,14 @@ export function updateWorld(
 
   const arrowHit = updateArrows(world, dtSec);
 
+  // 전장의 중앙 보급 상자는 직접 전진해야 회수된다. 뒤에서 버티기만 해서는
+  // 정제 강철 보상을 얻을 수 없다.
+  const stageProgress = world.stageElapsedMs / Math.max(1, getStage(world.stageIndex).durationMs);
+  if (world.chests === 0 && stageProgress >= 0.42 && stageProgress <= 0.78 && p.x >= world.width * 0.68) {
+    world.chests = 1;
+    world.supplies += 5;
+  }
+
   if (world.comboTimerMs > 0) {
     world.comboTimerMs = Math.max(0, world.comboTimerMs - dtSec * 1000);
     if (world.comboTimerMs <= 0) world.combo = 0;
@@ -299,6 +319,8 @@ export function updateWorld(
   const stage = getStage(world.stageIndex);
   if (!world.stageClear && world.stageElapsedMs >= stage.durationMs) {
     world.stageClear = true;
+    if (p.hp === p.maxHp) world.expeditionSeals += 2;
+    if (world.chests > 0) world.expeditionSeals += 1;
     return { type: "clear" };
   }
 
@@ -306,7 +328,7 @@ export function updateWorld(
     p.hp -= 1;
     p.anim = "hit";
     p.animTime = 0;
-    p.invulnMs = 520;
+    p.invulnMs = 950;
     p.vy = -220;
     p.onGround = false;
     world.combo = 0;

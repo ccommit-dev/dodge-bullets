@@ -168,12 +168,33 @@ function clubBed(
   stepIndex: number,
   bpm: number,
   currentStepSec: number,
+  mixEnergy: number,
 ): void {
   const stepsPerBeat = Math.max(1, Math.round((60 / Math.max(1, bpm)) / currentStepSec));
   if (stepIndex % stepsPerBeat !== 0) return;
   const beat = Math.floor(stepIndex / stepsPerBeat);
   const roots = [55, 49, 65.41, 43.65];
   const root = roots[Math.floor(beat / 4) % roots.length];
+
+  // 4-on-the-floor kick: the old bed only had a quiet saw bass, so it sounded
+  // like a metronome rather than a club track.
+  const kick = ctx.createOscillator();
+  const kickGain = ctx.createGain();
+  kick.type = "sine";
+  kick.frequency.setValueAtTime(145, when);
+  kick.frequency.exponentialRampToValueAtTime(48, when + 0.11);
+  kickGain.gain.setValueAtTime(0.08 + mixEnergy * 0.12, when);
+  kickGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.2);
+  kick.connect(kickGain);
+  kickGain.connect(master);
+  kick.start(when);
+  kick.stop(when + 0.22);
+
+  // Off-beat hat and 2/4 clap make the groove readable without copying a song.
+  const beatSec = 60 / Math.max(1, bpm);
+  if (mixEnergy >= 0.2) noiseBurst(ctx, master, when + beatSec * 0.5, 0.035, 0.02 + mixEnergy * 0.035, 7200);
+  if (mixEnergy >= 0.4 && beat % 2 === 1) noiseBurst(ctx, master, when, 0.075, 0.035 + mixEnergy * 0.05, 1700);
+
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   const filter = ctx.createBiquadFilter();
@@ -183,13 +204,63 @@ function clubBed(
   filter.frequency.setValueAtTime(520, when);
   filter.frequency.exponentialRampToValueAtTime(120, when + 0.22);
   gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(0.045, when + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.035 + mixEnergy * 0.065, when + 0.012);
   gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.28);
   osc.connect(filter);
   filter.connect(gain);
   gain.connect(master);
   osc.start(when);
   osc.stop(when + 0.3);
+
+  // Two-beat neon chord stab. Original progression: Am–F–C–G flavour,
+  // deliberately not based on an existing copyrighted track.
+  if (mixEnergy >= 0.62 && beat % 2 === 0) {
+    const chord = [root * 4, root * 5, root * 6];
+    chord.forEach((hz, index) => {
+      const voice = ctx.createOscillator();
+      const vg = ctx.createGain();
+      const vf = ctx.createBiquadFilter();
+      voice.type = index === 0 ? "sawtooth" : "triangle";
+      voice.frequency.setValueAtTime(hz, when);
+      vf.type = "lowpass";
+      vf.frequency.setValueAtTime(1450, when);
+      vg.gain.setValueAtTime(0.0001, when);
+      vg.gain.exponentialRampToValueAtTime(0.018, when + 0.012);
+      vg.gain.exponentialRampToValueAtTime(0.0001, when + 0.42);
+      voice.connect(vf);
+      vf.connect(vg);
+      vg.connect(master);
+      voice.start(when);
+      voice.stop(when + 0.44);
+    });
+  }
+
+  // Stage tempo changes the arrangement, not just playback speed.
+  if (mixEnergy >= 0.48 && bpm >= 100 && bpm < 136) {
+    const arp = ctx.createOscillator();
+    const ag = ctx.createGain();
+    arp.type = "square";
+    arp.frequency.setValueAtTime(root * [8, 10, 12, 15][beat % 4], when + beatSec * .5);
+    ag.gain.setValueAtTime(0.018 + mixEnergy * .018, when + beatSec * .5);
+    ag.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * .82);
+    arp.connect(ag);
+    ag.connect(master);
+    arp.start(when + beatSec * .5);
+    arp.stop(when + beatSec * .84);
+  }
+  if (mixEnergy >= 0.35 && bpm >= 136) {
+    const ghost = ctx.createOscillator();
+    const gg = ctx.createGain();
+    ghost.type = "sine";
+    ghost.frequency.setValueAtTime(110, when + beatSec * .5);
+    ghost.frequency.exponentialRampToValueAtTime(46, when + beatSec * .62);
+    gg.gain.setValueAtTime(0.09, when + beatSec * .5);
+    gg.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * .7);
+    ghost.connect(gg);
+    gg.connect(master);
+    ghost.start(when + beatSec * .5);
+    ghost.stop(when + beatSec * .72);
+  }
 }
 
 const SOUND_MAKEUP: Record<BeatSound, number> = {
@@ -204,7 +275,7 @@ const SOUND_MAKEUP: Record<BeatSound, number> = {
 };
 
 /** Bed / teacher layer — always audible as the lesson BGM. */
-const GUIDE_GAIN = 0.42;
+const GUIDE_GAIN = 0.34;
 /** Player lead when locked on the grid — stacks on top of guide. */
 const LEAD_GAIN = 1.05;
 /** Off-grid tap — still audible but thinner. */
@@ -307,6 +378,7 @@ export function createBeatboxPlayer(
   getCtx: () => AudioContext | null,
   getMaster: () => GainNode | null,
   isLive: () => boolean,
+  getMixEnergy: () => number = () => 0,
 ): BeatboxPlayer {
   let transportTimer: number | null = null;
   let transportStartCtx = 0;
@@ -338,8 +410,9 @@ export function createBeatboxPlayer(
       const step = chartRef[nextStepToSchedule];
       if (step && when >= ctx.currentTime - 0.02) {
         const playAt = Math.max(when, ctx.currentTime + 0.001);
-        synthSound(ctx, master, step.sound, playAt, GUIDE_GAIN);
-        clubBed(ctx, master, playAt, nextStepToSchedule, transportBpm, stepSec);
+        const mixEnergy = Math.max(0, Math.min(1, getMixEnergy()));
+        synthSound(ctx, master, step.sound, playAt, GUIDE_GAIN * (0.22 + mixEnergy * 0.58));
+        clubBed(ctx, master, playAt, nextStepToSchedule, transportBpm, stepSec, mixEnergy);
         onStepCb?.(nextStepToSchedule, step.sound, when);
       }
       nextStepToSchedule += 1;

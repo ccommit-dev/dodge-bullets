@@ -24,6 +24,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       warningMs: 0,
       kind: "normal",
       bounces: 0,
+      telegraph: "aerial",
     };
   }
   return pool;
@@ -67,6 +68,7 @@ function activate(
   arrow.bounces = kind === "ricochet" ? 1 : 0;
   arrow.hitRadius = kind === "explosive" ? 10 : HIT_R;
   arrow.length = kind === "explosive" ? 36 : ARROW_LEN;
+  arrow.telegraph = kind === "aimed" ? "sniper" : kind === "explosive" ? "blast" : kind === "ricochet" ? "dash" : kind === "fan" ? "perfect" : kind === "normal" && Math.abs(vx) > Math.abs(vy) ? "charge" : "aerial";
 }
 
 function activePattern(world: GameWorld): ArrowPattern | null {
@@ -136,7 +138,7 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       const dx = targetX - x;
       const dy = targetY - y;
       const len = Math.max(1, Math.hypot(dx, dy));
-      activate(arrow, x, y, (dx / len) * speed, (dy / len) * speed, "aimed", 480);
+      activate(arrow, x, y, (dx / len) * speed, (dy / len) * speed, "aimed", 800);
       break;
     }
     case "fan": {
@@ -242,6 +244,7 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
         a.active = false;
         world.countered += 1;
         world.supplies += a.kind === "explosive" ? 3 : a.kind === "aimed" || a.kind === "ricochet" ? 2 : 1;
+        if (world.countered % 3 === 0) world.enemyKills += 1;
         bumpCombo(world);
         continue;
       }
@@ -261,6 +264,19 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
       }
     }
     a.angle = Math.atan2(a.vy, a.vx || 0.0001);
+
+    // 푸른 공격은 대시로 관통하며 역으로 정찰병을 제압한다.
+    if (a.telegraph === "dash" && player.dashActiveMs > 0) {
+      const dx = a.x - player.x;
+      const dy = a.y - player.y;
+      if (dx * dx + dy * dy <= (player.radius + 34) ** 2) {
+        a.active = false;
+        world.enemyKills += 1;
+        world.supplies += 2;
+        bumpCombo(world);
+        continue;
+      }
+    }
 
     const out =
       a.y > world.height + 60 ||
@@ -291,6 +307,10 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
     if (!a.nearMissed && distSq <= nearR * nearR) {
       a.nearMissed = true;
       bumpCombo(world);
+      if (a.telegraph === "perfect") {
+        world.perfectDodges += 1;
+        world.expeditionSeals += 1;
+      }
     }
   }
 
