@@ -60,7 +60,6 @@ import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { STORE_PRODUCTS } from "./economy/productCatalog";
-import { unconfiguredPaymentAdapter } from "./payments/adapter";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
 
@@ -131,6 +130,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
+  const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
   const [idleReport, setIdleReport] = useState<{
     result: IdleYield;
@@ -140,6 +140,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [gateNotice, setGateNotice] = useState(false);
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
+  const [formationEngaged, setFormationEngaged] = useState(false);
+  const [formationReady, setFormationReady] = useState(false);
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -162,6 +164,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const battlePhaseRef = useRef<BattlePhase>("combat");
   const battleTimers = useRef<number[]>([]);
   const pendingStageRef = useRef<number | null>(null);
+  const formationReadyRef = useRef(false);
 
   useEffect(() => {
     saveRef.current = save;
@@ -216,6 +219,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     chestRef.current = isChest;
     hpRef.current = mhp;
     bossLeftRef.current = BOSS_TIME_SEC;
+    formationReadyRef.current = false;
+    setFormationReady(false);
+    setFormationEngaged(false);
+    window.requestAnimationFrame(() => setFormationEngaged(true));
+    const approachMs = asBoss ? 1450 : 1250;
+    const formationTimer = window.setTimeout(() => {
+      formationReadyRef.current = true;
+      setFormationReady(true);
+    }, approachMs);
+    battleTimers.current.push(formationTimer);
   }, []);
 
   useEffect(() => {
@@ -506,7 +519,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
   const doTap = useCallback(
     (clientX?: number, clientY?: number) => {
-      if (battlePhaseRef.current !== "combat") return;
+      if (battlePhaseRef.current !== "combat" || !formationReadyRef.current) return;
       const { dmg, crit } = computeTapHit();
       playAttackAnim();
       pushFx("slash", 28 + Math.random() * 8, 42 + Math.random() * 10);
@@ -526,7 +539,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       last = now;
 
       const war = now < buffsRef.current.warcryUntil ? 2.5 : 1;
-      if (battlePhaseRef.current === "combat" && document.visibilityState !== "hidden") {
+      if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012));
         autoAttackAcc.current += dt;
         if (autoAttackAcc.current >= autoInterval) {
@@ -543,7 +556,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         autoAttackAcc.current = 0;
       }
 
-      if (battlePhaseRef.current === "combat" && document.visibilityState !== "hidden") {
+      if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025;
         for (const h of HEROES) {
           const level = saveRef.current.heroes[h.id];
@@ -586,7 +599,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   }, [ready, applyDamage, spawn]);
 
   useEffect(() => {
-    if (!ready || battlePhase !== "combat") {
+    if (!ready || battlePhase !== "combat" || !formationReady) {
       setMonsterAction("idle");
       return;
     }
@@ -608,7 +621,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       window.clearTimeout(prepareTimer);
       window.clearTimeout(recoverTimer);
     };
-  }, [battlePhase, boss, ready]);
+  }, [battlePhase, boss, formationReady, ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -727,9 +740,55 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     flash(`${def.name} Lv.${level + 1}`);
   };
 
-  const previewPurchase = async (productId: string) => {
-    const result = await unconfiguredPaymentAdapter.purchase(productId);
-    if (result.status === "not-configured") flash("결제 연동 준비 중 · 실제 결제는 발생하지 않습니다");
+  const claimFreeProduct = async (productId: string) => {
+    const claimKey = `free-store-v1:${productId}`;
+    if (claimingProduct || characterRef.current.claimedRewards.includes(claimKey)) return;
+    setClaimingProduct(productId);
+    const grants: Record<string, { gems: number; gold: number; materials: number; cores: number; shoulder?: ShoulderId }> = {
+      "gems-80": { gems: 80, gold: 0, materials: 0, cores: 0 },
+      "gems-450": { gems: 450, gold: 0, materials: 0, cores: 0 },
+      "gems-1200": { gems: 1200, gold: 0, materials: 0, cores: 0 },
+      "adventurer-starter": { gems: 80, gold: 5000, materials: 10, cores: 0, shoulder: "scout" },
+      "adventurer-mid": { gems: 250, gold: 50000, materials: 0, cores: 5, shoulder: "shadow" },
+      "adventurer-advanced": { gems: 700, gold: 0, materials: 30, cores: 15, shoulder: "dragon" },
+    };
+    const grant = grants[productId];
+    if (!grant) {
+      setClaimingProduct(null);
+      return;
+    }
+    try {
+      const updated = await updateCharacterProgress(userHash, (current) => {
+        if (current.claimedRewards.includes(claimKey)) return current;
+        return {
+          ...current,
+          redGems: current.redGems + grant.gems,
+          sharedCoins: current.sharedCoins + grant.gold,
+          enhancementMaterials: current.enhancementMaterials + grant.materials,
+          ownedShoulders: grant.shoulder
+            ? [...new Set([...current.ownedShoulders, grant.shoulder])]
+            : current.ownedShoulders,
+          claimedRewards: [...current.claimedRewards, claimKey],
+          lastContent: "titans",
+        };
+      });
+      setCharacter(updated);
+      characterRef.current = updated;
+      setRedGems(updated.redGems);
+      if (grant.gold > 0 || grant.cores > 0) {
+        setSave((current) => ({
+          ...current,
+          gold: current.gold + grant.gold,
+          skillInventory: {
+            ...current.skillInventory,
+            skillCores: current.skillInventory.skillCores + grant.cores,
+          },
+        }));
+      }
+      flash(`${STORE_PRODUCTS.find((product) => product.id === productId)?.name ?? "체험 상품"} 무료 수령 완료`);
+    } finally {
+      setClaimingProduct(null);
+    }
   };
 
   const skipStageTransition = () => {
@@ -819,7 +878,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         }}
       >
         <div className="titans-background" aria-hidden="true" />
-        <div className={`titans-hero ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
+        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
           <div className={`titans-hero-facing facing-${animMode}`}>
             <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} />
           </div>
@@ -832,6 +891,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               id={h.id}
               attacking
               pulse={allyPulse[h.id] ?? 0}
+              engaged={formationEngaged}
+              approaching={formationEngaged && !formationReady}
             />
           ))}
         </div>
@@ -841,7 +902,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
-        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
+        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
           <MonsterArt kind={kind} area={area} boss={boss} golden={chesterson} />
           <strong>{label}</strong>
           {monsterAction === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}
@@ -1043,11 +1104,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </b>
           </p>
         )}
-        {tab === "premium" && STORE_PRODUCTS.filter((product) => product.visible).map((product) => <article key={product.id} className="titans-card premium-product-card">
+        {tab === "premium" && STORE_PRODUCTS.filter((product) => product.visible).map((product) => {
+          const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
+          return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}</strong><p>{product.description}</p><small>{product.contents.join(" · ")}</small></div>
-          <button type="button" onClick={() => void previewPurchase(product.id)}>{product.displayPrice}</button>
-        </article>)}
+          <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회"}</button>
+        </article>})}
       </section>
 
       {toast && <div className="titans-toast">{toast}</div>}

@@ -54,10 +54,10 @@ export function MonsterArt({
   );
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0 }: { id: TitanHeroId; attacking?: boolean; pulse?: number }) {
+export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, approaching = false }: { id: TitanHeroId; attacking?: boolean; pulse?: number; engaged?: boolean; approaching?: boolean }) {
   const ranged = id === "leon" || id === "sera";
   return (
-    <div className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"}`}>
+    <div className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해

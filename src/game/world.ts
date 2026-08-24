@@ -58,6 +58,8 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     combo: 0,
     maxCombo: 0,
     comboTimerMs: 0,
+    countered: 0,
+    supplies: 0,
   };
   applyStageLayout(world);
   return world;
@@ -107,6 +109,8 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.combo = 0;
   world.maxCombo = 0;
   world.comboTimerMs = 0;
+  world.countered = 0;
+  world.supplies = 0;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -121,6 +125,8 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.stageClear = false;
   world.combo = 0;
   world.comboTimerMs = 0;
+  world.countered = 0;
+  world.supplies = 0;
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;

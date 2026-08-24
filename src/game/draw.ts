@@ -101,9 +101,51 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.fillRect(pl.x, pl.y, pl.w, 3);
   }
 
+  // 원정 추격대 — 단순 탄막이 아니라 적이 사격하는 전장으로 읽히게 한다.
+  const enemyX = width - world.safeRight - 42;
+  const enemyY = floorY - 40;
+  ctx.save();
+  ctx.strokeStyle = "rgba(251,113,133,.9)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(enemyX, enemyY - 28, 9, 0, Math.PI * 2);
+  ctx.moveTo(enemyX, enemyY - 18); ctx.lineTo(enemyX, enemyY + 12);
+  ctx.moveTo(enemyX, enemyY - 8); ctx.lineTo(enemyX - 14, enemyY + 4);
+  ctx.moveTo(enemyX, enemyY - 8); ctx.lineTo(enemyX + 15, enemyY - 18);
+  ctx.moveTo(enemyX, enemyY + 12); ctx.lineTo(enemyX - 10, enemyY + 30);
+  ctx.moveTo(enemyX, enemyY + 12); ctx.lineTo(enemyX + 10, enemyY + 30);
+  ctx.stroke();
+  ctx.strokeStyle = "#fbbf24";
+  ctx.beginPath(); ctx.arc(enemyX + 18, enemyY - 18, 15, -1.2, 1.2); ctx.stroke();
+  ctx.restore();
+
+  // 쳐낸 공격이 보급품으로 쌓이는 즉각적인 목표 피드백.
+  ctx.save();
+  ctx.fillStyle = "rgba(8,47,73,.88)";
+  ctx.strokeStyle = "#67e8f9";
+  ctx.lineWidth = 2;
+  ctx.fillRect(world.safeLeft + 12, world.safeTop + 72, 132, 34);
+  ctx.strokeRect(world.safeLeft + 12, world.safeTop + 72, 132, 34);
+  ctx.fillStyle = "#e0f2fe";
+  ctx.font = "700 12px system-ui";
+  ctx.fillText(`반격 ${world.countered} · 보급 ${world.supplies}`, world.safeLeft + 22, world.safeTop + 94);
+  ctx.restore();
+
   for (let i = 0; i < arrows.length; i++) {
     if (arrows[i].active) drawArrow(ctx, arrows[i]);
   }
 
   drawStickman(ctx, world);
+
+  if (world.player.slowActiveMs > 0) {
+    const pulse = 1 - world.player.slowActiveMs / Math.max(1, world.stats.slowDurationMs);
+    ctx.save();
+    ctx.globalAlpha = 0.85 - pulse * 0.55;
+    ctx.strokeStyle = "#67e8f9";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(world.player.x, world.player.y, world.stats.slowRadius * (0.55 + pulse * 0.55), -1.25, 1.3);
+    ctx.stroke();
+    ctx.restore();
+  }
 }

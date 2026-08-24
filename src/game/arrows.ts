@@ -238,6 +238,13 @@ export function updateArrows(world: GameWorld, dtSec: number): boolean {
     if (slow) {
       const dx = a.x - player.x;
       const dy = a.y - player.y;
+      if (dx * dx + dy * dy <= slowR * slowR && a.warningMs <= 0) {
+        a.active = false;
+        world.countered += 1;
+        world.supplies += a.kind === "explosive" ? 3 : a.kind === "aimed" || a.kind === "ricochet" ? 2 : 1;
+        bumpCombo(world);
+        continue;
+      }
       if (dx * dx + dy * dy <= slowR * slowR) mul = slowF;
     }
 
