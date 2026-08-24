@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { assetUrl } from "./asset";
-import { BEAT_SHOP_ITEMS } from "./beat/shop";
 import { drawBeatFrame } from "./beat/draw";
 import {
   applyLessonClear,
   buildStageSlots,
-  SKILL_LABEL,
-  skillTotal,
   spendStamina,
   type BeatRpgProgress,
   type PracticeSlot,
-  type SkillId,
 } from "./beat/rpg";
 import { getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
-import type { BeatCosmetics, NoteLane, RingSkinId, SpikeSkinId } from "./beat/types";
+import type { BeatCosmetics, NoteLane } from "./beat/types";
 import { BEAT_SOUND_LABEL, LANE_KEYS } from "./beat/types";
 import {
   applyBeatInsets,
@@ -30,20 +26,19 @@ import {
   loadBeatCosmetics,
   loadBeatRpg,
   loadBeatUnlock,
-  saveBeatCosmetics,
   saveBeatRpg,
   saveBeatUnlock,
   saveCoins,
   saveHighScore,
 } from "./game/storage";
 import type { SafeInsets } from "./game/toss";
-import { grantCharacterReward, setWalletBalance, updateCharacterProgress } from "./progression/storage";
+import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import type { ShoulderId } from "./progression/model";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { AllyArt } from "./titans/SpriteArt";
 
-type BeatUi = "menu" | "playing" | "clear" | "gameover" | "shop";
+type BeatUi = "menu" | "playing" | "clear" | "gameover";
 type DifficultyChoice = "easy" | "normal" | "hard" | "expert";
 const DIFFICULTY = {
   easy: { label: "EASY", bpmMultiplier: .92, difficulty: "easy" as const, reward: 1 },
@@ -136,11 +131,8 @@ export function BeatGame({
   const [timingOffset, setTimingOffset] = useState(0);
   const [loopCompletion, setLoopCompletion] = useState(0);
   const [unlocked, setUnlocked] = useState(0);
-  const [cosmetics, setCosmetics] = useState<BeatCosmetics | null>(null);
   const [rpg, setRpg] = useState<BeatRpgProgress | null>(null);
-  const [shopMsg, setShopMsg] = useState("");
   const [hubMsg, setHubMsg] = useState("");
-  const [practiceKind, setPracticeKind] = useState<"lesson" | "spar">("lesson");
   const [difficultyChoice, setDifficultyChoice] = useState<DifficultyChoice>("normal");
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
@@ -153,7 +145,7 @@ export function BeatGame({
   const [fever, setFever] = useState(0);
   const commandBeatsRef = useRef<BeatDirection[]>([]);
   const beatEnemyHpRef = useRef(100);
-  const slots = buildStageSlots(practiceKind);
+  const slots = buildStageSlots("lesson");
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
 
@@ -191,7 +183,6 @@ export function BeatGame({
         loadBeatRpg(userHash),
       ]);
       setUnlocked(u);
-      setCosmetics(c);
       cosmeticsRef.current = c;
       setRpg(r);
       rpgRef.current = r;
@@ -488,54 +479,6 @@ export function BeatGame({
     syncUi("playing");
   };
 
-  const buyOrEquip = async (kind: "ring" | "spike", id: string) => {
-    if (!cosmetics) return;
-    const item = BEAT_SHOP_ITEMS.find((i) => i.kind === kind && i.id === id);
-    if (!item) return;
-    const next = {
-      ...cosmetics,
-      ownedRings: [...cosmetics.ownedRings],
-      ownedSpikes: [...cosmetics.ownedSpikes],
-    };
-
-    if (kind === "ring") {
-      const rid = id as RingSkinId;
-      if (!next.ownedRings.includes(rid)) {
-        if (coinsRef.current < item.cost) {
-          setShopMsg("코인이 부족해요");
-          return;
-        }
-        // 레거시 코인 키만 낮추면 다음 로드에서 sharedCoins가 살아나 구매가 취소된다.
-        const bal = (await setWalletBalance(userHash, coinsRef.current - item.cost)).sharedCoins;
-        coinsRef.current = bal;
-        onCoins(bal);
-        next.ownedRings.push(rid);
-        setShopMsg(`${item.name} 구매!`);
-      }
-      next.ringSkin = rid;
-    } else {
-      const sid = id as SpikeSkinId;
-      if (!next.ownedSpikes.includes(sid)) {
-        if (coinsRef.current < item.cost) {
-          setShopMsg("코인이 부족해요");
-          return;
-        }
-        // 레거시 코인 키만 낮추면 다음 로드에서 sharedCoins가 살아나 구매가 취소된다.
-        const bal = (await setWalletBalance(userHash, coinsRef.current - item.cost)).sharedCoins;
-        coinsRef.current = bal;
-        onCoins(bal);
-        next.ownedSpikes.push(sid);
-        setShopMsg(`${item.name} 구매!`);
-      }
-      next.spikeSkin = sid;
-    }
-
-    setCosmetics(next);
-    cosmeticsRef.current = next;
-    await saveBeatCosmetics(userHash, next);
-    if (sessionRef.current) sessionRef.current.world.cosmetics = next;
-  };
-
   const dockStyle = {
     paddingTop: insets.top,
     paddingLeft: insets.left,
@@ -543,8 +486,6 @@ export function BeatGame({
   } as const;
 
   const totalStages = stageCount();
-  const skillIds = Object.keys(SKILL_LABEL) as SkillId[];
-
   return (
     <div className="beat-layer">
       <canvas ref={canvasRef} className={`game-canvas ${ui === "playing" ? "beat-battle-canvas" : ""}`} />
@@ -553,56 +494,16 @@ export function BeatGame({
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand beat-kicker">PRACTICE ROOM</p>
-            <h1 className="title beat-title">비트박스 연습실</h1>
-            <p className="subtitle">화살표 4박자 명령으로 파티를 지휘하고 챕터 보스를 쓰러뜨리세요</p>
-            <p className="controls-hint">
-              ←/A · ↓/S · ↑/W · →/D — 강조된 네 방향 명령을 박자에 맞춰 입력
-            </p>
-            <p className="controls-hint">모바일에서는 화면 아래 네 방향 버튼으로 파티를 지휘합니다</p>
-            <p className="score-line">
-              코인 {coins} · 공명 제련 · 명성 {rpg.fame} · SP {rpg.sp}
-            </p>
-            <div className="beat-blueprints" aria-label="챕터 견갑 보상">
-              {SHOULDER_BLUEPRINTS.map((item) => (
-                <button key={item.id} type="button" disabled>
-                  <span className={`blueprint-pauldron blueprint-${item.id}`} aria-hidden="true" />
-                  <b>CH.{SHOULDER_BLUEPRINTS.indexOf(item)+1} {item.name}</b><small>보스 최초 클리어 확정</small>
-                </button>
-              ))}
-            </div>
-            <div className="rpg-stats">
-              {skillIds.map((id) => (
-                <div key={id} className="rpg-stat">
-                  <span>{SKILL_LABEL[id]}</span>
-                  <strong>Lv.{rpg.skills[id]}</strong>
-                </div>
-              ))}
-              <div className="rpg-stat">
-                <span>합계</span>
-                <strong>{skillTotal(rpg.skills)}</strong>
-              </div>
-            </div>
+            <h1 className="title beat-title">공명 전투 훈련</h1>
+            <p className="subtitle">클럽 비트에 맞춰 네 방향 명령을 완성하고 견갑을 획득하세요</p>
+            <p className="controls-hint">키보드 ← ↓ ↑ → / A S W D · 모바일은 화면 아래 화살표</p>
+            <p className="score-line">보유 골드 {coins.toLocaleString()} · SP {rpg.sp} · 명성 {rpg.fame}</p>
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
-            <div className="mode-row" role="tablist">
-              {(["lesson", "spar"] as const).map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  role="tab"
-                  aria-selected={practiceKind === kind}
-                  className={`mode-tab ${practiceKind === kind ? "on" : ""}`}
-                  onClick={() => setPracticeKind(kind)}
-                >
-                  {kind === "lesson" ? "레슨 · 차근차근" : "스파링 · 보상 2배"}
-                </button>
-              ))}
-            </div>
             <div className="beat-difficulty" aria-label="노래 난이도">
-              {(Object.keys(DIFFICULTY) as DifficultyChoice[]).map((id) => <button key={id} type="button" className={difficultyChoice === id ? "on" : ""} onClick={() => setDifficultyChoice(id)}>
+              {(["easy", "normal", "hard"] as DifficultyChoice[]).map((id) => <button key={id} type="button" className={difficultyChoice === id ? "on" : ""} onClick={() => setDifficultyChoice(id)}>
                 <b>{DIFFICULTY[id].label}</b><small>보상 ×{DIFFICULTY[id].reward}</small>
               </button>)}
             </div>
-            <p className="controls-hint">전진 → 공격 → 방어 → 집중 · 명령 성공으로 FEVER를 유지하세요</p>
             <div className="schedule-list">
               {slots.map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
@@ -618,7 +519,7 @@ export function BeatGame({
                   >
                     <span className="schedule-day">
                       CHAPTER {Math.floor(slot.stageIndex / 2)+1}-{slot.stageIndex % 2 + 1} · {slot.track.bpm}BPM ·{" "}
-                      {slot.track.subdivision}비트
+                      {slot.track.subdivision}비트 · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초
                       {recommended ? " · 추천" : ""}
                     </span>
                     <span className="schedule-title">{slot.title}</span>
@@ -640,9 +541,6 @@ export function BeatGame({
               >
                 이어서 연습하기
               </button>
-              <button type="button" className="cta cta-ghost" onClick={() => syncUi("shop")}>
-                전장의 악기 공방
-              </button>
               <button type="button" className="cta cta-ghost" onClick={onBack}>
                 타이탄 사냥터
               </button>
@@ -651,58 +549,11 @@ export function BeatGame({
         </div>
       )}
 
-      {ui === "shop" && cosmetics && (
-        <div className="game-overlay">
-          <div className="overlay-content overlay-wide">
-            <p className="brand beat-kicker">WAR DRUM WORKSHOP</p>
-            <h1 className="title">지휘 북 · 파티 구호</h1>
-            <p className="subtitle">전투 보상으로 명령 음색과 화살표 구호를 커스텀하세요</p>
-            <p className="score-line">보유 {coins} 코인</p>
-            {shopMsg && <p className="shop-toast">{shopMsg}</p>}
-            <div className="beat-shop-list">
-              {BEAT_SHOP_ITEMS.map((item) => {
-                const owned =
-                  item.kind === "ring"
-                    ? cosmetics.ownedRings.includes(item.id)
-                    : cosmetics.ownedSpikes.includes(item.id);
-                const equipped =
-                  item.kind === "ring"
-                    ? cosmetics.ringSkin === item.id
-                    : cosmetics.spikeSkin === item.id;
-                return (
-                  <div key={`${item.kind}-${item.id}`} className="beat-shop-item">
-                    <div className="shop-item-text">
-                      <strong>
-                        {item.kind === "ring" ? "지휘 북" : "파티 구호"} · {item.name}
-                      </strong>
-                      <span>{item.desc}</span>
-                      <span className="shop-lv">
-                        {owned ? (equipped ? "착용 중" : "보유") : `${item.cost} 코인`}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="shop-buy"
-                      onClick={() => void buyOrEquip(item.kind, item.id)}
-                    >
-                      {equipped ? "착용됨" : owned ? "착용" : "구매"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <button type="button" className="cta" onClick={() => syncUi("menu")}>
-              연습실로
-            </button>
-          </div>
-        </div>
-      )}
-
       {ui === "playing" && (
         <>
           <div className={`beat-command-party action-${partyAction}`} aria-live="polite">
             <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>훈련 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
-            <div className="beat-command-track"><span className="beat-party-character"><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" ? commandIndex : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" ? commandIndex : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="훈련 몬스터" /></div>
+            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" ? commandIndex : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" ? commandIndex : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="훈련 몬스터" /></div>
             <div className="beat-fever"><i style={{width:`${fever}%`}}/><span>FEVER {fever}%</span></div>
             <div className="beat-command-readout"><strong>{COMMANDS[commandIndex % COMMANDS.length].action === "march" ? "전진" : COMMANDS[commandIndex % COMMANDS.length].action === "attack" ? "공격" : COMMANDS[commandIndex % COMMANDS.length].action === "guard" ? "방어" : "집중"}</strong><span>{COMMANDS[commandIndex % COMMANDS.length].arrows.map((direction,index) => <i key={`${commandIndex}-${index}`} className={commandBeats[index] === direction ? "done" : index === commandBeats.length ? "current" : ""}>{DIRECTIONS.find(item=>item.id===direction)?.symbol}</i>)}</span></div>
           </div>
@@ -785,9 +636,6 @@ export function BeatGame({
                 다음 스테이지
               </button>
             )}
-            <button type="button" className="cta beat-start" onClick={() => syncUi("shop")}>
-              비트 상점
-            </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
               연습실
             </button>
@@ -817,9 +665,6 @@ export function BeatGame({
             </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
               연습실
-            </button>
-            <button type="button" className="cta cta-ghost" onClick={() => syncUi("shop")}>
-              비트 상점
             </button>
             <button type="button" className="cta cta-ghost" onClick={onBack}>
               사냥터로 돌아가기

@@ -123,7 +123,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
           <article style={{ animationDelay: "180ms" }}>
             <img src={assetUrl("ui/attendance/enhance-stone.png")} alt="" />
             <b>{materials.toLocaleString()}</b>
-            <span>강화석</span>
+            <span>강화석 · 대장간 성공률 +8%p</span>
           </article>
         </div>
 

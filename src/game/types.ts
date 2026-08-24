@@ -137,4 +137,7 @@ export type GameWorld = {
   combo: number;
   maxCombo: number;
   comboTimerMs: number;
+  /** 검격으로 쳐낸 투사체 수와 회수한 원정 보급품. */
+  countered: number;
+  supplies: number;
 };

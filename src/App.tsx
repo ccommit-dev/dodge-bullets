@@ -14,6 +14,7 @@ import { HUNTING_AREAS } from "./titans/model";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
 import { IdleQaPanel } from "./dev/IdleQaPanel";
+import { ContentIcon } from "./ui/ContentIcon";
 import {
   grantCharacterReward,
   loadCharacterProgress,
@@ -473,7 +474,7 @@ function App() {
               world.player.maxHp,
               world.stageElapsedMs,
               stage.durationMs,
-            ) + Math.min(40, world.maxCombo * 2);
+            ) + Math.min(40, world.maxCombo * 2) + world.supplies * 3;
           setCoinGain(reward);
           sound.playCoin();
           void (async () => {
@@ -490,7 +491,7 @@ function App() {
               {
                 exp: growth.exp,
                 sharedCoins: reward,
-                enhancementMaterials: growth.materials,
+                enhancementMaterials: growth.materials + Math.floor(world.supplies / 8),
                 dodgeStage: world.stageIndex + 1,
                 lastContent: "dodge",
               },
@@ -661,7 +662,7 @@ function App() {
     if (!world || stateRef.current !== "playing" || world.stageElapsedMs < 15_000) return;
     const stage = getStage(world.stageIndex);
     const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
-    const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2));
+    const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2));
     const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
     soundRef.current.stopBgm();
     soundRef.current.playCoin();
@@ -683,7 +684,7 @@ function App() {
         {
           exp: Math.floor(growth.exp * survivalRatio * 0.65),
           sharedCoins: reward,
-          enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6)),
+          enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6) + Math.floor(world.supplies / 10)),
           dodgeStage: world.stageIndex + 1,
           lastContent: "dodge",
         },
@@ -781,6 +782,16 @@ function App() {
             </button>
             {settingsOpen && (
               <div className="settings-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    setAppMode("profile");
+                  }}
+                >
+                  <span><ContentIcon name="profile" /> 마이페이지</span><b>›</b>
+                </button>
                 <button
                   type="button"
                   role="menuitem"
@@ -904,9 +915,9 @@ function App() {
       {bootReady && appMode === "dodge" && gameState === "ready" && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
-            <p className="brand">총알피하기</p>
-            <h1 className="title">Arrow Dodge</h1>
-            <p className="subtitle">검의 주인과 함께 화살을 피하고 원정지를 돌파하세요</p>
+            <p className="brand">BATTLE EXPEDITION</p>
+            <h1 className="title">전장의 돌파 원정</h1>
+            <p className="subtitle">이동·회피·검격 반격으로 적진의 보급품을 확보하고 탈출하세요</p>
             <p className="score-line">코인 {coins} · 최고 {highScore}</p>
 
             <div className="tab-row" role="tablist">
@@ -929,7 +940,7 @@ function App() {
             {menuTab === "play" ? (
               <>
                 <p className="controls-hint">
-                  드래그 이동 · 더블탭/스페이스 점프 · Shift 대시 · E 슬로우
+                  드래그 이동 · 더블탭/스페이스 점프 · Shift 대시 · E 검격 반격
                 </p>
                 <p className="controls-hint">
                   식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"} · 스테이지 {STAGES.length}개
@@ -986,7 +997,7 @@ function App() {
             ) : (
               <div className="shop-list">
                 <p className="brand">EXPEDITION SUPPLY</p>
-                <p className="subtitle">이동 훈련과 생존 장비를 준비해 더 위험한 원정에 도전하세요</p>
+                <p className="subtitle">기동 장비와 반격 검술을 준비해 더 위험한 돌파 작전에 도전하세요</p>
                 {(Object.keys(SHOP_META) as ShopUpgradeId[]).map((id) => {
                   const level = shopLevels[id];
                   const max = SHOP_MAX[id];
@@ -1098,12 +1109,11 @@ function App() {
             <button
               type="button"
               className="action-btn"
-              disabled={shopLevels.slowField <= 0}
               onClick={() => {
                 inputRef.current.slowPressed = true;
               }}
             >
-              슬로우
+              검격
             </button>
             <button
               type="button"

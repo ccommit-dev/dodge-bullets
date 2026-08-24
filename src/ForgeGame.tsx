@@ -451,6 +451,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   <div>
                     <span>성공 확률</span>
                     <strong>{maxed ? "—" : `${Math.round(boostedChance * 1000) / 10}%`}</strong>
+                    {!maxed && <small>{materials > 0 ? "강화석 1개 자동 사용 · +8%p" : "방치 정산 강화석으로 +8%p"}</small>}
                   </div>
                   <div>
                     <span>판매 가격</span>

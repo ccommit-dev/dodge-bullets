@@ -160,6 +160,38 @@ function rim(ctx: AudioContext, master: GainNode, when: number, gainScale: numbe
   osc.stop(when + 0.07);
 }
 
+/** 저작권 음원을 복제하지 않는 오리지널 클럽 베드. 가이드와 같은 오디오 시계로 예약한다. */
+function clubBed(
+  ctx: AudioContext,
+  master: GainNode,
+  when: number,
+  stepIndex: number,
+  bpm: number,
+  currentStepSec: number,
+): void {
+  const stepsPerBeat = Math.max(1, Math.round((60 / Math.max(1, bpm)) / currentStepSec));
+  if (stepIndex % stepsPerBeat !== 0) return;
+  const beat = Math.floor(stepIndex / stepsPerBeat);
+  const roots = [55, 49, 65.41, 43.65];
+  const root = roots[Math.floor(beat / 4) % roots.length];
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(root, when);
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(520, when);
+  filter.frequency.exponentialRampToValueAtTime(120, when + 0.22);
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(0.045, when + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.28);
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(master);
+  osc.start(when);
+  osc.stop(when + 0.3);
+}
+
 const SOUND_MAKEUP: Record<BeatSound, number> = {
   boots: 1.15,
   rim: 1.35,
@@ -283,6 +315,7 @@ export function createBeatboxPlayer(
   let nextStepToSchedule = 0;
   let onStepCb: LessonStepCallback | undefined;
   let running = false;
+  let transportBpm = 120;
 
   const stopLessonTransport = () => {
     if (transportTimer !== null) {
@@ -304,7 +337,9 @@ export function createBeatboxPlayer(
       if (when > horizon) break;
       const step = chartRef[nextStepToSchedule];
       if (step && when >= ctx.currentTime - 0.02) {
-        synthSound(ctx, master, step.sound, Math.max(when, ctx.currentTime + 0.001), GUIDE_GAIN);
+        const playAt = Math.max(when, ctx.currentTime + 0.001);
+        synthSound(ctx, master, step.sound, playAt, GUIDE_GAIN);
+        clubBed(ctx, master, playAt, nextStepToSchedule, transportBpm, stepSec);
         onStepCb?.(nextStepToSchedule, step.sound, when);
       }
       nextStepToSchedule += 1;
@@ -356,7 +391,7 @@ export function createBeatboxPlayer(
       if (!isLive()) return;
       const ctx = getCtx();
       if (!ctx) return;
-      void bpm;
+      transportBpm = Math.max(60, bpm);
       stepSec = Math.max(0.05, stepSeconds);
       chartRef = chart;
       onStepCb = onStep;

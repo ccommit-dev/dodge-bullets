@@ -10,12 +10,12 @@ const platforms = [
 export const STAGES: StageDef[] = [
   {
     id: 1,
-    name: "외곽 초소",
+    name: "외곽 초소 돌파",
     durationMs: 30_000,
     baseReward: 370,
     speedMul: 1,
     spawnMul: 1,
-    intro: "30초 안에 화살 폭풍을 돌파하세요",
+    intro: "전진·점프·검격 반격으로 보급품을 확보하고 초소를 돌파하세요",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },
@@ -26,12 +26,12 @@ export const STAGES: StageDef[] = [
   },
   {
     id: 2,
-    name: "붉은 협곡",
+    name: "붉은 협곡 추격전",
     durationMs: 34_000,
     baseReward: 580,
     speedMul: 1.08,
     spawnMul: 1.14,
-    intro: "조준 사격과 반사 화살이 퇴로를 압박합니다",
+    intro: "궁수의 조준 사격을 쳐내고 기습대를 따돌리세요",
     platforms,
     patterns: [
       { kind: "side", atMs: 0, durationMs: 8_000, spawnMs: 390, speed: 370 },
@@ -42,12 +42,12 @@ export const STAGES: StageDef[] = [
   },
   {
     id: 3,
-    name: "왕실 사격장",
+    name: "왕실 사격장 탈환",
     durationMs: 38_000,
     baseReward: 850,
     speedMul: 1.16,
     spawnMul: 1.22,
-    intro: "부채꼴과 폭발 화살을 연속으로 돌파하세요",
+    intro: "발판을 넘고 폭발 화살을 반격해 정예 보급 상자를 탈환하세요",
     platforms,
     patterns: [
       { kind: "fan", atMs: 0, durationMs: 9_000, spawnMs: 700, speed: 410 },
@@ -58,12 +58,12 @@ export const STAGES: StageDef[] = [
   },
   {
     id: 4,
-    name: "검은 성문",
+    name: "검은 성문 탈출",
     durationMs: 45_000,
     baseReward: 1_220,
     speedMul: 1.24,
     spawnMul: 1.3,
-    intro: "모든 정예 패턴을 뚫고 성문에서 탈출하세요",
+    intro: "추격대의 모든 공격을 돌파하고 제한 시간 안에 성문을 탈출하세요",
     platforms,
     patterns: [
       { kind: "aimed", atMs: 0, durationMs: 9_000, spawnMs: 430, speed: 430 },
