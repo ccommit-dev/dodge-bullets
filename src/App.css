@@ -2328,8 +2328,15 @@
 .kind-boss .titan-monster-art { width: var(--boss-size); filter: drop-shadow(0 0 18px var(--area-accent)); }
 .titans-field.chest .titan-monster-art { filter: sepia(1) saturate(2.4) drop-shadow(0 0 16px #fbbf24); }
 
-.titans-allies { display: flex; align-items: flex-end; gap: 0; }
-.titan-ally-art { position: relative; width: var(--ally-size); aspect-ratio: 1; filter: drop-shadow(0 7px 6px rgba(0, 0, 0, 0.55)); transform-origin: 50% 92%; }
+.titans-allies { display:block; }
+.titan-ally-art { position:relative; width:var(--ally-size); aspect-ratio:1; filter:drop-shadow(0 7px 6px rgba(0,0,0,.55)); transform-origin:50% 92%; }
+.titans-allies .titan-ally-art { position:absolute; left:var(--ally-x,0%); bottom:var(--ally-y,0%); }
+.titan-ally-art.ally-mia { --ally-x:18%; --ally-y:0%; z-index:5; }
+.titan-ally-art.ally-leon { --ally-x:0%; --ally-y:30%; z-index:2; }
+.titan-ally-art.ally-sera { --ally-x:30%; --ally-y:38%; z-index:1; }
+.titan-ally-art.ally-garen { --ally-x:48%; --ally-y:2%; z-index:4; }
+.titan-ally-art.ally-ari { --ally-x:60%; --ally-y:30%; z-index:2; }
+.titan-ally-art.ally-nox { --ally-x:78%; --ally-y:5%; z-index:3; }
 .titan-ally-art { transition:transform 1.15s linear; }
 .titan-ally-art.combat-ranged.is-engaged { transform:translateX(clamp(55px,13vw,105px)); }
 .titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }
@@ -2340,7 +2347,23 @@
 .ally-idle { width:100%; height:100%; transform-origin:50% 92%; animation: ally-idle-bob 1.7s ease-in-out infinite; }
 @keyframes ally-idle-bob { 50% { transform: translateY(-2.5px) scale(1.008,.992); } }
 .ally-swing { position:relative; width:100%; height:100%; transform-origin:50% 86%; }
-.titan-ally-art .ally-body { width: 100%; height: 100%; background-repeat: no-repeat; }
+.titan-ally-art .ally-body { position:absolute; inset:0; z-index:1; width:100%; height:100%; background-repeat:no-repeat; }
+.ally-weapon { position:absolute; z-index:2; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; transform-origin:56% 62%; filter:drop-shadow(0 0 3px rgba(103,232,249,.85)); }
+.ally-weapon .weapon-metal { fill:rgba(224,242,254,.92); stroke:#38bdf8; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
+.ally-weapon .weapon-string { fill:none; stroke:#e2e8f0; stroke-width:1.7; }
+.ally-weapon .weapon-shaft { fill:none; stroke:#c084fc; stroke-width:5; stroke-linecap:round; }
+.ally-weapon .weapon-gem { fill:#a855f7; stroke:#f0abfc; stroke-width:3; }
+.ally-weapon .weapon-accent { fill:none; stroke:#fbbf24; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+.ally-weapon .offhand { opacity:.9; }
+.weapon-mia { transform:translate(1%,5%) rotate(-5deg) scale(.72); }
+.weapon-leon { transform:translate(2%,0) scale(.9); transform-origin:51% 52%; }
+.weapon-sera { transform:translate(-1%,1%) scale(.92); transform-origin:63% 61%; }
+.weapon-garen { transform:translate(5%,3%) rotate(9deg) scale(.85); transform-origin:58% 72%; }
+.weapon-ari { transform:translate(3%,1%) rotate(-5deg) scale(.98); transform-origin:45% 70%; }
+.weapon-nox { transform:translate(3%,1%) rotate(-8deg) scale(.9); transform-origin:51% 72%; }
+.ally-swing.is-attacking .ally-weapon.melee { animation:ally-weapon-slash .55s cubic-bezier(.2,.8,.3,1); }
+.ally-swing.is-attacking .weapon-leon { animation:ally-bow-release .42s ease-out; }
+.ally-swing.is-attacking .weapon-sera { animation:ally-staff-cast .58s ease-out; }
 .combat-melee .ally-swing.is-attacking { z-index:8; animation:ally-body-strike .62s cubic-bezier(.22,.78,.3,1); }
 .combat-ranged .ally-swing.is-attacking { animation:ally-body-shot .42s cubic-bezier(.2,.85,.25,1); }
 .ally-mia .ally-swing.is-attacking,.ally-nox .ally-swing.is-attacking { animation-name:ally-fast-slash; }
@@ -2353,6 +2376,9 @@
 @keyframes ally-heavy-slash { 0%,100% { transform:translateX(0) rotate(0); } 30% { transform:translate(4px,-7px) rotate(-5deg); } 62% { transform:translate(13px,3px) rotate(7deg) scale(1.08,.96); } }
 @keyframes ally-lance-thrust { 0%,100% { transform:translateX(0); } 48%,65% { transform:translateX(22px) scale(1.07,.98); } }
 @keyframes ally-cast { 0%,100% { transform:translateY(0); filter:none; } 45% { transform:translateY(-6px) scale(1.04); filter:brightness(1.28) drop-shadow(0 0 8px #c084fc); } }
+@keyframes ally-weapon-slash { 0%,100% { rotate:0deg; } 30% { rotate:-24deg; } 62% { rotate:42deg; } }
+@keyframes ally-bow-release { 45% { transform:translate(2%,0) scale(.84,.94); filter:brightness(1.5) drop-shadow(0 0 7px #67e8f9); } }
+@keyframes ally-staff-cast { 45% { transform:translate(-1%,-5%) rotate(-9deg) scale(.98); filter:brightness(1.5) drop-shadow(0 0 10px #c084fc); } }
 .ally-attack-fx { position:absolute; z-index:3; left:72%; top:33%; width:42%; height:42%; border:3px solid rgba(103,232,249,.75); border-left-color:transparent; border-bottom-color:transparent; border-radius:50%; animation: ally-fx .38s ease-out forwards; pointer-events:none; }
 .ally-attack-fx.melee { left:82%; }
 .ally-attack-fx.ranged { width:min(48vw,360px); height:4px; top:51%; border:0; border-radius:99px; background:linear-gradient(90deg,#f8fafc 0 8%,#67e8f9 35%,transparent); transform-origin:left center; }
@@ -2833,10 +2859,9 @@
   position: absolute;
   left: 4%;
   bottom: 6%;
+  width: 34%;
+  height: 52%;
   z-index: 3;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
   pointer-events: none;
 }
 
