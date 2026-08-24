@@ -745,6 +745,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
   const kind: TitanMonsterKind = monsterKind(save.stage, boss, chesterson);
   const area = huntingArea(save.stage);
+  const monsterRanged = kind === "dragon" || (boss && (area.id === "volcano" || area.id === "abyss"));
   const label = monsterLabel(kind, chesterson, save.stage);
   const dps = totalHeroDps(save.heroes) + playerIdleDps(save.equipmentTraining.weaponMastery);
   const tap = tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5));
@@ -840,7 +841,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
-        <div className={`titans-monster kind-${kind} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
+        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
           <MonsterArt kind={kind} area={area} boss={boss} golden={chesterson} />
           <strong>{label}</strong>
           {monsterAction === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}

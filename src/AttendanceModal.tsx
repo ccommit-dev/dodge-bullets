@@ -25,6 +25,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHa
     // 열릴 때마다 다시 읽는다 — 부팅 시 1회만 읽으면 모달을 닫았다 여는 사이에
     // 바뀐 저장소(자정 경과, 다른 탭)와 어긋난 상태를 보여준다.
     if (!open) return;
+    setMessage("");
     void storageGet(`dodgebullets:attendance:v1:${userHash}`).then((raw) => {
       try { setSave(raw ? JSON.parse(raw) as AttendanceSave : { lastClaimDate: null, lastClaimTimestamp: 0, consecutiveDays: 0, boardIndex: 0, totalDays: 0 }); }
       catch { setSave({ lastClaimDate: null, lastClaimTimestamp: 0, consecutiveDays: 0, boardIndex: 0, totalDays: 0 }); }
@@ -55,7 +56,10 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHa
       }));
       const next = { lastClaimDate: today(), lastClaimTimestamp: Date.now(), consecutiveDays: streak, boardIndex: (day + 1) % 7, totalDays: save.totalDays + 1 };
       await storageSet(`dodgebullets:attendance:v1:${userHash}`, JSON.stringify(next));
-      setSave(next); onUpdated(progress); setMessage(`${rewards[day].name} ×${rewards[day].amount} 수령 완료!`);
+      setSave(next);
+      onUpdated(progress);
+      setMessage(`${rewards[day].name} ×${rewards[day].amount} 수령 완료!`);
+      onClose();
     } finally {
       setClaiming(false);
     }
