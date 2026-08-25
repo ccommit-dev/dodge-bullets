@@ -23,6 +23,7 @@ import type {
   BeatWorld,
   NoteLane,
 } from "./types";
+import { assetUrl } from "../asset";
 
 /** Which pad a syllable belongs to. Drawing and judging share this map. */
 const SOUND_LANE: Record<BeatSound, NoteLane> = {
@@ -145,6 +146,8 @@ export function createBeatWorld(
     stepAccSec: 0,
     performIndex: 0,
     score: 0,
+    scoreMultiplier: 1,
+    feverMs: 0,
     combo: 0,
     maxCombo: 0,
     comboTimerMs: 0,
@@ -220,6 +223,7 @@ export type BeatSession = {
   box: BeatboxPlayer;
   ctx: AudioContext | null;
   master: GainNode | null;
+  backingAudio: HTMLAudioElement | null;
   enabled: boolean;
   skills: BeatSkills;
   isSpar: boolean;
@@ -245,9 +249,17 @@ export async function createBeatSession(
   const baseTrack = getTrack(trackId);
   const track = difficultyProfile ? {
     ...baseTrack,
-    bpm: Math.round(baseTrack.bpm * difficultyProfile.bpmMultiplier),
+    // The licensed backing track has a fixed tempo. Difficulty changes chart
+    // density and judgement, never playback BPM, otherwise notes drift away.
+    bpm: baseTrack.bpm,
     difficulty: difficultyProfile.difficulty,
-    subdivision: difficultyProfile.force16 ? 16 as const : baseTrack.subdivision,
+    subdivision: difficultyProfile.force16
+      ? 16 as const
+      : difficultyProfile.difficulty === "easy"
+        ? 4 as const
+        : difficultyProfile.difficulty === "medium"
+          ? 8 as const
+          : 16 as const,
     ringCount: difficultyProfile.difficulty === "easy" ? 1 as const : 2 as const,
   } : baseTrack;
   const chart = buildChart(track);
@@ -272,7 +284,15 @@ export async function createBeatSession(
 
   let ctx: AudioContext | null = null;
   let master: GainNode | null = null;
+  let backingAudio: HTMLAudioElement | null = null;
   if (soundEnabled) {
+    backingAudio = new Audio(assetUrl(`audio/${track.audioFile}`));
+    backingAudio.preload = "metadata";
+    backingAudio.volume = 0.72;
+    backingAudio.setAttribute("playsinline", "true");
+    // Called inside the stage CTA handler so iOS/Android treat this element as
+    // user-initiated. The transport below resets it to the exact chart origin.
+    void backingAudio.play().catch(() => {});
     const AC =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -286,6 +306,7 @@ export async function createBeatSession(
     () => master,
     () => soundEnabled && !!ctx,
     () => world.loopCompletion,
+    backingAudio,
   );
 
   const session: BeatSession = {
@@ -295,6 +316,7 @@ export async function createBeatSession(
     box,
     ctx,
     master,
+    backingAudio,
     enabled: soundEnabled,
     skills,
     isSpar,
@@ -317,6 +339,8 @@ export async function createBeatSession(
 
 export function disposeBeatSession(session: BeatSession): void {
   session.box.dispose();
+  session.backingAudio?.pause();
+  session.backingAudio = null;
   void session.ctx?.close();
   session.ctx = null;
   session.master = null;
@@ -335,6 +359,10 @@ function bumpCombo(world: BeatWorld, amount = 1): void {
 export function performBeatLane(session: BeatSession, lane: NoteLane): void {
   const world = session.world;
   if (world.dead || world.cleared) return;
+
+  if (session.backingAudio?.paused) {
+    void session.backingAudio.play().catch(() => {});
+  }
 
   session.taps += 1;
   world.laneFlashMs[lane] = PAD_FLASH_MS;
@@ -359,7 +387,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
   const to = Math.min(session.chart.length - 1, Math.floor(position) + 3);
   for (let i = from; i <= to; i++) {
     const step = session.chart[i];
-    if (!step || laneOfSound(step.sound) !== lane) continue;
+    if (!step || !step.spike || laneOfSound(step.sound) !== lane) continue;
     if (world.hitSteps.has(i)) continue;
     const distSec = Math.abs(i - position) * stepSec;
     if (distSec < bestDistSec) {
@@ -392,7 +420,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
     session.box.playLead(sound, gridWhen, lock);
 
     bumpCombo(world, 1);
-    world.score += 18 + Math.floor(lock * 16);
+    world.score += (18 + Math.floor(lock * 16)) * world.scoreMultiplier;
     world.judgeText = lock > 0.78 ? "PERFECT" : lock > 0.45 ? "GREAT" : "GOOD";
   } else {
     world.lastOffsetMs = 0;
@@ -500,6 +528,10 @@ export function updateBeatWorld(
   world.elapsedMs = position * stepMs;
 
   if (world.invulnMs > 0) world.invulnMs = Math.max(0, world.invulnMs - dtSec * 1000);
+  if (world.feverMs > 0) {
+    world.feverMs = Math.max(0, world.feverMs - dtSec * 1000);
+    if (world.feverMs <= 0) world.scoreMultiplier = 1;
+  }
   if (world.shakeMs > 0) world.shakeMs = Math.max(0, world.shakeMs - dtSec * 1000);
   if (world.comboTimerMs > 0) {
     world.comboTimerMs = Math.max(0, world.comboTimerMs - dtSec * 1000);

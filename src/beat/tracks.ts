@@ -22,6 +22,7 @@ export type BeatPatternId =
 export type BeatTrackDef = {
   id: string;
   name: string;
+  audioFile: string;
   patternId: BeatPatternId;
   bpm: number;
   subdivision: BeatSubdivision;
@@ -103,137 +104,111 @@ function expandLoop(loop: BeatSound[], subdivision: BeatSubdivision): BeatSound[
 }
 
 function accentSpike(
-  sound: BeatSound,
+  _sound: BeatSound,
   inBar: number,
   subdivision: BeatSubdivision,
   diff: BeatDifficulty,
 ): boolean {
-  const dens = diff === "easy" ? 0.32 : diff === "medium" ? 0.52 : 0.72;
   const isDown = inBar === 0;
-  const strong =
-    sound === "boots" ||
-    sound === "firebeat" ||
-    sound === "trumpet" ||
-    sound === "throat" ||
-    sound === "rim";
-  if (diff === "easy") return isDown && strong;
-  if (strong && (isDown || Math.random() < dens)) return true;
-  if (sound === "cats") return Math.random() < dens * 0.4;
-  if (subdivision === 16 && diff === "hard") return Math.random() < dens * 0.22;
-  return false;
+  const isBackBeat = inBar === Math.floor(subdivision / 2);
+  const quarter = inBar % Math.max(1, subdivision / 4) === 0;
+  const eighth = inBar % Math.max(1, subdivision / 8) === 0;
+  // Keep every chart deterministic and readable: 2 / 4 / 8 required notes per
+  // bar. Difficulty changes density without changing the licensed song tempo.
+  if (diff === "easy") return isDown || isBackBeat;
+  if (diff === "medium") return quarter;
+  return eighth;
 }
 
 export const BEAT_TRACKS: BeatTrackDef[] = [
   {
-    id: "lesson-kick",
-    name: "NEON VANGUARD · 기동",
-    patternId: "kick-only",
-    bpm: 92,
-    subdivision: 4,
-    difficulty: "easy",
-    bars: 20,
-    desc: "킥으로 주인공의 검격을 만들며 네온 던전에 진입",
-    lessonTitle: "NEON VANGUARD · 진입",
-    lessonHint: "KICK을 맞혀 첫 음악 레이어와 검격을 활성화하세요",
-    reward: 40,
-    ringCount: 1,
-  },
-  {
-    id: "lesson-hat",
-    name: "NEON VANGUARD · 추격",
-    patternId: "hat-only",
-    bpm: 96,
-    subdivision: 4,
-    difficulty: "easy",
-    bars: 20,
-    desc: "하이햇 원거리 지원과 킥 검격을 겹쳐 추격대를 돌파",
-    lessonTitle: "NEON VANGUARD · 추격",
-    lessonHint: "HAT을 쌓으면 원거리 동료와 조명이 깨어납니다",
-    reward: 45,
-    ringCount: 1,
-  },
-  {
-    id: "lesson-snare",
-    name: "CYBER PURSUIT · 잠입",
-    patternId: "snare-only",
-    bpm: 100,
-    subdivision: 4,
-    difficulty: "easy",
-    bars: 20,
-    desc: "클럽 스네어 빌드업에 맞춘 백비트 훈련",
-    lessonTitle: "CYBER PURSUIT · 잠입",
-    lessonHint: "SNARE로 근접 동료의 연계 공격을 지휘하세요",
-    reward: 50,
-    ringCount: 1,
-  },
-  {
-    id: "lesson-bc4",
-    name: "CYBER PURSUIT · 코어",
+    id: "cybernetic-overload",
+    name: "Cybernetic Overload",
+    audioFile: "cybernetic-overload.mp3",
     patternId: "boots-cats",
-    bpm: 104,
+    bpm: 170,
     subdivision: 4,
     difficulty: "easy",
-    bars: 20,
-    desc: "4-on-the-floor 그루브와 Boots & Cats 조합",
-    lessonTitle: "CYBER PURSUIT · 코어",
-    lessonHint: "네 악기를 교차해 DROP 게이지를 빠르게 충전하세요",
-    reward: 60,
+    bars: 28,
+    desc: "하드 트랜스의 강한 킥을 따라가는 입문 원정",
+    lessonTitle: "CYBERNETIC OVERLOAD",
+    lessonHint: "강박의 방향 노트부터 천천히 맞추세요",
+    reward: 55,
     ringCount: 1,
   },
   {
-    id: "lesson-8",
-    name: "INFERNO BREAKER · 폭주",
+    id: "arcade-overdrive",
+    name: "Arcade Overdrive",
+    audioFile: "arcade-overdrive.mp3",
     patternId: "eight-basic",
-    bpm: 138,
-    subdivision: 8,
-    difficulty: "medium",
-    bars: 20,
-    desc: "퓨처하우스 베이스 위 8비트 명령 전투",
-    lessonTitle: "INFERNO BREAKER · 폭주",
-    lessonHint: "빠른 HAT과 SNARE로 화염 보스의 방어를 파괴하세요",
-    reward: 75,
-    ringCount: 2,
+    bpm: 128,
+    subdivision: 4,
+    difficulty: "easy",
+    bars: 24,
+    desc: "신스웨이브 리듬을 읽는 레트로 아케이드 원정",
+    lessonTitle: "ARCADE OVERDRIVE",
+    lessonHint: "킥과 스네어의 교차 박자를 확인하세요",
+    reward: 65,
+    ringCount: 1,
   },
   {
-    id: "lesson-fire",
-    name: "INFERNO BREAKER · 붕괴",
+    id: "pixel-rush",
+    name: "Pixel Rush",
+    audioFile: "pixel-rush.mp3",
     patternId: "firebeat",
-    bpm: 144,
+    bpm: 150,
     subdivision: 8,
     difficulty: "medium",
     bars: 24,
-    desc: "빅룸 드롭과 롤링 파이어빗 테크닉",
-    lessonTitle: "INFERNO BREAKER · 붕괴",
-    lessonHint: "DROP 직전까지 레이어를 쌓고 BASS로 폭발시키세요",
-    reward: 90,
-    ringCount: 2,
+    desc: "빠른 칩튠 악센트에 맞춘 8비트 돌파전",
+    lessonTitle: "PIXEL RUSH",
+    lessonHint: "연속 노트 사이의 빈 박자를 놓치지 마세요",
+    reward: 80,
+    ringCount: 1,
   },
   {
-    id: "lesson-throat",
-    name: "TITAN OVERDRIVE · 각성",
-    patternId: "throat-trumpet",
-    bpm: 124,
+    id: "playful-pixels",
+    name: "Playful Pixels",
+    audioFile: "playful-pixels.mp3",
+    patternId: "boots-cats",
+    bpm: 120,
     subdivision: 8,
-    difficulty: "hard",
+    difficulty: "medium",
     bars: 24,
-    desc: "베이스하우스 드롭에 스로트·트럼펫을 섞는 전투",
-    lessonTitle: "TITAN OVERDRIVE · 각성",
-    lessonHint: "베이스와 동료 연계를 유지해 타이탄을 경직시키세요",
-    reward: 110,
+    desc: "경쾌한 멜로디의 엇박을 익히는 변칙 원정",
+    lessonTitle: "PLAYFUL PIXELS",
+    lessonHint: "색보다 방향을 먼저 읽고 입력하세요",
+    reward: 90,
+    ringCount: 1,
+  },
+  {
+    id: "happy-strum-day",
+    name: "Happy Strum Day",
+    audioFile: "happy-strum-day.mp3",
+    patternId: "throat-trumpet",
+    bpm: 112,
+    subdivision: 8,
+    difficulty: "medium",
+    bars: 24,
+    desc: "기타 스트럼과 박수 악센트를 교차하는 리듬 원정",
+    lessonTitle: "HAPPY STRUM DAY",
+    lessonHint: "백비트 노트를 정확하게 이어 FEVER를 채우세요",
+    reward: 105,
     ringCount: 2,
   },
   {
-    id: "lesson-16",
-    name: "TITAN OVERDRIVE · 최종 DROP",
+    id: "starlight-strut",
+    name: "Starlight Strut",
+    audioFile: "starlight-strut.mp3",
     patternId: "sixteen-mix",
-    bpm: 132,
+    bpm: 124,
     subdivision: 16,
     difficulty: "hard",
-    bars: 24,
-    desc: "하드클럽 피날레에 모든 비트박스 음색을 조합",
-    lessonTitle: "TITAN OVERDRIVE · 최종 DROP",
-    lessonHint: "네 레이어를 완성하고 연속 DROP으로 타이탄을 처치하세요",
-    reward: 140,
+    bars: 28,
+    desc: "스윙과 디스코 싱코페이션을 섞은 최종 원정",
+    lessonTitle: "STARLIGHT STRUT",
+    lessonHint: "16비트 구간에서도 필수 악센트만 정확히 노리세요",
+    reward: 135,
     ringCount: 2,
   },
 ];
@@ -270,7 +245,7 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     let spike = accentSpike(sound, inBar, track.subdivision, track.difficulty);
     if (i < 2) spike = false;
     if (spike && track.ringCount === 2 && track.difficulty === "hard") {
-      lane = Math.random() < 0.45 ? ((lane ^ 1) as 0 | 1) : lane;
+      lane = (Math.floor(i / Math.max(1, track.subdivision / 4)) % 2) as 0 | 1;
     } else {
       lane = 0;
     }
