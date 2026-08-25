@@ -48,9 +48,9 @@ export function railGeometry(world: BeatWorld): {
   nearHalf: number;
 } {
   return {
-    horizonY: Math.max(world.safeTop + 180, world.height * 0.34),
+    horizonY: Math.max(world.safeTop + 215, world.height * 0.25),
     hitY: world.height - world.safeBottom - Math.max(150, world.height * 0.2),
-    farHalf: Math.min(45, world.width * 0.12),
+    farHalf: Math.min(world.width * 0.46, 230),
     nearHalf: Math.min(world.width * 0.46, 230),
   };
 }
@@ -58,8 +58,9 @@ export function railGeometry(world: BeatWorld): {
 /** Horizontal position of a lane at depth `eased` (0 = horizon, 1 = hit line). */
 export function laneXAt(world: BeatWorld, lane: NoteLane, eased: number): number {
   const { farHalf, nearHalf } = railGeometry(world);
-  const spread = farHalf * 0.45 + (nearHalf * 0.62 - farHalf * 0.45) * eased;
-  return world.cx + (lane - 1.5) * spread * 0.82;
+  const half = farHalf + (nearHalf - farHalf) * eased;
+  const laneWidth = (half * 2) / 4;
+  return world.cx - half + laneWidth * (lane + 0.5);
 }
 
 const SPIKE_POOL = 48;

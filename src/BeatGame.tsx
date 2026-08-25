@@ -136,13 +136,10 @@ export function BeatGame({
   const [dropCharge, setDropCharge] = useState(0);
   const [instrumentLayers, setInstrumentLayers] = useState<[number, number, number, number]>([0, 0, 0, 0]);
   const [dropFlash, setDropFlash] = useState(0);
-  const [raidUpgradeOpen, setRaidUpgradeOpen] = useState(false);
-  const [raidBuffs, setRaidBuffs] = useState({ kick: 0, allies: 0, drop: 0 });
   const beatEnemyHpRef = useRef(100);
   const dropChargeRef = useRef(0);
   const dropCountRef = useRef(0);
   const upgradeRoundRef = useRef(0);
-  const raidUpgradeOpenRef = useRef(false);
   const raidBuffRef = useRef({ kick: 0, allies: 0, drop: 0 });
   const lastRaidTapRef = useRef({ lane: -1, at: 0 });
   const slots = buildStageSlots("lesson");
@@ -191,16 +188,6 @@ export function BeatGame({
     beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
     setBeatEnemyHp(beatEnemyHpRef.current);
     if (beatEnemyHpRef.current === 0) world.elapsedMs = world.durationMs;
-  }, []);
-
-  const chooseRaidBuff = useCallback((kind: "kick" | "allies" | "drop") => {
-    const next = { ...raidBuffRef.current, [kind]: raidBuffRef.current[kind] + 1 };
-    raidBuffRef.current = next;
-    setRaidBuffs(next);
-    setRaidUpgradeOpen(false);
-    raidUpgradeOpenRef.current = false;
-    lastTsRef.current = 0;
-    void sessionRef.current?.ctx?.resume();
   }, []);
 
   const syncUi = useCallback((next: BeatUi) => {
@@ -325,11 +312,11 @@ export function BeatGame({
           setTimingOffset(w.lastOffsetMs);
           setLoopCompletion(w.loopCompletion);
           const upgradeRound = Math.min(3, Math.floor((w.elapsedMs / Math.max(1, w.durationMs)) * 4));
-          if (upgradeRound > upgradeRoundRef.current && !raidUpgradeOpenRef.current) {
+          if (upgradeRound > upgradeRoundRef.current) {
             upgradeRoundRef.current = upgradeRound;
-            raidUpgradeOpenRef.current = true;
-            setRaidUpgradeOpen(true);
-            void session.ctx?.suspend();
+            const kind = (["kick", "allies", "drop"] as const)[upgradeRound - 1];
+            if (kind) raidBuffRef.current = { ...raidBuffRef.current, [kind]: raidBuffRef.current[kind] + 1 };
+            setDropFlash((value) => value + 1);
           }
           const nextL = `${BEAT_SOUND_LABEL[w.nextSound]} → ${LANE_KEYS[laneOfSound(w.nextSound)]}`;
           if (nextL !== hudNextRef.current) {
@@ -506,9 +493,6 @@ export function BeatGame({
     dropCountRef.current = 0;
     setInstrumentLayers([0, 0, 0, 0]);
     setDropFlash(0);
-    setRaidUpgradeOpen(false);
-    raidUpgradeOpenRef.current = false;
-    setRaidBuffs({ kick: 0, allies: 0, drop: 0 });
     raidBuffRef.current = { kick: 0, allies: 0, drop: 0 };
     upgradeRoundRef.current = 0;
     lastRaidTapRef.current = { lane: -1, at: 0 };
@@ -650,20 +634,6 @@ export function BeatGame({
             ))}
           </div>
         </>
-      )}
-
-      {ui === "playing" && raidUpgradeOpen && (
-        <div className="game-overlay beat-upgrade-overlay">
-          <div className="overlay-content">
-            <p className="brand">16 BAR POWER UP</p>
-            <h2 className="title">다음 DROP을 강화하세요</h2>
-            <div className="beat-rogue-choices">
-              <button type="button" onClick={() => chooseRaidBuff("kick")}><b>⚔ KICK 검격</b><small>주인공 공격 +7 · Lv.{raidBuffs.kick}</small></button>
-              <button type="button" onClick={() => chooseRaidBuff("allies")}><b>✦ 동료 리믹스</b><small>근접·원거리 공격 +7 · Lv.{raidBuffs.allies}</small></button>
-              <button type="button" onClick={() => chooseRaidBuff("drop")}><b>◆ BASS OVERDRIVE</b><small>베이스·DROP 공격 +7 · Lv.{raidBuffs.drop}</small></button>
-            </div>
-          </div>
-        </div>
       )}
 
       {ui === "clear" && (
