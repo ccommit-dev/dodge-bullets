@@ -752,7 +752,6 @@ function App() {
   const isNewRecord = lastScore > 0 && lastScore >= highScore;
   const stage = getStage(stageIndex);
   const towerFloor = towerFloorOf(stageIndex);
-  const remainSec = Math.ceil(stageRemainMs / 1000);
   const expeditionElapsed = Math.max(0, stage.durationMs - stageRemainMs);
   const expeditionRatio = Math.min(1, expeditionElapsed / stage.durationMs);
   const threatLevel = expeditionRatio < 0.25 ? 1 : expeditionRatio < 0.5 ? 2 : expeditionRatio < 0.78 ? 3 : 4;
@@ -1043,7 +1042,7 @@ function App() {
             <p className="brand">STAGE {stage.id}</p>
             <h1 className="title">{stageLabel}</h1>
             <p className="subtitle">{stageIntro}</p>
-            <p className="score-line">제한 {Math.round(stage.durationMs / 1000)}초 · 경고를 읽고 상자를 회수해 탈출</p>
+            <p className="score-line">전초전을 돌파하고 보스 화살을 끝까지 베면 스테이지 클리어</p>
             <button type="button" className="cta" onClick={handleBeginPlay}>
               바로 시작
             </button>
@@ -1069,7 +1068,7 @@ function App() {
                 </span>
               )}
               <span className="hud-score">
-                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {remainSec > 0 ? `${remainSec}s` : worldRef.current?.bossDefeated ? "CLEAR" : "BOSS"}
+                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft}` : "전초전"}
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">

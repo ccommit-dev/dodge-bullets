@@ -365,8 +365,7 @@ export function updateWorld(
     world.maxCombo,
   ) + world.slashScore;
 
-  const stage = getStage(world.stageIndex);
-  if (!world.stageClear && world.stageElapsedMs >= stage.durationMs && world.bossDefeated) {
+  if (!world.stageClear && world.bossSpawned && world.bossDefeated) {
     world.stageClear = true;
     if (p.hp === p.maxHp) world.expeditionSeals += 2;
     if (world.chests > 0) world.expeditionSeals += 1;

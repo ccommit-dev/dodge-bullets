@@ -84,7 +84,9 @@ export function statsFromLevels(levels: ShopLevels): PlayerStats {
     slowRadius: 82 + s * 18,
     slowFactor: Math.max(0.35, 0.72 - s * 0.06),
     slowDurationMs: 700 + s * 180,
-    slowCooldownMs: Math.max(1800, 3500 - s * 300),
+    // Counter slash is the expedition's main action. Keep the same upgrade
+    // curve while halving its former 3.5s cooldown.
+    slowCooldownMs: Math.max(900, 1750 - s * 150),
     slashLevel: s,
     extraLives: life,
     // Slight hitbox shrink with extraLife investments beyond lives

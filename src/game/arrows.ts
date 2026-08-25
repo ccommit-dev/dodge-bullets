@@ -7,7 +7,7 @@ const HIT_R = 5;
 /** Tip within this band (beyond hit radius) counts as near-miss. */
 const NEAR_MISS_PAD = 22;
 const COMBO_WINDOW_MS = 1600;
-const SPLIT_ORBIT_MS = 1_550;
+const SPLIT_ORBIT_MS = 1_850;
 const SPLIT_DAMAGE = [1, 0.65, 0.4, 0.25] as const;
 
 export function createArrowPool(size = POOL_SIZE): Arrow[] {
@@ -297,10 +297,10 @@ function configureSplitFragment(
   arrow.orbitX = source.x;
   arrow.orbitY = source.y;
   arrow.orbitAngle = source.angle + (direction < 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 0.9;
-  const mapOrbit = Math.min(world.width, world.height) * 0.2;
-  arrow.orbitRadius = mapOrbit * (0.82 + Math.random() * 0.36) + level * 5;
+  const mapOrbit = Math.min(world.width, world.height) * 0.27;
+  arrow.orbitRadius = mapOrbit * (0.9 + Math.random() * 0.42) + level * 7;
   arrow.orbitDirection = direction;
-  arrow.orbitStretch = 0.48 + Math.random() * 1.15;
+  arrow.orbitStretch = 0.72 + Math.random() * 0.92;
   arrow.orbitWobble = 0.18 + Math.random() * (0.36 + slashLevel * 0.035);
   arrow.orbitDriftX = (Math.random() - 0.5) * (46 + slashLevel * 5);
   arrow.orbitDriftY = (Math.random() - 0.5) * (38 + slashLevel * 4);
@@ -342,12 +342,41 @@ function registerSlash(world: GameWorld, arrow: Arrow, boss = false): void {
   maybeDropSlashItem(world, arrow.x, arrow.y, boss && arrow.bossCutsLeft <= 0);
 }
 
+function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
+  const count = 2 + Math.min(2, Math.floor(source.bossTier / 2)) + (Math.random() < 0.35 ? 1 : 0);
+  const variants: Arrow["kind"][] = ["homing", "ricochet", "explosive", "fan"];
+  const kind = variants[Math.floor(Math.random() * variants.length)];
+  for (let i = 0; i < count; i++) {
+    const fragment = acquire(world);
+    if (!fragment) break;
+    const direction: -1 | 1 = i % 2 === 0 ? -1 : 1;
+    const level = Math.min(3, 1 + Math.floor(source.bossTier / 2)) as 1 | 2 | 3;
+    configureSplitFragment(world, fragment, source, level, direction, world.stats.slashLevel);
+    fragment.kind = kind;
+    fragment.telegraph = kind === "homing" ? "homing" : kind === "explosive" ? "blast" : kind === "ricochet" ? "dash" : "perfect";
+    fragment.damage = Math.max(fragment.damage, 0.34 + source.bossTier * 0.035);
+    fragment.length += 7 + source.bossTier * 1.5;
+    fragment.hitRadius += 1.5;
+    fragment.orbitMs += 260 + Math.random() * 420;
+    fragment.orbitRadius *= 1.08 + Math.random() * 0.24;
+    fragment.orbitAngle += (i / Math.max(1, count)) * Math.PI * 1.35;
+    fragment.orbitWobble += 0.12 + Math.random() * 0.18;
+    if (kind === "homing") {
+      fragment.homingMs = 2_300 + source.bossTier * 180;
+      fragment.homingTurnRate = 1.05 + source.bossTier * 0.08;
+    } else if (kind === "ricochet") {
+      fragment.bounces = 2 + Math.min(2, source.bossTier);
+    }
+  }
+}
+
 function splitArrow(world: GameWorld, arrow: Arrow): void {
   if (arrow.boss) {
     arrow.bossCutsLeft = Math.max(0, arrow.bossCutsLeft - 1);
     world.bossCutsLeft = arrow.bossCutsLeft;
     registerSlash(world, arrow, true);
     bumpCombo(world);
+    spawnBossSplitPattern(world, { ...arrow });
     if (arrow.bossCutsLeft <= 0) {
       arrow.active = false;
       world.bossDefeated = true;
@@ -357,10 +386,14 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
       maybeDropSlashItem(world, arrow.x, arrow.y, true);
     } else {
       const away = Math.atan2(arrow.y - world.player.y, arrow.x - world.player.x) + (Math.random() - 0.5) * 0.8;
-      const speed = 175 + arrow.bossTier * 12;
+      const speed = 190 + arrow.bossTier * 15 + Math.random() * 45;
       arrow.vx = Math.cos(away) * speed;
       arrow.vy = Math.sin(away) * speed;
-      arrow.homingMs = 2_400;
+      const bossVariants: Arrow["kind"][] = ["homing", "ricochet", "explosive", "fan"];
+      arrow.kind = bossVariants[Math.floor(Math.random() * bossVariants.length)];
+      arrow.telegraph = arrow.kind === "homing" ? "homing" : arrow.kind === "explosive" ? "blast" : arrow.kind === "ricochet" ? "dash" : "perfect";
+      arrow.homingMs = arrow.kind === "homing" ? Number.POSITIVE_INFINITY : 0;
+      arrow.bounces = arrow.kind === "ricochet" ? 2 + Math.min(2, arrow.bossTier) : 0;
       arrow.splitGraceMs = 330;
     }
     return;
@@ -466,6 +499,8 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     }
 
     if (a.orbitMs > 0) {
+      const previousX = a.x;
+      const previousY = a.y;
       a.orbitMs = Math.max(0, a.orbitMs - dtSec * 1000);
       const direction = a.orbitDirection;
       const life = Math.max(0, Math.min(1, a.orbitMs / SPLIT_ORBIT_MS));
@@ -477,7 +512,13 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       const driftProgress = 1 - life;
       a.x = a.orbitX + a.orbitDriftX * driftProgress + Math.cos(a.orbitAngle) * a.orbitRadius * a.orbitStretch * collapse + wobbleX;
       a.y = a.orbitY + a.orbitDriftY * driftProgress + Math.sin(a.orbitAngle) * a.orbitRadius / a.orbitStretch * collapse + wobbleY;
-      a.angle = a.orbitAngle + direction * Math.PI * 0.5;
+      // Face the arrowhead along the actual wide parabolic/orbital trajectory,
+      // instead of rotating it around a mechanically perfect circle.
+      const travelX = a.x - previousX;
+      const travelY = a.y - previousY;
+      if (travelX * travelX + travelY * travelY > 0.01) {
+        a.angle = Math.atan2(travelY, travelX);
+      }
       if (a.orbitMs <= 0) {
         const baseSpeed = Math.max(185, Math.hypot(sourceVelocityX(a), sourceVelocityY(a)));
         launchAtPlayer(world, a, baseSpeed + a.splitLevel * 22);
