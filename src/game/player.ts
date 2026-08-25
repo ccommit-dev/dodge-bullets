@@ -6,6 +6,7 @@ const BASE_RADIUS = 16;
 /** Source sheet faces left; multiply logical facing by this when drawing. */
 const EXPEDITION_NATIVE_FACING = -1;
 let expeditionHero: HTMLImageElement | null = null;
+let expeditionHeroAttack: HTMLImageElement | null = null;
 
 function getExpeditionHero(): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -14,6 +15,15 @@ function getExpeditionHero(): HTMLImageElement | null {
     expeditionHero.src = assetUrl("titans/character/base/hero-idle.png");
   }
   return expeditionHero;
+}
+
+function getExpeditionAttackHero(): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  if (!expeditionHeroAttack) {
+    expeditionHeroAttack = new Image();
+    expeditionHeroAttack.src = assetUrl("titans/generated/hero-attack-sheet.png");
+  }
+  return expeditionHeroAttack;
 }
 
 export function createPlayer(width: number, floorY: number): Player {
@@ -30,6 +40,7 @@ export function createPlayer(width: number, floorY: number): Player {
     invulnMs: 0,
     hp: 3,
     maxHp: 3,
+    damageBuffer: 0,
     dashCdMs: 0,
     dashActiveMs: 0,
     slowCdMs: 0,
@@ -50,6 +61,7 @@ export function resetPlayer(player: Player, width: number, floorY: number, extra
   player.invulnMs = 0;
   player.maxHp = 3 + extraLives;
   player.hp = player.maxHp;
+  player.damageBuffer = 0;
   player.dashCdMs = 0;
   player.dashActiveMs = 0;
   player.slowCdMs = 0;
@@ -73,9 +85,12 @@ export function drawStickman(
   ctx.ellipse(p.x, floorY - 2, p.radius * 1.15 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const hero = getExpeditionHero();
+  const idleHero = getExpeditionHero();
+  const attackHero = p.anim === "skill" ? getExpeditionAttackHero() : null;
+  const hero = attackHero?.complete && attackHero.naturalWidth > 0 ? attackHero : idleHero;
   if (hero?.complete && hero.naturalWidth > 0) {
-    const frameWidth = hero.naturalWidth / 4;
+    const frameCount = hero === attackHero ? 3 : 4;
+    const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
     const frame = Math.floor(p.animTime * frameRate) % 4;
     const drawHeight = p.radius * 4.7;
@@ -98,7 +113,14 @@ export function drawStickman(
       const s = p.landingFxMs / 180;
       ctx.scale(1 + 0.07 * s, 1 - 0.09 * s);
     }
-    if (p.anim === "skill") ctx.rotate(Math.sin(p.animTime * 24) * 0.04);
+    if (p.anim === "skill") {
+      const phase = Math.min(1, p.animTime / 0.28);
+      const windup = phase < 0.28 ? phase / 0.28 : 1;
+      const release = phase < 0.28 ? 0 : Math.sin(((phase - 0.28) / 0.72) * Math.PI);
+      ctx.translate(-p.facing * 5 * windup + p.facing * 13 * release, -2 * release);
+      ctx.rotate((-0.08 * windup + 0.16 * release) * p.facing);
+      ctx.scale(1 + release * 0.06, 1 - release * 0.035);
+    }
     if (p.anim === "hit") ctx.globalAlpha = 0.62;
     if (p.dashActiveMs > 0) {
       for (let trail = 3; trail >= 1; trail--) {
@@ -130,10 +152,12 @@ export function drawStickman(
     }
 
     if (p.slowActiveMs > 0) {
+      const slashPhase = Math.min(1, p.animTime / 0.3);
       ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3 + (1 - slashPhase) * 4;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, world.stats.slowRadius, 0, Math.PI * 2);
+      const start = p.facing > 0 ? -1.15 : Math.PI - 1.15;
+      ctx.arc(p.x, p.y, world.stats.slowRadius * (0.72 + slashPhase * 0.28), start, start + p.facing * Math.PI * 1.35, p.facing < 0);
       ctx.stroke();
     }
     return;

@@ -1069,7 +1069,7 @@ function App() {
                 </span>
               )}
               <span className="hud-score">
-                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {remainSec}s
+                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {remainSec > 0 ? `${remainSec}s` : worldRef.current?.bossDefeated ? "CLEAR" : "BOSS"}
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
@@ -1117,7 +1117,7 @@ function App() {
                 inputRef.current.slowPressed = true;
               }}
             >
-              검격
+              검격 Lv.{shopLevels.slowField}
             </button>
             <button
               type="button"

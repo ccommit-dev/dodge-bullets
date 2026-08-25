@@ -16,6 +16,8 @@ export type Player = {
   invulnMs: number;
   hp: number;
   maxHp: number;
+  /** Fractional damage accumulated by weakened split arrows. */
+  damageBuffer: number;
   dashCdMs: number;
   dashActiveMs: number;
   slowCdMs: number;
@@ -38,9 +40,50 @@ export type Arrow = {
   /** Near-miss scored once per arrow. */
   nearMissed: boolean;
   warningMs: number;
-  kind: "normal" | "aimed" | "fan" | "ricochet" | "explosive";
+  kind: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing";
   bounces: number;
-  telegraph: "sniper" | "blast" | "charge" | "aerial" | "dash" | "perfect";
+  telegraph: "sniper" | "blast" | "charge" | "aerial" | "dash" | "perfect" | "homing";
+  homingMs: number;
+  homingTurnRate: number;
+  /** Number of times this projectile has been cut by the player's slash. */
+  splitLevel: 0 | 1 | 2 | 3;
+  /** Damage is reduced every time the arrow is split. */
+  damage: number;
+  /** Brief spherical orbit before a split fragment homes back toward the player. */
+  orbitMs: number;
+  orbitX: number;
+  orbitY: number;
+  orbitAngle: number;
+  orbitRadius: number;
+  orbitDirection: -1 | 1;
+  orbitStretch: number;
+  orbitWobble: number;
+  orbitDriftX: number;
+  orbitDriftY: number;
+  /** Prevents one slash window from splitting the same fragment repeatedly. */
+  splitGraceMs: number;
+  boss: boolean;
+  bossTier: number;
+  bossCutsLeft: number;
+  bossMaxCuts: number;
+};
+
+export type SlashHitFx = {
+  active: boolean;
+  x: number;
+  y: number;
+  value: number;
+  lifeMs: number;
+  maxLifeMs: number;
+  boss: boolean;
+};
+
+export type SlashDrop = {
+  active: boolean;
+  x: number;
+  y: number;
+  vy: number;
+  kind: "edge" | "core" | "rune";
 };
 
 export type Platform = {
@@ -107,6 +150,8 @@ export type PlayerStats = {
   slowFactor: number;
   slowDurationMs: number;
   slowCooldownMs: number;
+  /** Counter-sword item level; controls split weakening and orbit disruption. */
+  slashLevel: number;
   extraLives: number;
   hitboxScale: number;
 };
@@ -145,4 +190,12 @@ export type GameWorld = {
   perfectDodges: number;
   chests: number;
   expeditionSeals: number;
+  slashScore: number;
+  slashBuff: number;
+  slashHitFx: SlashHitFx[];
+  slashDrops: SlashDrop[];
+  bossSpawned: boolean;
+  bossDefeated: boolean;
+  bossCutsLeft: number;
+  bossMaxCuts: number;
 };

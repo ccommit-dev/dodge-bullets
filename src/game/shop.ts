@@ -36,7 +36,7 @@ export const SHOP_META: Record<
   slowField: {
     name: "반격 검술",
     category: "생존 장비",
-    desc: "E / 검격 버튼으로 사거리 안의 투사체를 쳐내고 보급품 획득",
+    desc: "검격 범위·재사용 속도·분열 화살 약화율·불규칙 궤도가 단계별 강화",
     baseCost: 90,
     costStep: 60,
   },
@@ -85,6 +85,7 @@ export function statsFromLevels(levels: ShopLevels): PlayerStats {
     slowFactor: Math.max(0.35, 0.72 - s * 0.06),
     slowDurationMs: 700 + s * 180,
     slowCooldownMs: Math.max(1800, 3500 - s * 300),
+    slashLevel: s,
     extraLives: life,
     // Slight hitbox shrink with extraLife investments beyond lives
     hitboxScale: Math.max(0.82, 1 - life * 0.04),

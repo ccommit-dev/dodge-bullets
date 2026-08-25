@@ -12,12 +12,40 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   const by = a.y - sin * half;
   const px = -sin;
   const py = cos;
+  const bossPalette = ["#fb7185", "#f97316", "#a78bfa", "#facc15", "#22d3ee"];
+  const bossColor = bossPalette[Math.max(0, a.bossTier - 1) % bossPalette.length];
+
+  if (a.splitLevel > 0) {
+    ctx.save();
+    const splitColor = a.splitLevel === 1 ? "#67e8f9" : a.splitLevel === 2 ? "#c084fc" : "#fbbf24";
+    ctx.globalAlpha = a.orbitMs > 0 ? 0.82 : 0.42;
+    ctx.strokeStyle = splitColor;
+    ctx.lineWidth = 2 + a.splitLevel * 0.45;
+    ctx.shadowColor = splitColor;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    if (a.orbitMs > 0) {
+      ctx.ellipse(a.orbitX, a.orbitY, a.orbitRadius * a.orbitStretch, a.orbitRadius / a.orbitStretch, a.orbitAngle * 0.18, 0, Math.PI * 1.72);
+    } else {
+      ctx.arc(a.x, a.y, 7 + a.splitLevel * 2, 0, Math.PI * 2);
+    }
+    ctx.stroke();
+    ctx.fillStyle = splitColor;
+    ctx.globalAlpha = 0.65;
+    for (let i = 0; i < 4; i++) {
+      const trail = a.angle + Math.PI + i * 0.18;
+      ctx.beginPath();
+      ctx.arc(a.x + Math.cos(trail) * (6 + i * 4), a.y + Math.sin(trail) * (6 + i * 4), Math.max(1, 3 - i * 0.55), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 
   if (a.warningMs > 0) {
     const pulse = 0.25 + 0.45 * (1 - a.warningMs / 560);
     ctx.save();
     ctx.globalAlpha = pulse;
-    const warningColor = a.telegraph === "dash" ? "#38bdf8" : a.telegraph === "perfect" ? "#facc15" : a.telegraph === "blast" ? "#f97316" : "#fb3f5c";
+    const warningColor = a.telegraph === "homing" ? "#c084fc" : a.telegraph === "dash" ? "#38bdf8" : a.telegraph === "perfect" ? "#facc15" : a.telegraph === "blast" ? "#f97316" : "#fb3f5c";
     ctx.strokeStyle = warningColor;
     ctx.lineWidth = a.telegraph === "blast" ? 9 : 3;
     ctx.setLineDash([8, 8]);
@@ -34,15 +62,30 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.setLineDash([]);
     ctx.fillStyle = warningColor;
     ctx.font = "800 11px system-ui";
-    const warningText = a.telegraph === "sniper" ? "저격 0.8" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "점프" : a.telegraph === "dash" ? "대시 관통" : "PERFECT";
+    const warningText = a.telegraph === "homing" ? "유도탄" : a.telegraph === "sniper" ? "저격 0.8" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "점프" : a.telegraph === "dash" ? "대시 관통" : "PERFECT";
     ctx.fillText(warningText, Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x)), Math.max(18, Math.min(ctx.canvas.clientHeight - 18, a.y + 18)));
     ctx.restore();
   }
 
-  ctx.strokeStyle = a.telegraph === "perfect" ? "#facc15" : a.kind === "explosive" ? "#f59e0b" : a.kind === "ricochet" ? "#38bdf8" : "#f87171";
-  ctx.fillStyle = a.telegraph === "perfect" ? "#fef08a" : a.kind === "explosive" ? "#fde68a" : "#fca5a5";
-  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = a.boss ? bossColor : a.kind === "homing" ? "#c084fc" : a.telegraph === "perfect" ? "#facc15" : a.kind === "explosive" ? "#f59e0b" : a.kind === "ricochet" ? "#38bdf8" : "#f87171";
+  ctx.fillStyle = a.boss ? "#fff7ed" : a.kind === "homing" ? "#e9d5ff" : a.telegraph === "perfect" ? "#fef08a" : a.kind === "explosive" ? "#fde68a" : "#fca5a5";
+  ctx.lineWidth = a.boss ? 6 + Math.min(5, a.bossTier) : 2.4;
   ctx.lineCap = "round";
+
+  if (a.boss) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = bossColor;
+    ctx.globalAlpha = 0.42;
+    ctx.lineWidth = 14 + Math.min(12, a.bossTier * 2);
+    ctx.shadowColor = bossColor;
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // shaft
   ctx.beginPath();
@@ -55,6 +98,15 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.arc(a.x, a.y, 9, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(251, 191, 36, 0.5)";
     ctx.fill();
+  }
+  if (a.kind === "homing") {
+    ctx.save();
+    ctx.strokeStyle = "rgba(192,132,252,.58)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 9 + Math.sin(performance.now() * 0.012) * 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   // tip
@@ -114,24 +166,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.fillRect(pl.x, pl.y, pl.w, 3);
   }
 
-  // 원정 추격대 — 단순 탄막이 아니라 적이 사격하는 전장으로 읽히게 한다.
-  const enemyX = width - world.safeRight - 42;
-  const enemyY = floorY - 40;
-  ctx.save();
-  ctx.strokeStyle = "rgba(251,113,133,.9)";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(enemyX, enemyY - 28, 9, 0, Math.PI * 2);
-  ctx.moveTo(enemyX, enemyY - 18); ctx.lineTo(enemyX, enemyY + 12);
-  ctx.moveTo(enemyX, enemyY - 8); ctx.lineTo(enemyX - 14, enemyY + 4);
-  ctx.moveTo(enemyX, enemyY - 8); ctx.lineTo(enemyX + 15, enemyY - 18);
-  ctx.moveTo(enemyX, enemyY + 12); ctx.lineTo(enemyX - 10, enemyY + 30);
-  ctx.moveTo(enemyX, enemyY + 12); ctx.lineTo(enemyX + 10, enemyY + 30);
-  ctx.stroke();
-  ctx.strokeStyle = "#fbbf24";
-  ctx.beginPath(); ctx.arc(enemyX + 18, enemyY - 18, 15, -1.2, 1.2); ctx.stroke();
-  ctx.restore();
-
   if (world.stageIndex === 3) {
     ctx.save();
     ctx.globalAlpha = 0.32 + Math.sin(world.animClock * 8) * 0.05;
@@ -182,6 +216,74 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
 
   for (let i = 0; i < arrows.length; i++) {
     if (arrows[i].active) drawArrow(ctx, arrows[i]);
+  }
+
+  for (const drop of world.slashDrops) {
+    if (!drop.active) continue;
+    const color = drop.kind === "rune" ? "#f472b6" : drop.kind === "core" ? "#facc15" : "#67e8f9";
+    ctx.save();
+    ctx.translate(drop.x, drop.y);
+    ctx.rotate(world.animClock * 2.4);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "#f8fafc";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    if (drop.kind === "edge") {
+      ctx.moveTo(0, -13); ctx.lineTo(6, 5); ctx.lineTo(0, 12); ctx.lineTo(-6, 5);
+    } else {
+      ctx.moveTo(0, -11); ctx.lineTo(10, 0); ctx.lineTo(0, 11); ctx.lineTo(-10, 0);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  for (const fx of world.slashHitFx) {
+    if (!fx.active) continue;
+    const alpha = Math.max(0, fx.lifeMs / fx.maxLifeMs);
+    const pop = 1 + (1 - alpha) * 0.35;
+    ctx.save();
+    ctx.translate(fx.x, fx.y);
+    ctx.scale(pop, pop);
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `italic 1000 ${fx.boss ? 30 : 22}px system-ui, sans-serif`;
+    ctx.lineWidth = fx.boss ? 7 : 5;
+    ctx.strokeStyle = "#3b0764";
+    ctx.shadowColor = fx.boss ? "#facc15" : "#22d3ee";
+    ctx.shadowBlur = 16;
+    ctx.strokeText(String(fx.value), 0, 0);
+    const grad = ctx.createLinearGradient(0, -18, 0, 14);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.45, fx.boss ? "#fde047" : "#67e8f9");
+    grad.addColorStop(1, fx.boss ? "#fb7185" : "#a78bfa");
+    ctx.fillStyle = grad;
+    ctx.fillText(String(fx.value), 0, 0);
+    ctx.restore();
+  }
+
+  if (world.bossSpawned && !world.bossDefeated) {
+    const barW = Math.min(280, width - world.safeLeft - world.safeRight - 36);
+    const barX = (width - barW) * 0.5;
+    const barY = world.safeTop + 126;
+    const ratio = world.bossMaxCuts > 0 ? world.bossCutsLeft / world.bossMaxCuts : 0;
+    ctx.save();
+    ctx.fillStyle = "rgba(15,23,42,.9)";
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 2;
+    ctx.fillRect(barX, barY, barW, 25);
+    ctx.strokeRect(barX, barY, barW, 25);
+    ctx.fillStyle = "#ef4444";
+    ctx.fillRect(barX + 3, barY + 3, (barW - 6) * ratio, 19);
+    ctx.fillStyle = "#fff";
+    ctx.font = "900 11px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(`보스 화살 · 남은 검격 ${world.bossCutsLeft}/${world.bossMaxCuts}`, width * 0.5, barY + 17);
+    ctx.restore();
   }
 
   drawStickman(ctx, world);

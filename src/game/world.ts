@@ -64,6 +64,14 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     perfectDodges: 0,
     chests: 0,
     expeditionSeals: 0,
+    slashScore: 0,
+    slashBuff: 0,
+    slashHitFx: Array.from({ length: 24 }, () => ({ active: false, x: 0, y: 0, value: 0, lifeMs: 0, maxLifeMs: 0, boss: false })),
+    slashDrops: Array.from({ length: 8 }, () => ({ active: false, x: 0, y: 0, vy: 0, kind: "edge" as const })),
+    bossSpawned: false,
+    bossDefeated: false,
+    bossCutsLeft: 0,
+    bossMaxCuts: 10,
   };
   applyStageLayout(world);
   return world;
@@ -119,6 +127,14 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.perfectDodges = 0;
   world.chests = 0;
   world.expeditionSeals = 0;
+  world.slashScore = 0;
+  world.slashBuff = 0;
+  world.slashHitFx.forEach((fx) => { fx.active = false; });
+  world.slashDrops.forEach((drop) => { drop.active = false; });
+  world.bossSpawned = false;
+  world.bossDefeated = false;
+  world.bossCutsLeft = 0;
+  world.bossMaxCuts = 10 + stageIndex * 4;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -139,6 +155,14 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.perfectDodges = 0;
   world.chests = 0;
   world.expeditionSeals = 0;
+  world.slashScore = 0;
+  world.slashBuff = 0;
+  world.slashHitFx.forEach((fx) => { fx.active = false; });
+  world.slashDrops.forEach((drop) => { drop.active = false; });
+  world.bossSpawned = false;
+  world.bossDefeated = false;
+  world.bossCutsLeft = 0;
+  world.bossMaxCuts = 10 + stageIndex * 4;
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
@@ -293,7 +317,32 @@ export function updateWorld(
     p.animTime = 0;
   }
 
-  const arrowHit = updateArrows(world, dtSec);
+  const arrowDamage = updateArrows(world, dtSec);
+
+  for (const fx of world.slashHitFx) {
+    if (!fx.active) continue;
+    fx.lifeMs -= dtSec * 1000;
+    fx.y -= dtSec * (fx.boss ? 34 : 52);
+    if (fx.lifeMs <= 0) fx.active = false;
+  }
+  for (const drop of world.slashDrops) {
+    if (!drop.active) continue;
+    drop.vy += 620 * dtSec;
+    drop.y += drop.vy * dtSec;
+    if (drop.y > world.floorY - 10) {
+      drop.y = world.floorY - 10;
+      drop.vy *= -0.28;
+    }
+    const dx = drop.x - p.x;
+    const dy = drop.y - p.y;
+    if (dx * dx + dy * dy <= (p.radius + 25) ** 2) {
+      const gain = drop.kind === "rune" ? 3 : drop.kind === "core" ? 2 : 1;
+      world.slashBuff = Math.min(8, world.slashBuff + gain);
+      world.supplies += gain;
+      world.slashScore += gain * 180;
+      drop.active = false;
+    }
+  }
 
   // 전장의 중앙 보급 상자는 직접 전진해야 회수된다. 뒤에서 버티기만 해서는
   // 정제 강철 보상을 얻을 수 없다.
@@ -314,18 +363,23 @@ export function updateWorld(
     world.stageIndex,
     world.combo,
     world.maxCombo,
-  );
+  ) + world.slashScore;
 
   const stage = getStage(world.stageIndex);
-  if (!world.stageClear && world.stageElapsedMs >= stage.durationMs) {
+  if (!world.stageClear && world.stageElapsedMs >= stage.durationMs && world.bossDefeated) {
     world.stageClear = true;
     if (p.hp === p.maxHp) world.expeditionSeals += 2;
     if (world.chests > 0) world.expeditionSeals += 1;
     return { type: "clear" };
   }
 
-  if (arrowHit && p.hp > 0) {
-    p.hp -= 1;
+  if (arrowDamage > 0 && p.hp > 0) {
+    p.damageBuffer += arrowDamage;
+    const wholeDamage = Math.floor(p.damageBuffer + 1e-6);
+    if (wholeDamage > 0) {
+      p.hp = Math.max(0, p.hp - wholeDamage);
+      p.damageBuffer -= wholeDamage;
+    }
     p.anim = "hit";
     p.animTime = 0;
     p.invulnMs = 950;

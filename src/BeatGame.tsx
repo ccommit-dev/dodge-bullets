@@ -41,9 +41,9 @@ import { AllyArt } from "./titans/SpriteArt";
 type BeatUi = "menu" | "playing" | "clear" | "gameover";
 type DifficultyChoice = "easy" | "normal" | "hard" | "expert";
 const DIFFICULTY = {
-  easy: { label: "EASY", bpmMultiplier: .92, difficulty: "easy" as const, reward: 1 },
-  normal: { label: "NORMAL", bpmMultiplier: 1, difficulty: "medium" as const, reward: 1.35 },
-  hard: { label: "HARD", bpmMultiplier: 1.12, difficulty: "hard" as const, reward: 1.8 },
+  easy: { label: "하 · EASY", bpmMultiplier: .92, difficulty: "easy" as const, reward: 1 },
+  normal: { label: "중 · NORMAL", bpmMultiplier: 1, difficulty: "medium" as const, reward: 1.35 },
+  hard: { label: "상 · HARD", bpmMultiplier: 1.12, difficulty: "hard" as const, reward: 1.8 },
   expert: { label: "EXPERT", bpmMultiplier: 1.26, difficulty: "hard" as const, reward: 2.5, force16: true },
 };
 
@@ -78,6 +78,11 @@ const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }>
   { id: "dragon", name: "용린 견갑", desc: "16비트 · 스킬 특화" },
 ];
 const CHAPTER_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
+
+function shoulderForTrack(stageIndex: number, totalStages = stageCount()): ShoulderId {
+  const tier = Math.floor((stageIndex * CHAPTER_SHOULDERS.length) / Math.max(1, totalStages));
+  return CHAPTER_SHOULDERS[Math.min(CHAPTER_SHOULDERS.length - 1, tier)];
+}
 
 type Props = {
   insets: SafeInsets;
@@ -136,6 +141,8 @@ export function BeatGame({
   const [dropCharge, setDropCharge] = useState(0);
   const [instrumentLayers, setInstrumentLayers] = useState<[number, number, number, number]>([0, 0, 0, 0]);
   const [dropFlash, setDropFlash] = useState(0);
+  const [feverMultiplier, setFeverMultiplier] = useState<1 | 2 | 3 | 5>(1);
+  const [feverRemainSec, setFeverRemainSec] = useState(0);
   const beatEnemyHpRef = useRef(100);
   const dropChargeRef = useRef(0);
   const dropCountRef = useRef(0);
@@ -161,33 +168,42 @@ export function BeatGame({
       next[lane] = Math.min(4, next[lane] + 1);
       return next;
     });
-    const gain = world.judgeText === "PERFECT" ? 11 : world.judgeText === "GREAT" ? 8 : 5;
+    const gain = world.judgeText === "PERFECT" ? 5 : world.judgeText === "GREAT" ? 3 : 2;
     dropChargeRef.current = Math.min(100, dropChargeRef.current + gain);
     const buff = lane === 0 ? raidBuffRef.current.kick : lane === 3 ? raidBuffRef.current.drop : raidBuffRef.current.allies;
     let damage = [12, 16, 9, 20][lane] + buff * 7 + Math.floor(world.combo * .8);
     const now = performance.now();
     if (lastRaidTapRef.current.lane >= 0 && lastRaidTapRef.current.lane !== lane && now - lastRaidTapRef.current.at <= 120) {
       damage += 24;
-      dropChargeRef.current = Math.min(100, dropChargeRef.current + 12);
+      dropChargeRef.current = Math.min(100, dropChargeRef.current + 3);
       world.zoomPulse = Math.max(world.zoomPulse, .38);
     }
     lastRaidTapRef.current = { lane, at: now };
-    if (lane === 3 && dropChargeRef.current >= 100) {
-      damage += 90 + world.combo * 2;
-      dropChargeRef.current = 0;
-      dropCountRef.current += 1;
-      setDropFlash((value) => value + 1);
-      world.zoomPulse = 1;
-      world.beatPulse = 1;
-      world.shakeMs = 260;
-      session.box.playSound("firebeat", 1);
-      session.box.playSound("trumpet", 1);
-      session.box.playSound("throat", 1);
-    }
     setDropCharge(dropChargeRef.current);
     beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
     setBeatEnemyHp(beatEnemyHpRef.current);
     if (beatEnemyHpRef.current === 0) world.elapsedMs = world.durationMs;
+  }, []);
+
+  const activateFever = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session || session.world.scoreMultiplier !== 1) return;
+    const charge = dropChargeRef.current;
+    const multiplier: 1 | 2 | 3 | 5 = charge >= 100 ? 5 : charge >= 65 ? 3 : charge >= 35 ? 2 : 1;
+    if (multiplier === 1) return;
+    const durationMs = multiplier === 5 ? 6_000 : multiplier === 3 ? 7_000 : 8_000;
+    session.world.scoreMultiplier = multiplier;
+    session.world.feverMs = durationMs;
+    dropChargeRef.current = 0;
+    setDropCharge(0);
+    setFeverMultiplier(multiplier);
+    setFeverRemainSec(Math.ceil(durationMs / 1000));
+    dropCountRef.current += 1;
+    setDropFlash((value) => value + 1);
+    session.world.zoomPulse = 1;
+    session.world.beatPulse = 1;
+    session.world.shakeMs = 220;
+    session.box.playSound("firebeat", 1);
   }, []);
 
   const syncUi = useCallback((next: BeatUi) => {
@@ -280,10 +296,11 @@ export function BeatGame({
       const session = sessionRef.current;
       if (!session?.ctx) return;
       if (document.visibilityState === "hidden") {
+        session.backingAudio?.pause();
         void session.ctx.suspend();
       } else {
         lastTsRef.current = 0;
-        void session.ctx.resume();
+        void session.ctx.resume().then(() => session.backingAudio?.play()).catch(() => {});
       }
     };
 
@@ -311,12 +328,13 @@ export function BeatGame({
           setLessonTitle(w.lessonTitle);
           setTimingOffset(w.lastOffsetMs);
           setLoopCompletion(w.loopCompletion);
+          setFeverMultiplier(w.scoreMultiplier);
+          setFeverRemainSec(Math.ceil(w.feverMs / 1000));
           const upgradeRound = Math.min(3, Math.floor((w.elapsedMs / Math.max(1, w.durationMs)) * 4));
           if (upgradeRound > upgradeRoundRef.current) {
             upgradeRoundRef.current = upgradeRound;
             const kind = (["kick", "allies", "drop"] as const)[upgradeRound - 1];
             if (kind) raidBuffRef.current = { ...raidBuffRef.current, [kind]: raidBuffRef.current[kind] + 1 };
-            setDropFlash((value) => value + 1);
           }
           const nextL = `${BEAT_SOUND_LABEL[w.nextSound]} → ${LANE_KEYS[laneOfSound(w.nextSound)]}`;
           if (nextL !== hudNextRef.current) {
@@ -376,7 +394,7 @@ export function BeatGame({
                   lastContent: "beat",
                 });
                 const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0) + Math.min(15, dropCountRef.current * 3)));
-                const chapterShoulder = CHAPTER_SHOULDERS[Math.min(CHAPTER_SHOULDERS.length - 1, Math.floor(w.stageIndex / 2))];
+                const chapterShoulder = shoulderForTrack(w.stageIndex);
                 const isChapterBoss = w.stageIndex % 2 === 1;
                 const clearKey = `beat-chapter:${Math.floor(w.stageIndex / 2) + 1}:boss-clear`;
                 let craftedNow = false;
@@ -448,7 +466,7 @@ export function BeatGame({
     }
     pendingClearRef.current = false;
     activeSlotRef.current = slot;
-    setShoulderBlueprint(CHAPTER_SHOULDERS[Math.min(3, Math.floor(slot.stageIndex / 2))]);
+    setShoulderBlueprint(shoulderForTrack(slot.stageIndex));
 
     const canvas = canvasRef.current;
     const width = window.innerWidth;
@@ -493,6 +511,8 @@ export function BeatGame({
     dropCountRef.current = 0;
     setInstrumentLayers([0, 0, 0, 0]);
     setDropFlash(0);
+    setFeverMultiplier(1);
+    setFeverRemainSec(0);
     raidBuffRef.current = { kick: 0, allies: 0, drop: 0 };
     upgradeRoundRef.current = 0;
     lastRaidTapRef.current = { lane: -1, at: 0 };
@@ -521,10 +541,10 @@ export function BeatGame({
       {ui === "menu" && rpg && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
-            <p className="brand beat-kicker">RESONANCE MARCH</p>
-            <h1 className="title beat-title">공명 행군 원정</h1>
-            <p className="subtitle">입력이 곧 음악과 공격이 됩니다. KICK·SNARE·HAT·BASS 레이어를 완성하고 DROP으로 보스를 브레이크하세요</p>
-            <p className="controls-hint">← KICK · ↓ SNARE · ↑ HAT · → BASS / A S W D</p>
+            <p className="brand beat-kicker">STARLIGHT RHYTHM EXPEDITION</p>
+            <h1 className="title beat-title">별빛 리듬 원정</h1>
+            <p className="subtitle">오리지널 멜로딕 트랜스의 인트로·빌드업·DROP에 맞춰 내려오는 방향 노트를 연주하고 보스를 브레이크하세요</p>
+            <p className="controls-hint">노트와 같은 방향 입력 · ← ↓ ↑ → / A S W D</p>
             <p className="score-line">보유 골드 {coins.toLocaleString()} · SP {rpg.sp} · 명성 {rpg.fame}</p>
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
             <div className="beat-difficulty" aria-label="노래 난이도">
@@ -546,13 +566,13 @@ export function BeatGame({
                     onClick={() => void startSlot(slot)}
                   >
                     <span className="schedule-day">
-                      CHAPTER {Math.floor(slot.stageIndex / 2)+1}-{slot.stageIndex % 2 + 1} · {slot.track.bpm}BPM ·{" "}
-                      {slot.track.subdivision}비트 · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초
+                      TRACK {slot.stageIndex + 1}/{totalStages} · {slot.track.bpm}BPM ·{" "}
+                      {difficultyChoice === "easy" ? 4 : difficultyChoice === "normal" ? 8 : 16}비트 · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초
                       {recommended ? " · 추천" : ""}
                     </span>
                     <span className="schedule-title">{slot.title}</span>
                     <span className="schedule-hint">{done ? `오늘 완료 · ${slot.hint}` : slot.hint}</span>
-                    <span className="schedule-cost">{slot.stageIndex % 2 === 1 ? `${SHOULDER_BLUEPRINTS[Math.min(3,Math.floor(slot.stageIndex/2))].name} 최초 확정` : "명령 훈련 · 견갑 조각"} · +{slot.track.reward} 코인</span>
+                    <span className="schedule-cost">{`${SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderForTrack(slot.stageIndex))?.name ?? "원정 견갑"} 조각`} · +{slot.track.reward} 코인</span>
                   </button>
                 );
               })}
@@ -579,12 +599,24 @@ export function BeatGame({
 
       {ui === "playing" && (
         <>
-          <div key={dropFlash} className={`beat-command-party action-${partyAction} ${dropFlash > 0 ? "drop-burst" : ""}`} aria-live="polite">
+          <div key={dropFlash} className={`beat-command-party action-${partyAction} ${dropFlash > 0 ? "drop-burst" : ""} ${feverMultiplier > 1 ? `fever-x${feverMultiplier}` : ""}`} aria-live="polite">
             <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
             <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "guard" ? score : 0}/><AllyArt id="leon" attacking pulse={partyAction === "march" ? score : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="레이드 몬스터" /></div>
-            <div className="beat-fever"><i style={{width:`${dropCharge}%`}}/><span>DROP {dropCharge}% {dropCharge >= 100 ? "· BASS를 눌러 궁극기" : ""}</span></div>
+            <div className="beat-fever">
+              <i style={{width:`${feverMultiplier > 1 ? feverRemainSec / (feverMultiplier === 5 ? 6 : feverMultiplier === 3 ? 7 : 8) * 100 : dropCharge}%`}}/>
+              <span>{feverMultiplier > 1 ? `FEVER ×${feverMultiplier} · ${feverRemainSec}s` : `FEVER ${dropCharge}% · ${dropCharge >= 100 ? "×5" : dropCharge >= 65 ? "×3" : dropCharge >= 35 ? "×2 사용 가능" : "정확한 노트로 충전"}`}</span>
+            </div>
             <div className="beat-layer-mixer">{["KICK 검격","SNARE 근접","HAT 원거리","BASS 궁극기"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
           </div>
+          <button
+            type="button"
+            className={`beat-fever-trigger ${dropCharge >= 35 && feverMultiplier === 1 ? "ready" : ""}`}
+            disabled={dropCharge < 35 || feverMultiplier > 1}
+            onClick={activateFever}
+          >
+            <b>{feverMultiplier > 1 ? `×${feverMultiplier}` : dropCharge >= 100 ? "FEVER ×5" : dropCharge >= 65 ? "FEVER ×3" : dropCharge >= 35 ? "FEVER ×2" : "FEVER"}</b>
+            <small>{feverMultiplier > 1 ? `${feverRemainSec}s` : `${dropCharge}%`}</small>
+          </button>
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">

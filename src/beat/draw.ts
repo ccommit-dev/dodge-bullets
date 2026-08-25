@@ -1,4 +1,4 @@
-import { LANE_KEYS, type BeatSound, type BeatWorld, type NoteLane, type RingSkinId } from "./types";
+import { type BeatSound, type BeatWorld, type NoteLane, type RingSkinId } from "./types";
 import { laneOfSound, laneXAt, PAD_FLASH_MS, railGeometry } from "./world";
 
 const RING_PALETTE: Record<
@@ -54,6 +54,13 @@ const SOUND_SHORT: Record<BeatSound, string> = {
   firebeat: "PF",
   trumpet: "TR",
   throat: "TH",
+};
+
+const LANE_SYMBOL: Record<NoteLane, string> = {
+  0: "←",
+  1: "↓",
+  2: "↑",
+  3: "→",
 };
 
 /**
@@ -393,7 +400,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const index = head + offset;
     if (index < 0) continue;
     const step = world.chart[index];
-    if (!step) continue;
+    if (!step || !step.spike) continue;
     const distance = index - position;
     if (distance < -0.6) continue;
     const z = 1 - distance / preview;
@@ -423,20 +430,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.globalAlpha = (0.35 + eased * 0.65) * fade;
     }
     ctx.beginPath();
-    if (lane === 3) {
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size, 0);
-      ctx.lineTo(0, size);
-      ctx.lineTo(-size, 0);
-      ctx.closePath();
-    } else if (step.spike) {
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size * 0.82, size * 0.65);
-      ctx.lineTo(-size * 0.82, size * 0.65);
-      ctx.closePath();
-    } else {
-      ctx.arc(0, 0, size * 0.72, 0, Math.PI * 2);
-    }
+    ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * 1.56, size * 0.3);
     ctx.fillStyle = consumed ? "#94a3b8" : golden ? "#facc15" : step.spike ? "#fb4f6d" : LANE_ACCENT[lane];
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 8 + eased * 18;
@@ -448,12 +442,17 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.stroke();
     }
     if (eased > 0.3) {
-      ctx.font = `900 ${Math.round(8 + eased * 8)}px system-ui, sans-serif`;
+      ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#f8fafc";
       ctx.shadowBlur = 0;
-      ctx.fillText(SOUND_SHORT[step.sound], 0, 1);
+      ctx.fillText(LANE_SYMBOL[lane], 0, -1);
+      if (eased > 0.62) {
+        ctx.font = `800 ${Math.round(6 + eased * 4)}px system-ui, sans-serif`;
+        ctx.fillStyle = "rgba(248,250,252,.82)";
+        ctx.fillText(SOUND_SHORT[step.sound], 0, size * 0.48);
+      }
     }
     ctx.restore();
   }
@@ -469,37 +468,6 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   ctx.shadowBlur = 18 + pulse * 24;
   ctx.stroke();
   ctx.restore();
-
-  // Four instrument pads: every successful press adds a layer to the track.
-  const padLabel: Record<NoteLane, string> = { 0: "KICK", 1: "SNARE", 2: "HAT", 3: "BASS" };
-  for (let lane = 0 as NoteLane; lane <= 3; lane = (lane + 1) as NoteLane) {
-    const x = laneXAt(world, lane, 1);
-    const flash = Math.min(1, world.laneFlashMs[lane] / PAD_FLASH_MS);
-    const padW = Math.min(88, nearHalf * 0.48);
-    const padH = 34;
-    ctx.save();
-    ctx.translate(x, hitY + 24);
-    ctx.beginPath();
-    ctx.roundRect(-padW / 2, -padH / 2, padW, padH, 10);
-    ctx.fillStyle = flash > 0 ? LANE_ACCENT[lane] : "rgba(15,23,42,.82)";
-    ctx.globalAlpha = flash > 0 ? 0.35 + flash * 0.5 : 0.9;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1.5 + flash * 2;
-    ctx.strokeStyle = flash > 0 ? LANE_ACCENT[lane] : "rgba(148,163,184,.35)";
-    ctx.shadowColor = LANE_ACCENT[lane];
-    ctx.shadowBlur = flash * 20;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.textAlign = "center";
-    ctx.font = "900 10px system-ui, sans-serif";
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillText(padLabel[lane], 0, -1);
-    ctx.font = "700 8px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(226,232,240,.7)";
-    ctx.fillText(LANE_KEYS[lane], 0, 11);
-    ctx.restore();
-  }
 
   drawLoopStack(ctx, world);
 

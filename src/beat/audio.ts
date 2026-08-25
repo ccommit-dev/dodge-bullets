@@ -169,53 +169,67 @@ function clubBed(
   bpm: number,
   currentStepSec: number,
   mixEnergy: number,
+  chartProgress: number,
 ): void {
   const stepsPerBeat = Math.max(1, Math.round((60 / Math.max(1, bpm)) / currentStepSec));
-  if (stepIndex % stepsPerBeat !== 0) return;
   const beat = Math.floor(stepIndex / stepsPerBeat);
-  const roots = [55, 49, 65.41, 43.65];
+  const stepInBeat = stepIndex % stepsPerBeat;
+  const roots = [55, 65.41, 73.42, 49]; // A–C–D–G, original progression
   const root = roots[Math.floor(beat / 4) % roots.length];
-
-  // 4-on-the-floor kick: the old bed only had a quiet saw bass, so it sounded
-  // like a metronome rather than a club track.
-  const kick = ctx.createOscillator();
-  const kickGain = ctx.createGain();
-  kick.type = "sine";
-  kick.frequency.setValueAtTime(145, when);
-  kick.frequency.exponentialRampToValueAtTime(48, when + 0.11);
-  kickGain.gain.setValueAtTime(0.08 + mixEnergy * 0.12, when);
-  kickGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.2);
-  kick.connect(kickGain);
-  kickGain.connect(master);
-  kick.start(when);
-  kick.stop(when + 0.22);
-
-  // Off-beat hat and 2/4 clap make the groove readable without copying a song.
+  const sectionEnergy = chartProgress < 0.16
+    ? 0.48
+    : chartProgress < 0.36
+      ? 0.68
+      : chartProgress < 0.76
+        ? 1
+        : 0.84;
+  const energy = Math.max(sectionEnergy, 0.35 + mixEnergy * 0.65);
   const beatSec = 60 / Math.max(1, bpm);
-  if (mixEnergy >= 0.2) noiseBurst(ctx, master, when + beatSec * 0.5, 0.035, 0.02 + mixEnergy * 0.035, 7200);
-  if (mixEnergy >= 0.4 && beat % 2 === 1) noiseBurst(ctx, master, when, 0.075, 0.035 + mixEnergy * 0.05, 1700);
 
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(root, when);
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(520, when);
-  filter.frequency.exponentialRampToValueAtTime(120, when + 0.22);
-  gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(0.035 + mixEnergy * 0.065, when + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.28);
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(master);
-  osc.start(when);
-  osc.stop(when + 0.3);
+  if (stepInBeat === 0) {
+    const kick = ctx.createOscillator();
+    const kickGain = ctx.createGain();
+    kick.type = "sine";
+    kick.frequency.setValueAtTime(155, when);
+    kick.frequency.exponentialRampToValueAtTime(46, when + 0.12);
+    kickGain.gain.setValueAtTime(0.13 + energy * 0.12, when);
+    kickGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.22);
+    kick.connect(kickGain);
+    kickGain.connect(master);
+    kick.start(when);
+    kick.stop(when + 0.24);
 
-  // Two-beat neon chord stab. Original progression: Am–F–C–G flavour,
-  // deliberately not based on an existing copyrighted track.
-  if (mixEnergy >= 0.62 && beat % 2 === 0) {
-    const chord = [root * 4, root * 5, root * 6];
+    if (beat % 2 === 1) {
+      noiseBurst(ctx, master, when, 0.09, 0.045 + energy * 0.045, 1700);
+    }
+
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    const bassFilter = ctx.createBiquadFilter();
+    bass.type = "sawtooth";
+    bass.frequency.setValueAtTime(root, when);
+    bassFilter.type = "lowpass";
+    bassFilter.frequency.setValueAtTime(620 + energy * 460, when);
+    bassFilter.frequency.exponentialRampToValueAtTime(150, when + beatSec * 0.72);
+    bassGain.gain.setValueAtTime(0.0001, when);
+    bassGain.gain.exponentialRampToValueAtTime(0.055 + energy * 0.055, when + 0.012);
+    bassGain.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * 0.8);
+    bass.connect(bassFilter);
+    bassFilter.connect(bassGain);
+    bassGain.connect(master);
+    bass.start(when);
+    bass.stop(when + beatSec * 0.84);
+  }
+
+  // Offbeat open hat shares the exact transport grid with the falling notes.
+  if (stepsPerBeat > 1 && stepInBeat === Math.floor(stepsPerBeat / 2)) {
+    noiseBurst(ctx, master, when, 0.055, 0.035 + energy * 0.05, 6500);
+  }
+
+  // Wide trance chord on every two beats. This is an original progression,
+  // using the bright arcade-rhythm-game arrangement language only.
+  if (stepInBeat === 0 && beat % 2 === 0) {
+    const chord = [root * 4, root * 5, root * 6, root * 8];
     chord.forEach((hz, index) => {
       const voice = ctx.createOscillator();
       const vg = ctx.createGain();
@@ -225,41 +239,43 @@ function clubBed(
       vf.type = "lowpass";
       vf.frequency.setValueAtTime(1450, when);
       vg.gain.setValueAtTime(0.0001, when);
-      vg.gain.exponentialRampToValueAtTime(0.018, when + 0.012);
-      vg.gain.exponentialRampToValueAtTime(0.0001, when + 0.42);
+      vg.gain.exponentialRampToValueAtTime((0.012 + energy * 0.012) / Math.sqrt(chord.length), when + 0.018);
+      vg.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * 1.7);
       voice.connect(vf);
       vf.connect(vg);
       vg.connect(master);
       voice.start(when);
-      voice.stop(when + 0.44);
+      voice.stop(when + beatSec * 1.75);
     });
   }
 
-  // Stage tempo changes the arrangement, not just playback speed.
-  if (mixEnergy >= 0.48 && bpm >= 100 && bpm < 136) {
-    const arp = ctx.createOscillator();
-    const ag = ctx.createGain();
-    arp.type = "square";
-    arp.frequency.setValueAtTime(root * [8, 10, 12, 15][beat % 4], when + beatSec * .5);
-    ag.gain.setValueAtTime(0.018 + mixEnergy * .018, when + beatSec * .5);
-    ag.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * .82);
-    arp.connect(ag);
-    ag.connect(master);
-    arp.start(when + beatSec * .5);
-    arp.stop(when + beatSec * .84);
-  }
-  if (mixEnergy >= 0.35 && bpm >= 136) {
-    const ghost = ctx.createOscillator();
-    const gg = ctx.createGain();
-    ghost.type = "sine";
-    ghost.frequency.setValueAtTime(110, when + beatSec * .5);
-    ghost.frequency.exponentialRampToValueAtTime(46, when + beatSec * .62);
-    gg.gain.setValueAtTime(0.09, when + beatSec * .5);
-    gg.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * .7);
-    ghost.connect(gg);
-    gg.connect(master);
-    ghost.start(when + beatSec * .5);
-    ghost.stop(when + beatSec * .72);
+  // Original pentatonic lead/arp. Every scheduled tone corresponds to one
+  // visible chart subdivision, making the falling pattern musically readable.
+  if (chartProgress >= 0.14 && (stepsPerBeat <= 1 || stepInBeat % Math.max(1, Math.floor(stepsPerBeat / 2)) === 0)) {
+    const melody = [0, 7, 12, 10, 7, 15, 12, 7, 3, 10, 12, 15, 12, 10, 7, 5];
+    const semitone = melody[Math.floor(stepIndex / Math.max(1, Math.floor(stepsPerBeat / 2))) % melody.length];
+    const hz = 220 * 2 ** (semitone / 12);
+    const lead = ctx.createOscillator();
+    const lead2 = ctx.createOscillator();
+    const leadGain = ctx.createGain();
+    const leadFilter = ctx.createBiquadFilter();
+    lead.type = "sawtooth";
+    lead2.type = "square";
+    lead.frequency.setValueAtTime(hz, when);
+    lead2.frequency.setValueAtTime(hz * 1.004, when);
+    leadFilter.type = "lowpass";
+    leadFilter.frequency.setValueAtTime(1350 + energy * 1900, when);
+    leadGain.gain.setValueAtTime(0.0001, when);
+    leadGain.gain.exponentialRampToValueAtTime(0.018 + energy * 0.022, when + 0.012);
+    leadGain.gain.exponentialRampToValueAtTime(0.0001, when + beatSec * 0.42);
+    lead.connect(leadFilter);
+    lead2.connect(leadFilter);
+    leadFilter.connect(leadGain);
+    leadGain.connect(master);
+    lead.start(when);
+    lead2.start(when);
+    lead.stop(when + beatSec * 0.45);
+    lead2.stop(when + beatSec * 0.45);
   }
 }
 
@@ -379,6 +395,7 @@ export function createBeatboxPlayer(
   getMaster: () => GainNode | null,
   isLive: () => boolean,
   getMixEnergy: () => number = () => 0,
+  backingAudio: HTMLAudioElement | null = null,
 ): BeatboxPlayer {
   let transportTimer: number | null = null;
   let transportStartCtx = 0;
@@ -397,6 +414,10 @@ export function createBeatboxPlayer(
     running = false;
     nextStepToSchedule = 0;
     onStepCb = undefined;
+    if (backingAudio) {
+      backingAudio.pause();
+      backingAudio.currentTime = 0;
+    }
   };
 
   const scheduleAhead = () => {
@@ -411,8 +432,19 @@ export function createBeatboxPlayer(
       if (step && when >= ctx.currentTime - 0.02) {
         const playAt = Math.max(when, ctx.currentTime + 0.001);
         const mixEnergy = Math.max(0, Math.min(1, getMixEnergy()));
-        synthSound(ctx, master, step.sound, playAt, GUIDE_GAIN * (0.22 + mixEnergy * 0.58));
-        clubBed(ctx, master, playAt, nextStepToSchedule, transportBpm, stepSec, mixEnergy);
+        if (!backingAudio) {
+          synthSound(ctx, master, step.sound, playAt, GUIDE_GAIN * (0.22 + mixEnergy * 0.58));
+          clubBed(
+            ctx,
+            master,
+            playAt,
+            nextStepToSchedule,
+            transportBpm,
+            stepSec,
+            mixEnergy,
+            nextStepToSchedule / Math.max(1, chartRef.length - 1),
+          );
+        }
         onStepCb?.(nextStepToSchedule, step.sound, when);
       }
       nextStepToSchedule += 1;
@@ -425,14 +457,14 @@ export function createBeatboxPlayer(
   const getTransportStep = () => {
     const ctx = getCtx();
     if (!ctx || !running || stepSec <= 0) return 0;
-    const elapsed = ctx.currentTime - transportStartCtx;
+    const elapsed = backingAudio ? backingAudio.currentTime : ctx.currentTime - transportStartCtx;
     return Math.max(0, Math.min(chartRef.length, Math.floor(elapsed / stepSec)));
   };
 
   const getTransportPhase = () => {
     const ctx = getCtx();
     if (!ctx || !running || stepSec <= 0) return 0;
-    const elapsed = ctx.currentTime - transportStartCtx;
+    const elapsed = backingAudio ? backingAudio.currentTime : ctx.currentTime - transportStartCtx;
     const phase = (elapsed / stepSec) % 1;
     return phase < 0 ? 0 : phase;
   };
@@ -440,7 +472,8 @@ export function createBeatboxPlayer(
   const getTransportPosition = () => {
     const ctx = getCtx();
     if (!ctx || !running || stepSec <= 0) return 0;
-    return Math.max(0, (ctx.currentTime - transportStartCtx) / stepSec);
+    const elapsed = backingAudio ? backingAudio.currentTime : ctx.currentTime - transportStartCtx;
+    return Math.max(0, elapsed / stepSec);
   };
 
   return {
@@ -469,6 +502,13 @@ export function createBeatboxPlayer(
       chartRef = chart;
       onStepCb = onStep;
       transportStartCtx = ctx.currentTime + 0.06;
+      if (backingAudio) {
+        backingAudio.currentTime = 0;
+        transportStartCtx = ctx.currentTime;
+        void backingAudio.play().catch(() => {
+          // A later pad press can retry playback if a browser revoked activation.
+        });
+      }
       nextStepToSchedule = 0;
       running = true;
       scheduleAhead();
@@ -478,12 +518,23 @@ export function createBeatboxPlayer(
     getTransportStep,
     getTransportPhase,
     getTransportPosition,
-    getTransportStepTime: (stepIndex) => transportStartCtx + stepIndex * stepSec,
+    getTransportStepTime: (stepIndex) => {
+      const ctx = getCtx();
+      if (backingAudio && ctx) {
+        return ctx.currentTime + Math.max(0, stepIndex * stepSec - backingAudio.currentTime);
+      }
+      return transportStartCtx + stepIndex * stepSec;
+    },
     rebaseTransport(fromStep) {
       const ctx = getCtx();
       if (!ctx || !running || stepSec <= 0) return;
       const step = Math.max(0, Math.floor(fromStep));
-      transportStartCtx = ctx.currentTime - step * stepSec;
+      if (backingAudio) {
+        backingAudio.currentTime = Math.min(backingAudio.duration || Infinity, step * stepSec);
+        transportStartCtx = ctx.currentTime - backingAudio.currentTime;
+      } else {
+        transportStartCtx = ctx.currentTime - step * stepSec;
+      }
       nextStepToSchedule = step;
     },
     isTransportRunning: () => running,

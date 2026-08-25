@@ -76,6 +76,8 @@ export type BeatWorld = {
   stepAccSec: number;
   performIndex: number;
   score: number;
+  scoreMultiplier: 1 | 2 | 3 | 5;
+  feverMs: number;
   combo: number;
   maxCombo: number;
   comboTimerMs: number;
