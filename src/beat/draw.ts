@@ -373,7 +373,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   // Beat-depth crossbars make speed and timing legible.
   for (let i = 1; i <= 8; i++) {
     const z = i / 8;
-    const eased = z * z;
+    const eased = z;
     const y = horizonY + (hitY - horizonY) * eased;
     const half = farHalf + (nearHalf - farHalf) * eased;
     ctx.beginPath();
@@ -399,7 +399,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const z = 1 - distance / preview;
     if (z <= 0) continue;
     // Notes stop at the MIX LINE and pop out there instead of sliding onto the pads.
-    const eased = Math.min(1, z) ** 2;
+    const eased = Math.min(1, z);
     const overshoot = Math.max(0, z - 1);
     const lane = laneOfSound(step.sound);
     const x = laneXAt(world, lane, eased);

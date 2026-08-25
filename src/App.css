@@ -1176,14 +1176,14 @@
   white-space: nowrap;
 }
 
-.beat-battle-canvas { opacity:0; }
-.beat-command-party { position:fixed; z-index:4; left:50%; top:22%; width:min(92vw,680px); padding:12px; transform:translateX(-50%); border:1px solid rgba(103,232,249,.25); border-radius:18px; background:linear-gradient(180deg,rgba(14,116,144,.72),rgba(15,23,42,.92) 62%,rgba(20,83,45,.92)); box-shadow:inset 0 -25px 40px rgba(0,0,0,.2),0 18px 50px rgba(0,0,0,.45); pointer-events:none; }
-.beat-command-track { position:relative; height:190px; border-bottom:3px solid rgba(167,243,208,.4); perspective:700px; overflow:hidden; }
-.beat-party-character { position:absolute; left:18%; bottom:0; width:62px; transform:translateX(-50%); transition:left .24s ease; filter:drop-shadow(0 10px 8px rgba(0,0,0,.55)); }
+.beat-battle-canvas { opacity:1; }
+.beat-command-party { position:fixed; z-index:4; top:max(86px,calc(env(safe-area-inset-top) + 62px)); right:12px; width:min(43vw,410px); padding:8px; border:1px solid rgba(103,232,249,.25); border-radius:14px; background:linear-gradient(180deg,rgba(8,47,73,.78),rgba(15,23,42,.9)); box-shadow:inset 0 -16px 28px rgba(0,0,0,.18),0 12px 32px rgba(0,0,0,.38); pointer-events:none; backdrop-filter:blur(7px); }
+.beat-command-track { position:relative; height:76px; border-bottom:2px solid rgba(167,243,208,.35); overflow:hidden; }
+.beat-party-character { position:absolute; left:18%; bottom:0; width:43px; transform:translateX(-50%); transition:left .24s ease; filter:drop-shadow(0 7px 6px rgba(0,0,0,.55)); }
 .beat-party-character.facing-idle .equipped-character { transform:scaleX(-1); }
 .beat-party-character.facing-attack .equipped-character { transform:scaleX(1); }
-.beat-party-allies { position:absolute; left:27%; bottom:2px; display:flex; --ally-size:46px; }
-.beat-training-monster { position:absolute; right:5%; bottom:0; width:clamp(100px,25vw,170px); height:165px; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 10px 10px rgba(0,0,0,.6)); }
+.beat-party-allies { position:absolute; left:27%; bottom:2px; display:flex; --ally-size:34px; }
+.beat-training-monster { position:absolute; right:5%; bottom:0; width:78px; height:72px; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 8px 8px rgba(0,0,0,.6)); }
 .beat-enemy-hp,.beat-fever { position:relative; height:16px; overflow:hidden; border-radius:999px; background:rgba(2,6,23,.74); }
 .beat-enemy-hp i,.beat-fever i { display:block; height:100%; background:linear-gradient(90deg,#dc2626,#fb7185); transition:width .25s ease; }
 .beat-enemy-hp strong,.beat-fever span { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-size:9px; text-shadow:0 1px 2px #000; }
@@ -1202,12 +1202,7 @@
 .beat-command-party.drop-burst::after { content:"DROP!"; position:absolute; z-index:20; left:50%; top:42%; transform:translate(-50%,-50%); color:#fff; font:italic 1000 clamp(38px,10vw,78px)/1 system-ui; text-shadow:0 0 12px #22d3ee,0 0 32px #a855f7,0 6px 0 #7c3aed; animation:beat-drop-text .7s ease-out forwards; pointer-events:none; }
 @keyframes beat-drop-burst { 35% { filter:brightness(1.8) saturate(1.7); box-shadow:0 0 70px rgba(168,85,247,.8),inset 0 0 60px rgba(34,211,238,.45); } }
 @keyframes beat-drop-text { from { opacity:0; transform:translate(-50%,-50%) scale(.55); } 35% { opacity:1; transform:translate(-50%,-50%) scale(1.15); } to { opacity:0; transform:translate(-50%,-75%) scale(1.35); } }
-.beat-upgrade-overlay { z-index:40; background:rgba(2,6,23,.72); backdrop-filter:blur(8px); }
-.beat-rogue-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; width:min(760px,92vw); }
-.beat-rogue-choices button { display:grid; gap:7px; min-height:112px; padding:15px 10px; border:1px solid rgba(103,232,249,.42); border-radius:14px; color:#f8fafc; background:linear-gradient(145deg,rgba(8,145,178,.28),rgba(88,28,135,.54)); box-shadow:inset 0 0 25px rgba(34,211,238,.08); }
-.beat-rogue-choices button:active { transform:scale(.97); filter:brightness(1.3); }
-.beat-rogue-choices small { color:#bae6fd; }
-@media (max-width:560px) { .beat-rogue-choices { grid-template-columns:1fr; } .beat-rogue-choices button { min-height:70px; } }
+@media (max-width:700px) { .beat-command-party { top:max(106px,calc(env(safe-area-inset-top) + 82px)); left:12px; right:12px; width:auto; } .beat-layer-mixer span { padding:3px 2px; font-size:7px; } }
 .beat-training-enemy { position:absolute; right:16%; bottom:7px; width:60px; height:72px; border-radius:48% 48% 38% 38%; background:radial-gradient(circle at 35% 28%,#fca5a5 0 7%,transparent 8%),radial-gradient(circle at 65% 28%,#fca5a5 0 7%,transparent 8%),linear-gradient(145deg,#7f1d1d,#1f2937); box-shadow:0 0 20px rgba(239,68,68,.38); }
 .beat-command-readout { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:8px; color:#f8fafc; text-shadow:0 2px 5px #000; }
 .beat-command-readout strong { color:#fde047; font-size:13px; }
@@ -2359,7 +2354,8 @@
 .titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }
 .titan-ally-art.ally-garen.is-engaged { transform:translateX(clamp(135px,28vw,220px)); }
 .titan-ally-art.ally-nox.is-engaged { transform:translateX(clamp(165px,34vw,265px)); }
-.titan-ally-art.is-approaching .ally-body { animation:formation-walk .26s ease-in-out infinite alternate; }
+.titan-ally-art.is-approaching .ally-swing { animation:formation-walk .26s ease-in-out infinite alternate; }
+.titan-ally-art.is-approaching .ally-weapon { filter:drop-shadow(0 0 2px rgba(103,232,249,.55)); }
 /* 대기 호흡 — 영웅(스프라이트)·몬스터(breathe)만 움직이고 동료는 박제였다. */
 .ally-idle { width:100%; height:100%; transform-origin:50% 92%; animation: ally-idle-bob 1.7s ease-in-out infinite; }
 @keyframes ally-idle-bob { 50% { transform: translateY(-2.5px) scale(1.008,.992); } }

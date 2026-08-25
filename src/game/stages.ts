@@ -1,9 +1,9 @@
 import type { StageDef } from "./types";
 
 const platforms = [
-  { x: 0.12, y: 0.72, w: 0.2, h: 0.025 },
-  { x: 0.42, y: 0.58, w: 0.18, h: 0.025 },
-  { x: 0.7, y: 0.7, w: 0.2, h: 0.025 },
+  { x: 0.04, y: 0.89, w: 0.28, h: 0.025 },
+  { x: 0.35, y: 0.84, w: 0.28, h: 0.025 },
+  { x: 0.66, y: 0.89, w: 0.3, h: 0.025 },
 ];
 
 /** Short expeditions: immediate pressure → escalation → five-second escape climax. */
