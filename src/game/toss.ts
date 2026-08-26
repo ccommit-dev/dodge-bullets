@@ -124,6 +124,38 @@ export async function closeMiniApp(): Promise<void> {
   }
 }
 
+/**
+ * Capacitor Preferences 로더 (1회 캐시).
+ *
+ * 네이티브(Android/iOS)에서는 WebView localStorage가 OS에 의해 삭제될 수 있어
+ * (특히 iOS 저장공간 부족 시) 네이티브 키-값 저장소로 대체한다.
+ * 웹·앱인토스에서는 null을 돌려 기존 경로를 그대로 탄다.
+ */
+type PreferencesLike = {
+  get: (opts: { key: string }) => Promise<{ value: string | null }>;
+  set: (opts: { key: string; value: string }) => Promise<void>;
+};
+let prefsPromise: Promise<PreferencesLike | null> | null = null;
+function nativePrefs(): Promise<PreferencesLike | null> {
+  if (!prefsPromise) {
+    prefsPromise = (async () => {
+      try {
+        const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+        if (!cap?.isNativePlatform?.()) return null;
+        const { Preferences } = await import("@capacitor/preferences");
+        return Preferences;
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return prefsPromise;
+}
+
+/**
+ * 저장 우선순위: 앱인토스 Storage → Capacitor Preferences(네이티브) → localStorage(웹).
+ * 세 환경 모두 이 두 함수만 지나므로 여기가 유일한 분기 지점이다.
+ */
 export async function storageGet(key: string): Promise<string | null> {
   try {
     const { Storage } = await import("@apps-in-toss/web-framework");
@@ -132,6 +164,20 @@ export async function storageGet(key: string): Promise<string | null> {
     }
   } catch {
     // fall through
+  }
+  const prefs = await nativePrefs();
+  if (prefs) {
+    try {
+      const { value } = await prefs.get({ key });
+      if (value !== null) return value;
+      // 1회 마이그레이션 — Preferences 도입 전 네이티브 빌드가 localStorage에
+      // 남긴 데이터를 옮겨 온다. 이후 읽기는 Preferences에서 바로 적중한다.
+      const legacy = localStorage.getItem(key);
+      if (legacy !== null) await prefs.set({ key, value: legacy });
+      return legacy;
+    } catch {
+      // fall through
+    }
   }
   try {
     return localStorage.getItem(key);
@@ -149,6 +195,15 @@ export async function storageSet(key: string, value: string): Promise<void> {
     }
   } catch {
     // fall through
+  }
+  const prefs = await nativePrefs();
+  if (prefs) {
+    try {
+      await prefs.set({ key, value });
+      return;
+    } catch {
+      // fall through
+    }
   }
   try {
     localStorage.setItem(key, value);
