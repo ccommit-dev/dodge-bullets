@@ -14,6 +14,7 @@ import { HUNTING_AREAS } from "./titans/model";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
 import { IdleQaPanel } from "./dev/IdleQaPanel";
+import { bindAndroidBackButton, exitAppNative } from "./game/native";
 import { ContentIcon } from "./ui/ContentIcon";
 import {
   grantCharacterReward,
@@ -159,6 +160,24 @@ function App() {
       setPointer(inputRef.current, false);
     }
   }, []);
+
+  // Android 하드웨어 뒤로가기 — 콘텐츠 안이면 허브로, 허브면 앱 최소화.
+  // 웹/앱인토스에서는 native.ts 가드가 no-op을 돌려준다.
+  useEffect(() => {
+    let dispose = () => undefined as void;
+    void bindAndroidBackButton({
+      onBack: () => {
+        if (appModeRef.current !== "titans") {
+          setMode("titans");
+          return true;
+        }
+        return false;
+      },
+    }).then((fn) => {
+      dispose = fn;
+    });
+    return () => dispose();
+  }, [setMode]);
 
   const syncState = useCallback((next: GameState) => {
     stateRef.current = next;
@@ -739,6 +758,8 @@ function App() {
     soundRef.current.stopBgm();
     soundRef.current.enterBackground();
     setExitOpen(false);
+    // 네이티브(안드로이드/iOS)면 Capacitor 경로, 아니면 앱인토스 closeView.
+    if (await exitAppNative()) return;
     await closeMiniApp();
   };
 
