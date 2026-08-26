@@ -89,7 +89,9 @@ export function drawStickman(
   const attackHero = p.anim === "skill" ? getExpeditionAttackHero() : null;
   const hero = attackHero?.complete && attackHero.naturalWidth > 0 ? attackHero : idleHero;
   if (hero?.complete && hero.naturalWidth > 0) {
-    const frameCount = hero === attackHero ? 3 : 4;
+    // 검격 시트는 4프레임(543px)이다. 3으로 나누면 프레임 폭이 724px가 되어
+    // 캐릭터가 경계에서 잘리고 옆 프레임 캐릭터가 함께 그려진다 (실측 2172×724).
+    const frameCount = 4;
     const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
     const frame = Math.floor(p.animTime * frameRate) % 4;
@@ -97,7 +99,10 @@ export function drawStickman(
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
     ctx.save();
     ctx.translate(p.x, p.y + p.radius);
-    ctx.scale(p.facing * EXPEDITION_NATIVE_FACING, 1);
+    // 시트마다 기준 방향이 다르다: idle 시트는 왼쪽(-1), 검격 시트는 4프레임 모두
+    // 오른쪽(+1)을 본다. 일괄 -1을 곱하면 검격이 바라보는 방향과 반대로 베어진다.
+    const nativeFacing = hero === attackHero ? 1 : EXPEDITION_NATIVE_FACING;
+    ctx.scale(p.facing * nativeFacing, 1);
     if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
     if (p.anim === "jump" || p.anim === "fall") {
       // 고정 포즈(-0.08 / +0.06)는 정점과 착지에서 순간 전환되어 뚝 튄다.

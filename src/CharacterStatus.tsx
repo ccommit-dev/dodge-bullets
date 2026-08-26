@@ -63,7 +63,8 @@ export function CharacterStatus({
   const [growthMessage, setGrowthMessage] = useState("");
 
   useEffect(() => {
-    const id = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 180);
+    // idle 프레임은 AI 보일링이 있어 느리게 돌려야 떨림이 아닌 호흡으로 읽힌다 (anim.ts 참조)
+    const id = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 240);
     return () => window.clearInterval(id);
   }, []);
 
