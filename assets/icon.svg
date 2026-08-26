@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    DODGE LAB 앱 아이콘 — 게임 아이덴티티(화살 회피 + 검 강화)를 한 마크로.
+    작은 크기에서도 읽히도록 요소 2개(검 1, 화살 2)로 제한하고 대비를 크게 잡았다.
+  -->
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#16324e"/>
+      <stop offset="0.62" stop-color="#0d1b2e"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </radialGradient>
+    <linearGradient id="blade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ecfeff"/>
+      <stop offset="0.45" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="guard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fb7185" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#fb7185"/>
+      <stop offset="1" stop-color="#fda4af"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- 검 뒤 광륜 -->
+  <circle cx="512" cy="470" r="300" fill="none" stroke="#5eead4" stroke-opacity="0.14" stroke-width="26"/>
+  <circle cx="512" cy="470" r="228" fill="none" stroke="#5eead4" stroke-opacity="0.1" stroke-width="14"/>
+
+  <!-- 스쳐 가는 화살 2발 (회피 판정의 near-miss) -->
+  <g stroke-linecap="round">
+    <path d="M150 306 L618 214" stroke="url(#arrow)" stroke-width="30"/>
+    <path d="M618 214 l-64 -8 m64 8 l-52 40" stroke="#fda4af" stroke-width="26" fill="none"/>
+    <path d="M212 766 L700 690" stroke="url(#arrow)" stroke-width="30"/>
+    <path d="M700 690 l-63 -12 m63 12 l-54 37" stroke="#fda4af" stroke-width="26" fill="none"/>
+  </g>
+
+  <!-- 대검 -->
+  <g>
+    <path d="M512 96 L582 260 L566 588 L458 588 L442 260 Z" fill="url(#blade)"/>
+    <path d="M512 96 L512 588" stroke="#0f766e" stroke-width="14" stroke-opacity="0.55"/>
+    <path d="M512 96 L582 260 L566 588" fill="#0b1220" opacity="0.14"/>
+    <!-- 가드 -->
+    <rect x="386" y="574" width="252" height="52" rx="24" fill="url(#guard)"/>
+    <circle cx="512" cy="600" r="17" fill="#7c2d12"/>
+    <!-- 자루 -->
+    <rect x="482" y="622" width="60" height="150" rx="24" fill="#334155"/>
+    <path d="M482 650 h60 M482 690 h60 M482 730 h60" stroke="#0f172a" stroke-width="12"/>
+    <!-- 폼멜 -->
+    <circle cx="512" cy="796" r="42" fill="url(#guard)"/>
+    <circle cx="512" cy="796" r="18" fill="#7c2d12"/>
+  </g>
+
+  <!-- 검끝 스파크 -->
+  <circle cx="512" cy="96" r="14" fill="#ecfeff"/>
+  <path d="M512 44 v28 M478 74 l18 18 M546 74 l-18 18" stroke="#a7f3d0" stroke-width="10" stroke-linecap="round"/>
+</svg>
