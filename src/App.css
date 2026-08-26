@@ -2823,6 +2823,9 @@
 }
 
 .equipment-shoulder.back { z-index: 1; filter: brightness(.72); }
+/* 공격 프레임은 상체가 크게 비틀려 고정 앵커 견갑이 얼굴을 덮는 순간이 생긴다.
+   타격 중에는 두 견갑을 모두 몸 뒤로 보내 실루엣을 해치지 않게 한다. */
+.equipped-character.mode-attack .equipment-shoulder { z-index: 1; filter: brightness(.78); }
 @keyframes equipment-equip { from { opacity: 0; filter: brightness(2); } to { opacity: 1; } }
 
 .titan-2d-sprite {

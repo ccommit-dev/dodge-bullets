@@ -5,7 +5,8 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // android/ios는 Capacitor가 생성한 네이티브 프로젝트 — 빌드 산출물(JS 브리지 포함)이라 lint 대상이 아니다.
+  { ignores: ["dist", "android", "ios", "docs/game"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
