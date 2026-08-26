@@ -39,20 +39,15 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
 ## 2. Android 서명 · 배포
 
 - [x] gradle 서명 배선 — `android/key.properties`가 있으면 release 서명이 자동 연결됨
-  (`key.properties`·keystore는 gitignore로 커밋 차단)
-- [ ] 업로드 keystore 생성 — **비밀번호는 직접 정해야 함** (분실 시 복구 불가, 안전한 곳에 백업):
-  ```bash
-  "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot\bin\keytool" -genkey -v -keystore android\dodgelab-upload.keystore -alias dodgelab -keyalg RSA -keysize 2048 -validity 10000
-  ```
-- [ ] `android/key.properties` 작성 (4줄):
-  ```properties
-  storeFile=../dodgelab-upload.keystore
-  storePassword=<위에서 정한 비밀번호>
-  keyAlias=dodgelab
-  keyPassword=<위에서 정한 비밀번호>
-  ```
-- [ ] **Play App Signing** 활성화 (신규 앱 필수)
-- [ ] 릴리스 번들 생성: `cd android && gradlew bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`
+- [x] 업로드 keystore 생성 완료 — `android/dodgelab-upload.keystore` (alias `dodgelab`, RSA 2048, 10000일)
+      · 비밀번호는 랜덤 생성해 `android/key.properties`에 기록됨 (둘 다 gitignore, 로컬 전용)
+- [ ] ⚠️ **keystore 2개 파일 백업 필수** — `android/dodgelab-upload.keystore` + `android/key.properties`를
+      비밀번호 관리자·안전한 저장소에 백업할 것. 이 머신에서 유실되면 업로드 키를 재발급해야 한다
+      (Play App Signing을 쓰면 Google에 재설정 요청 가능하지만 번거롭다)
+- [x] **서명된 release 번들 빌드 완료** — `android/app/build/outputs/bundle/release/app-release.aab` (45MB)
+      · apksigner 검증: `CN=DODGE LAB, OU=ccommit` 서명 확인
+      · release APK도 함께 생성됨 (`outputs/apk/release/app-release.apk`, 실기기 사이드로드용)
+- [ ] **Play App Signing** 활성화 (신규 앱 필수 — 콘솔에서 .aab 첫 업로드 시 자동 안내)
 - [ ] `versionCode` / `versionName` 관리 규칙 정하기 (`android/app/build.gradle`, 업로드마다 versionCode 증가 필수)
 
 ## 3. Google Play Console
