@@ -48,7 +48,29 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
       · apksigner 검증: `CN=DODGE LAB, OU=ccommit` 서명 확인
       · release APK도 함께 생성됨 (`outputs/apk/release/app-release.apk`, 실기기 사이드로드용)
 - [ ] **Play App Signing** 활성화 (신규 앱 필수 — 콘솔에서 .aab 첫 업로드 시 자동 안내)
-- [ ] `versionCode` / `versionName` 관리 규칙 정하기 (`android/app/build.gradle`, 업로드마다 versionCode 증가 필수)
+- [x] `versionCode` / `versionName` 관리 규칙 — **package.json `version`이 단일 출처.**
+      gradle이 `major*10000 + minor*100 + patch`로 versionCode를 자동 파생한다.
+      릴리스 때 package.json 버전만 올리면 됨 (현재 0.1.0 → versionCode 100)
+- [x] R8 축소/난독화 활성화 (`minifyEnabled` + `shrinkResources`, Capacitor keep 규칙 포함)
+      — ⚠️ 난독화 빌드는 실기기에서 1회 스모크 테스트 권장 (플러그인 리플렉션 보호 규칙은 넣었음)
+- [ ] **CI release 서명 활성화** — GitHub Settings > Secrets에 아래 4개 등록하면
+      push마다 서명된 .aab가 Actions 아티팩트로 나온다 (미등록 시 job 자동 스킵):
+  ```
+  KEYSTORE_BASE64   = base64 -w0 android/dodgelab-upload.keystore 출력값
+  KEYSTORE_PASSWORD = android/key.properties의 storePassword
+  KEY_ALIAS         = dodgelab
+  KEY_PASSWORD      = android/key.properties의 keyPassword
+  ```
+
+## 2-1. 론칭 편의 기능 — ✅ 구현 완료
+
+- [x] **세이브 내보내기/가져오기** — 설정 > 세이브 백업. 전 저장 키를 체크섬 포함
+      JSON으로 클립보드 복사, 붙여넣기로 복원(2단계 확인 후 전체 덮어쓰기).
+      기기 이전·앱인토스↔네이티브 이어하기 겸용. 왕복 복원 실측 검증
+- [x] **인앱 리뷰 유도** — 첫 지역 개척·첫 +15 달성 시 1회만 요청
+      (@capacitor-community/in-app-review, 네이티브 전용·실패 무해)
+- [x] **로컬 오류 로그** — 전역 오류를 기기 내 링 버퍼(30건)에 기록,
+      설정 > 오류 로그 복사로 문의 시 첨부. 원격 수집 없음(개인정보방침 유지)
 
 ## 3. Google Play Console
 

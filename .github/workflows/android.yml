@@ -3,9 +3,10 @@ name: Android Build
 # 웹 소스나 안드로이드 프로젝트가 바뀔 때마다 debug APK를 빌드해 아티팩트로 올린다.
 # 로컬 빌드 환경(JDK 21 + SDK + 사내망 TLS 우회) 없이도 누구나 APK를 받을 수 있다.
 #
-# release .aab 서명까지 CI로 옮기려면 (선택):
-#   1) Settings > Secrets에 KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD 등록
-#   2) 아래 "Decode keystore" 스텝의 주석을 해제
+# release-aab job은 Secrets 4개가 등록된 경우에만 실제 서명 빌드를 수행한다:
+#   KEYSTORE_BASE64  — base64 -w0 android/dodgelab-upload.keystore 결과
+#   KEYSTORE_PASSWORD / KEY_ALIAS(=dodgelab) / KEY_PASSWORD
+# Secrets가 없으면 job이 스스로 스킵되므로 등록 전에도 워크플로는 깨지지 않는다.
 on:
   push:
     branches: [main, "feat/**"]
@@ -52,16 +53,6 @@ jobs:
       - name: Build web and sync to native
         run: npm run native:sync
 
-      # - name: Decode keystore (release 서명 시 주석 해제)
-      #   run: |
-      #     echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/dodgelab-upload.keystore
-      #     cat > android/key.properties <<EOF
-      #     storeFile=../dodgelab-upload.keystore
-      #     storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-      #     keyAlias=${{ secrets.KEY_ALIAS }}
-      #     keyPassword=${{ secrets.KEY_PASSWORD }}
-      #     EOF
-
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
@@ -72,3 +63,67 @@ jobs:
           name: dodgelab-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
+  release-aab:
+    runs-on: ubuntu-latest
+    # Secrets는 스텝 if에서 직접 못 읽으므로 env로 옮겨 판정한다
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+    steps:
+      - name: Skip notice (secrets 미등록)
+        if: env.HAS_KEYSTORE != 'true'
+        run: echo "KEYSTORE_BASE64 secret이 없어 release 서명 빌드를 건너뜁니다."
+
+      - name: Checkout
+        if: env.HAS_KEYSTORE == 'true'
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        if: env.HAS_KEYSTORE == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup JDK 21
+        if: env.HAS_KEYSTORE == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        if: env.HAS_KEYSTORE == 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        if: env.HAS_KEYSTORE == 'true'
+        run: npm ci
+
+      - name: Build web and sync to native
+        if: env.HAS_KEYSTORE == 'true'
+        run: npm run native:sync
+
+      - name: Decode keystore
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/dodgelab-upload.keystore
+          cat > android/key.properties <<EOF
+          storeFile=../dodgelab-upload.keystore
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+
+      - name: Build signed release bundle
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: android
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: Upload AAB artifact
+        if: env.HAS_KEYSTORE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dodgelab-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30

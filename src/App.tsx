@@ -14,7 +14,10 @@ import { HUNTING_AREAS } from "./titans/model";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
 import { IdleQaPanel } from "./dev/IdleQaPanel";
-import { bindAndroidBackButton, exitAppNative } from "./game/native";
+import { bindAndroidBackButton, exitAppNative, requestReviewOnce } from "./game/native";
+import { SaveBackupModal } from "./SaveBackupModal";
+import { copyToClipboard } from "./game/backup";
+import { errorLogCount, serializeErrorLog } from "./game/errlog";
 import { ContentIcon } from "./ui/ContentIcon";
 import {
   grantCharacterReward,
@@ -148,6 +151,8 @@ function App() {
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(true);
   const [eventOpen, setEventOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [settingsToast, setSettingsToast] = useState("");
   const appModeRef = useRef<AppMode>("titans");
 
   const setMode = useCallback((mode: AppMode) => {
@@ -527,6 +532,8 @@ function App() {
               }));
               sfxAreaUnlock();
               setPioneeredAreaIndex(openedArea);
+              // 첫 지역 개척 = 게임 루프가 처음으로 완성되는 감정 고점 — 리뷰 요청 적기
+              if (openedArea === 2) void requestReviewOnce("first-pioneer");
             }
 
             // 끝없는 성벽 — 층 기록은 방치 배율(M)로 환산된다. 100층당 ×+0.05.
@@ -830,6 +837,24 @@ function App() {
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setEventOpen(true); }}>
                   <span>모험가 이벤트</span><b>NEW</b>
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
+                  <span>세이브 백업</span><b>›</b>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={errorLogCount() === 0}
+                  title="문의 시 GitHub Issues에 붙여넣어 주세요"
+                  onClick={() => {
+                    void copyToClipboard(serializeErrorLog()).then((done) => {
+                      setSettingsToast(done ? "오류 로그를 클립보드에 복사했습니다" : "복사에 실패했습니다");
+                      window.setTimeout(() => setSettingsToast(""), 2200);
+                    });
+                  }}
+                >
+                  <span>오류 로그 복사</span>
+                  <b>{errorLogCount()}건</b>
                 </button>
                 <button
                   type="button"
@@ -1229,6 +1254,11 @@ function App() {
           onDone={() => setPioneeredAreaIndex(null)}
         />
       )}
+
+      {bootReady && backupOpen && (
+        <SaveBackupModal userHash={userHashRef.current} onClose={() => setBackupOpen(false)} />
+      )}
+      {settingsToast && <div className="titans-toast settings-copy-toast">{settingsToast}</div>}
 
       {/* 개발 전용 UI 점검 패널 — `?qa=1`. DEV 상수 뒤라 프로덕션 번들에서 제거된다. */}
       {import.meta.env.DEV && qaMode && <IdleQaPanel userHash={userHashRef.current} />}

@@ -16,6 +16,7 @@ import {
   type ForgeSave,
 } from "./forge/model";
 import { sfxReforge } from "./ui/sfx";
+import { requestReviewOnce } from "./game/native";
 import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -161,6 +162,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       if (success) {
         setSave((prev) => {
           const nextLevel = Math.min(15, prev.level + 1);
+          // 첫 +15(초월자의 검) 달성 — 강화 루프의 정점, 리뷰 요청 적기
+          if (nextLevel === 15 && prev.level === 14) void requestReviewOnce("first-plus15");
           void grantCharacterReward(userHash, `forge:${prev.totalAttempts}:${Date.now()}`, {
             exp: PROGRESSION_BALANCE.forge.successExp + nextLevel * 2,
             lastContent: "forge",
