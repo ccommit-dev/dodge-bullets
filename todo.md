@@ -17,36 +17,44 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
 
 ---
 
-## 1. Android 빌드 환경 (이 머신에 없음)
+## 1. Android 빌드 환경
 
-- [ ] **JDK 17** 설치 (Temurin 등) — `java -version` 확인
-- [ ] **Android Studio** 설치 (SDK Platform 34+, Build-Tools 포함)
-- [ ] 환경변수 `ANDROID_HOME` 설정 (`%LOCALAPPDATA%\Android\Sdk`)
-- [ ] 첫 빌드 확인:
-  ```bash
-  npm run native:sync
-  npx cap open android   # Android Studio에서 Run
-  ```
+- [x] **JDK 17** 설치 완료 — Temurin 17.0.20.1 (`C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot`)
+- [x] **Android SDK** — Android Studio 대신 cmdline-tools로 설치 (SDK Platform 36 + Build-Tools)
+  - 위치: `%LOCALAPPDATA%\Android\Sdk` · 이 경로가 `android/local.properties`(gitignored)에 기록됨
+- [ ] **Android Studio (선택)** — 에뮬레이터·프로파일링이 필요할 때만. gradle 빌드는 이미 CLI로 가능
+- [ ] 실기기 연결 후: `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb install app-debug.apk`
 
 ## 2. Android 서명 · 배포
 
-- [ ] 업로드 keystore 생성 (분실 시 복구 불가 — 안전한 곳에 백업):
+- [x] gradle 서명 배선 — `android/key.properties`가 있으면 release 서명이 자동 연결됨
+  (`key.properties`·keystore는 gitignore로 커밋 차단)
+- [ ] 업로드 keystore 생성 — **비밀번호는 직접 정해야 함** (분실 시 복구 불가, 안전한 곳에 백업):
   ```bash
-  keytool -genkey -v -keystore dodgelab-upload.keystore -alias dodgelab -keyalg RSA -keysize 2048 -validity 10000
+  "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot\bin\keytool" -genkey -v -keystore android\dodgelab-upload.keystore -alias dodgelab -keyalg RSA -keysize 2048 -validity 10000
   ```
-- [ ] `android/app/build.gradle`에 signingConfig 연결 (또는 Android Studio → Generate Signed Bundle)
+- [ ] `android/key.properties` 작성 (4줄):
+  ```properties
+  storeFile=../dodgelab-upload.keystore
+  storePassword=<위에서 정한 비밀번호>
+  keyAlias=dodgelab
+  keyPassword=<위에서 정한 비밀번호>
+  ```
 - [ ] **Play App Signing** 활성화 (신규 앱 필수)
-- [ ] 릴리스 번들 생성: `cd android && gradlew bundleRelease` → `.aab`
+- [ ] 릴리스 번들 생성: `cd android && gradlew bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`
 - [ ] `versionCode` / `versionName` 관리 규칙 정하기 (`android/app/build.gradle`, 업로드마다 versionCode 증가 필수)
 
 ## 3. Google Play Console
 
 - [ ] 개발자 계정 등록 ($25 일회성)
 - [ ] 앱 생성 (패키지명 `com.ccommit.dodgelab` — **첫 업로드 후 변경 불가**)
-- [ ] 스토어 등록정보: 이름·설명·스크린샷(휴대전화 최소 2장)·그래픽 이미지(1024×500)
+- [x] 등록 텍스트 초안 — [store/listing.md](store/listing.md) (앱 이름·짧은/전체 설명·태그)
+- [x] 그래픽 이미지 1024×500 — [store/feature-graphic.png](store/feature-graphic.png)
+- [ ] 스크린샷 (휴대전화 세로 최소 2장 — listing.md의 촬영 가이드 6장 참조)
 - [ ] 콘텐츠 등급 설문 (게임 카테고리)
-- [ ] **개인정보처리방침 URL** (필수 — 페이지 없으면 만들어야 함)
-- [ ] 데이터 보안 섹션 작성 (현재 수집 데이터 없음 → "수집 안 함"으로 신고 가능. 단 광고 SDK 붙이면 재작성)
+- [x] **개인정보처리방침 페이지** — [docs/privacy.html](docs/privacy.html) 작성 완료.
+      main 머지 시 https://ccommit-dev.github.io/dodge-bullets/privacy.html 로 배포됨 → 이 URL을 콘솔에 입력
+- [x] 데이터 보안 섹션 답변 초안 — listing.md에 표로 정리 (수집 없음)
 - [ ] 내부 테스트 트랙 → 프로덕션 순서로 출시
 
 ## 4. iOS 빌드 환경 (macOS 필수)
@@ -58,16 +66,12 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
 - [ ] 실기기 테스트 → Archive → App Store Connect 업로드
 - [ ] TestFlight 배포 → 심사 제출
 
-## 5. 앱 아이콘 · 스플래시 (현재 Capacitor 기본 아이콘)
+## 5. 앱 아이콘 · 스플래시 — ✅ 완료
 
-- [ ] 1024×1024 원본 아이콘 1장 준비 (`public/appsintoss-logo.png`는 해상도 확인 필요)
-- [ ] `@capacitor/assets`로 일괄 생성:
-  ```bash
-  npm i -D @capacitor/assets
-  # assets/icon.png(1024²), assets/splash.png(2732²) 배치 후
-  npx capacitor-assets generate
-  ```
-- [ ] 스플래시 배경색 `#0b1220`으로 통일
+- [x] 아이콘 디자인 — [assets/icon.svg](assets/icon.svg) (검 + 스쳐 가는 화살, 게임 팔레트)
+- [x] 원본 파생 — `node scripts/make-app-assets.mjs` → icon.png(1024²)·splash(2732²)·splash-dark
+- [x] 네이티브 리소스 생성 — `npx capacitor-assets generate` (android 100개 / ios 13개 / pwa 7개)
+- [ ] (선택) 아이콘 시안이 마음에 안 들면 `assets/icon.svg`만 수정 후 위 두 명령 재실행
 
 ## 6. 실기기 QA 체크리스트
 
@@ -79,13 +83,12 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
 - [ ] 저사양 기기 프레임 — 캔버스 게임(화살 원정) 60fps 여부
 - [ ] 터치 입력 지연 — 비트 수련 판정에 영향 없는지
 
-## 7. 저장 데이터 내구성 (권장)
+## 7. 저장 데이터 내구성 — ✅ 완료
 
-- [ ] 현재 저장은 WebView `localStorage` — **iOS는 저장공간 부족 시 OS가 WebView 스토리지를
-      삭제할 수 있다.** `@capacitor/preferences`로 이관 검토:
-  - `game/toss.ts`의 `storageGet`/`storageSet`이 유일한 저장 경로라 그 두 함수에
-    Capacitor Preferences 분기만 추가하면 전체 이관 완료
-- [ ] 이관 시 기존 localStorage → Preferences 1회 마이그레이션 코드 필요
+- [x] `@capacitor/preferences` 이관 — `toss.ts`의 `storageGet`/`storageSet`에 네이티브 분기 추가
+      (우선순위: 앱인토스 Storage → Preferences → localStorage)
+- [x] 구버전 네이티브 빌드의 localStorage 데이터는 읽기 시점에 1회 자동 이관
+- [x] 웹 회귀 검증 — 기존 저장 로드 정상 (브라우저 실측)
 
 ## 8. 심사 리젝 대비
 
