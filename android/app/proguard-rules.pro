@@ -19,3 +19,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Capacitor — 플러그인은 리플렉션·어노테이션으로 로드되므로 R8이 지우면 안 된다.
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keepclassmembers class * {
+    @com.getcapacitor.PluginMethod <methods>;
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+}
+# WebView JS 브리지
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+# Google Play In-App Review (플러그인 의존)
+-keep class com.google.android.play.core.** { *; }

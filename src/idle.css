@@ -840,6 +840,36 @@
 .idle-var small { color: #64748b; font-size: 9.5px; }
 .idle-var em { color: #94a3b8; font-size: 10px; font-style: normal; }
 
+/* ─────────────────────────────  세이브 백업 모달  ───────────────────────────── */
+
+.backup-card {
+  width: min(100%, 340px);
+  padding: 18px;
+  border: 1px solid rgba(94, 234, 212, 0.28);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(15, 33, 54, 0.97), rgba(9, 17, 30, 0.98));
+}
+.backup-note { margin: 0; color: #94a3b8; font-size: 11.5px; line-height: 1.6; text-align: left; }
+.backup-tabs { width: 100%; }
+.backup-text {
+  width: 100%;
+  min-height: 110px;
+  padding: 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+  background: rgba(8, 18, 33, 0.8);
+  color: #cbd5f5;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.backup-danger { background: linear-gradient(135deg, #fb7185, #f43f5e); color: #fff; }
+.backup-message { margin: 0; color: #fcd34d; font-size: 11.5px; line-height: 1.5; }
+
+.settings-copy-toast { z-index: 130; }
+
 @media (max-width: 380px) {
   .idle-loot article b { font-size: 13px; }
   .idle-factors strong { font-size: 11px; }

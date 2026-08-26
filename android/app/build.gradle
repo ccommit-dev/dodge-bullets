@@ -8,6 +8,12 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 }
 
+// 버전의 단일 출처는 package.json이다.
+// versionCode = major*10000 + minor*100 + patch — package.json의 version만 올리면
+// 웹·스토어 버전이 함께 움직이고, Play가 요구하는 versionCode 단조 증가도 보장된다.
+def pkg = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json'))
+def (pkgMajor, pkgMinor, pkgPatch) = pkg.version.tokenize('.').collect { it.toInteger() }
+
 android {
     namespace = "com.ccommit.dodgelab"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -15,8 +21,8 @@ android {
         applicationId "com.ccommit.dodgelab"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode pkgMajor * 10000 + pkgMinor * 100 + pkgPatch
+        versionName pkg.version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -36,8 +42,11 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // R8 — 자바 브리지·플러그인 코드 축소/난독화. Capacitor 쪽 keep 규칙은
+            // proguard-rules.pro에 있다 (리플렉션 기반 플러그인 로딩 보호).
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release
             }

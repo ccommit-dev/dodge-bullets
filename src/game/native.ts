@@ -15,6 +15,28 @@ export function isNativePlatform(): boolean {
   }
 }
 
+const REVIEW_ASKED_KEY = "dodgebullets:reviewAsked:v1";
+
+/**
+ * 인앱 리뷰 요청 — 감정 고점(첫 지역 개척, 첫 +15 강화)에서 1회만.
+ *
+ * - 스토어 API 특성상 호출해도 조용히 표시되지 않을 수 있다(쿼터). 그래서
+ *   "요청 시도"를 기준으로 1회 플래그를 남긴다 — 반복 호출은 정책 위반 소지.
+ * - 네이티브가 아니면 no-op. 실패는 전부 삼킨다 — 리뷰 유도 때문에
+ *   게임 흐름이 끊기면 본말전도다.
+ */
+export async function requestReviewOnce(trigger: string): Promise<void> {
+  if (!isNativePlatform()) return;
+  try {
+    if (localStorage.getItem(REVIEW_ASKED_KEY)) return;
+    localStorage.setItem(REVIEW_ASKED_KEY, `${trigger}:${Date.now()}`);
+    const { InAppReview } = await import("@capacitor-community/in-app-review");
+    await InAppReview.requestReview();
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * 네이티브에서의 "게임 종료".
  *
