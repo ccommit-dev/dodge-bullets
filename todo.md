@@ -56,7 +56,7 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
 - [ ] 앱 생성 (패키지명 `com.ccommit.dodgelab` — **첫 업로드 후 변경 불가**)
 - [x] 등록 텍스트 초안 — [store/listing.md](store/listing.md) (앱 이름·짧은/전체 설명·태그)
 - [x] 그래픽 이미지 1024×500 — [store/feature-graphic.png](store/feature-graphic.png)
-- [ ] 스크린샷 (휴대전화 세로 최소 2장 — listing.md의 촬영 가이드 6장 참조)
+- [x] 스크린샷 6장 촬영 완료 — store/screenshots/ (1080×1920, headless Chrome으로 실제 앱 화면 캡처)
 - [ ] 콘텐츠 등급 설문 (게임 카테고리)
 - [x] **개인정보처리방침 페이지** — [docs/privacy.html](docs/privacy.html) 작성 완료.
       main 머지 시 https://ccommit-dev.github.io/dodge-bullets/privacy.html 로 배포됨 → 이 URL을 콘솔에 입력
