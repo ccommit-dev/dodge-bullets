@@ -19,9 +19,17 @@ Capacitor 포팅(`feat/capacitor-port` 브랜치)에서 **코드로 끝낼 수 �
 
 ## 1. Android 빌드 환경
 
-- [x] **JDK 17** 설치 완료 — Temurin 17.0.20.1 (`C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot`)
-- [x] **Android SDK** — Android Studio 대신 cmdline-tools로 설치 (SDK Platform 36 + Build-Tools)
-  - 위치: `%LOCALAPPDATA%\Android\Sdk` · 이 경로가 `android/local.properties`(gitignored)에 기록됨
+- [x] **JDK 21** 설치 완료 — Temurin 21.0.12 (`C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot`)
+      · Capacitor 8의 capacitor-android가 Java 21을 요구한다 (17로는 "invalid source release: 21" 실패)
+- [x] **Android SDK** — Android Studio 대신 cmdline-tools로 설치 (Platform 36 + Build-Tools 36.0.0)
+  - 위치: `%LOCALAPPDATA%\Android\Sdk` · `android/local.properties`(gitignored)에 기록됨
+- [x] **debug APK 빌드 성공** — `android/app/build/outputs/apk/debug/app-debug.apk` (47MB)
+- [x] **빌드 명령** — 빌드할 때 아래 env가 필요:
+  ```powershell
+  $env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot'
+  $env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"
+  cd android; .\gradlew.bat assembleDebug
+  ```
 - [ ] **Android Studio (선택)** — 에뮬레이터·프로파일링이 필요할 때만. gradle 빌드는 이미 CLI로 가능
 - [ ] 실기기 연결 후: `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb install app-debug.apk`
 
