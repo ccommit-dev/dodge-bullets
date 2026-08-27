@@ -27,6 +27,15 @@ const allyIndex: Record<TitanHeroId, number> = {
   garen: 3,
   ari: 4,
   nox: 5,
+  // 신규 동료는 로스터 시트가 아니라 개별 이미지를 쓴다 (아래 STANDALONE_ALLY)
+  luna: 6,
+  volt: 7,
+};
+
+/** 상점 전용 동료 — 6인 로스터 시트에 없어 개별 이미지를 쓴다. */
+const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
+  luna: assetUrl("titans/generated/allies/luna.png"),
+  volt: assetUrl("titans/generated/allies/volt.png"),
 };
 
 function sheetStyle(url: string, index: number, count: number): CSSProperties {
@@ -35,6 +44,14 @@ function sheetStyle(url: string, index: number, count: number): CSSProperties {
     backgroundSize: `${count * 100}% 100%`,
     backgroundPosition: `${(index / (count - 1)) * 100}% 0`,
   };
+}
+
+function allyBodyStyle(id: TitanHeroId): CSSProperties {
+  const standalone = STANDALONE_ALLY[id];
+  if (standalone) {
+    return { backgroundImage: `url(${standalone})`, backgroundSize: "contain", backgroundPosition: "center bottom", backgroundRepeat: "no-repeat" };
+  }
+  return sheetStyle(ALLY_SHEET, allyIndex[id], 6);
 }
 
 export function MonsterArt({
@@ -70,7 +87,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, app
       */}
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
-          <div className="ally-body" style={sheetStyle(ALLY_SHEET, allyIndex[id], 6)} />
+          <div className="ally-body" style={allyBodyStyle(id)} />
           <AllyWeapon id={id} />
         </div>
       </div>
@@ -105,6 +122,19 @@ function AllyWeapon({ id }: { id: TitanHeroId }) {
         <>
           <path className="weapon-metal weapon-greatblade" d="M50 85 L61 36 L72 9 L76 38 L61 88 Z" />
           <path className="weapon-accent" d="M45 66 L70 71 M53 77 L45 92" />
+        </>
+      ) : id === "luna" ? (
+        <>
+          {/* 성기사 루나 — 성광 워해머 */}
+          <path className="weapon-shaft" d="M40 88 L66 30" />
+          <path className="weapon-metal" d="M52 18 L82 26 L78 44 L48 36 Z" />
+          <path className="weapon-accent" d="M65 12 v10 M58 16 l6 6 M74 16 l-6 6" />
+        </>
+      ) : id === "volt" ? (
+        <>
+          {/* 기계공 볼트 — 렌치 + 포탑 스파크 */}
+          <path className="weapon-metal" d="M46 84 L70 40 M70 40 a10 10 0 1 0 8 -14 l-6 8 -8 -4 2 -10 a10 10 0 0 0 -8 14" />
+          <path className="weapon-accent" d="M38 78 l-6 12 M84 20 l6 -8 M90 24 l4 -4" />
         </>
       ) : id === "nox" ? (
         <>

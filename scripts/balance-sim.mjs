@@ -46,6 +46,7 @@ const idle = await import(await bundle("src/progression/idle.ts", "idle.mjs"));
 const forge = await import(await bundle("src/forge/model.ts", "forge.mjs"));
 const titans = await import(await bundle("src/titans/model.ts", "titans.mjs"));
 const progression = await import(await bundle("src/progression/model.ts", "progression.mjs"));
+const allies = await import(await bundle("src/titans/allies.ts", "allies.mjs"));
 
 // ── 재현 가능한 난수 ──────────────────────────────────────────────
 function mulberry32(a) {
@@ -85,7 +86,7 @@ function playTitans(state, seconds, stageCeiling) {
   let wall = false;
   while (t > 0) {
     const dps =
-      titans.totalHeroDps(state.heroes) +
+      titans.totalHeroDps(state.heroes, (id) => allies.starMultiplier(allies.effectiveStars(state.stars?.[id], state.heroes[id]))) +
       titans.playerIdleDps(state.weaponMastery) +
       titans.tapDamage(state.weaponMastery) * ASSUMPTIONS.tapsPerSecond;
 
@@ -164,19 +165,28 @@ function simulate(kind) {
     gold: 0,
     weaponMastery: 1,
     heroes: Object.fromEntries(titans.HEROES.map((h) => [h.id, 0])),
+    stars: Object.fromEntries(titans.HEROES.map((h) => [h.id, 0])),
   };
+  const wallSet = new Set();
+  let rebirths = 0;
+  let boostNextDay = false;
+  let wallStreak = 0;
   const rows = [];
   let cumulativeGold = 0;
   let wallDays = 0;
   let gateDays = 0;
 
   for (let day = 1; day <= DAYS; day += 1) {
-    // ── 방치 정산 (세션 수만큼) ──
+    // ── 방치 정산 (세션 수만큼) — P1 따라잡기·조각 드랍 포함 ──
     let dayGold = 0, dayExp = 0, dayMats = 0, cappedToday = false;
+    let lastEndStage = titansState.stage;
+    let dayShards = 0;
     const equipped = equipMapFor(p);
     for (let s = 0; s < ASSUMPTIONS.sessionsPerDay; s += 1) {
-      const y = idle.computeIdleYield(p, titansState.stage, equipped, ASSUMPTIONS.hoursBetweenSessions * 3600);
+      const y = idle.computeIdleYield(p, lastEndStage, equipped, ASSUMPTIONS.hoursBetweenSessions * 3600);
       dayGold += y.gold; dayExp += y.exp; dayMats += y.materials;
+      dayShards += y.allyShardDrops;
+      lastEndStage = Math.max(lastEndStage, y.endStage);
       if (y.cappedOut) cappedToday = true;
     }
     p.sharedCoins += dayGold;
@@ -185,6 +195,35 @@ function simulate(kind) {
     cumulativeGold += dayGold;
     // 출석은 매일 한다고 본다 — T 보너스(최대 +2h)에 반영된다.
     p.attendanceStreak = day;
+    // P1 따라잡기 반영
+    titansState.stage = Math.max(titansState.stage, lastEndStage);
+    // 조각 드랍 → 무작위 보유 동료
+    for (let d = 0; d < dayShards; d += 1) {
+      const owned = Object.keys(titansState.heroes).filter((id) => titansState.heroes[id] > 0);
+      if (owned.length === 0) break;
+      const id = owned[Math.floor(rng() * owned.length)];
+      p.allyShards[id] = (p.allyShards[id] ?? 0) + 1;
+    }
+    // 조각이 모이면 즉시 승급 (탐욕)
+    for (const id of Object.keys(titansState.heroes)) {
+      if (titansState.heroes[id] <= 0) continue;
+      let stars = allies.effectiveStars(titansState.stars[id], titansState.heroes[id]);
+      let need = allies.shardCostToNext(id, stars);
+      while (need !== null && (p.allyShards[id] ?? 0) >= need) {
+        p.allyShards[id] -= need;
+        stars += 1;
+        titansState.stars[id] = stars;
+        need = allies.shardCostToNext(id, stars);
+      }
+    }
+    // 무한 재련: +15 이후 골드가 비용의 3배 이상이면 시도
+    if (p.bestForgeLevel >= 15) {
+      let guard = 0;
+      while (guard++ < 20 && p.sharedCoins >= forge.reforgeCost(p.reforgeRank) * 3) {
+        p.sharedCoins -= forge.reforgeCost(p.reforgeRank);
+        if (rng() < forge.reforgeChance(p.reforgeRank)) p.reforgeRank += 1;
+      }
+    }
 
     // ── 대장간 강화 (두 archetype 공통) ──
     for (let i = 0; i < ASSUMPTIONS.forgeAttemptsPerDay; i += 1) {
@@ -217,8 +256,23 @@ function simulate(kind) {
       }
       // ── 사냥터 전투 (DPS가 진행을 결정) ──
       const res = playTitans(titansState, ASSUMPTIONS.activePlaySeconds, idle.stageCeilingFor(p.pioneeredArea));
-      if (res.wall) wallDays += 1;
+      if (res.wall) { wallDays += 1; wallStreak += 1; wallSet.add(titans.huntingArea(titansState.stage).id); } else { wallStreak = 0; }
       p.titanBestStage = Math.max(p.titanBestStage, titansState.stage);
+
+      // ── 환생: 조건 충족 + 벽 정체 5일 이상일 때만.
+      // 즉시 환생은 동료 DPS 손실이 결정 이득보다 커서 손해라는 것이 탐욕 정책 실험으로 확인됨. ──
+      if (wallSet.size >= 3 && wallStreak >= 5) {
+        wallStreak = 0;
+        wallSet.clear();
+        p.inheritanceCrystals += Math.max(3, Math.floor(Math.sqrt(p.titanBestStage) * 3));
+        p.rebirthCount += 1;
+        rebirths += 1;
+        titansState.stage = 1;
+        titansState.gold = 0;
+        for (const id of Object.keys(titansState.heroes)) titansState.heroes[id] = 0;
+        titansState.weaponMastery = 1;
+        boostNextDay = true; // 다음날 정산에만 2배 적용
+      }
     }
 
     p.level = progression.levelFromExp(p.exp);
@@ -234,7 +288,8 @@ function simulate(kind) {
       wallet: p.sharedCoins,
     });
   }
-  return { kind, rows, cumulativeGold, wallDays, gateDays, final: p, stage: titansState.stage };
+  const starsTotal = Object.values(titansState.stars).reduce((a, b) => a + (b || 0), 0);
+  return { kind, rows, cumulativeGold, wallDays, gateDays, final: p, stage: titansState.stage, rebirths, starsTotal };
 }
 
 function firstDayReaching(rows, pick, target) {
@@ -284,7 +339,7 @@ for (const run of runs) {
     `전 지역 개척: ${firstDayReaching(r, (x) => x.area, 5) ?? "미도달"}일`,
   ].join(" · "));
   lines.push("");
-  lines.push(`**${DAYS}일차** — Stage ${last.stage} · Lv ${last.level} · 누적 골드 ${fmt(run.cumulativeGold)} · DPS 벽 ${run.wallDays}일 · 개척 ${run.gateDays}회`);
+  lines.push(`**${DAYS}일차** — Stage ${last.stage} · Lv ${last.level} · 누적 골드 ${fmt(run.cumulativeGold)} · DPS 벽 ${run.wallDays}일 · 개척 ${run.gateDays}회 · 환생 ${run.rebirths}회 · 성급 합 ${run.starsTotal} · 재련 ${run.final.reforgeRank}`);
   lines.push("");
 }
 

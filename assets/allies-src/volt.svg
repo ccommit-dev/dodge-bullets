@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- 기계공 볼트 (SR) — 자동 포탑 · 렌치. 청동/스틸 팔레트. -->
+  <defs>
+    <linearGradient id="vSuit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7dd3fc"/><stop offset="0.5" stop-color="#38bdf8"/><stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+    <linearGradient id="vMetal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#64748b"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="120" cy="242" rx="56" ry="9" fill="#000" opacity="0.3"/>
+  <!-- 백팩 포탑 -->
+  <rect x="152" y="96" width="44" height="52" rx="9" fill="url(#vMetal)" stroke="#334155" stroke-width="3"/>
+  <rect x="162" y="76" width="10" height="26" rx="4" fill="#475569"/>
+  <rect x="178" y="66" width="8" height="36" rx="4" fill="#334155"/>
+  <circle cx="182" cy="62" r="5" fill="#fbbf24"/>
+  <path d="M196 112 h26" stroke="#334155" stroke-width="9" stroke-linecap="round"/>
+  <path d="M222 112 h10" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="174" cy="122" r="9" fill="#0ea5e9" stroke="#e2e8f0" stroke-width="3"/>
+  <!-- 다리 -->
+  <path d="M104 174 L98 236 L114 238 L118 182 Z" fill="#155e75"/>
+  <path d="M134 174 L142 236 L126 238 L122 182 Z" fill="#0e7490"/>
+  <path d="M94 234 h24 v10 h-26 z M146 234 h-24 v10 h26 z" fill="#292524"/>
+  <!-- 몸통 작업복 -->
+  <path d="M98 110 L142 110 L148 176 Q120 188 92 176 Z" fill="url(#vSuit)"/>
+  <rect x="106" y="128" width="28" height="20" rx="4" fill="#0c4a6e"/>
+  <circle cx="113" cy="138" r="3" fill="#fbbf24"/>
+  <circle cx="127" cy="138" r="3" fill="#4ade80"/>
+  <path d="M96 156 h48" stroke="#78350f" stroke-width="8"/>
+  <rect x="114" y="150" width="12" height="12" rx="2" fill="#d9a53f"/>
+  <!-- 팔 -->
+  <path d="M90 118 L70 148 L82 156 L98 130 Z" fill="#0ea5e9"/>
+  <path d="M148 118 L170 142 L160 152 L142 130 Z" fill="#0ea5e9"/>
+  <circle cx="75" cy="152" r="8" fill="#f3c795"/>
+  <circle cx="166" cy="147" r="8" fill="#f3c795"/>
+  <!-- 렌치 -->
+  <path d="M75 152 L48 118" stroke="#94a3b8" stroke-width="7" stroke-linecap="round"/>
+  <path d="M48 118 a12 12 0 1 1 -6 -20 l-4 9 8 6 8 -6 a12 12 0 0 1 -6 11" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>
+  <!-- 머리 -->
+  <circle cx="120" cy="78" r="24" fill="#f3d9b8"/>
+  <path d="M96 74 Q96 48 120 48 Q144 48 144 74 Q136 62 120 60 Q104 62 96 74 Z" fill="#b45309"/>
+  <!-- 고글 -->
+  <rect x="100" y="66" width="40" height="16" rx="8" fill="#164e63" stroke="#fbbf24" stroke-width="3"/>
+  <circle cx="112" cy="74" r="6" fill="#7dd3fc"/>
+  <circle cx="130" cy="74" r="6" fill="#7dd3fc"/>
+  <path d="M114 92 Q120 96 128 92" stroke="#b0795a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <!-- 스파크 -->
+  <path d="M226 96 l4 -8 M232 106 l8 -3" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+</svg>

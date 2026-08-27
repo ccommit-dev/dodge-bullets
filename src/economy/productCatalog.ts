@@ -19,4 +19,28 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "adventurer-mid", kind: "bundle", name: "중급 모험가 세트", description: "스킬과 견갑 성장을 위한 패키지", displayPrice: "₩12,000", contents: ["보석 ×250", "스킬 코어 ×5", "그림자 견갑 선택권", "골드 ×50,000"], visible: true },
   { id: "adventurer-advanced", kind: "bundle", name: "고급 모험가 세트", description: "후반 장비와 스킬 성장을 위한 체험 패키지", displayPrice: "₩29,000", contents: ["보석 ×700", "스킬 코어 ×15", "용린 견갑", "강화석 ×30"], visible: true },
   { id: "remove-ads", kind: "entitlement", name: "광고 제거", description: "광고 기능 도입 이후에만 판매", displayPrice: "준비 중", contents: ["보상형 광고 제외 일반 광고 제거"], visible: false },
+  // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──
+  { id: "char-obsidian", kind: "entitlement", name: "캐릭터: 흑요석 검사", description: "전용 외형 + 방치 효율 +1%p", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 효율 +1%p"], visible: true },
+  { id: "char-dawn", kind: "entitlement", name: "캐릭터: 새벽의 무희", description: "전용 외형 + 방치 시간 +30분", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 캡 +30분"], visible: true },
+  { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 20 · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 20", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
 ];
+
+/**
+ * 보석 소비형 상품 (LIVEOPS §3.3) — 이미 결제로 얻은 하드 화폐를 쓰는 것이므로
+ * 클라이언트 지급이 허용된다 (₩ 상품과 달리 어댑터 검증 불필요).
+ */
+export type GemProduct = {
+  id: string;
+  name: string;
+  gemCost: number;
+  description: string;
+};
+
+export const GEM_PRODUCTS: GemProduct[] = [
+  { id: "shard-pack", name: "성급 조각 선택팩", gemCost: 120, description: "원하는 동료의 조각 ×10 · 주당 동료별 3회" },
+  { id: "idle-booster", name: "방치 가속권 24h", gemCost: 80, description: "24시간 동안 방치 산출 2배 (중첩 불가)" },
+];
+
+/** 조각팩 주간 구매 제한 — 과금 상한 설계 (동료당/주) */
+export const SHARD_PACK_WEEKLY_LIMIT = 3;
+export const SHARD_PACK_AMOUNT = 10;

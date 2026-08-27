@@ -99,7 +99,10 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
         <p className="brand">IDLE REPORT</p>
         <h2 className="exit-title">귀환 정산</h2>
         <p className="idle-sub">
-          Stage {stage} · {formatDuration(result.seconds)} 동안 원정대가 사냥했습니다
+          {result.endStage > stage
+            ? `Stage ${stage} → ${result.endStage} · ${formatDuration(result.seconds)} 동안 원정대가 전진했습니다`
+            : `Stage ${stage} · ${formatDuration(result.seconds)} 동안 원정대가 사냥했습니다`}
+          {result.boosted && <em className="idle-boost-tag"> ×2 부스트</em>}
         </p>
 
         {result.cappedOut && (
@@ -125,6 +128,13 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
             <b>{materials.toLocaleString()}</b>
             <span>강화석 · 대장간 성공률 +8%p</span>
           </article>
+          {result.allyShardDrops > 0 && (
+            <article style={{ animationDelay: "270ms" }}>
+              <span className="idle-shard-orb" aria-hidden="true">★</span>
+              <b>{result.allyShardDrops}</b>
+              <span>동료 조각</span>
+            </article>
+          )}
         </div>
 
         <div className="idle-factors">

@@ -1,5 +1,6 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
-import { HUNTING_AREAS, huntingArea } from "../titans/model";
+import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
+import { emptyAllyRecord } from "../titans/allies";
 
 export const PROGRESSION_VERSION = 5;
 
@@ -44,6 +45,24 @@ export type CharacterProgress = {
   attendanceStreak: number;
   /** 마지막 방치 정산 시각 (구 `TitansSave.lastActiveAt`에서 승격) */
   idleClaimedAt: number;
+  /** 동료 성급 (★0~5) — 환생에도 보존되는 영구 성장 */
+  allyStars: Record<TitanHeroId, number>;
+  /** 동료별 승급 조각 */
+  allyShards: Record<TitanHeroId, number>;
+  /** 몬스터 도감 — 종류별 처치 수 (마일스톤 → 골드 보너스) */
+  monsterKills: Record<TitanMonsterKind, number>;
+  /** DPS 벽에 도달했던 지역 id — 벽 보상 1회 지급 + 환생 조건(≥3) 겸용 */
+  wallAreas: string[];
+  /** 방치 산출 2배 만료 시각 — 환생 복귀 버프·가속권이 공유 */
+  idleBoostUntil: number;
+  /** 구매한 플레이어블 캐릭터 */
+  ownedCharacters: string[];
+  /** 장착 캐릭터 ("default" = 기본 소년) */
+  activeCharacter: string;
+  /** 성급 조각팩 주간 구매 기록 — { week: "2026-35", bought: { luna: 2 } } */
+  weeklyShardPacks: { week: string; bought: Partial<Record<TitanHeroId, number>> };
+  /** 콘텐츠별 오늘의 첫 클리어 날짜 (YYYY-MM-DD) — 첫 클리어 2배 판정 */
+  firstClearDates: Record<"hunt" | "dodge" | "forge" | "beat", string>;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -90,6 +109,15 @@ export function emptyCharacterProgress(): CharacterProgress {
     evolutionPath: "novice",
     attendanceStreak: 0,
     idleClaimedAt: Date.now(),
+    allyStars: emptyAllyRecord(),
+    allyShards: emptyAllyRecord(),
+    monsterKills: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 },
+    wallAreas: [],
+    idleBoostUntil: 0,
+    ownedCharacters: [],
+    activeCharacter: "default",
+    weeklyShardPacks: { week: "", bought: {} },
+    firstClearDates: { hunt: "", dodge: "", forge: "", beat: "" },
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -114,6 +142,18 @@ function integer(value: unknown, fallback: number, max = Number.MAX_SAFE_INTEGER
   return typeof value === "number" && Number.isFinite(value)
     ? Math.max(0, Math.min(max, Math.floor(value)))
     : fallback;
+}
+
+function allyRecordOf(
+  raw: Partial<Record<TitanHeroId, number>> | undefined,
+  max: number,
+): Record<TitanHeroId, number> {
+  const base = emptyAllyRecord();
+  if (!raw) return base;
+  (Object.keys(base) as TitanHeroId[]).forEach((id) => {
+    base[id] = integer(raw[id], 0, max);
+  });
+  return base;
 }
 
 /** v5 필드가 있으면 그대로, 없으면 구 `unlockedHuntingArea`(스테이지 번호)에서 환산. */
@@ -185,6 +225,34 @@ export function normalizeCharacterProgress(
       : "novice",
     attendanceStreak: integer(raw.attendanceStreak, 0, 9999),
     idleClaimedAt: integer(raw.idleClaimedAt, Date.now(), Date.now()),
+    allyStars: allyRecordOf(raw.allyStars, 5),
+    allyShards: allyRecordOf(raw.allyShards, 99999),
+    monsterKills: {
+      slime: integer(raw.monsterKills?.slime, 0),
+      goblin: integer(raw.monsterKills?.goblin, 0),
+      wolf: integer(raw.monsterKills?.wolf, 0),
+      ogre: integer(raw.monsterKills?.ogre, 0),
+      dragon: integer(raw.monsterKills?.dragon, 0),
+      boss: integer(raw.monsterKills?.boss, 0),
+    },
+    wallAreas: Array.isArray(raw.wallAreas)
+      ? [...new Set(raw.wallAreas.filter((id): id is string => typeof id === "string"))].slice(0, 10)
+      : [],
+    idleBoostUntil: integer(raw.idleBoostUntil, 0),
+    ownedCharacters: Array.isArray(raw.ownedCharacters)
+      ? [...new Set(raw.ownedCharacters.filter((id): id is string => typeof id === "string"))].slice(0, 20)
+      : [],
+    activeCharacter: typeof raw.activeCharacter === "string" ? raw.activeCharacter : "default",
+    weeklyShardPacks:
+      raw.weeklyShardPacks && typeof raw.weeklyShardPacks.week === "string"
+        ? { week: raw.weeklyShardPacks.week, bought: { ...(raw.weeklyShardPacks.bought ?? {}) } }
+        : { week: "", bought: {} },
+    firstClearDates: {
+      hunt: typeof raw.firstClearDates?.hunt === "string" ? raw.firstClearDates.hunt : "",
+      dodge: typeof raw.firstClearDates?.dodge === "string" ? raw.firstClearDates.dodge : "",
+      forge: typeof raw.firstClearDates?.forge === "string" ? raw.firstClearDates.forge : "",
+      beat: typeof raw.firstClearDates?.beat === "string" ? raw.firstClearDates.beat : "",
+    },
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

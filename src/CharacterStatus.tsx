@@ -3,7 +3,7 @@ import { loadBeatRpg } from "./game/storage";
 import { skillTotal, SKILL_LABEL, type BeatRpgProgress, type SkillId } from "./beat/rpg";
 import { loadForgeSave } from "./forge/storage";
 import { defaultForgeSave, tierAt, type ForgeSave } from "./forge/model";
-import { loadTitansSave } from "./titans/storage";
+import { loadTitansSave, rebirthResetTitans } from "./titans/storage";
 import {
   HEROES,
   defaultTitansSave,
@@ -30,6 +30,7 @@ import {
 } from "./progression/idle";
 import { HUNTING_AREAS } from "./titans/model";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
+import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 
@@ -61,6 +62,7 @@ export function CharacterStatus({
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
   const [growthMessage, setGrowthMessage] = useState("");
+  const [rebirthConfirm, setRebirthConfirm] = useState(false);
 
   useEffect(() => {
     // idle 프레임은 AI 보일링이 있어 느리게 돌려야 떨림이 아닌 호흡으로 읽힌다 (anim.ts 참조)
@@ -112,8 +114,11 @@ export function CharacterStatus({
     level: Math.max(beat?.skills[id] ?? 0, progress.beatSkills[id]),
   }));
   const earnedBadges = earnedBadgeIds(progress);
-  const rebirthRequirement = 30 + progress.rebirthCount * 20;
-  const canRebirth = progress.titanBestStage >= rebirthRequirement;
+  // 환생 리워크 (LIVEOPS §1.4): 스테이지 숫자 대신 "벽에 부딪힌 지역 수"가 조건.
+  // 벽 도달은 TitansGame이 wallAreas에 기록한다 — 유저 입장에선 "3개 지역에서 한계를
+  // 본 뒤 다시 태어난다"는 서사가 Stage 30보다 명확하다.
+  const REBIRTH_WALL_AREAS = 3;
+  const canRebirth = progress.wallAreas.length >= REBIRTH_WALL_AREAS;
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
     if (progress.rebirthCount < 1 || progress.evolutionPoints < 1) {
@@ -131,19 +136,31 @@ export function CharacterStatus({
 
   const rebirth = async () => {
     if (!canRebirth) {
-      setGrowthMessage(`사냥터 Stage ${rebirthRequirement}부터 환생할 수 있습니다.`);
+      setGrowthMessage(`${REBIRTH_WALL_AREAS}개 지역에서 한계(DPS 벽)에 도달하면 환생할 수 있습니다. (현재 ${progress.wallAreas.length})`);
       return;
     }
+    // 리셋이 생겼으므로 실수 방지 확인 단계
+    if (!rebirthConfirm) {
+      setRebirthConfirm(true);
+      setGrowthMessage("환생하면 사냥터(스테이지·골드·동료 레벨)가 초기화됩니다. 성급·재련·개척·공유 재화는 보존됩니다. 한 번 더 누르면 진행합니다.");
+      return;
+    }
+    setRebirthConfirm(false);
     const crystals = Math.max(3, Math.floor(Math.sqrt(progress.titanBestStage) * 3));
+    await rebirthResetTitans(userHash);
     const next = await updateCharacterProgress(userHash, (current) => ({
       ...current,
       rebirthCount: current.rebirthCount + 1,
       inheritanceCrystals: current.inheritanceCrystals + crystals,
       evolutionPoints: current.evolutionPoints + 1,
+      // 벽 기록은 소모 — 다음 환생도 다시 3개 지역의 벽을 봐야 한다
+      wallAreas: [],
+      // 복귀 버프: 24시간 방치 산출 2배 (P1 따라잡기와 함께 재등반을 가속)
+      idleBoostUntil: Date.now() + 24 * 3600 * 1000,
       claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
     }));
     onProgressChange(next);
-    setGrowthMessage(`계승 완료 · 계승 결정 +${crystals}, 진화 포인트 +1`);
+    setGrowthMessage(`계승 완료 · 결정 +${crystals} (배율 +${(crystals * 0.02).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배`);
   };
 
   return (
@@ -170,7 +187,7 @@ export function CharacterStatus({
       <section className="character-hero-card">
         <div className="character-equipment-preview">
           <div className="character-equipment-facing">
-            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} />
+            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} />
           </div>
         </div>
         <div className="character-identity">
@@ -236,6 +253,54 @@ export function CharacterStatus({
       </section>
 
       <section className="legacy-growth">
+        <div className="legacy-heading"><div><small>CHARACTER</small><strong>플레이어블 캐릭터</strong></div><span>{1 + progress.ownedCharacters.length}종 보유</span></div>
+        <div className="character-skin-row">
+          {CHARACTER_SKINS.map((skin) => {
+            const owned = skin === "default" || progress.ownedCharacters.includes(skin);
+            const active = progress.activeCharacter === skin;
+            return (
+              <button
+                key={skin}
+                type="button"
+                className={`character-skin-chip ${active ? "active" : ""} ${owned ? "" : "locked"}`}
+                onClick={() => {
+                  if (!owned) {
+                    setGrowthMessage("보석 상점에서 구매할 수 있는 캐릭터입니다.");
+                    return;
+                  }
+                  void updateCharacterProgress(userHash, (current) => ({ ...current, activeCharacter: skin })).then((next) => {
+                    onProgressChange(next);
+                    setGrowthMessage(`${CHARACTER_LABEL[skin]} 장착`);
+                  });
+                }}
+              >
+                <b>{CHARACTER_LABEL[skin]}</b>
+                <small>
+                  {skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : "패시브 없음"}
+                  {!owned && " · 미보유"}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="legacy-heading"><div><small>CODEX</small><strong>몬스터 도감</strong></div><span>처치 마일스톤 → 골드 보너스</span></div>
+        <div className="codex-grid">
+          {(Object.keys(progress.monsterKills) as Array<keyof typeof progress.monsterKills>).map((kind) => {
+            const kills = progress.monsterKills[kind];
+            const bonus = kills >= 1000 ? 8 : kills >= 100 ? 4 : kills >= 10 ? 2 : 0;
+            const nextAt = kills >= 1000 ? null : kills >= 100 ? 1000 : kills >= 10 ? 100 : 10;
+            const label = { slime: "슬라임", goblin: "고블린", wolf: "늑대", ogre: "오우거", dragon: "용", boss: "보스" }[kind];
+            return (
+              <div key={kind} className={`codex-chip ${bonus > 0 ? "tiered" : ""}`}>
+                <b>{label}</b>
+                <span>{kills.toLocaleString()}마리</span>
+                <small>{bonus > 0 ? `골드 +${bonus}%` : "10마리부터"}{nextAt !== null && ` · 다음 ${nextAt}`}</small>
+              </div>
+            );
+          })}
+        </div>
+
         <div className="legacy-heading"><div><small>COLLECTION</small><strong>모험 배지</strong></div><span>{earnedBadges.length}/{BADGES.length}</span></div>
         <div className="badge-grid">
           {BADGES.map((badge) => <div key={badge.id} className={`badge-chip ${earnedBadges.includes(badge.id) ? "earned" : "locked"}`} title={badge.condition}><b>{badge.icon}</b><span>{badge.name}<small>{badge.condition}</small></span></div>)}
@@ -246,7 +311,9 @@ export function CharacterStatus({
           <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존 · 방치 시간 +2h</small></button>
           <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>비트 · 방치 효율 +3%p</small></button>
         </div>
-        <button type="button" className="rebirth-button" disabled={!canRebirth} onClick={() => void rebirth()}>환생 {progress.rebirthCount}회 · {canRebirth ? "계승 시작" : `Stage ${rebirthRequirement} 필요`}</button>
+        <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""}`} disabled={!canRebirth} onClick={() => void rebirth()}>
+          환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/3 지역`}
+        </button>
         {growthMessage && <p className="growth-message">{growthMessage}</p>}
       </section>
 

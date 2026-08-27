@@ -51,6 +51,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [ownedShoulders, setOwnedShoulders] = useState<ShoulderId[]>([]);
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const timerRef = useRef<number | null>(null);
+  const firstClearRef = useRef("");
   const toastRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -78,6 +79,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setCoins(progress.sharedCoins);
       setReforgeRank(progress.reforgeRank);
       setMaterials(progress.enhancementMaterials);
+      firstClearRef.current = progress.firstClearDates.forge;
       setOwnedShoulders(progress.ownedShoulders);
       setEquippedShoulder(progress.equippedShoulder);
       setPhase(forge.pendingFailure ? "failure" : "idle");
@@ -164,8 +166,19 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           const nextLevel = Math.min(15, prev.level + 1);
           // 첫 +15(초월자의 검) 달성 — 강화 루프의 정점, 리뷰 요청 적기
           if (nextLevel === 15 && prev.level === 14) void requestReviewOnce("first-plus15");
+          // 오늘의 첫 강화 성공 2배 (LIVEOPS §2.4)
+          const forgeToday = new Date().toLocaleDateString("sv-SE");
+          const firstToday = firstClearRef.current !== forgeToday;
+          if (firstToday) {
+            firstClearRef.current = forgeToday;
+            flashToast("오늘의 첫 강화 성공 · 경험치 2배!");
+            void updateCharacterProgress(userHash, (current) => ({
+              ...current,
+              firstClearDates: { ...current.firstClearDates, forge: forgeToday },
+            }));
+          }
           void grantCharacterReward(userHash, `forge:${prev.totalAttempts}:${Date.now()}`, {
-            exp: PROGRESSION_BALANCE.forge.successExp + nextLevel * 2,
+            exp: (PROGRESSION_BALANCE.forge.successExp + nextLevel * 2) * (firstToday ? 2 : 1),
             lastContent: "forge",
           }).then(() =>
             updateCharacterProgress(userHash, (current) => ({
