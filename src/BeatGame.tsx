@@ -387,10 +387,20 @@ export function BeatGame({
                 rpgRef.current = grown;
                 setRpg(grown);
                 await saveBeatRpg(userHash, grown);
+                // 오늘의 첫 수련 클리어 2배 (LIVEOPS §2.4)
+                const beatToday = new Date().toLocaleDateString("sv-SE");
+                const progressNow = await updateCharacterProgress(userHash, (c) => c);
+                const beatFirst = progressNow.firstClearDates.beat !== beatToday;
+                if (beatFirst) {
+                  await updateCharacterProgress(userHash, (current) => ({
+                    ...current,
+                    firstClearDates: { ...current.firstClearDates, beat: beatToday },
+                  }));
+                }
                 const rewardId = `beat:${track.id}:${Date.now()}`;
                 await grantCharacterReward(userHash, rewardId, {
-                  exp: PROGRESSION_BALANCE.beat.clearExp,
-                  sharedCoins: reward,
+                  exp: PROGRESSION_BALANCE.beat.clearExp * (beatFirst ? 2 : 1),
+                  sharedCoins: reward * (beatFirst ? 2 : 1),
                   lastContent: "beat",
                 });
                 const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0) + Math.min(15, dropCountRef.current * 3)));

@@ -1,6 +1,6 @@
 import { assetUrl } from "../asset";
 
-export type TitanHeroId = "mia" | "leon" | "sera" | "garen" | "ari" | "nox";
+export type TitanHeroId = "mia" | "leon" | "sera" | "garen" | "ari" | "nox" | "luna" | "volt";
 
 export type TitanSkillId = "strike" | "crit" | "clone" | "warcry" | "steel";
 export type TitanSkillSlot = "starter" | "linkA" | "linkB" | "finisher" | "passive";
@@ -141,6 +141,28 @@ export const HEROES: TitanHeroDef[] = [
     hue: 310,
     feature: "쌍단검 두 번째 타격 치명 보정", attackType: "치명 연격", attackInterval: .62,
   },
+  // luna·volt는 상점 전용 동료 — unlockStage 대신 보석 구매로 해금된다 (allies.ts 참조).
+  // unlockStage 9999는 "스테이지로는 열리지 않음"의 표기.
+  {
+    id: "luna",
+    name: "성기사 루나",
+    role: "광역 성광 · 실드",
+    unlockStage: 9999,
+    baseCost: 220_000,
+    baseDps: 1_100,
+    hue: 48,
+    feature: "성광 파동으로 광역 피해 · 파티 실드", attackType: "광역 성광", attackInterval: 1.4,
+  },
+  {
+    id: "volt",
+    name: "기계공 볼트",
+    role: "포탑 지속딜",
+    unlockStage: 9999,
+    baseCost: 40_000,
+    baseDps: 210,
+    hue: 200,
+    feature: "자동 포탑을 설치해 지속 사격", attackType: "포탑 사격", attackInterval: .9,
+  },
 ];
 
 export const SKILLS: TitanSkillDef[] = [
@@ -179,7 +201,7 @@ export function emptySkillLevels(): Record<TitanSkillId, number> { return { stri
 export function defaultSkillInventory(): TitansSave["skillInventory"] { return { learned: ["strike"], levels: { ...emptySkillLevels(), strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }; }
 
 export function emptyHeroLevels(): Record<TitanHeroId, number> {
-  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0 };
+  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0, luna: 0, volt: 0 };
 }
 
 export function defaultTitansSave(): TitansSave {
@@ -284,8 +306,12 @@ export function heroDps(def: TitanHeroDef, level: number): number {
   return def.baseDps * Math.pow(1.125, level - 1) * milestone;
 }
 
-export function totalHeroDps(heroes: Record<TitanHeroId, number>): number {
-  return HEROES.reduce((sum, def) => sum + heroDps(def, heroes[def.id]), 0);
+/** starMultOf — 동료별 성급 배율 콜백 (allies.ts starMultiplier). 생략 시 ×1. */
+export function totalHeroDps(
+  heroes: Record<TitanHeroId, number>,
+  starMultOf?: (id: TitanHeroId) => number,
+): number {
+  return HEROES.reduce((sum, def) => sum + heroDps(def, heroes[def.id]) * (starMultOf?.(def.id) ?? 1), 0);
 }
 
 export function monsterKind(stage: number, boss: boolean, chesterson: boolean): TitanMonsterKind {

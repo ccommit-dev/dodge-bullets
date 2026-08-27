@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- 성기사 루나 (SSR) — 성광 워해머 · 파티 실드. 금백 팔레트. -->
+  <defs>
+    <linearGradient id="lArmor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fef3c7"/><stop offset="0.5" stop-color="#f5d97a"/><stop offset="1" stop-color="#d9a53f"/>
+    </linearGradient>
+    <linearGradient id="lCloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <radialGradient id="lHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.55" stop-color="#fde68a" stop-opacity="0.5"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="128" cy="242" rx="58" ry="9" fill="#000" opacity="0.3"/>
+  <circle cx="128" cy="66" r="46" fill="url(#lHalo)"/>
+  <!-- 후광 링 -->
+  <ellipse cx="128" cy="46" rx="30" ry="8" fill="none" stroke="#fde68a" stroke-width="4" opacity="0.9"/>
+  <!-- 망토 -->
+  <path d="M92 108 Q80 180 88 234 L118 226 L112 150 Z" fill="#e2e8f0"/>
+  <path d="M164 108 Q176 180 168 234 L138 226 L144 150 Z" fill="#cbd5e1"/>
+  <!-- 다리 -->
+  <path d="M112 172 L106 236 L122 238 L126 180 Z" fill="url(#lArmor)"/>
+  <path d="M144 172 L150 236 L134 238 L130 180 Z" fill="#d9a53f"/>
+  <path d="M102 234 h24 v10 h-26 z M152 234 h-24 v10 h26 z" fill="#8a6a24"/>
+  <!-- 몸통 갑주 -->
+  <path d="M104 106 L152 106 L158 168 Q128 182 98 168 Z" fill="url(#lArmor)"/>
+  <path d="M104 106 L152 106 L150 128 L106 128 Z" fill="#fef3c7"/>
+  <circle cx="128" cy="140" r="10" fill="#fff7ed" stroke="#d9a53f" stroke-width="3"/>
+  <path d="M128 133 l3 5 -3 5 -3 -5 z" fill="#f59e0b"/>
+  <!-- 치마 천 -->
+  <path d="M104 166 Q128 178 152 166 L148 206 Q128 214 108 206 Z" fill="url(#lCloth)"/>
+  <!-- 어깨 -->
+  <ellipse cx="98" cy="108" rx="16" ry="12" fill="url(#lArmor)" stroke="#8a6a24" stroke-width="2"/>
+  <ellipse cx="158" cy="108" rx="16" ry="12" fill="url(#lArmor)" stroke="#8a6a24" stroke-width="2"/>
+  <!-- 팔 -->
+  <path d="M92 116 L74 152 L86 158 L102 126 Z" fill="#e8c364"/>
+  <path d="M164 116 L186 148 L175 156 L156 128 Z" fill="#e8c364"/>
+  <circle cx="79" cy="156" r="8" fill="#f1d9a0"/>
+  <circle cx="181" cy="153" r="8" fill="#f1d9a0"/>
+  <!-- 워해머 -->
+  <path d="M181 153 L206 96" stroke="#94a3b8" stroke-width="7" stroke-linecap="round"/>
+  <rect x="186" y="70" width="42" height="30" rx="6" fill="url(#lArmor)" stroke="#8a6a24" stroke-width="3"/>
+  <path d="M207 60 v8 M197 64 l6 6 M217 64 l-6 6" stroke="#fde68a" stroke-width="4" stroke-linecap="round"/>
+  <!-- 머리 -->
+  <circle cx="128" cy="74" r="24" fill="#f8e3c8"/>
+  <path d="M104 70 Q104 44 128 44 Q152 44 152 70 Q146 58 128 56 Q110 58 104 70 Z" fill="#e8e2f4"/>
+  <path d="M104 70 Q100 96 110 104 L112 84 Z" fill="#e8e2f4"/>
+  <path d="M152 70 Q156 96 146 104 L144 84 Z" fill="#d9d2ec"/>
+  <circle cx="119" cy="74" r="3.4" fill="#3b3168"/>
+  <circle cx="137" cy="74" r="3.4" fill="#3b3168"/>
+  <path d="M122 86 Q128 90 134 86" stroke="#c2846a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <!-- 티아라 -->
+  <path d="M112 56 L128 48 L144 56" stroke="#f5d97a" stroke-width="4" fill="none"/>
+  <circle cx="128" cy="50" r="4" fill="#fde68a"/>
+</svg>

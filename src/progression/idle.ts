@@ -32,8 +32,8 @@ export const IDLE = {
   multCap: 3,
   /** bestForgeLevel 최대 15 → +0.90 */
   multPerForgeLevel: 0.06,
-  /** 첫 환생 지급량이 16개라 0.05면 즉시 상한을 친다. IDLE_REDESIGN.md 4.2 참조. */
-  multPerCrystal: 0.01,
+  /** 환생 리워크(LIVEOPS §1.4)로 0.01→0.02 — 첫 환생 +0.32, 리셋 비용에 걸맞은 보상 */
+  multPerCrystal: 0.02,
   /** 끝없는 성벽 100층당 +0.05, 최대 +0.50 */
   multPerTowerHundred: 0.05,
   multTowerCap: 0.5,
@@ -166,11 +166,17 @@ export type IdleYield = {
   gold: number;
   exp: number;
   materials: number;
+  /** 방치 중 무작위 보유 동료에게 떨어지는 승급 조각 (4h당 1개) */
+  allyShardDrops: number;
+  /** P1 따라잡기 — 방치가 끝난 뒤의 스테이지 (시간당 +1, 최고기록-5 한도) */
+  endStage: number;
   /** 실제로 정산된 초 (캡 적용 후) */
   seconds: number;
   /** 캡에 걸려 버려진 초 */
   wastedSeconds: number;
   cappedOut: boolean;
+  /** 방치 2배 부스트(환생 복귀·가속권) 적용 여부 */
+  boosted: boolean;
   rate: number;
   multiplier: number;
   capHours: number;
@@ -181,6 +187,7 @@ export function computeIdleYield(
   stage: number,
   equipped: Partial<Record<TitanSkillSlot, TitanSkillId>>,
   awaySeconds: number,
+  now: number = Date.now(),
 ): IdleYield {
   const rate = idleRate(progress, equipped);
   const multiplier = idleMultiplier(progress);
@@ -189,19 +196,41 @@ export function computeIdleYield(
   const raw = Math.max(0, Math.floor(awaySeconds));
   const seconds = Math.min(capSeconds, raw);
   const safeStage = Math.max(1, Math.floor(stage));
+  // 부스트는 "정산 시점"이 창 안이면 전체에 적용 — 시간별 분할은 체감 대비 복잡도만 높다
+  const boosted = progress.idleBoostUntil > now;
+  const boost = boosted ? 2 : 1;
 
-  const gold = Math.floor(killGold(safeStage, false, false) * rate * multiplier * seconds);
-  const exp = Math.floor(safeStage * IDLE.expPerStageSecond * multiplier * seconds);
-  const perHour = Math.min(IDLE.materialsPerHourCap, 2 + Math.floor(safeStage / 4));
-  const materials = Math.floor((perHour * multiplier * seconds) / 3600);
+  // P1 따라잡기: 시간당 +1 스테이지, 신기록 -5까지만 (신기록은 액티브 전용).
+  // 산출은 시간별로 그 시점의 스테이지 killGold를 적분한다.
+  const catchupCeiling = Math.min(stageCeilingFor(progress.pioneeredArea), progress.titanBestStage - 5);
+  let gold = 0;
+  let current = safeStage;
+  let remaining = seconds;
+  while (remaining > 0) {
+    const slice = Math.min(3600, remaining);
+    gold += killGold(current, false, false) * rate * multiplier * slice;
+    remaining -= slice;
+    if (current < catchupCeiling) current += 1;
+  }
+  gold = Math.floor(gold * boost);
+  const endStage = current;
+
+  const avgStage = (safeStage + endStage) / 2;
+  const exp = Math.floor(avgStage * IDLE.expPerStageSecond * multiplier * seconds * boost);
+  const perHour = Math.min(IDLE.materialsPerHourCap, 2 + Math.floor(avgStage / 4));
+  const materials = Math.floor((perHour * multiplier * seconds) / 3600) * boost;
+  const allyShardDrops = Math.floor(seconds / (4 * 3600));
 
   return {
     gold,
     exp,
     materials,
+    allyShardDrops,
+    endStage,
     seconds,
     wastedSeconds: raw - seconds,
     cappedOut: raw > capSeconds,
+    boosted,
     rate,
     multiplier,
     capHours,

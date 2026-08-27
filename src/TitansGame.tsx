@@ -52,14 +52,25 @@ import {
 import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
-import { sfxGateBlocked } from "./ui/sfx";
+import { sfxGateBlocked, sfxSlotUnlock } from "./ui/sfx";
+import {
+  ALLY_RARITY,
+  RARITY_COLOR,
+  SHOP_ALLY_GEM_COST,
+  STAR_CAP,
+  effectiveStars,
+  shardCostToNext,
+  starMultiplier,
+  randomOwnedAlly,
+} from "./titans/allies";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
 import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
-import { STORE_PRODUCTS } from "./economy/productCatalog";
+import { SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS } from "./economy/productCatalog";
+import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
 
@@ -138,6 +149,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     bottleneck: IdleBottleneck;
   } | null>(null);
   const [gateNotice, setGateNotice] = useState(false);
+  const [wallBanner, setWallBanner] = useState(false);
+  const [shardPackTarget, setShardPackTarget] = useState<TitanHeroId>("mia");
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
@@ -156,7 +169,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const fxId = useRef(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   const toastTimer = useRef<number | null>(null);
-  const allyAttackAcc = useRef<Record<TitanHeroId, number>>({ mia: 0, leon: .18, sera: .36, garen: .54, ari: .72, nox: .9 });
+  const allyAttackAcc = useRef<Record<TitanHeroId, number>>({ mia: 0, leon: .18, sera: .36, garen: .54, ari: .72, nox: .9, luna: .3, volt: .6 });
   const autoAttackAcc = useRef(0);
   const attackUntil = useRef(0);
   const animResetRef = useRef(false);
@@ -165,6 +178,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const battleTimers = useRef<number[]>([]);
   const pendingStageRef = useRef<number | null>(null);
   const formationReadyRef = useRef(false);
+  const bossFailStreakRef = useRef(0);
+  const killCountsRef = useRef<Partial<Record<TitanMonsterKind, number>>>({});
 
   useEffect(() => {
     saveRef.current = save;
@@ -243,7 +258,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       const awaySeconds = Math.max(0, (Date.now() - since) / 1000);
       const result = computeIdleYield(progress, stage, loaded.skillInventory.equipped, awaySeconds);
 
-      setSave({ ...loaded, stage, lastActiveAt: Date.now() });
+      // P1 따라잡기 — 방치가 진행시킨 스테이지(endStage)에서 재개한다
+      const resumeStage = Math.max(stage, result.endStage);
+      setSave({ ...loaded, stage: resumeStage, lastActiveAt: Date.now() });
       setCharacter(progress);
       setEquippedShoulder(progress.equippedShoulder);
       setSkillPoints(progress.skillPoints);
@@ -254,13 +271,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         setIdleReport({
           result,
           stage,
-          bottleneck: idleBottleneck(progress, result, stage, progress.pioneeredArea),
+          bottleneck: idleBottleneck(progress, result, resumeStage, progress.pioneeredArea),
         });
       } else {
         void updateCharacterProgress(userHash, (current) => ({ ...current, idleClaimedAt: Date.now() }));
       }
 
-      spawn(stage, 1, false);
+      spawn(resumeStage, 1, false);
       setReady(true);
     });
     return () => {
@@ -284,13 +301,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       setIdleReport(null);
       // 방치 골드는 공유 지갑(대장간 소비처)으로 간다.
       // 사냥터 자체 골드(save.gold)는 액티브 전투 보상으로 남겨 방치가 플레이를 대체하지 않게 한다.
-      void updateCharacterProgress(userHash, (current) => ({
-        ...current,
-        sharedCoins: current.sharedCoins + report.result.gold,
-        exp: current.exp + report.result.exp,
-        enhancementMaterials: current.enhancementMaterials + report.result.materials,
-        idleClaimedAt: Date.now(),
-      })).then((next) => {
+      void updateCharacterProgress(userHash, (current) => {
+        // 조각 드랍 (4h당 1개) — 보유 동료 중 무작위 배분
+        const shards = { ...current.allyShards };
+        for (let i = 0; i < report.result.allyShardDrops; i += 1) {
+          const target = randomOwnedAlly(saveRef.current.heroes);
+          shards[target] = (shards[target] ?? 0) + 1;
+        }
+        return {
+          ...current,
+          sharedCoins: current.sharedCoins + report.result.gold,
+          exp: current.exp + report.result.exp,
+          enhancementMaterials: current.enhancementMaterials + report.result.materials,
+          allyShards: shards,
+          idleClaimedAt: Date.now(),
+        };
+      }).then((next) => {
         setCharacter(next);
         setSkillPoints(next.skillPoints);
         then?.();
@@ -394,8 +420,46 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       const wasBoss = bossRef.current;
       battlePhaseRef.current = "monster-death";
       setBattlePhase("monster-death");
-      const goldGain =
-        killGold(s.stage, wasBoss, chestRef.current) + (wasBoss ? stageClearBonus(s.stage) : 0);
+
+      // 몬스터 도감 (LIVEOPS §2.3) — 종별 카운트는 배치로 모아 보스 클리어 때 플러시.
+      // 킬마다 storage 쓰기를 하면 저장 부하가 크다.
+      const killedKind = monsterKind(s.stage, wasBoss, chestRef.current);
+      killCountsRef.current[killedKind] = (killCountsRef.current[killedKind] ?? 0) + 1;
+      if (wasBoss) bossFailStreakRef.current = 0;
+
+      // 도감 마일스톤 보너스: 10/100/1,000 처치 → +2/4/8%
+      const codexKills =
+        (characterRef.current.monsterKills[killedKind] ?? 0) + (killCountsRef.current[killedKind] ?? 0);
+      const codexMult = codexKills >= 1000 ? 1.08 : codexKills >= 100 ? 1.04 : codexKills >= 10 ? 1.02 : 1;
+
+      // 오늘의 첫 보스 클리어 2배 (LIVEOPS §2.4)
+      const today = new Date().toLocaleDateString("sv-SE");
+      const firstClearToday = wasBoss && characterRef.current.firstClearDates.hunt !== today;
+
+      const goldGain = Math.floor(
+        (killGold(s.stage, wasBoss, chestRef.current) + (wasBoss ? stageClearBonus(s.stage) : 0)) *
+          codexMult *
+          (firstClearToday ? 2 : 1),
+      );
+      if (firstClearToday) {
+        flash("오늘의 첫 보스 클리어 · 보상 2배!");
+        void updateCharacterProgress(userHash, (current) => ({
+          ...current,
+          firstClearDates: { ...current.firstClearDates, hunt: today },
+        })).then(setCharacter);
+      }
+      if (wasBoss) {
+        // 도감 카운트 플러시 (보스 주기 = 자연스러운 배치 경계)
+        const pending = killCountsRef.current;
+        killCountsRef.current = {};
+        void updateCharacterProgress(userHash, (current) => {
+          const merged = { ...current.monsterKills };
+          (Object.keys(pending) as TitanMonsterKind[]).forEach((k) => {
+            merged[k] = (merged[k] ?? 0) + (pending[k] ?? 0);
+          });
+          return { ...current, monsterKills: merged };
+        }).then((next) => setCharacter(next));
+      }
 
       // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 화살 원정으로만 열린다.
       // 스테이지 증가보다 **먼저** 판정해야 한다. 나중에 보면 이미 상한을 넘긴 뒤라
@@ -566,7 +630,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
           pushFx("ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
-          applyDamage(heroDps(h, level) * h.attackInterval * war * shoulderBoost, false, { fromAlly: h.id });
+          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost, false, { fromAlly: h.id });
         }
       }
 
@@ -580,6 +644,30 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           spawn(saveRef.current.stage, MOBS_PER_STAGE, false);
           battlePhaseRef.current = "combat";
           setBattlePhase("combat");
+          // DPS 벽 감지 (LIVEOPS §1.3) — 2연속 실패 = 이 지역의 벽.
+          // 벽은 실패가 아니라 이정표다: 최초 도달 시 보석 보상 + 돌파 3택 배너,
+          // 그리고 wallAreas 기록이 환생 조건(3지역)을 채운다.
+          bossFailStreakRef.current += 1;
+          if (bossFailStreakRef.current >= 2) {
+            bossFailStreakRef.current = 0;
+            const areaId = huntingArea(saveRef.current.stage).id;
+            if (!characterRef.current.wallAreas.includes(areaId)) {
+              void updateCharacterProgress(userHash, (current) =>
+                current.wallAreas.includes(areaId)
+                  ? current
+                  : {
+                      ...current,
+                      wallAreas: [...current.wallAreas, areaId],
+                      redGems: current.redGems + 30,
+                    },
+              ).then((next) => {
+                setCharacter(next);
+                setRedGems(next.redGems);
+                flash(`${huntingArea(saveRef.current.stage).name}의 벽 도달 · 보석 +30`);
+              });
+            }
+            setWallBanner(true);
+          }
         }
       }
 
@@ -647,6 +735,83 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       equipmentTraining: { ...prev.equipmentTraining, [key]: prev.equipmentTraining[key] + 1 },
     }));
     flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + 1}`);
+  };
+
+  /** 이번 주 조각팩 구매 횟수 — 주간 제한(과금 상한 설계)의 판정 */
+  const shardPackBoughtThisWeek = (id: TitanHeroId): number => {
+    const week = currentWeekKey();
+    if (character.weeklyShardPacks.week !== week) return 0;
+    return character.weeklyShardPacks.bought[id] ?? 0;
+  };
+
+  const buyShardPack = async () => {
+    const id = shardPackTarget;
+    if (redGems < 120 || save.heroes[id] <= 0) return;
+    const week = currentWeekKey();
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const record = current.weeklyShardPacks.week === week ? current.weeklyShardPacks : { week, bought: {} };
+      const bought = record.bought[id] ?? 0;
+      if (bought >= SHARD_PACK_WEEKLY_LIMIT || current.redGems < 120) return current;
+      return {
+        ...current,
+        redGems: current.redGems - 120,
+        allyShards: { ...current.allyShards, [id]: (current.allyShards[id] ?? 0) + SHARD_PACK_AMOUNT },
+        weeklyShardPacks: { week, bought: { ...record.bought, [id]: bought + 1 } },
+      };
+    });
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`${HEROES.find((h) => h.id === id)?.name} 조각 +${SHARD_PACK_AMOUNT}`);
+  };
+
+  const buyIdleBooster = async () => {
+    if (redGems < 80 || character.idleBoostUntil > Date.now()) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.redGems < 80 || current.idleBoostUntil > Date.now()
+        ? current
+        : { ...current, redGems: current.redGems - 80, idleBoostUntil: Date.now() + 24 * 3600 * 1000 },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash("방치 가속 24시간 시작 — 산출 2배");
+  };
+
+  /** 상점 전용 동료(luna·volt) — 보석으로 ★1 확정 해금. 성급은 조각 파밍으로만. */
+  const buyShopAlly = async (id: TitanHeroId) => {
+    const gemCost = SHOP_ALLY_GEM_COST[id];
+    const def = HEROES.find((h) => h.id === id);
+    if (!def || gemCost === undefined || save.heroes[id] > 0 || redGems < gemCost) return;
+    const next = await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      redGems: Math.max(0, current.redGems - gemCost),
+      allyStars: { ...current.allyStars, [id]: Math.max(1, current.allyStars[id]) },
+    }));
+    setCharacter(next);
+    setRedGems(next.redGems);
+    setSave((prev) => ({ ...prev, heroes: { ...prev.heroes, [id]: 1 } }));
+    setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    flash(`${def.name} 합류! (★1)`);
+  };
+
+  /** 성급 승급 — 조각 소비, 환생에도 보존되는 영구 성장 */
+  const starUpAlly = async (id: TitanHeroId) => {
+    const lv = save.heroes[id];
+    const stars = effectiveStars(character.allyStars[id], lv);
+    const cost = shardCostToNext(id, stars);
+    if (lv <= 0 || cost === null || character.allyShards[id] < cost) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const cur = effectiveStars(current.allyStars[id], lv);
+      const need = shardCostToNext(id, cur);
+      if (need === null || current.allyShards[id] < need) return current;
+      return {
+        ...current,
+        allyShards: { ...current.allyShards, [id]: current.allyShards[id] - need },
+        allyStars: { ...current.allyStars, [id]: cur + 1 },
+      };
+    });
+    setCharacter(next);
+    sfxSlotUnlock();
+    flash(`${HEROES.find((h) => h.id === id)?.name} ★${effectiveStars(next.allyStars[id], lv)} 승급!`);
   };
 
   const buyHero = (id: TitanHeroId) => {
@@ -806,7 +971,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const area = huntingArea(save.stage);
   const monsterRanged = kind === "dragon" || (boss && (area.id === "volcano" || area.id === "abyss"));
   const label = monsterLabel(kind, chesterson, save.stage);
-  const dps = totalHeroDps(save.heroes) + playerIdleDps(save.equipmentTraining.weaponMastery);
+  const dps = totalHeroDps(save.heroes, (id) => starMultiplier(effectiveStars(character.allyStars[id], save.heroes[id]))) + playerIdleDps(save.equipmentTraining.weaponMastery);
   const tap = tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5));
   const now = performance.now();
   const allies = useMemo(
@@ -880,7 +1045,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         <div className="titans-background" aria-hidden="true" />
         <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} />
           </div>
         </div>
 
@@ -1041,25 +1206,68 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {tab === "heroes" &&
           HEROES.map((h) => {
             const lv = save.heroes[h.id];
-            const locked = save.stage < h.unlockStage;
+            const gemCost = SHOP_ALLY_GEM_COST[h.id];
+            const shopOnly = gemCost !== undefined;
+            const locked = shopOnly ? lv === 0 : save.stage < h.unlockStage;
             const cost = heroUpgradeCost(h, lv);
+            const rarity = ALLY_RARITY[h.id];
+            const stars = effectiveStars(character.allyStars[h.id], lv);
+            const shards = character.allyShards[h.id];
+            const nextCost = shardCostToNext(h.id, Math.max(1, stars));
+            const cap = STAR_CAP[rarity];
+            const mult = starMultiplier(Math.max(1, stars));
             return (
-              <article key={h.id} className="titans-card">
+              <article key={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()}`}>
                 <AllyArt id={h.id} />
                 <div>
                   <strong>
+                    <em className="rarity-tag" style={{ color: RARITY_COLOR[rarity] }}>{rarity}</em>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
                   </strong>
+                  {lv > 0 && (
+                    <span className="ally-stars" aria-label={`성급 ${stars}/${cap}`}>
+                      {Array.from({ length: cap }, (_, i) => (
+                        <i key={i} className={i < stars ? "on" : ""}>★</i>
+                      ))}
+                      {mult > 1 && <b>×{mult}</b>}
+                    </span>
+                  )}
                   <p>
-                    {locked
-                      ? `STAGE ${h.unlockStage} 해금 · ${h.attackType}`
-                      : `${h.attackType} · ${h.attackInterval.toFixed(2)}초 · DPS ${formatGold(heroDps(h, lv || 1))}`}
+                    {shopOnly && lv === 0
+                      ? `보석 상점 전용 동료 · ${h.attackType}`
+                      : locked
+                        ? `STAGE ${h.unlockStage} 해금 · ${h.attackType}`
+                        : `${h.attackType} · ${h.attackInterval.toFixed(2)}초 · DPS ${formatGold(heroDps(h, lv || 1) * mult)}`}
                   </p>
                   <small className="ally-feature">{h.feature}</small>
+                  {lv > 0 && (
+                    <small className="ally-shards">
+                      조각 {shards}
+                      {nextCost !== null ? ` / ${nextCost} · ★${Math.max(1, stars) + 1} 승급` : " · 최대 성급"}
+                    </small>
+                  )}
                 </div>
-                <button type="button" disabled={locked || save.gold < cost} onClick={() => buyHero(h.id)}>
-                  {lv === 0 ? "소환" : "레벨업"}
-                </button>
+                <div className="ally-card-actions">
+                  {shopOnly && lv === 0 ? (
+                    <button type="button" disabled={redGems < (gemCost ?? 0)} onClick={() => void buyShopAlly(h.id)}>
+                      💎 {gemCost}
+                    </button>
+                  ) : (
+                    <button type="button" disabled={locked || save.gold < cost} onClick={() => buyHero(h.id)}>
+                      {lv === 0 ? "소환" : "레벨업"}
+                    </button>
+                  )}
+                  {lv > 0 && nextCost !== null && (
+                    <button
+                      type="button"
+                      className="ally-star-up"
+                      disabled={shards < nextCost}
+                      onClick={() => void starUpAlly(h.id)}
+                    >
+                      ★ 승급
+                    </button>
+                  )}
+                </div>
               </article>
             );
           })}
@@ -1104,12 +1312,63 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </b>
           </p>
         )}
+        {tab === "premium" && (
+          <>
+            {/* 보석 소비형 상품 (LIVEOPS §3.3) — 확정 구매, 확률 없음 */}
+            <article className="titans-card premium-product-card gem-product">
+              <CurrencyIcon kind="gem" />
+              <div>
+                <strong>성급 조각 선택팩 <em>주 {SHARD_PACK_WEEKLY_LIMIT}회/동료</em></strong>
+                <p>원하는 동료의 조각 ×{SHARD_PACK_AMOUNT} · 확정 지급</p>
+                <select
+                  className="shard-pack-select"
+                  value={shardPackTarget}
+                  onChange={(e) => setShardPackTarget(e.target.value as TitanHeroId)}
+                  aria-label="조각 받을 동료"
+                >
+                  {HEROES.filter((h) => save.heroes[h.id] > 0).map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.name} · 이번 주 {shardPackBoughtThisWeek(h.id)}/{SHARD_PACK_WEEKLY_LIMIT}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                disabled={redGems < 120 || shardPackBoughtThisWeek(shardPackTarget) >= SHARD_PACK_WEEKLY_LIMIT || save.heroes[shardPackTarget] <= 0}
+                onClick={() => void buyShardPack()}
+              >
+                💎 120
+              </button>
+            </article>
+            <article className="titans-card premium-product-card gem-product">
+              <CurrencyIcon kind="gem" />
+              <div>
+                <strong>방치 가속권 24h {character.idleBoostUntil > Date.now() && <em>적용 중</em>}</strong>
+                <p>24시간 동안 방치 산출 2배 · 중첩 불가</p>
+              </div>
+              <button
+                type="button"
+                disabled={redGems < 80 || character.idleBoostUntil > Date.now()}
+                onClick={() => void buyIdleBooster()}
+              >
+                💎 80
+              </button>
+            </article>
+          </>
+        )}
         {tab === "premium" && STORE_PRODUCTS.filter((product) => product.visible).map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
+          // 실결제 전용 상품(캐릭터·월정액)은 무료 체험 지급 대상이 아니다 — Play Billing 연동 후 판매
+          const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d";
           return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}</strong><p>{product.description}</p><small>{product.contents.join(" · ")}</small></div>
-          <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회"}</button>
+          {paidOnly ? (
+            <button type="button" disabled title="스토어 결제 연동 후 판매됩니다">{product.displayPrice}</button>
+          ) : (
+            <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회"}</button>
+          )}
         </article>})}
       </section>
 
@@ -1123,6 +1382,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           onClaim={() => claimIdle()}
           onGoContent={(content) => claimIdle(() => onOpenContent(content))}
         />
+      )}
+
+      {wallBanner && (
+        <div className="wall-banner" role="status">
+          <div className="wall-banner-head">
+            <b>DPS 벽</b>
+            <span>보스가 제한시간을 버텨냅니다 — 지금 뚫는 법 셋</span>
+            <button type="button" aria-label="닫기" onClick={() => setWallBanner(false)}>✕</button>
+          </div>
+          <div className="wall-banner-actions">
+            <button type="button" onClick={() => { setWallBanner(false); onOpenContent("forge"); }}>
+              <b>무한 재련</b><small>배율 +0.02/회</small>
+            </button>
+            <button type="button" onClick={() => { setWallBanner(false); setTab("heroes"); }}>
+              <b>동료 성급</b><small>DPS 최대 ×7</small>
+            </button>
+            <button type="button" onClick={() => { setWallBanner(false); onOpenContent("profile"); }}>
+              <b>환생</b><small>벽 {character.wallAreas.length}/3 지역</small>
+            </button>
+          </div>
+        </div>
       )}
 
       {gateNotice && (

@@ -5,6 +5,8 @@ import { updateCharacterProgress } from "./progression/storage";
 import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
 import { resolveShadow, shadowOpponents, weekKey, type ShadowOpponent } from "./events/shadowArena";
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
+import { loadTitansSave } from "./titans/storage";
+import { randomOwnedAlly } from "./titans/allies";
 import { assetUrl } from "./asset";
 import { sfxRiftClaim } from "./ui/sfx";
 
@@ -160,15 +162,25 @@ export function EventCenter({
   const enterRift = async () => {
     if (save.riftAttempts >= RIFT_ATTEMPTS) return;
     sfxRiftClaim();
-    const nextProgress = await updateCharacterProgress(userHash, (current) => ({
-      ...current,
-      sharedCoins: current.sharedCoins + riftYield.gold,
-      exp: current.exp + riftYield.exp,
-      enhancementMaterials: current.enhancementMaterials + riftYield.materials,
-    }));
+    // 균열 보상에 동료 조각 +2 (LIVEOPS §2.2) — 일일 던전에 수집 목적성 부여
+    const titans = await loadTitansSave(userHash);
+    const nextProgress = await updateCharacterProgress(userHash, (current) => {
+      const shards = { ...current.allyShards };
+      for (let i = 0; i < 2; i += 1) {
+        const target = randomOwnedAlly(titans.heroes);
+        shards[target] = (shards[target] ?? 0) + 1;
+      }
+      return {
+        ...current,
+        sharedCoins: current.sharedCoins + riftYield.gold,
+        exp: current.exp + riftYield.exp,
+        enhancementMaterials: current.enhancementMaterials + riftYield.materials,
+        allyShards: shards,
+      };
+    });
     onUpdated(nextProgress);
     setRiftMessage(
-      `공유 골드 +${formatGold(riftYield.gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${riftYield.materials}`,
+      `공유 골드 +${formatGold(riftYield.gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${riftYield.materials} · 동료 조각 +2`,
     );
     await persist({ ...save, riftAttempts: save.riftAttempts + 1 });
   };
@@ -184,11 +196,21 @@ export function EventCenter({
       });
       return;
     }
-    const nextProgress = await updateCharacterProgress(userHash, (current) => ({
-      ...current,
-      sharedCoins: current.sharedCoins + 2_000 * (1 + opponents.indexOf(opponent)),
-      shoulderShards: current.shoulderShards + 10,
-    }));
+    // 승리 보상에 동료 조각 +3 (LIVEOPS §2.2)
+    const titansForShards = await loadTitansSave(userHash);
+    const nextProgress = await updateCharacterProgress(userHash, (current) => {
+      const shards = { ...current.allyShards };
+      for (let i = 0; i < 3; i += 1) {
+        const target = randomOwnedAlly(titansForShards.heroes);
+        shards[target] = (shards[target] ?? 0) + 1;
+      }
+      return {
+        ...current,
+        sharedCoins: current.sharedCoins + 2_000 * (1 + opponents.indexOf(opponent)),
+        shoulderShards: current.shoulderShards + 10,
+        allyShards: shards,
+      };
+    });
     onUpdated(nextProgress);
     setShadowLog({
       id: opponent.id,

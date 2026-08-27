@@ -3,7 +3,7 @@ import { tierAt } from "../forge/model";
 import { SwordArt } from "../forge/swords";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
 import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS } from "../equipment/anchors";
-import { assetUrl } from "../asset";
+import { sheetFor } from "../titans/anim";
 
 type Props = {
   mode: "idle" | "attack";
@@ -12,16 +12,19 @@ type Props = {
   shoulder?: ShoulderId | null;
   className?: string;
   evolution?: EvolutionPath;
+  /** 구매 캐릭터 스킨 id ("default" | "obsidian" | "dawn") */
+  character?: string;
 };
 
 const shoulderColor: Record<ShoulderId, string> = {
   scout: "#94a3b8", shadow: "#7c3aed", ogre: "#b45309", dragon: "#ef4444",
 };
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", className = "" }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", className = "" }: Props) {
   const index = Math.max(0, Math.min(3, frame));
   const anchor = (mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS)[index];
-  const sheet = assetUrl(mode === "attack" ? "titans/character/base/hero-attack.png" : "titans/character/base/hero-idle.png");
+  // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
+  const sheet = sheetFor(character, mode);
   const tier = tierAt(Math.min(15, weaponLevel));
   const part = (a: typeof anchor.hand): CSSProperties => ({
     left: `${a.x}%`, top: `${a.y}%`, transform: `translate(-50%,-50%) rotate(${a.rotation}deg) scale(${a.scale})`,

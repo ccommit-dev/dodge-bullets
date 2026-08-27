@@ -11,6 +11,8 @@ import { EventCenter } from "./EventCenter";
 import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS } from "./titans/model";
+import { loadTitansSave } from "./titans/storage";
+import { randomOwnedAlly } from "./titans/allies";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
 import { IdleQaPanel } from "./dev/IdleQaPanel";
@@ -545,8 +547,31 @@ function App() {
                   towerBestFloor: Math.max(current.towerBestFloor, floor),
                 }));
               }
-              if (floor % 10 === 0) sfxTowerMilestone();
-              else sfxTowerFloor(floor);
+              if (floor % 10 === 0) {
+                sfxTowerMilestone();
+                // 성벽 10층마다 동료 조각 +1 (LIVEOPS §2.2)
+                const titansSave = await loadTitansSave(userHashRef.current);
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => {
+                  const target = randomOwnedAlly(titansSave.heroes);
+                  return {
+                    ...current,
+                    allyShards: { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + 1 },
+                  };
+                });
+              } else {
+                sfxTowerFloor(floor);
+              }
+            }
+
+            // 오늘의 첫 원정 클리어 2배 (LIVEOPS §2.4)
+            const dodgeToday = new Date().toLocaleDateString("sv-SE");
+            if (nextProgress.firstClearDates.dodge !== dodgeToday) {
+              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
+                ...current,
+                sharedCoins: current.sharedCoins + reward, // 기본 보상만큼 추가 = 2배
+                firstClearDates: { ...current.firstClearDates, dodge: dodgeToday },
+              }));
+              setShoulderDrop("오늘의 첫 원정 클리어 · 코인 2배!");
             }
 
             const shoulder = EXPEDITION_SHOULDERS[Math.min(3, world.stageIndex)];
