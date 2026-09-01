@@ -19,6 +19,8 @@ export const ALLY_RARITY: Record<TitanHeroId, AllyRarity> = {
   nox: "SSR",
   luna: "SSR",
   volt: "SR",
+  mia_dark: "SR",
+  sera_light: "SSR",
 };
 
 export const RARITY_LABEL: Record<AllyRarity, string> = { R: "희귀", SR: "영웅", SSR: "전설" };
@@ -37,6 +39,9 @@ export const STAR_SHARD_COST = [0, 20, 50, 120, 300] as const;
 export const SHOP_ALLY_GEM_COST: Partial<Record<TitanHeroId, number>> = {
   luna: 900,
   volt: 450,
+  // 얼터너티브 동료 (§9) — 원본과 다른 역할·등급의 재해석 버전
+  mia_dark: 600,
+  sera_light: 1100,
 };
 
 /**
@@ -59,10 +64,10 @@ export function shardCostToNext(id: TitanHeroId, stars: number): number | null {
 }
 
 export function emptyAllyRecord(): Record<TitanHeroId, number> {
-  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0, luna: 0, volt: 0 };
+  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0, luna: 0, volt: 0, mia_dark: 0, sera_light: 0 };
 }
 
-export const ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt"];
+export const ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "mia_dark", "sera_light"];
 
 /* ───────────────────────── 원정대 편성 + 시너지 (CRUMBLE_GAP §2) ───────────────────────── */
 
@@ -77,6 +82,8 @@ export const ALLY_ROLE: Record<TitanHeroId, AllyRole> = {
   nox: "melee",
   luna: "melee",
   volt: "ranged",
+  mia_dark: "melee",
+  sera_light: "ranged",
 };
 
 export const ROLE_LABEL: Record<AllyRole, string> = { melee: "근접", ranged: "원거리", flame: "화염" };

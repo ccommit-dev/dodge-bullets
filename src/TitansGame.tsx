@@ -11,6 +11,7 @@ import {
   HEROES,
   MOBS_PER_STAGE,
   SKILLS,
+  bulkUpgradeQuote,
   defaultTitansSave,
   formatGold,
   heroDps,
@@ -41,6 +42,7 @@ import {
   activeSlotLevelSum,
   computeIdleYield,
   idleBottleneck,
+  idleCapHours,
   idleRate,
   masteryToNextSlotLevel,
   nextAreaName,
@@ -73,6 +75,7 @@ import {
 } from "./titans/allies";
 import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
 import { assetUrl } from "./asset";
+import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification } from "./game/native";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
@@ -162,6 +165,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [wallBanner, setWallBanner] = useState(false);
   const [shardPackTarget, setShardPackTarget] = useState<TitanHeroId>("mia");
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
+  /** QoL — 일괄 레벨업 수량 (0 = MAX) */
+  const [buyAmount, setBuyAmount] = useState<1 | 10 | 0>(1);
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
@@ -179,7 +184,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const fxId = useRef(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   const toastTimer = useRef<number | null>(null);
-  const allyAttackAcc = useRef<Record<TitanHeroId, number>>({ mia: 0, leon: .18, sera: .36, garen: .54, ari: .72, nox: .9, luna: .3, volt: .6 });
+  const allyAttackAcc = useRef<Record<TitanHeroId, number>>({ mia: 0, leon: .18, sera: .36, garen: .54, ari: .72, nox: .9, luna: .3, volt: .6, mia_dark: .12, sera_light: .44 });
   const autoAttackAcc = useRef(0);
   const attackUntil = useRef(0);
   const animResetRef = useRef(false);
@@ -190,6 +195,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const formationReadyRef = useRef(false);
   const bossFailStreakRef = useRef(0);
   const killCountsRef = useRef<Partial<Record<TitanMonsterKind, number>>>({});
+  /** castSkill은 렌더마다 재생성 — 전투 인터벌(의존성 없음)에서 최신본을 쓰기 위한 ref */
+  const castSkillRef = useRef<(id: TitanSkillId) => void>(() => {});
 
   useEffect(() => {
     saveRef.current = save;
@@ -228,6 +235,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const later = useCallback((fn: () => void, ms: number) => {
     const id = window.setTimeout(fn, ms);
     battleTimers.current.push(id);
+  }, []);
+
+  /** 방치 캡이 차는 시각에 로컬 푸시 예약 — 정산할 때마다 갱신 (네이티브에서만 동작) */
+  const scheduleIdleCapNotify = useCallback((progress: CharacterProgress) => {
+    const at = new Date(Date.now() + idleCapHours(progress) * 3600 * 1000);
+    void scheduleLocalNotification(
+      NOTIFY_ID.idleCap,
+      "방치 보상이 가득 찼어요",
+      "사냥터 보상이 캡에 닿았습니다. 지금 정산하면 손해가 없어요!",
+      at,
+    );
   }, []);
 
   // 보스 제한시간 — 방진 시너지(§2)와 아기 늑대 펫(§1)이 연장한다.
@@ -344,6 +362,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
       spawn(resumeStage, 1, false);
       setReady(true);
+      scheduleIdleCapNotify(progress);
     });
     return () => {
       cancelled = true;
@@ -351,7 +370,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       battleTimers.current.forEach(window.clearTimeout);
       battleTimers.current = [];
     };
-  }, [userHash, spawn]);
+  }, [userHash, spawn, scheduleIdleCapNotify]);
 
   useEffect(() => {
     if (!ready) return;
@@ -384,10 +403,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       }).then((next) => {
         setCharacter(next);
         setSkillPoints(next.skillPoints);
+        scheduleIdleCapNotify(next);
         then?.();
       });
     },
-    [idleReport, userHash],
+    [idleReport, userHash, scheduleIdleCapNotify],
   );
 
   // Idle / attack sprite playback
@@ -691,8 +711,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     let last = performance.now();
     const id = window.setInterval(() => {
       const now = performance.now();
-      const dt = Math.min(0.25, (now - last) / 1000);
+      // 배속(QoL)은 공격·보스 타이머·쿨타임에 대칭 적용 — 보스 1초당 DPS가
+      // 변하지 않아 벽 판정이 그대로다. 빨라지는 건 체감 진행 속도뿐이다.
+      const dt = Math.min(0.25, (now - last) / 1000) * saveRef.current.battleSpeed;
       last = now;
+
+      if (
+        saveRef.current.autoSkill &&
+        battlePhaseRef.current === "combat" &&
+        formationReadyRef.current &&
+        document.visibilityState !== "hidden"
+      ) {
+        for (const sk of SKILLS) {
+          if (sk.slot === "passive" || cdsRef.current[sk.id] > 0) continue;
+          if (!saveRef.current.skillInventory.learned.includes(sk.id)) continue;
+          if (saveRef.current.skillInventory.equipped[sk.slot] !== sk.id) continue;
+          castSkillRef.current(sk.id);
+        }
+      }
 
       const war = now < buffsRef.current.warcryUntil ? 2.5 : 1;
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
@@ -795,15 +831,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       prepareTimer = window.setTimeout(() => setMonsterAction("attack"), boss ? 360 : 320);
       recoverTimer = window.setTimeout(() => setMonsterAction("idle"), boss ? 900 : 860);
     };
-    const interval = window.setInterval(trigger, boss ? 2100 : 2900);
-    const first = window.setTimeout(trigger, boss ? 900 : 1400);
+    // 배속 시 공격 주기만 조인다 — 클립 내부 타이밍을 줄이면 모션이 뭉개진다
+    const interval = window.setInterval(trigger, (boss ? 2100 : 2900) / save.battleSpeed);
+    const first = window.setTimeout(trigger, (boss ? 900 : 1400) / save.battleSpeed);
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(first);
       window.clearTimeout(prepareTimer);
       window.clearTimeout(recoverTimer);
     };
-  }, [battlePhase, boss, formationReady, ready]);
+  }, [battlePhase, boss, formationReady, ready, save.battleSpeed]);
 
   useEffect(() => {
     if (!ready) return;
@@ -821,14 +858,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const trainEquipment = (slot: "weapon" | "shoulder") => {
     const key = slot === "weapon" ? "weaponMastery" : "shoulderMastery";
     const level = save.equipmentTraining[key];
-    const cost = equipmentTrainingCost(slot, level);
-    if (save.gold < cost) return;
+    const quote = bulkUpgradeQuote((l) => equipmentTrainingCost(slot, l), level, save.gold, buyAmount);
+    if (quote.count === 0) return;
     setSave((prev) => ({
       ...prev,
-      gold: prev.gold - cost,
-      equipmentTraining: { ...prev.equipmentTraining, [key]: prev.equipmentTraining[key] + 1 },
+      gold: prev.gold - quote.cost,
+      equipmentTraining: { ...prev.equipmentTraining, [key]: prev.equipmentTraining[key] + quote.count },
     }));
-    flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + 1}`);
+    flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}`);
   };
 
   /** 이번 주 조각팩 구매 횟수 — 주간 제한(과금 상한 설계)의 판정 */
@@ -943,16 +980,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       character.expeditions.some((e) => e.allyId === id)
     )
       return;
+    const endsAt = Date.now() + hours * 3600 * 1000;
     const next = await updateCharacterProgress(userHash, (current) =>
       current.expeditions.length >= EXPEDITION_MAX || current.expeditions.some((e) => e.allyId === id)
         ? current
         : {
             ...current,
-            expeditions: [...current.expeditions, { allyId: id, endsAt: Date.now() + hours * 3600 * 1000, hours }],
+            expeditions: [...current.expeditions, { allyId: id, endsAt, hours }],
           },
     );
     setCharacter(next);
-    flash(`${HEROES.find((h) => h.id === id)?.name} ${hours}시간 파견 출발`);
+    const name = HEROES.find((h) => h.id === id)?.name ?? "동료";
+    flash(`${name} ${hours}시간 파견 출발`);
+    const slot = next.expeditions.findIndex((e) => e.allyId === id);
+    if (slot >= 0) {
+      void scheduleLocalNotification(
+        NOTIFY_ID.expeditionBase + slot,
+        "파견대 귀환",
+        `${name} 파견대가 돌아왔습니다. 보상을 수령하세요!`,
+        new Date(endsAt),
+      );
+    }
   };
 
   /** 완료된 파견 일괄 수령 — 보상 조각은 파견 간 동료 본인에게 쌓인다 */
@@ -983,6 +1031,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     setCharacter(next);
     setRedGems(next.redGems);
     flash(`파견 ${done.length}건 귀환 — 조각·강화석 수령 완료`);
+    // 알림 정리: 전부 취소 후 아직 진행 중인 파견만 다시 예약 (슬롯 재배치)
+    void cancelLocalNotification([NOTIFY_ID.expeditionBase, NOTIFY_ID.expeditionBase + 1]).then(() => {
+      next.expeditions.forEach((e, slot) => {
+        const name = HEROES.find((h) => h.id === e.allyId)?.name ?? "동료";
+        void scheduleLocalNotification(
+          NOTIFY_ID.expeditionBase + slot,
+          "파견대 귀환",
+          `${name} 파견대가 돌아왔습니다. 보상을 수령하세요!`,
+          new Date(e.endsAt),
+        );
+      });
+    });
   };
 
   const buyHero = (id: TitanHeroId) => {
@@ -990,14 +1050,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     if (!def) return;
     if (save.stage < def.unlockStage) return;
     const lv = save.heroes[id];
-    const cost = heroUpgradeCost(def, lv);
-    if (save.gold < cost) return;
+    // 소환(0→1)은 항상 1레벨 — 일괄 수량은 레벨업에만 적용된다
+    const quote =
+      lv === 0
+        ? { count: save.gold >= def.baseCost ? 1 : 0, cost: def.baseCost }
+        : bulkUpgradeQuote((l) => heroUpgradeCost(def, l), lv, save.gold, buyAmount);
+    if (quote.count === 0) return;
     setSave((prev) => ({
       ...prev,
-      gold: prev.gold - cost,
-      heroes: { ...prev.heroes, [id]: prev.heroes[id] + 1 },
+      gold: prev.gold - quote.cost,
+      heroes: { ...prev.heroes, [id]: prev.heroes[id] + quote.count },
     }));
-    flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + 1}`);
+    flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}`);
     if (lv === 0) {
       setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
       pushFx("ally", 36, 58, def.hue);
@@ -1046,6 +1110,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       flash("전장의 함성!");
     }
   };
+
+  useEffect(() => {
+    castSkillRef.current = castSkill;
+  });
 
   const learnSkill = async (id: TitanSkillId) => {
     const def = SKILLS.find((skill) => skill.id === id);
@@ -1352,6 +1420,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       </div>
 
       <div className="titans-skills-row">
+        <div className="battle-qol" role="group" aria-label="전투 편의">
+          <button
+            type="button"
+            className={`qol-btn ${save.autoSkill ? "on" : ""}`}
+            title="쿨타임 찬 스킬 자동 시전"
+            onClick={() => setSave((prev) => ({ ...prev, autoSkill: !prev.autoSkill }))}
+          >
+            AUTO
+          </button>
+          <button
+            type="button"
+            className={`qol-btn ${save.battleSpeed === 2 ? "on" : ""}`}
+            title="전투 배속"
+            onClick={() => setSave((prev) => ({ ...prev, battleSpeed: prev.battleSpeed === 2 ? 1 : 2 }))}
+          >
+            ×2
+          </button>
+        </div>
         {SKILLS.map((sk) => {
           const learned = save.skillInventory.learned.includes(sk.id);
           const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
@@ -1391,6 +1477,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       </div>
 
       <section className="titans-shop">
+        {(tab === "sword" || tab === "heroes") && (
+          <div className="bulk-toggle" role="group" aria-label="일괄 레벨업 수량">
+            <span>일괄 레벨업</span>
+            {([1, 10, 0] as const).map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={buyAmount === n ? "on" : ""}
+                onClick={() => setBuyAmount(n)}
+              >
+                {n === 0 ? "MAX" : `×${n}`}
+              </button>
+            ))}
+          </div>
+        )}
         {tab === "sword" && (
           <>
             <article className="titans-card equipment-training-card">

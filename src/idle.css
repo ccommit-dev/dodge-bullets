@@ -1284,3 +1284,46 @@
     animation: none;
   }
 }
+
+/* ─── 전투 QoL — 일괄 레벨업 · 오토 스킬 · 배속 ─── */
+.bulk-toggle {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+.bulk-toggle span { color: #64748b; font-size: 9.5px; }
+.bulk-toggle button {
+  min-width: 42px;
+  padding: 4px 0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.6);
+  font-size: 10px;
+  font-weight: 800;
+}
+.bulk-toggle button.on {
+  border-color: rgba(94, 234, 212, 0.6);
+  color: #5eead4;
+  background: rgba(20, 83, 75, 0.35);
+}
+.battle-qol { display: flex; flex-direction: column; gap: 4px; }
+.qol-btn {
+  flex: 1;
+  min-width: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 9px;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.72);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.qol-btn.on {
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  background: rgba(120, 80, 12, 0.28);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
+}

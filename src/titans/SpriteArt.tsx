@@ -30,12 +30,23 @@ const allyIndex: Record<TitanHeroId, number> = {
   // 신규 동료는 로스터 시트가 아니라 개별 이미지를 쓴다 (아래 STANDALONE_ALLY)
   luna: 6,
   volt: 7,
+  mia_dark: 8,
+  sera_light: 9,
 };
 
 /** 상점 전용 동료 — 6인 로스터 시트에 없어 개별 이미지를 쓴다. */
 const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
   luna: assetUrl("titans/generated/allies/luna.png"),
   volt: assetUrl("titans/generated/allies/volt.png"),
+  // 얼터너티브 동료 (§9) — 로스터 시트 프레임의 팔레트 파생 (scripts/make-alt-allies.mjs)
+  mia_dark: assetUrl("titans/generated/allies/mia-dark.png"),
+  sera_light: assetUrl("titans/generated/allies/sera-light.png"),
+};
+
+/** 얼터너티브 → 원본 매핑 — 무기·전투 타입은 원본을 따른다 (아트만 팔레트가 다르다) */
+const ALT_BASE: Partial<Record<TitanHeroId, TitanHeroId>> = {
+  mia_dark: "mia",
+  sera_light: "sera",
 };
 
 function sheetStyle(url: string, index: number, count: number): CSSProperties {
@@ -78,7 +89,8 @@ export function MonsterArt({
 }
 
 export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, approaching = false }: { id: TitanHeroId; attacking?: boolean; pulse?: number; engaged?: boolean; approaching?: boolean }) {
-  const ranged = id === "leon" || id === "sera";
+  const base = ALT_BASE[id] ?? id;
+  const ranged = base === "leon" || base === "sera";
   return (
     <div className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""}`}>
       {/*
@@ -102,7 +114,9 @@ export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, app
   );
 }
 
-function AllyWeapon({ id }: { id: TitanHeroId }) {
+function AllyWeapon({ id: rawId }: { id: TitanHeroId }) {
+  // 얼터너티브는 원본의 무기를 쓴다 — 팔레트는 CSS(weapon-* 클래스)가 아니라 몸체 이미지 차이
+  const id = ALT_BASE[rawId] ?? rawId;
   const ranged = id === "leon" || id === "sera";
   return (
     <svg className={`ally-weapon weapon-${id} ${ranged ? "ranged" : "melee"}`} viewBox="0 0 100 100" aria-hidden="true">
