@@ -1546,3 +1546,60 @@
     opacity: 1;
   }
 }
+
+/* ─── 보석 상점 확장 — 무기 외형·칭호·재화 팩 ─── */
+.equipment-weapon.has-blade-skin {
+  filter: drop-shadow(0 0 6px var(--blade-aura)) drop-shadow(0 0 14px color-mix(in srgb, var(--blade-aura) 45%, transparent));
+  animation: blade-aura-pulse 2.2s ease-in-out infinite;
+}
+@keyframes blade-aura-pulse {
+  0%, 100% { filter: drop-shadow(0 0 5px var(--blade-aura)) drop-shadow(0 0 12px color-mix(in srgb, var(--blade-aura) 40%, transparent)); }
+  50% { filter: drop-shadow(0 0 8px var(--blade-aura)) drop-shadow(0 0 18px color-mix(in srgb, var(--blade-aura) 60%, transparent)); }
+}
+.blade-product .blade-thumb {
+  flex: 0 0 40px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--blade-aura) 22%, transparent), rgba(8, 14, 26, 0.9) 70%);
+}
+.blade-product .blade-thumb svg { width: 30px; height: 50px; filter: drop-shadow(0 0 5px var(--blade-aura)); }
+.title-product .title-thumb {
+  flex: 0 0 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  text-shadow: 0 0 10px currentColor;
+}
+.pack-icon { width: 34px; height: 34px; }
+.title-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+.title-chip {
+  padding: 5px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(10, 18, 33, 0.6);
+  font-size: 10.5px;
+  font-weight: 800;
+  opacity: 0.65;
+}
+.title-chip.active {
+  opacity: 1;
+  background: rgba(30, 30, 60, 0.5);
+  box-shadow: 0 0 10px color-mix(in srgb, currentColor 35%, transparent);
+}
+.character-title {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px color-mix(in srgb, currentColor 50%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .equipment-weapon.has-blade-skin { animation: none; }
+}

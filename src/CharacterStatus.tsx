@@ -39,6 +39,7 @@ import {
   type PetId,
 } from "./titans/pets";
 import { starMilestoneMultiplier, starMilestoneNext, totalStars } from "./progression/collection";
+import { TITLES } from "./economy/gemCatalog";
 import { MonsterArt } from "./titans/SpriteArt";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
@@ -229,10 +230,15 @@ export function CharacterStatus({
       <section className="character-hero-card">
         <div className="character-equipment-preview">
           <div className="character-equipment-facing">
-            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} />
+            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} />
           </div>
         </div>
         <div className="character-identity">
+          {progress.activeTitle && TITLES[progress.activeTitle] && (
+            <em className="character-title" style={{ color: TITLES[progress.activeTitle].color }}>
+              ✦ {TITLES[progress.activeTitle].name}
+            </em>
+          )}
           <span>Lv.{progress.level} · 통합 전투력</span>
           <strong>{summary.combatPower.toLocaleString()}</strong>
           <small>EXP {levelProgress.current}/{levelProgress.required}</small>
@@ -325,6 +331,39 @@ export function CharacterStatus({
             );
           })}
         </div>
+
+        {progress.ownedTitles.length > 0 && (
+          <>
+            <div className="legacy-heading"><div><small>TITLE</small><strong>칭호</strong></div><span>{progress.ownedTitles.length}종 보유</span></div>
+            <div className="title-row">
+              {progress.ownedTitles
+                .filter((id) => TITLES[id])
+                .map((id) => {
+                  const def = TITLES[id];
+                  const active = progress.activeTitle === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`title-chip ${active ? "active" : ""}`}
+                      style={{ color: def.color }}
+                      onClick={() => {
+                        void updateCharacterProgress(userHash, (current) => ({
+                          ...current,
+                          activeTitle: current.activeTitle === id ? "" : id,
+                        })).then((next) => {
+                          onProgressChange(next);
+                          setGrowthMessage(next.activeTitle === id ? `칭호 「${def.name}」 표시` : "칭호 표시 해제");
+                        });
+                      }}
+                    >
+                      ✦ {def.name}
+                    </button>
+                  );
+                })}
+            </div>
+          </>
+        )}
 
         <div className="legacy-heading"><div><small>CODEX</small><strong>몬스터 도감</strong></div><span>처치 마일스톤 → 골드 보너스</span></div>
         <div className="codex-grid">

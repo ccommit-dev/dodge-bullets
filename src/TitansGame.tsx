@@ -33,6 +33,7 @@ import {
 } from "./titans/model";
 import { AllyArt, MonsterArt } from "./titans/SpriteArt";
 import { ALLY_SKINS } from "./titans/skins";
+import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
@@ -1101,6 +1102,120 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     setCharacter(next);
   };
 
+  /** 무기 외형 구매 — 확정 구매, 즉시 장착 */
+  const buyWeaponSkin = async (skinId: string) => {
+    const def = WEAPON_SKINS[skinId];
+    if (!def || character.ownedWeaponSkins.includes(skinId) || redGems < def.gemCost) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.ownedWeaponSkins.includes(skinId) || current.redGems < def.gemCost
+        ? current
+        : {
+            ...current,
+            redGems: current.redGems - def.gemCost,
+            ownedWeaponSkins: [...current.ownedWeaponSkins, skinId],
+            equippedWeaponSkin: skinId,
+          },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`${def.name} 장착 — 칼날이 물들었다`);
+  };
+
+  const toggleWeaponSkin = async (skinId: string) => {
+    if (!character.ownedWeaponSkins.includes(skinId)) return;
+    const next = await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      equippedWeaponSkin: current.equippedWeaponSkin === skinId ? "" : skinId,
+    }));
+    setCharacter(next);
+  };
+
+  /** 칭호 구매 — 표시 칭호가 없으면 자동 장착 */
+  const buyTitle = async (titleId: string) => {
+    const def = TITLES[titleId];
+    if (!def || character.ownedTitles.includes(titleId) || redGems < def.gemCost) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.ownedTitles.includes(titleId) || current.redGems < def.gemCost
+        ? current
+        : {
+            ...current,
+            redGems: current.redGems - def.gemCost,
+            ownedTitles: [...current.ownedTitles, titleId],
+            activeTitle: current.activeTitle || titleId,
+          },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`칭호 「${def.name}」 획득 — 마이페이지에서 표시`);
+  };
+
+  /** 재화 팩 — 수량이 진행도 비례(goldPackAmount)라 어느 시점에도 유의미하다 */
+  const buyGoldPack = async () => {
+    if (redGems < GEM_PACK.goldPackCost) return;
+    const amount = goldPackAmount(character);
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.redGems < GEM_PACK.goldPackCost
+        ? current
+        : { ...current, redGems: current.redGems - GEM_PACK.goldPackCost },
+    );
+    if (next.redGems === redGems) return;
+    setCharacter(next);
+    setRedGems(next.redGems);
+    setSave((prev) => ({ ...prev, gold: prev.gold + amount }));
+    flash(`황금 보급 상자 개봉 — +${formatGold(amount)}G`);
+  };
+
+  const buyMaterialPack = async () => {
+    if (redGems < GEM_PACK.materialPackCost) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.redGems < GEM_PACK.materialPackCost
+        ? current
+        : {
+            ...current,
+            redGems: current.redGems - GEM_PACK.materialPackCost,
+            enhancementMaterials: current.enhancementMaterials + GEM_PACK.materialPackAmount,
+          },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`강화석 상자 개봉 — +${GEM_PACK.materialPackAmount}`);
+  };
+
+  const buyCorePack = async () => {
+    if (redGems < GEM_PACK.corePackCost) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.redGems < GEM_PACK.corePackCost
+        ? current
+        : { ...current, redGems: current.redGems - GEM_PACK.corePackCost },
+    );
+    if (next.redGems === redGems) return;
+    setCharacter(next);
+    setRedGems(next.redGems);
+    setSave((prev) => ({
+      ...prev,
+      skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + GEM_PACK.corePackAmount },
+    }));
+    flash(`스킬 코어 상자 개봉 — +${GEM_PACK.corePackAmount}`);
+  };
+
+  /** 파견 즉시 완료권 — 가장 먼저 끝나는 진행 중 파견 1건을 바로 귀환시킨다 */
+  const buyExpeditionFinish = async () => {
+    const running = character.expeditions.filter((e) => e.endsAt > Date.now());
+    if (running.length === 0 || redGems < GEM_PACK.expeditionFinishCost) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const active = [...current.expeditions].sort((a, b) => a.endsAt - b.endsAt).find((e) => e.endsAt > Date.now());
+      if (!active || current.redGems < GEM_PACK.expeditionFinishCost) return current;
+      return {
+        ...current,
+        redGems: current.redGems - GEM_PACK.expeditionFinishCost,
+        expeditions: current.expeditions.map((e) => (e === active ? { ...e, endsAt: Date.now() } : e)),
+      };
+    });
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash("파견대가 즉시 귀환했습니다 — 동료 탭에서 보상을 받으세요");
+  };
+
   const buyHero = (id: TitanHeroId) => {
     const def = HEROES.find((h) => h.id === id);
     if (!def) return;
@@ -1403,7 +1518,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         <div className="titans-background" aria-hidden="true" />
         <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} />
           </div>
         </div>
 
@@ -1818,6 +1933,96 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 onClick={() => void buyShardPack()}
               >
                 💎 120
+              </button>
+            </article>
+            {/* 무기 외형 — 강화 티어 실루엣은 유지, 칼날 색·오라만 커스텀 */}
+            {Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
+              const owned = character.ownedWeaponSkins.includes(skinId);
+              const equipped = character.equippedWeaponSkin === skinId;
+              return (
+                <article key={skinId} className="titans-card premium-product-card gem-product blade-product">
+                  <span className="blade-thumb" style={{ "--blade-aura": def.aura } as CSSProperties} aria-hidden="true">
+                    <SwordArt level={Math.min(15, Math.max(3, character.equippedWeaponLevel))} hue={def.hue} name={def.name} />
+                  </span>
+                  <div>
+                    <strong>{def.name} <em>무기 외형</em></strong>
+                    <p>{def.desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!owned && redGems < def.gemCost}
+                    onClick={() => void (owned ? toggleWeaponSkin(skinId) : buyWeaponSkin(skinId))}
+                  >
+                    {owned ? (equipped ? "해제" : "장착") : `💎 ${def.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
+            {/* 칭호 — 프로필 과시 축. 표시 변경은 마이페이지에서 */}
+            {Object.entries(TITLES).map(([titleId, def]) => {
+              const owned = character.ownedTitles.includes(titleId);
+              return (
+                <article key={titleId} className="titans-card premium-product-card gem-product title-product">
+                  <span className="title-thumb" style={{ color: def.color }} aria-hidden="true">✦</span>
+                  <div>
+                    <strong style={{ color: def.color }}>{def.name} <em>칭호</em></strong>
+                    <p>{def.desc}</p>
+                  </div>
+                  <button type="button" disabled={owned || redGems < def.gemCost} onClick={() => void buyTitle(titleId)}>
+                    {owned ? "보유 중" : `💎 ${def.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
+            {/* 재화 팩 — 수량이 진행도 비례라 후반에도 유의미하다 */}
+            <article className="titans-card premium-product-card gem-product">
+              <CurrencyIcon kind="gold" />
+              <div>
+                <strong>황금 보급 상자</strong>
+                <p>사냥터 골드 +{formatGold(goldPackAmount(character))} · 최고 스테이지 비례</p>
+              </div>
+              <button type="button" disabled={redGems < GEM_PACK.goldPackCost} onClick={() => void buyGoldPack()}>
+                💎 {GEM_PACK.goldPackCost}
+              </button>
+            </article>
+            <article className="titans-card premium-product-card gem-product">
+              <CurrencyIcon kind="gem" />
+              <div>
+                <strong>강화석 상자</strong>
+                <p>강화석 +{GEM_PACK.materialPackAmount} · 대장간·펫 간식 재료</p>
+              </div>
+              <button type="button" disabled={redGems < GEM_PACK.materialPackCost} onClick={() => void buyMaterialPack()}>
+                💎 {GEM_PACK.materialPackCost}
+              </button>
+            </article>
+            <article className="titans-card premium-product-card gem-product">
+              <CurrencyIcon kind="gem" />
+              <div>
+                <strong>스킬 코어 상자</strong>
+                <p>스킬 코어 +{GEM_PACK.corePackAmount} · 새 스킬 학습 재료</p>
+              </div>
+              <button type="button" disabled={redGems < GEM_PACK.corePackCost} onClick={() => void buyCorePack()}>
+                💎 {GEM_PACK.corePackCost}
+              </button>
+            </article>
+            <article className="titans-card premium-product-card gem-product">
+              <img className="pack-icon" src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+              <div>
+                <strong>파견 즉시 완료권</strong>
+                <p>
+                  진행 중 파견 1건 즉시 귀환
+                  {character.expeditions.filter((e) => e.endsAt > Date.now()).length === 0 && " · 진행 중인 파견 없음"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={
+                  redGems < GEM_PACK.expeditionFinishCost ||
+                  character.expeditions.filter((e) => e.endsAt > Date.now()).length === 0
+                }
+                onClick={() => void buyExpeditionFinish()}
+              >
+                💎 {GEM_PACK.expeditionFinishCost}
               </button>
             </article>
             {/* 동료 스킨(코스튬) — 외형 전용 확정 구매. 얼터너티브(별도 동료)와 다른 축 */}

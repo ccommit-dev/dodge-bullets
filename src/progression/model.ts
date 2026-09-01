@@ -89,6 +89,14 @@ export type CharacterProgress = {
   ownedAllySkins: string[];
   /** 동료별 장착 스킨 (미장착 = 기본 외형) */
   equippedAllySkins: Partial<Record<TitanHeroId, string>>;
+  /** 보유 무기 외형 id — 칼날 색·오라 커스텀 (성능 무관) */
+  ownedWeaponSkins: string[];
+  /** 장착 무기 외형 ("" = 강화 티어 기본색) */
+  equippedWeaponSkin: string;
+  /** 보유 칭호 id */
+  ownedTitles: string[];
+  /** 표시 칭호 ("" = 없음) */
+  activeTitle: string;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -154,6 +162,10 @@ export function emptyCharacterProgress(): CharacterProgress {
     dodgeStars: {},
     ownedAllySkins: [],
     equippedAllySkins: {},
+    ownedWeaponSkins: [],
+    equippedWeaponSkin: "",
+    ownedTitles: [],
+    activeTitle: "",
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -372,6 +384,24 @@ export function normalizeCharacterProgress(
       ? [...new Set(raw.ownedAllySkins.filter((id): id is string => typeof id === "string"))].slice(0, 20)
       : [],
     equippedAllySkins: equippedSkinsOf(raw.equippedAllySkins, raw.ownedAllySkins),
+    ownedWeaponSkins: Array.isArray(raw.ownedWeaponSkins)
+      ? [...new Set(raw.ownedWeaponSkins.filter((id): id is string => typeof id === "string"))].slice(0, 20)
+      : [],
+    equippedWeaponSkin:
+      typeof raw.equippedWeaponSkin === "string" &&
+      Array.isArray(raw.ownedWeaponSkins) &&
+      raw.ownedWeaponSkins.includes(raw.equippedWeaponSkin)
+        ? raw.equippedWeaponSkin
+        : "",
+    ownedTitles: Array.isArray(raw.ownedTitles)
+      ? [...new Set(raw.ownedTitles.filter((id): id is string => typeof id === "string"))].slice(0, 30)
+      : [],
+    activeTitle:
+      typeof raw.activeTitle === "string" &&
+      Array.isArray(raw.ownedTitles) &&
+      raw.ownedTitles.includes(raw.activeTitle)
+        ? raw.activeTitle
+        : "",
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
