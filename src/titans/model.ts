@@ -1,6 +1,17 @@
 import { assetUrl } from "../asset";
 
-export type TitanHeroId = "mia" | "leon" | "sera" | "garen" | "ari" | "nox" | "luna" | "volt";
+export type TitanHeroId =
+  | "mia"
+  | "leon"
+  | "sera"
+  | "garen"
+  | "ari"
+  | "nox"
+  | "luna"
+  | "volt"
+  // 얼터너티브 동료 (CRUMBLE_GAP §9) — 기존 동료의 재해석 버전, 상점 전용
+  | "mia_dark"
+  | "sera_light";
 
 export type TitanSkillId = "strike" | "crit" | "clone" | "warcry" | "steel";
 export type TitanSkillSlot = "starter" | "linkA" | "linkB" | "finisher" | "passive";
@@ -74,6 +85,10 @@ export type TitansSave = {
   heroes: Record<TitanHeroId, number>;
   totalKills: number;
   totalTaps: number;
+  /** QoL — 스킬 자동 시전 (쿨타임 찬 액티브를 자동 사용) */
+  autoSkill: boolean;
+  /** QoL — 전투 배속. 공격·보스 타이머·쿨타임에 대칭 적용이라 밸런스 중립 */
+  battleSpeed: 1 | 2;
   lastActiveAt: number;
 };
 
@@ -163,6 +178,27 @@ export const HEROES: TitanHeroDef[] = [
     hue: 200,
     feature: "자동 포탑을 설치해 지속 사격", attackType: "포탑 사격", attackInterval: .9,
   },
+  // 얼터너티브 동료 (§9) — 기존 로스터의 팔레트 재해석. 별도 성급을 갖는 독립 동료다.
+  {
+    id: "mia_dark",
+    name: "흑화 미아",
+    role: "심연 연격 딜러",
+    unlockStage: 9999,
+    baseCost: 60_000,
+    baseDps: 380,
+    hue: 265,
+    feature: "어둠에 물든 단검 — 연격이 그림자 잔상을 남긴다", attackType: "근접 2연격", attackInterval: .68,
+  },
+  {
+    id: "sera_light",
+    name: "성광 세라",
+    role: "광역 성광 폭발",
+    unlockStage: 9999,
+    baseCost: 260_000,
+    baseDps: 1_250,
+    hue: 50,
+    feature: "빛으로 재해석된 마력탄 — 광역 성광 폭발", attackType: "범위 성광", attackInterval: 1.25,
+  },
 ];
 
 export const SKILLS: TitanSkillDef[] = [
@@ -201,7 +237,7 @@ export function emptySkillLevels(): Record<TitanSkillId, number> { return { stri
 export function defaultSkillInventory(): TitansSave["skillInventory"] { return { learned: ["strike"], levels: { ...emptySkillLevels(), strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }; }
 
 export function emptyHeroLevels(): Record<TitanHeroId, number> {
-  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0, luna: 0, volt: 0 };
+  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0, luna: 0, volt: 0, mia_dark: 0, sera_light: 0 };
 }
 
 export function defaultTitansSave(): TitansSave {
@@ -215,6 +251,8 @@ export function defaultTitansSave(): TitansSave {
     heroes: emptyHeroLevels(),
     totalKills: 0,
     totalTaps: 0,
+    autoSkill: false,
+    battleSpeed: 1,
     lastActiveAt: Date.now(),
   };
 }
@@ -249,6 +287,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     heroes,
     totalKills: n(value.totalKills, 0),
     totalTaps: n(value.totalTaps, 0),
+    autoSkill: value.autoSkill === true,
+    battleSpeed: value.battleSpeed === 2 ? 2 : 1,
     lastActiveAt: n(value.lastActiveAt, Date.now(), Date.now()),
   };
 }
@@ -294,6 +334,31 @@ export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number
 export function heroUpgradeCost(def: TitanHeroDef, level: number): number {
   if (level <= 0) return def.baseCost;
   return Math.floor(def.baseCost * Math.pow(1.19, level));
+}
+
+/**
+ * 일괄 구매 견적 (QoL) — amount 레벨(0 = MAX)까지, 골드가 허용하는 만큼.
+ * ×10도 부분 구매를 허용한다: 7레벨만 살 수 있으면 7을 산다. "10 못 사면 0"보다
+ * 후반 연타 피로를 줄이는 목적에 충실하다.
+ */
+export function bulkUpgradeQuote(
+  costOf: (level: number) => number,
+  fromLevel: number,
+  gold: number,
+  amount: number,
+): { count: number; cost: number } {
+  const limit = amount <= 0 ? 999 : amount;
+  let count = 0;
+  let cost = 0;
+  let level = fromLevel;
+  while (count < limit) {
+    const next = costOf(level);
+    if (cost + next > gold) break;
+    cost += next;
+    level += 1;
+    count += 1;
+  }
+  return { count, cost };
 }
 
 export function heroDps(def: TitanHeroDef, level: number): number {

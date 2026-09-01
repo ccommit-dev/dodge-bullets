@@ -2357,6 +2357,11 @@
 .titan-ally-art.ally-garen { --ally-x:48%; --ally-y:2%; z-index:4; }
 .titan-ally-art.ally-ari { --ally-x:60%; --ally-y:30%; z-index:2; }
 .titan-ally-art.ally-nox { --ally-x:78%; --ally-y:5%; z-index:3; }
+/* 상점 전용·얼터너티브 동료 — 위치 미지정이면 (0,0)에 겹쳐 쌓인다 */
+.titan-ally-art.ally-luna { --ally-x:8%; --ally-y:12%; z-index:4; }
+.titan-ally-art.ally-volt { --ally-x:40%; --ally-y:22%; z-index:2; }
+.titan-ally-art.ally-mia_dark { --ally-x:24%; --ally-y:20%; z-index:3; }
+.titan-ally-art.ally-sera_light { --ally-x:56%; --ally-y:34%; z-index:1; }
 .titan-ally-art { transition:transform 1.15s linear; }
 .titan-ally-art.combat-ranged.is-engaged { transform:translateX(clamp(55px,13vw,105px)); }
 .titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }

@@ -37,6 +37,57 @@ export async function requestReviewOnce(trigger: string): Promise<void> {
   }
 }
 
+/** 로컬 알림 id 대역 — 겹치지 않게 용도별로 고정 */
+export const NOTIFY_ID = {
+  idleCap: 1,
+  /** 파견 슬롯 0·1 → 100·101 */
+  expeditionBase: 100,
+} as const;
+
+let notifyPermissionAsked = false;
+
+/**
+ * 로컬 푸시 예약 (방치형 리텐션 축) — 방치 캡 도달·파견 귀환 알림.
+ *
+ * - 권한은 첫 예약 시도 때 1회 요청한다 (Android 13+ POST_NOTIFICATIONS).
+ * - 네이티브가 아니면 no-op. 실패는 전부 삼킨다 — 알림 때문에 게임이 죽으면 본말전도.
+ * - 같은 id로 다시 예약하면 기존 것을 대체한다 (플러그인 기본 동작).
+ */
+export async function scheduleLocalNotification(
+  id: number,
+  title: string,
+  body: string,
+  at: Date,
+): Promise<void> {
+  if (!isNativePlatform() || at.getTime() <= Date.now()) return;
+  try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    if (!notifyPermissionAsked) {
+      notifyPermissionAsked = true;
+      const status = await LocalNotifications.checkPermissions();
+      if (status.display !== "granted") {
+        const asked = await LocalNotifications.requestPermissions();
+        if (asked.display !== "granted") return;
+      }
+    }
+    await LocalNotifications.schedule({
+      notifications: [{ id, title, body, schedule: { at } }],
+    });
+  } catch {
+    // ignore
+  }
+}
+
+export async function cancelLocalNotification(ids: number[]): Promise<void> {
+  if (!isNativePlatform() || ids.length === 0) return;
+  try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * 네이티브에서의 "게임 종료".
  *
