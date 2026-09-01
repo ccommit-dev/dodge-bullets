@@ -1,6 +1,8 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
-import { emptyAllyRecord } from "../titans/allies";
+import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
+import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
+import { allyCollectionPower, petCollectionPower } from "./collection";
 
 export const PROGRESSION_VERSION = 5;
 
@@ -63,6 +65,18 @@ export type CharacterProgress = {
   weeklyShardPacks: { week: string; bought: Partial<Record<TitanHeroId, number>> };
   /** 콘텐츠별 오늘의 첫 클리어 날짜 (YYYY-MM-DD) — 첫 클리어 2배 판정 */
   firstClearDates: Record<"hunt" | "dodge" | "forge" | "beat", string>;
+  /** 펫 레벨 — 0=미부화, 종별 1,000처치로 부화(레벨 1). 환생에도 보존. */
+  pets: Record<TitanMonsterKind, number>;
+  /** 장착 펫 ("" = 없음) — 1마리만 액티브 패시브 */
+  activePet: string;
+  /** 원정대 편성 — 출전 동료만 전투·DPS에 반영 */
+  partyIds: TitanHeroId[];
+  /** 편성 슬롯 소급 하한 — 편성 도입 이전 유저는 보유 수만큼(최대 6) 보장 */
+  partyCap: number;
+  /** 진행 중 파견 (최대 2팀) */
+  expeditions: Expedition[];
+  /** 원정 일지 — 수령한 마일스톤 id */
+  journalClaimed: string[];
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -118,6 +132,12 @@ export function emptyCharacterProgress(): CharacterProgress {
     activeCharacter: "default",
     weeklyShardPacks: { week: "", bought: {} },
     firstClearDates: { hunt: "", dodge: "", forge: "", beat: "" },
+    pets: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 },
+    activePet: "",
+    partyIds: [],
+    partyCap: 4,
+    expeditions: [],
+    journalClaimed: [],
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -253,6 +273,37 @@ export function normalizeCharacterProgress(
       forge: typeof raw.firstClearDates?.forge === "string" ? raw.firstClearDates.forge : "",
       beat: typeof raw.firstClearDates?.beat === "string" ? raw.firstClearDates.beat : "",
     },
+    pets: {
+      slime: integer(raw.pets?.slime, 0, PET_MAX_LEVEL),
+      goblin: integer(raw.pets?.goblin, 0, PET_MAX_LEVEL),
+      wolf: integer(raw.pets?.wolf, 0, PET_MAX_LEVEL),
+      ogre: integer(raw.pets?.ogre, 0, PET_MAX_LEVEL),
+      dragon: integer(raw.pets?.dragon, 0, PET_MAX_LEVEL),
+      boss: integer(raw.pets?.boss, 0, PET_MAX_LEVEL),
+    },
+    activePet:
+      typeof raw.activePet === "string" && PET_IDS.includes(raw.activePet as TitanMonsterKind)
+        ? raw.activePet
+        : "",
+    partyIds: Array.isArray(raw.partyIds)
+      ? [...new Set(raw.partyIds.filter((id): id is TitanHeroId => ALLY_IDS.includes(id as TitanHeroId)))].slice(0, 6)
+      : [],
+    partyCap: Math.max(4, integer(raw.partyCap, 4, 6)),
+    expeditions: Array.isArray(raw.expeditions)
+      ? raw.expeditions
+          .filter(
+            (e): e is Expedition =>
+              !!e &&
+              typeof e === "object" &&
+              ALLY_IDS.includes((e as Expedition).allyId) &&
+              typeof (e as Expedition).endsAt === "number" &&
+              [4, 8, 12].includes((e as Expedition).hours),
+          )
+          .slice(0, EXPEDITION_MAX)
+      : [],
+    journalClaimed: Array.isArray(raw.journalClaimed)
+      ? [...new Set(raw.journalClaimed.filter((id): id is string => typeof id === "string"))].slice(-50)
+      : [],
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
@@ -272,7 +323,10 @@ export function combatPower(progress: CharacterProgress): number {
       progress.equippedWeaponLevel * 28 +
       progress.bestForgeLevel * 14 +
       progress.titanBestStage * 7 +
-      totalSkillMastery(progress) * 3,
+      totalSkillMastery(progress) * 3 +
+      // 도감 영구 전투력 (CRUMBLE_GAP §7) — 동료·펫 최초 획득만으로 붙는다
+      allyCollectionPower(progress) +
+      petCollectionPower(progress),
   );
 }
 

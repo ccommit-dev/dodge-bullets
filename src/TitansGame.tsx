@@ -54,15 +54,24 @@ import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked, sfxSlotUnlock } from "./ui/sfx";
 import {
+  ALLY_IDS,
   ALLY_RARITY,
+  ALLY_ROLE,
+  EXPEDITION_HOURS,
+  EXPEDITION_MAX,
   RARITY_COLOR,
+  ROLE_LABEL,
   SHOP_ALLY_GEM_COST,
   STAR_CAP,
   effectiveStars,
+  expeditionReward,
+  partySlotCount,
+  partySynergies,
   shardCostToNext,
   starMultiplier,
   randomOwnedAlly,
 } from "./titans/allies";
+import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
@@ -220,6 +229,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     battleTimers.current.push(id);
   }, []);
 
+  // 보스 제한시간 — 방진 시너지(§2)와 아기 늑대 펫(§1)이 연장한다.
+  // spawn이 의존성 없는 콜백이라 ref로 전달한다.
+  const bossTimeSec = useMemo(
+    () =>
+      BOSS_TIME_SEC +
+      partySynergies(character.partyIds).effects.bossTimeBonus +
+      activePetEffect(character.pets, character.activePet, "bossTime"),
+    [character.partyIds, character.pets, character.activePet],
+  );
+  const bossTimeRef = useRef(bossTimeSec);
+  useEffect(() => {
+    bossTimeRef.current = bossTimeSec;
+  }, [bossTimeSec]);
+
   const spawn = useCallback((stage: number, nextWave: number, asBoss: boolean) => {
     const isChest = !asBoss && Math.random() < 0.04;
     const mhp = monsterHp(stage, asBoss) * (isChest ? 1.6 : 1);
@@ -228,12 +251,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     setChesterson(isChest);
     setHp(mhp);
     setMaxHp(mhp);
-    setBossLeft(BOSS_TIME_SEC);
+    setBossLeft(bossTimeRef.current);
     waveRef.current = nextWave;
     bossRef.current = asBoss;
     chestRef.current = isChest;
     hpRef.current = mhp;
-    bossLeftRef.current = BOSS_TIME_SEC;
+    bossLeftRef.current = bossTimeRef.current;
     formationReadyRef.current = false;
     setFormationReady(false);
     setFormationEngaged(false);
@@ -249,8 +272,49 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   useEffect(() => {
     let cancelled = false;
     preloadTitanSheets();
-    void Promise.all([loadTitansSave(userHash), loadCharacterProgress(userHash)]).then(([loaded, progress]) => {
+    void Promise.all([loadTitansSave(userHash), loadCharacterProgress(userHash)]).then(([rawLoaded, rawProgress]) => {
       if (cancelled) return;
+      const loaded = rawLoaded;
+      let progress = rawProgress;
+
+      // 도감(§7) 보유 동기화 — effectiveStars의 암묵 ★1을 저장값에도 반영해야
+      // progress만 보는 도감 전투력·성급 마일스톤이 보유 동료를 셀 수 있다.
+      const starsFix = ALLY_IDS.filter((id) => loaded.heroes[id] > 0 && (progress.allyStars[id] ?? 0) <= 0);
+      // 편성(§2) 소급 — 편성 도입 전 세이브는 전원이 출전 중이었다. 보유 수만큼(최대 6)
+      // 슬롯 하한을 보장하고, DPS 상위 순으로 자동 편성해 전력 손실 없이 넘어온다.
+      const owned = HEROES.filter((h) => loaded.heroes[h.id] > 0);
+      const needsParty = progress.partyIds.length === 0 && owned.length > 0;
+      if (starsFix.length > 0 || needsParty) {
+        const cap = needsParty ? Math.min(6, Math.max(progress.partyCap, owned.length)) : progress.partyCap;
+        const autoParty = needsParty
+          ? [...owned]
+              .sort(
+                (a, b) =>
+                  heroDps(b, loaded.heroes[b.id]) * starMultiplier(effectiveStars(progress.allyStars[b.id], loaded.heroes[b.id])) -
+                  heroDps(a, loaded.heroes[a.id]) * starMultiplier(effectiveStars(progress.allyStars[a.id], loaded.heroes[a.id])),
+              )
+              .slice(0, partySlotCount(progress.towerBestFloor, cap))
+              .map((h) => h.id)
+          : progress.partyIds;
+        const stars = { ...progress.allyStars };
+        starsFix.forEach((id) => {
+          stars[id] = 1;
+        });
+        progress = { ...progress, allyStars: stars, partyIds: autoParty, partyCap: cap };
+        void updateCharacterProgress(userHash, (current) => {
+          const merged = { ...current.allyStars };
+          starsFix.forEach((id) => {
+            merged[id] = Math.max(1, merged[id] ?? 0);
+          });
+          return {
+            ...current,
+            allyStars: merged,
+            partyIds: current.partyIds.length === 0 ? autoParty : current.partyIds,
+            partyCap: Math.max(current.partyCap, cap),
+          };
+        });
+      }
+
       // 개척하지 않은 지역으로는 진입할 수 없다 — 저장값이 앞서 있으면 경계로 되돌린다.
       const ceiling = stageCeilingFor(progress.pioneeredArea);
       const stage = Math.min(loaded.stage, ceiling);
@@ -436,9 +500,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       const today = new Date().toLocaleDateString("sv-SE");
       const firstClearToday = wasBoss && characterRef.current.firstClearDates.hunt !== today;
 
+      // 아기 슬라임 펫(§1) — 사냥 골드 가산
+      const petGold = 1 + activePetEffect(characterRef.current.pets, characterRef.current.activePet, "gold");
       const goldGain = Math.floor(
         (killGold(s.stage, wasBoss, chestRef.current) + (wasBoss ? stageClearBonus(s.stage) : 0)) *
           codexMult *
+          petGold *
           (firstClearToday ? 2 : 1),
       );
       if (firstClearToday) {
@@ -457,8 +524,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           (Object.keys(pending) as TitanMonsterKind[]).forEach((k) => {
             merged[k] = (merged[k] ?? 0) + (pending[k] ?? 0);
           });
-          return { ...current, monsterKills: merged };
-        }).then((next) => setCharacter(next));
+          // 펫 부화 (§1) — 도감 최종 마일스톤(1,000처치) 도달 시 아기 버전이 태어난다.
+          // 플러시 경계에서만 판정하므로 킬마다 검사하는 비용이 없다.
+          const hatched = pendingHatches(merged, current.pets);
+          if (hatched.length === 0) return { ...current, monsterKills: merged };
+          const pets = { ...current.pets };
+          hatched.forEach((id) => {
+            pets[id] = 1;
+          });
+          return {
+            ...current,
+            monsterKills: merged,
+            pets,
+            activePet: current.activePet || hatched[0],
+          };
+        }).then((next) => {
+          const born = Object.keys(next.pets).filter(
+            (id) => (next.pets[id as TitanMonsterKind] ?? 0) > 0 && (characterRef.current.pets[id as TitanMonsterKind] ?? 0) <= 0,
+          ) as TitanMonsterKind[];
+          setCharacter(next);
+          if (born.length > 0) flash(`${PET_DEFS[born[0]].name} 부화! 마이페이지에서 확인하세요`);
+        });
       }
 
       // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 화살 원정으로만 열린다.
@@ -622,15 +708,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025;
+        // 편성(§2): 출전 슬롯에 오른 동료만 싸운다 · 엄호 사격 시너지가 DPS를 증폭한다
+        const synergyDps = partySynergies(characterRef.current.partyIds).effects.dpsMult;
         for (const h of HEROES) {
           const level = saveRef.current.heroes[h.id];
-          if (level <= 0) continue;
+          if (level <= 0 || !characterRef.current.partyIds.includes(h.id)) continue;
           allyAttackAcc.current[h.id] += dt;
           if (allyAttackAcc.current[h.id] < h.attackInterval) continue;
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
           pushFx("ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
-          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost, false, { fromAlly: h.id });
+          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps, false, { fromAlly: h.id });
         }
       }
 
@@ -684,7 +772,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       });
     }, 100);
     return () => window.clearInterval(id);
-  }, [ready, applyDamage, spawn]);
+  }, [ready, applyDamage, spawn, userHash]);
 
   useEffect(() => {
     if (!ready || battlePhase !== "combat" || !formationReady) {
@@ -781,11 +869,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     const gemCost = SHOP_ALLY_GEM_COST[id];
     const def = HEROES.find((h) => h.id === id);
     if (!def || gemCost === undefined || save.heroes[id] > 0 || redGems < gemCost) return;
-    const next = await updateCharacterProgress(userHash, (current) => ({
-      ...current,
-      redGems: Math.max(0, current.redGems - gemCost),
-      allyStars: { ...current.allyStars, [id]: Math.max(1, current.allyStars[id]) },
-    }));
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const slots = partySlotCount(current.towerBestFloor, current.partyCap);
+      return {
+        ...current,
+        redGems: Math.max(0, current.redGems - gemCost),
+        allyStars: { ...current.allyStars, [id]: Math.max(1, current.allyStars[id]) },
+        partyIds:
+          current.partyIds.includes(id) || current.partyIds.length >= slots
+            ? current.partyIds
+            : [...current.partyIds, id],
+      };
+    });
     setCharacter(next);
     setRedGems(next.redGems);
     setSave((prev) => ({ ...prev, heroes: { ...prev.heroes, [id]: 1 } }));
@@ -814,6 +909,76 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     flash(`${HEROES.find((h) => h.id === id)?.name} ★${effectiveStars(next.allyStars[id], lv)} 승급!`);
   };
 
+  /** 출전/벤치 토글 (§2) — 슬롯이 차 있으면 추가 불가, 파견 중 동료는 출전 불가 */
+  const toggleParty = async (id: TitanHeroId) => {
+    const onExpedition = character.expeditions.some((e) => e.allyId === id);
+    if (onExpedition) return;
+    const slots = partySlotCount(character.towerBestFloor, character.partyCap);
+    const inParty = character.partyIds.includes(id);
+    if (!inParty && character.partyIds.length >= slots) {
+      flash(`출전 슬롯이 가득 찼습니다 (${slots}자리)`);
+      return;
+    }
+    const next = await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      partyIds: current.partyIds.includes(id)
+        ? current.partyIds.filter((p) => p !== id)
+        : [...current.partyIds, id].slice(0, slots),
+    }));
+    setCharacter(next);
+  };
+
+  /** 파견 (§3) — 벤치 동료를 4/8/12시간 보내 등급·성급 비례 보상을 받는다 */
+  const sendExpedition = async (id: TitanHeroId, hours: 4 | 8 | 12) => {
+    if (
+      save.heroes[id] <= 0 ||
+      character.partyIds.includes(id) ||
+      character.expeditions.length >= EXPEDITION_MAX ||
+      character.expeditions.some((e) => e.allyId === id)
+    )
+      return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.expeditions.length >= EXPEDITION_MAX || current.expeditions.some((e) => e.allyId === id)
+        ? current
+        : {
+            ...current,
+            expeditions: [...current.expeditions, { allyId: id, endsAt: Date.now() + hours * 3600 * 1000, hours }],
+          },
+    );
+    setCharacter(next);
+    flash(`${HEROES.find((h) => h.id === id)?.name} ${hours}시간 파견 출발`);
+  };
+
+  /** 완료된 파견 일괄 수령 — 보상 조각은 파견 간 동료 본인에게 쌓인다 */
+  const claimExpeditions = async () => {
+    const done = character.expeditions.filter((e) => e.endsAt <= Date.now());
+    if (done.length === 0) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const finished = current.expeditions.filter((e) => e.endsAt <= Date.now());
+      if (finished.length === 0) return current;
+      const shards = { ...current.allyShards };
+      let materials = 0;
+      let gems = 0;
+      finished.forEach((e) => {
+        const stars = effectiveStars(current.allyStars[e.allyId], saveRef.current.heroes[e.allyId]);
+        const reward = expeditionReward(e.allyId, stars, e.hours);
+        shards[e.allyId] = (shards[e.allyId] ?? 0) + reward.shards;
+        materials += reward.materials;
+        gems += reward.gems;
+      });
+      return {
+        ...current,
+        allyShards: shards,
+        enhancementMaterials: current.enhancementMaterials + materials,
+        redGems: current.redGems + gems,
+        expeditions: current.expeditions.filter((e) => e.endsAt > Date.now()),
+      };
+    });
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`파견 ${done.length}건 귀환 — 조각·강화석 수령 완료`);
+  };
+
   const buyHero = (id: TitanHeroId) => {
     const def = HEROES.find((h) => h.id === id);
     if (!def) return;
@@ -830,6 +995,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     if (lv === 0) {
       setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
       pushFx("ally", 36, 58, def.hue);
+      // 첫 소환은 빈 슬롯에 자동 출전 — 소환했는데 안 싸우는 상황을 막는다.
+      // 도감(§7) 보유 판정용 ★1 기록도 여기서 함께 남긴다.
+      void updateCharacterProgress(userHash, (current) => {
+        const slots = partySlotCount(current.towerBestFloor, current.partyCap);
+        return {
+          ...current,
+          allyStars: { ...current.allyStars, [id]: Math.max(1, current.allyStars[id] ?? 0) },
+          partyIds:
+            current.partyIds.includes(id) || current.partyIds.length >= slots
+              ? current.partyIds
+              : [...current.partyIds, id],
+        };
+      }).then(setCharacter);
     }
   };
 
@@ -971,13 +1149,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const area = huntingArea(save.stage);
   const monsterRanged = kind === "dragon" || (boss && (area.id === "volcano" || area.id === "abyss"));
   const label = monsterLabel(kind, chesterson, save.stage);
-  const dps = totalHeroDps(save.heroes, (id) => starMultiplier(effectiveStars(character.allyStars[id], save.heroes[id]))) + playerIdleDps(save.equipmentTraining.weaponMastery);
+  // 편성(§2) — 출전 동료만 DPS·필드 렌더에 반영한다
+  const partySlots = partySlotCount(character.towerBestFloor, character.partyCap);
+  const synergy = useMemo(() => partySynergies(character.partyIds), [character.partyIds]);
+  const partyHeroes = useMemo(() => {
+    const filtered = { ...save.heroes };
+    ALLY_IDS.forEach((id) => {
+      if (!character.partyIds.includes(id)) filtered[id] = 0;
+    });
+    return filtered;
+  }, [save.heroes, character.partyIds]);
+  const dps =
+    totalHeroDps(partyHeroes, (id) => starMultiplier(effectiveStars(character.allyStars[id], save.heroes[id]))) *
+      synergy.effects.dpsMult +
+    playerIdleDps(save.equipmentTraining.weaponMastery);
   const tap = tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5));
   const now = performance.now();
   const allies = useMemo(
-    () => HEROES.filter((h) => save.heroes[h.id] > 0),
-    [save.heroes],
+    () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id)),
+    [save.heroes, character.partyIds],
   );
+  const expeditionsDone = character.expeditions.filter((e) => e.endsAt <= Date.now()).length;
 
   const pad = {
     paddingTop: Math.max(12, insets.top),
@@ -1062,6 +1254,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           ))}
         </div>
 
+        {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
+          <div className="titans-pet" title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
+            <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} />
+          </div>
+        )}
+
         {/*
           피격 반동은 hit-a/hit-b를 번갈아 붙여 매 타격마다 CSS 애니메이션을 재시작한다.
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
@@ -1115,7 +1313,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {boss && (
           <div className="titans-boss-timer">
             BOSS {bossLeft.toFixed(1)}s
-            <i style={{ width: `${(bossLeft / BOSS_TIME_SEC) * 100}%` }} />
+            <i style={{ width: `${(bossLeft / bossTimeSec) * 100}%` }} />
           </div>
         )}
 
@@ -1203,6 +1401,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           </>
         )}
 
+        {tab === "heroes" && (
+          <article className="titans-card party-panel">
+            <div className="party-panel-head">
+              <strong>
+                원정대 편성 {character.partyIds.length}/{partySlots}
+              </strong>
+              <small>
+                {partySlots < 6
+                  ? `성벽 ${character.towerBestFloor < 50 ? 50 : 100}층 등반 시 슬롯 +1`
+                  : "슬롯 최대"}
+              </small>
+            </div>
+            <div className="party-synergies">
+              {synergy.list.map((s) => (
+                <span key={s.id} className={`synergy-chip ${s.active ? "on" : ""}`} title={s.desc}>
+                  {s.name}
+                </span>
+              ))}
+            </div>
+            {expeditionsDone > 0 && (
+              <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
+                파견 {expeditionsDone}건 귀환 — 보상 받기
+              </button>
+            )}
+          </article>
+        )}
         {tab === "heroes" &&
           HEROES.map((h) => {
             const lv = save.heroes[h.id];
@@ -1216,12 +1440,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             const nextCost = shardCostToNext(h.id, Math.max(1, stars));
             const cap = STAR_CAP[rarity];
             const mult = starMultiplier(Math.max(1, stars));
+            const inParty = character.partyIds.includes(h.id);
+            const expedition = character.expeditions.find((e) => e.allyId === h.id);
+            const expeditionLeft = expedition ? Math.max(0, expedition.endsAt - Date.now()) : 0;
             return (
-              <article key={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()}`}>
+              <article key={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""}`}>
                 <AllyArt id={h.id} />
                 <div>
                   <strong>
                     <em className="rarity-tag" style={{ color: RARITY_COLOR[rarity] }}>{rarity}</em>
+                    <em className="role-tag">{ROLE_LABEL[ALLY_ROLE[h.id]]}</em>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
                   </strong>
                   {lv > 0 && (
@@ -1266,6 +1494,29 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                     >
                       ★ 승급
                     </button>
+                  )}
+                  {lv > 0 && !expedition && (
+                    <button
+                      type="button"
+                      className={`ally-party-toggle ${inParty ? "benched-action" : ""}`}
+                      onClick={() => void toggleParty(h.id)}
+                    >
+                      {inParty ? "벤치로" : "출전"}
+                    </button>
+                  )}
+                  {lv > 0 && expedition && (
+                    <span className="ally-expedition-status">
+                      파견 중 · {Math.ceil(expeditionLeft / 60000)}분 남음
+                    </span>
+                  )}
+                  {lv > 0 && !inParty && !expedition && character.expeditions.length < EXPEDITION_MAX && (
+                    <span className="ally-expedition-send">
+                      {EXPEDITION_HOURS.map((hours) => (
+                        <button key={hours} type="button" onClick={() => void sendExpedition(h.id, hours)}>
+                          {hours}h
+                        </button>
+                      ))}
+                    </span>
                   )}
                 </div>
               </article>

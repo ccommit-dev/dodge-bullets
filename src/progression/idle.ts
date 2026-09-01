@@ -18,6 +18,9 @@ import {
   type TitanSkillSlot,
 } from "../titans/model";
 import { STAGES } from "../game/stages";
+import { partySynergies } from "../titans/allies";
+import { activePetEffect } from "../titans/pets";
+import { starMilestoneMultiplier } from "./collection";
 import type { CharacterProgress } from "./model";
 
 /** 일반 화살 원정 스테이지 수 — T 보너스의 상한 근거. */
@@ -116,7 +119,8 @@ export function idleRate(
   const arcane = progress.evolutionPath === "arcane" ? 0.03 : 0;
   const raw =
     IDLE.baseRate + activeSlotLevelSum(progress, equipped) * IDLE.ratePerSlotLevel + arcane;
-  return Math.min(IDLE.rateCap, raw);
+  // 균형 편성 시너지(§2)는 캡 밖 가산 — 상한을 다 채운 뒤에도 편성이 의미를 갖게
+  return Math.min(IDLE.rateCap, raw) + partySynergies(progress.partyIds).effects.idleRateBonus;
 }
 
 /** M — 산출 배율. forge · 환생 · 끝없는 성벽이 올린다. */
@@ -129,7 +133,10 @@ export function idleMultiplier(progress: CharacterProgress): number {
   );
   const reforge = progress.reforgeRank * IDLE.multPerReforgeRank;
   const evolution = progress.evolutionPath === "swordmaster" ? 0.15 : 0;
-  return Math.min(IDLE.multCap, 1 + forge + crystals + tower + reforge + evolution);
+  // 성급 도감 마일스톤(§7)·타이탄의 그림자 펫(§1)은 캡 안에서 가산 — M 상한은 유지한다
+  const collection = starMilestoneMultiplier(progress);
+  const pet = activePetEffect(progress.pets, progress.activePet, "multiplier");
+  return Math.min(IDLE.multCap, 1 + forge + crystals + tower + reforge + evolution + collection + pet);
 }
 
 /**
@@ -142,7 +149,9 @@ export function idleCapHours(progress: CharacterProgress): number {
   const dodge = Math.min(DODGE_STAGE_COUNT, progress.dodgeBestStage) * IDLE.hoursPerDodgeStage;
   const attendance = Math.min(IDLE.attendanceHoursCap, Math.floor(progress.attendanceStreak / 3));
   const evolution = progress.evolutionPath === "guardian" ? 2 : 0;
-  return Math.min(IDLE.hoursCap, IDLE.hoursBase + dodge + attendance + evolution);
+  // 새끼 용 펫(§1)은 캡 밖 가산 — T가 14시간에 닿은 후에도 펫 육성이 유효하게
+  const pet = activePetEffect(progress.pets, progress.activePet, "capHours");
+  return Math.min(IDLE.hoursCap, IDLE.hoursBase + dodge + attendance + evolution) + pet;
 }
 
 /** 개척된 지역 인덱스(1~5)에서 진입 가능한 최대 스테이지. */
@@ -218,8 +227,12 @@ export function computeIdleYield(
   const avgStage = (safeStage + endStage) / 2;
   const exp = Math.floor(avgStage * IDLE.expPerStageSecond * multiplier * seconds * boost);
   const perHour = Math.min(IDLE.materialsPerHourCap, 2 + Math.floor(avgStage / 4));
-  const materials = Math.floor((perHour * multiplier * seconds) / 3600) * boost;
-  const allyShardDrops = Math.floor(seconds / (4 * 3600));
+  const ogrePet = 1 + activePetEffect(progress.pets, progress.activePet, "materials");
+  const materials = Math.floor((perHour * multiplier * seconds * ogrePet) / 3600) * boost;
+  // 조각 드랍: 기본 4h당 1개 — 꼬마 고블린 펫은 주기를 줄이고, SSR 2+ 시너지는 개수를 2배로
+  const goblinPet = 1 + activePetEffect(progress.pets, progress.activePet, "shard");
+  const shardMult = partySynergies(progress.partyIds).effects.shardMult;
+  const allyShardDrops = Math.floor(seconds / ((4 * 3600) / goblinPet)) * shardMult;
 
   return {
     gold,

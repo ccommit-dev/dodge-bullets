@@ -64,6 +64,93 @@ export function emptyAllyRecord(): Record<TitanHeroId, number> {
 
 export const ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt"];
 
+/* ───────────────────────── 원정대 편성 + 시너지 (CRUMBLE_GAP §2) ───────────────────────── */
+
+export type AllyRole = "melee" | "ranged" | "flame";
+
+export const ALLY_ROLE: Record<TitanHeroId, AllyRole> = {
+  mia: "melee",
+  leon: "ranged",
+  sera: "ranged",
+  garen: "melee",
+  ari: "flame",
+  nox: "melee",
+  luna: "melee",
+  volt: "ranged",
+};
+
+export const ROLE_LABEL: Record<AllyRole, string> = { melee: "근접", ranged: "원거리", flame: "화염" };
+
+/** 편성 슬롯 수 — 기본 4, 성벽 50/100층에서 +1씩. partyCap은 소급 완화 하한(기존 유저). */
+export function partySlotCount(towerBestFloor: number, partyCap: number): number {
+  const fromTower = 4 + (towerBestFloor >= 50 ? 1 : 0) + (towerBestFloor >= 100 ? 1 : 0);
+  return Math.min(6, Math.max(fromTower, partyCap));
+}
+
+export type Synergy = {
+  id: string;
+  name: string;
+  desc: string;
+  active: boolean;
+};
+
+export type SynergyEffects = {
+  /** 보스 제한시간 가산(초) */
+  bossTimeBonus: number;
+  /** 전체 DPS 배율 */
+  dpsMult: number;
+  /** 조각 드랍 배율 */
+  shardMult: number;
+  /** 방치 효율 가산(%p → 0.01 단위) */
+  idleRateBonus: number;
+};
+
+/** 편성 조합에서 발동하는 시너지 — 편성 화면과 전투가 같은 함수를 쓴다. */
+export function partySynergies(party: TitanHeroId[]): { list: Synergy[]; effects: SynergyEffects } {
+  const roles = party.map((id) => ALLY_ROLE[id]);
+  const melee = roles.filter((r) => r === "melee").length;
+  const ranged = roles.filter((r) => r === "ranged").length;
+  const ssr = party.filter((id) => ALLY_RARITY[id] === "SSR").length;
+  const distinctRoles = new Set(roles).size;
+  const list: Synergy[] = [
+    { id: "phalanx", name: "방진", desc: "근접 3+ · 보스 시간 +4초", active: melee >= 3 },
+    { id: "volley", name: "엄호 사격", desc: "원거리 2+ · DPS +8%", active: ranged >= 2 },
+    { id: "legend", name: "전설의 공명", desc: "SSR 2+ · 조각 드랍 2배", active: ssr >= 2 },
+    { id: "balance", name: "균형 편성", desc: "3역할 혼성 · 방치 효율 +1%p", active: distinctRoles >= 3 },
+  ];
+  return {
+    list,
+    effects: {
+      bossTimeBonus: melee >= 3 ? 4 : 0,
+      dpsMult: ranged >= 2 ? 1.08 : 1,
+      shardMult: ssr >= 2 ? 2 : 1,
+      idleRateBonus: distinctRoles >= 3 ? 0.01 : 0,
+    },
+  };
+}
+
+/* ───────────────────────── 파견 (CRUMBLE_GAP §3 · 길드 대체) ───────────────────────── */
+
+export type Expedition = { allyId: TitanHeroId; endsAt: number; hours: 4 | 8 | 12 };
+
+export const EXPEDITION_MAX = 2;
+export const EXPEDITION_HOURS = [4, 8, 12] as const;
+
+/** 파견 보상 — 등급·성급 비례 (벤치 동료의 성급 투자 가치). 보석은 SSR 12h에만 소량. */
+export function expeditionReward(
+  allyId: TitanHeroId,
+  stars: number,
+  hours: number,
+): { shards: number; materials: number; gems: number } {
+  const rarityMult = { R: 1, SR: 1.5, SSR: 2 }[ALLY_RARITY[allyId]];
+  const starMult = 1 + Math.max(0, stars - 1) * 0.25;
+  return {
+    shards: Math.max(1, Math.round((hours / 4) * rarityMult * starMult)),
+    materials: Math.max(1, Math.round((hours / 2) * starMult)),
+    gems: ALLY_RARITY[allyId] === "SSR" && hours >= 12 ? 5 : 0,
+  };
+}
+
 /** 보유 동료 중 무작위 1명 — 조각 드랍 대상 선정용 (미보유뿐이면 mia). */
 export function randomOwnedAlly(
   heroes: Record<TitanHeroId, number>,
