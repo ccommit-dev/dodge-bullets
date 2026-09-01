@@ -7,7 +7,7 @@ import { resolveShadow, shadowOpponents, weekKey, type ShadowOpponent } from "./
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
 import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
-import { weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
+import { riftEventFor, weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
 import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
 import { sfxRiftClaim } from "./ui/sfx";
@@ -165,13 +165,17 @@ export function EventCenter({
     if (save.riftAttempts >= RIFT_ATTEMPTS) return;
     sfxRiftClaim();
     // 요일 균열(CRUMBLE_GAP §5) — 요일마다 다른 축의 보상이 증폭된다
+    // 기간 한정 이벤트(주말 2배 등)는 그 위에 곱으로 중첩된다
     const rift = weekdayRift();
-    const gold = Math.floor(riftYield.gold * rift.goldMult);
-    const materials = Math.floor(riftYield.materials * rift.matMult);
+    const event = riftEventFor();
+    const eventMult = event?.mult ?? 1;
+    const gold = Math.floor(riftYield.gold * rift.goldMult * eventMult);
+    const materials = Math.floor(riftYield.materials * rift.matMult * eventMult);
+    const shardCount = Math.round(rift.shards * eventMult);
     const titans = await loadTitansSave(userHash);
     const nextProgress = await updateCharacterProgress(userHash, (current) => {
       const shards = { ...current.allyShards };
-      for (let i = 0; i < rift.shards; i += 1) {
+      for (let i = 0; i < shardCount; i += 1) {
         const target = randomOwnedAlly(titans.heroes);
         shards[target] = (shards[target] ?? 0) + 1;
       }
@@ -185,7 +189,7 @@ export function EventCenter({
     });
     onUpdated(nextProgress);
     setRiftMessage(
-      `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${rift.shards}`,
+      `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
     );
     await persist({ ...save, riftAttempts: save.riftAttempts + 1 });
   };
@@ -312,6 +316,16 @@ export function EventCenter({
             <h3>
               {weekdayRift().name} <small className="rift-day-desc">오늘은 {weekdayRift().desc}</small>
             </h3>
+            {riftEventFor() && (
+              <div className="rift-event-banner" role="status">
+                <img src={assetUrl("ui/idle/weekend-rift.svg")} alt="" aria-hidden="true" />
+                <div>
+                  <b>{riftEventFor()!.name}</b>
+                  <small>{riftEventFor()!.desc}</small>
+                </div>
+                <em>×{riftEventFor()!.mult}</em>
+              </div>
+            )}
             <p>
               균열 하나가 <b>방치 {formatDuration(RIFT_SECONDS)}</b>을 즉시 정산합니다.
               <br />
@@ -327,7 +341,7 @@ export function EventCenter({
             <div className="rift-preview">
               <div>
                 <span>공유 골드</span>
-                <strong>{formatGold(Math.floor(riftYield.gold * weekdayRift().goldMult))}</strong>
+                <strong>{formatGold(Math.floor(riftYield.gold * weekdayRift().goldMult * (riftEventFor()?.mult ?? 1)))}</strong>
               </div>
               <div>
                 <span>경험치</span>
@@ -335,11 +349,11 @@ export function EventCenter({
               </div>
               <div>
                 <span>강화석</span>
-                <strong>{Math.floor(riftYield.materials * weekdayRift().matMult)}</strong>
+                <strong>{Math.floor(riftYield.materials * weekdayRift().matMult * (riftEventFor()?.mult ?? 1))}</strong>
               </div>
               <div>
                 <span>동료 조각</span>
-                <strong>{weekdayRift().shards}</strong>
+                <strong>{Math.round(weekdayRift().shards * (riftEventFor()?.mult ?? 1))}</strong>
               </div>
             </div>
             {riftMessage && <p className="shop-toast">{riftMessage}</p>}

@@ -77,6 +77,18 @@ export type CharacterProgress = {
   expeditions: Expedition[];
   /** 원정 일지 — 수령한 마일스톤 id */
   journalClaimed: string[];
+  /**
+   * 온보딩 순차 개방 단계 (CRUMBLE_GAP §8) — 0 사냥터만 → 1 화살 원정 →
+   * 2 대장간 → 3 연습실 → 4 전부(이벤트·보석 상점). 단조 증가.
+   * 기존 유저는 마이그레이션에서 4로 소급 — 신규에게만 적용된다.
+   */
+  onboardingStep: number;
+  /** dodge 스테이지 별점 (§4) — key는 스테이지 인덱스 "0"~"3", 성벽 미적용 */
+  dodgeStars: Record<string, number>;
+  /** 보유 동료 스킨 id */
+  ownedAllySkins: string[];
+  /** 동료별 장착 스킨 (미장착 = 기본 외형) */
+  equippedAllySkins: Partial<Record<TitanHeroId, string>>;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -138,6 +150,10 @@ export function emptyCharacterProgress(): CharacterProgress {
     partyCap: 4,
     expeditions: [],
     journalClaimed: [],
+    onboardingStep: 0,
+    dodgeStars: {},
+    ownedAllySkins: [],
+    equippedAllySkins: {},
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -187,6 +203,52 @@ function pioneeredAreaOf(raw: Partial<CharacterProgress> & { unlockedHuntingArea
     return areaIndexFromLegacyStage(legacy);
   }
   return 1;
+}
+
+/**
+ * 온보딩 단계 마이그레이션 (§8) — 필드가 없는 세이브는 진행 흔적이 하나라도
+ * 있으면 4(전부 개방)로 소급한다. 업데이트가 기존 유저의 콘텐츠를 잠그면 안 된다.
+ * 완전 신규(모든 기본값)만 0에서 시작한다.
+ */
+function onboardingStepOf(raw: Partial<CharacterProgress>): number {
+  const stored = raw.onboardingStep;
+  if (typeof stored === "number" && Number.isFinite(stored)) {
+    return Math.max(0, Math.min(4, Math.floor(stored)));
+  }
+  const hasProgress =
+    (raw.titanBestStage ?? 1) > 1 ||
+    (raw.dodgeBestStage ?? 1) > 1 ||
+    (raw.exp ?? 0) > 0 ||
+    (raw.bestForgeLevel ?? 0) > 0 ||
+    (raw.attendanceStreak ?? 0) > 0 ||
+    (raw.pioneeredArea ?? 1) > 1;
+  return hasProgress ? 4 : 0;
+}
+
+function dodgeStarsOf(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (raw && typeof raw === "object") {
+    Object.entries(raw as Record<string, unknown>).forEach(([key, value]) => {
+      if (/^\d+$/.test(key) && typeof value === "number") {
+        out[key] = Math.max(0, Math.min(3, Math.floor(value)));
+      }
+    });
+  }
+  return out;
+}
+
+function equippedSkinsOf(
+  raw: Partial<Record<TitanHeroId, string>> | undefined,
+  owned: unknown,
+): Partial<Record<TitanHeroId, string>> {
+  const out: Partial<Record<TitanHeroId, string>> = {};
+  if (!raw) return out;
+  const ownedList = Array.isArray(owned) ? owned : [];
+  ALLY_IDS.forEach((id) => {
+    const skin = raw[id];
+    if (typeof skin === "string" && ownedList.includes(skin)) out[id] = skin;
+  });
+  return out;
 }
 
 export function normalizeCharacterProgress(
@@ -304,6 +366,12 @@ export function normalizeCharacterProgress(
     journalClaimed: Array.isArray(raw.journalClaimed)
       ? [...new Set(raw.journalClaimed.filter((id): id is string => typeof id === "string"))].slice(-50)
       : [],
+    onboardingStep: onboardingStepOf(raw),
+    dodgeStars: dodgeStarsOf(raw.dodgeStars),
+    ownedAllySkins: Array.isArray(raw.ownedAllySkins)
+      ? [...new Set(raw.ownedAllySkins.filter((id): id is string => typeof id === "string"))].slice(0, 20)
+      : [],
+    equippedAllySkins: equippedSkinsOf(raw.equippedAllySkins, raw.ownedAllySkins),
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

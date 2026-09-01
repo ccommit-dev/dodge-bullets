@@ -1327,3 +1327,222 @@
   background: rgba(120, 80, 12, 0.28);
   box-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
 }
+
+/* ─── 온보딩 순차 개방 (CRUMBLE_GAP §8) ─── */
+.titans-content-tabs button.tab-locked {
+  position: relative;
+  opacity: 0.5;
+  filter: grayscale(0.7);
+}
+.tab-lock {
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  width: 17px;
+  height: 17px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+.titans-tabs button.tab-locked { position: relative; opacity: 0.55; }
+.titans-tabs .tab-lock { top: -6px; right: 2px; }
+
+/* 개방 배너 — 문이 열리는 순간의 무게감: 문장 팝 + 회전 광선 + 카피 순차 등장 */
+.content-unlock-banner {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  z-index: 80;
+  width: min(88vw, 320px);
+  padding: 22px 18px 18px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(45, 33, 8, 0.96), rgba(12, 16, 28, 0.97));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(251, 191, 36, 0.15);
+  text-align: center;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  animation: unlock-pop 460ms cubic-bezier(0.2, 1.25, 0.32, 1) both, unlock-fade-out 420ms ease-in 2.7s forwards;
+  pointer-events: none;
+}
+.content-unlock-banner img {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  animation: unlock-crest-rise 560ms cubic-bezier(0.2, 1.2, 0.35, 1) both;
+}
+.content-unlock-banner b {
+  position: relative;
+  display: block;
+  margin-top: 6px;
+  color: #fde68a;
+  font-size: 16.5px;
+  letter-spacing: 0.02em;
+  animation: unlock-copy-rise 420ms ease-out 0.16s both;
+}
+.content-unlock-banner small {
+  position: relative;
+  display: block;
+  margin-top: 4px;
+  color: #cbd5f5;
+  font-size: 11px;
+  line-height: 1.5;
+  animation: unlock-copy-rise 420ms ease-out 0.28s both;
+}
+.unlock-rays {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 300px;
+  height: 300px;
+  margin: -150px 0 0 -150px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(251, 191, 36, 0.18) 0deg 14deg,
+    transparent 14deg 42deg
+  );
+  animation: unlock-rays-spin 9s linear infinite;
+}
+@keyframes unlock-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes unlock-fade-out {
+  to { opacity: 0; transform: translate(-50%, -56%) scale(0.96); }
+}
+@keyframes unlock-crest-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.6) rotate(-8deg); }
+  60% { transform: translateY(-3px) scale(1.08) rotate(2deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes unlock-copy-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes unlock-rays-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── dodge 별점 (CRUMBLE_GAP §4) ─── */
+.star-result {
+  position: fixed;
+  left: 50%;
+  top: 30%;
+  z-index: 75;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  animation: star-result-out 360ms ease-in 2s forwards;
+}
+.star-result-row { display: flex; justify-content: center; gap: 6px; }
+.star-result-row img {
+  width: 54px;
+  height: 54px;
+  opacity: 0;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  animation: star-pop 540ms cubic-bezier(0.2, 1.4, 0.35, 1) both;
+}
+.star-result-row img.empty {
+  filter: grayscale(1) brightness(0.55) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  animation-name: star-pop-dim;
+}
+.star-result p {
+  margin: 8px 0 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(9, 12, 20, 0.78);
+  color: #e2e8f0;
+  font-size: 12px;
+  animation: unlock-copy-rise 380ms ease-out 0.5s both;
+}
+.star-result p b { color: #fde68a; }
+@keyframes star-pop {
+  from { opacity: 0; transform: translateY(18px) scale(0.3) rotate(-24deg); }
+  62% { opacity: 1; transform: translateY(-6px) scale(1.18) rotate(6deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes star-pop-dim {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 0.6; transform: none; }
+}
+@keyframes star-result-out {
+  to { opacity: 0; transform: translate(-50%, -58%); }
+}
+.pioneer-stars { display: inline-flex; gap: 1px; margin-left: 7px; vertical-align: -2px; }
+.pioneer-stars img { width: 13px; height: 13px; filter: grayscale(1) brightness(0.55); }
+.pioneer-stars img.on { filter: none; }
+.pioneer-star-hint { margin: 6px 0 0; color: #94a3b8; font-size: 9.5px; text-align: center; }
+
+/* ─── 기간 한정 이벤트 균열 ─── */
+.rift-event-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 8px auto 2px;
+  padding: 8px 12px;
+  width: fit-content;
+  border: 1px solid rgba(251, 146, 60, 0.55);
+  border-radius: 13px;
+  background: linear-gradient(90deg, rgba(88, 32, 8, 0.55), rgba(120, 53, 15, 0.35));
+  animation: event-banner-glow 1.8s ease-in-out infinite alternate;
+}
+.rift-event-banner img { width: 34px; height: 34px; animation: event-crest-flare 2.6s ease-in-out infinite; }
+.rift-event-banner b { display: block; color: #fdba74; font-size: 12px; text-align: left; }
+.rift-event-banner small { display: block; color: #fde68a; font-size: 9.5px; text-align: left; }
+.rift-event-banner em {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #f59e0b;
+  color: #431407;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 900;
+}
+@keyframes event-banner-glow {
+  from { box-shadow: 0 0 0 rgba(251, 146, 60, 0); }
+  to { box-shadow: 0 0 16px rgba(251, 146, 60, 0.35); }
+}
+@keyframes event-crest-flare {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.07); filter: brightness(1.2); }
+}
+
+/* ─── 동료 스킨(코스튬) ─── */
+.ally-skin-chip {
+  margin-top: 3px;
+  padding: 3px 9px !important;
+  border: 1px solid rgba(125, 211, 252, 0.4) !important;
+  border-radius: 999px;
+  color: #7dd3fc !important;
+  background: rgba(14, 30, 51, 0.6) !important;
+  font-size: 9px;
+  width: fit-content;
+}
+.ally-skin-chip.on {
+  border-color: rgba(251, 191, 36, 0.55) !important;
+  color: #fcd34d !important;
+  background: rgba(90, 60, 12, 0.35) !important;
+}
+.skin-product .skin-thumb {
+  flex: 0 0 44px;
+  height: 56px;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center 12%;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-unlock-banner,
+  .content-unlock-banner img,
+  .content-unlock-banner b,
+  .content-unlock-banner small,
+  .unlock-rays,
+  .star-result,
+  .star-result-row img,
+  .star-result p,
+  .rift-event-banner,
+  .rift-event-banner img {
+    animation: none;
+    opacity: 1;
+  }
+}
