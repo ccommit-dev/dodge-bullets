@@ -4,6 +4,8 @@ import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 
 const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
+const ALLY_ANIMATION_ATLAS = assetUrl("titans/generated/allies/ally-animation-atlas-v1.png");
+const SPECIAL_ANIMATION_ATLAS = assetUrl("titans/generated/allies/ally-special-animation-atlas-v1.png");
 
 const MONSTER_ASSET: Record<Exclude<TitanMonsterKind, "boss">, string> = {
   slime: assetUrl("titans/generated/monsters/slime.png"),
@@ -33,6 +35,8 @@ const allyIndex: Record<TitanHeroId, number> = {
   volt: 7,
   mia_dark: 8,
   sera_light: 9,
+  pyro:0, marina:2, terra:3, zephyr:1, bronn:3,
+  iris:2, cain:5, sylph:2, orion:1, ember:4,
 };
 
 /**
@@ -55,6 +59,13 @@ const STANDALONE_ALLY: Partial<Record<TitanHeroId, { url: string; fit: "contain"
 const ALT_BASE: Partial<Record<TitanHeroId, TitanHeroId>> = {
   mia_dark: "mia",
   sera_light: "sera",
+  pyro:"mia", marina:"sera", terra:"garen", zephyr:"leon", bronn:"garen",
+  iris:"sera", cain:"nox", sylph:"sera", orion:"leon", ember:"ari",
+};
+
+const VARIANT_HUE: Partial<Record<TitanHeroId, number>> = {
+  pyro:25, marina:175, terra:70, zephyr:125, bronn:15,
+  iris:205, cain:45, sylph:110, orion:235, ember:335,
 };
 
 
@@ -78,7 +89,29 @@ function allyBodyStyle(id: TitanHeroId, skin?: string): CSSProperties {
       backgroundRepeat: "no-repeat",
     };
   }
-  return sheetStyle(ALLY_SHEET, allyIndex[id], 6);
+  const base = ALT_BASE[id] ?? id;
+  return {
+    ...sheetStyle(ALLY_SHEET, allyIndex[base], 6),
+    filter: VARIANT_HUE[id] == null ? undefined : `hue-rotate(${VARIANT_HUE[id]}deg) saturate(1.18)`,
+  };
+}
+
+function animatedBodyStyle(id: TitanHeroId, state:0|1|2|3, skin?:string): CSSProperties {
+  const specialRows:Partial<Record<TitanHeroId,number>> = { luna:0, volt:1, mia_dark:2, sera_light:3 };
+  const specialRow = specialRows[id];
+  const base = ALT_BASE[id] ?? id;
+  const row = allyIndex[base];
+  const style:CSSProperties = specialRow == null ? {
+    backgroundImage:`url(${ALLY_ANIMATION_ATLAS})`, backgroundSize:"400% 600%",
+    backgroundPosition:`${state / 3 * 100}% ${row / 5 * 100}%`,
+  } : {
+    backgroundImage:`url(${SPECIAL_ANIMATION_ATLAS})`, backgroundSize:"400% 400%",
+    backgroundPosition:`${state / 3 * 100}% ${specialRow / 3 * 100}%`,
+  };
+  const skinDef = skin ? ALLY_SKINS[skin] : undefined;
+  const tint = skinDef?.ally === id ? (id === "garen" ? 22 : 190) : VARIANT_HUE[id];
+  if (tint != null) style.filter=`hue-rotate(${tint}deg) saturate(1.2)`;
+  return style;
 }
 
 export function MonsterArt({
@@ -104,11 +137,11 @@ export function MonsterArt({
   );
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, approaching = false, skin }: { id: TitanHeroId; attacking?: boolean; pulse?: number; engaged?: boolean; approaching?: boolean; skin?: string }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; skin?: string }) {
   const base = ALT_BASE[id] ?? id;
-  const ranged = base === "leon" || base === "sera";
+  const ranged = base === "leon" || base === "sera" || base === "volt" || id === "sera_light";
   return (
-    <div className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""}`}>
+    <div className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해
@@ -121,7 +154,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, app
       */}
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
-          <div className="ally-body" style={allyBodyStyle(id, skin)} />
+          <div className="ally-body" style={animatedBodyStyle(id, hitPulse > 0 ? 3 : attacking && pulse > 0 ? 2 : approaching ? 1 : 0, skin)} />
           <AllyWeapon id={id} />
         </div>
       </div>

@@ -26,6 +26,9 @@ export type ForgeSave = {
   pendingFailure: boolean;
   /** 무한 재련 시도 횟수 (등급은 공유 진행도에 저장) */
   reforgeAttempts: number;
+  armorLevel: number;
+  bestArmorLevel: number;
+  armorAttempts: number;
 };
 
 export const FORGE_TIERS: SwordTier[] = [
@@ -65,6 +68,9 @@ export function defaultForgeSave(): ForgeSave {
     mode: "steady",
     pendingFailure: false,
     reforgeAttempts: 0,
+    armorLevel: 0,
+    bestArmorLevel: 0,
+    armorAttempts: 0,
   };
 }
 
@@ -79,6 +85,9 @@ export function normalizeForgeSave(value: Partial<ForgeSave> | null): ForgeSave 
     gold: integer(value.gold, base.gold),
     goldMigrated: value.goldMigrated === true,
     reforgeAttempts: integer(value.reforgeAttempts, 0),
+    armorLevel: integer(value.armorLevel, 0, 15),
+    bestArmorLevel: integer(value.bestArmorLevel, 0, 15),
+    armorAttempts: integer(value.armorAttempts, 0),
     level: integer(value.level, base.level, FORGE_TIERS.length - 1),
     tickets: integer(value.tickets, base.tickets, 999),
     shards: integer(value.shards, base.shards),

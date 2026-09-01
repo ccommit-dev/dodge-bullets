@@ -126,18 +126,18 @@ export type BeatWorld = {
 export type NoteLane = 0 | 1 | 2 | 3;
 
 export const LANE_LABEL: Record<NoteLane, string> = {
-  0: "KICK 주인공",
-  1: "SNARE 근접 동료",
-  2: "HAT 원거리 동료",
-  3: "BASS 드롭",
+  0: "KICK 공격",
+  1: "SNARE 방어",
+  2: "HAT 회피",
+  3: "BASS 스킬",
 };
 
 /** Which syllables live on each pad, shown in the practice room. */
 export const LANE_MEMBERS: Record<NoteLane, string> = {
-  0: "킥 · 파이어빗",
-  1: "스네어 · 트럼펫",
-  2: "하이햇 · 클릭 · 숨소리",
-  3: "스로트 · 베이스",
+  0: "검격 · 집중 공격",
+  1: "방패 · 피해 경감",
+  2: "회피 · 반격 준비",
+  3: "합동 스킬 · 재료 보너스",
 };
 
 export const LANE_KEYS: Record<NoteLane, string> = {
@@ -151,6 +151,12 @@ export type BeatChartStep = {
   sound: BeatSound;
   spike: boolean;
   lane: 0 | 1;
+  /** 펌프형 롱노트의 머리에서 유지해야 하는 스텝 수. */
+  holdSteps?: number;
+  /** 롱노트 몸통. 같은 버튼을 누른 채 유지하면 연속 판정된다. */
+  holdTail?: boolean;
+  /** 난이도별 시야 트릭. 판정 레인은 바뀌지 않아 암기 강요를 줄인다. */
+  trick?: "late" | "ghost" | "flash";
 };
 
 export const BEAT_SOUND_LABEL: Record<BeatSound, string> = {

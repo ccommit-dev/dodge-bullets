@@ -41,6 +41,9 @@ function isMoveKey(code: string): boolean {
     code === "Space" ||
     code === "ShiftLeft" ||
     code === "ShiftRight" ||
+    code === "Enter" ||
+    code === "ControlLeft" ||
+    code === "ControlRight" ||
     code === "KeyE"
   );
 }
@@ -71,6 +74,9 @@ export function applyKeyDown(input: InputState, code: string): boolean {
       input.dashPressed = true;
       break;
     case "KeyE":
+    case "Enter":
+    case "ControlLeft":
+    case "ControlRight":
       input.slowPressed = true;
       break;
   }

@@ -7,7 +7,7 @@ const HIT_R = 5;
 /** Tip within this band (beyond hit radius) counts as near-miss. */
 const NEAR_MISS_PAD = 22;
 const COMBO_WINDOW_MS = 1600;
-const SPLIT_ORBIT_MS = 1_850;
+const SPLIT_ORBIT_MS = 1_325;
 const SPLIT_DAMAGE = [1, 0.65, 0.4, 0.25] as const;
 
 export function createArrowPool(size = POOL_SIZE): Arrow[] {
@@ -293,17 +293,17 @@ function configureSplitFragment(
   arrow.splitLevel = level;
   const itemWeakening = Math.max(0.62, 1 - slashLevel * 0.065);
   arrow.damage = SPLIT_DAMAGE[level] * itemWeakening;
-  arrow.orbitMs = SPLIT_ORBIT_MS + (Math.random() - 0.5) * 360;
+  arrow.orbitMs = SPLIT_ORBIT_MS + (Math.random() - 0.5) * 220;
   arrow.orbitX = source.x;
   arrow.orbitY = source.y;
   arrow.orbitAngle = source.angle + (direction < 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 0.9;
-  const mapOrbit = Math.min(world.width, world.height) * 0.27;
-  arrow.orbitRadius = mapOrbit * (0.9 + Math.random() * 0.42) + level * 7;
+  const mapOrbit = Math.min(world.width, world.height) * 0.1;
+  arrow.orbitRadius = mapOrbit * (0.9 + Math.random() * 0.16) + level * 4;
   arrow.orbitDirection = direction;
-  arrow.orbitStretch = 0.72 + Math.random() * 0.92;
-  arrow.orbitWobble = 0.18 + Math.random() * (0.36 + slashLevel * 0.035);
-  arrow.orbitDriftX = (Math.random() - 0.5) * (46 + slashLevel * 5);
-  arrow.orbitDriftY = (Math.random() - 0.5) * (38 + slashLevel * 4);
+  arrow.orbitStretch = 0.9 + Math.random() * 0.18;
+  arrow.orbitWobble = 0.035 + Math.random() * 0.075;
+  arrow.orbitDriftX = (Math.random() - 0.5) * 16;
+  arrow.orbitDriftY = (Math.random() - 0.5) * 12;
   arrow.splitGraceMs = SPLIT_ORBIT_MS + 120;
   arrow.boss = false;
   arrow.bossTier = 0;
@@ -343,7 +343,7 @@ function registerSlash(world: GameWorld, arrow: Arrow, boss = false): void {
 }
 
 function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
-  const count = 2 + Math.min(2, Math.floor(source.bossTier / 2)) + (Math.random() < 0.35 ? 1 : 0);
+  const count = source.bossTier >= 4 && Math.random() < .35 ? 3 : 2;
   const variants: Arrow["kind"][] = ["homing", "ricochet", "explosive", "fan"];
   const kind = variants[Math.floor(Math.random() * variants.length)];
   for (let i = 0; i < count; i++) {
@@ -505,7 +505,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       const direction = a.orbitDirection;
       const life = Math.max(0, Math.min(1, a.orbitMs / SPLIT_ORBIT_MS));
       const angularJitter = 1 + Math.sin(a.orbitAngle * 2.7 + a.orbitWobble * 9) * a.orbitWobble;
-      a.orbitAngle += direction * dtSec * (2.65 + a.splitLevel * 0.38) * angularJitter;
+      a.orbitAngle += direction * dtSec * (3.44 + a.splitLevel * 0.36) * angularJitter;
       const collapse = 0.48 + 0.52 * life;
       const wobbleX = Math.sin(a.orbitAngle * 3.1) * a.orbitRadius * a.orbitWobble;
       const wobbleY = Math.cos(a.orbitAngle * 2.35) * a.orbitRadius * a.orbitWobble;

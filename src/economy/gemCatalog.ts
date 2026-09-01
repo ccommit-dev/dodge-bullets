@@ -19,6 +19,7 @@ export type WeaponSkinDef = {
   /** 오라 발광 색 */
   aura: string;
   gemCost: number;
+  spriteIndex: 0 | 1 | 2;
 };
 
 export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
@@ -28,6 +29,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
     hue: 350,
     aura: "#f87171",
     gemCost: 450,
+    spriteIndex: 0,
   },
   "blade-glacier": {
     name: "빙하의 검",
@@ -35,6 +37,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
     hue: 195,
     aura: "#7dd3fc",
     gemCost: 450,
+    spriteIndex: 1,
   },
   "blade-solar": {
     name: "황금 성검",
@@ -42,6 +45,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
     hue: 46,
     aura: "#fcd34d",
     gemCost: 600,
+    spriteIndex: 2,
   },
 };
 
