@@ -1148,7 +1148,9 @@
   filter: saturate(1.25) brightness(1.18) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
   animation: pet-float 2.6s ease-in-out infinite alternate;
 }
-.titans-pet > * { transform: scale(0.42); transform-origin: center bottom; }
+/* MonsterArt는 --monster-size로 크기가 정해진다 — 스케일 대신 변수로 컨테이너를 채운다 */
+.titans-pet { --monster-size: 100%; }
+.titans-pet .titan-monster-art { filter: none; }
 @keyframes pet-float {
   from { transform: translateY(0); }
   to { transform: translateY(-7px); }
@@ -1186,7 +1188,8 @@
   overflow: hidden;
   filter: saturate(1.25) brightness(1.15);
 }
-.pet-figure > * { transform: scale(0.5); transform-origin: center center; }
+.pet-figure { --monster-size: 100%; }
+.pet-figure .titan-monster-art { filter: none; }
 .pet-chip.egg .pet-figure { filter: grayscale(1) brightness(0.5); }
 .pet-chip.hatched .pet-figure { cursor: pointer; animation: pet-float 2.6s ease-in-out infinite alternate; }
 .pet-feed {
@@ -1243,3 +1246,41 @@
 .journal-list { max-height: 46vh; overflow-y: auto; }
 .journal-list article.claimed { opacity: 0.55; }
 .journal-reward { display: block; margin-top: 2px; color: #fcd34d; font-size: 9px; }
+
+/* ─── 신규 콘텐츠 아이콘·모션 마감 ─── */
+.journal-event { text-align: center; }
+.journal-event .journal-list { text-align: left; }
+.journal-crest {
+  width: 62px;
+  height: 62px;
+  margin: 2px auto 0;
+  animation: journal-sway 3.4s ease-in-out infinite;
+}
+@keyframes journal-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg) translateY(-2px); }
+}
+.expedition-claim img,
+.expedition-progress img {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  vertical-align: -5px;
+}
+.expedition-progress {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 8px 0 0;
+  color: #7dd3fc;
+  font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titans-pet,
+  .pet-chip.hatched .pet-figure,
+  .expedition-claim,
+  .journal-crest {
+    animation: none;
+  }
+}

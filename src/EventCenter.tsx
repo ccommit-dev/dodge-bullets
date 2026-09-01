@@ -393,6 +393,7 @@ export function EventCenter({
 
         {tab === "journal" && (
           <section className="journal-event">
+            <img className="journal-crest" src={assetUrl("ui/idle/journal.svg")} alt="" aria-hidden="true" />
             <h3>원정 일지</h3>
             <p className="journal-note">
               시즌도 리셋도 없는 누적 기록입니다. 목표를 달성하면 언제든 받을 수 있습니다.

@@ -72,6 +72,7 @@ import {
   randomOwnedAlly,
 } from "./titans/allies";
 import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
+import { assetUrl } from "./asset";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
@@ -543,7 +544,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             (id) => (next.pets[id as TitanMonsterKind] ?? 0) > 0 && (characterRef.current.pets[id as TitanMonsterKind] ?? 0) <= 0,
           ) as TitanMonsterKind[];
           setCharacter(next);
-          if (born.length > 0) flash(`${PET_DEFS[born[0]].name} 부화! 마이페이지에서 확인하세요`);
+          if (born.length > 0) {
+            flash(`${PET_DEFS[born[0]].name} 부화! 마이페이지에서 확인하세요`);
+            // 필드 펫 자리(좌측)에서 황금 버스트 — 부화가 눈에 보이게
+            pushFx("crit", 15, 50, 45);
+            pushFx("warcry", 15, 50, 45);
+          }
         });
       }
 
@@ -1422,8 +1428,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </div>
             {expeditionsDone > 0 && (
               <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
+                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
                 파견 {expeditionsDone}건 귀환 — 보상 받기
               </button>
+            )}
+            {expeditionsDone === 0 && character.expeditions.length > 0 && (
+              <p className="expedition-progress">
+                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+                파견 {character.expeditions.length}팀 진행 중
+              </p>
             )}
           </article>
         )}
