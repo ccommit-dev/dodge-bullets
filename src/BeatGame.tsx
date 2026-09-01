@@ -108,7 +108,6 @@ export function BeatGame({
   const lastTsRef = useRef(0);
   const coinsRef = useRef(coins);
   coinsRef.current = coins;
-  const lastTapMs = useRef(0);
   const cosmeticsRef = useRef<BeatCosmetics | null>(null);
   const rpgRef = useRef<BeatRpgProgress | null>(null);
   const pendingClearRef = useRef(false);
@@ -135,7 +134,9 @@ export function BeatGame({
   const [difficultyChoice, setDifficultyChoice] = useState<DifficultyChoice>("normal");
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
-  const [partyAction, setPartyAction] = useState<"march" | "attack" | "guard" | "focus">("focus");
+  const [partyAction, setPartyAction] = useState<"idle" | "attack" | "guard" | "dodge" | "skill">("idle");
+  const [enemyAction, setEnemyAction] = useState<"idle" | "hit" | "attack" | "guard" | "stagger" | "skill">("idle");
+  const [materialGain, setMaterialGain] = useState(0);
   const [beatEnemyHp, setBeatEnemyHp] = useState(100);
   const [beatEnemyMaxHp, setBeatEnemyMaxHp] = useState(100);
   const [dropCharge, setDropCharge] = useState(0);
@@ -144,11 +145,13 @@ export function BeatGame({
   const [feverMultiplier, setFeverMultiplier] = useState<1 | 2 | 3 | 5>(1);
   const [feverRemainSec, setFeverRemainSec] = useState(0);
   const beatEnemyHpRef = useRef(100);
+  const materialGainRef = useRef(0);
   const dropChargeRef = useRef(0);
   const dropCountRef = useRef(0);
   const upgradeRoundRef = useRef(0);
   const raidBuffRef = useRef({ kick: 0, allies: 0, drop: 0 });
   const lastRaidTapRef = useRef({ lane: -1, at: 0 });
+  const laneHoldTimersRef = useRef<Partial<Record<NoteLane, number>>>({});
   const slots = buildStageSlots("lesson");
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
@@ -159,9 +162,15 @@ export function BeatGame({
     performBeatLane(session, lane);
     const world = session.world;
     const success = world.judgeText !== "MISS";
-    const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "march" : "focus";
+    const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "dodge" : "skill";
     setPartyAction(action);
-    if (!success) return;
+    if (!success) {
+      setEnemyAction("skill");
+      window.setTimeout(() => setEnemyAction("idle"), 420);
+      return;
+    }
+    setEnemyAction(lane === 0 ? (world.judgeText === "PERFECT" ? "hit" : "guard") : lane === 1 || lane === 2 ? "attack" : "stagger");
+    window.setTimeout(() => setEnemyAction("idle"), lane === 3 ? 620 : 390);
 
     setInstrumentLayers((current) => {
       const next = [...current] as [number, number, number, number];
@@ -171,7 +180,7 @@ export function BeatGame({
     const gain = world.judgeText === "PERFECT" ? 5 : world.judgeText === "GREAT" ? 3 : 2;
     dropChargeRef.current = Math.min(100, dropChargeRef.current + gain);
     const buff = lane === 0 ? raidBuffRef.current.kick : lane === 3 ? raidBuffRef.current.drop : raidBuffRef.current.allies;
-    let damage = [12, 16, 9, 20][lane] + buff * 7 + Math.floor(world.combo * .8);
+    let damage = [14, 7, 6, 25][lane] + buff * 7 + Math.floor(world.combo * .8);
     const now = performance.now();
     if (lastRaidTapRef.current.lane >= 0 && lastRaidTapRef.current.lane !== lane && now - lastRaidTapRef.current.at <= 120) {
       damage += 24;
@@ -180,10 +189,34 @@ export function BeatGame({
     }
     lastRaidTapRef.current = { lane, at: now };
     setDropCharge(dropChargeRef.current);
+    const materialDrop = (world.judgeText === "PERFECT" && Math.random() < .16) || (world.combo > 0 && world.combo % 12 === 0);
+    if (materialDrop) {
+      materialGainRef.current += lane === 3 ? 2 : 1;
+      setMaterialGain(materialGainRef.current);
+    }
     beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
     setBeatEnemyHp(beatEnemyHpRef.current);
     if (beatEnemyHpRef.current === 0) world.elapsedMs = world.durationMs;
   }, []);
+
+  const stopLaneHold = useCallback((lane?: NoteLane) => {
+    const lanes: NoteLane[] = lane === undefined ? [0,1,2,3] : [lane];
+    lanes.forEach((target) => {
+      const timer = laneHoldTimersRef.current[target];
+      if (timer !== undefined) window.clearInterval(timer);
+      delete laneHoldTimersRef.current[target];
+    });
+  }, []);
+
+  const startLaneHold = useCallback((lane: NoteLane) => {
+    if (laneHoldTimersRef.current[lane] !== undefined) return;
+    playRaidLane(lane);
+    const cadence = Math.max(72, (sessionRef.current?.world.stepSec ?? .12) * 1000);
+    laneHoldTimersRef.current[lane] = window.setInterval(() => {
+      if (uiRef.current !== "playing") return stopLaneHold(lane);
+      playRaidLane(lane);
+    }, cadence);
+  }, [playRaidLane, stopLaneHold]);
 
   const activateFever = useCallback(() => {
     const session = sessionRef.current;
@@ -200,6 +233,9 @@ export function BeatGame({
     setFeverRemainSec(Math.ceil(durationMs / 1000));
     dropCountRef.current += 1;
     setDropFlash((value) => value + 1);
+    setPartyAction("skill");
+    setEnemyAction("stagger");
+    window.setTimeout(() => setEnemyAction("idle"), 900);
     session.world.zoomPulse = 1;
     session.world.beatPulse = 1;
     session.world.shakeMs = 220;
@@ -259,21 +295,17 @@ export function BeatGame({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const fireTap = (lane: NoteLane) => {
-      if (uiRef.current !== "playing" || !sessionRef.current) return;
-      const now = performance.now();
-      if (now - lastTapMs.current < 40) return;
-      lastTapMs.current = now;
-      playRaidLane(lane);
-    };
-
     const onKeyDown = (e: KeyboardEvent) => {
       if (uiRef.current !== "playing" || !sessionRef.current) return;
       if (e.repeat) return;
       const lane = KEY_LANE[e.code];
       if (lane === undefined) return;
-      fireTap(lane);
+      startLaneHold(lane);
       e.preventDefault();
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      const lane = KEY_LANE[e.code];
+      if (lane !== undefined) stopLaneHold(lane);
     };
 
     // Tap position picks one of the four instrument lanes.
@@ -283,12 +315,13 @@ export function BeatGame({
       canvas.setPointerCapture(e.pointerId);
       const rect = canvas.getBoundingClientRect();
       const ratio = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0.5;
-      if (ratio < 0.25) fireTap(0);
-      else if (ratio < 0.5) fireTap(1);
-      else if (ratio < 0.75) fireTap(2);
-      else fireTap(3);
+      if (ratio < 0.25) startLaneHold(0);
+      else if (ratio < 0.5) startLaneHold(1);
+      else if (ratio < 0.75) startLaneHold(2);
+      else startLaneHold(3);
       e.preventDefault();
     };
+    const onPointerUp = () => stopLaneHold();
 
     // Hidden tabs stop requestAnimationFrame while the AudioContext keeps
     // ticking, so freeze the audio clock too and re-sync the frame delta.
@@ -305,7 +338,10 @@ export function BeatGame({
     };
 
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     canvas.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     document.addEventListener("visibilitychange", onVisibility);
 
     const loop = (ts: number) => {
@@ -417,6 +453,7 @@ export function BeatGame({
                     beatSkills: { ...grown.skills },
                     skillPoints: Math.max(current.skillPoints, grown.sp),
                     shoulderShards: current.shoulderShards + (firstBossClear && !alreadyOwned ? 0 : fragmentGain),
+                    enhancementMaterials: current.enhancementMaterials + materialGainRef.current,
                     ownedShoulders: craftedNow ? [...current.ownedShoulders, chapterShoulder] : current.ownedShoulders,
                     claimedRewards: firstBossClear ? [...current.claimedRewards, clearKey] : current.claimedRewards,
                     lastContent: "beat",
@@ -449,14 +486,18 @@ export function BeatGame({
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+      stopLaneHold();
       document.removeEventListener("visibilitychange", onVisibility);
       if (sessionRef.current) {
         disposeBeatSession(sessionRef.current);
         sessionRef.current = null;
       }
     };
-  }, [difficultyChoice, onCoins, playRaidLane, shoulderBlueprint, syncUi, userHash]);
+  }, [difficultyChoice, onCoins, playRaidLane, shoulderBlueprint, startLaneHold, stopLaneHold, syncUi, userHash]);
 
   const startSlot = async (slot: PracticeSlot) => {
     if (!slot.track || !rpgRef.current) return;
@@ -515,7 +556,10 @@ export function BeatGame({
     beatEnemyHpRef.current = enemyMax;
     setBeatEnemyHp(enemyMax);
     setBeatEnemyMaxHp(enemyMax);
-    setPartyAction("focus");
+    setPartyAction("idle");
+    setEnemyAction("idle");
+    setMaterialGain(0);
+    materialGainRef.current = 0;
     setDropCharge(0);
     dropChargeRef.current = 0;
     dropCountRef.current = 0;
@@ -609,14 +653,14 @@ export function BeatGame({
 
       {ui === "playing" && (
         <>
-          <div key={dropFlash} className={`beat-command-party action-${partyAction} ${dropFlash > 0 ? "drop-burst" : ""} ${feverMultiplier > 1 ? `fever-x${feverMultiplier}` : ""}`} aria-live="polite">
+          <div key={dropFlash} className={`beat-command-party action-${partyAction} enemy-${enemyAction} ${dropFlash > 0 ? "drop-burst" : ""} ${feverMultiplier > 1 ? `fever-x${feverMultiplier}` : ""}`} aria-live="polite">
             <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
-            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "guard" ? score : 0}/><AllyArt id="leon" attacking pulse={partyAction === "march" ? score : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="레이드 몬스터" /></div>
+            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash + 1 : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="레이드 몬스터" />{materialGain > 0 && <b className="beat-material-drop">강화석 +{materialGain}</b>}</div>
             <div className="beat-fever">
               <i style={{width:`${feverMultiplier > 1 ? feverRemainSec / (feverMultiplier === 5 ? 6 : feverMultiplier === 3 ? 7 : 8) * 100 : dropCharge}%`}}/>
               <span>{feverMultiplier > 1 ? `FEVER ×${feverMultiplier} · ${feverRemainSec}s` : `FEVER ${dropCharge}% · ${dropCharge >= 100 ? "×5" : dropCharge >= 65 ? "×3" : dropCharge >= 35 ? "×2 사용 가능" : "정확한 노트로 충전"}`}</span>
             </div>
-            <div className="beat-layer-mixer">{["KICK 검격","SNARE 근접","HAT 원거리","BASS 궁극기"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
+            <div className="beat-layer-mixer">{["KICK 공격","SNARE 방어","HAT 회피","BASS 스킬"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
           </div>
           <button
             type="button"
@@ -667,8 +711,10 @@ export function BeatGame({
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (sessionRef.current) playRaidLane(direction.lane);
+                  if (sessionRef.current) startLaneHold(direction.lane);
                 }}
+                onPointerUp={() => stopLaneHold(direction.lane)}
+                onPointerCancel={() => stopLaneHold(direction.lane)}
               >
                 <span>{direction.symbol}</span>
                 <small>{["KICK","SNARE","HAT","BASS"][direction.lane]} · {direction.key}</small>

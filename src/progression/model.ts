@@ -124,8 +124,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     equippedWeaponLevel: 0,
     bestForgeLevel: 0,
     reforgeRank: 0,
-    equippedShoulder: null,
-    ownedShoulders: [],
+    equippedShoulder: "scout",
+    ownedShoulders: ["scout"],
     shoulderShards: 0,
     pioneeredArea: 1,
     dodgeBestStage: 1,
@@ -276,9 +276,10 @@ export function normalizeCharacterProgress(
   const content = raw.lastContent;
   const evolutionPaths: EvolutionPath[] = ["novice", "swordmaster", "guardian", "arcane"];
   const shoulderIds: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
-  const ownedShoulders = Array.isArray(raw.ownedShoulders)
+  const storedShoulders = Array.isArray(raw.ownedShoulders)
     ? raw.ownedShoulders.filter((id): id is ShoulderId => shoulderIds.includes(id as ShoulderId))
     : [];
+  const ownedShoulders = storedShoulders.length > 0 ? storedShoulders : ["scout" as ShoulderId];
   const equippedShoulder = shoulderIds.includes(raw.equippedShoulder as ShoulderId)
     ? (raw.equippedShoulder as ShoulderId)
     : null;
@@ -292,7 +293,7 @@ export function normalizeCharacterProgress(
     equippedWeaponLevel: integer(raw.equippedWeaponLevel, base.equippedWeaponLevel, 9999),
     bestForgeLevel: integer(raw.bestForgeLevel, base.bestForgeLevel, 15),
     reforgeRank: integer(raw.reforgeRank, 0, 999),
-    equippedShoulder: equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : null,
+    equippedShoulder: equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : "scout",
     ownedShoulders: [...new Set(ownedShoulders)],
     shoulderShards: integer(raw.shoulderShards, 0),
     pioneeredArea: pioneeredAreaOf(raw),

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { assetUrl } from "../asset";
 import { tierAt } from "../forge/model";
 import { SwordArt } from "../forge/swords";
 import { WEAPON_SKINS } from "../economy/gemCatalog";
@@ -19,9 +20,7 @@ type Props = {
   weaponSkin?: string;
 };
 
-const shoulderColor: Record<ShoulderId, string> = {
-  scout: "#94a3b8", shadow: "#7c3aed", ogre: "#b45309", dragon: "#ef4444",
-};
+const shoulderIndex: Record<ShoulderId, number> = { scout: 0, shadow: 1, ogre: 2, dragon: 3 };
 
 export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "" }: Props) {
   const index = Math.max(0, Math.min(3, frame));
@@ -41,15 +40,15 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = nul
   };
   return (
     <div className={`equipped-character mode-${mode} evolution-${evolution} ${className}`}>
-      {shoulder && <i className="equipment-shoulder back" style={{ ...part(anchor.shoulderRight), "--part-color": shoulderColor[shoulder] } as CSSProperties} />}
+      {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} back`} style={{ ...part(anchor.shoulderRight), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
       <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundPosition: `${(index / 3) * 100}% 0` }} />
-      {shoulder && <i className="equipment-shoulder front" style={{ ...part(anchor.shoulderLeft), "--part-color": shoulderColor[shoulder] } as CSSProperties} />}
+      {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} front`} style={{ ...part(anchor.shoulderLeft), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
       {weaponLevel > 0 && (
         <div
           className={`equipment-weapon ${blade ? "has-blade-skin" : ""}`}
           style={blade ? { ...weaponPart, "--blade-aura": blade.aura } as CSSProperties : weaponPart}
         >
-          <SwordArt level={Math.min(15, weaponLevel)} hue={blade?.hue ?? tier.hue} name={blade?.name ?? tier.name} />
+          {blade ? <i className="premium-weapon-part" style={{ backgroundImage:`url(${assetUrl("titans/equipment/weapons/premium-weapon-sheet.png")})`, backgroundPosition:`${blade.spriteIndex / 2 * 100}% center` }} /> : <SwordArt level={Math.min(15, weaponLevel)} hue={tier.hue} name={tier.name} />}
         </div>
       )}
     </div>
