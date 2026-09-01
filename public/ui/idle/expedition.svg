@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="파견">
+  <defs>
+    <linearGradient id="exTent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+    <radialGradient id="exGlow" cx="0.5" cy="0.55" r="0.55">
+      <stop offset="0.5" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="31" fill="url(#exGlow)"/>
+  <!-- 야영 텐트 -->
+  <path d="M12 47L30 20l18 27z" fill="url(#exTent)"/>
+  <path d="M30 20l18 27h-9L30 30z" fill="#0c4a6e" opacity="0.55"/>
+  <path d="M26 47l4-9 4 9z" fill="#082f49"/>
+  <path d="M12 47h36" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+  <!-- 깃대와 깃발 -->
+  <path d="M46 40V12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M46 12h11l-3.4 4 3.4 4H46z" fill="#f59e0b"/>
+  <!-- 달과 별 (장시간 원정) -->
+  <path d="M17 16a6 6 0 1 0 6 8 7 7 0 0 1-6-8z" fill="#fde68a" opacity="0.9"/>
+  <circle cx="27" cy="12" r="1.2" fill="#e0f2fe" opacity="0.8"/>
+  <circle cx="38" cy="9" r="1" fill="#e0f2fe" opacity="0.6"/>
+</svg>

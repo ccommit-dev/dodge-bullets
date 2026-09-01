@@ -65,7 +65,13 @@ export function MonsterArt({
   boss: boolean;
   golden?: boolean;
 }) {
-  const asset = golden ? assetUrl("titans/generated/monsters/golden-lion-clean.png") : boss ? (BOSS_ASSET[area.id] ?? BOSS_ASSET.abyss) : MONSTER_ASSET[kind as Exclude<TitanMonsterKind, "boss">];
+  // kind "boss"인데 boss=false는 펫(타이탄의 그림자) 렌더다 — 심연 타이탄 아트로 고정한다.
+  // MONSTER_ASSET에는 boss 키가 없어 그대로 두면 src가 undefined로 깨진다.
+  const asset = golden
+    ? assetUrl("titans/generated/monsters/golden-lion-clean.png")
+    : boss || kind === "boss"
+      ? (boss ? (BOSS_ASSET[area.id] ?? BOSS_ASSET.abyss) : BOSS_ASSET.abyss)
+      : MONSTER_ASSET[kind as Exclude<TitanMonsterKind, "boss">];
   return (
     <div key={asset} className="titan-monster-art"><img src={asset} alt="" /></div>
   );
