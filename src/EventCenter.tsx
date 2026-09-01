@@ -7,10 +7,12 @@ import { resolveShadow, shadowOpponents, weekKey, type ShadowOpponent } from "./
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
 import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
+import { weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
+import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
 import { sfxRiftClaim } from "./ui/sfx";
 
-type EventTab = "daily" | "rift" | "weekly";
+type EventTab = "daily" | "rift" | "weekly" | "journal";
 
 type EventSave = {
   date: string;
@@ -162,27 +164,58 @@ export function EventCenter({
   const enterRift = async () => {
     if (save.riftAttempts >= RIFT_ATTEMPTS) return;
     sfxRiftClaim();
-    // 균열 보상에 동료 조각 +2 (LIVEOPS §2.2) — 일일 던전에 수집 목적성 부여
+    // 요일 균열(CRUMBLE_GAP §5) — 요일마다 다른 축의 보상이 증폭된다
+    const rift = weekdayRift();
+    const gold = Math.floor(riftYield.gold * rift.goldMult);
+    const materials = Math.floor(riftYield.materials * rift.matMult);
     const titans = await loadTitansSave(userHash);
     const nextProgress = await updateCharacterProgress(userHash, (current) => {
       const shards = { ...current.allyShards };
-      for (let i = 0; i < 2; i += 1) {
+      for (let i = 0; i < rift.shards; i += 1) {
         const target = randomOwnedAlly(titans.heroes);
         shards[target] = (shards[target] ?? 0) + 1;
       }
       return {
         ...current,
-        sharedCoins: current.sharedCoins + riftYield.gold,
+        sharedCoins: current.sharedCoins + gold,
         exp: current.exp + riftYield.exp,
-        enhancementMaterials: current.enhancementMaterials + riftYield.materials,
+        enhancementMaterials: current.enhancementMaterials + materials,
         allyShards: shards,
       };
     });
     onUpdated(nextProgress);
     setRiftMessage(
-      `공유 골드 +${formatGold(riftYield.gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${riftYield.materials} · 동료 조각 +2`,
+      `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${rift.shards}`,
     );
     await persist({ ...save, riftAttempts: save.riftAttempts + 1 });
+  };
+
+  const claimJournal = async (entryId: string) => {
+    const entry = JOURNAL_ENTRIES.find((e) => e.id === entryId);
+    if (!entry || progress.journalClaimed.includes(entryId)) return;
+    const { current, goal } = entry.progressOf(progress);
+    if (current < goal) return;
+    const titans = await loadTitansSave(userHash);
+    const nextProgress = await updateCharacterProgress(userHash, (p) => {
+      if (p.journalClaimed.includes(entryId)) return p;
+      const next = { ...p, journalClaimed: [...p.journalClaimed, entryId] };
+      const reward = entry.reward;
+      if (reward.kind === "gems") next.redGems = p.redGems + reward.amount;
+      if (reward.kind === "materials") next.enhancementMaterials = p.enhancementMaterials + reward.amount;
+      if (reward.kind === "shards") {
+        const shards = { ...p.allyShards };
+        for (let i = 0; i < reward.amount; i += 1) {
+          const target = randomOwnedAlly(titans.heroes);
+          shards[target] = (shards[target] ?? 0) + 1;
+        }
+        next.allyShards = shards;
+      }
+      if (reward.kind === "boost") {
+        next.idleBoostUntil = Math.max(p.idleBoostUntil, Date.now()) + reward.hours * 3600 * 1000;
+      }
+      return next;
+    });
+    onUpdated(nextProgress);
   };
 
   const challengeShadow = async (opponent: ShadowOpponent) => {
@@ -232,9 +265,15 @@ export function EventCenter({
         <p className="brand">ADVENTURE EVENT</p>
         <h2 className="exit-title">모험가 이벤트</h2>
         <div className="event-tabs">
-          {(["daily", "rift", "weekly"] as EventTab[]).map((id) => (
+          {(["daily", "rift", "weekly", "journal"] as EventTab[]).map((id) => (
             <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
-              {id === "daily" ? "오늘의 토벌령" : id === "rift" ? "차원 균열" : "주간 랭크 시험"}
+              {id === "daily"
+                ? "토벌령"
+                : id === "rift"
+                  ? "차원 균열"
+                  : id === "weekly"
+                    ? "랭크 시험"
+                    : "원정 일지"}
             </button>
           ))}
         </div>
@@ -270,16 +309,25 @@ export function EventCenter({
         {tab === "rift" && (
           <section className="rift-event">
             <img className="rift-crest" src={assetUrl("ui/idle/rift.svg")} alt="" aria-hidden="true" />
-            <h3>심연의 균열</h3>
+            <h3>
+              {weekdayRift().name} <small className="rift-day-desc">오늘은 {weekdayRift().desc}</small>
+            </h3>
             <p>
               균열 하나가 <b>방치 {formatDuration(RIFT_SECONDS)}</b>을 즉시 정산합니다.
               <br />
               현재 효율 {(riftYield.rate * 100).toFixed(0)}% · 배율 ×{riftYield.multiplier.toFixed(2)} 기준
             </p>
+            <div className="rift-week" aria-label="요일 균열 일정">
+              {weekdayRiftSchedule().map((slot) => (
+                <span key={slot.day} className={slot.today ? "today" : ""} title={`${slot.rift.name} · ${slot.rift.desc}`}>
+                  {slot.day}
+                </span>
+              ))}
+            </div>
             <div className="rift-preview">
               <div>
                 <span>공유 골드</span>
-                <strong>{formatGold(riftYield.gold)}</strong>
+                <strong>{formatGold(Math.floor(riftYield.gold * weekdayRift().goldMult))}</strong>
               </div>
               <div>
                 <span>경험치</span>
@@ -287,7 +335,11 @@ export function EventCenter({
               </div>
               <div>
                 <span>강화석</span>
-                <strong>{riftYield.materials}</strong>
+                <strong>{Math.floor(riftYield.materials * weekdayRift().matMult)}</strong>
+              </div>
+              <div>
+                <span>동료 조각</span>
+                <strong>{weekdayRift().shards}</strong>
               </div>
             </div>
             {riftMessage && <p className="shop-toast">{riftMessage}</p>}
@@ -331,6 +383,39 @@ export function EventCenter({
                     </div>
                     <button disabled={cleared} onClick={() => void challengeShadow(opponent)}>
                       {cleared ? "돌파" : "도전"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {tab === "journal" && (
+          <section className="journal-event">
+            <h3>원정 일지</h3>
+            <p className="journal-note">
+              시즌도 리셋도 없는 누적 기록입니다. 목표를 달성하면 언제든 받을 수 있습니다.
+            </p>
+            <div className="event-list journal-list">
+              {JOURNAL_ENTRIES.map((entry) => {
+                const { current, goal } = entry.progressOf(progress);
+                const done = current >= goal;
+                const claimed = progress.journalClaimed.includes(entry.id);
+                return (
+                  <article key={entry.id} className={claimed ? "claimed" : ""}>
+                    <div>
+                      <b>{entry.title}</b>
+                      <span>
+                        {entry.desc} · {Math.min(goal, current).toLocaleString()} / {goal.toLocaleString()}
+                      </span>
+                      <i>
+                        <em style={{ width: `${Math.min(100, (current / goal) * 100)}%` }} />
+                      </i>
+                      <small className="journal-reward">{journalRewardLabel(entry.reward)}</small>
+                    </div>
+                    <button disabled={!done || claimed} onClick={() => void claimJournal(entry.id)}>
+                      {claimed ? "완료" : done ? "받기" : "진행중"}
                     </button>
                   </article>
                 );

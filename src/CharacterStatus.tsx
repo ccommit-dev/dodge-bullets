@@ -30,6 +30,16 @@ import {
 } from "./progression/idle";
 import { HUNTING_AREAS } from "./titans/model";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
+import {
+  PET_DEFS,
+  PET_HATCH_KILLS,
+  PET_IDS,
+  petEffect,
+  petFeedCost,
+  type PetId,
+} from "./titans/pets";
+import { starMilestoneMultiplier, starMilestoneNext, totalStars } from "./progression/collection";
+import { MonsterArt } from "./titans/SpriteArt";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
@@ -134,6 +144,35 @@ export function CharacterStatus({
     setGrowthMessage("진화 계통이 적용되었습니다.");
   };
 
+  /** 펫 장착/해제 (§1) — 액티브 패시브는 1마리만 */
+  const equipPet = async (id: PetId) => {
+    if ((progress.pets[id] ?? 0) <= 0) return;
+    const next = await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      activePet: current.activePet === id ? "" : id,
+    }));
+    onProgressChange(next);
+  };
+
+  /** 간식 주기 — 강화석을 소비해 펫 레벨을 올린다 */
+  const feedPet = async (id: PetId) => {
+    const level = progress.pets[id] ?? 0;
+    const cost = petFeedCost(level);
+    if (level <= 0 || cost === null || progress.enhancementMaterials < cost) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const cur = current.pets[id] ?? 0;
+      const need = petFeedCost(cur);
+      if (cur <= 0 || need === null || current.enhancementMaterials < need) return current;
+      return {
+        ...current,
+        enhancementMaterials: current.enhancementMaterials - need,
+        pets: { ...current.pets, [id]: cur + 1 },
+      };
+    });
+    onProgressChange(next);
+    setGrowthMessage(`${PET_DEFS[id].name} Lv.${next.pets[id]} — ${PET_DEFS[id].desc} 강화`);
+  };
+
   const rebirth = async () => {
     if (!canRebirth) {
       setGrowthMessage(`${REBIRTH_WALL_AREAS}개 지역에서 한계(DPS 벽)에 도달하면 환생할 수 있습니다. (현재 ${progress.wallAreas.length})`);
@@ -155,6 +194,9 @@ export function CharacterStatus({
       evolutionPoints: current.evolutionPoints + 1,
       // 벽 기록은 소모 — 다음 환생도 다시 3개 지역의 벽을 봐야 한다
       wallAreas: [],
+      // 동료 레벨이 리셋되므로 편성·파견도 비운다 (partyCap 하한과 펫은 보존)
+      partyIds: [],
+      expeditions: [],
       // 복귀 버프: 24시간 방치 산출 2배 (P1 따라잡기와 함께 재등반을 가속)
       idleBoostUntil: Date.now() + 24 * 3600 * 1000,
       claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
@@ -300,6 +342,71 @@ export function CharacterStatus({
             );
           })}
         </div>
+
+        <div className="legacy-heading">
+          <div><small>PETS</small><strong>도감의 아이들</strong></div>
+          <span>{PET_IDS.filter((id) => (progress.pets[id] ?? 0) > 0).length}/{PET_IDS.length} 부화</span>
+        </div>
+        <p className="pet-note">
+          몬스터 {PET_HATCH_KILLS.toLocaleString()}마리 처치(도감 최종 단계)마다 아기 버전이 부화합니다.
+          부화만으로 전투력 +30, 장착한 1마리의 패시브가 추가로 적용됩니다.
+        </p>
+        <div className="pet-grid">
+          {PET_IDS.map((id) => {
+            const def = PET_DEFS[id];
+            const level = progress.pets[id] ?? 0;
+            const hatched = level > 0;
+            const kills = progress.monsterKills[id] ?? 0;
+            const cost = petFeedCost(level);
+            const value = petEffect(id, level);
+            const effectLabel =
+              def.unit === "%"
+                ? `+${Math.round(value * 100)}%`
+                : def.unit === "초"
+                  ? `+${value.toFixed(1)}초`
+                  : def.unit === "시간"
+                    ? `+${value.toFixed(1)}h`
+                    : `+${value.toFixed(2)}`;
+            const active = progress.activePet === id;
+            return (
+              <div key={id} className={`pet-chip ${hatched ? "hatched" : "egg"} ${active ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className="pet-figure"
+                  disabled={!hatched}
+                  onClick={() => void equipPet(id)}
+                  title={hatched ? (active ? "장착 해제" : "장착") : `${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치`}
+                >
+                  <MonsterArt kind={id} area={HUNTING_AREAS[0]} boss={false} golden={false} />
+                </button>
+                <b>{hatched ? def.name : "???"}</b>
+                {hatched ? (
+                  <>
+                    <span>Lv.{level} · {def.desc} {effectLabel}</span>
+                    <small>{active ? "장착 중" : "탭하여 장착"}</small>
+                    <button
+                      type="button"
+                      className="pet-feed"
+                      disabled={cost === null || progress.enhancementMaterials < cost}
+                      onClick={() => void feedPet(id)}
+                    >
+                      {cost === null ? "MAX" : `간식 (강화석 ${cost})`}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span>{kills.toLocaleString()} / {PET_HATCH_KILLS.toLocaleString()} 처치</span>
+                    <i className="pet-hatch-bar"><em style={{ width: `${Math.min(100, (kills / PET_HATCH_KILLS) * 100)}%` }} /></i>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="collection-summary">
+          성급 도감 ★{totalStars(progress)} 합계 · 방치 배율 +{starMilestoneMultiplier(progress).toFixed(2)} 영구
+          {starMilestoneNext(progress) !== null && ` · 다음 마일스톤 ★${starMilestoneNext(progress)}`}
+        </p>
 
         <div className="legacy-heading"><div><small>COLLECTION</small><strong>모험 배지</strong></div><span>{earnedBadges.length}/{BADGES.length}</span></div>
         <div className="badge-grid">

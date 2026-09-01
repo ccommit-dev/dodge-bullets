@@ -1059,3 +1059,187 @@
     transform: none;
   }
 }
+
+/* ─── 원정대 편성 + 시너지 (CRUMBLE_GAP §2) ─── */
+.party-panel { display: block !important; }
+.party-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.party-panel-head strong { color: #e2e8f0; font-size: 12.5px; }
+.party-panel-head small { color: #94a3b8; font-size: 9.5px; }
+.party-synergies { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.synergy-chip {
+  padding: 3px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  color: rgba(148, 163, 184, 0.6);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.synergy-chip.on {
+  border-color: rgba(52, 211, 153, 0.55);
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+}
+.role-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  border-radius: 6px;
+  color: #7dd3fc;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.ally-card.in-party { border-color: rgba(52, 211, 153, 0.4); }
+.ally-card.on-expedition { opacity: 0.72; }
+.ally-party-toggle {
+  border: 1px solid rgba(52, 211, 153, 0.5) !important;
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  font-size: 10.5px;
+}
+.ally-party-toggle.benched-action {
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  color: #94a3b8 !important;
+  background: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* ─── 파견 (CRUMBLE_GAP §3) ─── */
+.expedition-claim {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(252, 211, 77, 0.55) !important;
+  border-radius: 10px;
+  color: #fcd34d !important;
+  background: rgba(180, 130, 20, 0.15) !important;
+  font-size: 11px;
+  font-weight: 800;
+  animation: expedition-glow 1.6s ease-in-out infinite alternate;
+}
+@keyframes expedition-glow {
+  from { box-shadow: 0 0 0 rgba(252, 211, 77, 0); }
+  to { box-shadow: 0 0 12px rgba(252, 211, 77, 0.35); }
+}
+.ally-expedition-status { color: #fbbf24; font-size: 9px; text-align: center; }
+.ally-expedition-send { display: flex; gap: 3px; }
+.ally-expedition-send button {
+  flex: 1;
+  padding: 3px 0 !important;
+  border: 1px solid rgba(125, 211, 252, 0.35) !important;
+  border-radius: 7px;
+  color: #7dd3fc !important;
+  background: rgba(14, 30, 51, 0.6) !important;
+  font-size: 9px;
+}
+
+/* ─── 펫 「도감의 아이들」 (CRUMBLE_GAP §1) ─── */
+.titans-pet {
+  position: absolute;
+  left: 13%;
+  top: 46%;
+  width: 44px;
+  height: 44px;
+  z-index: 3;
+  pointer-events: none;
+  /* 아기 버전: 몬스터 아트를 축소하고 밝고 순하게 순화한다 */
+  filter: saturate(1.25) brightness(1.18) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+  animation: pet-float 2.6s ease-in-out infinite alternate;
+}
+.titans-pet > * { transform: scale(0.42); transform-origin: center bottom; }
+@keyframes pet-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-7px); }
+}
+.pet-note { margin: 6px 0 8px; color: #94a3b8; font-size: 10px; line-height: 1.5; }
+.pet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0 0 10px; }
+.pet-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: rgba(10, 18, 33, 0.6);
+  text-align: center;
+}
+.pet-chip.hatched { border-color: rgba(52, 211, 153, 0.35); }
+.pet-chip.active {
+  border-color: rgba(252, 211, 77, 0.6);
+  background: rgba(60, 45, 12, 0.35);
+  box-shadow: 0 0 10px rgba(252, 211, 77, 0.18);
+}
+.pet-chip b { color: #e2e8f0; font-size: 10.5px; }
+.pet-chip span { color: #94a3b8; font-size: 9px; }
+.pet-chip small { color: #64748b; font-size: 8.5px; }
+.pet-chip.active small { color: #fcd34d; }
+.pet-figure {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: hidden;
+  filter: saturate(1.25) brightness(1.15);
+}
+.pet-figure > * { transform: scale(0.5); transform-origin: center center; }
+.pet-chip.egg .pet-figure { filter: grayscale(1) brightness(0.5); }
+.pet-chip.hatched .pet-figure { cursor: pointer; animation: pet-float 2.6s ease-in-out infinite alternate; }
+.pet-feed {
+  margin-top: 2px;
+  padding: 3px 9px;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 8px;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.1);
+  font-size: 9px;
+  font-weight: 700;
+}
+.pet-feed:disabled { opacity: 0.4; }
+.pet-hatch-bar {
+  width: 90%;
+  height: 4px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.15);
+  overflow: hidden;
+}
+.pet-hatch-bar em { display: block; height: 100%; background: linear-gradient(90deg, #38bdf8, #34d399); }
+.collection-summary {
+  margin: 0 0 14px;
+  padding: 7px 10px;
+  border: 1px solid rgba(196, 181, 253, 0.3);
+  border-radius: 10px;
+  color: #c4b5fd;
+  background: rgba(76, 29, 149, 0.12);
+  font-size: 10px;
+}
+
+/* ─── 요일 균열 (CRUMBLE_GAP §5) ─── */
+.rift-day-desc { margin-left: 6px; color: #7dd3fc; font-size: 10px; font-weight: 700; }
+.rift-week { display: flex; justify-content: center; gap: 5px; margin: 6px 0 2px; }
+.rift-week span {
+  width: 24px;
+  padding: 3px 0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 7px;
+  color: #94a3b8;
+  font-size: 9.5px;
+  text-align: center;
+}
+.rift-week span.today {
+  border-color: rgba(125, 211, 252, 0.6);
+  color: #7dd3fc;
+  background: rgba(14, 116, 178, 0.2);
+  font-weight: 800;
+}
+
+/* ─── 원정 일지 (CRUMBLE_GAP §6) ─── */
+.journal-event h3 { margin: 4px 0 2px; color: #e2e8f0; font-size: 14px; }
+.journal-note { margin: 0 0 8px; color: #94a3b8; font-size: 10px; }
+.journal-list { max-height: 46vh; overflow-y: auto; }
+.journal-list article.claimed { opacity: 0.55; }
+.journal-reward { display: block; margin-top: 2px; color: #fcd34d; font-size: 9px; }
