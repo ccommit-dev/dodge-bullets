@@ -27,7 +27,17 @@ const frameW = Math.floor(meta.width / FRAMES);
 async function frame(index, insetL = 0, insetR = 0) {
   const left = Math.round(index * frameW + frameW * insetL);
   const width = Math.round(frameW * (1 - insetL - insetR));
-  return sharp(SHEET).extract({ left, top: 0, width, height: meta.height });
+  const cut = await sharp(SHEET)
+    .extract({ left, top: 0, width, height: meta.height })
+    .png()
+    .toBuffer();
+  // 잘라낸 만큼 투명 패딩으로 복원 — 프레임 폭이 로스터와 같아야
+  // stretch 렌더 배율이 원본과 일치해 무기 앵커가 어긋나지 않는다
+  return sharp(cut).extend({
+    left: frameW - width - Math.round(frameW * insetR) > 0 ? Math.round(frameW * insetL) : 0,
+    right: Math.round(frameW * insetR),
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  });
 }
 
 // 흑화 미아 — mia(프레임 0)를 심연 보라 tint + 저휘도로

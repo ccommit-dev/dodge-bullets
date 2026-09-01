@@ -35,13 +35,20 @@ const allyIndex: Record<TitanHeroId, number> = {
   sera_light: 9,
 };
 
-/** 상점 전용 동료 — 6인 로스터 시트에 없어 개별 이미지를 쓴다. */
-const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
-  luna: assetUrl("titans/generated/allies/luna.png"),
-  volt: assetUrl("titans/generated/allies/volt.png"),
+/**
+ * 상점 전용 동료 — 6인 로스터 시트에 없어 개별 이미지를 쓴다.
+ *
+ * fit이 중요하다: 로스터는 backgroundSize 600%×100%로 셀을 정사각 박스에
+ * "가로 스트레치"해 그린다. 로스터에서 파생된 얼터너티브가 contain(비율 보존)으로
+ * 그려지면 원본의 절반 폭이 되어 무기 앵커가 전부 어긋난다 — stretch로 통일한다.
+ * 루나·볼트는 독립 원화(정사각 구도)라 contain이 맞다.
+ */
+const STANDALONE_ALLY: Partial<Record<TitanHeroId, { url: string; fit: "contain" | "stretch" }>> = {
+  luna: { url: assetUrl("titans/generated/allies/luna.png"), fit: "contain" },
+  volt: { url: assetUrl("titans/generated/allies/volt.png"), fit: "contain" },
   // 얼터너티브 동료 (§9) — 로스터 시트 프레임의 팔레트 파생 (scripts/make-alt-allies.mjs)
-  mia_dark: assetUrl("titans/generated/allies/mia-dark.png"),
-  sera_light: assetUrl("titans/generated/allies/sera-light.png"),
+  mia_dark: { url: assetUrl("titans/generated/allies/mia-dark.png"), fit: "stretch" },
+  sera_light: { url: assetUrl("titans/generated/allies/sera-light.png"), fit: "stretch" },
 };
 
 /** 얼터너티브 → 원본 매핑 — 무기·전투 타입은 원본을 따른다 (아트만 팔레트가 다르다) */
@@ -61,9 +68,15 @@ function sheetStyle(url: string, index: number, count: number): CSSProperties {
 
 function allyBodyStyle(id: TitanHeroId, skin?: string): CSSProperties {
   const skinDef = skin ? ALLY_SKINS[skin] : undefined;
-  const standalone = (skinDef?.ally === id ? skinDef.url : undefined) ?? STANDALONE_ALLY[id];
+  // 스킨은 로스터 프레임 파생 → 로스터와 같은 stretch로 그려야 무기 앵커가 맞는다
+  const standalone = skinDef?.ally === id ? { url: skinDef.url, fit: "stretch" as const } : STANDALONE_ALLY[id];
   if (standalone) {
-    return { backgroundImage: `url(${standalone})`, backgroundSize: "contain", backgroundPosition: "center bottom", backgroundRepeat: "no-repeat" };
+    return {
+      backgroundImage: `url(${standalone.url})`,
+      backgroundSize: standalone.fit === "stretch" ? "100% 100%" : "contain",
+      backgroundPosition: "center bottom",
+      backgroundRepeat: "no-repeat",
+    };
   }
   return sheetStyle(ALLY_SHEET, allyIndex[id], 6);
 }

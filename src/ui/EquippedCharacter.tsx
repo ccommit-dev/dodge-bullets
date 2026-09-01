@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { tierAt } from "../forge/model";
 import { SwordArt } from "../forge/swords";
+import { WEAPON_SKINS } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
 import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS } from "../equipment/anchors";
 import { sheetFor } from "../titans/anim";
@@ -14,18 +15,23 @@ type Props = {
   evolution?: EvolutionPath;
   /** 구매 캐릭터 스킨 id ("default" | "obsidian" | "dawn") */
   character?: string;
+  /** 구매 무기 외형 id ("" = 강화 티어 기본색) — 칼날 hue·오라만 바꾼다 */
+  weaponSkin?: string;
 };
 
 const shoulderColor: Record<ShoulderId, string> = {
   scout: "#94a3b8", shadow: "#7c3aed", ogre: "#b45309", dragon: "#ef4444",
 };
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", className = "" }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "" }: Props) {
   const index = Math.max(0, Math.min(3, frame));
   const anchor = (mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS)[index];
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
   const sheet = sheetFor(character, mode);
   const tier = tierAt(Math.min(15, weaponLevel));
+  // 무기 외형(상점) — 티어 색을 덮어쓰고 오라를 두른다. 실루엣(티어)은 유지 =
+  // 강화 단계는 형태로, 커스텀은 색으로 읽힌다.
+  const blade = weaponSkin ? WEAPON_SKINS[weaponSkin] : undefined;
   const part = (a: typeof anchor.hand): CSSProperties => ({
     left: `${a.x}%`, top: `${a.y}%`, transform: `translate(-50%,-50%) rotate(${a.rotation}deg) scale(${a.scale})`,
   });
@@ -38,7 +44,14 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = nul
       {shoulder && <i className="equipment-shoulder back" style={{ ...part(anchor.shoulderRight), "--part-color": shoulderColor[shoulder] } as CSSProperties} />}
       <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundPosition: `${(index / 3) * 100}% 0` }} />
       {shoulder && <i className="equipment-shoulder front" style={{ ...part(anchor.shoulderLeft), "--part-color": shoulderColor[shoulder] } as CSSProperties} />}
-      {weaponLevel > 0 && <div className="equipment-weapon" style={weaponPart}><SwordArt level={Math.min(15, weaponLevel)} hue={tier.hue} name={tier.name} /></div>}
+      {weaponLevel > 0 && (
+        <div
+          className={`equipment-weapon ${blade ? "has-blade-skin" : ""}`}
+          style={blade ? { ...weaponPart, "--blade-aura": blade.aura } as CSSProperties : weaponPart}
+        >
+          <SwordArt level={Math.min(15, weaponLevel)} hue={blade?.hue ?? tier.hue} name={blade?.name ?? tier.name} />
+        </div>
+      )}
     </div>
   );
 }

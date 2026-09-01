@@ -2357,16 +2357,26 @@
 .titan-ally-art.ally-garen { --ally-x:48%; --ally-y:2%; z-index:4; }
 .titan-ally-art.ally-ari { --ally-x:60%; --ally-y:30%; z-index:2; }
 .titan-ally-art.ally-nox { --ally-x:78%; --ally-y:5%; z-index:3; }
-/* 상점 전용·얼터너티브 동료 — 위치 미지정이면 (0,0)에 겹쳐 쌓인다 */
-.titan-ally-art.ally-luna { --ally-x:8%; --ally-y:12%; z-index:4; }
-.titan-ally-art.ally-volt { --ally-x:40%; --ally-y:22%; z-index:2; }
-.titan-ally-art.ally-mia_dark { --ally-x:24%; --ally-y:20%; z-index:3; }
-.titan-ally-art.ally-sera_light { --ally-x:56%; --ally-y:34%; z-index:1; }
+/*
+ * 상점 전용·얼터너티브 동료 대형 — 위치 미지정이면 (0,0)에 겹쳐 쌓인다.
+ * 근접은 교전 시 translateX로 몬스터까지 전진하므로, 대형 슬롯과 전진 거리를
+ * 한 쌍으로 튜닝해야 도착 지점이 서로 겹치지 않는다 (아래 engage 규칙 참조).
+ */
+.titan-ally-art.ally-luna { --ally-x:2%; --ally-y:8%; z-index:4; }
+.titan-ally-art.ally-volt { --ally-x:0%; --ally-y:64%; z-index:1; }
+.titan-ally-art.ally-mia_dark { --ally-x:36%; --ally-y:14%; z-index:3; }
+.titan-ally-art.ally-sera_light { --ally-x:16%; --ally-y:50%; z-index:1; }
 .titan-ally-art { transition:transform 1.15s linear; }
 .titan-ally-art.combat-ranged.is-engaged { transform:translateX(clamp(55px,13vw,105px)); }
 .titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }
 .titan-ally-art.ally-garen.is-engaged { transform:translateX(clamp(135px,28vw,220px)); }
 .titan-ally-art.ally-nox.is-engaged { transform:translateX(clamp(165px,34vw,265px)); }
+/* 신규 근접 — 대형 슬롯이 뒤쪽이라 전진 거리를 줄여 도착 지점이 기존 근접과 안 겹치게 */
+.titan-ally-art.ally-luna.is-engaged { transform:translateX(clamp(118px,24vw,188px)); }
+.titan-ally-art.ally-mia_dark.is-engaged { transform:translateX(clamp(100px,21vw,164px)); }
+/* 신규 원거리 — 후열 유지, 볼트는 포탑이라 거의 제자리 */
+.titan-ally-art.ally-volt.is-engaged { transform:translateX(clamp(26px,6vw,48px)); }
+.titan-ally-art.ally-sera_light.is-engaged { transform:translateX(clamp(30px,7vw,58px)); }
 .titan-ally-art.is-approaching .ally-swing { animation:formation-walk .26s ease-in-out infinite alternate; }
 .titan-ally-art.is-approaching .ally-weapon { filter:drop-shadow(0 0 2px rgba(103,232,249,.55)); }
 /* 대기 호흡 — 영웅(스프라이트)·몬스터(breathe)만 움직이고 동료는 박제였다. */
@@ -2387,15 +2397,26 @@
 .weapon-garen { --weapon-left:25%; --weapon-top:19%; --weapon-width:68%; --weapon-height:76%; --weapon-rest:13deg; --weapon-pivot-x:58%; --weapon-pivot-y:76%; }
 .weapon-ari { z-index:0; --weapon-left:20%; --weapon-top:9%; --weapon-width:86%; --weapon-height:86%; --weapon-rest:-8deg; --weapon-pivot-x:43%; --weapon-pivot-y:74%; }
 .weapon-nox { --weapon-left:19%; --weapon-top:19%; --weapon-width:72%; --weapon-height:72%; --weapon-rest:-12deg; --weapon-pivot-x:48%; --weapon-pivot-y:75%; }
+/* 루나·볼트 — 독립 원화(정사각 구도)라 로스터와 다른 앵커가 필요하다.
+   미지정 시 기본값(18%,12%)이 적용돼 무기가 머리 위에 떠 있었다. */
+.weapon-luna { --weapon-left:19%; --weapon-top:32%; --weapon-width:56%; --weapon-height:56%; --weapon-rest:10deg; --weapon-pivot-x:54%; --weapon-pivot-y:72%; }
+.weapon-volt { z-index:0; --weapon-left:33%; --weapon-top:38%; --weapon-width:50%; --weapon-height:50%; --weapon-rest:-4deg; --weapon-pivot-x:45%; --weapon-pivot-y:68%; }
 .ally-swing.is-attacking .ally-weapon.melee { animation:ally-weapon-slash .55s cubic-bezier(.2,.8,.3,1); }
-.ally-swing.is-attacking .weapon-leon { animation:ally-bow-release .42s ease-out; }
-.ally-swing.is-attacking .weapon-sera { animation:ally-staff-cast .58s ease-out; }
+/* 원거리 공용 릴리즈 — 개별 규칙이 없는 원거리도 무기가 공격에 반응해야 한다.
+   (볼트가 이 규칙 없이는 전투 내내 미동도 없었다.) */
+.ally-swing.is-attacking .ally-weapon.ranged { animation:ally-ranged-release .42s ease-out; }
+.ally-swing.is-attacking .ally-weapon.weapon-leon { animation:ally-bow-release .42s ease-out; }
+.ally-swing.is-attacking .ally-weapon.weapon-sera { animation:ally-staff-cast .58s ease-out; }
+.ally-swing.is-attacking .ally-weapon.weapon-volt { animation:ally-turret-recoil .44s ease-out; }
+.ally-swing.is-attacking .ally-weapon.weapon-luna { animation:ally-hammer-arc .6s cubic-bezier(.3,.7,.28,1); }
 .combat-melee .ally-swing.is-attacking { z-index:8; animation:ally-body-strike .62s cubic-bezier(.22,.78,.3,1); }
 .combat-ranged .ally-swing.is-attacking { animation:ally-body-shot .42s cubic-bezier(.2,.85,.25,1); }
-.ally-mia .ally-swing.is-attacking,.ally-nox .ally-swing.is-attacking { animation-name:ally-fast-slash; }
+.ally-mia .ally-swing.is-attacking,.ally-nox .ally-swing.is-attacking,.ally-mia_dark .ally-swing.is-attacking { animation-name:ally-fast-slash; }
 .ally-garen .ally-swing.is-attacking { animation-name:ally-heavy-slash; animation-duration:.58s; }
 .ally-ari .ally-swing.is-attacking { animation-name:ally-lance-thrust; }
-.ally-sera .ally-swing.is-attacking { animation-name:ally-cast; }
+.ally-sera .ally-swing.is-attacking,.ally-sera_light .ally-swing.is-attacking { animation-name:ally-cast; }
+/* 루나 — 워해머 내려찍기: 크게 들었다 무겁게 떨어진다 */
+.ally-luna .ally-swing.is-attacking { animation-name:ally-hammer-smash; animation-duration:.6s; }
 @keyframes ally-body-strike { 0%,100% { transform:translateX(0); } 42%,62% { transform:translateX(5px) scale(1.025,.99); } }
 @keyframes ally-body-shot { 0%,100% { transform:translateX(0); } 45% { transform:translateX(2px) scale(.99,1.015); filter:brightness(1.12); } }
 @keyframes ally-fast-slash { 0%,100% { transform:translateX(0); } 42% { transform:translate(6px,-1px) rotate(2deg) scale(1.025); } }
@@ -2405,6 +2426,12 @@
 @keyframes ally-weapon-slash { 0%,100% { transform:rotate(var(--weapon-rest)); } 28% { transform:rotate(calc(var(--weapon-rest) - 22deg)); } 62% { transform:rotate(calc(var(--weapon-rest) + 38deg)); } }
 @keyframes ally-bow-release { 0%,100% { transform:rotate(var(--weapon-rest)) scale(1); } 45% { transform:rotate(var(--weapon-rest)) scale(.94,1.02); filter:brightness(1.5) drop-shadow(0 0 7px #67e8f9); } }
 @keyframes ally-staff-cast { 0%,100% { transform:rotate(var(--weapon-rest)); } 45% { transform:translateY(-3px) rotate(calc(var(--weapon-rest) - 8deg)); filter:brightness(1.5) drop-shadow(0 0 10px #c084fc); } }
+@keyframes ally-ranged-release { 0%,100% { transform:rotate(var(--weapon-rest)) scale(1); } 45% { transform:rotate(var(--weapon-rest)) scale(.95,1.03); filter:brightness(1.5) drop-shadow(0 0 8px #67e8f9); } }
+/* 볼트 렌치 — 포탑 발사 반동: 뒤로 젖혀졌다 앞으로 스냅 */
+@keyframes ally-turret-recoil { 0%,100% { transform:rotate(var(--weapon-rest)); } 32% { transform:rotate(calc(var(--weapon-rest) - 10deg)) translateX(-2px); filter:brightness(1.6) drop-shadow(0 0 9px #67e8f9); } 58% { transform:rotate(calc(var(--weapon-rest) + 5deg)) translateX(1px); } }
+/* 루나 워해머 — 스윙보다 큰 호로 들었다 내려찍는다. 몸(ally-hammer-smash)과 위상 동기 */
+@keyframes ally-hammer-arc { 0%,100% { transform:rotate(var(--weapon-rest)); } 30% { transform:rotate(calc(var(--weapon-rest) - 42deg)) translateY(-2px); } 56% { transform:rotate(calc(var(--weapon-rest) + 46deg)); filter:brightness(1.35) drop-shadow(0 0 8px #fcd34d); } 74% { transform:rotate(calc(var(--weapon-rest) + 38deg)); } }
+@keyframes ally-hammer-smash { 0%,100% { transform:none; } 30% { transform:translate(-1px,-4px) rotate(-3deg); } 56% { transform:translate(5px,2px) rotate(3deg) scale(1.05,.96); } 74% { transform:translate(3px,1px) rotate(2deg); } }
 .ally-attack-fx { position:absolute; z-index:3; left:72%; top:33%; width:42%; height:42%; border:3px solid rgba(103,232,249,.75); border-left-color:transparent; border-bottom-color:transparent; border-radius:50%; animation: ally-fx .38s ease-out forwards; pointer-events:none; }
 .ally-attack-fx.melee { left:82%; }
 .ally-attack-fx.ranged { width:min(48vw,360px); height:4px; top:51%; border:0; border-radius:99px; background:linear-gradient(90deg,#f8fafc 0 8%,#67e8f9 35%,transparent); transform-origin:left center; }

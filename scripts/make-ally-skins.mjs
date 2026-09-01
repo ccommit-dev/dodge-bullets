@@ -18,14 +18,23 @@ const FRAMES = 6;
 const meta = await sharp(SHEET).metadata();
 const frameW = Math.floor(meta.width / FRAMES);
 
-function frame(index, insetL = 0, insetR = 0) {
+async function frame(index, insetL = 0, insetR = 0) {
   const left = Math.round(index * frameW + frameW * insetL);
   const width = Math.round(frameW * (1 - insetL - insetR));
-  return sharp(SHEET).extract({ left, top: 0, width, height: meta.height });
+  const cut = await sharp(SHEET)
+    .extract({ left, top: 0, width, height: meta.height })
+    .png()
+    .toBuffer();
+  // 잘라낸 만큼 투명 패딩 복원 — stretch 렌더 배율을 로스터와 일치시킨다
+  return sharp(cut).extend({
+    left: Math.round(frameW * insetL),
+    right: Math.round(frameW * insetR),
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  });
 }
 
 // 용암 기사 가렌 — garen(프레임 3)
-await frame(3)
+await (await frame(3))
   .tint({ r: 255, g: 138, b: 76 })
   .modulate({ brightness: 0.92, saturation: 1.15 })
   .png()
@@ -33,7 +42,7 @@ await frame(3)
 console.log("generated garen-magma.png");
 
 // 설원 궁수 레온 — leon(프레임 1) · 좌측 7%는 이웃 프레임 손 잔재라 잘라낸다
-await frame(1, 0.07, 0)
+await (await frame(1, 0.07, 0))
   .tint({ r: 158, g: 210, b: 255 })
   .modulate({ brightness: 1.08, saturation: 1.05 })
   .png()
