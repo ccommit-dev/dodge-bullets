@@ -139,6 +139,8 @@ function App() {
   const [hp, setHp] = useState(1);
   const [maxHp, setMaxHp] = useState(1);
   const [combo, setCombo] = useState(0);
+  /** dodge 별점 획득 연출 (§4) — 클리어 직후 2.4초 팝업 */
+  const [starResult, setStarResult] = useState<{ stars: number; improved: boolean; total: number } | null>(null);
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
   const [exitOpen, setExitOpen] = useState(false);
@@ -504,6 +506,12 @@ function App() {
               + world.enemyKills * 5 + world.perfectDodges * 8 + world.chests * 30 + world.expeditionSeals * 20;
           setCoinGain(reward);
           sound.playCoin();
+          // dodge 별점 (CRUMBLE_GAP §4) — ★ 클리어 · ★★ 피격 1회 이하 · ★★★ 노히트+콤보 10.
+          // 성벽(무한)은 층수가 이미 목적이라 미적용.
+          const starFloor = towerFloorOf(world.stageIndex);
+          const hitsTaken = world.player.maxHp - world.player.hp;
+          const starsGained =
+            starFloor > 0 ? 0 : hitsTaken <= 0 && world.maxCombo >= 10 ? 3 : hitsTaken <= 1 ? 2 : 1;
           void (async () => {
             const nextCoins = await saveCoins(
               userHashRef.current,
@@ -560,6 +568,42 @@ function App() {
                 });
               } else {
                 sfxTowerFloor(floor);
+              }
+            }
+
+            // 별점 기록 — 스테이지별 최고 기록만 남긴다. 12개 마일스톤은 1회 보상.
+            if (starsGained > 0) {
+              const stageKey = String(world.stageIndex);
+              const prevStars = nextProgress.dodgeStars[stageKey] ?? 0;
+              if (starsGained > prevStars) {
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
+                  ...current,
+                  dodgeStars: {
+                    ...current.dodgeStars,
+                    [stageKey]: Math.max(current.dodgeStars[stageKey] ?? 0, starsGained),
+                  },
+                }));
+              }
+              const totalStars = Object.values(nextProgress.dodgeStars).reduce((a, b) => a + b, 0);
+              setStarResult({ stars: starsGained, improved: starsGained > prevStars, total: totalStars });
+              window.setTimeout(() => setStarResult(null), 2400);
+              if (totalStars >= 12 && !nextProgress.claimedRewards.includes("dodge-stars-12")) {
+                const titansForStars = await loadTitansSave(userHashRef.current);
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => {
+                  if (current.claimedRewards.includes("dodge-stars-12")) return current;
+                  const shards = { ...current.allyShards };
+                  for (let i = 0; i < 10; i += 1) {
+                    const target = randomOwnedAlly(titansForStars.heroes);
+                    shards[target] = (shards[target] ?? 0) + 1;
+                  }
+                  return {
+                    ...current,
+                    redGems: current.redGems + 60,
+                    allyShards: shards,
+                    claimedRewards: [...current.claimedRewards, "dodge-stars-12"],
+                  };
+                });
+                setShoulderDrop("원정 전 별 12개 달성 · 보석 +60 · 동료 조각 +10");
               }
             }
 
@@ -857,11 +901,22 @@ function App() {
                   <span>사운드</span>
                   <b>{soundOn ? "ON" : "OFF"}</b>
                 </button>
-                <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}>
-                  <span>출석 이벤트</span><b>7일</b>
+                {/* 온보딩(§8) — 이벤트류는 마지막 단계(4)에서 열린다 */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={progress.onboardingStep < 4}
+                  onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}
+                >
+                  <span>출석 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "7일"}</b>
                 </button>
-                <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setEventOpen(true); }}>
-                  <span>모험가 이벤트</span><b>NEW</b>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={progress.onboardingStep < 4}
+                  onClick={() => { setSettingsOpen(false); setEventOpen(true); }}
+                >
+                  <span>모험가 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "NEW"}</b>
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b>›</b>
@@ -1023,12 +1078,16 @@ function App() {
                 <div className="pioneer-board">
                   <p className="pioneer-heading">
                     <b>개척 진척</b>
-                    <span>{progress.pioneeredArea} / {HUNTING_AREAS.length} 지역</span>
+                    <span>
+                      {progress.pioneeredArea} / {HUNTING_AREAS.length} 지역 · ★
+                      {Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0)}/12
+                    </span>
                   </p>
                   {STAGES.map((stage, index) => {
                     const area = HUNTING_AREAS[index + 1];
                     const opened = progress.pioneeredArea >= index + 2;
                     const reachable = progress.dodgeBestStage >= index || index === 0;
+                    const stars = progress.dodgeStars[String(index)] ?? 0;
                     return (
                       <button
                         key={stage.id}
@@ -1037,7 +1096,14 @@ function App() {
                         onClick={() => void handleStart(index)}
                       >
                         <span className="pioneer-stage">S{index + 1}</span>
-                        <span className="pioneer-name">{stage.name}</span>
+                        <span className="pioneer-name">
+                          {stage.name}
+                          <span className="pioneer-stars" aria-label={`별 ${stars}/3`}>
+                            {[1, 2, 3].map((n) => (
+                              <img key={n} src={assetUrl("ui/idle/star.svg")} alt="" className={n <= stars ? "on" : ""} />
+                            ))}
+                          </span>
+                        </span>
                         <span className="pioneer-area" style={opened ? { color: area.accent } : undefined}>
                           {opened ? "개척 완료" : `→ ${area.name}`}
                         </span>
@@ -1045,6 +1111,9 @@ function App() {
                       </button>
                     );
                   })}
+                  <p className="pioneer-star-hint">
+                    ★★ 피격 1회 이하 · ★★★ 노히트+콤보 10 — 별 12개 달성 시 보석 60 · 조각 10
+                  </p>
                 </div>
 
                 <button type="button" className="cta" onClick={() => void handleStart(0)}>
@@ -1201,6 +1270,25 @@ function App() {
         </>
       )}
 
+      {appMode === "dodge" && starResult && (
+        <div className="star-result" role="status" aria-label={`별 ${starResult.stars}개 획득`}>
+          <div className="star-result-row">
+            {[1, 2, 3].map((n) => (
+              <img
+                key={n}
+                src={assetUrl("ui/idle/star.svg")}
+                alt=""
+                className={n <= starResult.stars ? "earned" : "empty"}
+                style={{ animationDelay: `${(n - 1) * 0.16}s` }}
+              />
+            ))}
+          </div>
+          <p>
+            {starResult.improved && <b>신기록! </b>}원정 별 {starResult.total}/12
+          </p>
+        </div>
+      )}
+
       {appMode === "dodge" && gameState === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
@@ -1266,7 +1354,8 @@ function App() {
           </div>
         </div>
       )}
-      {bootReady && appMode === "titans" && (
+      {/* 온보딩 첫 5분 대본(§8) — 신규(step<4)에게는 출석 모달을 띄우지 않는다 */}
+      {bootReady && appMode === "titans" && progress.onboardingStep >= 4 && (
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} />
       )}
       {bootReady && appMode === "titans" && (

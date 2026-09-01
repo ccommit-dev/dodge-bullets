@@ -29,6 +29,46 @@ export function weekdayRift(day: number = new Date().getDay()): WeekdayRift {
   return RIFTS[((day % 7) + 7) % 7];
 }
 
+/* ───────── 기간 한정 이벤트 균열 — 요일 테이블 위의 배율 레이어 ───────── */
+
+export type RiftEvent = {
+  id: string;
+  name: string;
+  desc: string;
+  /** 요일 균열 보상 전체에 곱해지는 추가 배율 */
+  mult: number;
+};
+
+/**
+ * 날짜 범위 이벤트 — 서버 없이 클라이언트 달력으로 판정한다.
+ * 새 이벤트는 여기에 한 줄 추가가 전부다 (배포 = 이벤트 공지).
+ */
+const DATED_EVENTS: Array<RiftEvent & { from: string; to: string }> = [
+  {
+    id: "launch-festival",
+    name: "개장 축제 균열",
+    desc: "출시 기념 — 모든 균열 보상 3배",
+    mult: 3,
+    from: "2026-09-14",
+    to: "2026-09-20",
+  },
+];
+
+/**
+ * 활성 이벤트 판정 — 날짜 범위 이벤트가 우선, 없으면 상시 주말(토·일) 2배.
+ * 요일 테이블과 곱으로 중첩된다: 일요일(만능 1.5배) + 주말 2배 = 3배 체감.
+ */
+export function riftEventFor(date: Date = new Date()): RiftEvent | null {
+  const key = date.toLocaleDateString("sv-SE");
+  const dated = DATED_EVENTS.find((e) => key >= e.from && key <= e.to);
+  if (dated) return dated;
+  const day = date.getDay();
+  if (day === 0 || day === 6) {
+    return { id: "weekend-double", name: "주말 2배 균열", desc: "토·일 상시 — 균열 보상 2배", mult: 2 };
+  }
+  return null;
+}
+
 const DAY_LABEL = ["일", "월", "화", "수", "목", "금", "토"];
 
 export function weekdayRiftSchedule(): { day: string; rift: WeekdayRift; today: boolean }[] {

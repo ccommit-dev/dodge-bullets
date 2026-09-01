@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="별">
+  <defs>
+    <linearGradient id="stBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fef08a"/>
+      <stop offset="0.55" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <radialGradient id="stGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.4" stop-color="#fbbf24" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#stGlow)"/>
+  <path d="M32 7l7.4 15.6 17.1 2.2-12.6 11.9 3.3 17L32 45.4l-15.2 8.3 3.3-17L7.5 24.8l17.1-2.2z"
+        fill="url(#stBody)" stroke="#92400e" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- 상단 하이라이트 -->
+  <path d="M32 12l4.6 9.8 3.6.5c-2.9 1.4-6.6 1.6-8.9-.9-1.6-1.8-1-6 .7-9.4z" fill="#fffbeb" opacity="0.75"/>
+  <circle cx="24.5" cy="26.5" r="1.4" fill="#fffbeb" opacity="0.8"/>
+</svg>

@@ -32,6 +32,7 @@ import {
   type TitansSave,
 } from "./titans/model";
 import { AllyArt, MonsterArt } from "./titans/SpriteArt";
+import { ALLY_SKINS } from "./titans/skins";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
@@ -76,6 +77,13 @@ import {
 import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification } from "./game/native";
+import {
+  LOCK_HINT,
+  UNLOCK_BANNER,
+  contentUnlocked,
+  onboardingTargetStep,
+  type OnboardContent,
+} from "./progression/onboarding";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
@@ -167,6 +175,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   /** QoL — 일괄 레벨업 수량 (0 = MAX) */
   const [buyAmount, setBuyAmount] = useState<1 | 10 | 0>(1);
+  /** 온보딩(§8) 개방 연출 — 방금 열린 단계 번호 */
+  const [unlockBanner, setUnlockBanner] = useState<number | null>(null);
+  const onboardHintShownRef = useRef(false);
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
@@ -399,11 +410,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           enhancementMaterials: current.enhancementMaterials + report.result.materials,
           allyShards: shards,
           idleClaimedAt: Date.now(),
+          // 온보딩 마지막 단계(§8) — 첫 방치 정산이 이벤트·상점을 연다
+          onboardingStep: current.onboardingStep === 3 ? 4 : current.onboardingStep,
         };
       }).then((next) => {
+        const finishedOnboarding = characterRef.current.onboardingStep === 3 && next.onboardingStep === 4;
         setCharacter(next);
         setSkillPoints(next.skillPoints);
         scheduleIdleCapNotify(next);
+        if (finishedOnboarding) {
+          sfxSlotUnlock();
+          setUnlockBanner(4);
+          window.setTimeout(() => setUnlockBanner(null), 3200);
+        }
         then?.();
       });
     },
@@ -621,6 +640,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         }
 
         flash(`STAGE ${s.stage} CLEAR! +${formatGold(goldGain)}G`);
+        // 첫 5분 대본(§8) — 첫 보스 클리어 직후 방치 개념을 1회 안내
+        if (characterRef.current.onboardingStep < 4 && !onboardHintShownRef.current) {
+          onboardHintShownRef.current = true;
+          later(() => flash("잠깐 닫았다 와도 원정대가 계속 사냥합니다 — 방치 보상이 쌓여요"), 1700);
+        }
         pendingStageRef.current = s.stage + 1;
         later(() => {
           battlePhaseRef.current = "stage-clear";
@@ -1045,6 +1069,38 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     });
   };
 
+  /** 동료 스킨 구매 — 확정 구매, 구매 즉시 자동 장착 */
+  const buyAllySkin = async (skinId: string) => {
+    const def = ALLY_SKINS[skinId];
+    if (!def || character.ownedAllySkins.includes(skinId) || redGems < def.gemCost) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.ownedAllySkins.includes(skinId) || current.redGems < def.gemCost
+        ? current
+        : {
+            ...current,
+            redGems: current.redGems - def.gemCost,
+            ownedAllySkins: [...current.ownedAllySkins, skinId],
+            equippedAllySkins: { ...current.equippedAllySkins, [def.ally]: skinId },
+          },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    setAllyPulse((prev) => ({ ...prev, [def.ally]: (prev[def.ally] ?? 0) + 1 }));
+    flash(`${def.name} 스킨 장착!`);
+  };
+
+  /** 스킨 장착/해제 토글 */
+  const toggleAllySkin = async (allyId: TitanHeroId, skinId: string) => {
+    if (!character.ownedAllySkins.includes(skinId)) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const equipped = { ...current.equippedAllySkins };
+      if (equipped[allyId] === skinId) delete equipped[allyId];
+      else equipped[allyId] = skinId;
+      return { ...current, equippedAllySkins: equipped };
+    });
+    setCharacter(next);
+  };
+
   const buyHero = (id: TitanHeroId) => {
     const def = HEROES.find((h) => h.id === id);
     if (!def) return;
@@ -1114,6 +1170,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   useEffect(() => {
     castSkillRef.current = castSkill;
   });
+
+  // 온보딩(§8) 자동 진행 — 조건(Stage 5 / 첫 개척 / Stage 10)을 채우면 다음 단계로.
+  // 단계 4(이벤트·상점)는 조건이 아니라 "첫 방치 정산" 행위로만 오른다 (claimIdle 참조).
+  useEffect(() => {
+    if (!ready || character.onboardingStep >= 4) return;
+    const target = onboardingTargetStep(character);
+    if (target <= character.onboardingStep) return;
+    void updateCharacterProgress(userHash, (current) => {
+      const next = onboardingTargetStep(current);
+      return next > current.onboardingStep ? { ...current, onboardingStep: next } : current;
+    }).then((next) => {
+      setCharacter(next);
+      sfxSlotUnlock();
+      setUnlockBanner(next.onboardingStep);
+      window.setTimeout(() => setUnlockBanner(null), 3200);
+    });
+  }, [ready, character, userHash]);
 
   const learnSkill = async (id: TitanSkillId) => {
     const def = SKILLS.find((skill) => skill.id === id);
@@ -1274,9 +1347,28 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
       <nav className="titans-content-tabs" aria-label="성장 콘텐츠">
         <button type="button" className="on"><ContentIcon name="hunt" />사냥터</button>
-        <button type="button" onClick={() => onOpenContent("dodge")}><ContentIcon name="dodge" />화살 원정</button>
-        <button type="button" onClick={() => onOpenContent("beat")}><ContentIcon name="beat" />비트 수련</button>
-        <button type="button" onClick={() => onOpenContent("forge")}><ContentIcon name="forge" />대장간</button>
+        {(
+          [
+            { id: "dodge", label: "화살 원정", icon: "dodge" },
+            { id: "beat", label: "비트 수련", icon: "beat" },
+            { id: "forge", label: "대장간", icon: "forge" },
+          ] as const
+        ).map((item) => {
+          const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={locked ? "tab-locked" : ""}
+              aria-disabled={locked}
+              onClick={() => (locked ? flash(LOCK_HINT[item.id as OnboardContent]) : onOpenContent(item.id))}
+            >
+              {locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />}
+              <ContentIcon name={item.icon} />
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="titans-stagebar">
@@ -1320,6 +1412,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             <AllyArt
               key={h.id}
               id={h.id}
+              skin={character.equippedAllySkins[h.id]}
               attacking
               pulse={allyPulse[h.id] ?? 0}
               engaged={formationEngaged}
@@ -1471,7 +1564,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         <button type="button" className={tab === "skills" ? "on" : ""} onClick={() => setTab("skills")}>
           스킬
         </button>
-        <button type="button" className={tab === "premium" ? "on" : ""} onClick={() => setTab("premium")}>
+        <button
+          type="button"
+          className={`${tab === "premium" ? "on" : ""} ${contentUnlocked(character.onboardingStep, "events") ? "" : "tab-locked"}`}
+          onClick={() =>
+            contentUnlocked(character.onboardingStep, "events") ? setTab("premium") : flash(LOCK_HINT.events)
+          }
+        >
+          {!contentUnlocked(character.onboardingStep, "events") && (
+            <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />
+          )}
           보석 상점
         </button>
       </div>
@@ -1557,9 +1659,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             const inParty = character.partyIds.includes(h.id);
             const expedition = character.expeditions.find((e) => e.allyId === h.id);
             const expeditionLeft = expedition ? Math.max(0, expedition.endsAt - Date.now()) : 0;
+            const skinEntry = Object.entries(ALLY_SKINS).find(
+              ([skinId, def]) => def.ally === h.id && character.ownedAllySkins.includes(skinId),
+            );
             return (
               <article key={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""}`}>
-                <AllyArt id={h.id} />
+                <AllyArt id={h.id} skin={character.equippedAllySkins[h.id]} />
                 <div>
                   <strong>
                     <em className="rarity-tag" style={{ color: RARITY_COLOR[rarity] }}>{rarity}</em>
@@ -1587,6 +1692,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                       조각 {shards}
                       {nextCost !== null ? ` / ${nextCost} · ★${Math.max(1, stars) + 1} 승급` : " · 최대 성급"}
                     </small>
+                  )}
+                  {lv > 0 && skinEntry && (
+                    <button
+                      type="button"
+                      className={`ally-skin-chip ${character.equippedAllySkins[h.id] === skinEntry[0] ? "on" : ""}`}
+                      onClick={() => void toggleAllySkin(h.id, skinEntry[0])}
+                    >
+                      {skinEntry[1].name.split(" ")[0]} 스킨 {character.equippedAllySkins[h.id] === skinEntry[0] ? "장착 중" : "장착"}
+                    </button>
                   )}
                 </div>
                 <div className="ally-card-actions">
@@ -1706,6 +1820,26 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 💎 120
               </button>
             </article>
+            {/* 동료 스킨(코스튬) — 외형 전용 확정 구매. 얼터너티브(별도 동료)와 다른 축 */}
+            {Object.entries(ALLY_SKINS).map(([skinId, skinDef]) => {
+              const owned = character.ownedAllySkins.includes(skinId);
+              return (
+                <article key={skinId} className="titans-card premium-product-card gem-product skin-product">
+                  <span className="skin-thumb" style={{ backgroundImage: `url(${skinDef.url})` }} aria-hidden="true" />
+                  <div>
+                    <strong>{skinDef.name} <em>코스튬</em></strong>
+                    <p>{skinDef.desc} · 동료 탭에서 장착/해제</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={owned || redGems < skinDef.gemCost}
+                    onClick={() => void buyAllySkin(skinId)}
+                  >
+                    {owned ? "보유 중" : `💎 ${skinDef.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
             <article className="titans-card premium-product-card gem-product">
               <CurrencyIcon kind="gem" />
               <div>
@@ -1747,6 +1881,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           onClaim={() => claimIdle()}
           onGoContent={(content) => claimIdle(() => onOpenContent(content))}
         />
+      )}
+
+      {unlockBanner !== null && UNLOCK_BANNER[unlockBanner] && (
+        <div className="content-unlock-banner" role="status">
+          <span className="unlock-rays" aria-hidden="true" />
+          <img src={assetUrl("ui/idle/unlock-crest.svg")} alt="" aria-hidden="true" />
+          <b>{UNLOCK_BANNER[unlockBanner].title}</b>
+          <small>{UNLOCK_BANNER[unlockBanner].desc}</small>
+        </div>
       )}
 
       {wallBanner && (

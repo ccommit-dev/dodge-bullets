@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { assetUrl } from "../asset";
+import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 
 const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
@@ -49,6 +50,7 @@ const ALT_BASE: Partial<Record<TitanHeroId, TitanHeroId>> = {
   sera_light: "sera",
 };
 
+
 function sheetStyle(url: string, index: number, count: number): CSSProperties {
   return {
     backgroundImage: `url(${url})`,
@@ -57,8 +59,9 @@ function sheetStyle(url: string, index: number, count: number): CSSProperties {
   };
 }
 
-function allyBodyStyle(id: TitanHeroId): CSSProperties {
-  const standalone = STANDALONE_ALLY[id];
+function allyBodyStyle(id: TitanHeroId, skin?: string): CSSProperties {
+  const skinDef = skin ? ALLY_SKINS[skin] : undefined;
+  const standalone = (skinDef?.ally === id ? skinDef.url : undefined) ?? STANDALONE_ALLY[id];
   if (standalone) {
     return { backgroundImage: `url(${standalone})`, backgroundSize: "contain", backgroundPosition: "center bottom", backgroundRepeat: "no-repeat" };
   }
@@ -88,7 +91,7 @@ export function MonsterArt({
   );
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, approaching = false }: { id: TitanHeroId; attacking?: boolean; pulse?: number; engaged?: boolean; approaching?: boolean }) {
+export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, approaching = false, skin }: { id: TitanHeroId; attacking?: boolean; pulse?: number; engaged?: boolean; approaching?: boolean; skin?: string }) {
   const base = ALT_BASE[id] ?? id;
   const ranged = base === "leon" || base === "sera";
   return (
@@ -105,7 +108,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, engaged = false, app
       */}
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
-          <div className="ally-body" style={allyBodyStyle(id)} />
+          <div className="ally-body" style={allyBodyStyle(id, skin)} />
           <AllyWeapon id={id} />
         </div>
       </div>
