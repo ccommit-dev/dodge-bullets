@@ -1625,13 +1625,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     setSave((prev) => {
       const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = {};
       SKILLS.forEach((sk) => {
-        if (ids.includes(sk.id) && prev.skillInventory.learned.includes(sk.id) && slotLevels(characterRef.current)[sk.slot] > 0) {
+        if (ids.includes(sk.id) && prev.skillInventory.learned.includes(sk.id)) {
           equipped[sk.slot] = sk.id;
         }
       });
       return { ...prev, skillInventory: { ...prev.skillInventory, equipped } };
     });
-    flash("프리셋 적용 — 학습·해금된 스킬만 장착됐습니다");
+    flash("프리셋 적용 — 학습한 스킬만 장착됐습니다");
   };
 
   /** 추천 편성 (점검표 #4) — DPS 상위를 뽑되 원거리 2명을 보장해 엄호 사격 시너지를 켠다 */

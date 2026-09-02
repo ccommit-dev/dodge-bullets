@@ -142,6 +142,7 @@ function App() {
   const [tutorialActive, setTutorialActive] = useState(false);
   const tutorialRef = useRef(false);
   const tutorialEligibleRef = useRef(false);
+  const tutorialStartRef = useRef(0);
   /** dodge 별점 획득 연출 (§4) — 클리어 직후 2.4초 팝업 */
   const [starResult, setStarResult] = useState<{ stars: number; improved: boolean; total: number } | null>(null);
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
@@ -446,7 +447,8 @@ function App() {
         if (!lastTsRef.current) lastTsRef.current = ts;
         // 첫 스테이지 슬로모션 튜토리얼 (점검표 #6): 첫 원정의 처음 7초만 45% 속도로,
         // 분열 화살 규칙을 안전하게 한 번 본 뒤 정상 속도로 복귀한다
-        const tutorialSlow = tutorialRef.current && world.stageIndex === 0 && world.stageElapsedMs < 7000;
+        // 실시간 기준 7초 — 감속된 게임 시간(stageElapsedMs)으로 재면 실제로는 15초가 걸린다
+        const tutorialSlow = tutorialRef.current && world.stageIndex === 0 && performance.now() - tutorialStartRef.current < 7000;
         if (tutorialRef.current && !tutorialSlow) {
           tutorialRef.current = false;
           setTutorialActive(false);
@@ -750,6 +752,7 @@ function App() {
     if (tutorialEligibleRef.current && worldRef.current?.stageIndex === 0) {
       tutorialEligibleRef.current = false;
       tutorialRef.current = true;
+      tutorialStartRef.current = performance.now();
       setTutorialActive(true);
       void updateCharacterProgress(userHashRef.current, (current) =>
         current.claimedRewards.includes("dodge-tutorial")

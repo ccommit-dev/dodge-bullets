@@ -306,7 +306,14 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   const levels = emptySkillLevels();
   for (const skill of SKILLS) levels[skill.id] = n(value.skillInventory?.levels?.[skill.id], learned.includes(skill.id) ? 1 : 0, skill.maxLevel);
   const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = {};
-  for (const skill of SKILLS) if (learned.includes(skill.id)) equipped[skill.slot] = value.skillInventory?.equipped?.[skill.slot] === skill.id ? skill.id : equipped[skill.slot] ?? skill.id;
+  // 장착 맵이 있는 세이브는 그대로 존중한다(학습한 스킬만 통과). 빈 슬롯을 자동으로 채우면
+  // 프리셋·수동 해제가 저장 시점에 되돌아간다. 장착 맵이 아예 없는 레거시 세이브만 자동 장착.
+  const storedEquipped = value.skillInventory?.equipped;
+  if (storedEquipped) {
+    for (const skill of SKILLS) if (learned.includes(skill.id) && storedEquipped[skill.slot] === skill.id) equipped[skill.slot] = skill.id;
+  } else {
+    for (const skill of SKILLS) if (learned.includes(skill.id)) equipped[skill.slot] = equipped[skill.slot] ?? skill.id;
+  }
   return {
     gold: n(value.gold, 0),
     stage: Math.max(1, n(value.stage, 1, 9999)),
