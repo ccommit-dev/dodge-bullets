@@ -40,6 +40,8 @@ import {
 } from "./titans/pets";
 import { starMilestoneMultiplier, starMilestoneNext, totalStars } from "./progression/collection";
 import { TITLES } from "./economy/gemCatalog";
+import { renderShareCard, shareCard } from "./ui/shareCard";
+import { sheetFor } from "./titans/anim";
 import { MonsterArt } from "./titans/SpriteArt";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
@@ -221,6 +223,26 @@ export function CharacterStatus({
           <p className="character-eyebrow">MY PAGE</p>
           <h1>마이페이지</h1>
           <p>네 콘텐츠의 성장이 하나의 캐릭터에 합산됩니다.</p>
+          <button
+            type="button"
+            className="share-card-btn"
+            onClick={() => {
+              void renderShareCard({
+                headline: "모험가 기록",
+                subline: `Lv.${progress.level} · 사냥터 Stage ${progress.titanBestStage} · 원정 별 ${Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0)}/12`,
+                power: summary.combatPower,
+                titleName: progress.activeTitle ? TITLES[progress.activeTitle]?.name : undefined,
+                titleColor: progress.activeTitle ? TITLES[progress.activeTitle]?.color : undefined,
+                characterSheet: sheetFor(progress.activeCharacter, "idle"),
+              }).then(async (blob) => {
+                if (!blob) return;
+                const result = await shareCard(blob);
+                setGrowthMessage(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
+              });
+            }}
+          >
+            기록 카드 공유
+          </button>
         </div>
         <button type="button" className="character-back" onClick={onBack}>
           콘텐츠

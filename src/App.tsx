@@ -8,7 +8,10 @@ import { TitansGame } from "./TitansGame";
 import { CharacterStatus } from "./CharacterStatus";
 import { AttendanceModal } from "./AttendanceModal";
 import { EventCenter } from "./EventCenter";
-import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
+import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
+import { renderShareCard, shareCard } from "./ui/shareCard";
+import { TITLES } from "./economy/gemCatalog";
+import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS } from "./titans/model";
 import { loadTitansSave } from "./titans/storage";
@@ -91,6 +94,17 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
+/** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
+const DEATH_TIPS: Record<string, string> = {
+  homing: "유도탄은 빨간 궤적이 붙기 전에 검격으로 베면 조각이 되어 흩어집니다",
+  explosive: "폭발 화살은 점프로 넘기지 말고 대시로 관통하세요 — 폭발 범위가 넓어요",
+  ricochet: "튕기는 화살은 벽 근처에서 두 번 옵니다 — 벽에서 떨어져 서세요",
+  fan: "부채꼴 화살은 한 발만 베면 틈이 열립니다",
+  aimed: "조준 화살은 붉은 선이 사라지는 순간 위치를 바꾸세요",
+  fragment: "베어 낸 조각은 돌다가 되돌아옵니다 — 조각이 남았을 땐 점프 후 대시",
+  boss: "보스 화살은 끝까지 베야 합니다 — 검격이 준비되기 전엔 거리를 두세요",
+  normal: "일반 화살은 검격으로 베면 코인과 조각이 됩니다 — 피하지 말고 베세요",
+};
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 function statsWithShoulder(levels: ShopLevels, shoulder: ShoulderId | null) {
   const stats = statsFromLevels(levels);
@@ -145,6 +159,8 @@ function App() {
   const tutorialStartRef = useRef(0);
   /** dodge 별점 획득 연출 (§4) — 클리어 직후 2.4초 팝업 */
   const [starResult, setStarResult] = useState<{ stars: number; improved: boolean; total: number } | null>(null);
+  /** 실패 완화 (RETENTION G): 사망 원인별 한 줄 팁 */
+  const [deathTip, setDeathTip] = useState("");
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
   const [exitOpen, setExitOpen] = useState(false);
@@ -159,6 +175,7 @@ function App() {
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(true);
   const [eventOpen, setEventOpen] = useState(false);
+  const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal">("daily");
   const [backupOpen, setBackupOpen] = useState(false);
   const [settingsToast, setSettingsToast] = useState("");
   const appModeRef = useRef<AppMode>("titans");
@@ -512,6 +529,7 @@ function App() {
           void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
           stateRef.current = "gameover";
           setGameState("gameover");
+          setDeathTip(DEATH_TIPS[world.lastHitCause] ?? "");
         }
 
         if (event.type === "clear" && stateRef.current === "playing") {
@@ -744,6 +762,24 @@ function App() {
     lastTsRef.current = 0;
     soundRef.current.playStart();
     syncState("intro");
+  };
+
+  /** 결과 공유 카드 (RETENTION H) — 별점·전투력·칭호를 canvas 카드로 */
+  const shareDodgeCard = async () => {
+    const stars = Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0);
+    const blob = await renderShareCard({
+      headline: extracted ? "보급품 확보" : allClear ? "전 스테이지 클리어" : `${stageLabel} 클리어`,
+      subline: `점수 ${lastScore.toLocaleString()} · 원정 별 ${stars}/12`,
+      stars: progress.dodgeStars[String(stageIndex)] ?? 0,
+      power: combatPower(progress),
+      titleName: progress.activeTitle ? TITLES[progress.activeTitle]?.name : undefined,
+      titleColor: progress.activeTitle ? TITLES[progress.activeTitle]?.color : undefined,
+      characterSheet: sheetFor(progress.activeCharacter, "idle"),
+      accent: "#7dd3fc",
+    });
+    if (!blob) return;
+    const result = await shareCard(blob);
+    setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
   };
 
   const handleBeginPlay = useCallback(() => {
@@ -1059,6 +1095,7 @@ function App() {
           insets={insets}
           userHash={userHashRef.current}
           forgedWeaponLevel={progress.equippedWeaponLevel}
+          onOpenEvents={(tab) => { setEventTab(tab); setEventOpen(true); }}
           onOpenContent={(content) => {
             if (content === "dodge") syncState("ready");
             setMode(content);
@@ -1275,6 +1312,7 @@ function App() {
         <div className="game-overlay">
           <div className="overlay-content">
             <p className="brand">{extracted ? "SAFE RETURN" : allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
+            <button type="button" className="share-card-btn" onClick={() => void shareDodgeCard()}>기록 카드 공유</button>
             <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
             <p className="score-line">+{coinGain} 코인</p>
             <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
@@ -1307,6 +1345,7 @@ function App() {
             <p className="subtitle">
               Stage {stage.id} · 최고 {highScore} · 코인 {coins}
             </p>
+            {deathTip && <p className="death-tip"><b>다음엔 이렇게</b> {deathTip}</p>}
             <button type="button" className="cta" onClick={handleRestart}>
               이 스테이지 다시
             </button>
@@ -1341,7 +1380,7 @@ function App() {
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} />
       )}
       {bootReady && appMode === "titans" && (
-        <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
+        <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} initialTab={eventTab} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
       )}
 
       {pioneeredAreaIndex !== null && (

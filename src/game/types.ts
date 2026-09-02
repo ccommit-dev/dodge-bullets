@@ -198,6 +198,8 @@ export type GameWorld = {
   slashBuff: number;
   slashHitFx: SlashHitFx[];
   slashDrops: SlashDrop[];
+  /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
+  lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "";
   bossSpawned: boolean;
   bossDefeated: boolean;
   bossCutsLeft: number;

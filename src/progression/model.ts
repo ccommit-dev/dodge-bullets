@@ -101,6 +101,14 @@ export type CharacterProgress = {
   shoulderEnhance: number;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
+  /** 복귀 워밍업(RETENTION C) — 골드 ×2가 끝나는 시각(ms). 0이면 없음 */
+  warmupUntil: number;
+  /** 워밍업 일일 발동 횟수(하루 3회 상한) */
+  warmupDay: { date: string; count: number };
+  /** 데일리 루틴 보드(RETENTION A) 완료 보상을 받은 날짜(sv-SE) */
+  routineClaimedDate: string;
+  /** 사냥터 진입 세션 수 — 종료 예고 칩은 첫 3세션만 */
+  sessionCount: number;
 };
 
 export function expForLevel(level: number): number {
@@ -169,6 +177,10 @@ export function emptyCharacterProgress(): CharacterProgress {
     ownedTitles: [],
     activeTitle: "",
     shoulderEnhance: 0,
+    warmupUntil: 0,
+    warmupDay: { date: "", count: 0 },
+    routineClaimedDate: "",
+    sessionCount: 0,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -407,6 +419,13 @@ export function normalizeCharacterProgress(
         ? raw.activeTitle
         : "",
     shoulderEnhance: integer(raw.shoulderEnhance, 0, 10),
+    warmupUntil: integer(raw.warmupUntil, 0),
+    warmupDay:
+      raw.warmupDay && typeof raw.warmupDay.date === "string"
+        ? { date: raw.warmupDay.date, count: integer(raw.warmupDay.count, 0, 99) }
+        : { date: "", count: 0 },
+    routineClaimedDate: typeof raw.routineClaimedDate === "string" ? raw.routineClaimedDate : "",
+    sessionCount: integer(raw.sessionCount, 0, 999999),
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

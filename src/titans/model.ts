@@ -347,7 +347,10 @@ export function formatGold(value: number): string {
 
 export function monsterHp(stage: number, boss: boolean): number {
   const base = 14 * Math.pow(1.38, stage - 1);
-  return Math.max(8, Math.floor(base * (boss ? 11 : 1)));
+  // 첫 세션 곡선 (RETENTION E): Stage 1~4는 HP를 감쇠해 신규가 5분 안에 Stage 5(원정 개방)에
+  // 닿게 한다. scripts/first-session-probe.mjs로 측정 — 감쇠 없이는 547초가 걸렸다.
+  const earlyRelief = stage < 5 ? 0.5 + 0.125 * (stage - 1) : 1;
+  return Math.max(8, Math.floor(base * earlyRelief * (boss ? 11 : 1)));
 }
 
 export function killGold(stage: number, boss: boolean, chesterson: boolean): number {
@@ -363,7 +366,8 @@ export function stageClearBonus(stage: number): number {
 }
 
 export function tapDamage(swordLevel: number): number {
-  return Math.max(1, Math.floor(1.2 * Math.pow(1.145, swordLevel - 1)));
+  // 하한 2 — 첫 탭이 1이면 초반 몬스터(HP 7~14)를 10번 넘게 눌러야 해 첫 60초가 늘어진다
+  return Math.max(2, Math.floor(1.2 * Math.pow(1.145, swordLevel - 1)));
 }
 
 export function swordUpgradeCost(level: number): number {
