@@ -20,6 +20,7 @@ import {
 import { STAGES } from "../game/stages";
 import { partySynergies } from "../titans/allies";
 import { activePetEffect } from "../titans/pets";
+import { CHARACTER_PASSIVE, PATRON } from "../economy/productCatalog";
 import { starMilestoneMultiplier } from "./collection";
 import type { CharacterProgress } from "./model";
 
@@ -120,7 +121,9 @@ export function idleRate(
   const raw =
     IDLE.baseRate + activeSlotLevelSum(progress, equipped) * IDLE.ratePerSlotLevel + arcane;
   // 균형 편성 시너지(§2)는 캡 밖 가산 — 상한을 다 채운 뒤에도 편성이 의미를 갖게
-  return Math.min(IDLE.rateCap, raw) + partySynergies(progress.partyIds).effects.idleRateBonus;
+  // 흑요석 검사(유료 캐릭터) 패시브 +1%p — 카탈로그가 약속한 효과의 실제 구현
+  const obsidian = progress.ownedCharacters.includes("obsidian") ? CHARACTER_PASSIVE.obsidianIdleRate : 0;
+  return Math.min(IDLE.rateCap, raw) + partySynergies(progress.partyIds).effects.idleRateBonus + obsidian;
 }
 
 /** M — 산출 배율. forge · 환생 · 끝없는 성벽이 올린다. */
@@ -151,7 +154,10 @@ export function idleCapHours(progress: CharacterProgress): number {
   const evolution = progress.evolutionPath === "guardian" ? 2 : 0;
   // 새끼 용 펫(§1)은 캡 밖 가산 — T가 14시간에 닿은 후에도 펫 육성이 유효하게
   const pet = activePetEffect(progress.pets, progress.activePet, "capHours");
-  return Math.min(IDLE.hoursCap, IDLE.hoursBase + dodge + attendance + evolution) + pet;
+  // 새벽의 무희(+30분)·원정 후원 계약(+2h)은 캡 밖 가산 — 유료 효과가 T 상한에 먹히지 않게
+  const dawn = progress.ownedCharacters.includes("dawn") ? CHARACTER_PASSIVE.dawnCapHours : 0;
+  const patron = progress.patronUntil > Date.now() ? PATRON.capHours : 0;
+  return Math.min(IDLE.hoursCap, IDLE.hoursBase + dodge + attendance + evolution) + pet + dawn + patron;
 }
 
 /** 개척된 지역 인덱스(1~5)에서 진입 가능한 최대 스테이지. */

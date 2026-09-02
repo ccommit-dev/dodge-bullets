@@ -2024,3 +2024,75 @@
   .titans-stagebar h1 { font-size: 20px; }
   .titans-field { margin-bottom: 4px; }
 }
+
+/* ── gacha panel (party tab) ── */
+.gacha-panel { margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(252, 211, 77, 0.28); border-radius: 12px; background: linear-gradient(180deg, rgba(60, 40, 90, 0.35), rgba(20, 16, 40, 0.5)); }
+.gacha-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.gacha-head strong { font-size: 13px; color: #fde68a; }
+.gacha-rates-link { background: none; border: 1px solid rgba(148, 163, 184, 0.4); color: #cbd5e1; border-radius: 999px; padding: 2px 8px; font-size: 10px; }
+.gacha-pickups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.gacha-pickup { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 4px 6px; border-radius: 10px; background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(148, 163, 184, 0.2); }
+.gacha-pickup .titan-ally-art { grid-row: 1 / span 2; --ally-size: 44px; width: 44px; }
+.gacha-pickup b { font-size: 10px; letter-spacing: 0.04em; }
+.gacha-pickup small { font-size: 10px; color: #cbd5e1; }
+.gacha-pickup.rarity-ssr { border-color: rgba(252, 211, 77, 0.45); box-shadow: inset 0 0 14px rgba(252, 211, 77, 0.12); }
+.gacha-pickup.rarity-sr { border-color: rgba(196, 181, 253, 0.4); }
+.gacha-empty { margin: 0 0 6px; font-size: 11px; color: #94a3b8; }
+.gacha-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; }
+.gacha-actions button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 6px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(30, 41, 59, 0.7); color: #f1f5f9; font-weight: 800; font-size: 13px; }
+.gacha-actions button small { font-size: 9.5px; font-weight: 600; color: #cbd5e1; }
+.gacha-actions button:disabled { opacity: 0.45; }
+.gacha-actions .gacha-ten { border-color: rgba(252, 211, 77, 0.6); background: linear-gradient(180deg, rgba(120, 80, 12, 0.5), rgba(60, 40, 10, 0.6)); color: #fde68a; }
+.gacha-pity { display: block; margin-top: 6px; font-size: 9.5px; color: #94a3b8; line-height: 1.4; }
+
+/* ── gacha reveal modal ── */
+.gacha-reveal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(3px); animation: gacha-fade 0.25s ease-out; }
+@keyframes gacha-fade { from { opacity: 0; } }
+.gacha-reveal-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: min(100%, 420px); }
+.gacha-reveal-grid.count-1 { grid-template-columns: minmax(0, 160px); justify-content: center; }
+.gacha-reveal-grid .gacha-close { grid-column: 1 / -1; margin-top: 6px; }
+.gacha-card { perspective: 600px; aspect-ratio: 3 / 4; animation: gacha-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+@keyframes gacha-pop { from { transform: translateY(24px) scale(0.6); opacity: 0; } }
+.gacha-card-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; animation: gacha-flip 0.6s ease-out both; animation-delay: inherit; }
+.gacha-card { --flip-delay: 0s; }
+.gacha-card .gacha-card-inner { animation-delay: calc(var(--flip-delay) + 0.35s); }
+@keyframes gacha-flip { from { transform: rotateY(180deg); } to { transform: rotateY(0deg); } }
+.gacha-card-back, .gacha-card-front { position: absolute; inset: 0; border-radius: 10px; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.gacha-card-back { transform: rotateY(180deg); background: linear-gradient(160deg, #312e81, #0f172a); border: 1px solid rgba(165, 180, 252, 0.4); color: #a5b4fc; font-size: 28px; font-weight: 900; }
+.gacha-card-front { background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(148, 163, 184, 0.35); padding: 4px; text-align: center; }
+.gacha-card-front .titan-ally-art { --ally-size: 42px; width: 42px; }
+.gacha-card-front em { font-size: 9px; font-weight: 900; letter-spacing: 0.06em; font-style: normal; }
+.gacha-card-front b { font-size: 9.5px; color: #f1f5f9; line-height: 1.15; }
+.gacha-card-front small { font-size: 8.5px; color: #cbd5e1; }
+.gacha-card.rarity-ssr .gacha-card-front { border-color: rgba(252, 211, 77, 0.8); box-shadow: 0 0 22px rgba(252, 211, 77, 0.45), inset 0 0 18px rgba(252, 211, 77, 0.18); animation: gacha-ssr-glow 1.2s ease-in-out infinite alternate; }
+@keyframes gacha-ssr-glow { to { box-shadow: 0 0 34px rgba(252, 211, 77, 0.75), inset 0 0 24px rgba(252, 211, 77, 0.28); } }
+.gacha-card.rarity-sr .gacha-card-front { border-color: rgba(196, 181, 253, 0.7); box-shadow: 0 0 14px rgba(196, 181, 253, 0.35); }
+.gacha-card.new .gacha-card-front small { color: #86efac; font-weight: 800; }
+.gacha-card.dup .gacha-card-front { opacity: 0.85; }
+.gacha-rates-sheet { width: min(100%, 420px); max-height: 82vh; overflow: auto; padding: 14px; border-radius: 14px; background: rgba(15, 23, 42, 0.98); border: 1px solid rgba(148, 163, 184, 0.35); color: #e2e8f0; }
+.gacha-rates-sheet strong { display: block; font-size: 15px; margin-bottom: 6px; color: #fde68a; }
+.gacha-rates-sheet p { font-size: 11px; line-height: 1.5; color: #cbd5e1; margin: 0 0 8px; }
+.gacha-rates-sheet table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 10px; }
+.gacha-rates-sheet th, .gacha-rates-sheet td { padding: 4px 6px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); text-align: left; }
+.gacha-rates-sheet td:last-child, .gacha-rates-sheet th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── skill slot tabs + cards ── */
+.skill-slot-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 4px 0 8px; }
+.skill-slot-tabs button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(15, 23, 42, 0.55); color: #cbd5e1; }
+.skill-slot-tabs button b { font-size: 11px; }
+.skill-slot-tabs button small { font-size: 8.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #94a3b8; }
+.skill-slot-tabs button.on { border-color: rgba(103, 232, 249, 0.7); background: rgba(8, 47, 73, 0.7); color: #e0f2fe; }
+.skill-slot-tabs button.locked { opacity: 0.55; }
+.skill-effect { color: #fde68a !important; font-weight: 700; }
+.skill-element-tag, .skill-level-tag, .skill-equipped-tag { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; font-size: 9px; font-style: normal; font-weight: 800; vertical-align: middle; border: 1px solid rgba(148, 163, 184, 0.35); color: #cbd5e1; }
+.skill-equipped-tag { border-color: rgba(103, 232, 249, 0.6); color: #67e8f9; }
+.skill-learn-card.element-fire .skill-icon { color: #fb923c; }
+.skill-learn-card.element-wind .skill-icon { color: #67e8f9; }
+.skill-learn-card.element-earth .skill-icon { color: #a3e635; }
+.skill-learn-card.element-light .skill-icon { color: #fde68a; }
+.skill-learn-card.element-blade .skill-icon { color: #e2e8f0; }
+.skill-learn-card.unlearned { opacity: 0.8; }
+.synergy-chip.role-chip { border-style: dashed; }
+
+/* ── title nameplate in battle ── */
+.hero-title-plate { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); white-space: nowrap; font-size: 9.5px; font-weight: 900; letter-spacing: 0.04em; text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px currentColor; pointer-events: none; z-index: 6; }

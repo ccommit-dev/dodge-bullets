@@ -8,12 +8,14 @@ type AttendanceSave = { lastClaimDate: string | null; lastClaimTimestamp: number
 const rewards = [
   { name: "골드", amount: "300", icon: "gold", rarity: "normal" },
   { name: "견갑 조각", amount: "15", icon: "shoulder-shards", rarity: "normal" },
-  { name: "강화석", amount: "5", icon: "enhance-stone", rarity: "rare" },
+  // 과금 점검: 출석이 보석을 전혀 주지 않아 무료 유저의 소환 동선이 없었다 — 3일·7일차에 보석
+  { name: "강화석 5 + 보석", amount: "30", icon: "enhance-stone", rarity: "rare" },
   { name: "골드", amount: "1,000", icon: "gold", rarity: "rare" },
   { name: "정찰 견갑", amount: "1", icon: "scout-pauldron", rarity: "epic" },
   { name: "스킬 포인트", amount: "2", icon: "skill-orb", rarity: "epic" },
-  { name: "용린 견갑", amount: "1", icon: "dragon-pauldron", rarity: "legend" },
+  { name: "용린 견갑 + 보석", amount: "100", icon: "dragon-pauldron", rarity: "legend" },
 ];
+const GEMS_BY_DAY: Record<number, number> = { 2: 30, 6: 100 };
 const today = () => new Date().toLocaleDateString("sv-SE");
 
 export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHash: string; open: boolean; onClose: () => void; onUpdated: (p: CharacterProgress) => void }) {
@@ -52,6 +54,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHa
         shoulderShards: current.shoulderShards + (day === 1 ? 15 : 0),
         enhancementMaterials: current.enhancementMaterials + (day === 2 ? 5 : 0),
         skillPoints: current.skillPoints + (day === 5 ? 2 : 0),
+        redGems: current.redGems + (GEMS_BY_DAY[day] ?? 0),
         ownedShoulders: shoulder ? [...new Set([...current.ownedShoulders, shoulder])] : current.ownedShoulders,
       }));
       const next = { lastClaimDate: today(), lastClaimTimestamp: Date.now(), consecutiveDays: streak, boardIndex: (day + 1) % 7, totalDays: save.totalDays + 1 };

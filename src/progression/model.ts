@@ -109,6 +109,16 @@ export type CharacterProgress = {
   routineClaimedDate: string;
   /** 사냥터 진입 세션 수 — 종료 예고 칩은 첫 3세션만 */
   sessionCount: number;
+  /** 소환 천장 카운터 — SSR 없이 누적된 뽑기 수 (60에서 확정) */
+  gachaPity: number;
+  /** 누적 뽑기 수 (공시·통계) */
+  gachaPulls: number;
+  /** 원정 후원 계약 만료 시각(ms). 0이면 없음 */
+  patronUntil: number;
+  /** 후원 일일 보석을 받은 날짜(sv-SE) */
+  patronClaimedDate: string;
+  /** 비트 RPG sp 중 이미 SP로 합산한 값 — 매 로드마다 재합산되던 환불 버그 방지 */
+  beatSpMigrated: number;
 };
 
 export function expForLevel(level: number): number {
@@ -181,6 +191,11 @@ export function emptyCharacterProgress(): CharacterProgress {
     warmupDay: { date: "", count: 0 },
     routineClaimedDate: "",
     sessionCount: 0,
+    gachaPity: 0,
+    gachaPulls: 0,
+    patronUntil: 0,
+    patronClaimedDate: "",
+    beatSpMigrated: 0,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -426,6 +441,11 @@ export function normalizeCharacterProgress(
         : { date: "", count: 0 },
     routineClaimedDate: typeof raw.routineClaimedDate === "string" ? raw.routineClaimedDate : "",
     sessionCount: integer(raw.sessionCount, 0, 999999),
+    gachaPity: integer(raw.gachaPity, 0, 999),
+    gachaPulls: integer(raw.gachaPulls, 0, 9999999),
+    patronUntil: integer(raw.patronUntil, 0),
+    patronClaimedDate: typeof raw.patronClaimedDate === "string" ? raw.patronClaimedDate : "",
+    beatSpMigrated: integer(raw.beatSpMigrated, 0, 9999999),
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

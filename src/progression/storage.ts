@@ -75,7 +75,11 @@ export async function migrateLegacyProgress(
         Math.max(value, beat.skills[id as keyof typeof beat.skills]),
       ]),
     ) as CharacterProgress["beatSkills"],
-    skillPoints: Math.max(current.skillPoints, beat.sp),
+    // 비트 sp는 "지금까지 번 총량"이고 skillPoints는 "쓰고 남은 잔액"이다. max()로 합치면
+    // 스킬 학습으로 쓴 SP가 다음 로드에서 그대로 환불된다 (코인과 같은 함정). 이미 합산한
+    // 양(beatSpMigrated)을 기록해 증가분만 더한다.
+    skillPoints: current.skillPoints + Math.max(0, beat.sp - current.beatSpMigrated),
+    beatSpMigrated: Math.max(current.beatSpMigrated, beat.sp),
   });
   return saveCharacterProgress(userHash, next);
 }

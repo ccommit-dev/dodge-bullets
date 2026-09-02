@@ -47,28 +47,44 @@ const ALT_BASE: Partial<Record<TitanHeroId, TitanHeroId>> = {
   iris:"sera", cain:"nox", sylph:"sera", orion:"leon", ember:"ari",
 };
 
-const VARIANT_HUE: Partial<Record<TitanHeroId, number>> = {
-  pyro:25, marina:175, terra:70, zephyr:125, bronn:15,
-  iris:205, cain:45, sylph:110, orion:235, ember:335,
+/**
+ * 변형 동료 10명 — 전용 아틀라스 행 (scripts/make-variant-atlas.mjs가 tint로 생성).
+ * 에셋 점검 전엔 기본 행에 CSS hue-rotate를 걸어 피부색이 왜곡됐다.
+ */
+const VARIANT_ATLAS = assetUrl("titans/generated/allies/ally-variant-atlas-v1.png");
+const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = {
+  pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9,
 };
+const VARIANT_ROWS = 10;
+/** 스킨 아틀라스 — 상점 썸네일 PNG가 아니라 전투 프레임 4종을 실제로 갈아입는다 */
+const SKIN_ATLAS = assetUrl("titans/generated/allies/ally-skin-atlas-v1.png");
+const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1 };
+const SKIN_ROWS = 2;
 
+/**
+ * 기본·변형·스킨 아틀라스의 셀은 313.5×209(가로 1.5:1)인데 .titan-ally-art는 정사각형이라
+ * 그대로 채우면 세로로 1.5배 늘어난다. 폭을 150%로 넓히고 좌측 −25%로 중앙을 맞춰 원본 비율로 그린다.
+ * (특수 아틀라스는 정사각 셀이라 그대로.)
+ */
+const WIDE_CELL: CSSProperties = { width: "150%", left: "-25%" };
 
 function animatedBodyStyle(id: TitanHeroId, state:0|1|2|3, skin?:string): CSSProperties {
   const specialRows:Partial<Record<TitanHeroId,number>> = { luna:0, volt:1, mia_dark:2, sera_light:3 };
   const specialRow = specialRows[id];
-  const base = ALT_BASE[id] ?? id;
-  const row = allyIndex[base];
-  const style:CSSProperties = specialRow == null ? {
-    backgroundImage:`url(${ALLY_ANIMATION_ATLAS})`, backgroundSize:"400% 600%",
-    backgroundPosition:`${state / 3 * 100}% ${row / 5 * 100}%`,
-  } : {
-    backgroundImage:`url(${SPECIAL_ANIMATION_ATLAS})`, backgroundSize:"400% 400%",
-    backgroundPosition:`${state / 3 * 100}% ${specialRow / 3 * 100}%`,
-  };
+  const col = `${state / 3 * 100}%`;
   const skinDef = skin ? ALLY_SKINS[skin] : undefined;
-  const tint = skinDef?.ally === id ? (id === "garen" ? 22 : 190) : VARIANT_HUE[id];
-  if (tint != null) style.filter=`hue-rotate(${tint}deg) saturate(1.2)`;
-  return style;
+  if (skinDef?.ally === id && skin && SKIN_ROW[skin] != null) {
+    return { ...WIDE_CELL, backgroundImage:`url(${SKIN_ATLAS})`, backgroundSize:`400% ${SKIN_ROWS * 100}%`, backgroundPosition:`${col} ${SKIN_ROW[skin] / (SKIN_ROWS - 1) * 100}%` };
+  }
+  const variantRow = VARIANT_ROW[id];
+  if (variantRow != null) {
+    return { ...WIDE_CELL, backgroundImage:`url(${VARIANT_ATLAS})`, backgroundSize:`400% ${VARIANT_ROWS * 100}%`, backgroundPosition:`${col} ${variantRow / (VARIANT_ROWS - 1) * 100}%` };
+  }
+  if (specialRow != null) {
+    return { backgroundImage:`url(${SPECIAL_ANIMATION_ATLAS})`, backgroundSize:"400% 400%", backgroundPosition:`${col} ${specialRow / 3 * 100}%` };
+  }
+  const row = allyIndex[ALT_BASE[id] ?? id];
+  return { ...WIDE_CELL, backgroundImage:`url(${ALLY_ANIMATION_ATLAS})`, backgroundSize:"400% 600%", backgroundPosition:`${col} ${row / 5 * 100}%` };
 }
 
 export function MonsterArt({

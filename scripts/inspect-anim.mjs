@@ -62,7 +62,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2600);
 // 정산 모달 닫기
 await page.evaluate(() => {
-  [...document.querySelectorAll("button")].find((b) => /받기|확인|닫기/.test(b.textContent))?.click();
+  for (let k = 0; k < 3; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".recommend-banner, .routine-board, .titans-tabs, .titans-content-tabs")).find((x) => /출석|수령|받기|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); }
 });
 await sleep(1400);
 // 스테이지 전환 중이면 전투 페이즈까지 대기 (전환 프레임을 찍으면 동료가 없다)

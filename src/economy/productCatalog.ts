@@ -22,8 +22,25 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──
   { id: "char-obsidian", kind: "entitlement", name: "캐릭터: 흑요석 검사", description: "전용 외형 + 방치 효율 +1%p", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 효율 +1%p"], visible: true },
   { id: "char-dawn", kind: "entitlement", name: "캐릭터: 새벽의 무희", description: "전용 외형 + 방치 시간 +30분", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 캡 +30분"], visible: true },
-  { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 20 · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 20", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
+  // 과금 점검: 20/일(600)은 ₩9.17/보석으로 1,200팩(₩12.50)을 무의미하게 만들었다 → 15/일(450, ₩12.2/보석) + 편의 효과
+  { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 15 · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 15", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
 ];
+
+/** 원정 후원 계약(월정액) 효과 — 실결제 연동 시 patronUntil을 30일 뒤로 세팅한다 */
+export const PATRON = {
+  days: 30,
+  dailyGems: 15,
+  capHours: 2,
+  riftBonus: 1,
+} as const;
+
+/** 플레이어블 캐릭터 패시브 — 카탈로그 설명과 정확히 일치해야 한다 (허위 표시 방지) */
+export const CHARACTER_PASSIVE = {
+  /** 흑요석 검사: 방치 효율 +1%p (캡 밖 가산) */
+  obsidianIdleRate: 0.01,
+  /** 새벽의 무희: 방치 캡 +30분 (캡 밖 가산) */
+  dawnCapHours: 0.5,
+} as const;
 
 /**
  * 보석 소비형 상품 (LIVEOPS §3.3) — 이미 결제로 얻은 하드 화폐를 쓰는 것이므로

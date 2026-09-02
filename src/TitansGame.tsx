@@ -34,6 +34,8 @@ import {
 } from "./titans/model";
 import { AllyArt, MonsterArt } from "./titans/SpriteArt";
 import { ALLY_SKINS } from "./titans/skins";
+import { GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
+import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -73,6 +75,8 @@ import {
   effectiveStars,
   expeditionReward,
   partySlotCount,
+  partyRoleEffects,
+  canFieldAlly,
   partySynergies,
   shardCostToNext,
   starMultiplier,
@@ -97,7 +101,7 @@ import { CurrencyIcon } from "./ui/CurrencyIcon";
 import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
-import { SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS } from "./economy/productCatalog";
+import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS } from "./economy/productCatalog";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
@@ -135,11 +139,25 @@ type FxBurst = {
   hue?: number;
 };
 
+/** 버프 상태 — 만료 시각(performance.now 기준)과 그때의 수치. 값은 titans/skills.ts가 정한다 */
 type BuffState = {
   critUntil: number;
+  critBonus: number;
   cloneUntil: number;
+  cloneMult: number;
   warcryUntil: number;
+  warMult: number;
+  hasteUntil: number;
+  hasteMult: number;
+  freezeUntil: number;
+  burnUntil: number;
+  /** 초당 화상 피해(절대값 — 시전 시점의 탭 기본 피해 × 배율) */
+  burnPerSec: number;
+  burnBossOnly: boolean;
 };
+
+const EMPTY_BUFFS: BuffState = { critUntil: 0, critBonus: 0, cloneUntil: 0, cloneMult: 1, warcryUntil: 0, warMult: 1, hasteUntil: 0, hasteMult: 1, freezeUntil: 0, burnUntil: 0, burnPerSec: 0, burnBossOnly: false };
+const AUTO_SKILL_ORDER = autoSkillOrder();
 
 type CooldownMap = Record<TitanSkillId, number>;
 type BattlePhase = "combat" | "monster-death" | "boss-ready" | "stage-clear" | "stage-exit" | "stage-enter";
@@ -154,20 +172,13 @@ function shoulderTrainingMaterials(level: number): { expedition: number; beat: n
   return { expedition: 4 + Math.floor((level - 15) / 4), beat: 1 + Math.floor((level - 15) / 5) };
 }
 
-/** 스킬별 평균 DPS 보정(%) — 업타임(지속/쿨) × 효과의 근사치. 프리셋 미리보기용 */
-const SKILL_PREVIEW_PCT: Partial<Record<TitanSkillId, number>> = {
-  strike: 9,
-  crit: 13,
-  clone: 33,
-  warcry: 45,
-  steel: 6,
-};
-
-const SKILL_PRESETS: { id: string; name: string; desc: string; ids: TitanSkillId[] }[] = [
-  { id: "burst", name: "공격형", desc: "일격·함성·치명 — 보스 순간 화력", ids: ["strike", "warcry", "crit", "steel"] },
-  { id: "sustain", name: "지속형", desc: "분신·치명·강철 — 사냥 지속 화력", ids: ["clone", "crit", "steel", "strike"] },
-  { id: "balance", name: "균형", desc: "학습한 스킬 전부 장착", ids: ["strike", "crit", "clone", "warcry", "steel"] },
-];
+/**
+ * 무료 지급 게이트 (과금 점검): ₩ 상품 6종을 무료로 1회씩 주던 QA 경로는 개발 빌드 또는
+ * `dodgebullets:qa-free-store` 플래그에서만 열린다. 배포 빌드에서는 결제 연동 전까지 가격만 보인다.
+ */
+const FREE_STORE_ENABLED =
+  import.meta.env.DEV ||
+  (typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
 export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent, onOpenEvents }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
@@ -187,11 +198,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [fx, setFx] = useState<FxBurst[]>([]);
   const [toast, setToast] = useState("");
   const [cds, setCds] = useState<CooldownMap>(() => emptyCds());
-  const [buffs, setBuffs] = useState<BuffState>({
-    critUntil: 0,
-    cloneUntil: 0,
-    warcryUntil: 0,
-  });
+  const [buffs, setBuffs] = useState<BuffState>(EMPTY_BUFFS);
+  /** 소환 결과 연출 (확률형 재설계) — 카드 뒤집기 모달. null이면 닫힘 */
+  const [gachaReveal, setGachaReveal] = useState<PullResult[] | null>(null);
+  const [showGachaRates, setShowGachaRates] = useState(false);
+  const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot>("starter");
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
   const [frameIdx, setFrameIdx] = useState(0);
   const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
@@ -202,7 +213,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [redGems, setRedGems] = useState(0);
   const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
-  const skillTypeCapacity = Math.min(10, Math.max(1, Math.ceil(character.level / 10)));
+  // 하한 2 — 기본 스킬(초승 검격)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
+  const skillTypeCapacity = Math.min(10, Math.max(2, Math.ceil(character.level / 10)));
   const [idleReport, setIdleReport] = useState<{
     result: IdleYield;
     stage: number;
@@ -243,6 +255,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const toastTimer = useRef<number | null>(null);
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
+  const burnAcc = useRef(0);
   const attackUntil = useRef(0);
   const animResetRef = useRef(false);
   const animModeRef = useRef<"idle" | "attack">("idle");
@@ -315,12 +328,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
   // 보스 제한시간 — 방진 시너지(§2)와 아기 늑대 펫(§1)이 연장한다.
   // spawn이 의존성 없는 콜백이라 ref로 전달한다.
+  // + 탱커 도발(역할 효과 +5초/명) + 수호자의 혼(패시브)
   const bossTimeSec = useMemo(
     () =>
       BOSS_TIME_SEC +
       partySynergies(character.partyIds).effects.bossTimeBonus +
+      partyRoleEffects(character.partyIds).bossTimeBonus +
+      passiveTotals(save.skillInventory.learned, save.skillInventory.equipped, save.skillInventory.levels).bossTime +
       activePetEffect(character.pets, character.activePet, "bossTime"),
-    [character.partyIds, character.pets, character.activePet],
+    [character.partyIds, character.pets, character.activePet, save.skillInventory],
   );
   const bossTimeRef = useRef(bossTimeSec);
   useEffect(() => {
@@ -437,7 +453,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       setReady(true);
       scheduleIdleCapNotify(progress);
       // 세션 카운트(종료 예고 카드는 첫 3세션) + 이벤트 저장 로드
-      void updateCharacterProgress(userHash, (current) => ({ ...current, sessionCount: current.sessionCount + 1 })).then(setCharacter);
+      void updateCharacterProgress(userHash, (current) => {
+        // 원정 후원 계약(월정액) — 하루 1회 보석 지급. 결제 연동 시 patronUntil이 세팅된다
+        const today = new Date().toLocaleDateString("sv-SE");
+        const patronDue = current.patronUntil > Date.now() && current.patronClaimedDate !== today;
+        return {
+          ...current,
+          sessionCount: current.sessionCount + 1,
+          redGems: current.redGems + (patronDue ? PATRON.dailyGems : 0),
+          patronClaimedDate: patronDue ? today : current.patronClaimedDate,
+        };
+      }).then((next) => {
+        setCharacter(next);
+        setRedGems(next.redGems);
+        if (next.patronUntil > Date.now() && next.patronClaimedDate === new Date().toLocaleDateString("sv-SE") && next.redGems > progress.redGems) flash(`후원 계약 · 오늘의 보석 +${PATRON.dailyGems}`);
+      });
       void loadEventSave(userHash).then(setEvents);
     });
     return () => {
@@ -811,11 +841,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
   const computeTapHit = useCallback(() => {
     const now = performance.now();
-    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5));
-    const clone = now < buffsRef.current.cloneUntil ? 2 : 1;
-    const critChance = 0.08 + (now < buffsRef.current.critUntil ? 0.45 : 0);
+    const inv = saveRef.current.skillInventory;
+    const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
+    // 강철 호흡(패시브) — 탭 기본 피해 상시 증가
+    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg);
+    const b = buffsRef.current;
+    const clone = now < b.cloneUntil ? b.cloneMult : 1;
+    // 검심 집중(패시브) + 치명 버프
+    const critChance = Math.min(0.95, 0.08 + passive.critChance + (now < b.critUntil ? b.critBonus : 0));
     const crit = Math.random() < critChance;
-    return { dmg: base * clone * (crit ? 3.2 : 1), crit };
+    return { dmg: base * clone * (crit ? 3.2 : 1), crit, base };
   }, [forgedWeaponLevel]);
 
   const doTap = useCallback(
@@ -847,17 +882,33 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         formationReadyRef.current &&
         document.visibilityState !== "hidden"
       ) {
-        for (const sk of SKILLS) {
-          if (sk.slot === "passive" || cdsRef.current[sk.id] > 0) continue;
-          if (!saveRef.current.skillInventory.learned.includes(sk.id)) continue;
-          if (saveRef.current.skillInventory.equipped[sk.slot] !== sk.id) continue;
-          castSkillRef.current(sk.id);
+        // 순서: 연계(버프) → 시동기 → 마무리. 심연 절단은 보스 30% 미만(또는 시간 촉박)까지 아낀다
+        for (const id of AUTO_SKILL_ORDER) {
+          const sk = SKILLS.find((s) => s.id === id)!;
+          if (cdsRef.current[id] > 0) continue;
+          if (!saveRef.current.skillInventory.learned.includes(id)) continue;
+          if (saveRef.current.skillInventory.equipped[sk.slot] !== id) continue;
+          if (id === "voidFinish" && bossRef.current && hpRef.current >= monsterHp(saveRef.current.stage, true) * 0.3 && bossLeftRef.current > 6) continue;
+          castSkillRef.current(id);
         }
       }
 
-      const war = now < buffsRef.current.warcryUntil ? 2.5 : 1;
+      const buff = buffsRef.current;
+      const inv = saveRef.current.skillInventory;
+      const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
+      // 동료 배율 = 고무 버프(대지 수호·뇌광 연쇄·별빛 처형) × 원소 공명(패시브)
+      const war = (now < buff.warcryUntil ? buff.warMult : 1) * (1 + passive.allyDmg);
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
-        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012));
+        // 질풍 연계(가속) — 영웅 자동 공격 간격 단축
+        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1);
+        // 화상(잔불 베기·용염 숨결) — 0.5초 단위로 몰아서 넣어 피해 숫자 도배를 막는다
+        if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
+          burnAcc.current += dt;
+          if (burnAcc.current >= 0.5) {
+            applyDamage(buff.burnPerSec * burnAcc.current, false, { source: "skill" });
+            burnAcc.current = 0;
+          }
+        } else burnAcc.current = 0;
         autoAttackAcc.current += dt;
         if (autoAttackAcc.current >= autoInterval) {
           autoAttackAcc.current %= autoInterval;
@@ -891,7 +942,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       }
 
       if (bossRef.current) {
-        const left = bossLeftRef.current - dt;
+        // 빙결(서리 칼날·해일 폭발) — 제한시간 정지
+        const left = bossLeftRef.current - (now < buffsRef.current.freezeUntil ? 0 : dt);
         bossLeftRef.current = left;
         setBossLeft(Math.max(0, left));
         if (left <= 0) {
@@ -1086,23 +1138,46 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     flash(`${def.name} 합류! (★1)`);
   };
 
-  const summonAlly = async () => {
-    if (redGems < 100) return;
-    const roll = Math.random();
-    const rarity = roll < .6 ? "R" : roll < .9 ? "SR" : "SSR";
-    const pool = HEROES.filter((hero) => ALLY_RARITY[hero.id] === rarity);
-    const id = pool[Math.floor(Math.random() * pool.length)].id;
-    const owned = save.heroes[id] > 0;
-    const next = await updateCharacterProgress(userHash, (current) => ({
-      ...current,
-      redGems: Math.max(0, current.redGems - 100),
-      allyStars: owned ? current.allyStars : { ...current.allyStars, [id]: 1 },
-      allyShards: owned ? { ...current.allyShards, [id]: current.allyShards[id] + 20 } : current.allyShards,
-    }));
+  /**
+   * 동료 소환 (확률형 재설계) — titans/gacha.ts 엔진. 풀은 현재 진행도 기준(상점 동료 제외),
+   * 천장 60·10연 SR 보장·픽업 2배. 새 동료는 빈 슬롯이 있으면 자동 편성 — "뽑았는데 안 싸우는" 상황을 막는다.
+   */
+  const summonAlly = async (count: 1 | 10) => {
+    const cost = count === 10 ? GACHA.tenCost : GACHA.singleCost;
+    if (redGems < cost || gacha.entries.length === 0) return;
+    const pulled =
+      count === 10
+        ? pullTen(gacha, save.heroes, character.gachaPity)
+        : (() => { const r = pullOnce(gacha, save.heroes, character.gachaPity); return { results: [r.result], pity: r.pity }; })();
+    const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).map((r) => r.id))];
+    let paid = false;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      if (current.redGems < cost) return current;
+      paid = true;
+      const slots = partySlotCount(current.towerBestFloor, current.partyCap);
+      const stars = { ...current.allyStars };
+      const shards = { ...current.allyShards };
+      for (const r of pulled.results) {
+        if (r.duplicate) shards[r.id] = (shards[r.id] ?? 0) + r.shards;
+        else stars[r.id] = Math.max(1, stars[r.id] ?? 0);
+      }
+      const party = [...current.partyIds];
+      for (const id of newIds) if (!party.includes(id) && party.length < slots) party.push(id);
+      return { ...current, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaPulls: current.gachaPulls + count };
+    });
+    if (!paid) return;
     setCharacter(next);
     setRedGems(next.redGems);
-    if (!owned) setSave((current) => ({ ...current, heroes: { ...current.heroes, [id]: 1 } }));
-    flash(`${HEROES.find((hero) => hero.id === id)?.name} ${owned ? "중복 · 조각 +20" : "합류!"}`);
+    if (newIds.length > 0) {
+      setSave((cur) => {
+        const heroes = { ...cur.heroes };
+        for (const id of newIds) heroes[id] = Math.max(1, heroes[id]);
+        return { ...cur, heroes };
+      });
+      setAllyPulse((prev) => { const out = { ...prev }; for (const id of newIds) out[id] = (out[id] ?? 0) + 1; return out; });
+    }
+    sfxSlotUnlock();
+    setGachaReveal(pulled.results);
   };
 
   /** 성급 승급 — 조각 소비, 환생에도 보존되는 영구 성장 */
@@ -1130,6 +1205,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const toggleParty = async (id: TitanHeroId) => {
     const onExpedition = character.expeditions.some((e) => e.allyId === id);
     if (onExpedition) return;
+    // 개척 상한 게이트 — 소환으로 얻은 후반 동료가 Lv.1로 25스테이지를 건너뛰던 구멍을 막는다
+    const def = HEROES.find((h) => h.id === id);
+    if (def && !character.partyIds.includes(id) && !canFieldAlly(id, def.unlockStage, stageCeilingFor(character.pioneeredArea))) {
+      flash(`${def.name}은(는) STAGE ${def.unlockStage} 지역을 개척해야 출전합니다 — 화살 원정으로 지역을 여세요`);
+      return;
+    }
     const slots = partySlotCount(character.towerBestFloor, character.partyCap);
     const inParty = character.partyIds.includes(id);
     if (!inParty && character.partyIds.length >= slots) {
@@ -1411,31 +1492,50 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     window.setTimeout(() => setSkillVisual((active) => (active === id ? null : active)), 820);
     const visualKind: FxBurst["kind"] = def.slot === "starter" ? "strike" : def.slot === "finisher" ? "warcry" : def.element === "fire" ? "clone" : "crit";
     pushFx(visualKind, 56, 44, def.element === "fire" ? 18 : def.element === "wind" ? 185 : def.element === "earth" ? 75 : def.element === "light" ? 48 : 330);
-    setCds((prev) => ({ ...prev, [id]: def.cooldownSec }));
-    if (def.slot === "starter") {
+    // 효과 숫자는 titans/skills.ts 한 곳에서 온다. 레벨 = ×(1+0.05/Lv), 힐러 축복 = 쿨 −10%/명
+    const level = Math.max(1, save.skillInventory.levels[id] ?? 1);
+    const mult = skillLevelMult(level);
+    const effect = SKILL_EFFECTS[id];
+    setCds((prev) => ({ ...prev, [id]: def.cooldownSec * partyRoleEffects(characterRef.current.partyIds).cooldownMult }));
+    // 지속은 배속만큼 실시간이 줄어 쿨타임과 대칭 — ×2가 업타임을 2배로 만들던 버그 제거
+    const durMs = buffDurationMs(def, level, saveRef.current.battleSpeed);
+    const bossOnlyBurn = effect.kind === "buff" && !!effect.bossOnly;
+    // 버프는 연장만 한다 — 짧은 버프가 긴 버프를 잘라먹지 않게 (수면 보법이 혈월 난무를 1초 줄이던 문제)
+    const applyBuff = (kind: BuffKind, value: number) => {
+      const until = now + durMs;
+      setBuffs((b) => {
+        switch (kind) {
+          case "crit": return { ...b, critUntil: Math.max(b.critUntil, until), critBonus: value };
+          case "clone": return { ...b, cloneUntil: Math.max(b.cloneUntil, until), cloneMult: value };
+          case "war": return { ...b, warcryUntil: Math.max(b.warcryUntil, until), warMult: value };
+          case "haste": return { ...b, hasteUntil: Math.max(b.hasteUntil, until), hasteMult: value };
+          case "freeze": return { ...b, freezeUntil: Math.max(b.freezeUntil, until) };
+          case "burn": return { ...b, burnUntil: Math.max(b.burnUntil, until), burnPerSec: value, burnBossOnly: bossOnlyBurn };
+        }
+      });
+    };
+    if (effect.kind === "hit" || effect.kind === "execute") {
       playAttackAnim();
-      pushFx("slash", 30, 40);
-      const { dmg } = computeTapHit();
-      applyDamage(dmg * (id === "pierce" ? 52 : id === "emberCut" ? 46 : id === "frostEdge" ? 43 : 40), true, { source: "skill" });
-      flash(`${def.name}!`);
+      if (def.slot === "starter") pushFx("slash", 30, 40);
+      else pushFx("warcry", 58, 42, def.element === "fire" ? 18 : 210);
+      const { dmg, base } = computeTapHit();
+      const low = effect.kind === "execute" && hpRef.current < monsterHp(saveRef.current.stage, bossRef.current) * 0.3;
+      const hitMult = effect.kind === "execute" ? (low ? effect.lowMult : effect.mult) : effect.mult;
+      applyDamage(dmg * hitMult * mult, true, { source: "skill" });
+      if (effect.kind === "hit" && effect.buff) {
+        applyBuff(effect.buff, effect.buff === "burn" ? base * (effect.buffValue ?? 0) * mult : (effect.buffValue ?? 1) * mult);
+      }
+      flash(low ? `${def.name} · 처형!` : `${def.name}!`);
       return;
     }
-    if (def.slot === "finisher") {
-      playAttackAnim();
-      const { dmg } = computeTapHit();
-      const execute = id === "voidFinish" && hpRef.current < monsterHp(saveRef.current.stage, bossRef.current) * .3 ? 110 : id === "meteor" ? 85 : 72;
-      applyDamage(dmg * execute, true);
-      pushFx("warcry", 58, 42, def.element === "fire" ? 18 : 210);
-      flash(`${def.name}!`);
-    } else if (def.element === "wind" || id === "bloodMoon") {
-      setBuffs((b) => ({ ...b, critUntil: now + def.durationSec * 1000 }));
-      flash(`${def.name} · 치명 연계!`);
-    } else if (def.element === "fire" || id === "thunderLink") {
-      setBuffs((b) => ({ ...b, cloneUntil: now + def.durationSec * 1000 }));
-      flash(`${def.name} · 추가 타격!`);
-    } else {
-      setBuffs((b) => ({ ...b, warcryUntil: now + def.durationSec * 1000 }));
-      flash(`${def.name} · 파티 강화!`);
+    if (effect.kind === "buff") {
+      const value =
+        effect.buff === "burn" ? computeTapHit().base * effect.value * mult
+        : effect.buff === "haste" ? effect.value
+        : effect.buff === "crit" ? Math.min(0.85, effect.value * mult)
+        : effect.value * mult;
+      applyBuff(effect.buff, value);
+      flash(`${def.name} · ${BUFF_LABEL[effect.buff]}!`);
     }
   };
 
@@ -1597,10 +1697,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     playerIdleDps(save.equipmentTraining.weaponMastery);
   const tap = tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5));
   const now = performance.now();
+  const fieldCeiling = stageCeilingFor(character.pioneeredArea);
   const allies = useMemo(
-    () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id)),
-    [save.heroes, character.partyIds],
+    () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id) && canFieldAlly(h.id, h.unlockStage, fieldCeiling)),
+    [save.heroes, character.partyIds, fieldCeiling],
   );
+  const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea), [save.stage, character.pioneeredArea]);
   const expeditionsDone = character.expeditions.filter((e) => e.endsAt <= Date.now()).length;
 
   // 다음 목표 3종 (점검표 #3): 동료 합류 · 스킬 학습 · 지역 개척 — 남은 거리를 항상 보여준다
@@ -1695,27 +1797,30 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     () =>
       SKILLS.reduce((sum, sk) => {
         if (save.skillInventory.equipped[sk.slot] !== sk.id || !save.skillInventory.learned.includes(sk.id)) return sum;
-        return sum + (SKILL_PREVIEW_PCT[sk.id] ?? 0) * (1 + (save.skillInventory.levels[sk.id] - 1) * 0.06);
+        return sum + skillPreviewPct(sk.id, save.skillInventory.levels[sk.id]);
       }, 0),
     [save.skillInventory],
   ).toFixed(0);
 
-  const applyPreset = (ids: TitanSkillId[]) => {
+  /** 프리셋 — 슬롯마다 후보 순서 중 학습한 첫 스킬. 잠긴 슬롯(비트 숙련 0)은 건드리지 않고, 후보가 없으면 기존 장착을 유지 */
+  const applyPreset = (preset: SkillPreset) => {
+    const locks = slotLevels(character);
     setSave((prev) => {
-      const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = {};
-      SKILLS.forEach((sk) => {
-        if (ids.includes(sk.id) && prev.skillInventory.learned.includes(sk.id)) {
-          equipped[sk.slot] = sk.id;
-        }
-      });
+      const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = { ...prev.skillInventory.equipped };
+      for (const slot of SLOT_ORDER) {
+        if (locks[slot] <= 0) continue;
+        const pick = preset.picks[slot].find((id) => prev.skillInventory.learned.includes(id));
+        if (pick) equipped[slot] = pick;
+      }
       return { ...prev, skillInventory: { ...prev.skillInventory, equipped } };
     });
-    flash("프리셋 적용 — 학습한 스킬만 장착됐습니다");
+    flash(`${preset.name} 프리셋 적용 — 학습한 스킬만 장착됐습니다`);
   };
 
   /** 추천 편성 (점검표 #4) — DPS 상위를 뽑되 원거리 2명을 보장해 엄호 사격 시너지를 켠다 */
   const recommendParty = async () => {
-    const owned = HEROES.filter((h) => save.heroes[h.id] > 0 && !character.expeditions.some((e) => e.allyId === h.id));
+    const ceiling = stageCeilingFor(character.pioneeredArea);
+    const owned = HEROES.filter((h) => save.heroes[h.id] > 0 && canFieldAlly(h.id, h.unlockStage, ceiling) && !character.expeditions.some((e) => e.allyId === h.id));
     const slots = partySlotCount(character.towerBestFloor, character.partyCap);
     const dpsOf = (h: (typeof HEROES)[number]) =>
       heroDps(h, save.heroes[h.id]) * starMultiplier(effectiveStars(character.allyStars[h.id], save.heroes[h.id]));
@@ -1864,6 +1969,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       >
         <div className="titans-background" aria-hidden="true" />
         <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
+          {/* 칭호 이름표 — 과금 점검: 칭호가 전투에서 전혀 보이지 않아 150~250보석 가치가 없었다 */}
+          {character.activeTitle && TITLES[character.activeTitle] && (
+            <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
+          )}
           <div className={`titans-hero-facing facing-${animMode}`}>
             <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} />
           </div>
@@ -2026,9 +2135,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       </section>
 
       <div className="titans-buffs">
-        {now < buffs.critUntil && <span>치명</span>}
-        {now < buffs.cloneUntil && <span>분신</span>}
-        {now < buffs.warcryUntil && <span>함성</span>}
+        {now < buffs.critUntil && <span>치명 +{Math.round(buffs.critBonus * 100)}%</span>}
+        {now < buffs.cloneUntil && <span>분신 ×{buffs.cloneMult.toFixed(1)}</span>}
+        {now < buffs.warcryUntil && <span>고무 ×{buffs.warMult.toFixed(1)}</span>}
+        {now < buffs.hasteUntil && <span>가속</span>}
+        {now < buffs.freezeUntil && <span>빙결</span>}
+        {now < buffs.burnUntil && <span>화상</span>}
       </div>
 
       {/* 다음 목표 스트립 (점검표 #3) — "다음 해금까지 얼마"를 HUD에 고정 */}
@@ -2116,6 +2228,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                   {s.name}
                 </span>
               ))}
+              {/* 역할 실효과 — 탱커 도발(보스 시간) · 힐러 축복(스킬 쿨) */}
+              {(() => {
+                const role = partyRoleEffects(character.partyIds);
+                return (
+                  <>
+                    <span className={`synergy-chip role-chip ${role.tanks > 0 ? "on" : ""}`} title="탱커 1명당 보스 제한시간 +5초 (최대 2명)">도발 +{role.bossTimeBonus}초</span>
+                    <span className={`synergy-chip role-chip ${role.healers > 0 ? "on" : ""}`} title="힐러 1명당 스킬 쿨타임 −10% (최대 2명)">축복 쿨 −{Math.round((1 - role.cooldownMult) * 100)}%</span>
+                  </>
+                );
+              })()}
             </div>
             <div className="party-tools">
               <div className="role-filter" role="group" aria-label="역할 필터">
@@ -2129,9 +2251,40 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 추천 편성
               </button>
             </div>
-            <button type="button" className="expedition-claim" disabled={redGems < 100} onClick={() => void summonAlly()}>
-              동료 소환 · 붉은 보석 100 <small>R 60% · SR 30% · SSR 10% · 중복 조각 +20</small>
-            </button>
+            {/* 동료 소환 (확률형 재설계) — 픽업 2명 노출 · 1회/10연 · 천장 카운터 · 확률 공시 */}
+            <div className="gacha-panel" aria-label="동료 소환">
+              <div className="gacha-head">
+                <strong>동료 소환</strong>
+                <button type="button" className="gacha-rates-link" onClick={() => setShowGachaRates(true)}>확률 보기</button>
+              </div>
+              {gacha.pickups.length > 0 ? (
+                <div className="gacha-pickups">
+                  {gacha.pickups.map((id) => {
+                    const h = HEROES.find((x) => x.id === id)!;
+                    return (
+                      <div key={id} className={`gacha-pickup rarity-${ALLY_RARITY[id].toLowerCase()}`}>
+                        <AllyArt id={id} />
+                        <b style={{ color: RARITY_COLOR[ALLY_RARITY[id]] }}>{ALLY_RARITY[id]} 픽업 ×2</b>
+                        <small>{h.name}{save.heroes[id] > 0 ? " · 보유" : ` · STAGE ${h.unlockStage}`}</small>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="gacha-empty">이 지역의 동료를 모두 만났습니다 — 화살 원정으로 다음 지역을 개척하면 새 픽업이 열립니다</p>
+              )}
+              <div className="gacha-actions">
+                <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}>
+                  1회 <small>💎 {GACHA.singleCost}</small>
+                </button>
+                <button type="button" className="gacha-ten" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}>
+                  10연 <small>💎 {GACHA.tenCost} · SR 이상 1 보장</small>
+                </button>
+              </div>
+              <small className="gacha-pity">
+                전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회 · 중복 시 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 뽑은 동료는 빈 슬롯에 자동 출전
+              </small>
+            </div>
             {expeditionsDone > 0 && (
               <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
                 <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
@@ -2264,7 +2417,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </div>
             <div className="preset-row">
               {SKILL_PRESETS.map((preset) => (
-                <button key={preset.id} type="button" onClick={() => applyPreset(preset.ids)} title={preset.desc}>
+                <button key={preset.id} type="button" onClick={() => applyPreset(preset)} title={preset.desc}>
                   <b>{preset.name}</b>
                   <small>{preset.desc}</small>
                 </button>
@@ -2272,8 +2425,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </div>
           </article>
         )}
+        {/* 스킬 정리: 슬롯 탭(5) × 4종. 카드에 실제 효과 수치·쿨·지속·다음 레벨 효과를 표기해 비교 가능하게 */}
+        {tab === "skills" && (
+          <nav className="skill-slot-tabs" aria-label="스킬 슬롯">
+            {SLOT_ORDER.map((slot) => {
+              const eq = save.skillInventory.equipped[slot];
+              const locked = slotLevels(character)[slot] <= 0;
+              return (
+                <button key={slot} type="button" className={`${skillSlotTab === slot ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)}>
+                  <b>{SLOT_LABEL[slot]}</b>
+                  <small>{locked ? "잠김" : eq ? SKILLS.find((s) => s.id === eq)?.name : "비어 있음"}</small>
+                </button>
+              );
+            })}
+          </nav>
+        )}
         {tab === "skills" &&
-          SKILLS.map((sk) => {
+          SKILLS.filter((sk) => sk.slot === skillSlotTab).map((sk) => {
             const learned = save.skillInventory.learned.includes(sk.id);
             const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
             const level = save.skillInventory.levels[sk.id];
@@ -2283,17 +2451,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             const mastery = character.beatSkills[beatSkill];
             const slotLevel = slotLevels(character)[sk.slot];
             const toNext = masteryToNextSlotLevel(mastery);
-            return <article key={sk.id} className={`titans-card skill-learn-card ${equipped ? "equipped" : ""} ${slotLevel <= 0 ? "slot-locked" : ""}`}>
+            return <article key={sk.id} className={`titans-card skill-learn-card element-${sk.element} ${equipped ? "equipped" : ""} ${slotLevel <= 0 ? "slot-locked" : ""} ${learned ? "" : "unlearned"}`}>
               <SkillIcon id={sk.id} />
               <div>
-                <strong>{sk.name} · {sk.slot} · {sk.element}</strong>
-                <p>{sk.desc} · Lv.{save.skillInventory.levels[sk.id]}/{sk.maxLevel}</p>
+                <strong>
+                  {sk.name} <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em>
+                  {learned && <em className="skill-level-tag">Lv.{level}/{sk.maxLevel}</em>}
+                  {equipped && <em className="skill-equipped-tag">장착</em>}
+                </strong>
+                <p className="skill-effect">{skillEffectLabel(sk.id, Math.max(1, level))}</p>
+                <p>{sk.desc}{learned && level < sk.maxLevel ? ` · 다음 Lv: ${skillEffectLabel(sk.id, level + 1).split(" · ")[0]}` : ""}</p>
                 <small className={`slot-link ${slotLevel <= 0 ? "locked" : ""}`}>
                   <em>{SKILL_LABEL[beatSkill]}</em> 숙련 {mastery} · 슬롯 {slotLevel > 0 ? `Lv.${slotLevel}` : "잠김"}
                   {toNext !== null && ` · 다음까지 ${toNext}`}
                   {slotLevel > 0 && ` · 방치 효율 +${(slotLevel * IDLE.ratePerSlotLevel * 100).toFixed(1)}%p`}
                 </small>
-                {!learned && <small>학습 비용 SP {sk.learnSpCost} · 코어 {sk.learnCoreCost} · {sk.slot} {learnedInType}/{skillTypeCapacity}</small>}
+                {!learned && <small>학습 비용 SP {sk.learnSpCost} · 코어 {sk.learnCoreCost} · {SLOT_LABEL[sk.slot]} {learnedInType}/{skillTypeCapacity}</small>}
               </div>
               <div className="skill-card-actions">
                 <button type="button" disabled={!learned && (learnedInType >= skillTypeCapacity || skillPoints < sk.learnSpCost || save.skillInventory.skillCores < sk.learnCoreCost)} onClick={() => learned ? toggleSkill(sk.id) : void learnSkill(sk.id)}>
@@ -2306,7 +2479,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {tab === "skills" && (
           <p className="skill-wallet">
             SP {skillPoints} · 스킬 코어 {save.skillInventory.skillCores} · 종류별 보유 한도 {skillTypeCapacity}/10
-            <br />레벨 10마다 종류별 한도 +1 · 시동기 → 연계 A → 연계 B → 마무리 → 패시브
+            <br />레벨 10마다 종류별 한도 +1 · 시동기 → 연계 A → 연계 B → 마무리 → 패시브 · 강화는 효과 ×(1+0.05/Lv)
             <br />
             <b>
               활성 슬롯 합 {activeSlotLevelSum(character, save.skillInventory.equipped)} · 방치 효율{" "}
@@ -2483,15 +2656,68 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}</strong><p>{product.description}</p><small>{product.contents.join(" · ")}</small></div>
-          {paidOnly ? (
+          {paidOnly || !FREE_STORE_ENABLED ? (
             <button type="button" disabled title="스토어 결제 연동 후 판매됩니다">{product.displayPrice}</button>
           ) : (
-            <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회"}</button>
+            <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회 (QA)"}</button>
           )}
         </article>})}
       </section>
 
       {toast && <div className="titans-toast">{toast}</div>}
+
+      {/* 소환 연출 — 카드가 순서대로 뒤집히고 등급색으로 빛난다. 새 동료/중복 조각을 구분해 보여준다 */}
+      {gachaReveal && (
+        <div className="gacha-reveal" role="dialog" aria-label="소환 결과" onClick={() => setGachaReveal(null)}>
+          <div className={`gacha-reveal-grid count-${gachaReveal.length}`} onClick={(e) => e.stopPropagation()}>
+            {gachaReveal.map((r, i) => {
+              const h = HEROES.find((x) => x.id === r.id)!;
+              return (
+                <div key={`${r.id}-${i}`} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}>
+                  <div className="gacha-card-inner">
+                    <div className="gacha-card-back">?</div>
+                    <div className="gacha-card-front">
+                      <em style={{ color: RARITY_COLOR[r.rarity] }}>{r.rarity}{r.pickup ? " · 픽업" : ""}</em>
+                      <AllyArt id={r.id} />
+                      <b>{h.name}</b>
+                      <small>{r.duplicate ? `중복 · 조각 +${r.shards}` : "새 동료!"}</small>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <button type="button" className="cta gacha-close" onClick={() => setGachaReveal(null)}>확인</button>
+          </div>
+        </div>
+      )}
+
+      {/* 확률 공시 — 게임산업법 확률형 아이템 표시. 풀·등급·동료별 확률·천장·보장 규칙 */}
+      {showGachaRates && (
+        <div className="gacha-reveal gacha-rates" role="dialog" aria-label="소환 확률 공시" onClick={() => setShowGachaRates(false)}>
+          <div className="gacha-rates-sheet" onClick={(e) => e.stopPropagation()}>
+            <strong>동료 소환 확률 공시</strong>
+            <p>
+              등급 확률 R {(gacha.bandRate.R * 100).toFixed(0)}% · SR {(gacha.bandRate.SR * 100).toFixed(0)}% · SSR {(gacha.bandRate.SSR * 100).toFixed(0)}%
+              <br />풀 = STAGE {save.stage} 이하로 만난 동료 + 픽업 {gacha.pickups.length}명(같은 등급 내 2배) · 상점 전용 동료 제외
+              <br />천장: SSR 없이 {GACHA.pityLimit}회 → 다음 소환 SSR 확정 (현재 {character.gachaPity}회 누적) · 10연: SR 이상 1명 보장
+              <br />중복: 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 누적 소환 {character.gachaPulls}회
+            </p>
+            <table>
+              <thead><tr><th>동료</th><th>등급</th><th>확률</th></tr></thead>
+              <tbody>
+                {rateTable(gacha).map((row) => (
+                  <tr key={row.id}>
+                    <td>{HEROES.find((h) => h.id === row.id)?.name}{row.pickup ? " (픽업)" : ""}</td>
+                    <td style={{ color: RARITY_COLOR[row.rarity] }}>{row.rarity}</td>
+                    <td>{row.percent}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button type="button" className="cta" onClick={() => setShowGachaRates(false)}>닫기</button>
+          </div>
+        </div>
+      )}
 
       {coach && (
         <button

@@ -6,7 +6,7 @@
  */
 import { IDLE, idleCapHours, idleMultiplier, idleRate, stageCeilingFor, nextAreaName } from "./idle";
 import type { CharacterProgress } from "./model";
-import { RIFT_ATTEMPTS, dailyMissionsDone, type EventSave } from "../events/eventSave";
+import { dailyMissionsDone, riftAttemptsFor, type EventSave } from "../events/eventSave";
 import { JOURNAL_ENTRIES } from "./journal";
 import { ALLY_IDS, effectiveStars, shardCostToNext } from "../titans/allies";
 import { HEROES, heroUpgradeCost, heroDps, type TitanHeroId, type TitanSkillId, type TitanSkillSlot, type TitansSave } from "../titans/model";
@@ -121,8 +121,8 @@ export function recommendNext(
   }
   // 3. 오늘 남은 무료
   if (progress.onboardingStep >= 4) {
-    if (events.riftAttempts < RIFT_ATTEMPTS) {
-      return { id: "rift", tone: "free", title: `차원 균열 ${RIFT_ATTEMPTS - events.riftAttempts}회 남음`, desc: "방치 2시간을 즉시 정산합니다", cta: "균열", action: { kind: "events", tab: "rift" } };
+    if (events.riftAttempts < riftAttemptsFor(progress.patronUntil, now)) {
+      return { id: "rift", tone: "free", title: `차원 균열 ${riftAttemptsFor(progress.patronUntil, now) - events.riftAttempts}회 남음`, desc: "방치 2시간을 즉시 정산합니다", cta: "균열", action: { kind: "events", tab: "rift" } };
     }
     if (!dailyMissionsDone(events)) {
       return { id: "mission", tone: "free", title: "오늘의 토벌령 미수령", desc: "4개 콘텐츠 보상을 챙기세요", cta: "토벌령", action: { kind: "events", tab: "daily" } };
