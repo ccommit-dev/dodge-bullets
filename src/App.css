@@ -1182,16 +1182,24 @@
 .beat-command-track { position:relative; height:76px; border-bottom:2px solid rgba(167,243,208,.35); overflow:hidden; }
 .beat-party-character { position:absolute; left:18%; bottom:0; width:43px; transform:translateX(-50%); transition:left .24s ease; filter:drop-shadow(0 7px 6px rgba(0,0,0,.55)); }
 .beat-party-character.facing-idle .equipped-character { transform:scaleX(-1); }
-.beat-party-character.facing-attack .equipped-character { transform:scaleX(1); }
+.beat-party-character.facing-attack .equipped-character { transform:scaleX(-1); }
 .beat-party-allies { position:absolute; left:27%; bottom:2px; display:flex; --ally-size:34px; }
-.beat-training-monster { position:absolute; right:5%; bottom:0; width:78px; height:72px; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 8px 8px rgba(0,0,0,.6)); }
+.beat-training-monster { position:absolute; right:5%; bottom:0; width:78px; height:72px; object-fit:contain; object-position:center bottom; transform:scaleX(1); filter:drop-shadow(0 8px 8px rgba(0,0,0,.6)); }
 .beat-enemy-hp,.beat-fever { position:relative; height:16px; overflow:hidden; border-radius:999px; background:rgba(2,6,23,.74); }
 .beat-enemy-hp i,.beat-fever i { display:block; height:100%; background:linear-gradient(90deg,#dc2626,#fb7185); transition:width .25s ease; }
 .beat-enemy-hp strong,.beat-fever span { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-size:9px; text-shadow:0 1px 2px #000; }
 .beat-fever { margin-top:8px; height:12px; }.beat-fever i { background:linear-gradient(90deg,#06b6d4,#fde047); }
-.beat-command-party.action-march .beat-party-character { left:34%; animation:beat-party-march .38s ease-in-out infinite alternate; }
 .beat-command-party.action-attack .beat-party-character { left:48%; animation:beat-party-strike .3s ease-out; }
 .beat-command-party.action-guard .beat-party-character::after { content:""; position:absolute; inset:15% -25%; border:3px solid #67e8f9; border-radius:50%; box-shadow:0 0 22px #22d3ee; animation:beat-guard .55s ease-out infinite alternate; }
+.beat-command-party.action-dodge .beat-party-character { animation:beat-party-dodge .38s ease-out; }
+.beat-command-party.action-skill .beat-party-character { left:46%; animation:beat-party-skill .55s cubic-bezier(.2,.85,.25,1); }
+.beat-command-party.action-skill .beat-party-allies,.beat-command-party[class*="fever-x"] .beat-party-allies { animation:beat-allies-rush .48s ease-in-out infinite alternate; filter:drop-shadow(0 0 10px #67e8f9); }
+.beat-command-party.enemy-hit .beat-training-monster { animation:beat-enemy-hit .28s ease-out; }
+.beat-command-party.enemy-attack .beat-training-monster { animation:beat-enemy-attack .5s ease-in-out; }
+.beat-command-party.enemy-guard .beat-training-monster { filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 16px #60a5fa); animation:beat-enemy-guard .5s ease-in-out; }
+.beat-command-party.enemy-stagger .beat-training-monster { animation:beat-enemy-stagger .5s ease-out; }
+.beat-command-party.enemy-skill .beat-training-monster { animation:beat-enemy-skill .72s ease-in-out; filter:drop-shadow(0 0 12px #ef4444) drop-shadow(0 0 24px #a855f7); }
+.beat-material-drop { position:absolute; z-index:8; right:14%; top:7px; color:#fde047; font-size:11px; text-shadow:0 0 8px #f59e0b,0 2px 2px #000; animation:beat-material-pop .7s ease-out; }
 .beat-battle-resources { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-top:7px; }
 .beat-battle-resources span { display:flex; justify-content:space-between; gap:4px; padding:5px 7px; border:1px solid rgba(103,232,249,.22); border-radius:8px; color:#94a3b8; background:rgba(2,6,23,.62); font-size:10px; }
 .beat-battle-resources b { color:#f8fafc; }
@@ -1208,6 +1216,9 @@
 .beat-command-party.fever-x2 { box-shadow:0 0 28px rgba(34,211,238,.55),inset 0 0 24px rgba(34,211,238,.2); }
 .beat-command-party.fever-x3 { box-shadow:0 0 38px rgba(168,85,247,.7),inset 0 0 32px rgba(168,85,247,.24); }
 .beat-command-party.fever-x5 { box-shadow:0 0 54px rgba(250,204,21,.82),0 0 90px rgba(244,114,182,.42),inset 0 0 38px rgba(250,204,21,.28); }
+.beat-command-party[class*="fever-x"] .beat-command-track::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(112deg,transparent 0 18px,rgba(103,232,249,.2) 19px 21px,transparent 22px 36px); mix-blend-mode:screen; animation:beat-fever-field .45s linear infinite; }
+.beat-command-party.fever-x3 .beat-command-track::after { background:repeating-linear-gradient(112deg,transparent 0 13px,rgba(192,132,252,.3) 14px 17px,transparent 18px 28px); animation-duration:.3s; }
+.beat-command-party.fever-x5 .beat-command-track::after { background:repeating-linear-gradient(112deg,transparent 0 8px,rgba(250,204,21,.38) 9px 12px,rgba(244,114,182,.25) 13px 16px,transparent 17px 23px); animation-duration:.2s; }
 @keyframes fever-ready { to { transform:translateY(-3px) scale(1.04); filter:brightness(1.2); } }
 @keyframes beat-drop-burst { 35% { filter:brightness(1.8) saturate(1.7); box-shadow:0 0 70px rgba(168,85,247,.8),inset 0 0 60px rgba(34,211,238,.45); } }
 @keyframes beat-drop-text { from { opacity:0; transform:translate(-50%,-50%) scale(.55); } 35% { opacity:1; transform:translate(-50%,-50%) scale(1.15); } to { opacity:0; transform:translate(-50%,-75%) scale(1.35); } }
@@ -1223,6 +1234,16 @@
 @keyframes beat-party-march { to { transform:translate(-50%,-4px) rotate(2deg); } }
 @keyframes beat-party-strike { 50% { transform:translateX(-50%) scale(1.12); filter:drop-shadow(12px 4px 9px #f59e0b); } }
 @keyframes beat-guard { from { opacity:.4; transform:scale(.82); } to { opacity:1; transform:scale(1); } }
+@keyframes beat-party-dodge { 45% { transform:translate(-90%,-9px) skewX(-8deg); filter:drop-shadow(-10px 4px 8px #67e8f9); } }
+@keyframes beat-party-skill { 42% { transform:translate(-45%,-8px) scale(1.2) rotate(-5deg); filter:drop-shadow(14px 0 9px #fde047) drop-shadow(0 0 16px #a855f7); } }
+@keyframes beat-allies-rush { to { transform:translateX(18px) translateY(-3px) scale(1.08); } }
+@keyframes beat-enemy-hit { 45% { transform:translateX(10px) scaleX(1) rotate(7deg); filter:brightness(2) drop-shadow(0 0 14px #ef4444); } }
+@keyframes beat-enemy-attack { 45% { right:35%; transform:scaleX(1) scale(1.08); filter:drop-shadow(-10px 2px 8px #ef4444); } }
+@keyframes beat-enemy-guard { 50% { transform:scaleX(1) scale(.93); } }
+@keyframes beat-enemy-stagger { 40% { right:0; transform:scaleX(1) rotate(12deg) scale(.9); filter:brightness(2) drop-shadow(0 0 18px #fde047); } }
+@keyframes beat-enemy-skill { 45% { transform:scaleX(1) scale(1.18) translateY(-5px); } }
+@keyframes beat-material-pop { from { opacity:0; transform:translateY(16px) scale(.6); } 35% { opacity:1; transform:translateY(-5px) scale(1.18); } to { opacity:.35; transform:translateY(-12px); } }
+@keyframes beat-fever-field { to { transform:translateX(36px); } }
 @keyframes command-current { to { transform:scale(1.16); } }
 
 .beat-reverse {
@@ -2272,12 +2293,12 @@
 .beat-difficulty small { margin-top: 3px; font-size: 8px; }
 .forge-character-preview { width: 74px; margin: 0 auto; }
 .armor-panel { display: grid; gap: 8px; }
-.armor-preview { width: 42px; height: 28px; display: block; border-radius: 60% 25% 55% 30%; border: 2px solid rgba(255,255,255,.55); box-shadow: inset 0 -5px 8px rgba(0,0,0,.4); background: #94a3b8; }
-.armor-shadow { background: #7c3aed; }.armor-ogre { background: #b45309; }.armor-dragon { background: #ef4444; }
+.armor-preview { width:42px; height:42px; display:block; background-size:400% 100%; background-repeat:no-repeat; filter:drop-shadow(0 3px 4px rgba(0,0,0,.55)); }
+.armor-shadow { background-position:33.333% center; }.armor-ogre { background-position:66.666% center; }.armor-dragon { background-position:100% center; }
 
 .titans-monster {
   position: absolute;
-  right: 10%;
+  right: -7%;
   bottom: 22%;
   z-index: 4;
   display: flex;
@@ -2285,10 +2306,10 @@
   align-items: center;
   gap: 6px;
   min-width: 96px;
-  transition: right 1.25s linear, transform 0.08s ease;
+  transition: right var(--encounter-duration,1.25s) linear, transform 0.08s ease;
 }
-.titans-monster.combat-melee.is-engaged { right:38%; }
-.titans-monster.combat-ranged.is-engaged { right:13%; }
+.titans-monster.combat-melee.is-engaged { right:var(--monster-meet-right,38%); }
+.titans-monster.combat-ranged.is-engaged { right:var(--monster-meet-right,27%); }
 .titans-monster.is-approaching.action-idle .titan-monster-art { animation:formation-walk .28s ease-in-out infinite alternate; }
 .titans-monster.action-idle .titan-monster-art { animation:monster-breathe 1.4s ease-in-out infinite; transform-origin:50% 90%; }
 .titans-monster.action-prepare .titan-monster-art { animation:monster-prepare .32s ease-out both; transform-origin:50% 90%; }
@@ -2367,6 +2388,11 @@
 .titan-ally-art.ally-volt { --ally-x:0%; --ally-y:64%; z-index:1; }
 .titan-ally-art.ally-mia_dark { --ally-x:36%; --ally-y:14%; z-index:3; }
 .titan-ally-art.ally-sera_light { --ally-x:16%; --ally-y:50%; z-index:1; }
+.titan-ally-art.ally-pyro,.titan-ally-art.ally-cain { --ally-x:22%; --ally-y:4%; z-index:5; }
+.titan-ally-art.ally-marina,.titan-ally-art.ally-iris { --ally-x:4%; --ally-y:48%; z-index:1; }
+.titan-ally-art.ally-terra,.titan-ally-art.ally-bronn { --ally-x:42%; --ally-y:1%; z-index:4; }
+.titan-ally-art.ally-zephyr,.titan-ally-art.ally-orion { --ally-x:2%; --ally-y:30%; z-index:2; }
+.titan-ally-art.ally-sylph,.titan-ally-art.ally-ember { --ally-x:14%; --ally-y:58%; z-index:1; }
 .titan-ally-art { transition:transform 1.15s linear; }
 .titan-ally-art.combat-ranged.is-engaged { transform:translateX(clamp(55px,13vw,105px)); }
 .titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }
@@ -2383,8 +2409,22 @@
 /* 대기 호흡 — 영웅(스프라이트)·몬스터(breathe)만 움직이고 동료는 박제였다. */
 .ally-idle { width:100%; height:100%; transform-origin:50% 92%; animation: ally-idle-bob 1.7s ease-in-out infinite; }
 @keyframes ally-idle-bob { 50% { transform: translateY(-2.5px) scale(1.008,.992); } }
+.titan-ally-art.is-approaching .ally-idle { animation:ally-run-cycle .38s linear infinite; }
+.titan-ally-art.was-hit.hit-0 .ally-swing { animation:ally-hit-recoil-a .3s ease-out; }
+.titan-ally-art.was-hit.hit-1 .ally-swing { animation:ally-hit-recoil-b .3s ease-out; }
+@keyframes ally-run-cycle { 0%,100% { transform:translateY(0) rotate(-1.5deg) scaleY(.985); } 50% { transform:translateY(-5px) rotate(1.5deg) scaleY(1.015); } }
+@keyframes ally-hit-recoil-a { 35% { transform:translate(-7px,2px) rotate(-4deg) scale(.96,1.02); filter:brightness(1.65) saturate(.7); } }
+@keyframes ally-hit-recoil-b { 35% { transform:translate(-7px,2px) rotate(-4deg) scale(.96,1.02); filter:brightness(1.65) saturate(.7); } }
 .ally-swing { position:relative; width:100%; height:100%; transform-origin:50% 86%; }
 .titan-ally-art .ally-body { position:absolute; inset:0; z-index:1; width:100%; height:100%; background-repeat:no-repeat; }
+.titan-ally-art:not(.is-approaching) .ally-body { animation:ally-body-breathe 1.9s ease-in-out infinite; transform-origin:50% 88%; }
+.titan-ally-art.is-approaching .ally-body { animation:ally-body-run .38s steps(2,end) infinite; transform-origin:50% 88%; }
+.combat-melee .ally-swing.is-attacking .ally-body { animation:ally-body-melee-pose .62s cubic-bezier(.2,.8,.3,1); }
+.combat-ranged .ally-swing.is-attacking .ally-body { animation:ally-body-ranged-pose .44s ease-out; }
+@keyframes ally-body-breathe { 50% { transform:scale(1.012,.988) translateY(-1px); } }
+@keyframes ally-body-run { 0% { transform:translateY(1px) rotate(-1deg) scaleY(.98); } 50% { transform:translateY(-4px) rotate(1deg) scaleY(1.02); } }
+@keyframes ally-body-melee-pose { 0%,100% { transform:none; } 28% { transform:translate(-1px,-2px) rotate(-2deg); } 58% { transform:translate(4px,1px) rotate(2.5deg) scale(1.035,.975); } }
+@keyframes ally-body-ranged-pose { 0%,100% { transform:none; } 45% { transform:translateX(-2px) rotate(-1.5deg) scale(.985,1.015); filter:brightness(1.18); } }
 .ally-weapon { position:absolute; z-index:2; left:var(--weapon-left,18%); top:var(--weapon-top,12%); width:var(--weapon-width,76%); height:var(--weapon-height,76%); overflow:visible; pointer-events:none; transform:rotate(var(--weapon-rest,0deg)); transform-origin:var(--weapon-pivot-x,50%) var(--weapon-pivot-y,62%); filter:drop-shadow(0 0 2px rgba(103,232,249,.75)); }
 .ally-weapon .weapon-metal { fill:rgba(224,242,254,.92); stroke:#38bdf8; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
 .ally-weapon .weapon-string { fill:none; stroke:#e2e8f0; stroke-width:1.7; }
@@ -2561,19 +2601,32 @@
 }
 
 .titans-skills-row {
-  width: min(100%, 720px);
-  margin: 0 auto 8px;
+  position:fixed;
+  z-index:18;
+  right:max(8px,env(safe-area-inset-right));
+  bottom:max(82px,calc(env(safe-area-inset-bottom) + 72px));
+  width:auto;
+  max-width:min(390px,calc(100vw - 16px));
+  margin:0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  grid-template-columns:repeat(7,42px);
+  gap:4px;
+  padding:5px;
+  border:1px solid rgba(56,189,248,.24);
+  border-radius:13px;
+  background:rgba(2,6,23,.76);
+  backdrop-filter:blur(8px);
 }
 
 .titans-skill {
-  display: grid;
-  grid-template-columns: 36px minmax(0,1fr);
-  gap: 2px;
+  display:grid;
+  place-items:center;
+  grid-template-columns:1fr;
+  gap:0;
   min-width: 0;
-  padding: 8px 6px;
+  width:42px;
+  height:42px;
+  padding:3px;
   border: 1px solid rgba(56, 189, 248, 0.3);
   border-radius: 12px;
   color: #e0f2fe;
@@ -2582,16 +2635,18 @@
 }
 
 .titans-skill strong {
-  overflow: hidden;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display:none;
 }
 
 .titans-skill small {
-  color: #7dd3fc;
-  font-size: 9px;
+  position:absolute;
+  margin-top:30px;
+  color:#e0f2fe;
+  font-size:7px;
+  text-shadow:0 1px 2px #000;
 }
+.titans-skills-row .battle-qol { display:contents; }.titans-skills-row .qol-btn { width:42px; height:42px; padding:2px; border-radius:9px; font-size:8px; }
+.titans-skills-row .skill-icon { width:30px; height:30px; flex-basis:30px; }
 
 .titans-skill:disabled {
   opacity: 0.4;
@@ -2692,7 +2747,7 @@
   overflow: visible;
 }
 .shoulder-icon { position:relative; width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border:2px solid #475569; border-radius:12px; background:radial-gradient(circle at 35% 28%,#334155,#0f172a); box-shadow:inset 0 0 12px rgba(255,255,255,.08); }
-.shoulder-icon svg { width:38px; height:38px; }.shoulder-icon.grade-rare{border-color:#3b82f6}.shoulder-icon.grade-epic{border-color:#a855f7}.shoulder-icon.grade-legendary{border-color:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.45)}
+.shoulder-icon-part { width:36px; height:36px; background-size:400% 100%; background-repeat:no-repeat; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); }.shoulder-icon.grade-rare{border-color:#3b82f6}.shoulder-icon.grade-epic{border-color:#a855f7}.shoulder-icon.grade-legendary{border-color:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.45)}
 .shoulder-icon b { position:absolute; right:-5px; bottom:-5px; padding:2px 4px; border-radius:5px; color:#052e16; background:#86efac; font-size:7px; }
 
 .training-item-icon.weapon svg,
@@ -2785,9 +2840,9 @@
   filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.5));
   pointer-events: none;
   animation: none;
-  transition:left 1.15s linear;
+  transition:left var(--encounter-duration,1.15s) linear;
 }
-.titans-hero.is-engaged { left:34%; }
+.titans-hero.is-engaged { left:var(--hero-meet-left,34%); }
 .titans-hero.is-approaching .equipped-character { animation:formation-walk .25s ease-in-out infinite alternate; }
 @keyframes formation-walk { from { translate:0 0; rotate:-1deg; } to { translate:0 -4px; rotate:1deg; } }
 .titans-hero-facing { width:100%; transform-origin:center bottom; }
@@ -2795,10 +2850,12 @@
 .titans-hero-facing.facing-attack { transform:scaleX(1); }
 .titans-field.phase-stage-exit .titans-hero { animation: party-run-out .68s cubic-bezier(.35,.05,.8,.35) forwards; }
 .titans-field.phase-stage-enter .titans-hero { animation: party-run-in .46s ease-out both; }
+.titans-field.phase-stage-enter .titans-monster { animation:boss-enter-right .62s cubic-bezier(.18,.72,.28,1) both; }
 .titans-field.phase-stage-exit .titans-allies { animation: party-run-out .68s .09s cubic-bezier(.35,.05,.8,.35) forwards; }
 .titans-field.phase-stage-enter .titans-allies { animation: party-run-in .46s .08s ease-out both; }
 @keyframes party-run-out { 0% { transform:translateX(0) translateY(0); } 35% { transform:translateX(45%) translateY(-5px); } 100% { transform:translateX(760%) translateY(0); } }
 @keyframes party-run-in { from { transform:translateX(-220%) translateY(-4px); } to { transform:translateX(0) translateY(0); } }
+@keyframes boss-enter-right { from { opacity:0; transform:translateX(180%) scale(1.08); } 70% { opacity:1; transform:translateX(-5%) scale(.98); } to { opacity:1; transform:translateX(0) scale(1); } }
 .titans-clear-banner { position:absolute; z-index:14; left:50%; top:25%; transform:translate(-50%,-50%); color:#fef3c7; font-size:clamp(24px,7vw,44px); font-weight:1000; letter-spacing:.08em; text-shadow:0 0 18px #f59e0b,0 4px 0 #7c2d12; animation:clear-banner .5s ease-out both; pointer-events:none; }
 .titans-transition-skip { position:absolute; z-index:16; top:42px; right:12px; padding:7px 13px; border:1px solid rgba(255,255,255,.45); border-radius:999px; color:#f8fafc; background:rgba(2,6,23,.72); font-size:11px; font-weight:900; }
 @keyframes clear-banner { from { opacity:0; transform:translate(-50%,-50%) scale(.65); } 65% { opacity:1; transform:translate(-50%,-50%) scale(1.08); } to { transform:translate(-50%,-50%) scale(1); } }
@@ -2840,22 +2897,22 @@
 }
 
 .equipment-weapon .forge-sword { width: 100%; height: 100%; filter: drop-shadow(0 0 7px rgba(103,232,249,.75)); }
+.premium-weapon-part { position:absolute; inset:-28% -55%; background-size:300% 100%; background-repeat:no-repeat; filter:drop-shadow(0 0 8px var(--blade-aura)); }
+.premium-weapon-thumb { display:block; width:100%; height:100%; background-size:300% 100%; background-repeat:no-repeat; filter:drop-shadow(0 0 8px var(--blade-aura)); }
 
 .equipment-shoulder {
   position: absolute;
   z-index: 3;
-  width: 24%;
-  aspect-ratio: 1.5;
-  border: 2px solid color-mix(in srgb, var(--part-color) 55%, white);
-  border-radius: 60% 25% 55% 30%;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--part-color) 68%, white), var(--part-color));
-  box-shadow: inset 0 -4px 6px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.35);
+  width: 13%;
+  aspect-ratio: .75;
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
   transform-origin: center;
   transition: left 80ms linear, top 80ms linear, transform 80ms linear;
   animation: equipment-equip .18s ease-out;
 }
 
-.equipment-shoulder.back { z-index: 1; filter: brightness(.72); }
+.equipment-shoulder.back { z-index: 1; filter: brightness(.72); scale:-1 1; }
 /* 공격 프레임은 상체가 크게 비틀려 고정 앵커 견갑이 얼굴을 덮는 순간이 생긴다.
    타격 중에는 두 견갑을 모두 몸 뒤로 보내 실루엣을 해치지 않게 한다. */
 .equipped-character.mode-attack .equipment-shoulder { z-index: 1; filter: brightness(.78); }
@@ -3123,9 +3180,26 @@
 @media (max-width:560px) { .badge-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 /* Mobile game shell: keep controls readable in in-app browsers and safe areas. */
-.mypage-icon { position:relative; width:25px; height:25px; flex:0 0 25px; border:1px solid rgba(125,211,252,.55); border-radius:8px; background:rgba(14,116,144,.24); }
-.mypage-icon::before { content:""; position:absolute; left:50%; top:4px; width:7px; height:7px; transform:translateX(-50%); border-radius:50%; background:#bae6fd; }
-.mypage-icon::after { content:""; position:absolute; left:50%; bottom:4px; width:13px; height:7px; transform:translateX(-50%); border-radius:8px 8px 4px 4px; background:#bae6fd; }
+.mypage-icon { position:relative; width:34px; height:34px; flex:0 0 34px; overflow:hidden; border:1px solid rgba(125,211,252,.55); border-radius:10px; background-color:#172554; background-repeat:no-repeat; background-size:200% 100%; background-position:left center; }
+.mypage-label { display:grid; gap:1px; text-align:left; line-height:1.05; }
+.mypage-label small { max-width:105px; overflow:hidden; font-size:8px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
+.ally-roster-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.ally-roster-summary { grid-column:1/-1; display:flex; justify-content:space-between; gap:8px; padding:9px 11px; border:1px solid rgba(103,232,249,.22); border-radius:11px; color:#f8fafc; background:rgba(8,47,73,.55); }
+.ally-roster-summary small { color:#94a3b8; font-size:9px; }.ally-roster-grid .ally-card { margin:0; min-width:0; }
+@media(max-width:720px){.ally-roster-grid{grid-template-columns:1fr}}
+.forge-material-guide { margin-top:12px; padding:12px; border:1px solid rgba(251,191,36,.25); border-radius:14px; background:rgba(15,23,42,.72); }
+.forge-material-guide h3 { margin:0; color:#fde68a; font-size:14px; }.forge-material-guide>p { color:#94a3b8; font-size:9px; }
+.forge-material-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.forge-material-grid article { display:grid; grid-template-columns:1fr auto; gap:2px 7px; padding:7px; border:1px solid rgba(148,163,184,.18); border-radius:9px; background:rgba(2,6,23,.62); }
+.forge-material-grid b { color:#f8fafc; font-size:10px; }.forge-material-grid em { color:#67e8f9; font-size:8px; font-style:normal; }.forge-material-grid span { color:#94a3b8; font-size:8px; }.forge-material-grid strong { color:#fbbf24; font-size:9px; }
+.armor-forge-stage { display:grid; place-items:center; min-height:360px; margin:12px 0; }
+.armor-forge-stage>.shoulder-icon { width:min(46vw,240px); height:min(46vw,240px); border:0; background:transparent; filter:drop-shadow(0 0 24px #fb923c); animation:forge-armor-float 1.4s ease-in-out infinite alternate; }
+.armor-forge-stage .shoulder-icon-part { width:100%; height:100%; background-size:400% 100%; }
+.armor-forge-stage.forge-phase-forging>.shoulder-icon { animation:forge-armor-hit .22s ease-in-out infinite; }
+.armor-forge-stage.forge-phase-success>.shoulder-icon { filter:brightness(1.6) drop-shadow(0 0 42px #fbbf24); transform:scale(1.12); }
+@keyframes forge-armor-float{to{transform:translateY(-8px) rotate(2deg)}}
+@keyframes forge-armor-hit{50%{transform:scale(.94) rotate(-3deg);filter:brightness(1.8) drop-shadow(0 0 34px #fb923c)}}
+@media(max-width:560px){.forge-material-grid{grid-template-columns:1fr}}
 
 @media (max-width: 600px) {
   .game-overlay { padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
@@ -3150,8 +3224,8 @@
   .titans-monster { right:7%; }
   .titans-allies { left:11%; }
 
-  .titans-skills-row { width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
-  .titans-skill { min-height:58px; grid-template-columns:30px minmax(0,1fr); padding:6px 5px; }
+  .titans-skills-row { width:auto; grid-template-columns:repeat(7,38px); gap:3px; }
+  .titans-skill { width:38px; height:38px; min-height:38px; grid-template-columns:1fr; padding:3px; }
   .titans-skill .skill-icon { width:30px; height:30px; flex-basis:30px; }
   .titans-skill .skill-icon svg { width:24px; height:24px; }
   .titans-skill strong { font-size:9px; }
