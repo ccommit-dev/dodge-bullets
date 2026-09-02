@@ -2195,7 +2195,7 @@
 
 .titans-field {
   --hero-size: clamp(58px, 12.5%, 72px);
-  --ally-size: 72px;
+  --ally-size: 86px;
   --monster-size: 112px;
   --boss-size: 154px;
   position: relative;
@@ -2388,11 +2388,29 @@
 .titan-ally-art.ally-volt { --ally-x:0%; --ally-y:64%; z-index:1; }
 .titan-ally-art.ally-mia_dark { --ally-x:36%; --ally-y:14%; z-index:3; }
 .titan-ally-art.ally-sera_light { --ally-x:16%; --ally-y:50%; z-index:1; }
-.titan-ally-art.ally-pyro,.titan-ally-art.ally-cain { --ally-x:22%; --ally-y:4%; z-index:5; }
-.titan-ally-art.ally-marina,.titan-ally-art.ally-iris { --ally-x:4%; --ally-y:48%; z-index:1; }
-.titan-ally-art.ally-terra,.titan-ally-art.ally-bronn { --ally-x:42%; --ally-y:1%; z-index:4; }
-.titan-ally-art.ally-zephyr,.titan-ally-art.ally-orion { --ally-x:2%; --ally-y:30%; z-index:2; }
-.titan-ally-art.ally-sylph,.titan-ally-art.ally-ember { --ally-x:14%; --ally-y:58%; z-index:1; }
+/* 변형 10명 — 쌍으로 같은 좌표를 쓰던 것을 전부 분리 (같이 편성하면 정확히 겹쳤다) */
+.titan-ally-art.ally-pyro { --ally-x:22%; --ally-y:4%; z-index:5; }
+.titan-ally-art.ally-cain { --ally-x:30%; --ally-y:10%; z-index:5; }
+.titan-ally-art.ally-marina { --ally-x:4%; --ally-y:48%; z-index:1; }
+.titan-ally-art.ally-iris { --ally-x:12%; --ally-y:42%; z-index:1; }
+.titan-ally-art.ally-terra { --ally-x:42%; --ally-y:1%; z-index:4; }
+.titan-ally-art.ally-bronn { --ally-x:52%; --ally-y:6%; z-index:4; }
+.titan-ally-art.ally-zephyr { --ally-x:2%; --ally-y:30%; z-index:2; }
+.titan-ally-art.ally-orion { --ally-x:10%; --ally-y:22%; z-index:2; }
+.titan-ally-art.ally-sylph { --ally-x:14%; --ally-y:58%; z-index:1; }
+.titan-ally-art.ally-ember { --ally-x:24%; --ally-y:52%; z-index:1; }
+/* 변형 근접의 전진 거리 — 도착 지점이 원본 근접과 겹치지 않게 */
+.titan-ally-art.ally-cain.is-engaged { transform:translateX(clamp(140px,29vw,230px)); }
+.titan-ally-art.ally-bronn.is-engaged { transform:translateX(clamp(125px,26vw,205px)); }
+.titan-ally-art.ally-terra.is-engaged { transform:translateX(clamp(130px,27vw,212px)); }
+.titan-ally-art.ally-pyro.is-engaged { transform:translateX(clamp(158px,33vw,255px)); }
+/* 변형 무기 팔레트 — 몸체 tint와 맞춘 무기 발광색 */
+.ally-pyro .ally-weapon .weapon-accent,.ally-bronn .ally-weapon .weapon-accent,.ally-ember .ally-weapon .weapon-accent { stroke:#fb923c; }
+.ally-pyro .ally-weapon,.ally-bronn .ally-weapon,.ally-ember .ally-weapon { filter:drop-shadow(0 0 3px rgba(251,146,60,.8)); }
+.ally-marina .ally-weapon,.ally-iris .ally-weapon { filter:drop-shadow(0 0 3px rgba(125,211,252,.8)); }
+.ally-terra .ally-weapon .weapon-accent,.ally-sylph .ally-weapon .weapon-accent,.ally-zephyr .ally-weapon .weapon-accent { stroke:#a3e635; }
+.ally-cain .ally-weapon { filter:drop-shadow(0 0 4px rgba(253,224,71,.9)); }
+.ally-orion .ally-weapon .weapon-accent { stroke:#c4b5fd; }
 .titan-ally-art { transition:transform 1.15s linear; }
 .titan-ally-art.combat-ranged.is-engaged { transform:translateX(clamp(55px,13vw,105px)); }
 .titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }
@@ -3219,7 +3237,7 @@
   .titans-stagebar { width:100%; align-items:flex-end; }
   .titans-stagebar h1 { max-width:calc(100vw - 82px); overflow-wrap:anywhere; font-size:clamp(21px,7vw,28px); }
 
-  .titans-field { --hero-size:clamp(54px,15vw,66px); --ally-size:58px; --monster-size:94px; --boss-size:126px; width:100%; height:clamp(230px,36svh,330px); border-radius:15px; }
+  .titans-field { --hero-size:clamp(54px,15vw,66px); --ally-size:70px; --monster-size:94px; --boss-size:126px; width:100%; height:clamp(230px,36svh,330px); border-radius:15px; }
   .titans-hp { left:12%; right:12%; }
   .titans-monster { right:7%; }
   .titans-allies { left:11%; }

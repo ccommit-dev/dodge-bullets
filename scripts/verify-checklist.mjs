@@ -48,7 +48,9 @@ ok("#2 탭 피해 숫자 src-tap", [...tapFloats].some((c) => c.includes("src-ta
 // ── B. 기존 유저(step4, 출석 0, Lv 5) + 방치 3h ──
 await seed(
   { version: 5, onboardingStep: 4, level: 5, exp: 800, attendanceStreak: 0, redGems: 500, sharedCoins: 10000, enhancementMaterials: 12, skillPoints: 20,
-    titanBestStage: 6, pioneeredArea: 2, dodgeBestStage: 2, idleClaimedAt: now - 3 * 3600 * 1000, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4 },
+    titanBestStage: 6, pioneeredArea: 2, dodgeBestStage: 2, idleClaimedAt: now - 3 * 3600 * 1000, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4,
+    // 프리셋은 잠긴 슬롯(비트 숙련 0)을 건드리지 않는다 — 5슬롯 전부 숙련 5로 열어 둔다
+    beatSkills: { kick: 5, hat: 5, snare: 5, fire: 5, throat: 5 } },
   { stage: 6, bestStage: 6, gold: 50000, heroes: { mia: 5, leon: 3, sera: 2, garen: 1 }, skillInventory: { learned: ["strike", "crit", "clone"], levels: { strike: 1, crit: 1, clone: 1 }, equipped: { starter: "strike" }, skillCores: 5 }, lastActiveAt: now - 3 * 3600 * 1000 },
 );
 r = await page.evaluate(() => ({ modal: !!document.querySelector(".idle-modal"), cta: document.querySelector(".idle-forge-cta b")?.textContent }));
@@ -59,10 +61,11 @@ ok("#3 목표 스트립 3칸", r.goals.length === 3, r.goals.join(" / "));
 await clickText(".titans-tabs button", "스킬");
 await sleep(400);
 const before = await page.evaluate(() => document.querySelector(".skill-preset-card small")?.textContent);
-await clickText(".preset-row button", "공격형");
+await clickText(".preset-row button", "탭 폭발형");
 await sleep(500);
 r = await page.evaluate((h) => { const t = JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)); return { eq: t.skillInventory.equipped, preview: document.querySelector(".skill-preset-card small")?.textContent }; }, H);
-ok("#5 프리셋(공격형) 적용 → 미학습 제외 장착", Object.values(r.eq).includes("crit") && !Object.values(r.eq).includes("clone"), JSON.stringify(r.eq));
+// 탭 폭발형: 시동기 pierce(미학습)→strike, 연계A waterStep(미학습)→crit, 연계B bloodMoon(미학습)→clone — 학습한 것만 장착
+ok("#5 프리셋(탭 폭발형) 적용 → 미학습 제외 장착", Object.values(r.eq).includes("crit") && Object.values(r.eq).includes("clone") && Object.values(r.eq).every((id) => ["strike", "crit", "clone"].includes(id)), JSON.stringify(r.eq));
 ok("#5 예상 DPS 보정 갱신", /\+\d+%/.test(r.preview ?? "") && r.preview !== before, `${before} → ${r.preview}`);
 await clickText(".titans-tabs button", "동료");
 await sleep(400);

@@ -148,6 +148,26 @@ export function partySynergies(party: TitanHeroId[]): { list: Synergy[]; effects
   };
 }
 
+/**
+ * 역할 실효과 (동료 점검 후) — 탱커·힐러가 DPS 숫자 외의 기능을 갖는다.
+ * 탱커: 도발 — 보스 제한시간 +5초/명 (최대 2명)
+ * 힐러: 축복 — 스킬 쿨타임 −10%/명 (최대 2명)
+ */
+export function partyRoleEffects(party: TitanHeroId[]): { bossTimeBonus: number; cooldownMult: number; tanks: number; healers: number } {
+  const tanks = Math.min(2, party.filter((id) => ALLY_ROLE[id] === "tank").length);
+  const healers = Math.min(2, party.filter((id) => ALLY_ROLE[id] === "healer").length);
+  return { bossTimeBonus: tanks * 5, cooldownMult: Math.pow(0.9, healers), tanks, healers };
+}
+
+/**
+ * 편성 가능 여부 — 개척한 지역 상한을 넘는 동료는 소환(뽑기)으로 얻어도 벤치에 둔다.
+ * 상점 전용 동료(unlockStage 9999)는 항상 편성 가능. 뽑기 픽업은 개척 상한 안에서만 뽑히므로
+ * 뽑은 동료는 언제나 즉시 출전할 수 있다.
+ */
+export function canFieldAlly(id: TitanHeroId, unlockStage: number, stageCeiling: number): boolean {
+  return SHOP_ALLY_GEM_COST[id] !== undefined || unlockStage <= stageCeiling;
+}
+
 /* ───────────────────────── 파견 (CRUMBLE_GAP §3 · 길드 대체) ───────────────────────── */
 
 export type Expedition = { allyId: TitanHeroId; endsAt: number; hours: 4 | 8 | 12 };

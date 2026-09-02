@@ -29,6 +29,11 @@ export const dateKey = () => new Date().toLocaleDateString("sv-SE");
 export const RIFT_SECONDS = 2 * 3600;
 export const RIFT_ATTEMPTS = 3;
 
+/** 하루 균열 횟수 — 원정 후원 계약(월정액) 중이면 +1 */
+export function riftAttemptsFor(patronUntil: number, now: number = Date.now()): number {
+  return RIFT_ATTEMPTS + (patronUntil > now ? 1 : 0);
+}
+
 export function emptyEventSave(): EventSave {
   return {
     date: dateKey(),

@@ -93,10 +93,11 @@ export const GEM_PACK = {
 } as const;
 
 /**
- * 황금 보급 상자 수량 — 현재 최고 스테이지 보스 킬골드 × 900.
- * 능동 사냥 약 30~40분치로, 스테이지가 오르면 자동으로 같이 오른다.
+ * 황금 보급 상자 수량 — 현재 최고 스테이지 보스 킬골드 × 3,000.
+ * 과금 점검: ×900은 방치 가속권(80보석, 최대 킬골드×37,800)에 5배 열위였다. ×3,000은
+ * 기본 스탯 가속권(×5,040)의 4배·상한 스탯의 60% — 즉시 골드가 필요한 벽에서 고를 이유가 생긴다.
  */
 export function goldPackAmount(progress: CharacterProgress): number {
   const stage = Math.max(1, progress.titanBestStage);
-  return Math.floor(killGold(stage, true, false) * 900);
+  return Math.floor(killGold(stage, true, false) * 3000);
 }

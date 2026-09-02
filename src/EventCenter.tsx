@@ -13,7 +13,7 @@ import { sfxRiftClaim } from "./ui/sfx";
 
 type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge";
 
-import { RIFT_ATTEMPTS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, saveEventSave, type EventSave } from "./events/eventSave";
+import { RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 
 /**
@@ -125,7 +125,7 @@ export function EventCenter({
   };
 
   const enterRift = async () => {
-    if (save.riftAttempts >= RIFT_ATTEMPTS) return;
+    if (save.riftAttempts >= riftAttemptsFor(progress.patronUntil)) return;
     sfxRiftClaim();
     // 요일 균열(CRUMBLE_GAP §5) — 요일마다 다른 축의 보상이 증폭된다
     // 기간 한정 이벤트(주말 2배 등)는 그 위에 곱으로 중첩된다
@@ -347,10 +347,10 @@ export function EventCenter({
             {riftMessage && <p className="shop-toast">{riftMessage}</p>}
             <button
               className="cta"
-              disabled={save.riftAttempts >= RIFT_ATTEMPTS}
+              disabled={save.riftAttempts >= riftAttemptsFor(progress.patronUntil)}
               onClick={() => void enterRift()}
             >
-              균열 진입 {save.riftAttempts}/{RIFT_ATTEMPTS}
+              균열 진입 {save.riftAttempts}/{riftAttemptsFor(progress.patronUntil)}
             </button>
           </section>
         )}
