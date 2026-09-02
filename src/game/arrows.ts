@@ -311,16 +311,31 @@ function configureSplitFragment(
   arrow.bossMaxCuts = 0;
 }
 
-function pushSlashFx(world: GameWorld, x: number, y: number, value: number, boss: boolean): void {
+function pushSlashFx(world: GameWorld, x: number, y: number, value: number, boss: boolean, crit = false, energy = 0): void {
   const fx = world.slashHitFx.find((item) => !item.active) ?? world.slashHitFx[0];
   if (!fx) return;
   fx.active = true;
   fx.x = x + (Math.random() - 0.5) * 18;
   fx.y = y - 8;
   fx.value = value;
-  fx.lifeMs = boss ? 850 : 620;
+  fx.lifeMs = boss ? 850 : crit ? 780 : 620;
   fx.maxLifeMs = fx.lifeMs;
   fx.boss = boss;
+  fx.crit = crit;
+  fx.energy = energy;
+}
+
+/**
+ * 화살 에너지 0~1 — 반격 대미지와 오브 지속의 근거. 같은 110이 찍히던 것을
+ * "무엇을 베었는가"로 갈라 읽히게 한다: 속도·종류·분열 단계·피해량이 오를수록 높다.
+ */
+export function arrowEnergy(arrow: Arrow): number {
+  const speed = Math.hypot(arrow.vx, arrow.vy);
+  const speedPart = Math.min(1, speed / 560);
+  const kindPart = arrow.kind === "homing" ? 0.9 : arrow.kind === "explosive" ? 0.85 : arrow.kind === "ricochet" ? 0.7 : arrow.kind === "aimed" ? 0.55 : arrow.kind === "fan" ? 0.45 : 0.3;
+  const damagePart = Math.min(1, arrow.damage / 1.2);
+  const splitPart = arrow.splitLevel * 0.12;
+  return Math.max(0, Math.min(1, speedPart * 0.35 + kindPart * 0.35 + damagePart * 0.2 + splitPart));
 }
 
 function maybeDropSlashItem(world: GameWorld, x: number, y: number, guaranteed = false): void {
@@ -335,11 +350,18 @@ function maybeDropSlashItem(world: GameWorld, x: number, y: number, guaranteed =
   drop.kind = roll < 0.55 ? "edge" : roll < 0.86 ? "core" : "rune";
 }
 
-function registerSlash(world: GameWorld, arrow: Arrow, boss = false): void {
-  const value = Math.round((boss ? 520 : 110) * (1 + world.stats.slashLevel * 0.22 + world.slashBuff * 0.12));
+function registerSlash(world: GameWorld, arrow: Arrow, boss = false): number {
+  // 에너지(0~1)로 기본치가 0.6~1.8배 — 빠른 유도탄을 벤 반격이 느린 화살보다 값지다
+  const energy = arrowEnergy(arrow);
+  const base = (boss ? 520 : 110) * (0.6 + energy * 1.2);
+  // 치명 반격: 검술 레벨·콤보가 확률을 올린다 (메이플식 CRIT 피드백)
+  const critChance = 0.12 + world.stats.slashLevel * 0.03 + Math.min(0.15, world.combo * 0.006);
+  const crit = Math.random() < critChance;
+  const value = Math.round(base * (1 + world.stats.slashLevel * 0.22 + world.slashBuff * 0.12) * (crit ? 2.2 : 1));
   world.slashScore += value;
-  pushSlashFx(world, arrow.x, arrow.y, value, boss);
+  pushSlashFx(world, arrow.x, arrow.y, value, boss, crit, energy);
   maybeDropSlashItem(world, arrow.x, arrow.y, boss && arrow.bossCutsLeft <= 0);
+  return energy;
 }
 
 function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
@@ -399,7 +421,7 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
     return;
   }
 
-  registerSlash(world, arrow);
+  const energy = registerSlash(world, arrow);
   if (arrow.splitLevel >= 3) {
     arrow.active = false;
     world.countered += 1;
@@ -413,6 +435,15 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
   const sibling = acquire(world);
   configureSplitFragment(world, arrow, source, nextLevel, -1, world.stats.slashLevel);
   if (sibling) configureSplitFragment(world, sibling, source, nextLevel, 1, world.stats.slashLevel);
+  // 에너지가 높은 화살일수록 조각이 오브로 더 오래·더 넓게 돌다가 덮친다 —
+  // "무엇을 베었는지"가 반격 결과(지속·궤도)로 이어진다 (사용자 지시)
+  const orbitBonus = 1 + energy * 1.1;
+  for (const fragment of [arrow, sibling]) {
+    if (!fragment) continue;
+    fragment.orbitMs *= orbitBonus;
+    fragment.orbitRadius *= 1 + energy * 0.35;
+    fragment.splitGraceMs = fragment.orbitMs + 120;
+  }
   world.countered += 1;
   if (world.countered % 3 === 0) world.enemyKills += 1;
   bumpCombo(world);

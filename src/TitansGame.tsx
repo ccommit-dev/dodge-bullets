@@ -29,6 +29,7 @@ import {
   type TitanHeroId,
   type TitanMonsterKind,
   type TitanSkillId,
+  type TitanSkillSlot,
   type TitansSave,
 } from "./titans/model";
 import { AllyArt, MonsterArt } from "./titans/SpriteArt";
@@ -105,12 +106,17 @@ type TitansGameProps = {
 
 type ShopTab = "sword" | "heroes" | "skills" | "premium";
 
+/** 피해 출처 — 숫자 색·아이콘을 분리해 "누가 때렸는지" 읽히게 한다 (첫 플레이 점검표 #2) */
+type FloatSource = "tap" | "hero" | "ally" | "skill";
+
 type FloatText = {
   id: number;
   x: number;
   y: number;
   text: string;
   crit: boolean;
+  source: FloatSource;
+  hue?: number;
 };
 
 type FxBurst = {
@@ -133,6 +139,21 @@ type BattlePhase = "combat" | "monster-death" | "boss-ready" | "stage-clear" | "
 function emptyCds(): CooldownMap {
   return { strike: 0, crit: 0, clone: 0, warcry: 0, steel: 0 };
 }
+
+/** 스킬별 평균 DPS 보정(%) — 업타임(지속/쿨) × 효과의 근사치. 프리셋 미리보기용 */
+const SKILL_PREVIEW_PCT: Record<TitanSkillId, number> = {
+  strike: 9,
+  crit: 13,
+  clone: 33,
+  warcry: 45,
+  steel: 6,
+};
+
+const SKILL_PRESETS: { id: string; name: string; desc: string; ids: TitanSkillId[] }[] = [
+  { id: "burst", name: "공격형", desc: "일격·함성·치명 — 보스 순간 화력", ids: ["strike", "warcry", "crit", "steel"] },
+  { id: "sustain", name: "지속형", desc: "분신·치명·강철 — 사냥 지속 화력", ids: ["clone", "crit", "steel", "strike"] },
+  { id: "balance", name: "균형", desc: "학습한 스킬 전부 장착", ids: ["strike", "crit", "clone", "warcry", "steel"] },
+];
 
 export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
@@ -178,6 +199,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [buyAmount, setBuyAmount] = useState<1 | 10 | 0>(1);
   /** 온보딩(§8) 개방 연출 — 방금 열린 단계 번호 */
   const [unlockBanner, setUnlockBanner] = useState<number | null>(null);
+  /** 동료 탭 역할 필터 (점검표 #4) */
+  const [allyFilter, setAllyFilter] = useState<"all" | "melee" | "ranged" | "flame">("all");
   const onboardHintShownRef = useRef(false);
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
@@ -209,6 +232,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const killCountsRef = useRef<Partial<Record<TitanMonsterKind, number>>>({});
   /** castSkill은 렌더마다 재생성 — 전투 인터벌(의존성 없음)에서 최신본을 쓰기 위한 ref */
   const castSkillRef = useRef<(id: TitanSkillId) => void>(() => {});
+  /**
+   * 저사양 판정 (점검표 #12) — 코어 4개 이하 또는 메모리 3GB 이하면 이펙트·숫자
+   * 동시 개수를 줄이고 대기 호흡 애니메이션을 끈다. 동료는 이미 출전 인원만 렌더한다.
+   */
+  const lowFxRef = useRef<boolean>(
+    (navigator.hardwareConcurrency ?? 8) <= 4 ||
+      ((navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8) <= 3,
+  );
 
   useEffect(() => {
     saveRef.current = save;
@@ -473,18 +504,26 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
   const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number) => {
     const id = ++fxId.current;
-    setFx((prev) => [...prev.slice(-22), { id, kind, x, y, hue }]);
+    setFx((prev) => [...prev.slice(lowFxRef.current ? -8 : -22), { id, kind, x, y, hue }]);
     window.setTimeout(() => {
       setFx((prev) => prev.filter((f) => f.id !== id));
     }, kind === "slash" ? 320 : kind === "hit" || kind === "ally" ? 420 : 850);
   };
 
-  const pushFloat = (dmg: number, crit: boolean, clientX?: number, clientY?: number) => {
+  const pushFloat = (
+    dmg: number,
+    crit: boolean,
+    clientX?: number,
+    clientY?: number,
+    source: FloatSource = "hero",
+    hue?: number,
+  ) => {
     const rect = fieldRef.current?.getBoundingClientRect();
     const x = clientX && rect ? ((clientX - rect.left) / rect.width) * 100 : 58 + Math.random() * 16;
     const y = clientY && rect ? ((clientY - rect.top) / rect.height) * 100 : 30 + Math.random() * 16;
     const id = ++floatId.current;
-    setFloats((prev) => [...prev.slice(-18), { id, x, y, text: formatGold(dmg), crit }]);
+    // 저사양 모드는 동시 숫자를 절반으로 — 숫자 폭주가 프레임을 먹는다
+    setFloats((prev) => [...prev.slice(lowFxRef.current ? -8 : -18), { id, x, y, text: formatGold(dmg), crit, source, hue }]);
     window.setTimeout(() => {
       setFloats((prev) => prev.filter((f) => f.id !== id));
     }, 700);
@@ -502,11 +541,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     (
       raw: number,
       crit: boolean,
-      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap" },
+      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number },
     ) => {
       if (raw <= 0 || battlePhaseRef.current !== "combat") return;
       const dealt = Math.floor(raw);
-      pushFloat(dealt, crit, opts?.clientX, opts?.clientY);
+      pushFloat(dealt, crit, opts?.clientX, opts?.clientY, opts?.source ?? "hero", opts?.hue);
       setMonsterHit((n) => n + 1);
       setImpact(crit ? "critical" : "normal");
       // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
@@ -725,7 +764,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       playAttackAnim();
       pushFx("slash", 28 + Math.random() * 8, 42 + Math.random() * 10);
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
-      applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap" });
+      applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap" });
     },
     [applyDamage, computeTapHit],
   );
@@ -767,14 +806,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           setAnimMode("attack");
           setFrameIdx(0);
           pushFx("slash", 31, 45);
-          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery), false, { fromAlly: "tap" });
+          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery), false, { fromAlly: "tap", source: "hero" });
         }
       } else {
         autoAttackAcc.current = 0;
       }
 
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
-        const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025;
+        // 보호구 강화(대장간)는 동료 지원 배율로 붙는다 — 견갑 훈련(사냥터 골드)과 별개 축
+        const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025 + (characterRef.current.shoulderEnhance ?? 0) * 0.02;
         // 편성(§2): 출전 슬롯에 오른 동료만 싸운다 · 엄호 사격 시너지가 DPS를 증폭한다
         const synergyDps = partySynergies(characterRef.current.partyIds).effects.dpsMult;
         for (const h of HEROES) {
@@ -785,7 +825,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
           pushFx("ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
-          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps, false, { fromAlly: h.id });
+          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps, false, { fromAlly: h.id, source: "ally", hue: h.hue });
         }
       }
 
@@ -1266,7 +1306,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       playAttackAnim();
       pushFx("slash", 30, 40);
       const { dmg } = computeTapHit();
-      applyDamage(dmg * 40, true);
+      applyDamage(dmg * 40, true, { source: "skill" });
       flash("천상의 일격!");
       return;
     }
@@ -1433,6 +1473,104 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   );
   const expeditionsDone = character.expeditions.filter((e) => e.endsAt <= Date.now()).length;
 
+  // 다음 목표 3종 (점검표 #3): 동료 합류 · 스킬 학습 · 지역 개척 — 남은 거리를 항상 보여준다
+  const nextGoals = useMemo(() => {
+    const nextAlly = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && h.unlockStage > 0)
+      .sort((a, b) => a.unlockStage - b.unlockStage)[0];
+    const nextSkill = SKILLS.find((sk) => !save.skillInventory.learned.includes(sk.id));
+    const ceiling = stageCeilingFor(character.pioneeredArea);
+    const areaName = nextAreaName(character.pioneeredArea);
+    const goals: { id: string; label: string; value: string; ratio: number; done: boolean; onClick: () => void }[] = [];
+    if (nextAlly) {
+      const reachable = save.stage >= nextAlly.unlockStage;
+      goals.push({
+        id: "ally",
+        label: "다음 동료",
+        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · STAGE ${nextAlly.unlockStage}`,
+        ratio: reachable ? 1 : save.stage / nextAlly.unlockStage,
+        done: reachable,
+        onClick: () => setTab("heroes"),
+      });
+    }
+    if (nextSkill) {
+      const ok = skillPoints >= nextSkill.learnSpCost && save.skillInventory.skillCores >= nextSkill.learnCoreCost;
+      goals.push({
+        id: "skill",
+        label: "다음 스킬",
+        value: ok ? `${nextSkill.name} 학습 가능` : `${nextSkill.name} · SP ${skillPoints}/${nextSkill.learnSpCost}`,
+        ratio: ok ? 1 : Math.min(skillPoints / nextSkill.learnSpCost, save.skillInventory.skillCores / Math.max(1, nextSkill.learnCoreCost)),
+        done: ok,
+        onClick: () => setTab("skills"),
+      });
+    }
+    if (areaName) {
+      goals.push({
+        id: "area",
+        label: "다음 지역",
+        value: save.stage >= ceiling ? `${areaName} · 화살 원정 필요` : `${areaName} · STAGE ${ceiling}까지 ${ceiling - save.stage}`,
+        ratio: Math.min(1, save.stage / ceiling),
+        done: save.stage >= ceiling,
+        onClick: () => (contentUnlocked(character.onboardingStep, "dodge") ? onOpenContent("dodge") : flash(LOCK_HINT.dodge)),
+      });
+    }
+    return goals;
+  }, [save.heroes, save.stage, save.skillInventory, character.pioneeredArea, character.onboardingStep, skillPoints, onOpenContent]);
+
+  const paidProductsUnlocked = character.attendanceStreak >= 3 || character.level >= 20;
+
+  // 스킬 예상 DPS 보정 (점검표 #5) — 장착 액티브의 평균 업타임 가중치 합. 정확한 시뮬이
+  // 아니라 "이 조합이 얼마나 강한가"의 상대 지표다.
+  const skillDpsPreview = useMemo(
+    () =>
+      SKILLS.reduce((sum, sk) => {
+        if (save.skillInventory.equipped[sk.slot] !== sk.id || !save.skillInventory.learned.includes(sk.id)) return sum;
+        return sum + SKILL_PREVIEW_PCT[sk.id] * (1 + (save.skillInventory.levels[sk.id] - 1) * 0.06);
+      }, 0),
+    [save.skillInventory],
+  ).toFixed(0);
+
+  const applyPreset = (ids: TitanSkillId[]) => {
+    setSave((prev) => {
+      const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = {};
+      SKILLS.forEach((sk) => {
+        if (ids.includes(sk.id) && prev.skillInventory.learned.includes(sk.id) && slotLevels(characterRef.current)[sk.slot] > 0) {
+          equipped[sk.slot] = sk.id;
+        }
+      });
+      return { ...prev, skillInventory: { ...prev.skillInventory, equipped } };
+    });
+    flash("프리셋 적용 — 학습·해금된 스킬만 장착됐습니다");
+  };
+
+  /** 추천 편성 (점검표 #4) — DPS 상위를 뽑되 원거리 2명을 보장해 엄호 사격 시너지를 켠다 */
+  const recommendParty = async () => {
+    const owned = HEROES.filter((h) => save.heroes[h.id] > 0 && !character.expeditions.some((e) => e.allyId === h.id));
+    const slots = partySlotCount(character.towerBestFloor, character.partyCap);
+    const dpsOf = (h: (typeof HEROES)[number]) =>
+      heroDps(h, save.heroes[h.id]) * starMultiplier(effectiveStars(character.allyStars[h.id], save.heroes[h.id]));
+    const sorted = [...owned].sort((a, b) => dpsOf(b) - dpsOf(a));
+    const pick = sorted.slice(0, slots).map((h) => h.id);
+    const rangedIn = pick.filter((id) => ALLY_ROLE[id] === "ranged").length;
+    const rangedOut = sorted.filter((h) => ALLY_ROLE[h.id] === "ranged" && !pick.includes(h.id));
+    for (let i = rangedIn; i < 2 && rangedOut.length > 0 && pick.length >= 2; i += 1) {
+      const swapIdx = [...pick].reverse().findIndex((id) => ALLY_ROLE[id] !== "ranged");
+      if (swapIdx < 0) break;
+      pick.splice(pick.length - 1 - swapIdx, 1, rangedOut.shift()!.id);
+    }
+    const next = await updateCharacterProgress(userHash, (current) => ({ ...current, partyIds: pick }));
+    setCharacter(next);
+    flash(`추천 편성 적용 — ${pick.length}명 출전`);
+  };
+
+  // 첫 60초 코치 (점검표 #1) — 신규(step 0)에게 공격→소환→훈련 순으로 한 번에 하나만 보여준다
+  const coach = useMemo(() => {
+    if (character.onboardingStep > 0) return null;
+    if (save.totalTaps < 3) return { id: "tap", text: "몬스터를 탭해서 공격해 보세요", target: "field" as const };
+    if (save.heroes.mia <= 0) return { id: "summon", text: "동료 탭에서 스카우트 미아를 소환하세요", target: "heroes" as const };
+    if (save.equipmentTraining.weaponMastery < 2) return { id: "train", text: "장비 성장에서 무기를 훈련하면 탭 공격력이 오릅니다", target: "sword" as const };
+    return null;
+  }, [character.onboardingStep, save.totalTaps, save.heroes.mia, save.equipmentTraining.weaponMastery]);
+
   const pad = {
     paddingTop: Math.max(12, insets.top),
     paddingRight: Math.max(12, insets.right),
@@ -1449,7 +1587,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   }
 
   return (
-    <div className="titans-layer" style={pad}>
+    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""}`} style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" /> 마이페이지
@@ -1578,10 +1716,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {floats.map((f) => (
           <span
             key={f.id}
-            className={`titans-float ${f.crit ? "crit" : ""}`}
-            style={{ left: `${f.x}%`, top: `${f.y}%` }}
+            className={`titans-float src-${f.source} ${f.crit ? "crit" : ""}`}
+            style={{ left: `${f.x}%`, top: `${f.y}%`, ...(f.hue !== undefined ? { "--float-hue": f.hue } : {}) } as CSSProperties}
           >
-            {f.crit ? "CRITICAL " : ""}-{f.text}
+            <i aria-hidden="true">{f.source === "tap" ? "☝" : f.source === "ally" ? "◆" : f.source === "skill" ? "✦" : "⚔"}</i>
+            {f.crit ? "CRIT " : ""}-{f.text}
           </span>
         ))}
 
@@ -1616,6 +1755,53 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           </button>
         )}
 
+        {/* 스킬 독 — 전장 안 좌하단. 스킬은 전투 중 누르는 것이라 전장 밖(하단 카드 열)에
+            있으면 시선이 오간다. 힌트 텍스트는 우하단으로 비켜난다 (사용자 지시). */}
+        <div className="titans-skill-dock" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="battle-qol" role="group" aria-label="전투 편의">
+            <button
+              type="button"
+              className={`qol-btn ${save.autoSkill ? "on" : ""}`}
+              title="쿨타임 찬 스킬 자동 시전"
+              onClick={() => setSave((prev) => ({ ...prev, autoSkill: !prev.autoSkill }))}
+            >
+              AUTO
+            </button>
+            <button
+              type="button"
+              className={`qol-btn ${save.battleSpeed === 2 ? "on" : ""}`}
+              title="전투 배속"
+              onClick={() => setSave((prev) => ({ ...prev, battleSpeed: prev.battleSpeed === 2 ? 1 : 2 }))}
+            >
+              ×2
+            </button>
+          </div>
+          {SKILLS.map((sk) => {
+            const learned = save.skillInventory.learned.includes(sk.id);
+            const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
+            const cd = cds[sk.id];
+            const ready = learned && equipped && cd <= 0 && sk.slot !== "passive";
+            return (
+              <button
+                key={sk.id}
+                type="button"
+                className={`titans-skill ${ready ? "ready" : ""} ${skillVisual === sk.id ? "casting" : ""}`}
+                disabled={!learned || !equipped || cd > 0 || sk.slot === "passive"}
+                onClick={() => castSkill(sk.id)}
+                title={`${sk.name} · ${sk.desc}`}
+                aria-label={sk.name}
+              >
+                <SkillIcon id={sk.id} />
+                <small>
+                  {!learned ? "미학습" : !equipped ? "미장착" : sk.slot === "passive" ? "PASSIVE" : cd > 0 ? `${cd.toFixed(1)}s` : "READY"}
+                </small>
+                {learned && equipped && cd > 0 && sk.slot !== "passive" && (
+                  <i className="skill-cd-ring" style={{ "--cd": cd / sk.cooldownSec } as CSSProperties} aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
         <p className="titans-hint">
           탭 / 스페이스 · DPS {formatGold(dps)} · TAP {formatGold(tap)}
         </p>
@@ -1627,46 +1813,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {now < buffs.warcryUntil && <span>함성</span>}
       </div>
 
-      <div className="titans-skills-row">
-        <div className="battle-qol" role="group" aria-label="전투 편의">
-          <button
-            type="button"
-            className={`qol-btn ${save.autoSkill ? "on" : ""}`}
-            title="쿨타임 찬 스킬 자동 시전"
-            onClick={() => setSave((prev) => ({ ...prev, autoSkill: !prev.autoSkill }))}
-          >
-            AUTO
+      {/* 다음 목표 스트립 (점검표 #3) — "다음 해금까지 얼마"를 HUD에 고정 */}
+      <div className="titans-goals" aria-label="다음 성장 목표">
+        {nextGoals.map((g) => (
+          <button key={g.id} type="button" className={`goal-chip ${g.done ? "done" : ""}`} onClick={g.onClick}>
+            <small>{g.label}</small>
+            <b>{g.value}</b>
+            <i><em style={{ width: `${Math.min(100, g.ratio * 100)}%` }} /></i>
           </button>
-          <button
-            type="button"
-            className={`qol-btn ${save.battleSpeed === 2 ? "on" : ""}`}
-            title="전투 배속"
-            onClick={() => setSave((prev) => ({ ...prev, battleSpeed: prev.battleSpeed === 2 ? 1 : 2 }))}
-          >
-            ×2
-          </button>
-        </div>
-        {SKILLS.map((sk) => {
-          const learned = save.skillInventory.learned.includes(sk.id);
-          const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
-          const cd = cds[sk.id];
-          return (
-            <button
-              key={sk.id}
-              type="button"
-              className="titans-skill"
-              disabled={!learned || !equipped || cd > 0 || sk.slot === "passive"}
-              onClick={() => castSkill(sk.id)}
-              title={sk.desc}
-            >
-              <SkillIcon id={sk.id} />
-              <strong>{sk.name}</strong>
-              <small>
-                {!learned ? "미학습" : !equipped ? "미장착" : sk.slot === "passive" ? "PASSIVE" : cd > 0 ? `${cd.toFixed(1)}s` : "READY"}
-              </small>
-            </button>
-          );
-        })}
+        ))}
       </div>
 
       <div className="titans-tabs">
@@ -1744,6 +1899,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 </span>
               ))}
             </div>
+            <div className="party-tools">
+              <div className="role-filter" role="group" aria-label="역할 필터">
+                {(["all", "melee", "ranged", "flame"] as const).map((role) => (
+                  <button key={role} type="button" className={allyFilter === role ? "on" : ""} onClick={() => setAllyFilter(role)}>
+                    {role === "all" ? "전체" : ROLE_LABEL[role]}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="recommend-party" onClick={() => void recommendParty()}>
+                추천 편성
+              </button>
+            </div>
             {expeditionsDone > 0 && (
               <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
                 <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
@@ -1759,7 +1926,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           </article>
         )}
         {tab === "heroes" &&
-          HEROES.map((h) => {
+          HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).map((h) => {
             const lv = save.heroes[h.id];
             const gemCost = SHOP_ALLY_GEM_COST[h.id];
             const shopOnly = gemCost !== undefined;
@@ -1866,6 +2033,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             );
           })}
 
+        {tab === "skills" && (
+          <article className="titans-card skill-preset-card">
+            <div className="party-panel-head">
+              <strong>스킬 프리셋</strong>
+              <small>학습한 스킬만 장착됩니다 · 예상 DPS 보정 +{skillDpsPreview}%</small>
+            </div>
+            <div className="preset-row">
+              {SKILL_PRESETS.map((preset) => (
+                <button key={preset.id} type="button" onClick={() => applyPreset(preset.ids)} title={preset.desc}>
+                  <b>{preset.name}</b>
+                  <small>{preset.desc}</small>
+                </button>
+              ))}
+            </div>
+          </article>
+        )}
         {tab === "skills" &&
           SKILLS.map((sk) => {
             const learned = save.skillInventory.learned.includes(sk.id);
@@ -2061,7 +2244,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </article>
           </>
         )}
-        {tab === "premium" && STORE_PRODUCTS.filter((product) => product.visible).map((product) => {
+        {/* 결제 준비 (점검표 #14): 강한 유료 패키지는 D3 잔존(출석 3일) 또는 Lv.20 전에는 숨긴다 */}
+        {tab === "premium" && !paidProductsUnlocked && (
+          <p className="paid-gate-note">모험가 세트·캐릭터·월정액 상품은 출석 3일차(또는 Lv.20)부터 열립니다 — 먼저 성장 구조를 충분히 경험해 보세요.</p>
+        )}
+        {tab === "premium" && STORE_PRODUCTS.filter((product) => product.visible).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
           // 실결제 전용 상품(캐릭터·월정액)은 무료 체험 지급 대상이 아니다 — Play Billing 연동 후 판매
           const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d";
@@ -2077,6 +2264,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       </section>
 
       {toast && <div className="titans-toast">{toast}</div>}
+
+      {coach && (
+        <button
+          type="button"
+          className={`coach-bubble coach-${coach.target}`}
+          onClick={() => {
+            if (coach.target === "heroes") setTab("heroes");
+            if (coach.target === "sword") setTab("sword");
+          }}
+        >
+          <span className="coach-hand" aria-hidden="true">☝</span>
+          {coach.text}
+        </button>
+      )}
 
       {idleReport && (
         <IdleReturnModal

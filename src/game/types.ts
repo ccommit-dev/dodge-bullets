@@ -76,6 +76,10 @@ export type SlashHitFx = {
   lifeMs: number;
   maxLifeMs: number;
   boss: boolean;
+  /** 치명 반격 — 숫자 색·크기가 달라진다 (메이플식 피드백) */
+  crit: boolean;
+  /** 화살 에너지 0~1 — 빠르고 위험한 화살일수록 높다. 색 등급·오브 지속에 반영 */
+  energy: number;
 };
 
 export type SlashDrop = {

@@ -49,6 +49,35 @@ export const SHOP_META: Record<
   },
 };
 
+/**
+ * 보급소 삭제 후 파생 스탯 — 구매 대신 캐릭터 성장이 기동·검격 레벨을 끌어올린다.
+ *   경량 장화·바람 망토: 캐릭터 레벨 / 그림자 부츠(대시): 원정 첫 클리어부터
+ *   반격 검술: 장착 검 강화(+3마다 1) — 대장간이 원정 전투력이 되는 연결
+ *   수호 부적: 레벨 15마다 1 (최대 3)
+ */
+export function derivedShopLevels(progress: {
+  level: number;
+  equippedWeaponLevel: number;
+  dodgeBestStage: number;
+}): ShopLevels {
+  return {
+    moveSpeed: Math.min(SHOP_MAX.moveSpeed, Math.floor(progress.level / 8)),
+    jumpPower: Math.min(SHOP_MAX.jumpPower, Math.floor(progress.level / 10)),
+    dash: Math.min(SHOP_MAX.dash, progress.dodgeBestStage >= 2 ? 1 + Math.floor(progress.level / 20) : 0),
+    slowField: Math.min(SHOP_MAX.slowField, Math.floor(progress.equippedWeaponLevel / 3)),
+    extraLife: Math.min(SHOP_MAX.extraLife, Math.floor(progress.level / 15)),
+  };
+}
+
+/** 저장된 구매 레벨과 파생 레벨의 항목별 최대 — 보급소에서 산 것을 잃지 않는다 */
+export function mergeShopLevels(saved: ShopLevels, derived: ShopLevels): ShopLevels {
+  const out = { ...saved };
+  (Object.keys(out) as ShopUpgradeId[]).forEach((id) => {
+    out[id] = Math.min(SHOP_MAX[id], Math.max(saved[id], derived[id]));
+  });
+  return out;
+}
+
 export function emptyShopLevels(): ShopLevels {
   return {
     moveSpeed: 0,

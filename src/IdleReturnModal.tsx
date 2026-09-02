@@ -137,6 +137,18 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
           )}
         </div>
 
+        {/* 보상 → 사용처 연결 (점검표 #10): 강화석이 생긴 순간 대장간으로 바로 보낸다 */}
+        {result.materials > 0 && (
+          <button type="button" className="idle-forge-cta" onClick={() => onGoContent("forge")}>
+            <img src={assetUrl("ui/idle/anvil.svg")} alt="" aria-hidden="true" />
+            <span>
+              <b>강화석 {result.materials}개 — 대장간에서 바로 쓰기</b>
+              <small>수령 후 대장간으로 이동 · 이번 강화 성공률 +8%p</small>
+            </span>
+            <em>›</em>
+          </button>
+        )}
+
         <div className="idle-factors">
           <div>
             <small>R · 효율</small>

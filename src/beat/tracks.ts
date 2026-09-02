@@ -232,24 +232,97 @@ export function stageCount(): number {
   return BEAT_CAMPAIGN.length;
 }
 
+/** 곡별 결정론적 난수 — 같은 곡은 항상 같은 채보 (연습 가능성) */
+function seededRng(seed: string): () => number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += 0x6d2b79f5;
+    let t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * 곡 구간 — 트랜스/신스웨이브 구조를 마디 비율로 근사한다.
+ * 인트로(0~18%) → 빌드업(~40%) → 드롭(~62%) → 브레이크(~72%) → 드롭2(~100%)
+ */
+function sectionAt(bar: number, bars: number): NonNullable<BeatChartStep["section"]> {
+  const t = bar / Math.max(1, bars);
+  if (t < 0.18) return "intro";
+  if (t < 0.4) return "build";
+  if (t < 0.62) return "drop";
+  if (t < 0.72) return "break";
+  return "drop";
+}
+
+/**
+ * 채보 생성 — 곡마다 다르다 (사용자 지시: 노래마다 노트가 똑같던 문제).
+ *
+ * 세 가지 축이 채보를 가른다:
+ *  1. BPM: 빠른 곡(150+)은 16비트를 성기게, 느린 곡(≤120)은 8비트 엇박을 촘촘하게 —
+ *     "손이 따라갈 수 있는 초당 노트 수"를 BPM에 맞춘다
+ *  2. 구간: 인트로는 강박만, 빌드업은 점점 조밀, 드롭은 최대 밀도 + 레인 교차,
+ *     브레이크는 롱노트(HOLD) 위주 — 곡의 에너지 곡선을 그대로 손에 옮긴다
+ *  3. 패턴 루프(악기 배치)와 곡 id 시드: 같은 밀도라도 어떤 스텝이 노트가 되는지가 곡마다 다르다
+ * 롱노트는 지속음(트럼펫·목청)이 놓인 스텝에서 2~4스텝으로 뻗는다.
+ */
 export function buildChart(track: BeatTrackDef): BeatChartStep[] {
   const loop = expandLoop(PATTERN_LOOPS[track.patternId], track.subdivision);
   const stepsPerBar = track.subdivision;
   const total = track.bars * stepsPerBar;
   const chart: BeatChartStep[] = new Array(total);
-  let lane: 0 | 1 = 0;
+  const rng = seededRng(track.id);
+  // BPM 보정: 초당 노트 상한 ≈ 4.2. 16비트 150BPM은 스텝당 0.1초라 절반만 노트로
+  const stepSec = (60 / track.bpm) * 4 / stepsPerBar;
+  const bpmKeep = Math.min(1, (stepSec * 4.2));
+  let holdRemain = 0;
 
   for (let i = 0; i < total; i++) {
     const sound = loop[i % loop.length];
     const inBar = i % stepsPerBar;
-    let spike = accentSpike(sound, inBar, track.subdivision, track.difficulty);
-    if (i < 2) spike = false;
-    if (spike && track.ringCount === 2 && track.difficulty === "hard") {
-      lane = (Math.floor(i / Math.max(1, track.subdivision / 4)) % 2) as 0 | 1;
+    const bar = Math.floor(i / stepsPerBar);
+    const section = sectionAt(bar, track.bars);
+    const base = accentSpike(sound, inBar, track.subdivision, track.difficulty);
+    const isDown = inBar === 0;
+    const quarter = inBar % Math.max(1, stepsPerBar / 4) === 0;
+    let spike = false;
+    let hold = 0;
+    if (holdRemain > 0) {
+      // 롱노트 몸통 구간은 새 노트를 두지 않는다
+      holdRemain -= 1;
+    } else if (section === "intro") {
+      spike = isDown || (quarter && rng() < 0.35);
+    } else if (section === "build") {
+      const ramp = 0.45 + ((bar / Math.max(1, track.bars)) - 0.18) / 0.22 * 0.45;
+      spike = base && rng() < Math.min(0.95, ramp) * bpmKeep;
+    } else if (section === "drop") {
+      spike = base && rng() < bpmKeep * 0.95;
+      // 드롭 강박에 가끔 짧은 롱노트 — 손을 눌러 붙잡는 감각
+      if (spike && isDown && (sound === "trumpet" || sound === "throat" || sound === "firebeat") && rng() < 0.35) {
+        hold = Math.min(3, Math.max(2, Math.round(stepsPerBar / 4)));
+      }
     } else {
-      lane = 0;
+      // break: 성긴 롱노트 위주
+      spike = isDown || (quarter && rng() < 0.25);
+      if (spike && rng() < 0.6) hold = Math.min(4, Math.max(2, Math.round(stepsPerBar / 4) + 1));
     }
-    chart[i] = { sound, spike, lane };
+    if (i < 2 || i >= total - 1) {
+      spike = false;
+      hold = 0;
+    }
+    if (hold > 0) holdRemain = hold;
+    // 레인: 드롭에서만 교차(2링 곡), 그 외 0. 빌드업 후반은 마디 단위 교차로 예고
+    let lane: 0 | 1 = 0;
+    if (track.ringCount === 2 && spike) {
+      if (section === "drop") lane = (Math.floor(i / Math.max(1, stepsPerBar / 4)) % 2) as 0 | 1;
+      else if (section === "build") lane = (bar % 2) as 0 | 1;
+    }
+    chart[i] = { sound, spike, lane, hold: hold || undefined, section };
   }
   return chart;
 }
