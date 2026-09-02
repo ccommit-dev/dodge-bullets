@@ -109,6 +109,9 @@ export type BeatWorld = {
   loopCounts: Record<BeatSound, number>;
   /** Last lead offset from grid in milliseconds. */
   lastOffsetMs: number;
+  /** 누르는 중인 롱노트 (렌더용) — 레인/꼬리 스텝, 없으면 -1 */
+  holdLane: number;
+  holdEndStep: number;
   /** 0..1 lesson loop completion from distinct sounds recorded. */
   loopCompletion: number;
   /** Pad flash per lane (0=kick, 1=snare, 2=hat, 3=bass), milliseconds remaining. */
@@ -151,6 +154,10 @@ export type BeatChartStep = {
   sound: BeatSound;
   spike: boolean;
   lane: 0 | 1;
+  /** 롱노트 길이(스텝). 머리에서 누르고 꼬리에서 떼야 한다. 0/undefined = 단타 */
+  hold?: number;
+  /** 곡 구간 — 인트로/빌드업/드롭/브레이크. 노트 밀도와 색의 근거 */
+  section?: "intro" | "build" | "drop" | "break";
 };
 
 export const BEAT_SOUND_LABEL: Record<BeatSound, string> = {

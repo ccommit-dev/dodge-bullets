@@ -97,6 +97,8 @@ export type CharacterProgress = {
   ownedTitles: string[];
   /** 표시 칭호 ("" = 없음) */
   activeTitle: string;
+  /** 보호구(견갑) 강화 단계 — 대장간에서 검처럼 강화한다 (0~10). 파괴 없음 */
+  shoulderEnhance: number;
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
 };
@@ -166,6 +168,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     equippedWeaponSkin: "",
     ownedTitles: [],
     activeTitle: "",
+    shoulderEnhance: 0,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -402,6 +405,7 @@ export function normalizeCharacterProgress(
       raw.ownedTitles.includes(raw.activeTitle)
         ? raw.activeTitle
         : "",
+    shoulderEnhance: integer(raw.shoulderEnhance, 0, 10),
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
@@ -424,7 +428,8 @@ export function combatPower(progress: CharacterProgress): number {
       totalSkillMastery(progress) * 3 +
       // 도감 영구 전투력 (CRUMBLE_GAP §7) — 동료·펫 최초 획득만으로 붙는다
       allyCollectionPower(progress) +
-      petCollectionPower(progress),
+      petCollectionPower(progress) +
+      progress.shoulderEnhance * 20,
   );
 }
 

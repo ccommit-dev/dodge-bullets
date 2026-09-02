@@ -251,18 +251,36 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.globalAlpha = alpha;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `italic 1000 ${fx.boss ? 30 : 22}px system-ui, sans-serif`;
-    ctx.lineWidth = fx.boss ? 7 : 5;
-    ctx.strokeStyle = "#3b0764";
-    ctx.shadowColor = fx.boss ? "#facc15" : "#22d3ee";
-    ctx.shadowBlur = 16;
+    // 에너지 등급별 색: 낮음(시안) → 중간(보라) → 높음(주황). 치명은 금-적 + CRIT 라벨
+    const tier = fx.energy >= 0.66 ? 2 : fx.energy >= 0.36 ? 1 : 0;
+    const midColor = fx.boss ? "#fde047" : fx.crit ? "#fde68a" : tier === 2 ? "#fb923c" : tier === 1 ? "#a78bfa" : "#67e8f9";
+    const lowColor = fx.boss ? "#fb7185" : fx.crit ? "#f97316" : tier === 2 ? "#ef4444" : tier === 1 ? "#7c3aed" : "#0ea5e9";
+    const size = fx.boss ? 30 : fx.crit ? 28 : 20 + tier * 2;
+    ctx.font = `italic 1000 ${size}px system-ui, sans-serif`;
+    ctx.lineWidth = fx.boss || fx.crit ? 7 : 5;
+    ctx.strokeStyle = fx.crit ? "#7c2d12" : "#3b0764";
+    ctx.shadowColor = fx.crit ? "#fbbf24" : midColor;
+    ctx.shadowBlur = fx.crit ? 22 : 16;
     ctx.strokeText(String(fx.value), 0, 0);
     const grad = ctx.createLinearGradient(0, -18, 0, 14);
     grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(0.45, fx.boss ? "#fde047" : "#67e8f9");
-    grad.addColorStop(1, fx.boss ? "#fb7185" : "#a78bfa");
+    grad.addColorStop(0.45, midColor);
+    grad.addColorStop(1, lowColor);
     ctx.fillStyle = grad;
     ctx.fillText(String(fx.value), 0, 0);
+    if (fx.crit) {
+      ctx.font = "italic 900 11px system-ui, sans-serif";
+      ctx.lineWidth = 3;
+      ctx.strokeText("CRITICAL", 0, -size * 0.78);
+      ctx.fillStyle = "#fef3c7";
+      ctx.fillText("CRITICAL", 0, -size * 0.78);
+    } else if (tier === 2 && !fx.boss) {
+      ctx.font = "900 9px system-ui, sans-serif";
+      ctx.lineWidth = 3;
+      ctx.strokeText("HIGH ENERGY", 0, -size * 0.8);
+      ctx.fillStyle = "#ffedd5";
+      ctx.fillText("HIGH ENERGY", 0, -size * 0.8);
+    }
     ctx.restore();
   }
 

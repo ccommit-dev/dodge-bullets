@@ -414,20 +414,44 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const size = (5 + eased * 21) * (1 + overshoot * 1.6);
     const consumed = world.hitSteps.has(index);
     const golden = (index + 1) % world.subdivision === 0;
-    const sustained = world.chart[index + 1] && laneOfSound(world.chart[index + 1].sound) === lane;
+    const holdLen = step.hold ?? 0;
+    const holdingThis = holdLen > 0 && world.holdLane === lane && world.holdEndStep === index + holdLen;
     ctx.save();
     ctx.translate(x, y);
     const fade = overshoot > 0 ? Math.max(0, 1 - overshoot / 0.24) : 1;
-    ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed ? 0.3 : 1);
-    if (sustained && !consumed) {
-      ctx.strokeStyle = golden ? "rgba(250,204,21,.8)" : LANE_ACCENT[lane];
-      ctx.lineWidth = Math.max(3, size * .26);
-      ctx.globalAlpha *= .45;
+    ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed && !holdingThis ? 0.3 : 1);
+    if (holdLen > 0) {
+      // 롱노트 (점검표 #8): 머리(여기) → 몸통 → 꼬리(index+hold)를 레일 위에 그린다.
+      // 누르는 중이면 몸통이 밝게 차오르고, 꼬리 캡이 "떼는 지점"을 알린다.
+      const tailDist = index + holdLen - position;
+      const tailZ = Math.max(0, Math.min(1, 1 - tailDist / preview));
+      const tailX = laneXAt(world, lane, tailZ) - x;
+      const tailY = horizonY + (hitY - horizonY) * tailZ - y;
+      const bodyW = Math.max(6, size * 0.9);
+      ctx.lineCap = "round";
+      ctx.lineWidth = bodyW;
+      ctx.strokeStyle = holdingThis ? "rgba(254,240,138,.9)" : consumed ? "rgba(148,163,184,.35)" : "rgba(251,79,109,.42)";
+      ctx.shadowColor = holdingThis ? "#fde047" : "transparent";
+      ctx.shadowBlur = holdingThis ? 18 : 0;
       ctx.beginPath();
-      ctx.moveTo(0, -size * .4);
-      ctx.lineTo(0, -size * 2.4);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(tailX, tailY);
       ctx.stroke();
-      ctx.globalAlpha = (0.35 + eased * 0.65) * fade;
+      // 꼬리 캡
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(tailX, tailY, Math.max(4, bodyW * 0.55), 0, Math.PI * 2);
+      ctx.fillStyle = holdingThis ? "#fef08a" : "#fda4af";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(248,250,252,.9)";
+      ctx.stroke();
+      if (eased > 0.5) {
+        ctx.font = `900 ${Math.round(7 + eased * 4)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(248,250,252,.9)";
+        ctx.fillText("HOLD", tailX, tailY - bodyW * 0.9);
+      }
     }
     ctx.beginPath();
     ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * 1.56, size * 0.3);

@@ -184,6 +184,8 @@ export function createBeatWorld(
       rim: 0,
     },
     lastOffsetMs: 0,
+    holdLane: -1,
+    holdEndStep: -1,
     loopCompletion: 0,
     laneFlashMs: [0, 0, 0, 0],
     hitSteps: new Set<number>(),
@@ -232,6 +234,11 @@ export type BeatSession = {
   taps: number;
   hitSteps: Set<number>;
   evaluatedStep: number;
+  /** 기기 싱크 보정(초) — 양수면 유저가 늦게 누르는 기기. 판정 위치에서 뺀다 */
+  calibrationSec: number;
+  /** 누르고 있는 롱노트 — 레인과 꼬리 스텝. -1이면 없음 */
+  holdLane: number;
+  holdEndStep: number;
 };
 
 export async function createBeatSession(
@@ -324,6 +331,9 @@ export async function createBeatSession(
     taps: 0,
     hitSteps: new Set<number>(),
     evaluatedStep: 0,
+    calibrationSec: 0,
+    holdLane: -1,
+    holdEndStep: -1,
   };
 
   // Audio-clock lesson BGM — same syllables the player will layer on tap.
@@ -370,10 +380,11 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
 
   const stepSec = world.stepSec;
   // Judge against the same playhead the notes are drawn from.
+  // 싱크 보정: 기기 오디오 지연만큼 판정 위치를 되돌린다 (늦게 누르는 기기 = 양수)
   const position =
-    session.enabled && session.box.isTransportRunning()
+    (session.enabled && session.box.isTransportRunning()
       ? Math.max(world.beatPosition, session.box.getTransportPosition())
-      : world.beatPosition;
+      : world.beatPosition) - session.calibrationSec / stepSec;
 
   // Widest forgiving window, tightened so 16ths cannot claim a neighbour's note.
   const windowSec = Math.min(
@@ -422,6 +433,14 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
     bumpCombo(world, 1);
     world.score += (18 + Math.floor(lock * 16)) * world.scoreMultiplier;
     world.judgeText = lock > 0.78 ? "PERFECT" : lock > 0.45 ? "GREAT" : "GOOD";
+    // 롱노트 머리: 꼬리 스텝까지 누르고 있어야 한다 (performBeatRelease가 판정)
+    const holdLen = session.chart[bestIndex].hold ?? 0;
+    if (holdLen > 0) {
+      session.holdLane = lane;
+      session.holdEndStep = bestIndex + holdLen;
+      world.holdLane = lane;
+      world.holdEndStep = session.holdEndStep;
+    }
   } else {
     world.lastOffsetMs = 0;
     session.box.playLead(sound, 0, 0);
@@ -442,6 +461,54 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
 /** Center pad — kept so pointer taps without a lane still play. */
 export function performBeatTap(session: BeatSession, lane: NoteLane = 1): void {
   performBeatLane(session, lane);
+}
+
+/**
+ * 롱노트 릴리즈 판정 (점검표 #8) — 꼬리 스텝 근처에서 떼면 보너스, 너무 일찍 떼면 콤보가 끊긴다.
+ * 릴리즈 시점의 진동(navigator.vibrate)은 호출부(BeatGame)가 담당한다.
+ */
+export function performBeatRelease(session: BeatSession, lane: NoteLane): "release-good" | "release-early" | null {
+  const world = session.world;
+  if (session.holdLane !== lane || session.holdEndStep < 0) return null;
+  const stepSec = world.stepSec;
+  const position =
+    (session.enabled && session.box.isTransportRunning()
+      ? Math.max(world.beatPosition, session.box.getTransportPosition())
+      : world.beatPosition) - session.calibrationSec / stepSec;
+  const distSec = (session.holdEndStep - position) * stepSec;
+  const windowSec = Math.min(0.22, stepSec * 0.9);
+  session.holdLane = -1;
+  session.holdEndStep = -1;
+  world.holdLane = -1;
+  world.holdEndStep = -1;
+  if (distSec <= windowSec) {
+    bumpCombo(world, 1);
+    world.score += 24 * world.scoreMultiplier;
+    world.judgeText = "PERFECT";
+    world.judgeMs = 320;
+    spawnMoveParticles(world, 18, LANE_HUE[lane], lane);
+    return "release-good";
+  }
+  world.combo = 0;
+  world.comboTimerMs = 0;
+  world.judgeText = "MISS";
+  world.judgeMs = 320;
+  return "release-early";
+}
+
+/** 롱노트를 끝까지 누른 채 꼬리를 지나치면 자동 성공 처리 (틱에서 호출) */
+export function settleHoldIfPassed(session: BeatSession): void {
+  if (session.holdEndStep < 0) return;
+  const world = session.world;
+  const position = world.beatPosition - session.calibrationSec / world.stepSec;
+  if (position > session.holdEndStep + 0.9) {
+    session.holdLane = -1;
+    session.holdEndStep = -1;
+    world.holdLane = -1;
+    world.holdEndStep = -1;
+    bumpCombo(world, 1);
+    world.score += 16 * world.scoreMultiplier;
+  }
 }
 
 const LANE_FALLBACK_SOUND: Record<NoteLane, BeatSound> = {

@@ -708,8 +708,9 @@
 .content-icon-hunt { background-position:0 0; }.content-icon-dodge { background-position:33.333% 0; }.content-icon-beat { background-position:66.667% 0; }.content-icon-forge { background-position:100% 0; }
 .content-icon-profile { background-position:0 100%; }.content-icon-attendance { background-position:33.333% 100%; }.content-icon-event { background-position:66.667% 100%; }.content-icon-settings { background-position:100% 100%; }
 .status-icon.content-icon { width:46px; height:46px; border-radius:12px; background-color:rgba(15,23,42,.7); }
-.character-equipment-preview { width:82px; align-self:stretch; display:flex; align-items:flex-end; justify-content:center; overflow:visible; }
-.character-equipment-facing { width:64px; transform:scaleX(-1); transform-origin:center bottom; }
+/* 마이페이지 캐릭터 아이콘 — 상반신만 (사용자 지시): 원형 프레임에 확대해 머리·가슴이 차게 */
+.character-equipment-preview { width:82px; height:82px; align-self:center; display:flex; align-items:flex-start; justify-content:center; overflow:hidden; border-radius:50%; border:2px solid rgba(94,234,212,.45); background:radial-gradient(circle at 50% 30%, rgba(94,234,212,.18), rgba(8,18,33,.9) 70%); box-shadow:0 0 14px rgba(94,234,212,.2); }
+.character-equipment-facing { width:64px; transform:scaleX(-1) scale(1.75) translateY(18%); transform-origin:center top; }
 .status-copy { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .status-copy small { color: #94a3b8; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; }
 .status-copy strong { font-size: 15px; }

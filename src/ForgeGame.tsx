@@ -50,6 +50,39 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [reforgePhase, setReforgePhase] = useState<"idle" | "rolling" | "hit" | "miss">("idle");
   const [ownedShoulders, setOwnedShoulders] = useState<ShoulderId[]>([]);
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
+  /** 보호구 강화 (0~10) — 검과 같은 흐름이지만 파괴 없음. 장착 견갑에 무관하게 유지 */
+  const [shoulderEnhance, setShoulderEnhance] = useState(0);
+  const [armorPhase, setArmorPhase] = useState<"idle" | "forging" | "success" | "failure">("idle");
+  const armorCost = Math.floor(600 * Math.pow(1.6, shoulderEnhance));
+  const armorChance = Math.max(0.35, 0.95 - shoulderEnhance * 0.06);
+
+  const enhanceArmor = () => {
+    if (!equippedShoulder || shoulderEnhance >= 10 || coins < armorCost || armorPhase !== "idle") return;
+    const success = Math.random() < armorChance;
+    setCoins((value) => Math.max(0, value - armorCost));
+    setArmorPhase("forging");
+    void updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      sharedCoins: Math.max(0, current.sharedCoins - armorCost),
+      lastContent: "forge",
+    }));
+    timerRef.current = window.setTimeout(() => {
+      if (success) {
+        setShoulderEnhance((v) => Math.min(10, v + 1));
+        void updateCharacterProgress(userHash, (current) => ({
+          ...current,
+          shoulderEnhance: Math.min(10, current.shoulderEnhance + 1),
+          lastContent: "forge",
+        }));
+        setArmorPhase("success");
+        flashToast(`보호구 +${shoulderEnhance + 1} — 동료 지원 +${(shoulderEnhance + 1) * 2}%`);
+      } else {
+        setArmorPhase("failure");
+        flashToast("담금질 실패 — 보호구는 파괴되지 않습니다");
+      }
+      timerRef.current = window.setTimeout(() => setArmorPhase("idle"), RESULT_MS);
+    }, FORGE_MS);
+  };
   const timerRef = useRef<number | null>(null);
   const firstClearRef = useRef("");
   const toastRef = useRef<number | null>(null);
@@ -82,6 +115,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       firstClearRef.current = progress.firstClearDates.forge;
       setOwnedShoulders(progress.ownedShoulders);
       setEquippedShoulder(progress.equippedShoulder);
+      setShoulderEnhance(progress.shoulderEnhance);
       setPhase(forge.pendingFailure ? "failure" : "idle");
       setView(forge.pendingFailure || forge.level > 0 || forge.totalAttempts > 0 ? "forge" : "title");
       setReady(true);
@@ -611,8 +645,38 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             </section>
           ) : (
             <section className="forge-panel armor-panel">
+              {/* 보호구 강화 — 검 강화와 같은 무대·버튼·연출 (사용자 지시: 보호구도 강화 흐름이 있어야 한다) */}
+              <div className={`forge-stage armor-stage forge-phase-${armorPhase}`}>
+                <div className="sword-aura" />
+                {equippedShoulder ? (
+                  <i className={`armor-preview armor-${equippedShoulder} armor-stage-preview`} />
+                ) : (
+                  <img className="armor-stage-empty" src={assetUrl("ui/idle/gate-locked.svg")} alt="" aria-hidden="true" />
+                )}
+                <div className="forge-sword-name">
+                  <span>+{shoulderEnhance}</span>
+                  <strong>{equippedShoulder ? shoulderMeta.find((s) => s.id === equippedShoulder)?.name : "보호구 미장착"}</strong>
+                </div>
+                {armorPhase === "forging" && <div className="forge-impact">담금질 중…</div>}
+                {armorPhase === "success" && <div className="forge-impact success">SUCCESS!</div>}
+                {armorPhase === "failure" && <div className="forge-impact sold">FAILED</div>}
+              </div>
+              <div className="forge-stats forge-stats-4">
+                <div><span>강화 비용</span><strong>{shoulderEnhance >= 10 ? "MAX" : `${formatGold(armorCost)}G`}</strong></div>
+                <div><span>성공 확률</span><strong>{shoulderEnhance >= 10 ? "—" : `${Math.round(armorChance * 100)}%`}</strong><small>실패해도 파괴되지 않음</small></div>
+                <div><span>동료 지원</span><strong>+{(shoulderEnhance * 2).toFixed(0)}%</strong></div>
+                <div><span>전투력</span><strong>+{shoulderEnhance * 20}</strong></div>
+              </div>
+              <button
+                type="button"
+                className="forge-button"
+                disabled={!equippedShoulder || shoulderEnhance >= 10 || coins < armorCost || armorPhase !== "idle"}
+                onClick={enhanceArmor}
+              >
+                {!equippedShoulder ? "보호구를 먼저 장착하세요" : shoulderEnhance >= 10 ? "최고 단계 달성" : armorPhase === "forging" ? "담금질 중…" : "보호구 강화하기"}
+              </button>
               <h2>원정 견갑</h2>
-              <p>화살 원정 최초 클리어 또는 드롭으로 획득합니다.</p>
+              <p>화살 원정 최초 클리어 또는 드롭으로 획득합니다. 강화 단계는 어떤 견갑을 끼워도 유지됩니다.</p>
               <button type="button" className="forge-sell" onClick={() => equipShoulder(null)}>보호구 해제</button>
               {shoulderMeta.map((item) => {
                 const owned = ownedShoulders.includes(item.id);

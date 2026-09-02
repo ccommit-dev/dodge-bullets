@@ -66,7 +66,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     expeditionSeals: 0,
     slashScore: 0,
     slashBuff: 0,
-    slashHitFx: Array.from({ length: 24 }, () => ({ active: false, x: 0, y: 0, value: 0, lifeMs: 0, maxLifeMs: 0, boss: false })),
+    slashHitFx: Array.from({ length: 24 }, () => ({ active: false, x: 0, y: 0, value: 0, lifeMs: 0, maxLifeMs: 0, boss: false, crit: false, energy: 0 })),
     slashDrops: Array.from({ length: 8 }, () => ({ active: false, x: 0, y: 0, vy: 0, kind: "edge" as const })),
     bossSpawned: false,
     bossDefeated: false,

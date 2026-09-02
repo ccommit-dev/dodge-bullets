@@ -25,7 +25,6 @@ import {
   grantCharacterReward,
   loadCharacterProgress,
   migrateLegacyProgress,
-  setWalletBalance,
   updateCharacterProgress,
 } from "./progression/storage";
 import { drawFrame } from "./game/draw";
@@ -39,11 +38,10 @@ import {
   type InputState,
 } from "./game/input";
 import {
-  SHOP_MAX,
-  SHOP_META,
+  derivedShopLevels,
   emptyShopLevels,
+  mergeShopLevels,
   statsFromLevels,
-  upgradeCost,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
 import { STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf } from "./game/stages";
@@ -139,6 +137,10 @@ function App() {
   const [hp, setHp] = useState(1);
   const [maxHp, setMaxHp] = useState(1);
   const [combo, setCombo] = useState(0);
+  /** 첫 원정 슬로모션 튜토리얼 (점검표 #6) — 1회만 */
+  const [tutorialActive, setTutorialActive] = useState(false);
+  const tutorialRef = useRef(false);
+  const tutorialEligibleRef = useRef(false);
   /** dodge 별점 획득 연출 (§4) — 클리어 직후 2.4초 팝업 */
   const [starResult, setStarResult] = useState<{ stars: number; improved: boolean; total: number } | null>(null);
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
@@ -284,10 +286,13 @@ function App() {
       setCoins(wallet);
       coinsRef.current = wallet;
       if (wallet !== savedCoins) void saveCoins(key.hash, wallet);
-      setShopLevels(levels);
-      shopLevelsRef.current = levels;
+      // 보급소 삭제 — 저장된 구매 레벨과 성장 파생 레벨 중 높은 쪽 (기존 구매 손실 없음)
+      const mergedLevels = mergeShopLevels(levels, derivedShopLevels(character));
+      setShopLevels(mergedLevels);
+      shopLevelsRef.current = mergedLevels;
       setProgress(character);
-      const stats = statsWithShoulder(levels, character.equippedShoulder);
+      tutorialEligibleRef.current = !character.claimedRewards.includes("dodge-tutorial") && character.dodgeBestStage <= 1;
+      const stats = statsWithShoulder(mergedLevels, character.equippedShoulder);
       if (worldRef.current) applyStats(worldRef.current, stats);
       setMaxHp(1 + stats.extraLives);
       setHp(1 + stats.extraLives);
@@ -430,7 +435,14 @@ function App() {
       const ctx = canvasRef.current?.getContext("2d");
       if (world && ctx) {
         if (!lastTsRef.current) lastTsRef.current = ts;
-        const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05);
+        // 첫 스테이지 슬로모션 튜토리얼 (점검표 #6): 첫 원정의 처음 7초만 45% 속도로,
+        // 분열 화살 규칙을 안전하게 한 번 본 뒤 정상 속도로 복귀한다
+        const tutorialSlow = tutorialRef.current && world.stageIndex === 0 && world.stageElapsedMs < 7000;
+        if (tutorialRef.current && !tutorialSlow) {
+          tutorialRef.current = false;
+          setTutorialActive(false);
+        }
+        const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05) * (tutorialSlow ? 0.45 : 1);
         lastTsRef.current = ts;
 
         const event = updateWorld(
@@ -725,6 +737,17 @@ function App() {
 
   const handleBeginPlay = useCallback(() => {
     lastTsRef.current = 0;
+    // 첫 원정 1회: 슬로모션 튜토리얼 시작 + 기록 (다음 판부터는 정상 속도)
+    if (tutorialEligibleRef.current && worldRef.current?.stageIndex === 0) {
+      tutorialEligibleRef.current = false;
+      tutorialRef.current = true;
+      setTutorialActive(true);
+      void updateCharacterProgress(userHashRef.current, (current) =>
+        current.claimedRewards.includes("dodge-tutorial")
+          ? current
+          : { ...current, claimedRewards: [...current.claimedRewards, "dodge-tutorial"] },
+      );
+    }
     syncState("playing");
     soundRef.current.startBgm();
   }, [syncState]);
@@ -807,28 +830,18 @@ function App() {
     void migrateLegacyProgress(userHashRef.current, progress).then(setProgress);
   };
 
-  const buyUpgrade = async (id: ShopUpgradeId) => {
-    await unlockAudio();
-    const level = shopLevels[id];
-    if (level >= SHOP_MAX[id]) return;
-    const cost = upgradeCost(id, level);
-    if (coins < cost) return;
-    const nextLevels = { ...shopLevels, [id]: level + 1 };
-    const nextCoins = coins - cost;
-    setShopLevels(nextLevels);
-    shopLevelsRef.current = nextLevels;
-    setCoins(nextCoins);
-    coinsRef.current = nextCoins;
-    soundRef.current.playBuy();
-    if (worldRef.current) applyStats(worldRef.current, statsWithShoulder(nextLevels, progress.equippedShoulder));
-    // 잔고는 setWalletBalance로만 확정한다. setProgress는 React 상태만 바꿔
-    // 저장소에 남지 않으므로, 그대로 두면 리로드 시 소비가 취소된다.
-    const [nextProgress] = await Promise.all([
-      setWalletBalance(userHashRef.current, nextCoins),
-      saveShopLevels(userHashRef.current, nextLevels),
-    ]);
-    setProgress(nextProgress);
-  };
+  // 보급소 삭제 후: 기동·검격 스탯은 캐릭터 성장에서 파생된다. 진행도가 바뀔 때마다
+  // (강화·레벨업 후 복귀) 저장된 구매 레벨과 파생 레벨 중 높은 쪽을 적용한다.
+  useEffect(() => {
+    if (!bootReady) return;
+    const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(progress));
+    const changed = (Object.keys(merged) as ShopUpgradeId[]).some((id) => merged[id] !== shopLevelsRef.current[id]);
+    if (!changed) return;
+    shopLevelsRef.current = merged;
+    setShopLevels(merged);
+    if (worldRef.current) applyStats(worldRef.current, statsWithShoulder(merged, progress.equippedShoulder));
+    void saveShopLevels(userHashRef.current, merged);
+  }, [bootReady, progress]);
 
   const confirmExit = async () => {
     soundRef.current.stopBgm();
@@ -919,7 +932,7 @@ function App() {
                   <span>모험가 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "NEW"}</b>
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
-                  <span>세이브 백업</span><b>›</b>
+                  <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
                 </button>
                 <button
                   type="button"
@@ -1049,23 +1062,8 @@ function App() {
             <p className="subtitle">이동·회피·검격 반격으로 적진의 보급품을 확보하고 탈출하세요</p>
             <p className="score-line">코인 {coins} · 최고 {highScore}</p>
 
-            <div className="tab-row" role="tablist">
-              <button
-                type="button"
-                className={`tab ${menuTab === "play" ? "tab-active" : ""}`}
-                onClick={() => setMenuTab("play")}
-              >
-                플레이
-              </button>
-              <button
-                type="button"
-                className={`tab ${menuTab === "shop" ? "tab-active" : ""}`}
-                onClick={() => setMenuTab("shop")}
-              >
-                원정대 보급소
-              </button>
-            </div>
-
+            {/* 원정대 보급소는 삭제됐다 (사용자 지시: 용도 불명). 기동·검격 스탯은
+                캐릭터 성장(레벨·강화)에서 자동 파생된다 — derivedShopLevels 참조 */}
             {menuTab === "play" ? (
               <>
                 <p className="controls-hint">
@@ -1137,41 +1135,7 @@ function App() {
                   타이탄 사냥터
                 </button>
               </>
-            ) : (
-              <div className="shop-list">
-                <p className="brand">EXPEDITION SUPPLY</p>
-                <p className="subtitle">기동 장비와 반격 검술을 준비해 더 위험한 돌파 작전에 도전하세요</p>
-                {(Object.keys(SHOP_META) as ShopUpgradeId[]).map((id) => {
-                  const level = shopLevels[id];
-                  const max = SHOP_MAX[id];
-                  const cost = upgradeCost(id, level);
-                  const soldOut = level >= max;
-                  const canBuy = !soldOut && coins >= cost;
-                  return (
-                    <div key={id} className="shop-item">
-                      <div className="shop-item-text">
-                        <span className="shop-category">{SHOP_META[id].category}</span>
-                        <strong>
-                          {SHOP_META[id].name}{" "}
-                          <span className="shop-lv">
-                            Lv.{level}/{max}
-                          </span>
-                        </strong>
-                        <span>{SHOP_META[id].desc}</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="shop-buy"
-                        disabled={!canBuy}
-                        onClick={() => void buyUpgrade(id)}
-                      >
-                        {soldOut ? "MAX" : `${cost}c`}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}
@@ -1219,6 +1183,12 @@ function App() {
               <i className="expedition-progress"><b style={{ width: `${expeditionRatio * 100}%` }} /></i>
             </div>
             {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
+            {tutorialActive && (
+              <div className="dodge-tutorial" role="status">
+                <b>슬로모션 튜토리얼</b>
+                <span>화살이 다가오면 <em>검격</em>으로 베세요 — 벤 화살은 조각이 되어 돌다가 되돌아옵니다. 점프·대시로 피하세요.</span>
+              </div>
+            )}
           </div>
           <div
             className="action-dock"

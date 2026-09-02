@@ -17,7 +17,9 @@ import {
   disposeBeatSession,
   laneOfSound,
   performBeatLane,
+  performBeatRelease,
   resizeBeatWorld,
+  settleHoldIfPassed,
   updateBeatWorld,
   type BeatSession,
 } from "./beat/world";
@@ -39,13 +41,17 @@ import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { AllyArt } from "./titans/SpriteArt";
 
 type BeatUi = "menu" | "playing" | "clear" | "gameover";
-type DifficultyChoice = "easy" | "normal" | "hard" | "expert";
-const DIFFICULTY = {
-  easy: { label: "하 · EASY", bpmMultiplier: .92, difficulty: "easy" as const, reward: 1 },
-  normal: { label: "중 · NORMAL", bpmMultiplier: 1, difficulty: "medium" as const, reward: 1.35 },
-  hard: { label: "상 · HARD", bpmMultiplier: 1.12, difficulty: "hard" as const, reward: 1.8 },
-  expert: { label: "EXPERT", bpmMultiplier: 1.26, difficulty: "hard" as const, reward: 2.5, force16: true },
-};
+/**
+ * 난이도 선택(상·중·하)은 삭제됐다 (사용자 지시). 곡마다 고정 난이도가 있고
+ * 채보는 BPM·구간으로 곡별로 다르게 생성된다 (beat/tracks.ts buildChart).
+ * 보상 배율은 곡의 고정 난이도를 따른다.
+ */
+function trackRewardMult(track: { difficulty: "easy" | "medium" | "hard" }): number {
+  return track.difficulty === "hard" ? 1.8 : track.difficulty === "medium" ? 1.35 : 1;
+}
+
+/** 싱크 보정 저장 키 — 기기별 오디오 지연은 달라서 로컬에만 남긴다 */
+const CALIBRATION_KEY = "dodgebullets:beat:calibrationMs";
 
 /** Each pad has its own keys so the lane you see is the key you press. */
 const KEY_LANE: Record<string, NoteLane> = {
@@ -132,7 +138,20 @@ export function BeatGame({
   const [unlocked, setUnlocked] = useState(0);
   const [rpg, setRpg] = useState<BeatRpgProgress | null>(null);
   const [hubMsg, setHubMsg] = useState("");
-  const [difficultyChoice, setDifficultyChoice] = useState<DifficultyChoice>("normal");
+  /** 싱크 보정 (점검표 #7) — 8박자 탭 평균 오프셋을 기기 로컬에 저장, 판정에 적용 */
+  const [calibrationMs, setCalibrationMs] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(CALIBRATION_KEY);
+      return raw === null ? Number.NaN : Number(raw);
+    } catch {
+      return Number.NaN;
+    }
+  });
+  const [calibrating, setCalibrating] = useState(false);
+  const calibTapsRef = useRef<number[]>([]);
+  const calibStartRef = useRef(0);
+  const calibTimerRef = useRef<number | null>(null);
+  const [calibBeat, setCalibBeat] = useState(0);
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
   const [partyAction, setPartyAction] = useState<"march" | "attack" | "guard" | "focus">("focus");
@@ -153,10 +172,23 @@ export function BeatGame({
   const hudNextRef = useRef("");
   const hudLastRef = useRef("");
 
+  /** 롱노트 릴리즈 (점검표 #8) — 꼬리에서 떼면 성공 + 진동 2회, 일찍 떼면 짧은 진동 */
+  const releaseRaidLane = useCallback((lane: NoteLane) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const result = performBeatRelease(session, lane);
+    if (!result) return;
+    if (navigator.vibrate) navigator.vibrate(result === "release-good" ? [12, 30, 12] : 40);
+    setCombo(session.world.combo);
+    setScore(session.world.score);
+  }, []);
+
   const playRaidLane = useCallback((lane: NoteLane) => {
     const session = sessionRef.current;
     if (!session) return;
     performBeatLane(session, lane);
+    // 롱노트 머리를 잡았으면 진동으로 "누르고 있어야 함"을 알린다
+    if (session.holdEndStep >= 0 && navigator.vibrate) navigator.vibrate(18);
     const world = session.world;
     const success = world.judgeText !== "MISS";
     const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "march" : "focus";
@@ -304,7 +336,12 @@ export function BeatGame({
       }
     };
 
+    const onKeyUp = (e: KeyboardEvent) => {
+      const lane = KEY_LANE[e.code];
+      if (lane !== undefined) releaseRaidLane(lane);
+    };
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     canvas.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("visibilitychange", onVisibility);
 
@@ -318,6 +355,8 @@ export function BeatGame({
 
         if (session && uiRef.current === "playing") {
           const event = updateBeatWorld(session, dtSec, true);
+          // 롱노트를 끝까지 누른 채 꼬리를 지나면 자동 성공
+          settleHoldIfPassed(session);
           const w = session.world;
           setScore(w.score);
           setCombo(w.combo);
@@ -367,7 +406,7 @@ export function BeatGame({
                 w.maxHp,
                 w.elapsedMs,
                 w.durationMs,
-              ) * DIFFICULTY[difficultyChoice].reward + Math.min(60, w.maxCombo * 2) + dropCountRef.current * 12);
+              ) * trackRewardMult(track) + Math.min(60, w.maxCombo * 2) + dropCountRef.current * 12);
             setCoinGain(reward);
             setLastScore(w.score);
             const perfectRatio =
@@ -403,7 +442,7 @@ export function BeatGame({
                   sharedCoins: reward * (beatFirst ? 2 : 1),
                   lastContent: "beat",
                 });
-                const fragmentGain = Math.max(5, Math.round(8 * DIFFICULTY[difficultyChoice].reward + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0) + Math.min(15, dropCountRef.current * 3)));
+                const fragmentGain = Math.max(5, Math.round(8 * trackRewardMult(track) + perfectRatio * 14 + (w.maxCombo >= 20 ? 5 : 0) + Math.min(15, dropCountRef.current * 3)));
                 const chapterShoulder = shoulderForTrack(w.stageIndex);
                 const isChapterBoss = w.stageIndex % 2 === 1;
                 const clearKey = `beat-chapter:${Math.floor(w.stageIndex / 2) + 1}:boss-clear`;
@@ -449,6 +488,7 @@ export function BeatGame({
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("visibilitychange", onVisibility);
       if (sessionRef.current) {
@@ -456,7 +496,7 @@ export function BeatGame({
         sessionRef.current = null;
       }
     };
-  }, [difficultyChoice, onCoins, playRaidLane, shoulderBlueprint, syncUi, userHash]);
+  }, [calibrationMs, onCoins, playRaidLane, releaseRaidLane, shoulderBlueprint, syncUi, userHash]);
 
   const startSlot = async (slot: PracticeSlot) => {
     if (!slot.track || !rpgRef.current) return;
@@ -494,9 +534,10 @@ export function BeatGame({
       cos ?? undefined,
       spent.skills,
       slot.kind === "spar",
-      DIFFICULTY[difficultyChoice],
     );
     applyBeatInsets(session.world, insets);
+    // 기기 싱크 보정 적용 — 판정 위치를 평균 오프셋만큼 되돌린다
+    session.calibrationSec = (Number.isFinite(calibrationMs) ? calibrationMs : 0) / 1000;
     sessionRef.current = session;
     setLessonTitle(slot.title);
     setStageNo(slot.stageIndex + 1);
@@ -537,6 +578,87 @@ export function BeatGame({
     syncUi("playing");
   };
 
+  /* ── 싱크 보정 (점검표 #7): 100BPM 8박자 클릭에 맞춰 탭 → 평균 오프셋을 저장 ── */
+  const CALIB_BPM = 100;
+  const saveCalibration = (ms: number) => {
+    const clamped = Math.max(-200, Math.min(200, Math.round(ms)));
+    setCalibrationMs(clamped);
+    try {
+      localStorage.setItem(CALIBRATION_KEY, String(clamped));
+    } catch {
+      /* 저장 불가 환경 — 세션 동안만 유지 */
+    }
+  };
+  const stopCalibration = () => {
+    if (calibTimerRef.current !== null) window.clearInterval(calibTimerRef.current);
+    calibTimerRef.current = null;
+    setCalibrating(false);
+  };
+  const startCalibration = () => {
+    calibTapsRef.current = [];
+    calibStartRef.current = performance.now();
+    setCalibBeat(0);
+    setCalibrating(true);
+    let beat = 0;
+    const beatMs = 60000 / CALIB_BPM;
+    // 클릭음: 오디오 컨텍스트 짧은 비프 (BGM 없이도 보정 가능)
+    let ctx: AudioContext | null = null;
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      ctx = soundEnabled ? new AC() : null;
+    } catch {
+      ctx = null;
+    }
+    const click = () => {
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = beat % 4 === 0 ? 1320 : 880;
+      gain.gain.value = 0.18;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.06);
+      osc.stop(ctx.currentTime + 0.07);
+    };
+    click();
+    calibTimerRef.current = window.setInterval(() => {
+      beat += 1;
+      setCalibBeat(beat);
+      if (beat >= 12) {
+        stopCalibration();
+        void ctx?.close();
+        const taps = calibTapsRef.current;
+        if (taps.length >= 4) {
+          // 각 탭을 가장 가까운 박자에 대응시켜 오프셋 평균 (양수 = 늦게 누름)
+          const offsets = taps.map((t) => {
+            const rel = (t - calibStartRef.current) % beatMs;
+            return rel > beatMs / 2 ? rel - beatMs : rel;
+          });
+          const avg = offsets.reduce((a, b) => a + b, 0) / offsets.length;
+          saveCalibration(avg);
+          setHubMsg(`싱크 보정 완료 · ${avg > 0 ? "+" : ""}${Math.round(avg)}ms (${taps.length}탭)`);
+        } else {
+          setHubMsg("탭이 부족해 보정을 건너뛰었습니다 — 다시 시도하세요");
+        }
+        return;
+      }
+      click();
+    }, beatMs);
+  };
+  const calibTap = () => {
+    if (!calibrating) return;
+    calibTapsRef.current.push(performance.now());
+    if (navigator.vibrate) navigator.vibrate(8);
+  };
+  // 최초 진입 1회 자동 보정 안내 — 저장된 오프셋이 없으면 메뉴에서 바로 연다
+  const autoCalibRef = useRef(false);
+  useEffect(() => {
+    if (ui !== "menu" || calibrating || autoCalibRef.current || !Number.isNaN(calibrationMs)) return;
+    autoCalibRef.current = true;
+    startCalibration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui]);
+
   const dockStyle = {
     paddingTop: insets.top,
     paddingLeft: insets.left,
@@ -548,6 +670,20 @@ export function BeatGame({
     <div className="beat-layer">
       <canvas ref={canvasRef} className={`game-canvas ${ui === "playing" ? "beat-battle-canvas" : ""}`} />
 
+      {calibrating && (
+        <button type="button" className="beat-calib-overlay" onPointerDown={(e) => { e.preventDefault(); calibTap(); }}>
+          <p className="brand">SYNC CALIBRATION</p>
+          <h2>클릭에 맞춰 탭하세요</h2>
+          <div className="beat-calib-dots" aria-hidden="true">
+            {Array.from({ length: 8 }, (_, i) => (
+              <i key={i} className={i === calibBeat % 8 ? "on" : ""} />
+            ))}
+          </div>
+          <span className="beat-calib-count">{Math.min(12, calibBeat)} / 12</span>
+          <small>기기마다 다른 오디오 지연을 맞춥니다 · 8박자 이상 탭 · 화면 아무 곳이나</small>
+        </button>
+      )}
+
       {ui === "menu" && rpg && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
@@ -557,10 +693,21 @@ export function BeatGame({
             <p className="controls-hint">노트와 같은 방향 입력 · ← ↓ ↑ → / A S W D</p>
             <p className="score-line">보유 골드 {coins.toLocaleString()} · SP {rpg.sp} · 명성 {rpg.fame}</p>
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
-            <div className="beat-difficulty" aria-label="노래 난이도">
-              {(["easy", "normal", "hard"] as DifficultyChoice[]).map((id) => <button key={id} type="button" className={difficultyChoice === id ? "on" : ""} onClick={() => setDifficultyChoice(id)}>
-                <b>{DIFFICULTY[id].label}</b><small>보상 ×{DIFFICULTY[id].reward}</small>
-              </button>)}
+            <div className="beat-calibration-row">
+              <button type="button" className={`beat-calibrate ${Number.isNaN(calibrationMs) ? "needed" : ""}`} onClick={startCalibration}>
+                <b>{Number.isNaN(calibrationMs) ? "싱크 보정 필요" : "싱크 보정"}</b>
+                <small>
+                  {Number.isNaN(calibrationMs)
+                    ? "8박자 탭으로 기기 지연을 맞춥니다"
+                    : `현재 ${calibrationMs > 0 ? "+" : ""}${calibrationMs}ms · 다시 보정`}
+                </small>
+              </button>
+              {!Number.isNaN(calibrationMs) && (
+                <div className="beat-calib-nudge" role="group" aria-label="수동 오프셋">
+                  <button type="button" onClick={() => saveCalibration(calibrationMs - 10)}>−10</button>
+                  <button type="button" onClick={() => saveCalibration(calibrationMs + 10)}>+10</button>
+                </div>
+              )}
             </div>
             <div className="schedule-list">
               {slots.map((slot) => {
@@ -577,7 +724,7 @@ export function BeatGame({
                   >
                     <span className="schedule-day">
                       TRACK {slot.stageIndex + 1}/{totalStages} · {slot.track.bpm}BPM ·{" "}
-                      {difficultyChoice === "easy" ? 4 : difficultyChoice === "normal" ? 8 : 16}비트 · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초
+                      {slot.track.subdivision}비트 · {slot.track.difficulty === "hard" ? "고난도" : slot.track.difficulty === "medium" ? "중급" : "입문"} · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초
                       {recommended ? " · 추천" : ""}
                     </span>
                     <span className="schedule-title">{slot.title}</span>
@@ -669,6 +816,9 @@ export function BeatGame({
                   e.stopPropagation();
                   if (sessionRef.current) playRaidLane(direction.lane);
                 }}
+                onPointerUp={() => releaseRaidLane(direction.lane)}
+                onPointerCancel={() => releaseRaidLane(direction.lane)}
+                onPointerLeave={() => releaseRaidLane(direction.lane)}
               >
                 <span>{direction.symbol}</span>
                 <small>{["KICK","SNARE","HAT","BASS"][direction.lane]} · {direction.key}</small>
