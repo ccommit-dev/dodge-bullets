@@ -541,6 +541,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 <p className="forge-note">
                   원정 재료 {materials}개 {materials > 0 ? "· 이번 강화 성공률 +8%" : "· 화살 원정에서 획득"}
                 </p>
+                <p className="forge-note forge-refine-note">화살 원정·방치에서 얻은 세부 재료는 <b>획득 즉시 강화석으로 정제</b>되어 여기 합산됩니다 · 종류별 확률은 조합소의 재료 도감에서</p>
 
                 <button
                   type="button"

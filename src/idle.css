@@ -1892,3 +1892,7 @@
 .titans-field > .titans-pet,
 .titans-field > .titans-boss-challenge { translate: 0 -52px; }
 .titans-field .titans-clear-banner { translate: 0 -26px; }
+
+/* 저사양: 사용자 CSS의 run-cycle(.is-approaching .ally-idle)까지 덮도록 특이도·!important */
+.titans-layer.perf-low .titan-ally-art .ally-idle,
+.titans-layer.perf-low .titan-ally-art.is-approaching .ally-idle { animation: none !important; }
