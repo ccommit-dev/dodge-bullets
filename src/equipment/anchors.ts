@@ -6,10 +6,10 @@ export type EquipmentFrameAnchors = {
 };
 
 export const IDLE_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = [
-  { hand: { x: 25, y: 50, rotation: -42, scale: .38 }, shoulderLeft: { x: 35, y: 27, rotation: -8, scale: .8 }, shoulderRight: { x: 64, y: 27, rotation: 8, scale: .8 } },
-  { hand: { x: 25, y: 49, rotation: -41, scale: .38 }, shoulderLeft: { x: 35, y: 27, rotation: -8, scale: .8 }, shoulderRight: { x: 64, y: 27, rotation: 8, scale: .8 } },
-  { hand: { x: 25, y: 50, rotation: -42, scale: .38 }, shoulderLeft: { x: 35, y: 27, rotation: -8, scale: .8 }, shoulderRight: { x: 64, y: 27, rotation: 8, scale: .8 } },
-  { hand: { x: 25, y: 51, rotation: -43, scale: .38 }, shoulderLeft: { x: 35, y: 27, rotation: -8, scale: .8 }, shoulderRight: { x: 64, y: 27, rotation: 8, scale: .8 } },
+  { hand: { x: 25, y: 50, rotation: -42, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
+  { hand: { x: 25, y: 49, rotation: -41, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
+  { hand: { x: 25, y: 50, rotation: -42, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
+  { hand: { x: 25, y: 51, rotation: -43, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
 ];
 
 /**

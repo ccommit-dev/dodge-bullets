@@ -113,6 +113,7 @@ function App() {
   const lastTsRef = useRef<number>(0);
   const insetsRef = useRef<SafeInsets>(normalizeInsets(null));
   const lastJumpAtRef = useRef(0);
+  const lastSpaceAtRef = useRef(0);
   const dodgeRunIdRef = useRef(`boot-${Date.now()}`);
 
   const hudRemainSecRef = useRef(0);
@@ -366,6 +367,14 @@ function App() {
       if (appModeRef.current !== "dodge") return;
       if (stateRef.current !== "playing") return;
       if (applyKeyDown(inputRef.current, e.code)) {
+        if (e.code === "Space") {
+          const now = performance.now();
+          if (now - lastSpaceAtRef.current < 280) {
+            inputRef.current.dashPressed = true;
+            sound.playDash();
+          }
+          lastSpaceAtRef.current = now;
+        }
         if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") sound.playJump();
         if (e.code === "ShiftLeft" || e.code === "ShiftRight") sound.playDash();
         e.preventDefault();
@@ -1067,7 +1076,7 @@ function App() {
             {menuTab === "play" ? (
               <>
                 <p className="controls-hint">
-                  전진 · 더블탭/스페이스 점프 · Shift 대시 관통 · E 검격 반격
+                  전진 · Space 점프/두 번 대시 · Shift 대시 · Enter/Ctrl/E 검격
                 </p>
                 <p className="controls-hint">
                   식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"} · 스테이지 {STAGES.length}개

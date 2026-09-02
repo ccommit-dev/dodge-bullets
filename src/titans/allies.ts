@@ -21,6 +21,8 @@ export const ALLY_RARITY: Record<TitanHeroId, AllyRarity> = {
   volt: "SR",
   mia_dark: "SR",
   sera_light: "SSR",
+  pyro:"R", marina:"SR", terra:"SR", zephyr:"SR", bronn:"SSR",
+  iris:"SSR", cain:"SSR", sylph:"SSR", orion:"SSR", ember:"SSR",
 };
 
 export const RARITY_LABEL: Record<AllyRarity, string> = { R: "희귀", SR: "영웅", SSR: "전설" };
@@ -64,29 +66,39 @@ export function shardCostToNext(id: TitanHeroId, stars: number): number | null {
 }
 
 export function emptyAllyRecord(): Record<TitanHeroId, number> {
-  return { mia: 0, leon: 0, sera: 0, garen: 0, ari: 0, nox: 0, luna: 0, volt: 0, mia_dark: 0, sera_light: 0 };
+  return Object.fromEntries(ALLY_IDS.map((id) => [id, 0])) as Record<TitanHeroId, number>;
 }
 
-export const ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "mia_dark", "sera_light"];
+export const ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember", "luna", "volt", "mia_dark", "sera_light"];
 
 /* ───────────────────────── 원정대 편성 + 시너지 (CRUMBLE_GAP §2) ───────────────────────── */
 
-export type AllyRole = "melee" | "ranged" | "flame";
+export type AllyRole = "melee" | "ranged" | "tank" | "healer";
+export type AllyElement = "fire" | "water" | "earth" | "wind";
 
 export const ALLY_ROLE: Record<TitanHeroId, AllyRole> = {
   mia: "melee",
   leon: "ranged",
   sera: "ranged",
-  garen: "melee",
-  ari: "flame",
+  garen: "tank",
+  ari: "melee",
   nox: "melee",
-  luna: "melee",
+  luna: "healer",
   volt: "ranged",
   mia_dark: "melee",
-  sera_light: "ranged",
+  sera_light: "healer",
+  pyro:"melee", marina:"healer", terra:"tank", zephyr:"ranged", bronn:"tank",
+  iris:"ranged", cain:"melee", sylph:"healer", orion:"ranged", ember:"ranged",
 };
 
-export const ROLE_LABEL: Record<AllyRole, string> = { melee: "근접", ranged: "원거리", flame: "화염" };
+export const ROLE_LABEL: Record<AllyRole, string> = { melee: "근딜", ranged: "원딜", tank: "탱커", healer: "힐러" };
+export const ALLY_ELEMENT: Record<TitanHeroId, AllyElement> = {
+  mia:"wind", leon:"wind", sera:"water", garen:"earth", ari:"fire",
+  nox:"wind", luna:"earth", volt:"fire", mia_dark:"water", sera_light:"water",
+  pyro:"fire", marina:"water", terra:"earth", zephyr:"wind", bronn:"fire",
+  iris:"water", cain:"wind", sylph:"wind", orion:"earth", ember:"fire",
+};
+export const ELEMENT_LABEL: Record<AllyElement, string> = { fire:"불", water:"물", earth:"흙", wind:"바람" };
 
 /** 편성 슬롯 수 — 기본 4, 성벽 50/100층에서 +1씩. partyCap은 소급 완화 하한(기존 유저). */
 export function partySlotCount(towerBestFloor: number, partyCap: number): number {
@@ -115,7 +127,7 @@ export type SynergyEffects = {
 /** 편성 조합에서 발동하는 시너지 — 편성 화면과 전투가 같은 함수를 쓴다. */
 export function partySynergies(party: TitanHeroId[]): { list: Synergy[]; effects: SynergyEffects } {
   const roles = party.map((id) => ALLY_ROLE[id]);
-  const melee = roles.filter((r) => r === "melee").length;
+  const melee = roles.filter((r) => r === "melee" || r === "tank").length;
   const ranged = roles.filter((r) => r === "ranged").length;
   const ssr = party.filter((id) => ALLY_RARITY[id] === "SSR").length;
   const distinctRoles = new Set(roles).size;

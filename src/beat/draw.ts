@@ -409,30 +409,22 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const eased = Math.min(1, z);
     const overshoot = Math.max(0, z - 1);
     const lane = laneOfSound(step.sound);
+    const trick = step.trick;
     const x = laneXAt(world, lane, eased);
     const y = horizonY + (hitY - horizonY) * eased;
     const size = (5 + eased * 21) * (1 + overshoot * 1.6);
     const consumed = world.hitSteps.has(index);
     const golden = (index + 1) % world.subdivision === 0;
-    const holdLen = step.hold ?? 0;
-    const holdingThis = holdLen > 0 && world.holdLane === lane && world.holdEndStep === index + holdLen;
+    const sustained = world.chart[index + 1] && laneOfSound(world.chart[index + 1].sound) === lane;
     ctx.save();
     ctx.translate(x, y);
     const fade = overshoot > 0 ? Math.max(0, 1 - overshoot / 0.24) : 1;
-    ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed && !holdingThis ? 0.3 : 1);
-    if (holdLen > 0) {
-      // 롱노트 (점검표 #8): 머리(여기) → 몸통 → 꼬리(index+hold)를 레일 위에 그린다.
-      // 누르는 중이면 몸통이 밝게 차오르고, 꼬리 캡이 "떼는 지점"을 알린다.
-      const tailDist = index + holdLen - position;
-      const tailZ = Math.max(0, Math.min(1, 1 - tailDist / preview));
-      const tailX = laneXAt(world, lane, tailZ) - x;
-      const tailY = horizonY + (hitY - horizonY) * tailZ - y;
-      const bodyW = Math.max(6, size * 0.9);
-      ctx.lineCap = "round";
-      ctx.lineWidth = bodyW;
-      ctx.strokeStyle = holdingThis ? "rgba(254,240,138,.9)" : consumed ? "rgba(148,163,184,.35)" : "rgba(251,79,109,.42)";
-      ctx.shadowColor = holdingThis ? "#fde047" : "transparent";
-      ctx.shadowBlur = holdingThis ? 18 : 0;
+    const trickAlpha = trick === "late" ? (eased > .62 ? 1 : .04) : trick === "ghost" ? .34 : trick === "flash" ? (.35 + Math.abs(Math.sin(world.elapsedMs * .012)) * .65) : 1;
+    ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed ? 0.3 : 1) * trickAlpha;
+    if (sustained && !consumed) {
+      ctx.strokeStyle = golden ? "rgba(250,204,21,.8)" : LANE_ACCENT[lane];
+      ctx.lineWidth = Math.max(3, size * .26);
+      ctx.globalAlpha *= .45;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(tailX, tailY);
@@ -454,7 +446,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       }
     }
     ctx.beginPath();
-    ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * 1.56, size * 0.3);
+    ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * (step.holdSteps || step.holdTail ? 1.9 : 1.56), size * 0.3);
     ctx.fillStyle = consumed ? "#94a3b8" : golden ? "#facc15" : step.spike ? "#fb4f6d" : LANE_ACCENT[lane];
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 8 + eased * 18;
@@ -472,6 +464,11 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.fillStyle = "#f8fafc";
       ctx.shadowBlur = 0;
       ctx.fillText(LANE_SYMBOL[lane], 0, -1);
+      if (step.holdSteps) {
+        ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
+        ctx.fillStyle = "#fde047";
+        ctx.fillText(`HOLD ×${step.holdSteps}`, 0, -size * .92);
+      }
       if (eased > 0.62) {
         ctx.font = `800 ${Math.round(6 + eased * 4)}px system-ui, sans-serif`;
         ctx.fillStyle = "rgba(248,250,252,.82)";

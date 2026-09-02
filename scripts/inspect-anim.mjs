@@ -65,6 +65,12 @@ await page.evaluate(() => {
   [...document.querySelectorAll("button")].find((b) => /받기|확인|닫기/.test(b.textContent))?.click();
 });
 await sleep(1400);
+// 스테이지 전환 중이면 전투 페이즈까지 대기 (전환 프레임을 찍으면 동료가 없다)
+for (let i = 0; i < 40; i += 1) {
+  const inCombat = await page.evaluate(() => !document.querySelector(".titans-transition-skip") && !!document.querySelector(".titans-monster") && document.querySelectorAll(".titans-allies > *").length > 0);
+  if (inCombat) break;
+  await sleep(250);
+}
 
 async function freezeAt(delaySec) {
   await page.evaluate((d) => {
