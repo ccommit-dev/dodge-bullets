@@ -3,8 +3,7 @@ import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 
-const ALLY_ANIMATION_ATLAS = assetUrl("titans/generated/allies/ally-animation-atlas-v1.png");
-const SPECIAL_ANIMATION_ATLAS = assetUrl("titans/generated/allies/ally-special-animation-atlas-v1.png");
+const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
 
 const MONSTER_ASSET: Record<Exclude<TitanMonsterKind, "boss">, string> = {
   slime: assetUrl("titans/generated/monsters/slime.png"),
@@ -47,44 +46,32 @@ const ALT_BASE: Partial<Record<TitanHeroId, TitanHeroId>> = {
   iris:"sera", cain:"nox", sylph:"sera", orion:"leon", ember:"ari",
 };
 
-/**
- * 변형 동료 10명 — 전용 아틀라스 행 (scripts/make-variant-atlas.mjs가 tint로 생성).
- * 에셋 점검 전엔 기본 행에 CSS hue-rotate를 걸어 피부색이 왜곡됐다.
- */
-const VARIANT_ATLAS = assetUrl("titans/generated/allies/ally-variant-atlas-v1.png");
-const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = {
-  pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9,
+/** 투명 배경이 검증된 개별 동료 에셋. */
+const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
+  luna: assetUrl("titans/generated/allies/luna.png"),
+  volt: assetUrl("titans/generated/allies/volt.png"),
+  mia_dark: assetUrl("titans/generated/allies/mia-dark.png"),
+  sera_light: assetUrl("titans/generated/allies/sera-light.png"),
 };
-const VARIANT_ROWS = 10;
-/** 스킨 아틀라스 — 상점 썸네일 PNG가 아니라 전투 프레임 4종을 실제로 갈아입는다 */
-const SKIN_ATLAS = assetUrl("titans/generated/allies/ally-skin-atlas-v1.png");
-const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1 };
-const SKIN_ROWS = 2;
 
-/**
- * 기본·변형·스킨 아틀라스의 셀은 313.5×209(가로 1.5:1)인데 .titan-ally-art는 정사각형이라
- * 그대로 채우면 세로로 1.5배 늘어난다. 폭을 150%로 넓히고 좌측 −25%로 중앙을 맞춰 원본 비율로 그린다.
- * (특수 아틀라스는 정사각 셀이라 그대로.)
- */
-const WIDE_CELL: CSSProperties = { width: "150%", left: "-25%" };
-
-function animatedBodyStyle(id: TitanHeroId, state:0|1|2|3, skin?:string): CSSProperties {
-  const specialRows:Partial<Record<TitanHeroId,number>> = { luna:0, volt:1, mia_dark:2, sera_light:3 };
-  const specialRow = specialRows[id];
-  const col = `${state / 3 * 100}%`;
+function allyBodyStyle(id: TitanHeroId, skin?:string): CSSProperties {
   const skinDef = skin ? ALLY_SKINS[skin] : undefined;
-  if (skinDef?.ally === id && skin && SKIN_ROW[skin] != null) {
-    return { ...WIDE_CELL, backgroundImage:`url(${SKIN_ATLAS})`, backgroundSize:`400% ${SKIN_ROWS * 100}%`, backgroundPosition:`${col} ${SKIN_ROW[skin] / (SKIN_ROWS - 1) * 100}%` };
-  }
-  const variantRow = VARIANT_ROW[id];
-  if (variantRow != null) {
-    return { ...WIDE_CELL, backgroundImage:`url(${VARIANT_ATLAS})`, backgroundSize:`400% ${VARIANT_ROWS * 100}%`, backgroundPosition:`${col} ${variantRow / (VARIANT_ROWS - 1) * 100}%` };
-  }
-  if (specialRow != null) {
-    return { backgroundImage:`url(${SPECIAL_ANIMATION_ATLAS})`, backgroundSize:"400% 400%", backgroundPosition:`${col} ${specialRow / 3 * 100}%` };
+  const standalone = skinDef?.ally === id ? skinDef.url : STANDALONE_ALLY[id];
+  if (standalone) {
+    return {
+      backgroundImage: `url(${standalone})`,
+      backgroundSize: "contain",
+      backgroundPosition: "center bottom",
+      backgroundRepeat: "no-repeat",
+    };
   }
   const row = allyIndex[ALT_BASE[id] ?? id];
-  return { ...WIDE_CELL, backgroundImage:`url(${ALLY_ANIMATION_ATLAS})`, backgroundSize:"400% 600%", backgroundPosition:`${col} ${row / 5 * 100}%` };
+  return {
+    backgroundImage: `url(${ALLY_SHEET})`,
+    backgroundSize: "600% 100%",
+    backgroundPosition: `${row / 5 * 100}% center`,
+    backgroundRepeat: "no-repeat",
+  };
 }
 
 export function MonsterArt({
@@ -127,7 +114,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
       */}
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
-          <div className="ally-body" style={animatedBodyStyle(id, hitPulse > 0 ? 3 : attacking && pulse > 0 ? 2 : approaching ? 1 : 0, skin)} />
+          <div className="ally-body" style={allyBodyStyle(id, skin)} />
           <AllyWeapon id={id} />
         </div>
       </div>

@@ -1915,18 +1915,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         </button>
       )}
 
-      <div className="routine-board" aria-label="오늘의 루틴">
-        {routine.map((item) => (
-          <button key={item.id} type="button" className={`routine-chip ${item.done ? "done" : ""}`} onClick={() => runRoutine(item)}>
-            <b>{item.label}</b>
-            <small>{item.detail}</small>
-          </button>
-        ))}
-        <button type="button" className={`routine-reward ${routineReward ? "ready" : ""}`} disabled={!routineReward} onClick={() => void claimRoutine()}>
-          {character.routineClaimedDate === new Date().toLocaleDateString("sv-SE") ? "완료" : `💎 ${ROUTINE_REWARD_GEMS}`}
-        </button>
-      </div>
-
       <div className="titans-stagebar">
         <div>
           <p className="titans-kicker">TAP TITANS · RPG</p>
@@ -2133,6 +2121,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           탭 / 스페이스 · DPS {formatGold(dps)} · TAP {formatGold(tap)}
         </p>
       </section>
+
+      <div className="routine-board routine-board-below-field" aria-label="오늘의 전투 루틴">
+        {routine.map((item) => (
+          <button key={item.id} type="button" className={`routine-chip ${item.done ? "done" : ""}`} onClick={() => runRoutine(item)}>
+            <b>{item.label}</b>
+            <small>{item.detail}</small>
+          </button>
+        ))}
+        <button type="button" className={`routine-reward ${routineReward ? "ready" : ""}`} disabled={!routineReward} onClick={() => void claimRoutine()}>
+          {character.routineClaimedDate === new Date().toLocaleDateString("sv-SE") ? "완료" : `보상 받기 · ${ROUTINE_REWARD_GEMS}`}
+        </button>
+      </div>
 
       <div className="titans-buffs">
         {now < buffs.critUntil && <span>치명 +{Math.round(buffs.critBonus * 100)}%</span>}

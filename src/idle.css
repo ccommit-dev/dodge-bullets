@@ -1935,6 +1935,9 @@
   grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   gap: 5px;
 }
+.routine-board-below-field {
+  margin-top: 8px;
+}
 .routine-chip {
   display: grid;
   gap: 1px;
@@ -1996,7 +1999,7 @@
 .death-tip b { display: block; color: #fbbf24; font-size: 10px; letter-spacing: 0.06em; }
 
 @media (max-width: 480px) {
-  .routine-board { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .routine-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .routine-reward { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .recommend-banner, .routine-reward.ready { animation: none; } }
@@ -2010,8 +2013,8 @@
   .routine-board { gap: 4px; margin-bottom: 6px; }
   .routine-chip { padding: 4px 3px; }
   .routine-chip small { display: none; }
-  .routine-board .routine-reward { grid-column: auto; padding: 4px 6px; font-size: 9px; }
-  .routine-board { grid-template-columns: repeat(5, minmax(0, 1fr)) auto; }
+  .routine-board .routine-reward { grid-column: 3; padding: 4px 6px; font-size: 9px; }
+  .routine-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .titans-layer.has-recommend .titans-goals { display: none; }
   .warmup-chip, .idle-preview-chip { font-size: 8.5px; padding: 1px 6px; }
 }

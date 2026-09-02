@@ -29,7 +29,7 @@ export function routineItems(progress: CharacterProgress, events: EventSave, now
   return [
     { id: "claim", label: "정산", detail: claimedToday ? "오늘 수령" : "방치 보상 받기", done: claimedToday, go: { kind: "claim" } },
     { id: "rift", label: "균열", detail: riftLeft === 0 ? `${riftMax}/${riftMax} 완료` : `${riftMax - riftLeft}/${riftMax}`, done: riftLeft === 0, go: { kind: "events", tab: "rift" } },
-    { id: "mission", label: "토벌령", detail: missionsDone ? "모두 수령" : "미수령", done: missionsDone, go: { kind: "events", tab: "daily" } },
+    { id: "mission", label: "토벌", detail: missionsDone ? "모두 수령" : "미수령", done: missionsDone, go: { kind: "events", tab: "daily" } },
     { id: "forge", label: "강화", detail: forgedToday ? "오늘 성공" : "1회 성공", done: forgedToday, go: { kind: "content", content: "forge" } },
     { id: "expedition", label: "파견", detail: expeditionActive ? "진행 중" : "보내기", done: expeditionActive, go: { kind: "tab", tab: "heroes" } },
   ];
