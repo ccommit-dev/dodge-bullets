@@ -1648,13 +1648,26 @@
 /* 힌트는 우하단으로 — 좌하단은 스킬 독 자리 */
 .titans-hint { left: auto !important; right: 12px !important; text-align: right; max-width: 42%; }
 
-.titans-goals {
-  width: min(100%, 720px);
-  margin: 0 auto 8px;
+.growth-alerts {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 48;
+  width: min(290px, calc(100vw - 28px));
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 14px;
+  background: rgba(3, 14, 29, 0.93);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(12px);
 }
+.growth-alerts-title { color:#7dd3fc; font-size:9px; letter-spacing:.12em; }
+.growth-alerts .goal-chip { grid-template-columns:56px minmax(0,1fr); align-items:center; gap:2px 7px; padding:5px 7px; }
+.growth-alerts .goal-chip small { grid-row:1; grid-column:1; }
+.growth-alerts .goal-chip b { grid-row:1; grid-column:2; }
+.growth-alerts .goal-chip i { grid-row:2; grid-column:1 / -1; }
 .goal-chip {
   display: grid;
   gap: 2px;
@@ -1889,8 +1902,8 @@
 .titans-field > .titans-hero,
 .titans-field > .titans-allies,
 .titans-field > .titans-monster,
-.titans-field > .titans-pet,
-.titans-field > .titans-boss-challenge { translate: 0 -52px; }
+.titans-field > .titans-pet { translate: 0 -52px; }
+.titans-field > .titans-boss-challenge { translate: 0; }
 .titans-field .titans-clear-banner { translate: 0 -26px; }
 
 /* 저사양: 사용자 CSS의 run-cycle(.is-approaching .ally-idle)까지 덮도록 특이도·!important */
@@ -1911,7 +1924,11 @@
   background: rgba(8, 18, 33, 0.82);
   text-align: left;
   animation: coach-in 0.35s ease-out both;
+  box-sizing: border-box;
+  min-height: 0;
+  height: auto;
 }
+.recommend-banner-below-field { margin-top: 8px; }
 .recommend-banner .recommend-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .recommend-banner small { color: #94a3b8; font-size: 9px; letter-spacing: 0.06em; }
 .recommend-banner b { color: #e2e8f0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2006,7 +2023,7 @@
 
 /* 좁은 화면: 추천 배너·루틴 보드를 압축하고, 배너가 있을 땐 목표 스트립을 접는다(추천이 곧 목표) */
 @media (max-width: 480px) {
-  .recommend-banner { padding: 6px 10px; gap: 8px; margin-bottom: 6px; }
+  .recommend-banner { padding: 7px 10px; gap: 8px; margin-bottom: 6px; }
   .recommend-banner em { display: none; }
   .recommend-banner b { font-size: 12px; }
   .recommend-banner strong { padding: 4px 8px; font-size: 10px; }
@@ -2015,12 +2032,12 @@
   .routine-chip small { display: none; }
   .routine-board .routine-reward { grid-column: 3; padding: 4px 6px; font-size: 9px; }
   .routine-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .titans-layer.has-recommend .titans-goals { display: none; }
+  .titans-layer.has-recommend .growth-alerts { display: none; }
   .warmup-chip, .idle-preview-chip { font-size: 8.5px; padding: 1px 6px; }
 }
 /* 360×640에서 상점 탭 열이 44px 내려간다 — 배너·루틴·스테이지바 여백을 조여 화면 안으로 */
 @media (max-width: 480px) {
-  .recommend-banner { margin-bottom: 4px; padding: 5px 10px; }
+  .recommend-banner { margin-bottom: 4px; padding: 6px 10px; }
   .routine-board { margin-bottom: 4px; }
   .routine-chip { padding: 3px 3px; }
   .titans-stagebar { margin-bottom: 4px; }

@@ -97,11 +97,24 @@ export function MonsterArt({
   );
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; skin?: string }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; skin?: string; partySlot?: number }) {
   const base = ALT_BASE[id] ?? id;
   const ranged = base === "leon" || base === "sera" || base === "volt" || id === "sera_light";
+  const slot = partySlot === undefined ? undefined : Math.max(0, Math.min(5, partySlot));
+  // 대기 시에는 주인공(좌측 2%~약 18%) 바깥에서 시작한다. 모바일에서도
+  // 20%가 최소 안전선이라 캐릭터와 첫 동료의 바운딩 박스가 겹치지 않는다.
+  const homeX = slot === undefined ? undefined : [20, 20, 33, 33, 46, 46][slot];
+  const laneY = slot === undefined ? undefined : [4, 53, 12, 63, 1, 48][slot];
+  // 교전 시 후열은 주인공 뒤, 전열은 주인공 오른쪽에 고정한다. % 좌표를
+  // 사용해 360px 모바일부터 720px 데스크톱까지 동일한 충돌 여백을 유지한다.
+  const combatX = slot === undefined ? undefined : ranged ? [3, 4, 13, 14, 23, 24][slot] : [52, 54, 62, 64, 72, 74][slot];
+  const partyStyle = slot === undefined ? undefined : ({
+    "--party-home-x": `${homeX}%`,
+    "--party-lane-y": `${laneY}%`,
+    "--party-combat-x": `${combatX}%`,
+  } as CSSProperties);
   return (
-    <div className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
+    <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해

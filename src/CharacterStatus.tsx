@@ -22,11 +22,6 @@ import {
 import { updateCharacterProgress } from "./progression/storage";
 import {
   IDLE,
-  idleCapHours,
-  idleMultiplier,
-  idleRate,
-  slotLevels,
-  stageCeilingFor,
 } from "./progression/idle";
 import { HUNTING_AREAS } from "./titans/model";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
@@ -270,55 +265,6 @@ export function CharacterStatus({
           <span><b>{Math.max(coins, progress.sharedCoins).toLocaleString()}</b> 공용 코인</span>
           <span><b>{titans.gold.toLocaleString()}</b> 사냥 골드</span>
           <span><b>{Math.max(beat?.sp ?? 0, progress.skillPoints)}</b> 스킬 포인트</span>
-        </div>
-      </section>
-
-      <section className="idle-panel">
-        <div className="legacy-heading">
-          <div>
-            <small>IDLE FORMULA</small>
-            <strong>방치 공식</strong>
-          </div>
-          <span>4개 콘텐츠가 변수 하나씩</span>
-        </div>
-        <p className="idle-panel-formula">
-          초당 산출 = killGold(<b>S</b>) × <b>R</b> × <b>M</b> · 누적 상한 <b>T</b>
-        </p>
-        <div className="idle-panel-grid">
-          <button type="button" className="idle-var var-S" onClick={() => onOpenContent("titans")}>
-            <span className="idle-var-key">S</span>
-            <b>Stage {titans.stage}</b>
-            <small>사냥터 · 상한 {stageCeilingFor(progress.pioneeredArea)}</small>
-            <em>
-              {progress.pioneeredArea} / {HUNTING_AREAS.length} 지역 개척
-            </em>
-          </button>
-          <button type="button" className="idle-var var-R" onClick={() => onOpenContent("beat")}>
-            <span className="idle-var-key">R</span>
-            <b>{(idleRate(progress, titans.skillInventory.equipped) * 100).toFixed(1)}%</b>
-            <small>연습실 · 최대 {IDLE.rateCap * 100}%</small>
-            <em>
-              슬롯{" "}
-              {(Object.values(slotLevels(progress)) as number[]).reduce((a, b) => a + b, 0)} / 15
-            </em>
-          </button>
-          <button type="button" className="idle-var var-M" onClick={() => onOpenContent("forge")}>
-            <span className="idle-var-key">M</span>
-            <b>×{idleMultiplier(progress).toFixed(2)}</b>
-            <small>대장간 · 최대 ×{IDLE.multCap}</small>
-            <em>
-              +{progress.bestForgeLevel} · 재련 {progress.reforgeRank} · 결정{" "}
-              {progress.inheritanceCrystals}
-            </em>
-          </button>
-          <button type="button" className="idle-var var-T" onClick={() => onOpenContent("dodge")}>
-            <span className="idle-var-key">T</span>
-            <b>{idleCapHours(progress)}시간</b>
-            <small>화살 원정 · 최대 {IDLE.hoursCap}시간</small>
-            <em>
-              원정 {Math.min(4, progress.dodgeBestStage)}/4 · 성벽 {progress.towerBestFloor}층
-            </em>
-          </button>
         </div>
       </section>
 

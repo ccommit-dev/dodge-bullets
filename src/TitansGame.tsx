@@ -44,11 +44,9 @@ import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from 
 import {
   BEAT_SKILL_BY_SLOT,
   IDLE,
-  activeSlotLevelSum,
   computeIdleYield,
   idleBottleneck,
   idleCapHours,
-  idleRate,
   masteryToNextSlotLevel,
   nextAreaName,
   slotLevels,
@@ -115,8 +113,18 @@ type TitansGameProps = {
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal") => void;
 };
 
-type ShopTab = "sword" | "heroes" | "skills" | "premium";
+type ShopTab = "sword" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
+  heroes: { kicker: "ALLY ARCHIVE", title: "동료 도감", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
+  gacha: { kicker: "ALLY RECRUIT", title: "동료 뽑기", desc: "지역 픽업 동료를 소환하고 천장 진행도를 확인하세요." },
+  premium: { kicker: "PREMIUM SHOP", title: "상점", desc: "재화, 성장 패키지, 동료와 외형 상품을 확인하세요." },
+  "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
+  "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
+};
 type PremiumCategory = "currency" | "package" | "ally" | "title" | "weapon";
+
+/** 실제 앱 이탈이 이 시간 이상일 때만 귀환 정산을 표시한다. */
+const IDLE_REPORT_MIN_SECONDS = 10 * 60;
 
 /** 피해 출처 — 숫자 색·아이콘을 분리해 "누가 때렸는지" 읽히게 한다 (첫 플레이 점검표 #2) */
 type FloatSource = "tap" | "hero" | "ally" | "skill";
@@ -426,9 +434,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       // 개척하지 않은 지역으로는 진입할 수 없다 — 저장값이 앞서 있으면 경계로 되돌린다.
       const ceiling = stageCeilingFor(progress.pioneeredArea);
       const stage = Math.min(loaded.stage, ceiling);
-      const since = progress.idleClaimedAt || loaded.lastActiveAt;
-      const awaySeconds = Math.max(0, (Date.now() - since) / 1000);
-      const result = computeIdleYield(progress, stage, loaded.skillInventory.equipped, awaySeconds);
+      // idleClaimedAt은 마지막 보상 수령 시각이라 플레이 중에도 오래될 수 있다.
+      // 실제 사냥터 저장 시각을 써야 콘텐츠 탭 이동을 오프라인 복귀로 오인하지 않는다.
+      const lastActiveAt = loaded.lastActiveAt || progress.idleClaimedAt || Date.now();
+      const awaySeconds = Math.max(0, (Date.now() - lastActiveAt) / 1000);
+      const eligibleAwaySeconds = awaySeconds >= IDLE_REPORT_MIN_SECONDS ? awaySeconds : 0;
+      const result = computeIdleYield(progress, stage, loaded.skillInventory.equipped, eligibleAwaySeconds);
 
       // P1 따라잡기 — 방치가 진행시킨 스테이지(endStage)에서 재개한다
       const resumeStage = Math.max(stage, result.endStage);
@@ -438,15 +449,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       setSkillPoints(progress.skillPoints);
       setRedGems(progress.redGems);
 
-      // 1분 미만 이탈은 정산 화면을 띄우지 않는다 (탭 전환마다 모달이 뜨면 피로하다).
-      if (result.seconds >= 60 && result.gold > 0) {
+      // 오프라인 10분 이상일 때만 정산 화면과 보상을 만든다.
+      // 짧은 새로고침·콘텐츠 이동은 보상 수령 시각도 변경하지 않는다.
+      if (awaySeconds >= IDLE_REPORT_MIN_SECONDS && result.seconds >= IDLE_REPORT_MIN_SECONDS && result.gold > 0) {
         setIdleReport({
           result,
           stage,
           bottleneck: idleBottleneck(progress, result, resumeStage, progress.pioneeredArea),
         });
-      } else {
-        void updateCharacterProgress(userHash, (current) => ({ ...current, idleClaimedAt: Date.now() }));
       }
 
       spawn(resumeStage, 1, false);
@@ -1863,7 +1873,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   }
 
   return (
-    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""}`} style={pad}>
+    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab}`} style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${assetUrl("titans/character/base/hero-idle.png")})` }} />
@@ -1900,20 +1910,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           );
         })}
       </nav>
-
-      {recommendation && (
-        <button type="button" className={`recommend-banner tone-${recommendation.tone}`} onClick={() => runAction(recommendation.action)}>
-          <span className="recommend-copy">
-            <small>{recommendation.tone === "claim" ? "받을 것" : recommendation.tone === "free" ? "오늘 무료" : recommendation.tone === "wall" ? "DPS 벽" : "다음 성장"}</small>
-            <b>{recommendation.title}</b>
-            <em>{recommendation.desc}</em>
-            {recommendation.meter !== undefined && (
-              <i className="wall-meter" aria-label={`벽 ${Math.round(recommendation.meter * 100)}%`}><u style={{ width: `${recommendation.meter * 100}%` }} /></i>
-            )}
-          </span>
-          <strong>{recommendation.cta} ›</strong>
-        </button>
-      )}
 
       <div className="titans-stagebar">
         <div>
@@ -1967,10 +1963,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         </div>
 
         <div className="titans-allies">
-          {allies.map((h) => (
+          {allies.map((h, allySlot) => (
             <AllyArt
               key={h.id}
               id={h.id}
+              partySlot={allySlot}
               skin={character.equippedAllySkins[h.id]}
               attacking
               pulse={allyPulse[h.id] ?? 0}
@@ -2122,6 +2119,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         </p>
       </section>
 
+      {recommendation && (
+        <button type="button" className={`recommend-banner recommend-banner-below-field tone-${recommendation.tone}`} onClick={() => runAction(recommendation.action)}>
+          <span className="recommend-copy">
+            <small>{recommendation.tone === "claim" ? "받을 보상" : recommendation.tone === "free" ? "오늘 무료" : recommendation.tone === "wall" ? "DPS 벽" : "다음 성장"}</small>
+            <b>{recommendation.title}</b>
+            <em>{recommendation.desc}</em>
+            {recommendation.meter !== undefined && (
+              <i className="wall-meter" aria-label={`벽 ${Math.round(recommendation.meter * 100)}%`}><u style={{ width: `${recommendation.meter * 100}%` }} /></i>
+            )}
+          </span>
+          <strong>{recommendation.cta} ›</strong>
+        </button>
+      )}
+
       <div className="routine-board routine-board-below-field" aria-label="오늘의 전투 루틴">
         {routine.map((item) => (
           <button key={item.id} type="button" className={`routine-chip ${item.done ? "done" : ""}`} onClick={() => runRoutine(item)}>
@@ -2143,8 +2154,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {now < buffs.burnUntil && <span>화상</span>}
       </div>
 
-      {/* 다음 목표 스트립 (점검표 #3) — "다음 해금까지 얼마"를 HUD에 고정 */}
-      <div className="titans-goals" aria-label="다음 성장 목표">
+      <aside className="growth-alerts" aria-label="성장 알림">
+        <strong className="growth-alerts-title">성장 알림</strong>
         {nextGoals.map((g) => (
           <button key={g.id} type="button" className={`goal-chip ${g.done ? "done" : ""}`} onClick={g.onClick}>
             <small>{g.label}</small>
@@ -2152,31 +2163,39 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             <i><em style={{ width: `${Math.min(100, g.ratio * 100)}%` }} /></i>
           </button>
         ))}
+      </aside>
+
+      <div className="titans-page-links" aria-label="관리 페이지">
+        <button type="button" onClick={() => setTab("gacha")}><ContentIcon name="hunt" /><span><b>동료 뽑기</b><small>픽업·천장·소환</small></span><i>›</i></button>
+        <button
+          type="button"
+          className={contentUnlocked(character.onboardingStep, "events") ? "" : "tab-locked"}
+          onClick={() => contentUnlocked(character.onboardingStep, "events") ? setTab("premium") : flash(LOCK_HINT.events)}
+        >
+          {!contentUnlocked(character.onboardingStep, "events") && <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />}
+          <CurrencyIcon kind="gem" /><span><b>상점</b><small>재화·패키지·외형</small></span><i>›</i>
+        </button>
       </div>
 
-      <div className="titans-tabs">
+      <div className="titans-tabs titans-growth-tabs">
         <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab("sword")}> 
           장비 성장
-        </button>
-        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => setTab("heroes")}>
-          동료
         </button>
         <button type="button" className={tab === "skills" ? "on" : ""} onClick={() => setTab("skills")}>
           스킬
         </button>
-        <button
-          type="button"
-          className={`${tab === "premium" ? "on" : ""} ${contentUnlocked(character.onboardingStep, "events") ? "" : "tab-locked"}`}
-          onClick={() =>
-            contentUnlocked(character.onboardingStep, "events") ? setTab("premium") : flash(LOCK_HINT.events)
-          }
-        >
-          {!contentUnlocked(character.onboardingStep, "events") && (
-            <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />
-          )}
-          상점
-        </button>
       </div>
+
+      {MANAGEMENT_PAGE_COPY[tab] && (
+        <header className="management-page-header">
+          <button type="button" onClick={() => setTab("sword")}>← 사냥터로 돌아가기</button>
+          <div>
+            <small>{MANAGEMENT_PAGE_COPY[tab]!.kicker}</small>
+            <h1>{MANAGEMENT_PAGE_COPY[tab]!.title}</h1>
+            <p>{MANAGEMENT_PAGE_COPY[tab]!.desc}</p>
+          </div>
+        </header>
+      )}
 
       <section className="titans-shop">
         {(tab === "sword" || tab === "heroes") && (
@@ -2206,7 +2225,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               <div><strong>{equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].name : "견갑 미장착"} · 숙련 Lv.{save.equipmentTraining.shoulderMastery}</strong><p>{equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].effect : "기본 견갑"} · 다음 {formatGold(equipmentTrainingCost("shoulder", save.equipmentTraining.shoulderMastery))}G{shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition > 0 ? ` · 원정 강화석 ${shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition}` : ""}{shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat > 0 ? ` · 비트 견갑 조각 ${shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat}` : ""}</p></div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("shoulder", save.equipmentTraining.shoulderMastery) || character.enhancementMaterials < shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition || character.shoulderShards < shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat} onClick={() => void trainEquipment("shoulder")}>훈련</button>
             </article>
-            <button type="button" className="forge-jump-button" onClick={() => onOpenContent("forge")}><ContentIcon name="forge" /> 장비 제작·강화는 대장간에서</button>
           </>
         )}
 
@@ -2298,6 +2316,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </p>
             )}
           </article>
+        )}
+        {tab === "gacha" && (
+          <section className="gacha-stage-page" aria-label="동료 뽑기">
+            <div className="gacha-stage-hero">
+              <span className="gacha-rarity-badge">SSR</span>
+              <div className="gacha-pickup-showcase">
+                {gacha.pickups.slice(0, 2).map((id) => <AllyArt key={id} id={id} />)}
+              </div>
+              <div><small>SEASON PICK UP</small><h2>{gacha.pickups.length ? "심연을 건너온 원정대" : "다음 지역 픽업 준비 중"}</h2><p>픽업 동료 확률 2배 · 10회 소환 시 SR 이상 1명 보장</p></div>
+            </div>
+            <div className="gacha-level"><b>소환 레벨 MAX</b><i><em /></i><span>전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회</span></div>
+            <div className="gacha-page-actions">
+              <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small>💎 {GACHA.singleCost}</small></button>
+              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small>💎 {GACHA.tenCost}</small></button>
+              <button type="button" onClick={() => setShowGachaRates(true)}><b>확률 정보</b><small>등급별 확률 보기</small></button>
+            </div>
+          </section>
         )}
         {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`}>
           <header className="ally-roster-summary"><strong>동료 도감 {HEROES.length}명</strong><small>근딜·원딜·탱커·힐러와 불·물·흙·바람 조합으로 편성하세요.</small></header>
@@ -2476,17 +2511,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </div>
             </article>
           })}
-        {tab === "skills" && (
-          <p className="skill-wallet">
-            SP {skillPoints} · 스킬 코어 {save.skillInventory.skillCores} · 종류별 보유 한도 {skillTypeCapacity}/10
-            <br />레벨 10마다 종류별 한도 +1 · 시동기 → 연계 A → 연계 B → 마무리 → 패시브 · 강화는 효과 ×(1+0.05/Lv)
-            <br />
-            <b>
-              활성 슬롯 합 {activeSlotLevelSum(character, save.skillInventory.equipped)} · 방치 효율{" "}
-              {(idleRate(character, save.skillInventory.equipped) * 100).toFixed(1)}% / {IDLE.rateCap * 100}%
-            </b>
-          </p>
-        )}
         {tab === "premium" && (
           <>
             <nav className="premium-category-tabs" aria-label="상점 카테고리">
@@ -2662,7 +2686,36 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회 (QA)"}</button>
           )}
         </article>})}
+        {(tab === "event-shop" || tab === "event-shop2") && (
+          <div className="event-offer-grid">
+            {(tab === "event-shop" ? [
+              ["원정 개척 패키지", "화살 원정 강화석 · 골드 · 동료 조각", "HOT", "dodge"],
+              ["비트 수련 지원팩", "견갑 조각 · 스킬 코어 · 붉은 보석", "7 DAYS", "beat"],
+              ["보스 토벌 보급품", "강화 방지권 · 정제 강철 · 골드", "LIMITED", "forge"],
+            ] : [
+              ["5일 출석 패키지", "매일 접속해 붉은 보석과 소환권 획득", "WELCOME", "hunt"],
+              ["그림자 원정대 러시", "동료 조각 선택권 · 경험치 · 보석", "PICK UP", "hunt"],
+              ["심연 장비 완성팩", "무기·견갑 강화 재료를 한 번에 확보", "SPECIAL", "forge"],
+            ]).map(([name, desc, badge, icon], index) => (
+              <article key={name} className={`event-offer-card offer-${index + 1}`}>
+                <div className="event-offer-art"><ContentIcon name={icon} /><span>{badge}</span></div>
+                <div><small>기간 한정</small><h2>{name}</h2><p>{desc}</p></div>
+                <button type="button" onClick={() => index === 0 ? onOpenEvents?.("daily") : setTab("premium")}>{index === 0 ? "이벤트 보기" : "상품 보기"}</button>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
+
+      <nav className="titans-bottom-nav" aria-label="주요 메뉴">
+        <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab("sword")}><ContentIcon name="hunt" /><span>사냥터</span></button>
+        <button type="button" className={tab === "gacha" ? "on" : ""} onClick={() => setTab("gacha")}><span className="nav-symbol">✦</span><span>동료 뽑기</span></button>
+        <button type="button" onClick={() => onOpenEvents?.("daily")}><span className="nav-symbol">✓</span><span>일일 퀘스트</span></button>
+        <button type="button" className={tab === "event-shop" ? "on" : ""} onClick={() => setTab("event-shop")}><span className="nav-symbol">◆</span><span>이벤트</span></button>
+        <button type="button" className={tab === "event-shop2" ? "on" : ""} onClick={() => setTab("event-shop2")}><span className="nav-symbol">★</span><span>특별 상점</span></button>
+        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => setTab("heroes")}><span className="nav-symbol">♟</span><span>동료 도감</span></button>
+        <button type="button" className={tab === "premium" ? "on" : ""} onClick={() => setTab("premium")}><span className="nav-symbol">▰</span><span>상점</span></button>
+      </nav>
 
       {toast && <div className="titans-toast">{toast}</div>}
 
