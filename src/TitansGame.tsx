@@ -239,6 +239,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [allyFilter, setAllyFilter] = useState<"all" | "melee" | "ranged" | "tank" | "healer">("all");
   /** 이벤트 저장(균열·토벌령·주간) — 루틴 보드·추천 엔진이 읽는다 */
   const [events, setEvents] = useState<EventSave>(() => emptyEventSave());
+  const [navPopup, setNavPopup] = useState<"content" | "adventure" | null>(null);
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
   /** 벽 미터 — 마지막 보스 실패의 정량 정보 (RETENTION D) */
   const [wallInfo, setWallInfo] = useState<WallInfo | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -1885,32 +1887,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         </div>
       </header>
 
-      <nav className="titans-content-tabs" aria-label="성장 콘텐츠">
-        <button type="button" className="on"><ContentIcon name="hunt" />사냥터</button>
-        {(
-          [
-            { id: "dodge", label: "화살 원정", icon: "dodge" },
-            { id: "beat", label: "비트 수련", icon: "beat" },
-            { id: "forge", label: "대장간", icon: "forge" },
-          ] as const
-        ).map((item) => {
-          const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={locked ? "tab-locked" : ""}
-              aria-disabled={locked}
-              onClick={() => (locked ? flash(LOCK_HINT[item.id as OnboardContent]) : onOpenContent(item.id))}
-            >
-              {locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />}
-              <ContentIcon name={item.icon} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
-
       <div className="titans-stagebar">
         <div>
           <p className="titans-kicker">TAP TITANS · RPG</p>
@@ -2114,36 +2090,37 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             );
           })}
         </div>
-        <p className="titans-hint">
-          탭 / 스페이스 · DPS {formatGold(dps)} · TAP {formatGold(tap)}
-        </p>
+        <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
+          {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
+            <button
+              type="button"
+              className={`battle-alert tone-${recommendation.tone}`}
+              onClick={() => {
+                setDismissedAlerts((items) => [...items, `recommend:${recommendation.title}`]);
+                runAction(recommendation.action);
+              }}
+            >
+              <small>{recommendation.tone === "claim" ? "받을 보상" : "성장 알림"}</small>
+              <b>{recommendation.title}</b><i>›</i>
+            </button>
+          )}
+          {routine.filter((item) => item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)).map((item) => (
+            <button key={item.id} type="button" className="battle-alert claim" onClick={() => { setDismissedAlerts((items) => [...items, `routine:${item.id}:${item.detail}`]); runRoutine(item); }}>
+              <small>귀환 정산</small><b>{item.detail}</b><i>›</i>
+            </button>
+          ))}
+          {routineReward && !dismissedAlerts.includes(`routine-reward:${character.routineClaimedDate}`) && (
+            <button type="button" className="battle-alert reward" onClick={() => { setDismissedAlerts((items) => [...items, `routine-reward:${character.routineClaimedDate}`]); void claimRoutine(); }}>
+              <small>일일 루틴</small><b>보상 받기 · 보석 {ROUTINE_REWARD_GEMS}</b><i>›</i>
+            </button>
+          )}
+          {nextGoals.filter((g) => !dismissedAlerts.includes(`goal:${g.id}:${g.value}`)).slice(0, 2).map((g) => (
+            <button key={g.id} type="button" className={`battle-alert goal ${g.done ? "done" : ""}`} onClick={() => { setDismissedAlerts((items) => [...items, `goal:${g.id}:${g.value}`]); g.onClick(); }}>
+              <small>{g.label}</small><b>{g.value}</b><i>›</i>
+            </button>
+          ))}
+        </div>
       </section>
-
-      {recommendation && (
-        <button type="button" className={`recommend-banner recommend-banner-below-field tone-${recommendation.tone}`} onClick={() => runAction(recommendation.action)}>
-          <span className="recommend-copy">
-            <small>{recommendation.tone === "claim" ? "받을 보상" : recommendation.tone === "free" ? "오늘 무료" : recommendation.tone === "wall" ? "DPS 벽" : "다음 성장"}</small>
-            <b>{recommendation.title}</b>
-            <em>{recommendation.desc}</em>
-            {recommendation.meter !== undefined && (
-              <i className="wall-meter" aria-label={`벽 ${Math.round(recommendation.meter * 100)}%`}><u style={{ width: `${recommendation.meter * 100}%` }} /></i>
-            )}
-          </span>
-          <strong>{recommendation.cta} ›</strong>
-        </button>
-      )}
-
-      <div className="routine-board routine-board-below-field" aria-label="오늘의 전투 루틴">
-        {routine.map((item) => (
-          <button key={item.id} type="button" className={`routine-chip ${item.done ? "done" : ""}`} onClick={() => runRoutine(item)}>
-            <b>{item.label}</b>
-            <small>{item.detail}</small>
-          </button>
-        ))}
-        <button type="button" className={`routine-reward ${routineReward ? "ready" : ""}`} disabled={!routineReward} onClick={() => void claimRoutine()}>
-          {character.routineClaimedDate === new Date().toLocaleDateString("sv-SE") ? "완료" : `보상 받기 · ${ROUTINE_REWARD_GEMS}`}
-        </button>
-      </div>
 
       <div className="titans-buffs">
         {now < buffs.critUntil && <span>치명 +{Math.round(buffs.critBonus * 100)}%</span>}
@@ -2154,28 +2131,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {now < buffs.burnUntil && <span>화상</span>}
       </div>
 
-      <aside className="growth-alerts" aria-label="성장 알림">
-        <strong className="growth-alerts-title">성장 알림</strong>
-        {nextGoals.map((g) => (
-          <button key={g.id} type="button" className={`goal-chip ${g.done ? "done" : ""}`} onClick={g.onClick}>
-            <small>{g.label}</small>
-            <b>{g.value}</b>
-            <i><em style={{ width: `${Math.min(100, g.ratio * 100)}%` }} /></i>
-          </button>
-        ))}
-      </aside>
-
-      <div className="titans-page-links" aria-label="관리 페이지">
-        <button type="button" onClick={() => setTab("gacha")}><ContentIcon name="hunt" /><span><b>동료 뽑기</b><small>픽업·천장·소환</small></span><i>›</i></button>
-        <button
-          type="button"
-          className={contentUnlocked(character.onboardingStep, "events") ? "" : "tab-locked"}
-          onClick={() => contentUnlocked(character.onboardingStep, "events") ? setTab("premium") : flash(LOCK_HINT.events)}
-        >
-          {!contentUnlocked(character.onboardingStep, "events") && <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />}
-          <CurrencyIcon kind="gem" /><span><b>상점</b><small>재화·패키지·외형</small></span><i>›</i>
-        </button>
-      </div>
 
       <div className="titans-tabs titans-growth-tabs">
         <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab("sword")}> 
@@ -2707,14 +2662,43 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         )}
       </section>
 
-      <nav className="titans-bottom-nav" aria-label="주요 메뉴">
-        <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab("sword")}><ContentIcon name="hunt" /><span>사냥터</span></button>
-        <button type="button" className={tab === "gacha" ? "on" : ""} onClick={() => setTab("gacha")}><span className="nav-symbol">✦</span><span>동료 뽑기</span></button>
-        <button type="button" onClick={() => onOpenEvents?.("daily")}><span className="nav-symbol">✓</span><span>일일 퀘스트</span></button>
-        <button type="button" className={tab === "event-shop" ? "on" : ""} onClick={() => setTab("event-shop")}><span className="nav-symbol">◆</span><span>이벤트</span></button>
-        <button type="button" className={tab === "event-shop2" ? "on" : ""} onClick={() => setTab("event-shop2")}><span className="nav-symbol">★</span><span>특별 상점</span></button>
-        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => setTab("heroes")}><span className="nav-symbol">♟</span><span>동료 도감</span></button>
-        <button type="button" className={tab === "premium" ? "on" : ""} onClick={() => setTab("premium")}><span className="nav-symbol">▰</span><span>상점</span></button>
+      {navPopup && (
+        <div className={`bottom-nav-popup popup-${navPopup}`} role="dialog" aria-label={navPopup === "content" ? "콘텐츠 선택" : "모험 메뉴"}>
+          <header><b>{navPopup === "content" ? "콘텐츠" : "모험"}</b><button type="button" onClick={() => setNavPopup(null)}>×</button></header>
+          {navPopup === "content" ? (
+            <div className="nav-popup-grid">
+              {([
+                { id: "dodge", label: "화살 원정", desc: "원정 재료 획득", icon: "dodge" },
+                { id: "beat", label: "비트 수련", desc: "견갑 조각 획득", icon: "beat" },
+                { id: "forge", label: "대장간", desc: "장비 제작·강화", icon: "forge" },
+              ] as const).map((item) => {
+                const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
+                return <button key={item.id} type="button" className={locked ? "tab-locked" : ""} onClick={() => { if (locked) flash(LOCK_HINT[item.id as OnboardContent]); else { setNavPopup(null); onOpenContent(item.id); } }}>
+                  <ContentIcon name={item.icon} /><span><b>{item.label}</b><small>{item.desc}</small></span>{locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" />}
+                </button>;
+              })}
+            </div>
+          ) : (
+            <div className="nav-popup-grid adventure-grid">
+              {routine.filter((item) => item.id !== "claim").map((item) => (
+                <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => { setNavPopup(null); runRoutine(item); }}>
+                  <ContentIcon name={item.id === "forge" ? "forge" : item.id === "expedition" ? "hunt" : "dodge"} />
+                  <span><b>{item.label}</b><small>{item.detail}</small></span>
+                </button>
+              ))}
+              <button type="button" onClick={() => { setNavPopup(null); onOpenEvents?.("daily"); }}><span className="nav-symbol">✓</span><span><b>일일 퀘스트</b><small>오늘의 임무</small></span></button>
+              <button type="button" onClick={() => { setNavPopup(null); setTab("event-shop"); }}><span className="nav-symbol">◆</span><span><b>이벤트 상점</b><small>기간 한정 교환</small></span></button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <nav className="titans-bottom-nav compact" aria-label="주요 메뉴">
+        <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("sword"); }}><ContentIcon name="hunt" /><span>사냥터</span></button>
+        <button type="button" className={navPopup === "content" ? "on" : ""} onClick={() => setNavPopup((open) => open === "content" ? null : "content")}><ContentIcon name="dodge" /><span>콘텐츠</span></button>
+        <button type="button" className={navPopup === "adventure" ? "on" : ""} onClick={() => setNavPopup((open) => open === "adventure" ? null : "adventure")}><span className="nav-symbol">✓</span><span>모험</span></button>
+        <button type="button" className={tab === "heroes" || tab === "gacha" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("heroes"); }}><span className="nav-symbol">♟</span><span>동료</span></button>
+        <button type="button" className={tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("premium"); }}><span className="nav-symbol">▰</span><span>상점</span></button>
       </nav>
 
       {toast && <div className="titans-toast">{toast}</div>}
