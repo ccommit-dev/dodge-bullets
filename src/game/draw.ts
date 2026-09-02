@@ -313,7 +313,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.strokeStyle = "#67e8f9";
     ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.arc(world.player.x, world.player.y, world.stats.slowRadius * (0.55 + pulse * 0.55), -1.25, 1.3);
+    const facing = world.player.facing;
+    const start = facing > 0 ? -1.25 : Math.PI + 1.25;
+    const end = facing > 0 ? 1.3 : Math.PI - 1.3;
+    ctx.arc(world.player.x, world.player.y, world.stats.slowRadius * (0.55 + pulse * 0.55), start, end, facing < 0);
     ctx.stroke();
     ctx.restore();
   }

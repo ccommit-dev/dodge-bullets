@@ -10,12 +10,10 @@ import {
 } from "./beat/rpg";
 import { getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
 import type { BeatCosmetics, NoteLane } from "./beat/types";
-import { BEAT_SOUND_LABEL, LANE_KEYS } from "./beat/types";
 import {
   applyBeatInsets,
   createBeatSession,
   disposeBeatSession,
-  laneOfSound,
   performBeatLane,
   resizeBeatWorld,
   settleHoldIfPassed,
@@ -48,9 +46,6 @@ type BeatUi = "menu" | "playing" | "clear" | "gameover";
 function trackRewardMult(track: { difficulty: "easy" | "medium" | "hard" }): number {
   return track.difficulty === "hard" ? 1.8 : track.difficulty === "medium" ? 1.35 : 1;
 }
-
-/** 싱크 보정 저장 키 — 기기별 오디오 지연은 달라서 로컬에만 남긴다 */
-const CALIBRATION_KEY = "dodgebullets:beat:calibrationMs";
 
 /** Each pad has its own keys so the lane you see is the key you press. */
 const KEY_LANE: Record<string, NoteLane> = {
@@ -129,27 +124,11 @@ export function BeatGame({
   const [rpgGain, setRpgGain] = useState("");
   const [lessonTitle, setLessonTitle] = useState(() => getCampaignStage(0).lessonTitle);
   const [stageNo, setStageNo] = useState(1);
-  const [nextSoundLabel, setNextSoundLabel] = useState("킥(B)");
-  const [lastSoundLabel, setLastSoundLabel] = useState("");
-  const [timingOffset, setTimingOffset] = useState(0);
-  const [loopCompletion, setLoopCompletion] = useState(0);
   const [unlocked, setUnlocked] = useState(0);
   const [rpg, setRpg] = useState<BeatRpgProgress | null>(null);
   const [hubMsg, setHubMsg] = useState("");
-  /** 싱크 보정 (점검표 #7) — 8박자 탭 평균 오프셋을 기기 로컬에 저장, 판정에 적용 */
-  const [calibrationMs, setCalibrationMs] = useState<number>(() => {
-    try {
-      const raw = localStorage.getItem(CALIBRATION_KEY);
-      return raw === null ? Number.NaN : Number(raw);
-    } catch {
-      return Number.NaN;
-    }
-  });
-  const [calibrating, setCalibrating] = useState(false);
-  const calibTapsRef = useRef<number[]>([]);
-  const calibStartRef = useRef(0);
-  const calibTimerRef = useRef<number | null>(null);
-  const [calibBeat, setCalibBeat] = useState(0);
+  // 곡의 오디오 시계를 판정 기준으로 직접 사용한다. 별도 수동 싱크 UI는 제공하지 않는다.
+  const calibrationMs = 0;
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
   const [partyAction, setPartyAction] = useState<"idle" | "attack" | "guard" | "dodge" | "skill">("idle");
@@ -171,8 +150,6 @@ export function BeatGame({
   const lastRaidTapRef = useRef({ lane: -1, at: 0 });
   const laneHoldTimersRef = useRef<Partial<Record<NoteLane, number>>>({});
   const slots = buildStageSlots("lesson");
-  const hudNextRef = useRef("");
-  const hudLastRef = useRef("");
 
   const playRaidLane = useCallback((lane: NoteLane) => {
     const session = sessionRef.current;
@@ -377,8 +354,6 @@ export function BeatGame({
           setRemainSec(Math.ceil(Math.max(0, w.durationMs - w.elapsedMs) / 1000));
           setStageNo(w.stageIndex + 1);
           setLessonTitle(w.lessonTitle);
-          setTimingOffset(w.lastOffsetMs);
-          setLoopCompletion(w.loopCompletion);
           setFeverMultiplier(w.scoreMultiplier);
           setFeverRemainSec(Math.ceil(w.feverMs / 1000));
           const upgradeRound = Math.min(3, Math.floor((w.elapsedMs / Math.max(1, w.durationMs)) * 4));
@@ -387,19 +362,6 @@ export function BeatGame({
             const kind = (["kick", "allies", "drop"] as const)[upgradeRound - 1];
             if (kind) raidBuffRef.current = { ...raidBuffRef.current, [kind]: raidBuffRef.current[kind] + 1 };
           }
-          const nextL = `${BEAT_SOUND_LABEL[w.nextSound]} → ${LANE_KEYS[laneOfSound(w.nextSound)]}`;
-          if (nextL !== hudNextRef.current) {
-            hudNextRef.current = nextL;
-            setNextSoundLabel(nextL);
-          }
-          if (w.lastSound) {
-            const lastL = BEAT_SOUND_LABEL[w.lastSound];
-            if (lastL !== hudLastRef.current) {
-              hudLastRef.current = lastL;
-              setLastSoundLabel(lastL);
-            }
-          }
-
           if (event.type === "dead") {
             setLastScore(w.score);
             void saveHighScore(userHash, w.score);
@@ -570,9 +532,6 @@ export function BeatGame({
     setCoinGain(0);
     setRpgGain("");
     setShoulderReward("");
-    setLastSoundLabel("");
-    setTimingOffset(0);
-    setLoopCompletion(0);
     const enemyMax = 90 + slot.stageIndex * 24;
     beatEnemyHpRef.current = enemyMax;
     setBeatEnemyHp(enemyMax);
@@ -602,87 +561,6 @@ export function BeatGame({
     syncUi("playing");
   };
 
-  /* ── 싱크 보정 (점검표 #7): 100BPM 8박자 클릭에 맞춰 탭 → 평균 오프셋을 저장 ── */
-  const CALIB_BPM = 100;
-  const saveCalibration = (ms: number) => {
-    const clamped = Math.max(-200, Math.min(200, Math.round(ms)));
-    setCalibrationMs(clamped);
-    try {
-      localStorage.setItem(CALIBRATION_KEY, String(clamped));
-    } catch {
-      /* 저장 불가 환경 — 세션 동안만 유지 */
-    }
-  };
-  const stopCalibration = () => {
-    if (calibTimerRef.current !== null) window.clearInterval(calibTimerRef.current);
-    calibTimerRef.current = null;
-    setCalibrating(false);
-  };
-  const startCalibration = () => {
-    calibTapsRef.current = [];
-    calibStartRef.current = performance.now();
-    setCalibBeat(0);
-    setCalibrating(true);
-    let beat = 0;
-    const beatMs = 60000 / CALIB_BPM;
-    // 클릭음: 오디오 컨텍스트 짧은 비프 (BGM 없이도 보정 가능)
-    let ctx: AudioContext | null = null;
-    try {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      ctx = soundEnabled ? new AC() : null;
-    } catch {
-      ctx = null;
-    }
-    const click = () => {
-      if (!ctx) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = beat % 4 === 0 ? 1320 : 880;
-      gain.gain.value = 0.18;
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.06);
-      osc.stop(ctx.currentTime + 0.07);
-    };
-    click();
-    calibTimerRef.current = window.setInterval(() => {
-      beat += 1;
-      setCalibBeat(beat);
-      if (beat >= 12) {
-        stopCalibration();
-        void ctx?.close();
-        const taps = calibTapsRef.current;
-        if (taps.length >= 4) {
-          // 각 탭을 가장 가까운 박자에 대응시켜 오프셋 평균 (양수 = 늦게 누름)
-          const offsets = taps.map((t) => {
-            const rel = (t - calibStartRef.current) % beatMs;
-            return rel > beatMs / 2 ? rel - beatMs : rel;
-          });
-          const avg = offsets.reduce((a, b) => a + b, 0) / offsets.length;
-          saveCalibration(avg);
-          setHubMsg(`싱크 보정 완료 · ${avg > 0 ? "+" : ""}${Math.round(avg)}ms (${taps.length}탭)`);
-        } else {
-          setHubMsg("탭이 부족해 보정을 건너뛰었습니다 — 다시 시도하세요");
-        }
-        return;
-      }
-      click();
-    }, beatMs);
-  };
-  const calibTap = () => {
-    if (!calibrating) return;
-    calibTapsRef.current.push(performance.now());
-    if (navigator.vibrate) navigator.vibrate(8);
-  };
-  // 최초 진입 1회 자동 보정 안내 — 저장된 오프셋이 없으면 메뉴에서 바로 연다
-  const autoCalibRef = useRef(false);
-  useEffect(() => {
-    if (ui !== "menu" || calibrating || autoCalibRef.current || !Number.isNaN(calibrationMs)) return;
-    autoCalibRef.current = true;
-    startCalibration();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui]);
-
   const dockStyle = {
     paddingTop: insets.top,
     paddingLeft: insets.left,
@@ -694,45 +572,14 @@ export function BeatGame({
     <div className="beat-layer">
       <canvas ref={canvasRef} className={`game-canvas ${ui === "playing" ? "beat-battle-canvas" : ""}`} />
 
-      {calibrating && (
-        <button type="button" className="beat-calib-overlay" onPointerDown={(e) => { e.preventDefault(); calibTap(); }}>
-          <p className="brand">SYNC CALIBRATION</p>
-          <h2>클릭에 맞춰 탭하세요</h2>
-          <div className="beat-calib-dots" aria-hidden="true">
-            {Array.from({ length: 8 }, (_, i) => (
-              <i key={i} className={i === calibBeat % 8 ? "on" : ""} />
-            ))}
-          </div>
-          <span className="beat-calib-count">{Math.min(12, calibBeat)} / 12</span>
-          <small>기기마다 다른 오디오 지연을 맞춥니다 · 8박자 이상 탭 · 화면 아무 곳이나</small>
-        </button>
-      )}
-
       {ui === "menu" && rpg && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand beat-kicker">STARLIGHT RHYTHM EXPEDITION</p>
             <h1 className="title beat-title">별빛 리듬 원정</h1>
-            <p className="subtitle">오리지널 멜로딕 트랜스의 인트로·빌드업·DROP에 맞춰 내려오는 방향 노트를 연주하고 보스를 브레이크하세요</p>
-            <p className="controls-hint">노트와 같은 방향 입력 · ← ↓ ↑ → / A S W D</p>
-            <p className="score-line">보유 골드 {coins.toLocaleString()} · SP {rpg.sp} · 명성 {rpg.fame}</p>
+            <p className="subtitle">곡을 선택하고 방향 노트로 보스를 격파하세요.</p>
+            <p className="score-line">골드 {coins.toLocaleString()} · 명성 {rpg.fame}</p>
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
-            <div className="beat-calibration-row">
-              <button type="button" className={`beat-calibrate ${Number.isNaN(calibrationMs) ? "needed" : ""}`} onClick={startCalibration}>
-                <b>{Number.isNaN(calibrationMs) ? "싱크 보정 필요" : "싱크 보정"}</b>
-                <small>
-                  {Number.isNaN(calibrationMs)
-                    ? "8박자 탭으로 기기 지연을 맞춥니다"
-                    : `현재 ${calibrationMs > 0 ? "+" : ""}${calibrationMs}ms · 다시 보정`}
-                </small>
-              </button>
-              {!Number.isNaN(calibrationMs) && (
-                <div className="beat-calib-nudge" role="group" aria-label="수동 오프셋">
-                  <button type="button" onClick={() => saveCalibration(calibrationMs - 10)}>−10</button>
-                  <button type="button" onClick={() => saveCalibration(calibrationMs + 10)}>+10</button>
-                </div>
-              )}
-            </div>
             <div className="schedule-list">
               {slots.map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
@@ -746,14 +593,13 @@ export function BeatGame({
                     }`}
                     onClick={() => void startSlot(slot)}
                   >
-                    <span className="schedule-day">
-                      TRACK {slot.stageIndex + 1}/{totalStages} · {slot.track.bpm}BPM ·{" "}
-                      {slot.track.subdivision}비트 · {slot.track.difficulty === "hard" ? "고난도" : slot.track.difficulty === "medium" ? "중급" : "입문"} · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초
-                      {recommended ? " · 추천" : ""}
+                    <span className={`beat-track-cover cover-${slot.stageIndex % 6}`} aria-hidden="true"><i>{["☁","◆","✦","♫","⚡","VS"][slot.stageIndex % 6]}</i></span>
+                    <span className="schedule-copy">
+                      <span className="schedule-day">{slot.track.difficulty === "hard" ? "HARD" : slot.track.difficulty === "medium" ? "NORMAL" : "EASY"} · {slot.track.bpm} BPM{recommended ? " · 추천" : ""}</span>
+                      <span className="schedule-title">{slot.title}</span>
+                      <span className="schedule-hint">{done ? "오늘 완료" : slot.track.desc}</span>
+                      <span className="schedule-cost">견갑 조각 · +{slot.track.reward} 골드</span>
                     </span>
-                    <span className="schedule-title">{slot.title}</span>
-                    <span className="schedule-hint">{done ? `오늘 완료 · ${slot.hint}` : slot.hint}</span>
-                    <span className="schedule-cost">{`${SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderForTrack(slot.stageIndex))?.name ?? "원정 견갑"} 조각`} · +{slot.track.reward} 코인</span>
                   </button>
                 );
               })}
@@ -805,17 +651,8 @@ export function BeatGame({
                 {totalStages} · {remainSec}s
               </span>
               <span className="hud-hint">
-                {lessonTitle} · NEXT {nextSoundLabel}
-                {lastSoundLabel ? ` · YOU ${lastSoundLabel}` : ""} · HP {"♥".repeat(hp)}
+                {lessonTitle} · HP {"♥".repeat(hp)}
                 {"♡".repeat(Math.max(0, maxHp - hp))}
-              </span>
-              <span className="hud-hint">
-                LOOP {Math.round(loopCompletion * 100)}% ·{" "}
-                {timingOffset === 0
-                  ? "ON GRID"
-                  : timingOffset < 0
-                    ? `EARLY ${Math.abs(timingOffset)}ms`
-                    : `LATE ${timingOffset}ms`}
               </span>
               <span className="hud-hint">공명 제련 · {SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderBlueprint)?.name}</span>
             </div>
@@ -901,7 +738,6 @@ export function BeatGame({
             >
               {activeSlotRef.current?.track && freeRetryAvailable(activeSlotRef.current.track.id) ? "무료 재도전 (스태미나 0)" : "다시 도전"}
             </button>
-            <p className="controls-hint">{lastSoundLabel ? `마지막 판정 ${lastSoundLabel} · ` : ""}노트가 MIX LINE에 닿는 순간 누르세요 — 빠르면 EARLY, 늦으면 LATE</p>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
               연습실
             </button>
