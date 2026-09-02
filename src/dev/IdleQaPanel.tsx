@@ -148,7 +148,7 @@ export function IdleQaPanel({ userHash }: { userHash: string }) {
                 type="button"
                 onClick={() =>
                   seed(userHash, {
-                    allyShards: { mia: 200, leon: 200, sera: 200, garen: 200, ari: 400, nox: 400, luna: 400, volt: 200 },
+                    allyShards: { mia: 200, leon: 200, sera: 200, garen: 200, ari: 400, nox: 400, luna: 400, volt: 200 } as CharacterProgress["allyShards"],
                   })
                 }
               >

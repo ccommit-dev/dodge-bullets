@@ -422,6 +422,12 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const trickAlpha = trick === "late" ? (eased > .62 ? 1 : .04) : trick === "ghost" ? .34 : trick === "flash" ? (.35 + Math.abs(Math.sin(world.elapsedMs * .012)) * .65) : 1;
     ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed ? 0.3 : 1) * trickAlpha;
     if (sustained && !consumed) {
+      // 꼬리 끝 = 다음 노트의 레일 위치 (현재 노트 기준 상대 좌표 — translate 이후)
+      const nextEased = Math.max(0, Math.min(1, 1 - (index + 1 - position) / preview));
+      const tailX = laneXAt(world, lane, nextEased) - x;
+      const tailY = horizonY + (hitY - horizonY) * nextEased - y;
+      const bodyW = size;
+      const holdingThis = world.holdLane === lane;
       ctx.strokeStyle = golden ? "rgba(250,204,21,.8)" : LANE_ACCENT[lane];
       ctx.lineWidth = Math.max(3, size * .26);
       ctx.globalAlpha *= .45;

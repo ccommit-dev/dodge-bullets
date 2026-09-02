@@ -513,9 +513,15 @@ export function BeatGame({
     };
   }, [calibrationMs, onCoins, playRaidLane, shoulderBlueprint, startLaneHold, stopLaneHold, syncUi, userHash]);
 
-  const startSlot = async (slot: PracticeSlot) => {
+  /** 실패 완화 (RETENTION G): 같은 곡 즉시 재도전은 곡당 하루 1회 스태미나 무료 */
+  const freeRetryKey = (trackId: string) => `dodgebullets:beat:freeRetry:${new Date().toLocaleDateString("sv-SE")}:${trackId}`;
+  const freeRetryAvailable = (trackId: string) => { try { return !localStorage.getItem(freeRetryKey(trackId)); } catch { return false; } };
+
+  const startSlot = async (slot: PracticeSlot, opts?: { freeRetry?: boolean }) => {
     if (!slot.track || !rpgRef.current) return;
-    const spent = spendStamina(rpgRef.current, slot.staminaCost);
+    const useFree = !!opts?.freeRetry && freeRetryAvailable(slot.track.id);
+    if (useFree) { try { localStorage.setItem(freeRetryKey(slot.track.id), "1"); } catch { /* 저장 불가 */ } }
+    const spent = useFree ? rpgRef.current : spendStamina(rpgRef.current, slot.staminaCost);
     if (!spent) {
       setHubMsg("스태미나 부족 · 내일 다시 충전됩니다");
       return;
@@ -890,11 +896,12 @@ export function BeatGame({
               className="cta"
               onClick={() => {
                 const slot = activeSlotRef.current ?? slots[stageNo - 1] ?? slots[0];
-                void startSlot(slot);
+                void startSlot(slot, { freeRetry: true });
               }}
             >
-              다시 도전
+              {activeSlotRef.current?.track && freeRetryAvailable(activeSlotRef.current.track.id) ? "무료 재도전 (스태미나 0)" : "다시 도전"}
             </button>
+            <p className="controls-hint">{lastSoundLabel ? `마지막 판정 ${lastSoundLabel} · ` : ""}노트가 MIX LINE에 닿는 순간 누르세요 — 빠르면 EARLY, 늦으면 LATE</p>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
               연습실
             </button>

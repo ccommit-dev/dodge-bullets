@@ -624,6 +624,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     const hitR = a.hitRadius + pr;
     if (distSq <= hitR * hitR) {
       hitDamage += a.damage;
+      world.lastHitCause = a.boss ? "boss" : a.splitLevel > 0 ? "fragment" : a.kind;
       if (a.boss) {
         const away = Math.atan2(a.y - player.y, a.x - player.x) + (Math.random() - 0.5) * 0.7;
         a.vx = Math.cos(away) * 210;

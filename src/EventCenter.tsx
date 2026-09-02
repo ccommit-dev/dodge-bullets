@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { storageGet, storageSet } from "./game/toss";
 import { combatPower, type CharacterProgress } from "./progression/model";
 import { updateCharacterProgress } from "./progression/storage";
 import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
@@ -12,33 +11,10 @@ import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
 import { sfxRiftClaim } from "./ui/sfx";
 
-type EventTab = "daily" | "rift" | "weekly" | "journal";
+type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge";
 
-type EventSave = {
-  date: string;
-  week: string;
-  claimed: string[];
-  riftAttempts: number;
-  shadowCleared: string[];
-  shadowBonus: number;
-};
-
-const dateKey = () => new Date().toLocaleDateString("sv-SE");
-
-/** 일일 던전 1회 = 방치 2시간 즉시 정산. */
-const RIFT_SECONDS = 2 * 3600;
-const RIFT_ATTEMPTS = 3;
-
-function emptySave(): EventSave {
-  return {
-    date: dateKey(),
-    week: weekKey(),
-    claimed: [],
-    riftAttempts: 0,
-    shadowCleared: [],
-    shadowBonus: 0,
-  };
-}
+import { RIFT_ATTEMPTS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, saveEventSave, type EventSave } from "./events/eventSave";
+import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 
 /**
  * 해금된 슬롯을 전부 장착한 것으로 간주한 맵.
@@ -66,12 +42,15 @@ export function EventCenter({
   open,
   onClose,
   onUpdated,
+  initialTab,
 }: {
   userHash: string;
   progress: CharacterProgress;
   open: boolean;
   onClose: () => void;
   onUpdated: (p: CharacterProgress) => void;
+  /** 추천 배너·루틴 보드가 특정 탭으로 연다 */
+  initialTab?: "daily" | "rift" | "weekly" | "journal";
 }) {
   const [tab, setTab] = useState<EventTab>("daily");
   const [save, setSave] = useState<EventSave | null>(null);
@@ -79,33 +58,12 @@ export function EventCenter({
   const [shadowLog, setShadowLog] = useState<{ id: string; win: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    void storageGet(`dodgebullets:events:v2:${userHash}`).then((raw) => {
-      let value = emptySave();
-      try {
-        if (raw) value = { ...value, ...(JSON.parse(raw) as EventSave) };
-      } catch {
-        /* fallback */
-      }
-      if (value.date !== dateKey()) {
-        value = {
-          ...value,
-          date: dateKey(),
-          claimed: value.claimed.filter((id) => id.startsWith("weekly:")),
-          riftAttempts: 0,
-        };
-      }
-      if (value.week !== weekKey()) {
-        value = {
-          ...value,
-          week: weekKey(),
-          claimed: value.claimed.filter((id) => id.startsWith("daily:")),
-          shadowCleared: [],
-          shadowBonus: 0,
-        };
-      }
-      setSave(value);
-    });
-  }, [userHash]);
+    void loadEventSave(userHash).then(setSave);
+  }, [userHash, open]);
+
+  useEffect(() => {
+    if (open && initialTab) setTab(initialTab);
+  }, [open, initialTab]);
 
   /** 일일 미션 — 4개 콘텐츠 축을 하나씩 담당한다. beat가 빠져 있던 것을 채웠다. */
   const daily = useMemo(
@@ -145,8 +103,10 @@ export function EventCenter({
   if (!open || !save) return null;
 
   const persist = async (next: EventSave) => {
-    setSave(next);
-    await storageSet(`dodgebullets:events:v2:${userHash}`, JSON.stringify(next));
+    const saved = await saveEventSave(userHash, next);
+    setSave(saved);
+    // 사냥터 허브(루틴 보드·추천)가 즉시 따라오도록
+    window.dispatchEvent(new Event("dodgebullets:events-changed"));
   };
 
   const claimMission = async (id: string) => {
@@ -158,7 +118,10 @@ export function EventCenter({
       enhancementMaterials: current.enhancementMaterials + 2,
     }));
     onUpdated(nextProgress);
-    await persist({ ...save, claimed: [...save.claimed, key] });
+    const nextClaimed = { ...save, claimed: [...save.claimed, key] };
+    // 주간 도전: 오늘 토벌령 4종을 모두 받은 날은 하루로 집계 (중복 방지)
+    const completedToday = dailyMissionsDone(nextClaimed) && nextClaimed.lastMissionDay !== dateKey();
+    await persist(completedToday ? { ...nextClaimed, weeklyMissionDays: nextClaimed.weeklyMissionDays + 1, lastMissionDay: dateKey() } : nextClaimed);
   };
 
   const enterRift = async () => {
@@ -191,7 +154,30 @@ export function EventCenter({
     setRiftMessage(
       `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
     );
-    await persist({ ...save, riftAttempts: save.riftAttempts + 1 });
+    await persist({ ...save, riftAttempts: save.riftAttempts + 1, weeklyRiftRuns: save.weeklyRiftRuns + 1 });
+  };
+
+  /** 주간 도전 수령 (RETENTION F) */
+  const claimWeekly = async (id: string) => {
+    const ch = weeklyChallenges(save.week).find((c) => c.id === id);
+    if (!ch || save.weeklyClaimed.includes(id) || ch.progressOf(save) < ch.goal) return;
+    const titans = await loadTitansSave(userHash);
+    const nextProgress = await updateCharacterProgress(userHash, (p) => {
+      const next = { ...p };
+      if (ch.reward.kind === "gems") next.redGems = p.redGems + ch.reward.amount;
+      if (ch.reward.kind === "shards") {
+        const shards = { ...p.allyShards };
+        for (let i = 0; i < ch.reward.amount; i += 1) {
+          const target = randomOwnedAlly(titans.heroes);
+          shards[target] = (shards[target] ?? 0) + 1;
+        }
+        next.allyShards = shards;
+      }
+      if (ch.reward.kind === "boost") next.idleBoostUntil = Math.max(p.idleBoostUntil, Date.now()) + ch.reward.hours * 3600 * 1000;
+      return next;
+    });
+    onUpdated(nextProgress);
+    await persist({ ...save, weeklyClaimed: [...save.weeklyClaimed, id] });
   };
 
   const claimJournal = async (entryId: string) => {
@@ -269,7 +255,7 @@ export function EventCenter({
         <p className="brand">ADVENTURE EVENT</p>
         <h2 className="exit-title">모험가 이벤트</h2>
         <div className="event-tabs">
-          {(["daily", "rift", "weekly", "journal"] as EventTab[]).map((id) => (
+          {(["daily", "rift", "challenge", "weekly", "journal"] as EventTab[]).map((id) => (
             <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
               {id === "daily"
                 ? "토벌령"
@@ -277,7 +263,9 @@ export function EventCenter({
                   ? "차원 균열"
                   : id === "weekly"
                     ? "랭크 시험"
-                    : "원정 일지"}
+                    : id === "challenge"
+                      ? "주간 도전"
+                      : "원정 일지"}
             </button>
           ))}
         </div>
@@ -397,6 +385,33 @@ export function EventCenter({
                     </div>
                     <button disabled={cleared} onClick={() => void challengeShadow(opponent)}>
                       {cleared ? "돌파" : "도전"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {tab === "challenge" && (
+          <section className="journal-event weekly-challenge">
+            <h3>주간 도전</h3>
+            <p className="journal-note">이번 주({save.week}) 3가지 — 요일 균열과 함께 돌아갑니다. 월요일에 새 목표로 바뀝니다.</p>
+            <div className="event-list journal-list">
+              {weeklyChallenges(save.week).map((ch) => {
+                const current = ch.progressOf(save);
+                const done = current >= ch.goal;
+                const claimed = save.weeklyClaimed.includes(ch.id);
+                return (
+                  <article key={ch.id} className={claimed ? "claimed" : ""}>
+                    <div>
+                      <b>{ch.title}</b>
+                      <span>{Math.min(ch.goal, current)} / {ch.goal}</span>
+                      <i><em style={{ width: `${Math.min(100, (current / ch.goal) * 100)}%` }} /></i>
+                      <small className="journal-reward">{weeklyRewardLabel(ch.reward)}</small>
+                    </div>
+                    <button disabled={!done || claimed} onClick={() => void claimWeekly(ch.id)}>
+                      {claimed ? "완료" : done ? "받기" : "진행중"}
                     </button>
                   </article>
                 );

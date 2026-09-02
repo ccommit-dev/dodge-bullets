@@ -81,6 +81,9 @@ import {
 import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification } from "./game/native";
+import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
+import { ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
+import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
   LOCK_HINT,
   UNLOCK_BANNER,
@@ -104,6 +107,8 @@ type TitansGameProps = {
   userHash: string;
   forgedWeaponLevel?: number;
   onOpenContent: (content: "dodge" | "beat" | "forge" | "profile") => void;
+  /** 이벤트 센터를 특정 탭으로 연다 (추천 배너·루틴 보드) */
+  onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal") => void;
 };
 
 type ShopTab = "sword" | "heroes" | "skills" | "premium";
@@ -150,7 +155,7 @@ function shoulderTrainingMaterials(level: number): { expedition: number; beat: n
 }
 
 /** 스킬별 평균 DPS 보정(%) — 업타임(지속/쿨) × 효과의 근사치. 프리셋 미리보기용 */
-const SKILL_PREVIEW_PCT: Record<TitanSkillId, number> = {
+const SKILL_PREVIEW_PCT: Partial<Record<TitanSkillId, number>> = {
   strike: 9,
   crit: 13,
   clone: 33,
@@ -164,7 +169,7 @@ const SKILL_PRESETS: { id: string; name: string; desc: string; ids: TitanSkillId
   { id: "balance", name: "균형", desc: "학습한 스킬 전부 장착", ids: ["strike", "crit", "clone", "warcry", "steel"] },
 ];
 
-export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent, onOpenEvents }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>("sword");
@@ -204,7 +209,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     bottleneck: IdleBottleneck;
   } | null>(null);
   const [gateNotice, setGateNotice] = useState(false);
-  const [wallBanner, setWallBanner] = useState(false);
   const [shardPackTarget, setShardPackTarget] = useState<TitanHeroId>("mia");
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   /** QoL — 일괄 레벨업 수량 (0 = MAX) */
@@ -213,6 +217,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [unlockBanner, setUnlockBanner] = useState<number | null>(null);
   /** 동료 탭 역할 필터 (점검표 #4) */
   const [allyFilter, setAllyFilter] = useState<"all" | "melee" | "ranged" | "tank" | "healer">("all");
+  /** 이벤트 저장(균열·토벌령·주간) — 루틴 보드·추천 엔진이 읽는다 */
+  const [events, setEvents] = useState<EventSave>(() => emptyEventSave());
+  /** 벽 미터 — 마지막 보스 실패의 정량 정보 (RETENTION D) */
+  const [wallInfo, setWallInfo] = useState<WallInfo | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const onboardHintShownRef = useRef(false);
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
@@ -427,6 +436,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       spawn(resumeStage, 1, false);
       setReady(true);
       scheduleIdleCapNotify(progress);
+      // 세션 카운트(종료 예고 카드는 첫 3세션) + 이벤트 저장 로드
+      void updateCharacterProgress(userHash, (current) => ({ ...current, sessionCount: current.sessionCount + 1 })).then(setCharacter);
+      void loadEventSave(userHash).then(setEvents);
     });
     return () => {
       cancelled = true;
@@ -465,6 +477,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           idleClaimedAt: Date.now(),
           // 온보딩 마지막 단계(§8) — 첫 방치 정산이 이벤트·상점을 연다
           onboardingStep: current.onboardingStep === 3 ? 4 : current.onboardingStep,
+          // 복귀 워밍업 (RETENTION C): 2h+ 이탈 후 정산 = 5분 골드 ×2, 하루 3회
+          ...(() => {
+            const today = new Date().toLocaleDateString("sv-SE");
+            const day = current.warmupDay.date === today ? current.warmupDay : { date: today, count: 0 };
+            if (report.result.seconds + report.result.wastedSeconds < 2 * 3600 || day.count >= 3) return {};
+            return { warmupUntil: Date.now() + 5 * 60 * 1000, warmupDay: { date: today, count: day.count + 1 } };
+          })(),
         };
       }).then((next) => {
         const finishedOnboarding = characterRef.current.onboardingStep === 3 && next.onboardingStep === 4;
@@ -590,7 +609,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       // 킬마다 storage 쓰기를 하면 저장 부하가 크다.
       const killedKind = monsterKind(s.stage, wasBoss, chestRef.current);
       killCountsRef.current[killedKind] = (killCountsRef.current[killedKind] ?? 0) + 1;
-      if (wasBoss) bossFailStreakRef.current = 0;
+      if (wasBoss) {
+        bossFailStreakRef.current = 0;
+        setWallInfo(null);
+      }
 
       // 도감 마일스톤 보너스: 10/100/1,000 처치 → +2/4/8%
       const codexKills =
@@ -603,10 +625,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
       // 아기 슬라임 펫(§1) — 사냥 골드 가산
       const petGold = 1 + activePetEffect(characterRef.current.pets, characterRef.current.activePet, "gold");
+      const warmupMult = characterRef.current.warmupUntil > Date.now() ? 2 : 1;
       const goldGain = Math.floor(
         (killGold(s.stage, wasBoss, chestRef.current) + (wasBoss ? stageClearBonus(s.stage) : 0)) *
           codexMult *
           petGold *
+          warmupMult *
           (firstClearToday ? 2 : 1),
       );
       if (firstClearToday) {
@@ -617,6 +641,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         })).then(setCharacter);
       }
       if (wasBoss) {
+        // 주간 도전(보스 처치) 카운트
+        void updateEventSave(userHash, (e) => ({ ...e, weeklyBossKills: e.weeklyBossKills + 1 })).then(setEvents);
         // 도감 카운트 플러시 (보스 주기 = 자연스러운 배치 경계)
         const pending = killCountsRef.current;
         killCountsRef.current = {};
@@ -870,6 +896,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         setBossLeft(Math.max(0, left));
         if (left <= 0) {
           flash("보스 실패 · 다시 도전!");
+          // 벽 미터 (RETENTION D): 제한시간 동안 깎은 비율 — 추천 배너가 정량 게이지로 보여준다
+          setWallInfo({ ratio: Math.max(0.02, Math.min(0.99, 1 - hpRef.current / Math.max(1, monsterHp(saveRef.current.stage, true)))), stage: saveRef.current.stage });
           setBossReady(true);
           spawn(saveRef.current.stage, MOBS_PER_STAGE, false);
           battlePhaseRef.current = "combat";
@@ -896,7 +924,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 flash(`${huntingArea(saveRef.current.stage).name}의 벽 도달 · 보석 +30`);
               });
             }
-            setWallBanner(true);
           }
         }
       }
@@ -1396,7 +1423,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     if (def.slot === "finisher") {
       playAttackAnim();
       const { dmg } = computeTapHit();
-      const execute = id === "voidFinish" && monsterHpRef.current < monsterMaxHpRef.current * .3 ? 110 : id === "meteor" ? 85 : 72;
+      const execute = id === "voidFinish" && hpRef.current < monsterHp(saveRef.current.stage, bossRef.current) * .3 ? 110 : id === "meteor" ? 85 : 72;
       applyDamage(dmg * execute, true);
       pushFx("warcry", 58, 42, def.element === "fire" ? 18 : 210);
       flash(`${def.name}!`);
@@ -1415,6 +1442,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   useEffect(() => {
     castSkillRef.current = castSkill;
   });
+
+  // 이벤트 센터가 저장을 바꾸면 루틴 보드·추천이 즉시 따라온다 · 1초 틱은 워밍업 타이머용
+  useEffect(() => {
+    const refresh = () => void loadEventSave(userHash).then(setEvents);
+    window.addEventListener("dodgebullets:events-changed", refresh);
+    const tick = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => {
+      window.removeEventListener("dodgebullets:events-changed", refresh);
+      window.clearInterval(tick);
+    };
+  }, [userHash]);
 
   // 온보딩(§8) 자동 진행 — 조건(Stage 5 / 첫 개척 / Stage 10)을 채우면 다음 단계로.
   // 단계 4(이벤트·상점)는 조건이 아니라 "첫 방치 정산" 행위로만 오른다 (claimIdle 참조).
@@ -1608,6 +1646,47 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     return goals;
   }, [save.heroes, save.stage, save.skillInventory, character.pioneeredArea, character.onboardingStep, skillPoints, onOpenContent]);
 
+  // ── 리텐션: 루틴 보드 · 추천 1개 · 워밍업 · 종료 예고 ──
+  const routine = useMemo(() => routineItems(character, events, nowTick), [character, events, nowTick]);
+  const routineReward = routineRewardAvailable(character, routine);
+  const recommendation = useMemo(
+    () => recommendNext(character, save, events, { wall: wallInfo, equipped: save.skillInventory.equipped, now: nowTick }),
+    [character, save, events, wallInfo, nowTick],
+  );
+  const warmupLeft = Math.max(0, character.warmupUntil - nowTick);
+  const idlePreview = useMemo(
+    () => (character.sessionCount <= 3 ? computeIdleYield(character, save.stage, save.skillInventory.equipped, 8 * 3600) : null),
+    [character, save.stage, save.skillInventory.equipped],
+  );
+  const runAction = (action: RecommendAction) => {
+    if (action.kind === "content") onOpenContent(action.content);
+    else if (action.kind === "tab") setTab(action.tab);
+    else if (action.kind === "events") {
+      if (onOpenEvents) onOpenEvents(action.tab);
+      else flash("설정 → 모험가 이벤트에서 열 수 있습니다");
+    }
+  };
+  const runRoutine = (item: RoutineItem) => {
+    if (item.go.kind === "claim") {
+      flash(item.done ? "오늘 정산을 이미 받았습니다" : "방치 보상은 접속 시 자동 정산 · 균열로 즉시 정산할 수 있어요");
+      if (!item.done && onOpenEvents) onOpenEvents("rift");
+      return;
+    }
+    if (item.go.kind === "content") runAction({ kind: "content", content: item.go.content });
+    else if (item.go.kind === "events") runAction({ kind: "events", tab: item.go.tab });
+    else runAction({ kind: "tab", tab: item.go.tab });
+  };
+  const claimRoutine = async () => {
+    if (!routineReward) return;
+    const today = new Date().toLocaleDateString("sv-SE");
+    const next = await updateCharacterProgress(userHash, (current) =>
+      current.routineClaimedDate === today ? current : { ...current, routineClaimedDate: today, redGems: current.redGems + ROUTINE_REWARD_GEMS },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`오늘 루틴 완료 — 보석 +${ROUTINE_REWARD_GEMS}`);
+  };
+
   const paidProductsUnlocked = character.attendanceStreak >= 3 || character.level >= 20;
 
   // 스킬 예상 DPS 보정 (점검표 #5) — 장착 액티브의 평균 업타임 가중치 합. 정확한 시뮬이
@@ -1616,7 +1695,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     () =>
       SKILLS.reduce((sum, sk) => {
         if (save.skillInventory.equipped[sk.slot] !== sk.id || !save.skillInventory.learned.includes(sk.id)) return sum;
-        return sum + SKILL_PREVIEW_PCT[sk.id] * (1 + (save.skillInventory.levels[sk.id] - 1) * 0.06);
+        return sum + (SKILL_PREVIEW_PCT[sk.id] ?? 0) * (1 + (save.skillInventory.levels[sk.id] - 1) * 0.06);
       }, 0),
     [save.skillInventory],
   ).toFixed(0);
@@ -1679,7 +1758,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   }
 
   return (
-    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""}`} style={pad}>
+    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""}`} style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${assetUrl("titans/character/base/hero-idle.png")})` }} />
@@ -1717,6 +1796,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         })}
       </nav>
 
+      {recommendation && (
+        <button type="button" className={`recommend-banner tone-${recommendation.tone}`} onClick={() => runAction(recommendation.action)}>
+          <span className="recommend-copy">
+            <small>{recommendation.tone === "claim" ? "받을 것" : recommendation.tone === "free" ? "오늘 무료" : recommendation.tone === "wall" ? "DPS 벽" : "다음 성장"}</small>
+            <b>{recommendation.title}</b>
+            <em>{recommendation.desc}</em>
+            {recommendation.meter !== undefined && (
+              <i className="wall-meter" aria-label={`벽 ${Math.round(recommendation.meter * 100)}%`}><u style={{ width: `${recommendation.meter * 100}%` }} /></i>
+            )}
+          </span>
+          <strong>{recommendation.cta} ›</strong>
+        </button>
+      )}
+
+      <div className="routine-board" aria-label="오늘의 루틴">
+        {routine.map((item) => (
+          <button key={item.id} type="button" className={`routine-chip ${item.done ? "done" : ""}`} onClick={() => runRoutine(item)}>
+            <b>{item.label}</b>
+            <small>{item.detail}</small>
+          </button>
+        ))}
+        <button type="button" className={`routine-reward ${routineReward ? "ready" : ""}`} disabled={!routineReward} onClick={() => void claimRoutine()}>
+          {character.routineClaimedDate === new Date().toLocaleDateString("sv-SE") ? "완료" : `💎 ${ROUTINE_REWARD_GEMS}`}
+        </button>
+      </div>
+
       <div className="titans-stagebar">
         <div>
           <p className="titans-kicker">TAP TITANS · RPG</p>
@@ -1725,6 +1830,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             {boss ? " BOSS" : bossReady ? " · 10/10 · 반복 사냥" : ` · ${wave}/${MOBS_PER_STAGE}`}
           </h1>
           <small className="titans-area-name">{area.name} · STAGE {area.stageFrom}–{area.stageTo >= 9999 ? "∞" : area.stageTo}</small>
+          {warmupLeft > 0 && (
+            <span className="warmup-chip">워밍업 ×2 · {Math.floor(warmupLeft / 60000)}:{String(Math.floor((warmupLeft % 60000) / 1000)).padStart(2, "0")}</span>
+          )}
+          {idlePreview && !idleReport && (
+            <span className="idle-preview-chip" title="지금 닫아도 원정대가 8시간 동안 사냥합니다">
+              지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)}G
+            </span>
+          )}
         </div>
         <div className="titans-best">
           최고
@@ -2410,27 +2523,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           <img src={assetUrl("ui/idle/unlock-crest.svg")} alt="" aria-hidden="true" />
           <b>{UNLOCK_BANNER[unlockBanner].title}</b>
           <small>{UNLOCK_BANNER[unlockBanner].desc}</small>
-        </div>
-      )}
-
-      {wallBanner && (
-        <div className="wall-banner" role="status">
-          <div className="wall-banner-head">
-            <b>DPS 벽</b>
-            <span>보스가 제한시간을 버텨냅니다 — 지금 뚫는 법 셋</span>
-            <button type="button" aria-label="닫기" onClick={() => setWallBanner(false)}>✕</button>
-          </div>
-          <div className="wall-banner-actions">
-            <button type="button" onClick={() => { setWallBanner(false); onOpenContent("forge"); }}>
-              <b>무한 재련</b><small>배율 +0.02/회</small>
-            </button>
-            <button type="button" onClick={() => { setWallBanner(false); setTab("heroes"); }}>
-              <b>동료 성급</b><small>DPS 최대 ×7</small>
-            </button>
-            <button type="button" onClick={() => { setWallBanner(false); onOpenContent("profile"); }}>
-              <b>환생</b><small>벽 {character.wallAreas.length}/3 지역</small>
-            </button>
-          </div>
         </div>
       )}
 

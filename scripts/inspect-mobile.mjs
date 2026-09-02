@@ -92,19 +92,22 @@ for (const vp of VIEWPORTS) {
         if (ox > 4 && oy > 4) overlaps.push(`${a.sel} ↔ ${b.sel} (${Math.round(ox)}×${Math.round(oy)}px)`);
       }
     }
+    // 허브는 세로 스크롤 화면 — 아래로 넘어간 요소(belowFold)는 스크롤로 닿으므로 문제로 세지 않는다.
+    // 가로 넘침·음수 좌표만 실제 결함이다.
     const offscreen = boxes
-      .filter((b) => b.x < -1 || b.y < -1 || b.right > window.innerWidth + 1 || b.bottom > window.innerHeight + 1)
+      .filter((b) => b.x < -1 || b.y < -1 || b.right > window.innerWidth + 1)
       .map((b) => `${b.sel} @ ${Math.round(b.x)},${Math.round(b.y)} ${Math.round(b.w)}×${Math.round(b.h)}`);
+    const belowFold = boxes.filter((b) => b.bottom > window.innerHeight + 1 && b.x >= -1 && b.right <= window.innerWidth + 1).length;
     const small = boxes
       .filter((b) => /titans-skill\[|content-tabs|titans-tabs|goal-chip/.test(b.sel) && (b.w < 36 || b.h < 30))
       .map((b) => `${b.sel} ${Math.round(b.w)}×${Math.round(b.h)}px`);
-    return { count: boxes.length, overlaps, offscreen, small };
+    return { count: boxes.length, overlaps, offscreen, small, belowFold };
   }, SELECTORS);
 
   await page.screenshot({ path: `${OUT}/titans-${vp.name}.png`, fullPage: false });
   const issues = report.overlaps.length + report.offscreen.length + report.small.length;
   problems += issues;
-  console.log(`\n[${vp.name}] elements=${report.count} overlaps=${report.overlaps.length} offscreen=${report.offscreen.length} small-touch=${report.small.length}`);
+  console.log(`\n[${vp.name}] elements=${report.count} overlaps=${report.overlaps.length} offscreen=${report.offscreen.length} small-touch=${report.small.length} belowFold(스크롤)=${report.belowFold}`);
   report.overlaps.forEach((o) => console.log("  overlap:", o));
   report.offscreen.forEach((o) => console.log("  offscreen:", o));
   report.small.forEach((o) => console.log("  small touch target (<36×30):", o));
