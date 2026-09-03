@@ -206,6 +206,24 @@ const art = await (async () => {
   ok("L 광고 제거 상품 노출(₩3,900)", product.STORE_PRODUCTS.find((x) => x.id === "remove-ads")?.visible === true);
 }
 
+// ── 4e. I 영웅 외형 ──
+{
+  const cos = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysi-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * from "${root}/src/economy/cosmetics";\nexport * as anim from "${root}/src/titans/anim";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  ok("I 무기 이펙트 3종 판매(300) + 시즌 1종 비매품 · 테마 3종(400) · 코스튬 2종", Object.values(cos.WEAPON_FX).filter((f) => f.gemCost === 300).length === 3 && cos.WEAPON_FX["fx-season"].gemCost === null && Object.values(cos.THEMES).every((t) => t.gemCost === 400) && Object.keys(cos.COSTUMES).length === 2);
+  ok("I 코스튬이 캐릭터 목록·라벨에 등록", cos.anim.CHARACTER_SKINS.includes("ember") && cos.anim.CHARACTER_SKINS.includes("frost") && !!cos.anim.CHARACTER_LABEL.frost);
+  ok("I 코스튬 상품 char-ember/char-frost 카탈로그·Play id", ["char-ember", "char-frost"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.visible)));
+  ok("I 진행도 정규화: 미보유 이펙트/테마 장착은 해제", (() => { const n = prog.normalizeCharacterProgress({ ...base, ownedWeaponFx: ["fx-crimson"], equippedWeaponFx: "fx-solar", ownedThemes: [], equippedTheme: "theme-void" }); return n.equippedWeaponFx === "" && n.equippedTheme === ""; })());
+}
+
 // ── 5. 이벤트 상점 · 결제 지급 ──
 const eventShop = await (async () => {
   const d2 = mkdtempSync(join(tmpdir(), "sys2-"));

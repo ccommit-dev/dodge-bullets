@@ -19,7 +19,7 @@ import { isNativePlatform } from "../game/native";
 import { unconfiguredPaymentAdapter, type PaymentAdapter, type PurchaseResult } from "./adapter";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
-export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads"] as const;
+export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
 /** @capgo/native-purchases 가 노출하는 최소 표면 — 런타임 주입 여부만 확인한다 */
@@ -79,6 +79,8 @@ export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
     case "adventurer-advanced": return { gems: 700, materials: 30, cores: 15, shoulder: "dragon" };
     case "char-obsidian": return { character: "obsidian" };
     case "char-dawn": return { character: "dawn" };
+    case "char-ember": return { character: "ember" };
+    case "char-frost": return { character: "frost" };
     case "patron-30d": return { patronDays: PATRON.days };
     // H 트리거 패키지
     case "pack-pioneer": return { gems: 120, materials: 40, allyShards: 20 };
