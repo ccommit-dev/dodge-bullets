@@ -103,6 +103,19 @@ await sleep(400);
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
 ok("결제 미연동: 캐릭터 상품 탭 → 안내 토스트 (지급 없음)", /결제 연동 전/.test(r), r);
 
+// ── H. 트리거 패키지 노출 · 첫 구매 2배 배지 ──
+await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.rebirthCount = 1; q.wallAreas = ["forest"]; q.attendanceStreak = 5; localStorage.setItem(k, JSON.stringify(q)); }, H);
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2200);
+await closeModal();
+await clickText(".titans-bottom-nav button", "상점");
+await sleep(600);
+await clickText(".premium-category-tabs button", "패키지");
+await sleep(400);
+r = await page.evaluate(() => ({ names: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent), badges: document.querySelectorAll(".first-double-badge").length }));
+ok("H 트리거 패키지(벽 돌파·환생) 노출 · 개척(지역3)도 노출", r.names.some((n) => /벽 돌파/.test(n)) && r.names.some((n) => /환생 세트/.test(n)) && r.names.some((n) => /개척 축하/.test(n)), r.names.filter((n) => /세트/.test(n)).join("|"));
+ok("H 보석팩 3종에 첫 구매 2배 배지", r.badges === 3, String(r.badges));
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

@@ -11,14 +11,14 @@
  * 영수증 검증: 현재는 플러그인이 돌려준 결과를 신뢰한다(로컬). 서버 검증을 붙일 때는
  * verifyReceipt()만 교체하면 된다 (LIVEOPS §3.5 — 서버 검증 도입 시 개인정보 방침 재작성).
  */
-import { PATRON } from "../economy/productCatalog";
+import { FIRST_DOUBLE_IDS, PATRON, STORE_PRODUCTS } from "../economy/productCatalog";
 import { updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress, ShoulderId } from "../progression/model";
 import { isNativePlatform } from "../game/native";
 import { unconfiguredPaymentAdapter, type PaymentAdapter, type PurchaseResult } from "./adapter";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
-export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d"] as const;
+export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
 /** @capgo/native-purchases 가 노출하는 최소 표면 — 런타임 주입 여부만 확인한다 */
@@ -66,8 +66,9 @@ export function paymentsConfigured(): boolean {
   return isNativePlatform() && nativePurchases() !== null;
 }
 
-/** 상품별 지급 내용 — productCatalog의 contents 문구와 일치해야 한다 */
-export function purchaseGrant(productId: string): Partial<{ gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number }> | null {
+/** 상품별 지급 내용 — productCatalog의 contents 문구와 일치해야 한다. allyShards는 출전 1번 동료에게 */
+export type PurchaseGrantSpec = Partial<{ gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number }>;
+export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
   switch (productId) {
     case "gems-80": return { gems: 80 };
     case "gems-450": return { gems: 450 };
@@ -78,33 +79,61 @@ export function purchaseGrant(productId: string): Partial<{ gems: number; gold: 
     case "char-obsidian": return { character: "obsidian" };
     case "char-dawn": return { character: "dawn" };
     case "patron-30d": return { patronDays: PATRON.days };
+    // H 트리거 패키지
+    case "pack-pioneer": return { gems: 120, materials: 40, allyShards: 20 };
+    case "pack-wall": return { allyShards: 30, idleBoostHours: 24, gems: 100 };
+    case "pack-rebirth": return { gems: 400, cores: 10, allyShards: 40 };
     default: return null;
   }
 }
 
+/** 첫 구매 2배 (H) — 보석팩 3종은 팩마다 첫 구매 시 보석 2배. 기록 키 first-double:<id> */
+export function firstDoubleAvailable(progress: Pick<CharacterProgress, "claimedRewards">, productId: string): boolean {
+  return (FIRST_DOUBLE_IDS as readonly string[]).includes(productId) && !progress.claimedRewards.includes(`first-double:${productId}`);
+}
+
+/** 트리거 패키지 구매 여부 — transactionId와 무관하게 상품 id로 1회 판정 */
+export function packagePurchased(progress: Pick<CharacterProgress, "claimedRewards">, productId: string): boolean {
+  return progress.claimedRewards.some((k) => k.startsWith(`purchase:${productId}:`));
+}
+
 /**
- * 검증된 구매 지급. 같은 transactionId는 한 번만. 스킬 코어는 사냥터 저장에 있으므로
- * 반환값의 cores를 호출자가 TitansSave에 더한다.
+ * 구매 1건을 진행도에 적용하는 순수 함수 — 같은 key(purchase:<id>:<tx>)는 두 번 적용되지 않는다.
+ * 트리거 패키지는 상품당 1회. 반환 cores는 사냥터 저장에 있으므로 호출자가 더한다.
  */
-export async function grantPurchase(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean }> {
+export function applyPurchase(current: CharacterProgress, productId: string, transactionId: string, now: number = Date.now()): { progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean } {
   const grant = purchaseGrant(productId);
   const key = `purchase:${productId}:${transactionId}`;
-  let applied = false;
+  const product = STORE_PRODUCTS.find((p) => p.id === productId);
+  if (!grant || current.claimedRewards.includes(key) || (product?.trigger && packagePurchased(current, productId))) {
+    return { progress: current, cores: 0, applied: false, doubled: false };
+  }
+  const doubled = firstDoubleAvailable(current, productId);
+  const gems = (grant.gems ?? 0) * (doubled ? 2 : 1);
+  const target = current.partyIds[0];
+  const progress: CharacterProgress = {
+    ...current,
+    redGems: current.redGems + gems,
+    sharedCoins: current.sharedCoins + (grant.gold ?? 0),
+    enhancementMaterials: current.enhancementMaterials + (grant.materials ?? 0),
+    ownedShoulders: grant.shoulder ? [...new Set([...current.ownedShoulders, grant.shoulder])] : current.ownedShoulders,
+    ownedCharacters: grant.character ? [...new Set([...current.ownedCharacters, grant.character])] : current.ownedCharacters,
+    // 후원 계약은 남은 기간 위에 이어 붙는다 (조기 재구매 손해 없음)
+    patronUntil: grant.patronDays ? Math.max(now, current.patronUntil) + grant.patronDays * 86400000 : current.patronUntil,
+    allyShards: grant.allyShards && target ? { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + grant.allyShards } : current.allyShards,
+    idleBoostUntil: grant.idleBoostHours ? Math.max(now, current.idleBoostUntil) + grant.idleBoostHours * 3600000 : current.idleBoostUntil,
+    claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : [])],
+  };
+  return { progress, cores: grant.cores ?? 0, applied: true, doubled };
+}
+
+/** 검증된 구매 지급 (저장소 경유) */
+export async function grantPurchase(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean }> {
+  let out = { cores: 0, applied: false, doubled: false };
   const progress = await updateCharacterProgress(userHash, (current) => {
-    if (!grant || current.claimedRewards.includes(key)) return current;
-    applied = true;
-    const now = Date.now();
-    return {
-      ...current,
-      redGems: current.redGems + (grant.gems ?? 0),
-      sharedCoins: current.sharedCoins + (grant.gold ?? 0),
-      enhancementMaterials: current.enhancementMaterials + (grant.materials ?? 0),
-      ownedShoulders: grant.shoulder ? [...new Set([...current.ownedShoulders, grant.shoulder])] : current.ownedShoulders,
-      ownedCharacters: grant.character ? [...new Set([...current.ownedCharacters, grant.character])] : current.ownedCharacters,
-      // 후원 계약은 남은 기간 위에 이어 붙는다 (조기 재구매 손해 없음)
-      patronUntil: grant.patronDays ? Math.max(now, current.patronUntil) + grant.patronDays * 86400000 : current.patronUntil,
-      claimedRewards: [...current.claimedRewards, key],
-    };
+    const r = applyPurchase(current, productId, transactionId);
+    out = { cores: r.cores, applied: r.applied, doubled: r.doubled };
+    return r.progress;
   });
-  return { progress, cores: applied ? grant?.cores ?? 0 : 0, applied };
+  return { progress, ...out };
 }
