@@ -2484,7 +2484,8 @@
 @keyframes ally-body-run { 0% { transform:translateY(1px) rotate(-1deg) scaleY(.98); } 50% { transform:translateY(-4px) rotate(1deg) scaleY(1.02); } }
 @keyframes ally-body-melee-pose { 0%,100% { transform:none; } 28% { transform:translate(-1px,-2px) rotate(-2deg); } 58% { transform:translate(4px,1px) rotate(2.5deg) scale(1.035,.975); } }
 @keyframes ally-body-ranged-pose { 0%,100% { transform:none; } 45% { transform:translateX(-2px) rotate(-1.5deg) scale(.985,1.015); filter:brightness(1.18); } }
-.ally-weapon { position:absolute; z-index:2; left:var(--weapon-left,18%); top:var(--weapon-top,12%); width:var(--weapon-width,76%); height:var(--weapon-height,76%); overflow:visible; pointer-events:none; transform:rotate(var(--weapon-rest,0deg)); transform-origin:var(--weapon-pivot-x,50%) var(--weapon-pivot-y,62%); filter:drop-shadow(0 0 2px rgba(103,232,249,.75)); }
+/* 프레임별 무기 앵커(계획안 A): --weapon-dx/dy/drot는 상태(대기·이동·공격·피격)마다 SpriteArt가 넣는 오프셋 */
+.ally-weapon { position:absolute; z-index:2; left:calc(var(--weapon-left,18%) + var(--weapon-dx,0%)); top:calc(var(--weapon-top,12%) + var(--weapon-dy,0%)); width:var(--weapon-width,76%); height:var(--weapon-height,76%); overflow:visible; pointer-events:none; transform:rotate(calc(var(--weapon-rest,0deg) + var(--weapon-drot,0deg))); transform-origin:var(--weapon-pivot-x,50%) var(--weapon-pivot-y,62%); filter:drop-shadow(0 0 2px rgba(103,232,249,.75)); transition:left .12s ease-out, top .12s ease-out, transform .12s ease-out; }
 .ally-weapon .weapon-metal { fill:rgba(224,242,254,.92); stroke:#38bdf8; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
 .ally-weapon .weapon-string { fill:none; stroke:#e2e8f0; stroke-width:1.7; }
 .ally-weapon .weapon-shaft { fill:none; stroke:#c084fc; stroke-width:5; stroke-linecap:round; }

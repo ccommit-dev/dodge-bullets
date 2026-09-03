@@ -110,6 +110,28 @@ ok("후원 15/일 = ₩12.2/보석 (1,200팩 ₩12.5와 근접)", product.PATRON
 ok("황금 보급 상자 ×3000 (가속권 대비 열위 해소)", gem.goldPackAmount({ ...base, titanBestStage: 10 }) === Math.floor(model.killGold(10, true, false) * 3000));
 ok("진행도 정규화: gachaPity·patronUntil·beatSpMigrated 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, gachaPity: 12, patronUntil: 5, beatSpMigrated: 7 }); return n.gachaPity === 12 && n.patronUntil === 5 && n.beatSpMigrated === 7; })());
 
+// ── 4b. 동료 4상태 아틀라스 (계획안 A) ──
+const art = await (async () => {
+  const d3 = mkdtempSync(join(tmpdir(), "sys3-"));
+  const e3 = join(d3, "entry.ts");
+  writeFileSync(e3, `export * from "${root}/src/titans/SpriteArt";`);
+  const o3 = join(d3, "bundle.mjs");
+  await build({ entryPoints: [e3], bundle: true, format: "esm", outfile: o3, platform: "node", jsx: "automatic", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" }});
+  const mod = await import(pathToFileURL(o3).href);
+  rmSync(d3, { recursive: true, force: true });
+  return mod;
+})();
+{
+  const frames = (id, skin) => [0, 1, 2, 3].map((s) => art.allyFrameStyle(id, s, skin).backgroundPosition);
+  const distinct = (arr) => new Set(arr).size === 4;
+  ok("기본 6명: 4상태 프레임이 서로 다름 (아틀라스)", ["mia", "leon", "sera", "garen", "ari", "nox"].every((id) => distinct(frames(id))));
+  ok("변형 10명: 변형 아틀라스 4상태", ["pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember"].every((id) => distinct(frames(id)) && /variant/.test(art.allyFrameStyle(id, 0).backgroundImage)));
+  ok("특수 4명: 특수 아틀라스 4상태 (정사각 셀 → wide 아님)", ["luna", "volt", "mia_dark", "sera_light"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === undefined));
+  ok("스킨 2종: 스킨 아틀라스 4상태", distinct(frames("garen", "garen-magma")) && /skin-atlas/.test(art.allyFrameStyle("leon", 2, "leon-frost").backgroundImage));
+  ok("가로 셀 아틀라스는 폭 150%·좌측 −25%로 비율 보정", art.allyFrameStyle("mia", 0).width === "150%" && art.allyFrameStyle("pyro", 0).left === "-25%");
+  ok("무기 앵커: 기본 8종 × 4상태, 공격(2)은 대기(0)와 다른 각도", Object.values(art.WEAPON_STATE_ANCHOR).every((t) => [0, 1, 2, 3].every((s) => t[s]) && t[2].rot !== t[0].rot) && art.weaponAnchorStyle("pyro", 2)["--weapon-drot"] === art.weaponAnchorStyle("mia", 2)["--weapon-drot"]);
+}
+
 // ── 5. 이벤트 상점 · 결제 지급 ──
 const eventShop = await (async () => {
   const d2 = mkdtempSync(join(tmpdir(), "sys2-"));
