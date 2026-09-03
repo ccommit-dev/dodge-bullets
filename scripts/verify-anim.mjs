@@ -89,6 +89,31 @@ await cast("별빛");
 const c4 = await page.evaluate(() => ({ cutin: document.querySelector(".skill-cutin")?.className ?? "", flash: !!document.querySelector(".cutin-flash") }));
 ok("C 마무리 컷인(플래시)", /cutin-finisher/.test(c4.cutin) && c4.flash, JSON.stringify(c4));
 
+// ── D. 비트 적: 박자 맥동 + 판정별 모션 ──
+await page.evaluate(() => localStorage.setItem("dodgebullets:beat:calibrationMs", "0"));
+await clickText(".titans-bottom-nav button", "콘텐츠");
+await sleep(400);
+await clickText(".nav-popup-grid button", "비트 수련");
+await sleep(1500);
+await page.evaluate(() => document.querySelector(".schedule-card")?.click());
+await sleep(2500);
+const beatsSeen = new Set();
+const actionsSeen = new Set();
+let hitFrameSeen = false;
+for (let i = 0; i < 70; i += 1) {
+  // 레인 키 4종을 번갈아 눌러 판정을 유도한다 — 판정 성공(PERFECT/스킬 레인)은 확률적이라 촘촘히 표본을 잡는다
+  await page.keyboard.press(["KeyA", "KeyS", "KeyW", "KeyD"][i % 4]);
+  for (let k = 0; k < 3; k += 1) {
+    await sleep(35);
+    const s = await page.evaluate(() => ({ beat: document.querySelector(".beat-monster-wrap")?.getAttribute("data-beat"), action: [...(document.querySelector(".beat-command-party")?.classList ?? [])].find((c) => c.startsWith("enemy-")), hit: (() => { const el = document.querySelector(".beat-monster-hit"); return !!el && getComputedStyle(el).opacity === "1"; })() }));
+    if (s.beat) beatsSeen.add(s.beat);
+    if (s.action) actionsSeen.add(s.action);
+    if (s.hit) hitFrameSeen = true;
+  }
+}
+ok("D 비트 적이 박자마다 맥동한다(박자 번호 3개 이상 관찰)", beatsSeen.size >= 3, `beats=${beatsSeen.size}`);
+ok("D 판정별 모션 2종 이상(피격/가드/경직/반격) + 피격 프레임 표시", actionsSeen.size >= 2 && hitFrameSeen, `${[...actionsSeen].join(",")} hit=${hitFrameSeen}`);
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
