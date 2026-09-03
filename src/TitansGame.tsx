@@ -1985,7 +1985,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         }}
       >
         <div className="titans-background" aria-hidden="true" />
-        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""}`}>
+        {/* 스킬 컷인 (계획안 C): 시동기 검 궤적 · 연계 마법진 · 마무리 플래시+줌 */}
+        {skillVisual && (() => {
+          const slot = SKILLS.find((s) => s.id === skillVisual)?.slot ?? "starter";
+          const element = SKILLS.find((s) => s.id === skillVisual)?.element ?? "blade";
+          return (
+            <div key={`${skillVisual}-${cds[skillVisual]}`} className={`skill-cutin cutin-${slot} element-${element}`} aria-hidden="true">
+              {slot === "starter" && <svg viewBox="0 0 200 120"><path className="cutin-arc" d="M12 96 C 60 10, 140 10, 188 96" /><path className="cutin-arc thin" d="M30 104 C 70 40, 130 40, 172 104" /></svg>}
+              {(slot === "linkA" || slot === "linkB") && <svg viewBox="0 0 200 200"><circle className="cutin-ring" cx="100" cy="100" r="78" /><circle className="cutin-ring inner" cx="100" cy="100" r="52" /><polygon className="cutin-star" points="100,30 118,86 176,86 129,120 146,176 100,142 54,176 71,120 24,86 82,86" /></svg>}
+              {slot === "finisher" && <span className="cutin-flash" />}
+              <b className="cutin-name">{SKILLS.find((s) => s.id === skillVisual)?.name}</b>
+            </div>
+          );
+        })()}
+        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`}>
           {/* 칭호 이름표 — 과금 점검: 칭호가 전투에서 전혀 보이지 않아 150~250보석 가치가 없었다 */}
           {character.activeTitle && TITLES[character.activeTitle] && (
             <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
@@ -1995,7 +2008,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           </div>
         </div>
 
-        <div className="titans-allies">
+        {/* 상태 이펙트 (계획안 C): 고무 = 동료 발밑 금색 링 */}
+        <div className={`titans-allies ${now < buffs.warcryUntil ? "party-inspired" : ""}`}>
           {allies.map((h, allySlot) => (
             <AllyArt
               key={h.id}
@@ -2022,7 +2036,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
-        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
+        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`}>
           <MonsterArt
             kind={kind}
             area={area}
@@ -2036,6 +2050,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                   : "idle"
             }
           />
+          {/* 상태 이펙트 (계획안 C): 화상 불꽃 · 빙결 결정 — HUD 칩 없이도 전장에서 읽힌다 */}
+          <span className="status-layer" aria-hidden="true">
+            {now < buffs.burnUntil && (!buffs.burnBossOnly || boss) && <i className="st-burn"><b /><b /><b /></i>}
+            {now < buffs.freezeUntil && <i className="st-freeze"><b /><b /><b /><b /></i>}
+          </span>
           {bossBreak === 2 && <i className="boss-crack" aria-hidden="true" />}
           {bossBreak === 3 && (
             <span className="boss-gold-burst" aria-hidden="true">
