@@ -131,6 +131,10 @@ export type CharacterProgress = {
   /** 전장 테마 (I) */
   ownedThemes: string[];
   equippedTheme: string;
+  /** 광고 제거 구매 (L) — 보상형 자리 3곳을 광고 없이 자동 적용 */
+  adFree: boolean;
+  /** 보상형 광고 일일 카운터 (L) */
+  adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number };
 };
 
 export function expForLevel(level: number): number {
@@ -215,6 +219,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     equippedWeaponFx: "",
     ownedThemes: [],
     equippedTheme: "",
+    adFree: false,
+    adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 },
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -484,6 +490,11 @@ export function normalizeCharacterProgress(
     equippedWeaponFx: typeof raw.equippedWeaponFx === "string" && Array.isArray(raw.ownedWeaponFx) && raw.ownedWeaponFx.includes(raw.equippedWeaponFx) ? raw.equippedWeaponFx : "",
     ownedThemes: Array.isArray(raw.ownedThemes) ? [...new Set(raw.ownedThemes.filter((id): id is string => typeof id === "string"))].slice(0, 20) : [],
     equippedTheme: typeof raw.equippedTheme === "string" && Array.isArray(raw.ownedThemes) && raw.ownedThemes.includes(raw.equippedTheme) ? raw.equippedTheme : "",
+    adFree: raw.adFree === true,
+    adRewards:
+      raw.adRewards && typeof raw.adRewards.date === "string"
+        ? { date: raw.adRewards.date, idleDouble: integer(raw.adRewards.idleDouble, 0, 99), booster4h: integer(raw.adRewards.booster4h, 0, 99), bossRetry: integer(raw.adRewards.bossRetry, 0, 99) }
+        : { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 },
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

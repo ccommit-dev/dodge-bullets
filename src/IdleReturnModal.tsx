@@ -10,6 +10,10 @@ type Props = {
   stage: number;
   bottleneck: IdleBottleneck;
   onClaim: () => void;
+  /** L 보상형 광고 2배 — undefined면 버튼을 그리지 않는다 */
+  adOption?: "ad" | "free" | null;
+  adBusy?: boolean;
+  onClaimDouble?: () => void | Promise<void>;
   onGoContent: (content: "dodge" | "beat" | "forge") => void;
 };
 
@@ -59,7 +63,7 @@ const CONTENT_LABEL: Record<IdleBottleneck["content"], string> = {
   forge: "대장간",
 };
 
-export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoContent }: Props) {
+export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoContent, adOption = null, adBusy = false, onClaimDouble }: Props) {
   const gold = useCountUp(result.gold, 950);
   const exp = useCountUp(result.exp, 950, 120);
   const materials = useCountUp(result.materials, 950, 240);
@@ -184,6 +188,13 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
         <button type="button" className="cta idle-claim" onClick={claim}>
           보상 수령
         </button>
+        {/* L 보상형 광고: 정산 2배 — 미연동이면 자리 자체가 없다 */}
+        {adOption && (
+          <button type="button" className="cta idle-claim-ad" disabled={adBusy} onClick={() => void onClaimDouble?.()}>
+            {adBusy ? "광고 재생 중…" : adOption === "free" ? "광고 제거 보유 · 2배로 받기" : "광고 보고 2배로 받기"}
+            <small>{adOption === "free" ? "광고 없이 자동 적용" : "오늘 남은 횟수 포함 · 30초 광고"}</small>
+          </button>
+        )}
         {bottleneck.content !== "titans" && (
           <button
             type="button"

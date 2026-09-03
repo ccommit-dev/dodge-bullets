@@ -19,7 +19,7 @@ import { isNativePlatform } from "../game/native";
 import { unconfiguredPaymentAdapter, type PaymentAdapter, type PurchaseResult } from "./adapter";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
-export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass"] as const;
+export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
 /** @capgo/native-purchases 가 노출하는 최소 표면 — 런타임 주입 여부만 확인한다 */
@@ -68,7 +68,7 @@ export function paymentsConfigured(): boolean {
 }
 
 /** 상품별 지급 내용 — productCatalog의 contents 문구와 일치해야 한다. allyShards는 출전 1번 동료에게 */
-export type PurchaseGrantSpec = Partial<{ gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean }>;
+export type PurchaseGrantSpec = Partial<{ gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean; adFree: boolean }>;
 export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
   switch (productId) {
     case "gems-80": return { gems: 80 };
@@ -85,6 +85,7 @@ export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
     case "pack-wall": return { allyShards: 30, idleBoostHours: 24, gems: 100 };
     case "pack-rebirth": return { gems: 400, cores: 10, allyShards: 40 };
     case "season-pass": return { seasonPaid: true };
+    case "remove-ads": return { adFree: true };
     default: return null;
   }
 }
@@ -125,6 +126,7 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
     allyShards: grant.allyShards && target ? { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + grant.allyShards } : current.allyShards,
     idleBoostUntil: grant.idleBoostHours ? Math.max(now, current.idleBoostUntil) + grant.idleBoostHours * 3600000 : current.idleBoostUntil,
     seasonPass: grant.seasonPaid ? { ...normalizeSeason(current, now), paid: true } : current.seasonPass,
+    adFree: grant.adFree ? true : current.adFree,
     claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : [])],
   };
   return { progress, cores: grant.cores ?? 0, applied: true, doubled };

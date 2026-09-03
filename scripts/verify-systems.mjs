@@ -185,6 +185,27 @@ const art = await (async () => {
   ok("G 유료 15단 시즌 스킨 · 25단 무기 이펙트", sm.paidReward(15, 0).kind === "allySkin" && sm.paidReward(25, 0).kind === "weaponFx");
 }
 
+// ── 4d. L 보상형 광고 ──
+{
+  const ads = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysl-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * from "${root}/src/ads/rewarded";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  const today = "2026-09-03";
+  ok("L 미연동: 자리 숨김(none) · 광고 제거 보유면 free · 연동이면 ad", ads.rewardedAvailability(base, "idleDouble", today, false) === "none" && ads.rewardedAvailability({ ...base, adFree: true }, "idleDouble", today, false) === "free" && ads.rewardedAvailability(base, "idleDouble", today, true) === "ad");
+  let p = base;
+  for (let i = 0; i < 3; i += 1) p = ads.consumeAdReward(p, "idleDouble", today);
+  ok("L 정산 2배 1일 3회 한도 후 none · 다음 날 리셋", ads.rewardedAvailability(p, "idleDouble", today, true) === "none" && ads.rewardedAvailability(p, "idleDouble", "2026-09-04", true) === "ad");
+  ok("L 가속 4h는 1일 1회", ads.AD_LIMITS.booster4h === 1 && ads.rewardedAvailability(ads.consumeAdReward(base, "booster4h", today), "booster4h", today, true) === "none");
+  ok("L 광고 제거 상품 노출(₩3,900)", product.STORE_PRODUCTS.find((x) => x.id === "remove-ads")?.visible === true);
+}
+
 // ── 5. 이벤트 상점 · 결제 지급 ──
 const eventShop = await (async () => {
   const d2 = mkdtempSync(join(tmpdir(), "sys2-"));
@@ -202,6 +223,7 @@ ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThis
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");
 ok("미연동 환경: 어댑터 not-configured", (await eventShop.pay.getPaymentAdapter().purchase("gems-80")).status === "not-configured");
 { const sp = eventShop.pay.applyPurchase({ ...base, partyIds: ["mia"] }, "season-pass", "tx-s", Date.UTC(2026, 8, 10)); ok("G 시즌 패스 구매 → 현재 시즌 유료 트랙 활성", sp.applied && sp.progress.seasonPass.paid && sp.progress.seasonPass.season === 0); }
+ok("L 광고 제거 구매 → adFree", eventShop.pay.applyPurchase(base, "remove-ads", "tx-a").progress.adFree === true);
 {
   // H: 첫 구매 2배 · 트리거 패키지 1회 · 같은 영수증 중복 방지
   const p0 = { ...base, partyIds: ["mia"], rebirthCount: 1, wallAreas: ["forest"], pioneeredArea: 2 };
