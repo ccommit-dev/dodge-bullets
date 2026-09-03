@@ -16,7 +16,7 @@ export type RoutineItem = {
   go: { kind: "content"; content: "forge" } | { kind: "events"; tab: "rift" | "daily" } | { kind: "tab"; tab: "heroes" } | { kind: "claim" };
 };
 
-export const ROUTINE_REWARD_GEMS = 10;
+export const ROUTINE_REWARD_GEMS = 15; // K: 무과금 주 300 보석 경로 (10→15)
 
 export function routineItems(progress: CharacterProgress, events: EventSave, now = Date.now()): RoutineItem[] {
   const today = dateKey();

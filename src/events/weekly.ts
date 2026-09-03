@@ -17,17 +17,23 @@ export type WeeklyChallenge = {
 /** 주차 패리티로 두 세트가 번갈아 — 매주 같은 숫자가 아니게 */
 export function weeklyChallenges(week: string): WeeklyChallenge[] {
   const parity = [...week].reduce((a, c) => a + c.charCodeAt(0), 0) % 2;
+  // K: 무과금 보석 경로 — 3종 전부 보석 (주 120). 조각·가속은 균열·이벤트 상점이 맡는다
   return parity === 0
     ? [
-        { id: "rift-5", title: "차원 균열 5회", goal: 5, progressOf: (s) => s.weeklyRiftRuns, reward: { kind: "shards", amount: 10 } },
-        { id: "mission-3", title: "토벌령 3일 완주", goal: 3, progressOf: (s) => s.weeklyMissionDays, reward: { kind: "gems", amount: 30 } },
-        { id: "boss-15", title: "보스 15마리 처치", goal: 15, progressOf: (s) => s.weeklyBossKills, reward: { kind: "boost", hours: 4 } },
+        { id: "rift-5", title: "차원 균열 5회", goal: 5, progressOf: (s) => s.weeklyRiftRuns, reward: { kind: "gems", amount: 30 } },
+        { id: "mission-3", title: "토벌령 3일 완주", goal: 3, progressOf: (s) => s.weeklyMissionDays, reward: { kind: "gems", amount: 40 } },
+        { id: "boss-15", title: "보스 15마리 처치", goal: 15, progressOf: (s) => s.weeklyBossKills, reward: { kind: "gems", amount: 50 } },
       ]
     : [
-        { id: "rift-8", title: "차원 균열 8회", goal: 8, progressOf: (s) => s.weeklyRiftRuns, reward: { kind: "boost", hours: 4 } },
-        { id: "mission-5", title: "토벌령 5일 완주", goal: 5, progressOf: (s) => s.weeklyMissionDays, reward: { kind: "shards", amount: 12 } },
-        { id: "boss-30", title: "보스 30마리 처치", goal: 30, progressOf: (s) => s.weeklyBossKills, reward: { kind: "gems", amount: 40 } },
+        { id: "rift-8", title: "차원 균열 8회", goal: 8, progressOf: (s) => s.weeklyRiftRuns, reward: { kind: "gems", amount: 30 } },
+        { id: "mission-5", title: "토벌령 5일 완주", goal: 5, progressOf: (s) => s.weeklyMissionDays, reward: { kind: "gems", amount: 40 } },
+        { id: "boss-30", title: "보스 30마리 처치", goal: 30, progressOf: (s) => s.weeklyBossKills, reward: { kind: "gems", amount: 50 } },
       ];
+}
+
+/** 주간 도전 보석 합 — 하니스·시뮬이 무과금 수입을 계산할 때 쓴다 */
+export function weeklyGemTotal(week: string): number {
+  return weeklyChallenges(week).reduce((s, c) => s + (c.reward.kind === "gems" ? c.reward.amount : 0), 0);
 }
 
 export function weeklyRewardLabel(r: WeeklyReward): string {

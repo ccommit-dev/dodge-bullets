@@ -13,7 +13,7 @@ import { sfxRiftClaim } from "./ui/sfx";
 
 type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge";
 
-import { RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
+import { MISSION_ALL_DONE_GEMS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 
 /**
@@ -112,15 +112,18 @@ export function EventCenter({
   const claimMission = async (id: string) => {
     const key = `daily:${dateKey()}:${id}`;
     if (save.claimed.includes(key)) return;
+    const nextClaimed = { ...save, claimed: [...save.claimed, key] };
+    // 주간 도전: 오늘 토벌령 4종을 모두 받은 날은 하루로 집계 (중복 방지)
+    const completedToday = dailyMissionsDone(nextClaimed) && nextClaimed.lastMissionDay !== dateKey();
     const nextProgress = await updateCharacterProgress(userHash, (current) => ({
       ...current,
       sharedCoins: current.sharedCoins + 250,
       enhancementMaterials: current.enhancementMaterials + 2,
+      // K: 4종 모두 수령한 날 보석 +10 — 무과금 보석 경로
+      redGems: current.redGems + (completedToday ? MISSION_ALL_DONE_GEMS : 0),
     }));
     onUpdated(nextProgress);
-    const nextClaimed = { ...save, claimed: [...save.claimed, key] };
-    // 주간 도전: 오늘 토벌령 4종을 모두 받은 날은 하루로 집계 (중복 방지)
-    const completedToday = dailyMissionsDone(nextClaimed) && nextClaimed.lastMissionDay !== dateKey();
+    if (completedToday) setRiftMessage(`오늘의 토벌령 완주 · 보석 +${MISSION_ALL_DONE_GEMS}`);
     await persist(completedToday ? { ...nextClaimed, weeklyMissionDays: nextClaimed.weeklyMissionDays + 1, lastMissionDay: dateKey() } : nextClaimed);
   };
 

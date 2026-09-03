@@ -39,7 +39,7 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
     id: "forge-10",
     title: "달궈진 모루",
     desc: "대장간 강화 +10 달성",
-    reward: { kind: "materials", amount: 40 },
+    reward: { kind: "gems", amount: 40 },
     progressOf: (p) => ({ current: p.bestForgeLevel, goal: 10 }),
   },
   {
@@ -53,14 +53,14 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
     id: "stars-3",
     title: "빛나는 견장",
     desc: "동료 성급 합 ★3",
-    reward: { kind: "shards", amount: 15 },
+    reward: { kind: "gems", amount: 40 },
     progressOf: (p) => ({ current: totalStars(p), goal: 3 }),
   },
   {
     id: "kills-2000",
     title: "사냥터의 지배자",
     desc: "몬스터 2,000마리 처치",
-    reward: { kind: "boost", hours: 8 },
+    reward: { kind: "gems", amount: 60 },
     progressOf: (p) => ({ current: killTotal(p), goal: 2000 }),
   },
   {
@@ -77,7 +77,7 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
     id: "pioneer-4",
     title: "개척자의 길",
     desc: "사냥터 4지역 개척",
-    reward: { kind: "shards", amount: 25 },
+    reward: { kind: "gems", amount: 60 },
     progressOf: (p) => ({ current: p.pioneeredArea, goal: 4 }),
   },
   {
@@ -91,7 +91,7 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
     id: "rebirth-1",
     title: "다시 태어난 자",
     desc: "환생 1회",
-    reward: { kind: "boost", hours: 12 },
+    reward: { kind: "gems", amount: 80 },
     progressOf: (p) => ({ current: p.rebirthCount, goal: 1 }),
   },
   {

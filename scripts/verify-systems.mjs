@@ -64,6 +64,31 @@ let cnt = { R: 0, SR: 0, SSR: 0 };
 for (let i = 0; i < 100000; i += 1) cnt[gacha.pullOnce(p30, owned0, 0).result.rarity] += 1;
 ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", Math.abs(cnt.R / 1e5 - 0.6) < 0.01 && Math.abs(cnt.SSR / 1e5 - 0.1) < 0.01, JSON.stringify(cnt));
 
+// ── 1b. K: 무과금 보석 경로 · 픽업 2주 회전 ──
+{
+  const weeklyMod = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysk-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * as weekly from "${root}/src/events/weekly";\nexport * as routine from "${root}/src/progression/routine";\nexport * as journal from "${root}/src/progression/journal";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  const weekGems = weeklyMod.routine.ROUTINE_REWARD_GEMS * 7 + events.MISSION_ALL_DONE_GEMS * 7 + Math.min(weeklyMod.weekly.weeklyGemTotal("2026-36"), weeklyMod.weekly.weeklyGemTotal("2026-37"));
+  ok("K 무과금 주간 보석 ≥ 290 (루틴 15×7 + 토벌 완주 10×7 + 주간 도전 120)", weekGems >= 290, `${weekGems}`);
+  ok("K 주간 도전 3종 전부 보석", ["2026-36", "2026-37"].every((w) => weeklyMod.weekly.weeklyChallenges(w).every((c) => c.reward.kind === "gems")));
+  ok("K 원정 일지 전 항목 보석화", weeklyMod.journal.JOURNAL_ENTRIES.every((e) => e.reward.kind === "gems"), weeklyMod.journal.JOURNAL_ENTRIES.map((e) => e.reward.kind).join());
+  // 회전: stage 5 · 지역 5 → 후보 15명(6~48) → 14일 뒤 픽업이 바뀐다
+  const t0 = Date.UTC(2026, 8, 3);
+  const a = gacha.gachaPool(5, 5, t0);
+  const b = gacha.gachaPool(5, 5, t0 + 14 * 86400000);
+  ok("K 픽업 2주 회전: 후보 3명 이상이면 14일 뒤 픽업이 바뀐다", a.rotationPool >= 3 && a.pickups.join() !== b.pickups.join() && a.pickups.length === 2, `${a.pickups.join()} → ${b.pickups.join()} (${a.rotationDaysLeft}일 남음)`);
+  ok("K 후보 2명 이하면 회전 없음 (stage12/지역3 → terra 고정)", gacha.gachaPool(12, 3, t0).pickups.join() === gacha.gachaPool(12, 3, t0 + 14 * 86400000).pickups.join());
+  ok("K 회전해도 풀 확률 합 1 · 픽업 가중 유지", Math.abs(b.entries.reduce((s, e) => s + e.rate, 0) - 1) < 1e-9 && b.entries.filter((e) => e.pickup).length === 2);
+}
+
 // ── 2. 동료 곡선 · 역할 · 게이트 ──
 const eff = (h) => h.baseDps / h.baseCost;
 const byStage = model.HEROES.filter((h) => h.unlockStage < 9999).sort((a, b) => a.unlockStage - b.unlockStage);
