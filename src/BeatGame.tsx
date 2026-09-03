@@ -139,6 +139,9 @@ export function BeatGame({
   const [dropCharge, setDropCharge] = useState(0);
   const [instrumentLayers, setInstrumentLayers] = useState<[number, number, number, number]>([0, 0, 0, 0]);
   const [dropFlash, setDropFlash] = useState(0);
+  /** 박자 번호 — 바뀔 때마다 적 래퍼가 리마운트되어 맥동 애니메이션이 재생된다 */
+  const [beatTick, setBeatTick] = useState(0);
+  const beatNoRef = useRef(-1);
   const [feverMultiplier, setFeverMultiplier] = useState<1 | 2 | 3 | 5>(1);
   const [feverRemainSec, setFeverRemainSec] = useState(0);
   const beatEnemyHpRef = useRef(100);
@@ -164,7 +167,8 @@ export function BeatGame({
       window.setTimeout(() => setEnemyAction("idle"), 420);
       return;
     }
-    setEnemyAction(lane === 0 ? (world.judgeText === "PERFECT" ? "hit" : "guard") : lane === 1 || lane === 2 ? "attack" : "stagger");
+    // 판정별 모션 (계획안 D): PERFECT → 피격 프레임 · GREAT/GOOD → 가드 · 스킬 레인 → 경직. MISS는 위에서 적의 반격(skill)
+    setEnemyAction(lane === 3 ? "stagger" : world.judgeText === "PERFECT" ? "hit" : "guard");
     window.setTimeout(() => setEnemyAction("idle"), lane === 3 ? 620 : 390);
 
     setInstrumentLayers((current) => {
@@ -347,6 +351,12 @@ export function BeatGame({
           // 롱노트를 끝까지 누른 채 꼬리를 지나면 자동 성공
           settleHoldIfPassed(session);
           const w = session.world;
+          // 박자 카운터 (계획안 D) — 비트마다 적이 맥동한다. 스텝/4 = 1비트 (subdivision은 마디당 스텝)
+          const beatNo = Math.floor(w.beatPosition / Math.max(1, w.subdivision / 4));
+          if (beatNo !== beatNoRef.current) {
+            beatNoRef.current = beatNo;
+            setBeatTick(beatNo);
+          }
           setScore(w.score);
           setCombo(w.combo);
           setHp(w.hp);
@@ -629,7 +639,7 @@ export function BeatGame({
         <>
           <div key={dropFlash} className={`beat-command-party action-${partyAction} enemy-${enemyAction} ${dropFlash > 0 ? "drop-burst" : ""} ${feverMultiplier > 1 ? `fever-x${feverMultiplier}` : ""}`} aria-live="polite">
             <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
-            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash + 1 : 0}/></span><img className="beat-training-monster" src={assetUrl(stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean.png" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean.png" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean.png" : "titans/generated/monsters/moss-golem-clean.png")} alt="레이드 몬스터" />{materialGain > 0 && <b className="beat-material-drop">강화석 +{materialGain}</b>}</div>
+            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash + 1 : 0}/></span>{(() => { const base = stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean" : "titans/generated/monsters/moss-golem-clean"; return <span key={beatTick} className="beat-monster-wrap beat-pulse" data-beat={beatTick}><img className="beat-training-monster" src={assetUrl(base + ".png")} alt="레이드 몬스터" /><img className="beat-monster-hit" src={assetUrl(base + "-hit.png")} alt="" aria-hidden="true" /></span>; })()}{materialGain > 0 && <b className="beat-material-drop">강화석 +{materialGain}</b>}</div>
             <div className="beat-fever">
               <i style={{width:`${feverMultiplier > 1 ? feverRemainSec / (feverMultiplier === 5 ? 6 : feverMultiplier === 3 ? 7 : 8) * 100 : dropCharge}%`}}/>
               <span>{feverMultiplier > 1 ? `FEVER ×${feverMultiplier} · ${feverRemainSec}s` : `FEVER ${dropCharge}% · ${dropCharge >= 100 ? "×5" : dropCharge >= 65 ? "×3" : dropCharge >= 35 ? "×2 사용 가능" : "정확한 노트로 충전"}`}</span>

@@ -3568,3 +3568,15 @@
 @keyframes cutin-zoom { 30% { transform: scale(1.06); } 100% { transform: scale(1); } }
 .skill-cutin.element-fire { color: #fb923c; } .skill-cutin.element-wind { color: #67e8f9; } .skill-cutin.element-earth { color: #a3e635; } .skill-cutin.element-light { color: #fde68a; } .skill-cutin.element-blade { color: #e2e8f0; }
 .perf-low .skill-cutin svg, .perf-low .st-burn, .perf-low .hero-haste .titans-hero-facing::before { display: none; }
+
+/* ── beat enemy reacts to the beat and to judgements (plan D) ── */
+.beat-monster-wrap { position: absolute; right: 5%; bottom: 0; width: 78px; height: 72px; }
+.beat-monster-wrap .beat-training-monster { position: static; width: 100%; height: 100%; }
+.beat-monster-wrap.beat-pulse { animation: beat-enemy-pulse .18s ease-out both; transform-origin: 50% 100%; }
+@keyframes beat-enemy-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.05, .96); } 100% { transform: scale(1); } }
+.beat-monster-wrap .beat-monster-hit { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; opacity: 0; }
+.enemy-hit .beat-monster-wrap .beat-monster-hit, .enemy-stagger .beat-monster-wrap .beat-monster-hit { opacity: 1; }
+.enemy-hit .beat-monster-wrap .beat-training-monster, .enemy-stagger .beat-monster-wrap .beat-training-monster { opacity: 0; }
+.enemy-guard .beat-monster-wrap .beat-training-monster { filter: drop-shadow(0 0 8px #93c5fd) brightness(1.1); }
+.enemy-skill .beat-monster-wrap .beat-training-monster { filter: drop-shadow(0 0 10px #f87171) contrast(1.15); }
+.beat-command-party.drop-burst .beat-monster-wrap { animation: beat-enemy-stagger .6s ease-out both; }
