@@ -2241,3 +2241,7 @@
 .theme-thumb { width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: linear-gradient(180deg, var(--t-sky) 55%, var(--t-ground) 55%); box-shadow: inset 0 0 12px var(--t-accent); }
 .cosmetic-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .cosmetic-chips span { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; border: 1px solid rgba(148,163,184,.35); color: #e2e8f0; }
+
+/* ── J: 동료 스킨 픽업 할인 배지 ── */
+.skin-product .skin-pickup { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 900; background: rgba(252,211,77,.18); color: #fcd34d; border: 1px solid rgba(252,211,77,.5); vertical-align: middle; }
+.skin-product button s { opacity: .55; font-size: 10px; margin-right: 4px; }

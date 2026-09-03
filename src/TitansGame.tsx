@@ -32,7 +32,7 @@ import {
   type TitansSave,
 } from "./titans/model";
 import { AllyArt, MonsterArt } from "./titans/SpriteArt";
-import { ALLY_SKINS } from "./titans/skins";
+import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
@@ -1375,13 +1375,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   /** 동료 스킨 구매 — 확정 구매, 구매 즉시 자동 장착 */
   const buyAllySkin = async (skinId: string) => {
     const def = ALLY_SKINS[skinId];
-    if (!def || character.ownedAllySkins.includes(skinId) || redGems < def.gemCost) return;
+    // J: 픽업 동료의 스킨은 20% 할인 — 가격은 구매 시점의 픽업 목록으로 확정
+    const price = skinPrice(skinId, gacha.pickups);
+    if (!def || price === null || character.ownedAllySkins.includes(skinId) || redGems < price) return;
     const next = await updateCharacterProgress(userHash, (current) =>
-      current.ownedAllySkins.includes(skinId) || current.redGems < def.gemCost
+      current.ownedAllySkins.includes(skinId) || current.redGems < price
         ? current
         : {
             ...current,
-            redGems: current.redGems - def.gemCost,
+            redGems: current.redGems - price,
             ownedAllySkins: [...current.ownedAllySkins, skinId],
             equippedAllySkins: { ...current.equippedAllySkins, [def.ally]: skinId },
           },
@@ -2826,21 +2828,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </button>
             </article></>}
             {/* 동료 스킨(코스튬) — 외형 전용 확정 구매. 얼터너티브(별도 동료)와 다른 축 */}
-            {premiumCategory === "ally" && Object.entries(ALLY_SKINS).map(([skinId, skinDef]) => {
+            {premiumCategory === "ally" && Object.entries(ALLY_SKINS).filter(([skinId, def]) => def.gemCost !== null || character.ownedAllySkins.includes(skinId)).map(([skinId, skinDef]) => {
               const owned = character.ownedAllySkins.includes(skinId);
+              const price = skinPrice(skinId, gacha.pickups);
+              const pickupDeal = price !== null && skinDef.gemCost !== null && price < skinDef.gemCost;
               return (
-                <article key={skinId} className="titans-card premium-product-card gem-product skin-product">
+                <article key={skinId} className={`titans-card premium-product-card gem-product skin-product ${pickupDeal ? "pickup-deal" : ""}`}>
                   <span className="skin-thumb" style={{ backgroundImage: `url(${skinDef.url})` }} aria-hidden="true" />
                   <div>
-                    <strong>{skinDef.name} <em>코스튬</em></strong>
+                    <strong>{skinDef.name} <em>코스튬</em>{pickupDeal && <i className="skin-pickup">픽업 -20%</i>}</strong>
                     <p>{skinDef.desc} · 동료 탭에서 장착/해제</p>
                   </div>
                   <button
                     type="button"
-                    disabled={owned || redGems < skinDef.gemCost}
+                    disabled={owned || price === null || redGems < price}
                     onClick={() => void buyAllySkin(skinId)}
                   >
-                    {owned ? "보유 중" : `💎 ${skinDef.gemCost}`}
+                    {owned ? "보유 중" : price === null ? "시즌 한정" : pickupDeal ? <><s>{skinDef.gemCost}</s>💎 {price}</> : `💎 ${price}`}
                   </button>
                 </article>
               );

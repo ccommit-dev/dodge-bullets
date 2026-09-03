@@ -3,7 +3,7 @@
  *   node scripts/verify-systems.mjs
  */
 import { build } from "esbuild";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync , existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -222,6 +222,32 @@ const art = await (async () => {
   ok("I 코스튬이 캐릭터 목록·라벨에 등록", cos.anim.CHARACTER_SKINS.includes("ember") && cos.anim.CHARACTER_SKINS.includes("frost") && !!cos.anim.CHARACTER_LABEL.frost);
   ok("I 코스튬 상품 char-ember/char-frost 카탈로그·Play id", ["char-ember", "char-frost"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.visible)));
   ok("I 진행도 정규화: 미보유 이펙트/테마 장착은 해제", (() => { const n = prog.normalizeCharacterProgress({ ...base, ownedWeaponFx: ["fx-crimson"], equippedWeaponFx: "fx-solar", ownedThemes: [], equippedTheme: "theme-void" }); return n.equippedWeaponFx === "" && n.equippedTheme === ""; })());
+}
+
+// ── 4f. J SSR 스킨 10종 + 픽업 할인 ──
+{
+  const sk = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysj-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * from "${root}/src/titans/skins";
+export * as allies from "${root}/src/titans/allies";
+export * as art from "${root}/src/titans/SpriteArt";
+export * as season from "${root}/src/economy/seasonPass";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", jsx: "automatic", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  const ssr = Object.keys(sk.allies.ALLY_RARITY).filter((id) => sk.allies.ALLY_RARITY[id] === "SSR");
+  const sale = Object.entries(sk.ALLY_SKINS).filter(([, d]) => d.gemCost !== null);
+  ok("J SSR 10명 전원에게 판매 스킨(300) 1종 이상", ssr.length === 10 && ssr.every((id) => sale.some(([, d]) => d.ally === id && d.gemCost === 300)), `ssr=${ssr.length} sale=${sale.length}`);
+  ok("J 시즌 한정 스킨 season-1/2 비매품 · 패스 15단 id와 일치", sk.ALLY_SKINS["season-1"]?.gemCost === null && sk.ALLY_SKINS["season-2"]?.gemCost === null && sk.season.paidReward(15, 0)?.id === "season-1");
+  ok("J 픽업 할인: 픽업이면 240, 아니면 300, 비매품 null", sk.skinPrice("ari-blaze", ["ari"]) === 240 && sk.skinPrice("ari-blaze", ["nox"]) === 300 && sk.skinPrice("season-1", ["ari"]) === null);
+  const luna = sk.art.allyFrameStyle("luna", 2, "luna-eclipse");
+  const ari = sk.art.allyFrameStyle("ari", 2, "ari-blaze");
+  ok("J 스킨 프레임: 루나 스킨은 정사각 특수 스킨 아틀라스 · 아리 스킨은 가로 스킨 아틀라스 12행", /skin-special-atlas/.test(String(luna.backgroundImage)) && luna.width === undefined && /ally-skin-atlas/.test(String(ari.backgroundImage)) && ari.backgroundSize === "400% 1200%");
+  ok("J 스킨 썸네일·아틀라스 파일 존재", ["skins/ari-blaze.png", "skins/luna-eclipse.png", "skins/season-1.png", "ally-skin-special-atlas-v1.png"].every((f) => existsSync(join(root, "public/titans/generated/allies", f))));
 }
 
 // ── 5. 이벤트 상점 · 결제 지급 ──

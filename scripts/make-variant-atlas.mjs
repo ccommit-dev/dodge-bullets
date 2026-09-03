@@ -32,9 +32,30 @@ const VARIANTS = [
   ["orion", "leon", [172, 184, 255], 1.0, 1.1],
   ["ember", "ari", [255, 96, 140], 1.0, 1.2],
 ];
+// 스킨(가로 셀) — 원본은 기본 아틀라스 행 또는 변형 아틀라스 행(J: SSR 스킨 10종 + 시즌 한정 2종)
+// 순서 = SpriteArt SKIN_ROW. 시즌 스킨(season-N)은 시즌 패스 유료 15단 보상 — 판매하지 않는다.
+const VARIANT_ATLAS = "public/titans/generated/allies/ally-variant-atlas-v1.png";
+const VARIANT_ROW = Object.fromEntries(VARIANTS.map(([id], i) => [id, i]));
 const SKINS = [
   ["garen-magma", "garen", [255, 138, 76], 0.92, 1.15],
   ["leon-frost", "leon", [158, 210, 255], 1.08, 1.05],
+  ["ari-blaze", "ari", [255, 176, 64], 1.02, 1.3],
+  ["nox-abyss", "nox", [120, 96, 200], 0.86, 1.2],
+  ["bronn-iron", "bronn", [190, 200, 214], 0.95, 0.7],
+  ["iris-prism", "iris", [255, 190, 240], 1.12, 1.25],
+  ["cain-ash", "cain", [150, 140, 150], 0.82, 0.6],
+  ["sylph-dawn", "sylph", [255, 214, 160], 1.1, 1.1],
+  ["orion-nova", "orion", [140, 240, 255], 1.14, 1.2],
+  ["ember-ruby", "ember", [255, 60, 90], 0.98, 1.4],
+  ["season-1", "ari", [200, 150, 255], 1.06, 1.25],
+  ["season-2", "nox", [255, 220, 120], 1.04, 1.2],
+];
+// 스킨(정사각 셀) — 특수 아틀라스 행(루나·세라 라이트)
+const SPECIAL_ATLAS = "public/titans/generated/allies/ally-special-animation-atlas-v1.png";
+const SPECIAL_ROW = { luna: 0, volt: 1, mia_dark: 2, sera_light: 3 };
+const SKINS_SPECIAL = [
+  ["luna-eclipse", "luna", [120, 110, 190], 0.88, 1.2],
+  ["sera_light-halo", "sera_light", [255, 240, 180], 1.12, 1.15],
 ];
 
 const meta = await sharp(BASE).metadata();
@@ -42,9 +63,21 @@ const cellH = Math.floor(meta.height / ROWS);
 const stripW = meta.width;
 
 async function tintedRow(baseId, rgb, brightness, saturation) {
-  const top = BASE_ROW[baseId] * cellH;
-  const strip = await sharp(BASE).extract({ left: 0, top, width: stripW, height: cellH }).png().toBuffer();
+  // 기본 6명은 기본 아틀라스, 변형 10명은 변형 아틀라스(같은 셀 크기)에서 행을 가져온다
+  const fromVariant = BASE_ROW[baseId] === undefined;
+  const src = fromVariant ? VARIANT_ATLAS : BASE;
+  const top = (fromVariant ? VARIANT_ROW[baseId] : BASE_ROW[baseId]) * cellH;
+  const strip = await sharp(src).extract({ left: 0, top, width: stripW, height: cellH }).png().toBuffer();
   return sharp(strip).tint({ r: rgb[0], g: rgb[1], b: rgb[2] }).modulate({ brightness, saturation }).png().toBuffer();
+}
+async function tintedSpecialRow(baseId, rgb, brightness, saturation, cell) {
+  const top = SPECIAL_ROW[baseId] * cell;
+  const strip = await sharp(SPECIAL_ATLAS).extract({ left: 0, top, width: stripW, height: cell }).png().toBuffer();
+  return sharp(strip).tint({ r: rgb[0], g: rgb[1], b: rgb[2] }).modulate({ brightness, saturation }).png().toBuffer();
+}
+/** 상점 썸네일 — 대기(0열) 셀을 잘라 skins/<id>.png 로 */
+async function thumb(rowBuf, cell, id) {
+  await sharp(rowBuf).extract({ left: 0, top: 0, width: Math.floor(stripW / COLS), height: cell }).png().toFile(`public/titans/generated/allies/skins/${id}.png`);
 }
 
 async function buildAtlas(list, outFile) {
@@ -60,5 +93,21 @@ async function buildAtlas(list, outFile) {
   console.log(`generated ${outFile} (${stripW}x${cellH * list.length}, ${COLS} cols x ${list.length} rows)`);
 }
 
+import { mkdirSync } from "node:fs";
+mkdirSync("public/titans/generated/allies/skins", { recursive: true });
 await buildAtlas(VARIANTS, "public/titans/generated/allies/ally-variant-atlas-v1.png");
 await buildAtlas(SKINS, "public/titans/generated/allies/ally-skin-atlas-v1.png");
+for (const [id, base, rgb, b, sat] of SKINS) await thumb(await tintedRow(base, rgb, b, sat), cellH, id);
+{
+  const sm = await sharp(SPECIAL_ATLAS).metadata();
+  const cell = Math.floor(sm.height / 4);
+  const rows = [];
+  for (const [id, base, rgb, b, sat] of SKINS_SPECIAL) {
+    const buf = await tintedSpecialRow(base, rgb, b, sat, cell);
+    rows.push({ input: buf, left: 0, top: rows.length * cell });
+    await thumb(buf, cell, id);
+    console.log(`special row ${rows.length - 1}: ${id} <- ${base}`);
+  }
+  await sharp({ create: { width: stripW, height: cell * SKINS_SPECIAL.length, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(rows).png().toFile("public/titans/generated/allies/ally-skin-special-atlas-v1.png");
+  console.log(`generated ally-skin-special-atlas-v1.png (${stripW}x${cell * SKINS_SPECIAL.length})`);
+}
