@@ -1235,7 +1235,7 @@ function App() {
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
-                <span>화살이 다가오면 <em>검격</em>으로 베세요 — 벤 화살은 조각이 되어 돌다가 되돌아옵니다. 점프·대시로 피하세요.</span>
+                <span>위협 화살을 <em>검격</em>으로 쳐내 보급 점수를 얻으세요. 한 번 분해된 파편은 다시 베면 소멸합니다.</span>
               </div>
             )}
           </div>

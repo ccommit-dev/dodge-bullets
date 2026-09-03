@@ -24,6 +24,8 @@ async function seed(progress, titans, extra = {}) {
 }
 const closeModal = async () => { await page.evaluate(() => { [...document.querySelectorAll("button")].find((b) => /받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
+/** 콘텐츠(화살 원정·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
+const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const now = Date.now();
 
 // ── A. 신규 유저 ──
@@ -56,8 +58,9 @@ await seed(
 r = await page.evaluate(() => ({ modal: !!document.querySelector(".idle-modal"), cta: document.querySelector(".idle-forge-cta b")?.textContent }));
 ok("#10 정산 팝업 대장간 CTA", r.modal && /강화석/.test(r.cta ?? ""), JSON.stringify(r));
 await closeModal();
-r = await page.evaluate(() => ({ goals: [...document.querySelectorAll(".goal-chip b")].map((b) => b.textContent) }));
-ok("#3 목표 스트립 3칸", r.goals.length === 3, r.goals.join(" / "));
+// 목표는 전장 우하단 알림 핀(추천 1 + 목표 2)으로 표시된다
+r = await page.evaluate(() => ({ goals: [...document.querySelectorAll(".battle-alert b")].map((b) => b.textContent) }));
+ok("#3 목표 알림 핀 2개 이상", r.goals.length >= 2, r.goals.join(" / "));
 await clickText(".titans-tabs button", "스킬");
 await sleep(400);
 const before = await page.evaluate(() => document.querySelector(".skill-preset-card small")?.textContent);
@@ -67,7 +70,7 @@ r = await page.evaluate((h) => { const t = JSON.parse(localStorage.getItem(`dodg
 // 탭 폭발형: 시동기 pierce(미학습)→strike, 연계A waterStep(미학습)→crit, 연계B bloodMoon(미학습)→clone — 학습한 것만 장착
 ok("#5 프리셋(탭 폭발형) 적용 → 미학습 제외 장착", Object.values(r.eq).includes("crit") && Object.values(r.eq).includes("clone") && Object.values(r.eq).every((id) => ["strike", "crit", "clone"].includes(id)), JSON.stringify(r.eq));
 ok("#5 예상 DPS 보정 갱신", /\+\d+%/.test(r.preview ?? "") && r.preview !== before, `${before} → ${r.preview}`);
-await clickText(".titans-tabs button", "동료");
+await clickText(".titans-bottom-nav button", "동료");
 await sleep(400);
 r = await page.evaluate(() => ({ chips: [...document.querySelectorAll(".role-filter button")].map((b) => b.textContent), rec: !!document.querySelector(".recommend-party") }));
 ok("#4 역할 필터 4종+전체", r.chips.join(",") === "전체,근딜,원딜,탱커,힐러", r.chips.join(","));
@@ -82,7 +85,7 @@ await clickText(".recommend-party", "추천");
 await sleep(600);
 r = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)).partyIds, H);
 ok("#4 추천 편성 → 원거리 2명 보장", r.length >= 3 && r.filter((id) => ["leon", "sera"].includes(id)).length >= 2, r.join(","));
-await clickText(".titans-tabs button", "상점");
+await clickText(".titans-bottom-nav button", "상점");
 await sleep(400);
 const catBtns = await page.evaluate(() => [...document.querySelectorAll(".titans-shop button, .premium-category button")].map((b) => b.textContent.trim()).filter((t) => t.length < 8).slice(0, 8));
 await clickText("button", "패키지");
@@ -115,7 +118,7 @@ await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();
-await clickText(".titans-content-tabs button", "화살 원정");
+await openContent("화살 원정");
 await sleep(1000);
 await clickText("button", "스테이지 1 시작");
 await sleep(1800);
@@ -129,10 +132,11 @@ ok("#6 7초 후 튜토리얼 종료", r === false);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();
-await clickText(".titans-content-tabs button", "비트");
+await openContent("비트 수련");
 await sleep(1500);
-r = await page.evaluate(() => ({ overlay: !!document.querySelector(".beat-calib-overlay"), btn: document.querySelector(".beat-calibrate b")?.textContent, diff: !!document.querySelector(".beat-difficulty") }));
-ok("#7 최초 진입 자동 보정 오버레이 + 상중하 없음", r.overlay && !r.diff, JSON.stringify(r));
+// 싱크 보정 UI는 사용자 개편에서 제거됐다(곡 오디오 시계를 직접 판정 기준으로 사용). 상중하 없음 + 곡별 커버 이미지를 확인한다
+r = await page.evaluate(() => ({ diff: !!document.querySelector(".beat-difficulty"), cards: document.querySelectorAll(".schedule-card").length, covers: [...document.querySelectorAll(".schedule-cover")].filter((i) => i.complete && i.naturalWidth > 0).length }));
+ok("#7 비트 메뉴: 상중하 없음 + 곡별 커버 이미지", !r.diff && r.cards > 0 && r.covers === r.cards, JSON.stringify(r));
 
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();

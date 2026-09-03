@@ -1648,13 +1648,26 @@
 /* 힌트는 우하단으로 — 좌하단은 스킬 독 자리 */
 .titans-hint { left: auto !important; right: 12px !important; text-align: right; max-width: 42%; }
 
-.titans-goals {
-  width: min(100%, 720px);
-  margin: 0 auto 8px;
+.growth-alerts {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 48;
+  width: min(290px, calc(100vw - 28px));
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 14px;
+  background: rgba(3, 14, 29, 0.93);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(12px);
 }
+.growth-alerts-title { color:#7dd3fc; font-size:9px; letter-spacing:.12em; }
+.growth-alerts .goal-chip { grid-template-columns:56px minmax(0,1fr); align-items:center; gap:2px 7px; padding:5px 7px; }
+.growth-alerts .goal-chip small { grid-row:1; grid-column:1; }
+.growth-alerts .goal-chip b { grid-row:1; grid-column:2; }
+.growth-alerts .goal-chip i { grid-row:2; grid-column:1 / -1; }
 .goal-chip {
   display: grid;
   gap: 2px;
@@ -1889,8 +1902,8 @@
 .titans-field > .titans-hero,
 .titans-field > .titans-allies,
 .titans-field > .titans-monster,
-.titans-field > .titans-pet,
-.titans-field > .titans-boss-challenge { translate: 0 0; }
+.titans-field > .titans-pet { translate: 0 -52px; }
+.titans-field > .titans-boss-challenge { translate: 0; }
 .titans-field .titans-clear-banner { translate: 0 -26px; }
 
 /* 저사양: 사용자 CSS의 run-cycle(.is-approaching .ally-idle)까지 덮도록 특이도·!important */
@@ -1911,7 +1924,11 @@
   background: rgba(8, 18, 33, 0.82);
   text-align: left;
   animation: coach-in 0.35s ease-out both;
+  box-sizing: border-box;
+  min-height: 0;
+  height: auto;
 }
+.recommend-banner-below-field { margin-top: 8px; }
 .recommend-banner .recommend-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .recommend-banner small { color: #94a3b8; font-size: 9px; letter-spacing: 0.06em; }
 .recommend-banner b { color: #e2e8f0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1934,6 +1951,9 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   gap: 5px;
+}
+.routine-board-below-field {
+  margin-top: 8px;
 }
 .routine-chip {
   display: grid;
@@ -1996,28 +2016,28 @@
 .death-tip b { display: block; color: #fbbf24; font-size: 10px; letter-spacing: 0.06em; }
 
 @media (max-width: 480px) {
-  .routine-board { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .routine-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .routine-reward { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .recommend-banner, .routine-reward.ready { animation: none; } }
 
 /* 좁은 화면: 추천 배너·루틴 보드를 압축하고, 배너가 있을 땐 목표 스트립을 접는다(추천이 곧 목표) */
 @media (max-width: 480px) {
-  .recommend-banner { padding: 6px 10px; gap: 8px; margin-bottom: 6px; }
+  .recommend-banner { padding: 7px 10px; gap: 8px; margin-bottom: 6px; }
   .recommend-banner em { display: none; }
   .recommend-banner b { font-size: 12px; }
   .recommend-banner strong { padding: 4px 8px; font-size: 10px; }
   .routine-board { gap: 4px; margin-bottom: 6px; }
   .routine-chip { padding: 4px 3px; }
   .routine-chip small { display: none; }
-  .routine-board .routine-reward { grid-column: auto; padding: 4px 6px; font-size: 9px; }
-  .routine-board { grid-template-columns: repeat(5, minmax(0, 1fr)) auto; }
-  .titans-layer.has-recommend .titans-goals { display: none; }
+  .routine-board .routine-reward { grid-column: 3; padding: 4px 6px; font-size: 9px; }
+  .routine-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .titans-layer.has-recommend .growth-alerts { display: none; }
   .warmup-chip, .idle-preview-chip { font-size: 8.5px; padding: 1px 6px; }
 }
 /* 360×640에서 상점 탭 열이 44px 내려간다 — 배너·루틴·스테이지바 여백을 조여 화면 안으로 */
 @media (max-width: 480px) {
-  .recommend-banner { margin-bottom: 4px; padding: 5px 10px; }
+  .recommend-banner { margin-bottom: 4px; padding: 6px 10px; }
   .routine-board { margin-bottom: 4px; }
   .routine-chip { padding: 3px 3px; }
   .titans-stagebar { margin-bottom: 4px; }
@@ -2097,44 +2117,43 @@
 /* ── title nameplate in battle ── */
 .hero-title-plate { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); white-space: nowrap; font-size: 9.5px; font-weight: 900; letter-spacing: 0.04em; text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px currentColor; pointer-events: none; z-index: 6; }
 
-/* ── hub alerts strip: banner + goals in one compact row under the field ── */
-.hub-alerts { width: min(100%, 720px); margin: 4px auto 6px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 4px; align-items: stretch; }
-.hub-alerts:has(> .recommend-banner:only-child) { grid-template-columns: 1fr; }
-.hub-alerts .recommend-banner { margin: 0; padding: 4px 8px; gap: 6px; border-radius: 10px; border-left-width: 3px; animation: none; overflow: hidden; min-width: 0; }
-.hub-alerts .recommend-banner small { font-size: 8.5px; letter-spacing: 0.04em; }
-.hub-alerts .recommend-banner b { font-size: 11.5px; line-height: 1.2; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hub-alerts .recommend-banner em { display: none; }
-.hub-alerts .recommend-banner strong { flex: none; padding: 3px 7px; font-size: 10px; }
-.hub-alerts .wall-meter { height: 3px; }
-.hub-alerts .titans-goals { margin: 0; gap: 3px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.hub-alerts .goal-chip { padding: 3px 5px; gap: 1px; border-radius: 8px; }
-.hub-alerts .goal-chip small { font-size: 8px; color: #94a3b8; }
-.hub-alerts .goal-chip b { font-size: 10px; color: #f1f5f9; }
-.hub-alerts .goal-chip i { height: 2px; }
-.titans-layer.has-recommend .titans-goals { display: grid; }
-
-/* ── bottom bar + sheet ── */
-.titans-layer::after { content: ""; display: block; height: calc(64px + env(safe-area-inset-bottom, 0px)); }
-.hub-bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 42; width: auto; max-width: none; margin: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; border-radius: 16px 16px 0 0; border-top: 1px solid rgba(148, 163, 184, 0.25); background: rgba(2, 6, 23, 0.94); backdrop-filter: blur(14px); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45); }
-.hub-bottom-bar button { min-height: 40px; padding: 6px 2px; font-size: 11px; }
-.hub-sheet-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(2, 6, 23, 0.35); }
-.hub-sheet { position: fixed; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); z-index: 41; max-height: 62vh; overflow: auto; padding: 4px 10px 12px; border-radius: 18px 18px 0 0; border: 1px solid rgba(148, 163, 184, 0.25); border-bottom: 0; background: rgba(5, 12, 28, 0.97); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5); animation: hub-sheet-up 0.22s ease-out; overscroll-behavior: contain; }
-@keyframes hub-sheet-up { from { transform: translateY(24px); opacity: 0; } }
-.hub-sheet-handle { display: flex; justify-content: center; width: 100%; padding: 6px 0 8px; background: none; border: 0; }
+/* ── bottom sheet for management pages (heroes / gacha / shop), rises above the bottom nav ── */
+.hub-sheet-backdrop { position: fixed; inset: 0; z-index: 56; background: rgba(2, 6, 23, 0.38); }
+.hub-sheet { position: fixed; left: 50%; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); z-index: 58; width: min(920px, calc(100vw - 8px)); max-height: 60vh; overflow: auto; padding: 2px 10px 12px; border-radius: 18px 18px 12px 12px; border: 1px solid rgba(56, 189, 248, 0.32); background: rgba(4, 12, 28, 0.97); box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.55); transform: translateX(-50%); animation: hub-sheet-up 0.22s ease-out; overscroll-behavior: contain; }
+@keyframes hub-sheet-up { from { transform: translate(-50%, 24px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.hub-sheet-handle { display: flex; justify-content: center; width: 100%; padding: 6px 0 4px; background: none; border: 0; }
 .hub-sheet-handle i { width: 42px; height: 4px; border-radius: 999px; background: rgba(148, 163, 184, 0.55); }
-.hub-sheet .titans-shop { width: min(100%, 720px); margin: 0 auto; }
-@media (min-width: 640px) {
-  .hub-bottom-bar { left: 50%; right: auto; width: min(100%, 720px); transform: translateX(-50%); }
-  .hub-sheet { left: 50%; right: auto; width: min(100%, 760px); transform: translateX(-50%); }
+.hub-sheet-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 0 8px; background: rgba(4, 12, 28, 0.97); }
+.hub-sheet-head > div { min-width: 0; display: grid; }
+.hub-sheet-head small { color: #38bdf8; font-size: 8.5px; font-weight: 900; letter-spacing: 0.14em; }
+.hub-sheet-head b { color: #f0f9ff; font-size: 15px; }
+.hub-sheet-switch { margin-left: auto; display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: rgba(15, 23, 42, 0.7); }
+.hub-sheet-switch button { padding: 5px 9px; border: 0; border-radius: 8px; color: #94a3b8; background: transparent; font-size: 11px; font-weight: 800; }
+.hub-sheet-switch button.on { color: #082f49; background: linear-gradient(135deg, #67e8f9, #fde047); }
+.hub-sheet-close { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; color: #cbd5e1; background: #172033; font-size: 18px; }
+.hub-sheet .titans-shop { width: 100%; margin: 0; }
+.hub-sheet .gacha-stage-page { min-height: 0; padding: 12px; gap: 10px; }
+.hub-sheet .gacha-stage-hero { min-height: 190px; padding: 12px; }
+.hub-sheet .gacha-pickup-showcase { --ally-size: clamp(84px, 20vw, 120px); }
+.hub-sheet .gacha-stage-hero h2 { font-size: clamp(18px, 4vw, 26px); }
+.hub-sheet .gacha-page-actions button { min-height: 52px; }
+.hub-sheet .page-premium .titans-shop, .titans-layer.page-premium .hub-sheet .titans-shop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hub-sheet .event-offer-card { min-height: 0; grid-template-columns: 30% 1fr; padding: 12px; }
+.hub-sheet .event-offer-art { min-height: 96px; }
+.hub-sheet .event-offer-art .content-icon { width: 72px; height: 72px; }
+.hub-sheet .event-offer-card h2 { font-size: 17px; }
+@media (max-width: 480px) {
+  .hub-sheet { max-height: 56vh; }
+  .hub-sheet-switch button { padding: 4px 7px; font-size: 10px; }
 }
 
-/* gacha tab inside the sheet: plain wrapper (not the icon|text|button card grid) and stronger button rules */
-.gacha-card-wrap { display: block; width: 100%; margin: 0 0 8px; }
-.titans-shop .gacha-panel .gacha-rates-link { width: auto; min-height: 0; padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.4); background: rgba(15, 23, 42, 0.6); color: #cbd5e1; font-size: 10.5px; font-weight: 700; box-shadow: none; }
-.titans-shop .gacha-panel .gacha-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; }
-.titans-shop .gacha-panel .gacha-actions button { display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 6px; width: 100%; min-height: 44px; padding: 8px 6px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(30, 41, 59, 0.75); color: #f1f5f9; font-weight: 900; font-size: 14px; box-shadow: none; }
-.titans-shop .gacha-panel .gacha-actions button small { font-size: 10px; font-weight: 700; color: #cbd5e1; white-space: nowrap; }
-.titans-shop .gacha-panel .gacha-actions .gacha-ten { border-color: rgba(252, 211, 77, 0.65); background: linear-gradient(180deg, rgba(120, 80, 12, 0.55), rgba(60, 40, 10, 0.7)); color: #fde68a; }
-.titans-shop .gacha-panel .gacha-actions button:disabled { opacity: 0.45; }
-.gacha-panel .gacha-pickup { grid-template-columns: 56px 1fr; }
-.gacha-panel .gacha-pickup .titan-ally-art { --ally-size: 56px; width: 56px; }
+/* beat track cover image (generated per song) */
+.beat-track-cover.has-image::before, .beat-track-cover.has-image::after { display: none; }
+.beat-track-cover.has-image .schedule-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+
+/* armor view unified with the weapon view */
+.armor-list { display: grid; gap: 8px; margin-top: 6px; }
+.armor-list .titans-card { margin: 0; }
+.armor-panel { display: grid; gap: 8px; }
+.hub-sheet .page-premium .premium-product-card, .titans-layer.page-premium .hub-sheet .premium-product-card { min-height: 0; }
+.hub-inline { display: contents; }
