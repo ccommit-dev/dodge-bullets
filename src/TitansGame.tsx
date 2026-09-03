@@ -202,6 +202,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [bossLeft, setBossLeft] = useState(BOSS_TIME_SEC);
   const [bossReady, setBossReady] = useState(false);
   const [monsterHit, setMonsterHit] = useState(0);
+  /** 보스 처치 3단계 (계획안 B): 1 경직 → 2 균열 → 3 붕괴+골드 분출. 0이면 없음 */
+  const [bossBreak, setBossBreak] = useState<0 | 1 | 2 | 3>(0);
   const [impact, setImpact] = useState<"normal" | "critical" | null>(null);
   const [floats, setFloats] = useState<FloatText[]>([]);
   const [fx, setFx] = useState<FxBurst[]>([]);
@@ -686,6 +688,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       if (wasBoss) {
         // 주간 도전(보스 처치) 카운트
         void updateEventSave(userHash, (e) => ({ ...e, weeklyBossKills: e.weeklyBossKills + 1 })).then(setEvents);
+        // 3단계 처치 연출 — 경직(0.3s) → 균열(0.35s) → 붕괴+골드 분출. 다음 스폰(1.5s) 직전에 정리
+        setBossBreak(1);
+        later(() => setBossBreak(2), 300);
+        later(() => setBossBreak(3), 650);
+        later(() => setBossBreak(0), 1450);
         // 도감 카운트 플러시 (보스 주기 = 자연스러운 배치 경계)
         const pending = killCountsRef.current;
         killCountsRef.current = {};
@@ -1962,7 +1969,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""}`}
+        className={`titans-field phase-${battlePhase} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         style={{
           "--area-sky": area.sky,
           "--area-ground": area.ground,
@@ -2016,7 +2023,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
         <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""}`}>
-          <MonsterArt kind={kind} area={area} boss={boss} golden={chesterson} />
+          <MonsterArt
+            kind={kind}
+            area={area}
+            boss={boss}
+            golden={chesterson}
+            state={
+              bossBreak >= 3 || (bossBreak === 0 && (battlePhase === "monster-death" || battlePhase === "stage-clear" || battlePhase === "stage-exit"))
+                ? "defeat"
+                : impact || bossBreak === 1
+                  ? "hit"
+                  : "idle"
+            }
+          />
+          {bossBreak === 2 && <i className="boss-crack" aria-hidden="true" />}
+          {bossBreak === 3 && (
+            <span className="boss-gold-burst" aria-hidden="true">
+              {Array.from({ length: 14 }, (_, i) => (
+                <i key={i} style={{ "--i": i, "--dx": Math.round(Math.cos((i / 14) * Math.PI * 2) * (34 + (i % 3) * 14)), "--dy": Math.round(40 + Math.abs(Math.sin((i / 14) * Math.PI * 2)) * 50) } as CSSProperties} />
+              ))}
+            </span>
+          )}
           <strong>{label}</strong>
           {monsterAction === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}
           {monsterAction === "attack" && <i className="monster-attack-fx" aria-hidden="true" />}

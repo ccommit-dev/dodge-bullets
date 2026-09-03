@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
@@ -137,31 +137,63 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
   return { "--weapon-dx": `${a.dx}%`, "--weapon-dy": `${a.dy}%`, "--weapon-drot": `${a.rot}deg` } as CSSProperties;
 }
 
+/** 몬스터 프레임 (계획안 B) — idle 원본 · hit/defeat는 scripts/make-monster-states.mjs가 파생한 <name>-hit/-defeat.png */
+export type MonsterFrameState = "idle" | "hit" | "defeat";
+export function monsterAssetFor(kind: TitanMonsterKind, area: HuntingAreaDef, boss: boolean, golden: boolean, state: MonsterFrameState = "idle"): string {
+  // kind "boss"인데 boss=false는 펫(타이탄의 그림자) 렌더다 — 심연 타이탄 아트로 고정한다.
+  // MONSTER_ASSET에는 boss 키가 없어 그대로 두면 src가 undefined로 깨진다.
+  const base = golden
+    ? assetUrl("titans/generated/monsters/golden-lion-clean.png")
+    : boss || kind === "boss"
+      ? (boss ? (BOSS_ASSET[area.id] ?? BOSS_ASSET.abyss) : BOSS_ASSET.abyss)
+      : MONSTER_ASSET[kind as Exclude<TitanMonsterKind, "boss">];
+  return state === "idle" ? base : base.replace(/\.png$/, `-${state}.png`);
+}
+
 export function MonsterArt({
   kind,
   area,
   boss,
   golden = false,
+  state = "idle",
 }: {
   kind: TitanMonsterKind;
   area: HuntingAreaDef;
   boss: boolean;
   golden?: boolean;
+  state?: MonsterFrameState;
 }) {
-  // kind "boss"인데 boss=false는 펫(타이탄의 그림자) 렌더다 — 심연 타이탄 아트로 고정한다.
-  // MONSTER_ASSET에는 boss 키가 없어 그대로 두면 src가 undefined로 깨진다.
-  const asset = golden
-    ? assetUrl("titans/generated/monsters/golden-lion-clean.png")
-    : boss || kind === "boss"
-      ? (boss ? (BOSS_ASSET[area.id] ?? BOSS_ASSET.abyss) : BOSS_ASSET.abyss)
-      : MONSTER_ASSET[kind as Exclude<TitanMonsterKind, "boss">];
+  const idle = monsterAssetFor(kind, area, boss, golden, "idle");
+  const asset = monsterAssetFor(kind, area, boss, golden, state);
+  // 세 프레임을 모두 마운트해 두고 보이는 것만 바꾼다 — 상태 전환 순간 이미지 로딩으로 깜빡이지 않게
   return (
-    <div key={asset} className="titan-monster-art"><img src={asset} alt="" /></div>
+    <div key={idle} className={`titan-monster-art frame-${state}`}>
+      <img src={idle} alt="" className={state === "idle" ? "on" : ""} />
+      <img src={monsterAssetFor(kind, area, boss, golden, "hit")} alt="" className={state === "hit" ? "on" : ""} aria-hidden="true" />
+      <img src={monsterAssetFor(kind, area, boss, golden, "defeat")} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
+      <span className="monster-asset-current" data-src={asset} hidden />
+    </div>
   );
 }
 
 export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; skin?: string; partySlot?: number }) {
   const base = ALT_BASE[id] ?? id;
+  // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
+  // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
+  const [swinging, setSwinging] = useState(false);
+  const [flinching, setFlinching] = useState(false);
+  useEffect(() => {
+    if (!(attacking && pulse > 0)) return;
+    setSwinging(true);
+    const t = window.setTimeout(() => setSwinging(false), 320);
+    return () => window.clearTimeout(t);
+  }, [attacking, pulse]);
+  useEffect(() => {
+    if (hitPulse <= 0) return;
+    setFlinching(true);
+    const t = window.setTimeout(() => setFlinching(false), 260);
+    return () => window.clearTimeout(t);
+  }, [hitPulse]);
   const ranged = base === "leon" || base === "sera" || base === "volt" || id === "sera_light";
   const slot = partySlot === undefined ? undefined : Math.max(0, Math.min(5, partySlot));
   // 대기 시에는 주인공(좌측 2%~약 18%) 바깥에서 시작한다. 모바일에서도
@@ -191,7 +223,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
           {(() => {
-            const state: AllyFrameState = hitPulse > 0 ? 3 : attacking && pulse > 0 ? 2 : approaching ? 1 : 0;
+            const state: AllyFrameState = flinching ? 3 : swinging ? 2 : approaching ? 1 : 0;
             return (
               <>
                 <div className={`ally-body frame-${state}`} style={allyFrameStyle(id, state, skin)} />

@@ -3495,3 +3495,30 @@
   .titans-wallet { gap:3px; padding-inline:6px; }
   .character-quick-stats { grid-template-columns:1fr; }
 }
+
+/* ── monster hit / defeat frames + boss 3-stage break (plan B) ── */
+.titan-monster-art { position: relative; }
+.titan-monster-art > img { transition: opacity .06s linear; }
+.titan-monster-art > img:not(.on) { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.titan-monster-art > img.on { position: relative; opacity: 1; }
+.titan-monster-art.frame-hit > img.on { filter: drop-shadow(0 0 10px rgba(255,255,255,.85)); }
+/* stage 1 (0-300ms): freeze — no defeat fade yet */
+.titans-field.boss-breaking .titans-monster { animation: none !important; opacity: 1 !important; }
+.titans-field.boss-break-1 .titans-monster .titan-monster-art { animation: boss-freeze .3s steps(2) both; filter: brightness(1.8) contrast(1.2); }
+@keyframes boss-freeze { 0%,100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+/* stage 2 (300-650ms): cracks spread across the body */
+.boss-crack { position: absolute; inset: 0; z-index: 3; pointer-events: none; background:
+  linear-gradient(112deg, transparent 47%, rgba(255,255,255,.9) 48%, transparent 50%),
+  linear-gradient(28deg, transparent 58%, rgba(255,255,255,.85) 59%, transparent 61%),
+  linear-gradient(160deg, transparent 32%, rgba(255,255,255,.8) 33%, transparent 35%),
+  linear-gradient(74deg, transparent 66%, rgba(255,255,255,.85) 67%, transparent 69%);
+  mix-blend-mode: screen; animation: boss-crack-in .35s ease-out both; filter: drop-shadow(0 0 6px #fde68a); }
+@keyframes boss-crack-in { from { clip-path: circle(0% at 50% 55%); opacity: 0; } to { clip-path: circle(80% at 50% 55%); opacity: 1; } }
+.titans-field.boss-break-2 .titans-monster .titan-monster-art { animation: boss-tremble .35s linear infinite; }
+@keyframes boss-tremble { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-2px,1px); } 50% { transform: translate(2px,-1px); } 75% { transform: translate(-1px,-2px); } }
+/* stage 3 (650ms+): collapse + gold burst */
+.titans-field.boss-break-3 .titans-monster .titan-monster-art { animation: boss-collapse .55s cubic-bezier(.3,.6,.4,1) both; }
+@keyframes boss-collapse { 0% { transform: scale(1); filter: brightness(2); } 40% { transform: scale(1.06,.9) translateY(4px); filter: brightness(1); } 100% { transform: scale(.7,.45) translateY(28px); opacity: 0; filter: brightness(.6) blur(2px); } }
+.boss-gold-burst { position: absolute; left: 50%; bottom: 20%; z-index: 9; width: 0; height: 0; pointer-events: none; }
+.boss-gold-burst i { position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff7d6, #facc15 55%, #b45309); box-shadow: 0 0 6px rgba(250,204,21,.8); animation: gold-burst .9s cubic-bezier(.2,.7,.3,1) both; animation-delay: calc(var(--i) * 28ms); }
+@keyframes gold-burst { 0% { transform: translate(0,0) scale(.4); opacity: 0; } 15% { opacity: 1; } 60% { transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * -1px)) scale(1); opacity: 1; } 100% { transform: translate(calc(var(--dx) * 1.3px), calc(var(--dy) * -0.2px)) scale(.8); opacity: 0; } }
