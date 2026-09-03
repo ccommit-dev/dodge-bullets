@@ -2163,3 +2163,23 @@
 .event-shard-target { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #cbd5e1; }
 .event-shard-target .shard-pack-select { flex: 1; }
 .premium-product-card > button.paid-buy { color: #082f49; background: linear-gradient(135deg, #67e8f9, #fde047); }
+
+/* ── gacha summoning circle (plan E): tier-colored tease before the card flip ── */
+.gacha-summoning { --tier: #7dd3fc; }
+.gacha-summoning.tier-sr { --tier: #c4b5fd; }
+.gacha-summoning.tier-ssr { --tier: #fcd34d; }
+.gacha-summon-circle { position: relative; width: min(72vw, 300px); aspect-ratio: 1; display: grid; place-items: center; color: var(--tier); }
+.gacha-summon-circle .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--tier); opacity: .55; animation: summon-ring 1.2s ease-out both; }
+.gacha-summon-circle .ring.r2 { inset: 12%; animation-delay: .15s; border-style: dashed; }
+.gacha-summon-circle .ring.r3 { inset: 24%; animation-delay: .3s; }
+@keyframes summon-ring { 0% { transform: scale(.4) rotate(0); opacity: 0; } 30% { opacity: .8; } 100% { transform: scale(1.05) rotate(180deg); opacity: .25; } }
+.gacha-summon-circle svg { width: 70%; overflow: visible; animation: summon-spin 1.2s linear infinite; filter: drop-shadow(0 0 14px var(--tier)); }
+.gacha-summon-circle .sigil { fill: none; stroke: var(--tier); stroke-width: 3; stroke-linejoin: round; stroke-dasharray: 600; stroke-dashoffset: 600; animation: summon-draw 1s ease-out both; }
+.gacha-summon-circle .sigil-ring { fill: none; stroke: var(--tier); stroke-width: 1.5; stroke-dasharray: 6 8; opacity: .8; }
+@keyframes summon-draw { to { stroke-dashoffset: 0; } }
+@keyframes summon-spin { to { transform: rotate(360deg); } }
+.gacha-summon-circle b { position: absolute; bottom: -34px; font-size: 15px; font-weight: 950; letter-spacing: .1em; color: #f8fafc; text-shadow: 0 0 10px var(--tier); }
+.gacha-summon-circle small { position: absolute; bottom: -54px; font-size: 11px; color: var(--tier); animation: summon-text 1.2s ease-out both; }
+@keyframes summon-text { 0%,40% { opacity: 0; } 100% { opacity: 1; } }
+.gacha-summoning.tier-ssr::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(252,211,77,.28), transparent 55%); animation: summon-gold 1.2s ease-in-out infinite alternate; }
+@keyframes summon-gold { from { opacity: .4; } to { opacity: 1; } }

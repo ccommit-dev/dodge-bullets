@@ -100,11 +100,34 @@ await sleep(2500);
 const beatsSeen = new Set();
 const actionsSeen = new Set();
 let hitFrameSeen = false;
-for (let i = 0; i < 70; i += 1) {
-  // 레인 키 4종을 번갈아 눌러 판정을 유도한다 — 판정 성공(PERFECT/스킬 레인)은 확률적이라 촘촘히 표본을 잡는다
-  await page.keyboard.press(["KeyA", "KeyS", "KeyW", "KeyD"][i % 4]);
-  for (let k = 0; k < 3; k += 1) {
-    await sleep(35);
+// 개발 훅(window.__beatSession)으로 다음 노트의 레인·도착 시각을 읽어 정확히 누른다 — 무작위 연타는 MISS로 HP가 바닥나 판정을 못 본다
+const KEY_OF = ["KeyA", "KeyS", "KeyW", "KeyD"];
+const judges = [];
+for (let i = 0; i < 14; i += 1) {
+  // 페이지 안에서 오디오 시계를 rAF로 기다렸다가 키 이벤트를 직접 디스패치한다 (puppeteer 왕복 지연 회피)
+  const res = await page.evaluate((keys) => new Promise((resolve) => {
+    const s = window.__beatSession; if (!s) return resolve(null);
+    const w = s.world; const from = Math.ceil(w.beatPosition + 0.4);
+    let idx = -1; for (let j = from; j < Math.min(s.chart.length, from + 24); j += 1) { const st = s.chart[j]; if (st?.spike && !st.holdTail) { idx = j; break; } }
+    if (idx < 0) return resolve(null);
+    const lane = window.__beatLaneOf ? window.__beatLaneOf(s.chart[idx].sound) : s.chart[idx].lane; const code = keys[lane] ?? "KeyA";
+    const target = idx + s.calibrationSec / w.stepSec;
+    const start = performance.now();
+    const tick = () => {
+      if (w.beatPosition >= target - 0.02 || performance.now() - start > 4000) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { code, key: code.slice(-1).toLowerCase(), bubbles: true }));
+        setTimeout(() => window.dispatchEvent(new KeyboardEvent("keyup", { code, key: code.slice(-1).toLowerCase(), bubbles: true })), 40);
+        setTimeout(() => resolve({ lane, judge: w.judgeText }), 20);
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }), KEY_OF);
+  if (!res) break;
+  judges.push(res.judge);
+  for (let k = 0; k < 4; k += 1) {
+    await sleep(30);
     const s = await page.evaluate(() => ({ beat: document.querySelector(".beat-monster-wrap")?.getAttribute("data-beat"), action: [...(document.querySelector(".beat-command-party")?.classList ?? [])].find((c) => c.startsWith("enemy-")), hit: (() => { const el = document.querySelector(".beat-monster-hit"); return !!el && getComputedStyle(el).opacity === "1"; })() }));
     if (s.beat) beatsSeen.add(s.beat);
     if (s.action) actionsSeen.add(s.action);
@@ -112,7 +135,25 @@ for (let i = 0; i < 70; i += 1) {
   }
 }
 ok("D 비트 적이 박자마다 맥동한다(박자 번호 3개 이상 관찰)", beatsSeen.size >= 3, `beats=${beatsSeen.size}`);
-ok("D 판정별 모션 2종 이상(피격/가드/경직/반격) + 피격 프레임 표시", actionsSeen.size >= 2 && hitFrameSeen, `${[...actionsSeen].join(",")} hit=${hitFrameSeen}`);
+ok("D 판정별 모션 2종 이상(피격/가드/경직/반격) + 피격 프레임 표시", actionsSeen.size >= 2 && hitFrameSeen, `${[...actionsSeen].join(",")} hit=${hitFrameSeen} judges=${judges.join("|")}`);
+
+// ── E. 뽑기 사전 연출: 소환진(등급 예고 색) → 카드 공개 ──
+await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 3000, sharedCoins: 100000, pioneeredArea: 3, titanBestStage: 12, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9 },
+  { stage: 12, bestStage: 12, gold: 100000, heroes: { mia: 9, leon: 6 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now });
+await clickText(".titans-bottom-nav button", "동료");
+await sleep(600);
+await clickText(".hub-sheet-switch button", "동료 뽑기");
+await sleep(500);
+await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
+await sleep(250);
+const e1 = await page.evaluate(() => ({ circle: !!document.querySelector(".gacha-summon-circle"), tier: [...(document.querySelector(".gacha-summoning")?.classList ?? [])].find((c) => c.startsWith("tier-")), reveal: !!document.querySelector(".gacha-card") }));
+ok("E 소환 직후 소환진이 뜨고 카드는 아직 없다", e1.circle && !!e1.tier && !e1.reveal, JSON.stringify(e1));
+await sleep(1300);
+const e2 = await page.evaluate(() => ({ circle: !!document.querySelector(".gacha-summon-circle"), cards: document.querySelectorAll(".gacha-card").length }));
+ok("E 1.2초 뒤 소환진이 사라지고 카드 10장 공개", !e2.circle && e2.cards === 10, JSON.stringify(e2));
+// 등급 예고 정합: 결과 최고 등급이 SSR이면 소환진은 반드시 금색 (페이크는 상향만)
+const hadSsr = await page.evaluate(() => !!document.querySelector(".gacha-card.rarity-ssr"));
+ok("E 예고 색 규칙: 결과에 SSR이 있으면 예고는 금색이어야 함 (상향 페이크만 허용)", !hadSsr || e1.tier === "tier-ssr", `ssr=${hadSsr} tease=${e1.tier}`);
 
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();

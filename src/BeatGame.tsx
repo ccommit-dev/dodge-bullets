@@ -14,6 +14,7 @@ import {
   applyBeatInsets,
   createBeatSession,
   disposeBeatSession,
+  laneOfSound,
   performBeatLane,
   resizeBeatWorld,
   settleHoldIfPassed,
@@ -532,6 +533,8 @@ export function BeatGame({
     // 기기 싱크 보정 적용 — 판정 위치를 평균 오프셋만큼 되돌린다
     session.calibrationSec = (Number.isFinite(calibrationMs) ? calibrationMs : 0) / 1000;
     sessionRef.current = session;
+    // 개발 훅 — e2e(scripts/verify-anim.mjs)가 채보 타이밍에 맞춰 키를 누르기 위해 세션을 노출한다. 배포 빌드에는 없다.
+    if (import.meta.env.DEV) { const w = window as unknown as { __beatSession?: BeatSession; __beatLaneOf?: typeof laneOfSound }; w.__beatSession = session; w.__beatLaneOf = laneOfSound; }
     setLessonTitle(slot.title);
     setStageNo(slot.stageIndex + 1);
     setScore(0);

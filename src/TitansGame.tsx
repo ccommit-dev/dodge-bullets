@@ -212,6 +212,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [buffs, setBuffs] = useState<BuffState>(EMPTY_BUFFS);
   /** 소환 결과 연출 (확률형 재설계) — 카드 뒤집기 모달. null이면 닫힘 */
   const [gachaReveal, setGachaReveal] = useState<PullResult[] | null>(null);
+  /** 소환진 사전 연출 (계획안 E) — 1.2초 뒤 gachaReveal로 넘어간다 */
+  const [gachaSummoning, setGachaSummoning] = useState<{ tier: "R" | "SR" | "SSR"; count: number } | null>(null);
   const [showGachaRates, setShowGachaRates] = useState(false);
   const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot>("starter");
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
@@ -1230,8 +1232,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       });
       setAllyPulse((prev) => { const out = { ...prev }; for (const id of newIds) out[id] = (out[id] ?? 0) + 1; return out; });
     }
-    sfxSlotUnlock();
-    setGachaReveal(pulled.results);
+    // 사전 연출 (계획안 E): 소환진 1.2s — 색은 최종 최고 등급을 예고하되 30%는 한 단계 위로 페이크
+    const order = ["R", "SR", "SSR"] as const;
+    const best = pulled.results.map((r) => r.rarity).sort((a, b) => order.indexOf(b) - order.indexOf(a))[0] ?? "R";
+    const fake = best !== "SSR" && Math.random() < 0.3;
+    const tease = fake ? order[Math.min(2, order.indexOf(best) + 1)] : best;
+    setGachaSummoning({ tier: tease, count });
+    window.setTimeout(() => {
+      setGachaSummoning(null);
+      sfxSlotUnlock();
+      setGachaReveal(pulled.results);
+    }, 1200);
   };
 
   /** 성급 승급 — 조각 소비, 환생에도 보존되는 영구 성장 */
@@ -2839,6 +2850,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
       {toast && <div className="titans-toast">{toast}</div>}
 
+      {/* 소환진 (계획안 E) — 등급 예고 색(파랑 R · 보라 SR · 금 SSR)으로 1.2초 기대감을 만든 뒤 카드 공개 */}
+      {gachaSummoning && (
+        <div className={`gacha-reveal gacha-summoning tier-${gachaSummoning.tier.toLowerCase()}`} role="status" aria-label="소환 중">
+          <div className="gacha-summon-circle">
+            <i className="ring r1" /><i className="ring r2" /><i className="ring r3" />
+            <svg viewBox="0 0 200 200" aria-hidden="true"><polygon className="sigil" points="100,18 128,72 186,80 143,120 156,180 100,150 44,180 57,120 14,80 72,72" /><circle className="sigil-ring" cx="100" cy="100" r="88" /></svg>
+            <b>{gachaSummoning.count === 10 ? "10회 소환" : "소환"}</b>
+            <small>{gachaSummoning.tier === "SSR" ? "전설의 기운이 감돕니다" : gachaSummoning.tier === "SR" ? "영웅의 기운" : "동료가 응답합니다"}</small>
+          </div>
+        </div>
+      )}
       {/* 소환 연출 — 카드가 순서대로 뒤집히고 등급색으로 빛난다. 새 동료/중복 조각을 구분해 보여준다 */}
       {gachaReveal && (
         <div className="gacha-reveal" role="dialog" aria-label="소환 결과" onClick={() => setGachaReveal(null)}>

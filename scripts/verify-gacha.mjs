@@ -73,7 +73,7 @@ await clickText(".gacha-rates-sheet button", "닫기");
 await sleep(300);
 const gemsBefore = (await prog()).redGems;
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
-await sleep(1200);
+await sleep(2000); // 소환진 1.2s 후 카드 공개
 r = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, fronts: [...document.querySelectorAll(".gacha-card-front b")].map((b) => b.textContent), labels: [...document.querySelectorAll(".gacha-card-front small")].map((s) => s.textContent) }));
 let p = await prog();
 let t = await titans();
