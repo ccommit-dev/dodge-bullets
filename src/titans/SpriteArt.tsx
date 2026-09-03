@@ -71,24 +71,70 @@ const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
   ember: assetUrl("titans/generated/allies/ember.png"),
 };
 
-function allyBodyStyle(id: TitanHeroId, skin?:string): CSSProperties {
-  const skinDef = skin ? ALLY_SKINS[skin] : undefined;
-  const standalone = skinDef?.ally === id ? skinDef.url : STANDALONE_ALLY[id];
-  if (standalone) {
-    return {
-      backgroundImage: `url(${standalone})`,
-      backgroundSize: "contain",
-      backgroundPosition: "center bottom",
-      backgroundRepeat: "no-repeat",
-    };
-  }
-  const row = allyIndex[ALT_BASE[id] ?? id];
+/* ───────────── 4상태 아틀라스 (계획안 A) ─────────────
+ * 상태: 0 대기 · 1 이동 · 2 공격 · 3 피격. 아틀라스는 4열이고 행이 동료다.
+ *   기본 6명   ally-animation-atlas-v1.png         4×6 (셀 313.5×209, 가로 1.5:1)
+ *   변형 10명  ally-variant-atlas-v1.png           4×10 (기본 행의 tint 파생 — make-variant-atlas.mjs)
+ *   스킨 2종   ally-skin-atlas-v1.png              4×2
+ *   특수 4명   ally-special-animation-atlas-v1.png 4×4 (정사각 셀)
+ * 셀이 가로로 넓은 아틀라스는 .titan-ally-art(정사각)에 그대로 채우면 세로로 1.5배 늘어난다 —
+ * 폭 150%·좌측 −25%로 원본 비율을 지킨다(WIDE_CELL). 아틀라스에 행이 없는 동료만 개별 PNG(정지)로 떨어진다.
+ */
+export type AllyFrameState = 0 | 1 | 2 | 3;
+const ALLY_ANIMATION_ATLAS = assetUrl("titans/generated/allies/ally-animation-atlas-v1.png");
+const VARIANT_ATLAS = assetUrl("titans/generated/allies/ally-variant-atlas-v1.png");
+const SKIN_ATLAS = assetUrl("titans/generated/allies/ally-skin-atlas-v1.png");
+const SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-special-animation-atlas-v1.png");
+const BASE_ROW: Partial<Record<TitanHeroId, number>> = { mia: 0, leon: 1, sera: 2, garen: 3, ari: 4, nox: 5 };
+const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = { pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9 };
+const SPECIAL_ROW: Partial<Record<TitanHeroId, number>> = { luna: 0, volt: 1, mia_dark: 2, sera_light: 3 };
+const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1 };
+const WIDE_CELL: CSSProperties = { width: "150%", left: "-25%", right: "auto" };
+
+function atlasCell(atlas: string, cols: number, rows: number, col: number, row: number, wide: boolean): CSSProperties {
   return {
-    backgroundImage: `url(${ALLY_SHEET})`,
-    backgroundSize: "600% 100%",
-    backgroundPosition: `${row / 5 * 100}% center`,
+    ...(wide ? WIDE_CELL : {}),
+    backgroundImage: `url(${atlas})`,
+    backgroundSize: `${cols * 100}% ${rows * 100}%`,
+    backgroundPosition: `${(col / (cols - 1)) * 100}% ${rows > 1 ? (row / (rows - 1)) * 100 : 0}%`,
     backgroundRepeat: "no-repeat",
   };
+}
+
+/** 동료·상태·스킨 → 배경 스타일 (순수 함수, 하니스에서 상태별 프레임 차이를 단언한다) */
+export function allyFrameStyle(id: TitanHeroId, state: AllyFrameState, skin?: string): CSSProperties {
+  const skinDef = skin ? ALLY_SKINS[skin] : undefined;
+  if (skinDef?.ally === id && skin && SKIN_ROW[skin] !== undefined) return atlasCell(SKIN_ATLAS, 4, 2, state, SKIN_ROW[skin], true);
+  const variantRow = VARIANT_ROW[id];
+  if (variantRow !== undefined) return atlasCell(VARIANT_ATLAS, 4, 10, state, variantRow, true);
+  const specialRow = SPECIAL_ROW[id];
+  if (specialRow !== undefined) return atlasCell(SPECIAL_ATLAS, 4, 4, state, specialRow, false);
+  const baseRow = BASE_ROW[id];
+  if (baseRow !== undefined) return atlasCell(ALLY_ANIMATION_ATLAS, 4, 6, state, baseRow, true);
+  // 아틀라스에 없는 동료 — 개별 PNG(정지). 원화 교체 경로: STANDALONE_ALLY
+  const standalone = STANDALONE_ALLY[id] ?? ALLY_SHEET;
+  return { backgroundImage: `url(${standalone})`, backgroundSize: "contain", backgroundPosition: "center bottom", backgroundRepeat: "no-repeat" };
+}
+
+/**
+ * 프레임별 무기 앵커 (계획안 A) — 상태마다 손 위치가 다르므로 무기 위치·각도를 같이 옮긴다.
+ * 값은 .weapon-<id> CSS 기본 앵커에 더하는 오프셋(%·deg). 대기(0)는 오프셋 0.
+ */
+export const WEAPON_STATE_ANCHOR: Record<"mia" | "leon" | "sera" | "garen" | "ari" | "nox" | "luna" | "volt", Record<AllyFrameState, { dx: number; dy: number; rot: number }>> = {
+  mia:   { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 4, dy: -2, rot: 8 },  2: { dx: 12, dy: -6, rot: -48 }, 3: { dx: -6, dy: 2, rot: 22 } },
+  leon:  { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 3, dy: -1, rot: 4 },  2: { dx: 8, dy: -3, rot: -6 },   3: { dx: -5, dy: 2, rot: 14 } },
+  sera:  { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 3, dy: -2, rot: 5 },  2: { dx: 10, dy: -8, rot: -22 }, 3: { dx: -5, dy: 3, rot: 16 } },
+  garen: { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 4, dy: -1, rot: 6 },  2: { dx: 14, dy: -4, rot: -62 }, 3: { dx: -6, dy: 3, rot: 24 } },
+  ari:   { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 5, dy: -2, rot: 4 },  2: { dx: 16, dy: -2, rot: -14 }, 3: { dx: -6, dy: 2, rot: 18 } },
+  nox:   { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 4, dy: -2, rot: 10 }, 2: { dx: 12, dy: -6, rot: -56 }, 3: { dx: -6, dy: 2, rot: 26 } },
+  luna:  { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 3, dy: -1, rot: 6 },  2: { dx: 10, dy: -10, rot: -70 }, 3: { dx: -5, dy: 3, rot: 20 } },
+  volt:  { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 2, dy: -1, rot: 3 },  2: { dx: 6, dy: -4, rot: -18 },  3: { dx: -4, dy: 2, rot: 12 } },
+};
+export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSProperties {
+  const base = (ALT_BASE[id] ?? id) as keyof typeof WEAPON_STATE_ANCHOR;
+  const table = WEAPON_STATE_ANCHOR[base] ?? WEAPON_STATE_ANCHOR.mia;
+  const a = table[state];
+  return { "--weapon-dx": `${a.dx}%`, "--weapon-dy": `${a.dy}%`, "--weapon-drot": `${a.rot}deg` } as CSSProperties;
 }
 
 export function MonsterArt({
@@ -144,8 +190,15 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
       */}
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
-          <div className="ally-body" style={allyBodyStyle(id, skin)} />
-          <AllyWeapon id={id} />
+          {(() => {
+            const state: AllyFrameState = hitPulse > 0 ? 3 : attacking && pulse > 0 ? 2 : approaching ? 1 : 0;
+            return (
+              <>
+                <div className={`ally-body frame-${state}`} style={allyFrameStyle(id, state, skin)} />
+                <AllyWeapon id={id} anchor={weaponAnchorStyle(id, state)} />
+              </>
+            );
+          })()}
         </div>
       </div>
       {attacking && pulse > 0 && <i key={`fx-${pulse}`} className={`ally-attack-fx ${ranged ? "ranged" : "melee"}`} aria-hidden="true" />}
@@ -153,12 +206,12 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   );
 }
 
-function AllyWeapon({ id: rawId }: { id: TitanHeroId }) {
+function AllyWeapon({ id: rawId, anchor }: { id: TitanHeroId; anchor?: CSSProperties }) {
   // 얼터너티브는 원본의 무기를 쓴다 — 팔레트는 CSS(weapon-* 클래스)가 아니라 몸체 이미지 차이
   const id = ALT_BASE[rawId] ?? rawId;
   const ranged = id === "leon" || id === "sera";
   return (
-    <svg className={`ally-weapon weapon-${id} ${ranged ? "ranged" : "melee"}`} viewBox="0 0 100 100" aria-hidden="true">
+    <svg className={`ally-weapon weapon-${id} ${ranged ? "ranged" : "melee"}`} style={anchor} viewBox="0 0 100 100" aria-hidden="true">
       {id === "leon" ? (
         <>
           <path className="weapon-metal" d="M69 17 Q92 49 68 84" />
