@@ -101,6 +101,7 @@ import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
 import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
+import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -272,6 +273,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
   const burnAcc = useRef(0);
+  /** L 보스 실패 후 광고 +10초 — 다음 보스 도전 1회에만 적용 */
+  const bossRetryBonusRef = useRef(0);
   const attackUntil = useRef(0);
   const animResetRef = useRef(false);
   const animModeRef = useRef<"idle" | "attack">("idle");
@@ -503,10 +506,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
 
   /** 방치 보상 확정 — 골드는 사냥터 저장에, EXP·강화석은 공유 진행도에 들어간다. */
   const claimIdle = useCallback(
-    (then?: () => void) => {
+    (then?: () => void, goldMult = 1) => {
       const report = idleReport;
       if (!report) return;
       setIdleReport(null);
+      // L 보상형 광고 2배 — 골드만 2배 (조각·EXP·강화석은 그대로)
+      if (goldMult !== 1) report.result = { ...report.result, gold: Math.floor(report.result.gold * goldMult) };
       // 방치 골드는 공유 지갑(대장간 소비처)으로 간다.
       // 사냥터 자체 골드(save.gold)는 액티브 전투 보상으로 남겨 방치가 플레이를 대체하지 않게 한다.
       void updateCharacterProgress(userHash, (current) => {
@@ -1681,6 +1686,29 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     flash(`${def.name} Lv.${level + 1}`);
   };
 
+  /** L 보상형 광고 — 자리 상태를 확인하고, 광고(또는 광고 제거 보유)면 보상을 적용한 뒤 카운터를 올린다 */
+  const [adBusy, setAdBusy] = useState(false);
+  const watchAd = async (placement: AdPlacement, apply: () => void) => {
+    if (adBusy) return;
+    const today = new Date().toLocaleDateString("sv-SE");
+    const availability = rewardedAvailability(characterRef.current, placement, today);
+    if (availability === "none") return;
+    setAdBusy(true);
+    try {
+      const ok = availability === "free" ? true : await showRewarded(placement);
+      if (!ok) { flash("광고를 끝까지 보지 않아 보상이 적용되지 않았습니다"); return; }
+      const next = await updateCharacterProgress(userHash, (current) => consumeAdReward(current, placement, today));
+      setCharacter(next);
+      apply();
+    } finally {
+      setAdBusy(false);
+    }
+  };
+  const buyAdBooster = () => watchAd("booster4h", () => {
+    void updateCharacterProgress(userHash, (current) => ({ ...current, idleBoostUntil: Math.max(Date.now(), current.idleBoostUntil) + BOOSTER_AD_HOURS * 3600 * 1000 })).then((next) => { setCharacter(next); flash(`방치 가속 ${BOOSTER_AD_HOURS}시간 — 산출 2배`); });
+  });
+  const retryBossWithAd = () => watchAd("bossRetry", () => { bossRetryBonusRef.current = BOSS_RETRY_BONUS_SEC; flash(`다음 보스 도전 제한시간 +${BOSS_RETRY_BONUS_SEC}초`); });
+
   /** 실결제(₩) — 어댑터가 검증한 구매만 지급. 미연동 환경에서는 안내 토스트만 */
   const buyPaidProduct = async (productId: string) => {
     if (claimingProduct) return;
@@ -2151,6 +2179,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             }}
           >
             보스 도전하기
+          </button>
+        )}
+        {/* L 보상형 광고: 보스 실패 후 +10초 — 미연동이면 자리 없음 */}
+        {bossReady && !boss && battlePhase === "combat" && bossFailStreakRef.current > 0 && bossRetryBonusRef.current === 0 && rewardedAvailability(character, "bossRetry", new Date().toLocaleDateString("sv-SE")) !== "none" && (
+          <button type="button" className="ad-boss-retry" disabled={adBusy} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); void retryBossWithAd(); }}>
+            {character.adFree ? "광고 제거 · " : "광고 보고 "}다음 도전 +{BOSS_RETRY_BONUS_SEC}초
           </button>
         )}
 
@@ -2748,6 +2782,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 </article>
               );
             })}
+            {/* L 보상형 광고: 방치 가속 4h (1일 1회) — 미연동이면 카드 자체가 없다 */}
+            {premiumCategory === "currency" && rewardedAvailability(character, "booster4h", new Date().toLocaleDateString("sv-SE")) !== "none" && (
+              <article className="titans-card premium-product-card gem-product ad-product">
+                <CurrencyIcon kind="gem" />
+                <div>
+                  <strong>방치 가속 {BOOSTER_AD_HOURS}h {character.adFree ? <em>광고 제거</em> : <em>광고</em>}</strong>
+                  <p>{character.adFree ? "광고 없이 오늘 1회 자동 적용" : "30초 광고 시청 · 오늘 1회"}</p>
+                </div>
+                <button type="button" disabled={adBusy} onClick={() => void buyAdBooster()}>{adBusy ? "재생 중…" : character.adFree ? "받기" : "▶ 광고"}</button>
+              </article>
+            )}
             {premiumCategory === "currency" && <article className="titans-card premium-product-card gem-product">
               <CurrencyIcon kind="gem" />
               <div>
@@ -2772,7 +2817,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
           const doubleReady = firstDoubleAvailable(character, product.id);
           // 실결제 전용 상품(캐릭터·월정액)은 무료 체험 지급 대상이 아니다 — Play Billing 연동 후 판매
-          const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d";
+          const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d" || product.id === "remove-ads";
           return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
@@ -2942,6 +2987,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           bottleneck={idleReport.bottleneck}
           onClaim={() => claimIdle()}
           onGoContent={(content) => claimIdle(() => onOpenContent(content))}
+          adOption={(() => { const a = rewardedAvailability(character, "idleDouble", new Date().toLocaleDateString("sv-SE")); return a === "none" ? null : a; })()}
+          adBusy={adBusy}
+          onClaimDouble={() => void watchAd("idleDouble", () => claimIdle(undefined, 2))}
         />
       )}
 

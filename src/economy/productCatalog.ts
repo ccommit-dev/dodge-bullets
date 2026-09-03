@@ -33,7 +33,8 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "adventurer-starter", kind: "bundle", name: "초급 모험가 세트", description: "초반 성장 시간을 줄이는 입문 패키지", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×80", "강화석 ×10", "정찰 견갑", "골드 ×5,000"], visible: true },
   { id: "adventurer-mid", kind: "bundle", name: "중급 모험가 세트", description: "스킬과 견갑 성장을 위한 패키지", displayPrice: "₩12,000", contents: ["보석 ×250", "스킬 코어 ×5", "그림자 견갑 선택권", "골드 ×50,000"], visible: true },
   { id: "adventurer-advanced", kind: "bundle", name: "고급 모험가 세트", description: "후반 장비와 스킬 성장을 위한 체험 패키지", displayPrice: "₩29,000", contents: ["보석 ×700", "스킬 코어 ×15", "용린 견갑", "강화석 ×30"], visible: true },
-  { id: "remove-ads", kind: "entitlement", name: "광고 제거", description: "광고 기능 도입 이후에만 판매", displayPrice: "준비 중", contents: ["보상형 광고 제외 일반 광고 제거"], visible: false },
+  // L 광고 제거 — 보상형 자리 3곳(정산 2배·가속 4h·보스 +10초)을 광고 없이 자동 적용하는 상품
+  { id: "remove-ads", kind: "entitlement", name: "광고 제거", description: "보상형 광고 3곳을 광고 없이 자동 적용 (정산 2배 · 가속 4h · 보스 +10초)", displayPrice: "₩3,900", badge: "영구", contents: ["방치 정산 2배 1일 3회", "방치 가속 4h 1일 1회", "보스 실패 후 +10초 1회"], visible: true },
   // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──
   { id: "char-obsidian", kind: "entitlement", name: "캐릭터: 흑요석 검사", description: "전용 외형 + 방치 효율 +1%p", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 효율 +1%p"], visible: true },
   { id: "char-dawn", kind: "entitlement", name: "캐릭터: 새벽의 무희", description: "전용 외형 + 방치 시간 +30분", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 캡 +30분"], visible: true },

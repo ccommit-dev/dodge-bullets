@@ -147,6 +147,43 @@ await sleep(1200);
 gp = await prog();
 ok("G 모두 받기 → 남은 수령 가능 0", gp.seasonPass.claimedFree.length === 3 && gp.seasonPass.claimedPaid.length === 5, `free=${gp.seasonPass.claimedFree.join()} paid=${gp.seasonPass.claimedPaid.join()}`);
 
+// ── L. 보상형 광고 자리(QA 스텁): 정산 2배 · 가속 4h · 미연동 시 숨김 ──
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await page.evaluate((h) => { localStorage.setItem("dodgebullets:qa-ads", "1"); const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.idleClaimedAt = Date.now() - 3 * 3600000; q.adRewards = { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 }; localStorage.setItem(k, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.lastActiveAt = Date.now() - 3 * 3600000; localStorage.setItem(tk, JSON.stringify(t)); }, H);
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2400);
+r = await page.evaluate(() => ({ modal: !!document.querySelector(".idle-modal"), adBtn: document.querySelector(".idle-claim-ad")?.textContent ?? "" }));
+ok("L 정산 모달에 '광고 보고 2배' 버튼 (QA 스텁 연동)", r.modal && /광고 보고 2배/.test(r.adBtn), r.adBtn);
+const lBefore = await prog();
+const reportGold = await page.evaluate(() => { const b = document.querySelector(".idle-loot article b"); return b ? b.textContent : ""; });
+await page.evaluate(() => document.querySelector(".idle-claim-ad")?.click());
+await sleep(1500);
+let lp = await prog();
+ok("L 광고 2배 수령 → 카운터 1 · 골드 증가", lp.adRewards.idleDouble === 1 && lp.sharedCoins > lBefore.sharedCoins, `idleDouble=${lp.adRewards.idleDouble} coins ${lBefore.sharedCoins}→${lp.sharedCoins} (report ${reportGold})`);
+await closeModal();
+await clickText(".titans-bottom-nav button", "상점");
+await sleep(600);
+await clickText(".premium-category-tabs button", "재화");
+await sleep(400);
+r = await page.evaluate(() => ({ card: !!document.querySelector(".ad-product"), btn: document.querySelector(".ad-product button")?.textContent }));
+ok("L 재화 탭에 광고 가속 4h 카드", r.card && /광고/.test(r.btn ?? ""), JSON.stringify(r));
+const boostBefore = lp.idleBoostUntil;
+await page.evaluate(() => document.querySelector(".ad-product button")?.click());
+await sleep(1200);
+lp = await prog();
+r = await page.evaluate(() => !!document.querySelector(".ad-product"));
+ok("L 가속 시청 → +4h · 오늘 한도 소진으로 카드 사라짐", lp.idleBoostUntil >= Math.max(boostBefore, Date.now() - 2000) + 4 * 3600000 - 5000 && lp.adRewards.booster4h === 1 && !r, `boost=${lp.idleBoostUntil - Date.now()}ms`);
+// 미연동(스텁 off) → 자리 숨김
+await page.evaluate(() => localStorage.removeItem("dodgebullets:qa-ads"));
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2200);
+await closeModal();
+await clickText(".titans-bottom-nav button", "상점");
+await sleep(600);
+await clickText(".premium-category-tabs button", "재화");
+await sleep(400);
+ok("L 미연동이면 광고 카드 자체가 없다", await page.evaluate(() => !document.querySelector(".ad-product")));
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
