@@ -29,8 +29,10 @@ async function seed(progress, titans, extra = {}) {
   await sleep(2400);
 }
 // 정산 모달의 '보상 수령'(.idle-claim)을 우선 — 루틴 보드의 비활성 '💎' 버튼 등 다른 버튼을 잡지 않도록
-const closeModal = async () => { await page.evaluate(() => { const claim = document.querySelector(".idle-claim"); if (claim) { claim.click(); return; } [...document.querySelectorAll("button")].find((b) => /수령|받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
+const closeModal = async () => { await page.evaluate(() => { const claim = document.querySelector(".idle-claim"); if (claim) { claim.click(); return; } [...document.querySelectorAll("button")].filter((b) => !b.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((b) => /수령|받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
+/** 콘텐츠(화살 원정·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
+const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 
 const baseProgress = { version: 5, onboardingStep: 4, level: 8, exp: 3000, attendanceStreak: 1, redGems: 100, sharedCoins: 50000, enhancementMaterials: 20,
@@ -48,18 +50,26 @@ ok("C 워밍업 칩 표시", /워밍업 ×2/.test(r.chip ?? ""), r.chip ?? `stag
 ok("E 종료 예고 칩(첫 3세션)", /8시간 후 \+/.test(r.preview ?? ""), r.preview ?? `stagebar=${r.bar}`);
 ok("E 세션 카운트 증가", p.sessionCount === 1, String(p.sessionCount));
 
-// ── A 루틴 보드 · B 추천 배너 ──
+// ── A 루틴(하단 바 '모험' 팝업) · B 추천(전장 알림 핀) ──
+// 루틴은 사용자 개편(하단 바) 이후 '모험' 팝업에 4칸(균열·토벌·강화·파견), 정산은 전장 알림 핀으로 표시된다
+const routineChips = async () => {
+  await clickText(".titans-bottom-nav button", "모험");
+  await sleep(400);
+  const chips = await page.evaluate(() => [...document.querySelectorAll(".nav-popup-grid.adventure-grid > button")].slice(0, 4).map((c) => c.querySelector("b")?.textContent + (c.classList.contains("done") ? "✓" : "")));
+  await clickText(".titans-bottom-nav button", "모험");
+  await sleep(300);
+  return chips;
+};
 r = await page.evaluate(() => ({
-  chips: [...document.querySelectorAll(".routine-chip")].map((c) => c.querySelector("b")?.textContent + (c.classList.contains("done") ? "✓" : "")),
-  reward: document.querySelector(".routine-reward")?.textContent,
-  banner: document.querySelector(".recommend-banner")?.className,
-  title: document.querySelector(".recommend-banner b")?.textContent,
-  goalsHidden: getComputedStyle(document.querySelector(".titans-goals")).display,
+  claimPin: !!document.querySelector(".battle-alert.claim"),
+  banner: document.querySelector(".battle-alert[class*='tone-']")?.className,
+  title: document.querySelector(".battle-alert[class*='tone-'] b")?.textContent,
 }));
-ok("A 루틴 5칸(정산 완료 표시)", r.chips.length === 5 && r.chips[0] === "정산✓", r.chips.join(","));
-ok("B 추천 배너 1개(균열 남음 → 오늘 무료)", /tone-free/.test(r.banner ?? "") && /균열/.test(r.title ?? ""), r.title);
-// 추천 배너 클릭 → 이벤트 센터 균열 탭
-await page.evaluate(() => document.querySelector(".recommend-banner")?.click());
+r.chips = await routineChips();
+ok("A 루틴 4칸(모험 팝업) + 정산 완료라 정산 핀 없음", r.chips.length === 4 && !r.claimPin, r.chips.join(",") + ` claimPin=${r.claimPin}`);
+ok("B 추천 핀 1개(균열 남음 → 오늘 무료)", /tone-free/.test(r.banner ?? "") && /균열/.test(r.title ?? ""), r.title);
+// 추천 핀 클릭 → 이벤트 센터 균열 탭
+await page.evaluate(() => document.querySelector(".battle-alert[class*='tone-']")?.click());
 await sleep(700);
 r = await page.evaluate(() => ({ modal: !!document.querySelector(".event-modal"), riftTab: !!document.querySelector(".rift-event") }));
 ok("B 추천 클릭 → 이벤트 센터 균열 탭으로", r.modal && r.riftTab, JSON.stringify(r));
@@ -71,7 +81,8 @@ r = await page.evaluate(() => ({ items: [...document.querySelectorAll(".weekly-c
 ok("F 주간 도전 3종 + 균열 카운트 반영", r.items.length === 3 && r.items.some((t) => /균열/.test(t) && /3 \//.test(t)), r.items.join(" | "));
 await clickText("button", "닫기");
 await sleep(700);
-r = await page.evaluate(() => ({ chips: [...document.querySelectorAll(".routine-chip")].map((c) => c.querySelector("b")?.textContent + (c.classList.contains("done") ? "✓" : "")), title: document.querySelector(".recommend-banner b")?.textContent }));
+r = await page.evaluate(() => ({ title: document.querySelector(".battle-alert[class*='tone-'] b")?.textContent }));
+r.chips = await routineChips();
 ok("A 루틴 균열 칸 완료 반영(이벤트 변경 즉시 동기화)", r.chips.includes("균열✓"), r.chips.join(","));
 ok("B 추천이 다음 항목(토벌령)으로 넘어감", /토벌령/.test(r.title ?? ""), r.title);
 
@@ -82,9 +93,10 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();
 const gemsBefore = (await prog()).redGems;
-r = await page.evaluate(() => ({ ready: document.querySelector(".routine-reward")?.classList.contains("ready"), chips: [...document.querySelectorAll(".routine-chip.done")].length }));
-ok("A 5칸 완료 → 보상 버튼 활성", r.ready === true && r.chips === 5, JSON.stringify(r));
-await page.evaluate(() => document.querySelector(".routine-reward")?.click());
+r = await page.evaluate(() => ({ ready: !!document.querySelector(".battle-alert.reward"), text: document.querySelector(".battle-alert.reward b")?.textContent }));
+r.chips = (await routineChips()).filter((c) => c.endsWith("✓")).length;
+ok("A 5칸 완료 → 루틴 보상 핀 표시", r.ready === true && r.chips === 4, JSON.stringify(r));
+await page.evaluate(() => document.querySelector(".battle-alert.reward")?.click());
 await sleep(600);
 p = await prog();
 ok("A 루틴 보상 보석 +10 · 날짜 기록", p.redGems === gemsBefore + 10 && p.routineClaimedDate === today, `${gemsBefore}→${p.redGems}`);
@@ -104,14 +116,14 @@ ok("D 일반 10마리 처치 → 보스 도전 버튼", bossBtn);
 let wallSeen = null;
 for (let i = 0; i < 60 && !wallSeen; i += 1) {
   await sleep(1000);
-  wallSeen = await page.evaluate(() => { const b = document.querySelector(".recommend-banner.tone-wall"); return b ? { title: b.querySelector("b")?.textContent, desc: b.querySelector("em")?.textContent, meter: !!b.querySelector(".wall-meter") } : null; });
+  wallSeen = await page.evaluate(() => { const b = document.querySelector(".battle-alert.tone-wall"); return b ? { title: b.querySelector("b")?.textContent, meter: true } : null; });
 }
 ok("D 보스 실패 → 벽 미터 배너(비율 + 해법 1개)", !!wallSeen && wallSeen.meter && /\d+%/.test(wallSeen.title ?? ""), JSON.stringify(wallSeen));
 
 // ── G 비트 무료 재도전 라벨 · H 공유 버튼 · G 사망 팁 ──
 await seed({ ...baseProgress, idleClaimedAt: now, sessionCount: 5 }, baseTitans, { "dodgebullets:beat:calibrationMs": "0" });
 await closeModal();
-await clickText(".titans-content-tabs button", "비트");
+await openContent("비트 수련");
 await sleep(1200);
 ok("G 비트 메뉴 진입", await page.evaluate(() => !!document.querySelector(".schedule-card")));
 await page.evaluate(() => document.querySelector(".schedule-card")?.click());

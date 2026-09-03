@@ -131,6 +131,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const armorMaterialNeed = save.armorLevel < 5 ? 1 : 2 + Math.floor((save.armorLevel - 5) / 4);
   const armorBeatNeed = save.armorLevel < 5 ? 0 : 1 + Math.floor((save.armorLevel - 5) / 5);
   const armorChance = Math.max(.38, .94 - save.armorLevel * .045);
+  const armorSell = save.armorLevel <= 0 ? 0 : Math.floor(armorCost * (save.mode === "rush" ? 1.2 : .72));
   const swordStyle = useMemo(
     () =>
       ({
@@ -412,6 +413,15 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     }, FORGE_MS);
   };
 
+  const sellArmor = () => {
+    if (save.armorLevel <= 0 || phase !== "idle") return;
+    changeCoins(armorSell);
+    setSave((current) => ({ ...current, armorLevel: 0 }));
+    setPhase("sold");
+    flashToast(`보호구 판매 완료 +${formatGold(armorSell)}G`);
+    timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
+  };
+
   if (!ready) {
     return (
       <div className="forge-layer forge-loading">
@@ -464,7 +474,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <p className="forge-kicker">
                 {save.mode === "rush" ? "HARD MODE" : "EASY MODE"}
               </p>
-              <h1>{view === "armor" ? "견갑 강화하기" : "검 강화하기"}</h1>
+              <h1>{view === "armor" ? "보호구 강화하기" : "검 강화하기"}</h1>
             </div>
             <div className="forge-best">
               최고 기록
@@ -695,14 +705,14 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               </p>
             </section>
           ) : (
-            /* 견갑 강화 — 검 강화와 같은 골격(무대 → 패널 → 4스탯 → 안내 → 강화 버튼)으로 통일 (사용자 지시) */
+            /* 견갑 강화 — 검 강화와 같은 골격(무대 → 패널 → 4스탯 → 안내 → 강화 → 판매)으로 통일 (사용자 지시) */
             <>
               <section className={`forge-stage armor-forge-stage forge-phase-${phase}`}>
                 <div className="forge-embers" aria-hidden="true">{Array.from({length:12},(_,i)=><i key={i} style={{"--ember-i":i,left:`${(i*37)%100}%`} as CSSProperties}/>)}</div>
                 <div className="sword-aura" />
                 <ShoulderIcon id={equippedShoulder} />
                 <div className="forge-sword-name"><span>+{save.armorLevel}</span><strong>{equippedShoulder ? shoulderMeta.find((item)=>item.id===equippedShoulder)?.name : "견갑 미장착"}</strong></div>
-                {phase === "forging" && <div className="forge-impact">강화 중…</div>}{phase === "success" && <div className="forge-impact success">SUCCESS!</div>}
+                {phase === "forging" && <div className="forge-impact">강화 중…</div>}{phase === "success" && <div className="forge-impact success">SUCCESS!</div>}{phase === "sold" && <div className="forge-impact sold">SOLD</div>}
               </section>
 
               <section className="forge-panel armor-panel">
@@ -713,15 +723,15 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                     <strong>{save.armorLevel >= 15 ? "—" : `${Math.round(armorChance * 100)}%`}</strong>
                     {save.armorLevel < 15 && <small>강화석 {armorMaterialNeed}개{armorBeatNeed > 0 ? ` · 견갑 조각 ${armorBeatNeed}개` : ""} 사용</small>}
                   </div>
-                  <div><span>견갑 단계</span><strong>+{save.armorLevel}</strong></div>
+                  <div><span>판매 가격</span><strong>{formatGold(armorSell)}G</strong></div>
                   <div><span>방지권</span><strong>{save.tickets}장</strong></div>
                 </div>
-                <p className="forge-note">
-                  보유 강화석 {materials}개 · 견갑 조각 {shoulderShards}개 · 실패 시 방지권 1장 자동 사용, 없으면 1단계 하락
-                </p>
+                <p className="forge-note">보유 강화석 {materials}개 · 견갑 조각 {shoulderShards}개 · 실패 시 방지권 1장 자동 사용, 없으면 1단계 하락</p>
+                <p className="forge-note forge-refine-note">비트 수련에서 견갑 조각을, 화살 원정에서 강화석을 획득합니다.</p>
                 <button type="button" className="forge-button" disabled={!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle"} onClick={() => void enhanceArmor()}>
                   {save.armorLevel >= 15 ? "최고 단계 달성" : phase === "forging" ? "두드리는 중…" : !equippedShoulder ? "견갑을 먼저 장착하세요" : "강화하기"}
                 </button>
+                <button type="button" className="forge-sell" disabled={save.armorLevel === 0 || phase !== "idle"} onClick={sellArmor}>현재 견갑 판매 · {formatGold(armorSell)}G</button>
                 <div className="armor-list">
                   {shoulderMeta.map((item) => {
                     const owned = ownedShoulders.includes(item.id);
@@ -733,9 +743,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                     </article>;
                   })}
                 </div>
-                <button type="button" className="forge-sell" onClick={() => setView("title")}>
-                  대장간 입구로
-                </button>
+                <button type="button" className="forge-sell" onClick={() => setView("title")}>모드 선택으로</button>
               </section>
             </>
           )}

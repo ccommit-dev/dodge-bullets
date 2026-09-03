@@ -29,6 +29,8 @@ async function seed(progress, titans, extra = {}) {
 }
 const closeModal = async () => { await page.evaluate(() => { for (let k = 0; k < 3; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".recommend-banner, .routine-board, .titans-tabs, .titans-content-tabs, .gacha-panel")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
+/** 콘텐츠(화살 원정·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
+const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 const titans = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)), H);
 
@@ -43,24 +45,25 @@ await closeModal();
 let r = await page.evaluate(() => ({ nameplate: document.querySelector(".hero-title-plate")?.textContent, tabs: [...document.querySelectorAll(".titans-tabs button")].map((b) => b.textContent.trim()) }));
 ok("칭호 이름표가 전투 화면 영웅 위에 표시", /타이탄 슬레이어/.test(r.nameplate ?? ""), r.nameplate);
 // 하단 바: 동료 탭(편성·역할 칩) → 소환 탭(뽑기 패널)
-await clickText(".titans-tabs button", "동료");
+await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 const roleChips = await page.evaluate(() => [...document.querySelectorAll(".role-chip")].map((c) => c.textContent));
-await clickText(".titans-tabs button", "소환");
+await clickText(".hub-sheet-switch button", "동료 뽑기");
 await sleep(600);
 r = await page.evaluate(() => ({
-  panel: !!document.querySelector(".hub-sheet .gacha-panel"),
-  pickups: [...document.querySelectorAll(".gacha-pickup small")].map((s) => s.textContent),
-  ten: document.querySelector(".gacha-ten")?.textContent,
-  pity: document.querySelector(".gacha-pity")?.textContent,
+  panel: !!document.querySelector(".hub-sheet .gacha-stage-page"),
+  pickups: [...document.querySelectorAll(".gacha-pickup-showcase .titan-ally-art")].map((el) => [...el.classList].find((c) => c.startsWith("ally-"))),
+  ten: document.querySelector(".gacha-page-actions button:nth-child(2)")?.textContent,
+  guarantee: document.querySelector(".gacha-stage-hero p")?.textContent,
+  pity: document.querySelector(".gacha-level span")?.textContent,
 }));
 r.roleChips = roleChips;
-ok("소환 패널 · 픽업 = 다음 동료(테라 STAGE 14, 지역3 상한 15)", r.panel && r.pickups.some((t) => /테라|STAGE 14/.test(t)), r.pickups.join("|"));
-ok("10연 버튼 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.ten ?? ""), r.ten);
+ok("뽑기 시트 · 픽업 = 다음 동료(테라, 지역3 상한 15)", r.panel && r.pickups.includes("ally-terra"), r.pickups.join("|"));
+ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
 // 확률 공시
-await page.evaluate(() => document.querySelector(".gacha-rates-link")?.click());
+await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(3)")?.click());
 await sleep(400);
 r = await page.evaluate(() => ({ sheet: !!document.querySelector(".gacha-rates-sheet"), rows: [...document.querySelectorAll(".gacha-rates-sheet tbody tr")].map((tr) => tr.textContent), text: document.querySelector(".gacha-rates-sheet p")?.textContent }));
 const pctSum = r.rows.reduce((s, t) => s + parseFloat((t.match(/(\d+\.\d+)%/) ?? [0, 0])[1]), 0);
@@ -69,7 +72,7 @@ ok("공시: 상점 전용 동료(루나·볼트) 제외", !r.rows.some((t) => /�
 await clickText(".gacha-rates-sheet button", "닫기");
 await sleep(300);
 const gemsBefore = (await prog()).redGems;
-await page.evaluate(() => document.querySelector(".gacha-ten")?.click());
+await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(1200);
 r = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, fronts: [...document.querySelectorAll(".gacha-card-front b")].map((b) => b.textContent), labels: [...document.querySelectorAll(".gacha-card-front small")].map((s) => s.textContent) }));
 let p = await prog();
@@ -91,7 +94,7 @@ await page.evaluate((h) => { const k = `dodgebullets:titans:${h}`; const s = JSO
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();
-await clickText(".titans-tabs button", "동료");
+await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 const gateClicked = await page.evaluate(() => { const card = [...document.querySelectorAll(".ally-card")].find((c) => /엠버/.test(c.textContent)); const btn = card?.querySelector(".ally-party-toggle"); btn?.click(); return !!btn; });
 await sleep(500);
@@ -138,7 +141,7 @@ await sleep(2200);
 p = await prog();
 ok("같은 날 재부팅 → 중복 지급 없음", p.redGems === 2015, String(p.redGems));
 await closeModal();
-await clickText(".titans-tabs button", "상점");
+await clickText(".titans-bottom-nav button", "상점");
 await sleep(500);
 await clickText(".premium-category-tabs button", "패키지");
 await sleep(400);

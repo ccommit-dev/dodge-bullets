@@ -422,7 +422,9 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
   }
 
   const energy = registerSlash(world, arrow);
-  if (arrow.splitLevel >= 3) {
+  // 일반 화살은 한 번만 두 갈래로 쳐낸다. 두 번째 검격은 파편을 소멸시켜
+  // 화면이 기하급수적으로 난잡해지지 않고 "반격→마무리" 목적이 선명해진다.
+  if (arrow.splitLevel >= 1) {
     arrow.active = false;
     world.countered += 1;
     world.supplies += 1;
@@ -431,7 +433,7 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
   }
 
   const source = { ...arrow };
-  const nextLevel = (arrow.splitLevel + 1) as 1 | 2 | 3;
+  const nextLevel = 1 as const;
   const sibling = acquire(world);
   configureSplitFragment(world, arrow, source, nextLevel, -1, world.stats.slashLevel);
   if (sibling) configureSplitFragment(world, sibling, source, nextLevel, 1, world.stats.slashLevel);
