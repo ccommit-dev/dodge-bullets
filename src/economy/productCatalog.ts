@@ -38,6 +38,9 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──
   { id: "char-obsidian", kind: "entitlement", name: "캐릭터: 흑요석 검사", description: "전용 외형 + 방치 효율 +1%p", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 효율 +1%p"], visible: true },
   { id: "char-dawn", kind: "entitlement", name: "캐릭터: 새벽의 무희", description: "전용 외형 + 방치 시간 +30분", displayPrice: "₩5,900", contents: ["플레이어블 캐릭터", "패시브: 방치 캡 +30분"], visible: true },
+  // I 코스튬 2종 — 외형 전용 (패시브 없음)
+  { id: "char-ember", kind: "entitlement", name: "코스튬: 붉은 잔영", description: "잔불빛으로 물든 모험가 — 외형 전용", displayPrice: "₩5,900", contents: ["코스튬"], visible: true },
+  { id: "char-frost", kind: "entitlement", name: "코스튬: 서리 무희", description: "서릿발이 서린 푸른 모험가 — 외형 전용", displayPrice: "₩5,900", contents: ["코스튬"], visible: true },
   // 과금 점검: 20/일(600)은 ₩9.17/보석으로 1,200팩(₩12.50)을 무의미하게 만들었다 → 15/일(450, ₩12.2/보석) + 편의 효과
   { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 15 · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 15", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
   // ── H 진행도 트리거 패키지 — 감정 고점(개척·벽·환생)에서 1회 ──

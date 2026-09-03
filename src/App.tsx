@@ -170,6 +170,14 @@ function App() {
   const [allClear, setAllClear] = useState(false);
   const [extracted, setExtracted] = useState(false);
   const [appMode, setAppMode] = useState<AppMode>("titans");
+  // 마이페이지 진입 시 저장소에서 진행도를 다시 읽는다 — 사냥터 상점에서 산 외형(이펙트·테마)·보석이
+  // App의 progress 상태에 반영되지 않은 채 프로필이 열리는 문제(계획안 I) 방지
+  useEffect(() => {
+    if (appMode !== "profile" || !userHashRef.current) return;
+    let cancelled = false;
+    void loadCharacterProgress(userHashRef.current).then((next) => { if (!cancelled) setProgress(next); });
+    return () => { cancelled = true; };
+  }, [appMode]);
   const [profileRefresh, setProfileRefresh] = useState(0);
   const [progress, setProgress] = useState<CharacterProgress>(() => emptyCharacterProgress());
   const [shoulderDrop, setShoulderDrop] = useState("");

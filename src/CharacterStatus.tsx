@@ -39,6 +39,7 @@ import { renderShareCard, shareCard } from "./ui/shareCard";
 import { sheetFor } from "./titans/anim";
 import { MonsterArt } from "./titans/SpriteArt";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
+import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 
@@ -70,6 +71,11 @@ export function CharacterStatus({
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
   const [growthMessage, setGrowthMessage] = useState("");
+  /** I 외형: 장착 중인 무기 이펙트·전장 테마 이름 — 마이페이지 칩 + 공유 카드 서브라인 */
+  const cosmeticLabels = [
+    progress.equippedWeaponFx && WEAPON_FX[progress.equippedWeaponFx] ? `⚔ ${WEAPON_FX[progress.equippedWeaponFx].name}` : "",
+    progress.equippedTheme && THEMES[progress.equippedTheme] ? `🌌 ${THEMES[progress.equippedTheme].name}` : "",
+  ].filter(Boolean);
   const [rebirthConfirm, setRebirthConfirm] = useState(false);
 
   useEffect(() => {
@@ -224,7 +230,7 @@ export function CharacterStatus({
             onClick={() => {
               void renderShareCard({
                 headline: "모험가 기록",
-                subline: `Lv.${progress.level} · 사냥터 Stage ${progress.titanBestStage} · 원정 별 ${Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0)}/12`,
+                subline: `Lv.${progress.level} · 사냥터 Stage ${progress.titanBestStage} · 원정 별 ${Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0)}/12${cosmeticLabels.length ? ` · ${cosmeticLabels.join(" · ")}` : ""}`,
                 power: summary.combatPower,
                 titleName: progress.activeTitle ? TITLES[progress.activeTitle]?.name : undefined,
                 titleColor: progress.activeTitle ? TITLES[progress.activeTitle]?.color : undefined,
@@ -251,6 +257,9 @@ export function CharacterStatus({
           </div>
         </div>
         <div className="character-identity">
+          {cosmeticLabels.length > 0 && (
+            <div className="cosmetic-chips">{cosmeticLabels.map((label) => <span key={label}>{label}</span>)}</div>
+          )}
           {progress.activeTitle && TITLES[progress.activeTitle] && (
             <em className="character-title" style={{ color: TITLES[progress.activeTitle].color }}>
               ✦ {TITLES[progress.activeTitle].name}

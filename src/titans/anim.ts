@@ -4,13 +4,16 @@ export const IDLE_SHEET = assetUrl("titans/character/base/hero-idle.png");
 export const ATTACK_SHEET = assetUrl("titans/character/base/hero-attack.png");
 
 /** 구매 캐릭터 스킨 — 기본 시트의 팔레트 파생 (scripts/make-character-skins.mjs) */
-export const CHARACTER_SKINS = ["default", "obsidian", "dawn"] as const;
+export const CHARACTER_SKINS = ["default", "obsidian", "dawn", "ember", "frost"] as const;
 export type CharacterSkinId = (typeof CHARACTER_SKINS)[number];
 
 export const CHARACTER_LABEL: Record<CharacterSkinId, string> = {
   default: "기본 모험가",
   obsidian: "흑요석 검사",
   dawn: "새벽의 무희",
+  // I 코스튬 — 기본 시트의 CSS 팔레트 파생 (EquippedCharacter costume-<id>)
+  ember: "붉은 잔영",
+  frost: "서리 무희",
 };
 
 export function sheetFor(character: string, mode: "idle" | "attack"): string {

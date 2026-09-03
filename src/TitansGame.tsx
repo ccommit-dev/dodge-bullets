@@ -102,6 +102,7 @@ import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, pac
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
 import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
+import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -1811,6 +1812,31 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const synergy = useMemo(() => partySynergies(character.partyIds), [character.partyIds]);
   const now = performance.now();
   const fieldCeiling = stageCeilingFor(character.pioneeredArea);
+  /** I 외형: 장착한 무기 이펙트·전장 테마 정의 (없으면 undefined) */
+  const equippedFxDef = character.equippedWeaponFx ? WEAPON_FX[character.equippedWeaponFx] : undefined;
+  const equippedThemeDef = character.equippedTheme ? THEMES[character.equippedTheme] : undefined;
+  const buyCosmetic = async (kind: "fx" | "theme", id: string) => {
+    const cost = kind === "fx" ? WEAPON_FX[id]?.gemCost : THEMES[id]?.gemCost;
+    if (cost == null || redGems < cost) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const owned = kind === "fx" ? current.ownedWeaponFx : current.ownedThemes;
+      if (owned.includes(id) || current.redGems < cost) return current;
+      return kind === "fx"
+        ? { ...current, redGems: current.redGems - cost, ownedWeaponFx: [...current.ownedWeaponFx, id], equippedWeaponFx: id }
+        : { ...current, redGems: current.redGems - cost, ownedThemes: [...current.ownedThemes, id], equippedTheme: id };
+    });
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`${kind === "fx" ? WEAPON_FX[id].name : THEMES[id].name} 구매 · 장착`);
+  };
+  const toggleCosmetic = async (kind: "fx" | "theme", id: string) => {
+    const next = await updateCharacterProgress(userHash, (current) =>
+      kind === "fx"
+        ? { ...current, equippedWeaponFx: current.equippedWeaponFx === id ? "" : (current.ownedWeaponFx.includes(id) ? id : current.equippedWeaponFx) }
+        : { ...current, equippedTheme: current.equippedTheme === id ? "" : (current.ownedThemes.includes(id) ? id : current.equippedTheme) },
+    );
+    setCharacter(next);
+  };
   const allies = useMemo(
     () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id) && canFieldAlly(h.id, h.unlockStage, fieldCeiling)),
     [save.heroes, character.partyIds, fieldCeiling],
@@ -2014,8 +2040,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       <section
         ref={fieldRef}
         className={`titans-field phase-${battlePhase} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
+        data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         style={{
-          "--area-sky": area.sky,
+          ...(equippedThemeDef ? { "--fx-theme": "1" } : {}),
+          ...(equippedFxDef ? { "--fx-trail": equippedFxDef.trail, "--fx-rot": `${equippedFxDef.hue - 200}deg` } : {}),
+          "--area-sky": equippedThemeDef?.sky ?? area.sky,
           "--area-ground": area.ground,
           "--area-accent": area.accent,
           "--area-background": `url(${area.background})`,
@@ -2029,6 +2059,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         }}
       >
         <div className="titans-background" aria-hidden="true" />
+        {/* I 전장 테마 파티클 — 오로라 띠 · 꽃잎 · 공허 별 */}
+        {equippedThemeDef && (
+          <span className={`theme-particles theme-${equippedThemeDef.particles}`} aria-hidden="true">
+            {Array.from({ length: equippedThemeDef.particles === "aurora" ? 1 : 6 }, (_, i) => <i key={i} />)}
+          </span>
+        )}
         {/* 스킬 컷인 (계획안 C): 시동기 검 궤적 · 연계 마법진 · 마무리 플래시+줌 */}
         {skillVisual && (() => {
           const slot = SKILLS.find((s) => s.id === skillVisual)?.slot ?? "starter";
@@ -2643,7 +2679,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {tab === "premium" && (
           <>
             <nav className="premium-category-tabs" aria-label="상점 카테고리">
-              {([['currency','재화'],['package','패키지'],['ally','동료'],['title','칭호'],['weapon','무기']] as const).map(([id,label])=><button key={id} type="button" className={premiumCategory===id?'on':''} onClick={()=>setPremiumCategory(id)}>{label}</button>)}
+              {([['currency','재화'],['package','패키지'],['ally','동료'],['title','칭호'],['weapon','외형']] as const).map(([id,label])=><button key={id} type="button" className={premiumCategory===id?'on':''} onClick={()=>setPremiumCategory(id)}>{label}</button>)}
             </nav>
             {/* 보석 소비형 상품 (LIVEOPS §3.3) — 확정 구매, 확률 없음 */}
             {premiumCategory === "ally" && <article className="titans-card premium-product-card gem-product">
@@ -2690,6 +2726,33 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                     disabled={!owned && redGems < def.gemCost}
                     onClick={() => void (owned ? toggleWeaponSkin(skinId) : buyWeaponSkin(skinId))}
                   >
+                    {owned ? (equipped ? "해제" : "장착") : `💎 ${def.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
+            {/* I 무기 이펙트 · 전장 테마 — 외형 탭 */}
+            {premiumCategory === "weapon" && Object.entries(WEAPON_FX).filter(([, def]) => def.gemCost !== null || character.ownedWeaponFx.includes("fx-season")).map(([fxId, def]) => {
+              const owned = character.ownedWeaponFx.includes(fxId);
+              const equipped = character.equippedWeaponFx === fxId;
+              return (
+                <article key={fxId} className="titans-card premium-product-card gem-product fx-product">
+                  <span className="fx-thumb" style={{ "--fx-trail": def.trail } as CSSProperties} aria-hidden="true"><i /></span>
+                  <div><strong>{def.name} <em>무기 이펙트</em></strong><p>{def.desc}</p></div>
+                  <button type="button" disabled={!owned && (def.gemCost === null || redGems < def.gemCost)} onClick={() => void (owned ? toggleCosmetic("fx", fxId) : buyCosmetic("fx", fxId))}>
+                    {owned ? (equipped ? "해제" : "장착") : def.gemCost === null ? "시즌 한정" : `💎 ${def.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
+            {premiumCategory === "weapon" && Object.entries(THEMES).map(([themeId, def]) => {
+              const owned = character.ownedThemes.includes(themeId);
+              const equipped = character.equippedTheme === themeId;
+              return (
+                <article key={themeId} className="titans-card premium-product-card gem-product theme-product">
+                  <span className="theme-thumb" style={{ "--t-sky": def.sky, "--t-ground": def.ground, "--t-accent": def.accent } as CSSProperties} aria-hidden="true" />
+                  <div><strong>{def.name} <em>전장 테마</em></strong><p>{def.desc}</p></div>
+                  <button type="button" disabled={!owned && redGems < def.gemCost} onClick={() => void (owned ? toggleCosmetic("theme", themeId) : buyCosmetic("theme", themeId))}>
                     {owned ? (equipped ? "해제" : "장착") : `💎 ${def.gemCost}`}
                   </button>
                 </article>

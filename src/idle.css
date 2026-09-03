@@ -2218,3 +2218,26 @@
 .ad-boss-retry { position: absolute; left: 50%; top: 84px; z-index: 12; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(52, 211, 153, 0.7); background: rgba(6, 78, 59, 0.92); color: #d1fae5; font-size: 10px; font-weight: 900; white-space: nowrap; }
 .premium-product-card.ad-product { border-color: rgba(52, 211, 153, 0.45); }
 .premium-product-card.ad-product > button { color: #052e16; background: linear-gradient(180deg, #86efac, #22c55e); }
+
+/* ── hero cosmetics (plan I): weapon fx trail, battlefield themes, costumes ── */
+.titans-field[data-weapon-fx] .titans-fx-slash { filter: hue-rotate(var(--fx-rot, 0deg)) drop-shadow(0 0 10px var(--fx-trail, transparent)); }
+.titans-field[data-weapon-fx] .titans-hero.attack .titans-hero-facing::before { content: ""; position: absolute; inset: 0; background: inherit; opacity: .55; transform: translateX(-14px) skewX(-10deg); filter: drop-shadow(0 0 8px var(--fx-trail)) saturate(0); mix-blend-mode: screen; animation: fx-trail .42s ease-out both; pointer-events: none; }
+@keyframes fx-trail { from { opacity: .7; transform: translateX(-4px) skewX(-4deg); } to { opacity: 0; transform: translateX(-26px) skewX(-14deg); } }
+.titans-field[data-weapon-fx] .skill-cutin .cutin-arc { stroke: var(--fx-trail); }
+.theme-particles { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+.theme-particles i { position: absolute; display: block; }
+.theme-particles.theme-aurora i { left: 0; right: 0; top: 4%; height: 40%; background: linear-gradient(100deg, transparent 10%, rgba(94,234,212,.25) 30%, rgba(167,139,250,.28) 50%, rgba(94,234,212,.22) 70%, transparent 90%); filter: blur(14px); animation: theme-aurora 7s ease-in-out infinite alternate; }
+@keyframes theme-aurora { from { transform: translateX(-8%) skewX(-10deg); opacity: .6; } to { transform: translateX(8%) skewX(8deg); opacity: 1; } }
+.theme-particles.theme-petal i { width: 8px; height: 6px; border-radius: 60% 40% 60% 40%; background: #f9a8d4; opacity: .85; animation: theme-petal 6s linear infinite; }
+.theme-particles.theme-petal i:nth-child(1) { left: 10%; animation-delay: 0s; } .theme-particles.theme-petal i:nth-child(2) { left: 30%; animation-delay: 1.5s; } .theme-particles.theme-petal i:nth-child(3) { left: 55%; animation-delay: 3s; } .theme-particles.theme-petal i:nth-child(4) { left: 75%; animation-delay: 2.2s; } .theme-particles.theme-petal i:nth-child(5) { left: 90%; animation-delay: 4.4s; } .theme-particles.theme-petal i:nth-child(6) { left: 45%; animation-delay: 5.1s; }
+@keyframes theme-petal { 0% { transform: translate(0, -10%) rotate(0); } 100% { transform: translate(40px, 110%) rotate(540deg); opacity: .2; } }
+.theme-particles.theme-void i { width: 3px; height: 3px; border-radius: 50%; background: #c4b5fd; box-shadow: 0 0 6px #a78bfa; animation: theme-void 5s ease-in infinite; }
+.theme-particles.theme-void i:nth-child(1) { left: 15%; top: 20%; } .theme-particles.theme-void i:nth-child(2) { left: 40%; top: 10%; animation-delay: 1s; } .theme-particles.theme-void i:nth-child(3) { left: 65%; top: 25%; animation-delay: 2s; } .theme-particles.theme-void i:nth-child(4) { left: 85%; top: 12%; animation-delay: 3s; } .theme-particles.theme-void i:nth-child(5) { left: 28%; top: 40%; animation-delay: 4s; } .theme-particles.theme-void i:nth-child(6) { left: 75%; top: 45%; animation-delay: 2.5s; }
+@keyframes theme-void { 0% { opacity: 0; transform: scale(.3); } 30% { opacity: 1; transform: scale(1.4); } 100% { opacity: 0; transform: scale(.2) translateY(20px); } }
+.equipped-character.costume-ember .equipment-base { filter: sepia(.55) saturate(2.2) hue-rotate(-18deg) contrast(1.05); }
+.equipped-character.costume-frost .equipment-base { filter: saturate(.7) hue-rotate(165deg) brightness(1.08); }
+.fx-thumb { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: radial-gradient(circle, var(--fx-trail) 0%, transparent 70%); }
+.fx-thumb i { width: 26px; height: 4px; border-radius: 999px; background: var(--fx-trail); box-shadow: 0 0 10px var(--fx-trail); transform: rotate(-30deg); }
+.theme-thumb { width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: linear-gradient(180deg, var(--t-sky) 55%, var(--t-ground) 55%); box-shadow: inset 0 0 12px var(--t-accent); }
+.cosmetic-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.cosmetic-chips span { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; border: 1px solid rgba(148,163,184,.35); color: #e2e8f0; }
