@@ -28,6 +28,8 @@ export const dateKey = () => new Date().toLocaleDateString("sv-SE");
 /** 일일 던전 1회 = 방치 2시간 즉시 정산. */
 export const RIFT_SECONDS = 2 * 3600;
 export const RIFT_ATTEMPTS = 3;
+/** 토벌령 4종을 모두 받은 날의 보석 보너스 (K: 무과금 보석 경로) */
+export const MISSION_ALL_DONE_GEMS = 10;
 
 /** 하루 균열 횟수 — 원정 후원 계약(월정액) 중이면 +1 */
 export function riftAttemptsFor(patronUntil: number, now: number = Date.now()): number {

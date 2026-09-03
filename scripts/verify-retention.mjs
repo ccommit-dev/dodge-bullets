@@ -99,7 +99,7 @@ ok("A 5칸 완료 → 루틴 보상 핀 표시", r.ready === true && r.chips ===
 await page.evaluate(() => document.querySelector(".battle-alert.reward")?.click());
 await sleep(600);
 p = await prog();
-ok("A 루틴 보상 보석 +10 · 날짜 기록", p.redGems === gemsBefore + 10 && p.routineClaimedDate === today, `${gemsBefore}→${p.redGems}`);
+ok("A 루틴 보상 보석 +15 · 날짜 기록", p.redGems === gemsBefore + 15 && p.routineClaimedDate === today, `${gemsBefore}→${p.redGems}`);
 
 // ── D 벽 미터: 보스 실패 유도 (보스 HP 거대) ──
 // Stage 6 · 미아 20 (탭 없이 mob 3.9s, 보스 43s > 30s 제한) — 10마리 후 보스 도전 → 실패가 보장된다

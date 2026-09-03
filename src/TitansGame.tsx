@@ -2407,7 +2407,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 {gacha.pickups.slice(0, 2).map((id) => <AllyArt key={id} id={id} />)}
               </div>
               <div>
-                <small>{area.name.toUpperCase()} · PICK UP</small>
+                <small>{area.name.toUpperCase()} · PICK UP{gacha.rotationPool > 2 ? ` · 회전까지 ${gacha.rotationDaysLeft}일` : ""}</small>
                 <h2>{gacha.pickups.length ? gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") : "다음 지역 픽업 준비 중"}</h2>
                 <p>{gacha.pickups.length ? `픽업 확률 2배 · STAGE ${gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.unlockStage).join("·")} 동료를 먼저 만난다` : "화살 원정으로 다음 지역을 개척하면 픽업이 열립니다"} · 10회 소환 시 SR 이상 1명 보장</p>
               </div>

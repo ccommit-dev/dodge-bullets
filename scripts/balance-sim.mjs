@@ -74,7 +74,11 @@ const ASSUMPTIONS = {
   /** 차원 균열 1회당 조각 — 요일별 2·3·6 평균 (events/weekdayRift.ts) */
   riftShardsPerRun: 3.5,
   /** 주간 도전 조각 합 (events/weekly.ts: 10 + 12) */
-  weeklyShards: 22,
+  weeklyShards: 0, // K 이후 주간 도전은 전부 보석
+  dailyGemsRoutine: 15,
+  dailyGemsMissions: 10,
+  weeklyGemsChallenges: 120,
+  weeklyGemsAttendance: 130,
 };
 /** 조각이 편성 최강 동료에게 가는 비율 — --focus 0 (전부 무작위, 현행) ~ 1 (전부 집중) */
 const SHARD_FOCUS = Number(flag("focus", 0.7)); // allies.ts SHARD_PARTY_FOCUS와 같은 값
@@ -203,6 +207,8 @@ function simulate(kind) {
     cumulativeGold += dayGold;
     // 출석은 매일 한다고 본다 — T 보너스(최대 +2h)에 반영된다.
     p.attendanceStreak = day;
+    // K: 무과금 보석 수입 — 루틴 15 + 토벌 완주 10 + 주간 도전 120/7 + 출석 130/7 (균형형만 전부 수행)
+    if (active) p.redGems += ASSUMPTIONS.dailyGemsRoutine + ASSUMPTIONS.dailyGemsMissions + (day % 7 === 0 ? ASSUMPTIONS.weeklyGemsChallenges + ASSUMPTIONS.weeklyGemsAttendance : 0);
     // P1 따라잡기 반영
     titansState.stage = Math.max(titansState.stage, lastEndStage);
     // 조각 수급: 방치 드랍 + 차원 균열 3회(요일 평균 ≈ 3.5/회, 균형형만) + 주간 도전(주 22, 균형형만)
@@ -357,6 +363,7 @@ for (const run of runs) {
   ].join(" · "));
   lines.push("");
   lines.push(`**${DAYS}일차** — Stage ${last.stage} · Lv ${last.level} · 누적 골드 ${fmt(run.cumulativeGold)} · DPS 벽 ${run.wallDays}일 · 개척 ${run.gateDays}회 · 환생 ${run.rebirths}회 · 성급 합 ${run.starsTotal} · 재련 ${run.final.reforgeRank}`);
+  lines.push(`**무과금 소환** — ${DAYS}일 누적 보석 ${run.final.redGems.toLocaleString()} → 10연 ${Math.floor(run.final.redGems / 900)}회 (단발 환산 ${Math.floor(run.final.redGems / 100)}회)`);
   lines.push("");
 }
 
