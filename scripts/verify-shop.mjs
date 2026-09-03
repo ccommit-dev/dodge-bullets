@@ -116,6 +116,37 @@ r = await page.evaluate(() => ({ names: [...document.querySelectorAll(".premium-
 ok("H 트리거 패키지(벽 돌파·환생) 노출 · 개척(지역3)도 노출", r.names.some((n) => /벽 돌파/.test(n)) && r.names.some((n) => /환생 세트/.test(n)) && r.names.some((n) => /개척 축하/.test(n)), r.names.filter((n) => /세트/.test(n)).join("|"));
 ok("H 보석팩 3종에 첫 구매 2배 배지", r.badges === 3, String(r.badges));
 
+// ── G. 시즌 패스: 모험 팝업 진입 · 수령 · 유료 트랙 구매(QA) ──
+await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.seasonPass = { season: 0, xp: 520, paid: false, claimedFree: [], claimedPaid: [] }; q.partyIds = ["mia", "leon"]; localStorage.setItem(k, JSON.stringify(q)); }, H);
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2200);
+await closeModal();
+await clickText(".titans-bottom-nav button", "모험");
+await sleep(400);
+await clickText(".nav-popup-grid button", "시즌 패스");
+await sleep(800);
+r = await page.evaluate(() => ({ head: document.querySelector(".season-head b")?.textContent, tiers: document.querySelectorAll(".season-tier").length, freeOpen: [...document.querySelectorAll(".season-cell.free:not(:disabled)")].length, buy: !!document.querySelector(".season-buy") }));
+ok("G 시즌 탭: 5/30단 · 30단 목록 · 무료 수령 3칸 · 유료 구매 버튼", /5\/30/.test(r.head ?? "") && r.tiers === 30 && r.freeOpen === 3 && r.buy, JSON.stringify(r));
+const gBefore = await prog();
+await page.evaluate(() => [...document.querySelectorAll(".season-tier")][4]?.querySelector(".season-cell.free")?.click());
+await sleep(600);
+let gp = await prog();
+ok("G 5단 무료 수령 → 보석 +25 · 수령 기록", gp.redGems - gBefore.redGems === 25 && gp.seasonPass.claimedFree.includes(5), `${gBefore.redGems}→${gp.redGems}`);
+const coresBefore = (await titans()).skillInventory.skillCores;
+await page.evaluate(() => document.querySelector(".season-buy")?.click());
+await sleep(800);
+gp = await prog();
+r = await page.evaluate(() => ({ badge: !!document.querySelector(".season-paid-badge"), paidOpen: [...document.querySelectorAll(".season-cell.paid:not(:disabled)")].length }));
+ok("G 유료 트랙 구매(QA 경로) → 활성 배지 · 유료 5칸 수령 가능", gp.seasonPass.paid && r.badge && r.paidOpen === 5, JSON.stringify(r));
+await page.evaluate(() => [...document.querySelectorAll(".season-tier")][2]?.querySelector(".season-cell.paid")?.click());
+await sleep(800);
+const coresAfter = (await titans()).skillInventory.skillCores;
+ok("G 유료 3단 수령 → 스킬 코어 +1 (사냥터 저장)", coresAfter - coresBefore === 1, `${coresBefore}→${coresAfter}`);
+await page.evaluate(() => document.querySelector(".season-claim-all")?.click());
+await sleep(1200);
+gp = await prog();
+ok("G 모두 받기 → 남은 수령 가능 0", gp.seasonPass.claimedFree.length === 3 && gp.seasonPass.claimedPaid.length === 5, `free=${gp.seasonPass.claimedFree.join()} paid=${gp.seasonPass.claimedPaid.join()}`);
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

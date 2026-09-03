@@ -100,6 +100,7 @@ import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
+import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -111,7 +112,7 @@ type TitansGameProps = {
   forgedWeaponLevel?: number;
   onOpenContent: (content: "dodge" | "beat" | "forge" | "profile") => void;
   /** 이벤트 센터를 특정 탭으로 연다 (추천 배너·루틴 보드) */
-  onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal") => void;
+  onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal" | "season") => void;
 };
 
 type ShopTab = "sword" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
@@ -1866,7 +1867,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     if (!routineReward) return;
     const today = new Date().toLocaleDateString("sv-SE");
     const next = await updateCharacterProgress(userHash, (current) =>
-      current.routineClaimedDate === today ? current : { ...current, routineClaimedDate: today, redGems: current.redGems + ROUTINE_REWARD_GEMS },
+      current.routineClaimedDate === today ? current : addSeasonXp({ ...current, routineClaimedDate: today, redGems: current.redGems + ROUTINE_REWARD_GEMS }, SEASON.xp.routine),
     );
     setCharacter(next);
     setRedGems(next.redGems);
@@ -2839,6 +2840,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 </button>
               ))}
               <button type="button" onClick={() => { setNavPopup(null); onOpenEvents?.("daily"); }}><span className="nav-symbol">✓</span><span><b>일일 퀘스트</b><small>오늘의 임무</small></span></button>
+              <button type="button" className="season-nav" onClick={() => { setNavPopup(null); onOpenEvents?.("season"); }}><span className="nav-symbol">★</span><span><b>시즌 패스</b><small>{character.seasonPass.season === seasonIndex() ? `${seasonTier(character.seasonPass.xp)}/${SEASON.tiers}단` : "새 시즌"} · D-{seasonDaysLeft()}</small></span></button>
               <button type="button" onClick={() => { setNavPopup(null); setTab("event-shop"); }}><span className="nav-symbol">◆</span><span><b>이벤트 상점</b><small>기간 한정 교환</small></span></button>
             </div>
           )}

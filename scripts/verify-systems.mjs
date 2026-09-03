@@ -157,6 +157,34 @@ const art = await (async () => {
   ok("무기 앵커: 기본 8종 × 4상태, 공격(2)은 대기(0)와 다른 각도", Object.values(art.WEAPON_STATE_ANCHOR).every((t) => [0, 1, 2, 3].every((s) => t[s]) && t[2].rot !== t[0].rot) && art.weaponAnchorStyle("pyro", 2)["--weapon-drot"] === art.weaponAnchorStyle("mia", 2)["--weapon-drot"]);
 }
 
+// ── 4c. G 시즌 패스 ──
+{
+  const sm = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysg-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * from "${root}/src/economy/seasonPass";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  const t0 = sm.SEASON_EPOCH + 3 * 86400000;
+  ok("G 시즌 28일 · 30단 · 유료 보석 600 · 무료 보석 150", sm.SEASON.days === 28 && sm.SEASON.tiers === 30 && sm.paidGemTotal(0) === 600 && sm.freeGemTotal() === 150, `paid=${sm.paidGemTotal(0)} free=${sm.freeGemTotal()}`);
+  ok("G 시즌 번호·잔여일: 에폭+3일 → 시즌0, D-25", sm.seasonIndex(t0) === 0 && sm.seasonDaysLeft(t0) === 25 && sm.seasonIndex(t0 + 28 * 86400000) === 1);
+  let p = { ...base, partyIds: ["mia"] };
+  p = sm.addSeasonXp(p, sm.SEASON.xp.routine * 26, t0); // 520 XP → 5단
+  ok("G 경험치 → 단계 (520 XP = 5단)", sm.seasonTier(p.seasonPass.xp) === 5 && p.seasonPass.season === 0);
+  ok("G 무료 수령 가능 단계: 1(강화석)·3(조각)·5(보석25) — 2·4는 빈 칸", sm.claimableTiers(p, "free", t0).join() === "1,3,5" && sm.claimableTiers(p, "paid", t0).length === 0);
+  const c5 = sm.claimSeasonTier(p, "free", 5, t0);
+  ok("G 5단 무료 수령 → 보석 +25 · 재수령 불가", c5.applied && c5.progress.redGems === base.redGems + 25 && !sm.claimSeasonTier(c5.progress, "free", 5, t0).applied);
+  const paidP = { ...c5.progress, seasonPass: { ...c5.progress.seasonPass, paid: true } };
+  ok("G 유료 트랙 활성 시 1~5단 유료 보상 수령 가능 (3단 코어 반환)", sm.claimableTiers(paidP, "paid", t0).length === 5 && sm.claimSeasonTier(paidP, "paid", 3, t0).cores === 1);
+  const rolled = sm.addSeasonXp(paidP, 10, t0 + 29 * 86400000);
+  ok("G 시즌 전환 시 xp·수령·유료 초기화 (미수령 소멸)", rolled.seasonPass.season === 1 && rolled.seasonPass.xp === 10 && !rolled.seasonPass.paid && rolled.seasonPass.claimedFree.length === 0);
+  ok("G 유료 15단 시즌 스킨 · 25단 무기 이펙트", sm.paidReward(15, 0).kind === "allySkin" && sm.paidReward(25, 0).kind === "weaponFx");
+}
+
 // ── 5. 이벤트 상점 · 결제 지급 ──
 const eventShop = await (async () => {
   const d2 = mkdtempSync(join(tmpdir(), "sys2-"));
@@ -173,6 +201,7 @@ ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", ev
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");
 ok("미연동 환경: 어댑터 not-configured", (await eventShop.pay.getPaymentAdapter().purchase("gems-80")).status === "not-configured");
+{ const sp = eventShop.pay.applyPurchase({ ...base, partyIds: ["mia"] }, "season-pass", "tx-s", Date.UTC(2026, 8, 10)); ok("G 시즌 패스 구매 → 현재 시즌 유료 트랙 활성", sp.applied && sp.progress.seasonPass.paid && sp.progress.seasonPass.season === 0); }
 {
   // H: 첫 구매 2배 · 트리거 패키지 1회 · 같은 영수증 중복 방지
   const p0 = { ...base, partyIds: ["mia"], rebirthCount: 1, wallAreas: ["forest"], pioneeredArea: 2 };
