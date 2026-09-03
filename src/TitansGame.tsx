@@ -115,7 +115,7 @@ type TitansGameProps = {
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal") => void;
 };
 
-type ShopTab = "sword" | "heroes" | "skills" | "premium";
+type ShopTab = "sword" | "heroes" | "skills" | "premium" | "gacha";
 type PremiumCategory = "currency" | "package" | "ally" | "title" | "weapon";
 
 /** 피해 출처 — 숫자 색·아이콘을 분리해 "누가 때렸는지" 읽히게 한다 (첫 플레이 점검표 #2) */
@@ -183,7 +183,7 @@ const FREE_STORE_ENABLED =
 export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent, onOpenEvents }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<ShopTab>("sword");
+  const [tab, setTab] = useState<ShopTab | null>(null);
   const [premiumCategory, setPremiumCategory] = useState<PremiumCategory>("currency");
   const [wave, setWave] = useState(1);
   const [boss, setBoss] = useState(false);
@@ -1901,20 +1901,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         })}
       </nav>
 
-      {recommendation && (
-        <button type="button" className={`recommend-banner tone-${recommendation.tone}`} onClick={() => runAction(recommendation.action)}>
-          <span className="recommend-copy">
-            <small>{recommendation.tone === "claim" ? "받을 것" : recommendation.tone === "free" ? "오늘 무료" : recommendation.tone === "wall" ? "DPS 벽" : "다음 성장"}</small>
-            <b>{recommendation.title}</b>
-            <em>{recommendation.desc}</em>
-            {recommendation.meter !== undefined && (
-              <i className="wall-meter" aria-label={`벽 ${Math.round(recommendation.meter * 100)}%`}><u style={{ width: `${recommendation.meter * 100}%` }} /></i>
-            )}
-          </span>
-          <strong>{recommendation.cta} ›</strong>
-        </button>
-      )}
-
       <div className="routine-board" aria-label="오늘의 루틴">
         {routine.map((item) => (
           <button key={item.id} type="button" className={`routine-chip ${item.done ? "done" : ""}`} onClick={() => runRoutine(item)}>
@@ -2143,32 +2129,57 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {now < buffs.burnUntil && <span>화상</span>}
       </div>
 
-      {/* 다음 목표 스트립 (점검표 #3) — "다음 해금까지 얼마"를 HUD에 고정 */}
-      <div className="titans-goals" aria-label="다음 성장 목표">
-        {nextGoals.map((g) => (
-          <button key={g.id} type="button" className={`goal-chip ${g.done ? "done" : ""}`} onClick={g.onClick}>
-            <small>{g.label}</small>
-            <b>{g.value}</b>
-            <i><em style={{ width: `${Math.min(100, g.ratio * 100)}%` }} /></i>
+      {/* 알림 스트립 (사용자 지시): 추천 배너 + 다음 목표를 전장 바로 아래 한 줄로 — 높이 1/4, 글자는 또렷하게 */}
+      <div className="hub-alerts" aria-label="알림">
+        {recommendation && (
+          <button type="button" className={`recommend-banner tone-${recommendation.tone}`} onClick={() => runAction(recommendation.action)}>
+            <span className="recommend-copy">
+              <small>{recommendation.tone === "claim" ? "받을 보상" : recommendation.tone === "free" ? "오늘 무료" : recommendation.tone === "wall" ? "DPS 벽" : "다음 성장"}</small>
+              <b>{recommendation.title}</b>
+              {recommendation.meter !== undefined && (
+                <i className="wall-meter" aria-label={`벽 ${Math.round(recommendation.meter * 100)}%`}><u style={{ width: `${recommendation.meter * 100}%` }} /></i>
+              )}
+            </span>
+            <strong>{recommendation.cta} ›</strong>
           </button>
-        ))}
+        )}
+        <div className="titans-goals" aria-label="다음 성장 목표">
+          {nextGoals.map((g) => (
+            <button key={g.id} type="button" className={`goal-chip ${g.done ? "done" : ""}`} onClick={g.onClick}>
+              <small>{g.label}</small>
+              <b>{g.value}</b>
+              <i><em style={{ width: `${Math.min(100, g.ratio * 100)}%` }} /></i>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="titans-tabs">
-        <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab("sword")}> 
+      {/* 하단 바 (사용자 지시): 장비·동료·스킬·소환·상점 — 화면 하단 고정, 탭을 누르면 시트가 올라오고 다시 누르면 닫힌다 */}
+      <nav className="titans-tabs hub-bottom-bar" aria-label="하단 메뉴">
+        <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab((t) => (t === "sword" ? null : "sword"))}>
           장비 성장
         </button>
-        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => setTab("heroes")}>
+        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => setTab((t) => (t === "heroes" ? null : "heroes"))}>
           동료
         </button>
-        <button type="button" className={tab === "skills" ? "on" : ""} onClick={() => setTab("skills")}>
+        <button type="button" className={tab === "skills" ? "on" : ""} onClick={() => setTab((t) => (t === "skills" ? null : "skills"))}>
           스킬
+        </button>
+        <button
+          type="button"
+          className={`${tab === "gacha" ? "on" : ""} ${contentUnlocked(character.onboardingStep, "events") ? "" : "tab-locked"}`}
+          onClick={() => (contentUnlocked(character.onboardingStep, "events") ? setTab((t) => (t === "gacha" ? null : "gacha")) : flash(LOCK_HINT.events))}
+        >
+          {!contentUnlocked(character.onboardingStep, "events") && (
+            <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />
+          )}
+          소환
         </button>
         <button
           type="button"
           className={`${tab === "premium" ? "on" : ""} ${contentUnlocked(character.onboardingStep, "events") ? "" : "tab-locked"}`}
           onClick={() =>
-            contentUnlocked(character.onboardingStep, "events") ? setTab("premium") : flash(LOCK_HINT.events)
+            contentUnlocked(character.onboardingStep, "events") ? setTab((t) => (t === "premium" ? null : "premium")) : flash(LOCK_HINT.events)
           }
         >
           {!contentUnlocked(character.onboardingStep, "events") && (
@@ -2176,8 +2187,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           )}
           상점
         </button>
-      </div>
+      </nav>
 
+      {tab && <div className="hub-sheet-backdrop" onClick={() => setTab(null)} aria-hidden="true" />}
+      {tab && (
+      <div className="hub-sheet" role="dialog" aria-label="하단 시트">
+        <button type="button" className="hub-sheet-handle" onClick={() => setTab(null)} aria-label="닫기"><i /></button>
       <section className="titans-shop">
         {(tab === "sword" || tab === "heroes") && (
           <div className="bulk-toggle" role="group" aria-label="일괄 레벨업 수량">
@@ -2251,7 +2266,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 추천 편성
               </button>
             </div>
-            {/* 동료 소환 (확률형 재설계) — 픽업 2명 노출 · 1회/10연 · 천장 카운터 · 확률 공시 */}
+            <p className="party-gacha-hint">새 동료는 하단 바 <b>소환</b>에서 뽑습니다 · 픽업 {gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") || "없음"}</p>
+            {expeditionsDone > 0 && (
+              <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
+                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+                파견 {expeditionsDone}건 귀환 — 보상 받기
+              </button>
+            )}
+            {expeditionsDone === 0 && character.expeditions.length > 0 && (
+              <p className="expedition-progress">
+                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+                파견 {character.expeditions.length}팀 진행 중
+              </p>
+            )}
+          </article>
+        )}
+        {/* 소환 탭 (하단 바) — 픽업 2명 노출 · 1회/10연 · 천장 카운터 · 확률 공시 */}
+        {tab === "gacha" && (
+          <article className="gacha-card-wrap">
             <div className="gacha-panel" aria-label="동료 소환">
               <div className="gacha-head">
                 <strong>동료 소환</strong>
@@ -2285,18 +2317,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                 전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회 · 중복 시 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 뽑은 동료는 빈 슬롯에 자동 출전
               </small>
             </div>
-            {expeditionsDone > 0 && (
-              <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
-                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
-                파견 {expeditionsDone}건 귀환 — 보상 받기
-              </button>
-            )}
-            {expeditionsDone === 0 && character.expeditions.length > 0 && (
-              <p className="expedition-progress">
-                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
-                파견 {character.expeditions.length}팀 진행 중
-              </p>
-            )}
+            <p className="gacha-wallet">보유 💎 {redGems} · 누적 소환 {character.gachaPulls}회 · 조각 선택팩과 동료 스킨은 상점 › 동료</p>
           </article>
         )}
         {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`}>
@@ -2663,6 +2684,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           )}
         </article>})}
       </section>
+      </div>
+      )}
 
       {toast && <div className="titans-toast">{toast}</div>}
 

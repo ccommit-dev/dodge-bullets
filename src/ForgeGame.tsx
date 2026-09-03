@@ -464,11 +464,11 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <p className="forge-kicker">
                 {save.mode === "rush" ? "HARD MODE" : "EASY MODE"}
               </p>
-              <h1>검 강화하기</h1>
+              <h1>{view === "armor" ? "견갑 강화하기" : "검 강화하기"}</h1>
             </div>
             <div className="forge-best">
               최고 기록
-              <strong>+{save.bestLevel}</strong>
+              <strong>+{view === "armor" ? save.bestArmorLevel : save.bestLevel}</strong>
             </div>
           </section>
 
@@ -695,8 +695,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               </p>
             </section>
           ) : (
-            <section className="forge-panel armor-panel">
-              <h2>보호구 강화하기</h2>
+            /* 견갑 강화 — 검 강화와 같은 골격(무대 → 패널 → 4스탯 → 안내 → 강화 버튼)으로 통일 (사용자 지시) */
+            <>
               <section className={`forge-stage armor-forge-stage forge-phase-${phase}`}>
                 <div className="forge-embers" aria-hidden="true">{Array.from({length:12},(_,i)=><i key={i} style={{"--ember-i":i,left:`${(i*37)%100}%`} as CSSProperties}/>)}</div>
                 <div className="sword-aura" />
@@ -704,21 +704,40 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 <div className="forge-sword-name"><span>+{save.armorLevel}</span><strong>{equippedShoulder ? shoulderMeta.find((item)=>item.id===equippedShoulder)?.name : "견갑 미장착"}</strong></div>
                 {phase === "forging" && <div className="forge-impact">강화 중…</div>}{phase === "success" && <div className="forge-impact success">SUCCESS!</div>}
               </section>
-              <div className="forge-stats forge-stats-4"><div><span>강화 비용</span><strong>{formatGold(armorCost)}G</strong></div><div><span>성공 확률</span><strong>{Math.round(armorChance*100)}%</strong></div><div><span>보호구 단계</span><strong>+{save.armorLevel}</strong></div><div><span>공용 방지권</span><strong>{save.tickets}장</strong></div></div>
-              <p>실패 시 방지권 1장 자동 사용 · 없으면 1단계 하락</p>
-              <p className="forge-note">화살 원정 강화석 {armorMaterialNeed}개{armorBeatNeed > 0 ? ` + 비트 수련 견갑 조각 ${armorBeatNeed}개` : ""} · {formatGold(armorCost)}G</p>
-              <button type="button" className="forge-button" disabled={!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle"} onClick={() => void enhanceArmor()}>{save.armorLevel >= 15 ? "보호구 최고 단계" : "보호구 강화"}</button>
-              <button type="button" className="forge-sell" onClick={() => equipShoulder(null)}>보호구 해제</button>
-              {shoulderMeta.map((item) => {
-                const owned = ownedShoulders.includes(item.id);
-                const equipped = equippedShoulder === item.id;
-                return <article key={item.id} className="titans-card">
-                  <i className={`armor-preview armor-${item.id}`} style={{ backgroundImage:`url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})` }} />
-                  <div><strong>{item.name}</strong><p>{item.effect} · {owned ? "보유" : "미획득"}</p></div>
-                  <button type="button" disabled={!owned || equipped} onClick={() => equipShoulder(item.id)}>{equipped ? "장착 중" : "장착"}</button>
-                </article>;
-              })}
-            </section>
+
+              <section className="forge-panel armor-panel">
+                <div className="forge-stats forge-stats-4">
+                  <div><span>강화 비용</span><strong>{save.armorLevel >= 15 ? "MAX" : `${formatGold(armorCost)}G`}</strong></div>
+                  <div>
+                    <span>성공 확률</span>
+                    <strong>{save.armorLevel >= 15 ? "—" : `${Math.round(armorChance * 100)}%`}</strong>
+                    {save.armorLevel < 15 && <small>강화석 {armorMaterialNeed}개{armorBeatNeed > 0 ? ` · 견갑 조각 ${armorBeatNeed}개` : ""} 사용</small>}
+                  </div>
+                  <div><span>견갑 단계</span><strong>+{save.armorLevel}</strong></div>
+                  <div><span>방지권</span><strong>{save.tickets}장</strong></div>
+                </div>
+                <p className="forge-note">
+                  보유 강화석 {materials}개 · 견갑 조각 {shoulderShards}개 · 실패 시 방지권 1장 자동 사용, 없으면 1단계 하락
+                </p>
+                <button type="button" className="forge-button" disabled={!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle"} onClick={() => void enhanceArmor()}>
+                  {save.armorLevel >= 15 ? "최고 단계 달성" : phase === "forging" ? "두드리는 중…" : !equippedShoulder ? "견갑을 먼저 장착하세요" : "강화하기"}
+                </button>
+                <div className="armor-list">
+                  {shoulderMeta.map((item) => {
+                    const owned = ownedShoulders.includes(item.id);
+                    const equipped = equippedShoulder === item.id;
+                    return <article key={item.id} className="titans-card">
+                      <i className={`armor-preview armor-${item.id}`} style={{ backgroundImage:`url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})` }} />
+                      <div><strong>{item.name}</strong><p>{item.effect} · {owned ? "보유" : "미획득"}</p></div>
+                      <button type="button" disabled={!owned} onClick={() => equipShoulder(equipped ? null : item.id)}>{equipped ? "해제" : "장착"}</button>
+                    </article>;
+                  })}
+                </div>
+                <button type="button" className="forge-sell" onClick={() => setView("title")}>
+                  대장간 입구로
+                </button>
+              </section>
+            </>
           )}
         </main>
       )}

@@ -36,3 +36,4 @@ coverage/
 *.tsbuildinfo
 store/anim-inspect/
 store/mobile-inspect/
+store/screens/

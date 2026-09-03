@@ -881,6 +881,10 @@
   cursor: pointer;
 }
 
+/* 곡 커버 — 카드 좌측 64px, 텍스트는 오른쪽 열로 */
+.schedule-card { display: grid; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto auto auto auto; column-gap: 12px; row-gap: 2px; align-items: start; }
+.schedule-cover { grid-row: 1 / span 4; width: 64px; height: 64px; border-radius: 12px; object-fit: cover; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.12); }
+.schedule-card.today .schedule-cover { box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.55), 0 6px 14px rgba(0, 0, 0, 0.45); }
 .schedule-card.today {
   border-color: rgba(34, 211, 238, 0.65);
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 47, 73, 0.9));
@@ -2237,11 +2241,13 @@
   border-color: rgba(251, 191, 36, 0.55);
 }
 
+/* 보스 도전 — 체력바(top 12px + 18px) 바로 아래 정중앙 (사용자 지시) */
 .titans-boss-challenge {
   position: absolute;
   z-index: 12;
   left: 50%;
-  bottom: 40px;
+  top: 40px;
+  bottom: auto;
   transform: translateX(-50%);
   min-width: 170px;
   padding: 12px 18px;
@@ -3274,3 +3280,10 @@
   .titans-wallet { gap:3px; padding-inline:6px; }
   .character-quick-stats { grid-template-columns:1fr; }
 }
+
+/* armor view unified with the weapon view: list of pauldrons inside the same panel */
+.armor-list { display: grid; gap: 8px; margin-top: 6px; }
+.armor-list .titans-card { margin: 0; }
+.party-gacha-hint { margin: 6px 0 0; font-size: 10.5px; color: #94a3b8; }
+.party-gacha-hint b { color: #fde68a; }
+.gacha-wallet { margin: 8px 0 0; font-size: 10.5px; color: #94a3b8; }

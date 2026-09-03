@@ -746,6 +746,8 @@ export function BeatGame({
                     }`}
                     onClick={() => void startSlot(slot)}
                   >
+                    {/* 곡 커버 — 곡명 모티프로 생성 (scripts/make-beat-covers.mjs) */}
+                    <img className="schedule-cover" src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" aria-hidden="true" />
                     <span className="schedule-day">
                       TRACK {slot.stageIndex + 1}/{totalStages} · {slot.track.bpm}BPM ·{" "}
                       {slot.track.subdivision}비트 · {slot.track.difficulty === "hard" ? "고난도" : slot.track.difficulty === "medium" ? "중급" : "입문"} · 약 {Math.round(slot.track.bars * 240 / slot.track.bpm)}초

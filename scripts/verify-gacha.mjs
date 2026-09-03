@@ -42,15 +42,19 @@ await seed(baseProgress, baseTitans);
 await closeModal();
 let r = await page.evaluate(() => ({ nameplate: document.querySelector(".hero-title-plate")?.textContent, tabs: [...document.querySelectorAll(".titans-tabs button")].map((b) => b.textContent.trim()) }));
 ok("칭호 이름표가 전투 화면 영웅 위에 표시", /타이탄 슬레이어/.test(r.nameplate ?? ""), r.nameplate);
+// 하단 바: 동료 탭(편성·역할 칩) → 소환 탭(뽑기 패널)
 await clickText(".titans-tabs button", "동료");
 await sleep(600);
+const roleChips = await page.evaluate(() => [...document.querySelectorAll(".role-chip")].map((c) => c.textContent));
+await clickText(".titans-tabs button", "소환");
+await sleep(600);
 r = await page.evaluate(() => ({
-  panel: !!document.querySelector(".gacha-panel"),
+  panel: !!document.querySelector(".hub-sheet .gacha-panel"),
   pickups: [...document.querySelectorAll(".gacha-pickup small")].map((s) => s.textContent),
   ten: document.querySelector(".gacha-ten")?.textContent,
   pity: document.querySelector(".gacha-pity")?.textContent,
-  roleChips: [...document.querySelectorAll(".role-chip")].map((c) => c.textContent),
 }));
+r.roleChips = roleChips;
 ok("소환 패널 · 픽업 = 다음 동료(테라 STAGE 14, 지역3 상한 15)", r.panel && r.pickups.some((t) => /테라|STAGE 14/.test(t)), r.pickups.join("|"));
 ok("10연 버튼 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.ten ?? ""), r.ten);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
