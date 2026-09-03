@@ -75,7 +75,8 @@ const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
  * 상태: 0 대기 · 1 이동 · 2 공격 · 3 피격. 아틀라스는 4열이고 행이 동료다.
  *   기본 6명   ally-animation-atlas-v1.png         4×6 (셀 313.5×209, 가로 1.5:1)
  *   변형 10명  ally-variant-atlas-v1.png           4×10 (기본 행의 tint 파생 — make-variant-atlas.mjs)
- *   스킨 2종   ally-skin-atlas-v1.png              4×2
+ *   스킨 12종  ally-skin-atlas-v1.png              4×12 (기본·변형 행 tint — J SSR 스킨 + 시즌 한정)
+ *   특수 스킨  ally-skin-special-atlas-v1.png      4×2 (정사각 셀 — 루나·세라 라이트)
  *   특수 4명   ally-special-animation-atlas-v1.png 4×4 (정사각 셀)
  * 셀이 가로로 넓은 아틀라스는 .titan-ally-art(정사각)에 그대로 채우면 세로로 1.5배 늘어난다 —
  * 폭 150%·좌측 −25%로 원본 비율을 지킨다(WIDE_CELL). 아틀라스에 행이 없는 동료만 개별 PNG(정지)로 떨어진다.
@@ -88,7 +89,13 @@ const SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-special-animation-a
 const BASE_ROW: Partial<Record<TitanHeroId, number>> = { mia: 0, leon: 1, sera: 2, garen: 3, ari: 4, nox: 5 };
 const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = { pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9 };
 const SPECIAL_ROW: Partial<Record<TitanHeroId, number>> = { luna: 0, volt: 1, mia_dark: 2, sera_light: 3 };
-const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1 };
+// J: SSR 스킨 10종 + 시즌 한정 2종 — 순서는 make-variant-atlas.mjs SKINS와 같다 (가로 셀 12행)
+const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1, "ari-blaze": 2, "nox-abyss": 3, "bronn-iron": 4, "iris-prism": 5, "cain-ash": 6, "sylph-dawn": 7, "orion-nova": 8, "ember-ruby": 9, "season-1": 10, "season-2": 11 };
+const SKIN_ROWS = 12;
+// 특수 아틀라스 기반(정사각 셀) 스킨 — 루나·세라 라이트
+const SKIN_SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-skin-special-atlas-v1.png");
+const SKIN_SPECIAL_ROW: Record<string, number> = { "luna-eclipse": 0, "sera_light-halo": 1 };
+const SKIN_SPECIAL_ROWS = 2;
 const WIDE_CELL: CSSProperties = { width: "150%", left: "-25%", right: "auto" };
 
 function atlasCell(atlas: string, cols: number, rows: number, col: number, row: number, wide: boolean): CSSProperties {
@@ -104,7 +111,8 @@ function atlasCell(atlas: string, cols: number, rows: number, col: number, row: 
 /** 동료·상태·스킨 → 배경 스타일 (순수 함수, 하니스에서 상태별 프레임 차이를 단언한다) */
 export function allyFrameStyle(id: TitanHeroId, state: AllyFrameState, skin?: string): CSSProperties {
   const skinDef = skin ? ALLY_SKINS[skin] : undefined;
-  if (skinDef?.ally === id && skin && SKIN_ROW[skin] !== undefined) return atlasCell(SKIN_ATLAS, 4, 2, state, SKIN_ROW[skin], true);
+  if (skinDef?.ally === id && skin && SKIN_ROW[skin] !== undefined) return atlasCell(SKIN_ATLAS, 4, SKIN_ROWS, state, SKIN_ROW[skin], true);
+  if (skinDef?.ally === id && skin && SKIN_SPECIAL_ROW[skin] !== undefined) return atlasCell(SKIN_SPECIAL_ATLAS, 4, SKIN_SPECIAL_ROWS, state, SKIN_SPECIAL_ROW[skin], false);
   const variantRow = VARIANT_ROW[id];
   if (variantRow !== undefined) return atlasCell(VARIANT_ATLAS, 4, 10, state, variantRow, true);
   const specialRow = SPECIAL_ROW[id];

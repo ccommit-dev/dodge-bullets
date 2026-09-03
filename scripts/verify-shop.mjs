@@ -219,6 +219,41 @@ ok("I 마이페이지 칩: 진홍 잔영 · 오로라 밤", r.length === 2 && /�
 r = await page.evaluate(() => [...document.querySelectorAll(".character-skin-grid button, .character-skins button, button")].filter((b) => /붉은 잔영|서리 무희/.test(b.textContent)).length);
 ok("I 코스튬 2종이 플레이어블 캐릭터 목록에 노출", r >= 2, `count=${r}`);
 
+// ── J. SSR 스킨 10종 · 픽업 할인 20% · 시즌 스킨 비매품 ──
+// 픽업을 결정적으로: 스테이지 16 · 개척 5지역 → 미획득 후보 2명(녹스·브론) → 회전 없음, 둘 다 SSR 스킨 보유 대상
+await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.redGems = 1000; q.ownedAllySkins = ["season-1"]; q.equippedAllySkins = {}; q.pioneeredArea = Math.max(q.pioneeredArea ?? 1, 5); localStorage.setItem(k, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.stage = 16; t.heroes = { ...t.heroes, zephyr: 0, bronn: 0 }; localStorage.setItem(tk, JSON.stringify(t)); }, H);
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(1500);
+await closeModal();
+await clickText(".titans-bottom-nav button", "동료");
+await sleep(600);
+await clickText(".hub-sheet-switch button", "동료 뽑기");
+await sleep(600);
+const pickupNames = await page.evaluate(() => [...document.querySelectorAll(".gacha-pickup b")].map((b) => b.textContent.trim()));
+await clickText(".titans-bottom-nav button", "상점");
+await sleep(600);
+await clickText(".premium-category-tabs button", "동료");
+await sleep(400);
+r = await page.evaluate(() => ({
+  cards: document.querySelectorAll(".skin-product").length,
+  deals: [...document.querySelectorAll(".skin-product.pickup-deal")].map((c) => ({ name: c.querySelector("strong").childNodes[0].textContent.trim(), btn: c.querySelector("button").textContent })),
+  season: [...document.querySelectorAll(".skin-product")].filter((c) => /시즌 1/.test(c.textContent)).map((c) => c.querySelector("button").textContent),
+  seasonTwoHidden: ![...document.querySelectorAll(".skin-product")].some((c) => /시즌 2/.test(c.textContent)),
+}));
+ok("J 동료 탭 스킨 카드 13장(판매 12 + 보유한 시즌 1) · 미보유 시즌 2는 숨김", r.cards === 13 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
+ok("J 픽업 동료(녹스·브론)의 스킨에만 픽업 -20% 배지 · 240 표시", r.deals.length === 2 && r.deals.some((d) => /녹스/.test(d.name)) && r.deals.some((d) => /브론/.test(d.name)) && r.deals.every((d) => /240/.test(d.btn)), `pickups=${pickupNames.join("/")} deals=${JSON.stringify(r.deals)}`);
+if (r.deals.length > 0) {
+  await page.evaluate(() => document.querySelector(".skin-product.pickup-deal button")?.click());
+  await sleep(800);
+  const jp = await prog();
+  ok("J 할인 스킨 구매 → 보석 1000→760 · 보유·장착", jp.redGems === 760 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
+} else {
+  await page.evaluate(() => [...document.querySelectorAll(".skin-product button")].find((b) => /300/.test(b.textContent))?.click());
+  await sleep(800);
+  const jp = await prog();
+  ok("J 정가 스킨 구매 → 보석 1000→700 · 보유·장착 (이번 회전에 스킨 픽업 없음)", jp.redGems === 700 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
+}
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
