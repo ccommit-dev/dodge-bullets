@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import "./idle.css";
 import { assetUrl } from "./asset";
-import { BeatGame } from "./BeatGame";
-import { ForgeGame } from "./ForgeGame";
+// 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
+const BeatGame = lazy(() => import("./BeatGame").then((m) => ({ default: m.BeatGame })));
+const ForgeGame = lazy(() => import("./ForgeGame").then((m) => ({ default: m.ForgeGame })));
 import { TitansGame } from "./TitansGame";
-import { CharacterStatus } from "./CharacterStatus";
+const CharacterStatus = lazy(() => import("./CharacterStatus").then((m) => ({ default: m.CharacterStatus })));
 import { AttendanceModal } from "./AttendanceModal";
-import { EventCenter } from "./EventCenter";
+const EventCenter = lazy(() => import("./EventCenter").then((m) => ({ default: m.EventCenter })));
 import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { TITLES } from "./economy/gemCatalog";
@@ -601,7 +602,7 @@ function App() {
                 // 성벽 10층마다 동료 조각 +1 (LIVEOPS §2.2)
                 const titansSave = await loadTitansSave(userHashRef.current);
                 nextProgress = await updateCharacterProgress(userHashRef.current, (current) => {
-                  const target = randomOwnedAlly(titansSave.heroes);
+                  const target = randomOwnedAlly(titansSave.heroes, Math.random, current.partyIds);
                   return {
                     ...current,
                     allyShards: { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + 1 },
@@ -634,7 +635,7 @@ function App() {
                   if (current.claimedRewards.includes("dodge-stars-12")) return current;
                   const shards = { ...current.allyShards };
                   for (let i = 0; i < 10; i += 1) {
-                    const target = randomOwnedAlly(titansForStars.heroes);
+                    const target = randomOwnedAlly(titansForStars.heroes, Math.random, current.partyIds);
                     shards[target] = (shards[target] ?? 0) + 1;
                   }
                   return {
@@ -1056,6 +1057,7 @@ function App() {
       )}
 
       {bootReady && appMode === "profile" && (
+        <Suspense fallback={<div className="lazy-screen" aria-busy="true" />}>
         <CharacterStatus
           insets={insets}
           userHash={userHashRef.current}
@@ -1070,9 +1072,11 @@ function App() {
           }}
           onBack={() => setMode("titans")}
         />
+        </Suspense>
       )}
 
       {bootReady && appMode === "beat" && (
+        <Suspense fallback={<div className="lazy-screen" aria-busy="true" />}>
         <BeatGame
           insets={insets}
           soundEnabled
@@ -1084,10 +1088,13 @@ function App() {
           }}
           onBack={handleBackToHub}
         />
+        </Suspense>
       )}
 
       {bootReady && appMode === "forge" && (
-        <ForgeGame insets={insets} userHash={userHashRef.current} onBack={handleBackToHub} />
+        <Suspense fallback={<div className="lazy-screen" aria-busy="true" />}>
+          <ForgeGame insets={insets} userHash={userHashRef.current} onBack={handleBackToHub} />
+        </Suspense>
       )}
 
       {bootReady && appMode === "titans" && (
@@ -1379,8 +1386,10 @@ function App() {
       {bootReady && appMode === "titans" && progress.onboardingStep >= 4 && (
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} />
       )}
-      {bootReady && appMode === "titans" && (
-        <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} initialTab={eventTab} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
+      {bootReady && appMode === "titans" && eventOpen && (
+        <Suspense fallback={null}>
+          <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} initialTab={eventTab} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
+        </Suspense>
       )}
 
       {pioneeredAreaIndex !== null && (
