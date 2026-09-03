@@ -139,7 +139,7 @@ export function EventCenter({
     const nextProgress = await updateCharacterProgress(userHash, (current) => {
       const shards = { ...current.allyShards };
       for (let i = 0; i < shardCount; i += 1) {
-        const target = randomOwnedAlly(titans.heroes);
+        const target = randomOwnedAlly(titans.heroes, Math.random, current.partyIds);
         shards[target] = (shards[target] ?? 0) + 1;
       }
       return {
@@ -168,7 +168,7 @@ export function EventCenter({
       if (ch.reward.kind === "shards") {
         const shards = { ...p.allyShards };
         for (let i = 0; i < ch.reward.amount; i += 1) {
-          const target = randomOwnedAlly(titans.heroes);
+          const target = randomOwnedAlly(titans.heroes, Math.random, p.partyIds);
           shards[target] = (shards[target] ?? 0) + 1;
         }
         next.allyShards = shards;
@@ -195,7 +195,7 @@ export function EventCenter({
       if (reward.kind === "shards") {
         const shards = { ...p.allyShards };
         for (let i = 0; i < reward.amount; i += 1) {
-          const target = randomOwnedAlly(titans.heroes);
+          const target = randomOwnedAlly(titans.heroes, Math.random, p.partyIds);
           shards[target] = (shards[target] ?? 0) + 1;
         }
         next.allyShards = shards;
@@ -224,7 +224,7 @@ export function EventCenter({
     const nextProgress = await updateCharacterProgress(userHash, (current) => {
       const shards = { ...current.allyShards };
       for (let i = 0; i < 3; i += 1) {
-        const target = randomOwnedAlly(titansForShards.heroes);
+        const target = randomOwnedAlly(titansForShards.heroes, Math.random, current.partyIds);
         shards[target] = (shards[target] ?? 0) + 1;
       }
       return {

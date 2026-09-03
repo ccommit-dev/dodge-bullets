@@ -2157,3 +2157,9 @@
 .armor-panel { display: grid; gap: 8px; }
 .hub-sheet .page-premium .premium-product-card, .titans-layer.page-premium .hub-sheet .premium-product-card { min-height: 0; }
 .hub-inline { display: contents; }
+
+/* lazy-loaded screens: dark placeholder so the hub background does not flash */
+.lazy-screen { position: absolute; inset: 0; background: #0b1220; }
+.event-shard-target { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #cbd5e1; }
+.event-shard-target .shard-pack-select { flex: 1; }
+.premium-product-card > button.paid-buy { color: #082f49; background: linear-gradient(135deg, #67e8f9, #fde047); }

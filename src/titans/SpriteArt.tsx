@@ -46,12 +46,29 @@ const ALT_BASE: Partial<Record<TitanHeroId, TitanHeroId>> = {
   iris:"sera", cain:"nox", sylph:"sera", orion:"leon", ember:"ari",
 };
 
-/** 투명 배경이 검증된 개별 동료 에셋. */
+/**
+ * 투명 배경이 검증된 개별 동료 에셋.
+ *
+ * 원화 교체 절차: 같은 파일명(public/titans/generated/allies/<id>.png)으로 덮어쓰면 끝이다 —
+ * 세로 기준 정렬(background-position center bottom)이라 폭·높이는 자유롭다.
+ * 변형 10명(pyro~ember)은 scripts/make-variant-standalone.mjs가 원본 프레임을 tint로 파생한
+ * 임시 아트다. 원화가 오기 전까지도 원본과 구분되는 팔레트로 나온다.
+ */
 const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
   luna: assetUrl("titans/generated/allies/luna.png"),
   volt: assetUrl("titans/generated/allies/volt.png"),
   mia_dark: assetUrl("titans/generated/allies/mia-dark.png"),
   sera_light: assetUrl("titans/generated/allies/sera-light.png"),
+  pyro: assetUrl("titans/generated/allies/pyro.png"),
+  marina: assetUrl("titans/generated/allies/marina.png"),
+  terra: assetUrl("titans/generated/allies/terra.png"),
+  zephyr: assetUrl("titans/generated/allies/zephyr.png"),
+  bronn: assetUrl("titans/generated/allies/bronn.png"),
+  iris: assetUrl("titans/generated/allies/iris.png"),
+  cain: assetUrl("titans/generated/allies/cain.png"),
+  sylph: assetUrl("titans/generated/allies/sylph.png"),
+  orion: assetUrl("titans/generated/allies/orion.png"),
+  ember: assetUrl("titans/generated/allies/ember.png"),
 };
 
 function allyBodyStyle(id: TitanHeroId, skin?:string): CSSProperties {

@@ -93,6 +93,14 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
         if (carried > 0) flashToast(`대장간 지갑 통합 · 공유 골드 +${formatGold(carried)}`);
       }
 
+      // 이벤트 상점에서 산 방지권은 진행도에 적립돼 있다 — 대장간 진입 시 1회 이관
+      if (progress.forgeTicketsPending > 0) {
+        const pending = progress.forgeTicketsPending;
+        forge = { ...forge, tickets: forge.tickets + pending };
+        progress = await updateCharacterProgress(userHash, (current) => ({ ...current, forgeTicketsPending: 0 }));
+        flashToast(`이벤트 상점 방지권 ${pending}장 수령`);
+      }
+
       if (cancelled) return;
       setSave(forge);
       setCoins(progress.sharedCoins);

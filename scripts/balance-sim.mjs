@@ -71,7 +71,15 @@ const ASSUMPTIONS = {
   beatMasteryPerDay: 6,
   /** 하루 강화 시도 상한 (골드가 되는 만큼, 이 횟수까지) */
   forgeAttemptsPerDay: 12,
+  /** 차원 균열 1회당 조각 — 요일별 2·3·6 평균 (events/weekdayRift.ts) */
+  riftShardsPerRun: 3.5,
+  /** 주간 도전 조각 합 (events/weekly.ts: 10 + 12) */
+  weeklyShards: 22,
 };
+/** 조각이 편성 최강 동료에게 가는 비율 — --focus 0 (전부 무작위, 현행) ~ 1 (전부 집중) */
+const SHARD_FOCUS = Number(flag("focus", 0.7)); // allies.ts SHARD_PARTY_FOCUS와 같은 값
+/** 조각 수급 배율 실험용 — --shardmult 2 등 */
+const SHARD_MULT = Number(flag("shardmult", 1));
 
 /**
  * 사냥터 전투 시뮬레이션 — 스테이지 진행은 DPS가 결정한다.
@@ -185,7 +193,7 @@ function simulate(kind) {
     for (let s = 0; s < ASSUMPTIONS.sessionsPerDay; s += 1) {
       const y = idle.computeIdleYield(p, lastEndStage, equipped, ASSUMPTIONS.hoursBetweenSessions * 3600);
       dayGold += y.gold; dayExp += y.exp; dayMats += y.materials;
-      dayShards += y.allyShardDrops;
+      dayShards += Math.round(y.allyShardDrops * SHARD_MULT);
       lastEndStage = Math.max(lastEndStage, y.endStage);
       if (y.cappedOut) cappedToday = true;
     }
@@ -197,11 +205,20 @@ function simulate(kind) {
     p.attendanceStreak = day;
     // P1 따라잡기 반영
     titansState.stage = Math.max(titansState.stage, lastEndStage);
-    // 조각 드랍 → 무작위 보유 동료
+    // 조각 수급: 방치 드랍 + 차원 균열 3회(요일 평균 ≈ 3.5/회, 균형형만) + 주간 도전(주 22, 균형형만)
+    if (active) {
+      dayShards += Math.round(3 * ASSUMPTIONS.riftShardsPerRun * SHARD_MULT);
+      if (day % 7 === 0) dayShards += ASSUMPTIONS.weeklyShards;
+    }
+    // 배분: 편성 상위 DPS 동료 우선(SHARD_FOCUS 비율) · 나머지는 무작위 보유 동료
     for (let d = 0; d < dayShards; d += 1) {
       const owned = Object.keys(titansState.heroes).filter((id) => titansState.heroes[id] > 0);
       if (owned.length === 0) break;
-      const id = owned[Math.floor(rng() * owned.length)];
+      let id = owned[Math.floor(rng() * owned.length)];
+      if (rng() < SHARD_FOCUS) {
+        const top = [...owned].sort((a, b) => titans.heroDps(titans.HEROES.find((h) => h.id === b), titansState.heroes[b]) - titans.heroDps(titans.HEROES.find((h) => h.id === a), titansState.heroes[a]))[0];
+        if (top) id = top;
+      }
       p.allyShards[id] = (p.allyShards[id] ?? 0) + 1;
     }
     // 조각이 모이면 즉시 승급 (탐욕)

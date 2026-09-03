@@ -99,6 +99,8 @@ import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS } from "./economy/productCatalog";
+import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
+import { getPaymentAdapter, grantPurchase, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
@@ -506,7 +508,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         // 조각 드랍 (4h당 1개) — 보유 동료 중 무작위 배분
         const shards = { ...current.allyShards };
         for (let i = 0; i < report.result.allyShardDrops; i += 1) {
-          const target = randomOwnedAlly(saveRef.current.heroes);
+          const target = randomOwnedAlly(saveRef.current.heroes, Math.random, current.partyIds);
           shards[target] = (shards[target] ?? 0) + 1;
         }
         return {
@@ -1093,6 +1095,40 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     return character.weeklyShardPacks.bought[id] ?? 0;
   };
 
+  /** 이벤트·특별 상점 (확정 구매, 주간 한도). 골드는 공유 지갑, 코어는 사냥터 저장, 방지권은 대장간 진입 시 이관 */
+  const buyEventProduct = async (product: EventProduct) => {
+    const week = currentWeekKey();
+    if (redGems < product.gemCost || eventBuysThisWeek(character, product.id, week) >= product.weeklyLimit) return;
+    const target = shardPackTarget;
+    let grant: EventGrant | null = null;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const record = current.weeklyEventBuys.week === week ? current.weeklyEventBuys : { week, bought: {} };
+      const bought = record.bought[product.id] ?? 0;
+      if (bought >= product.weeklyLimit || current.redGems < product.gemCost) return current;
+      const g = product.grant(current);
+      grant = g;
+      return {
+        ...current,
+        redGems: current.redGems - product.gemCost + (g.gems ?? 0),
+        sharedCoins: current.sharedCoins + (g.gold ?? 0),
+        enhancementMaterials: current.enhancementMaterials + (g.materials ?? 0),
+        shoulderShards: current.shoulderShards + (g.shoulderShards ?? 0),
+        allyShards: g.allyShards ? { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + g.allyShards } : current.allyShards,
+        forgeTicketsPending: current.forgeTicketsPending + (g.forgeTickets ?? 0),
+        idleBoostUntil: g.idleBoostHours ? Math.max(Date.now(), current.idleBoostUntil) + g.idleBoostHours * 3600 * 1000 : current.idleBoostUntil,
+        weeklyEventBuys: { week, bought: { ...record.bought, [product.id]: bought + 1 } },
+        lastContent: "titans",
+      };
+    });
+    if (!grant) return;
+    const g: EventGrant = grant;
+    setCharacter(next);
+    setRedGems(next.redGems);
+    if (g.cores) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + (g.cores ?? 0) } }));
+    sfxSlotUnlock();
+    flash(`${product.name} 구매 — ${product.summary(next)}`);
+  };
+
   const buyShardPack = async () => {
     const id = shardPackTarget;
     if (redGems < 120 || save.heroes[id] <= 0) return;
@@ -1624,6 +1660,33 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       skillInventory: { ...prev.skillInventory, levels: { ...prev.skillInventory.levels, [id]: level + 1 } },
     }));
     flash(`${def.name} Lv.${level + 1}`);
+  };
+
+  /** 실결제(₩) — 어댑터가 검증한 구매만 지급. 미연동 환경에서는 안내 토스트만 */
+  const buyPaidProduct = async (productId: string) => {
+    if (claimingProduct) return;
+    const adapter = getPaymentAdapter();
+    if (!paymentsConfigured()) {
+      flash("스토어 결제 연동 전입니다 — Google Play 등록 후 구매할 수 있습니다");
+      return;
+    }
+    setClaimingProduct(productId);
+    try {
+      const result = await adapter.purchase(productId);
+      if (result.status !== "verified") {
+        if (result.status === "not-configured") flash("결제를 사용할 수 없는 환경입니다");
+        return;
+      }
+      const { progress, cores, applied } = await grantPurchase(userHash, productId, result.transactionId);
+      if (!applied) { flash("이미 지급된 구매입니다"); return; }
+      setCharacter(progress);
+      setRedGems(progress.redGems);
+      if (cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + cores } }));
+      sfxSlotUnlock();
+      flash(`${STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId} 구매 완료`);
+    } finally {
+      setClaimingProduct(null);
+    }
   };
 
   const claimFreeProduct = async (productId: string) => {
@@ -2277,14 +2340,26 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         )}
         {tab === "gacha" && (
           <section className="gacha-stage-page" aria-label="동료 뽑기">
+            {/* 자리표시자 마감: 배지 = 픽업 최고 등급, 제목 = 지역·픽업 이름, 게이지 = 천장 진행도(gachaPity/60) */}
             <div className="gacha-stage-hero">
-              <span className="gacha-rarity-badge">SSR</span>
+              {gacha.pickups.length > 0 && (() => {
+                const best = gacha.pickups.map((id) => ALLY_RARITY[id]).sort((a, b) => ["R", "SR", "SSR"].indexOf(b) - ["R", "SR", "SSR"].indexOf(a))[0];
+                return <span className="gacha-rarity-badge" style={{ background: `linear-gradient(135deg, ${RARITY_COLOR[best]}, #ec4899)` }}>{best} 픽업</span>;
+              })()}
               <div className="gacha-pickup-showcase">
                 {gacha.pickups.slice(0, 2).map((id) => <AllyArt key={id} id={id} />)}
               </div>
-              <div><small>SEASON PICK UP</small><h2>{gacha.pickups.length ? "심연을 건너온 원정대" : "다음 지역 픽업 준비 중"}</h2><p>픽업 동료 확률 2배 · 10회 소환 시 SR 이상 1명 보장</p></div>
+              <div>
+                <small>{area.name.toUpperCase()} · PICK UP</small>
+                <h2>{gacha.pickups.length ? gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") : "다음 지역 픽업 준비 중"}</h2>
+                <p>{gacha.pickups.length ? `픽업 확률 2배 · STAGE ${gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.unlockStage).join("·")} 동료를 먼저 만난다` : "화살 원정으로 다음 지역을 개척하면 픽업이 열립니다"} · 10회 소환 시 SR 이상 1명 보장</p>
+              </div>
             </div>
-            <div className="gacha-level"><b>소환 레벨 MAX</b><i><em /></i><span>전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회</span></div>
+            <div className="gacha-level">
+              <b>천장 {character.gachaPity}/{GACHA.pityLimit}</b>
+              <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
+              <span>전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회</span>
+            </div>
             <div className="gacha-page-actions">
               <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small>💎 {GACHA.singleCost}</small></button>
               <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small>💎 {GACHA.tenCost}</small></button>
@@ -2639,28 +2714,39 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}</strong><p>{product.description}</p><small>{product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
-            <button type="button" disabled title="스토어 결제 연동 후 판매됩니다">{product.displayPrice}</button>
+            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : "스토어 결제 연동 후 판매됩니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : product.displayPrice}</button>
           ) : (
             <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회 (QA)"}</button>
           )}
         </article>})}
         {(tab === "event-shop" || tab === "event-shop2") && (
           <div className="event-offer-grid">
-            {(tab === "event-shop" ? [
-              ["원정 개척 패키지", "화살 원정 강화석 · 골드 · 동료 조각", "HOT", "dodge"],
-              ["비트 수련 지원팩", "견갑 조각 · 스킬 코어 · 붉은 보석", "7 DAYS", "beat"],
-              ["보스 토벌 보급품", "강화 방지권 · 정제 강철 · 골드", "LIMITED", "forge"],
-            ] : [
-              ["5일 출석 패키지", "매일 접속해 붉은 보석과 소환권 획득", "WELCOME", "hunt"],
-              ["그림자 원정대 러시", "동료 조각 선택권 · 경험치 · 보석", "PICK UP", "hunt"],
-              ["심연 장비 완성팩", "무기·견갑 강화 재료를 한 번에 확보", "SPECIAL", "forge"],
-            ]).map(([name, desc, badge, icon], index) => (
-              <article key={name} className={`event-offer-card offer-${index + 1}`}>
-                <div className="event-offer-art"><ContentIcon name={icon as ContentIconName} /><span>{badge}</span></div>
-                <div><small>기간 한정</small><h2>{name}</h2><p>{desc}</p></div>
-                <button type="button" onClick={() => index === 0 ? onOpenEvents?.("daily") : setTab("premium")}>{index === 0 ? "이벤트 보기" : "상품 보기"}</button>
-              </article>
-            ))}
+            {/* 실상품 (economy/eventShop.ts): 확정 구매 · 주간 한도 · 진행도 비례 수량 */}
+            {eventProductsFor(tab).some((p) => p.grant(character).allyShards) && (
+              <label className="event-shard-target">
+                조각 받을 동료
+                <select className="shard-pack-select" value={shardPackTarget} onChange={(e) => setShardPackTarget(e.target.value as TitanHeroId)} aria-label="조각 받을 동료">
+                  {HEROES.filter((h) => save.heroes[h.id] > 0).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+              </label>
+            )}
+            {eventProductsFor(tab).map((product, index) => {
+              const bought = eventBuysThisWeek(character, product.id, currentWeekKey());
+              const left = product.weeklyLimit - bought;
+              return (
+                <article key={product.id} className={`event-offer-card offer-${index + 1}`}>
+                  <div className="event-offer-art"><ContentIcon name={product.icon as ContentIconName} /><span>{product.badge}</span></div>
+                  <div>
+                    <small>이번 주 {left}/{product.weeklyLimit}회 남음</small>
+                    <h2>{product.name}</h2>
+                    <p>{product.summary(character)}</p>
+                  </div>
+                  <button type="button" disabled={left <= 0 || redGems < product.gemCost || (!!product.grant(character).allyShards && save.heroes[shardPackTarget] <= 0)} onClick={() => void buyEventProduct(product)}>
+                    {left <= 0 ? "이번 주 한도 소진" : `💎 ${product.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

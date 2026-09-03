@@ -75,6 +75,15 @@ ok("상점 동료(볼트 SR) 효율 > 무료 동시대(파이로) 효율", eff(m
 const role = allies.partyRoleEffects(["garen", "terra", "bronn", "luna"]);
 ok("역할 효과: 탱커 3 → 상한 2 → +10초 · 힐러 1 → 쿨 ×0.9", role.bossTimeBonus === 10 && Math.abs(role.cooldownMult - 0.9) < 1e-9, JSON.stringify(role));
 ok("편성 게이트: ember(48)는 지역4 상한(23)에서 불가, 상점 동료 luna는 가능", !allies.canFieldAlly("ember", 48, 23) && allies.canFieldAlly("luna", 9999, 5) && allies.canFieldAlly("ari", 16, 23));
+{
+  // 조각 드랍 대상: 출전 동료 70% — 1만 회 표본에서 편성 2명이 65~75%를 받는다
+  const heroes = { ...allies.emptyAllyRecord(), mia: 5, leon: 3, sera: 2, garen: 1 };
+  let inParty = 0;
+  for (let i = 0; i < 10000; i += 1) if (["mia", "leon"].includes(allies.randomOwnedAlly(heroes, Math.random, ["mia", "leon"]))) inParty += 1;
+  // 무작위 30%의 절반(2/4)도 편성에 떨어지므로 기대값 = 0.7 + 0.3 × 0.5 = 0.85
+  ok("조각 드랍: 출전 동료 우선 (기대 85% ± 3%p)", Math.abs(inParty / 10000 - 0.85) < 0.03, `${(inParty / 100).toFixed(1)}%`);
+  ok("조각 드랍: 편성 없으면 보유 동료 무작위", ["mia", "leon", "sera", "garen"].includes(allies.randomOwnedAlly(heroes, Math.random, [])));
+}
 
 // ── 3. 스킬 ──
 ok("SKILL_EFFECTS가 20종 전부 정의", model.SKILLS.every((s) => skills.SKILL_EFFECTS[s.id] !== undefined) && Object.keys(skills.SKILL_EFFECTS).length === 20);
@@ -100,6 +109,24 @@ ok("후원 계약 → 균열 4회", events.riftAttemptsFor(Date.now() + 1e6) ===
 ok("후원 15/일 = ₩12.2/보석 (1,200팩 ₩12.5와 근접)", product.PATRON.dailyGems === 15 && 5500 / (15 * 30) > 12);
 ok("황금 보급 상자 ×3000 (가속권 대비 열위 해소)", gem.goldPackAmount({ ...base, titanBestStage: 10 }) === Math.floor(model.killGold(10, true, false) * 3000));
 ok("진행도 정규화: gachaPity·patronUntil·beatSpMigrated 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, gachaPity: 12, patronUntil: 5, beatSpMigrated: 7 }); return n.gachaPity === 12 && n.patronUntil === 5 && n.beatSpMigrated === 7; })());
+
+// ── 5. 이벤트 상점 · 결제 지급 ──
+const eventShop = await (async () => {
+  const d2 = mkdtempSync(join(tmpdir(), "sys2-"));
+  const e2 = join(d2, "entry.ts");
+  writeFileSync(e2, `export * as shop from "${root}/src/economy/eventShop";\nexport * as pay from "${root}/src/payments/store";`);
+  const o2 = join(d2, "bundle.mjs");
+  await build({ entryPoints: [e2], bundle: true, format: "esm", outfile: o2, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+  const mod = await import(pathToFileURL(o2).href);
+  rmSync(d2, { recursive: true, force: true });
+  return mod;
+})();
+ok("이벤트 상점 6종 · 탭별 3종 · 전부 보석 가격·주간 한도", eventShop.shop.EVENT_PRODUCTS.length === 6 && eventShop.shop.eventProductsFor("event-shop").length === 3 && eventShop.shop.EVENT_PRODUCTS.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1));
+ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 30 }).gold > eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 5 }).gold);
+ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
+ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");
+ok("미연동 환경: 어댑터 not-configured", (await eventShop.pay.getPaymentAdapter().purchase("gems-80")).status === "not-configured");
+ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, weeklyEventBuys: { week: "2026-36", bought: { x: 2 } }, forgeTicketsPending: 3 }); return n.weeklyEventBuys.bought.x === 2 && n.forgeTicketsPending === 3; })());
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
 const fails = results.filter((r) => r[0] === "FAIL").length;

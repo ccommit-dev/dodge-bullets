@@ -190,12 +190,21 @@ export function expeditionReward(
   };
 }
 
-/** 보유 동료 중 무작위 1명 — 조각 드랍 대상 선정용 (미보유뿐이면 mia). */
+/** 조각 드랍이 출전 동료에게 가는 확률 — 밸런스 시뮬(--focus)로 측정: 무작위 배분은 30일간 성급 합 8, 집중 배분은 12 */
+export const SHARD_PARTY_FOCUS = 0.7;
+
+/**
+ * 조각 드랍 대상 — 출전 동료 우선(70%), 나머지는 보유 동료 무작위 (미보유뿐이면 mia).
+ * 20명을 모을수록 주력의 성급이 희석되던 문제(동료 점검)를 줄인다. 파견 보상은 이 함수를 쓰지 않는다.
+ */
 export function randomOwnedAlly(
   heroes: Record<TitanHeroId, number>,
   rng: () => number = Math.random,
+  party: TitanHeroId[] = [],
 ): TitanHeroId {
   const owned = ALLY_IDS.filter((id) => heroes[id] > 0);
   if (owned.length === 0) return "mia";
+  const fielded = party.filter((id) => heroes[id] > 0);
+  if (fielded.length > 0 && rng() < SHARD_PARTY_FOCUS) return fielded[Math.floor(rng() * fielded.length)];
   return owned[Math.floor(rng() * owned.length)];
 }

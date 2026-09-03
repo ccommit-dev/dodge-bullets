@@ -119,6 +119,10 @@ export type CharacterProgress = {
   patronClaimedDate: string;
   /** 비트 RPG sp 중 이미 SP로 합산한 값 — 매 로드마다 재합산되던 환불 버그 방지 */
   beatSpMigrated: number;
+  /** 이벤트·특별 상점 주간 구매 기록 — { week: "2026-36", bought: { "ev-pioneer-pack": 1 } } */
+  weeklyEventBuys: { week: string; bought: Record<string, number> };
+  /** 이벤트 상점에서 산 대장간 방지권 적립분 — 대장간 진입 시 ForgeSave.tickets로 이관 */
+  forgeTicketsPending: number;
 };
 
 export function expForLevel(level: number): number {
@@ -196,6 +200,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     patronUntil: 0,
     patronClaimedDate: "",
     beatSpMigrated: 0,
+    weeklyEventBuys: { week: "", bought: {} },
+    forgeTicketsPending: 0,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -446,6 +452,11 @@ export function normalizeCharacterProgress(
     patronUntil: integer(raw.patronUntil, 0),
     patronClaimedDate: typeof raw.patronClaimedDate === "string" ? raw.patronClaimedDate : "",
     beatSpMigrated: integer(raw.beatSpMigrated, 0, 9999999),
+    weeklyEventBuys:
+      raw.weeklyEventBuys && typeof raw.weeklyEventBuys.week === "string" && raw.weeklyEventBuys.bought && typeof raw.weeklyEventBuys.bought === "object"
+        ? { week: raw.weeklyEventBuys.week, bought: Object.fromEntries(Object.entries(raw.weeklyEventBuys.bought).map(([k, v]) => [k, integer(v, 0, 99)])) }
+        : { week: "", bought: {} },
+    forgeTicketsPending: integer(raw.forgeTicketsPending, 0, 999),
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

@@ -1,0 +1,51 @@
+name: Check
+
+# 타입·린트·시스템 단언·웹 빌드 게이트. Android Build는 vite 번들만 만들기 때문에
+# tsc 오류가 있어도 통과했다(2026-09-03 main 커밋 3건). 이 워크플로가 먼저 걸러 준다.
+on:
+  push:
+    branches: [main, "feat/**"]
+    paths:
+      - "src/**"
+      - "scripts/verify-systems.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "eslint.config.*"
+      - "vite.config.ts"
+      - ".github/workflows/check.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: System assertions (gacha · skills · ally curve · monetization)
+        run: node scripts/verify-systems.mjs
+
+      - name: Web build
+        run: npm run build:web
