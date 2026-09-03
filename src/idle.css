@@ -2183,3 +2183,4 @@
 @keyframes summon-text { 0%,40% { opacity: 0; } 100% { opacity: 1; } }
 .gacha-summoning.tier-ssr::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(252,211,77,.28), transparent 55%); animation: summon-gold 1.2s ease-in-out infinite alternate; }
 @keyframes summon-gold { from { opacity: .4; } to { opacity: 1; } }
+.first-double-badge { margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-style: normal; font-size: 9px; font-weight: 900; color: #082f49; background: linear-gradient(135deg, #fde047, #fb923c); }

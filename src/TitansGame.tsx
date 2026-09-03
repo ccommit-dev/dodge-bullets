@@ -98,9 +98,9 @@ import { CurrencyIcon } from "./ui/CurrencyIcon";
 import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
-import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS } from "./economy/productCatalog";
+import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
-import { getPaymentAdapter, grantPurchase, paymentsConfigured } from "./payments/store";
+import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
@@ -1718,6 +1718,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       "adventurer-starter": { gems: 80, gold: 5000, materials: 10, cores: 0, shoulder: "scout" },
       "adventurer-mid": { gems: 250, gold: 50000, materials: 0, cores: 5, shoulder: "shadow" },
       "adventurer-advanced": { gems: 700, gold: 0, materials: 30, cores: 15, shoulder: "dragon" },
+      // H 트리거 패키지 (QA 무료 경로) — 실결제 지급은 payments/store.ts applyPurchase가 담당
+      "pack-pioneer": { gems: 120, gold: 0, materials: 40, cores: 0 },
+      "pack-wall": { gems: 100, gold: 0, materials: 0, cores: 0 },
+      "pack-rebirth": { gems: 400, gold: 0, materials: 0, cores: 10 },
     };
     const grant = grants[productId];
     if (!grant) {
@@ -2763,13 +2767,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         {tab === "premium" && premiumCategory === "package" && !paidProductsUnlocked && (
           <p className="paid-gate-note">모험가 세트·캐릭터·월정액 상품은 출석 3일차(또는 Lv.20)부터 열립니다 — 먼저 성장 구조를 충분히 경험해 보세요.</p>
         )}
-        {tab === "premium" && premiumCategory === "package" && STORE_PRODUCTS.filter((product) => product.visible).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).map((product) => {
+        {tab === "premium" && premiumCategory === "package" && STORE_PRODUCTS.filter((product) => product.visible).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id))).map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
+          const doubleReady = firstDoubleAvailable(character, product.id);
           // 실결제 전용 상품(캐릭터·월정액)은 무료 체험 지급 대상이 아니다 — Play Billing 연동 후 판매
           const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d";
           return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
-          <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}</strong><p>{product.description}</p><small>{product.contents.join(" · ")}</small></div>
+          <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
             <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : "스토어 결제 연동 후 판매됩니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : product.displayPrice}</button>
           ) : (

@@ -173,6 +173,20 @@ ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", ev
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");
 ok("미연동 환경: 어댑터 not-configured", (await eventShop.pay.getPaymentAdapter().purchase("gems-80")).status === "not-configured");
+{
+  // H: 첫 구매 2배 · 트리거 패키지 1회 · 같은 영수증 중복 방지
+  const p0 = { ...base, partyIds: ["mia"], rebirthCount: 1, wallAreas: ["forest"], pioneeredArea: 2 };
+  const r1 = eventShop.pay.applyPurchase(p0, "gems-450", "tx1", 0);
+  const r2 = eventShop.pay.applyPurchase(r1.progress, "gems-450", "tx2", 0);
+  ok("H 보석팩 첫 구매 2배(450→900) · 두 번째는 정가", r1.doubled && r1.progress.redGems === 900 && !r2.doubled && r2.progress.redGems === 1350, `${r1.progress.redGems}/${r2.progress.redGems}`);
+  const dup = eventShop.pay.applyPurchase(r2.progress, "gems-450", "tx2", 0);
+  ok("H 같은 transactionId 재적용 안 됨", !dup.applied && dup.progress.redGems === 1350);
+  const w1 = eventShop.pay.applyPurchase(r2.progress, "pack-wall", "tx3", 0);
+  const w2 = eventShop.pay.applyPurchase(w1.progress, "pack-wall", "tx4", 0);
+  ok("H 벽 돌파 세트: 출전 1번 동료 조각 +30 · 가속 24h · 상품당 1회", w1.applied && w1.progress.allyShards.mia === 30 && w1.progress.idleBoostUntil === 24 * 3600000 && !w2.applied);
+  ok("H 트리거 조건: 개척 2지역·벽 경험·환생 1회", product.packageTriggered("pioneer", p0) && product.packageTriggered("wall", p0) && product.packageTriggered("rebirth", p0) && !product.packageTriggered("rebirth", base));
+  ok("H 트리거 패키지 3종 카탈로그·Play id 등록", ["pack-pioneer", "pack-wall", "pack-rebirth"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.trigger) && eventShop.pay.PLAY_PRODUCT_IDS.includes(id)));
+}
 ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, weeklyEventBuys: { week: "2026-36", bought: { x: 2 } }, forgeTicketsPending: 3 }); return n.weeklyEventBuys.bought.x === 2 && n.forgeTicketsPending === 3; })());
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
