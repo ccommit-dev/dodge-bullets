@@ -11,10 +11,13 @@ import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
 import { sfxRiftClaim } from "./ui/sfx";
 
-type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge";
+type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge" | "season";
 
 import { MISSION_ALL_DONE_GEMS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
+import { SEASON, addSeasonXp, claimSeasonTier, claimableTiers, freeReward, normalizeSeason, paidGemTotal, paidReward, rewardLabel, seasonDaysLeft, seasonTier } from "./economy/seasonPass";
+import { getPaymentAdapter, grantPurchase, paymentsConfigured } from "./payments/store";
+import { saveTitansSave } from "./titans/storage";
 
 /**
  * 해금된 슬롯을 전부 장착한 것으로 간주한 맵.
@@ -50,7 +53,7 @@ export function EventCenter({
   onClose: () => void;
   onUpdated: (p: CharacterProgress) => void;
   /** 추천 배너·루틴 보드가 특정 탭으로 연다 */
-  initialTab?: "daily" | "rift" | "weekly" | "journal";
+  initialTab?: "daily" | "rift" | "weekly" | "journal" | "season";
 }) {
   const [tab, setTab] = useState<EventTab>("daily");
   const [save, setSave] = useState<EventSave | null>(null);
@@ -122,6 +125,8 @@ export function EventCenter({
       // K: 4종 모두 수령한 날 보석 +10 — 무과금 보석 경로
       redGems: current.redGems + (completedToday ? MISSION_ALL_DONE_GEMS : 0),
     }));
+    // G 시즌 경험치 — 토벌령 4종 완주
+    if (completedToday) onUpdated(await updateCharacterProgress(userHash, (current) => addSeasonXp(current, SEASON.xp.missionsAll)));
     onUpdated(nextProgress);
     if (completedToday) setRiftMessage(`오늘의 토벌령 완주 · 보석 +${MISSION_ALL_DONE_GEMS}`);
     await persist(completedToday ? { ...nextClaimed, weeklyMissionDays: nextClaimed.weeklyMissionDays + 1, lastMissionDay: dateKey() } : nextClaimed);
@@ -153,7 +158,8 @@ export function EventCenter({
         allyShards: shards,
       };
     });
-    onUpdated(nextProgress);
+    onUpdated(await updateCharacterProgress(userHash, (current) => addSeasonXp(current, SEASON.xp.rift)));
+    void nextProgress;
     setRiftMessage(
       `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
     );
@@ -177,10 +183,28 @@ export function EventCenter({
         next.allyShards = shards;
       }
       if (ch.reward.kind === "boost") next.idleBoostUntil = Math.max(p.idleBoostUntil, Date.now()) + ch.reward.hours * 3600 * 1000;
-      return next;
+      return addSeasonXp(next, SEASON.xp.weeklyChallenge);
     });
     onUpdated(nextProgress);
     await persist({ ...save, weeklyClaimed: [...save.weeklyClaimed, id] });
+  };
+
+  /** 시즌 패스 (G) — 단계 수령 · 유료 트랙 구매 */
+  const claimSeason = async (track: "free" | "paid", tier: number) => {
+    let cores = 0;
+    const next = await updateCharacterProgress(userHash, (current) => { const r = claimSeasonTier(current, track, tier); cores = r.cores; return r.progress; });
+    if (cores > 0) { const t = await loadTitansSave(userHash); await saveTitansSave(userHash, { ...t, skillInventory: { ...t.skillInventory, skillCores: t.skillInventory.skillCores + cores } }); }
+    onUpdated(next);
+  };
+  const buySeasonPass = async () => {
+    if (paymentsConfigured()) {
+      const result = await getPaymentAdapter().purchase(SEASON.productId);
+      if (result.status !== "verified") return;
+      onUpdated((await grantPurchase(userHash, SEASON.productId, result.transactionId)).progress);
+      return;
+    }
+    if (import.meta.env.DEV) { onUpdated((await grantPurchase(userHash, SEASON.productId, `qa-${Date.now()}`)).progress); return; }
+    setRiftMessage("스토어 결제 연동 전입니다 — Google Play 등록 후 구매할 수 있습니다");
   };
 
   const claimJournal = async (entryId: string) => {
@@ -258,7 +282,7 @@ export function EventCenter({
         <p className="brand">ADVENTURE EVENT</p>
         <h2 className="exit-title">모험가 이벤트</h2>
         <div className="event-tabs">
-          {(["daily", "rift", "challenge", "weekly", "journal"] as EventTab[]).map((id) => (
+          {(["daily", "rift", "challenge", "weekly", "season", "journal"] as EventTab[]).map((id) => (
             <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
               {id === "daily"
                 ? "토벌령"
@@ -266,6 +290,8 @@ export function EventCenter({
                   ? "차원 균열"
                   : id === "weekly"
                     ? "랭크 시험"
+                    : id === "season"
+                      ? "시즌 패스"
                     : id === "challenge"
                       ? "주간 도전"
                       : "원정 일지"}
@@ -423,6 +449,46 @@ export function EventCenter({
           </section>
         )}
 
+        {tab === "season" && (() => {
+          const sp = normalizeSeason(progress);
+          const tierNow = seasonTier(sp.xp);
+          const daysLeft = seasonDaysLeft();
+          const freeOpen = claimableTiers(progress, "free");
+          const paidOpen = claimableTiers(progress, "paid");
+          return (
+            <section className="season-pass" aria-label="시즌 패스">
+              <header className="season-head">
+                <div>
+                  <small>SEASON {sp.season + 1} · D-{daysLeft}{daysLeft <= 3 ? " · 미수령 보상은 시즌 종료 시 소멸" : ""}</small>
+                  <b>{tierNow}/{SEASON.tiers}단</b>
+                  <i className="season-xp"><em style={{ width: `${Math.min(100, ((sp.xp % SEASON.xpPerTier) / SEASON.xpPerTier) * 100)}%` }} /></i>
+                  <span>다음 단까지 {SEASON.xpPerTier - (sp.xp % SEASON.xpPerTier)} XP · 루틴 {SEASON.xp.routine} · 토벌 완주 {SEASON.xp.missionsAll} · 주간 도전 {SEASON.xp.weeklyChallenge} · 균열 {SEASON.xp.rift}</span>
+                </div>
+                {sp.paid ? <span className="season-paid-badge">유료 트랙 활성</span> : (
+                  <button type="button" className="cta season-buy" onClick={() => void buySeasonPass()}>유료 트랙 {SEASON.paidPriceLabel}<small>보석 {paidGemTotal(sp.season)} · 조각 선택 3 · 시즌 스킨 · 무기 이펙트</small></button>
+                )}
+              </header>
+              {(freeOpen.length > 0 || paidOpen.length > 0) && (
+                <button type="button" className="cta season-claim-all" onClick={() => void (async () => { for (const t of freeOpen) await claimSeason("free", t); for (const t of paidOpen) await claimSeason("paid", t); })()}>
+                  수령 가능 {freeOpen.length + paidOpen.length}개 모두 받기
+                </button>
+              )}
+              <ol className="season-tiers">
+                {Array.from({ length: SEASON.tiers }, (_, i) => i + 1).map((t) => {
+                  const fr = freeReward(t); const pr = paidReward(t, sp.season);
+                  const reached = t <= tierNow;
+                  return (
+                    <li key={t} className={`season-tier ${reached ? "reached" : ""} ${t === tierNow + 1 ? "next" : ""}`}>
+                      <b>{t}</b>
+                      <button type="button" className={`season-cell free ${sp.claimedFree.includes(t) ? "claimed" : ""}`} disabled={!freeOpen.includes(t)} onClick={() => void claimSeason("free", t)}>{rewardLabel(fr)}{sp.claimedFree.includes(t) ? " ✓" : ""}</button>
+                      <button type="button" className={`season-cell paid ${sp.claimedPaid.includes(t) ? "claimed" : ""} ${sp.paid ? "" : "locked"}`} disabled={!paidOpen.includes(t)} onClick={() => void claimSeason("paid", t)}>{rewardLabel(pr)}{sp.claimedPaid.includes(t) ? " ✓" : sp.paid ? "" : " 🔒"}</button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          );
+        })()}
         {tab === "journal" && (
           <section className="journal-event">
             <img className="journal-crest" src={assetUrl("ui/idle/journal.svg")} alt="" aria-hidden="true" />

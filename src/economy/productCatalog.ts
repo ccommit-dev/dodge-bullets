@@ -43,6 +43,8 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "pack-pioneer", kind: "bundle", name: "개척 축하 세트", description: "새 지역을 열었을 때 1회", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×120", "강화석 ×40", "출전 동료 조각 ×20"], visible: true, trigger: "pioneer" },
   { id: "pack-wall", kind: "bundle", name: "벽 돌파 세트", description: "DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다", displayPrice: "₩5,900", badge: "1회", contents: ["출전 동료 조각 ×30", "방치 가속 24h", "보석 ×100"], visible: true, trigger: "wall" },
   { id: "pack-rebirth", kind: "bundle", name: "환생 세트", description: "첫 환생 후 1회 — 재시작을 빠르게", displayPrice: "₩12,000", badge: "1회", contents: ["보석 ×400", "스킬 코어 ×10", "출전 동료 조각 ×40"], visible: true, trigger: "rebirth" },
+  // G 시즌 패스 유료 트랙 — 이벤트 센터 시즌 탭에서 판매 (패키지 탭에는 숨김)
+  { id: "season-pass", kind: "entitlement", name: "시즌 패스", description: "4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트", displayPrice: "₩7,900", badge: "시즌", contents: ["유료 트랙 30단"], visible: false },
 ];
 
 /** 원정 후원 계약(월정액) 효과 — 실결제 연동 시 patronUntil을 30일 뒤로 세팅한다 */

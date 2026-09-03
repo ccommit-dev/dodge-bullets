@@ -123,6 +123,14 @@ export type CharacterProgress = {
   weeklyEventBuys: { week: string; bought: Record<string, number> };
   /** 이벤트 상점에서 산 대장간 방지권 적립분 — 대장간 진입 시 ForgeSave.tickets로 이관 */
   forgeTicketsPending: number;
+  /** 시즌 패스 (G) — 시즌 번호·경험치·유료 여부·수령 단계 */
+  seasonPass: { season: number; xp: number; paid: boolean; claimedFree: number[]; claimedPaid: number[] };
+  /** 영웅 무기 이펙트 (I) — 검격 궤적·잔상 색 */
+  ownedWeaponFx: string[];
+  equippedWeaponFx: string;
+  /** 전장 테마 (I) */
+  ownedThemes: string[];
+  equippedTheme: string;
 };
 
 export function expForLevel(level: number): number {
@@ -202,6 +210,11 @@ export function emptyCharacterProgress(): CharacterProgress {
     beatSpMigrated: 0,
     weeklyEventBuys: { week: "", bought: {} },
     forgeTicketsPending: 0,
+    seasonPass: { season: -1, xp: 0, paid: false, claimedFree: [], claimedPaid: [] },
+    ownedWeaponFx: [],
+    equippedWeaponFx: "",
+    ownedThemes: [],
+    equippedTheme: "",
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -457,6 +470,20 @@ export function normalizeCharacterProgress(
         ? { week: raw.weeklyEventBuys.week, bought: Object.fromEntries(Object.entries(raw.weeklyEventBuys.bought).map(([k, v]) => [k, integer(v, 0, 99)])) }
         : { week: "", bought: {} },
     forgeTicketsPending: integer(raw.forgeTicketsPending, 0, 999),
+    seasonPass:
+      raw.seasonPass && typeof raw.seasonPass.season === "number"
+        ? {
+            season: integer(raw.seasonPass.season, 0, 9999),
+            xp: integer(raw.seasonPass.xp, 0, 99999),
+            paid: raw.seasonPass.paid === true,
+            claimedFree: Array.isArray(raw.seasonPass.claimedFree) ? raw.seasonPass.claimedFree.filter((t): t is number => typeof t === "number") : [],
+            claimedPaid: Array.isArray(raw.seasonPass.claimedPaid) ? raw.seasonPass.claimedPaid.filter((t): t is number => typeof t === "number") : [],
+          }
+        : { season: -1, xp: 0, paid: false, claimedFree: [], claimedPaid: [] },
+    ownedWeaponFx: Array.isArray(raw.ownedWeaponFx) ? [...new Set(raw.ownedWeaponFx.filter((id): id is string => typeof id === "string"))].slice(0, 20) : [],
+    equippedWeaponFx: typeof raw.equippedWeaponFx === "string" && Array.isArray(raw.ownedWeaponFx) && raw.ownedWeaponFx.includes(raw.equippedWeaponFx) ? raw.equippedWeaponFx : "",
+    ownedThemes: Array.isArray(raw.ownedThemes) ? [...new Set(raw.ownedThemes.filter((id): id is string => typeof id === "string"))].slice(0, 20) : [],
+    equippedTheme: typeof raw.equippedTheme === "string" && Array.isArray(raw.ownedThemes) && raw.ownedThemes.includes(raw.equippedTheme) ? raw.equippedTheme : "",
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content

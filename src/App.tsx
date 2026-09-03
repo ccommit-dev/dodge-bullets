@@ -176,7 +176,7 @@ function App() {
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(true);
   const [eventOpen, setEventOpen] = useState(false);
-  const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal">("daily");
+  const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal" | "season">("daily");
   const [backupOpen, setBackupOpen] = useState(false);
   const [settingsToast, setSettingsToast] = useState("");
   const appModeRef = useRef<AppMode>("titans");
