@@ -71,6 +71,24 @@ for (let i = 0; i < 80; i += 1) {
 }
 ok("B 보스 처치 3단계(경직 → 균열 → 붕괴+골드 분출)가 순서대로 나타난다", stages.has("1") && stages.has("2") && stages.has("3"), [...stages].join(">") || "none");
 
+// ── C. 스킬 컷인 + 버프 이펙트 레이어 ──
+await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, beatSkills: { kick: 5, hat: 5, snare: 5, fire: 5, throat: 5 } },
+  { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 9, leon: 6 }, skillInventory: { learned: ["emberCut", "crit", "thunderLink", "warcry"], levels: { emberCut: 1, crit: 1, thunderLink: 1, warcry: 1 }, equipped: { starter: "emberCut", linkA: "crit", linkB: "thunderLink", finisher: "warcry" }, skillCores: 0 }, lastActiveAt: now });
+await sleep(1500);
+const cast = async (name) => { await page.evaluate((n) => { [...document.querySelectorAll(".titans-skill-dock .titans-skill")].find((b) => (b.textContent ?? "").includes(n) || (b.getAttribute("title") ?? "").includes(n) || (b.getAttribute("aria-label") ?? "").includes(n))?.click(); }, name); await sleep(150); };
+await cast("잔불");
+const c1 = await page.evaluate(() => ({ cutin: document.querySelector(".skill-cutin")?.className ?? "", burn: !!document.querySelector(".titans-monster.st-burning .st-burn"), name: document.querySelector(".cutin-name")?.textContent }));
+ok("C 시동기 컷인(검 궤적) + 화상 불꽃 레이어", /cutin-starter/.test(c1.cutin) && /element-fire/.test(c1.cutin) && c1.burn, JSON.stringify(c1));
+await cast("질풍");
+const c2 = await page.evaluate(() => ({ cutin: document.querySelector(".skill-cutin")?.className ?? "", aura: !!document.querySelector(".titans-hero.hero-crit-aura") }));
+ok("C 연계 컷인(마법진) + 영웅 치명 오라", /cutin-linkA/.test(c2.cutin) && c2.aura, JSON.stringify(c2));
+await cast("뇌광");
+const c3 = await page.evaluate(() => ({ inspired: !!document.querySelector(".titans-allies.party-inspired"), ring: getComputedStyle(document.querySelector(".titans-allies.party-inspired .titan-ally-art") ?? document.body, "::after").content }));
+ok("C 고무 버프 → 동료 발밑 금색 링", c3.inspired && c3.ring !== "none", JSON.stringify(c3));
+await cast("별빛");
+const c4 = await page.evaluate(() => ({ cutin: document.querySelector(".skill-cutin")?.className ?? "", flash: !!document.querySelector(".cutin-flash") }));
+ok("C 마무리 컷인(플래시)", /cutin-finisher/.test(c4.cutin) && c4.flash, JSON.stringify(c4));
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
