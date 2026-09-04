@@ -151,7 +151,9 @@ const art = await (async () => {
   const distinct = (arr) => new Set(arr).size === 4;
   ok("기본 6명: 4상태 프레임이 서로 다름 (아틀라스)", ["mia", "leon", "sera", "garen", "ari", "nox"].every((id) => distinct(frames(id))));
   ok("변형 10명: 변형 아틀라스 4상태", ["pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember"].every((id) => distinct(frames(id)) && /variant/.test(art.allyFrameStyle(id, 0).backgroundImage)));
-  ok("특수 4명: 특수 아틀라스 4상태 (정사각 셀 → wide 아님)", ["luna", "volt", "mia_dark", "sera_light"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === undefined));
+  // 루나·볼트는 아트 점검 1순위로 로스터 화풍 변형 행으로 이동 — 특수(정사각) 아틀라스에는 미아 다크·세라 라이트만 남는다
+  ok("특수 2명(미아 다크·세라 라이트): 특수 아틀라스 4상태 (정사각 셀 → wide 아님)", ["mia_dark", "sera_light"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === undefined));
+  ok("루나·볼트 4상태 프레임이 서로 다르고 가로 셀(로스터 화풍)", ["luna", "volt"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === "150%"));
   ok("스킨 2종: 스킨 아틀라스 4상태", distinct(frames("garen", "garen-magma")) && /skin-atlas/.test(art.allyFrameStyle("leon", 2, "leon-frost").backgroundImage));
   ok("가로 셀 아틀라스는 폭 150%·좌측 −25%로 비율 보정", art.allyFrameStyle("mia", 0).width === "150%" && art.allyFrameStyle("pyro", 0).left === "-25%");
   ok("무기 앵커: 기본 8종 × 4상태, 공격(2)은 대기(0)와 다른 각도", Object.values(art.WEAPON_STATE_ANCHOR).every((t) => [0, 1, 2, 3].every((s) => t[s]) && t[2].rot !== t[0].rot) && art.weaponAnchorStyle("pyro", 2)["--weapon-drot"] === art.weaponAnchorStyle("mia", 2)["--weapon-drot"]);
@@ -244,9 +246,12 @@ export * as season from "${root}/src/economy/seasonPass";`);
   ok("J SSR 10명 전원에게 판매 스킨(300) 1종 이상", ssr.length === 10 && ssr.every((id) => sale.some(([, d]) => d.ally === id && d.gemCost === 300)), `ssr=${ssr.length} sale=${sale.length}`);
   ok("J 시즌 한정 스킨 season-1/2 비매품 · 패스 15단 id와 일치", sk.ALLY_SKINS["season-1"]?.gemCost === null && sk.ALLY_SKINS["season-2"]?.gemCost === null && sk.season.paidReward(15, 0)?.id === "season-1");
   ok("J 픽업 할인: 픽업이면 240, 아니면 300, 비매품 null", sk.skinPrice("ari-blaze", ["ari"]) === 240 && sk.skinPrice("ari-blaze", ["nox"]) === 300 && sk.skinPrice("season-1", ["ari"]) === null);
-  const luna = sk.art.allyFrameStyle("luna", 2, "luna-eclipse");
+  const halo = sk.art.allyFrameStyle("sera_light", 2, "sera_light-halo");
   const ari = sk.art.allyFrameStyle("ari", 2, "ari-blaze");
-  ok("J 스킨 프레임: 루나 스킨은 정사각 특수 스킨 아틀라스 · 아리 스킨은 가로 스킨 아틀라스 12행", /skin-special-atlas/.test(String(luna.backgroundImage)) && luna.width === undefined && /ally-skin-atlas/.test(String(ari.backgroundImage)) && ari.backgroundSize === "400% 1200%");
+  ok("J 스킨 프레임: 세라 라이트 스킨은 정사각 특수 스킨 아틀라스 · 아리 스킨은 가로 스킨 아틀라스 13행", /skin-special-atlas/.test(String(halo.backgroundImage)) && halo.width === undefined && /ally-skin-atlas/.test(String(ari.backgroundImage)) && ari.backgroundSize === "400% 1300%");
+  const lunaIdle = sk.art.allyFrameStyle("luna", 0);
+  const voltIdle = sk.art.allyFrameStyle("volt", 0);
+  ok("아트1 루나·볼트가 로스터 화풍 변형 아틀라스(가로 12행)에서 나온다 — 클립아트 특수 아틀라스 미사용", /ally-variant-atlas/.test(String(lunaIdle.backgroundImage)) && /ally-variant-atlas/.test(String(voltIdle.backgroundImage)) && lunaIdle.backgroundSize === "400% 1200%" && lunaIdle.width === "150%");
   ok("J 스킨 썸네일·아틀라스 파일 존재", ["skins/ari-blaze.png", "skins/luna-eclipse.png", "skins/season-1.png", "ally-skin-special-atlas-v1.png"].every((f) => existsSync(join(root, "public/titans/generated/allies", f))));
 }
 
