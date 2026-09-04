@@ -91,6 +91,25 @@ await sleep(1200);
 p = await prog();
 ok("미리보기에서 구매(QA) → patronUntil ≈ +30일 · 구매 기록", p.patronUntil - Date.now() > 29 * 86400000 && p.claimedRewards.some((k) => k.startsWith("purchase:patron-30d:")), `patron ${Math.round((p.patronUntil - Date.now()) / 86400000)}d`);
 ok("구매 후 미리보기 사라짐(후원 중)", await page.evaluate(() => !document.querySelector(".idle-patron-preview")));
+
+// ── retention-4: 벽 2지역 → 마이페이지 환생(2회 클릭) → 사냥터 복귀 시 환생 세트 카드 ──
+await page.evaluate(({ h }) => { const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.wallAreas = ["meadow", "forest"]; q.titanBestStage = 12; q.idleClaimedAt = Date.now(); localStorage.setItem(pk, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.lastActiveAt = Date.now(); localStorage.setItem(tk, JSON.stringify(t)); }, { h: H });
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2000);
+await closeModal();
+await clickText("button", "설정"); await sleep(400);
+await clickText("[role=menuitem]", "마이페이지"); await sleep(1200);
+const rebirthBtn = await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /환생/.test(x.textContent) && !/설명|안내/.test(x.textContent)); b?.click(); return b?.textContent?.trim().slice(0, 20) ?? null; });
+await sleep(700);
+await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /환생/.test(x.textContent) && !/설명|안내/.test(x.textContent)); b?.click(); });
+await sleep(1500);
+p = await prog();
+ok("환생 실행(벽 2지역) → rebirthCount 1 · 환생 세트 제안 창 30분", p.rebirthCount === 1 && p.momentOffers?.["pack-rebirth"]?.kind === "rebirth", `btn=${rebirthBtn} rebirth=${p.rebirthCount} offers=${Object.keys(p.momentOffers ?? {}).join()}`);
+await page.evaluate(() => document.querySelector(".character-back")?.click());
+await sleep(1800);
+await closeModal();
+r = await page.evaluate(() => { const c = document.querySelector(".moment-offer[data-product]"); return c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent } : null; });
+ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.product === "pack-rebirth" && /환생 축하/.test(r.head ?? ""), JSON.stringify(r));
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 
 await browser.close();

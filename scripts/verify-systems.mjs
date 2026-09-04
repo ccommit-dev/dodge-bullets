@@ -294,6 +294,11 @@ export * as pay from "${root}/src/payments/store";`);
   const pv = mo.patronPreview({ patronUntil: 0, attendanceStreak: 3, level: 5 }, 9 * 3600, 3600, 80000, 8 * 3600, t0);
   ok("후원 미리보기: 캡 +2h × 시급(10K) = 20,000 골드", pv && pv.extraGold === 20000 && pv.extraHours === 2, JSON.stringify(pv));
   ok("후원 미리보기 제외: 후원 중 · 8h 미만 · 게이트 전", mo.patronPreview({ patronUntil: t0 + 1, attendanceStreak: 3, level: 5 }, 9 * 3600, 3600, 80000, 8 * 3600, t0) === null && mo.patronPreview({ patronUntil: 0, attendanceStreak: 3, level: 5 }, 7 * 3600, 0, 1, 1, t0) === null && mo.patronPreview({ patronUntil: 0, attendanceStreak: 1, level: 5 }, 9 * 3600, 3600, 1, 1, t0) === null);
+  // retention-4: 개척·환생 제안 — 30분 창, 트리거 팩 구매 후 재개방 없음
+  const pio = mo.openMomentOffer(p0, "pioneer", t0);
+  ok("개척 축하 제안: pack-pioneer 30분 창 · 보너스 30", pio.momentOffers["pack-pioneer"]?.kind === "pioneer" && pio.momentOffers["pack-pioneer"].until === t0 + 30 * 60000 && pio.momentOffers["pack-pioneer"].bonusGems === 30);
+  const reb = mo.openMomentOffer(p0, "rebirth", t0);
+  ok("환생 축하 제안: pack-rebirth 30분 창 · 보너스 60 · 구매 시 보석 400+60·코어 10", reb.momentOffers["pack-rebirth"]?.bonusGems === 60 && (() => { const r = mo.pay.applyPurchase(reb, "pack-rebirth", "tx-r", t0 + 1000); return r.applied && r.bonus === 60 && r.progress.redGems === 460 && r.cores === 10; })());
   ok("5종 제안 상품이 모두 카탈로그에 존재", Object.values(mo.MOMENT_OFFERS).every((d) => product.STORE_PRODUCTS.some((p) => p.id === d.productId)));
   ok("남은 시간 표기", mo.momentTimeLeft(t0 + 90_000, t0) === "1:30" && /일/.test(mo.momentTimeLeft(t0 + 2 * 86400000, t0)));
 }

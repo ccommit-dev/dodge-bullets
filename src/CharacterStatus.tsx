@@ -40,6 +40,7 @@ import { sheetFor } from "./titans/anim";
 import { MonsterArt } from "./titans/SpriteArt";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
+import { openMomentOffer } from "./economy/momentOffers";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 
@@ -192,7 +193,8 @@ export function CharacterStatus({
     setRebirthConfirm(false);
     const crystals = Math.max(3, Math.floor(Math.sqrt(progress.titanBestStage) * 3));
     await rebirthResetTitans(userHash);
-    const next = await updateCharacterProgress(userHash, (current) => ({
+    // retention-4: 환생 직후 축하 제안(환생 세트) — 같은 갱신에서 열어 lost update 방지
+    const next = await updateCharacterProgress(userHash, (current) => openMomentOffer({
       ...current,
       rebirthCount: current.rebirthCount + 1,
       inheritanceCrystals: current.inheritanceCrystals + crystals,
@@ -205,7 +207,7 @@ export function CharacterStatus({
       // 복귀 버프: 24시간 방치 산출 2배 (P1 따라잡기와 함께 재등반을 가속)
       idleBoostUntil: Date.now() + 24 * 3600 * 1000,
       claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
-    }));
+    }, "rebirth"));
     onProgressChange(next);
     setGrowthMessage(`계승 완료 · 결정 +${crystals} (배율 +${(crystals * 0.02).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배`);
   };
