@@ -13,7 +13,10 @@ import sharp from "sharp";
 import { readdirSync } from "node:fs";
 
 const DIR = "public/titans/generated/monsters";
-const SOURCES = readdirSync(DIR).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$/.test(f));
+import { existsSync, readFileSync } from "node:fs";
+/** place-art.mjs boss 로 생성 원화를 넣은 몬스터는 파생하지 않는다 (authored.json) */
+const AUTHORED = existsSync(`${DIR}/authored.json`) ? JSON.parse(readFileSync(`${DIR}/authored.json`, "utf8")) : [];
+const SOURCES = readdirSync(DIR).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$/.test(f) && !AUTHORED.includes(f.replace(/\.png$/, "")));
 
 /** 균열 마스크 — 결정적 선 패턴(랜덤 아님, 재생성해도 같은 결과) */
 function crackSvg(w, h) {

@@ -43,7 +43,9 @@ async function frame(base) {
   return sharp(cut).extend({ left: Math.round(frameW * insetL), background: { r: 0, g: 0, b: 0, alpha: 0 } });
 }
 
+import { existsSync as _ex } from "node:fs";
 for (const [id, base, rgb, brightness, saturation] of VARIANTS) {
+  if (_ex(`public/titans/generated/allies/authored/${id}-row.png`)) { console.log(`skip ${id} (authored 원화 — place-art.mjs 가 ${id}.png 를 직접 놓는다)`); continue; }
   await (await frame(base))
     .tint({ r: rgb[0], g: rgb[1], b: rgb[2] })
     .modulate({ brightness, saturation })

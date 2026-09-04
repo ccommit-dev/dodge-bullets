@@ -253,6 +253,16 @@ export * as season from "${root}/src/economy/seasonPass";`);
   const lunaIdle = sk.art.allyFrameStyle("luna", 0);
   const voltIdle = sk.art.allyFrameStyle("volt", 0);
   ok("아트1 루나·볼트가 로스터 화풍 변형 아틀라스(가로 12행)에서 나온다 — 클립아트 특수 아틀라스 미사용", /ally-variant-atlas/.test(String(lunaIdle.backgroundImage)) && /ally-variant-atlas/.test(String(voltIdle.backgroundImage)) && lunaIdle.backgroundSize === "400% 1200%" && lunaIdle.width === "150%");
+  // 생성 원화(art-gen): authored 행이 있는 동료는 변형 아틀라스가 tint 대신 그 행을 쓴다 — 파일·매니페스트 존재로 검증
+  {
+    const authoredDir = join(root, "public/titans/generated/allies/authored");
+    const authored = existsSync(authoredDir) ? (await import("node:fs")).readdirSync(authoredDir).filter((f) => f.endsWith("-row.png")) : [];
+    ok("아트gen 생성 원화 행(authored/*-row.png) 8명 이상 배치 · 개별 PNG 동반", authored.length >= 8 && authored.every((f) => existsSync(join(root, "public/titans/generated/allies", f.replace("-row.png", ".png")))), authored.map((f) => f.replace("-row.png", "")).join());
+    // 보스 피격·처치는 img2img 결과가 포즈로 읽히지 않아 절차적 파생을 유지 — authored 매니페스트가 없어야 make-monster-states 가 전부 파생한다
+    ok("아트gen 보스는 절차적 파생 유지(monsters/authored.json 없음)", !existsSync(join(root, "public/titans/generated/monsters/authored.json")));
+    const cAuth = join(root, "public/titans/character/skins/authored.json");
+    ok("아트gen 코스튬 원화 매니페스트 2종", existsSync(cAuth) && JSON.parse((await import("node:fs")).readFileSync(cAuth, "utf8")).length === 2);
+  }
   ok("J 스킨 썸네일·아틀라스 파일 존재", ["skins/ari-blaze.png", "skins/luna-eclipse.png", "skins/season-1.png", "ally-skin-special-atlas-v1.png"].every((f) => existsSync(join(root, "public/titans/generated/allies", f))));
 }
 

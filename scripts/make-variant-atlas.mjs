@@ -83,11 +83,16 @@ async function thumb(rowBuf, cell, id) {
   await sharp(rowBuf).extract({ left: 0, top: 0, width: Math.floor(stripW / COLS), height: cell }).png().toFile(`public/titans/generated/allies/skins/${id}.png`);
 }
 
+import { existsSync } from "node:fs";
+/** 생성 원화(scripts/place-art.mjs char)가 있으면 tint 대신 그 행을 쓴다 */
+const authoredRow = (id) => { const p = `public/titans/generated/allies/authored/${id}-row.png`; return existsSync(p) ? p : null; };
+
 async function buildAtlas(list, outFile) {
   const rows = [];
   for (const [id, base, rgb, brightness, saturation] of list) {
-    rows.push({ input: await tintedRow(base, rgb, brightness, saturation), left: 0, top: rows.length * cellH });
-    console.log(`row ${rows.length - 1}: ${id} <- ${base}`);
+    const authored = authoredRow(id);
+    rows.push({ input: authored ? await sharp(authored).resize(stripW, cellH, { fit: "fill" }).png().toBuffer() : await tintedRow(base, rgb, brightness, saturation), left: 0, top: rows.length * cellH });
+    console.log(`row ${rows.length - 1}: ${id} <- ${authored ? "authored 원화" : base}`);
   }
   await sharp({ create: { width: stripW, height: cellH * list.length, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
     .composite(rows)

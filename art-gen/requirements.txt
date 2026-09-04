@@ -1,0 +1,11 @@
+diffusers>=0.32
+transformers>=4.46
+accelerate
+safetensors
+controlnet-aux>=0.0.9
+rembg[cpu]>=2.0.60
+onnxruntime
+opencv-python-headless
+Pillow
+numpy
+matplotlib
