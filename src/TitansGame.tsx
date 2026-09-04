@@ -1873,6 +1873,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     [save.heroes, character.partyIds, fieldCeiling],
   );
   const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea), [save.stage, character.pioneeredArea]);
+  // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
+  useEffect(() => {
+    if (tab !== "gacha" || gacha.rotationPool <= 2 || gacha.rotationDaysLeft > 2) return;
+    if (!paidOffersUnlocked(characterRef.current)) return;
+    const rotationEnd = Date.now() + gacha.rotationDaysLeft * 86400000;
+    void updateCharacterProgress(userHash, (current) => openMomentOffer(current, "pickup", Date.now(), rotationEnd)).then((next) => setCharacter(next));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, gacha.rotationPool, gacha.rotationDaysLeft, userHash]);
+
   const expeditionsDone = character.expeditions.filter((e) => e.endsAt <= Date.now()).length;
 
   // 다음 목표 3종 (점검표 #3): 동료 합류 · 스킬 학습 · 지역 개척 — 남은 거리를 항상 보여준다
@@ -2031,6 +2040,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
       </div>
     );
   }
+
+  /** 순간 제안 카드 (retention-2~5) — 전장 위와 뽑기 페이지 상단에 같은 카드 */
+  const momentOfferCard = (() => {
+          const offer = activeMomentOffers(character, nowTick).find((o) => !dismissedOffers.includes(o.productId));
+          if (!offer) return null;
+          const def = MOMENT_OFFERS[offer.kind as MomentOfferKind];
+          const product = STORE_PRODUCTS.find((p) => p.id === offer.productId);
+          if (!def || !product) return null;
+          const doubleReady = firstDoubleAvailable(character, product.id);
+          return (
+            <div className={`moment-offer kind-${offer.kind}`} role="dialog" data-product={product.id} onPointerDown={(e) => e.stopPropagation()}>
+              <div className="moment-head">{def.title} <small>{product.displayPrice}</small>{doubleReady && <small>첫 구매 2배</small>}</div>
+              <span className="moment-timer">{momentTimeLeft(offer.until, nowTick)}</span>
+              <div className="moment-sub">{def.subtitle} · 지금 사면 보석 +{offer.bonusGems}</div>
+              <div className="moment-actions">
+                <button type="button" className="moment-buy" disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{product.name}<em>{product.displayPrice}</em></button>
+                <button type="button" className="moment-later" onClick={() => setDismissedOffers((d) => [...d, product.id])}>나중에</button>
+              </div>
+            </div>
+          );
+  })();
 
   return (
     <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab}`} style={pad}>
@@ -2314,25 +2344,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             </div>
           </div>
         )}
-        {!freeRetryCard && (() => {
-          const offer = activeMomentOffers(character, nowTick).find((o) => !dismissedOffers.includes(o.productId));
-          if (!offer) return null;
-          const def = MOMENT_OFFERS[offer.kind as MomentOfferKind];
-          const product = STORE_PRODUCTS.find((p) => p.id === offer.productId);
-          if (!def || !product) return null;
-          const doubleReady = firstDoubleAvailable(character, product.id);
-          return (
-            <div className={`moment-offer kind-${offer.kind}`} role="dialog" data-product={product.id} onPointerDown={(e) => e.stopPropagation()}>
-              <div className="moment-head">{def.title} <small>{product.displayPrice}</small>{doubleReady && <small>첫 구매 2배</small>}</div>
-              <span className="moment-timer">{momentTimeLeft(offer.until, nowTick)}</span>
-              <div className="moment-sub">{def.subtitle} · 지금 사면 보석 +{offer.bonusGems}</div>
-              <div className="moment-actions">
-                <button type="button" className="moment-buy" disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{product.name}<em>{product.displayPrice}</em></button>
-                <button type="button" className="moment-later" onClick={() => setDismissedOffers((d) => [...d, product.id])}>나중에</button>
-              </div>
-            </div>
-          );
-        })()}
+        {!freeRetryCard && momentOfferCard}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
           {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
             <button
@@ -2553,6 +2565,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
               <span>전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회</span>
             </div>
+            {momentOfferCard}
             <div className="gacha-page-actions">
               <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small>💎 {GACHA.singleCost}</small></button>
               <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small>💎 {GACHA.tenCost}</small></button>
