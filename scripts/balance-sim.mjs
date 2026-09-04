@@ -280,11 +280,13 @@ function simulate(kind) {
       // ── 사냥터 전투 (DPS가 진행을 결정) ──
       const res = playTitans(titansState, ASSUMPTIONS.activePlaySeconds, idle.stageCeilingFor(p.pioneeredArea));
       if (res.wall) { wallDays += 1; wallStreak += 1; wallSet.add(titans.huntingArea(titansState.stage).id); } else { wallStreak = 0; }
+      p.wallAreas = [...wallSet]; // 방치 따라잡기의 벽 규칙(idle.ts)이 읽는다
       p.titanBestStage = Math.max(p.titanBestStage, titansState.stage);
 
       // ── 환생: 조건 충족 + 벽 정체 5일 이상일 때만.
       // 즉시 환생은 동료 DPS 손실이 결정 이득보다 커서 손해라는 것이 탐욕 정책 실험으로 확인됨. ──
-      if (wallSet.size >= 3 && wallStreak >= 5) {
+      // 환생 조건 2개 지역(코드 REBIRTH_WALL_AREAS와 동일)
+      if (wallSet.size >= 2 && wallStreak >= 5) {
         wallStreak = 0;
         wallSet.clear();
         p.inheritanceCrystals += Math.max(3, Math.floor(Math.sqrt(p.titanBestStage) * 3));

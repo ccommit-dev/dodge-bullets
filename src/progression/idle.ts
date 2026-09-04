@@ -16,6 +16,7 @@ import {
   killGold,
   type TitanSkillId,
   type TitanSkillSlot,
+  huntingArea,
 } from "../titans/model";
 import { STAGES } from "../game/stages";
 import { partySynergies } from "../titans/allies";
@@ -183,7 +184,7 @@ export type IdleYield = {
   materials: number;
   /** 방치 중 무작위 보유 동료에게 떨어지는 승급 조각 (4h당 1개) */
   allyShardDrops: number;
-  /** P1 따라잡기 — 방치가 끝난 뒤의 스테이지 (시간당 +1, 최고기록-5 한도) */
+  /** P1 따라잡기 — 방치가 끝난 뒤의 스테이지 (시간당 +1, 최고기록+1·개척 상한 한도) */
   endStage: number;
   /** 실제로 정산된 초 (캡 적용 후) */
   seconds: number;
@@ -196,6 +197,9 @@ export type IdleYield = {
   multiplier: number;
   capHours: number;
 };
+
+/** 방치 따라잡기가 최고기록을 넘어설 수 있는 스테이지 수 (지역 상한 이내) */
+export const IDLE_CATCHUP_BEYOND_BEST = 1; // +3은 후퇴 수단이 없는 이 게임에서 복귀 직후 잡기 힘든 스테이지에 놓는다 — 세션마다 +1이면 며칠에 걸쳐 지역 상한까지 오른다
 
 export function computeIdleYield(
   progress: CharacterProgress,
@@ -215,9 +219,17 @@ export function computeIdleYield(
   const boosted = progress.idleBoostUntil > now;
   const boost = boosted ? 2 : 1;
 
-  // P1 따라잡기: 시간당 +1 스테이지, 신기록 -5까지만 (신기록은 액티브 전용).
+  // P1 따라잡기: 시간당 +1 스테이지. 상한은 "신기록 +1, 개척 지역 상한 이내".
+  // 예전 "신기록 −5"는 앱만 켜는 유저(최고기록 1)를 30일 내내 Stage 1에 묶어 두었다(밸런스 시뮬 방치형 판정) —
+  // 방치로도 지역 상한까지는 올라가고, 다음 지역은 개척(액티브)이 열어야 한다.
   // 산출은 시간별로 그 시점의 스테이지 killGold를 적분한다.
-  const catchupCeiling = Math.min(stageCeilingFor(progress.pioneeredArea), progress.titanBestStage - 5);
+  // DPS 벽을 본 지역에서는 방치가 신기록을 만들지 못한다 — 마지막 지역은 상한이 없어(9999) 세션마다 +3이 무한히 이어지는 것을 막는다
+  const walled = progress.wallAreas.includes(huntingArea(safeStage).id);
+  const catchupCeiling = Math.min(
+    stageCeilingFor(progress.pioneeredArea),
+    // 기준은 현재 스테이지(방치가 올린 스테이지가 다음 세션의 출발점) — 신기록 기준이면 방치만으로는 best+1에서 멈춘다
+    Math.max(1, walled ? progress.titanBestStage : Math.max(progress.titanBestStage, safeStage) + IDLE_CATCHUP_BEYOND_BEST),
+  );
   let gold = 0;
   let current = safeStage;
   let remaining = seconds;

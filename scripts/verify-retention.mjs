@@ -103,7 +103,8 @@ ok("A 루틴 보상 보석 +15 · 날짜 기록", p.redGems === gemsBefore + 15 
 
 // ── D 벽 미터: 보스 실패 유도 (보스 HP 거대) ──
 // Stage 6 · 미아 20 (탭 없이 mob 3.9s, 보스 43s > 30s 제한) — 10마리 후 보스 도전 → 실패가 보장된다
-await seed({ ...baseProgress, idleClaimedAt: now, sessionCount: 5, partyIds: ["mia"] }, { ...baseTitans, heroes: { mia: 20 }, gold: 300 });
+// lastActiveAt: now — 방치 따라잡기(신기록+3)가 Stage 9로 올려 버리면 시나리오(Stage 6 벽)가 깨진다
+await seed({ ...baseProgress, idleClaimedAt: now, sessionCount: 5, partyIds: ["mia"] }, { ...baseTitans, heroes: { mia: 20 }, gold: 300, lastActiveAt: now });
 await closeModal();
 // 배속 ×2 — 전 과정 절반 시간
 await page.evaluate(() => { [...document.querySelectorAll(".qol-btn")].find((b) => b.textContent.trim() === "×2")?.click(); });
