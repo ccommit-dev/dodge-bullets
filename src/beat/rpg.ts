@@ -1,5 +1,6 @@
+import type { BeatDifficulty } from "./types";
 import type { BeatPatternId, BeatTrackDef } from "./tracks";
-import { BEAT_TRACKS } from "./tracks";
+import { BEAT_TRACKS, GRADE_ORDER, gradeOf, type BeatGrade } from "./tracks";
 
 /** Solo raising stats (Roadmap A). */
 export type SkillId = "kick" | "hat" | "snare" | "fire" | "throat";
@@ -15,6 +16,8 @@ export type BeatRpgProgress = {
   maxStamina: number;
   /** Season fame for weekly rank feel. */
   fame: number;
+  /** 곡×난이도별 최고 등급 — 키 `${trackId}:${difficulty}` */
+  grades: Record<string, BeatGrade>;
   /** YYYY-MM-DD of last stamina refresh. */
   lastDayKey: string;
   /** 0=Mon … 6=Sun style season day (derived from lastDayKey). */
@@ -74,6 +77,7 @@ export function emptyBeatRpg(): BeatRpgProgress {
     stamina: MAX_STAMINA_BASE,
     maxStamina: MAX_STAMINA_BASE,
     fame: 0,
+    grades: {},
     lastDayKey: key,
     seasonDay: seasonDayFromKey(key),
     clearedToday: [],
@@ -94,6 +98,7 @@ export function normalizeBeatRpg(raw: Partial<BeatRpgProgress> | null): BeatRpgP
     stamina: Math.max(0, Math.floor(raw.stamina ?? base.stamina)),
     maxStamina: Math.max(MAX_STAMINA_BASE, Math.floor(raw.maxStamina ?? base.maxStamina)),
     fame: Math.max(0, Math.floor(raw.fame ?? 0)),
+    grades: (() => { const out: Record<string, BeatGrade> = {}; const src = raw.grades && typeof raw.grades === "object" ? raw.grades : {}; for (const [k, v] of Object.entries(src)) if (v === "S" || v === "A" || v === "B" || v === "C") out[k] = v; return out; })(),
     lastDayKey: typeof raw.lastDayKey === "string" ? raw.lastDayKey : base.lastDayKey,
     seasonDay: Math.max(0, Math.min(6, Math.floor(raw.seasonDay ?? base.seasonDay))),
     clearedToday: Array.isArray(raw.clearedToday)
@@ -167,9 +172,13 @@ export function buildStageSlots(kind: "lesson" | "spar"): PracticeSlot[] {
 export function applyLessonClear(
   progress: BeatRpgProgress,
   track: BeatTrackDef,
-  opts: { perfectRatio: number; isSpar: boolean },
+  opts: { perfectRatio: number; isSpar: boolean; difficulty?: BeatDifficulty },
 ): BeatRpgProgress {
-  const next = refreshStaminaForToday({ ...progress, skills: { ...progress.skills } });
+  const next = refreshStaminaForToday({ ...progress, skills: { ...progress.skills }, grades: { ...progress.grades } });
+  // 등급 기록 — 곡×난이도 최고만 (docs/CONTENT_BEAT_DODGE_PLAN.md §1)
+  const gradeKey = `${track.id}:${opts.difficulty ?? track.difficulty}`;
+  const grade = gradeOf(opts.perfectRatio);
+  if (!next.grades[gradeKey] || GRADE_ORDER[grade] > GRADE_ORDER[next.grades[gradeKey]]) next.grades[gradeKey] = grade;
   const gains = PATTERN_SKILLS[track.patternId] ?? ["kick"];
   const skillGain = opts.isSpar ? 2 : 1;
   for (const id of gains) {
@@ -192,4 +201,15 @@ export function spendStamina(progress: BeatRpgProgress, cost: number): BeatRpgPr
   if (cost <= 0) return next;
   if (next.stamina < cost) return null;
   return { ...next, stamina: next.stamina - cost };
+}
+
+/** HARD 변형 해금 — 같은 곡 NORMAL(또는 곡 기본 난이도가 hard면 즉시) A 이상 */
+export function hardUnlocked(progress: Pick<BeatRpgProgress, "grades">, track: Pick<BeatTrackDef, "id" | "difficulty">): boolean {
+  if (track.difficulty === "hard") return true;
+  const g = progress.grades[`${track.id}:medium`];
+  return !!g && GRADE_ORDER[g] >= GRADE_ORDER.A;
+}
+/** 곡의 등급 요약 — 카드 배지용 */
+export function gradesFor(progress: Pick<BeatRpgProgress, "grades">, trackId: string): Partial<Record<BeatDifficulty, BeatGrade>> {
+  return { easy: progress.grades[`${trackId}:easy`], medium: progress.grades[`${trackId}:medium`], hard: progress.grades[`${trackId}:hard`] };
 }

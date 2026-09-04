@@ -13,6 +13,7 @@ import {
   stepDurationSec,
   trackDurationMs,
   type BeatTrackDef,
+  JUDGE_THRESHOLDS,
 } from "./tracks";
 import type {
   BeatChartStep,
@@ -432,7 +433,8 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
 
     bumpCombo(world, 1);
     world.score += (18 + Math.floor(lock * 16)) * world.scoreMultiplier;
-    world.judgeText = lock > 0.78 ? "PERFECT" : lock > 0.45 ? "GREAT" : "GOOD";
+    const [perfectAt, greatAt] = JUDGE_THRESHOLDS[world.difficulty];
+    world.judgeText = lock > perfectAt ? "PERFECT" : lock > greatAt ? "GREAT" : "GOOD";
     // 롱노트 머리: 꼬리 스텝까지 누르고 있어야 한다 (performBeatRelease가 판정)
     const holdLen = session.chart[bestIndex].hold ?? 0;
     if (holdLen > 0) {

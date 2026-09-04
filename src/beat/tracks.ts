@@ -28,6 +28,8 @@ export type BeatTrackDef = {
   subdivision: BeatSubdivision;
   difficulty: BeatDifficulty;
   bars: number;
+  /** 난이도 레벨 1~10 — BPM × 분할 × 패턴 복잡도 × 길이. 스케줄은 이 값 오름차순 (docs/CONTENT_BEAT_DODGE_PLAN.md) */
+  level: number;
   desc: string;
   lessonTitle: string;
   lessonHint: string;
@@ -122,19 +124,19 @@ function accentSpike(
   return eighth;
 }
 
-export const BEAT_TRACKS: BeatTrackDef[] = [
-  { id:"azure-sky", name:"Azure Sky", audioFile:"o2jam/azure-sky.m4a", patternId:"eight-basic", bpm:130, subdivision:8, difficulty:"medium", bars:79, audioOffsetMs:1850, desc:"넓은 신스 구간과 상승 멜로디", lessonTitle:"AZURE SKY", lessonHint:"긴 호흡 뒤의 킥과 하이햇 교차를 읽으세요", reward:120, ringCount:2 },
-  { id:"cherry-pop", name:"Cherry Pop", audioFile:"o2jam/cherry-pop.m4a", patternId:"boots-cats", bpm:123, subdivision:8, difficulty:"medium", bars:48, audioOffsetMs:620, desc:"팝 리듬의 경쾌한 백비트", lessonTitle:"CHERRY POP", lessonHint:"스네어 백비트에서 방어를 연결하세요", reward:105, ringCount:1 },
-  { id:"strawberry-lemonade", name:"Strawberry Lemonade", audioFile:"o2jam/strawberry-lemonade.m4a", patternId:"sixteen-mix", bpm:165, subdivision:16, difficulty:"hard", bars:112, audioOffsetMs:480, desc:"빠른 전개와 연속 멜로디 러시", lessonTitle:"STRAWBERRY LEMONADE", lessonHint:"연타 사이 회피 노트를 놓치지 마세요", reward:180, ringCount:2 },
-  { id:"turkish-march", name:"Turkish March", audioFile:"o2jam/turkish-march.m4a", patternId:"throat-trumpet", bpm:140, subdivision:8, difficulty:"medium", bars:68, audioOffsetMs:720, desc:"피아노 행진 악센트 전투", lessonTitle:"TURKISH MARCH", lessonHint:"피아노 프레이즈 끝의 스킬 노트를 노리세요", reward:145, ringCount:2 },
-  { id:"plasma-gun", name:"Plasma Gun", audioFile:"o2jam/plasma-gun.m4a", patternId:"firebeat", bpm:160, subdivision:16, difficulty:"hard", bars:39, audioOffsetMs:300, desc:"짧고 강한 전자음 보스 러시", lessonTitle:"PLASMA GUN", lessonHint:"밀집 노트를 공격-회피-스킬로 연결하세요", reward:170, ringCount:2 },
-  { id:"dual-racing", name:"Dual Racing RED vs BLUE", audioFile:"o2jam/dual-racing.m4a", patternId:"sixteen-mix", bpm:165, subdivision:16, difficulty:"hard", bars:79, audioOffsetMs:540, desc:"두 테마가 교차하는 고속 결전", lessonTitle:"DUAL RACING", lessonHint:"RED 공격과 BLUE 방어 구절을 교대하세요", reward:195, ringCount:2 },
-  { id:"black-city-beat", name:"Black City Beat", audioFile:"o2jam/black-city-beat.m4a", patternId:"boots-cats", bpm:95, subdivision:8, difficulty:"easy", bars:43, audioOffsetMs:1100, desc:"묵직한 록 그루브 입문전", lessonTitle:"BLACK CITY BEAT", lessonHint:"느린 킥을 정확히 눌러 재료 콤보를 만드세요", reward:100, ringCount:1 },
-  { id:"andromeda", name:"Andromeda", audioFile:"o2jam/andromeda.m4a", patternId:"firebeat", bpm:147, subdivision:16, difficulty:"hard", bars:75, audioOffsetMs:880, desc:"우주 신스와 고밀도 테크노", lessonTitle:"ANDROMEDA", lessonHint:"16비트 구간은 모든 노트보다 핵심 악센트를 우선하세요", reward:185, ringCount:2 },
-  { id:"one-more-time", name:"1 More Time", audioFile:"o2jam/one-more-time.m4a", patternId:"eight-basic", bpm:125, subdivision:8, difficulty:"medium", bars:89, audioOffsetMs:900, desc:"반복 구절을 성장시키는 장기전", lessonTitle:"1 MORE TIME", lessonHint:"반복될수록 공격-방어 패턴이 확장됩니다", reward:155, ringCount:2 },
-  { id:"duel", name:"Duel", audioFile:"o2jam/duel.m4a", patternId:"sixteen-mix", bpm:150, subdivision:16, difficulty:"hard", bars:77, audioOffsetMs:650, desc:"공격과 반격이 교차하는 결투", lessonTitle:"DUEL", lessonHint:"방어 직후 스킬 노트로 반격하세요", reward:190, ringCount:2 },
+const TRACK_DEFS: BeatTrackDef[] = [
+  { id:"azure-sky", level: 5, name:"Azure Sky", audioFile:"o2jam/azure-sky.m4a", patternId:"eight-basic", bpm:130, subdivision:8, difficulty:"medium", bars:79, audioOffsetMs:1850, desc:"넓은 신스 구간과 상승 멜로디", lessonTitle:"AZURE SKY", lessonHint:"긴 호흡 뒤의 킥과 하이햇 교차를 읽으세요", reward:120, ringCount:2 },
+  { id:"cherry-pop", level: 3, name:"Cherry Pop", audioFile:"o2jam/cherry-pop.m4a", patternId:"boots-cats", bpm:123, subdivision:8, difficulty:"medium", bars:48, audioOffsetMs:620, desc:"팝 리듬의 경쾌한 백비트", lessonTitle:"CHERRY POP", lessonHint:"스네어 백비트에서 방어를 연결하세요", reward:105, ringCount:1 },
+  { id:"strawberry-lemonade", level: 10, name:"Strawberry Lemonade", audioFile:"o2jam/strawberry-lemonade.m4a", patternId:"sixteen-mix", bpm:165, subdivision:16, difficulty:"hard", bars:112, audioOffsetMs:480, desc:"빠른 전개와 연속 멜로디 러시", lessonTitle:"STRAWBERRY LEMONADE", lessonHint:"연타 사이 회피 노트를 놓치지 마세요", reward:180, ringCount:2 },
+  { id:"turkish-march", level: 6, name:"Turkish March", audioFile:"o2jam/turkish-march.m4a", patternId:"throat-trumpet", bpm:140, subdivision:8, difficulty:"medium", bars:68, audioOffsetMs:720, desc:"피아노 행진 악센트 전투", lessonTitle:"TURKISH MARCH", lessonHint:"피아노 프레이즈 끝의 스킬 노트를 노리세요", reward:145, ringCount:2 },
+  { id:"plasma-gun", level: 9, name:"Plasma Gun", audioFile:"o2jam/plasma-gun.m4a", patternId:"firebeat", bpm:160, subdivision:16, difficulty:"hard", bars:39, audioOffsetMs:300, desc:"짧고 강한 전자음 보스 러시", lessonTitle:"PLASMA GUN", lessonHint:"밀집 노트를 공격-회피-스킬로 연결하세요", reward:170, ringCount:2 },
+  { id:"dual-racing", level: 9, name:"Dual Racing RED vs BLUE", audioFile:"o2jam/dual-racing.m4a", patternId:"sixteen-mix", bpm:165, subdivision:16, difficulty:"hard", bars:79, audioOffsetMs:540, desc:"두 테마가 교차하는 고속 결전", lessonTitle:"DUAL RACING", lessonHint:"RED 공격과 BLUE 방어 구절을 교대하세요", reward:195, ringCount:2 },
+  { id:"black-city-beat", level: 1, name:"Black City Beat", audioFile:"o2jam/black-city-beat.m4a", patternId:"boots-cats", bpm:95, subdivision:8, difficulty:"easy", bars:43, audioOffsetMs:1100, desc:"묵직한 록 그루브 입문전", lessonTitle:"BLACK CITY BEAT", lessonHint:"느린 킥을 정확히 눌러 재료 콤보를 만드세요", reward:100, ringCount:1 },
+  { id:"andromeda", level: 8, name:"Andromeda", audioFile:"o2jam/andromeda.m4a", patternId:"firebeat", bpm:147, subdivision:16, difficulty:"hard", bars:75, audioOffsetMs:880, desc:"우주 신스와 고밀도 테크노", lessonTitle:"ANDROMEDA", lessonHint:"16비트 구간은 모든 노트보다 핵심 악센트를 우선하세요", reward:185, ringCount:2 },
+  { id:"one-more-time", level: 5, name:"1 More Time", audioFile:"o2jam/one-more-time.m4a", patternId:"eight-basic", bpm:125, subdivision:8, difficulty:"medium", bars:89, audioOffsetMs:900, desc:"반복 구절을 성장시키는 장기전", lessonTitle:"1 MORE TIME", lessonHint:"반복될수록 공격-방어 패턴이 확장됩니다", reward:155, ringCount:2 },
+  { id:"duel", level: 8, name:"Duel", audioFile:"o2jam/duel.m4a", patternId:"sixteen-mix", bpm:150, subdivision:16, difficulty:"hard", bars:77, audioOffsetMs:650, desc:"공격과 반격이 교차하는 결투", lessonTitle:"DUEL", lessonHint:"방어 직후 스킬 노트로 반격하세요", reward:190, ringCount:2 },
   {
-    id: "cybernetic-overload",
+    id: "cybernetic-overload", level: 2,
     name: "Cybernetic Overload",
     audioFile: "cybernetic-overload.mp3",
     patternId: "boots-cats",
@@ -149,7 +151,7 @@ export const BEAT_TRACKS: BeatTrackDef[] = [
     ringCount: 1,
   },
   {
-    id: "arcade-overdrive",
+    id: "arcade-overdrive", level: 2,
     name: "Arcade Overdrive",
     audioFile: "arcade-overdrive.mp3",
     patternId: "eight-basic",
@@ -164,7 +166,7 @@ export const BEAT_TRACKS: BeatTrackDef[] = [
     ringCount: 1,
   },
   {
-    id: "pixel-rush",
+    id: "pixel-rush", level: 4,
     name: "Pixel Rush",
     audioFile: "pixel-rush.mp3",
     patternId: "firebeat",
@@ -179,7 +181,7 @@ export const BEAT_TRACKS: BeatTrackDef[] = [
     ringCount: 1,
   },
   {
-    id: "playful-pixels",
+    id: "playful-pixels", level: 3,
     name: "Playful Pixels",
     audioFile: "playful-pixels.mp3",
     patternId: "boots-cats",
@@ -194,7 +196,7 @@ export const BEAT_TRACKS: BeatTrackDef[] = [
     ringCount: 1,
   },
   {
-    id: "happy-strum-day",
+    id: "happy-strum-day", level: 4,
     name: "Happy Strum Day",
     audioFile: "happy-strum-day.mp3",
     patternId: "throat-trumpet",
@@ -209,7 +211,7 @@ export const BEAT_TRACKS: BeatTrackDef[] = [
     ringCount: 2,
   },
   {
-    id: "starlight-strut",
+    id: "starlight-strut", level: 7,
     name: "Starlight Strut",
     audioFile: "starlight-strut.mp3",
     patternId: "sixteen-mix",
@@ -224,6 +226,9 @@ export const BEAT_TRACKS: BeatTrackDef[] = [
     ringCount: 2,
   },
 ];
+
+/** 스케줄 사다리 — 레벨 오름차순(같은 레벨은 정의 순). stageIndex 는 이 순서다 */
+export const BEAT_TRACKS: BeatTrackDef[] = [...TRACK_DEFS].sort((a, b) => a.level - b.level);
 
 export const BEAT_CAMPAIGN = BEAT_TRACKS.map((t) => t.id);
 
@@ -373,3 +378,14 @@ export function angularSpeedFor(track: BeatTrackDef): number {
     track.difficulty === "easy" ? 0.5 : track.difficulty === "medium" ? 0.68 : 0.85;
   return (Math.PI * 2 * orbitsPerBar) / barSec;
 }
+
+
+/** 난이도 변형별 판정 임계(락 값): [PERFECT, GREAT] */
+export const JUDGE_THRESHOLDS: Record<BeatDifficulty, [number, number]> = { easy: [0.7, 0.4], medium: [0.78, 0.45], hard: [0.84, 0.5] };
+
+/** 등급 — 정확도(락 히트 / 탭) */
+export type BeatGrade = "S" | "A" | "B" | "C";
+export function gradeOf(accuracy: number): BeatGrade {
+  return accuracy >= 0.9 ? "S" : accuracy >= 0.75 ? "A" : accuracy >= 0.55 ? "B" : "C";
+}
+export const GRADE_ORDER: Record<BeatGrade, number> = { C: 0, B: 1, A: 2, S: 3 };

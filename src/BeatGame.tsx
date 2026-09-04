@@ -1,3 +1,5 @@
+import type { BeatTrackDef } from "./beat/tracks";
+import type { BeatDifficulty } from "./beat/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { assetUrl } from "./asset";
 import { drawBeatFrame } from "./beat/draw";
@@ -7,6 +9,8 @@ import {
   spendStamina,
   type BeatRpgProgress,
   type PracticeSlot,
+  gradesFor,
+  hardUnlocked,
 } from "./beat/rpg";
 import { getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
 import type { BeatCosmetics, NoteLane } from "./beat/types";
@@ -126,6 +130,9 @@ export function BeatGame({
   const [lessonTitle, setLessonTitle] = useState(() => getCampaignStage(0).lessonTitle);
   const [stageNo, setStageNo] = useState(1);
   const [unlocked, setUnlocked] = useState(0);
+  /** 곡별 선택 난이도 변형 (docs/CONTENT_BEAT_DODGE_PLAN.md §1) — 기본은 곡 정의 난이도 */
+  const [variants, setVariants] = useState<Record<string, BeatDifficulty>>({});
+  const variantOf = (track: BeatTrackDef): BeatDifficulty => variants[track.id] ?? track.difficulty;
   const [rpg, setRpg] = useState<BeatRpgProgress | null>(null);
   const [hubMsg, setHubMsg] = useState("");
   // 곡의 오디오 시계를 판정 기준으로 직접 사용한다. 별도 수동 싱크 UI는 제공하지 않는다.
@@ -407,6 +414,7 @@ export function BeatGame({
                 const grown = applyLessonClear(rpgRef.current, track, {
                   perfectRatio,
                   isSpar: session.isSpar || slot?.kind === "spar",
+                  difficulty: track.difficulty,
                 });
                 rpgRef.current = grown;
                 setRpg(grown);
@@ -528,6 +536,8 @@ export function BeatGame({
       cos ?? undefined,
       spent.skills,
       slot.kind === "spar",
+      // 난이도 변형: 재생 BPM 고정, 노트 밀도·판정·HP만 바뀐다
+      { bpmMultiplier: 1, difficulty: variantOf(track) },
     );
     applyBeatInsets(session.world, insets);
     // 기기 싱크 보정 적용 — 판정 위치를 평균 오프셋만큼 되돌린다
@@ -609,7 +619,20 @@ export function BeatGame({
                     {/* 곡 커버 — 곡명 모티프로 생성한 이미지 (scripts/make-beat-covers.mjs) */}
                     <span className={`beat-track-cover cover-${slot.stageIndex % 6} has-image`} aria-hidden="true"><img className="schedule-cover" src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" /></span>
                     <span className="schedule-copy">
-                      <span className="schedule-day">{slot.track.difficulty === "hard" ? "HARD" : slot.track.difficulty === "medium" ? "NORMAL" : "EASY"} · {slot.track.bpm} BPM{recommended ? " · 추천" : ""}</span>
+<span className="schedule-day">Lv.{slot.track.level} · {slot.track.bpm} BPM{recommended ? " · 추천" : ""}</span>
+                      <span className="schedule-variants" onClick={(e) => e.stopPropagation()}>
+                        {(["easy", "medium", "hard"] as const).map((d) => {
+                          const g = gradesFor(rpg, slot.track.id)[d];
+                          const locked = d === "hard" && !hardUnlocked(rpg, slot.track);
+                          const on = variantOf(slot.track) === d;
+                          return (
+                            <button key={d} type="button" className={`variant-chip ${on ? "on" : ""} ${locked ? "locked" : ""}`} disabled={locked} title={locked ? "NORMAL A 이상이면 열립니다" : undefined}
+                              onClick={(e) => { e.stopPropagation(); setVariants((v) => ({ ...v, [slot.track.id]: d })); }}>
+                              {d === "easy" ? "EASY" : d === "medium" ? "NORMAL" : "HARD"}{g ? <em className={`grade grade-${g}`}>{g}</em> : null}
+                            </button>
+                          );
+                        })}
+                      </span>
                       <span className="schedule-title">{slot.title}</span>
                       <span className="schedule-hint">{done ? "오늘 완료" : slot.track.desc}</span>
                       <span className="schedule-cost">견갑 조각 · +{slot.track.reward} 골드</span>
