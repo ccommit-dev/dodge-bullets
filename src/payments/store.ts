@@ -12,6 +12,7 @@
  * verifyReceipt()만 교체하면 된다 (LIVEOPS §3.5 — 서버 검증 도입 시 개인정보 방침 재작성).
  */
 import { FIRST_DOUBLE_IDS, PATRON, STORE_PRODUCTS } from "../economy/productCatalog";
+import { closeMomentOffer, momentBonusGems } from "../economy/momentOffers";
 import { normalizeSeason } from "../economy/seasonPass";
 import { updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress, ShoulderId } from "../progression/model";
@@ -106,15 +107,17 @@ export function packagePurchased(progress: Pick<CharacterProgress, "claimedRewar
  * 구매 1건을 진행도에 적용하는 순수 함수 — 같은 key(purchase:<id>:<tx>)는 두 번 적용되지 않는다.
  * 트리거 패키지는 상품당 1회. 반환 cores는 사냥터 저장에 있으므로 호출자가 더한다.
  */
-export function applyPurchase(current: CharacterProgress, productId: string, transactionId: string, now: number = Date.now()): { progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean } {
+export function applyPurchase(current: CharacterProgress, productId: string, transactionId: string, now: number = Date.now()): { progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean; bonus?: number } {
   const grant = purchaseGrant(productId);
   const key = `purchase:${productId}:${transactionId}`;
   const product = STORE_PRODUCTS.find((p) => p.id === productId);
   if (!grant || current.claimedRewards.includes(key) || (product?.trigger && packagePurchased(current, productId))) {
-    return { progress: current, cores: 0, applied: false, doubled: false };
+    return { progress: current, cores: 0, applied: false, doubled: false, bonus: 0 };
   }
   const doubled = firstDoubleAvailable(current, productId);
-  const gems = (grant.gems ?? 0) * (doubled ? 2 : 1);
+  // 순간 제안 창 안이면 보너스 보석 — 가격은 스토어 고정이라 구성으로만 차이를 만든다
+  const bonus = momentBonusGems(current, productId, now);
+  const gems = (grant.gems ?? 0) * (doubled ? 2 : 1) + bonus;
   const target = current.partyIds[0];
   const progress: CharacterProgress = {
     ...current,
@@ -131,15 +134,16 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
     adFree: grant.adFree ? true : current.adFree,
     claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : [])],
   };
-  return { progress, cores: grant.cores ?? 0, applied: true, doubled };
+  const withOffer = closeMomentOffer(progress, productId);
+  return { progress: withOffer, cores: grant.cores ?? 0, applied: true, doubled, bonus };
 }
 
 /** 검증된 구매 지급 (저장소 경유) */
-export async function grantPurchase(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean }> {
-  let out = { cores: 0, applied: false, doubled: false };
+export async function grantPurchase(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean; bonus: number }> {
+  let out = { cores: 0, applied: false, doubled: false, bonus: 0 };
   const progress = await updateCharacterProgress(userHash, (current) => {
     const r = applyPurchase(current, productId, transactionId);
-    out = { cores: r.cores, applied: r.applied, doubled: r.doubled };
+    out = { cores: r.cores, applied: r.applied, doubled: r.doubled, bonus: r.bonus ?? 0 };
     return r.progress;
   });
   return { progress, ...out };

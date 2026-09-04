@@ -135,6 +135,8 @@ export type CharacterProgress = {
   adFree: boolean;
   /** 보상형 광고 일일 카운터 (L) */
   adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number };
+  /** 순간 제안 창 (economy/momentOffers): 상품 id → 만료·보너스 */
+  momentOffers: Record<string, { kind: string; until: number; bonusGems: number; openedAt: number }>;
 };
 
 export function expForLevel(level: number): number {
@@ -221,6 +223,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     equippedTheme: "",
     adFree: false,
     adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 },
+    momentOffers: {},
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -491,6 +494,18 @@ export function normalizeCharacterProgress(
     ownedThemes: Array.isArray(raw.ownedThemes) ? [...new Set(raw.ownedThemes.filter((id): id is string => typeof id === "string"))].slice(0, 20) : [],
     equippedTheme: typeof raw.equippedTheme === "string" && Array.isArray(raw.ownedThemes) && raw.ownedThemes.includes(raw.equippedTheme) ? raw.equippedTheme : "",
     adFree: raw.adFree === true,
+    momentOffers: (() => {
+      const out: Record<string, { kind: string; until: number; bonusGems: number; openedAt: number }> = {};
+      if (raw.momentOffers && typeof raw.momentOffers === "object") {
+        for (const [id, v] of Object.entries(raw.momentOffers as Record<string, unknown>)) {
+          const o = v as { kind?: unknown; until?: unknown; bonusGems?: unknown; openedAt?: unknown };
+          if (typeof o?.kind === "string" && typeof o.until === "number" && Number.isFinite(o.until)) {
+            out[id] = { kind: o.kind, until: o.until, bonusGems: integer(o.bonusGems, 0, 1000), openedAt: typeof o.openedAt === "number" ? o.openedAt : 0 };
+          }
+        }
+      }
+      return out;
+    })(),
     adRewards:
       raw.adRewards && typeof raw.adRewards.date === "string"
         ? { date: raw.adRewards.date, idleDouble: integer(raw.adRewards.idleDouble, 0, 99), booster4h: integer(raw.adRewards.booster4h, 0, 99), bossRetry: integer(raw.adRewards.bossRetry, 0, 99) }

@@ -266,6 +266,34 @@ export * as season from "${root}/src/economy/seasonPass";`);
   ok("J 스킨 썸네일·아틀라스 파일 존재", ["skins/ari-blaze.png", "skins/luna-eclipse.png", "skins/season-1.png", "ally-skin-special-atlas-v1.png"].every((f) => existsSync(join(root, "public/titans/generated/allies", f))));
 }
 
+// ── 4g. 순간 제안 (결제 타이밍, retention-2) ──
+{
+  const mo = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysmo-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * from "${root}/src/economy/momentOffers";
+export * as pay from "${root}/src/payments/store";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  const t0 = 1_800_000_000_000;
+  const p0 = prog.normalizeCharacterProgress({ ...base, redGems: 0, attendanceStreak: 3 }); // 유료 게이트 통과
+  const p1 = mo.openMomentOffer(p0, "wall", t0);
+  ok("순간 제안 열기: pack-wall 15분 창 · 보너스 30", p1.momentOffers["pack-wall"]?.kind === "wall" && p1.momentOffers["pack-wall"].until === t0 + 15 * 60000 && mo.momentBonusGems(p1, "pack-wall", t0 + 1000) === 30);
+  ok("순간 제안 중복 열기 무시 · 만료 후 0", mo.openMomentOffer(p1, "wall", t0 + 1000) === p1 && mo.momentBonusGems(p1, "pack-wall", t0 + 16 * 60000) === 0 && mo.activeMomentOffers(p1, t0 + 16 * 60000).length === 0);
+  const bought = mo.pay.applyPurchase(p1, "pack-wall", "tx-1", t0 + 5000);
+  ok("창 안 구매 → 보석 100 + 보너스 30 · 제안 제거", bought.applied && bought.bonus === 30 && bought.progress.redGems === 130 && !bought.progress.momentOffers["pack-wall"]);
+  ok("구매한 트리거 팩은 다시 열리지 않음", mo.openMomentOffer(bought.progress, "wall", t0 + 6000) === bought.progress);
+  const late = mo.pay.applyPurchase(p1, "pack-wall", "tx-2", t0 + 20 * 60000);
+  ok("창 밖 구매 → 보너스 0 (정가 구성)", late.applied && late.bonus === 0 && late.progress.redGems === 100);
+  ok("유료 게이트 전(출석<3·Lv<20)엔 제안이 열리지 않음", mo.openMomentOffer(prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }), "wall", t0) === prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }) || Object.keys(mo.openMomentOffer(prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }), "wall", t0).momentOffers).length === 0);
+  ok("5종 제안 상품이 모두 카탈로그에 존재", Object.values(mo.MOMENT_OFFERS).every((d) => product.STORE_PRODUCTS.some((p) => p.id === d.productId)));
+  ok("남은 시간 표기", mo.momentTimeLeft(t0 + 90_000, t0) === "1:30" && /일/.test(mo.momentTimeLeft(t0 + 2 * 86400000, t0)));
+}
+
 // ── 5. 이벤트 상점 · 결제 지급 ──
 const eventShop = await (async () => {
   const d2 = mkdtempSync(join(tmpdir(), "sys2-"));
