@@ -25,8 +25,13 @@ const SKINS = [
   { id: "frost", hue: 0, saturation: 0.5, brightness: 1.14, cast: [186, 220, 255], castMix: 0.55 },
 ];
 
+import { existsSync, readFileSync } from "node:fs";
+/** place-art.mjs costume 으로 생성 원화 시트를 넣은 코스튬은 파생하지 않는다 (skins/authored.json) */
+const AUTHORED = existsSync("public/titans/character/skins/authored.json") ? JSON.parse(readFileSync("public/titans/character/skins/authored.json", "utf8")) : [];
+
 for (const [src, base] of SHEETS) {
   for (const { id, hue, saturation, brightness, cast, castMix = 0 } of SKINS) {
+    if (AUTHORED.includes(id)) { console.log("skip", id, "(authored 원화 시트)"); continue; }
     const out = `public/titans/character/skins/${base}-${id}.png`;
     if (!cast) {
       await sharp(src).modulate({ hue, saturation, brightness }).png().toFile(out);

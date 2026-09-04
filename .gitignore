@@ -37,3 +37,11 @@ coverage/
 store/anim-inspect/
 store/mobile-inspect/
 store/screens/
+
+# 로컬 원화 생성 환경 (art-gen/README.md)
+art-gen/.venv/
+art-gen/models/
+art-gen/out/
+art-gen/hf-cache/
+art-gen/*.log
+art-gen/out/
