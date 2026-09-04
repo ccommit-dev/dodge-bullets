@@ -31,6 +31,7 @@ import {
   migrateLegacyProgress,
   updateCharacterProgress,
 } from "./progression/storage";
+import { openMomentOffer } from "./economy/momentOffers";
 import { drawFrame } from "./game/draw";
 import {
   applyKeyDown,
@@ -586,10 +587,11 @@ function App() {
             // 원정 클리어 = 사냥터 지역 개척. Stage 1~4 → 지역 2~5.
             const openedArea = Math.min(HUNTING_AREAS.length, world.stageIndex + 2);
             if (nextProgress.pioneeredArea < openedArea) {
-              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
+              // retention-4: 개척 직후 축하 제안(개척 축하 세트) — 사냥터로 돌아오면 카드가 뜬다
+              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => openMomentOffer({
                 ...current,
                 pioneeredArea: Math.max(current.pioneeredArea, openedArea),
-              }));
+              }, "pioneer"));
               sfxAreaUnlock();
               setPioneeredAreaIndex(openedArea);
               // 첫 지역 개척 = 게임 루프가 처음으로 완성되는 감정 고점 — 리뷰 요청 적기
