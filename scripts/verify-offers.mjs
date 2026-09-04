@@ -55,6 +55,7 @@ ok("실패 1회 → 무료 +10초 카드", r && /무료 1회/.test(r.head ?? "")
 await page.evaluate(() => document.querySelector(".moment-offer.free .moment-buy")?.click());
 await sleep(500);
 ok("무료 카드 수락 → 카드 닫힘 · 유료 제안은 아직 없음", await page.evaluate(() => !document.querySelector(".moment-offer")));
+ok("보스 실패 → 30분 뒤 재도전 알림 예약 호출(id 2)", await page.evaluate(() => (window.__notifyLog || []).some((n) => n.id === 2 && n.at - Date.now() > 25 * 60000)));
 
 await failBossOnce();
 await sleep(1200);
@@ -125,6 +126,7 @@ ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.produ
   await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
   await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(1500);
   r = await page.evaluate(() => { const days = [...document.querySelectorAll("small")].map((x) => x.textContent).find((t) => /회전까지/.test(t ?? "")) ?? ""; const c = document.querySelector(".moment-offer[data-product]"); return { days, card: c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent, sub: c.querySelector(".moment-sub")?.textContent } : null }; });
+  ok("뽑기 페이지 → 픽업 교체 D-1 알림 예약 호출(id 3)", await page.evaluate(() => (window.__notifyLog || []).some((n) => n.id === 3)));
   ok("픽업 회전 D-2 · 뽑기 페이지에 보석 1,200 제안 카드(첫 구매 2배 · +150)", /회전까지 [12]일/.test(r.days ?? "") && r.card?.product === "gems-1200" && /첫 구매 2배/.test(r.card.head ?? "") && /\+150/.test(r.card.sub ?? ""), JSON.stringify(r));
   await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
   await sleep(1200);

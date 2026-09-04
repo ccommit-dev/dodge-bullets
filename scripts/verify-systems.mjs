@@ -303,6 +303,12 @@ export * as pay from "${root}/src/payments/store";`);
   const pk = mo.openMomentOffer(p0, "pickup", t0, t0 + 36 * 3600000);
   ok("픽업 제안: gems-1200 창 = 회전 종료(36h) · 보너스 150", pk.momentOffers["gems-1200"]?.kind === "pickup" && pk.momentOffers["gems-1200"].until === t0 + 36 * 3600000 && pk.momentOffers["gems-1200"].bonusGems === 150);
   ok("픽업 제안 구매(첫 구매) → 1200×2 + 150 = 2550", (() => { const r = mo.pay.applyPurchase(pk, "gems-1200", "tx-p", t0 + 1000); return r.applied && r.doubled && r.bonus === 150 && r.progress.redGems === 2550; })());
+  // retention-6: 주간 마감 알림 시각 — 일요일 20:00 로컬, 지났으면 null
+  const nat = await (async () => { const d = mkdtempSync(join(tmpdir(), "sysnat-")); const e = join(d, "entry.ts"); writeFileSync(e, `export * from "${root}/src/game/native";`); const o = join(d, "bundle.mjs"); await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } }); const m = await import(pathToFileURL(o).href); rmSync(d, { recursive: true, force: true }); return m; })();
+  const wed = new Date(2026, 8, 2, 10, 0, 0); // 수요일 10시
+  const dl = nat.weeklyDeadlineAt(wed);
+  ok("주간 마감 알림: 수요일 → 같은 주 일요일 20:00", dl && dl.getDay() === 0 && dl.getHours() === 20 && dl.getDate() === 6);
+  ok("주간 마감 알림: 일요일 21시 → null(지남)", nat.weeklyDeadlineAt(new Date(2026, 8, 6, 21, 0, 0)) === null);
   ok("5종 제안 상품이 모두 카탈로그에 존재", Object.values(mo.MOMENT_OFFERS).every((d) => product.STORE_PRODUCTS.some((p) => p.id === d.productId)));
   ok("남은 시간 표기", mo.momentTimeLeft(t0 + 90_000, t0) === "1:30" && /일/.test(mo.momentTimeLeft(t0 + 2 * 86400000, t0)));
 }
