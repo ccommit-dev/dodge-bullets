@@ -103,7 +103,7 @@ import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct
 import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
-import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, type MomentOfferKind } from "./economy/momentOffers";
+import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
 import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -3116,6 +3116,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           adOption={(() => { const a = rewardedAvailability(character, "idleDouble", new Date().toLocaleDateString("sv-SE")); return a === "none" ? null : a; })()}
           adBusy={adBusy}
           onClaimDouble={() => void watchAd("idleDouble", () => claimIdle(undefined, 2))}
+          patronOption={(() => {
+            const pv = patronPreview(character, idleReport.result.seconds + idleReport.result.wastedSeconds, idleReport.result.wastedSeconds, idleReport.result.gold, idleReport.result.seconds);
+            return pv ? { ...pv, price: STORE_PRODUCTS.find((p) => p.id === "patron-30d")?.displayPrice ?? "₩5,500", busy: claimingProduct !== null } : null;
+          })()}
+          onBuyPatron={() => void buyPaidProduct("patron-30d")}
         />
       )}
 

@@ -77,3 +77,15 @@ export function momentTimeLeft(until: number, now: number = Date.now()): string 
   const m = Math.floor(ms / MIN); const s = Math.floor((ms % MIN) / 1000);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+/** 정산 모달 후원 미리보기 (retention-3) — 8시간 이상 복귀·후원 미가입·유료 게이트 통과일 때만 */
+export const PATRON_PREVIEW_MIN_HOURS = 8;
+export function patronPreview(progress: Pick<CharacterProgress, "patronUntil" | "attendanceStreak" | "level">, awaySeconds: number, wastedSeconds: number, gold: number, seconds: number, now: number = Date.now()): { extraGold: number; extraHours: number } | null {
+  if (progress.patronUntil > now || !paidOffersUnlocked(progress) || awaySeconds < PATRON_PREVIEW_MIN_HOURS * 3600) return null;
+  // 후원 계약은 방치 캡 +2h — 이번 정산의 시급으로 환산한 "정산당 +2시간" 가치를 보여준다
+  // (버려진 시간이 0이어도 캡이 차는 다음 정산부터 그만큼 더 받는다). wastedSeconds 는 문구용
+  const extraHours = 2;
+  const perHour = seconds > 0 ? gold / (seconds / 3600) : 0;
+  void wastedSeconds;
+  return { extraGold: Math.floor(perHour * extraHours), extraHours };
+}

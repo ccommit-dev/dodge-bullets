@@ -14,6 +14,9 @@ type Props = {
   adOption?: "ad" | "free" | null;
   adBusy?: boolean;
   onClaimDouble?: () => void | Promise<void>;
+  /** retention-3: 후원 계약 미리보기 (8h+ 복귀·미가입·유료 게이트 통과) — 이번 정산에 더 받았을 골드·시간 */
+  patronOption?: { extraGold: number; extraHours: number; price: string; busy: boolean } | null;
+  onBuyPatron?: () => void | Promise<void>;
   onGoContent: (content: "dodge" | "beat" | "forge") => void;
 };
 
@@ -63,7 +66,7 @@ const CONTENT_LABEL: Record<IdleBottleneck["content"], string> = {
   forge: "대장간",
 };
 
-export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoContent, adOption = null, adBusy = false, onClaimDouble }: Props) {
+export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoContent, adOption = null, adBusy = false, onClaimDouble, patronOption = null, onBuyPatron }: Props) {
   const gold = useCountUp(result.gold, 950);
   const exp = useCountUp(result.exp, 950, 120);
   const materials = useCountUp(result.materials, 950, 240);
@@ -189,6 +192,14 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
           보상 수령
         </button>
         {/* L 보상형 광고: 정산 2배 — 미연동이면 자리 자체가 없다 */}
+        {patronOption && (
+          <div className="idle-patron-preview" data-extra-gold={patronOption.extraGold}>
+            <b>후원 계약이었다면 이번 정산 +{patronOption.extraGold.toLocaleString()} 골드</b>
+            <span>{patronOption.price}</span>
+            <p>방치 캡 +{patronOption.extraHours}시간 · 매일 보석 15 · 균열 +1회 — 30일</p>
+            <button type="button" className="patron-buy" disabled={patronOption.busy} onClick={() => void onBuyPatron?.()}>원정 후원 계약 30일<em>{patronOption.price}</em></button>
+          </div>
+        )}
         {adOption && (
           <button type="button" className="cta idle-claim-ad" disabled={adBusy} onClick={() => void onClaimDouble?.()}>
             {adBusy ? "광고 재생 중…" : adOption === "free" ? "광고 제거 보유 · 2배로 받기" : "광고 보고 2배로 받기"}

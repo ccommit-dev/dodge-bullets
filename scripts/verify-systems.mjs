@@ -290,6 +290,10 @@ export * as pay from "${root}/src/payments/store";`);
   const late = mo.pay.applyPurchase(p1, "pack-wall", "tx-2", t0 + 20 * 60000);
   ok("창 밖 구매 → 보너스 0 (정가 구성)", late.applied && late.bonus === 0 && late.progress.redGems === 100);
   ok("유료 게이트 전(출석<3·Lv<20)엔 제안이 열리지 않음", mo.openMomentOffer(prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }), "wall", t0) === prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }) || Object.keys(mo.openMomentOffer(prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }), "wall", t0).momentOffers).length === 0);
+  // retention-3 정산 모달 후원 미리보기: 9h 복귀·캡 8h(버림 1h) → 추가 1h 골드, 후원 중이거나 8h 미만이면 null
+  const pv = mo.patronPreview({ patronUntil: 0, attendanceStreak: 3, level: 5 }, 9 * 3600, 3600, 80000, 8 * 3600, t0);
+  ok("후원 미리보기: 캡 +2h × 시급(10K) = 20,000 골드", pv && pv.extraGold === 20000 && pv.extraHours === 2, JSON.stringify(pv));
+  ok("후원 미리보기 제외: 후원 중 · 8h 미만 · 게이트 전", mo.patronPreview({ patronUntil: t0 + 1, attendanceStreak: 3, level: 5 }, 9 * 3600, 3600, 80000, 8 * 3600, t0) === null && mo.patronPreview({ patronUntil: 0, attendanceStreak: 3, level: 5 }, 7 * 3600, 0, 1, 1, t0) === null && mo.patronPreview({ patronUntil: 0, attendanceStreak: 1, level: 5 }, 9 * 3600, 3600, 1, 1, t0) === null);
   ok("5종 제안 상품이 모두 카탈로그에 존재", Object.values(mo.MOMENT_OFFERS).every((d) => product.STORE_PRODUCTS.some((p) => p.id === d.productId)));
   ok("남은 시간 표기", mo.momentTimeLeft(t0 + 90_000, t0) === "1:30" && /일/.test(mo.momentTimeLeft(t0 + 2 * 86400000, t0)));
 }
