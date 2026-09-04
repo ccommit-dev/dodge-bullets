@@ -2243,3 +2243,19 @@
 /* ── J: 동료 스킨 픽업 할인 배지 ── */
 .skin-product .skin-pickup { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 900; background: rgba(252,211,77,.18); color: #fcd34d; border: 1px solid rgba(252,211,77,.5); vertical-align: middle; }
 .skin-product button s { opacity: .55; font-size: 10px; margin-right: 4px; }
+
+/* ── 순간 제안 카드 (economy/momentOffers) — 전장 위에 1장, 15~30분 창 ── */
+.moment-offer { position: absolute; left: 10px; right: 10px; top: 46px; z-index: 12; display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; padding: 9px 11px; border-radius: 14px; background: linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,27,75,.94)); border: 1px solid rgba(250,204,21,.55); box-shadow: 0 10px 28px rgba(0,0,0,.45), inset 0 0 18px rgba(250,204,21,.08); animation: moment-in .32s cubic-bezier(.2,.9,.3,1.2) both; }
+.moment-offer.free { border-color: rgba(52,211,153,.6); }
+@keyframes moment-in { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+.moment-offer .moment-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 900; color: #fde68a; }
+.moment-offer.free .moment-head { color: #6ee7b7; }
+.moment-offer .moment-head small { font-size: 9px; font-weight: 800; color: #cbd5e1; padding: 1px 6px; border-radius: 999px; border: 1px solid rgba(148,163,184,.4); }
+.moment-offer .moment-sub { grid-column: 1 / -1; font-size: 10.5px; line-height: 1.35; color: #e2e8f0; }
+.moment-offer .moment-actions { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; }
+.moment-offer .moment-buy { flex: 1; min-height: 34px; border-radius: 10px; border: 0; font-weight: 900; font-size: 12px; color: #1e1b4b; background: linear-gradient(90deg, #fde047, #f59e0b); }
+.moment-offer.free .moment-buy { background: linear-gradient(90deg, #6ee7b7, #10b981); color: #052e16; }
+.moment-offer .moment-buy em { font-style: normal; font-size: 10px; opacity: .85; margin-left: 4px; }
+.moment-offer .moment-later { min-height: 34px; padding: 0 10px; border-radius: 10px; background: transparent; border: 1px solid rgba(148,163,184,.4); color: #cbd5e1; font-size: 11px; font-weight: 800; }
+.moment-offer .moment-timer { font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 900; color: #fbbf24; }
+.moment-bonus-badge { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 900; background: rgba(250,204,21,.18); color: #fde68a; border: 1px solid rgba(250,204,21,.5); }

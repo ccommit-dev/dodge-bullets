@@ -1,0 +1,85 @@
+/**
+ * 결제 타이밍(순간 제안) e2e — Stage 6 · 미아 20 시나리오(보스 실패 보장)로
+ *   실패 1회 → 무료 +10초 카드 · 실패 2회(벽 최초) → 벽 돌파 세트 카드 → QA 구매 → 보석·보너스·상점 배지
+ *   node scripts/verify-offers.mjs   (dev 서버 5173, DEV 빌드: QA 결제 스텁 dodgebullets:qa-pay)
+ */
+import puppeteer from "puppeteer";
+const BASE = "http://localhost:5173", H = "mock-local-dev";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const results = [];
+const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
+const now = Date.now();
+const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844 });
+const errors = [];
+page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 120)));
+const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
+const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
+const closeModal = async () => { await page.evaluate(() => { for (let k = 0; k < 3; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid, .moment-offer")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } }); await sleep(800); };
+
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await page.evaluate(({ h, now }) => {
+  localStorage.clear();
+  localStorage.setItem("dodgebullets:qa-pay", "1");
+  localStorage.setItem("dodge-bullets:soundEnabled", "0");
+  localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ version: 5, onboardingStep: 4, level: 8, exp: 3000, attendanceStreak: 3, redGems: 100, sharedCoins: 50000, enhancementMaterials: 20, titanBestStage: 6, pioneeredArea: 2, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, sessionCount: 5 }));
+  localStorage.setItem(`dodgebullets:titans:${h}`, JSON.stringify({ stage: 6, bestStage: 6, gold: 300, heroes: { mia: 20 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now }));
+}, { h: H, now });
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2000);
+await closeModal();
+await page.evaluate(() => { [...document.querySelectorAll(".qol-btn")].find((b) => b.textContent.trim() === "×2")?.click(); });
+
+/** 보스 도전 버튼이 뜨면 누르고, 실패(제한시간 초과)까지 기다린다 */
+async function failBossOnce(maxSec = 120) {
+  let pressed = false;
+  for (let i = 0; i < maxSec && !pressed; i += 1) {
+    await sleep(1000);
+    pressed = await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("보스 도전")); b?.click(); return !!b; });
+  }
+  if (!pressed) return false;
+  // 실패 신호: 제한시간 초과 직후 bossReady 가 다시 켜져 "보스 도전" 버튼이 즉시 재등장한다 (벽 배너는 1회차부터 남아 있어 신호가 못 된다)
+  await sleep(1500);
+  for (let i = 0; i < 70; i += 1) {
+    await sleep(1000);
+    const failed = await page.evaluate(() => !!document.querySelector(".moment-offer") || [...document.querySelectorAll("button")].some((x) => x.textContent.includes("보스 도전")));
+    if (failed) return true;
+  }
+  return false;
+}
+
+await failBossOnce();
+let r = await page.evaluate(() => { const c = document.querySelector(".moment-offer.free"); return c ? { head: c.querySelector(".moment-head")?.textContent, btn: c.querySelector(".moment-buy")?.textContent } : null; });
+ok("실패 1회 → 무료 +10초 카드", r && /무료 1회/.test(r.head ?? "") && /\+10초/.test(r.btn ?? ""), JSON.stringify(r));
+await page.evaluate(() => document.querySelector(".moment-offer.free .moment-buy")?.click());
+await sleep(500);
+ok("무료 카드 수락 → 카드 닫힘 · 유료 제안은 아직 없음", await page.evaluate(() => !document.querySelector(".moment-offer")));
+
+await failBossOnce();
+await sleep(1200);
+r = await page.evaluate(() => { const c = document.querySelector(".moment-offer[data-product]"); return c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent, timer: c.querySelector(".moment-timer")?.textContent, sub: c.querySelector(".moment-sub")?.textContent } : null; });
+ok("실패 2회(벽 최초 도달) → 벽 돌파 세트 제안 카드 · 타이머 · 보너스 +30", r && r.product === "pack-wall" && /\d+:\d\d/.test(r.timer ?? "") && /\+30/.test(r.sub ?? ""), JSON.stringify(r));
+let p = await prog();
+ok("진행도에 제안 창 기록(momentOffers.pack-wall, 15분)", p.momentOffers?.["pack-wall"]?.kind === "wall" && p.momentOffers["pack-wall"].until - Date.now() > 13 * 60000 && p.wallAreas.includes("forest"), JSON.stringify(p.momentOffers));
+const gemsBefore = p.redGems;
+await clickText(".titans-bottom-nav button", "상점");
+await sleep(600);
+await clickText(".premium-category-tabs button", "패키지");
+await sleep(500);
+r = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card")].filter((c) => /벽 돌파/.test(c.textContent)).map((c) => c.querySelector(".moment-bonus-badge")?.textContent ?? null));
+ok("상점 패키지 탭의 벽 돌파 세트에 '지금 +30 보석' 배지", r.length === 1 && /\+30/.test(r[0] ?? ""), JSON.stringify(r));
+await clickText(".titans-bottom-nav button", "사냥터");
+await sleep(600);
+await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
+await sleep(1200);
+p = await prog();
+ok("카드에서 구매(QA) → 보석 +100 +30 보너스 · 제안 제거 · 구매 기록", p.redGems === gemsBefore + 130 && !p.momentOffers?.["pack-wall"] && p.claimedRewards.some((k) => k.startsWith("purchase:pack-wall:")), `gems ${gemsBefore}→${p.redGems}`);
+ok("구매 후 카드 사라짐", await page.evaluate(() => !document.querySelector(".moment-offer")));
+ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
+
+await browser.close();
+for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
+const fails = results.filter((x) => x[0] === "FAIL").length;
+console.log(fails === 0 ? "\nALL PASS" : `\n${fails} FAIL`);
+process.exit(fails === 0 ? 0 : 1);

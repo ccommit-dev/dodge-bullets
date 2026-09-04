@@ -103,6 +103,7 @@ import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct
 import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
+import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, type MomentOfferKind } from "./economy/momentOffers";
 import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -251,6 +252,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
   /** 벽 미터 — 마지막 보스 실패의 정량 정보 (RETENTION D) */
   const [wallInfo, setWallInfo] = useState<WallInfo | null>(null);
+  /** 첫 보스 실패 직후 무료 +10초 카드 (세션 1회) — 두 번째 실패부터는 순간 제안(초급 세트) */
+  const [freeRetryCard, setFreeRetryCard] = useState(false);
+  const freeRetryUsedRef = useRef(false);
+  const sessionBossFailsRef = useRef(0);
+  /** 이번 세션에서 '나중에'를 누른 순간 제안 (상품 id) */
+  const [dismissedOffers, setDismissedOffers] = useState<string[]>([]);
+  const openOffer = (kind: MomentOfferKind) => {
+    void updateCharacterProgress(userHash, (current) => openMomentOffer(current, kind)).then((next) => { setCharacter(next); });
+  };
   const [nowTick, setNowTick] = useState(() => Date.now());
   const onboardHintShownRef = useRef(false);
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
@@ -987,18 +997,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           // 벽은 실패가 아니라 이정표다: 최초 도달 시 보석 보상 + 돌파 3택 배너,
           // 그리고 wallAreas 기록이 환생 조건(3지역)을 채운다.
           bossFailStreakRef.current += 1;
+          sessionBossFailsRef.current += 1;
+          // 결제 타이밍 (retention-2): 실패 1회차 → 무료 +10초 카드(세션 1회), 2회차부터 → 초급 세트 순간 제안.
+          // 단 이번 실패가 지역 벽 최초 도달이면 아래 벽 제안이 대신 뜬다.
+          const wallNow = bossFailStreakRef.current >= 2 && !characterRef.current.wallAreas.includes(huntingArea(saveRef.current.stage).id);
+          if (!wallNow) {
+            if (sessionBossFailsRef.current === 1 && !freeRetryUsedRef.current) setFreeRetryCard(true);
+            else openOffer("boss-fail");
+          }
           if (bossFailStreakRef.current >= 2) {
             bossFailStreakRef.current = 0;
             const areaId = huntingArea(saveRef.current.stage).id;
             if (!characterRef.current.wallAreas.includes(areaId)) {
+              // 벽 기록과 벽 제안(retention-2)은 같은 갱신에서 — 따로 쓰면 나중 쓰기가 앞의 momentOffers 를 덮는다
               void updateCharacterProgress(userHash, (current) =>
                 current.wallAreas.includes(areaId)
                   ? current
-                  : {
+                  : openMomentOffer({
                       ...current,
                       wallAreas: [...current.wallAreas, areaId],
                       redGems: current.redGems + 30,
-                    },
+                    }, "wall"),
               ).then((next) => {
                 setCharacter(next);
                 setRedGems(next.redGems);
@@ -1716,6 +1735,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   const buyPaidProduct = async (productId: string) => {
     if (claimingProduct) return;
     const adapter = getPaymentAdapter();
+    if (import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-pay") === "1") {
+      // QA 스텁: 스토어 없이 지급 경로만 검증 (verify-offers.mjs)
+      const { progress, cores, applied, bonus } = await grantPurchase(userHash, productId, `qa-${Date.now()}`);
+      if (!applied) { flash("이미 지급된 구매입니다"); return; }
+      setCharacter(progress);
+      setRedGems(progress.redGems);
+      if (cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + cores } }));
+      flash(`${STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId} 구매 완료${bonus ? ` · 보너스 보석 +${bonus}` : ""}`);
+      return;
+    }
     if (!paymentsConfigured()) {
       flash("스토어 결제 연동 전입니다 — Google Play 등록 후 구매할 수 있습니다");
       return;
@@ -1727,13 +1756,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
         if (result.status === "not-configured") flash("결제를 사용할 수 없는 환경입니다");
         return;
       }
-      const { progress, cores, applied } = await grantPurchase(userHash, productId, result.transactionId);
+      const { progress, cores, applied, bonus } = await grantPurchase(userHash, productId, result.transactionId);
       if (!applied) { flash("이미 지급된 구매입니다"); return; }
       setCharacter(progress);
       setRedGems(progress.redGems);
       if (cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + cores } }));
       sfxSlotUnlock();
-      flash(`${STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId} 구매 완료`);
+      flash(`${STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId} 구매 완료${bonus ? ` · 보너스 보석 +${bonus}` : ""}`);
     } finally {
       setClaimingProduct(null);
     }
@@ -1930,7 +1959,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
     flash(`오늘 루틴 완료 — 보석 +${ROUTINE_REWARD_GEMS}`);
   };
 
-  const paidProductsUnlocked = character.attendanceStreak >= 3 || character.level >= 20;
+  const paidProductsUnlocked = paidOffersUnlocked(character);
 
   // 스킬 예상 DPS 보정 (점검표 #5) — 장착 액티브의 평균 업타임 가중치 합. 정확한 시뮬이
   // 아니라 "이 조합이 얼마나 강한가"의 상대 지표다.
@@ -2274,6 +2303,36 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             );
           })}
         </div>
+        {/* 결제 타이밍 카드 (retention-2~5): 무료 +10초 → 순간 제안 1장. 창이 닫히면 상점 패키지 탭에 정가로 남는다 */}
+        {freeRetryCard && (
+          <div className="moment-offer free" role="dialog" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="moment-head">첫 보스 실패 — 다음 도전 +10초 <small>무료 1회</small></div>
+            <div className="moment-sub">몬스터 10마리를 다시 처치하면 보스가 돌아옵니다. 이번 한 번은 제한시간을 늘려 드려요.</div>
+            <div className="moment-actions">
+              <button type="button" className="moment-buy" onClick={() => { freeRetryUsedRef.current = true; bossRetryBonusRef.current = BOSS_RETRY_BONUS_SEC; setFreeRetryCard(false); flash(`다음 보스 도전 제한시간 +${BOSS_RETRY_BONUS_SEC}초`); }}>+{BOSS_RETRY_BONUS_SEC}초 받기</button>
+              <button type="button" className="moment-later" onClick={() => setFreeRetryCard(false)}>괜찮아요</button>
+            </div>
+          </div>
+        )}
+        {!freeRetryCard && (() => {
+          const offer = activeMomentOffers(character, nowTick).find((o) => !dismissedOffers.includes(o.productId));
+          if (!offer) return null;
+          const def = MOMENT_OFFERS[offer.kind as MomentOfferKind];
+          const product = STORE_PRODUCTS.find((p) => p.id === offer.productId);
+          if (!def || !product) return null;
+          const doubleReady = firstDoubleAvailable(character, product.id);
+          return (
+            <div className={`moment-offer kind-${offer.kind}`} role="dialog" data-product={product.id} onPointerDown={(e) => e.stopPropagation()}>
+              <div className="moment-head">{def.title} <small>{product.displayPrice}</small>{doubleReady && <small>첫 구매 2배</small>}</div>
+              <span className="moment-timer">{momentTimeLeft(offer.until, nowTick)}</span>
+              <div className="moment-sub">{def.subtitle} · 지금 사면 보석 +{offer.bonusGems}</div>
+              <div className="moment-actions">
+                <button type="button" className="moment-buy" disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{product.name}<em>{product.displayPrice}</em></button>
+                <button type="button" className="moment-later" onClick={() => setDismissedOffers((d) => [...d, product.id])}>나중에</button>
+              </div>
+            </div>
+          );
+        })()}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
           {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
             <button
@@ -2887,7 +2946,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d" || product.id === "remove-ads";
           return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
-          <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
+          <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
             <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : "스토어 결제 연동 후 판매됩니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : product.displayPrice}</button>
           ) : (
