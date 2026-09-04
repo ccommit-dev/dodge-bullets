@@ -76,6 +76,21 @@ await sleep(1200);
 p = await prog();
 ok("카드에서 구매(QA) → 보석 +100 +30 보너스 · 제안 제거 · 구매 기록", p.redGems === gemsBefore + 130 && !p.momentOffers?.["pack-wall"] && p.claimedRewards.some((k) => k.startsWith("purchase:pack-wall:")), `gems ${gemsBefore}→${p.redGems}`);
 ok("구매 후 카드 사라짐", await page.evaluate(() => !document.querySelector(".moment-offer")));
+
+// ── retention-3: 9시간 복귀 → 정산 모달에 후원 계약 미리보기 → QA 구매 → patronUntil 30일 ──
+await page.evaluate(({ h, now }) => {
+  const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.idleClaimedAt = now - 9 * 3600000; q.patronUntil = 0; localStorage.setItem(pk, JSON.stringify(q));
+  const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.lastActiveAt = now - 9 * 3600000; localStorage.setItem(tk, JSON.stringify(t));
+}, { h: H, now: Date.now() });
+await page.goto(BASE, { waitUntil: "networkidle0" });
+await sleep(2500);
+r = await page.evaluate(() => { const m = document.querySelector(".idle-modal"); const pv = document.querySelector(".idle-patron-preview"); return { modal: !!m, preview: pv ? { gold: Number(pv.dataset.extraGold), text: pv.querySelector("b")?.textContent, btn: pv.querySelector(".patron-buy")?.textContent } : null }; });
+ok("9h 복귀 정산 모달에 후원 계약 미리보기(+골드·₩5,500)", r.modal && r.preview && r.preview.gold > 0 && /₩5,500/.test(r.preview.btn ?? ""), JSON.stringify(r));
+await page.evaluate(() => document.querySelector(".idle-patron-preview .patron-buy")?.click());
+await sleep(1200);
+p = await prog();
+ok("미리보기에서 구매(QA) → patronUntil ≈ +30일 · 구매 기록", p.patronUntil - Date.now() > 29 * 86400000 && p.claimedRewards.some((k) => k.startsWith("purchase:patron-30d:")), `patron ${Math.round((p.patronUntil - Date.now()) / 86400000)}d`);
+ok("구매 후 미리보기 사라짐(후원 중)", await page.evaluate(() => !document.querySelector(".idle-patron-preview")));
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 
 await browser.close();
