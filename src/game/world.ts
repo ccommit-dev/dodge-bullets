@@ -66,6 +66,12 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     expeditionSeals: 0,
     slashScore: 0,
     slashBuff: 0,
+    slashGauge: 0,
+    ultFlashMs: 0,
+    reflectKills: 0,
+    ultCount: 0,
+    lastCut: "" as const,
+    lastCutMs: 0,
     slashHitFx: Array.from({ length: 24 }, () => ({ active: false, x: 0, y: 0, value: 0, lifeMs: 0, maxLifeMs: 0, boss: false, crit: false, energy: 0 })),
     slashDrops: Array.from({ length: 8 }, () => ({ active: false, x: 0, y: 0, vy: 0, kind: "edge" as const })),
     lastHitCause: "",
@@ -120,6 +126,12 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.stageClear = false;
   world.animClock = 0;
   world.combo = 0;
+  world.slashGauge = 0;
+  world.ultFlashMs = 0;
+  world.reflectKills = 0;
+  world.ultCount = 0;
+  world.lastCut = "";
+  world.lastCutMs = 0;
   world.maxCombo = 0;
   world.comboTimerMs = 0;
   world.countered = 0;
@@ -241,6 +253,8 @@ export function updateWorld(
   if (p.dashActiveMs > 0) p.dashActiveMs = Math.max(0, p.dashActiveMs - dtSec * 1000);
   if (p.slowCdMs > 0) p.slowCdMs = Math.max(0, p.slowCdMs - dtSec * 1000);
   if (p.slowActiveMs > 0) p.slowActiveMs = Math.max(0, p.slowActiveMs - dtSec * 1000);
+  if (world.ultFlashMs > 0) world.ultFlashMs = Math.max(0, world.ultFlashMs - dtSec * 1000);
+  if (world.lastCutMs > 0) world.lastCutMs = Math.max(0, world.lastCutMs - dtSec * 1000);
   if (p.landingFxMs > 0) p.landingFxMs = Math.max(0, p.landingFxMs - dtSec * 1000);
   const wasOnGround = p.onGround;
 

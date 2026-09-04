@@ -98,14 +98,14 @@ type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
 const DEATH_TIPS: Record<string, string> = {
-  homing: "유도탄은 빨간 궤적이 붙기 전에 검격으로 베면 조각이 되어 흩어집니다",
+  homing: "유도탄은 빨간 궤적이 붙기 전에 정면에서 베세요 — 뒤에서 오는 화살은 못 벱니다",
   explosive: "폭발 화살은 점프로 넘기지 말고 대시로 관통하세요 — 폭발 범위가 넓어요",
   ricochet: "튕기는 화살은 벽 근처에서 두 번 옵니다 — 벽에서 떨어져 서세요",
   fan: "부채꼴 화살은 한 발만 베면 틈이 열립니다",
   aimed: "조준 화살은 붉은 선이 사라지는 순간 위치를 바꾸세요",
   fragment: "베어 낸 조각은 돌다가 되돌아옵니다 — 조각이 남았을 땐 점프 후 대시",
   boss: "보스 화살은 끝까지 베야 합니다 — 검격이 준비되기 전엔 거리를 두세요",
-  normal: "일반 화살은 검격으로 베면 코인과 조각이 됩니다 — 피하지 말고 베세요",
+  normal: "검격은 스윙 순간 앞쪽 화살만 벱니다 — 코앞에서 베면 반사되어 궁수를 잡습니다",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 function statsWithShoulder(levels: ShopLevels, shoulder: ShoulderId | null) {
@@ -1252,7 +1252,7 @@ function App() {
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
-                <span>위협 화살을 <em>검격</em>으로 쳐내 보급 점수를 얻으세요. 한 번 분해된 파편은 다시 베면 소멸합니다.</span>
+                <span>스윙 순간 <em>앞쪽</em> 화살만 벱니다. 코앞에서 베면 <em>반사</em>되어 궁수를 잡고, 참격 게이지가 차면 <em>일섬</em>이 화면을 비웁니다.</span>
               </div>
             )}
           </div>

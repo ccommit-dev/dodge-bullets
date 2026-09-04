@@ -115,7 +115,8 @@ export function statsFromLevels(levels: ShopLevels): PlayerStats {
     slowDurationMs: 700 + s * 180,
     // Counter slash is the expedition's main action. Keep the same upgrade
     // curve while halving its former 3.5s cooldown.
-    slowCooldownMs: Math.max(900, 1750 - s * 150),
+    // 검객 규칙: 스윙 순간에만 베므로 쿨다운을 짧게 — 리듬이 빨라야 한다 (docs/CONTENT_BEAT_DODGE_PLAN.md §2)
+    slowCooldownMs: Math.max(600, 1150 - s * 90),
     slashLevel: s,
     extraLives: life,
     // Slight hitbox shrink with extraLife investments beyond lives

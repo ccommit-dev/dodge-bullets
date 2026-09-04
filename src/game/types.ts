@@ -49,6 +49,8 @@ export type Arrow = {
   splitLevel: 0 | 1 | 2 | 3;
   /** Damage is reduced every time the arrow is split. */
   damage: number;
+  /** 정타로 반사된 화살 — 플레이어를 해치지 않고 화면 밖으로 나가면 궁수 처치로 친다 */
+  reflected: boolean;
   /** Brief spherical orbit before a split fragment homes back toward the player. */
   orbitMs: number;
   orbitX: number;
@@ -196,6 +198,16 @@ export type GameWorld = {
   expeditionSeals: number;
   slashScore: number;
   slashBuff: number;
+  /** 참격 게이지 0~100 — 반사 +22 · 파쇄 +9 · 근접 회피 +4. 가득 차면 일섬 (docs/CONTENT_BEAT_DODGE_PLAN.md §2) */
+  slashGauge: number;
+  /** 일섬 섬광 남은 ms */
+  ultFlashMs: number;
+  /** 반사로 처치한 궁수 수 · 일섬 횟수 */
+  reflectKills: number;
+  ultCount: number;
+  /** 마지막 베기 결과 (HUD 문구) */
+  lastCut: "" | "reflect" | "shatter" | "ult";
+  lastCutMs: number;
   slashHitFx: SlashHitFx[];
   slashDrops: SlashDrop[];
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */

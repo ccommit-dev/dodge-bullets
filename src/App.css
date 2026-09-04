@@ -3583,3 +3583,12 @@
 .enemy-guard .beat-monster-wrap .beat-training-monster { filter: drop-shadow(0 0 8px #93c5fd) brightness(1.1); }
 .enemy-skill .beat-monster-wrap .beat-training-monster { filter: drop-shadow(0 0 10px #f87171) contrast(1.15); }
 .beat-command-party.drop-burst .beat-monster-wrap { animation: beat-enemy-stagger .6s ease-out both; }
+
+/* ── 비트 원정 난이도 변형 칩 · 등급 배지 (docs/CONTENT_BEAT_DODGE_PLAN.md §1) ── */
+.schedule-variants { display: flex; gap: 4px; margin: 3px 0 2px; }
+.variant-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 900; letter-spacing: .02em; border: 1px solid rgba(148,163,184,.4); background: rgba(15,23,42,.6); color: #cbd5e1; }
+.variant-chip.on { border-color: #67e8f9; color: #e0f2fe; background: rgba(8,145,178,.35); }
+.variant-chip.locked { opacity: .45; }
+.variant-chip .grade { font-style: normal; font-size: 9px; padding: 0 4px; border-radius: 6px; background: #1e293b; color: #fde68a; }
+.variant-chip .grade-S { background: #fde68a; color: #1e1b4b; }
+.variant-chip .grade-A { background: #a78bfa; color: #1e1b4b; }

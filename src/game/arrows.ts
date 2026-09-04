@@ -31,6 +31,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       homingTurnRate: 0,
       splitLevel: 0,
       damage: 1,
+      reflected: false,
       orbitMs: 0,
       orbitX: 0,
       orbitY: 0,
@@ -110,6 +111,7 @@ function activate(
     arrow.hitRadius = HIT_R + 1;
   }
   arrow.splitLevel = 0;
+  arrow.reflected = false;
   arrow.damage = SPLIT_DAMAGE[0];
   arrow.orbitMs = 0;
   arrow.orbitX = x;
@@ -392,6 +394,80 @@ function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
   }
 }
 
+/** 검격 스윙 창(ms) — 지속 시간의 앞부분만 베기가 유효하다 */
+export const SWING_MS = 320;
+/** 스윙 호 — 바라보는 방향 기준 ±110° (뒤에서 오는 화살은 못 벤다) */
+export const SWING_ARC = (220 / 180) * Math.PI;
+/** 정타(반사) 거리 — 화살이 몸에서 이 거리 안일 때 베면 반사 */
+export const REFLECT_DIST = 16;
+export const GAUGE_REFLECT = 22;
+export const GAUGE_SHATTER = 9;
+
+export function inSwingArc(facing: -1 | 1, dx: number, dy: number): boolean {
+  const ang = Math.atan2(dy, dx);
+  const front = facing > 0 ? 0 : Math.PI;
+  let d = ang - front;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  return Math.abs(d) <= SWING_ARC / 2;
+}
+
+function addGauge(world: GameWorld, amount: number): void {
+  world.slashGauge = Math.min(100, world.slashGauge + amount);
+  if (world.slashGauge >= 100) ultimateSlash(world);
+}
+
+/** 일섬 — 화면의 일반 화살 전부 파쇄 + 1.2초 시간 지연 + 섬광 */
+export function ultimateSlash(world: GameWorld): void {
+  world.slashGauge = 0;
+  world.ultCount += 1;
+  world.ultFlashMs = 600;
+  world.lastCut = "ult";
+  world.lastCutMs = 900;
+  world.player.slowActiveMs = Math.max(world.player.slowActiveMs, 1200);
+  for (const a of world.arrows) {
+    if (!a.active || a.boss || a.reflected || a.warningMs > 0) continue;
+    a.active = false;
+    world.countered += 1;
+    world.supplies += 1;
+    world.slashScore += 12;
+  }
+  bumpCombo(world);
+}
+
+/** 화살 베기 — 정타(몸에서 REFLECT_DIST 안)면 반사, 아니면 파쇄. 보스는 기존 다단 베기 */
+export function cutArrow(world: GameWorld, a: Arrow, dist: number): void {
+  if (a.boss) { splitArrow(world, a); addGauge(world, GAUGE_SHATTER); return; }
+  const player = world.player;
+  const value = registerSlash(world, a);
+  const close = dist <= player.radius + a.hitRadius + REFLECT_DIST;
+  if (close) {
+    // 반사: 온 길로 1.4배 속도로 되돌린다 — 화면 밖으로 나가면 궁수 처치
+    const speed = Math.max(220, Math.hypot(a.vx, a.vy)) * 1.4;
+    const back = Math.atan2(-a.vy, -a.vx || 0.0001);
+    a.vx = Math.cos(back) * speed;
+    a.vy = Math.sin(back) * speed;
+    a.reflected = true;
+    a.damage = 0;
+    a.homingMs = 0;
+    a.bounces = 0;
+    a.orbitMs = 0;
+    world.lastCut = "reflect";
+    world.lastCutMs = 700;
+    pushSlashFx(world, a.x, a.y, Math.round(40 + value * 40), false, true, value);
+    addGauge(world, GAUGE_REFLECT);
+  } else {
+    a.active = false;
+    world.countered += 1;
+    world.supplies += 1;
+    world.lastCut = "shatter";
+    world.lastCutMs = 500;
+    maybeDropSlashItem(world, a.x, a.y, false);
+    addGauge(world, GAUGE_SHATTER);
+  }
+  if (world.countered % 3 === 0) world.enemyKills += 1;
+  bumpCombo(world);
+}
+
 function splitArrow(world: GameWorld, arrow: Arrow): void {
   if (arrow.boss) {
     arrow.bossCutsLeft = Math.max(0, arrow.bossCutsLeft - 1);
@@ -524,11 +600,14 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     if (slow) {
       const dx = a.x - player.x;
       const dy = a.y - player.y;
-      if (dx * dx + dy * dy <= slowR * slowR && a.warningMs <= 0 && a.splitGraceMs <= 0) {
-        splitArrow(world, a);
+      const inRadius = dx * dx + dy * dy <= slowR * slowR;
+      // 검객 규칙: 베기는 스윙(처음 SWING_MS) 동안, 앞쪽 SWING_ARC 안의 화살만. 나머지 지속 시간은 시간 지연만 (docs/CONTENT_BEAT_DODGE_PLAN.md §2)
+      const swinging = player.slowActiveMs > world.stats.slowDurationMs - SWING_MS;
+      if (inRadius && swinging && !a.reflected && a.warningMs <= 0 && a.splitGraceMs <= 0 && inSwingArc(player.facing, dx, dy)) {
+        cutArrow(world, a, Math.sqrt(dx * dx + dy * dy));
         continue;
       }
-      if (dx * dx + dy * dy <= slowR * slowR) mul = slowF;
+      if (inRadius && !a.reflected) mul = slowF;
     }
 
     if (a.orbitMs > 0) {
@@ -604,6 +683,14 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       a.x < -80 ||
       a.x > world.width + 80;
     if (out) {
+      if (a.reflected) {
+        a.active = false;
+        world.reflectKills += 1;
+        world.enemyKills += 1;
+        world.supplies += 2;
+        world.slashScore += 40;
+        continue;
+      }
       if (a.boss) {
         const side = Math.random() < 0.5 ? -1 : 1;
         a.x = side < 0 ? -36 : world.width + 36;
@@ -616,7 +703,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       continue;
     }
 
-    if (player.invulnMs > 0 || player.anim === "dead") continue;
+    if (a.reflected || player.invulnMs > 0 || player.anim === "dead") continue;
 
     const tip = tipPos(a);
     const pr = player.radius;
@@ -643,6 +730,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     if (!a.nearMissed && distSq <= nearR * nearR) {
       a.nearMissed = true;
       bumpCombo(world);
+      addGauge(world, 4);
       if (a.telegraph === "perfect") {
         world.perfectDodges += 1;
         world.expeditionSeals += 1;

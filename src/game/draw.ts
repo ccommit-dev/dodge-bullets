@@ -3,6 +3,16 @@ import { getStage } from "./stages";
 import type { Arrow, GameWorld } from "./types";
 
 function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
+  if (a.reflected) {
+    // 반사된 화살 — 금색, 궁수에게 되돌아가는 중
+    const c = Math.cos(a.angle), sn = Math.sin(a.angle), h = a.length * 0.5;
+    ctx.save();
+    ctx.strokeStyle = "#fde68a"; ctx.fillStyle = "#fde68a"; ctx.lineWidth = 3; ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.moveTo(a.x - c * h, a.y - sn * h); ctx.lineTo(a.x + c * h, a.y + sn * h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a.x + c * h, a.y + sn * h); ctx.lineTo(a.x + c * (h - 8) - sn * 4, a.y + sn * (h - 8) + c * 4); ctx.lineTo(a.x + c * (h - 8) + sn * 4, a.y + sn * (h - 8) - c * 4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    return;
+  }
   const cos = Math.cos(a.angle);
   const sin = Math.sin(a.angle);
   const half = a.length * 0.5;
@@ -204,15 +214,41 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.fillStyle = "rgba(8,47,73,.88)";
   ctx.strokeStyle = "#67e8f9";
   ctx.lineWidth = 2;
-  ctx.fillRect(trackerX, trackerY, trackerW, 40);
-  ctx.strokeRect(trackerX, trackerY, trackerW, 40);
+  ctx.fillRect(trackerX, trackerY, trackerW, 54);
+  ctx.strokeRect(trackerX, trackerY, trackerW, 54);
   ctx.fillStyle = "#e0f2fe";
   ctx.font = "700 11px system-ui";
   ctx.fillText(`처치 ${world.enemyKills} · 완벽 ${world.perfectDodges} · 상자 ${world.chests}`, trackerX + 10, trackerY + 16);
   ctx.font = "700 10px system-ui";
   ctx.fillStyle = "#fde68a";
   ctx.fillText(`보급 ${world.supplies} · 원정 인장 ${world.expeditionSeals}`, trackerX + 10, trackerY + 31);
+  // 참격 게이지 — 가득 차면 일섬
+  const gw = trackerW - 20;
+  ctx.fillStyle = "rgba(15,23,42,.8)";
+  ctx.fillRect(trackerX + 10, trackerY + 40, gw, 7);
+  ctx.fillStyle = world.slashGauge >= 100 ? "#fde68a" : "#f59e0b";
+  ctx.fillRect(trackerX + 10, trackerY + 40, gw * Math.min(1, world.slashGauge / 100), 7);
+  ctx.fillStyle = "#fde68a";
+  ctx.font = "700 9px system-ui";
+  ctx.fillText(`참격 ${Math.round(world.slashGauge)}% · 반사 ${world.reflectKills}`, trackerX + 10, trackerY + 52 + 0);
   ctx.restore();
+  if (world.lastCutMs > 0 && world.lastCut) {
+    ctx.save();
+    const label = world.lastCut === "reflect" ? "반사!" : world.lastCut === "ult" ? "일섬" : "파쇄";
+    ctx.globalAlpha = Math.min(1, world.lastCutMs / 300);
+    ctx.fillStyle = world.lastCut === "reflect" ? "#fde68a" : world.lastCut === "ult" ? "#f8fafc" : "#67e8f9";
+    ctx.font = `900 ${world.lastCut === "ult" ? 30 : 16}px system-ui`;
+    ctx.textAlign = "center";
+    ctx.fillText(label, world.player.x, world.player.y - 46);
+    ctx.restore();
+  }
+  if (world.ultFlashMs > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.55, world.ultFlashMs / 600 * 0.55);
+    ctx.fillStyle = "#fef3c7";
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
 
   for (let i = 0; i < arrows.length; i++) {
     if (arrows[i].active) drawArrow(ctx, arrows[i]);
