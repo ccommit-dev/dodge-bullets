@@ -2412,6 +2412,8 @@
 }
 .titans-allies .titan-ally-art[data-party-slot].is-engaged {
   left: var(--party-combat-x);
+  bottom: var(--party-combat-y, var(--party-lane-y));
+  z-index: var(--party-z, 3);
   transform: none;
 }
 .titan-ally-art.ally-mia { --ally-x:18%; --ally-y:0%; z-index:5; }
@@ -3048,6 +3050,7 @@
   position: absolute;
   left: 2%;
   bottom: 14%;
+  z-index: 5; /* 교전 중 뒷줄 동료(--party-z 2)는 뒤, 앞줄(8)은 앞 */
   width: var(--hero-size);
   z-index: 2;
   filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.5));

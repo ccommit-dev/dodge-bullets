@@ -205,7 +205,10 @@ def cmd_sample(a):
 
 def cmd_char(a):
     base = a.pose_from or "garen"
+    only = set(a.states.split(",")) if a.states else None
     for si, state in enumerate(["idle", "run", "attack", "hit"]):
+        if only and state not in only:
+            continue
         pose = pose_of(REF / f"{base}-{state}.png")
         im = gen_txt(f"{a.prompt}, {STATE_PROMPT[state]}", (a.seed or BASE_SEED) + si * 7, pose=pose)
         save(cutout(im), f"char-{a.id}-{state}.png")
@@ -258,7 +261,7 @@ if __name__ == "__main__":
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("smoke").set_defaults(fn=cmd_smoke)
     sub.add_parser("sample").set_defaults(fn=cmd_sample)
-    c = sub.add_parser("char"); c.add_argument("id"); c.add_argument("prompt"); c.add_argument("--pose-from"); c.add_argument("--seed", type=int); c.set_defaults(fn=cmd_char)
+    c = sub.add_parser("char"); c.add_argument("id"); c.add_argument("prompt"); c.add_argument("--pose-from"); c.add_argument("--seed", type=int); c.add_argument("--states", help="idle,run,attack,hit 중 일부만"); c.set_defaults(fn=cmd_char)
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)

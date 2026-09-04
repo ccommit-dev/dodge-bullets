@@ -92,6 +92,8 @@ const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = { pyro: 0, marina: 1, 
 const VARIANT_ROWS = 12;
 const SPECIAL_ROW: Partial<Record<TitanHeroId, number>> = { mia_dark: 2, sera_light: 3 };
 // J: SSR 스킨 10종 + 시즌 한정 2종 — 순서는 make-variant-atlas.mjs SKINS와 같다 (가로 셀 12행)
+/** 생성 원화(art-gen) 동료 — 무기가 그림에 포함돼 있어 장착 파츠(.ally-weapon)를 겹쳐 그리면 검이 두 자루가 된다 */
+const AUTHORED_WEAPON_BAKED = new Set<TitanHeroId>(["luna", "volt", "bronn", "iris", "cain", "sylph", "orion", "ember"]);
 const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1, "ari-blaze": 2, "nox-abyss": 3, "bronn-iron": 4, "iris-prism": 5, "cain-ash": 6, "sylph-dawn": 7, "orion-nova": 8, "ember-ruby": 9, "season-1": 10, "season-2": 11, "luna-eclipse": 12 };
 const SKIN_ROWS = 13;
 // 특수 아틀라스 기반(정사각 셀) 스킨 — 루나·세라 라이트
@@ -212,11 +214,21 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   const laneY = slot === undefined ? undefined : [4, 53, 12, 63, 1, 48][slot];
   // 교전 시 후열은 주인공 뒤, 전열은 주인공 오른쪽에 고정한다. % 좌표를
   // 사용해 360px 모바일부터 720px 데스크톱까지 동일한 충돌 여백을 유지한다.
-  const combatX = slot === undefined ? undefined : ranged ? [3, 4, 13, 14, 23, 24][slot] : [52, 54, 62, 64, 72, 74][slot];
+  // 교전 위치(x%, bottom%) — 플레이 검증에서 확정: 동료 박스가 폭 20%·높이 18%라, 같은 열은 세로 18% 이상,
+  // 같은 줄은 가로 20% 이상 띄운다. 예전 값(근접 52/54/62/64 + 줄 53/63)은 1·3번 슬롯이 37px 겹쳤고,
+  // 원거리 13%는 교전 중 주인공(29~36%)과 겹쳤다. 깊이(z)는 줄이 낮을수록 앞.
+  // 동료 컨테이너는 전장보다 약 40px 안쪽이라 x 68%가 우측 한계(박스 366px 기준). 원거리는 주인공(교전 시 29~36%)
+  // 왼쪽에 서야 하므로 8% 이하.
+  const MELEE_COMBAT = [[50, 4], [50, 50], [68, 4], [68, 50], [59, 27], [59, 70]];
+  const RANGED_COMBAT = [[2, 4], [2, 50], [8, 27], [8, 70], [2, 27], [8, 4]];
+  const [combatX, combatY] = slot === undefined ? [undefined, undefined] : (ranged ? RANGED_COMBAT : MELEE_COMBAT)[slot];
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
     "--party-lane-y": `${laneY}%`,
     "--party-combat-x": `${combatX}%`,
+    "--party-combat-y": `${combatY}%`,
+    // 주인공 발(bottom 14%)보다 앞줄(≤14%)만 주인공 위에, 뒷줄은 주인공 뒤에 그린다 (.titans-hero z-index 5)
+    "--party-z": String((combatY ?? 0) <= 14 ? 8 : 2),
   } as CSSProperties);
   return (
     <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
@@ -252,6 +264,8 @@ function AllyWeapon({ id: rawId, anchor }: { id: TitanHeroId; anchor?: CSSProper
   // 얼터너티브는 원본의 무기를 쓴다 — 팔레트는 CSS(weapon-* 클래스)가 아니라 몸체 이미지 차이
   const id = ALT_BASE[rawId] ?? rawId;
   const ranged = id === "leon" || id === "sera";
+  // 생성 원화 동료는 무기가 그림에 있다 — 장착 파츠를 겹치면 검이 두 자루가 된다
+  if (AUTHORED_WEAPON_BAKED.has(rawId)) return null;
   return (
     <svg className={`ally-weapon weapon-${id} ${ranged ? "ranged" : "melee"}`} style={anchor} viewBox="0 0 100 100" aria-hidden="true">
       {id === "leon" ? (

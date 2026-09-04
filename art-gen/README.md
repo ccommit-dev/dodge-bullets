@@ -42,3 +42,12 @@ bash art-gen/finalize.sh                                       # 배치 → 아�
 | 코스튬 시트 | `character/skins/hero-*-<id>.png` | make-character-skins: `character/skins/authored.json` |
 | 영웅 시트 | `character/base/hero-idle.png · hero-attack.png` | (원본 교체 — 흑요석·새벽 스킨은 새 시트에서 재파생) |
 | 커버 | `beat/covers/<id>.png` | make-beat-covers 를 다시 돌리지 않는다 |
+
+## 플레이 검증
+
+```bash
+node scripts/verify-play-art.mjs   # dev 서버 5173 필요
+```
+
+새 원화 동료 4명(루나·브론·아이리스·엠버)을 편성해 전투를 돌리며 동료끼리·동료-주인공·동료-몬스터 본체 겹침, 전장 이탈, 상태 프레임 전환, 상태 간 크기 팝을 잰다. 스크린샷은 `art-gen/out/play-t*.png`.
+이 검증에서 확정된 것: 교전 위치 표(`SpriteArt.tsx MELEE_COMBAT/RANGED_COMBAT`, 줄에 따른 깊이 z), 생성 동료의 무기 오버레이 생략(`AUTHORED_WEAPON_BAKED`), `place-art.mjs`의 파편 제거·배율 상한 규칙.
