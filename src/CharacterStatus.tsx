@@ -129,9 +129,10 @@ export function CharacterStatus({
   }));
   const earnedBadges = earnedBadgeIds(progress);
   // 환생 리워크 (LIVEOPS §1.4): 스테이지 숫자 대신 "벽에 부딪힌 지역 수"가 조건.
-  // 벽 도달은 TitansGame이 wallAreas에 기록한다 — 유저 입장에선 "3개 지역에서 한계를
+  // 벽 도달은 TitansGame이 wallAreas에 기록한다 — 유저 입장에선 "2개 지역에서 한계를
   // 본 뒤 다시 태어난다"는 서사가 Stage 30보다 명확하다.
-  const REBIRTH_WALL_AREAS = 3;
+  // 3 → 2: 밸런스 시뮬에서 15~30일이 Stage 29 정체였고 환생이 30일에야 1회 — 2개 지역이면 개척 완료(9일) 직후 열린다
+  const REBIRTH_WALL_AREAS = 2;
   const canRebirth = progress.wallAreas.length >= REBIRTH_WALL_AREAS;
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
@@ -196,7 +197,7 @@ export function CharacterStatus({
       rebirthCount: current.rebirthCount + 1,
       inheritanceCrystals: current.inheritanceCrystals + crystals,
       evolutionPoints: current.evolutionPoints + 1,
-      // 벽 기록은 소모 — 다음 환생도 다시 3개 지역의 벽을 봐야 한다
+      // 벽 기록은 소모 — 다음 환생도 다시 2개 지역의 벽을 봐야 한다
       wallAreas: [],
       // 동료 레벨이 리셋되므로 편성·파견도 비운다 (partyCap 하한과 펫은 보존)
       partyIds: [],
