@@ -110,6 +110,28 @@ await sleep(1800);
 await closeModal();
 r = await page.evaluate(() => { const c = document.querySelector(".moment-offer[data-product]"); return c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent } : null; });
 ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.product === "pack-rebirth" && /환생 축하/.test(r.head ?? ""), JSON.stringify(r));
+
+// ── retention-5: 픽업 회전 D-2 → 뽑기 페이지에 보석 1,200 제안(첫 구매 2배) → QA 구매 → 2400 + 150 ──
+// 회전 주기 14일·기준 2026-01-05 UTC — 다음 회전 종료 2일 전(+1h)으로 Date.now 를 고정한다 (new Date() 는 실시간이라 출석 문자열엔 영향 없음)
+{
+  const EPOCH = Date.UTC(2026, 0, 5), PERIOD = 14 * 86400000;
+  const k = Math.floor((Date.now() - EPOCH) / PERIOD) + 1;
+  const fake = EPOCH + k * PERIOD - 2 * 86400000 + 3600000;
+  await page.evaluateOnNewDocument((f) => { const real = Date.now; Date.now = () => f + (real() - f); (window).__fakeStart = f; Date.now = () => f; }, fake);
+  await page.evaluate(({ h }) => { const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.pioneeredArea = 5; q.redGems = 0; q.claimedRewards = (q.claimedRewards || []).filter((k) => !k.startsWith("first-double:")); q.momentOffers = {}; localStorage.setItem(pk, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.stage = 5; localStorage.setItem(tk, JSON.stringify(t)); }, { h: H });
+  await page.goto(BASE, { waitUntil: "networkidle0" });
+  await sleep(2000);
+  await closeModal();
+  await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
+  await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(1500);
+  r = await page.evaluate(() => { const days = [...document.querySelectorAll("small")].map((x) => x.textContent).find((t) => /회전까지/.test(t ?? "")) ?? ""; const c = document.querySelector(".moment-offer[data-product]"); return { days, card: c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent, sub: c.querySelector(".moment-sub")?.textContent } : null }; });
+  ok("픽업 회전 D-2 · 뽑기 페이지에 보석 1,200 제안 카드(첫 구매 2배 · +150)", /회전까지 [12]일/.test(r.days ?? "") && r.card?.product === "gems-1200" && /첫 구매 2배/.test(r.card.head ?? "") && /\+150/.test(r.card.sub ?? ""), JSON.stringify(r));
+  await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
+  await sleep(1200);
+  p = await prog();
+  ok("픽업 제안 구매(QA, 첫 구매) → 보석 2,400 + 150 = 2,550 · 제안 제거", p.redGems === 2550 && !p.momentOffers?.["gems-1200"], `gems=${p.redGems}`);
+  await page.evaluateOnNewDocument(() => {});
+}
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 
 await browser.close();

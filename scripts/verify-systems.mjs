@@ -299,6 +299,10 @@ export * as pay from "${root}/src/payments/store";`);
   ok("개척 축하 제안: pack-pioneer 30분 창 · 보너스 30", pio.momentOffers["pack-pioneer"]?.kind === "pioneer" && pio.momentOffers["pack-pioneer"].until === t0 + 30 * 60000 && pio.momentOffers["pack-pioneer"].bonusGems === 30);
   const reb = mo.openMomentOffer(p0, "rebirth", t0);
   ok("환생 축하 제안: pack-rebirth 30분 창 · 보너스 60 · 구매 시 보석 400+60·코어 10", reb.momentOffers["pack-rebirth"]?.bonusGems === 60 && (() => { const r = mo.pay.applyPurchase(reb, "pack-rebirth", "tx-r", t0 + 1000); return r.applied && r.bonus === 60 && r.progress.redGems === 460 && r.cores === 10; })());
+  // retention-5: 픽업 D-2 제안 — 창은 회전 종료 시각과 정의 창(2일) 중 이른 쪽, 첫 구매 2배 + 보너스 150
+  const pk = mo.openMomentOffer(p0, "pickup", t0, t0 + 36 * 3600000);
+  ok("픽업 제안: gems-1200 창 = 회전 종료(36h) · 보너스 150", pk.momentOffers["gems-1200"]?.kind === "pickup" && pk.momentOffers["gems-1200"].until === t0 + 36 * 3600000 && pk.momentOffers["gems-1200"].bonusGems === 150);
+  ok("픽업 제안 구매(첫 구매) → 1200×2 + 150 = 2550", (() => { const r = mo.pay.applyPurchase(pk, "gems-1200", "tx-p", t0 + 1000); return r.applied && r.doubled && r.bonus === 150 && r.progress.redGems === 2550; })());
   ok("5종 제안 상품이 모두 카탈로그에 존재", Object.values(mo.MOMENT_OFFERS).every((d) => product.STORE_PRODUCTS.some((p) => p.id === d.productId)));
   ok("남은 시간 표기", mo.momentTimeLeft(t0 + 90_000, t0) === "1:30" && /일/.test(mo.momentTimeLeft(t0 + 2 * 86400000, t0)));
 }

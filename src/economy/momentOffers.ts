@@ -45,7 +45,7 @@ export function paidOffersUnlocked(progress: Pick<CharacterProgress, "attendance
 }
 
 /** 순간 제안을 연다 — 유료 게이트 전·이미 산 트리거 팩·이미 열린 창·미등록 상품이면 그대로 */
-export function openMomentOffer(progress: CharacterProgress, kind: MomentOfferKind, now: number = Date.now()): CharacterProgress {
+export function openMomentOffer(progress: CharacterProgress, kind: MomentOfferKind, now: number = Date.now(), untilOverride?: number): CharacterProgress {
   if (!paidOffersUnlocked(progress)) return progress;
   const def = MOMENT_OFFERS[kind];
   const product = STORE_PRODUCTS.find((p) => p.id === def.productId);
@@ -53,7 +53,9 @@ export function openMomentOffer(progress: CharacterProgress, kind: MomentOfferKi
   if (product.trigger && packagePurchased(progress, def.productId)) return progress;
   const existing = progress.momentOffers?.[def.productId];
   if (existing && existing.until > now) return progress;
-  return { ...progress, momentOffers: { ...(progress.momentOffers ?? {}), [def.productId]: { kind, until: now + def.windowMs, bonusGems: def.bonusGems, openedAt: now } } };
+  // 픽업 제안은 회전 종료 시각까지 — 정의된 창(2일)보다 회전이 먼저 끝나면 그때 닫힌다
+  const until = untilOverride ? Math.min(now + def.windowMs, untilOverride) : now + def.windowMs;
+  return { ...progress, momentOffers: { ...(progress.momentOffers ?? {}), [def.productId]: { kind, until, bonusGems: def.bonusGems, openedAt: now } } };
 }
 
 /** 창 안 구매 보너스 보석 (없으면 0) */
