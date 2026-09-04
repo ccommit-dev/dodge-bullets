@@ -19,12 +19,26 @@ const SHEETS = [
 const SKINS = [
   { id: "obsidian", hue: 220, saturation: 0.55, brightness: 0.82 },
   { id: "dawn", hue: 130, saturation: 1.15, brightness: 1.08 },
+  // 코스튬 2종(₩5,900) — CSS 필터 대신 실제 시트 (아트 점검 5순위)
+  { id: "ember", hue: 342, saturation: 1.7, brightness: 0.96 },
+  // frost: hue 회전은 피부를 청록으로 왜곡한다(변형 동료에서 확인된 교훈) — 저채도·밝게 + 알파 마스크한 한랭 multiply 캐스트
+  { id: "frost", hue: 0, saturation: 0.5, brightness: 1.14, cast: [186, 220, 255], castMix: 0.55 },
 ];
 
 for (const [src, base] of SHEETS) {
-  for (const { id, hue, saturation, brightness } of SKINS) {
+  for (const { id, hue, saturation, brightness, cast, castMix = 0 } of SKINS) {
     const out = `public/titans/character/skins/${base}-${id}.png`;
-    await sharp(src).modulate({ hue, saturation, brightness }).png().toFile(out);
+    if (!cast) {
+      await sharp(src).modulate({ hue, saturation, brightness }).png().toFile(out);
+    } else {
+      // 알파가 있는 픽셀만 색 캐스트를 multiply로 섞는다 — 투명 배경은 그대로
+      const { data, info } = await sharp(src).modulate({ hue, saturation, brightness }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      for (let i = 0; i < data.length; i += info.channels) {
+        if (data[i + 3] === 0) continue;
+        for (let c = 0; c < 3; c += 1) data[i + c] = Math.round(data[i + c] * (1 - castMix) + (data[i + c] * cast[c] / 255) * castMix);
+      }
+      await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } }).png().toFile(out);
+    }
     console.log("generated", out);
   }
 }

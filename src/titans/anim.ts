@@ -11,13 +11,13 @@ export const CHARACTER_LABEL: Record<CharacterSkinId, string> = {
   default: "기본 모험가",
   obsidian: "흑요석 검사",
   dawn: "새벽의 무희",
-  // I 코스튬 — 기본 시트의 CSS 팔레트 파생 (EquippedCharacter costume-<id>)
+  // I 코스튬 — make-character-skins.mjs가 기본 시트에서 파생한 실제 시트 (skins/hero-*-<id>.png)
   ember: "붉은 잔영",
   frost: "서리 무희",
 };
 
 export function sheetFor(character: string, mode: "idle" | "attack"): string {
-  if (character === "obsidian" || character === "dawn") {
+  if (character === "obsidian" || character === "dawn" || character === "ember" || character === "frost") {
     return assetUrl(`titans/character/skins/hero-${mode}-${character}.png`);
   }
   return mode === "attack" ? ATTACK_SHEET : IDLE_SHEET;

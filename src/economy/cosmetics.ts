@@ -3,7 +3,7 @@
  *
  * 전부 확정 구매(보석) 또는 ₩ 코스튬. 성능 무관.
  * 무기 이펙트는 검격 궤적·잔상 색(C의 이펙트 레이어 재사용), 테마는 전장 하늘·바닥·강조색과 파티클,
- * 코스튬은 기본 시트의 팔레트 파생(EquippedCharacter에 costume-<id> 클래스 → CSS filter).
+ * 코스튬은 기본 시트에서 파생한 실제 시트(make-character-skins.mjs).
  */
 export type WeaponFxDef = { name: string; desc: string; hue: number; trail: string; gemCost: number | null };
 export const WEAPON_FX: Record<string, WeaponFxDef> = {
@@ -21,8 +21,8 @@ export const THEMES: Record<string, ThemeDef> = {
   "theme-void": { name: "공허", desc: "별이 스러지는 심연의 정적", sky: "#020617", ground: "#0f0a1f", accent: "#a78bfa", particles: "void", gemCost: 400 },
 };
 
-/** 코스튬 (₩5,900) — 기본 시트 팔레트 파생. char-<id> 상품으로 판매 */
-export const COSTUMES: Record<string, { name: string; desc: string; filter: string }> = {
-  ember: { name: "붉은 잔영", desc: "잔불빛으로 물든 모험가", filter: "sepia(.55) saturate(2.2) hue-rotate(-18deg) contrast(1.05)" },
-  frost: { name: "서리 무희", desc: "서릿발이 서린 푸른 모험가", filter: "saturate(.7) hue-rotate(165deg) brightness(1.08)" },
+/** 코스튬 (₩5,900) — 실제 시트는 scripts/make-character-skins.mjs가 파생(titans/character/skins/hero-*-<id>.png). char-<id> 상품으로 판매 */
+export const COSTUMES: Record<string, { name: string; desc: string }> = {
+  ember: { name: "붉은 잔영", desc: "잔불빛으로 물든 모험가" },
+  frost: { name: "서리 무희", desc: "서릿발이 서린 푸른 모험가" },
 };

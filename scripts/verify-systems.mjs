@@ -222,6 +222,7 @@ const art = await (async () => {
   })();
   ok("I 무기 이펙트 3종 판매(300) + 시즌 1종 비매품 · 테마 3종(400) · 코스튬 2종", Object.values(cos.WEAPON_FX).filter((f) => f.gemCost === 300).length === 3 && cos.WEAPON_FX["fx-season"].gemCost === null && Object.values(cos.THEMES).every((t) => t.gemCost === 400) && Object.keys(cos.COSTUMES).length === 2);
   ok("I 코스튬이 캐릭터 목록·라벨에 등록", cos.anim.CHARACTER_SKINS.includes("ember") && cos.anim.CHARACTER_SKINS.includes("frost") && !!cos.anim.CHARACTER_LABEL.frost);
+  ok("아트5 코스튬 2종이 CSS 필터가 아닌 실제 시트(skins/hero-idle-<id>.png)로 해석되고 파일이 존재", ["ember", "frost"].every((id) => cos.anim.sheetFor(id, "idle").includes("skins/hero-idle-" + id) && cos.anim.sheetFor(id, "attack").includes("skins/hero-attack-" + id) && existsSync(join(root, "public/titans/character/skins", "hero-idle-" + id + ".png"))));
   ok("I 코스튬 상품 char-ember/char-frost 카탈로그·Play id", ["char-ember", "char-frost"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.visible)));
   ok("I 진행도 정규화: 미보유 이펙트/테마 장착은 해제", (() => { const n = prog.normalizeCharacterProgress({ ...base, ownedWeaponFx: ["fx-crimson"], equippedWeaponFx: "fx-solar", ownedThemes: [], equippedTheme: "theme-void" }); return n.equippedWeaponFx === "" && n.equippedTheme === ""; })());
 }
