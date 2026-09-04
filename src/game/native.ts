@@ -42,7 +42,23 @@ export const NOTIFY_ID = {
   idleCap: 1,
   /** 파견 슬롯 0·1 → 100·101 */
   expeditionBase: 100,
+  /** retention-6: 보스 실패 후 30분 — 재도전 유도 */
+  bossRetry: 2,
+  /** retention-6: 픽업 회전 24시간 전 */
+  pickupRotation: 3,
+  /** retention-6: 주간 도전 마감(일요일 20시) 미수령 알림 */
+  weeklyDeadline: 4,
 } as const;
+
+/** 이번 주 일요일 20:00(로컬) — 주간 도전 마감 알림 시각. 이미 지났으면 null */
+export function weeklyDeadlineAt(now: Date = new Date()): Date | null {
+  const d = new Date(now);
+  const day = d.getDay(); // 0 = 일
+  const toSunday = (7 - day) % 7;
+  d.setDate(d.getDate() + toSunday);
+  d.setHours(20, 0, 0, 0);
+  return d.getTime() > now.getTime() ? d : null;
+}
 
 let notifyPermissionAsked = false;
 
@@ -59,6 +75,11 @@ export async function scheduleLocalNotification(
   body: string,
   at: Date,
 ): Promise<void> {
+  // DEV 검증용 기록 — 웹에서는 예약이 no-op 이라 호출 사실만 남긴다 (verify-offers.mjs)
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    const w = window as unknown as { __notifyLog?: Array<{ id: number; title: string; at: number }> };
+    (w.__notifyLog ??= []).push({ id, title, at: at.getTime() });
+  }
   if (!isNativePlatform() || at.getTime() <= Date.now()) return;
   try {
     const { LocalNotifications } = await import("@capacitor/local-notifications");

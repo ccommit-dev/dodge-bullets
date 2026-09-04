@@ -81,8 +81,9 @@ import {
 } from "./titans/allies";
 import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
 import { assetUrl } from "./asset";
-import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification } from "./game/native";
+import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt } from "./game/native";
 import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
+import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
@@ -346,6 +347,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   }, []);
 
   /** 방치 캡이 차는 시각에 로컬 푸시 예약 — 정산할 때마다 갱신 (네이티브에서만 동작) */
+  /** retention-6: 주간 도전 마감(일 20시) — 미수령이 남아 있을 때만 예약, 다 받았으면 취소 */
+  const scheduleWeeklyDeadlineNotify = useCallback((ev: EventSave) => {
+    const at = weeklyDeadlineAt();
+    const unclaimed = weeklyChallenges(ev.week).filter((ch) => !ev.weeklyClaimed.includes(ch.id)).length;
+    if (!at || unclaimed === 0) { void cancelLocalNotification([NOTIFY_ID.weeklyDeadline]); return; }
+    void scheduleLocalNotification(NOTIFY_ID.weeklyDeadline, "주간 도전 마감 임박", `오늘 밤 초기화 — 아직 받지 않은 주간 보상 ${unclaimed}개가 있어요.`, at);
+  }, []);
+  useEffect(() => { scheduleWeeklyDeadlineNotify(events); }, [events, scheduleWeeklyDeadlineNotify]);
   const scheduleIdleCapNotify = useCallback((progress: CharacterProgress) => {
     const at = new Date(Date.now() + idleCapHours(progress) * 3600 * 1000);
     void scheduleLocalNotification(
@@ -998,6 +1007,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           // 그리고 wallAreas 기록이 환생 조건(3지역)을 채운다.
           bossFailStreakRef.current += 1;
           sessionBossFailsRef.current += 1;
+          void scheduleLocalNotification(NOTIFY_ID.bossRetry, "보스 재도전 준비 완료", `Stage ${saveRef.current.stage} 보스가 기다립니다 — 동료 레벨업 후 다시 도전하세요.`, new Date(Date.now() + 30 * 60000));
           // 결제 타이밍 (retention-2): 실패 1회차 → 무료 +10초 카드(세션 1회), 2회차부터 → 초급 세트 순간 제안.
           // 단 이번 실패가 지역 벽 최초 도달이면 아래 벽 제안이 대신 뜬다.
           const wallNow = bossFailStreakRef.current >= 2 && !characterRef.current.wallAreas.includes(huntingArea(saveRef.current.stage).id);
@@ -1874,6 +1884,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
   );
   const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea), [save.stage, character.pioneeredArea]);
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
+  useEffect(() => {
+    if (tab !== "gacha" || gacha.rotationPool <= 2) return;
+    // retention-6: 픽업 교체 24시간 전 알림 — 뽑기 페이지를 본 유저에게만
+    const rotationEndMs = Date.now() + gacha.rotationDaysLeft * 86400000;
+    void scheduleLocalNotification(NOTIFY_ID.pickupRotation, "픽업 동료 교체 D-1", "내일 픽업이 바뀝니다. 지금 픽업 동료의 스킨은 20% 할인 중이에요.", new Date(rotationEndMs - 86400000));
+  }, [tab, gacha.rotationPool, gacha.rotationDaysLeft]);
   useEffect(() => {
     if (tab !== "gacha" || gacha.rotationPool <= 2 || gacha.rotationDaysLeft > 2) return;
     if (!paidOffersUnlocked(characterRef.current)) return;
