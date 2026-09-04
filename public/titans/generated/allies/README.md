@@ -7,9 +7,10 @@
 | 파일 | 격자 | 셀 크기 | 행 순서 |
 |---|---|---|---|
 | `ally-animation-atlas-v1.png` | 4열 × 6행 | 313.5 × 209 | mia, leon, sera, garen, ari, nox |
-| `ally-variant-atlas-v1.png` | 4열 × 10행 | 313.5 × 209 | pyro, marina, terra, zephyr, bronn, iris, cain, sylph, orion, ember |
-| `ally-skin-atlas-v1.png` | 4열 × 2행 | 313.5 × 209 | garen-magma, leon-frost |
-| `ally-special-animation-atlas-v1.png` | 4열 × 4행 | 313.5 × 313.5 (정사각) | luna, volt, mia_dark, sera_light |
+| `ally-variant-atlas-v1.png` | 4열 × 12행 | 313.5 × 209 | pyro, marina, terra, zephyr, bronn, iris, cain, sylph, orion, ember, luna, volt |
+| `ally-skin-atlas-v1.png` | 4열 × 13행 | 313.5 × 209 | garen-magma, leon-frost, ari-blaze, nox-abyss, bronn-iron, iris-prism, cain-ash, sylph-dawn, orion-nova, ember-ruby, season-1, season-2, luna-eclipse |
+| `ally-skin-special-atlas-v1.png` | 4열 × 1행 | 313.5 × 313.5 (정사각) | sera_light-halo |
+| `ally-special-animation-atlas-v1.png` | 4열 × 4행 | 313.5 × 313.5 (정사각) | (0·1행 미사용) mia_dark, sera_light — 루나·볼트는 클립아트풍이라 변형 아틀라스 행으로 이동했다 |
 
 열 순서는 고정: **0 대기 · 1 이동 · 2 공격 · 3 피격**.
 가로로 넓은 셀(1.5:1)은 렌더에서 폭 150%로 보정되므로 셀 비율만 지키면 된다.

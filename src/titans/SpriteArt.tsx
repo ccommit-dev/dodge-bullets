@@ -74,7 +74,7 @@ const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
 /* ───────────── 4상태 아틀라스 (계획안 A) ─────────────
  * 상태: 0 대기 · 1 이동 · 2 공격 · 3 피격. 아틀라스는 4열이고 행이 동료다.
  *   기본 6명   ally-animation-atlas-v1.png         4×6 (셀 313.5×209, 가로 1.5:1)
- *   변형 10명  ally-variant-atlas-v1.png           4×10 (기본 행의 tint 파생 — make-variant-atlas.mjs)
+ *   변형 12명  ally-variant-atlas-v1.png           4×12 (기본 행의 tint 파생 — make-variant-atlas.mjs; 루나·볼트 포함)
  *   스킨 12종  ally-skin-atlas-v1.png              4×12 (기본·변형 행 tint — J SSR 스킨 + 시즌 한정)
  *   특수 스킨  ally-skin-special-atlas-v1.png      4×2 (정사각 셀 — 루나·세라 라이트)
  *   특수 4명   ally-special-animation-atlas-v1.png 4×4 (정사각 셀)
@@ -87,15 +87,17 @@ const VARIANT_ATLAS = assetUrl("titans/generated/allies/ally-variant-atlas-v1.pn
 const SKIN_ATLAS = assetUrl("titans/generated/allies/ally-skin-atlas-v1.png");
 const SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-special-animation-atlas-v1.png");
 const BASE_ROW: Partial<Record<TitanHeroId, number>> = { mia: 0, leon: 1, sera: 2, garen: 3, ari: 4, nox: 5 };
-const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = { pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9 };
-const SPECIAL_ROW: Partial<Record<TitanHeroId, number>> = { luna: 0, volt: 1, mia_dark: 2, sera_light: 3 };
+// 루나·볼트는 클립아트풍 특수 아틀라스에서 로스터 화풍 tint 행으로 이동 (아트 점검 1순위)
+const VARIANT_ROW: Partial<Record<TitanHeroId, number>> = { pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9, luna: 10, volt: 11 };
+const VARIANT_ROWS = 12;
+const SPECIAL_ROW: Partial<Record<TitanHeroId, number>> = { mia_dark: 2, sera_light: 3 };
 // J: SSR 스킨 10종 + 시즌 한정 2종 — 순서는 make-variant-atlas.mjs SKINS와 같다 (가로 셀 12행)
-const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1, "ari-blaze": 2, "nox-abyss": 3, "bronn-iron": 4, "iris-prism": 5, "cain-ash": 6, "sylph-dawn": 7, "orion-nova": 8, "ember-ruby": 9, "season-1": 10, "season-2": 11 };
-const SKIN_ROWS = 12;
+const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1, "ari-blaze": 2, "nox-abyss": 3, "bronn-iron": 4, "iris-prism": 5, "cain-ash": 6, "sylph-dawn": 7, "orion-nova": 8, "ember-ruby": 9, "season-1": 10, "season-2": 11, "luna-eclipse": 12 };
+const SKIN_ROWS = 13;
 // 특수 아틀라스 기반(정사각 셀) 스킨 — 루나·세라 라이트
 const SKIN_SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-skin-special-atlas-v1.png");
-const SKIN_SPECIAL_ROW: Record<string, number> = { "luna-eclipse": 0, "sera_light-halo": 1 };
-const SKIN_SPECIAL_ROWS = 2;
+const SKIN_SPECIAL_ROW: Record<string, number> = { "sera_light-halo": 0 };
+const SKIN_SPECIAL_ROWS = 1;
 const WIDE_CELL: CSSProperties = { width: "150%", left: "-25%", right: "auto" };
 
 function atlasCell(atlas: string, cols: number, rows: number, col: number, row: number, wide: boolean): CSSProperties {
@@ -114,7 +116,7 @@ export function allyFrameStyle(id: TitanHeroId, state: AllyFrameState, skin?: st
   if (skinDef?.ally === id && skin && SKIN_ROW[skin] !== undefined) return atlasCell(SKIN_ATLAS, 4, SKIN_ROWS, state, SKIN_ROW[skin], true);
   if (skinDef?.ally === id && skin && SKIN_SPECIAL_ROW[skin] !== undefined) return atlasCell(SKIN_SPECIAL_ATLAS, 4, SKIN_SPECIAL_ROWS, state, SKIN_SPECIAL_ROW[skin], false);
   const variantRow = VARIANT_ROW[id];
-  if (variantRow !== undefined) return atlasCell(VARIANT_ATLAS, 4, 10, state, variantRow, true);
+  if (variantRow !== undefined) return atlasCell(VARIANT_ATLAS, 4, VARIANT_ROWS, state, variantRow, true);
   const specialRow = SPECIAL_ROW[id];
   if (specialRow !== undefined) return atlasCell(SPECIAL_ATLAS, 4, 4, state, specialRow, false);
   const baseRow = BASE_ROW[id];

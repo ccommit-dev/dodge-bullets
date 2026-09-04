@@ -27,6 +27,9 @@ const VARIANTS = [
   ["sylph", "sera", [172, 255, 204], 1.06, 1.1],
   ["orion", "leon", [172, 184, 255], 1.0, 1.1],
   ["ember", "ari", [255, 96, 140], 1.0, 1.2],
+  // 루나·볼트 개별 PNG(클립아트풍) 교체 — 아틀라스 행과 같은 팔레트
+  ["luna", "garen", [236, 228, 205], 1.12, 0.85],
+  ["volt", "leon", [255, 232, 96], 1.06, 1.3],
 ];
 
 const meta = await sharp(SHEET).metadata();

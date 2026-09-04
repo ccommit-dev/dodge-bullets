@@ -31,6 +31,9 @@ const VARIANTS = [
   ["sylph", "sera", [172, 255, 204], 1.06, 1.1],
   ["orion", "leon", [172, 184, 255], 1.0, 1.1],
   ["ember", "ari", [255, 96, 140], 1.0, 1.2],
+  // 아트 점검 1순위: 루나·볼트는 클립아트풍 개별 PNG였다 — 로스터 화풍(기본 행 tint)으로 재생성해 전장 화풍을 통일한다
+  ["luna", "garen", [236, 228, 205], 1.12, 0.85],
+  ["volt", "leon", [255, 232, 96], 1.06, 1.3],
 ];
 // 스킨(가로 셀) — 원본은 기본 아틀라스 행 또는 변형 아틀라스 행(J: SSR 스킨 10종 + 시즌 한정 2종)
 // 순서 = SpriteArt SKIN_ROW. 시즌 스킨(season-N)은 시즌 패스 유료 15단 보상 — 판매하지 않는다.
@@ -49,12 +52,12 @@ const SKINS = [
   ["ember-ruby", "ember", [255, 60, 90], 0.98, 1.4],
   ["season-1", "ari", [200, 150, 255], 1.06, 1.25],
   ["season-2", "nox", [255, 220, 120], 1.04, 1.2],
+  ["luna-eclipse", "luna", [120, 110, 190], 0.88, 1.2],
 ];
 // 스킨(정사각 셀) — 특수 아틀라스 행(루나·세라 라이트)
 const SPECIAL_ATLAS = "public/titans/generated/allies/ally-special-animation-atlas-v1.png";
 const SPECIAL_ROW = { luna: 0, volt: 1, mia_dark: 2, sera_light: 3 };
 const SKINS_SPECIAL = [
-  ["luna-eclipse", "luna", [120, 110, 190], 0.88, 1.2],
   ["sera_light-halo", "sera_light", [255, 240, 180], 1.12, 1.15],
 ];
 
