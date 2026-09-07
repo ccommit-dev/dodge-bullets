@@ -1,4 +1,5 @@
 import { getStage } from "./stages";
+import { BOSS_CUTS_BASE, BOSS_CUTS_PER_STAGE } from "./world";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
 const POOL_SIZE = 120;
@@ -102,12 +103,13 @@ function activate(
   arrow.vx = Math.cos(heading) * speed;
   arrow.vy = Math.sin(heading) * speed;
   arrow.angle = heading;
-  if ((kind === "normal" || kind === "aimed" || kind === "fan") && Math.random() < 0.13) {
+  if ((kind === "normal" || kind === "aimed" || kind === "fan") && Math.random() < currentHomingChance) {
     arrow.kind = "homing";
     arrow.telegraph = "homing";
     arrow.warningMs = Math.max(warningMs, 680);
     arrow.homingMs = 1_800 + Math.random() * 1_300;
-    arrow.homingTurnRate = 1.25 + Math.random() * 1.1;
+    // 회전율 완화(1.25~2.35 → 0.9~1.8): 등 뒤로 감아 도는 궤도를 줄여 정면에서 벨 여지를 준다
+    arrow.homingTurnRate = 0.9 + Math.random() * 0.9;
     arrow.hitRadius = HIT_R + 1;
   }
   arrow.splitLevel = 0;
@@ -140,8 +142,15 @@ function activePattern(world: GameWorld): ArrowPattern | null {
   return null;
 }
 
+/** 유도탄 승격 확률 — 스테이지별. 유도탄은 뒤로 돌아 들어와 "앞쪽만 벤다" 규칙과 가장 충돌하므로 1스테이지엔 없다 (봇 시뮬 피격 1위) */
+export function homingChanceFor(stageIndex: number): number {
+  return [0, 0.05, 0.06, 0.09][Math.min(3, Math.max(0, stageIndex))];
+}
+let currentHomingChance = 0.13;
+
 function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
   const stage = getStage(world.stageIndex);
+  currentHomingChance = homingChanceFor(world.stageIndex);
   const speed = (pattern.speed ?? 220) * stage.speedMul;
   const arrow = acquire(world);
   if (!arrow) return;
@@ -367,29 +376,38 @@ function registerSlash(world: GameWorld, arrow: Arrow, boss = false): number {
 }
 
 function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
-  const count = source.bossTier >= 4 && Math.random() < .35 ? 3 : 2;
-  const variants: Arrow["kind"][] = ["homing", "ricochet", "explosive", "fan"];
+  // 검객 규칙 재조정 (docs/CONTENT_BEAT_DODGE_PLAN.md §2): 보스를 베면 파편이 플레이어 주위를 돌다 뒤에서 덮치던 방식은
+  // "앞쪽만 벤다" 규칙과 충돌해(봇 시뮬 피격 1위) 없앴다. 파편은 보스 위치에서 520ms 예고 뒤 플레이어를 향해 날아온다 —
+  // 보스를 보고 있으면 파편도 보인다. 1~2티어 1발(일반), 3티어부터 2발, 유도는 3티어부터.
+  const tier = source.bossTier;
+  const count = tier >= 3 ? 2 : 1;
+  const variants: Arrow["kind"][] = tier >= 3 ? ["homing", "ricochet", "fan"] : ["normal", "fan"];
   const kind = variants[Math.floor(Math.random() * variants.length)];
   for (let i = 0; i < count; i++) {
     const fragment = acquire(world);
     if (!fragment) break;
     const direction: -1 | 1 = i % 2 === 0 ? -1 : 1;
-    const level = Math.min(3, 1 + Math.floor(source.bossTier / 2)) as 1 | 2 | 3;
+    const level = Math.min(3, 1 + Math.floor(tier / 2)) as 1 | 2 | 3;
     configureSplitFragment(world, fragment, source, level, direction, world.stats.slashLevel);
     fragment.kind = kind;
-    fragment.telegraph = kind === "homing" ? "homing" : kind === "explosive" ? "blast" : kind === "ricochet" ? "dash" : "perfect";
-    fragment.damage = Math.max(fragment.damage, 0.34 + source.bossTier * 0.035);
-    fragment.length += 7 + source.bossTier * 1.5;
-    fragment.hitRadius += 1.5;
-    fragment.orbitMs += 260 + Math.random() * 420;
-    fragment.orbitRadius *= 1.08 + Math.random() * 0.24;
-    fragment.orbitAngle += (i / Math.max(1, count)) * Math.PI * 1.35;
-    fragment.orbitWobble += 0.12 + Math.random() * 0.18;
+    fragment.telegraph = kind === "homing" ? "homing" : kind === "ricochet" ? "dash" : "aerial";
+    fragment.damage = Math.max(fragment.damage, 0.25 + tier * 0.03);
+    fragment.length += 5 + tier;
+    fragment.hitRadius += 1;
+    // 공전 없이 보스 위치에서 예고 후 발사
+    fragment.orbitMs = 0;
+    fragment.x = source.x + direction * (10 + i * 8);
+    fragment.y = source.y;
+    fragment.warningMs = 520;
+    fragment.splitGraceMs = 0;
+    launchAtPlayer(world, fragment, 190 + tier * 14);
     if (kind === "homing") {
-      fragment.homingMs = 2_300 + source.bossTier * 180;
-      fragment.homingTurnRate = 1.05 + source.bossTier * 0.08;
+      fragment.homingMs = 1_600 + tier * 120;
+      fragment.homingTurnRate = 0.9 + tier * 0.06;
     } else if (kind === "ricochet") {
-      fragment.bounces = 2 + Math.min(2, source.bossTier);
+      fragment.bounces = 1 + Math.min(2, tier);
+    } else {
+      fragment.homingMs = 0;
     }
   }
 }
@@ -436,7 +454,11 @@ export function ultimateSlash(world: GameWorld): void {
 
 /** 화살 베기 — 정타(몸에서 REFLECT_DIST 안)면 반사, 아니면 파쇄. 보스는 기존 다단 베기 */
 export function cutArrow(world: GameWorld, a: Arrow, dist: number): void {
-  if (a.boss) { splitArrow(world, a); addGauge(world, GAUGE_SHATTER); return; }
+  if (a.boss) {
+    // 보스 정타(코앞)는 2컷 — 위험을 감수한 만큼 빨리 무너뜨린다
+    if (dist <= world.player.radius + a.hitRadius + REFLECT_DIST && a.bossCutsLeft > 1) a.bossCutsLeft -= 1;
+    splitArrow(world, a); addGauge(world, GAUGE_SHATTER); return;
+  }
   const player = world.player;
   const value = registerSlash(world, a);
   const close = dist <= player.radius + a.hitRadius + REFLECT_DIST;
@@ -531,7 +553,7 @@ function spawnBossArrow(world: GameWorld): void {
   const arrow = acquire(world);
   if (!arrow) return;
   const tier = world.stageIndex + 1;
-  const cuts = 10 + world.stageIndex * 4;
+  const cuts = BOSS_CUTS_BASE + world.stageIndex * BOSS_CUTS_PER_STAGE;
   const fromLeft = tier % 2 === 0;
   const x = fromLeft ? -48 : world.width + 48;
   const y = world.safeTop + Math.max(80, (world.floorY - world.safeTop) * (0.25 + (tier % 3) * 0.14));

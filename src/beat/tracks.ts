@@ -268,6 +268,13 @@ function seededRng(seed: string): () => number {
  * 곡 구간 — 트랜스/신스웨이브 구조를 마디 비율로 근사한다.
  * 인트로(0~18%) → 빌드업(~40%) → 드롭(~62%) → 브레이크(~72%) → 드롭2(~100%)
  */
+/** 구간 밀도표 — intro/break: 4분음 확률, build: 램프 시작→끝, drop: 기본 강박 유지 확률, fill: 프레이즈 끝 채움 스텝 수 */
+export const SECTION_DENSITY: Record<BeatDifficulty, { intro: number; buildFrom: number; buildTo: number; drop: number; break: number; fill: number }> = {
+  easy: { intro: 0.2, buildFrom: 0.35, buildTo: 0.6, drop: 0.75, break: 0.15, fill: 0 },
+  medium: { intro: 0.35, buildFrom: 0.45, buildTo: 0.9, drop: 0.95, break: 0.3, fill: 2 },
+  hard: { intro: 0.45, buildFrom: 0.55, buildTo: 1.0, drop: 1.0, break: 0.45, fill: 4 },
+};
+
 function sectionAt(bar: number, bars: number): NonNullable<BeatChartStep["section"]> {
   const t = bar / Math.max(1, bars);
   if (t < 0.18) return "intro";
@@ -319,13 +326,21 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     const isDown = inBar === 0;
     const quarter = inBar % Math.max(1, stepsPerBar / 4) === 0;
     // 구간·BPM이 "얼마나 조밀한가"를 정한다 (인트로 강박 → 빌드업 점증 → 드롭 최대 → 브레이크 성김)
+    // 난이도별 구간 밀도 (docs/CONTENT_BEAT_DODGE_PLAN.md §1 보강): 같은 곡이라도 EASY 는 드롭이 성기고 HARD 는 브레이크마저 빽빽하다
+    const dens = SECTION_DENSITY[track.difficulty];
+    const t = bar / Math.max(1, track.bars);
     let spike = false;
-    if (section === "intro") spike = isDown || (quarter && rng() < 0.35);
+    if (section === "intro") spike = isDown || (quarter && rng() < dens.intro);
     else if (section === "build") {
-      const ramp = 0.45 + ((bar / Math.max(1, track.bars)) - 0.18) / 0.22 * 0.45;
-      spike = base && rng() < Math.min(0.95, ramp) * bpmKeep;
-    } else if (section === "drop") spike = base && rng() < bpmKeep * 0.95;
-    else spike = isDown || (quarter && rng() < 0.3);
+      const ramp = dens.buildFrom + Math.max(0, Math.min(1, (t - 0.18) / 0.22)) * (dens.buildTo - dens.buildFrom);
+      spike = base && rng() < ramp * bpmKeep;
+    } else if (section === "drop") {
+      // 클라이맥스(마지막 10%)는 확률 없이 기본 강박 전부 — 곡의 끝을 손이 알게
+      spike = base && (t >= 0.9 ? bpmKeep >= 0.5 || rng() < bpmKeep : rng() < bpmKeep * dens.drop);
+    } else spike = isDown || (quarter && rng() < dens.break);
+    // 프레이즈 필: 4마디 프레이즈의 마지막 마디 끝을 채워 "구절이 끝난다"를 예고 (스텝이 100ms 이상일 때만 — 손이 따라간다)
+    const fillSteps = dens.fill;
+    if (fillSteps > 0 && (section === "build" || section === "drop") && bar % 4 === 3 && inBar >= stepsPerBar - fillSteps && stepSec >= 0.1) spike = true;
     if (i < Math.max(2, offsetSteps) || i >= total - 1) spike = false;
     if (spike) {
       // 곡마다 시작 레인을 다르게 하고, 같은 레인이 연속 낙하하지 않도록

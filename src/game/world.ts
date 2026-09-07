@@ -116,6 +116,10 @@ function clampX(world: GameWorld): void {
   player.x = Math.min(Math.max(player.x, minX), Math.max(minX, maxX));
 }
 
+/** 보스 화살 베기 수 — 스윙 1회 = 1컷(정타 2컷)·쿨다운 1.15s 이므로 10+4n 은 너무 길다 (docs/CONTENT_BEAT_DODGE_PLAN.md §2) */
+export const BOSS_CUTS_BASE = 4;
+export const BOSS_CUTS_PER_STAGE = 2;
+
 export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.stageIndex = stageIndex;
   world.elapsedMs = 0;
@@ -147,7 +151,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.bossSpawned = false;
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
-  world.bossMaxCuts = 10 + stageIndex * 4;
+  world.bossMaxCuts = BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -175,7 +179,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.bossSpawned = false;
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
-  world.bossMaxCuts = 10 + stageIndex * 4;
+  world.bossMaxCuts = BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE;
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
