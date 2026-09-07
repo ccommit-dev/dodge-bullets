@@ -6,7 +6,8 @@ const platforms = [
   { x: 0.66, y: 0.89, w: 0.3, h: 0.025 },
 ];
 
-/** Short expeditions: immediate pressure → escalation → five-second escape climax. */
+/** Short expeditions: immediate pressure → escalation → five-second escape climax.
+ * 수치는 검객 봇 시뮬(scripts/dodge-sim.mjs)로 재조정 — 스윙 순간 앞쪽만 베는 규칙에서 1·2스테이지 5/5 클리어, 3·4 는 도전 구간. */
 export const STAGES: StageDef[] = [
   {
     id: 1,
@@ -50,10 +51,10 @@ export const STAGES: StageDef[] = [
     intro: "발판을 넘고 폭발 화살을 반격해 정예 보급 상자를 탈환하세요",
     platforms,
     patterns: [
-      { kind: "fan", atMs: 0, durationMs: 9_000, spawnMs: 700, speed: 410 },
+      { kind: "fan", atMs: 0, durationMs: 9_000, spawnMs: 720, speed: 380 },
       { kind: "sweep", atMs: 9_000, durationMs: 10_000, spawnMs: 330, speed: 430 },
       { kind: "explosive", atMs: 19_000, durationMs: 14_000, spawnMs: 650, speed: 430 },
-      { kind: "burst", atMs: 33_000, durationMs: 5_000, spawnMs: 120, speed: 495 },
+      { kind: "burst", atMs: 33_000, durationMs: 5_000, spawnMs: 150, speed: 470 },
     ],
   },
   {
@@ -68,10 +69,10 @@ export const STAGES: StageDef[] = [
     patterns: [
       { kind: "aimed", atMs: 0, durationMs: 9_000, spawnMs: 430, speed: 430 },
       { kind: "ricochet", atMs: 9_000, durationMs: 10_000, spawnMs: 500, speed: 435 },
-      { kind: "fan", atMs: 19_000, durationMs: 10_000, spawnMs: 620, speed: 455 },
+      { kind: "fan", atMs: 19_000, durationMs: 10_000, spawnMs: 660, speed: 420 },
       { kind: "explosive", atMs: 29_000, durationMs: 11_000, spawnMs: 520, speed: 470 },
-      { kind: "cross", atMs: 40_000, durationMs: 10_000, spawnMs: 210, speed: 505 },
-      { kind: "burst", atMs: 50_000, durationMs: 10_000, spawnMs: 96, speed: 545 },
+      { kind: "cross", atMs: 40_000, durationMs: 10_000, spawnMs: 250, speed: 470 },
+      { kind: "burst", atMs: 50_000, durationMs: 10_000, spawnMs: 130, speed: 510 },
     ],
   },
 ];
