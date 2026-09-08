@@ -37,7 +37,7 @@ import { starMilestoneMultiplier, starMilestoneNext, totalStars } from "./progre
 import { TITLES } from "./economy/gemCatalog";
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { sheetFor } from "./titans/anim";
-import { MonsterArt } from "./titans/SpriteArt";
+import { MonsterArt, monsterAssetFor } from "./titans/SpriteArt";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { openMomentOffer } from "./economy/momentOffers";
@@ -302,6 +302,8 @@ export function CharacterStatus({
                   });
                 }}
               >
+                {/* 캐릭터 썸네일 — 대기 시트 1프레임 (텍스트만 있던 칩에 얼굴을) */}
+                <i className="skin-thumb" style={{ backgroundImage: `url(${sheetFor(skin, "idle")})` }} aria-hidden="true" />
                 <b>{CHARACTER_LABEL[skin]}</b>
                 <small>
                   {skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : "패시브 없음"}
@@ -353,7 +355,9 @@ export function CharacterStatus({
             const nextAt = kills >= 1000 ? null : kills >= 100 ? 1000 : kills >= 10 ? 100 : 10;
             const label = { slime: "슬라임", goblin: "고블린", wolf: "늑대", ogre: "오우거", dragon: "용", boss: "보스" }[kind];
             return (
-              <div key={kind} className={`codex-chip ${bonus > 0 ? "tiered" : ""}`}>
+              <div key={kind} className={`codex-chip ${bonus > 0 ? "tiered" : ""} ${kills > 0 ? "seen" : "unseen"}`}>
+                {/* 도감 썸네일 — 만난 적 없는 몬스터는 실루엣 */}
+                <img className="codex-thumb" src={monsterAssetFor(kind === "boss" ? "boss" : kind, HUNTING_AREAS[4], kind === "boss", false)} alt="" aria-hidden="true" />
                 <b>{label}</b>
                 <span>{kills.toLocaleString()}마리</span>
                 <small>{bonus > 0 ? `골드 +${bonus}%` : "10마리부터"}{nextAt !== null && ` · 다음 ${nextAt}`}</small>

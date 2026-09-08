@@ -22,6 +22,15 @@ function stageBackground(stageIndex: number): HTMLImageElement | null {
   return img && img.complete && img.naturalWidth > 0 ? img : null;
 }
 
+const spriteCache = new Map<string, HTMLImageElement>();
+/** 캔버스용 이미지 캐시 — 로드 전엔 null (그 프레임은 건너뛴다) */
+function sprite(path: string): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  let img = spriteCache.get(path);
+  if (!img) { img = new Image(); img.decoding = "async"; img.src = assetUrl(path); spriteCache.set(path, img); }
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+
 function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, floorY } = world;
   const img = stageBackground(world.stageIndex);
@@ -226,15 +235,29 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   }
 
   if (world.stageIndex === 3) {
+    // 추격대장 — 화면 오른쪽 끝에서 활을 당기는 궁수 대장 원화 (art-gen char captain). 로드 전엔 예전 붉은 기운만
+    const captain = sprite("titans/generated/dodge/archer-captain.png");
     ctx.save();
     ctx.globalAlpha = 0.32 + Math.sin(world.animClock * 8) * 0.05;
     ctx.fillStyle = "#7f1d1d";
     ctx.beginPath();
     ctx.arc(width - 18, floorY - 42, 42, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+    if (captain) {
+      const h = 118, w = h * (captain.naturalWidth / captain.naturalHeight);
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.translate(width - 6, floorY + 2);
+      ctx.scale(-1, 1); // 원화는 오른쪽을 본다 — 플레이어(왼쪽)를 향하게 뒤집는다
+      ctx.drawImage(captain, 0, -h + Math.sin(world.animClock * 2.2) * 2, w, h);
+      ctx.restore();
+    }
+    ctx.save();
     ctx.fillStyle = "#fecaca";
     ctx.font = "900 11px system-ui";
-    ctx.fillText("추격대장", width - 72, floorY - 88);
+    ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
+    ctx.fillText("추격대장", width - 76, floorY - 124);
     ctx.restore();
   }
 
@@ -242,16 +265,22 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   if (world.chests === 0 && stageProgress >= 0.42 && stageProgress <= 0.78) {
     const chestX = width * 0.7;
     const chestY = floorY - 23;
+    const chestImg = sprite("ui/attendance/event-chest.png");
     ctx.save();
-    ctx.fillStyle = "#92400e";
-    ctx.strokeStyle = "#fde68a";
-    ctx.lineWidth = 3;
-    ctx.fillRect(chestX - 21, chestY - 17, 42, 27);
-    ctx.strokeRect(chestX - 21, chestY - 17, 42, 27);
+    if (chestImg) {
+      const bob = Math.sin(world.animClock * 3) * 2;
+      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14;
+      ctx.drawImage(chestImg, chestX - 22, chestY - 24 + bob, 44, 44);
+    } else {
+      ctx.fillStyle = "#92400e";
+      ctx.strokeStyle = "#fde68a";
+      ctx.lineWidth = 3;
+      ctx.fillRect(chestX - 21, chestY - 17, 42, 27);
+      ctx.strokeRect(chestX - 21, chestY - 17, 42, 27);
+    }
     ctx.fillStyle = "#fbbf24";
-    ctx.fillRect(chestX - 4, chestY - 17, 8, 27);
     ctx.font = "800 11px system-ui";
-    ctx.fillText("재료 상자", chestX - 27, chestY - 24);
+    ctx.fillText("재료 상자", chestX - 27, chestY - 30);
     ctx.restore();
   }
 
