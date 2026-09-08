@@ -50,14 +50,15 @@ for (const file of SOURCES) {
   // hit: 밝게 + 흰 tint + 기울임 + 흰 외곽선(원본 알파를 확장한 흰 실루엣 아래 깔기)
   // raw()로 받아야 1채널 원시 버퍼다 — 기본 toBuffer는 PNG 인코딩이라 raw 래핑 시 크기 오류
   const silhouette = await sharp(src).ensureAlpha().extractChannel("alpha").raw().toBuffer();
-  const outline = await sharp(silhouette, { raw: { width: w, height: h, channels: 1 } })
+  // 외곽선 마스크는 알파 채널로 붙여야 한다 — 예전엔 b-w PNG(알파 없음)를 dest-in 으로 섞어 마스크가 통째로 불투명해졌고,
+  // 그 결과 17종 피격 프레임이 전부 흰 사각형이었다(타격마다 흰 박스가 번쩍임).
+  const outlineMask = await sharp(silhouette, { raw: { width: w, height: h, channels: 1 } })
     .blur(3)
     .threshold(20)
-    .toColourspace("b-w")
-    .png()
+    .raw()
     .toBuffer();
-  const whiteOutline = await sharp({ create: { width: w, height: h, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } })
-    .composite([{ input: outline, blend: "dest-in" }])
+  const whiteOutline = await sharp({ create: { width: w, height: h, channels: 3, background: { r: 255, g: 255, b: 255 } } })
+    .joinChannel(outlineMask, { raw: { width: w, height: h, channels: 1 } })
     .png()
     .toBuffer();
   const lit = await sharp(src).modulate({ brightness: 1.7, saturation: 0.75 }).png().toBuffer();

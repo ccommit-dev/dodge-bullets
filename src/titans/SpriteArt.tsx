@@ -188,18 +188,44 @@ export function MonsterArt({
   );
 }
 
+/** 공격 3박 타이밍(ms) — 예비 90 · 타격 240 · 복귀 150. 사냥터 공격 간격(≥600ms)보다 짧아 겹치지 않는다 */
+export const ALLY_ATTACK_TIMING = { windupMs: 90, strikeMs: 240, recoverMs: 150 } as const;
+/** 걷기 프레임 교대 주기 — 0.28s 한 걸음 */
+export const ALLY_WALK_FRAME_MS = 140;
+/** 상태 → 아틀라스 프레임 (0 대기 · 1 이동 · 2 공격 · 3 피격). 우선순위: 피격 > 공격 > 걷기 */
+export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "windup" | "strike" | "recover"; approaching: boolean; walkTick: number }): AllyFrameState {
+  if (v.flinching) return 3;
+  if (v.attackPhase === "strike") return 2;
+  if (v.attackPhase === "windup") return 1;
+  if (v.attackPhase === "recover") return 0;
+  if (v.approaching) return v.walkTick % 2 === 0 ? 1 : 0;
+  return 0;
+}
+
 export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; skin?: string; partySlot?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
-  const [swinging, setSwinging] = useState(false);
+  // 공격은 3박: 예비(이동 프레임, 무게를 뒤로) → 타격(공격 프레임, 앞으로 찌르기) → 복귀(대기 프레임, 짧게 정지).
+  // 단일 프레임 320ms 고정은 "포즈가 바뀐다"일 뿐 "친다"로 안 읽혔다.
+  const [attackPhase, setAttackPhase] = useState<"none" | "windup" | "strike" | "recover">("none");
   const [flinching, setFlinching] = useState(false);
   useEffect(() => {
     if (!(attacking && pulse > 0)) return;
-    setSwinging(true);
-    const t = window.setTimeout(() => setSwinging(false), 320);
-    return () => window.clearTimeout(t);
+    setAttackPhase("windup");
+    const t1 = window.setTimeout(() => setAttackPhase("strike"), ALLY_ATTACK_TIMING.windupMs);
+    const t2 = window.setTimeout(() => setAttackPhase("recover"), ALLY_ATTACK_TIMING.windupMs + ALLY_ATTACK_TIMING.strikeMs);
+    const t3 = window.setTimeout(() => setAttackPhase("none"), ALLY_ATTACK_TIMING.windupMs + ALLY_ATTACK_TIMING.strikeMs + ALLY_ATTACK_TIMING.recoverMs);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); };
   }, [attacking, pulse]);
+  // 걷기: 이동 프레임 하나를 흔들기만 하던 것을 "대기 ↔ 발 내딛기" 2프레임 사이클로 — 140ms 마다 교대
+  const [walkTick, setWalkTick] = useState(0);
+  useEffect(() => {
+    if (!approaching) return;
+    setWalkTick(0);
+    const id = window.setInterval(() => setWalkTick((t) => t + 1), ALLY_WALK_FRAME_MS);
+    return () => window.clearInterval(id);
+  }, [approaching]);
   useEffect(() => {
     if (hitPulse <= 0) return;
     setFlinching(true);
@@ -243,9 +269,9 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
           피벗과 공격 궤적이 다르므로 몸을 흔들지 않고 무기만 자연스럽게 움직인다.
       */}
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
-        <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""}`}>
+        <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
           {(() => {
-            const state: AllyFrameState = flinching ? 3 : swinging ? 2 : approaching ? 1 : 0;
+            const state: AllyFrameState = allyFrameFor({ flinching, attackPhase, approaching, walkTick });
             return (
               <>
                 <div className={`ally-body frame-${state}`} style={allyFrameStyle(id, state, skin)} />

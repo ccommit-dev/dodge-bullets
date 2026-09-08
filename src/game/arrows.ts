@@ -322,6 +322,40 @@ function configureSplitFragment(
   arrow.bossMaxCuts = 0;
 }
 
+function pushDebris(world: GameWorld, kind: "tip" | "tail" | "spark" | "streak", x: number, y: number, vx: number, vy: number, angle: number, len: number, lifeMs: number, color: string): void {
+  const d = world.slashDebris.find((item) => !item.active) ?? world.slashDebris[0];
+  if (!d) return;
+  d.active = true; d.kind = kind; d.x = x; d.y = y; d.vx = vx; d.vy = vy; d.angle = angle; d.len = len; d.lifeMs = lifeMs; d.maxLifeMs = lifeMs; d.color = color;
+  d.spin = kind === "spark" ? 0 : (Math.random() - 0.5) * 16;
+}
+
+/**
+ * 쪼개짐 연출 — "베었는데 그냥 사라진다"를 고친다. 파쇄는 화살이 검격 지점에서 두 토막(촉 쪽·깃 쪽)으로 갈라져
+ * 검이 지나간 방향으로 튕겨 나가고, 반사·보스 베기는 불꽃만. 검광(streak)은 베인 자리에 남는 흰 선.
+ */
+export function spawnCutDebris(world: GameWorld, a: Arrow, mode: "shatter" | "reflect" | "boss"): void {
+  const facing = world.player.facing;
+  const cos = Math.cos(a.angle), sin = Math.sin(a.angle);
+  const px = -sin, py = cos;
+  const color = mode === "reflect" ? "#fde68a" : mode === "boss" ? "#fb7185" : "#67e8f9";
+  // 검광: 화살 진행 방향에 직교하는 짧은 선 — 베인 자리
+  pushDebris(world, "streak", a.x, a.y, 0, 0, a.angle + Math.PI / 2, mode === "boss" ? 34 : 26, 170, mode === "reflect" ? "#fef3c7" : "#f8fafc");
+  if (mode === "shatter") {
+    const half = a.length * 0.5;
+    const fwd = Math.hypot(a.vx, a.vy) * 0.22;
+    // 촉 토막은 검이 미는 쪽(플레이어 방향 → 바깥)으로, 깃 토막은 반대편으로 갈라진다
+    const side = facing;
+    pushDebris(world, "tip", a.x + cos * half * 0.5, a.y + sin * half * 0.5, px * 95 * side + cos * fwd + facing * 40, py * 95 * side - 120, a.angle, half, 620, color);
+    pushDebris(world, "tail", a.x - cos * half * 0.5, a.y - sin * half * 0.5, -px * 85 * side + cos * fwd * 0.6 + facing * 20, -py * 85 * side - 90, a.angle, half, 620, color);
+  }
+  const sparks = mode === "reflect" ? 7 : mode === "boss" ? 5 : 5;
+  for (let i = 0; i < sparks; i += 1) {
+    const ang = Math.atan2(-a.vy, -a.vx) + (Math.random() - 0.5) * 1.6;
+    const sp = 120 + Math.random() * 220;
+    pushDebris(world, "spark", a.x, a.y, Math.cos(ang) * sp, Math.sin(ang) * sp - 60, ang, 3 + Math.random() * 4, 260 + Math.random() * 220, color);
+  }
+}
+
 function pushSlashFx(world: GameWorld, x: number, y: number, value: number, boss: boolean, crit = false, energy = 0): void {
   const fx = world.slashHitFx.find((item) => !item.active) ?? world.slashHitFx[0];
   if (!fx) return;
@@ -444,6 +478,7 @@ export function ultimateSlash(world: GameWorld): void {
   world.player.slowActiveMs = Math.max(world.player.slowActiveMs, 1200);
   for (const a of world.arrows) {
     if (!a.active || a.boss || a.reflected || a.warningMs > 0) continue;
+    spawnCutDebris(world, a, "shatter");
     a.active = false;
     world.countered += 1;
     world.supplies += 1;
@@ -457,7 +492,7 @@ export function cutArrow(world: GameWorld, a: Arrow, dist: number): void {
   if (a.boss) {
     // 보스 정타(코앞)는 2컷 — 위험을 감수한 만큼 빨리 무너뜨린다
     if (dist <= world.player.radius + a.hitRadius + REFLECT_DIST && a.bossCutsLeft > 1) a.bossCutsLeft -= 1;
-    splitArrow(world, a); addGauge(world, GAUGE_SHATTER); return;
+    spawnCutDebris(world, a, "boss"); splitArrow(world, a); addGauge(world, GAUGE_SHATTER); return;
   }
   const player = world.player;
   const value = registerSlash(world, a);
@@ -475,9 +510,11 @@ export function cutArrow(world: GameWorld, a: Arrow, dist: number): void {
     a.orbitMs = 0;
     world.lastCut = "reflect";
     world.lastCutMs = 700;
+    spawnCutDebris(world, a, "reflect");
     pushSlashFx(world, a.x, a.y, Math.round(40 + value * 40), false, true, value);
     addGauge(world, GAUGE_REFLECT);
   } else {
+    spawnCutDebris(world, a, "shatter");
     a.active = false;
     world.countered += 1;
     world.supplies += 1;

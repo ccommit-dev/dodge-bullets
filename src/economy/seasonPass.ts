@@ -41,12 +41,16 @@ export type SeasonReward =
   | { kind: "allySkin"; id: string }
   | { kind: "weaponFx"; id: string };
 
-/** 무료 트랙 30단 — 보석 150 + 재료. 5단마다 보석 25 */
+/**
+ * 무료 트랙 30단 — 보석 150 + 재료 + 방치 가속. 5단마다 보석 25.
+ * 빈 칸("—")이 12칸이던 목데이터를 없앴다: 2단 = 방치 가속 1h, 4단 = 강화석 20. 매 단이 무언가를 준다.
+ */
 export function freeReward(tier: number): SeasonReward {
   if (tier % 5 === 0) return { kind: "gems", amount: 25 };
   if (tier % 5 === 3) return { kind: "shards", amount: 4 };
   if (tier % 5 === 1) return { kind: "materials", amount: 12 };
-  return { kind: "gems", amount: 0 };
+  if (tier % 5 === 2) return { kind: "boost", hours: 1 };
+  return { kind: "materials", amount: 20 };
 }
 /** 유료 트랙 — 보석 600 · 조각 선택권 3(10단·20단·30단 = 조각 10씩) · 시즌 한정 스킨(15단) · 무기 이펙트(25단) */
 export function paidReward(tier: number, season: number): SeasonReward {

@@ -84,6 +84,22 @@ export type SlashHitFx = {
   energy: number;
 };
 
+/** 베기 파편 — 파쇄된 화살의 두 토막·불꽃·검광. 순수 연출(충돌 없음) */
+export type SlashDebris = {
+  active: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  angle: number;
+  spin: number;
+  len: number;
+  lifeMs: number;
+  maxLifeMs: number;
+  kind: "tip" | "tail" | "spark" | "streak";
+  color: string;
+};
+
 export type SlashDrop = {
   active: boolean;
   x: number;
@@ -210,6 +226,8 @@ export type GameWorld = {
   lastCutMs: number;
   slashHitFx: SlashHitFx[];
   slashDrops: SlashDrop[];
+  /** 베기 파편 풀 — 파쇄 시 화살이 두 토막으로 쪼개져 날아가는 것이 보여야 한다 */
+  slashDebris: SlashDebris[];
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
   lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "";
   bossSpawned: boolean;

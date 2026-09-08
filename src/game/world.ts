@@ -74,6 +74,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     lastCutMs: 0,
     slashHitFx: Array.from({ length: 24 }, () => ({ active: false, x: 0, y: 0, value: 0, lifeMs: 0, maxLifeMs: 0, boss: false, crit: false, energy: 0 })),
     slashDrops: Array.from({ length: 8 }, () => ({ active: false, x: 0, y: 0, vy: 0, kind: "edge" as const })),
+    slashDebris: Array.from({ length: 48 }, () => ({ active: false, x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0, len: 0, lifeMs: 0, maxLifeMs: 0, kind: "spark" as const, color: "#67e8f9" })),
     lastHitCause: "",
     bossSpawned: false,
     bossDefeated: false,
@@ -148,6 +149,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.slashBuff = 0;
   world.slashHitFx.forEach((fx) => { fx.active = false; });
   world.slashDrops.forEach((drop) => { drop.active = false; });
+  world.slashDebris.forEach((d) => { d.active = false; });
   world.bossSpawned = false;
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
@@ -176,6 +178,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.slashBuff = 0;
   world.slashHitFx.forEach((fx) => { fx.active = false; });
   world.slashDrops.forEach((drop) => { drop.active = false; });
+  world.slashDebris.forEach((d) => { d.active = false; });
   world.bossSpawned = false;
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
@@ -343,6 +346,19 @@ export function updateWorld(
     fx.lifeMs -= dtSec * 1000;
     fx.y -= dtSec * (fx.boss ? 34 : 52);
     if (fx.lifeMs <= 0) fx.active = false;
+  }
+  for (const d of world.slashDebris) {
+    if (!d.active) continue;
+    d.lifeMs -= dtSec * 1000;
+    if (d.lifeMs <= 0) { d.active = false; continue; }
+    if (d.kind !== "streak") {
+      d.vy += (d.kind === "spark" ? 420 : 760) * dtSec;
+      d.vx *= 1 - 1.6 * dtSec;
+      d.x += d.vx * dtSec;
+      d.y += d.vy * dtSec;
+      d.angle += d.spin * dtSec;
+      if (d.y > world.floorY - 4 && d.kind !== "spark") { d.y = world.floorY - 4; d.vy *= -0.32; d.vx *= 0.6; d.spin *= 0.5; }
+    }
   }
   for (const drop of world.slashDrops) {
     if (!drop.active) continue;

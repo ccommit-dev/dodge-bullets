@@ -19,6 +19,16 @@ art-gen/.venv/Scripts/python art-gen/gen.py smoke   # out/smoke.png 가 나오�
 - 프롬프트 공통부·네거티브·시드(20260904)는 `gen.py STYLE/NEG/BASE_SEED`에 고정
 - 포즈: 같은 아틀라스의 4상태 셀에서 OpenPose 골격 추출 → ControlNet 0.8. "같은 자세, 다른 디자인"이 나온다
 
+## 아이콘 · 영웅 대기 (2026-09-08)
+
+```bash
+bash art-gen/batch-icons.sh            # 보상 아이콘 7종 (참조 = public/ui/attendance, 화풍이 출석 아이콘과 맞는다) → node scripts/place-icons.mjs
+bash art-gen/batch-hero-idle.sh        # 오른쪽 보는 영웅 대기 후보 → PICK=<seed> POSE=<후보.png> 로 코스튬 2종 → node scripts/make-hero-idle-sheet.mjs <seed>
+```
+
+- `gen.py icon <id> "<prompt>"`: IP-Adapter 참조를 동료가 아니라 UI 아이콘으로 바꾼다. 256px 투명.
+- `gen.py heroidle <id> "<prompt>" [--seeds …] [--pose-from <png>] [--ip 0.4]`: **CLIP 77토큰 한계** — 자세 지시를 맨 앞에 짧게. 긴 프롬프트는 뒤가 잘려 정면 캐릭터 시트(여러 인물)가 나온다. 동료 참조는 청록 스카프를 섞으니 색을 앞에 쓰고 `--ip 0.4`. 방향이 안 잡히면 잘 나온 후보의 OpenPose 를 `--pose-from` 으로 준다.
+
 ## 배치
 
 `node scripts/place-art.mjs` 가 `art-gen/out/`의 결과를 아틀라스 행·개별 PNG·시트로 조립해 `public/`에 넣는다.
