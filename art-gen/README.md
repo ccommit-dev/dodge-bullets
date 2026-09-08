@@ -29,6 +29,15 @@ bash art-gen/batch-hero-idle.sh        # 오른쪽 보는 영웅 대기 후보 �
 - `gen.py icon <id> "<prompt>"`: IP-Adapter 참조를 동료가 아니라 UI 아이콘으로 바꾼다. 256px 투명.
 - `gen.py heroidle <id> "<prompt>" [--seeds …] [--pose-from <png>] [--ip 0.4]`: **CLIP 77토큰 한계** — 자세 지시를 맨 앞에 짧게. 긴 프롬프트는 뒤가 잘려 정면 캐릭터 시트(여러 인물)가 나온다. 동료 참조는 청록 스카프를 섞으니 색을 앞에 쓰고 `--ip 0.4`. 방향이 안 잡히면 잘 나온 후보의 OpenPose 를 `--pose-from` 으로 준다.
 
+## 무기 원화 (2026-09-08 2차)
+
+```bash
+bash art-gen/batch-props.sh            # 동료 무기 6종 + 영웅 강화 검 16티어 → node scripts/place-props.mjs
+```
+
+- `gen.py prop <id> "<prompt>"`: 대각선 구도의 무기 1점. 동료 참조 IP 는 0.2~0.35 — 높으면 사람이 같이 그려진다. "exactly one weapon, isolated weapon only" 를 넣어도 두 자루가 나오는 시드가 있어 `place-props.mjs` 가 가장 큰 연결 성분만 남긴다(쌍단검·활 제외).
+- `place-props.mjs`: 알파 주축(PCA)으로 수직 정렬 → 폭 프로파일로 손잡이 판정(가드가 가장 넓다, 보주 지팡이·창은 반대) → 검은 수직, 동료 무기는 +45°.
+
 ## 배치
 
 `node scripts/place-art.mjs` 가 `art-gen/out/`의 결과를 아틀라스 행·개별 PNG·시트로 조립해 `public/`에 넣는다.

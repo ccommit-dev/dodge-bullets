@@ -4,7 +4,8 @@ import { assetUrl } from "../asset";
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
 /** Source sheet faces left; multiply logical facing by this when drawing. */
-const EXPEDITION_NATIVE_FACING = -1;
+// 대기 시트가 오른쪽을 보는 원화로 교체됐다(2026-09-08) — 예전 정면/왼쪽 시트는 -1 이었다
+const EXPEDITION_NATIVE_FACING = 1;
 let expeditionHero: HTMLImageElement | null = null;
 let expeditionHeroAttack: HTMLImageElement | null = null;
 

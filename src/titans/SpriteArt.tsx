@@ -286,12 +286,20 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   );
 }
 
+/** 원화 무기가 있는 동료 — scripts/place-props.mjs 가 넣는다. 루나·볼트는 그림에 무기가 포함(AUTHORED_WEAPON_BAKED) */
+export const ALLY_WEAPON_PAINTED = new Set<TitanHeroId>(["mia", "leon", "sera", "garen", "ari", "nox"]);
+
 function AllyWeapon({ id: rawId, anchor }: { id: TitanHeroId; anchor?: CSSProperties }) {
   // 얼터너티브는 원본의 무기를 쓴다 — 팔레트는 CSS(weapon-* 클래스)가 아니라 몸체 이미지 차이
   const id = ALT_BASE[rawId] ?? rawId;
   const ranged = id === "leon" || id === "sera";
   // 생성 원화 동료는 무기가 그림에 있다 — 장착 파츠를 겹치면 검이 두 자루가 된다
   if (AUTHORED_WEAPON_BAKED.has(rawId)) return null;
+  // 생성 원화 무기(art-gen prop → public/titans/equipment/weapons/ally/<id>.png, 좌하→우상 대각선) — 네온 벡터가 페인팅 동료와 겉돌던 것을 교체.
+  // 앵커·애니메이션 CSS(.ally-weapon / .weapon-<id>)는 그대로 — 같은 정사각 박스 안에서 같은 구도다.
+  if (ALLY_WEAPON_PAINTED.has(id)) {
+    return <img className={`ally-weapon painted weapon-${id} ${ranged ? "ranged" : "melee"}`} style={anchor} src={assetUrl(`titans/equipment/weapons/ally/${id}.png`)} alt="" aria-hidden="true" draggable={false} />;
+  }
   return (
     <svg className={`ally-weapon weapon-${id} ${ranged ? "ranged" : "melee"}`} style={anchor} viewBox="0 0 100 100" aria-hidden="true">
       {id === "leon" ? (

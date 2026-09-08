@@ -1,6 +1,54 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import type { Arrow, GameWorld } from "./types";
+import { assetUrl } from "../asset";
+
+/**
+ * 스테이지 배경 — 사냥터 지역 배경을 재사용한다 (외곽 초소=초원, 붉은 협곡=폐허, 왕실 사격장=용암, 검은 성문=심연).
+ * 텅 빈 남색 캔버스에 화살만 날아오던 것이 "전장"으로 읽히게. 화살 가독성을 위해 어두운 오버레이를 덮는다.
+ */
+const STAGE_BACKGROUNDS = ["meadow", "ruins", "volcano", "abyss"].map((id) => assetUrl(`titans/backgrounds/${id}.webp`));
+const bgCache: Array<HTMLImageElement | null> = [];
+function stageBackground(stageIndex: number): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  const i = Math.max(0, Math.min(STAGE_BACKGROUNDS.length - 1, stageIndex));
+  if (bgCache[i] === undefined) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = STAGE_BACKGROUNDS[i];
+    bgCache[i] = img;
+  }
+  const img = bgCache[i];
+  return img && img.complete && img.naturalWidth > 0 ? img : null;
+}
+
+function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  const { width, height, floorY } = world;
+  const img = stageBackground(world.stageIndex);
+  if (img) {
+    // cover 맞춤 + 느린 가로 패럴랙스(플레이어 x 에 따라 ±3%)
+    const scale = Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
+    const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+    const shift = ((world.player.x / Math.max(1, width)) - 0.5) * width * 0.06;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(img, (width - dw) / 2 - shift, floorY + 40 - dh, dw, dh);
+    ctx.fillStyle = "rgba(8, 14, 28, 0.62)";
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
+  // 지면: 바닥선 아래 어두운 띠 + 잔디/돌 결
+  const g = ctx.createLinearGradient(0, floorY, 0, height);
+  g.addColorStop(0, "rgba(30, 41, 59, 0.95)");
+  g.addColorStop(1, "rgba(2, 6, 23, 1)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, floorY, width, height - floorY);
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.12)";
+  ctx.lineWidth = 1;
+  for (let x = (world.animClock * 8) % 28; x < width; x += 28) {
+    ctx.beginPath(); ctx.moveTo(x, floorY + 6); ctx.lineTo(x + 10, floorY + 6); ctx.stroke();
+  }
+}
 
 function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   if (a.reflected) {
@@ -142,6 +190,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
 
   ctx.fillStyle = "#0b1220";
   ctx.fillRect(0, 0, width, height);
+  drawStageBackground(ctx, world);
 
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
   gradient.addColorStop(0, "rgba(30, 58, 95, 0.45)");
