@@ -291,6 +291,23 @@ def cmd_heroidle(a):
         save(cutout(im), f"heroidle-{a.id}-{seed}{'-pose' if pose is not None else ''}.png")
 
 
+PROP_STYLE = (
+    "single fantasy weapon, game item illustration, painterly semi-realistic, detailed metal and leather, "
+    "held diagonally with the tip pointing to the upper right, centered, plain white background, no hands, no character, no text"
+)
+PROP_NEG = "hand, arm, person, character, text, letters, watermark, logo, blurry, lowres, multiple weapons, frame, border, background scenery, photo, 3d render"
+
+
+def cmd_prop(a):
+    """무기·소품 1장 — 화풍 참조는 동료 원화(style_refs), 대각선(좌하→우상) 구도. 출력 prop-<id>.png (512px 투명)"""
+    pipe = load_pipe(ip=True)
+    pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.35)
+    g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
+    im = pipe(prompt=f"{a.prompt}, {PROP_STYLE}", negative_prompt=PROP_NEG, num_inference_steps=24, guidance_scale=7.0,
+              generator=g, width=1024, height=1024, ip_adapter_image=[style_refs()]).images[0]
+    save(cutout(im).resize((512, 512), Image.LANCZOS), f"prop-{a.id}.png")
+
+
 def cmd_cover(a):
     pipe = load_pipe(ip=False)
     g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
@@ -311,6 +328,7 @@ if __name__ == "__main__":
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
+    pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
     v = sub.add_parser("cover"); v.add_argument("id"); v.add_argument("prompt"); v.add_argument("--seed", type=int); v.set_defaults(fn=cmd_cover)
     args = ap.parse_args()
     args.fn(args)

@@ -1203,11 +1203,12 @@
 .beat-battle-canvas { opacity:1; }
 .beat-command-party { position:fixed; z-index:4; top:max(86px,calc(env(safe-area-inset-top) + 62px)); right:12px; width:min(43vw,410px); padding:8px; border:1px solid rgba(103,232,249,.25); border-radius:14px; background:linear-gradient(180deg,rgba(8,47,73,.78),rgba(15,23,42,.9)); box-shadow:inset 0 -16px 28px rgba(0,0,0,.18),0 12px 32px rgba(0,0,0,.38); pointer-events:none; backdrop-filter:blur(7px); }
 .beat-command-track { position:relative; height:76px; border-bottom:2px solid rgba(167,243,208,.35); overflow:hidden; }
-.beat-party-character { position:absolute; left:18%; bottom:0; width:43px; transform:translateX(-50%); transition:left .24s ease; filter:drop-shadow(0 7px 6px rgba(0,0,0,.55)); }
+/* 비트 트랙 주인공 — 동료(48px 셀, 본체 ~41px)와 같은 눈높이: 폭 24px = 높이 48px (예전 43px = 86px, 동료의 3배) */
+.beat-party-character { position:absolute; left:18%; bottom:0; width:28px; transform:translateX(-50%); transition:left .24s ease; filter:drop-shadow(0 7px 6px rgba(0,0,0,.55)); }
 .beat-party-character.facing-idle .equipped-character { transform:scaleX(1); }
 /* 비트 트랙은 주인공 좌(18%)·몬스터 우(5%) — 공격 시트는 오른쪽을 보므로 뒤집지 않는다 (예전엔 몬스터 반대편으로 주먹을 뻗었다) */
 .beat-party-character.facing-attack .equipped-character { transform:scaleX(1); }
-.beat-party-allies { position:absolute; left:27%; bottom:2px; display:flex; --ally-size:34px; }
+.beat-party-allies { position:absolute; left:27%; bottom:2px; display:flex; gap:6px; --ally-size:48px; }
 .beat-training-monster { position:absolute; right:5%; bottom:0; width:78px; height:72px; object-fit:contain; object-position:center bottom; transform:scaleX(1); filter:drop-shadow(0 8px 8px rgba(0,0,0,.6)); }
 .beat-enemy-hp,.beat-fever { position:relative; height:16px; overflow:hidden; border-radius:999px; background:rgba(2,6,23,.74); }
 .beat-enemy-hp i,.beat-fever i { display:block; height:100%; background:linear-gradient(90deg,#dc2626,#fb7185); transition:width .25s ease; }
@@ -1637,6 +1638,9 @@
   filter: blur(5px);
 }
 
+img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
+.equipment-weapon img.forge-sword.painted { width: 100%; height: 100%; max-width: none; }
+.training-item-icon.weapon img.sword-art { width: 34px !important; max-width: 34px; height: 40px !important; object-fit: contain; }
 .forge-sword {
   position: relative;
   z-index: 2;
@@ -2491,6 +2495,8 @@
 @keyframes ally-body-ranged-pose { 0%,100% { transform:none; } 18% { transform:translateX(-3px) rotate(-2deg) scale(.985,1.015); } 36% { transform:translateX(2px) rotate(1deg) scale(1.02,.99); filter:brightness(1.2); } 70% { transform:translateX(0) scale(1.005,.995); } }
 /* 프레임별 무기 앵커(계획안 A): --weapon-dx/dy/drot는 상태(대기·이동·공격·피격)마다 SpriteArt가 넣는 오프셋 */
 .ally-weapon { position:absolute; z-index:2; left:calc(var(--weapon-left,18%) + var(--weapon-dx,0%)); top:calc(var(--weapon-top,12%) + var(--weapon-dy,0%)); width:var(--weapon-width,76%); height:var(--weapon-height,76%); overflow:visible; pointer-events:none; transform:rotate(calc(var(--weapon-rest,0deg) + var(--weapon-drot,0deg))); transform-origin:var(--weapon-pivot-x,50%) var(--weapon-pivot-y,62%); filter:drop-shadow(0 0 2px rgba(103,232,249,.75)); transition:left .12s ease-out, top .12s ease-out, transform .12s ease-out; }
+/* 원화 무기는 정사각 안에 대각선으로 꽉 채워져 SVG 보다 작게 보인다 — 박스를 1.2배 (앵커 중심 유지) */
+.ally-weapon.painted { object-fit:contain; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); width:calc(var(--weapon-width,76%) * 1.2); height:calc(var(--weapon-height,76%) * 1.2); left:calc(var(--weapon-left,18%) + var(--weapon-dx,0%) - var(--weapon-width,76%) * .1); top:calc(var(--weapon-top,12%) + var(--weapon-dy,0%) - var(--weapon-height,76%) * .1); }
 .ally-weapon .weapon-metal { fill:rgba(224,242,254,.92); stroke:#38bdf8; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
 .ally-weapon .weapon-string { fill:none; stroke:#e2e8f0; stroke-width:1.7; }
 .ally-weapon .weapon-shaft { fill:none; stroke:#c084fc; stroke-width:5; stroke-linecap:round; }
@@ -2855,8 +2861,10 @@
 .gacha-stage-hero { position:relative; min-height:340px; display:grid; align-content:end; justify-items:center; padding:24px; text-align:center; }
 .gacha-stage-hero::before { content:""; position:absolute; inset:3% 8% 24%; border-radius:50%; background:conic-gradient(from 20deg,transparent,#a855f744,transparent,#22d3ee55,transparent); animation:gacha-halo 8s linear infinite; }
 @keyframes gacha-halo { to { transform:rotate(1turn); } }
-.gacha-pickup-showcase { position:relative; z-index:1; display:flex; justify-content:center; align-items:flex-end; --ally-size:clamp(150px,24vw,230px); }
-.gacha-pickup-showcase .titan-ally-art { margin:0 -22px; }
+.gacha-pickup-showcase { position:relative; z-index:1; display:flex; justify-content:center; align-items:flex-end; gap:clamp(6px,3vw,24px); --ally-size:clamp(150px,24vw,230px); }
+/* 픽업 2명이 겹쳐 한 덩어리로 보였다 — 간격을 두고 각자 발밑 빛무리 */
+.gacha-pickup-showcase .titan-ally-art { margin:0; }
+.gacha-pickup-showcase .titan-ally-art::before { content:""; position:absolute; left:20%; right:20%; bottom:-4px; height:14px; border-radius:50%; background:radial-gradient(ellipse, rgba(253,224,71,.55), transparent 70%); }
 .gacha-stage-hero > div:last-child { position:relative; z-index:2; }
 .gacha-stage-hero h2 { margin:4px 0; color:#fff; font-size:clamp(24px,4vw,42px); text-shadow:0 3px 0 #4c1d95; }
 .gacha-stage-hero p { margin:0; color:#ddd6fe; }

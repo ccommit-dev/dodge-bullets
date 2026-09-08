@@ -1,3 +1,4 @@
+import { assetUrl } from "../asset";
 type SwordArtProps = {
   level: number;
   hue: number;
@@ -8,8 +9,21 @@ function metal(hue: number, light: number, sat = 70): string {
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 
+/** 생성 원화 검(art-gen prop → public/forge/swords/s<nn>.png, 수직·칼끝 위) — 16티어 전부. 벡터(SwordArtVector)는 원화가 없을 때의 대체 */
+export const PAINTED_SWORD_LEVELS = 16;
+export function swordImageUrl(level: number): string {
+  return assetUrl(`forge/swords/s${String(Math.max(0, Math.min(PAINTED_SWORD_LEVELS - 1, level))).padStart(2, "0")}.png`);
+}
+
+export function SwordArt(props: SwordArtProps) {
+  if (props.level < PAINTED_SWORD_LEVELS) {
+    return <img className="forge-sword sword-art painted" src={swordImageUrl(props.level)} alt={props.name} draggable={false} data-level={props.level} />;
+  }
+  return <SwordArtVector {...props} />;
+}
+
 /** Distinct silhouette + ornaments per enhancement tier. */
-export function SwordArt({ level, hue, name }: SwordArtProps) {
+export function SwordArtVector({ level, hue, name }: SwordArtProps) {
   const id = `blade-${level}`;
   const tip = metal(hue, 72, 80);
   const mid = metal(hue, 52);

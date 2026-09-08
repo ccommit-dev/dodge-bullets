@@ -47,24 +47,15 @@ for (const file of SOURCES) {
   const w = meta.width ?? 512;
   const h = meta.height ?? 512;
 
-  // hit: 밝게 + 흰 tint + 기울임 + 흰 외곽선(원본 알파를 확장한 흰 실루엣 아래 깔기)
-  // raw()로 받아야 1채널 원시 버퍼다 — 기본 toBuffer는 PNG 인코딩이라 raw 래핑 시 크기 오류
-  const silhouette = await sharp(src).ensureAlpha().extractChannel("alpha").raw().toBuffer();
-  // 외곽선 마스크는 알파 채널로 붙여야 한다 — 예전엔 b-w PNG(알파 없음)를 dest-in 으로 섞어 마스크가 통째로 불투명해졌고,
-  // 그 결과 17종 피격 프레임이 전부 흰 사각형이었다(타격마다 흰 박스가 번쩍임).
-  const outlineMask = await sharp(silhouette, { raw: { width: w, height: h, channels: 1 } })
-    .blur(3)
-    .threshold(20)
-    .raw()
-    .toBuffer();
-  const whiteOutline = await sharp({ create: { width: w, height: h, channels: 3, background: { r: 255, g: 255, b: 255 } } })
-    .joinChannel(outlineMask, { raw: { width: w, height: h, channels: 1 } })
-    .png()
-    .toBuffer();
-  const lit = await sharp(src).modulate({ brightness: 1.7, saturation: 0.75 }).png().toBuffer();
-  await sharp({ create: { width: w, height: h, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-    .composite([{ input: whiteOutline, blend: "over" }, { input: lit, blend: "over" }])
-    .rotate(8, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  // hit: 픽셀 단위로 흰색 쪽으로 45% 보간 + 밝기 1.15 (알파 유지) → 6° 기울임.
+  // 예전 "블러 실루엣 외곽선" 방식은 raw 버퍼 해석이 어긋나 줄무늬 흰 구름이 몸 뒤에 깔렸다 (감사 시트에서 발견).
+  const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    for (let c = 0; c < 3; c += 1) data[i + c] = Math.min(255, Math.round((data[i + c] * 0.55 + 255 * 0.45) * 1.15));
+  }
+  await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .rotate(6, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .resize(w, h, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toFile(`${DIR}/${base}-hit.png`);
