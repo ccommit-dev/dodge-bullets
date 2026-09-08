@@ -2867,7 +2867,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
             })}
             {/* 재화 팩 — 수량이 진행도 비례라 후반에도 유의미하다 */}
             {premiumCategory === "currency" && <><article className="titans-card premium-product-card gem-product">
-              <CurrencyIcon kind="gold" />
+              <RewardIcon kind="gold" size={38} className="pack-icon" />
               <div>
                 <strong>황금 보급 상자</strong>
                 <p>사냥터 골드 +{formatGold(goldPackAmount(character))} · 최고 스테이지 비례</p>
@@ -2877,7 +2877,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
-              <CurrencyIcon kind="gem" />
+              <RewardIcon kind="materials" size={38} className="pack-icon" />
               <div>
                 <strong>강화석 상자</strong>
                 <p>강화석 +{GEM_PACK.materialPackAmount} · 대장간·펫 간식 재료</p>
@@ -2887,7 +2887,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
-              <CurrencyIcon kind="gem" />
+              <RewardIcon kind="cores" size={38} className="pack-icon" />
               <div>
                 <strong>스킬 코어 상자</strong>
                 <p>스킬 코어 +{GEM_PACK.corePackAmount} · 새 스킬 학습 재료</p>
@@ -2950,7 +2950,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               </article>
             )}
             {premiumCategory === "currency" && <article className="titans-card premium-product-card gem-product">
-              <CurrencyIcon kind="gem" />
+              <RewardIcon kind="boost" size={38} className="pack-icon" />
               <div>
                 <strong>방치 가속권 24h {character.idleBoostUntil > Date.now() && <em>적용 중</em>}</strong>
                 <p>24시간 동안 방치 산출 2배 · 중첩 불가</p>
