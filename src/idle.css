@@ -2266,3 +2266,18 @@
 .idle-patron-preview p { grid-column: 1 / -1; margin: 0; font-size: 10.5px; line-height: 1.35; color: #e2e8f0; }
 .idle-patron-preview .patron-buy { grid-column: 1 / -1; min-height: 34px; border-radius: 10px; border: 0; font-weight: 900; font-size: 12px; color: #1e1b4b; background: linear-gradient(90deg, #fde047, #f59e0b); }
 .idle-patron-preview .patron-buy em { font-style: normal; font-size: 10px; opacity: .85; margin-left: 4px; }
+
+/* 보상 아이콘 (ui/RewardIcon.tsx) — 시즌 패스·토벌령·주간 도전·원정 일지·이벤트 상점 공용 */
+.reward-icon { display: inline-block; vertical-align: middle; flex: 0 0 auto; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5)); }
+.reward-chip { display: inline-flex; align-items: center; gap: 4px; }
+.reward-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; }
+.season-cell { display: flex; align-items: center; gap: 6px; }
+.season-cell.claimed .reward-icon { filter: grayscale(0.6) opacity(0.7); }
+.season-tier.after-gap { position: relative; margin-top: 12px; }
+.season-tier.after-gap::before { content: "· · ·"; position: absolute; left: 6px; top: -12px; color: #64748b; font-size: 10px; letter-spacing: 2px; }
+.season-expand { width: 100%; padding: 8px; border: 1px dashed rgba(148, 163, 184, 0.4); border-radius: 10px; background: transparent; color: #cbd5e1; font-size: 11px; font-weight: 800; }
+.season-perks { display: flex; justify-content: center; gap: 4px; margin-top: 3px; }
+.mission-card { grid-template-columns: auto 1fr auto !important; }
+.mission-card .mission-icon { width: 30px; height: 30px; }
+.mission-card .journal-reward { grid-column: 1 / -1; }
+.event-offer-card .reward-row { margin-top: 5px; }

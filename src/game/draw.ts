@@ -254,6 +254,42 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     if (arrows[i].active) drawArrow(ctx, arrows[i]);
   }
 
+  // 베기 파편 — 두 토막·불꽃·검광. 화살 뒤, 드롭 앞
+  for (const d of world.slashDebris) {
+    if (!d.active) continue;
+    const life = Math.max(0, d.lifeMs / d.maxLifeMs);
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.angle);
+    if (d.kind === "streak") {
+      ctx.globalAlpha = life;
+      ctx.strokeStyle = d.color; ctx.lineWidth = 3 * life + 1; ctx.lineCap = "round";
+      ctx.shadowColor = d.color; ctx.shadowBlur = 12;
+      const l = d.len * (1 + (1 - life) * 0.9);
+      ctx.beginPath(); ctx.moveTo(-l, 0); ctx.lineTo(l, 0); ctx.stroke();
+    } else if (d.kind === "spark") {
+      ctx.globalAlpha = life;
+      ctx.fillStyle = d.color; ctx.shadowColor = d.color; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(0, 0, Math.max(0.6, d.len * 0.5 * life), 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.globalAlpha = Math.min(1, life * 1.6);
+      ctx.strokeStyle = d.color; ctx.fillStyle = d.color; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+      ctx.shadowColor = d.color; ctx.shadowBlur = 6;
+      const h = d.len * 0.5;
+      ctx.beginPath(); ctx.moveTo(-h, 0); ctx.lineTo(h, 0); ctx.stroke();
+      if (d.kind === "tip") {
+        // 촉 토막: 끝에 화살촉
+        ctx.beginPath(); ctx.moveTo(h, 0); ctx.lineTo(h - 8, 4); ctx.lineTo(h - 8, -4); ctx.closePath(); ctx.fill();
+      } else {
+        // 깃 토막: 끝에 깃
+        ctx.beginPath(); ctx.moveTo(-h, 0); ctx.lineTo(-h + 6, 5); ctx.moveTo(-h, 0); ctx.lineTo(-h + 6, -5); ctx.stroke();
+      }
+      // 잘린 단면 — 흰 점
+      ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.arc(d.kind === "tip" ? -h : h, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   for (const drop of world.slashDrops) {
     if (!drop.active) continue;
     const color = drop.kind === "rune" ? "#f472b6" : drop.kind === "core" ? "#facc15" : "#67e8f9";

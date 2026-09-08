@@ -39,7 +39,7 @@ const rects = () => page.evaluate(() => {
   const allies = [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((e) => ({ id: (e.className.match(/ ally-([a-z_]+)/) || [])[1], approaching: e.classList.contains("is-approaching"), state: e.querySelector(".ally-body")?.className.match(/frame-(\d)/)?.[1], ...r(e.querySelector(".ally-body") || e, 0.45) }));
   const hero = document.querySelector(".titans-hero"); const monster = document.querySelector(".titan-monster-art");
   const phase = (field?.className.match(/phase-([a-z-]+)/) || [])[1] || "";
-  return { phase, field: field ? r(field) : null, allies, hero: hero ? r(hero, 0.55) : null, monster: monster ? r(monster, 0.7) : null, boss: !!document.querySelector(".titans-field.boss") };
+  return { phase, heroApproaching: !!hero?.classList.contains("is-approaching"), field: field ? r(field) : null, allies, hero: hero ? r(hero, 0.55) : null, monster: monster ? r(monster, 0.7) : null, boss: !!document.querySelector(".titans-field.boss") };
 });
 const inter = (a, b) => { const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)); const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)); return (x * y) / Math.min(a.w * a.h, b.w * b.h); };
 
@@ -49,7 +49,8 @@ for (let t = 0; t < 14; t += 1) {
   for (const a of s.allies) (statesSeen[a.id] ??= new Set()).add(a.state); // 상태 프레임은 모든 샘플에서 수집
   if (t < 2) { await sleep(600); continue; } // 첫 교전 정렬까지 대기
   // 스테이지 전환(run-out/in)·등장 걸어오기 중에는 동료 컨테이너가 통째로 움직여 주인공·몬스터를 스쳐 지나간다 — 정지 교전 순간만 잰다
-  if (/stage-/.test(s.phase) || s.allies.some((a) => a.approaching)) { await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true }))); await sleep(450); continue; }
+  // 주인공도 2%→34% 로 걸어 들어오는 동안 원거리 동료(8%) 위를 지나간다 — 주인공 이동 중 샘플도 제외
+  if (/stage-/.test(s.phase) || s.heroApproaching || s.allies.some((a) => a.approaching)) { await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true }))); await sleep(450); continue; }
   for (let i = 0; i < s.allies.length; i += 1) for (let j = i + 1; j < s.allies.length; j += 1) {
     const v = inter(s.allies[i], s.allies[j]); if (v > worstAlly.v) worstAlly = { v, pair: `${s.allies[i].id}×${s.allies[j].id}` };
   }

@@ -9,6 +9,8 @@ import { randomOwnedAlly } from "./titans/allies";
 import { riftEventFor, weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
 import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
+import { RewardChip, RewardIcon } from "./ui/RewardIcon";
+import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { sfxRiftClaim } from "./ui/sfx";
 
 type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge" | "season";
@@ -56,6 +58,7 @@ export function EventCenter({
   initialTab?: "daily" | "rift" | "weekly" | "journal" | "season";
 }) {
   const [tab, setTab] = useState<EventTab>("daily");
+  const [allTiers, setAllTiers] = useState(false);
   const [save, setSave] = useState<EventSave | null>(null);
   const [riftMessage, setRiftMessage] = useState("");
   const [shadowLog, setShadowLog] = useState<{ id: string; win: boolean; text: string } | null>(null);
@@ -68,22 +71,20 @@ export function EventCenter({
     if (open && initialTab) setTab(initialTab);
   }, [open, initialTab]);
 
-  /** 일일 미션 — 4개 콘텐츠 축을 하나씩 담당한다. beat가 빠져 있던 것을 채웠다. */
-  const daily = useMemo(
-    () => [
-      { id: "hunt", title: "사냥터 보스 진척", axis: "S", value: Math.max(0, progress.titanBestStage - 1), goal: 2 },
-      { id: "pioneer", title: "화살 원정 개척", axis: "T", value: progress.dodgeBestStage, goal: 2 },
-      { id: "forge", title: "장비 강화 기록", axis: "M", value: progress.bestForgeLevel, goal: 3 },
-      {
-        id: "beat",
-        title: "비트 수련 숙련",
-        axis: "R",
-        value: Object.values(progress.beatSkills).reduce((a, b) => a + b, 0),
-        goal: 5,
-      },
-    ],
-    [progress],
-  );
+  /**
+   * 토벌령 — 4개 콘텐츠 축, "오늘 실제로 했는가"(firstClearDates)가 기준이다.
+   * 예전 값(최고 스테이지·최고 강화 등 누적 최고치)은 한 번 넘기면 매일 자동 달성되는 목데이터였다.
+   */
+  const daily = useMemo(() => {
+    const today = dateKey();
+    const did = (k: keyof CharacterProgress["firstClearDates"]) => (progress.firstClearDates[k] === today ? 1 : 0);
+    return [
+      { id: "hunt", title: "오늘 보스 처치", desc: "사냥터 보스 1마리", axis: "S", icon: "hunt" as ContentIconName, value: did("hunt"), goal: 1 },
+      { id: "pioneer", title: "오늘 화살 원정", desc: "원정 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
+      { id: "forge", title: "오늘 장비 강화", desc: "대장간 강화 1회 성공", axis: "M", icon: "forge" as ContentIconName, value: did("forge"), goal: 1 },
+      { id: "beat", title: "오늘 비트 수련", desc: "1곡 클리어", axis: "R", icon: "beat" as ContentIconName, value: did("beat"), goal: 1 },
+    ];
+  }, [progress]);
 
   const opponents = useMemo(
     () => shadowOpponents(userHash, progress, save?.week ?? weekKey()),
@@ -305,18 +306,20 @@ export function EventCenter({
               const key = `daily:${dateKey()}:${m.id}`;
               const done = m.value >= m.goal;
               return (
-                <article key={m.id}>
+                <article key={m.id} className="mission-card">
+                  <ContentIcon name={m.icon} className="mission-icon" />
                   <div>
                     <b>
                       <span className={`axis-chip axis-${m.axis}`}>{m.axis}</span>
                       {m.title}
                     </b>
                     <span>
-                      {Math.min(m.goal, m.value)} / {m.goal}
+                      {m.desc} · {Math.min(m.goal, m.value)} / {m.goal}
                     </span>
                     <i>
                       <em style={{ width: `${Math.min(100, (m.value / m.goal) * 100)}%` }} />
                     </i>
+                    <small className="journal-reward reward-row"><RewardChip kind="gold" label="골드 250" /><RewardChip kind="materials" label="강화석 2" /></small>
                   </div>
                   <button disabled={!done || save.claimed.includes(key)} onClick={() => void claimMission(m.id)}>
                     {save.claimed.includes(key) ? "완료" : "받기"}
@@ -437,7 +440,7 @@ export function EventCenter({
                       <b>{ch.title}</b>
                       <span>{Math.min(ch.goal, current)} / {ch.goal}</span>
                       <i><em style={{ width: `${Math.min(100, (current / ch.goal) * 100)}%` }} /></i>
-                      <small className="journal-reward">{weeklyRewardLabel(ch.reward)}</small>
+                      <small className="journal-reward"><RewardChip kind={ch.reward.kind} label={weeklyRewardLabel(ch.reward)} /></small>
                     </div>
                     <button disabled={!done || claimed} onClick={() => void claimWeekly(ch.id)}>
                       {claimed ? "완료" : done ? "받기" : "진행중"}
@@ -465,7 +468,7 @@ export function EventCenter({
                   <span>다음 단까지 {SEASON.xpPerTier - (sp.xp % SEASON.xpPerTier)} XP · 루틴 {SEASON.xp.routine} · 토벌 완주 {SEASON.xp.missionsAll} · 주간 도전 {SEASON.xp.weeklyChallenge} · 균열 {SEASON.xp.rift}</span>
                 </div>
                 {sp.paid ? <span className="season-paid-badge">유료 트랙 활성</span> : (
-                  <button type="button" className="cta season-buy" onClick={() => void buySeasonPass()}>유료 트랙 {SEASON.paidPriceLabel}<small>보석 {paidGemTotal(sp.season)} · 조각 선택 3 · 시즌 스킨 · 무기 이펙트</small></button>
+                  <button type="button" className="cta season-buy" onClick={() => void buySeasonPass()}>유료 트랙 {SEASON.paidPriceLabel}<small>보석 {paidGemTotal(sp.season)} · 조각 선택 3 · 시즌 스킨 · 무기 이펙트</small><span className="season-perks"><RewardIcon kind="gems" size={18} /><RewardIcon kind="shards" size={18} /><RewardIcon kind="allySkin" size={18} /><RewardIcon kind="weaponFx" size={18} /></span></button>
                 )}
               </header>
               {(freeOpen.length > 0 || paidOpen.length > 0) && (
@@ -473,19 +476,31 @@ export function EventCenter({
                   수령 가능 {freeOpen.length + paidOpen.length}개 모두 받기
                 </button>
               )}
-              <ol className="season-tiers">
-                {Array.from({ length: SEASON.tiers }, (_, i) => i + 1).map((t) => {
-                  const fr = freeReward(t); const pr = paidReward(t, sp.season);
-                  const reached = t <= tierNow;
-                  return (
-                    <li key={t} className={`season-tier ${reached ? "reached" : ""} ${t === tierNow + 1 ? "next" : ""}`}>
-                      <b>{t}</b>
-                      <button type="button" className={`season-cell free ${sp.claimedFree.includes(t) ? "claimed" : ""}`} disabled={!freeOpen.includes(t)} onClick={() => void claimSeason("free", t)}>{rewardLabel(fr)}{sp.claimedFree.includes(t) ? " ✓" : ""}</button>
-                      <button type="button" className={`season-cell paid ${sp.claimedPaid.includes(t) ? "claimed" : ""} ${sp.paid ? "" : "locked"}`} disabled={!paidOpen.includes(t)} onClick={() => void claimSeason("paid", t)}>{rewardLabel(pr)}{sp.claimedPaid.includes(t) ? " ✓" : sp.paid ? "" : " 🔒"}</button>
-                    </li>
-                  );
-                })}
-              </ol>
+              {/* 30줄을 늘어놓지 않는다 — 현재 단 앞뒤(−1~+4)와 수령 가능한 단만. 전체는 토글 */}
+              {(() => {
+                const openSet = new Set([...freeOpen, ...paidOpen]);
+                const all = Array.from({ length: SEASON.tiers }, (_, i) => i + 1);
+                const shown = allTiers ? all : all.filter((t) => openSet.has(t) || (t >= Math.max(1, tierNow - 1) && t <= Math.min(SEASON.tiers, tierNow + 4)));
+                return (
+                  <>
+                    <ol className="season-tiers">
+                      {shown.map((t, i) => {
+                        const fr = freeReward(t); const pr = paidReward(t, sp.season);
+                        const reached = t <= tierNow;
+                        const gap = i > 0 && shown[i - 1] !== t - 1;
+                        return (
+                          <li key={t} data-tier={t} className={`season-tier ${reached ? "reached" : ""} ${t === tierNow + 1 ? "next" : ""} ${gap ? "after-gap" : ""}`}>
+                            <b>{t}</b>
+                            <button type="button" className={`season-cell free ${sp.claimedFree.includes(t) ? "claimed" : ""}`} disabled={!freeOpen.includes(t)} onClick={() => void claimSeason("free", t)}><RewardIcon kind={fr.kind} size={20} />{rewardLabel(fr)}{sp.claimedFree.includes(t) ? " ✓" : ""}</button>
+                            <button type="button" className={`season-cell paid ${sp.claimedPaid.includes(t) ? "claimed" : ""} ${sp.paid ? "" : "locked"}`} disabled={!paidOpen.includes(t)} onClick={() => void claimSeason("paid", t)}><RewardIcon kind={pr.kind} size={20} />{rewardLabel(pr)}{sp.claimedPaid.includes(t) ? " ✓" : sp.paid ? "" : " 🔒"}</button>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    <button type="button" className="season-expand" onClick={() => setAllTiers((v) => !v)}>{allTiers ? "접기" : `전체 ${SEASON.tiers}단 보기`}</button>
+                  </>
+                );
+              })()}
             </section>
           );
         })()}
@@ -511,7 +526,7 @@ export function EventCenter({
                       <i>
                         <em style={{ width: `${Math.min(100, (current / goal) * 100)}%` }} />
                       </i>
-                      <small className="journal-reward">{journalRewardLabel(entry.reward)}</small>
+                      <small className="journal-reward"><RewardChip kind={entry.reward.kind} label={journalRewardLabel(entry.reward)} /></small>
                     </div>
                     <button disabled={!done || claimed} onClick={() => void claimJournal(entry.id)}>
                       {claimed ? "완료" : done ? "받기" : "진행중"}

@@ -710,7 +710,8 @@
 .status-icon.content-icon { width:46px; height:46px; border-radius:12px; background-color:rgba(15,23,42,.7); }
 /* 마이페이지 캐릭터 아이콘 — 상반신만 (사용자 지시): 원형 프레임에 확대해 머리·가슴이 차게 */
 .character-equipment-preview { width:96px; height:96px; align-self:center; display:flex; align-items:flex-start; justify-content:center; overflow:hidden; border-radius:24px; border:2px solid rgba(94,234,212,.45); background:radial-gradient(circle at 50% 30%, rgba(94,234,212,.18), rgba(8,18,33,.9) 70%); box-shadow:0 0 14px rgba(94,234,212,.2); }
-.character-equipment-facing { width:76px; transform:scaleX(-1) translateY(2px); transform-origin:center top; }
+/* 새 대기 원화는 오른쪽을 본다 — 더는 뒤집지 않는다 (2026-09-08) */
+.character-equipment-facing { width:76px; transform:translateY(2px); transform-origin:center top; }
 .status-copy { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .status-copy small { color: #94a3b8; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; }
 .status-copy strong { font-size: 15px; }
@@ -1203,8 +1204,9 @@
 .beat-command-party { position:fixed; z-index:4; top:max(86px,calc(env(safe-area-inset-top) + 62px)); right:12px; width:min(43vw,410px); padding:8px; border:1px solid rgba(103,232,249,.25); border-radius:14px; background:linear-gradient(180deg,rgba(8,47,73,.78),rgba(15,23,42,.9)); box-shadow:inset 0 -16px 28px rgba(0,0,0,.18),0 12px 32px rgba(0,0,0,.38); pointer-events:none; backdrop-filter:blur(7px); }
 .beat-command-track { position:relative; height:76px; border-bottom:2px solid rgba(167,243,208,.35); overflow:hidden; }
 .beat-party-character { position:absolute; left:18%; bottom:0; width:43px; transform:translateX(-50%); transition:left .24s ease; filter:drop-shadow(0 7px 6px rgba(0,0,0,.55)); }
-.beat-party-character.facing-idle .equipped-character { transform:scaleX(-1); }
-.beat-party-character.facing-attack .equipped-character { transform:scaleX(-1); }
+.beat-party-character.facing-idle .equipped-character { transform:scaleX(1); }
+/* 비트 트랙은 주인공 좌(18%)·몬스터 우(5%) — 공격 시트는 오른쪽을 보므로 뒤집지 않는다 (예전엔 몬스터 반대편으로 주먹을 뻗었다) */
+.beat-party-character.facing-attack .equipped-character { transform:scaleX(1); }
 .beat-party-allies { position:absolute; left:27%; bottom:2px; display:flex; --ally-size:34px; }
 .beat-training-monster { position:absolute; right:5%; bottom:0; width:78px; height:72px; object-fit:contain; object-position:center bottom; transform:scaleX(1); filter:drop-shadow(0 8px 8px rgba(0,0,0,.6)); }
 .beat-enemy-hp,.beat-fever { position:relative; height:16px; overflow:hidden; border-radius:999px; background:rgba(2,6,23,.74); }
@@ -2221,7 +2223,8 @@
 }
 
 .titans-field {
-  --hero-size: clamp(58px, 12.5%, 72px);
+  /* 영웅 시트는 가로:세로 1:2 — 폭 42px = 높이 84px. 동료 본체(74~82px)와 같은 눈높이 (예전 58~72px 폭 = 동료의 1.7배) */
+  --hero-size: clamp(38px, 8.4%, 46px);
   --ally-size: 86px;
   --monster-size: 112px;
   --boss-size: 154px;
@@ -2468,24 +2471,24 @@
 .titan-ally-art.is-approaching .ally-swing { animation:formation-walk .26s ease-in-out infinite alternate; }
 .titan-ally-art.is-approaching .ally-weapon { filter:drop-shadow(0 0 2px rgba(103,232,249,.55)); }
 /* 대기 호흡 — 영웅(스프라이트)·몬스터(breathe)만 움직이고 동료는 박제였다. */
-.ally-idle { width:100%; height:100%; transform-origin:50% 92%; animation: ally-idle-bob 1.7s ease-in-out infinite; }
-@keyframes ally-idle-bob { 50% { transform: translateY(-2.5px) scale(1.008,.992); } }
+.ally-idle { width:100%; height:100%; transform-origin:50% 92%; animation: ally-idle-bob 3.2s ease-in-out infinite; }
+@keyframes ally-idle-bob { 50% { transform: translateY(-1.5px) rotate(.4deg); } }
 .titan-ally-art.is-approaching .ally-idle { animation:ally-run-cycle .38s linear infinite; }
 .titan-ally-art.was-hit.hit-0 .ally-swing { animation:ally-hit-recoil-a .3s ease-out; }
 .titan-ally-art.was-hit.hit-1 .ally-swing { animation:ally-hit-recoil-b .3s ease-out; }
-@keyframes ally-run-cycle { 0%,100% { transform:translateY(0) rotate(-1.5deg) scaleY(.985); } 50% { transform:translateY(-5px) rotate(1.5deg) scaleY(1.015); } }
+@keyframes ally-run-cycle { 0%,100% { transform:translateY(0) rotate(-1deg); } 50% { transform:translateY(-2px) rotate(1deg); } }
 @keyframes ally-hit-recoil-a { 35% { transform:translate(-7px,2px) rotate(-4deg) scale(.96,1.02); filter:brightness(1.65) saturate(.7); } }
 @keyframes ally-hit-recoil-b { 35% { transform:translate(-7px,2px) rotate(-4deg) scale(.96,1.02); filter:brightness(1.65) saturate(.7); } }
 .ally-swing { position:relative; width:100%; height:100%; transform-origin:50% 86%; }
 .titan-ally-art .ally-body { position:absolute; inset:0; z-index:1; width:100%; height:100%; background-repeat:no-repeat; }
 .titan-ally-art:not(.is-approaching) .ally-body { animation:ally-body-breathe 1.9s ease-in-out infinite; transform-origin:50% 88%; }
-.titan-ally-art.is-approaching .ally-body { animation:ally-body-run .38s steps(2,end) infinite; transform-origin:50% 88%; }
-.combat-melee .ally-swing.is-attacking .ally-body { animation:ally-body-melee-pose .62s cubic-bezier(.2,.8,.3,1); }
+.titan-ally-art.is-approaching .ally-body { animation:ally-body-run .28s ease-in-out infinite; transform-origin:50% 88%; }
+.combat-melee .ally-swing.is-attacking .ally-body { animation:ally-body-melee-pose .48s cubic-bezier(.2,.8,.3,1); }
 .combat-ranged .ally-swing.is-attacking .ally-body { animation:ally-body-ranged-pose .44s ease-out; }
-@keyframes ally-body-breathe { 50% { transform:scale(1.012,.988) translateY(-1px); } }
-@keyframes ally-body-run { 0% { transform:translateY(1px) rotate(-1deg) scaleY(.98); } 50% { transform:translateY(-4px) rotate(1deg) scaleY(1.02); } }
-@keyframes ally-body-melee-pose { 0%,100% { transform:none; } 28% { transform:translate(-1px,-2px) rotate(-2deg); } 58% { transform:translate(4px,1px) rotate(2.5deg) scale(1.035,.975); } }
-@keyframes ally-body-ranged-pose { 0%,100% { transform:none; } 45% { transform:translateX(-2px) rotate(-1.5deg) scale(.985,1.015); filter:brightness(1.18); } }
+@keyframes ally-body-breathe { 50% { transform:scale(1.014,.986); } }
+@keyframes ally-body-run { 0%,100% { transform:translateY(0) scaleY(1); } 50% { transform:translateY(-3px) scaleY(1.015); } }
+@keyframes ally-body-melee-pose { 0%,100% { transform:none; } 18% { transform:translate(-4px,-1px) rotate(-3deg) scale(.98,1.02); } 32% { transform:translate(7px,1px) rotate(3deg) scale(1.05,.97); } 62% { transform:translate(4px,0) rotate(1.5deg) scale(1.02,.99); } 84% { transform:translate(1px,0); } }
+@keyframes ally-body-ranged-pose { 0%,100% { transform:none; } 18% { transform:translateX(-3px) rotate(-2deg) scale(.985,1.015); } 36% { transform:translateX(2px) rotate(1deg) scale(1.02,.99); filter:brightness(1.2); } 70% { transform:translateX(0) scale(1.005,.995); } }
 /* 프레임별 무기 앵커(계획안 A): --weapon-dx/dy/drot는 상태(대기·이동·공격·피격)마다 SpriteArt가 넣는 오프셋 */
 .ally-weapon { position:absolute; z-index:2; left:calc(var(--weapon-left,18%) + var(--weapon-dx,0%)); top:calc(var(--weapon-top,12%) + var(--weapon-dy,0%)); width:var(--weapon-width,76%); height:var(--weapon-height,76%); overflow:visible; pointer-events:none; transform:rotate(calc(var(--weapon-rest,0deg) + var(--weapon-drot,0deg))); transform-origin:var(--weapon-pivot-x,50%) var(--weapon-pivot-y,62%); filter:drop-shadow(0 0 2px rgba(103,232,249,.75)); transition:left .12s ease-out, top .12s ease-out, transform .12s ease-out; }
 .ally-weapon .weapon-metal { fill:rgba(224,242,254,.92); stroke:#38bdf8; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
@@ -2535,6 +2538,9 @@
 /* 루나 워해머 — 스윙보다 큰 호로 들었다 내려찍는다. 몸(ally-hammer-smash)과 위상 동기 */
 @keyframes ally-hammer-arc { 0%,100% { transform:rotate(var(--weapon-rest)); } 30% { transform:rotate(calc(var(--weapon-rest) - 42deg)) translateY(-2px); } 56% { transform:rotate(calc(var(--weapon-rest) + 46deg)); filter:brightness(1.35) drop-shadow(0 0 8px #fcd34d); } 74% { transform:rotate(calc(var(--weapon-rest) + 38deg)); } }
 @keyframes ally-hammer-smash { 0%,100% { transform:none; } 30% { transform:translate(-1px,-4px) rotate(-3deg); } 56% { transform:translate(5px,2px) rotate(3deg) scale(1.05,.96); } 74% { transform:translate(3px,1px) rotate(2deg); } }
+.ally-swing.phase-strike .ally-body { filter:brightness(1.12) drop-shadow(0 0 3px rgba(255,255,255,.35)); }
+.ally-swing.phase-recover .ally-body { animation:ally-body-settle .15s ease-out; }
+@keyframes ally-body-settle { from { transform:translateX(3px) scale(1.02,.99); } to { transform:none; } }
 .ally-attack-fx { position:absolute; z-index:3; left:72%; top:33%; width:42%; height:42%; border:3px solid rgba(103,232,249,.75); border-left-color:transparent; border-bottom-color:transparent; border-radius:50%; animation: ally-fx .38s ease-out forwards; pointer-events:none; }
 .ally-attack-fx.melee { left:82%; }
 .ally-attack-fx.ranged { width:min(48vw,360px); height:4px; top:51%; border:0; border-radius:99px; background:linear-gradient(90deg,#f8fafc 0 8%,#67e8f9 35%,transparent); transform-origin:left center; }
@@ -2874,7 +2880,8 @@
 .event-offer-card.offer-2{background:linear-gradient(130deg,#701a75,#312e81)}.event-offer-card.offer-3{background:linear-gradient(130deg,#9a3412,#7f1d1d)}
 .event-offer-art { min-height:150px; display:grid; place-items:center; border-radius:16px; background:radial-gradient(circle,rgba(255,255,255,.32),transparent 66%); }
 .event-offer-art .content-icon { width:112px; height:112px; filter:drop-shadow(0 10px 12px rgba(0,0,0,.35)); }
-.event-offer-art span { position:absolute; top:12px; left:12px; padding:5px 8px; border-radius:8px; color:#fff; background:#ec4899; font-size:10px; font-weight:950; }
+/* 배지만 — 콘텐츠 아이콘도 span 이라 같은 규칙을 받아 분홍 사각형으로 덮였다 */
+.event-offer-art span:not(.content-icon) { position:absolute; top:12px; left:12px; padding:5px 8px; border-radius:8px; color:#fff; background:#ec4899; font-size:10px; font-weight:950; }
 .event-offer-card h2 { margin:4px 0; font-size:24px; }.event-offer-card p{color:#dbeafe}.event-offer-card small{color:#fde047;font-weight:900}
 .event-offer-card button { grid-column:1/-1; min-height:46px; border:0; border-radius:11px; color:#301500; background:linear-gradient(180deg,#fde047,#fb923c); font-weight:950; }
 
@@ -3062,7 +3069,10 @@
 .titans-hero.is-approaching .equipped-character { animation:formation-walk .25s ease-in-out infinite alternate; }
 @keyframes formation-walk { from { translate:0 0; rotate:-1deg; } to { translate:0 -4px; rotate:1deg; } }
 .titans-hero-facing { width:100%; transform-origin:center bottom; }
-.titans-hero-facing.facing-idle { transform:scaleX(-1); }
+.titans-hero:not(.is-approaching) .titans-hero-facing.facing-idle .equipped-character { animation:hero-breathe 2.6s ease-in-out infinite; transform-origin:50% 100%; }
+@keyframes hero-breathe { 50% { transform:scale(1.012,.988); } }
+/* 대기 시트가 오른쪽(몬스터 쪽)을 보는 3/4 원화로 교체됐다 — 공격 시트와 같은 방향이라 전환 시 좌우가 튀지 않는다 */
+.titans-hero-facing.facing-idle { transform:scaleX(1); }
 .titans-hero-facing.facing-attack { transform:scaleX(1); }
 .titans-field.phase-stage-exit .titans-hero { animation: party-run-out .68s cubic-bezier(.35,.05,.8,.35) forwards; }
 .titans-field.phase-stage-enter .titans-hero { animation: party-run-in .46s ease-out both; }
@@ -3435,7 +3445,7 @@
   .titans-stagebar { width:100%; align-items:flex-end; }
   .titans-stagebar h1 { max-width:calc(100vw - 82px); overflow-wrap:anywhere; font-size:clamp(21px,7vw,28px); }
 
-  .titans-field { --hero-size:clamp(58px,16vw,72px); --ally-size:74px; --monster-size:100px; --boss-size:136px; width:100%; height:clamp(300px,48svh,440px); border-radius:15px; }
+  .titans-field { --hero-size:clamp(36px,10.5vw,42px); --ally-size:74px; --monster-size:100px; --boss-size:136px; width:100%; height:clamp(300px,48svh,440px); border-radius:15px; }
   .titans-hp { left:12%; right:12%; }
   .titans-monster { right:7%; }
   .titans-allies { left:11%; }

@@ -153,6 +153,11 @@ const art = await (async () => {
   ok("변형 10명: 변형 아틀라스 4상태", ["pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember"].every((id) => distinct(frames(id)) && /variant/.test(art.allyFrameStyle(id, 0).backgroundImage)));
   // 루나·볼트는 아트 점검 1순위로 로스터 화풍 변형 행으로 이동 — 특수(정사각) 아틀라스에는 미아 다크·세라 라이트만 남는다
   ok("특수 2명(미아 다크·세라 라이트): 특수 아틀라스 4상태 (정사각 셀 → wide 아님)", ["mia_dark", "sera_light"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === undefined));
+  // 동료 애니메이션 상태기 — 공격 3박(예비 1 → 타격 2 → 복귀 0) · 걷기 2프레임 교대(1↔0) · 피격 우선
+  const f = (v) => art.allyFrameFor({ flinching: false, attackPhase: "none", approaching: false, walkTick: 0, ...v });
+  ok("동료 공격 3박: 예비=이동 프레임 · 타격=공격 프레임 · 복귀=대기 프레임", f({ attackPhase: "windup" }) === 1 && f({ attackPhase: "strike" }) === 2 && f({ attackPhase: "recover" }) === 0);
+  ok("동료 걷기: 틱마다 이동↔대기 프레임 교대 (한 프레임 흔들기 아님)", f({ approaching: true, walkTick: 0 }) === 1 && f({ approaching: true, walkTick: 1 }) === 0 && f({ approaching: true, walkTick: 2 }) === 1);
+  ok("동료 피격이 공격·걷기보다 우선 · 공격 타이밍 90/240/150 · 걷기 140ms", f({ flinching: true, attackPhase: "strike", approaching: true }) === 3 && art.ALLY_ATTACK_TIMING.windupMs === 90 && art.ALLY_ATTACK_TIMING.strikeMs === 240 && art.ALLY_ATTACK_TIMING.recoverMs === 150 && art.ALLY_WALK_FRAME_MS === 140);
   ok("루나·볼트 4상태 프레임이 서로 다르고 가로 셀(로스터 화풍)", ["luna", "volt"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === "150%"));
   ok("스킨 2종: 스킨 아틀라스 4상태", distinct(frames("garen", "garen-magma")) && /skin-atlas/.test(art.allyFrameStyle("leon", 2, "leon-frost").backgroundImage));
   ok("가로 셀 아틀라스는 폭 150%·좌측 −25%로 비율 보정", art.allyFrameStyle("mia", 0).width === "150%" && art.allyFrameStyle("pyro", 0).left === "-25%");
@@ -177,7 +182,8 @@ const art = await (async () => {
   let p = { ...base, partyIds: ["mia"] };
   p = sm.addSeasonXp(p, sm.SEASON.xp.routine * 26, t0); // 520 XP → 5단
   ok("G 경험치 → 단계 (520 XP = 5단)", sm.seasonTier(p.seasonPass.xp) === 5 && p.seasonPass.season === 0);
-  ok("G 무료 수령 가능 단계: 1(강화석)·3(조각)·5(보석25) — 2·4는 빈 칸", sm.claimableTiers(p, "free", t0).join() === "1,3,5" && sm.claimableTiers(p, "paid", t0).length === 0);
+  ok("G 무료 수령 가능 단계 1~5 전부 (빈 칸 없음: 2=가속 1h · 4=강화석 20)", sm.claimableTiers(p, "free", t0).join() === "1,2,3,4,5" && sm.claimableTiers(p, "paid", t0).length === 0 && sm.freeReward(2).kind === "boost" && sm.freeReward(4).kind === "materials");
+  ok("G 무료 트랙 30단 모두 실보상 (\"—\" 없음)", Array.from({ length: 30 }, (_, i) => sm.rewardLabel(sm.freeReward(i + 1))).every((l) => l !== "—"));
   const c5 = sm.claimSeasonTier(p, "free", 5, t0);
   ok("G 5단 무료 수령 → 보석 +25 · 재수령 불가", c5.applied && c5.progress.redGems === base.redGems + 25 && !sm.claimSeasonTier(c5.progress, "free", 5, t0).applied);
   const paidP = { ...c5.progress, seasonPass: { ...c5.progress.seasonPass, paid: true } };

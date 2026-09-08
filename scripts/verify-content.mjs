@@ -96,6 +96,28 @@ a = place(60);
 world.updateWorld(w, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
 ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 · 섬광 · 1.2초 시간 지연", w.ultCount === 1 && w.slashGauge === 0 && [1, 2, 3, 4].every((i) => !w.arrows[i].active) && w.ultFlashMs > 0 && w.player.slowActiveMs >= 1200, `ult=${w.ultCount} gauge=${w.slashGauge}`);
 
+// ── 화살 원정: 쪼개짐 연출 — 파쇄는 두 토막 + 불꽃 + 검광, 반사는 불꽃 + 검광 ──
+{
+  const active = (w2) => w2.slashDebris.filter((d) => d.active);
+  const kinds = (w2) => active(w2).map((d) => d.kind);
+  let w2 = mk(); w2.player.facing = 1;
+  const p2 = (dist, fromRight = true) => { const a2 = w2.arrows[0]; a2.active = true; a2.reflected = false; a2.splitLevel = 0; a2.warningMs = 0; a2.splitGraceMs = 0; a2.boss = false; a2.kind = "normal"; a2.x = w2.player.x + (fromRight ? dist : -dist); a2.y = w2.player.y; a2.vx = fromRight ? -300 : 300; a2.vy = 0; a2.angle = Math.atan2(a2.vy, a2.vx); a2.damage = 1; a2.hitRadius = 5; a2.length = 34; return a2; };
+  p2(60);
+  world.updateWorld(w2, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
+  const k = kinds(w2);
+  ok("파쇄 → 촉 토막 1 · 깃 토막 1 · 검광 1 · 불꽃 ≥ 4 가 보인다", k.filter((x) => x === "tip").length === 1 && k.filter((x) => x === "tail").length === 1 && k.includes("streak") && k.filter((x) => x === "spark").length >= 4, k.join());
+  const tip = active(w2).find((d) => d.kind === "tip"), tail = active(w2).find((d) => d.kind === "tail");
+  ok("두 토막은 서로 반대편으로 갈라진다 (수직 속도 부호 반대·길이 = 화살 절반)", tip && tail && Math.sign(tip.vy - tail.vy) !== 0 && Math.abs(tip.len - 17) < 0.01 && Math.abs(tail.len - 17) < 0.01, `tip vy ${tip?.vy.toFixed(0)} tail vy ${tail?.vy.toFixed(0)}`);
+  for (let i = 0; i < 80; i += 1) world.updateWorld(w2, 0.016, true, input.createInputState());
+  ok("파편은 1.3초 안에 전부 사라진다 (풀 누수 없음)", active(w2).length === 0, `남은 ${active(w2).length}`);
+  w2 = mk(); w2.player.facing = 1;
+  p2(w2.player.radius + 5 + 10);
+  world.updateWorld(w2, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
+  const k2 = kinds(w2);
+  ok("반사 → 토막 없이 금색 불꽃 + 검광 (화살은 살아서 되돌아간다)", !k2.includes("tip") && k2.includes("streak") && k2.filter((x) => x === "spark").length >= 5 && active(w2).every((d) => d.kind === "streak" || d.color === "#fde68a"), k2.join());
+  ok("파편 풀은 resetRun 에서 비워진다", (world.resetRun(w2, 0), active(w2).length === 0));
+}
+
 // ── 비트: 구간 밀도 곡선 · 프레이즈 필 (마저 개발) ──
 {
   const dens = (difficulty, section) => { const ch = tracks.buildChart({ ...base, difficulty, subdivision: difficulty === "easy" ? 4 : difficulty === "medium" ? 8 : 16 }); const st = ch.filter((x) => x.section === section); return st.filter((x) => x.spike).length / Math.max(1, st.length); };

@@ -5,11 +5,15 @@ export type EquipmentFrameAnchors = {
   shoulderRight: EquipmentAnchor;
 };
 
+/**
+ * 대기 시트(2026-09-08 교체): 오른쪽을 보는 3/4 자세 4프레임 동일 — 앞손(뷰어 오른쪽)에 검, 어깨는 뒤(52%)·앞(79%).
+ * 좌표는 scripts/make-hero-idle-sheet.mjs 가 찍는 프레임 % 와 격자 확인(art-gen/out/idle-grid.png)으로 잡았다.
+ */
 export const IDLE_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = [
-  { hand: { x: 25, y: 50, rotation: -42, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
-  { hand: { x: 25, y: 49, rotation: -41, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
-  { hand: { x: 25, y: 50, rotation: -42, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
-  { hand: { x: 25, y: 51, rotation: -43, scale: .38 }, shoulderLeft: { x: 39, y: 27, rotation: -8, scale: .72 }, shoulderRight: { x: 61, y: 27, rotation: 8, scale: .72 } },
+  { hand: { x: 86, y: 50, rotation: 25, scale: .38 }, shoulderLeft: { x: 52, y: 25, rotation: -6, scale: .68 }, shoulderRight: { x: 79, y: 24, rotation: 10, scale: .72 } },
+  { hand: { x: 86, y: 50, rotation: 25, scale: .38 }, shoulderLeft: { x: 52, y: 25, rotation: -6, scale: .68 }, shoulderRight: { x: 79, y: 24, rotation: 10, scale: .72 } },
+  { hand: { x: 86, y: 50, rotation: 25, scale: .38 }, shoulderLeft: { x: 52, y: 25, rotation: -6, scale: .68 }, shoulderRight: { x: 79, y: 24, rotation: 10, scale: .72 } },
+  { hand: { x: 86, y: 50, rotation: 25, scale: .38 }, shoulderLeft: { x: 52, y: 25, rotation: -6, scale: .68 }, shoulderRight: { x: 79, y: 24, rotation: 10, scale: .72 } },
 ];
 
 /**

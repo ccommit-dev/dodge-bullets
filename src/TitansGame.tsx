@@ -95,6 +95,7 @@ import {
 } from "./progression/onboarding";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
+import { RewardIcon, grantRewardKinds } from "./ui/RewardIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
 import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
@@ -3003,6 +3004,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
                     <small>이번 주 {left}/{product.weeklyLimit}회 남음</small>
                     <h2>{product.name}</h2>
                     <p>{product.summary(character)}</p>
+                    <span className="reward-row">{grantRewardKinds(product.grant(character)).map((k) => <RewardIcon key={k} kind={k} size={22} />)}</span>
                   </div>
                   <button type="button" disabled={left <= 0 || redGems < product.gemCost || (!!product.grant(character).allyShards && save.heroes[shardPackTarget] <= 0)} onClick={() => void buyEventProduct(product)}>
                     {left <= 0 ? "이번 주 한도 소진" : `💎 ${product.gemCost}`}

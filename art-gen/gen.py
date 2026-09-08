@@ -9,6 +9,7 @@
   python gen.py costume <id> "<prompt>"     # 영웅 코스튬: 기본 시트 프레임을 img2img (포즈 유지)
   python gen.py boss <file> "<prompt>"      # 보스 피격/처치 포즈: img2img 2장
   python gen.py cover <id> "<prompt>"       # 비트 곡 커버 1장 (정사각)
+  python gen.py icon <id> "<prompt>"        # 보상 아이콘 1장 (256px 투명, 참조 = public/ui/attendance)
 
 화풍 앵커: IP-Adapter(plus, ViT-H)에 기본 동료 6명의 idle 셀을 참조로 넣는다. 프롬프트·시드는 STYLE에 고정.
 배경 제거: rembg(isnet-general-use). 출력은 art-gen/out/, 배치는 node scripts/place-art.mjs가 담당.
@@ -247,6 +248,49 @@ def cmd_boss(a):
     save(cutout(defeat), f"boss-{Path(a.file).stem}-defeat.png")
 
 
+ICON_STYLE = (
+    "fantasy mobile game reward item icon, chibi painterly semi-realistic, glossy highlights, rim light, "
+    "single object centered, large and readable, plain white background, no text, no watermark"
+)
+ICON_NEG = "text, letters, watermark, logo, blurry, lowres, multiple objects, character, person, frame, border, background scenery, photo, 3d render"
+
+
+def icon_refs() -> list[Image.Image]:
+    """출석 보상 아이콘(public/ui/attendance)을 화풍 앵커로 — 같은 계열로 나와야 한 화면에 섞인다"""
+    d = ROOT.parent / "public" / "ui" / "attendance"
+    imgs = []
+    for f in ["event-chest.png", "gold.png", "skill-orb.png", "enhance-stone.png"]:
+        im = Image.open(d / f).convert("RGBA")
+        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+        bg.alpha_composite(im)
+        imgs.append(bg.convert("RGB").resize((384, 384)))
+    return imgs
+
+
+def cmd_icon(a):
+    """보상 아이콘 1장 — IP-Adapter 참조는 동료가 아니라 기존 UI 아이콘. 출력 art-gen/out/icon-<id>.png (256px, 투명)"""
+    pipe = load_pipe(ip=True)
+    pipe.set_ip_adapter_scale(a.ip or 0.5)
+    g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
+    im = pipe(prompt=f"{a.prompt}, {ICON_STYLE}", negative_prompt=ICON_NEG, num_inference_steps=24, guidance_scale=6.5,
+              generator=g, width=1024, height=1024, ip_adapter_image=[icon_refs()]).images[0]
+    save(cutout(im).resize((256, 256), Image.LANCZOS), f"icon-{a.id}.png")
+
+
+# CLIP 77토큰 한계: 자세 지시를 맨 앞에 두고 짧게 — 뒤에 붙는 STYLE 까지 합쳐 70토큰 안쪽 (긴 프롬프트는 뒷부분이 잘려 정면 캐릭터 시트가 나왔다)
+HERO_IDLE_RIGHT = "three-quarter view facing right, looking right, ready stance, empty hands, one person"
+
+
+def cmd_heroidle(a):
+    """영웅 대기 1장 — 오른쪽(몬스터 쪽)을 보는 3/4 자세. --pose-from 으로 동료 아틀라스 셀의 OpenPose 를 줄 수 있다.
+    base 는 시드 후보를 여러 장 뽑아 고르고, 코스튬(ember/frost)은 고른 시드·포즈로 같은 구도를 받는다. 출력 heroidle-<id>-<seed>.png"""
+    pose = pose_of(Path(a.pose_from)) if a.pose_from else None
+    for seed in (a.seeds or [a.seed or BASE_SEED]):
+        im = gen_txt(f"{HERO_IDLE_RIGHT}, {a.prompt}", seed, pose=pose, size=(832, 1216), ip_scale=a.ip if a.ip is not None else 0.55,
+                     neg_extra="weapon, sword, shield, back view, facing left, character sheet, multiple views")
+        save(cutout(im), f"heroidle-{a.id}-{seed}{'-pose' if pose is not None else ''}.png")
+
+
 def cmd_cover(a):
     pipe = load_pipe(ip=False)
     g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
@@ -265,6 +309,8 @@ if __name__ == "__main__":
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
+    ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
+    hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     v = sub.add_parser("cover"); v.add_argument("id"); v.add_argument("prompt"); v.add_argument("--seed", type=int); v.set_defaults(fn=cmd_cover)
     args = ap.parse_args()
     args.fn(args)
