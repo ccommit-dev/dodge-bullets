@@ -100,7 +100,8 @@ const SKIN_ROWS = 13;
 const SKIN_SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-skin-special-atlas-v1.png");
 const SKIN_SPECIAL_ROW: Record<string, number> = { "sera_light-halo": 0 };
 const SKIN_SPECIAL_ROWS = 1;
-const WIDE_CELL: CSSProperties = { width: "150%", left: "-25%", right: "auto" };
+// 재패킹 아틀라스(scripts/repack-ally-atlas.mjs): 셀 313.5×239 — 원래 209px 영역이 요소 높이 100%, 발 확장 30px 은 아래로 14.35% 삐져나온다
+const WIDE_CELL: CSSProperties = { width: "131.2%", height: "114.35%", left: "-15.6%", top: 0, bottom: "auto", right: "auto" };
 
 function atlasCell(atlas: string, cols: number, rows: number, col: number, row: number, wide: boolean): CSSProperties {
   return {
@@ -236,8 +237,9 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   const slot = partySlot === undefined ? undefined : Math.max(0, Math.min(5, partySlot));
   // 대기 시에는 주인공(좌측 2%~약 18%) 바깥에서 시작한다. 모바일에서도
   // 20%가 최소 안전선이라 캐릭터와 첫 동료의 바운딩 박스가 겹치지 않는다.
+  // 대기 대형도 바닥 띠(2~22%) — 예전 53/63% 는 공중에 떠 보였다
   const homeX = slot === undefined ? undefined : [20, 20, 33, 33, 46, 46][slot];
-  const laneY = slot === undefined ? undefined : [4, 53, 12, 63, 1, 48][slot];
+  const laneY = slot === undefined ? undefined : [6, 20, 12, 24, 3, 16][slot];
   // 교전 시 후열은 주인공 뒤, 전열은 주인공 오른쪽에 고정한다. % 좌표를
   // 사용해 360px 모바일부터 720px 데스크톱까지 동일한 충돌 여백을 유지한다.
   // 교전 위치(x%, bottom%) — 플레이 검증에서 확정: 동료 박스가 폭 20%·높이 18%라, 같은 열은 세로 18% 이상,
@@ -245,20 +247,28 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 원거리 13%는 교전 중 주인공(29~36%)과 겹쳤다. 깊이(z)는 줄이 낮을수록 앞.
   // 동료 컨테이너는 전장보다 약 40px 안쪽이라 x 68%가 우측 한계(박스 366px 기준). 원거리는 주인공(교전 시 29~36%)
   // 왼쪽에 서야 하므로 8% 이하.
-  const MELEE_COMBAT = [[50, 4], [50, 50], [68, 4], [68, 50], [59, 27], [59, 70]];
-  // 주인공이 동료 크기(폭 41px)로 줄면서 교전 위치(34%)가 8% 원거리 슬롯과 20px 겹쳤다 — 3·4·6번 슬롯을 4% 로
-const RANGED_COMBAT = [[2, 4], [2, 50], [4, 27], [4, 70], [2, 27], [4, 4]];
+  // 교전 배치(2026-09-09 바닥 스폰): 모두 bottom 2~26% 띠에 선다. 동료 원화는 오른쪽을 보므로
+  // 근접은 몬스터 **왼쪽**에 붙어 서고(주인공 16~19% 바로 오른쪽, 몬스터 왼쪽 가장자리 ≈ 36%), 원거리는 주인공 뒤(0~6%).
+  // 예전 근접 슬롯(50·68%)은 몬스터 오른쪽·공중이라 등 뒤에서 허공을 치는 것처럼 보였다.
+  // 세 줄 깊이(앞 3% · 중 12% · 뒤 21%). 근접은 몬스터 양옆에 붙고(오른쪽 슬롯은 좌우 반전해 몬스터를 본다), 원거리는 주인공(16~19%) 뒤 0~10%.
+  // 8명이 한 바닥에 서므로 줄이 다르면 앞줄이 뒷줄을 살짝 가리는 것은 자연스러운 깊이다 — verify-play-art 는 같은 줄끼리만 겹침을 잰다.
+  // 실측(390px): 동료 컨테이너는 전장 왼쪽 +41px 에서 시작 · 몬스터 190~290px · 주인공 26% = 107px. 근접 코어가 몬스터 가장자리에 닿고 원거리는 주인공 뒤(0~3%)
+  const MELEE_COMBAT = [[22, 3], [60, 3], [20, 21], [63, 21], [24, 12], [66, 12]];
+  const RANGED_COMBAT = [[0, 3], [2, 21], [0, 12], [3, 21], [1, 12], [2, 3]];
   const [combatX, combatY] = slot === undefined ? [undefined, undefined] : (ranged ? RANGED_COMBAT : MELEE_COMBAT)[slot];
+  // 몬스터 오른쪽에 서는 근접 슬롯은 원화(오른쪽 보기)를 뒤집어 몬스터를 향한다
+  const faceLeft = engaged && !ranged && (combatX ?? 0) > 50;
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
     "--party-lane-y": `${laneY}%`,
     "--party-combat-x": `${combatX}%`,
     "--party-combat-y": `${combatY}%`,
     // 주인공 발(bottom 14%)보다 앞줄(≤14%)만 주인공 위에, 뒷줄은 주인공 뒤에 그린다 (.titans-hero z-index 5)
-    "--party-z": String((combatY ?? 0) <= 14 ? 8 : 2),
+    // 바닥 띠에서 줄이 낮을수록(y 작을수록) 앞 — 주인공(bottom 10%, z 5)보다 앞줄(≤ 9%)만 위에 그린다
+    "--party-z": String((combatY ?? 0) <= 9 ? 8 : 2),
   } as CSSProperties);
   return (
-    <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
+    <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해

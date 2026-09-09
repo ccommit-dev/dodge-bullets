@@ -51,20 +51,21 @@ export const SOUND_LOUDNESS: Record<BeatSound, number> = { boots: 0.32, firebeat
  *   1~2  4분음·강박만, 롱노트 없음                  3~4  8분음, 짧은 롱노트(2스텝)
  *   5~6  레인 계단(0→1→2→3), 롱노트 3스텝           7~8  16분음 드릴(같은 레인 3연타), 롱노트 4스텝
  *   9~10 드릴 + 계단 + 긴 롱노트, 초당 5노트까지
+ *   노트 종류(손 게임 기준): 탭 · 홀드(3+) · 점프 = 두 레인 동시(5+) · 롤 = 두 레인 교대 연타(6+) · 홀드 점프 = 두 레인 동시 홀드(8+)
  * notesPerSec: 손이 따라갈 초당 노트 상한 · minLoud: 이 크기(킥 대비 비율) 미만 소리는 노트 제외
  */
-export type LevelFeature = { notesPerSec: number; minLoud: number; holdEvery: number; holdSteps: number; stairs: boolean; drill: boolean };
+export type LevelFeature = { notesPerSec: number; minLoud: number; holdEvery: number; holdSteps: number; stairs: boolean; drill: boolean; jump: boolean; holdJump: boolean; roll: boolean };
 export const LEVEL_FEATURES: LevelFeature[] = [
-  { notesPerSec: 2.0, minLoud: 0.45, holdEvery: 0, holdSteps: 0, stairs: false, drill: false },
-  { notesPerSec: 2.4, minLoud: 0.45, holdEvery: 0, holdSteps: 0, stairs: false, drill: false },
-  { notesPerSec: 2.9, minLoud: 0.38, holdEvery: 12, holdSteps: 2, stairs: false, drill: false },
-  { notesPerSec: 3.2, minLoud: 0.38, holdEvery: 11, holdSteps: 2, stairs: false, drill: false },
-  { notesPerSec: 3.6, minLoud: 0.3, holdEvery: 9, holdSteps: 3, stairs: true, drill: false },
-  { notesPerSec: 3.9, minLoud: 0.3, holdEvery: 9, holdSteps: 3, stairs: true, drill: false },
-  { notesPerSec: 4.2, minLoud: 0.22, holdEvery: 8, holdSteps: 4, stairs: true, drill: true },
-  { notesPerSec: 4.5, minLoud: 0.22, holdEvery: 7, holdSteps: 4, stairs: true, drill: true },
-  { notesPerSec: 4.8, minLoud: 0, holdEvery: 6, holdSteps: 4, stairs: true, drill: true },
-  { notesPerSec: 5.2, minLoud: 0, holdEvery: 6, holdSteps: 5, stairs: true, drill: true },
+  { notesPerSec: 2.0, minLoud: 0.45, holdEvery: 0, holdSteps: 0, stairs: false, drill: false, jump: false, holdJump: false, roll: false },
+  { notesPerSec: 2.4, minLoud: 0.45, holdEvery: 0, holdSteps: 0, stairs: false, drill: false, jump: false, holdJump: false, roll: false },
+  { notesPerSec: 2.9, minLoud: 0.38, holdEvery: 12, holdSteps: 2, stairs: false, drill: false, jump: false, holdJump: false, roll: false },
+  { notesPerSec: 3.2, minLoud: 0.38, holdEvery: 11, holdSteps: 2, stairs: false, drill: false, jump: false, holdJump: false, roll: false },
+  { notesPerSec: 3.6, minLoud: 0.3, holdEvery: 9, holdSteps: 3, stairs: true, drill: false, jump: true, holdJump: false, roll: false },
+  { notesPerSec: 3.9, minLoud: 0.3, holdEvery: 9, holdSteps: 3, stairs: true, drill: false, jump: true, holdJump: false, roll: true },
+  { notesPerSec: 4.2, minLoud: 0.22, holdEvery: 8, holdSteps: 4, stairs: true, drill: true, jump: true, holdJump: false, roll: true },
+  { notesPerSec: 4.5, minLoud: 0.22, holdEvery: 7, holdSteps: 4, stairs: true, drill: true, jump: true, holdJump: true, roll: true },
+  { notesPerSec: 4.8, minLoud: 0, holdEvery: 6, holdSteps: 4, stairs: true, drill: true, jump: true, holdJump: true, roll: true },
+  { notesPerSec: 5.2, minLoud: 0, holdEvery: 6, holdSteps: 5, stairs: true, drill: true, jump: true, holdJump: true, roll: true },
 ];
 /** 곡 레벨 + 난이도 변형(EASY −2 · HARD +2) → 1~10 */
 export function effectiveLevel(track: BeatTrackDef): number {
@@ -438,6 +439,31 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
       chart[i + tail] = { ...chart[i + tail], sound: step.sound, spike: false, holdTail: true, trick: undefined };
     }
     i += holdSteps - 1;
+  }
+  // ── 노트 종류 후처리: 점프(5+) · 롤(6+) · 홀드 점프(8+) ──
+  const laneOf = (snd: BeatSound): 0 | 1 | 2 | 3 => (snd === "boots" || snd === "firebeat" ? 0 : snd === "rim" || snd === "trumpet" ? 1 : snd === "throat" ? 3 : 2);
+  const otherLaneSound = (snd: BeatSound, k: number): BeatSound => { const target = ((laneOf(snd) + 2 + (k % 2)) % 4) as 0 | 1 | 2 | 3; const pool = laneSounds[target]; return pool[k % pool.length]; };
+  if (feat.jump || feat.roll || feat.holdJump) {
+    let n = 0, holdN = 0;
+    for (let i = 0; i < chart.length; i++) {
+      const step = chart[i];
+      if (!step.spike || step.holdTail) continue;
+      n += 1;
+      const sec = step.section;
+      // 점프: 빌드업·드롭에서 10노트마다 두 번째 레인 (단타 위에) — 손 두 개를 동시에
+      if (feat.jump && !step.hold && (sec === "drop" || sec === "build") && n % 10 === 0) step.jumpSound = otherLaneSound(step.sound, n);
+      // 홀드 점프: 3번째 롱노트마다 두 레인 홀드
+      if (step.hold) { holdN += 1; if (feat.holdJump && holdN % 3 === 0) step.jumpSound = otherLaneSound(step.sound, holdN); }
+      // 롤: 드롭에서 14노트마다 4스텝 두 레인 교대 연타 (스텝 90ms 이상 곡만)
+      if (feat.roll && sec === "drop" && n % 14 === 0 && stepSec >= 0.09 && !step.hold) {
+        const other = otherLaneSound(step.sound, n);
+        for (let d = 0; d < 4 && i + d < chart.length; d += 1) {
+          if (chart[i + d].hold || chart[i + d].holdTail) break;
+          chart[i + d] = { ...chart[i + d], sound: d % 2 === 0 ? step.sound : other, spike: true, roll: true, trick: undefined, jumpSound: undefined, section: sec };
+        }
+        i += 3;
+      }
+    }
   }
   return chart;
 }

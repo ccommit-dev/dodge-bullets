@@ -40,7 +40,7 @@ export function simulateChart(trackId, difficulty, profile = "competent", seed =
   const chart = T.buildChart(track);
   const world = W.createBeatWorld(390, 700, 1, track, chart[0]?.sound ?? "boots");
   world.invulnMs = 0;
-  const session = { world, chart, track, box: fakeBox, ctx: null, master: null, backingAudio: null, enabled: false, skills: RPG.emptySkills(), isSpar: false, lockHits: 0, taps: 0, hitSteps: new Set(), evaluatedStep: 0, calibrationSec: 0, holdLane: -1, holdEndStep: -1 };
+  const session = { world, chart, track, box: fakeBox, ctx: null, master: null, backingAudio: null, enabled: false, skills: RPG.emptySkills(), isSpar: false, lockHits: 0, taps: 0, hitSteps: new Set(), evaluatedStep: 0, calibrationSec: 0, holdLane: -1, holdEndStep: -1, holdLane2: -1, holdEndStep2: -1 };
   const { hitRate, jitterMs } = PROFILES[profile];
   const stepSec = world.stepSec;
   const plan = new Map(); // 노트 인덱스 → { at: 탭할 위치(스텝), skip }
@@ -52,13 +52,16 @@ export function simulateChart(trackId, difficulty, profile = "competent", seed =
   }
   let minHp = world.hp, taps = 0, hits = 0, holdsOk = 0, holdsEarly = 0, ended = "timeout";
   const dt = 1 / 60;
-  let releaseAt = -1, releaseLane = -1;
+  let releaseAt = -1, releaseLane = -1, releaseAt2 = -1, releaseLane2 = -1;
   for (let frame = 0; frame < 60 * 400; frame += 1) {
     const ev = W.updateBeatWorld(session, dt, true);
     const pos = world.beatPosition;
     // 롱노트 릴리즈 — 꼬리 0.4스텝 앞에서 뗀다 (숙련자), 초보는 가끔 일찍 뗀다
     if (session.holdEndStep >= 0 && releaseAt < 0) { releaseAt = session.holdEndStep - 0.4 - (profile === "novice" && rng() < 0.25 ? 1.2 : 0); releaseLane = session.holdLane; }
     if (releaseAt >= 0 && pos >= releaseAt) { const r = W.performBeatRelease(session, releaseLane); if (r === "release-good") holdsOk += 1; else if (r === "release-early") holdsEarly += 1; releaseAt = -1; releaseLane = -1; }
+    // 홀드 점프의 두 번째 레인
+    if (session.holdEndStep2 >= 0 && releaseAt2 < 0) { releaseAt2 = session.holdEndStep2 - 0.4; releaseLane2 = session.holdLane2; }
+    if (releaseAt2 >= 0 && pos >= releaseAt2) { const r = W.performBeatRelease(session, releaseLane2); if (r === "release-good") holdsOk += 1; else if (r === "release-early") holdsEarly += 1; releaseAt2 = -1; releaseLane2 = -1; }
     // 탭
     for (const [i, p] of plan) {
       if (p.done || pos < p.at) continue;
@@ -68,6 +71,8 @@ export function simulateChart(trackId, difficulty, profile = "competent", seed =
       taps += 1;
       const res = W.performBeatLane(session, lane);
       if (res === "hit") hits += 1;
+      // 점프: 두 번째 레인도 같은 프레임에 (양손 동시)
+      if (chart[i].jumpSound) { taps += 1; if (W.performBeatLane(session, W.laneOfSound(chart[i].jumpSound)) === "hit") hits += 1; }
     }
     W.settleHoldIfPassed(session);
     minHp = Math.min(minHp, world.hp);

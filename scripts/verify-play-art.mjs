@@ -41,6 +41,8 @@ const rects = () => page.evaluate(() => {
   const phase = (field?.className.match(/phase-([a-z-]+)/) || [])[1] || "";
   return { phase, heroApproaching: !!hero?.classList.contains("is-approaching"), field: field ? r(field) : null, allies, hero: hero ? r(hero, 0.55) : null, monster: monster ? r(monster, 0.7) : null, boss: !!document.querySelector(".titans-field.boss") };
 });
+// 바닥 3줄 깊이(앞·중·뒤): 줄이 다르면(발 위치 차 > 6% 필드 높이) 앞줄이 뒷줄을 가리는 것은 의도된 깊이 — 같은 줄끼리만 겹침을 잰다
+const sameRow = (a, b, field) => Math.abs((a.y + a.h) - (b.y + b.h)) <= (field?.h ?? 400) * 0.06;
 const inter = (a, b) => { const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)); const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)); return (x * y) / Math.min(a.w * a.h, b.w * b.h); };
 
 let worstAlly = { v: 0, pair: "" }, worstHero = { v: 0, pair: "" }, worstMon = { v: 0, pair: "" }, offField = [], statesSeen = {};
@@ -56,10 +58,10 @@ for (let t = 0; t < 20; t += 1) {
   // 주인공도 2%→34% 로 걸어 들어오는 동안 원거리 동료(8%) 위를 지나간다 — 주인공 이동 중 샘플도 제외
   if (/stage-/.test(s.phase) || s.heroApproaching || s.allies.some((a) => a.approaching)) { await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true }))); await sleep(450); continue; }
   for (let i = 0; i < s.allies.length; i += 1) for (let j = i + 1; j < s.allies.length; j += 1) {
-    push(samples.ally, `${s.allies[i].id}×${s.allies[j].id}`, inter(s.allies[i], s.allies[j]));
+    if (sameRow(s.allies[i], s.allies[j], s.field)) push(samples.ally, `${s.allies[i].id}×${s.allies[j].id}`, inter(s.allies[i], s.allies[j]));
   }
   for (const a of s.allies) {
-    if (s.hero) push(samples.hero, `${a.id}×hero`, inter(a, s.hero));
+    if (s.hero && sameRow(a, s.hero, s.field)) push(samples.hero, `${a.id}×hero`, inter(a, s.hero));
     if (s.monster) push(samples.mon, `${a.id}×monster`, inter(a, s.monster));
     // 등장 걸어오기(approaching)·스테이지 전환(run-out/in) 중에는 화면 밖을 지나가므로 제외
     if (!a.approaching && !/stage-/.test(s.phase) && s.field && (a.x < s.field.x - 2 || a.x + a.w > s.field.x + s.field.w + 2 || a.y + a.h > s.field.y + s.field.h + 2)) offField.push(`${a.id}@t${t}`);

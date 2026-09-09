@@ -96,7 +96,7 @@ export type BeatWorld = {
   lastSound: BeatSound | null;
   nextSound: BeatSound;
   timingHint: number;
-  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | "";
+  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | `JUMP ${string}` | "";
   judgeMs: number;
   stageIndex: number;
   stageBannerMs: number;
@@ -114,6 +114,11 @@ export type BeatWorld = {
   /** 누르는 중인 롱노트 (렌더용) — 레인/꼬리 스텝, 없으면 -1 */
   holdLane: number;
   holdEndStep: number;
+  /** 홀드 점프의 두 번째 레인 (없으면 -1) */
+  holdLane2: number;
+  holdEndStep2: number;
+  /** 점프 노트의 두 번째 레인 타격 기록 (hitSteps 는 첫 레인) */
+  hitSteps2: Set<number>;
   /** 0..1 lesson loop completion from distinct sounds recorded. */
   loopCompletion: number;
   /** Pad flash per lane (0=kick, 1=snare, 2=hat, 3=bass), milliseconds remaining. */
@@ -166,6 +171,10 @@ export type BeatChartStep = {
   holdTail?: boolean;
   /** 난이도별 시야 트릭. 판정 레인은 바뀌지 않아 암기 강요를 줄인다. */
   trick?: "late" | "ghost" | "flash";
+  /** 점프(동시 노트) — 같은 스텝에 두 번째 레인의 노트. hold 와 함께면 홀드 점프(두 레인을 같이 누르고 유지) */
+  jumpSound?: BeatSound;
+  /** 롤 — 두 레인을 빠르게 교대로 치는 연속 노트의 일부 (표시용 라벨) */
+  roll?: boolean;
 };
 
 export const BEAT_SOUND_LABEL: Record<BeatSound, string> = {

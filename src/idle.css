@@ -2297,7 +2297,20 @@
 .rift-run-party { position: absolute; left: 6%; bottom: 14%; display: flex; gap: 6px; z-index: 2; --ally-size: 70px; }
 .rift-run-party .titan-ally-art { position: relative !important; transform: none !important; left: auto !important; }
 .rift-run-monsters { position: absolute; right: 6%; bottom: 14%; display: flex; gap: 2px; z-index: 2; }
-.rift-run-monster { width: 64px; height: 64px; transition: opacity .3s, transform .3s; }
+/* 균열 몬스터 — 사냥터의 .titans-monster 종별 동작을 재사용하되 절대 배치는 끈다 */
+.rift-run-monsters { align-items: flex-end; }
+.rift-run-monsters .titans-monster { position: relative; right: auto; bottom: auto; min-width: 0; width: 60px; transition: opacity .35s, transform .35s; }
+.rift-run-monsters .titans-monster .titan-monster-art { width: 60px; height: 60px; }
+.rift-run-monsters .titans-monster.rift-boss { width: 96px; margin-left: 4px; }
+.rift-run-monsters .titans-monster.rift-boss .titan-monster-art { width: 96px; height: 96px; }
+.rift-run-monsters .titans-monster.rift-boss strong { font-size: 10px; color: #fde68a; text-shadow: 0 1px 3px #000; }
+.rift-run-monsters .titans-monster.rift-down { opacity: .28; transform: translateY(6px) scale(.9); }
+.rift-run-monsters .titans-monster.rift-hidden { opacity: 0; transform: translateX(40px); pointer-events: none; }
+.rift-run-monsters .titans-monster.is-approaching { animation: rift-monster-in .7s ease-out both; }
+.rift-float { position: absolute; left: 50%; top: -8px; transform: translateX(-50%); color: #fca5a5; font-size: 13px; font-weight: 1000; text-shadow: 0 1px 3px #000; animation: rift-float-up .6s ease-out both; pointer-events: none; }
+.rift-float.boss { color: #fde047; font-size: 15px; }
+@keyframes rift-float-up { from { opacity: 1; transform: translate(-50%, 6px); } to { opacity: 0; transform: translate(-50%, -18px); } }
+@keyframes rift-monster-in { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
 .rift-run-monster.down { opacity: .25; transform: translateY(8px) scale(.9); }
 .rift-run-monster .titan-monster-art { width: 100%; height: 100%; }
 .rift-run-title { position: absolute; left: 12px; top: 10px; z-index: 3; color: #f8fafc; font-size: 13px; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
