@@ -37,7 +37,7 @@ import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL,
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
-import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
+import { grantCharacterReward, loadCharacterProgress, testModeEnabled, updateCharacterProgress } from "./progression/storage";
 import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import {
   BEAT_SKILL_BY_SLOT,
@@ -269,7 +269,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 32, monsterRight: 38, durationMs: 1250 });
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 30, durationMs: 1250 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -405,8 +405,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     const durationMs = Math.round(speedBase * (.88 + Math.random() * .24));
     setEncounterMotion({
-      heroLeft: 29 + Math.random() * 7,
-      monsterRight: (rolledKind === "dragon" ? 25 : 35) + Math.random() * 8,
+      // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
+      heroLeft: 26 + Math.random() * 2,
+      monsterRight: (rolledKind === "dragon" ? 22 : 28) + Math.random() * 6,
       durationMs,
     });
     window.requestAnimationFrame(() => setFormationEngaged(true));
@@ -1747,8 +1748,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const buyPaidProduct = async (productId: string) => {
     if (claimingProduct) return;
     const adapter = getPaymentAdapter();
-    if (import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-pay") === "1") {
-      // QA 스텁: 스토어 없이 지급 경로만 검증 (verify-offers.mjs)
+    if ((import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-pay") === "1") || testModeEnabled()) {
+      // QA 스텁: 스토어 없이 지급 경로만 검증 (verify-offers.mjs) — 테스트 모드(빌드 라벨 7탭)에서도 ₩ 상품을 바로 지급해 전 상품을 눌러볼 수 있다
       const { progress, cores, applied, bonus } = await grantPurchase(userHash, productId, `qa-${Date.now()}`);
       if (!applied) { flash("이미 지급된 구매입니다"); return; }
       setCharacter(progress);
@@ -2982,7 +2983,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
-            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : "스토어 결제 연동 후 판매됩니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : product.displayPrice}</button>
+            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : testModeEnabled() ? "테스트 구매 (즉시 지급)" : "스토어 결제 연동 후 판매됩니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : product.displayPrice}</button>
           ) : (
             <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회 (QA)"}</button>
           )}

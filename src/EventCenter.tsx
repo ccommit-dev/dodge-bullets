@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { combatPower, type CharacterProgress } from "./progression/model";
-import { updateCharacterProgress } from "./progression/storage";
+import { testModeEnabled, updateCharacterProgress } from "./progression/storage";
 import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
 import { resolveShadow, shadowOpponents, shadowPortrait, weekKey, type ShadowOpponent } from "./events/shadowArena";
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
@@ -211,7 +211,7 @@ export function EventCenter({
       onUpdated((await grantPurchase(userHash, SEASON.productId, result.transactionId)).progress);
       return;
     }
-    if (import.meta.env.DEV) { onUpdated((await grantPurchase(userHash, SEASON.productId, `qa-${Date.now()}`)).progress); return; }
+    if (import.meta.env.DEV || testModeEnabled()) { onUpdated((await grantPurchase(userHash, SEASON.productId, `qa-${Date.now()}`)).progress); return; }
     setRiftMessage("스토어 결제 연동 전입니다 — Google Play 등록 후 구매할 수 있습니다");
   };
 
@@ -557,31 +557,67 @@ export function EventCenter({
 }
 
 
-/** 균열 진입 연출 — 원정대가 균열 몬스터 세 마리를 쓸어 담고 보상이 쏟아진다 (3초, 탭하면 건너뜀) */
+/**
+ * 균열 진입 연출 — 실제 전투처럼: 일반 몬스터 3마리가 차례로 예비→공격하고, 원정대의 타격에 피격→쓰러진다.
+ * 셋이 쓰러지면 보스가 등장해 같은 순서로 쓰러지고 보상이 쏟아진다 (약 7초, 탭하면 건너뜀). 사냥터의 종별 동작 CSS 를 그대로 쓴다.
+ */
+type RiftPhase = "approach" | "prepare" | "attack" | "hit" | "down" | "idle" | "hidden";
+export function riftTimeline(tick: number): { monsters: RiftPhase[]; boss: RiftPhase; loot: boolean; strike: number } {
+  // 틱 350ms. 몬스터 i: 2+3i 예비 · 3+3i 공격 · 4+3i 피격 · 5+3i 쓰러짐. 보스: 12 등장 · 14 예비 · 15 공격 · 16·17 피격 · 18 쓰러짐 · 19 보상
+  const monsters: RiftPhase[] = [0, 1, 2].map((i) => {
+    const t = tick - 3 * i;
+    if (tick < 2) return "approach";
+    if (t < 2) return "idle";
+    if (t === 2) return "prepare";
+    if (t === 3) return "attack";
+    if (t === 4) return "hit";
+    return "down";
+  });
+  const boss: RiftPhase = tick < 12 ? "hidden" : tick < 14 ? "approach" : tick === 14 ? "prepare" : tick === 15 ? "attack" : tick <= 17 ? "hit" : "down";
+  const strike = tick >= 2 && tick < 19 ? tick : -1;
+  return { monsters, boss, loot: tick >= 19, strike };
+}
+const RIFT_TICK_MS = 350, RIFT_END_TICK = 22;
+
 function RiftRunOverlay({ run, area, party, onClose }: { run: { name: string; gold: number; exp: number; materials: number; shards: number; mult: number }; area: ReturnType<typeof huntingArea>; party: string[]; onClose: () => void }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 420);
-    const done = window.setTimeout(onClose, 3400);
+    const id = window.setInterval(() => setTick((t) => t + 1), RIFT_TICK_MS);
+    const done = window.setTimeout(onClose, RIFT_TICK_MS * RIFT_END_TICK);
     return () => { window.clearInterval(id); window.clearTimeout(done); };
   }, [onClose]);
-  const progressPct = Math.min(100, tick * 14);
-  const kinds = area.normalKinds;
+  const tl = riftTimeline(tick);
+  const kinds = [0, 1, 2].map((i) => area.normalKinds[i % area.normalKinds.length]);
+  const monsterClass = (kind: string, phase: RiftPhase, i: number) => `titans-monster kind-${kind} combat-${kind === "dragon" ? "ranged" : "melee"} ${phase === "approach" ? "is-approaching action-idle" : phase === "prepare" ? "action-prepare" : phase === "attack" ? "action-attack" : phase === "hit" ? `action-idle ${(tick + i) % 2 ? "hit-a" : "hit-b"}` : "action-idle"} ${phase === "down" ? "rift-down" : ""} ${phase === "hidden" ? "rift-hidden" : ""}`;
+  const monsterState = (phase: RiftPhase) => (phase === "down" ? "defeat" : phase === "hit" ? "hit" : "idle");
+  const progressPct = Math.min(100, Math.round((tick / 19) * 100));
   return (
     <div className="rift-run" role="status" onClick={onClose} style={{ "--area-sky": area.sky, "--area-background": `url(${area.background})` } as React.CSSProperties}>
       <div className="rift-run-field">
         <div className="rift-run-party">
-          {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tick + i} partySlot={i} engaged />)}
+          {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tl.strike >= 0 ? tl.strike * 3 + i : 0} hitPulse={tl.monsters.some((p) => p === "attack") || tl.boss === "attack" ? tick : 0} partySlot={i} engaged />)}
         </div>
         <div className="rift-run-monsters">
-          {kinds.slice(0, 3).map((kind, i) => (
-            <span key={kind + i} className={`rift-run-monster ${tick > i * 2 + 1 ? "down" : ""}`}><MonsterArt kind={kind} area={area} boss={false} state={tick > i * 2 + 1 ? "defeat" : tick === i * 2 + 1 ? "hit" : "idle"} /></span>
+          {kinds.map((kind, i) => (
+            <div key={kind + i} className={monsterClass(kind, tl.monsters[i], i)}>
+              <MonsterArt kind={kind} area={area} boss={false} state={monsterState(tl.monsters[i])} />
+              {tl.monsters[i] === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}
+              {tl.monsters[i] === "attack" && <i className="monster-attack-fx" aria-hidden="true" />}
+              {tl.monsters[i] === "hit" && <b className="rift-float">-{(1200 + i * 700).toLocaleString()}</b>}
+            </div>
           ))}
+          <div className={monsterClass("boss", tl.boss, 3) + " rift-boss"}>
+            <MonsterArt kind="boss" area={area} boss state={monsterState(tl.boss)} />
+            {tl.boss === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}
+            {tl.boss === "attack" && <i className="monster-attack-fx" aria-hidden="true" />}
+            {tl.boss === "hit" && <b className="rift-float boss">-{(4800 + tick * 300).toLocaleString()}</b>}
+            {tl.boss !== "hidden" && <strong>{area.bossName}</strong>}
+          </div>
         </div>
-        <b className="rift-run-title">{run.name} · 균열 정산 중</b>
+        <b className="rift-run-title">{run.name} · {tl.boss === "hidden" ? "균열 몬스터 소탕 중" : tl.boss === "down" ? "보스 격파!" : `${area.bossName} 출현`}</b>
         <i className="rift-run-bar"><em style={{ width: `${progressPct}%` }} /></i>
       </div>
-      <div className={`rift-run-loot ${progressPct >= 100 ? "show" : ""}`}>
+      <div className={`rift-run-loot ${tl.loot ? "show" : ""}`}>
         <RewardChip kind="gold" label={`골드 +${formatGold(run.gold)}`} />
         <RewardChip kind="seasonXp" label={`EXP +${run.exp.toLocaleString()}`} />
         <RewardChip kind="materials" label={`강화석 +${run.materials}`} />

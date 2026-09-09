@@ -158,9 +158,9 @@ const art = await (async () => {
   ok("동료 공격 3박: 예비=이동 프레임 · 타격=공격 프레임 · 복귀=대기 프레임", f({ attackPhase: "windup" }) === 1 && f({ attackPhase: "strike" }) === 2 && f({ attackPhase: "recover" }) === 0);
   ok("동료 걷기: 틱마다 이동↔대기 프레임 교대 (한 프레임 흔들기 아님)", f({ approaching: true, walkTick: 0 }) === 1 && f({ approaching: true, walkTick: 1 }) === 0 && f({ approaching: true, walkTick: 2 }) === 1);
   ok("동료 피격이 공격·걷기보다 우선 · 공격 타이밍 90/240/150 · 걷기 140ms", f({ flinching: true, attackPhase: "strike", approaching: true }) === 3 && art.ALLY_ATTACK_TIMING.windupMs === 90 && art.ALLY_ATTACK_TIMING.strikeMs === 240 && art.ALLY_ATTACK_TIMING.recoverMs === 150 && art.ALLY_WALK_FRAME_MS === 140);
-  ok("루나·볼트 4상태 프레임이 서로 다르고 가로 셀(로스터 화풍)", ["luna", "volt"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === "150%"));
+  ok("루나·볼트 4상태 프레임이 서로 다르고 가로 셀 131.2%(재패킹 아틀라스)", ["luna", "volt"].every((id) => distinct(frames(id)) && art.allyFrameStyle(id, 0).width === "131.2%"));
   ok("스킨 2종: 스킨 아틀라스 4상태", distinct(frames("garen", "garen-magma")) && /skin-atlas/.test(art.allyFrameStyle("leon", 2, "leon-frost").backgroundImage));
-  ok("가로 셀 아틀라스는 폭 150%·좌측 −25%로 비율 보정", art.allyFrameStyle("mia", 0).width === "150%" && art.allyFrameStyle("pyro", 0).left === "-25%");
+  ok("가로 셀 아틀라스는 폭 131.2%·높이 114.35%·좌측 −15.6%로 비율 보정 (재패킹: 발 확장 30px)", art.allyFrameStyle("mia", 0).width === "131.2%" && art.allyFrameStyle("mia", 0).height === "114.35%" && art.allyFrameStyle("pyro", 0).left === "-15.6%");
   ok("무기 앵커: 기본 8종 × 4상태, 공격(2)은 대기(0)와 다른 각도", Object.values(art.WEAPON_STATE_ANCHOR).every((t) => [0, 1, 2, 3].every((s) => t[s]) && t[2].rot !== t[0].rot) && art.weaponAnchorStyle("pyro", 2)["--weapon-drot"] === art.weaponAnchorStyle("mia", 2)["--weapon-drot"]);
 }
 
@@ -258,7 +258,7 @@ export * as season from "${root}/src/economy/seasonPass";`);
   ok("J 스킨 프레임: 세라 라이트 스킨은 정사각 특수 스킨 아틀라스 · 아리 스킨은 가로 스킨 아틀라스 13행", /skin-special-atlas/.test(String(halo.backgroundImage)) && halo.width === undefined && /ally-skin-atlas/.test(String(ari.backgroundImage)) && ari.backgroundSize === "400% 1300%");
   const lunaIdle = sk.art.allyFrameStyle("luna", 0);
   const voltIdle = sk.art.allyFrameStyle("volt", 0);
-  ok("아트1 루나·볼트가 로스터 화풍 변형 아틀라스(가로 12행)에서 나온다 — 클립아트 특수 아틀라스 미사용", /ally-variant-atlas/.test(String(lunaIdle.backgroundImage)) && /ally-variant-atlas/.test(String(voltIdle.backgroundImage)) && lunaIdle.backgroundSize === "400% 1200%" && lunaIdle.width === "150%");
+  ok("아트1 루나·볼트가 로스터 화풍 변형 아틀라스(가로 12행)에서 나온다 — 클립아트 특수 아틀라스 미사용", /ally-variant-atlas/.test(String(lunaIdle.backgroundImage)) && /ally-variant-atlas/.test(String(voltIdle.backgroundImage)) && lunaIdle.backgroundSize === "400% 1200%" && lunaIdle.width === "131.2%");
   // 생성 원화(art-gen): authored 행이 있는 동료는 변형 아틀라스가 tint 대신 그 행을 쓴다 — 파일·매니페스트 존재로 검증
   {
     const authoredDir = join(root, "public/titans/generated/allies/authored");

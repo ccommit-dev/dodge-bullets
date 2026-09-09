@@ -106,6 +106,9 @@ export async function setWalletBalance(
 export const QA_GEMS_KEY = "dodgebullets:qa-gems";
 /** 테스트 모드 플래그 — 설정의 빌드 라벨 7번 탭. 이게 켜져야(또는 DEV) 보석 무제한 메뉴가 보인다 */
 export const QA_MODE_KEY = "dodgebullets:qa-mode";
+export function testModeEnabled(): boolean {
+  try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; }
+}
 export function qaGemsEnabled(): boolean {
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1" && (import.meta.env.DEV || localStorage.getItem(QA_MODE_KEY) === "1"); } catch { return false; }
 }

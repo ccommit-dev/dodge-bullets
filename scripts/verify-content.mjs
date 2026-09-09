@@ -170,6 +170,31 @@ ok("대장 예고: 90px 520ms(하한) · 400px 860ms · 900px 1200ms(상한)", a
   ok("판정 창 하한 110ms (170BPM 16분에서 55ms 로 좁아지던 문제)", bworld.JUDGE_WINDOW_FLOOR_SEC === 0.11);
 }
 
+// ── 비트: 노트 종류 — 탭 · 홀드 · 점프(2레인 동시) · 홀드 점프 · 롤(교대 연타) ──
+{
+  const lv10 = tracks.buildChart({ ...T.find((t) => t.level === 10), difficulty: "hard", subdivision: 16 });
+  const lv1 = tracks.buildChart({ ...T.find((t) => t.level === 1), difficulty: "easy", subdivision: 4 });
+  const jumps = lv10.filter((x) => x.spike && x.jumpSound && !x.hold), holdJumps = lv10.filter((x) => x.hold && x.jumpSound), rolls = lv10.filter((x) => x.roll);
+  ok("레벨 10 HARD 채보에 점프·홀드 점프·롤이 있고, 점프의 두 레인은 서로 다르다", jumps.length > 0 && holdJumps.length > 0 && rolls.length >= 4 && jumps.every((x) => bworld.laneOfSound(x.sound) !== bworld.laneOfSound(x.jumpSound)), `jump ${jumps.length} holdJump ${holdJumps.length} roll ${rolls.length}`);
+  ok("롤은 두 레인이 교대로 이어진다", (() => { for (let i = 0; i + 1 < lv10.length; i += 1) if (lv10[i].roll && lv10[i + 1].roll && bworld.laneOfSound(lv10[i].sound) === bworld.laneOfSound(lv10[i + 1].sound)) return false; return true; })());
+  ok("레벨 1 EASY 에는 점프·롤·홀드 점프가 없다", !lv1.some((x) => x.jumpSound || x.roll));
+  ok("레벨표: 점프 5+ · 롤 6+ · 홀드 점프 8+", !tracks.LEVEL_FEATURES[3].jump && tracks.LEVEL_FEATURES[4].jump && !tracks.LEVEL_FEATURES[4].roll && tracks.LEVEL_FEATURES[5].roll && !tracks.LEVEL_FEATURES[6].holdJump && tracks.LEVEL_FEATURES[7].holdJump);
+  // 점프 판정: 두 레인 다 쳐야 미스가 아니다
+  const jt = { ...base, difficulty: "medium", subdivision: 8 };
+  const jw = bworld.createBeatWorld(390, 700, 1, jt, "boots"); jw.invulnMs = 0;
+  const jchart = [0, 1, 2, 3, 4, 5].map(() => ({ sound: "boots", spike: false, lane: 0 }));
+  jchart[2] = { sound: "boots", spike: true, lane: 0, jumpSound: "cats" };
+  const jses = { world: jw, chart: jchart, track: jt, box: { isTransportRunning: () => false, getTransportPosition: () => 0, getTransportStepTime: () => 0, playLead() {}, playSound() {}, stopLessonTransport() {} }, ctx: null, master: null, backingAudio: null, enabled: false, skills: rpg.emptySkills(), isSpar: false, lockHits: 0, taps: 0, hitSteps: new Set(), evaluatedStep: 0, calibrationSec: 0, holdLane: -1, holdEndStep: -1, holdLane2: -1, holdEndStep2: -1 };
+  jw.beatPosition = 2;
+  const r1 = bworld.performBeatLane(jses, 0), r2 = bworld.performBeatLane(jses, 2);
+  ok("점프: 첫 레인 hit · 두 번째 레인 hit → 'JUMP' 판정 문구 · 두 레인 모두 기록", r1 === "hit" && r2 === "hit" && String(jw.judgeText).startsWith("JUMP") && jw.hitSteps.has(2) && jw.hitSteps2.has(2), `${r1} ${r2} ${jw.judgeText}`);
+  const jw2 = bworld.createBeatWorld(390, 700, 1, jt, "boots"); jw2.invulnMs = 0; jw2.hp = 5;
+  const jses2 = { ...jses, world: jw2, hitSteps: new Set(), evaluatedStep: 0 };
+  jw2.beatPosition = 2; bworld.performBeatLane(jses2, 0); // 한 레인만
+  for (let i = 0; i < 40; i += 1) bworld.updateBeatWorld(jses2, 1 / 60, true);
+  ok("점프에서 한 레인만 치면 MISS (HP −1)", jw2.hp === 4, `hp ${jw2.hp}`);
+}
+
 // ── 비트: 구간 밀도 곡선 · 프레이즈 필 (마저 개발) ──
 {
   const dens = (difficulty, section) => { const ch = tracks.buildChart({ ...base, difficulty, subdivision: difficulty === "easy" ? 4 : difficulty === "medium" ? 8 : 16 }); const st = ch.filter((x) => x.section === section); return st.filter((x) => x.spike).length / Math.max(1, st.length); };

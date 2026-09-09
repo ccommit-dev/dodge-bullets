@@ -615,6 +615,8 @@ export function BeatGame({
             <p className="brand beat-kicker">STARLIGHT RHYTHM EXPEDITION</p>
             <h1 className="title beat-title">별빛 리듬 원정</h1>
             <p className="subtitle">곡을 선택하고 방향 노트로 보스를 격파하세요.</p>
+            {/* 노트 종류 안내 — 손 게임 기준 (펌프의 발판 노트를 4레인 손 입력으로) */}
+            <p className="beat-note-legend"><b>탭</b> 한 번 · <b>홀드</b> 꼬리까지 누르기 · <b>점프</b> 두 레인 동시 · <b>홀드 점프</b> 두 레인 동시 홀드 · <b>롤</b> 두 레인 교대 연타</p>
             <p className="score-line">골드 {coins.toLocaleString()} · 명성 {rpg.fame}</p>
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
             <div className="schedule-list">

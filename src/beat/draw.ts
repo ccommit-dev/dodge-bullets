@@ -415,7 +415,9 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const size = (5 + eased * 21) * (1 + overshoot * 1.6);
     const consumed = world.hitSteps.has(index);
     const golden = (index + 1) % world.subdivision === 0;
-    const sustained = world.chart[index + 1] && laneOfSound(world.chart[index + 1].sound) === lane;
+    // 롱노트 몸통: 머리의 hold 길이만큼 (꼬리 스텝은 판정 대상이 아니라 spike=false)
+    const holdLen = step.hold ?? 0;
+    const sustained = holdLen > 0;
     ctx.save();
     ctx.translate(x, y);
     const fade = overshoot > 0 ? Math.max(0, 1 - overshoot / 0.24) : 1;
@@ -423,11 +425,11 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed ? 0.3 : 1) * trickAlpha;
     if (sustained && !consumed) {
       // 꼬리 끝 = 다음 노트의 레일 위치 (현재 노트 기준 상대 좌표 — translate 이후)
-      const nextEased = Math.max(0, Math.min(1, 1 - (index + 1 - position) / preview));
+      const nextEased = Math.max(0, Math.min(1, 1 - (index + holdLen - position) / preview));
       const tailX = laneXAt(world, lane, nextEased) - x;
       const tailY = horizonY + (hitY - horizonY) * nextEased - y;
       const bodyW = size;
-      const holdingThis = world.holdLane === lane;
+      const holdingThis = world.holdLane === lane || world.holdLane2 === lane;
       ctx.strokeStyle = golden ? "rgba(250,204,21,.8)" : LANE_ACCENT[lane];
       ctx.lineWidth = Math.max(3, size * .26);
       ctx.globalAlpha *= .45;
@@ -473,7 +475,15 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       if (step.holdSteps) {
         ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
         ctx.fillStyle = "#fde047";
-        ctx.fillText(`HOLD ×${step.holdSteps}`, 0, -size * .92);
+        ctx.fillText(step.jumpSound ? `HOLD JUMP ×${step.holdSteps}` : `HOLD ×${step.holdSteps}`, 0, -size * .92);
+      } else if (step.jumpSound) {
+        ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
+        ctx.fillStyle = "#a5f3fc";
+        ctx.fillText("JUMP", 0, -size * .92);
+      } else if (step.roll) {
+        ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
+        ctx.fillStyle = "#f9a8d4";
+        ctx.fillText("ROLL", 0, -size * .92);
       }
       if (eased > 0.62) {
         ctx.font = `800 ${Math.round(6 + eased * 4)}px system-ui, sans-serif`;
@@ -482,6 +492,29 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       }
     }
     ctx.restore();
+    // 점프의 두 번째 노트 — 다른 레인에 같은 깊이로, 두 노트를 잇는 연결선
+    if (step.jumpSound) {
+      const lane2 = laneOfSound(step.jumpSound);
+      const x2 = laneXAt(world, lane2, eased);
+      const consumed2 = world.hitSteps2.has(index);
+      ctx.save();
+      ctx.globalAlpha = (0.35 + eased * 0.65) * fade * 0.7;
+      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = Math.max(2, size * 0.18); ctx.setLineDash([size * 0.3, size * 0.25]);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.translate(x2, y);
+      ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed2 ? 0.3 : 1);
+      ctx.beginPath();
+      ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * (step.holdSteps ? 1.9 : 1.56), size * 0.3);
+      ctx.fillStyle = consumed2 ? "#94a3b8" : "#22d3ee";
+      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 8 + eased * 18;
+      ctx.fill();
+      if (!consumed2) { ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = "rgba(248,250,252,.9)"; ctx.stroke(); }
+      if (eased > 0.3) {
+        ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#f8fafc"; ctx.shadowBlur = 0;
+        ctx.fillText(LANE_SYMBOL[lane2], 0, -1);
+      }
+      ctx.restore();
+    }
   }
 
   // Player hit line / mixer pad.

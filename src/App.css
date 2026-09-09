@@ -2341,7 +2341,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .titans-monster {
   position: absolute;
   right: -7%;
-  bottom: 22%;
+  bottom: 10%; /* 바닥 띠 — 동료·주인공과 같은 지면 */
   z-index: 4;
   display: flex;
   flex-direction: column;
@@ -2497,10 +2497,6 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .titan-ally-art.ally-sylph { --ally-x:14%; --ally-y:58%; z-index:1; }
 .titan-ally-art.ally-ember { --ally-x:24%; --ally-y:52%; z-index:1; }
 /* 변형 근접의 전진 거리 — 도착 지점이 원본 근접과 겹치지 않게 */
-.titan-ally-art.ally-cain.is-engaged { transform:translateX(clamp(140px,29vw,230px)); }
-.titan-ally-art.ally-bronn.is-engaged { transform:translateX(clamp(112px,23vw,185px)); } /* 타격 돌진(+7px) 뒤에도 몬스터 본체와 40% 이상 겹치지 않게 13px 뒤로 */
-.titan-ally-art.ally-terra.is-engaged { transform:translateX(clamp(130px,27vw,212px)); }
-.titan-ally-art.ally-pyro.is-engaged { transform:translateX(clamp(158px,33vw,255px)); }
 /* 변형 무기 팔레트 — 몸체 tint와 맞춘 무기 발광색 */
 .ally-pyro .ally-weapon .weapon-accent,.ally-bronn .ally-weapon .weapon-accent,.ally-ember .ally-weapon .weapon-accent { stroke:#fb923c; }
 .ally-pyro .ally-weapon,.ally-bronn .ally-weapon,.ally-ember .ally-weapon { filter:drop-shadow(0 0 3px rgba(251,146,60,.8)); }
@@ -2509,16 +2505,14 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .ally-cain .ally-weapon { filter:drop-shadow(0 0 4px rgba(253,224,71,.9)); }
 .ally-orion .ally-weapon .weapon-accent { stroke:#c4b5fd; }
 .titan-ally-art { transition:transform 1.15s linear; }
-.titan-ally-art.combat-ranged.is-engaged { transform:translateX(clamp(55px,13vw,105px)); }
-.titan-ally-art.combat-melee.is-engaged { transform:translateX(clamp(150px,31vw,245px)); }
-.titan-ally-art.ally-garen.is-engaged { transform:translateX(clamp(135px,28vw,220px)); }
-.titan-ally-art.ally-nox.is-engaged { transform:translateX(clamp(165px,34vw,265px)); }
+/* 교전 이동은 --party-combat-x/y 만으로 (예전 translateX 오버라이드 삭제 — 근접·원거리 슬롯이 이미 자리를 정한다) */
+.titan-ally-art.combat-ranged.is-engaged { transform:none; }
+.titan-ally-art.combat-melee.is-engaged { transform:none; }
+/* 몬스터 오른쪽 근접 슬롯 — 좌우 반전으로 몬스터를 향한다 (무기·타격 이펙트도 같이 뒤집힌다) */
+.titan-ally-art.face-left.is-engaged { transform:scaleX(-1); }
+.titan-ally-art.face-left .hero-marker { transform:scaleX(-1); }
 /* 신규 근접 — 대형 슬롯이 뒤쪽이라 전진 거리를 줄여 도착 지점이 기존 근접과 안 겹치게 */
-.titan-ally-art.ally-luna.is-engaged { transform:translateX(clamp(118px,24vw,188px)); }
-.titan-ally-art.ally-mia_dark.is-engaged { transform:translateX(clamp(100px,21vw,164px)); }
 /* 신규 원거리 — 후열 유지, 볼트는 포탑이라 거의 제자리 */
-.titan-ally-art.ally-volt.is-engaged { transform:translateX(clamp(26px,6vw,48px)); }
-.titan-ally-art.ally-sera_light.is-engaged { transform:translateX(clamp(30px,7vw,58px)); }
 .titan-ally-art.is-approaching .ally-swing { animation:formation-walk .26s ease-in-out infinite alternate; }
 .titan-ally-art.is-approaching .ally-weapon { filter:drop-shadow(0 0 2px rgba(103,232,249,.55)); }
 /* 대기 호흡 — 영웅(스프라이트)·몬스터(breathe)만 움직이고 동료는 박제였다. */
@@ -3111,7 +3105,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .titans-hero {
   position: absolute;
   left: 2%;
-  bottom: 14%;
+  bottom: 10%;
   z-index: 5; /* 교전 중 뒷줄 동료(--party-z 2)는 뒤, 앞줄(8)은 앞 */
   width: var(--hero-size);
   z-index: 2;
@@ -3683,3 +3677,6 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .variant-chip .grade { font-style: normal; font-size: 9px; padding: 0 4px; border-radius: 6px; background: #1e293b; color: #fde68a; }
 .variant-chip .grade-S { background: #fde68a; color: #1e1b4b; }
 .variant-chip .grade-A { background: #a78bfa; color: #1e1b4b; }
+
+.beat-note-legend { margin:2px 0 8px; color:#94a3b8; font-size:10px; line-height:1.5; }
+.beat-note-legend b { color:#e0f2fe; font-weight:800; }
