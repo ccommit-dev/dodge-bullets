@@ -40,6 +40,41 @@ export type BeatTrackDef = {
   audioOffsetMs?: number;
 };
 
+/**
+ * 소리 크기(데시벨 근사) — audio.ts 각 악기의 피크 게인. 큰 소리(킥·파이어빗)는 노트로 남고
+ * 작은 소리(숨·클릭)는 저레벨에서 노트가 되지 않는다. 채보가 "곡의 소리"를 따르게 하는 축.
+ */
+export const SOUND_LOUDNESS: Record<BeatSound, number> = { boots: 0.32, firebeat: 0.2, throat: 0.16, cats: 0.16, trumpet: 0.14, rim: 0.12, click: 0.1, breath: 0.07 };
+
+/**
+ * 펌프 잇 업 레벨별 채보 특징 (S1~S10 감각을 4레인에 옮김):
+ *   1~2  4분음·강박만, 롱노트 없음                  3~4  8분음, 짧은 롱노트(2스텝)
+ *   5~6  레인 계단(0→1→2→3), 롱노트 3스텝           7~8  16분음 드릴(같은 레인 3연타), 롱노트 4스텝
+ *   9~10 드릴 + 계단 + 긴 롱노트, 초당 5노트까지
+ * notesPerSec: 손이 따라갈 초당 노트 상한 · minLoud: 이 크기(킥 대비 비율) 미만 소리는 노트 제외
+ */
+export type LevelFeature = { notesPerSec: number; minLoud: number; holdEvery: number; holdSteps: number; stairs: boolean; drill: boolean };
+export const LEVEL_FEATURES: LevelFeature[] = [
+  { notesPerSec: 2.0, minLoud: 0.45, holdEvery: 0, holdSteps: 0, stairs: false, drill: false },
+  { notesPerSec: 2.4, minLoud: 0.45, holdEvery: 0, holdSteps: 0, stairs: false, drill: false },
+  { notesPerSec: 2.9, minLoud: 0.38, holdEvery: 12, holdSteps: 2, stairs: false, drill: false },
+  { notesPerSec: 3.2, minLoud: 0.38, holdEvery: 11, holdSteps: 2, stairs: false, drill: false },
+  { notesPerSec: 3.6, minLoud: 0.3, holdEvery: 9, holdSteps: 3, stairs: true, drill: false },
+  { notesPerSec: 3.9, minLoud: 0.3, holdEvery: 9, holdSteps: 3, stairs: true, drill: false },
+  { notesPerSec: 4.2, minLoud: 0.22, holdEvery: 8, holdSteps: 4, stairs: true, drill: true },
+  { notesPerSec: 4.5, minLoud: 0.22, holdEvery: 7, holdSteps: 4, stairs: true, drill: true },
+  { notesPerSec: 4.8, minLoud: 0, holdEvery: 6, holdSteps: 4, stairs: true, drill: true },
+  { notesPerSec: 5.2, minLoud: 0, holdEvery: 6, holdSteps: 5, stairs: true, drill: true },
+];
+/** 곡 레벨 + 난이도 변형(EASY −2 · HARD +2) → 1~10 */
+export function effectiveLevel(track: BeatTrackDef): number {
+  const shift = track.difficulty === "easy" ? -2 : track.difficulty === "hard" ? 2 : 0;
+  return Math.max(1, Math.min(10, (track.level ?? 5) + shift));
+}
+export function levelFeatureFor(track: BeatTrackDef): LevelFeature {
+  return LEVEL_FEATURES[effectiveLevel(track) - 1];
+}
+
 /** Quiet guide + loud player share these loops. */
 const PATTERN_LOOPS: Record<BeatPatternId, BeatSound[]> = {
   "kick-only": ["boots", "breath", "boots", "breath"],
@@ -304,6 +339,10 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
   // BPM 보정: 초당 노트 상한 ≈ 4.2. 16비트 150BPM은 스텝당 0.1초라 절반만 노트로
   const stepSec = (60 / track.bpm) * 4 / stepsPerBar;
   const bpmKeep = Math.min(1, (stepSec * 4.2));
+  // 펌프식 레벨 특징: 초당 노트 상한과 소리 크기 하한이 레벨을 따른다 (docs/CONTENT_BEAT_DODGE_PLAN.md §4)
+  const feat = levelFeatureFor(track);
+  // bpmKeep(4.2/s)이 이미 걸러낸 뒤이므로, 레벨 상한이 그보다 낮을 때만 그 비율만큼 더 덜어낸다 (이중 감산 방지)
+  const levelKeep = Math.min(1, (stepSec * feat.notesPerSec) / Math.max(0.05, bpmKeep));
   let accentOrdinal = 0;
   const offsetSteps = Math.max(0, Math.round((track.audioOffsetMs ?? 0) / (stepDurationSec(track) * 1000)));
   const laneSounds: Record<0 | 1 | 2 | 3, BeatSound[]> = {
@@ -338,6 +377,13 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
       // 클라이맥스(마지막 10%)는 확률 없이 기본 강박 전부 — 곡의 끝을 손이 알게
       spike = base && (t >= 0.9 ? bpmKeep >= 0.5 || rng() < bpmKeep : rng() < bpmKeep * dens.drop);
     } else spike = isDown || (quarter && rng() < dens.break);
+    // 곡의 소리: 작은 소리(숨·클릭)는 레벨 하한 아래면 노트가 아니고, 큰 소리일수록 남는다 — 같은 밀도라도 "무엇이 들리는가"를 따른다
+    if (spike && !isDown) {
+      const loud = SOUND_LOUDNESS[sound] / SOUND_LOUDNESS.boots;
+      if (loud < feat.minLoud) spike = false;
+      else if (rng() > 0.6 + 0.4 * loud) spike = false;
+    }
+    if (spike && !isDown && levelKeep < 1 && rng() > levelKeep) spike = false;
     // 프레이즈 필: 4마디 프레이즈의 마지막 마디 끝을 채워 "구절이 끝난다"를 예고 (스텝이 100ms 이상일 때만 — 손이 따라간다)
     const fillSteps = dens.fill;
     if (fillSteps > 0 && (section === "build" || section === "drop") && bar % 4 === 3 && inBar >= stepsPerBar - fillSteps && stepSec >= 0.1) spike = true;
@@ -345,8 +391,13 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     if (spike) {
       // 곡마다 시작 레인을 다르게 하고, 같은 레인이 연속 낙하하지 않도록
       // 킥·스네어·하이햇·베이스를 구절 단위로 순환한다 — "어느 레인인가"는 곡 프레이즈가 정한다
-      const noteLane = lanePhrase[(accentOrdinal + trackOffset) % lanePhrase.length] as 0 | 1 | 2 | 3;
-      const pool = laneSounds[noteLane];
+      // 레인 계단(레벨 5+): 드롭 후반 마디는 0→1→2→3 오르내림 — 펌프의 계단 패턴
+      const stairs = feat.stairs && section === "drop" && bar % 4 >= 2;
+      const noteLane = (stairs ? ((bar % 8 >= 4 ? 3 - (accentOrdinal % 4) : accentOrdinal % 4)) : lanePhrase[(accentOrdinal + trackOffset) % lanePhrase.length]) as 0 | 1 | 2 | 3;
+      // 레인 소리 풀에서도 레벨 하한보다 작은 소리(숨·클릭)는 뺀다 — 저레벨 노트는 언제나 또렷한 소리
+      const poolAll = laneSounds[noteLane];
+      const poolLoud = poolAll.filter((snd) => SOUND_LOUDNESS[snd] / SOUND_LOUDNESS.boots >= feat.minLoud);
+      const pool = poolLoud.length ? poolLoud : poolAll;
       sound = pool[(Math.floor(accentOrdinal / lanePhrase.length) + accentOrdinal) % pool.length];
       accentOrdinal += 1;
     }
@@ -365,12 +416,23 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     noteOrdinal += 1;
     if (track.difficulty === "hard") step.trick = noteOrdinal % 11 === 0 ? "late" : noteOrdinal % 7 === 0 ? "ghost" : undefined;
     else if (track.difficulty === "medium" && noteOrdinal % 13 === 0) step.trick = "flash";
-    const longEvery = track.difficulty === "easy" ? 11 : track.difficulty === "medium" ? 9 : 8;
-    if (noteOrdinal % longEvery !== 0) continue;
-    const holdSteps = track.difficulty === "easy" ? 2 : track.difficulty === "medium" ? 3 : 4;
+    // 드릴(레벨 7+): 드롭에서 8노트마다 같은 레인 3연타 — 다음 두 스텝을 같은 소리로 채운다
+    if (feat.drill && step.section === "drop" && noteOrdinal % 8 === 0) {
+      for (let d = 1; d <= 2 && i + d < chart.length; d += 1) {
+        if (chart[i + d].holdTail || chart[i + d].hold) break;
+        chart[i + d] = { ...chart[i + d], sound: step.sound, spike: true, section: step.section, trick: undefined };
+      }
+      i += 2;
+      noteOrdinal += 2;
+      continue;
+    }
+    if (feat.holdEvery === 0 || noteOrdinal % feat.holdEvery !== 0) continue;
+    const holdSteps = Math.min(feat.holdSteps, chart.length - 1 - i);
+    if (holdSteps < 2) continue;
+    step.hold = holdSteps;
     step.holdSteps = holdSteps;
-    for (let tail = 1; tail < holdSteps && i + tail < chart.length; tail++) {
-      chart[i + tail] = { ...chart[i + tail], sound:step.sound, spike:true, holdTail:true, trick:undefined };
+    for (let tail = 1; tail < holdSteps; tail++) {
+      chart[i + tail] = { ...chart[i + tail], sound: step.sound, spike: false, holdTail: true, trick: undefined };
     }
     i += holdSteps - 1;
   }

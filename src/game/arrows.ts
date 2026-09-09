@@ -592,8 +592,10 @@ function spawnBossArrow(world: GameWorld): void {
   const tier = world.stageIndex + 1;
   const cuts = BOSS_CUTS_BASE + world.stageIndex * BOSS_CUTS_PER_STAGE;
   const fromLeft = tier % 2 === 0;
-  const x = fromLeft ? -48 : world.width + 48;
-  const y = world.safeTop + Math.max(80, (world.floorY - world.safeTop) * (0.25 + (tier % 3) * 0.14));
+  // 4스테이지: 보스 화살은 화면 오른쪽 끝에 선 추격대장의 활에서 나온다 (draw.ts 의 궁수 대장 원화 위치)
+  const captain = world.stageIndex === 3;
+  const x = captain ? world.width - 44 : fromLeft ? -48 : world.width + 48;
+  const y = captain ? world.floorY - 84 : world.safeTop + Math.max(80, (world.floorY - world.safeTop) * (0.25 + (tier % 3) * 0.14));
   const dx = world.player.x - x;
   const dy = world.player.y - y;
   const len = Math.max(1, Math.hypot(dx, dy));
@@ -751,9 +753,9 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
         continue;
       }
       if (a.boss) {
-        const side = Math.random() < 0.5 ? -1 : 1;
-        a.x = side < 0 ? -36 : world.width + 36;
-        a.y = world.safeTop + 50 + Math.random() * Math.max(80, world.floorY - world.safeTop - 100);
+        const side = world.stageIndex === 3 ? 1 : Math.random() < 0.5 ? -1 : 1;
+        a.x = world.stageIndex === 3 ? world.width - 44 : side < 0 ? -36 : world.width + 36;
+        a.y = world.stageIndex === 3 ? world.floorY - 84 : world.safeTop + 50 + Math.random() * Math.max(80, world.floorY - world.safeTop - 100);
         launchAtPlayer(world, a, 170 + a.bossTier * 10);
         continue;
       }

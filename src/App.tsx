@@ -1,3 +1,4 @@
+import { QA_GEMS_AMOUNT, QA_GEMS_KEY, qaGemsEnabled } from "./progression/storage";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import "./idle.css";
@@ -871,6 +872,16 @@ function App() {
         },
       );
       setProgress(nextProgress);
+      // 추격대장 격파(4스테이지 보스) — 대장의 활시위: 대장간 강화 방지권 2 + 강화석 30 (특수 드랍)
+      if (world.stageIndex === 3 && world.bossDefeated) {
+        const dropped = await updateCharacterProgress(userHashRef.current, (current) => ({
+          ...current,
+          forgeTicketsPending: current.forgeTicketsPending + 2,
+          enhancementMaterials: current.enhancementMaterials + 30,
+        }));
+        setProgress(dropped);
+        setShoulderDrop("추격대장 격파 · 「대장의 활시위」 — 강화 방지권 +2 · 강화석 +30");
+      }
     })();
   };
 
@@ -993,6 +1004,20 @@ function App() {
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
                 </button>
+                {/* 테스트용 — 보석 무제한 (로컬 플래그, 저장 때마다 999,999 로 채움) */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    const on = localStorage.getItem(QA_GEMS_KEY) === "1";
+                    if (on) localStorage.removeItem(QA_GEMS_KEY); else localStorage.setItem(QA_GEMS_KEY, "1");
+                    setSettingsOpen(false);
+                    void updateCharacterProgress(userHashRef.current, (current) => (on ? current : { ...current, redGems: QA_GEMS_AMOUNT })).then((next) => setProgress(next));
+                  }}
+                  aria-pressed={qaGemsEnabled()}
+                >
+                  <span>테스트 · 보석 무제한</span><b>{qaGemsEnabled() ? "ON" : "OFF"}</b>
+                </button>
                 <button
                   type="button"
                   role="menuitem"
@@ -1112,6 +1137,7 @@ function App() {
           insets={insets}
           userHash={userHashRef.current}
           forgedWeaponLevel={progress.equippedWeaponLevel}
+          armorLevel={progress.armorLevel}
           onOpenEvents={(tab) => { setEventTab(tab); setEventOpen(true); }}
           onOpenContent={(content) => {
             if (content === "dodge") syncState("ready");
@@ -1125,7 +1151,7 @@ function App() {
           <div className="overlay-content overlay-wide">
             <p className="brand">BATTLE EXPEDITION</p>
             <h1 className="title">전장의 돌파 원정</h1>
-            <p className="subtitle">이동·회피·검격 반격으로 적진의 보급품을 확보하고 탈출하세요</p>
+            <p className="subtitle">적 궁수의 화살촉엔 <b>마력 결정</b>이 박혀 있다 — 베어 떨어뜨린 결정은 대장간 <b>강화석</b>이 되고, 코앞에서 베면 궁수에게 되돌아간다</p>
             <p className="score-line">코인 {coins} · 최고 {highScore}</p>
 
             {/* 원정대 보급소는 삭제됐다 (사용자 지시: 용도 불명). 기동·검격 스탯은

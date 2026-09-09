@@ -26,7 +26,7 @@ await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, p
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { tracks, rpg, arrows, world, shop, input } = await import(pathToFileURL(out).href);
+const { tracks, rpg, bworld, arrows, world, shop, input } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -116,6 +116,25 @@ ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 
   const k2 = kinds(w2);
   ok("반사 → 토막 없이 금색 불꽃 + 검광 (화살은 살아서 되돌아간다)", !k2.includes("tip") && k2.includes("streak") && k2.filter((x) => x === "spark").length >= 5 && active(w2).every((d) => d.kind === "streak" || d.color === "#fde68a"), k2.join());
   ok("파편 풀은 resetRun 에서 비워진다", (world.resetRun(w2, 0), active(w2).length === 0));
+}
+
+// ── 비트: 홀드 노트(실제 유지) · 회복 · 곡 특성(소리 크기) · 펌프식 레벨 특징 ──
+{
+  const hardTrack = { ...base, difficulty: "hard", subdivision: 16 };
+  const ch = tracks.buildChart(hardTrack);
+  const heads = ch.filter((x) => x.hold && x.hold >= 2);
+  ok("HARD 채보에 롱노트 머리(hold ≥ 2)가 있고 꼬리는 단타 판정 대상이 아니다(spike=false·holdTail)", heads.length > 0 && heads.every((h, ) => { const i = ch.indexOf(h); return ch[i + 1]?.holdTail === true && ch[i + 1]?.spike === false; }), `heads ${heads.length}`);
+  const lvl1 = tracks.buildChart({ ...T.find((t) => t.level === 1), difficulty: "easy", subdivision: 4 });
+  ok("레벨 1(EASY) 채보는 롱노트가 없고 숨소리·클릭(작은 소리)이 노트가 아니다", !lvl1.some((x) => x.hold) && !lvl1.some((x) => x.spike && (x.sound === "breath" || x.sound === "click")));
+  ok("레벨 특징표: 1~2 롱노트 없음 · 5+ 계단 · 7+ 드릴 · 초당 노트 상한 단조 증가", tracks.LEVEL_FEATURES[0].holdEvery === 0 && tracks.LEVEL_FEATURES[4].stairs && !tracks.LEVEL_FEATURES[3].stairs && tracks.LEVEL_FEATURES[6].drill && !tracks.LEVEL_FEATURES[5].drill && tracks.LEVEL_FEATURES.every((f, i) => i === 0 || f.notesPerSec > tracks.LEVEL_FEATURES[i - 1].notesPerSec));
+  ok("effectiveLevel: 곡 레벨 ± 난이도 변형(EASY −2 · HARD +2), 1~10 클램프", tracks.effectiveLevel({ ...base, level: 5, difficulty: "easy" }) === 3 && tracks.effectiveLevel({ ...base, level: 5, difficulty: "hard" }) === 7 && tracks.effectiveLevel({ ...base, level: 10, difficulty: "hard" }) === 10);
+  // 드릴: 레벨 7+ 드롭에 같은 레인 3연타가 존재
+  const runs = (c) => { let best = 0, run = 0, prev = null; for (const st of c) { if (st.spike && st.section === "drop" && st.sound === prev) { run += 1; best = Math.max(best, run); } else run = st.spike ? 1 : 0; prev = st.spike ? st.sound : null; } return best; };
+  ok("레벨 7+(HARD azure-sky) 드롭에 같은 레인 3연타 드릴이 있다", runs(ch) >= 3, `max run ${runs(ch)}`);
+  // 회복: PERFECT 4번 → HP +1 (상한 maxHp)
+  const w = { hp: 5, maxHp: 7, healGauge: 0 };
+  let healed = 0; for (let i = 0; i < 4; i += 1) if (bworld.gainHeal(w, 2)) healed += 1;
+  ok("회복 게이지: PERFECT(+2) 4번 → HP +1 · GREAT(+1)은 절반 속도 · 상한 초과 없음", healed === 1 && w.hp === 6 && bworld.HEAL_GAUGE_MAX === 8 && (() => { const f = { hp: 7, maxHp: 7, healGauge: 0 }; for (let i = 0; i < 8; i += 1) bworld.gainHeal(f, 2); return f.hp === 7; })());
 }
 
 // ── 비트: 구간 밀도 곡선 · 프레이즈 필 (마저 개발) ──

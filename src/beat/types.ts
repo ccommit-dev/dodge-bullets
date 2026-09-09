@@ -83,6 +83,8 @@ export type BeatWorld = {
   comboTimerMs: number;
   hp: number;
   maxHp: number;
+  /** 회복 게이지 — PERFECT +2 · GREAT +1 · 롱노트 완주 +2, HEAL_GAUGE_MAX 마다 HP +1 (게임 오버를 늦춘다) */
+  healGauge: number;
   invulnMs: number;
   dead: boolean;
   cleared: boolean;
@@ -94,7 +96,7 @@ export type BeatWorld = {
   lastSound: BeatSound | null;
   nextSound: BeatSound;
   timingHint: number;
-  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "";
+  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | "";
   judgeMs: number;
   stageIndex: number;
   stageBannerMs: number;

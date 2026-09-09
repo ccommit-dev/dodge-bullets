@@ -10,6 +10,9 @@ import { riftEventFor, weekdayRift, weekdayRiftSchedule } from "./events/weekday
 import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
 import { RewardChip, RewardIcon } from "./ui/RewardIcon";
+import { AllyArt, MonsterArt } from "./titans/SpriteArt";
+import { EquippedCharacter } from "./ui/EquippedCharacter";
+import { huntingArea } from "./titans/model";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { sfxRiftClaim } from "./ui/sfx";
 
@@ -62,6 +65,9 @@ export function EventCenter({
   const [save, setSave] = useState<EventSave | null>(null);
   const [riftMessage, setRiftMessage] = useState("");
   const [shadowLog, setShadowLog] = useState<{ id: string; win: boolean; text: string } | null>(null);
+  // 화면 전환 콘텐츠 — 균열 진입은 원정대가 균열 몬스터를 쓸어 담는 연출, 랭크 시험은 그림자와의 대결 연출
+  const [riftRun, setRiftRun] = useState<{ name: string; gold: number; exp: number; materials: number; shards: number; mult: number } | null>(null);
+  const [duel, setDuel] = useState<{ name: string; title: string; win: boolean; playerRoll: number; opponentRoll: number; bonus: number } | null>(null);
 
   useEffect(() => {
     void loadEventSave(userHash).then(setSave);
@@ -161,6 +167,7 @@ export function EventCenter({
     });
     onUpdated(await updateCharacterProgress(userHash, (current) => addSeasonXp(current, SEASON.xp.rift)));
     void nextProgress;
+    setRiftRun({ name: rift.name, gold, exp: riftYield.exp, materials, shards: shardCount, mult: eventMult });
     setRiftMessage(
       `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
     );
@@ -239,6 +246,7 @@ export function EventCenter({
   const challengeShadow = async (opponent: ShadowOpponent) => {
     if (save.shadowCleared.includes(opponent.id)) return;
     const result = resolveShadow(progress, opponent);
+    setDuel({ name: opponent.name, title: opponent.title, win: result.win, playerRoll: result.playerRoll, opponentRoll: result.opponentRoll, bonus: opponent.bonus });
     if (!result.win) {
       setShadowLog({
         id: opponent.id,
@@ -541,7 +549,75 @@ export function EventCenter({
         <button className="cta cta-ghost" onClick={onClose}>
           닫기
         </button>
+        {riftRun && <RiftRunOverlay run={riftRun} area={huntingArea(Math.max(1, progress.titanBestStage))} party={progress.partyIds.slice(0, 3)} onClose={() => setRiftRun(null)} />}
+        {duel && <DuelOverlay duel={duel} progress={progress} onClose={() => setDuel(null)} />}
       </div>
+    </div>
+  );
+}
+
+
+/** 균열 진입 연출 — 원정대가 균열 몬스터 세 마리를 쓸어 담고 보상이 쏟아진다 (3초, 탭하면 건너뜀) */
+function RiftRunOverlay({ run, area, party, onClose }: { run: { name: string; gold: number; exp: number; materials: number; shards: number; mult: number }; area: ReturnType<typeof huntingArea>; party: string[]; onClose: () => void }) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 420);
+    const done = window.setTimeout(onClose, 3400);
+    return () => { window.clearInterval(id); window.clearTimeout(done); };
+  }, [onClose]);
+  const progressPct = Math.min(100, tick * 14);
+  const kinds = area.normalKinds;
+  return (
+    <div className="rift-run" role="status" onClick={onClose} style={{ "--area-sky": area.sky, "--area-background": `url(${area.background})` } as React.CSSProperties}>
+      <div className="rift-run-field">
+        <div className="rift-run-party">
+          {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tick + i} partySlot={i} engaged />)}
+        </div>
+        <div className="rift-run-monsters">
+          {kinds.slice(0, 3).map((kind, i) => (
+            <span key={kind + i} className={`rift-run-monster ${tick > i * 2 + 1 ? "down" : ""}`}><MonsterArt kind={kind} area={area} boss={false} state={tick > i * 2 + 1 ? "defeat" : tick === i * 2 + 1 ? "hit" : "idle"} /></span>
+          ))}
+        </div>
+        <b className="rift-run-title">{run.name} · 균열 정산 중</b>
+        <i className="rift-run-bar"><em style={{ width: `${progressPct}%` }} /></i>
+      </div>
+      <div className={`rift-run-loot ${progressPct >= 100 ? "show" : ""}`}>
+        <RewardChip kind="gold" label={`골드 +${formatGold(run.gold)}`} />
+        <RewardChip kind="seasonXp" label={`EXP +${run.exp.toLocaleString()}`} />
+        <RewardChip kind="materials" label={`강화석 +${run.materials}`} />
+        <RewardChip kind="shards" label={`조각 +${run.shards}`} />
+        {run.mult > 1 && <small>이벤트 ×{run.mult}</small>}
+      </div>
+    </div>
+  );
+}
+
+/** 랭크 시험 연출 — 주인공과 그림자 상대의 전투력 게이지가 맞붙는다 (2.6초, 탭하면 건너뜀) */
+function DuelOverlay({ duel, progress, onClose }: { duel: { name: string; title: string; win: boolean; playerRoll: number; opponentRoll: number; bonus: number }; progress: CharacterProgress; onClose: () => void }) {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setPhase(1), 200);
+    const t2 = window.setTimeout(() => setPhase(2), 1500);
+    const t3 = window.setTimeout(onClose, 3200);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); };
+  }, [onClose]);
+  const top = Math.max(duel.playerRoll, duel.opponentRoll, 1);
+  return (
+    <div className={`duel-overlay phase-${phase} ${duel.win ? "win" : "lose"}`} role="status" onClick={onClose}>
+      <div className="duel-side me">
+        <EquippedCharacter mode={phase === 2 && duel.win ? "attack" : "idle"} frame={phase === 2 ? 3 : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+        <b>나</b>
+        <i className="duel-bar"><em style={{ width: phase >= 1 ? `${(duel.playerRoll / top) * 100}%` : "0%" }} /></i>
+        <span>{Math.floor(duel.playerRoll).toLocaleString()}</span>
+      </div>
+      <b className="duel-vs">{phase === 2 ? (duel.win ? "승리" : "패배") : "VS"}</b>
+      <div className="duel-side foe">
+        <span className="shadow-figure big" aria-hidden="true"><span className="shadow-body" /></span>
+        <b>{duel.name}</b>
+        <i className="duel-bar foe"><em style={{ width: phase >= 1 ? `${(duel.opponentRoll / top) * 100}%` : "0%" }} /></i>
+        <span>{Math.floor(duel.opponentRoll).toLocaleString()}</span>
+      </div>
+      {phase === 2 && <small className="duel-result">{duel.win ? `주간 보너스 +${duel.bonus.toFixed(2)} · 공유 코인·견갑 조각·동료 조각 획득` : "전투력을 올려 다시 도전하세요 — 장비 강화·동료 성급이 전투력을 올린다"}</small>}
     </div>
   );
 }
