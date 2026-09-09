@@ -4,7 +4,7 @@ import { tierAt } from "../forge/model";
 import { SwordArt } from "../forge/swords";
 import { WEAPON_SKINS } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS, capeAnchor } from "../equipment/anchors";
 import { sheetFor } from "../titans/anim";
 
 type Props = {
@@ -30,9 +30,11 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
 const shoulderIndex: Record<ShoulderId, number> = { scout: 0, shadow: 1, ogre: 2, dragon: 3 };
 
 export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0 }: Props) {
-  const armorTier = armorTierOf(armorLevel);
   const index = Math.max(0, Math.min(3, frame));
   const anchor = (mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS)[index];
+  const armorTier = armorTierOf(armorLevel);
+  // 망토 파츠 — 견갑 +3 부터 등 뒤에 걸린다(z 1, 몸 뒤). 티어별 색: 적 → 청 → 금 → 프리즘
+  const cape = armorLevel >= 3 ? capeAnchor(anchor, mode) : null;
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
   const sheet = sheetFor(character, mode);
   const tier = tierAt(Math.min(15, weaponLevel));
@@ -48,6 +50,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = nul
   };
   return (
     <div className={`equipped-character mode-${mode} evolution-${evolution} ${character ? `costume-${character}` : ""} armor-tier-${armorTier} ${className}`} data-armor-tier={armorTier}>
+      {cape && <i className={`equipment-cape cape-tier-${armorTier}`} style={{ left: `${cape.x}%`, top: `${cape.y}%`, "--cape-base": `translate(-50%,-12%) rotate(${cape.rotation}deg) scale(${cape.scale})`, transform: "var(--cape-base)", backgroundImage: `url(${assetUrl("titans/equipment/cape/cape.png")})` } as CSSProperties} aria-hidden="true" />}
       {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} back`} style={{ ...part(anchor.shoulderRight), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
       <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundPosition: `${(index / 3) * 100}% 0` }} />
       {shoulder && armorTier >= 3 && <b className="armor-gem" style={{ left: `${anchor.shoulderLeft.x}%`, top: `${anchor.shoulderLeft.y - 6}%` }} aria-hidden="true" />}

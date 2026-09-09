@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { combatPower, type CharacterProgress } from "./progression/model";
 import { updateCharacterProgress } from "./progression/storage";
 import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
-import { resolveShadow, shadowOpponents, weekKey, type ShadowOpponent } from "./events/shadowArena";
+import { resolveShadow, shadowOpponents, shadowPortrait, weekKey, type ShadowOpponent } from "./events/shadowArena";
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
 import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
@@ -413,7 +413,7 @@ export function EventCenter({
                 return (
                   <article key={opponent.id} className={cleared ? "cleared" : ""}>
                     <div className="shadow-figure" aria-hidden="true">
-                      <span className="shadow-body" />
+                      <img className="shadow-portrait" src={shadowPortrait(opponent.name)} alt="" />
                     </div>
                     <div className="shadow-info">
                       <small>{opponent.title}</small>
@@ -612,7 +612,7 @@ function DuelOverlay({ duel, progress, onClose }: { duel: { name: string; title:
       </div>
       <b className="duel-vs">{phase === 2 ? (duel.win ? "승리" : "패배") : "VS"}</b>
       <div className="duel-side foe">
-        <span className="shadow-figure big" aria-hidden="true"><span className="shadow-body" /></span>
+        <span className="shadow-figure big" aria-hidden="true"><img className="shadow-portrait" src={shadowPortrait(duel.name)} alt="" /></span>
         <b>{duel.name}</b>
         <i className="duel-bar foe"><em style={{ width: phase >= 1 ? `${(duel.opponentRoll / top) * 100}%` : "0%" }} /></i>
         <span>{Math.floor(duel.opponentRoll).toLocaleString()}</span>

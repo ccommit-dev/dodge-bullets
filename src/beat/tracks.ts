@@ -384,6 +384,8 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
       else if (rng() > 0.6 + 0.4 * loud) spike = false;
     }
     if (spike && !isDown && levelKeep < 1 && rng() > levelKeep) spike = false;
+    // 레벨 1~2: 빌드업·드롭의 4분음(강박)은 전부 노트 — 소리 필터로 성겨져 지루해지지 않게 (NPS ≈ BPM/60)
+    if (feat.notesPerSec <= 2.4 && quarter && (section === "drop" || section === "build")) spike = true;
     // 프레이즈 필: 4마디 프레이즈의 마지막 마디 끝을 채워 "구절이 끝난다"를 예고 (스텝이 100ms 이상일 때만 — 손이 따라간다)
     const fillSteps = dens.fill;
     if (fillSteps > 0 && (section === "build" || section === "drop") && bar % 4 === 3 && inBar >= stepsPerBar - fillSteps && stepSec >= 0.1) spike = true;
@@ -417,7 +419,8 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     if (track.difficulty === "hard") step.trick = noteOrdinal % 11 === 0 ? "late" : noteOrdinal % 7 === 0 ? "ghost" : undefined;
     else if (track.difficulty === "medium" && noteOrdinal % 13 === 0) step.trick = "flash";
     // 드릴(레벨 7+): 드롭에서 8노트마다 같은 레인 3연타 — 다음 두 스텝을 같은 소리로 채운다
-    if (feat.drill && step.section === "drop" && noteOrdinal % 8 === 0) {
+    // 드릴은 스텝이 90ms 이상일 때만 — 170BPM 16분(88ms)에서 3연타는 손이 못 따라간다
+    if (feat.drill && stepSec >= 0.09 && step.section === "drop" && noteOrdinal % 8 === 0) {
       for (let d = 1; d <= 2 && i + d < chart.length; d += 1) {
         if (chart[i + d].holdTail || chart[i + d].hold) break;
         chart[i + d] = { ...chart[i + d], sound: step.sound, spike: true, section: step.section, trick: undefined };

@@ -1,4 +1,5 @@
-import { QA_GEMS_AMOUNT, QA_GEMS_KEY, qaGemsEnabled } from "./progression/storage";
+import { preloadStageBackgrounds } from "./game/draw";
+import { QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import "./idle.css";
@@ -168,6 +169,20 @@ function App() {
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
   const [exitOpen, setExitOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 테스트 모드 — 빌드 라벨을 3초 안에 7번 탭하면 토글 (안드로이드 개발자 옵션식 숨은 제스처)
+  const [testMode, setTestMode] = useState(() => { try { return localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; } });
+  const buildTapsRef = useRef<number[]>([]);
+  const tapBuildLabel = () => {
+    const now = Date.now();
+    buildTapsRef.current = [...buildTapsRef.current.filter((t) => now - t < 3000), now];
+    if (buildTapsRef.current.length < 7) return;
+    buildTapsRef.current = [];
+    const next = !testMode;
+    try { if (next) localStorage.setItem(QA_MODE_KEY, "1"); else { localStorage.removeItem(QA_MODE_KEY); localStorage.removeItem(QA_GEMS_KEY); } } catch { /* 저장 불가 환경 */ }
+    setTestMode(next);
+    setSettingsToast(next ? "테스트 모드 ON — 보석 무제한 메뉴가 열립니다" : "테스트 모드 OFF");
+    window.setTimeout(() => setSettingsToast(""), 2200);
+  };
   const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
   const [allClear, setAllClear] = useState(false);
   const [extracted, setExtracted] = useState(false);
@@ -1004,8 +1019,8 @@ function App() {
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
                 </button>
-                {/* 테스트용 — 보석 무제한 (로컬 플래그, 저장 때마다 999,999 로 채움) */}
-                <button
+                {/* 테스트용 — 보석 무제한. 라이브에 노출되지 않도록 DEV 빌드이거나 빌드 라벨을 7번 탭해 테스트 모드를 연 뒤에만 보인다 */}
+                {(import.meta.env.DEV || testMode) && <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
@@ -1017,6 +1032,9 @@ function App() {
                   aria-pressed={qaGemsEnabled()}
                 >
                   <span>테스트 · 보석 무제한</span><b>{qaGemsEnabled() ? "ON" : "OFF"}</b>
+                </button>}
+                <button type="button" role="menuitem" className="settings-build" onClick={tapBuildLabel}>
+                  <span>DODGE LAB</span><b>{testMode ? "테스트 모드" : "빌드 2026.09"}</b>
                 </button>
                 <button
                   type="button"
@@ -1146,7 +1164,7 @@ function App() {
         />
       )}
 
-      {bootReady && appMode === "dodge" && gameState === "ready" && (
+      {bootReady && appMode === "dodge" && gameState === "ready" && preloadStageBackgrounds() && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide">
             <p className="brand">BATTLE EXPEDITION</p>

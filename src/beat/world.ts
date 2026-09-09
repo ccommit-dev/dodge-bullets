@@ -381,11 +381,13 @@ export function gainHeal(world: BeatWorld, amount: number): boolean {
   return true;
 }
 
-export function performBeatLane(session: BeatSession, lane: NoteLane): void {
+/** 탭 결과 — hit: 노트를 침 · empty: 노트가 없는 스텝(판정·콤보·피해 없음, 소리만) · held: 롱노트 유지 중이라 무시 */
+export type BeatTapResult = "hit" | "empty" | "held";
+export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapResult {
   // 롱노트를 누르고 있는 레인의 추가 입력(키 반복·홀드 연타)은 무시 — 유지 중에 MISS 로 끊기지 않게
-  if (session.holdLane === lane && session.holdEndStep >= 0) return;
+  if (session.holdLane === lane && session.holdEndStep >= 0) return "held";
   const world = session.world;
-  if (world.dead || world.cleared) return;
+  if (world.dead || world.cleared) return "held";
 
   if (session.backingAudio?.paused) {
     void session.backingAudio.play().catch(() => {});
@@ -461,12 +463,12 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
       world.holdEndStep = session.holdEndStep;
     }
   } else {
+    // 노트가 없는 스텝의 탭 — 리듬 게임 관례대로 벌점 없음 (예전엔 MISS + 콤보 초기화라 홀드 중 반복 입력이 콤보를 끊었다)
     world.lastOffsetMs = 0;
     session.box.playLead(sound, 0, 0);
-    world.score += 2;
-    world.judgeText = "MISS";
-    world.combo = 0;
-    world.comboTimerMs = 0;
+    world.lastSound = sound;
+    world.timingHint = 0.25;
+    return "empty";
   }
 
   world.lastSound = sound;
@@ -475,6 +477,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
   world.timingHint = onTime ? 1 : 0.25;
   world.judgeMs = 380;
   spawnMoveParticles(world, onTime ? 26 : 8, onTime ? LANE_HUE[lane] : 0, lane);
+  return "hit";
 }
 
 /** Center pad — kept so pointer taps without a lane still play. */
