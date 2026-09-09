@@ -21,10 +21,11 @@ writeFileSync(entry, [
   `export * as events from "${root}/src/events/eventSave";`,
   `export * as gem from "${root}/src/economy/gemCatalog";`,
   `export * as product from "${root}/src/economy/productCatalog";`,
+  `export * as shadow from "${root}/src/events/shadowArena";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -352,6 +353,31 @@ ok("L 광고 제거 구매 → adFree", eventShop.pay.applyPurchase(base, "remov
   ok("H 트리거 패키지 3종 카탈로그·Play id 등록", ["pack-pioneer", "pack-wall", "pack-rebirth"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.trigger) && eventShop.pay.PLAY_PRODUCT_IDS.includes(id)));
 }
 ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, weeklyEventBuys: { week: "2026-36", bought: { x: 2 } }, forgeTicketsPending: 3 }); return n.weeklyEventBuys.bought.x === 2 && n.forgeTicketsPending === 3; })());
+
+// ── 랭크 시험 상대: 직업 명사 8종 → 서로 다른 그림자 원화 8장이 실제로 있다 ──
+{
+  const { existsSync } = await import("node:fs");
+  const nouns = ["검객", "추적자", "고행자", "수문장", "방랑자", "집행자", "관측자", "대장장이"];
+  const files = nouns.map((n) => shadow.shadowPortrait("잊힌 " + n).replace(/^[/]/, ""));
+  ok("그림자 상대 직업 8종이 서로 다른 원화 파일에 대응한다", new Set(files).size === 8, files.map((f) => f.split("/").pop()).join(" "));
+  ok("그림자 원화 8장이 public/ 에 존재한다", files.every((f) => existsSync(join(root, "public", f))));
+  ok("모르는 명사는 검객 원화로 안전하게 떨어진다", /swordsman[.]png$/.test(shadow.shadowPortrait("잊힌 무언가")));
+}
+
+// ── 강화 검 원화 16장: 투명 여백이 트림돼 있다 (폭 기준 contain 축소로 '실'이 되지 않게) ──
+{
+  const sharp = (await import("sharp")).default;
+  const bad = [];
+  for (let i = 0; i < 16; i += 1) {
+    const p = join(root, "public/forge/swords", "s" + String(i).padStart(2, "0") + ".png");
+    const { data, info } = await sharp(p).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+    let minx = Infinity, maxx = -1;
+    for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 24) { if (x < minx) minx = x; if (x > maxx) maxx = x; }
+    const fill = (maxx - minx + 1) / info.width;
+    if (fill < 0.7 || info.width > info.height) bad.push(`s${i}:${info.width}x${info.height} ${(fill * 100).toFixed(0)}%`);
+  }
+  ok("검 원화 16장 모두 세로형이고 검이 폭의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
+}
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
 const fails = results.filter((r) => r[0] === "FAIL").length;

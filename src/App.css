@@ -1639,11 +1639,9 @@
 }
 
 img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
-/* 0~3티어 단검·장검은 세로로 길게 트림돼 손에 들면 실처럼 보였다 — 손 안에서 1.3배 */
-.equipment-weapon img.forge-sword.painted[data-level="2"], .equipment-weapon img.forge-sword.painted[data-level="3"] { transform: rotate(11deg) scale(1.3); }
-/* 0~1티어 단검은 손 안에서 거의 안 보였다(클로즈업 확인) — 1.55배 */
-.equipment-weapon img.forge-sword.painted[data-level="0"], .equipment-weapon img.forge-sword.painted[data-level="1"] { transform: rotate(11deg) scale(1.55); }
-.equipment-weapon img.forge-sword.painted { width: 100%; height: 100%; max-width: none; }
+/* 원화는 scripts/trim-sword-art.mjs 로 투명 여백을 잘라 높이 기준으로 맞는다(이전엔 폭 600px+ 캔버스라 contain 이 폭 기준으로 줄여 5~7px '실'이 됐다).
+   손 안에서는 전 티어 동일 배율 — 자루(아래쪽)를 축으로 키워 손잡이가 손에 남는다 */
+.equipment-weapon img.forge-sword.painted { width: 100%; height: 100%; max-width: none; transform: rotate(11deg) scale(1.6); transform-origin: 50% 80%; }
 .training-item-icon.weapon img.sword-art { width: 34px !important; max-width: 34px; height: 40px !important; object-fit: contain; }
 .forge-sword {
   position: relative;
