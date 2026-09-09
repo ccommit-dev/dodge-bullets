@@ -368,6 +368,8 @@ function bumpCombo(world: BeatWorld, amount = 1): void {
  * Hit the pad matching the lane of the note arriving at the MIX LINE.
  * The lead is scheduled on that note's own grid time so it stacks with the guide.
  */
+/** 판정 창 하한(초) — 스텝이 아무리 짧아도 이보다 좁아지지 않는다 */
+export const JUDGE_WINDOW_FLOOR_SEC = 0.11;
 /** 회복 게이지 상한 — PERFECT 4번(=8) 마다 HP 1 */
 export const HEAL_GAUGE_MAX = 8;
 /** GREAT/PERFECT·롱노트 완주가 게이지를 채워 HP 를 돌려준다 — 잘 치는 동안은 게임 오버가 늦춰진다 */
@@ -405,10 +407,12 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
       ? Math.max(world.beatPosition, session.box.getTransportPosition())
       : world.beatPosition) - session.calibrationSec / stepSec;
 
-  // Widest forgiving window, tightened so 16ths cannot claim a neighbour's note.
+  // 판정 창: 기본 190ms(스킬 보너스 +), 스텝의 62% 까지 좁히되 110ms 아래로는 안 내려간다.
+  // 예전엔 170BPM 16분(88ms)에서 55ms 가 되어 지터 80ms 인 사람은 거의 못 맞혔다(봇 시뮬 novice 전멸).
+  // 이웃 가로채기는 창 폭이 아니라 선택 규칙으로 막는다: 창 안의 "가장 이른 미타 노트"를 잡는다 (리듬게임 관례).
   const windowSec = Math.min(
     0.19 + timingBonusFromSkills(session.skills) * 0.2,
-    stepSec * 0.62,
+    Math.max(stepSec * 0.62, JUDGE_WINDOW_FLOOR_SEC),
   );
 
   let bestIndex = -1;
@@ -420,10 +424,8 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
     if (!step || !step.spike || laneOfSound(step.sound) !== lane) continue;
     if (world.hitSteps.has(i)) continue;
     const distSec = Math.abs(i - position) * stepSec;
-    if (distSec < bestDistSec) {
-      bestDistSec = distSec;
-      bestIndex = i;
-    }
+    if (distSec <= windowSec) { bestIndex = i; bestDistSec = distSec; break; } // 창 안의 가장 이른 노트
+    if (distSec < bestDistSec) { bestDistSec = distSec; bestIndex = i; }
   }
 
   const onTime = bestIndex >= 0 && bestDistSec <= windowSec;

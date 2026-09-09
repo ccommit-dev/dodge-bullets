@@ -158,6 +158,18 @@ ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 
 // ── 화살 원정: 추격대장 예고 시간은 거리 비례 · 4스테이지 봇 클리어 1~4/5 (어렵되 불가능하지 않게) ──
 ok("대장 예고: 90px 520ms(하한) · 400px 860ms · 900px 1200ms(상한)", arrows.captainWarningMs(90) === 520 && arrows.captainWarningMs(400) === 860 && arrows.captainWarningMs(900) === 1200);
 
+// ── 비트: 사람 반응 모델 봇 플레이 (scripts/beat-sim.mjs) — 숙련자 48/48 클리어 · 초보는 EASY 전부 + 유효 레벨 ≤ 3 전부 + HARD 아닌 레벨 ≤ 7 ──
+{
+  const { runAll } = await import(pathToFileURL(join(root, "scripts/beat-sim.mjs")).href);
+  const pro = runAll("competent");
+  ok("숙련자 봇(히트 93% · 지터 45ms): 48채보 전부 클리어", pro.every((r) => r.ended === "clear"), pro.filter((r) => r.ended !== "clear").map((r) => `${r.id}/${r.difficulty}`).join(" "));
+  const nov = runAll("novice");
+  const mustClear = nov.filter((r) => r.difficulty === "easy" || r.level <= 3 || (r.difficulty !== "hard" && r.level <= 7));
+  ok("초보 봇(히트 85% · 지터 80ms): EASY 전부 · 유효 레벨 ≤ 3 전부 · HARD 아닌 레벨 ≤ 7 클리어", mustClear.every((r) => r.ended === "clear"), mustClear.filter((r) => r.ended !== "clear").map((r) => `${r.id}/${r.difficulty}(L${r.level})`).join(" "));
+  ok("HARD 고레벨(≥ 8)은 초보 봇이 못 깬다 — 난이도 사다리가 살아 있다", nov.filter((r) => r.difficulty === "hard" && r.level >= 8).some((r) => r.ended === "dead"));
+  ok("판정 창 하한 110ms (170BPM 16분에서 55ms 로 좁아지던 문제)", bworld.JUDGE_WINDOW_FLOOR_SEC === 0.11);
+}
+
 // ── 비트: 구간 밀도 곡선 · 프레이즈 필 (마저 개발) ──
 {
   const dens = (difficulty, section) => { const ch = tracks.buildChart({ ...base, difficulty, subdivision: difficulty === "easy" ? 4 : difficulty === "medium" ? 8 : 16 }); const st = ch.filter((x) => x.section === section); return st.filter((x) => x.spike).length / Math.max(1, st.length); };
