@@ -21,7 +21,7 @@ import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
-import { EquippedCharacter } from "./ui/EquippedCharacter";
+import { EquippedCharacter, armorTierOf } from "./ui/EquippedCharacter";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import type { ShoulderId } from "./progression/model";
 
@@ -715,7 +715,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           ) : (
             /* 견갑 강화 — 검 강화와 같은 골격(무대 → 패널 → 4스탯 → 안내 → 강화 → 판매)으로 통일 (사용자 지시) */
             <>
-              <section className={`forge-stage armor-forge-stage forge-phase-${phase}`}>
+              <section className={`forge-stage armor-forge-stage forge-phase-${phase} armor-tier-${armorTierOf(save.armorLevel)}`} data-armor-tier={armorTierOf(save.armorLevel)}>
                 <div className="forge-embers" aria-hidden="true">{Array.from({length:12},(_,i)=><i key={i} style={{"--ember-i":i,left:`${(i*37)%100}%`} as CSSProperties}/>)}</div>
                 <div className="sword-aura" />
                 <ShoulderIcon id={equippedShoulder} />

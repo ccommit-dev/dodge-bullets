@@ -20,6 +20,7 @@ import {
   disposeBeatSession,
   laneOfSound,
   performBeatLane,
+  performBeatRelease,
   resizeBeatWorld,
   settleHoldIfPassed,
   updateBeatWorld,
@@ -212,6 +213,12 @@ export function BeatGame({
       const timer = laneHoldTimersRef.current[target];
       if (timer !== undefined) window.clearInterval(timer);
       delete laneHoldTimersRef.current[target];
+      // 롱노트 릴리즈 판정 — 꼬리 근처면 보너스, 일찍 떼면 MISS (실제로 누르고 있어야 유효)
+      const session = sessionRef.current;
+      if (session) {
+        const r = performBeatRelease(session, target);
+        if (r === "release-good" && typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
+      }
     });
   }, []);
 
@@ -340,7 +347,13 @@ export function BeatGame({
       }
     };
 
+    const onKeyUp = (e: KeyboardEvent) => {
+      const lane = KEY_LANE[e.code];
+      if (lane === undefined) return;
+      stopLaneHold(lane);
+    };
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     canvas.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
@@ -482,6 +495,7 @@ export function BeatGame({
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);

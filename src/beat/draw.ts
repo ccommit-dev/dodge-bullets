@@ -521,7 +521,9 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.textAlign = "center";
     ctx.font = "900 26px system-ui, sans-serif";
     ctx.fillStyle =
-      world.judgeText === "PERFECT" || world.judgeText === "CLUTCH"
+      world.judgeText.endsWith("♥")
+        ? `rgba(74, 222, 128, ${alpha})`
+        : world.judgeText === "PERFECT" || world.judgeText === "CLUTCH" || world.judgeText === "HOLD"
         ? `rgba(34, 211, 238, ${alpha})`
         : world.judgeText === "GREAT" || world.judgeText === "GOOD"
           ? `rgba(251, 191, 36, ${alpha})`

@@ -84,7 +84,7 @@ import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt } from "./game/native";
 import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges } from "./events/weekly";
-import { ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
+import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
   LOCK_HINT,
@@ -115,6 +115,8 @@ type TitansGameProps = {
   insets: SafeInsets;
   userHash: string;
   forgedWeaponLevel?: number;
+  /** 견갑 강화 단계 — 전장 견갑 외형 티어 */
+  armorLevel?: number;
   onOpenContent: (content: "dodge" | "beat" | "forge" | "profile") => void;
   /** 이벤트 센터를 특정 탭으로 연다 (추천 배너·루틴 보드) */
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal" | "season") => void;
@@ -195,7 +197,7 @@ const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
   (typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
-export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenContent, onOpenEvents }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>("sword");
@@ -2161,8 +2163,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
           {character.activeTitle && TITLES[character.activeTitle] && (
             <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
           )}
+          {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링 */}
+          <span className="hero-marker" aria-hidden="true"><b>{TITLES[character.activeTitle ?? ""]?.name ?? "주인공"}</b><i>▼</i></span>
+          <span className="hero-ring" aria-hidden="true" />
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} />
           </div>
         </div>
 
@@ -3038,12 +3043,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, onOpenCont
               {routine.filter((item) => item.id !== "claim").map((item) => (
                 <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => { setNavPopup(null); runRoutine(item); }}>
                   <ContentIcon name={item.id === "forge" ? "forge" : item.id === "expedition" ? "hunt" : "dodge"} />
-                  <span><b>{item.label}</b><small>{item.detail}</small></span>
+                  <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
                 </button>
               ))}
-              <button type="button" onClick={() => { setNavPopup(null); onOpenEvents?.("daily"); }}><span className="nav-symbol">✓</span><span><b>일일 퀘스트</b><small>오늘의 임무</small></span></button>
+              <button type="button" onClick={() => { setNavPopup(null); onOpenEvents?.("daily"); }}><span className="nav-symbol">✓</span><span><b>일일 퀘스트</b><small>오늘의 임무</small><small className="nav-help">보스·원정·강화·비트 각 1회 → 골드·강화석, 4종 완주 시 보석</small></span></button>
               <button type="button" className="season-nav" onClick={() => { setNavPopup(null); onOpenEvents?.("season"); }}><span className="nav-symbol">★</span><span><b>시즌 패스</b><small>{character.seasonPass.season === seasonIndex() ? `${seasonTier(character.seasonPass.xp)}/${SEASON.tiers}단` : "새 시즌"} · D-{seasonDaysLeft()}</small></span></button>
-              <button type="button" onClick={() => { setNavPopup(null); setTab("event-shop"); }}><span className="nav-symbol">◆</span><span><b>이벤트 상점</b><small>기간 한정 교환</small></span></button>
+              <button type="button" onClick={() => { setNavPopup(null); setTab("event-shop"); }}><span className="nav-symbol">◆</span><span><b>이벤트 상점</b><small>기간 한정 교환</small><small className="nav-help">보석으로 주간 한도 상품(조각·강화석·방지권) 확정 구매</small></span></button>
             </div>
           )}
         </div>

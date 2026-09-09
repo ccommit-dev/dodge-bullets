@@ -153,6 +153,7 @@ export function createBeatWorld(
     maxCombo: 0,
     comboTimerMs: 0,
     hp: track.difficulty === "hard" ? 6 : track.difficulty === "medium" ? 7 : 8,
+    healGauge: 0,
     maxHp: track.difficulty === "hard" ? 6 : track.difficulty === "medium" ? 7 : 8,
     invulnMs: 900,
     dead: false,
@@ -367,7 +368,22 @@ function bumpCombo(world: BeatWorld, amount = 1): void {
  * Hit the pad matching the lane of the note arriving at the MIX LINE.
  * The lead is scheduled on that note's own grid time so it stacks with the guide.
  */
+/** 회복 게이지 상한 — PERFECT 4번(=8) 마다 HP 1 */
+export const HEAL_GAUGE_MAX = 8;
+/** GREAT/PERFECT·롱노트 완주가 게이지를 채워 HP 를 돌려준다 — 잘 치는 동안은 게임 오버가 늦춰진다 */
+export function gainHeal(world: BeatWorld, amount: number): boolean {
+  if (amount <= 0) return false;
+  world.healGauge += amount;
+  if (world.healGauge < HEAL_GAUGE_MAX) return false;
+  world.healGauge -= HEAL_GAUGE_MAX;
+  if (world.hp >= world.maxHp) return false;
+  world.hp += 1;
+  return true;
+}
+
 export function performBeatLane(session: BeatSession, lane: NoteLane): void {
+  // 롱노트를 누르고 있는 레인의 추가 입력(키 반복·홀드 연타)은 무시 — 유지 중에 MISS 로 끊기지 않게
+  if (session.holdLane === lane && session.holdEndStep >= 0) return;
   const world = session.world;
   if (world.dead || world.cleared) return;
 
@@ -435,6 +451,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): void {
     world.score += (18 + Math.floor(lock * 16)) * world.scoreMultiplier;
     const [perfectAt, greatAt] = JUDGE_THRESHOLDS[world.difficulty];
     world.judgeText = lock > perfectAt ? "PERFECT" : lock > greatAt ? "GREAT" : "GOOD";
+    if (gainHeal(world, world.judgeText === "PERFECT" ? 2 : world.judgeText === "GREAT" ? 1 : 0)) world.judgeText += " ♥";
     // 롱노트 머리: 꼬리 스텝까지 누르고 있어야 한다 (performBeatRelease가 판정)
     const holdLen = session.chart[bestIndex].hold ?? 0;
     if (holdLen > 0) {
@@ -495,6 +512,8 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
   world.comboTimerMs = 0;
   world.judgeText = "MISS";
   world.judgeMs = 320;
+  // 일찍 뗀 롱노트는 놓친 노트와 같다 — 유지해야 유효하다
+  if (world.invulnMs <= 0) { world.hp -= 1; world.invulnMs = 450; world.shakeMs = 120; }
   return "release-early";
 }
 
@@ -510,6 +529,8 @@ export function settleHoldIfPassed(session: BeatSession): void {
     world.holdEndStep = -1;
     bumpCombo(world, 1);
     world.score += 16 * world.scoreMultiplier;
+    world.judgeText = gainHeal(world, 2) ? "HOLD ♥" : "HOLD";
+    world.judgeMs = 320;
   }
 }
 
@@ -676,6 +697,11 @@ export function updateBeatWorld(
       world.stageIndex * 80,
   );
 
+  if (world.hp <= 0 && !world.dead) {
+    world.dead = true;
+    session.box.stopLessonTransport();
+    return { type: "dead" };
+  }
   if (missed && world.invulnMs <= 0) {
     world.hp -= 1;
     world.invulnMs = 450;

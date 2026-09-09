@@ -247,7 +247,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     if (captain) {
       const h = 118, w = h * (captain.naturalWidth / captain.naturalHeight);
       ctx.save();
-      ctx.globalAlpha = 0.95;
+      ctx.globalAlpha = world.bossDefeated ? 0.38 : 0.95;
+      if (world.bossDefeated) ctx.filter = "grayscale(1)";
       ctx.translate(width - 6, floorY + 2);
       ctx.scale(-1, 1); // 원화는 오른쪽을 본다 — 플레이어(왼쪽)를 향하게 뒤집는다
       ctx.drawImage(captain, 0, -h + Math.sin(world.animClock * 2.2) * 2, w, h);
@@ -257,7 +258,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.fillStyle = "#fecaca";
     ctx.font = "900 11px system-ui";
     ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
-    ctx.fillText("추격대장", width - 76, floorY - 124);
+    const captainLabel = world.bossDefeated ? "추격대장 격파" : world.bossSpawned ? `추격대장 · 베기 ${world.bossCutsLeft}` : "추격대장";
+    ctx.fillText(captainLabel, width - 100, floorY - 124);
     ctx.restore();
   }
 

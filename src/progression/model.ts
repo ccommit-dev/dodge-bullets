@@ -18,6 +18,8 @@ export type CharacterProgress = {
   enhancementMaterials: number;
   equippedWeaponLevel: number;
   bestForgeLevel: number;
+  /** 장착 견갑 강화 단계 (대장간 보호구 +N) — 전장 견갑 외형 티어의 근거 */
+  armorLevel: number;
   /** 무한 재련 등급 — +15 도달 후 반복 재련으로만 오른다. 방치 배율(M)에 붙는다. */
   reforgeRank: number;
   equippedShoulder: ShoulderId | null;
@@ -161,6 +163,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     enhancementMaterials: 0,
     equippedWeaponLevel: 0,
     bestForgeLevel: 0,
+    armorLevel: 0,
     reforgeRank: 0,
     equippedShoulder: "scout",
     ownedShoulders: ["scout"],
@@ -350,6 +353,7 @@ export function normalizeCharacterProgress(
     enhancementMaterials: integer(raw.enhancementMaterials, base.enhancementMaterials),
     equippedWeaponLevel: integer(raw.equippedWeaponLevel, base.equippedWeaponLevel, 9999),
     bestForgeLevel: integer(raw.bestForgeLevel, base.bestForgeLevel, 15),
+    armorLevel: integer(raw.armorLevel, base.armorLevel, 15),
     reforgeRank: integer(raw.reforgeRank, 0, 999),
     equippedShoulder: equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : "scout",
     ownedShoulders: [...new Set(ownedShoulders)],

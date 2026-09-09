@@ -62,6 +62,7 @@ export async function migrateLegacyProgress(
     enhancementMaterials: Math.max(current.enhancementMaterials, forge.shards),
     equippedWeaponLevel: Math.max(current.equippedWeaponLevel, forge.level),
     bestForgeLevel: Math.max(current.bestForgeLevel, forge.bestLevel),
+    armorLevel: forge.armorLevel,
     // v5 이전 유저 — 사냥터 최고 기록이 속한 지역까지는 개척 완료로 인정한다(소급 잠금 없음).
     // 이후 로드에서는 grantPioneerFromTitans=false라 화살 원정만 개척도를 올린다.
     pioneeredArea: grantPioneerFromTitans
@@ -101,12 +102,20 @@ export async function setWalletBalance(
   return updateCharacterProgress(userHash, (current) => ({ ...current, sharedCoins: next }));
 }
 
+/** 테스트용 보석 무제한 — 설정 메뉴 토글. 켜져 있으면 저장 때마다 보석을 999,999 로 채운다 (실결제 검증 아님, 로컬 플래그) */
+export const QA_GEMS_KEY = "dodgebullets:qa-gems";
+export function qaGemsEnabled(): boolean {
+  try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1"; } catch { return false; }
+}
+export const QA_GEMS_AMOUNT = 999_999;
+
 export async function updateCharacterProgress(
   userHash: string,
   updater: (current: CharacterProgress) => CharacterProgress,
 ): Promise<CharacterProgress> {
   const current = await loadCharacterProgress(userHash);
-  return saveCharacterProgress(userHash, updater(current));
+  const next = updater(current);
+  return saveCharacterProgress(userHash, qaGemsEnabled() && next.redGems < QA_GEMS_AMOUNT ? { ...next, redGems: QA_GEMS_AMOUNT } : next);
 }
 
 export async function grantCharacterReward(

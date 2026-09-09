@@ -2367,6 +2367,16 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 @keyframes monster-melee-strike { 0%,100% { transform:translateX(0); } 45%,62% { transform:translateX(-18px) scale(1.06); } }
 @keyframes monster-bounce-strike { 45% { transform:translateY(-15px) scale(1.13,.88); } }
 @keyframes monster-lunge { 50% { transform:translateX(-18px) skewX(-8deg); } }
+/* 오우거 — 큰 몸집이 젤리처럼 늘어나던 호흡 → 무겁고 느린 호흡, 공격은 들어올려 내려찍기, 피격 반동 큼 */
+.titans-monster.kind-ogre .titan-monster-art img { animation: ogre-breathe 3.4s ease-in-out infinite; transform-origin: 50% 96%; }
+.titans-monster.kind-ogre.action-prepare .titan-monster-art { animation: ogre-windup .42s ease-in both; }
+.titans-monster.combat-melee.kind-ogre.action-attack .titan-monster-art { animation: ogre-smash .78s cubic-bezier(.3,.7,.2,1) both; }
+.titans-monster.kind-ogre.hit-a { animation: ogre-hit-recoil .18s ease-out; } .titans-monster.kind-ogre.hit-b { animation: ogre-hit-recoil-b .18s ease-out; }
+@keyframes ogre-breathe { 50% { transform: translateY(-1.5px) scale(1.012, .992); } }
+@keyframes ogre-windup { to { transform: translate(6px, -10px) rotate(5deg) scale(1.03, 1.04); filter: brightness(1.15); } }
+@keyframes ogre-smash { 0% { transform: translate(6px, -10px) rotate(5deg); } 38% { transform: translate(-16px, 6px) rotate(-9deg) scale(1.1, .9); } 52% { transform: translate(-14px, 2px) rotate(-7deg) scale(1.06, .95); } 100% { transform: none; } }
+@keyframes ogre-hit-recoil { 40% { transform: translateX(7px) rotate(2deg) scale(.98, 1.02); } }
+@keyframes ogre-hit-recoil-b { 40% { transform: translateX(7px) rotate(2deg) scale(.98, 1.02); } }
 @keyframes monster-smash { 35% { transform:translateY(-12px) rotate(6deg); } 65% { transform:translate(-12px,4px) rotate(-7deg) scale(1.08,.94); } }
 @keyframes monster-breath { 45% { transform:translateX(-12px) rotate(-4deg); filter:brightness(1.25) saturate(1.4); } }
 @keyframes monster-melee-impact { from { opacity:1; transform:scale(.55) rotate(-35deg); } to { opacity:0; transform:scale(1.5) rotate(35deg); } }
@@ -3077,6 +3087,24 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .titans-hero.is-approaching .equipped-character { animation:formation-walk .25s ease-in-out infinite alternate; }
 @keyframes formation-walk { from { translate:0 0; rotate:-1deg; } to { translate:0 -4px; rotate:1deg; } }
 .titans-hero-facing { width:100%; transform-origin:center bottom; }
+.hero-marker { position:absolute; left:50%; bottom:calc(100% + 4px); transform:translateX(-50%); display:grid; justify-items:center; pointer-events:none; animation:hero-marker-bob 1.6s ease-in-out infinite; z-index:3; }
+.hero-marker b { padding:2px 7px; border-radius:999px; color:#082f49; background:linear-gradient(135deg,#67e8f9,#fde047); font-size:9px; font-weight:900; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.45); }
+.hero-marker i { color:#fde047; font-size:9px; font-style:normal; line-height:1; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.hero-ring { position:absolute; left:50%; bottom:-3px; width:120%; height:14px; transform:translateX(-50%); border-radius:50%; background:radial-gradient(ellipse, rgba(103,232,249,.55), rgba(103,232,249,.12) 55%, transparent 72%); pointer-events:none; }
+@keyframes hero-marker-bob { 50% { transform:translate(-50%, -3px); } }
+/* 견갑 강화 티어 외형 — +5 푸른 테두리 빛 · +10 금빛 + 보석 · +15 프리즘 */
+.equipped-character.armor-tier-1 .equipment-shoulder { filter: brightness(1.08); }
+.equipped-character.armor-tier-2 .equipment-shoulder { filter: brightness(1.1) drop-shadow(0 0 3px rgba(147,197,253,.95)); }
+.equipped-character.armor-tier-3 .equipment-shoulder { filter: brightness(1.14) saturate(1.15) drop-shadow(0 0 4px rgba(253,224,71,.95)); }
+.equipped-character.armor-tier-4 .equipment-shoulder { filter: brightness(1.2) saturate(1.25) drop-shadow(0 0 5px rgba(244,114,182,.9)); animation: armor-prism 2.2s linear infinite; }
+.armor-gem { position:absolute; z-index:5; width:11%; height:11%; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle at 35% 30%, #fff, #fde047 40%, #b45309 100%); box-shadow:0 0 6px #fde047; pointer-events:none; animation: armor-gem-twinkle 1.4s ease-in-out infinite; }
+.equipped-character.armor-tier-4 .armor-gem { background:radial-gradient(circle at 35% 30%, #fff, #f0abfc 40%, #7e22ce 100%); box-shadow:0 0 8px #f0abfc; }
+@keyframes armor-prism { 0% { filter: brightness(1.2) saturate(1.25) hue-rotate(0deg) drop-shadow(0 0 5px rgba(244,114,182,.9)); } 100% { filter: brightness(1.2) saturate(1.25) hue-rotate(360deg) drop-shadow(0 0 5px rgba(244,114,182,.9)); } }
+@keyframes armor-gem-twinkle { 50% { transform:translate(-50%,-50%) scale(1.35); opacity:.85; } }
+.armor-forge-stage.armor-tier-2 > .shoulder-icon { filter: drop-shadow(0 0 24px #60a5fa) drop-shadow(0 0 6px #bfdbfe); }
+.armor-forge-stage.armor-tier-3 > .shoulder-icon { filter: drop-shadow(0 0 28px #facc15) drop-shadow(0 0 8px #fef08a) saturate(1.15); }
+.armor-forge-stage.armor-tier-4 > .shoulder-icon { filter: drop-shadow(0 0 32px #f472b6) drop-shadow(0 0 10px #fbcfe8) saturate(1.3); animation: forge-armor-float 1.4s ease-in-out infinite alternate, armor-prism 2.2s linear infinite; }
+.nav-help { display:block; margin-top:2px; color:#94a3b8; font-size:9px; font-weight:600; line-height:1.3; white-space:normal; }
 .titans-hero:not(.is-approaching) .titans-hero-facing.facing-idle .equipped-character { animation:hero-breathe 2.6s ease-in-out infinite; transform-origin:50% 100%; }
 @keyframes hero-breathe { 50% { transform:scale(1.012,.988); } }
 /* 대기 시트가 오른쪽(몬스터 쪽)을 보는 3/4 원화로 교체됐다 — 공격 시트와 같은 방향이라 전환 시 좌우가 튀지 않는다 */

@@ -16,7 +16,7 @@ export const STAGES: StageDef[] = [
     baseReward: 370,
     speedMul: 0.86,
     spawnMul: 0.78,
-    intro: "전진·점프·검격 반격으로 보급품을 확보하고 초소를 돌파하세요",
+    intro: "적 궁수의 화살촉엔 마력 결정이 박혀 있다 — 베어 떨어뜨린 결정이 대장간 강화석이 된다. 초소를 돌파하라",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },
@@ -32,7 +32,7 @@ export const STAGES: StageDef[] = [
     baseReward: 580,
     speedMul: 0.94,
     spawnMul: 0.9,
-    intro: "궁수의 조준 사격을 쳐내고 기습대를 따돌리세요",
+    intro: "조준 사격은 코앞에서 베면 궁수에게 되돌아간다(반사) — 결정을 모으며 기습대를 따돌려라",
     platforms,
     patterns: [
       { kind: "side", atMs: 0, durationMs: 8_000, spawnMs: 390, speed: 370 },
@@ -48,7 +48,7 @@ export const STAGES: StageDef[] = [
     baseReward: 850,
     speedMul: 1.02,
     spawnMul: 1.02,
-    intro: "발판을 넘고 폭발 화살을 반격해 정예 보급 상자를 탈환하세요",
+    intro: "폭발 화살은 결정 덩어리다 — 발판을 넘어 정예 보급 상자를 탈환하라",
     platforms,
     patterns: [
       { kind: "fan", atMs: 0, durationMs: 9_000, spawnMs: 720, speed: 380 },
@@ -64,7 +64,7 @@ export const STAGES: StageDef[] = [
     baseReward: 1_220,
     speedMul: 1.1,
     spawnMul: 1.12,
-    intro: "추격대의 모든 공격을 돌파하고 제한 시간 안에 성문을 탈출하세요",
+    intro: "추격대장이 성문 앞에서 활을 겨눈다 — 대장의 화살을 베어 떨어뜨리면 활시위(대장간 재료)를 얻는다",
     platforms,
     patterns: [
       { kind: "aimed", atMs: 0, durationMs: 9_000, spawnMs: 430, speed: 430 },
