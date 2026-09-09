@@ -104,8 +104,10 @@ export async function setWalletBalance(
 
 /** 테스트용 보석 무제한 — 설정 메뉴 토글. 켜져 있으면 저장 때마다 보석을 999,999 로 채운다 (실결제 검증 아님, 로컬 플래그) */
 export const QA_GEMS_KEY = "dodgebullets:qa-gems";
+/** 테스트 모드 플래그 — 설정의 빌드 라벨 7번 탭. 이게 켜져야(또는 DEV) 보석 무제한 메뉴가 보인다 */
+export const QA_MODE_KEY = "dodgebullets:qa-mode";
 export function qaGemsEnabled(): boolean {
-  try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1"; } catch { return false; }
+  try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1" && (import.meta.env.DEV || localStorage.getItem(QA_MODE_KEY) === "1"); } catch { return false; }
 }
 export const QA_GEMS_AMOUNT = 999_999;
 

@@ -166,11 +166,14 @@ export function BeatGame({
   const playRaidLane = useCallback((lane: NoteLane) => {
     const session = sessionRef.current;
     if (!session) return;
-    performBeatLane(session, lane);
+    const result = performBeatLane(session, lane);
+    if (result === "held") return;
     const world = session.world;
-    const success = world.judgeText !== "MISS";
     const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "dodge" : "skill";
     setPartyAction(action);
+    // 노트 없는 탭은 파티 동작만 — 피해·게이지·적 반격 없음 (연타 이득도, 벌점도 없다)
+    if (result === "empty") return;
+    const success = world.judgeText !== "MISS";
     if (!success) {
       setEnemyAction("skill");
       window.setTimeout(() => setEnemyAction("idle"), 420);
@@ -211,7 +214,7 @@ export function BeatGame({
     const lanes: NoteLane[] = lane === undefined ? [0,1,2,3] : [lane];
     lanes.forEach((target) => {
       const timer = laneHoldTimersRef.current[target];
-      if (timer !== undefined) window.clearInterval(timer);
+      if (timer === undefined) return;
       delete laneHoldTimersRef.current[target];
       // 롱노트 릴리즈 판정 — 꼬리 근처면 보너스, 일찍 떼면 MISS (실제로 누르고 있어야 유효)
       const session = sessionRef.current;
@@ -222,15 +225,12 @@ export function BeatGame({
     });
   }, []);
 
+  // 키 다운 1회 = 탭 1회. 누르고 있는 동안은 롱노트 유지만 한다 (예전의 스텝마다 반복 발사는 홀드 규칙과 충돌하고 연타 이득을 줬다)
   const startLaneHold = useCallback((lane: NoteLane) => {
     if (laneHoldTimersRef.current[lane] !== undefined) return;
+    laneHoldTimersRef.current[lane] = 1;
     playRaidLane(lane);
-    const cadence = Math.max(72, (sessionRef.current?.world.stepSec ?? .12) * 1000);
-    laneHoldTimersRef.current[lane] = window.setInterval(() => {
-      if (uiRef.current !== "playing") return stopLaneHold(lane);
-      playRaidLane(lane);
-    }, cadence);
-  }, [playRaidLane, stopLaneHold]);
+  }, [playRaidLane]);
 
   const activateFever = useCallback(() => {
     const session = sessionRef.current;

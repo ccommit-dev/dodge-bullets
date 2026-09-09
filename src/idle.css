@@ -2323,3 +2323,9 @@
 .duel-overlay.phase-2.lose .duel-side.me { filter: brightness(.6); }
 .duel-result { grid-column: 1 / -1; text-align: center; color: #cbd5e1; font-size: 11px; }
 .event-card { position: relative; }
+
+/* 그림자 상대 원화 — 어두운 보라 톤에 눈빛만 남긴 "그림자" (실제 유저가 아니라는 픽션과 맞춘다) */
+.shadow-figure .shadow-portrait { display: block; width: 100%; height: 100%; object-fit: contain; object-position: bottom; filter: brightness(0.42) contrast(1.15) sepia(0.5) hue-rotate(220deg) saturate(1.6) drop-shadow(0 0 6px rgba(167, 139, 250, 0.55)); }
+.shadow-list article.cleared .shadow-portrait { filter: brightness(0.7) contrast(1.05) drop-shadow(0 0 6px rgba(74, 222, 128, 0.45)); }
+.duel-overlay .shadow-figure.big .shadow-portrait { filter: brightness(0.55) contrast(1.15) sepia(0.4) hue-rotate(220deg) saturate(1.5) drop-shadow(0 0 10px rgba(167, 139, 250, 0.7)); }
+.duel-overlay.phase-2.win .shadow-figure.big .shadow-portrait { filter: brightness(0.25) grayscale(1); }

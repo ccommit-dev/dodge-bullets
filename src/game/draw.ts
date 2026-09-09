@@ -7,7 +7,8 @@ import { assetUrl } from "../asset";
  * 스테이지 배경 — 사냥터 지역 배경을 재사용한다 (외곽 초소=초원, 붉은 협곡=폐허, 왕실 사격장=용암, 검은 성문=심연).
  * 텅 빈 남색 캔버스에 화살만 날아오던 것이 "전장"으로 읽히게. 화살 가독성을 위해 어두운 오버레이를 덮는다.
  */
-const STAGE_BACKGROUNDS = ["meadow", "ruins", "volcano", "abyss"].map((id) => assetUrl(`titans/backgrounds/${id}.webp`));
+// 캔버스용 축소본(720px, scripts/make-stage-backgrounds.mjs) — 원본(1536px)을 매 프레임 그리면 저사양에서 첫 프레임이 끊긴다
+const STAGE_BACKGROUNDS = ["meadow", "ruins", "volcano", "abyss"].map((id) => assetUrl(`titans/backgrounds/${id}-sm.webp`));
 const bgCache: Array<HTMLImageElement | null> = [];
 function stageBackground(stageIndex: number): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -29,6 +30,12 @@ function sprite(path: string): HTMLImageElement | null {
   let img = spriteCache.get(path);
   if (!img) { img = new Image(); img.decoding = "async"; img.src = assetUrl(path); spriteCache.set(path, img); }
   return img.complete && img.naturalWidth > 0 ? img : null;
+}
+
+/** 시작 화면에서 4스테이지 배경을 미리 받아 둔다 (JSX 조건식에서 호출되므로 항상 true 를 돌려준다) */
+export function preloadStageBackgrounds(): true {
+  for (let i = 0; i < STAGE_BACKGROUNDS.length; i += 1) stageBackground(i);
+  return true;
 }
 
 function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {

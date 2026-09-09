@@ -137,6 +137,27 @@ ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 
   ok("회복 게이지: PERFECT(+2) 4번 → HP +1 · GREAT(+1)은 절반 속도 · 상한 초과 없음", healed === 1 && w.hp === 6 && bworld.HEAL_GAUGE_MAX === 8 && (() => { const f = { hp: 7, maxHp: 7, healGauge: 0 }; for (let i = 0; i < 8; i += 1) bworld.gainHeal(f, 2); return f.hp === 7; })());
 }
 
+// ── 비트: 플레이 가능성 게이트 (귀 대신 수치) · 빈 탭 무벌점 ──
+{
+  const { allStats, playability } = await import(pathToFileURL(join(root, "scripts/beat-chart-report.mjs")).href);
+  const rows = allStats();
+  const bad = rows.map((r) => ({ r, issues: playability(r) })).filter((x) => x.issues.length);
+  ok("전 곡 × 3변형(48): 최소 간격 ≥ 85ms · 레벨 1~2 NPS 0.8~2.6 · 레벨 9~10 NPS ≤ 5.4 · 레벨 3+ 롱노트 존재", bad.length === 0, bad.slice(0, 4).map((x) => `${x.r.id}/${x.r.difficulty}: ${x.issues.join(",")}`).join(" | "));
+  ok("드릴은 스텝 90ms 이상 곡에만 (170BPM 16분 88ms 곡엔 없음)", rows.every((r) => r.drills === 0 || r.stepMs >= 90));
+  // 빈 탭: 노트 없는 스텝을 치면 "empty" — 콤보·HP 그대로
+  const stubTrack = { ...base, difficulty: "medium", subdivision: 8 };
+  const stubWorld = bworld.createBeatWorld(390, 700, 1, stubTrack, "boots");
+  stubWorld.combo = 7; stubWorld.hp = 5; stubWorld.beatPosition = 1; stubWorld.invulnMs = 0;
+  const ses = { world: stubWorld, chart: Array.from({ length: 6 }, () => ({ sound: "boots", spike: false, lane: 0 })), track: stubTrack, box: { isTransportRunning: () => false, getTransportPosition: () => 0, getTransportStepTime: () => 0, playLead() {}, playSound() {}, stopLessonTransport() {} }, ctx: null, master: null, backingAudio: null, enabled: false, skills: {}, isSpar: false, lockHits: 0, taps: 0, hitSteps: new Set(), evaluatedStep: 0, calibrationSec: 0, holdLane: -1, holdEndStep: -1 };
+  const r0 = bworld.performBeatLane(ses, 0);
+  ok("노트 없는 스텝의 탭 = empty: MISS 아님 · 콤보 유지 · HP 유지", r0 === "empty" && ses.world.combo === 7 && ses.world.hp === 5 && ses.world.judgeText === "", `result ${r0} combo ${ses.world.combo}`);
+  ses.holdLane = 0; ses.holdEndStep = 3;
+  ok("롱노트 유지 중 같은 레인 입력 = held (무시)", bworld.performBeatLane(ses, 0) === "held");
+}
+
+// ── 화살 원정: 추격대장 예고 시간은 거리 비례 · 4스테이지 봇 클리어 1~4/5 (어렵되 불가능하지 않게) ──
+ok("대장 예고: 90px 520ms(하한) · 400px 860ms · 900px 1200ms(상한)", arrows.captainWarningMs(90) === 520 && arrows.captainWarningMs(400) === 860 && arrows.captainWarningMs(900) === 1200);
+
 // ── 비트: 구간 밀도 곡선 · 프레이즈 필 (마저 개발) ──
 {
   const dens = (difficulty, section) => { const ch = tracks.buildChart({ ...base, difficulty, subdivision: difficulty === "easy" ? 4 : difficulty === "medium" ? 8 : 16 }); const st = ch.filter((x) => x.section === section); return st.filter((x) => x.spike).length / Math.max(1, st.length); };
@@ -165,6 +186,8 @@ ok("보스 베기 수 4 + 2×스테이지 (예전 10 + 4×)", world.BOSS_CUTS_BA
   const s1 = gate(0), s2 = gate(1);
   ok("검객 봇: 1스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s1.clear >= 4 && s1.hits <= 1.5, `clear ${s1.clear}/5 hits ${s1.hits.toFixed(1)}`);
   ok("검객 봇: 2스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s2.clear >= 4 && s2.hits <= 1.5, `clear ${s2.clear}/5 hits ${s2.hits.toFixed(1)}`);
+  const s4 = gate(3);
+  ok("검객 봇: 4스테이지(추격대장) 5시드 중 1~4회 클리어 — 벽이되 불가능하지 않다", s4.clear >= 1 && s4.clear <= 4, `clear ${s4.clear}/5 hits ${s4.hits.toFixed(1)}`);
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

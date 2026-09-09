@@ -586,6 +586,12 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
   bumpCombo(world);
 }
 
+/** 추격대장 활 위치 — 화면 오른쪽 끝에서 앞뒤 30px·위아래 60px 흔들린다 (한 점에서만 나오면 왼쪽 끝에 붙어 서서 외우게 된다) */
+function captainBowX(world: GameWorld): number { return world.width - 44 - Math.random() * 30; }
+function captainBowY(world: GameWorld): number { return world.floorY - 84 - Math.random() * 60; }
+/** 예고 시간(ms) = 420 + 거리 × 1.1, 520~1200 — 거리에 비례해 반응 시간을 보장 */
+export function captainWarningMs(distance: number): number { return Math.max(520, Math.min(1200, Math.round(420 + distance * 1.1))); }
+
 function spawnBossArrow(world: GameWorld): void {
   const arrow = acquire(world);
   if (!arrow) return;
@@ -594,13 +600,15 @@ function spawnBossArrow(world: GameWorld): void {
   const fromLeft = tier % 2 === 0;
   // 4스테이지: 보스 화살은 화면 오른쪽 끝에 선 추격대장의 활에서 나온다 (draw.ts 의 궁수 대장 원화 위치)
   const captain = world.stageIndex === 3;
-  const x = captain ? world.width - 44 : fromLeft ? -48 : world.width + 48;
-  const y = captain ? world.floorY - 84 : world.safeTop + Math.max(80, (world.floorY - world.safeTop) * (0.25 + (tier % 3) * 0.14));
+  const cx = captainBowX(world), cy = captainBowY(world);
+  const x = captain ? cx : fromLeft ? -48 : world.width + 48;
+  const y = captain ? cy : world.safeTop + Math.max(80, (world.floorY - world.safeTop) * (0.25 + (tier % 3) * 0.14));
   const dx = world.player.x - x;
   const dy = world.player.y - y;
   const len = Math.max(1, Math.hypot(dx, dy));
   const speed = 150 + Math.min(120, tier * 10);
-  activate(arrow, x, y, dx / len * speed, dy / len * speed, "homing", 1_050);
+  // 대장 화살 예고: 가까우면 짧고(최소 520ms) 멀면 길다(최대 1,200ms) — 대장 근처에 서면 반응 시간이 0 이 되던 문제
+  activate(arrow, x, y, dx / len * speed, dy / len * speed, "homing", captain ? captainWarningMs(len) : 1_050);
   arrow.boss = true;
   arrow.bossTier = tier;
   arrow.bossCutsLeft = cuts;
@@ -754,9 +762,10 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       }
       if (a.boss) {
         const side = world.stageIndex === 3 ? 1 : Math.random() < 0.5 ? -1 : 1;
-        a.x = world.stageIndex === 3 ? world.width - 44 : side < 0 ? -36 : world.width + 36;
-        a.y = world.stageIndex === 3 ? world.floorY - 84 : world.safeTop + 50 + Math.random() * Math.max(80, world.floorY - world.safeTop - 100);
+        a.x = world.stageIndex === 3 ? captainBowX(world) : side < 0 ? -36 : world.width + 36;
+        a.y = world.stageIndex === 3 ? captainBowY(world) : world.safeTop + 50 + Math.random() * Math.max(80, world.floorY - world.safeTop - 100);
         launchAtPlayer(world, a, 170 + a.bossTier * 10);
+        if (world.stageIndex === 3) a.warningMs = captainWarningMs(Math.hypot(world.player.x - a.x, world.player.y - a.y));
         continue;
       }
       a.active = false;

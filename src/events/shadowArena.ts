@@ -1,3 +1,4 @@
+import { assetUrl } from "../asset";
 /**
  * 그림자 대전 — 아레나(PvP) 대체.
  *
@@ -43,6 +44,13 @@ const FIRST = ["잊힌", "무명의", "재의", "여명의", "심연의", "황�
 const SECOND = ["검객", "추적자", "고행자", "수문장", "방랑자", "집행자", "관측자", "대장장이"];
 
 const TITLES = ["1차 시험", "2차 시험", "최종 시험"];
+
+/** 직업 명사 → 원화 파일 (public/titans/generated/shadow/<id>.png, art-gen batch-cape-shadow.sh). 이름의 두 번째 단어로 고른다 */
+const PORTRAIT: Record<string, string> = { 검객: "swordsman", 추적자: "tracker", 고행자: "ascetic", 수문장: "gatekeeper", 방랑자: "wanderer", 집행자: "executor", 관측자: "observer", 대장장이: "blacksmith" };
+export function shadowPortrait(name: string): string {
+  const noun = name.split(" ").pop() ?? "";
+  return assetUrl(`titans/generated/shadow/${PORTRAIT[noun] ?? "swordsman"}.png`);
+}
 
 /** 상대 전투력 배수 — 1차는 붙어볼 만하고 최종은 확실히 벽이다. */
 const RATIOS = [0.82, 1.05, 1.34];

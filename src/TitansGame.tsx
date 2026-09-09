@@ -2164,7 +2164,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
           )}
           {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링 */}
-          <span className="hero-marker" aria-hidden="true"><b>{TITLES[character.activeTitle ?? ""]?.name ?? "주인공"}</b><i>▼</i></span>
+          <span className="hero-marker" aria-hidden="true"><b>{TITLES[character.activeTitle ?? ""]?.name ?? "모험가"}</b><i>▼</i></span>
           <span className="hero-ring" aria-hidden="true" />
           <div className={`titans-hero-facing facing-${animMode}`}>
             <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} />

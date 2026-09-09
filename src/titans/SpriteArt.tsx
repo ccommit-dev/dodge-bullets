@@ -246,7 +246,8 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 동료 컨테이너는 전장보다 약 40px 안쪽이라 x 68%가 우측 한계(박스 366px 기준). 원거리는 주인공(교전 시 29~36%)
   // 왼쪽에 서야 하므로 8% 이하.
   const MELEE_COMBAT = [[50, 4], [50, 50], [68, 4], [68, 50], [59, 27], [59, 70]];
-  const RANGED_COMBAT = [[2, 4], [2, 50], [8, 27], [8, 70], [2, 27], [8, 4]];
+  // 주인공이 동료 크기(폭 41px)로 줄면서 교전 위치(34%)가 8% 원거리 슬롯과 20px 겹쳤다 — 3·4·6번 슬롯을 4% 로
+const RANGED_COMBAT = [[2, 4], [2, 50], [4, 27], [4, 70], [2, 27], [4, 4]];
   const [combatX, combatY] = slot === undefined ? [undefined, undefined] : (ranged ? RANGED_COMBAT : MELEE_COMBAT)[slot];
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
