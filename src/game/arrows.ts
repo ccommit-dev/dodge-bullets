@@ -1,5 +1,6 @@
 import { getStage } from "./stages";
 import { BOSS_CUTS_BASE, BOSS_CUTS_PER_STAGE } from "./world";
+import { bossPatternFor } from "./bossPatterns";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
 const POOL_SIZE = 120;
@@ -413,13 +414,14 @@ function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
   // 검객 규칙 재조정 (docs/CONTENT_BEAT_DODGE_PLAN.md §2): 보스를 베면 파편이 플레이어 주위를 돌다 뒤에서 덮치던 방식은
   // "앞쪽만 벤다" 규칙과 충돌해(봇 시뮬 피격 1위) 없앴다. 파편은 보스 위치에서 520ms 예고 뒤 플레이어를 향해 날아온다 —
   // 보스를 보고 있으면 파편도 보인다. 1~2티어 1발(일반), 3티어부터 2발, 유도는 3티어부터.
+  // 패턴은 티어별로 고정 (bossPatterns.ts) — 학습 가능한 보스
   const tier = source.bossTier;
-  const count = tier >= 3 ? 2 : 1;
-  const variants: Arrow["kind"][] = tier >= 3 ? ["homing", "ricochet", "fan"] : ["normal", "fan"];
-  const kind = variants[Math.floor(Math.random() * variants.length)];
+  const pattern = bossPatternFor(tier);
+  const count = pattern.count;
   for (let i = 0; i < count; i++) {
     const fragment = acquire(world);
     if (!fragment) break;
+    const kind = pattern.kinds[i % pattern.kinds.length];
     const direction: -1 | 1 = i % 2 === 0 ? -1 : 1;
     const level = Math.min(3, 1 + Math.floor(tier / 2)) as 1 | 2 | 3;
     configureSplitFragment(world, fragment, source, level, direction, world.stats.slashLevel);
@@ -432,9 +434,17 @@ function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
     fragment.orbitMs = 0;
     fragment.x = source.x + direction * (10 + i * 8);
     fragment.y = source.y;
-    fragment.warningMs = 520;
+    fragment.warningMs = pattern.warningMs;
     fragment.splitGraceMs = 0;
-    launchAtPlayer(world, fragment, 190 + tier * 14);
+    launchAtPlayer(world, fragment, (190 + tier * 14) * pattern.speedMul);
+    // 부채꼴 확산 — 가운데 파편을 기준으로 좌우 대칭
+    if (pattern.spreadDeg > 0 && count > 1) {
+      const rot = ((i - (count - 1) / 2) * pattern.spreadDeg * Math.PI) / 180;
+      const vx = fragment.vx, vy = fragment.vy;
+      fragment.vx = vx * Math.cos(rot) - vy * Math.sin(rot);
+      fragment.vy = vx * Math.sin(rot) + vy * Math.cos(rot);
+      fragment.angle = Math.atan2(fragment.vy, fragment.vx);
+    }
     if (kind === "homing") {
       fragment.homingMs = 1_600 + tier * 120;
       fragment.homingTurnRate = 0.9 + tier * 0.06;

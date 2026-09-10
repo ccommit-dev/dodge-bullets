@@ -35,6 +35,9 @@ import {
   saveCoins,
 } from "./game/storage";
 import { track as trackEvent } from "./analytics/events";
+import { weeklyRanking } from "./beat/ranking";
+import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
+import { loadCharacterProgress } from "./progression/storage";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -142,7 +145,35 @@ export function BeatGame({
   /** 결과 화면의 기록 비교 — 곡×난이도 최고 점수/콤보와 신기록 여부 (P0-3) */
   const [resultRecord, setResultRecord] = useState<{ bestScore: number; bestCombo: number; combo: number; newScore: boolean; newCombo: boolean } | null>(null);
   const runStartedAtRef = useRef(0);
+  /** 클리어 보상 ×2 광고 자리 (P1) — 클리어 화면에서 가용성을 읽는다 */
+  const [adDouble, setAdDouble] = useState<"none" | "ad" | "free" | "busy" | "done">("none");
   /** 한 판 결과를 곡×난이도 기록에 반영하고 저장한다 (클리어·게임오버 공통) */
+  useEffect(() => {
+    if (ui !== "clear") return;
+    let alive = true;
+    void loadCharacterProgress(userHash).then((p) => { if (!alive) return; const a = rewardedAvailability(p, "beatDouble", new Date().toLocaleDateString("sv-SE")); setAdDouble(a); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui, userHash]);
+  const doubleBeatReward = async () => {
+    if (adDouble !== "ad" && adDouble !== "free") return;
+    const free = adDouble === "free";
+    setAdDouble("busy");
+    trackEvent("ad_start", { placement: "beatDouble" });
+    try {
+      const ok = free ? true : await showRewarded("beatDouble");
+      if (!ok) { setAdDouble(free ? "free" : "ad"); return; }
+      trackEvent("ad_complete", { placement: "beatDouble" });
+      const today = new Date().toLocaleDateString("sv-SE");
+      await updateCharacterProgress(userHash, (current) => consumeAdReward(current, "beatDouble", today));
+      const nextCoins = await saveCoins(userHash, coinsRef.current + coinGain);
+      coinsRef.current = nextCoins;
+      onCoins(nextCoins);
+      setAdDouble("done");
+    } catch {
+      setAdDouble("none");
+    }
+  };
   const commitRecord = (session: BeatSession, cleared: boolean) => {
     const w = session.world;
     const accuracy = session.taps > 0 ? session.lockHits / session.taps : 0;
@@ -637,6 +668,20 @@ export function BeatGame({
             {/* 노트 종류 안내 — 손 게임 기준 (펌프의 발판 노트를 4레인 손 입력으로) */}
             <p className="beat-note-legend"><b>탭</b> 한 번 · <b>홀드</b> 꼬리까지 누르기 · <b>점프</b> 두 레인 동시 · <b>홀드 점프</b> 두 레인 동시 홀드 · <b>롤</b> 두 레인 교대 연타</p>
             <p className="score-line">골드 {coins.toLocaleString()} · 명성 {rpg.fame}</p>
+            {/* 주간 랭킹 (계획안 §7 · P1) — 로컬 기록 + 시드 Mock, 서버 랭킹은 P3 */}
+            {(() => {
+              const rk = weeklyRanking(rpg, userHash);
+              return (
+                <div className="beat-rank-panel">
+                  <b>이번 주 랭킹 <small>로컬 기록 · 서버 랭킹은 추후</small></b>
+                  {rk.rows.slice(0, 5).map((row) => (
+                    <span key={row.rank} className={row.me ? "me" : ""}><em>{row.rank}위</em>{row.name}<strong>{row.score.toLocaleString()}</strong></span>
+                  ))}
+                  {rk.myRank > 5 && <span className="me"><em>{rk.myRank}위</em>나<strong>{rk.myScore.toLocaleString()}</strong></span>}
+                  <small className="beat-rank-next">{rk.myScore === 0 ? "한 곡을 클리어하면 내 기록이 랭킹에 오릅니다" : rk.nextTarget ? `다음 순위까지 ${(rk.nextTarget - rk.myScore).toLocaleString()}점` : "이번 주 1위 — 기록을 지키세요"}</small>
+                </div>
+              );
+            })()}
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
             <div className="schedule-list">
               {slots.map((slot) => {
@@ -766,7 +811,13 @@ export function BeatGame({
           <div className="overlay-content">
             <p className="brand">CLEAR</p>
             <h1 className="title">{lessonTitle}</h1>
-            <p className="score-line">+{coinGain} 코인</p>
+            <p className="score-line">+{coinGain} 코인{adDouble === "done" ? " (광고 ×2 적용)" : ""}</p>
+            {(adDouble === "ad" || adDouble === "free" || adDouble === "busy") && coinGain > 0 && (
+              <button type="button" className="cta idle-claim-ad" disabled={adDouble === "busy"} onClick={() => void doubleBeatReward()}>
+                {adDouble === "busy" ? "광고 재생 중…" : adDouble === "free" ? "광고 제거 보유 · 코인 ×2" : "광고 보고 코인 ×2"}
+                <small>+{coinGain} 코인 추가 · 오늘 남은 횟수 포함</small>
+              </button>
+            )}
             {resultRecord && (
               <p className={`beat-record-line ${resultRecord.newScore || resultRecord.newCombo ? "is-new" : ""}`}>
                 {resultRecord.newScore ? "신기록! " : ""}점수 {lastScore.toLocaleString()} / 최고 {resultRecord.bestScore.toLocaleString()} · 콤보 {resultRecord.combo}{resultRecord.newCombo ? " (최고 갱신)" : ` / 최고 ${resultRecord.bestCombo}`}

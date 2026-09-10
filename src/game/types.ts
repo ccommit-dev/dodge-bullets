@@ -1,4 +1,4 @@
-export type GameState = "ready" | "intro" | "playing" | "clear" | "gameover";
+export type GameState = "ready" | "intro" | "playing" | "perk" | "clear" | "gameover";
 
 export type PlayerAnim = "idle" | "run" | "jump" | "fall" | "dash" | "skill" | "hit" | "dead";
 

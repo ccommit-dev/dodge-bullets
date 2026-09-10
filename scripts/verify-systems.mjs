@@ -25,10 +25,14 @@ writeFileSync(entry, [
   `export * as beatRpg from "${root}/src/beat/rpg";`,
   `export * as stages from "${root}/src/game/stages";`,
   `export * as analytics from "${root}/src/analytics/events";`,
+  `export * as bossPatterns from "${root}/src/game/bossPatterns";`,
+  `export * as perks from "${root}/src/game/perks";`,
+  `export * as ranking from "${root}/src/beat/ranking";`,
+  `export * as ads from "${root}/src/ads/rewarded";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -380,6 +384,31 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("분석 이벤트: 최근 200건만 유지하고 가장 오래된 것부터 버린다", list.length === 200 && list[0].data.stage === 5 && list[199].data.stage === 204 && JSON.parse(store.get("dodgebullets:analytics")).length === 200);
     delete globalThis.localStorage;
   }
+}
+
+// ── 콘텐츠 역할 분리 P1 ──
+{
+  // 보스 패턴: 티어별 고정, 서로 다른 구성, 성벽(5+)은 E
+  const ids = [1, 2, 3, 4, 5, 9].map((t) => bossPatterns.bossPatternFor(t).id).join("");
+  ok("보스 패턴: 1~4스테이지 A·B·C·D, 성벽은 E 로 고정 (학습 가능한 보스)", ids === "ABCDEE" && new Set(bossPatterns.BOSS_PATTERNS.map((p) => p.kinds.join("+") + p.count + p.spreadDeg)).size === 5, ids);
+  ok("보스 패턴: 파편 수·종류 수가 일치하거나 순환하고, 예고는 500ms 이상", bossPatterns.BOSS_PATTERNS.every((p) => p.count >= 1 && p.kinds.length >= 1 && p.warningMs >= 500));
+  // 성장 선택: 3택 무작위(결정적 rng) · 적용 효과 · 대시 미해금이면 dash 제외
+  const w = { slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 } };
+  let k = 0; const det = () => ((k += 0.37) % 1);
+  const picked = perks.pickPerks(w, det);
+  ok("성장 선택: 3개가 서로 다르고 대시 미해금이면 dash 는 나오지 않는다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => p.id === "dash"), picked.map((p) => p.id).join(","));
+  perks.applyPerk(w, "heal"); perks.applyPerk(w, "speed"); perks.applyPerk(w, "gauge");
+  ok("성장 선택 적용: HP 가득이면 최대 HP +1, 이동 +12%, 게이지 +35 (99 상한)", w.player.maxHp === 4 && w.player.hp === 4 && Math.abs(w.stats.moveSpeed - 112) < 1e-9 && w.slashGauge === 45 && perks.applyPerk(w, "dash") === false);
+  // 주간 랭킹: 내 기록이 정렬에 들어가고 같은 주·같은 유저면 재현, 기록 0이면 최하위
+  const rpg0 = beatRpg.emptyBeatRpg();
+  const r0 = ranking.weeklyRanking(rpg0, "u1", "2026-37");
+  const rpg1 = beatRpg.applyBeatRecord(rpg0, "pixel-rush", "hard", { score: 9000, maxCombo: 50, accuracy: 0.9, cleared: true }).progress;
+  const r1 = ranking.weeklyRanking(rpg1, "u1", "2026-37"), r1b = ranking.weeklyRanking(rpg1, "u1", "2026-37");
+  ok("주간 랭킹: 기록 0이면 7위(최하위)·다음 목표 있음, 9000점이면 순위가 오르고 같은 시드는 재현된다", r0.myRank === 7 && r0.nextTarget !== null && r1.myRank < 7 && JSON.stringify(r1.rows) === JSON.stringify(r1b.rows) && r1.rows.every((x, i) => i === 0 || r1.rows[i - 1].score >= x.score), `r0 ${r0.myRank} r1 ${r1.myRank}`);
+  // 광고 자리: dodgeDouble/beatDouble 한도 3, 미연동이면 none, 광고 제거면 free
+  const p = { adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 }, adFree: false };
+  ok("광고 자리: dodgeDouble·beatDouble 하루 3회, 미연동이면 none, 광고 제거 보유면 free, 한도 소진이면 none", ads.AD_LIMITS.dodgeDouble === 3 && ads.AD_LIMITS.beatDouble === 3 && ads.rewardedAvailability(p, "dodgeDouble", "2026-09-10", false) === "none" && ads.rewardedAvailability({ ...p, adFree: true }, "beatDouble", "2026-09-10", false) === "free" && ads.rewardedAvailability({ ...p, adRewards: { ...p.adRewards, date: "2026-09-10", beatDouble: 3 } }, "beatDouble", "2026-09-10", true) === "none" && ads.rewardedAvailability(p, "beatDouble", "2026-09-10", true) === "ad");
+  ok("진행도 정규화: adRewards 에 새 자리(dodgeDouble·beatDouble)가 기본 0으로 들어간다", prog.emptyCharacterProgress().adRewards.dodgeDouble === 0 && prog.emptyCharacterProgress().adRewards.beatDouble === 0);
 }
 
 // ── 랭크 시험 상대: 직업 명사 8종 → 서로 다른 그림자 원화 8장이 실제로 있다 ──

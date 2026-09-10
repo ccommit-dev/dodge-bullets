@@ -53,6 +53,9 @@ import {
 import { createSoundController, loadSoundEnabled } from "./game/sound";
 import { STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf, waveAt } from "./game/stages";
 import { track as trackEvent } from "./analytics/events";
+import { bossPatternFor } from "./game/bossPatterns";
+import { applyPerk, pickPerks, type PerkDef, type PerkId } from "./game/perks";
+import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import {
   computeClearReward,
   loadCoins,
@@ -150,6 +153,14 @@ function App() {
   const [highScore, setHighScore] = useState(0);
   const [coins, setCoins] = useState(0);
   const [coinGain, setCoinGain] = useState(0);
+  /** 런 중 성장 선택 (P1) — 스테이지당 1회, 마지막 웨이브 앞 */
+  const perkStageRef = useRef(-1);
+  const qaGodmodeRef = useRef(false);
+  useEffect(() => { try { qaGodmodeRef.current = import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-godmode") === "1"; } catch { qaGodmodeRef.current = false; } }, []);
+  const [perkOptions, setPerkOptions] = useState<PerkDef[]>([]);
+  /** 클리어 보상 ×2 광고 (P1) */
+  const [adBusy, setAdBusy] = useState(false);
+  const [adDoubled, setAdDoubled] = useState(false);
   const [shopLevels, setShopLevels] = useState<ShopLevels>(() => emptyShopLevels());
   const [stageIndex, setStageIndex] = useState(0);
   const [stageLabel, setStageLabel] = useState(STAGES[0].name);
@@ -500,6 +511,20 @@ function App() {
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05) * (tutorialSlow ? 0.45 : 1);
         lastTsRef.current = ts;
 
+        // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
+        if (import.meta.env.DEV && qaGodmodeRef.current && stateRef.current === "playing") world.player.hp = world.player.maxHp;
+        // 성장 선택: 두 번째 웨이브에 들어설 때(보스 전) 한 번 멈추고 3택 (perks.ts)
+        if (stateRef.current === "playing" && !world.bossSpawned && perkStageRef.current !== world.stageIndex) {
+          const wvStage = getStage(world.stageIndex);
+          const wv = waveAt(wvStage, world.stageElapsedMs);
+          // 보스는 스테이지 58% 지점에 나오므로(arrows.ts) 두 번째 웨이브에 들어설 때가 "보스 전 마지막 숨 고르기"다
+          if (wv.count >= 2 && wv.index === 2) {
+            perkStageRef.current = world.stageIndex;
+            setPerkOptions(pickPerks(world));
+            stateRef.current = "perk";
+            setGameState("perk");
+          }
+        }
         const event = updateWorld(
           world,
           dtSec,
@@ -774,6 +799,8 @@ function App() {
     await unlockAudio();
     dodgeRunIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     trackEvent("arrow_expedition_start", { stage: fromStage + 1, player_power: progress.equippedWeaponLevel });
+    perkStageRef.current = -1;
+    setAdDoubled(false);
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
@@ -1286,7 +1313,7 @@ function App() {
                 </span>
               )}
               <span className="hud-score">
-                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return `WAVE ${wv.index}/${wv.count}`; })()}
+                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return `WAVE ${wv.index}/${wv.count}`; })()}
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
@@ -1373,14 +1400,65 @@ function App() {
         </div>
       )}
 
+      {appMode === "dodge" && gameState === "perk" && (
+        <div className="game-overlay perk-overlay">
+          <div className="overlay-content">
+            <p className="brand">LEVEL UP</p>
+            <h1 className="title">성장 선택</h1>
+            <p className="subtitle">첫 웨이브를 넘겼습니다 — 보스까지 이번 런에만 적용되는 강화를 하나 고르세요</p>
+            {perkOptions.map((perk) => (
+              <button key={perk.id} type="button" className="cta perk-choice" onClick={() => {
+                const world = worldRef.current;
+                if (world) applyPerk(world, perk.id as PerkId);
+                trackEvent("upgrade", { content: "dodge", result: perk.id, stage: (world?.stageIndex ?? 0) + 1 });
+                lastTsRef.current = 0;
+                stateRef.current = "playing";
+                setGameState("playing");
+              }}>
+                <b>{perk.label}</b><small>{perk.desc}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {appMode === "dodge" && gameState === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
             <p className="brand">{extracted ? "SAFE RETURN" : allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
             <button type="button" className="share-card-btn" onClick={() => void shareDodgeCard()}>기록 카드 공유</button>
             <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
-            <p className="score-line">+{coinGain} 코인</p>
+            <p className="score-line">+{coinGain} 코인{adDoubled ? " (광고 ×2 적용)" : ""}</p>
             <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
+            {/* 계획안 §25 — 선택형 광고: 클리어 보상 ×2 (미연동·한도 소진이면 자리 없음) */}
+            {!adDoubled && coinGain > 0 && (() => {
+              const avail = rewardedAvailability(progress, "dodgeDouble", new Date().toLocaleDateString("sv-SE"));
+              if (avail === "none") return null;
+              return (
+                <button type="button" className="cta idle-claim-ad" disabled={adBusy} onClick={() => void (async () => {
+                  if (adBusy) return;
+                  setAdBusy(true);
+                  trackEvent("ad_start", { placement: "dodgeDouble" });
+                  try {
+                    const ok = avail === "free" ? true : await showRewarded("dodgeDouble");
+                    if (!ok) return;
+                    trackEvent("ad_complete", { placement: "dodgeDouble" });
+                    const today = new Date().toLocaleDateString("sv-SE");
+                    const next = await updateCharacterProgress(userHashRef.current, (current) => consumeAdReward(current, "dodgeDouble", today));
+                    setProgress(next);
+                    const nextCoins = await saveCoins(userHashRef.current, coinsRef.current + coinGain);
+                    coinsRef.current = nextCoins;
+                    setCoins(nextCoins);
+                    setAdDoubled(true);
+                  } finally {
+                    setAdBusy(false);
+                  }
+                })()}>
+                  {adBusy ? "광고 재생 중…" : avail === "free" ? "광고 제거 보유 · 코인 ×2" : "광고 보고 코인 ×2"}
+                  <small>+{coinGain} 코인 추가 · 오늘 남은 횟수 포함</small>
+                </button>
+              );
+            })()}
             {!extracted && worldRef.current && (
               <p className="controls-hint">
                 철광석 ×{worldRef.current.enemyKills} · 속성 결정 ×{worldRef.current.perfectDodges} · 정제 강철 ×{worldRef.current.chests * 4} · 원정 인장 ×{worldRef.current.expeditionSeals}
