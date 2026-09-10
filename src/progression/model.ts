@@ -136,7 +136,7 @@ export type CharacterProgress = {
   /** 광고 제거 구매 (L) — 보상형 자리 3곳을 광고 없이 자동 적용 */
   adFree: boolean;
   /** 보상형 광고 일일 카운터 (L) */
-  adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number };
+  adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number; dodgeDouble: number; beatDouble: number };
   /** 순간 제안 창 (economy/momentOffers): 상품 id → 만료·보너스 */
   momentOffers: Record<string, { kind: string; until: number; bonusGems: number; openedAt: number }>;
 };
@@ -225,7 +225,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     ownedThemes: [],
     equippedTheme: "",
     adFree: false,
-    adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 },
+    adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 },
     momentOffers: {},
     lastContent: null,
     updatedAt: Date.now(),
@@ -512,7 +512,7 @@ export function normalizeCharacterProgress(
     })(),
     adRewards:
       raw.adRewards && typeof raw.adRewards.date === "string"
-        ? { date: raw.adRewards.date, idleDouble: integer(raw.adRewards.idleDouble, 0, 99), booster4h: integer(raw.adRewards.booster4h, 0, 99), bossRetry: integer(raw.adRewards.bossRetry, 0, 99) }
+        ? { date: raw.adRewards.date, idleDouble: integer(raw.adRewards.idleDouble, 0, 99), booster4h: integer(raw.adRewards.booster4h, 0, 99), bossRetry: integer(raw.adRewards.bossRetry, 0, 99), dodgeDouble: integer(raw.adRewards.dodgeDouble, 0, 99), beatDouble: integer(raw.adRewards.beatDouble, 0, 99) }
         : { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 },
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"

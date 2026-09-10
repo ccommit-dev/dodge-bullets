@@ -10,12 +10,15 @@
 import type { CharacterProgress } from "../progression/model";
 import { isNativePlatform } from "../game/native";
 
-export type AdPlacement = "idleDouble" | "booster4h" | "bossRetry";
-export const AD_LIMITS: Record<AdPlacement, number> = { idleDouble: 3, booster4h: 1, bossRetry: 3 };
+export type AdPlacement = "idleDouble" | "booster4h" | "bossRetry" | "dodgeDouble" | "beatDouble";
+/** 계획안 §35 — 화살 원정·비트 클리어 보상 ×2 자리 추가 (하루 3회). 강제 광고는 없다 */
+export const AD_LIMITS: Record<AdPlacement, number> = { idleDouble: 3, booster4h: 1, bossRetry: 3, dodgeDouble: 3, beatDouble: 3 };
 export const AD_UNIT_IDS: Record<AdPlacement, string> = {
   idleDouble: "ca-app-pub-XXXX/idle-double",
   booster4h: "ca-app-pub-XXXX/booster",
   bossRetry: "ca-app-pub-XXXX/boss-retry",
+  dodgeDouble: "ca-app-pub-XXXX/dodge-double",
+  beatDouble: "ca-app-pub-XXXX/beat-double",
 };
 export const BOSS_RETRY_BONUS_SEC = 10;
 export const BOOSTER_AD_HOURS = 4;
@@ -50,7 +53,7 @@ export function adsConfigured(): boolean {
 
 /** 오늘 기준 카운터 — 날짜가 바뀌면 0 */
 export function adRewardsToday(progress: Pick<CharacterProgress, "adRewards">, today: string): CharacterProgress["adRewards"] {
-  return progress.adRewards.date === today ? progress.adRewards : { date: today, idleDouble: 0, booster4h: 0, bossRetry: 0 };
+  return progress.adRewards.date === today ? progress.adRewards : { date: today, idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 };
 }
 
 /**
