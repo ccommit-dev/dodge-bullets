@@ -1,6 +1,6 @@
 import { preloadStageBackgrounds } from "./game/draw";
 import { QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import "./App.css";
 import "./idle.css";
 import { assetUrl } from "./asset";
@@ -51,7 +51,8 @@ import {
   statsFromLevels,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf, waveAt } from "./game/stages";
+import { PATTERN_LABEL, STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf, waveAt } from "./game/stages";
+import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, type PerkDef, type PerkId } from "./game/perks";
@@ -100,6 +101,8 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 }
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
+/** 성장 선택 아이콘 — 기존 보상 아이콘 재사용 (참격 게이지=스킬 오브 · 이동=부스트 · HP=경험 오브 · 참격 강화=강화석 · 회피=무기 이펙트) */
+const PERK_ICON: Record<PerkId, RewardIconKind | "exp"> = { gauge: "cores", speed: "boost", heal: "exp", slash: "materials", dash: "weaponFx" };
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
@@ -158,6 +161,16 @@ function App() {
   const qaGodmodeRef = useRef(false);
   useEffect(() => { try { qaGodmodeRef.current = import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-godmode") === "1"; } catch { qaGodmodeRef.current = false; } }, []);
   const [perkOptions, setPerkOptions] = useState<PerkDef[]>([]);
+  /** 웨이브 전환·보스 등장 배너 (아트 후속) — key 가 바뀔 때마다 CSS 애니메이션이 다시 돈다 */
+  const [hudBanner, setHudBanner] = useState<{ key: number; title: string; sub: string; boss: boolean } | null>(null);
+  const hudWaveRef = useRef(0);
+  const hudBossRef = useRef(false);
+  const bannerTimerRef = useRef(0);
+  const showBanner = (title: string, sub: string, boss: boolean) => {
+    setHudBanner({ key: Date.now(), title, sub, boss });
+    window.clearTimeout(bannerTimerRef.current);
+    bannerTimerRef.current = window.setTimeout(() => setHudBanner(null), boss ? 2600 : 1700);
+  };
   /** 클리어 보상 ×2 광고 (P1) */
   const [adBusy, setAdBusy] = useState(false);
   const [adDoubled, setAdDoubled] = useState(false);
@@ -554,6 +567,22 @@ function App() {
             hudMaxHpRef.current = world.player.maxHp;
             setMaxHp(world.player.maxHp);
           }
+          // 웨이브 전환 · 보스 등장 배너
+          {
+            const wv = waveAt(getStage(world.stageIndex), world.stageElapsedMs);
+            const waveKey = world.stageIndex * 100 + wv.index;
+            if (waveKey !== hudWaveRef.current) {
+              const first = hudWaveRef.current === 0 || Math.floor(hudWaveRef.current / 100) !== world.stageIndex;
+              hudWaveRef.current = waveKey;
+              hudBossRef.current = false;
+              if (!first && !world.bossSpawned) showBanner(`WAVE ${wv.index}`, PATTERN_LABEL[getStage(world.stageIndex).patterns[wv.index - 1]?.kind ?? ""] ?? "", false);
+            }
+            if (world.bossSpawned && !hudBossRef.current) {
+              hudBossRef.current = true;
+              const bp = bossPatternFor(world.stageIndex + 1);
+              showBanner(`BOSS · ${bp.name}`, bp.hint, true);
+            }
+          }
           if (world.combo !== hudComboRef.current) {
             if (world.combo > hudComboRef.current && world.combo > 0 && world.combo % 5 === 0) {
               sound.playWhoosh();
@@ -801,6 +830,9 @@ function App() {
     trackEvent("arrow_expedition_start", { stage: fromStage + 1, player_power: progress.equippedWeaponLevel });
     perkStageRef.current = -1;
     setAdDoubled(false);
+    hudWaveRef.current = 0;
+    hudBossRef.current = false;
+    setHudBanner(null);
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
@@ -1324,6 +1356,12 @@ function App() {
               <i className="expedition-progress"><b style={{ width: `${expeditionRatio * 100}%` }} /></i>
             </div>
             {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
+            {hudBanner && (
+              <div key={hudBanner.key} className={`wave-banner ${hudBanner.boss ? "is-boss" : ""}`} aria-live="polite">
+                <b>{hudBanner.title}</b>
+                {hudBanner.sub && <small>{hudBanner.sub}</small>}
+              </div>
+            )}
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
@@ -1406,16 +1444,18 @@ function App() {
             <p className="brand">LEVEL UP</p>
             <h1 className="title">성장 선택</h1>
             <p className="subtitle">첫 웨이브를 넘겼습니다 — 보스까지 이번 런에만 적용되는 강화를 하나 고르세요</p>
-            {perkOptions.map((perk) => (
-              <button key={perk.id} type="button" className="cta perk-choice" onClick={() => {
+            {perkOptions.map((perk, i) => (
+              <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id}`} style={{ "--i": i } as CSSProperties} onClick={() => {
                 const world = worldRef.current;
                 if (world) applyPerk(world, perk.id as PerkId);
                 trackEvent("upgrade", { content: "dodge", result: perk.id, stage: (world?.stageIndex ?? 0) + 1 });
                 lastTsRef.current = 0;
                 stateRef.current = "playing";
                 setGameState("playing");
+                showBanner(perk.label, "이번 런 동안 적용", false);
               }}>
-                <b>{perk.label}</b><small>{perk.desc}</small>
+                <span className="perk-icon">{PERK_ICON[perk.id as PerkId] === "exp" ? <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={30} height={30} /> : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={30} />}</span>
+                <span className="perk-copy"><b>{perk.label}</b><small>{perk.desc}</small></span>
               </button>
             ))}
           </div>

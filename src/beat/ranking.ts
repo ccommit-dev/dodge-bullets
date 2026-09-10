@@ -7,7 +7,8 @@ import { bestScoreOverall, type BeatRpgProgress } from "./rpg";
  */
 export type RankRow = { rank: number; name: string; score: number; me: boolean };
 
-const NAMES = ["별빛검객", "리듬추적자", "고요한고행자", "박자수문장", "새벽방랑자", "드롭집행자", "레인관측자", "강철대장장이", "서리무희", "황혼연주자"];
+/** 마지막 단어가 그림자 원화 직업(shadowArena.PORTRAIT)과 맞아 아바타가 서로 다르다 */
+const NAMES = ["별빛 검객", "리듬 추적자", "고요한 고행자", "박자 수문장", "새벽 방랑자", "드롭 집행자", "레인 관측자", "강철 대장장이"];
 const MULTS = [1.85, 1.5, 1.28, 1.12, 0.92, 0.74];
 
 function hash(s: string): number { let h = 2166136261; for (let i = 0; i < s.length; i += 1) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }

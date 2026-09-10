@@ -8,6 +8,9 @@ const platforms = [
 
 /** Short expeditions: immediate pressure → escalation → five-second escape climax.
  * 수치는 검객 봇 시뮬(scripts/dodge-sim.mjs)로 재조정 — 스윙 순간 앞쪽만 베는 규칙에서 1·2스테이지 5/5 클리어, 3·4 는 도전 구간. */
+/** 웨이브 배너용 패턴 이름 (HUD "WAVE n · 조준 사격") */
+export const PATTERN_LABEL: Record<string, string> = { rain: "화살비", aimed: "조준 사격", cross: "교차 사격", fan: "부채 사격", side: "측면 기습", ricochet: "도탄", sweep: "휩쓸기", explosive: "폭발 화살", burst: "연사" };
+
 /** 스테이지의 패턴 구간 = 웨이브. 경과 시간으로 현재 웨이브(1부터)와 총 수를 돌려준다 (HUD "WAVE n/N", 보스는 별도) */
 export function waveAt(stage: Pick<StageDef, "patterns">, elapsedMs: number): { index: number; count: number } {
   const count = stage.patterns.length;

@@ -3681,19 +3681,42 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .beat-rank-panel { display: grid; gap: 3px; width: min(100%, 420px); margin: 4px auto 8px; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(165, 180, 252, 0.3); background: rgba(15, 23, 42, 0.55); font-size: 12px; color: #cbd5f5; text-align: left; }
 .beat-rank-panel > b { color: #e0e7ff; font-size: 12px; display: flex; justify-content: space-between; align-items: baseline; }
 .beat-rank-panel > b small { color: #94a3b8; font-weight: 500; font-size: 10px; }
-.beat-rank-panel > span { display: grid; grid-template-columns: 34px 1fr auto; gap: 6px; align-items: baseline; padding: 1px 0; }
+.beat-rank-panel > span { display: grid; grid-template-columns: 34px 26px 1fr auto; gap: 6px; align-items: center; padding: 1px 0; }
+.rank-avatar { width: 26px; height: 26px; border-radius: 50%; background-size: cover; background-position: center 18%; border: 1px solid rgba(165, 180, 252, 0.35); filter: saturate(0.7); }
+.rank-avatar.is-me { background-size: auto 130%; background-position: 0% 8%; border-color: #67e8f9; filter: none; box-shadow: 0 0 8px rgba(103, 232, 249, 0.5); }
+.beat-rank-panel > span.rank-1 em { color: #fde047; font-weight: 900; }
+.beat-rank-panel > span.rank-2 em { color: #e2e8f0; font-weight: 900; }
+.beat-rank-panel > span.rank-3 em { color: #fdba74; font-weight: 900; }
 .beat-rank-panel > span em { font-style: normal; color: #94a3b8; font-size: 11px; }
 .beat-rank-panel > span strong { color: #fde68a; font-variant-numeric: tabular-nums; }
 .beat-rank-panel > span.me { color: #a5f3fc; font-weight: 800; }
 .beat-rank-panel > span.me strong { color: #67e8f9; }
 .beat-rank-next { color: #94a3b8; font-size: 10px; margin-top: 2px; }
-/* 화살 원정 성장 선택 (P1) */
+/* 화살 원정 성장 선택 (P1 · 아트 후속: 아이콘 + 순차 팝인) */
 .perk-overlay .overlay-content { gap: 8px; }
-.perk-choice { display: grid; gap: 2px; text-align: left; }
+.perk-overlay .brand { animation: perk-brand 1.2s ease-in-out infinite alternate; }
+@keyframes perk-brand { to { text-shadow: 0 0 14px rgba(103, 232, 249, 0.9); letter-spacing: 0.22em; } }
+.perk-choice { display: flex; align-items: center; gap: 12px; text-align: left; animation: perk-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; animation-delay: calc(var(--i, 0) * 90ms); }
+@keyframes perk-in { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: none; } }
+.perk-icon { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: rgba(15, 23, 42, 0.45); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.perk-icon img { width: 30px; height: 30px; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35)); }
+.perk-copy { display: grid; gap: 2px; min-width: 0; }
 .perk-choice b { font-size: 15px; }
 .perk-choice small { color: #cbd5f5; font-size: 11px; font-weight: 500; }
+.perk-choice.perk-heal { background: linear-gradient(135deg, #fda4af, #f43f5e); }
+.perk-choice.perk-speed { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+.perk-choice.perk-slash { background: linear-gradient(135deg, #c4b5fd, #7c3aed); }
+.perk-choice.perk-dash { background: linear-gradient(135deg, #a5f3fc, #0891b2); }
+/* 웨이브 전환 · 보스 등장 배너 — 가운데서 커졌다가 사라진다 (combo-flash 계열) */
+.wave-banner { position: absolute; top: calc(var(--safe-top, 0px) + 150px); left: 50%; display: grid; justify-items: center; gap: 2px; padding: 7px 16px; border-radius: 14px; max-width: min(92vw, 340px); background: rgba(2, 6, 23, 0.6); border: 1px solid rgba(103, 232, 249, 0.45); color: #e0f2fe; text-align: center; pointer-events: none; animation: wave-banner 1.7s ease-out both; }
+.wave-banner b { font-size: 20px; font-weight: 900; letter-spacing: 0.06em; white-space: nowrap; text-shadow: 0 0 14px rgba(103, 232, 249, 0.75); }
+.wave-banner small { font-size: 11px; line-height: 1.3; color: #bae6fd; max-width: 300px; }
+.wave-banner.is-boss { border-color: rgba(251, 113, 133, 0.6); background: rgba(76, 5, 25, 0.6); animation-duration: 2.6s; }
+.wave-banner.is-boss b { color: #fecdd3; text-shadow: 0 0 16px rgba(251, 113, 133, 0.9); }
+@keyframes wave-banner { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 22% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -12px) scale(0.96); } }
 .beat-record-line { margin: 2px 0 6px; font-size: 13px; color: #cbd5f5; }
-.beat-record-line.is-new { color: #fde68a; font-weight: 800; text-shadow: 0 0 10px rgba(253, 230, 138, 0.5); }
+.beat-record-line.is-new { color: #fde68a; font-weight: 800; text-shadow: 0 0 10px rgba(253, 230, 138, 0.5); animation: record-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+@keyframes record-pop { 0% { opacity: 0; transform: scale(0.7); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
 .schedule-best { display: block; font-size: 10px; color: #93c5fd; margin-top: 2px; }
 .beat-note-legend { margin:2px 0 8px; color:#94a3b8; font-size:10px; line-height:1.5; }
 .beat-note-legend b { color:#e0f2fe; font-weight:800; }

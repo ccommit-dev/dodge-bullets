@@ -36,6 +36,7 @@ import {
 } from "./game/storage";
 import { track as trackEvent } from "./analytics/events";
 import { weeklyRanking } from "./beat/ranking";
+import { shadowPortrait } from "./events/shadowArena";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import { loadCharacterProgress } from "./progression/storage";
 import type { SafeInsets } from "./game/toss";
@@ -675,9 +676,13 @@ export function BeatGame({
                 <div className="beat-rank-panel">
                   <b>이번 주 랭킹 <small>로컬 기록 · 서버 랭킹은 추후</small></b>
                   {rk.rows.slice(0, 5).map((row) => (
-                    <span key={row.rank} className={row.me ? "me" : ""}><em>{row.rank}위</em>{row.name}<strong>{row.score.toLocaleString()}</strong></span>
+                    <span key={row.rank} className={`rank-${row.rank} ${row.me ? "me" : ""}`}>
+                      <em>{row.rank}위</em>
+                      <i className={`rank-avatar ${row.me ? "is-me" : ""}`} style={{ backgroundImage: `url(${row.me ? assetUrl("titans/character/base/hero-idle.png") : shadowPortrait(row.name)})` }} aria-hidden="true" />
+                      {row.name}<strong>{row.score.toLocaleString()}</strong>
+                    </span>
                   ))}
-                  {rk.myRank > 5 && <span className="me"><em>{rk.myRank}위</em>나<strong>{rk.myScore.toLocaleString()}</strong></span>}
+                  {rk.myRank > 5 && <span className="me"><em>{rk.myRank}위</em><i className="rank-avatar is-me" style={{ backgroundImage: `url(${assetUrl("titans/character/base/hero-idle.png")})` }} aria-hidden="true" />나<strong>{rk.myScore.toLocaleString()}</strong></span>}
                   <small className="beat-rank-next">{rk.myScore === 0 ? "한 곡을 클리어하면 내 기록이 랭킹에 오릅니다" : rk.nextTarget ? `다음 순위까지 ${(rk.nextTarget - rk.myScore).toLocaleString()}점` : "이번 주 1위 — 기록을 지키세요"}</small>
                 </div>
               );
