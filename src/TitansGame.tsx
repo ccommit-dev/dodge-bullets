@@ -2173,6 +2173,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         }}
       >
         <div className="titans-background" aria-hidden="true" />
+        {/* 낮은 화면(≤720px)용 방치 상태 한 줄 — 블록 카드는 자리를 밀어 하단 내비와 겹치므로 필드 위에 띄운다 */}
+        {ready && (() => {
+          const perHour = computeIdleYield(character, save.stage, save.skillInventory.equipped, 3600);
+          return (
+            <div className="idle-status-strip" role="status">
+              <i className="idle-status-dot" />자동 사냥
+              <RewardIcon kind="gold" size={13} /><b>+{formatGold(perHour.gold)}</b>
+              <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={13} height={13} /><b>+{perHour.exp.toLocaleString()}</b>
+              <RewardIcon kind="materials" size={13} /><b>+{perHour.materials}</b>
+              <small>/h · 최대 {idleCapHours(character)}h</small>
+            </div>
+          );
+        })()}
         {/* I 전장 테마 파티클 — 오로라 띠 · 꽃잎 · 공허 별 */}
         {equippedThemeDef && (
           <span className={`theme-particles theme-${equippedThemeDef.particles}`} aria-hidden="true">
