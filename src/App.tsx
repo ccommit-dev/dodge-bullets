@@ -51,7 +51,8 @@ import {
   statsFromLevels,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf } from "./game/stages";
+import { STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf, waveAt } from "./game/stages";
+import { track as trackEvent } from "./analytics/events";
 import {
   computeClearReward,
   loadCoins,
@@ -555,6 +556,7 @@ function App() {
           void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
           stateRef.current = "gameover";
           setGameState("gameover");
+          trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
           setDeathTip(DEATH_TIPS[world.lastHitCause] ?? "");
         }
 
@@ -719,6 +721,7 @@ function App() {
           } else {
             stateRef.current = "clear";
             setGameState("clear");
+            trackEvent("arrow_expedition_clear", { stage: world.stageIndex + 1, score: world.score, duration: Math.round(world.elapsedMs / 1000), combo: world.maxCombo });
           }
         }
       }
@@ -770,6 +773,7 @@ function App() {
     if (!bootReady) return;
     await unlockAudio();
     dodgeRunIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    trackEvent("arrow_expedition_start", { stage: fromStage + 1, player_power: progress.equippedWeaponLevel });
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
@@ -1282,7 +1286,7 @@ function App() {
                 </span>
               )}
               <span className="hud-score">
-                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft}` : "전초전"}
+                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return `WAVE ${wv.index}/${wv.count}`; })()}
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">

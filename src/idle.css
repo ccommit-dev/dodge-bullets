@@ -230,6 +230,13 @@
   font-size: 10.5px;
 }
 
+/* 방치 상태 카드 — 사냥터 허브 상단 (일반 던전 = 자동 진행·오프라인 누적) */
+.idle-status-card { width: min(100%, 720px); margin: -2px auto 8px; display: grid; gap: 3px; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(52, 211, 153, 0.35); background: linear-gradient(135deg, rgba(6, 78, 59, 0.55), rgba(15, 23, 42, 0.7)); color: #d1fae5; font-size: 12px; }
+.idle-status-head { display: flex; align-items: center; gap: 6px; font-weight: 800; color: #a7f3d0; letter-spacing: 0.02em; }
+.idle-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; animation: idle-status-pulse 1.6s ease-in-out infinite; }
+@keyframes idle-status-pulse { 50% { opacity: 0.35; } }
+.idle-status-rates b, .idle-status-cap b { color: #fde68a; }
+.idle-status-cap { color: #94a3b8; font-size: 11px; line-height: 1.35; }
 .idle-claim {
   background: linear-gradient(135deg, #5eead4, #34d399);
 }
@@ -2342,3 +2349,8 @@
 .shadow-list article.cleared .shadow-portrait { filter: brightness(0.7) contrast(1.05) drop-shadow(0 0 6px rgba(74, 222, 128, 0.45)); }
 .duel-overlay .shadow-figure.big .shadow-portrait { filter: brightness(0.55) contrast(1.15) sepia(0.4) hue-rotate(220deg) saturate(1.5) drop-shadow(0 0 10px rgba(167, 139, 250, 0.7)); }
 .duel-overlay.phase-2.win .shadow-figure.big .shadow-portrait { filter: brightness(0.25) grayscale(1); }
+
+/* 낮은 화면(360×640)에서는 방치 카드를 한 줄로 — 스킬 독이 하단 내비와 겹치지 않게 */
+@media (max-height: 720px) {
+  .idle-status-card { display: none; }
+}

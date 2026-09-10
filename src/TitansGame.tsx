@@ -38,6 +38,9 @@ import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCat
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, testModeEnabled, updateCharacterProgress } from "./progression/storage";
+import { track as trackEvent } from "./analytics/events";
+import { loadBeatRpg } from "./game/storage";
+import { bestScoreOverall } from "./beat/rpg";
 import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import {
   BEAT_SKILL_BY_SLOT,
@@ -265,6 +268,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     void updateCharacterProgress(userHash, (current) => openMomentOffer(current, kind)).then((next) => { setCharacter(next); });
   };
   const [nowTick, setNowTick] = useState(() => Date.now());
+  /** 콘텐츠 선택 카드 "최고점수" — 비트 기록은 비트 저장소에 있어 팝업을 열 때 읽는다 */
+  const [beatBestScore, setBeatBestScore] = useState(0);
   const onboardHintShownRef = useRef(false);
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
@@ -562,6 +567,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           })(),
         };
       }).then((next) => {
+        trackEvent("dungeon_reward_claim", { stage: report.stage, reward: report.result.gold, duration: Math.round(report.result.seconds) });
         const finishedOnboarding = characterRef.current.onboardingStep === 3 && next.onboardingStep === 4;
         setCharacter(next);
         setSkillPoints(next.skillPoints);
@@ -1729,9 +1735,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const availability = rewardedAvailability(characterRef.current, placement, today);
     if (availability === "none") return;
     setAdBusy(true);
+    trackEvent("ad_start", { placement });
     try {
       const ok = availability === "free" ? true : await showRewarded(placement);
       if (!ok) { flash("광고를 끝까지 보지 않아 보상이 적용되지 않았습니다"); return; }
+      trackEvent("ad_complete", { placement });
       const next = await updateCharacterProgress(userHash, (current) => consumeAdReward(current, placement, today));
       setCharacter(next);
       apply();
@@ -1948,6 +1956,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
 
   // ── 리텐션: 루틴 보드 · 추천 1개 · 워밍업 · 종료 예고 ──
   const routine = useMemo(() => routineItems(character, events, nowTick), [character, events, nowTick]);
+  useEffect(() => {
+    if (navPopup !== "content") return;
+    let alive = true;
+    void loadBeatRpg(userHash).then((r) => { if (alive) setBeatBestScore(bestScoreOverall(r)); });
+    return () => { alive = false; };
+  }, [navPopup, userHash]);
   const routineReward = routineRewardAvailable(character, routine);
   const recommendation = useMemo(
     () => recommendNext(character, save, events, { wall: wallInfo, equipped: save.skillInventory.equipped, now: nowTick }),
@@ -2116,6 +2130,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <strong>{save.bestStage}</strong>
         </div>
       </div>
+
+      {/* 방치 상태 카드 (계획안 §14 · P0-2) — 이 화면이 '일반 던전'이다: 앱을 닫아도 원정대가 자동으로 사냥하고 다시 열면 정산된다 */}
+      {ready && (() => {
+        const perHour = computeIdleYield(character, save.stage, save.skillInventory.equipped, 3600);
+        const capHours = idleCapHours(character);
+        const full = computeIdleYield(character, save.stage, save.skillInventory.equipped, capHours * 3600);
+        const boosted = character.idleBoostUntil > nowTick;
+        return (
+          <div className="idle-status-card" role="status">
+            <span className="idle-status-head"><i className="idle-status-dot" />자동 사냥 중 · STAGE {save.stage}{boosted ? " · 가속 ×2" : ""}</span>
+            <span className="idle-status-rates">시간당 <b>+{formatGold(perHour.gold)} 골드</b> · EXP {perHour.exp.toLocaleString()} · 강화석 {perHour.materials}</span>
+            <span className="idle-status-cap">최대 <b>{capHours}h</b> 누적 → +{formatGold(full.gold)} 골드 · 강화석 {full.materials} — 닫아도 계속 쌓이고, 다시 열면 정산됩니다</span>
+          </div>
+        );
+      })()}
 
       <section
         ref={fieldRef}
@@ -3028,9 +3057,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           {navPopup === "content" ? (
             <div className="nav-popup-grid">
               {([
-                { id: "dodge", label: "화살 원정", desc: "원정 재료 획득", icon: "dodge" },
-                { id: "beat", label: "비트 수련", desc: "견갑 조각 획득", icon: "beat" },
-                { id: "forge", label: "대장간", desc: "장비 제작·강화", icon: "forge" },
+                { id: "dodge", label: "화살 원정", desc: `직접 플레이 · 탄막 회피 → 강화석·견갑 ${character.dodgeBestStage > 0 ? `· 최고 S${character.dodgeBestStage}` : ""}`, icon: "dodge" },
+                { id: "beat", label: "비트 수련", desc: `30초~2분 기록 도전 → 견갑 조각 ${beatBestScore > 0 ? `· 최고점수 ${beatBestScore.toLocaleString()}` : ""}`, icon: "beat" },
+                { id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", icon: "forge" },
               ] as const).map((item) => {
                 const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
                 return <button key={item.id} type="button" className={locked ? "tab-locked" : ""} onClick={() => { if (locked) flash(LOCK_HINT[item.id as OnboardContent]); else { setNavPopup(null); onOpenContent(item.id); } }}>
