@@ -513,7 +513,7 @@ export function normalizeCharacterProgress(
     adRewards:
       raw.adRewards && typeof raw.adRewards.date === "string"
         ? { date: raw.adRewards.date, idleDouble: integer(raw.adRewards.idleDouble, 0, 99), booster4h: integer(raw.adRewards.booster4h, 0, 99), bossRetry: integer(raw.adRewards.bossRetry, 0, 99), dodgeDouble: integer(raw.adRewards.dodgeDouble, 0, 99), beatDouble: integer(raw.adRewards.beatDouble, 0, 99) }
-        : { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0 },
+        : { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 },
     lastContent:
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
