@@ -3676,5 +3676,9 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .variant-chip .grade-S { background: #fde68a; color: #1e1b4b; }
 .variant-chip .grade-A { background: #a78bfa; color: #1e1b4b; }
 
+/* 비트 기록 (P0-3) — 결과 화면 최고 기록 비교 · 허브 카드 최고 점수 */
+.beat-record-line { margin: 2px 0 6px; font-size: 13px; color: #cbd5f5; }
+.beat-record-line.is-new { color: #fde68a; font-weight: 800; text-shadow: 0 0 10px rgba(253, 230, 138, 0.5); }
+.schedule-best { display: block; font-size: 10px; color: #93c5fd; margin-top: 2px; }
 .beat-note-legend { margin:2px 0 8px; color:#94a3b8; font-size:10px; line-height:1.5; }
 .beat-note-legend b { color:#e0f2fe; font-weight:800; }

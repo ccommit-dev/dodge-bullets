@@ -22,10 +22,13 @@ writeFileSync(entry, [
   `export * as gem from "${root}/src/economy/gemCatalog";`,
   `export * as product from "${root}/src/economy/productCatalog";`,
   `export * as shadow from "${root}/src/events/shadowArena";`,
+  `export * as beatRpg from "${root}/src/beat/rpg";`,
+  `export * as stages from "${root}/src/game/stages";`,
+  `export * as analytics from "${root}/src/analytics/events";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -353,6 +356,31 @@ ok("L 광고 제거 구매 → adFree", eventShop.pay.applyPurchase(base, "remov
   ok("H 트리거 패키지 3종 카탈로그·Play id 등록", ["pack-pioneer", "pack-wall", "pack-rebirth"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.trigger) && eventShop.pay.PLAY_PRODUCT_IDS.includes(id)));
 }
 ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, weeklyEventBuys: { week: "2026-36", bought: { x: 2 } }, forgeTicketsPending: 3 }); return n.weeklyEventBuys.bought.x === 2 && n.forgeTicketsPending === 3; })());
+
+// ── 콘텐츠 역할 분리 P0 (docs/CONTENT_ROLES_PLAN.md) ──
+{
+  // 비트 기록: 곡×난이도 최고 점수/콤보/정확도 — 신기록 판정, 정규화가 기록을 보존
+  const base = beatRpg.emptyBeatRpg();
+  const r1 = beatRpg.applyBeatRecord(base, "pixel-rush", "hard", { score: 1200, maxCombo: 30, accuracy: 0.8, cleared: true });
+  const r2 = beatRpg.applyBeatRecord(r1.progress, "pixel-rush", "hard", { score: 900, maxCombo: 45, accuracy: 0.6, cleared: false });
+  ok("비트 기록: 첫 판은 점수·콤보 모두 신기록, 두 번째 판은 콤보만 신기록이고 최고 점수는 유지된다", r1.newScore && r1.newCombo && !r2.newScore && r2.newCombo && r2.progress.records["pixel-rush:hard"].score === 1200 && r2.progress.records["pixel-rush:hard"].combo === 45 && r2.progress.records["pixel-rush:hard"].plays === 2 && r2.progress.records["pixel-rush:hard"].cleared === 1, JSON.stringify(r2.progress.records));
+  ok("비트 기록: 난이도가 다르면 다른 기록이고, 전체 최고점수는 가장 큰 값", beatRpg.bestRecord(r2.progress, "pixel-rush", "easy") === null && beatRpg.bestScoreOverall(r2.progress) === 1200);
+  const norm = beatRpg.normalizeBeatRpg(JSON.parse(JSON.stringify(r2.progress)));
+  ok("비트 기록: 저장→정규화를 거쳐도 기록이 유지되고, 깨진 값은 0으로 방어된다", norm.records["pixel-rush:hard"].score === 1200 && beatRpg.normalizeBeatRpg({ records: { "x:easy": { score: "bad", combo: -3, accuracy: 7 } } }).records["x:easy"].accuracy === 1);
+  // 화살 원정 Wave: 패턴 구간 = 웨이브
+  const st = stages.STAGES[0];
+  ok("화살 원정 Wave: 1스테이지 4패턴 → 0ms WAVE 1/4 · 마지막 패턴 시각 WAVE 4/4", stages.waveAt(st, 0).index === 1 && stages.waveAt(st, 0).count === 4 && stages.waveAt(st, st.patterns[3].atMs).index === 4);
+  // 분석 이벤트 링버퍼 (localStorage 스텁)
+  {
+    const store = new Map();
+    globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
+    analytics.clearEvents();
+    for (let i = 0; i < 205; i += 1) analytics.track("arrow_expedition_start", { stage: i });
+    const list = analytics.readEvents();
+    ok("분석 이벤트: 최근 200건만 유지하고 가장 오래된 것부터 버린다", list.length === 200 && list[0].data.stage === 5 && list[199].data.stage === 204 && JSON.parse(store.get("dodgebullets:analytics")).length === 200);
+    delete globalThis.localStorage;
+  }
+}
 
 // ── 랭크 시험 상대: 직업 명사 8종 → 서로 다른 그림자 원화 8장이 실제로 있다 ──
 {

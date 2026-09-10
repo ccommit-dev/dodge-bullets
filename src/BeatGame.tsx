@@ -10,8 +10,7 @@ import {
   type BeatRpgProgress,
   type PracticeSlot,
   gradesFor,
-  hardUnlocked,
-} from "./beat/rpg";
+  hardUnlocked, applyBeatRecord, bestRecord, emptyBeatRpg } from "./beat/rpg";
 import { getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
 import type { BeatCosmetics, NoteLane } from "./beat/types";
 import {
@@ -34,8 +33,8 @@ import {
   saveBeatRpg,
   saveBeatUnlock,
   saveCoins,
-  saveHighScore,
 } from "./game/storage";
+import { track as trackEvent } from "./analytics/events";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -140,6 +139,23 @@ export function BeatGame({
   const calibrationMs = 0;
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const [shoulderReward, setShoulderReward] = useState("");
+  /** 결과 화면의 기록 비교 — 곡×난이도 최고 점수/콤보와 신기록 여부 (P0-3) */
+  const [resultRecord, setResultRecord] = useState<{ bestScore: number; bestCombo: number; combo: number; newScore: boolean; newCombo: boolean } | null>(null);
+  const runStartedAtRef = useRef(0);
+  /** 한 판 결과를 곡×난이도 기록에 반영하고 저장한다 (클리어·게임오버 공통) */
+  const commitRecord = (session: BeatSession, cleared: boolean) => {
+    const w = session.world;
+    const accuracy = session.taps > 0 ? session.lockHits / session.taps : 0;
+    const base = rpgRef.current ?? emptyBeatRpg();
+    const rec = applyBeatRecord(base, session.track.id, session.track.difficulty, { score: w.score, maxCombo: w.maxCombo, accuracy, cleared });
+    rpgRef.current = rec.progress;
+    setRpg(rec.progress);
+    void saveBeatRpg(userHash, rec.progress);
+    const best = bestRecord(rec.progress, session.track.id, session.track.difficulty);
+    setResultRecord({ bestScore: best?.score ?? w.score, bestCombo: best?.combo ?? w.maxCombo, combo: w.maxCombo, newScore: rec.newScore, newCombo: rec.newCombo });
+    trackEvent("beat_expedition_end", { track: session.track.id, difficulty: session.track.difficulty, score: w.score, combo: w.maxCombo, duration: Math.round((Date.now() - runStartedAtRef.current) / 1000), result: cleared ? "clear" : "fail" });
+    if (rec.newScore) trackEvent("beat_score_record", { track: session.track.id, difficulty: session.track.difficulty, score: w.score, combo: w.maxCombo });
+  };
   const [partyAction, setPartyAction] = useState<"idle" | "attack" | "guard" | "dodge" | "skill">("idle");
   const [enemyAction, setEnemyAction] = useState<"idle" | "hit" | "attack" | "guard" | "stagger" | "skill">("idle");
   const [materialGain, setMaterialGain] = useState(0);
@@ -395,11 +411,12 @@ export function BeatGame({
           }
           if (event.type === "dead") {
             setLastScore(w.score);
-            void saveHighScore(userHash, w.score);
+            commitRecord(session, false);
             syncUi("gameover");
           }
           if (event.type === "clear" && !pendingClearRef.current) {
             pendingClearRef.current = true;
+            commitRecord(session, true);
             beatEnemyHpRef.current = 0;
             setBeatEnemyHp(0);
             const track = session.track;
@@ -477,7 +494,6 @@ export function BeatGame({
                 );
               }
             })();
-            void saveHighScore(userHash, w.score);
             syncUi("clear");
           }
           drawBeatFrame(ctx, w);
@@ -513,6 +529,9 @@ export function BeatGame({
   const freeRetryAvailable = (trackId: string) => { try { return !localStorage.getItem(freeRetryKey(trackId)); } catch { return false; } };
 
   const startSlot = async (slot: PracticeSlot, opts?: { freeRetry?: boolean }) => {
+    runStartedAtRef.current = Date.now();
+    setResultRecord(null);
+    trackEvent("beat_expedition_start", { track: slot.track.id, difficulty: variantOf(slot.track), stage: slot.stageIndex + 1 });
     if (!slot.track || !rpgRef.current) return;
     const useFree = !!opts?.freeRetry && freeRetryAvailable(slot.track.id);
     if (useFree) { try { localStorage.setItem(freeRetryKey(slot.track.id), "1"); } catch { /* 저장 불가 */ } }
@@ -614,7 +633,7 @@ export function BeatGame({
           <div className="overlay-content overlay-wide">
             <p className="brand beat-kicker">STARLIGHT RHYTHM EXPEDITION</p>
             <h1 className="title beat-title">별빛 리듬 원정</h1>
-            <p className="subtitle">곡을 선택하고 방향 노트로 보스를 격파하세요.</p>
+            <p className="subtitle">30초~2분 · 점수와 콤보로 실력을 시험하는 기록 도전 콘텐츠 — 곡을 선택하고 방향 노트로 보스를 격파하세요.</p>
             {/* 노트 종류 안내 — 손 게임 기준 (펌프의 발판 노트를 4레인 손 입력으로) */}
             <p className="beat-note-legend"><b>탭</b> 한 번 · <b>홀드</b> 꼬리까지 누르기 · <b>점프</b> 두 레인 동시 · <b>홀드 점프</b> 두 레인 동시 홀드 · <b>롤</b> 두 레인 교대 연타</p>
             <p className="score-line">골드 {coins.toLocaleString()} · 명성 {rpg.fame}</p>
@@ -652,6 +671,7 @@ export function BeatGame({
                       <span className="schedule-title">{slot.title}</span>
                       <span className="schedule-hint">{done ? "오늘 완료" : slot.track.desc}</span>
                       <span className="schedule-cost">견갑 조각 · +{slot.track.reward} 골드</span>
+                      {(() => { const b = bestRecord(rpg, slot.track.id, variantOf(slot.track)); return <span className="schedule-best">{b ? `최고 ${b.score.toLocaleString()}점 · 콤보 ${b.combo} · 정확도 ${Math.round(b.accuracy * 100)}%` : "아직 기록 없음 · 첫 도전"}</span>; })()}
                     </span>
                   </button>
                 );
@@ -747,6 +767,11 @@ export function BeatGame({
             <p className="brand">CLEAR</p>
             <h1 className="title">{lessonTitle}</h1>
             <p className="score-line">+{coinGain} 코인</p>
+            {resultRecord && (
+              <p className={`beat-record-line ${resultRecord.newScore || resultRecord.newCombo ? "is-new" : ""}`}>
+                {resultRecord.newScore ? "신기록! " : ""}점수 {lastScore.toLocaleString()} / 최고 {resultRecord.bestScore.toLocaleString()} · 콤보 {resultRecord.combo}{resultRecord.newCombo ? " (최고 갱신)" : ` / 최고 ${resultRecord.bestCombo}`}
+              </p>
+            )}
             {rpgGain && <p className="subtitle">{rpgGain}</p>}
             {shoulderReward && <p className="shoulder-reward">{shoulderReward}</p>}
             <p className="subtitle">점수 {lastScore} · 보유 {coins}</p>
@@ -780,6 +805,11 @@ export function BeatGame({
             <p className="brand">게임 오버</p>
             <h1 className="title">비트 아웃</h1>
             <p className="score-line">점수 {lastScore}</p>
+            {resultRecord && (
+              <p className={`beat-record-line ${resultRecord.newScore ? "is-new" : ""}`}>
+                {resultRecord.newScore ? "신기록! " : ""}최고 {resultRecord.bestScore.toLocaleString()}점 · 콤보 {resultRecord.combo}{resultRecord.newCombo ? " (최고 갱신)" : ` / 최고 ${resultRecord.bestCombo}`}
+              </p>
+            )}
             <p className="subtitle">{lessonTitle}</p>
             <button
               type="button"

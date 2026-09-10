@@ -24,7 +24,51 @@ export type BeatRpgProgress = {
   seasonDay: number;
   /** Lessons cleared today (for schedule UI). */
   clearedToday: string[];
+  /** 곡×난이도별 기록 — 키 `${trackId}:${difficulty}` (계획안 P0-3: 최고 점수·최고 콤보·최고 정확도·도전 횟수) */
+  records: Record<string, BeatRecord>;
 };
+
+export type BeatRecord = { score: number; combo: number; accuracy: number; plays: number; cleared: number };
+
+export function recordKey(trackId: string, difficulty: BeatDifficulty): string {
+  return `${trackId}:${difficulty}`;
+}
+
+export function bestRecord(progress: Pick<BeatRpgProgress, "records">, trackId: string, difficulty: BeatDifficulty): BeatRecord | null {
+  return progress.records[recordKey(trackId, difficulty)] ?? null;
+}
+
+/** 전 곡 통틀어 최고 점수 (콘텐츠 선택 카드 "최고점수") */
+export function bestScoreOverall(progress: Pick<BeatRpgProgress, "records">): number {
+  return Object.values(progress.records).reduce((m, r) => Math.max(m, r.score), 0);
+}
+
+/** 한 판 결과를 기록에 반영 — 신기록 여부를 함께 돌려준다 */
+export function applyBeatRecord(
+  progress: BeatRpgProgress,
+  trackId: string,
+  difficulty: BeatDifficulty,
+  run: { score: number; maxCombo: number; accuracy: number; cleared: boolean },
+): { progress: BeatRpgProgress; newScore: boolean; newCombo: boolean; previous: BeatRecord | null } {
+  const key = recordKey(trackId, difficulty);
+  const prev = progress.records[key] ?? null;
+  const score = Math.max(0, Math.floor(run.score));
+  const combo = Math.max(0, Math.floor(run.maxCombo));
+  const accuracy = Math.max(0, Math.min(1, run.accuracy));
+  const next: BeatRecord = {
+    score: Math.max(prev?.score ?? 0, score),
+    combo: Math.max(prev?.combo ?? 0, combo),
+    accuracy: Math.max(prev?.accuracy ?? 0, accuracy),
+    plays: (prev?.plays ?? 0) + 1,
+    cleared: (prev?.cleared ?? 0) + (run.cleared ? 1 : 0),
+  };
+  return {
+    progress: { ...progress, records: { ...progress.records, [key]: next } },
+    newScore: score > 0 && score > (prev?.score ?? 0),
+    newCombo: combo > 0 && combo > (prev?.combo ?? 0),
+    previous: prev,
+  };
+}
 
 export const SKILL_LABEL: Record<SkillId, string> = {
   kick: "킥",
@@ -81,6 +125,7 @@ export function emptyBeatRpg(): BeatRpgProgress {
     lastDayKey: key,
     seasonDay: seasonDayFromKey(key),
     clearedToday: [],
+    records: {},
   };
 }
 
@@ -104,6 +149,16 @@ export function normalizeBeatRpg(raw: Partial<BeatRpgProgress> | null): BeatRpgP
     clearedToday: Array.isArray(raw.clearedToday)
       ? raw.clearedToday.filter((x) => typeof x === "string")
       : [],
+    records: (() => {
+      const out: Record<string, BeatRecord> = {};
+      const src = raw.records && typeof raw.records === "object" ? raw.records : {};
+      for (const [k, v] of Object.entries(src as Record<string, Partial<BeatRecord>>)) {
+        if (!v || typeof v !== "object") continue;
+        const n = (x: unknown, max = Number.MAX_SAFE_INTEGER) => (typeof x === "number" && Number.isFinite(x) ? Math.max(0, Math.min(max, x)) : 0);
+        out[k] = { score: Math.floor(n(v.score)), combo: Math.floor(n(v.combo)), accuracy: n(v.accuracy, 1), plays: Math.floor(n(v.plays)), cleared: Math.floor(n(v.cleared)) };
+      }
+      return out;
+    })(),
   };
   const refreshed = refreshStaminaForToday(progress);
   // Free-practice mode: keep stamina full so the HUD never looks blocked.
