@@ -253,16 +253,20 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 세 줄 깊이(앞 3% · 중 12% · 뒤 21%). 근접은 몬스터 양옆에 붙고(오른쪽 슬롯은 좌우 반전해 몬스터를 본다), 원거리는 주인공(16~19%) 뒤 0~10%.
   // 8명이 한 바닥에 서므로 줄이 다르면 앞줄이 뒷줄을 살짝 가리는 것은 자연스러운 깊이다 — verify-play-art 는 같은 줄끼리만 겹침을 잰다.
   // 실측(390px): 동료 컨테이너는 전장 왼쪽 +41px 에서 시작 · 몬스터 190~290px · 주인공 26% = 107px. 근접 코어가 몬스터 가장자리에 닿고 원거리는 주인공 뒤(0~3%)
+  // 근접 슬롯 x 는 CSS 가 몬스터 좌표(--monster-meet-right · --monster-size)에서 계산한다 — 짝수 슬롯은 몬스터 왼쪽, 홀수 슬롯은 오른쪽(좌우 반전).
+  // 여기 x 는 CSS 변수가 없을 때의 폴백이고, dx 는 줄 깊이별 px 오프셋(뒷줄일수록 몬스터에서 조금 떨어진다).
   const MELEE_COMBAT = [[22, 3], [60, 3], [20, 21], [63, 21], [24, 12], [66, 12]];
+  const MELEE_DX = [0, 0, -10, 12, -5, 6];
   const RANGED_COMBAT = [[0, 3], [2, 21], [0, 12], [3, 21], [1, 12], [2, 3]];
   const [combatX, combatY] = slot === undefined ? [undefined, undefined] : (ranged ? RANGED_COMBAT : MELEE_COMBAT)[slot];
   // 몬스터 오른쪽에 서는 근접 슬롯은 원화(오른쪽 보기)를 뒤집어 몬스터를 향한다
-  const faceLeft = engaged && !ranged && (combatX ?? 0) > 50;
+  const faceLeft = engaged && !ranged && slot !== undefined && slot % 2 === 1;
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
     "--party-lane-y": `${laneY}%`,
     "--party-combat-x": `${combatX}%`,
     "--party-combat-y": `${combatY}%`,
+    "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot]}px`,
     // 주인공 발(bottom 14%)보다 앞줄(≤14%)만 주인공 위에, 뒷줄은 주인공 뒤에 그린다 (.titans-hero z-index 5)
     // 바닥 띠에서 줄이 낮을수록(y 작을수록) 앞 — 주인공(bottom 10%, z 5)보다 앞줄(≤ 9%)만 위에 그린다
     "--party-z": String((combatY ?? 0) <= 9 ? 8 : 2),
