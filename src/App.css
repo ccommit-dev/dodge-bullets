@@ -2423,10 +2423,11 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
  * 피격 반동 — 같은 animation-name은 재적용해도 재시작하지 않아,
  * 내용이 동일한 a/b 두 벌을 번갈아 써서 매 타격마다 반동이 재생되게 한다.
  */
-.titans-monster.hit-a { animation: monster-hit-recoil-a .12s ease-out; filter: brightness(1.4); }
-.titans-monster.hit-b { animation: monster-hit-recoil-b .12s ease-out; filter: brightness(1.4); }
-.titans-monster.critical.hit-a { animation: monster-crit-recoil-a .16s ease-out; filter: brightness(1.65) saturate(1.5); }
-.titans-monster.critical.hit-b { animation: monster-crit-recoil-b .16s ease-out; filter: brightness(1.65) saturate(1.5); }
+/* 피격 밝기 — 피격 프레임(-hit.png)이 이미 흰색 쪽으로 보간돼 있어 필터는 살짝만 (예전 1.4/1.65 는 흰 유령처럼 보였다) */
+.titans-monster.hit-a { animation: monster-hit-recoil-a .12s ease-out; filter: brightness(1.12); }
+.titans-monster.hit-b { animation: monster-hit-recoil-b .12s ease-out; filter: brightness(1.12); }
+.titans-monster.critical.hit-a { animation: monster-crit-recoil-a .16s ease-out; filter: brightness(1.3) saturate(1.35); }
+.titans-monster.critical.hit-b { animation: monster-crit-recoil-b .16s ease-out; filter: brightness(1.3) saturate(1.35); }
 .titans-field.phase-monster-death .titans-monster { animation: monster-defeat .36s ease-in forwards; pointer-events:none; }
 .titans-field.phase-boss-ready .titans-monster { opacity:0; pointer-events:none; }
 .titans-field.phase-stage-clear .titans-monster,
@@ -2468,6 +2469,11 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   z-index: var(--party-z, 3);
   transform: none;
 }
+/* 근접 동료는 몬스터 좌표에 붙인다 — 몬스터 박스 왼쪽 = 100% − meet-right − monster-size. 동료 컨테이너는 필드보다 41px 오른쪽에서 시작하고
+   그린 인물은 박스 중앙 45% 폭이라, 왼쪽 슬롯은 박스 왼쪽 −41px, 오른쪽 슬롯은 박스 오른쪽 −32px 에 놓으면 몸이 몬스터에 닿는다 (실측: garen 이 54px 떨어져 허공을 베던 문제) */
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--monster-meet-right, 30%) - var(--monster-size, 112px) - 82px + var(--party-melee-dx, 0px)); }
+.titans-field.boss .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--monster-meet-right, 30%) - var(--boss-size, 136px) - 82px + var(--party-melee-dx, 0px)); }
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee.face-left { left: calc(100% - var(--monster-meet-right, 30%) - 73px + var(--party-melee-dx, 0px)); }
 .titan-ally-art.ally-mia { --ally-x:18%; --ally-y:0%; z-index:5; }
 .titan-ally-art.ally-leon { --ally-x:0%; --ally-y:30%; z-index:2; }
 .titan-ally-art.ally-sera { --ally-x:30%; --ally-y:38%; z-index:1; }

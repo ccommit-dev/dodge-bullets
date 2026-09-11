@@ -412,7 +412,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     setEncounterMotion({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       heroLeft: 26 + Math.random() * 2,
-      monsterRight: (rolledKind === "dragon" ? 22 : 28) + Math.random() * 6,
+      // 흔들림을 ±1%로 — 근접 동료가 몬스터 좌표에 붙으므로(App.css) 넓게 흔들면 주인공과 겹친다
+      monsterRight: (rolledKind === "dragon" ? 23 : 29) + Math.random() * 2,
       durationMs,
     });
     window.requestAnimationFrame(() => setFormationEngaged(true));
@@ -671,7 +672,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       setMonsterHit((n) => n + 1);
       setImpact(crit ? "critical" : "normal");
       // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
-      window.setTimeout(() => setImpact(null), crit ? 170 : 130);
+      // 피격 프레임은 짧게(90/130ms) — 파티 4명이 연타하면 흰 프레임이 거의 상시 노출되던 문제
+      window.setTimeout(() => setImpact(null), crit ? 130 : 90);
       pushFx("hit", 72 + Math.random() * 10, 38 + Math.random() * 14);
       if (crit) pushFx("crit", 70, 40, 38);
 

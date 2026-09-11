@@ -47,16 +47,14 @@ for (const file of SOURCES) {
   const w = meta.width ?? 512;
   const h = meta.height ?? 512;
 
-  // hit: 픽셀 단위로 흰색 쪽으로 45% 보간 + 밝기 1.15 (알파 유지) → 6° 기울임.
+  // hit: 픽셀 단위로 흰색 쪽으로 28% 보간 (알파 유지), 기울임 없음 — 45%+밝기 1.15+6° 는 흰 유령이 옆으로 튀어나온 것처럼 보였다 (2026-09-11 프레임 시트).
   // 예전 "블러 실루엣 외곽선" 방식은 raw 버퍼 해석이 어긋나 줄무늬 흰 구름이 몸 뒤에 깔렸다 (감사 시트에서 발견).
   const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] === 0) continue;
-    for (let c = 0; c < 3; c += 1) data[i + c] = Math.min(255, Math.round((data[i + c] * 0.55 + 255 * 0.45) * 1.15));
+    for (let c = 0; c < 3; c += 1) data[i + c] = Math.min(255, Math.round(data[i + c] * 0.72 + 255 * 0.28));
   }
   await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
-    .rotate(6, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .resize(w, h, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toFile(`${DIR}/${base}-hit.png`);
 
