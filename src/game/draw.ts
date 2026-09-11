@@ -293,7 +293,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.restore();
   }
 
-  // 쳐낸 공격이 보급품으로 쌓이는 즉각적인 목표 피드백.
+  // 쳐낸 공격이 보급품으로 쌓이는 즉각적인 목표 피드백. 준비 화면(elapsed 0)에서는 오버레이 뒤로 비치므로 그리지 않는다.
+  if (world.elapsedMs > 0) {
   ctx.save();
   const trackerW = Math.min(190, width - world.safeLeft - world.safeRight - 24);
   const trackerX = width - world.safeRight - trackerW - 12;
@@ -319,6 +320,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   ctx.font = "700 9px system-ui";
   ctx.fillText(`참격 ${Math.round(world.slashGauge)}% · 반사 ${world.reflectKills}`, trackerX + 10, trackerY + 52 + 0);
   ctx.restore();
+  }
   if (world.lastCutMs > 0 && world.lastCut) {
     ctx.save();
     const label = world.lastCut === "reflect" ? "반사!" : world.lastCut === "ult" ? "일섬" : "파쇄";

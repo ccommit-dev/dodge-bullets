@@ -68,10 +68,15 @@ export function shadowOpponents(
   week = weekKey(),
 ): ShadowOpponent[] {
   const power = combatPower(progress);
+  const usedSecond = new Set<string>();
   return TITLES.map((title, rank) => {
     const rng = seeded(hashString(`${userHash}:${week}:${rank}`));
     const first = FIRST[Math.floor(rng() * FIRST.length)];
-    const second = SECOND[Math.floor(rng() * SECOND.length)];
+    // 직업 명사(= 그림자 원화)가 세 상대 사이에서 겹치지 않게 — 겹치면 다음 명사로
+    let secondIdx = Math.floor(rng() * SECOND.length);
+    while (usedSecond.has(SECOND[secondIdx])) secondIdx = (secondIdx + 1) % SECOND.length;
+    const second = SECOND[secondIdx];
+    usedSecond.add(second);
     // ±8% 흔들림 — 같은 주차 안에서는 고정이지만 시험마다 미묘하게 다르다.
     const jitter = 0.92 + rng() * 0.16;
     return {

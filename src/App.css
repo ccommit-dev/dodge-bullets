@@ -2878,7 +2878,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .bottom-nav-popup header button { width:28px;height:28px;border:0;border-radius:8px;color:#cbd5e1;background:#172033;font-size:19px; }
 .nav-popup-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
 .nav-popup-grid > button { position:relative; min-height:74px; display:grid; grid-template-columns:42px minmax(0,1fr); align-items:center; gap:8px; padding:9px; border:1px solid rgba(125,211,252,.2); border-radius:12px; color:#e2e8f0; background:linear-gradient(145deg,#0d3048,#101a2c); text-align:left; }
-.nav-popup-grid .content-icon,.nav-popup-grid .nav-symbol{width:38px;height:38px;display:grid;place-items:center;font-size:26px}.nav-popup-grid span{display:grid;gap:2px}.nav-popup-grid b{font-size:11px}.nav-popup-grid small{color:#7dd3fc;font-size:8px}.nav-popup-grid .done{border-color:rgba(52,211,153,.45)}
+.nav-popup-grid .content-icon,.nav-popup-grid .nav-symbol{width:38px;height:38px;display:grid;place-items:center;font-size:26px}.nav-popup-grid .nav-icon-svg{width:34px;height:34px;flex:0 0 auto;filter:drop-shadow(0 3px 3px rgba(0,0,0,.45))}.nav-popup-grid span{display:grid;gap:2px}.nav-popup-grid b{font-size:11px}.nav-popup-grid small{color:#7dd3fc;font-size:8px}.nav-popup-grid .done{border-color:rgba(52,211,153,.45)}
 
 /* 전장 알림 (사용자 지시): 카드 높이 42→20px(약 1/4 면적), 글자는 10px 유지, 전장 하단 우측에 아래 정렬 */
 .battle-alert-stack {

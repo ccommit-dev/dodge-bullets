@@ -2143,9 +2143,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <div className="idle-status-card" role="status">
             <span className="idle-status-head"><i className="idle-status-dot" />자동 사냥 중 · STAGE {save.stage}{boosted ? " · 가속 ×2" : ""}<em>시간당 · 최대 {capHours}h</em></span>
             <span className="idle-status-chips">
-              <span className="idle-chip"><RewardIcon kind="gold" size={16} /><b>+{formatGold(perHour.gold)}</b><small>골드/h</small></span>
+              <span className="idle-chip"><RewardIcon kind="gold" size={16} /><b>+{formatGold(perHour.gold)}</b><small>/h</small></span>
               <span className="idle-chip"><img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={16} height={16} /><b>+{perHour.exp.toLocaleString()}</b><small>EXP/h</small></span>
-              <span className="idle-chip"><RewardIcon kind="materials" size={16} /><b>+{perHour.materials}</b><small>강화석/h</small></span>
+              <span className="idle-chip"><RewardIcon kind="materials" size={16} /><b>+{perHour.materials}</b><small>/h</small></span>
             </span>
             <span className="idle-status-cap">최대 {capHours}h 누적 시 <b>+{formatGold(full.gold)} 골드 · 강화석 {full.materials}</b> — 닫아도 계속 쌓이고, 다시 열면 정산됩니다</span>
             <i className="idle-status-sweep" aria-hidden="true" />
@@ -3091,7 +3091,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             <div className="nav-popup-grid adventure-grid">
               {routine.filter((item) => item.id !== "claim").map((item) => (
                 <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => { setNavPopup(null); runRoutine(item); }}>
-                  <ContentIcon name={item.id === "forge" ? "forge" : item.id === "expedition" ? "hunt" : "dodge"} />
+                  {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.svg" : item.id === "expedition" ? "ui/idle/expedition.svg" : "ui/idle/pioneer-flag.svg")} alt="" aria-hidden="true" />}
                   <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
                 </button>
               ))}
