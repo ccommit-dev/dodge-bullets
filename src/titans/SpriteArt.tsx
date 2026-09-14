@@ -152,6 +152,18 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
 
 /** 몬스터 프레임 (계획안 B) — idle 원본 · hit/defeat는 scripts/make-monster-states.mjs가 파생한 <name>-hit/-defeat.png */
 export type MonsterFrameState = "idle" | "hit" | "defeat";
+/** 몬스터 원화의 좌/우 투명 여백 비율 (scripts 로 실측, 2026-09-14) — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다 */
+const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
+  "abyss-titan": [0.15, 0.15], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], "flame-wyvern": [0.18, 0.18], goblin: [0.13, 0.13],
+  "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1], "moss-golem": [0.15, 0.15],
+  "ogre-king-clean": [0.12, 0.05], "ogre-king": [0.17, 0.18], ogre: [0.23, 0.13], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14],
+  "wolf-king-clean": [0.18, 0.13], "wolf-king": [0.17, 0.17], wolf: [0.14, 0.14],
+};
+export function monsterVisibleMargin(assetPath: string): [number, number] {
+  const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
+  return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];
+}
+
 export function monsterAssetFor(kind: TitanMonsterKind, area: HuntingAreaDef, boss: boolean, golden: boolean, state: MonsterFrameState = "idle"): string {
   // kind "boss"인데 boss=false는 펫(타이탄의 그림자) 렌더다 — 심연 타이탄 아트로 고정한다.
   // MONSTER_ASSET에는 boss 키가 없어 그대로 두면 src가 undefined로 깨진다.

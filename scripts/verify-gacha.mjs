@@ -18,7 +18,7 @@ const now = Date.now();
 
 async function seed(progress, titans, extra = {}) {
   await page.goto(BASE, { waitUntil: "networkidle0" });
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
+  await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("dodgebullets:test-phase", "0"); /* 실제 경제를 본다 — TEST_PHASE 끔 */ for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
     [`dodgebullets:titans:${H}`]: JSON.stringify(titans),
     "dodge-bullets:soundEnabled": "0",

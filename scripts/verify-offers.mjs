@@ -20,7 +20,7 @@ const closeModal = async () => { await page.evaluate(() => { for (let k = 0; k <
 
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await page.evaluate(({ h, now }) => {
-  localStorage.clear();
+  localStorage.clear(); localStorage.setItem("dodgebullets:test-phase", "0"); /* 실제 경제를 본다 — TEST_PHASE 끔 */
   localStorage.setItem("dodgebullets:qa-pay", "1");
   localStorage.setItem("dodge-bullets:soundEnabled", "0");
   localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ version: 5, onboardingStep: 4, level: 8, exp: 3000, attendanceStreak: 3, redGems: 100, sharedCoins: 50000, enhancementMaterials: 20, titanBestStage: 6, pioneeredArea: 2, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, sessionCount: 5 }));

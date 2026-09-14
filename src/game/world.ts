@@ -80,6 +80,10 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     bossDefeated: false,
     bossCutsLeft: 0,
     bossMaxCuts: 10,
+    runXp: 0,
+    runLevel: 1,
+    levelUps: 0,
+    tempo: 1,
   };
   applyStageLayout(world);
   return world;
@@ -121,6 +125,23 @@ function clampX(world: GameWorld): void {
 export const BOSS_CUTS_BASE = 4;
 export const BOSS_CUTS_PER_STAGE = 2;
 
+/** 런 레벨업에 필요한 XP — 베기 1 · 회피 1 · 보스 베기 4. 레벨이 오를수록 더 필요하다 */
+export function runXpToNext(level: number): number {
+  return 8 + level * 5;
+}
+export const RUN_TEMPO_PER_LEVEL = 0.045;
+export const RUN_TEMPO_CAP = 1.25;
+/** 런 XP 획득 — 레벨업하면 levelUps 를 올리고(UI 가 성장 선택으로 소비) tempo 를 올린다 */
+export function gainRunXp(world: GameWorld, amount: number): void {
+  world.runXp += amount;
+  while (world.runXp >= runXpToNext(world.runLevel)) {
+    world.runXp -= runXpToNext(world.runLevel);
+    world.runLevel += 1;
+    world.levelUps += 1;
+    world.tempo = Math.min(RUN_TEMPO_CAP, 1 + RUN_TEMPO_PER_LEVEL * (world.runLevel - 1));
+  }
+}
+
 export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.stageIndex = stageIndex;
   world.elapsedMs = 0;
@@ -154,6 +175,10 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
   world.bossMaxCuts = BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE;
+  world.runXp = 0;
+  world.runLevel = 1;
+  world.levelUps = 0;
+  world.tempo = 1;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);

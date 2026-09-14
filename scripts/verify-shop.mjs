@@ -21,7 +21,7 @@ const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebu
 const titans = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)), H);
 
 await page.goto(BASE, { waitUntil: "networkidle0" });
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
+await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("dodgebullets:test-phase", "0"); /* 실제 경제를 본다 — TEST_PHASE 끔 */ for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, onboardingStep: 4, level: 30, exp: 90000, attendanceStreak: 5, redGems: 1000, sharedCoins: 100000, enhancementMaterials: 10, pioneeredArea: 3, titanBestStage: 12, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, gachaPity: 24 }),
   [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 12, bestStage: 12, gold: 50000, heroes: { mia: 12, leon: 8 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 2 }, lastActiveAt: now }),
   "dodge-bullets:soundEnabled": "0",
@@ -233,7 +233,9 @@ await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 await clickText(".hub-sheet-switch button", "동료 뽑기");
 await sleep(600);
-const pickupNames = await page.evaluate(() => [...document.querySelectorAll(".gacha-pickup b")].map((b) => b.textContent.trim()));
+await sleep(600);
+// 픽업은 14일마다 바뀐다(gacha.ts ROTATION) — 이름을 하드코딩하지 않고 소환 화면의 픽업 카드에서 읽는다
+const pickupNames = await page.evaluate(() => [...document.querySelectorAll(".gacha-pickup small")].map((b) => b.textContent.trim().split(" · ")[0]));
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
 await clickText(".premium-category-tabs button", "동료");
@@ -241,11 +243,12 @@ await sleep(400);
 r = await page.evaluate(() => ({
   cards: document.querySelectorAll(".skin-product").length,
   deals: [...document.querySelectorAll(".skin-product.pickup-deal")].map((c) => ({ name: c.querySelector("strong").childNodes[0].textContent.trim(), btn: c.querySelector("button").textContent })),
+  nonDeal240: [...document.querySelectorAll(".skin-product:not(.pickup-deal)")].filter((c) => /240/.test(c.querySelector("button")?.textContent ?? "")).length,
   season: [...document.querySelectorAll(".skin-product")].filter((c) => /시즌 1/.test(c.textContent)).map((c) => c.querySelector("button").textContent),
   seasonTwoHidden: ![...document.querySelectorAll(".skin-product")].some((c) => /시즌 2/.test(c.textContent)),
 }));
 ok("J 동료 탭 스킨 카드 13장(판매 12 + 보유한 시즌 1) · 미보유 시즌 2는 숨김", r.cards === 13 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
-ok("J 픽업 동료(녹스·브론)의 스킨에만 픽업 -20% 배지 · 240 표시", r.deals.length === 2 && r.deals.some((d) => /녹스/.test(d.name)) && r.deals.some((d) => /브론/.test(d.name)) && r.deals.every((d) => /240/.test(d.btn)), `pickups=${pickupNames.join("/")} deals=${JSON.stringify(r.deals)}`);
+ok("J 픽업 스킨 2장에만 -20% 배지 · 240 표시 (로테이션 무관)", r.deals.length === 2 && r.deals.every((d) => /240/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
 if (r.deals.length > 0) {
   await page.evaluate(() => document.querySelector(".skin-product.pickup-deal button")?.click());
   await sleep(800);

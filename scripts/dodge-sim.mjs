@@ -21,13 +21,14 @@ writeFileSync(entry, [
   `export * as shop from "${root}/src/game/shop";`,
   `export * as input from "${root}/src/game/input";`,
   `export * as stages from "${root}/src/game/stages";`,
+  `export * as perks from "${root}/src/game/perks";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { world: W, shop, input: I, stages } = await import(pathToFileURL(out).href);
+const { world: W, shop, input: I, stages, perks: P } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 /** 결정적 난수 (mulberry32) — Math.random 을 시드별로 바꿔 끼운다 */
@@ -44,7 +45,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   W.resetRun(w, stageIndex);
   const inp = I.createInputState();
   const dt = 1 / 60;
-  let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false; let hitLog = [];
+  let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = [];
   let seenArrows = new Set();
   const p = w.player;
   const stage = stages.getStage(stageIndex);
@@ -92,6 +93,8 @@ export function simulateStage(stageIndex, seed, opts = {}) {
       }
     } else if (p.x < w.width * 0.42) inp.right = true; else if (p.x > w.width * 0.58) inp.left = true;
     const ev = W.updateWorld(w, dt, true, inp);
+    // 런 레벨업 — 플레이어처럼 성장 선택 하나를 고른다 (결정적: 후보 중 첫 번째)
+    if (w.levelUps > 0) { w.levelUps = 0; const opts = P.pickPerks(w, () => ((perkSeed += 0.37) % 1)); if (opts[0]) P.applyPerk(w, opts[0].id); }
     if (ev.type === "hit") { hits += 1; (hitLog ??= []).push(`${w.lastHitCause}@${Math.round(w.stageElapsedMs / 1000)}s`); }
     if (ev.type === "dead") { dead = true; break; }
     if (ev.type === "clear") { clear = true; break; }

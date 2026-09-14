@@ -549,7 +549,7 @@ export function EventCenter({
         <button className="cta cta-ghost" onClick={onClose}>
           닫기
         </button>
-        {riftRun && <RiftRunOverlay run={riftRun} area={huntingArea(Math.max(1, progress.titanBestStage))} party={progress.partyIds.slice(0, 3)} onClose={() => setRiftRun(null)} />}
+        {riftRun && <RiftRunOverlay run={riftRun} area={huntingArea(Math.max(1, progress.titanBestStage))} party={progress.partyIds.slice(0, 3)} progress={progress} onClose={() => setRiftRun(null)} />}
         {duel && <DuelOverlay duel={duel} progress={progress} onClose={() => setDuel(null)} />}
       </div>
     </div>
@@ -579,7 +579,7 @@ export function riftTimeline(tick: number): { monsters: RiftPhase[]; boss: RiftP
 }
 const RIFT_TICK_MS = 350, RIFT_END_TICK = 22;
 
-function RiftRunOverlay({ run, area, party, onClose }: { run: { name: string; gold: number; exp: number; materials: number; shards: number; mult: number }; area: ReturnType<typeof huntingArea>; party: string[]; onClose: () => void }) {
+function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: string; gold: number; exp: number; materials: number; shards: number; mult: number }; area: ReturnType<typeof huntingArea>; party: string[]; progress: CharacterProgress; onClose: () => void }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), RIFT_TICK_MS);
@@ -594,8 +594,13 @@ function RiftRunOverlay({ run, area, party, onClose }: { run: { name: string; go
   return (
     <div className="rift-run" role="status" onClick={onClose} style={{ "--area-sky": area.sky, "--area-background": `url(${area.background})` } as React.CSSProperties}>
       <div className="rift-run-field">
+        {/* 한 줄 대열: 동료 → 주인공(선두) → 몬스터 줄. 쓰러진 몬스터는 폭 0 으로 접혀 다음 몬스터가 앞으로 당겨진다 — 예전엔 두 무리가 좌우 끝에 따로 서서 허공을 쳤다 */}
+        <div className="rift-run-line">
         <div className="rift-run-party">
           {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tl.strike >= 0 ? tl.strike * 3 + i : 0} hitPulse={tl.monsters.some((p) => p === "attack") || tl.boss === "attack" ? tick : 0} partySlot={i} engaged />)}
+          <span className={`rift-hero ${tl.strike >= 0 ? "is-striking" : ""}`} aria-hidden="true">
+            <EquippedCharacter mode={tl.strike >= 0 ? "attack" : "idle"} frame={tick % 4} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+          </span>
         </div>
         <div className="rift-run-monsters">
           {kinds.map((kind, i) => (
@@ -613,6 +618,7 @@ function RiftRunOverlay({ run, area, party, onClose }: { run: { name: string; go
             {tl.boss === "hit" && <b className="rift-float boss">-{(4800 + tick * 300).toLocaleString()}</b>}
             {tl.boss !== "hidden" && <strong>{area.bossName}</strong>}
           </div>
+        </div>
         </div>
         <b className="rift-run-title">{run.name} · {tl.boss === "hidden" ? "균열 몬스터 소탕 중" : tl.boss === "down" ? "보스 격파!" : `${area.bossName} 출현`}</b>
         <i className="rift-run-bar"><em style={{ width: `${progressPct}%` }} /></i>

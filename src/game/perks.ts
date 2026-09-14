@@ -19,9 +19,13 @@ export const PERKS: PerkDef[] = [
 export function pickPerks(world: GameWorld, rng: () => number = Math.random, count = 3): PerkDef[] {
   const pool = PERKS.filter((p) => p.available(world));
   const out: PerkDef[] = [];
-  while (out.length < Math.min(count, pool.length)) {
-    const i = Math.floor(rng() * pool.length);
-    if (!out.includes(pool[i])) out.push(pool[i]);
+  // rng 가 상수를 돌려줘도(시뮬) 끝나도록 — 겹치면 다음 후보로 밀어 넣는다
+  let guard = 0;
+  while (out.length < Math.min(count, pool.length) && guard < 64) {
+    guard += 1;
+    let i = Math.floor(rng() * pool.length) % pool.length;
+    while (out.includes(pool[i])) i = (i + 1) % pool.length;
+    out.push(pool[i]);
   }
   return out;
 }

@@ -2471,9 +2471,11 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 }
 /* 근접 동료는 몬스터 좌표에 붙인다 — 몬스터 박스 왼쪽 = 100% − meet-right − monster-size. 동료 컨테이너는 필드보다 41px 오른쪽에서 시작하고
    그린 인물은 박스 중앙 45% 폭이라, 왼쪽 슬롯은 박스 왼쪽 −41px, 오른쪽 슬롯은 박스 오른쪽 −32px 에 놓으면 몸이 몬스터에 닿는다 (실측: garen 이 54px 떨어져 허공을 베던 문제) */
-.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--monster-meet-right, 30%) - var(--monster-size, 112px) - 82px + var(--party-melee-dx, 0px)); }
-.titans-field.boss .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--monster-meet-right, 30%) - var(--boss-size, 136px) - 82px + var(--party-melee-dx, 0px)); }
-.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee.face-left { left: calc(100% - var(--monster-meet-right, 30%) - 73px + var(--party-melee-dx, 0px)); }
+/* 원화의 투명 여백(--monster-ml/--monster-mr, TitansGame 이 종별로 넣는다)만큼 안쪽으로 — 박스가 아니라 보이는 몸에 붙는다 */
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * (1 - var(--monster-ml, .22)) - 104px + var(--party-melee-dx, 0px)); }
+.titans-field.boss .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--monster-meet-right, 30%) - var(--boss-size, 136px) * (1 - var(--monster-ml, .22)) - 104px + var(--party-melee-dx, 0px)); }
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee.face-left { left: calc(100% - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * var(--monster-mr, .22) - 50px + var(--party-melee-dx, 0px)); }
+.titans-field.boss .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee.face-left { left: calc(100% - var(--monster-meet-right, 30%) - var(--boss-size, 136px) * var(--monster-mr, .22) - 50px + var(--party-melee-dx, 0px)); }
 .titan-ally-art.ally-mia { --ally-x:18%; --ally-y:0%; z-index:5; }
 .titan-ally-art.ally-leon { --ally-x:0%; --ally-y:30%; z-index:2; }
 .titan-ally-art.ally-sera { --ally-x:30%; --ally-y:38%; z-index:1; }
@@ -3714,6 +3716,10 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .perk-choice.perk-speed { background: linear-gradient(135deg, #fde68a, #f59e0b); }
 .perk-choice.perk-slash { background: linear-gradient(135deg, #c4b5fd, #7c3aed); }
 .perk-choice.perk-dash { background: linear-gradient(135deg, #a5f3fc, #0891b2); }
+/* 런 레벨 · XP 바 (성장 선택은 레벨업마다) */
+.run-level { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #a5f3fc; }
+.run-xp { display: inline-block; width: 64px; height: 5px; border-radius: 999px; background: rgba(148, 163, 184, 0.3); overflow: hidden; }
+.run-xp b { display: block; height: 100%; background: linear-gradient(90deg, #67e8f9, #fde047); transition: width .2s; }
 /* 웨이브 전환 · 보스 등장 배너 — 가운데서 커졌다가 사라진다 (combo-flash 계열) */
 .wave-banner { position: absolute; top: calc(var(--safe-top, 0px) + 150px); left: 50%; display: grid; justify-items: center; gap: 2px; padding: 7px 16px; border-radius: 14px; max-width: min(92vw, 340px); background: rgba(2, 6, 23, 0.6); border: 1px solid rgba(103, 232, 249, 0.45); color: #e0f2fe; text-align: center; pointer-events: none; animation: wave-banner 1.7s ease-out both; }
 .wave-banner b { font-size: 20px; font-weight: 900; letter-spacing: 0.06em; white-space: nowrap; text-shadow: 0 0 14px rgba(103, 232, 249, 0.75); }

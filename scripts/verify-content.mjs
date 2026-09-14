@@ -125,8 +125,8 @@ ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 
   const heads = ch.filter((x) => x.hold && x.hold >= 2);
   ok("HARD 채보에 롱노트 머리(hold ≥ 2)가 있고 꼬리는 단타 판정 대상이 아니다(spike=false·holdTail)", heads.length > 0 && heads.every((h, ) => { const i = ch.indexOf(h); return ch[i + 1]?.holdTail === true && ch[i + 1]?.spike === false; }), `heads ${heads.length}`);
   const lvl1 = tracks.buildChart({ ...T.find((t) => t.level === 1), difficulty: "easy", subdivision: 4 });
-  ok("레벨 1(EASY) 채보는 롱노트가 없고 숨소리·클릭(작은 소리)이 노트가 아니다", !lvl1.some((x) => x.hold) && !lvl1.some((x) => x.spike && (x.sound === "breath" || x.sound === "click")));
-  ok("레벨 특징표: 1~2 롱노트 없음 · 5+ 계단 · 7+ 드릴 · 초당 노트 상한 단조 증가", tracks.LEVEL_FEATURES[0].holdEvery === 0 && tracks.LEVEL_FEATURES[4].stairs && !tracks.LEVEL_FEATURES[3].stairs && tracks.LEVEL_FEATURES[6].drill && !tracks.LEVEL_FEATURES[5].drill && tracks.LEVEL_FEATURES.every((f, i) => i === 0 || f.notesPerSec > tracks.LEVEL_FEATURES[i - 1].notesPerSec));
+  ok("레벨 1(EASY) 채보는 숨소리·클릭(작은 소리)이 노트가 아니다 (홀드는 저레벨에도 섞인다 — 2026-09-14)", !lvl1.some((x) => x.spike && (x.sound === "breath" || x.sound === "click")));
+  ok("레벨 특징표: 1부터 롱노트 · 5+ 계단 · 7+ 드릴 · 초당 노트 상한 단조 증가", tracks.LEVEL_FEATURES[0].holdEvery > 0 && tracks.LEVEL_FEATURES[4].stairs && !tracks.LEVEL_FEATURES[3].stairs && tracks.LEVEL_FEATURES[6].drill && !tracks.LEVEL_FEATURES[5].drill && tracks.LEVEL_FEATURES.every((f, i) => i === 0 || f.notesPerSec > tracks.LEVEL_FEATURES[i - 1].notesPerSec));
   ok("effectiveLevel: 곡 레벨 ± 난이도 변형(EASY −2 · HARD +2), 1~10 클램프", tracks.effectiveLevel({ ...base, level: 5, difficulty: "easy" }) === 3 && tracks.effectiveLevel({ ...base, level: 5, difficulty: "hard" }) === 7 && tracks.effectiveLevel({ ...base, level: 10, difficulty: "hard" }) === 10);
   // 드릴: 레벨 7+ 드롭에 같은 레인 3연타가 존재
   const runs = (c) => { let best = 0, run = 0, prev = null; for (const st of c) { if (st.spike && st.section === "drop" && st.sound === prev) { run += 1; best = Math.max(best, run); } else run = st.spike ? 1 : 0; prev = st.spike ? st.sound : null; } return best; };
@@ -177,8 +177,8 @@ ok("대장 예고: 90px 520ms(하한) · 400px 860ms · 900px 1200ms(상한)", a
   const jumps = lv10.filter((x) => x.spike && x.jumpSound && !x.hold), holdJumps = lv10.filter((x) => x.hold && x.jumpSound), rolls = lv10.filter((x) => x.roll);
   ok("레벨 10 HARD 채보에 점프·홀드 점프·롤이 있고, 점프의 두 레인은 서로 다르다", jumps.length > 0 && holdJumps.length > 0 && rolls.length >= 4 && jumps.every((x) => bworld.laneOfSound(x.sound) !== bworld.laneOfSound(x.jumpSound)), `jump ${jumps.length} holdJump ${holdJumps.length} roll ${rolls.length}`);
   ok("롤은 두 레인이 교대로 이어진다", (() => { for (let i = 0; i + 1 < lv10.length; i += 1) if (lv10[i].roll && lv10[i + 1].roll && bworld.laneOfSound(lv10[i].sound) === bworld.laneOfSound(lv10[i + 1].sound)) return false; return true; })());
-  ok("레벨 1 EASY 에는 점프·롤·홀드 점프가 없다", !lv1.some((x) => x.jumpSound || x.roll));
-  ok("레벨표: 점프 5+ · 롤 6+ · 홀드 점프 8+", !tracks.LEVEL_FEATURES[3].jump && tracks.LEVEL_FEATURES[4].jump && !tracks.LEVEL_FEATURES[4].roll && tracks.LEVEL_FEATURES[5].roll && !tracks.LEVEL_FEATURES[6].holdJump && tracks.LEVEL_FEATURES[7].holdJump);
+  ok("레벨 1 EASY 에도 홀드·점프가 섞이고, 롤·홀드 점프는 없다", lv1.some((x) => x.hold) && lv1.some((x) => x.jumpSound && !x.hold) && !lv1.some((x) => x.roll || (x.hold && x.jumpSound)), `hold ${lv1.filter((x) => x.hold).length} jump ${lv1.filter((x) => x.jumpSound).length}`);
+  ok("레벨표: 홀드 1+ · 점프 1+ · 롤 4+ · 홀드 점프 5+ (초보 봇이 유효 레벨 3 을 깰 수 있는 선)", tracks.LEVEL_FEATURES[0].holdEvery > 0 && tracks.LEVEL_FEATURES[0].jump && !tracks.LEVEL_FEATURES[2].roll && tracks.LEVEL_FEATURES[3].roll && !tracks.LEVEL_FEATURES[3].holdJump && tracks.LEVEL_FEATURES[4].holdJump);
   // 점프 판정: 두 레인 다 쳐야 미스가 아니다
   const jt = { ...base, difficulty: "medium", subdivision: 8 };
   const jw = bworld.createBeatWorld(390, 700, 1, jt, "boots"); jw.invulnMs = 0;

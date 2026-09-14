@@ -234,4 +234,10 @@ export type GameWorld = {
   bossDefeated: boolean;
   bossCutsLeft: number;
   bossMaxCuts: number;
+  /** 런 성장 (계획안 §23·§24) — 베기·회피로 XP, 레벨업마다 성장 선택. tempo 는 레벨에 따라 화살 속도·빈도를 올린다 (실력 요소) */
+  runXp: number;
+  runLevel: number;
+  /** 아직 UI 가 소비하지 않은 레벨업 수 */
+  levelUps: number;
+  tempo: number;
 };
