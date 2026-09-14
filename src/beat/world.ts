@@ -506,6 +506,12 @@ export function performBeatTap(session: BeatSession, lane: NoteLane = 1): void {
  * 롱노트 릴리즈 판정 (점검표 #8) — 꼬리 스텝 근처에서 떼면 보너스, 너무 일찍 떼면 콤보가 끊긴다.
  * 릴리즈 시점의 진동(navigator.vibrate)은 호출부(BeatGame)가 담당한다.
  */
+/** tracks.effectiveLevel 과 같은 규칙 — 순환 import 를 피해 여기서 계산 */
+function effectiveLevelOf(track: { level?: number; difficulty: string }): number {
+  const shift = track.difficulty === "easy" ? -2 : track.difficulty === "hard" ? 2 : 0;
+  return Math.max(1, Math.min(10, (track.level ?? 5) + shift));
+}
+
 export function performBeatRelease(session: BeatSession, lane: NoteLane): "release-good" | "release-early" | null {
   const world = session.world;
   const slot = session.holdLane === lane && session.holdEndStep >= 0 ? 1 : session.holdLane2 === lane && session.holdEndStep2 >= 0 ? 2 : 0;
@@ -517,7 +523,8 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
       : world.beatPosition) - session.calibrationSec / stepSec;
   const endStep = slot === 2 ? session.holdEndStep2 : session.holdEndStep;
   const distSec = (endStep - position) * stepSec;
-  const windowSec = Math.min(0.22, stepSec * 0.9);
+  // 릴리즈 허용 창: 빠른 곡 0.22초, 느린 곡(4분음 채보)은 0.35초까지 — 꼬리 한 박 앞에서 떼는 초보의 손이 MISS 로 찍히지 않게 (2026-09-14)
+  const windowSec = Math.max(0.22, Math.min(0.35, stepSec * 0.6));
   if (slot === 2) { session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1; }
   else { session.holdLane = -1; session.holdEndStep = -1; world.holdLane = -1; world.holdEndStep = -1; }
   if (distSec <= windowSec) {
@@ -532,8 +539,9 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
   world.comboTimerMs = 0;
   world.judgeText = "MISS";
   world.judgeMs = 320;
-  // 일찍 뗀 롱노트는 놓친 노트와 같다 — 유지해야 유효하다
-  if (world.invulnMs <= 0) { world.hp -= 1; world.invulnMs = 450; world.shakeMs = 120; }
+  // 일찍 뗀 롱노트는 놓친 노트와 같다 — 유지해야 유효하다. 단 저레벨(유효 레벨 ≤ 3)은 콤보만 끊고 체력은 지킨다 (입문 채보에 롱노트를 섞으면서 초보 보호, 2026-09-14)
+  const lenient = effectiveLevelOf(session.track) <= 3;
+  if (world.invulnMs <= 0 && !lenient) { world.hp -= 1; world.invulnMs = 450; world.shakeMs = 120; }
   return "release-early";
 }
 

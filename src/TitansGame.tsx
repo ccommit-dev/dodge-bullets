@@ -30,14 +30,14 @@ import {
   type TitanSkillSlot,
   type TitansSave,
 } from "./titans/model";
-import { AllyArt, MonsterArt } from "./titans/SpriteArt";
+import { AllyArt, MonsterArt, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
-import { grantCharacterReward, loadCharacterProgress, testModeEnabled, updateCharacterProgress } from "./progression/storage";
+import { grantCharacterReward, loadCharacterProgress, qaGemsEnabled, testModeEnabled, updateCharacterProgress } from "./progression/storage";
 import { track as trackEvent } from "./analytics/events";
 import { loadBeatRpg } from "./game/storage";
 import { bestScoreOverall } from "./beat/rpg";
@@ -2106,7 +2106,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         </button>
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong>{formatGold(save.gold)}</strong></span>
-          <span><CurrencyIcon kind="gem" /><strong>{formatGold(redGems)}</strong></span>
+          <span title={qaGemsEnabled() ? "테스트 단계 · 보석 무제한" : undefined}><CurrencyIcon kind="gem" /><strong>{qaGemsEnabled() ? "∞" : formatGold(redGems)}</strong></span>
         </div>
       </header>
 
@@ -2167,6 +2167,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           "--area-background": `url(${area.background})`,
           "--hero-meet-left": `${encounterMotion.heroLeft}%`,
           "--monster-meet-right": `${encounterMotion.monsterRight}%`,
+          // 근접 슬롯이 몬스터 박스가 아니라 '보이는' 몸 가장자리에 붙도록 — 새끼 용처럼 좌우 여백이 큰 원화에서 동료가 허공에 서던 문제
+          "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson))[0]),
+          "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson))[1]),
           "--encounter-duration": `${encounterMotion.durationMs}ms`,
         } as CSSProperties}
         onPointerDown={(e) => {
@@ -3118,6 +3121,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         <div className={`gacha-reveal gacha-summoning tier-${gachaSummoning.tier.toLowerCase()}`} role="status" aria-label="소환 중">
           <div className="gacha-summon-circle">
             <i className="ring r1" /><i className="ring r2" /><i className="ring r3" />
+            <i className="sparks" aria-hidden="true" /><i className="sparks s2" aria-hidden="true" />
             <svg viewBox="0 0 200 200" aria-hidden="true"><polygon className="sigil" points="100,18 128,72 186,80 143,120 156,180 100,150 44,180 57,120 14,80 72,72" /><circle className="sigil-ring" cx="100" cy="100" r="88" /></svg>
             <b>{gachaSummoning.count === 10 ? "10회 소환" : "소환"}</b>
             <small>{gachaSummoning.tier === "SSR" ? "전설의 기운이 감돕니다" : gachaSummoning.tier === "SR" ? "영웅의 기운" : "동료가 응답합니다"}</small>
@@ -3126,7 +3130,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       )}
       {/* 소환 연출 — 카드가 순서대로 뒤집히고 등급색으로 빛난다. 새 동료/중복 조각을 구분해 보여준다 */}
       {gachaReveal && (
-        <div className="gacha-reveal" role="dialog" aria-label="소환 결과" onClick={() => setGachaReveal(null)}>
+        <div className={`gacha-reveal gacha-result ${gachaReveal.some((r) => r.rarity === "SSR") ? "has-ssr" : gachaReveal.some((r) => r.rarity === "SR") ? "has-sr" : ""}`} role="dialog" aria-label="소환 결과" onClick={() => setGachaReveal(null)}>
+          <i className="gacha-burst" aria-hidden="true" />
+          <i className="gacha-rays" aria-hidden="true" />
           <div className={`gacha-reveal-grid count-${gachaReveal.length}`} onClick={(e) => e.stopPropagation()}>
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;

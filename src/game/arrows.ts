@@ -1,5 +1,5 @@
 import { getStage } from "./stages";
-import { BOSS_CUTS_BASE, BOSS_CUTS_PER_STAGE } from "./world";
+import { BOSS_CUTS_BASE, BOSS_CUTS_PER_STAGE, gainRunXp } from "./world";
 import { bossPatternFor } from "./bossPatterns";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
@@ -152,7 +152,7 @@ let currentHomingChance = 0.13;
 function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
   const stage = getStage(world.stageIndex);
   currentHomingChance = homingChanceFor(world.stageIndex);
-  const speed = (pattern.speed ?? 220) * stage.speedMul;
+  const speed = (pattern.speed ?? 220) * stage.speedMul * world.tempo;
   const arrow = acquire(world);
   if (!arrow) return;
 
@@ -405,6 +405,7 @@ function registerSlash(world: GameWorld, arrow: Arrow, boss = false): number {
   const crit = Math.random() < critChance;
   const value = Math.round(base * (1 + world.stats.slashLevel * 0.22 + world.slashBuff * 0.12) * (crit ? 2.2 : 1));
   world.slashScore += value;
+  gainRunXp(world, boss ? 4 : 1);
   pushSlashFx(world, arrow.x, arrow.y, value, boss, crit, energy);
   maybeDropSlashItem(world, arrow.x, arrow.y, boss && arrow.bossCutsLeft <= 0);
   return energy;
@@ -648,7 +649,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
   if (world.stageElapsedMs < 2_000) {
     world.spawnAccMs = 0;
   } else if (pattern && pattern.kind !== "rest") {
-    const spawnMs = (pattern.spawnMs ?? 700) / stage.spawnMul;
+    const spawnMs = (pattern.spawnMs ?? 700) / (stage.spawnMul * world.tempo);
     world.spawnAccMs += dtSec * 1000;
     while (world.spawnAccMs >= spawnMs) {
       world.spawnAccMs -= spawnMs;
@@ -780,6 +781,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       }
       a.active = false;
       world.dodged += 1;
+      gainRunXp(world, 1);
       continue;
     }
 

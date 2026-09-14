@@ -106,10 +106,23 @@ export async function setWalletBalance(
 export const QA_GEMS_KEY = "dodgebullets:qa-gems";
 /** 테스트 모드 플래그 — 설정의 빌드 라벨 7번 탭. 이게 켜져야(또는 DEV) 보석 무제한 메뉴가 보인다 */
 export const QA_MODE_KEY = "dodgebullets:qa-mode";
+/**
+ * 테스트 단계 스위치 — true 면 모든 빌드에서 보석 무제한(지갑 ∞ 표시)·원화 상품 테스트 구매가 켜진다.
+ * 출시 전 false 로 내리면 다시 빌드 라벨 7탭(테스트 모드)에서만 열린다.
+ */
+export const TEST_PHASE = true;
+/** localStorage `dodgebullets:test-phase` = "0" 이면 테스트 단계를 끈다 — 검증 하니스가 실제 경제(보석 차감·구매 게이트)를 볼 때 쓴다 */
+export const TEST_PHASE_KEY = "dodgebullets:test-phase";
+export function testPhaseActive(): boolean {
+  if (!TEST_PHASE) return false;
+  try { return typeof localStorage === "undefined" || localStorage.getItem(TEST_PHASE_KEY) !== "0"; } catch { return true; }
+}
 export function testModeEnabled(): boolean {
+  if (testPhaseActive()) return true;
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; }
 }
 export function qaGemsEnabled(): boolean {
+  if (testPhaseActive()) return true;
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1" && (import.meta.env.DEV || localStorage.getItem(QA_MODE_KEY) === "1"); } catch { return false; }
 }
 export const QA_GEMS_AMOUNT = 999_999;

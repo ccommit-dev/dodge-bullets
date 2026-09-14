@@ -29,6 +29,8 @@ writeFileSync(entry, [
   `export * as perks from "${root}/src/game/perks";`,
   `export * as ranking from "${root}/src/beat/ranking";`,
   `export * as ads from "${root}/src/ads/rewarded";`,
+  `export * as dodgeWorld from "${root}/src/game/world";`,
+  `export * as spriteArt from "${root}/src/titans/SpriteArt";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
@@ -384,6 +386,18 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("분석 이벤트: 최근 200건만 유지하고 가장 오래된 것부터 버린다", list.length === 200 && list[0].data.stage === 5 && list[199].data.stage === 204 && JSON.parse(store.get("dodgebullets:analytics")).length === 200);
     delete globalThis.localStorage;
   }
+}
+
+// ── 화살 원정 런 XP · 몬스터 보이는 여백 (2026-09-14) ──
+{
+  const w = { runXp: 0, runLevel: 1, levelUps: 0, tempo: 1 };
+  const worldMod = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+  for (let i = 0; i < 13; i += 1) worldMod.gainRunXp(w, 1);
+  ok("런 XP: 13 XP 로 레벨 2(필요 13) · 레벨업 1 · tempo 1.045", w.runLevel === 2 && w.levelUps === 1 && Math.abs(w.tempo - 1.045) < 1e-9 && w.runXp === 0, JSON.stringify(w));
+  for (let i = 0; i < 400; i += 1) worldMod.gainRunXp(w, 1);
+  ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
+  const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
+  ok("몬스터 보이는 여백: 새끼 용 좌 23%·우 32%, 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.23,0.32]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
 }
 
 // ── 콘텐츠 역할 분리 P1 ──

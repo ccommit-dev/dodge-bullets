@@ -21,6 +21,8 @@ globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeE
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
 const { tracks: T, world: W, rpg: RPG } = await import(pathToFileURL(out).href);
+/** 실험용: LEVEL_FEATURES 를 바꿔 가며 시뮬할 때 (scripts/tmp-*) */
+export const tracksModule = T;
 rmSync(dir, { recursive: true, force: true });
 
 export const PROFILES = {

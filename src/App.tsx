@@ -83,6 +83,7 @@ import {
   resetRun,
   resizeWorld,
   updateWorld,
+  runXpToNext,
 } from "./game/world";
 
 function applyInsetsToWorld(world: GameWorld, insets: SafeInsets): void {
@@ -158,6 +159,9 @@ function App() {
   const [coinGain, setCoinGain] = useState(0);
   /** 런 중 성장 선택 (P1) — 스테이지당 1회, 마지막 웨이브 앞 */
   const perkStageRef = useRef(-1);
+  const hudLevelRef = useRef(1);
+  const hudXpRef = useRef(0);
+  const [runHud, setRunHud] = useState({ level: 1, pct: 0, tempo: 1 });
   const qaGodmodeRef = useRef(false);
   useEffect(() => { try { qaGodmodeRef.current = import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-godmode") === "1"; } catch { qaGodmodeRef.current = false; } }, []);
   const [perkOptions, setPerkOptions] = useState<PerkDef[]>([]);
@@ -526,17 +530,12 @@ function App() {
 
         // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
         if (import.meta.env.DEV && qaGodmodeRef.current && stateRef.current === "playing") world.player.hp = world.player.maxHp;
-        // 성장 선택: 두 번째 웨이브에 들어설 때(보스 전) 한 번 멈추고 3택 (perks.ts)
-        if (stateRef.current === "playing" && !world.bossSpawned && perkStageRef.current !== world.stageIndex) {
-          const wvStage = getStage(world.stageIndex);
-          const wv = waveAt(wvStage, world.stageElapsedMs);
-          // 보스는 스테이지 58% 지점에 나오므로(arrows.ts) 두 번째 웨이브에 들어설 때가 "보스 전 마지막 숨 고르기"다
-          if (wv.count >= 2 && wv.index === 2) {
-            perkStageRef.current = world.stageIndex;
-            setPerkOptions(pickPerks(world));
-            stateRef.current = "perk";
-            setGameState("perk");
-          }
+        // 성장 선택: 런 XP 로 레벨업할 때마다(perks.ts) 멈추고 3택 — 레벨이 오를수록 화살도 빨라진다(world.tempo)
+        if (stateRef.current === "playing" && world.levelUps > 0) {
+          world.levelUps = 0;
+          setPerkOptions(pickPerks(world));
+          stateRef.current = "perk";
+          setGameState("perk");
         }
         const event = updateWorld(
           world,
@@ -551,6 +550,11 @@ function App() {
           if (world.score !== scoreRef.current) {
             scoreRef.current = world.score;
             setScore(world.score);
+          }
+          if (world.runLevel !== hudLevelRef.current || Math.abs(world.runXp - hudXpRef.current) >= 1) {
+            hudLevelRef.current = world.runLevel;
+            hudXpRef.current = world.runXp;
+            setRunHud({ level: world.runLevel, pct: Math.min(100, Math.round((world.runXp / runXpToNext(world.runLevel)) * 100)), tempo: world.tempo });
           }
           const stage = getStage(world.stageIndex);
           const remain = Math.max(0, stage.durationMs - world.stageElapsedMs);
@@ -1353,6 +1357,7 @@ function App() {
                 {"♡".repeat(Math.max(0, maxHp - hp))}
               </span>
               <span className="threat-label">위험도 {"◆".repeat(threatLevel)}{"◇".repeat(4 - threatLevel)}</span>
+              <span className="run-level">Lv.{runHud.level}{runHud.tempo > 1 ? ` · 속도 ×${runHud.tempo.toFixed(2)}` : ""}<i className="run-xp"><b style={{ width: `${runHud.pct}%` }} /></i></span>
               <i className="expedition-progress"><b style={{ width: `${expeditionRatio * 100}%` }} /></i>
             </div>
             {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
@@ -1443,7 +1448,7 @@ function App() {
           <div className="overlay-content">
             <p className="brand">LEVEL UP</p>
             <h1 className="title">성장 선택</h1>
-            <p className="subtitle">첫 웨이브를 넘겼습니다 — 보스까지 이번 런에만 적용되는 강화를 하나 고르세요</p>
+            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 적용되는 강화를 하나 고르세요. 레벨이 오를수록 화살이 빨라지고 잦아집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
             {perkOptions.map((perk, i) => (
               <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id}`} style={{ "--i": i } as CSSProperties} onClick={() => {
                 const world = worldRef.current;
