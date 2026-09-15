@@ -7,7 +7,7 @@
 import { spawnSync } from "node:child_process";
 
 const NODE_SUITES = ["verify-systems", "verify-content", "beat-chart-report"];
-const BROWSER_SUITES = ["verify-shop", "verify-checklist", "verify-retention", "verify-offers", "verify-gacha", "verify-anim", "verify-play-art", "inspect-mobile"];
+const BROWSER_SUITES = ["verify-shop", "verify-checklist", "verify-retention", "verify-offers", "verify-gacha", "verify-anim", "verify-anim-clip", "verify-play-art", "inspect-mobile"];
 const nodeOnly = process.argv.includes("--node");
 const suites = nodeOnly ? NODE_SUITES : [...NODE_SUITES, ...BROWSER_SUITES];
 const failed = [];

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { combatPower, type CharacterProgress } from "./progression/model";
 import { testModeEnabled, updateCharacterProgress } from "./progression/storage";
 import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
@@ -586,6 +586,30 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
     const done = window.setTimeout(onClose, RIFT_TICK_MS * RIFT_END_TICK);
     return () => { window.clearInterval(id); window.clearTimeout(done); };
   }, [onClose]);
+  // 대열이 필드보다 넓으면 통째로 줄인다 — 파티 3명 + 몬스터 3마리는 390px 화면에서 527px 이라
+  // 예전엔 뒤쪽 두 마리가 화면 밖에 서서 "몬스터가 한 마리뿐"으로 보였다 (2026-09-15 실측).
+  const lineRef = useRef<HTMLDivElement>(null);
+  const needRef = useRef(0);
+  const [lineScale, setLineScale] = useState(1);
+  useEffect(() => {
+    const el = lineRef.current;
+    if (!el) return;
+    const fit = () => {
+      const avail = el.clientWidth;
+      // 자식(동료 줄·몬스터 줄)의 레이아웃 폭만 더한다 — scrollWidth 는 .ally-body 의 투명 여백 넘침까지 세어 과하게 줄였다
+      const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
+      const kids = [...el.children] as HTMLElement[];
+      const width = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * Math.max(0, kids.length - 1);
+      // 쓰러진 몬스터가 접히면 필요 폭이 줄지만 축소율은 최대치로 고정한다 — 안 그러면 전투 내내 화면이 줌인된다
+      needRef.current = Math.max(needRef.current, width);
+      const need = needRef.current;
+      setLineScale(need > avail + 1 ? Math.max(0.6, avail / need) : 1);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tick, party.length]);
   const tl = riftTimeline(tick);
   const kinds = [0, 1, 2].map((i) => area.normalKinds[i % area.normalKinds.length]);
   const monsterClass = (kind: string, phase: RiftPhase, i: number) => `titans-monster kind-${kind} combat-${kind === "dragon" ? "ranged" : "melee"} ${phase === "approach" ? "is-approaching action-idle" : phase === "prepare" ? "action-prepare" : phase === "attack" ? "action-attack" : phase === "hit" ? `action-idle ${(tick + i) % 2 ? "hit-a" : "hit-b"}` : "action-idle"} ${phase === "down" ? "rift-down" : ""} ${phase === "hidden" ? "rift-hidden" : ""}`;
@@ -595,7 +619,7 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
     <div className="rift-run" role="status" onClick={onClose} style={{ "--area-sky": area.sky, "--area-background": `url(${area.background})` } as React.CSSProperties}>
       <div className="rift-run-field">
         {/* 한 줄 대열: 동료 → 주인공(선두) → 몬스터 줄. 쓰러진 몬스터는 폭 0 으로 접혀 다음 몬스터가 앞으로 당겨진다 — 예전엔 두 무리가 좌우 끝에 따로 서서 허공을 쳤다 */}
-        <div className="rift-run-line">
+        <div className="rift-run-line" ref={lineRef} style={{ "--rift-scale": lineScale } as React.CSSProperties}>
         <div className="rift-run-party">
           {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tl.strike >= 0 ? tl.strike * 3 + i : 0} hitPulse={tl.monsters.some((p) => p === "attack") || tl.boss === "attack" ? tick : 0} partySlot={i} engaged />)}
           <span className={`rift-hero ${tl.strike >= 0 ? "is-striking" : ""}`} aria-hidden="true">
