@@ -191,13 +191,14 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   ctx.closePath();
   ctx.fill();
 
-  // fletching
+  // fletching — 축 위 한 점에서 뒤·바깥으로 눕는 꼬리 깃 (촉보다 얇게)
   ctx.strokeStyle = "#fda4af";
+  ctx.lineWidth = Math.max(1.4, ctx.lineWidth * 0.6);
   ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx + cos * 6 + px * 5, by + sin * 6 + py * 5);
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx + cos * 6 - px * 5, by + sin * 6 - py * 5);
+  ctx.moveTo(bx + cos * 8, by + sin * 8);
+  ctx.lineTo(bx - cos * 1.5 + px * 3.8, by - sin * 1.5 + py * 3.8);
+  ctx.moveTo(bx + cos * 8, by + sin * 8);
+  ctx.lineTo(bx - cos * 1.5 - px * 3.8, by - sin * 1.5 - py * 3.8);
   ctx.stroke();
 }
 

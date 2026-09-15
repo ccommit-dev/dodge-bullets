@@ -35,12 +35,13 @@ let r = await page.evaluate(() => ({ coach: document.querySelector(".coach-bubbl
 ok("#1 신규 코치 1단계(탭 유도)", /탭/.test(r.coach ?? ""), r.coach);
 // 초반 곡선 완화로 Stage 1 몬스터가 탭 2~3회에 죽는다 — 같은 틱의 연타는 스테이지 전환 중 버려지므로 실제 손가락처럼 간격을 둔다
 const tapFloats = new Set();
-for (let i = 0; i < 8; i++) {
+for (let i = 0; i < 30; i++) {
   await page.evaluate(() => { document.querySelector(".titans-field")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 200, clientY: 400 })); });
   await sleep(120);
   // 피해 숫자는 짧게 떠 있으므로 탭 직후에 채집한다
   (await page.evaluate(() => [...document.querySelectorAll(".titans-float")].map((f) => f.className))).forEach((c) => tapFloats.add(c));
   await sleep(200);
+  if (i >= 6 && /소환/.test(await page.evaluate(() => document.querySelector(".coach-bubble")?.textContent ?? ""))) break;
 }
 await sleep(600);
 r = await page.evaluate(() => ({ coach: document.querySelector(".coach-bubble")?.textContent?.trim() }));

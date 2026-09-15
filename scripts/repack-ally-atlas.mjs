@@ -4,7 +4,7 @@
  * 경계 아래 확장 띠에서 "위 행의 바닥선과 연결된 픽셀"만 위 행으로 옮긴다 (아래 행 상단에서는 지운다).
  *   node scripts/repack-ally-atlas.mjs
  * 대상: ally-animation-atlas-v1 (4×6) · ally-variant-atlas-v1 (4×12) · ally-skin-atlas-v1 (4×13) — 셀 313.5×209 → 313.5×239.
- * 이미 재패킹된 아틀라스(높이가 239 배수)는 건너뛴다. SpriteArt WIDE_CELL 은 새 비율(131.2% × 114.35%)을 쓴다.
+ * 이미 재패킹된 아틀라스(높이가 239 배수)는 건너뛴다. SpriteArt WIDE_CELL 은 폭 150%(셀 폭 그대로) × 높이 114.35%(209→239) 를 쓴다 — 폭을 같이 줄이면 인물이 가로로 눌린다.
  */
 import sharp from "sharp";
 

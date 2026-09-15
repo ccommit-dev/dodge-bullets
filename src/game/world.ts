@@ -5,8 +5,14 @@ import { emptyShopLevels, statsFromLevels } from "./shop";
 import { getStage } from "./stages";
 import type { GameWorld, Platform, PlayerStats } from "./types";
 
+/**
+ * 조작 버튼(.action-dock, 높이 74px)이 화면 맨 아래에 깔려 있어 바닥이 그 뒤였다 —
+ * 주인공이 버튼에 가려 "피하는 순간 내 캐릭터가 안 보이는" 상태였다 (2026-09-15 실측: 발 814, 독 770~844).
+ * 바닥을 독 위로 올린다. 발판은 playH(= floorY − safeTop) 비율이라 같이 따라 올라간다.
+ */
+export const HUD_BOTTOM_RESERVE = 72;
 function floorYOf(height: number, safeBottom: number): number {
-  return height - safeBottom - 18;
+  return height - safeBottom - 18 - HUD_BOTTOM_RESERVE;
 }
 
 function materializePlatforms(

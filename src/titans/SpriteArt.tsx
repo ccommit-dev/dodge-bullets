@@ -100,8 +100,12 @@ const SKIN_ROWS = 13;
 const SKIN_SPECIAL_ATLAS = assetUrl("titans/generated/allies/ally-skin-special-atlas-v1.png");
 const SKIN_SPECIAL_ROW: Record<string, number> = { "sera_light-halo": 0 };
 const SKIN_SPECIAL_ROWS = 1;
-// 재패킹 아틀라스(scripts/repack-ally-atlas.mjs): 셀 313.5×239 — 원래 209px 영역이 요소 높이 100%, 발 확장 30px 은 아래로 14.35% 삐져나온다
-const WIDE_CELL: CSSProperties = { width: "131.2%", height: "114.35%", left: "-15.6%", top: 0, bottom: "auto", right: "auto" };
+/**
+ * 재패킹 아틀라스(scripts/repack-ally-atlas.mjs): 셀 313.5×239 — 원래 209px 영역이 요소 높이 100%, 발 확장 30px 은 아래로 14.35% 삐져나온다.
+ * 폭은 재패킹 전(313.5px = 150%)과 같다 — 세로만 209→239 로 늘었으므로 높이만 114.35% 로 올린다.
+ * 2026-09-11~14 동안 폭을 131.2% 로 함께 줄여 동료가 가로로 12.5% 눌려 있었다 (셀 비율 1.312 vs 렌더 1.147). 원래 비율로 되돌린다.
+ */
+const WIDE_CELL: CSSProperties = { width: "150%", height: "114.35%", left: "-25%", top: 0, bottom: "auto", right: "auto" };
 
 function atlasCell(atlas: string, cols: number, rows: number, col: number, row: number, wide: boolean): CSSProperties {
   return {

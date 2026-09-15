@@ -518,7 +518,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                       style={
                         {
                           "--ember-i": i,
-                          left: `${(i * 37) % 100}%`,
+                          left: `${6 + ((i * 37) % 88)}%`,
                         } as CSSProperties
                       }
                     />
@@ -716,7 +716,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             /* 견갑 강화 — 검 강화와 같은 골격(무대 → 패널 → 4스탯 → 안내 → 강화 → 판매)으로 통일 (사용자 지시) */
             <>
               <section className={`forge-stage armor-forge-stage forge-phase-${phase} armor-tier-${armorTierOf(save.armorLevel)}`} data-armor-tier={armorTierOf(save.armorLevel)}>
-                <div className="forge-embers" aria-hidden="true">{Array.from({length:12},(_,i)=><i key={i} style={{"--ember-i":i,left:`${(i*37)%100}%`} as CSSProperties}/>)}</div>
+                <div className="forge-embers" aria-hidden="true">{Array.from({length:12},(_,i)=><i key={i} style={{"--ember-i":i,left:`${6+((i*37)%88)}%`} as CSSProperties}/>)}</div>
                 <div className="sword-aura" />
                 <ShoulderIcon id={equippedShoulder} />
                 <div className="forge-sword-name"><span>+{save.armorLevel}</span><strong>{equippedShoulder ? shoulderMeta.find((item)=>item.id===equippedShoulder)?.name : "견갑 미장착"}</strong></div>
