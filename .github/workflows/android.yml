@@ -45,7 +45,7 @@ jobs:
           java-version: 21
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install dependencies
         run: npm ci
@@ -94,7 +94,7 @@ jobs:
 
       - name: Setup Android SDK
         if: env.HAS_KEYSTORE == 'true'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install dependencies
         if: env.HAS_KEYSTORE == 'true'
