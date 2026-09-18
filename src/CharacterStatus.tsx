@@ -306,8 +306,7 @@ export function CharacterStatus({
                 <i className="skin-thumb" style={{ backgroundImage: `url(${sheetFor(skin, "idle")})` }} aria-hidden="true" />
                 <b>{CHARACTER_LABEL[skin]}</b>
                 <small>
-                  {skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : "패시브 없음"}
-                  {!owned && " · 미보유"}
+                  {[skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : owned ? "패시브 없음" : "", owned ? "" : "미보유"].filter(Boolean).join(" · ")}
                 </small>
               </button>
             );
@@ -359,8 +358,8 @@ export function CharacterStatus({
                 {/* 도감 썸네일 — 만난 적 없는 몬스터는 실루엣 */}
                 <img className="codex-thumb" src={monsterAssetFor(kind === "boss" ? "boss" : kind, HUNTING_AREAS[4], kind === "boss", false)} alt="" aria-hidden="true" />
                 <b>{label}</b>
-                <span>{kills.toLocaleString()}마리</span>
-                <small>{bonus > 0 ? `골드 +${bonus}%` : "10마리부터"}{nextAt !== null && ` · 다음 ${nextAt}`}</small>
+                <span>{kills.toLocaleString()}{nextAt !== null ? ` / ${nextAt.toLocaleString()}` : "마리"}</span>
+                {bonus > 0 && <small>골드 +{bonus}%</small>}
               </div>
             );
           })}

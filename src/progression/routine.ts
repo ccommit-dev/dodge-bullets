@@ -38,7 +38,8 @@ export function routineItems(progress: CharacterProgress, events: EventSave, now
   return [
     { id: "claim", label: "정산", detail: claimedToday ? "오늘 수령" : "방치 보상 받기", done: claimedToday, go: { kind: "claim" } },
     { id: "rift", label: "균열", detail: riftLeft === 0 ? `${riftMax}/${riftMax} 완료` : `${riftMax - riftLeft}/${riftMax}`, done: riftLeft === 0, go: { kind: "events", tab: "rift" } },
-    { id: "mission", label: "토벌", detail: missionsDone ? "모두 수령" : "미수령", done: missionsDone, go: { kind: "events", tab: "daily" } },
+    // "토벌" 과 별도의 "일일 퀘스트" 버튼이 같은 화면·같은 설명으로 두 번 있었다 — 진행 상태가 보이는 이쪽만 남기고 이름을 합쳤다 (2026-09-18)
+    { id: "mission", label: "일일 퀘스트", detail: missionsDone ? "모두 수령" : "미수령", done: missionsDone, go: { kind: "events", tab: "daily" } },
     { id: "forge", label: "강화", detail: forgedToday ? "오늘 성공" : "1회 성공", done: forgedToday, go: { kind: "content", content: "forge" } },
     { id: "expedition", label: "파견", detail: expeditionActive ? "진행 중" : "보내기", done: expeditionActive, go: { kind: "tab", tab: "heroes" } },
   ];
