@@ -982,10 +982,11 @@
 }
 .character-skin-chip.active { border-color: #5eead4; box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.4); }
 .character-skin-chip.locked { opacity: 0.55; }
-.character-skin-chip b { display: block; font-size: 11.5px; }
-.character-skin-chip small { display: block; margin-top: 2px; color: #94a3b8; font-size: 9px; }
+.character-skin-chip b { display: block; font-size: 11.5px; word-break: keep-all; }
+.character-skin-chip small { display: block; margin-top: 2px; color: #94a3b8; font-size: 9px; word-break: keep-all; }
 
-.codex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 8px 0 14px; }
+/* 3열에서는 썸네일을 빼면 글자 칸이 46px 뿐이라 "1,500마리"·"250 / 1,000" 이 두세 줄로 접혔다 — 2열로 (2026-09-18) */
+.codex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin: 8px 0 14px; }
 .codex-chip {
   padding: 8px;
   border: 1px solid rgba(148, 163, 184, 0.2);
@@ -993,8 +994,8 @@
   background: rgba(10, 18, 33, 0.6);
 }
 .codex-chip.tiered { border-color: rgba(251, 191, 36, 0.35); }
-.codex-chip b { display: block; color: #e2e8f0; font-size: 11px; }
-.codex-chip span { display: block; color: #94a3b8; font-size: 10px; }
+.codex-chip b { display: block; color: #e2e8f0; font-size: 11px; word-break: keep-all; }
+.codex-chip span { display: block; color: #94a3b8; font-size: 10px; word-break: keep-all; }
 .codex-chip small { display: block; margin-top: 2px; color: #fbbf24; font-size: 8.5px; }
 
 .shard-pack-select {
@@ -2314,11 +2315,11 @@
 .event-offer-card .reward-row { margin-top: 5px; }
 
 /* 마이페이지 — 캐릭터 칩 썸네일 · 몬스터 도감 썸네일 */
-.character-skin-chip { position: relative; padding-left: 52px !important; min-height: 60px; }
-.character-skin-chip .skin-thumb { position: absolute; left: 6px; top: 50%; width: 40px; height: 52px; transform: translateY(-50%); background-size: 400% 100%; background-position: 0 0; background-repeat: no-repeat; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); pointer-events: none; }
+.character-skin-chip { position: relative; padding-left: 44px !important; min-height: 60px; }
+.character-skin-chip .skin-thumb { position: absolute; left: 4px; top: 50%; width: 34px; height: 46px; transform: translateY(-50%); background-size: 400% 100%; background-position: 0 0; background-repeat: no-repeat; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); pointer-events: none; }
 .character-skin-chip.locked .skin-thumb { filter: grayscale(1) brightness(0.55); }
-.codex-chip { position: relative; padding-left: 58px !important; min-height: 62px; }
-.codex-chip .codex-thumb { position: absolute; left: 6px; top: 50%; width: 46px; height: 46px; transform: translateY(-50%); object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); }
+.codex-chip { position: relative; padding-left: 46px !important; min-height: 58px; }
+.codex-chip .codex-thumb { position: absolute; left: 4px; top: 50%; width: 38px; height: 38px; transform: translateY(-50%); object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); }
 .codex-chip.unseen .codex-thumb { filter: brightness(0) opacity(0.55); }
 
 /* 균열 진입 연출 */
