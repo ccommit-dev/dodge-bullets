@@ -160,7 +160,7 @@ export type MonsterFrameState = "idle" | "hit" | "defeat";
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   "abyss-titan": [0.15, 0.15], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], "flame-wyvern": [0.18, 0.18], goblin: [0.13, 0.13],
   "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1], "moss-golem": [0.15, 0.15],
-  "ogre-king-clean": [0.12, 0.05], "ogre-king": [0.17, 0.18], ogre: [0.23, 0.13], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14],
+  "ogre-king-clean": [0.12, 0.05], "ogre-king": [0.17, 0.18], ogre: [0.05, 0.05], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14],
   "wolf-king-clean": [0.18, 0.13], "wolf-king": [0.17, 0.17], wolf: [0.14, 0.14],
 };
 export function monsterVisibleMargin(assetPath: string): [number, number] {

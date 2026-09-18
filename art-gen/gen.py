@@ -308,6 +308,37 @@ def cmd_prop(a):
     save(cutout(im).resize((512, 512), Image.LANCZOS), f"prop-{a.id}.png")
 
 
+MONSTER_STYLE = (
+    "fantasy mobile RPG monster, painterly semi-realistic, full body from head to feet, both feet planted on the ground, "
+    "standing upright facing the viewer, whole figure inside the frame with empty space below the feet, "
+    "single creature, plain white background, no text, no watermark"
+)
+MONSTER_NEG = (
+    "cropped, cut off legs, cut off feet, out of frame, close-up, bust shot, portrait crop, waist up, "
+    "text, letters, watermark, logo, blurry, lowres, multiple creatures, person, human, frame, border, background scenery, photo, 3d render"
+)
+
+
+def cmd_monster(a):
+    """몬스터 1장 — 기존 몬스터 원화를 IP 참조로 화풍을 맞추고, 발끝까지 들어간 전신으로 뽑는다.
+    출력 art-gen/out/monster-<id>-s<seed>.png (512px 투명). 기존 ogre.png 등은 허벅지에서 잘려 있었다 (2026-09-18)."""
+    pipe = load_pipe(ip=True)
+    pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.45)
+    refs = []
+    for f in (a.ref or "").split(",") if a.ref else []:
+        im = Image.open(f).convert("RGBA")
+        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+        bg.alpha_composite(im)
+        refs.append(bg.convert("RGB").resize((384, 384)))
+    if not refs:
+        refs = style_refs()
+    for seed in (a.seeds or [a.seed or BASE_SEED]):
+        g = torch.Generator(dev()).manual_seed(seed)
+        im = pipe(prompt=f"{a.prompt}, {MONSTER_STYLE}", negative_prompt=MONSTER_NEG, num_inference_steps=26,
+                  guidance_scale=7.0, generator=g, width=1024, height=1024, ip_adapter_image=[refs]).images[0]
+        save(cutout(im).resize((512, 512), Image.LANCZOS), f"monster-{a.id}-s{seed}.png")
+
+
 def cmd_cover(a):
     pipe = load_pipe(ip=False)
     g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
@@ -329,6 +360,7 @@ if __name__ == "__main__":
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
+    mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.set_defaults(fn=cmd_monster)
     v = sub.add_parser("cover"); v.add_argument("id"); v.add_argument("prompt"); v.add_argument("--seed", type=int); v.set_defaults(fn=cmd_cover)
     args = ap.parse_args()
     args.fn(args)
