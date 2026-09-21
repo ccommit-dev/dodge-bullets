@@ -1250,10 +1250,17 @@
 .beat-layer-mixer span { display:grid; gap:2px; padding:5px 4px; border:1px solid rgba(148,163,184,.18); border-radius:8px; color:#64748b; background:rgba(2,6,23,.72); font-size:8px; text-align:center; transition:.2s ease; }
 .beat-layer-mixer span.on { color:#f8fafc; border-color:#67e8f9; background:linear-gradient(145deg,rgba(8,145,178,.38),rgba(88,28,135,.46)); box-shadow:0 0 14px rgba(34,211,238,.2); }
 .beat-layer-mixer i { color:#fbbf24; font-style:normal; letter-spacing:1px; }
+/* 키보드 키는 마우스가 있는 기기에서만 — 미니앱은 터치라 ←/A 같은 표기가 뜻이 없었다 (2026-09-21) */
+.beat-pad .pad-key { display:none; }
+@media (hover: hover) and (pointer: fine) { .beat-pad .pad-key { display:block; font-style:normal; opacity:.7; } }
 .beat-command-party.drop-burst { animation:beat-drop-burst .7s cubic-bezier(.2,.85,.24,1); }
 .beat-command-party.drop-burst::after { content:"FEVER!"; position:absolute; z-index:20; left:50%; top:42%; transform:translate(-50%,-50%); color:#fff; font:italic 1000 clamp(38px,10vw,78px)/1 system-ui; text-shadow:0 0 12px #22d3ee,0 0 32px #a855f7,0 6px 0 #7c3aed; animation:beat-drop-text .7s ease-out forwards; pointer-events:none; }
-.beat-fever-trigger { position:fixed; z-index:12; right:max(18px,env(safe-area-inset-right)); bottom:calc(max(18px,env(safe-area-inset-bottom)) + 92px); display:grid; place-items:center; width:86px; height:58px; border:2px solid #475569; border-radius:18px; color:#64748b; background:rgba(2,6,23,.9); box-shadow:0 10px 28px rgba(0,0,0,.42); }
-.beat-fever-trigger b { font-size:13px; }.beat-fever-trigger small { font-size:10px; }
+/* 파티 패널 안으로 — 전에는 화면 오른쪽 고정이라 판정선과 패드 사이(손이 오가는 띠)를 막았다 (2026-09-21).
+   패널은 pointer-events:none 이므로 버튼만 auto 로 되살린다. 충전량은 배경이 왼쪽부터 차오른다. */
+.beat-fever-trigger { position:relative; z-index:1; margin-top:8px; display:grid; place-items:center; width:100%; height:40px; overflow:hidden; border:1px solid rgba(148,163,184,.3); border-radius:12px; color:#94a3b8; background:rgba(2,6,23,.82); pointer-events:auto; }
+.beat-fever-trigger::before { content:""; position:absolute; left:0; top:0; bottom:0; width:var(--fever-fill,0%); background:linear-gradient(90deg,rgba(6,182,212,.55),rgba(253,224,71,.5)); transition:width .25s ease; }
+.beat-fever-trigger b,.beat-fever-trigger small { position:relative; }
+.beat-fever-trigger b { font-size:12px; }.beat-fever-trigger small { font-size:9px; }
 .beat-fever-trigger.ready { color:#fff; border-color:#fde047; background:linear-gradient(145deg,#0891b2,#7c3aed 58%,#f59e0b); box-shadow:0 0 18px #22d3ee,0 0 34px rgba(168,85,247,.65); animation:fever-ready .65s ease-in-out infinite alternate; }
 .beat-fever-trigger:disabled { opacity:.68; }
 .beat-command-party.fever-x2 { box-shadow:0 0 28px rgba(34,211,238,.55),inset 0 0 24px rgba(34,211,238,.2); }

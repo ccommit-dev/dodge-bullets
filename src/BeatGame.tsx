@@ -1,6 +1,6 @@
 import type { BeatTrackDef } from "./beat/tracks";
 import type { BeatDifficulty } from "./beat/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "./asset";
 import { drawBeatFrame } from "./beat/draw";
 import {
@@ -764,21 +764,22 @@ export function BeatGame({
           <div key={dropFlash} className={`beat-command-party action-${partyAction} enemy-${enemyAction} ${dropFlash > 0 ? "drop-burst" : ""} ${feverMultiplier > 1 ? `fever-x${feverMultiplier}` : ""}`} aria-live="polite">
             <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
             <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"}`}><EquippedCharacter mode={partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"} frame={combo % 4} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash + 1 : 0}/></span>{(() => { const base = stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean" : "titans/generated/monsters/moss-golem-clean"; return <span key={beatTick} className="beat-monster-wrap beat-pulse" data-beat={beatTick}><img className="beat-training-monster" src={assetUrl(base + ".png")} alt="레이드 몬스터" /><img className="beat-monster-hit" src={assetUrl(base + "-hit.png")} alt="" aria-hidden="true" /></span>; })()}{materialGain > 0 && <b className="beat-material-drop">강화석 +{materialGain}</b>}</div>
-            <div className="beat-fever">
-              <i style={{width:`${feverMultiplier > 1 ? feverRemainSec / (feverMultiplier === 5 ? 6 : feverMultiplier === 3 ? 7 : 8) * 100 : dropCharge}%`}}/>
-              <span>{feverMultiplier > 1 ? `FEVER ×${feverMultiplier} · ${feverRemainSec}s` : `FEVER ${dropCharge}% · ${dropCharge >= 100 ? "×5" : dropCharge >= 65 ? "×3" : dropCharge >= 35 ? "×2 사용 가능" : "정확한 노트로 충전"}`}</span>
-            </div>
-            <div className="beat-layer-mixer">{["KICK 공격","SNARE 방어","HAT 회피","BASS 스킬"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
+            {/* FEVER 가 바(패널 안)와 버튼(화면 오른쪽) 두 곳에서 같은 값을 보여 줬다 — 버튼 하나로 합치고
+                충전량은 버튼 배경이 채운다. 자리도 패널 안으로 올렸다: 판정선과 패드 사이,
+                손이 오가는 띠에 떠 있었다 (2026-09-21 실측 캡처) */}
+            <button
+              type="button"
+              className={`beat-fever-trigger ${dropCharge >= 35 && feverMultiplier === 1 ? "ready" : ""}`}
+              disabled={dropCharge < 35 || feverMultiplier > 1}
+              onClick={activateFever}
+              style={{ "--fever-fill": `${feverMultiplier > 1 ? feverRemainSec / (feverMultiplier === 5 ? 6 : feverMultiplier === 3 ? 7 : 8) * 100 : dropCharge}%` } as CSSProperties}
+            >
+              <b>{feverMultiplier > 1 ? `FEVER ×${feverMultiplier}` : dropCharge >= 100 ? "FEVER ×5" : dropCharge >= 65 ? "FEVER ×3" : dropCharge >= 35 ? "FEVER ×2" : "FEVER"}</b>
+              <small>{feverMultiplier > 1 ? `${feverRemainSec}s` : dropCharge >= 35 ? `${dropCharge}% · 누르세요` : `${dropCharge}% · 정확한 노트로 충전`}</small>
+            </button>
+            {/* 악기 이름만 — 역할(공격·방어·회피·스킬)은 아래 패드가 말한다. 전에는 양쪽이 같은 말을 했다 */}
+            <div className="beat-layer-mixer">{["KICK","SNARE","HAT","BASS"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
           </div>
-          <button
-            type="button"
-            className={`beat-fever-trigger ${dropCharge >= 35 && feverMultiplier === 1 ? "ready" : ""}`}
-            disabled={dropCharge < 35 || feverMultiplier > 1}
-            onClick={activateFever}
-          >
-            <b>{feverMultiplier > 1 ? `×${feverMultiplier}` : dropCharge >= 100 ? "FEVER ×5" : dropCharge >= 65 ? "FEVER ×3" : dropCharge >= 35 ? "FEVER ×2" : "FEVER"}</b>
-            <small>{feverMultiplier > 1 ? `${feverRemainSec}s` : `${dropCharge}%`}</small>
-          </button>
           <div className="hud beat-hud" style={dockStyle}>
             <div className="hud-left">
               <span className="hud-score beat-track-name">
@@ -789,7 +790,8 @@ export function BeatGame({
                 {lessonTitle} · HP {"♥".repeat(hp)}
                 {"♡".repeat(Math.max(0, maxHp - hp))}
               </span>
-              <span className="hud-hint">공명 제련 · {SHOULDER_BLUEPRINTS.find((item) => item.id === shoulderBlueprint)?.name}</span>
+              {/* '공명 제련 · <견갑>' 줄은 파티 패널에 가려 반쯤 잘렸다. 시작할 때 정해지는 값이고
+                  받는 양은 클리어 화면(shoulderReward)이 말하므로 플레이 중에는 뺀다 (2026-09-21) */}
             </div>
             <div className="beat-score">{score.toLocaleString()}</div>
             {combo >= 2 && <div className="combo-flash">COMBO x{combo}</div>}
@@ -817,7 +819,8 @@ export function BeatGame({
                 }}
               >
                 <span>{direction.symbol}</span>
-                <small>{["KICK","SNARE","HAT","BASS"][direction.lane]} · {direction.key}</small>
+                {/* 악기 이름은 위 믹서가 말한다 — 패드는 역할만. 키보드 키는 마우스 기기에서만 보인다 */}
+                <small>{["공격", "방어", "회피", "스킬"][direction.lane]}<em className="pad-key">{direction.key}</em></small>
               </button>
             ))}
           </div>
