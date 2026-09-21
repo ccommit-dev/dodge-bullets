@@ -248,6 +248,31 @@ def cmd_boss(a):
     save(cutout(defeat), f"boss-{Path(a.file).stem}-defeat.png")
 
 
+NPC_STYLE = (
+    "full body from head to feet, standing on the ground, whole figure visible with margin around it, "
+    "fantasy mobile game character art, painterly semi-realistic, dramatic rim light, plain white background, no text, no watermark"
+)
+# monster 와 같은 취지지만 사람을 막지 않는다 — NPC 는 사람이다
+NPC_NEG = (
+    "cropped, cut off legs, cut off feet, cut off arms, out of frame, close-up, bust shot, portrait crop, waist up, zoomed in, "
+    "text, letters, watermark, logo, blurry, lowres, multiple people, crowd, frame, border, background scenery, photo, 3d render"
+)
+
+
+def cmd_npc(a):
+    """NPC 전신 1장 — 잘리지 않게 여백을 두고 뽑는다. 화풍 참조는 --ref. 출력 npc-<id>-s<seed>.png"""
+    refs = [Image.open(x).convert("RGB").resize((384, 384)) for x in (a.ref.split(",") if a.ref else [])]
+    pipe = load_pipe(ip=bool(refs))
+    if refs:
+        pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.45)
+    for seed in (a.seeds or [a.seed or BASE_SEED]):
+        g = torch.Generator(dev()).manual_seed(seed)
+        kw = {"ip_adapter_image": [refs]} if refs else {}
+        im = pipe(prompt=f"{a.prompt}, {NPC_STYLE}", negative_prompt=NPC_NEG, num_inference_steps=28, guidance_scale=7.0,
+                  generator=g, width=832, height=1216, **kw).images[0]
+        save(cutout(im), f"npc-{a.id}-s{seed}.png")
+
+
 ICON_STYLE = (
     "fantasy mobile game reward item icon, chibi painterly semi-realistic, glossy highlights, rim light, "
     "single object centered, large and readable, plain white background, no text, no watermark"
@@ -360,6 +385,7 @@ if __name__ == "__main__":
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
+    np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
     mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.set_defaults(fn=cmd_monster)
     v = sub.add_parser("cover"); v.add_argument("id"); v.add_argument("prompt"); v.add_argument("--seed", type=int); v.set_defaults(fn=cmd_cover)
     args = ap.parse_args()

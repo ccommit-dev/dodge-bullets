@@ -22,6 +22,10 @@ function getExpeditionAttackHero(): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   if (!expeditionHeroAttack) {
     expeditionHeroAttack = new Image();
+    // 이 시트는 대기 원화와 **다른 인물**이다 (남색 머리·파란 망토 vs 갈색 머리·주황 코트) — 스킬을 쓰면 주인공이 바뀌어 보인다.
+    // 타이탄용 hero-attack.png 로 바꿔 보았으나 그쪽은 무기를 장비 오버레이로 따로 그리는 구조라 **맨손**이다.
+    // 캔버스(화살 원정)에는 그 오버레이가 없어 검 없이 허공을 베게 된다 — 인물 일치보다 검이 보이는 쪽을 택했다.
+    // 제대로 된 해결은 대기 원화와 같은 인물이 검을 든 4프레임을 새로 뽑는 것이다 (2026-09-21 확인).
     expeditionHeroAttack.src = assetUrl("titans/generated/hero-attack-sheet.png");
   }
   return expeditionHeroAttack;
