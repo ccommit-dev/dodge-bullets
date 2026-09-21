@@ -461,8 +461,15 @@ function spawnBossSplitPattern(world: GameWorld, source: Arrow): void {
 export const SWING_MS = 320;
 /** 스윙 호 — 바라보는 방향 기준 ±110° (뒤에서 오는 화살은 못 벤다) */
 export const SWING_ARC = (220 / 180) * Math.PI;
-/** 정타(반사) 거리 — 화살이 몸에서 이 거리 안일 때 베면 반사 */
-export const REFLECT_DIST = 16;
+/**
+ * 정타(반사) 거리 — 화살이 몸에서 이 거리 안일 때 베면 반사된다.
+ * 16 일 때는 플레이어 반지름(16)과 같아 의도적으로 노릴 수 없었다 — 봇 5시드 평균 반사 0.2회/런,
+ * 베기 27회 중 0.7%. 콘텐츠의 재미 포인트(코앞에서 베어 궁수에게 되돌리기)를 사실상 못 겪는다.
+ * 22 로 넓히면 1.6회/런 이 되고 클리어율은 그대로다 (1·2·3스테이지 5/5, 4스테이지 4/5).
+ * 더 넓히면 오히려 어려워진다 — 반사된 화살은 사라지지 않고 계속 날아다녀서,
+ * 26 에서 2스테이지가 4/5, 30 에서 3/5 로 떨어지고 4스테이지에 사망이 생겼다 (2026-09-21 실측).
+ */
+export const REFLECT_DIST = 22;
 export const GAUGE_REFLECT = 22;
 export const GAUGE_SHATTER = 9;
 

@@ -8,10 +8,10 @@ export type PerkId = "gauge" | "speed" | "heal" | "slash" | "dash";
 export type PerkDef = { id: PerkId; label: string; desc: string; available: (w: GameWorld) => boolean; apply: (w: GameWorld) => void };
 
 export const PERKS: PerkDef[] = [
-  { id: "gauge", label: "참격 게이지 +35", desc: "일섬이 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
+  { id: "gauge", label: "일섬 게이지 +35", desc: "일섬이 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
   { id: "speed", label: "이동 속도 +12%", desc: "이번 런 동안", available: () => true, apply: (w) => { w.stats.moveSpeed *= 1.12; } },
   { id: "heal", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) w.player.maxHp += 1; w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
-  { id: "slash", label: "참격 강화 +1", desc: "베기 점수·파편 약화", available: () => true, apply: (w) => { w.stats.slashLevel += 1; } },
+  { id: "slash", label: "검격 강화 +1", desc: "베기 점수·파편 약화", available: () => true, apply: (w) => { w.stats.slashLevel += 1; } },
   { id: "dash", label: "회피 쿨타임 -15%", desc: "대시가 열려 있을 때", available: (w) => w.stats.dashUnlocked, apply: (w) => { w.stats.dashCooldownMs *= 0.85; } },
 ];
 

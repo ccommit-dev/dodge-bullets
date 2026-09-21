@@ -102,7 +102,7 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 }
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
-/** 성장 선택 아이콘 — 기존 보상 아이콘 재사용 (참격 게이지=스킬 오브 · 이동=부스트 · HP=경험 오브 · 참격 강화=강화석 · 회피=무기 이펙트) */
+/** 성장 선택 아이콘 — 기존 보상 아이콘 재사용 (일섬 게이지=스킬 오브 · 이동=부스트 · HP=경험 오브 · 검격 강화=강화석 · 회피=무기 이펙트) */
 const PERK_ICON: Record<PerkId, RewardIconKind | "exp"> = { gauge: "cores", speed: "boost", heal: "exp", slash: "materials", dash: "weaponFx" };
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
@@ -149,7 +149,8 @@ function App() {
   const coinsRef = useRef(0);
   const shopLevelsRef = useRef<ShopLevels>(emptyShopLevels());
   const [bootReady, setBootReady] = useState(false);
-  const [userKeySource, setUserKeySource] = useState<"sdk" | "mock">("mock");
+  // 값은 화면에 안 쓴다 — 개발용 배선 상태라 로비에서 뺐다(2026-09-21). 세터는 부팅 경로가 계속 쓴다
+  const [, setUserKeySource] = useState<"sdk" | "mock">("mock");
   const [gameState, setGameState] = useState<GameState>("ready");
   const [menuTab, setMenuTab] = useState<"play" | "shop">("play");
   const [score, setScore] = useState(0);
@@ -1243,11 +1244,10 @@ function App() {
                 캐릭터 성장(레벨·강화)에서 자동 파생된다 — derivedShopLevels 참조 */}
             {menuTab === "play" ? (
               <>
-                <p className="controls-hint">
+                {/* 키 안내는 마우스·키보드 기기에서만 — 미니앱은 터치라 Space/Shift 가 없다.
+                    '식별키 … 로컬 mock' 줄은 개발용 배선 상태였다 — 플레이어에게는 뜻이 없어 뺐다 (2026-09-21) */}
+                <p className="controls-hint desktop-keys">
                   전진 · Space 점프/두 번 대시 · Shift 대시 · Enter/Ctrl/E 검격
-                </p>
-                <p className="controls-hint">
-                  식별키 {userKeySource === "sdk" ? "연동됨" : "로컬 mock"} · 스테이지 {STAGES.length}개
                 </p>
 
                 <div className="pioneer-board">
@@ -1370,7 +1370,7 @@ function App() {
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
-                <span>스윙 순간 <em>앞쪽</em> 화살만 벱니다. 코앞에서 베면 <em>반사</em>되어 궁수를 잡고, 참격 게이지가 차면 <em>일섬</em>이 화면을 비웁니다.</span>
+                <span>스윙 순간 <em>앞쪽</em> 화살만 벱니다. <em>금색 점선 안</em>에서 베면 <em>반사</em>되어 궁수를 잡고, 일섬 게이지가 차면 <em>일섬</em>이 화면을 비웁니다.</span>
               </div>
             )}
           </div>
@@ -1506,7 +1506,7 @@ function App() {
             })()}
             {!extracted && worldRef.current && (
               <p className="controls-hint">
-                철광석 ×{worldRef.current.enemyKills} · 속성 결정 ×{worldRef.current.perfectDodges} · 정제 강철 ×{worldRef.current.chests * 4} · 원정 인장 ×{worldRef.current.expeditionSeals}
+                철광석 ×{worldRef.current.enemyKills} · 속성 결정 ×{worldRef.current.perfectDodges} · 정제 강철 ×{worldRef.current.chests * 4} · 원정 인장 ×{worldRef.current.expeditionSeals} · 보급 ×{worldRef.current.supplies}
                 {worldRef.current.player.hp === worldRef.current.player.maxHp ? " · 노히트 설계도 판정" : ""}
               </p>
             )}
