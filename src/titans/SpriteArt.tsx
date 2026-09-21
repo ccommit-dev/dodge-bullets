@@ -147,6 +147,20 @@ export const WEAPON_STATE_ANCHOR: Record<"mia" | "leon" | "sera" | "garen" | "ar
   luna:  { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 3, dy: -1, rot: 6 },  2: { dx: 10, dy: -10, rot: -70 }, 3: { dx: -5, dy: 3, rot: 20 } },
   volt:  { 0: { dx: 0, dy: 0, rot: 0 }, 1: { dx: 2, dy: -1, rot: 3 },  2: { dx: 6, dy: -4, rot: -18 },  3: { dx: -4, dy: 2, rot: 12 } },
 };
+/**
+ * 이 동료가 정사각 셀 아틀라스로 그려지는가 (allyFrameStyle 과 같은 분기 순서).
+ * 무기 앵커가 와이드 셀 기준이라 정사각 셀에서는 CSS 가 보정해야 한다 — .cell-square
+ */
+export function allyCellSquare(id: TitanHeroId, skin?: string): boolean {
+  const skinDef = skin ? ALLY_SKINS[skin] : undefined;
+  if (skinDef?.ally === id && skin && SKIN_ROW[skin] !== undefined) return false;
+  if (skinDef?.ally === id && skin && SKIN_SPECIAL_ROW[skin] !== undefined) return true;
+  if (VARIANT_ROW[id] !== undefined) return false;
+  if (SPECIAL_ROW[id] !== undefined) return true;
+  if (BASE_ROW[id] !== undefined) return false;
+  return true; // 낱장 PNG 폴백도 칸을 그대로 쓴다 (contain)
+}
+
 export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSProperties {
   const base = (ALT_BASE[id] ?? id) as keyof typeof WEAPON_STATE_ANCHOR;
   const table = WEAPON_STATE_ANCHOR[base] ?? WEAPON_STATE_ANCHOR.mia;
@@ -160,7 +174,7 @@ export type MonsterFrameState = "idle" | "hit" | "defeat";
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   // MONSTER_ASSET · BOSS_ASSET 이 실제로 가리키는 11종만 둔다 — -clean 변종으로 교체되며 남았던
   // flame-wyvern · moss-golem · ogre-king(-clean) · wolf · wolf-king 항목은 어느 경로로도 조회되지 않았다 (2026-09-21)
-  "abyss-titan": [0.15, 0.15], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], goblin: [0.04, 0.04],
+  "abyss-titan": [0.02, 0.02], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], goblin: [0.04, 0.04],
   "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1],
   ogre: [0.05, 0.05], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14], "wolf-king-clean": [0.18, 0.13],
 };
@@ -291,7 +305,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
   } as CSSProperties);
   return (
-    <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
+    <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해
