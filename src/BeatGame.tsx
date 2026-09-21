@@ -209,6 +209,12 @@ export function BeatGame({
   const raidBuffRef = useRef({ kick: 0, allies: 0, drop: 0 });
   const lastRaidTapRef = useRef({ lane: -1, at: 0 });
   const laneHoldTimersRef = useRef<Partial<Record<NoteLane, number>>>({});
+  /**
+   * 손가락(pointerId) 하나가 어느 레인을 누르고 있는지 — 뗄 때 그 레인만 놓기 위해.
+   * 전에는 window 의 pointerup 이 레인 인자 없이 stopLaneHold() 를 불러 네 레인을 통째로 놓았다.
+   * 그래서 두 손가락이 필요한 점프·홀드점프에서 한 손가락만 떼도 나머지 홀드가 같이 끊겼다 (2026-09-21).
+   */
+  const pointerLaneRef = useRef(new Map<number, NoteLane>());
   const slots = buildStageSlots("lesson");
 
   const playRaidLane = useCallback((lane: NoteLane) => {
@@ -373,13 +379,18 @@ export function BeatGame({
       canvas.setPointerCapture(e.pointerId);
       const rect = canvas.getBoundingClientRect();
       const ratio = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0.5;
-      if (ratio < 0.25) startLaneHold(0);
-      else if (ratio < 0.5) startLaneHold(1);
-      else if (ratio < 0.75) startLaneHold(2);
-      else startLaneHold(3);
+      const lane: NoteLane = ratio < 0.25 ? 0 : ratio < 0.5 ? 1 : ratio < 0.75 ? 2 : 3;
+      pointerLaneRef.current.set(e.pointerId, lane);
+      startLaneHold(lane);
       e.preventDefault();
     };
-    const onPointerUp = () => stopLaneHold();
+    // 뗀 손가락이 맡고 있던 레인만 놓는다 — 다른 손가락의 홀드는 계속 유지된다
+    const onPointerUp = (e: PointerEvent) => {
+      const lane = pointerLaneRef.current.get(e.pointerId);
+      if (lane === undefined) return;
+      pointerLaneRef.current.delete(e.pointerId);
+      stopLaneHold(lane);
+    };
 
     // Hidden tabs stop requestAnimationFrame while the AudioContext keeps
     // ticking, so freeze the audio clock too and re-sync the frame delta.
@@ -548,6 +559,7 @@ export function BeatGame({
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
       stopLaneHold();
+      pointerLaneRef.current.clear();
       document.removeEventListener("visibilitychange", onVisibility);
       if (sessionRef.current) {
         disposeBeatSession(sessionRef.current);
@@ -798,10 +810,11 @@ export function BeatGame({
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (sessionRef.current) startLaneHold(direction.lane);
+                  if (!sessionRef.current) return;
+                  // 떼는 것은 window 의 pointerup/pointercancel 이 pointerId 로 처리한다 (패드 밖에서 떼도 놓이게)
+                  pointerLaneRef.current.set(e.pointerId, direction.lane);
+                  startLaneHold(direction.lane);
                 }}
-                onPointerUp={() => stopLaneHold(direction.lane)}
-                onPointerCancel={() => stopLaneHold(direction.lane)}
               >
                 <span>{direction.symbol}</span>
                 <small>{["KICK","SNARE","HAT","BASS"][direction.lane]} · {direction.key}</small>

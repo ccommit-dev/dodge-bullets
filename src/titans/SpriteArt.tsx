@@ -158,7 +158,7 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
 export type MonsterFrameState = "idle" | "hit" | "defeat";
 /** 몬스터 원화의 좌/우 투명 여백 비율 (scripts 로 실측, 2026-09-14) — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다 */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
-  "abyss-titan": [0.15, 0.15], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], "flame-wyvern": [0.18, 0.18], goblin: [0.13, 0.13],
+  "abyss-titan": [0.15, 0.15], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], "flame-wyvern": [0.18, 0.18], goblin: [0.04, 0.04],
   "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1], "moss-golem": [0.15, 0.15],
   "ogre-king-clean": [0.12, 0.05], "ogre-king": [0.17, 0.18], ogre: [0.05, 0.05], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14],
   "wolf-king-clean": [0.18, 0.13], "wolf-king": [0.17, 0.17], wolf: [0.14, 0.14],
@@ -273,6 +273,8 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 여기 x 는 CSS 변수가 없을 때의 폴백이고, dx 는 줄 깊이별 px 오프셋(뒷줄일수록 몬스터에서 조금 떨어진다).
   const MELEE_COMBAT = [[22, 3], [60, 3], [20, 21], [63, 21], [24, 12], [66, 12]];
   const MELEE_DX = [0, 0, -10, 12, -5, 6];
+  // 원거리 x 는 주인공(교전 시 26~28%)과 같은 줄이 되는 슬롯일수록 왼쪽 끝에 붙인다 —
+  // 2026-09-21 에 서로 벌리려고 8% 로 밀었다가 주인공을 100% 덮어 verify-play-art 가 잡았다. 깊이(줄)로 구분한다.
   const RANGED_COMBAT = [[0, 3], [2, 21], [0, 12], [3, 21], [1, 12], [2, 3]];
   const [combatX, combatY] = slot === undefined ? [undefined, undefined] : (ranged ? RANGED_COMBAT : MELEE_COMBAT)[slot];
   // 몬스터 오른쪽에 서는 근접 슬롯은 원화(오른쪽 보기)를 뒤집어 몬스터를 향한다
@@ -283,9 +285,9 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     "--party-combat-x": `${combatX}%`,
     "--party-combat-y": `${combatY}%`,
     "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot]}px`,
-    // 주인공 발(bottom 14%)보다 앞줄(≤14%)만 주인공 위에, 뒷줄은 주인공 뒤에 그린다 (.titans-hero z-index 5)
-    // 바닥 띠에서 줄이 낮을수록(y 작을수록) 앞 — 주인공(bottom 10%, z 5)보다 앞줄(≤ 9%)만 위에 그린다
-    "--party-z": String((combatY ?? 0) <= 9 ? 8 : 2),
+    // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
+    // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
+    "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
   } as CSSProperties);
   return (
     <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>

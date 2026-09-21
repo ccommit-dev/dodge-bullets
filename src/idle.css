@@ -1622,38 +1622,48 @@
 }
 
 /* ─── 첫 플레이 점검 — 전장 스킬 독 · 다음 목표 · 코치 · 피해 출처 ─── */
+/* 스킬은 전장 아래 가운데 한 줄 — 왼쪽에서 시작하면 오른쪽 알림과 겹쳤다 (2026-09-21) */
 .titans-skill-dock {
   position: absolute;
-  left: 10px;
+  left: 8px;
+  right: 8px;
   bottom: 8px;
   z-index: 12;
   display: flex;
   align-items: flex-end;
-  gap: 5px;
+  justify-content: center;
+  gap: 7px;
+  pointer-events: none;
 }
-.titans-skill-dock .battle-qol { flex-direction: row; gap: 3px; margin-right: 2px; }
-.titans-skill-dock .qol-btn { min-width: 30px; height: 26px; padding: 0 5px; font-size: 9px; }
+.titans-skill-dock > * { pointer-events: auto; }
+/* 설정 토글(자동 시전·배속)은 전투 행동이 아니다 — 스킬 줄에서 빼 왼쪽 위로 */
+.titans-skill-dock .battle-qol { position: absolute; left: 2px; bottom: 46px; flex-direction: row; gap: 4px; }
+.titans-skill-dock .qol-btn { min-width: 32px; height: 24px; padding: 0 6px; font-size: 9px; }
 .titans-skill-dock .titans-skill {
   position: relative;
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
   gap: 1px;
-  width: 44px;
-  padding: 4px 2px 3px;
-  border-radius: 11px;
-  background: rgba(8, 24, 42, 0.86);
+  width: 50px;
+  padding: 5px 2px 4px;
+  border-radius: 13px;
+  /* 전장 위라 배경이 옅으면 아이콘이 묻힌다 — 어둡게 깔고 테두리를 준다 */
+  background: rgba(4, 14, 28, 0.92);
+  border: 1px solid rgba(148, 197, 255, 0.22);
   backdrop-filter: blur(3px);
 }
-.titans-skill-dock .titans-skill .skill-icon { width: 24px; height: 24px; grid-row: auto; }
-.titans-skill-dock .titans-skill small { font-size: 8px; line-height: 1; color: #94a3b8; }
+.titans-skill-dock .titans-skill .skill-icon { width: 30px; height: 30px; grid-row: auto; }
+.titans-skill-dock .titans-skill small { font-size: 9px; font-weight: 900; line-height: 1; color: #cbd5e1; }
 .titans-skill-dock .titans-skill.ready {
   border-color: rgba(251, 191, 36, 0.7);
   box-shadow: 0 0 10px rgba(251, 191, 36, 0.35);
 }
 .titans-skill-dock .titans-skill.ready small { color: #fde68a; }
 .titans-skill-dock .titans-skill.casting { animation: skill-cast-pop 0.32s ease-out; }
-.titans-skill-dock .titans-skill:disabled { opacity: 0.55; }
+/* 쿨타임 중에도 어떤 스킬인지는 보여야 한다 — 0.55 에서는 전장 배경에 묻혔다 (2026-09-21) */
+.titans-skill-dock .titans-skill:disabled { opacity: 0.74; }
+.titans-skill-dock .titans-skill:disabled small { color: #93c5fd; }
 .skill-cd-ring {
   position: absolute;
   inset: 0;
@@ -1909,7 +1919,7 @@
 @media (max-width: 480px) {
   .titans-hint { bottom: 66px !important; max-width: 60%; font-size: 9px; }
   .titans-skill-dock { gap: 3px; }
-  .titans-skill-dock .titans-skill { width: 40px; }
+  .titans-skill-dock .titans-skill { width: 46px; }
   .titans-skill-dock .qol-btn { min-width: 26px; padding: 0 3px; }
 }
 
