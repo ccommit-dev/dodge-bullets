@@ -2236,7 +2236,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .titans-field {
   /* 영웅 시트는 가로:세로 1:2 — 폭 42px = 높이 84px. 동료 본체(74~82px)와 같은 눈높이 (예전 58~72px 폭 = 동료의 1.7배) */
   --hero-size: clamp(38px, 8.4%, 46px);
-  --ally-size: 86px;
+  /* 동료를 86 → 78 로 — 366px 전장 왼쪽 153px 에 네 명이 서느라 서로를 67% 가렸다. 주인공(41px 폭)도 상대적으로 커 보인다 (2026-09-21) */
+  --ally-size: 78px;
   --monster-size: 112px;
   --boss-size: 154px;
   position: relative;
@@ -2560,19 +2561,20 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 /* 프레임별 무기 앵커(계획안 A): --weapon-dx/dy/drot는 상태(대기·이동·공격·피격)마다 SpriteArt가 넣는 오프셋 */
 .ally-weapon { position:absolute; z-index:2; left:calc(var(--weapon-left,18%) + var(--weapon-dx,0%)); top:calc(var(--weapon-top,12%) + var(--weapon-dy,0%)); width:var(--weapon-width,76%); height:var(--weapon-height,76%); overflow:visible; pointer-events:none; transform:rotate(calc(var(--weapon-rest,0deg) + var(--weapon-drot,0deg))); transform-origin:var(--weapon-pivot-x,50%) var(--weapon-pivot-y,62%); filter:drop-shadow(0 0 2px rgba(103,232,249,.75)); transition:left .12s ease-out, top .12s ease-out, transform .12s ease-out; }
 /* 원화 무기는 정사각 안에 대각선으로 꽉 채워져 SVG 보다 작게 보인다 — 박스를 1.2배 (앵커 중심 유지) */
-.ally-weapon.painted { object-fit:contain; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); width:calc(var(--weapon-width,76%) * 1.2); height:calc(var(--weapon-height,76%) * 1.2); left:calc(var(--weapon-left,18%) + var(--weapon-dx,0%) - var(--weapon-width,76%) * .1); top:calc(var(--weapon-top,12%) + var(--weapon-dy,0%) - var(--weapon-height,76%) * .1); }
+/* 크기·위치는 --weapon-* 가 그대로 말한다 (전의 ×1.2 / −10% 보정은 손 위치를 역산할 수 없게 만들었다, 2026-09-21) */
+.ally-weapon.painted { object-fit:contain; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
 .ally-weapon .weapon-metal { fill:rgba(224,242,254,.92); stroke:#38bdf8; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
 .ally-weapon .weapon-string { fill:none; stroke:#e2e8f0; stroke-width:1.7; }
 .ally-weapon .weapon-shaft { fill:none; stroke:#c084fc; stroke-width:5; stroke-linecap:round; }
 .ally-weapon .weapon-gem { fill:#a855f7; stroke:#f0abfc; stroke-width:3; }
 .ally-weapon .weapon-accent { fill:none; stroke:#fbbf24; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
 .ally-weapon .offhand { opacity:.9; }
-.weapon-mia { --weapon-left:19%; --weapon-top:20%; --weapon-width:66%; --weapon-height:66%; --weapon-rest:-10deg; --weapon-pivot-x:48%; --weapon-pivot-y:72%; }
-.weapon-leon { z-index:0; --weapon-left:27%; --weapon-top:16%; --weapon-width:74%; --weapon-height:72%; --weapon-rest:-3deg; --weapon-pivot-x:49%; --weapon-pivot-y:53%; }
-.weapon-sera { z-index:0; --weapon-left:28%; --weapon-top:8%; --weapon-width:70%; --weapon-height:86%; --weapon-rest:2deg; --weapon-pivot-x:63%; --weapon-pivot-y:67%; }
-.weapon-garen { --weapon-left:25%; --weapon-top:19%; --weapon-width:68%; --weapon-height:76%; --weapon-rest:13deg; --weapon-pivot-x:58%; --weapon-pivot-y:76%; }
-.weapon-ari { z-index:0; --weapon-left:20%; --weapon-top:9%; --weapon-width:86%; --weapon-height:86%; --weapon-rest:-8deg; --weapon-pivot-x:43%; --weapon-pivot-y:74%; }
-.weapon-nox { --weapon-left:19%; --weapon-top:19%; --weapon-width:72%; --weapon-height:72%; --weapon-rest:-12deg; --weapon-pivot-x:48%; --weapon-pivot-y:75%; }
+.weapon-mia { --weapon-left:65%; --weapon-top:26%; --weapon-width:52%; --weapon-height:52%; --weapon-rest:-4deg; --weapon-pivot-x:28%; --weapon-pivot-y:65%; }
+.weapon-leon { z-index:0; --weapon-left:54%; --weapon-top:34%; --weapon-width:52%; --weapon-height:52%; --weapon-rest:0deg; --weapon-pivot-x:50%; --weapon-pivot-y:50%; }
+.weapon-sera { z-index:0; --weapon-left:73%; --weapon-top:14%; --weapon-width:52%; --weapon-height:52%; --weapon-rest:0deg; --weapon-pivot-x:13%; --weapon-pivot-y:88%; }
+.weapon-garen { --weapon-left:74%; --weapon-top:15%; --weapon-width:52%; --weapon-height:52%; --weapon-rest:-4deg; --weapon-pivot-x:12%; --weapon-pivot-y:87%; }
+.weapon-ari { z-index:0; --weapon-left:74%; --weapon-top:14%; --weapon-width:52%; --weapon-height:52%; --weapon-rest:-2deg; --weapon-pivot-x:12%; --weapon-pivot-y:88%; }
+.weapon-nox { --weapon-left:74%; --weapon-top:27%; --weapon-width:52%; --weapon-height:52%; --weapon-rest:-4deg; --weapon-pivot-x:12%; --weapon-pivot-y:64%; }
 /* 루나·볼트 — 독립 원화(정사각 구도)라 로스터와 다른 앵커가 필요하다.
    미지정 시 기본값(18%,12%)이 적용돼 무기가 머리 위에 떠 있었다. */
 .weapon-luna { --weapon-left:19%; --weapon-top:32%; --weapon-width:56%; --weapon-height:56%; --weapon-rest:10deg; --weapon-pivot-x:54%; --weapon-pivot-y:72%; }
@@ -2903,7 +2905,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .battle-alert-stack {
   position:absolute;
   right:8px;
-  bottom:8px;
+  /* 스킬 줄(바닥 8 + 높이 ~40)을 덮지 않게 그 위로 — 실측에서 뒤쪽 스킬 두 칸이 이 아래 깔려 있었다 (2026-09-21) */
+  bottom:56px;
   z-index:14;
   width:min(230px,54%);
   display:flex;
@@ -3131,9 +3134,10 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   position: absolute;
   left: 2%;
   bottom: 10%;
-  z-index: 5; /* 교전 중 뒷줄 동료(--party-z 2)는 뒤, 앞줄(8)은 앞 */
+  /* 주인공은 동료보다 항상 위 — 같은 규칙에 z-index 가 두 번 있어 뒤의 2 가 이겼고,
+     그래서 앞줄 동료(z 8)가 주인공을 78% 덮었다 (2026-09-21 실측). 동료는 2(뒷줄)/4(앞줄) 로 낮춘다. */
+  z-index: 5;
   width: var(--hero-size);
-  z-index: 2;
   filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.5));
   pointer-events: none;
   animation: none;
@@ -3575,7 +3579,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   .titans-bottom-nav button { min-width:0; min-height:48px; font-size:8px; }
   .bottom-nav-popup { bottom:max(64px,calc(env(safe-area-inset-bottom) + 60px)); }
   .nav-popup-grid,.adventure-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .battle-alert-stack{right:6px;bottom:6px;width:min(200px,58%);gap:3px}.battle-alert{min-height:20px;padding:2px 16px 2px 7px}.battle-alert small{font-size:8px}.battle-alert b{font-size:9.5px}
+  .battle-alert-stack{right:6px;bottom:54px;width:min(200px,58%);gap:3px}.battle-alert{min-height:20px;padding:2px 16px 2px 7px}.battle-alert small{font-size:8px}.battle-alert b{font-size:9.5px}
   .gacha-stage-page { min-height:calc(100svh - 210px); padding:10px; }
   .gacha-stage-hero { min-height:300px; padding:12px 8px; }
   .gacha-pickup-showcase { --ally-size:145px; }

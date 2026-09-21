@@ -2135,19 +2135,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
 
       {/* 방치 상태 카드 (계획안 §14 · P0-2) — 이 화면이 '일반 던전'이다: 앱을 닫아도 원정대가 자동으로 사냥하고 다시 열면 정산된다 */}
       {ready && (() => {
-        const perHour = computeIdleYield(character, save.stage, save.skillInventory.equipped, 3600);
         const capHours = idleCapHours(character);
         const full = computeIdleYield(character, save.stage, save.skillInventory.equipped, capHours * 3600);
         const boosted = character.idleBoostUntil > nowTick;
         return (
           <div className="idle-status-card" role="status">
-            <span className="idle-status-head"><i className="idle-status-dot" />자동 사냥 중{boosted ? " · 가속 ×2" : ""}<em>시간당</em></span>
-            <span className="idle-status-chips">
-              {/* 단위(/h)는 머리말 "시간당" 이 한 번만 말한다 — 칩마다 반복하면 숫자가 밀린다 (2026-09-18) */}
-              <span className="idle-chip"><RewardIcon kind="gold" size={16} /><b>+{formatGold(perHour.gold)}</b><small>골드</small></span>
-              <span className="idle-chip"><img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={16} height={16} /><b>+{perHour.exp.toLocaleString()}</b><small>EXP</small></span>
-              <span className="idle-chip"><RewardIcon kind="materials" size={16} /><b>+{perHour.materials}</b><small>강화석</small></span>
-            </span>
+            {/* 시간당 수급 수치는 마이페이지 '방치 수급' 으로 옮겼다 — 전장 위에는 "쌓이고 있다"만 남긴다 (사용자 지시 2026-09-21) */}
+            <span className="idle-status-head"><i className="idle-status-dot" />자동 사냥 중{boosted ? " · 가속 ×2" : ""}</span>
             <span className="idle-status-cap">최대 {capHours}h 누적 시 <b>+{formatGold(full.gold)} 골드 · 강화석 {full.materials}</b> — 닫아도 계속 쌓이고, 다시 열면 정산됩니다</span>
             <i className="idle-status-sweep" aria-hidden="true" />
           </div>
@@ -2180,18 +2174,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       >
         <div className="titans-background" aria-hidden="true" />
         {/* 낮은 화면(≤720px)용 방치 상태 한 줄 — 블록 카드는 자리를 밀어 하단 내비와 겹치므로 필드 위에 띄운다 */}
-        {ready && (() => {
-          const perHour = computeIdleYield(character, save.stage, save.skillInventory.equipped, 3600);
-          return (
-            <div className="idle-status-strip" role="status">
-              <i className="idle-status-dot" />자동 사냥
-              <RewardIcon kind="gold" size={13} /><b>+{formatGold(perHour.gold)}</b>
-              <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={13} height={13} /><b>+{perHour.exp.toLocaleString()}</b>
-              <RewardIcon kind="materials" size={13} /><b>+{perHour.materials}</b>
-              <small>/h · 최대 {idleCapHours(character)}h</small>
-            </div>
-          );
-        })()}
+        {ready && (
+          <div className="idle-status-strip" role="status">
+            <i className="idle-status-dot" />자동 사냥 중
+            <small>최대 {idleCapHours(character)}h 누적 · 시간당 수급은 마이페이지</small>
+          </div>
+        )}
         {/* I 전장 테마 파티클 — 오로라 띠 · 꽃잎 · 공허 별 */}
         {equippedThemeDef && (
           <span className={`theme-particles theme-${equippedThemeDef.particles}`} aria-hidden="true">

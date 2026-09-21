@@ -22,6 +22,8 @@ import {
 import { updateCharacterProgress } from "./progression/storage";
 import {
   IDLE,
+  computeIdleYield,
+  idleCapHours,
 } from "./progression/idle";
 import { HUNTING_AREAS } from "./titans/model";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
@@ -278,6 +280,22 @@ export function CharacterStatus({
           <span><b>{titans.gold.toLocaleString()}</b> 사냥 골드</span>
           <span><b>{Math.max(beat?.sp ?? 0, progress.skillPoints)}</b> 스킬 포인트</span>
         </div>
+        {/* 방치 수급 — 전에는 허브 전장 위 카드에 있었다. 전투 화면이 아니라 성장 수치를 보는 곳에 둔다 (2026-09-21) */}
+        {(() => {
+          const perHour = computeIdleYield(progress, titans.stage, titans.skillInventory.equipped, 3600);
+          const capHours = idleCapHours(progress);
+          return (
+            <div className="character-idle-yield">
+              <span className="character-idle-head">자동 사냥 <em>시간당</em></span>
+              <span className="character-idle-chips">
+                <span><b>+{perHour.gold.toLocaleString()}</b>골드</span>
+                <span><b>+{perHour.exp.toLocaleString()}</b>EXP</span>
+                <span><b>+{perHour.materials.toLocaleString()}</b>강화석</span>
+              </span>
+              <small>최대 {capHours}h 까지 쌓이고, 사냥터를 열면 정산됩니다</small>
+            </div>
+          );
+        })()}
       </section>
 
       <section className="legacy-growth">
