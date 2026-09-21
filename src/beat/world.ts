@@ -51,7 +51,9 @@ export function railGeometry(world: BeatWorld): {
 } {
   return {
     horizonY: Math.max(world.safeTop + 215, world.height * 0.25),
-    hitY: world.height - world.safeBottom - Math.max(150, world.height * 0.2),
+    // 판정선과 패드 사이가 83px 비어 "보는 곳"과 "누르는 곳"이 떨어져 있었다 (2026-09-21 실측) —
+    // 바닥 여백을 줄여 50px 로. 이 값은 그리기·파티클 위치에만 쓰이고 판정(beatPosition)에는 관여하지 않는다.
+    hitY: world.height - world.safeBottom - Math.max(140, world.height * 0.175),
     farHalf: Math.min(world.width * 0.46, 230),
     nearHalf: Math.min(world.width * 0.46, 230),
   };
