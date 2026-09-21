@@ -364,6 +364,28 @@ def cmd_monster(a):
         save(cutout(im).resize((512, 512), Image.LANCZOS), f"monster-{a.id}-s{seed}.png")
 
 
+BACKDROP_STYLE = (
+    "fantasy mobile game UI background plate, distant scenery seen from far away, misty depth, "
+    "dark moody palette, soft glow near the horizon, painterly, vertical composition, "
+    "empty simple middle area with no focal object, no characters, no text, no watermark"
+)
+# UI 가 위에 얹히는 판이라 '읽히는 주인공'이 있으면 안 된다 — 인물·글자·강한 대비를 막는다
+BACKDROP_NEG = (
+    "character, person, people, creature, close-up, text, letters, watermark, logo, ui, hud, buttons, frame, border, "
+    "high contrast, busy detail, clutter, bright white, lowres, blurry, photo, 3d render"
+)
+
+
+def cmd_backdrop(a):
+    """앱 셸 배경판 — 세로 구도(832x1216). UI 가 위에 얹히므로 가운데는 비우고 어둡게. 출력 backdrop-<id>-s<seed>.png"""
+    pipe = load_pipe(ip=False)
+    for seed in (a.seeds or [a.seed or BASE_SEED]):
+        g = torch.Generator(dev()).manual_seed(seed)
+        im = pipe(prompt=f"{a.prompt}, {BACKDROP_STYLE}", negative_prompt=BACKDROP_NEG, num_inference_steps=26,
+                  guidance_scale=6.0, generator=g, width=832, height=1216).images[0]
+        save(im, f"backdrop-{a.id}-s{seed}.png")
+
+
 def cmd_cover(a):
     pipe = load_pipe(ip=False)
     g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
@@ -387,6 +409,7 @@ if __name__ == "__main__":
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
     np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
     mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.set_defaults(fn=cmd_monster)
+    bd = sub.add_parser("backdrop"); bd.add_argument("id"); bd.add_argument("prompt"); bd.add_argument("--seed", type=int); bd.add_argument("--seeds", type=int, nargs="*"); bd.set_defaults(fn=cmd_backdrop)
     v = sub.add_parser("cover"); v.add_argument("id"); v.add_argument("prompt"); v.add_argument("--seed", type=int); v.set_defaults(fn=cmd_cover)
     args = ap.parse_args()
     args.fn(args)

@@ -562,13 +562,18 @@
   z-index: 5;
   overflow-y: auto;
   box-sizing: border-box;
+  /* 허브와 같은 배경판 — 마이페이지만 평평한 남색이면 화면을 옮길 때 다른 앱처럼 보인다 (2026-09-21) */
   background:
-    radial-gradient(circle at 12% 2%, rgba(45, 212, 191, 0.18), transparent 30%),
-    radial-gradient(circle at 88% 36%, rgba(124, 58, 237, 0.16), transparent 32%),
-    linear-gradient(180deg, #07111f, #0b1220 48%, #080d18);
+    radial-gradient(circle at 12% 2%, rgba(45, 212, 191, 0.12), transparent 30%),
+    linear-gradient(180deg, #060d18, #0a1524 48%, #070c15);
   color: #f8fafc;
   touch-action: pan-y;
+  --shell-backdrop: url("/ui/bg/hub-backdrop.webp");
 }
+.character-page::before { content:""; position:fixed; inset:0; z-index:-2; background: var(--shell-backdrop) center top / cover no-repeat; opacity:.62; pointer-events:none; }
+.character-page::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(ellipse 125% 85% at 50% 36%, transparent 44%, rgba(2, 6, 14, .62) 100%),
+    linear-gradient(180deg, rgba(2, 6, 14, .68) 0%, rgba(2, 6, 14, .34) 18%, transparent 36%, transparent 58%, rgba(2, 6, 14, .82) 100%); }
 
 .character-header {
   width: min(100%, 760px);
@@ -642,6 +647,14 @@
 
 .character-quick-stats span { padding: 9px 6px; border-radius: 10px; background: rgba(2, 6, 23, 0.45); color: #94a3b8; font-size: 10px; text-align: center; }
 .character-quick-stats b { display: block; margin-bottom: 2px; color: #f8fafc; font-size: 14px; }
+/* 방치 수급 — 허브 전장 위에서 옮겨 온 블록(2026-09-18). CSS 를 같이 안 넣어 글자가 세로로 흘렀다 (2026-09-21) */
+.character-idle-yield { display: grid; gap: 6px; margin-top: 10px; padding: 10px; border-radius: 12px; border: 1px solid rgba(94, 234, 212, 0.22); background: rgba(2, 20, 28, 0.5); }
+.character-idle-head { display: flex; align-items: baseline; justify-content: space-between; color: #5eead4; font-size: 11px; font-weight: 900; }
+.character-idle-head em { color: #94a3b8; font-size: 9px; font-style: normal; font-weight: 800; }
+.character-idle-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.character-idle-chips span { display: flex; align-items: baseline; justify-content: center; gap: 3px; padding: 7px 4px; border-radius: 9px; background: rgba(2, 6, 23, 0.5); color: #94a3b8; font-size: 9px; white-space: nowrap; }
+.character-idle-chips b { color: #fde68a; font-size: 12px; }
+.character-idle-yield > small { color: #64748b; font-size: 9px; line-height: 1.4; }
 
 .character-content-grid {
   width: min(100%, 760px);
@@ -1417,12 +1430,18 @@
   box-sizing: border-box;
   overflow: auto;
   color: #fff7ed;
+  /* 허브와 같은 방식 — 그린 배경판 위에 어두운 막. 대장간만 평평하면 화면을 옮길 때 웹으로 읽힌다 (2026-09-21) */
   background:
-    radial-gradient(circle at 50% 28%, rgba(194, 65, 12, 0.28), transparent 34%),
-    linear-gradient(180deg, #100b09 0%, #1d100b 54%, #090807 100%);
+    radial-gradient(circle at 50% 28%, rgba(194, 65, 12, 0.18), transparent 34%),
+    linear-gradient(180deg, #0d0908 0%, #170d09 54%, #070606 100%);
   font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   touch-action: pan-y;
+  --shell-backdrop: url("/ui/bg/forge-backdrop.webp");
 }
+.forge-layer::before { content:""; position:fixed; inset:0; z-index:-2; background: var(--shell-backdrop) center top / cover no-repeat; opacity:.7; pointer-events:none; }
+.forge-layer::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(ellipse 125% 85% at 50% 36%, transparent 44%, rgba(8, 4, 2, .6) 100%),
+    linear-gradient(180deg, rgba(8, 4, 2, .62) 0%, rgba(8, 4, 2, .3) 16%, transparent 34%, transparent 58%, rgba(8, 4, 2, .82) 100%); }
 
 .forge-title-screen {
   width: min(100%, 420px);
@@ -2076,6 +2095,26 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   }
 }
 
+/* 게임 패널 — 평평한 카드에 금색 안쪽 선과 위쪽 베벨을 넣어 '판때기'로 읽히게 한다 (2026-09-21) */
+.titans-layer .idle-status-card,
+.titans-layer .legacy-growth,
+.titans-layer .character-hero,
+.titans-layer .character-idle-yield,
+.hub-sheet,
+.titans-field {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 0 0 1px rgba(253, 224, 71, .10),
+    0 8px 22px rgba(2, 6, 14, .5);
+}
+/* 제목 — 자간과 그림자만으로도 웹 글씨 느낌이 크게 준다 */
+.titans-stagebar h1,
+.legacy-heading strong,
+.character-headline h1 {
+  letter-spacing: .02em;
+  text-shadow: 0 2px 0 rgba(2, 6, 14, .55), 0 0 14px rgba(253, 224, 71, .12);
+}
+
 .game-card-titans {
   border-color: rgba(56, 189, 248, 0.5);
   background: linear-gradient(135deg, rgba(12, 24, 42, 0.95), rgba(8, 47, 73, 0.7));
@@ -2088,12 +2127,21 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   box-sizing: border-box;
   overflow: auto;
   color: #e0f2fe;
+  /* 그라데이션만 쓰면 SaaS 대시보드로 읽힌다 — 그린 배경판을 깔고 위에 어두운 막·비네트를 얹어
+     글자 대비는 유지한다 (배경판은 ::before, 막은 ::after) */
   background:
-    radial-gradient(circle at 70% 30%, rgba(56, 189, 248, 0.18), transparent 36%),
-    linear-gradient(180deg, #07111f 0%, #0b1d33 45%, #10233a 100%);
+    radial-gradient(circle at 70% 18%, rgba(253, 224, 71, 0.07), transparent 42%),
+    linear-gradient(180deg, #060d18 0%, #0a1728 45%, #0c1c2e 100%);
   font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   touch-action: manipulation;
+  --shell-backdrop: url("/ui/bg/hub-backdrop.webp");
 }
+/* 배경판 — 고정이라 스크롤해도 따라오지 않는다(배경이 흐르면 웹 페이지로 읽힌다) */
+.titans-layer::before { content:""; position:fixed; inset:0; z-index:-2; background: var(--shell-backdrop) center top / cover no-repeat; opacity:.78; pointer-events:none; }
+/* 비네트 + 바닥 어둠 — 가장자리를 눌러 UI 가 떠 보이게 하고 하단 내비 뒤를 어둡게 */
+.titans-layer::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(ellipse 125% 85% at 50% 36%, transparent 44%, rgba(2, 6, 14, .58) 100%),
+    linear-gradient(180deg, rgba(2, 6, 14, .62) 0%, rgba(2, 6, 14, .28) 16%, transparent 34%, transparent 58%, rgba(2, 6, 14, .8) 100%); }
 
 .titans-loading {
   display: grid;
