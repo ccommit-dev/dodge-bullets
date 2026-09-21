@@ -214,7 +214,7 @@ export type GameWorld = {
   expeditionSeals: number;
   slashScore: number;
   slashBuff: number;
-  /** 참격 게이지 0~100 — 반사 +22 · 파쇄 +9 · 근접 회피 +4. 가득 차면 일섬 (docs/CONTENT_BEAT_DODGE_PLAN.md §2) */
+  /** 일섬 게이지 0~100 — 반사 +22 · 파쇄 +9 · 근접 회피 +4. 가득 차면 일섬 (docs/CONTENT_BEAT_DODGE_PLAN.md §2) */
   slashGauge: number;
   /** 일섬 섬광 남은 ms */
   ultFlashMs: number;

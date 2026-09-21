@@ -1,5 +1,6 @@
 import type { GameWorld, Player } from "./types";
 import { assetUrl } from "../asset";
+import { SWING_MS } from "./arrows";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -161,7 +162,8 @@ export function drawStickman(
       ctx.stroke();
     }
 
-    if (p.slowActiveMs > 0) {
+    // 베는 동안(SWING_MS)만 — 느려지는 구간에는 칼을 그리지 않는다 (2026-09-21)
+    if (p.slowActiveMs > world.stats.slowDurationMs - SWING_MS) {
       const slashPhase = Math.min(1, p.animTime / 0.3);
       ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
       ctx.lineWidth = 3 + (1 - slashPhase) * 4;

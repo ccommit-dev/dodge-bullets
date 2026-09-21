@@ -1251,8 +1251,8 @@
 .beat-layer-mixer span.on { color:#f8fafc; border-color:#67e8f9; background:linear-gradient(145deg,rgba(8,145,178,.38),rgba(88,28,135,.46)); box-shadow:0 0 14px rgba(34,211,238,.2); }
 .beat-layer-mixer i { color:#fbbf24; font-style:normal; letter-spacing:1px; }
 /* 키보드 키는 마우스가 있는 기기에서만 — 미니앱은 터치라 ←/A 같은 표기가 뜻이 없었다 (2026-09-21) */
-.beat-pad .pad-key { display:none; }
-@media (hover: hover) and (pointer: fine) { .beat-pad .pad-key { display:block; font-style:normal; opacity:.7; } }
+.beat-pad .pad-key,.controls-hint.desktop-keys { display:none; }
+@media (hover: hover) and (pointer: fine) { .beat-pad .pad-key { display:block; font-style:normal; opacity:.7; } .controls-hint.desktop-keys { display:block; } }
 .beat-command-party.drop-burst { animation:beat-drop-burst .7s cubic-bezier(.2,.85,.24,1); }
 .beat-command-party.drop-burst::after { content:"FEVER!"; position:absolute; z-index:20; left:50%; top:42%; transform:translate(-50%,-50%); color:#fff; font:italic 1000 clamp(38px,10vw,78px)/1 system-ui; text-shadow:0 0 12px #22d3ee,0 0 32px #a855f7,0 6px 0 #7c3aed; animation:beat-drop-text .7s ease-out forwards; pointer-events:none; }
 /* 파티 패널 안으로 — 전에는 화면 오른쪽 고정이라 판정선과 패드 사이(손이 오가는 띠)를 막았다 (2026-09-21).

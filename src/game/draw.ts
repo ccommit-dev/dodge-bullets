@@ -1,5 +1,6 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
+import { REFLECT_DIST, SWING_MS } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
@@ -300,26 +301,22 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   const trackerW = Math.min(190, width - world.safeLeft - world.safeRight - 24);
   const trackerX = width - world.safeRight - trackerW - 12;
   const trackerY = world.safeTop + 76;
-  ctx.fillStyle = "rgba(8,47,73,.88)";
-  ctx.strokeStyle = "#67e8f9";
+  // 일섬 게이지만 — 나머지 집계(처치·완벽·상자·보급·인장)는 결과 화면이 말한다.
+  // 탄막을 피하면서 9px 숫자 일곱 개를 읽을 수는 없다 (2026-09-21)
+  const full = world.slashGauge >= 100;
+  ctx.fillStyle = "rgba(8,47,73,.82)";
+  ctx.strokeStyle = full ? "#fde68a" : "rgba(103,232,249,.7)";
   ctx.lineWidth = 2;
-  ctx.fillRect(trackerX, trackerY, trackerW, 54);
-  ctx.strokeRect(trackerX, trackerY, trackerW, 54);
-  ctx.fillStyle = "#e0f2fe";
-  ctx.font = "700 11px system-ui";
-  ctx.fillText(`처치 ${world.enemyKills} · 완벽 ${world.perfectDodges} · 상자 ${world.chests}`, trackerX + 10, trackerY + 16);
-  ctx.font = "700 10px system-ui";
-  ctx.fillStyle = "#fde68a";
-  ctx.fillText(`보급 ${world.supplies} · 원정 인장 ${world.expeditionSeals}`, trackerX + 10, trackerY + 31);
-  // 참격 게이지 — 가득 차면 일섬
+  ctx.fillRect(trackerX, trackerY, trackerW, 26);
+  ctx.strokeRect(trackerX, trackerY, trackerW, 26);
   const gw = trackerW - 20;
   ctx.fillStyle = "rgba(15,23,42,.8)";
-  ctx.fillRect(trackerX + 10, trackerY + 40, gw, 7);
-  ctx.fillStyle = world.slashGauge >= 100 ? "#fde68a" : "#f59e0b";
-  ctx.fillRect(trackerX + 10, trackerY + 40, gw * Math.min(1, world.slashGauge / 100), 7);
-  ctx.fillStyle = "#fde68a";
-  ctx.font = "700 9px system-ui";
-  ctx.fillText(`참격 ${Math.round(world.slashGauge)}% · 반사 ${world.reflectKills}`, trackerX + 10, trackerY + 52 + 0);
+  ctx.fillRect(trackerX + 10, trackerY + 14, gw, 7);
+  ctx.fillStyle = full ? "#fde68a" : "#f59e0b";
+  ctx.fillRect(trackerX + 10, trackerY + 14, gw * Math.min(1, world.slashGauge / 100), 7);
+  ctx.fillStyle = full ? "#fde68a" : "#e0f2fe";
+  ctx.font = "900 10px system-ui";
+  ctx.fillText(full ? "일섬 준비" : `일섬 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
   ctx.restore();
   }
   if (world.lastCutMs > 0 && world.lastCut) {
@@ -469,17 +466,43 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   drawStickman(ctx, world);
 
   if (world.player.slowActiveMs > 0) {
-    const pulse = 1 - world.player.slowActiveMs / Math.max(1, world.stats.slowDurationMs);
+    // 베는 구간과 느려지는 구간을 **다르게** 그린다.
+    // 전에는 둘 다 같은 칼 궤적이라, 실제로는 안 베는 시간(강화 시 최대 1.1초)에도
+    // 칼이 번쩍여 "왜 안 베이지?" 가 됐다 (2026-09-21).
+    const swingLeft = world.player.slowActiveMs - (world.stats.slowDurationMs - SWING_MS);
+    const swinging = swingLeft > 0;
     ctx.save();
-    ctx.globalAlpha = 0.85 - pulse * 0.55;
-    ctx.strokeStyle = "#67e8f9";
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    const facing = world.player.facing;
-    const start = facing > 0 ? -1.25 : Math.PI + 1.25;
-    const end = facing > 0 ? 1.3 : Math.PI - 1.3;
-    ctx.arc(world.player.x, world.player.y, world.stats.slowRadius * (0.55 + pulse * 0.55), start, end, facing < 0);
-    ctx.stroke();
+    if (swinging) {
+      // 베는 중 — 밝은 칼빛 호가 빠르게 훑고 지나간다
+      const t = 1 - swingLeft / SWING_MS;
+      ctx.globalAlpha = 0.95 - t * 0.45;
+      ctx.strokeStyle = "#a5f3fc";
+      ctx.lineWidth = 9 - t * 4;
+      ctx.beginPath();
+      const facing = world.player.facing;
+      const start = facing > 0 ? -1.25 : Math.PI + 1.25;
+      const end = facing > 0 ? 1.3 : Math.PI - 1.3;
+      ctx.arc(world.player.x, world.player.y, world.stats.slowRadius * (0.62 + t * 0.42), start, end, facing < 0);
+      ctx.stroke();
+      // 반사 거리 링 — 이 안에서 베면 화살이 궁수에게 되돌아간다. 어디를 노려야 하는지 보여 준다
+      ctx.globalAlpha = 0.75 - t * 0.3;
+      ctx.strokeStyle = "#fde68a";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(world.player.x, world.player.y, REFLECT_DIST, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      // 느려진 장 — 칼이 아니라 '시간이 늘어진 공간'. 옅은 원 하나로만
+      const rest = world.player.slowActiveMs / Math.max(1, world.stats.slowDurationMs - SWING_MS);
+      ctx.globalAlpha = 0.16 * rest;
+      ctx.strokeStyle = "#7dd3fc";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(world.player.x, world.player.y, world.stats.slowRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }
