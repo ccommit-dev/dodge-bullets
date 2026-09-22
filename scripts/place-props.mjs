@@ -2,7 +2,8 @@
  * 무기 원화 배치 — art-gen/out/prop-<id>.png (512px 투명) →
  *   w-<ally>  → public/titans/equipment/weapons/ally/<ally>.png   (256px, 동료 장착 무기 — SpriteArt AllyWeapon, 좌하→우상 45°)
  *   s<nn>     → public/forge/swords/s<nn>.png                       (256px, 영웅 강화 검 — forge/swords SwordArt, 수직·칼끝 위)
- *   node scripts/place-props.mjs
+ *   node scripts/place-props.mjs && node scripts/trim-sword-art.mjs
+ *   (place-props 는 256x256 정사각으로 다시 쓰므로 검 트림이 풀린다 — 두 단계가 한 쌍이다)
  * 생성 구도가 들쭉날쭉하므로 (1) 알파 마스크 주축(PCA)으로 수직 정렬 → (2) 폭 프로파일로 손잡이 쪽 판정(가드·손잡이가 가장 넓다;
  * 지팡이는 반대로 보주가 머리) → 칼끝을 위로 → (3) 동료 무기는 45° 기울여 우상향.
  */
@@ -73,7 +74,18 @@ async function largestComponent(buf) {
 }
 const rot = (buf, deg) => sharp(buf).rotate(deg, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
 
-const files = readdirSync("art-gen/out").filter((f) => /^prop-.+\.png$/.test(f));
+/**
+ * 배치 대상은 **최종 id 만** — 동료 무기 `w-<ally>` · 강화 검 `s<nn>`.
+ * 전에는 `prop-*.png` 를 전부 배치해서 후보(`prop-cand-s12-<seed>.png`)까지
+ * public/forge/swords/ 로 들어갔고, 티어를 다시 뽑을 때마다 배포 디렉터리에 쌓였다
+ * (2026-09-22 정리 시점에 잔재 11장 + 미사용 cape.png = 284KB).
+ * 후보는 scripts/pick-sword-candidates.mjs --apply 가 골라 `prop-s<nn>.png` 로
+ * 채택한 뒤에만 여기로 들어온다.
+ */
+const FINAL_ID = /^(w-[a-z_]+|s\d{2})$/;
+const all = readdirSync("art-gen/out").filter((f) => /^prop-.+\.png$/.test(f));
+const files = all.filter((f) => FINAL_ID.test(f.replace(/^prop-/, "").replace(/\.png$/, "")));
+const skipped = all.filter((f) => !files.includes(f));
 let n = 0;
 for (const f of files) {
   const id = f.replace(/^prop-/, "").replace(/\.png$/, "");
@@ -105,3 +117,9 @@ for (const f of files) {
   console.log("placed", out, `axis ${axis.toFixed(0)}° → vertical ${r.toFixed(0)}°${flipped ? " flip" : ""}${isAlly ? " +45°" : ""}`);
 }
 console.log(`${n} props placed`);
+// 이 스크립트는 256x256 정사각 캔버스로 다시 쓴다 — 강화 검은 여백 트림이 풀리므로 반드시 이어서 돌린다
+if (n) console.log("→ 이어서: node scripts/trim-sword-art.mjs (강화 검 여백 트림이 풀린 상태다)");
+if (skipped.length) {
+  console.log(`건너뜀 ${skipped.length}개 (최종 id 아님 — 후보·실험용): ${skipped.slice(0, 6).join(", ")}${skipped.length > 6 ? " …" : ""}`);
+  console.log("  후보는 scripts/pick-sword-candidates.mjs --apply 로 prop-s<nn>.png 채택 후 다시 실행한다");
+}
