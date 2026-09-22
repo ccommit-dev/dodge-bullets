@@ -5,11 +5,14 @@ import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
 /**
- * 스테이지 배경 — 사냥터 지역 배경을 재사용한다 (외곽 초소=초원, 붉은 협곡=폐허, 왕실 사격장=용암, 검은 성문=심연).
- * 텅 빈 남색 캔버스에 화살만 날아오던 것이 "전장"으로 읽히게. 화살 가독성을 위해 어두운 오버레이를 덮는다.
+ * 스테이지 배경 — 화살 원정 **전용** 배경 4종 (art-gen/batch-dodge-bg.sh).
+ * 전에는 사냥터 지역 배경(초원·폐허·용암·심연)을 재사용해 스테이지 이름
+ * (외곽 초소·붉은 협곡·왕실 사격장·검은 성문)과 장소가 맞지 않았고, 화살 가독성을 위해
+ * 62% 어둡게 덮어 무엇이 있는지 보이지도 않았다 — 콘텐츠 고유의 장소로 읽히지 않았다 (2026-09-22).
+ * 새 배경은 '어둡게 깔릴 판'으로 뽑았으므로(가운데 비움·강한 대비 없음) 덮는 막을 48% 로 줄인다.
  */
-// 캔버스용 축소본(720px, scripts/make-stage-backgrounds.mjs) — 원본(1536px)을 매 프레임 그리면 저사양에서 첫 프레임이 끊긴다
-const STAGE_BACKGROUNDS = ["meadow", "ruins", "volcano", "abyss"].map((id) => assetUrl(`titans/backgrounds/${id}-sm.webp`));
+// 720px 축소본 — 원본(832×1216)을 매 프레임 그리면 저사양에서 첫 프레임이 끊긴다
+const STAGE_BACKGROUNDS = [1, 2, 3, 4].map((n) => assetUrl(`dodge/bg/s${n}.webp`));
 const bgCache: Array<HTMLImageElement | null> = [];
 function stageBackground(stageIndex: number): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -50,7 +53,7 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.drawImage(img, (width - dw) / 2 - shift, floorY + 40 - dh, dw, dh);
-    ctx.fillStyle = "rgba(8, 14, 28, 0.62)";
+    ctx.fillStyle = "rgba(8, 14, 28, 0.48)";
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
   }
