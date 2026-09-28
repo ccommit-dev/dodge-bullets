@@ -316,6 +316,28 @@ def cmd_heroidle(a):
         save(cutout(im), f"heroidle-{a.id}-{seed}{'-pose' if pose is not None else ''}.png")
 
 
+
+def cmd_heroattack(a):
+    """대기 원화와 **같은 인물**이 검을 든 공격 4프레임 (2026-09-28).
+    화살 원정의 검격 시트(generated/hero-attack-sheet.png)는 남색 머리·파란 망토로 대기(갈색 머리·주황 코트)와 다른 사람이었다.
+    정체성은 --ref(대기 원화)를 IP-Adapter 로, 포즈는 ref/hero-attack-{i} 의 OpenPose 로, 시드는 대기와 같은 값으로 고정한다.
+    출력 heroattack-<id>-<i>.png"""
+    im = Image.open(a.ref).convert("RGBA")
+    bg = Image.new("RGBA", im.size, (255, 255, 255, 255)); bg.alpha_composite(im)
+    ref = bg.convert("RGB").resize((384, 384))
+    seed = a.seed or BASE_SEED
+    pipe = load_pipe(controlnet=True)
+    pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.6)
+    for i in range(4):
+        pose = pose_of(REF / f"hero-attack-{i}.png")
+        g = torch.Generator(dev()).manual_seed(seed)
+        out = pipe(prompt=f"{a.prompt}, lunging sword slash attack pose, facing right, gripping a steel longsword, {STYLE}",
+                   negative_prompt=NEG + ", back view, facing left, character sheet, multiple views, empty hands, bare hands",
+                   num_inference_steps=24, guidance_scale=6.5, generator=g, width=832, height=1216,
+                   ip_adapter_image=[[ref]], image=pose, controlnet_conditioning_scale=0.8).images[0]
+        save(cutout(out), f"heroattack-{a.id}-{i}.png")
+
+
 PROP_STYLE = (
     "single fantasy weapon, game item illustration, painterly semi-realistic, detailed metal and leather, "
     "held diagonally with the tip pointing to the upper right, centered, plain white background, no hands, no character, no text"
@@ -407,6 +429,7 @@ if __name__ == "__main__":
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
+    ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.set_defaults(fn=cmd_heroattack)
     np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
     mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.set_defaults(fn=cmd_monster)
     bd = sub.add_parser("backdrop"); bd.add_argument("id"); bd.add_argument("prompt"); bd.add_argument("--seed", type=int); bd.add_argument("--seeds", type=int, nargs="*"); bd.set_defaults(fn=cmd_backdrop)
