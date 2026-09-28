@@ -486,7 +486,7 @@ export function inSwingArc(facing: -1 | 1, dx: number, dy: number): boolean {
 
 function addGauge(world: GameWorld, amount: number): void {
   // [일섬] 레벨이 게이지 획득을 늘린다 (2026-09-28)
-  world.slashGauge = Math.min(100, world.slashGauge + amount * gaugeGainMul(world.skillLevels));
+  world.slashGauge = Math.min(100, world.slashGauge + amount * gaugeGainMul(world.skillLevels) * world.chips.gaugeMul);
   if (world.slashGauge >= 100) ultimateSlash(world);
 }
 

@@ -34,10 +34,11 @@ writeFileSync(entry, [
   `export * as dodgeSkills from "${root}/src/game/skills";`,
   `export * as dodgeShop from "${root}/src/game/shop";`,
   `export * as dodgeShots from "${root}/src/game/skillShots";`,
+  `export * as dodgeChips from "${root}/src/game/chips";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -681,6 +682,63 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
         world.runMods.volleyExtra === 0 && world.runMods.moveSpeedMul === 1 && !world.runMods.evolutions.volley);
     }
   }
+
+  // ── 원정 칩 — 가이드의 영구 성장 2순위 "랜덤에 좌우되지 않는 패시브" (2026-09-28)
+  {
+    const C = dodgeChips;
+    const S2 = dodgeSkills;
+    const zero = C.emptyChipLevels();
+    const neutral = JSON.stringify(C.emptyChipMods());
+
+    ok("칩 6종이 0레벨로 시작", Object.keys(zero).length === 6 && Object.values(zero).every((v) => v === 0));
+    ok("아무것도 안 끼우면 완전히 중립 — 기존 난이도 기준선이 그대로",
+      JSON.stringify(C.chipModsOf(zero, [null, null, null], 3)) === neutral);
+    ok("0레벨 칩은 끼워도 아무 일도 없다",
+      JSON.stringify(C.chipModsOf(zero, ["focus", "rime", "edge"], 3)) === neutral);
+
+    const lv5 = { ...zero, focus: 5, barrage: 5, ember: 5, rime: 5, vitality: 5, edge: 5 };
+    const three = C.chipModsOf(lv5, ["focus", "barrage", "vitality"], 3);
+    ok("끼운 칩만 효과가 난다 (안 끼운 서리·잔열·예기는 중립)",
+      Math.abs(three.cooldownMul - 0.85) < 1e-9 && three.volleyExtra === 2 && three.extraLives === 2
+      && three.flameRadiusMul === 1 && three.chillMsMul === 1 && three.gaugeMul === 1,
+      JSON.stringify(three));
+
+    ok("열리지 않은 슬롯의 칩은 세지 않는다",
+      C.chipModsOf(lv5, ["focus", "barrage", "vitality"], 1).volleyExtra === 0
+      && Math.abs(C.chipModsOf(lv5, ["focus", "barrage", "vitality"], 1).cooldownMul - 0.85) < 1e-9);
+    ok("같은 칩을 두 칸에 끼워도 한 번만 센다",
+      C.chipModsOf(lv5, ["barrage", "barrage", null], 3).volleyExtra === 2);
+
+    ok("슬롯은 원정 기록으로 열린다 — 1·2·4스테이지",
+      C.chipSlotsOpen(0) === 0 && C.chipSlotsOpen(1) === 1 && C.chipSlotsOpen(2) === 2
+      && C.chipSlotsOpen(3) === 2 && C.chipSlotsOpen(4) === 3);
+
+    const worse = [];
+    for (let lv = 1; lv < C.CHIP_MAX_LEVEL; lv += 1) {
+      if (C.chipCooldown(lv + 1) > C.chipCooldown(lv)) worse.push("focus");
+      if (C.chipVolley(lv + 1) < C.chipVolley(lv)) worse.push("barrage");
+      if (C.chipFlame(lv + 1) < C.chipFlame(lv)) worse.push("ember");
+      if (C.chipChill(lv + 1) < C.chipChill(lv)) worse.push("rime");
+      if (C.chipLives(lv + 1) < C.chipLives(lv)) worse.push("vitality");
+      if (C.chipGauge(lv + 1) < C.chipGauge(lv)) worse.push("edge");
+    }
+    ok("칩은 레벨이 오를 때 나빠지지 않는다", worse.length === 0, worse.join());
+    ok("칩 비용이 레벨마다 오르고, 첫 단계는 스킬 1레벨과 같아 선택이 생긴다",
+      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) === S2.skillCost(S2.SKILL_BY_ID.volley, 1).seals,
+      "lv1 " + C.chipCost(1) + "인 → lv5 " + C.chipCost(5) + "인");
+
+    // 설명 문구가 실제 수치와 같은가 — 화면이 거짓말하면 투자 판단이 망가진다
+    ok("칩 설명이 실제 수치를 말한다",
+      C.CHIP_BY_ID.focus.desc(5).includes("15%") && C.CHIP_BY_ID.ember.desc(5).includes("30%")
+      && C.CHIP_BY_ID.rime.desc(5).includes("100%") && C.CHIP_BY_ID.edge.desc(5).includes("25%"),
+      C.CHIP_BY_ID.focus.desc(5) + " / " + C.CHIP_BY_ID.ember.desc(5));
+
+    const n = prog.normalizeCharacterProgress({ ...base, expeditionChips: { focus: 99 }, equippedChips: ["focus", "nope", null] });
+    ok("진행도 정규화: 칩 레벨은 상한, 모르는 칩 id 는 빈 칸",
+      n.expeditionChips.focus === C.CHIP_MAX_LEVEL && n.equippedChips[0] === "focus" && n.equippedChips[1] === null
+      && n.equippedChips.length === C.CHIP_SLOTS, JSON.stringify(n.equippedChips));
+  }
+
 
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
     /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));

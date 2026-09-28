@@ -57,6 +57,7 @@ import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type PerkId } from "./game/perks";
 import { effectiveCooldown } from "./game/skillShots";
+import { chipCost, chipModsOf, chipSlotsOpen, CHIP_MAX_LEVEL, type ChipId } from "./game/chips";
 import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
 import { EXPEDITION_SKILLS } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
@@ -152,6 +153,9 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   const stats = statsWithShoulder(levels, p.equippedShoulder, p.expeditionSkills);
   // 이번 런에서 고른 카드를 다시 얹는다 — 스테이지가 넘어갈 때 여기를 지나며 상점 값으로
   // 덮이므로, 안 얹으면 "이번 런 동안 적용"이 스테이지 하나짜리 거짓말이 된다 (2026-09-28)
+  // 칩은 랜덤이 아니라 고정 패시브 — 카드보다 먼저 얹는다
+  world.chips = chipModsOf(p.expeditionChips, p.equippedChips, chipSlotsOpen(p.dodgeBestStage));
+  stats.extraLives += world.chips.extraLives;
   const m = world.runMods;
   stats.moveSpeed *= m.moveSpeedMul;
   stats.dashCooldownMs *= m.dashCooldownMul;
@@ -980,6 +984,39 @@ function App() {
     })();
   }, []);
 
+  /** 칩 강화 — 스킬과 같은 원정 인장을 쓴다(1순위 vs 2순위 선택이 생기도록) */
+  const handleUpgradeChip = useCallback((id: ChipId) => {
+    const lv = progress.expeditionChips[id] ?? 0;
+    if (lv >= CHIP_MAX_LEVEL) return;
+    const cost = chipCost(lv + 1);
+    if (progress.expeditionSeals < cost) return;
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
+        ...p,
+        expeditionSeals: p.expeditionSeals - cost,
+        expeditionChips: { ...p.expeditionChips, [id]: (p.expeditionChips[id] ?? 0) + 1 },
+      }));
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, [progress]);
+
+  /** 칩 탈착 — 같은 칩을 다시 누르면 빼고, 다른 칸에 이미 끼워 둔 것은 옮겨 온다 */
+  const handleEquipChip = useCallback((slot: number, id: ChipId | null) => {
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const slots = [...p.equippedChips];
+        if (id && slots.includes(id)) slots[slots.indexOf(id)] = null;
+        slots[slot] = slots[slot] === id ? null : id;
+        return { ...p, equippedChips: slots };
+      });
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, []);
+
   const handleBeginPlay = useCallback(() => {
     lastTsRef.current = 0;
     // 첫 원정 1회: 슬로모션 튜토리얼 시작 + 기록 (다음 판부터는 정상 속도)
@@ -1459,6 +1496,11 @@ function App() {
                 gold={progress.sharedCoins}
                 seals={progress.expeditionSeals}
                 dodgeBestStage={progress.dodgeBestStage}
+                chipLevels={progress.expeditionChips}
+                equippedChips={progress.equippedChips}
+                chipSlots={chipSlotsOpen(progress.dodgeBestStage)}
+                onUpgradeChip={handleUpgradeChip}
+                onEquipChip={handleEquipChip}
                 weapon={progress.expeditionWeapon}
                 onEquipWeapon={handleEquipWeapon}
                 onUpgrade={handleUpgradeSkill}

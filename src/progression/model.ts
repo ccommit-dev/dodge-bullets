@@ -1,4 +1,5 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
+import { CHIPS, CHIP_MAX_LEVEL, CHIP_SLOTS, emptyChipLevels, type ChipId, type ChipLevels } from "../game/chips";
 import { emptySkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
@@ -40,6 +41,10 @@ export type CharacterProgress = {
   expeditionSeals: number;
   /** 장착한 원거리 무기 — 캐릭터는 그대로, 무기만 탈착한다. 계열이 맞는 스킬 쿨타임을 줄인다 */
   expeditionWeapon: RangedWeaponId;
+  /** 원정 칩 레벨 (game/chips.ts) — 랜덤에 좌우되지 않는 영구 패시브 */
+  expeditionChips: ChipLevels;
+  /** 칩 슬롯에 끼운 것. 슬롯 수는 원정 최고 스테이지로 열린다 */
+  equippedChips: Array<ChipId | null>;
   /** 끝없는 성벽 최고 층 */
   towerBestFloor: number;
   titanBestStage: number;
@@ -181,6 +186,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     expeditionSkills: emptySkillLevels(),
     expeditionSeals: 0,
     expeditionWeapon: "bow",
+    expeditionChips: emptyChipLevels(),
+    equippedChips: [null, null, null],
     towerBestFloor: 0,
     titanBestStage: 1,
     beatSkills: emptySkills(),
@@ -377,6 +384,16 @@ export function normalizeCharacterProgress(
     dodgeBestScore: integer(raw.dodgeBestScore, 0),
     expeditionSkills,
     expeditionSeals: integer(raw.expeditionSeals, 0),
+    expeditionChips: (() => {
+      const c = { ...base.expeditionChips, ...(raw.expeditionChips ?? {}) };
+      (Object.keys(c) as ChipId[]).forEach((id) => { c[id] = integer(c[id], 0, CHIP_MAX_LEVEL); });
+      return c;
+    })(),
+    // 모르는 칩 id 는 빈 칸으로 — 저장된 값이 슬롯을 막으면 안 된다
+    equippedChips: Array.from({ length: CHIP_SLOTS }, (_, i) => {
+      const v = Array.isArray(raw.equippedChips) ? raw.equippedChips[i] : null;
+      return CHIPS.some((c) => c.id === v) ? (v as ChipId) : null;
+    }),
     // 모르는 값이 저장돼 있어도 맨손으로 떨어지지 않게 — 기본 무기로 되돌린다
     expeditionWeapon: raw.expeditionWeapon === "none" || RANGED_WEAPONS.some((w) => w.id === raw.expeditionWeapon)
       ? (raw.expeditionWeapon as RangedWeaponId)

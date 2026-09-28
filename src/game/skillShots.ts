@@ -138,7 +138,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     if (level <= 0) return;                       // 미습득 스킬은 아무것도 하지 않는다
     timers[id] = (timers[id] ?? 0) - dtSec;
     if (timers[id] > 0) return;
-    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul
+    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul * world.chips.cooldownMul
       * (id === "volley" && world.runMods.evolutions.volley === "beam" ? 1.35 : 1)
       * (id === "flame" && world.runMods.evolutions.flame === "pyre" ? 1.25 : 1);
     fire();
@@ -146,7 +146,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
 
   tick("volley", () => {
     const evo = world.runMods.evolutions.volley;
-    const targets = nearest(world, volleyShots(lv.volley) + world.runMods.volleyExtra, world.player.x, world.player.y);
+    const targets = nearest(world, volleyShots(lv.volley) + world.runMods.volleyExtra + world.chips.volleyExtra, world.player.x, world.player.y);
     for (const t of targets) {
       const ang = Math.atan2(t.y - world.player.y, t.x - world.player.x);
       // [관통 광선] 멈추지 않고 화면 끝까지 꿰지만 재사용이 길다 / [유도 볼트] 느리지만 쫓아간다
@@ -168,7 +168,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
 
   tick("flame", () => {
     const evo = world.runMods.evolutions.flame;
-    const r = flameRadius(lv.flame) * world.runMods.flameRadiusMul;
+    const r = flameRadius(lv.flame) * world.runMods.flameRadiusMul * world.chips.flameRadiusMul;
     // [화염 장판] 올라가지 않고 그 자리에 머물며 지나는 화살을 계속 태운다 (재사용은 길다)
     if (evo === "pyre") { spawn(world, { kind: "flame", vy: -20, radius: r * 0.8, lifeMs: 2600, pyre: true }); return; }
     spawn(world, { kind: "flame", vy: -230, radius: r, lifeMs: 1500 });
@@ -187,7 +187,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       if (sp < 150) continue;
       const k = Math.max(slow, 150 / sp);
       a.vx *= k; a.vy *= k;
-      a.chilledMs = evo === "lingering" ? 4500 : 1500;   // 콤보 카드가 이 표식을 본다
+      a.chilledMs = (evo === "lingering" ? 4500 : 1500) * world.chips.chillMsMul;   // 콤보 카드가 이 표식을 본다
     }
     // [서리 파쇄] 안쪽 절반은 얼리는 대신 그 자리에서 부순다 / [지속 서리] 넓고 오래 얼린다
     if (evo === "shatter") {

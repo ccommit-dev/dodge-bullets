@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { assetUrl } from "../asset";
 import { perksUnlockedBy, RARITY_LABEL } from "./perks";
+import { chipCost, CHIPS, CHIP_BY_ID, CHIP_MAX_LEVEL, type ChipId, type ChipLevels } from "./chips";
 import {
   EXPEDITION_SKILLS,
   RANGED_WEAPONS,
@@ -31,16 +32,30 @@ type Props = {
   dodgeBestStage: number;
   /** 지금 장착한 원거리 무기 ("none" = 맨손) */
   weapon: RangedWeaponId;
+  chipLevels: ChipLevels;
+  equippedChips: Array<ChipId | null>;
+  /** 열린 칩 슬롯 수 (원정 최고 스테이지로 늘어난다) */
+  chipSlots: number;
+  onUpgradeChip: (id: ChipId) => void;
+  onEquipChip: (slot: number, id: ChipId | null) => void;
   onEquipWeapon: (id: RangedWeaponId) => void;
   onUpgrade: (id: ExpeditionSkillId) => void;
 };
+
+/** 아직 안 열린 슬롯에 표시할 해금 조건 */
+const CHIP_SLOT_LABEL = ["", "2단계", "4단계"];
 
 function canAfford(gold: number, seals: number, cost: { gold: number; seals: number }): boolean {
   return gold >= cost.gold && seals >= cost.seals;
 }
 
-export function SkillPanel({ levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade }: Props) {
+export function SkillPanel({
+  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade,
+  chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
+}: Props) {
   const [openId, setOpenId] = useState<ExpeditionSkillId | null>(null);
+  /** 어느 슬롯에 끼울지 고르는 중 — null 이면 칩 목록만 본다 */
+  const [pickSlot, setPickSlot] = useState<number | null>(null);
   const summary = skillSummary(levels);
   const open = openId ? SKILL_BY_ID[openId] : null;
 
@@ -80,6 +95,64 @@ export function SkillPanel({ levels, gold, seals, dodgeBestStage, weapon, onEqui
             );
           })}
         </div>
+      </div>
+
+      {/* 원정 칩 — 가이드의 영구 성장 2순위. 랜덤에 좌우되지 않는 고정 패시브이고,
+          스킬과 **같은 인장**을 쓰므로 "지금 무엇에 먼저 쓸까"라는 선택이 생긴다 (2026-09-28) */}
+      <div className="exp-chip-row">
+        <b>원정 칩 <small>슬롯 {chipSlots}/3</small></b>
+        <div className="exp-chip-slots">
+          {[0, 1, 2].map((i) => {
+            const open = i < chipSlots;
+            const id = open ? equippedChips[i] ?? null : null;
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`exp-chip-slot ${open ? "" : "locked"} ${pickSlot === i ? "picking" : ""}`}
+                disabled={!open}
+                onClick={() => setPickSlot(pickSlot === i ? null : i)}
+              >
+                {id
+                  ? <img src={assetUrl(`dodge/chips/${id}.png`)} alt="" aria-hidden="true" />
+                  : <span className="exp-chip-empty">{open ? "+" : `${CHIP_SLOT_LABEL[i]}`}</span>}
+                {id && <em>{CHIP_BY_ID[id].name} Lv.{chipLevels[id] ?? 0}</em>}
+              </button>
+            );
+          })}
+        </div>
+        <ul className="exp-chip-list">
+          {CHIPS.map((c) => {
+            const lv = chipLevels[c.id] ?? 0;
+            const maxed = lv >= CHIP_MAX_LEVEL;
+            const cost = chipCost(lv + 1);
+            const slot = equippedChips.indexOf(c.id);
+            const on = slot >= 0 && slot < chipSlots;
+            return (
+              <li key={c.id} className={on ? "on" : ""}>
+                <img src={assetUrl(`dodge/chips/${c.id}.png`)} alt="" aria-hidden="true" />
+                <span>
+                  <b>{c.name} <i>Lv.{lv}</i></b>
+                  <em>{lv > 0 ? c.desc(lv) : c.desc(1) + " (미보유)"}</em>
+                </span>
+                {pickSlot !== null
+                  ? (
+                    <button type="button" className="exp-chip-act" disabled={lv <= 0}
+                      onClick={() => { onEquipChip(pickSlot, c.id); setPickSlot(null); }}>
+                      {on ? "해제" : "장착"}
+                    </button>
+                  )
+                  : (
+                    <button type="button" className="exp-chip-act up" disabled={maxed || seals < cost}
+                      onClick={() => onUpgradeChip(c.id)}>
+                      {maxed ? "MAX" : `인장 ${cost}`}
+                    </button>
+                  )}
+              </li>
+            );
+          })}
+        </ul>
+        {pickSlot !== null && <p className="exp-chip-hint">{pickSlot + 1}번 슬롯에 끼울 칩을 고르세요 — 슬롯을 다시 누르면 취소</p>}
       </div>
 
       <div className="exp-skill-grid">
