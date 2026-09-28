@@ -1,5 +1,5 @@
 import { createArrowPool, resetArrows, updateArrows } from "./arrows";
-import { makeSkillShots, updateSkillShots, resetSkillShots } from "./skillShots";
+import { emptyRunMods, makeSkillShots, updateSkillShots, resetSkillShots } from "./skillShots";
 import { emptySkillLevels } from "./skills";
 import type { InputState } from "./input";
 import { createPlayer, GRAVITY, resetPlayer } from "./player";
@@ -80,6 +80,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     skillTimers: { volley: 0, pierce: 0, flame: 0, frost: 0, chain: 0, ultimate: 0 },
     rangedWeapon: "none",
     skillKills: 0,
+    runMods: emptyRunMods(),
     ultFlashMs: 0,
     reflectKills: 0,
     ultCount: 0,

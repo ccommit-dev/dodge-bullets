@@ -409,7 +409,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("보스 패턴: 1~4스테이지 A·B·C·D, 성벽은 E 로 고정 (학습 가능한 보스)", ids === "ABCDEE" && new Set(bossPatterns.BOSS_PATTERNS.map((p) => p.kinds.join("+") + p.count + p.spreadDeg)).size === 5, ids);
   ok("보스 패턴: 파편 수·종류 수가 일치하거나 순환하고, 예고는 500ms 이상", bossPatterns.BOSS_PATTERNS.every((p) => p.count >= 1 && p.kinds.length >= 1 && p.warningMs >= 500));
   // 성장 선택: 3택 무작위(결정적 rng) · 적용 효과 · 대시 미해금이면 dash 제외
-  const w = { slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 } };
+  const w = { slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels() };
   let k = 0; const det = () => ((k += 0.37) % 1);
   const picked = perks.pickPerks(w, det);
   ok("성장 선택: 3개가 서로 다르고 대시 미해금이면 dash 는 나오지 않는다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => p.id === "dash"), picked.map((p) => p.id).join(","));
@@ -527,6 +527,92 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   const appSrc = readFileSync(join(root, "src/App.tsx"), "utf8");
   const bypass = appSrc.split("\n").filter((l) => /applyStats\(world/.test(l) && !/applyStats\(world, stats\);/.test(l));
   ok("월드 적재는 loadLoadout 한 곳만 — 스탯만 싣는 우회 경로가 없다", bypass.length === 0, bypass.slice(0, 2).map((l) => l.trim()).join(" / "));
+  // 9) 런 강화 카드 — 스킬 진화·콤보. 참고 게임의 핵심 루프를 옮긴 부분이다.
+  //    함정도 같이 옮기지 않으려고, 들고 있지 않은 스킬의 카드는 후보에 넣지 않는다.
+  {
+    const w = (levels) => ({
+      skillLevels: { ...S.emptySkillLevels(), ...levels },
+      runMods: { volleyExtra: 0, boltPierce: 0, flameRadiusMul: 1, chainExtra: 0, frostSlowBonus: 0, cooldownMul: 1, chillHunt: false, chillBurst: false },
+      stats: { dashUnlocked: true },
+      player: { hp: 1, maxHp: 1 },
+      slashGauge: 0,
+    });
+    const ids = (world) => perks.PERKS.filter((p) => p.available(world)).map((p) => p.id);
+
+    const none = ids(w({}));
+    ok("스킬이 하나도 없으면 후보는 예전 일반 다섯 장 그대로 — 기준선이 안 흔들린다",
+      none.length === 5 && ["gauge", "speed", "heal", "slash", "dash"].every((id) => none.includes(id)), none.join());
+
+    const volley = ids(w({ volley: 1 }));
+    ok("연속 사격을 들면 그 스킬 카드만 붙는다 (화염·사슬 카드는 안 뜬다)",
+      volley.includes("volleyExtra") && volley.includes("boltPierce")
+      && !volley.includes("flameWide") && !volley.includes("chainExtra"), volley.join());
+
+    ok("콤보는 두 스킬이 다 있을 때만 — 빙결만으로는 안 뜬다",
+      !ids(w({ frost: 1 })).includes("chillHunt")
+      && ids(w({ frost: 1, volley: 1 })).includes("chillHunt")
+      && ids(w({ frost: 1, flame: 1 })).includes("chillBurst"));
+
+    const taken = w({ frost: 1, volley: 1 });
+    perks.applyPerk(taken, "chillHunt");
+    ok("이미 고른 콤보는 다시 뜨지 않는다", taken.runMods.chillHunt === true && !ids(taken).includes("chillHunt"));
+
+    const grow = w({ volley: 1, flame: 1, chain: 1, frost: 1 });
+    perks.applyPerk(grow, "volleyExtra"); perks.applyPerk(grow, "boltPierce");
+    perks.applyPerk(grow, "flameWide"); perks.applyPerk(grow, "chainExtra"); perks.applyPerk(grow, "frostDeep");
+    ok("카드가 runMods 에만 쌓인다 (영구 스킬 레벨은 그대로)",
+      grow.runMods.volleyExtra === 1 && grow.runMods.boltPierce === 1
+      && Math.abs(grow.runMods.flameRadiusMul - 1.35) < 1e-9 && grow.runMods.chainExtra === 1
+      && Math.abs(grow.runMods.frostSlowBonus - 0.1) < 1e-9
+      && grow.skillLevels.volley === 1,
+      JSON.stringify(grow.runMods));
+
+    // 3택은 후보가 3장 미만이어도 멈춰야 한다 (rng 가 상수여도)
+    const three = perks.pickPerks(w({ volley: 1, frost: 1 }), () => 0.5);
+    ok("레벨업 3택은 겹치지 않는 카드 3장을 돌려준다", three.length === 3 && new Set(three.map((p) => p.id)).size === 3,
+      three.map((p) => p.id).join());
+
+    // ── 등급 — 스테이지가 깊을수록 상위 등급이 잘 나온다 (사용자 지시 2026-09-28)
+    const odds = [0, 1, 2, 3].map((i) => perks.rarityOdds(i));
+    ok("등급 확률: 각 스테이지에서 합이 1", odds.every((o) => Math.abs(o.common + o.rare + o.epic - 1) < 1e-9));
+    ok("등급 확률: 스테이지가 깊을수록 에픽·레어가 오르고 일반이 내려간다",
+      odds.every((o, i) => i === 0 || (o.epic > odds[i - 1].epic && o.rare > odds[i - 1].rare && o.common < odds[i - 1].common)),
+      odds.map((o) => Math.round(o.epic * 100) + "%").join(" → "));
+    ok("1스테이지 에픽은 드물고(≤5%) 4스테이지는 볼 만하다(≥15%)",
+      odds[0].epic <= 0.05 && odds[3].epic >= 0.15, `${Math.round(odds[0].epic * 100)}% / ${Math.round(odds[3].epic * 100)}%`);
+
+    ok("카드마다 등급이 붙어 있다", perks.PERKS.every((p) => ["common", "rare", "epic"].includes(p.rarity)));
+    ok("콤보는 전부 에픽", perks.PERKS.filter((p) => p.combo).every((p) => p.rarity === "epic")
+      && perks.PERKS.some((p) => p.combo));
+
+    // 등급 굴림이 실제로 뽑히는 등급을 바꾼다 — rng 0 이면 항상 에픽, 0.99 면 항상 일반
+    const full = w({ volley: 1, flame: 1, frost: 1, chain: 1 });
+    const allEpic = perks.pickPerks(full, () => 0, 3, 3);
+    const allCommon = perks.pickPerks(full, () => 0.99, 3, 0);
+    ok("rng 가 낮으면 에픽부터, 높으면 일반부터 뽑힌다",
+      allEpic.every((p) => p.rarity === "epic") && allCommon.every((p) => p.rarity === "common"),
+      allEpic.map((p) => p.rarity).join() + " / " + allCommon.map((p) => p.rarity).join());
+
+    // 그 등급이 동나면 아래로 내려온다 — 에픽 후보가 없는 로드아웃에서 rng 0
+    const thin = perks.pickPerks(w({}), () => 0, 3, 3);
+    ok("에픽 후보가 없으면 아래 등급으로 내려와 3장을 채운다",
+      thin.length === 3 && thin.every((p) => p.rarity === "common"), thin.map((p) => p.id).join());
+
+    // 같은 rng 면 같은 결과 (시뮬 재현)
+    const seq = () => { let k = 0; return () => ((k += 0.37) % 1); };
+    ok("같은 rng 면 같은 3택이 나온다 (재현 가능)",
+      JSON.stringify(perks.pickPerks(full, seq(), 3, 2).map((p) => p.id))
+      === JSON.stringify(perks.pickPerks(full, seq(), 3, 2).map((p) => p.id)));
+
+    // 에픽 두 장은 실제로 세다
+    const epic = w({ volley: 1 });
+    perks.applyPerk(epic, "volleyStorm");
+    ok("[탄막 폭풍] 에픽: 발수 +2 · 관통 +1", epic.runMods.volleyExtra === 2 && epic.runMods.boltPierce === 1);
+    const od = w({ volley: 1 });
+    perks.applyPerk(od, "overdrive");
+    ok("[과부하] 에픽: 모든 스킬 재사용 ×0.8", Math.abs(od.runMods.cooldownMul - 0.8) < 1e-9);
+  }
+
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
     /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
 }

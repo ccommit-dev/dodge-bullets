@@ -3801,10 +3801,11 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .perk-copy { display: grid; gap: 2px; min-width: 0; }
 .perk-choice b { font-size: 15px; }
 .perk-choice small { color: #cbd5f5; font-size: 11px; font-weight: 500; }
-.perk-choice.perk-heal { background: linear-gradient(135deg, #fda4af, #f43f5e); }
-.perk-choice.perk-speed { background: linear-gradient(135deg, #fde68a, #f59e0b); }
-.perk-choice.perk-slash { background: linear-gradient(135deg, #c4b5fd, #7c3aed); }
-.perk-choice.perk-dash { background: linear-gradient(135deg, #a5f3fc, #0891b2); }
+/* 카드 색은 **등급**이 정한다 — 카드마다 다른 색이면 일반 카드가 에픽처럼 보인다 (2026-09-28).
+   일반은 차분하게, 레어는 푸르게, 에픽은 빛나게. 한 판에 에픽이 뜨면 바로 눈에 띄어야 한다. */
+.perk-choice.rarity-common { background: linear-gradient(135deg, #475569, #1e293b); }
+.perk-choice.rarity-rare { background: linear-gradient(135deg, #38bdf8, #1d4ed8); }
+.perk-choice.rarity-epic { background: linear-gradient(135deg, #c084fc, #7c3aed 55%, #db2777); }
 /* 런 레벨 · XP 바 (성장 선택은 레벨업마다) */
 .run-level { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #a5f3fc; }
 .run-xp { display: inline-block; width: 64px; height: 5px; border-radius: 999px; background: rgba(148, 163, 184, 0.3); overflow: hidden; }
@@ -3877,6 +3878,28 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-skill-cost span.short { color:#f87171; }
 .exp-skill-cost img { width:18px; height:18px; }
 .exp-skill-cost em { color:#94a3b8; font-style:normal; font-size:10px; font-weight:700; }
+/* 강화 카드 등급 — 스테이지가 깊을수록 상위 등급이 잘 나온다 (2026-09-28).
+   등급이 없으면 레벨업이 "+12% 셋 중 하나"로 읽혀 집중이 안 된다 */
+.perk-rarity { margin-right:6px; padding:1px 6px; border-radius:99px; font-style:normal; font-size:9px; font-weight:900; vertical-align:middle; }
+.perk-rarity.r-common { background:rgba(148,163,184,.25); color:#cbd5f5; }
+.perk-rarity.r-rare { background:rgba(56,189,248,.25); color:#7dd3fc; }
+.perk-rarity.r-epic { background:linear-gradient(135deg,#a855f7,#f472b6); color:#faf5ff; }
+.perk-choice.rarity-common { border-color:rgba(148,163,184,.4); }
+.perk-choice.rarity-rare { border-color:rgba(125,211,252,.75); box-shadow:0 0 14px rgba(56,189,248,.28); }
+.perk-choice.rarity-epic { border-color:rgba(240,171,252,.9); box-shadow:0 0 22px rgba(192,132,252,.45); }
+/* 에픽은 테두리가 천천히 숨 쉰다 — 뽑혔다는 것이 느껴지게 */
+.perk-choice.rarity-epic { animation: perk-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2) both, perk-epic-glow 1.8s ease-in-out infinite; }
+@keyframes perk-epic-glow {
+  0%, 100% { box-shadow: 0 0 18px rgba(192,132,252,.35); }
+  50% { box-shadow: 0 0 30px rgba(244,114,182,.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .perk-choice.rarity-epic { animation: none; }
+}
+.perk-odds { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; margin:0 0 2px; color:#94a3b8; font-size:10px; font-weight:700; }
+.perk-odds .perk-rarity { margin:0 0 0 6px; }
+/* 콤보 카드 배지 — 두 스킬이 맞물릴 때만 뜬다 (2026-09-28) */
+.perk-combo { margin-left:6px; padding:1px 6px; border-radius:99px; background:linear-gradient(135deg,#f472b6,#fbbf24); color:#3b0764; font-style:normal; font-size:9px; font-weight:900; vertical-align:middle; }
 /* 원거리 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (2026-09-28) */
 .exp-weapon-row { display:grid; gap:6px; }
 .exp-weapon-row > b { color:#c4b5fd; font-size:11px; }
