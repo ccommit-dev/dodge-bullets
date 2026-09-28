@@ -1,3 +1,4 @@
+import type { ChipMods } from "./chips";
 import type { SkillShot } from "./skillShots";
 import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
 export type GameState = "ready" | "intro" | "playing" | "paused" | "perk" | "clear" | "gameover";
@@ -282,6 +283,11 @@ export type GameWorld = {
   skillKills: number;
   /** 런 중 강화 카드가 쌓은 스킬 진화 — 런이 끝나면 사라진다 (game/perks.ts) */
   runMods: RunMods;
+  /**
+   * 장착한 원정 칩이 만들어 내는 값 (game/chips.ts) — 카드와 달리 **무작위가 아니고**
+   * 런 내내 고정이다. 출격 적재(loadLoadout)에서 매번 다시 싣는다
+   */
+  chips: ChipMods;
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
   lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "";
   bossSpawned: boolean;

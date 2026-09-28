@@ -1,4 +1,5 @@
 import { createArrowPool, resetArrows, updateArrows } from "./arrows";
+import { emptyChipMods } from "./chips";
 import { emptyRunMods, makeSkillShots, updateSkillShots, resetSkillShots } from "./skillShots";
 import { emptySkillLevels } from "./skills";
 import type { InputState } from "./input";
@@ -81,6 +82,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     rangedWeapon: "none",
     skillKills: 0,
     runMods: emptyRunMods(),
+    chips: emptyChipMods(),
     ultFlashMs: 0,
     reflectKills: 0,
     ultCount: 0,

@@ -27,6 +27,8 @@ const progress = {
   expeditionSeals: 400,
   expeditionSkills: { volley: 6, pierce: 4, flame: 2, frost: 2, chain: 2, ultimate: 4 },
   expeditionWeapon: "staff",
+  expeditionChips: { focus: 3, barrage: 3, ember: 2, rime: 4, vitality: 2, edge: 1 },
+  equippedChips: ["focus", "rime", null],
   claimedRewards: ["dodge-tutorial"],
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
@@ -87,6 +89,20 @@ ok("스킬 화면: 무기 2종 + 스킬 6종, 저장된 지팡이가 장착 상�
   && skillUi.weapons === 2 && skillUi.skills === 6 && skillUi.on[1] === true && skillUi.on[0] === false,
   JSON.stringify(skillUi.on));
 ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, skillUi.over.slice(0, 2).join(", "));
+
+// 원정 칩 — 가이드의 영구 성장 2순위. 슬롯(끼운 것)과 목록(가진 것)이 나뉘어 보여야 한다
+const chipUi = await page.evaluate(() => ({
+  slots: [...document.querySelectorAll(".exp-chip-slot")].length,
+  filled: [...document.querySelectorAll(".exp-chip-slot img")].length,
+  list: [...document.querySelectorAll(".exp-chip-list li")].map((l) => l.querySelector("em")?.textContent ?? "?"),
+  equipped: [...document.querySelectorAll(".exp-chip-list li.on")].length,
+}));
+ok("칩 슬롯 3칸 중 2칸이 차 있고, 목록 6종이 실제 수치를 말한다",
+  chipUi.slots === 3 && chipUi.filled === 2 && chipUi.list.length === 6
+  && chipUi.list[0].includes("-9%") === false && chipUi.list[0].includes("9%")
+  && chipUi.list[3].includes("80%"),
+  JSON.stringify(chipUi.list.slice(0, 4)));
+ok("끼운 칩 2종이 목록에서 장착 표시된다", chipUi.equipped === 2, String(chipUi.equipped));
 
 // 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지" 를 보여 준다 (가이드의 투자 조언)
 await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[3]?.click());
@@ -159,6 +175,12 @@ const loaded = await page.evaluate(() => {
   const w = window.__dodgeWorld;
   return w ? { weapon: w.rangedWeapon, lv: w.skillLevels } : null;
 });
+const chipLoaded = await page.evaluate(() => window.__dodgeWorld?.chips ?? null);
+// 조준 Lv3(재사용 ×0.91) + 서리 Lv4(빙결 ×1.8). 연사·잔열은 안 끼웠으므로 중립
+ok("끼운 칩이 전투 월드에 실린다 (안 끼운 칩은 중립)",
+  !!chipLoaded && Math.abs(chipLoaded.cooldownMul - 0.91) < 1e-6 && Math.abs(chipLoaded.chillMsMul - 1.8) < 1e-6
+  && chipLoaded.volleyExtra === 0 && chipLoaded.flameRadiusMul === 1,
+  JSON.stringify(chipLoaded));
 ok("진행도의 스킬 레벨과 장착 무기가 전투 월드에 실린다",
   !!loaded && loaded.weapon === "staff" && loaded.lv.volley === 6 && loaded.lv.pierce === 4,
   JSON.stringify(loaded));
