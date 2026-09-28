@@ -1,6 +1,6 @@
 import type { SkillShot } from "./skillShots";
 import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
-export type GameState = "ready" | "intro" | "playing" | "perk" | "clear" | "gameover";
+export type GameState = "ready" | "intro" | "playing" | "paused" | "perk" | "clear" | "gameover";
 
 export type PlayerAnim = "idle" | "run" | "jump" | "fall" | "dash" | "skill" | "hit" | "dead";
 

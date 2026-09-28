@@ -191,6 +191,45 @@ const skillCardOffered = perk.ids.some((id) => /volleyExtra|boltPierce|flameWide
 ok("스킬 카드를 고르면 runMods 가 실제로 바뀐다", !skillCardOffered || before !== after,
   skillCardOffered ? `${before} → ${after}` : "이번 3택에 스킬 카드가 안 뽑힘(무작위) — 건너뜀");
 
+// 4) 전투 상시 조작 — 스킬 슬롯 · 일시정지 · 배속 (참고 게임의 전투 HUD 관례)
+const dock = await page.evaluate(() => {
+  const slots = [...document.querySelectorAll(".skill-slot")];
+  return {
+    slots: slots.length,
+    // 쿨타임 덮개 높이가 슬롯마다 있고 0~100% 안에 있다
+    covers: slots.map((s) => s.querySelector("i")?.style.height ?? "?"),
+    levels: slots.map((s) => s.querySelector("b")?.textContent ?? "?"),
+    auto: !!document.querySelector(".skill-dock-auto"),
+    pause: !!document.querySelector(".battle-toggle"),
+    speed: document.querySelector(".speed-toggle")?.textContent?.trim(),
+  };
+});
+// 지팡이 로드아웃은 volley·flame·frost·chain 4종 (pierce 4 포함이면 5종). 일섬은 슬롯에 안 넣는다
+ok("장착한 원거리 스킬이 전투 슬롯으로 보인다 (일섬 제외)",
+  dock.slots === 5 && dock.auto && dock.levels.join() === "6,4,2,2,2", JSON.stringify(dock.levels) + " auto=" + dock.auto);
+ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 5 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
+ok("일시정지·배속 버튼이 전투 중에 있다", dock.pause && dock.speed === "×1", String(dock.speed));
+
+// 일시정지가 실제로 세계를 멈추는가
+await page.evaluate(() => [...document.querySelectorAll(".battle-toggle")].find((b) => b.textContent.includes("일시정지"))?.click());
+await sleep(300);
+const t0 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
+await sleep(900);
+const t1 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
+ok("일시정지하면 스테이지 시계가 멈춘다", t0 === t1, t0 + "ms → " + t1 + "ms");
+await page.evaluate(() => [...document.querySelectorAll(".battle-toggle, .cta")].find((b) => b.textContent.includes("계속"))?.click());
+await sleep(700);
+const t2 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
+ok("재개하면 다시 흐른다", t2 > t1, t1 + "ms → " + t2 + "ms");
+
+// 배속이 실제로 시간을 빠르게 돌리는가
+await page.evaluate(() => document.querySelector(".speed-toggle")?.click());
+const a0 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
+await sleep(1000);
+const a1 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
+const rate = (a1 - a0) / 1000;
+ok("배속 ×1.5 면 게임 시간이 1.5배 가까이 흐른다", rate > 1.25 && rate < 1.8, rate.toFixed(2) + "배");
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 
 await browser.close();

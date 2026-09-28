@@ -56,6 +56,7 @@ import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type PerkId } from "./game/perks";
+import { effectiveCooldown } from "./game/skillShots";
 import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
 import { EXPEDITION_SKILLS } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
@@ -190,6 +191,12 @@ function App() {
   const [gameState, setGameState] = useState<GameState>("ready");
   // 구 '보급소' 탭은 용도 불명으로 삭제돼 상태만 남아 있었다 — 그 자리에 영구 스킬 화면을 넣는다 (2026-09-28)
   const [menuTab, setMenuTab] = useState<"play" | "skill">("play");
+  /** 배속 — 참고 게임의 전투 배속. 빨리 돌리면 그만큼 위험해서 인장을 더 준다 */
+  const [speedMul, setSpeedMul] = useState(1);
+  const speedRef = useRef(1);
+  /** 스킬 슬롯 — 자동 발사라 쿨타임이 안 보이면 내 스킬이 도는지 알 수 없다 */
+  const [skillHud, setSkillHud] = useState<{ id: ExpeditionSkillId; lv: number; ready: number }[]>([]);
+  const skillHudTsRef = useRef(0);
   const [score, setScore] = useState(0);
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -567,7 +574,7 @@ function App() {
           tutorialRef.current = false;
           setTutorialActive(false);
         }
-        const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05) * (tutorialSlow ? 0.45 : 1);
+        const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05) * (tutorialSlow ? 0.45 : speedRef.current);
         lastTsRef.current = ts;
 
         // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
@@ -592,6 +599,16 @@ function App() {
           if (world.score !== scoreRef.current) {
             scoreRef.current = world.score;
             setScore(world.score);
+          }
+          if (ts - skillHudTsRef.current > 100) {
+            skillHudTsRef.current = ts;
+            setSkillHud(EXPEDITION_SKILLS
+              .filter((d) => d.id !== "ultimate" && (world.skillLevels[d.id] ?? 0) > 0)
+              .map((d) => {
+                const full = effectiveCooldown(d.id, world.skillLevels[d.id], world.rangedWeapon) * world.runMods.cooldownMul;
+                const left = Math.max(0, world.skillTimers[d.id] ?? 0);
+                return { id: d.id, lv: world.skillLevels[d.id], ready: full > 0 ? 1 - left / full : 1 };
+              }));
           }
           if (world.runLevel !== hudLevelRef.current || Math.abs(world.runXp - hudXpRef.current) >= 1) {
             hudLevelRef.current = world.runLevel;
@@ -698,7 +715,8 @@ function App() {
                 enhancementMaterials: growth.materials + Math.floor(world.supplies / 8)
                   + world.enemyKills + world.perfectDodges * 2 + world.chests * 4,
                 dodgeStage: world.stageIndex + 1,
-                expeditionSeals: world.expeditionSeals,
+                // 배속은 순수한 손해가 아니라 선택이어야 한다 — 빨리 돌린 만큼 인장을 더 준다 (2026-09-28)
+                expeditionSeals: Math.round(world.expeditionSeals * (speedRef.current > 1 ? 1.25 : 1)),
                 lastContent: "dodge",
               },
             );
@@ -1232,6 +1250,36 @@ function App() {
             >
               {soundOn ? "사운드 On" : "사운드 Off"}
             </button>
+            {(gameState === "playing" || gameState === "paused") && (
+              <>
+                <button
+                  type="button"
+                  className="battle-toggle"
+                  aria-pressed={gameState === "paused"}
+                  aria-label={gameState === "paused" ? "계속하기" : "일시정지"}
+                  onClick={() => {
+                    const next = stateRef.current === "paused" ? "playing" : "paused";
+                    lastTsRef.current = 0;
+                    stateRef.current = next;
+                    setGameState(next);
+                  }}
+                >
+                  {gameState === "paused" ? "계속" : "일시정지"}
+                </button>
+                <button
+                  type="button"
+                  className="battle-toggle speed-toggle"
+                  aria-label={`전투 속도 ${speedMul === 1 ? "1배" : "1.5배"}`}
+                  onClick={() => {
+                    const next = speedRef.current === 1 ? 1.5 : 1;
+                    speedRef.current = next;
+                    setSpeedMul(next);
+                  }}
+                >
+                  ×{speedMul === 1 ? "1" : "1.5"}
+                </button>
+              </>
+            )}
             <button
               type="button"
               className="exit-toggle"
@@ -1468,6 +1516,19 @@ function App() {
               </div>
             )}
           </div>
+          {skillHud.length > 0 && (
+            <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
+              {skillHud.map((s) => (
+                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""}`} title={SKILL_BY_ID[s.id].name}>
+                  <img src={assetUrl(`dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
+                  {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
+                  <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />
+                  <b>{s.lv}</b>
+                </span>
+              ))}
+              <span className="skill-dock-auto">자동 조준</span>
+            </div>
+          )}
           <div
             className="action-dock"
             style={{
@@ -1534,6 +1595,17 @@ function App() {
           <p>
             {starResult.improved && <b>신기록! </b>}원정 별 {starResult.total}/12
           </p>
+        </div>
+      )}
+
+      {appMode === "dodge" && gameState === "paused" && (
+        <div className="game-overlay">
+          <div className="overlay-content">
+            <p className="brand">PAUSED</p>
+            <h1 className="title">일시정지</h1>
+            <p className="subtitle">화살은 멈춰 있습니다. 장착 스킬은 계속 자동으로 나갑니다 — 재개하면 쿨타임이 이어집니다.</p>
+            <button type="button" className="cta" onClick={() => { lastTsRef.current = 0; stateRef.current = "playing"; setGameState("playing"); }}>계속하기</button>
+          </div>
         </div>
       )}
 
