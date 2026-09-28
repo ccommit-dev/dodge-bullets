@@ -1,4 +1,5 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
+import { emptySkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
@@ -33,6 +34,12 @@ export type CharacterProgress = {
   pioneeredArea: number;
   dodgeBestStage: number;
   dodgeBestScore: number;
+  /** 화살 원정 영구 스킬 레벨 (game/skills.ts) — 0 = 미습득 */
+  expeditionSkills: ExpeditionSkillLevels;
+  /** 원정 인장 — 스킬 강화 재화. 런 안의 world.expeditionSeals 가 클리어 때 누적된다 */
+  expeditionSeals: number;
+  /** 장착한 원거리 무기 — 캐릭터는 그대로, 무기만 탈착한다. 계열이 맞는 스킬 쿨타임을 줄인다 */
+  expeditionWeapon: RangedWeaponId;
   /** 끝없는 성벽 최고 층 */
   towerBestFloor: number;
   titanBestStage: number;
@@ -171,6 +178,9 @@ export function emptyCharacterProgress(): CharacterProgress {
     pioneeredArea: 1,
     dodgeBestStage: 1,
     dodgeBestScore: 0,
+    expeditionSkills: emptySkillLevels(),
+    expeditionSeals: 0,
+    expeditionWeapon: "bow",
     towerBestFloor: 0,
     titanBestStage: 1,
     beatSkills: emptySkills(),
@@ -333,6 +343,10 @@ export function normalizeCharacterProgress(
   (Object.keys(beatSkills) as Array<keyof BeatSkills>).forEach((id) => {
     beatSkills[id] = integer(beatSkills[id], 0, 99);
   });
+  const expeditionSkills = { ...base.expeditionSkills, ...(raw.expeditionSkills ?? {}) };
+  (Object.keys(expeditionSkills) as ExpeditionSkillId[]).forEach((id) => {
+    expeditionSkills[id] = integer(expeditionSkills[id], 0, SKILL_MAX_LEVEL);
+  });
   const exp = integer(raw.exp, base.exp);
   const content = raw.lastContent;
   const evolutionPaths: EvolutionPath[] = ["novice", "swordmaster", "guardian", "arcane"];
@@ -361,6 +375,12 @@ export function normalizeCharacterProgress(
     pioneeredArea: pioneeredAreaOf(raw),
     dodgeBestStage: Math.max(1, integer(raw.dodgeBestStage, 1, 9999)),
     dodgeBestScore: integer(raw.dodgeBestScore, 0),
+    expeditionSkills,
+    expeditionSeals: integer(raw.expeditionSeals, 0),
+    // 모르는 값이 저장돼 있어도 맨손으로 떨어지지 않게 — 기본 무기로 되돌린다
+    expeditionWeapon: raw.expeditionWeapon === "none" || RANGED_WEAPONS.some((w) => w.id === raw.expeditionWeapon)
+      ? (raw.expeditionWeapon as RangedWeaponId)
+      : base.expeditionWeapon,
     towerBestFloor: integer(raw.towerBestFloor, 0, 99999),
     titanBestStage: Math.max(1, integer(raw.titanBestStage, 1, 9999)),
     beatSkills,

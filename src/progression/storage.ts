@@ -142,6 +142,8 @@ export async function grantCharacterReward(
   reward: Partial<Pick<CharacterProgress, "exp" | "sharedCoins" | "enhancementMaterials">> & {
     lastContent?: CharacterProgress["lastContent"];
     dodgeStage?: number;
+    /** 원정 인장 — 화살 원정 영구 스킬 강화 재화 (2026-09-28) */
+    expeditionSeals?: number;
   },
 ): Promise<CharacterProgress> {
   return updateCharacterProgress(userHash, (current) => {
@@ -153,6 +155,7 @@ export async function grantCharacterReward(
       enhancementMaterials:
         current.enhancementMaterials + Math.max(0, reward.enhancementMaterials ?? 0),
       dodgeBestStage: Math.max(current.dodgeBestStage, reward.dodgeStage ?? 1),
+      expeditionSeals: current.expeditionSeals + Math.max(0, reward.expeditionSeals ?? 0),
       lastContent: reward.lastContent ?? current.lastContent,
       claimedRewards: [...current.claimedRewards, rewardId],
     });

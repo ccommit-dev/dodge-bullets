@@ -27,7 +27,7 @@ export const STAGES: StageDef[] = [
     baseReward: 370,
     speedMul: 0.86,
     spawnMul: 0.78,
-    intro: "적 궁수의 화살촉엔 마력 결정이 박혀 있다 — 베어 떨어뜨린 결정이 대장간 강화석이 된다. 초소를 돌파하라",
+    intro: "장착한 활이 알아서 화살을 요격한다 — 남은 화살은 직접 베어라. 떨어진 결정이 대장간 강화석이 된다",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },

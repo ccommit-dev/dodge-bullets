@@ -56,6 +56,9 @@ import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, type PerkDef, type PerkId } from "./game/perks";
+import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
+import { EXPEDITION_SKILLS } from "./game/skills";
+import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import {
   computeClearReward,
@@ -115,16 +118,44 @@ const DEATH_TIPS: Record<string, string> = {
   aimed: "조준 화살은 붉은 선이 사라지는 순간 위치를 바꾸세요",
   fragment: "베어 낸 조각은 돌다가 되돌아옵니다 — 조각이 남았을 땐 점프 후 대시",
   boss: "보스 화살은 끝까지 베야 합니다 — 검격이 준비되기 전엔 거리를 두세요",
-  normal: "검격은 스윙 순간 앞쪽 화살만 벱니다 — 코앞에서 베면 반사되어 궁수를 잡습니다",
+  normal: "원거리 스킬은 알아서 나갑니다 — 검격은 스윙 순간 앞쪽 화살만, 코앞에서 베면 반사되어 궁수를 잡습니다",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
-function statsWithShoulder(levels: ShopLevels, shoulder: ShoulderId | null) {
-  const stats = statsFromLevels(levels);
-  if (shoulder === "scout") stats.moveSpeed *= 1.03;
-  if (shoulder === "shadow") stats.dashCooldownMs *= .95;
-  if (shoulder === "ogre") stats.extraLives += 1;
-  if (shoulder === "dragon") stats.dashIFramesMs *= 1.1;
+/**
+ * 원정 스탯 조립의 **유일한** 지점 — 파생(캐릭터 성장) → 견갑 → 영구 스킬 순으로 얹는다.
+ * 세 호출부가 모두 이 함수를 지나므로 전투·시뮬·미리보기가 같은 값을 본다 (2026-09-28).
+ */
+/** 지금 강화할 수 있는 스킬이 하나라도 있나 — 탭의 "!" 배지 */
+function EXPEDITION_SKILL_READY(p: CharacterProgress | null): boolean {
+  if (!p) return false;
+  return EXPEDITION_SKILLS.some((d) => {
+    const lv = p.expeditionSkills[d.id] ?? 0;
+    if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(d, p.dodgeBestStage)) return false;
+    const c = skillCost(d, lv + 1);
+    return p.sharedCoins >= c.gold && p.expeditionSeals >= c.seals;
+  });
+}
+
+/**
+ * 출격 적재 — 스탯 · 스킬 레벨 · 장착 무기를 **한 군데서** 월드에 싣는다 (2026-09-28).
+ * 스탯만 넣고 스킬 레벨을 빠뜨리면 화면에는 Lv.10 인데 전투에서는 아무것도 쏘지 않는다.
+ */
+function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress) {
+  const stats = statsWithShoulder(levels, p.equippedShoulder, p.expeditionSkills);
+  applyStats(world, stats);
+  world.skillLevels = { ...p.expeditionSkills };
+  world.rangedWeapon = p.expeditionWeapon;
   return stats;
+}
+
+function statsWithShoulder(levels: ShopLevels, shoulder: ShoulderId | null, skills?: ExpeditionSkillLevels) {
+  const base = statsFromLevels(levels);
+  if (shoulder === "scout") base.moveSpeed *= 1.03;
+  if (shoulder === "shadow") base.dashCooldownMs *= .95;
+  if (shoulder === "ogre") base.extraLives += 1;
+  if (shoulder === "dragon") base.dashIFramesMs *= 1.1;
+  if (!skills) return base;
+  return applySkillLevels(base, skills);
 }
 
 function App() {
@@ -152,7 +183,8 @@ function App() {
   // 값은 화면에 안 쓴다 — 개발용 배선 상태라 로비에서 뺐다(2026-09-21). 세터는 부팅 경로가 계속 쓴다
   const [, setUserKeySource] = useState<"sdk" | "mock">("mock");
   const [gameState, setGameState] = useState<GameState>("ready");
-  const [menuTab, setMenuTab] = useState<"play" | "shop">("play");
+  // 구 '보급소' 탭은 용도 불명으로 삭제돼 상태만 남아 있었다 — 그 자리에 영구 스킬 화면을 넣는다 (2026-09-28)
+  const [menuTab, setMenuTab] = useState<"play" | "skill">("play");
   const [score, setScore] = useState(0);
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -320,6 +352,9 @@ function App() {
 
     if (!worldRef.current) {
       worldRef.current = createWorld(width, height, dpr);
+      // 개발 전용 관찰 창구 — 헤드리스 하니스가 전투 내부(스킬 탄·장착 무기)를 읽을 수 있게.
+      // DOM 만으로는 "강화했는데 실제로 쏘는가"를 확인할 길이 없다 (2026-09-28)
+      if (import.meta.env.DEV) (window as unknown as { __dodgeWorld?: GameWorld }).__dodgeWorld = worldRef.current;
     } else {
       resizeWorld(worldRef.current, width, height, dpr);
     }
@@ -367,8 +402,9 @@ function App() {
       shopLevelsRef.current = mergedLevels;
       setProgress(character);
       tutorialEligibleRef.current = !character.claimedRewards.includes("dodge-tutorial") && character.dodgeBestStage <= 1;
-      const stats = statsWithShoulder(mergedLevels, character.equippedShoulder);
-      if (worldRef.current) applyStats(worldRef.current, stats);
+      const stats = worldRef.current
+        ? loadLoadout(worldRef.current, mergedLevels, character)
+        : statsWithShoulder(mergedLevels, character.equippedShoulder, character.expeditionSkills);
       setMaxHp(1 + stats.extraLives);
       setHp(1 + stats.extraLives);
       setBootReady(true);
@@ -657,6 +693,7 @@ function App() {
                 enhancementMaterials: growth.materials + Math.floor(world.supplies / 8)
                   + world.enemyKills + world.perfectDodges * 2 + world.chests * 4,
                 dodgeStage: world.stageIndex + 1,
+                expeditionSeals: world.expeditionSeals,
                 lastContent: "dodge",
               },
             );
@@ -817,7 +854,7 @@ function App() {
     const world = worldRef.current;
     if (!world) return;
     applyInsetsToWorld(world, insetsRef.current);
-    applyStats(world, statsWithShoulder(shopLevelsRef.current, progress.equippedShoulder));
+    loadLoadout(world, shopLevelsRef.current, progress);
     beginStage(world, index);
     const stage = getStage(index);
     setStageIndex(index);
@@ -841,7 +878,7 @@ function App() {
     const world = worldRef.current;
     if (world) {
       applyInsetsToWorld(world, insetsRef.current);
-      applyStats(world, statsWithShoulder(shopLevelsRef.current, progress.equippedShoulder));
+      loadLoadout(world, shopLevelsRef.current, progress);
       resetRun(world, fromStage);
     }
     prepareWorldForStage(fromStage);
@@ -876,6 +913,40 @@ function App() {
     const result = await shareCard(blob);
     setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
   };
+
+  /** 스킬 강화 — 골드(공용 코인)와 원정 인장을 쓰고 레벨을 올린다. 즉시 스탯에 반영된다 */
+  const handleUpgradeSkill = useCallback((id: ExpeditionSkillId) => {
+    const current = progress;
+    const def = SKILL_BY_ID[id];
+    const lv = current.expeditionSkills[id] ?? 0;
+    if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(def, current.dodgeBestStage)) return;
+    const cost = skillCost(def, lv + 1);
+    if (current.sharedCoins < cost.gold || current.expeditionSeals < cost.seals) return;
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
+        ...p,
+        sharedCoins: p.sharedCoins - cost.gold,
+        expeditionSeals: p.expeditionSeals - cost.seals,
+        expeditionSkills: { ...p.expeditionSkills, [id]: (p.expeditionSkills[id] ?? 0) + 1 },
+      }));
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, [progress]);
+
+  /** 원거리 무기 탈착 — 같은 캐릭터에 활/지팡이를 바꿔 끼운다. 장착 중인 것을 다시 누르면 맨손 */
+  const handleEquipWeapon = useCallback((id: RangedWeaponId) => {
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
+        ...p,
+        expeditionWeapon: p.expeditionWeapon === id ? "none" : id,
+      }));
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, []);
 
   const handleBeginPlay = useCallback(() => {
     lastTsRef.current = 0;
@@ -992,7 +1063,7 @@ function App() {
     if (!changed) return;
     shopLevelsRef.current = merged;
     setShopLevels(merged);
-    if (worldRef.current) applyStats(worldRef.current, statsWithShoulder(merged, progress.equippedShoulder));
+    if (worldRef.current) loadLoadout(worldRef.current, merged, progress);
     void saveShopLevels(userHashRef.current, merged);
   }, [bootReady, progress]);
 
@@ -1237,11 +1308,19 @@ function App() {
           <div className="overlay-content overlay-wide">
             <p className="brand">BATTLE EXPEDITION</p>
             <h1 className="title">전장의 돌파 원정</h1>
-            <p className="subtitle">적 궁수의 화살촉엔 <b>마력 결정</b>이 박혀 있다 — 베어 떨어뜨린 결정은 대장간 <b>강화석</b>이 되고, 코앞에서 베면 궁수에게 되돌아간다</p>
+            <p className="subtitle">등에 멘 <b>활·지팡이</b>가 날아오는 화살을 알아서 요격한다 — 손에 남은 건 <b>검격</b>과 <b>일섬</b>, 코앞에서 베면 궁수에게 되돌아간다</p>
             <p className="score-line">코인 {coins} · 최고 {highScore}</p>
 
             {/* 원정대 보급소는 삭제됐다 (사용자 지시: 용도 불명). 기동·검격 스탯은
                 캐릭터 성장(레벨·강화)에서 자동 파생된다 — derivedShopLevels 참조 */}
+            <div className="exp-menu-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected={menuTab === "play"} className={menuTab === "play" ? "on" : ""} onClick={() => setMenuTab("play")}>원정</button>
+              <button type="button" role="tab" aria-selected={menuTab === "skill"} className={menuTab === "skill" ? "on" : ""} onClick={() => setMenuTab("skill")}>
+                스킬
+                {/* 하나라도 지금 강화할 수 있으면 배지 — 참고 게임의 "!" */}
+                {EXPEDITION_SKILL_READY(progress) && <i className="exp-tab-badge">!</i>}
+              </button>
+            </div>
             {menuTab === "play" ? (
               <>
                 {/* 키 안내는 마우스·키보드 기기에서만 — 미니앱은 터치라 Space/Shift 가 없다.
@@ -1312,7 +1391,17 @@ function App() {
                   타이탄 사냥터
                 </button>
               </>
-            ) : null}
+            ) : (
+              <SkillPanel
+                levels={progress.expeditionSkills}
+                gold={progress.sharedCoins}
+                seals={progress.expeditionSeals}
+                dodgeBestStage={progress.dodgeBestStage}
+                weapon={progress.expeditionWeapon}
+                onEquipWeapon={handleEquipWeapon}
+                onUpgrade={handleUpgradeSkill}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1353,7 +1442,7 @@ function App() {
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
-                점수 {score} · 코인 {coins} · HP {"♥".repeat(hp)}
+                점수 {score} · HP {"♥".repeat(hp)}
                 {"♡".repeat(Math.max(0, maxHp - hp))}
               </span>
               <span className="threat-label">위험도 {"◆".repeat(threatLevel)}{"◇".repeat(4 - threatLevel)}</span>

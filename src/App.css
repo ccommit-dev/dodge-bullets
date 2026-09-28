@@ -131,6 +131,9 @@
   gap: 4px;
   /* Leave room for sound toggle above score area */
   margin-top: 44px;
+  /* 오른쪽 위 일섬 게이지(캔버스, 폭 190 + 여백 12)는 DOM 이 아니라 겹쳐도 레이아웃이 안 밀어낸다.
+     글자가 그 아래로 기어들어가지 않게 여기서 폭을 끊는다 (2026-09-28) */
+  max-width: calc(100% - 210px);
 }
 
 .hud-score {
@@ -142,6 +145,8 @@
 .hud-hint {
   font-size: 12px;
   color: #94a3b8;
+  /* ♥ 연속은 줄바꿈 지점이 없어 박스를 넘쳐 캔버스 게이지 위로 흘렀다 — 어디서든 끊는다 (2026-09-28) */
+  overflow-wrap: anywhere;
 }
 
 .threat-label { color: #fb7185; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
@@ -3817,3 +3822,73 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .schedule-best { display: block; font-size: 10px; color: #93c5fd; margin-top: 2px; }
 .beat-note-legend { margin:2px 0 8px; color:#94a3b8; font-size:10px; line-height:1.5; }
 .beat-note-legend b { color:#e0f2fe; font-weight:800; }
+
+/* ── 화살 원정 영구 스킬 화면 (2026-09-28) ──
+   참고 게임(Galactic Outlaw TD)의 스킬 화면 구조: 상단 합산 배너 · 2열 격자 · 상세 시트.
+   레이아웃 값은 기존 overlay-content 폭 안에서만 — inspect-mobile 이 넘침을 잡는다. */
+.exp-menu-tabs { display:flex; gap:6px; justify-content:center; margin:2px 0 10px; }
+.exp-menu-tabs button { position:relative; padding:7px 22px; border:1px solid rgba(103,232,249,.28); border-radius:999px; color:#94a3b8; background:rgba(2,10,22,.7); font-size:12px; font-weight:900; cursor:pointer; }
+.exp-menu-tabs button.on { color:#082f49; border-color:transparent; background:linear-gradient(135deg,#67e8f9,#fde047); }
+.exp-tab-badge { position:absolute; right:-3px; top:-3px; display:grid; place-items:center; width:16px; height:16px; border-radius:50%; color:#fff; background:#ef4444; font-size:10px; font-style:normal; font-weight:900; }
+
+.exp-skill-panel { display:grid; gap:10px; }
+.exp-skill-banner { display:grid; gap:2px; justify-items:center; padding:10px; border-radius:14px; border:1px solid rgba(167,139,250,.35); background:linear-gradient(145deg,rgba(76,29,149,.32),rgba(15,23,42,.9)); }
+.exp-skill-banner b { color:#c4b5fd; font-size:11px; }
+.exp-skill-banner strong { color:#fde047; font-size:22px; }
+.exp-skill-banner small { color:#94a3b8; font-size:9px; }
+
+.exp-skill-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.exp-skill-card { position:relative; display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(103,232,249,.28); border-radius:12px; background:rgba(4,14,28,.85); color:#e0f2fe; text-align:left; cursor:pointer; }
+.exp-skill-card.ready { border-color:rgba(253,224,71,.65); box-shadow:0 0 12px rgba(253,224,71,.22); }
+.exp-skill-card.locked { opacity:.55; cursor:default; }
+.exp-skill-icon { flex:0 0 auto; width:44px; height:44px; border-radius:10px; object-fit:contain; background:rgba(2,6,23,.6); }
+.exp-skill-body { display:grid; gap:3px; min-width:0; flex:1; }
+.exp-skill-body b { font-size:12px; }
+.exp-skill-body em { color:#7dd3fc; font-size:10px; font-style:normal; font-weight:800; }
+.exp-skill-lock { color:#94a3b8 !important; font-size:9px !important; }
+.exp-skill-bar { position:relative; display:block; height:13px; border-radius:999px; background:rgba(2,6,23,.75); overflow:hidden; }
+.exp-skill-bar > b { display:block; height:100%; background:linear-gradient(90deg,#0891b2,#fde047); }
+.exp-skill-bar > small { position:absolute; inset:0; display:grid; place-items:center; color:#f8fafc; font-size:8px; font-weight:900; text-shadow:0 1px 2px #000; }
+.exp-skill-badge { position:absolute; right:6px; top:6px; display:grid; place-items:center; width:17px; height:17px; border-radius:50%; color:#fff; background:#ef4444; font-size:11px; font-weight:900; }
+.exp-skill-locked { position:absolute; right:8px; top:8px; width:16px; height:16px; }
+
+.exp-skill-sheet { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:16px; background:rgba(2,6,14,.72); }
+.exp-skill-sheet-inner { width:min(420px,100%); max-height:86vh; overflow-y:auto; display:grid; gap:9px; padding:13px; border:1px solid rgba(103,232,249,.35); border-radius:16px; background:linear-gradient(180deg,rgba(8,24,44,.98),rgba(4,12,24,.98)); box-shadow:0 18px 44px rgba(0,0,0,.6); }
+.exp-skill-sheet-inner > header { display:flex; align-items:center; justify-content:space-between; }
+.exp-skill-sheet-inner > header b { color:#fde047; font-size:15px; }
+.exp-skill-close { width:30px; height:30px; border:0; border-radius:9px; color:#e0f2fe; background:rgba(2,6,23,.7); font-size:17px; cursor:pointer; }
+.exp-skill-head { display:flex; align-items:center; gap:10px; }
+.exp-skill-head img { width:56px; height:56px; border-radius:12px; object-fit:contain; background:rgba(2,6,23,.6); }
+.exp-skill-head p { margin:0; color:#cbd5e1; font-size:11px; line-height:1.45; }
+.exp-skill-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.exp-skill-stats span { display:grid; gap:2px; padding:7px; border-radius:9px; background:rgba(2,6,23,.55); text-align:center; }
+.exp-skill-stats em { color:#94a3b8; font-size:9px; font-style:normal; }
+.exp-skill-stats b { color:#f8fafc; font-size:13px; }
+.exp-skill-stats b > i { margin-left:4px; color:#4ade80; font-size:10px; font-style:normal; }
+.exp-skill-miles { display:grid; gap:5px; margin:0; padding:0; list-style:none; }
+.exp-skill-miles li { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:9px; background:rgba(2,6,23,.5); font-size:10px; }
+.exp-skill-miles li > b { flex:0 0 auto; padding:2px 8px; border-radius:6px; color:#fff; background:#ef4444; font-size:10px; }
+.exp-skill-miles li.yet { opacity:.5; }
+.exp-skill-miles li.yet > b { background:#475569; }
+.exp-skill-miles li span { color:#e2e8f0; }
+.exp-skill-miles li em { color:#fb923c; font-style:normal; font-weight:800; }
+.exp-skill-cost { display:flex; justify-content:center; gap:14px; }
+.exp-skill-cost span { display:flex; align-items:center; gap:5px; color:#f8fafc; font-size:12px; font-weight:800; }
+.exp-skill-cost span.short { color:#f87171; }
+.exp-skill-cost img { width:18px; height:18px; }
+.exp-skill-cost em { color:#94a3b8; font-style:normal; font-size:10px; font-weight:700; }
+/* 원거리 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (2026-09-28) */
+.exp-weapon-row { display:grid; gap:6px; }
+.exp-weapon-row > b { color:#c4b5fd; font-size:11px; }
+.exp-weapon-row > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.exp-weapon-card { display:grid; grid-template-columns:34px minmax(0,1fr); grid-template-areas:"icon text" "state state"; align-items:center; gap:4px 8px; padding:8px; border:1px solid rgba(103,232,249,.24); border-radius:12px; background:rgba(4,14,28,.85); color:#e0f2fe; text-align:left; cursor:pointer; }
+.exp-weapon-card img { grid-area:icon; width:34px; height:34px; object-fit:contain; }
+.exp-weapon-card span { grid-area:text; display:grid; gap:1px; min-width:0; }
+.exp-weapon-card span b { font-size:12px; font-weight:800; }
+.exp-weapon-card span em { color:#94a3b8; font-style:normal; font-size:9px; line-height:1.3; }
+.exp-weapon-card i { grid-area:state; justify-self:stretch; padding:3px 0; border-radius:7px; background:rgba(148,163,184,.16); color:#cbd5f5; font-style:normal; font-size:10px; font-weight:800; text-align:center; }
+.exp-weapon-card.on { border-color:rgba(253,224,71,.6); box-shadow:0 0 10px rgba(253,224,71,.18); }
+.exp-weapon-card.on i { background:linear-gradient(135deg,#fbbf24,#fde047); color:#082f49; }
+.exp-weapon-card.locked { opacity:.55; cursor:default; }
+.exp-skill-upgrade { padding:11px; border:0; border-radius:12px; color:#64748b; background:#334155; font-size:14px; font-weight:900; cursor:not-allowed; }
+.exp-skill-upgrade.on { color:#082f49; background:linear-gradient(135deg,#fbbf24,#fde047); cursor:pointer; }

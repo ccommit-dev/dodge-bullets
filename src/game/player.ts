@@ -19,6 +19,18 @@ function getExpeditionHero(): HTMLImageElement | null {
   return expeditionHero;
 }
 
+/** 장착한 원거리 무기 — 주인공 스프라이트는 그대로 두고 손 위치에 겹쳐 그린다 (2026-09-28) */
+const rangedWeaponImgs: Record<string, HTMLImageElement | null> = {};
+function getRangedWeapon(id: string): HTMLImageElement | null {
+  if (typeof Image === "undefined" || id === "none") return null;
+  if (!rangedWeaponImgs[id]) {
+    const img = new Image();
+    img.src = assetUrl(`dodge/weapons/${id}.png`);
+    rangedWeaponImgs[id] = img;
+  }
+  return rangedWeaponImgs[id];
+}
+
 function getExpeditionAttackHero(): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   if (!expeditionHeroAttack) {
@@ -151,6 +163,15 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
+    // 장착한 원거리 무기 — 같은 변환 안이라 방향·포즈가 함께 적용된다.
+    // 손은 스프라이트 높이의 45~55% 지점에 있다. 무기 가운데를 그 높이에 맞추고, 몸통을 덮지
+    // 않도록 바깥으로 밀어 낸다 (허리춤에 얼룩처럼 걸쳤던 것을 실측해 고침, 2026-09-28)
+    const wp = getRangedWeapon(world.rangedWeapon);
+    if (wp?.complete && wp.naturalWidth > 0) {
+      const wh = drawHeight * 0.46;
+      const ww = wh * (wp.naturalWidth / wp.naturalHeight);
+      ctx.drawImage(wp, drawWidth * 0.30, -drawHeight * 0.72, ww, wh);
+    }
     ctx.restore();
 
     if (p.landingFxMs > 0) {
