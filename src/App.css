@@ -3912,6 +3912,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 }
 .perk-odds { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; margin:0 0 2px; color:#94a3b8; font-size:10px; font-weight:700; }
 .perk-odds .perk-rarity { margin:0 0 0 6px; }
+/* 진화 배지 — 스킬의 작동 방식이 바뀐다. 한 스킬당 하나뿐 (2026-09-28) */
+.perk-evo { margin-left:6px; padding:1px 6px; border-radius:99px; background:linear-gradient(135deg,#34d399,#0ea5e9); color:#042f2e; font-style:normal; font-size:9px; font-weight:900; vertical-align:middle; }
 /* 콤보 카드 배지 — 두 스킬이 맞물릴 때만 뜬다 (2026-09-28) */
 .perk-combo { margin-left:6px; padding:1px 6px; border-radius:99px; background:linear-gradient(135deg,#f472b6,#fbbf24); color:#3b0764; font-style:normal; font-size:9px; font-weight:900; vertical-align:middle; }
 /* 원거리 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (2026-09-28) */

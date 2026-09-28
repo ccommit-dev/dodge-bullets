@@ -112,6 +112,8 @@ const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cor
 const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
   volleyExtra: "volley", boltPierce: "volley", flameWide: "flame", chainExtra: "chain", frostDeep: "frost",
   volleyStorm: "volley", overdrive: "ultimate", chillHunt: "frost", chillBurst: "flame",
+  evoBeam: "pierce", evoSeeker: "volley", evoCluster: "flame", evoPyre: "flame",
+  evoShatter: "frost", evoLingering: "frost",
 };
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
@@ -148,6 +150,13 @@ function EXPEDITION_SKILL_READY(p: CharacterProgress | null): boolean {
  */
 function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress) {
   const stats = statsWithShoulder(levels, p.equippedShoulder, p.expeditionSkills);
+  // 이번 런에서 고른 카드를 다시 얹는다 — 스테이지가 넘어갈 때 여기를 지나며 상점 값으로
+  // 덮이므로, 안 얹으면 "이번 런 동안 적용"이 스테이지 하나짜리 거짓말이 된다 (2026-09-28)
+  const m = world.runMods;
+  stats.moveSpeed *= m.moveSpeedMul;
+  stats.dashCooldownMs *= m.dashCooldownMul;
+  stats.slashLevel += m.slashLevelBonus;
+  stats.extraLives += m.maxHpBonus;
   applyStats(world, stats);
   world.skillLevels = { ...p.expeditionSkills };
   world.rangedWeapon = p.expeditionWeapon;
@@ -1649,6 +1658,7 @@ function App() {
                     <i className={`perk-rarity r-${perk.rarity}`}>{RARITY_LABEL[perk.rarity]}</i>
                     {perk.label}
                     {perk.combo && <i className="perk-combo">콤보</i>}
+                    {perk.evolution && <i className="perk-evo">진화</i>}
                   </b>
                   <small>{perk.desc}</small>
                 </span>

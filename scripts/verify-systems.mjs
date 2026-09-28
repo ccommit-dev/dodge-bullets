@@ -33,10 +33,11 @@ writeFileSync(entry, [
   `export * as spriteArt from "${root}/src/titans/SpriteArt";`,
   `export * as dodgeSkills from "${root}/src/game/skills";`,
   `export * as dodgeShop from "${root}/src/game/shop";`,
+  `export * as dodgeShots from "${root}/src/game/skillShots";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -409,7 +410,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("보스 패턴: 1~4스테이지 A·B·C·D, 성벽은 E 로 고정 (학습 가능한 보스)", ids === "ABCDEE" && new Set(bossPatterns.BOSS_PATTERNS.map((p) => p.kinds.join("+") + p.count + p.spreadDeg)).size === 5, ids);
   ok("보스 패턴: 파편 수·종류 수가 일치하거나 순환하고, 예고는 500ms 이상", bossPatterns.BOSS_PATTERNS.every((p) => p.count >= 1 && p.kinds.length >= 1 && p.warningMs >= 500));
   // 성장 선택: 3택 무작위(결정적 rng) · 적용 효과 · 대시 미해금이면 dash 제외
-  const w = { slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels() };
+  const w = { slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
   let k = 0; const det = () => ((k += 0.37) % 1);
   const picked = perks.pickPerks(w, det);
   ok("성장 선택: 3개가 서로 다르고 대시 미해금이면 dash 는 나오지 않는다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => p.id === "dash"), picked.map((p) => p.id).join(","));
@@ -532,7 +533,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   {
     const w = (levels) => ({
       skillLevels: { ...S.emptySkillLevels(), ...levels },
-      runMods: { volleyExtra: 0, boltPierce: 0, flameRadiusMul: 1, chainExtra: 0, frostSlowBonus: 0, cooldownMul: 1, chillHunt: false, chillBurst: false },
+      runMods: dodgeShots.emptyRunMods(),
       stats: { dashUnlocked: true },
       player: { hp: 1, maxHp: 1 },
       slashGauge: 0,
@@ -611,6 +612,40 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     const od = w({ volley: 1 });
     perks.applyPerk(od, "overdrive");
     ok("[과부하] 에픽: 모든 스킬 재사용 ×0.8", Math.abs(od.runMods.cooldownMul - 0.8) < 1e-9);
+
+    // ── 진화 — 스킬의 작동 방식을 바꾸고, 한 스킬당 하나만
+    const evoIds = perks.PERKS.filter((p) => p.evolution).map((p) => p.id);
+    ok("진화 카드 6종이 전부 에픽", evoIds.length === 6 && perks.PERKS.filter((p) => p.evolution).every((p) => p.rarity === "epic"), evoIds.join());
+
+    const ev = w({ volley: 1, flame: 1, frost: 1 });
+    ok("진화 전에는 세 스킬의 분기가 모두 열려 있다",
+      ["evoBeam", "evoSeeker", "evoCluster", "evoPyre", "evoShatter", "evoLingering"].every((id) => ids(ev).includes(id)));
+    perks.applyPerk(ev, "evoBeam");
+    ok("한 스킬은 하나만 진화한다 — 광선을 고르면 유도는 닫히고 다른 스킬 분기는 열려 있다",
+      ev.runMods.evolutions.volley === "beam"
+      && !ids(ev).includes("evoBeam") && !ids(ev).includes("evoSeeker")
+      && ids(ev).includes("evoPyre") && ids(ev).includes("evoShatter"), JSON.stringify(ev.runMods.evolutions));
+    perks.applyPerk(ev, "evoSeeker");
+    ok("이미 진화한 스킬은 다시 진화하지 않는다 (덮어쓰기 없음)", ev.runMods.evolutions.volley === "beam");
+
+    // ── 카드는 런 단위 — 스테이지 경계에서 지워지면 "이번 런 동안"이 거짓말이 된다
+    {
+      const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+      const world = wm.createWorld(390, 700, 1);
+      world.skillLevels = { ...world.skillLevels, volley: 3 };
+      wm.resetRun(world, 0);
+      perks.applyPerk(world, "volleyExtra");
+      perks.applyPerk(world, "speed");
+      const speedAfterCard = world.stats.moveSpeed;
+      wm.beginStage(world, 1);      // 다음 스테이지로 넘어간다 (런은 이어진다)
+      ok("스테이지가 넘어가도 카드가 유지된다",
+        world.runMods.volleyExtra === 1 && Math.abs(world.runMods.moveSpeedMul - 1.12) < 1e-9,
+        JSON.stringify({ volleyExtra: world.runMods.volleyExtra, moveSpeedMul: world.runMods.moveSpeedMul }));
+      ok("스탯 카드도 배수로 기록돼 다시 얹을 수 있다", speedAfterCard > 0 && world.runMods.moveSpeedMul > 1);
+      wm.resetRun(world, 0);        // 새 런
+      ok("새 런에서는 카드가 비워진다",
+        world.runMods.volleyExtra === 0 && world.runMods.moveSpeedMul === 1 && !world.runMods.evolutions.volley);
+    }
   }
 
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
