@@ -35,6 +35,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       splitLevel: 0,
       damage: 1,
       reflected: false,
+      chilledMs: 0,
       orbitMs: 0,
       orbitX: 0,
       orbitY: 0,
@@ -116,6 +117,7 @@ function activate(
   }
   arrow.splitLevel = 0;
   arrow.reflected = false;
+  arrow.chilledMs = 0;
   arrow.damage = SPLIT_DAMAGE[0];
   arrow.orbitMs = 0;
   arrow.orbitX = x;
@@ -679,6 +681,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     if (!a.active) continue;
 
     a.splitGraceMs = Math.max(0, a.splitGraceMs - dtSec * 1000);
+    a.chilledMs = Math.max(0, a.chilledMs - dtSec * 1000);
 
     if (a.warningMs > 0) {
       a.warningMs = Math.max(0, a.warningMs - dtSec * 1000);

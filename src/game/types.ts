@@ -53,6 +53,8 @@ export type Arrow = {
   damage: number;
   /** 정타로 반사된 화살 — 플레이어를 해치지 않고 화면 밖으로 나가면 궁수 처치로 친다 */
   reflected: boolean;
+  /** 빙결 파동에 얼어붙은 남은 시간(ms) — 콤보 카드가 이걸 보고 추가 효과를 낸다 (2026-09-28) */
+  chilledMs: number;
   /** Brief spherical orbit before a split fragment homes back toward the player. */
   orbitMs: number;
   orbitX: number;
@@ -161,6 +163,29 @@ export type ShopUpgradeId =
 
 export type ShopLevels = Record<ShopUpgradeId, number>;
 
+/**
+ * 런 강화 카드가 쌓는 값 (2026-09-28). 영구 스킬 레벨과 달리 런이 끝나면 초기화된다.
+ * 카드가 하나도 안 뜬 상태(전부 0/false)가 기존 난이도 기준선이다.
+ */
+export type RunMods = {
+  /** 연속 사격 발수 +N */
+  volleyExtra: number;
+  /** 볼트 하나가 추가로 더 꿰는 화살 수 */
+  boltPierce: number;
+  /** 화염탄 폭발 반경 배수 */
+  flameRadiusMul: number;
+  /** 번개 사슬 대상 +N */
+  chainExtra: number;
+  /** 빙결 감속을 더 깊게 (배수를 이만큼 더 낮춘다) */
+  frostSlowBonus: number;
+  /** [과부하] 에픽 — 모든 원거리 스킬 재사용 배수 */
+  cooldownMul: number;
+  /** 콤보 — 얼어붙은 화살은 볼트가 한 방에 부수고 일섬 게이지를 더 준다 */
+  chillHunt: boolean;
+  /** 콤보 — 화염탄이 얼어붙은 화살을 함께 터뜨리면 폭발이 넓어진다 */
+  chillBurst: boolean;
+};
+
 export type PlayerStats = {
   moveSpeed: number;
   jumpPower: number;
@@ -240,6 +265,8 @@ export type GameWorld = {
   rangedWeapon: RangedWeaponId;
   /** 이번 런에서 스킬로 떨어뜨린 화살 수 (결과 화면) */
   skillKills: number;
+  /** 런 중 강화 카드가 쌓은 스킬 진화 — 런이 끝나면 사라진다 (game/perks.ts) */
+  runMods: RunMods;
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
   lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "";
   bossSpawned: boolean;

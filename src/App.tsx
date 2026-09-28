@@ -55,7 +55,7 @@ import { PATTERN_LABEL, STAGES, TOWER_START_INDEX, getStage, isLastStage, towerF
 import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
-import { applyPerk, pickPerks, type PerkDef, type PerkId } from "./game/perks";
+import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type PerkId } from "./game/perks";
 import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
 import { EXPEDITION_SKILLS } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
@@ -105,8 +105,13 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 }
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
-/** 성장 선택 아이콘 — 기존 보상 아이콘 재사용 (일섬 게이지=스킬 오브 · 이동=부스트 · HP=경험 오브 · 검격 강화=강화석 · 회피=무기 이펙트) */
-const PERK_ICON: Record<PerkId, RewardIconKind | "exp"> = { gauge: "cores", speed: "boost", heal: "exp", slash: "materials", dash: "weaponFx" };
+/** 성장 선택 아이콘 — 일반 카드는 기존 보상 아이콘 재사용 (게이지=스킬 오브 · 이동=부스트 · HP=경험 오브 · 검격=강화석 · 회피=무기 이펙트) */
+const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cores", speed: "boost", heal: "exp", slash: "materials", dash: "weaponFx" };
+/** 스킬을 바꾸는 카드는 그 스킬의 아이콘을 그대로 쓴다 — 무엇이 세지는지 한 눈에 보이게 (2026-09-28) */
+const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
+  volleyExtra: "volley", boltPierce: "volley", flameWide: "flame", chainExtra: "chain", frostDeep: "frost",
+  volleyStorm: "volley", overdrive: "ultimate", chillHunt: "frost", chillBurst: "flame",
+};
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
@@ -1537,19 +1542,44 @@ function App() {
           <div className="overlay-content">
             <p className="brand">LEVEL UP</p>
             <h1 className="title">성장 선택</h1>
-            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 적용되는 강화를 하나 고르세요. 레벨이 오를수록 화살이 빨라지고 잦아집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
+            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 적용되는 강화를 하나 고르세요. 장착한 스킬이 있으면 그 스킬을 바꾸는 카드와 <b>콤보</b>가 함께 나옵니다. 레벨이 오를수록 화살이 빨라지고 잦아집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
+            {(() => {
+              // 스테이지가 깊을수록 상위 등급이 잘 나온다 — 지금 확률을 밝혀 둔다
+              const odds = rarityOdds(worldRef.current?.stageIndex ?? 0);
+              return (
+                <p className="perk-odds">
+                  STAGE {(worldRef.current?.stageIndex ?? 0) + 1} 등급 확률 ·
+                  <i className="perk-rarity r-common">일반</i> <span>{Math.round(odds.common * 100)}%</span>
+                  <i className="perk-rarity r-rare">레어</i> <span>{Math.round(odds.rare * 100)}%</span>
+                  <i className="perk-rarity r-epic">에픽</i> <span>{Math.round(odds.epic * 100)}%</span>
+                </p>
+              );
+            })()}
             {perkOptions.map((perk, i) => (
-              <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id}`} style={{ "--i": i } as CSSProperties} onClick={() => {
+              <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id} rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => {
                 const world = worldRef.current;
                 if (world) applyPerk(world, perk.id as PerkId);
-                trackEvent("upgrade", { content: "dodge", result: perk.id, stage: (world?.stageIndex ?? 0) + 1 });
+                trackEvent("upgrade", { content: "dodge", result: `${perk.rarity}:${perk.id}`, stage: (world?.stageIndex ?? 0) + 1 });
                 lastTsRef.current = 0;
                 stateRef.current = "playing";
                 setGameState("playing");
-                showBanner(perk.label, "이번 런 동안 적용", false);
+                showBanner(`[${RARITY_LABEL[perk.rarity]}] ${perk.label}`, "이번 런 동안 적용", perk.rarity === "epic");
               }}>
-                <span className="perk-icon">{PERK_ICON[perk.id as PerkId] === "exp" ? <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={30} height={30} /> : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={30} />}</span>
-                <span className="perk-copy"><b>{perk.label}</b><small>{perk.desc}</small></span>
+                <span className="perk-icon">
+                  {PERK_SKILL_ICON[perk.id as PerkId]
+                    ? <img src={assetUrl(`dodge/skills/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={30} height={30} />
+                    : PERK_ICON[perk.id as PerkId] === "exp"
+                      ? <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={30} height={30} />
+                      : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={30} />}
+                </span>
+                <span className="perk-copy">
+                  <b>
+                    <i className={`perk-rarity r-${perk.rarity}`}>{RARITY_LABEL[perk.rarity]}</i>
+                    {perk.label}
+                    {perk.combo && <i className="perk-combo">콤보</i>}
+                  </b>
+                  <small>{perk.desc}</small>
+                </span>
               </button>
             ))}
           </div>

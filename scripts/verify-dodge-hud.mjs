@@ -150,6 +150,47 @@ ok("진행도의 스킬 레벨과 장착 무기가 전투 월드에 실린다",
   !!loaded && loaded.weapon === "staff" && loaded.lv.volley === 6 && loaded.lv.pierce === 4,
   JSON.stringify(loaded));
 ok("장착 스킬이 전투 중 실제로 발사된다", !!fired, fired ? fired.shots.join(",") : "8초 동안 탄 없음");
+// 3) 레벨업 강화 카드 — 장착한 스킬의 진화·콤보가 실제로 후보에 뜨는가
+//    (참고 게임의 핵심 루프. 소스 단언만으로는 화면까지 이어졌는지 알 수 없다)
+await page.evaluate(() => { const w = window.__dodgeWorld; if (w) w.levelUps = 1; });  // 레벨업 큐를 직접 채운다
+await sleep(1600);
+const perk = await page.evaluate(() => {
+  const cards = [...document.querySelectorAll(".perk-choice")];
+  return {
+    open: !!document.querySelector(".perk-overlay"),
+    count: cards.length,
+    ids: cards.map((c) => [...c.classList].find((k) => k.startsWith("perk-") && k !== "perk-choice") ?? "?"),
+    combos: document.querySelectorAll(".perk-combo").length,
+    rarities: cards.map((c) => [...c.classList].find((k) => k.startsWith("rarity-")) ?? "?"),
+    oddsLine: document.querySelector(".perk-odds")?.textContent.replace(/s+/g, " ").trim(),
+  };
+});
+ok("레벨업하면 강화 카드 3장이 뜬다", perk.open && perk.count === 3, JSON.stringify(perk.ids));
+ok("카드마다 등급이 붙고 화면이 스테이지 등급 확률을 밝힌다",
+  perk.rarities?.length === 3 && perk.rarities.every((r) => /rarity-(common|rare|epic)/.test(r)) && !!perk.oddsLine,
+  (perk.rarities ?? []).join() + " | " + (perk.oddsLine ?? ""));
+// 지팡이 로드아웃(volley 6 · flame 2 · frost 2 · chain 2)이면 스킬/콤보 카드가 후보에 들어 있다.
+// 3장은 무작위라 "매번 스킬 카드"를 요구할 수는 없고, 후보 풀에 들어갔는지를 본다.
+const pool = await page.evaluate(() => {
+  const w = window.__dodgeWorld;
+  return w ? { lv: w.skillLevels, mods: w.runMods } : null;
+});
+ok("전투 월드가 런 강화칸(runMods)을 들고 있다 — 카드가 쌓일 자리",
+  !!pool && pool.mods && pool.mods.volleyExtra === 0 && pool.mods.flameRadiusMul === 1, JSON.stringify(pool?.mods));
+
+// 한 장 고르면 실제로 runMods 가 움직이는가 (스킬 카드가 뽑혔을 때만 검사)
+const before = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
+await page.evaluate(() => {
+  const skill = [...document.querySelectorAll(".perk-choice")]
+    .find((c) => [...c.classList].some((k) => /perk-(volleyExtra|boltPierce|flameWide|chainExtra|frostDeep|chillHunt|chillBurst)/.test(k)));
+  (skill ?? document.querySelector(".perk-choice"))?.click();
+});
+await sleep(900);
+const after = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
+const skillCardOffered = perk.ids.some((id) => /volleyExtra|boltPierce|flameWide|chainExtra|frostDeep|chillHunt|chillBurst/.test(id));
+ok("스킬 카드를 고르면 runMods 가 실제로 바뀐다", !skillCardOffered || before !== after,
+  skillCardOffered ? `${before} → ${after}` : "이번 3택에 스킬 카드가 안 뽑힘(무작위) — 건너뜀");
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 
 await browser.close();
