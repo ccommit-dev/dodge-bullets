@@ -162,7 +162,8 @@ export function SkillPanel({
                 aria-pressed={on}
                 onClick={() => onEquipWeapon(w.id)}
               >
-                <img src={assetUrl(`dodge/weapons/${w.id}.png`)} alt="" aria-hidden="true" />
+                {/* 카드는 아이콘판 — 부착용 원화(${w.id}.png)는 가는 선이라 34px 에서 뭉개진다 (2026-09-28) */}
+                <img src={assetUrl(`dodge/weapons/icon-${w.id}.png`)} alt="" aria-hidden="true" />
                 <span>
                   <b>{w.name}</b>
                   <em>{unlocked ? w.desc : `${w.unlockStage}스테이지 클리어 시 해금`}</em>

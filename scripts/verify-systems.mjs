@@ -839,6 +839,34 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   }
 
 
+  // ── 원정 주인공 시트 기하 (2026-09-28) — 검격 시트가 대기와 다른 규격이면 베는 순간 인물 크기가 튄다
+  //    (예전 시트: 인물 높이 71% vs 대기 97% → 검격 때 26% 작아졌다). 프레임 높이와 인물 높이 비를 대기에 맞춘다.
+  {
+    const sharpMod = await import("sharp");
+    const sharp = sharpMod.default;
+    const figureRatios = async (file) => {
+      const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const W = info.width, H = info.height, FW = W / 4, out = [];
+      for (let f = 0; f < 4; f += 1) {
+        let y0 = 1e9, y1 = -1;
+        for (let y = 0; y < H; y += 1) for (let x = Math.floor(f * FW); x < Math.floor((f + 1) * FW); x += 1) {
+          if (data[(y * W + x) * 4 + 3] > 30) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        out.push((y1 - y0 + 1) / H);
+      }
+      return { H, ratios: out };
+    };
+    const idle = await figureRatios(join(root, "public/titans/character/base/hero-idle.png"));
+    const atk = await figureRatios(join(root, "public/titans/generated/hero-attack-sheet.png"));
+    ok("검격 시트의 프레임 높이가 대기 시트와 같다 (같은 drawHeight 로 그린다)", atk.H === idle.H, atk.H + " vs " + idle.H);
+    // 찌르는 자세는 웅크려 bbox 가 낮다 — 같은 배율이어도 75~86% 다. 예전 시트(다른 배율)는 평균 69.5% 였다.
+    // 평균 80% 이상 · 프레임마다 72% 이상이면 대기와 같은 배율로 조립된 시트다.
+    const mean = atk.ratios.reduce((p, q) => p + q, 0) / atk.ratios.length;
+    ok("검격 4프레임의 인물 높이가 대기와 같은 배율이다 (평균 ≥ 80% · 각 ≥ 72%, 베는 순간 크기가 안 튄다)",
+      mean >= 0.8 && atk.ratios.every((r) => r >= 0.72),
+      "대기 " + (idle.ratios[0] * 100).toFixed(0) + "% · 검격 " + atk.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
+  }
+
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
     /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
 }

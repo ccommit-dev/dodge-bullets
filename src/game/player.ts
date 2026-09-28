@@ -35,10 +35,9 @@ function getExpeditionAttackHero(): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   if (!expeditionHeroAttack) {
     expeditionHeroAttack = new Image();
-    // 이 시트는 대기 원화와 **다른 인물**이다 (남색 머리·파란 망토 vs 갈색 머리·주황 코트) — 스킬을 쓰면 주인공이 바뀌어 보인다.
-    // 타이탄용 hero-attack.png 로 바꿔 보았으나 그쪽은 무기를 장비 오버레이로 따로 그리는 구조라 **맨손**이다.
-    // 캔버스(화살 원정)에는 그 오버레이가 없어 검 없이 허공을 베게 된다 — 인물 일치보다 검이 보이는 쪽을 택했다.
-    // 제대로 된 해결은 대기 원화와 같은 인물이 검을 든 4프레임을 새로 뽑는 것이다 (2026-09-21 확인).
+    // 대기 원화와 **같은 인물**이 검을 든 4프레임 (art-gen heroattack, 2026-09-28). 예전 시트는 남색 머리·파란 망토의
+    // 다른 인물이었고 인물 높이도 프레임의 ~71% 라(대기 97%) 베는 순간 26% 작아졌다. 새 시트는 대기와 같은 규격
+    // (프레임 높이 887 · 인물 857 · 바닥 885, 폭 600) — scripts/make-hero-attack-sheet.mjs. verify-systems 가 기하를 대조한다.
     expeditionHeroAttack.src = assetUrl("titans/generated/hero-attack-sheet.png");
   }
   return expeditionHeroAttack;
@@ -107,8 +106,8 @@ export function drawStickman(
   const attackHero = p.anim === "skill" ? getExpeditionAttackHero() : null;
   const hero = attackHero?.complete && attackHero.naturalWidth > 0 ? attackHero : idleHero;
   if (hero?.complete && hero.naturalWidth > 0) {
-    // 검격 시트는 4프레임(543px)이다. 3으로 나누면 프레임 폭이 724px가 되어
-    // 캐릭터가 경계에서 잘리고 옆 프레임 캐릭터가 함께 그려진다 (실측 2172×724).
+    // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
+    // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
     const frameCount = 4;
     const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
