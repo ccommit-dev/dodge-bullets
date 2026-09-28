@@ -112,7 +112,7 @@ const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cor
 const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
   volleyExtra: "volley", boltPierce: "volley", flameWide: "flame", chainExtra: "chain", frostDeep: "frost",
   volleyStorm: "volley", overdrive: "ultimate", chillHunt: "frost", chillBurst: "flame",
-  evoBeam: "pierce", evoSeeker: "volley", evoCluster: "flame", evoPyre: "flame",
+  pierceWide: "pierce", evoBeam: "pierce", evoSeeker: "volley", evoCluster: "flame", evoPyre: "flame",
   evoShatter: "frost", evoLingering: "frost",
 };
 

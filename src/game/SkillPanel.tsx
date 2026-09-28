@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { assetUrl } from "../asset";
+import { perksUnlockedBy, RARITY_LABEL } from "./perks";
 import {
   EXPEDITION_SKILLS,
   RANGED_WEAPONS,
@@ -154,6 +155,32 @@ export function SkillPanel({ levels, gold, seals, dodgeBestStage, weapon, onEqui
                   );
                 })}
               </ul>
+              {/* 런 중에 열리는 카드 — 가이드의 투자 조언("보이지 않는 스킬에 투자하면 운에 기대는 셈")을
+                  화면에서 답해 준다. 어떤 카드가 열리는지 모르면 감으로 올리게 된다 */}
+              {(() => {
+                const cards = perksUnlockedBy(open.id as never);
+                if (!cards.length) return null;
+                return (
+                  <div className="exp-skill-unlocks">
+                    <b>런 중 열리는 카드</b>
+                    <ul>
+                      {cards.map((c) => {
+                        const others = (c.needs ?? []).filter((n) => n !== open.id);
+                        const missing = others.filter((n) => (levels[n as ExpeditionSkillId] ?? 0) <= 0);
+                        return (
+                          <li key={c.id} className={missing.length ? "locked" : ""}>
+                            <i className={`perk-rarity r-${c.rarity}`}>{RARITY_LABEL[c.rarity]}</i>
+                            <span>{c.label}</span>
+                            {missing.length > 0 && (
+                              <em>{missing.map((n) => SKILL_BY_ID[n as ExpeditionSkillId].name).join("·")} 필요</em>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })()}
               <div className="exp-skill-cost">
                 <span className={gold >= cost.gold ? "" : "short"}>
                   {/* 재화는 코인·원정 인장 — 전용 아이콘이 없어 남의 재화 아이콘을 빌리면 거짓말이 된다 */}

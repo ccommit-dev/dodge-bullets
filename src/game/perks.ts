@@ -24,7 +24,7 @@ export const RARITY_LABEL: Record<PerkRarity, string> = { common: "일반", rare
 
 export type PerkId =
   | "gauge" | "speed" | "heal" | "slash" | "dash"
-  | "volleyExtra" | "boltPierce" | "flameWide" | "chainExtra" | "frostDeep"
+  | "volleyExtra" | "boltPierce" | "pierceWide" | "flameWide" | "chainExtra" | "frostDeep"
   | "volleyStorm" | "overdrive" | "chillHunt" | "chillBurst"
   | "evoBeam" | "evoSeeker" | "evoCluster" | "evoPyre" | "evoShatter" | "evoLingering";
 
@@ -37,6 +37,12 @@ export type PerkDef = {
   combo?: boolean;
   /** 진화 카드 — 스킬의 작동 방식을 바꾼다. 한 스킬당 하나만 */
   evolution?: boolean;
+  /**
+   * 이 카드가 후보에 들어오려면 필요한 스킬. available() 안의 조건을 **밖에서도 읽을 수 있게**
+   * 적어 둔 것이다 — 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지"를 보여주는 데 쓴다.
+   * available() 이 진실이고 이건 그것의 목록판이다 (verify-systems 가 둘이 어긋나면 잡는다).
+   */
+  needs?: Array<keyof GameWorld["skillLevels"]>;
   available: (w: GameWorld) => boolean;
   apply: (w: GameWorld) => void;
 };
@@ -51,17 +57,18 @@ export const PERKS: PerkDef[] = [
   { id: "heal", rarity: "common", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; } w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
   { id: "slash", rarity: "common", label: "검격 강화 +1", desc: "베기 점수·파편 약화", available: () => true, apply: (w) => { w.stats.slashLevel += 1; w.runMods.slashLevelBonus += 1; } },
   { id: "dash", rarity: "common", label: "회피 쿨타임 -15%", desc: "대시가 열려 있을 때", available: (w) => w.stats.dashUnlocked, apply: (w) => { w.stats.dashCooldownMs *= 0.85; w.runMods.dashCooldownMul *= 0.85; } },
-  { id: "volleyExtra", rarity: "common", label: "연속 사격 +1발", desc: "한 번에 한 발 더 날린다", available: (w) => has(w, "volley"), apply: (w) => { w.runMods.volleyExtra += 1; } },
-  { id: "chainExtra", rarity: "common", label: "사슬 분기 +1", desc: "번개가 한 갈래 더 뻗는다", available: (w) => has(w, "chain"), apply: (w) => { w.runMods.chainExtra += 1; } },
+  { id: "volleyExtra", rarity: "common", needs: ["volley"], label: "연속 사격 +1발", desc: "한 번에 한 발 더 날린다", available: (w) => has(w, "volley"), apply: (w) => { w.runMods.volleyExtra += 1; } },
+  { id: "chainExtra", rarity: "common", needs: ["chain"], label: "사슬 분기 +1", desc: "번개가 한 갈래 더 뻗는다", available: (w) => has(w, "chain"), apply: (w) => { w.runMods.chainExtra += 1; } },
 
   // ── 레어 — 스킬이 눈에 띄게 달라진다
-  { id: "boltPierce", rarity: "rare", label: "관통 볼트", desc: "볼트 한 발이 화살 하나를 더 꿰고 나간다", available: (w) => has(w, "volley"), apply: (w) => { w.runMods.boltPierce += 1; } },
-  { id: "flameWide", rarity: "rare", label: "확산 화염", desc: "화염탄 폭발 반경 +35%", available: (w) => has(w, "flame"), apply: (w) => { w.runMods.flameRadiusMul *= 1.35; } },
-  { id: "frostDeep", rarity: "rare", label: "심층 빙결", desc: "빙결 파동이 더 깊게 얼린다", available: (w) => has(w, "frost"), apply: (w) => { w.runMods.frostSlowBonus += 0.1; } },
+  { id: "boltPierce", rarity: "rare", needs: ["volley"], label: "관통 볼트", desc: "볼트 한 발이 화살 하나를 더 꿰고 나간다", available: (w) => has(w, "volley"), apply: (w) => { w.runMods.boltPierce += 1; } },
+  { id: "flameWide", rarity: "rare", needs: ["flame"], label: "확산 화염", desc: "화염탄 폭발 반경 +35%", available: (w) => has(w, "flame"), apply: (w) => { w.runMods.flameRadiusMul *= 1.35; } },
+  { id: "pierceWide", rarity: "rare", needs: ["pierce"], label: "광폭 관통", desc: "관통 화살 폭 +40%", available: (w) => has(w, "pierce"), apply: (w) => { w.runMods.pierceWidthMul *= 1.4; } },
+  { id: "frostDeep", rarity: "rare", needs: ["frost"], label: "심층 빙결", desc: "빙결 파동이 더 깊게 얼린다", available: (w) => has(w, "frost"), apply: (w) => { w.runMods.frostSlowBonus += 0.1; } },
 
   // ── 에픽 — 빌드의 방향이 바뀐다. 콤보는 두 스킬이 맞물릴 때만.
   {
-    id: "volleyStorm", rarity: "epic", label: "탄막 폭풍", desc: "연속 사격 +2발 · 모든 볼트가 하나씩 더 꿴다",
+    id: "volleyStorm", rarity: "epic", needs: ["volley"], label: "탄막 폭풍", desc: "연속 사격 +2발 · 모든 볼트가 하나씩 더 꿴다",
     available: (w) => has(w, "volley"),
     apply: (w) => { w.runMods.volleyExtra += 2; w.runMods.boltPierce += 1; },
   },
@@ -71,12 +78,12 @@ export const PERKS: PerkDef[] = [
     apply: (w) => { w.runMods.cooldownMul *= 0.8; },
   },
   {
-    id: "chillHunt", rarity: "epic", label: "서리 사냥", desc: "얼어붙은 화살을 부수면 일섬 게이지를 더 받는다", combo: true,
+    id: "chillHunt", rarity: "epic", needs: ["frost", "volley"], label: "서리 사냥", desc: "얼어붙은 화살을 부수면 일섬 게이지를 더 받는다", combo: true,
     available: (w) => has(w, "frost") && has(w, "volley") && !w.runMods.chillHunt,
     apply: (w) => { w.runMods.chillHunt = true; },
   },
   {
-    id: "chillBurst", rarity: "epic", label: "열충격", desc: "얼어붙은 화살을 함께 터뜨리면 화염 폭발이 넓어진다", combo: true,
+    id: "chillBurst", rarity: "epic", needs: ["frost", "flame"], label: "열충격", desc: "얼어붙은 화살을 함께 터뜨리면 화염 폭발이 넓어진다", combo: true,
     available: (w) => has(w, "frost") && has(w, "flame") && !w.runMods.chillBurst,
     apply: (w) => { w.runMods.chillBurst = true; },
   },
@@ -85,32 +92,32 @@ export const PERKS: PerkDef[] = [
   //    참고 게임의 "기본 레이저 → 관통 광선 / 확산 / 차지 폭발". 무조건 상위 호환이 되지 않게
   //    장점에는 대가를 붙였다 (광선은 재사용 ×1.35, 유도는 느리다, 장판은 재사용 ×1.25).
   {
-    id: "evoBeam", rarity: "epic", label: "진화 · 관통 광선", desc: "볼트가 멈추지 않고 화면 끝까지 꿴다 · 재사용 +35%", evolution: true,
+    id: "evoBeam", rarity: "epic", needs: ["volley"], label: "진화 · 관통 광선", desc: "볼트가 멈추지 않고 화면 끝까지 꿴다 · 재사용 +35%", evolution: true,
     available: (w) => has(w, "volley") && !w.runMods.evolutions.volley,
     apply: (w) => { w.runMods.evolutions.volley = "beam"; },
   },
   {
-    id: "evoSeeker", rarity: "epic", label: "진화 · 유도 볼트", desc: "볼트가 화살을 쫓아간다 · 대신 느리다", evolution: true,
+    id: "evoSeeker", rarity: "epic", needs: ["volley"], label: "진화 · 유도 볼트", desc: "볼트가 화살을 쫓아간다 · 대신 느리다", evolution: true,
     available: (w) => has(w, "volley") && !w.runMods.evolutions.volley,
     apply: (w) => { w.runMods.evolutions.volley = "seeker"; },
   },
   {
-    id: "evoCluster", rarity: "epic", label: "진화 · 확산 폭발", desc: "화염탄 폭발 반경 +60%", evolution: true,
+    id: "evoCluster", rarity: "epic", needs: ["flame"], label: "진화 · 확산 폭발", desc: "화염탄 폭발 반경 +60%", evolution: true,
     available: (w) => has(w, "flame") && !w.runMods.evolutions.flame,
     apply: (w) => { w.runMods.evolutions.flame = "cluster"; w.runMods.flameRadiusMul *= 1.6; },
   },
   {
-    id: "evoPyre", rarity: "epic", label: "진화 · 화염 장판", desc: "터지지 않고 그 자리에 머물며 계속 태운다 · 재사용 +25%", evolution: true,
+    id: "evoPyre", rarity: "epic", needs: ["flame"], label: "진화 · 화염 장판", desc: "터지지 않고 그 자리에 머물며 계속 태운다 · 재사용 +25%", evolution: true,
     available: (w) => has(w, "flame") && !w.runMods.evolutions.flame,
     apply: (w) => { w.runMods.evolutions.flame = "pyre"; },
   },
   {
-    id: "evoShatter", rarity: "epic", label: "진화 · 서리 파쇄", desc: "파동 안쪽 절반은 얼리는 대신 그 자리에서 부순다", evolution: true,
+    id: "evoShatter", rarity: "epic", needs: ["frost"], label: "진화 · 서리 파쇄", desc: "파동 안쪽 절반은 얼리는 대신 그 자리에서 부순다", evolution: true,
     available: (w) => has(w, "frost") && !w.runMods.evolutions.frost,
     apply: (w) => { w.runMods.evolutions.frost = "shatter"; },
   },
   {
-    id: "evoLingering", rarity: "epic", label: "진화 · 지속 서리", desc: "파동이 넓어지고 빙결이 3배 오래간다 (콤보가 잘 물린다)", evolution: true,
+    id: "evoLingering", rarity: "epic", needs: ["frost"], label: "진화 · 지속 서리", desc: "파동이 넓어지고 빙결이 3배 오래간다 (콤보가 잘 물린다)", evolution: true,
     available: (w) => has(w, "frost") && !w.runMods.evolutions.frost,
     apply: (w) => { w.runMods.evolutions.frost = "lingering"; },
   },
@@ -164,6 +171,11 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
     out.push(taken);
   }
   return out;
+}
+
+/** 이 스킬을 들면 런 중에 열리는 카드들 — 강화 화면이 투자 판단에 쓴다 */
+export function perksUnlockedBy(skill: keyof GameWorld["skillLevels"]): PerkDef[] {
+  return PERKS.filter((p) => p.needs?.includes(skill));
 }
 
 export function applyPerk(world: GameWorld, id: PerkId): boolean {

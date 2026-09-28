@@ -88,6 +88,19 @@ ok("스킬 화면: 무기 2종 + 스킬 6종, 저장된 지팡이가 장착 상�
   JSON.stringify(skillUi.on));
 ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, skillUi.over.slice(0, 2).join(", "));
 
+// 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지" 를 보여 준다 (가이드의 투자 조언)
+await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[3]?.click());
+await sleep(400);
+const unlocks = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll(".exp-skill-unlocks li")];
+  return { rows: rows.length, rarities: rows.map((r) => r.querySelector("i")?.className ?? "?") };
+});
+ok("강화 화면이 런 중 열리는 카드를 등급과 함께 보여 준다",
+  unlocks.rows === 5 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
+  JSON.stringify(unlocks));
+await page.evaluate(() => document.querySelector(".exp-skill-close")?.click());
+await sleep(300);
+
 // ── 전투 진입 ──
 await clickText(".exp-menu-tabs button", "원정"); await sleep(500);
 await clickText("button", "스테이지"); await sleep(1800);
