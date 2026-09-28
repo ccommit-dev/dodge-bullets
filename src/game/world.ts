@@ -1,4 +1,6 @@
 import { createArrowPool, resetArrows, updateArrows } from "./arrows";
+import { makeSkillShots, updateSkillShots, resetSkillShots } from "./skillShots";
+import { emptySkillLevels } from "./skills";
 import type { InputState } from "./input";
 import { createPlayer, GRAVITY, resetPlayer } from "./player";
 import { emptyShopLevels, statsFromLevels } from "./shop";
@@ -73,6 +75,11 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     slashScore: 0,
     slashBuff: 0,
     slashGauge: 0,
+    skillShots: makeSkillShots(),
+    skillLevels: emptySkillLevels(),
+    skillTimers: { volley: 0, pierce: 0, flame: 0, frost: 0, chain: 0, ultimate: 0 },
+    rangedWeapon: "none",
+    skillKills: 0,
     ultFlashMs: 0,
     reflectKills: 0,
     ultCount: 0,
@@ -187,6 +194,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.tempo = 1;
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
+  resetSkillShots(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
   applyStageLayout(world);
@@ -215,6 +223,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.bossCutsLeft = 0;
   world.bossMaxCuts = BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE;
   resetArrows(world);
+  resetSkillShots(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
   applyStageLayout(world);
@@ -370,6 +379,8 @@ export function updateWorld(
     p.animTime = 0;
   }
 
+  // 원거리 스킬 자동 발사 — 화살 갱신 **앞**에서 돌려 이번 프레임에 요격된 화살이 바로 사라지게
+  updateSkillShots(world, dtSec);
   const arrowDamage = updateArrows(world, dtSec);
 
   for (const fx of world.slashHitFx) {

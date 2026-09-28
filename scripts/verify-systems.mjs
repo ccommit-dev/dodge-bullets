@@ -3,7 +3,7 @@
  *   node scripts/verify-systems.mjs
  */
 import { build } from "esbuild";
-import { mkdtempSync, writeFileSync, rmSync , existsSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync , existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -31,10 +31,12 @@ writeFileSync(entry, [
   `export * as ads from "${root}/src/ads/rewarded";`,
   `export * as dodgeWorld from "${root}/src/game/world";`,
   `export * as spriteArt from "${root}/src/titans/SpriteArt";`,
+  `export * as dodgeSkills from "${root}/src/game/skills";`,
+  `export * as dodgeShop from "${root}/src/game/shop";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -448,6 +450,85 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     if (fill < 0.7 || info.width > info.height) bad.push(`s${i}:${info.width}x${info.height} ${(fill * 100).toFixed(0)}%`);
   }
   ok("검 원화 16장 모두 세로형이고 검이 폭의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
+}
+
+// ── 화살 원정 영구 스킬 — 원거리 요격 (2026-09-28) ──
+{
+  const S = dodgeSkills;
+  const lv0 = S.emptySkillLevels();
+
+  // 1) 미습득이면 아무 일도 없어야 한다 — 기존 봇 시뮬 게이트가 레벨 0 에서 돈다
+  ok("스킬 6종 전부 0레벨로 시작", Object.values(lv0).every((v) => v === 0) && Object.keys(lv0).length === 6);
+  const base = dodgeShop.statsFromLevels({ moveSpeed: 0, jumpPower: 0, dash: 1, slowField: 0, extraLife: 0 });
+  ok("스킬 0레벨은 스탯을 바꾸지 않는다", JSON.stringify(S.applySkillLevels(base, lv0)) === JSON.stringify(base));
+  ok("일섬 0레벨은 게이지 배수 1", S.gaugeGainMul(lv0) === 1);
+
+  // 2) 마일스톤(짝수 레벨)에서만 값이 움직인다 — 표와 수치가 어긋나면 화면이 거짓말을 한다
+  const movers = {
+    volley: (lv) => [S.volleyCooldown(lv), S.volleyShots(lv)],
+    pierce: (lv) => [S.pierceCooldown(lv), S.pierceWidth(lv)],
+    flame: (lv) => [S.flameCooldown(lv), S.flameRadius(lv)],
+    frost: (lv) => [S.frostCooldown(lv), S.frostRadius(lv), S.frostSlow(lv)],
+    chain: (lv) => [S.chainCooldown(lv), S.chainTargets(lv)],
+    ultimate: (lv) => [S.ultSwingMul(lv), S.ultGaugeMul(lv)],
+  };
+  const mismatch = [];
+  for (const def of S.EXPEDITION_SKILLS) {
+    const f = movers[def.id];
+    const milestoneLevels = new Set(def.milestones.map((m) => m.level));
+    for (let lv = 1; lv <= S.SKILL_MAX_LEVEL; lv += 1) {
+      const moved = JSON.stringify(f(lv)) !== JSON.stringify(f(lv - 1));
+      if (moved !== milestoneLevels.has(lv)) mismatch.push(`${def.id} Lv${lv} ${moved ? "값만 변함" : "표만 있음"}`);
+    }
+  }
+  ok("마일스톤 표와 실제 수치가 같은 레벨에서 움직인다", mismatch.length === 0, mismatch.slice(0, 4).join(", "));
+
+  // 3) 성장 방향 — 레벨이 오르면 쿨타임은 내리고 위력은 오른다 (강화가 약화가 되면 안 된다)
+  const worse = [];
+  for (const [id, f] of Object.entries({ volley: S.volleyCooldown, pierce: S.pierceCooldown, flame: S.flameCooldown, frost: S.frostCooldown, chain: S.chainCooldown })) {
+    for (let lv = 1; lv < S.SKILL_MAX_LEVEL; lv += 1) if (f(lv + 1) > f(lv)) worse.push(`${id} Lv${lv + 1}`);
+  }
+  for (const [id, f] of Object.entries({ volley: S.volleyShots, pierce: S.pierceWidth, flame: S.flameRadius, frost: S.frostRadius, chain: S.chainTargets, ult: S.ultSwingMul })) {
+    for (let lv = 1; lv < S.SKILL_MAX_LEVEL; lv += 1) if (f(lv + 1) < f(lv)) worse.push(`${id} Lv${lv + 1}`);
+  }
+  ok("레벨이 오를 때 쿨타임은 내려가고 위력은 올라간다", worse.length === 0, worse.slice(0, 4).join(", "));
+
+  // 4) 무기 상성 — 계열이 맞으면 쿨타임이 줄고, 안 맞거나 미장착이면 그대로
+  ok("장궁은 물리 계열만, 지팡이는 마법 계열만 줄인다",
+    S.weaponCooldownMul("bow", "physical") === 0.88 && S.weaponCooldownMul("bow", "magic") === 1
+    && S.weaponCooldownMul("staff", "magic") === 0.88 && S.weaponCooldownMul("none", "physical") === 1);
+  ok("연속 사격·관통은 물리 · 화염·빙결·연쇄는 마법",
+    S.SKILL_BY_ID.volley.family === "physical" && S.SKILL_BY_ID.pierce.family === "physical"
+    && S.SKILL_BY_ID.flame.family === "magic" && S.SKILL_BY_ID.frost.family === "magic" && S.SKILL_BY_ID.chain.family === "magic");
+
+  // 5) 일섬만 스탯에 닿는다 (베기 창) — 나머지는 자동 발사라 스탯에 얹을 것이 없다
+  const ult6 = S.applySkillLevels(base, { ...lv0, ultimate: 6 });
+  ok("일섬 Lv6 에서 베기 창 +16%", Math.abs(ult6.slowDurationMs - base.slowDurationMs * 1.16) < 1e-6);
+  ok("일섬 Lv4 에서 게이지 획득 +12%", Math.abs(S.gaugeGainMul({ ...lv0, ultimate: 4 }) - 1.12) < 1e-9);
+
+  // 6) 비용·해금
+  const c1 = S.skillCost(S.SKILL_BY_ID.volley, 1), c5 = S.skillCost(S.SKILL_BY_ID.volley, 5);
+  ok("스킬 비용이 레벨마다 오른다", c5.gold > c1.gold * 4 && c5.seals > c1.seals * 2, `lv1 ${c1.gold}G/${c1.seals}인 → lv5 ${c5.gold}G/${c5.seals}인`);
+  ok("해금은 원정 스테이지 — 연속 사격·일섬은 처음부터, 번개 사슬은 3스테이지",
+    S.skillUnlocked(S.SKILL_BY_ID.volley, 1) && S.skillUnlocked(S.SKILL_BY_ID.ultimate, 1)
+    && !S.skillUnlocked(S.SKILL_BY_ID.chain, 2) && S.skillUnlocked(S.SKILL_BY_ID.chain, 3));
+
+  // 7) 무기 탈착 — 진행도에 저장되고, 이상한 값은 기본 무기로 되돌린다
+  ok("새 진행도는 장궁을 끼고 시작한다", prog.emptyCharacterProgress().expeditionWeapon === "bow");
+  ok("맨손은 그대로, 모르는 무기는 기본으로", (() => {
+    const none = prog.normalizeCharacterProgress({ ...base, expeditionWeapon: "none" });
+    const junk = prog.normalizeCharacterProgress({ ...base, expeditionWeapon: "railgun" });
+    const staff = prog.normalizeCharacterProgress({ ...base, expeditionWeapon: "staff" });
+    return none.expeditionWeapon === "none" && junk.expeditionWeapon === "bow" && staff.expeditionWeapon === "staff";
+  })());
+
+  // 8) 출격 적재 — 스탯만 싣고 스킬 레벨을 빠뜨리면 화면은 Lv.10 인데 전투는 조용하다.
+  //    App.tsx 의 모든 적재 호출부가 loadLoadout 을 지나는지 소스로 못 박는다.
+  const appSrc = readFileSync(join(root, "src/App.tsx"), "utf8");
+  const bypass = appSrc.split("\n").filter((l) => /applyStats\(world/.test(l) && !/applyStats\(world, stats\);/.test(l));
+  ok("월드 적재는 loadLoadout 한 곳만 — 스탯만 싣는 우회 경로가 없다", bypass.length === 0, bypass.slice(0, 2).map((l) => l.trim()).join(" / "));
+  ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
+    /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

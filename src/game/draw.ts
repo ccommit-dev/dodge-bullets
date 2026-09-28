@@ -42,6 +42,47 @@ export function preloadStageBackgrounds(): true {
   return true;
 }
 
+/** 원거리 스킬 탄·효과 — 화살(붉은 계열)과 섞이지 않게 아군은 청록·금색 계열로 (2026-09-28) */
+function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  for (const s of world.skillShots) {
+    if (!s.active) continue;
+    ctx.save();
+    ctx.globalAlpha = s.fade;
+    if (s.kind === "bolt") {
+      const ang = Math.atan2(s.vy, s.vx);
+      ctx.translate(s.x, s.y); ctx.rotate(ang);
+      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(9, 0); ctx.stroke();
+      ctx.fillStyle = "#e0f2fe";
+      ctx.beginPath(); ctx.moveTo(13, 0); ctx.lineTo(5, -4); ctx.lineTo(5, 4); ctx.closePath(); ctx.fill();
+    } else if (s.kind === "pierce") {
+      ctx.strokeStyle = "#fde68a"; ctx.lineWidth = s.radius * 2;
+      ctx.globalAlpha = s.fade * 0.55;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y + 30); ctx.lineTo(s.x, s.y - 34); ctx.stroke();
+      ctx.globalAlpha = s.fade; ctx.strokeStyle = "#fff7ed"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y + 26); ctx.lineTo(s.x, s.y - 30); ctx.stroke();
+    } else if (s.kind === "flame") {
+      const g = ctx.createRadialGradient(s.x, s.y, 2, s.x, s.y, 18);
+      g.addColorStop(0, "#fff7ed"); g.addColorStop(0.5, "#fb923c"); g.addColorStop(1, "rgba(249,115,22,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x, s.y, 18, 0, Math.PI * 2); ctx.fill();
+    } else if (s.kind === "frost") {
+      const grow = 1 - s.lifeMs / 420;
+      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4;
+      ctx.globalAlpha = s.fade * (1 - grow) * 0.9;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.radius * (0.35 + grow * 0.65), 0, Math.PI * 2); ctx.stroke();
+    } else if (s.kind === "chain") {
+      ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(world.player.x, world.player.y - 10);
+      const mx = (world.player.x + s.x) / 2 + (s.lifeMs % 40) - 20;
+      ctx.lineTo(mx, (world.player.y + s.y) / 2);
+      ctx.lineTo(s.x, s.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, floorY } = world;
   const img = stageBackground(world.stageIndex);
@@ -466,6 +507,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
     ctx.restore();
   }
 
+  drawSkillShots(ctx, world);
   drawStickman(ctx, world);
 
   if (world.player.slowActiveMs > 0) {

@@ -1,4 +1,5 @@
 import { getStage } from "./stages";
+import { gaugeGainMul } from "./skills";
 import { BOSS_CUTS_BASE, BOSS_CUTS_PER_STAGE, gainRunXp } from "./world";
 import { bossPatternFor } from "./bossPatterns";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
@@ -482,7 +483,8 @@ export function inSwingArc(facing: -1 | 1, dx: number, dy: number): boolean {
 }
 
 function addGauge(world: GameWorld, amount: number): void {
-  world.slashGauge = Math.min(100, world.slashGauge + amount);
+  // [일섬] 레벨이 게이지 획득을 늘린다 (2026-09-28)
+  world.slashGauge = Math.min(100, world.slashGauge + amount * gaugeGainMul(world.skillLevels));
   if (world.slashGauge >= 100) ultimateSlash(world);
 }
 

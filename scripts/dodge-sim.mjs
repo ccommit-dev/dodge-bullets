@@ -42,6 +42,8 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   // 스테이지 도달 시점의 성장(30일 밸런스 시뮬 기준): Lv 8/21/37/55 · 장착 검 3/6/10/13 · 원정 최고 스테이지 = 현재
   const growth = [{ level: 8, equippedWeaponLevel: 3 }, { level: 21, equippedWeaponLevel: 6 }, { level: 37, equippedWeaponLevel: 10 }, { level: 55, equippedWeaponLevel: 13 }][Math.min(3, stageIndex)];
   W.applyStats(w, shop.statsFromLevels(shop.derivedShopLevels({ ...growth, dodgeBestStage: stageIndex + 1 })));
+  // 원거리 스킬 레벨 — opts.skills 로 넣으면 자동 발사가 켜진다 (레벨 0 = 기존 기준선)
+  if (opts.skills) { w.skillLevels = { ...w.skillLevels, ...opts.skills }; w.rangedWeapon = opts.weapon ?? "none"; }
   W.resetRun(w, stageIndex);
   const inp = I.createInputState();
   const dt = 1 / 60;
@@ -100,7 +102,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     if (ev.type === "clear") { clear = true; break; }
   }
   Math.random = realRandom;
-  return { stage: stageIndex, seed, hits, hitLog, cuts: w.countered, reflects: w.reflectKills, ults: w.ultCount, maxCombo: w.maxCombo, dodged: w.dodged, clear, dead, seconds: Math.round(frames * dt), hp: p.maxHp };
+  return { stage: stageIndex, seed, hits, hitLog, cuts: w.countered, skillKills: w.skillKills, reflects: w.reflectKills, ults: w.ultCount, maxCombo: w.maxCombo, dodged: w.dodged, clear, dead, seconds: Math.round(frames * dt), hp: p.maxHp };
 }
 
 export function runAll() {

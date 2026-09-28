@@ -1,3 +1,5 @@
+import type { SkillShot } from "./skillShots";
+import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
 export type GameState = "ready" | "intro" | "playing" | "perk" | "clear" | "gameover";
 
 export type PlayerAnim = "idle" | "run" | "jump" | "fall" | "dash" | "skill" | "hit" | "dead";
@@ -228,6 +230,16 @@ export type GameWorld = {
   slashDrops: SlashDrop[];
   /** 베기 파편 풀 — 파쇄 시 화살이 두 토막으로 쪼개져 날아가는 것이 보여야 한다 */
   slashDebris: SlashDebris[];
+  /** 원거리 스킬 — 자동 발사 탄 (game/skillShots.ts, 2026-09-28) */
+  skillShots: SkillShot[];
+  /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
+  skillLevels: ExpeditionSkillLevels;
+  /** 스킬별 남은 쿨타임(초) */
+  skillTimers: Record<ExpeditionSkillId, number>;
+  /** 장착한 원거리 무기 — 계열이 맞는 스킬의 쿨타임을 줄인다 */
+  rangedWeapon: RangedWeaponId;
+  /** 이번 런에서 스킬로 떨어뜨린 화살 수 (결과 화면) */
+  skillKills: number;
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
   lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "";
   bossSpawned: boolean;
