@@ -59,7 +59,7 @@ import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type Perk
 import { effectiveCooldown } from "./game/skillShots";
 import { chipCost, chipModsOf, chipSlotsOpen, CHIP_MAX_LEVEL, type ChipId } from "./game/chips";
 import {
-  dailyClaimable, DAILY_BY_ID, rolledDaily, SUPPLY_BY_ID, SUPPLY_MAX,
+  DAILIES, dailyClaimable, DAILY_BY_ID, PRIMED_MS, rolledDaily, SUPPLIES, SUPPLY_BY_ID, SUPPLY_MAX,
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
 import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
@@ -690,6 +690,11 @@ function App() {
           void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
           stateRef.current = "gameover";
           setGameState("gameover");
+          // 일일 임무는 결과와 무관하게 이 스테이지에서 한 만큼 센다 (클리어 보상과 다른 id)
+          void grantCharacterReward(userHashRef.current, `dodge:${dodgeRunIdRef.current}:fail:${world.stageIndex}`, {
+            dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
+            lastContent: "dodge",
+          }).then(setProgress);
           trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
           setDeathTip(DEATH_TIPS[world.lastHitCause] ?? "");
         }
@@ -926,7 +931,7 @@ function App() {
       const used: SupplyId[] = [];
       if (stock.draft > 0) { world.draftBoost = true; used.push("draft"); }
       if (stock.primed > 0) {
-        (Object.keys(world.skillTimers) as (keyof typeof world.skillTimers)[]).forEach((k) => { world.skillTimers[k] = 0; });
+        world.primedMs = PRIMED_MS;
         world.slashGauge = Math.min(99, world.slashGauge + 30);
         used.push("primed");
       }
@@ -1156,6 +1161,7 @@ function App() {
           enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6)
             + Math.floor(world.supplies / 10) + world.enemyKills + world.perfectDodges + world.chests * 3),
           dodgeStage: world.stageIndex + 1,
+          dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
           lastContent: "dodge",
         },
       );
@@ -1479,10 +1485,10 @@ function App() {
                 캐릭터 성장(레벨·강화)에서 자동 파생된다 — derivedShopLevels 참조 */}
             <div className="exp-menu-tabs" role="tablist">
               <button type="button" role="tab" aria-selected={menuTab === "play"} className={menuTab === "play" ? "on" : ""} onClick={() => setMenuTab("play")}>원정</button>
-              <button type="button" role="tab" aria-selected={menuTab === "skill"} className={menuTab === "skill" ? "on" : ""} onClick={() => setMenuTab("skill")}>
-                스킬
+              <button type="button" role="tab" aria-selected={menuTab === "skill"} className={menuTab === "skill" ? "on" : ""} onClick={() => setMenuTab("skill")} aria-label="정비 — 스킬 · 무기 · 칩 · 보급 · 임무">
+                정비
                 {/* 하나라도 지금 강화할 수 있으면 배지 — 참고 게임의 "!" */}
-                {EXPEDITION_SKILL_READY(progress) && <i className="exp-tab-badge">!</i>}
+                {(EXPEDITION_SKILL_READY(progress) || DAILIES.some((d) => dailyClaimable(rolledDaily(progress.expeditionDaily), d.id))) && <i className="exp-tab-badge">!</i>}
               </button>
             </div>
             {menuTab === "play" ? (
@@ -1537,6 +1543,12 @@ function App() {
                 <button type="button" className="cta" onClick={() => void handleStart(0)}>
                   스테이지 1 시작
                 </button>
+                {SUPPLIES.some((sp) => (progress.expeditionSupplies[sp.id] ?? 0) > 0) && (
+                  <p className="exp-next-supply">
+                    다음 출격 보급 · {SUPPLIES.filter((sp) => (progress.expeditionSupplies[sp.id] ?? 0) > 0)
+                      .map((sp) => `${sp.name}${progress.expeditionSupplies[sp.id] > 1 ? ` (남은 ${progress.expeditionSupplies[sp.id]})` : ""}`).join(" · ")}
+                  </p>
+                )}
                 {progress.dodgeBestStage >= STAGES.length && (
                   <button
                     type="button"

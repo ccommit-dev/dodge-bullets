@@ -786,6 +786,44 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       && O.dailyClaimable(d2, "clear")              // 2/2
       && !O.dailyClaimable({ ...d2, claimed: ["clear"] }, "clear"));
 
+    // ── 보급창 정정 (2026-09-28 /goal 검토)
+    // [예비 화살통] — 출격 시점엔 쿨타임이 이미 0 이라 "재사용 완료"는 빈말이었다.
+    // 이제 30초 동안 재사용 ×0.7 이고, 시간이 다하면 원래대로 돌아와야 한다.
+    {
+      const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+      const world = wm.createWorld(390, 700, 1);
+      world.skillLevels = { ...world.skillLevels, volley: 3 };
+      wm.resetRun(world, 0);
+      ok("새 런은 화살통 효과가 꺼진 채 시작한다 (재사용 배수 1)", world.primedMs === 0);
+      // 출격 직후 쿨타임은 이미 0 — 예전 설명("재사용 완료")이 빈말이었다는 근거
+      ok("출격 시점의 스킬 쿨타임은 이미 전부 0", Object.values(world.skillTimers).every((t) => t === 0));
+      world.primedMs = O.PRIMED_MS;
+      dodgeShots.updateSkillShots(world, 0.016);         // 첫 발이 나가며 쿨타임이 잡힌다
+      const primedCd = world.skillTimers.volley;
+      world.primedMs = 0; world.skillTimers.volley = 0;
+      dodgeShots.updateSkillShots(world, 0.016);
+      const normalCd = world.skillTimers.volley;
+      ok("[예비 화살통] 이 켜진 동안 재사용이 ×0.7, 꺼지면 원래대로",
+        primedCd > 0 && Math.abs(primedCd / normalCd - O.PRIMED_COOLDOWN_MUL) < 1e-6, primedCd.toFixed(2) + " / " + normalCd.toFixed(2));
+      world.primedMs = 1000;
+      dodgeShots.updateSkillShots(world, 0.5); dodgeShots.updateSkillShots(world, 0.6);
+      ok("화살통 효과는 시간이 다하면 0 으로 내려온다", world.primedMs === 0);
+
+      // epicPicks 는 클리어마다 일일 임무에 더한다 — 런 단위로 두면 스테이지마다 중복 집계된다
+      world.epicPicks = 2;
+      wm.beginStage(world, 1);
+      ok("에픽 카드 집계는 스테이지 경계에서 비워진다 (중복 집계 방지)", world.epicPicks === 0);
+      ok("이름이 활·지팡이 원정의 물건이다 (탄창·보험 계약 없음)",
+        !O.SUPPLIES.some((sp) => /탄창|보험/.test(sp.name)) && O.SUPPLIES.map((sp) => sp.name).join() === "정예 선발,예비 화살통,수호 부적",
+        O.SUPPLIES.map((sp) => sp.name).join(" · "));
+    }
+    // 사망·귀환에서도 일일 진행도를 센다 — 40개 요격하고 죽으면 0 이던 것 (소스 단언)
+    {
+      const app = readFileSync(join(root, "src/App.tsx"), "utf8");
+      const credits = (app.match(/dailyProgress: \{ skillKills: world\.skillKills/g) ?? []).length;
+      ok("일일 진행도를 클리어·사망·귀환 세 경로 모두에서 더한다", credits === 3, credits + "곳");
+    }
+
     // 진행도 정규화
     const stale = prog.normalizeCharacterProgress({
       ...base,

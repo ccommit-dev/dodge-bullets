@@ -103,6 +103,7 @@ export function SkillPanel({
                 const full = have >= SUPPLY_MAX;
                 return (
                   <li key={sp.id}>
+                    <img src={assetUrl(`dodge/supplies/${sp.id}.png`)} alt="" aria-hidden="true" />
                     <span>
                       <b>{sp.name} {have > 0 && <i>×{have}</i>}</b>
                       <em>{sp.desc}</em>
