@@ -25,7 +25,11 @@ export type SkillShotKind = "bolt" | "pierce" | "flame" | "frost" | "chain";
 
 /** 카드가 하나도 안 쌓인 상태 — 이게 기존 난이도 기준선이다 */
 export function emptyRunMods(): RunMods {
-  return { volleyExtra: 0, boltPierce: 0, flameRadiusMul: 1, chainExtra: 0, frostSlowBonus: 0, cooldownMul: 1, chillHunt: false, chillBurst: false };
+  return {
+    volleyExtra: 0, boltPierce: 0, flameRadiusMul: 1, chainExtra: 0, frostSlowBonus: 0, cooldownMul: 1,
+    chillHunt: false, chillBurst: false, evolutions: {},
+    moveSpeedMul: 1, dashCooldownMul: 1, slashLevelBonus: 0, maxHpBonus: 0,
+  };
 }
 
 export type SkillShot = {
@@ -42,6 +46,10 @@ export type SkillShot = {
   fade: number;
   /** 남은 관통 횟수 — 볼트는 기본 0(한 발에 한 화살), 카드가 올린다 */
   hits: number;
+  /** [유도 볼트] 진화 — 가장 가까운 화살을 쫓아간다 */
+  seeker: boolean;
+  /** [화염 장판] 진화 — 터지지 않고 머물며 들어오는 화살을 계속 태운다 */
+  pyre: boolean;
 };
 
 const POOL = 40;
@@ -49,7 +57,7 @@ const POOL = 40;
 export function makeSkillShots(): SkillShot[] {
   return Array.from({ length: POOL }, () => ({
     active: false, kind: "bolt" as SkillShotKind, x: 0, y: 0, vx: 0, vy: 0,
-    radius: 0, lifeMs: 0, fade: 1, hits: 0,
+    radius: 0, lifeMs: 0, fade: 1, hits: 0, seeker: false, pyre: false,
   }));
 }
 
@@ -65,7 +73,9 @@ function spawn(world: GameWorld, s: Partial<SkillShot> & { kind: SkillShotKind }
   shot.radius = s.radius ?? 0;
   shot.lifeMs = s.lifeMs ?? 1200;
   shot.fade = 1;
-  shot.hits = 0;
+  shot.hits = s.hits ?? 0;
+  shot.seeker = s.seeker ?? false;
+  shot.pyre = s.pyre ?? false;
 }
 
 /** 요격 대상 — 살아 있고 경고 중이 아니며 아직 반사되지 않은 화살 */
@@ -128,15 +138,27 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     if (level <= 0) return;                       // 미습득 스킬은 아무것도 하지 않는다
     timers[id] = (timers[id] ?? 0) - dtSec;
     if (timers[id] > 0) return;
-    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul;
+    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul
+      * (id === "volley" && world.runMods.evolutions.volley === "beam" ? 1.35 : 1)
+      * (id === "flame" && world.runMods.evolutions.flame === "pyre" ? 1.25 : 1);
     fire();
   };
 
   tick("volley", () => {
+    const evo = world.runMods.evolutions.volley;
     const targets = nearest(world, volleyShots(lv.volley) + world.runMods.volleyExtra, world.player.x, world.player.y);
     for (const t of targets) {
       const ang = Math.atan2(t.y - world.player.y, t.x - world.player.x);
-      spawn(world, { kind: "bolt", vx: Math.cos(ang) * 760, vy: Math.sin(ang) * 760, radius: 9, lifeMs: 1400, hits: world.runMods.boltPierce });
+      // [관통 광선] 멈추지 않고 화면 끝까지 꿰지만 재사용이 길다 / [유도 볼트] 느리지만 쫓아간다
+      const sp = evo === "beam" ? 1050 : evo === "seeker" ? 560 : 760;
+      spawn(world, {
+        kind: "bolt",
+        vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+        radius: evo === "beam" ? 12 : 9,
+        lifeMs: 1400,
+        hits: world.runMods.boltPierce + (evo === "beam" ? 99 : 0),
+        seeker: evo === "seeker",
+      });
     }
   });
 
@@ -145,12 +167,18 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   });
 
   tick("flame", () => {
-    spawn(world, { kind: "flame", vy: -230, radius: flameRadius(lv.flame) * world.runMods.flameRadiusMul, lifeMs: 1500 });
+    const evo = world.runMods.evolutions.flame;
+    const r = flameRadius(lv.flame) * world.runMods.flameRadiusMul;
+    // [화염 장판] 올라가지 않고 그 자리에 머물며 지나는 화살을 계속 태운다 (재사용은 길다)
+    if (evo === "pyre") { spawn(world, { kind: "flame", vy: -20, radius: r * 0.8, lifeMs: 2600, pyre: true }); return; }
+    spawn(world, { kind: "flame", vy: -230, radius: r, lifeMs: 1500 });
   });
 
   tick("frost", () => {
     // 파동은 즉발 — 주변 화살을 그 자리에서 느리게 만든다
-    const r = frostRadius(lv.frost), slow = Math.max(0.2, frostSlow(lv.frost) - world.runMods.frostSlowBonus);
+    const evo = world.runMods.evolutions.frost;
+    const r = frostRadius(lv.frost) * (evo === "lingering" ? 1.4 : 1);
+    const slow = Math.max(0.2, frostSlow(lv.frost) - world.runMods.frostSlowBonus);
     for (const a of world.arrows) {
       if (!targetable(a)) continue;
       if ((a.x - world.player.x) ** 2 + (a.y - world.player.y) ** 2 > r * r) continue;
@@ -159,7 +187,14 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       if (sp < 150) continue;
       const k = Math.max(slow, 150 / sp);
       a.vx *= k; a.vy *= k;
-      a.chilledMs = 1500;   // 콤보 카드가 이 표식을 본다
+      a.chilledMs = evo === "lingering" ? 4500 : 1500;   // 콤보 카드가 이 표식을 본다
+    }
+    // [서리 파쇄] 안쪽 절반은 얼리는 대신 그 자리에서 부순다 / [지속 서리] 넓고 오래 얼린다
+    if (evo === "shatter") {
+      for (const a of world.arrows) {
+        if (!targetable(a)) continue;
+        if ((a.x - world.player.x) ** 2 + (a.y - world.player.y) ** 2 <= (r * 0.5) ** 2) intercept(world, a);
+      }
     }
     spawn(world, { kind: "frost", radius: r, lifeMs: 420, vx: 0, vy: 0 });
   });
@@ -174,11 +209,32 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   for (const s of world.skillShots) {
     if (!s.active) continue;
     s.lifeMs -= dtSec * 1000;
+    if (s.seeker) {
+      // [유도 볼트] — 가장 가까운 화살 쪽으로 천천히 방향을 튼다
+      const t = nearest(world, 1, s.x, s.y)[0];
+      if (t) {
+        const want = Math.atan2(t.y - s.y, t.x - s.x);
+        const cur = Math.atan2(s.vy, s.vx);
+        let d = want - cur;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        const next = cur + Math.max(-4 * dtSec, Math.min(4 * dtSec, d));
+        const sp = Math.hypot(s.vx, s.vy);
+        s.vx = Math.cos(next) * sp; s.vy = Math.sin(next) * sp;
+      }
+    }
     s.x += s.vx * dtSec;
     s.y += s.vy * dtSec;
+    if (s.pyre) {
+      // [화염 장판] — 머무는 동안 반경에 들어오는 화살을 계속 태운다
+      for (const a of world.arrows) {
+        if (!targetable(a)) continue;
+        if ((a.x - s.x) ** 2 + (a.y - s.y) ** 2 <= s.radius * s.radius) intercept(world, a);
+      }
+    }
     s.fade = Math.max(0, Math.min(1, s.lifeMs / 400));
     if (s.lifeMs <= 0 || s.y < -80 || s.x < -80 || s.x > world.width + 80) {
-      if (s.kind === "flame") {
+      if (s.kind === "flame" && !s.pyre) {
         // 수명이 다하면 터진다. 콤보 [열충격] — 얼어붙은 화살이 반경 안에 있으면 폭발이 넓어진다
         let r = s.radius;
         if (world.runMods.chillBurst && world.arrows.some((a) => targetable(a) && a.chilledMs > 0
@@ -209,9 +265,9 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   }
 }
 
+/** 스테이지 경계에서도 불린다 — **카드(runMods)는 여기서 지우지 않는다**. 런 전체에서 유지된다 */
 export function resetSkillShots(world: GameWorld): void {
   for (const s of world.skillShots) s.active = false;
-  world.runMods = emptyRunMods();
   world.skillTimers = { volley: 0, pierce: 0, flame: 0, frost: 0, chain: 0, ultimate: 0 };
   world.skillKills = 0;
 }

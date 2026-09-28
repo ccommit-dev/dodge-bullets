@@ -180,6 +180,19 @@ export type RunMods = {
   frostSlowBonus: number;
   /** [과부하] 에픽 — 모든 원거리 스킬 재사용 배수 */
   cooldownMul: number;
+  /**
+   * 스킬 진화 — 스킬마다 **하나만** 고를 수 있는 분기. 작동 방식 자체가 바뀐다.
+   * 참고 게임의 "기본 레이저 → 관통 광선 / 확산 / 차지 폭발" 에 해당한다 (2026-09-28)
+   */
+  evolutions: { volley?: "beam" | "seeker"; flame?: "cluster" | "pyre"; frost?: "shatter" | "lingering" };
+  /**
+   * 스탯을 건드리는 카드도 여기 남긴다 — 스테이지가 넘어갈 때 applyStats 가 상점 값으로
+   * 덮어쓰므로, 다시 얹지 않으면 "이번 런 동안"이 거짓말이 된다 (2026-09-28)
+   */
+  moveSpeedMul: number;
+  dashCooldownMul: number;
+  slashLevelBonus: number;
+  maxHpBonus: number;
   /** 콤보 — 얼어붙은 화살은 볼트가 한 방에 부수고 일섬 게이지를 더 준다 */
   chillHunt: boolean;
   /** 콤보 — 화염탄이 얼어붙은 화살을 함께 터뜨리면 폭발이 넓어진다 */

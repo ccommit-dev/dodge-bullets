@@ -45,6 +45,8 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   // 원거리 스킬 레벨 — opts.skills 로 넣으면 자동 발사가 켜진다 (레벨 0 = 기존 기준선)
   if (opts.skills) { w.skillLevels = { ...w.skillLevels, ...opts.skills }; w.rangedWeapon = opts.weapon ?? "none"; }
   W.resetRun(w, stageIndex);
+  // 런 강화 카드(진화·콤보) — resetRun 이 카드를 비우므로 **그 뒤에** 얹는다
+  if (opts.mods) w.runMods = { ...w.runMods, ...opts.mods, evolutions: { ...w.runMods.evolutions, ...(opts.mods.evolutions ?? {}) } };
   const inp = I.createInputState();
   const dt = 1 / 60;
   let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = [];
