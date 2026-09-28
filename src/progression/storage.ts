@@ -1,3 +1,4 @@
+import { addDailyProgress, rolledDaily } from "../game/expeditionOps";
 import { loadBeatRpg, loadCoins, loadHighScore, saveCoins } from "../game/storage";
 import { storageGet, storageSet } from "../game/toss";
 import { loadForgeSave } from "../forge/storage";
@@ -144,6 +145,11 @@ export async function grantCharacterReward(
     dodgeStage?: number;
     /** 원정 인장 — 화살 원정 영구 스킬 강화 재화 (2026-09-28) */
     expeditionSeals?: number;
+    /**
+     * 일일 임무 진행 **증분**. 절대값을 밖에서 계산해 넘기면 화면이 들고 있던 오래된
+     * 진행도를 덮어써 오늘치가 날아간다 — 여기 current 로 더한다 (2026-09-28)
+     */
+    dailyProgress?: { skillKills: number; epicPicks: number; clears: number };
   },
 ): Promise<CharacterProgress> {
   return updateCharacterProgress(userHash, (current) => {
@@ -156,6 +162,9 @@ export async function grantCharacterReward(
         current.enhancementMaterials + Math.max(0, reward.enhancementMaterials ?? 0),
       dodgeBestStage: Math.max(current.dodgeBestStage, reward.dodgeStage ?? 1),
       expeditionSeals: current.expeditionSeals + Math.max(0, reward.expeditionSeals ?? 0),
+      expeditionDaily: reward.dailyProgress
+        ? addDailyProgress(rolledDaily(current.expeditionDaily), reward.dailyProgress)
+        : rolledDaily(current.expeditionDaily),
       lastContent: reward.lastContent ?? current.lastContent,
       claimedRewards: [...current.claimedRewards, rewardId],
     });

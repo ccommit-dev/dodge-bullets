@@ -3912,6 +3912,28 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 }
 .perk-odds { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; margin:0 0 2px; color:#94a3b8; font-size:10px; font-weight:700; }
 .perk-odds .perk-rarity { margin:0 0 0 6px; }
+/* 강화 / 보급·임무 하위 탭 (2026-09-28) */
+.exp-sub-tabs { display:flex; gap:6px; justify-content:center; }
+.exp-sub-tabs button { position:relative; padding:6px 14px; border:1px solid rgba(103,232,249,.3); border-radius:99px; background:rgba(4,14,28,.7); color:#94a3b8; font-size:12px; font-weight:800; cursor:pointer; }
+.exp-sub-tabs button.on { border-color:rgba(167,139,250,.7); background:linear-gradient(135deg,rgba(76,29,149,.5),rgba(15,23,42,.9)); color:#e0f2fe; }
+.exp-sub-dot { position:absolute; top:2px; right:4px; width:7px; height:7px; border-radius:50%; background:#f87171; }
+.exp-ops { display:grid; gap:12px; }
+.exp-ops section { display:grid; gap:6px; }
+.exp-ops section > b { color:#c4b5fd; font-size:11px; }
+.exp-ops section > b small { color:#64748b; font-size:9px; font-weight:700; }
+.exp-supply-list, .exp-daily-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
+.exp-supply-list li, .exp-daily-list li { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(103,232,249,.2); border-radius:10px; background:rgba(4,14,28,.6); }
+.exp-supply-list span, .exp-daily-list span { display:grid; gap:3px; min-width:0; flex:1; }
+.exp-supply-list b, .exp-daily-list b { color:#e0f2fe; font-size:11px; font-weight:800; }
+.exp-supply-list b i { color:#fde68a; font-style:normal; font-size:10px; }
+.exp-supply-list em { color:#94a3b8; font-style:normal; font-size:9px; line-height:1.35; }
+.exp-supply-list button, .exp-daily-list button { flex:none; padding:6px 10px; border:0; border-radius:8px; background:linear-gradient(135deg,#fbbf24,#fde047); color:#082f49; font-size:10px; font-weight:900; cursor:pointer; }
+.exp-supply-list button:disabled, .exp-daily-list button:disabled { background:rgba(148,163,184,.2); color:#64748b; cursor:default; }
+.exp-daily-bar { position:relative; display:block; height:12px; overflow:hidden; border-radius:99px; background:rgba(148,163,184,.2); }
+.exp-daily-bar > b { display:block; height:100%; background:linear-gradient(90deg,#2dd4bf,#a78bfa); }
+.exp-daily-bar small { position:absolute; inset:0; display:grid; place-items:center; color:#e0f2fe; font-size:8px; font-weight:900; }
+.exp-daily-list li.done { border-color:rgba(253,224,71,.55); }
+.exp-daily-list li.claimed { opacity:.5; }
 /* 원정 칩 — 영구 패시브. 슬롯(끼운 것)과 목록(가진 것)을 나눠 보여 준다 (2026-09-28) */
 .exp-chip-row { display:grid; gap:6px; }
 .exp-chip-row > b { color:#c4b5fd; font-size:11px; }

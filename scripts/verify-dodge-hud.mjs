@@ -29,6 +29,8 @@ const progress = {
   expeditionWeapon: "staff",
   expeditionChips: { focus: 3, barrage: 3, ember: 2, rime: 4, vitality: 2, edge: 1 },
   equippedChips: ["focus", "rime", null],
+  expeditionSupplies: { draft: 1, primed: 0, insurance: 2 },
+  expeditionDaily: { day: new Date().toISOString().slice(0, 10), counts: { intercept: 44, epic: 0, clear: 1 }, claimed: [] },
   claimedRewards: ["dodge-tutorial"],
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
@@ -89,6 +91,23 @@ ok("스킬 화면: 무기 2종 + 스킬 6종, 저장된 지팡이가 장착 상�
   && skillUi.weapons === 2 && skillUi.skills === 6 && skillUi.on[1] === true && skillUi.on[0] === false,
   JSON.stringify(skillUi.on));
 ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, skillUi.over.slice(0, 2).join(", "));
+
+// 보급창 · 일일 임무 탭 — 인장을 "지금 쓰는" 자리와 "한 판 더"의 이유
+await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("보급"))?.click());
+await sleep(400);
+const ops = await page.evaluate(() => ({
+  supplies: [...document.querySelectorAll(".exp-supply-list li")].length,
+  buyable: [...document.querySelectorAll(".exp-supply-list button")].filter((b) => !b.disabled).length,
+  dailies: [...document.querySelectorAll(".exp-daily-list li")].map((l) => l.querySelector("small")?.textContent ?? "?"),
+  claimable: [...document.querySelectorAll(".exp-daily-list button")].filter((b) => !b.disabled).length,
+  dot: !!document.querySelector(".exp-sub-dot"),
+}));
+ok("보급창 3종과 일일 임무 3종이 진행도와 함께 보인다",
+  ops.supplies === 3 && ops.dailies.join() === "40/40,0/1,1/2", JSON.stringify(ops.dailies));
+ok("목표를 채운 임무만 수령 버튼이 열리고 탭에 배지가 붙는다",
+  ops.claimable === 1 && ops.dot === true, "claimable=" + ops.claimable + " dot=" + ops.dot);
+await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("강화"))?.click());
+await sleep(300);
 
 // 원정 칩 — 가이드의 영구 성장 2순위. 슬롯(끼운 것)과 목록(가진 것)이 나뉘어 보여야 한다
 const chipUi = await page.evaluate(() => ({

@@ -35,10 +35,11 @@ writeFileSync(entry, [
   `export * as dodgeShop from "${root}/src/game/shop";`,
   `export * as dodgeShots from "${root}/src/game/skillShots";`,
   `export * as dodgeChips from "${root}/src/game/chips";`,
+  `export * as dodgeOps from "${root}/src/game/expeditionOps";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -737,6 +738,66 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("진행도 정규화: 칩 레벨은 상한, 모르는 칩 id 는 빈 칸",
       n.expeditionChips.focus === C.CHIP_MAX_LEVEL && n.equippedChips[0] === "focus" && n.equippedChips[1] === null
       && n.equippedChips.length === C.CHIP_SLOTS, JSON.stringify(n.equippedChips));
+  }
+
+
+  // ── 원정 보급창 · 일일 임무 (2026-09-28)
+  {
+    const O = dodgeOps;
+    const DAY = 24 * 60 * 60 * 1000;
+    const t0 = new Date(2026, 8, 28, 10, 0, 0).getTime();
+
+    // 보급 — 다음 런 한 번에만 듣는 소모품
+    const stock = O.emptySupplyStock();
+    ok("보급 3종이 0개로 시작", Object.keys(stock).length === 3 && Object.values(stock).every((v) => v === 0));
+    ok("보급 가격이 칩 한 단계보다 비싸다 — 한 판을 확실히 바꾸는 값",
+      O.SUPPLIES.every((s) => s.seals > dodgeChips.chipCost(1)),
+      O.SUPPLIES.map((s) => s.name + " " + s.seals).join(" · "));
+
+    // [선발 보급] 이 켜지면 3택이 전부 레어 이상이어야 한다
+    const w2 = {
+      skillLevels: { ...dodgeSkills.emptySkillLevels(), volley: 1, frost: 1, flame: 1 },
+      runMods: dodgeShots.emptyRunMods(),
+      stats: { dashUnlocked: true }, player: { hp: 1, maxHp: 1 }, slashGauge: 0, stageIndex: 0,
+    };
+    let seq = 0; const det = () => ((seq += 0.41) % 1);
+    const plain = perks.pickPerks({ ...w2, draftBoost: false }, det, 3, 0);
+    seq = 0;
+    const boosted = perks.pickPerks({ ...w2, draftBoost: true }, det, 3, 0);
+    ok("[선발 보급] 이 켜지면 3택이 전부 레어 이상",
+      boosted.every((p) => p.rarity !== "common") && plain.some((p) => p.rarity === "common"),
+      boosted.map((p) => p.rarity).join() + " / " + plain.map((p) => p.rarity).join());
+
+    // 일일 — 날짜가 바뀌면 초기화
+    const d0 = O.emptyDaily(t0);
+    const run = { skillKills: 25, epicPicks: 1, clears: 1 };
+    const d1 = O.addDailyProgress(d0, run, t0);
+    const d2 = O.addDailyProgress(d1, run, t0);
+    ok("일일 진행도가 런마다 쌓인다", d2.counts.intercept === 50 && d2.counts.epic === 2 && d2.counts.clear === 2,
+      JSON.stringify(d2.counts));
+    ok("날짜가 바뀌면 진행도와 수령 기록이 비워진다",
+      O.rolledDaily({ ...d2, claimed: ["clear"] }, t0 + DAY).counts.intercept === 0
+      && O.rolledDaily({ ...d2, claimed: ["clear"] }, t0 + DAY).claimed.length === 0);
+    ok("같은 날이면 그대로", O.rolledDaily(d2, t0 + 3600_000).counts.intercept === 50);
+
+    ok("목표를 채워야 수령할 수 있고, 한 번 받으면 다시 못 받는다",
+      !O.dailyClaimable(d1, "intercept")            // 25/40
+      && O.dailyClaimable(d2, "intercept")          // 50/40
+      && O.dailyClaimable(d2, "clear")              // 2/2
+      && !O.dailyClaimable({ ...d2, claimed: ["clear"] }, "clear"));
+
+    // 진행도 정규화
+    const stale = prog.normalizeCharacterProgress({
+      ...base,
+      expeditionSupplies: { draft: 99, primed: 1, nope: 4 },
+      expeditionDaily: { day: "2020-01-01", counts: { intercept: 999, epic: 9, clear: 9 }, claimed: ["clear", "bogus"] },
+    });
+    ok("진행도 정규화: 보급은 아는 id 3개만·수량 상한, 어제 일일 기록은 새 하루로",
+      stale.expeditionSupplies.draft === O.SUPPLY_MAX && stale.expeditionSupplies.primed === 1
+      && Object.keys(stale.expeditionSupplies).length === 3
+      && stale.expeditionDaily.day === O.dayKey() && stale.expeditionDaily.counts.intercept === 0
+      && stale.expeditionDaily.claimed.length === 0,
+      JSON.stringify({ sup: stale.expeditionSupplies, day: stale.expeditionDaily.day }));
   }
 
 

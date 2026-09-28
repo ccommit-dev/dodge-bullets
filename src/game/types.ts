@@ -281,6 +281,10 @@ export type GameWorld = {
   rangedWeapon: RangedWeaponId;
   /** 이번 런에서 스킬로 떨어뜨린 화살 수 (결과 화면) */
   skillKills: number;
+  /** 이번 런에서 고른 에픽 카드 수 — 일일 임무가 센다 (2026-09-28) */
+  epicPicks: number;
+  /** [선발 보급] 소모품 — 다음 3택을 전부 레어 이상으로. 한 번 쓰면 꺼진다 */
+  draftBoost: boolean;
   /** 런 중 강화 카드가 쌓은 스킬 진화 — 런이 끝나면 사라진다 (game/perks.ts) */
   runMods: RunMods;
   /**

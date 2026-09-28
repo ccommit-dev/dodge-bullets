@@ -1,5 +1,9 @@
 import { emptySkills, type BeatSkills } from "../beat/rpg";
 import { CHIPS, CHIP_MAX_LEVEL, CHIP_SLOTS, emptyChipLevels, type ChipId, type ChipLevels } from "../game/chips";
+import {
+  DAILIES, emptyDaily, emptySupplyStock, rolledDaily, SUPPLIES, SUPPLY_MAX,
+  type DailyId, type DailyState, type SupplyStock,
+} from "../game/expeditionOps";
 import { emptySkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
@@ -45,6 +49,10 @@ export type CharacterProgress = {
   expeditionChips: ChipLevels;
   /** 칩 슬롯에 끼운 것. 슬롯 수는 원정 최고 스테이지로 열린다 */
   equippedChips: Array<ChipId | null>;
+  /** 원정 보급창에서 산 소모품 — 다음 런 한 번에만 듣는다 (game/expeditionOps.ts) */
+  expeditionSupplies: SupplyStock;
+  /** 원정 일일 임무 — 날짜가 바뀌면 초기화된다 */
+  expeditionDaily: DailyState;
   /** 끝없는 성벽 최고 층 */
   towerBestFloor: number;
   titanBestStage: number;
@@ -188,6 +196,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     expeditionWeapon: "bow",
     expeditionChips: emptyChipLevels(),
     equippedChips: [null, null, null],
+    expeditionSupplies: emptySupplyStock(),
+    expeditionDaily: emptyDaily(),
     towerBestFloor: 0,
     titanBestStage: 1,
     beatSkills: emptySkills(),
@@ -388,6 +398,27 @@ export function normalizeCharacterProgress(
       const c = { ...base.expeditionChips, ...(raw.expeditionChips ?? {}) };
       (Object.keys(c) as ChipId[]).forEach((id) => { c[id] = integer(c[id], 0, CHIP_MAX_LEVEL); });
       return c;
+    })(),
+    // 아는 보급 id 로만 다시 만든다 — 저장된 쓰레기 키가 쌓이지 않게
+    expeditionSupplies: Object.fromEntries(
+      SUPPLIES.map((sp) => [sp.id, integer((raw.expeditionSupplies ?? {})[sp.id], 0, SUPPLY_MAX)]),
+    ) as SupplyStock,
+    // 날짜가 지난 기록은 읽는 순간 새 하루로 — 저장된 진행도가 어제 것이면 안 센다
+    expeditionDaily: (() => {
+      const d = raw.expeditionDaily;
+      if (!d || typeof d.day !== "string") return emptyDaily();
+      const rolled = rolledDaily({
+        day: d.day,
+        counts: {
+          intercept: integer(d.counts?.intercept, 0),
+          epic: integer(d.counts?.epic, 0),
+          clear: integer(d.counts?.clear, 0),
+        },
+        claimed: Array.isArray(d.claimed)
+          ? d.claimed.filter((x): x is DailyId => DAILIES.some((t) => t.id === x))
+          : [],
+      });
+      return rolled;
     })(),
     // 모르는 칩 id 는 빈 칸으로 — 저장된 값이 슬롯을 막으면 안 된다
     equippedChips: Array.from({ length: CHIP_SLOTS }, (_, i) => {
