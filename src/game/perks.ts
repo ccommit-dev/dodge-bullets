@@ -146,7 +146,8 @@ function rollRarity(odds: Record<PerkRarity, number>, r: number): PerkRarity {
  */
 export function pickPerks(world: GameWorld, rng: () => number = Math.random, count = 3, stageIndex = world.stageIndex ?? 0): PerkDef[] {
   const pool = PERKS.filter((p) => p.available(world));
-  const odds = rarityOdds(stageIndex);
+  // [선발 보급] 소모품 — 이번 3택만 전부 레어 이상. 쓰고 나면 꺼진다 (game/expeditionOps.ts)
+  const odds = world.draftBoost ? { common: 0, rare: 0.55, epic: 0.45 } : rarityOdds(stageIndex);
   const out: PerkDef[] = [];
   const order: PerkRarity[] = ["epic", "rare", "common"];
 

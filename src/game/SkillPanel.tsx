@@ -3,6 +3,10 @@ import { assetUrl } from "../asset";
 import { perksUnlockedBy, RARITY_LABEL } from "./perks";
 import { chipCost, CHIPS, CHIP_BY_ID, CHIP_MAX_LEVEL, type ChipId, type ChipLevels } from "./chips";
 import {
+  DAILIES, dailyClaimable, dailyDone, SUPPLIES, SUPPLY_MAX,
+  type DailyId, type DailyState, type SupplyId, type SupplyStock,
+} from "./expeditionOps";
+import {
   EXPEDITION_SKILLS,
   RANGED_WEAPONS,
   SKILL_BY_ID,
@@ -38,6 +42,11 @@ type Props = {
   chipSlots: number;
   onUpgradeChip: (id: ChipId) => void;
   onEquipChip: (slot: number, id: ChipId | null) => void;
+  /** 보급창 재고 — 다음 런 한 번에만 듣는 소모품 */
+  supplies: SupplyStock;
+  daily: DailyState;
+  onBuySupply: (id: SupplyId) => void;
+  onClaimDaily: (id: DailyId) => void;
   onEquipWeapon: (id: RangedWeaponId) => void;
   onUpgrade: (id: ExpeditionSkillId) => void;
 };
@@ -52,7 +61,10 @@ function canAfford(gold: number, seals: number, cost: { gold: number; seals: num
 export function SkillPanel({
   levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
+  supplies, daily, onBuySupply, onClaimDaily,
 }: Props) {
+  /** 화면이 길어져 세 갈래로 나눈다 — 강화 / 보급 / 임무 */
+  const [tab, setTab] = useState<"upgrade" | "supply">("upgrade");
   const [openId, setOpenId] = useState<ExpeditionSkillId | null>(null);
   /** 어느 슬롯에 끼울지 고르는 중 — null 이면 칩 목록만 본다 */
   const [pickSlot, setPickSlot] = useState<number | null>(null);
@@ -68,6 +80,70 @@ export function SkillPanel({
         <strong>+{summary.power}%</strong>
         <small>스킬을 강화해 원정 화력과 생존을 올리세요 · 누적 {summary.totalLevels}레벨</small>
       </div>
+
+      <div className="exp-sub-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === "upgrade"}
+          className={tab === "upgrade" ? "on" : ""} onClick={() => setTab("upgrade")}>강화</button>
+        <button type="button" role="tab" aria-selected={tab === "supply"}
+          className={tab === "supply" ? "on" : ""} onClick={() => setTab("supply")}>
+          보급 · 임무
+          {DAILIES.some((d) => dailyClaimable(daily, d.id)) && <i className="exp-sub-dot" aria-label="수령 가능" />}
+        </button>
+      </div>
+
+      {tab === "supply" ? (
+        <div className="exp-ops">
+          {/* 보급창 — 가이드: "영구 강화는 구매해야 효과가 있다. 완벽한 해금을 기다리며
+              자원을 쌓아 두기만 하면 성장만 늦어진다." 인장을 지금 쓰는 자리 */}
+          <section>
+            <b>원정 보급창 <small>다음 출격에 자동으로 쓰입니다</small></b>
+            <ul className="exp-supply-list">
+              {SUPPLIES.map((sp) => {
+                const have = supplies[sp.id] ?? 0;
+                const full = have >= SUPPLY_MAX;
+                return (
+                  <li key={sp.id}>
+                    <span>
+                      <b>{sp.name} {have > 0 && <i>×{have}</i>}</b>
+                      <em>{sp.desc}</em>
+                    </span>
+                    <button type="button" disabled={full || seals < sp.seals} onClick={() => onBuySupply(sp.id)}>
+                      {full ? "가득" : `인장 ${sp.seals}`}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          {/* 일일 임무 — "짧은 런을 여러 번" 이라는 가이드의 리듬에 이유를 붙인다.
+              보상이 인장이라 스킬·칩·보급 전부로 되돌아간다 */}
+          <section>
+            <b>오늘의 임무 <small>매일 0시 초기화</small></b>
+            <ul className="exp-daily-list">
+              {DAILIES.map((d) => {
+                const n = daily.counts[d.id] ?? 0;
+                const done = dailyDone(daily, d.id);
+                const claimed = daily.claimed.includes(d.id);
+                return (
+                  <li key={d.id} className={claimed ? "claimed" : done ? "done" : ""}>
+                    <span>
+                      <b>{d.name}</b>
+                      <i className="exp-daily-bar">
+                        <b style={{ width: `${Math.min(100, (n / d.goal) * 100)}%` }} />
+                        <small>{Math.min(n, d.goal)}/{d.goal}</small>
+                      </i>
+                    </span>
+                    <button type="button" disabled={!dailyClaimable(daily, d.id)} onClick={() => onClaimDaily(d.id)}>
+                      {claimed ? "수령함" : `인장 +${d.seals}`}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </div>
+      ) : (<>
 
       {/* 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (사용자 지시 2026-09-28) */}
       <div className="exp-weapon-row">
@@ -192,6 +268,8 @@ export function SkillPanel({
           );
         })}
       </div>
+
+      </>)}
 
       {open && (() => {
         const lv = levels[open.id] ?? 0;

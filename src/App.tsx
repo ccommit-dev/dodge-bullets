@@ -58,6 +58,10 @@ import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type PerkId } from "./game/perks";
 import { effectiveCooldown } from "./game/skillShots";
 import { chipCost, chipModsOf, chipSlotsOpen, CHIP_MAX_LEVEL, type ChipId } from "./game/chips";
+import {
+  dailyClaimable, DAILY_BY_ID, rolledDaily, SUPPLY_BY_ID, SUPPLY_MAX,
+  type DailyId, type SupplyId,
+} from "./game/expeditionOps";
 import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
 import { EXPEDITION_SKILLS } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
@@ -728,6 +732,7 @@ function App() {
                 enhancementMaterials: growth.materials + Math.floor(world.supplies / 8)
                   + world.enemyKills + world.perfectDodges * 2 + world.chests * 4,
                 dodgeStage: world.stageIndex + 1,
+                dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 1 },
                 // 배속은 순수한 손해가 아니라 선택이어야 한다 — 빨리 돌린 만큼 인장을 더 준다 (2026-09-28)
                 expeditionSeals: Math.round(world.expeditionSeals * (speedRef.current > 1 ? 1.25 : 1)),
                 lastContent: "dodge",
@@ -916,6 +921,34 @@ function App() {
       applyInsetsToWorld(world, insetsRef.current);
       loadLoadout(world, shopLevelsRef.current, progress);
       resetRun(world, fromStage);
+      // 보급 소모 — 산 것을 이번 런에 쓴다. 안 쓰고 남겨 두면 인장만 잠긴다
+      const stock = progress.expeditionSupplies;
+      const used: SupplyId[] = [];
+      if (stock.draft > 0) { world.draftBoost = true; used.push("draft"); }
+      if (stock.primed > 0) {
+        (Object.keys(world.skillTimers) as (keyof typeof world.skillTimers)[]).forEach((k) => { world.skillTimers[k] = 0; });
+        world.slashGauge = Math.min(99, world.slashGauge + 30);
+        used.push("primed");
+      }
+      if (stock.insurance > 0) {
+        world.player.maxHp += 1;
+        world.player.hp += 1;
+        world.runMods.maxHpBonus += 1;   // 스테이지가 넘어가도 유지되게
+        used.push("insurance");
+      }
+      if (used.length) {
+        setHp(world.player.hp);
+        setMaxHp(world.player.maxHp);
+        showBanner("보급 사용", used.map((id) => SUPPLY_BY_ID[id].name).join(" · "), false);
+        void (async () => {
+          const next = await updateCharacterProgress(userHashRef.current, (p) => {
+            const s = { ...p.expeditionSupplies };
+            used.forEach((id) => { s[id] = Math.max(0, (s[id] ?? 0) - 1); });
+            return { ...p, expeditionSupplies: s };
+          });
+          setProgress(next);
+        })();
+      }
     }
     prepareWorldForStage(fromStage);
     scoreRef.current = 0;
@@ -1016,6 +1049,38 @@ function App() {
       if (worldRef.current) loadLoadout(worldRef.current, merged, next);
     })();
   }, []);
+
+  /** 보급 구매 — 인장을 "지금 쓰는" 자리. 스킬·칩과 같은 재화라 선택이 생긴다 */
+  const handleBuySupply = useCallback((id: SupplyId) => {
+    const def = SUPPLY_BY_ID[id];
+    if (progress.expeditionSeals < def.seals) return;
+    if ((progress.expeditionSupplies[id] ?? 0) >= SUPPLY_MAX) return;
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
+        ...p,
+        expeditionSeals: p.expeditionSeals - def.seals,
+        expeditionSupplies: { ...p.expeditionSupplies, [id]: (p.expeditionSupplies[id] ?? 0) + 1 },
+      }));
+      setProgress(next);
+    })();
+  }, [progress]);
+
+  /** 일일 임무 보상 수령 — 보상은 인장이라 스킬·칩·보급 전부로 되돌아간다 */
+  const handleClaimDaily = useCallback((id: DailyId) => {
+    if (!dailyClaimable(rolledDaily(progress.expeditionDaily), id)) return;
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const d = rolledDaily(p.expeditionDaily);
+        if (!dailyClaimable(d, id)) return p;
+        return {
+          ...p,
+          expeditionSeals: p.expeditionSeals + DAILY_BY_ID[id].seals,
+          expeditionDaily: { ...d, claimed: [...d.claimed, id] },
+        };
+      });
+      setProgress(next);
+    })();
+  }, [progress]);
 
   const handleBeginPlay = useCallback(() => {
     lastTsRef.current = 0;
@@ -1496,6 +1561,10 @@ function App() {
                 gold={progress.sharedCoins}
                 seals={progress.expeditionSeals}
                 dodgeBestStage={progress.dodgeBestStage}
+                supplies={progress.expeditionSupplies}
+                daily={rolledDaily(progress.expeditionDaily)}
+                onBuySupply={handleBuySupply}
+                onClaimDaily={handleClaimDaily}
                 chipLevels={progress.expeditionChips}
                 equippedChips={progress.equippedChips}
                 chipSlots={chipSlotsOpen(progress.dodgeBestStage)}
@@ -1681,7 +1750,11 @@ function App() {
             {perkOptions.map((perk, i) => (
               <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id} rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => {
                 const world = worldRef.current;
-                if (world) applyPerk(world, perk.id as PerkId);
+                if (world) {
+                  applyPerk(world, perk.id as PerkId);
+                  if (perk.rarity === "epic") world.epicPicks += 1;
+                  world.draftBoost = false;   // [선발 보급]은 한 번만 듣는다
+                }
                 trackEvent("upgrade", { content: "dodge", result: `${perk.rarity}:${perk.id}`, stage: (world?.stageIndex ?? 0) + 1 });
                 lastTsRef.current = 0;
                 stateRef.current = "playing";
