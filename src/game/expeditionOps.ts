@@ -24,9 +24,11 @@ export type SupplyDef = {
 };
 
 export const SUPPLIES: SupplyDef[] = [
-  { id: "draft", name: "선발 보급", desc: "다음 런의 첫 3택이 전부 레어 이상으로 나온다", seals: 12 },
-  { id: "primed", name: "예비 탄창", desc: "출격 즉시 모든 스킬 재사용 완료 · 일섬 게이지 +30", seals: 8 },
-  { id: "insurance", name: "보험 계약", desc: "이번 런 동안 최대 HP +1", seals: 6 },
+  // 이름은 활·지팡이 원정의 물건이어야 한다 — "탄창"(총기)·"보험 계약"(현대)은 세계에 없다
+  { id: "draft", name: "정예 선발", desc: "다음 런의 첫 3택이 전부 레어 이상으로 나온다", seals: 12 },
+  // 출격 시점엔 쿨타임이 이미 0 이라 "재사용 완료"는 빈말이었다 — 30초 동안 빨리 쏘는 것으로
+  { id: "primed", name: "예비 화살통", desc: "출격 후 30초 동안 모든 스킬 재사용 −30% · 일섬 게이지 +30", seals: 8 },
+  { id: "insurance", name: "수호 부적", desc: "이번 런 동안 최대 HP +1", seals: 6 },
 ];
 
 export const SUPPLY_BY_ID: Record<SupplyId, SupplyDef> =
@@ -37,6 +39,10 @@ export type SupplyStock = Record<SupplyId, number>;
 export function emptySupplyStock(): SupplyStock {
   return { draft: 0, primed: 0, insurance: 0 };
 }
+
+/** [예비 화살통] 이 듣는 시간(ms) 과 재사용 배수 */
+export const PRIMED_MS = 30_000;
+export const PRIMED_COOLDOWN_MUL = 0.7;
 
 /** 한 번에 쌓아 둘 수 있는 수량 — 무한히 쟁여 두면 "지금 쓴다"는 선택이 사라진다 */
 export const SUPPLY_MAX = 5;

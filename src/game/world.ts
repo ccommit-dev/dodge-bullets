@@ -83,6 +83,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     skillKills: 0,
     epicPicks: 0,
     draftBoost: false,
+    primedMs: 0,
     runMods: emptyRunMods(),
     chips: emptyChipMods(),
     ultFlashMs: 0,
@@ -202,8 +203,8 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   resetSkillShots(world);
   // 카드는 런 단위 — 새 런에서만 비운다 (스테이지 경계에서는 유지)
   world.runMods = emptyRunMods();
-  world.epicPicks = 0;
   world.draftBoost = false;
+  world.primedMs = 0;
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
   applyStageLayout(world);

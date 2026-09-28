@@ -3912,6 +3912,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 }
 .perk-odds { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px; margin:0 0 2px; color:#94a3b8; font-size:10px; font-weight:700; }
 .perk-odds .perk-rarity { margin:0 0 0 6px; }
+/* 원정 탭 — 다음 출격에 자동으로 쓰일 보급 (2026-09-28) */
+.exp-next-supply { margin:0; color:#fde68a; font-size:10px; font-weight:700; text-align:center; }
 /* 강화 / 보급·임무 하위 탭 (2026-09-28) */
 .exp-sub-tabs { display:flex; gap:6px; justify-content:center; }
 .exp-sub-tabs button { position:relative; padding:6px 14px; border:1px solid rgba(103,232,249,.3); border-radius:99px; background:rgba(4,14,28,.7); color:#94a3b8; font-size:12px; font-weight:800; cursor:pointer; }
@@ -3923,6 +3925,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-ops section > b small { color:#64748b; font-size:9px; font-weight:700; }
 .exp-supply-list, .exp-daily-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
 .exp-supply-list li, .exp-daily-list li { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(103,232,249,.2); border-radius:10px; background:rgba(4,14,28,.6); }
+.exp-supply-list img { flex:none; width:32px; height:32px; object-fit:contain; }
 .exp-supply-list span, .exp-daily-list span { display:grid; gap:3px; min-width:0; flex:1; }
 .exp-supply-list b, .exp-daily-list b { color:#e0f2fe; font-size:11px; font-weight:800; }
 .exp-supply-list b i { color:#fde68a; font-style:normal; font-size:10px; }

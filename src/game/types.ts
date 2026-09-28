@@ -283,8 +283,10 @@ export type GameWorld = {
   skillKills: number;
   /** 이번 런에서 고른 에픽 카드 수 — 일일 임무가 센다 (2026-09-28) */
   epicPicks: number;
-  /** [선발 보급] 소모품 — 다음 3택을 전부 레어 이상으로. 한 번 쓰면 꺼진다 */
+  /** [정예 선발] 소모품 — 다음 3택을 전부 레어 이상으로. 한 번 쓰면 꺼진다 */
   draftBoost: boolean;
+  /** [예비 화살통] 소모품 — 남은 동안 모든 스킬 재사용이 짧다 (ms) */
+  primedMs: number;
   /** 런 중 강화 카드가 쌓은 스킬 진화 — 런이 끝나면 사라진다 (game/perks.ts) */
   runMods: RunMods;
   /**

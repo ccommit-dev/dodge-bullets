@@ -69,7 +69,7 @@ await clickText(".nav-popup-grid button", "화살 원정"); await sleep(1600);
 
 // ── 메뉴: 무기 탈착 행 ──
 const menu = await page.evaluate(() => {
-  const tab = [...document.querySelectorAll(".exp-menu-tabs button")].find((b) => b.textContent.includes("스킬"));
+  const tab = [...document.querySelectorAll(".exp-menu-tabs button")].find((b) => b.textContent.includes("정비"));
   tab?.click();
   return true;
 });

@@ -1,4 +1,5 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
+import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
 import {
   chainCooldown, chainTargets,
   flameCooldown, flameRadius,
@@ -130,6 +131,7 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
 
 /** 매 프레임 — 쿨타임을 돌리고 다 찬 스킬을 쏜다 */
 export function updateSkillShots(world: GameWorld, dtSec: number): void {
+  if (world.primedMs > 0) world.primedMs = Math.max(0, world.primedMs - dtSec * 1000);
   const lv = world.skillLevels;
   const timers = world.skillTimers;
 
@@ -139,6 +141,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     timers[id] = (timers[id] ?? 0) - dtSec;
     if (timers[id] > 0) return;
     timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul * world.chips.cooldownMul
+      * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1)
       * (id === "volley" && world.runMods.evolutions.volley === "beam" ? 1.35 : 1)
       * (id === "flame" && world.runMods.evolutions.flame === "pyre" ? 1.25 : 1);
     fire();
@@ -270,4 +273,5 @@ export function resetSkillShots(world: GameWorld): void {
   for (const s of world.skillShots) s.active = false;
   world.skillTimers = { volley: 0, pierce: 0, flame: 0, frost: 0, chain: 0, ultimate: 0 };
   world.skillKills = 0;
+  world.epicPicks = 0;   // 클리어마다 일일 임무에 더하므로 skillKills 처럼 스테이지 단위
 }
