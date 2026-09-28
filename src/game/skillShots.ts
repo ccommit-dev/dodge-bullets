@@ -26,7 +26,7 @@ export type SkillShotKind = "bolt" | "pierce" | "flame" | "frost" | "chain";
 /** 카드가 하나도 안 쌓인 상태 — 이게 기존 난이도 기준선이다 */
 export function emptyRunMods(): RunMods {
   return {
-    volleyExtra: 0, boltPierce: 0, flameRadiusMul: 1, chainExtra: 0, frostSlowBonus: 0, cooldownMul: 1,
+    volleyExtra: 0, boltPierce: 0, pierceWidthMul: 1, flameRadiusMul: 1, chainExtra: 0, frostSlowBonus: 0, cooldownMul: 1,
     chillHunt: false, chillBurst: false, evolutions: {},
     moveSpeedMul: 1, dashCooldownMul: 1, slashLevelBonus: 0, maxHpBonus: 0,
   };
@@ -163,7 +163,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   });
 
   tick("pierce", () => {
-    spawn(world, { kind: "pierce", vy: -980, radius: pierceWidth(lv.pierce) / 2, lifeMs: 1600 });
+    spawn(world, { kind: "pierce", vy: -980, radius: pierceWidth(lv.pierce) * world.runMods.pierceWidthMul / 2, lifeMs: 1600 });
   });
 
   tick("flame", () => {

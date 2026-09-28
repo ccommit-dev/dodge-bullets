@@ -172,6 +172,8 @@ export type RunMods = {
   volleyExtra: number;
   /** 볼트 하나가 추가로 더 꿰는 화살 수 */
   boltPierce: number;
+  /** 관통 화살 폭 배수 */
+  pierceWidthMul: number;
   /** 화염탄 폭발 반경 배수 */
   flameRadiusMul: number;
   /** 번개 사슬 대상 +N */

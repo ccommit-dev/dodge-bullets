@@ -628,6 +628,40 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     perks.applyPerk(ev, "evoSeeker");
     ok("이미 진화한 스킬은 다시 진화하지 않는다 (덮어쓰기 없음)", ev.runMods.evolutions.volley === "beam");
 
+    // ── needs 목록이 available() 과 어긋나면 강화 화면이 거짓말을 한다.
+    //    available() 이 진실이고 needs 는 그것을 밖에서 읽으려고 적어 둔 목록이다.
+    {
+      const all = ["volley", "pierce", "flame", "frost", "chain", "ultimate"];
+      const drift = [];
+      for (const p of perks.PERKS) {
+        if (!p.needs) {
+          // needs 가 없는 카드는 스킬에 매이면 안 된다 — 아무 스킬 없이도 뜨거나(일반),
+          // 스킬 전부 보유 상태에서만 뜨는 [과부하] 처럼 needs 를 안 쓰는 것이어야 한다
+          continue;
+        }
+        // 필요한 스킬을 하나씩 빼 보면 반드시 후보에서 빠져야 한다
+        for (const miss of p.needs) {
+          const levels = {};
+          for (const id of p.needs) if (id !== miss) levels[id] = 1;
+          if (p.available(w(levels))) drift.push(p.id + " (" + miss + " 없이도 뜸)");
+        }
+        // 필요한 스킬을 모두 들면 떠야 한다
+        const full = {};
+        for (const id of p.needs) full[id] = 1;
+        if (!p.available(w(full))) drift.push(p.id + " (전부 들어도 안 뜸)");
+      }
+      ok("카드의 needs 목록과 실제 available() 조건이 일치한다", drift.length === 0, drift.slice(0, 3).join(", "));
+
+      // 스킬마다 강화 화면이 보여 줄 카드가 실제로 있다 (일섬·관통은 카드 없음이 정상)
+      const shown = all.map((id) => [id, perks.perksUnlockedBy(id).length]);
+      ok("빙결을 올리면 런 중 카드 5장이 열린다 (심층·서리 사냥·열충격·파쇄·지속)",
+        perks.perksUnlockedBy("frost").map((p) => p.id).sort().join() === "chillBurst,chillHunt,evoLingering,evoShatter,frostDeep",
+        perks.perksUnlockedBy("frost").map((p) => p.id).join());
+      ok("스킬마다 런 중 열리는 카드가 있다 — 연사 6 · 관통 1 · 화염 4 · 빙결 5 · 사슬 1",
+        JSON.stringify(shown) === JSON.stringify([["volley",6],["pierce",1],["flame",4],["frost",5],["chain",1],["ultimate",0]]),
+        JSON.stringify(shown));
+    }
+
     // ── 카드는 런 단위 — 스테이지 경계에서 지워지면 "이번 런 동안"이 거짓말이 된다
     {
       const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
