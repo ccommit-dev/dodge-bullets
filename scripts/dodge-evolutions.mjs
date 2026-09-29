@@ -11,16 +11,16 @@
 import { simulateStage } from "./dodge-sim.mjs";
 
 const SEEDS = [11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 1212];
-const SKILLS = { volley: 6, pierce: 4, flame: 4, frost: 4, chain: 2, ultimate: 4 };
+const SKILLS = { fire: 4, water: 4, ice: 4, earth: 2, bolt: 2, ultimate: 4 };
 
 const BUILDS = [
   ["진화 없음", {}],
-  ["관통 광선", { evolutions: { volley: "beam" } }],
-  ["유도 볼트", { evolutions: { volley: "seeker" } }],
-  ["확산 폭발", { evolutions: { flame: "cluster" }, flameRadiusMul: 1.6 }],
-  ["화염 장판", { evolutions: { flame: "pyre" } }],
-  ["서리 파쇄", { evolutions: { frost: "shatter" } }],
-  ["지속 서리", { evolutions: { frost: "lingering" } }],
+  ["관통 광선", { evolutions: { basic: "beam" } }],
+  ["유도 화살", { evolutions: { basic: "seeker" } }],
+  ["확산 폭발", { evolutions: { fire: "cluster" }, fireRadiusMul: 1.6 }],
+  ["화염 장판", { evolutions: { fire: "pyre" } }],
+  ["서리 파쇄", { evolutions: { ice: "shatter" } }],
+  ["지속 서리", { evolutions: { ice: "lingering" } }],
 ];
 
 const rows = [];

@@ -4,7 +4,7 @@ import {
   DAILIES, emptyDaily, emptySupplyStock, rolledDaily, SUPPLIES, SUPPLY_MAX,
   type DailyId, type DailyState, type SupplyStock,
 } from "../game/expeditionOps";
-import { emptySkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "../game/skills";
+import { emptySkillLevels, migrateSkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
@@ -360,7 +360,8 @@ export function normalizeCharacterProgress(
   (Object.keys(beatSkills) as Array<keyof BeatSkills>).forEach((id) => {
     beatSkills[id] = integer(beatSkills[id], 0, 99);
   });
-  const expeditionSkills = { ...base.expeditionSkills, ...(raw.expeditionSkills ?? {}) };
+  // 2026-09-28 저장(연속 사격·관통·화염탄·빙결·번개)은 새 속성 화살 키로 옮긴다 — 올린 레벨을 잃지 않게
+  const expeditionSkills = { ...base.expeditionSkills, ...migrateSkillLevels(raw.expeditionSkills as Record<string, unknown> | undefined) };
   (Object.keys(expeditionSkills) as ExpeditionSkillId[]).forEach((id) => {
     expeditionSkills[id] = integer(expeditionSkills[id], 0, SKILL_MAX_LEVEL);
   });

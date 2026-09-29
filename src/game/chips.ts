@@ -25,8 +25,8 @@ export const CHIP_SLOT_UNLOCK = [1, 2, 4];
 export type ChipDef = {
   id: ChipId;
   name: string;
-  /** 어떤 스킬과 맞물리는지 — 강화 화면이 안내에 쓴다. null 이면 스킬과 무관한 범용 */
-  pairs: ExpeditionSkillId | null;
+  /** 어떤 스킬과 맞물리는지 — 강화 화면이 안내에 쓴다. "basic" 은 기본 사격, null 이면 범용 */
+  pairs: ExpeditionSkillId | "basic" | null;
   desc: (lv: number) => string;
 };
 
@@ -34,9 +34,9 @@ export type ChipDef = {
 export type ChipMods = {
   /** 모든 원거리 스킬 재사용 배수 */
   cooldownMul: number;
-  /** 연속 사격 발수 +N */
+  /** 기본 사격 발수 +N */
   volleyExtra: number;
-  /** 화염탄 폭발 반경 배수 */
+  /** 불화살 폭발 반경 배수 */
   flameRadiusMul: number;
   /** 빙결 지속 배수 */
   chillMsMul: number;
@@ -68,9 +68,9 @@ export const chipGauge = (lv: number) => 1 + 0.05 * lv;                    // ed
 
 export const CHIPS: ChipDef[] = [
   { id: "focus", name: "조준 칩", pairs: null, desc: (lv) => `모든 원거리 스킬 재사용 −${Math.round((1 - chipCooldown(lv)) * 100)}%` },
-  { id: "barrage", name: "연사 칩", pairs: "volley", desc: (lv) => `연속 사격 발수 +${chipVolley(lv)} (Lv3 · Lv5)` },
-  { id: "ember", name: "잔열 칩", pairs: "flame", desc: (lv) => `화염탄 폭발 반경 +${Math.round((chipFlame(lv) - 1) * 100)}%` },
-  { id: "rime", name: "서리 칩", pairs: "frost", desc: (lv) => `빙결 지속 +${Math.round((chipChill(lv) - 1) * 100)}% (콤보가 오래 물린다)` },
+  { id: "barrage", name: "연사 칩", pairs: "basic", desc: (lv) => `기본 사격 발수 +${chipVolley(lv)} (Lv3 · Lv5)` },
+  { id: "ember", name: "잔열 칩", pairs: "fire", desc: (lv) => `불화살 폭발 반경 +${Math.round((chipFlame(lv) - 1) * 100)}%` },
+  { id: "rime", name: "서리 칩", pairs: "ice", desc: (lv) => `빙결 지속 +${Math.round((chipChill(lv) - 1) * 100)}% (콤보가 오래 물린다)` },
   { id: "vitality", name: "활력 칩", pairs: null, desc: (lv) => `최대 HP +${chipLives(lv)} (Lv2 · Lv5)` },
   { id: "edge", name: "예기 칩", pairs: "ultimate", desc: (lv) => `일섬 게이지 획득 +${Math.round((chipGauge(lv) - 1) * 100)}%` },
 ];

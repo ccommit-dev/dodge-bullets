@@ -56,7 +56,7 @@ import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type PerkId } from "./game/perks";
-import { effectiveCooldown } from "./game/skillShots";
+import { basicCooldown, effectiveCooldown } from "./game/skillShots";
 import { chipCost, chipModsOf, chipSlotsOpen, CHIP_MAX_LEVEL, type ChipId } from "./game/chips";
 import {
   DAILIES, dailyClaimable, DAILY_BY_ID, PRIMED_MS, rolledDaily, SUPPLIES, SUPPLY_BY_ID, SUPPLY_MAX,
@@ -111,14 +111,14 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 }
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
-/** 성장 선택 아이콘 — 일반 카드는 기존 보상 아이콘 재사용 (게이지=스킬 오브 · 이동=부스트 · HP=경험 오브 · 검격=강화석 · 회피=무기 이펙트) */
-const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cores", speed: "boost", heal: "exp", slash: "materials", dash: "weaponFx" };
-/** 스킬을 바꾸는 카드는 그 스킬의 아이콘을 그대로 쓴다 — 무엇이 세지는지 한 눈에 보이게 (2026-09-28) */
+/** 성장 선택 아이콘 — 일반 카드는 기존 보상 아이콘 재사용 (게이지=스킬 오브 · HP=경험 오브) */
+const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cores", heal: "exp" };
+/** 스킬을 바꾸는 카드는 그 스킬의 아이콘을 그대로 쓴다 — 무엇이 세지는지 한 눈에 보이게. basic 은 기본 사격(활) (2026-09-29) */
 const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
-  volleyExtra: "volley", boltPierce: "volley", flameWide: "flame", chainExtra: "chain", frostDeep: "frost",
-  volleyStorm: "volley", overdrive: "ultimate", chillHunt: "frost", chillBurst: "flame",
-  pierceWide: "pierce", evoBeam: "pierce", evoSeeker: "volley", evoCluster: "flame", evoPyre: "flame",
-  evoShatter: "frost", evoLingering: "frost",
+  shotExtra: "basic", quickdraw: "basic", shotPierce: "basic", arrowStorm: "basic", overdrive: "basic",
+  evoBeam: "basic", evoSeeker: "basic",
+  boltExtra: "bolt", waterMore: "water", fireWide: "fire", iceDeep: "ice", earthHeavy: "earth",
+  chillHunt: "ice", chillBurst: "fire", evoCluster: "fire", evoPyre: "fire", evoShatter: "ice", evoLingering: "ice",
 };
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
@@ -212,7 +212,7 @@ function App() {
   const [speedMul, setSpeedMul] = useState(1);
   const speedRef = useRef(1);
   /** 스킬 슬롯 — 자동 발사라 쿨타임이 안 보이면 내 스킬이 도는지 알 수 없다 */
-  const [skillHud, setSkillHud] = useState<{ id: ExpeditionSkillId; lv: number; ready: number }[]>([]);
+  const [skillHud, setSkillHud] = useState<{ id: ExpeditionSkillId | "basic"; lv: number; ready: number }[]>([]);
   const skillHudTsRef = useRef(0);
   const [score, setScore] = useState(0);
   const [lastScore, setLastScore] = useState(0);
@@ -619,13 +619,17 @@ function App() {
           }
           if (ts - skillHudTsRef.current > 100) {
             skillHudTsRef.current = ts;
-            setSkillHud(EXPEDITION_SKILLS
+            // 기본 사격은 무기의 것 — 스킬이 없어도 독이 비지 않게 맨 앞에 (2026-09-29)
+            const basic = world.rangedWeapon !== "none"
+              ? [{ id: "basic" as const, lv: 0, ready: 1 - Math.max(0, world.basicTimer) / Math.max(0.01, basicCooldown(world)) }]
+              : [];
+            setSkillHud([...basic, ...EXPEDITION_SKILLS
               .filter((d) => d.id !== "ultimate" && (world.skillLevels[d.id] ?? 0) > 0)
               .map((d) => {
                 const full = effectiveCooldown(d.id, world.skillLevels[d.id], world.rangedWeapon) * world.runMods.cooldownMul;
                 const left = Math.max(0, world.skillTimers[d.id] ?? 0);
                 return { id: d.id, lv: world.skillLevels[d.id], ready: full > 0 ? 1 - left / full : 1 };
-              }));
+              })]);
           }
           if (world.runLevel !== hudLevelRef.current || Math.abs(world.runXp - hudXpRef.current) >= 1) {
             hudLevelRef.current = world.runLevel;
@@ -1651,11 +1655,11 @@ function App() {
           {skillHud.length > 0 && (
             <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
               {skillHud.map((s) => (
-                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""}`} title={SKILL_BY_ID[s.id].name}>
-                  <img src={assetUrl(`dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
+                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""}`} title={s.id === "basic" ? "기본 사격" : SKILL_BY_ID[s.id].name}>
+                  <img src={assetUrl(`dodge/skills/${s.id === "basic" ? "basic" : SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
                   {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
                   <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />
-                  <b>{s.lv}</b>
+                  {s.id !== "basic" && <b>{s.lv}</b>}
                 </span>
               ))}
               <span className="skill-dock-auto">자동 조준</span>

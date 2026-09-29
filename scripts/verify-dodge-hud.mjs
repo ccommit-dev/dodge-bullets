@@ -25,7 +25,7 @@ const progress = {
   dodgeBestStage: 4, towerBestFloor: 0, idleClaimedAt: now, updatedAt: now, onboardingStep: 4,
   partyIds: ["mia"], partyCap: 4, skillPoints: 6,
   expeditionSeals: 400,
-  expeditionSkills: { volley: 6, pierce: 4, flame: 2, frost: 2, chain: 2, ultimate: 4 },
+  expeditionSkills: { fire: 6, water: 4, ice: 2, earth: 2, bolt: 2, ultimate: 4 },
   expeditionWeapon: "staff",
   expeditionChips: { focus: 3, barrage: 3, ember: 2, rime: 4, vitality: 2, edge: 1 },
   equippedChips: ["focus", "rime", null],
@@ -124,7 +124,7 @@ ok("칩 슬롯 3칸 중 2칸이 차 있고, 목록 6종이 실제 수치를 말�
 ok("끼운 칩 2종이 목록에서 장착 표시된다", chipUi.equipped === 2, String(chipUi.equipped));
 
 // 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지" 를 보여 준다 (가이드의 투자 조언)
-await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[3]?.click());
+await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[2]?.click());
 await sleep(400);
 const unlocks = await page.evaluate(() => {
   const rows = [...document.querySelectorAll(".exp-skill-unlocks li")];
@@ -146,10 +146,15 @@ await page.evaluate(() => {
 });
 await sleep(1500);
 
+// 전투에 못 들어갔으면 무엇이 화면에 남아 있는지 말해 준다 (2026-09-29)
+const onScreen = await page.evaluate(() => ({ canvas: !!document.querySelector("canvas"), text: document.body.innerText.replace(/s+/g, " ").slice(0, 240) }));
+if (!onScreen.canvas) { console.log("DEBUG 전투 진입 실패 —", onScreen.text); }
+
 // 1) 겹침 — 캔버스 일섬 게이지 사각형 vs DOM HUD
 const hud = await page.evaluate(() => {
   const w = window.__dodgeWorld;
-  if (!w) return { missing: true };
+  const canvasEl = document.querySelector("canvas");
+  if (!w || !canvasEl) return { missing: true };
   const canvas = document.querySelector("canvas");
   const cr = canvas.getBoundingClientRect();
   // draw.ts 와 같은 계산 — 여기가 어긋나면 이 단언은 의미가 없으므로 같은 식을 그대로 쓴다
@@ -186,7 +191,7 @@ for (let i = 0; i < 8 && !fired; i += 1) {
   fired = await page.evaluate(() => {
     const w = window.__dodgeWorld;
     if (!w) return null;
-    const shots = w.skillShots.filter((s) => s.active).map((s) => s.kind);
+    const shots = w.skillShots.filter((s) => s.active).map((s) => s.element);
     return shots.length ? { weapon: w.rangedWeapon, lv: w.skillLevels, shots } : null;
   });
 }
@@ -201,7 +206,7 @@ ok("끼운 칩이 전투 월드에 실린다 (안 끼운 칩은 중립)",
   && chipLoaded.volleyExtra === 0 && chipLoaded.flameRadiusMul === 1,
   JSON.stringify(chipLoaded));
 ok("진행도의 스킬 레벨과 장착 무기가 전투 월드에 실린다",
-  !!loaded && loaded.weapon === "staff" && loaded.lv.volley === 6 && loaded.lv.pierce === 4,
+  !!loaded && loaded.weapon === "staff" && loaded.lv.fire === 6 && loaded.lv.water === 4,
   JSON.stringify(loaded));
 ok("장착 스킬이 전투 중 실제로 발사된다", !!fired, fired ? fired.shots.join(",") : "8초 동안 탄 없음");
 // 3) 레벨업 강화 카드 — 장착한 스킬의 진화·콤보가 실제로 후보에 뜨는가
@@ -223,25 +228,25 @@ ok("레벨업하면 강화 카드 3장이 뜬다", perk.open && perk.count === 3
 ok("카드마다 등급이 붙고 화면이 스테이지 등급 확률을 밝힌다",
   perk.rarities?.length === 3 && perk.rarities.every((r) => /rarity-(common|rare|epic)/.test(r)) && !!perk.oddsLine,
   (perk.rarities ?? []).join() + " | " + (perk.oddsLine ?? ""));
-// 지팡이 로드아웃(volley 6 · flame 2 · frost 2 · chain 2)이면 스킬/콤보 카드가 후보에 들어 있다.
+// 지팡이 로드아웃(fire 6 · water 4 · ice 2 · earth 2 · bolt 2)이면 스킬/콤보 카드가 후보에 들어 있다.
 // 3장은 무작위라 "매번 스킬 카드"를 요구할 수는 없고, 후보 풀에 들어갔는지를 본다.
 const pool = await page.evaluate(() => {
   const w = window.__dodgeWorld;
   return w ? { lv: w.skillLevels, mods: w.runMods } : null;
 });
 ok("전투 월드가 런 강화칸(runMods)을 들고 있다 — 카드가 쌓일 자리",
-  !!pool && pool.mods && pool.mods.volleyExtra === 0 && pool.mods.flameRadiusMul === 1, JSON.stringify(pool?.mods));
+  !!pool && pool.mods && pool.mods.shotExtra === 0 && pool.mods.fireRadiusMul === 1, JSON.stringify(pool?.mods));
 
 // 한 장 고르면 실제로 runMods 가 움직이는가 (스킬 카드가 뽑혔을 때만 검사)
 const before = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
 await page.evaluate(() => {
   const skill = [...document.querySelectorAll(".perk-choice")]
-    .find((c) => [...c.classList].some((k) => /perk-(volleyExtra|boltPierce|flameWide|chainExtra|frostDeep|chillHunt|chillBurst)/.test(k)));
+    .find((c) => [...c.classList].some((k) => /perk-(shotExtra|quickdraw|shotPierce|boltExtra|waterMore|fireWide|iceDeep|earthHeavy|chillHunt|chillBurst|arrowStorm|overdrive|evo)/.test(k)));
   (skill ?? document.querySelector(".perk-choice"))?.click();
 });
 await sleep(900);
 const after = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
-const skillCardOffered = perk.ids.some((id) => /volleyExtra|boltPierce|flameWide|chainExtra|frostDeep|chillHunt|chillBurst/.test(id));
+const skillCardOffered = perk.ids.some((id) => /shotExtra|quickdraw|shotPierce|boltExtra|waterMore|fireWide|iceDeep|earthHeavy|chillHunt|chillBurst|arrowStorm|overdrive|evo/.test(id));
 ok("스킬 카드를 고르면 runMods 가 실제로 바뀐다", !skillCardOffered || before !== after,
   skillCardOffered ? `${before} → ${after}` : "이번 3택에 스킬 카드가 안 뽑힘(무작위) — 건너뜀");
 
@@ -258,10 +263,11 @@ const dock = await page.evaluate(() => {
     speed: document.querySelector(".speed-toggle")?.textContent?.trim(),
   };
 });
-// 지팡이 로드아웃은 volley·flame·frost·chain 4종 (pierce 4 포함이면 5종). 일섬은 슬롯에 안 넣는다
-ok("장착한 원거리 스킬이 전투 슬롯으로 보인다 (일섬 제외)",
-  dock.slots === 5 && dock.auto && dock.levels.join() === "6,4,2,2,2", JSON.stringify(dock.levels) + " auto=" + dock.auto);
-ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 5 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
+// 지팡이 로드아웃은 불·물·얼음·흙·번개 5종. 일섬은 슬롯에 안 넣는다
+// 맨 앞은 기본 사격(무기의 것, 레벨 없음) — 스킬이 없는 계정도 독이 비지 않는다 (2026-09-29)
+ok("전투 슬롯: 기본 사격 + 장착한 속성 화살 5종 (일섬 제외)",
+  dock.slots === 6 && dock.auto && dock.levels[0] === "?" && dock.levels.slice(1).join() === "6,4,2,2,2", JSON.stringify(dock.levels) + " auto=" + dock.auto);
+ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 6 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
 ok("일시정지·배속 버튼이 전투 중에 있다", dock.pause && dock.speed === "×1", String(dock.speed));
 
 // 일시정지가 실제로 세계를 멈추는가

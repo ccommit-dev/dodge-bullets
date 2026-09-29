@@ -1,5 +1,5 @@
 import type { ChipMods } from "./chips";
-import type { SkillShot } from "./skillShots";
+import type { SkillFx, SkillShot } from "./skillShots";
 import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
 export type GameState = "ready" | "intro" | "playing" | "paused" | "perk" | "clear" | "gameover";
 
@@ -169,25 +169,31 @@ export type ShopLevels = Record<ShopUpgradeId, number>;
  * 카드가 하나도 안 뜬 상태(전부 0/false)가 기존 난이도 기준선이다.
  */
 export type RunMods = {
-  /** 연속 사격 발수 +N */
-  volleyExtra: number;
-  /** 볼트 하나가 추가로 더 꿰는 화살 수 */
-  boltPierce: number;
-  /** 관통 화살 폭 배수 */
-  pierceWidthMul: number;
-  /** 화염탄 폭발 반경 배수 */
-  flameRadiusMul: number;
-  /** 번개 사슬 대상 +N */
-  chainExtra: number;
-  /** 빙결 감속을 더 깊게 (배수를 이만큼 더 낮춘다) */
-  frostSlowBonus: number;
-  /** [과부하] 에픽 — 모든 원거리 스킬 재사용 배수 */
+  /** 기본 사격 발수 +N */
+  shotExtra: number;
+  /** 기본 화살이 추가로 더 꿰는 화살 수 */
+  shotPierce: number;
+  /** 불화살 폭발 반경 배수 */
+  fireRadiusMul: number;
+  /** 물화살 관통 +N */
+  waterPierceExtra: number;
+  /** 얼음화살 감속을 더 깊게 (배수를 이만큼 더 낮춘다) */
+  iceSlowBonus: number;
+  /** 흙화살 위력 +N */
+  earthPowerBonus: number;
+  /** 번개화살 연쇄 +N */
+  boltExtra: number;
+  /** [과부하]·[속사] — 모든 화살 재사용 배수 */
   cooldownMul: number;
+  /** 콤보 — 얼어붙은 화살을 부수면 일섬 게이지를 더 준다 */
+  chillHunt: boolean;
+  /** 콤보 — 불화살이 얼어붙은 화살을 함께 터뜨리면 폭발이 넓어진다 */
+  chillBurst: boolean;
   /**
-   * 스킬 진화 — 스킬마다 **하나만** 고를 수 있는 분기. 작동 방식 자체가 바뀐다.
-   * 참고 게임의 "기본 레이저 → 관통 광선 / 확산 / 차지 폭발" 에 해당한다 (2026-09-28)
+   * 진화 — 스킬마다 **하나만** 고를 수 있는 분기. 작동 방식 자체가 바뀐다.
+   * basic 은 기본 사격(무기의 것)이다 (2026-09-29)
    */
-  evolutions: { volley?: "beam" | "seeker"; flame?: "cluster" | "pyre"; frost?: "shatter" | "lingering" };
+  evolutions: { basic?: "beam" | "seeker"; fire?: "cluster" | "pyre"; ice?: "shatter" | "lingering" };
   /**
    * 스탯을 건드리는 카드도 여기 남긴다 — 스테이지가 넘어갈 때 applyStats 가 상점 값으로
    * 덮어쓰므로, 다시 얹지 않으면 "이번 런 동안"이 거짓말이 된다 (2026-09-28)
@@ -196,10 +202,6 @@ export type RunMods = {
   dashCooldownMul: number;
   slashLevelBonus: number;
   maxHpBonus: number;
-  /** 콤보 — 얼어붙은 화살은 볼트가 한 방에 부수고 일섬 게이지를 더 준다 */
-  chillHunt: boolean;
-  /** 콤보 — 화염탄이 얼어붙은 화살을 함께 터뜨리면 폭발이 넓어진다 */
-  chillBurst: boolean;
 };
 
 export type PlayerStats = {
@@ -271,8 +273,17 @@ export type GameWorld = {
   slashDrops: SlashDrop[];
   /** 베기 파편 풀 — 파쇄 시 화살이 두 토막으로 쪼개져 날아가는 것이 보여야 한다 */
   slashDebris: SlashDebris[];
-  /** 원거리 스킬 — 자동 발사 탄 (game/skillShots.ts, 2026-09-28) */
+  /** 활 사격 — 날아가는 화살 (game/skillShots.ts) */
   skillShots: SkillShot[];
+  /** 명중 이펙트 — 속성별 색 폭발 */
+  skillFx: SkillFx[];
+  /** 기본 사격 남은 재사용(초) — 무기만 있으면 항상 돈다 */
+  basicTimer: number;
+  /** 활 반동 연출 남은 시간(ms) · 쏜 방향 — player.ts 가 무기를 기울이고 시위를 그린다 */
+  shotFlashMs: number;
+  shotAngle: number;
+  /** 번개화살 연쇄 선 — 쏜 자리에서 표적들로. ms 가 0 이 되면 사라진다 */
+  boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
   skillLevels: ExpeditionSkillLevels;
   /** 스킬별 남은 쿨타임(초) */

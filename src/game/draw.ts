@@ -1,6 +1,7 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import { REFLECT_DIST, SWING_MS } from "./arrows";
+import { ELEMENT_COLOR, type Element } from "./skills";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
@@ -42,42 +43,106 @@ export function preloadStageBackgrounds(): true {
   return true;
 }
 
-/** 원거리 스킬 탄·효과 — 화살(붉은 계열)과 섞이지 않게 아군은 청록·금색 계열로 (2026-09-28) */
+/** 화살 스프라이트 캐시 — dodge/arrows/<element>.png (수평, 촉이 오른쪽) */
+const arrowImgs: Partial<Record<Element, HTMLImageElement>> = {};
+function arrowImg(element: Element): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  if (!arrowImgs[element]) {
+    const img = new Image();
+    img.src = assetUrl(`dodge/arrows/${element}.png`);
+    arrowImgs[element] = img;
+  }
+  return arrowImgs[element] ?? null;
+}
+
+/**
+ * 활 사격 — 실제 화살 물체 · 궤적 · 명중 이펙트 (2026-09-29).
+ * 적 화살(붉은 계열)과 섞이지 않게 아군 화살은 스프라이트 + 속성색 궤적으로 그린다.
+ */
 function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  // 번개 연쇄 선
+  const b = world.boltFrom;
+  if (b && b.ms > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, b.ms / 120);
+    ctx.strokeStyle = ELEMENT_COLOR.bolt; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    ctx.shadowColor = ELEMENT_COLOR.bolt; ctx.shadowBlur = 8;
+    for (const t of b.targets) {
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      const mx = (b.x + t.x) / 2 + ((b.ms * 7) % 30) - 15;
+      ctx.lineTo(mx, (b.y + t.y) / 2);
+      ctx.lineTo(t.x, t.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   for (const s of world.skillShots) {
     if (!s.active) continue;
+    const color = ELEMENT_COLOR[s.element];
+    const moving = s.vx !== 0 || s.vy !== 0;
     ctx.save();
     ctx.globalAlpha = s.fade;
-    if (s.kind === "bolt") {
-      const ang = Math.atan2(s.vy, s.vx);
-      ctx.translate(s.x, s.y); ctx.rotate(ang);
-      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 3; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(9, 0); ctx.stroke();
-      ctx.fillStyle = "#e0f2fe";
-      ctx.beginPath(); ctx.moveTo(13, 0); ctx.lineTo(5, -4); ctx.lineTo(5, 4); ctx.closePath(); ctx.fill();
-    } else if (s.kind === "pierce") {
-      ctx.strokeStyle = "#fde68a"; ctx.lineWidth = s.radius * 2;
-      ctx.globalAlpha = s.fade * 0.55;
-      ctx.beginPath(); ctx.moveTo(s.x, s.y + 30); ctx.lineTo(s.x, s.y - 34); ctx.stroke();
-      ctx.globalAlpha = s.fade; ctx.strokeStyle = "#fff7ed"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(s.x, s.y + 26); ctx.lineTo(s.x, s.y - 30); ctx.stroke();
-    } else if (s.kind === "flame") {
-      const g = ctx.createRadialGradient(s.x, s.y, 2, s.x, s.y, 18);
-      g.addColorStop(0, "#fff7ed"); g.addColorStop(0.5, "#fb923c"); g.addColorStop(1, "rgba(249,115,22,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x, s.y, 18, 0, Math.PI * 2); ctx.fill();
-    } else if (s.kind === "frost") {
-      const grow = 1 - s.lifeMs / 420;
-      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4;
-      ctx.globalAlpha = s.fade * (1 - grow) * 0.9;
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.radius * (0.35 + grow * 0.65), 0, Math.PI * 2); ctx.stroke();
-    } else if (s.kind === "chain") {
-      ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(world.player.x, world.player.y - 10);
-      const mx = (world.player.x + s.x) / 2 + (s.lifeMs % 40) - 20;
-      ctx.lineTo(mx, (world.player.y + s.y) / 2);
-      ctx.lineTo(s.x, s.y);
-      ctx.stroke();
+    if (!moving) {
+      // 화염 장판 — 머무는 불
+      const g = ctx.createRadialGradient(s.x, s.y, 2, s.x, s.y, s.radius);
+      g.addColorStop(0, "rgba(255,247,237,.9)"); g.addColorStop(0.45, "rgba(251,146,60,.6)"); g.addColorStop(1, "rgba(249,115,22,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      continue;
+    }
+    const ang = Math.atan2(s.vy, s.vx);
+    // 궤적 — 속성색, 날아간 만큼 길어진다(최대 36px)
+    const tail = Math.min(36, s.dist * 0.5);
+    ctx.strokeStyle = color; ctx.lineWidth = s.element === "earth" ? 4 : 2.5; ctx.lineCap = "round";
+    ctx.globalAlpha = s.fade * 0.55;
+    ctx.beginPath();
+    ctx.moveTo(s.x - Math.cos(ang) * tail, s.y - Math.sin(ang) * tail);
+    ctx.lineTo(s.x, s.y);
+    ctx.stroke();
+    ctx.globalAlpha = s.fade;
+    // 화살 물체
+    ctx.translate(s.x, s.y); ctx.rotate(ang);
+    const img = arrowImg(s.element);
+    const len = s.element === "earth" ? 34 : s.element === "basic" && s.radius > 10 ? 40 : 30;
+    if (img?.complete && img.naturalWidth > 0) {
+      const h = len * (img.naturalHeight / img.naturalWidth);
+      ctx.shadowColor = color; ctx.shadowBlur = s.element === "basic" ? 0 : 8;
+      ctx.drawImage(img, -len * 0.55, -h / 2, len, h);
+    } else {
+      // 스프라이트가 아직이면 선으로
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-len * 0.55, 0); ctx.lineTo(len * 0.35, 0); ctx.stroke();
+      ctx.fillStyle = "#fff7ed";
+      ctx.beginPath(); ctx.moveTo(len * 0.45, 0); ctx.lineTo(len * 0.2, -4); ctx.lineTo(len * 0.2, 4); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 명중 이펙트 — 속성별 링 + 파편
+  for (const f of world.skillFx) {
+    if (!f.active) continue;
+    const t = 1 - f.ms / f.total;           // 0 → 1
+    const color = ELEMENT_COLOR[f.element];
+    ctx.save();
+    ctx.globalAlpha = (1 - t) * 0.9;
+    ctx.strokeStyle = color; ctx.lineWidth = f.element === "earth" ? 5 : 3;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.radius * (0.3 + t * 0.7), 0, Math.PI * 2); ctx.stroke();
+    if (f.element === "fire") {
+      const g = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.radius * (0.4 + t * 0.6));
+      g.addColorStop(0, "rgba(255,247,237,.8)"); g.addColorStop(0.5, "rgba(251,146,60,.5)"); g.addColorStop(1, "rgba(249,115,22,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, f.radius * (0.4 + t * 0.6), 0, Math.PI * 2); ctx.fill();
+    }
+    // 파편 6개 — 얼음은 날카롭게, 흙은 굵게
+    ctx.fillStyle = color; ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2 + t * 0.6;
+      const d = f.radius * (0.2 + t * 0.9);
+      const px = f.x + Math.cos(a) * d, py = f.y + Math.sin(a) * d;
+      if (f.element === "ice") { ctx.beginPath(); ctx.moveTo(px, py - 5); ctx.lineTo(px + 3, py); ctx.lineTo(px, py + 5); ctx.lineTo(px - 3, py); ctx.closePath(); ctx.fill(); }
+      else if (f.element === "bolt") { ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 4, py - 6); ctx.lineTo(px + 2, py + 2); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.arc(px, py, f.element === "earth" ? 3.5 : 2.2, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.restore();
   }

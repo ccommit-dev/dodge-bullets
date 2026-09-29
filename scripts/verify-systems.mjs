@@ -412,12 +412,12 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("보스 패턴: 1~4스테이지 A·B·C·D, 성벽은 E 로 고정 (학습 가능한 보스)", ids === "ABCDEE" && new Set(bossPatterns.BOSS_PATTERNS.map((p) => p.kinds.join("+") + p.count + p.spreadDeg)).size === 5, ids);
   ok("보스 패턴: 파편 수·종류 수가 일치하거나 순환하고, 예고는 500ms 이상", bossPatterns.BOSS_PATTERNS.every((p) => p.count >= 1 && p.kinds.length >= 1 && p.warningMs >= 500));
   // 성장 선택: 3택 무작위(결정적 rng) · 적용 효과 · 대시 미해금이면 dash 제외
-  const w = { slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
+  const w = { rangedWeapon: "bow", slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
   let k = 0; const det = () => ((k += 0.37) % 1);
   const picked = perks.pickPerks(w, det);
-  ok("성장 선택: 3개가 서로 다르고 대시 미해금이면 dash 는 나오지 않는다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => p.id === "dash"), picked.map((p) => p.id).join(","));
-  perks.applyPerk(w, "heal"); perks.applyPerk(w, "speed"); perks.applyPerk(w, "gauge");
-  ok("성장 선택 적용: HP 가득이면 최대 HP +1, 이동 +12%, 게이지 +35 (99 상한)", w.player.maxHp === 4 && w.player.hp === 4 && Math.abs(w.stats.moveSpeed - 112) < 1e-9 && w.slashGauge === 45 && perks.applyPerk(w, "dash") === false);
+  ok("성장 선택: 3개가 서로 다르고 활 계열 밖(이동·회피·검격) 카드는 없다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => ["dash", "speed", "slash"].includes(p.id)), picked.map((p) => p.id).join(","));
+  perks.applyPerk(w, "heal"); perks.applyPerk(w, "shotExtra"); perks.applyPerk(w, "gauge");
+  ok("성장 선택 적용: HP 가득이면 최대 HP +1, 기본 사격 +1발, 게이지 +35 (99 상한)", w.player.maxHp === 4 && w.player.hp === 4 && w.runMods.shotExtra === 1 && w.slashGauge === 45 && perks.applyPerk(w, "dash") === false);
   // 주간 랭킹: 내 기록이 정렬에 들어가고 같은 주·같은 유저면 재현, 기록 0이면 최하위
   const rpg0 = beatRpg.emptyBeatRpg();
   const r0 = ranking.weeklyRanking(rpg0, "u1", "2026-37");
@@ -468,11 +468,11 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
   // 2) 마일스톤(짝수 레벨)에서만 값이 움직인다 — 표와 수치가 어긋나면 화면이 거짓말을 한다
   const movers = {
-    volley: (lv) => [S.volleyCooldown(lv), S.volleyShots(lv)],
-    pierce: (lv) => [S.pierceCooldown(lv), S.pierceWidth(lv)],
-    flame: (lv) => [S.flameCooldown(lv), S.flameRadius(lv)],
-    frost: (lv) => [S.frostCooldown(lv), S.frostRadius(lv), S.frostSlow(lv)],
-    chain: (lv) => [S.chainCooldown(lv), S.chainTargets(lv)],
+    fire: (lv) => [S.fireCooldown(lv), S.fireRadius(lv), S.firePower(lv)],
+    water: (lv) => [S.waterCooldown(lv), S.waterPierce(lv)],
+    ice: (lv) => [S.iceCooldown(lv), S.iceRadius(lv), S.iceSlow(lv)],
+    earth: (lv) => [S.earthCooldown(lv), S.earthPower(lv), S.earthRadius(lv)],
+    bolt: (lv) => [S.boltCooldown(lv), S.boltTargets(lv)],
     ultimate: (lv) => [S.ultSwingMul(lv), S.ultGaugeMul(lv)],
   };
   const mismatch = [];
@@ -488,10 +488,10 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
   // 3) 성장 방향 — 레벨이 오르면 쿨타임은 내리고 위력은 오른다 (강화가 약화가 되면 안 된다)
   const worse = [];
-  for (const [id, f] of Object.entries({ volley: S.volleyCooldown, pierce: S.pierceCooldown, flame: S.flameCooldown, frost: S.frostCooldown, chain: S.chainCooldown })) {
+  for (const [id, f] of Object.entries({ fire: S.fireCooldown, water: S.waterCooldown, ice: S.iceCooldown, earth: S.earthCooldown, bolt: S.boltCooldown })) {
     for (let lv = 1; lv < S.SKILL_MAX_LEVEL; lv += 1) if (f(lv + 1) > f(lv)) worse.push(`${id} Lv${lv + 1}`);
   }
-  for (const [id, f] of Object.entries({ volley: S.volleyShots, pierce: S.pierceWidth, flame: S.flameRadius, frost: S.frostRadius, chain: S.chainTargets, ult: S.ultSwingMul })) {
+  for (const [id, f] of Object.entries({ fire: S.fireRadius, water: S.waterPierce, ice: S.iceRadius, earth: S.earthPower, bolt: S.boltTargets, ult: S.ultSwingMul })) {
     for (let lv = 1; lv < S.SKILL_MAX_LEVEL; lv += 1) if (f(lv + 1) < f(lv)) worse.push(`${id} Lv${lv + 1}`);
   }
   ok("레벨이 오를 때 쿨타임은 내려가고 위력은 올라간다", worse.length === 0, worse.slice(0, 4).join(", "));
@@ -500,9 +500,20 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("장궁은 물리 계열만, 지팡이는 마법 계열만 줄인다",
     S.weaponCooldownMul("bow", "physical") === 0.88 && S.weaponCooldownMul("bow", "magic") === 1
     && S.weaponCooldownMul("staff", "magic") === 0.88 && S.weaponCooldownMul("none", "physical") === 1);
-  ok("연속 사격·관통은 물리 · 화염·빙결·연쇄는 마법",
-    S.SKILL_BY_ID.volley.family === "physical" && S.SKILL_BY_ID.pierce.family === "physical"
-    && S.SKILL_BY_ID.flame.family === "magic" && S.SKILL_BY_ID.frost.family === "magic" && S.SKILL_BY_ID.chain.family === "magic");
+  ok("물·흙은 물리 · 불·얼음·번개는 마법",
+    S.SKILL_BY_ID.water.family === "physical" && S.SKILL_BY_ID.earth.family === "physical"
+    && S.SKILL_BY_ID.fire.family === "magic" && S.SKILL_BY_ID.ice.family === "magic" && S.SKILL_BY_ID.bolt.family === "magic");
+  // 상성표 — 다섯 화살이 서로 다른 적 화살 종류를 하나씩 맡는다. 겹치면 표가 무의미하다
+  ok("속성 화살 5종의 상성이 서로 다른 적 화살 종류를 가리킨다",
+    new Set(["fire", "water", "ice", "earth", "bolt"].map((id) => S.SKILL_BY_ID[id].strongVs)).size === 5
+    && S.SKILL_BY_ID.ultimate.strongVs === null,
+    ["fire", "water", "ice", "earth", "bolt"].map((id) => id + "→" + S.SKILL_BY_ID[id].strongVs).join(" "));
+  ok("흙화살만 기본 위력 2 — 보스를 크게 깎는 자리", S.earthPower(1) === 2 && S.firePower(1) === 1 && S.waterPower(1) === 1 && S.icePower(1) === 1 && S.boltPower(1) === 1);
+  // 저장 마이그레이션 — 예전 키의 레벨을 잃지 않는다
+  ok("예전 저장(연속 사격·관통·화염탄·빙결·번개)이 새 키로 옮겨진다",
+    JSON.stringify(S.migrateSkillLevels({ volley: 3, pierce: 2, flame: 5, frost: 4, chain: 1, ultimate: 2 }))
+    === JSON.stringify({ fire: 5, water: 2, ice: 4, bolt: 1, earth: 0, ultimate: 2 }));
+  ok("새 키 저장은 그대로 지나간다", S.migrateSkillLevels({ fire: 2, earth: 1 }).earth === 1);
 
   // 5) 일섬만 스탯에 닿는다 (베기 창) — 나머지는 자동 발사라 스탯에 얹을 것이 없다
   const ult6 = S.applySkillLevels(base, { ...lv0, ultimate: 6 });
@@ -510,11 +521,11 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("일섬 Lv4 에서 게이지 획득 +12%", Math.abs(S.gaugeGainMul({ ...lv0, ultimate: 4 }) - 1.12) < 1e-9);
 
   // 6) 비용·해금
-  const c1 = S.skillCost(S.SKILL_BY_ID.volley, 1), c5 = S.skillCost(S.SKILL_BY_ID.volley, 5);
+  const c1 = S.skillCost(S.SKILL_BY_ID.fire, 1), c5 = S.skillCost(S.SKILL_BY_ID.fire, 5);
   ok("스킬 비용이 레벨마다 오른다", c5.gold > c1.gold * 4 && c5.seals > c1.seals * 2, `lv1 ${c1.gold}G/${c1.seals}인 → lv5 ${c5.gold}G/${c5.seals}인`);
-  ok("해금은 원정 스테이지 — 연속 사격·일섬은 처음부터, 번개 사슬은 3스테이지",
-    S.skillUnlocked(S.SKILL_BY_ID.volley, 1) && S.skillUnlocked(S.SKILL_BY_ID.ultimate, 1)
-    && !S.skillUnlocked(S.SKILL_BY_ID.chain, 2) && S.skillUnlocked(S.SKILL_BY_ID.chain, 3));
+  ok("해금은 원정 스테이지 — 불화살·일섬은 처음부터, 번개화살은 3스테이지",
+    S.skillUnlocked(S.SKILL_BY_ID.fire, 1) && S.skillUnlocked(S.SKILL_BY_ID.ultimate, 1)
+    && !S.skillUnlocked(S.SKILL_BY_ID.bolt, 2) && S.skillUnlocked(S.SKILL_BY_ID.bolt, 3));
 
   // 7) 무기 탈착 — 진행도에 저장되고, 이상한 값은 기본 무기로 되돌린다
   ok("새 진행도는 장궁을 끼고 시작한다", prog.emptyCharacterProgress().expeditionWeapon === "bow");
@@ -533,7 +544,8 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   // 9) 런 강화 카드 — 스킬 진화·콤보. 참고 게임의 핵심 루프를 옮긴 부분이다.
   //    함정도 같이 옮기지 않으려고, 들고 있지 않은 스킬의 카드는 후보에 넣지 않는다.
   {
-    const w = (levels) => ({
+    const w = (levels, weapon = "bow") => ({
+      rangedWeapon: weapon,
       skillLevels: { ...S.emptySkillLevels(), ...levels },
       runMods: dodgeShots.emptyRunMods(),
       stats: { dashUnlocked: true },
@@ -542,36 +554,40 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     });
     const ids = (world) => perks.PERKS.filter((p) => p.available(world)).map((p) => p.id);
 
-    const none = ids(w({}));
-    ok("스킬이 하나도 없으면 후보는 예전 일반 다섯 장 그대로 — 기준선이 안 흔들린다",
-      none.length === 5 && ["gauge", "speed", "heal", "slash", "dash"].every((id) => none.includes(id)), none.join());
+    const bare = ids(w({}, "none"));
+    ok("맨손(무기 없음)이면 게이지·HP 두 장뿐 — 활 계열 카드는 무기가 있어야 뜬다 (기준선)",
+      bare.length === 2 && bare.includes("gauge") && bare.includes("heal"), bare.join());
+    ok("이동 속도·회피·검격 카드는 사라졌다 (활 계열로 통일)",
+      !perks.PERKS.some((p) => ["speed", "dash", "slash"].includes(p.id)));
 
-    const volley = ids(w({ volley: 1 }));
-    ok("연속 사격을 들면 그 스킬 카드만 붙는다 (화염·사슬 카드는 안 뜬다)",
-      volley.includes("volleyExtra") && volley.includes("boltPierce")
-      && !volley.includes("flameWide") && !volley.includes("chainExtra"), volley.join());
+    const armedOnly = ids(w({}));
+    ok("무기만 있으면 기본 사격 카드가 붙는다 (속성 화살 카드는 안 뜬다)",
+      armedOnly.includes("shotExtra") && armedOnly.includes("quickdraw") && armedOnly.includes("shotPierce")
+      && !armedOnly.includes("fireWide") && !armedOnly.includes("boltExtra"), armedOnly.join());
 
-    ok("콤보는 두 스킬이 다 있을 때만 — 빙결만으로는 안 뜬다",
-      !ids(w({ frost: 1 })).includes("chillHunt")
-      && ids(w({ frost: 1, volley: 1 })).includes("chillHunt")
-      && ids(w({ frost: 1, flame: 1 })).includes("chillBurst"));
+    ok("콤보는 두 조건이 다 있을 때만 — 얼음만으로는 서리 사냥이 안 뜬다",
+      !ids(w({ ice: 1 }, "none")).includes("chillHunt")
+      && ids(w({ ice: 1 })).includes("chillHunt")
+      && ids(w({ ice: 1, fire: 1 })).includes("chillBurst"));
 
-    const taken = w({ frost: 1, volley: 1 });
+    const taken = w({ ice: 1 });
     perks.applyPerk(taken, "chillHunt");
     ok("이미 고른 콤보는 다시 뜨지 않는다", taken.runMods.chillHunt === true && !ids(taken).includes("chillHunt"));
 
-    const grow = w({ volley: 1, flame: 1, chain: 1, frost: 1 });
-    perks.applyPerk(grow, "volleyExtra"); perks.applyPerk(grow, "boltPierce");
-    perks.applyPerk(grow, "flameWide"); perks.applyPerk(grow, "chainExtra"); perks.applyPerk(grow, "frostDeep");
+    const grow = w({ fire: 1, bolt: 1, ice: 1, water: 1, earth: 1 });
+    perks.applyPerk(grow, "shotExtra"); perks.applyPerk(grow, "shotPierce");
+    perks.applyPerk(grow, "fireWide"); perks.applyPerk(grow, "boltExtra"); perks.applyPerk(grow, "iceDeep");
+    perks.applyPerk(grow, "waterMore"); perks.applyPerk(grow, "earthHeavy");
     ok("카드가 runMods 에만 쌓인다 (영구 스킬 레벨은 그대로)",
-      grow.runMods.volleyExtra === 1 && grow.runMods.boltPierce === 1
-      && Math.abs(grow.runMods.flameRadiusMul - 1.35) < 1e-9 && grow.runMods.chainExtra === 1
-      && Math.abs(grow.runMods.frostSlowBonus - 0.1) < 1e-9
-      && grow.skillLevels.volley === 1,
+      grow.runMods.shotExtra === 1 && grow.runMods.shotPierce === 1
+      && Math.abs(grow.runMods.fireRadiusMul - 1.35) < 1e-9 && grow.runMods.boltExtra === 1
+      && Math.abs(grow.runMods.iceSlowBonus - 0.1) < 1e-9
+      && grow.runMods.waterPierceExtra === 1 && grow.runMods.earthPowerBonus === 1
+      && grow.skillLevels.fire === 1,
       JSON.stringify(grow.runMods));
 
     // 3택은 후보가 3장 미만이어도 멈춰야 한다 (rng 가 상수여도)
-    const three = perks.pickPerks(w({ volley: 1, frost: 1 }), () => 0.5);
+    const three = perks.pickPerks(w({ ice: 1 }), () => 0.5);
     ok("레벨업 3택은 겹치지 않는 카드 3장을 돌려준다", three.length === 3 && new Set(three.map((p) => p.id)).size === 3,
       three.map((p) => p.id).join());
 
@@ -589,7 +605,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       && perks.PERKS.some((p) => p.combo));
 
     // 등급 굴림이 실제로 뽑히는 등급을 바꾼다 — rng 0 이면 항상 에픽, 0.99 면 항상 일반
-    const full = w({ volley: 1, flame: 1, frost: 1, chain: 1 });
+    const full = w({ fire: 1, ice: 1, bolt: 1, water: 1, earth: 1 });
     const allEpic = perks.pickPerks(full, () => 0, 3, 3);
     const allCommon = perks.pickPerks(full, () => 0.99, 3, 0);
     ok("rng 가 낮으면 에픽부터, 높으면 일반부터 뽑힌다",
@@ -597,9 +613,9 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       allEpic.map((p) => p.rarity).join() + " / " + allCommon.map((p) => p.rarity).join());
 
     // 그 등급이 동나면 아래로 내려온다 — 에픽 후보가 없는 로드아웃에서 rng 0
-    const thin = perks.pickPerks(w({}), () => 0, 3, 3);
-    ok("에픽 후보가 없으면 아래 등급으로 내려와 3장을 채운다",
-      thin.length === 3 && thin.every((p) => p.rarity === "common"), thin.map((p) => p.id).join());
+    const thin = perks.pickPerks(w({}, "none"), () => 0, 3, 3);
+    ok("에픽 후보가 없으면 아래 등급으로 내려오고, 후보가 2장뿐이면 2장에서 멈춘다 (맨손)",
+      thin.length === 2 && thin.every((p) => p.rarity === "common"), thin.map((p) => p.id).join());
 
     // 같은 rng 면 같은 결과 (시뮬 재현)
     const seq = () => { let k = 0; return () => ((k += 0.37) % 1); };
@@ -608,10 +624,10 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       === JSON.stringify(perks.pickPerks(full, seq(), 3, 2).map((p) => p.id)));
 
     // 에픽 두 장은 실제로 세다
-    const epic = w({ volley: 1 });
-    perks.applyPerk(epic, "volleyStorm");
-    ok("[탄막 폭풍] 에픽: 발수 +2 · 관통 +1", epic.runMods.volleyExtra === 2 && epic.runMods.boltPierce === 1);
-    const od = w({ volley: 1 });
+    const epic = w({});
+    perks.applyPerk(epic, "arrowStorm");
+    ok("[화살 폭풍] 에픽: 기본 사격 +2발 · 관통 +1", epic.runMods.shotExtra === 2 && epic.runMods.shotPierce === 1);
+    const od = w({});
     perks.applyPerk(od, "overdrive");
     ok("[과부하] 에픽: 모든 스킬 재사용 ×0.8", Math.abs(od.runMods.cooldownMul - 0.8) < 1e-9);
 
@@ -619,21 +635,21 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     const evoIds = perks.PERKS.filter((p) => p.evolution).map((p) => p.id);
     ok("진화 카드 6종이 전부 에픽", evoIds.length === 6 && perks.PERKS.filter((p) => p.evolution).every((p) => p.rarity === "epic"), evoIds.join());
 
-    const ev = w({ volley: 1, flame: 1, frost: 1 });
+    const ev = w({ fire: 1, ice: 1 });
     ok("진화 전에는 세 스킬의 분기가 모두 열려 있다",
       ["evoBeam", "evoSeeker", "evoCluster", "evoPyre", "evoShatter", "evoLingering"].every((id) => ids(ev).includes(id)));
     perks.applyPerk(ev, "evoBeam");
     ok("한 스킬은 하나만 진화한다 — 광선을 고르면 유도는 닫히고 다른 스킬 분기는 열려 있다",
-      ev.runMods.evolutions.volley === "beam"
+      ev.runMods.evolutions.basic === "beam"
       && !ids(ev).includes("evoBeam") && !ids(ev).includes("evoSeeker")
       && ids(ev).includes("evoPyre") && ids(ev).includes("evoShatter"), JSON.stringify(ev.runMods.evolutions));
     perks.applyPerk(ev, "evoSeeker");
-    ok("이미 진화한 스킬은 다시 진화하지 않는다 (덮어쓰기 없음)", ev.runMods.evolutions.volley === "beam");
+    ok("이미 진화한 스킬은 다시 진화하지 않는다 (덮어쓰기 없음)", ev.runMods.evolutions.basic === "beam");
 
     // ── needs 목록이 available() 과 어긋나면 강화 화면이 거짓말을 한다.
     //    available() 이 진실이고 needs 는 그것을 밖에서 읽으려고 적어 둔 목록이다.
     {
-      const all = ["volley", "pierce", "flame", "frost", "chain", "ultimate"];
+      const all = ["fire", "water", "ice", "earth", "bolt", "ultimate"];
       const drift = [];
       for (const p of perks.PERKS) {
         if (!p.needs) {
@@ -644,23 +660,26 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
         // 필요한 스킬을 하나씩 빼 보면 반드시 후보에서 빠져야 한다
         for (const miss of p.needs) {
           const levels = {};
-          for (const id of p.needs) if (id !== miss) levels[id] = 1;
-          if (p.available(w(levels))) drift.push(p.id + " (" + miss + " 없이도 뜸)");
+          for (const id of p.needs) if (id !== miss && id !== "basic") levels[id] = 1;
+          const weapon = miss === "basic" || !p.needs.includes("basic") ? "none" : "bow";
+          if (p.available(w(levels, weapon))) drift.push(p.id + " (" + miss + " 없이도 뜸)");
         }
-        // 필요한 스킬을 모두 들면 떠야 한다
+        // 필요한 것을 모두 갖추면 떠야 한다
         const full = {};
-        for (const id of p.needs) full[id] = 1;
-        if (!p.available(w(full))) drift.push(p.id + " (전부 들어도 안 뜸)");
+        for (const id of p.needs) if (id !== "basic") full[id] = 1;
+        if (!p.available(w(full, p.needs.includes("basic") ? "bow" : "none"))) drift.push(p.id + " (전부 들어도 안 뜸)");
       }
       ok("카드의 needs 목록과 실제 available() 조건이 일치한다", drift.length === 0, drift.slice(0, 3).join(", "));
 
       // 스킬마다 강화 화면이 보여 줄 카드가 실제로 있다 (일섬·관통은 카드 없음이 정상)
       const shown = all.map((id) => [id, perks.perksUnlockedBy(id).length]);
-      ok("빙결을 올리면 런 중 카드 5장이 열린다 (심층·서리 사냥·열충격·파쇄·지속)",
-        perks.perksUnlockedBy("frost").map((p) => p.id).sort().join() === "chillBurst,chillHunt,evoLingering,evoShatter,frostDeep",
-        perks.perksUnlockedBy("frost").map((p) => p.id).join());
-      ok("스킬마다 런 중 열리는 카드가 있다 — 연사 6 · 관통 1 · 화염 4 · 빙결 5 · 사슬 1",
-        JSON.stringify(shown) === JSON.stringify([["volley",6],["pierce",1],["flame",4],["frost",5],["chain",1],["ultimate",0]]),
+      ok("얼음화살을 올리면 런 중 카드 5장이 열린다 (심층·서리 사냥·열충격·파쇄·지속)",
+        perks.perksUnlockedBy("ice").map((p) => p.id).sort().join() === "chillBurst,chillHunt,evoLingering,evoShatter,iceDeep",
+        perks.perksUnlockedBy("ice").map((p) => p.id).join());
+      ok("기본 사격(무기)만으로 열리는 카드가 8장 — 스킬 없는 계정도 카드가 뜬다",
+        perks.perksUnlockedBy("basic").length === 8, perks.perksUnlockedBy("basic").map((p) => p.id).join());
+      ok("스킬마다 런 중 열리는 카드가 있다 — 불 4 · 물 1 · 얼음 5 · 흙 1 · 번개 1",
+        JSON.stringify(shown) === JSON.stringify([["fire",4],["water",1],["ice",5],["earth",1],["bolt",1],["ultimate",0]]),
         JSON.stringify(shown));
     }
 
@@ -668,19 +687,18 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     {
       const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
       const world = wm.createWorld(390, 700, 1);
-      world.skillLevels = { ...world.skillLevels, volley: 3 };
+      world.rangedWeapon = "bow"; world.skillLevels = { ...world.skillLevels, fire: 3 };
       wm.resetRun(world, 0);
-      perks.applyPerk(world, "volleyExtra");
-      perks.applyPerk(world, "speed");
+      perks.applyPerk(world, "shotExtra");
       const speedAfterCard = world.stats.moveSpeed;
       wm.beginStage(world, 1);      // 다음 스테이지로 넘어간다 (런은 이어진다)
       ok("스테이지가 넘어가도 카드가 유지된다",
-        world.runMods.volleyExtra === 1 && Math.abs(world.runMods.moveSpeedMul - 1.12) < 1e-9,
-        JSON.stringify({ volleyExtra: world.runMods.volleyExtra, moveSpeedMul: world.runMods.moveSpeedMul }));
-      ok("스탯 카드도 배수로 기록돼 다시 얹을 수 있다", speedAfterCard > 0 && world.runMods.moveSpeedMul > 1);
+        world.runMods.shotExtra === 1 && Math.abs(world.runMods.maxHpBonus - 0) < 1e-9,
+        JSON.stringify({ shotExtra: world.runMods.shotExtra }));
+      ok("스탯 배수 칸은 남아 있다 (HP 카드가 쓴다)", speedAfterCard > 0 && world.runMods.moveSpeedMul === 1);
       wm.resetRun(world, 0);        // 새 런
       ok("새 런에서는 카드가 비워진다",
-        world.runMods.volleyExtra === 0 && world.runMods.moveSpeedMul === 1 && !world.runMods.evolutions.volley);
+        world.runMods.shotExtra === 0 && world.runMods.moveSpeedMul === 1 && !world.runMods.evolutions.basic);
     }
   }
 
@@ -725,7 +743,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     }
     ok("칩은 레벨이 오를 때 나빠지지 않는다", worse.length === 0, worse.join());
     ok("칩 비용이 레벨마다 오르고, 첫 단계는 스킬 1레벨과 같아 선택이 생긴다",
-      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) === S2.skillCost(S2.SKILL_BY_ID.volley, 1).seals,
+      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) === S2.skillCost(S2.SKILL_BY_ID.fire, 1).seals,
       "lv1 " + C.chipCost(1) + "인 → lv5 " + C.chipCost(5) + "인");
 
     // 설명 문구가 실제 수치와 같은가 — 화면이 거짓말하면 투자 판단이 망가진다
@@ -756,7 +774,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
     // [선발 보급] 이 켜지면 3택이 전부 레어 이상이어야 한다
     const w2 = {
-      skillLevels: { ...dodgeSkills.emptySkillLevels(), volley: 1, frost: 1, flame: 1 },
+      rangedWeapon: "bow", skillLevels: { ...dodgeSkills.emptySkillLevels(), ice: 1, fire: 1 },
       runMods: dodgeShots.emptyRunMods(),
       stats: { dashUnlocked: true }, player: { hp: 1, maxHp: 1 }, slashGauge: 0, stageIndex: 0,
     };
@@ -792,17 +810,19 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     {
       const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
       const world = wm.createWorld(390, 700, 1);
-      world.skillLevels = { ...world.skillLevels, volley: 3 };
+      world.rangedWeapon = "bow"; world.skillLevels = { ...world.skillLevels, fire: 3 };
       wm.resetRun(world, 0);
+      // 표적이 없으면 쏘지 않는다(쿨타임을 태우지 않는다) — 화살 하나를 사정권에 둔다
+      const tgt = world.arrows[0]; tgt.active = true; tgt.warningMs = 0; tgt.reflected = false; tgt.x = world.player.x; tgt.y = 40; tgt.hitRadius = 6; tgt.boss = false; tgt.kind = "normal";
       ok("새 런은 화살통 효과가 꺼진 채 시작한다 (재사용 배수 1)", world.primedMs === 0);
       // 출격 직후 쿨타임은 이미 0 — 예전 설명("재사용 완료")이 빈말이었다는 근거
       ok("출격 시점의 스킬 쿨타임은 이미 전부 0", Object.values(world.skillTimers).every((t) => t === 0));
       world.primedMs = O.PRIMED_MS;
       dodgeShots.updateSkillShots(world, 0.016);         // 첫 발이 나가며 쿨타임이 잡힌다
-      const primedCd = world.skillTimers.volley;
-      world.primedMs = 0; world.skillTimers.volley = 0;
+      const primedCd = world.skillTimers.fire;
+      world.primedMs = 0; world.skillTimers.fire = 0;
       dodgeShots.updateSkillShots(world, 0.016);
-      const normalCd = world.skillTimers.volley;
+      const normalCd = world.skillTimers.fire;
       ok("[예비 화살통] 이 켜진 동안 재사용이 ×0.7, 꺼지면 원래대로",
         primedCd > 0 && Math.abs(primedCd / normalCd - O.PRIMED_COOLDOWN_MUL) < 1e-6, primedCd.toFixed(2) + " / " + normalCd.toFixed(2));
       world.primedMs = 1000;
