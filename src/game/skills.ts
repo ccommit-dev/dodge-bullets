@@ -14,7 +14,7 @@ import type { PlayerStats } from "./types";
  *     (특정 적 화살 종류에 강함)을 가진다. 표는 화면에 그대로 보인다.
  *   · **일섬** — 게이지 필살기(검격)는 그대로.
  *
- * 참고 게임 구조는 유지한다: 레벨 1~10 · 재화 둘(골드 + 원정 인장) · **짝수 레벨이 마일스톤** ·
+ * 참고 게임 구조는 유지한다: 레벨 1~10 · 재화 둘(골드 + 그 스킬의 조각) · **짝수 레벨이 마일스톤** ·
  * 잠긴 스킬은 원정 스테이지 클리어로 열린다.
  */
 
@@ -36,7 +36,7 @@ export type RangedWeaponDef = {
 export type SkillFamily = "physical" | "magic" | "none";
 
 export const RANGED_WEAPONS: RangedWeaponDef[] = [
-  { id: "bow", name: "장궁", desc: "기본 사격 + 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 1 },
+  { id: "bow", name: "장궁", desc: "기본 사격 + 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
   { id: "staff", name: "수정 지팡이", desc: "기본 사격 + 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
 ];
 
@@ -331,7 +331,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
       { label: "피해", value: reach(iceDamage(lv)), delta: nextDelta(lv, iceDamage, "", 2) },
       { label: "보스 깎기", value: `${icePower(lv)}` },
       { label: "빙결 반경", value: `${iceRadius(lv)}`, delta: nextDelta(lv, iceRadius) },
-      { label: "감속", value: `${Math.round((1 - iceSlow(lv)) * 100)}%` },
+      { label: "감속", value: `${Math.round((1 - iceSlow(lv)) * 100)}%`, delta: nextDelta(lv, (n) => Math.round((1 - iceSlow(n)) * 100), "%") },
       { label: "재사용", value: num(iceCooldown(lv), "초"), delta: nextDelta(lv, iceCooldown, "초", 1) },
       { label: "상성", value: vs("homing") },
     ],

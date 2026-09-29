@@ -69,7 +69,7 @@ export function SkillPanel({
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
   supplies, daily, onBuySupply, onClaimDaily, shards,
 }: Props) {
-  /** 화면이 길어져 세 갈래로 나눈다 — 강화 / 보급 / 임무 */
+  /** 화면이 길어져 둘로 나눈다 — 강화 / 보급·임무 */
   const [tab, setTab] = useState<"upgrade" | "supply">("upgrade");
   const [openId, setOpenId] = useState<ExpeditionSkillId | null>(null);
   /** 어느 슬롯에 끼울지 고르는 중 — null 이면 칩 목록만 본다 */
@@ -366,7 +366,7 @@ export function SkillPanel({
               })()}
               <div className="exp-skill-cost">
                 <span className={gold >= cost.gold ? "" : "short"}>
-                  {/* 재화는 코인·원정 인장 — 전용 아이콘이 없어 남의 재화 아이콘을 빌리면 거짓말이 된다 */}
+                  {/* 재화는 코인·그 스킬의 조각 — 코인은 전용 아이콘이 없어 글자로 쓴다 */}
                   <em>코인</em>
                   {maxed ? "—" : `${gold.toLocaleString()}/${cost.gold.toLocaleString()}`}
                 </span>

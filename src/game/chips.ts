@@ -7,8 +7,8 @@ import type { ExpeditionSkillId } from "./skills";
  * 이런 요소는 랜덤 요소에 좌우되지 않는 패시브 이점이다. 작은 영구 피해 증가나 쿨다운 감소도
  * 수십 번의 런이 쌓이면 체감이 커지고, 실험적인 빌드를 시도할 때 부담도 줄어든다."
  *
- * 스킬 강화(1순위)와 **같은 재화(원정 인장)** 를 쓴다 — 그래야 "지금 무엇에 먼저 쓸까"라는
- * 가이드의 1/2/3순위 선택이 실제로 생긴다. 새 재화를 만들면 그 선택이 사라진다.
+ * 재화는 **원정 인장** — 보급창과 같은 재화다. 그래야 "지금 무엇에 먼저 쓸까"(오래 남는 칩 vs
+ * 이번 판을 바꾸는 보급)라는 선택이 실제로 생긴다. 스킬은 제 조각으로 올린다 (2026-09-29).
  *
  * 슬롯은 3칸이고 원정 스테이지 기록으로 하나씩 열린다. 칩은 **레벨을 올려도 장착해야 효과가
  * 난다** — 들고 있는 것과 끼운 것을 구분해야 슬롯이 선택의 자리가 된다.
@@ -68,19 +68,16 @@ export const chipGauge = (lv: number) => 1 + 0.05 * lv;                    // ed
 
 export const CHIPS: ChipDef[] = [
   { id: "focus", name: "조준 칩", pairs: null, desc: (lv) => `모든 원거리 스킬 재사용 −${Math.round((1 - chipCooldown(lv)) * 100)}%` },
-  { id: "barrage", name: "연사 칩", pairs: "basic", desc: (lv) => `기본 사격 발수 +${chipVolley(lv)} (Lv3 · Lv5)` },
+  { id: "barrage", name: "연사 칩", pairs: "basic", desc: (lv) => (chipVolley(lv) > 0 ? `기본 사격 발수 +${chipVolley(lv)} (Lv3 · Lv5 에 +1)` : "Lv3 부터 기본 사격 발수 +1 (Lv5 에 +2)") },
   { id: "ember", name: "잔열 칩", pairs: "fire", desc: (lv) => `불화살 폭발 반경 +${Math.round((chipFlame(lv) - 1) * 100)}%` },
   { id: "rime", name: "서리 칩", pairs: "ice", desc: (lv) => `빙결 지속 +${Math.round((chipChill(lv) - 1) * 100)}% (콤보가 오래 물린다)` },
-  { id: "vitality", name: "활력 칩", pairs: null, desc: (lv) => `최대 HP +${chipLives(lv)} (Lv2 · Lv5)` },
+  { id: "vitality", name: "활력 칩", pairs: null, desc: (lv) => (chipLives(lv) > 0 ? `최대 HP +${chipLives(lv)} (Lv2 · Lv5 에 +1)` : "Lv2 부터 최대 HP +1 (Lv5 에 +2)") },
   { id: "edge", name: "예기 칩", pairs: "ultimate", desc: (lv) => `일섬 게이지 획득 +${Math.round((chipGauge(lv) - 1) * 100)}%` },
 ];
 
 export const CHIP_BY_ID: Record<ChipId, ChipDef> = Object.fromEntries(CHIPS.map((c) => [c.id, c])) as Record<ChipId, ChipDef>;
 
-/**
- * 강화 비용 — 스킬과 **같은 원정 인장**. 1단계 값을 스킬 1레벨과 같게 두어, 첫 인장을
- * 스킬에 쓸지 칩에 쓸지가 실제 선택이 되게 한다 (가이드의 1순위 vs 2순위).
- */
+/** 강화 비용 — 원정 인장. 1단계는 보급 하나(6~12)보다 싸서 첫 인장의 쓸 곳이 된다 */
 export function chipCost(level: number): number {
   return Math.round(3 * 1.45 ** (level - 1));
 }
