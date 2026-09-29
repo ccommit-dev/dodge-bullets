@@ -992,6 +992,66 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("조각이 있는 저장은 그대로 (없는 키는 0)", kept.expeditionShards.fire === 11 && kept.expeditionShards.ice === 0);
   }
 
+  // ── 감사 패스 (2026-09-29) — 사 놓고 안 듣던 칩 · 매 프레임 다시 터지던 장판 · 독과 실제가 다르던 재사용
+  {
+    const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+    const mk = (mut) => {
+      const world = wm.createWorld(390, 700, 1);
+      world.rangedWeapon = "none"; world.skillLevels = { ...world.skillLevels, fire: 1 };
+      wm.resetRun(world, 3);                       // S4 — 화살 체력 3.6, 불화살 Lv1(1.6)로는 한 번에 안 부서진다
+      world.runSkills.fire = true;
+      for (const x of world.arrows) x.active = false;
+      mut?.(world);
+      return world;
+    };
+    const put = (world, i, x, y) => { const t = world.arrows[i]; t.active = true; t.warningMs = 0; t.reflected = false; t.boss = false; t.kind = "normal"; t.x = x; t.y = y; t.vx = 0; t.vy = 0; t.hitRadius = 8; t.hp = 0; t.maxHp = 0; t.chilledMs = 0; return t; };
+    // 1) 화염 장판 — 폭발은 한 번, 그 뒤는 틱 피해
+    {
+      const world = mk((w) => { w.runMods.evolutions.fire = "pyre"; });
+      const t = put(world, 0, world.player.x, world.player.y - 120);
+      let frames = 0;
+      while (world.sfx.boom === 0 && frames < 120) { dodgeShots.updateSkillShots(world, 1 / 60); frames += 1; }
+      const hpAfterBoom = t.hp;
+      world.sfx.hit = 0;
+      const sparksBefore = world.sparks.filter((p) => p.active).length;
+      for (let i = 0; i < 12; i += 1) dodgeShots.updateSkillShots(world, 1 / 60);
+      const zone = world.skillShots.find((x) => x.active && x.element === "fire" && x.vx === 0 && x.vy === 0);
+      ok("화염 장판: 폭발은 한 번뿐이다 (닿아 있는 화살마다 매 프레임 다시 터지지 않는다)", world.sfx.boom === 1 && !!zone, "boom " + world.sfx.boom);
+      const tick = hpAfterBoom - t.hp;
+      ok("화염 장판: 머무는 동안은 초당 피해 ×3 으로 나눠 태운다", t.active && Math.abs(tick - 1.6 * 3 * (12 / 60)) < 0.01, "12프레임에 " + tick.toFixed(3));
+      ok("화염 장판: 틱 피해는 조용하다 — 명중음·파편을 매 프레임 내지 않는다", world.sfx.hit === 0 && world.sparks.filter((p) => p.active).length <= sparksBefore, "hit " + world.sfx.hit);
+    }
+    // 2) 잔열 칩 — 끼우면 폭발 반경이 실제로 넓어진다
+    {
+      const run = (mul) => {
+        const world = mk((w) => { w.chips = { ...w.chips, flameRadiusMul: mul }; });
+        put(world, 0, world.player.x, world.player.y - 120);
+        const far = put(world, 1, world.player.x + 56, world.player.y - 120);   // 기본 반경 48 밖 · 48×1.3=62.4 안
+        for (let i = 0; i < 120 && world.sfx.boom === 0; i += 1) dodgeShots.updateSkillShots(world, 1 / 60);
+        return far.maxHp > 0;   // 맞았으면 체력이 채워져 있다
+      };
+      const plain = run(1), chip = run(dodgeChips.chipFlame(5));
+      ok("잔열 칩: 장착하면 불화살 폭발 반경이 실제로 넓어진다 (Lv5 +30%)", !plain && chip, plain + " → " + chip);
+    }
+    // 3) 재사용 — 쏘는 쪽과 독이 같은 값을 읽는다
+    {
+      const world = mk((w) => { w.chips = { ...w.chips, cooldownMul: 0.9 }; w.collectionMul = 0.95; w.runMods.cooldownMul = 0.8; });
+      put(world, 0, world.player.x, world.player.y - 300);
+      dodgeShots.updateSkillShots(world, 1 / 60);
+      const want = dodgeShots.skillCooldown(world, "fire");
+      ok("속성 화살 재사용: 실제 타이머 = skillCooldown (칩 · 수집 · 카드 포함)",
+        Math.abs(world.skillTimers.fire - want) < 1e-9 && Math.abs(want - 5.5 * 0.9 * 0.95 * 0.8) < 1e-9, world.skillTimers.fire + " / " + want);
+      const app = readFileSync(join(root, "src/App.tsx"), "utf8");
+      ok("독의 게이지는 skillCooldown 을 읽는다 (따로 계산하지 않는다)", app.includes("full = skillCooldown(world, d.id") && !app.includes("effectiveCooldown"));
+    }
+    // 4) 기본 무기와 칩 설명
+    ok("장궁은 처음부터 열려 있다 — 새 계정이 끼고 있는 무기가 '잠김'으로 보이지 않는다",
+      dodgeSkills.WEAPON_BY_ID.bow.unlockStage === 0 && prog.emptyCharacterProgress().expeditionWeapon === "bow" && dodgeSkills.weaponUnlocked(dodgeSkills.WEAPON_BY_ID.bow, 0));
+    ok("칩 설명에 '+0' 이 없다 — 효과가 아직 없는 레벨은 언제 오르는지를 말한다",
+      dodgeChips.CHIPS.every((c) => [1, 2, 3, 4, 5].every((lv) => !(c.desc(lv) + " ").includes("+0 "))),
+      dodgeChips.CHIPS.map((c) => c.desc(1)).filter((d) => (d + " ").includes("+0 ")).join(" | "));
+  }
+
   // ── 손맛 연출 (2026-09-29) — 판정과 무관하지만, "맞았다"는 신호가 실제로 나가는지는 단언으로 남긴다
   {
     const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);

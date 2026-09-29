@@ -20,11 +20,11 @@ import {
  * 조준은 자동이고 플레이어는 위치와 성장에 집중한다 (참고 게임과 같다).
  *
  *   · **기본 사격** — 활/지팡이를 끼면 스킬과 무관하게 항상 나간다. 보스는 못 깎는다.
- *   · **속성 화살** — 스킬 레벨이 1 이상일 때 재사용마다 한 발. 각각 위력(보스를 깎는 양)과
- *     명중 효과, 상성(특정 종류에 위력 +1 · 효과 ×1.5)이 있다.
+ *   · **속성 화살** — **이번 런에서 카드로 습득한 것만** 재사용마다 한 발. 각각 피해(화살 체력을
+ *     깎는 양) · 위력(보스를 깎는 양) · 명중 효과 · 상성(피해 ×1.5 · 위력 +1 · 효과 ×1.5)이 있다.
  *
- * 난이도 원칙: 봇 시뮬 게이트는 **맨손(weapon "none")** 에서 돈다. 무기를 끼운 만큼, 스킬을 올린
- * 만큼만 쉬워진다 — 성장의 보상이 난이도 완화로 나타나는 구조다.
+ * 난이도 원칙: 봇 시뮬 게이트의 기준선은 **장궁 + 불화살 Lv1**(새 계정의 기본 상태)이다.
+ * 스킬을 올린 만큼, 칩을 끼운 만큼만 쉬워진다 — 성장의 보상이 난이도 완화로 나타나는 구조다.
  */
 
 export type SkillShot = {
@@ -202,7 +202,7 @@ function affinity(element: Element, a: Arrow): { power: number; mul: number } {
  * 남긴다(스킬이 보스에 아무 영향이 없으면 강화할수록 벨 화살만 줄어 보스를 못 끝낸다 — 2026-09-28 실측).
  * 기본 사격(위력 0)은 보스에 흠집도 못 낸다 — 보스는 속성 화살·검격의 몫이다.
  */
-function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage: number): boolean {
+function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage: number, quiet = false): boolean {
   if (!targetable(a)) return false;
   const aff = affinity(element, a);
   const p = power + aff.power;
@@ -212,6 +212,7 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage
     a.hp -= damage * aff.mul * world.runMods.damageMul;
     if (a.hp > 0.001) {
       // 안 부서졌다 — 번쩍이고 파편 조금. 체력 눈금이 남은 양을 보여 준다
+      if (quiet) { if (a.hitFlashMs <= 0) a.hitFlashMs = 140; return false; }
       a.hitFlashMs = 140;
       burst(world, element, a.x, a.y, 3, 110);
       world.sfx.hit += 1;
@@ -280,6 +281,17 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
   return base * weaponCooldownMul(weapon, family);
 }
 
+/**
+ * 속성 화살의 **실제** 재사용(초) — 무기 상성 · 카드 · 칩 · 수집 보너스 · 화살통 · [화염 장판]의 대가까지.
+ * 쏘는 쪽(tick)과 화면의 독이 같은 값을 읽는다 — 따로 계산하면 독의 게이지가 실제와 어긋난다.
+ */
+export function skillCooldown(world: GameWorld, id: Exclude<ExpeditionSkillId, "ultimate">): number {
+  return effectiveCooldown(id, world.skillLevels[id] ?? 0, world.rangedWeapon)
+    * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
+    * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1)
+    * (id === "fire" && world.runMods.evolutions.fire === "pyre" ? 1.25 : 1);
+}
+
 /** 기본 사격 재사용(초) — 카드·칩·화살통이 줄인다 */
 export function basicCooldown(world: GameWorld): number {
   return BASIC_SHOT_COOLDOWN * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
@@ -340,9 +352,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     timers[id] = (timers[id] ?? 0) - dtSec;
     if (timers[id] > 0) return;
     if (!fire()) { timers[id] = 0.1; return; }   // 표적이 없으면 쿨타임을 태우지 않는다
-    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
-      * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1)
-      * (id === "fire" && world.runMods.evolutions.fire === "pyre" ? 1.25 : 1);
+    timers[id] = skillCooldown(world, id);
   };
 
   tick("fire", () => {
@@ -436,6 +446,9 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     s.fade = Math.max(0, Math.min(1, s.lifeMs / 300));
     if (s.lifeMs <= 0 || s.y < -80 || s.y > world.height + 80 || s.x < -80 || s.x > world.width + 80) { s.active = false; continue; }
 
+    // 머무는 화염 장판은 아래 전용 루프가 태운다 — 여기서 또 충돌을 보면 닿는 화살마다 매 프레임 통째로 다시 터진다
+    if (s.vx === 0 && s.vy === 0) continue;
+
     for (const a of world.arrows) {
       if (!targetable(a)) continue;
       if ((a.x - s.x) ** 2 + (a.y - s.y) ** 2 > (s.radius + a.hitRadius) ** 2) continue;
@@ -443,14 +456,14 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       const aff = affinity(s.element, a);
       if (s.element === "fire" && !s.basic) {
         // 폭발 — 반경 안을 함께 태운다. 콤보 [열충격]: 얼어붙은 화살이 섞여 있으면 넓어진다
-        let r = fireRadius(lv.fire) * world.runMods.fireRadiusMul * aff.mul;
+        let r = fireRadius(lv.fire) * world.runMods.fireRadiusMul * world.chips.flameRadiusMul * aff.mul;
         if (world.runMods.chillBurst && world.arrows.some((b) => targetable(b) && b.chilledMs > 0 && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r)) r *= 1.6;
         spawnFx(world, "fire", s.x, s.y, r, 420);
         burst(world, "fire", s.x, s.y, 18, 60 + r * 2.2);
         shake(world, 150, 3);
         world.sfx.boom += 1;
         for (const b of world.arrows) if (targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r) hit(world, b, "fire", s.power, s.damage);
-        if (world.runMods.evolutions.fire === "pyre") { s.vx = 0; s.vy = 0; s.lifeMs = Math.min(s.lifeMs, 1400); s.radius = r * 0.8; s.hits = 99; continue; }
+        if (world.runMods.evolutions.fire === "pyre") { s.vx = 0; s.vy = 0; s.lifeMs = Math.min(s.lifeMs, 1400); s.radius = r * 0.8; s.hits = 99; break; }
         s.active = false; break;
       }
       if (s.element === "ice" && !s.basic) {
@@ -491,7 +504,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   for (const s of world.skillShots) {
     if (!s.active || s.basic || s.element !== "fire" || s.vx !== 0 || s.vy !== 0) continue;
     // 장판은 매 프레임 닿으므로 초당 피해(피해 ×3/초)로 나눠 준다 — 한 프레임에 통째로 주면 즉사다
-    for (const a of world.arrows) if (targetable(a) && (a.x - s.x) ** 2 + (a.y - s.y) ** 2 <= s.radius * s.radius) hit(world, a, "fire", 0, s.damage * 3 * dtSec);
+    for (const a of world.arrows) if (targetable(a) && (a.x - s.x) ** 2 + (a.y - s.y) ** 2 <= s.radius * s.radius) hit(world, a, "fire", 0, s.damage * 3 * dtSec, true);
   }
 
   for (const p of world.sparks) {

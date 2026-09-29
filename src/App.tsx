@@ -56,14 +56,14 @@ import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
 import { applyPerk, pickPerks, rarityOdds, RARITY_LABEL, type PerkDef, type PerkId } from "./game/perks";
-import { basicCooldown, effectiveCooldown } from "./game/skillShots";
+import { basicCooldown, skillCooldown } from "./game/skillShots";
 import { chipCost, chipModsOf, chipSlotsOpen, CHIP_MAX_LEVEL, type ChipId } from "./game/chips";
 import {
   DAILIES, dailyClaimable, DAILY_BY_ID, PRIMED_MS, rolledDaily, SUPPLIES, SUPPLY_BY_ID, SUPPLY_MAX,
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
 import { applySkillLevels, collectionCooldownMul, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
-import { EXPEDITION_SKILLS } from "./game/skills";
+import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import {
@@ -648,7 +648,8 @@ function App() {
             setSkillHud([...basic, ...EXPEDITION_SKILLS
               .filter((d) => d.id !== "ultimate" && !!world.runSkills[d.id] && (world.skillLevels[d.id] ?? 0) > 0)
               .map((d) => {
-                const full = effectiveCooldown(d.id, world.skillLevels[d.id], world.rangedWeapon) * world.runMods.cooldownMul;
+                // 쏘는 쪽과 같은 값 — 칩·수집 보너스·화살통을 빼고 재면 게이지가 실제보다 늦게 찬다
+                const full = skillCooldown(world, d.id as Exclude<typeof d.id, "ultimate">);
                 const left = Math.max(0, world.skillTimers[d.id] ?? 0);
                 return { id: d.id, lv: world.skillLevels[d.id], ready: full > 0 ? 1 - left / full : 1 };
               })]);
@@ -1025,12 +1026,19 @@ function App() {
     const cost = skillCost(def, lv + 1);
     if (current.sharedCoins < cost.gold || (current.expeditionShards[id] ?? 0) < cost.shards) return;
     void (async () => {
-      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
-        ...p,
-        sharedCoins: p.sharedCoins - cost.gold,
-        expeditionShards: { ...p.expeditionShards, [id]: Math.max(0, (p.expeditionShards[id] ?? 0) - cost.shards) },
-        expeditionSkills: { ...p.expeditionSkills, [id]: (p.expeditionSkills[id] ?? 0) + 1 },
-      }));
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        // 저장된 값으로 다시 본다 — 빠르게 두 번 누르면 밖의 검사는 둘 다 통과한다
+        const now = p.expeditionSkills[id] ?? 0;
+        if (now >= SKILL_MAX_LEVEL) return p;
+        const c = skillCost(def, now + 1);
+        if (p.sharedCoins < c.gold || (p.expeditionShards[id] ?? 0) < c.shards) return p;
+        return {
+          ...p,
+          sharedCoins: p.sharedCoins - c.gold,
+          expeditionShards: { ...p.expeditionShards, [id]: (p.expeditionShards[id] ?? 0) - c.shards },
+          expeditionSkills: { ...p.expeditionSkills, [id]: now + 1 },
+        };
+      });
       setProgress(next);
       const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
       if (worldRef.current) loadLoadout(worldRef.current, merged, next);
@@ -1040,28 +1048,31 @@ function App() {
   /** 원거리 무기 탈착 — 같은 캐릭터에 활/지팡이를 바꿔 끼운다. 장착 중인 것을 다시 누르면 맨손 */
   const handleEquipWeapon = useCallback((id: RangedWeaponId) => {
     void (async () => {
-      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
-        ...p,
-        expeditionWeapon: p.expeditionWeapon === id ? "none" : id,
-      }));
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const def = id === "none" ? null : WEAPON_BY_ID[id];
+        if (def && !weaponUnlocked(def, p.dodgeBestStage)) return p;   // 잠긴 무기는 못 낀다
+        return { ...p, expeditionWeapon: p.expeditionWeapon === id ? "none" : id };
+      });
       setProgress(next);
       const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
       if (worldRef.current) loadLoadout(worldRef.current, merged, next);
     })();
   }, []);
 
-  /** 칩 강화 — 스킬과 같은 원정 인장을 쓴다(1순위 vs 2순위 선택이 생기도록) */
+  /** 칩 강화 — 원정 인장을 쓴다. 보급창과 같은 재화라 "칩이냐 보급이냐"가 선택이 된다 */
   const handleUpgradeChip = useCallback((id: ChipId) => {
     const lv = progress.expeditionChips[id] ?? 0;
     if (lv >= CHIP_MAX_LEVEL) return;
     const cost = chipCost(lv + 1);
     if (progress.expeditionSeals < cost) return;
     void (async () => {
-      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
-        ...p,
-        expeditionSeals: p.expeditionSeals - cost,
-        expeditionChips: { ...p.expeditionChips, [id]: (p.expeditionChips[id] ?? 0) + 1 },
-      }));
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const now = p.expeditionChips[id] ?? 0;
+        if (now >= CHIP_MAX_LEVEL) return p;
+        const c = chipCost(now + 1);
+        if (p.expeditionSeals < c) return p;
+        return { ...p, expeditionSeals: p.expeditionSeals - c, expeditionChips: { ...p.expeditionChips, [id]: now + 1 } };
+      });
       setProgress(next);
       const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
       if (worldRef.current) loadLoadout(worldRef.current, merged, next);
@@ -1083,22 +1094,22 @@ function App() {
     })();
   }, []);
 
-  /** 보급 구매 — 인장을 "지금 쓰는" 자리. 스킬·칩과 같은 재화라 선택이 생긴다 */
+  /** 보급 구매 — 인장을 "지금 쓰는" 자리. 칩과 같은 재화라 선택이 생긴다 */
   const handleBuySupply = useCallback((id: SupplyId) => {
     const def = SUPPLY_BY_ID[id];
     if (progress.expeditionSeals < def.seals) return;
     if ((progress.expeditionSupplies[id] ?? 0) >= SUPPLY_MAX) return;
     void (async () => {
-      const next = await updateCharacterProgress(userHashRef.current, (p) => ({
-        ...p,
-        expeditionSeals: p.expeditionSeals - def.seals,
-        expeditionSupplies: { ...p.expeditionSupplies, [id]: (p.expeditionSupplies[id] ?? 0) + 1 },
-      }));
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const have = p.expeditionSupplies[id] ?? 0;
+        if (p.expeditionSeals < def.seals || have >= SUPPLY_MAX) return p;
+        return { ...p, expeditionSeals: p.expeditionSeals - def.seals, expeditionSupplies: { ...p.expeditionSupplies, [id]: have + 1 } };
+      });
       setProgress(next);
     })();
   }, [progress]);
 
-  /** 일일 임무 보상 수령 — 보상은 인장이라 스킬·칩·보급 전부로 되돌아간다 */
+  /** 일일 임무 보상 수령 — 보상은 인장이라 칩·보급으로 되돌아간다 */
   const handleClaimDaily = useCallback((id: DailyId) => {
     if (!dailyClaimable(rolledDaily(progress.expeditionDaily), id)) return;
     void (async () => {

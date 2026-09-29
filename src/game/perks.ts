@@ -97,7 +97,7 @@ export const PERKS: PerkDef[] = [
   { id: "shotExtra", rarity: "common", needs: ["basic"], label: "기본 사격 +1발", desc: "한 번에 한 발 더 쏜다", available: armed, apply: (w) => { w.runMods.shotExtra += 1; } },
   { id: "quickdraw", rarity: "common", needs: ["basic"], label: "속사", desc: "모든 화살 재사용 −10%", available: armed, apply: (w) => { w.runMods.cooldownMul *= 0.9; } },
   // 가이드: "초반에는 공격 속도나 범위가 안전하다. 단일 대상 피해는 강한 한 방이 의미를 갖기 전에 밀릴 수 있다" —
-  // 화살 체력이 S1 1 → S4 3.8 로 오르므로 이 카드의 값은 깊이 들어갈수록 커진다
+  // 화살 체력이 S1 1 → S4 3.6 으로 오르므로 이 카드의 값은 깊이 들어갈수록 커진다
   { id: "damageUp", rarity: "common", needs: ["basic"], label: "강궁", desc: "모든 화살 피해 +15%", available: armed, apply: (w) => { w.runMods.damageMul *= 1.15; } },
   { id: "boltExtra", rarity: "common", needs: ["bolt"], label: "번개 분기 +1", desc: "번개화살이 한 갈래 더 뻗는다", available: (w) => has(w, "bolt"), apply: (w) => { w.runMods.boltExtra += 1; } },
 
