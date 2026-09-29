@@ -273,7 +273,10 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.fillStyle = warningColor;
     ctx.font = "800 11px system-ui";
     const warningText = a.telegraph === "homing" ? "유도탄" : a.telegraph === "sniper" ? "저격 0.8" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "점프" : a.telegraph === "dash" ? "대시 관통" : "PERFECT";
-    ctx.fillText(warningText, Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x)), Math.max(18, Math.min(ctx.canvas.clientHeight - 18, a.y + 18)));
+    // 위는 상단 버튼·HUD 글자(왼쪽 열이 더 길다)·일섬 게이지, 아래는 스킬 슬롯·조작 버튼이 덮는다 — 그 사이에만 쓴다
+    const lx = Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x));
+    const top = labelBounds.top + (lx < labelBounds.leftColumn ? labelBounds.leftExtra : 0);
+    ctx.fillText(warningText, lx, Math.max(top, Math.min(labelBounds.bottom, a.y + 18)));
     ctx.restore();
   }
 
@@ -436,8 +439,42 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   if (shaking) ctx.restore();
 }
 
+/** 보스 막대의 세로 위치(safeTop 기준) — verify-dodge-hud 가 DOM HUD 와 겹치지 않는지 잰다 */
+export const BOSS_BAR_TOP = 214;
+
+/** 캔버스 글자가 DOM HUD 에 가려지지 않는 세로 범위 — drawFrameInner 가 매 프레임 채운다 */
+const labelBounds = { top: 120, bottom: 600, leftColumn: 205, leftExtra: 72 };
+
+/** 일섬 게이지 — 화살·이펙트보다 **위**에 그린다. 아래에 그리면 날아가는 화살이 숫자를 가린다 (2026-09-29) */
+function drawSlashGauge(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  if (world.elapsedMs <= 0) return;   // 준비 화면에서는 오버레이 뒤로 비친다
+  const { width } = world;
+  ctx.save();
+  const trackerW = Math.min(190, width - world.safeLeft - world.safeRight - 24);
+  const trackerX = width - world.safeRight - trackerW - 12;
+  const trackerY = world.safeTop + 76;
+  const full = world.slashGauge >= 100;
+  ctx.fillStyle = "rgba(8,47,73,.82)";
+  ctx.strokeStyle = full ? "#fde68a" : "rgba(103,232,249,.7)";
+  ctx.lineWidth = 2;
+  ctx.fillRect(trackerX, trackerY, trackerW, 26);
+  ctx.strokeRect(trackerX, trackerY, trackerW, 26);
+  const gw = trackerW - 20;
+  ctx.fillStyle = "rgba(15,23,42,.8)";
+  ctx.fillRect(trackerX + 10, trackerY + 14, gw, 7);
+  ctx.fillStyle = full ? "#fde68a" : "#f59e0b";
+  ctx.fillRect(trackerX + 10, trackerY + 14, gw * Math.min(1, world.slashGauge / 100), 7);
+  ctx.fillStyle = full ? "#fde68a" : "#e0f2fe";
+  ctx.font = "900 10px system-ui";
+  ctx.fillText(full ? "일섬 준비" : `일섬 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
+  ctx.restore();
+}
+
 function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, safeTop, safeBottom, arrows, platforms, floorY } = world;
+  labelBounds.top = safeTop + (world.bossSpawned && !world.bossDefeated ? BOSS_BAR_TOP + 44 : 120);
+  labelBounds.leftExtra = world.bossSpawned && !world.bossDefeated ? 0 : 72;
+  labelBounds.bottom = floorY - 8;
 
   ctx.fillStyle = "#0b1220";
   ctx.fillRect(0, 0, width, height);
@@ -528,30 +565,6 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.restore();
   }
 
-  // 쳐낸 공격이 보급품으로 쌓이는 즉각적인 목표 피드백. 준비 화면(elapsed 0)에서는 오버레이 뒤로 비치므로 그리지 않는다.
-  if (world.elapsedMs > 0) {
-  ctx.save();
-  const trackerW = Math.min(190, width - world.safeLeft - world.safeRight - 24);
-  const trackerX = width - world.safeRight - trackerW - 12;
-  const trackerY = world.safeTop + 76;
-  // 일섬 게이지만 — 나머지 집계(처치·완벽·상자·보급·인장)는 결과 화면이 말한다.
-  // 탄막을 피하면서 9px 숫자 일곱 개를 읽을 수는 없다 (2026-09-21)
-  const full = world.slashGauge >= 100;
-  ctx.fillStyle = "rgba(8,47,73,.82)";
-  ctx.strokeStyle = full ? "#fde68a" : "rgba(103,232,249,.7)";
-  ctx.lineWidth = 2;
-  ctx.fillRect(trackerX, trackerY, trackerW, 26);
-  ctx.strokeRect(trackerX, trackerY, trackerW, 26);
-  const gw = trackerW - 20;
-  ctx.fillStyle = "rgba(15,23,42,.8)";
-  ctx.fillRect(trackerX + 10, trackerY + 14, gw, 7);
-  ctx.fillStyle = full ? "#fde68a" : "#f59e0b";
-  ctx.fillRect(trackerX + 10, trackerY + 14, gw * Math.min(1, world.slashGauge / 100), 7);
-  ctx.fillStyle = full ? "#fde68a" : "#e0f2fe";
-  ctx.font = "900 10px system-ui";
-  ctx.fillText(full ? "일섬 준비" : `일섬 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
-  ctx.restore();
-  }
   if (world.lastCutMs > 0 && world.lastCut) {
     ctx.save();
     const label = world.lastCut === "reflect" ? "반사!" : world.lastCut === "ult" ? "일섬" : "파쇄";
@@ -679,7 +692,8 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   if (world.bossSpawned && !world.bossDefeated) {
     const barW = Math.min(280, width - world.safeLeft - world.safeRight - 36);
     const barX = (width - barW) * 0.5;
-    const barY = world.safeTop + 126;
+    // HUD 왼쪽 열(제목·점수·HP·위험도·레벨·진행바) 아래 — 126 에 두면 위험도 줄을 덮는다 (2026-09-29 캡처)
+    const barY = world.safeTop + BOSS_BAR_TOP;
     const ratio = world.bossMaxCuts > 0 ? world.bossCutsLeft / world.bossMaxCuts : 0;
     ctx.save();
     ctx.fillStyle = "rgba(15,23,42,.9)";
@@ -699,6 +713,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   drawSkillShots(ctx, world);
   drawStickman(ctx, world);
   drawJuice(ctx, world);
+  drawSlashGauge(ctx, world);
 
   if (world.player.slowActiveMs > 0) {
     // 베는 구간과 느려지는 구간을 **다르게** 그린다.
