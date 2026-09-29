@@ -3937,6 +3937,13 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-daily-bar small { position:absolute; inset:0; display:grid; place-items:center; color:#e0f2fe; font-size:8px; font-weight:900; }
 .exp-daily-list li.done { border-color:rgba(253,224,71,.55); }
 .exp-daily-list li.claimed { opacity:.5; }
+/* 기본 사격 행 — 무기의 것 (2026-09-29) */
+.exp-basic-row { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(253,224,71,.35); border-radius:12px; background:rgba(4,14,28,.7); }
+.exp-basic-row img { flex:none; width:34px; height:34px; object-fit:contain; }
+.exp-basic-row span { display:grid; gap:2px; min-width:0; }
+.exp-basic-row b { color:#fde68a; font-size:12px; }
+.exp-basic-row b i { margin-left:6px; color:#94a3b8; font-style:normal; font-size:9px; font-weight:700; }
+.exp-basic-row em { color:#e0f2fe; font-style:normal; font-size:10px; }
 /* 원정 칩 — 영구 패시브. 슬롯(끼운 것)과 목록(가진 것)을 나눠 보여 준다 (2026-09-28) */
 .exp-chip-row { display:grid; gap:6px; }
 .exp-chip-row > b { color:#c4b5fd; font-size:11px; }

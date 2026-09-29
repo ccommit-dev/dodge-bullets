@@ -233,6 +233,17 @@ export function SkillPanel({
         {pickSlot !== null && <p className="exp-chip-hint">{pickSlot + 1}번 슬롯에 끼울 칩을 고르세요 — 슬롯을 다시 누르면 취소</p>}
       </div>
 
+      {/* 기본 사격 — 무기만 있으면 항상 나간다. 스킬이 없어도 런 중 카드가 열린다는 것을 알려 준다 (2026-09-29) */}
+      {weapon !== "none" && (
+        <div className="exp-basic-row">
+          <img src={assetUrl("dodge/skills/basic.png")} alt="" aria-hidden="true" />
+          <span>
+            <b>기본 사격 <i>1.5초마다 1발 · 보스는 못 깎음</i></b>
+            <em>런 중 열리는 카드 {perksUnlockedBy("basic").length}장 — 발수·속사·관통·진화</em>
+          </span>
+        </div>
+      )}
+
       <div className="exp-skill-grid">
         {EXPEDITION_SKILLS.map((def) => {
           const lv = levels[def.id] ?? 0;
@@ -318,14 +329,15 @@ export function SkillPanel({
                     <b>런 중 열리는 카드</b>
                     <ul>
                       {cards.map((c) => {
+                        // "basic" 은 무기 조건 — SKILL_BY_ID 에 없다. 여기서 이름을 찾다 앱이 통째로 죽었다 (2026-09-29 실측)
                         const others = (c.needs ?? []).filter((n) => n !== open.id);
-                        const missing = others.filter((n) => (levels[n as ExpeditionSkillId] ?? 0) <= 0);
+                        const missing = others.filter((n) => (n === "basic" ? weapon === "none" : (levels[n as ExpeditionSkillId] ?? 0) <= 0));
                         return (
                           <li key={c.id} className={missing.length ? "locked" : ""}>
                             <i className={`perk-rarity r-${c.rarity}`}>{RARITY_LABEL[c.rarity]}</i>
                             <span>{c.label}</span>
                             {missing.length > 0 && (
-                              <em>{missing.map((n) => SKILL_BY_ID[n as ExpeditionSkillId].name).join("·")} 필요</em>
+                              <em>{missing.map((n) => (n === "basic" ? "무기 장착" : SKILL_BY_ID[n as ExpeditionSkillId].name)).join("·")} 필요</em>
                             )}
                           </li>
                         );

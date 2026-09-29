@@ -169,7 +169,24 @@ export function drawStickman(
     if (wp?.complete && wp.naturalWidth > 0) {
       const wh = drawHeight * 0.46;
       const ww = wh * (wp.naturalWidth / wp.naturalHeight);
-      ctx.drawImage(wp, drawWidth * 0.30, -drawHeight * 0.72, ww, wh);
+      // 쏘는 순간 — 무기를 표적 쪽으로 기울이고 뒤로 튕긴다. 시위는 밝은 선으로 (2026-09-29)
+      const k = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
+      const hx = drawWidth * 0.30 + ww / 2, hy = -drawHeight * 0.72 + wh / 2;
+      ctx.save();
+      ctx.translate(hx, hy);
+      if (k > 0) {
+        // 표적 각도 — 스프라이트는 facing 으로 이미 뒤집혀 있으므로 x 성분에 facing 을 곱한다
+        const a = Math.atan2(Math.sin(world.shotAngle), Math.cos(world.shotAngle) * p.facing);
+        ctx.rotate((a + Math.PI / 2) * 0.35 * k);
+        ctx.translate(-4 * k, 3 * k);
+      }
+      ctx.drawImage(wp, -ww / 2, -wh / 2, ww, wh);
+      if (k > 0) {
+        ctx.globalAlpha = k;
+        ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(-ww * 0.1, -wh * 0.42); ctx.lineTo(-ww * 0.35 * (1 - k) - ww * 0.1, 0); ctx.lineTo(-ww * 0.1, wh * 0.42); ctx.stroke();
+      }
+      ctx.restore();
     }
     ctx.restore();
 

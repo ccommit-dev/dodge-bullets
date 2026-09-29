@@ -6,16 +6,16 @@ import type { GameWorld } from "./types";
  * 적용은 world.stats / player / runMods 에 직접.
  *
  * 참고 게임(황야의 무법자: 타워 디펜스)의 핵심 루프를 옮긴 부분이다 (2026-09-28):
- *
- *   1. **등급** — 카드는 일반 / 레어 / 에픽으로 나뉘고, **스테이지가 깊어질수록 상위 등급이
- *      잘 나온다**. 1스테이지에서 에픽을 보면 사건이고, 4스테이지에서는 빌드를 에픽으로
- *      굳히는 판이 된다. 등급이 없으면 레벨업이 그냥 "+12% 셋 중 하나"라 집중이 안 된다.
+ *   1. **등급** — 일반 / 레어 / 에픽. **스테이지가 깊어질수록 상위 등급이 잘 나온다**.
  *   2. **스킬 진화** — "같은 스킬도 어떤 카드를 쌓느냐에 따라 전혀 다르게 진화한다".
- *   3. **콤보** — "얼음으로 느려진 대상에 추가 피해" 처럼 두 스킬이 맞물릴 때만 뜨는 카드.
+ *   3. **콤보** — 두 스킬이 맞물릴 때만 뜨는 카드.
  *
- * 가이드가 경고한 함정("런 중에 거의 보이지 않는 스킬에 투자하면 운에 기대는 셈")은
- * **가진 스킬의 카드만 후보에 넣어** 피한다. 스킬이 하나도 없으면 후보가 예전 일반 다섯 장
- * 그대로라 기존 난이도 기준선이 흔들리지 않는다.
+ * 2026-09-29: 카드를 **전부 활 계열**로 바꿨다 — 이동 속도·회피 쿨타임·검격 강화 같은 카드는
+ * "활을 쏘는 게임"이라는 주제에서 벗어나 있었다(사용자 지적). 남는 일반 카드는 기본 사격·
+ * 일섬 게이지·HP 뿐이고 나머지는 속성 화살을 바꾼다.
+ *
+ * 가이드가 경고한 함정("보이지 않는 스킬에 투자하면 운에 기대는 셈")은 **가진 스킬의 카드만**
+ * 후보에 넣어 피한다.
  */
 
 export type PerkRarity = "common" | "rare" | "epic";
@@ -23,9 +23,9 @@ export type PerkRarity = "common" | "rare" | "epic";
 export const RARITY_LABEL: Record<PerkRarity, string> = { common: "일반", rare: "레어", epic: "에픽" };
 
 export type PerkId =
-  | "gauge" | "speed" | "heal" | "slash" | "dash"
-  | "volleyExtra" | "boltPierce" | "pierceWide" | "flameWide" | "chainExtra" | "frostDeep"
-  | "volleyStorm" | "overdrive" | "chillHunt" | "chillBurst"
+  | "gauge" | "heal" | "shotExtra" | "quickdraw" | "boltExtra"
+  | "shotPierce" | "waterMore" | "fireWide" | "iceDeep" | "earthHeavy"
+  | "arrowStorm" | "overdrive" | "chillHunt" | "chillBurst"
   | "evoBeam" | "evoSeeker" | "evoCluster" | "evoPyre" | "evoShatter" | "evoLingering";
 
 export type PerkDef = {
@@ -40,86 +40,86 @@ export type PerkDef = {
   /**
    * 이 카드가 후보에 들어오려면 필요한 스킬. available() 안의 조건을 **밖에서도 읽을 수 있게**
    * 적어 둔 것이다 — 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지"를 보여주는 데 쓴다.
-   * available() 이 진실이고 이건 그것의 목록판이다 (verify-systems 가 둘이 어긋나면 잡는다).
+   * "basic" 은 기본 사격(무기만 있으면 됨). available() 이 진실이고 이건 그것의 목록판이다.
    */
-  needs?: Array<keyof GameWorld["skillLevels"]>;
+  needs?: Array<keyof GameWorld["skillLevels"] | "basic">;
   available: (w: GameWorld) => boolean;
   apply: (w: GameWorld) => void;
 };
 
 /** 그 스킬을 실제로 들고 있는가 (영구 레벨 1 이상) */
 const has = (w: GameWorld, id: keyof GameWorld["skillLevels"]) => (w.skillLevels?.[id] ?? 0) > 0;
+/** 기본 사격이 나가는가 — 무기를 끼고 있으면 */
+const armed = (w: GameWorld) => (w.rangedWeapon ?? "none") !== "none";
 
 export const PERKS: PerkDef[] = [
-  // ── 일반 — 무엇을 들고 있든 고를 수 있다
+  // ── 일반 — 무기만 있으면 고를 수 있다
   { id: "gauge", rarity: "common", label: "일섬 게이지 +35", desc: "일섬이 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
-  { id: "speed", rarity: "common", label: "이동 속도 +12%", desc: "이번 런 동안", available: () => true, apply: (w) => { w.stats.moveSpeed *= 1.12; w.runMods.moveSpeedMul *= 1.12; } },
   { id: "heal", rarity: "common", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; } w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
-  { id: "slash", rarity: "common", label: "검격 강화 +1", desc: "베기 점수·파편 약화", available: () => true, apply: (w) => { w.stats.slashLevel += 1; w.runMods.slashLevelBonus += 1; } },
-  { id: "dash", rarity: "common", label: "회피 쿨타임 -15%", desc: "대시가 열려 있을 때", available: (w) => w.stats.dashUnlocked, apply: (w) => { w.stats.dashCooldownMs *= 0.85; w.runMods.dashCooldownMul *= 0.85; } },
-  { id: "volleyExtra", rarity: "common", needs: ["volley"], label: "연속 사격 +1발", desc: "한 번에 한 발 더 날린다", available: (w) => has(w, "volley"), apply: (w) => { w.runMods.volleyExtra += 1; } },
-  { id: "chainExtra", rarity: "common", needs: ["chain"], label: "사슬 분기 +1", desc: "번개가 한 갈래 더 뻗는다", available: (w) => has(w, "chain"), apply: (w) => { w.runMods.chainExtra += 1; } },
+  { id: "shotExtra", rarity: "common", needs: ["basic"], label: "기본 사격 +1발", desc: "한 번에 한 발 더 쏜다", available: armed, apply: (w) => { w.runMods.shotExtra += 1; } },
+  { id: "quickdraw", rarity: "common", needs: ["basic"], label: "속사", desc: "모든 화살 재사용 −10%", available: armed, apply: (w) => { w.runMods.cooldownMul *= 0.9; } },
+  { id: "boltExtra", rarity: "common", needs: ["bolt"], label: "번개 분기 +1", desc: "번개화살이 한 갈래 더 뻗는다", available: (w) => has(w, "bolt"), apply: (w) => { w.runMods.boltExtra += 1; } },
 
-  // ── 레어 — 스킬이 눈에 띄게 달라진다
-  { id: "boltPierce", rarity: "rare", needs: ["volley"], label: "관통 볼트", desc: "볼트 한 발이 화살 하나를 더 꿰고 나간다", available: (w) => has(w, "volley"), apply: (w) => { w.runMods.boltPierce += 1; } },
-  { id: "flameWide", rarity: "rare", needs: ["flame"], label: "확산 화염", desc: "화염탄 폭발 반경 +35%", available: (w) => has(w, "flame"), apply: (w) => { w.runMods.flameRadiusMul *= 1.35; } },
-  { id: "pierceWide", rarity: "rare", needs: ["pierce"], label: "광폭 관통", desc: "관통 화살 폭 +40%", available: (w) => has(w, "pierce"), apply: (w) => { w.runMods.pierceWidthMul *= 1.4; } },
-  { id: "frostDeep", rarity: "rare", needs: ["frost"], label: "심층 빙결", desc: "빙결 파동이 더 깊게 얼린다", available: (w) => has(w, "frost"), apply: (w) => { w.runMods.frostSlowBonus += 0.1; } },
+  // ── 레어 — 화살이 눈에 띄게 달라진다
+  { id: "shotPierce", rarity: "rare", needs: ["basic"], label: "관통 촉", desc: "기본 화살이 화살 하나를 더 꿰고 나간다", available: armed, apply: (w) => { w.runMods.shotPierce += 1; } },
+  { id: "waterMore", rarity: "rare", needs: ["water"], label: "급류", desc: "물화살 관통 +1", available: (w) => has(w, "water"), apply: (w) => { w.runMods.waterPierceExtra += 1; } },
+  { id: "fireWide", rarity: "rare", needs: ["fire"], label: "확산 화염", desc: "불화살 폭발 반경 +35%", available: (w) => has(w, "fire"), apply: (w) => { w.runMods.fireRadiusMul *= 1.35; } },
+  { id: "iceDeep", rarity: "rare", needs: ["ice"], label: "심층 빙결", desc: "얼음화살이 더 깊게 얼린다", available: (w) => has(w, "ice"), apply: (w) => { w.runMods.iceSlowBonus += 0.1; } },
+  { id: "earthHeavy", rarity: "rare", needs: ["earth"], label: "바위 촉", desc: "흙화살 위력 +1 (보스를 더 깎는다)", available: (w) => has(w, "earth"), apply: (w) => { w.runMods.earthPowerBonus += 1; } },
 
   // ── 에픽 — 빌드의 방향이 바뀐다. 콤보는 두 스킬이 맞물릴 때만.
   {
-    id: "volleyStorm", rarity: "epic", needs: ["volley"], label: "탄막 폭풍", desc: "연속 사격 +2발 · 모든 볼트가 하나씩 더 꿴다",
-    available: (w) => has(w, "volley"),
-    apply: (w) => { w.runMods.volleyExtra += 2; w.runMods.boltPierce += 1; },
+    id: "arrowStorm", rarity: "epic", needs: ["basic"], label: "화살 폭풍", desc: "기본 사격 +2발 · 모든 기본 화살이 하나씩 더 꿴다",
+    available: armed,
+    apply: (w) => { w.runMods.shotExtra += 2; w.runMods.shotPierce += 1; },
   },
   {
-    id: "overdrive", rarity: "epic", label: "과부하", desc: "장착한 모든 원거리 스킬의 재사용 −20%",
-    available: (w) => Object.values(w.skillLevels ?? {}).some((v) => v > 0),
+    id: "overdrive", rarity: "epic", needs: ["basic"], label: "과부하", desc: "모든 화살 재사용 −20%",
+    available: armed,
     apply: (w) => { w.runMods.cooldownMul *= 0.8; },
   },
   {
-    id: "chillHunt", rarity: "epic", needs: ["frost", "volley"], label: "서리 사냥", desc: "얼어붙은 화살을 부수면 일섬 게이지를 더 받는다", combo: true,
-    available: (w) => has(w, "frost") && has(w, "volley") && !w.runMods.chillHunt,
+    id: "chillHunt", rarity: "epic", needs: ["ice", "basic"], label: "서리 사냥", desc: "얼어붙은 화살을 부수면 일섬 게이지를 더 받는다", combo: true,
+    available: (w) => has(w, "ice") && armed(w) && !w.runMods.chillHunt,
     apply: (w) => { w.runMods.chillHunt = true; },
   },
   {
-    id: "chillBurst", rarity: "epic", needs: ["frost", "flame"], label: "열충격", desc: "얼어붙은 화살을 함께 터뜨리면 화염 폭발이 넓어진다", combo: true,
-    available: (w) => has(w, "frost") && has(w, "flame") && !w.runMods.chillBurst,
+    id: "chillBurst", rarity: "epic", needs: ["ice", "fire"], label: "열충격", desc: "얼어붙은 화살을 함께 터뜨리면 불화살 폭발이 넓어진다", combo: true,
+    available: (w) => has(w, "ice") && has(w, "fire") && !w.runMods.chillBurst,
     apply: (w) => { w.runMods.chillBurst = true; },
   },
 
   // ── 진화 — 스킬의 **작동 방식**이 바뀐다. 한 스킬당 하나뿐이라 런마다 빌드가 갈린다.
-  //    참고 게임의 "기본 레이저 → 관통 광선 / 확산 / 차지 폭발". 무조건 상위 호환이 되지 않게
-  //    장점에는 대가를 붙였다 (광선은 재사용 ×1.35, 유도는 느리다, 장판은 재사용 ×1.25).
+  //    무조건 상위 호환이 되지 않게 장점에는 대가를 붙였다.
   {
-    id: "evoBeam", rarity: "epic", needs: ["volley"], label: "진화 · 관통 광선", desc: "볼트가 멈추지 않고 화면 끝까지 꿴다 · 재사용 +35%", evolution: true,
-    available: (w) => has(w, "volley") && !w.runMods.evolutions.volley,
-    apply: (w) => { w.runMods.evolutions.volley = "beam"; },
+    id: "evoBeam", rarity: "epic", needs: ["basic"], label: "진화 · 관통 광선", desc: "기본 화살이 멈추지 않고 화면 끝까지 꿴다 · 화살이 두꺼워진다", evolution: true,
+    available: (w) => armed(w) && !w.runMods.evolutions.basic,
+    apply: (w) => { w.runMods.evolutions.basic = "beam"; },
   },
   {
-    id: "evoSeeker", rarity: "epic", needs: ["volley"], label: "진화 · 유도 볼트", desc: "볼트가 화살을 쫓아간다 · 대신 느리다", evolution: true,
-    available: (w) => has(w, "volley") && !w.runMods.evolutions.volley,
-    apply: (w) => { w.runMods.evolutions.volley = "seeker"; },
+    id: "evoSeeker", rarity: "epic", needs: ["basic"], label: "진화 · 유도 화살", desc: "기본 화살이 표적을 쫓아간다 · 대신 느리다", evolution: true,
+    available: (w) => armed(w) && !w.runMods.evolutions.basic,
+    apply: (w) => { w.runMods.evolutions.basic = "seeker"; },
   },
   {
-    id: "evoCluster", rarity: "epic", needs: ["flame"], label: "진화 · 확산 폭발", desc: "화염탄 폭발 반경 +60%", evolution: true,
-    available: (w) => has(w, "flame") && !w.runMods.evolutions.flame,
-    apply: (w) => { w.runMods.evolutions.flame = "cluster"; w.runMods.flameRadiusMul *= 1.6; },
+    id: "evoCluster", rarity: "epic", needs: ["fire"], label: "진화 · 확산 폭발", desc: "불화살 폭발 반경 +60%", evolution: true,
+    available: (w) => has(w, "fire") && !w.runMods.evolutions.fire,
+    apply: (w) => { w.runMods.evolutions.fire = "cluster"; w.runMods.fireRadiusMul *= 1.6; },
   },
   {
-    id: "evoPyre", rarity: "epic", needs: ["flame"], label: "진화 · 화염 장판", desc: "터지지 않고 그 자리에 머물며 계속 태운다 · 재사용 +25%", evolution: true,
-    available: (w) => has(w, "flame") && !w.runMods.evolutions.flame,
-    apply: (w) => { w.runMods.evolutions.flame = "pyre"; },
+    id: "evoPyre", rarity: "epic", needs: ["fire"], label: "진화 · 화염 장판", desc: "불화살이 터진 자리에 머물며 계속 태운다 · 재사용 +25%", evolution: true,
+    available: (w) => has(w, "fire") && !w.runMods.evolutions.fire,
+    apply: (w) => { w.runMods.evolutions.fire = "pyre"; },
   },
   {
-    id: "evoShatter", rarity: "epic", needs: ["frost"], label: "진화 · 서리 파쇄", desc: "파동 안쪽 절반은 얼리는 대신 그 자리에서 부순다", evolution: true,
-    available: (w) => has(w, "frost") && !w.runMods.evolutions.frost,
-    apply: (w) => { w.runMods.evolutions.frost = "shatter"; },
+    id: "evoShatter", rarity: "epic", needs: ["ice"], label: "진화 · 서리 파쇄", desc: "빙결 반경 안쪽 절반은 얼리는 대신 그 자리에서 부순다", evolution: true,
+    available: (w) => has(w, "ice") && !w.runMods.evolutions.ice,
+    apply: (w) => { w.runMods.evolutions.ice = "shatter"; },
   },
   {
-    id: "evoLingering", rarity: "epic", needs: ["frost"], label: "진화 · 지속 서리", desc: "파동이 넓어지고 빙결이 3배 오래간다 (콤보가 잘 물린다)", evolution: true,
-    available: (w) => has(w, "frost") && !w.runMods.evolutions.frost,
-    apply: (w) => { w.runMods.evolutions.frost = "lingering"; },
+    id: "evoLingering", rarity: "epic", needs: ["ice"], label: "진화 · 지속 서리", desc: "빙결 반경이 넓어지고 3배 오래간다 (콤보가 잘 물린다)", evolution: true,
+    available: (w) => has(w, "ice") && !w.runMods.evolutions.ice,
+    apply: (w) => { w.runMods.evolutions.ice = "lingering"; },
   },
 ];
 
@@ -146,7 +146,7 @@ function rollRarity(odds: Record<PerkRarity, number>, r: number): PerkRarity {
  */
 export function pickPerks(world: GameWorld, rng: () => number = Math.random, count = 3, stageIndex = world.stageIndex ?? 0): PerkDef[] {
   const pool = PERKS.filter((p) => p.available(world));
-  // [선발 보급] 소모품 — 이번 3택만 전부 레어 이상. 쓰고 나면 꺼진다 (game/expeditionOps.ts)
+  // [정예 선발] 소모품 — 이번 3택만 전부 레어 이상. 쓰고 나면 꺼진다 (game/expeditionOps.ts)
   const odds = world.draftBoost ? { common: 0, rare: 0.55, epic: 0.45 } : rarityOdds(stageIndex);
   const out: PerkDef[] = [];
   const order: PerkRarity[] = ["epic", "rare", "common"];
@@ -155,7 +155,6 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
   while (out.length < Math.min(count, pool.length) && guard < 128) {
     guard += 1;
     const want = rollRarity(odds, rng());
-    // 원하는 등급부터 아래로 내려가며 남은 카드를 찾는다
     let taken: PerkDef | undefined;
     for (const tier of order.slice(order.indexOf(want))) {
       const tierPool = pool.filter((p) => p.rarity === tier && !out.includes(p));
@@ -163,7 +162,6 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
       taken = tierPool[Math.floor(rng() * tierPool.length) % tierPool.length];
       break;
     }
-    // 아래로도 없으면 위로 올려본다 (일반이 먼저 동나는 경우)
     if (!taken) {
       const rest = pool.filter((p) => !out.includes(p));
       if (!rest.length) break;
@@ -174,8 +172,8 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
   return out;
 }
 
-/** 이 스킬을 들면 런 중에 열리는 카드들 — 강화 화면이 투자 판단에 쓴다 */
-export function perksUnlockedBy(skill: keyof GameWorld["skillLevels"]): PerkDef[] {
+/** 이 스킬(또는 기본 사격)을 들면 런 중에 열리는 카드들 — 강화 화면이 투자 판단에 쓴다 */
+export function perksUnlockedBy(skill: keyof GameWorld["skillLevels"] | "basic"): PerkDef[] {
   return PERKS.filter((p) => p.needs?.includes(skill));
 }
 
