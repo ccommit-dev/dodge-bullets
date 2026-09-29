@@ -984,6 +984,55 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("조각이 있는 저장은 그대로 (없는 키는 0)", kept.expeditionShards.fire === 11 && kept.expeditionShards.ice === 0);
   }
 
+  // ── 손맛 연출 (2026-09-29) — 판정과 무관하지만, "맞았다"는 신호가 실제로 나가는지는 단언으로 남긴다
+  {
+    const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+    const mkWorld = (skill) => {
+      const world = wm.createWorld(390, 700, 1);
+      world.rangedWeapon = "none"; world.skillLevels = { ...world.skillLevels, [skill]: 3 };
+      wm.resetRun(world, 0);
+      world.runSkills[skill] = true;
+      return world;
+    };
+    const put = (world, i, kind, dx, dy) => { const a = world.arrows[i]; a.active = true; a.warningMs = 0; a.reflected = false; a.boss = false; a.kind = kind; a.x = world.player.x + dx; a.y = world.player.y - 14 + dy; a.vx = 0; a.vy = 300; a.hitRadius = 8; a.chilledMs = 0; a.angle = Math.PI / 2; a.length = 34; return a; };
+    const run = (world, frames) => { for (let i = 0; i < frames; i += 1) dodgeShots.updateSkillShots(world, 1 / 60); };
+
+    // 연출 난수는 Math.random 을 건드리지 않는다 — 시뮬의 시드 수열이 연출 때문에 움직이면 안 된다
+    const realRandom = Math.random; let calls = 0; Math.random = () => { calls += 1; return 0.5; };
+    const fw = mkWorld("fire");
+    put(fw, 0, "normal", 0, -40); put(fw, 1, "normal", 12, -48);
+    // 터지는 그 프레임에 센다 — 파편은 0.26~0.52초면 사라져 나중에 세면 절반이 없다
+    let atBoom = 0;
+    for (let i = 0; i < 30; i += 1) { dodgeShots.updateSkillShots(fw, 1 / 60); if (fw.sfx.boom === 1 && atBoom === 0) atBoom = fw.sparks.filter((p) => p.active).length; }
+    Math.random = realRandom;
+    ok("연출(파편·궤적)은 Math.random 을 쓰지 않는다 — 봇 시뮬 수열이 안 움직인다", calls === 0, calls + "회 호출");
+
+    ok("불화살이 터지면 파편이 튀고 화면이 흔들리고 폭발음이 센다",
+      atBoom >= 18 && fw.sfx.boom === 1 && fw.sfx.shot >= 1,
+      JSON.stringify({ sparksAtBoom: atBoom, sfx: fw.sfx }));
+    ok("두 발을 연달아 떨구면 연속 요격이 2 로 쌓인다", fw.streak === 2 && fw.streakMs > 0, "streak " + fw.streak);
+    run(fw, 100);
+    ok("1.5초 동안 못 이으면 연속 요격이 끊긴다", fw.streak === 0 && fw.streakMs === 0);
+    ok("흔들림은 잦아들어 0 으로 돌아온다", fw.shakeMs === 0 && fw.shakeAmp === 0);
+
+    // 얼음 — 맞은 화살은 부서지고 주변은 얼어붙은 표식이 남는다(그려질 대상)
+    const iw = mkWorld("ice");
+    put(iw, 0, "normal", 0, -40); const near = put(iw, 1, "normal", 30, -50);
+    near.vy = 300;
+    run(iw, 20);
+    ok("얼음화살 주변의 화살은 얼어붙은 표식이 남는다 (서리 연출 대상)", near.active && near.chilledMs > 0 && iw.sfx.freeze === 1, "chilledMs " + Math.round(near.chilledMs));
+
+    // 습득 — 주인공을 감싸는 빛과 소리
+    const lw = wm.createWorld(390, 700, 1);
+    lw.rangedWeapon = "bow"; lw.skillLevels = { ...lw.skillLevels, water: 2 };
+    wm.resetRun(lw, 0);
+    perks.applyPerk(lw, "learnWater");
+    ok("스킬을 습득하면 그 속성의 빛과 습득음이 난다", lw.heroAura?.element === "water" && lw.sfx.learn === 1);
+    wm.beginStage(lw, 1);
+    ok("스테이지가 넘어가면 연출은 비워지지만 습득은 남는다", lw.heroAura === null && lw.sparks.every((p) => !p.active) && lw.runSkills.water === true);
+  }
+
+
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
     /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
 }

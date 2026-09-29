@@ -61,7 +61,11 @@ const learn = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: st
   id: ("learn" + id[0].toUpperCase() + id.slice(1)) as PerkId,
   rarity: "common", label: `습득 · ${name}`, desc, learns: id,
   available: (w) => owned(w, id) && !w.runSkills?.[id],
-  apply: (w) => { w.runSkills[id] = true; w.skillTimers[id] = 0; },
+  apply: (w) => {
+    w.runSkills[id] = true; w.skillTimers[id] = 0;
+    // 습득한 순간 — 주인공을 그 속성의 빛이 감싼다 (모의 월드에는 연출 칸이 없을 수 있다)
+    if (w.sfx) { w.heroAura = { element: id, ms: 900 }; w.sfx.learn += 1; }
+  },
 });
 /** 기본 사격이 나가는가 — 무기를 끼고 있으면 */
 const armed = (w: GameWorld) => (w.rangedWeapon ?? "none") !== "none";
