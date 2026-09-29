@@ -336,7 +336,87 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   ctx.stroke();
 }
 
+/**
+ * 손맛 연출 — 얼어붙은 화살 · 파편 · 연속 요격 · 습득 빛 (2026-09-29).
+ * 화살과 주인공 위에 그린다. 판정과 무관하다.
+ */
+function drawJuice(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  // 얼어붙은 화살 — 빙결은 핵심 피드백인데 화살 모양이 그대로였다. 서리가 끼고 푸르게 빛난다
+  for (const a of world.arrows) {
+    if (!a.active || a.chilledMs <= 0 || a.reflected) continue;
+    const k = Math.min(1, a.chilledMs / 600);
+    const c = Math.cos(a.angle), sn = Math.sin(a.angle), h = a.length * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.85 * k;
+    ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.lineCap = "round";
+    ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(a.x - c * h, a.y - sn * h); ctx.lineTo(a.x + c * h, a.y + sn * h); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.lineWidth = 1.5; ctx.strokeStyle = "#f0f9ff";
+    // 서리 가시 — 화살대에 직각으로 셋
+    for (let i = -1; i <= 1; i += 1) {
+      const mx = a.x + c * h * 0.55 * i, my = a.y + sn * h * 0.55 * i;
+      ctx.beginPath(); ctx.moveTo(mx - sn * 5, my + c * 5); ctx.lineTo(mx + sn * 5, my - c * 5); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 습득한 순간 — 주인공을 감싸는 빛이 퍼져 나간다
+  const aura = world.heroAura;
+  if (aura) {
+    const t = 1 - aura.ms / 900;
+    const color = ELEMENT_COLOR[aura.element];
+    ctx.save();
+    for (let i = 0; i < 2; i += 1) {
+      const tt = Math.min(1, t * 1.25 - i * 0.22);
+      if (tt <= 0) continue;
+      ctx.globalAlpha = (1 - tt) * 0.9;
+      ctx.strokeStyle = color; ctx.lineWidth = 4 - i * 1.5;
+      ctx.shadowColor = color; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.arc(world.player.x, world.player.y - 14, 18 + tt * 70, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 파편 — 수명에 따라 작아지며 사라진다
+  for (const p of world.sparks) {
+    if (!p.active) continue;
+    const k = p.ms / p.total;
+    ctx.globalAlpha = Math.min(1, k * 1.6);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.6, p.size * (0.4 + k * 0.6)), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 연속 요격 — 셋부터. 쌓일수록 커지고, 방금 오른 순간 튄다
+  if (world.streak >= 3 && world.streakMs > 0) {
+    const pop = Math.max(0, (world.streakMs - 1300) / 200);   // 갱신 직후 0.2초
+    const size = Math.min(26, 13 + world.streak * 0.9) * (1 + pop * 0.35);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, world.streakMs / 400);
+    ctx.font = `900 ${size.toFixed(1)}px system-ui`; ctx.textAlign = "center";
+    ctx.lineJoin = "round"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
+    ctx.fillStyle = world.streak >= 10 ? "#fde047" : world.streak >= 6 ? "#fdba74" : "#e0f2fe";
+    const y = world.player.y - 62;
+    ctx.strokeText(`요격 ×${world.streak}`, world.player.x, y);
+    ctx.fillText(`요격 ×${world.streak}`, world.player.x, y);
+    ctx.restore();
+  }
+}
+
+/** 화면 흔들림을 씌워 한 프레임을 그린다 — 폭발·강타가 묵직하게 읽히게 */
 export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  const shaking = world.shakeMs > 0 && world.shakeAmp > 0;
+  if (shaking) {
+    // 시간으로 방향을 정한다(난수 없음) — 남은 시간이 줄수록 잦아든다
+    const k = world.shakeAmp * Math.min(1, world.shakeMs / 120);
+    ctx.save();
+    ctx.translate(Math.sin(world.shakeMs * 0.19) * k, Math.cos(world.shakeMs * 0.23) * k);
+  }
+  drawFrameInner(ctx, world);
+  if (shaking) ctx.restore();
+}
+
+function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, safeTop, safeBottom, arrows, platforms, floorY } = world;
 
   ctx.fillStyle = "#0b1220";
@@ -598,6 +678,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
 
   drawSkillShots(ctx, world);
   drawStickman(ctx, world);
+  drawJuice(ctx, world);
 
   if (world.player.slowActiveMs > 0) {
     // 베는 구간과 느려지는 구간을 **다르게** 그린다.

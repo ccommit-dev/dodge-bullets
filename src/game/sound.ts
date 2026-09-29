@@ -53,6 +53,14 @@ export type SoundController = {
   playClear: () => void;
   playCoin: () => void;
   playBuy: () => void;
+  /** 활 사격 — 시위 튕기는 소리 · 명중 · 속성별 (2026-09-29) */
+  playShot: () => void;
+  playArrowHit: () => void;
+  playBoom: () => void;
+  playFreeze: () => void;
+  playZap: () => void;
+  playThud: () => void;
+  playLearn: () => void;
   startBgm: () => void;
   stopBgm: () => void;
   dispose: () => void;
@@ -192,6 +200,42 @@ export function createSoundController(initialEnabled = loadSoundEnabled()): Soun
       if (!canPlay() || !ctx || !master) return;
       playTone(ctx, master, { freq: 392, duration: 0.07, type: "triangle", gain: 0.05 });
       playTone(ctx, master, { freq: 523, duration: 0.1, type: "triangle", gain: 0.05 }, 0.06);
+    },
+
+    // ── 활 사격. 자주 울리므로 짧고 작게 — 배경음과 검격 소리를 덮으면 안 된다
+    playShot() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 660, duration: 0.05, type: "triangle", gain: 0.022 });
+      playTone(ctx, master, { freq: 330, duration: 0.07, type: "sine", gain: 0.018 }, 0.02);
+    },
+    playArrowHit() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 880, duration: 0.04, type: "square", gain: 0.02 });
+    },
+    playBoom() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 150, duration: 0.2, type: "sawtooth", gain: 0.05 });
+      playTone(ctx, master, { freq: 80, duration: 0.26, type: "square", gain: 0.035 }, 0.03);
+    },
+    playFreeze() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 1568, duration: 0.08, type: "sine", gain: 0.03 });
+      playTone(ctx, master, { freq: 2093, duration: 0.12, type: "sine", gain: 0.025 }, 0.05);
+    },
+    playZap() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 1200, duration: 0.04, type: "sawtooth", gain: 0.03 });
+      playTone(ctx, master, { freq: 1800, duration: 0.05, type: "square", gain: 0.022 }, 0.03);
+    },
+    playThud() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 110, duration: 0.16, type: "triangle", gain: 0.06 });
+    },
+    playLearn() {
+      if (!canPlay() || !ctx || !master) return;
+      playTone(ctx, master, { freq: 523, duration: 0.09, type: "triangle", gain: 0.05 });
+      playTone(ctx, master, { freq: 784, duration: 0.09, type: "triangle", gain: 0.05 }, 0.08);
+      playTone(ctx, master, { freq: 1047, duration: 0.16, type: "sine", gain: 0.05 }, 0.16);
     },
 
     startBgm() {

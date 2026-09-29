@@ -3885,6 +3885,10 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .skill-slot img { width:100%; height:100%; object-fit:contain; opacity:.65; }
 .skill-slot.on { border-color:rgba(253,224,71,.8); box-shadow:0 0 10px rgba(253,224,71,.3); }
 .skill-slot.on img { opacity:1; }
+/* 방금 쏜 슬롯 — 재사용이 막 시작된 짧은 동안 번쩍인다. 자동 발사의 박자가 아래에서도 보인다 (2026-09-29) */
+.skill-slot.fired { animation: slot-fired .22s ease-out; }
+@keyframes slot-fired { 0% { transform:scale(1.18); box-shadow:0 0 16px rgba(253,224,71,.75); border-color:#fde047; } 100% { transform:scale(1); box-shadow:none; } }
+@media (prefers-reduced-motion: reduce) { .skill-slot.fired { animation:none; } }
 /* 아직 안 찬 만큼 위에서 덮는다 */
 .skill-slot i { position:absolute; left:0; right:0; top:0; background:rgba(2,6,23,.72); }
 .skill-slot b { position:absolute; right:2px; bottom:1px; color:#e0f2fe; font-size:9px; font-weight:900; text-shadow:0 1px 2px #000; }

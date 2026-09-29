@@ -1,5 +1,5 @@
 import type { ChipMods } from "./chips";
-import type { SkillFx, SkillShot } from "./skillShots";
+import type { SkillFx, SkillShot, Spark } from "./skillShots";
 import type { Element } from "./skills";
 import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
 export type GameState = "ready" | "intro" | "playing" | "paused" | "perk" | "clear" | "gameover";
@@ -290,6 +290,18 @@ export type GameWorld = {
   /** 활 반동 연출 남은 시간(ms) · 쏜 방향 — player.ts 가 무기를 기울이고 시위를 그린다 */
   shotFlashMs: number;
   shotAngle: number;
+  /** 불씨·물방울·서리·파편 — 궤적과 명중에서 튄다 (연출 전용, 판정과 무관) */
+  sparks: Spark[];
+  /** 화면 흔들림 — 폭발·강타에서 짧게. 남은 시간(ms)과 세기(px) */
+  shakeMs: number;
+  shakeAmp: number;
+  /** 연속 요격 — 1.5초 안에 이어 떨구면 쌓인다. 3 이상이면 화면에 "요격 ×N" */
+  streak: number;
+  streakMs: number;
+  /** 효과음 계수기 — 로직은 세기만 하고 소리는 App 루프가 낸다 (시뮬은 소리가 없다) */
+  sfx: { shot: number; hit: number; boom: number; freeze: number; zap: number; thud: number; learn: number };
+  /** 스킬을 습득한 순간 주인공을 감싸는 빛 */
+  heroAura: { element: Element; ms: number } | null;
   /** 상성 명중 표시 — 자리·속성·남은 시간(ms). 표에만 있던 상성을 화면에서 체감하게 (2026-09-29) */
   affinityPop: { x: number; y: number; element: Element; ms: number } | null;
   /** 번개화살 연쇄 선 — 쏜 자리에서 표적들로. ms 가 0 이 되면 사라진다 */

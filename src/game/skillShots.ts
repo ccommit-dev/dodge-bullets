@@ -62,6 +62,67 @@ export type SkillFx = {
 
 const POOL = 40;
 const FX_POOL = 24;
+const SPARK_POOL = 120;
+
+/** 불씨·물방울·서리·파편 한 알 */
+export type Spark = {
+  active: boolean;
+  x: number; y: number; vx: number; vy: number;
+  ms: number; total: number;
+  color: string;
+  size: number;
+  /** 중력(px/s²) — 물방울·흙은 떨어지고 불씨는 떠오른다(음수) */
+  grav: number;
+};
+
+export function makeSparks(): Spark[] {
+  return Array.from({ length: SPARK_POOL }, () => ({ active: false, x: 0, y: 0, vx: 0, vy: 0, ms: 0, total: 1, color: "#fff", size: 2, grav: 0 }));
+}
+
+export function emptySfx(): GameWorld["sfx"] {
+  return { shot: 0, hit: 0, boom: 0, freeze: 0, zap: 0, thud: 0, learn: 0 };
+}
+
+/**
+ * 연출 전용 난수 — **Math.random 을 쓰지 않는다**. 봇 시뮬은 Math.random 을 시드로 갈아 끼워
+ * 화살 생성을 재현하는데, 불씨가 그 수열을 소비하면 연출을 고칠 때마다 밸런스 수치가 움직인다.
+ */
+let vseed = 0x2f6e2b1;
+function vr(): number {
+  vseed = (Math.imul(vseed, 1664525) + 1013904223) | 0;
+  return ((vseed >>> 8) & 0xffff) / 0x10000;
+}
+
+const SPARK_COLOR: Record<Element, string[]> = {
+  basic: ["#f8fafc", "#cbd5e1"],
+  fire: ["#fff7ed", "#fdba74", "#f97316"],
+  water: ["#e0f2fe", "#7dd3fc", "#38bdf8"],
+  ice: ["#f0f9ff", "#a5f3fc"],
+  earth: ["#f5deb3", "#d6a35c", "#92400e"],
+  bolt: ["#fefce8", "#fde047"],
+};
+
+function spark(world: GameWorld, x: number, y: number, vx: number, vy: number, ms: number, color: string, size: number, grav: number): void {
+  const s = world.sparks.find((p) => !p.active);
+  if (!s) return;   // 풀이 찼으면 조용히 건너뛴다 — 연출은 빠져도 된다
+  s.active = true; s.x = x; s.y = y; s.vx = vx; s.vy = vy; s.ms = ms; s.total = ms; s.color = color; s.size = size; s.grav = grav;
+}
+
+/** 사방으로 튀는 파편 */
+export function burst(world: GameWorld, element: Element, x: number, y: number, n: number, speed: number): void {
+  const colors = SPARK_COLOR[element];
+  const grav = element === "fire" ? -90 : element === "earth" ? 520 : element === "water" ? 380 : 0;
+  for (let i = 0; i < n; i += 1) {
+    const a = vr() * Math.PI * 2;
+    const v = speed * (0.45 + vr() * 0.75);
+    spark(world, x, y, Math.cos(a) * v, Math.sin(a) * v, 260 + vr() * 260, colors[Math.floor(vr() * colors.length)], element === "earth" ? 3.2 : 2 + vr() * 1.4, grav);
+  }
+}
+
+/** 짧은 화면 흔들림 — 더 센 것이 이긴다 */
+function shake(world: GameWorld, ms: number, amp: number): void {
+  if (amp >= world.shakeAmp || world.shakeMs <= 0) { world.shakeMs = ms; world.shakeAmp = amp; }
+}
 
 export function makeSkillShots(): SkillShot[] {
   return Array.from({ length: POOL }, () => ({
@@ -141,18 +202,31 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number): boole
   if (a.boss) {
     if (p <= 0) return false;
     const take = Math.min(p, Math.max(0, a.bossCutsLeft - 1));
-    if (take > 0) { a.bossCutsLeft -= take; world.skillKills += 1; }
+    if (take > 0) {
+      a.bossCutsLeft -= take; world.skillKills += 1;
+      // 보스를 깎는 순간은 묵직하게
+      burst(world, element, a.x, a.y, 10 + take * 3, 190);
+      shake(world, 130, 2 + take);
+      world.sfx.thud += 1;
+    }
     return take > 0;
   }
   const chilled = a.chilledMs > 0;
   a.active = false;
   world.skillKills += 1;
   world.supplies += 1;
+  // 손맛 — 파편이 튀고 연속 요격이 쌓인다. 얼어붙은 것을 부수면 얼음 조각이 더 튄다
+  burst(world, chilled ? "ice" : element, a.x, a.y, chilled ? 12 : 7, 150);
+  world.streak = world.streakMs > 0 ? world.streak + 1 : 1;
+  world.streakMs = 1500;
+  world.sfx.hit += 1;
   // 상성 명중 — 보스가 아니면 위력 +1 이 아무 뜻이 없다. 게이지·보급으로 되돌려 주고 화면에 띄운다
   if (aff.power > 0) {
     world.slashGauge = Math.min(100, world.slashGauge + 6);
     world.supplies += 1;
     world.affinityPop = { x: a.x, y: a.y, element, ms: 520 };
+    burst(world, element, a.x, a.y, 10, 220);
+    shake(world, 90, 1.6);
     spawnFx(world, element, a.x, a.y, 30, 420);
   }
   // 요격도 일섬 게이지를 조금 준다 — 안 주면 스킬이 벨 화살을 먼저 지워 게이지가 굶는다 (2026-09-28 실측)
@@ -166,6 +240,12 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number): boole
 function recoil(world: GameWorld, ang: number): void {
   world.shotFlashMs = 160;
   world.shotAngle = ang;
+  world.sfx.shot += 1;
+  const mx = world.player.x + Math.cos(ang) * 16, my = world.player.y - 14 + Math.sin(ang) * 16;
+  for (let i = 0; i < 3; i += 1) {
+    const a2 = ang + (vr() - 0.5) * 0.9;
+    spark(world, mx, my, Math.cos(a2) * (90 + vr() * 80), Math.sin(a2) * (90 + vr() * 80), 160 + vr() * 80, "#f8fafc", 1.6, 0);
+  }
 }
 
 /** 스킬 하나의 실제 쿨타임(초) — 무기 상성이 줄여 준다 */
@@ -298,6 +378,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       spawnFx(world, "bolt", t.x, t.y, 22, 260);
       hit(world, t, "bolt", boltPower(lv.bolt));
     }
+    world.sfx.zap += 1;
     world.boltFrom = { x: px, y: py, ms: 220, targets: pool.map((t) => ({ x: t.x, y: t.y })) };
     recoil(world, aimAt(pool[0]));
     return true;
@@ -326,6 +407,11 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     s.x += s.vx * dtSec;
     s.y += s.vy * dtSec;
     s.dist += Math.hypot(s.vx, s.vy) * dtSec;
+    if (s.element !== "basic" && (s.vx !== 0 || s.vy !== 0) && vr() < dtSec * 34) {
+      const c = SPARK_COLOR[s.element];
+      const g = s.element === "fire" ? -70 : s.element === "water" ? 300 : s.element === "earth" ? 420 : 0;
+      spark(world, s.x + (vr() - 0.5) * 6, s.y + (vr() - 0.5) * 6, (vr() - 0.5) * 40, (vr() - 0.5) * 40, 240 + vr() * 200, c[Math.floor(vr() * c.length)], s.element === "earth" ? 2.6 : 1.8, g);
+    }
     s.fade = Math.max(0, Math.min(1, s.lifeMs / 300));
     if (s.lifeMs <= 0 || s.y < -80 || s.y > world.height + 80 || s.x < -80 || s.x > world.width + 80) { s.active = false; continue; }
 
@@ -339,6 +425,9 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         let r = fireRadius(lv.fire) * world.runMods.fireRadiusMul * aff.mul;
         if (world.runMods.chillBurst && world.arrows.some((b) => targetable(b) && b.chilledMs > 0 && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r)) r *= 1.6;
         spawnFx(world, "fire", s.x, s.y, r, 420);
+        burst(world, "fire", s.x, s.y, 18, 60 + r * 2.2);
+        shake(world, 150, 3);
+        world.sfx.boom += 1;
         for (const b of world.arrows) if (targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r) hit(world, b, "fire", s.power);
         if (world.runMods.evolutions.fire === "pyre") { s.vx = 0; s.vy = 0; s.lifeMs = Math.min(s.lifeMs, 1400); s.radius = r * 0.8; s.hits = 99; continue; }
         s.active = false; break;
@@ -348,6 +437,8 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         const slow = Math.max(0.2, iceSlow(lv.ice) - world.runMods.iceSlowBonus);
         const chill = world.runMods.evolutions.ice === "lingering" ? 4500 : 1500;
         spawnFx(world, "ice", s.x, s.y, r, 420);
+        burst(world, "ice", s.x, s.y, 12, 40 + r * 1.6);
+        world.sfx.freeze += 1;
         hit(world, a, "ice", s.power);
         for (const b of world.arrows) {
           if (!targetable(b) || (b.x - s.x) ** 2 + (b.y - s.y) ** 2 > r * r) continue;
@@ -361,6 +452,9 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         // 강타 — 튕기는 화살은 더 못 튄다 (상성), 보스를 크게 깎는다
         if (a.kind === "ricochet") a.bounces = 0;
         spawnFx(world, "earth", s.x, s.y, s.radius + 14, 320);
+        burst(world, "earth", s.x, s.y, 12, 200);
+        shake(world, 120, 2.4);
+        world.sfx.thud += 1;
         hit(world, a, "earth", s.power);
         s.active = false; break;
       }
@@ -378,6 +472,18 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     for (const a of world.arrows) if (targetable(a) && (a.x - s.x) ** 2 + (a.y - s.y) ** 2 <= s.radius * s.radius) hit(world, a, "fire", s.power);
   }
 
+  for (const p of world.sparks) {
+    if (!p.active) continue;
+    p.ms -= dtSec * 1000;
+    if (p.ms <= 0) { p.active = false; continue; }
+    p.vy += p.grav * dtSec;
+    p.x += p.vx * dtSec; p.y += p.vy * dtSec;
+    p.vx *= 1 - 1.6 * dtSec; p.vy *= 1 - 1.6 * dtSec;
+  }
+  if (world.shakeMs > 0) { world.shakeMs -= dtSec * 1000; if (world.shakeMs <= 0) { world.shakeMs = 0; world.shakeAmp = 0; } }
+  if (world.streakMs > 0) { world.streakMs -= dtSec * 1000; if (world.streakMs <= 0) { world.streakMs = 0; world.streak = 0; } }
+  if (world.heroAura) { world.heroAura.ms -= dtSec * 1000; if (world.heroAura.ms <= 0) world.heroAura = null; }
+
   for (const f of world.skillFx) {
     if (!f.active) continue;
     f.ms -= dtSec * 1000;
@@ -394,6 +500,10 @@ export function resetSkillShots(world: GameWorld): void {
   world.shotFlashMs = 0;
   world.boltFrom = null;
   world.affinityPop = null;
+  for (const p of world.sparks) p.active = false;
+  world.shakeMs = 0; world.shakeAmp = 0;
+  world.streak = 0; world.streakMs = 0;
+  world.heroAura = null;
   world.skillKills = 0;
   world.epicPicks = 0;   // 클리어마다 일일 임무에 더하므로 skillKills 처럼 스테이지 단위
 }

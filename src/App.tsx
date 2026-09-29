@@ -217,6 +217,9 @@ function App() {
   /** 스킬 슬롯 — 자동 발사라 쿨타임이 안 보이면 내 스킬이 도는지 알 수 없다 */
   const [skillHud, setSkillHud] = useState<{ id: ExpeditionSkillId | "basic"; lv: number; ready: number }[]>([]);
   const skillHudTsRef = useRef(0);
+  /** 효과음 — 로직이 센 값(world.sfx)과 마지막으로 본 값을 비교해 여기서 낸다 */
+  const sfxSeenRef = useRef({ shot: 0, hit: 0, boom: 0, freeze: 0, zap: 0, thud: 0, learn: 0 });
+  const shotSfxTsRef = useRef(0);
   const [score, setScore] = useState(0);
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -614,6 +617,21 @@ function App() {
         );
         consumeActionEdges(inputRef.current);
         drawFrame(ctx, world);
+        // 활 사격 효과음 — 한 프레임에 여럿이 겹치면 시끄럽다. 센 것 하나만, 발사음은 90ms 에 한 번
+        {
+          const f = world.sfx, seen = sfxSeenRef.current;
+          if (f.shot < seen.shot) sfxSeenRef.current = { ...f };   // 새 런 — 계수기가 되돌아갔다
+          else {
+            if (f.boom !== seen.boom) sound.playBoom();
+            else if (f.thud !== seen.thud) sound.playThud();
+            else if (f.zap !== seen.zap) sound.playZap();
+            else if (f.freeze !== seen.freeze) sound.playFreeze();
+            else if (f.hit !== seen.hit) sound.playArrowHit();
+            else if (f.shot !== seen.shot && ts - shotSfxTsRef.current > 90) { shotSfxTsRef.current = ts; sound.playShot(); }
+            if (f.learn !== seen.learn) sound.playLearn();
+            sfxSeenRef.current = { ...f };
+          }
+        }
 
         if (stateRef.current === "playing") {
           if (world.score !== scoreRef.current) {
@@ -1662,7 +1680,7 @@ function App() {
           {skillHud.length > 0 && (
             <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
               {skillHud.map((s) => (
-                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""}`} title={s.id === "basic" ? "기본 사격" : SKILL_BY_ID[s.id].name}>
+                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""}`} title={s.id === "basic" ? "기본 사격" : SKILL_BY_ID[s.id].name}>
                   <img src={assetUrl(`dodge/skills/${s.id === "basic" ? "basic" : SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
                   {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
                   <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />
