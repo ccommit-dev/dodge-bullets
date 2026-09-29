@@ -147,8 +147,13 @@ await sleep(800);
 const coresAfter = (await titans()).skillInventory.skillCores;
 ok("G 유료 3단 수령 → 스킬 코어 +1 (사냥터 저장)", coresAfter - coresBefore === 1, `${coresBefore}→${coresAfter}`);
 await page.evaluate(() => document.querySelector(".season-claim-all")?.click());
-await sleep(1200);
-gp = await prog();
+// 수령은 칸마다 차례로 저장된다 — 고정 1.2초로는 부하가 걸리면 덜 끝난 상태를 읽었다(free=5,1,2).
+// 다 찰 때까지 최대 6초 기다린다 (2026-09-29, 전체 스위트에서 한 번 실패)
+for (let i = 0; i < 30; i += 1) {
+  await sleep(200);
+  gp = await prog();
+  if (gp.seasonPass.claimedFree.length === 5 && gp.seasonPass.claimedPaid.length === 5) break;
+}
 ok("G 모두 받기 → 남은 수령 가능 0 (무료 5 · 유료 5)", gp.seasonPass.claimedFree.length === 5 && gp.seasonPass.claimedPaid.length === 5, `free=${gp.seasonPass.claimedFree.join()} paid=${gp.seasonPass.claimedPaid.join()}`);
 
 // ── L. 보상형 광고 자리(QA 스텁): 정산 2배 · 가속 4h · 미연동 시 숨김 ──

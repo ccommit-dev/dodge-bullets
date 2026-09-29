@@ -226,7 +226,18 @@ const gate = (stage) => { const runs = [1, 2, 3, 4, 5].map((seed) => simulateSta
   ok("검객 봇: 1스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s1.clear >= 4 && s1.hits <= 1.5, `clear ${s1.clear}/5 hits ${s1.hits.toFixed(1)}`);
   ok("검객 봇: 2스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s2.clear >= 4 && s2.hits <= 1.5, `clear ${s2.clear}/5 hits ${s2.hits.toFixed(1)}`);
   const s4 = gate(3);
-  ok("검객 봇: 4스테이지(추격대장) 5시드 중 1~4회 클리어 — 벽이되 불가능하지 않다", s4.clear >= 1 && s4.clear <= 4, `clear ${s4.clear}/5 hits ${s4.hits.toFixed(1)}`);
+  // 4스테이지 단독 게이트는 뺐다 (2026-09-29) — 스테이지마다 새 런으로 재는 방식은 카드·습득이 이어지는 실제 원정을
+// 못 잰다. 대신 **풀런 곡선**을 못 박는다: 참고 게임처럼 새 계정은 중반에서 막히고, 성장하면 뚫린다.
+{
+  const { runCurve } = await import("./dodge-sim.mjs");
+  const curve = Object.fromEntries(runCurve(20).map((r) => [r.tier, r]));
+  const N = curve["새 계정"], M = curve["중간"], S = curve["강함"];
+  const line = (r) => `S1 ${r.clearS1} · S2 ${r.clearS2} · S3 ${r.clearS3} · S4 ${r.clearS4} / ${r.n}`;
+  ok("풀런 · 새 계정: 초반은 넘고(S1 ≥ 18 · S2 ≥ 14) 끝은 벽이다(S4 ≤ 4)", N.clearS1 >= 18 && N.clearS2 >= 14 && N.clearS4 <= 4, line(N));
+  ok("풀런 · 중간 계정: S3 은 대체로 넘고(≥ 12) S4 는 반반 안팎(8~18)", M.clearS3 >= 12 && M.clearS4 >= 8 && M.clearS4 <= 18, line(M));
+  ok("풀런 · 강한 계정: S4 를 대부분 깬다(≥ 15)", S.clearS4 >= 15, line(S));
+  ok("풀런 · 성장할수록 멀리 간다 (S4 클리어: 새 < 중간 ≤ 강함)", N.clearS4 < M.clearS4 && M.clearS4 <= S.clearS4, [N.clearS4, M.clearS4, S.clearS4].join(" < "));
+}
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

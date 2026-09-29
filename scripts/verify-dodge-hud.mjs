@@ -141,8 +141,8 @@ const unlocks = await page.evaluate(() => {
   return { rows: rows.length, rarities: rows.map((r) => r.querySelector("i")?.className ?? "?") };
 });
 ok("강화 화면이 런 중 열리는 카드를 등급과 함께 보여 준다",
-  // 습득 카드 1 + 레어 1 + 에픽 4 (콤보 2 · 진화 2)
-  unlocks.rows === 6 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
+  // 습득 카드 1 + 레어 2(심층 빙결 · 원소 전환) + 에픽 4 (콤보 2 · 진화 2)
+  unlocks.rows === 7 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
   JSON.stringify(unlocks));
 await page.evaluate(() => document.querySelector(".exp-skill-close")?.click());
 await sleep(300);

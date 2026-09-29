@@ -116,6 +116,7 @@ const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cor
 /** 스킬을 바꾸는 카드는 그 스킬의 아이콘을 그대로 쓴다 — 무엇이 세지는지 한 눈에 보이게. basic 은 기본 사격(활) (2026-09-29) */
 const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
   learnFire: "fire", learnWater: "water", learnIce: "ice", learnEarth: "earth", learnBolt: "bolt",
+  damageUp: "basic", convertFire: "fire", convertWater: "water", convertIce: "ice", convertEarth: "earth", convertBolt: "bolt",
   shotExtra: "basic", quickdraw: "basic", shotPierce: "basic", arrowStorm: "basic", overdrive: "basic",
   evoBeam: "basic", evoSeeker: "basic",
   boltExtra: "bolt", waterMore: "water", fireWide: "fire", iceDeep: "ice", earthHeavy: "earth",

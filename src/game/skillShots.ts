@@ -1,12 +1,13 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
 import {
+  arrowHpFor, BASIC_DAMAGE,
   BASIC_SHOT_COOLDOWN, BASIC_SHOT_SPEED,
-  boltCooldown, boltPower, boltTargets,
-  earthCooldown, earthPower, earthRadius,
-  fireCooldown, firePower, fireRadius,
-  iceCooldown, icePower, iceRadius, iceSlow,
-  waterCooldown, waterPierce, waterPower,
+  boltCooldown, boltDamage, boltPower, boltTargets,
+  earthCooldown, earthDamage, earthPower, earthRadius,
+  fireCooldown, fireDamage, firePower, fireRadius,
+  iceCooldown, iceDamage, icePower, iceRadius, iceSlow,
+  waterCooldown, waterDamage, waterPierce, waterPower,
   weaponCooldownMul,
   SKILL_BY_ID,
   type Element,
@@ -42,6 +43,10 @@ export type SkillShot = {
   hits: number;
   /** 보스를 깎는 양 */
   power: number;
+  /** 화살 체력을 깎는 양 */
+  damage: number;
+  /** 기본 사격인가 — [원소 전환]으로 속성을 띠어도 동작은 기본 화살이다(폭발·빙결 없음) */
+  basic: boolean;
   /** [유도] 진화 — 가장 가까운 화살을 쫓아간다 */
   seeker: boolean;
   /** 이동 거리 누적(px) — 궤적 연출 */
@@ -127,7 +132,7 @@ function shake(world: GameWorld, ms: number, amp: number): void {
 export function makeSkillShots(): SkillShot[] {
   return Array.from({ length: POOL }, () => ({
     active: false, element: "basic" as Element, x: 0, y: 0, vx: 0, vy: 0,
-    radius: 0, lifeMs: 0, fade: 1, hits: 0, power: 0, seeker: false, dist: 0,
+    radius: 0, lifeMs: 0, fade: 1, hits: 0, power: 0, damage: 1, basic: false, seeker: false, dist: 0,
   }));
 }
 
@@ -139,7 +144,7 @@ export function makeSkillFx(): SkillFx[] {
 export function emptyRunMods(): RunMods {
   return {
     shotExtra: 0, shotPierce: 0, fireRadiusMul: 1, waterPierceExtra: 0, iceSlowBonus: 0, earthPowerBonus: 0, boltExtra: 0,
-    cooldownMul: 1, chillHunt: false, chillBurst: false, evolutions: {},
+    cooldownMul: 1, damageMul: 1, convert: null, chillHunt: false, chillBurst: false, evolutions: {},
     moveSpeedMul: 1, dashCooldownMul: 1, slashLevelBonus: 0, maxHpBonus: 0,
   };
 }
@@ -158,6 +163,8 @@ function spawn(world: GameWorld, s: Partial<SkillShot> & { element: Element }): 
   shot.fade = 1;
   shot.hits = s.hits ?? 0;
   shot.power = s.power ?? 0;
+  shot.damage = s.damage ?? 1;
+  shot.basic = s.basic ?? false;
   shot.seeker = s.seeker ?? false;
   shot.dist = 0;
   return shot;
@@ -195,10 +202,22 @@ function affinity(element: Element, a: Arrow): { power: number; mul: number } {
  * 남긴다(스킬이 보스에 아무 영향이 없으면 강화할수록 벨 화살만 줄어 보스를 못 끝낸다 — 2026-09-28 실측).
  * 기본 사격(위력 0)은 보스에 흠집도 못 낸다 — 보스는 속성 화살·검격의 몫이다.
  */
-function hit(world: GameWorld, a: Arrow, element: Element, power: number): boolean {
+function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage: number): boolean {
   if (!targetable(a)) return false;
   const aff = affinity(element, a);
   const p = power + aff.power;
+  if (!a.boss) {
+    // 체력 — 처음 맞을 때 그 스테이지 값으로 채운다. 상성이면 피해 ×1.5
+    if (a.maxHp <= 0) { a.maxHp = arrowHpFor(world.stageIndex); a.hp = a.maxHp; }
+    a.hp -= damage * aff.mul * world.runMods.damageMul;
+    if (a.hp > 0.001) {
+      // 안 부서졌다 — 번쩍이고 파편 조금. 체력 눈금이 남은 양을 보여 준다
+      a.hitFlashMs = 140;
+      burst(world, element, a.x, a.y, 3, 110);
+      world.sfx.hit += 1;
+      return false;
+    }
+  }
   if (a.boss) {
     if (p <= 0) return false;
     const take = Math.min(p, Math.max(0, a.bossCutsLeft - 1));
@@ -300,9 +319,10 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         for (const t of targets) {
           const ang = aimAt(t);
           const sp = evo === "beam" ? 1000 : evo === "seeker" ? 540 : BASIC_SHOT_SPEED;
+          const conv = world.runMods.convert;
           spawn(world, {
-            element: "basic", vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-            radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 0,
+            element: conv ?? "basic", basic: true, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+            radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 0, damage: BASIC_DAMAGE * (conv ? 1.2 : 1),
             hits: world.runMods.shotPierce + (evo === "beam" ? 99 : 0), seeker: evo === "seeker",
           });
         }
@@ -329,7 +349,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const [t] = nearest(world, 1, px, py);
     if (!t) return false;
     const ang = aimAt(t);
-    spawn(world, { element: "fire", vx: Math.cos(ang) * 640, vy: Math.sin(ang) * 640, radius: 10, lifeMs: 1600, power: firePower(lv.fire) });
+    spawn(world, { element: "fire", vx: Math.cos(ang) * 640, vy: Math.sin(ang) * 640, radius: 10, lifeMs: 1600, power: firePower(lv.fire), damage: fireDamage(lv.fire) });
     recoil(world, ang);
     return true;
   });
@@ -340,7 +360,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const ang = aimAt(t);
     spawn(world, {
       element: "water", vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700, radius: 11, lifeMs: 1700,
-      power: waterPower(lv.water), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1,
+      power: waterPower(lv.water), damage: waterDamage(lv.water), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1,
     });
     recoil(world, ang);
     return true;
@@ -350,7 +370,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const [t] = nearest(world, 1, px, py);
     if (!t) return false;
     const ang = aimAt(t);
-    spawn(world, { element: "ice", vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 10, lifeMs: 1600, power: icePower(lv.ice) });
+    spawn(world, { element: "ice", vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 10, lifeMs: 1600, power: icePower(lv.ice), damage: iceDamage(lv.ice) });
     recoil(world, ang);
     return true;
   });
@@ -362,6 +382,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     spawn(world, {
       element: "earth", vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460,
       radius: earthRadius(lv.earth), lifeMs: 2000, power: earthPower(lv.earth) + world.runMods.earthPowerBonus,
+      damage: earthDamage(lv.earth) + world.runMods.earthPowerBonus,
     });
     recoil(world, ang);
     return true;
@@ -376,7 +397,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     if (!pool.length) return false;
     for (const t of pool) {
       spawnFx(world, "bolt", t.x, t.y, 22, 260);
-      hit(world, t, "bolt", boltPower(lv.bolt));
+      hit(world, t, "bolt", boltPower(lv.bolt), boltDamage(lv.bolt));
     }
     world.sfx.zap += 1;
     world.boltFrom = { x: px, y: py, ms: 220, targets: pool.map((t) => ({ x: t.x, y: t.y })) };
@@ -407,7 +428,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     s.x += s.vx * dtSec;
     s.y += s.vy * dtSec;
     s.dist += Math.hypot(s.vx, s.vy) * dtSec;
-    if (s.element !== "basic" && (s.vx !== 0 || s.vy !== 0) && vr() < dtSec * 34) {
+    if (s.element !== "basic" && (s.vx !== 0 || s.vy !== 0) && vr() < dtSec * (s.basic ? 18 : 34)) {
       const c = SPARK_COLOR[s.element];
       const g = s.element === "fire" ? -70 : s.element === "water" ? 300 : s.element === "earth" ? 420 : 0;
       spark(world, s.x + (vr() - 0.5) * 6, s.y + (vr() - 0.5) * 6, (vr() - 0.5) * 40, (vr() - 0.5) * 40, 240 + vr() * 200, c[Math.floor(vr() * c.length)], s.element === "earth" ? 2.6 : 1.8, g);
@@ -420,7 +441,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       if ((a.x - s.x) ** 2 + (a.y - s.y) ** 2 > (s.radius + a.hitRadius) ** 2) continue;
 
       const aff = affinity(s.element, a);
-      if (s.element === "fire") {
+      if (s.element === "fire" && !s.basic) {
         // 폭발 — 반경 안을 함께 태운다. 콤보 [열충격]: 얼어붙은 화살이 섞여 있으면 넓어진다
         let r = fireRadius(lv.fire) * world.runMods.fireRadiusMul * aff.mul;
         if (world.runMods.chillBurst && world.arrows.some((b) => targetable(b) && b.chilledMs > 0 && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r)) r *= 1.6;
@@ -428,39 +449,39 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         burst(world, "fire", s.x, s.y, 18, 60 + r * 2.2);
         shake(world, 150, 3);
         world.sfx.boom += 1;
-        for (const b of world.arrows) if (targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r) hit(world, b, "fire", s.power);
+        for (const b of world.arrows) if (targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= r * r) hit(world, b, "fire", s.power, s.damage);
         if (world.runMods.evolutions.fire === "pyre") { s.vx = 0; s.vy = 0; s.lifeMs = Math.min(s.lifeMs, 1400); s.radius = r * 0.8; s.hits = 99; continue; }
         s.active = false; break;
       }
-      if (s.element === "ice") {
+      if (s.element === "ice" && !s.basic) {
         const r = iceRadius(lv.ice) * aff.mul * (world.runMods.evolutions.ice === "lingering" ? 1.4 : 1);
         const slow = Math.max(0.2, iceSlow(lv.ice) - world.runMods.iceSlowBonus);
         const chill = world.runMods.evolutions.ice === "lingering" ? 4500 : 1500;
         spawnFx(world, "ice", s.x, s.y, r, 420);
         burst(world, "ice", s.x, s.y, 12, 40 + r * 1.6);
         world.sfx.freeze += 1;
-        hit(world, a, "ice", s.power);
+        hit(world, a, "ice", s.power, s.damage);
         for (const b of world.arrows) {
           if (!targetable(b) || (b.x - s.x) ** 2 + (b.y - s.y) ** 2 > r * r) continue;
           // [서리 파쇄] 진화 — 안쪽 절반은 얼리는 대신 부순다
-          if (world.runMods.evolutions.ice === "shatter" && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= (r * 0.5) ** 2) { hit(world, b, "ice", 0); continue; }
+          if (world.runMods.evolutions.ice === "shatter" && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= (r * 0.5) ** 2) { hit(world, b, "ice", 0, 99); continue; }
           freeze(world, b, slow, chill);
         }
         s.active = false; break;
       }
-      if (s.element === "earth") {
+      if (s.element === "earth" && !s.basic) {
         // 강타 — 튕기는 화살은 더 못 튄다 (상성), 보스를 크게 깎는다
         if (a.kind === "ricochet") a.bounces = 0;
         spawnFx(world, "earth", s.x, s.y, s.radius + 14, 320);
         burst(world, "earth", s.x, s.y, 12, 200);
         shake(world, 120, 2.4);
         world.sfx.thud += 1;
-        hit(world, a, "earth", s.power);
+        hit(world, a, "earth", s.power, s.damage);
         s.active = false; break;
       }
       // basic · water — 관통 수만큼 지나간다
       spawnFx(world, s.element, s.x, s.y, s.element === "water" ? 18 : 12, 220);
-      hit(world, a, s.element, s.power);
+      hit(world, a, s.element, s.power, s.damage);
       if (s.hits > 0) { s.hits -= 1; continue; }
       s.active = false; break;
     }
@@ -468,8 +489,9 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
 
   // 화염 장판 — 머무는 동안 들어오는 화살을 계속 태운다 (hits 99 로 표시)
   for (const s of world.skillShots) {
-    if (!s.active || s.element !== "fire" || s.vx !== 0 || s.vy !== 0) continue;
-    for (const a of world.arrows) if (targetable(a) && (a.x - s.x) ** 2 + (a.y - s.y) ** 2 <= s.radius * s.radius) hit(world, a, "fire", s.power);
+    if (!s.active || s.basic || s.element !== "fire" || s.vx !== 0 || s.vy !== 0) continue;
+    // 장판은 매 프레임 닿으므로 초당 피해(피해 ×3/초)로 나눠 준다 — 한 프레임에 통째로 주면 즉사다
+    for (const a of world.arrows) if (targetable(a) && (a.x - s.x) ** 2 + (a.y - s.y) ** 2 <= s.radius * s.radius) hit(world, a, "fire", 0, s.damage * 3 * dtSec);
   }
 
   for (const p of world.sparks) {

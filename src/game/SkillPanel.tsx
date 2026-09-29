@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { assetUrl } from "../asset";
-import { perksUnlockedBy, RARITY_LABEL } from "./perks";
+import { perksForBasicOnly, perksUnlockedBy, RARITY_LABEL } from "./perks";
 import { chipCost, CHIPS, CHIP_BY_ID, CHIP_MAX_LEVEL, type ChipId, type ChipLevels } from "./chips";
 import {
   DAILIES, dailyClaimable, dailyDone, SUPPLIES, SUPPLY_MAX,
@@ -245,8 +245,8 @@ export function SkillPanel({
         <div className="exp-basic-row">
           <img src={assetUrl("dodge/skills/basic.png")} alt="" aria-hidden="true" />
           <span>
-            <b>기본 사격 <i>1.5초마다 1발 · 보스는 못 깎음</i></b>
-            <em>런 중 열리는 카드 {perksUnlockedBy("basic").length}장 — 발수·속사·관통·진화</em>
+            <b>기본 사격 <i>피해 1 · 1.5초마다 1발 · 보스는 못 깎음</i></b>
+            <em>런 중 열리는 카드 {perksForBasicOnly().length}장 — 피해·발수·속사·관통·진화 (원소 전환은 속성 습득 후)</em>
           </span>
         </div>
       )}

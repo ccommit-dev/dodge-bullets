@@ -675,13 +675,21 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
       // 스킬마다 강화 화면이 보여 줄 카드가 실제로 있다 (일섬·관통은 카드 없음이 정상)
       const shown = all.map((id) => [id, perks.perksUnlockedBy(id).length]);
-      ok("얼음화살을 올리면 런 중 카드 5장이 열린다 (심층·서리 사냥·열충격·파쇄·지속)",
-        perks.perksUnlockedBy("ice").filter((p) => !p.learns).map((p) => p.id).sort().join() === "chillBurst,chillHunt,evoLingering,evoShatter,iceDeep",
+      ok("얼음화살을 올리면 런 중 카드 6장이 열린다 (심층·원소 전환·서리 사냥·열충격·파쇄·지속)",
+        perks.perksUnlockedBy("ice").filter((p) => !p.learns).map((p) => p.id).sort().join() === "chillBurst,chillHunt,convertIce,evoLingering,evoShatter,iceDeep",
         perks.perksUnlockedBy("ice").map((p) => p.id).join());
-      ok("기본 사격(무기)만으로 열리는 카드가 8장 — 스킬 없는 계정도 카드가 뜬다",
-        perks.perksUnlockedBy("basic").length === 8, perks.perksUnlockedBy("basic").map((p) => p.id).join());
-      ok("스킬마다 런 중 열리는 카드가 있다 (습득 카드 포함) — 불 5 · 물 2 · 얼음 6 · 흙 2 · 번개 2",
-        JSON.stringify(shown) === JSON.stringify([["fire",5],["water",2],["ice",6],["earth",2],["bolt",2],["ultimate",0]]),
+      ok("무기만으로 열리는 카드가 8장 — 스킬 없는 계정도 카드가 뜬다 (콤보·원소 전환은 제외)",
+        perks.perksForBasicOnly().map((p) => p.id).sort().join() === "arrowStorm,damageUp,evoBeam,evoSeeker,overdrive,quickdraw,shotExtra,shotPierce", perks.perksForBasicOnly().map((p) => p.id).join());
+      // 가이드가 이름으로 든 카드 다섯 — 피해량 증가 · 공격 속도 · 연쇄 · 범위 폭발 · 원소 전환
+      ok("가이드가 든 카드 다섯 종류가 모두 있다", ["damageUp", "quickdraw", "boltExtra", "fireWide", "convertFire"].every((id) => perks.PERKS.some((p) => p.id === id)));
+      {
+        const cw = w({ fire: 1 });
+        perks.applyPerk(cw, "damageUp"); perks.applyPerk(cw, "convertFire");
+        ok("[강궁] 피해 ×1.15 · [원소 전환] 은 이번 런에 하나만", Math.abs(cw.runMods.damageMul - 1.15) < 1e-9 && cw.runMods.convert === "fire" && !ids(cw).some((id) => id.startsWith("convert")), JSON.stringify({ mul: cw.runMods.damageMul, convert: cw.runMods.convert }));
+        ok("[원소 전환] 은 습득한 속성으로만 뜬다", !ids(w({ ice: 1 }, "bow", false)).includes("convertIce") && ids(w({ ice: 1 })).includes("convertIce"));
+      }
+      ok("스킬마다 런 중 열리는 카드가 있다 (습득·원소 전환 포함) — 불 6 · 물 3 · 얼음 7 · 흙 3 · 번개 3",
+        JSON.stringify(shown) === JSON.stringify([["fire",6],["water",3],["ice",7],["earth",3],["bolt",3],["ultimate",0]]),
         JSON.stringify(shown));
     }
 

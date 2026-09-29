@@ -35,6 +35,9 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       splitLevel: 0,
       damage: 1,
       reflected: false,
+      hp: 0,
+      maxHp: 0,
+      hitFlashMs: 0,
       chilledMs: 0,
       orbitMs: 0,
       orbitX: 0,
@@ -117,6 +120,7 @@ function activate(
   }
   arrow.splitLevel = 0;
   arrow.reflected = false;
+  arrow.hp = 0; arrow.maxHp = 0; arrow.hitFlashMs = 0;   // 체력은 처음 맞을 때 그 스테이지 값으로 채운다
   arrow.chilledMs = 0;
   arrow.damage = SPLIT_DAMAGE[0];
   arrow.orbitMs = 0;
@@ -295,6 +299,7 @@ function configureSplitFragment(
   arrow.y = source.y;
   arrow.vx = 0;
   arrow.vy = 0;
+  arrow.hp = 1; arrow.maxHp = 1; arrow.hitFlashMs = 0;   // 베어 낸 조각은 약하다 — 한 발이면 된다
   arrow.length = Math.max(12, ARROW_LEN - level * 4);
   arrow.hitRadius = Math.max(2.5, HIT_R - level * 0.65);
   arrow.angle = source.angle + direction * 0.48;
@@ -682,6 +687,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
 
     a.splitGraceMs = Math.max(0, a.splitGraceMs - dtSec * 1000);
     a.chilledMs = Math.max(0, a.chilledMs - dtSec * 1000);
+    if (a.hitFlashMs > 0) a.hitFlashMs = Math.max(0, a.hitFlashMs - dtSec * 1000);
 
     if (a.warningMs > 0) {
       a.warningMs = Math.max(0, a.warningMs - dtSec * 1000);

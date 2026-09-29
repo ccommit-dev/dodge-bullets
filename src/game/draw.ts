@@ -104,12 +104,14 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.globalAlpha = s.fade;
     // 화살 물체
     ctx.translate(s.x, s.y); ctx.rotate(ang);
-    if (s.element === "basic" && world.rangedWeapon === "staff") {
+    if (s.basic && world.rangedWeapon === "staff") {
       // 지팡이의 기본 사격은 마력탄 — 나무 화살이 지팡이에서 나가면 어색하다 (2026-09-29)
       const r = s.radius > 10 ? 9 : 7;
+      // [원소 전환]을 골랐으면 마력탄도 그 속성색으로
+      const tint = s.element === "basic" ? "#7dd3fc" : color;
       const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r);
-      g.addColorStop(0, "#f0f9ff"); g.addColorStop(0.5, "#7dd3fc"); g.addColorStop(1, "rgba(56,189,248,0)");
-      ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 10;
+      g.addColorStop(0, "#f0f9ff"); g.addColorStop(0.5, tint); g.addColorStop(1, "rgba(56,189,248,0)");
+      ctx.shadowColor = tint; ctx.shadowBlur = 10;
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       continue;
@@ -356,6 +358,24 @@ function drawJuice(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     for (let i = -1; i <= 1; i += 1) {
       const mx = a.x + c * h * 0.55 * i, my = a.y + sn * h * 0.55 * i;
       ctx.beginPath(); ctx.moveTo(mx - sn * 5, my + c * 5); ctx.lineTo(mx + sn * 5, my - c * 5); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 체력 눈금 — 맞고도 안 부서진 화살만. 몇 발 더 필요한지가 보여야 "피해"가 읽힌다 (2026-09-29)
+  for (const a of world.arrows) {
+    if (!a.active || a.boss || a.reflected || a.maxHp <= 0 || a.hp >= a.maxHp) continue;
+    const w = 22, x = a.x - w / 2, y = a.y - 16;
+    ctx.save();
+    ctx.fillStyle = "rgba(2,6,23,.75)"; ctx.fillRect(x - 1, y - 1, w + 2, 5);
+    ctx.fillStyle = a.hitFlashMs > 0 ? "#f8fafc" : "#fb7185";
+    ctx.fillRect(x, y, w * Math.max(0, a.hp / a.maxHp), 3);
+    if (a.hitFlashMs > 0) {
+      // 맞은 순간 화살이 하얗게 번쩍인다
+      const c = Math.cos(a.angle), sn = Math.sin(a.angle), h = a.length * 0.5;
+      ctx.globalAlpha = a.hitFlashMs / 140;
+      ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(a.x - c * h, a.y - sn * h); ctx.lineTo(a.x + c * h, a.y + sn * h); ctx.stroke();
     }
     ctx.restore();
   }
