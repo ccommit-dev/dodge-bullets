@@ -72,11 +72,14 @@ await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageIndex
 await sleep(900);
 await shot("30-perk");
 await page.evaluate(() => document.querySelector(".perk-choice")?.click()); await sleep(600);
+// 보스 구간 → 클리어 결과 화면
 await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageIndex = 0; w.stageElapsedMs = 9e6; for (const x of w.arrows) x.active = false; } });
 await sleep(3500);
-await shot("40-after-stage");
+await shot("40-boss");
+await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.bossSpawned = true; w.bossDefeated = true; } });
 await sleep(2500);
-await shot("41-after-stage");
+await shot("50-clear", true);
+// 패배 결과 화면 — 새로 출격해 체력을 0 으로
 const st = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { shots: w.skillShots.filter((s) => s.active).length, run: w.runSkills, lvl: w.runLevel, weapon: w.rangedWeapon } : null; });
 console.log(JSON.stringify(st));
 await browser.close();
