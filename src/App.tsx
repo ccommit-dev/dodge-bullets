@@ -295,6 +295,13 @@ function App() {
   }, [appMode]);
   const [profileRefresh, setProfileRefresh] = useState(0);
   const [progress, setProgress] = useState<CharacterProgress>(() => emptyCharacterProgress());
+  /**
+   * 최신 진행도 — 게임 루프(한 번 만들어지는 effect)가 읽는다. 루프가 `progress` 를 직접 잡으면 **만들어질 때의
+   * 초기값**이라, 스테이지를 깨고 자동으로 넘어갈 때 영구 스킬·칩·무기가 기본값으로 실렸다 (2026-09-29 캡처:
+   * 2스테이지 슬롯이 불화살 Lv1 하나로 줄어 있었다).
+   */
+  const progressRef = useRef(progress);
+  useEffect(() => { progressRef.current = progress; }, [progress]);
   const [shoulderDrop, setShoulderDrop] = useState("");
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(true);
@@ -929,7 +936,8 @@ function App() {
     const world = worldRef.current;
     if (!world) return;
     applyInsetsToWorld(world, insetsRef.current);
-    loadLoadout(world, shopLevelsRef.current, progress);
+    // progressRef — 이 함수는 게임 루프의 오래된 클로저에서도 불린다
+    loadLoadout(world, shopLevelsRef.current, progressRef.current);
     beginStage(world, index);
     const stage = getStage(index);
     setStageIndex(index);

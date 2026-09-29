@@ -359,6 +359,21 @@ const a1 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 const rate = (a1 - a0) / 1000;
 ok("배속 ×1.5 면 게임 시간이 1.5배 가까이 흐른다", rate > 1.25 && rate < 1.8, rate.toFixed(2) + "배");
 
+// 스테이지를 깨고 자동으로 넘어가도 영구 스킬·칩·무기가 그대로 실려 있다 (오래된 클로저가 초기값을 싣던 것)
+{
+  await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageElapsedMs = 9e6; w.bossSpawned = true; w.bossDefeated = true; } });
+  let carried = null;
+  for (let i = 0; i < 40; i += 1) {
+    await sleep(250);
+    carried = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { stage: w.stageIndex, lv: w.skillLevels, weapon: w.rangedWeapon, chip: w.chips.cooldownMul, run: Object.keys(w.runSkills).filter((k) => w.runSkills[k]) } : null; });
+    if (carried && carried.stage >= 1) break;
+  }
+  ok("다음 스테이지로 넘어가도 영구 스킬 레벨 · 무기 · 칩이 그대로다",
+    !!carried && carried.stage >= 1 && carried.lv.fire === 6 && carried.lv.water === 4 && carried.weapon === "staff" && Math.abs(carried.chip - 0.91) < 1e-9,
+    JSON.stringify(carried));
+  ok("이번 런에 습득한 스킬도 이어진다", !!carried && carried.run.length >= 1, JSON.stringify(carried?.run));
+}
+
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 
 await browser.close();
