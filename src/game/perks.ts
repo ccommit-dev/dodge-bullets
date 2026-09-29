@@ -23,6 +23,7 @@ export type PerkRarity = "common" | "rare" | "epic";
 export const RARITY_LABEL: Record<PerkRarity, string> = { common: "일반", rare: "레어", epic: "에픽" };
 
 export type PerkId =
+  | "learnFire" | "learnWater" | "learnIce" | "learnEarth" | "learnBolt"
   | "gauge" | "heal" | "shotExtra" | "quickdraw" | "boltExtra"
   | "shotPierce" | "waterMore" | "fireWide" | "iceDeep" | "earthHeavy"
   | "arrowStorm" | "overdrive" | "chillHunt" | "chillBurst"
@@ -38,6 +39,11 @@ export type PerkDef = {
   /** 진화 카드 — 스킬의 작동 방식을 바꾼다. 한 스킬당 하나만 */
   evolution?: boolean;
   /**
+   * 습득 카드 — 이번 런에서 그 속성 화살을 쓰기 시작한다 (참고 게임: 스킬은 런 중 카드로 얻는다).
+   * 영구 레벨 1 이상(=해금·학습)인 스킬만 뜬다 — "보이지 않는 스킬에 투자하면 운에 기대는 셈"
+   */
+  learns?: Exclude<keyof GameWorld["skillLevels"], "ultimate">;
+  /**
    * 이 카드가 후보에 들어오려면 필요한 스킬. available() 안의 조건을 **밖에서도 읽을 수 있게**
    * 적어 둔 것이다 — 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지"를 보여주는 데 쓴다.
    * "basic" 은 기본 사격(무기만 있으면 됨). available() 이 진실이고 이건 그것의 목록판이다.
@@ -47,12 +53,27 @@ export type PerkDef = {
   apply: (w: GameWorld) => void;
 };
 
-/** 그 스킬을 실제로 들고 있는가 (영구 레벨 1 이상) */
-const has = (w: GameWorld, id: keyof GameWorld["skillLevels"]) => (w.skillLevels?.[id] ?? 0) > 0;
+/** 영구 레벨 1 이상 — 이 스킬의 습득 카드가 뜰 수 있다 */
+const owned = (w: GameWorld, id: keyof GameWorld["skillLevels"]) => (w.skillLevels?.[id] ?? 0) > 0;
+/** 이번 런에서 습득해 실제로 쏘고 있는가 — 강화·콤보·진화 카드는 이것을 본다 */
+const has = (w: GameWorld, id: keyof GameWorld["skillLevels"]) => owned(w, id) && !!w.runSkills?.[id];
+const learn = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: string, desc: string): PerkDef => ({
+  id: ("learn" + id[0].toUpperCase() + id.slice(1)) as PerkId,
+  rarity: "common", label: `습득 · ${name}`, desc, learns: id,
+  available: (w) => owned(w, id) && !w.runSkills?.[id],
+  apply: (w) => { w.runSkills[id] = true; w.skillTimers[id] = 0; },
+});
 /** 기본 사격이 나가는가 — 무기를 끼고 있으면 */
 const armed = (w: GameWorld) => (w.rangedWeapon ?? "none") !== "none";
 
 export const PERKS: PerkDef[] = [
+  // ── 습득 — 이번 런에서 그 속성 화살을 쓰기 시작한다. 영구 레벨이 있어야 뜬다
+  learn("fire", "불화살", "명중한 자리에서 터진다"),
+  learn("water", "물화살", "멈추지 않고 꿰뚫는다"),
+  learn("ice", "얼음화살", "명중한 주변을 얼린다"),
+  learn("earth", "흙화살", "느리지만 보스를 크게 깎는다"),
+  learn("bolt", "번개화살", "쏘는 순간 여럿을 잇는다"),
+
   // ── 일반 — 무기만 있으면 고를 수 있다
   { id: "gauge", rarity: "common", label: "일섬 게이지 +35", desc: "일섬이 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
   { id: "heal", rarity: "common", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; } w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
@@ -150,6 +171,10 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
   const odds = world.draftBoost ? { common: 0, rare: 0.55, epic: 0.45 } : rarityOdds(stageIndex);
   const out: PerkDef[] = [];
   const order: PerkRarity[] = ["epic", "rare", "common"];
+  // 아직 아무것도 습득하지 않았으면 첫 자리는 습득 카드 — 빌드가 시작되지 않는 판을 막는다
+  const learnable = pool.filter((p) => p.learns);
+  const acquiredAny = Object.values(world.runSkills ?? {}).some(Boolean);
+  if (!acquiredAny && learnable.length && count > 0) out.push(learnable[Math.floor(rng() * learnable.length) % learnable.length]);
 
   let guard = 0;
   while (out.length < Math.min(count, pool.length) && guard < 128) {
@@ -174,7 +199,7 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
 
 /** 이 스킬(또는 기본 사격)을 들면 런 중에 열리는 카드들 — 강화 화면이 투자 판단에 쓴다 */
 export function perksUnlockedBy(skill: keyof GameWorld["skillLevels"] | "basic"): PerkDef[] {
-  return PERKS.filter((p) => p.needs?.includes(skill));
+  return PERKS.filter((p) => p.learns === skill || p.needs?.includes(skill));
 }
 
 export function applyPerk(world: GameWorld, id: PerkId): boolean {

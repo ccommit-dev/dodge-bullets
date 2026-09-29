@@ -18,6 +18,7 @@ import {
   type ExpeditionSkillId,
   type ExpeditionSkillLevels,
   type RangedWeaponId,
+  type SkillShards,
 } from "./skills";
 
 /**
@@ -34,6 +35,8 @@ type Props = {
   gold: number;
   seals: number;
   dodgeBestStage: number;
+  /** 스킬별 조각 — 그 스킬 강화에만 쓴다 (참고 게임의 126/225) */
+  shards: SkillShards;
   /** 지금 장착한 원거리 무기 ("none" = 맨손) */
   weapon: RangedWeaponId;
   chipLevels: ChipLevels;
@@ -57,14 +60,14 @@ const ORDER = ["water", "fire", "earth", "ice", "bolt", "ultimate"];
 /** 아직 안 열린 슬롯에 표시할 해금 조건 */
 const CHIP_SLOT_LABEL = ["", "2단계", "4단계"];
 
-function canAfford(gold: number, seals: number, cost: { gold: number; seals: number }): boolean {
-  return gold >= cost.gold && seals >= cost.seals;
+function canAfford(gold: number, have: number, cost: { gold: number; shards: number }): boolean {
+  return gold >= cost.gold && have >= cost.shards;
 }
 
 export function SkillPanel({
   levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
-  supplies, daily, onBuySupply, onClaimDaily,
+  supplies, daily, onBuySupply, onClaimDaily, shards,
 }: Props) {
   /** 화면이 길어져 세 갈래로 나눈다 — 강화 / 보급 / 임무 */
   const [tab, setTab] = useState<"upgrade" | "supply">("upgrade");
@@ -79,9 +82,10 @@ export function SkillPanel({
   return (
     <div className="exp-skill-panel">
       <div className="exp-skill-banner">
-        <b>원정 총 전투력</b>
-        <strong>+{summary.power}%</strong>
-        <small>스킬을 강화해 원정 화력과 생존을 올리세요 · 누적 {summary.totalLevels}레벨</small>
+        {/* 배너의 숫자는 실제로 걸리는 효과다 — 참고 게임의 "총 ○○ 증가 +N%" */}
+        <b>수집 보너스 · 모든 화살 재사용</b>
+        <strong>−{summary.bonusPct}%</strong>
+        <small>누적 스킬 레벨 {summary.totalLevels} · 레벨 하나당 −0.3% (최대 −18%)</small>
       </div>
 
       <div className="exp-sub-tabs" role="tablist">
@@ -247,6 +251,8 @@ export function SkillPanel({
         </div>
       )}
 
+      <p className="exp-learn-hint">속성 화살은 <b>런 중 레벨업 카드로 습득</b>합니다 — 여기서 올린 레벨이 습득했을 때의 성능이고, 쓴 스킬의 조각이 돌아옵니다</p>
+
       {/* 갈래 — 기본 사격에서 물리(장궁)·마법(지팡이)로 갈라지고 일섬으로 모인다. 장착 무기의 갈래가 밝다 */}
       <div className="exp-tree" aria-hidden="true">
         <span className={`exp-tree-branch ${weapon === "bow" ? "on" : ""}`}>물리 화살 <i>장궁 상성</i></span>
@@ -260,7 +266,8 @@ export function SkillPanel({
           const unlocked = skillUnlocked(def, dodgeBestStage);
           const maxed = lv >= SKILL_MAX_LEVEL;
           const cost = skillCost(def, lv + 1);
-          const ready = unlocked && !maxed && canAfford(gold, seals, cost);
+          const have = shards[def.id] ?? 0;
+          const ready = unlocked && !maxed && canAfford(gold, have, cost);
           return (
             <button
               key={def.id}
@@ -275,10 +282,10 @@ export function SkillPanel({
                 {unlocked ? (
                   <>
                     <em>{maxed ? "MAX" : `Level ${lv}`}</em>
-                    {/* 진행바는 '다음 레벨 인장' 대비 보유량 — 참고 화면의 126/225 자리 */}
+                    {/* 진행바는 **이 스킬의 조각** 보유량 / 다음 레벨 필요량 — 참고 화면의 126/225 */}
                     <i className="exp-skill-bar">
-                      <b style={{ width: `${maxed ? 100 : Math.min(100, (seals / Math.max(1, cost.seals)) * 100)}%` }} />
-                      <small>{maxed ? "최대 레벨" : `${seals}/${cost.seals}`}</small>
+                      <b style={{ width: `${maxed ? 100 : Math.min(100, (have / Math.max(1, cost.shards)) * 100)}%` }} />
+                      <small>{maxed ? "최대 레벨" : `${have}/${cost.shards}`}</small>
                     </i>
                   </>
                 ) : (
@@ -298,7 +305,8 @@ export function SkillPanel({
         const lv = levels[open.id] ?? 0;
         const maxed = lv >= SKILL_MAX_LEVEL;
         const cost = skillCost(open, lv + 1);
-        const afford = canAfford(gold, seals, cost);
+        const have = shards[open.id] ?? 0;
+        const afford = canAfford(gold, have, cost);
         return (
           <div className="exp-skill-sheet" role="dialog" aria-label={`${open.name} 상세`}>
             <div className="exp-skill-sheet-inner">
@@ -362,9 +370,10 @@ export function SkillPanel({
                   <em>코인</em>
                   {maxed ? "—" : `${gold.toLocaleString()}/${cost.gold.toLocaleString()}`}
                 </span>
-                <span className={seals >= cost.seals ? "" : "short"}>
-                  <em>원정 인장</em>
-                  {maxed ? "—" : `${seals}/${cost.seals}`}
+                <span className={have >= cost.shards ? "" : "short"}>
+                  <img src={iconOf(open)} alt="" aria-hidden="true" />
+                  <em>{open.name} 조각</em>
+                  {maxed ? "—" : `${have}/${cost.shards}`}
                 </span>
               </div>
               <button

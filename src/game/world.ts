@@ -82,6 +82,8 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     shotFlashMs: 0,
     shotAngle: -Math.PI / 2,
     boltFrom: null,
+    runSkills: {},
+    collectionMul: 1,
     affinityPop: null,
     skillLevels: emptySkillLevels(),
     skillTimers: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
@@ -209,6 +211,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   resetSkillShots(world);
   // 카드는 런 단위 — 새 런에서만 비운다 (스테이지 경계에서는 유지)
   world.runMods = emptyRunMods();
+  world.runSkills = {};   // 습득은 런 단위 — 스테이지 경계에서는 유지된다
   world.draftBoost = false;
   world.primedMs = 0;
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);

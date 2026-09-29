@@ -183,7 +183,7 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
 
 /** 기본 사격 재사용(초) — 카드·칩·화살통이 줄인다 */
 export function basicCooldown(world: GameWorld): number {
-  return BASIC_SHOT_COOLDOWN * world.runMods.cooldownMul * world.chips.cooldownMul
+  return BASIC_SHOT_COOLDOWN * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
     * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1);
 }
 
@@ -234,12 +234,13 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   }
 
   const tick = (id: Exclude<ExpeditionSkillId, "ultimate">, fire: () => boolean) => {
-    const level = lv[id] ?? 0;
+    // 이번 런에서 카드로 습득한 것만 나간다 — 영구 레벨은 습득했을 때의 성능이다
+    const level = world.runSkills[id] ? (lv[id] ?? 0) : 0;
     if (level <= 0) return;                       // 미습득 스킬은 아무것도 하지 않는다
     timers[id] = (timers[id] ?? 0) - dtSec;
     if (timers[id] > 0) return;
     if (!fire()) { timers[id] = 0.1; return; }   // 표적이 없으면 쿨타임을 태우지 않는다
-    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul * world.chips.cooldownMul
+    timers[id] = effectiveCooldown(id, level, world.rangedWeapon) * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
       * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1)
       * (id === "fire" && world.runMods.evolutions.fire === "pyre" ? 1.25 : 1);
   };

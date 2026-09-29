@@ -104,12 +104,51 @@ export type ExpeditionSkillDef = {
   readout: (level: number) => Array<{ label: string; value: string; delta?: string }>;
 };
 
-export function skillCost(def: ExpeditionSkillDef, level: number): { gold: number; seals: number } {
+/**
+ * 강화 비용 — 골드 + **그 스킬의 조각**. 참고 게임의 진행바 `126/225` 가 이것이다:
+ * 스킬마다 제 조각을 모아 제 레벨을 올린다. 공용 재화로 두면 모든 카드의 진행바가 같은 숫자가 된다.
+ */
+export function skillCost(def: ExpeditionSkillDef, level: number): { gold: number; shards: number } {
   const n = Math.max(1, level);
   return {
     gold: Math.round(def.goldBase * Math.pow(1.55, n - 1)),
-    seals: Math.round(def.sealBase * Math.pow(1.4, n - 1)),
+    shards: Math.round(def.sealBase * Math.pow(1.4, n - 1)),
   };
+}
+
+export type SkillShards = Record<ExpeditionSkillId, number>;
+
+export function emptyShards(): SkillShards {
+  return { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 };
+}
+
+/**
+ * 한 스테이지가 끝났을 때 받는 조각 — **그 판에 습득해 쓴 스킬의 조각**이 나온다.
+ * 쓴 것이 자란다 — 참고 게임 가이드의 "자주 나오는 스킬부터 강화" 가 저절로 된다.
+ * 일섬은 카드로 습득하는 것이 아니라 게이지 필살기라 쓴 횟수만큼.
+ */
+export function shardDrops(
+  acquired: Partial<Record<ExpeditionSkillId, boolean>>,
+  stageIndex: number,
+  cleared: boolean,
+  ultCount: number,
+): Partial<SkillShards> {
+  const out: Partial<SkillShards> = {};
+  (Object.keys(acquired) as ExpeditionSkillId[]).forEach((id) => {
+    if (!acquired[id] || id === "ultimate") return;
+    out[id] = cleared ? 2 + Math.max(0, stageIndex) : 1;
+  });
+  const ult = Math.min(3, Math.max(0, ultCount)) + (cleared ? 1 : 0);
+  if (ult > 0) out.ultimate = ult;
+  return out;
+}
+
+/** 수집 보너스 — 누적 스킬 레벨 하나당 모든 화살 재사용 −0.3% (최대 −18%). 배너의 숫자가 실제 효과다 */
+export const COLLECTION_PER_LEVEL = 0.003;
+export const COLLECTION_CAP = 0.18;
+export function collectionCooldownMul(levels: ExpeditionSkillLevels): number {
+  const total = (Object.values(levels) as number[]).reduce((s, v) => s + Math.max(0, v), 0);
+  return 1 - Math.min(COLLECTION_CAP, COLLECTION_PER_LEVEL * total);
 }
 
 export type ExpeditionSkillLevels = Record<ExpeditionSkillId, number>;
@@ -367,9 +406,10 @@ export function applySkillLevels(stats: PlayerStats, levels: ExpeditionSkillLeve
 /** 게이지 획득 배수 — arrows.addGauge 가 곱한다 */
 export function gaugeGainMul(levels: ExpeditionSkillLevels): number { return ultGaugeMul(levels.ultimate); }
 
-/** 상단 배너용 합산 — 참고 게임의 "총 치명타 피해 증가 +N%" 자리 */
-export function skillSummary(levels: ExpeditionSkillLevels): { totalLevels: number; power: number } {
+/** 상단 배너 — 참고 게임의 "총 치명타 피해 증가 +N%" 자리. bonusPct 는 **실제로 걸리는** 수집 보너스다 */
+export function skillSummary(levels: ExpeditionSkillLevels): { totalLevels: number; power: number; bonusPct: number } {
   const totalLevels = EXPEDITION_SKILLS.reduce((s, d) => s + (levels[d.id] ?? 0), 0);
+  const bonusPct = Math.round((1 - collectionCooldownMul(levels)) * 1000) / 10;
   // 초당 요격 기대치를 한 숫자로 — 화면 배너에만 쓴다 (기본 사격 1발/1.5초 = 기준 0)
   const rate = (lv: number, cd: (n: number) => number, per = 1) => (lv > 0 ? per / cd(lv) : 0);
   const power = Math.round(
@@ -379,7 +419,7 @@ export function skillSummary(levels: ExpeditionSkillLevels): { totalLevels: numb
       + rate(levels.earth, earthCooldown, earthPower(levels.earth))
       + rate(levels.bolt, boltCooldown, boltTargets(levels.bolt))) * 100,
   );
-  return { totalLevels, power };
+  return { totalLevels, power, bonusPct };
 }
 
 export function skillUnlocked(def: ExpeditionSkillDef, dodgeBestStage: number): boolean {

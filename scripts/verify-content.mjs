@@ -219,9 +219,9 @@ ok("유도탄 승격 확률: 1스테이지 0 · 2/3/4 = 5/6/9%", arrows.homingCh
 ok("보스 베기 수 4 + 2×스테이지 (예전 10 + 4×)", world.BOSS_CUTS_BASE === 4 && world.BOSS_CUTS_PER_STAGE === 2);
 {
   const { simulateStage } = await import(pathToFileURL(join(root, "scripts/dodge-sim.mjs")).href);
-  // 기준선은 "활만 · 스킬 0" — 새 진행도가 장궁을 끼고 시작하므로 이것이 실제 첫 플레이다 (2026-09-29).
+  // 기준선은 새 진행도 그대로 — 장궁 + 불화살 Lv1 (런 중 카드로 습득한다). 이것이 실제 첫 플레이다 (2026-09-29).
 // 맨손은 레벨업 카드가 게이지·HP 두 장뿐이라 봇이 HP 만 뽑아 S4 벽이 무너진다 — 기본 상태가 아니다
-const gate = (stage) => { const runs = [1, 2, 3, 4, 5].map((seed) => simulateStage(stage, seed * 7919 + stage, { skills: {}, weapon: "bow" })); return { clear: runs.filter((r) => r.clear).length, hits: runs.reduce((s2, r) => s2 + r.hits, 0) / 5 }; };
+const gate = (stage) => { const runs = [1, 2, 3, 4, 5].map((seed) => simulateStage(stage, seed * 7919 + stage, { skills: { fire: 1 }, weapon: "bow" })); return { clear: runs.filter((r) => r.clear).length, hits: runs.reduce((s2, r) => s2 + r.hits, 0) / 5 }; };
   const s1 = gate(0), s2 = gate(1);
   ok("검객 봇: 1스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s1.clear >= 4 && s1.hits <= 1.5, `clear ${s1.clear}/5 hits ${s1.hits.toFixed(1)}`);
   ok("검객 봇: 2스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s2.clear >= 4 && s2.hits <= 1.5, `clear ${s2.clear}/5 hits ${s2.hits.toFixed(1)}`);

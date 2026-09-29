@@ -278,6 +278,13 @@ export type GameWorld = {
   skillShots: SkillShot[];
   /** 명중 이펙트 — 속성별 색 폭발 */
   skillFx: SkillFx[];
+  /**
+   * 이번 런에서 **카드로 습득한** 속성 화살 — 습득한 것만 나간다 (참고 게임과 같다, 2026-09-29).
+   * 영구 레벨은 "어떤 카드가 뜰 수 있는가"와 "습득했을 때의 성능"을 정한다. 새 런에서 비워진다
+   */
+  runSkills: Partial<Record<ExpeditionSkillId, boolean>>;
+  /** 수집 보너스 — 누적 스킬 레벨이 주는 모든 화살 재사용 배수 (skills.collectionCooldownMul) */
+  collectionMul: number;
   /** 기본 사격 남은 재사용(초) — 무기만 있으면 항상 돈다 */
   basicTimer: number;
   /** 활 반동 연출 남은 시간(ms) · 쏜 방향 — player.ts 가 무기를 기울이고 시위를 그린다 */

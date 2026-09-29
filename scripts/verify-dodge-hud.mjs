@@ -26,6 +26,7 @@ const progress = {
   partyIds: ["mia"], partyCap: 4, skillPoints: 6,
   expeditionSeals: 400,
   expeditionSkills: { fire: 6, water: 4, ice: 2, earth: 2, bolt: 2, ultimate: 4 },
+  expeditionShards: { fire: 30, water: 2, ice: 9, earth: 0, bolt: 5, ultimate: 12 },
   expeditionWeapon: "staff",
   expeditionChips: { focus: 3, barrage: 3, ember: 2, rime: 4, vitality: 2, edge: 1 },
   equippedChips: ["focus", "rime", null],
@@ -109,6 +110,14 @@ ok("목표를 채운 임무만 수령 버튼이 열리고 탭에 배지가 붙�
 await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("강화"))?.click());
 await sleep(300);
 
+// 스킬별 조각 — 참고 게임의 126/225. 공용 인장이었을 때는 모든 카드의 분자가 같았다
+const bars = await page.evaluate(() => [...document.querySelectorAll(".exp-skill-card .exp-skill-bar small")].map((e) => e.textContent.trim()));
+ok("격자 진행바가 스킬마다 제 조각을 보인다 (분자가 서로 다르다)",
+  bars.length === 6 && new Set(bars.map((b) => b.split("/")[0])).size >= 5, bars.join(" · "));
+const banner = await page.evaluate(() => document.querySelector(".exp-skill-banner")?.textContent.replace(/\s+/g, " ").trim());
+// 픽스처 누적 레벨 6+4+2+2+2+4 = 20 → 20 × 0.3% = 6%
+ok("배너가 실제 수집 보너스를 말한다 (누적 20레벨 → −6%)", !!banner && banner.includes("수집 보너스") && banner.includes("6%") && banner.includes("20"), banner);
+
 // 원정 칩 — 가이드의 영구 성장 2순위. 슬롯(끼운 것)과 목록(가진 것)이 나뉘어 보여야 한다
 const chipUi = await page.evaluate(() => ({
   slots: [...document.querySelectorAll(".exp-chip-slot")].length,
@@ -132,7 +141,8 @@ const unlocks = await page.evaluate(() => {
   return { rows: rows.length, rarities: rows.map((r) => r.querySelector("i")?.className ?? "?") };
 });
 ok("강화 화면이 런 중 열리는 카드를 등급과 함께 보여 준다",
-  unlocks.rows === 5 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
+  // 습득 카드 1 + 레어 1 + 에픽 4 (콤보 2 · 진화 2)
+  unlocks.rows === 6 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
   JSON.stringify(unlocks));
 await page.evaluate(() => document.querySelector(".exp-skill-close")?.click());
 await sleep(300);
@@ -210,6 +220,10 @@ ok("진행도의 스킬 레벨과 장착 무기가 전투 월드에 실린다",
   !!loaded && loaded.weapon === "staff" && loaded.lv.fire === 6 && loaded.lv.water === 4,
   JSON.stringify(loaded));
 ok("장착 스킬이 전투 중 실제로 발사된다", !!fired, fired ? fired.shots.join(",") : "8초 동안 탄 없음");
+// 2.5) 출격 직후 — 보유 스킬이 있어도 아직 습득 전이라 독에는 기본 사격만 있다
+const dock0 = await page.evaluate(() => ({ slots: document.querySelectorAll(".skill-slot").length, acquired: Object.keys(window.__dodgeWorld?.runSkills ?? {}).length }));
+ok("출격 직후 독에는 기본 사격 슬롯만 있다 (속성 화살은 런 중 습득)", dock0.slots === 1 && dock0.acquired === 0, JSON.stringify(dock0));
+
 // 3) 레벨업 강화 카드 — 장착한 스킬의 진화·콤보가 실제로 후보에 뜨는가
 //    (참고 게임의 핵심 루프. 소스 단언만으로는 화면까지 이어졌는지 알 수 없다)
 await page.evaluate(() => { const w = window.__dodgeWorld; if (w) w.levelUps = 1; });  // 레벨업 큐를 직접 채운다
@@ -226,6 +240,7 @@ const perk = await page.evaluate(() => {
   };
 });
 ok("레벨업하면 강화 카드 3장이 뜬다", perk.open && perk.count === 3, JSON.stringify(perk.ids));
+ok("첫 3택의 첫 자리는 습득 카드다", /^perk-learn/.test(perk.ids[0] ?? ""), perk.ids[0]);
 ok("카드마다 등급이 붙고 화면이 스테이지 등급 확률을 밝힌다",
   perk.rarities?.length === 3 && perk.rarities.every((r) => /rarity-(common|rare|epic)/.test(r)) && !!perk.oddsLine,
   (perk.rarities ?? []).join() + " | " + (perk.oddsLine ?? ""));
@@ -241,15 +256,13 @@ ok("전투 월드가 런 강화칸(runMods)을 들고 있다 — 카드가 쌓�
 // 한 장 고르면 실제로 runMods 가 움직이는가 (스킬 카드가 뽑혔을 때만 검사)
 const before = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
 await page.evaluate(() => {
-  const skill = [...document.querySelectorAll(".perk-choice")]
-    .find((c) => [...c.classList].some((k) => /perk-(shotExtra|quickdraw|shotPierce|boltExtra|waterMore|fireWide|iceDeep|earthHeavy|chillHunt|chillBurst|arrowStorm|overdrive|evo)/.test(k)));
-  (skill ?? document.querySelector(".perk-choice"))?.click();
+  document.querySelector(".perk-choice")?.click();   // 첫 자리 = 습득 카드
 });
 await sleep(900);
 const after = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
-const skillCardOffered = perk.ids.some((id) => /shotExtra|quickdraw|shotPierce|boltExtra|waterMore|fireWide|iceDeep|earthHeavy|chillHunt|chillBurst|arrowStorm|overdrive|evo/.test(id));
-ok("스킬 카드를 고르면 runMods 가 실제로 바뀐다", !skillCardOffered || before !== after,
-  skillCardOffered ? `${before} → ${after}` : "이번 3택에 스킬 카드가 안 뽑힘(무작위) — 건너뜀");
+const learned = await page.evaluate(() => Object.keys(window.__dodgeWorld?.runSkills ?? {}));
+ok("습득 카드를 고르면 그 스킬이 이번 런에 켜진다", learned.length === 1 && before === after, JSON.stringify(learned));
+await sleep(700);
 
 // 4) 전투 상시 조작 — 스킬 슬롯 · 일시정지 · 배속 (참고 게임의 전투 HUD 관례)
 const dock = await page.evaluate(() => {
@@ -266,9 +279,9 @@ const dock = await page.evaluate(() => {
 });
 // 지팡이 로드아웃은 불·물·얼음·흙·번개 5종. 일섬은 슬롯에 안 넣는다
 // 맨 앞은 기본 사격(무기의 것, 레벨 없음) — 스킬이 없는 계정도 독이 비지 않는다 (2026-09-29)
-ok("전투 슬롯: 기본 사격 + 장착한 속성 화살 5종 (일섬 제외)",
-  dock.slots === 6 && dock.auto && dock.levels[0] === "?" && dock.levels.slice(1).join() === "6,4,2,2,2", JSON.stringify(dock.levels) + " auto=" + dock.auto);
-ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 6 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
+ok("전투 슬롯: 기본 사격 + 방금 습득한 속성 화살 1종",
+  dock.slots === 2 && dock.auto && dock.levels[0] === "?" && /^[0-9]+$/.test(dock.levels[1] ?? ""), JSON.stringify(dock.levels) + " auto=" + dock.auto);
+ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 2 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
 ok("일시정지·배속 버튼이 전투 중에 있다", dock.pause && dock.speed === "×1", String(dock.speed));
 
 // 일시정지가 실제로 세계를 멈추는가

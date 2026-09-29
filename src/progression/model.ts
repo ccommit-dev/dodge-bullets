@@ -4,7 +4,7 @@ import {
   DAILIES, emptyDaily, emptySupplyStock, rolledDaily, SUPPLIES, SUPPLY_MAX,
   type DailyId, type DailyState, type SupplyStock,
 } from "../game/expeditionOps";
-import { emptySkillLevels, migrateSkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "../game/skills";
+import { emptyShards, emptySkillLevels, migrateSkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillShards } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
@@ -41,8 +41,10 @@ export type CharacterProgress = {
   dodgeBestScore: number;
   /** 화살 원정 영구 스킬 레벨 (game/skills.ts) — 0 = 미습득 */
   expeditionSkills: ExpeditionSkillLevels;
-  /** 원정 인장 — 스킬 강화 재화. 런 안의 world.expeditionSeals 가 클리어 때 누적된다 */
+  /** 원정 인장 — 칩·보급 재화. 런 안의 world.expeditionSeals 가 클리어 때 누적된다 */
   expeditionSeals: number;
+  /** 스킬 조각 — **스킬마다 따로**. 그 판에 습득해 쓴 스킬의 조각이 나오고, 그 스킬 강화에만 쓴다 */
+  expeditionShards: SkillShards;
   /** 장착한 원거리 무기 — 캐릭터는 그대로, 무기만 탈착한다. 계열이 맞는 스킬 쿨타임을 줄인다 */
   expeditionWeapon: RangedWeaponId;
   /** 원정 칩 레벨 (game/chips.ts) — 랜덤에 좌우되지 않는 영구 패시브 */
@@ -191,8 +193,10 @@ export function emptyCharacterProgress(): CharacterProgress {
     pioneeredArea: 1,
     dodgeBestStage: 1,
     dodgeBestScore: 0,
-    expeditionSkills: emptySkillLevels(),
+    // 불화살은 1레벨로 시작 — 첫 런의 첫 3택에 습득 카드가 떠야 빌드가 시작된다 (참고 게임도 기본 스킬을 준다)
+    expeditionSkills: { ...emptySkillLevels(), fire: 1 },
     expeditionSeals: 0,
+    expeditionShards: emptyShards(),
     expeditionWeapon: "bow",
     expeditionChips: emptyChipLevels(),
     equippedChips: [null, null, null],
@@ -395,6 +399,13 @@ export function normalizeCharacterProgress(
     dodgeBestScore: integer(raw.dodgeBestScore, 0),
     expeditionSkills,
     expeditionSeals: integer(raw.expeditionSeals, 0),
+    // 조각이 없던 저장(2026-09-29 이전)은 스킬마다 6개로 시작 — 인장으로 올리던 흐름이 끊기지 않게
+    expeditionShards: (() => {
+      const rawShards = raw.expeditionShards as Partial<SkillShards> | undefined;
+      const out = emptyShards();
+      (Object.keys(out) as ExpeditionSkillId[]).forEach((id) => { out[id] = rawShards ? integer(rawShards[id], 0) : 6; });
+      return out;
+    })(),
     expeditionChips: (() => {
       const c = { ...base.expeditionChips, ...(raw.expeditionChips ?? {}) };
       (Object.keys(c) as ChipId[]).forEach((id) => { c[id] = integer(c[id], 0, CHIP_MAX_LEVEL); });
