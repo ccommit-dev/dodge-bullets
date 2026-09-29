@@ -1515,11 +1515,12 @@ function App() {
 
       {bootReady && appMode === "dodge" && gameState === "ready" && preloadStageBackgrounds() && (
         <div className="game-overlay">
-          <div className="overlay-content overlay-wide">
+          <div className="overlay-content overlay-wide exp-menu-content">
             <p className="brand">BATTLE EXPEDITION</p>
             <h1 className="title">전장의 돌파 원정</h1>
             <p className="subtitle">등에 멘 <b>활·지팡이</b>가 날아오는 화살을 알아서 요격한다 — 손에 남은 건 <b>검격</b>과 <b>일섬</b>, 코앞에서 베면 궁수에게 되돌아간다</p>
-            <p className="score-line">코인 {coins} · 최고 {highScore}</p>
+            {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
+            <p className="score-line">코인 {coins.toLocaleString()} · 인장 <b data-testid="exp-seals">{progress.expeditionSeals.toLocaleString()}</b> · 최고 {highScore.toLocaleString()}</p>
 
             {/* 원정대 보급소는 삭제됐다 (사용자 지시: 용도 불명). 기동·검격 스탯은
                 캐릭터 성장(레벨·강화)에서 자동 파생된다 — derivedShopLevels 참조 */}
@@ -1787,7 +1788,7 @@ function App() {
           <div className="overlay-content">
             <p className="brand">LEVEL UP</p>
             <h1 className="title">성장 선택</h1>
-            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 적용되는 강화를 하나 고르세요. 장착한 스킬이 있으면 그 스킬을 바꾸는 카드와 <b>콤보</b>가 함께 나옵니다. 레벨이 오를수록 화살이 빨라지고 잦아집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
+            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 듣는 카드를 하나 고르세요. <b>습득</b>한 속성 화살의 강화·<b>콤보</b>·<b>진화</b>가 함께 나옵니다. 레벨이 오를수록 적 화살이 빨라집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
             {(() => {
               // 스테이지가 깊을수록 상위 등급이 잘 나온다 — 지금 확률을 밝혀 둔다
               const odds = rarityOdds(worldRef.current?.stageIndex ?? 0);

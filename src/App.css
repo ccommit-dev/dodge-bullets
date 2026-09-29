@@ -4017,3 +4017,17 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-weapon-card.locked { opacity:.55; cursor:default; }
 .exp-skill-upgrade { padding:11px; border:0; border-radius:12px; color:#64748b; background:#334155; font-size:14px; font-weight:900; cursor:not-allowed; }
 .exp-skill-upgrade.on { color:#082f49; background:linear-gradient(135deg,#fbbf24,#fde047); cursor:pointer; }
+
+/* ── 화살 원정 위치·줄바꿈 점검 (2026-09-29) ──
+   캡처로 본 것: 상단 버튼(사운드·사냥터로)이 "BATTLE EXPEDITION" 위에 겹쳤고, 전투 스킬 슬롯이 바닥선 위로
+   12px 올라와 주인공 발을 가렸고, 목록 글이 가운데 정렬이라 아이콘과 설명이 따로 놀았다. */
+.exp-menu-content { padding-top: 44px; }
+.exp-menu-content .score-line b { color:#fde68a; font-weight:800; }
+.skill-dock { bottom:52px; }
+.exp-skill-panel, .exp-skill-sheet { word-break:keep-all; overflow-wrap:anywhere; }
+.exp-chip-list span, .exp-supply-list span, .exp-daily-list span, .exp-basic-row span { flex:1; text-align:left; }
+.exp-skill-head p { text-align:left; }
+/* 스탯 칸이 홀수면 마지막 칸이 반쪽만 차 빈칸이 남는다 — 한 줄을 다 쓴다 */
+.exp-skill-stats span:last-child:nth-child(odd) { grid-column:1 / -1; }
+/* 전투 제목이 "직 / 선 조준"처럼 낱말 가운데서 접히지 않게 */
+.hud-left { word-break:keep-all; }

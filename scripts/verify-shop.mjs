@@ -143,8 +143,9 @@ gp = await prog();
 r = await page.evaluate(() => ({ badge: !!document.querySelector(".season-paid-badge"), paidOpen: [...document.querySelectorAll(".season-cell.paid:not(:disabled)")].length }));
 ok("G 유료 트랙 구매(QA 경로) → 활성 배지 · 유료 5칸 수령 가능", gp.seasonPass.paid && r.badge && r.paidOpen === 5, JSON.stringify(r));
 await page.evaluate(() => document.querySelector('.season-tier[data-tier="3"] .season-cell.paid')?.click());
-await sleep(800);
-const coresAfter = (await titans()).skillInventory.skillCores;
+// 저장은 비동기다 — 고정 대기 800ms 는 묶음 실행에서 가끔 모자랐다(9→9). 바뀔 때까지 최대 6초 본다
+let coresAfter = coresBefore;
+for (let i = 0; i < 30 && coresAfter === coresBefore; i += 1) { await sleep(200); coresAfter = (await titans()).skillInventory.skillCores; }
 ok("G 유료 3단 수령 → 스킬 코어 +1 (사냥터 저장)", coresAfter - coresBefore === 1, `${coresBefore}→${coresAfter}`);
 await page.evaluate(() => document.querySelector(".season-claim-all")?.click());
 // 수령은 칸마다 차례로 저장된다 — 고정 1.2초로는 부하가 걸리면 덜 끝난 상태를 읽었다(free=5,1,2).

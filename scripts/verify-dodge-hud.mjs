@@ -91,6 +91,17 @@ const skillUi = await page.evaluate(() => {
 ok("스킬 화면: 무기 2종 + 스킬 6종, 저장된 지팡이가 장착 상태", menu
   && skillUi.weapons === 2 && skillUi.skills === 6 && skillUi.on[1] === true && skillUi.on[0] === false,
   JSON.stringify(skillUi.on));
+// 메뉴 머리 — 상단 버튼(사운드·사냥터로)이 제목 위에 겹치지 않고, 인장 잔액이 보인다 (2026-09-29 캡처)
+{
+  const head = await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "사냥터로");
+    const brand = document.querySelector(".exp-menu-content .brand");
+    const a = btn?.getBoundingClientRect(), b = brand?.getBoundingClientRect();
+    return { btnBottom: a ? Math.round(a.bottom) : -1, brandTop: b ? Math.round(b.top) : -1, seals: document.querySelector("[data-testid=exp-seals]")?.textContent ?? "" };
+  });
+  ok("메뉴 제목이 상단 버튼 아래에서 시작한다 (겹침 없음)", head.btnBottom > 0 && head.brandTop >= head.btnBottom, "버튼 끝 " + head.btnBottom + " · 제목 시작 " + head.brandTop);
+  ok("정비 화면 머리에 인장 잔액이 보인다", head.seals === "400", head.seals);
+}
 ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, skillUi.over.slice(0, 2).join(", "));
 
 // 보급창 · 일일 임무 탭 — 인장을 "지금 쓰는" 자리와 "한 판 더"의 이유
@@ -194,6 +205,50 @@ const hud = await page.evaluate(() => {
 });
 ok("일섬 게이지와 HUD 글자 사이에 8px 여백이 남는다 (6자리 코인 기준)", !hud.missing && hud.hits.length === 0, (hud.hits ?? []).join(", "));
 ok("전투 HUD 글자에 전체 지갑 코인을 띄우지 않는다", !!hud.hint && !hud.hint.includes("코인"), hud.hint);
+
+// 1-a) 스킬 슬롯 — 바닥선 아래에 있어야 주인공 발을 가리지 않고, 조작 버튼 위에 있어야 눌림을 막지 않는다
+{
+  const dock = await page.evaluate(() => {
+    const w = window.__dodgeWorld; const canvas = document.querySelector("canvas");
+    const slot = document.querySelector(".skill-slot");
+    const jump = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "점프");
+    if (!w || !canvas || !slot || !jump) return { missing: true };
+    const r = slot.getBoundingClientRect();
+    return { floor: Math.round(canvas.getBoundingClientRect().top + w.floorY), top: Math.round(r.top), bottom: Math.round(r.bottom), ctl: Math.round(jump.getBoundingClientRect().top) };
+  });
+  ok("스킬 슬롯이 바닥선과 조작 버튼 사이에 들어간다 (주인공 발을 안 가린다)",
+    !dock.missing && dock.top >= dock.floor && dock.bottom <= dock.ctl, JSON.stringify(dock));
+}
+
+// 1-b) 보스 막대 — 캔버스에 그리므로 DOM HUD 가 밀어내 주지 않는다. 제목이 두 줄로 접혀도 안 겹쳐야 한다
+{
+  const src = (await import("node:fs")).readFileSync("src/game/draw.ts", "utf8");
+  const top = Number(/BOSS_BAR_TOP = ([0-9]+)/.exec(src)?.[1] ?? 0);
+  const boss = await page.evaluate((top) => {
+    const w = window.__dodgeWorld; const canvas = document.querySelector("canvas");
+    if (!w || !canvas) return { missing: true };
+    const cr = canvas.getBoundingClientRect();
+    const barW = Math.min(280, cr.width - w.safeLeft - w.safeRight - 36);
+    const bar = { x: cr.x + (cr.width - barW) / 2, y: cr.y + w.safeTop + top, w: barW, h: 25 };
+    const hits = [];
+    // 가장 긴 제목(보스 이름이 붙어 두 줄) 기준으로 잰다
+    const title = document.querySelector(".hud-left > :first-child");
+    const keep = title?.textContent;
+    if (title) title.textContent = "Stage 4 · BOSS 12 · 직선 조준 사격";
+    for (const el of document.querySelectorAll(".hud-left > *")) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) continue;
+      const ox = Math.min(r.right, bar.x + bar.w) - Math.max(r.left, bar.x);
+      const oy = Math.min(r.bottom, bar.y + bar.h) - Math.max(r.top, bar.y);
+      if (ox > 0 && oy > 0) hits.push((el.className || el.tagName) + " " + Math.round(oy) + "px");
+    }
+    const bottom = Math.max(...[...document.querySelectorAll(".hud-left > *")].map((e) => e.getBoundingClientRect().bottom));
+    if (title && keep != null) title.textContent = keep;
+    return { hits, bar, hudBottom: Math.round(bottom) };
+  }, top);
+  ok("보스 막대가 HUD 왼쪽 열을 덮지 않는다 (제목 두 줄 기준)", top > 0 && !boss.missing && boss.hits.length === 0,
+    boss.missing ? "월드 없음" : "막대 y " + Math.round(boss.bar.y) + " · HUD 끝 " + boss.hudBottom + " " + boss.hits.join(", "));
+}
 
 // 2) 적재 — 스킬 레벨·무기가 실려서 실제로 쏘는가
 let fired = null;
