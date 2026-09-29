@@ -1,5 +1,6 @@
 import type { ChipMods } from "./chips";
 import type { SkillFx, SkillShot } from "./skillShots";
+import type { Element } from "./skills";
 import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
 export type GameState = "ready" | "intro" | "playing" | "paused" | "perk" | "clear" | "gameover";
 
@@ -282,6 +283,8 @@ export type GameWorld = {
   /** 활 반동 연출 남은 시간(ms) · 쏜 방향 — player.ts 가 무기를 기울이고 시위를 그린다 */
   shotFlashMs: number;
   shotAngle: number;
+  /** 상성 명중 표시 — 자리·속성·남은 시간(ms). 표에만 있던 상성을 화면에서 체감하게 (2026-09-29) */
+  affinityPop: { x: number; y: number; element: Element; ms: number } | null;
   /** 번개화살 연쇄 선 — 쏜 자리에서 표적들로. ms 가 0 이 되면 사라진다 */
   boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */

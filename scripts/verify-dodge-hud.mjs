@@ -124,7 +124,8 @@ ok("칩 슬롯 3칸 중 2칸이 차 있고, 목록 6종이 실제 수치를 말�
 ok("끼운 칩 2종이 목록에서 장착 표시된다", chipUi.equipped === 2, String(chipUi.equipped));
 
 // 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지" 를 보여 준다 (가이드의 투자 조언)
-await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[2]?.click());
+// 트리 정렬(물·불·흙·얼음·번개·일섬) 뒤 얼음화살은 4번째 — 카드 5장(에픽 4) (2026-09-29)
+await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[3]?.click());
 await sleep(400);
 const unlocks = await page.evaluate(() => {
   const rows = [...document.querySelectorAll(".exp-skill-unlocks li")];

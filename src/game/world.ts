@@ -82,6 +82,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     shotFlashMs: 0,
     shotAngle: -Math.PI / 2,
     boltFrom: null,
+    affinityPop: null,
     skillLevels: emptySkillLevels(),
     skillTimers: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
     rangedWeapon: "none",

@@ -887,6 +887,22 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       "대기 " + (idle.ratios[0] * 100).toFixed(0) + "% · 검격 " + atk.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
   }
 
+  // ── 상성이 체감된다 (2026-09-29 재검토) — 표에만 있던 상성이 보스가 아니면 아무 효과가 없었다.
+  //    상성 명중은 게이지 +6 · 보급 +1 을 더 주고 "상성!" 을 띄운다. 흙화살 ↔ 튕김 화살로 잰다.
+  {
+    const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+    const world = wm.createWorld(390, 700, 1);
+    // 맨손으로 — 활을 끼면 기본 사격이 0프레임에 먼저 나가 표적을 가로챈다 (첫 시도에서 그렇게 FAIL 했다)
+    world.rangedWeapon = "none"; world.skillLevels = { ...world.skillLevels, earth: 1 };
+    wm.resetRun(world, 0);
+    const place = (kind) => { const a = world.arrows[0]; a.active = true; a.warningMs = 0; a.reflected = false; a.boss = false; a.kind = kind; a.x = world.player.x; a.y = world.player.y - 14 - 30; a.vx = 0; a.vy = 0; a.hitRadius = 8; a.chilledMs = 0; };
+    const shoot = () => { world.skillTimers.earth = 0; world.slashGauge = 0; world.supplies = 0; world.affinityPop = null; for (let i = 0; i < 40 && world.arrows[0].active; i += 1) dodgeShots.updateSkillShots(world, 1 / 60); return { gauge: world.slashGauge, supplies: world.supplies, pop: world.affinityPop?.element ?? null, dead: !world.arrows[0].active }; };
+    place("normal"); const plain = shoot();
+    place("ricochet"); const strong = shoot();
+    ok("흙화살이 일반 화살을 떨군다 (게이지 +3 · 보급 +1)", plain.dead && plain.gauge === 3 && plain.supplies === 1 && plain.pop === null, JSON.stringify(plain));
+    ok("상성(튕김) 명중은 게이지 +9 · 보급 +2 · 「상성!」 표시", strong.dead && strong.gauge === 9 && strong.supplies === 2 && strong.pop === "earth", JSON.stringify(strong));
+  }
+
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
     /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
 }
