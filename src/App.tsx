@@ -62,7 +62,7 @@ import {
   DAILIES, dailyClaimable, DAILY_BY_ID, PRIMED_MS, rolledDaily, SUPPLIES, SUPPLY_BY_ID, SUPPLY_MAX,
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
-import { applySkillLevels, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
+import { applySkillLevels, collectionCooldownMul, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
 import { EXPEDITION_SKILLS } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
@@ -115,6 +115,7 @@ type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
 const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cores", heal: "exp" };
 /** 스킬을 바꾸는 카드는 그 스킬의 아이콘을 그대로 쓴다 — 무엇이 세지는지 한 눈에 보이게. basic 은 기본 사격(활) (2026-09-29) */
 const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
+  learnFire: "fire", learnWater: "water", learnIce: "ice", learnEarth: "earth", learnBolt: "bolt",
   shotExtra: "basic", quickdraw: "basic", shotPierce: "basic", arrowStorm: "basic", overdrive: "basic",
   evoBeam: "basic", evoSeeker: "basic",
   boltExtra: "bolt", waterMore: "water", fireWide: "fire", iceDeep: "ice", earthHeavy: "earth",
@@ -145,7 +146,7 @@ function EXPEDITION_SKILL_READY(p: CharacterProgress | null): boolean {
     const lv = p.expeditionSkills[d.id] ?? 0;
     if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(d, p.dodgeBestStage)) return false;
     const c = skillCost(d, lv + 1);
-    return p.sharedCoins >= c.gold && p.expeditionSeals >= c.seals;
+    return p.sharedCoins >= c.gold && (p.expeditionShards[d.id] ?? 0) >= c.shards;
   });
 }
 
@@ -159,6 +160,8 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   // 덮이므로, 안 얹으면 "이번 런 동안 적용"이 스테이지 하나짜리 거짓말이 된다 (2026-09-28)
   // 칩은 랜덤이 아니라 고정 패시브 — 카드보다 먼저 얹는다
   world.chips = chipModsOf(p.expeditionChips, p.equippedChips, chipSlotsOpen(p.dodgeBestStage));
+  // 수집 보너스 — 배너의 숫자가 실제로 걸린다
+  world.collectionMul = collectionCooldownMul(p.expeditionSkills);
   stats.extraLives += world.chips.extraLives;
   const m = world.runMods;
   stats.moveSpeed *= m.moveSpeedMul;
@@ -624,7 +627,7 @@ function App() {
               ? [{ id: "basic" as const, lv: 0, ready: 1 - Math.max(0, world.basicTimer) / Math.max(0.01, basicCooldown(world)) }]
               : [];
             setSkillHud([...basic, ...EXPEDITION_SKILLS
-              .filter((d) => d.id !== "ultimate" && (world.skillLevels[d.id] ?? 0) > 0)
+              .filter((d) => d.id !== "ultimate" && !!world.runSkills[d.id] && (world.skillLevels[d.id] ?? 0) > 0)
               .map((d) => {
                 const full = effectiveCooldown(d.id, world.skillLevels[d.id], world.rangedWeapon) * world.runMods.cooldownMul;
                 const left = Math.max(0, world.skillTimers[d.id] ?? 0);
@@ -697,6 +700,7 @@ function App() {
           // 일일 임무는 결과와 무관하게 이 스테이지에서 한 만큼 센다 (클리어 보상과 다른 id)
           void grantCharacterReward(userHashRef.current, `dodge:${dodgeRunIdRef.current}:fail:${world.stageIndex}`, {
             dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
+            skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
             lastContent: "dodge",
           }).then(setProgress);
           trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
@@ -742,6 +746,7 @@ function App() {
                   + world.enemyKills + world.perfectDodges * 2 + world.chests * 4,
                 dodgeStage: world.stageIndex + 1,
                 dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 1 },
+                skillShards: shardDrops(world.runSkills, world.stageIndex, true, world.ultCount),
                 // 배속은 순수한 손해가 아니라 선택이어야 한다 — 빨리 돌린 만큼 인장을 더 준다 (2026-09-28)
                 expeditionSeals: Math.round(world.expeditionSeals * (speedRef.current > 1 ? 1.25 : 1)),
                 lastContent: "dodge",
@@ -992,19 +997,19 @@ function App() {
     setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
   };
 
-  /** 스킬 강화 — 골드(공용 코인)와 원정 인장을 쓰고 레벨을 올린다. 즉시 스탯에 반영된다 */
+  /** 스킬 강화 — 골드(공용 코인)와 **그 스킬의 조각**을 쓰고 레벨을 올린다. 즉시 스탯에 반영된다 */
   const handleUpgradeSkill = useCallback((id: ExpeditionSkillId) => {
     const current = progress;
     const def = SKILL_BY_ID[id];
     const lv = current.expeditionSkills[id] ?? 0;
     if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(def, current.dodgeBestStage)) return;
     const cost = skillCost(def, lv + 1);
-    if (current.sharedCoins < cost.gold || current.expeditionSeals < cost.seals) return;
+    if (current.sharedCoins < cost.gold || (current.expeditionShards[id] ?? 0) < cost.shards) return;
     void (async () => {
       const next = await updateCharacterProgress(userHashRef.current, (p) => ({
         ...p,
         sharedCoins: p.sharedCoins - cost.gold,
-        expeditionSeals: p.expeditionSeals - cost.seals,
+        expeditionShards: { ...p.expeditionShards, [id]: Math.max(0, (p.expeditionShards[id] ?? 0) - cost.shards) },
         expeditionSkills: { ...p.expeditionSkills, [id]: (p.expeditionSkills[id] ?? 0) + 1 },
       }));
       setProgress(next);
@@ -1166,6 +1171,7 @@ function App() {
             + Math.floor(world.supplies / 10) + world.enemyKills + world.perfectDodges + world.chests * 3),
           dodgeStage: world.stageIndex + 1,
           dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
+          skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
           lastContent: "dodge",
         },
       );
@@ -1576,6 +1582,7 @@ function App() {
                 levels={progress.expeditionSkills}
                 gold={progress.sharedCoins}
                 seals={progress.expeditionSeals}
+                shards={progress.expeditionShards}
                 dodgeBestStage={progress.dodgeBestStage}
                 supplies={progress.expeditionSupplies}
                 daily={rolledDaily(progress.expeditionDaily)}
@@ -1790,6 +1797,7 @@ function App() {
                     {perk.label}
                     {perk.combo && <i className="perk-combo">콤보</i>}
                     {perk.evolution && <i className="perk-evo">진화</i>}
+                    {perk.learns && <i className="perk-learn">습득</i>}
                   </b>
                   <small>{perk.desc}</small>
                 </span>
@@ -1842,6 +1850,13 @@ function App() {
                 {worldRef.current.player.hp === worldRef.current.player.maxHp ? " · 노히트 설계도 판정" : ""}
               </p>
             )}
+            {/* 쓴 스킬의 조각이 돌아온다 — 무엇을 얼마나 받았는지 보여야 고리가 읽힌다 (2026-09-29) */}
+            {worldRef.current && (() => {
+              const drops = shardDrops(worldRef.current.runSkills, worldRef.current.stageIndex, !extracted, worldRef.current.ultCount);
+              const rows = (Object.keys(drops) as ExpeditionSkillId[]).filter((id) => (drops[id] ?? 0) > 0);
+              if (!rows.length) return null;
+              return <p className="subtitle exp-shard-line">스킬 조각 · {rows.map((id) => `${SKILL_BY_ID[id].name} +${drops[id]}`).join(" · ")}</p>;
+            })()}
             {shoulderDrop && <p className="shop-toast">{shoulderDrop}</p>}
             <button type="button" className="cta" onClick={handleNextStage}>
               {allClear || extracted ? "원정 준비" : "다음 스테이지"}

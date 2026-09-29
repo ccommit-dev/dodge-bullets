@@ -412,7 +412,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("보스 패턴: 1~4스테이지 A·B·C·D, 성벽은 E 로 고정 (학습 가능한 보스)", ids === "ABCDEE" && new Set(bossPatterns.BOSS_PATTERNS.map((p) => p.kinds.join("+") + p.count + p.spreadDeg)).size === 5, ids);
   ok("보스 패턴: 파편 수·종류 수가 일치하거나 순환하고, 예고는 500ms 이상", bossPatterns.BOSS_PATTERNS.every((p) => p.count >= 1 && p.kinds.length >= 1 && p.warningMs >= 500));
   // 성장 선택: 3택 무작위(결정적 rng) · 적용 효과 · 대시 미해금이면 dash 제외
-  const w = { rangedWeapon: "bow", slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
+  const w = { rangedWeapon: "bow", runSkills: {}, skillTimers: {}, slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
   let k = 0; const det = () => ((k += 0.37) % 1);
   const picked = perks.pickPerks(w, det);
   ok("성장 선택: 3개가 서로 다르고 활 계열 밖(이동·회피·검격) 카드는 없다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => ["dash", "speed", "slash"].includes(p.id)), picked.map((p) => p.id).join(","));
@@ -522,7 +522,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
   // 6) 비용·해금
   const c1 = S.skillCost(S.SKILL_BY_ID.fire, 1), c5 = S.skillCost(S.SKILL_BY_ID.fire, 5);
-  ok("스킬 비용이 레벨마다 오른다", c5.gold > c1.gold * 4 && c5.seals > c1.seals * 2, `lv1 ${c1.gold}G/${c1.seals}인 → lv5 ${c5.gold}G/${c5.seals}인`);
+  ok("스킬 비용이 레벨마다 오른다", c5.gold > c1.gold * 4 && c5.shards > c1.shards * 2, `lv1 ${c1.gold}G/${c1.shards}조각 → lv5 ${c5.gold}G/${c5.shards}조각`);
   ok("해금은 원정 스테이지 — 불화살·일섬은 처음부터, 번개화살은 3스테이지",
     S.skillUnlocked(S.SKILL_BY_ID.fire, 1) && S.skillUnlocked(S.SKILL_BY_ID.ultimate, 1)
     && !S.skillUnlocked(S.SKILL_BY_ID.bolt, 2) && S.skillUnlocked(S.SKILL_BY_ID.bolt, 3));
@@ -544,8 +544,10 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   // 9) 런 강화 카드 — 스킬 진화·콤보. 참고 게임의 핵심 루프를 옮긴 부분이다.
   //    함정도 같이 옮기지 않으려고, 들고 있지 않은 스킬의 카드는 후보에 넣지 않는다.
   {
-    const w = (levels, weapon = "bow") => ({
+    const w = (levels, weapon = "bow", acquired = true) => ({
       rangedWeapon: weapon,
+      runSkills: acquired ? Object.fromEntries(Object.keys(levels).map((id) => [id, true])) : {},
+      skillTimers: {},
       skillLevels: { ...S.emptySkillLevels(), ...levels },
       runMods: dodgeShots.emptyRunMods(),
       stats: { dashUnlocked: true },
@@ -674,12 +676,12 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       // 스킬마다 강화 화면이 보여 줄 카드가 실제로 있다 (일섬·관통은 카드 없음이 정상)
       const shown = all.map((id) => [id, perks.perksUnlockedBy(id).length]);
       ok("얼음화살을 올리면 런 중 카드 5장이 열린다 (심층·서리 사냥·열충격·파쇄·지속)",
-        perks.perksUnlockedBy("ice").map((p) => p.id).sort().join() === "chillBurst,chillHunt,evoLingering,evoShatter,iceDeep",
+        perks.perksUnlockedBy("ice").filter((p) => !p.learns).map((p) => p.id).sort().join() === "chillBurst,chillHunt,evoLingering,evoShatter,iceDeep",
         perks.perksUnlockedBy("ice").map((p) => p.id).join());
       ok("기본 사격(무기)만으로 열리는 카드가 8장 — 스킬 없는 계정도 카드가 뜬다",
         perks.perksUnlockedBy("basic").length === 8, perks.perksUnlockedBy("basic").map((p) => p.id).join());
-      ok("스킬마다 런 중 열리는 카드가 있다 — 불 4 · 물 1 · 얼음 5 · 흙 1 · 번개 1",
-        JSON.stringify(shown) === JSON.stringify([["fire",4],["water",1],["ice",5],["earth",1],["bolt",1],["ultimate",0]]),
+      ok("스킬마다 런 중 열리는 카드가 있다 (습득 카드 포함) — 불 5 · 물 2 · 얼음 6 · 흙 2 · 번개 2",
+        JSON.stringify(shown) === JSON.stringify([["fire",5],["water",2],["ice",6],["earth",2],["bolt",2],["ultimate",0]]),
         JSON.stringify(shown));
     }
 
@@ -690,15 +692,16 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       world.rangedWeapon = "bow"; world.skillLevels = { ...world.skillLevels, fire: 3 };
       wm.resetRun(world, 0);
       perks.applyPerk(world, "shotExtra");
+      perks.applyPerk(world, "learnFire");
       const speedAfterCard = world.stats.moveSpeed;
       wm.beginStage(world, 1);      // 다음 스테이지로 넘어간다 (런은 이어진다)
       ok("스테이지가 넘어가도 카드가 유지된다",
-        world.runMods.shotExtra === 1 && Math.abs(world.runMods.maxHpBonus - 0) < 1e-9,
+        world.runMods.shotExtra === 1 && world.runSkills.fire === true,
         JSON.stringify({ shotExtra: world.runMods.shotExtra }));
       ok("스탯 배수 칸은 남아 있다 (HP 카드가 쓴다)", speedAfterCard > 0 && world.runMods.moveSpeedMul === 1);
       wm.resetRun(world, 0);        // 새 런
       ok("새 런에서는 카드가 비워진다",
-        world.runMods.shotExtra === 0 && world.runMods.moveSpeedMul === 1 && !world.runMods.evolutions.basic);
+        world.runMods.shotExtra === 0 && world.runMods.moveSpeedMul === 1 && !world.runMods.evolutions.basic && !world.runSkills.fire);
     }
   }
 
@@ -743,7 +746,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     }
     ok("칩은 레벨이 오를 때 나빠지지 않는다", worse.length === 0, worse.join());
     ok("칩 비용이 레벨마다 오르고, 첫 단계는 스킬 1레벨과 같아 선택이 생긴다",
-      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) === S2.skillCost(S2.SKILL_BY_ID.fire, 1).seals,
+      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) === S2.skillCost(S2.SKILL_BY_ID.fire, 1).shards,
       "lv1 " + C.chipCost(1) + "인 → lv5 " + C.chipCost(5) + "인");
 
     // 설명 문구가 실제 수치와 같은가 — 화면이 거짓말하면 투자 판단이 망가진다
@@ -774,7 +777,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
     // [선발 보급] 이 켜지면 3택이 전부 레어 이상이어야 한다
     const w2 = {
-      rangedWeapon: "bow", skillLevels: { ...dodgeSkills.emptySkillLevels(), ice: 1, fire: 1 },
+      rangedWeapon: "bow", runSkills: { ice: true, fire: true }, skillTimers: {}, skillLevels: { ...dodgeSkills.emptySkillLevels(), ice: 1, fire: 1 },
       runMods: dodgeShots.emptyRunMods(),
       stats: { dashUnlocked: true }, player: { hp: 1, maxHp: 1 }, slashGauge: 0, stageIndex: 0,
     };
@@ -812,6 +815,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       const world = wm.createWorld(390, 700, 1);
       world.rangedWeapon = "bow"; world.skillLevels = { ...world.skillLevels, fire: 3 };
       wm.resetRun(world, 0);
+      world.runSkills.fire = true;
       // 표적이 없으면 쏘지 않는다(쿨타임을 태우지 않는다) — 화살 하나를 사정권에 둔다
       const tgt = world.arrows[0]; tgt.active = true; tgt.warningMs = 0; tgt.reflected = false; tgt.x = world.player.x; tgt.y = 40; tgt.hitRadius = 6; tgt.boss = false; tgt.kind = "normal";
       ok("새 런은 화살통 효과가 꺼진 채 시작한다 (재사용 배수 1)", world.primedMs === 0);
@@ -895,12 +899,89 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     // 맨손으로 — 활을 끼면 기본 사격이 0프레임에 먼저 나가 표적을 가로챈다 (첫 시도에서 그렇게 FAIL 했다)
     world.rangedWeapon = "none"; world.skillLevels = { ...world.skillLevels, earth: 1 };
     wm.resetRun(world, 0);
+    world.runSkills.earth = true;
     const place = (kind) => { const a = world.arrows[0]; a.active = true; a.warningMs = 0; a.reflected = false; a.boss = false; a.kind = kind; a.x = world.player.x; a.y = world.player.y - 14 - 30; a.vx = 0; a.vy = 0; a.hitRadius = 8; a.chilledMs = 0; };
     const shoot = () => { world.skillTimers.earth = 0; world.slashGauge = 0; world.supplies = 0; world.affinityPop = null; for (let i = 0; i < 40 && world.arrows[0].active; i += 1) dodgeShots.updateSkillShots(world, 1 / 60); return { gauge: world.slashGauge, supplies: world.supplies, pop: world.affinityPop?.element ?? null, dead: !world.arrows[0].active }; };
     place("normal"); const plain = shoot();
     place("ricochet"); const strong = shoot();
     ok("흙화살이 일반 화살을 떨군다 (게이지 +3 · 보급 +1)", plain.dead && plain.gauge === 3 && plain.supplies === 1 && plain.pop === null, JSON.stringify(plain));
     ok("상성(튕김) 명중은 게이지 +9 · 보급 +2 · 「상성!」 표시", strong.dead && strong.gauge === 9 && strong.supplies === 2 && strong.pop === "earth", JSON.stringify(strong));
+  }
+
+  // ── 참고 게임 체계 그대로 (2026-09-29 감사): 스킬별 조각 · 런 중 습득 · 수집 보너스
+  {
+    const S3 = dodgeSkills;
+    const mk = (levels, acquired = {}) => ({
+      rangedWeapon: "bow", runSkills: { ...acquired }, skillTimers: {}, stageIndex: 0, draftBoost: false,
+      skillLevels: { ...S3.emptySkillLevels(), ...levels },
+      runMods: dodgeShots.emptyRunMods(), stats: { dashUnlocked: true }, player: { hp: 1, maxHp: 1 }, slashGauge: 0,
+    });
+    const avail = (world) => perks.PERKS.filter((p) => p.available(world)).map((p) => p.id);
+
+    // 1) 런 중 습득 — 영구 레벨이 있는 스킬만 습득 카드가 뜨고, 습득 전에는 강화 카드가 안 뜬다
+    const fresh = mk({ fire: 1, ice: 2 });
+    ok("영구 레벨이 있는 스킬만 습득 카드가 뜬다 (레벨 0 인 물·흙·번개는 안 뜬다)",
+      avail(fresh).includes("learnFire") && avail(fresh).includes("learnIce")
+      && !avail(fresh).includes("learnWater") && !avail(fresh).includes("learnEarth") && !avail(fresh).includes("learnBolt"));
+    ok("습득 전에는 그 스킬의 강화·진화 카드가 안 뜬다",
+      !avail(fresh).includes("fireWide") && !avail(fresh).includes("evoPyre") && !avail(fresh).includes("chillBurst"));
+    perks.applyPerk(fresh, "learnFire");
+    ok("습득하면 그 스킬이 이번 런에 켜지고 강화 카드가 열린다 (습득 카드는 사라진다)",
+      fresh.runSkills.fire === true && avail(fresh).includes("fireWide") && !avail(fresh).includes("learnFire"));
+
+    // 2) 첫 3택은 습득 카드를 보장한다 — 빌드가 시작되지 않는 판을 막는다
+    const first = perks.pickPerks(mk({ fire: 1 }), () => 0.99, 3, 0);
+    ok("아무것도 습득하지 않았으면 첫 자리는 습득 카드", !!first[0]?.learns && new Set(first.map((p) => p.id)).size === first.length, first.map((p) => p.id).join());
+    const later = perks.pickPerks(mk({ fire: 1 }, { fire: true }), () => 0.99, 3, 0);
+    ok("이미 습득한 뒤에는 자리를 강제하지 않는다", !later[0]?.learns, later.map((p) => p.id).join());
+
+    // 3) 습득한 것만 실제로 나간다
+    {
+      const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+      const world = wm.createWorld(390, 700, 1);
+      world.rangedWeapon = "none"; world.skillLevels = { ...world.skillLevels, fire: 3 };
+      wm.resetRun(world, 0);
+      const t = world.arrows[0]; t.active = true; t.warningMs = 0; t.reflected = false; t.boss = false; t.kind = "normal"; t.x = world.player.x; t.y = 60; t.vx = 0; t.vy = 0; t.hitRadius = 8;
+      dodgeShots.updateSkillShots(world, 1 / 60);
+      const before = world.skillShots.filter((x) => x.active).length;
+      world.runSkills.fire = true;
+      dodgeShots.updateSkillShots(world, 1 / 60);
+      const after = world.skillShots.filter((x) => x.active && x.element === "fire").length;
+      ok("보유만 하고 습득하지 않은 스킬은 쏘지 않는다 — 습득하면 그때부터 나간다", before === 0 && after === 1, before + " → " + after);
+    }
+
+    // 4) 스킬별 조각 — 그 판에 습득해 쓴 스킬의 조각이 나온다
+    const drop = S3.shardDrops({ fire: true, ice: true }, 2, true, 1);
+    ok("클리어하면 습득한 스킬마다 조각 2 + 스테이지, 안 쓴 스킬은 0",
+      drop.fire === 4 && drop.ice === 4 && drop.water === undefined && drop.ultimate === 2, JSON.stringify(drop));
+    const failDrop = S3.shardDrops({ fire: true }, 3, false, 0);
+    ok("실패해도 쓴 스킬은 조각 1", failDrop.fire === 1 && failDrop.ultimate === undefined, JSON.stringify(failDrop));
+    ok("강화 비용은 골드 + 그 스킬의 조각", (() => { const c = S3.skillCost(S3.SKILL_BY_ID.ice, 1); return c.gold > 0 && c.shards === 4 && !("seals" in c); })());
+
+    // 5) 수집 보너스 — 배너의 숫자가 실제 효과
+    ok("수집 보너스: 누적 레벨 하나당 재사용 −0.3%, 최대 −18%",
+      S3.collectionCooldownMul(S3.emptySkillLevels()) === 1
+      && Math.abs(S3.collectionCooldownMul({ ...S3.emptySkillLevels(), fire: 10 }) - 0.97) < 1e-9
+      && Math.abs(S3.collectionCooldownMul({ fire: 10, water: 10, ice: 10, earth: 10, bolt: 10, ultimate: 10 }) - 0.82) < 1e-9);
+    ok("배너 숫자 = 실제 배수", S3.skillSummary({ ...S3.emptySkillLevels(), fire: 10, ice: 10 }).bonusPct === 6);
+    {
+      const wm = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
+      const world = wm.createWorld(390, 700, 1);
+      world.rangedWeapon = "bow"; wm.resetRun(world, 0);
+      const plain = dodgeShots.basicCooldown(world);
+      world.collectionMul = 0.9;
+      ok("수집 보너스가 기본 사격 재사용에 실제로 걸린다", Math.abs(dodgeShots.basicCooldown(world) / plain - 0.9) < 1e-9);
+    }
+
+    // 6) 저장 — 새 진행도는 불화살 Lv1, 조각 없던 저장은 스킬마다 6개
+    const fresh0 = prog.emptyCharacterProgress();
+    ok("새 진행도는 불화살 Lv1 로 시작한다 (첫 3택에 습득 카드가 뜬다)", fresh0.expeditionSkills.fire === 1 && fresh0.expeditionShards.fire === 0);
+    const old = prog.normalizeCharacterProgress({ ...base, expeditionSeals: 40, expeditionSkills: { flame: 3 } });
+    ok("조각이 없던 저장은 스킬마다 6개로 시작하고 인장·레벨은 그대로",
+      old.expeditionShards.fire === 6 && old.expeditionShards.ultimate === 6 && old.expeditionSeals === 40 && old.expeditionSkills.fire === 3,
+      JSON.stringify(old.expeditionShards));
+    const kept = prog.normalizeCharacterProgress({ ...base, expeditionShards: { fire: 11 } });
+    ok("조각이 있는 저장은 그대로 (없는 키는 0)", kept.expeditionShards.fire === 11 && kept.expeditionShards.ice === 0);
   }
 
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",

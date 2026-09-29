@@ -47,6 +47,8 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   W.resetRun(w, stageIndex);
   // 런 강화 카드(진화·콤보) — resetRun 이 카드를 비우므로 **그 뒤에** 얹는다
   if (opts.mods) w.runMods = { ...w.runMods, ...opts.mods, evolutions: { ...w.runMods.evolutions, ...(opts.mods.evolutions ?? {}) } };
+  // 습득은 런 중 카드로 한다(봇은 첫 자리 카드를 고른다). 빌드끼리 비교할 때는 acquireAll 로 전부 습득한 상태에서 잰다
+  if (opts.acquireAll) for (const [id, lv] of Object.entries(w.skillLevels)) if (lv > 0 && id !== "ultimate") w.runSkills[id] = true;
   const inp = I.createInputState();
   const dt = 1 / 60;
   let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = [];

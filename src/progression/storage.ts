@@ -143,8 +143,10 @@ export async function grantCharacterReward(
   reward: Partial<Pick<CharacterProgress, "exp" | "sharedCoins" | "enhancementMaterials">> & {
     lastContent?: CharacterProgress["lastContent"];
     dodgeStage?: number;
-    /** 원정 인장 — 화살 원정 영구 스킬 강화 재화 (2026-09-28) */
+    /** 원정 인장 — 칩·보급 재화 */
     expeditionSeals?: number;
+    /** 스킬 조각 — 스킬별 증분 (그 판에 습득해 쓴 스킬의 조각) */
+    skillShards?: Partial<Record<string, number>>;
     /**
      * 일일 임무 진행 **증분**. 절대값을 밖에서 계산해 넘기면 화면이 들고 있던 오래된
      * 진행도를 덮어써 오늘치가 날아간다 — 여기 current 로 더한다 (2026-09-28)
@@ -162,6 +164,9 @@ export async function grantCharacterReward(
         current.enhancementMaterials + Math.max(0, reward.enhancementMaterials ?? 0),
       dodgeBestStage: Math.max(current.dodgeBestStage, reward.dodgeStage ?? 1),
       expeditionSeals: current.expeditionSeals + Math.max(0, reward.expeditionSeals ?? 0),
+      expeditionShards: Object.fromEntries(
+        Object.entries(current.expeditionShards).map(([id, n]) => [id, n + Math.max(0, reward.skillShards?.[id] ?? 0)]),
+      ) as typeof current.expeditionShards,
       expeditionDaily: reward.dailyProgress
         ? addDailyProgress(rolledDaily(current.expeditionDaily), reward.dailyProgress)
         : rolledDaily(current.expeditionDaily),

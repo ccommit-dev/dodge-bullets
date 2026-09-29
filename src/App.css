@@ -3938,6 +3938,12 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-daily-bar small { position:absolute; inset:0; display:grid; place-items:center; color:#e0f2fe; font-size:8px; font-weight:900; }
 .exp-daily-list li.done { border-color:rgba(253,224,71,.55); }
 .exp-daily-list li.claimed { opacity:.5; }
+/* 결과 화면 — 이번 판에 받은 스킬 조각 */
+.exp-shard-line { color:#7dd3fc; font-weight:700; }
+/* 습득 안내 · 습득 카드 배지 (2026-09-29) */
+.exp-learn-hint { margin:0; padding:7px 10px; border-radius:10px; background:rgba(56,189,248,.1); color:#bae6fd; font-size:10px; line-height:1.45; text-align:center; }
+.exp-learn-hint b { color:#7dd3fc; }
+.perk-learn { margin-left:6px; padding:1px 6px; border-radius:99px; background:linear-gradient(135deg,#38bdf8,#818cf8); color:#0c1a3a; font-style:normal; font-size:9px; font-weight:900; vertical-align:middle; }
 /* 스킬 트리 갈래 — 왼쪽 열 물리(장궁) · 오른쪽 열 마법(지팡이). 장착 무기 쪽이 밝다 (2026-09-29) */
 .exp-tree { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px; margin:-2px 0; }
 .exp-tree-root { color:#475569; font-size:16px; }

@@ -28,7 +28,7 @@ for (const stage of [1, 3]) {
   for (const [name, mods] of BUILDS) {
     let clear = 0, hits = 0, kills = 0;
     for (const seed of SEEDS) {
-      const r = simulateStage(stage - 1, seed, { skills: SKILLS, weapon: "bow", mods });
+      const r = simulateStage(stage - 1, seed, { skills: SKILLS, weapon: "bow", mods, acquireAll: true });
       if (r.clear) clear += 1;
       hits += r.hits;
       kills += r.skillKills ?? 0;
