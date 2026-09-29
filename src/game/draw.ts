@@ -104,6 +104,16 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.globalAlpha = s.fade;
     // 화살 물체
     ctx.translate(s.x, s.y); ctx.rotate(ang);
+    if (s.element === "basic" && world.rangedWeapon === "staff") {
+      // 지팡이의 기본 사격은 마력탄 — 나무 화살이 지팡이에서 나가면 어색하다 (2026-09-29)
+      const r = s.radius > 10 ? 9 : 7;
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r);
+      g.addColorStop(0, "#f0f9ff"); g.addColorStop(0.5, "#7dd3fc"); g.addColorStop(1, "rgba(56,189,248,0)");
+      ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 10;
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      continue;
+    }
     const img = arrowImg(s.element);
     const len = s.element === "earth" ? 34 : s.element === "basic" && s.radius > 10 ? 40 : 30;
     if (img?.complete && img.naturalWidth > 0) {
@@ -117,6 +127,20 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
       ctx.fillStyle = "#fff7ed";
       ctx.beginPath(); ctx.moveTo(len * 0.45, 0); ctx.lineTo(len * 0.2, -4); ctx.lineTo(len * 0.2, 4); ctx.closePath(); ctx.fill();
     }
+    ctx.restore();
+  }
+
+  // 상성 명중 — "상성!" 이 튀어 오른다. 표에만 있던 상성을 여기서 체감한다
+  const ap = world.affinityPop;
+  if (ap) {
+    const t = 1 - ap.ms / 520;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, ap.ms / 200);
+    ctx.fillStyle = ELEMENT_COLOR[ap.element];
+    ctx.strokeStyle = "rgba(2,6,23,.85)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+    ctx.font = "900 15px system-ui"; ctx.textAlign = "center";
+    ctx.strokeText("상성!", ap.x, ap.y - 14 - t * 26);
+    ctx.fillText("상성!", ap.x, ap.y - 14 - t * 26);
     ctx.restore();
   }
 

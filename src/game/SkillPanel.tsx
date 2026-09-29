@@ -51,6 +51,9 @@ type Props = {
   onUpgrade: (id: ExpeditionSkillId) => void;
 };
 
+/** 격자 순서 — 왼쪽 열은 물리(물·흙), 오른쪽 열은 마법(불·얼음·번개), 마지막에 궁극 */
+const ORDER = ["water", "fire", "earth", "ice", "bolt", "ultimate"];
+
 /** 아직 안 열린 슬롯에 표시할 해금 조건 */
 const CHIP_SLOT_LABEL = ["", "2단계", "4단계"];
 
@@ -244,8 +247,15 @@ export function SkillPanel({
         </div>
       )}
 
+      {/* 갈래 — 기본 사격에서 물리(장궁)·마법(지팡이)로 갈라지고 일섬으로 모인다. 장착 무기의 갈래가 밝다 */}
+      <div className="exp-tree" aria-hidden="true">
+        <span className={`exp-tree-branch ${weapon === "bow" ? "on" : ""}`}>물리 화살 <i>장궁 상성</i></span>
+        <span className="exp-tree-root">┬</span>
+        <span className={`exp-tree-branch ${weapon === "staff" ? "on" : ""}`}>마법 화살 <i>지팡이 상성</i></span>
+      </div>
+
       <div className="exp-skill-grid">
-        {EXPEDITION_SKILLS.map((def) => {
+        {[...EXPEDITION_SKILLS].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)).map((def) => {
           const lv = levels[def.id] ?? 0;
           const unlocked = skillUnlocked(def, dodgeBestStage);
           const maxed = lv >= SKILL_MAX_LEVEL;
@@ -255,7 +265,7 @@ export function SkillPanel({
             <button
               key={def.id}
               type="button"
-              className={`exp-skill-card ${unlocked ? "" : "locked"} ${ready ? "ready" : ""}`}
+              className={`exp-skill-card fam-${def.family} ${unlocked ? "" : "locked"} ${ready ? "ready" : ""} ${(weapon === "bow" && def.family === "physical") || (weapon === "staff" && def.family === "magic") ? "affine" : ""}`}
               disabled={!unlocked}
               onClick={() => setOpenId(def.id)}
             >

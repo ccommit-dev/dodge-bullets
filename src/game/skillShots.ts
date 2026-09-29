@@ -148,6 +148,13 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number): boole
   a.active = false;
   world.skillKills += 1;
   world.supplies += 1;
+  // 상성 명중 — 보스가 아니면 위력 +1 이 아무 뜻이 없다. 게이지·보급으로 되돌려 주고 화면에 띄운다
+  if (aff.power > 0) {
+    world.slashGauge = Math.min(100, world.slashGauge + 6);
+    world.supplies += 1;
+    world.affinityPop = { x: a.x, y: a.y, element, ms: 520 };
+    spawnFx(world, element, a.x, a.y, 30, 420);
+  }
   // 요격도 일섬 게이지를 조금 준다 — 안 주면 스킬이 벨 화살을 먼저 지워 게이지가 굶는다 (2026-09-28 실측)
   world.slashGauge = Math.min(100, world.slashGauge + 3);
   // 콤보 [서리 사냥] — 얼어붙은 화살을 부수면 게이지를 더 받는다
@@ -296,6 +303,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   });
 
   if (world.boltFrom && world.boltFrom.ms > 0) world.boltFrom.ms -= dtSec * 1000;
+  if (world.affinityPop) { world.affinityPop.ms -= dtSec * 1000; if (world.affinityPop.ms <= 0) world.affinityPop = null; }
 
   // ── 날아가는 화살 갱신
   for (const s of world.skillShots) {
@@ -384,6 +392,7 @@ export function resetSkillShots(world: GameWorld): void {
   world.basicTimer = 0;
   world.shotFlashMs = 0;
   world.boltFrom = null;
+  world.affinityPop = null;
   world.skillKills = 0;
   world.epicPicks = 0;   // 클리어마다 일일 임무에 더하므로 skillKills 처럼 스테이지 단위
 }
