@@ -55,6 +55,14 @@ export type Arrow = {
   damage: number;
   /** 정타로 반사된 화살 — 플레이어를 해치지 않고 화면 밖으로 나가면 궁수 처치로 친다 */
   reflected: boolean;
+  /**
+   * 체력 — 활 사격이 깎는다(검격·일섬은 체력과 무관하게 벤다). 0 이면 아직 안 정해진 것으로,
+   * 처음 맞을 때 그 스테이지의 체력으로 채운다 (skills.arrowHpFor, 2026-09-29)
+   */
+  hp: number;
+  maxHp: number;
+  /** 맞았지만 안 부서졌을 때 번쩍이는 남은 시간(ms) */
+  hitFlashMs: number;
   /** 빙결 파동에 얼어붙은 남은 시간(ms) — 콤보 카드가 이걸 보고 추가 효과를 낸다 (2026-09-28) */
   chilledMs: number;
   /** Brief spherical orbit before a split fragment homes back toward the player. */
@@ -186,6 +194,10 @@ export type RunMods = {
   boltExtra: number;
   /** [과부하]·[속사] — 모든 화살 재사용 배수 */
   cooldownMul: number;
+  /** [강궁] — 모든 화살 피해 배수 (가이드의 "피해량 증가") */
+  damageMul: number;
+  /** [원소 전환] — 기본 화살이 띠는 속성. null 이면 무속성 (가이드의 "원소 전환") */
+  convert: Exclude<Element, "basic"> | null;
   /** 콤보 — 얼어붙은 화살을 부수면 일섬 게이지를 더 준다 */
   chillHunt: boolean;
   /** 콤보 — 불화살이 얼어붙은 화살을 함께 터뜨리면 폭발이 넓어진다 */

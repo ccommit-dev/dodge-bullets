@@ -24,7 +24,8 @@ export const RARITY_LABEL: Record<PerkRarity, string> = { common: "일반", rare
 
 export type PerkId =
   | "learnFire" | "learnWater" | "learnIce" | "learnEarth" | "learnBolt"
-  | "gauge" | "heal" | "shotExtra" | "quickdraw" | "boltExtra"
+  | "gauge" | "heal" | "shotExtra" | "quickdraw" | "boltExtra" | "damageUp"
+  | "convertFire" | "convertWater" | "convertIce" | "convertEarth" | "convertBolt"
   | "shotPierce" | "waterMore" | "fireWide" | "iceDeep" | "earthHeavy"
   | "arrowStorm" | "overdrive" | "chillHunt" | "chillBurst"
   | "evoBeam" | "evoSeeker" | "evoCluster" | "evoPyre" | "evoShatter" | "evoLingering";
@@ -70,6 +71,18 @@ const learn = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: st
 /** 기본 사격이 나가는가 — 무기를 끼고 있으면 */
 const armed = (w: GameWorld) => (w.rangedWeapon ?? "none") !== "none";
 
+/**
+ * 원소 전환 — 기본 화살이 그 속성을 띤다 (가이드의 "원소 전환"). 피해 +20%, 그 속성의 상성과 궤적.
+ * 폭발·빙결 같은 명중 효과는 없다 — 그건 속성 화살의 몫이다. 이번 런에 하나만, 습득한 속성으로만.
+ */
+const convert = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: string): PerkDef => ({
+  id: ("convert" + id[0].toUpperCase() + id.slice(1)) as PerkId,
+  rarity: "rare", label: `원소 전환 · ${name}`, desc: `기본 화살이 ${name} 속성이 된다 — 피해 +20% · ${name}의 상성`,
+  needs: [id, "basic"],
+  available: (w) => has(w, id) && armed(w) && !w.runMods.convert,
+  apply: (w) => { w.runMods.convert = id; },
+});
+
 export const PERKS: PerkDef[] = [
   // ── 습득 — 이번 런에서 그 속성 화살을 쓰기 시작한다. 영구 레벨이 있어야 뜬다
   learn("fire", "불화살", "명중한 자리에서 터진다"),
@@ -83,6 +96,9 @@ export const PERKS: PerkDef[] = [
   { id: "heal", rarity: "common", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; } w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
   { id: "shotExtra", rarity: "common", needs: ["basic"], label: "기본 사격 +1발", desc: "한 번에 한 발 더 쏜다", available: armed, apply: (w) => { w.runMods.shotExtra += 1; } },
   { id: "quickdraw", rarity: "common", needs: ["basic"], label: "속사", desc: "모든 화살 재사용 −10%", available: armed, apply: (w) => { w.runMods.cooldownMul *= 0.9; } },
+  // 가이드: "초반에는 공격 속도나 범위가 안전하다. 단일 대상 피해는 강한 한 방이 의미를 갖기 전에 밀릴 수 있다" —
+  // 화살 체력이 S1 1 → S4 3.8 로 오르므로 이 카드의 값은 깊이 들어갈수록 커진다
+  { id: "damageUp", rarity: "common", needs: ["basic"], label: "강궁", desc: "모든 화살 피해 +15%", available: armed, apply: (w) => { w.runMods.damageMul *= 1.15; } },
   { id: "boltExtra", rarity: "common", needs: ["bolt"], label: "번개 분기 +1", desc: "번개화살이 한 갈래 더 뻗는다", available: (w) => has(w, "bolt"), apply: (w) => { w.runMods.boltExtra += 1; } },
 
   // ── 레어 — 화살이 눈에 띄게 달라진다
@@ -90,7 +106,13 @@ export const PERKS: PerkDef[] = [
   { id: "waterMore", rarity: "rare", needs: ["water"], label: "급류", desc: "물화살 관통 +1", available: (w) => has(w, "water"), apply: (w) => { w.runMods.waterPierceExtra += 1; } },
   { id: "fireWide", rarity: "rare", needs: ["fire"], label: "확산 화염", desc: "불화살 폭발 반경 +35%", available: (w) => has(w, "fire"), apply: (w) => { w.runMods.fireRadiusMul *= 1.35; } },
   { id: "iceDeep", rarity: "rare", needs: ["ice"], label: "심층 빙결", desc: "얼음화살이 더 깊게 얼린다", available: (w) => has(w, "ice"), apply: (w) => { w.runMods.iceSlowBonus += 0.1; } },
-  { id: "earthHeavy", rarity: "rare", needs: ["earth"], label: "바위 촉", desc: "흙화살 위력 +1 (보스를 더 깎는다)", available: (w) => has(w, "earth"), apply: (w) => { w.runMods.earthPowerBonus += 1; } },
+  { id: "earthHeavy", rarity: "rare", needs: ["earth"], label: "바위 촉", desc: "흙화살 피해 +1 · 보스 깎기 +1", available: (w) => has(w, "earth"), apply: (w) => { w.runMods.earthPowerBonus += 1; } },
+
+  convert("fire", "불"),
+  convert("water", "물"),
+  convert("ice", "얼음"),
+  convert("earth", "흙"),
+  convert("bolt", "번개"),
 
   // ── 에픽 — 빌드의 방향이 바뀐다. 콤보는 두 스킬이 맞물릴 때만.
   {
@@ -199,6 +221,11 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
     out.push(taken);
   }
   return out;
+}
+
+/** 무기만 있으면 뜨는 카드 — 다른 스킬을 요구하지 않는 것만 (콤보·원소 전환은 스킬도 필요하다) */
+export function perksForBasicOnly(): PerkDef[] {
+  return PERKS.filter((p) => p.needs?.length === 1 && p.needs[0] === "basic");
 }
 
 /** 이 스킬(또는 기본 사격)을 들면 런 중에 열리는 카드들 — 강화 화면이 투자 판단에 쓴다 */
