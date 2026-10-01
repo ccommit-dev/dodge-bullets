@@ -326,15 +326,24 @@ def cmd_heroattack(a):
     bg = Image.new("RGBA", im.size, (255, 255, 255, 255)); bg.alpha_composite(im)
     ref = bg.convert("RGB").resize((384, 384))
     seed = a.seed or BASE_SEED
-    pipe = load_pipe(controlnet=True)
+    pipe = load_pipe(controlnet=not getattr(a, "no_pose", False))
     pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.6)
     for i in range(4):
-        pose = pose_of(REF / f"hero-attack-{i}.png")
-        g = torch.Generator(dev()).manual_seed(seed)
-        out = pipe(prompt=f"{a.prompt}, lunging sword slash attack pose, facing right, gripping a steel longsword, {STYLE}",
-                   negative_prompt=NEG + ", back view, facing left, character sheet, multiple views, empty hands, bare hands",
+        pose = None if getattr(a, "no_pose", False) else pose_of(REF / f"hero-attack-{i}.png")
+        g = torch.Generator(dev()).manual_seed(seed + (i if getattr(a, "no_pose", False) else 0))
+        # --weapon (2026-10-01): 화살 원정은 활만 쓴다 — 검 대신 활을 당기거나 지팡이를 드는 자세.
+        # 자세 참조(ref/hero-attack-{i})는 검 찌르기라 활 자세와 맞지 않으므로 --no-pose 로 ControlNet 을 끄고 IP-Adapter 만 쓴다.
+        weapon = getattr(a, "weapon", "sword")
+        action = ("drawing a large elven longbow fully, arrow nocked on the string, aiming to the right, both arms raised in archery stance"
+                  if weapon == "bow" else
+                  "raising a glowing crystal staff forward with both hands, casting, facing right"
+                  if weapon == "staff" else
+                  "lunging sword slash attack pose, facing right, gripping a steel longsword")
+        neg_extra = ", sword, blade" if weapon != "sword" else ""
+        out = pipe(prompt=f"{a.prompt}, {action}, {STYLE}",
+                   negative_prompt=NEG + ", back view, facing left, character sheet, multiple views, empty hands, bare hands" + neg_extra,
                    num_inference_steps=24, guidance_scale=6.5, generator=g, width=832, height=1216,
-                   ip_adapter_image=[[ref]], image=pose, controlnet_conditioning_scale=0.8).images[0]
+                   ip_adapter_image=[[ref]], **({} if pose is None else {"image": pose, "controlnet_conditioning_scale": 0.8})).images[0]
         save(cutout(out), f"heroattack-{a.id}-{i}.png")
 
 
@@ -429,7 +438,7 @@ if __name__ == "__main__":
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
-    ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.set_defaults(fn=cmd_heroattack)
+    ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.add_argument("--weapon", choices=["sword", "bow", "staff"], default="sword"); ha.add_argument("--no-pose", action="store_true"); ha.set_defaults(fn=cmd_heroattack)
     np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
     mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.set_defaults(fn=cmd_monster)
     bd = sub.add_parser("backdrop"); bd.add_argument("id"); bd.add_argument("prompt"); bd.add_argument("--seed", type=int); bd.add_argument("--seeds", type=int, nargs="*"); bd.set_defaults(fn=cmd_backdrop)
