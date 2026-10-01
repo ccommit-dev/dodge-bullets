@@ -94,7 +94,8 @@ export function drawStickman(
   world: GameWorld,
 ): void {
   const p = world.player;
-  const blink = p.invulnMs > 0 && Math.floor(p.invulnMs / 60) % 2 === 0;
+  // 쓰러질 때는 깜빡이지 않는다 — 깜빡이면 넘어가는 동작이 안 보인다 (2026-10-01)
+  const blink = p.anim !== "dead" && p.invulnMs > 0 && Math.floor(p.invulnMs / 60) % 2 === 0;
   if (blink) return;
 
   const floorY = world.floorY;
@@ -150,7 +151,23 @@ export function drawStickman(
       ctx.translate(-p.facing * 3 * drawPhase + p.facing * 6 * releasePhase, -1 * releasePhase);
       ctx.scale(1 + releasePhase * 0.03, 1 - releasePhase * 0.02);
     }
-    if (p.anim === "hit") ctx.globalAlpha = 0.62;
+    // 피격 — 반투명만으로는 "맞았다"가 안 읽혔다. 맞은 쪽 반대로 몸이 젖혀졌다가 돌아오고 붉게 번쩍인다 (2026-10-01)
+    if (p.anim === "hit") {
+      const k = Math.max(0, 1 - p.animTime / 0.35);
+      ctx.globalAlpha = 0.62 + 0.3 * (1 - k);
+      ctx.rotate(-p.facing * 0.22 * k);
+      ctx.translate(-p.facing * 6 * k, 0);
+      if (k > 0.4) ctx.filter = "brightness(1.6) saturate(1.4)";
+    }
+    // 쓰러짐 — 그대로 서 있던 것을 뒤로 넘어가며 가라앉게 (0.5초)
+    if (p.anim === "dead") {
+      const k = Math.min(1, p.animTime / 0.5);
+      const e = 1 - (1 - k) * (1 - k);
+      ctx.rotate(-p.facing * 1.35 * e);
+      ctx.translate(-p.facing * 10 * e, -drawWidth * 0.22 * e);   // 눕힌 몸이 바닥선에 걸치지 않게 띄운다
+      ctx.globalAlpha = 1 - 0.35 * e;
+      ctx.filter = "saturate(" + (1 - 0.6 * e) + ")";
+    }
     if (p.dashActiveMs > 0) {
       for (let trail = 3; trail >= 1; trail--) {
         ctx.globalAlpha = 0.1 * (4 - trail);
