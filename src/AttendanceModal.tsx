@@ -6,16 +6,18 @@ import { assetUrl } from "./asset";
 
 type AttendanceSave = { lastClaimDate: string | null; lastClaimTimestamp: number; consecutiveDays: number; boardIndex: number; totalDays: number };
 const rewards = [
-  { name: "골드", amount: "300", icon: "gold", rarity: "normal" },
+  // 골드 300·1,000 은 사냥터 하루 수입(수만~수십만)에 묻혀 보상으로 읽히지 않았다 (2026-10-01). 1일차는 보석(첫 소환 맛보기),
+  // 4일차는 원정 인장(화살 원정에서 스킬 하나를 배우는 값) — 둘 다 그날 할 일이 생기는 보상이다
+  { name: "보석", amount: "20", icon: "gem", rarity: "normal" },
   { name: "견갑 조각", amount: "15", icon: "shoulder-shards", rarity: "normal" },
   // 과금 점검: 출석이 보석을 전혀 주지 않아 무료 유저의 소환 동선이 없었다 — 3일·7일차에 보석
   { name: "강화석 5 + 보석", amount: "30", icon: "enhance-stone", rarity: "rare" },
-  { name: "골드", amount: "1,000", icon: "gold", rarity: "rare" },
+  { name: "원정 인장", amount: "10", icon: "expedition-seal", rarity: "rare" },
   { name: "정찰 견갑", amount: "1", icon: "scout-pauldron", rarity: "epic" },
   { name: "스킬 포인트", amount: "2", icon: "skill-orb", rarity: "epic" },
   { name: "용린 견갑 + 보석", amount: "100", icon: "dragon-pauldron", rarity: "legend" },
 ];
-const GEMS_BY_DAY: Record<number, number> = { 2: 30, 6: 100 };
+const GEMS_BY_DAY: Record<number, number> = { 0: 20, 2: 30, 6: 100 };
 const today = () => new Date().toLocaleDateString("sv-SE");
 
 export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHash: string; open: boolean; onClose: () => void; onUpdated: (p: CharacterProgress) => void }) {
@@ -50,7 +52,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated }: { userHa
       const progress = await updateCharacterProgress(userHash, (current) => ({
         ...current,
         attendanceStreak: streak,
-        sharedCoins: current.sharedCoins + (day === 0 ? 300 : day === 3 ? 1000 : 0),
+        expeditionSeals: current.expeditionSeals + (day === 3 ? 10 : 0),
         shoulderShards: current.shoulderShards + (day === 1 ? 15 : 0),
         enhancementMaterials: current.enhancementMaterials + (day === 2 ? 5 : 0),
         skillPoints: current.skillPoints + (day === 5 ? 2 : 0),

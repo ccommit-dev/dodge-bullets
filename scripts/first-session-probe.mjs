@@ -22,7 +22,7 @@ await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, p
 const t = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
-const TAPS_PER_SEC = 2.5;
+const TAPS_PER_SEC = Number(process.env.TAPS ?? 2.5);
 const TARGET_STAGE = 5;
 const LIMIT_SEC = 300;
 
@@ -70,5 +70,8 @@ function probe() {
 
 const r = probe();
 r.log.forEach((l) => console.log(l));
-console.log(`\n첫 세션: Stage ${TARGET_STAGE} 도달 ${r.reached ? Math.round(r.time) + "초" : "실패"} · 목표 ${LIMIT_SEC}초 → ${r.reached && r.time <= LIMIT_SEC ? "OK" : "튜닝 필요"}`);
-process.exit(r.reached && r.time <= LIMIT_SEC ? 0 : 1);
+const fails = r.log.filter((l) => l.includes("실패")).length;
+// 첫 5분 안의 보스 실패는 이탈 지점이다 (2026-10-01) — 기본 탭 속도에서는 한 번도 없어야 한다
+console.log(`
+첫 세션: Stage ${TARGET_STAGE} 도달 ${r.reached ? Math.round(r.time) + "초" : "실패"} · 보스 실패 ${fails}회 · 목표 ${LIMIT_SEC}초·실패 0 → ${r.reached && r.time <= LIMIT_SEC && fails === 0 ? "OK" : "튜닝 필요"}`);
+process.exit(r.reached && r.time <= LIMIT_SEC && fails === 0 ? 0 : 1);
