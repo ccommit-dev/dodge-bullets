@@ -78,7 +78,7 @@ const ASSUMPTIONS = {
   dailyGemsRoutine: 15,
   dailyGemsMissions: 10,
   weeklyGemsChallenges: 120,
-  weeklyGemsAttendance: 130,
+  weeklyGemsAttendance: 150, // 1일 20 + 3일 30 + 7일 100 (2026-10-01: 1일차 골드 300 → 보석 20)
 };
 /** 조각이 편성 최강 동료에게 가는 비율 — --focus 0 (전부 무작위, 현행) ~ 1 (전부 집중) */
 const SHARD_FOCUS = Number(flag("focus", 0.7)); // allies.ts SHARD_PARTY_FOCUS와 같은 값
@@ -207,7 +207,7 @@ function simulate(kind) {
     cumulativeGold += dayGold;
     // 출석은 매일 한다고 본다 — T 보너스(최대 +2h)에 반영된다.
     p.attendanceStreak = day;
-    // K: 무과금 보석 수입 — 루틴 15 + 토벌 완주 10 + 주간 도전 120/7 + 출석 130/7 (균형형만 전부 수행)
+    // K: 무과금 보석 수입 — 루틴 15 + 토벌 완주 10 + 주간 도전 120/7 + 출석 150/7 (균형형만 전부 수행)
     if (active) p.redGems += ASSUMPTIONS.dailyGemsRoutine + ASSUMPTIONS.dailyGemsMissions + (day % 7 === 0 ? ASSUMPTIONS.weeklyGemsChallenges + ASSUMPTIONS.weeklyGemsAttendance : 0);
     // P1 따라잡기 반영
     titansState.stage = Math.max(titansState.stage, lastEndStage);
@@ -286,7 +286,8 @@ function simulate(kind) {
       // ── 환생: 조건 충족 + 벽 정체 5일 이상일 때만.
       // 즉시 환생은 동료 DPS 손실이 결정 이득보다 커서 손해라는 것이 탐욕 정책 실험으로 확인됨. ──
       // 환생 조건 2개 지역(코드 REBIRTH_WALL_AREAS와 동일)
-      if (wallSet.size >= 2 && wallStreak >= 5) {
+      // 첫 환생 뒤에는 한 지역이면 된다 (CharacterStatus 와 같은 규칙, 2026-10-01)
+      if ((wallSet.size >= 2 || (rebirths >= 1 && wallSet.size >= 1)) && wallStreak >= 5) {
         wallStreak = 0;
         wallSet.clear();
         p.inheritanceCrystals += Math.max(3, Math.floor(Math.sqrt(p.titanBestStage) * 3));
@@ -351,7 +352,7 @@ for (const run of runs) {
   lines.push(`| 일 | Stage | 지역 | Lv | R | M | T | 대장간 | 일일 골드 | 캡 |`);
   lines.push(`|---:|---:|---:|---:|---:|---:|---:|---:|---:|:--:|`);
   for (const row of r) {
-    if (row.day > 7 && row.day % 5 !== 0 && row.day !== DAYS) continue;
+    if (!process.env.ALLROWS && row.day > 7 && row.day % 5 !== 0 && row.day !== DAYS) continue;
     lines.push(
       `| ${row.day} | ${row.stage} | ${row.area}/5 | ${row.level} | ${(row.R * 100).toFixed(1)}% | ×${row.M.toFixed(2)} | ${row.T}h | +${row.forge} | ${fmt(row.dayGold)} | ${row.capped ? "◉" : "·"} |`,
     );

@@ -136,7 +136,10 @@ export function CharacterStatus({
   // 본 뒤 다시 태어난다"는 서사가 Stage 30보다 명확하다.
   // 3 → 2: 밸런스 시뮬에서 15~30일이 Stage 29 정체였고 환생이 30일에야 1회 — 2개 지역이면 개척 완료(9일) 직후 열린다
   const REBIRTH_WALL_AREAS = 2;
-  const canRebirth = progress.wallAreas.length >= REBIRTH_WALL_AREAS;
+  // 첫 환생 뒤에는 **한 지역**이면 된다 — 환생이 벽 기록을 비우고 다시 오르면 마지막 지역에서만 막히므로, "2개 지역"을
+  // 계속 요구하면 두 번째 환생이 영원히 불가능했다 (30일 시뮬: 14일째부터 16일간 Stage 33 정체, 2026-10-01)
+  const needAreas = progress.rebirthCount >= 1 ? 1 : REBIRTH_WALL_AREAS;
+  const canRebirth = progress.wallAreas.length >= needAreas;
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
     if (progress.rebirthCount < 1 || progress.evolutionPoints < 1) {
@@ -183,7 +186,7 @@ export function CharacterStatus({
 
   const rebirth = async () => {
     if (!canRebirth) {
-      setGrowthMessage(`${REBIRTH_WALL_AREAS}개 지역에서 한계(DPS 벽)에 도달하면 환생할 수 있습니다. (현재 ${progress.wallAreas.length})`);
+      setGrowthMessage(`${needAreas}개 지역에서 한계(DPS 벽)에 도달하면 환생할 수 있습니다. (현재 ${progress.wallAreas.length})`);
       return;
     }
     // 리셋이 생겼으므로 실수 방지 확인 단계

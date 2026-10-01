@@ -331,7 +331,7 @@ export function monsterHp(stage: number, boss: boolean): number {
   const base = 14 * Math.pow(1.38, stage - 1);
   // 첫 세션 곡선 (RETENTION E): Stage 1~4는 HP를 감쇠해 신규가 5분 안에 Stage 5(원정 개방)에
   // 닿게 한다. scripts/first-session-probe.mjs로 측정 — 감쇠 없이는 547초가 걸렸다.
-  const earlyRelief = stage < 5 ? 0.5 + 0.125 * (stage - 1) : 1;
+  const earlyRelief = stage < 5 ? 0.4 + 0.08 * (stage - 1) : 1;
   return Math.max(8, Math.floor(base * earlyRelief * (boss ? 11 : 1)));
 }
 
