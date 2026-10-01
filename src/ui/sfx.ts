@@ -1,7 +1,7 @@
 /**
  * 공용 UI 효과음 — 방치 정산 / 지역 개척 / 슬롯 해금 / 성벽 등반용.
  *
- * `game/sound.ts`의 SoundController는 화살 원정 전용 인스턴스라 다른 화면에서 쓸 수 없다.
+ * `game/sound.ts`의 SoundController는 성문 방어 전용 인스턴스라 다른 화면에서 쓸 수 없다.
  * 여기서는 필요할 때만 AudioContext를 만들고, 토글 상태는 같은 localStorage 키를 공유한다.
  */
 import { loadSoundEnabled } from "../game/sound";

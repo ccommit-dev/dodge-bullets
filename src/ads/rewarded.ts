@@ -11,7 +11,7 @@ import type { CharacterProgress } from "../progression/model";
 import { isNativePlatform } from "../game/native";
 
 export type AdPlacement = "idleDouble" | "booster4h" | "bossRetry" | "dodgeDouble" | "beatDouble";
-/** 계획안 §35 — 화살 원정·비트 클리어 보상 ×2 자리 추가 (하루 3회). 강제 광고는 없다 */
+/** 계획안 §35 — 성문 방어·비트 클리어 보상 ×2 자리 추가 (하루 3회). 강제 광고는 없다 */
 export const AD_LIMITS: Record<AdPlacement, number> = { idleDouble: 3, booster4h: 1, bossRetry: 3, dodgeDouble: 3, beatDouble: 3 };
 export const AD_UNIT_IDS: Record<AdPlacement, string> = {
   idleDouble: "ca-app-pub-XXXX/idle-double",

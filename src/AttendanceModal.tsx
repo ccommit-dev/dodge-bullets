@@ -7,7 +7,7 @@ import { assetUrl } from "./asset";
 type AttendanceSave = { lastClaimDate: string | null; lastClaimTimestamp: number; consecutiveDays: number; boardIndex: number; totalDays: number };
 const rewards = [
   // 골드 300·1,000 은 사냥터 하루 수입(수만~수십만)에 묻혀 보상으로 읽히지 않았다 (2026-10-01). 1일차는 보석(첫 소환 맛보기),
-  // 4일차는 원정 인장(화살 원정에서 스킬 하나를 배우는 값) — 둘 다 그날 할 일이 생기는 보상이다
+  // 4일차는 원정 인장(성문 방어에서 스킬 하나를 배우는 값) — 둘 다 그날 할 일이 생기는 보상이다
   { name: "보석", amount: "20", icon: "gem", rarity: "normal" },
   { name: "견갑 조각", amount: "15", icon: "shoulder-shards", rarity: "normal" },
   // 과금 점검: 출석이 보석을 전혀 주지 않아 무료 유저의 소환 동선이 없었다 — 3일·7일차에 보석

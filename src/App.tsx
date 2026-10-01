@@ -127,14 +127,14 @@ const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
 const DEATH_TIPS: Record<string, string> = {
-  homing: "유도탄은 빨간 궤적이 붙기 전에 정면에서 쏘세요 — 뒤에서 오는 화살은 못 떨굽니다",
-  explosive: "폭발 화살은 점프로 넘기지 말고 대시로 관통하세요 — 폭발 범위가 넓어요",
-  ricochet: "튕기는 화살은 벽 근처에서 두 번 옵니다 — 벽에서 떨어져 서세요",
-  fan: "부채꼴 화살은 한 발만 떨구면 틈이 열립니다",
-  aimed: "조준 화살은 붉은 선이 사라지는 순간 위치를 바꾸세요",
-  fragment: "떨군 조각은 돌다가 되돌아옵니다 — 조각이 남았을 땐 점프 후 대시",
-  boss: "보스 화살은 끝까지 떨궈야 합니다 — 일제 사격이 준비되기 전엔 거리를 두세요",
-  normal: "속성 화살은 알아서 나갑니다 — 일제 사격은 시위를 놓는 순간 앞쪽 화살만, 코앞에서 쏘면 되쏘기로 궁수를 잡습니다",
+  homing: "달빛 늑대는 따라옵니다 — 멈추지 말고 계속 옆으로 걸으면 활이 먼저 잡습니다",
+  explosive: "폭염 비룡은 떨어지는 자리에서 멀리 — 폭발 범위가 넓어요",
+  ricochet: "오우거는 벽에서 되돌아옵니다 — 벽에서 떨어져 서세요",
+  fan: "고블린 떼는 한 마리만 잡으면 틈이 열립니다",
+  aimed: "그림자 늑대는 붉은 선이 사라지는 순간 돌진합니다 — 그 전에 자리를 바꾸세요",
+  fragment: "떨군 조각은 돌다가 되돌아옵니다 — 조각 아래에 서지 마세요",
+  boss: "대장 몬스터는 끝까지 쏴야 쓰러집니다 — 활 사거리 안에 두되 바로 아래에 서지 마세요",
+  normal: "활은 알아서 쏩니다 — 할 일은 내려오는 자리를 피하는 것. 몬스터 아래가 아니라 옆에 서세요",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 /**
@@ -250,7 +250,7 @@ function App() {
   /** 클리어 보상 ×2 광고 (P1) */
   const [adBusy, setAdBusy] = useState(false);
   const [adDoubled, setAdDoubled] = useState(false);
-  const [shopLevels, setShopLevels] = useState<ShopLevels>(() => emptyShopLevels());
+  const [, setShopLevels] = useState<ShopLevels>(() => emptyShopLevels());   // 값은 화면에 안 쓴다 — 점프·대시·일제 사격 버튼이 빠지며 표시할 레벨이 없다 (2026-10-01)
   const [stageIndex, setStageIndex] = useState(0);
   const [stageLabel, setStageLabel] = useState(STAGES[0].name);
   const [stageIntro, setStageIntro] = useState(STAGES[0].intro);
@@ -523,16 +523,8 @@ function App() {
       if (appModeRef.current !== "dodge") return;
       if (stateRef.current !== "playing") return;
       if (applyKeyDown(inputRef.current, e.code)) {
-        if (e.code === "Space") {
-          const now = performance.now();
-          if (now - lastSpaceAtRef.current < 280) {
-            inputRef.current.dashPressed = true;
-            sound.playDash();
-          }
-          lastSpaceAtRef.current = now;
-        }
-        if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") sound.playJump();
-        if (e.code === "ShiftLeft" || e.code === "ShiftRight") sound.playDash();
+        // 점프·대시·일제 사격 키는 더 없다 (2026-10-01) — 좌우만 뜻이 있다. 나머지 키는 삼키기만 한다
+        lastSpaceAtRef.current = performance.now();
         e.preventDefault();
       }
     };
@@ -550,13 +542,8 @@ function App() {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       canvas.setPointerCapture(e.pointerId);
       const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY);
-      const now = performance.now();
-      // Double-tap near previous tap → jump
-      if (now - lastJumpAtRef.current < 280) {
-        inputRef.current.jumpPressed = true;
-        sound.playJump();
-      }
-      lastJumpAtRef.current = now;
+      // 더블탭 점프는 없다 (2026-10-01) — 누른 자리로 이동만
+      lastJumpAtRef.current = performance.now();
       setPointer(inputRef.current, true, x, y);
       e.preventDefault();
     };
@@ -1302,7 +1289,7 @@ function App() {
       <canvas
         ref={canvasRef}
         className={`game-canvas ${appMode === "dodge" ? "is-active" : "is-inactive"}`}
-        aria-label="화살 원정 게임 화면"
+        aria-label="성문 방어 게임 화면"
         aria-hidden={appMode !== "dodge"}
       />
 
@@ -1537,9 +1524,9 @@ function App() {
       {bootReady && appMode === "dodge" && gameState === "ready" && preloadStageBackgrounds() && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide exp-menu-content">
-            <p className="brand">BATTLE EXPEDITION</p>
-            <h1 className="title">전장의 돌파 원정</h1>
-            <p className="subtitle">손에 든 <b>활·지팡이</b>가 날아오는 화살을 알아서 요격한다 — 시위를 당기면 <b>일제 사격</b>, 코앞에서 쏘면 <b>되쏘기</b>로 궁수에게 되돌아가고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
+            <p className="brand">GATE DEFENSE</p>
+            <h1 className="title">성문 방어전</h1>
+            <p className="subtitle">성문으로 내려오는 <b>몬스터</b>를 옆으로 피하면 <b>활</b>이 알아서 쏜다 — 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             <p className="score-line">코인 {coins.toLocaleString()} · 인장 <b data-testid="exp-seals">{progress.expeditionSeals.toLocaleString()}</b> · 최고 {highScore.toLocaleString()}</p>
 
@@ -1558,7 +1545,7 @@ function App() {
                 {/* 키 안내는 마우스·키보드 기기에서만 — 미니앱은 터치라 Space/Shift 가 없다.
                     '식별키 … 로컬 mock' 줄은 개발용 배선 상태였다 — 플레이어에게는 뜻이 없어 뺐다 (2026-09-21) */}
                 <p className="controls-hint desktop-keys">
-                  전진 · Space 점프/두 번 대시 · Shift 대시 · Enter/Ctrl/E 일제 사격
+                  ← → 또는 A/D 로 이동 · 활은 자동으로 당긴다 · 게이지가 차면 화살비
                 </p>
 
                 <div className="pioneer-board">
@@ -1660,7 +1647,7 @@ function App() {
             <p className="brand">STAGE {stage.id}</p>
             <h1 className="title">{stageLabel}</h1>
             <p className="subtitle">{stageIntro}</p>
-            <p className="score-line">전초전을 돌파하고 보스 화살을 끝까지 격추하면 스테이지 클리어</p>
+            <p className="score-line">몰려오는 몬스터를 넘기고 대장 몬스터를 끝까지 쓰러뜨리면 스테이지 클리어</p>
             <button type="button" className="cta" onClick={handleBeginPlay}>
               바로 시작
             </button>
@@ -1707,7 +1694,7 @@ function App() {
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
-                <span>시위를 놓는 순간 <em>앞쪽</em> 화살만 떨굽니다. <em>금색 점선 안</em>에서 쏘면 <em>되쏘기</em>로 궁수를 잡고, 게이지가 차면 <em>화살비</em>가 화면을 비웁니다.</span>
+                <span>몬스터는 <em>위에서</em> 내려옵니다 — 화면을 눌러 옆으로 피하세요. 활은 <em>알아서</em> 가장 가까운 몬스터를 쏘고, 곁의 <em>무기 정령</em>이 속성 화살을 쏩니다. 게이지가 차면 <em>화살비</em>가 화면을 비웁니다.</span>
               </div>
             )}
           </div>
@@ -1732,36 +1719,8 @@ function App() {
               paddingLeft: insets.left,
             }}
           >
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => {
-                inputRef.current.jumpPressed = true;
-                soundRef.current.playJump();
-              }}
-            >
-              점프
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              disabled={shopLevels.dash <= 0}
-              onClick={() => {
-                inputRef.current.dashPressed = true;
-                soundRef.current.playDash();
-              }}
-            >
-              대시
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => {
-                inputRef.current.slowPressed = true;
-              }}
-            >
-              일제 사격 Lv.{shopLevels.slowField}
-            </button>
+            {/* 점프·대시·일제 사격은 없다 (2026-10-01, 아웃로 디펜스) — 이동은 화면을 누르거나 ←→, 활은 자동 */}
+            <span className="action-note">화면을 눌러 이동 · 활은 자동으로 당깁니다</span>
             <button
               type="button"
               className="action-btn extract-btn"
@@ -1798,7 +1757,7 @@ function App() {
           <div className="overlay-content">
             <p className="brand">PAUSED</p>
             <h1 className="title">일시정지</h1>
-            <p className="subtitle">화살은 멈춰 있습니다. 장착 스킬은 계속 자동으로 나갑니다 — 재개하면 쿨타임이 이어집니다.</p>
+            <p className="subtitle">몬스터는 멈춰 있습니다. 장착 스킬은 계속 자동으로 나갑니다 — 재개하면 쿨타임이 이어집니다.</p>
             <button type="button" className="cta" onClick={() => { lastTsRef.current = 0; stateRef.current = "playing"; setGameState("playing"); }}>계속하기</button>
           </div>
         </div>
@@ -1809,7 +1768,7 @@ function App() {
           <div className="overlay-content">
             <p className="brand">LEVEL UP</p>
             <h1 className="title">성장 선택</h1>
-            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 듣는 카드를 하나 고르세요. <b>습득</b>한 속성 화살의 강화·<b>콤보</b>·<b>진화</b>가 함께 나옵니다. 레벨이 오를수록 적 화살이 빨라집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
+            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 듣는 카드를 하나 고르세요. <b>습득</b>한 속성 화살의 강화·<b>콤보</b>·<b>진화</b>가 함께 나옵니다. 레벨이 오를수록 몬스터가 빨라집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
             {(() => {
               // 스테이지가 깊을수록 상위 등급이 잘 나온다 — 지금 확률을 밝혀 둔다
               const odds = rarityOdds(worldRef.current?.stageIndex ?? 0);

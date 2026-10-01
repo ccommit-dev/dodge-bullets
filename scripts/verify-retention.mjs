@@ -31,7 +31,7 @@ async function seed(progress, titans, extra = {}) {
 // 정산 모달의 '보상 수령'(.idle-claim)을 우선 — 루틴 보드의 비활성 '💎' 버튼 등 다른 버튼을 잡지 않도록
 const closeModal = async () => { await page.evaluate(() => { const claim = document.querySelector(".idle-claim"); if (claim) { claim.click(); return; } [...document.querySelectorAll("button")].filter((b) => !b.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((b) => /수령|받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
-/** 콘텐츠(화살 원정·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
+/** 콘텐츠(성문 방어·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
 const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 

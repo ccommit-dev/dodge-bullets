@@ -61,7 +61,7 @@ function useCountUp(target: number, durationMs = 900, delayMs = 0): number {
 
 const CONTENT_LABEL: Record<IdleBottleneck["content"], string> = {
   titans: "사냥터",
-  dodge: "화살 원정",
+  dodge: "성문 방어",
   beat: "연습실",
   forge: "대장간",
 };

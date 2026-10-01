@@ -123,7 +123,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
 
   ctx.fillStyle = "#64748b";
   ctx.font = "600 30px system-ui, sans-serif";
-  ctx.fillText("타이탄 사냥터 · 화살 원정 · 비트 수련 · 대장간", W / 2, Hh - 110);
+  ctx.fillText("타이탄 사냥터 · 성문 방어 · 비트 수련 · 대장간", W / 2, Hh - 110);
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }

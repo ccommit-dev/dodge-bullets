@@ -777,7 +777,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         });
       }
 
-      // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 화살 원정으로만 열린다.
+      // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 성문 방어으로만 열린다.
       // 스테이지 증가보다 **먼저** 판정해야 한다. 나중에 보면 이미 상한을 넘긴 뒤라
       // 헤더는 다음 스테이지를 가리키는데 몬스터는 이전 스테이지가 나온다.
       const gateBlocked =
@@ -808,7 +808,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             titanBestStage: advancing
               ? Math.max(current.titanBestStage, clearedStage + 1)
               : current.titanBestStage,
-            // 개척도(pioneeredArea)는 여기서 올리지 않는다 — 화살 원정만 지역을 연다.
+            // 개척도(pioneeredArea)는 여기서 올리지 않는다 — 성문 방어만 지역을 연다.
             lastContent: "titans",
           })),
         );
@@ -1329,7 +1329,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     // 개척 상한 게이트 — 소환으로 얻은 후반 동료가 Lv.1로 25스테이지를 건너뛰던 구멍을 막는다
     const def = HEROES.find((h) => h.id === id);
     if (def && !character.partyIds.includes(id) && !canFieldAlly(id, def.unlockStage, stageCeilingFor(character.pioneeredArea))) {
-      flash(`${def.name}은(는) STAGE ${def.unlockStage} 지역을 개척해야 출전합니다 — 화살 원정으로 지역을 여세요`);
+      flash(`${def.name}은(는) STAGE ${def.unlockStage} 지역을 개척해야 출전합니다 — 성문 방어으로 지역을 여세요`);
       return;
     }
     const slots = partySlotCount(character.towerBestFloor, character.partyCap);
@@ -1956,7 +1956,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       goals.push({
         id: "area",
         label: "다음 지역",
-        value: save.stage >= ceiling ? `${areaName} · 화살 원정 필요` : `${areaName} · STAGE ${ceiling}까지 ${ceiling - save.stage}`,
+        value: save.stage >= ceiling ? `${areaName} · 성문 방어 필요` : `${areaName} · STAGE ${ceiling}까지 ${ceiling - save.stage}`,
         ratio: Math.min(1, save.stage / ceiling),
         done: save.stage >= ceiling,
         onClick: () => (contentUnlocked(character.onboardingStep, "dodge") ? onOpenContent("dodge") : flash(LOCK_HINT.dodge)),
@@ -2586,7 +2586,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   })}
                 </div>
               ) : (
-                <p className="gacha-empty">이 지역의 동료를 모두 만났습니다 — 화살 원정으로 다음 지역을 개척하면 새 픽업이 열립니다</p>
+                <p className="gacha-empty">이 지역의 동료를 모두 만났습니다 — 성문 방어으로 다음 지역을 개척하면 새 픽업이 열립니다</p>
               )}
               <div className="gacha-actions">
                 <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}>
@@ -2628,7 +2628,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               <div>
                 <small>{area.name.toUpperCase()} · PICK UP{gacha.rotationPool > 2 ? ` · 회전까지 ${gacha.rotationDaysLeft}일` : ""}</small>
                 <h2>{gacha.pickups.length ? gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") : "다음 지역 픽업 준비 중"}</h2>
-                <p>{gacha.pickups.length ? `픽업 확률 2배 · STAGE ${gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.unlockStage).join("·")} 동료를 먼저 만난다` : "화살 원정으로 다음 지역을 개척하면 픽업이 열립니다"} · 10회 소환 시 SR 이상 1명 보장</p>
+                <p>{gacha.pickups.length ? `픽업 확률 2배 · STAGE ${gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.unlockStage).join("·")} 동료를 먼저 만난다` : "성문 방어으로 다음 지역을 개척하면 픽업이 열립니다"} · 10회 소환 시 SR 이상 1명 보장</p>
               </div>
             </div>
             <div className="gacha-level">
@@ -3077,7 +3077,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           {navPopup === "content" ? (
             <div className="nav-popup-grid">
               {([
-                { id: "dodge", label: "화살 원정", desc: `직접 플레이 · 탄막 회피 → 강화석·견갑 ${character.dodgeBestStage > 0 ? `· 최고 S${character.dodgeBestStage}` : ""}`, icon: "dodge" },
+                { id: "dodge", label: "성문 방어", desc: `직접 플레이 · 탄막 회피 → 강화석·견갑 ${character.dodgeBestStage > 0 ? `· 최고 S${character.dodgeBestStage}` : ""}`, icon: "dodge" },
                 { id: "beat", label: "비트 수련", desc: `30초~2분 기록 도전 → 견갑 조각 ${beatBestScore > 0 ? `· 최고점수 ${beatBestScore.toLocaleString()}` : ""}`, icon: "beat" },
                 { id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", icon: "forge" },
               ] as const).map((item) => {

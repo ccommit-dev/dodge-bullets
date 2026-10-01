@@ -24,7 +24,7 @@ async function seed(progress, titans, extra = {}) {
 }
 const closeModal = async () => { await page.evaluate(() => { [...document.querySelectorAll("button")].find((b) => /받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
-/** 콘텐츠(화살 원정·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
+/** 콘텐츠(성문 방어·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
 const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const now = Date.now();
 
@@ -114,12 +114,12 @@ await closeModal();
 r = await page.evaluate(() => ({ low: document.querySelector(".titans-layer")?.classList.contains("perf-low"), idleAnim: document.querySelector(".ally-idle") ? getComputedStyle(document.querySelector(".ally-idle")).animationName : "n/a" }));
 ok("#12 저사양(코어2) → perf-low + 호흡 애니 제거", r.low === true && (r.idleAnim === "none" || r.idleAnim === "n/a"), JSON.stringify(r));
 
-// ── D. 화살 원정 슬로모 튜토리얼 ──
+// ── D. 성문 방어 슬로모 튜토리얼 ──
 await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const p = JSON.parse(localStorage.getItem(k)); p.dodgeBestStage = 1; p.claimedRewards = []; p.onboardingStep = 4; localStorage.setItem(k, JSON.stringify(p)); }, H);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();
-await openContent("화살 원정");
+await openContent("성문 방어");
 await sleep(1000);
 await clickText("button", "스테이지 1 시작");
 await sleep(1800);

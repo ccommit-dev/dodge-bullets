@@ -1,5 +1,5 @@
 /**
- * 화살 원정 인게임 재촬영 — 첫 촬영은 5초 시점이라 화살이 깔리기 전이었다.
+ * 성문 방어 인게임 재촬영 — 첫 촬영은 5초 시점이라 화살이 깔리기 전이었다.
  * 좌우 이동+점프를 시뮬레이션해 생존시키면서, 패턴이 겹치는 14/18/22초에
  * 후보 3장을 찍는다 (게임오버 프레임은 파일명에 표시).
  */
@@ -24,7 +24,7 @@ await page.evaluate(() => {
 });
 await sleep(600);
 await page.evaluate(() => {
-  [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "화살 원정")?.click();
+  [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "성문 방어")?.click();
 });
 await sleep(1400);
 await page.evaluate(() => {

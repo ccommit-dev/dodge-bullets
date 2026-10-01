@@ -3795,7 +3795,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .beat-rank-panel > span.me { color: #a5f3fc; font-weight: 800; }
 .beat-rank-panel > span.me strong { color: #67e8f9; }
 .beat-rank-next { color: #94a3b8; font-size: 10px; margin-top: 2px; }
-/* 화살 원정 성장 선택 (P1 · 아트 후속: 아이콘 + 순차 팝인) */
+/* 성문 방어 성장 선택 (P1 · 아트 후속: 아이콘 + 순차 팝인) */
 .perk-overlay .overlay-content { gap: 8px; }
 .perk-overlay .subtitle { word-break: keep-all; }
 .perk-overlay .brand { animation: perk-brand 1.2s ease-in-out infinite alternate; }
@@ -3831,7 +3831,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .beat-note-legend { margin:2px 0 8px; color:#94a3b8; font-size:10px; line-height:1.5; }
 .beat-note-legend b { color:#e0f2fe; font-weight:800; }
 
-/* ── 화살 원정 영구 스킬 화면 (2026-09-28) ──
+/* ── 성문 방어 영구 스킬 화면 (2026-09-28) ──
    참고 게임(Galactic Outlaw TD)의 스킬 화면 구조: 상단 합산 배너 · 2열 격자 · 상세 시트.
    레이아웃 값은 기존 overlay-content 폭 안에서만 — inspect-mobile 이 넘침을 잡는다. */
 .exp-menu-tabs { display:flex; gap:6px; justify-content:center; margin:2px 0 10px; }
@@ -4024,7 +4024,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-skill-upgrade { padding:11px; border:0; border-radius:12px; color:#64748b; background:#334155; font-size:14px; font-weight:900; cursor:not-allowed; }
 .exp-skill-upgrade.on { color:#082f49; background:linear-gradient(135deg,#fbbf24,#fde047); cursor:pointer; }
 
-/* ── 화살 원정 위치·줄바꿈 점검 (2026-09-29) ──
+/* ── 성문 방어 위치·줄바꿈 점검 (2026-09-29) ──
    캡처로 본 것: 상단 버튼(사운드·사냥터로)이 "BATTLE EXPEDITION" 위에 겹쳤고, 전투 스킬 슬롯이 바닥선 위로
    12px 올라와 주인공 발을 가렸고, 목록 글이 가운데 정렬이라 아이콘과 설명이 따로 놀았다. */
 .exp-menu-content { padding-top: 44px; }
@@ -4037,3 +4037,5 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-skill-stats span:last-child:nth-child(odd) { grid-column:1 / -1; }
 /* 전투 제목이 "직 / 선 조준"처럼 낱말 가운데서 접히지 않게 */
 .hud-left { word-break:keep-all; }
+/* 점프·대시·일제 사격 버튼이 빠진 자리 — 조작 안내 한 줄 (2026-10-01) */
+.action-note { align-self:center; padding:0 10px; color:#94a3b8; font-size:11px; font-weight:700; text-align:center; }

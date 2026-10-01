@@ -5,8 +5,8 @@ export type BadgeDefinition = { id: string; icon: string; name: string; conditio
 export const BADGES: BadgeDefinition[] = [
   { id: "first-hunt", icon: "⚔", name: "첫 토벌", condition: "사냥터 Stage 2 달성" },
   { id: "stage-10", icon: "♛", name: "지역 정복자", condition: "사냥터 Stage 10 달성" },
-  { id: "first-expedition", icon: "➶", name: "화살 개척자", condition: "화살 원정 Stage 2 달성" },
-  { id: "dodge-master", icon: "✦", name: "천 번의 회피", condition: "화살 원정 1,000점" },
+  { id: "first-expedition", icon: "➶", name: "화살 개척자", condition: "성문 방어 Stage 2 달성" },
+  { id: "dodge-master", icon: "✦", name: "천 번의 회피", condition: "성문 방어 1,000점" },
   { id: "shoulder-collector", icon: "◈", name: "견갑 수집가", condition: "견갑 2종 획득" },
   { id: "all-shoulders", icon: "❖", name: "리듬 지휘관", condition: "견갑 4종 획득" },
   { id: "forge-5", icon: "◆", name: "숙련 대장장이", condition: "대장간 최고 +5" },

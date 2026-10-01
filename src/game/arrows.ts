@@ -1,6 +1,6 @@
 import { getStage } from "./stages";
 import { gaugeGainMul } from "./skills";
-import { BOSS_CUTS_BASE, BOSS_CUTS_PER_STAGE, gainRunXp } from "./world";
+import { bossCutsFor, gainRunXp } from "./world";
 import { bossPatternFor } from "./bossPatterns";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
@@ -54,6 +54,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       bossTier: 0,
       bossCutsLeft: 0,
       bossMaxCuts: 0,
+      fromBoss: false,
     };
   }
   return pool;
@@ -113,7 +114,7 @@ function activate(
     arrow.kind = "homing";
     arrow.telegraph = "homing";
     arrow.warningMs = Math.max(warningMs, 680);
-    arrow.homingMs = 1_800 + Math.random() * 1_300;
+    arrow.homingMs = 900 + Math.random() * 600;   // 1.8~3.1초 → 0.9~1.5초: 한 번 휘고 나면 곧게 떨어진다 (옆으로 걸으면 피해진다)
     // 회전율 완화(1.25~2.35 → 0.9~1.8): 등 뒤로 감아 도는 궤도를 줄여 정면에서 벨 여지를 준다
     arrow.homingTurnRate = 0.9 + Math.random() * 0.9;
     arrow.hitRadius = HIT_R + 1;
@@ -136,6 +137,7 @@ function activate(
   arrow.splitGraceMs = 0;
   arrow.boss = false;
   arrow.bossTier = 0;
+  arrow.fromBoss = false;
   arrow.bossCutsLeft = 0;
   arrow.bossMaxCuts = 0;
 }
@@ -152,7 +154,8 @@ function activePattern(world: GameWorld): ArrowPattern | null {
 
 /** 유도탄 승격 확률 — 스테이지별. 유도탄은 뒤로 돌아 들어와 "앞쪽만 벤다" 규칙과 가장 충돌하므로 1스테이지엔 없다 (봇 시뮬 피격 1위) */
 export function homingChanceFor(stageIndex: number): number {
-  return [0, 0.05, 0.06, 0.09][Math.min(3, Math.max(0, stageIndex))];
+  // 좌우 이동만으로 피하는 규칙(2026-10-01)에서 유도탄은 가장 안 피해지는 화살이다 — 확률을 낮추고 유도 시간도 짧게
+  return [0, 0.03, 0.04, 0.06][Math.min(3, Math.max(0, stageIndex))];
 }
 let currentHomingChance = 0.13;
 
@@ -166,7 +169,6 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
   const minX = world.safeLeft + 12;
   const maxX = world.width - world.safeRight - 12;
   const spanX = Math.max(1, maxX - minX);
-  const midY = (world.safeTop + world.floorY) * 0.45;
 
   switch (pattern.kind) {
     case "rest":
@@ -175,11 +177,12 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       activate(arrow, minX + Math.random() * spanX, world.safeTop - 20, 0, speed);
       break;
     }
+    // 아래 세 패턴은 예전에 옆에서 왔다 — 화살은 **위에서 아래로만** (2026-10-01). 모양만 다르게: 측면 기습은 모서리에서 비스듬히,
+    // 교차 사격은 양쪽 모서리에서 엇갈려, 휩쓸기는 왼쪽에서 오른쪽으로(또는 반대로) 훑으며 떨어진다
     case "side": {
       const fromLeft = Math.random() < 0.5;
-      const y = world.safeTop + 40 + Math.random() * (world.floorY - world.safeTop - 80);
-      if (fromLeft) activate(arrow, -20, y, speed, 0);
-      else activate(arrow, world.width + 20, y, -speed, 0);
+      const x = fromLeft ? minX + spanX * 0.08 : maxX - spanX * 0.08;
+      activate(arrow, x, world.safeTop - 20, (fromLeft ? 1 : -1) * speed * 0.55, speed * 0.85);
       break;
     }
     case "cross": {
@@ -187,17 +190,15 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
         activate(arrow, minX + Math.random() * spanX, world.safeTop - 20, 0, speed);
       } else {
         const fromLeft = Math.random() < 0.5;
-        const y = midY + (Math.random() - 0.5) * 160;
-        if (fromLeft) activate(arrow, -20, y, speed * 0.95, speed * 0.15);
-        else activate(arrow, world.width + 20, y, -speed * 0.95, speed * 0.15);
+        const x = fromLeft ? minX + spanX * (0.1 + Math.random() * 0.25) : maxX - spanX * (0.1 + Math.random() * 0.25);
+        activate(arrow, x, world.safeTop - 20, (fromLeft ? 1 : -1) * speed * 0.6, speed * 0.8);
       }
       break;
     }
     case "sweep": {
-      const y = world.floorY - 28 - Math.random() * 36;
-      const fromLeft = Math.random() < 0.5;
-      if (fromLeft) activate(arrow, -20, y, speed * 1.05, 0);
-      else activate(arrow, world.width + 20, y, -speed * 1.05, 0);
+      const phase = ((world.stageElapsedMs / 1000) % 3) / 3;      // 3초에 한 번 왕복
+      const t = phase < 0.5 ? phase * 2 : 2 - phase * 2;
+      activate(arrow, minX + spanX * t, world.safeTop - 20, 0, speed * 1.05);
       break;
     }
     case "burst": {
@@ -206,9 +207,9 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       break;
     }
     case "aimed": {
-      const fromLeft = Math.random() < 0.5;
-      const x = fromLeft ? -20 : world.width + 20;
-      const y = world.safeTop + 35 + Math.random() * Math.max(60, world.floorY * 0.35);
+      // 위쪽 어딘가에서 플레이어를 겨눈다 — 옆에서 오던 것을 위로 (2026-10-01)
+      const x = minX + Math.random() * spanX;
+      const y = world.safeTop - 20;
       const targetX = world.player.x + world.player.vx * 0.28;
       const targetY = world.player.y;
       const dx = targetX - x;
@@ -230,15 +231,15 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       break;
     }
     case "ricochet": {
+      // 위 모서리에서 비스듬히 떨어지며 벽에 튕긴다 — 위로 되튀지는 않는다 (2026-10-01)
       const fromLeft = Math.random() < 0.5;
-      const x = fromLeft ? -20 : world.width + 20;
-      const y = world.safeTop + 60 + Math.random() * Math.max(80, world.floorY - world.safeTop - 140);
+      const x = fromLeft ? minX + spanX * 0.05 : maxX - spanX * 0.05;
       activate(
         arrow,
         x,
-        y,
-        (fromLeft ? 1 : -1) * speed,
-        speed * (Math.random() < 0.5 ? 0.38 : -0.38),
+        world.safeTop - 20,
+        (fromLeft ? 1 : -1) * speed * 0.8,
+        speed * 0.6,
         "ricochet",
         500,
       );
@@ -327,6 +328,7 @@ function configureSplitFragment(
   arrow.splitGraceMs = SPLIT_ORBIT_MS + 120;
   arrow.boss = false;
   arrow.bossTier = 0;
+  arrow.fromBoss = false;
   arrow.bossCutsLeft = 0;
   arrow.bossMaxCuts = 0;
 }
@@ -569,15 +571,12 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
       world.expeditionSeals += 2;
       maybeDropSlashItem(world, arrow.x, arrow.y, true);
     } else {
-      const away = Math.atan2(arrow.y - world.player.y, arrow.x - world.player.x) + (Math.random() - 0.5) * 0.8;
-      const speed = 190 + arrow.bossTier * 15 + Math.random() * 45;
-      arrow.vx = Math.cos(away) * speed;
-      arrow.vy = Math.sin(away) * speed;
-      const bossVariants: Arrow["kind"][] = ["homing", "ricochet", "explosive", "fan"];
-      arrow.kind = bossVariants[Math.floor(Math.random() * bossVariants.length)];
-      arrow.telegraph = arrow.kind === "homing" ? "homing" : arrow.kind === "explosive" ? "blast" : arrow.kind === "ricochet" ? "dash" : "perfect";
-      arrow.homingMs = arrow.kind === "homing" ? Number.POSITIVE_INFINITY : 0;
-      arrow.bounces = arrow.kind === "ricochet" ? 2 + Math.min(2, arrow.bossTier) : 0;
+      // 깎이면 옆으로 튀어 자리를 바꾼다 — 쫓아오지 않는다 (2026-10-01). 종류는 그대로(위쪽 띠에서 떠다님)
+      const speed = 220 + arrow.bossTier * 15 + Math.random() * 45;
+      arrow.vx = (Math.random() < 0.5 ? -1 : 1) * speed;
+      arrow.vy = 0;
+      arrow.homingMs = 0;
+      arrow.bounces = 0;
       arrow.splitGraceMs = 330;
     }
     return;
@@ -613,9 +612,14 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
   bumpCombo(world);
 }
 
-/** 추격대장 활 위치 — 화면 오른쪽 끝에서 앞뒤 30px·위아래 60px 흔들린다 (한 점에서만 나오면 왼쪽 끝에 붙어 서서 외우게 된다) */
-function captainBowX(world: GameWorld): number { return world.width - 44 - Math.random() * 30; }
-function captainBowY(world: GameWorld): number { return world.floorY - 84 - Math.random() * 60; }
+/** 추격대장 활 위치 — 화면 **위 가운데**(성문 위)에서 좌우 ±70px 흔들린다. 화살은 위에서 아래로만 오므로 대장도 위에 선다 (2026-10-01) */
+export const CAPTAIN_TOP = 330;   // 150 → 330 (2026-10-01 캡처): 150 은 화살비 게이지·제목과 겹쳤다. HUD 왼쪽 열(~182)·게이지 아래, 보스 막대(350) 위
+/** 보스 화살이 떠다니는 높이 — 대장 발밑(safeTop+CAPTAIN_TOP+70)이되, 바닥에서 320px 은 띄운다(시뮬 화면 700 처럼 낮은 화면) */
+export function bossHoverY(world: GameWorld): number { return Math.min(world.safeTop + CAPTAIN_TOP + 70, world.floorY - 320); }   // 462 로 내려 보니 사격 거리가 줄어 곡선이 바뀌었다 — 412 유지, 대신 보스 바를 올림
+/** 보스의 조준 사격 주기(ms) — 단계가 오를수록 잦다 */
+export function bossSalvoMs(tier: number): number { return Math.max(1_100, 1_800 - tier * 220); }
+function captainBowX(world: GameWorld): number { return world.width * 0.5 + (Math.random() - 0.5) * 140; }
+function captainBowY(world: GameWorld): number { return world.safeTop + CAPTAIN_TOP - 10 - Math.random() * 20; }
 /** 예고 시간(ms) = 420 + 거리 × 1.1, 520~1200 — 거리에 비례해 반응 시간을 보장 */
 export function captainWarningMs(distance: number): number { return Math.max(520, Math.min(1200, Math.round(420 + distance * 1.1))); }
 
@@ -623,19 +627,20 @@ function spawnBossArrow(world: GameWorld): void {
   const arrow = acquire(world);
   if (!arrow) return;
   const tier = world.stageIndex + 1;
-  const cuts = BOSS_CUTS_BASE + world.stageIndex * BOSS_CUTS_PER_STAGE;
+  const cuts = bossCutsFor(world.stageIndex);
   const fromLeft = tier % 2 === 0;
   // 4스테이지: 보스 화살은 화면 오른쪽 끝에 선 추격대장의 활에서 나온다 (draw.ts 의 궁수 대장 원화 위치)
   const captain = world.stageIndex === 3;
   const cx = captainBowX(world), cy = captainBowY(world);
-  const x = captain ? cx : fromLeft ? -48 : world.width + 48;
-  const y = captain ? cy : world.safeTop + Math.max(80, (world.floorY - world.safeTop) * (0.25 + (tier % 3) * 0.14));
-  const dx = world.player.x - x;
-  const dy = world.player.y - y;
-  const len = Math.max(1, Math.hypot(dx, dy));
-  const speed = 150 + Math.min(120, tier * 10);
-  // 대장 화살 예고: 가까우면 짧고(최소 520ms) 멀면 길다(최대 1,200ms) — 대장 근처에 서면 반응 시간이 0 이 되던 문제
-  activate(arrow, x, y, dx / len * speed, dy / len * speed, "homing", captain ? captainWarningMs(len) : 1_050);
+  // 1~3스테이지 보스 화살도 위에서 — 왼쪽/오른쪽 위 모서리를 번갈아 (옆에서 오던 것을 위로, 2026-10-01)
+  const x = captain ? cx : fromLeft ? world.safeLeft + 40 : world.width - world.safeRight - 40;
+  const y = captain ? cy : world.safeTop - 48;
+  // 보스 화살은 플레이어를 쫓지 않는다 (2026-10-01, 아웃로 디펜스) — 화면 위쪽 띠(성문 아래)에서 좌우로 떠다니며
+  // 아래로 조준 화살을 쏘고, 플레이어의 사격이 격추 수만큼 깎아 떨어뜨린다. 일제 사격이 없어진 뒤 쫓아오는 보스는 피할 길이 없었다
+  const speed = 60 + Math.min(60, tier * 8);
+  void y;
+  activate(arrow, x, bossHoverY(world), (x < world.width * 0.5 ? 1 : -1) * speed, 0, "normal", captain ? 900 : 1_050);
+  world.bossSalvoMs = 0;
   arrow.boss = true;
   arrow.bossTier = tier;
   arrow.bossCutsLeft = cuts;
@@ -643,8 +648,8 @@ function spawnBossArrow(world: GameWorld): void {
   arrow.length = 58 + Math.min(42, tier * 5);
   arrow.hitRadius = 12 + Math.min(10, tier * 1.2);
   arrow.damage = 0.75;
-  arrow.homingMs = Number.POSITIVE_INFINITY;
-  arrow.homingTurnRate = 0.62 + Math.min(0.75, tier * 0.05);
+  arrow.homingMs = 0;
+  arrow.homingTurnRate = 0;
   arrow.telegraph = "homing";
   world.bossSpawned = true;
   world.bossCutsLeft = cuts;
@@ -736,6 +741,28 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
       continue;
     }
 
+    if (a.boss) {
+      // 위쪽 띠에 머문다 — 좌우로 떠다니고 벽에서 돌아선다. 깎였을 때 튄 속도는 서서히 줄인다
+      const hoverY = bossHoverY(world);
+      a.y += (hoverY - a.y) * Math.min(1, dtSec * 4);
+      a.vy = 0;
+      const cruise = 60 + Math.min(60, a.bossTier * 8);
+      if (Math.abs(a.vx) > cruise) a.vx *= Math.max(0, 1 - dtSec * 2.5);
+      if (Math.abs(a.vx) < cruise * 0.5) a.vx = (a.vx < 0 ? -1 : 1) * cruise;
+      if ((a.x < world.safeLeft + 40 && a.vx < 0) || (a.x > world.width - world.safeRight - 40 && a.vx > 0)) a.vx *= -1;
+      // 조준 사격 — 주기마다 플레이어를 겨눈 화살 한 발 (예고 700ms)
+      world.bossSalvoMs += dtSec * 1000;
+      if (world.bossSalvoMs >= bossSalvoMs(a.bossTier) && a.warningMs <= 0) {
+        world.bossSalvoMs = 0;
+        const shot = acquire(world);
+        if (shot) {
+          const dx = player.x + player.vx * 0.25 - a.x, dy = player.y - a.y, len = Math.max(1, Math.hypot(dx, dy));
+          const sp = 300 + a.bossTier * 25;
+          activate(shot, a.x, a.y + 10, dx / len * sp, dy / len * sp, "aimed", 700);
+          shot.fromBoss = true;
+        }
+      }
+    }
     if (a.kind === "homing" && a.homingMs > 0) {
       a.homingMs = Math.max(0, a.homingMs - dtSec * 1000);
       const desired = Math.atan2(player.y - a.y, player.x - a.x);
@@ -755,10 +782,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
         a.vx *= -1;
         a.bounces -= 1;
       }
-      if ((a.y < world.safeTop + 8 && a.vy < 0) || (a.y > world.floorY - 8 && a.vy > 0)) {
-        a.vy *= -1;
-        a.bounces -= 1;
-      }
+      // 천장·바닥 되튀김은 없다 — 화살은 위에서 아래로만 (2026-10-01)
     }
     a.angle = Math.atan2(a.vy, a.vx || 0.0001);
 

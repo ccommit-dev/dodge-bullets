@@ -9,7 +9,7 @@ const platforms = [
 /** Short expeditions: immediate pressure → escalation → five-second escape climax.
  * 수치는 검객 봇 시뮬(scripts/dodge-sim.mjs)로 재조정 — 스윙 순간 앞쪽만 베는 규칙에서 1·2스테이지 5/5 클리어, 3·4 는 도전 구간. */
 /** 웨이브 배너용 패턴 이름 (HUD "WAVE n · 조준 사격") */
-export const PATTERN_LABEL: Record<string, string> = { rain: "화살비", aimed: "조준 사격", cross: "교차 사격", fan: "부채 사격", side: "측면 기습", ricochet: "도탄", sweep: "휩쓸기", explosive: "폭발 화살", burst: "연사" };
+export const PATTERN_LABEL: Record<string, string> = { rain: "슬라임 떼", aimed: "늑대 돌진", cross: "교차 습격", fan: "고블린 떼", side: "측면 기습", ricochet: "오우거 돌진", sweep: "휩쓸기", explosive: "비룡 습격", burst: "연속 습격" };
 
 /** 스테이지의 패턴 구간 = 웨이브. 경과 시간으로 현재 웨이브(1부터)와 총 수를 돌려준다 (HUD "WAVE n/N", 보스는 별도) */
 export function waveAt(stage: Pick<StageDef, "patterns">, elapsedMs: number): { index: number; count: number } {
@@ -27,7 +27,7 @@ export const STAGES: StageDef[] = [
     baseReward: 370,
     speedMul: 0.86,
     spawnMul: 0.78,
-    intro: "장착한 활이 알아서 화살을 요격한다 — 남은 화살은 일제 사격으로 떨궈라. 떨어진 결정이 대장간 강화석이 된다",
+    intro: "활이 알아서 몬스터를 쏜다 — 내려오는 자리만 피해라. 떨어진 결정이 대장간 강화석이 된다",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },
@@ -41,9 +41,9 @@ export const STAGES: StageDef[] = [
     name: "붉은 협곡 추격전",
     durationMs: 38_000,
     baseReward: 580,
-    speedMul: 0.94,
+    speedMul: 0.92,   // 0.94 → 0.92 (2026-10-01): 좌우 이동만 남은 뒤 S2 봇 피격 1.6 → 게이트 1.5 안으로
     spawnMul: 0.9,
-    intro: "조준 화살은 코앞에서 쏘면 궁수에게 되돌아간다(되쏘기) — 결정을 모으며 기습대를 따돌려라",
+    intro: "그림자 늑대는 붉은 선이 사라지는 순간 돌진한다 — 결정을 모으며 기습대를 따돌려라",
     platforms,
     patterns: [
       { kind: "side", atMs: 0, durationMs: 8_000, spawnMs: 390, speed: 370 },
@@ -59,7 +59,7 @@ export const STAGES: StageDef[] = [
     baseReward: 850,
     speedMul: 1.02,
     spawnMul: 1.02,
-    intro: "폭발 화살은 결정 덩어리다 — 발판을 넘어 정예 보급 상자를 탈환하라",
+    intro: "폭염 비룡은 결정 덩어리다 — 폭발 자리를 피하며 정예 보급 상자를 탈환하라",
     platforms,
     patterns: [
       { kind: "fan", atMs: 0, durationMs: 9_000, spawnMs: 720, speed: 380 },
@@ -75,7 +75,7 @@ export const STAGES: StageDef[] = [
     baseReward: 1_220,
     speedMul: 1.1,
     spawnMul: 1.12,
-    intro: "추격대장이 성문 앞에서 활을 겨눈다 — 대장의 화살을 격추하면 활시위(대장간 재료)를 얻는다",
+    intro: "심연의 타이탄이 성문 위에 선다 — 끝까지 쓰러뜨리면 활시위(대장간 재료)를 얻는다",
     platforms,
     patterns: [
       { kind: "aimed", atMs: 0, durationMs: 9_000, spawnMs: 430, speed: 430 },

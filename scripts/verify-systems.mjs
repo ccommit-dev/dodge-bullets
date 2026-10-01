@@ -396,9 +396,9 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("비트 기록: 난이도가 다르면 다른 기록이고, 전체 최고점수는 가장 큰 값", beatRpg.bestRecord(r2.progress, "pixel-rush", "easy") === null && beatRpg.bestScoreOverall(r2.progress) === 1200);
   const norm = beatRpg.normalizeBeatRpg(JSON.parse(JSON.stringify(r2.progress)));
   ok("비트 기록: 저장→정규화를 거쳐도 기록이 유지되고, 깨진 값은 0으로 방어된다", norm.records["pixel-rush:hard"].score === 1200 && beatRpg.normalizeBeatRpg({ records: { "x:easy": { score: "bad", combo: -3, accuracy: 7 } } }).records["x:easy"].accuracy === 1);
-  // 화살 원정 Wave: 패턴 구간 = 웨이브
+  // 성문 방어 Wave: 패턴 구간 = 웨이브
   const st = stages.STAGES[0];
-  ok("화살 원정 Wave: 1스테이지 4패턴 → 0ms WAVE 1/4 · 마지막 패턴 시각 WAVE 4/4", stages.waveAt(st, 0).index === 1 && stages.waveAt(st, 0).count === 4 && stages.waveAt(st, st.patterns[3].atMs).index === 4);
+  ok("성문 방어 Wave: 1스테이지 4패턴 → 0ms WAVE 1/4 · 마지막 패턴 시각 WAVE 4/4", stages.waveAt(st, 0).index === 1 && stages.waveAt(st, 0).count === 4 && stages.waveAt(st, st.patterns[3].atMs).index === 4);
   // 분석 이벤트 링버퍼 (localStorage 스텁)
   {
     const store = new Map();
@@ -411,7 +411,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   }
 }
 
-// ── 화살 원정 런 XP · 몬스터 보이는 여백 (2026-09-14) ──
+// ── 성문 방어 런 XP · 몬스터 보이는 여백 (2026-09-14) ──
 {
   const w = { runXp: 0, runLevel: 1, levelUps: 0, tempo: 1 };
   const worldMod = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
@@ -473,7 +473,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("검 원화 16장 모두 세로형이고 검이 폭의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
 }
 
-// ── 화살 원정 영구 스킬 — 원거리 요격 (2026-09-28) ──
+// ── 성문 방어 영구 스킬 — 원거리 요격 (2026-09-28) ──
 {
   const S = dodgeSkills;
   const lv0 = S.emptySkillLevels();
@@ -902,24 +902,23 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       const t = strip(readFileSync(join(root, f), "utf8"));
       for (const word of ["검격", "일섬", "반사!", "\"파쇄\"", "베기 창", "검술", "베어", "베면", "검의 주인", "hero-attack-sheet"]) if (t.includes(word)) hits.push(f + ": " + word);
     }
-    ok("화살 원정 문구·그리기에 검이 없다 (검격·일섬·반사·파쇄·검 시트)", hits.length === 0, hits.slice(0, 5).join(" | "));
+    ok("성문 방어 문구·그리기에 검이 없다 (검격·일섬·반사·파쇄·검 시트)", hits.length === 0, hits.slice(0, 5).join(" | "));
     ok("검 시트 파일을 지웠다 — 쓰지 않는 자산을 게임 자산으로 오판하지 않게", !existsSync(join(root, "public/titans/generated/hero-attack-sheet.png")));
-    ok("화살비·일제 사격·되쏘기·격추가 화면 문구에 있다", (() => {
+    ok("화살비·격추가 화면 문구에 있고, 점프·대시·일제 사격 버튼은 없다 (2026-10-01 아웃로 디펜스)", (() => {
       const d = readFileSync(join(root, "src/game/draw.ts"), "utf8"), app = readFileSync(join(root, "src/App.tsx"), "utf8");
-      return d.includes("\"되쏘기!\"") && d.includes("\"격추\"") && d.includes("화살비 준비") && app.includes("일제 사격 Lv.");
+      return d.includes('"처치"') && d.includes("화살비 준비") && !app.includes("일제 사격 Lv.") && !app.includes("inputRef.current.jumpPressed = true") && !app.includes("inputRef.current.dashPressed = true") && app.includes("action-note");
     })());
     // 무기는 늘 들고 있다 — 장착 중인 무기를 다시 눌러도 맨손이 되지 않는다 (핸들러 소스)
     const app = readFileSync(join(root, "src/App.tsx"), "utf8");
     ok("장착 중인 무기를 다시 눌러도 맨손이 되지 않는다", !app.includes("p.expeditionWeapon === id ? \"none\" : id") && app.includes("if (id === \"none\") return p;"));
     // 일제 사격 연출 — 검 호(arc) 대신 화살 부채꼴. 판정 폭(SWING_ARC)을 그대로 쓴다
     const draw = readFileSync(join(root, "src/game/draw.ts"), "utf8");
-    ok("일제 사격 연출이 판정 호(SWING_ARC)와 같은 폭으로 화살 부채꼴을 그린다", draw.includes("SWING_ARC * (i + 0.5)) / 5") && !draw.includes("밝은 칼빛 호"));
+    ok("수동 사격 연출(검 호·되쏘기 링)이 없고 무기 정령을 그린다", !draw.includes("SWING_ARC") && !draw.includes("REFLECT_DIST") && draw.includes("function drawWeaponSpirit"));
     // 모델 — 일제 사격은 **장착 무기의 시트**(같은 인물이 활을 당기는 / 지팡이를 드는 4프레임)로, 시트가 없으면
     // 대기 시트 위에 무기를 당기는 포즈(drawPhase)로 그린다. 시트에는 무기가 그려져 있으므로 그 위에 무기를 또 올리지 않는다
     const player = readFileSync(join(root, "src/game/player.ts"), "utf8");
-    ok("일제 사격은 장착 무기의 시트로 그리고, 없으면 대기 시트 + 당김 포즈로 그린다",
-      !player.includes("getExpeditionAttackHero") && player.includes("getWeaponAttackSheet(world.rangedWeapon)") && player.includes("attackHero ?? idleHero")
-      && player.includes("drawPhase") && player.includes("attackHero ? null : getRangedWeapon(world.rangedWeapon)"));
+    ok("주인공은 늘 활을 들고 조준 각(aimAngle)으로 겨누며 재사용 동안 시위를 당긴다 — 장착 무기는 정령",
+      player.includes("getRangedWeapon(\"bow\")") && player.includes("world.aimAngle") && player.includes("basicCooldownOf(world)") && !player.includes("attackHero ? null : getRangedWeapon"));
     // 시트 기하 — 대기 원화와 같은 프레임 높이 · 같은 배율. 무기를 머리 위로 든 프레임은 bbox 가 커서 줄어들 수 있다(≥ 70%)
     const sharp = (await import("sharp")).default;
     const figureRatios = async (file) => {

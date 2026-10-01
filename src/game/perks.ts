@@ -85,9 +85,9 @@ const convert = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: 
 
 export const PERKS: PerkDef[] = [
   // ── 습득 — 이번 런에서 그 속성 화살을 쓰기 시작한다. 영구 레벨이 있어야 뜬다
-  learn("fire", "불화살", "명중한 자리에서 터진다"),
-  learn("water", "물화살", "멈추지 않고 꿰뚫는다"),
-  learn("ice", "얼음화살", "명중한 주변을 얼린다"),
+  learn("fire", "불화살", "명중한 자리에서 터져 주변 몬스터를 태운다"),
+  learn("water", "물화살", "멈추지 않고 몬스터를 꿰뚫는다"),
+  learn("ice", "얼음화살", "명중한 주변 몬스터를 얼린다"),
   learn("earth", "흙화살", "느리지만 보스를 크게 깎는다"),
   learn("bolt", "번개화살", "쏘는 순간 여럿을 잇는다"),
 
@@ -102,7 +102,7 @@ export const PERKS: PerkDef[] = [
   { id: "boltExtra", rarity: "common", needs: ["bolt"], label: "번개 분기 +1", desc: "번개화살이 한 갈래 더 뻗는다", available: (w) => has(w, "bolt"), apply: (w) => { w.runMods.boltExtra += 1; } },
 
   // ── 레어 — 화살이 눈에 띄게 달라진다
-  { id: "shotPierce", rarity: "rare", needs: ["basic"], label: "관통 촉", desc: "기본 화살이 화살 하나를 더 꿰고 나간다", available: armed, apply: (w) => { w.runMods.shotPierce += 1; } },
+  { id: "shotPierce", rarity: "rare", needs: ["basic"], label: "관통 촉", desc: "기본 화살이 몬스터 하나를 더 꿰고 나간다", available: armed, apply: (w) => { w.runMods.shotPierce += 1; } },
   { id: "waterMore", rarity: "rare", needs: ["water"], label: "급류", desc: "물화살 관통 +1", available: (w) => has(w, "water"), apply: (w) => { w.runMods.waterPierceExtra += 1; } },
   { id: "fireWide", rarity: "rare", needs: ["fire"], label: "확산 화염", desc: "불화살 폭발 반경 +35%", available: (w) => has(w, "fire"), apply: (w) => { w.runMods.fireRadiusMul *= 1.35; } },
   { id: "iceDeep", rarity: "rare", needs: ["ice"], label: "심층 빙결", desc: "얼음화살이 더 깊게 얼린다", available: (w) => has(w, "ice"), apply: (w) => { w.runMods.iceSlowBonus += 0.1; } },
@@ -126,12 +126,12 @@ export const PERKS: PerkDef[] = [
     apply: (w) => { w.runMods.cooldownMul *= 0.8; },
   },
   {
-    id: "chillHunt", rarity: "epic", needs: ["ice", "basic"], label: "서리 사냥", desc: "얼어붙은 화살을 부수면 화살비 게이지를 더 받는다", combo: true,
+    id: "chillHunt", rarity: "epic", needs: ["ice", "basic"], label: "서리 사냥", desc: "얼어붙은 몬스터를 잡으면 화살비 게이지를 더 받는다", combo: true,
     available: (w) => has(w, "ice") && armed(w) && !w.runMods.chillHunt,
     apply: (w) => { w.runMods.chillHunt = true; },
   },
   {
-    id: "chillBurst", rarity: "epic", needs: ["ice", "fire"], label: "열충격", desc: "얼어붙은 화살을 함께 터뜨리면 불화살 폭발이 넓어진다", combo: true,
+    id: "chillBurst", rarity: "epic", needs: ["ice", "fire"], label: "열충격", desc: "얼어붙은 몬스터를 함께 터뜨리면 불화살 폭발이 넓어진다", combo: true,
     available: (w) => has(w, "ice") && has(w, "fire") && !w.runMods.chillBurst,
     apply: (w) => { w.runMods.chillBurst = true; },
   },

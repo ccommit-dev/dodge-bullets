@@ -33,11 +33,11 @@ export function AreaGateModal({ pioneeredArea, onGoDodge, onDismiss }: Props) {
         <p className="gate-desc">
           정찰병이 길을 뚫어야 사냥터가 열립니다.
           <br />
-          <b>화살 원정 Stage {requiredDodgeStage(pioneeredArea) ?? 4}</b> 클리어가 필요합니다.
+          <b>성문 방어 Stage {requiredDodgeStage(pioneeredArea) ?? 4}</b> 클리어가 필요합니다.
         </p>
         <p className="gate-reward">개방 시 획득 배율 ×{nextArea.rewardMultiplier}</p>
         <button type="button" className="cta" onClick={onGoDodge}>
-          화살 원정 출발 (30초)
+          성문 방어 출발 (30초)
         </button>
         <button type="button" className="cta cta-ghost" onClick={onDismiss}>
           여기서 더 사냥하기

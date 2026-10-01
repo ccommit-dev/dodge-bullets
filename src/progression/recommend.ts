@@ -134,7 +134,7 @@ export function recommendNext(
   const cap = idleCapHours(progress);
   const ceiling = stageCeilingFor(progress.pioneeredArea);
   if (titans.stage >= ceiling && nextAreaName(progress.pioneeredArea)) {
-    return { id: "gate", tone: "grow", title: `${nextAreaName(progress.pioneeredArea)} 개척 필요`, desc: "화살 원정을 클리어하면 사냥터가 열립니다", cta: "원정", action: { kind: "content", content: "dodge" } };
+    return { id: "gate", tone: "grow", title: `${nextAreaName(progress.pioneeredArea)} 개척 필요`, desc: "성문 방어을 클리어하면 사냥터가 열립니다", cta: "원정", action: { kind: "content", content: "dodge" } };
   }
   if (progress.bestForgeLevel < 15 && mult < IDLE.multCap) {
     return { id: "forge", tone: "grow", title: `대장간 강화 +${progress.bestForgeLevel}`, desc: `방치 배율 ×${mult.toFixed(2)} — 강화 1단계당 +0.06`, cta: "대장간", action: { kind: "content", content: "forge" } };
@@ -143,7 +143,7 @@ export function recommendNext(
     return { id: "beat", tone: "grow", title: `방치 효율 ${(rate * 100).toFixed(0)}%`, desc: "비트 수련으로 스킬 슬롯을 해금하세요", cta: "연습실", action: { kind: "content", content: "beat" } };
   }
   if (cap < IDLE.hoursCap) {
-    return { id: "dodge-cap", tone: "grow", title: `방치 시간 ${cap}h / ${IDLE.hoursCap}h`, desc: "화살 원정 스테이지를 클리어하면 +1시간", cta: "원정", action: { kind: "content", content: "dodge" } };
+    return { id: "dodge-cap", tone: "grow", title: `방치 시간 ${cap}h / ${IDLE.hoursCap}h`, desc: "성문 방어 스테이지를 클리어하면 +1시간", cta: "원정", action: { kind: "content", content: "dodge" } };
   }
   // 5. 장기
   return { id: "tower", tone: "grow", title: "끝없는 성벽 등반", desc: `최고 ${progress.towerBestFloor}층 · 100층당 배율 +0.05`, cta: "성벽", action: { kind: "content", content: "dodge" } };

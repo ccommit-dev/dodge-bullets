@@ -32,14 +32,14 @@ export type CharacterProgress = {
   ownedShoulders: ShoulderId[];
   shoulderShards: number;
   /**
-   * 개척한 사냥터 지역 인덱스 (1~5). 화살 원정 클리어로만 오른다.
+   * 개척한 사냥터 지역 인덱스 (1~5). 성문 방어 클리어로만 오른다.
    * 구 `unlockedHuntingArea`는 이름과 달리 스테이지 번호를 담고 있어 그대로 쓸 수 없다 —
    * v4→v5에서 `huntingArea()`로 지역 인덱스로 환산한다.
    */
   pioneeredArea: number;
   dodgeBestStage: number;
   dodgeBestScore: number;
-  /** 화살 원정 영구 스킬 레벨 (game/skills.ts) — 0 = 미습득 */
+  /** 성문 방어 영구 스킬 레벨 (game/skills.ts) — 0 = 미습득 */
   expeditionSkills: ExpeditionSkillLevels;
   /** 원정 인장 — 칩·보급 재화. 런 안의 world.expeditionSeals 가 클리어 때 누적된다 */
   expeditionSeals: number;
@@ -102,7 +102,7 @@ export type CharacterProgress = {
   /** 원정 일지 — 수령한 마일스톤 id */
   journalClaimed: string[];
   /**
-   * 온보딩 순차 개방 단계 (CRUMBLE_GAP §8) — 0 사냥터만 → 1 화살 원정 →
+   * 온보딩 순차 개방 단계 (CRUMBLE_GAP §8) — 0 사냥터만 → 1 성문 방어 →
    * 2 대장간 → 3 연습실 → 4 전부(이벤트·보석 상점). 단조 증가.
    * 기존 유저는 마이그레이션에서 4로 소급 — 신규에게만 적용된다.
    */

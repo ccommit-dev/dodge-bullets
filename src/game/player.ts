@@ -1,5 +1,6 @@
 import type { GameWorld, Player } from "./types";
 import { assetUrl } from "../asset";
+import { basicCooldown as basicCooldownOf } from "./skillShots";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -186,53 +187,33 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
-    // 장착한 원거리 무기 — 같은 변환 안이라 방향·포즈가 함께 적용된다.
-    // 손은 스프라이트 높이의 45~55% 지점에 있다. 무기 가운데를 그 높이에 맞추고, 몸통을 덮지
-    // 않도록 바깥으로 밀어 낸다 (허리춤에 얼룩처럼 걸쳤던 것을 실측해 고침, 2026-09-28)
-    // 무기 시트에는 무기가 그려져 있다 — 그 위에 또 올리면 활이 두 개가 된다
-    const wp = attackHero ? null : getRangedWeapon(world.rangedWeapon);
-    if (wp?.complete && wp.naturalWidth > 0) {
-      const wh = drawHeight * 0.46;
-      const ww = wh * (wp.naturalWidth / wp.naturalHeight);
-      // 쏘는 순간 — 무기를 표적 쪽으로 기울이고 뒤로 튕긴다. 시위는 밝은 선으로 (2026-09-29)
+    // 주인공의 활 (2026-10-01, 아웃로 디펜스 차용) — 장착 무기와 무관하게 **늘 활**을 든다. 가장 가까운 화살 쪽(world.aimAngle)으로
+    // 겨누고, 기본 사격 재사용이 차는 동안 시위를 당겼다가 쏘는 순간 놓는다. 장착 무기는 곁의 정령(draw.ts drawWeaponSpirit)이다.
+    const bow = getRangedWeapon("bow");
+    if (bow?.complete && bow.naturalWidth > 0 && p.anim !== "dead") {
+      const wh = drawHeight * 0.44;
+      const ww = wh * (bow.naturalWidth / bow.naturalHeight);
       const k = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
-      // 일제 사격(수동) — 무기를 몸 앞으로 들어 올리고 시위를 끝까지 당겼다가 놓는다. 활이든 지팡이든
-      // 같은 손 위치에서 움직여, 무기를 바꿔 끼워도 동작이 이어진다 (2026-10-01)
-      const aim = drawPhase;                                       // 0: 옆구리 · 1: 앞으로 든 사격 자세
-      const hx = drawWidth * 0.30 + ww / 2 + aim * drawWidth * 0.22, hy = -drawHeight * 0.72 + wh / 2 - aim * drawHeight * 0.06;
+      // 조준 각 — 스프라이트는 facing 으로 뒤집혀 있으므로 x 성분에 facing 을 곱한다. 활 원화는 세로(시위가 왼쪽)라 +90° 가 '앞'
+      const a = Math.atan2(Math.sin(world.aimAngle), Math.cos(world.aimAngle) * p.facing);
+      const cd = Math.max(0.01, basicCooldownOf(world));
+      const pull = k > 0 ? 0.15 * k : Math.min(1, 1 - Math.max(0, world.basicTimer) / cd) * 0.5;   // 당김 0~0.5 → 놓는 순간 0.15에서 풀린다
       ctx.save();
-      ctx.translate(hx, hy);
-      // 사격 자세 — 활은 수직으로 세워 들고, 지팡이는 앞으로 기울인다
-      ctx.rotate(aim * (world.rangedWeapon === "staff" ? -0.55 : -0.12));
-      if (k > 0 && aim === 0) {
-        // 자동 사격 — 표적 쪽으로 살짝 기울이고 뒤로 튕긴다 (스프라이트는 facing 으로 뒤집혀 있어 x 에 facing 을 곱한다)
-        const a = Math.atan2(Math.sin(world.shotAngle), Math.cos(world.shotAngle) * p.facing);
-        ctx.rotate((a + Math.PI / 2) * 0.35 * k);
-        ctx.translate(-4 * k, 3 * k);
-      }
-      if (releasePhase > 0) ctx.translate(-3 * releasePhase, 0);   // 놓는 순간 반동
-      ctx.drawImage(wp, -ww / 2, -wh / 2, ww, wh);
-      // 시위 — 자동 사격은 밝은 선 한 번, 일제 사격은 당긴 만큼 뒤로 물러났다가 놓는다
-      const pull = Math.max(k * 0.35, aim * (1 - releasePhase) * 0.5);
-      if (pull > 0 && world.rangedWeapon === "bow") {
-        ctx.globalAlpha = Math.max(k, aim);
-        ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(-ww * 0.1, -wh * 0.42); ctx.lineTo(-ww * pull - ww * 0.1, 0); ctx.lineTo(-ww * 0.1, wh * 0.42); ctx.stroke();
-        if (aim > 0 && releasePhase === 0) {
-          // 메긴 화살 — 당긴 시위에서 활 앞으로 뻗는다
-          ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(-ww * pull - ww * 0.1, 0); ctx.lineTo(ww * 0.55, 0); ctx.stroke();
-        }
-      } else if (aim > 0 && world.rangedWeapon === "staff") {
-        // 지팡이 — 끝의 수정이 당기는 동안 부풀어 오르다 놓는 순간 터진다
-        const g = ctx.createRadialGradient(0, -wh * 0.42, 1, 0, -wh * 0.42, 8 + aim * 10);
-        g.addColorStop(0, "rgba(240,249,255,.95)"); g.addColorStop(1, "rgba(56,189,248,0)");
-        ctx.globalAlpha = Math.min(1, aim * (1 - releasePhase * 0.6));
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -wh * 0.42, 8 + aim * 10, 0, Math.PI * 2); ctx.fill();
+      ctx.translate(drawWidth * 0.22, -drawHeight * 0.52);
+      ctx.rotate(a + Math.PI / 2);
+      ctx.translate(0, -3 * k);                                   // 쏘는 순간 반동
+      ctx.drawImage(bow, -ww / 2, -wh / 2, ww, wh);
+      // 시위 — 당긴 만큼 뒤로(활 그림의 왼쪽이 시위 쪽)
+      ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(-ww * 0.1, -wh * 0.42); ctx.lineTo(-ww * 0.1 - ww * pull, 0); ctx.lineTo(-ww * 0.1, wh * 0.42); ctx.stroke();
+      if (k === 0 && pull > 0.08) {
+        // 메긴 화살
+        ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-ww * 0.1 - ww * pull, 0); ctx.lineTo(ww * 0.55, 0); ctx.stroke();
       }
       ctx.restore();
     }
-    ctx.restore();
+        ctx.restore();
 
     if (p.landingFxMs > 0) {
       const progress = 1 - p.landingFxMs / 180;

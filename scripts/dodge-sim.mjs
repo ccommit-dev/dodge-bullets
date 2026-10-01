@@ -1,5 +1,5 @@
 /**
- * 화살 원정 검객 봇 시뮬 — 새 검격 규칙(스윙 호·정타 반사·파쇄)으로 스테이지 패턴 수치를 재조정하기 위한 계측.
+ * 성문 방어 검객 봇 시뮬 — 새 검격 규칙(스윙 호·정타 반사·파쇄)으로 스테이지 패턴 수치를 재조정하기 위한 계측.
  *
  * 봇 정책(숙련자 근사): 가장 먼저 닿을 화살을 고르고
  *   - 0.42초 안에 닿고 검격이 준비됐으면 그쪽을 바라보고 스윙 (정타 거리면 반사)
@@ -46,47 +46,52 @@ function pickCard(cards) {
   return [...cards].sort((x, y) => score(y) - score(x))[0];
 }
 
-/** 봇의 한 프레임 입력 — 가장 먼저 닿을 화살을 보고 벨지·피할지 정한다 (두 시뮬 공용) */
+/**
+ * 봇의 한 프레임 입력 — **좌우 이동만** (2026-10-01, 아웃로 디펜스 차용: 점프·대시·일제 사격이 없다).
+ * 화살마다 "내 높이에 닿을 때의 x" 를 예측해 위험 구간을 모으고, 비어 있는 가장 가까운 x 로 걷는다.
+ * 활은 알아서 쏘므로 봇의 일은 떨어지는 자리를 비키는 것뿐이다 — 사람도 그렇다.
+ */
 function botInput(w, p, inp, opts, seenArrows) {
-  // 위협 평가
-  let best = null;
+  const look = opts.look ?? 0.9;            // 몇 초 앞까지 보나
+  const margin = opts.margin ?? 34;         // 화살 예측 x 에서 이만큼은 피한다
+  const minX = w.safeLeft + 18, maxX = w.width - w.safeRight - 18;
+  const dangers = [];
   for (let i = 0; i < w.arrows.length; i += 1) {
     const a = w.arrows[i];
     if (!a.active || a.reflected || a.warningMs > 0) continue;
     seenArrows.add(i + ":" + Math.round(a.x) + ":" + Math.round(a.y) + ":" + a.kind);
-    const dx = p.x - a.x, dy = p.y - a.y;
-    const sp = Math.hypot(a.vx, a.vy) || 1;
-    const along = (dx * a.vx + dy * a.vy) / sp; // 진행 방향 거리
-    if (along < -10) continue; // 이미 지나감
-    const lateral = Math.abs(dx * a.vy - dy * a.vx) / sp;
-    if (lateral > 46) continue; // 안 맞을 궤도
-    const tti = along / sp;
-    if (!best || tti < best.tti) best = { a, tti, along, dx: -dx, dy: -dy, lateral };
+    const dy = p.y - a.y;
+    if (a.vy <= 1) { if (Math.abs(dy) < 40) dangers.push({ x: a.x + a.vx * 0.3, t: 0.1, r: margin }); continue; }
+    const t = dy / a.vy;
+    if (t < -0.05 || t > look) continue;
+    // 유도탄은 내 쪽으로 휘니 지금 x 와 예측 x 사이를 전부 위험으로 본다
+    let x = a.x + a.vx * Math.max(0, t);
+    if (a.kind === "homing") x = (x + p.x) / 2;
+    const r = margin + (a.boss ? 24 : a.kind === "explosive" ? 30 : 0) + (a.hitRadius ?? 6);
+    dangers.push({ x, t: Math.max(0.05, t), r });
   }
   inp.left = false; inp.right = false; inp.jumpPressed = false; inp.slowPressed = false; inp.dashPressed = false;
-  const ready = p.slowCdMs <= 0 && p.slowActiveMs <= 0;
-  if (best) {
-    const fromRight = best.dx > 0; // 화살이 오른쪽에 있음
-    const facingOk = (fromRight && p.facing > 0) || (!fromRight && p.facing < 0) || Math.abs(best.dx) < 12;
-    // 스윙은 화살이 검격 반경(slowRadius) 안에 들어왔을 때 — 밖에서 휘두르면 헛스윙
-    const reach = w.stats.slowRadius * (opts.reach ?? 0.92);
-    if (best.along <= reach && ready) {
-      if (!facingOk) { if (fromRight) inp.right = true; else inp.left = true; } // 이번 프레임에 방향 전환
-      else inp.slowPressed = true;
-    } else if (best.tti <= 0.22 && !ready && w.stats.dashUnlocked && p.dashCdMs <= 0 && p.dashActiveMs <= 0) {
-      // 검격이 안 되면 마지막 순간 대시(무적 프레임)로 빠져나간다 — 숙련자의 두 번째 도구
-      inp.dashPressed = true;
-    } else if (best.tti <= 0.55 && (!ready || best.along > reach)) {
-      // 못 베면 회피: 위에서 오면 옆으로, 옆에서 오면 점프
-      const fromAbove = Math.abs(best.a.vy) > Math.abs(best.a.vx);
-      if (fromAbove) { if (best.a.x >= p.x) inp.left = true; else inp.right = true; }
-      else if (Math.abs(best.dy) < 40 && p.onGround) inp.jumpPressed = true;
-      else { if (best.a.x >= p.x) inp.left = true; else inp.right = true; }
-    } else if (best.tti > 0.7) {
-      // 여유: 화살 쪽을 바라보고 중앙 근처 유지
-      if (fromRight && p.facing < 0) inp.right = true; else if (!fromRight && p.facing > 0) inp.left = true;
+  const danger = (x) => dangers.reduce((s, d) => s + (Math.abs(x - d.x) < d.r ? (d.r - Math.abs(x - d.x)) / d.t : 0), 0);
+  const here = danger(p.x);
+  if (here <= 0) {
+    // 안전하면 가운데 쪽으로 천천히 돌아온다 (가장자리는 도탄에 약하다)
+    const mid = (minX + maxX) / 2;
+    if (Math.abs(p.x - mid) > 60) { if (p.x < mid) inp.right = true; else inp.left = true; }
+    return;
+  }
+  // 가장 가까운 안전한 x — 12px 간격으로 좌우를 훑는다
+  let best = null;
+  for (let d = 12; d <= 240; d += 12) {
+    for (const x of [p.x - d, p.x + d]) {
+      if (x < minX || x > maxX) continue;
+      const v = danger(x);
+      if (v <= 0) { best = x; break; }
+      if (!best && v < here * 0.5) best = x;
     }
-  } else if (p.x < w.width * 0.42) inp.right = true; else if (p.x > w.width * 0.58) inp.left = true;
+    if (best !== null) break;
+  }
+  if (best === null) best = p.x < (minX + maxX) / 2 ? maxX : minX;
+  if (best > p.x + 2) inp.right = true; else if (best < p.x - 2) inp.left = true;
 }
 
 export function simulateStage(stageIndex, seed, opts = {}) {

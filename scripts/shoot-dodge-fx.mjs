@@ -26,7 +26,7 @@ await sleep(2600);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } });
 await sleep(900);
 await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
-await clickText(".nav-popup-grid button", "화살 원정"); await sleep(1600);
+await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 await clickText("button", "스테이지"); await sleep(1800);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 await sleep(1500);
