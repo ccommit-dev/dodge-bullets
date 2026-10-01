@@ -1,5 +1,5 @@
 /**
- * 영웅 검격 시트 조립 — art-gen heroattack 4장 → public/titans/generated/hero-attack-sheet.png (2026-09-28).
+ * 영웅 공격 시트 조립 — art-gen heroattack 4장 → public/titans/generated/hero-<id>-sheet.png (2026-09-28 · 10-01 무기별).
  *
  *   node scripts/make-hero-attack-sheet.mjs [id]      (기본 base: art-gen/out/heroattack-base-{0..3}.png)
  *
@@ -17,7 +17,8 @@ import sharp from "sharp";
 const id = process.argv[2] ?? "base";
 const FRAME_W = 780, FRAME_H = 887, FRAMES = 4, FIGURE_H = 857, BASELINE = 885;
 const IDLE_RAW = "art-gen/out/heroidle-base-20260918-pose.png";
-const OUT = "public/titans/generated/hero-attack-sheet.png";
+// 무기별 시트 (2026-10-01): bow → hero-bow-sheet.png · staff → hero-staff-sheet.png. 검 시트(hero-attack-sheet)는 지웠다
+const OUT = `public/titans/generated/hero-${id}-sheet.png`;
 
 async function bbox(buf) {
   const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -33,13 +34,17 @@ const SCALE = FIGURE_H / idleB.h;
 console.log(`대기 원본 인물 높이 ${idleB.h} → 배율 ${SCALE.toFixed(3)}`);
 const comps = [];
 for (let i = 0; i < FRAMES; i += 1) {
-  const src = `art-gen/out/heroattack-${id}-${i}.png`;
+  // --pick 1=s12,2=s21 : 그 프레임만 재추첨본(-태그)으로 바꿔 끼운다
+  const picks = Object.fromEntries((process.argv.find((x) => x.startsWith("--pick="))?.slice(7) ?? "").split(",").filter(Boolean).map((kv) => kv.split("=")));
+  const src = `art-gen/out/heroattack-${id}-${i}${picks[i] ? "-" + picks[i] : ""}.png`;
   if (!existsSync(src)) { console.error("없음:", src); process.exit(1); }
   const raw = await sharp(src).png().toBuffer();
   const b = await bbox(raw);
   const figure = await sharp(raw).extract({ left: b.x0, top: b.y0, width: b.w, height: b.h }).png().toBuffer();
   let scale = SCALE;
   if (b.w * scale > FRAME_W - 12) { console.warn(`frame ${i}: 폭 초과 — 배율을 줄인다`); scale = (FRAME_W - 12) / b.w; }
+  // 활을 머리 위로 든 자세는 대기보다 키가 크다 — 바닥(885)에 발을 맞춘 채 프레임 안에 들어가게 줄인다
+  if (b.h * scale > BASELINE - 2) { console.warn(`frame ${i}: 높이 초과 — 배율을 줄인다`); scale = (BASELINE - 2) / b.h; }
   const w = Math.round(b.w * scale), h = Math.round(b.h * scale);
   const frame = await sharp(figure).resize(w, h, { fit: "fill", kernel: "lanczos3" }).png().toBuffer();
   comps.push({ input: frame, left: i * FRAME_W + Math.round((FRAME_W - w) / 2), top: BASELINE - h });

@@ -896,10 +896,36 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     // 일제 사격 연출 — 검 호(arc) 대신 화살 부채꼴. 판정 폭(SWING_ARC)을 그대로 쓴다
     const draw = readFileSync(join(root, "src/game/draw.ts"), "utf8");
     ok("일제 사격 연출이 판정 호(SWING_ARC)와 같은 폭으로 화살 부채꼴을 그린다", draw.includes("SWING_ARC * (i + 0.5)) / 5") && !draw.includes("밝은 칼빛 호"));
-    // 모델 — 검 시트를 안 쓰고 대기 시트 하나 위에 무기를 올린다. 시위 당김(drawPhase)이 활·지팡이 둘 다에 걸린다
+    // 모델 — 일제 사격은 **장착 무기의 시트**(같은 인물이 활을 당기는 / 지팡이를 드는 4프레임)로, 시트가 없으면
+    // 대기 시트 위에 무기를 당기는 포즈(drawPhase)로 그린다. 시트에는 무기가 그려져 있으므로 그 위에 무기를 또 올리지 않는다
     const player = readFileSync(join(root, "src/game/player.ts"), "utf8");
-    ok("주인공은 시트 하나(대기) 위에 무기를 올려 그린다 — 무기를 바꿔도 모델이 바뀌지 않는다",
-      !player.includes("getExpeditionAttackHero") && player.includes("drawPhase") && player.includes("world.rangedWeapon === \"staff\" ? -0.55 : -0.12"));
+    ok("일제 사격은 장착 무기의 시트로 그리고, 없으면 대기 시트 + 당김 포즈로 그린다",
+      !player.includes("getExpeditionAttackHero") && player.includes("getWeaponAttackSheet(world.rangedWeapon)") && player.includes("attackHero ?? idleHero")
+      && player.includes("drawPhase") && player.includes("attackHero ? null : getRangedWeapon(world.rangedWeapon)"));
+    // 시트 기하 — 대기 원화와 같은 프레임 높이 · 같은 배율. 무기를 머리 위로 든 프레임은 bbox 가 커서 줄어들 수 있다(≥ 70%)
+    const sharp = (await import("sharp")).default;
+    const figureRatios = async (file) => {
+      const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const W = info.width, H = info.height, FW = W / 4, out = [];
+      for (let f = 0; f < 4; f += 1) {
+        let y0 = 1e9, y1 = -1;
+        for (let y = 0; y < H; y += 1) for (let x = Math.floor(f * FW); x < Math.floor((f + 1) * FW); x += 1) {
+          if (data[(y * W + x) * 4 + 3] > 30) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        out.push((y1 - y0 + 1) / H);
+      }
+      return { H, W, ratios: out };
+    };
+    const idle = await figureRatios(join(root, "public/titans/character/base/hero-idle.png"));
+    for (const w of ["bow", "staff"]) {
+      const file = join(root, `public/titans/generated/hero-${w}-sheet.png`);
+      if (!existsSync(file)) { ok(`${w} 일제 사격 시트가 있다`, false, "없음 — bash art-gen/batch-dodge-hero-bow.sh → node scripts/make-hero-attack-sheet.mjs " + w); continue; }
+      const sheet = await figureRatios(file);
+      ok(`${w} 시트: 프레임 높이가 대기 시트와 같고 4프레임이다 (같은 drawHeight 로 그린다)`, sheet.H === idle.H && sheet.W % 4 === 0, sheet.W + "×" + sheet.H);
+      ok(`${w} 시트: 4프레임의 인물 높이가 대기와 같은 배율이다 (각 ≥ 70% · 평균 ≥ 80%)`,
+        sheet.ratios.every((r) => r >= 0.7) && sheet.ratios.reduce((p, q) => p + q, 0) / 4 >= 0.8,
+        "대기 " + (idle.ratios[0] * 100).toFixed(0) + "% · " + w + " " + sheet.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
+    }
   }
 
   // ── 상성이 체감된다 (2026-09-29 재검토) — 표에만 있던 상성이 보스가 아니면 아무 효과가 없었다.

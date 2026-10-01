@@ -2225,6 +2225,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               hitPulse={allyHitPulse}
               engaged={formationEngaged}
               approaching={formationEngaged && !formationReady}
+              flank={formationReady && battlePhase === "combat"}
             />
           ))}
         </div>
