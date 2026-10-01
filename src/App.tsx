@@ -199,6 +199,8 @@ function App() {
   const lastJumpAtRef = useRef(0);
   const lastSpaceAtRef = useRef(0);
   const dodgeRunIdRef = useRef(`boot-${Date.now()}`);
+  /** 죽는 동작이 재생되는 0.65초 — 이 동안은 계속 '플레이 중'으로 그리되 입력·3택·재사망을 막는다 */
+  const dyingRef = useRef(false);
 
   const hudRemainSecRef = useRef(0);
   const hudHpRef = useRef(1);
@@ -611,7 +613,7 @@ function App() {
         // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
         if (import.meta.env.DEV && qaGodmodeRef.current && stateRef.current === "playing") world.player.hp = world.player.maxHp;
         // 성장 선택: 런 XP 로 레벨업할 때마다(perks.ts) 멈추고 3택 — 레벨이 오를수록 화살도 빨라진다(world.tempo)
-        if (stateRef.current === "playing" && world.levelUps > 0) {
+        if (stateRef.current === "playing" && !dyingRef.current && world.levelUps > 0) {
           world.levelUps = 0;
           setPerkOptions(pickPerks(world));
           stateRef.current = "perk";
@@ -710,28 +712,36 @@ function App() {
           sound.playHit();
         }
 
-        if (event.type === "dead" && stateRef.current === "playing") {
+        // 쓰러지는 동작(0.5초)이 보이게 — 전에는 죽는 프레임에 바로 결과 화면이 떠서 주인공이 선 채로 멈췄다 (2026-10-01)
+        if (event.type === "dead" && stateRef.current === "playing" && !dyingRef.current) {
+          dyingRef.current = true;
           clearKeys(inputRef.current);
           setPointer(inputRef.current, false);
           sound.stopBgm();
           sound.playHit();
-          const finalScore = world.score;
-          scoreRef.current = finalScore;
-          setScore(finalScore);
-          setLastScore(finalScore);
-          setAllClear(false);
-          setExtracted(false);
-          void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
-          stateRef.current = "gameover";
-          setGameState("gameover");
-          // 일일 임무는 결과와 무관하게 이 스테이지에서 한 만큼 센다 (클리어 보상과 다른 id)
-          void grantCharacterReward(userHashRef.current, `dodge:${dodgeRunIdRef.current}:fail:${world.stageIndex}`, {
-            dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
-            skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
-            lastContent: "dodge",
-          }).then(setProgress);
-          trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
-          setDeathTip(DEATH_TIPS[world.lastHitCause] ?? "");
+          window.setTimeout(() => {
+            dyingRef.current = false;
+            if (stateRef.current !== "playing") return;
+            clearKeys(inputRef.current);
+            setPointer(inputRef.current, false);
+            const finalScore = world.score;
+            scoreRef.current = finalScore;
+            setScore(finalScore);
+            setLastScore(finalScore);
+            setAllClear(false);
+            setExtracted(false);
+            void saveHighScore(userHashRef.current, finalScore).then(setHighScore);
+            stateRef.current = "gameover";
+            setGameState("gameover");
+            // 일일 임무는 결과와 무관하게 이 스테이지에서 한 만큼 센다 (클리어 보상과 다른 id)
+            void grantCharacterReward(userHashRef.current, `dodge:${dodgeRunIdRef.current}:fail:${world.stageIndex}`, {
+              dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
+              skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
+              lastContent: "dodge",
+            }).then(setProgress);
+            trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
+            setDeathTip(DEATH_TIPS[world.lastHitCause] ?? "");
+          }, 650);
         }
 
         if (event.type === "clear" && stateRef.current === "playing") {
