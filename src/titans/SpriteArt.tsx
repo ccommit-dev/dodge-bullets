@@ -234,7 +234,7 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
   return 0;
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; skin?: string; partySlot?: number }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, flank = true, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -292,14 +292,19 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 2026-09-21 에 서로 벌리려고 8% 로 밀었다가 주인공을 100% 덮어 verify-play-art 가 잡았다. 깊이(줄)로 구분한다.
   const RANGED_COMBAT = [[0, 3], [2, 21], [0, 12], [3, 21], [1, 12], [2, 3]];
   const [combatX, combatY] = slot === undefined ? [undefined, undefined] : (ranged ? RANGED_COMBAT : MELEE_COMBAT)[slot];
-  // 몬스터 오른쪽에 서는 근접 슬롯은 원화(오른쪽 보기)를 뒤집어 몬스터를 향한다
-  const faceLeft = engaged && !ranged && slot !== undefined && slot % 2 === 1;
+  // 몬스터 오른쪽에 서는 근접 슬롯은 원화(오른쪽 보기)를 뒤집어 몬스터를 향한다.
+  // **접근 중에는 오른쪽으로 가지 않는다** — 몬스터가 오른쪽에서 걸어 들어오는 동안 동료가 먼저 그 너머까지 달려가
+  // 몬스터를 앞질러 서 있었다(실측 65px, 2026-10-01). 접근 중엔 왼쪽 슬롯 뒤에 섰다가, 몬스터가 자리를 잡으면 오른쪽으로 돈다
+  // 몬스터가 죽으면(flank=false) 다음 몬스터가 들어오기 전에 왼쪽으로 돌아온다 — 안 그러면 새 몬스터가 들어올 때 오른쪽에서 출발해 또 앞선다
+  const rightFlank = !ranged && slot !== undefined && slot % 2 === 1;
+  const faceLeft = engaged && !approaching && flank && rightFlank;
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
     "--party-lane-y": `${laneY}%`,
     "--party-combat-x": `${combatX}%`,
     "--party-combat-y": `${combatY}%`,
-    "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot]}px`,
+    // 접근 중인 오른쪽 측면 슬롯은 왼쪽 슬롯 뒤(−34px)에 선다 — 같은 줄에 겹쳐 서지 않게
+    "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot] + (rightFlank && !faceLeft ? -34 : 0)}px`,
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
     // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),

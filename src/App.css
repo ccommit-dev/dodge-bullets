@@ -2592,8 +2592,14 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 /* 교전 이동은 --party-combat-x/y 만으로 (예전 translateX 오버라이드 삭제 — 근접·원거리 슬롯이 이미 자리를 정한다) */
 .titan-ally-art.combat-ranged.is-engaged { transform:none; }
 .titan-ally-art.combat-melee.is-engaged { transform:none; }
-/* 몬스터 오른쪽 근접 슬롯 — 좌우 반전으로 몬스터를 향한다 (무기·타격 이펙트도 같이 뒤집힌다) */
+/* 몬스터 오른쪽 근접 슬롯 — 좌우 반전으로 몬스터를 향한다 (무기·타격 이펙트도 같이 뒤집힌다).
+   접근이 끝난 뒤에야 face-left 가 붙으므로(SpriteArt), 그 순간 왼쪽에서 오른쪽으로 짧게 돌아 들어간다 — 긴 접근 전환이 아니라 0.42초 */
 .titan-ally-art.face-left.is-engaged { transform:scaleX(-1); }
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.face-left { transition: left .42s cubic-bezier(.2,.8,.3,1), bottom .28s ease; animation: flank-hop .42s ease-out both; }
+@keyframes flank-hop { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 16px; } }
+/* 몬스터가 죽으면 측면 슬롯이 왼쪽으로 돌아온다 — 다음 몬스터가 들어오기(1.18s) 전에 끝나야 하므로 접근 전환(~1s)이 아니라 0.42초 */
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee:not(.is-approaching):not(.face-left) { transition: left .42s cubic-bezier(.2,.8,.3,1), bottom .28s ease; }
+@media (prefers-reduced-motion: reduce) { .titans-allies .titan-ally-art[data-party-slot].is-engaged.face-left { animation: none; } }
 .titan-ally-art.face-left .hero-marker { transform:scaleX(-1); }
 /* 신규 근접 — 대형 슬롯이 뒤쪽이라 전진 거리를 줄여 도착 지점이 기존 근접과 안 겹치게 */
 /* 신규 원거리 — 후열 유지, 볼트는 포탑이라 거의 제자리 */

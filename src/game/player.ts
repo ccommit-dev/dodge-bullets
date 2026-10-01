@@ -17,6 +17,23 @@ function getExpeditionHero(): HTMLImageElement | null {
   return expeditionHero;
 }
 
+/**
+ * 무기별 일제 사격 시트 — 대기 원화와 같은 인물이 활을 당기거나 지팡이를 드는 4프레임
+ * (art-gen heroattack --weapon, scripts/make-hero-attack-sheet.mjs, 2026-10-01). 프레임 규격은 대기와 같다(높이 887 · 바닥 885).
+ * 아직 안 실렸거나 파일이 없으면 null — 그때는 대기 시트 위에 무기를 당기는 포즈로 그린다.
+ */
+const weaponAttackSheets: Record<string, HTMLImageElement> = {};
+function getWeaponAttackSheet(id: string): HTMLImageElement | null {
+  if (typeof Image === "undefined" || id === "none") return null;
+  if (!weaponAttackSheets[id]) {
+    const img = new Image();
+    img.src = assetUrl(`titans/generated/hero-${id}-sheet.png`);
+    weaponAttackSheets[id] = img;
+  }
+  const img = weaponAttackSheets[id];
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+
 /** 장착한 원거리 무기 — 주인공 스프라이트는 그대로 두고 손 위치에 겹쳐 그린다 (2026-09-28) */
 const rangedWeaponImgs: Record<string, HTMLImageElement | null> = {};
 function getRangedWeapon(id: string): HTMLImageElement | null {
@@ -89,24 +106,25 @@ export function drawStickman(
   ctx.fill();
 
   const idleHero = getExpeditionHero();
-  // 검 시트(hero-attack-sheet)는 더 쓰지 않는다 — 활만 쓰는 콘텐츠다 (2026-10-01). 일제 사격은 대기 시트 위에서
-  // 무기를 앞으로 들어 시위를 당기는 포즈로 그린다. 시트가 하나라 무기를 바꿔 끼워도 모델이 바뀌지 않는다
-  const attackHero: HTMLImageElement | null = null;
-  const hero = idleHero;
+  // 검 시트(hero-attack-sheet)는 지웠다 — 활만 쓰는 콘텐츠다 (2026-10-01). 일제 사격은 **장착 무기의** 시트
+  // (활을 당기는 / 지팡이를 드는 같은 인물)로 그리고, 시트가 없으면 대기 시트 위에 무기를 당기는 포즈로 그린다.
+  const attackHero = p.anim === "skill" ? getWeaponAttackSheet(world.rangedWeapon) : null;
+  const hero = attackHero ?? idleHero;
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
     // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
     const frameCount = 4;
     const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
-    const frame = Math.floor(p.animTime * frameRate) % 4;
+    // 무기 시트는 메김 → 당김 → 놓음 → 복귀 순서라 돌리지 않고 한 번만 지나간다 (SWING_MS 320ms ÷ 4)
+    const frame = attackHero ? Math.min(3, Math.floor(p.animTime / 0.085)) : Math.floor(p.animTime * frameRate) % 4;
     const drawHeight = p.radius * 4.7;
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
     ctx.save();
     ctx.translate(p.x, p.y + p.radius);
     // 시트마다 기준 방향이 다르다: idle 시트는 왼쪽(-1), 검격 시트는 4프레임 모두
     // 오른쪽(+1)을 본다. 일괄 -1을 곱하면 검격이 바라보는 방향과 반대로 베어진다.
-    const nativeFacing = attackHero ? 1 : EXPEDITION_NATIVE_FACING;
+    const nativeFacing = EXPEDITION_NATIVE_FACING;   // 무기 시트도 대기처럼 오른쪽을 본다 (prompt: facing right)
     ctx.scale(p.facing * nativeFacing, 1);
     if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
     if (p.anim === "jump" || p.anim === "fall") {
@@ -154,7 +172,8 @@ export function drawStickman(
     // 장착한 원거리 무기 — 같은 변환 안이라 방향·포즈가 함께 적용된다.
     // 손은 스프라이트 높이의 45~55% 지점에 있다. 무기 가운데를 그 높이에 맞추고, 몸통을 덮지
     // 않도록 바깥으로 밀어 낸다 (허리춤에 얼룩처럼 걸쳤던 것을 실측해 고침, 2026-09-28)
-    const wp = getRangedWeapon(world.rangedWeapon);
+    // 무기 시트에는 무기가 그려져 있다 — 그 위에 또 올리면 활이 두 개가 된다
+    const wp = attackHero ? null : getRangedWeapon(world.rangedWeapon);
     if (wp?.complete && wp.naturalWidth > 0) {
       const wh = drawHeight * 0.46;
       const ww = wh * (wp.naturalWidth / wp.naturalHeight);

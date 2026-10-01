@@ -74,6 +74,13 @@ for (const [name, wait] of [["60-volley-draw", 60], ["61-volley-release", 200]])
   await shot(name);
   await sleep(1200);
 }
+// 왼쪽을 보며 일제 사격 — 무기 시트가 방향에 맞게 뒤집히는지
+for (const [name, wait] of [["63-volley-left-draw", 60], ["64-volley-left-release", 200]]) {
+  await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.slowCdMs = 0; w.player.slowActiveMs = 0; w.player.facing = -1; } const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("일제 사격")); b?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await sleep(wait);
+  await shot(name);
+  await sleep(1200);
+}
 // 화살비 — 게이지를 채워 발동
 await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.slashGauge = 100; w.player.slowCdMs = 0; w.player.slowActiveMs = 0; const t = w.arrows.find((x) => !x.active); if (t) { t.active = true; t.warningMs = 0; t.reflected = false; t.boss = false; t.kind = "normal"; t.x = w.player.x + w.player.facing * 40; t.y = w.player.y - 10; t.vx = -w.player.facing * 50; t.vy = 0; t.hitRadius = 8; t.hp = 0; t.maxHp = 0; } } const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("일제 사격")); b?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
 await sleep(240);
