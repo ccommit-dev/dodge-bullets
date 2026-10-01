@@ -527,13 +527,13 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     S.skillUnlocked(S.SKILL_BY_ID.fire, 1) && S.skillUnlocked(S.SKILL_BY_ID.ultimate, 1)
     && !S.skillUnlocked(S.SKILL_BY_ID.bolt, 2) && S.skillUnlocked(S.SKILL_BY_ID.bolt, 3));
 
-  // 7) 무기 탈착 — 진행도에 저장되고, 이상한 값은 기본 무기로 되돌린다
+  // 7) 무기 교체 — 진행도에 저장된다. 맨손은 없다(활만 쓰는 콘텐츠, 2026-10-01): 예전 저장의 "none" 도 장궁으로
   ok("새 진행도는 장궁을 끼고 시작한다", prog.emptyCharacterProgress().expeditionWeapon === "bow");
-  ok("맨손은 그대로, 모르는 무기는 기본으로", (() => {
+  ok("예전 저장의 맨손(none)과 모르는 무기는 장궁으로, 지팡이는 그대로", (() => {
     const none = prog.normalizeCharacterProgress({ ...base, expeditionWeapon: "none" });
     const junk = prog.normalizeCharacterProgress({ ...base, expeditionWeapon: "railgun" });
     const staff = prog.normalizeCharacterProgress({ ...base, expeditionWeapon: "staff" });
-    return none.expeditionWeapon === "none" && junk.expeditionWeapon === "bow" && staff.expeditionWeapon === "staff";
+    return none.expeditionWeapon === "bow" && junk.expeditionWeapon === "bow" && staff.expeditionWeapon === "staff";
   })());
 
   // 8) 출격 적재 — 스탯만 싣고 스킬 레벨을 빠뜨리면 화면은 Lv.10 인데 전투는 조용하다.
@@ -873,30 +873,33 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
   // ── 원정 주인공 시트 기하 (2026-09-28) — 검격 시트가 대기와 다른 규격이면 베는 순간 인물 크기가 튄다
   //    (예전 시트: 인물 높이 71% vs 대기 97% → 검격 때 26% 작아졌다). 프레임 높이와 인물 높이 비를 대기에 맞춘다.
+  // ── 활만 쓴다 (2026-10-01) — 검격·일섬·반사·파쇄는 일제 사격·화살비·되쏘기·격추가 됐다.
+  //    판정(arrows.ts)은 그대로이고 뜻·연출·모델 동작만 바뀌었으므로, 남은 것은 "검이 화면에 안 나온다"를 못 박는 일이다
   {
-    const sharpMod = await import("sharp");
-    const sharp = sharpMod.default;
-    const figureRatios = async (file) => {
-      const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-      const W = info.width, H = info.height, FW = W / 4, out = [];
-      for (let f = 0; f < 4; f += 1) {
-        let y0 = 1e9, y1 = -1;
-        for (let y = 0; y < H; y += 1) for (let x = Math.floor(f * FW); x < Math.floor((f + 1) * FW); x += 1) {
-          if (data[(y * W + x) * 4 + 3] > 30) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
-        }
-        out.push((y1 - y0 + 1) / H);
-      }
-      return { H, ratios: out };
-    };
-    const idle = await figureRatios(join(root, "public/titans/character/base/hero-idle.png"));
-    const atk = await figureRatios(join(root, "public/titans/generated/hero-attack-sheet.png"));
-    ok("검격 시트의 프레임 높이가 대기 시트와 같다 (같은 drawHeight 로 그린다)", atk.H === idle.H, atk.H + " vs " + idle.H);
-    // 찌르는 자세는 웅크려 bbox 가 낮다 — 같은 배율이어도 75~86% 다. 예전 시트(다른 배율)는 평균 69.5% 였다.
-    // 평균 80% 이상 · 프레임마다 72% 이상이면 대기와 같은 배율로 조립된 시트다.
-    const mean = atk.ratios.reduce((p, q) => p + q, 0) / atk.ratios.length;
-    ok("검격 4프레임의 인물 높이가 대기와 같은 배율이다 (평균 ≥ 80% · 각 ≥ 72%, 베는 순간 크기가 안 튄다)",
-      mean >= 0.8 && atk.ratios.every((r) => r >= 0.72),
-      "대기 " + (idle.ratios[0] * 100).toFixed(0) + "% · 검격 " + atk.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
+    const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const files = ["src/App.tsx", "src/game/draw.ts", "src/game/player.ts", "src/game/skills.ts", "src/game/perks.ts", "src/game/chips.ts",
+      "src/game/expeditionOps.ts", "src/game/stages.ts", "src/game/bossPatterns.ts", "src/game/shop.ts", "src/game/SkillPanel.tsx"];
+    const hits = [];
+    for (const f of files) {
+      const t = strip(readFileSync(join(root, f), "utf8"));
+      for (const word of ["검격", "일섬", "반사!", "\"파쇄\"", "베기 창", "검술", "hero-attack-sheet"]) if (t.includes(word)) hits.push(f + ": " + word);
+    }
+    ok("화살 원정 문구·그리기에 검이 없다 (검격·일섬·반사·파쇄·검 시트)", hits.length === 0, hits.slice(0, 5).join(" | "));
+    ok("검 시트 파일을 지웠다 — 쓰지 않는 자산을 게임 자산으로 오판하지 않게", !existsSync(join(root, "public/titans/generated/hero-attack-sheet.png")));
+    ok("화살비·일제 사격·되쏘기·격추가 화면 문구에 있다", (() => {
+      const d = readFileSync(join(root, "src/game/draw.ts"), "utf8"), app = readFileSync(join(root, "src/App.tsx"), "utf8");
+      return d.includes("\"되쏘기!\"") && d.includes("\"격추\"") && d.includes("화살비 준비") && app.includes("일제 사격 Lv.");
+    })());
+    // 무기는 늘 들고 있다 — 장착 중인 무기를 다시 눌러도 맨손이 되지 않는다 (핸들러 소스)
+    const app = readFileSync(join(root, "src/App.tsx"), "utf8");
+    ok("장착 중인 무기를 다시 눌러도 맨손이 되지 않는다", !app.includes("p.expeditionWeapon === id ? \"none\" : id") && app.includes("if (id === \"none\") return p;"));
+    // 일제 사격 연출 — 검 호(arc) 대신 화살 부채꼴. 판정 폭(SWING_ARC)을 그대로 쓴다
+    const draw = readFileSync(join(root, "src/game/draw.ts"), "utf8");
+    ok("일제 사격 연출이 판정 호(SWING_ARC)와 같은 폭으로 화살 부채꼴을 그린다", draw.includes("SWING_ARC * (i + 0.5)) / 5") && !draw.includes("밝은 칼빛 호"));
+    // 모델 — 검 시트를 안 쓰고 대기 시트 하나 위에 무기를 올린다. 시위 당김(drawPhase)이 활·지팡이 둘 다에 걸린다
+    const player = readFileSync(join(root, "src/game/player.ts"), "utf8");
+    ok("주인공은 시트 하나(대기) 위에 무기를 올려 그린다 — 무기를 바꿔도 모델이 바뀌지 않는다",
+      !player.includes("getExpeditionAttackHero") && player.includes("drawPhase") && player.includes("world.rangedWeapon === \"staff\" ? -0.55 : -0.12"));
   }
 
   // ── 상성이 체감된다 (2026-09-29 재검토) — 표에만 있던 상성이 보스가 아니면 아무 효과가 없었다.

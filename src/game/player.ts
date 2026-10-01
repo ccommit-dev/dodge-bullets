@@ -1,6 +1,5 @@
 import type { GameWorld, Player } from "./types";
 import { assetUrl } from "../asset";
-import { SWING_MS } from "./arrows";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -8,7 +7,6 @@ const BASE_RADIUS = 16;
 // 대기 시트가 오른쪽을 보는 원화로 교체됐다(2026-09-08) — 예전 정면/왼쪽 시트는 -1 이었다
 const EXPEDITION_NATIVE_FACING = 1;
 let expeditionHero: HTMLImageElement | null = null;
-let expeditionHeroAttack: HTMLImageElement | null = null;
 
 function getExpeditionHero(): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -29,18 +27,6 @@ function getRangedWeapon(id: string): HTMLImageElement | null {
     rangedWeaponImgs[id] = img;
   }
   return rangedWeaponImgs[id];
-}
-
-function getExpeditionAttackHero(): HTMLImageElement | null {
-  if (typeof Image === "undefined") return null;
-  if (!expeditionHeroAttack) {
-    expeditionHeroAttack = new Image();
-    // 대기 원화와 **같은 인물**이 검을 든 4프레임 (art-gen heroattack, 2026-09-28). 예전 시트는 남색 머리·파란 망토의
-    // 다른 인물이었고 인물 높이도 프레임의 ~71% 라(대기 97%) 베는 순간 26% 작아졌다. 새 시트는 대기와 같은 규격
-    // (프레임 높이 887 · 인물 857 · 바닥 885, 폭 600) — scripts/make-hero-attack-sheet.mjs. verify-systems 가 기하를 대조한다.
-    expeditionHeroAttack.src = assetUrl("titans/generated/hero-attack-sheet.png");
-  }
-  return expeditionHeroAttack;
 }
 
 export function createPlayer(width: number, floorY: number): Player {
@@ -103,8 +89,10 @@ export function drawStickman(
   ctx.fill();
 
   const idleHero = getExpeditionHero();
-  const attackHero = p.anim === "skill" ? getExpeditionAttackHero() : null;
-  const hero = attackHero?.complete && attackHero.naturalWidth > 0 ? attackHero : idleHero;
+  // 검 시트(hero-attack-sheet)는 더 쓰지 않는다 — 활만 쓰는 콘텐츠다 (2026-10-01). 일제 사격은 대기 시트 위에서
+  // 무기를 앞으로 들어 시위를 당기는 포즈로 그린다. 시트가 하나라 무기를 바꿔 끼워도 모델이 바뀌지 않는다
+  const attackHero: HTMLImageElement | null = null;
+  const hero = idleHero;
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
     // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
@@ -118,7 +106,7 @@ export function drawStickman(
     ctx.translate(p.x, p.y + p.radius);
     // 시트마다 기준 방향이 다르다: idle 시트는 왼쪽(-1), 검격 시트는 4프레임 모두
     // 오른쪽(+1)을 본다. 일괄 -1을 곱하면 검격이 바라보는 방향과 반대로 베어진다.
-    const nativeFacing = hero === attackHero ? 1 : EXPEDITION_NATIVE_FACING;
+    const nativeFacing = attackHero ? 1 : EXPEDITION_NATIVE_FACING;
     ctx.scale(p.facing * nativeFacing, 1);
     if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
     if (p.anim === "jump" || p.anim === "fall") {
@@ -135,13 +123,14 @@ export function drawStickman(
       const s = p.landingFxMs / 180;
       ctx.scale(1 + 0.07 * s, 1 - 0.09 * s);
     }
+    // 일제 사격 — 당길 때 몸이 살짝 뒤로(drawPhase), 놓을 때 앞으로 쏠린다(releasePhase). 검을 휘두르던 회전은 뺐다
+    let drawPhase = 0, releasePhase = 0;
     if (p.anim === "skill") {
       const phase = Math.min(1, p.animTime / 0.28);
-      const windup = phase < 0.28 ? phase / 0.28 : 1;
-      const release = phase < 0.28 ? 0 : Math.sin(((phase - 0.28) / 0.72) * Math.PI);
-      ctx.translate(-p.facing * 5 * windup + p.facing * 13 * release, -2 * release);
-      ctx.rotate((-0.08 * windup + 0.16 * release) * p.facing);
-      ctx.scale(1 + release * 0.06, 1 - release * 0.035);
+      drawPhase = phase < 0.28 ? phase / 0.28 : 1;
+      releasePhase = phase < 0.28 ? 0 : Math.sin(((phase - 0.28) / 0.72) * Math.PI);
+      ctx.translate(-p.facing * 3 * drawPhase + p.facing * 6 * releasePhase, -1 * releasePhase);
+      ctx.scale(1 + releasePhase * 0.03, 1 - releasePhase * 0.02);
     }
     if (p.anim === "hit") ctx.globalAlpha = 0.62;
     if (p.dashActiveMs > 0) {
@@ -171,20 +160,39 @@ export function drawStickman(
       const ww = wh * (wp.naturalWidth / wp.naturalHeight);
       // 쏘는 순간 — 무기를 표적 쪽으로 기울이고 뒤로 튕긴다. 시위는 밝은 선으로 (2026-09-29)
       const k = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
-      const hx = drawWidth * 0.30 + ww / 2, hy = -drawHeight * 0.72 + wh / 2;
+      // 일제 사격(수동) — 무기를 몸 앞으로 들어 올리고 시위를 끝까지 당겼다가 놓는다. 활이든 지팡이든
+      // 같은 손 위치에서 움직여, 무기를 바꿔 끼워도 동작이 이어진다 (2026-10-01)
+      const aim = drawPhase;                                       // 0: 옆구리 · 1: 앞으로 든 사격 자세
+      const hx = drawWidth * 0.30 + ww / 2 + aim * drawWidth * 0.22, hy = -drawHeight * 0.72 + wh / 2 - aim * drawHeight * 0.06;
       ctx.save();
       ctx.translate(hx, hy);
-      if (k > 0) {
-        // 표적 각도 — 스프라이트는 facing 으로 이미 뒤집혀 있으므로 x 성분에 facing 을 곱한다
+      // 사격 자세 — 활은 수직으로 세워 들고, 지팡이는 앞으로 기울인다
+      ctx.rotate(aim * (world.rangedWeapon === "staff" ? -0.55 : -0.12));
+      if (k > 0 && aim === 0) {
+        // 자동 사격 — 표적 쪽으로 살짝 기울이고 뒤로 튕긴다 (스프라이트는 facing 으로 뒤집혀 있어 x 에 facing 을 곱한다)
         const a = Math.atan2(Math.sin(world.shotAngle), Math.cos(world.shotAngle) * p.facing);
         ctx.rotate((a + Math.PI / 2) * 0.35 * k);
         ctx.translate(-4 * k, 3 * k);
       }
+      if (releasePhase > 0) ctx.translate(-3 * releasePhase, 0);   // 놓는 순간 반동
       ctx.drawImage(wp, -ww / 2, -wh / 2, ww, wh);
-      if (k > 0) {
-        ctx.globalAlpha = k;
+      // 시위 — 자동 사격은 밝은 선 한 번, 일제 사격은 당긴 만큼 뒤로 물러났다가 놓는다
+      const pull = Math.max(k * 0.35, aim * (1 - releasePhase) * 0.5);
+      if (pull > 0 && world.rangedWeapon === "bow") {
+        ctx.globalAlpha = Math.max(k, aim);
         ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(-ww * 0.1, -wh * 0.42); ctx.lineTo(-ww * 0.35 * (1 - k) - ww * 0.1, 0); ctx.lineTo(-ww * 0.1, wh * 0.42); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-ww * 0.1, -wh * 0.42); ctx.lineTo(-ww * pull - ww * 0.1, 0); ctx.lineTo(-ww * 0.1, wh * 0.42); ctx.stroke();
+        if (aim > 0 && releasePhase === 0) {
+          // 메긴 화살 — 당긴 시위에서 활 앞으로 뻗는다
+          ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(-ww * pull - ww * 0.1, 0); ctx.lineTo(ww * 0.55, 0); ctx.stroke();
+        }
+      } else if (aim > 0 && world.rangedWeapon === "staff") {
+        // 지팡이 — 끝의 수정이 당기는 동안 부풀어 오르다 놓는 순간 터진다
+        const g = ctx.createRadialGradient(0, -wh * 0.42, 1, 0, -wh * 0.42, 8 + aim * 10);
+        g.addColorStop(0, "rgba(240,249,255,.95)"); g.addColorStop(1, "rgba(56,189,248,0)");
+        ctx.globalAlpha = Math.min(1, aim * (1 - releasePhase * 0.6));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -wh * 0.42, 8 + aim * 10, 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
     }
@@ -199,16 +207,7 @@ export function drawStickman(
       ctx.stroke();
     }
 
-    // 베는 동안(SWING_MS)만 — 느려지는 구간에는 칼을 그리지 않는다 (2026-09-21)
-    if (p.slowActiveMs > world.stats.slowDurationMs - SWING_MS) {
-      const slashPhase = Math.min(1, p.animTime / 0.3);
-      ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
-      ctx.lineWidth = 3 + (1 - slashPhase) * 4;
-      ctx.beginPath();
-      const start = p.facing > 0 ? -1.15 : Math.PI - 1.15;
-      ctx.arc(p.x, p.y, world.stats.slowRadius * (0.72 + slashPhase * 0.28), start, start + p.facing * Math.PI * 1.35, p.facing < 0);
-      ctx.stroke();
-    }
+    // 일제 사격의 화살 부채꼴은 draw.ts 가 그린다 (검 호를 대신한다)
     return;
   }
 

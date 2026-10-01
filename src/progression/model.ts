@@ -437,8 +437,8 @@ export function normalizeCharacterProgress(
       const v = Array.isArray(raw.equippedChips) ? raw.equippedChips[i] : null;
       return CHIPS.some((c) => c.id === v) ? (v as ChipId) : null;
     }),
-    // 모르는 값이 저장돼 있어도 맨손으로 떨어지지 않게 — 기본 무기로 되돌린다
-    expeditionWeapon: raw.expeditionWeapon === "none" || RANGED_WEAPONS.some((w) => w.id === raw.expeditionWeapon)
+    // 맨손은 없다 — 활만 쓰는 콘텐츠다. 예전 저장의 "none" 과 모르는 값은 장궁으로 (2026-10-01)
+    expeditionWeapon: RANGED_WEAPONS.some((w) => w.id === raw.expeditionWeapon)
       ? (raw.expeditionWeapon as RangedWeaponId)
       : base.expeditionWeapon,
     towerBestFloor: integer(raw.towerBestFloor, 0, 99999),

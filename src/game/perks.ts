@@ -92,7 +92,7 @@ export const PERKS: PerkDef[] = [
   learn("bolt", "번개화살", "쏘는 순간 여럿을 잇는다"),
 
   // ── 일반 — 무기만 있으면 고를 수 있다
-  { id: "gauge", rarity: "common", label: "일섬 게이지 +35", desc: "일섬이 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
+  { id: "gauge", rarity: "common", label: "화살비 게이지 +35", desc: "화살비가 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
   { id: "heal", rarity: "common", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; } w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
   { id: "shotExtra", rarity: "common", needs: ["basic"], label: "기본 사격 +1발", desc: "한 번에 한 발 더 쏜다", available: armed, apply: (w) => { w.runMods.shotExtra += 1; } },
   { id: "quickdraw", rarity: "common", needs: ["basic"], label: "속사", desc: "모든 화살 재사용 −10%", available: armed, apply: (w) => { w.runMods.cooldownMul *= 0.9; } },
@@ -126,7 +126,7 @@ export const PERKS: PerkDef[] = [
     apply: (w) => { w.runMods.cooldownMul *= 0.8; },
   },
   {
-    id: "chillHunt", rarity: "epic", needs: ["ice", "basic"], label: "서리 사냥", desc: "얼어붙은 화살을 부수면 일섬 게이지를 더 받는다", combo: true,
+    id: "chillHunt", rarity: "epic", needs: ["ice", "basic"], label: "서리 사냥", desc: "얼어붙은 화살을 부수면 화살비 게이지를 더 받는다", combo: true,
     available: (w) => has(w, "ice") && armed(w) && !w.runMods.chillHunt,
     apply: (w) => { w.runMods.chillHunt = true; },
   },

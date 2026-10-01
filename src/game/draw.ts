@@ -1,6 +1,6 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
-import { REFLECT_DIST, SWING_MS } from "./arrows";
+import { REFLECT_DIST, SWING_ARC, SWING_MS } from "./arrows";
 import { ELEMENT_COLOR, type Element } from "./skills";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
@@ -440,7 +440,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
 }
 
 /** 보스 막대의 세로 위치(safeTop 기준) — verify-dodge-hud 가 DOM HUD 와 겹치지 않는지 잰다 */
-export const BOSS_BAR_TOP = 214;
+export const BOSS_BAR_TOP = 270;
 
 /** 캔버스 글자가 DOM HUD 에 가려지지 않는 세로 범위 — drawFrameInner 가 매 프레임 채운다 */
 const labelBounds = { top: 120, bottom: 600, leftColumn: 205, leftExtra: 72 };
@@ -466,7 +466,7 @@ function drawSlashGauge(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   ctx.fillRect(trackerX + 10, trackerY + 14, gw * Math.min(1, world.slashGauge / 100), 7);
   ctx.fillStyle = full ? "#fde68a" : "#e0f2fe";
   ctx.font = "900 10px system-ui";
-  ctx.fillText(full ? "일섬 준비" : `일섬 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
+  ctx.fillText(full ? "화살비 준비" : `화살비 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
   ctx.restore();
 }
 
@@ -537,7 +537,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = "#fecaca";
     ctx.font = "900 11px system-ui";
     ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
-    const captainLabel = world.bossDefeated ? "추격대장 격파" : world.bossSpawned ? `추격대장 · 베기 ${world.bossCutsLeft}` : "추격대장";
+    const captainLabel = world.bossDefeated ? "추격대장 격파" : world.bossSpawned ? `추격대장 · 격추 ${world.bossCutsLeft}` : "추격대장";
     ctx.fillText(captainLabel, width - 100, floorY - 124);
     ctx.restore();
   }
@@ -567,19 +567,34 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
 
   if (world.lastCutMs > 0 && world.lastCut) {
     ctx.save();
-    const label = world.lastCut === "reflect" ? "반사!" : world.lastCut === "ult" ? "일섬" : "파쇄";
+    const label = world.lastCut === "reflect" ? "되쏘기!" : world.lastCut === "ult" ? "화살비" : "격추";
     ctx.globalAlpha = Math.min(1, world.lastCutMs / 300);
     ctx.fillStyle = world.lastCut === "reflect" ? "#fde68a" : world.lastCut === "ult" ? "#f8fafc" : "#67e8f9";
-    ctx.font = `900 ${world.lastCut === "ult" ? 30 : 16}px system-ui`;
+    ctx.font = `900 ${world.lastCut === "ult" ? 34 : 16}px system-ui`;
     ctx.textAlign = "center";
-    ctx.fillText(label, world.player.x, world.player.y - 46);
+    // 화살비는 화면 전체의 사건이라 가운데 위에 — 주인공 머리 위에 두면 "요격 ×N" 과 겹친다 (2026-10-01 캡처)
+    if (world.lastCut === "ult") { ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14; ctx.fillText(label, width * 0.5, height * 0.4); }
+    else ctx.fillText(label, world.player.x, world.player.y - 46);
     ctx.restore();
   }
   if (world.ultFlashMs > 0) {
+    // 화살비 — 섬광 위로 하늘에서 화살이 쏟아진다. 난수 없이 칸마다 위상을 다르게 (연출은 Math.random 을 안 쓴다)
+    const t = 1 - world.ultFlashMs / 600;
     ctx.save();
-    ctx.globalAlpha = Math.min(0.55, world.ultFlashMs / 600 * 0.55);
+    ctx.globalAlpha = Math.min(0.45, (1 - t) * 0.45);
     ctx.fillStyle = "#fef3c7";
     ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = Math.min(1, (1 - t) * 1.6);
+    ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 6;
+    const cols = 11;
+    for (let i = 0; i < cols; i += 1) {
+      const phase = ((i * 7919) % 97) / 97;
+      const x = (i + 0.5) * (width / cols) + Math.sin(i * 1.7) * 9;
+      const y = -40 + (height + 80) * Math.min(1, t * 1.4 + phase * 0.35);
+      ctx.beginPath(); ctx.moveTo(x + 6, y - 42); ctx.lineTo(x, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 4, y - 7); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 6); ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -692,7 +707,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   if (world.bossSpawned && !world.bossDefeated) {
     const barW = Math.min(280, width - world.safeLeft - world.safeRight - 36);
     const barX = (width - barW) * 0.5;
-    // HUD 왼쪽 열(제목·점수·HP·위험도·레벨·진행바) 아래 — 126 에 두면 위험도 줄을 덮는다 (2026-09-29 캡처)
+    // HUD 왼쪽 열(제목·점수·HP·위험도·레벨·진행바)과 가운데 안내 배너(BOSS · 패턴, ~262px) 아래 (2026-09-29 · 10-01 캡처)
     const barY = world.safeTop + BOSS_BAR_TOP;
     const ratio = world.bossMaxCuts > 0 ? world.bossCutsLeft / world.bossMaxCuts : 0;
     ctx.save();
@@ -706,7 +721,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = "#fff";
     ctx.font = "900 11px system-ui";
     ctx.textAlign = "center";
-    ctx.fillText(`보스 화살 · 남은 검격 ${world.bossCutsLeft}/${world.bossMaxCuts}`, width * 0.5, barY + 17);
+    ctx.fillText(`보스 화살 · 남은 격추 ${world.bossCutsLeft}/${world.bossMaxCuts}`, width * 0.5, barY + 17);
     ctx.restore();
   }
 
@@ -723,18 +738,26 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const swinging = swingLeft > 0;
     ctx.save();
     if (swinging) {
-      // 베는 중 — 밝은 칼빛 호가 빠르게 훑고 지나간다
+      // 일제 사격 — 시위를 놓는 순간 화살 다섯 발이 앞쪽 부채꼴로 퍼져 나간다 (판정 호 SWING_ARC 와 같은 폭)
       const t = 1 - swingLeft / SWING_MS;
-      ctx.globalAlpha = 0.95 - t * 0.45;
-      ctx.strokeStyle = "#a5f3fc";
-      ctx.lineWidth = 9 - t * 4;
-      ctx.beginPath();
       const facing = world.player.facing;
-      const start = facing > 0 ? -1.25 : Math.PI + 1.25;
-      const end = facing > 0 ? 1.3 : Math.PI - 1.3;
-      ctx.arc(world.player.x, world.player.y, world.stats.slowRadius * (0.62 + t * 0.42), start, end, facing < 0);
-      ctx.stroke();
-      // 반사 거리 링 — 이 안에서 베면 화살이 궁수에게 되돌아간다. 어디를 노려야 하는지 보여 준다
+      const px = world.player.x, py = world.player.y - 10;
+      const reach = world.stats.slowRadius * (0.35 + t * 0.75);
+      const half = SWING_ARC / 2;
+      const sprite = arrowImg("basic");
+      ctx.globalAlpha = 0.95 - t * 0.5;
+      for (let i = 0; i < 5; i += 1) {
+        const ang = (facing > 0 ? 0 : Math.PI) + facing * (-half + (SWING_ARC * (i + 0.5)) / 5) * 0.82;
+        const r = reach * (0.86 + ((i * 37) % 7) * 0.02);
+        const x = px + Math.cos(ang) * r, y = py + Math.sin(ang) * r;
+        ctx.strokeStyle = "#e0f2fe"; ctx.lineWidth = 2; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(px + Math.cos(ang) * r * 0.45, py + Math.sin(ang) * r * 0.45); ctx.lineTo(x, y); ctx.stroke();
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+        if (sprite) ctx.drawImage(sprite, -16, -5, 32, 10);
+        else { ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(10, 0); ctx.stroke(); }
+        ctx.restore();
+      }
+      // 되쏘기 거리 링 — 이 안에서 쏘면 화살이 궁수에게 되돌아간다. 어디를 노려야 하는지 보여 준다
       ctx.globalAlpha = 0.75 - t * 0.3;
       ctx.strokeStyle = "#fde68a";
       ctx.lineWidth = 2;

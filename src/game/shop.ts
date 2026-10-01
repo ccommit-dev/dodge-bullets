@@ -34,9 +34,9 @@ export const SHOP_META: Record<
     costStep: 45,
   },
   slowField: {
-    name: "반격 검술",
+    name: "일제 사격",
     category: "생존 장비",
-    desc: "검격 범위·재사용 속도·분열 화살 약화율·불규칙 궤도가 단계별 강화",
+    desc: "일제 사격 범위·재사용 속도·분열 화살 약화율·불규칙 궤도가 단계별 강화",
     baseCost: 90,
     costStep: 60,
   },
