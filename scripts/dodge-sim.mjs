@@ -178,8 +178,11 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
     reached = stageIndex + 1;
   }
   Math.random = realRandom;
-  return { seed, reached, hits, acquired: Object.keys(w.runSkills).filter((k) => w.runSkills[k]), runLevel: w.runLevel };
+  return { seed, reached, hits, acquired: Object.keys(w.runSkills).filter((k) => w.runSkills[k]), runLevel: w.runLevel, ults: w.ultCount, fullHp: w.player.hp >= w.player.maxHp };
 }
+
+/** 주간 시뮬(dodge-week-sim)이 쓰는 모듈 묶음 — 번들에서 꺼낸 실제 소스 */
+export const api = { SK, CH, W, shop, P, stages };
 
 /** 계정 단계별 도달 분포 — [S1 에서 끝, S2 에서 끝, S3, S4, 전부 클리어] */
 export function runCurve(seeds = 20) {

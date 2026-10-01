@@ -109,13 +109,21 @@ export type ExpeditionSkillDef = {
  * 강화 비용 — 골드 + **그 스킬의 조각**. 참고 게임의 진행바 `126/225` 가 이것이다:
  * 스킬마다 제 조각을 모아 제 레벨을 올린다. 공용 재화로 두면 모든 카드의 진행바가 같은 숫자가 된다.
  */
-export function skillCost(def: ExpeditionSkillDef, level: number): { gold: number; shards: number } {
+export function skillCost(def: ExpeditionSkillDef, level: number): { gold: number; shards: number; seals: number } {
   const n = Math.max(1, level);
+  // **학습(Lv1)은 인장으로** — 조각은 그 스킬을 쓴 판에서만 나오고 습득 카드는 Lv1 이상이어야 뜨므로,
+  // Lv1 에 조각을 요구하면 새 계정은 두 번째 스킬을 영원히 못 배운다 (주간 시뮬 실측, 2026-10-01).
+  // 인장은 스테이지를 깰 때마다 나오니 "다음 스테이지를 깨면 다음 스킬을 배운다"는 리듬이 된다
+  if (n === 1) return { gold: def.goldBase, shards: 0, seals: LEARN_SEALS[def.id] };
   return {
     gold: Math.round(def.goldBase * Math.pow(1.55, n - 1)),
     shards: Math.round(def.sealBase * Math.pow(1.4, n - 1)),
+    seals: 0,
   };
 }
+
+/** 학습 인장 — 해금 스테이지 순서대로 비싸진다. 하루 서너 판이면 인장 15~25 가 모인다 */
+export const LEARN_SEALS: Record<ExpeditionSkillId, number> = { fire: 0, ultimate: 6, water: 8, ice: 10, earth: 10, bolt: 14 };
 
 export type SkillShards = Record<ExpeditionSkillId, number>;
 

@@ -60,8 +60,8 @@ const ORDER = ["water", "fire", "earth", "ice", "bolt", "ultimate"];
 /** 아직 안 열린 슬롯에 표시할 해금 조건 */
 const CHIP_SLOT_LABEL = ["", "2단계", "4단계"];
 
-function canAfford(gold: number, have: number, cost: { gold: number; shards: number }): boolean {
-  return gold >= cost.gold && have >= cost.shards;
+function canAfford(gold: number, have: number, seals: number, cost: { gold: number; shards: number; seals: number }): boolean {
+  return gold >= cost.gold && have >= cost.shards && seals >= cost.seals;
 }
 
 export function SkillPanel({
@@ -268,7 +268,7 @@ export function SkillPanel({
           const maxed = lv >= SKILL_MAX_LEVEL;
           const cost = skillCost(def, lv + 1);
           const have = shards[def.id] ?? 0;
-          const ready = unlocked && !maxed && canAfford(gold, have, cost);
+          const ready = unlocked && !maxed && canAfford(gold, have, seals, cost);
           return (
             <button
               key={def.id}
@@ -283,10 +283,10 @@ export function SkillPanel({
                 {unlocked ? (
                   <>
                     <em>{maxed ? "MAX" : `Level ${lv}`}</em>
-                    {/* 진행바는 **이 스킬의 조각** 보유량 / 다음 레벨 필요량 — 참고 화면의 126/225 */}
+                    {/* 진행바는 **이 스킬의 조각** 보유량 / 다음 레벨 필요량 — 참고 화면의 126/225. Lv0 은 학습(인장) */}
                     <i className="exp-skill-bar">
-                      <b style={{ width: `${maxed ? 100 : Math.min(100, (have / Math.max(1, cost.shards)) * 100)}%` }} />
-                      <small>{maxed ? "최대 레벨" : `${have}/${cost.shards}`}</small>
+                      <b style={{ width: `${maxed ? 100 : lv === 0 ? Math.min(100, (seals / Math.max(1, cost.seals)) * 100) : Math.min(100, (have / Math.max(1, cost.shards)) * 100)}%` }} />
+                      <small>{maxed ? "최대 레벨" : lv === 0 ? `학습 · 인장 ${Math.min(seals, cost.seals)}/${cost.seals}` : `${have}/${cost.shards}`}</small>
                     </i>
                   </>
                 ) : (
@@ -307,7 +307,7 @@ export function SkillPanel({
         const maxed = lv >= SKILL_MAX_LEVEL;
         const cost = skillCost(open, lv + 1);
         const have = shards[open.id] ?? 0;
-        const afford = canAfford(gold, have, cost);
+        const afford = canAfford(gold, have, seals, cost);
         return (
           <div className="exp-skill-sheet" role="dialog" aria-label={`${open.name} 상세`}>
             <div className="exp-skill-sheet-inner">
@@ -371,11 +371,19 @@ export function SkillPanel({
                   <em>코인</em>
                   {maxed ? "—" : `${gold.toLocaleString()}/${cost.gold.toLocaleString()}`}
                 </span>
-                <span className={have >= cost.shards ? "" : "short"}>
-                  <img src={iconOf(open)} alt="" aria-hidden="true" />
-                  <em>{open.name} 조각</em>
-                  {maxed ? "—" : `${have}/${cost.shards}`}
-                </span>
+                {lv === 0 ? (
+                  // 학습 — 조각이 아니라 원정 인장. 조각은 이 스킬을 쓴 판에서 나오므로 배우기 전엔 없다
+                  <span className={seals >= cost.seals ? "" : "short"}>
+                    <em>원정 인장</em>
+                    {`${seals}/${cost.seals}`}
+                  </span>
+                ) : (
+                  <span className={have >= cost.shards ? "" : "short"}>
+                    <img src={iconOf(open)} alt="" aria-hidden="true" />
+                    <em>{open.name} 조각</em>
+                    {maxed ? "—" : `${have}/${cost.shards}`}
+                  </span>
+                )}
               </div>
               <button
                 type="button"
@@ -383,7 +391,7 @@ export function SkillPanel({
                 disabled={maxed || !afford}
                 onClick={() => onUpgrade(open.id)}
               >
-                {maxed ? "최대 레벨" : afford ? "강화" : "재료 부족"}
+                {maxed ? "최대 레벨" : afford ? (lv === 0 ? "학습" : "강화") : "재료 부족"}
               </button>
             </div>
           </div>
