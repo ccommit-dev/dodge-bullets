@@ -243,9 +243,10 @@ export function SkillPanel({
       {/* 기본 사격 — 무기만 있으면 항상 나간다. 스킬이 없어도 런 중 카드가 열린다는 것을 알려 준다 (2026-09-29) */}
       {weapon !== "none" && (
         <div className="exp-basic-row">
-          <img src={assetUrl("dodge/skills/basic.png")} alt="" aria-hidden="true" />
+          {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
+          <img src={assetUrl(`dodge/weapons/icon-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
-            <b>기본 사격 <i>피해 1 · 1.5초마다 1발 · 보스는 못 깎음</i></b>
+            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} <i>피해 1 · 1.5초마다 1발 · 보스는 못 깎음</i></b>
             <em>런 중 열리는 카드 {perksForBasicOnly().length}장 — 피해·발수·속사·관통·진화 (원소 전환은 속성 습득 후)</em>
           </span>
         </div>

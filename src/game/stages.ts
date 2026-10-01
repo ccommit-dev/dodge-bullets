@@ -27,7 +27,7 @@ export const STAGES: StageDef[] = [
     baseReward: 370,
     speedMul: 0.86,
     spawnMul: 0.78,
-    intro: "장착한 활이 알아서 화살을 요격한다 — 남은 화살은 직접 베어라. 떨어진 결정이 대장간 강화석이 된다",
+    intro: "장착한 활이 알아서 화살을 요격한다 — 남은 화살은 일제 사격으로 떨궈라. 떨어진 결정이 대장간 강화석이 된다",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },
@@ -75,7 +75,7 @@ export const STAGES: StageDef[] = [
     baseReward: 1_220,
     speedMul: 1.1,
     spawnMul: 1.12,
-    intro: "추격대장이 성문 앞에서 활을 겨눈다 — 대장의 화살을 베어 떨어뜨리면 활시위(대장간 재료)를 얻는다",
+    intro: "추격대장이 성문 앞에서 활을 겨눈다 — 대장의 화살을 격추하면 활시위(대장간 재료)를 얻는다",
     platforms,
     patterns: [
       { kind: "aimed", atMs: 0, durationMs: 9_000, spawnMs: 430, speed: 430 },
