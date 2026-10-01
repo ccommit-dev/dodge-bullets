@@ -158,7 +158,9 @@ export function autoSkillOrder(): TitanSkillId[] {
 /** 프리셋 — 슬롯별 후보 순서. 학습한 것 중 첫 번째가 장착된다 */
 export type SkillPreset = { id: string; name: string; desc: string; picks: Record<TitanSkillSlot, TitanSkillId[]> };
 export const SKILL_PRESETS: SkillPreset[] = [
-  { id: "balance", name: "균형형", desc: "탭·동료 고루 강화", picks: { starter: ["pierce", "strike", "emberCut", "frostEdge"], linkA: ["crit", "waterStep", "stoneGuard", "galeChain"], linkB: ["clone", "thunderLink", "bloodMoon", "dragonBreath"], finisher: ["meteor", "warcry", "voidFinish", "tidalBurst"], passive: ["steel", "focus", "elementalMastery", "guardianSoul"] } },
-  { id: "burst", name: "탭 폭발형", desc: "탭 연타 극대화", picks: { starter: ["pierce", "emberCut", "strike", "frostEdge"], linkA: ["waterStep", "crit", "galeChain", "stoneGuard"], linkB: ["bloodMoon", "clone", "dragonBreath", "thunderLink"], finisher: ["voidFinish", "meteor", "warcry", "tidalBurst"], passive: ["focus", "steel", "elementalMastery", "guardianSoul"] } },
-  { id: "party", name: "원정대형", desc: "동료 DPS와 보스 시간", picks: { starter: ["frostEdge", "pierce", "emberCut", "strike"], linkA: ["stoneGuard", "galeChain", "crit", "waterStep"], linkB: ["thunderLink", "dragonBreath", "clone", "bloodMoon"], finisher: ["warcry", "tidalBurst", "meteor", "voidFinish"], passive: ["elementalMastery", "guardianSoul", "steel", "focus"] } },
+  // 은퇴 스킬(관통 찌르기·수면 보법·질풍 연계·혈월 난무·용염 숨결·별빛 처형·해일 폭발·검심 집중)은 뺐다 (2026-10-01)
+  { id: "balance", name: "균형형", desc: "탭·동료 고루 강화", picks: { starter: ["strike", "emberCut", "frostEdge"], linkA: ["crit", "stoneGuard"], linkB: ["clone", "thunderLink"], finisher: ["meteor", "voidFinish"], passive: ["steel", "elementalMastery", "guardianSoul"] } },
+  { id: "burst", name: "탭 폭발형", desc: "탭 연타 극대화", picks: { starter: ["emberCut", "strike", "frostEdge"], linkA: ["crit", "stoneGuard"], linkB: ["clone", "thunderLink"], finisher: ["voidFinish", "meteor"], passive: ["steel", "guardianSoul", "elementalMastery"] } },
+  { id: "party", name: "원정대형", desc: "동료 DPS와 보스 시간", picks: { starter: ["frostEdge", "strike", "emberCut"], linkA: ["stoneGuard", "crit"], linkB: ["thunderLink", "clone"], finisher: ["meteor", "voidFinish"], passive: ["elementalMastery", "guardianSoul", "steel"] } },
+
 ];

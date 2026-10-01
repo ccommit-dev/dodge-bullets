@@ -58,7 +58,8 @@ r = await page.evaluate(() => ({
   pity: document.querySelector(".gacha-level span")?.textContent,
 }));
 r.roleChips = roleChips;
-ok("뽑기 시트 · 픽업 = 다음 동료(테라, 지역3 상한 15)", r.panel && r.pickups.includes("ally-terra"), r.pickups.join("|"));
+// 테라 은퇴(2026-10-01) — 지역3 상한(15) 안에 다음 해금이 없어 픽업이 비는 것이 맞다 (gachaPool 과 같은 답)
+ok("뽑기 시트 · 픽업 없음 (지역3 상한 15 안에 다음 해금이 없다)", r.panel && r.pickups.length === 0, r.pickups.join("|"));
 ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
@@ -111,13 +112,13 @@ r = await page.evaluate(() => ({
   effects: [...document.querySelectorAll(".skill-effect")].map((e) => e.textContent),
   presets: [...document.querySelectorAll(".preset-row button b")].map((b) => b.textContent),
 }));
-ok("슬롯 탭 5개 · 시동기 탭에 카드 4장", r.slotTabs.length === 5 && r.cards === 4, `${r.slotTabs.join("/")} cards=${r.cards}`);
+ok("슬롯 탭 5개 · 시동기 탭에 카드 3장 (기본·화상·빙결)", r.slotTabs.length === 5 && r.cards === 3, `${r.slotTabs.join("/")} cards=${r.cards}`);
 ok("카드에 효과 수치(탭 ×N · 쿨)", r.effects.every((e) => /탭 ×\d+/.test(e) && /쿨 \d+초/.test(e)), r.effects.join(" | "));
 ok("프리셋 3종 (균형형·탭 폭발형·원정대형)", r.presets.join() === "균형형,탭 폭발형,원정대형", r.presets.join());
 await clickText(".skill-slot-tabs button", "패시브");
 await sleep(300);
 r = await page.evaluate(() => [...document.querySelectorAll(".skill-effect")].map((e) => e.textContent));
-ok("패시브 4종 효과 수치 표기", r.length === 4 && r.some((e) => /탭 피해 \+/.test(e)) && r.some((e) => /보스 제한시간 \+/.test(e)), r.join(" | "));
+ok("패시브 3종 효과 수치 표기", r.length === 3 && r.some((e) => /탭 피해 \+/.test(e)) && r.some((e) => /보스 제한시간 \+/.test(e)), r.join(" | "));
 // 패시브 학습(강철 호흡) → 학습 후 장착 상태
 await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /강철 호흡/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
 await sleep(500);

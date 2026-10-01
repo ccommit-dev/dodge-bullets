@@ -92,7 +92,7 @@ ok("B 보스 처치 3단계(경직 → 균열 → 붕괴+골드 분출)가 순�
 
 // ── C. 스킬 컷인 + 버프 이펙트 레이어 ──
 await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, beatSkills: { kick: 5, hat: 5, snare: 5, fire: 5, throat: 5 } },
-  { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 9, leon: 6 }, skillInventory: { learned: ["emberCut", "crit", "thunderLink", "warcry"], levels: { emberCut: 1, crit: 1, thunderLink: 1, warcry: 1 }, equipped: { starter: "emberCut", linkA: "crit", linkB: "thunderLink", finisher: "warcry" }, skillCores: 0 }, lastActiveAt: now });
+  { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 9, leon: 6 }, skillInventory: { learned: ["emberCut", "crit", "thunderLink", "meteor"], levels: { emberCut: 1, crit: 1, thunderLink: 1, meteor: 1 }, equipped: { starter: "emberCut", linkA: "crit", linkB: "thunderLink", finisher: "meteor" }, skillCores: 0 }, lastActiveAt: now });
 await sleep(1500);
 const cast = async (name) => { await page.evaluate((n) => { [...document.querySelectorAll(".titans-skill-dock .titans-skill")].find((b) => (b.textContent ?? "").includes(n) || (b.getAttribute("title") ?? "").includes(n) || (b.getAttribute("aria-label") ?? "").includes(n))?.click(); }, name); await sleep(150); };
 await cast("잔불");
@@ -104,7 +104,7 @@ ok("C 연계 컷인(마법진) + 영웅 치명 오라", /cutin-linkA/.test(c2.cu
 await cast("뇌광");
 const c3 = await page.evaluate(() => ({ inspired: !!document.querySelector(".titans-allies.party-inspired"), ring: getComputedStyle(document.querySelector(".titans-allies.party-inspired .titan-ally-art") ?? document.body, "::after").content }));
 ok("C 고무 버프 → 동료 발밑 금색 링", c3.inspired && c3.ring !== "none", JSON.stringify(c3));
-await cast("별빛");
+await cast("유성");
 const c4 = await page.evaluate(() => ({ cutin: document.querySelector(".skill-cutin")?.className ?? "", flash: !!document.querySelector(".cutin-flash") }));
 ok("C 마무리 컷인(플래시)", /cutin-finisher/.test(c4.cutin) && c4.flash, JSON.stringify(c4));
 

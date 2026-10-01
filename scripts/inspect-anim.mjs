@@ -28,7 +28,7 @@ const progress = {
   attendanceStreak: 6, idleClaimedAt: now, lastContent: "titans", updatedAt: now,
   onboardingStep: 4,
   // 검사 대상 6인 — 문제 후보(luna·volt·얼터 2종) 포함
-  partyIds: ["mia", "garen", "luna", "volt", "mia_dark", "sera_light"],
+  partyIds: ["mia", "garen", "luna", "volt", "pyro", "marina"],
   partyCap: 6,
   allyStars: { mia: 1, leon: 1, sera: 1, garen: 1, ari: 1, nox: 1, luna: 1, volt: 1, mia_dark: 1, sera_light: 1 },
 };
@@ -39,7 +39,7 @@ const titans = {
     learned: ["strike"], levels: { strike: 4, crit: 0, clone: 0, warcry: 0, steel: 0 },
     equipped: { starter: "strike" }, skillCores: 3,
   },
-  heroes: { mia: 24, leon: 18, sera: 12, garen: 6, ari: 2, nox: 1, luna: 3, volt: 3, mia_dark: 3, sera_light: 3 },
+  heroes: { mia: 24, leon: 18, sera: 12, garen: 6, ari: 2, nox: 1, luna: 3, volt: 3, pyro: 3, marina: 3 },
   totalKills: 4820, totalTaps: 1200, autoSkill: false, battleSpeed: 1, lastActiveAt: now,
 };
 
@@ -120,7 +120,7 @@ await page.evaluate(() => {
   document.querySelectorAll(".titans-allies .ally-swing").forEach((el) => el.classList.remove("is-attacking"));
 });
 await freezeAt(0);
-const ids = ["mia", "garen", "luna", "volt", "mia_dark", "sera_light"];
+const ids = ["mia", "garen", "luna", "volt", "pyro", "marina"];
 for (const id of ids) {
   await page.evaluate((target) => {
     document.querySelectorAll(".titan-ally-art").forEach((el) => {
