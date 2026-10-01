@@ -31,6 +31,7 @@ import {
   type TitansSave,
 } from "./titans/model";
 import { AllyArt, MonsterArt, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
+import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
@@ -234,6 +235,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
+  // 지갑 숫자는 굴러간다 — 뚝 바뀌면 웹 같다 (2026-10-01)
+  const goldShown = useTween(save.gold);
+  const gemsShown = useTween(redGems);
   const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
   // 하한 2 — 기본 스킬(초승 검격)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
@@ -2114,8 +2118,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
         </button>
         <div className="titans-wallet">
-          <span><CurrencyIcon kind="gold" /><strong>{formatGold(save.gold)}</strong></span>
-          <span title={qaGemsEnabled() ? "테스트 단계 · 보석 무제한" : undefined}><CurrencyIcon kind="gem" /><strong>{qaGemsEnabled() ? "∞" : formatGold(redGems)}</strong></span>
+          <span><CurrencyIcon kind="gold" /><strong>{formatGold(goldShown)}</strong></span>
+          <span title={qaGemsEnabled() ? "테스트 단계 · 보석 무제한" : undefined}><CurrencyIcon kind="gem" /><strong>{qaGemsEnabled() ? "∞" : formatGold(gemsShown)}</strong></span>
         </div>
       </header>
 

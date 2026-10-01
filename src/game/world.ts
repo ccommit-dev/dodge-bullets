@@ -94,6 +94,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     barrierBreaks: 0,
     barrierHits: 0,
     barrierBreachDamage: 0,
+    hitStopMs: 0,
     runSkills: {},
     collectionMul: 1,
     affinityPop: null,
@@ -231,6 +232,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   resetArrows(world);
   resetSkillShots(world);
   resetBarrier(world);
+  world.hitStopMs = 0;
   // 카드는 런 단위 — 새 런에서만 비운다 (스테이지 경계에서는 유지)
   world.runMods = emptyRunMods();
   world.runSkills = {};   // 습득은 런 단위 — 스테이지 경계에서는 유지된다
@@ -266,6 +268,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   resetArrows(world);
   resetSkillShots(world);
   resetBarrier(world);
+  world.hitStopMs = 0;
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
   applyStageLayout(world);

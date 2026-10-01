@@ -344,6 +344,8 @@ export type GameWorld = {
   barrierHits: number;
   /** 이번 프레임 붕괴로 입을 성문 피해 — updateArrows 끝에서 피격에 합쳐진다 */
   barrierBreachDamage: number;
+  /** 히트스톱 남은 시간(ms) — App 루프가 실시간으로 줄이며 그동안 게임 시간을 1/10 로 흘린다. 시뮬은 무시한다 (2026-10-01) */
+  hitStopMs: number;
   boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
   skillLevels: ExpeditionSkillLevels;

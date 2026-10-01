@@ -3,6 +3,8 @@ import { QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progr
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import "./App.css";
 import "./idle.css";
+import "./weight.css";
+import { haptic } from "./ui/haptics";
 import { assetUrl } from "./asset";
 // 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
 const BeatGame = lazy(() => import("./BeatGame").then((m) => ({ default: m.BeatGame })));
@@ -225,6 +227,8 @@ function App() {
   /** 효과음 — 로직이 센 값(world.sfx)과 마지막으로 본 값을 비교해 여기서 낸다 */
   const sfxSeenRef = useRef({ shot: 0, hit: 0, boom: 0, freeze: 0, zap: 0, thud: 0, learn: 0 });
   const shotSfxTsRef = useRef(0);
+  /** 방어막 붕괴 햅틱 — 마지막으로 본 붕괴 수 */
+  const breachSeenRef = useRef(0);
   const [score, setScore] = useState(0);
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -596,8 +600,12 @@ function App() {
           tutorialRef.current = false;
           setTutorialActive(false);
         }
-        const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05) * (tutorialSlow ? 0.45 : speedRef.current);
+        const rawMs = Math.min(ts - lastTsRef.current, 50);
+        let dtSec = (rawMs / 1000) * (tutorialSlow ? 0.45 : speedRef.current);
         lastTsRef.current = ts;
+        // 히트스톱 — 보스 격추·방어막 붕괴·화살비 순간 세계가 한 박자 멈춘다 (실시간 기준이라 시뮬엔 없다, 2026-10-01)
+        if (world.hitStopMs > 0) { world.hitStopMs = Math.max(0, world.hitStopMs - rawMs); dtSec *= 0.1; }
+        if (world.barrierBreaks !== breachSeenRef.current) { breachSeenRef.current = world.barrierBreaks; if (world.barrierBreaks > 0) haptic("heavy"); }
 
         // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
         if (import.meta.env.DEV && qaGodmodeRef.current && stateRef.current === "playing") world.player.hp = world.player.maxHp;
@@ -699,10 +707,12 @@ function App() {
 
         if (event.type === "hit" && stateRef.current === "playing") {
           sound.playHit();
+          haptic("hit");
         }
 
         // 쓰러지는 동작(0.5초)이 보이게 — 전에는 죽는 프레임에 바로 결과 화면이 떠서 주인공이 선 채로 멈췄다 (2026-10-01)
         if (event.type === "dead" && stateRef.current === "playing" && !dyingRef.current) {
+          haptic("fail");
           dyingRef.current = true;
           clearKeys(inputRef.current);
           setPointer(inputRef.current, false);
@@ -736,6 +746,7 @@ function App() {
         if (event.type === "clear" && stateRef.current === "playing") {
           sound.stopBgm();
           sound.playClear();
+          haptic("success");
           const stage = getStage(world.stageIndex);
           const reward =
             computeClearReward(
