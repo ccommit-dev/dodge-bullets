@@ -90,15 +90,17 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   const boss = w.arrows.find((x) => x.active && x.boss);
   ok("보스 화살이 떴다 (스테이지 58%)", !!boss && w.bossSpawned);
   let minY = 1e9, maxY = -1e9, salvo = 0;
-  for (let f = 0; f < 60 * 8 && boss && boss.active; f += 1) {
+  // 기본 사격이 0.55초가 된 뒤(방어막 모델) 보스가 8초 안에 격파되기도 한다 — 격파되면 풀 객체가 다른 몬스터로 재사용되므로 그 뒤는 보지 않는다
+  for (let f = 0; f < 60 * 8 && boss && boss.active && !w.bossDefeated; f += 1) {
     world.updateWorld(w, 1 / 60, true, input.createInputState());
     w.player.hp = w.player.maxHp;
+    if (w.bossDefeated) break;
     minY = Math.min(minY, boss.y); maxY = Math.max(maxY, boss.y);
     for (const x of w.arrows) if (x.active && !x.boss && x.telegraph === "sniper" && x.y < boss.y + 80) salvo += 1;   // 보스 바로 아래서 막 나온 것
   }
   ok("보스는 화면 위쪽 띠(성문 아래)에 머문다 — 8초 동안 플레이어 높이로 내려오지 않는다", boss && maxY < w.player.y - 200 && minY > w.safeTop, `y ${minY.toFixed(0)}~${maxY.toFixed(0)} · 플레이어 ${w.player.y.toFixed(0)}`);
   ok("보스가 아래로 조준 화살을 쏜다 (8초 동안 1발 이상)", salvo > 0, String(salvo));
-  ok("기본 사격만으로 보스가 깎인다 (8초 안에 격추 수가 줄거나 격파)", !boss || !boss.active || boss.bossCutsLeft < boss.bossMaxCuts, boss ? `${boss.bossCutsLeft}/${boss.bossMaxCuts}` : "격파");
+  ok("기본 사격만으로 보스가 깎인다 (8초 안에 격추 수가 줄거나 격파)", w.bossDefeated || !boss || !boss.active || boss.bossCutsLeft < boss.bossMaxCuts, w.bossDefeated ? "격파" : boss ? `${boss.bossCutsLeft}/${boss.bossMaxCuts}` : "없음");
 }
 
 // ── 성문 방어막 (2026-10-01, 아웃로 디펜스) — 몬스터는 방어막에 멈춰 HP 를 깎고, 붕괴하면 성문 피해 1 · 붙은 몬스터 소멸 · 방어막 복구 ──
