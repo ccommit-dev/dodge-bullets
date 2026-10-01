@@ -53,7 +53,7 @@ export function weaponCooldownMul(weapon: RangedWeaponId, family: SkillFamily): 
 /* ────────────────── 기본 사격 ────────────────── */
 
 /** 활/지팡이만 끼면 나가는 기본 화살 — 스킬이 아니라 무기의 것이다 */
-export const BASIC_SHOT_COOLDOWN = 1.5;
+export const BASIC_SHOT_COOLDOWN = 0.55;   // 1.5 → 0.55 (2026-10-01 방어막): 할 일이 피하기에서 떨구기로 — 활이 쉴 새 없이 나간다
 export const BASIC_SHOT_SPEED = 720;
 
 /* ────────────────── 속성 ────────────────── */

@@ -27,7 +27,7 @@ export const STAGES: StageDef[] = [
     baseReward: 370,
     speedMul: 0.86,
     spawnMul: 0.78,
-    intro: "활이 알아서 몬스터를 쏜다 — 내려오는 자리만 피해라. 떨어진 결정이 대장간 강화석이 된다",
+    intro: "활이 알아서 몬스터를 쏜다 — 방어막에 닿기 전에 떨구고, 새는 놈은 옆으로 피해라. 떨어진 결정이 대장간 강화석이 된다",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },
@@ -42,7 +42,7 @@ export const STAGES: StageDef[] = [
     durationMs: 38_000,
     baseReward: 580,
     speedMul: 0.92,   // 0.94 → 0.92 (2026-10-01): 좌우 이동만 남은 뒤 S2 봇 피격 1.6 → 게이트 1.5 안으로
-    spawnMul: 0.9,
+    spawnMul: 0.7,    // 0.9 → 0.7 (2026-10-01 방어막): 오우거 두드림에 S2 붕괴 2회(피격 2.0) → 1.0, 게이트 1.5 안으로
     intro: "그림자 늑대는 붉은 선이 사라지는 순간 돌진한다 — 결정을 모으며 기습대를 따돌려라",
     platforms,
     patterns: [
