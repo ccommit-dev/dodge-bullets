@@ -1,9 +1,9 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
-import { cutArrow } from "./arrows";
+import { cutArrow, TUNING } from "./arrows";
 import {
   arrowHpFor, BASIC_DAMAGE,
-  BASIC_SHOT_COOLDOWN, BASIC_SHOT_SPEED,
+  BASIC_SHOT_SPEED,
   boltCooldown, boltDamage, boltPower, boltTargets,
   earthCooldown, earthDamage, earthPower, earthRadius,
   fireCooldown, fireDamage, firePower, fireRadius,
@@ -308,7 +308,7 @@ export function skillCooldown(world: GameWorld, id: Exclude<ExpeditionSkillId, "
 
 /** 기본 사격 재사용(초) — 카드·칩·화살통이 줄인다 */
 export function basicCooldown(world: GameWorld): number {
-  return BASIC_SHOT_COOLDOWN * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
+  return TUNING.basicCooldown * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
     * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1);
 }
 

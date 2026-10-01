@@ -2,6 +2,7 @@ import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, type Element } from "./skills";
 import { spiritPos } from "./skillShots";
+import { BARRIER_BREACH_MS, barrierY } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
@@ -313,7 +314,9 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.shadowColor = "#f59e0b"; ctx.shadowBlur = 10;
   }
   if (a.chilledMs > 0) { ctx.filter = "saturate(.4) brightness(1.2)"; }
-  ctx.translate(a.x, a.y + walk * 2);
+  // 방어막에 붙었으면 아래로 찧는 동작 — 들썩임 대신 내리찍기
+  const lunge = a.atBarrier ? Math.max(0, Math.sin(t * 7 + a.x * 0.1)) * 8 : 0;
+  ctx.translate(a.x, a.y + walk * 2 + lunge);
   ctx.scale(facing, 1);
   // 걷기 — 가로 폭이 살짝 벌어졌다 오므라든다 (슬라임은 더 출렁인다)
   const squash = (a.kind === "normal" ? 0.08 : 0.035) * walk;
@@ -335,6 +338,49 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.restore();
   }
   void tx; void ty;
+}
+
+/** 성문 방어막 — 주인공 머리 위 띠. 색은 남은 HP(청록 → 호박 → 붉음), 맞으면 하얗게 번쩍이며 파문. 붕괴 중엔 점선과 복구 시계 */
+function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  const y = barrierY(world);
+  const { width, safeLeft, safeRight } = world;
+  const t = world.animClock;
+  ctx.save();
+  const breach = world.barrierDownMs > 0 ? world.barrierDownMs / BARRIER_BREACH_MS : 0;   // 1 → 0
+  if (breach > 0) {
+    // 붕괴 충격파 — 띠에서 퍼지는 붉은 고리와 글자
+    const k = 1 - breach;
+    ctx.globalAlpha = breach * 0.9; ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 3 + k * 4; ctx.shadowColor = "#fb7185"; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.ellipse(width * 0.5, y, 40 + k * width * 0.6, 10 + k * 40, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = Math.min(1, breach * 1.6); ctx.fillStyle = "#fecaca"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
+    ctx.fillText("방어막 붕괴 · 성문 피해", width * 0.5, y - 30 - k * 12);
+    ctx.shadowBlur = 0;
+  }
+  const ratio = world.barrierMaxHp > 0 ? world.barrierHp / world.barrierMaxHp : 0;
+  const flash = world.barrierFlashMs > 0 ? world.barrierFlashMs / 220 : 0;
+  const color = ratio > 0.5 ? "#67e8f9" : ratio > 0.25 ? "#fbbf24" : "#fb7185";
+  const g = ctx.createLinearGradient(0, y - 16, 0, y + 4);
+  g.addColorStop(0, "rgba(103,232,249,0)"); g.addColorStop(1, color);
+  ctx.globalAlpha = 0.26 + flash * 0.4 + Math.sin(t * 3) * 0.04;
+  ctx.fillStyle = g; ctx.fillRect(safeLeft, y - 16, width - safeLeft - safeRight, 20);
+  ctx.globalAlpha = 0.85 + flash * 0.15;
+  ctx.strokeStyle = flash > 0 ? "#ffffff" : color; ctx.lineWidth = 2 + flash * 2; ctx.shadowColor = color; ctx.shadowBlur = 10 + flash * 10;
+  ctx.beginPath(); ctx.moveTo(safeLeft, y); ctx.lineTo(width - safeRight, y); ctx.stroke();
+  // 흐르는 점선 — 살아 있는 결계
+  ctx.globalAlpha = 0.35; ctx.lineWidth = 1; ctx.setLineDash([10, 14]); ctx.lineDashOffset = -t * 30;
+  ctx.beginPath(); ctx.moveTo(safeLeft, y - 7); ctx.lineTo(width - safeRight, y - 7); ctx.stroke(); ctx.setLineDash([]);
+  if (flash > 0) {
+    ctx.globalAlpha = flash * 0.8; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(world.barrierHitX, y, 26 * (1.4 - flash), 8 * (1.4 - flash), 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  // HP 막대 — 오른쪽 끝, 띠 바로 아래 (주인공 머리 위 공간)
+  const bw = 92, bx = width - safeRight - bw - 6, by = y + 8;
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(15,23,42,.8)"; ctx.fillRect(bx, by, bw, 12);
+  ctx.fillStyle = color; ctx.fillRect(bx + 2, by + 2, (bw - 4) * ratio, 8);
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "900 10px system-ui"; ctx.textAlign = "right"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
+  ctx.fillText(`방어막 ${Math.ceil(world.barrierHp)}`, bx - 6, by + 10);
+  ctx.restore();
 }
 
 /** 쓰러지는 몬스터 — 쓰러짐 프레임이 0.42초 동안 커지며 흐려진다 */
@@ -511,7 +557,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, safeTop, safeBottom, arrows, platforms, floorY } = world;
   labelBounds.top = safeTop + (world.bossSpawned && !world.bossDefeated ? BOSS_BAR_TOP + 44 : 120);
   labelBounds.leftExtra = world.bossSpawned && !world.bossDefeated ? 0 : 72;
-  labelBounds.bottom = floorY - 8;
+  labelBounds.bottom = barrierY(world) - 24;   // 예고 글자가 방어막 띠를 덮지 않게
 
   ctx.fillStyle = "#0b1220";
   ctx.fillRect(0, 0, width, height);
@@ -606,6 +652,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.restore();
   }
 
+  drawBarrier(ctx, world);
   drawFades(ctx, world);
   for (let i = 0; i < arrows.length; i++) {
     if (arrows[i].active) drawArrow(ctx, arrows[i]);

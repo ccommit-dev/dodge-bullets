@@ -1,4 +1,4 @@
-import { createArrowPool, resetArrows, updateArrows } from "./arrows";
+import { TUNING, createArrowPool, resetArrows, resetBarrier, updateArrows } from "./arrows";
 import { emptyChipMods } from "./chips";
 import { emptyRunMods, emptySfx, makeSkillFx, makeSkillShots, makeSparks, updateSkillShots, resetSkillShots } from "./skillShots";
 import { emptySkillLevels } from "./skills";
@@ -86,6 +86,14 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     fades: [],
     bossSalvoMs: 0,
     bossFocus: 0,
+    barrierHp: TUNING.barrierHp,
+    barrierMaxHp: TUNING.barrierHp,
+    barrierDownMs: 0,
+    barrierFlashMs: 0,
+    barrierHitX: width * 0.5,
+    barrierBreaks: 0,
+    barrierHits: 0,
+    barrierBreachDamage: 0,
     runSkills: {},
     collectionMul: 1,
     affinityPop: null,
@@ -163,7 +171,7 @@ export const BOSS_CUTS_BASE = 4;
 export const BOSS_CUTS_PER_STAGE = 6;
 /** 마지막 스테이지(추격대장)는 격추 수를 더 얹는다 — 새 계정의 벽. 풀런 새 계정 S4 5~6/20 → ≤ 4/20 (2026-10-01) */
 export const BOSS_CUTS_FINAL_EXTRA = 6;
-export function bossCutsFor(stageIndex: number): number { return BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE + (stageIndex === 3 ? BOSS_CUTS_FINAL_EXTRA : 0); }   // 2 → 6 (2026-10-01): 좌우 이동만 남은 뒤 성장이 갈리는 지렛대는 보스를 깎는 속도다 — 새 계정 S4 2/20 · 중간 10/20 · 강함 18/20
+export function bossCutsFor(stageIndex: number): number { return Math.round((BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE + (stageIndex === 3 ? BOSS_CUTS_FINAL_EXTRA : 0)) * TUNING.bossCutMul); }   // 2 → 6 (2026-10-01): 좌우 이동만 남은 뒤 성장이 갈리는 지렛대는 보스를 깎는 속도다 — 새 계정 S4 2/20 · 중간 10/20 · 강함 18/20
 
 /** 런 레벨업에 필요한 XP — 베기 1 · 회피 1 · 보스 베기 4. 레벨이 오를수록 더 필요하다 */
 export function runXpToNext(level: number): number {
@@ -222,6 +230,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.floorY = floorYOf(world.height, world.safeBottom);
   resetArrows(world);
   resetSkillShots(world);
+  resetBarrier(world);
   // 카드는 런 단위 — 새 런에서만 비운다 (스테이지 경계에서는 유지)
   world.runMods = emptyRunMods();
   world.runSkills = {};   // 습득은 런 단위 — 스테이지 경계에서는 유지된다
@@ -256,6 +265,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.bossMaxCuts = bossCutsFor(stageIndex);
   resetArrows(world);
   resetSkillShots(world);
+  resetBarrier(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
   applyStageLayout(world);

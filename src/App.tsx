@@ -135,6 +135,7 @@ const DEATH_TIPS: Record<string, string> = {
   fragment: "떨군 조각은 돌다가 되돌아옵니다 — 조각 아래에 서지 마세요",
   boss: "대장 몬스터는 끝까지 쏴야 쓰러집니다 — 활 사거리 안에 두되 바로 아래에 서지 마세요",
   normal: "활은 알아서 쏩니다 — 할 일은 내려오는 자리를 피하는 것. 몬스터 아래가 아니라 옆에 서세요",
+  barrier: "방어막이 깨질 때마다 성문 피해 1 — 방어막에 붙은 몬스터부터 떨구세요. 덩치(오우거·비룡)가 가장 세게 두드립니다",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 /**
@@ -1526,7 +1527,7 @@ function App() {
           <div className="overlay-content overlay-wide exp-menu-content">
             <p className="brand">GATE DEFENSE</p>
             <h1 className="title">성문 방어전</h1>
-            <p className="subtitle">성문으로 내려오는 <b>몬스터</b>를 옆으로 피하면 <b>활</b>이 알아서 쏜다 — 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
+            <p className="subtitle">몬스터가 성문 <b>방어막</b>으로 걸어 내려온다 — <b>활</b>이 알아서 쏘니 방어막이 깨지기 전에 떨구고, 새어 나온 놈은 옆으로 피해라. 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             <p className="score-line">코인 {coins.toLocaleString()} · 인장 <b data-testid="exp-seals">{progress.expeditionSeals.toLocaleString()}</b> · 최고 {highScore.toLocaleString()}</p>
 
@@ -1720,7 +1721,7 @@ function App() {
             }}
           >
             {/* 점프·대시·일제 사격은 없다 (2026-10-01, 아웃로 디펜스) — 이동은 화면을 누르거나 ←→, 활은 자동 */}
-            <span className="action-note">화면을 눌러 이동 · 활은 자동으로 당깁니다</span>
+            <span className="action-note">화면을 눌러 이동 · 활은 자동 · 방어막을 지키세요</span>
             <button
               type="button"
               className="action-btn extract-btn"

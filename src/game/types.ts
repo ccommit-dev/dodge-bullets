@@ -82,6 +82,10 @@ export type Arrow = {
   bossTier: number;
   /** 대장 몬스터가 쏜 마력탄 — 몬스터 그림 대신 구슬로 그리고, 잡아도 쓰러짐 프레임이 없다 (2026-10-01) */
   fromBoss: boolean;
+  /** 방어막에 붙어 두드리는 중 — 멈춰 서서 barrierHitMs 마다 방어막 HP 를 깎는다. 깨지면 barrierVy 로 다시 내려온다 (2026-10-01) */
+  atBarrier: boolean;
+  barrierHitMs: number;
+  barrierVy: number;
   bossCutsLeft: number;
   bossMaxCuts: number;
 };
@@ -327,6 +331,19 @@ export type GameWorld = {
   bossSalvoMs: number;
   /** 기본 사격이 보스와 가까운 화살을 번갈아 겨누는 토글 */
   bossFocus: number;
+  /**
+   * 성문 방어막 (2026-10-01, 아웃로 디펜스) — 주인공 머리 위 띠. 몬스터는 여기서 멈춰 HP 를 깎고, 0 이 되면 붕괴해
+   * barrierDownMs 동안 통과시킨다. 붙은 몬스터가 없으면 서서히 찬다. breaks·hits 는 결과·시뮬 계측용
+   */
+  barrierHp: number;
+  barrierMaxHp: number;
+  barrierDownMs: number;
+  barrierFlashMs: number;
+  barrierHitX: number;
+  barrierBreaks: number;
+  barrierHits: number;
+  /** 이번 프레임 붕괴로 입을 성문 피해 — updateArrows 끝에서 피격에 합쳐진다 */
+  barrierBreachDamage: number;
   boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
   skillLevels: ExpeditionSkillLevels;
@@ -350,7 +367,7 @@ export type GameWorld = {
    */
   chips: ChipMods;
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
-  lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "";
+  lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "barrier" | "";
   bossSpawned: boolean;
   bossDefeated: boolean;
   bossCutsLeft: number;

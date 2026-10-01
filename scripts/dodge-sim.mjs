@@ -24,13 +24,14 @@ writeFileSync(entry, [
   `export * as perks from "${root}/src/game/perks";`,
   `export * as skills from "${root}/src/game/skills";`,
   `export * as chips from "${root}/src/game/chips";`,
+  `export * as arrows from "${root}/src/game/arrows";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { world: W, shop, input: I, stages, perks: P, skills: SK, chips: CH } = await import(pathToFileURL(out).href);
+const { world: W, shop, input: I, stages, perks: P, skills: SK, chips: CH, arrows: AR } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 /** 결정적 난수 (mulberry32) — Math.random 을 시드별로 바꿔 끼운다 */
@@ -111,7 +112,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   if (opts.acquireAll) for (const [id, lv] of Object.entries(w.skillLevels)) if (lv > 0 && id !== "ultimate") w.runSkills[id] = true;
   const inp = I.createInputState();
   const dt = 1 / 60;
-  let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = [];
+  let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = []; let barrierMin = 1e9;
   let seenArrows = new Set();
   const p = w.player;
   const stage = stages.getStage(stageIndex);
@@ -124,11 +125,12 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     // 런 레벨업 — 플레이어처럼 성장 선택 하나를 고른다 (결정적: 후보 중 첫 번째)
     if (w.levelUps > 0) { w.levelUps = 0; const card = pickCard(P.pickPerks(w, () => ((perkSeed += 0.37) % 1))); if (card) P.applyPerk(w, card.id); }
     if (ev.type === "hit") { hits += 1; (hitLog ??= []).push(`${w.lastHitCause}@${Math.round(w.stageElapsedMs / 1000)}s`); }
+    barrierMin = Math.min(barrierMin, w.barrierHp);
     if (ev.type === "dead") { dead = true; break; }
     if (ev.type === "clear") { clear = true; break; }
   }
   Math.random = realRandom;
-  return { stage: stageIndex, seed, hits, hitLog, cuts: w.countered, skillKills: w.skillKills, reflects: w.reflectKills, ults: w.ultCount, maxCombo: w.maxCombo, dodged: w.dodged, clear, dead, seconds: Math.round(frames * dt), hp: p.maxHp };
+  return { stage: stageIndex, seed, hits, hitLog, barrierBreaks: w.barrierBreaks, barrierMin: Math.round(barrierMin), barrierHits: w.barrierHits, cuts: w.countered, skillKills: w.skillKills, reflects: w.reflectKills, ults: w.ultCount, maxCombo: w.maxCombo, dodged: w.dodged, clear, dead, seconds: Math.round(frames * dt), hp: p.maxHp };
 }
 
 /** 계정 단계 — 새 계정 / 중간 / 강함. 성장(레벨·검)·스킬·칩을 함께 올린다 */
@@ -165,7 +167,7 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
   const dt = 1 / 60;
   const p = w.player;
   const seen = new Set();
-  let hits = 0, reached = 0, perkSeed = seed * 0.11, dead = false;
+  let hits = 0, reached = 0, perkSeed = seed * 0.11, dead = false, breaks = 0;
   for (let stageIndex = 0; stageIndex < 4 && !dead; stageIndex += 1) {
     if (stageIndex > 0) { load(); W.beginStage(w, stageIndex); }
     const stage = stages.getStage(stageIndex);
@@ -179,15 +181,16 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
       if (ev.type === "dead") { dead = true; break; }
       if (ev.type === "clear") { cleared = true; break; }
     }
+    breaks += w.barrierBreaks;
     if (!cleared) break;
     reached = stageIndex + 1;
   }
   Math.random = realRandom;
-  return { seed, reached, hits, acquired: Object.keys(w.runSkills).filter((k) => w.runSkills[k]), runLevel: w.runLevel, ults: w.ultCount, fullHp: w.player.hp >= w.player.maxHp };
+  return { seed, reached, hits, breaks, acquired: Object.keys(w.runSkills).filter((k) => w.runSkills[k]), runLevel: w.runLevel, ults: w.ultCount, fullHp: w.player.hp >= w.player.maxHp };
 }
 
 /** 주간 시뮬(dodge-week-sim)이 쓰는 모듈 묶음 — 번들에서 꺼낸 실제 소스 */
-export const api = { SK, CH, W, shop, P, stages };
+export const api = { SK, CH, W, shop, P, stages, AR };
 
 /** 계정 단계별 도달 분포 — [S1 에서 끝, S2 에서 끝, S3, S4, 전부 클리어] */
 export function runCurve(seeds = 20) {
@@ -208,7 +211,7 @@ for (let stage = 0; stage < stages.STAGES.length; stage += 1) {
   const spawned = runs.map((r) => r.cuts + r.dodged + r.hits);
   const cutRate = runs.reduce((s, r, i) => s + r.cuts / Math.max(1, spawned[i]), 0) / runs.length;
   const causes = runs.flatMap((r) => r.hitLog).join(" ");
-  rows.push({ causes, stage: stage + 1, name: stages.STAGES[stage].name, hp: runs[0].hp, hits: +avg("hits").toFixed(1), cuts: +avg("cuts").toFixed(1), reflects: +avg("reflects").toFixed(1), ults: +avg("ults").toFixed(1), cutRate: +(cutRate * 100).toFixed(0), clear: runs.filter((r) => r.clear).length, dead: runs.filter((r) => r.dead).length });
+  rows.push({ causes, stage: stage + 1, name: stages.STAGES[stage].name, hp: runs[0].hp, hits: +avg("hits").toFixed(1), breaks: +avg("barrierBreaks").toFixed(1), barrierMin: Math.round(avg("barrierMin")), kills: +avg("skillKills").toFixed(0), cuts: +avg("cuts").toFixed(1), reflects: +avg("reflects").toFixed(1), ults: +avg("ults").toFixed(1), cutRate: +(cutRate * 100).toFixed(0), clear: runs.filter((r) => r.clear).length, dead: runs.filter((r) => r.dead).length });
 }
 return rows;
 }
@@ -218,9 +221,9 @@ if (isMain) {
   const rows = runAll();
   if (process.argv.includes("--json")) console.log(JSON.stringify(rows));
   else {
-  console.log("| 스테이지 | HP | 피격 | 베기 | 반사 | 일섬 | 베기율 | 클리어/5 | 사망/5 |");
+  console.log("| 스테이지 | HP | 피격 | 방어막 붕괴 | 방어막 최저 | 스킬 처치 | 일섬 | 클리어/5 | 사망/5 |");
   console.log("|---|---|---|---|---|---|---|---|---|");
-  for (const r of rows) console.log(`| ${r.stage} ${r.name} | ${r.hp} | ${r.hits} | ${r.cuts} | ${r.reflects} | ${r.ults} | ${r.cutRate}% | ${r.clear} | ${r.dead} |`);
+  for (const r of rows) console.log(`| ${r.stage} ${r.name} | ${r.hp} | ${r.hits} | ${r.breaks} | ${r.barrierMin} | ${r.kills} | ${r.ults} | ${r.clear} | ${r.dead} |`);
   if (process.argv.includes("--causes")) for (const r of rows) console.log(`S${r.stage} 피격 원인: ${r.causes}`);
   }
 }
