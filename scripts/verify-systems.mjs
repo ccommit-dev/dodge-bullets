@@ -882,7 +882,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     const hits = [];
     for (const f of files) {
       const t = strip(readFileSync(join(root, f), "utf8"));
-      for (const word of ["검격", "일섬", "반사!", "\"파쇄\"", "베기 창", "검술", "hero-attack-sheet"]) if (t.includes(word)) hits.push(f + ": " + word);
+      for (const word of ["검격", "일섬", "반사!", "\"파쇄\"", "베기 창", "검술", "베어", "베면", "검의 주인", "hero-attack-sheet"]) if (t.includes(word)) hits.push(f + ": " + word);
     }
     ok("화살 원정 문구·그리기에 검이 없다 (검격·일섬·반사·파쇄·검 시트)", hits.length === 0, hits.slice(0, 5).join(" | "));
     ok("검 시트 파일을 지웠다 — 쓰지 않는 자산을 게임 자산으로 오판하지 않게", !existsSync(join(root, "public/titans/generated/hero-attack-sheet.png")));

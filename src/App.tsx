@@ -112,10 +112,11 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
 /** 성장 선택 아이콘 — 일반 카드는 기존 보상 아이콘 재사용 (게이지=스킬 오브 · HP=경험 오브) */
-const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { gauge: "cores", heal: "exp" };
+const PERK_ICON: Partial<Record<PerkId, RewardIconKind | "exp">> = { heal: "exp" };
 /** 스킬을 바꾸는 카드는 그 스킬의 아이콘을 그대로 쓴다 — 무엇이 세지는지 한 눈에 보이게. basic 은 기본 사격(활) (2026-09-29) */
 const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
   learnFire: "fire", learnWater: "water", learnIce: "ice", learnEarth: "earth", learnBolt: "bolt",
+  gauge: "ultimate",   // 화살비 게이지 카드는 화살비 아이콘
   damageUp: "basic", convertFire: "fire", convertWater: "water", convertIce: "ice", convertEarth: "earth", convertBolt: "bolt",
   shotExtra: "basic", quickdraw: "basic", shotPierce: "basic", arrowStorm: "basic", overdrive: "basic",
   evoBeam: "basic", evoSeeker: "basic",
@@ -1300,7 +1301,7 @@ function App() {
       <canvas
         ref={canvasRef}
         className={`game-canvas ${appMode === "dodge" ? "is-active" : "is-inactive"}`}
-        aria-label="검의 주인 화살 원정 게임 화면"
+        aria-label="화살 원정 게임 화면"
         aria-hidden={appMode !== "dodge"}
       />
 
@@ -1658,7 +1659,7 @@ function App() {
             <p className="brand">STAGE {stage.id}</p>
             <h1 className="title">{stageLabel}</h1>
             <p className="subtitle">{stageIntro}</p>
-            <p className="score-line">전초전을 돌파하고 보스 화살을 끝까지 베면 스테이지 클리어</p>
+            <p className="score-line">전초전을 돌파하고 보스 화살을 끝까지 격추하면 스테이지 클리어</p>
             <button type="button" className="cta" onClick={handleBeginPlay}>
               바로 시작
             </button>
@@ -1713,7 +1714,7 @@ function App() {
             <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
               {skillHud.map((s) => (
                 <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""}`} title={s.id === "basic" ? "기본 사격" : SKILL_BY_ID[s.id].name}>
-                  <img src={assetUrl(`dodge/skills/${s.id === "basic" ? "basic" : SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
+                  <img src={assetUrl(s.id === "basic" ? `dodge/weapons/icon-${progress.expeditionWeapon === "staff" ? "staff" : "bow"}.png` : `dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
                   {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
                   <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />
                   {s.id !== "basic" && <b>{s.lv}</b>}

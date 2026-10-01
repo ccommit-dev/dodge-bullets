@@ -102,6 +102,11 @@ ok("스킬 화면: 무기 2종 + 스킬 6종, 저장된 지팡이가 장착 상�
   ok("메뉴 제목이 상단 버튼 아래에서 시작한다 (겹침 없음)", head.btnBottom > 0 && head.brandTop >= head.btnBottom, "버튼 끝 " + head.btnBottom + " · 제목 시작 " + head.brandTop);
   ok("정비 화면 머리에 인장 잔액이 보인다", head.seals === "400", head.seals);
 }
+// 기본 사격 행 — 장착 무기(픽스처: 지팡이)의 아이콘과 이름. 활 문장 basic.png 가 지팡이에도 떴다 (2026-10-01)
+{
+  const basic = await page.evaluate(() => { const row = document.querySelector(".exp-basic-row"); return { img: row?.querySelector("img")?.getAttribute("src") ?? "", name: row?.querySelector("b")?.textContent ?? "" }; });
+  ok("기본 사격 행이 장착 무기(지팡이)의 아이콘과 이름을 쓴다", basic.img.includes("weapons/icon-staff.png") && basic.name.startsWith("마력탄"), JSON.stringify(basic));
+}
 ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, skillUi.over.slice(0, 2).join(", "));
 
 // 보급창 · 일일 임무 탭 — 인장을 "지금 쓰는" 자리와 "한 판 더"의 이유
@@ -205,6 +210,12 @@ const hud = await page.evaluate(() => {
 });
 ok("일섬 게이지와 HUD 글자 사이에 8px 여백이 남는다 (6자리 코인 기준)", !hud.missing && hud.hits.length === 0, (hud.hits ?? []).join(", "));
 ok("전투 HUD 글자에 전체 지갑 코인을 띄우지 않는다", !!hud.hint && !hud.hint.includes("코인"), hud.hint);
+
+// 전투 슬롯의 기본 사격 칸도 장착 무기 아이콘
+{
+  const first = await page.evaluate(() => document.querySelector(".skill-slot img")?.getAttribute("src") ?? "");
+  ok("전투 슬롯 첫 칸(기본 사격)이 장착 무기(지팡이) 아이콘이다", first.includes("weapons/icon-staff.png"), first);
+}
 
 // 1-a) 스킬 슬롯 — 바닥선 아래에 있어야 주인공 발을 가리지 않고, 조작 버튼 위에 있어야 눌림을 막지 않는다
 {
