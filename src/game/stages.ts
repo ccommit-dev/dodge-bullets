@@ -43,7 +43,7 @@ export const STAGES: StageDef[] = [
     baseReward: 580,
     speedMul: 0.94,
     spawnMul: 0.9,
-    intro: "조준 사격은 코앞에서 베면 궁수에게 되돌아간다(반사) — 결정을 모으며 기습대를 따돌려라",
+    intro: "조준 화살은 코앞에서 쏘면 궁수에게 되돌아간다(되쏘기) — 결정을 모으며 기습대를 따돌려라",
     platforms,
     patterns: [
       { kind: "side", atMs: 0, durationMs: 8_000, spawnMs: 390, speed: 370 },

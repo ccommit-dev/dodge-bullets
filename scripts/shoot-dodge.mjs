@@ -67,6 +67,17 @@ for (let i = 0; i < 10; i += 1) {
   await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.hp = w.player.maxHp; } });
   await shot(`1${i + 1}-battle`);
 }
+// 일제 사격(수동) — 버튼을 누르고 당김·놓음 순간을 찍는다
+for (const [name, wait] of [["60-volley-draw", 60], ["61-volley-release", 200]]) {
+  await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.slowCdMs = 0; w.player.slowActiveMs = 0; } const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("일제 사격")); b?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await sleep(wait);
+  await shot(name);
+  await sleep(1200);
+}
+// 화살비 — 게이지를 채워 발동
+await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.slashGauge = 100; w.player.slowCdMs = 0; w.player.slowActiveMs = 0; const t = w.arrows.find((x) => !x.active); if (t) { t.active = true; t.warningMs = 0; t.reflected = false; t.boss = false; t.kind = "normal"; t.x = w.player.x + w.player.facing * 40; t.y = w.player.y - 10; t.vx = -w.player.facing * 50; t.vy = 0; t.hitRadius = 8; t.hp = 0; t.maxHp = 0; } } const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("일제 사격")); b?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+await sleep(240);
+await shot("62-arrow-rain");
 // 레벨업 3택 · 결과 화면
 await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageIndex = 3; w.levelUps = 1; } });
 await sleep(900);

@@ -126,14 +126,14 @@ const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
 const DEATH_TIPS: Record<string, string> = {
-  homing: "유도탄은 빨간 궤적이 붙기 전에 정면에서 베세요 — 뒤에서 오는 화살은 못 벱니다",
+  homing: "유도탄은 빨간 궤적이 붙기 전에 정면에서 쏘세요 — 뒤에서 오는 화살은 못 떨굽니다",
   explosive: "폭발 화살은 점프로 넘기지 말고 대시로 관통하세요 — 폭발 범위가 넓어요",
   ricochet: "튕기는 화살은 벽 근처에서 두 번 옵니다 — 벽에서 떨어져 서세요",
-  fan: "부채꼴 화살은 한 발만 베면 틈이 열립니다",
+  fan: "부채꼴 화살은 한 발만 떨구면 틈이 열립니다",
   aimed: "조준 화살은 붉은 선이 사라지는 순간 위치를 바꾸세요",
-  fragment: "베어 낸 조각은 돌다가 되돌아옵니다 — 조각이 남았을 땐 점프 후 대시",
-  boss: "보스 화살은 끝까지 베야 합니다 — 검격이 준비되기 전엔 거리를 두세요",
-  normal: "원거리 스킬은 알아서 나갑니다 — 검격은 스윙 순간 앞쪽 화살만, 코앞에서 베면 반사되어 궁수를 잡습니다",
+  fragment: "떨군 조각은 돌다가 되돌아옵니다 — 조각이 남았을 땐 점프 후 대시",
+  boss: "보스 화살은 끝까지 떨궈야 합니다 — 일제 사격이 준비되기 전엔 거리를 두세요",
+  normal: "속성 화살은 알아서 나갑니다 — 일제 사격은 시위를 놓는 순간 앞쪽 화살만, 코앞에서 쏘면 되쏘기로 궁수를 잡습니다",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 /**
@@ -1053,13 +1053,14 @@ function App() {
     })();
   }, [progress]);
 
-  /** 원거리 무기 탈착 — 같은 캐릭터에 활/지팡이를 바꿔 끼운다. 장착 중인 것을 다시 누르면 맨손 */
+  /** 원거리 무기 교체 — 같은 캐릭터에 활/지팡이를 바꿔 끼운다. 맨손은 없다 */
   const handleEquipWeapon = useCallback((id: RangedWeaponId) => {
     void (async () => {
       const next = await updateCharacterProgress(userHashRef.current, (p) => {
         const def = id === "none" ? null : WEAPON_BY_ID[id];
         if (def && !weaponUnlocked(def, p.dodgeBestStage)) return p;   // 잠긴 무기는 못 낀다
-        return { ...p, expeditionWeapon: p.expeditionWeapon === id ? "none" : id };
+        if (id === "none") return p;                                       // 맨손은 없다 — 활만 쓰는 콘텐츠다 (2026-10-01)
+        return { ...p, expeditionWeapon: id };
       });
       setProgress(next);
       const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
@@ -1526,7 +1527,7 @@ function App() {
           <div className="overlay-content overlay-wide exp-menu-content">
             <p className="brand">BATTLE EXPEDITION</p>
             <h1 className="title">전장의 돌파 원정</h1>
-            <p className="subtitle">등에 멘 <b>활·지팡이</b>가 날아오는 화살을 알아서 요격한다 — 손에 남은 건 <b>검격</b>과 <b>일섬</b>, 코앞에서 베면 궁수에게 되돌아간다</p>
+            <p className="subtitle">손에 든 <b>활·지팡이</b>가 날아오는 화살을 알아서 요격한다 — 시위를 당기면 <b>일제 사격</b>, 코앞에서 쏘면 <b>되쏘기</b>로 궁수에게 되돌아가고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             <p className="score-line">코인 {coins.toLocaleString()} · 인장 <b data-testid="exp-seals">{progress.expeditionSeals.toLocaleString()}</b> · 최고 {highScore.toLocaleString()}</p>
 
@@ -1545,7 +1546,7 @@ function App() {
                 {/* 키 안내는 마우스·키보드 기기에서만 — 미니앱은 터치라 Space/Shift 가 없다.
                     '식별키 … 로컬 mock' 줄은 개발용 배선 상태였다 — 플레이어에게는 뜻이 없어 뺐다 (2026-09-21) */}
                 <p className="controls-hint desktop-keys">
-                  전진 · Space 점프/두 번 대시 · Shift 대시 · Enter/Ctrl/E 검격
+                  전진 · Space 점프/두 번 대시 · Shift 대시 · Enter/Ctrl/E 일제 사격
                 </p>
 
                 <div className="pioneer-board">
@@ -1694,7 +1695,7 @@ function App() {
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
-                <span>스윙 순간 <em>앞쪽</em> 화살만 벱니다. <em>금색 점선 안</em>에서 베면 <em>반사</em>되어 궁수를 잡고, 일섬 게이지가 차면 <em>일섬</em>이 화면을 비웁니다.</span>
+                <span>시위를 놓는 순간 <em>앞쪽</em> 화살만 떨굽니다. <em>금색 점선 안</em>에서 쏘면 <em>되쏘기</em>로 궁수를 잡고, 게이지가 차면 <em>화살비</em>가 화면을 비웁니다.</span>
               </div>
             )}
           </div>
@@ -1747,7 +1748,7 @@ function App() {
                 inputRef.current.slowPressed = true;
               }}
             >
-              검격 Lv.{shopLevels.slowField}
+              일제 사격 Lv.{shopLevels.slowField}
             </button>
             <button
               type="button"

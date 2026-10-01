@@ -72,7 +72,7 @@ export const CHIPS: ChipDef[] = [
   { id: "ember", name: "잔열 칩", pairs: "fire", desc: (lv) => `불화살 폭발 반경 +${Math.round((chipFlame(lv) - 1) * 100)}%` },
   { id: "rime", name: "서리 칩", pairs: "ice", desc: (lv) => `빙결 지속 +${Math.round((chipChill(lv) - 1) * 100)}% (콤보가 오래 물린다)` },
   { id: "vitality", name: "활력 칩", pairs: null, desc: (lv) => (chipLives(lv) > 0 ? `최대 HP +${chipLives(lv)} (Lv2 · Lv5 에 +1)` : "Lv2 부터 최대 HP +1 (Lv5 에 +2)") },
-  { id: "edge", name: "예기 칩", pairs: "ultimate", desc: (lv) => `일섬 게이지 획득 +${Math.round((chipGauge(lv) - 1) * 100)}%` },
+  { id: "edge", name: "예기 칩", pairs: "ultimate", desc: (lv) => `화살비 게이지 획득 +${Math.round((chipGauge(lv) - 1) * 100)}%` },
 ];
 
 export const CHIP_BY_ID: Record<ChipId, ChipDef> = Object.fromEntries(CHIPS.map((c) => [c.id, c])) as Record<ChipId, ChipDef>;

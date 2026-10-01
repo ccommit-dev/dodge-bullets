@@ -36,8 +36,9 @@ export type RangedWeaponDef = {
 export type SkillFamily = "physical" | "magic" | "none";
 
 export const RANGED_WEAPONS: RangedWeaponDef[] = [
-  { id: "bow", name: "장궁", desc: "기본 사격 + 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
-  { id: "staff", name: "수정 지팡이", desc: "기본 사격 + 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
+  // 맨손은 없다 — 활만 쓰는 콘텐츠다. 저장의 "none" 은 장궁으로 되돌린다 (progression/model.ts, 2026-10-01)
+  { id: "bow", name: "장궁", desc: "기본 사격 + 일제 사격 · 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
+  { id: "staff", name: "수정 지팡이", desc: "마력탄 + 일제 사격 · 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
 ];
 
 export const WEAPON_BY_ID: Record<string, RangedWeaponDef> =
@@ -234,7 +235,7 @@ export function oneShotStage(damage: number): number {
 }
 const reach = (d: number) => { const n = oneShotStage(d); return n > 0 ? `${num(d)} · S${n} 까지 한 발` : `${num(d)}`; };
 
-/** 일섬 — 베기 창 배수 · 게이지 획득 배수 */
+/** 화살비 — 조준 창(일제 사격 지속) 배수 · 게이지 획득 배수 */
 export function ultSwingMul(lv: number): number { return 1 + 0.08 * step(lv, 2) + 0.08 * step(lv, 6) + 0.12 * step(lv, 10); }
 export function ultGaugeMul(lv: number): number { return 1 + 0.12 * step(lv, 4) + 0.12 * step(lv, 8); }
 
@@ -394,29 +395,29 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   },
   {
     id: "ultimate",
-    name: "일섬",
+    name: "화살비",
     kind: "궁극",
     family: "none",
     element: "basic",
     icon: "ultimate",
-    desc: "[일섬] 강화. 게이지가 빨리 차고 베기 창이 길어진다.",
-    effect: "화면 전체 파쇄",
+    desc: "[화살비] 강화. 게이지가 차면 하늘에서 화살이 쏟아져 화면의 화살을 전부 떨군다. 게이지가 빨리 차고 조준 창이 길어진다.",
+    effect: "화면 전체 격추",
     strongVs: null,
     unlockStage: 0,
     goldBase: 360,
     sealBase: 5,
     milestones: [
-      { level: 2, kind: "unlock", label: "해금 [잔광] — 베기 창 +8%" },
+      { level: 2, kind: "unlock", label: "해금 [잔향] — 조준 창 +8%" },
       { level: 4, kind: "stat", label: "게이지 획득 +12%" },
-      { level: 6, kind: "unlock", label: "해금 [여운] — 베기 창 +8%" },
+      { level: 6, kind: "unlock", label: "해금 [소나기] — 조준 창 +8%" },
       { level: 8, kind: "stat", label: "게이지 획득 +12%" },
-      { level: 10, kind: "unlock", label: "해금 [무한 일섬] — 베기 창 +12%" },
+      { level: 10, kind: "unlock", label: "해금 [폭우] — 조준 창 +12%" },
     ],
     readout: (lv) => [
       { label: "유형", value: "궁극" },
-      { label: "베기 창", value: ultSwingMul(lv) === 1 ? "기본" : `+${Math.round(ultSwingMul(lv) * 100 - 100)}%` },
+      { label: "조준 창", value: ultSwingMul(lv) === 1 ? "기본" : `+${Math.round(ultSwingMul(lv) * 100 - 100)}%` },
       { label: "게이지", value: ultGaugeMul(lv) === 1 ? "기본" : `+${Math.round(ultGaugeMul(lv) * 100 - 100)}%` },
-      { label: "사거리", value: "자신 주변" },
+      { label: "사거리", value: "화면 전체" },
     ],
   },
 ];
