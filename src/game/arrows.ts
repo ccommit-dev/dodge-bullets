@@ -113,6 +113,7 @@ function hitBarrier(world: GameWorld, a: Arrow): void {
     world.barrierBreachDamage += 1;
     world.barrierDownMs = BARRIER_BREACH_MS;
     world.barrierHp = world.barrierMaxHp;
+    world.hitStopMs = Math.max(world.hitStopMs, 120);
     world.shakeMs = Math.max(world.shakeMs, 300); world.shakeAmp = Math.max(world.shakeAmp, 6);
     world.sfx.boom += 1;
     for (const b of world.arrows) {
@@ -576,6 +577,7 @@ export function ultimateSlash(world: GameWorld): void {
   world.slashGauge = 0;
   world.ultCount += 1;
   world.ultFlashMs = 600;
+  world.hitStopMs = Math.max(world.hitStopMs, 90);
   world.lastCut = "ult";
   world.lastCutMs = 900;
   world.player.slowActiveMs = Math.max(world.player.slowActiveMs, 1200);
@@ -640,6 +642,7 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
     if (arrow.bossCutsLeft <= 0) {
       arrow.active = false;
       world.bossDefeated = true;
+      world.hitStopMs = Math.max(world.hitStopMs, 180);
       world.enemyKills += 1;
       world.supplies += 12 + arrow.bossTier * 3;
       world.expeditionSeals += 2;
