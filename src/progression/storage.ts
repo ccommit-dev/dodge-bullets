@@ -65,7 +65,7 @@ export async function migrateLegacyProgress(
     bestForgeLevel: Math.max(current.bestForgeLevel, forge.bestLevel),
     armorLevel: forge.armorLevel,
     // v5 이전 유저 — 사냥터 최고 기록이 속한 지역까지는 개척 완료로 인정한다(소급 잠금 없음).
-    // 이후 로드에서는 grantPioneerFromTitans=false라 화살 원정만 개척도를 올린다.
+    // 이후 로드에서는 grantPioneerFromTitans=false라 성문 방어만 개척도를 올린다.
     pioneeredArea: grantPioneerFromTitans
       ? Math.max(current.pioneeredArea, areaIndexFromLegacyStage(titans.bestStage))
       : current.pioneeredArea,

@@ -46,7 +46,7 @@ const fmt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `
 export const EVENT_PRODUCTS: EventProduct[] = [
   // ── 이벤트 상점: 원정 시즌 보급 ──
   {
-    id: "ev-pioneer-pack", tab: "event-shop", name: "원정 개척 패키지", desc: "화살 원정 강화석 · 골드 · 원하는 동료 조각", badge: "HOT", icon: "dodge", gemCost: 150, weeklyLimit: 2,
+    id: "ev-pioneer-pack", tab: "event-shop", name: "원정 개척 패키지", desc: "성문 방어 강화석 · 골드 · 원하는 동료 조각", badge: "HOT", icon: "dodge", gemCost: 150, weeklyLimit: 2,
     grant: (p) => ({ materials: 60, gold: bossGold(p, 1500), allyShards: 15 }),
     summary: (p) => `강화석 60 · 골드 ${fmt(bossGold(p, 1500))} · 동료 조각 15(선택)`,
   },

@@ -1,5 +1,5 @@
 /**
- * 화살 원정 전투 화면 단언 (2026-09-28).
+ * 성문 방어 전투 화면 단언 (2026-09-28).
  *
  *   node scripts/verify-dodge-hud.mjs   (vite dev 5173 필요)
  *
@@ -66,7 +66,7 @@ await page.evaluate(() => {
 });
 await sleep(900);
 await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
-await clickText(".nav-popup-grid button", "화살 원정"); await sleep(1600);
+await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 
 // ── 메뉴: 무기 탈착 행 ──
 const menu = await page.evaluate(() => {
@@ -222,7 +222,7 @@ ok("전투 HUD 글자에 전체 지갑 코인을 띄우지 않는다", !!hud.hin
   const dock = await page.evaluate(() => {
     const w = window.__dodgeWorld; const canvas = document.querySelector("canvas");
     const slot = document.querySelector(".skill-slot");
-    const jump = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "점프");
+    const jump = document.querySelector(".extract-btn");   // 점프 버튼은 없다 (2026-10-01) — 조작 줄의 남은 버튼은 귀환
     if (!w || !canvas || !slot || !jump) return { missing: true };
     const r = slot.getBoundingClientRect();
     return { floor: Math.round(canvas.getBoundingClientRect().top + w.floorY), top: Math.round(r.top), bottom: Math.round(r.bottom), ctl: Math.round(jump.getBoundingClientRect().top) };

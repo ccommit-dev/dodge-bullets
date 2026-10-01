@@ -124,11 +124,11 @@ await sleep(1900); // phase-reveal 구간 (성문 열린 뒤)
 await page.evaluate(() => { document.querySelector(".qa-panel")?.style.setProperty("display", "none"); });
 await shot(page, "04-area-unlock");
 
-// ── 3. 화살 원정 인게임 ──
+// ── 3. 성문 방어 인게임 ──
 await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeBootModals(page);
-await clickText(page, "button", "화살 원정");
+await clickText(page, "button", "성문 방어");
 await sleep(1400);
 await clickText(page, ".cta", "스테이지 1 시작");
 await sleep(5200); // 인트로 자동 시작 + 화살이 깔리는 시점

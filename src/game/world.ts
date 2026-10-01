@@ -82,6 +82,10 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     shotFlashMs: 0,
     shotAngle: -Math.PI / 2,
     boltFrom: null,
+    aimAngle: -Math.PI / 2,
+    fades: [],
+    bossSalvoMs: 0,
+    bossFocus: 0,
     runSkills: {},
     collectionMul: 1,
     affinityPop: null,
@@ -129,8 +133,7 @@ export function applyStats(world: GameWorld, stats: PlayerStats): void {
 }
 
 export function applyStageLayout(world: GameWorld): void {
-  const stage = getStage(world.stageIndex);
-  world.platforms = materializePlatforms(world, stage.platforms);
+  world.platforms = materializePlatforms(world, []);   // 발판 없음 — 점프가 없다 (2026-10-01). stage.platforms 는 더 쓰지 않는다
 }
 
 export function resizeWorld(world: GameWorld, width: number, height: number, dpr: number): void {
@@ -157,7 +160,10 @@ function clampX(world: GameWorld): void {
 
 /** 보스 화살 베기 수 — 스윙 1회 = 1컷(정타 2컷)·쿨다운 1.15s 이므로 10+4n 은 너무 길다 (docs/CONTENT_BEAT_DODGE_PLAN.md §2) */
 export const BOSS_CUTS_BASE = 4;
-export const BOSS_CUTS_PER_STAGE = 2;
+export const BOSS_CUTS_PER_STAGE = 6;
+/** 마지막 스테이지(추격대장)는 격추 수를 더 얹는다 — 새 계정의 벽. 풀런 새 계정 S4 5~6/20 → ≤ 4/20 (2026-10-01) */
+export const BOSS_CUTS_FINAL_EXTRA = 6;
+export function bossCutsFor(stageIndex: number): number { return BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE + (stageIndex === 3 ? BOSS_CUTS_FINAL_EXTRA : 0); }   // 2 → 6 (2026-10-01): 좌우 이동만 남은 뒤 성장이 갈리는 지렛대는 보스를 깎는 속도다 — 새 계정 S4 2/20 · 중간 10/20 · 강함 18/20
 
 /** 런 레벨업에 필요한 XP — 베기 1 · 회피 1 · 보스 베기 4. 레벨이 오를수록 더 필요하다 */
 export function runXpToNext(level: number): number {
@@ -208,7 +214,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.bossSpawned = false;
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
-  world.bossMaxCuts = BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE;
+  world.bossMaxCuts = bossCutsFor(stageIndex);
   world.runXp = 0;
   world.runLevel = 1;
   world.levelUps = 0;
@@ -247,7 +253,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.bossSpawned = false;
   world.bossDefeated = false;
   world.bossCutsLeft = 0;
-  world.bossMaxCuts = BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE;
+  world.bossMaxCuts = bossCutsFor(stageIndex);
   resetArrows(world);
   resetSkillShots(world);
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -347,27 +353,7 @@ export function updateWorld(
       if (dx !== 0) p.facing = dx > 0 ? 1 : -1;
     }
 
-    // Jump
-    if (input.jumpPressed && p.onGround) {
-      p.vy = -stats.jumpPower;
-      p.onGround = false;
-    }
-
-    // Dash
-    if (input.dashPressed && stats.dashUnlocked && p.dashCdMs <= 0 && p.dashActiveMs <= 0) {
-      p.dashActiveMs = stats.dashDurationMs;
-      p.dashCdMs = stats.dashCooldownMs;
-      p.invulnMs = Math.max(p.invulnMs, stats.dashIFramesMs);
-      if (!input.left && !input.right && !input.pointerActive) {
-        // keep facing
-      }
-    }
-
-    // Slow field
-    if (input.slowPressed && stats.slowUnlocked && p.slowCdMs <= 0 && p.slowActiveMs <= 0) {
-      p.slowActiveMs = stats.slowDurationMs;
-      p.slowCdMs = stats.slowCooldownMs;
-    }
+    // 점프·대시·일제 사격은 없다 (2026-10-01, 아웃로 디펜스 차용) — 좌우 이동만. 입력 플래그는 호환을 위해 남기되 읽지 않는다
   }
 
   // Integrate

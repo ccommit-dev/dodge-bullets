@@ -1,5 +1,5 @@
 /**
- * 화살 원정 화면 캡처 (2026-09-29) — 눈으로 보는 점검용. 단언은 verify-dodge-hud 가 한다.
+ * 성문 방어 화면 캡처 (2026-09-29) — 눈으로 보는 점검용. 단언은 verify-dodge-hud 가 한다.
  *   node scripts/shoot-dodge.mjs <outDir> [bow|staff] [fresh]
  */
 import puppeteer from "puppeteer";
@@ -37,7 +37,7 @@ await sleep(2600);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } });
 await sleep(900);
 await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
-await clickText(".nav-popup-grid button", "화살 원정"); await sleep(1600);
+await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 await shot("01-menu");
 await clickText(".exp-menu-tabs button", "정비"); await sleep(700);
 await shot("02-upgrade", true);

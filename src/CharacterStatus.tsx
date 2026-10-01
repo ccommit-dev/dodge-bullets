@@ -118,7 +118,7 @@ export function CharacterStatus({
   const levelProgress = progressToNextLevel(progress);
   const recommendation =
     progress.enhancementMaterials < 8
-      ? { title: "화살 원정에서 강화 재료 모으기", content: "dodge" as const }
+      ? { title: "성문 방어에서 강화 재료 모으기", content: "dodge" as const }
       : progress.equippedWeaponLevel < Math.min(15, progress.level)
         ? { title: "대장간에서 장착 검 강화하기", content: "forge" as const }
         : summary.mastery < progress.level * 3

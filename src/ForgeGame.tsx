@@ -39,20 +39,20 @@ type ForgeView = "title" | "forge" | "exchange" | "armor";
 type ForgePhase = "idle" | "forging" | "success" | "failure" | "sold";
 
 const MATERIAL_GUIDE = [
-  ["철광석", "검", "화살 원정 · 일반 화살 검격", "32%"],
-  ["정제 철편", "검", "화살 원정 · 분열 화살 2단", "18%"],
-  ["바람 깃", "검", "화살 원정 · 완벽 회피", "14%"],
-  ["저격수 렌즈", "검", "화살 원정 · 붉은 조준선 반격", "9%"],
-  ["폭발 촉매", "검", "화살 원정 · 폭발 화살 파괴", "8%"],
-  ["왕실 강철", "검", "화살 원정 · 정예 상자", "5%"],
-  ["보스 화살촉", "검", "화살 원정 · 보스 화살 절단", "100%"],
+  ["철광석", "검", "성문 방어 · 일반 화살 검격", "32%"],
+  ["정제 철편", "검", "성문 방어 · 분열 화살 2단", "18%"],
+  ["바람 깃", "검", "성문 방어 · 완벽 회피", "14%"],
+  ["저격수 렌즈", "검", "성문 방어 · 붉은 조준선 반격", "9%"],
+  ["폭발 촉매", "검", "성문 방어 · 폭발 화살 파괴", "8%"],
+  ["왕실 강철", "검", "성문 방어 · 정예 상자", "5%"],
+  ["보스 화살촉", "검", "성문 방어 · 보스 화살 절단", "100%"],
   ["공명 가루", "견갑", "비트 원정 · 곡 클리어", "70%"],
   ["박자 결정", "견갑", "비트 원정 · PERFECT", "16%/노트"],
   ["콤보 코어", "견갑", "비트 원정 · 30 COMBO", "35%"],
   ["피버 프리즘", "견갑", "비트 원정 · FEVER ×3 이상", "45%"],
   ["DROP 심장", "견갑", "비트 원정 · 보스곡 클리어", "100%"],
   ["별빛 현", "공용", "비트 원정 · FULL COMBO", "12%"],
-  ["원정 인장", "공용", "화살 원정 · 노히트 탈출", "100%"],
+  ["원정 인장", "공용", "성문 방어 · 노히트 탈출", "100%"],
 ] as const;
 
 export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
@@ -557,9 +557,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </div>
 
                 <p className="forge-note">
-                  원정 재료 {materials}개 {materials > 0 ? "· 이번 강화 성공률 +8%" : "· 화살 원정에서 획득"}
+                  원정 재료 {materials}개 {materials > 0 ? "· 이번 강화 성공률 +8%" : "· 성문 방어에서 획득"}
                 </p>
-                <p className="forge-note forge-refine-note">화살 원정·방치에서 얻은 세부 재료는 <b>획득 즉시 강화석으로 정제</b>되어 여기 합산됩니다 · 종류별 확률은 조합소의 재료 도감에서</p>
+                <p className="forge-note forge-refine-note">성문 방어·방치에서 얻은 세부 재료는 <b>획득 즉시 강화석으로 정제</b>되어 여기 합산됩니다 · 종류별 확률은 조합소의 재료 도감에서</p>
 
                 <button
                   type="button"
@@ -689,7 +689,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </button>
               </article>
               <article className="forge-shop-card">
-                <div><strong>원정 강화석</strong><p>화살 원정의 검격 처치·재료 상자·노히트 탈출에서 획득합니다. 무기와 보호구 강화에 사용합니다.</p></div>
+                <div><strong>원정 강화석</strong><p>성문 방어의 검격 처치·재료 상자·노히트 탈출에서 획득합니다. 무기와 보호구 강화에 사용합니다.</p></div>
                 <span>보유 {materials}</span>
               </article>
               <article className="forge-shop-card">
@@ -735,7 +735,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   <div><span>방지권</span><strong>{save.tickets}장</strong></div>
                 </div>
                 <p className="forge-note">보유 강화석 {materials}개 · 견갑 조각 {shoulderShards}개 · 실패 시 방지권 1장 자동 사용, 없으면 1단계 하락</p>
-                <p className="forge-note forge-refine-note">비트 수련에서 견갑 조각을, 화살 원정에서 강화석을 획득합니다.</p>
+                <p className="forge-note forge-refine-note">비트 수련에서 견갑 조각을, 성문 방어에서 강화석을 획득합니다.</p>
                 <button type="button" className="forge-button" disabled={!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle"} onClick={() => void enhanceArmor()}>
                   {save.armorLevel >= 15 ? "최고 단계 달성" : phase === "forging" ? "두드리는 중…" : !equippedShoulder ? "견갑을 먼저 장착하세요" : "강화하기"}
                 </button>

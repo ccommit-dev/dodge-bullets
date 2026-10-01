@@ -1,6 +1,6 @@
 /**
  * 첫 세션 5분 곡선 프로브 (RETENTION_DESIGN E) — 신규 유저가 탭+미아만으로
- * Stage 5(화살 원정 개방)까지 몇 초 걸리는지 실제 소스 함수로 측정한다.
+ * Stage 5(성문 방어 개방)까지 몇 초 걸리는지 실제 소스 함수로 측정한다.
  *
  *   node scripts/first-session-probe.mjs
  *

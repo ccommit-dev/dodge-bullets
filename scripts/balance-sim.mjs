@@ -265,7 +265,7 @@ function simulate(kind) {
     p.equippedWeaponLevel = forgeLevelRef.level;
 
     if (active) {
-      // ── 화살 원정: 게이트에 막혔으면 그날 뚫는다 (30초짜리라 현실적) ──
+      // ── 성문 방어: 게이트에 막혔으면 그날 뚫는다 (30초짜리라 현실적) ──
       if (titansState.stage >= idle.stageCeilingFor(p.pioneeredArea) && p.pioneeredArea < 5) {
         p.pioneeredArea += 1;
         p.dodgeBestStage = Math.min(4, p.dodgeBestStage + 1);

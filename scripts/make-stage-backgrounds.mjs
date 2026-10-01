@@ -1,5 +1,5 @@
 /**
- * 화살 원정 캔버스용 배경 축소본 — public/titans/backgrounds/<id>.webp (1536px) → <id>-sm.webp (720px, q72).
+ * 성문 방어 캔버스용 배경 축소본 — public/titans/backgrounds/<id>.webp (1536px) → <id>-sm.webp (720px, q72).
  *   node scripts/make-stage-backgrounds.mjs
  * draw.ts 는 -sm 만 쓴다. 원본은 사냥터 CSS 배경용.
  */

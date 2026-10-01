@@ -80,6 +80,8 @@ export type Arrow = {
   splitGraceMs: number;
   boss: boolean;
   bossTier: number;
+  /** 대장 몬스터가 쏜 마력탄 — 몬스터 그림 대신 구슬로 그리고, 잡아도 쓰러짐 프레임이 없다 (2026-10-01) */
+  fromBoss: boolean;
   bossCutsLeft: number;
   bossMaxCuts: number;
 };
@@ -317,6 +319,14 @@ export type GameWorld = {
   /** 상성 명중 표시 — 자리·속성·남은 시간(ms). 표에만 있던 상성을 화면에서 체감하게 (2026-09-29) */
   affinityPop: { x: number; y: number; element: Element; ms: number } | null;
   /** 번개화살 연쇄 선 — 쏜 자리에서 표적들로. ms 가 0 이 되면 사라진다 */
+  /** 쓰러지는 몬스터 — 쓰러짐 프레임이 커지며 사라진다 (2026-10-01) */
+  fades: Array<{ kind: Arrow["kind"]; boss: boolean; bossTier: number; x: number; y: number; size: number; ms: number; facing: number }>;
+  /** 활을 겨누는 각(라디안) — 가장 가까운 화살 쪽. 표적이 없으면 위(−π/2). 주인공 그리기가 활을 이 각으로 든다 (2026-10-01) */
+  aimAngle: number;
+  /** 보스 화살이 아래로 조준 화살을 쏘는 주기 누적(ms) — 위에서 떠다니며 쏜다 (2026-10-01) */
+  bossSalvoMs: number;
+  /** 기본 사격이 보스와 가까운 화살을 번갈아 겨누는 토글 */
+  bossFocus: number;
   boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
   skillLevels: ExpeditionSkillLevels;

@@ -86,7 +86,7 @@ export function EventCenter({
     const did = (k: keyof CharacterProgress["firstClearDates"]) => (progress.firstClearDates[k] === today ? 1 : 0);
     return [
       { id: "hunt", title: "오늘 보스 처치", desc: "사냥터 보스 1마리", axis: "S", icon: "hunt" as ContentIconName, value: did("hunt"), goal: 1 },
-      { id: "pioneer", title: "오늘 화살 원정", desc: "원정 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
+      { id: "pioneer", title: "오늘 성문 방어", desc: "원정 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
       { id: "forge", title: "오늘 장비 강화", desc: "대장간 강화 1회 성공", axis: "M", icon: "forge" as ContentIconName, value: did("forge"), goal: 1 },
       { id: "beat", title: "오늘 비트 수련", desc: "1곡 클리어", axis: "R", icon: "beat" as ContentIconName, value: did("beat"), goal: 1 },
     ];

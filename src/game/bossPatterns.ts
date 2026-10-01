@@ -19,10 +19,10 @@ export type BossPattern = {
 };
 
 export const BOSS_PATTERNS: BossPattern[] = [
-  { id: "A", name: "직선 조준", hint: "한 발이 곧게 온다 — 옆으로 한 걸음, 정면이면 일제 사격", kinds: ["normal"], count: 1, spreadDeg: 0, speedMul: 1, warningMs: 560 },
+  { id: "A", name: "직선 조준", hint: "한 마리가 곧게 온다 — 옆으로 한 걸음", kinds: ["normal"], count: 1, spreadDeg: 0, speedMul: 1, warningMs: 560 },
   { id: "B", name: "부채 탄막", hint: "두 발이 좌우로 갈라진다 — 사이로 들어가라", kinds: ["fan", "fan"], count: 2, spreadDeg: 28, speedMul: 0.88, warningMs: 640 },
-  { id: "C", name: "추적탄", hint: "따라오는 화살 + 직선 한 발 — 추적탄은 정면에서 쏴 떨궈라", kinds: ["homing", "normal"], count: 2, spreadDeg: 16, speedMul: 1, warningMs: 540 },
-  { id: "D", name: "도탄 벽", hint: "벽에 튕기는 두 발 — 발판 위로 올라가면 벽 각도가 빗나간다", kinds: ["ricochet", "ricochet"], count: 2, spreadDeg: 32, speedMul: 1.04, warningMs: 520 },
+  { id: "C", name: "추적탄", hint: "따라오는 늑대 + 돌진 한 마리 — 추격은 정면에서 쏴 떨궈라", kinds: ["homing", "normal"], count: 2, spreadDeg: 16, speedMul: 1, warningMs: 540 },
+  { id: "D", name: "도탄 벽", hint: "벽에 튕기는 두 발 — 가운데에 서면 두 번 다 빗나간다", kinds: ["ricochet", "ricochet"], count: 2, spreadDeg: 32, speedMul: 1.04, warningMs: 520 },
   { id: "E", name: "복합 탄막", hint: "추적 + 도탄 + 부채 — 예고 색을 보고 순서대로 처리", kinds: ["homing", "ricochet", "fan"], count: 3, spreadDeg: 24, speedMul: 1.06, warningMs: 500 },
 ];
 

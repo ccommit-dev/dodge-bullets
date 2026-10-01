@@ -1,5 +1,5 @@
 /**
- * 콘텐츠 설계 단언 (docs/CONTENT_BEAT_DODGE_PLAN.md) — 비트 난이도 레벨 · 화살 원정 검격 규칙. 순수 시뮬, 브라우저 불필요.
+ * 콘텐츠 설계 단언 (docs/CONTENT_BEAT_DODGE_PLAN.md) — 비트 난이도 레벨 · 성문 방어 검격 규칙. 순수 시뮬, 브라우저 불필요.
  *   node scripts/verify-content.mjs
  */
 import { build } from "esbuild";
@@ -19,6 +19,7 @@ writeFileSync(entry, [
   `export * as world from "${root}/src/game/world";`,
   `export * as shop from "${root}/src/game/shop";`,
   `export * as input from "${root}/src/game/input";`,
+  `export * as stages from "${root}/src/game/stages";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
@@ -26,7 +27,7 @@ await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, p
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { tracks, rpg, bworld, arrows, world, shop, input } = await import(pathToFileURL(out).href);
+const { tracks, rpg, bworld, arrows, world, shop, input, stages } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -52,70 +53,52 @@ ok("NORMAL A → HARD 해금 · 등급은 최고만 유지(다시 C여도 A)", r
 ok("hard 기본 곡은 HARD 즉시 열림", rpg.hardUnlocked(p0, T.find((t) => t.difficulty === "hard")));
 ok("정규화: 잘못된 등급 값 제거", Object.keys(rpg.normalizeBeatRpg({ grades: { "x:easy": "S", "y:hard": "Z" } }).grades).join() === "x:easy");
 
-// ── 화살 원정: 검격 규칙 ──
-ok("스윙 호 ±110°: 정면 O · 정면 위쪽 O · 뒤 X", arrows.inSwingArc(1, 10, 0) && arrows.inSwingArc(1, 2, -10) && !arrows.inSwingArc(1, -10, 0) && arrows.inSwingArc(-1, -10, 0));
+// ── 성문 방어: 아웃로 디펜스 규칙 (2026-10-01) — 점프·대시·일제 사격 없음 · 화살은 위에서 아래로만 · 발판 없음 · 보스는 위에서 떠다니며 사격으로 격추 ──
 const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w, shop.statsFromLevels(shop.emptyShopLevels())); world.resetRun(w, 0); return w; };
-let w = mk();
-const st = w.stats;
-ok("검격 쿨다운 1,150ms(강화 0) — 예전 1,750 보다 짧다", st.slowCooldownMs === 1150, `${st.slowCooldownMs}`);
-// 정타 반사: 화살을 플레이어 코앞 정면에 두고 스윙 시작 프레임에 갱신
-const inp = input.createInputState();
-const place = (dist, fromRight = true) => { const a = w.arrows[0]; a.active = true; a.reflected = false; a.splitLevel = 0; a.warningMs = 0; a.splitGraceMs = 0; a.boss = false; a.kind = "normal"; a.x = w.player.x + (fromRight ? dist : -dist); a.y = w.player.y; a.vx = fromRight ? -300 : 300; a.vy = 0; a.angle = Math.atan2(a.vy, a.vx); a.damage = 1; a.hitRadius = 5; return a; };
-w.player.facing = 1;
-let a = place(w.player.radius + 5 + 10);
-inp.slowPressed = true;
-world.updateWorld(w, 0.016, true, inp);
-ok("코앞(정타)에서 스윙 → 반사(금색·무해) · 게이지 +22 · 반사 화살은 오른쪽으로", a.active && a.reflected && a.damage === 0 && a.vx > 0 && w.slashGauge === 22 && w.lastCut === "reflect", `gauge=${w.slashGauge} vx=${a.vx.toFixed(0)}`);
-// 반사 화살이 화면 밖 → 처치
-a.x = w.width + 100;
-world.updateWorld(w, 0.016, true, input.createInputState());
-ok("반사 화살 화면 밖 → 궁수 처치 +1 · 보급 +2", !a.active && w.reflectKills === 1 && w.enemyKills >= 1 && w.supplies >= 2, `kills=${w.enemyKills} supplies=${w.supplies}`);
-// 파쇄: 멀리서(반경 안·정타 밖) 스윙
-w = mk(); w.player.facing = 1;
-a = place(60);
-const supBefore = w.supplies;
-world.updateWorld(w, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
-ok("반경 안·정타 밖에서 스윙 → 파쇄(소멸) · 보급 +1 · 게이지 +9", !a.active && w.supplies === supBefore + 1 && w.slashGauge === 9 && w.lastCut === "shatter");
-// 뒤쪽 화살은 못 벤다
-w = mk(); w.player.facing = 1;
-a = place(60, false);
-world.updateWorld(w, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
-ok("뒤에서 오는 화살은 스윙에 안 잘린다(시간 지연만)", a.active && !a.reflected && w.slashGauge === 0);
-// 스윙 창(320ms)이 지난 뒤 반경 안 화살은 안 잘린다
-w = mk(); w.player.facing = 1;
-world.updateWorld(w, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
-for (let i = 0; i < 25; i += 1) world.updateWorld(w, 0.016, true, input.createInputState()); // 0.4s 경과
-a = place(60);
-world.updateWorld(w, 0.016, true, input.createInputState());
-ok("스윙 창(320ms) 이후엔 베지 않는다 — 지속 시간 중이라도", a.active && w.slashGauge === 0 && w.player.slowActiveMs > 0, `slowActive=${w.player.slowActiveMs.toFixed(0)}`);
-// 일섬: 게이지 100 → 화면 정리 + 시간 지연
-w = mk(); w.slashGauge = 95;
-for (let i = 1; i <= 4; i += 1) { const b = w.arrows[i]; b.active = true; b.reflected = false; b.boss = false; b.warningMs = 0; b.x = 50 + i * 60; b.y = 100; b.vx = 0; b.vy = 200; b.splitLevel = 0; }
-w.player.facing = 1;
-a = place(60);
-world.updateWorld(w, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
-ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 · 섬광 · 1.2초 시간 지연", w.ultCount === 1 && w.slashGauge === 0 && [1, 2, 3, 4].every((i) => !w.arrows[i].active) && w.ultFlashMs > 0 && w.player.slowActiveMs >= 1200, `ult=${w.ultCount} gauge=${w.slashGauge}`);
-
-// ── 화살 원정: 쪼개짐 연출 — 파쇄는 두 토막 + 불꽃 + 검광, 반사는 불꽃 + 검광 ──
 {
-  const active = (w2) => w2.slashDebris.filter((d) => d.active);
-  const kinds = (w2) => active(w2).map((d) => d.kind);
-  let w2 = mk(); w2.player.facing = 1;
-  const p2 = (dist, fromRight = true) => { const a2 = w2.arrows[0]; a2.active = true; a2.reflected = false; a2.splitLevel = 0; a2.warningMs = 0; a2.splitGraceMs = 0; a2.boss = false; a2.kind = "normal"; a2.x = w2.player.x + (fromRight ? dist : -dist); a2.y = w2.player.y; a2.vx = fromRight ? -300 : 300; a2.vy = 0; a2.angle = Math.atan2(a2.vy, a2.vx); a2.damage = 1; a2.hitRadius = 5; a2.length = 34; return a2; };
-  p2(60);
-  world.updateWorld(w2, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
-  const k = kinds(w2);
-  ok("파쇄 → 촉 토막 1 · 깃 토막 1 · 검광 1 · 불꽃 ≥ 4 가 보인다", k.filter((x) => x === "tip").length === 1 && k.filter((x) => x === "tail").length === 1 && k.includes("streak") && k.filter((x) => x === "spark").length >= 4, k.join());
-  const tip = active(w2).find((d) => d.kind === "tip"), tail = active(w2).find((d) => d.kind === "tail");
-  ok("두 토막은 서로 반대편으로 갈라진다 (수직 속도 부호 반대·길이 = 화살 절반)", tip && tail && Math.sign(tip.vy - tail.vy) !== 0 && Math.abs(tip.len - 17) < 0.01 && Math.abs(tail.len - 17) < 0.01, `tip vy ${tip?.vy.toFixed(0)} tail vy ${tail?.vy.toFixed(0)}`);
-  for (let i = 0; i < 80; i += 1) world.updateWorld(w2, 0.016, true, input.createInputState());
-  ok("파편은 1.3초 안에 전부 사라진다 (풀 누수 없음)", active(w2).length === 0, `남은 ${active(w2).length}`);
-  w2 = mk(); w2.player.facing = 1;
-  p2(w2.player.radius + 5 + 10);
-  world.updateWorld(w2, 0.016, true, Object.assign(input.createInputState(), { slowPressed: true }));
-  const k2 = kinds(w2);
-  ok("반사 → 토막 없이 금색 불꽃 + 검광 (화살은 살아서 되돌아간다)", !k2.includes("tip") && k2.includes("streak") && k2.filter((x) => x === "spark").length >= 5 && active(w2).every((d) => d.kind === "streak" || d.color === "#fde68a"), k2.join());
-  ok("파편 풀은 resetRun 에서 비워진다", (world.resetRun(w2, 0), active(w2).length === 0));
+  const w = mk();
+  ok("발판이 없다 (점프가 없으니 설 수 없다)", w.platforms.length === 0, String(w.platforms.length));
+  const inp = Object.assign(input.createInputState(), { jumpPressed: true, dashPressed: true, slowPressed: true });
+  const y0 = w.player.y;
+  for (let i = 0; i < 20; i += 1) world.updateWorld(w, 1 / 60, true, inp);
+  ok("점프·대시·일제 사격 입력은 아무 일도 하지 않는다 (제자리·대시 없음·사격 지속 없음)",
+    Math.abs(w.player.y - y0) < 0.5 && w.player.onGround && w.player.dashActiveMs === 0 && w.player.slowActiveMs === 0, JSON.stringify({ y: w.player.y, y0, dash: w.player.dashActiveMs, slow: w.player.slowActiveMs }));
+  // 모든 패턴이 위에서 나온다 — 스테이지 4개의 패턴 구간을 각각 돌려 생성된 화살을 전부 본다
+  const bad = [];
+  for (let stage = 0; stage < 4; stage += 1) {
+    const w2 = mk(); world.resetRun(w2, stage);
+    const seen = new Set();
+    for (let f = 0; f < 60 * 50; f += 1) {
+      world.updateWorld(w2, 1 / 60, true, input.createInputState());
+      w2.player.hp = w2.player.maxHp;
+      for (let i = 0; i < w2.arrows.length; i += 1) {
+        const ar = w2.arrows[i]; if (!ar.active || ar.reflected || ar.splitLevel > 0 || ar.boss) continue;
+        const key = i + ":" + ar.kind + ":" + Math.round(ar.x) + ":" + Math.round(ar.y);
+        if (seen.has(key)) continue; seen.add(key);
+        // 처음 본 순간이 '생성 직후'는 아니지만, 위로(vy<0) 움직이는 일반 화살은 어느 순간에도 없어야 한다
+        if (ar.vy < 0 && ar.kind !== "homing") bad.push(`S${stage + 1} ${ar.kind} vy=${ar.vy.toFixed(0)} y=${ar.y.toFixed(0)}`);
+      }
+    }
+  }
+  ok("화살은 위에서 아래로만 — 네 스테이지 50초 동안 위로 움직이는 일반 화살이 없다 (유도탄 제외)", bad.length === 0, bad.slice(0, 4).join(" | "));
+}
+{
+  // 보스 — 위에서 좌우로 떠다니며 아래로 쏘고, 사격으로 깎는다
+  const w = mk(); world.resetRun(w, 0); w.rangedWeapon = "bow";
+  w.stageElapsedMs = stages.STAGES[0].durationMs * 0.6;
+  world.updateWorld(w, 1 / 60, true, input.createInputState());
+  const boss = w.arrows.find((x) => x.active && x.boss);
+  ok("보스 화살이 떴다 (스테이지 58%)", !!boss && w.bossSpawned);
+  let minY = 1e9, maxY = -1e9, salvo = 0;
+  for (let f = 0; f < 60 * 8 && boss && boss.active; f += 1) {
+    world.updateWorld(w, 1 / 60, true, input.createInputState());
+    w.player.hp = w.player.maxHp;
+    minY = Math.min(minY, boss.y); maxY = Math.max(maxY, boss.y);
+    for (const x of w.arrows) if (x.active && !x.boss && x.telegraph === "sniper" && x.y < boss.y + 80) salvo += 1;   // 보스 바로 아래서 막 나온 것
+  }
+  ok("보스는 화면 위쪽 띠(성문 아래)에 머문다 — 8초 동안 플레이어 높이로 내려오지 않는다", boss && maxY < w.player.y - 200 && minY > w.safeTop, `y ${minY.toFixed(0)}~${maxY.toFixed(0)} · 플레이어 ${w.player.y.toFixed(0)}`);
+  ok("보스가 아래로 조준 화살을 쏜다 (8초 동안 1발 이상)", salvo > 0, String(salvo));
+  ok("기본 사격만으로 보스가 깎인다 (8초 안에 격추 수가 줄거나 격파)", !boss || !boss.active || boss.bossCutsLeft < boss.bossMaxCuts, boss ? `${boss.bossCutsLeft}/${boss.bossMaxCuts}` : "격파");
 }
 
 // ── 비트: 홀드 노트(실제 유지) · 회복 · 곡 특성(소리 크기) · 펌프식 레벨 특징 ──
@@ -155,7 +138,7 @@ ok("게이지 100 도달 → 일섬: 화면 화살 전부 파쇄 · 게이지 0 
   ok("롱노트 유지 중 같은 레인 입력 = held (무시)", bworld.performBeatLane(ses, 0) === "held");
 }
 
-// ── 화살 원정: 추격대장 예고 시간은 거리 비례 · 4스테이지 봇 클리어 1~4/5 (어렵되 불가능하지 않게) ──
+// ── 성문 방어: 추격대장 예고 시간은 거리 비례 · 4스테이지 봇 클리어 1~4/5 (어렵되 불가능하지 않게) ──
 ok("대장 예고: 90px 520ms(하한) · 400px 860ms · 900px 1200ms(상한)", arrows.captainWarningMs(90) === 520 && arrows.captainWarningMs(400) === 860 && arrows.captainWarningMs(900) === 1200);
 
 // ── 비트: 사람 반응 모델 봇 플레이 (scripts/beat-sim.mjs) — 숙련자 48/48 클리어 · 초보는 EASY 전부 + 유효 레벨 ≤ 3 전부 + HARD 아닌 레벨 ≤ 7 ──
@@ -214,9 +197,9 @@ ok("대장 예고: 90px 520ms(하한) · 400px 860ms · 900px 1200ms(상한)", a
   ok("SECTION_DENSITY: EASY 필 0 · HARD 필 4", tracks.SECTION_DENSITY.easy.fill === 0 && tracks.SECTION_DENSITY.hard.fill === 4);
 }
 
-// ── 화살 원정: 스테이지 수치 재조정 (마저 개발) ──
-ok("유도탄 승격 확률: 1스테이지 0 · 2/3/4 = 5/6/9%", arrows.homingChanceFor(0) === 0 && arrows.homingChanceFor(1) === 0.05 && arrows.homingChanceFor(3) === 0.09 && arrows.homingChanceFor(9) === 0.09);
-ok("보스 베기 수 4 + 2×스테이지 (예전 10 + 4×)", world.BOSS_CUTS_BASE === 4 && world.BOSS_CUTS_PER_STAGE === 2);
+// ── 성문 방어: 스테이지 수치 재조정 (마저 개발) ──
+ok("유도탄 승격 확률: 1스테이지 0 · 2/3/4 = 3/4/6% (좌우 이동만으로 피하므로 낮게, 2026-10-01)", arrows.homingChanceFor(0) === 0 && arrows.homingChanceFor(1) === 0.03 && arrows.homingChanceFor(3) === 0.06 && arrows.homingChanceFor(9) === 0.06);
+ok("보스 격추 수 4 + 6×스테이지 — 좌우 이동만 남은 뒤 성장이 갈리는 지렛대 (2026-10-01)", world.BOSS_CUTS_BASE === 4 && world.BOSS_CUTS_PER_STAGE === 6);
 {
   const { simulateStage } = await import(pathToFileURL(join(root, "scripts/dodge-sim.mjs")).href);
   // 기준선은 새 진행도 그대로 — 장궁 + 불화살 Lv1 (런 중 카드로 습득한다). 이것이 실제 첫 플레이다 (2026-09-29).

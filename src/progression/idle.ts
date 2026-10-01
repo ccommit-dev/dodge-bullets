@@ -25,7 +25,7 @@ import { CHARACTER_PASSIVE, PATRON } from "../economy/productCatalog";
 import { starMilestoneMultiplier } from "./collection";
 import type { CharacterProgress } from "./model";
 
-/** 일반 화살 원정 스테이지 수 — T 보너스의 상한 근거. */
+/** 일반 성문 방어 스테이지 수 — T 보너스의 상한 근거. */
 const DODGE_STAGE_COUNT = STAGES.length;
 
 export const IDLE = {
@@ -167,7 +167,7 @@ export function stageCeilingFor(pioneeredArea: number): number {
   return HUNTING_AREAS[index].stageTo;
 }
 
-/** 다음 지역을 열기 위해 클리어해야 하는 화살 원정 스테이지 번호(1-based). */
+/** 다음 지역을 열기 위해 클리어해야 하는 성문 방어 스테이지 번호(1-based). */
 export function requiredDodgeStage(pioneeredArea: number): number | null {
   const next = Math.floor(pioneeredArea) + 1;
   return next > HUNTING_AREAS.length ? null : next - 1;
@@ -303,7 +303,7 @@ export function idleBottleneck(
       variable: "T",
       title: `방치 시간이 ${result.capHours}시간에서 잘렸습니다`,
       hint: canExtend
-        ? `화살 원정 Stage ${Math.min(DODGE_STAGE_COUNT, progress.dodgeBestStage + 1)} 클리어 → +1시간`
+        ? `성문 방어 Stage ${Math.min(DODGE_STAGE_COUNT, progress.dodgeBestStage + 1)} 클리어 → +1시간`
         : `이미 최대 ${IDLE.hoursCap}시간입니다 · 차원 균열로 즉시 정산하세요`,
       content: canExtend ? "dodge" : "titans",
     };
@@ -313,7 +313,7 @@ export function idleBottleneck(
     return {
       variable: "S",
       title: `${area ?? "다음 지역"} 앞에서 막혀 있습니다`,
-      hint: `화살 원정 Stage ${requiredDodgeStage(pioneeredArea) ?? DODGE_STAGE_COUNT} 클리어 → 길이 열립니다`,
+      hint: `성문 방어 Stage ${requiredDodgeStage(pioneeredArea) ?? DODGE_STAGE_COUNT} 클리어 → 길이 열립니다`,
       content: "dodge",
     };
   }

@@ -1,5 +1,6 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
+import { cutArrow } from "./arrows";
 import {
   arrowHpFor, BASIC_DAMAGE,
   BASIC_SHOT_COOLDOWN, BASIC_SHOT_SPEED,
@@ -19,7 +20,8 @@ import {
  *
  * 조준은 자동이고 플레이어는 위치와 성장에 집중한다 (참고 게임과 같다).
  *
- *   · **기본 사격** — 활/지팡이를 끼면 스킬과 무관하게 항상 나간다. 보스는 못 깎는다.
+ *   · **기본 사격** — 주인공이 손에 든 활. 늘 나가고(자동 조준), 한 발에 보스를 1 깎는다 — 일제 사격이 없어진 뒤로(2026-10-01)
+ *     보스를 떨구는 것도 사격의 몫이다. 속성 화살은 곁을 떠다니는 **무기 정령**(장착 무기)이 쏜다.
  *   · **속성 화살** — **이번 런에서 카드로 습득한 것만** 재사용마다 한 발. 각각 피해(화살 체력을
  *     깎는 양) · 위력(보스를 깎는 양) · 명중 효과 · 상성(피해 ×1.5 · 위력 +1 · 효과 ×1.5)이 있다.
  *
@@ -180,6 +182,15 @@ function targetable(a: Arrow): boolean {
   return a.active && a.warningMs <= 0 && !a.reflected;
 }
 
+/**
+ * 무기 정령의 자리 — 주인공 어깨 뒤 위를 둥둥 떠다닌다 (아웃로 디펜스의 펫처럼). 속성 화살은 여기서 나간다.
+ * 주인공이 바라보는 반대쪽 뒤에 두어 활을 가리지 않는다. 그리기(draw.ts)도 같은 함수를 쓴다
+ */
+export function spiritPos(world: GameWorld): { x: number; y: number } {
+  const t = world.animClock;
+  return { x: world.player.x - world.player.facing * 34 + Math.sin(t * 1.7) * 4, y: world.player.y - 66 + Math.sin(t * 2.3) * 5 };
+}
+
 /** 가장 가까운 화살 n개 */
 function nearest(world: GameWorld, n: number, fromX: number, fromY: number): Arrow[] {
   return world.arrows
@@ -221,17 +232,20 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage
   }
   if (a.boss) {
     if (p <= 0) return false;
-    const take = Math.min(p, Math.max(0, a.bossCutsLeft - 1));
-    if (take > 0) {
-      a.bossCutsLeft -= take; world.skillKills += 1;
-      // 보스를 깎는 순간은 묵직하게
-      burst(world, element, a.x, a.y, 10 + take * 3, 190);
-      shake(world, 130, 2 + take);
+    // 보스는 위력만큼 '격추'한다 — 마지막 한 번까지 사격이 한다(일제 사격이 없어졌으므로, 2026-10-01). 파편·격파는 arrows.cutArrow 가 맡는다
+    let took = 0;
+    for (let i = 0; i < p && a.active && a.bossCutsLeft > 0; i += 1) { cutArrow(world, a, 1e9); took += 1; }
+    if (took > 0) {
+      world.skillKills += 1;
+      burst(world, element, a.x, a.y, 10 + took * 3, 190);
+      shake(world, 130, 2 + took);
       world.sfx.thud += 1;
     }
-    return take > 0;
+    return took > 0;
   }
   const chilled = a.chilledMs > 0;
+  // 쓰러짐 — 몬스터는 사라지는 대신 쓰러짐 프레임이 커지며 흐려진다 (2026-10-01)
+  if (!a.fromBoss && world.fades.length < 24) world.fades.push({ kind: a.kind, boss: false, bossTier: a.bossTier, x: a.x, y: a.y, size: a.hitRadius, ms: 420, facing: a.vx < 0 ? -1 : 1 });
   a.active = false;
   world.skillKills += 1;
   world.supplies += 1;
@@ -317,24 +331,40 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   const lv = world.skillLevels;
   const timers = world.skillTimers;
   const px = world.player.x, py = world.player.y - 14;
-  const aimAt = (t: Arrow) => Math.atan2(t.y - py, t.x - px);
+  // 리드 조준 — 표적이 움직이는 만큼 앞을 겨눈다. 보스가 좌우로 떠다니게 되면서(2026-10-01) 발사 순간 위치를 겨누면 30~50px 빗나갔다
+  const lead = (fx: number, fy: number, t: Arrow, speed: number) => {
+    const d = Math.hypot(t.x - fx, t.y - fy);
+    const tt = d / Math.max(1, speed);
+    return Math.atan2(t.y + t.vy * tt - fy, t.x + t.vx * tt - fx);
+  };
+  const aimAt = (t: Arrow, speed = BASIC_SHOT_SPEED) => lead(px, py, t, speed);
+  // 활을 겨누는 각 — 가장 가까운 화살 쪽, 없으면 위. 그리기가 활을 이 각으로 든다
+  { const [near] = nearest(world, 1, px, py); const want = near ? aimAt(near) : -Math.PI / 2; let d = want - world.aimAngle; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; world.aimAngle += Math.max(-9 * dtSec, Math.min(9 * dtSec, d)); }
 
   // ── 기본 사격 — 무기만 있으면 항상. 지팡이는 마력탄이지만 같은 궤적이다
   if (world.rangedWeapon !== "none") {
     world.basicTimer -= dtSec;
     if (world.basicTimer <= 0) {
       const shots = 1 + world.runMods.shotExtra + world.chips.volleyExtra;
-      const targets = nearest(world, shots, px, py);
+      let targets = nearest(world, shots, px, py);
+      // 보스가 떠 있으면 번갈아 보스를 쏜다 — 늘 가장 가까운 화살만 쏘면 보스의 조준 화살이 끝없이 더 가까워 보스를 영영 못 깎는다 (2026-10-01 시뮬: 클리어 0/5)
+      const bossArrow = world.arrows.find((a) => a.boss && targetable(a));
+      if (bossArrow && !targets.includes(bossArrow)) {
+        const closest = targets[0];
+        const threatNear = !!closest && closest.y > py - 260;
+        world.bossFocus = (world.bossFocus + 1) % 2;
+        if (!threatNear || world.bossFocus === 0) targets = [bossArrow, ...targets.slice(0, Math.max(0, shots - 1))];
+      }
       if (targets.length) {
         world.basicTimer = basicCooldown(world);
         const evo = world.runMods.evolutions.basic;
         for (const t of targets) {
-          const ang = aimAt(t);
+          const ang = aimAt(t, evo === "beam" ? 1000 : evo === "seeker" ? 540 : BASIC_SHOT_SPEED);
           const sp = evo === "beam" ? 1000 : evo === "seeker" ? 540 : BASIC_SHOT_SPEED;
           const conv = world.runMods.convert;
           spawn(world, {
             element: conv ?? "basic", basic: true, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-            radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 0, damage: BASIC_DAMAGE * (conv ? 1.2 : 1),
+            radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 1, damage: BASIC_DAMAGE * (conv ? 1.2 : 1),
             hits: world.runMods.shotPierce + (evo === "beam" ? 99 : 0), seeker: evo === "seeker",
           });
         }
@@ -355,46 +385,48 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     timers[id] = skillCooldown(world, id);
   };
 
+  const sp0 = spiritPos(world);
+  const fromSpirit = (t: Arrow, speed = 640) => lead(sp0.x, sp0.y, t, speed);
   tick("fire", () => {
     const [t] = nearest(world, 1, px, py);
     if (!t) return false;
-    const ang = aimAt(t);
-    spawn(world, { element: "fire", vx: Math.cos(ang) * 640, vy: Math.sin(ang) * 640, radius: 10, lifeMs: 1600, power: firePower(lv.fire), damage: fireDamage(lv.fire) });
-    recoil(world, ang);
+    const ang = fromSpirit(t);
+    spawn(world, { x: sp0.x, y: sp0.y, element: "fire", vx: Math.cos(ang) * 640, vy: Math.sin(ang) * 640, radius: 10, lifeMs: 1600, power: firePower(lv.fire), damage: fireDamage(lv.fire) });
+    world.sfx.shot += 1;
     return true;
   });
 
   tick("water", () => {
     const [t] = nearest(world, 1, px, py);
     if (!t) return false;
-    const ang = aimAt(t);
+    const ang = fromSpirit(t, 700);
     spawn(world, {
-      element: "water", vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700, radius: 11, lifeMs: 1700,
+      x: sp0.x, y: sp0.y, element: "water", vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700, radius: 11, lifeMs: 1700,
       power: waterPower(lv.water), damage: waterDamage(lv.water), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1,
     });
-    recoil(world, ang);
+    world.sfx.shot += 1;
     return true;
   });
 
   tick("ice", () => {
     const [t] = nearest(world, 1, px, py);
     if (!t) return false;
-    const ang = aimAt(t);
-    spawn(world, { element: "ice", vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 10, lifeMs: 1600, power: icePower(lv.ice), damage: iceDamage(lv.ice) });
-    recoil(world, ang);
+    const ang = fromSpirit(t, 620);
+    spawn(world, { x: sp0.x, y: sp0.y, element: "ice", vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 10, lifeMs: 1600, power: icePower(lv.ice), damage: iceDamage(lv.ice) });
+    world.sfx.shot += 1;
     return true;
   });
 
   tick("earth", () => {
     const [t] = nearest(world, 1, px, py);
     if (!t) return false;
-    const ang = aimAt(t);
+    const ang = fromSpirit(t, 460);
     spawn(world, {
-      element: "earth", vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460,
+      x: sp0.x, y: sp0.y, element: "earth", vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460,
       radius: earthRadius(lv.earth), lifeMs: 2000, power: earthPower(lv.earth) + world.runMods.earthPowerBonus,
       damage: earthDamage(lv.earth) + world.runMods.earthPowerBonus,
     });
-    recoil(world, ang);
+    world.sfx.shot += 1;
     return true;
   });
 
@@ -410,8 +442,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       hit(world, t, "bolt", boltPower(lv.bolt), boltDamage(lv.bolt));
     }
     world.sfx.zap += 1;
-    world.boltFrom = { x: px, y: py, ms: 220, targets: pool.map((t) => ({ x: t.x, y: t.y })) };
-    recoil(world, aimAt(pool[0]));
+    world.boltFrom = { x: sp0.x, y: sp0.y, ms: 220, targets: pool.map((t) => ({ x: t.x, y: t.y })) };
     return true;
   });
 
@@ -518,6 +549,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   if (world.shakeMs > 0) { world.shakeMs -= dtSec * 1000; if (world.shakeMs <= 0) { world.shakeMs = 0; world.shakeAmp = 0; } }
   if (world.streakMs > 0) { world.streakMs -= dtSec * 1000; if (world.streakMs <= 0) { world.streakMs = 0; world.streak = 0; } }
   if (world.heroAura) { world.heroAura.ms -= dtSec * 1000; if (world.heroAura.ms <= 0) world.heroAura = null; }
+  for (let i = world.fades.length - 1; i >= 0; i -= 1) { world.fades[i].ms -= dtSec * 1000; if (world.fades[i].ms <= 0) world.fades.splice(i, 1); }
 
   for (const f of world.skillFx) {
     if (!f.active) continue;
@@ -539,6 +571,7 @@ export function resetSkillShots(world: GameWorld): void {
   world.shakeMs = 0; world.shakeAmp = 0;
   world.streak = 0; world.streakMs = 0;
   world.heroAura = null;
+  world.fades.length = 0;
   world.skillKills = 0;
   world.epicPicks = 0;   // 클리어마다 일일 임무에 더하므로 skillKills 처럼 스테이지 단위
 }

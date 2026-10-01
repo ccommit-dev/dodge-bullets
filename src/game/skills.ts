@@ -1,7 +1,7 @@
 import type { PlayerStats } from "./types";
 
 /**
- * 화살 원정 영구 스킬 — **속성 화살** (2026-09-29).
+ * 성문 방어 영구 스킬 — **속성 화살** (2026-09-29).
  *
  * 2026-09-28 설계(연속 사격·관통 화살·화염탄·빙결 파동·번개 사슬)는 활을 장착해도 **스킬 레벨이
  * 0 이면 아무것도 쏘지 않았다** — 실기기에서 "활은 들었는데 공격이 안 나간다"로 읽혔다(스크린샷).
@@ -60,11 +60,12 @@ export const BASIC_SHOT_SPEED = 720;
 
 export type Element = "basic" | "fire" | "water" | "ice" | "earth" | "bolt";
 
-/** 적 화살 종류 (types.Arrow.kind) — 상성표가 이걸 가리킨다 */
+/** 몬스터 종류 (types.Arrow.kind — 엔티티 이름은 호환상 Arrow) — 상성표가 이걸 가리킨다 */
 export type ArrowKind = "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing";
 
+/** 몬스터 종류 이름 — 내려오는 것은 화살이 아니라 몬스터다 (2026-10-01). 종류(kind)는 그대로, 겉모습·이름만 몬스터 */
 export const ARROW_KIND_LABEL: Record<ArrowKind, string> = {
-  normal: "일반", aimed: "조준", fan: "부채꼴", ricochet: "튕김", explosive: "폭발", homing: "유도",
+  normal: "슬라임", aimed: "그림자 늑대", fan: "고블린 떼", ricochet: "오우거", explosive: "폭염 비룡", homing: "달빛 늑대",
 };
 
 export const ELEMENT_LABEL: Record<Element, string> = {
@@ -95,7 +96,7 @@ export type ExpeditionSkillDef = {
   desc: string;
   /** 명중 효과 한 줄 — 표의 '효과' 칸 */
   effect: string;
-  /** 상성 — 이 종류의 적 화살에 피해 ×1.5 · 보스 깎기 +1 · 효과 ×1.5. null 이면 없음(일섬) */
+  /** 상성 — 이 종류의 몬스터에 피해 ×1.5 · 보스 깎기 +1 · 효과 ×1.5. null 이면 없음(화살비) */
   strongVs: ArrowKind | null;
   /** 이 스테이지를 클리어해야 열린다. 0 이면 처음부터 */
   unlockStage: number;
@@ -227,7 +228,7 @@ export function iceDamage(lv: number): number { return scaled(1.2, lv); }
 export function earthDamage(lv: number): number { return scaled(2.6, lv); }
 export function boltDamage(lv: number): number { return scaled(1.3, lv); }
 
-/** 스테이지별 화살 체력 — S1 은 기본 사격 한 발, 깊어질수록 속성 화살과 레벨이 필요하다. 성벽은 계속 오른다 */
+/** 스테이지별 몬스터 체력 — S1 은 기본 사격 한 발, 깊어질수록 속성 화살과 레벨이 필요하다. 성벽은 계속 오른다 */
 // S2 는 1.6 — 불화살 Lv1(1.6)이 S2 까지 한 발이다. 초반 웨이브는 안정적으로 넘어야 한다(가이드)
 export const ARROW_HP = [1, 1.6, 2.8, 3.6];
 export function arrowHpFor(stageIndex: number): number {
@@ -257,7 +258,7 @@ function nextDelta(lv: number, f: (n: number) => number, unit = "", digits = 0):
   return `${d > 0 ? "+" : ""}${v}${unit}`;
 }
 
-const vs = (k: ArrowKind) => `${ARROW_KIND_LABEL[k]} 화살`;
+const vs = (k: ArrowKind) => ARROW_KIND_LABEL[k];
 
 export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   {
@@ -267,7 +268,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "magic",
     element: "fire",
     icon: "fire",
-    desc: "[불화살] 학습. 명중한 자리에서 터져 주변 화살을 함께 태운다.",
+    desc: "[불화살] 학습. 명중한 자리에서 터져 주변 몬스터를 함께 태운다.",
     effect: "명중 시 폭발",
     strongVs: "fan",
     unlockStage: 0,
@@ -295,7 +296,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "water",
     icon: "water",
-    desc: "[물화살] 학습. 멈추지 않고 흘러가며 여러 화살을 꿰뚫는다. 폭발 화살을 끈다.",
+    desc: "[물화살] 학습. 멈추지 않고 흘러가며 여러 몬스터를 꿰뚫는다. 폭염 비룡의 불을 끈다.",
     effect: "관통",
     strongVs: "explosive",
     unlockStage: 1,
@@ -323,7 +324,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "magic",
     element: "ice",
     icon: "ice",
-    desc: "[얼음화살] 학습. 명중한 화살과 주변을 얼려 느리게 만든다. 유도 화살은 길을 잃는다.",
+    desc: "[얼음화살] 학습. 명중한 몬스터와 주변을 얼려 느리게 만든다. 달빛 늑대는 길을 잃는다.",
     effect: "명중 시 빙결",
     strongVs: "homing",
     unlockStage: 2,
@@ -352,7 +353,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "earth",
     icon: "earth",
-    desc: "[흙화살] 학습. 무거운 돌촉 화살. 느리지만 보스 화살을 크게 깎고 튕기는 화살을 땅에 박는다.",
+    desc: "[흙화살] 학습. 무거운 돌촉 화살. 느리지만 대장 몬스터를 크게 깎고 튕기는 오우거를 땅에 박는다.",
     effect: "고피해 · 튕김 봉쇄",
     strongVs: "ricochet",
     unlockStage: 2,
@@ -380,7 +381,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "magic",
     element: "bolt",
     icon: "bolt",
-    desc: "[번개화살] 학습. 쏘는 순간 가까운 화살 여러 개를 번개로 잇는다. 조준 화살을 먼저 끊는다.",
+    desc: "[번개화살] 학습. 쏘는 순간 가까운 몬스터 여럿을 번개로 잇는다. 돌진하는 늑대를 먼저 끊는다.",
     effect: "즉발 연쇄",
     strongVs: "aimed",
     unlockStage: 3,
@@ -408,8 +409,8 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "none",
     element: "basic",
     icon: "ultimate",
-    desc: "[화살비] 강화. 게이지가 차면 하늘에서 화살이 쏟아져 화면의 화살을 전부 떨군다. 게이지가 빨리 차고 조준 창이 길어진다.",
-    effect: "화면 전체 격추",
+    desc: "[화살비] 강화. 게이지가 차면 하늘에서 화살이 쏟아져 화면의 몬스터를 전부 쓰러뜨린다. 게이지가 빨리 찬다.",
+    effect: "화면 전체 처치",
     strongVs: null,
     unlockStage: 0,
     goldBase: 360,

@@ -1,12 +1,12 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
-import { REFLECT_DIST, SWING_ARC, SWING_MS } from "./arrows";
 import { ELEMENT_COLOR, type Element } from "./skills";
+import { spiritPos } from "./skillShots";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
 /**
- * 스테이지 배경 — 화살 원정 **전용** 배경 4종 (art-gen/batch-dodge-bg.sh).
+ * 스테이지 배경 — 성문 방어 **전용** 배경 4종 (art-gen/batch-dodge-bg.sh).
  * 전에는 사냥터 지역 배경(초원·폐허·용암·심연)을 재사용해 스테이지 이름
  * (외곽 초소·붉은 협곡·왕실 사격장·검은 성문)과 장소가 맞지 않았고, 화살 가독성을 위해
  * 62% 어둡게 덮어 무엇이 있는지 보이지도 않았다 — 콘텐츠 고유의 장소로 읽히지 않았다 (2026-09-22).
@@ -202,30 +202,38 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
   }
 }
 
+/**
+ * 몬스터 원화 — 사냥터와 같은 그림(titans/generated/monsters). 종류(kind)마다 한 종, 보스는 스테이지 지역 보스 (2026-10-01).
+ *   idle · -hit(피격) · -defeat(쓰러짐) 세 프레임이 있다
+ */
+const MONSTER_SPRITE: Record<Arrow["kind"], string> = {
+  normal: "slime", aimed: "shadow-wolf-clean", fan: "goblin", ricochet: "ogre", explosive: "dragon", homing: "moon-wolf-king-clean",
+};
+const BOSS_SPRITE = ["moss-golem-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan"];
+/** 보스 바에 쓰는 대장 이름 — 사냥터 지역 보스와 같은 그림이라 이름도 같다 */
+export const BOSS_NAME = ["이끼 골렘", "늑대 왕", "화염 비룡", "심연의 타이탄"];
+function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" | "hit" | "defeat"): HTMLImageElement | null {
+  const base = a.boss ? BOSS_SPRITE[Math.min(3, Math.max(0, a.bossTier - 1))] : MONSTER_SPRITE[a.kind];
+  return sprite(`titans/generated/monsters/${base}${state === "idle" ? "" : "-" + state}.png`);
+}
+/** 종류별 몸 크기(그림 높이 px) — 판정 반지름보다 크게, 사냥터 몬스터와 비슷한 체감 (34~52 → 56~88, 2026-10-01) */
+function monsterSize(a: Pick<Arrow, "kind" | "boss" | "bossTier">): number {
+  if (a.boss) return 96 + Math.min(40, a.bossTier * 10);
+  return a.kind === "ricochet" ? 88 : a.kind === "explosive" ? 84 : a.kind === "homing" ? 76 : a.kind === "aimed" ? 68 : a.kind === "fan" ? 60 : 56;
+}
+
 function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
-  if (a.reflected) {
-    // 반사된 화살 — 금색, 궁수에게 되돌아가는 중
-    const c = Math.cos(a.angle), sn = Math.sin(a.angle), h = a.length * 0.5;
-    ctx.save();
-    ctx.strokeStyle = "#fde68a"; ctx.fillStyle = "#fde68a"; ctx.lineWidth = 3; ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14;
-    ctx.beginPath(); ctx.moveTo(a.x - c * h, a.y - sn * h); ctx.lineTo(a.x + c * h, a.y + sn * h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(a.x + c * h, a.y + sn * h); ctx.lineTo(a.x + c * (h - 8) - sn * 4, a.y + sn * (h - 8) + c * 4); ctx.lineTo(a.x + c * (h - 8) + sn * 4, a.y + sn * (h - 8) - c * 4); ctx.closePath(); ctx.fill();
-    ctx.restore();
-    return;
-  }
+  if (a.reflected) return;   // 되쏘기는 없다 — 호환용 플래그
   const cos = Math.cos(a.angle);
   const sin = Math.sin(a.angle);
   const half = a.length * 0.5;
   const tx = a.x + cos * half;
   const ty = a.y + sin * half;
-  const bx = a.x - cos * half;
-  const by = a.y - sin * half;
-  const px = -sin;
-  const py = cos;
   const bossPalette = ["#fb7185", "#f97316", "#a78bfa", "#facc15", "#22d3ee"];
   const bossColor = bossPalette[Math.max(0, a.bossTier - 1) % bossPalette.length];
 
   if (a.splitLevel > 0) {
+    // 보스가 흩뿌린 조각 — 떠다니는 정령 구슬 (몬스터가 아니다)
     ctx.save();
     const splitColor = a.splitLevel === 1 ? "#67e8f9" : a.splitLevel === 2 ? "#c084fc" : "#fbbf24";
     ctx.globalAlpha = a.orbitMs > 0 ? 0.82 : 0.42;
@@ -240,14 +248,6 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
       ctx.arc(a.x, a.y, 7 + a.splitLevel * 2, 0, Math.PI * 2);
     }
     ctx.stroke();
-    ctx.fillStyle = splitColor;
-    ctx.globalAlpha = 0.65;
-    for (let i = 0; i < 4; i++) {
-      const trail = a.angle + Math.PI + i * 0.18;
-      ctx.beginPath();
-      ctx.arc(a.x + Math.cos(trail) * (6 + i * 4), a.y + Math.sin(trail) * (6 + i * 4), Math.max(1, 3 - i * 0.55), 0, Math.PI * 2);
-      ctx.fill();
-    }
     ctx.restore();
   }
 
@@ -272,7 +272,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.setLineDash([]);
     ctx.fillStyle = warningColor;
     ctx.font = "800 11px system-ui";
-    const warningText = a.telegraph === "homing" ? "유도탄" : a.telegraph === "sniper" ? "저격 0.8" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "점프" : a.telegraph === "dash" ? "대시 관통" : "PERFECT";
+    const warningText = a.fromBoss ? "대장 사격" : a.telegraph === "homing" ? "추격" : a.telegraph === "sniper" ? "돌진" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "낙하" : a.telegraph === "dash" ? "돌파" : "떼";
     // 위는 상단 버튼·HUD 글자(왼쪽 열이 더 길다)·일섬 게이지, 아래는 스킬 슬롯·조작 버튼이 덮는다 — 그 사이에만 쓴다
     const lx = Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x));
     const top = labelBounds.top + (lx < labelBounds.leftColumn ? labelBounds.leftExtra : 0);
@@ -280,66 +280,78 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.restore();
   }
 
-  ctx.strokeStyle = a.boss ? bossColor : a.kind === "homing" ? "#c084fc" : a.telegraph === "perfect" ? "#facc15" : a.kind === "explosive" ? "#f59e0b" : a.kind === "ricochet" ? "#38bdf8" : "#f87171";
-  ctx.fillStyle = a.boss ? "#fff7ed" : a.kind === "homing" ? "#e9d5ff" : a.telegraph === "perfect" ? "#fef08a" : a.kind === "explosive" ? "#fde68a" : "#fca5a5";
-  ctx.lineWidth = a.boss ? 6 + Math.min(5, a.bossTier) : 2.4;
-  ctx.lineCap = "round";
-
+  if (a.splitLevel > 0) return;   // 조각은 위에서 그렸다
+  if (a.fromBoss) {
+    // 대장 몬스터의 마력탄 — 보스색 구슬에 꼬리. 몬스터가 몬스터를 던지는 그림을 피한다
+    ctx.save();
+    const tailAng = Math.atan2(a.vy, a.vx);
+    ctx.strokeStyle = bossColor; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.globalAlpha = 0.45;
+    ctx.beginPath(); ctx.moveTo(a.x - Math.cos(tailAng) * 30, a.y - Math.sin(tailAng) * 30); ctx.lineTo(a.x, a.y); ctx.stroke();
+    ctx.globalAlpha = 1;
+    const g = ctx.createRadialGradient(a.x, a.y, 2, a.x, a.y, 13);
+    g.addColorStop(0, "#fff7ed"); g.addColorStop(0.45, bossColor); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.shadowColor = bossColor; ctx.shadowBlur = 14;
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(a.x, a.y, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // ── 몬스터 몸 ──
+  const img = monsterImg(a, a.hitFlashMs > 0 ? "hit" : "idle");
+  const size = monsterSize(a);
+  const t = performance.now() * 0.001;
+  const walk = Math.sin(t * 9 + a.x * 0.05);                    // 걷는 들썩임 — 개체마다 위상이 다르다
+  const facing = a.vx < -5 ? -1 : a.vx > 5 ? 1 : 1;
+  ctx.save();
+  // 발밑 그림자
+  ctx.fillStyle = "rgba(0,0,0,.28)";
+  ctx.beginPath(); ctx.ellipse(a.x, a.y + size * 0.42, size * 0.34, size * 0.1, 0, 0, Math.PI * 2); ctx.fill();
   if (a.boss) {
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = bossColor;
-    ctx.globalAlpha = 0.42;
-    ctx.lineWidth = 14 + Math.min(12, a.bossTier * 2);
-    ctx.shadowColor = bossColor;
-    ctx.shadowBlur = 24;
-    ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(tx, ty);
-    ctx.stroke();
-    ctx.restore();
+    ctx.shadowColor = bossColor; ctx.shadowBlur = 18;
+  } else if (a.kind === "homing") {
+    ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 12; ctx.globalAlpha = 0.9;
+  } else if (a.kind === "explosive") {
+    ctx.shadowColor = "#f59e0b"; ctx.shadowBlur = 10;
   }
-
-  // shaft
-  ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(tx, ty);
-  ctx.stroke();
-
+  if (a.chilledMs > 0) { ctx.filter = "saturate(.4) brightness(1.2)"; }
+  ctx.translate(a.x, a.y + walk * 2);
+  ctx.scale(facing, 1);
+  // 걷기 — 가로 폭이 살짝 벌어졌다 오므라든다 (슬라임은 더 출렁인다)
+  const squash = (a.kind === "normal" ? 0.08 : 0.035) * walk;
+  ctx.scale(1 + squash, 1 - squash);
+  if (img) {
+    const w = size * (img.naturalWidth / img.naturalHeight);
+    ctx.drawImage(img, -w / 2, -size / 2, w, size);
+  } else {
+    ctx.fillStyle = a.boss ? bossColor : "#f87171";
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
   if (a.kind === "explosive") {
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, 9, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(251, 191, 36, 0.5)";
-    ctx.fill();
-  }
-  if (a.kind === "homing") {
+    // 터지기 직전의 불씨 — 폭발 반경 예고
     ctx.save();
-    ctx.strokeStyle = "rgba(192,132,252,.58)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, 9 + Math.sin(performance.now() * 0.012) * 2, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.globalAlpha = 0.35 + Math.sin(t * 10) * 0.15;
+    ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2; ctx.setLineDash([4, 6]);
+    ctx.beginPath(); ctx.arc(a.x, a.y, size * 0.75, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   }
-
-  // tip
-  ctx.beginPath();
-  ctx.moveTo(tx, ty);
-  ctx.lineTo(tx - cos * 9 + px * 4.5, ty - sin * 9 + py * 4.5);
-  ctx.lineTo(tx - cos * 9 - px * 4.5, ty - sin * 9 - py * 4.5);
-  ctx.closePath();
-  ctx.fill();
-
-  // fletching — 축 위 한 점에서 뒤·바깥으로 눕는 꼬리 깃 (촉보다 얇게)
-  ctx.strokeStyle = "#fda4af";
-  ctx.lineWidth = Math.max(1.4, ctx.lineWidth * 0.6);
-  ctx.beginPath();
-  ctx.moveTo(bx + cos * 8, by + sin * 8);
-  ctx.lineTo(bx - cos * 1.5 + px * 3.8, by - sin * 1.5 + py * 3.8);
-  ctx.moveTo(bx + cos * 8, by + sin * 8);
-  ctx.lineTo(bx - cos * 1.5 - px * 3.8, by - sin * 1.5 - py * 3.8);
-  ctx.stroke();
+  void tx; void ty;
 }
+
+/** 쓰러지는 몬스터 — 쓰러짐 프레임이 0.42초 동안 커지며 흐려진다 */
+function drawFades(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  for (const f of world.fades) {
+    const img = monsterImg(f, "defeat");
+    const k = 1 - f.ms / 420;
+    const size = monsterSize(f) * (1 + k * 0.35);
+    ctx.save();
+    ctx.globalAlpha = 1 - k;
+    ctx.translate(f.x, f.y + k * 10);
+    ctx.scale(f.facing, 1);
+    if (img) { const w = size * (img.naturalWidth / img.naturalHeight); ctx.drawImage(img, -w / 2, -size / 2, w, size); }
+    ctx.restore();
+  }
+}
+
 
 /**
  * 손맛 연출 — 얼어붙은 화살 · 파편 · 연속 요격 · 습득 빛 (2026-09-29).
@@ -420,8 +432,8 @@ function drawJuice(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.lineJoin = "round"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
     ctx.fillStyle = world.streak >= 10 ? "#fde047" : world.streak >= 6 ? "#fdba74" : "#e0f2fe";
     const y = world.player.y - 62;
-    ctx.strokeText(`요격 ×${world.streak}`, world.player.x, y);
-    ctx.fillText(`요격 ×${world.streak}`, world.player.x, y);
+    ctx.strokeText(`처치 ×${world.streak}`, world.player.x, y);
+    ctx.fillText(`처치 ×${world.streak}`, world.player.x, y);
     ctx.restore();
   }
 }
@@ -440,7 +452,32 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
 }
 
 /** 보스 막대의 세로 위치(safeTop 기준) — verify-dodge-hud 가 DOM HUD 와 겹치지 않는지 잰다 */
-export const BOSS_BAR_TOP = 270;
+export const BOSS_BAR_TOP = 270;   // 270 → 350 → 270: 궁수 대장 원화가 사라지고 보스 몬스터(106~136px)가 412 띠에 떠서, 겹치지 않게 안내 배너 바로 아래로
+
+/**
+ * 무기 정령 — 장착한 무기(장궁·지팡이)가 주인공 곁을 떠다니며 속성 화살을 쏜다 (아웃로 디펜스의 펫, 2026-10-01).
+ * 손에 든 활과 겹치지 않게 어깨 뒤 위에서 둥둥 뜨고, 가장 가까운 몬스터 쪽으로 기울며, 속성 화살을 쏠 때 번쩍인다
+ */
+function drawWeaponSpirit(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  if (world.rangedWeapon === "none" || world.player.anim === "dead") return;
+  const img = sprite(`dodge/weapons/${world.rangedWeapon}.png`);
+  const { x, y } = spiritPos(world);
+  const glow = ELEMENT_COLOR[world.rangedWeapon === "staff" ? "ice" : "earth"];
+  ctx.save();
+  const g = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, 26);
+  g.addColorStop(0, "rgba(255,255,255,.35)"); g.addColorStop(0.5, glow + "55"); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y + 4, 26, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(x, y);
+  ctx.rotate(world.aimAngle + Math.PI / 2 + Math.sin(world.animClock * 1.3) * 0.06);
+  if (img) {
+    const h = 40, w = h * (img.naturalWidth / img.naturalHeight);
+    ctx.shadowColor = glow; ctx.shadowBlur = 10;
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  } else {
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
 
 /** 캔버스 글자가 DOM HUD 에 가려지지 않는 세로 범위 — drawFrameInner 가 매 프레임 채운다 */
 const labelBounds = { top: 120, bottom: 600, leftColumn: 205, leftExtra: 72 };
@@ -513,35 +550,6 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillRect(pl.x, pl.y, pl.w, 3);
   }
 
-  if (world.stageIndex === 3) {
-    // 추격대장 — 화면 오른쪽 끝에서 활을 당기는 궁수 대장 원화 (art-gen char captain). 로드 전엔 예전 붉은 기운만
-    const captain = sprite("titans/generated/dodge/archer-captain.png");
-    ctx.save();
-    ctx.globalAlpha = 0.32 + Math.sin(world.animClock * 8) * 0.05;
-    ctx.fillStyle = "#7f1d1d";
-    ctx.beginPath();
-    ctx.arc(width - 18, floorY - 42, 42, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    if (captain) {
-      const h = 118, w = h * (captain.naturalWidth / captain.naturalHeight);
-      ctx.save();
-      ctx.globalAlpha = world.bossDefeated ? 0.38 : 0.95;
-      if (world.bossDefeated) ctx.filter = "grayscale(1)";
-      ctx.translate(width - 6, floorY + 2);
-      ctx.scale(-1, 1); // 원화는 오른쪽을 본다 — 플레이어(왼쪽)를 향하게 뒤집는다
-      ctx.drawImage(captain, 0, -h + Math.sin(world.animClock * 2.2) * 2, w, h);
-      ctx.restore();
-    }
-    ctx.save();
-    ctx.fillStyle = "#fecaca";
-    ctx.font = "900 11px system-ui";
-    ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
-    const captainLabel = world.bossDefeated ? "추격대장 격파" : world.bossSpawned ? `추격대장 · 격추 ${world.bossCutsLeft}` : "추격대장";
-    ctx.fillText(captainLabel, width - 100, floorY - 124);
-    ctx.restore();
-  }
-
   const stageProgress = world.stageElapsedMs / Math.max(1, getStage(world.stageIndex).durationMs);
   if (world.chests === 0 && stageProgress >= 0.42 && stageProgress <= 0.78) {
     const chestX = width * 0.7;
@@ -567,12 +575,12 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
 
   if (world.lastCutMs > 0 && world.lastCut) {
     ctx.save();
-    const label = world.lastCut === "reflect" ? "되쏘기!" : world.lastCut === "ult" ? "화살비" : "격추";
+    const label = world.lastCut === "reflect" ? "되쏘기!" : world.lastCut === "ult" ? "화살비" : "처치";
     ctx.globalAlpha = Math.min(1, world.lastCutMs / 300);
     ctx.fillStyle = world.lastCut === "reflect" ? "#fde68a" : world.lastCut === "ult" ? "#f8fafc" : "#67e8f9";
     ctx.font = `900 ${world.lastCut === "ult" ? 34 : 16}px system-ui`;
     ctx.textAlign = "center";
-    // 화살비는 화면 전체의 사건이라 가운데 위에 — 주인공 머리 위에 두면 "요격 ×N" 과 겹친다 (2026-10-01 캡처)
+    // 화살비는 화면 전체의 사건이라 가운데 위에 — 주인공 머리 위에 두면 "처치 ×N" 과 겹친다 (2026-10-01 캡처)
     if (world.lastCut === "ult") { ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14; ctx.fillText(label, width * 0.5, height * 0.4); }
     else ctx.fillText(label, world.player.x, world.player.y - 46);
     ctx.restore();
@@ -598,6 +606,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.restore();
   }
 
+  drawFades(ctx, world);
   for (let i = 0; i < arrows.length; i++) {
     if (arrows[i].active) drawArrow(ctx, arrows[i]);
   }
@@ -721,61 +730,16 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = "#fff";
     ctx.font = "900 11px system-ui";
     ctx.textAlign = "center";
-    ctx.fillText(`보스 화살 · 남은 격추 ${world.bossCutsLeft}/${world.bossMaxCuts}`, width * 0.5, barY + 17);
+    ctx.fillText(`${BOSS_NAME[Math.min(3, Math.max(0, world.stageIndex))]} · 남은 처치 ${world.bossCutsLeft}/${world.bossMaxCuts}`, width * 0.5, barY + 17);
     ctx.restore();
   }
 
+  drawWeaponSpirit(ctx, world);
   drawSkillShots(ctx, world);
   drawStickman(ctx, world);
   drawJuice(ctx, world);
   drawSlashGauge(ctx, world);
 
-  if (world.player.slowActiveMs > 0) {
-    // 베는 구간과 느려지는 구간을 **다르게** 그린다.
-    // 전에는 둘 다 같은 칼 궤적이라, 실제로는 안 베는 시간(강화 시 최대 1.1초)에도
-    // 칼이 번쩍여 "왜 안 베이지?" 가 됐다 (2026-09-21).
-    const swingLeft = world.player.slowActiveMs - (world.stats.slowDurationMs - SWING_MS);
-    const swinging = swingLeft > 0;
-    ctx.save();
-    if (swinging) {
-      // 일제 사격 — 시위를 놓는 순간 화살 다섯 발이 앞쪽 부채꼴로 퍼져 나간다 (판정 호 SWING_ARC 와 같은 폭)
-      const t = 1 - swingLeft / SWING_MS;
-      const facing = world.player.facing;
-      const px = world.player.x, py = world.player.y - 10;
-      const reach = world.stats.slowRadius * (0.35 + t * 0.75);
-      const half = SWING_ARC / 2;
-      const sprite = arrowImg("basic");
-      ctx.globalAlpha = 0.95 - t * 0.5;
-      for (let i = 0; i < 5; i += 1) {
-        const ang = (facing > 0 ? 0 : Math.PI) + facing * (-half + (SWING_ARC * (i + 0.5)) / 5) * 0.82;
-        const r = reach * (0.86 + ((i * 37) % 7) * 0.02);
-        const x = px + Math.cos(ang) * r, y = py + Math.sin(ang) * r;
-        ctx.strokeStyle = "#e0f2fe"; ctx.lineWidth = 2; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(px + Math.cos(ang) * r * 0.45, py + Math.sin(ang) * r * 0.45); ctx.lineTo(x, y); ctx.stroke();
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-        if (sprite) ctx.drawImage(sprite, -16, -5, 32, 10);
-        else { ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(10, 0); ctx.stroke(); }
-        ctx.restore();
-      }
-      // 되쏘기 거리 링 — 이 안에서 쏘면 화살이 궁수에게 되돌아간다. 어디를 노려야 하는지 보여 준다
-      ctx.globalAlpha = 0.75 - t * 0.3;
-      ctx.strokeStyle = "#fde68a";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      ctx.arc(world.player.x, world.player.y, REFLECT_DIST, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    } else {
-      // 느려진 장 — 칼이 아니라 '시간이 늘어진 공간'. 옅은 원 하나로만
-      const rest = world.player.slowActiveMs / Math.max(1, world.stats.slowDurationMs - SWING_MS);
-      ctx.globalAlpha = 0.16 * rest;
-      ctx.strokeStyle = "#7dd3fc";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(world.player.x, world.player.y, world.stats.slowRadius, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
+  // 일제 사격·되쏘기는 없다 (2026-10-01) — 수동 동작의 연출 블록을 뺐다
+
 }
