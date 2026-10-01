@@ -15,8 +15,8 @@ await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await page.evaluate((h) => {
   localStorage.clear();
-  localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ equippedWeaponLevel: 10, onboardingStep: 99, tutorialDone: true, idleClaimedAt: Date.now(), pioneeredArea: 5, activeCharacter: "default", partyIds: ["mia", "garen", "ari", "nox", "pyro", "cain"], partyCap: 6 }));
-  localStorage.setItem(`dodgebullets:titans:${h}`, JSON.stringify({ stage: 22, heroes: { mia: 5, garen: 5, ari: 5, nox: 5, pyro: 5, cain: 5 }, party: ["mia", "garen", "ari", "nox", "pyro", "cain"], lastActiveAt: Date.now() }));
+  localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ equippedWeaponLevel: 10, onboardingStep: 99, tutorialDone: true, idleClaimedAt: Date.now(), pioneeredArea: 5, activeCharacter: "default", partyIds: ["mia", "garen", "ari", "nox", "pyro", "bronn"], partyCap: 6 }));
+  localStorage.setItem(`dodgebullets:titans:${h}`, JSON.stringify({ stage: 22, heroes: { mia: 5, garen: 5, ari: 5, nox: 5, pyro: 5, bronn: 5 }, party: ["mia", "garen", "ari", "nox", "pyro", "bronn"], lastActiveAt: Date.now() }));
   localStorage.setItem("dodge-bullets:soundEnabled", "0");
 }, H);
 await page.goto(BASE, { waitUntil: "networkidle0" });

@@ -7,7 +7,7 @@
  *    season-N 은 시즌 패스 유료 15단 보상 — gemCost null(비매품).
  */
 import { assetUrl } from "../asset";
-import type { TitanHeroId } from "./model";
+import { RETIRED_ALLY_IDS, type TitanHeroId } from "./model";
 
 export type AllySkinDef = {
   ally: TitanHeroId;
@@ -21,7 +21,7 @@ export type AllySkinDef = {
 /** 픽업 동료의 스킨 할인율 (J) */
 export const PICKUP_SKIN_DISCOUNT = 0.2;
 
-export const ALLY_SKINS: Record<string, AllySkinDef> = {
+const ALL_ALLY_SKINS: Record<string, AllySkinDef> = {
   "garen-magma": {
     ally: "garen",
     name: "용암 기사 가렌",
@@ -50,6 +50,8 @@ export const ALLY_SKINS: Record<string, AllySkinDef> = {
   "season-1": { ally: "ari", name: "시즌 1 · 자수정 용기사 아리", desc: "시즌 1 패스 한정 — 자수정빛 용기사 아리", url: assetUrl("titans/generated/allies/skins/season-1.png"), gemCost: null },
   "season-2": { ally: "nox", name: "시즌 2 · 황금 암살자 녹스", desc: "시즌 2 패스 한정 — 황금빛 암살자 녹스", url: assetUrl("titans/generated/allies/skins/season-2.png"), gemCost: null },
 };
+/** 판매·장착 가능한 스킨 — 은퇴 동료(성광 세라·아이리스·카인·실프)의 스킨은 뺀다 (2026-10-01) */
+export const ALLY_SKINS: Record<string, AllySkinDef> = Object.fromEntries(Object.entries(ALL_ALLY_SKINS).filter(([, d]) => !RETIRED_ALLY_IDS.includes(d.ally)));
 
 /** 스킨 가격 — 픽업 중인 동료면 20% 할인. 비매품은 null */
 export function skinPrice(skinId: string, pickups: readonly TitanHeroId[]): number | null {

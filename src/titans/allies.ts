@@ -6,7 +6,7 @@
  * - 집중도: 조각이 방치·균열·주간 시험·성벽 4곳에서 나와 전 콘텐츠에 수집 동기
  * - 결제: 동료 "획득"은 과금 가능하지만 "성급"은 조각 파밍으로만 — 확정 구매 원칙
  */
-import type { TitanHeroId } from "./model";
+import { RETIRED_ALLY_IDS, type TitanHeroId } from "./model";
 
 export type AllyRarity = "R" | "SR" | "SSR";
 
@@ -41,9 +41,7 @@ export const STAR_SHARD_COST = [0, 20, 50, 120, 300] as const;
 export const SHOP_ALLY_GEM_COST: Partial<Record<TitanHeroId, number>> = {
   luna: 900,
   volt: 450,
-  // 얼터너티브 동료 (§9) — 원본과 다른 역할·등급의 재해석 버전
-  mia_dark: 600,
-  sera_light: 1100,
+  // 얼터너티브 동료(흑화 미아·성광 세라)는 은퇴 — 원본과 겹쳤다 (2026-10-01). 환불가는 model.RETIRED_ALLY_SHOP_GEMS
 };
 
 /**
@@ -69,7 +67,11 @@ export function emptyAllyRecord(): Record<TitanHeroId, number> {
   return Object.fromEntries(ALLY_IDS.map((id) => [id, 0])) as Record<TitanHeroId, number>;
 }
 
-export const ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember", "luna", "volt", "mia_dark", "sera_light"];
+/** 전체 id (은퇴 포함) — 저장 이관용 */
+export const ALL_ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember", "luna", "volt", "mia_dark", "sera_light"];
+/** 로스터 — 은퇴 동료(model.RETIRED_ALLY_IDS)를 뺀 13명 */
+export const ALLY_IDS: TitanHeroId[] = ALL_ALLY_IDS.filter((id) => !RETIRED_ALLY_IDS.includes(id));
+export { RETIRED_ALLY_IDS };
 
 /* ───────────────────────── 원정대 편성 + 시너지 (CRUMBLE_GAP §2) ───────────────────────── */
 

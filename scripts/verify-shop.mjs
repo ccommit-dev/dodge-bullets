@@ -36,8 +36,9 @@ await sleep(600);
 await clickText(".hub-sheet-switch button", "동료 뽑기");
 await sleep(600);
 let r = await page.evaluate(() => ({ badge: document.querySelector(".gacha-rarity-badge")?.textContent, title: document.querySelector(".gacha-stage-hero h2")?.textContent, kicker: document.querySelector(".gacha-stage-hero small")?.textContent, level: document.querySelector(".gacha-level b")?.textContent, bar: document.querySelector(".gacha-level em")?.style.width }));
-ok("뽑기 배지 = 픽업 최고 등급 (테라 SR)", /SR 픽업/.test(r.badge ?? ""), r.badge);
-ok("뽑기 제목 = 픽업 동료 이름 · 지역 키커", /테라/.test(r.title ?? "") && /PICK UP/.test(r.kicker ?? ""), `${r.kicker} / ${r.title}`);
+// 테라 은퇴(2026-10-01) — 이 픽스처(지역3 상한 15)에는 픽업이 없다. 배지는 픽업 등급을 주장하지 않고 제목은 "준비 중"을 말해야 한다
+ok("뽑기 배지: 픽업이 없으면 등급 픽업을 주장하지 않는다", !/픽업/.test(r.badge ?? ""), r.badge ?? "(없음)");
+ok("뽑기 제목 = 픽업 준비 중 · 지역 키커", /픽업 준비/.test(r.title ?? "") && /붉은 폐허/.test(r.kicker ?? ""), `${r.kicker} / ${r.title}`);
 ok("천장 게이지 = gachaPity/60 (24 → 40%)", /24\/60/.test(r.level ?? "") && r.bar === "40%", `${r.level} ${r.bar}`);
 
 // ── 이벤트 상점: 실상품 · 구매 · 주간 한도 ──
@@ -253,7 +254,7 @@ r = await page.evaluate(() => ({
   season: [...document.querySelectorAll(".skin-product")].filter((c) => /시즌 1/.test(c.textContent)).map((c) => c.querySelector("button").textContent),
   seasonTwoHidden: ![...document.querySelectorAll(".skin-product")].some((c) => /시즌 2/.test(c.textContent)),
 }));
-ok("J 동료 탭 스킨 카드 13장(판매 12 + 보유한 시즌 1) · 미보유 시즌 2는 숨김", r.cards === 13 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
+ok("J 동료 탭 스킨 카드 9장(판매 8 + 보유한 시즌 1 — 은퇴 동료 스킨 4장 제외) · 미보유 시즌 2는 숨김", r.cards === 9 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
 ok("J 픽업 스킨 2장에만 -20% 배지 · 240 표시 (로테이션 무관)", r.deals.length === 2 && r.deals.every((d) => /240/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
 if (r.deals.length > 0) {
   await page.evaluate(() => document.querySelector(".skin-product.pickup-deal button")?.click());

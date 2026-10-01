@@ -91,6 +91,8 @@ export type TitansSave = {
     skillCores: number;
   };
   heroes: Record<TitanHeroId, number>;
+  /** 은퇴한 동료·스킬의 환불 — 진행도(보석·SP)에 아직 안 얹은 것. TitansGame 부팅이 얹고 비운다 */
+  pendingRefund: { gems: number; sp: number } | null;
   totalKills: number;
   totalTaps: number;
   /** QoL — 스킬 자동 시전 (쿨타임 찬 액티브를 자동 사용) */
@@ -103,7 +105,22 @@ export type TitansSave = {
 export const MOBS_PER_STAGE = 10;
 export const BOSS_TIME_SEC = 30;
 
-export const HEROES: TitanHeroDef[] = [
+/**
+ * 은퇴한 동료·스킬 (2026-10-01) — 역할·속성이 겹쳐 "무분별하게 많다"고 지적된 것들. 타입과 표(ALLY_ROLE 등)는 남겨
+ * 예전 저장을 읽되, 로스터(HEROES)·뽑기·상점·도감·스킨에서는 뺀다. 보유분은 normalizeTitansSave 가 환불로 바꾼다.
+ *   동료 13 남김: 근딜 미아·아리·녹스·파이로 / 원딜 레온·세라·볼트·오리온·엠버 / 탱커 가렌·브론 / 힐러 루나·마리나
+ *   스킬 12 남김: 시동기 3 (기본·화상·빙결) · 연계 A 2 (치명·동료) · 연계 B 2 (분신·동료) · 마무리 2 (한 방·처형) · 패시브 3 (탭·보스 시간·동료)
+ */
+export const RETIRED_ALLY_IDS: readonly TitanHeroId[] = ["cain", "mia_dark", "zephyr", "iris", "terra", "sylph", "sera_light"];
+export const RETIRED_SKILL_IDS: readonly TitanSkillId[] = ["pierce", "waterStep", "galeChain", "bloodMoon", "dragonBreath", "warcry", "tidalBurst", "focus"];
+/** 은퇴 동료 보유분 환불(보석) — 등급별 + 상점 동료는 산 값 */
+export const RETIRED_ALLY_REFUND_GEMS: Record<"R" | "SR" | "SSR", number> = { R: 100, SR: 200, SSR: 400 };
+/** 은퇴 동료의 등급·상점가 — allies.ts 의 표와 같아야 한다 (verify-systems 대조). allies 가 이 파일을 타입으로만 쓰므로 순환을 피해 여기 둔다 */
+export const RETIRED_ALLY_RARITY: Partial<Record<TitanHeroId, "R" | "SR" | "SSR">> = { cain: "SSR", mia_dark: "SR", zephyr: "SR", iris: "SSR", terra: "SR", sylph: "SSR", sera_light: "SSR" };
+export const RETIRED_ALLY_SHOP_GEMS: Partial<Record<TitanHeroId, number>> = { mia_dark: 600, sera_light: 1100 };
+
+/** 전체 정의(은퇴 포함) — 저장 이관·환불이 읽는다 */
+export const ALL_HEROES: TitanHeroDef[] = [
   {
     id: "mia",
     name: "스카우트 미아",
@@ -215,11 +232,14 @@ export const HEROES: TitanHeroDef[] = [
   { id:"iris", name:"빙결술사 아이리스", role:"제어 원거리", unlockStage:26, baseCost:84_000, baseDps:4_300, hue:205, feature:"적 공격 속도를 낮추는 빙결", attackType:"빙결 창", attackInterval:1.18 },
   { id:"cain", name:"뇌광검 카인", role:"치명 근접", unlockStage:30, baseCost:210_000, baseDps:11_500, hue:55, feature:"치명타마다 연쇄 번개", attackType:"뇌광 발도", attackInterval:.58 },
   { id:"sylph", name:"정령왕 실프", role:"바람 지원", unlockStage:34, baseCost:470_000, baseDps:28_000, hue:135, feature:"파티 공격 속도 강화", attackType:"정령 탄환", attackInterval:.82 },
-  { id:"orion", name:"성창 오리온", role:"보스 전문", unlockStage:40, baseCost:1_150_000, baseDps:75_000, hue:225, feature:"보스에게 성창 추가 피해", attackType:"성창 투척", attackInterval:1.05 },
+  { id:"orion", name:"성창 오리온", role:"보스 전문", unlockStage:30, baseCost:1_150_000, baseDps:75_000, hue:225, feature:"보스에게 성창 추가 피해", attackType:"성창 투척", attackInterval:1.05 },
   { id:"ember", name:"불사조 엠버", role:"전설 광역 딜러", unlockStage:48, baseCost:2_800_000, baseDps:210_000, hue:350, feature:"전장을 태우는 불사조 폭발", attackType:"불사조 강하", attackInterval:1.3 },
 ];
 
-export const SKILLS: TitanSkillDef[] = [
+/** 로스터 — 은퇴 동료를 뺀 것 */
+export const HEROES: TitanHeroDef[] = ALL_HEROES.filter((h) => !RETIRED_ALLY_IDS.includes(h.id));
+
+export const ALL_SKILLS: TitanSkillDef[] = [
   // 설명은 titans/skills.ts SKILL_EFFECTS의 실제 효과와 1:1로 맞춘다 — 숫자는 카드가 skillEffectLabel로 보여준다.
   // ── 시동기 4종: 탭 배율 단발 + 서로 다른 부가 효과 ──
   { id: "strike", name: "초승 검격", desc: "기본 시동기 — 빠른 단일 검격", slot: "starter", element: "blade", learnSpCost: 2, learnCoreCost: 0, maxLevel: 20, cooldownSec: 12, durationSec: 0 },
@@ -248,6 +268,9 @@ export const SKILLS: TitanSkillDef[] = [
   { id: "elementalMastery", name: "원소 공명", desc: "동료 피해 상시 증가", slot: "passive", element: "light", learnSpCost: 10, learnCoreCost: 3, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
 ];
 
+/** 스킬 목록 — 은퇴 스킬을 뺀 것 */
+export const SKILLS: TitanSkillDef[] = ALL_SKILLS.filter((s) => !RETIRED_SKILL_IDS.includes(s.id));
+
 export function emptySkillLevels(): Record<TitanSkillId, number> { return Object.fromEntries(SKILLS.map((skill) => [skill.id, 0])) as Record<TitanSkillId, number>; }
 export function defaultSkillInventory(): TitansSave["skillInventory"] { return { learned: ["strike"], levels: { ...emptySkillLevels(), strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }; }
 
@@ -264,6 +287,7 @@ export function defaultTitansSave(): TitansSave {
     equipmentTraining: { weaponMastery: 1, shoulderMastery: 0 },
     skillInventory: defaultSkillInventory(),
     heroes: emptyHeroLevels(),
+    pendingRefund: null,
     totalKills: 0,
     totalTaps: 0,
     autoSkill: false,
@@ -282,9 +306,20 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     heroes[h.id] = n(value.heroes?.[h.id], 0, 9999);
   }
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
+  // 은퇴 환불 — 보유하던 은퇴 동료는 등급별 보석(+상점가), 배운 은퇴 스킬은 SP·코어를 돌려준다. 한 번만: 이 함수가 지운 뒤에는 원본에 없다
+  const refund = { gems: value.pendingRefund?.gems ?? 0, sp: value.pendingRefund?.sp ?? 0, cores: 0 };
+  for (const h of ALL_HEROES) {
+    if (!RETIRED_ALLY_IDS.includes(h.id) || n(value.heroes?.[h.id], 0, 9999) <= 0) continue;
+    refund.gems += RETIRED_ALLY_REFUND_GEMS[RETIRED_ALLY_RARITY[h.id] ?? "R"] + (RETIRED_ALLY_SHOP_GEMS[h.id] ?? 0);
+  }
+  const rawLearned = Array.isArray(value.skillInventory?.learned) ? value.skillInventory.learned : [];
+  for (const sk of ALL_SKILLS) {
+    if (!RETIRED_SKILL_IDS.includes(sk.id) || !rawLearned.includes(sk.id)) continue;
+    refund.sp += sk.learnSpCost; refund.cores += sk.learnCoreCost;
+  }
   const learned = Array.isArray(value.skillInventory?.learned)
     ? value.skillInventory.learned.filter((id): id is TitanSkillId => SKILLS.some((skill) => skill.id === id))
-    : (["strike", "crit", "clone", "warcry", "steel"] as TitanSkillId[]).filter((_id, index) => legacySword >= [1, 8, 15, 25, 30][index]);
+    : (["strike", "crit", "clone", "meteor", "steel"] as TitanSkillId[]).filter((_id, index) => legacySword >= [1, 8, 15, 25, 30][index]);
   const levels = emptySkillLevels();
   for (const skill of SKILLS) levels[skill.id] = n(value.skillInventory?.levels?.[skill.id], learned.includes(skill.id) ? 1 : 0, skill.maxLevel);
   const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = {};
@@ -305,8 +340,9 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
       weaponMastery: Math.max(1, n(value.equipmentTraining?.weaponMastery, legacySword, 9999)),
       shoulderMastery: n(value.equipmentTraining?.shoulderMastery, 0, 9999),
     },
-    skillInventory: { learned: [...new Set(learned)], levels, equipped, skillCores: n(value.skillInventory?.skillCores, 0, 9999) },
+    skillInventory: { learned: [...new Set(learned)], levels, equipped, skillCores: n(value.skillInventory?.skillCores, 0, 9999) + refund.cores },
     heroes,
+    pendingRefund: refund.gems > 0 || refund.sp > 0 ? { gems: refund.gems, sp: refund.sp } : null,
     totalKills: n(value.totalKills, 0),
     totalTaps: n(value.totalTaps, 0),
     autoSkill: value.autoSkill === true,

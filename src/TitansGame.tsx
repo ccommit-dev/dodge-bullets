@@ -471,6 +471,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         });
       }
 
+      // 은퇴한 동료·스킬의 환불 — normalizeTitansSave 가 계산해 둔 보석·SP 를 진행도에 얹고 비운다 (2026-10-01)
+      if (loaded.pendingRefund && (loaded.pendingRefund.gems > 0 || loaded.pendingRefund.sp > 0)) {
+        const r = loaded.pendingRefund;
+        progress = { ...progress, redGems: progress.redGems + r.gems, skillPoints: progress.skillPoints + r.sp };
+        void updateCharacterProgress(userHash, (current) => ({ ...current, redGems: current.redGems + r.gems, skillPoints: current.skillPoints + r.sp }));
+        loaded.pendingRefund = null;
+        void saveTitansSave(userHash, loaded);
+      }
+
       // 개척하지 않은 지역으로는 진입할 수 없다 — 저장값이 앞서 있으면 경계로 되돌린다.
       const ceiling = stageCeilingFor(progress.pioneeredArea);
       const stage = Math.min(loaded.stage, ceiling);

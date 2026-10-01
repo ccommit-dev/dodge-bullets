@@ -53,7 +53,8 @@ ok("풀 확률 합 = 1", Math.abs(p1.entries.reduce((s, e) => s + e.rate, 0) - 1
 ok("픽업 가중 2배 (leon 2/3)", Math.abs(p1.entries.find((e) => e.id === "leon").rate - 2 / 3) < 1e-9);
 const p12 = gacha.gachaPool(12, 3);
 ok("풀 stage12/지역3: 상점 동료 제외", p12.entries.every((e) => allies.SHOP_ALLY_GEM_COST[e.id] === undefined));
-ok("픽업 = 다음 2명 (terra 14, ari 16 — 지역3 상한 15라 ari 제외 → terra만)", p12.pickups.join() === "terra", p12.pickups.join());
+// terra 은퇴(2026-10-01) — stage 12 · 지역3(상한 15)에서 다음 해금은 ari 16 뿐이라 상한 밖 → 픽업 없음
+ok("픽업 = 다음 2명 (지역3 상한 15 안에 다음 해금이 없다 → 픽업 없음)", p12.pickups.join() === "", p12.pickups.join());
 const p20 = gacha.gachaPool(20, 4);
 ok("stage20/지역4 픽업 2명 = bronn(22)·(23 이하 없음 → bronn만)", p20.pickups.join() === "bronn", p20.pickups.join());
 const p30 = gacha.gachaPool(30, 5);
@@ -126,18 +127,34 @@ ok("편성 게이트: ember(48)는 지역4 상한(23)에서 불가, 상점 동�
 }
 
 // ── 3. 스킬 ──
-ok("SKILL_EFFECTS가 20종 전부 정의", model.SKILLS.every((s) => skills.SKILL_EFFECTS[s.id] !== undefined) && Object.keys(skills.SKILL_EFFECTS).length === 20);
-ok("패시브 4종 값 > 0", ["steel", "focus", "guardianSoul", "elementalMastery"].every((id) => skills.passiveValue(id, 1) > 0));
+ok("SKILL_EFFECTS가 남은 12종 전부 정의 (은퇴 8종은 표에 남아 저장을 읽는다)", model.SKILLS.length === 12 && model.SKILLS.every((s) => skills.SKILL_EFFECTS[s.id] !== undefined) && Object.keys(skills.SKILL_EFFECTS).length === 20);
+ok("패시브 3종 값 > 0", ["steel", "guardianSoul", "elementalMastery"].every((id) => skills.passiveValue(id, 1) > 0));
 ok("패시브 레벨 성장", skills.passiveValue("steel", 10) > skills.passiveValue("steel", 1));
 const slotSets = ["starter", "linkA", "linkB", "finisher"].map((slot) => model.SKILLS.filter((s) => s.slot === slot).map((s) => JSON.stringify({ ...skills.SKILL_EFFECTS[s.id] })));
 ok("슬롯 내 효과 중복 없음 (clone=dragonBreath 해소)", slotSets.every((set) => new Set(set).size === set.length));
-ok("warcry = 타격 + 동료 고무 버프", skills.SKILL_EFFECTS.warcry.kind === "hit" && skills.SKILL_EFFECTS.warcry.buff === "war");
+ok("meteor = 가장 강한 단발 마무리, voidFinish = 처형 (마무리 둘의 역할이 다르다)", skills.SKILL_EFFECTS.meteor.kind === "hit" && skills.SKILL_EFFECTS.voidFinish.kind === "execute");
+// ── 정리 (2026-10-01): 역할이 겹치는 동료 7·스킬 8 은퇴. 로스터에서 빠지고, 보유분은 환불로 바뀐다
+ok("로스터 13명 — 근딜 4 · 원딜 5 · 탱커 2 · 힐러 2, 속성 넷 전부", (() => {
+  const roles = allies.ALLY_IDS.map((id) => allies.ALLY_ROLE[id]); const el = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_ELEMENT[id]));
+  return allies.ALLY_IDS.length === 13 && roles.filter((r) => r === "melee").length === 4 && roles.filter((r) => r === "ranged").length === 5 && roles.filter((r) => r === "tank").length === 2 && roles.filter((r) => r === "healer").length === 2 && el.size === 4;
+})(), allies.ALLY_IDS.join());
+ok("은퇴 동료는 로스터·뽑기·상점·스킨에 없다", model.RETIRED_ALLY_IDS.every((id) => !allies.ALLY_IDS.includes(id) && !model.HEROES.some((h) => h.id === id) && allies.SHOP_ALLY_GEM_COST[id] === undefined && gacha.gachaPool(60, 5).entries.every((e) => e.id !== id)));
+ok("은퇴 동료의 등급·상점가 표가 allies 와 같다 (환불 근거)", model.RETIRED_ALLY_IDS.every((id) => model.RETIRED_ALLY_RARITY[id] === allies.ALLY_RARITY[id]) && model.RETIRED_ALLY_SHOP_GEMS.mia_dark === 600 && model.RETIRED_ALLY_SHOP_GEMS.sera_light === 1100);
+ok("스킬 12종 — 슬롯마다 2~3개, 은퇴 스킬은 프리셋에 없다", model.SKILLS.length === 12 && ["starter", "linkA", "linkB", "finisher", "passive"].every((slot) => { const n = model.SKILLS.filter((s) => s.slot === slot).length; return n >= 2 && n <= 3; }) && skills.SKILL_PRESETS.every((p) => Object.values(p.picks).flat().every((id) => model.SKILLS.some((s) => s.id === id))));
+{
+  // 예전 저장: 은퇴 동료 보유(카인 SSR Lv3 · 흑화 미아 SR 상점) + 은퇴 스킬 학습(pierce 3SP/1코어 · warcry 9SP/3코어)
+  const old = model.normalizeTitansSave({ heroes: { mia: 5, cain: 3, mia_dark: 2 }, skillInventory: { learned: ["strike", "pierce", "warcry"], levels: { strike: 1, pierce: 2, warcry: 1 }, equipped: { starter: "pierce", finisher: "warcry" }, skillCores: 4 } });
+  ok("은퇴 동료 보유 저장 → 보석 환불 대기 (SSR 400 + SR 200 + 상점가 600 = 1200), 로스터엔 없음", old.pendingRefund?.gems === 1200 && old.heroes.cain === undefined && old.heroes.mia === 5, JSON.stringify(old.pendingRefund));
+  ok("은퇴 스킬 학습 저장 → SP 12 대기 · 코어 4+4 즉시 · 장착에서 빠짐", old.pendingRefund?.sp === 12 && old.skillInventory.skillCores === 8 && !old.skillInventory.learned.includes("pierce") && old.skillInventory.equipped.starter === undefined, JSON.stringify(old.skillInventory.equipped));
+  const fresh = model.normalizeTitansSave({ heroes: { mia: 5 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 } });
+  ok("은퇴 항목이 없는 저장은 환불이 없다", fresh.pendingRefund === null);
+}
 ok("레벨 배율 Lv20 = ×1.95", Math.abs(skills.skillLevelMult(20) - 1.95) < 1e-9);
 const def = model.SKILLS.find((s) => s.id === "crit");
 ok("배속 ×2에서 버프 실시간 절반 (업타임 불변)", Math.abs(skills.buffDurationMs(def, 1, 2) * 2 - skills.buffDurationMs(def, 1, 1)) < 1e-6);
 ok("모든 스킬 프리뷰 % > 0 · 라벨 비어있지 않음", model.SKILLS.every((s) => skills.skillPreviewPct(s.id, 1) > 0 && skills.skillEffectLabel(s.id, 1).length > 3), model.SKILLS.map((s) => `${s.id}:${skills.skillPreviewPct(s.id, 1)}`).join(" "));
 ok("자동 시전 순서: 연계 → 시동기 → 마무리", (() => { const o = skills.autoSkillOrder(); const slotOf = (id) => model.SKILLS.find((s) => s.id === id).slot; return slotOf(o[0]) === "linkA" && slotOf(o[o.length - 1]) === "finisher" && !o.includes("steel"); })());
-ok("프리셋 3종이 5슬롯 전부 후보 보유", skills.SKILL_PRESETS.every((p) => skills.SLOT_ORDER.every((slot) => p.picks[slot].length === 4)));
+ok("프리셋 3종이 5슬롯 전부 후보 보유 (슬롯당 2~3, 그 슬롯의 남은 스킬 전부)", skills.SKILL_PRESETS.every((p) => skills.SLOT_ORDER.every((slot) => p.picks[slot].length === model.SKILLS.filter((s) => s.slot === slot).length)));
 const pt = skills.passiveTotals(["steel"], { passive: "steel" }, { steel: 5 });
 ok("passiveTotals: 장착 패시브만 합산", pt.tapDmg > 0.2 && pt.critChance === 0);
 
@@ -263,14 +280,15 @@ export * as season from "${root}/src/economy/seasonPass";`);
     rmSync(d, { recursive: true, force: true });
     return m;
   })();
-  const ssr = Object.keys(sk.allies.ALLY_RARITY).filter((id) => sk.allies.ALLY_RARITY[id] === "SSR");
+  const ssr = sk.allies.ALLY_IDS.filter((id) => sk.allies.ALLY_RARITY[id] === "SSR");
   const sale = Object.entries(sk.ALLY_SKINS).filter(([, d]) => d.gemCost !== null);
-  ok("J SSR 10명 전원에게 판매 스킨(300) 1종 이상", ssr.length === 10 && ssr.every((id) => sale.some(([, d]) => d.ally === id && d.gemCost === 300)), `ssr=${ssr.length} sale=${sale.length}`);
+  ok("J SSR 6명(은퇴 4명 제외) 전원에게 판매 스킨(300) 1종 이상", ssr.length === 6 && ssr.every((id) => sale.some(([, d]) => d.ally === id && d.gemCost === 300)), `ssr=${ssr.length} sale=${sale.length}`);
   ok("J 시즌 한정 스킨 season-1/2 비매품 · 패스 15단 id와 일치", sk.ALLY_SKINS["season-1"]?.gemCost === null && sk.ALLY_SKINS["season-2"]?.gemCost === null && sk.season.paidReward(15, 0)?.id === "season-1");
   ok("J 픽업 할인: 픽업이면 240, 아니면 300, 비매품 null", sk.skinPrice("ari-blaze", ["ari"]) === 240 && sk.skinPrice("ari-blaze", ["nox"]) === 300 && sk.skinPrice("season-1", ["ari"]) === null);
-  const halo = sk.art.allyFrameStyle("sera_light", 2, "sera_light-halo");
+  // 성광 세라는 은퇴(2026-10-01) — 그 스킨은 카탈로그에 없다. 특수 정사각 아틀라스 경로는 아리 스킨 대조로만 본다
+  ok("J 은퇴 동료의 스킨은 카탈로그에 없다 (성광 세라 후광)", sk.ALLY_SKINS["sera_light-halo"] === undefined && Object.values(sk.ALLY_SKINS).every((d) => !model.RETIRED_ALLY_IDS.includes(d.ally)));
   const ari = sk.art.allyFrameStyle("ari", 2, "ari-blaze");
-  ok("J 스킨 프레임: 세라 라이트 스킨은 정사각 특수 스킨 아틀라스 · 아리 스킨은 가로 스킨 아틀라스 13행", /skin-special-atlas/.test(String(halo.backgroundImage)) && halo.width === undefined && /ally-skin-atlas/.test(String(ari.backgroundImage)) && ari.backgroundSize === "400% 1300%");
+  ok("J 스킨 프레임: 아리 스킨은 가로 스킨 아틀라스 13행", /ally-skin-atlas/.test(String(ari.backgroundImage)) && ari.backgroundSize === "400% 1300%");
   const lunaIdle = sk.art.allyFrameStyle("luna", 0);
   const voltIdle = sk.art.allyFrameStyle("volt", 0);
   ok("아트1 루나·볼트가 로스터 화풍 변형 아틀라스(가로 12행)에서 나온다 — 클립아트 특수 아틀라스 미사용", /ally-variant-atlas/.test(String(lunaIdle.backgroundImage)) && /ally-variant-atlas/.test(String(voltIdle.backgroundImage)) && lunaIdle.backgroundSize === "400% 1200%" && lunaIdle.width === "150%");

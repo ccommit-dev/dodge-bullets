@@ -19,9 +19,9 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 await page.evaluate((h) => {
   localStorage.clear();
   const pk = `dodgebullets:progression:v1:${h}`;
-  localStorage.setItem(pk, JSON.stringify({ equippedWeaponLevel: 10, equippedShoulder: "dragon", onboardingStep: 99, tutorialDone: true, idleClaimedAt: Date.now(), pioneeredArea: 5, ownedCharacters: ["ember"], activeCharacter: "default", partyIds: ["luna", "bronn", "iris", "ember"], partyCap: 4 }));
+  localStorage.setItem(pk, JSON.stringify({ equippedWeaponLevel: 10, equippedShoulder: "dragon", onboardingStep: 99, tutorialDone: true, idleClaimedAt: Date.now(), pioneeredArea: 5, ownedCharacters: ["ember"], activeCharacter: "default", partyIds: ["luna", "bronn", "orion", "ember"], partyCap: 4 }));
   const tk = `dodgebullets:titans:${h}`;
-  localStorage.setItem(tk, JSON.stringify({ stage: 22, heroes: { luna: 5, bronn: 5, iris: 5, ember: 5, mia: 3 }, party: ["luna", "bronn", "iris", "ember"], lastActiveAt: Date.now() }));
+  localStorage.setItem(tk, JSON.stringify({ stage: 22, heroes: { luna: 5, bronn: 5, orion: 5, ember: 5, mia: 3 }, party: ["luna", "bronn", "orion", "ember"], lastActiveAt: Date.now() }));
 }, H);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2500);
@@ -50,13 +50,20 @@ let worstAlly = { v: 0, pair: "" }, worstHero = { v: 0, pair: "" }, worstMon = {
 const samples = { ally: new Map(), hero: new Map(), mon: new Map() };
 const push = (bucket, pair, v) => { if (!bucket.has(pair)) bucket.set(pair, []); bucket.get(pair).push(v); };
 const worstMedian = (bucket) => { let best = { v: 0, pair: "" }; for (const [pair, arr] of bucket) { const sorted = [...arr].sort((a, b) => a - b); const med = sorted[Math.floor(sorted.length / 2)]; if (med > best.v) best = { v: med, pair }; } return best; };
+let wasApproaching = false;
 for (let t = 0; t < 20; t += 1) {
   const s = await rects();
+  // 접근이 끝난 직후 0.42초는 오른쪽 측면 슬롯이 왼쪽에서 돌아 들어가는 중이라(flank-hop) 왼쪽 슬롯과 스친다 — 그 표본은 뺀다 (2026-10-01)
+  // 주인공도 걸어 들어온 직후 한 표본은 아직 제자리로 미끄러지는 중이다 — 함께 뺀다
+  const approachingNow = s.heroApproaching || s.allies.some((a) => a.approaching);
+  if (wasApproaching && !approachingNow) { wasApproaching = false; await sleep(600); continue; }
+  wasApproaching = approachingNow;
   for (const a of s.allies) (statesSeen[a.id] ??= new Set()).add(a.state); // 상태 프레임은 모든 샘플에서 수집
   if (t < 2) { await sleep(600); continue; } // 첫 교전 정렬까지 대기
   // 스테이지 전환(run-out/in)·등장 걸어오기 중에는 동료 컨테이너가 통째로 움직여 주인공·몬스터를 스쳐 지나간다 — 정지 교전 순간만 잰다
   // 주인공도 2%→34% 로 걸어 들어오는 동안 원거리 동료(8%) 위를 지나간다 — 주인공 이동 중 샘플도 제외
-  if (/stage-/.test(s.phase) || s.heroApproaching || s.allies.some((a) => a.approaching)) { await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true }))); await sleep(450); continue; }
+  // 몬스터가 죽는 중(monster-death)에는 측면 슬롯이 왼쪽으로 돌아오고 몬스터는 사라지는 중이라 교전 배치가 아니다 — combat 만 잰다 (2026-10-01)
+  if (s.phase !== "combat" || s.heroApproaching || s.allies.some((a) => a.approaching)) { await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true }))); await sleep(450); continue; }
   for (let i = 0; i < s.allies.length; i += 1) for (let j = i + 1; j < s.allies.length; j += 1) {
     if (sameRow(s.allies[i], s.allies[j], s.field)) push(samples.ally, `${s.allies[i].id}×${s.allies[j].id}`, inter(s.allies[i], s.allies[j]));
   }
