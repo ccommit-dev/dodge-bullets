@@ -753,8 +753,8 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       if (C.chipGauge(lv + 1) < C.chipGauge(lv)) worse.push("edge");
     }
     ok("칩은 레벨이 오를 때 나빠지지 않는다", worse.length === 0, worse.join());
-    ok("칩 비용이 레벨마다 오르고, 첫 단계는 스킬 1레벨과 같아 선택이 생긴다",
-      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) === S2.skillCost(S2.SKILL_BY_ID.fire, 1).shards,
+    ok("칩 비용이 레벨마다 오르고, 첫 단계는 스킬 학습(인장)보다 싸서 선택이 생긴다",
+      C.chipCost(5) > C.chipCost(1) * 3 && C.chipCost(1) < S2.LEARN_SEALS.water,
       "lv1 " + C.chipCost(1) + "인 → lv5 " + C.chipCost(5) + "인");
 
     // 설명 문구가 실제 수치와 같은가 — 화면이 거짓말하면 투자 판단이 망가진다
@@ -993,7 +993,9 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       drop.fire === 4 && drop.ice === 4 && drop.water === undefined && drop.ultimate === 2, JSON.stringify(drop));
     const failDrop = S3.shardDrops({ fire: true }, 3, false, 0);
     ok("실패해도 쓴 스킬은 조각 1", failDrop.fire === 1 && failDrop.ultimate === undefined, JSON.stringify(failDrop));
-    ok("강화 비용은 골드 + 그 스킬의 조각", (() => { const c = S3.skillCost(S3.SKILL_BY_ID.ice, 1); return c.gold > 0 && c.shards === 4 && !("seals" in c); })());
+    ok("학습(Lv1)은 골드 + 원정 인장, 강화(Lv2+)는 골드 + 그 스킬의 조각 — 조각은 배운 뒤에야 나오므로",
+      (() => { const c1 = S3.skillCost(S3.SKILL_BY_ID.ice, 1), c2 = S3.skillCost(S3.SKILL_BY_ID.ice, 2); return c1.shards === 0 && c1.seals === 10 && c2.shards === 6 && c2.seals === 0; })());
+    ok("학습 인장은 해금 순서대로 비싸진다 (물 < 얼음 = 흙 < 번개)", S3.LEARN_SEALS.water < S3.LEARN_SEALS.ice && S3.LEARN_SEALS.ice === S3.LEARN_SEALS.earth && S3.LEARN_SEALS.earth < S3.LEARN_SEALS.bolt);
 
     // 5) 수집 보너스 — 배너의 숫자가 실제 효과
     ok("수집 보너스: 누적 레벨 하나당 재사용 −0.3%, 최대 −18%",

@@ -242,6 +242,19 @@ ok("검객 봇: 4스테이지(추격대장) 5시드 중 1~4회 클리어 — 벽
   ok("풀런 · 강한 계정: S4 를 대부분 깬다(≥ 15)", S.clearS4 >= 15, line(S));
   ok("풀런 · 성장할수록 멀리 간다 (S4 클리어: 새 < 중간 ≤ 강함)", N.clearS4 < M.clearS4 && M.clearS4 <= S.clearS4, [N.clearS4, M.clearS4, S.clearS4].join(" < "));
 }
+
+// ── 일주일 곡선 (2026-10-01) — 새 계정이 하루 3판씩 일주일. 이탈 지점(강화 0 인 날) 없이, 사흘 안에 스킬 6종을 다 배우고
+//    S4 를 처음 깨며, 7일째에도 만렙이 없어야(남은 분량) 한다. 학습이 조각이면 두 번째 스킬을 영원히 못 배웠다(실측).
+{
+  const { weekSummary } = await import("./dodge-week-sim.mjs");
+  const weeks = weekSummary(3);
+  const line = weeks.map((w) => `첫판 S${w.firstRun} · 전부 학습 ${w.allLearnedBy}일 · S4 ${w.s4By}일 · 7일째 S4 ${w.s4Day7}/3 · 만렙 ${w.maxedDay7} · 합 ${w.totalDay7}`).join(" | ");
+  ok("일주일 · 강화를 하나도 못 하는 날이 없다 (이탈 지점)", weeks.every((w) => w.stallDays.length === 0), weeks.map((w) => w.stallDays.join(",") || "없음").join(" | "));
+  ok("일주일 · 첫 판에 2스테이지 이상 간다 (첫 플레이가 벽이 아니다)", weeks.every((w) => w.firstRun >= 2), line);
+  ok("일주일 · 사흘 안에 스킬 6종을 전부 배운다 (학습은 인장)", weeks.every((w) => w.allLearnedBy <= 3), line);
+  ok("일주일 · S4 를 나흘 안에 처음 깬다 (운 좋으면 첫날, 보통 2~3일 — 벽이되 막혀 있진 않다)", weeks.every((w) => w.s4By <= 4), line);
+  ok("일주일 · 7일째에 만렙 스킬이 없고 누적 레벨 28 이상 (분량이 남아 있되 성장은 했다)", weeks.every((w) => w.maxedDay7 === 0 && w.totalDay7 >= 28), line);
+}
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

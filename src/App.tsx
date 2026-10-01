@@ -148,7 +148,7 @@ function EXPEDITION_SKILL_READY(p: CharacterProgress | null): boolean {
     const lv = p.expeditionSkills[d.id] ?? 0;
     if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(d, p.dodgeBestStage)) return false;
     const c = skillCost(d, lv + 1);
-    return p.sharedCoins >= c.gold && (p.expeditionShards[d.id] ?? 0) >= c.shards;
+    return p.sharedCoins >= c.gold && (p.expeditionShards[d.id] ?? 0) >= c.shards && p.expeditionSeals >= c.seals;
   });
 }
 
@@ -1043,17 +1043,18 @@ function App() {
     const lv = current.expeditionSkills[id] ?? 0;
     if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(def, current.dodgeBestStage)) return;
     const cost = skillCost(def, lv + 1);
-    if (current.sharedCoins < cost.gold || (current.expeditionShards[id] ?? 0) < cost.shards) return;
+    if (current.sharedCoins < cost.gold || (current.expeditionShards[id] ?? 0) < cost.shards || current.expeditionSeals < cost.seals) return;
     void (async () => {
       const next = await updateCharacterProgress(userHashRef.current, (p) => {
         // 저장된 값으로 다시 본다 — 빠르게 두 번 누르면 밖의 검사는 둘 다 통과한다
         const now = p.expeditionSkills[id] ?? 0;
         if (now >= SKILL_MAX_LEVEL) return p;
         const c = skillCost(def, now + 1);
-        if (p.sharedCoins < c.gold || (p.expeditionShards[id] ?? 0) < c.shards) return p;
+        if (p.sharedCoins < c.gold || (p.expeditionShards[id] ?? 0) < c.shards || p.expeditionSeals < c.seals) return p;
         return {
           ...p,
           sharedCoins: p.sharedCoins - c.gold,
+          expeditionSeals: p.expeditionSeals - c.seals,
           expeditionShards: { ...p.expeditionShards, [id]: (p.expeditionShards[id] ?? 0) - c.shards },
           expeditionSkills: { ...p.expeditionSkills, [id]: now + 1 },
         };
