@@ -2,14 +2,14 @@
  * 애니메이션 계획안 A~E e2e — 동료 프레임 전환·몬스터 피격/처치 프레임·보스 3단계·버프 이펙트·비트 적 반응·뽑기 사전 연출.
  *   node scripts/verify-anim.mjs   (vite dev 서버 5173 필요)
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 const errors = [];

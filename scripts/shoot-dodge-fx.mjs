@@ -2,7 +2,7 @@
  * 속성 화살 명중 이펙트 캡처 (2026-10-01) — 속성 하나씩만 습득시키고, 표적을 세워 놓고 명중 순간을 찍는다.
  *   node scripts/shoot-dodge-fx.mjs <outDir>   (vite dev 5173 필요)
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 import { mkdirSync } from "node:fs";
 const OUT = process.argv[2] ?? "shots-fx"; mkdirSync(OUT, { recursive: true });
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -11,7 +11,7 @@ const progress = {
   expeditionSeals: 400, expeditionSkills: { fire: 6, water: 4, ice: 4, earth: 4, bolt: 4, ultimate: 4 }, expeditionWeapon: "bow", claimedRewards: ["dodge-tutorial"],
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 page.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 200)));

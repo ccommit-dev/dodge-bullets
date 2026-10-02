@@ -3,14 +3,14 @@
  *   node scripts/shot-variants.mjs   → store/anim-inspect/variants-*.png
  */
 import { mkdirSync } from "node:fs";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
 const OUT = "store/anim-inspect";
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const now = Date.now();
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
 

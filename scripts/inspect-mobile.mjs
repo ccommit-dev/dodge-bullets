@@ -7,7 +7,7 @@
  * 서로 겹치는 쌍과 화면 밖으로 나간 요소를 보고하고, 각 뷰포트를 촬영한다.
  */
 import { mkdirSync } from "node:fs";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = "http://localhost:5173";
 const OUT = process.env.OUT ?? "store/mobile-inspect";
@@ -48,7 +48,7 @@ const SELECTORS = [
   ".titans-wallet",
 ];
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

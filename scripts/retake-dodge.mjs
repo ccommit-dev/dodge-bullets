@@ -4,13 +4,13 @@
  * 후보 3장을 찍는다 (게임오버 프레임은 파일명에 표시).
  */
 import { mkdirSync } from "node:fs";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = "http://localhost:5173";
 mkdirSync("store/screenshots", { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const browser = await puppeteer.launch({ headless: "shell" });
+const browser = await launchBrowser();
 const page = await browser.newPage();
 await page.setViewport({ width: 360, height: 640, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
 

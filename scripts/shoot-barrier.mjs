@@ -1,6 +1,6 @@
 // 방어막 캡처 — 활을 빼고 몬스터 다섯을 띠 위에 세워 두드리는 모습·붕괴 연출을 찍는다 (vite 5173)
 //   node scripts/shoot-barrier.mjs <outDir>
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 import { mkdirSync } from "node:fs";
 const OUT = process.argv[2] ?? "shots-barrier"; mkdirSync(OUT, { recursive: true });
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -9,7 +9,7 @@ const progress = {
   expeditionSeals: 400, expeditionSkills: { fire: 6, water: 4, ice: 4, earth: 4, bolt: 4, ultimate: 4 }, expeditionWeapon: "bow", claimedRewards: ["dodge-tutorial"],
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 page.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 200)));

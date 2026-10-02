@@ -11,7 +11,7 @@
  *   2) 적재 — 진행도의 스킬 레벨·장착 무기가 실제 전투 월드에 실리고 탄이 나가는가.
  *      DOM 만으로는 "강화했는데 실제로 쏘는가"를 볼 길이 없어 개발 전용 window.__dodgeWorld 를 읽는다.
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
@@ -36,7 +36,7 @@ const progress = {
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = [];

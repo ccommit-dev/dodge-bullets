@@ -3,13 +3,13 @@
  *   실패 1회 → 무료 +10초 카드 · 실패 2회(벽 최초) → 벽 돌파 세트 카드 → QA 구매 → 보석·보너스·상점 배지
  *   node scripts/verify-offers.mjs   (dev 서버 5173, DEV 빌드: QA 결제 스텁 dodgebullets:qa-pay)
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
 const now = Date.now();
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844 });
 const errors = [];

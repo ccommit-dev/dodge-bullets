@@ -2,7 +2,7 @@
  * 성문 방어 화면 캡처 (2026-09-29) — 눈으로 보는 점검용. 단언은 verify-dodge-hud 가 한다.
  *   node scripts/shoot-dodge.mjs <outDir> [bow|staff] [fresh]
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 import { mkdirSync } from "node:fs";
 const OUT = process.argv[2] ?? "shots"; mkdirSync(OUT, { recursive: true });
 const WEAPON = process.argv[3] ?? "bow";
@@ -21,7 +21,7 @@ const progress = FRESH
     claimedRewards: ["dodge-tutorial"],
   };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 page.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 200)));

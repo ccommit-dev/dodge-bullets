@@ -4,11 +4,11 @@
  * 몬스터는 오른쪽에서 들어오고 근접 동료는 왼쪽(주인공 옆)에서 출발한다 — 접근 중에 동료의 몸 중심이
  * 몬스터의 몸 중심보다 오른쪽에 있으면 "앞질러 간" 것이다. 교전 정렬(formationReady) 뒤의 오른쪽 측면 슬롯은 설계다.
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 import { mkdirSync } from "node:fs";
 const OUT = process.argv[2] ?? ""; if (OUT) mkdirSync(OUT, { recursive: true });
 const BASE = "http://localhost:5173", H = "mock-local-dev";
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
