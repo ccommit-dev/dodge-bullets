@@ -15,7 +15,7 @@ const dir = mkdtempSync(join(tmpdir(), "beatreport-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, `export * as tracks from "${root}/src/beat/tracks";`);
 const out = join(dir, "bundle.mjs");
-await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
 const { tracks } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 

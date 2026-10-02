@@ -108,10 +108,15 @@ export const QA_GEMS_KEY = "dodgebullets:qa-gems";
 /** 테스트 모드 플래그 — 설정의 빌드 라벨 7번 탭. 이게 켜져야(또는 DEV) 보석 무제한 메뉴가 보인다 */
 export const QA_MODE_KEY = "dodgebullets:qa-mode";
 /**
- * 테스트 단계 스위치 — true 면 모든 빌드에서 보석 무제한(지갑 ∞ 표시)·원화 상품 테스트 구매가 켜진다.
- * 출시 전 false 로 내리면 다시 빌드 라벨 7탭(테스트 모드)에서만 열린다.
+ * **QA 빌드** — 테스트 우회 다섯 경로(원화 상품 무료 지급 · 보석 무제한 자동 충전 · 빌드 라벨 7탭 테스트 모드 · 무료 상점 플래그 ·
+ * 설정의 보석 무제한 메뉴)가 열리는 유일한 스위치 (2026-10-02).
+ * 개발 서버(DEV)와 VITE_QA_BUILD=true 로 만든 빌드(CI 디버그 APK · GitHub Pages 데모)만 QA 다. 출시 빌드(플레이 AAB · ait build)는
+ * 플래그가 없어 false 로 접히고, 우회 코드와 그 localStorage 키 문자열이 번들에서 빠진다 — scripts/check-release-build.mjs 가 확인한다.
+ * 예전에는 TEST_PHASE = true 하나라 출시 빌드에서도 ₩ 상품이 무료로 지급됐다.
  */
-export const TEST_PHASE = true;
+export const QA_BUILD: boolean = import.meta.env.DEV || import.meta.env.VITE_QA_BUILD === "true";
+/** 테스트 단계 — QA 빌드에서는 기본으로 켜진다(보석 ∞ · 테스트 구매). 출시 빌드에서는 존재하지 않는다 */
+export const TEST_PHASE = QA_BUILD;
 /** localStorage `dodgebullets:test-phase` = "0" 이면 테스트 단계를 끈다 — 검증 하니스가 실제 경제(보석 차감·구매 게이트)를 볼 때 쓴다 */
 export const TEST_PHASE_KEY = "dodgebullets:test-phase";
 export function testPhaseActive(): boolean {
@@ -119,10 +124,12 @@ export function testPhaseActive(): boolean {
   try { return typeof localStorage === "undefined" || localStorage.getItem(TEST_PHASE_KEY) !== "0"; } catch { return true; }
 }
 export function testModeEnabled(): boolean {
+  if (!QA_BUILD) return false;
   if (testPhaseActive()) return true;
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; }
 }
 export function qaGemsEnabled(): boolean {
+  if (!QA_BUILD) return false;
   if (testPhaseActive()) return true;
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1" && (import.meta.env.DEV || localStorage.getItem(QA_MODE_KEY) === "1"); } catch { return false; }
 }

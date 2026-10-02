@@ -8,6 +8,7 @@ on:
     paths:
       - "src/**"
       - "scripts/verify-systems.mjs"
+      - "scripts/check-release-build.mjs"
       - "package.json"
       - "package-lock.json"
       - "tsconfig*.json"
@@ -49,3 +50,7 @@ jobs:
 
       - name: Web build
         run: npm run build:web
+
+      # 출시 번들(플래그 없는 빌드)에 테스트 우회가 없는지 — 매 푸시마다
+      - name: Release gate — no QA bypass in bundle
+        run: node scripts/check-release-build.mjs dist
