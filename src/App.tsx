@@ -1,5 +1,5 @@
 import { preloadStageBackgrounds } from "./game/draw";
-import { QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
+import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import "./App.css";
 import "./idle.css";
@@ -278,9 +278,11 @@ function App() {
   const [exitOpen, setExitOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 테스트 모드 — 빌드 라벨을 3초 안에 7번 탭하면 토글 (안드로이드 개발자 옵션식 숨은 제스처)
-  const [testMode, setTestMode] = useState(() => { try { return localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; } });
+  // 출시 빌드(QA_BUILD false)에서는 제스처도 플래그도 없다 — 테스터 기기에 남은 qa-mode=1 도 무시
+  const [testMode, setTestMode] = useState(() => { if (!QA_BUILD) return false; try { return localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; } });
   const buildTapsRef = useRef<number[]>([]);
   const tapBuildLabel = () => {
+    if (!QA_BUILD) return;
     const now = Date.now();
     buildTapsRef.current = [...buildTapsRef.current.filter((t) => now - t < 3000), now];
     if (buildTapsRef.current.length < 7) return;
@@ -1383,7 +1385,7 @@ function App() {
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
                 </button>
                 {/* 테스트용 — 보석 무제한. 라이브에 노출되지 않도록 DEV 빌드이거나 빌드 라벨을 7번 탭해 테스트 모드를 연 뒤에만 보인다 */}
-                {(import.meta.env.DEV || testMode) && <button
+                {QA_BUILD && (import.meta.env.DEV || testMode) && <button
                   type="button"
                   role="menuitem"
                   onClick={() => {

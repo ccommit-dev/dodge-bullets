@@ -38,7 +38,7 @@ writeFileSync(entry, [
   `export * as dodgeOps from "${root}/src/game/expeditionOps";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
-await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
 const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
@@ -87,7 +87,7 @@ ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", Math.abs(cnt.R / 
     const e = join(d, "entry.ts");
     writeFileSync(e, `export * as weekly from "${root}/src/events/weekly";\nexport * as routine from "${root}/src/progression/routine";\nexport * as journal from "${root}/src/progression/journal";`);
     const o = join(d, "bundle.mjs");
-    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
     const m = await import(pathToFileURL(o).href);
     rmSync(d, { recursive: true, force: true });
     return m;
@@ -173,7 +173,7 @@ const art = await (async () => {
   const e3 = join(d3, "entry.ts");
   writeFileSync(e3, `export * from "${root}/src/titans/SpriteArt";`);
   const o3 = join(d3, "bundle.mjs");
-  await build({ entryPoints: [e3], bundle: true, format: "esm", outfile: o3, platform: "node", jsx: "automatic", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" }});
+  await build({ entryPoints: [e3], bundle: true, format: "esm", outfile: o3, platform: "node", jsx: "automatic", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" }});
   const mod = await import(pathToFileURL(o3).href);
   rmSync(d3, { recursive: true, force: true });
   return mod;
@@ -203,7 +203,7 @@ const art = await (async () => {
     const e = join(d, "entry.ts");
     writeFileSync(e, `export * from "${root}/src/economy/seasonPass";`);
     const o = join(d, "bundle.mjs");
-    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
     const m = await import(pathToFileURL(o).href);
     rmSync(d, { recursive: true, force: true });
     return m;
@@ -232,7 +232,7 @@ const art = await (async () => {
     const e = join(d, "entry.ts");
     writeFileSync(e, `export * from "${root}/src/ads/rewarded";`);
     const o = join(d, "bundle.mjs");
-    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
     const m = await import(pathToFileURL(o).href);
     rmSync(d, { recursive: true, force: true });
     return m;
@@ -253,7 +253,7 @@ const art = await (async () => {
     const e = join(d, "entry.ts");
     writeFileSync(e, `export * from "${root}/src/economy/cosmetics";\nexport * as anim from "${root}/src/titans/anim";`);
     const o = join(d, "bundle.mjs");
-    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
     const m = await import(pathToFileURL(o).href);
     rmSync(d, { recursive: true, force: true });
     return m;
@@ -275,7 +275,7 @@ export * as allies from "${root}/src/titans/allies";
 export * as art from "${root}/src/titans/SpriteArt";
 export * as season from "${root}/src/economy/seasonPass";`);
     const o = join(d, "bundle.mjs");
-    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", jsx: "automatic", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", jsx: "automatic", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
     const m = await import(pathToFileURL(o).href);
     rmSync(d, { recursive: true, force: true });
     return m;
@@ -313,7 +313,7 @@ export * as season from "${root}/src/economy/seasonPass";`);
     writeFileSync(e, `export * from "${root}/src/economy/momentOffers";
 export * as pay from "${root}/src/payments/store";`);
     const o = join(d, "bundle.mjs");
-    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
     const m = await import(pathToFileURL(o).href);
     rmSync(d, { recursive: true, force: true });
     return m;
@@ -343,7 +343,7 @@ export * as pay from "${root}/src/payments/store";`);
   ok("픽업 제안: gems-1200 창 = 회전 종료(36h) · 보너스 150", pk.momentOffers["gems-1200"]?.kind === "pickup" && pk.momentOffers["gems-1200"].until === t0 + 36 * 3600000 && pk.momentOffers["gems-1200"].bonusGems === 150);
   ok("픽업 제안 구매(첫 구매) → 1200×2 + 150 = 2550", (() => { const r = mo.pay.applyPurchase(pk, "gems-1200", "tx-p", t0 + 1000); return r.applied && r.doubled && r.bonus === 150 && r.progress.redGems === 2550; })());
   // retention-6: 주간 마감 알림 시각 — 일요일 20:00 로컬, 지났으면 null
-  const nat = await (async () => { const d = mkdtempSync(join(tmpdir(), "sysnat-")); const e = join(d, "entry.ts"); writeFileSync(e, `export * from "${root}/src/game/native";`); const o = join(d, "bundle.mjs"); await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } }); const m = await import(pathToFileURL(o).href); rmSync(d, { recursive: true, force: true }); return m; })();
+  const nat = await (async () => { const d = mkdtempSync(join(tmpdir(), "sysnat-")); const e = join(d, "entry.ts"); writeFileSync(e, `export * from "${root}/src/game/native";`); const o = join(d, "bundle.mjs"); await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } }); const m = await import(pathToFileURL(o).href); rmSync(d, { recursive: true, force: true }); return m; })();
   const wed = new Date(2026, 8, 2, 10, 0, 0); // 수요일 10시
   const dl = nat.weeklyDeadlineAt(wed);
   ok("주간 마감 알림: 수요일 → 같은 주 일요일 20:00", dl && dl.getDay() === 0 && dl.getHours() === 20 && dl.getDate() === 6);
@@ -358,7 +358,7 @@ const eventShop = await (async () => {
   const e2 = join(d2, "entry.ts");
   writeFileSync(e2, `export * as shop from "${root}/src/economy/eventShop";\nexport * as pay from "${root}/src/payments/store";`);
   const o2 = join(d2, "bundle.mjs");
-  await build({ entryPoints: [e2], bundle: true, format: "esm", outfile: o2, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
+  await build({ entryPoints: [e2], bundle: true, format: "esm", outfile: o2, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
   const mod = await import(pathToFileURL(o2).href);
   rmSync(d2, { recursive: true, force: true });
   return mod;

@@ -66,8 +66,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web and sync to native
-        run: npm run native:sync
+      # 디버그 APK 는 테스트용 — QA 빌드(테스트 모드·무료 구매 열림). 출시 AAB 잡은 플래그 없이 빌드한다
+      - name: Build web (QA) and sync to native
+        run: npm run native:sync:qa
 
       - name: Build debug APK
         working-directory: android
@@ -135,6 +136,11 @@ jobs:
       - name: Build web and sync to native
         if: env.HAS_KEYSTORE == 'true'
         run: npm run native:sync
+
+      # 출시 번들에 테스트 우회(무료 지급·보석 무제한·7탭)가 남아 있으면 여기서 멈춘다
+      - name: Release gate — no QA bypass in bundle
+        if: env.HAS_KEYSTORE == 'true'
+        run: node scripts/check-release-build.mjs dist
 
       - name: Decode keystore
         if: env.HAS_KEYSTORE == 'true'

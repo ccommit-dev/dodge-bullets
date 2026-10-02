@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build:pages": "GITHUB_PAGES=true vite build --outDir docs/game --emptyOutDir",
+    "build:pages": "GITHUB_PAGES=true VITE_QA_BUILD=true vite build --outDir docs/game --emptyOutDir",
+    "build:qa": "VITE_QA_BUILD=true vite build",
+    "native:sync:qa": "npm run build:qa && npx cap sync",
+    "check:release": "node scripts/check-release-build.mjs",
     "build:web": "vite build",
     "native:sync": "npm run build:web && npx cap sync",
     "native:android": "npx cap open android",
