@@ -20,7 +20,7 @@ import { TITLES } from "./economy/gemCatalog";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS } from "./titans/model";
-import { loadTitansSave, saveTitansSave } from "./titans/storage";
+import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
@@ -39,7 +39,13 @@ import {
   migrateLegacyProgress,
   updateCharacterProgress,
 } from "./progression/storage";
-import { openMomentOffer } from "./economy/momentOffers";
+import { activeMomentOffers, MOMENT_OFFERS, momentTimeLeft, openMomentOffer, paidOffersUnlocked } from "./economy/momentOffers";
+import { STORE_PRODUCTS } from "./economy/productCatalog";
+import { claimGateFundTier, gemValueRatio, GATE_FUND_TOTAL_GEMS } from "./economy/gateFund";
+import { paidStoreNote, paidStoreVisible, purchaseInFlight, purchaseProduct } from "./payments/store";
+import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
+import { paymentEnvironment } from "./payments/environment";
+import { subscribeAppVisibility as subscribeResume } from "./ui/appLifecycle";
 import { drawFrame } from "./game/draw";
 import {
   applyKeyDown,
@@ -324,6 +330,12 @@ function App() {
   const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal" | "season">("daily");
   const [backupOpen, setBackupOpen] = useState(false);
   const [settingsToast, setSettingsToast] = useState("");
+  const showToast = (msg: string, ms = 2400) => { setSettingsToast(msg); window.setTimeout(() => setSettingsToast(""), ms); };
+  // 성문 보급소 결제 (2026-10-02) — 진행 중인 결제 상품 · 같은 판에서 성문에 진 횟수(3·4스테이지)
+  const [buyingProduct, setBuyingProduct] = useState<string | null>(null);
+  const gateFailsRef = useRef<Record<number, number>>({});
+  const [, setStoreTick] = useState(0);
+  useEffect(() => { const off = onStorePricesChanged(() => setStoreTick((t) => t + 1)); return () => { off(); }; }, []);
   const appModeRef = useRef<AppMode>("titans");
 
   const setMode = useCallback((mode: AppMode) => {
@@ -431,6 +443,7 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     let unsub: () => void = () => undefined;
+    let offResume: () => void = () => undefined;
 
     (async () => {
       const [key, safe] = await Promise.all([
@@ -475,17 +488,22 @@ function App() {
       const payEnv = detectPaymentEnvironment(key.source, isNativePlatform());
       setPaymentEnvironment(payEnv);
       void primeRewardedAds(payEnv);
-      void reconcileStore(key.hash).then(async (r) => {
+      const applyReconcile = async (r: { granted: number; revoked: number; cores: number }) => {
         if (cancelled || (!r.granted && !r.revoked && !r.cores)) return;
         const detail = { ...r, handled: false };
         window.dispatchEvent(new CustomEvent("dodgebullets:store-reconciled", { detail }));
-        // 사냥터가 떠 있지 않아 스킬 코어를 받아 줄 곳이 없으면 저장에 직접 더한다
-        if (!detail.handled && r.cores > 0) {
-          const t = await loadTitansSave(key.hash);
-          await saveTitansSave(key.hash, { ...t, skillInventory: { ...t.skillInventory, skillCores: t.skillInventory.skillCores + r.cores } });
-        }
+        // 스킬 코어는 진행도의 pendingSkillCores 로 쌓였다 — 사냥터가 준비되면 옮긴다 (TitansGame)
         setProgress(await loadCharacterProgress(key.hash));
-      }).catch(() => undefined);
+      };
+      void reconcileStore(key.hash).then(applyReconcile).catch(() => undefined);
+      // 복귀 정산 — 대기 중이던 플레이 결제가 승인됐으면 다음 실행까지 기다리지 않는다. 결제 시트에서 돌아오는 순간에는
+      // 실시간 결제가 지급하므로 건너뛴다(purchaseInFlight) — 둘이 겹치면 실시간 쪽이 "이미 지급"을 보게 된다
+      let lastReconcile = Date.now();
+      offResume = subscribeResume((hidden) => {
+        if (hidden || cancelled || purchaseInFlight() || Date.now() - lastReconcile < 30_000) return;
+        lastReconcile = Date.now();
+        void reconcileStore(key.hash).then(applyReconcile).catch(() => undefined);
+      });
 
       unsub = await subscribeSafeInsets((next) => {
         if (!cancelled) applyInsets(next);
@@ -495,6 +513,7 @@ function App() {
     return () => {
       cancelled = true;
       unsub();
+      offResume();
     };
   }, [applyInsets]);
 
@@ -765,7 +784,15 @@ function App() {
               dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
               skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
               lastContent: "dodge",
-            }).then(setProgress);
+            }).then(async (next) => {
+              // 성문 방어 3·4스테이지에서 두 번째 실패 — 성문 수비 보급 순간 제안 (유료 게이트·이미 열린 창은 openMomentOffer 가 거른다)
+              if (world.stageIndex >= 2) {
+                const fails = (gateFailsRef.current[world.stageIndex] ?? 0) + 1;
+                gateFailsRef.current[world.stageIndex] = fails;
+                if (fails >= 2) next = await updateCharacterProgress(userHashRef.current, (current) => openMomentOffer(current, "gate-wall"));
+              }
+              setProgress(next);
+            });
             trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
             setDeathTip(DEATH_TIPS[world.lastHitCause] ?? "");
           }, 650);
@@ -1061,6 +1088,36 @@ function App() {
     if (!blob) return;
     const result = await shareCard(blob);
     setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : result === "shown" ? "기록 카드를 띄웠습니다 — 스크린샷으로 저장하세요" : "공유를 지원하지 않는 환경입니다");
+  };
+
+  /** 성문 보급소 결제 — QA 빌드 테스트 모드면 무료 테스트 지급, 아니면 스토어 (payments/store.purchaseProduct) */
+  const handleBuyProduct = async (productId: string) => {
+    if (buyingProduct) return;
+    setBuyingProduct(productId);
+    try {
+      const r = await purchaseProduct(userHashRef.current, productId);
+      const name = STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId;
+      if (r.status === "granted" && r.progress) { setProgress(r.progress); showToast(`${name} 구매 완료${r.bonus ? ` · 보너스 보석 +${r.bonus}` : ""}`); }
+      else if (r.status === "duplicate") showToast("이미 지급된 구매입니다");
+      else if (r.status === "pending") showToast("결제 확인 중입니다 — 확인되면 자동으로 지급됩니다", 3200);
+      else if (r.status === "unavailable") showToast(paidStoreNote(), 3200);
+    } finally {
+      setBuyingProduct(null);
+    }
+  };
+  /** 원정 기금 단계 수령 */
+  const handleClaimFund = (tierId: string) => {
+    let gems = 0;
+    void updateCharacterProgress(userHashRef.current, (current) => { const r = claimGateFundTier(current, tierId); gems = r.gems; return r.progress; })
+      .then((next) => { setProgress(next); if (gems > 0) showToast(`원정 기금 보석 +${gems}`); });
+  };
+  /** 구매 복원 — 스토어 내역으로 지급 전에 죽은 구매·재설치 영구 상품을 되살리고 환불을 거둔다 */
+  const handleRestorePurchases = async () => {
+    showToast("구매 내역을 확인하는 중…", 6000);
+    const r = await reconcileStore(userHashRef.current);
+    window.dispatchEvent(new CustomEvent("dodgebullets:store-reconciled", { detail: { ...r, handled: false } }));
+    setProgress(await loadCharacterProgress(userHashRef.current));
+    showToast(r.granted || r.revoked ? `구매 ${r.granted}건 지급 · ${r.revoked}건 회수` : "되살릴 구매가 없습니다");
   };
 
   /** 기본 사격 강화 — 골드만 쓴다 (2026-10-02). 즉시 전투 월드에 반영 */
@@ -1405,6 +1462,11 @@ function App() {
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
                 </button>
+                {paymentEnvironment() !== "web" && (
+                  <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); void handleRestorePurchases(); }}>
+                    <span>구매 복원</span><b>스토어</b>
+                  </button>
+                )}
                 {/* 테스트용 — 보석 무제한. 라이브에 노출되지 않도록 DEV 빌드이거나 빌드 라벨을 7번 탭해 테스트 모드를 연 뒤에만 보인다 */}
                 {QA_BUILD && (import.meta.env.DEV || testMode) && <button
                   type="button"
@@ -1696,6 +1758,22 @@ function App() {
                 onUpgrade={handleUpgradeSkill}
                 basicLevel={progress.expeditionBasic}
                 onUpgradeBasic={handleUpgradeBasic}
+                shop={{
+                  visible: paidStoreVisible(),
+                  unlocked: paidOffersUnlocked(progress),
+                  note: paidStoreNote(),
+                  busy: buyingProduct,
+                  price: (id) => { const p = STORE_PRODUCTS.find((x) => x.id === id); return p ? priceLabel(p) : ""; },
+                  onSale: productOnSale,
+                  onBuy: (id) => void handleBuyProduct(id),
+                  fund: progress.gateFund,
+                  stars: progress.dodgeStars,
+                  fundRatio: (() => {
+                    const fund = STORE_PRODUCTS.find((x) => x.id === "gate-fund"), base = STORE_PRODUCTS.find((x) => x.id === "gems-80");
+                    return fund && base ? gemValueRatio(GATE_FUND_TOTAL_GEMS, priceLabel(fund), priceLabel(base), 80) : null;
+                  })(),
+                  onClaimFund: handleClaimFund,
+                }}
               />
             )}
           </div>
@@ -1953,6 +2031,25 @@ function App() {
               Stage {stage.id} · 최고 {highScore} · 코인 {coins}
             </p>
             {deathTip && <p className="death-tip"><b>다음엔 이렇게</b> {deathTip}</p>}
+            {(() => {
+              const offer = activeMomentOffers(progress).find((o) => o.productId === "gate-supply");
+              const product = STORE_PRODUCTS.find((p) => p.id === "gate-supply");
+              if (!offer || !product || !paidStoreVisible() || !productOnSale(product.id)) return null;
+              const def = MOMENT_OFFERS[offer.kind];
+              return (
+                <div className="gate-offer">
+                  <img src={assetUrl("ui/idle/gate-supply.svg")} alt="" aria-hidden="true" />
+                  <div>
+                    <b>{def.title}</b>
+                    <small>{def.subtitle}</small>
+                    <em>지금 사면 보석 +{offer.bonusGems} · {momentTimeLeft(offer.until)} 남음</em>
+                  </div>
+                  <button type="button" className="gate-offer-buy" disabled={buyingProduct !== null} onClick={() => void handleBuyProduct(product.id)}>
+                    {buyingProduct === product.id ? "결제 중…" : priceLabel(product)}
+                  </button>
+                </div>
+              );
+            })()}
             <button type="button" className="cta" onClick={handleRestart}>
               이 스테이지 다시
             </button>

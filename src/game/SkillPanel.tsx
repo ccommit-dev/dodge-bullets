@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { assetUrl } from "../asset";
 import { perksForBasicOnly, perksUnlockedBy, RARITY_LABEL } from "./perks";
+import { GATE_FUND_TIERS, GATE_FUND_TOTAL_GEMS, gateFundReadyGems, type GateFundState } from "../economy/gateFund";
 import { chipCost, CHIPS, CHIP_BY_ID, CHIP_MAX_LEVEL, type ChipId, type ChipLevels } from "./chips";
 import {
   DAILIES, dailyClaimable, dailyDone, SUPPLIES, SUPPLY_MAX,
@@ -53,6 +54,23 @@ type Props = {
   onClaimDaily: (id: DailyId) => void;
   onEquipWeapon: (id: RangedWeaponId) => void;
   onUpgrade: (id: ExpeditionSkillId) => void;
+  /**
+   * 성문 보급소 (2026-10-02) — 결제 상품(원정 기금 · 수비 보급). 결제가 안 되는 환경이면 note 만 보인다.
+   * 가격·판매 여부는 스토어 목록(payments/prices)에서, 값 비교 배수는 카탈로그 가격으로 계산해 넘긴다
+   */
+  shop?: {
+    visible: boolean;
+    unlocked: boolean;
+    note: string;
+    busy: string | null;
+    price: (id: string) => string;
+    onSale: (id: string) => boolean;
+    onBuy: (id: string) => void;
+    fund: GateFundState;
+    stars: Record<string, number>;
+    fundRatio: number | null;
+    onClaimFund: (tierId: string) => void;
+  };
   /** 기본 사격 강화 레벨 · 골드로 한 단계 올린다 (2026-10-02) */
   basicLevel: number;
   onUpgradeBasic: () => void;
@@ -69,7 +87,7 @@ function canAfford(gold: number, have: number, seals: number, cost: { gold: numb
 }
 
 export function SkillPanel({
-  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, onUpgradeBasic,
+  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, onUpgradeBasic, shop,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
   supplies, daily, onBuySupply, onClaimDaily, shards,
 }: Props) {
@@ -104,6 +122,62 @@ export function SkillPanel({
 
       {tab === "supply" ? (
         <div className="exp-ops">
+          {/* 성문 보급소 — 결제 상품. 무료 곡선은 그대로이고, 이건 "이미 하던 플레이에 얹히는 보석"과 "벽에서 빨리 넘기기"다 */}
+          {shop && (
+            <section className="exp-store">
+              <b>성문 보급소 <small>결제 상품</small></b>
+              {!shop.visible ? <p className="exp-store-note">{shop.note}</p>
+                : !shop.unlocked ? <p className="exp-store-note">출석 3일차(또는 Lv.20)부터 열립니다 — 먼저 성문 방어를 충분히 즐겨 보세요.</p>
+                : (<>
+                  {shop.onSale("gate-fund") && (() => {
+                    const ready = gateFundReadyGems({ gateFund: shop.fund, dodgeStars: shop.stars });
+                    return (
+                      <div className="exp-fund">
+                        <header>
+                          <img src={assetUrl("ui/idle/gate-fund.svg")} alt="" aria-hidden="true" />
+                          <span>
+                            <b>성문 원정 기금 <i>영구</i></b>
+                            <em>합계 보석 {GATE_FUND_TOTAL_GEMS.toLocaleString()}{shop.fundRatio ? ` · 같은 금액 보석팩의 ×${shop.fundRatio.toFixed(1)}` : ""}</em>
+                          </span>
+                        </header>
+                        <ul className="exp-fund-tiers">
+                          {GATE_FUND_TIERS.map((t) => {
+                            const done = t.done({ dodgeStars: shop.stars });
+                            const got = shop.fund.claimed.includes(t.id);
+                            return (
+                              <li key={t.id} className={got ? "got" : done ? "ready" : ""}>
+                                <span>{t.label}</span>
+                                <b>보석 {t.gems}</b>
+                                {shop.fund.paid
+                                  ? <button type="button" disabled={!done || got} onClick={() => shop.onClaimFund(t.id)}>{got ? "받음" : done ? "받기" : "미달성"}</button>
+                                  : <i>{done ? "달성" : "—"}</i>}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        {!shop.fund.paid && (
+                          <button type="button" className="exp-store-buy" disabled={shop.busy !== null} onClick={() => shop.onBuy("gate-fund")}>
+                            {shop.busy === "gate-fund" ? "결제 중…" : `${shop.price("gate-fund")} 구매${ready > 0 ? ` · 바로 보석 ${ready}` : ""}`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {shop.onSale("gate-supply") && (
+                    <div className="exp-store-row">
+                      <img src={assetUrl("ui/idle/gate-supply.svg")} alt="" aria-hidden="true" />
+                      <span>
+                        <b>성문 수비 보급</b>
+                        <em>원정 인장 30 · 속성 화살 조각 각 8 · 보석 40</em>
+                      </span>
+                      <button type="button" className="exp-store-buy" disabled={shop.busy !== null} onClick={() => shop.onBuy("gate-supply")}>
+                        {shop.busy === "gate-supply" ? "결제 중…" : shop.price("gate-supply")}
+                      </button>
+                    </div>
+                  )}
+                </>)}
+            </section>
+          )}
           {/* 보급창 — 가이드: "영구 강화는 구매해야 효과가 있다. 완벽한 해금을 기다리며
               자원을 쌓아 두기만 하면 성장만 늦어진다." 인장을 지금 쓰는 자리 */}
           <section>

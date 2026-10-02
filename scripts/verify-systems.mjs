@@ -379,8 +379,10 @@ ok("L 광고 제거 구매 → adFree", eventShop.pay.applyPurchase(base, "remov
   const dup = eventShop.pay.applyPurchase(r2.progress, "gems-450", "tx2", 0);
   ok("H 같은 transactionId 재적용 안 됨", !dup.applied && dup.progress.redGems === 1350);
   const w1 = eventShop.pay.applyPurchase(r2.progress, "pack-wall", "tx3", 0);
-  const w2 = eventShop.pay.applyPurchase(w1.progress, "pack-wall", "tx4", 0);
-  ok("H 벽 돌파 세트: 출전 1번 동료 조각 +30 · 가속 24h · 상품당 1회", w1.applied && w1.progress.allyShards.mia === 30 && w1.progress.idleBoostUntil === 24 * 3600000 && !w2.applied);
+  const w2 = eventShop.pay.applyPurchase(w1.progress, "pack-wall", "qa-4", 0);
+  const w3 = eventShop.pay.applyPurchase(w1.progress, "pack-wall", "tx5", 0);
+  // 상품당 1회는 판매 화면의 규칙 — QA 지급은 막고, **결제된** 두 번째 주문은 지급한다(돈을 냈는데 못 받는 일 없게, 2026-10-02 리뷰)
+  ok("H 벽 돌파 세트: 출전 1번 동료 조각 +30 · 가속 24h · QA 재지급 막힘 · 결제된 재주문은 지급", w1.applied && w1.progress.allyShards.mia === 30 && w1.progress.idleBoostUntil === 24 * 3600000 && !w2.applied && w3.applied);
   ok("H 트리거 조건: 개척 2지역·벽 경험·환생 1회", product.packageTriggered("pioneer", p0) && product.packageTriggered("wall", p0) && product.packageTriggered("rebirth", p0) && !product.packageTriggered("rebirth", base));
   ok("H 트리거 패키지 3종 카탈로그·Play id 등록", ["pack-pioneer", "pack-wall", "pack-rebirth"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.trigger) && eventShop.pay.PLAY_PRODUCT_IDS.includes(id)));
 }

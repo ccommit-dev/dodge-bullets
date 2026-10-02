@@ -102,7 +102,7 @@ await sleep(400);
 await page.evaluate(() => { [...document.querySelectorAll(".premium-product-card")].find((c) => /캐릭터:/.test(c.textContent))?.querySelector("button")?.click(); });
 await sleep(400);
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
-ok("결제 불가 환경(웹): 캐릭터 상품 탭 → 안내 토스트 (지급 없음)", /이 환경에서는 결제할 수 없습니다/.test(r), r);
+ok("결제 불가 환경(웹): 캐릭터 상품 탭 → 환경 안내 토스트 (지급 없음)", /토스 앱과 안드로이드 앱에서 구매할 수 있습니다/.test(r), r);
 
 // ── H. 트리거 패키지 노출 · 첫 구매 2배 배지 ──
 await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.rebirthCount = 1; q.wallAreas = ["forest"]; q.attendanceStreak = 5; localStorage.setItem(k, JSON.stringify(q)); }, H);

@@ -8,7 +8,8 @@
  *   3. 소모성은 consumePurchase(승인 포함 · 다시 살 수 있게), 영구 상품은 acknowledgePurchase.
  *   승인하지 않은 구매는 3일 뒤 구글이 자동 환불한다 — 그 전에 다음 실행의 복구(getPurchases)가 2·3 을 다시 한다.
  * purchaseState "1" = 결제 완료, 그 밖(대기 중 결제 등)은 지급하지 않는다. 환불된 구매는 getPurchases 에서 사라진다.
- * 같은 구매의 식별자는 transactionId(주문 번호 GPA.…) — 실시간 결제와 복구가 같은 값을 써야 두 번 지급되지 않는다.
+ * 같은 구매의 식별자: 플러그인은 transactionId 에 **구매 토큰**을 넣는다(주문 번호 GPA… 가 아니다 — 플러그인 소스 확인, 리뷰 #3).
+ * 지급 기록에는 "play:<토큰>" 을 쓴다 — 실시간·복구가 같은 값이고, 회수가 플레이 지급만 골라낼 수 있다.
  */
 import type { PurchaseResult } from "./adapter";
 
@@ -40,6 +41,12 @@ async function loadBilling(): Promise<{ billing: Billing; inapp: string } | null
   }
 }
 
+/** 지급 기록의 거래 식별자 — 실시간·복구·회수가 모두 이것을 쓴다 */
+export function playTxId(p: PlayPurchase): string {
+  const id = p.transactionId || p.purchaseToken || "";
+  return id ? `play:${id}` : "";
+}
+
 function completed(p: PlayPurchase): boolean {
   return !p.purchaseState || p.purchaseState === "1";
 }
@@ -61,11 +68,13 @@ export async function playPurchase(productId: string, consumable: boolean, grant
   let purchase: PlayPurchase;
   try {
     purchase = await loaded.billing.purchaseProduct({ productIdentifier: productId, productType: loaded.inapp, quantity: 1, isConsumable: false, autoAcknowledgePurchases: false });
-  } catch {
+  } catch (error) {
+    // 플러그인은 대기 중 결제(현금 결제 등)를 거부로 돌려준다 — 취소가 아니라 대기 (리뷰 #6). 승인되면 복구가 지급한다
+    if (/pending/i.test(String((error as { message?: string } | null)?.message ?? error))) return { status: "pending", productId };
     return { status: "cancelled", productId };   // 사용자 취소 · 네트워크 · 미등록 상품
   }
   if (!completed(purchase)) return { status: "pending", productId };
-  const txId = purchase.transactionId || purchase.purchaseToken || "";
+  const txId = playTxId(purchase);
   if (!txId) return { status: "cancelled", productId };
   let ok = false;
   try { ok = await grant(txId); } catch { ok = false; }
@@ -96,7 +105,7 @@ export async function playRecover(owned: PlayPurchase[], isConsumable: (productI
   let done = 0;
   for (const p of owned) {
     if (!completed(p) || !p.productIdentifier) continue;
-    const txId = p.transactionId || p.purchaseToken || "";
+    const txId = playTxId(p);
     if (!txId) continue;
     let ok = false;
     try { ok = await grant(p.productIdentifier, txId); } catch { ok = false; }
