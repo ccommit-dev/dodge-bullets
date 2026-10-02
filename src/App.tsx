@@ -5,6 +5,7 @@ import "./App.css";
 import "./idle.css";
 import "./weight.css";
 import { haptic } from "./ui/haptics";
+import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
 // 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
 const BeatGame = lazy(() => import("./BeatGame").then((m) => ({ default: m.BeatGame })));
@@ -492,8 +493,9 @@ function App() {
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
 
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
+    // 웹 visibilitychange + Capacitor pause/resume — 상태가 바뀔 때만 (ui/appLifecycle)
+    const onVisibility = (hidden: boolean) => {
+      if (hidden) {
         sound.enterBackground();
       } else {
         sound.enterForeground();
@@ -510,7 +512,7 @@ function App() {
       }
     };
 
-    document.addEventListener("visibilitychange", onVisibility);
+    const offVisibility = subscribeAppVisibility(onVisibility);
     window.addEventListener("pagehide", onPageHide);
     window.addEventListener("pageshow", onPageShow);
 
@@ -519,7 +521,7 @@ function App() {
       return () => {
         window.removeEventListener("resize", onResize);
         window.removeEventListener("orientationchange", onResize);
-        document.removeEventListener("visibilitychange", onVisibility);
+        offVisibility();
         window.removeEventListener("pagehide", onPageHide);
         window.removeEventListener("pageshow", onPageShow);
       };
@@ -925,7 +927,7 @@ function App() {
       sound.enterBackground();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
-      document.removeEventListener("visibilitychange", onVisibility);
+      offVisibility();
       window.removeEventListener("pagehide", onPageHide);
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("keydown", onKeyDown);
@@ -1033,7 +1035,7 @@ function App() {
     });
     if (!blob) return;
     const result = await shareCard(blob);
-    setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
+    setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : result === "shown" ? "기록 카드를 띄웠습니다 — 스크린샷으로 저장하세요" : "공유를 지원하지 않는 환경입니다");
   };
 
   /** 기본 사격 강화 — 골드만 쓴다 (2026-10-02). 즉시 전투 월드에 반영 */
