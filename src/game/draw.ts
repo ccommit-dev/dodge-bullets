@@ -343,7 +343,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   ctx.scale(1 + squash, 1 - squash);
   if (img) {
     const w = size * (img.naturalWidth / img.naturalHeight);
-    if (a.boss) ctx.imageSmoothingQuality = "high";   // 512px 원화를 ~480px 로 — 확대가 크니 부드럽게
+    if (a.boss) ctx.imageSmoothingQuality = "high";   // 1024px 원화(2026-10-02 고해상도화)를 폰에서 960~1440 실픽셀로 — 부드럽게
     ctx.drawImage(img, -w / 2, -size / 2, w, size);
   } else {
     ctx.fillStyle = a.boss ? bossColor : "#f87171";
