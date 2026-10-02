@@ -422,7 +422,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   for (let i = 0; i < 400; i += 1) worldMod.gainRunXp(w, 1);
   ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
   const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
-  ok("몬스터 보이는 여백: 새끼 용 좌 23%·우 32%, 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.23,0.32]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
+  ok("몬스터 보이는 여백: 보라 용 좌 4%·우 2% (2026-10-02 반실사 재생성), 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.04,0.02]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
 }
 
 // ── 콘텐츠 역할 분리 P1 ──

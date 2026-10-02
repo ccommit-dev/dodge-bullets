@@ -425,7 +425,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       heroLeft: 26 + Math.random() * 2,
       // 흔들림을 ±1%로 — 근접 동료가 몬스터 좌표에 붙으므로(App.css) 넓게 흔들면 주인공과 겹친다
-      monsterRight: (rolledKind === "dragon" ? 23 : 29) + Math.random() * 2,
+      // 용은 2026-10-02 에 보이는 몸이 상자를 꽉 채우는 드레이크로 바뀌어(여백 23/32% → 4/2%) 근접 동료가 20px 왼쪽에 붙으며 주인공을 덮었다 — 더 오른쪽에 세운다
+      monsterRight: (rolledKind === "dragon" ? 17 : 29) + Math.random() * 2,
       durationMs,
     });
     window.requestAnimationFrame(() => setFormationEngaged(true));
@@ -2194,7 +2195,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           "--area-background": `url(${area.background})`,
           "--hero-meet-left": `${encounterMotion.heroLeft}%`,
           "--monster-meet-right": `${encounterMotion.monsterRight}%`,
-          // 근접 슬롯이 몬스터 박스가 아니라 '보이는' 몸 가장자리에 붙도록 — 새끼 용처럼 좌우 여백이 큰 원화에서 동료가 허공에 서던 문제
+          // 근접 슬롯이 몬스터 박스가 아니라 '보이는' 몸 가장자리에 붙도록 — (옛 새끼 용처럼) 좌우 여백이 큰 원화에서 동료가 허공에 서던 문제
           "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson))[0]),
           "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson))[1]),
           "--encounter-duration": `${encounterMotion.durationMs}ms`,

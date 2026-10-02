@@ -460,7 +460,7 @@ export function monsterLabel(kind: TitanMonsterKind, chesterson: boolean, stage 
     case "ogre":
       return "오우거";
     case "dragon":
-      return "새끼 용";
+      return "보라 비룡";   // 2026-10-02 원화를 치비 새끼 용 → 반실사 드레이크로 다시 그리며 이름도
     case "boss":
       return huntingArea(stage).bossName;
   }
