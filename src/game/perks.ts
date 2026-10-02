@@ -25,6 +25,7 @@ export const RARITY_LABEL: Record<PerkRarity, string> = { common: "일반", rare
 
 export type PerkId =
   | "learnFire" | "learnWater" | "learnIce" | "learnEarth" | "learnBolt"
+  | "windTwin" | "poisonDeep" | "holyMend" | "shadowMore" | "meteorWide"
   | "gauge" | "heal" | "shotExtra" | "quickdraw" | "boltExtra" | "damageUp"
   | "convertFire" | "convertWater" | "convertIce" | "convertEarth" | "convertBolt"
   | "shotPierce" | "waterMore" | "fireWide" | "iceDeep" | "earthHeavy"
@@ -59,16 +60,6 @@ export type PerkDef = {
 const owned = (w: GameWorld, id: keyof GameWorld["skillLevels"]) => (w.skillLevels?.[id] ?? 0) > 0;
 /** 이번 런에서 습득해 실제로 쏘고 있는가 — 강화·콤보·진화 카드는 이것을 본다 */
 const has = (w: GameWorld, id: keyof GameWorld["skillLevels"]) => owned(w, id) && !!w.runSkills?.[id];
-const learn = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: string, desc: string): PerkDef => ({
-  id: ("learn" + id[0].toUpperCase() + id.slice(1)) as PerkId,
-  rarity: "common", label: `습득 · ${name}`, desc, learns: id,
-  available: (w) => owned(w, id) && !w.runSkills?.[id],
-  apply: (w) => {
-    w.runSkills[id] = true; w.skillTimers[id] = 0;
-    // 습득한 순간 — 주인공을 그 속성의 빛이 감싼다 (모의 월드에는 연출 칸이 없을 수 있다)
-    if (w.sfx) { w.heroAura = { element: id, ms: 900 }; w.sfx.learn += 1; }
-  },
-});
 /** 기본 사격이 나가는가 — 무기를 끼고 있으면 */
 const armed = (w: GameWorld) => (w.rangedWeapon ?? "none") !== "none";
 
@@ -85,12 +76,7 @@ const convert = (id: Exclude<keyof GameWorld["skillLevels"], "ultimate">, name: 
 });
 
 export const PERKS: PerkDef[] = [
-  // ── 습득 — 이번 런에서 그 속성 화살을 쓰기 시작한다. 영구 레벨이 있어야 뜬다
-  learn("fire", "불화살", "명중한 자리에서 터져 주변 몬스터를 태운다"),
-  learn("water", "물화살", "멈추지 않고 몬스터를 꿰뚫는다"),
-  learn("ice", "얼음화살", "명중한 주변 몬스터를 얼린다"),
-  learn("earth", "흙화살", "느리지만 보스를 크게 깎는다"),
-  learn("bolt", "번개화살", "쏘는 순간 여럿을 잇는다"),
+  // 습득 카드는 없다 (2026-10-02) — 스킬 무기는 정비에서 4칸에 **장착**하면 런 시작부터 쏜다. 카드는 장착한 무기를 강화한다
 
   // ── 일반 — 무기만 있으면 고를 수 있다
   { id: "gauge", rarity: "common", label: "화살비 게이지 +35", desc: "화살비가 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
@@ -109,6 +95,12 @@ export const PERKS: PerkDef[] = [
   { id: "fireWide", rarity: "rare", needs: ["fire"], label: "확산 화염", desc: "불화살 폭발 반경 +35%", available: (w) => has(w, "fire"), apply: (w) => { w.runMods.fireRadiusMul *= 1.35; } },
   { id: "iceDeep", rarity: "rare", needs: ["ice"], label: "심층 빙결", desc: "얼음화살이 더 깊게 얼린다", available: (w) => has(w, "ice"), apply: (w) => { w.runMods.iceSlowBonus += 0.1; } },
   { id: "earthHeavy", rarity: "rare", needs: ["earth"], label: "바위 촉", desc: "흙화살 피해 +1 · 보스 깎기 +1", available: (w) => has(w, "earth"), apply: (w) => { w.runMods.earthPowerBonus += 1; } },
+  // ── 새 스킬 무기 (2026-10-02)
+  { id: "windTwin", rarity: "rare", needs: ["wind"], label: "회오리 날", desc: "질풍 부메랑 피해 +40%", available: (w) => has(w, "wind"), apply: (w) => { w.runMods.windDamageMul *= 1.4; } },
+  { id: "poisonDeep", rarity: "rare", needs: ["poison"], label: "맹독", desc: "독침 중독 피해 +50%", available: (w) => has(w, "poison"), apply: (w) => { w.runMods.poisonMul *= 1.5; } },
+  { id: "holyMend", rarity: "rare", needs: ["holy"], label: "축복의 빛", desc: "성광 홀 방어막 수리 ×2", available: (w) => has(w, "holy"), apply: (w) => { w.runMods.holyRepairMul *= 2; } },
+  { id: "shadowMore", rarity: "rare", needs: ["shadow"], label: "분신 표창", desc: "그림자 표창 +2", available: (w) => has(w, "shadow"), apply: (w) => { w.runMods.shadowExtra += 2; } },
+  { id: "meteorWide", rarity: "rare", needs: ["meteor"], label: "유성 파편", desc: "운석 폭발 반경 +30%", available: (w) => has(w, "meteor"), apply: (w) => { w.runMods.meteorRadiusMul *= 1.3; } },
 
   convert("fire", "불"),
   convert("water", "물"),
@@ -177,9 +169,10 @@ export const PERKS: PerkDef[] = [
  * 1스테이지의 에픽은 사건이고, 4스테이지는 빌드를 굳히는 판이다.
  */
 export function rarityOdds(stageIndex: number): Record<PerkRarity, number> {
-  const s = Math.max(0, Math.min(3, stageIndex));
-  const epic = 0.03 + 0.05 * s;        // 3 · 8 · 13 · 18%
-  const rare = 0.20 + 0.05 * s;        // 20 · 25 · 30 · 35%
+  // 50 스테이지(2026-10-02) — 1 스테이지 3/20% 에서 40 스테이지 18/35% 까지 고르게 오른다 (예전 4 스테이지 표의 양 끝)
+  const s = Math.max(0, Math.min(1, stageIndex / 39));
+  const epic = 0.03 + 0.15 * s;
+  const rare = 0.20 + 0.15 * s;
   return { common: 1 - epic - rare, rare, epic };
 }
 
@@ -199,10 +192,6 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
   const odds = world.draftBoost ? { common: 0, rare: 0.55, epic: 0.45 } : rarityOdds(stageIndex);
   const out: PerkDef[] = [];
   const order: PerkRarity[] = ["epic", "rare", "common"];
-  // 아직 아무것도 습득하지 않았으면 첫 자리는 습득 카드 — 빌드가 시작되지 않는 판을 막는다
-  const learnable = pool.filter((p) => p.learns);
-  const acquiredAny = Object.values(world.runSkills ?? {}).some(Boolean);
-  if (!acquiredAny && learnable.length && count > 0) out.push(learnable[Math.floor(rng() * learnable.length) % learnable.length]);
 
   let guard = 0;
   while (out.length < Math.min(count, pool.length) && guard < 128) {

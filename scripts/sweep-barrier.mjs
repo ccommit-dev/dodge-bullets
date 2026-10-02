@@ -1,16 +1,21 @@
-// 방어막 모델 스윕 — TUNING 표를 바꿔 가며 게이트 수치(S1·S2·S4 단독, 풀런 곡선)를 찍는다. CURVE=0 이면 단독 게이트만
-//   node scripts/sweep-barrier.mjs '{"monsterSpeedMul":0.6,"basicCooldown":0.6}' [...]
-import { simulateStage, runCurve, api } from "./dodge-sim.mjs";
-const T = api.AR.TUNING;
-const base = { ...T };
+// 성문 방어 스윕 — 손잡이를 바꿔 가며 50 스테이지 체크포인트 곡선(기대 성장 vs 8 스테이지 덜 자란 계정)을 찍는다 (2026-10-02)
+//   node scripts/sweep-barrier.mjs '{"hpMul":4}' '{"hpMul":4.5,"bossOrbDmg":10}' [...]
+//   키: hpMul(skills.TUNING_HP.mul) · hpGrowth(stages.STAGE_CURVE.hpGrowth) · 나머지는 arrows.TUNING 필드
+import { checkpointCurve, api } from "./dodge-sim.mjs";
+const { AR, SK, stages } = api;
+const base = { ...AR.TUNING };
+const baseHp = SK.TUNING_HP.mul, baseGrowth = stages.STAGE_CURVE.hpGrowth;
 const configs = process.argv.slice(2).map((s) => JSON.parse(s));
 if (configs.length === 0) configs.push({});
-const gate = (stage) => { const runs = [1, 2, 3, 4, 5].map((seed) => simulateStage(stage, seed * 7919 + stage, { skills: { fire: 1 }, weapon: "bow" })); return { clear: runs.filter((r) => r.clear).length, min: Math.round(runs.reduce((s, r) => s + r.barrierMinRatio, 0) / 5 * 100), boss: runs.filter((r) => r.deathBoss).length, pool: Math.max(...runs.map((r) => r.maxActive)), full: runs.some((r) => r.poolFull) }; };
 for (const c of configs) {
-  Object.assign(T, base, c);
+  const { hpMul, hpGrowth, ...tuning } = c;
+  Object.assign(AR.TUNING, base, tuning);
+  SK.TUNING_HP.mul = hpMul ?? baseHp;
+  stages.STAGE_CURVE.hpGrowth = hpGrowth ?? baseGrowth;
+  for (let i = 0; i < stages.STAGES.length; i += 1) stages.STAGES[i] = stages.buildStage(i);
   const t0 = Date.now();
-  const s1 = gate(0), s2 = gate(1), s4 = gate(3);
-  const line = (r) => `S1 ${r.clearS1} S2 ${r.clearS2} S3 ${r.clearS3} S4 ${r.clearS4}`;
-  const curve = process.env.CURVE === "0" ? [] : runCurve(20);
-  console.log(JSON.stringify(c), `| S1 ${s1.clear}/5 min${s1.min}% | S2 ${s2.clear}/5 min${s2.min}% | S4 ${s4.clear}/5 min${s4.min}% 보스전사망${s4.boss} | 화면최대 ${Math.max(s1.pool,s2.pool,s4.pool)}${s1.full||s2.full||s4.full?' 풀고갈!':''} |`, curve.map((r) => `${r.tier}: ${line(r)}`).join(" | "), `(${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+  const rows = checkpointCurve(Number(process.env.SEEDS ?? 5), 8);
+  const under = rows.filter((r) => r.under !== null);
+  console.log(JSON.stringify(c), "|", rows.map((r) => `${r.stage + 1}:${r.expected}${r.under === null ? "" : "/" + r.under}`).join(" "),
+    `| 덜 자람 ${Math.round(under.reduce((s, r) => s + r.under, 0) / (under.length * 5) * 100)}% | 풀 가득 ${rows.filter((r) => r.pool).map((r) => r.stage + 1).join(",") || "없음"} (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
 }

@@ -38,6 +38,8 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       maxHp: 0,
       hitFlashMs: 0,
       chilledMs: 0,
+      poisonMs: 0,
+      poisonDps: 0,
       orbitMs: 0,
       orbitX: 0,
       orbitY: 0,
@@ -78,13 +80,23 @@ export const TUNING = {
   barrierHp: 120,
   barrierHitMs: 1200,        // 붙은 몬스터의 공격 주기
   barrierDmgMul: 0.65,       // 종류별 방어막 피해 배수 — 0.5 → 0.65 (1 이면 S2 부터 벽, 0.5 는 S1 이 긁히지도 않았다)
-  barrierDmgPerStage: 0.15,  // 스테이지마다 더해지는 피해 배수 — 뒤로 갈수록 세게 두드린다 (성장이 갈리는 지렛대)
+  /**
+   * 진행 속도 (2026-10-02, 사용자: "성벽원정 전반적으로 진행속도가 너무 빠름 3배는 느리게") — 몬스터·대장·화살·스테이지 시계가
+   * 실제 시간의 1/3 로 흐른다(world.updateWorld). 주인공 이동만 실제 시간이라 조작은 그대로 빠르다.
+   * 균형은 월드 시간 기준이라 그대로 — 대신 스테이지가 3배 길다. 시뮬은 실제 dt 를 (1/60)/pace 로 넣어 월드 한 걸음을 같게 잰다
+   */
+  pace: 1 / 3,
+  /** 대장 하강 속도(월드 px/s) — "내려오는 속도는 완전 느리게" (실제로는 pace 배 더 느리다) */
+  bossDescent: 18,
+  /** 대장이 살아 있는 동안 생성 간격 배수 */
+  bossSpawnSlow: 1.6,
   barrierRegen: 0,           // 방어막이 유일한 생명이 된 뒤(2026-10-02)에는 저절로 차지 않는다 — 스테이지마다 가득 찬다
   barrierPerLife: 0.15,      // 예전 "최대 HP +1" 하나가 방어막 +15% (성장 · 견갑 · 활력 칩 · 수호 부적 · 성장 카드)
   bossOrbDmg: 8,            // 대장 마력탄이 돔에 맞는 피해
-  stageSpawnScale: [0.85, 1.0, 1.8, 1.25] as number[],   // 스테이지별 생성 간격 배수 — 1 보다 크면 드물게. S1·S2 는 촘촘히(방어막이 실제로 깎이게), S3 은 비룡·폭발이 세서 드물게 (스윕 2026-10-02)
+  /** @deprecated 스테이지 표(stages.ts spawnScale)로 옮겼다 — 시뮬 스윕이 덮어쓰는 이름만 남긴다 */
+  stageSpawnScale: [1, 1, 1, 1] as number[],   // 스테이지별 생성 간격 배수 — 1 보다 크면 드물게. S1·S2 는 촘촘히(방어막이 실제로 깎이게), S3 은 비룡·폭발이 세서 드물게 (스윕 2026-10-02)
   basicCooldown: BASIC_SHOT_COOLDOWN,
-  bossCutMul: 1,             // 보스 격추 수 배수
+  bossCutMul: 3,             // 보스 격추 수 배수 — 무기가 실제 시간으로 쏘는 만큼 ×3 (2026-10-02 pace)
 };
 export const BARRIER_OFFSET = 150;          // 바닥선에서 위로 — 주인공 머리·무기 정령보다 위
 export const BARRIER_BREACH_MS = 900;       // 붕괴 연출 시간
@@ -130,7 +142,7 @@ export function resetBarrier(world: GameWorld): void {
   world.barrierBreachDamage = 0;
 }
 function hitBarrier(world: GameWorld, a: Arrow, damage = barrierDamageOf(a)): void {
-  world.barrierHp = Math.max(0, world.barrierHp - damage * TUNING.barrierDmgMul * (1 + TUNING.barrierDmgPerStage * world.stageIndex));
+  world.barrierHp = Math.max(0, world.barrierHp - damage * TUNING.barrierDmgMul * getStage(world.stageIndex).barrierDmgMul);
   world.lastHitCause = a.fromBoss ? "boss" : a.splitLevel > 0 ? "fragment" : a.kind;
   world.barrierFlashMs = 220;
   world.barrierHitX = a.x;
@@ -214,6 +226,8 @@ function activate(
   arrow.reflected = false;
   arrow.hp = 0; arrow.maxHp = 0; arrow.hitFlashMs = 0;   // 체력은 처음 맞을 때 그 스테이지 값으로 채운다
   arrow.chilledMs = 0;
+  arrow.poisonMs = 0;
+  arrow.poisonDps = 0;
   arrow.damage = SPLIT_DAMAGE[0];
   arrow.orbitMs = 0;
   arrow.orbitX = x;
@@ -249,8 +263,8 @@ function activePattern(world: GameWorld): ArrowPattern | null {
 
 /** 유도탄 승격 확률 — 스테이지별. 유도탄은 뒤로 돌아 들어와 "앞쪽만 벤다" 규칙과 가장 충돌하므로 1스테이지엔 없다 (봇 시뮬 피격 1위) */
 export function homingChanceFor(stageIndex: number): number {
-  // 좌우 이동만으로 피하는 규칙(2026-10-01)에서 유도탄은 가장 안 피해지는 화살이다 — 확률을 낮추고 유도 시간도 짧게
-  return [0, 0.03, 0.04, 0.06][Math.min(3, Math.max(0, stageIndex))];
+  // 스테이지 표의 값 — 1장(초원)엔 없고 장이 깊을수록 오른다 (2026-10-02)
+  return getStage(Math.max(0, stageIndex)).homingChance;
 }
 let currentHomingChance = 0.13;
 
@@ -633,7 +647,10 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
     world.bossCutsLeft = arrow.bossCutsLeft;
     registerSlash(world, arrow, true);
     bumpCombo(world);
-    spawnBossSplitPattern(world, { ...arrow });
+    // 처치 수가 TUNING.bossCutMul(3)배가 된 뒤로 깎일 때마다 파편·튀기를 하면 세 배가 쏟아져 몬스터 풀이 찼다(시뮬 45 스테이지) —
+    // 배수만큼에 한 번만 (예전 빈도)
+    const beat = (arrow.bossMaxCuts - arrow.bossCutsLeft) % Math.max(1, Math.round(TUNING.bossCutMul)) === 0;
+    if (beat) spawnBossSplitPattern(world, { ...arrow });
     if (arrow.bossCutsLeft <= 0) {
       arrow.active = false;
       world.bossDefeated = true;
@@ -642,7 +659,7 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
       world.supplies += 12 + arrow.bossTier * 3;
       world.expeditionSeals += 2;
       maybeDropSlashItem(world, arrow.x, arrow.y, true);
-    } else {
+    } else if (beat) {
       // 깎이면 옆으로 튀어 자리를 바꾼다 — 쫓아오지 않는다 (2026-10-01). 종류는 그대로(위쪽 띠에서 떠다님)
       const speed = 220 + arrow.bossTier * 15 + Math.random() * 45;
       arrow.vx = (Math.random() < 0.5 ? -1 : 1) * speed;
@@ -688,15 +705,20 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
 export const CAPTAIN_TOP = 330;   // 150 → 330 (2026-10-01 캡처): 150 은 화살비 게이지·제목과 겹쳤다. HUD 왼쪽 열(~182)·게이지 아래, 보스 막대(350) 위
 /** 보스 화살이 떠다니는 높이 — 대장 발밑(safeTop+CAPTAIN_TOP+70)이되, 바닥에서 320px 은 띄운다(시뮬 화면 700 처럼 낮은 화면) */
 /** 대장 몬스터 크기(그림 높이 px) — 5배 (96~136 → 480~528, 사용자: "크게도 5배", 2026-10-02). 화면 폭보다 커서 위쪽을 덮는다 */
-export function bossSize(tier: number): number { return 480 + Math.min(48, tier * 12); }
+/**
+ * 대장 크기 — 2026-10-02 에 5배(480+)로 키웠다가 같은 날 "너무 커, 2/3 로" (사용자). tier 는 1~5(장 + 1).
+ * 2/3 이면 약 330px — 화면 폭(390)보다 조금 좁아 양옆이 보인다
+ */
+export const BOSS_SIZE_SCALE = 2 / 3;
+export function bossSize(tier: number): number { return Math.round((480 + Math.min(48, tier * 12)) * BOSS_SIZE_SCALE); }
 /** 대장이 떠 있는 높이(중심) — 몸의 윗부분이 화면 위로 나가고 아래쪽이 화면 위쪽을 덮는다 (아웃로 디펜스의 모선처럼). 예전 412 → 약 130 */
-export function bossHoverY(world: GameWorld): number { return world.safeTop + bossSize(world.stageIndex + 1) * 0.24; }   // 462 로 내려 보니 사격 거리가 줄어 곡선이 바뀌었다 — 412 유지, 대신 보스 바를 올림
+export function bossHoverY(world: GameWorld): number { return world.safeTop + bossSize(getStage(world.stageIndex).bossTier + 1) * 0.32; }   // 462 로 내려 보니 사격 거리가 줄어 곡선이 바뀌었다 — 412 유지, 대신 보스 바를 올림
 /** 보스의 조준 사격 주기(ms) — 단계가 오를수록 잦다 */
 export function bossSalvoMs(tier: number): number { return Math.max(1_100, 1_800 - tier * 220); }
 function spawnBossArrow(world: GameWorld): void {
   const arrow = acquire(world);
   if (!arrow) return;
-  const tier = world.stageIndex + 1;
+  const tier = getStage(world.stageIndex).bossTier + 1;   // 장 1~5 — 그림·크기·사격 주기
   const cuts = bossCutsFor(world.stageIndex);
   // 대장은 화면 **맨 위 밖**에서 내려온다 (사용자: "보스가 너무 아래서 리스폰됨 — 맨 위부터", 2026-10-02)
   const size = bossSize(tier);
@@ -738,7 +760,9 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
   if (world.stageElapsedMs < 2_000) {
     world.spawnAccMs = 0;
   } else if (pattern && pattern.kind !== "rest") {
-    const spawnMs = (pattern.spawnMs ?? 700) * TUNING.spawnScale * (TUNING.stageSpawnScale[Math.min(3, world.stageIndex)] ?? 1) / (stage.spawnMul * world.tempo);
+    // 대장이 살아 있는 동안은 몬스터가 줄어든다 — 보스전에 집중하게 (2026-10-02, 50 스테이지: 대장 + 웨이브가 겹쳐 방어막이 녹던 것)
+    const bossLive = world.bossSpawned && !world.bossDefeated;
+    const spawnMs = (pattern.spawnMs ?? 700) * TUNING.spawnScale * stage.spawnScale * (bossLive ? TUNING.bossSpawnSlow : 1) / (stage.spawnMul * world.tempo);
     world.spawnAccMs += dtSec * 1000;
     while (world.spawnAccMs >= spawnMs) {
       world.spawnAccMs -= spawnMs;
@@ -810,20 +834,22 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     }
 
     if (a.boss) {
-      // 맨 위 밖에서 천천히 내려와 화면 위쪽에 자리 잡는다 — 좌우로 조금씩 흔들릴 뿐(화면보다 크다). 깎였을 때 튄 속도는 서서히 줄인다
+      // 맨 위 밖에서 **아주 천천히** 곧게 내려와 화면 위쪽에 자리 잡는다 (2026-10-02, "내려오는 속도는 완전 느리게").
+      // 예전엔 거리 비례(lerp)로 1~2초 만에 자리를 잡았다. 이제 일정 속도(TUNING.bossDescent)라 실제로는 수십 초 걸린다 —
+      // 그동안 기다리기만 하지 않게, 몸이 화면에 드러나면(bossEntering 해제) 맞고 쏜다
       const hoverY = bossHoverY(world);
       const size = bossSize(a.bossTier);
-      a.y += (hoverY - a.y) * Math.min(1, dtSec * 0.9);
+      if (a.y < hoverY) a.y = Math.min(hoverY, a.y + TUNING.bossDescent * dtSec);
       a.vy = 0;
       const cruise = 18 + a.bossTier * 4;
       if (Math.abs(a.vx) > cruise) a.vx *= Math.max(0, 1 - dtSec * 2.5);
       if (Math.abs(a.vx) < cruise * 0.5) a.vx = (a.vx < 0 ? -1 : 1) * cruise;
       if ((a.x < world.width * 0.38 && a.vx < 0) || (a.x > world.width * 0.62 && a.vx > 0)) a.vx *= -1;
-      // 마력탄 — 자리를 잡은 뒤부터, 주기마다 몸 아래에서 플레이어 머리 위 돔을 겨눈다 (돔에 맞는다)
-      const settled = Math.abs(a.y - hoverY) < 24;
-      if (settled && a.bossEntering) { a.bossEntering = false; world.bossSalvoMs = bossSalvoMs(a.bossTier); }   // 자리 잡자마자 첫 마력탄
-      if (settled) world.bossSalvoMs += dtSec * 1000;
-      if (settled && world.bossSalvoMs >= bossSalvoMs(a.bossTier)) {
+      // 마력탄 — 몸이 화면에 드러난 뒤부터(아래쪽 절반이 보이면), 주기마다 몸 아래에서 플레이어 머리 위 돔을 겨눈다 (돔에 맞는다)
+      const shown = a.y + size * 0.15 >= world.safeTop;
+      if (shown && a.bossEntering) { a.bossEntering = false; world.bossSalvoMs = bossSalvoMs(a.bossTier) * 0.5; }   // 드러나자마자 곧 첫 마력탄
+      if (shown) world.bossSalvoMs += dtSec * 1000;
+      if (shown && world.bossSalvoMs >= bossSalvoMs(a.bossTier)) {
         world.bossSalvoMs = 0;
         const shot = acquire(world);
         if (shot) {

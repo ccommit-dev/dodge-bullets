@@ -1,7 +1,7 @@
 import type { ChipMods } from "./chips";
 import type { SkillFx, SkillShot, Spark } from "./skillShots";
 import type { Element } from "./skills";
-import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId } from "./skills";
+import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId, SkillWeaponId, WeaponForgeLevels } from "./skills";
 export type GameState = "ready" | "intro" | "playing" | "paused" | "perk" | "clear" | "gameover";
 
 export type PlayerAnim = "idle" | "run" | "jump" | "fall" | "dash" | "skill" | "hit" | "dead";
@@ -65,6 +65,9 @@ export type Arrow = {
   hitFlashMs: number;
   /** 빙결 파동에 얼어붙은 남은 시간(ms) — 콤보 카드가 이걸 보고 추가 효과를 낸다 (2026-09-28) */
   chilledMs: number;
+  /** 중독 남은 시간(ms) · 초당 독 피해 — 독침 단궁 (2026-10-02) */
+  poisonMs: number;
+  poisonDps: number;
   /** Brief spherical orbit before a split fragment homes back toward the player. */
   orbitMs: number;
   orbitX: number;
@@ -158,14 +161,34 @@ export type ArrowPattern = {
   speed?: number;
 };
 
+/** 장 안의 칸 종류 (stages.ts SLOTS) */
+export type StageSlotKind = "intro" | "swarm" | "mixed" | "elite" | "midboss" | "rush" | "pincer" | "siege" | "elitemix" | "boss";
+
 export type StageDef = {
   id: number;
   name: string;
-  /** Survive this long to clear. */
+  /** 월드 시간 기준 길이 — 보스는 58% 에 나온다. 실제 시간은 TUNING.pace 로 늘어난다 */
   durationMs: number;
   baseReward: number;
   speedMul: number;
   spawnMul: number;
+  /** 생성 간격 배수 — 1 보다 크면 드물게 (예전 TUNING.stageSpawnScale) */
+  spawnScale: number;
+  /** 몬스터 체력 (예전 skills.ARROW_HP) */
+  monsterHp: number;
+  /** 방어막 피해 배수 (예전 1 + barrierDmgPerStage × stageIndex) */
+  barrierDmgMul: number;
+  /** 대장 처치 수 (보스 HP) — TUNING.bossCutMul 이 곱해진다 */
+  bossCuts: number;
+  /** 대장 그림·크기 단계 0~4 (장) */
+  bossTier: number;
+  bossName: string;
+  /** 유도탄 승격 확률 */
+  homingChance: number;
+  /** 장 0~4 · 칸 1~10 · 칸 종류 */
+  chapter: number;
+  slot: number;
+  slotKind: StageSlotKind;
   patterns: ArrowPattern[];
   /** Platforms in normalized coords (0–1 of playfield). */
   platforms: Array<{ x: number; y: number; w: number; h: number }>;
@@ -200,6 +223,12 @@ export type RunMods = {
   earthPowerBonus: number;
   /** 번개화살 연쇄 +N */
   boltExtra: number;
+  /** 새 스킬 무기 카드 (2026-10-02) — 부메랑 피해 배수 · 독 피해 배수 · 표창 +N · 운석 반경 배수 · 성광 수리 배수 */
+  windDamageMul: number;
+  poisonMul: number;
+  shadowExtra: number;
+  meteorRadiusMul: number;
+  holyRepairMul: number;
   /** [과부하]·[속사] — 모든 화살 재사용 배수 */
   cooldownMul: number;
   /** [강궁] — 모든 화살 피해 배수 (가이드의 "피해량 증가") */
@@ -357,6 +386,12 @@ export type GameWorld = {
   skillTimers: Record<ExpeditionSkillId, number>;
   /** 장착한 원거리 무기 — 계열이 맞는 스킬의 쿨타임을 줄인다 */
   rangedWeapon: RangedWeaponId;
+  /** 이번 판에 장착한 스킬 무기 (최대 4) — 런 시작부터 쏜다. 정령 자리 순서이기도 하다 (2026-10-02) */
+  loadout: SkillWeaponId[];
+  /** 대장간 활·지팡이 강화 단계 — 활: 기본 사격·물리 무기, 지팡이: 마법 무기 (2026-10-02) */
+  weaponForge: WeaponForgeLevels;
+  /** 성광 홀 빛줄기 연출 */
+  holyBeam: { x: number; y: number; tx: number; ty: number; ms: number } | null;
   /** 이번 런에서 스킬로 떨어뜨린 화살 수 (결과 화면) */
   skillKills: number;
   /** 이번 런에서 고른 에픽 카드 수 — 일일 임무가 센다 (2026-09-28) */

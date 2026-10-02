@@ -1,4 +1,5 @@
 import type { PlayerStats } from "./types";
+import { STAGES, getStage } from "./stages";
 
 /**
  * 성문 방어 영구 스킬 — **속성 화살** (2026-09-29).
@@ -59,14 +60,15 @@ export const BASIC_SHOT_SPEED = 720;
  * 기본 사격 강화 (2026-10-02) — 정비 화면에서 **골드만으로** 올린다. 속성 화살과 달리 조각·인장이 없다:
  * 활은 늘 쓰는 것이라 꾸준한 골드 싱크가 되고, 새 계정도 첫날부터 올릴 것이 있다. 레벨마다 피해 +15% · 재사용 −3%
  */
-export const BASIC_LEVEL_MAX = 10;
+/** 2026-10-02 부터 기본 사격 단계 = 대장간 **활** 단계(0~20). 피해 +8%·재사용 −1.5% (아래 weaponForge* 와 같은 곡선) */
+export const BASIC_LEVEL_MAX = 20;
 export function basicShotCost(level: number): number { return Math.round(80 * Math.pow(1.6, Math.max(1, level) - 1)); }
-export function basicDamageMul(level: number): number { return 1 + 0.15 * Math.max(0, level); }
-export function basicCooldownMul(level: number): number { return 1 - 0.03 * Math.max(0, level); }
+export function basicDamageMul(level: number): number { return 1 + 0.08 * Math.max(0, Math.min(20, level)); }
+export function basicCooldownMul(level: number): number { return 1 - 0.015 * Math.max(0, Math.min(20, level)); }
 
 /* ────────────────── 속성 ────────────────── */
 
-export type Element = "basic" | "fire" | "water" | "ice" | "earth" | "bolt";
+export type Element = "basic" | "fire" | "water" | "ice" | "earth" | "bolt" | "wind" | "poison" | "holy" | "shadow" | "meteor";
 
 /** 몬스터 종류 (types.Arrow.kind — 엔티티 이름은 호환상 Arrow) — 상성표가 이걸 가리킨다 */
 export type ArrowKind = "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing";
@@ -78,16 +80,28 @@ export const ARROW_KIND_LABEL: Record<ArrowKind, string> = {
 
 export const ELEMENT_LABEL: Record<Element, string> = {
   basic: "무속성", fire: "불", water: "물", ice: "얼음", earth: "흙", bolt: "번개",
+  wind: "바람", poison: "독", holy: "성광", shadow: "그림자", meteor: "운석",
 };
 
 /** 화면·이펙트 색 — 속성마다 하나 */
 export const ELEMENT_COLOR: Record<Element, string> = {
   basic: "#e2e8f0", fire: "#fb923c", water: "#38bdf8", ice: "#a5f3fc", earth: "#d6a35c", bolt: "#fde047",
+  wind: "#5eead4", poison: "#a3e635", holy: "#fef9c3", shadow: "#a78bfa", meteor: "#f97316",
 };
 
 /* ────────────────── 스킬 ────────────────── */
 
-export type ExpeditionSkillId = "fire" | "water" | "ice" | "earth" | "bolt" | "ultimate";
+/**
+ * 스킬 무기 10종 + 화살비 (2026-10-02, 사용자: "아웃로 디펜스 참고해서 레벨별로 10개 스킬무기 장착하되 한 판에는 최대 4개").
+ * 예전엔 속성 화살 5종을 런 중 카드로 '습득'했다 — 화면에는 활·지팡이·기본 활만 보여 무기가 셋뿐으로 읽혔다.
+ * 이제 각 스킬은 **무기**다: 계정 레벨로 해금 → 인장으로 배움 → 골드·조각으로 강화 → 정비에서 **4칸에 장착**하면
+ * 그 판은 처음부터 쏜다(곁에 무기 정령으로 떠 있다). 화살비(ultimate)는 무기가 아니라 게이지 필살기로 그대로.
+ */
+export type ExpeditionSkillId = "fire" | "water" | "ice" | "earth" | "bolt" | "wind" | "poison" | "holy" | "shadow" | "meteor" | "ultimate";
+export type SkillWeaponId = Exclude<ExpeditionSkillId, "ultimate">;
+export const SKILL_WEAPON_IDS: SkillWeaponId[] = ["fire", "water", "ice", "earth", "bolt", "wind", "poison", "holy", "shadow", "meteor"];
+/** 한 판에 장착하는 스킬 무기 수 */
+export const LOADOUT_MAX = 4;
 
 export const SKILL_MAX_LEVEL = 10;
 
@@ -106,8 +120,12 @@ export type ExpeditionSkillDef = {
   effect: string;
   /** 상성 — 이 종류의 몬스터에 피해 ×1.5 · 보스 깎기 +1 · 효과 ×1.5. null 이면 없음(화살비) */
   strongVs: ArrowKind | null;
-  /** 이 스테이지를 클리어해야 열린다. 0 이면 처음부터 */
+  /** 이 스테이지를 클리어해야 열린다. 0 이면 처음부터 (2026-10-02 부터는 unlockLevel 이 기준 — 이 값은 쓰지 않는다) */
   unlockStage: number;
+  /** 계정 레벨 해금 — "레벨별로 10개 스킬 무기". 이미 배운 무기(레벨 ≥ 1)는 레벨이 모자라도 계속 쓴다 */
+  unlockLevel: number;
+  /** 무기 이름 — 카드·정비 화면에 보인다 (name 은 쏘는 화살의 이름) */
+  weapon: string;
   goldBase: number;
   sealBase: number;
   milestones: SkillMilestone[];
@@ -132,12 +150,12 @@ export function skillCost(def: ExpeditionSkillDef, level: number): { gold: numbe
 }
 
 /** 학습 인장 — 해금 스테이지 순서대로 비싸진다. 하루 서너 판이면 인장 15~25 가 모인다 */
-export const LEARN_SEALS: Record<ExpeditionSkillId, number> = { fire: 0, ultimate: 6, water: 8, ice: 10, earth: 10, bolt: 14 };
+export const LEARN_SEALS: Record<ExpeditionSkillId, number> = { fire: 0, ultimate: 6, water: 8, ice: 10, earth: 10, bolt: 14, wind: 16, poison: 18, holy: 20, shadow: 22, meteor: 26 };
 
 export type SkillShards = Record<ExpeditionSkillId, number>;
 
 export function emptyShards(): SkillShards {
-  return { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 };
+  return { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, wind: 0, poison: 0, holy: 0, shadow: 0, meteor: 0, ultimate: 0 };
 }
 
 /**
@@ -154,7 +172,8 @@ export function shardDrops(
   const out: Partial<SkillShards> = {};
   (Object.keys(acquired) as ExpeditionSkillId[]).forEach((id) => {
     if (!acquired[id] || id === "ultimate") return;
-    out[id] = cleared ? 2 + Math.max(0, stageIndex) : 1;
+    // 50 스테이지(2026-10-02): 예전 "2 + 스테이지 번호"는 4 스테이지 시절 값이라 25 스테이지에선 한 판에 26개 — 일주일에 만렙이 셋 나왔다
+    out[id] = cleared ? 2 + Math.min(6, Math.floor(Math.max(0, stageIndex) / 6)) : 1;
   });
   const ult = Math.min(3, Math.max(0, ultCount)) + (cleared ? 1 : 0);
   if (ult > 0) out.ultimate = ult;
@@ -172,7 +191,52 @@ export function collectionCooldownMul(levels: ExpeditionSkillLevels): number {
 export type ExpeditionSkillLevels = Record<ExpeditionSkillId, number>;
 
 export function emptySkillLevels(): ExpeditionSkillLevels {
-  return { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 };
+  return { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, wind: 0, poison: 0, holy: 0, shadow: 0, meteor: 0, ultimate: 0 };
+}
+
+/**
+ * 장착 기본값 — 배운 무기를 레벨 높은 순으로 최대 4개 (2026-10-02). 장착 칸이 생기기 전 계정이 첫 판에
+ * 기본 사격만 쏘는 일이 없게, 저장에 장착 정보가 없으면 이걸 쓴다
+ */
+export function defaultLoadout(levels: Partial<ExpeditionSkillLevels>): SkillWeaponId[] {
+  return SKILL_WEAPON_IDS.filter((id) => (levels[id] ?? 0) > 0)
+    .sort((a, b) => (levels[b] ?? 0) - (levels[a] ?? 0) || SKILL_WEAPON_IDS.indexOf(a) - SKILL_WEAPON_IDS.indexOf(b))
+    .slice(0, LOADOUT_MAX);
+}
+
+/** 저장의 장착값 정리 — 모르는 id·중복·미습득은 빼고 4개까지. 비어 있으면(장착 칸 이전 저장) 기본값 */
+export function normalizeLoadout(raw: unknown, levels: Partial<ExpeditionSkillLevels>): SkillWeaponId[] {
+  if (!Array.isArray(raw)) return defaultLoadout(levels);
+  const out: SkillWeaponId[] = [];
+  for (const v of raw) {
+    if (typeof v !== "string" || !SKILL_WEAPON_IDS.includes(v as SkillWeaponId) || out.includes(v as SkillWeaponId)) continue;
+    if ((levels[v as SkillWeaponId] ?? 0) <= 0) continue;
+    out.push(v as SkillWeaponId);
+    if (out.length >= LOADOUT_MAX) break;
+  }
+  return out;
+}
+
+/* ────────────────── 대장간: 활 · 지팡이 강화 (2026-10-02) ──────────────────
+ * 사용자: "대장간에는 성벽원정에서 사용하는 지팡이, 활을 추가로 강화하고 강화한 내용 가지고 성벽원정에 적용".
+ * 활 = 기본 사격(주인공의 활)과 **물리** 스킬 무기, 지팡이 = **마법** 스킬 무기. 골드 + 강화석, 확정 강화(파괴 없음).
+ * 예전 '기본 사격 강화'(정비, 골드만)는 활 강화로 옮겼다 — 저장의 expeditionBasic 은 활 단계로 이관된다.
+ */
+export type WeaponForgeLevels = { bow: number; staff: number };
+export const WEAPON_FORGE_MAX = 20;
+export function emptyWeaponForge(): WeaponForgeLevels { return { bow: 0, staff: 0 }; }
+/** 한 단계 비용 — 골드는 1.32배씩, 강화석은 단계마다 +2 */
+export function weaponForgeCost(level: number): { gold: number; stones: number } {
+  const n = Math.max(1, level);
+  return { gold: Math.round(1_500 * Math.pow(1.32, n - 1)), stones: 2 + n * 2 };
+}
+/** 피해 배수 — 단계마다 +8% (20단계 ×2.6) */
+export function weaponForgeDamageMul(level: number): number { return 1 + 0.08 * Math.max(0, Math.min(WEAPON_FORGE_MAX, level)); }
+/** 재사용 배수 — 단계마다 −1.5% (20단계 ×0.7) */
+export function weaponForgeCooldownMul(level: number): number { return 1 - 0.015 * Math.max(0, Math.min(WEAPON_FORGE_MAX, level)); }
+/** 이 스킬 무기에 붙는 대장간 배수 — 물리는 활, 마법은 지팡이 */
+export function forgeFamilyLevel(levels: WeaponForgeLevels, family: SkillFamily): number {
+  return family === "physical" ? levels.bow : family === "magic" ? levels.staff : 0;
 }
 
 /**
@@ -221,6 +285,28 @@ export function earthRadius(lv: number): number { return 18 + 4 * step(lv, 2); }
 export function boltCooldown(lv: number): number { return 8 - 0.8 * step(lv, 6); }
 export function boltTargets(lv: number): number { return 2 + step(lv, 2) + step(lv, 4) + step(lv, 8) + step(lv, 10); }
 export function boltPower(lv: number): number { void lv; return 1; }
+/** 질풍 부메랑 — 재사용 · 사거리(되돌아오는 지점) · 꿰뚫고 돌아온다 */
+export function windCooldown(lv: number): number { return 5 - 0.5 * step(lv, 4) - 0.6 * step(lv, 8); }
+export function windRange(lv: number): number { return 300 + 40 * step(lv, 2) + 50 * step(lv, 6); }
+export function windPower(lv: number): number { return 1 + step(lv, 10); }
+/** 독침 단궁 — 재사용 · 중독 시간 · 초당 독 피해(명중 피해 대비) */
+export function poisonCooldown(lv: number): number { return 4 - 0.4 * step(lv, 4) - 0.5 * step(lv, 8); }
+export function poisonSeconds(lv: number): number { return 3 + step(lv, 2) + step(lv, 6); }
+export function poisonDpsMul(lv: number): number { return 0.5 + 0.15 * step(lv, 6) + 0.2 * step(lv, 10); }
+export function poisonPower(lv: number): number { void lv; return 1; }
+/** 성광 홀 — 재사용 · 방어막 수리량(명중당) · 위력 */
+export function holyCooldown(lv: number): number { return 7 - 0.7 * step(lv, 4) - 0.8 * step(lv, 8); }
+/** 수리량은 명중당 — 무기가 실제 시간으로 쏘므로(월드의 3배) 예전 기준의 1/3 */
+export function holyRepair(lv: number): number { return 0.5 + 0.35 * step(lv, 2) + 0.5 * step(lv, 6) + 0.65 * step(lv, 10); }
+export function holyPower(lv: number): number { return 1 + step(lv, 6); }
+/** 그림자 표창 — 재사용 · 표창 수 */
+export function shadowCooldown(lv: number): number { return 4.5 - 0.5 * step(lv, 4) - 0.6 * step(lv, 8); }
+export function shadowCount(lv: number): number { return 3 + step(lv, 2) + step(lv, 6) + step(lv, 10); }
+export function shadowPower(lv: number): number { void lv; return 1; }
+/** 운석 낙하포 — 재사용(길다) · 폭발 반경 · 위력(보스를 크게 깎는다) */
+export function meteorCooldown(lv: number): number { return 12 - 1.2 * step(lv, 4) - 1.5 * step(lv, 8); }
+export function meteorRadius(lv: number): number { return 80 + 16 * step(lv, 2) + 20 * step(lv, 6); }
+export function meteorPower(lv: number): number { return 3 + step(lv, 6) + step(lv, 10); }
 /* ── 피해와 화살 체력 (2026-09-29) ──
  * 참고 게임처럼 적(화살)에게 체력이 있고 스테이지가 깊을수록 단단하다. 피해는 **레벨마다** 오른다 —
  * 짝수 레벨의 마일스톤(재사용·반경·관통…)과 따로. 홀수 레벨이 아무것도 안 올리던 것을 고친다.
@@ -235,19 +321,30 @@ export function waterDamage(lv: number): number { return scaled(1.4, lv); }
 export function iceDamage(lv: number): number { return scaled(1.2, lv); }
 export function earthDamage(lv: number): number { return scaled(2.6, lv); }
 export function boltDamage(lv: number): number { return scaled(1.3, lv); }
+export function windDamage(lv: number): number { return scaled(1.2, lv); }
+export function poisonDamage(lv: number): number { return scaled(1.0, lv); }
+export function holyDamage(lv: number): number { return scaled(2.2, lv); }
+export function shadowDamage(lv: number): number { return scaled(0.9, lv); }
+export function meteorDamage(lv: number): number { return scaled(3.4, lv); }
 
 /** 스테이지별 몬스터 체력 — S1 은 기본 사격 한 발, 깊어질수록 속성 화살과 레벨이 필요하다. 성벽은 계속 오른다 */
 // S2 는 1.6 — 불화살 Lv1(1.6)이 S2 까지 한 발이다. 초반 웨이브는 안정적으로 넘어야 한다(가이드)
-export const ARROW_HP = [1, 1.6, 2.8, 4.0];   // S4 3.6 → 4.0 (2026-10-02 방어막 단일 생명): 새 계정에게 S4 를 벽으로 — 기본 사격이 약할수록 더 걸린다
+/** 스테이지 몬스터 체력 — 50 스테이지 표(stages.ts monsterHp)가 유일한 기준 (2026-10-02). 성벽 층도 거기서 만든다 */
 export function arrowHpFor(stageIndex: number): number {
-  const i = Math.max(0, stageIndex);
-  return i < ARROW_HP.length ? ARROW_HP[i] : ARROW_HP[ARROW_HP.length - 1] + (i - ARROW_HP.length + 1) * 0.7;
+  return getStage(Math.max(0, stageIndex)).monsterHp * TUNING_HP.mul;
 }
+/**
+ * 몬스터 체력 배수 — 무기는 실제 시간, 몬스터는 월드 시간(1/3)으로 흘러 같은 월드 시간에 무기가 세 배 쏜다 (2026-10-02 pace).
+ * 시뮬 스윕은 이 값을 바꾼다 (arrows.TUNING 에 두면 skills ↔ arrows 가 서로를 불러 순환한다)
+ */
+export const TUNING_HP = { mul: 4 };   // 3 → 4 (스윕 2026-10-02: 기대 성장 89% · 8 스테이지 덜 자란 계정 32%)
+/** 표의 '체력' 칸 — 앞 4 스테이지 (화면이 "S2 까지 한 발"을 보여 준다) */
+export const ARROW_HP = STAGES.slice(0, 4).map((st) => st.monsterHp * TUNING_HP.mul);
 
 /** 그 피해로 한 발에 부수는 가장 깊은 스테이지 — 표의 "S2 까지 한 발". 0 이면 S1 도 두 발 */
 export function oneShotStage(damage: number): number {
   let n = 0;
-  for (let i = 0; i < ARROW_HP.length; i += 1) if (damage + 1e-9 >= ARROW_HP[i]) n = i + 1;
+  for (let i = 0; i < STAGES.length; i += 1) if (damage + 1e-9 >= STAGES[i].monsterHp * TUNING_HP.mul) n = i + 1;
   return n;
 }
 const reach = (d: number) => { const n = oneShotStage(d); return n > 0 ? `${num(d)} · S${n} 까지 한 발` : `${num(d)}`; };
@@ -271,12 +368,14 @@ const vs = (k: ArrowKind) => ARROW_KIND_LABEL[k];
 export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   {
     id: "fire",
+    weapon: "화염 석궁",
+    unlockLevel: 1,
     name: "불화살",
     kind: "폭발",
     family: "magic",
     element: "fire",
     icon: "fire",
-    desc: "[불화살] 학습. 명중한 자리에서 터져 주변 몬스터를 함께 태운다.",
+    desc: "[화염 석궁] 학습. 불화살이 명중한 자리에서 터져 주변 몬스터를 함께 태운다.",
     effect: "명중 시 폭발",
     strongVs: "fan",
     unlockStage: 0,
@@ -299,12 +398,14 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   },
   {
     id: "water",
+    weapon: "물살 작살",
+    unlockLevel: 4,
     name: "물화살",
     kind: "관통",
     family: "physical",
     element: "water",
     icon: "water",
-    desc: "[물화살] 학습. 멈추지 않고 흘러가며 여러 몬스터를 꿰뚫는다. 폭염 비룡의 불을 끈다.",
+    desc: "[물살 작살] 학습. 물화살이 멈추지 않고 흘러가며 여러 몬스터를 꿰뚫는다. 폭염 비룡의 불을 끈다.",
     effect: "관통",
     strongVs: "explosive",
     unlockStage: 1,
@@ -327,12 +428,14 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   },
   {
     id: "ice",
+    weapon: "서리 지팡이",
+    unlockLevel: 8,
     name: "얼음화살",
     kind: "빙결",
     family: "magic",
     element: "ice",
     icon: "ice",
-    desc: "[얼음화살] 학습. 명중한 몬스터와 주변을 얼려 느리게 만든다. 달빛 늑대는 길을 잃는다.",
+    desc: "[서리 지팡이] 학습. 얼음화살이 명중한 몬스터와 주변을 얼려 느리게 만든다. 달빛 늑대는 길을 잃는다.",
     effect: "명중 시 빙결",
     strongVs: "homing",
     unlockStage: 2,
@@ -356,12 +459,14 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   },
   {
     id: "earth",
+    weapon: "바위 투석기",
+    unlockLevel: 12,
     name: "흙화살",
     kind: "강타",
     family: "physical",
     element: "earth",
     icon: "earth",
-    desc: "[흙화살] 학습. 무거운 돌촉 화살. 느리지만 대장 몬스터를 크게 깎고 튕기는 오우거를 땅에 박는다.",
+    desc: "[바위 투석기] 학습. 무거운 돌촉 화살. 느리지만 대장 몬스터를 크게 깎고 튕기는 오우거를 땅에 박는다.",
     effect: "고피해 · 튕김 봉쇄",
     strongVs: "ricochet",
     unlockStage: 2,
@@ -384,12 +489,14 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
   },
   {
     id: "bolt",
+    weapon: "번개 창",
+    unlockLevel: 16,
     name: "번개화살",
     kind: "연쇄",
     family: "magic",
     element: "bolt",
     icon: "bolt",
-    desc: "[번개화살] 학습. 쏘는 순간 가까운 몬스터 여럿을 번개로 잇는다. 돌진하는 늑대를 먼저 끊는다.",
+    desc: "[번개 창] 학습. 쏘는 순간 가까운 몬스터 여럿을 번개로 잇는다. 돌진하는 늑대를 먼저 끊는다.",
     effect: "즉발 연쇄",
     strongVs: "aimed",
     unlockStage: 3,
@@ -411,7 +518,157 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     ],
   },
   {
+    id: "wind",
+    weapon: "질풍 부메랑",
+    unlockLevel: 20,
+    name: "부메랑",
+    kind: "왕복 관통",
+    family: "physical",
+    element: "wind",
+    icon: "wind",
+    desc: "[질풍 부메랑] 학습. 앞으로 날아가며 꿰뚫고, 끝까지 가면 되돌아오며 한 번 더 벤다. 슬라임 떼를 쓸어 낸다.",
+    effect: "꿰뚫고 되돌아옴",
+    strongVs: "normal",
+    unlockStage: 0,
+    goldBase: 480,
+    sealBase: 5,
+    milestones: [
+      { level: 2, kind: "unlock", label: "해금 [돌풍] — 사거리 +40" },
+      { level: 4, kind: "stat", label: "재사용 −0.5초" },
+      { level: 6, kind: "unlock", label: "해금 [회오리] — 사거리 +50" },
+      { level: 8, kind: "stat", label: "재사용 −0.6초" },
+      { level: 10, kind: "unlock", label: "해금 [폭풍] — 보스 깎기 +1" },
+    ],
+    readout: (lv) => [
+      { label: "피해", value: reach(windDamage(lv)), delta: nextDelta(lv, windDamage, "", 2) },
+      { label: "보스 깎기", value: `${windPower(lv)}`, delta: nextDelta(lv, windPower) },
+      { label: "사거리", value: `${windRange(lv)}`, delta: nextDelta(lv, windRange) },
+      { label: "재사용", value: num(windCooldown(lv), "초"), delta: nextDelta(lv, windCooldown, "초", 1) },
+      { label: "상성", value: vs("normal") },
+    ],
+  },
+  {
+    id: "poison",
+    weapon: "독침 단궁",
+    unlockLevel: 25,
+    name: "독침",
+    kind: "중독",
+    family: "physical",
+    element: "poison",
+    icon: "poison",
+    desc: "[독침 단궁] 학습. 맞은 몬스터가 몇 초 동안 독에 타들어 간다. 단단한 오우거를 녹인다.",
+    effect: "명중 시 중독(지속 피해)",
+    strongVs: "ricochet",
+    unlockStage: 0,
+    goldBase: 520,
+    sealBase: 5,
+    milestones: [
+      { level: 2, kind: "unlock", label: "해금 [맹독] — 중독 +1초" },
+      { level: 4, kind: "stat", label: "재사용 −0.4초" },
+      { level: 6, kind: "unlock", label: "해금 [부식] — 중독 +1초 · 독 피해 +15%" },
+      { level: 8, kind: "stat", label: "재사용 −0.5초" },
+      { level: 10, kind: "unlock", label: "해금 [역병] — 독 피해 +20%" },
+    ],
+    readout: (lv) => [
+      { label: "피해", value: reach(poisonDamage(lv)), delta: nextDelta(lv, poisonDamage, "", 2) },
+      { label: "중독", value: `${poisonSeconds(lv)}초 · 초당 ${Math.round(poisonDpsMul(lv) * 100)}%`, delta: nextDelta(lv, poisonSeconds, "초") },
+      { label: "재사용", value: num(poisonCooldown(lv), "초"), delta: nextDelta(lv, poisonCooldown, "초", 1) },
+      { label: "상성", value: vs("ricochet") },
+    ],
+  },
+  {
+    id: "holy",
+    weapon: "성광 홀",
+    unlockLevel: 30,
+    name: "성광",
+    kind: "강타 · 수리",
+    family: "magic",
+    element: "holy",
+    icon: "holy",
+    desc: "[성광 홀] 학습. 가장 단단한 몬스터에 빛을 내리꽂고, 맞힐 때마다 방어막을 조금 고친다. 달빛 늑대를 붙잡는다.",
+    effect: "강타 + 방어막 수리",
+    strongVs: "homing",
+    unlockStage: 0,
+    goldBase: 560,
+    sealBase: 6,
+    milestones: [
+      { level: 2, kind: "unlock", label: "해금 [축복] — 수리 +1" },
+      { level: 4, kind: "stat", label: "재사용 −0.7초" },
+      { level: 6, kind: "unlock", label: "해금 [신성] — 보스 깎기 +1 · 수리 +1.5" },
+      { level: 8, kind: "stat", label: "재사용 −0.8초" },
+      { level: 10, kind: "unlock", label: "해금 [구원] — 수리 +2" },
+    ],
+    readout: (lv) => [
+      { label: "피해", value: reach(holyDamage(lv)), delta: nextDelta(lv, holyDamage, "", 2) },
+      { label: "보스 깎기", value: `${holyPower(lv)}`, delta: nextDelta(lv, holyPower) },
+      { label: "방어막 수리", value: num(holyRepair(lv)), delta: nextDelta(lv, holyRepair, "", 1) },
+      { label: "재사용", value: num(holyCooldown(lv), "초"), delta: nextDelta(lv, holyCooldown, "초", 1) },
+      { label: "상성", value: vs("homing") },
+    ],
+  },
+  {
+    id: "shadow",
+    weapon: "그림자 표창",
+    unlockLevel: 35,
+    name: "표창",
+    kind: "부채 연사",
+    family: "physical",
+    element: "shadow",
+    icon: "shadow",
+    desc: "[그림자 표창] 학습. 표창 여러 개를 부채꼴로 흩뿌린다. 나란히 오는 고블린 떼에 강하다.",
+    effect: "부채꼴 다발",
+    strongVs: "fan",
+    unlockStage: 0,
+    goldBase: 600,
+    sealBase: 6,
+    milestones: [
+      { level: 2, kind: "unlock", label: "해금 [분신] — 표창 +1" },
+      { level: 4, kind: "stat", label: "재사용 −0.5초" },
+      { level: 6, kind: "unlock", label: "해금 [암영] — 표창 +1" },
+      { level: 8, kind: "stat", label: "재사용 −0.6초" },
+      { level: 10, kind: "unlock", label: "해금 [천영] — 표창 +1" },
+    ],
+    readout: (lv) => [
+      { label: "피해", value: reach(shadowDamage(lv)), delta: nextDelta(lv, shadowDamage, "", 2) },
+      { label: "표창 수", value: `${shadowCount(lv)}`, delta: nextDelta(lv, shadowCount) },
+      { label: "재사용", value: num(shadowCooldown(lv), "초"), delta: nextDelta(lv, shadowCooldown, "초", 1) },
+      { label: "상성", value: vs("fan") },
+    ],
+  },
+  {
+    id: "meteor",
+    weapon: "운석 낙하포",
+    unlockLevel: 40,
+    name: "운석",
+    kind: "광역 강타",
+    family: "magic",
+    element: "meteor",
+    icon: "meteor",
+    desc: "[운석 낙하포] 학습. 몬스터가 가장 많이 모인 곳에 운석을 떨어뜨린다. 느리지만 대장을 크게 깎는다.",
+    effect: "광역 · 보스 강타",
+    strongVs: "explosive",
+    unlockStage: 0,
+    goldBase: 700,
+    sealBase: 7,
+    milestones: [
+      { level: 2, kind: "unlock", label: "해금 [파편] — 반경 +16" },
+      { level: 4, kind: "stat", label: "재사용 −1.2초" },
+      { level: 6, kind: "unlock", label: "해금 [유성우] — 반경 +20 · 보스 깎기 +1" },
+      { level: 8, kind: "stat", label: "재사용 −1.5초" },
+      { level: 10, kind: "unlock", label: "해금 [천벌] — 보스 깎기 +1" },
+    ],
+    readout: (lv) => [
+      { label: "피해", value: reach(meteorDamage(lv)), delta: nextDelta(lv, meteorDamage, "", 2) },
+      { label: "보스 깎기", value: `${meteorPower(lv)}`, delta: nextDelta(lv, meteorPower) },
+      { label: "반경", value: `${meteorRadius(lv)}`, delta: nextDelta(lv, meteorRadius) },
+      { label: "재사용", value: num(meteorCooldown(lv), "초"), delta: nextDelta(lv, meteorCooldown, "초", 1) },
+      { label: "상성", value: vs("explosive") },
+    ],
+  },
+  {
     id: "ultimate",
+    weapon: "화살비",
+    unlockLevel: 1,
     name: "화살비",
     kind: "궁극",
     family: "none",
@@ -462,8 +719,12 @@ export function skillSummary(levels: ExpeditionSkillLevels): { totalLevels: numb
   return { totalLevels, bonusPct };
 }
 
-export function skillUnlocked(def: ExpeditionSkillDef, dodgeBestStage: number): boolean {
-  return dodgeBestStage >= def.unlockStage;
+/**
+ * 스킬 무기 해금 — 계정 레벨 (2026-10-02). 예전 기준(원정 최고 스테이지)으로 이미 배운 무기는 레벨이 모자라도 그대로 쓴다.
+ * 두 번째 인자는 **계정 레벨**, 세 번째는 그 무기의 현재 레벨
+ */
+export function skillUnlocked(def: ExpeditionSkillDef, accountLevel: number, currentLevel = 0): boolean {
+  return currentLevel > 0 || accountLevel >= def.unlockLevel;
 }
 
 export function weaponUnlocked(def: RangedWeaponDef, dodgeBestStage: number): boolean {

@@ -29,7 +29,7 @@ export const MOMENT_OFFERS: Record<MomentOfferKind, MomentOfferDef> = {
   wall: { productId: "pack-wall", title: "벽 도달 — 돌파 세트", subtitle: "편성 동료 조각 30 + 방치 2배 24시간 + 보석 100", bonusGems: 30, windowMs: 15 * MIN },
   pioneer: { productId: "pack-pioneer", title: "개척 축하", subtitle: "새 지역 첫날을 위한 보석 120 + 강화석 40 + 조각 20", bonusGems: 30, windowMs: 30 * MIN },
   rebirth: { productId: "pack-rebirth", title: "환생 축하", subtitle: "두 번째 생을 위한 보석 400 + 스킬 코어 10 + 조각 40", bonusGems: 60, windowMs: 30 * MIN },
-  "gate-wall": { productId: "gate-supply", title: "성문이 버겁다면", subtitle: "원정 인장 30 + 속성 화살 조각 각 8 — 새 화살을 배우고 바로 올린다", bonusGems: 20, windowMs: 15 * MIN },
+  "gate-wall": { productId: "gate-supply", title: "성문이 버겁다면", subtitle: "원정 인장 30 + 스킬 무기 조각 각 8 — 새 무기를 배우고 바로 올린다", bonusGems: 20, windowMs: 15 * MIN },
   pickup: { productId: "gems-1200", title: "픽업 교체 D-2", subtitle: "보석 1,200이면 천장(60회)의 절반 — 첫 구매면 2배", bonusGems: 150, windowMs: 2 * 24 * 60 * MIN },
 };
 

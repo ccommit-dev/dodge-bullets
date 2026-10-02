@@ -4,7 +4,7 @@ import {
   DAILIES, emptyDaily, emptySupplyStock, rolledDaily, SUPPLIES, SUPPLY_MAX,
   type DailyId, type DailyState, type SupplyStock,
 } from "../game/expeditionOps";
-import { emptyShards, emptySkillLevels, migrateSkillLevels, RANGED_WEAPONS, SKILL_MAX_LEVEL, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillShards } from "../game/skills";
+import { emptyShards, emptySkillLevels, emptyWeaponForge, migrateSkillLevels, normalizeLoadout, RANGED_WEAPONS, SKILL_MAX_LEVEL, WEAPON_FORGE_MAX, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillShards, type SkillWeaponId, type WeaponForgeLevels } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
@@ -48,8 +48,19 @@ export type CharacterProgress = {
   expeditionShards: SkillShards;
   /** 장착한 원거리 무기 — 캐릭터는 그대로, 무기만 탈착한다. 계열이 맞는 스킬 쿨타임을 줄인다 */
   expeditionWeapon: RangedWeaponId;
-  /** 기본 사격 강화 레벨 0~10 — 골드로 올린다 (game/skills.ts basicShotCost, 2026-10-02) */
+  /** @deprecated 기본 사격 강화(정비, 골드) — 2026-10-02 대장간 활 강화로 옮겼다. 정규화가 expeditionWeaponForge.bow 로 이관한다 */
   expeditionBasic: number;
+  /** 대장간 활·지팡이 강화 단계 0~20 — 활: 기본 사격·물리 스킬 무기, 지팡이: 마법 스킬 무기 (2026-10-02) */
+  expeditionWeaponForge: WeaponForgeLevels;
+  /** 장착한 스킬 무기 (최대 4) — 그 판은 처음부터 쏜다 (2026-10-02) */
+  expeditionLoadout: SkillWeaponId[];
+  /**
+   * 원정 스테이지 저장 형식 — 2 = 50 스테이지 (2026-10-02). 그 전 저장은 성벽 층을 깰 때도 dodgeBestStage 가
+   * 층 + 4 로 올라가 있어(9층 = 13) 그대로 두면 50 스테이지 중 5~13 을 건너뛴다 — 정규화가 옛 최대(4)로 자른다
+   */
+  dodgeStageSchema: number;
+  /** 끝없는 성벽이 열렸는가 — 새 규칙은 10 스테이지(1장 대장) 클리어. 옛 4 스테이지를 깬 계정은 그대로 열려 있다 */
+  towerOpen: boolean;
   /** 원정 칩 레벨 (game/chips.ts) — 랜덤에 좌우되지 않는 영구 패시브 */
   expeditionChips: ChipLevels;
   /** 칩 슬롯에 끼운 것. 슬롯 수는 원정 최고 스테이지로 열린다 */
@@ -213,6 +224,10 @@ export function emptyCharacterProgress(): CharacterProgress {
     expeditionShards: emptyShards(),
     expeditionWeapon: "bow",
     expeditionBasic: 0,
+    expeditionWeaponForge: emptyWeaponForge(),
+    expeditionLoadout: ["fire"],
+    dodgeStageSchema: 2,
+    towerOpen: false,
     expeditionChips: emptyChipLevels(),
     equippedChips: [null, null, null],
     expeditionSupplies: emptySupplyStock(),
@@ -414,7 +429,8 @@ export function normalizeCharacterProgress(
     ownedShoulders: [...new Set(ownedShoulders)],
     shoulderShards: integer(raw.shoulderShards, 0),
     pioneeredArea: pioneeredAreaOf(raw),
-    dodgeBestStage: Math.max(1, integer(raw.dodgeBestStage, 1, 9999)),
+    // 옛 저장(형식 < 2)은 성벽 층이 섞여 부풀어 있다 — 옛 일반 원정의 끝(4)으로 자른다. 새 저장은 50 이 끝
+    dodgeBestStage: Math.max(1, Math.min((raw.dodgeStageSchema ?? 0) < 2 ? 4 : 50, integer(raw.dodgeBestStage, 1, 9999))),
     dodgeBestScore: integer(raw.dodgeBestScore, 0),
     expeditionSkills,
     expeditionSeals: integer(raw.expeditionSeals, 0),
@@ -458,6 +474,15 @@ export function normalizeCharacterProgress(
     }),
     // 맨손은 없다 — 활만 쓰는 콘텐츠다. 예전 저장의 "none" 과 모르는 값은 장궁으로 (2026-10-01)
     expeditionBasic: integer(raw.expeditionBasic, 0, SKILL_MAX_LEVEL),
+    // 기본 사격 강화(정비, 0~10, 단계당 +15%) → 대장간 활(0~20, 단계당 +8%): 두 배 단계로 옮겨 같은 세기를 지킨다
+    expeditionWeaponForge: (() => {
+      const r = (raw.expeditionWeaponForge ?? {}) as Partial<WeaponForgeLevels>;
+      const legacyBow = Math.min(WEAPON_FORGE_MAX, integer(raw.expeditionBasic, 0, SKILL_MAX_LEVEL) * 2);
+      return { bow: Math.max(legacyBow, integer(r.bow, 0, WEAPON_FORGE_MAX)), staff: integer(r.staff, 0, WEAPON_FORGE_MAX) };
+    })(),
+    expeditionLoadout: normalizeLoadout(raw.expeditionLoadout, expeditionSkills),
+    dodgeStageSchema: 2,
+    towerOpen: raw.towerOpen === true || (raw.dodgeStageSchema ?? 0) < 2 && (integer(raw.dodgeBestStage, 1, 9999) >= 4 || integer(raw.towerBestFloor, 0, 99999) > 0),
     expeditionWeapon: RANGED_WEAPONS.some((w) => w.id === raw.expeditionWeapon)
       ? (raw.expeditionWeapon as RangedWeaponId)
       : base.expeditionWeapon,

@@ -48,7 +48,7 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "pack-wall", kind: "bundle", name: "벽 돌파 세트", description: "DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다", displayPrice: "₩5,900", badge: "1회", contents: ["출전 동료 조각 ×30", "방치 가속 24h", "보석 ×100"], visible: true, trigger: "wall" },
   { id: "pack-rebirth", kind: "bundle", name: "환생 세트", description: "첫 환생 후 1회 — 재시작을 빠르게", displayPrice: "₩12,000", badge: "1회", contents: ["보석 ×400", "스킬 코어 ×10", "출전 동료 조각 ×40"], visible: true, trigger: "rebirth" },
   // 성문 방어 (2026-10-02) — 그동안 결제 접점이 없던 메인 콘텐츠. 무료 곡선은 그대로 두고 "벽에서 빨리 넘기"만 판다
-  { id: "gate-supply", kind: "bundle", name: "성문 수비 보급", description: "새 속성 화살을 배우고 올릴 몫 — 성문이 버거울 때", displayPrice: "₩3,900", contents: ["원정 인장 ×30", "속성 화살 조각 ×8 (6종 각각)", "보석 ×40"], visible: true },
+  { id: "gate-supply", kind: "bundle", name: "성문 수비 보급", description: "새 스킬 무기를 배우고 올릴 몫 — 성문이 버거울 때", displayPrice: "₩3,900", contents: ["원정 인장 ×30", "스킬 무기 조각 ×8 (10종 + 화살비 각각)", "보석 ×40"], visible: true },
   { id: "gate-fund", kind: "entitlement", name: "성문 원정 기금", description: "한 번 사면 성문 방어를 깰 때마다 보석 — 이미 깬 단계는 바로 받는다", displayPrice: "₩9,900", badge: "영구", contents: ["스테이지 1~4 돌파 보석 100 · 150 · 250 · 400", "원정 별 6개 · 12개 보석 300 · 500", "모두 달성 시 보석 ×1,700 (달성한 단계만큼 받는다)"], visible: true },
   // G 시즌 패스 유료 트랙 — 이벤트 센터 시즌 탭에서 판매 (패키지 탭에는 숨김)
   { id: "season-pass", kind: "entitlement", name: "시즌 패스", description: "4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트", displayPrice: "₩7,900", badge: "시즌", contents: ["유료 트랙 30단"], visible: false },
