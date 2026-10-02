@@ -8,9 +8,9 @@
  */
 import { paymentEnvironment } from "./environment";
 import { setStorePrices } from "./prices";
-import { playBillingAvailable, playOwnedPurchases, playPrices, playRecover } from "./playBilling";
+import { playBillingAvailable, playOwnedPurchases, playPrices, playRecover, playTxId } from "./playBilling";
 import { tossOrderHistory, tossPrices, tossRecoverPending } from "./tossIap";
-import { grantDurably, isConsumableProduct, isPermanentProduct, PLAY_PRODUCT_IDS, purchaseGrant, revokePurchase, setBillingReady } from "./store";
+import { grantDurably, isConsumableProduct, isPermanentProduct, PLAY_PRODUCT_IDS, purchaseGrant, revokeConsumable, revokePurchase, setBillingReady } from "./store";
 import { loadCharacterProgress, updateCharacterProgress } from "../progression/storage";
 
 export type ReconcileSummary = { granted: number; revoked: number; cores: number };
@@ -45,7 +45,15 @@ async function run(userHash: string): Promise<ReconcileSummary> {
     const history = await tossOrderHistory();
     if (history) {
       for (const order of history) {
-        if (!isPermanentProduct(order.sku)) continue;   // 소모성은 복원하지 않는다 — 재설치마다 보석이 다시 생기면 안 된다
+        if (!isPermanentProduct(order.sku)) {
+          // 소모성은 복원하지 않는다(재설치마다 보석이 생기면 안 된다). 환불이면 그 주문이 준 보석만 거둔다 — 장부가 있을 때만
+          if (order.status === "REFUNDED") {
+            let did = false;
+            await updateCharacterProgress(userHash, (current) => { const r = revokeConsumable(current, order.sku, order.orderId); did = r.revoked; return r.progress; });
+            if (did) summary.revoked += 1;
+          }
+          continue;
+        }
         if (order.status === "COMPLETED") await grant(order.sku, order.orderId);
         else await revoke(order.sku, order.orderId);
       }
@@ -60,10 +68,10 @@ async function run(userHash: string): Promise<ReconcileSummary> {
     if (owned) {
       await playRecover(owned, isConsumableProduct, grant);
       // 플레이에서 산 영구 상품인데 소유 목록에서 사라졌다 = 환불·취소. 조회가 성공했을 때만 (owned 가 null 이면 여기 오지 않는다)
-      const ownedTx = new Set(owned.map((p) => p.transactionId).filter(Boolean));
+      const ownedTx = new Set(owned.map(playTxId).filter(Boolean));
       const progress = await loadCharacterProgress(userHash);
       for (const key of progress.claimedRewards) {
-        const m = /^purchase:([^:]+):(GPA\..+)$/.exec(key);
+        const m = /^purchase:([^:]+):(play:.+)$/.exec(key);
         if (!m || !isPermanentProduct(m[1]) || ownedTx.has(m[2])) continue;
         await revoke(m[1], m[2]);
       }

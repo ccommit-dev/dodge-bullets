@@ -29,6 +29,8 @@ writeFileSync(entry, [
   `export * as prices from "${root}/src/payments/prices";`,
   `export * as prog from "${root}/src/progression/storage";`,
   `export * as catalog from "${root}/src/economy/productCatalog";`,
+  `export * as fund from "${root}/src/economy/gateFund";`,
+  `export * as moments from "${root}/src/economy/momentOffers";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({
@@ -55,7 +57,7 @@ globalThis.window = globalThis;
 globalThis.window.Capacitor = { isPluginAvailable: () => true };
 globalThis.document ??= { createElement: () => ({ style: {}, getContext: () => null }), body: { appendChild() {}, removeChild() {} } };
 
-const { store, reconcile, env, prices, prog, catalog } = await import(pathToFileURL(out).href);
+const { store, reconcile, env, prices, prog, catalog, fund, moments } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 let failed = 0;
@@ -70,7 +72,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const ids = catalog.STORE_PRODUCTS.map((p) => p.id).sort();
   const play = [...store.PLAY_PRODUCT_IDS].sort();
   ok("상품 ID: 카탈로그 = 스토어 등록 목록 (양방향)", JSON.stringify(ids) === JSON.stringify(play), `카탈로그만 ${ids.filter((i) => !play.includes(i)).join(",") || "-"} · 등록만 ${play.filter((i) => !ids.includes(i)).join(",") || "-"}`);
-  ok("영구 상품 = 광고 제거 + 캐릭터 4종, 시즌 패스는 소모성", JSON.stringify([...store.PERMANENT_PRODUCT_IDS].sort()) === JSON.stringify(["char-dawn", "char-ember", "char-frost", "char-obsidian", "remove-ads"]) && store.isConsumableProduct("season-pass"), [...store.PERMANENT_PRODUCT_IDS].join(","));
+  ok("영구 상품 = 광고 제거 + 캐릭터 4종 + 성문 원정 기금, 시즌 패스·성문 수비 보급은 소모성", JSON.stringify([...store.PERMANENT_PRODUCT_IDS].sort()) === JSON.stringify(["char-dawn", "char-ember", "char-frost", "char-obsidian", "gate-fund", "remove-ads"]) && store.isConsumableProduct("gate-supply") && store.isConsumableProduct("season-pass"), [...store.PERMANENT_PRODUCT_IDS].join(","));
 }
 
 // ── 진행도 갱신은 한 줄로 ──
@@ -214,19 +216,19 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   fresh(); env.setPaymentEnvironment("android"); store.setBillingReady(true);
   const calls = [];
   globalThis.__play = {
-    purchaseProduct: async (o) => { calls.push(`buy:${o.productIdentifier}:ack=${o.autoAcknowledgePurchases}:consumable=${o.isConsumable}`); return { transactionId: "GPA.1", productIdentifier: o.productIdentifier, purchaseToken: "tok1", purchaseState: "1" }; },
-    consumePurchase: async (o) => { calls.push(`consume:${o.purchaseToken}:saved=${await has("purchase:gems-80:GPA.1")}`); },
+    purchaseProduct: async (o) => { calls.push(`buy:${o.productIdentifier}:ack=${o.autoAcknowledgePurchases}:consumable=${o.isConsumable}`); return { transactionId: "tok1", orderId: "GPA.1", productIdentifier: o.productIdentifier, purchaseToken: "tok1", purchaseState: "1" }; },
+    consumePurchase: async (o) => { calls.push(`consume:${o.purchaseToken}:saved=${await has("purchase:gems-80:play:tok1")}`); },
     acknowledgePurchase: async (o) => { calls.push(`ack:${o.purchaseToken}`); },
   };
   const r = await store.buyWithStore(H, "gems-80");
   ok("플레이: 자동 승인·자동 소비를 끄고 산다", calls[0] === "buy:gems-80:ack=false:consumable=false", calls[0]);
   ok("플레이: 소모성은 지급이 저장된 뒤에 소비한다", r.status === "granted" && calls[1] === "consume:tok1:saved=true" && !calls.some((c) => c.startsWith("ack:")), calls.join(" → "));
   calls.length = 0;
-  globalThis.__play.purchaseProduct = async (o) => { calls.push("buy"); return { transactionId: "GPA.7", productIdentifier: o.productIdentifier, purchaseToken: "tok7", purchaseState: "1", isAcknowledged: false }; };
+  globalThis.__play.purchaseProduct = async (o) => { calls.push("buy"); return { transactionId: "tok7", orderId: "GPA.7", productIdentifier: o.productIdentifier, purchaseToken: "tok7", purchaseState: "1", isAcknowledged: false }; };
   await store.buyWithStore(H, "char-ember");
   ok("플레이: 영구 상품은 소비하지 않고 승인한다", calls.join() === "buy,ack:tok7" && (await P()).ownedCharacters.includes("ember"), calls.join());
   calls.length = 0; storageThrows = true;
-  globalThis.__play.purchaseProduct = async (o) => ({ transactionId: "GPA.8", productIdentifier: o.productIdentifier, purchaseToken: "tok8", purchaseState: "1" });
+  globalThis.__play.purchaseProduct = async (o) => ({ transactionId: "tok8", orderId: "GPA.8", productIdentifier: o.productIdentifier, purchaseToken: "tok8", purchaseState: "1" });
   const rFail = await store.buyWithStore(H, "gems-450");
   storageThrows = false;
   ok("플레이: 저장이 실패하면 소비·승인하지 않는다(복구가 다시 지급, 아니면 3일 뒤 자동 환불)", rFail.status === "pending" && calls.length === 0, `${rFail.status} · ${calls.join()}`);
@@ -236,7 +238,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
 {
   fresh(); env.setPaymentEnvironment("android");
   const consumed = [];
-  let owned = [{ transactionId: "GPA.2", productIdentifier: "gems-450", purchaseToken: "tok2", purchaseState: "1" }, { transactionId: "GPA.3", productIdentifier: "gems-80", purchaseToken: "tok3", purchaseState: "2" }];
+  let owned = [{ transactionId: "tok2", orderId: "GPA.2", productIdentifier: "gems-450", purchaseToken: "tok2", purchaseState: "1" }, { transactionId: "tok3", orderId: "GPA.3", productIdentifier: "gems-80", purchaseToken: "tok3", purchaseState: "2" }];
   globalThis.__play = {
     getPurchases: async () => ({ purchases: owned }),
     getProducts: async () => ({ products: [{ identifier: "gems-450", priceString: "₩7,500" }] }),
@@ -246,12 +248,12 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const r1 = await reconcile.reconcileStore(H);
   const gems1 = (await P()).redGems;
   ok("플레이 복구: 결제 완료된 구매를 한 번 지급하고 소비한다", r1.granted === 1 && gems1 > 0 && consumed.join() === "tok2", `${JSON.stringify(r1)} · 소비 ${consumed}`);
-  ok("플레이 복구: 대기 중 결제(purchaseState 2)는 지급하지 않는다", !(await has("purchase:gems-80:GPA.3")));
+  ok("플레이 복구: 대기 중 결제(purchaseState 2)는 지급하지 않는다", !(await has("purchase:gems-80:play:tok3")));
   const r2 = await reconcile.reconcileStore(H);
   ok("플레이 복구: 소비가 실패해 같은 구매가 또 와도 두 번 지급하지 않는다", r2.granted === 0 && (await P()).redGems === gems1, JSON.stringify(r2));
   // 회수
-  await prog.updateCharacterProgress(H, (c) => ({ ...c, adFree: true, ownedCharacters: [...c.ownedCharacters, "obsidian"], claimedRewards: [...c.claimedRewards, "purchase:remove-ads:GPA.9", "purchase:char-obsidian:qa-123"] }));
-  owned = [{ transactionId: "GPA.9", productIdentifier: "remove-ads", purchaseToken: "tok9", purchaseState: "1", isAcknowledged: true }];
+  await prog.updateCharacterProgress(H, (c) => ({ ...c, adFree: true, ownedCharacters: [...c.ownedCharacters, "obsidian"], claimedRewards: [...c.claimedRewards, "purchase:remove-ads:play:tok9", "purchase:char-obsidian:qa-123"] }));
+  owned = [{ transactionId: "tok9", orderId: "GPA.9", productIdentifier: "remove-ads", purchaseToken: "tok9", purchaseState: "1", isAcknowledged: true }];
   await reconcile.reconcileStore(H);
   ok("플레이 회수: 소유 목록에 있으면 그대로", (await P()).adFree === true);
   globalThis.__play.getPurchases = async () => { throw new Error("network"); };
@@ -262,6 +264,133 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const r3 = await reconcile.reconcileStore(H);
   const p3 = await P();
   ok("플레이 회수: 성공한 조회에서 사라진 영구 상품(환불)을 거두고, QA 지급은 건드리지 않는다", r3.revoked === 1 && p3.adFree === false && p3.ownedCharacters.includes("obsidian"), JSON.stringify(r3));
+}
+
+// ── 리뷰 반영 (2026-10-02) ──
+{
+  // #6 플레이 대기 결제: 플러그인이 거부로 돌려준다 → "대기"
+  fresh(); env.setPaymentEnvironment("android"); store.setBillingReady(true);
+  globalThis.__play = { purchaseProduct: async () => { throw new Error("Purchase is pending"); } };
+  const r = await store.buyWithStore(H, "gems-80");
+  ok("플레이: 대기 중 결제는 취소가 아니라 '결제 확인 중' (리뷰 #6)", r.status === "pending", r.status);
+}
+{
+  // #5 결제된 트리거 팩 두 번째 주문도 지급, QA 지급만 1회
+  fresh();
+  const base = await P();
+  const w1 = store.applyPurchase(base, "pack-wall", "play:a", 0);
+  const w2 = store.applyPurchase(w1.progress, "pack-wall", "play:b", 0);
+  const q1 = store.applyPurchase(base, "pack-wall", "qa-1", 0);
+  const q2 = store.applyPurchase(q1.progress, "pack-wall", "qa-2", 0);
+  ok("결제된 트리거 팩 재주문은 지급한다 — 돈을 냈는데 못 받는 일이 없게 (리뷰 #5)", w1.applied && w2.applied, `${w1.applied}/${w2.applied}`);
+  ok("QA 테스트 지급은 트리거 팩 1회 규칙을 지킨다", q1.applied && !q2.applied);
+}
+{
+  // #4 스킬 코어는 진행도의 pendingSkillCores 로 — 호출부가 사냥터 저장에 직접 더하지 않는다
+  fresh();
+  const r = store.applyPurchase(await P(), "adventurer-mid", "play:c", 0);
+  ok("결제 코어는 pendingSkillCores 에 쌓인다 (사냥터가 준비되면 옮긴다, 리뷰 #4)", r.progress.pendingSkillCores === 5 && r.cores === 5, String(r.progress.pendingSkillCores));
+}
+{
+  // #1 지급 확인 읽기가 응답이 없으면 durable=false (로컬 사본을 '있다'로 착각하지 않는다)
+  fresh(); env.setPaymentEnvironment("toss");
+  const tossMap = new Map();
+  let hangReads = false;
+  globalThis.__toss.Storage = {
+    getItem: (k) => (hangReads ? new Promise(() => undefined) : Promise.resolve(tossMap.has(k) ? tossMap.get(k) : null)),
+    setItem: async (k, v) => { tossMap.set(k, v); },
+  };
+  await P();   // 진행도 레코드를 토스 쪽에 만든다
+  let callback = null;
+  globalThis.__toss.IAP.createOneTimePurchaseOrder = ({ options, onEvent }) => {
+    setTimeout(async () => {
+      // 지급 쓰기는 됐다고 치고, 그 뒤 확인 읽기부터 응답이 없다
+      const origSet = globalThis.__toss.Storage.setItem;
+      globalThis.__toss.Storage.setItem = async (k, v) => { await origSet(k, v); hangReads = true; };
+      callback = await options.processProductGrant({ orderId: "T-H1" });
+      onEvent({ type: "success", data: { orderId: "T-H1" } });
+    }, 0);
+    return () => undefined;
+  };
+  const r = await store.buyWithStore(H, "gems-80");
+  ok("토스: 확인 읽기가 응답이 없으면 완료로 알리지 않는다 (리뷰 #1)", callback === false && r.status === "pending", `${callback} · ${r.status}`);
+  // #2 읽기가 응답이 없으면 갱신을 멈춘다 — "새 유저"로 착각해 빈 진행도로 덮어쓰지 않는다
+  const before = tossMap.get("dodgebullets:progression:v1:" + H);
+  let threw = false;
+  await prog.updateCharacterProgress(H, (c) => ({ ...c, redGems: c.redGems + 1 })).catch(() => { threw = true; });
+  ok("토스: 진행도 읽기가 응답이 없으면 갱신을 멈추고 저장본을 건드리지 않는다 (리뷰 #2)", threw && tossMap.get("dodgebullets:progression:v1:" + H) === before);
+  globalThis.__toss.Storage = undefined;
+}
+{
+  // 복귀 정산이 실시간 결제보다 먼저 지급해도, 이번 결제는 "구매 완료"
+  fresh(); env.setPaymentEnvironment("toss");
+  globalThis.__toss.IAP.createOneTimePurchaseOrder = ({ options, onEvent }) => {
+    setTimeout(async () => {
+      ok("결제 시트가 떠 있는 동안 purchaseInFlight = true", store.purchaseInFlight() === true);
+      await store.grantDurably(H, "gems-450", "T-RACE");   // 복귀 정산이 먼저 지급했다고 치자
+      const ok2 = await options.processProductGrant({ orderId: "T-RACE" });
+      onEvent({ type: "success", data: { orderId: "T-RACE" } });
+      void ok2;
+    }, 0);
+    return () => undefined;
+  };
+  const r = await store.buyWithStore(H, "gems-450");
+  ok("실시간 결제: 복귀 정산이 먼저 지급했어도 '구매 완료'로 보인다 (이미 지급 X)", r.status === "granted" && !store.purchaseInFlight(), r.status);
+}
+
+// ── 성문 방어 결제 (2026-10-02) ──
+{
+  fresh();
+  const p0 = await P();
+  const r = store.applyPurchase(p0, "gate-supply", "play:s1", 0);
+  const shards = Object.values(r.progress.expeditionShards);
+  ok("성문 수비 보급: 인장 +30 · 속성 조각 6종 각 +8 · 보석 +40", r.applied && r.progress.expeditionSeals === p0.expeditionSeals + 30 && shards.length === 6 && Object.entries(r.progress.expeditionShards).every(([id, n]) => n === (p0.expeditionShards[id] ?? 0) + 8) && r.progress.redGems === p0.redGems + 40, JSON.stringify(r.progress.expeditionShards));
+  // 기금: 산 뒤 이미 깬 단계는 바로 받고, 못 깬 단계는 못 받는다 · 두 번 받지 못한다
+  const withStars = { ...p0, dodgeStars: { "0": 3, "1": 2, "2": 1 } };
+  ok("기금: 사기 전에는 받을 수 없다", fund.claimGateFundTier(withStars, "s1").gems === 0);
+  ok("기금: 사기 전 화면의 '바로 받는 몫' = 깬 단계 합 (100+150+250+별 6개 300)", fund.gateFundReadyGems(withStars) === 800, String(fund.gateFundReadyGems(withStars)));
+  const bought = store.applyPurchase(withStars, "gate-fund", "play:f1", 0).progress;
+  const c1 = fund.claimGateFundTier(bought, "s3");
+  const c2 = fund.claimGateFundTier(c1.progress, "s3");
+  const c3 = fund.claimGateFundTier(c1.progress, "s4");
+  ok("기금: 깬 단계 수령 · 중복 수령 없음 · 못 깬 단계 불가", bought.gateFund.paid && c1.gems === 250 && c2.gems === 0 && c3.gems === 0);
+  ok("기금 합계 1,700 · 같은 금액 보석팩(80개, ₩1,500) 대비 ×3.2", fund.GATE_FUND_TOTAL_GEMS === 1700 && Math.abs(fund.gemValueRatio(1700, "₩9,900", "₩1,500", 80) - 3.22) < 0.01, String(fund.gemValueRatio(1700, "₩9,900", "₩1,500", 80)));
+  ok("보석팩 보너스 %: 450 개 +12% · 1,200 개 +50% · 통화가 다르면 계산 안 함", fund.gemPackBonusPercent(450, "₩7,500", "₩1,500", 80) === 12 && fund.gemPackBonusPercent(1200, "₩15,000", "₩1,500", 80) === 50 && fund.gemPackBonusPercent(1200, "$12.99", "₩1,500", 80) === null);
+  // 환불: 남은 단계만 거둔다
+  const refunded = store.revokePurchase(c1.progress, "gate-fund", "play:f1").progress;
+  ok("기금 환불: 기금을 거두되 이미 받은 보석은 그대로", refunded.gateFund.paid === false && refunded.redGems === c1.progress.redGems && refunded.gateFund.claimed.includes("s3"));
+}
+{
+  // 토스: 재설치 때 기금 복원(영구) · 환불된 소모성은 그 주문의 보석만 거둔다 · 장부 없는 옛 지급은 건드리지 않는다
+  fresh(); env.setPaymentEnvironment("toss");
+  await prog.updateCharacterProgress(H, (c) => store.applyPurchase(c, "gems-450", "T-L1", 0).progress);   // 첫 구매 2배 → 900
+  await prog.updateCharacterProgress(H, (c) => ({ ...c, redGems: c.redGems + 50, claimedRewards: [...c.claimedRewards, "purchase:gems-80:T-OLD"] }));   // 장부 없는 옛 지급
+  const before = (await P()).redGems;
+  Object.assign(globalThis.__toss.IAP, {
+    getPendingOrders: async () => ({ orders: [] }),
+    completeProductGrant: async () => true,
+    getProductItemList: async () => undefined,
+    getCompletedOrRefundedOrders: async () => ({ hasNext: false, orders: [
+      { orderId: "T-L1", sku: "gems-450", status: "REFUNDED" },
+      { orderId: "T-OLD", sku: "gems-80", status: "REFUNDED" },
+      { orderId: "T-F1", sku: "gate-fund", status: "COMPLETED" },
+    ] }),
+  });
+  const r = await reconcile.reconcileStore(H);
+  const after = await P();
+  ok("토스 소모성 환불: 그 주문이 준 보석(첫 구매 2배 포함 900)만 거둔다", after.redGems === before - 900 && after.claimedRewards.includes("revoked:gems-450:T-L1"), `${before} → ${after.redGems}`);
+  ok("토스 소모성 환불: 장부 없는 옛 지급은 거두지 않는다", !after.claimedRewards.includes("revoked:gems-80:T-OLD"));
+  ok("토스: 재설치 때 성문 원정 기금(영구)을 되살린다", after.gateFund.paid === true && r.granted === 1, JSON.stringify(r));
+  await reconcile.reconcileStore(H);
+  ok("토스 소모성 환불: 다시 돌려도 두 번 거두지 않는다", (await P()).redGems === after.redGems);
+}
+{
+  // 순간 제안 gate-wall — 유료 게이트(출석 3일 · Lv 20) 전에는 열리지 않는다
+  fresh();
+  const p0 = await P();
+  const early = moments.openMomentOffer({ ...p0, attendanceStreak: 0, level: 5 }, "gate-wall", 1000);
+  const open = moments.openMomentOffer({ ...p0, attendanceStreak: 3 }, "gate-wall", 1000);
+  ok("순간 제안 gate-wall: 유료 게이트 전 닫힘 · 뒤에는 성문 수비 보급 15분 창 · 보너스 보석 20", !early.momentOffers["gate-supply"] && open.momentOffers["gate-supply"]?.until === 1000 + 15 * 60000 && moments.momentBonusGems(open, "gate-supply", 2000) === 20);
 }
 
 console.log(failed ? `${failed} FAIL` : "ALL PASS");

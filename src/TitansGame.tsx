@@ -109,7 +109,8 @@ import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
-import { buyWithStore, firstDoubleAvailable, grantPurchase, packagePurchased, paidStoreNote, paidStoreVisible, paymentsConfigured } from "./payments/store";
+import { firstDoubleAvailable, packagePurchased, paidStoreNote, paidStoreVisible, paymentsConfigured, purchaseGrant, purchaseProduct } from "./payments/store";
+import { gemPackBonusPercent } from "./economy/gateFund";
 import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -236,6 +237,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
+  // 결제로 받은 스킬 코어 — 진행도의 pendingSkillCores 를 사냥터 저장이 준비된 뒤에 옮긴다 (부팅 정산·실시간 결제 공통, 리뷰 #4).
+  // 진행도 큐에서 0 으로 만들며 그 순간의 정확한 개수를 받아 더하므로 두 번 더해지지 않는다
+  const coresMovingRef = useRef(false);
   // 스토어 가격을 받으면 다시 그린다 (payments/prices)
   const [, setPriceTick] = useState(0);
   useEffect(() => { const off = onStorePricesChanged(() => setPriceTick((t) => t + 1)); return () => { off(); }; }, []);
@@ -648,7 +652,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       const d = (e as CustomEvent<{ granted: number; revoked: number; cores: number; handled: boolean }>).detail;
       if (!d) return;
       d.handled = true;
-      if (d.cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + d.cores } }));
       void loadCharacterProgress(userHash).then((next) => { setCharacter(next); setRedGems(next.redGems); });
       setToast(d.granted ? `결제 ${d.granted}건을 지급했습니다` : `환불된 구매 ${d.revoked}건을 회수했습니다`);
       if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
@@ -657,6 +660,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     window.addEventListener("dodgebullets:store-reconciled", onReconciled);
     return () => window.removeEventListener("dodgebullets:store-reconciled", onReconciled);
   }, [userHash]);
+  useEffect(() => {
+    if (!ready || coresMovingRef.current || character.pendingSkillCores <= 0) return;
+    coresMovingRef.current = true;
+    let moved = 0;
+    void updateCharacterProgress(userHash, (current) => { moved = current.pendingSkillCores; return { ...current, pendingSkillCores: 0 }; })
+      .then((next) => {
+        if (moved > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + moved } }));
+        setCharacter(next);
+      })
+      .catch(() => undefined)
+      .finally(() => { coresMovingRef.current = false; });
+  }, [ready, character.pendingSkillCores, userHash]);
 
   const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number) => {
     const id = ++fxId.current;
@@ -1790,31 +1805,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   /** 실결제(₩) — 어댑터가 검증한 구매만 지급. 미연동 환경에서는 안내 토스트만 */
   const buyPaidProduct = async (productId: string) => {
     if (claimingProduct) return;
-    if ((import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-pay") === "1") || testModeEnabled()) {
-      // QA 스텁: 스토어 없이 지급 경로만 검증 (verify-offers.mjs) — 테스트 모드(빌드 라벨 7탭)에서도 ₩ 상품을 바로 지급해 전 상품을 눌러볼 수 있다
-      const { progress, cores, applied, bonus } = await grantPurchase(userHash, productId, `qa-${Date.now()}`);
-      if (!applied) { flash("이미 지급된 구매입니다"); return; }
-      setCharacter(progress);
-      setRedGems(progress.redGems);
-      if (cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + cores } }));
-      flash(`${STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId} 구매 완료${bonus ? ` · 보너스 보석 +${bonus}` : ""}`);
-      return;
-    }
-    if (!paymentsConfigured()) {
-      flash("이 환경에서는 결제할 수 없습니다 — 토스 앱 또는 안드로이드 앱에서 구매해 주세요");
-      return;
-    }
+    // 결제 흐름은 하나 — QA 빌드 테스트 모드면 무료 테스트 지급, 아니면 스토어 (payments/store.purchaseProduct)
     setClaimingProduct(productId);
     try {
-      const result = await buyWithStore(userHash, productId);
-      if (result.status === "pending") { flash("결제 확인 중입니다 — 확인되면 앱을 다시 열 때 자동으로 지급됩니다"); return; }
-      if (result.status === "unavailable") { flash("이 환경에서는 결제할 수 없습니다"); return; }
+      const result = await purchaseProduct(userHash, productId);
+      if (result.status === "pending") { flash("결제 확인 중입니다 — 확인되면 자동으로 지급됩니다"); return; }
+      if (result.status === "unavailable") { flash(paidStoreNote()); return; }
       if (result.status === "cancelled" || !result.progress) return;
       if (result.status === "duplicate") { flash("이미 지급된 구매입니다"); return; }
-      const { progress, cores, bonus } = result;
+      const { progress, bonus } = result;
       setCharacter(progress);
       setRedGems(progress.redGems);
-      if (cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + cores } }));
       sfxSlotUnlock();
       flash(`${STORE_PRODUCTS.find((p) => p.id === productId)?.name ?? productId} 구매 완료${bonus ? ` · 보너스 보석 +${bonus}` : ""}`);
     } finally {
@@ -3055,7 +3056,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d" || product.id === "remove-ads";
           return <article key={product.id} className="titans-card premium-product-card">
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
-          <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
+          <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{(() => {
+            // 보석팩 보너스 — 기준 팩(80개) 가격 대비, 화면 가격으로 계산한 값만 (근거 없는 % 를 쓰지 않는다)
+            const gems = purchaseGrant(product.id)?.gems ?? 0;
+            const base = STORE_PRODUCTS.find((p) => p.id === "gems-80");
+            const pct = product.id.startsWith("gems-") && product.id !== "gems-80" && base ? gemPackBonusPercent(gems, priceLabel(product), priceLabel(base), 80) : null;
+            return pct ? <em className="gem-bonus-badge">+{pct}% 보너스</em> : null;
+          })()}{product.id === "gate-fund" && <em className="gem-bonus-badge">수령: 성문 방어 › 보급·임무</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
             <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : QA_BUILD && testModeEnabled() ? "테스트 구매 (즉시 지급)" : "토스 앱·안드로이드 앱에서 구매할 수 있습니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : priceLabel(product)}</button>
           ) : (

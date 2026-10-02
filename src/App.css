@@ -3149,7 +3149,9 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .titans-skill:disabled .skill-icon { filter:grayscale(1); opacity:.45; }
 .skill-learn-card.equipped > .skill-icon { border-color:#fbbf24; box-shadow:0 0 12px rgba(251,191,36,.45); }
 .premium-product-card > .currency-icon { width:38px; height:38px; flex:0 0 38px; }
-.premium-product-card em { padding:2px 5px; border-radius:999px; color:#450a0a; background:#fca5a5; font-size:8px; font-style:normal; }
+.premium-product-card em { padding:2px 5px; border-radius:999px; color:#450a0a; background:#fca5a5; font-size:8px; font-style:normal; white-space:nowrap; }
+/* 이름 줄의 배지(첫 구매 2배 · POPULAR · 보너스 %)가 넘치면 다음 줄로 — 잘려서 안 보이던 것 (2026-10-02) */
+.premium-product-card strong { display:flex; flex-wrap:wrap; align-items:center; gap:3px 4px; }
 
 .ally-feature {
   display: block;
@@ -3664,6 +3666,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   .event-list article { min-height:74px; border-radius:13px; background:linear-gradient(135deg,rgba(14,116,144,.24),rgba(15,23,42,.94)); }
   .titans-card { min-width:0; gap:8px; padding:10px 8px; }
   .titans-card strong { display:block; overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+  /* 상품 카드 이름 줄은 배지가 있어 잘리면 안 된다 — 줄바꿈 허용 (2026-10-02) */
+  .premium-product-card strong { display:flex; flex-wrap:wrap; overflow:visible; white-space:normal; }
   .titans-card p { font-size:9px; overflow-wrap:anywhere; }
   .titans-card button { flex:0 0 auto; min-height:40px; padding:8px 9px; font-size:10px; }
   .training-item-icon.weapon, .shoulder-icon { width:38px; height:38px; flex-basis:38px; }
@@ -3933,6 +3937,39 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-ops { display:grid; gap:12px; }
 .exp-ops section { display:grid; gap:6px; }
 .exp-ops section > b { color:#c4b5fd; font-size:11px; }
+/* 성문 보급소 (2026-10-02) — 결제 상품 */
+.exp-store-note { margin:0; padding:8px 10px; border-radius:10px; color:#cbd5e1; background:rgba(15,23,42,.6); font-size:11px; }
+.exp-fund { display:grid; gap:8px; padding:10px; border:1px solid rgba(244,114,182,.45); border-radius:14px; background:linear-gradient(160deg,rgba(76,5,25,.55),rgba(15,23,42,.9)); }
+.exp-fund header { display:flex; align-items:center; gap:10px; }
+.exp-fund header img { width:46px; height:46px; flex:none; }
+.exp-fund header span { display:grid; gap:2px; }
+.exp-fund header b { color:#fecdd3; font-size:14px; }
+.exp-fund header b i { margin-left:6px; padding:1px 6px; border-radius:999px; color:#4c0519; background:#fda4af; font-style:normal; font-size:9px; }
+.exp-fund header em { color:#fde68a; font-style:normal; font-size:11px; font-weight:800; }
+.exp-fund-tiers { display:grid; gap:4px; margin:0; padding:0; list-style:none; }
+.exp-fund-tiers li { display:grid; grid-template-columns:1fr auto 64px; align-items:center; gap:8px; padding:5px 8px; border-radius:9px; background:rgba(2,6,23,.5); color:#cbd5e1; font-size:11px; }
+.exp-fund-tiers li b { color:#fda4af; font-size:11px; }
+.exp-fund-tiers li i { color:#64748b; font-style:normal; font-size:10px; text-align:center; }
+.exp-fund-tiers li.ready i { color:#86efac; }
+.exp-fund-tiers li button { min-height:28px; border:0; border-radius:8px; color:#052e16; background:#86efac; font-size:11px; font-weight:900; }
+.exp-fund-tiers li button:disabled { color:#94a3b8; background:#1e293b; }
+.exp-fund-tiers li.got { opacity:.6; }
+.exp-store-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid rgba(251,191,36,.4); border-radius:12px; background:rgba(66,32,6,.45); }
+.exp-store-row img { width:42px; height:42px; flex:none; }
+.exp-store-row span { flex:1; display:grid; gap:2px; min-width:0; }
+.exp-store-row b { color:#fde68a; font-size:13px; }
+.exp-store-row em { color:#e2e8f0; font-style:normal; font-size:10px; }
+.exp-store-buy { min-height:38px; padding:0 14px; border:0; border-radius:10px; color:#1c1917; background:linear-gradient(180deg,#fde047,#f59e0b); font-size:12px; font-weight:900; }
+.exp-store-buy:disabled { opacity:.5; }
+/* 사망 화면 순간 제안 — 성문 수비 보급 */
+.gate-offer { display:flex; align-items:center; gap:10px; width:100%; padding:10px; border:1px solid rgba(251,191,36,.55); border-radius:14px; background:linear-gradient(150deg,rgba(66,32,6,.85),rgba(15,23,42,.92)); text-align:left; }
+.gate-offer img { width:52px; height:52px; flex:none; }
+.gate-offer div { flex:1; display:grid; gap:2px; min-width:0; }
+.gate-offer b { color:#fde68a; font-size:14px; }
+.gate-offer small { color:#e2e8f0; font-size:11px; line-height:1.35; }
+.gate-offer em { color:#86efac; font-style:normal; font-size:10px; font-weight:800; }
+.gate-offer-buy { flex:none; min-height:44px; padding:0 14px; border:0; border-radius:11px; color:#1c1917; background:linear-gradient(180deg,#fde047,#f59e0b); font-size:13px; font-weight:900; }
+.gem-bonus-badge { margin-left:4px; padding:1px 6px; border-radius:999px; color:#052e16; background:#86efac; font-style:normal; font-size:9px; font-weight:900; }
 .exp-ops section > b small { color:#64748b; font-size:9px; font-weight:700; }
 .exp-supply-list, .exp-daily-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
 .exp-supply-list li, .exp-daily-list li { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(103,232,249,.2); border-radius:10px; background:rgba(4,14,28,.6); }

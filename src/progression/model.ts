@@ -9,6 +9,7 @@ import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } f
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { allyCollectionPower, petCollectionPower } from "./collection";
+import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
 
 export const PROGRESSION_VERSION = 5;
 
@@ -161,6 +162,10 @@ export type CharacterProgress = {
   adFree: boolean;
   /** 보상형 광고 일일 카운터 (L) */
   adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number; dodgeDouble: number; beatDouble: number };
+  /** 결제로 받았지만 아직 사냥터 저장에 들어가지 않은 스킬 코어 — 사냥터가 준비되면 옮긴다 (2026-10-02 리뷰 #4) */
+  pendingSkillCores: number;
+  /** 성문 원정 기금 (economy/gateFund) — 샀는가 · 받은 단계 */
+  gateFund: GateFundState;
   /** 순간 제안 창 (economy/momentOffers): 상품 id → 만료·보너스 */
   momentOffers: Record<string, { kind: string; until: number; bonusGems: number; openedAt: number }>;
 };
@@ -261,6 +266,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     adFree: false,
     adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 },
     momentOffers: {},
+    gateFund: emptyGateFund(),
+    pendingSkillCores: 0,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -582,6 +589,15 @@ export function normalizeCharacterProgress(
     ownedThemes: Array.isArray(raw.ownedThemes) ? [...new Set(raw.ownedThemes.filter((id): id is string => typeof id === "string"))].slice(0, 20) : [],
     equippedTheme: typeof raw.equippedTheme === "string" && Array.isArray(raw.ownedThemes) && raw.ownedThemes.includes(raw.equippedTheme) ? raw.equippedTheme : "",
     adFree: raw.adFree === true,
+    pendingSkillCores: integer(raw.pendingSkillCores, 0, 100000),
+    gateFund: (() => {
+      const g = raw.gateFund as { paid?: unknown; claimed?: unknown } | undefined;
+      const known = new Set(GATE_FUND_TIERS.map((t) => t.id));
+      return {
+        paid: g?.paid === true,
+        claimed: Array.isArray(g?.claimed) ? [...new Set((g.claimed as unknown[]).filter((x): x is string => typeof x === "string" && known.has(x)))] : [],
+      };
+    })(),
     momentOffers: (() => {
       const out: Record<string, { kind: string; until: number; bonusGems: number; openedAt: number }> = {};
       if (raw.momentOffers && typeof raw.momentOffers === "object") {

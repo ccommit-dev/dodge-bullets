@@ -186,18 +186,34 @@ function nativePrefs(): Promise<PreferencesLike | null> {
  * 세 환경 모두 이 두 함수만 지나므로 여기가 유일한 분기 지점이다.
  */
 export async function storageGet(key: string): Promise<string | null> {
+  return (await storageRead(key)).value;
+}
+
+/**
+ * 읽기 + 그 값을 믿어도 되는가 (2026-10-02 리뷰). 토스 Storage 가 **응답하지 않으면**(타임아웃) 진짜 값을 모르는 채 로컬 사본을 돌려준다 —
+ * reliable=false. 그 값으로 덮어쓰거나("새 유저"로 착각해 빈 진행도 저장) 지급 확인을 하면 안 된다.
+ * 브리지 자체가 없어 바로 실패하는 웹은 정상 폴백이라 reliable=true.
+ */
+export async function storageRead(key: string): Promise<{ value: string | null; reliable: boolean }> {
+  let reliable = true;
   if (!skipTossBridge()) {
     try {
       const { Storage } = await import("@apps-in-toss/web-framework");
       if (Storage?.getItem) {
+        const TIMEOUT = { timeout: true } as const;
         // 응답이 없으면(브리지 없는 WebView) localStorage 로 — 영원히 기다리던 것이 부팅을 막았다
-        const v = await withTimeout(Storage.getItem(key).then((x) => ({ x })), BRIDGE_TIMEOUT_MS * 2, null);
-        if (v) return v.x;
+        const v = await withTimeout<{ x: string | null } | null | typeof TIMEOUT>(Storage.getItem(key).then((x) => ({ x }), () => null), BRIDGE_TIMEOUT_MS * 2, TIMEOUT);
+        if (v === TIMEOUT) reliable = false;
+        else if (v && "x" in v) return { value: v.x, reliable: true };
       }
     } catch {
       // fall through
     }
   }
+  return { value: await storageGetLocal(key), reliable };
+}
+
+async function storageGetLocal(key: string): Promise<string | null> {
   const prefs = await nativePrefs().catch(() => null);
   if (prefs) {
     try {

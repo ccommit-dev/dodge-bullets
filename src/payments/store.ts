@@ -14,15 +14,16 @@
 import { FIRST_DOUBLE_IDS, PATRON, STORE_PRODUCTS } from "../economy/productCatalog";
 import { closeMomentOffer, momentBonusGems } from "../economy/momentOffers";
 import { normalizeSeason } from "../economy/seasonPass";
-import { loadCharacterProgress, QA_BUILD, updateCharacterProgress } from "../progression/storage";
+import { QA_BUILD, readProgressReliably, testModeEnabled, updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress, ShoulderId } from "../progression/model";
 import { paymentEnvironment } from "./environment";
 import { playPurchase } from "./playBilling";
 import { tossPurchase } from "./tossIap";
+import type { PurchaseResult } from "./adapter";
 import { notifyStoreChanged } from "./prices";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
-export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost"] as const;
+export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost", "gate-supply", "gate-fund"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
 /**
@@ -64,7 +65,7 @@ export function paidStoreVisible(): boolean {
 }
 
 /** 상품별 지급 내용 — productCatalog의 contents 문구와 일치해야 한다. allyShards는 출전 1번 동료에게 */
-export type PurchaseGrantSpec = Partial<{ gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean; adFree: boolean }>;
+export type PurchaseGrantSpec = Partial<{ seals: number; skillShards: number; gateFund: boolean; gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean; adFree: boolean }>;
 export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
   switch (productId) {
     case "gems-80": return { gems: 80 };
@@ -84,6 +85,9 @@ export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
     case "pack-rebirth": return { gems: 400, cores: 10, allyShards: 40 };
     case "season-pass": return { seasonPaid: true };
     case "remove-ads": return { adFree: true };
+    // 성문 방어 (2026-10-02)
+    case "gate-supply": return { seals: 30, skillShards: 8, gems: 40 };
+    case "gate-fund": return { gateFund: true };
     default: return null;
   }
 }
@@ -107,7 +111,8 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
   const key = `purchase:${productId}:${transactionId}`;
   const product = STORE_PRODUCTS.find((p) => p.id === productId);
   // 회수된 주문(revoked:)은 다시 지급하지 않는다 — 환불 뒤 복구가 같은 주문을 또 지급하는 일이 없게
-  if (!grant || current.claimedRewards.includes(key) || current.claimedRewards.includes(`revoked:${productId}:${transactionId}`) || (product?.trigger && packagePurchased(current, productId))) {
+  // 트리거 팩 1회 규칙은 판매 화면의 것 — **결제된** 두 번째 주문은 지급한다(돈을 냈는데 못 받고 토스 주문이 영원히 대기하던 것, 리뷰 #5). QA 지급만 막는다
+  if (!grant || current.claimedRewards.includes(key) || current.claimedRewards.includes(`revoked:${productId}:${transactionId}`) || (product?.trigger && transactionId.startsWith("qa-") && packagePurchased(current, productId))) {
     return { progress: current, cores: 0, applied: false, doubled: false, bonus: 0 };
   }
   const doubled = firstDoubleAvailable(current, productId);
@@ -128,7 +133,14 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
     idleBoostUntil: grant.idleBoostHours ? Math.max(now, current.idleBoostUntil) + grant.idleBoostHours * 3600000 : current.idleBoostUntil,
     seasonPass: grant.seasonPaid ? { ...normalizeSeason(current, now), paid: true } : current.seasonPass,
     adFree: grant.adFree ? true : current.adFree,
-    claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : [])],
+    // 스킬 코어는 사냥터 저장 소관 — 여기 쌓아 두면 사냥터가 준비될 때 옮긴다(호출부가 직접 더하지 않는다)
+    pendingSkillCores: current.pendingSkillCores + (grant.cores ?? 0),
+    expeditionSeals: current.expeditionSeals + (grant.seals ?? 0),
+    expeditionShards: grant.skillShards
+      ? (Object.fromEntries(Object.entries(current.expeditionShards).map(([id, n]) => [id, n + (grant.skillShards ?? 0)])) as CharacterProgress["expeditionShards"])
+      : current.expeditionShards,
+    gateFund: grant.gateFund ? { ...current.gateFund, paid: true } : current.gateFund,
+    claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : []), ...(gems > 0 ? [`ledger:${productId}:${transactionId}:${gems}`] : [])],
   };
   const withOffer = closeMomentOffer(progress, productId);
   return { progress: withOffer, cores: grant.cores ?? 0, applied: true, doubled, bonus };
@@ -146,11 +158,30 @@ export function revokePurchase(current: CharacterProgress, productId: string, tr
   const grant = purchaseGrant(productId);
   let next: CharacterProgress = { ...current, claimedRewards: [...rest, `revoked:${productId}:${transactionId}`] };
   if (!stillOwned && grant?.adFree) next = { ...next, adFree: false };
+  // 원정 기금 환불 — 남은 단계만 거둔다(이미 받은 보석은 그대로)
+  if (!stillOwned && grant?.gateFund) next = { ...next, gateFund: { ...next.gateFund, paid: false } };
   if (!stillOwned && grant?.character) {
     const ch = grant.character;
     next = { ...next, ownedCharacters: next.ownedCharacters.filter((c) => c !== ch), activeCharacter: next.activeCharacter === ch ? "default" : next.activeCharacter };
   }
   return { progress: next, revoked: true };
+}
+
+/**
+ * 토스에서 환불된 **소모성** 주문 — 그 주문이 실제로 준 보석(장부 ledger:)만큼 거둔다. 0 아래로는 내리지 않는다.
+ * 장부가 없는 주문(이 기능 이전 지급 · QA 지급)은 건드리지 않는다. 보석 외 구성품(골드·재료·조각)은 거두지 않는다.
+ * 플레이는 소비된 구매의 환불을 기기에서 알 수 없다 — 서버 없이 불가 (docs/PAYMENTS.md)
+ */
+export function revokeConsumable(current: CharacterProgress, productId: string, transactionId: string): { progress: CharacterProgress; revoked: boolean; gems: number } {
+  const key = `purchase:${productId}:${transactionId}`;
+  const revokedKey = `revoked:${productId}:${transactionId}`;
+  if (!current.claimedRewards.includes(key) || current.claimedRewards.includes(revokedKey) || transactionId.startsWith("qa-")) return { progress: current, revoked: false, gems: 0 };
+  const prefix = `ledger:${productId}:${transactionId}:`;
+  const ledger = current.claimedRewards.find((k) => k.startsWith(prefix));
+  if (!ledger) return { progress: current, revoked: false, gems: 0 };
+  const granted = Number(ledger.slice(prefix.length)) || 0;
+  const take = Math.min(granted, current.redGems);
+  return { progress: { ...current, redGems: current.redGems - take, claimedRewards: [...current.claimedRewards, revokedKey] }, revoked: true, gems: take };
 }
 
 /** 검증된 구매 지급 (저장소 경유) */
@@ -169,20 +200,50 @@ export async function grantPurchase(userHash: string, productId: string, transac
  * 보므로 지급이 사라진다 — 그때 durable=false 로 돌려 스토어에 완료를 알리지 않는다(주문이 대기로 남아 복구가 다시 지급).
  */
 export async function grantDurably(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean; bonus: number; durable: boolean }> {
-  const r = await grantPurchase(userHash, productId, transactionId);
-  const saved = await loadCharacterProgress(userHash);
-  return { ...r, durable: saved.claimedRewards.includes(`purchase:${productId}:${transactionId}`) };
+  let r: Awaited<ReturnType<typeof grantPurchase>>;
+  try {
+    r = await grantPurchase(userHash, productId, transactionId);
+  } catch {
+    // 진행도를 믿을 수 있게 읽지 못해 갱신이 멈췄다 — 지급하지 않았으니 미완료
+    return { progress: await (await import("../progression/storage")).loadCharacterProgress(userHash), cores: 0, applied: false, doubled: false, bonus: 0, durable: false };
+  }
+  // 확인 읽기도 진짜 저장소에서만 — 응답이 없어 로컬 사본을 읽으면 "있다"로 착각해 완료를 알렸다 (리뷰 #1)
+  const saved = await readProgressReliably(userHash);
+  return { ...r, durable: !!saved && saved.claimedRewards.includes(`purchase:${productId}:${transactionId}`) };
+}
+
+/**
+ * 화면이 부르는 결제 하나 (2026-10-02) — QA 빌드의 테스트 모드면 무료 테스트 지급, 아니면 스토어.
+ * 테스트 지급 분기는 QA_BUILD 뒤라 출시 번들에서 빠진다(check-release-build). 화면마다 이 분기를 복사하지 않는다
+ */
+export async function purchaseProduct(userHash: string, productId: string): Promise<StoreBuyResult> {
+  if (QA_BUILD && (testModeEnabled() || (import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-pay") === "1"))) {
+    const r = await grantPurchase(userHash, productId, `qa-${Date.now()}`);
+    return { status: r.applied ? "granted" : "duplicate", progress: r.progress, cores: r.cores, bonus: r.bonus };
+  }
+  return buyWithStore(userHash, productId);
 }
 
 export type StoreBuyResult = { status: "granted" | "duplicate" | "pending" | "cancelled" | "unavailable"; progress?: CharacterProgress; cores: number; bonus: number };
+
+let inFlight = 0;
+/** 결제 시트가 떠 있는 중인가 — 복귀 정산(App)이 이때는 쉬어야 실시간 결제가 "이미 지급"을 보지 않는다 */
+export function purchaseInFlight(): boolean { return inFlight > 0; }
 
 /** 실결제 — 환경의 스토어로 결제하고, 저장이 확인된 뒤에만 스토어에 완료를 알린다 */
 export async function buyWithStore(userHash: string, productId: string): Promise<StoreBuyResult> {
   if (!paymentsConfigured() || !purchaseGrant(productId)) return { status: "unavailable", cores: 0, bonus: 0 };
   const box: { r: Awaited<ReturnType<typeof grantDurably>> | null } = { r: null };
   const grant = async (transactionId: string) => { box.r = await grantDurably(userHash, productId, transactionId); return box.r.durable; };
-  const result = paymentEnvironment() === "toss" ? await tossPurchase(productId, grant) : await playPurchase(productId, isConsumableProduct(productId), grant);
-  if (result.status === "verified" && box.r) return { status: box.r.applied ? "granted" : "duplicate", progress: box.r.progress, cores: box.r.cores, bonus: box.r.bonus };
+  inFlight += 1;
+  let result: PurchaseResult;
+  try {
+    result = paymentEnvironment() === "toss" ? await tossPurchase(productId, grant) : await playPurchase(productId, isConsumableProduct(productId), grant);
+  } finally {
+    inFlight -= 1;
+  }
+  // 저장이 확인된 결제는 사용자에게 "구매 완료" — 그 사이 복귀 정산이 먼저 지급했어도(applied=false) 이번 결제의 지급이다
+  if (result.status === "verified" && box.r) return { status: "granted", progress: box.r.progress, cores: box.r.cores, bonus: box.r.bonus };
   if (result.status === "pending") return { status: "pending", cores: 0, bonus: 0 };
   if (result.status === "not-configured") return { status: "unavailable", cores: 0, bonus: 0 };
   return { status: "cancelled", cores: 0, bonus: 0 };

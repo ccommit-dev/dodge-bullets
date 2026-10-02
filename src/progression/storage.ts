@@ -1,6 +1,6 @@
 import { addDailyProgress, rolledDaily } from "../game/expeditionOps";
 import { loadBeatRpg, loadCoins, loadHighScore, saveCoins } from "../game/storage";
-import { storageGet, storageSet } from "../game/toss";
+import { storageRead, storageSet } from "../game/toss";
 import { loadForgeSave } from "../forge/storage";
 import { loadTitansSave } from "../titans/storage";
 import {
@@ -31,8 +31,8 @@ export async function saveCharacterProgress(
  * 예전에는 읽을 때마다 합친 결과를 저장했고(updatedAt 이 늘 바뀌어 매번 썼다), 그 쓰기가 갱신 큐 밖이었다. 그래서 읽기가 큐의 쓰기와
  * 겹치면 읽은 시점의 오래된 진행도가 나중에 저장돼 방금 지급한 결제·보상이 사라질 수 있었다 (2026-10-02 결제 정산 리뷰에서 발견).
  */
-async function readProgress(userHash: string): Promise<{ value: CharacterProgress; changed: boolean }> {
-  const raw = await storageGet(progressionKey(userHash));
+async function readProgress(userHash: string): Promise<{ value: CharacterProgress; changed: boolean; reliable: boolean }> {
+  const { value: raw, reliable } = await storageRead(progressionKey(userHash));
   let base: CharacterProgress;
   let preV5 = true;
   try {
@@ -46,14 +46,27 @@ async function readProgress(userHash: string): Promise<{ value: CharacterProgres
   }
   const value = await mergeLegacyProgress(userHash, base, preV5);
   const same = (a: CharacterProgress, b: CharacterProgress) => JSON.stringify({ ...a, updatedAt: 0 }) === JSON.stringify({ ...b, updatedAt: 0 });
-  return { value, changed: !raw || !same(base, value) };
+  return { value, changed: !raw || !same(base, value), reliable };
+}
+
+/** 진행도를 믿을 수 있게 읽지 못했다 — 덮어쓰지 않으려고 갱신을 멈춘다 (토스 Storage 응답 없음) */
+export class ProgressUnreadableError extends Error {
+  constructor() { super("진행도를 읽지 못했다 — 덮어쓰지 않는다"); this.name = "ProgressUnreadableError"; }
 }
 
 export async function loadCharacterProgress(userHash: string): Promise<CharacterProgress> {
   const r = await readProgress(userHash);
+  // 믿을 수 없는 읽기(토스 Storage 응답 없음)는 화면용으로만 — 저장하지 않는다. 빈 값을 "새 유저"로 저장해 진행도를 지우던 경로 (리뷰 #2)
+  if (!r.reliable) return r.value;
   // 합친 결과가 달라졌을 때만 저장 — 그것도 큐로 (그 안에서 다시 읽어 합치므로 최신 위에 쓴다)
   if (r.changed) return updateCharacterProgress(userHash, (current) => current);
   return r.value;
+}
+
+/** 지급 확인용 — 진짜 저장소에서 읽었을 때만 값을 준다. 응답이 없으면 null (확인 불가 = 미확인) */
+export async function readProgressReliably(userHash: string): Promise<CharacterProgress | null> {
+  const r = await readProgress(userHash);
+  return r.reliable ? r.value : null;
 }
 
 /** 레거시 키를 합친 진행도(메모리) — 저장은 하지 않는다. 저장은 updateCharacterProgress 큐만 */
@@ -169,7 +182,8 @@ export function updateCharacterProgress(
   updater: (current: CharacterProgress) => CharacterProgress,
 ): Promise<CharacterProgress> {
   const run = progressQueue.then(async () => {
-    const { value: current } = await readProgress(userHash);
+    const { value: current, reliable } = await readProgress(userHash);
+    if (!reliable) throw new ProgressUnreadableError();
     const next = updater(current);
     return saveCharacterProgress(userHash, qaGemsEnabled() && next.redGems < QA_GEMS_AMOUNT ? { ...next, redGems: QA_GEMS_AMOUNT } : next);
   });
