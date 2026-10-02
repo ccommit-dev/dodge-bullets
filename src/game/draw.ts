@@ -2,6 +2,7 @@ import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, type Element } from "./skills";
 import { spiritPos } from "./skillShots";
+import { drawWoodArrow } from "./arrowArt";
 import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
@@ -46,6 +47,7 @@ export function preloadStageBackgrounds(): true {
 
 /** 화살 스프라이트 캐시 — dodge/arrows/<element>.png (수평, 촉이 오른쪽) */
 const arrowImgs: Partial<Record<Element, HTMLImageElement>> = {};
+/** 기본(basic) 화살은 arrowArt.drawWoodArrow 가 그린다 — 원화는 속성 화살만 */
 function arrowImg(element: Element): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   if (!arrowImgs[element]) {
@@ -94,17 +96,20 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
       continue;
     }
     const ang = Math.atan2(s.vy, s.vx);
+    // 기본 화살은 활 앞에서 출발한 것처럼 그린다 — 판정 위치와의 차이(drawOx/Oy)를 60px 날아가는 동안 0 으로 줄인다
+    const blend = s.basic ? Math.max(0, 1 - s.dist / 60) : 0;
+    const sx = s.x + s.drawOx * blend, sy = s.y + s.drawOy * blend;
     // 궤적 — 속성색, 날아간 만큼 길어진다(최대 36px)
     const tail = Math.min(36, s.dist * 0.5);
     ctx.strokeStyle = color; ctx.lineWidth = s.element === "earth" ? 4 : 2.5; ctx.lineCap = "round";
     ctx.globalAlpha = s.fade * 0.55;
     ctx.beginPath();
-    ctx.moveTo(s.x - Math.cos(ang) * tail, s.y - Math.sin(ang) * tail);
-    ctx.lineTo(s.x, s.y);
+    ctx.moveTo(sx - Math.cos(ang) * tail, sy - Math.sin(ang) * tail);
+    ctx.lineTo(sx, sy);
     ctx.stroke();
     ctx.globalAlpha = s.fade;
     // 화살 물체
-    ctx.translate(s.x, s.y); ctx.rotate(ang);
+    ctx.translate(sx, sy); ctx.rotate(ang);
     if (s.basic && world.rangedWeapon === "staff") {
       // 지팡이의 기본 사격은 마력탄 — 나무 화살이 지팡이에서 나가면 어색하다 (2026-09-29)
       const r = s.radius > 10 ? 9 : 7;
@@ -114,6 +119,21 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
       g.addColorStop(0, "#f0f9ff"); g.addColorStop(0.5, tint); g.addColorStop(1, "rgba(56,189,248,0)");
       ctx.shadowColor = tint; ctx.shadowBlur = 10;
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      continue;
+    }
+    if (s.basic && s.element === "basic") {
+      // 기본 화살 — 주인공의 활에서 나간 나무 화살 (2026-10-02, 회색 바늘 원화 대신). 지팡이의 마력탄은 위 그대로.
+      // 날아간 거리만큼 밝은 바람 자국이 늘고, 깃이 18px 마다 뒤집혀 도는 것처럼 보인다
+      const streak = Math.min(64, s.dist * 0.7);
+      if (streak > 4) {
+        const g = ctx.createLinearGradient(-streak, 0, 0, 0);
+        g.addColorStop(0, "rgba(254,243,199,0)"); g.addColorStop(1, `rgba(254,243,199,${0.6 * s.fade})`);
+        ctx.strokeStyle = g; ctx.lineWidth = s.radius > 10 ? 4 : 2.6;
+        ctx.beginPath(); ctx.moveTo(-streak, 0); ctx.lineTo(-6, 0); ctx.stroke();
+      }
+      const alen = s.radius > 10 ? 44 : 36;
+      drawWoodArrow(ctx, -alen * 0.6, alen, s.dist / 18);
       ctx.restore();
       continue;
     }

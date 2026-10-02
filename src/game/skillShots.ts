@@ -53,6 +53,9 @@ export type SkillShot = {
   seeker: boolean;
   /** 이동 거리 누적(px) — 궤적 연출 */
   dist: number;
+  /** 그리기 전용 시작 어긋남 — 기본 화살을 활 앞에서 그리고 60px 안에 실제 궤적으로 합친다 (판정·밸런스와 무관, 2026-10-02) */
+  drawOx: number;
+  drawOy: number;
 };
 
 /** 명중 이펙트 — 속성별 색 폭발. 그리기는 draw.ts */
@@ -134,7 +137,7 @@ function shake(world: GameWorld, ms: number, amp: number): void {
 export function makeSkillShots(): SkillShot[] {
   return Array.from({ length: POOL }, () => ({
     active: false, element: "basic" as Element, x: 0, y: 0, vx: 0, vy: 0,
-    radius: 0, lifeMs: 0, fade: 1, hits: 0, power: 0, damage: 1, basic: false, seeker: false, dist: 0,
+    radius: 0, lifeMs: 0, fade: 1, hits: 0, power: 0, damage: 1, basic: false, seeker: false, dist: 0, drawOx: 0, drawOy: 0,
   }));
 }
 
@@ -169,6 +172,8 @@ function spawn(world: GameWorld, s: Partial<SkillShot> & { element: Element }): 
   shot.basic = s.basic ?? false;
   shot.seeker = s.seeker ?? false;
   shot.dist = 0;
+  shot.drawOx = 0;
+  shot.drawOy = 0;
   return shot;
 }
 
@@ -271,11 +276,13 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage
 }
 
 /** 활을 당기는 연출 — player.ts 가 각도와 남은 시간으로 무기를 기울이고 시위를 그린다 */
-function recoil(world: GameWorld, ang: number): void {
+function recoil(world: GameWorld, ang: number, from?: { x: number; y: number }): void {
   world.shotFlashMs = 160;
   world.shotAngle = ang;
   world.sfx.shot += 1;
-  const mx = world.player.x + Math.cos(ang) * 16, my = world.player.y - 14 + Math.sin(ang) * 16;
+  const ox = from ? from.x : world.player.x, oy = from ? from.y : world.player.y - 14;
+  const reach = from ? BOW_REACH + 12 : 16;
+  const mx = ox + Math.cos(ang) * reach, my = oy + Math.sin(ang) * reach;
   for (let i = 0; i < 3; i += 1) {
     const a2 = ang + (vr() - 0.5) * 0.9;
     spark(world, mx, my, Math.cos(a2) * (90 + vr() * 80), Math.sin(a2) * (90 + vr() * 80), 160 + vr() * 80, "#f8fafc", 1.6, 0);
@@ -324,6 +331,16 @@ function freeze(world: GameWorld, a: Arrow, slow: number, chillMs: number): void
   if (a.kind === "homing") a.homingMs = 0;
 }
 
+/**
+ * 활 손 — 주인공이 활을 쥔 자리(바라보는 쪽 가슴 앞). 그리기(player.ts drawHeroBow)가 여기에 활을 쥐고, 기본 화살은 **그림만** 여기 활 앞에서
+ * 출발해 60px 안에 실제 궤적(플레이어 중심 −14 에서 나간 것)에 합쳐진다. 판정 출발점을 활 손으로 옮기면 20px 차이에 주간·곡선 게이트가
+ * 경계에서 흔들려(중간 S4 8 → 6, 주간 첫 S4 7일) 판정은 그대로 두었다 (2026-10-02)
+ */
+export const BOW_HAND_X = 12, BOW_HAND_Y = -34, BOW_REACH = 8;
+export function bowHand(world: GameWorld): { x: number; y: number } {
+  return { x: world.player.x + world.player.facing * BOW_HAND_X, y: world.player.y + BOW_HAND_Y };
+}
+
 /** 매 프레임 — 쿨타임을 돌리고 다 찬 것을 쏜다 */
 export function updateSkillShots(world: GameWorld, dtSec: number): void {
   if (world.primedMs > 0) world.primedMs = Math.max(0, world.primedMs - dtSec * 1000);
@@ -358,17 +375,20 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       if (targets.length) {
         world.basicTimer = basicCooldown(world);
         const evo = world.runMods.evolutions.basic;
+        const hand = bowHand(world);
         for (const t of targets) {
           const ang = aimAt(t, evo === "beam" ? 1000 : evo === "seeker" ? 540 : BASIC_SHOT_SPEED);
           const sp = evo === "beam" ? 1000 : evo === "seeker" ? 540 : BASIC_SHOT_SPEED;
           const conv = world.runMods.convert;
-          spawn(world, {
+          const shot = spawn(world, {
             element: conv ?? "basic", basic: true, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
             radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 1, damage: BASIC_DAMAGE * basicDamageMul(world.basicLevel) * (conv ? 1.2 : 1),
             hits: world.runMods.shotPierce + (evo === "beam" ? 99 : 0), seeker: evo === "seeker",
           });
+          // 그림은 활 앞(화살받침)에서 — 판정 출발점과의 차이는 그리기가 60px 안에 메운다
+          if (shot) { shot.drawOx = hand.x + Math.cos(ang) * BOW_REACH - shot.x; shot.drawOy = hand.y + Math.sin(ang) * BOW_REACH - shot.y; }
         }
-        recoil(world, aimAt(targets[0]));
+        recoil(world, aimAt(targets[0]), hand);
       } else {
         world.basicTimer = 0.1;   // 표적이 없으면 곧 다시 본다
       }

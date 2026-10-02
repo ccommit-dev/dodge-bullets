@@ -1,6 +1,7 @@
 import type { GameWorld, Player } from "./types";
 import { assetUrl } from "../asset";
-import { basicCooldown as basicCooldownOf } from "./skillShots";
+import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
+import { drawRecurveBow } from "./arrowArt";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -35,16 +36,27 @@ function getWeaponAttackSheet(id: string): HTMLImageElement | null {
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
-/** 장착한 원거리 무기 — 주인공 스프라이트는 그대로 두고 손 위치에 겹쳐 그린다 (2026-09-28) */
-const rangedWeaponImgs: Record<string, HTMLImageElement | null> = {};
-function getRangedWeapon(id: string): HTMLImageElement | null {
-  if (typeof Image === "undefined" || id === "none") return null;
-  if (!rangedWeaponImgs[id]) {
-    const img = new Image();
-    img.src = assetUrl(`dodge/weapons/${id}.png`);
-    rangedWeaponImgs[id] = img;
-  }
-  return rangedWeaponImgs[id];
+/**
+ * 주인공의 활 — 장착 무기와 무관하게 **늘 활**을 든다(장착 무기는 곁의 정령, draw.ts drawWeaponSpirit).
+ * 2026-10-02 (사용자: "기본 활 모델이 볼품없음 · 기본 화살 애니메이션이 없음"): 0.44배 원화가 몸 한가운데 겹쳐 흰 선만 보였다 →
+ * 바라보는 쪽 어깨 앞(bowHand)에 캔버스 리커브 활을 쥐고 가장 가까운 몬스터 쪽(world.aimAngle)으로 겨눈다.
+ * 기본 사격 재사용(basicCooldownOf(world))이 차는 동안 시위를 당기며 메긴 화살이 보이고, 다 당기면 촉이 빛나고,
+ * 쏘는 순간(shotFlashMs) 시위가 튕겨 떨리고 활이 반동하며 앞에서 번쩍인다. 기본 화살은 이 활 앞에서 나간다
+ */
+function drawHeroBow(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player): void {
+  const hand = bowHand(world);
+  const L = p.radius * 2.5;   // ≈ 40px — 주인공(75px)의 절반 남짓, 가슴 높이
+  const release = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
+  const cd = Math.max(0.01, basicCooldownOf(world));
+  const charge = Math.min(1, 1 - Math.max(0, world.basicTimer) / cd);
+  const pull = release > 0 ? 0 : Math.max(0, Math.min(1, charge * 1.15));
+  ctx.save();
+  ctx.translate(hand.x, hand.y);
+  ctx.rotate(world.aimAngle);
+  ctx.translate(-5 * release, 0);   // 반동
+  if (p.anim === "hit") ctx.globalAlpha = 0.75;
+  drawRecurveBow(ctx, L, pull, release, release <= 0 && pull >= 1);
+  ctx.restore();
 }
 
 export function createPlayer(width: number, floorY: number): Player {
@@ -187,33 +199,8 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
-    // 주인공의 활 (2026-10-01, 아웃로 디펜스 차용) — 장착 무기와 무관하게 **늘 활**을 든다. 가장 가까운 화살 쪽(world.aimAngle)으로
-    // 겨누고, 기본 사격 재사용이 차는 동안 시위를 당겼다가 쏘는 순간 놓는다. 장착 무기는 곁의 정령(draw.ts drawWeaponSpirit)이다.
-    const bow = getRangedWeapon("bow");
-    if (bow?.complete && bow.naturalWidth > 0 && p.anim !== "dead") {
-      const wh = drawHeight * 0.44;
-      const ww = wh * (bow.naturalWidth / bow.naturalHeight);
-      const k = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
-      // 조준 각 — 스프라이트는 facing 으로 뒤집혀 있으므로 x 성분에 facing 을 곱한다. 활 원화는 세로(시위가 왼쪽)라 +90° 가 '앞'
-      const a = Math.atan2(Math.sin(world.aimAngle), Math.cos(world.aimAngle) * p.facing);
-      const cd = Math.max(0.01, basicCooldownOf(world));
-      const pull = k > 0 ? 0.15 * k : Math.min(1, 1 - Math.max(0, world.basicTimer) / cd) * 0.5;   // 당김 0~0.5 → 놓는 순간 0.15에서 풀린다
-      ctx.save();
-      ctx.translate(drawWidth * 0.22, -drawHeight * 0.52);
-      ctx.rotate(a + Math.PI / 2);
-      ctx.translate(0, -3 * k);                                   // 쏘는 순간 반동
-      ctx.drawImage(bow, -ww / 2, -wh / 2, ww, wh);
-      // 시위 — 당긴 만큼 뒤로(활 그림의 왼쪽이 시위 쪽)
-      ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(-ww * 0.1, -wh * 0.42); ctx.lineTo(-ww * 0.1 - ww * pull, 0); ctx.lineTo(-ww * 0.1, wh * 0.42); ctx.stroke();
-      if (k === 0 && pull > 0.08) {
-        // 메긴 화살
-        ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(-ww * 0.1 - ww * pull, 0); ctx.lineTo(ww * 0.55, 0); ctx.stroke();
-      }
-      ctx.restore();
-    }
         ctx.restore();
+    if (p.anim !== "dead") drawHeroBow(ctx, world, p);
 
     if (p.landingFxMs > 0) {
       const progress = 1 - p.landingFxMs / 180;
