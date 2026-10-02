@@ -135,13 +135,22 @@ export function qaGemsEnabled(): boolean {
 }
 export const QA_GEMS_AMOUNT = 999_999;
 
-export async function updateCharacterProgress(
+/**
+ * 진행도 갱신은 **한 줄로 세운다** (2026-10-02) — 읽고·고치고·쓰기 사이에 다른 갱신이 끼면 한쪽이 지워진다.
+ * 부팅 결제 복구와 실시간 구매 지급이 동시에 돌 수 있게 되면서 필요해졌다
+ */
+let progressQueue: Promise<unknown> = Promise.resolve();
+export function updateCharacterProgress(
   userHash: string,
   updater: (current: CharacterProgress) => CharacterProgress,
 ): Promise<CharacterProgress> {
-  const current = await loadCharacterProgress(userHash);
-  const next = updater(current);
-  return saveCharacterProgress(userHash, qaGemsEnabled() && next.redGems < QA_GEMS_AMOUNT ? { ...next, redGems: QA_GEMS_AMOUNT } : next);
+  const run = progressQueue.then(async () => {
+    const current = await loadCharacterProgress(userHash);
+    const next = updater(current);
+    return saveCharacterProgress(userHash, qaGemsEnabled() && next.redGems < QA_GEMS_AMOUNT ? { ...next, redGems: QA_GEMS_AMOUNT } : next);
+  });
+  progressQueue = run.catch(() => undefined);
+  return run;
 }
 
 export async function grantCharacterReward(

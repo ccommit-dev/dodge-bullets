@@ -28,6 +28,65 @@ type AdMobPlugin = {
   showRewardVideoAd(): Promise<{ type?: string; amount?: number } | void>;
 };
 
+/**
+ * 토스 미니앱 보상형 광고 (2026-10-02) — @apps-in-toss/web-framework 의 GoogleAdMob (load → show, userEarnedReward 로 보상).
+ * 광고 그룹 ID 는 앱인토스 콘솔에서 발급받아 VITE_TOSS_AD_GROUP_ID 로 넣는다. 비어 있으면 웹·안드로이드와 똑같이 자리를 숨긴다.
+ * 부팅 때 primeRewardedAds() 가 모듈을 미리 불러 isSupported 를 확인해 둔다 — adsConfigured() 는 동기 함수라 거기서 SDK 를 기다릴 수 없다.
+ */
+const TOSS_AD_GROUP_ID = import.meta.env.VITE_TOSS_AD_GROUP_ID?.trim() ?? "";
+type TossAdEvent = { type: string };
+type TossAdCall = ((a: { options?: { adGroupId: string }; onEvent: (e: TossAdEvent) => void; onError: (e: unknown) => void }) => () => void) & { isSupported: () => boolean };
+type TossAdMob = { loadAppsInTossAdMob: TossAdCall; showAppsInTossAdMob: TossAdCall };
+let tossAds: { admob: TossAdMob } | null = null;
+export async function primeRewardedAds(env: "toss" | "android" | "web"): Promise<void> {
+  if (env !== "toss" || !TOSS_AD_GROUP_ID) return;
+  try {
+    const mod = (await import("@apps-in-toss/web-framework")) as unknown as { GoogleAdMob?: TossAdMob };
+    const g = mod.GoogleAdMob;
+    if (g?.loadAppsInTossAdMob?.isSupported?.() === true && g.showAppsInTossAdMob?.isSupported?.() === true) tossAds = { admob: g };
+  } catch {
+    tossAds = null;
+  }
+}
+function showTossRewarded(admob: TossAdMob): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    let earned = false;
+    let stopLoad: (() => void) | undefined;
+    let stopShow: (() => void) | undefined;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      try { stopLoad?.(); stopShow?.(); } catch { /* ignore */ }
+      resolve(ok);
+    };
+    // 광고가 안 불러와지면 버튼이 영원히 눌린 채가 되지 않게
+    const timer = window.setTimeout(() => done(false), 15_000);
+    try {
+      stopLoad = admob.loadAppsInTossAdMob({
+        options: { adGroupId: TOSS_AD_GROUP_ID },
+        onEvent: (e) => {
+          if (e.type !== "loaded" || stopShow) return;
+          window.clearTimeout(timer);
+          stopShow = admob.showAppsInTossAdMob({
+            options: { adGroupId: TOSS_AD_GROUP_ID },
+            onEvent: (s) => {
+              if (s.type === "userEarnedReward") earned = true;
+              else if (s.type === "dismissed") done(earned);
+              else if (s.type === "failedToShow") done(false);
+            },
+            onError: () => done(false),
+          });
+        },
+        onError: () => done(false),
+      });
+    } catch {
+      done(false);
+    }
+  });
+}
+
 function adMob(): AdMobPlugin | null {
   try {
     const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } }).Capacitor;
@@ -48,7 +107,7 @@ function qaStub(): boolean {
 
 /** 광고를 실제로 재생할 수 있는가 */
 export function adsConfigured(): boolean {
-  return qaStub() || (isNativePlatform() && adMob() !== null);
+  return qaStub() || tossAds !== null || (isNativePlatform() && adMob() !== null);
 }
 
 /** 오늘 기준 카운터 — 날짜가 바뀌면 0 */
@@ -72,6 +131,7 @@ export async function showRewarded(placement: AdPlacement): Promise<boolean> {
     await new Promise((r) => setTimeout(r, 300));
     return true;
   }
+  if (tossAds) return showTossRewarded(tossAds.admob);
   const plugin = adMob();
   if (!plugin) return false;
   try {

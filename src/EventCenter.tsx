@@ -21,7 +21,8 @@ type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge" | "season"
 import { MISSION_ALL_DONE_GEMS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 import { SEASON, addSeasonXp, claimSeasonTier, claimableTiers, freeReward, normalizeSeason, paidGemTotal, paidReward, rewardLabel, seasonDaysLeft, seasonTier } from "./economy/seasonPass";
-import { getPaymentAdapter, grantPurchase, paymentsConfigured } from "./payments/store";
+import { buyWithStore, grantPurchase, paidStoreVisible, paymentsConfigured } from "./payments/store";
+import { priceLabel, productOnSale } from "./payments/prices";
 import { saveTitansSave } from "./titans/storage";
 
 /**
@@ -205,14 +206,14 @@ export function EventCenter({
     onUpdated(next);
   };
   const buySeasonPass = async () => {
+    if (import.meta.env.DEV || testModeEnabled()) { onUpdated((await grantPurchase(userHash, SEASON.productId, `qa-${Date.now()}`)).progress); return; }
     if (paymentsConfigured()) {
-      const result = await getPaymentAdapter().purchase(SEASON.productId);
-      if (result.status !== "verified") return;
-      onUpdated((await grantPurchase(userHash, SEASON.productId, result.transactionId)).progress);
+      const result = await buyWithStore(userHash, SEASON.productId);
+      if (result.status === "pending") { setRiftMessage("결제 확인 중입니다 — 확인되면 앱을 다시 열 때 자동으로 지급됩니다"); return; }
+      if ((result.status === "granted" || result.status === "duplicate") && result.progress) onUpdated(result.progress);
       return;
     }
-    if (import.meta.env.DEV || testModeEnabled()) { onUpdated((await grantPurchase(userHash, SEASON.productId, `qa-${Date.now()}`)).progress); return; }
-    setRiftMessage("스토어 결제 연동 전입니다 — Google Play 등록 후 구매할 수 있습니다");
+    setRiftMessage("이 환경에서는 결제할 수 없습니다 — 토스 앱 또는 안드로이드 앱에서 구매해 주세요");
   };
 
   const claimJournal = async (entryId: string) => {
@@ -475,8 +476,8 @@ export function EventCenter({
                   <i className="season-xp"><em style={{ width: `${Math.min(100, ((sp.xp % SEASON.xpPerTier) / SEASON.xpPerTier) * 100)}%` }} /></i>
                   <span>다음 단까지 {SEASON.xpPerTier - (sp.xp % SEASON.xpPerTier)} XP · 루틴 {SEASON.xp.routine} · 토벌 완주 {SEASON.xp.missionsAll} · 주간 도전 {SEASON.xp.weeklyChallenge} · 균열 {SEASON.xp.rift}</span>
                 </div>
-                {sp.paid ? <span className="season-paid-badge">유료 트랙 활성</span> : (
-                  <button type="button" className="cta season-buy" onClick={() => void buySeasonPass()}>유료 트랙 {SEASON.paidPriceLabel}<small>보석 {paidGemTotal(sp.season)} · 조각 선택 3 · 시즌 스킨 · 무기 이펙트</small><span className="season-perks"><RewardIcon kind="gems" size={18} /><RewardIcon kind="shards" size={18} /><RewardIcon kind="allySkin" size={18} /><RewardIcon kind="weaponFx" size={18} /></span></button>
+                {sp.paid ? <span className="season-paid-badge">유료 트랙 활성</span> : !(paidStoreVisible() && productOnSale(SEASON.productId)) ? <span className="season-paid-badge">유료 트랙은 토스 앱·안드로이드 앱에서</span> : (
+                  <button type="button" className="cta season-buy" onClick={() => void buySeasonPass()}>유료 트랙 {priceLabel({ id: SEASON.productId, displayPrice: SEASON.paidPriceLabel })}<small>보석 {paidGemTotal(sp.season)} · 조각 선택 3 · 시즌 스킨 · 무기 이펙트</small><span className="season-perks"><RewardIcon kind="gems" size={18} /><RewardIcon kind="shards" size={18} /><RewardIcon kind="allySkin" size={18} /><RewardIcon kind="weaponFx" size={18} /></span></button>
                 )}
               </header>
               {(freeOpen.length > 0 || paidOpen.length > 0) && (

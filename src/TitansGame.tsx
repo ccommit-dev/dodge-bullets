@@ -109,7 +109,8 @@ import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
-import { firstDoubleAvailable, getPaymentAdapter, grantPurchase, packagePurchased, paymentsConfigured } from "./payments/store";
+import { buyWithStore, firstDoubleAvailable, grantPurchase, packagePurchased, paidStoreVisible, paymentsConfigured } from "./payments/store";
+import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
@@ -194,7 +195,7 @@ function shoulderTrainingMaterials(level: number): { expedition: number; beat: n
 
 /**
  * 무료 지급 게이트 (과금 점검): ₩ 상품 6종을 무료로 1회씩 주던 QA 경로는 개발 빌드 또는
- * `dodgebullets:qa-free-store` 플래그에서만 열린다. 배포 빌드에서는 결제 연동 전까지 가격만 보인다.
+ * `dodgebullets:qa-free-store` 플래그에서만 열린다(QA 빌드 한정). 출시 빌드에서는 토스·플레이 결제로만 팔고, 결제가 안 되는 웹에서는 유료 상품을 숨긴다.
  */
 const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
@@ -235,6 +236,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
+  // 스토어 가격을 받으면 다시 그린다 (payments/prices)
+  const [, setPriceTick] = useState(0);
+  useEffect(() => { const off = onStorePricesChanged(() => setPriceTick((t) => t + 1)); return () => { off(); }; }, []);
   // 지갑 숫자는 굴러간다 — 뚝 바뀌면 웹 같다 (2026-10-01)
   const goldShown = useTween(save.gold);
   const gemsShown = useTween(redGems);
@@ -637,6 +641,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(""), 1400);
   };
+
+  // 부팅 스토어 정산(App → payments/reconcile)이 지급·회수했으면 화면과 스킬 코어를 맞춘다
+  useEffect(() => {
+    const onReconciled = (e: Event) => {
+      const d = (e as CustomEvent<{ granted: number; revoked: number; cores: number; handled: boolean }>).detail;
+      if (!d) return;
+      d.handled = true;
+      if (d.cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + d.cores } }));
+      void loadCharacterProgress(userHash).then((next) => { setCharacter(next); setRedGems(next.redGems); });
+      setToast(d.granted ? `결제 ${d.granted}건을 지급했습니다` : `환불된 구매 ${d.revoked}건을 회수했습니다`);
+      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(""), 2400);
+    };
+    window.addEventListener("dodgebullets:store-reconciled", onReconciled);
+    return () => window.removeEventListener("dodgebullets:store-reconciled", onReconciled);
+  }, [userHash]);
 
   const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number) => {
     const id = ++fxId.current;
@@ -1770,7 +1790,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   /** 실결제(₩) — 어댑터가 검증한 구매만 지급. 미연동 환경에서는 안내 토스트만 */
   const buyPaidProduct = async (productId: string) => {
     if (claimingProduct) return;
-    const adapter = getPaymentAdapter();
     if ((import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-pay") === "1") || testModeEnabled()) {
       // QA 스텁: 스토어 없이 지급 경로만 검증 (verify-offers.mjs) — 테스트 모드(빌드 라벨 7탭)에서도 ₩ 상품을 바로 지급해 전 상품을 눌러볼 수 있다
       const { progress, cores, applied, bonus } = await grantPurchase(userHash, productId, `qa-${Date.now()}`);
@@ -1782,18 +1801,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       return;
     }
     if (!paymentsConfigured()) {
-      flash("스토어 결제 연동 전입니다 — Google Play 등록 후 구매할 수 있습니다");
+      flash("이 환경에서는 결제할 수 없습니다 — 토스 앱 또는 안드로이드 앱에서 구매해 주세요");
       return;
     }
     setClaimingProduct(productId);
     try {
-      const result = await adapter.purchase(productId);
-      if (result.status !== "verified") {
-        if (result.status === "not-configured") flash("결제를 사용할 수 없는 환경입니다");
-        return;
-      }
-      const { progress, cores, applied, bonus } = await grantPurchase(userHash, productId, result.transactionId);
-      if (!applied) { flash("이미 지급된 구매입니다"); return; }
+      const result = await buyWithStore(userHash, productId);
+      if (result.status === "pending") { flash("결제 확인 중입니다 — 확인되면 앱을 다시 열 때 자동으로 지급됩니다"); return; }
+      if (result.status === "unavailable") { flash("이 환경에서는 결제할 수 없습니다"); return; }
+      if (result.status === "cancelled" || !result.progress) return;
+      if (result.status === "duplicate") { flash("이미 지급된 구매입니다"); return; }
+      const { progress, cores, bonus } = result;
       setCharacter(progress);
       setRedGems(progress.redGems);
       if (cores > 0) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + cores } }));
@@ -2094,16 +2112,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           const offer = activeMomentOffers(character, nowTick).find((o) => !dismissedOffers.includes(o.productId));
           if (!offer) return null;
           const def = MOMENT_OFFERS[offer.kind as MomentOfferKind];
-          const product = STORE_PRODUCTS.find((p) => p.id === offer.productId);
+          const product = STORE_PRODUCTS.find((p) => p.id === offer.productId && paidStoreVisible() && productOnSale(p.id));
           if (!def || !product) return null;
           const doubleReady = firstDoubleAvailable(character, product.id);
           return (
             <div className={`moment-offer kind-${offer.kind}`} role="dialog" data-product={product.id} onPointerDown={(e) => e.stopPropagation()}>
-              <div className="moment-head">{def.title} <small>{product.displayPrice}</small>{doubleReady && <small>첫 구매 2배</small>}</div>
+              <div className="moment-head">{def.title} <small>{priceLabel(product)}</small>{doubleReady && <small>첫 구매 2배</small>}</div>
               <span className="moment-timer">{momentTimeLeft(offer.until, nowTick)}</span>
               <div className="moment-sub">{def.subtitle} · 지금 사면 보석 +{offer.bonusGems}</div>
               <div className="moment-actions">
-                <button type="button" className="moment-buy" disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{product.name}<em>{product.displayPrice}</em></button>
+                <button type="button" className="moment-buy" disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{product.name}<em>{priceLabel(product)}</em></button>
                 <button type="button" className="moment-later" onClick={() => setDismissedOffers((d) => [...d, product.id])}>나중에</button>
               </div>
             </div>
@@ -3027,7 +3045,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         {tab === "premium" && premiumCategory === "package" && !paidProductsUnlocked && (
           <p className="paid-gate-note">모험가 세트·캐릭터·월정액 상품은 출석 3일차(또는 Lv.20)부터 열립니다 — 먼저 성장 구조를 충분히 경험해 보세요.</p>
         )}
-        {tab === "premium" && premiumCategory === "package" && STORE_PRODUCTS.filter((product) => product.visible).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id))).map((product) => {
+        {tab === "premium" && premiumCategory === "package" && !paidStoreVisible() && (
+          <p className="paid-gate-note">유료 상품은 토스 앱과 안드로이드 앱에서 구매할 수 있습니다.</p>
+        )}
+        {tab === "premium" && premiumCategory === "package" && paidStoreVisible() && STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id))).map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
           const doubleReady = firstDoubleAvailable(character, product.id);
           // 실결제 전용 상품(캐릭터·월정액)은 무료 체험 지급 대상이 아니다 — Play Billing 연동 후 판매
@@ -3036,7 +3057,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
-            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : QA_BUILD && testModeEnabled() ? "테스트 구매 (즉시 지급)" : "스토어 결제 연동 후 판매됩니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : product.displayPrice}</button>
+            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : QA_BUILD && testModeEnabled() ? "테스트 구매 (즉시 지급)" : "토스 앱·안드로이드 앱에서 구매할 수 있습니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : priceLabel(product)}</button>
           ) : (
             <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회 (QA)"}</button>
           )}
@@ -3209,7 +3230,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           onClaimDouble={() => void watchAd("idleDouble", () => claimIdle(undefined, 2))}
           patronOption={(() => {
             const pv = patronPreview(character, idleReport.result.seconds + idleReport.result.wastedSeconds, idleReport.result.wastedSeconds, idleReport.result.gold, idleReport.result.seconds);
-            return pv ? { ...pv, price: STORE_PRODUCTS.find((p) => p.id === "patron-30d")?.displayPrice ?? "₩5,500", busy: claimingProduct !== null } : null;
+            return pv ? { ...pv, price: (() => { const p = STORE_PRODUCTS.find((x) => x.id === "patron-30d"); return p ? priceLabel(p) : "₩5,500"; })(), busy: claimingProduct !== null } : null;
           })()}
           onBuyPatron={() => void buyPaidProduct("patron-30d")}
         />

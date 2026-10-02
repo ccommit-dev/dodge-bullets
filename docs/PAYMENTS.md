@@ -1,43 +1,63 @@
-# 결제 연동 (Google Play Billing)
+# 결제 연동 — 토스 · 안드로이드 · 웹 (2026-10-02, 서버 없는 최소안)
 
-코드 쪽은 준비돼 있다. 아래 3단계만 하면 `₩` 상품이 실제로 팔린다.
+세 환경이 **같은 상품 목록 · 같은 지급 규칙 · 같은 중복 방지**를 쓰고, 결제 연결만 환경마다 다르다. 환경은 부팅 때 한 번 정한다(`payments/environment`).
 
-## 코드 구조 (이미 구현)
+| 환경 | 결제 | 지급 전에 죽은 구매 복구 | 재설치 복원 · 환불 회수 | 가격 | 광고 |
+|---|---|---|---|---|---|
+| 토스 미니앱 | 토스 인앱결제 `IAP.createOneTimePurchaseOrder` | `getPendingOrders` → 지급 → `completeProductGrant` | `getCompletedOrRefundedOrders` (페이지 끝까지) | `getProductItemList` | 토스 AdMob (`VITE_TOSS_AD_GROUP_ID`) |
+| 안드로이드 | Play Billing `@capgo/native-purchases` | 소유 구매 조회 → 지급 → 소비·승인 | 소유 구매 조회 (환불되면 목록에서 사라짐) | `getProducts` | 없음 (AdMob 미설치) |
+| 웹 | 판매 없음 — 출시 빌드에서 유료 상품 숨김 | — | — | — | 없음 |
 
-| 파일 | 역할 |
-|---|---|
-| `src/payments/adapter.ts` | `PaymentAdapter` 인터페이스, not-configured 어댑터 |
-| `src/payments/store.ts` | Google Play 어댑터(런타임에 `Capacitor.Plugins.NativePurchases` 탐지), `grantPurchase()` 지급, 영수증 검증 자리 |
-| `src/economy/productCatalog.ts` | 상품 카탈로그(₩ 표시가·설명) + `PATRON`·`CHARACTER_PASSIVE` 효과 상수 |
-| `src/TitansGame.tsx` `buyPaidProduct` | 버튼 → 어댑터 → 검증 → 지급 → 토스트. 미연동이면 안내 토스트만 |
+## 지급 순서 — 돈은 나갔는데 상품이 없는 일을 막는다
 
-지급 규칙은 `purchaseGrant()`에 있고 카탈로그의 `contents` 문구와 1:1이다. 같은 transactionId는 `claimedRewards`에 기록돼 두 번 지급되지 않는다. 후원 계약은 남은 기간 위에 30일이 이어 붙는다.
+- **저장이 확인된 뒤에만 스토어에 "완료"를 알린다.** `grantDurably` 가 지급하고 저장을 다시 읽어 지급 기록이 있는지 본다.
+  - 토스: `processProductGrant` 가 그 결과를 돌려준다. false 면 주문이 대기로 남고 다음 실행의 복구가 다시 지급한다.
+  - 플레이: `autoAcknowledgePurchases:false · isConsumable:false` 로 사고, 저장 확인 뒤 소모성은 `consumePurchase`(승인 포함), 영구 상품은 `acknowledgePurchase`. **3일 안에 승인하지 않으면 구글이 자동 환불**한다 — 그 전에 복구가 다시 한다.
+  - 토스 Storage 쓰기가 타임아웃으로 localStorage 에 떨어지면 다음 읽기는 토스 Storage 를 본다. 그래서 읽어서 확인하고, 없으면 완료로 알리지 않는다.
+- **같은 구매는 한 번만.** 지급 기록 키는 `purchase:<상품>:<주문 번호>` — 토스는 orderId, 플레이는 transactionId(GPA.…). 실시간 결제와 복구가 같은 값을 쓴다.
+- **진행도 갱신은 한 줄로**(`updateCharacterProgress` 큐) — 부팅 복구와 실시간 결제가 겹쳐도 서로 지우지 않는다.
+- **대기 중 결제**(플레이 purchaseState ≠ 1, 토스 PAYMENT_PENDING)는 지급하지 않는다. 화면은 "결제 확인 중 — 다시 열면 지급".
 
-## 1. 플러그인 설치
+## 부팅 정산 (`payments/reconcile`) — 부팅을 막지 않고 뒤에서
 
-```bash
-npm install @capgo/native-purchases
-npx cap sync
-```
+1. 가격 — 스토어 목록의 가격을 표시하고(`priceLabel`), **목록에 없는 상품은 팔지 않는다**(`productOnSale`). 목록을 못 받으면 카탈로그 ₩ 를 자리값으로.
+2. 복구 — 지급 전에 죽은 구매.
+3. 복원 — **영구 상품만**: 광고 제거 · 캐릭터 4종. 소모성은 복원하지 않는다(재설치마다 보석이 생기면 안 된다).
+4. 회수 — 환불된 영구 상품: 광고 제거 해제, 캐릭터 제거(쓰던 중이면 기본 캐릭터로). 회수한 주문(`revoked:`)은 다시 지급하지 않는다.
+   - 조회가 실패 · 타임아웃 · 구버전(undefined) · 페이지 일부 실패면 **아무것도 회수하지 않는다**. QA 지급(`qa-…`)은 건드리지 않는다.
+   - 플레이는 환불을 직접 알려 주지 않는다 — 성공한 소유 목록에서 사라진 영구 상품을 환불로 본다.
 
-플러그인이 주입되면 `paymentsConfigured()`가 true가 되고 버튼이 결제로 동작한다. 패키지가 없어도 빌드는 깨지지 않는다(런타임 탐지).
+**최소안의 한계** (서버가 생기면 풀린다): 소모성(보석 · 패키지 · 시즌 패스) 환불은 알 수 없고 거둘 수 없다. 영수증은 스토어 SDK 결과를 믿는다(서버 검증 없음). 저장은 기기 로컬이라 재설치하면 소모성 재화는 사라진다 — 세이브 백업이 유일한 이전 수단.
 
-## 2. Play Console 상품 등록
+## 상품 등록 — 플레이 콘솔 · 앱인토스 콘솔 · `PLAY_PRODUCT_IDS` 세 곳이 같은 ID
 
-`src/payments/store.ts`의 `PLAY_PRODUCT_IDS`와 **같은 id**로 인앱 상품(일회성)을 만든다.
+`scripts/verify-payments.mjs` 가 카탈로그와 `PLAY_PRODUCT_IDS` 가 양방향으로 같은지 확인한다. 콘솔 쪽은 사람이 맞춘다.
 
-| 상품 id | 표시가 | 유형 |
-|---|---|---|
-| gems-80 / gems-450 / gems-1200 | ₩1,500 / ₩7,500 / ₩15,000 | 소모성 |
-| adventurer-starter / mid / advanced | ₩3,900 / ₩12,000 / ₩29,000 | 소모성(1회 배지는 앱이 관리) |
-| char-obsidian / char-dawn | ₩5,900 | 비소모성 |
-| patron-30d | ₩5,500 | 소모성(30일 연장) — 정기결제로 바꾸려면 `productType: "subs"`로 변경 |
+| 상품 ID | 이름 | 카탈로그 가격 | 유형 |
+|---|---|---|---|
+| gems-80 / gems-450 / gems-1200 | 붉은 보석 | ₩1,500 / ₩7,500 / ₩15,000 | 소모성 |
+| adventurer-starter / -mid / -advanced | 모험가 세트 | ₩3,900 / ₩12,000 / ₩29,000 | 소모성 (1회 배지는 앱이 관리) |
+| pack-pioneer / pack-wall / pack-rebirth | 순간 제안 패키지 | ₩3,900 / ₩5,900 / ₩12,000 | 소모성 (상품당 1회는 앱이 관리) |
+| patron-30d | 원정 후원 계약 30일 | ₩5,500 | 소모성 (30일 연장) |
+| season-pass | 시즌 패스 | ₩7,900 | **소모성** — 시즌마다 다시 산다 |
+| remove-ads | 광고 제거 | ₩3,900 | **비소모성 (영구)** |
+| char-obsidian / char-dawn / char-ember / char-frost | 캐릭터 · 코스튬 | ₩5,900 | **비소모성 (영구)** |
 
-라이선스 테스트 계정을 등록하면 실제 과금 없이 구매 흐름을 검증할 수 있다.
+화면 가격은 콘솔 가격을 따라간다. 카탈로그 ₩ 는 목록을 받기 전의 자리값이니, 콘솔 가격을 바꾸면 카탈로그도 맞춰 두면 깔끔하다.
 
-## 3. 영수증 검증
+## 출시 빌드와 QA 빌드
 
-현재 `verifyReceipt()`는 플러그인이 돌려준 transactionId를 신뢰한다(로컬). 서버 검증(Google Play Developer API `purchases.products.get`)을 붙일 때는 이 함수만 교체한다. 서버 검증을 도입하면 개인정보 처리방침의 "수집 없음" 문구를 재작성해야 한다(LIVEOPS §3.5).
+- **QA 빌드** = `npm run dev` · CI 디버그 APK(`native:sync:qa`) · GitHub Pages(`build:pages`). 테스트 모드 · 무료 테스트 구매 · 보석 무제한이 열린다.
+- **출시 빌드** = 플레이 AAB(CI release 잡) · `ait build`. `VITE_QA_BUILD` 가 없어 우회가 번들에서 빠진다. `scripts/check-release-build.mjs` 가 매 푸시(check.yml)와 출시 잡에서 확인한다.
+- 실결제 검증은 **플레이 내부 테스트 트랙 + 라이선스 테스터**, **토스 샌드박스 앱**에서만 된다. 로직은 `node scripts/verify-payments.mjs` 가 가짜 스토어로 확인한다(복구 1회 · 재실행 0회 · 저장 뒤 소비 · 환불 회수 · 실패 시 회수 없음 · 페이지네이션).
+
+## 사람이 해야 하는 것 (계정이 필요)
+
+1. **플레이 콘솔**: 위 ID 로 인앱 상품 등록 · 라이선스 테스터 계정 · 내부 테스트 트랙. 데이터 보안 양식에 "구매 내역(앱 기능)" 기재.
+2. **앱인토스 콘솔**: 같은 ID 로 인앱결제 상품 등록 · (광고를 켤 때) 광고 그룹 ID 발급 → `VITE_TOSS_AD_GROUP_ID`. 토스 앱 5.233.0 이상에서 동작.
+3. **출시 서명**: 업로드 키스토어를 만들고 GitHub Secrets `KEYSTORE_BASE64 · KEYSTORE_PASSWORD · KEY_ALIAS · KEY_PASSWORD` 등록 → CI release 잡이 AAB 를 만든다. 플레이 앱 서명 등록. 출시마다 `npm version patch`(versionCode 는 package.json 버전에서 계산).
+4. **안드로이드 광고**를 켤 때: `@capacitor-community/admob` 설치 · 매니페스트에 `com.google.android.gms.ads.APPLICATION_ID`(**없으면 실행 직후 종료**) · 실제 광고 단위 ID · 개인정보 처리방침과 데이터 보안 양식에 광고 ID 수집 기재.
+5. **크래시 리포팅**: Firebase Crashlytics 나 Sentry 프로젝트가 필요하다. 붙이면 개인정보 처리방침을 함께 고친다.
 
 ## 확률형 고지
 

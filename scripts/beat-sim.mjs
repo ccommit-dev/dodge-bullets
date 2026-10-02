@@ -16,7 +16,7 @@ const dir = mkdtempSync(join(tmpdir(), "beatsim-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, [`export * as tracks from "${root}/src/beat/tracks";`, `export * as world from "${root}/src/beat/world";`, `export * as rpg from "${root}/src/beat/rpg";`].join("\n"));
 const out = join(dir, "bundle.mjs");
-await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.PROD": "true" } });
+await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };

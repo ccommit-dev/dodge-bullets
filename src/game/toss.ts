@@ -22,7 +22,7 @@ const MOCK_HASH = "mock-local-dev";
  *   · 그래도 부르는 경우엔 타임아웃을 둔다 — 응답이 없으면 fallback 으로 흐른다
  */
 const BRIDGE_TIMEOUT_MS = 2_500;
-function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+export function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise<T>((resolve) => {
     const timer = window.setTimeout(() => resolve(fallback), ms);
     p.then((v) => { window.clearTimeout(timer); resolve(v); }, () => { window.clearTimeout(timer); resolve(fallback); });

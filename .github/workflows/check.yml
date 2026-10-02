@@ -9,6 +9,7 @@ on:
       - "src/**"
       - "scripts/verify-systems.mjs"
       - "scripts/check-release-build.mjs"
+      - "scripts/verify-payments.mjs"
       - "package.json"
       - "package-lock.json"
       - "tsconfig*.json"
@@ -47,6 +48,10 @@ jobs:
 
       - name: System assertions (gacha · skills · ally curve · monetization)
         run: node scripts/verify-systems.mjs
+
+      # 결제 로직 — 가짜 토스·플레이 스토어로 지급 순서 · 복구 · 복원 · 회수 (scripts/verify-payments.mjs)
+      - name: Payment logic (fake stores)
+        run: node scripts/verify-payments.mjs
 
       - name: Web build
         run: npm run build:web
