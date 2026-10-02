@@ -137,7 +137,7 @@ export function SkillPanel({
                           <img src={assetUrl("ui/idle/gate-fund.svg")} alt="" aria-hidden="true" />
                           <span>
                             <b>성문 원정 기금 <i>영구</i></b>
-                            <em>합계 보석 {GATE_FUND_TOTAL_GEMS.toLocaleString()}{shop.fundRatio ? ` · 같은 금액 보석팩의 ×${shop.fundRatio.toFixed(1)}` : ""}</em>
+                            <em>모두 달성 시 보석 {GATE_FUND_TOTAL_GEMS.toLocaleString()}{shop.fundRatio ? ` · 같은 금액 보석팩의 ×${shop.fundRatio.toFixed(1)}` : ""}</em>
                           </span>
                         </header>
                         <ul className="exp-fund-tiers">
