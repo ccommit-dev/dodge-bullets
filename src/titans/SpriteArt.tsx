@@ -174,7 +174,7 @@ export type MonsterFrameState = "idle" | "hit" | "defeat";
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   // MONSTER_ASSET · BOSS_ASSET 이 실제로 가리키는 11종만 둔다 — -clean 변종으로 교체되며 남았던
   // flame-wyvern · moss-golem · ogre-king(-clean) · wolf · wolf-king 항목은 어느 경로로도 조회되지 않았다 (2026-09-21)
-  "abyss-titan": [0.02, 0.02], dragon: [0.23, 0.32], "flame-wyvern-clean": [0.2, 0.11], goblin: [0.04, 0.04],
+  "abyss-titan": [0.02, 0.02], dragon: [0.04, 0.02], "flame-wyvern-clean": [0.2, 0.11], goblin: [0.04, 0.04],
   "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1],
   ogre: [0.05, 0.05], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14], "wolf-king-clean": [0.18, 0.13],
 };
