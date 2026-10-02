@@ -33,4 +33,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 햅틱(navigator.vibrate) — 없으면 WebView 가 조용히 무시해 웹(크롬)과 손맛이 달랐다 (2026-10-02). 일반 권한이라 묻지 않는다 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

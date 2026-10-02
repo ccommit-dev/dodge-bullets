@@ -3,6 +3,7 @@
  * 서버 없음. 공유 API가 없으면 이미지를 새 탭으로 열어 저장하게 한다.
  */
 import { assetUrl } from "../asset";
+import { isNativePlatform } from "../game/native";
 
 export type ShareCardInput = {
   headline: string;
@@ -128,8 +129,35 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }
 
-/** 공유 — Web Share(files) → 실패 시 새 탭 열기(저장 가능). 반환값은 어떤 경로였는지 */
-export async function shareCard(blob: Blob, fileName = "dodgelab-record.png"): Promise<"shared" | "opened" | "failed"> {
+/**
+ * 앱(Capacitor)에서는 새 탭이 없다 — window.open(blob:) 은 Capacitor 가 blob 스킴을 WebView 안에서 그대로 열어
+ * (Bridge.launchIntent 가 data/blob 에 false) **게임 화면이 이미지로 바뀌고 진행 중인 판이 사라졌다**. 대신 앱 안에 카드를 띄운다.
+ */
+function showCardOverlay(blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const wrap = document.createElement("div");
+  wrap.className = "share-card-overlay";
+  wrap.setAttribute("role", "dialog");
+  wrap.setAttribute("aria-label", "기록 카드");
+  wrap.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(2,6,23,.92)";
+  const img = document.createElement("img");
+  img.src = url; img.alt = "기록 카드";
+  img.style.cssText = "max-width:92vw;max-height:70vh;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.6)";
+  const note = document.createElement("p");
+  note.textContent = "스크린샷으로 저장해 공유하세요";
+  note.style.cssText = "margin:0;color:#e2e8f0;font:800 13px system-ui,sans-serif";
+  const close = document.createElement("button");
+  close.type = "button"; close.textContent = "닫기"; close.className = "cta";
+  close.style.cssText = "width:auto;min-width:140px";
+  const done = () => { wrap.remove(); URL.revokeObjectURL(url); };
+  close.addEventListener("click", done);
+  wrap.addEventListener("click", (e) => { if (e.target === wrap) done(); });
+  wrap.append(img, note, close);
+  document.body.appendChild(wrap);
+}
+
+/** 공유 — Web Share(files) → 앱이면 앱 안 카드, 웹이면 새 탭 열기(저장 가능). 반환값은 어떤 경로였는지 */
+export async function shareCard(blob: Blob, fileName = "dodgelab-record.png"): Promise<"shared" | "opened" | "shown" | "failed"> {
   const file = new File([blob], fileName, { type: "image/png" });
   try {
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
@@ -139,6 +167,9 @@ export async function shareCard(blob: Blob, fileName = "dodgelab-record.png"): P
     }
   } catch {
     /* 사용자가 취소했거나 미지원 — 폴백 */
+  }
+  if (isNativePlatform()) {
+    try { showCardOverlay(blob); return "shown"; } catch { return "failed"; }
   }
   try {
     const url = URL.createObjectURL(blob);

@@ -246,7 +246,7 @@ export function CharacterStatus({
               }).then(async (blob) => {
                 if (!blob) return;
                 const result = await shareCard(blob);
-                setGrowthMessage(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
+                setGrowthMessage(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : result === "shown" ? "기록 카드를 띄웠습니다 — 스크린샷으로 저장하세요" : "공유를 지원하지 않는 환경입니다");
               });
             }}
           >

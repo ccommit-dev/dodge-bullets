@@ -45,6 +45,7 @@ import { PROGRESSION_BALANCE } from "./progression/balance";
 import type { ShoulderId } from "./progression/model";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { AllyArt } from "./titans/SpriteArt";
+import { subscribeAppVisibility } from "./ui/appLifecycle";
 
 type BeatUi = "menu" | "playing" | "clear" | "gameover";
 /**
@@ -394,10 +395,11 @@ export function BeatGame({
 
     // Hidden tabs stop requestAnimationFrame while the AudioContext keeps
     // ticking, so freeze the audio clock too and re-sync the frame delta.
-    const onVisibility = () => {
+    // 웹 visibilitychange + Capacitor pause/resume (ui/appLifecycle) — 앱에서 백그라운드를 놓치면 오디오 시계가 어긋난다
+    const onVisibility = (hidden: boolean) => {
       const session = sessionRef.current;
       if (!session?.ctx) return;
-      if (document.visibilityState === "hidden") {
+      if (hidden) {
         session.backingAudio?.pause();
         void session.ctx.suspend();
       } else {
@@ -416,7 +418,7 @@ export function BeatGame({
     canvas.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
-    document.addEventListener("visibilitychange", onVisibility);
+    const offVisibility = subscribeAppVisibility(onVisibility);
 
     const loop = (ts: number) => {
       const ctx = canvas.getContext("2d");
@@ -560,7 +562,7 @@ export function BeatGame({
       window.removeEventListener("pointercancel", onPointerUp);
       stopLaneHold();
       pointerLaneRef.current.clear();
-      document.removeEventListener("visibilitychange", onVisibility);
+      offVisibility();
       if (sessionRef.current) {
         disposeBeatSession(sessionRef.current);
         sessionRef.current = null;
