@@ -338,6 +338,9 @@ function App() {
     let dispose = () => undefined as void;
     void bindAndroidBackButton({
       onBack: () => {
+        // 앱 안 공유 카드(ui/shareCard)가 떠 있으면 그것부터 닫는다 — 웹의 "탭 닫기"와 같은 자리
+        const card = document.querySelector<HTMLButtonElement>(".share-card-overlay button");
+        if (card) { card.click(); return true; }
         if (appModeRef.current !== "titans") {
           setMode("titans");
           return true;
