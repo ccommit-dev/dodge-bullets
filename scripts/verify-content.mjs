@@ -260,12 +260,31 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   const jses = { world: jw, chart: jchart, track: jt, box: { isTransportRunning: () => false, getTransportPosition: () => 0, getTransportStepTime: () => 0, playLead() {}, playSound() {}, stopLessonTransport() {} }, ctx: null, master: null, backingAudio: null, enabled: false, skills: rpg.emptySkills(), isSpar: false, lockHits: 0, taps: 0, hitSteps: new Set(), evaluatedStep: 0, calibrationSec: 0, holdLane: -1, holdEndStep: -1, holdLane2: -1, holdEndStep2: -1 };
   jw.beatPosition = 2;
   const r1 = bworld.performBeatLane(jses, 0), r2 = bworld.performBeatLane(jses, 2);
-  ok("점프: 첫 레인 hit · 두 번째 레인 hit → 'JUMP' 판정 문구 · 두 레인 모두 기록", r1 === "hit" && r2 === "hit" && String(jw.judgeText).startsWith("JUMP") && jw.hitSteps.has(2) && jw.hitSteps2.has(2), `${r1} ${r2} ${jw.judgeText}`);
+  // 2026-10-02: 점프 한쪽만은 아직 성공이 아니다 — 보상(completedNotes)은 두 레인을 다 쳤을 때 한 번
+  ok("점프: 첫 레인 jump-half(보상 없음) · 두 번째 레인 hit → 'JUMP' · 두 레인 기록 · 완성 노트 1개", r1 === "jump-half" && r2 === "hit" && String(jw.judgeText).startsWith("JUMP") && jw.hitSteps.has(2) && jw.hitSteps2.has(2) && jw.completedNotes.length === 1, `${r1} ${r2} ${jw.judgeText} 완성 ${jw.completedNotes.length}`);
   const jw2 = bworld.createBeatWorld(390, 700, 1, jt, "boots"); jw2.invulnMs = 0; jw2.hp = 5;
   const jses2 = { ...jses, world: jw2, hitSteps: new Set(), evaluatedStep: 0 };
   jw2.beatPosition = 2; bworld.performBeatLane(jses2, 0); // 한 레인만
   for (let i = 0; i < 40; i += 1) bworld.updateBeatWorld(jses2, 1 / 60, true);
-  ok("점프에서 한 레인만 치면 MISS (HP −1)", jw2.hp === 4, `hp ${jw2.hp}`);
+  ok("점프에서 한 레인만 치면 MISS (HP −1) · 완성 노트 0 (레이드 보상 없음)", jw2.hp === 4 && jw2.completedNotes.length === 0, `hp ${jw2.hp} 완성 ${jw2.completedNotes.length}`);
+  // 롱노트: 머리만 톡 치고 떼면 실패, 꼬리까지 유지하면 완성 (2026-10-02, "모두 1회성 입력으로 성공함")
+  const hchart = [0, 1, 2, 3, 4, 5, 6, 7].map(() => ({ sound: "boots", spike: false, lane: 0 }));
+  hchart[2] = { sound: "boots", spike: true, lane: 0, hold: 3, holdSteps: 3 };
+  for (const t of [3, 4]) hchart[t] = { sound: "boots", spike: false, lane: 0, holdTail: true };
+  const hTrack = { ...jt, level: 6 };   // 유효 레벨 > 3 — 일찍 떼면 HP 도 깎인다
+  const mkHold = () => { const w = bworld.createBeatWorld(390, 700, 1, hTrack, "boots"); w.invulnMs = 0; w.hp = 5; w.beatPosition = 2; return { ...jses, world: w, chart: hchart, track: hTrack, hitSteps: new Set(), evaluatedStep: 0, holdLane: -1, holdEndStep: -1, holdLane2: -1, holdEndStep2: -1 }; };
+  const h1 = mkHold(); const hr = bworld.performBeatLane(h1, 0); const rel = bworld.performBeatRelease(h1, 0);
+  ok("롱노트 머리만 톡 치고 떼면: hold-start → release-early · MISS · HP −1 · 완성 노트 0", hr === "hold-start" && rel === "release-early" && h1.world.judgeText === "MISS" && h1.world.hp === 4 && h1.world.completedNotes.length === 0, `${hr} ${rel} ${h1.world.judgeText} hp ${h1.world.hp} 완성 ${h1.world.completedNotes.length}`);
+  const h2 = mkHold(); const hr2 = bworld.performBeatLane(h2, 0); const before = h2.world.completedNotes.length;
+  h2.world.beatPosition = 5.2; const rel2 = bworld.performBeatRelease(h2, 0);
+  ok("롱노트를 꼬리까지 유지하고 떼면: 누를 땐 완성 0 · 뗄 때 release-good · 완성 노트 1", hr2 === "hold-start" && before === 0 && rel2 === "release-good" && h2.world.completedNotes.length === 1, `${hr2} ${before} ${rel2} ${h2.world.completedNotes.length}`);
+  const h3 = mkHold(); bworld.performBeatLane(h3, 0); h3.world.beatPosition = 6.1; bworld.settleHoldIfPassed(h3);
+  ok("롱노트를 누른 채 꼬리를 지나면 자동 완성 (완성 노트 1)", h3.world.completedNotes.length === 1 && h3.holdEndStep === -1, String(h3.world.completedNotes.length));
+  // 일반 탭 노트는 누르는 순간 완성
+  const tchart = [0, 1, 2, 3].map(() => ({ sound: "boots", spike: false, lane: 0 })); tchart[2] = { sound: "boots", spike: true, lane: 0 };
+  const tw = bworld.createBeatWorld(390, 700, 1, jt, "boots"); tw.beatPosition = 2;
+  const tr = bworld.performBeatLane({ ...jses, world: tw, chart: tchart, hitSteps: new Set(), evaluatedStep: 0 }, 0);
+  ok("일반 탭 노트는 누르는 순간 hit · 완성 노트 1", tr === "hit" && tw.completedNotes.length === 1, `${tr} ${tw.completedNotes.length}`);
 }
 
 // ── 비트: 구간 밀도 곡선 · 프레이즈 필 (마저 개발) ──

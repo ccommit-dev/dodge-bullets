@@ -45,7 +45,7 @@ await clickText(".hub-sheet-close", "×");
 await sleep(400);
 // 대장간 — 콘텐츠 팝업 → 대장간 → 이지모드 → 검/견갑
 await openContent("대장간");
-await clickText("button", "이지모드");
+// 이지/하드 모드 선택 화면은 2026-10-02 에 없앴다 — 대장간은 바로 강화 화면
 await sleep(900);
 await page.screenshot({ path: `${OUT}/forge-weapon.png` });
 await clickText(".forge-tabs button", "보호구");

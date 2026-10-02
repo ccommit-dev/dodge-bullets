@@ -253,7 +253,7 @@ function simulate(kind) {
       const tier = forge.tierAt(forgeLevelRef.level);
       if (forgeLevelRef.level >= 15 || p.sharedCoins < tier.cost) break;
       p.sharedCoins -= tier.cost;
-      const chance = forge.effectiveChance(tier, "steady") + (p.enhancementMaterials > 0 ? 0.08 : 0);
+      const chance = forge.effectiveChance(tier) + (p.enhancementMaterials > 0 ? 0.08 : 0);
       if (p.enhancementMaterials > 0) p.enhancementMaterials -= 1;
       if (rng() < Math.min(1, chance)) {
         forgeLevelRef.level = Math.min(15, forgeLevelRef.level + 1);

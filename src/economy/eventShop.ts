@@ -22,6 +22,8 @@ export type EventGrant = {
   gems?: number;
   /** 방치 가속 시간(h) */
   idleBoostHours?: number;
+  /** 끝없는 성벽 등반권 (game/towerTickets) */
+  towerTickets?: number;
 };
 
 export type EventProduct = {
@@ -75,6 +77,17 @@ export const EVENT_PRODUCTS: EventProduct[] = [
     id: "sp-abyss-gear", tab: "event-shop2", name: "심연 장비 완성팩", desc: "무기·견갑 강화 재료를 한 번에", badge: "SPECIAL", icon: "forge", gemCost: 180, weeklyLimit: 1,
     grant: (p) => ({ materials: 120, shoulderShards: 60, forgeTickets: 3, gold: bossGold(p, 2000) }),
     summary: (p) => `강화석 120 · 견갑 조각 60 · 방지권 3 · 골드 ${fmt(bossGold(p, 2000))}`,
+  },
+  // ── 끝없는 성벽 등반권 (2026-10-02) — 하루 무료 3장 위로 더 오르고 싶을 때. 인장으로도 산다(원정 보급창) ──
+  {
+    id: "ev-tower-ticket", tab: "event-shop2", name: "성벽 등반권", desc: "끝없는 성벽을 한 번 더 오른다", badge: "TOWER", icon: "dodge", gemCost: 30, weeklyLimit: 10,
+    grant: () => ({ towerTickets: 1 }),
+    summary: () => "성벽 등반권 1장",
+  },
+  {
+    id: "ev-tower-ticket-5", tab: "event-shop2", name: "등반권 묶음", desc: "등반권 5장 — 1장씩보다 20% 싸다", badge: "BUNDLE", icon: "dodge", gemCost: 120, weeklyLimit: 2,
+    grant: () => ({ towerTickets: 5 }),
+    summary: () => "성벽 등반권 5장",
   },
 ];
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { assetUrl } from "../asset";
+import { TOWER_DAILY_TICKETS, TOWER_TICKET_MAX, TOWER_TICKET_SEALS } from "./towerTickets";
 import { perksForBasicOnly, perksUnlockedBy, RARITY_LABEL } from "./perks";
 import { GATE_FUND_TIERS, GATE_FUND_TOTAL_GEMS, gateFundReadyGems, type GateFundState } from "../economy/gateFund";
 import { chipCost, CHIPS, CHIP_BY_ID, CHIP_MAX_LEVEL, type ChipId, type ChipLevels } from "./chips";
@@ -51,6 +52,10 @@ type Props = {
   supplies: SupplyStock;
   daily: DailyState;
   onBuySupply: (id: SupplyId) => void;
+  /** 끝없는 성벽 등반권 — 보유 수 · 성벽이 열렸는가 · 인장으로 1장 사기 (2026-10-02) */
+  towerTickets?: number;
+  towerUnlocked?: boolean;
+  onBuyTowerTicket?: () => void;
   onClaimDaily: (id: DailyId) => void;
   onEquipWeapon: (id: RangedWeaponId) => void;
   onUpgrade: (id: ExpeditionSkillId) => void;
@@ -89,7 +94,7 @@ function canAfford(gold: number, have: number, seals: number, cost: { gold: numb
 export function SkillPanel({
   levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, onUpgradeBasic, shop,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
-  supplies, daily, onBuySupply, onClaimDaily, shards,
+  supplies, daily, onBuySupply, onClaimDaily, shards, towerTickets = 0, towerUnlocked = false, onBuyTowerTicket,
 }: Props) {
   /** 화면이 길어져 둘로 나눈다 — 강화 / 보급·임무 */
   const [tab, setTab] = useState<"upgrade" | "supply">("upgrade");
@@ -199,6 +204,18 @@ export function SkillPanel({
                   </li>
                 );
               })}
+              {towerUnlocked && onBuyTowerTicket && (
+                <li className="exp-tower-ticket">
+                  <img src={assetUrl("ui/idle/tower.svg")} alt="" aria-hidden="true" />
+                  <span>
+                    <b>성벽 등반권 <i>×{towerTickets}</i></b>
+                    <em>끝없는 성벽을 한 번 더 오른다 · 매일 {TOWER_DAILY_TICKETS}장 무료</em>
+                  </span>
+                  <button type="button" disabled={towerTickets >= TOWER_TICKET_MAX || seals < TOWER_TICKET_SEALS} onClick={onBuyTowerTicket}>
+                    {towerTickets >= TOWER_TICKET_MAX ? "가득" : `인장 ${TOWER_TICKET_SEALS}`}
+                  </button>
+                </li>
+              )}
             </ul>
           </section>
 

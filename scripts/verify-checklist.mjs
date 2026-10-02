@@ -101,7 +101,7 @@ await clickText('[role="menuitem"]', "마이페이지");
 await sleep(700);
 await clickText("button", "대장간");
 await sleep(1000);
-await clickText("button", "이지모드");
+// 이지/하드 모드 선택 화면은 2026-10-02 에 없앴다 — 대장간은 바로 강화 화면
 await sleep(600);
 r = await page.evaluate(() => document.body.textContent.includes("정제"));
 ok("#9 대장간 재료 정제 안내", r);

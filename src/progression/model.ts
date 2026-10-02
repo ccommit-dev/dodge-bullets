@@ -60,6 +60,13 @@ export type CharacterProgress = {
   expeditionDaily: DailyState;
   /** 끝없는 성벽 최고 층 */
   towerBestFloor: number;
+  /**
+   * 끝없는 성벽 등반권 (2026-10-02, 사용자: "티켓 제한을 두고 상점에서 구매") — 한 번 오를 때 1장.
+   * 매일 첫 접속에 무료분(TOWER_DAILY_TICKETS)까지 채워 주고(넘친 것은 그대로), 출석·상점에서 더 얻는다
+   */
+  towerTickets: number;
+  /** 무료 등반권을 마지막으로 채운 날짜 (sv-SE) */
+  towerTicketDate: string;
   titanBestStage: number;
   beatSkills: BeatSkills;
   skillPoints: number;
@@ -211,6 +218,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     expeditionSupplies: emptySupplyStock(),
     expeditionDaily: emptyDaily(),
     towerBestFloor: 0,
+    towerTickets: 3,
+    towerTicketDate: "",
     titanBestStage: 1,
     beatSkills: emptySkills(),
     skillPoints: 0,
@@ -453,6 +462,8 @@ export function normalizeCharacterProgress(
       ? (raw.expeditionWeapon as RangedWeaponId)
       : base.expeditionWeapon,
     towerBestFloor: integer(raw.towerBestFloor, 0, 99999),
+    towerTickets: integer(raw.towerTickets, base.towerTickets, 999),
+    towerTicketDate: typeof raw.towerTicketDate === "string" ? raw.towerTicketDate : "",
     titanBestStage: Math.max(1, integer(raw.titanBestStage, 1, 9999)),
     beatSkills,
     skillPoints: integer(raw.skillPoints, base.skillPoints),

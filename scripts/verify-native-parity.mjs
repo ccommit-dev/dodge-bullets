@@ -121,7 +121,7 @@ await sleep(800);
 await closeModal();
 await sleep(500);
 await openContent("대장간");
-ok("대장간이 열린다", await page.evaluate(() => !!document.querySelector(".forge-title-screen, .forge-page, .forge-tabs")));
+ok("대장간이 열린다", await page.evaluate(() => !!document.querySelector(".forge-page, .forge-tabs")));
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await waitHub();
 await sleep(800);

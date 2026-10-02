@@ -36,10 +36,12 @@ writeFileSync(entry, [
   `export * as dodgeShots from "${root}/src/game/skillShots";`,
   `export * as dodgeChips from "${root}/src/game/chips";`,
   `export * as dodgeOps from "${root}/src/game/expeditionOps";`,
+  `export * as towerTickets from "${root}/src/game/towerTickets";`,
+  `export * as forgeModel from "${root}/src/forge/model";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -363,7 +365,7 @@ const eventShop = await (async () => {
   rmSync(d2, { recursive: true, force: true });
   return mod;
 })();
-ok("이벤트 상점 6종 · 탭별 3종 · 전부 보석 가격·주간 한도", eventShop.shop.EVENT_PRODUCTS.length === 6 && eventShop.shop.eventProductsFor("event-shop").length === 3 && eventShop.shop.EVENT_PRODUCTS.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1));
+ok("이벤트 상점 8종 · 이벤트 탭 3종 · 특별 탭 5종(등반권 2 포함) · 전부 보석 가격·주간 한도", eventShop.shop.EVENT_PRODUCTS.length === 8 && eventShop.shop.eventProductsFor("event-shop").length === 3 && eventShop.shop.eventProductsFor("event-shop2").length === 5 && eventShop.shop.EVENT_PRODUCTS.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1));
 ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 30 }).gold > eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 5 }).gold);
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");
@@ -411,6 +413,26 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("분석 이벤트: 최근 200건만 유지하고 가장 오래된 것부터 버린다", list.length === 200 && list[0].data.stage === 5 && list[199].data.stage === 204 && JSON.parse(store.get("dodgebullets:analytics")).length === 200);
     delete globalThis.localStorage;
   }
+}
+
+// ── 끝없는 성벽 등반권 · 검 강화 단일 모드 (2026-10-02) ──
+{
+  const base = prog.defaultCharacterProgress ? prog.defaultCharacterProgress() : null;
+  const p0 = { ...(base ?? {}), towerTickets: 0, towerTicketDate: "2000-01-01", expeditionSeals: 20 };
+  const t1 = towerTickets.refillTowerTickets(p0);
+  ok("등반권: 날짜가 바뀌면 무료 3장까지 채운다 · 같은 날 다시 불러도 그대로", t1.towerTickets === 3 && towerTickets.refillTowerTickets(t1) === t1, String(t1.towerTickets));
+  ok("등반권: 무료분보다 많이 가졌으면 채우지 않는다(빼앗지 않는다)", towerTickets.refillTowerTickets({ ...p0, towerTickets: 7 }).towerTickets === 7);
+  const used = towerTickets.consumeTowerTicket(t1);
+  ok("등반 1회 = 1장 · 0장이면 시작 불가(null)", used?.towerTickets === 2 && towerTickets.consumeTowerTicket({ ...p0, towerTickets: 0 }) === null);
+  const bought = towerTickets.buyTowerTicketWithSeals(p0);
+  ok("인장 8 로 1장 · 상한 30 · 인장 부족이면 불가", bought?.towerTickets === 1 && bought.expeditionSeals === 12 && towerTickets.buyTowerTicketWithSeals({ ...p0, towerTickets: 30 }) === null && towerTickets.buyTowerTicketWithSeals({ ...p0, expeditionSeals: 7 }) === null);
+  const tk = eventShop.shop.EVENT_PRODUCTS.filter((x) => x.grant({}).towerTickets);
+  ok("사냥터 특별 상점에 보석 등반권(1장 30 · 5장 120)", tk.length === 2 && tk.every((x) => x.tab === "event-shop2") && tk.some((x) => x.gemCost === 30 && x.grant({}).towerTickets === 1) && tk.some((x) => x.gemCost === 120 && x.grant({}).towerTickets === 5), tk.map((x) => x.name + x.gemCost).join(","));
+  const normalized = prog.normalizeCharacterProgress ? prog.normalizeCharacterProgress({}) : null;
+  ok("새 계정 기본 등반권 3장", !normalized || normalized.towerTickets === 3, String(normalized?.towerTickets));
+  // 검 강화 — 이지/하드 모드가 없다: 성공률·판매가는 표 값 그대로, 예전 저장의 mode 는 무시
+  const tier = forgeModel.tierAt(5);
+  ok("검 강화 단일 모드: 성공률·판매가 = 표 값 · 저장에 mode 가 없다", forgeModel.effectiveChance(tier) === Math.max(0.01, Math.min(1, tier.chance)) && forgeModel.effectiveSell(tier) === Math.floor(tier.sell) && !("mode" in forgeModel.normalizeForgeSave({ mode: "rush" })));
 }
 
 // ── 성문 방어 런 XP · 몬스터 보이는 여백 (2026-09-14) ──

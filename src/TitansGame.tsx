@@ -115,6 +115,7 @@ import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/pric
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
 import { tierAt } from "./forge/model";
+import { TOWER_TICKET_MAX } from "./game/towerTickets";
 
 type TitansGameProps = {
   insets: SafeInsets;
@@ -1211,6 +1212,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       const bought = record.bought[product.id] ?? 0;
       if (bought >= product.weeklyLimit || current.redGems < product.gemCost) return current;
       const g = product.grant(current);
+      // 등반권은 보유 상한이 있다 — 넘치게 사면 보석만 사라진다
+      if (g.towerTickets && current.towerTickets + g.towerTickets > TOWER_TICKET_MAX) return current;
       grant = g;
       return {
         ...current,
@@ -1220,12 +1223,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         shoulderShards: current.shoulderShards + (g.shoulderShards ?? 0),
         allyShards: g.allyShards ? { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + g.allyShards } : current.allyShards,
         forgeTicketsPending: current.forgeTicketsPending + (g.forgeTickets ?? 0),
+        towerTickets: Math.min(TOWER_TICKET_MAX, current.towerTickets + (g.towerTickets ?? 0)),
         idleBoostUntil: g.idleBoostHours ? Math.max(Date.now(), current.idleBoostUntil) + g.idleBoostHours * 3600 * 1000 : current.idleBoostUntil,
         weeklyEventBuys: { week, bought: { ...record.bought, [product.id]: bought + 1 } },
         lastContent: "titans",
       };
     });
-    if (!grant) return;
+    if (!grant) {
+      if (product.grant(character).towerTickets) flash(`등반권은 ${TOWER_TICKET_MAX}장까지 가질 수 있습니다`);
+      return;
+    }
     const g: EventGrant = grant;
     setCharacter(next);
     setRedGems(next.redGems);
