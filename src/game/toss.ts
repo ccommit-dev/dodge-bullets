@@ -10,7 +10,28 @@ export type UserKeyResult = {
   source: "sdk" | "mock";
 };
 
+import { isNativePlatform } from "./native";
+
 const MOCK_HASH = "mock-local-dev";
+
+/**
+ * 토스 브리지 호출 보호 (2026-10-02) — Capacitor APK 에서는 토스 네이티브 브리지가 없어 getAnonymousKey ·
+ * setDeviceOrientation · Storage.getItem 의 Promise 가 **실패도 완료도 하지 않았다**. 웹에서는 브리지 부재가 바로
+ * 예외로 끝나 mock/localStorage 로 넘어갔지만, WebView 에서는 catch 가 영원히 안 돌아 "준비 중…" 에 멈췄다(실기기).
+ *   · 네이티브(Capacitor)면 토스 SDK 를 아예 부르지 않는다 — 키는 mock, 저장은 Preferences, 방향은 매니페스트(portrait)
+ *   · 그래도 부르는 경우엔 타임아웃을 둔다 — 응답이 없으면 fallback 으로 흐른다
+ */
+const BRIDGE_TIMEOUT_MS = 2_500;
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = window.setTimeout(() => resolve(fallback), ms);
+    p.then((v) => { window.clearTimeout(timer); resolve(v); }, () => { window.clearTimeout(timer); resolve(fallback); });
+  });
+}
+/** 네이티브 앱(안드로이드/iOS) — 토스 브리지를 건너뛴다 */
+function skipTossBridge(): boolean {
+  try { return isNativePlatform(); } catch { return false; }
+}
 
 function readCssSafeInsets(): SafeInsets {
   const probe = document.createElement("div");
@@ -47,12 +68,13 @@ export function normalizeInsets(raw: Partial<SafeInsets> | null | undefined): Sa
 
 /** 샌드박스/웹/토스앱 공통 — 실패 시 mock */
 export async function resolveUserKey(): Promise<UserKeyResult> {
+  if (skipTossBridge()) return { hash: MOCK_HASH, source: "mock" };
   try {
     const bridge = await import("@apps-in-toss/web-framework");
 
     // SDK 2.x 권장: getAnonymousKey
     if (typeof bridge.getAnonymousKey === "function") {
-      const result = await bridge.getAnonymousKey();
+      const result = await withTimeout(bridge.getAnonymousKey(), BRIDGE_TIMEOUT_MS, null);
       if (result && typeof result === "object" && result.type === "HASH" && result.hash) {
         return { hash: result.hash, source: "sdk" };
       }
@@ -60,7 +82,7 @@ export async function resolveUserKey(): Promise<UserKeyResult> {
 
     // 문서/구버전 호환: getUserKeyForGame
     if (typeof bridge.getUserKeyForGame === "function") {
-      const result = await bridge.getUserKeyForGame();
+      const result = await withTimeout(bridge.getUserKeyForGame(), BRIDGE_TIMEOUT_MS, null);
       if (result && typeof result === "object" && result.type === "HASH" && result.hash) {
         return { hash: result.hash, source: "sdk" };
       }
@@ -73,6 +95,7 @@ export async function resolveUserKey(): Promise<UserKeyResult> {
 }
 
 export async function readSafeInsets(): Promise<SafeInsets> {
+  if (skipTossBridge()) return normalizeInsets(null);   // WebView 는 CSS env(safe-area-inset-*) 로 충분하다
   try {
     const { SafeAreaInsets } = await import("@apps-in-toss/web-framework");
     if (SafeAreaInsets?.get) {
@@ -87,6 +110,7 @@ export async function readSafeInsets(): Promise<SafeInsets> {
 export async function subscribeSafeInsets(
   onChange: (insets: SafeInsets) => void,
 ): Promise<() => void> {
+  if (skipTossBridge()) return () => undefined;
   try {
     const { SafeAreaInsets } = await import("@apps-in-toss/web-framework");
     if (SafeAreaInsets?.subscribe) {
@@ -102,20 +126,22 @@ export async function subscribeSafeInsets(
 
 /** 출시 가이드: 세로 고정 + OS 뒤로가기 제스처 차단 */
 export async function lockScreenForGame(): Promise<void> {
+  if (skipTossBridge()) return;   // 안드로이드는 AndroidManifest 의 screenOrientation="portrait"
   try {
     const { setDeviceOrientation, setIosSwipeGestureEnabled } = await import(
       "@apps-in-toss/web-framework"
     );
-    await Promise.all([
+    await withTimeout(Promise.all([
       setDeviceOrientation({ type: "portrait" }),
       setIosSwipeGestureEnabled({ isEnabled: false }),
-    ]);
+    ]), BRIDGE_TIMEOUT_MS, null);
   } catch {
     // 로컬 웹에서는 무시
   }
 }
 
 export async function closeMiniApp(): Promise<void> {
+  if (skipTossBridge()) return;   // 네이티브 종료는 native.exitAppNative 가 먼저 처리한다
   try {
     const { closeView } = await import("@apps-in-toss/web-framework");
     await closeView();
@@ -143,7 +169,10 @@ function nativePrefs(): Promise<PreferencesLike | null> {
         const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
         if (!cap?.isNativePlatform?.()) return null;
         const { Preferences } = await import("@capacitor/preferences");
-        return Preferences;
+        // 플러그인 프록시를 async 함수에서 그대로 돌려주면 Promise 가 .then 을 찾아 부르고, 프록시는 그것을
+        // 네이티브 메서드 "Preferences.then()" 호출로 보내 거부한다 → nativePrefs 가 통째로 실패해 부팅이 멈췄다 (2026-10-02 실측).
+        // thenable 이 아닌 평범한 객체로 감싼다
+        return { get: (o) => Preferences.get(o), set: (o) => Preferences.set(o) };
       } catch {
         return null;
       }
@@ -157,15 +186,19 @@ function nativePrefs(): Promise<PreferencesLike | null> {
  * 세 환경 모두 이 두 함수만 지나므로 여기가 유일한 분기 지점이다.
  */
 export async function storageGet(key: string): Promise<string | null> {
-  try {
-    const { Storage } = await import("@apps-in-toss/web-framework");
-    if (Storage?.getItem) {
-      return await Storage.getItem(key);
+  if (!skipTossBridge()) {
+    try {
+      const { Storage } = await import("@apps-in-toss/web-framework");
+      if (Storage?.getItem) {
+        // 응답이 없으면(브리지 없는 WebView) localStorage 로 — 영원히 기다리던 것이 부팅을 막았다
+        const v = await withTimeout(Storage.getItem(key).then((x) => ({ x })), BRIDGE_TIMEOUT_MS * 2, null);
+        if (v) return v.x;
+      }
+    } catch {
+      // fall through
     }
-  } catch {
-    // fall through
   }
-  const prefs = await nativePrefs();
+  const prefs = await nativePrefs().catch(() => null);
   if (prefs) {
     try {
       const { value } = await prefs.get({ key });
@@ -187,16 +220,18 @@ export async function storageGet(key: string): Promise<string | null> {
 }
 
 export async function storageSet(key: string, value: string): Promise<void> {
-  try {
-    const { Storage } = await import("@apps-in-toss/web-framework");
-    if (Storage?.setItem) {
-      await Storage.setItem(key, value);
-      return;
+  if (!skipTossBridge()) {
+    try {
+      const { Storage } = await import("@apps-in-toss/web-framework");
+      if (Storage?.setItem) {
+        const done = await withTimeout(Storage.setItem(key, value).then(() => true), BRIDGE_TIMEOUT_MS * 2, false);
+        if (done) return;
+      }
+    } catch {
+      // fall through
     }
-  } catch {
-    // fall through
   }
-  const prefs = await nativePrefs();
+  const prefs = await nativePrefs().catch(() => null);
   if (prefs) {
     try {
       await prefs.set({ key, value });

@@ -3973,6 +3973,9 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .exp-basic-row b { color:#fde68a; font-size:12px; }
 .exp-basic-row b i { margin-left:6px; color:#94a3b8; font-style:normal; font-size:9px; font-weight:700; }
 .exp-basic-row em { color:#e0f2fe; font-style:normal; font-size:10px; }
+.exp-basic-row span { flex:1; }
+.exp-basic-upgrade { flex:none; min-height:36px; padding:0 12px; border:0; border-radius:9px; color:#1c1917; background:#fde68a; font-size:11px; font-weight:900; }
+.exp-basic-upgrade:disabled { opacity:.45; }
 /* 원정 칩 — 영구 패시브. 슬롯(끼운 것)과 목록(가진 것)을 나눠 보여 준다 (2026-09-28) */
 .exp-chip-row { display:grid; gap:6px; }
 .exp-chip-row > b { color:#c4b5fd; font-size:11px; }

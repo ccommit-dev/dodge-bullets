@@ -11,6 +11,7 @@ import {
   RANGED_WEAPONS,
   SKILL_BY_ID,
   SKILL_MAX_LEVEL,
+  BASIC_LEVEL_MAX, BASIC_SHOT_COOLDOWN, basicCooldownMul, basicDamageMul, basicShotCost,
   skillCost,
   skillSummary,
   skillUnlocked,
@@ -52,6 +53,9 @@ type Props = {
   onClaimDaily: (id: DailyId) => void;
   onEquipWeapon: (id: RangedWeaponId) => void;
   onUpgrade: (id: ExpeditionSkillId) => void;
+  /** 기본 사격 강화 레벨 · 골드로 한 단계 올린다 (2026-10-02) */
+  basicLevel: number;
+  onUpgradeBasic: () => void;
 };
 
 /** 격자 순서 — 왼쪽 열은 물리(물·흙), 오른쪽 열은 마법(불·얼음·번개), 마지막에 궁극 */
@@ -65,7 +69,7 @@ function canAfford(gold: number, have: number, seals: number, cost: { gold: numb
 }
 
 export function SkillPanel({
-  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade,
+  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, onUpgradeBasic,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
   supplies, daily, onBuySupply, onClaimDaily, shards,
 }: Props) {
@@ -246,9 +250,17 @@ export function SkillPanel({
           {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
           <img src={assetUrl(`dodge/weapons/icon-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
-            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} <i>피해 1 · 1.5초마다 1발 · 보스는 못 깎음</i></b>
-            <em>런 중 열리는 카드 {perksForBasicOnly().length}장 — 피해·발수·속사·관통·진화 (원소 전환은 속성 습득 후)</em>
+            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} Lv.{basicLevel} <i>피해 {basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 보스도 깎는다</i></b>
+            <em>{basicLevel >= BASIC_LEVEL_MAX ? "최대 강화" : `다음 강화: 피해 +15% · 재사용 −3% · ${basicShotCost(basicLevel + 1)}G`} · 런 중 카드 {perksForBasicOnly().length}장</em>
           </span>
+          <button
+            type="button"
+            className={`exp-basic-upgrade ${basicLevel < BASIC_LEVEL_MAX && gold >= basicShotCost(basicLevel + 1) ? "on" : ""}`}
+            disabled={basicLevel >= BASIC_LEVEL_MAX || gold < basicShotCost(basicLevel + 1)}
+            onClick={onUpgradeBasic}
+          >
+            {basicLevel >= BASIC_LEVEL_MAX ? "최대" : "강화"}
+          </button>
         </div>
       )}
 

@@ -24,7 +24,7 @@ function freshAccount() {
   return {
     skills: { fire: 1, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
     shards: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
-    seals: 0, gold: 0, bestStage: 0, chipLevels: CH.emptyChipLevels(), equipped: [null, null, null], weapon: "bow",
+    seals: 0, gold: 0, bestStage: 0, chipLevels: CH.emptyChipLevels(), equipped: [null, null, null], weapon: "bow", basic: 0,
   };
 }
 
@@ -46,6 +46,8 @@ function upgrade(acc, log) {
     acc.shards[best.id] -= best.cost.shards; acc.gold -= best.cost.gold; acc.seals -= best.cost.seals ?? 0; acc.skills[best.id] += 1; did += 1;
     log.push(`${SK.SKILL_BY_ID[best.id].name} Lv${acc.skills[best.id]}`);
   }
+  // 기본 사격 — 골드가 남으면 한 단계 (속성 화살보다 뒤, 2026-10-02)
+  if (acc.basic < SK.BASIC_LEVEL_MAX && acc.gold >= SK.basicShotCost(acc.basic + 1)) { acc.gold -= SK.basicShotCost(acc.basic + 1); acc.basic += 1; did += 1; log.push(`기본 사격 Lv${acc.basic}`); }
   const slots = CH.chipSlotsOpen(acc.bestStage);
   for (const id of ["focus", "vitality", "barrage"]) {
     const lv = acc.chipLevels[id];
@@ -67,7 +69,7 @@ export function simulateWeek(seedBase, runsPerDay = RUNS, dayCount = DAYS) {
     const runs = [];
     const runCount = day === 1 ? runsPerDay + 1 : runsPerDay;
     for (let r = 0; r < runCount; r += 1) {
-      const tier = { level: g.level, sword: g.sword, bestStage: Math.max(1, acc.bestStage), skills: acc.skills, chipLevels: acc.chipLevels, equipped: acc.equipped, weapon: acc.weapon };
+      const tier = { level: g.level, sword: g.sword, bestStage: Math.max(1, acc.bestStage), skills: acc.skills, chipLevels: acc.chipLevels, equipped: acc.equipped, weapon: acc.weapon, basic: acc.basic };
       const res = simulateRun(seedBase + day * 101 + r * 7, tier);
       // 보상 — 깬 스테이지마다 조각·인장·골드, 실패한 스테이지는 조각 1
       const acquired = Object.fromEntries(res.acquired.map((k) => [k, true]));

@@ -106,6 +106,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     sfx: emptySfx(),
     heroAura: null,
     skillLevels: emptySkillLevels(),
+    basicLevel: 0,
     skillTimers: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
     rangedWeapon: "none",
     skillKills: 0,
