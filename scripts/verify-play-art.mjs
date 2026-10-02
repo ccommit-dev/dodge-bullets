@@ -53,8 +53,7 @@ const worstMedian = (bucket) => { let best = { v: 0, pair: "" }; for (const [pai
 let wasApproaching = false;
 for (let t = 0; t < 20; t += 1) {
   const s = await rects();
-  // 접근이 끝난 직후 0.42초는 오른쪽 측면 슬롯이 왼쪽에서 돌아 들어가는 중이라(flank-hop) 왼쪽 슬롯과 스친다 — 그 표본은 뺀다 (2026-10-01)
-  // 주인공도 걸어 들어온 직후 한 표본은 아직 제자리로 미끄러지는 중이다 — 함께 뺀다
+  // 접근이 끝난 직후 한 표본은 동료·주인공이 아직 제자리로 미끄러지는 중이다 — 그 표본은 뺀다 (오른쪽 측면 슬롯은 2026-10-02 에 없앴다)
   const approachingNow = s.heroApproaching || s.allies.some((a) => a.approaching);
   if (wasApproaching && !approachingNow) { wasApproaching = false; await sleep(600); continue; }
   wasApproaching = approachingNow;

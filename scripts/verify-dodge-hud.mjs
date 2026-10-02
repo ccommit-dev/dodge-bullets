@@ -65,7 +65,17 @@ await page.evaluate(() => {
   }
 });
 await sleep(900);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(700);
+// 콘텐츠 팝업이 화면 안에 다 들어오고, 비트 수련까지 모든 칸이 보인다 (등장 애니메이션 끝 프레임이 팝업을 반 화면 밀어내던 것, 2026-10-02)
+{
+  const pop = await page.evaluate(() => {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const box = document.querySelector(".bottom-nav-popup")?.getBoundingClientRect();
+    const cells = [...document.querySelectorAll(".nav-popup-grid > button")].map((b) => { const r = b.getBoundingClientRect(); return { name: b.textContent.replace(/\s+/g, " ").trim().slice(0, 8), inside: r.left >= 0 && r.right <= vw && r.top >= 0 && r.bottom <= vh }; });
+    return { vw, box: box ? { left: Math.round(box.left), right: Math.round(box.right) } : null, cells };
+  });
+  ok("콘텐츠 팝업이 화면 안에 있고 모든 칸(비트 수련 포함)이 보인다", !!pop.box && pop.box.left >= 0 && pop.box.right <= pop.vw && pop.cells.length >= 3 && pop.cells.every((c) => c.inside) && pop.cells.some((c) => c.name.includes("비트")), JSON.stringify(pop));
+}
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 
 // ── 메뉴: 무기 탈착 행 ──
@@ -350,25 +360,30 @@ ok("전투 슬롯: 기본 사격 + 방금 습득한 속성 화살 1종",
 ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 2 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
 ok("일시정지·배속 버튼이 전투 중에 있다", dock.pause && dock.speed === "×1", String(dock.speed));
 
-// 일시정지가 실제로 세계를 멈추는가
-await page.evaluate(() => [...document.querySelectorAll(".battle-toggle")].find((b) => b.textContent.includes("일시정지"))?.click());
+// 일시정지가 실제로 세계를 멈추는가 — **좌표 탭**으로 누른다(합성 click 은 pointer-events:none 을 통과해 폰에서 안 눌리던 것을 놓쳤다)
+const tapButton = async (selector, text) => {
+  const at = await page.evaluate(({ selector, text }) => { const b = [...document.querySelectorAll(selector)].find((x) => !text || x.textContent.includes(text)); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, { selector, text });
+  if (at) await page.touchscreen.tap(at.x, at.y);
+  return !!at;
+};
+await tapButton(".battle-toggle", "일시정지");
 await sleep(300);
 const t0 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 await sleep(900);
 const t1 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 ok("일시정지하면 스테이지 시계가 멈춘다", t0 === t1, t0 + "ms → " + t1 + "ms");
-await page.evaluate(() => [...document.querySelectorAll(".battle-toggle, .cta")].find((b) => b.textContent.includes("계속"))?.click());
+await tapButton(".battle-toggle", "계속");
 await sleep(700);
 const t2 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 ok("재개하면 다시 흐른다", t2 > t1, t1 + "ms → " + t2 + "ms");
 
-// 배속이 실제로 시간을 빠르게 돌리는가
-await page.evaluate(() => document.querySelector(".speed-toggle")?.click());
+// 배속이 실제로 시간을 빠르게 돌리는가 (좌표 탭)
+await tapButton(".speed-toggle");
 const a0 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 await sleep(1000);
 const a1 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 const rate = (a1 - a0) / 1000;
-ok("배속 ×1.5 면 게임 시간이 1.5배 가까이 흐른다", rate > 1.25 && rate < 1.8, rate.toFixed(2) + "배");
+ok("배속 ×2 면 게임 시간이 2배 가까이 흐른다", rate > 1.6 && rate < 2.4, rate.toFixed(2) + "배");
 
 // 스테이지를 깨고 자동으로 넘어가도 영구 스킬·칩·무기가 그대로 실려 있다 (오래된 클로저가 초기값을 싣던 것)
 {

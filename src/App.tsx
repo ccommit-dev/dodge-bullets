@@ -663,12 +663,14 @@ function App() {
           stateRef.current = "perk";
           setGameState("perk");
         }
-        const event = updateWorld(
-          world,
-          dtSec,
-          stateRef.current === "playing",
-          inputRef.current,
-        );
+        // ×2 배속에서 느린 프레임(50ms)이면 한 번에 100ms 가 흐른다 — 기본 화살(720px/s)이 72px 를 건너뛰어 몬스터를 지나친다.
+        // 33ms 넘게 흐르면 나눠서 돌리고, 사건(피격·사망·클리어)이 나면 거기서 멈춘다
+        const steps = Math.max(1, Math.ceil(dtSec / 0.033));
+        let event: ReturnType<typeof updateWorld> = { type: "none" };
+        for (let i = 0; i < steps; i += 1) {
+          event = updateWorld(world, dtSec / steps, stateRef.current === "playing", inputRef.current);
+          if (event.type !== "none") break;
+        }
         consumeActionEdges(inputRef.current);
         drawFrame(ctx, world);
         // 활 사격 효과음 — 한 프레임에 여럿이 겹치면 시끄럽다. 센 것 하나만, 발사음은 90ms 에 한 번
@@ -1556,14 +1558,14 @@ function App() {
                 <button
                   type="button"
                   className="battle-toggle speed-toggle"
-                  aria-label={`전투 속도 ${speedMul === 1 ? "1배" : "1.5배"}`}
+                  aria-label={`전투 속도 ${speedMul === 1 ? "1배" : "2배"}`}
                   onClick={() => {
-                    const next = speedRef.current === 1 ? 1.5 : 1;
+                    const next = speedRef.current === 1 ? 2 : 1;
                     speedRef.current = next;
                     setSpeedMul(next);
                   }}
                 >
-                  ×{speedMul === 1 ? "1" : "1.5"}
+                  ×{speedMul === 1 ? "1" : "2"}
                 </button>
               </>
             )}

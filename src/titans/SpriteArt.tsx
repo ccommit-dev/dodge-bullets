@@ -234,7 +234,7 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
   return 0;
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, flank = true, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -286,7 +286,8 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 실측(390px): 동료 컨테이너는 전장 왼쪽 +41px 에서 시작 · 몬스터 190~290px · 주인공 26% = 107px. 근접 코어가 몬스터 가장자리에 닿고 원거리는 주인공 뒤(0~3%)
   // 근접 슬롯 x 는 CSS 가 몬스터 좌표(--monster-meet-right · --monster-size)에서 계산한다 — 짝수 슬롯은 몬스터 왼쪽, 홀수 슬롯은 오른쪽(좌우 반전).
   // 여기 x 는 CSS 변수가 없을 때의 폴백이고, dx 는 줄 깊이별 px 오프셋(뒷줄일수록 몬스터에서 조금 떨어진다).
-  const MELEE_COMBAT = [[22, 3], [60, 3], [20, 21], [63, 21], [24, 12], [66, 12]];
+  // 홀수 슬롯(예전 오른쪽 측면)은 짝수 슬롯과 다른 줄(+7%)에 서서 위아래로 갈린다 — 같은 줄에서 뒤로만 물리면 주인공·이웃과 겹쳤다 (2026-10-02)
+  const MELEE_COMBAT = [[22, 3], [20, 10], [20, 21], [18, 28], [24, 14], [22, 7]];
   const MELEE_DX = [0, 0, -10, 12, -5, 6];
   // 원거리 x 는 주인공(교전 시 26~28%)과 같은 줄이 되는 슬롯일수록 왼쪽 끝에 붙인다 —
   // 2026-09-21 에 서로 벌리려고 8% 로 밀었다가 주인공을 100% 덮어 verify-play-art 가 잡았다. 깊이(줄)로 구분한다.
@@ -296,15 +297,18 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // **접근 중에는 오른쪽으로 가지 않는다** — 몬스터가 오른쪽에서 걸어 들어오는 동안 동료가 먼저 그 너머까지 달려가
   // 몬스터를 앞질러 서 있었다(실측 65px, 2026-10-01). 접근 중엔 왼쪽 슬롯 뒤에 섰다가, 몬스터가 자리를 잡으면 오른쪽으로 돈다
   // 몬스터가 죽으면(flank=false) 다음 몬스터가 들어오기 전에 왼쪽으로 돌아온다 — 안 그러면 새 몬스터가 들어올 때 오른쪽에서 출발해 또 앞선다
+  // 오른쪽 측면 슬롯은 없앴다 (2026-10-02, 사용자: "아직 동료가 몬스터보다 우측에서 공격함") — 동료는 전부 몬스터 왼쪽에서 친다.
+  // 같은 줄의 홀수 슬롯은 짝수 슬롯 뒤(−34px)에 서서 겹치지 않는다
   const rightFlank = !ranged && slot !== undefined && slot % 2 === 1;
-  const faceLeft = engaged && !approaching && flank && rightFlank;
+  const faceLeft = false;
+  void engaged; void approaching;
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
     "--party-lane-y": `${laneY}%`,
     "--party-combat-x": `${combatX}%`,
     "--party-combat-y": `${combatY}%`,
     // 접근 중인 오른쪽 측면 슬롯은 왼쪽 슬롯 뒤(−34px)에 선다 — 같은 줄에 겹쳐 서지 않게
-    "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot] + (rightFlank && !faceLeft ? -34 : 0)}px`,
+    "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot] + (rightFlank && !faceLeft ? 4 : 0)}px`,
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
     // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),

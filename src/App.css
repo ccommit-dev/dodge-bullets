@@ -3904,7 +3904,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .skill-slot b { position:absolute; right:2px; bottom:1px; color:#e0f2fe; font-size:9px; font-weight:900; text-shadow:0 1px 2px #000; }
 .skill-dock-auto { padding:3px 8px; border-radius:99px; background:rgba(4,14,28,.72); color:#67e8f9; font-size:9px; font-weight:800; letter-spacing:.06em; }
 /* 일시정지 · 배속 — 참고 게임의 전투 상시 조작 */
-.battle-toggle { padding:6px 12px; border:1px solid rgba(148,163,184,.4); border-radius:99px; background:rgba(15,23,42,.72); color:#e2e8f0; font-size:12px; font-weight:800; cursor:pointer; }
+/* 상단 바(.sound-dock)는 pointer-events:none — 버튼마다 다시 켜야 한다. 안 그러면 폰에서 탭이 캔버스로 빠져 일시정지·배속이 안 눌렸다 (2026-10-02) */
+.battle-toggle { pointer-events:auto; padding:6px 12px; border:1px solid rgba(148,163,184,.4); border-radius:99px; background:rgba(15,23,42,.72); color:#e2e8f0; font-size:12px; font-weight:800; cursor:pointer; }
 .battle-toggle[aria-pressed=true] { border-color:rgba(253,224,71,.7); color:#fde68a; }
 .speed-toggle { min-width:46px; }
 /* 강화 카드 등급 — 스테이지가 깊을수록 상위 등급이 잘 나온다 (2026-09-28).
