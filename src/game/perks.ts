@@ -1,4 +1,5 @@
 import type { GameWorld } from "./types";
+import { syncBarrierLives } from "./arrows";
 
 /**
  * 런 중 성장 선택 — 런 레벨이 오를 때마다 카드 세 장 중 하나를 고른다.
@@ -93,7 +94,8 @@ export const PERKS: PerkDef[] = [
 
   // ── 일반 — 무기만 있으면 고를 수 있다
   { id: "gauge", rarity: "common", label: "화살비 게이지 +35", desc: "화살비가 빨리 찬다", available: () => true, apply: (w) => { w.slashGauge = Math.min(99, w.slashGauge + 35); } },
-  { id: "heal", rarity: "common", label: "HP 회복 +1", desc: "가득 차 있으면 최대 HP +1", available: () => true, apply: (w) => { if (w.player.hp >= w.player.maxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; } w.player.hp = Math.min(w.player.maxHp, w.player.hp + 1); } },
+  // 방어막이 유일한 생명(2026-10-02) — "HP 회복"은 방어막 수리. 가득이면 생명 +1(= 방어막 최대 +15%)
+  { id: "heal", rarity: "common", label: "방어막 수리", desc: "방어막 30% 회복 · 가득 차 있으면 최대치 +15%", available: () => true, apply: (w) => { if (w.barrierHp >= w.barrierMaxHp) { w.player.maxHp += 1; w.runMods.maxHpBonus += 1; syncBarrierLives(w); } else { w.barrierHp = Math.min(w.barrierMaxHp, w.barrierHp + w.barrierMaxHp * 0.3); } } },
   { id: "shotExtra", rarity: "common", needs: ["basic"], label: "기본 사격 +1발", desc: "한 번에 한 발 더 쏜다", available: armed, apply: (w) => { w.runMods.shotExtra += 1; } },
   { id: "quickdraw", rarity: "common", needs: ["basic"], label: "속사", desc: "모든 화살 재사용 −10%", available: armed, apply: (w) => { w.runMods.cooldownMul *= 0.9; } },
   // 가이드: "초반에는 공격 속도나 범위가 안전하다. 단일 대상 피해는 강한 한 방이 의미를 갖기 전에 밀릴 수 있다" —

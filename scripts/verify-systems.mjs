@@ -432,12 +432,12 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("보스 패턴: 1~4스테이지 A·B·C·D, 성벽은 E 로 고정 (학습 가능한 보스)", ids === "ABCDEE" && new Set(bossPatterns.BOSS_PATTERNS.map((p) => p.kinds.join("+") + p.count + p.spreadDeg)).size === 5, ids);
   ok("보스 패턴: 파편 수·종류 수가 일치하거나 순환하고, 예고는 500ms 이상", bossPatterns.BOSS_PATTERNS.every((p) => p.count >= 1 && p.kinds.length >= 1 && p.warningMs >= 500));
   // 성장 선택: 3택 무작위(결정적 rng) · 적용 효과 · 대시 미해금이면 dash 제외
-  const w = { rangedWeapon: "bow", runSkills: {}, skillTimers: {}, slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
+  const w = { rangedWeapon: "bow", runSkills: {}, skillTimers: {}, slashGauge: 10, stats: { moveSpeed: 100, slashLevel: 0, dashUnlocked: false, dashCooldownMs: 1000 }, player: { hp: 3, maxHp: 3 }, barrierHp: 120, barrierMaxHp: 120, skillLevels: dodgeSkills.emptySkillLevels(), runMods: dodgeShots.emptyRunMods() };
   let k = 0; const det = () => ((k += 0.37) % 1);
   const picked = perks.pickPerks(w, det);
   ok("성장 선택: 3개가 서로 다르고 활 계열 밖(이동·회피·검격) 카드는 없다", picked.length === 3 && new Set(picked.map((p) => p.id)).size === 3 && !picked.some((p) => ["dash", "speed", "slash"].includes(p.id)), picked.map((p) => p.id).join(","));
   perks.applyPerk(w, "heal"); perks.applyPerk(w, "shotExtra"); perks.applyPerk(w, "gauge");
-  ok("성장 선택 적용: HP 가득이면 최대 HP +1, 기본 사격 +1발, 게이지 +35 (99 상한)", w.player.maxHp === 4 && w.player.hp === 4 && w.runMods.shotExtra === 1 && w.slashGauge === 45 && perks.applyPerk(w, "dash") === false);
+  ok("성장 선택 적용: 방어막 가득이면 생명 +1(= 방어막 120 → 138), 기본 사격 +1발, 게이지 +35 (99 상한)", w.player.maxHp === 4 && w.barrierMaxHp === 138 && w.barrierHp === 138 && w.runMods.shotExtra === 1 && w.slashGauge === 45 && perks.applyPerk(w, "dash") === false);
   // 주간 랭킹: 내 기록이 정렬에 들어가고 같은 주·같은 유저면 재현, 기록 0이면 최하위
   const rpg0 = beatRpg.emptyBeatRpg();
   const r0 = ranking.weeklyRanking(rpg0, "u1", "2026-37");

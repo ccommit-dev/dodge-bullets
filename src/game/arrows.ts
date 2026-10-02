@@ -4,11 +4,10 @@ import { bossCutsFor, gainRunXp } from "./world";
 import { bossPatternFor } from "./bossPatterns";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
-const POOL_SIZE = 120;
+const POOL_SIZE = 260;   // 120 → 260: 몬스터가 3배 느려져 화면에 오래 머문다 — 풀이 마르면 생성이 조용히 빠져 쉬워 보인다
 const ARROW_LEN = 28;
 const HIT_R = 5;
 /** Tip within this band (beyond hit radius) counts as near-miss. */
-const NEAR_MISS_PAD = 22;
 const COMBO_WINDOW_MS = 1600;
 const SPLIT_ORBIT_MS = 1_325;
 const SPLIT_DAMAGE = [1, 0.65, 0.4, 0.25] as const;
@@ -54,6 +53,7 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       bossTier: 0,
       bossCutsLeft: 0,
       bossMaxCuts: 0,
+      bossEntering: false,
       fromBoss: false,
       atBarrier: false,
       barrierHitMs: 0,
@@ -65,21 +65,24 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
 
 /* ────────────────── 방어막 (2026-10-01, 아웃로 디펜스 차용) ──────────────────
  * 몬스터는 플레이어가 아니라 **방어막**을 향해 걸어 내려온다. 방어막에 닿으면 멈춰 서서 주기마다 HP 를 깎고,
- * 0 이 되면 **붕괴** — 성문이 한 번 뚫린 것으로 쳐서 주인공 HP 가 1 깎이고, 붙어 있던 몬스터는 충격파에 쓸려 나가며 방어막은 바로 다시 선다.
- * (처음엔 "6초 통과 뒤 복구"였는데 내려온 몬스터가 느려 봇이 다 피했다 — 붕괴가 가벼워 새 계정이 S4 를 절반 넘게 깼다.)
- * 붙은 몬스터가 없으면 서서히 찬다. 할 일이 "피하기"에서 "방어막이 깨지기 전에 떨구기"로 옮겨 간다 — 피하기는 보스 사격 몫 */
+ * 2026-10-02 부터 방어막이 **유일한 생명**이다 — 0 이 되면 패배. 회복은 없고(스테이지 시작에만 가득), 생명(+1)은 방어막 +15% 로 바뀐다.
+ * 대장 마력탄·조각도 플레이어가 아니라 돔에 맞는다. 할 일은 "방어막이 깨지기 전에 떨구기" 하나다.
+ * (옛 규칙: 붕괴하면 주인공 HP −1 · 방어막 즉시 복구 · 붙은 몬스터가 없으면 초당 4 회복 — HP 하트가 너무 많다는 피드백으로 걷어 냈다) */
 /**
  * 조정 손잡이 — 방어막 모델의 밸런스 값은 전부 여기. 시뮬(dodge-sim)이 스윕할 때 이 표만 바꾼다 (소스 수정 없이).
  * 게임은 런 시작마다 읽으므로 한 런 안에서는 고정이다
  */
 export const TUNING = {
-  monsterSpeedMul: 0.42,     // 몬스터는 걸어 내려온다 — 화살 속도의 42% (0.6 → 0.42, 사용자: "너무 빨리 내려옴", 2026-10-02)
+  monsterSpeedMul: 0.14,     // 0.6 → 0.42 → 0.14 (2026-10-02, 사용자: "3배 느리되 난이도 높게") — 대신 수·체력·피해로 압박한다
   spawnScale: 1.4,           // 생성 간격 배수 — 1.8 → 1.4: 느려진 만큼 촘촘히, "너무 쉽다"에 맞춰 (스윕 2026-10-02)
   barrierHp: 120,
   barrierHitMs: 1200,        // 붙은 몬스터의 공격 주기
   barrierDmgMul: 0.65,       // 종류별 방어막 피해 배수 — 0.5 → 0.65 (1 이면 S2 부터 벽, 0.5 는 S1 이 긁히지도 않았다)
   barrierDmgPerStage: 0.15,  // 스테이지마다 더해지는 피해 배수 — 뒤로 갈수록 세게 두드린다 (성장이 갈리는 지렛대)
-  barrierRegen: 4,           // 초당 회복 (붙은 몬스터가 없을 때)
+  barrierRegen: 0,           // 방어막이 유일한 생명이 된 뒤(2026-10-02)에는 저절로 차지 않는다 — 스테이지마다 가득 찬다
+  barrierPerLife: 0.15,      // 예전 "최대 HP +1" 하나가 방어막 +15% (성장 · 견갑 · 활력 칩 · 수호 부적 · 성장 카드)
+  bossOrbDmg: 8,            // 대장 마력탄이 돔에 맞는 피해
+  stageSpawnScale: [0.85, 1.0, 1.8, 1.25] as number[],   // 스테이지별 생성 간격 배수 — 1 보다 크면 드물게. S1·S2 는 촘촘히(방어막이 실제로 깎이게), S3 은 비룡·폭발이 세서 드물게 (스윕 2026-10-02)
   basicCooldown: BASIC_SHOT_COOLDOWN,
   bossCutMul: 1,             // 보스 격추 수 배수
 };
@@ -102,9 +105,23 @@ export function barrierYAt(world: GameWorld, x: number): number {
 export function barrierDamageOf(a: Pick<Arrow, "kind">): number {
   return a.kind === "explosive" ? 14 : a.kind === "ricochet" ? 9 : a.kind === "homing" ? 8 : a.kind === "aimed" ? 7 : 5;
 }
+/**
+ * 방어막 최대치 — 기본 × (1 + 15% × 추가 생명). 플레이어 HP 는 없다(2026-10-02): 예전 HP 를 올리던 모든 것(성장 · 오우거 견갑 · 활력 칩 ·
+ * 수호 부적 · 성장 카드)이 player.maxHp 를 올리고, 그 '추가 생명'만큼 방어막이 두꺼워진다
+ */
+export function barrierMaxFor(world: GameWorld): number {
+  const lives = Math.max(0, world.player.maxHp - 3);
+  return Math.round(TUNING.barrierHp * (1 + TUNING.barrierPerLife * lives));
+}
+/** 런 중에 생명이 늘면(수호 부적 · 성장 카드) 최대치와 현재치를 같이 올린다 */
+export function syncBarrierLives(world: GameWorld): void {
+  const next = barrierMaxFor(world);
+  world.barrierHp = Math.min(next, world.barrierHp + Math.max(0, next - world.barrierMaxHp));
+  world.barrierMaxHp = next;
+}
 export function resetBarrier(world: GameWorld): void {
-  world.barrierMaxHp = TUNING.barrierHp;
-  world.barrierHp = TUNING.barrierHp;
+  world.barrierMaxHp = barrierMaxFor(world);
+  world.barrierHp = world.barrierMaxHp;
   world.barrierDownMs = 0;
   world.barrierFlashMs = 0;
   world.barrierHitX = world.width * 0.5;
@@ -112,32 +129,26 @@ export function resetBarrier(world: GameWorld): void {
   world.barrierHits = 0;
   world.barrierBreachDamage = 0;
 }
-function hitBarrier(world: GameWorld, a: Arrow): void {
-  world.barrierHp = Math.max(0, world.barrierHp - barrierDamageOf(a) * TUNING.barrierDmgMul * (1 + TUNING.barrierDmgPerStage * world.stageIndex));
+function hitBarrier(world: GameWorld, a: Arrow, damage = barrierDamageOf(a)): void {
+  world.barrierHp = Math.max(0, world.barrierHp - damage * TUNING.barrierDmgMul * (1 + TUNING.barrierDmgPerStage * world.stageIndex));
+  world.lastHitCause = a.fromBoss ? "boss" : a.splitLevel > 0 ? "fragment" : a.kind;
   world.barrierFlashMs = 220;
   world.barrierHitX = a.x;
   world.barrierHits += 1;
   world.sfx.thud += 1;
-  if (world.barrierHp <= 0) {
-    // 붕괴 — 성문 피해 1 · 붙은 몬스터는 충격파에 쓸려 나간다(보상 없음) · 방어막은 바로 다시 선다
-    world.barrierBreaks += 1;
-    world.barrierBreachDamage += 1;
+  if (world.barrierHp <= 0 && world.barrierBreaks === 0) {
+    // 방어막 붕괴 = 패배 (유일한 생명). 붕괴 고리를 그리고 세계가 한 박자 멈춘다
+    world.barrierBreaks = 1;
     world.barrierDownMs = BARRIER_BREACH_MS;
-    world.barrierHp = world.barrierMaxHp;
-    world.hitStopMs = Math.max(world.hitStopMs, 120);
-    world.shakeMs = Math.max(world.shakeMs, 300); world.shakeAmp = Math.max(world.shakeAmp, 6);
+    world.hitStopMs = Math.max(world.hitStopMs, 160);
+    world.shakeMs = Math.max(world.shakeMs, 360); world.shakeAmp = Math.max(world.shakeAmp, 7);
     world.sfx.boom += 1;
-    for (const b of world.arrows) {
-      if (!b.active || !b.atBarrier) continue;
-      if (world.fades.length < 24) world.fades.push({ kind: b.kind, boss: false, bossTier: 0, x: b.x, y: b.y, size: b.hitRadius, ms: 420, facing: b.x < a.x ? -1 : 1 });
-      b.active = false;
-    }
   }
 }
 export function updateBarrier(world: GameWorld, dtSec: number): void {
   world.barrierFlashMs = Math.max(0, world.barrierFlashMs - dtSec * 1000);
   world.barrierDownMs = Math.max(0, world.barrierDownMs - dtSec * 1000);
-  if (!world.arrows.some((a) => a.active && a.atBarrier)) world.barrierHp = Math.min(world.barrierMaxHp, world.barrierHp + TUNING.barrierRegen * dtSec);
+  if (world.barrierHp > 0 && TUNING.barrierRegen > 0 && !world.arrows.some((a) => a.active && a.atBarrier)) world.barrierHp = Math.min(world.barrierMaxHp, world.barrierHp + TUNING.barrierRegen * dtSec);
 }
 
 export function resetArrows(world: GameWorld): void {
@@ -223,6 +234,7 @@ function activate(
   arrow.barrierVy = 0;
   arrow.bossCutsLeft = 0;
   arrow.bossMaxCuts = 0;
+  arrow.bossEntering = false;
 }
 
 function activePattern(world: GameWorld): ArrowPattern | null {
@@ -324,13 +336,6 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
   }
 }
 
-function tipPos(a: Arrow): { x: number; y: number } {
-  const half = a.length * 0.45;
-  return {
-    x: a.x + Math.cos(a.angle) * half,
-    y: a.y + Math.sin(a.angle) * half,
-  };
-}
 
 function bumpCombo(world: GameWorld): void {
   world.combo += 1;
@@ -394,6 +399,7 @@ function configureSplitFragment(
   arrow.barrierVy = 0;
   arrow.bossCutsLeft = 0;
   arrow.bossMaxCuts = 0;
+  arrow.bossEntering = false;
 }
 
 function pushDebris(world: GameWorld, kind: "tip" | "tail" | "spark" | "streak", x: number, y: number, vx: number, vy: number, angle: number, len: number, lifeMs: number, color: string): void {
@@ -583,6 +589,7 @@ export function ultimateSlash(world: GameWorld): void {
 /** 화살 베기 — 정타(몸에서 REFLECT_DIST 안)면 반사, 아니면 파쇄. 보스는 기존 다단 베기 */
 export function cutArrow(world: GameWorld, a: Arrow, dist: number): void {
   if (a.boss) {
+    if (a.bossEntering) return;   // 내려오는 중엔 맞지 않는다
     // 보스 정타(코앞)는 2컷 — 위험을 감수한 만큼 빨리 무너뜨린다
     if (dist <= world.player.radius + a.hitRadius + REFLECT_DIST && a.bossCutsLeft > 1) a.bossCutsLeft -= 1;
     spawnCutDebris(world, a, "boss"); splitArrow(world, a); addGauge(world, GAUGE_SHATTER); return;
@@ -680,38 +687,33 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
 /** 추격대장 활 위치 — 화면 **위 가운데**(성문 위)에서 좌우 ±70px 흔들린다. 화살은 위에서 아래로만 오므로 대장도 위에 선다 (2026-10-01) */
 export const CAPTAIN_TOP = 330;   // 150 → 330 (2026-10-01 캡처): 150 은 화살비 게이지·제목과 겹쳤다. HUD 왼쪽 열(~182)·게이지 아래, 보스 막대(350) 위
 /** 보스 화살이 떠다니는 높이 — 대장 발밑(safeTop+CAPTAIN_TOP+70)이되, 바닥에서 320px 은 띄운다(시뮬 화면 700 처럼 낮은 화면) */
-export function bossHoverY(world: GameWorld): number { return Math.min(world.safeTop + CAPTAIN_TOP + 70, world.floorY - 320); }   // 462 로 내려 보니 사격 거리가 줄어 곡선이 바뀌었다 — 412 유지, 대신 보스 바를 올림
+/** 대장 몬스터 크기(그림 높이 px) — 5배 (96~136 → 480~528, 사용자: "크게도 5배", 2026-10-02). 화면 폭보다 커서 위쪽을 덮는다 */
+export function bossSize(tier: number): number { return 480 + Math.min(48, tier * 12); }
+/** 대장이 떠 있는 높이(중심) — 몸의 윗부분이 화면 위로 나가고 아래쪽이 화면 위쪽을 덮는다 (아웃로 디펜스의 모선처럼). 예전 412 → 약 130 */
+export function bossHoverY(world: GameWorld): number { return world.safeTop + bossSize(world.stageIndex + 1) * 0.24; }   // 462 로 내려 보니 사격 거리가 줄어 곡선이 바뀌었다 — 412 유지, 대신 보스 바를 올림
 /** 보스의 조준 사격 주기(ms) — 단계가 오를수록 잦다 */
 export function bossSalvoMs(tier: number): number { return Math.max(1_100, 1_800 - tier * 220); }
-function captainBowX(world: GameWorld): number { return world.width * 0.5 + (Math.random() - 0.5) * 140; }
-function captainBowY(world: GameWorld): number { return world.safeTop + CAPTAIN_TOP - 10 - Math.random() * 20; }
-/** 예고 시간(ms) = 420 + 거리 × 1.1, 520~1200 — 거리에 비례해 반응 시간을 보장 */
-export function captainWarningMs(distance: number): number { return Math.max(520, Math.min(1200, Math.round(420 + distance * 1.1))); }
-
 function spawnBossArrow(world: GameWorld): void {
   const arrow = acquire(world);
   if (!arrow) return;
   const tier = world.stageIndex + 1;
   const cuts = bossCutsFor(world.stageIndex);
-  const fromLeft = tier % 2 === 0;
-  // 4스테이지: 보스 화살은 화면 오른쪽 끝에 선 추격대장의 활에서 나온다 (draw.ts 의 궁수 대장 원화 위치)
-  const captain = world.stageIndex === 3;
-  const cx = captainBowX(world), cy = captainBowY(world);
-  // 1~3스테이지 보스 화살도 위에서 — 왼쪽/오른쪽 위 모서리를 번갈아 (옆에서 오던 것을 위로, 2026-10-01)
-  const x = captain ? cx : fromLeft ? world.safeLeft + 40 : world.width - world.safeRight - 40;
-  const y = captain ? cy : world.safeTop - 48;
+  // 대장은 화면 **맨 위 밖**에서 내려온다 (사용자: "보스가 너무 아래서 리스폰됨 — 맨 위부터", 2026-10-02)
+  const size = bossSize(tier);
+  const x = world.width * 0.5;
+  const y = world.safeTop - size * 0.6;
   // 보스 화살은 플레이어를 쫓지 않는다 (2026-10-01, 아웃로 디펜스) — 화면 위쪽 띠(성문 아래)에서 좌우로 떠다니며
   // 아래로 조준 화살을 쏘고, 플레이어의 사격이 격추 수만큼 깎아 떨어뜨린다. 일제 사격이 없어진 뒤 쫓아오는 보스는 피할 길이 없었다
-  const speed = 60 + Math.min(60, tier * 8);
-  void y;
-  activate(arrow, x, bossHoverY(world), (x < world.width * 0.5 ? 1 : -1) * speed, 0, "normal", captain ? 900 : 1_050);
+  const speed = 18 + tier * 4;
+  activate(arrow, x, y, (tier % 2 === 0 ? -1 : 1) * speed, 0, "normal", 0);
   world.bossSalvoMs = 0;
   arrow.boss = true;
   arrow.bossTier = tier;
   arrow.bossCutsLeft = cuts;
   arrow.bossMaxCuts = cuts;
-  arrow.length = 58 + Math.min(42, tier * 5);
-  arrow.hitRadius = 12 + Math.min(10, tier * 1.2);
+  arrow.bossEntering = true;
+  arrow.length = size * 0.5;
+  arrow.hitRadius = size * 0.3;   // 그림이 큰 만큼 맞는 범위도 — 화살이 몸통에 박히면 맞는다
   arrow.damage = 0.75;
   arrow.homingMs = 0;
   arrow.homingTurnRate = 0;
@@ -736,7 +738,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
   if (world.stageElapsedMs < 2_000) {
     world.spawnAccMs = 0;
   } else if (pattern && pattern.kind !== "rest") {
-    const spawnMs = (pattern.spawnMs ?? 700) * TUNING.spawnScale / (stage.spawnMul * world.tempo);
+    const spawnMs = (pattern.spawnMs ?? 700) * TUNING.spawnScale * (TUNING.stageSpawnScale[Math.min(3, world.stageIndex)] ?? 1) / (stage.spawnMul * world.tempo);
     world.spawnAccMs += dtSec * 1000;
     while (world.spawnAccMs >= spawnMs) {
       world.spawnAccMs -= spawnMs;
@@ -750,7 +752,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
   const slow = player.slowActiveMs > 0;
   const slowR = world.stats.slowRadius + world.slashBuff * 8;
   const slowF = world.stats.slowFactor;
-  let hitDamage = 0;
+  const hitDamage = 0;   // 플레이어는 맞지 않는다 — 방어막이 받는다 (반환 형식만 유지)
 
   for (let i = 0; i < world.arrows.length; i++) {
     const a = world.arrows[i];
@@ -808,23 +810,28 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     }
 
     if (a.boss) {
-      // 위쪽 띠에 머문다 — 좌우로 떠다니고 벽에서 돌아선다. 깎였을 때 튄 속도는 서서히 줄인다
+      // 맨 위 밖에서 천천히 내려와 화면 위쪽에 자리 잡는다 — 좌우로 조금씩 흔들릴 뿐(화면보다 크다). 깎였을 때 튄 속도는 서서히 줄인다
       const hoverY = bossHoverY(world);
-      a.y += (hoverY - a.y) * Math.min(1, dtSec * 4);
+      const size = bossSize(a.bossTier);
+      a.y += (hoverY - a.y) * Math.min(1, dtSec * 0.9);
       a.vy = 0;
-      const cruise = 60 + Math.min(60, a.bossTier * 8);
+      const cruise = 18 + a.bossTier * 4;
       if (Math.abs(a.vx) > cruise) a.vx *= Math.max(0, 1 - dtSec * 2.5);
       if (Math.abs(a.vx) < cruise * 0.5) a.vx = (a.vx < 0 ? -1 : 1) * cruise;
-      if ((a.x < world.safeLeft + 40 && a.vx < 0) || (a.x > world.width - world.safeRight - 40 && a.vx > 0)) a.vx *= -1;
-      // 조준 사격 — 주기마다 플레이어를 겨눈 화살 한 발 (예고 700ms)
-      world.bossSalvoMs += dtSec * 1000;
-      if (world.bossSalvoMs >= bossSalvoMs(a.bossTier) && a.warningMs <= 0) {
+      if ((a.x < world.width * 0.38 && a.vx < 0) || (a.x > world.width * 0.62 && a.vx > 0)) a.vx *= -1;
+      // 마력탄 — 자리를 잡은 뒤부터, 주기마다 몸 아래에서 플레이어 머리 위 돔을 겨눈다 (돔에 맞는다)
+      const settled = Math.abs(a.y - hoverY) < 24;
+      if (settled && a.bossEntering) { a.bossEntering = false; world.bossSalvoMs = bossSalvoMs(a.bossTier); }   // 자리 잡자마자 첫 마력탄
+      if (settled) world.bossSalvoMs += dtSec * 1000;
+      if (settled && world.bossSalvoMs >= bossSalvoMs(a.bossTier)) {
         world.bossSalvoMs = 0;
         const shot = acquire(world);
         if (shot) {
-          const dx = player.x + player.vx * 0.25 - a.x, dy = player.y - a.y, len = Math.max(1, Math.hypot(dx, dy));
-          const sp = 300 + a.bossTier * 25;
-          activate(shot, a.x, a.y + 10, dx / len * sp, dy / len * sp, "aimed", 700);
+          const sx = a.x + (Math.random() - 0.5) * size * 0.4, sy = a.y + size * 0.36;
+          const tx = player.x + (Math.random() - 0.5) * 40, ty = barrierYAt(world, tx);
+          const dx = tx - sx, dy = ty - sy, len = Math.max(1, Math.hypot(dx, dy));
+          const sp = 170 + a.bossTier * 20;
+          activate(shot, sx, sy, dx / len * sp, dy / len * sp, "aimed", 600);
           shot.fromBoss = true;
         }
       }
@@ -852,6 +859,13 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
     }
     a.angle = Math.atan2(a.vy, a.vx || 0.0001);
 
+    // ── 대장 마력탄 · 조각 — 돔 표면에 맞아 방어막을 깎고 사라진다 (플레이어는 맞지 않는다, 2026-10-02) ──
+    if ((a.fromBoss || a.splitLevel > 0) && !a.reflected && a.vy > 0 && a.y >= barrierYAt(world, a.x) - 4) {
+      hitBarrier(world, a, a.fromBoss ? TUNING.bossOrbDmg : barrierDamageOf(a));
+      world.barrierFlashMs = 300;
+      a.active = false;
+      continue;
+    }
     // ── 방어막 — 몬스터(보스·보스 마력탄·조각 제외)는 띠에서 멈춰 두드린다 ──
     if (!a.boss && !a.fromBoss && a.splitLevel === 0 && !a.reflected) {
       const standY = barrierYAt(world, a.x) - BARRIER_STAND;
@@ -908,59 +922,14 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
         world.slashScore += 40;
         continue;
       }
-      if (a.boss) {
-        const side = world.stageIndex === 3 ? 1 : Math.random() < 0.5 ? -1 : 1;
-        a.x = world.stageIndex === 3 ? captainBowX(world) : side < 0 ? -36 : world.width + 36;
-        a.y = world.stageIndex === 3 ? captainBowY(world) : world.safeTop + 50 + Math.random() * Math.max(80, world.floorY - world.safeTop - 100);
-        launchAtPlayer(world, a, 170 + a.bossTier * 10);
-        if (world.stageIndex === 3) a.warningMs = captainWarningMs(Math.hypot(world.player.x - a.x, world.player.y - a.y));
-        continue;
-      }
+      if (a.boss) continue;   // 대장은 화면보다 커서 '밖'에 걸쳐 있다 — 지우지 않는다
       a.active = false;
       world.dodged += 1;
       gainRunXp(world, 1);
       continue;
     }
 
-    if (a.reflected || player.invulnMs > 0 || player.anim === "dead") continue;
-
-    const tip = tipPos(a);
-    const pr = player.radius;
-    const dx = tip.x - player.x;
-    const dy = tip.y - player.y;
-    const distSq = dx * dx + dy * dy;
-    const hitR = a.hitRadius + pr;
-    if (distSq <= hitR * hitR) {
-      hitDamage += a.damage;
-      world.lastHitCause = a.boss ? "boss" : a.splitLevel > 0 ? "fragment" : a.kind;
-      if (a.boss) {
-        const away = Math.atan2(a.y - player.y, a.x - player.x) + (Math.random() - 0.5) * 0.7;
-        a.vx = Math.cos(away) * 210;
-        a.vy = Math.sin(away) * 210;
-        a.x += Math.cos(away) * 38;
-        a.y += Math.sin(away) * 38;
-      } else {
-        a.active = false;
-      }
-      continue;
-    }
-
-    const nearR = hitR + NEAR_MISS_PAD;
-    if (!a.nearMissed && distSq <= nearR * nearR) {
-      a.nearMissed = true;
-      bumpCombo(world);
-      addGauge(world, 4);
-      if (a.telegraph === "perfect") {
-        world.perfectDodges += 1;
-        world.expeditionSeals += 1;
-      }
-    }
-  }
-
-  if (world.barrierBreachDamage > 0) {
-    hitDamage += world.barrierBreachDamage;
-    world.barrierBreachDamage = 0;
-    world.lastHitCause = "barrier";
+    // 플레이어 충돌·아슬아슬 피하기는 없다 — 몬스터는 돔에 멈추고 대장 마력탄은 돔에 맞는다 (방어막이 유일한 생명, 2026-10-02)
   }
   return hitDamage;
 }

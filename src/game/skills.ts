@@ -238,7 +238,7 @@ export function boltDamage(lv: number): number { return scaled(1.3, lv); }
 
 /** 스테이지별 몬스터 체력 — S1 은 기본 사격 한 발, 깊어질수록 속성 화살과 레벨이 필요하다. 성벽은 계속 오른다 */
 // S2 는 1.6 — 불화살 Lv1(1.6)이 S2 까지 한 발이다. 초반 웨이브는 안정적으로 넘어야 한다(가이드)
-export const ARROW_HP = [1, 1.6, 2.8, 3.6];
+export const ARROW_HP = [1, 1.6, 2.8, 4.0];   // S4 3.6 → 4.0 (2026-10-02 방어막 단일 생명): 새 계정에게 S4 를 벽으로 — 기본 사격이 약할수록 더 걸린다
 export function arrowHpFor(stageIndex: number): number {
   const i = Math.max(0, stageIndex);
   return i < ARROW_HP.length ? ARROW_HP[i] : ARROW_HP[ARROW_HP.length - 1] + (i - ARROW_HP.length + 1) * 0.7;

@@ -2,7 +2,7 @@ import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, type Element } from "./skills";
 import { spiritPos } from "./skillShots";
-import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt } from "./arrows";
+import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
@@ -219,7 +219,7 @@ function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" 
 }
 /** 종류별 몸 크기(그림 높이 px) — 판정 반지름보다 크게, 사냥터 몬스터와 비슷한 체감 (34~52 → 56~88, 2026-10-01) */
 function monsterSize(a: Pick<Arrow, "kind" | "boss" | "bossTier">): number {
-  if (a.boss) return 96 + Math.min(40, a.bossTier * 10);
+  if (a.boss) return bossSize(a.bossTier);   // 5배 (2026-10-02)
   return a.kind === "ricochet" ? 88 : a.kind === "explosive" ? 84 : a.kind === "homing" ? 76 : a.kind === "aimed" ? 68 : a.kind === "fan" ? 60 : 56;
 }
 
@@ -323,6 +323,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   ctx.scale(1 + squash, 1 - squash);
   if (img) {
     const w = size * (img.naturalWidth / img.naturalHeight);
+    if (a.boss) ctx.imageSmoothingQuality = "high";   // 512px 원화를 ~480px 로 — 확대가 크니 부드럽게
     ctx.drawImage(img, -w / 2, -size / 2, w, size);
   } else {
     ctx.fillStyle = a.boss ? bossColor : "#f87171";
@@ -353,7 +354,7 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.globalAlpha = breach * 0.9; ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 3 + k * 4; ctx.shadowColor = "#fb7185"; ctx.shadowBlur = 16;
     ctx.beginPath(); ctx.ellipse(width * 0.5, world.floorY, barrierRx(world) * (0.3 + k * 0.9), (world.floorY - y) * (0.3 + k * 0.9), 0, Math.PI, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = Math.min(1, breach * 1.6); ctx.fillStyle = "#fecaca"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
-    ctx.fillText("방어막 붕괴 · 성문 피해", width * 0.5, y - 30 - k * 12);
+    ctx.fillText("방어막 붕괴", width * 0.5, y - 30 - k * 12);
     ctx.shadowBlur = 0;
   }
   const ratio = world.barrierMaxHp > 0 ? world.barrierHp / world.barrierMaxHp : 0;
@@ -392,12 +393,13 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.beginPath(); ctx.ellipse(world.barrierHitX, hy, 26 * (1.4 - flash), 10 * (1.4 - flash), 0, 0, Math.PI * 2); ctx.stroke();
   }
   // HP 막대 — 돔 꼭대기 바로 아래 가운데
-  const bw = 112, bx = cx - bw * 0.5, by = y + 34;   // 꼭대기에 선 몬스터와 겹치지 않게 돔 안쪽으로
+  const bw = 150, bx = cx - bw * 0.5, by = y + 30;   // 꼭대기에 선 몬스터와 겹치지 않게 돔 안쪽으로
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(15,23,42,.8)"; ctx.fillRect(bx, by, bw, 12);
-  ctx.fillStyle = color; ctx.fillRect(bx + 2, by + 2, (bw - 4) * ratio, 8);
+  ctx.fillStyle = "rgba(15,23,42,.85)"; ctx.fillRect(bx, by, bw, 16);
+  ctx.fillStyle = color; ctx.fillRect(bx + 2, by + 2, (bw - 4) * ratio, 12);
   ctx.fillStyle = "#e2e8f0"; ctx.font = "900 10px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
-  ctx.fillText(`방어막 ${Math.ceil(world.barrierHp)}`, cx, by + 10);
+  ctx.fillStyle = "#0f172a"; ctx.font = "900 11px system-ui";
+  ctx.fillText(`방어막 ${Math.ceil(world.barrierHp)} / ${world.barrierMaxHp}`, cx, by + 12);
   ctx.restore();
 }
 

@@ -88,6 +88,8 @@ export type Arrow = {
   barrierVy: number;
   bossCutsLeft: number;
   bossMaxCuts: number;
+  /** 대장이 화면 위 밖에서 내려오는 중 — 자리를 잡기 전엔 맞지 않는다(내려오다 격파되면 마력탄을 한 번도 못 쏜다, 2026-10-02) */
+  bossEntering: boolean;
 };
 
 export type SlashHitFx = {

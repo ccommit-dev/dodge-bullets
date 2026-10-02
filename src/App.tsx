@@ -28,6 +28,8 @@ import { IdleQaPanel } from "./dev/IdleQaPanel";
 import { bindAndroidBackButton, exitAppNative, isNativePlatform, requestReviewOnce } from "./game/native";
 import { detectPaymentEnvironment, setPaymentEnvironment } from "./payments/environment";
 import { reconcileStore } from "./payments/reconcile";
+import { barrierRatio, starsForClear } from "./game/barrierLife";
+import { syncBarrierLives } from "./game/arrows";
 import { primeRewardedAds } from "./ads/rewarded";
 import { SaveBackupModal } from "./SaveBackupModal";
 import { copyToClipboard } from "./game/backup";
@@ -138,16 +140,17 @@ const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
+/** 패배 팁 — 방어막을 마지막으로 깎은 쪽 기준 (방어막이 유일한 생명, 2026-10-02) */
 const DEATH_TIPS: Record<string, string> = {
   homing: "달빛 늑대왕은 단단하고 방어막을 세게 두드립니다 — 보이면 먼저 떨구세요",
-  explosive: "폭염 비룡은 떨어지는 자리에서 멀리 — 폭발 범위가 넓어요",
-  ricochet: "오우거는 벽에서 되돌아옵니다 — 벽에서 떨어져 서세요",
-  fan: "고블린 떼는 한 마리만 잡으면 틈이 열립니다",
-  aimed: "그림자 늑대는 붉은 선이 사라지는 순간 돌진합니다 — 그 전에 자리를 바꾸세요",
-  fragment: "떨군 조각은 돌다가 되돌아옵니다 — 조각 아래에 서지 마세요",
-  boss: "대장 몬스터는 끝까지 쏴야 쓰러집니다 — 활 사거리 안에 두되 바로 아래에 서지 마세요",
-  normal: "활은 알아서 쏩니다 — 할 일은 내려오는 자리를 피하는 것. 몬스터 아래가 아니라 옆에 서세요",
-  barrier: "방어막이 깨질 때마다 성문 피해 1 — 방어막에 붙은 몬스터부터 떨구세요. 덩치(오우거·비룡)가 가장 세게 두드립니다",
+  explosive: "폭염 비룡은 돔에 닿으면 터져 한 번에 크게 깎습니다 — 물화살이 불을 끕니다",
+  ricochet: "오우거는 느리지만 단단합니다 — 흙화살이 오우거를 붙잡습니다",
+  fan: "고블린은 셋이 나란히 옵니다 — 불화살 폭발로 한꺼번에 정리하세요",
+  aimed: "그림자 늑대가 돔에 붙기 전에 떨구세요 — 번개화살이 먼저 끊습니다",
+  fragment: "대장을 깎으면 조각이 흩어져 돔을 두드립니다 — 화살비로 한 번에 지우세요",
+  boss: "대장의 마력탄이 돔을 깎습니다 — 대장을 빨리 쓰러뜨릴수록 덜 맞습니다. 기본 사격을 강화해 보세요",
+  normal: "슬라임 떼가 돔에 붙으면 조금씩 깎습니다 — 정비에서 기본 사격·속성 화살을 올려 보세요",
+  barrier: "방어막이 깨지면 집니다 — 붙은 몬스터부터 떨구고, 성장 카드의 방어막 수리를 챙기세요",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
 /**
@@ -270,8 +273,8 @@ function App() {
   const [stageIndex, setStageIndex] = useState(0);
   const [stageLabel, setStageLabel] = useState(STAGES[0].name);
   const [stageIntro, setStageIntro] = useState(STAGES[0].intro);
-  const [hp, setHp] = useState(1);
-  const [maxHp, setMaxHp] = useState(1);
+  const [, setHp] = useState(1);   // 하트 HUD 는 없앴다(방어막이 유일한 생명) — 값은 다른 화면용으로만 갱신
+  const [, setMaxHp] = useState(1);
   const [combo, setCombo] = useState(0);
   /** 첫 원정 슬로모션 튜토리얼 (점검표 #6) — 1회만 */
   const [tutorialActive, setTutorialActive] = useState(false);
@@ -655,7 +658,7 @@ function App() {
         if (world.barrierBreaks !== breachSeenRef.current) { breachSeenRef.current = world.barrierBreaks; if (world.barrierBreaks > 0) haptic("heavy"); }
 
         // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
-        if (import.meta.env.DEV && qaGodmodeRef.current && stateRef.current === "playing") world.player.hp = world.player.maxHp;
+        if (import.meta.env.DEV && qaGodmodeRef.current && stateRef.current === "playing") world.barrierHp = world.barrierMaxHp;
         // 성장 선택: 런 XP 로 레벨업할 때마다(perks.ts) 멈추고 3택 — 레벨이 오를수록 화살도 빨라진다(world.tempo)
         if (stateRef.current === "playing" && !dyingRef.current && world.levelUps > 0) {
           world.levelUps = 0;
@@ -808,20 +811,18 @@ function App() {
           const reward =
             computeClearReward(
               stage.baseReward,
-              world.player.hp,
-              world.player.maxHp,
+              world.barrierHp,
+              world.barrierMaxHp,
               world.stageElapsedMs,
               stage.durationMs,
             ) + Math.min(40, world.maxCombo * 2) + world.supplies * 3
               + world.enemyKills * 5 + world.perfectDodges * 8 + world.chests * 30 + world.expeditionSeals * 20;
           setCoinGain(reward);
           sound.playCoin();
-          // dodge 별점 (CRUMBLE_GAP §4) — ★ 클리어 · ★★ 피격 1회 이하 · ★★★ 노히트+콤보 10.
+          // dodge 별점 — ★ 클리어 · ★★ 방어막 50% 이상 · ★★★ 방어막 90% 이상 + 콤보 10 (방어막이 유일한 생명, 2026-10-02).
           // 성벽(무한)은 층수가 이미 목적이라 미적용.
           const starFloor = towerFloorOf(world.stageIndex);
-          const hitsTaken = world.player.maxHp - world.player.hp;
-          const starsGained =
-            starFloor > 0 ? 0 : hitsTaken <= 0 && world.maxCombo >= 10 ? 3 : hitsTaken <= 1 ? 2 : 1;
+          const starsGained = starFloor > 0 ? 0 : starsForClear(world);
           void (async () => {
             const nextCoins = await saveCoins(
               userHashRef.current,
@@ -935,7 +936,7 @@ function App() {
 
             const shoulder = EXPEDITION_SHOULDERS[Math.min(3, world.stageIndex)];
             const first = !nextProgress.ownedShoulders.includes(shoulder);
-            const dropped = first || Math.random() < (world.player.hp === world.player.maxHp ? .35 : .18);
+            const dropped = first || Math.random() < (barrierRatio(world) >= 0.9 ? .35 : .18);
             if (dropped) {
               const equipped = await updateCharacterProgress(userHashRef.current, (current) => ({
                 ...current,
@@ -1043,6 +1044,7 @@ function App() {
         world.player.maxHp += 1;
         world.player.hp += 1;
         world.runMods.maxHpBonus += 1;   // 스테이지가 넘어가도 유지되게
+        syncBarrierLives(world);          // 생명 +1 = 방어막 +15%
         used.push("insurance");
       }
       if (used.length) {
@@ -1650,7 +1652,7 @@ function App() {
           <div className="overlay-content overlay-wide exp-menu-content">
             <p className="brand">GATE DEFENSE</p>
             <h1 className="title">성문 방어전</h1>
-            <p className="subtitle">몬스터가 성문 <b>방어막</b>으로 걸어 내려온다 — <b>활</b>이 알아서 쏘니 방어막이 깨지기 전에 떨구고, 새어 나온 놈은 옆으로 피해라. 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
+            <p className="subtitle">몬스터가 성문 <b>방어막</b>으로 걸어 내려온다 — <b>활</b>이 알아서 쏘고, 방어막이 깨지면 진다. 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             <p className="score-line">코인 {coins.toLocaleString()} · 인장 <b data-testid="exp-seals">{progress.expeditionSeals.toLocaleString()}</b> · 최고 {highScore.toLocaleString()}</p>
 
@@ -1709,7 +1711,7 @@ function App() {
                     );
                   })}
                   <p className="pioneer-star-hint">
-                    ★★ 피격 1회 이하 · ★★★ 노히트+콤보 10 — 별 12개 달성 시 보석 60 · 조각 10
+                    ★★ 방어막 50% 이상 지킴 · ★★★ 방어막 90% 이상 + 콤보 10 — 별 12개 달성 시 보석 60 · 조각 10
                   </p>
                 </div>
 
@@ -1819,8 +1821,7 @@ function App() {
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
-                점수 {score} · HP {"♥".repeat(hp)}
-                {"♡".repeat(Math.max(0, maxHp - hp))}
+                점수 {score}
               </span>
               <span className="threat-label">위험도 {"◆".repeat(threatLevel)}{"◇".repeat(4 - threatLevel)}</span>
               <span className="run-level">Lv.{runHud.level}{runHud.tempo > 1 ? ` · 속도 ×${runHud.tempo.toFixed(2)}` : ""}<i className="run-xp"><b style={{ width: `${runHud.pct}%` }} /></i></span>
@@ -1836,7 +1837,7 @@ function App() {
             {tutorialActive && (
               <div className="dodge-tutorial" role="status">
                 <b>슬로모션 튜토리얼</b>
-                <span>몬스터는 <em>위에서</em> 내려옵니다 — 화면을 눌러 옆으로 피하세요. 활은 <em>알아서</em> 가장 가까운 몬스터를 쏘고, 곁의 <em>무기 정령</em>이 속성 화살을 쏩니다. 게이지가 차면 <em>화살비</em>가 화면을 비웁니다.</span>
+                <span>몬스터는 <em>위에서</em> 성문 <em>방어막</em>으로 내려옵니다 — 방어막이 깨지면 집니다. 활은 <em>알아서</em> 가장 가까운 몬스터를 쏘고, 곁의 <em>무기 정령</em>이 속성 화살을 쏩니다. 게이지가 차면 <em>화살비</em>가 화면을 비웁니다.</span>
               </div>
             )}
           </div>

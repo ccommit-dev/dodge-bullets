@@ -64,7 +64,7 @@ for (let i = 0; i < 10; i += 1) {
   // 레벨업 오버레이가 뜨면 찍고 첫 카드를 고른다
   const perk = await page.evaluate(() => !!document.querySelector("[class*=perk-card], .perk-overlay"));
   if (perk) { await shot(`2${i}-perk`); await page.evaluate(() => (document.querySelector("[data-testid^=perk-]") ?? document.querySelector("[class*=perk-card]"))?.click()); await sleep(400); }
-  await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.hp = w.player.maxHp; } });
+  await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.hp = w.player.maxHp; w.barrierHp = w.barrierMaxHp; } });
   await shot(`1${i + 1}-battle`);
 }
 // 일제 사격(수동) — 버튼을 누르고 당김·놓음 순간을 찍는다

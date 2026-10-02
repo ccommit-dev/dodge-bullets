@@ -91,7 +91,7 @@ ok("pause/resume 이벤트 뒤에도 오류 없이 전투가 이어진다", erro
 
 // ── 4. 클리어 → 보상이 저장된다. 중간 스테이지는 결과 화면 없이 다음으로 흐르므로(설계) 마지막 스테이지에서 깬다 ──
 const coinsBefore = (await readProgress())?.sharedCoins ?? 0;
-await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.hp = w.player.maxHp; w.stageIndex = 3; w.bossSpawned = true; w.bossDefeated = true; } });
+await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.player.hp = w.player.maxHp; w.barrierHp = w.barrierMaxHp; w.stageIndex = 3; w.bossSpawned = true; w.bossDefeated = true; } });
 let cleared = false;
 for (let i = 0; i < 30 && !cleared; i += 1) { await sleep(250); cleared = await page.evaluate(() => !!document.querySelector(".share-card-btn")); }
 ok("클리어 결과 화면이 뜬다", cleared);

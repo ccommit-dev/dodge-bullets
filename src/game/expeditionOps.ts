@@ -28,7 +28,7 @@ export const SUPPLIES: SupplyDef[] = [
   { id: "draft", name: "정예 선발", desc: "다음 런의 첫 3택이 전부 레어 이상으로 나온다", seals: 12 },
   // 출격 시점엔 쿨타임이 이미 0 이라 "재사용 완료"는 빈말이었다 — 30초 동안 빨리 쏘는 것으로
   { id: "primed", name: "예비 화살통", desc: "출격 후 30초 동안 모든 스킬 재사용 −30% · 화살비 게이지 +30", seals: 8 },
-  { id: "insurance", name: "수호 부적", desc: "이번 런 동안 최대 HP +1", seals: 6 },
+  { id: "insurance", name: "수호 부적", desc: "이번 런 동안 방어막 +15%", seals: 6 },
 ];
 
 export const SUPPLY_BY_ID: Record<SupplyId, SupplyDef> =

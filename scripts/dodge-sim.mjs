@@ -113,7 +113,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   if (opts.acquireAll) for (const [id, lv] of Object.entries(w.skillLevels)) if (lv > 0 && id !== "ultimate") w.runSkills[id] = true;
   const inp = I.createInputState();
   const dt = 1 / 60;
-  let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = []; let barrierMin = 1e9;
+  let hits = 0, spawnedMax = 0, frames = 0, clear = false, dead = false, perkSeed = seed * 0.11; let hitLog = []; let barrierMin = 1e9; let minRatio = 1; let maxActive = 0;
   let seenArrows = new Set();
   const p = w.player;
   const stage = stages.getStage(stageIndex);
@@ -127,11 +127,13 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     if (w.levelUps > 0) { w.levelUps = 0; const card = pickCard(P.pickPerks(w, () => ((perkSeed += 0.37) % 1))); if (card) P.applyPerk(w, card.id); }
     if (ev.type === "hit") { hits += 1; (hitLog ??= []).push(`${w.lastHitCause}@${Math.round(w.stageElapsedMs / 1000)}s`); }
     barrierMin = Math.min(barrierMin, w.barrierHp);
+    if (w.barrierMaxHp > 0) minRatio = Math.min(minRatio, w.barrierHp / w.barrierMaxHp);
+    maxActive = Math.max(maxActive, w.arrows.reduce((n, a) => n + (a.active ? 1 : 0), 0));
     if (ev.type === "dead") { dead = true; break; }
     if (ev.type === "clear") { clear = true; break; }
   }
   Math.random = realRandom;
-  return { stage: stageIndex, seed, hits, hitLog, barrierBreaks: w.barrierBreaks, barrierMin: Math.round(barrierMin), barrierHits: w.barrierHits, cuts: w.countered, skillKills: w.skillKills, reflects: w.reflectKills, ults: w.ultCount, maxCombo: w.maxCombo, dodged: w.dodged, clear, dead, seconds: Math.round(frames * dt), hp: p.maxHp };
+  return { stage: stageIndex, seed, hits, hitLog, barrierBreaks: w.barrierBreaks, barrierMin: Math.round(barrierMin), barrierMinRatio: minRatio, maxActive, poolFull: maxActive >= w.arrows.length, deathCause: dead ? w.lastHitCause : "", deathBoss: dead && w.bossSpawned, barrierHits: w.barrierHits, cuts: w.countered, skillKills: w.skillKills, reflects: w.reflectKills, ults: w.ultCount, maxCombo: w.maxCombo, dodged: w.dodged, clear, dead, seconds: Math.round(frames * dt), hp: p.maxHp };
 }
 
 /** 계정 단계 — 새 계정 / 중간 / 강함. 성장(레벨·검)·스킬·칩을 함께 올린다 */
@@ -169,7 +171,7 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
   const dt = 1 / 60;
   const p = w.player;
   const seen = new Set();
-  let hits = 0, reached = 0, perkSeed = seed * 0.11, dead = false, breaks = 0;
+  let hits = 0, reached = 0, perkSeed = seed * 0.11, dead = false, breaks = 0, deathCause = "", deathBoss = false;
   for (let stageIndex = 0; stageIndex < 4 && !dead; stageIndex += 1) {
     if (stageIndex > 0) { load(); W.beginStage(w, stageIndex); }
     const stage = stages.getStage(stageIndex);
@@ -180,7 +182,7 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
       const ev = W.updateWorld(w, dt, true, inp);
       if (w.levelUps > 0) { w.levelUps = 0; const card = pickCard(P.pickPerks(w, () => ((perkSeed += 0.37) % 1))); if (card) P.applyPerk(w, card.id); }
       if (ev.type === "hit") hits += 1;
-      if (ev.type === "dead") { dead = true; break; }
+      if (ev.type === "dead") { dead = true; deathCause = w.lastHitCause; deathBoss = w.bossSpawned; break; }
       if (ev.type === "clear") { cleared = true; break; }
     }
     breaks += w.barrierBreaks;
@@ -188,7 +190,7 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
     reached = stageIndex + 1;
   }
   Math.random = realRandom;
-  return { seed, reached, hits, breaks, acquired: Object.keys(w.runSkills).filter((k) => w.runSkills[k]), runLevel: w.runLevel, ults: w.ultCount, fullHp: w.player.hp >= w.player.maxHp };
+  return { seed, reached, hits, breaks, deathCause, deathBoss, acquired: Object.keys(w.runSkills).filter((k) => w.runSkills[k]), runLevel: w.runLevel, ults: w.ultCount, fullHp: w.player.hp >= w.player.maxHp };
 }
 
 /** 주간 시뮬(dodge-week-sim)이 쓰는 모듈 묶음 — 번들에서 꺼낸 실제 소스 */

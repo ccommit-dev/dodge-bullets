@@ -1,4 +1,5 @@
 import { TUNING, createArrowPool, resetArrows, resetBarrier, updateArrows } from "./arrows";
+import { barrierRatio } from "./barrierLife";
 import { emptyChipMods } from "./chips";
 import { emptyRunMods, emptySfx, makeSkillFx, makeSkillShots, makeSparks, updateSkillShots, resetSkillShots } from "./skillShots";
 import { emptySkillLevels } from "./skills";
@@ -241,6 +242,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.primedMs = 0;
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
+  resetBarrier(world);   // 생명(player.maxHp)이 정해진 뒤 — 방어막 최대치가 거기서 나온다
   applyStageLayout(world);
 }
 
@@ -272,6 +274,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.hitStopMs = 0;
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
   world.player.radius = 16 * world.stats.hitboxScale;
+  resetBarrier(world);
   applyStageLayout(world);
 }
 
@@ -470,31 +473,18 @@ export function updateWorld(
 
   if (!world.stageClear && world.bossSpawned && world.bossDefeated) {
     world.stageClear = true;
-    if (p.hp === p.maxHp) world.expeditionSeals += 2;
+    if (barrierRatio(world) >= 0.9) world.expeditionSeals += 2;   // 방어막을 90% 이상 지키고 깼다
     if (world.chests > 0) world.expeditionSeals += 1;
     return { type: "clear" };
   }
 
-  if (arrowDamage > 0 && p.hp > 0) {
-    p.damageBuffer += arrowDamage;
-    const wholeDamage = Math.floor(p.damageBuffer + 1e-6);
-    if (wholeDamage > 0) {
-      p.hp = Math.max(0, p.hp - wholeDamage);
-      p.damageBuffer -= wholeDamage;
-    }
-    p.anim = "hit";
+  void arrowDamage;   // 플레이어는 맞지 않는다 (2026-10-02)
+  // 패배 = 방어막 붕괴. 방어막이 유일한 생명이다
+  if (world.barrierHp <= 0 && p.anim !== "dead") {
+    p.hp = 0;
+    p.anim = "dead";
     p.animTime = 0;
-    p.invulnMs = 950;
-    p.vy = -220;
-    p.onGround = false;
-    world.combo = 0;
-    world.comboTimerMs = 0;
-    if (p.hp <= 0) {
-      p.anim = "dead";
-      p.animTime = 0;
-      return { type: "dead" };
-    }
-    return { type: "hit", remainingHp: p.hp };
+    return { type: "dead" };
   }
 
   return { type: "none" };
