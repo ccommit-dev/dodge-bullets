@@ -24,21 +24,40 @@ export async function saveCharacterProgress(
   return next;
 }
 
-export async function loadCharacterProgress(userHash: string): Promise<CharacterProgress> {
+/**
+ * 저장된 진행도를 읽고 레거시 키(코인·대장간·사냥터·비트)를 **메모리에서** 합친다. 쓰지 않는다.
+ * changed = 합친 결과가 저장본과 다르다(또는 저장본이 없다) — 그때만 큐를 거쳐 저장한다.
+ *
+ * 예전에는 읽을 때마다 합친 결과를 저장했고(updatedAt 이 늘 바뀌어 매번 썼다), 그 쓰기가 갱신 큐 밖이었다. 그래서 읽기가 큐의 쓰기와
+ * 겹치면 읽은 시점의 오래된 진행도가 나중에 저장돼 방금 지급한 결제·보상이 사라질 수 있었다 (2026-10-02 결제 정산 리뷰에서 발견).
+ */
+async function readProgress(userHash: string): Promise<{ value: CharacterProgress; changed: boolean }> {
   const raw = await storageGet(progressionKey(userHash));
-  if (!raw) return migrateLegacyProgress(userHash, emptyCharacterProgress(), true);
+  let base: CharacterProgress;
+  let preV5 = true;
   try {
-    const parsed = JSON.parse(raw) as Partial<CharacterProgress>;
+    const parsed = raw ? (JSON.parse(raw) as Partial<CharacterProgress>) : null;
     // v5 이전 레코드에만 사냥터 기록으로 개척도를 소급 부여한다.
     // 매 로드마다 부여하면 titans가 개척도를 계속 밀어 올려 게이트가 영영 걸리지 않는다.
-    const preV5 = typeof parsed.pioneeredArea !== "number";
-    return migrateLegacyProgress(userHash, normalizeCharacterProgress(parsed), preV5);
+    preV5 = !parsed || typeof parsed.pioneeredArea !== "number";
+    base = parsed ? normalizeCharacterProgress(parsed) : emptyCharacterProgress();
   } catch {
-    return migrateLegacyProgress(userHash, emptyCharacterProgress(), true);
+    base = emptyCharacterProgress();
   }
+  const value = await mergeLegacyProgress(userHash, base, preV5);
+  const same = (a: CharacterProgress, b: CharacterProgress) => JSON.stringify({ ...a, updatedAt: 0 }) === JSON.stringify({ ...b, updatedAt: 0 });
+  return { value, changed: !raw || !same(base, value) };
 }
 
-export async function migrateLegacyProgress(
+export async function loadCharacterProgress(userHash: string): Promise<CharacterProgress> {
+  const r = await readProgress(userHash);
+  // 합친 결과가 달라졌을 때만 저장 — 그것도 큐로 (그 안에서 다시 읽어 합치므로 최신 위에 쓴다)
+  if (r.changed) return updateCharacterProgress(userHash, (current) => current);
+  return r.value;
+}
+
+/** 레거시 키를 합친 진행도(메모리) — 저장은 하지 않는다. 저장은 updateCharacterProgress 큐만 */
+async function mergeLegacyProgress(
   userHash: string,
   current: CharacterProgress,
   /** 사냥터 최고 기록으로 개척도를 소급 부여할지. v5 이전 레코드 1회만 true. */
@@ -83,7 +102,12 @@ export async function migrateLegacyProgress(
     skillPoints: current.skillPoints + Math.max(0, beat.sp - current.beatSpMigrated),
     beatSpMigrated: Math.max(current.beatSpMigrated, beat.sp),
   });
-  return saveCharacterProgress(userHash, next);
+  return next;
+}
+
+/** 레거시 키를 다시 합쳐 저장 — 허브 복귀 등. 화면이 들고 있던 진행도가 아니라 **저장본**에서 출발한다 (큐) */
+export function migrateLegacyProgress(userHash: string): Promise<CharacterProgress> {
+  return updateCharacterProgress(userHash, (current) => current);
 }
 
 /**
@@ -145,7 +169,7 @@ export function updateCharacterProgress(
   updater: (current: CharacterProgress) => CharacterProgress,
 ): Promise<CharacterProgress> {
   const run = progressQueue.then(async () => {
-    const current = await loadCharacterProgress(userHash);
+    const { value: current } = await readProgress(userHash);
     const next = updater(current);
     return saveCharacterProgress(userHash, qaGemsEnabled() && next.redGems < QA_GEMS_AMOUNT ? { ...next, redGems: QA_GEMS_AMOUNT } : next);
   });

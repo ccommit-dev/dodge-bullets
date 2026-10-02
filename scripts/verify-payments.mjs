@@ -80,6 +80,28 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   ok("동시에 다섯 번 갱신해도 하나도 지워지지 않는다 (읽고·쓰기 사이 끼어들기 없음)", (await P()).redGems === 50, String((await P()).redGems));
 }
 
+// ── 읽기가 쓰지 않는다 · 레거시 합치기가 있어도 읽기와 지급이 겹쳐 지급이 사라지지 않는다 ──
+// 저장소에 실제 지연(1~8ms)을 넣어 읽기·쓰기가 진짜로 엇갈리게 한다 — 동기 가짜로는 겹침이 생기지 않는다
+{
+  fresh();
+  const slow = new Map();
+  const wait = () => new Promise((r) => setTimeout(r, 1 + Math.floor(Math.random() * 8)));
+  let writes = 0;
+  globalThis.__toss.Storage = { getItem: async (k) => { await wait(); return slow.has(k) ? slow.get(k) : null; }, setItem: async (k, v) => { await wait(); writes += 1; slow.set(k, v); } };
+  await prog.updateCharacterProgress(H, (c) => ({ ...c, redGems: 0 }));
+  await new Promise((r) => setTimeout(r, 20));
+  const w0 = writes;
+  await P(); await P(); await P();
+  ok("변화가 없으면 읽기는 저장하지 않는다", writes === w0, `읽기 3번에 쓰기 ${writes - w0}번`);
+  slow.set("dodgebullets:coins:" + H, "777");   // 레거시 코인 키가 더 크면 읽을 때 합칠 것이 생긴다
+  const jobs = [];
+  for (let i = 0; i < 6; i += 1) { jobs.push(P()); jobs.push(prog.updateCharacterProgress(H, (c) => ({ ...c, redGems: c.redGems + 100 }))); }
+  await Promise.all(jobs);
+  const after = await P();
+  ok("읽기와 지급이 겹쳐도 지급 6번(+600)과 레거시 합치기(코인 777)가 모두 남는다", after.redGems === 600 && after.sharedCoins >= 777, `보석 ${after.redGems} 코인 ${after.sharedCoins}`);
+  globalThis.__toss.Storage = undefined;
+}
+
 // ── 웹: 판매 없음 ──
 {
   fresh(); env.setPaymentEnvironment("web");
@@ -173,6 +195,18 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const r = await store.buyWithStore(H, "gems-80");
   ok("토스: 지급이 토스 Storage 에 남지 않았으면 콜백 false · 결과 대기(복구가 다시 지급)", callbackResult === false && r.status === "pending", `${callbackResult} · ${r.status}`);
   globalThis.__toss.Storage = undefined;
+}
+
+// ── 안드로이드: 결제 준비 전에는 "불러오는 중", 준비되면 상점이 다시 그려지고 보인다 (가격 목록을 못 받아도) ──
+{
+  fresh(); env.setPaymentEnvironment("android");
+  const before = { visible: store.paidStoreVisible(), note: store.paidStoreNote() };
+  let redraws = 0;
+  const off = prices.onStorePricesChanged(() => { redraws += 1; });
+  store.setBillingReady(true);
+  off();
+  ok("안드로이드: 준비 전 숨김 · '불러오는 중' 문구 (웹 문구가 아님)", before.visible === false && /불러오는 중/.test(before.note), JSON.stringify(before));
+  ok("안드로이드: 결제가 준비되면 상점을 다시 그리고 유료 상품이 보인다", redraws === 1 && store.paidStoreVisible() === true, `다시 그림 ${redraws}`);
 }
 
 // ── 안드로이드: 실시간 결제 ──
