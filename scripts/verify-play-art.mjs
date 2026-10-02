@@ -21,7 +21,7 @@ await page.evaluate((h) => {
   const pk = `dodgebullets:progression:v1:${h}`;
   localStorage.setItem(pk, JSON.stringify({ equippedWeaponLevel: 10, equippedShoulder: "dragon", onboardingStep: 99, tutorialDone: true, idleClaimedAt: Date.now(), pioneeredArea: 5, ownedCharacters: ["ember"], activeCharacter: "default", partyIds: ["luna", "bronn", "orion", "ember"], partyCap: 4 }));
   const tk = `dodgebullets:titans:${h}`;
-  localStorage.setItem(tk, JSON.stringify({ stage: 22, heroes: { luna: 5, bronn: 5, orion: 5, ember: 5, mia: 3 }, party: ["luna", "bronn", "orion", "ember"], lastActiveAt: Date.now() }));
+  localStorage.setItem(tk, JSON.stringify({ stage: 70, heroes: { luna: 5, bronn: 5, orion: 5, ember: 5, mia: 3 }, party: ["luna", "bronn", "orion", "ember"], lastActiveAt: Date.now() }));
 }, H);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2500);
@@ -50,7 +50,7 @@ let worstAlly = { v: 0, pair: "" }, worstHero = { v: 0, pair: "" }, worstMon = {
 const samples = { ally: new Map(), hero: new Map(), mon: new Map() };
 const push = (bucket, pair, v) => { if (!bucket.has(pair)) bucket.set(pair, []); bucket.get(pair).push(v); };
 const worstMedian = (bucket) => { let best = { v: 0, pair: "" }; for (const [pair, arr] of bucket) { const sorted = [...arr].sort((a, b) => a - b); const med = sorted[Math.floor(sorted.length / 2)]; if (med > best.v) best = { v: med, pair }; } return best; };
-let wasApproaching = false;
+let wasApproaching = false, measured = 0;
 for (let t = 0; t < 20; t += 1) {
   const s = await rects();
   // 접근이 끝난 직후 한 표본은 동료·주인공이 아직 제자리로 미끄러지는 중이다 — 그 표본은 뺀다 (오른쪽 측면 슬롯은 2026-10-02 에 없앴다)
@@ -63,6 +63,7 @@ for (let t = 0; t < 20; t += 1) {
   // 주인공도 2%→34% 로 걸어 들어오는 동안 원거리 동료(8%) 위를 지나간다 — 주인공 이동 중 샘플도 제외
   // 몬스터가 죽는 중(monster-death)에는 측면 슬롯이 왼쪽으로 돌아오고 몬스터는 사라지는 중이라 교전 배치가 아니다 — combat 만 잰다 (2026-10-01)
   if (s.phase !== "combat" || s.heroApproaching || s.allies.some((a) => a.approaching)) { await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true }))); await sleep(450); continue; }
+  measured += 1;
   for (let i = 0; i < s.allies.length; i += 1) for (let j = i + 1; j < s.allies.length; j += 1) {
     if (sameRow(s.allies[i], s.allies[j], s.field)) push(samples.ally, `${s.allies[i].id}×${s.allies[j].id}`, inter(s.allies[i], s.allies[j]));
   }
@@ -77,6 +78,9 @@ for (let t = 0; t < 20; t += 1) {
   await page.evaluate(() => document.querySelector(".titan-monster-art")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await sleep(450);
 }
+// 스테이지 22 에선 몬스터가 1초 안에 죽어 교전 표본이 0~2개였다 — 겹침 검사가 빈 채로 통과하거나 표본 하나에 휘둘렸다
+// (luna×bronn 67~76% 를 가끔만 잡음, 2026-10-02). 스테이지 70 으로 교전을 늘리고(실측 18개) 표본 수 자체를 단언한다
+ok("교전 중 배치 표본이 8개 이상 (빈 검사로 통과하지 않는다)", measured >= 8, String(measured));
 worstAlly = worstMedian(samples.ally); worstHero = worstMedian(samples.hero); worstMon = worstMedian(samples.mon);
 ok("동료끼리 본체 겹침(중앙값) 최대 20% 이하", worstAlly.v <= 0.2, `${worstAlly.pair} ${(worstAlly.v * 100).toFixed(0)}%`);
 ok("동료-영웅 본체 겹침(중앙값) 최대 25% 이하", worstHero.v <= 0.25, `${worstHero.pair} ${(worstHero.v * 100).toFixed(0)}%`);

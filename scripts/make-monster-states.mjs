@@ -7,7 +7,7 @@
  * SpriteArt.MonsterArt가 state("idle"|"hit"|"defeat")에 따라 파일을 고른다.
  * 원화가 오면 같은 파일명으로 덮어쓴다.
  *
- *   node scripts/make-monster-states.mjs
+ *   node scripts/make-monster-states.mjs [이름 ...]
  */
 import sharp from "sharp";
 import { readdirSync } from "node:fs";
@@ -16,7 +16,10 @@ const DIR = "public/titans/generated/monsters";
 import { existsSync, readFileSync } from "node:fs";
 /** place-art.mjs boss 로 생성 원화를 넣은 몬스터는 파생하지 않는다 (authored.json) */
 const AUTHORED = existsSync(`${DIR}/authored.json`) ? JSON.parse(readFileSync(`${DIR}/authored.json`, "utf8")) : [];
-const SOURCES = readdirSync(DIR).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$/.test(f) && !AUTHORED.includes(f.replace(/\.png$/, "")));
+/** 인자로 이름을 주면 그것만 다시 만든다 (예: 보스 원화 고해상도화 뒤 4종만, 2026-10-02) */
+const ONLY = process.argv.slice(2);
+const SOURCES = readdirSync(DIR).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$/.test(f) && !AUTHORED.includes(f.replace(/\.png$/, "")))
+  .filter((f) => ONLY.length === 0 || ONLY.includes(f.slice(0, -4)));
 
 /** 균열 마스크 — 결정적 선 패턴(랜덤 아님, 재생성해도 같은 결과) */
 function crackSvg(w, h) {
