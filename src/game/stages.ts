@@ -27,7 +27,7 @@ export const STAGES: StageDef[] = [
     baseReward: 370,
     speedMul: 0.86,
     spawnMul: 1.45,   // 0.78 → 1.45 (2026-10-02): 방어막이 긁히지도 않던 1스테이지에 압박을 — 봇 최저 76, 붕괴 0.2
-    intro: "활이 알아서 몬스터를 쏜다 — 방어막에 닿기 전에 떨구고, 새는 놈은 옆으로 피해라. 떨어진 결정이 대장간 강화석이 된다",
+    intro: "활이 알아서 몬스터를 쏜다 — 방어막이 깨지기 전에 떨궈라. 떨어진 결정이 대장간 강화석이 된다",
     platforms: [],
     patterns: [
       { kind: "rain", atMs: 0, durationMs: 8_000, spawnMs: 590, speed: 310 },
@@ -59,7 +59,7 @@ export const STAGES: StageDef[] = [
     baseReward: 850,
     speedMul: 1.02,
     spawnMul: 1.02,
-    intro: "폭염 비룡은 결정 덩어리다 — 폭발 자리를 피하며 정예 보급 상자를 탈환하라",
+    intro: "폭염 비룡은 결정 덩어리다 — 돔에 닿으면 터진다, 물화살로 먼저 꺼라. 정예 보급 상자를 탈환하라",
     platforms,
     patterns: [
       { kind: "fan", atMs: 0, durationMs: 9_000, spawnMs: 720, speed: 380 },

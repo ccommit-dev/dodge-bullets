@@ -55,7 +55,7 @@ await clickText("button", "원정"); await sleep(500);
 await clickText("button", "스테이지"); await sleep(1800);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 await sleep(1200);
-await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageIndex = 2; w.player.hp = 1; w.player.invulnMs = 0; w.barrierBreachDamage = 1; } });
+await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageIndex = 2; w.barrierHp = 1; } });
 let over = false;
 for (let i = 0; i < 30 && !over; i += 1) { await sleep(200); over = await page.evaluate(() => !!document.querySelector(".gate-offer")); }
 const offer = await page.evaluate(() => document.querySelector(".gate-offer")?.textContent.replace(/\s+/g, " ").trim() ?? null);

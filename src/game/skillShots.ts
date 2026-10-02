@@ -179,7 +179,7 @@ export function spawnFx(world: GameWorld, element: Element, x: number, y: number
 
 /** 요격 대상 — 살아 있고 경고 중이 아니며 아직 반사되지 않은 화살 */
 function targetable(a: Arrow): boolean {
-  return a.active && a.warningMs <= 0 && !a.reflected;
+  return a.active && a.warningMs <= 0 && !a.reflected && !a.bossEntering;
 }
 
 /**
