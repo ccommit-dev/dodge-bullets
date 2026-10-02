@@ -56,6 +56,8 @@ ok("hard 기본 곡은 HARD 즉시 열림", rpg.hardUnlocked(p0, T.find((t) => t
 ok("정규화: 잘못된 등급 값 제거", Object.keys(rpg.normalizeBeatRpg({ grades: { "x:easy": "S", "y:hard": "Z" } }).grades).join() === "x:easy");
 
 // ── 성문 방어: 아웃로 디펜스 규칙 (2026-10-01) — 점프·대시·일제 사격 없음 · 화살은 위에서 아래로만 · 발판 없음 · 보스는 위에서 떠다니며 사격으로 격추 ──
+/** 월드 한 걸음(1/60)이 되는 실제 dt — 진행 속도(TUNING.pace = 1/3) 이후 몬스터·방어막 테스트의 시간 단위 (2026-10-02) */
+const WSTEP = (1 / 60) / arrows.TUNING.pace;
 const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w, shop.statsFromLevels(shop.emptyShopLevels())); world.resetRun(w, 0); return w; };
 {
   const w = mk();
@@ -71,7 +73,7 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
     const w2 = mk(); world.resetRun(w2, stage);
     const seen = new Set();
     for (let f = 0; f < 60 * 50; f += 1) {
-      world.updateWorld(w2, 1 / 60, true, input.createInputState());
+      world.updateWorld(w2, WSTEP, true, input.createInputState());
       w2.player.hp = w2.player.maxHp; w2.barrierHp = w2.barrierMaxHp;
       for (let i = 0; i < w2.arrows.length; i += 1) {
         const ar = w2.arrows[i]; if (!ar.active || ar.reflected || ar.splitLevel > 0 || ar.boss) continue;
@@ -85,38 +87,43 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   ok("화살은 위에서 아래로만 — 네 스테이지 50초 동안 위로 움직이는 일반 화살이 없다 (유도탄 제외)", bad.length === 0, bad.slice(0, 4).join(" | "));
 }
 {
-  // 보스 — 위에서 좌우로 떠다니며 아래로 쏘고, 사격으로 깎는다
-  const w = mk(); world.resetRun(w, 0); w.rangedWeapon = "bow";
+  // 대장 (2026-10-02, 사용자: "보스가 너무 커 2/3 로 · 내려오는 속도는 완전 느리게 · 난이도 높게") —
+  // 화면 맨 위 밖에서 일정 속도(TUNING.bossDescent)로 아주 천천히 내려오고, 몸이 드러나면 맞으며 마력탄을 쏜다
+  const w = mk(); world.resetRun(w, 0); w.rangedWeapon = "none";   // 활 없이 — 내려오는 길을 끝까지 본다
   w.stageElapsedMs = stages.STAGES[0].durationMs * 0.6;
-  world.updateWorld(w, 1 / 60, true, input.createInputState());
+  world.updateWorld(w, WSTEP, true, input.createInputState());
   const boss = w.arrows.find((x) => x.active && x.boss);
   ok("보스 화살이 떴다 (스테이지 58%)", !!boss && w.bossSpawned);
-  // 대장은 화면 맨 위 밖에서 내려와(사용자: "너무 아래서 리스폰") 화면 위쪽에 자리 잡는다 — 5배 크기라 화면 폭보다 넓다 (2026-10-02)
   const startY = boss ? boss.y : 0;
-  let settledAt = -1, minY = 1e9, maxY = -1e9;
+  let shownAt = -1, settledAt = -1, maxY = -1e9;
   const orbIds = new Set();
   const orbMiss = [];
-  for (let f = 0; f < 60 * 14 && boss && boss.active && !w.bossDefeated; f += 1) {
-    world.updateWorld(w, 1 / 60, true, input.createInputState());
+  for (let f = 0; f < 60 * 240 && boss && boss.active && settledAt < 0; f += 1) {
+    world.updateWorld(w, 1 / 60, true, input.createInputState());   // 실제 1/60 — 실제 시간으로 잰다
     w.barrierHp = w.barrierMaxHp;
-    if (w.bossDefeated) break;
-    if (settledAt < 0 && Math.abs(boss.y - arrows.bossHoverY(w)) < 24) settledAt = f;
-    if (settledAt >= 0) { minY = Math.min(minY, boss.y); maxY = Math.max(maxY, boss.y); }
-    // 새로 나온 마력탄마다 — 그대로 날아가면 플레이어 머리 위 돔(±80px)에 떨어지는가. (돔에 맞으면 방어막이 깎이는 것은 아래 방어막 블록이 따로 본다 —
-    // 여기선 플레이어 사격이 마력탄을 떨구기도 해서 명중 수가 실행마다 다르다)
+    if (shownAt < 0 && !boss.bossEntering) shownAt = f;
+    if (boss.y >= arrows.bossHoverY(w) - 1) settledAt = f;
+    maxY = Math.max(maxY, boss.y);
     w.arrows.forEach((x, i) => {
       if (!x.active || !x.fromBoss || x.vy <= 0) return;
-      const id = i + ":" + x.bossTier + ":" + Math.round(x.vx);
+      const id = i + ":" + Math.round(x.vx);
       if (orbIds.has(id)) return;
       orbIds.add(id);
       const landX = x.x + x.vx * ((arrows.barrierY(w) - x.y) / x.vy);
       if (Math.abs(landX - w.player.x) > 80) orbMiss.push(Math.round(landX - w.player.x));
     });
   }
+  const descentSec = settledAt / 60, shownSec = shownAt / 60;
   ok("대장은 화면 맨 위 밖에서 나타나 내려온다 (첫 위치가 화면 위 밖)", !!boss && startY < w.safeTop, `첫 y ${startY.toFixed(0)} · 화면 위 ${w.safeTop}`);
-  ok("대장은 자리를 잡으면 화면 위쪽(1/3 안)에 머물고, 몸이 화면 폭보다 크다(5배)", settledAt >= 0 && maxY < w.height / 3 && arrows.bossSize(1) >= w.width, `y ${minY.toFixed(0)}~${maxY.toFixed(0)} · 크기 ${arrows.bossSize(1)} vs 폭 ${w.width}`);
+  ok("대장은 아주 천천히 내려온다 — 자리를 잡기까지 실제 30초 이상", settledAt > 0 && descentSec >= 30, descentSec.toFixed(1) + "초");
+  ok("내려오는 동안에도 몸이 드러나면 맞는다 (자리를 잡기 전) — 기다리기만 하는 시간이 없다", shownAt > 0 && shownAt < settledAt, `드러남 ${shownSec.toFixed(1)}초 · 자리 ${descentSec.toFixed(1)}초`);
+  ok("대장 크기는 2/3 — 화면 폭보다 좁고 자리는 화면 위쪽(1/3 안)", arrows.bossSize(1) < w.width && maxY < w.height / 3, `크기 ${arrows.bossSize(1)} · 자리 y ${maxY.toFixed(0)}`);
   ok("대장 마력탄은 플레이어 머리 위 돔을 겨눈다 (플레이어는 맞지 않는다)", orbIds.size > 0 && orbMiss.length === 0 && w.player.hp === w.player.maxHp, `마력탄 ${orbIds.size} · 빗나감 ${orbMiss.slice(0, 4).join(",")}`);
-  ok("기본 사격만으로 보스가 깎인다 (8초 안에 격추 수가 줄거나 격파)", w.bossDefeated || !boss || !boss.active || boss.bossCutsLeft < boss.bossMaxCuts, w.bossDefeated ? "격파" : boss ? `${boss.bossCutsLeft}/${boss.bossMaxCuts}` : "없음");
+  // 활을 들면 깎인다 — 드러난 뒤 실제 20초 안에
+  w.rangedWeapon = "bow";
+  const cuts0 = boss.bossCutsLeft;
+  for (let f = 0; f < 60 * 20 && boss.active && !w.bossDefeated; f += 1) { world.updateWorld(w, 1 / 60, true, input.createInputState()); w.barrierHp = w.barrierMaxHp; }
+  ok("기본 사격만으로 대장이 깎인다 (드러난 뒤 실제 20초 안에 처치 수가 줄거나 격파)", w.bossDefeated || !boss.active || boss.bossCutsLeft < cuts0, w.bossDefeated ? "격파" : `${boss.bossCutsLeft}/${boss.bossMaxCuts}`);
 }
 
 // ── 기본 화살은 주인공이 쥔 활에서 나간다 (2026-10-02, "기본 화살 애니메이션이 없고 활이 볼품없음") ──
@@ -151,44 +158,47 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   const put = (n) => { const a = w.arrows.filter((x) => !x.active).slice(0, n); a.forEach((x, i) => { x.active = true; x.warningMs = 0; x.reflected = false; x.boss = false; x.fromBoss = false; x.splitLevel = 0; x.kind = "normal"; x.hp = 0; x.maxHp = 0; x.x = 120 + i * 60; x.y = by - 80; x.vx = 0; x.vy = 200; x.atBarrier = false; x.hitRadius = 8; }); return a; };
   const trio = put(3);
   w.stageElapsedMs = 1000;   // 2초 전엔 생성이 없다 — 세운 셋만 본다
-  for (let f = 0; f < 30; f += 1) world.updateWorld(w, 1 / 60, true, input.createInputState());
+  for (let f = 0; f < 30; f += 1) world.updateWorld(w, WSTEP, true, input.createInputState());
   ok("몬스터는 방어막에 닿으면 멈춰 선다 (vy 0 · 띠 바로 위 · atBarrier)", trio.every((a) => a.active && a.atBarrier && a.vy === 0 && a.y < by && a.y > by - 40), trio.map((a) => `y${a.y.toFixed(0)} vy${a.vy}`).join(","));
   const hp0 = w.barrierHp;
-  for (let f = 0; f < 60 * 2; f += 1) { world.updateWorld(w, 1 / 60, true, input.createInputState()); w.stageElapsedMs = 1000; }
+  for (let f = 0; f < 60 * 2; f += 1) { world.updateWorld(w, WSTEP, true, input.createInputState()); w.stageElapsedMs = 1000; }
   ok("붙은 몬스터가 주기(1.2초)마다 방어막을 깎는다 — 슬라임 셋 2초에 피해 ≥ 5·3", hp0 - w.barrierHp >= 15 && w.barrierHits >= 3, `${hp0} → ${w.barrierHp.toFixed(1)} · 타격 ${w.barrierHits}`);
   ok("붙어 있는 동안은 회복하지 않는다", w.barrierHp < hp0 - 10, w.barrierHp.toFixed(1));
   // 붕괴 = 패배 — 방어막이 유일한 생명이다 (2026-10-02, 옛 규칙: 붕괴하면 HP −1 · 방어막 즉시 복구)
   w.barrierHp = 3;
   let ev = { type: "none" };
-  for (let f = 0; f < 60 * 3 && ev.type !== "dead"; f += 1) { ev = world.updateWorld(w, 1 / 60, true, input.createInputState()); w.stageElapsedMs = 1000; }
+  for (let f = 0; f < 60 * 3 && ev.type !== "dead"; f += 1) { ev = world.updateWorld(w, WSTEP, true, input.createInputState()); w.stageElapsedMs = 1000; }
   ok("방어막이 0 이 되면 패배 — 원인은 마지막에 깎은 몬스터", ev.type === "dead" && w.barrierHp === 0 && w.lastHitCause === "normal" && w.barrierBreaks === 1, `${ev.type} · 방어막 ${w.barrierHp} · ${w.lastHitCause}`);
   // 회복 없음 — 방어막은 스테이지마다 가득 찬 채 시작하고 저절로 차지 않는다
   const w3 = mk(); w3.rangedWeapon = "none"; w3.stageElapsedMs = 1000;
   w3.barrierHp = 50;
-  for (let f = 0; f < 120; f += 1) { world.updateWorld(w3, 1 / 60, true, input.createInputState()); w3.stageElapsedMs = 1000; }
+  for (let f = 0; f < 120; f += 1) { world.updateWorld(w3, WSTEP, true, input.createInputState()); w3.stageElapsedMs = 1000; }
   ok("방어막은 저절로 차지 않는다 (스테이지 시작에만 가득)", w3.barrierHp === 50, w3.barrierHp.toFixed(1));
   // 대장 마력탄은 돔 표면에서 터진다 — 플레이어까지 오지 않는다
   const w4 = mk(); w4.rangedWeapon = "none"; w4.stageElapsedMs = 1000;
   const orb = w4.arrows.find((x) => !x.active);
   Object.assign(orb, { active: true, warningMs: 0, reflected: false, boss: false, fromBoss: true, splitLevel: 0, kind: "aimed", hp: 0, maxHp: 0, x: w4.width / 2, y: arrows.barrierY(w4) - 80, vx: 0, vy: 300, atBarrier: false, hitRadius: 8 });
   const b0 = w4.barrierHp;
-  for (let f = 0; f < 60; f += 1) { world.updateWorld(w4, 1 / 60, true, input.createInputState()); w4.stageElapsedMs = 1000; }
+  for (let f = 0; f < 60; f += 1) { world.updateWorld(w4, WSTEP, true, input.createInputState()); w4.stageElapsedMs = 1000; }
   ok("대장 마력탄은 돔에 맞아 사라지고 방어막을 깎는다 (플레이어 HP 없음)", !orb.active && w4.barrierHp < b0 && w4.player.hp === w4.player.maxHp, `active ${orb.active} · ${b0} → ${w4.barrierHp.toFixed(1)}`);
   // 생명 = 방어막 두께 — 추가 생명 1 마다 +15%
   const w5 = mk(); w5.player.maxHp = 5; arrows.resetBarrier(w5);
   ok("추가 생명 1 마다 방어막 +15% (기본 120, 생명 2 → 156)", w5.barrierMaxHp === 156 && w5.barrierHp === 156, String(w5.barrierMaxHp));
-  ok("몬스터 속도 0.14(3배 느림) · 스테이지별 생성 0.85/1.0/1.8/1.25 · 회복 0 · 생명당 +15% · 마력탄 8 — 방어막 단일 생명의 손잡이 (스윕 2026-10-02)", arrows.TUNING.monsterSpeedMul === 0.14 && JSON.stringify(arrows.TUNING.stageSpawnScale) === "[0.85,1,1.8,1.25]" && arrows.TUNING.barrierRegen === 0 && arrows.TUNING.barrierPerLife === 0.15 && arrows.TUNING.bossOrbDmg === 8, JSON.stringify(arrows.TUNING));
+  ok("손잡이 — 몬스터 속도 0.14 · 회복 0 · 생명당 +15% · 마력탄 8 · 진행 1/3 · 대장 하강 18 · 보스전 생성 ×1.6 (스테이지별 체력·밀도·방어막 피해는 stages.ts 표, 2026-10-02)",
+    arrows.TUNING.monsterSpeedMul === 0.14 && arrows.TUNING.barrierRegen === 0 && arrows.TUNING.barrierPerLife === 0.15 && arrows.TUNING.bossOrbDmg === 8
+    && Math.abs(arrows.TUNING.pace - 1 / 3) < 1e-9 && arrows.TUNING.bossDescent === 18 && arrows.TUNING.bossSpawnSlow === 1.6, JSON.stringify(arrows.TUNING));
   // 1자 하강 — 보스·보스 마력탄 말고는 vx 가 0 (2026-10-02)
   {
     const w2 = mk(); world.resetRun(w2, 1); w2.rangedWeapon = "none";
     const tilted = [];
     for (let f = 0; f < 60 * 30; f += 1) {
-      world.updateWorld(w2, 1 / 60, true, input.createInputState()); w2.player.hp = w2.player.maxHp; w2.barrierHp = w2.barrierMaxHp;
+      world.updateWorld(w2, WSTEP, true, input.createInputState()); w2.player.hp = w2.player.maxHp; w2.barrierHp = w2.barrierMaxHp;
       for (const ar of w2.arrows) if (ar.active && !ar.boss && !ar.fromBoss && ar.splitLevel === 0 && !ar.atBarrier && ar.warningMs <= 0 && Math.abs(ar.vx) > 0.5) tilted.push(ar.kind + ":" + ar.vx.toFixed(0));
     }
     ok("몬스터는 1자로 내려온다 — 2스테이지 30초 동안 가로 속도가 있는 몬스터가 없다", tilted.length === 0, tilted.slice(0, 4).join(","));
     ok("돔 방어막 — 가운데가 가장 높고(−150) 가장자리는 낮다", Math.round(arrows.barrierYAt(w2, w2.width * 0.5)) === w2.floorY - 150 && arrows.barrierYAt(w2, w2.safeLeft + 10) > w2.floorY - 150 + 40 && arrows.barrierYAt(w2, w2.safeLeft + 10) < w2.floorY, `가운데 ${arrows.barrierYAt(w2, w2.width * 0.5).toFixed(0)} 가장자리 ${arrows.barrierYAt(w2, w2.safeLeft + 10).toFixed(0)} 바닥 ${w2.floorY}`);
-    ok("기본 사격 강화: Lv5 피해 1.75배 · 재사용 0.85배 · 비용 80·1.6^(n−1)", skills.basicDamageMul(5) === 1.75 && Math.abs(skills.basicCooldownMul(5) - 0.85) < 1e-9 && skills.basicShotCost(1) === 80 && skills.basicShotCost(2) === 128);
+    // 2026-10-02: 기본 사격 단계 = 대장간 활 단계(0~20) — 단계당 피해 +8% · 재사용 −1.5% (예전 정비 골드 강화 +15%/−3%, 0~10)
+    ok("기본 사격 = 대장간 활 단계: +10 피해 1.8배 · 재사용 0.85배 · 최대 20", Math.abs(skills.basicDamageMul(10) - 1.8) < 1e-9 && Math.abs(skills.basicCooldownMul(10) - 0.85) < 1e-9 && skills.BASIC_LEVEL_MAX === 20);
   }
 }
 
@@ -306,53 +316,66 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   ok("SECTION_DENSITY: EASY 필 0 · HARD 필 4", tracks.SECTION_DENSITY.easy.fill === 0 && tracks.SECTION_DENSITY.hard.fill === 4);
 }
 
-// ── 성문 방어: 스테이지 수치 재조정 (마저 개발) ──
-ok("유도탄 승격 확률: 1스테이지 0 · 2/3/4 = 3/4/6% (좌우 이동만으로 피하므로 낮게, 2026-10-01)", arrows.homingChanceFor(0) === 0 && arrows.homingChanceFor(1) === 0.03 && arrows.homingChanceFor(3) === 0.06 && arrows.homingChanceFor(9) === 0.06);
-ok("보스 격추 수 4 + 6×스테이지 — 좌우 이동만 남은 뒤 성장이 갈리는 지렛대 (2026-10-01)", world.BOSS_CUTS_BASE === 4 && world.BOSS_CUTS_PER_STAGE === 6);
+// ── 성문 방어 50 스테이지 (2026-10-02, 사용자: "일반원정 스테이지가 5밖에 없던데 50까지 다양하게 레벨 디자인 및 콘텐츠 추가") ──
+// 옛 게이트(4 스테이지 · 한 판에 S1→S4): 기준선(장궁+불 Lv1) S1·S2 ≥4/5 · S4 ≤1/5, 풀런 새 S1≥18·S2≥14·S4≤4 / 중간 S3≥12·S4 8~18 / 강함 S4≥15,
+// 주간 사흘 안에 6종 학습 · S4 엿새 안 · 7일째 만렙 0·합 28+. 한 판 = 한 스테이지 · 무기 장착 · 50 스테이지에서는 뜻이 없어 아래로 바꿨다.
 {
-  const { simulateStage } = await import(pathToFileURL(join(root, "scripts/dodge-sim.mjs")).href);
-  // 기준선은 새 진행도 그대로 — 장궁 + 불화살 Lv1 (런 중 카드로 습득한다). 이것이 실제 첫 플레이다 (2026-09-29).
-// 맨손은 레벨업 카드가 게이지·HP 두 장뿐이라 봇이 HP 만 뽑아 S4 벽이 무너진다 — 기본 상태가 아니다
-const gate = (stage) => { const runs = [1, 2, 3, 4, 5].map((seed) => simulateStage(stage, seed * 7919 + stage, { skills: { fire: 1 }, weapon: "bow" })); return { clear: runs.filter((r) => r.clear).length, minPct: Math.round(runs.reduce((s2, r) => s2 + r.barrierMinRatio, 0) / 5 * 100), pool: runs.some((r) => r.poolFull) }; };
-  const s1 = gate(0), s2 = gate(1);
-  // 방어막이 유일한 생명 (2026-10-02). 옛 게이트: S1 클리어 ≥4 · 피격 ≤1.5 / S2 클리어 ≥4 · 피격 ≤2.0 — 피격이 없어져 방어막으로 옮긴다.
-  // "난이도 높게": S1 도 방어막이 실제로 깎이고(최저 평균 ≤85%), S2 는 절반 가까이(≤70%) — 그래도 기준선이 깬다
-  ok("기준선 봇: 1스테이지 5시드 중 4회 이상 클리어 · 방어막 최저 평균 ≤ 85% (실제로 깎인다)", s1.clear >= 4 && s1.minPct <= 85, `clear ${s1.clear}/5 · 최저 ${s1.minPct}%`);
-  ok("기준선 봇: 2스테이지 5시드 중 4회 이상 클리어 · 방어막 최저 평균 ≤ 70%", s2.clear >= 4 && s2.minPct <= 70, `clear ${s2.clear}/5 · 최저 ${s2.minPct}%`);
-  ok("몬스터 풀이 마르지 않는다 (생성이 조용히 빠지면 쉬워 보인다)", !s1.pool && !s2.pool);
-  const s4 = gate(3);
-  // 스테이지 단독 S4 — 기준선(장궁 + 불화살 Lv1)이 새 런으로 S4 만 돌 때. 화살에 체력을 넣은 뒤에도
-// 예전 값(2/5 · 4.6)과 거의 같다(2/5 · 5.0). 중간 상태에서 5/5 가 나와 뺐다가 최종 상태를 재 보고 되살렸다 —
-// 밸런스 구조를 바꿔도 **기준선 난이도는 그대로**라는 것을 못 박는 닻이다.
-// 방어막 모델(2026-10-01)에서 기준선의 S4 단독은 벽이다(0~1/5) — "불가능하지 않다"는 아래 풀런 곡선의 중간(8~18)·강함(≥15) 이 맡는다
-// 옛 게이트: 클리어 0~4 · 붕괴 ≥4. 이제 붕괴 = 패배라 "벽"은 클리어 수로만 — 기준선(새 런으로 S4 만)은 거의 못 깬다
-ok("기준선 봇: 4스테이지 5시드 중 0~1회 클리어 — 기준선에겐 벽", s4.clear <= 1, `clear ${s4.clear}/5 · 최저 ${s4.minPct}%`);
-// 풀런 곡선 — 스테이지 단독으로는 카드·습득이 이어지는 실제 원정을 못 잰다. 둘을 함께 둔다:
-// 참고 게임처럼 새 계정은 중반에서 막히고, 성장하면 뚫린다.
-{
-  const { runCurve } = await import("./dodge-sim.mjs");
-  const curve = Object.fromEntries(runCurve(20).map((r) => [r.tier, r]));
-  const N = curve["새 계정"], M = curve["중간"], S = curve["강함"];
-  const line = (r) => `S1 ${r.clearS1} · S2 ${r.clearS2} · S3 ${r.clearS3} · S4 ${r.clearS4} / ${r.n}`;
-  ok("풀런 · 새 계정: 초반은 넘고(S1 ≥ 18 · S2 ≥ 14) 끝은 벽이다(S4 ≤ 4)", N.clearS1 >= 18 && N.clearS2 >= 14 && N.clearS4 <= 4, line(N));
-  ok("풀런 · 중간 계정: S3 은 대체로 넘고(≥ 12) S4 는 반반 안팎(8~18)", M.clearS3 >= 12 && M.clearS4 >= 8 && M.clearS4 <= 18, line(M));
-  ok("풀런 · 강한 계정: S4 를 대부분 깬다(≥ 15)", S.clearS4 >= 15, line(S));
-  ok("풀런 · 성장할수록 멀리 간다 (S4 클리어: 새 < 중간 ≤ 강함)", N.clearS4 < M.clearS4 && M.clearS4 <= S.clearS4, [N.clearS4, M.clearS4, S.clearS4].join(" < "));
+  const ST = stages.STAGES, CH = stages.CHAPTERS;
+  ok("50 스테이지 · 5장 × 10칸 · 칸 5 는 중간 보스, 칸 10 은 장 대장", ST.length === 50 && CH.length === 5 && ST.every((x, i) => x.chapter === Math.floor(i / 10) && x.slot === (i % 10) + 1) && ST.every((x) => (x.slot === 10) === (x.slotKind === "boss") && (x.slot === 5) === (x.slotKind === "midboss")));
+  ok("스테이지 이름 50개가 모두 다르다", new Set(ST.map((x) => x.name)).size === 50);
+  const seq = (x) => x.patterns.map((q) => q.kind).join(",");
+  const same = ST.map((x, i) => (i > 0 && seq(x) === seq(ST[i - 1]) ? i + 1 : 0)).filter(Boolean);
+  ok("이웃한 스테이지의 웨이브 구성이 서로 다르다 (같은 칸이라도 장·번호마다 순서가 바뀐다)", same.length === 0, same.join(","));
+  const kindsOf = (c) => new Set(ST.filter((x) => x.chapter === c).flatMap((x) => x.patterns.map((q) => q.kind)));
+  ok("장마다 몬스터가 늘어난다 — 1장엔 오우거·비룡이 없고, 2장에 오우거, 3장에 비룡이 처음 나온다",
+    !kindsOf(0).has("ricochet") && !kindsOf(0).has("explosive") && kindsOf(1).has("ricochet") && !kindsOf(1).has("explosive") && kindsOf(2).has("explosive"),
+    [0, 1, 2].map((c) => [...kindsOf(c)].join("/")).join(" | "));
+  ok("장 대장 스테이지는 갈수록 단단하다 (체력 10 < 20 < 30 < 40 < 50) · 장 대장 처치 수 > 같은 장 중간 보스",
+    [9, 19, 29, 39, 49].every((i, k, a) => k === 0 || ST[i].monsterHp > ST[a[k - 1]].monsterHp) && [0, 1, 2, 3, 4].every((c) => ST[c * 10 + 9].bossCuts > ST[c * 10 + 4].bossCuts),
+    [9, 19, 29, 39, 49].map((i) => ST[i].monsterHp + "/" + ST[i].bossCuts).join(" "));
+  ok("유도탄은 1장에 없고 장이 깊을수록 오른다", ST[0].homingChance === 0 && ST[9].homingChance === 0 && ST[10].homingChance > 0 && ST[40].homingChance > ST[10].homingChance && arrows.homingChanceFor(45) === ST[45].homingChance);
+  ok("표는 결정적이다 — 다시 만들어도 같은 스테이지", ST.every((x, i) => JSON.stringify(stages.buildStage(i)) === JSON.stringify(x)));
+  ok("장 대장을 깨면 사냥터 지역이 열린다 (10 → 2 · 20 → 3 · 30 → 4 · 40 → 5) · 다른 스테이지는 열지 않는다",
+    stages.areaOpenedByClear(9) === 2 && stages.areaOpenedByClear(19) === 3 && stages.areaOpenedByClear(29) === 4 && stages.areaOpenedByClear(39) === 5 && stages.areaOpenedByClear(3) === 0 && stages.areaOpenedByClear(14) === 0);
+  ok("스테이지는 순서대로 열린다 — 새 계정은 1만, 1 을 깨면(별) 2, 옛 최고 4 면 1~5",
+    stages.stageUnlocked(0, 1, {}) && !stages.stageUnlocked(1, 1, {}) && stages.stageUnlocked(1, 1, { 0: 1 }) && stages.stageUnlocked(4, 4, {}) && !stages.stageUnlocked(5, 4, {}) && stages.nextStageIndex(1, {}) === 0 && stages.nextStageIndex(4, {}) === 4);
+  ok("끝없는 성벽 — 1장 대장(10)을 깨면 열린다 · 1층은 10 스테이지 수준 · 41층부터는 50 스테이지보다 단단하다 (조금 더 어렵게)",
+    stages.TOWER_UNLOCK_STAGE === 10 && stages.getStage(stages.towerIndexOf(1)).monsterHp >= ST[9].monsterHp * 0.99 && stages.getStage(stages.towerIndexOf(50)).monsterHp > ST[49].monsterHp && stages.getStage(stages.towerIndexOf(50)).bossCuts >= ST[49].bossCuts);
 }
 
-// ── 일주일 곡선 (2026-10-01) — 새 계정이 하루 3판씩 일주일. 이탈 지점(강화 0 인 날) 없이, 사흘 안에 스킬 6종을 다 배우고
-//    S4 를 처음 깨며, 7일째에도 만렙이 없어야(남은 분량) 한다. 학습이 조각이면 두 번째 스킬을 영원히 못 배웠다(실측).
+// ── 진행 속도 · 대장 크기 (2026-10-02) ──
+ok("진행 속도 3배 느리게 — 월드(몬스터·대장·스테이지 시계)는 실제의 1/3 · 무기가 실제 시간으로 쏘는 만큼 몬스터 체력 ×4 · 대장 처치 수 ×3",
+  Math.abs(arrows.TUNING.pace - 1 / 3) < 1e-9 && skills.TUNING_HP.mul === 4 && arrows.TUNING.bossCutMul === 3);
+ok("대장 크기 2/3 — 5배(480+)에서 줄였다 · 화면 폭(390)보다 좁다", arrows.bossSize(1) === Math.round(492 * 2 / 3) && arrows.bossSize(5) < 390, String(arrows.bossSize(1)));
+
+{
+  const { checkpointCurve, stageGate, profileFor, CHECKPOINTS } = await import(pathToFileURL(join(root, "scripts/dodge-sim.mjs")).href);
+  const rows = checkpointCurve(5, 8);
+  const line = rows.map((r) => `${r.stage + 1}:${r.expected}${r.under === null ? "" : "/" + r.under}`).join(" ");
+  ok("50 스테이지 · 기대 성장 계정은 체크포인트(1·5·10·…·50)마다 5시드 중 3회 이상 깬다", rows.every((r) => r.expected >= 3), line);
+  ok("50 스테이지 · 8 스테이지 덜 자란 계정은 장 대장(10·20·30·40·50)에서 0~1회 — 성장이 벽을 넘긴다",
+    rows.filter((r) => [9, 19, 29, 39, 49].includes(r.stage)).every((r) => r.under !== null && r.under <= 1), line);
+  const underAll = rows.filter((r) => r.under !== null);
+  const underPct = Math.round(underAll.reduce((s2, r) => s2 + r.under, 0) / (underAll.length * 5) * 100);
+  ok("50 스테이지 · 덜 자란 계정의 체크포인트 클리어는 전체 30% 이하", underPct <= 30, underPct + "%");
+  ok("몬스터 풀이 차지 않는다 (생성이 조용히 빠지면 쉬워 보인다)", rows.every((r) => !r.pool), rows.filter((r) => r.pool).map((r) => r.stage + 1).join(","));
+  ok("진행 속도 — 체크포인트 한 판이 실제 75초 이상 (예전 30~60초의 약 2~3배)", rows.every((r) => r.realSec >= 75), rows.map((r) => r.realSec).join(" "));
+  const p20 = profileFor(19);
+  const g20 = stageGate(19, p20, 5), g30 = stageGate(29, p20, 5), g40 = stageGate(39, p20, 5);
+  ok("같은 계정(20 스테이지 기대 성장)은 깊이 갈수록 막힌다 — 20 ≥ 3/5 · 30 ≤ 1/5 · 40 ≤ 1/5", g20.clear >= 3 && g30.clear <= 1 && g40.clear <= 1, `${g20.clear} · ${g30.clear} · ${g40.clear}`);
+  void CHECKPOINTS;
+}
+
+// ── 일주일 곡선 (2026-10-02 다시 씀) — 새 계정이 하루 6판(한 판 = 한 스테이지)씩 일주일 ──
 {
   const { weekSummary } = await import("./dodge-week-sim.mjs");
   const weeks = weekSummary(3);
-  const line = weeks.map((w) => `첫판 S${w.firstRun} · 전부 학습 ${w.allLearnedBy}일 · S4 ${w.s4By}일 · 7일째 S4 ${w.s4Day7}/3 · 만렙 ${w.maxedDay7} · 합 ${w.totalDay7}`).join(" | ");
+  const line = weeks.map((w) => `첫날 ${w.firstDayClears}개 · 2장 ${w.chapter2By}일 · 7일째 ${w.bestDay7} · 배움 ${w.learnedDay7}/${w.unlockedDay7} · 만렙 ${w.maxedDay7} · 대장간 ${w.forgeDay7}`).join(" | ");
   ok("일주일 · 강화를 하나도 못 하는 날이 없다 (이탈 지점)", weeks.every((w) => w.stallDays.length === 0), weeks.map((w) => w.stallDays.join(",") || "없음").join(" | "));
-  ok("일주일 · 첫 판에 2스테이지 이상 간다 (첫 플레이가 벽이 아니다)", weeks.every((w) => w.firstRun >= 2), line);
-  ok("일주일 · 사흘 안에 스킬 6종을 전부 배운다 (학습은 인장)", weeks.every((w) => w.allLearnedBy <= 3), line);
-  // 2026-10-02 "너무 쉽다"에 맞춰 느리게·촘촘히·세게 — S3 가 새 계정의 벽이 되고 S4 첫 클리어는 5~6일째로 밀렸다. 일주일 안이면 된다
-  ok("일주일 · S4 를 엿새 안에 처음 깬다 (벽이되 일주일 안에 뚫린다)", weeks.every((w) => w.s4By <= 6), line);
-  ok("일주일 · 7일째에 만렙 스킬이 없고 누적 레벨 28 이상 (분량이 남아 있되 성장은 했다)", weeks.every((w) => w.maxedDay7 === 0 && w.totalDay7 >= 28), line);
-}
+  ok("일주일 · 첫날 2 스테이지 이상 깬다 (첫 플레이가 벽이 아니다)", weeks.every((w) => w.firstDayClears >= 2), line);
+  ok("일주일 · 나흘 안에 2장(11 스테이지)에 들어간다", weeks.every((w) => w.chapter2By <= 4), line);
+  ok("일주일 · 7일째 최고 15~45 스테이지 — 끝까지 다 끝나 버리지도, 1장에 갇히지도 않는다", weeks.every((w) => w.bestDay7 >= 15 && w.bestDay7 <= 45), line);
+  ok("일주일 · 7일째 만렙 무기는 1개 이하 · 무기 5종 이상 배움 · 대장간도 올렸다", weeks.every((w) => w.maxedDay7 <= 1 && w.learnedDay7 >= 5 && w.forgeDay7 >= 6), line);
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

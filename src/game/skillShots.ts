@@ -9,10 +9,17 @@ import {
   fireCooldown, fireDamage, firePower, fireRadius,
   iceCooldown, iceDamage, icePower, iceRadius, iceSlow,
   waterCooldown, waterDamage, waterPierce, waterPower,
+  windCooldown, windDamage, windPower, windRange,
+  poisonCooldown, poisonDamage, poisonDpsMul, poisonPower, poisonSeconds,
+  holyCooldown, holyDamage, holyPower, holyRepair,
+  shadowCooldown, shadowCount, shadowDamage, shadowPower,
+  meteorCooldown, meteorDamage, meteorPower, meteorRadius,
+  forgeFamilyLevel, weaponForgeCooldownMul, weaponForgeDamageMul,
   weaponCooldownMul,
   SKILL_BY_ID,
   type Element,
   type ExpeditionSkillId,
+  type SkillWeaponId,
 } from "./skills";
 
 /**
@@ -56,6 +63,12 @@ export type SkillShot = {
   /** 그리기 전용 시작 어긋남 — 기본 화살을 활 앞에서 그리고 60px 안에 실제 궤적으로 합친다 (판정·밸런스와 무관, 2026-10-02) */
   drawOx: number;
   drawOy: number;
+  /** 이번에 지나가며 이미 벤 몬스터 — 꿰뚫는 무기(부메랑)가 겹친 프레임마다 같은 몬스터를 또 베지 않게 */
+  struck: Arrow[];
+  /** 부메랑 — 이 거리(px)를 날면 주인공 쪽으로 되돌아온다. 0 이면 없음 */
+  turnAt: number;
+  /** 운석 — 이 높이에 닿으면 터진다. 0 이면 없음 */
+  targetY: number;
 };
 
 /** 명중 이펙트 — 속성별 색 폭발. 그리기는 draw.ts */
@@ -110,6 +123,11 @@ const SPARK_COLOR: Record<Element, string[]> = {
   ice: ["#f0f9ff", "#a5f3fc"],
   earth: ["#f5deb3", "#d6a35c", "#92400e"],
   bolt: ["#fefce8", "#fde047"],
+  wind: ["#f0fdfa", "#99f6e4", "#2dd4bf"],
+  poison: ["#ecfccb", "#a3e635", "#65a30d"],
+  holy: ["#ffffff", "#fef9c3", "#fde68a"],
+  shadow: ["#ede9fe", "#a78bfa", "#4c1d95"],
+  meteor: ["#fff7ed", "#fb923c", "#b91c1c"],
 };
 
 function spark(world: GameWorld, x: number, y: number, vx: number, vy: number, ms: number, color: string, size: number, grav: number): void {
@@ -138,6 +156,7 @@ export function makeSkillShots(): SkillShot[] {
   return Array.from({ length: POOL }, () => ({
     active: false, element: "basic" as Element, x: 0, y: 0, vx: 0, vy: 0,
     radius: 0, lifeMs: 0, fade: 1, hits: 0, power: 0, damage: 1, basic: false, seeker: false, dist: 0, drawOx: 0, drawOy: 0,
+    struck: [] as Arrow[], turnAt: 0, targetY: 0,
   }));
 }
 
@@ -149,6 +168,7 @@ export function makeSkillFx(): SkillFx[] {
 export function emptyRunMods(): RunMods {
   return {
     shotExtra: 0, shotPierce: 0, fireRadiusMul: 1, waterPierceExtra: 0, iceSlowBonus: 0, earthPowerBonus: 0, boltExtra: 0,
+    windDamageMul: 1, poisonMul: 1, shadowExtra: 0, meteorRadiusMul: 1, holyRepairMul: 1,
     cooldownMul: 1, damageMul: 1, convert: null, chillHunt: false, chillBurst: false, evolutions: {},
     moveSpeedMul: 1, dashCooldownMul: 1, slashLevelBonus: 0, maxHpBonus: 0,
   };
@@ -174,6 +194,9 @@ function spawn(world: GameWorld, s: Partial<SkillShot> & { element: Element }): 
   shot.dist = 0;
   shot.drawOx = 0;
   shot.drawOy = 0;
+  shot.struck.length = 0;
+  shot.turnAt = s.turnAt ?? 0;
+  shot.targetY = s.targetY ?? 0;
   return shot;
 }
 
@@ -191,9 +214,23 @@ function targetable(a: Arrow): boolean {
  * 무기 정령의 자리 — 주인공 어깨 뒤 위를 둥둥 떠다닌다 (아웃로 디펜스의 펫처럼). 속성 화살은 여기서 나간다.
  * 주인공이 바라보는 반대쪽 뒤에 두어 활을 가리지 않는다. 그리기(draw.ts)도 같은 함수를 쓴다
  */
-export function spiritPos(world: GameWorld): { x: number; y: number } {
-  const t = world.animClock;
-  return { x: world.player.x - world.player.facing * 34 + Math.sin(t * 1.7) * 4, y: world.player.y - 66 + Math.sin(t * 2.3) * 5 };
+export function spiritPos(world: GameWorld, slot = 0): { x: number; y: number } {
+  const t = world.animClock + slot * 0.9;
+  // 장착 무기 넷이 주인공 머리 위에 반원으로 떠 있다 (2026-10-02) — 0번이 바라보는 반대쪽 뒤, 3번이 바라보는 쪽
+  const fan = [-1.15, -0.4, 0.4, 1.15][Math.max(0, Math.min(3, slot))];
+  const back = -world.player.facing;
+  return { x: world.player.x + back * 34 * fan + Math.sin(t * 1.7) * 4, y: world.player.y - 66 - (1.2 - Math.abs(fan)) * 18 + Math.sin(t * 2.3) * 5 };
+}
+
+/** 장착 무기의 정령 칸 — 로드아웃 순서. 장착하지 않았으면 0 */
+export function spiritSlotOf(world: GameWorld, id: SkillWeaponId): number {
+  const i = (world.loadout ?? []).indexOf(id);
+  return i < 0 ? 0 : i;
+}
+
+/** 이 무기에 붙는 대장간 피해 배수 — 물리는 활, 마법은 지팡이 */
+function forgeDmg(world: GameWorld, id: SkillWeaponId): number {
+  return weaponForgeDamageMul(forgeFamilyLevel(world.weaponForge ?? { bow: 0, staff: 0 }, SKILL_BY_ID[id].family));
 }
 
 /** 가장 가까운 화살 n개 */
@@ -298,7 +335,12 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
         : id === "ice" ? iceCooldown(level)
           : id === "earth" ? earthCooldown(level)
             : id === "bolt" ? boltCooldown(level)
-              : 0;
+              : id === "wind" ? windCooldown(level)
+                : id === "poison" ? poisonCooldown(level)
+                  : id === "holy" ? holyCooldown(level)
+                    : id === "shadow" ? shadowCooldown(level)
+                      : id === "meteor" ? meteorCooldown(level)
+                        : 0;
   return base * weaponCooldownMul(weapon, family);
 }
 
@@ -308,6 +350,7 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
  */
 export function skillCooldown(world: GameWorld, id: Exclude<ExpeditionSkillId, "ultimate">): number {
   return effectiveCooldown(id, world.skillLevels[id] ?? 0, world.rangedWeapon)
+    * weaponForgeCooldownMul(forgeFamilyLevel(world.weaponForge ?? { bow: 0, staff: 0 }, SKILL_BY_ID[id].family))
     * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
     * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1)
     * (id === "fire" && world.runMods.evolutions.fire === "pyre" ? 1.25 : 1);
@@ -405,52 +448,70 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     timers[id] = skillCooldown(world, id);
   };
 
-  const sp0 = spiritPos(world);
+  const spiritOf = (id: SkillWeaponId) => spiritPos(world, spiritSlotOf(world, id));
+  /**
+   * 스킬 무기의 표적 — 대장이 떠 있고 방어막 가까이(띠 위 220px 안) 몬스터가 없으면 대장을, 아니면 가장 가까운 몬스터 (2026-10-02).
+   * 늘 가장 가까운 것만 쏘면 대장전이 기본 사격에만 기대 50 스테이지의 대장들이 끝나지 않았다(시뮬)
+   */
+  const skillTarget = (): Arrow | undefined => {
+    const boss = world.arrows.find((a) => a.boss && targetable(a));
+    if (boss) {
+      const line = world.floorY - 150 - 220;
+      if (!world.arrows.some((a) => !a.boss && targetable(a) && a.y > line)) return boss;
+    }
+    return nearest(world, 1, px, py)[0];
+  };
+  let sp0 = spiritPos(world);
   const fromSpirit = (t: Arrow, speed = 640) => lead(sp0.x, sp0.y, t, speed);
   tick("fire", () => {
-    const [t] = nearest(world, 1, px, py);
+    sp0 = spiritOf("fire");
+    const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t);
-    spawn(world, { x: sp0.x, y: sp0.y, element: "fire", vx: Math.cos(ang) * 640, vy: Math.sin(ang) * 640, radius: 10, lifeMs: 1600, power: firePower(lv.fire), damage: fireDamage(lv.fire) });
+    spawn(world, { x: sp0.x, y: sp0.y, element: "fire", vx: Math.cos(ang) * 640, vy: Math.sin(ang) * 640, radius: 10, lifeMs: 1600, power: firePower(lv.fire), damage: fireDamage(lv.fire) * forgeDmg(world, "fire") });
     world.sfx.shot += 1;
     return true;
   });
 
   tick("water", () => {
-    const [t] = nearest(world, 1, px, py);
+    sp0 = spiritOf("water");
+    const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 700);
     spawn(world, {
       x: sp0.x, y: sp0.y, element: "water", vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700, radius: 11, lifeMs: 1700,
-      power: waterPower(lv.water), damage: waterDamage(lv.water), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1,
+      power: waterPower(lv.water), damage: waterDamage(lv.water) * forgeDmg(world, "water"), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1,
     });
     world.sfx.shot += 1;
     return true;
   });
 
   tick("ice", () => {
-    const [t] = nearest(world, 1, px, py);
+    sp0 = spiritOf("ice");
+    const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 620);
-    spawn(world, { x: sp0.x, y: sp0.y, element: "ice", vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 10, lifeMs: 1600, power: icePower(lv.ice), damage: iceDamage(lv.ice) });
+    spawn(world, { x: sp0.x, y: sp0.y, element: "ice", vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 10, lifeMs: 1600, power: icePower(lv.ice), damage: iceDamage(lv.ice) * forgeDmg(world, "ice") });
     world.sfx.shot += 1;
     return true;
   });
 
   tick("earth", () => {
-    const [t] = nearest(world, 1, px, py);
+    sp0 = spiritOf("earth");
+    const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 460);
     spawn(world, {
       x: sp0.x, y: sp0.y, element: "earth", vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460,
       radius: earthRadius(lv.earth), lifeMs: 2000, power: earthPower(lv.earth) + world.runMods.earthPowerBonus,
-      damage: earthDamage(lv.earth) + world.runMods.earthPowerBonus,
+      damage: (earthDamage(lv.earth) + world.runMods.earthPowerBonus) * forgeDmg(world, "earth"),
     });
     world.sfx.shot += 1;
     return true;
   });
 
   tick("bolt", () => {
+    sp0 = spiritOf("bolt");
     // 즉발 연쇄 — 조준 화살(상성)을 먼저 끊는다
     const n = boltTargets(lv.bolt) + world.runMods.boltExtra;
     const pool = world.arrows.filter(targetable)
@@ -459,12 +520,94 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     if (!pool.length) return false;
     for (const t of pool) {
       spawnFx(world, "bolt", t.x, t.y, 22, 260);
-      hit(world, t, "bolt", boltPower(lv.bolt), boltDamage(lv.bolt));
+      hit(world, t, "bolt", boltPower(lv.bolt), boltDamage(lv.bolt) * forgeDmg(world, "bolt"));
     }
     world.sfx.zap += 1;
     world.boltFrom = { x: sp0.x, y: sp0.y, ms: 220, targets: pool.map((t) => ({ x: t.x, y: t.y })) };
     return true;
   });
+
+  // ── 새 스킬 무기 5종 (2026-10-02) ──
+  tick("wind", () => {
+    sp0 = spiritOf("wind");
+    const t = skillTarget();
+    if (!t) return false;
+    const ang = fromSpirit(t, 520);
+    spawn(world, {
+      x: sp0.x, y: sp0.y, element: "wind", vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, radius: 13, lifeMs: 2600,
+      power: windPower(lv.wind), damage: windDamage(lv.wind) * forgeDmg(world, "wind") * world.runMods.windDamageMul, hits: 99, turnAt: windRange(lv.wind),
+    });
+    world.sfx.shot += 1;
+    return true;
+  });
+
+  tick("poison", () => {
+    sp0 = spiritOf("poison");
+    const t = skillTarget();
+    if (!t) return false;
+    const ang = fromSpirit(t, 680);
+    spawn(world, { x: sp0.x, y: sp0.y, element: "poison", vx: Math.cos(ang) * 680, vy: Math.sin(ang) * 680, radius: 9, lifeMs: 1600, power: poisonPower(lv.poison), damage: poisonDamage(lv.poison) * forgeDmg(world, "poison") });
+    world.sfx.shot += 1;
+    return true;
+  });
+
+  tick("holy", () => {
+    sp0 = spiritOf("holy");
+    // 대장이 있으면 대장을, 없으면 방어막에 가장 가까이 온(가장 아래) 몬스터를 내리친다 — 즉발
+    const pool = world.arrows.filter(targetable);
+    if (!pool.length) return false;
+    const boss = pool.find((a) => a.boss);
+    const t = boss ?? pool.reduce((m, a) => (a.y > m.y ? a : m), pool[0]);
+    spawnFx(world, "holy", t.x, t.y, 34, 380);
+    burst(world, "holy", t.x, t.y, 14, 180);
+    hit(world, t, "holy", holyPower(lv.holy), holyDamage(lv.holy) * forgeDmg(world, "holy"));
+    // 방어막 수리 — 맞힐 때마다 조금 (최대치를 넘지 않는다)
+    world.barrierHp = Math.min(world.barrierMaxHp, world.barrierHp + holyRepair(lv.holy) * world.runMods.holyRepairMul);
+    world.holyBeam = { x: sp0.x, y: sp0.y, tx: t.x, ty: t.y, ms: 260 };
+    world.sfx.zap += 1;
+    return true;
+  });
+
+  tick("shadow", () => {
+    sp0 = spiritOf("shadow");
+    const t = skillTarget();
+    if (!t) return false;
+    const ang = fromSpirit(t, 600);
+    const n = shadowCount(lv.shadow) + world.runMods.shadowExtra;
+    for (let k = 0; k < n; k += 1) {
+      const a2 = ang + (k - (n - 1) / 2) * 0.13;
+      spawn(world, { x: sp0.x, y: sp0.y, element: "shadow", vx: Math.cos(a2) * 600, vy: Math.sin(a2) * 600, radius: 9, lifeMs: 1500, power: shadowPower(lv.shadow), damage: shadowDamage(lv.shadow) * forgeDmg(world, "shadow") });
+    }
+    world.sfx.shot += 1;
+    return true;
+  });
+
+  tick("meteor", () => {
+    sp0 = spiritOf("meteor");
+    // 가장 많이 모인 곳 — 대장이 있으면 대장
+    const pool = world.arrows.filter(targetable);
+    if (!pool.length) return false;
+    const r = meteorRadius(lv.meteor) * world.runMods.meteorRadiusMul;
+    let best = pool.find((a) => a.boss) ?? pool[0], bestN = -1;
+    if (!best.boss) for (const a of pool) {
+      let n = 0;
+      for (const b of pool) if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 <= r * r) n += 1;
+      if (n > bestN) { bestN = n; best = a; }
+    }
+    // 화면 위에서 곧장 떨어진다 — 몬스터가 내려오는 만큼 조금 아래를 노린다
+    const ty = Math.min(world.floorY - 40, best.y + best.vy * 0.5);
+    spawn(world, { x: best.x, y: world.safeTop - 40, element: "meteor", vx: 0, vy: 760, radius: 16, lifeMs: 2400, power: meteorPower(lv.meteor), damage: meteorDamage(lv.meteor) * forgeDmg(world, "meteor"), targetY: ty, hits: 99 });
+    world.sfx.shot += 1;
+    return true;
+  });
+
+  // 중독 — 몬스터가 초당 독 피해를 받는다 (보스는 처치 수라 독이 듣지 않는다)
+  for (const a of world.arrows) {
+    if (!a.active || a.poisonMs <= 0) continue;
+    a.poisonMs = Math.max(0, a.poisonMs - dtSec * 1000);
+    if (!a.boss && targetable(a)) hit(world, a, "poison", 0, a.poisonDps * dtSec, true);
+  }
+  if (world.holyBeam && world.holyBeam.ms > 0) { world.holyBeam.ms -= dtSec * 1000; if (world.holyBeam.ms <= 0) world.holyBeam = null; }
 
   if (world.boltFrom && world.boltFrom.ms > 0) world.boltFrom.ms -= dtSec * 1000;
   if (world.affinityPop) { world.affinityPop.ms -= dtSec * 1000; if (world.affinityPop.ms <= 0) world.affinityPop = null; }
@@ -489,6 +632,24 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     s.x += s.vx * dtSec;
     s.y += s.vy * dtSec;
     s.dist += Math.hypot(s.vx, s.vy) * dtSec;
+    // 부메랑 — 사거리에 닿으면 주인공 쪽으로 되돌아오며 다시 벤다
+    if (s.turnAt > 0 && s.dist >= s.turnAt) {
+      const sp = Math.hypot(s.vx, s.vy);
+      const back = Math.atan2(world.player.y - 30 - s.y, world.player.x - s.x);
+      s.vx = Math.cos(back) * sp; s.vy = Math.sin(back) * sp;
+      s.turnAt = 0; s.struck.length = 0;
+    }
+    // 운석 — 노린 높이에 닿으면 그 자리에서 터진다
+    if (s.targetY > 0 && s.y >= s.targetY) {
+      const r = meteorRadius(lv.meteor) * world.runMods.meteorRadiusMul;
+      spawnFx(world, "meteor", s.x, s.y, r, 520);
+      burst(world, "meteor", s.x, s.y, 26, 80 + r * 2.4);
+      shake(world, 220, 4.5);
+      world.sfx.boom += 1;
+      for (const b of world.arrows) if (targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= (r + (b.boss ? b.hitRadius : 0)) ** 2) hit(world, b, "meteor", s.power, s.damage);
+      s.active = false; continue;
+    }
+    if (s.targetY > 0) continue;   // 떨어지는 중엔 닿아도 터지지 않는다 — 노린 자리까지 간다
     if (s.element !== "basic" && (s.vx !== 0 || s.vy !== 0) && vr() < dtSec * (s.basic ? 18 : 34)) {
       const c = SPARK_COLOR[s.element];
       const g = s.element === "fire" ? -70 : s.element === "water" ? 300 : s.element === "earth" ? 420 : 0;
@@ -543,7 +704,25 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         hit(world, a, "earth", s.power, s.damage);
         s.active = false; break;
       }
-      // basic · water — 관통 수만큼 지나간다
+      if (s.element === "wind" && !s.basic) {
+        // 부메랑 — 한 번 지나가며 같은 몬스터는 한 번만 벤다 (되돌아올 때 다시)
+        if (s.struck.includes(a)) continue;
+        s.struck.push(a);
+        spawnFx(world, "wind", a.x, a.y, 16, 200);
+        hit(world, a, "wind", s.power, s.damage);
+        continue;
+      }
+      if (s.element === "poison" && !s.basic) {
+        // 독침 — 맞으면 중독(지속 피해). 상성(오우거)이면 독도 1.5배
+        spawnFx(world, "poison", s.x, s.y, 14, 260);
+        const alive = !hit(world, a, "poison", s.power, s.damage);
+        if (alive && a.active && !a.boss) {
+          a.poisonMs = poisonSeconds(lv.poison) * 1000;
+          a.poisonDps = Math.max(a.poisonDps, s.damage * poisonDpsMul(lv.poison) * aff.mul * world.runMods.poisonMul);
+        }
+        s.active = false; break;
+      }
+      // basic · water · shadow — 관통 수만큼 지나간다
       spawnFx(world, s.element, s.x, s.y, s.element === "water" ? 18 : 12, 220);
       hit(world, a, s.element, s.power, s.damage);
       if (s.hits > 0) { s.hits -= 1; continue; }
@@ -582,7 +761,8 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
 export function resetSkillShots(world: GameWorld): void {
   for (const s of world.skillShots) s.active = false;
   for (const f of world.skillFx) f.active = false;
-  world.skillTimers = { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 };
+  world.skillTimers = { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, wind: 0, poison: 0, holy: 0, shadow: 0, meteor: 0, ultimate: 0 };
+  world.holyBeam = null;
   world.basicTimer = 0;
   world.shotFlashMs = 0;
   world.boltFrom = null;

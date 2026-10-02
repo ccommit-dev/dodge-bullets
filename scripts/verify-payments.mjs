@@ -344,7 +344,8 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const p0 = await P();
   const r = store.applyPurchase(p0, "gate-supply", "play:s1", 0);
   const shards = Object.values(r.progress.expeditionShards);
-  ok("성문 수비 보급: 인장 +30 · 속성 조각 6종 각 +8 · 보석 +40", r.applied && r.progress.expeditionSeals === p0.expeditionSeals + 30 && shards.length === 6 && Object.entries(r.progress.expeditionShards).every(([id, n]) => n === (p0.expeditionShards[id] ?? 0) + 8) && r.progress.redGems === p0.redGems + 40, JSON.stringify(r.progress.expeditionShards));
+  // 2026-10-02: 스킬 무기 10종 + 화살비 = 조각 11종 (상품 값은 늘었다 — 옛 6종보다 적게 주지 않는다)
+  ok("성문 수비 보급: 인장 +30 · 스킬 무기 조각 11종 각 +8 · 보석 +40", r.applied && r.progress.expeditionSeals === p0.expeditionSeals + 30 && shards.length === 11 && Object.entries(r.progress.expeditionShards).every(([id, n]) => n === (p0.expeditionShards[id] ?? 0) + 8) && r.progress.redGems === p0.redGems + 40, JSON.stringify(r.progress.expeditionShards));
   // 기금: 산 뒤 이미 깬 단계는 바로 받고, 못 깬 단계는 못 받는다 · 두 번 받지 못한다
   const withStars = { ...p0, dodgeStars: { "0": 3, "1": 2, "2": 1 } };
   ok("기금: 사기 전에는 받을 수 없다", fund.claimGateFundTier(withStars, "s1").gems === 0);

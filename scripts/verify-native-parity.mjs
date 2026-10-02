@@ -75,7 +75,8 @@ await clickText("button", "스테이지");
 await sleep(1800);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 const t0 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs ?? -1);
-await sleep(4500);
+// 월드 시계는 실제의 1/3 로 흐른다(진행 속도 3배 느리게, 2026-10-02) — 첫 2초(월드) 개막 뒤 몬스터가 나오려면 실제 12초
+await sleep(12000);
 const run = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { t: w.stageElapsedMs, monsters: w.arrows.filter((a) => a.active).length, shots: w.skillShots.filter((s) => s.active).length, kills: w.skillKills } : null; });
 ok("전투 시계가 흐른다", !!run && run.t > t0 + 2000, run ? `${t0} → ${Math.round(run.t)}ms` : "월드 없음");
 ok("몬스터가 내려오고 활이 쏜다", !!run && (run.monsters > 0 || run.kills > 0) && (run.shots > 0 || run.kills > 0), JSON.stringify(run));

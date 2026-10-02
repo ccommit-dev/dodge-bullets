@@ -28,7 +28,7 @@ await page.evaluate(() => {
 });
 await sleep(1400);
 await page.evaluate(() => {
-  [...document.querySelectorAll(".cta")].find((b) => b.textContent.includes("스테이지 1 시작"))?.click();
+  [...document.querySelectorAll(".cta")].find((b) => b.textContent.includes("스테이지 1-1 시작"))?.click();
 });
 
 // 회피 봇: 0.55초마다 방향 전환, 2.2초마다 점프

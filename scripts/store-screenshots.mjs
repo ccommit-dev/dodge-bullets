@@ -130,7 +130,7 @@ await sleep(2200);
 await closeBootModals(page);
 await clickText(page, "button", "성문 방어");
 await sleep(1400);
-await clickText(page, ".cta", "스테이지 1 시작");
+await clickText(page, ".cta", "스테이지 1-1 시작");
 await sleep(5200); // 인트로 자동 시작 + 화살이 깔리는 시점
 await shot(page, "03-dodge-action");
 

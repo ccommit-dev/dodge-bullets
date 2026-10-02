@@ -108,8 +108,11 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     heroAura: null,
     skillLevels: emptySkillLevels(),
     basicLevel: 0,
-    skillTimers: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
+    skillTimers: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, wind: 0, poison: 0, holy: 0, shadow: 0, meteor: 0, ultimate: 0 },
     rangedWeapon: "none",
+    loadout: [],
+    weaponForge: { bow: 0, staff: 0 },
+    holyBeam: null,
     skillKills: 0,
     epicPicks: 0,
     draftBoost: false,
@@ -169,12 +172,8 @@ function clampX(world: GameWorld): void {
   player.x = Math.min(Math.max(player.x, minX), Math.max(minX, maxX));
 }
 
-/** 보스 화살 베기 수 — 스윙 1회 = 1컷(정타 2컷)·쿨다운 1.15s 이므로 10+4n 은 너무 길다 (docs/CONTENT_BEAT_DODGE_PLAN.md §2) */
-export const BOSS_CUTS_BASE = 4;
-export const BOSS_CUTS_PER_STAGE = 6;
-/** 마지막 스테이지(추격대장)는 격추 수를 더 얹는다 — 새 계정의 벽. 풀런 새 계정 S4 5~6/20 → ≤ 4/20 (2026-10-01) */
-export const BOSS_CUTS_FINAL_EXTRA = 6;
-export function bossCutsFor(stageIndex: number): number { return Math.round((BOSS_CUTS_BASE + stageIndex * BOSS_CUTS_PER_STAGE + (stageIndex === 3 ? BOSS_CUTS_FINAL_EXTRA : 0)) * TUNING.bossCutMul); }   // 2 → 6 (2026-10-01): 좌우 이동만 남은 뒤 성장이 갈리는 지렛대는 보스를 깎는 속도다 — 새 계정 S4 2/20 · 중간 10/20 · 강함 18/20
+/** 대장 처치 수 — 스테이지 표(stages.ts bossCuts: 4 + 0.55×스테이지, 중간 보스 ×1.25 · 장 대장 ×2)가 기준 (2026-10-02) */
+export function bossCutsFor(stageIndex: number): number { return Math.max(1, Math.round(getStage(stageIndex).bossCuts * TUNING.bossCutMul)); }   // 2 → 6 (2026-10-01): 좌우 이동만 남은 뒤 성장이 갈리는 지렛대는 보스를 깎는 속도다 — 새 계정 S4 2/20 · 중간 10/20 · 강함 18/20
 
 /** 런 레벨업에 필요한 XP — 베기 1 · 회피 1 · 보스 베기 4. 레벨이 오를수록 더 필요하다 */
 export function runXpToNext(level: number): number {
@@ -237,7 +236,9 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.hitStopMs = 0;
   // 카드는 런 단위 — 새 런에서만 비운다 (스테이지 경계에서는 유지)
   world.runMods = emptyRunMods();
-  world.runSkills = {};   // 습득은 런 단위 — 스테이지 경계에서는 유지된다
+  // 장착한 스킬 무기는 런 시작부터 쏜다 (2026-10-02) — 예전엔 런 중 카드로 '습득'해야 나갔다
+  world.runSkills = {};
+  for (const id of world.loadout ?? []) if ((world.skillLevels[id] ?? 0) > 0) world.runSkills[id] = true;
   world.draftBoost = false;
   world.primedMs = 0;
   resetPlayer(world.player, world.width, world.floorY, world.stats.extraLives);
@@ -337,9 +338,13 @@ export function updateWorld(
 ): WorldEvent {
   world.animClock += dtSec;
   if (!running) return { type: "none" };
+  // 월드 시간 — 몬스터·대장·마력탄·스테이지 시계는 실제의 TUNING.pace(1/3) 로 흐른다 (2026-10-02, "진행 속도 3배 느리게").
+  // 주인공 쪽(이동 · 활 · 스킬 무기 · 날아가는 화살)은 실제 시간 — 아웃로 디펜스처럼 몬스터는 천천히 걸어오고 무기는 쉴 새 없이 쏜다.
+  // 무기가 같은 시간에 세 배 쏘는 만큼 몬스터 체력·대장 처치 수가 세 배다(TUNING.monsterHpMul · bossCutMul)
+  const wdt = dtSec * TUNING.pace;
 
-  world.elapsedMs += dtSec * 1000;
-  world.stageElapsedMs += dtSec * 1000;
+  world.elapsedMs += wdt * 1000;
+  world.stageElapsedMs += wdt * 1000;
 
   const p = world.player;
   const stats = world.stats;
@@ -410,7 +415,7 @@ export function updateWorld(
 
   // 원거리 스킬 자동 발사 — 화살 갱신 **앞**에서 돌려 이번 프레임에 요격된 화살이 바로 사라지게
   updateSkillShots(world, dtSec);
-  const arrowDamage = updateArrows(world, dtSec);
+  const arrowDamage = updateArrows(world, wdt);
 
   for (const fx of world.slashHitFx) {
     if (!fx.active) continue;

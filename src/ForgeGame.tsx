@@ -24,6 +24,7 @@ import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } 
 import { armorTierOf } from "./ui/EquippedCharacter";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import type { ShoulderId } from "./progression/model";
+import { EXPEDITION_SKILLS, WEAPON_FORGE_MAX, weaponForgeCooldownMul, weaponForgeCost, weaponForgeDamageMul, type WeaponForgeLevels } from "./game/skills";
 
 /** Original delays were ~650/720ms; 3× faster ≈ 217/240. */
 const FORGE_MS = 220;
@@ -35,8 +36,8 @@ type ForgeGameProps = {
   onBack: () => void;
 };
 
-/** 모드 선택 첫 화면(title)은 없앴다 — 대장간을 열면 바로 강화 화면 (2026-10-02) */
-type ForgeView = "forge" | "exchange" | "armor";
+/** 모드 선택 첫 화면(title)은 없앴다 — 대장간을 열면 바로 강화 화면 (2026-10-02). weapons = 성문 방어의 활·지팡이 */
+type ForgeView = "forge" | "exchange" | "armor" | "weapons";
 type ForgePhase = "idle" | "forging" | "success" | "failure" | "sold";
 
 const MATERIAL_GUIDE = [
@@ -70,6 +71,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [ownedShoulders, setOwnedShoulders] = useState<ShoulderId[]>([]);
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [shoulderShards, setShoulderShards] = useState(0);
+  /** 성문 방어 활·지팡이 강화 단계 (2026-10-02) */
+  const [expForge, setExpForge] = useState<WeaponForgeLevels>({ bow: 0, staff: 0 });
   const timerRef = useRef<number | null>(null);
   const firstClearRef = useRef("");
   const toastRef = useRef<number | null>(null);
@@ -111,6 +114,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setOwnedShoulders(progress.ownedShoulders);
       setEquippedShoulder(progress.equippedShoulder);
       setShoulderShards(progress.shoulderShards);
+      setExpForge(progress.expeditionWeaponForge);
       setPhase(forge.pendingFailure ? "failure" : "idle");
       setReady(true);
     });
@@ -163,6 +167,35 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       sharedCoins: Math.max(0, current.sharedCoins + delta),
       lastContent: "forge",
     }));
+  };
+
+  /**
+   * 성문 방어 무기 강화 (2026-10-02, 사용자: "대장간에는 성벽원정에서 사용하는 지팡이, 활을 추가로 강화하고 성벽원정에 적용").
+   * 골드 + 강화석, 확정 강화(파괴·하락 없음). 활: 기본 사격·물리 스킬 무기 · 지팡이: 마법 스킬 무기 — 피해 +8% · 재사용 −1.5% / 단계
+   */
+  const upgradeExpWeapon = async (kind: keyof WeaponForgeLevels) => {
+    const lv = expForge[kind];
+    if (lv >= WEAPON_FORGE_MAX) return;
+    const cost = weaponForgeCost(lv + 1);
+    if (coins < cost.gold || materials < cost.stones) return;
+    let done = false;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const now = current.expeditionWeaponForge[kind];
+      const c = weaponForgeCost(now + 1);
+      if (now >= WEAPON_FORGE_MAX || current.sharedCoins < c.gold || current.enhancementMaterials < c.stones) return current;
+      done = true;
+      return {
+        ...current,
+        sharedCoins: current.sharedCoins - c.gold,
+        enhancementMaterials: current.enhancementMaterials - c.stones,
+        expeditionWeaponForge: { ...current.expeditionWeaponForge, [kind]: now + 1 },
+        lastContent: "forge",
+      };
+    });
+    setCoins(next.sharedCoins);
+    setMaterials(next.enhancementMaterials);
+    setExpForge(next.expeditionWeaponForge);
+    if (done) flashToast(`${kind === "bow" ? "원정 장궁" : "수정 지팡이"} +${next.expeditionWeaponForge[kind]} 강화 성공`);
   };
 
   const enhance = () => {
@@ -449,11 +482,11 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           <section className="forge-title-row">
             <div>
               <p className="forge-kicker">BLACKSMITH</p>
-              <h1>{view === "armor" ? "보호구 강화하기" : "검 강화하기"}</h1>
+              <h1>{view === "armor" ? "보호구 강화하기" : view === "weapons" ? "원정 무기 강화" : "검 강화하기"}</h1>
             </div>
             <div className="forge-best">
               최고 기록
-              <strong>+{view === "armor" ? save.bestArmorLevel : save.bestLevel}</strong>
+              <strong>+{view === "armor" ? save.bestArmorLevel : view === "weapons" ? Math.max(expForge.bow, expForge.staff) : save.bestLevel}</strong>
             </div>
           </section>
 
@@ -473,6 +506,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               조합소
             </button>
             <button type="button" className={view === "armor" ? "on" : ""} onClick={() => setView("armor")}>보호구</button>
+            <button type="button" className={view === "weapons" ? "on" : ""} onClick={() => setView("weapons")}>원정 무기</button>
           </div>
 
           {view === "forge" ? (
@@ -597,6 +631,34 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </button>
               </section>
             </>
+          ) : view === "weapons" ? (
+            <section className="forge-expweapons">
+              <p className="forge-note">성문 방어의 무기 — 강화는 확정(실패·파괴 없음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>
+              {(["bow", "staff"] as const).map((kind) => {
+                const lv = expForge[kind];
+                const maxed = lv >= WEAPON_FORGE_MAX;
+                const cost = weaponForgeCost(lv + 1);
+                const can = !maxed && coins >= cost.gold && materials >= cost.stones;
+                const family = kind === "bow" ? "physical" : "magic";
+                const weapons = EXPEDITION_SKILLS.filter((d) => d.family === family).map((d) => d.weapon);
+                return (
+                  <article key={kind} className={`forge-expweapon ${kind}`}>
+                    <img src={assetUrl(`dodge/weapons/icon-${kind}.png`)} alt="" aria-hidden="true" />
+                    <div>
+                      <strong>{kind === "bow" ? "원정 장궁" : "수정 지팡이"} +{lv}</strong>
+                      <p>{kind === "bow" ? "기본 사격 · " : ""}{weapons.join(" · ")}</p>
+                      <p className="forge-expweapon-stat">
+                        피해 ×{weaponForgeDamageMul(lv).toFixed(2)}{maxed ? "" : ` → ×${weaponForgeDamageMul(lv + 1).toFixed(2)}`} · 재사용 ×{weaponForgeCooldownMul(lv).toFixed(3)}{maxed ? "" : ` → ×${weaponForgeCooldownMul(lv + 1).toFixed(3)}`}
+                      </p>
+                      <p className={`forge-expweapon-cost ${can ? "" : "short"}`}>{maxed ? "최대 강화" : `골드 ${formatGold(cost.gold)} · 강화석 ${cost.stones} (보유 ${materials})`}</p>
+                    </div>
+                    <button type="button" className="forge-button" disabled={!can} onClick={() => void upgradeExpWeapon(kind)}>
+                      {maxed ? "최대" : "강화"}
+                    </button>
+                  </article>
+                );
+              })}
+            </section>
           ) : view === "exchange" ? (
             <section className="forge-exchange">
               <div className="forge-inventory">

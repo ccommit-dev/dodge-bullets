@@ -98,8 +98,9 @@ const skillUi = await page.evaluate(() => {
     over,
   };
 });
-ok("스킬 화면: 무기 2종 + 스킬 6종, 저장된 지팡이가 장착 상태", menu
-  && skillUi.weapons === 2 && skillUi.skills === 6 && skillUi.on[1] === true && skillUi.on[0] === false,
+// 2026-10-02: 스킬 무기 10종 + 화살비 = 카드 11장
+ok("스킬 화면: 원거리 무기 2종 + 스킬 무기 10종·화살비, 저장된 지팡이가 장착 상태", menu
+  && skillUi.weapons === 2 && skillUi.skills === 11 && skillUi.on[1] === true && skillUi.on[0] === false,
   JSON.stringify(skillUi.on));
 // 메뉴 머리 — 상단 버튼(사운드·사냥터로)이 제목 위에 겹치지 않고, 인장 잔액이 보인다 (2026-09-29 캡처)
 {
@@ -140,8 +141,12 @@ await sleep(300);
 
 // 스킬별 조각 — 참고 게임의 126/225. 공용 인장이었을 때는 모든 카드의 분자가 같았다
 const bars = await page.evaluate(() => [...document.querySelectorAll(".exp-skill-card .exp-skill-bar small")].map((e) => e.textContent.trim()));
-ok("격자 진행바가 스킬마다 제 조각을 보인다 (분자가 서로 다르다)",
-  bars.length === 6 && new Set(bars.map((b) => b.split("/")[0])).size >= 5, bars.join(" · "));
+const learnedBars = bars.filter((b) => !b.startsWith("학습"));
+ok("격자 진행바가 배운 무기마다 제 조각을 보인다 (분자가 서로 다르다) · 안 배운 무기는 학습(인장)",
+  learnedBars.length === 6 && new Set(learnedBars.map((b) => b.split("/")[0])).size >= 5 && bars.some((b) => b.startsWith("학습")), bars.join(" · "));
+// 장착 4칸 — 저장에 장착 정보가 없으면 배운 무기를 레벨 순으로 넷 (화염 석궁 6 · 물살 작살 4 · 서리 지팡이 2 · 바위 투석기 2)
+const loadoutUi = await page.evaluate(() => [...document.querySelectorAll(".exp-loadout-slot em")].map((e) => e.textContent.trim()));
+ok("장착 4칸에 배운 무기 넷이 레벨 순으로 끼워져 있다 (옛 저장 이전)", loadoutUi.length === 4 && loadoutUi[0].startsWith("화염 석궁") && loadoutUi[1].startsWith("물살 작살") && loadoutUi.every((t) => t !== "빈 칸"), loadoutUi.join(" | "));
 const banner = await page.evaluate(() => document.querySelector(".exp-skill-banner")?.textContent.replace(/\s+/g, " ").trim());
 // 픽스처 누적 레벨 6+4+2+2+2+4 = 20 → 20 × 0.3% = 6%
 ok("배너가 실제 수집 보너스를 말한다 (누적 20레벨 → −6%)", !!banner && banner.includes("수집 보너스") && banner.includes("6%") && banner.includes("20"), banner);
@@ -161,16 +166,16 @@ ok("칩 슬롯 3칸 중 2칸이 차 있고, 목록 6종이 실제 수치를 말�
 ok("끼운 칩 2종이 목록에서 장착 표시된다", chipUi.equipped === 2, String(chipUi.equipped));
 
 // 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지" 를 보여 준다 (가이드의 투자 조언)
-// 트리 정렬(물·불·흙·얼음·번개·일섬) 뒤 얼음화살은 4번째 — 카드 5장(에픽 4) (2026-09-29)
-await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[3]?.click());
+// 해금 레벨 순(화염·물살·서리·바위·번개·…) — 서리 지팡이(얼음)는 3번째. 습득 카드가 없어져(2026-10-02) 카드 6장(에픽 4)
+await page.evaluate(() => document.querySelectorAll(".exp-skill-card")[2]?.click());
 await sleep(400);
 const unlocks = await page.evaluate(() => {
   const rows = [...document.querySelectorAll(".exp-skill-unlocks li")];
   return { rows: rows.length, rarities: rows.map((r) => r.querySelector("i")?.className ?? "?") };
 });
 ok("강화 화면이 런 중 열리는 카드를 등급과 함께 보여 준다",
-  // 습득 카드 1 + 레어 2(심층 빙결 · 원소 전환) + 에픽 4 (콤보 2 · 진화 2)
-  unlocks.rows === 7 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
+  // 레어 2(심층 빙결 · 원소 전환) + 에픽 4 (콤보 2 · 진화 2)
+  unlocks.rows === 6 && unlocks.rarities.filter((c) => c.includes("r-epic")).length === 4,
   JSON.stringify(unlocks));
 await page.evaluate(() => document.querySelector(".exp-skill-close")?.click());
 await sleep(300);
@@ -298,9 +303,9 @@ ok("진행도의 스킬 레벨과 장착 무기가 전투 월드에 실린다",
   !!loaded && loaded.weapon === "staff" && loaded.lv.fire === 6 && loaded.lv.water === 4,
   JSON.stringify(loaded));
 ok("장착 스킬이 전투 중 실제로 발사된다", !!fired, fired ? fired.shots.join(",") : "8초 동안 탄 없음");
-// 2.5) 출격 직후 — 보유 스킬이 있어도 아직 습득 전이라 독에는 기본 사격만 있다
-const dock0 = await page.evaluate(() => ({ slots: document.querySelectorAll(".skill-slot").length, acquired: Object.keys(window.__dodgeWorld?.runSkills ?? {}).length }));
-ok("출격 직후 독에는 기본 사격 슬롯만 있다 (속성 화살은 런 중 습득)", dock0.slots === 1 && dock0.acquired === 0, JSON.stringify(dock0));
+// 2.5) 출격 직후 — 장착한 스킬 무기 넷이 처음부터 켜져 있다 (2026-10-02, 예전: 런 중 습득 전이라 기본 사격만)
+const dock0 = await page.evaluate(() => ({ slots: document.querySelectorAll(".skill-slot").length, acquired: Object.keys(window.__dodgeWorld?.runSkills ?? {}).filter((k) => window.__dodgeWorld.runSkills[k]).sort(), loadout: window.__dodgeWorld?.loadout ?? [] }));
+ok("출격 직후 독 = 기본 사격 + 장착 무기 넷 · 장착 무기는 런 시작부터 켜져 있다", dock0.slots === 5 && dock0.acquired.length === 4 && dock0.loadout.length === 4, JSON.stringify(dock0));
 
 // 3) 레벨업 강화 카드 — 장착한 스킬의 진화·콤보가 실제로 후보에 뜨는가
 //    (참고 게임의 핵심 루프. 소스 단언만으로는 화면까지 이어졌는지 알 수 없다)
@@ -318,7 +323,7 @@ const perk = await page.evaluate(() => {
   };
 });
 ok("레벨업하면 강화 카드 3장이 뜬다", perk.open && perk.count === 3, JSON.stringify(perk.ids));
-ok("첫 3택의 첫 자리는 습득 카드다", /^perk-learn/.test(perk.ids[0] ?? ""), perk.ids[0]);
+ok("습득 카드는 없다 — 3장 모두 강화 카드", perk.ids.every((id) => !/^perk-learn/.test(id)), perk.ids.join());
 ok("카드마다 등급이 붙고 화면이 스테이지 등급 확률을 밝힌다",
   perk.rarities?.length === 3 && perk.rarities.every((r) => /rarity-(common|rare|epic)/.test(r)) && !!perk.oddsLine,
   (perk.rarities ?? []).join() + " | " + (perk.oddsLine ?? ""));
@@ -334,12 +339,12 @@ ok("전투 월드가 런 강화칸(runMods)을 들고 있다 — 카드가 쌓�
 // 한 장 고르면 실제로 runMods 가 움직이는가 (스킬 카드가 뽑혔을 때만 검사)
 const before = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
 await page.evaluate(() => {
-  document.querySelector(".perk-choice")?.click();   // 첫 자리 = 습득 카드
+  document.querySelector(".perk-choice")?.click();
 });
 await sleep(900);
 const after = await page.evaluate(() => JSON.stringify(window.__dodgeWorld?.runMods));
-const learned = await page.evaluate(() => Object.keys(window.__dodgeWorld?.runSkills ?? {}));
-ok("습득 카드를 고르면 그 스킬이 이번 런에 켜진다", learned.length === 1 && before === after, JSON.stringify(learned));
+const picked = await page.evaluate(() => !document.querySelector(".perk-overlay"));
+ok("카드를 고르면 강화 창이 닫힌다", picked, String(before !== after));
 await sleep(700);
 
 // 4) 전투 상시 조작 — 스킬 슬롯 · 일시정지 · 배속 (참고 게임의 전투 HUD 관례)
@@ -357,9 +362,9 @@ const dock = await page.evaluate(() => {
 });
 // 지팡이 로드아웃은 불·물·얼음·흙·번개 5종. 일섬은 슬롯에 안 넣는다
 // 맨 앞은 기본 사격(무기의 것, 레벨 없음) — 스킬이 없는 계정도 독이 비지 않는다 (2026-09-29)
-ok("전투 슬롯: 기본 사격 + 방금 습득한 속성 화살 1종",
-  dock.slots === 2 && dock.auto && dock.levels[0] === "?" && /^[0-9]+$/.test(dock.levels[1] ?? ""), JSON.stringify(dock.levels) + " auto=" + dock.auto);
-ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 2 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
+ok("전투 슬롯: 기본 사격 + 장착 무기 넷 (레벨 표시)",
+  dock.slots === 5 && dock.auto && dock.levels[0] === "?" && dock.levels.slice(1).every((l) => /^[0-9]+$/.test(l)), JSON.stringify(dock.levels) + " auto=" + dock.auto);
+ok("슬롯마다 쿨타임 덮개가 있다", dock.covers.length === 5 && dock.covers.every((h) => /^[0-9]+%$/.test(h)), dock.covers.join());
 ok("일시정지·배속 버튼이 전투 중에 있다", dock.pause && dock.speed === "×1", String(dock.speed));
 
 // 일시정지가 실제로 세계를 멈추는가 — **좌표 탭**으로 누른다(합성 click 은 pointer-events:none 을 통과해 폰에서 안 눌리던 것을 놓쳤다)
@@ -384,22 +389,30 @@ await tapButton(".speed-toggle");
 const a0 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
 await sleep(1000);
 const a1 = await page.evaluate(() => window.__dodgeWorld?.stageElapsedMs);
-const rate = (a1 - a0) / 1000;
-ok("배속 ×2 면 게임 시간이 2배 가까이 흐른다", rate > 1.6 && rate < 2.4, rate.toFixed(2) + "배");
+// 월드 시계는 실제의 1/3 로 흐른다(진행 속도 3배 느리게, 2026-10-02) — ×2 면 실제 1초에 월드 2/3초
+const pace = await page.evaluate(() => 1 / 3);
+const rate = (a1 - a0) / 1000 / pace;
+ok("배속 ×2 면 게임 시간이 2배 가까이 흐른다 (월드 1/3 페이스 기준)", rate > 1.6 && rate < 2.4, rate.toFixed(2) + "배");
 
 // 스테이지를 깨고 자동으로 넘어가도 영구 스킬·칩·무기가 그대로 실려 있다 (오래된 클로저가 초기값을 싣던 것)
 {
   await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageElapsedMs = 9e6; w.bossSpawned = true; w.bossDefeated = true; } });
+  // 한 판 = 한 스테이지 (2026-10-02) — 결과 화면의 '다음 스테이지' 가 새 판을 연다
+  let clearShown = false;
+  for (let i = 0; i < 30 && !clearShown; i += 1) { await sleep(200); clearShown = await page.evaluate(() => [...document.querySelectorAll(".overlay-content button")].some((b) => b.textContent.includes("다음 스테이지"))); }
+  ok("스테이지를 깨면 결과 화면에서 다음 스테이지를 고른다 (자동으로 넘어가지 않는다)", clearShown);
+  await page.evaluate(() => [...document.querySelectorAll(".overlay-content button")].find((b) => b.textContent.includes("다음 스테이지"))?.click());
+  await sleep(1500);
   let carried = null;
   for (let i = 0; i < 40; i += 1) {
     await sleep(250);
     carried = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { stage: w.stageIndex, lv: w.skillLevels, weapon: w.rangedWeapon, chip: w.chips.cooldownMul, run: Object.keys(w.runSkills).filter((k) => w.runSkills[k]) } : null; });
     if (carried && carried.stage >= 1) break;
   }
-  ok("다음 스테이지로 넘어가도 영구 스킬 레벨 · 무기 · 칩이 그대로다",
+  ok("다음 스테이지(새 판)에도 영구 스킬 레벨 · 무기 · 칩이 그대로다",
     !!carried && carried.stage >= 1 && carried.lv.fire === 6 && carried.lv.water === 4 && carried.weapon === "staff" && Math.abs(carried.chip - 0.91) < 1e-9,
     JSON.stringify(carried));
-  ok("이번 런에 습득한 스킬도 이어진다", !!carried && carried.run.length >= 1, JSON.stringify(carried?.run));
+  ok("장착 무기가 새 판에서도 처음부터 켜져 있다", !!carried && carried.run.length === 4, JSON.stringify(carried?.run));
 }
 
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));

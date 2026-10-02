@@ -30,7 +30,7 @@ import { bindAndroidBackButton, exitAppNative, isNativePlatform, requestReviewOn
 import { detectPaymentEnvironment, setPaymentEnvironment } from "./payments/environment";
 import { reconcileStore } from "./payments/reconcile";
 import { barrierRatio, starsForClear } from "./game/barrierLife";
-import { syncBarrierLives } from "./game/arrows";
+import { TUNING, syncBarrierLives } from "./game/arrows";
 import { primeRewardedAds } from "./ads/rewarded";
 import { SaveBackupModal } from "./SaveBackupModal";
 import { copyToClipboard } from "./game/backup";
@@ -66,7 +66,7 @@ import {
   statsFromLevels,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { PATTERN_LABEL, STAGES, TOWER_START_INDEX, getStage, isLastStage, towerFloorOf, waveAt } from "./game/stages";
+import { CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, getStage, isLastStage, nextStageIndex, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
 import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
@@ -77,8 +77,8 @@ import {
   DAILIES, dailyClaimable, DAILY_BY_ID, PRIMED_MS, rolledDaily, SUPPLIES, SUPPLY_BY_ID, SUPPLY_MAX,
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
-import { applySkillLevels, collectionCooldownMul, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
-import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked, BASIC_LEVEL_MAX, basicShotCost } from "./game/skills";
+import { applySkillLevels, collectionCooldownMul, LOADOUT_MAX, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillWeaponId } from "./game/skills";
+import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import {
@@ -146,13 +146,13 @@ const BUILD_LABEL = "2026.10";
 /** 패배 팁 — 방어막을 마지막으로 깎은 쪽 기준 (방어막이 유일한 생명, 2026-10-02) */
 const DEATH_TIPS: Record<string, string> = {
   homing: "달빛 늑대왕은 단단하고 방어막을 세게 두드립니다 — 보이면 먼저 떨구세요",
-  explosive: "폭염 비룡은 돔에 닿으면 터져 한 번에 크게 깎습니다 — 물화살이 불을 끕니다",
-  ricochet: "오우거는 느리지만 단단합니다 — 흙화살이 오우거를 붙잡습니다",
-  fan: "고블린은 셋이 나란히 옵니다 — 불화살 폭발로 한꺼번에 정리하세요",
-  aimed: "그림자 늑대가 돔에 붙기 전에 떨구세요 — 번개화살이 먼저 끊습니다",
+  explosive: "폭염 비룡은 돔에 닿으면 터져 한 번에 크게 깎습니다 — 물살 작살(물화살)이 불을 끕니다",
+  ricochet: "오우거는 느리지만 단단합니다 — 바위 투석기·독침 단궁이 오우거에 강합니다",
+  fan: "고블린은 셋이 나란히 옵니다 — 화염 석궁 폭발·그림자 표창으로 한꺼번에 정리하세요",
+  aimed: "그림자 늑대가 돔에 붙기 전에 떨구세요 — 번개 창이 먼저 끊습니다",
   fragment: "대장을 깎으면 조각이 흩어져 돔을 두드립니다 — 화살비로 한 번에 지우세요",
-  boss: "대장의 마력탄이 돔을 깎습니다 — 대장을 빨리 쓰러뜨릴수록 덜 맞습니다. 기본 사격을 강화해 보세요",
-  normal: "슬라임 떼가 돔에 붙으면 조금씩 깎습니다 — 정비에서 기본 사격·속성 화살을 올려 보세요",
+  boss: "대장의 마력탄이 돔을 깎습니다 — 대장을 빨리 쓰러뜨릴수록 덜 맞습니다. 대장간에서 활·지팡이를 강화하거나 운석 낙하포·바위 투석기를 장착해 보세요",
+  normal: "슬라임 떼가 돔에 붙으면 조금씩 깎습니다 — 정비에서 스킬 무기를 올리고 4칸을 다 채워 보세요",
   barrier: "방어막이 깨지면 집니다 — 붙은 몬스터부터 떨구고, 성장 카드의 방어막 수리를 챙기세요",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
@@ -165,7 +165,7 @@ function EXPEDITION_SKILL_READY(p: CharacterProgress | null): boolean {
   if (!p) return false;
   return EXPEDITION_SKILLS.some((d) => {
     const lv = p.expeditionSkills[d.id] ?? 0;
-    if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(d, p.dodgeBestStage)) return false;
+    if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(d, p.level, lv)) return false;
     const c = skillCost(d, lv + 1);
     return p.sharedCoins >= c.gold && (p.expeditionShards[d.id] ?? 0) >= c.shards && p.expeditionSeals >= c.seals;
   });
@@ -191,7 +191,10 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   stats.extraLives += m.maxHpBonus;
   applyStats(world, stats);
   world.skillLevels = { ...p.expeditionSkills };
-  world.basicLevel = p.expeditionBasic;
+  // 기본 사격 = 대장간 활 단계 · 스킬 무기는 장착한 넷(2026-10-02)
+  world.weaponForge = { ...p.expeditionWeaponForge };
+  world.basicLevel = p.expeditionWeaponForge.bow;
+  world.loadout = p.expeditionLoadout.filter((id) => (p.expeditionSkills[id] ?? 0) > 0);
   world.rangedWeapon = p.expeditionWeapon;
   return stats;
 }
@@ -338,6 +341,8 @@ function App() {
   // 부팅 때 저장을 읽고 정한다 — 30일을 다 받았거나(attendanceDone) 오늘 이미 받았으면 자동으로 열지 않는다 (2026-10-02)
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [attendanceDone, setAttendanceDone] = useState(false);
+  /** 원정 메뉴에서 펼친 장 — null 이면 다음 스테이지의 장 */
+  const [expChapter, setExpChapter] = useState<number | null>(null);
   /** 웹에서 '게임 종료' — 토스 closeView 도 네이티브 종료도 없으면 탭이 그대로라 아무 일도 없던 것을 종료 화면으로 (2026-10-02) */
   const [gameClosed, setGameClosed] = useState(false);
   /** 클립보드가 막힌 환경(인앱 브라우저)에서 오류 로그를 직접 복사하도록 보여 주는 창 */
@@ -738,7 +743,7 @@ function App() {
           }
           const stage = getStage(world.stageIndex);
           const remain = Math.max(0, stage.durationMs - world.stageElapsedMs);
-          const remainSecNow = Math.ceil(remain / 1000);
+          const remainSecNow = Math.ceil(remain / 1000 / TUNING.pace);   // 실제 초 — 월드 시간은 1/3 로 흐른다
           if (remainSecNow !== hudRemainSecRef.current) {
             hudRemainSecRef.current = remainSecNow;
             setStageRemainMs(remain);
@@ -858,7 +863,8 @@ function App() {
                 sharedCoins: reward,
                 enhancementMaterials: growth.materials + Math.floor(world.supplies / 8)
                   + world.enemyKills + world.perfectDodges * 2 + world.chests * 4,
-                dodgeStage: world.stageIndex + 1,
+                // 성벽 층은 일반 원정 최고 기록이 아니다 — 예전엔 층 + 4 로 올라가 50 스테이지 시대엔 스테이지를 건너뛰게 했다
+                dodgeStage: towerFloorOf(world.stageIndex) > 0 ? undefined : world.stageIndex + 1,
                 dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 1 },
                 skillShards: shardDrops(world.runSkills, world.stageIndex, true, world.ultCount),
                 // 배속은 순수한 손해가 아니라 선택이어야 한다 — 빨리 돌린 만큼 인장을 더 준다 (2026-09-28)
@@ -867,9 +873,23 @@ function App() {
               },
             );
 
-            // 원정 클리어 = 사냥터 지역 개척. Stage 1~4 → 지역 2~5.
-            const openedArea = Math.min(HUNTING_AREAS.length, world.stageIndex + 2);
-            if (nextProgress.pioneeredArea < openedArea) {
+            // 원정 장 대장 클리어 = 사냥터 지역 개척. 1~4장 대장(10·20·30·40) → 지역 2~5 (2026-10-02, 예전엔 Stage 1~4)
+            const openedArea = Math.min(HUNTING_AREAS.length, areaOpenedByClear(world.stageIndex));
+            // 끝없는 성벽 — 1장 대장(10 스테이지)을 깨면 열린다
+            if (towerFloorOf(world.stageIndex) === 0 && world.stageIndex + 1 >= TOWER_UNLOCK_STAGE && !nextProgress.towerOpen) {
+              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({ ...current, towerOpen: true }));
+              setShoulderDrop("끝없는 성벽이 열렸다 · 매일 등반권 3장");
+            }
+            // 장 대장 격파 — 「대장의 활시위」: 대장간 방지권 + 강화석 (예전 4스테이지 추격대장 특수 드랍을 장 대장마다)
+            if (towerFloorOf(world.stageIndex) === 0 && getStage(world.stageIndex).slotKind === "boss") {
+              const ch = getStage(world.stageIndex).chapter;
+              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
+                ...current,
+                forgeTicketsPending: current.forgeTicketsPending + 2,
+                enhancementMaterials: current.enhancementMaterials + 30 + ch * 15,
+              }));
+            }
+            if (openedArea > 0 && nextProgress.pioneeredArea < openedArea) {
               // retention-4: 개척 직후 축하 제안(개척 축하 세트) — 사냥터로 돌아오면 카드가 뜬다
               nextProgress = await updateCharacterProgress(userHashRef.current, (current) => openMomentOffer({
                 ...current,
@@ -922,6 +942,15 @@ function App() {
               const totalStars = Object.values(nextProgress.dodgeStars).reduce((a, b) => a + b, 0);
               setStarResult({ stars: starsGained, improved: starsGained > prevStars, total: totalStars });
               window.setTimeout(() => setStarResult(null), 2400);
+              // 별 단계 보상 — 12(예전 하나) 위로 30 · 60 · 100 · 150 (50 스테이지 × 3 = 150, 2026-10-02)
+              for (const [need, gems] of [[30, 100], [60, 150], [100, 200], [150, 300]] as const) {
+                const id = `dodge-stars-${need}`;
+                if (totalStars < need || nextProgress.claimedRewards.includes(id)) continue;
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => (current.claimedRewards.includes(id) ? current : {
+                  ...current, redGems: current.redGems + gems, claimedRewards: [...current.claimedRewards, id],
+                }));
+                setShoulderDrop(`원정 별 ${need}개 달성 · 보석 +${gems}`);
+              }
               if (totalStars >= 12 && !nextProgress.claimedRewards.includes("dodge-stars-12")) {
                 const titansForStars = await loadTitansSave(userHashRef.current);
                 nextProgress = await updateCharacterProgress(userHashRef.current, (current) => {
@@ -953,14 +982,15 @@ function App() {
               setShoulderDrop("오늘의 첫 원정 클리어 · 코인 2배!");
             }
 
-            const shoulder = EXPEDITION_SHOULDERS[Math.min(3, world.stageIndex)];
+            const chapterIndex = towerFloorOf(world.stageIndex) > 0 ? 3 : getStage(world.stageIndex).chapter;
+            const shoulder = EXPEDITION_SHOULDERS[Math.min(3, chapterIndex)];
             const first = !nextProgress.ownedShoulders.includes(shoulder);
             const dropped = first || Math.random() < (barrierRatio(world) >= 0.9 ? .35 : .18);
             if (dropped) {
               const equipped = await updateCharacterProgress(userHashRef.current, (current) => ({
                 ...current,
                 ownedShoulders: [...new Set([...current.ownedShoulders, shoulder])],
-                shoulderShards: current.shoulderShards + (first ? 0 : 15 + world.stageIndex * 5),
+                shoulderShards: current.shoulderShards + (first ? 0 : 15 + Math.min(3, chapterIndex) * 10),
               }));
               setProgress(equipped);
               setShoulderDrop(first ? `${getStage(world.stageIndex).name} 견갑 획득!` : "중복 견갑 · 조각으로 변환");
@@ -975,8 +1005,8 @@ function App() {
           setAllClear(last);
           setExtracted(false);
 
-          // Stage 3+ and all mid clears: skip menu, keep flowing
-          if (!last) {
+          // 성벽은 층을 잇는다(한 번 오르기 = 등반권 1장). 일반 스테이지는 한 판 = 한 스테이지 — 결과 화면에서 다음 스테이지를 고른다 (2026-10-02)
+          if (towerFloorOf(world.stageIndex) > 0) {
             const next = world.stageIndex + 1;
             prepareWorldForStage(next);
             lastTsRef.current = 0;
@@ -986,6 +1016,7 @@ function App() {
           } else {
             stateRef.current = "clear";
             setGameState("clear");
+            setStageLabel(getStage(world.stageIndex).name);
             trackEvent("arrow_expedition_clear", { stage: world.stageIndex + 1, score: world.score, duration: Math.round(world.elapsedMs / 1000), combo: world.maxCombo });
           }
         }
@@ -1145,29 +1176,13 @@ function App() {
   };
 
   /** 기본 사격 강화 — 골드만 쓴다 (2026-10-02). 즉시 전투 월드에 반영 */
-  const handleUpgradeBasic = useCallback(() => {
-    const lv = progress.expeditionBasic;
-    if (lv >= BASIC_LEVEL_MAX || progress.sharedCoins < basicShotCost(lv + 1)) return;
-    void (async () => {
-      const next = await updateCharacterProgress(userHashRef.current, (p) => {
-        const now = p.expeditionBasic;
-        if (now >= BASIC_LEVEL_MAX) return p;
-        const c = basicShotCost(now + 1);
-        if (p.sharedCoins < c) return p;
-        return { ...p, sharedCoins: p.sharedCoins - c, expeditionBasic: now + 1 };
-      });
-      setProgress(next);
-      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
-      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
-    })();
-  }, [progress]);
 
   /** 스킬 강화 — 골드(공용 코인)와 **그 스킬의 조각**을 쓰고 레벨을 올린다. 즉시 스탯에 반영된다 */
   const handleUpgradeSkill = useCallback((id: ExpeditionSkillId) => {
     const current = progress;
     const def = SKILL_BY_ID[id];
     const lv = current.expeditionSkills[id] ?? 0;
-    if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(def, current.dodgeBestStage)) return;
+    if (lv >= SKILL_MAX_LEVEL || !skillUnlocked(def, current.level, lv)) return;
     const cost = skillCost(def, lv + 1);
     if (current.sharedCoins < cost.gold || (current.expeditionShards[id] ?? 0) < cost.shards || current.expeditionSeals < cost.seals) return;
     void (async () => {
@@ -1183,6 +1198,9 @@ function App() {
           expeditionSeals: p.expeditionSeals - c.seals,
           expeditionShards: { ...p.expeditionShards, [id]: (p.expeditionShards[id] ?? 0) - c.shards },
           expeditionSkills: { ...p.expeditionSkills, [id]: now + 1 },
+          // 처음 배운 스킬 무기는 빈 칸이 있으면 바로 장착 — 배우고도 장착을 몰라 안 쏘는 일이 없게 (2026-10-02)
+          expeditionLoadout: now === 0 && id !== "ultimate" && p.expeditionLoadout.length < LOADOUT_MAX && !p.expeditionLoadout.includes(id)
+            ? [...p.expeditionLoadout, id] : p.expeditionLoadout,
         };
       });
       setProgress(next);
@@ -1190,6 +1208,21 @@ function App() {
       if (worldRef.current) loadLoadout(worldRef.current, merged, next);
     })();
   }, [progress]);
+
+  /** 스킬 무기 장착/해제 — 4칸 (2026-10-02). 배운 것만, 가득이면 아무것도 하지 않는다(화면이 먼저 해제를 안내) */
+  const handleToggleLoadout = useCallback((id: SkillWeaponId) => {
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const on = p.expeditionLoadout.includes(id);
+        if (on) return { ...p, expeditionLoadout: p.expeditionLoadout.filter((x) => x !== id) };
+        if ((p.expeditionSkills[id] ?? 0) <= 0 || p.expeditionLoadout.length >= LOADOUT_MAX) return p;
+        return { ...p, expeditionLoadout: [...p.expeditionLoadout, id] };
+      });
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, []);
 
   /** 원거리 무기 교체 — 같은 캐릭터에 활/지팡이를 바꿔 끼운다. 맨손은 없다 */
   const handleEquipWeapon = useCallback((id: RangedWeaponId) => {
@@ -1326,11 +1359,8 @@ function App() {
       setMenuTab("play");
       return;
     }
-    const next = stageIndex + 1;
-    prepareWorldForStage(next);
-    lastTsRef.current = 0;
-    soundRef.current.playStart();
-    syncState("intro");
+    // 한 판 = 한 스테이지 — 다음 스테이지는 새 판으로 (카드·런 레벨은 새로) (2026-10-02)
+    void handleStart(Math.min(STAGES.length - 1, stageIndex + 1));
   };
 
   const handleRestart = () => {
@@ -1367,23 +1397,12 @@ function App() {
           sharedCoins: reward,
           enhancementMaterials: Math.max(1, Math.floor(growth.materials * survivalRatio * 0.6)
             + Math.floor(world.supplies / 10) + world.enemyKills + world.perfectDodges + world.chests * 3),
-          dodgeStage: world.stageIndex + 1,
           dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
           skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
           lastContent: "dodge",
         },
       );
       setProgress(nextProgress);
-      // 추격대장 격파(4스테이지 보스) — 대장의 활시위: 대장간 강화 방지권 2 + 강화석 30 (특수 드랍)
-      if (world.stageIndex === 3 && world.bossDefeated) {
-        const dropped = await updateCharacterProgress(userHashRef.current, (current) => ({
-          ...current,
-          forgeTicketsPending: current.forgeTicketsPending + 2,
-          enhancementMaterials: current.enhancementMaterials + 30,
-        }));
-        setProgress(dropped);
-        setShoulderDrop("추격대장 격파 · 「대장의 활시위」 — 강화 방지권 +2 · 강화석 +30");
-      }
     })();
   };
 
@@ -1724,57 +1743,79 @@ function App() {
                   ← → 또는 A/D 로 이동 · 활은 자동으로 당긴다 · 게이지가 차면 화살비
                 </p>
 
-                <div className="pioneer-board">
-                  <p className="pioneer-heading">
-                    <b>개척 진척</b>
-                    <span>
-                      {progress.pioneeredArea} / {HUNTING_AREAS.length} 지역 · ★
-                      {Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0)}/12
-                    </span>
-                  </p>
-                  {STAGES.map((stage, index) => {
-                    const area = HUNTING_AREAS[index + 1];
-                    const opened = progress.pioneeredArea >= index + 2;
-                    const reachable = progress.dodgeBestStage >= index || index === 0;
-                    const stars = progress.dodgeStars[String(index)] ?? 0;
-                    return (
-                      <button
-                        key={stage.id}
-                        type="button"
-                        className={`pioneer-row ${opened ? "opened" : ""} ${reachable ? "" : "far"}`}
-                        onClick={() => void handleStart(index)}
-                      >
-                        <span className="pioneer-stage">S{index + 1}</span>
-                        <span className="pioneer-name">
-                          {stage.name}
-                          <span className="pioneer-stars" aria-label={`별 ${stars}/3`}>
-                            {[1, 2, 3].map((n) => (
-                              <img key={n} src={assetUrl("ui/idle/star.svg")} alt="" className={n <= stars ? "on" : ""} />
-                            ))}
-                          </span>
-                        </span>
-                        <span className="pioneer-area" style={opened ? { color: area.accent } : undefined}>
-                          {opened ? "개척 완료" : `→ ${area.name}`}
-                        </span>
-                        <span className="pioneer-mult">×{area.rewardMultiplier}</span>
-                      </button>
-                    );
-                  })}
-                  <p className="pioneer-star-hint">
-                    ★★ 방어막 50% 이상 지킴 · ★★★ 방어막 90% 이상 + 콤보 10 — 별 12개 달성 시 보석 60 · 조각 10
-                  </p>
-                </div>
+                {/* 50 스테이지 — 장(10칸) 탭 + 그 장의 칸 목록 (2026-10-02). 한 판 = 한 스테이지, 순서대로 열린다 */}
+                {(() => {
+                  const stars = progress.dodgeStars;
+                  const next = nextStageIndex(progress.dodgeBestStage, stars);
+                  const shownChapter = expChapter ?? Math.floor(next / STAGES_PER_CHAPTER);
+                  const totalStars = Object.values(stars).reduce((a, b) => a + b, 0);
+                  const clearedCount = STAGES.filter((_, i) => (stars[String(i)] ?? 0) >= 1).length;
+                  return (
+                    <>
+                      <div className="pioneer-board">
+                        <p className="pioneer-heading">
+                          <b>원정 진척</b>
+                          <span>{clearedCount} / {STAGES.length} 스테이지 · ★{totalStars}/{STAGES.length * 3} · 지역 {progress.pioneeredArea}/{HUNTING_AREAS.length}</span>
+                        </p>
+                        <div className="chapter-tabs" role="tablist">
+                          {CHAPTERS.map((ch, c) => {
+                            const open = stageUnlocked(c * STAGES_PER_CHAPTER, progress.dodgeBestStage, stars);
+                            const chStars = Array.from({ length: STAGES_PER_CHAPTER }, (_, k) => stars[String(c * STAGES_PER_CHAPTER + k)] ?? 0).reduce((a, b) => a + b, 0);
+                            return (
+                              <button key={ch.name} type="button" role="tab" aria-selected={c === shownChapter}
+                                className={`chapter-tab ${c === shownChapter ? "on" : ""} ${open ? "" : "locked"}`}
+                                onClick={() => setExpChapter(c)}>
+                                <b>{c + 1}장</b><small>{open ? `★${chStars}` : "잠김"}</small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="chapter-title">{CHAPTERS[shownChapter].name} · 대장 {CHAPTERS[shownChapter].boss}{shownChapter < 4 ? ` · 깨면 ${HUNTING_AREAS[shownChapter + 1]?.name ?? ""} 개척` : ""}</p>
+                        {Array.from({ length: STAGES_PER_CHAPTER }, (_, k) => {
+                          const index = shownChapter * STAGES_PER_CHAPTER + k;
+                          const stage = STAGES[index];
+                          const unlocked = stageUnlocked(index, progress.dodgeBestStage, stars);
+                          const st = stars[String(index)] ?? 0;
+                          return (
+                            <button
+                              key={stage.id}
+                              type="button"
+                              disabled={!unlocked}
+                              className={`pioneer-row stage-${stage.slotKind} ${st > 0 ? "opened" : ""} ${unlocked ? "" : "far"} ${index === next ? "next" : ""}`}
+                              onClick={() => void handleStart(index)}
+                            >
+                              <span className="pioneer-stage">{shownChapter + 1}-{k + 1}</span>
+                              <span className="pioneer-name">
+                                {stage.name}
+                                <span className="pioneer-stars" aria-label={`별 ${st}/3`}>
+                                  {[1, 2, 3].map((n) => (
+                                    <img key={n} src={assetUrl("ui/idle/star.svg")} alt="" className={n <= st ? "on" : ""} />
+                                  ))}
+                                </span>
+                              </span>
+                              <span className="pioneer-area">{stage.slotKind === "boss" ? "장 대장" : stage.slotKind === "midboss" ? "중간 보스" : unlocked ? "" : "🔒"}</span>
+                              <span className="pioneer-mult">{unlocked ? `체력 ×${stage.monsterHp}` : ""}</span>
+                            </button>
+                          );
+                        })}
+                        <p className="pioneer-star-hint">
+                          ★★ 방어막 50% 이상 지킴 · ★★★ 방어막 90% 이상 + 콤보 10 — 별 12·30·60·100·150개마다 보석 · 장 대장을 깨면 사냥터 지역이 열린다
+                        </p>
+                      </div>
 
-                <button type="button" className="cta" onClick={() => void handleStart(0)}>
-                  스테이지 1 시작
-                </button>
+                      <button type="button" className="cta" onClick={() => void handleStart(next)}>
+                        스테이지 {Math.floor(next / STAGES_PER_CHAPTER) + 1}-{(next % STAGES_PER_CHAPTER) + 1} 시작 · {STAGES[next].name}
+                      </button>
+                    </>
+                  );
+                })()}
                 {SUPPLIES.some((sp) => (progress.expeditionSupplies[sp.id] ?? 0) > 0) && (
                   <p className="exp-next-supply">
                     다음 출격 보급 · {SUPPLIES.filter((sp) => (progress.expeditionSupplies[sp.id] ?? 0) > 0)
                       .map((sp) => `${sp.name}${progress.expeditionSupplies[sp.id] > 1 ? ` (남은 ${progress.expeditionSupplies[sp.id]})` : ""}`).join(" · ")}
                   </p>
                 )}
-                {progress.dodgeBestStage >= STAGES.length && (
+                {progress.towerOpen && (
                   <button
                     type="button"
                     className={`cta cta-tower ${progress.towerTickets <= 0 ? "no-ticket" : ""}`}
@@ -1804,7 +1845,7 @@ function App() {
                 daily={rolledDaily(progress.expeditionDaily)}
                 onBuySupply={handleBuySupply}
                 towerTickets={progress.towerTickets}
-                towerUnlocked={progress.dodgeBestStage >= STAGES.length}
+                towerUnlocked={progress.towerOpen}
                 onBuyTowerTicket={handleBuyTowerTicket}
                 onClaimDaily={handleClaimDaily}
                 chipLevels={progress.expeditionChips}
@@ -1816,7 +1857,10 @@ function App() {
                 onEquipWeapon={handleEquipWeapon}
                 onUpgrade={handleUpgradeSkill}
                 basicLevel={progress.expeditionBasic}
-                onUpgradeBasic={handleUpgradeBasic}
+                accountLevel={progress.level}
+                loadout={progress.expeditionLoadout}
+                onToggleLoadout={handleToggleLoadout}
+                forge={progress.expeditionWeaponForge}
                 shop={{
                   visible: paidStoreVisible(),
                   unlocked: paidOffersUnlocked(progress),
@@ -1924,7 +1968,7 @@ function App() {
               disabled={expeditionElapsed < 15_000}
               onClick={handleExtract}
             >
-              {expeditionElapsed < 15_000 ? `${Math.ceil((15_000 - expeditionElapsed) / 1000)}s` : "귀환"}
+              {expeditionElapsed < 15_000 ? `${Math.ceil((15_000 - expeditionElapsed) / 1000 / TUNING.pace)}s` : "귀환"}
             </button>
           </div>
         </>
@@ -1965,7 +2009,7 @@ function App() {
           <div className="overlay-content">
             <p className="brand">LEVEL UP</p>
             <h1 className="title">성장 선택</h1>
-            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 듣는 카드를 하나 고르세요. <b>습득</b>한 속성 화살의 강화·<b>콤보</b>·<b>진화</b>가 함께 나옵니다. 레벨이 오를수록 몬스터가 빨라집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
+            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 듣는 카드를 하나 고르세요. <b>장착</b>한 스킬 무기의 강화·<b>콤보</b>·<b>진화</b>가 함께 나옵니다. 레벨이 오를수록 몬스터가 빨라집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
             {(() => {
               // 스테이지가 깊을수록 상위 등급이 잘 나온다 — 지금 확률을 밝혀 둔다
               const odds = rarityOdds(worldRef.current?.stageIndex ?? 0);

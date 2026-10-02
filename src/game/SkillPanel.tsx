@@ -13,7 +13,10 @@ import {
   RANGED_WEAPONS,
   SKILL_BY_ID,
   SKILL_MAX_LEVEL,
-  BASIC_LEVEL_MAX, BASIC_SHOT_COOLDOWN, basicCooldownMul, basicDamageMul, basicShotCost,
+  BASIC_SHOT_COOLDOWN, basicCooldownMul, basicDamageMul,
+  LOADOUT_MAX,
+  weaponForgeDamageMul,
+  type SkillWeaponId,
   skillCost,
   skillSummary,
   skillUnlocked,
@@ -78,11 +81,18 @@ type Props = {
   };
   /** 기본 사격 강화 레벨 · 골드로 한 단계 올린다 (2026-10-02) */
   basicLevel: number;
-  onUpgradeBasic: () => void;
+  /** 계정 레벨 — 스킬 무기 해금 기준 (2026-10-02) */
+  accountLevel?: number;
+  /** 장착한 스킬 무기(최대 4) · 장착/해제 */
+  loadout?: SkillWeaponId[];
+  onToggleLoadout?: (id: SkillWeaponId) => void;
+  /** 대장간 활·지팡이 단계 — 기본 사격·스킬 무기 피해 배수 표시 */
+  forge?: { bow: number; staff: number };
 };
 
 /** 격자 순서 — 왼쪽 열은 물리(물·흙), 오른쪽 열은 마법(불·얼음·번개), 마지막에 궁극 */
-const ORDER = ["water", "fire", "earth", "ice", "bolt", "ultimate"];
+/** 해금 레벨 순 — 무기 10종 + 화살비 */
+const ORDER = ["fire", "water", "ice", "earth", "bolt", "wind", "poison", "holy", "shadow", "meteor", "ultimate"];
 
 /** 아직 안 열린 슬롯에 표시할 해금 조건 */
 const CHIP_SLOT_LABEL = ["", "2단계", "4단계"];
@@ -92,7 +102,7 @@ function canAfford(gold: number, have: number, seals: number, cost: { gold: numb
 }
 
 export function SkillPanel({
-  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, onUpgradeBasic, shop,
+  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, shop, accountLevel = 1, loadout = [], onToggleLoadout, forge = { bow: 0, staff: 0 },
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
   supplies, daily, onBuySupply, onClaimDaily, shards, towerTickets = 0, towerUnlocked = false, onBuyTowerTicket,
 }: Props) {
@@ -173,7 +183,7 @@ export function SkillPanel({
                       <img src={assetUrl("ui/idle/gate-supply.svg")} alt="" aria-hidden="true" />
                       <span>
                         <b>성문 수비 보급</b>
-                        <em>원정 인장 30 · 속성 화살 조각 각 8 · 보석 40</em>
+                        <em>원정 인장 30 · 스킬 무기 조각 각 8 (11종) · 보석 40</em>
                       </span>
                       <button type="button" className="exp-store-buy" disabled={shop.busy !== null} onClick={() => shop.onBuy("gate-supply")}>
                         {shop.busy === "gate-supply" ? "결제 중…" : shop.price("gate-supply")}
@@ -341,21 +351,28 @@ export function SkillPanel({
           {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
           <img src={assetUrl(`dodge/weapons/icon-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
-            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} Lv.{basicLevel} <i>피해 {basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 보스도 깎는다</i></b>
-            <em>{basicLevel >= BASIC_LEVEL_MAX ? "최대 강화" : `다음 강화: 피해 +15% · 재사용 −3% · ${basicShotCost(basicLevel + 1)}G`} · 런 중 카드 {perksForBasicOnly().length}장</em>
+            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} · 대장간 활 +{basicLevel} <i>피해 ×{basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 보스도 깎는다</i></b>
+            <em>강화는 대장간 「원정 무기」 탭 — 활: 기본 사격·물리 무기 ×{weaponForgeDamageMul(forge.bow).toFixed(2)} · 지팡이: 마법 무기 ×{weaponForgeDamageMul(forge.staff).toFixed(2)} · 런 중 카드 {perksForBasicOnly().length}장</em>
           </span>
-          <button
-            type="button"
-            className={`exp-basic-upgrade ${basicLevel < BASIC_LEVEL_MAX && gold >= basicShotCost(basicLevel + 1) ? "on" : ""}`}
-            disabled={basicLevel >= BASIC_LEVEL_MAX || gold < basicShotCost(basicLevel + 1)}
-            onClick={onUpgradeBasic}
-          >
-            {basicLevel >= BASIC_LEVEL_MAX ? "최대" : "강화"}
-          </button>
         </div>
       )}
 
-      <p className="exp-learn-hint">속성 화살은 <b>런 중 레벨업 카드로 습득</b>합니다 — 여기서 올린 레벨이 습득했을 때의 성능이고, 쓴 스킬의 조각이 돌아옵니다</p>
+      <p className="exp-learn-hint">스킬 무기는 <b>계정 레벨로 해금</b> → 인장으로 배우고 → <b>4칸에 장착</b>하면 그 판 처음부터 쏩니다. 쓴 무기의 조각이 돌아옵니다</p>
+
+      {/* 장착 4칸 (2026-10-02, 아웃로 디펜스) — 칸을 누르면 해제, 카드의 [장착] 으로 끼운다 */}
+      <div className="exp-loadout" aria-label="장착한 스킬 무기">
+        {Array.from({ length: LOADOUT_MAX }, (_, i) => {
+          const id = loadout[i];
+          const def = id ? SKILL_BY_ID[id] : null;
+          return (
+            <button key={i} type="button" className={`exp-loadout-slot ${def ? "on" : ""}`} disabled={!def || !onToggleLoadout}
+              onClick={() => id && onToggleLoadout?.(id)} aria-label={def ? `${def.weapon} 해제` : "빈 칸"}>
+              {def ? <img src={iconOf(def)} alt="" aria-hidden="true" /> : <span>{i + 1}</span>}
+              <em>{def ? `${def.weapon} Lv.${levels[def.id] ?? 0}` : "빈 칸"}</em>
+            </button>
+          );
+        })}
+      </div>
 
       {/* 갈래 — 기본 사격에서 물리(장궁)·마법(지팡이)로 갈라지고 일섬으로 모인다. 장착 무기의 갈래가 밝다 */}
       <div className="exp-tree" aria-hidden="true">
@@ -367,7 +384,8 @@ export function SkillPanel({
       <div className="exp-skill-grid">
         {[...EXPEDITION_SKILLS].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)).map((def) => {
           const lv = levels[def.id] ?? 0;
-          const unlocked = skillUnlocked(def, dodgeBestStage);
+          const unlocked = skillUnlocked(def, accountLevel, lv);
+          const equipped = def.id !== "ultimate" && loadout.includes(def.id as SkillWeaponId);
           const maxed = lv >= SKILL_MAX_LEVEL;
           const cost = skillCost(def, lv + 1);
           const have = shards[def.id] ?? 0;
@@ -376,13 +394,13 @@ export function SkillPanel({
             <button
               key={def.id}
               type="button"
-              className={`exp-skill-card fam-${def.family} ${unlocked ? "" : "locked"} ${ready ? "ready" : ""} ${(weapon === "bow" && def.family === "physical") || (weapon === "staff" && def.family === "magic") ? "affine" : ""}`}
+              className={`exp-skill-card fam-${def.family} ${unlocked ? "" : "locked"} ${ready ? "ready" : ""} ${equipped ? "equipped" : ""} ${(weapon === "bow" && def.family === "physical") || (weapon === "staff" && def.family === "magic") ? "affine" : ""}`}
               disabled={!unlocked}
               onClick={() => setOpenId(def.id)}
             >
               <img className="exp-skill-icon" src={iconOf(def)} alt="" aria-hidden="true" />
               <span className="exp-skill-body">
-                <b>{def.name}</b>
+                <b>{def.weapon}</b>
                 {unlocked ? (
                   <>
                     <em>{maxed ? "MAX" : `Level ${lv}`}</em>
@@ -393,10 +411,11 @@ export function SkillPanel({
                     </i>
                   </>
                 ) : (
-                  <em className="exp-skill-lock">{def.unlockStage}스테이지 클리어 시 해금</em>
+                  <em className="exp-skill-lock">계정 Lv.{def.unlockLevel} 해금</em>
                 )}
               </span>
               {ready && <span className="exp-skill-badge" aria-label="강화 가능">!</span>}
+              {equipped && <span className="exp-skill-equipped">장착</span>}
               {!unlocked && <img className="exp-skill-locked" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />}
             </button>
           );
@@ -415,7 +434,7 @@ export function SkillPanel({
           <div className="exp-skill-sheet" role="dialog" aria-label={`${open.name} 상세`}>
             <div className="exp-skill-sheet-inner">
               <header>
-                <b>{open.name} (Lv.{lv})</b>
+                <b>{open.weapon} (Lv.{lv})</b>
                 <button type="button" className="exp-skill-close" onClick={() => setOpenId(null)} aria-label="닫기">×</button>
               </header>
               <div className="exp-skill-head">
@@ -488,6 +507,15 @@ export function SkillPanel({
                   </span>
                 )}
               </div>
+              {open.id !== "ultimate" && lv > 0 && onToggleLoadout && (() => {
+                const on = loadout.includes(open.id as SkillWeaponId);
+                const full = !on && loadout.length >= LOADOUT_MAX;
+                return (
+                  <button type="button" className={`exp-skill-equip ${on ? "on" : ""}`} disabled={full} onClick={() => onToggleLoadout(open.id as SkillWeaponId)}>
+                    {on ? "장착 해제" : full ? `장착은 ${LOADOUT_MAX}개까지 — 먼저 하나를 해제` : "장착 (이번 판부터 쏜다)"}
+                  </button>
+                );
+              })()}
               <button
                 type="button"
                 className={`exp-skill-upgrade ${afford && !maxed ? "on" : ""}`}

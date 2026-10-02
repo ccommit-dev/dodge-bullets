@@ -3116,7 +3116,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           {navPopup === "content" ? (
             <div className="nav-popup-grid">
               {([
-                { id: "dodge", label: "성문 방어", desc: `직접 플레이 · 탄막 회피 → 강화석·견갑 ${character.dodgeBestStage > 0 ? `· 최고 S${character.dodgeBestStage}` : ""}`, icon: "dodge" },
+                { id: "dodge", label: "성문 방어", desc: `직접 플레이 · 50 스테이지 · 스킬 무기 → 강화석·견갑 ${character.dodgeBestStage > 0 ? `· 최고 S${character.dodgeBestStage}` : ""}`, icon: "dodge" },
                 { id: "beat", label: "비트 수련", desc: `30초~2분 기록 도전 → 견갑 조각 ${beatBestScore > 0 ? `· 최고점수 ${beatBestScore.toLocaleString()}` : ""}`, icon: "beat" },
                 { id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", icon: "forge" },
               ] as const).map((item) => {

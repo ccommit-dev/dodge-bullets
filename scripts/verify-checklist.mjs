@@ -121,7 +121,7 @@ await sleep(2200);
 await closeModal();
 await openContent("성문 방어");
 await sleep(1000);
-await clickText("button", "스테이지 1 시작");
+await clickText("button", "스테이지 1-1 시작");   // 50 스테이지 이후 버튼은 "스테이지 장-칸 시작 · 이름" (2026-10-02)
 await sleep(1800);
 r = await page.evaluate((h) => ({ tut: !!document.querySelector(".dodge-tutorial"), claimed: JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)).claimedRewards.includes("dodge-tutorial") }), H);
 ok("#6 첫 원정 슬로모 튜토리얼 표시 + 1회 기록", r.tut && r.claimed, JSON.stringify(r));

@@ -18,7 +18,6 @@ import {
   type TitanSkillSlot,
   huntingArea,
 } from "../titans/model";
-import { STAGES } from "../game/stages";
 import { partySynergies } from "../titans/allies";
 import { activePetEffect } from "../titans/pets";
 import { CHARACTER_PASSIVE, PATRON } from "../economy/productCatalog";
@@ -26,7 +25,8 @@ import { starMilestoneMultiplier } from "./collection";
 import type { CharacterProgress } from "./model";
 
 /** 일반 성문 방어 스테이지 수 — T 보너스의 상한 근거. */
-const DODGE_STAGE_COUNT = STAGES.length;
+/** 방치 시간 보너스를 주는 원정 스테이지 수 — 50 스테이지가 된 뒤에도(2026-10-02) 예전처럼 앞 4 스테이지까지만 (방치 경제를 그대로 둔다) */
+const DODGE_STAGE_COUNT = 4;
 
 export const IDLE = {
   /** 현행 `awaySeconds / 10`과 동일한 출발점. 밸런스를 깨지 않는다. */
