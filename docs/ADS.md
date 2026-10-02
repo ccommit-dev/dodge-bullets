@@ -12,7 +12,19 @@
 
 같은 3자리를 **광고 없이 자동 적용**한다 (`adFree`). 한도는 동일하다. 결제 지급은 `payments/store.ts applyPurchase`.
 
-## 연동
+## 환경별 연동 상태 (2026-10-02)
+
+| 환경 | 광고 | 켜는 법 | 지금 |
+|---|---|---|---|
+| 토스 미니앱 | 토스 AdMob (`GoogleAdMob.loadAppsInTossAdMob` → `showAppsInTossAdMob`, `userEarnedReward` 로 보상) | 앱인토스 콘솔에서 광고 그룹 ID 발급 → 빌드 환경 변수 `VITE_TOSS_AD_GROUP_ID` | 코드 준비됨 · ID 없음 → 자리 숨김 |
+| 안드로이드 | AdMob (`@capacitor-community/admob`) | 아래 "안드로이드 연동" | 미설치 → 자리 숨김 |
+| 웹 | 없음 | — | 숨김 |
+
+- 토스 광고는 부팅 때 `primeRewardedAds()` 가 SDK 지원 여부(`isSupported`)를 확인해 둔다. 불러오기가 15초 안에 안 되면 보상 없이 닫힌다.
+- **안드로이드 주의**: AdMob 플러그인을 넣고 매니페스트에 `com.google.android.gms.ads.APPLICATION_ID` 를 빠뜨리면 **앱이 실행 직후 종료**된다. 실제 앱 ID 와 광고 단위 ID 가 나오기 전에는 설치하지 않는다(구글 샘플 ID 로 출시되면 테스트 광고가 나간다).
+- 어느 환경이든 광고를 켜기 전에 개인정보 처리방침(광고 식별자 수집)과 플레이 데이터 보안 양식을 고친다.
+
+## 안드로이드 연동
 
 1. `npm install @capacitor-community/admob && npx cap sync`
 2. AdMob 콘솔에서 보상형 광고 단위 3개를 만들고 `src/ads/rewarded.ts AD_UNIT_IDS`를 교체한다.

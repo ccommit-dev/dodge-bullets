@@ -20,12 +20,15 @@ import { TITLES } from "./economy/gemCatalog";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS } from "./titans/model";
-import { loadTitansSave } from "./titans/storage";
+import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
 import { IdleQaPanel } from "./dev/IdleQaPanel";
-import { bindAndroidBackButton, exitAppNative, requestReviewOnce } from "./game/native";
+import { bindAndroidBackButton, exitAppNative, isNativePlatform, requestReviewOnce } from "./game/native";
+import { detectPaymentEnvironment, setPaymentEnvironment } from "./payments/environment";
+import { reconcileStore } from "./payments/reconcile";
+import { primeRewardedAds } from "./ads/rewarded";
 import { SaveBackupModal } from "./SaveBackupModal";
 import { copyToClipboard } from "./game/backup";
 import { errorLogCount, serializeErrorLog } from "./game/errlog";
@@ -466,6 +469,23 @@ function App() {
       setMaxHp(1 + stats.extraLives);
       setHp(1 + stats.extraLives);
       setBootReady(true);
+
+      // 결제 환경은 부팅 때 한 번 정하고(토스 · 안드로이드 · 웹), 뒤에서 스토어 정산 — 가격 · 지급 전에 죽은 구매 복구 ·
+      // 재설치 영구 상품 복원 · 환불 회수 (payments/reconcile). 부팅을 기다리게 하지 않는다
+      const payEnv = detectPaymentEnvironment(key.source, isNativePlatform());
+      setPaymentEnvironment(payEnv);
+      void primeRewardedAds(payEnv);
+      void reconcileStore(key.hash).then(async (r) => {
+        if (cancelled || (!r.granted && !r.revoked && !r.cores)) return;
+        const detail = { ...r, handled: false };
+        window.dispatchEvent(new CustomEvent("dodgebullets:store-reconciled", { detail }));
+        // 사냥터가 떠 있지 않아 스킬 코어를 받아 줄 곳이 없으면 저장에 직접 더한다
+        if (!detail.handled && r.cores > 0) {
+          const t = await loadTitansSave(key.hash);
+          await saveTitansSave(key.hash, { ...t, skillInventory: { ...t.skillInventory, skillCores: t.skillInventory.skillCores + r.cores } });
+        }
+        setProgress(await loadCharacterProgress(key.hash));
+      }).catch(() => undefined);
 
       unsub = await subscribeSafeInsets((next) => {
         if (!cancelled) applyInsets(next);

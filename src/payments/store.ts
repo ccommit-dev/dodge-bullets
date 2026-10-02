@@ -14,58 +14,37 @@
 import { FIRST_DOUBLE_IDS, PATRON, STORE_PRODUCTS } from "../economy/productCatalog";
 import { closeMomentOffer, momentBonusGems } from "../economy/momentOffers";
 import { normalizeSeason } from "../economy/seasonPass";
-import { updateCharacterProgress } from "../progression/storage";
+import { loadCharacterProgress, QA_BUILD, updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress, ShoulderId } from "../progression/model";
-import { isNativePlatform } from "../game/native";
-import { unconfiguredPaymentAdapter, type PaymentAdapter, type PurchaseResult } from "./adapter";
+import { paymentEnvironment } from "./environment";
+import { playPurchase } from "./playBilling";
+import { tossPurchase } from "./tossIap";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
 export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
-/** @capgo/native-purchases 가 노출하는 최소 표면 — 런타임 주입 여부만 확인한다 */
-type NativePurchasesPlugin = {
-  purchaseProduct(options: { productIdentifier: string; productType?: "inapp" | "subs"; quantity?: number }): Promise<{ transactionId?: string; purchaseToken?: string; productIdentifier?: string }>;
-  isBillingSupported?(): Promise<{ isBillingSupported: boolean }>;
-};
+/**
+ * 재설치 때 스토어 내역으로 **복원**하고 환불되면 **회수**하는 영구 상품 — 광고 제거 · 캐릭터 4종.
+ * 시즌 패스는 시즌마다 다시 사야 하므로 소모성이다(플레이에서 소비해야 다음 시즌에 또 살 수 있다). 나머지도 전부 소모성
+ */
+export const PERMANENT_PRODUCT_IDS: readonly string[] = STORE_PRODUCTS.filter((p) => p.kind === "entitlement" && p.id !== "season-pass").map((p) => p.id);
+export function isPermanentProduct(productId: string): boolean { return PERMANENT_PRODUCT_IDS.includes(productId); }
+export function isConsumableProduct(productId: string): boolean { return !isPermanentProduct(productId); }
 
-function nativePurchases(): NativePurchasesPlugin | null {
-  try {
-    const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } }).Capacitor;
-    const plugin = cap?.Plugins?.NativePurchases as NativePurchasesPlugin | undefined;
-    return plugin && typeof plugin.purchaseProduct === "function" ? plugin : null;
-  } catch {
-    return null;
-  }
-}
+/** 안드로이드 결제 플러그인이 실제로 붙어 있는가 — 부팅 정산이 확인해 세운다 */
+let billingReady = false;
+export function setBillingReady(ready: boolean): void { billingReady = ready; }
 
-/** 로컬 검증 자리 — 서버 검증 도입 시 이 함수만 교체 */
-async function verifyReceipt(productId: string, transactionId: string): Promise<boolean> {
-  return typeof transactionId === "string" && transactionId.length > 0 && (PLAY_PRODUCT_IDS as readonly string[]).includes(productId);
-}
-
-const googlePlayAdapter: PaymentAdapter = {
-  async purchase(productId): Promise<PurchaseResult> {
-    const plugin = nativePurchases();
-    if (!plugin) return { status: "not-configured", productId };
-    try {
-      const result = await plugin.purchaseProduct({ productIdentifier: productId, productType: "inapp", quantity: 1 });
-      const transactionId = result.transactionId ?? result.purchaseToken ?? "";
-      if (!(await verifyReceipt(productId, transactionId))) return { status: "cancelled", productId };
-      return { status: "verified", transactionId, productId };
-    } catch {
-      // 사용자 취소·네트워크·미등록 상품 — 전부 취소로 본다 (지급 없음)
-      return { status: "cancelled", productId };
-    }
-  },
-};
-
-export function getPaymentAdapter(): PaymentAdapter {
-  return isNativePlatform() && nativePurchases() ? googlePlayAdapter : unconfiguredPaymentAdapter;
-}
-
+/** 이 환경에서 실결제가 되는가 — 토스 미니앱이거나, 결제 플러그인이 붙은 안드로이드 */
 export function paymentsConfigured(): boolean {
-  return isNativePlatform() && nativePurchases() !== null;
+  const env = paymentEnvironment();
+  return env === "toss" || (env === "android" && billingReady);
+}
+
+/** 유료 상품을 화면에 보일까 — 실결제가 되거나 QA 빌드(테스트 구매)일 때만. 웹 출시 빌드에서는 숨긴다 */
+export function paidStoreVisible(): boolean {
+  return paymentsConfigured() || QA_BUILD;
 }
 
 /** 상품별 지급 내용 — productCatalog의 contents 문구와 일치해야 한다. allyShards는 출전 1번 동료에게 */
@@ -111,7 +90,8 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
   const grant = purchaseGrant(productId);
   const key = `purchase:${productId}:${transactionId}`;
   const product = STORE_PRODUCTS.find((p) => p.id === productId);
-  if (!grant || current.claimedRewards.includes(key) || (product?.trigger && packagePurchased(current, productId))) {
+  // 회수된 주문(revoked:)은 다시 지급하지 않는다 — 환불 뒤 복구가 같은 주문을 또 지급하는 일이 없게
+  if (!grant || current.claimedRewards.includes(key) || current.claimedRewards.includes(`revoked:${productId}:${transactionId}`) || (product?.trigger && packagePurchased(current, productId))) {
     return { progress: current, cores: 0, applied: false, doubled: false, bonus: 0 };
   }
   const doubled = firstDoubleAvailable(current, productId);
@@ -138,6 +118,25 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
   return { progress: withOffer, cores: grant.cores ?? 0, applied: true, doubled, bonus };
 }
 
+/**
+ * 환불된 영구 상품 회수 — 그 주문의 지급 기록을 지우고, 같은 상품의 다른 구매가 남아 있지 않으면 효과를 거둔다.
+ * 쓰고 있던 캐릭터면 기본 캐릭터로 돌린다. 지급 기록이 없는 주문(다른 기기·QA 지급)은 건드리지 않는다
+ */
+export function revokePurchase(current: CharacterProgress, productId: string, transactionId: string): { progress: CharacterProgress; revoked: boolean } {
+  const key = `purchase:${productId}:${transactionId}`;
+  if (!current.claimedRewards.includes(key) || transactionId.startsWith("qa-")) return { progress: current, revoked: false };
+  const rest = current.claimedRewards.filter((k) => k !== key);
+  const stillOwned = rest.some((k) => k.startsWith(`purchase:${productId}:`));
+  const grant = purchaseGrant(productId);
+  let next: CharacterProgress = { ...current, claimedRewards: [...rest, `revoked:${productId}:${transactionId}`] };
+  if (!stillOwned && grant?.adFree) next = { ...next, adFree: false };
+  if (!stillOwned && grant?.character) {
+    const ch = grant.character;
+    next = { ...next, ownedCharacters: next.ownedCharacters.filter((c) => c !== ch), activeCharacter: next.activeCharacter === ch ? "default" : next.activeCharacter };
+  }
+  return { progress: next, revoked: true };
+}
+
 /** 검증된 구매 지급 (저장소 경유) */
 export async function grantPurchase(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean; bonus: number }> {
   let out = { cores: 0, applied: false, doubled: false, bonus: 0 };
@@ -147,4 +146,28 @@ export async function grantPurchase(userHash: string, productId: string, transac
     return r.progress;
   });
   return { progress, ...out };
+}
+
+/**
+ * 지급하고 **저장된 것을 다시 읽어 확인**한다. 토스 Storage 쓰기가 타임아웃으로 localStorage 에 떨어지면 다음 읽기는 토스 Storage 를
+ * 보므로 지급이 사라진다 — 그때 durable=false 로 돌려 스토어에 완료를 알리지 않는다(주문이 대기로 남아 복구가 다시 지급).
+ */
+export async function grantDurably(userHash: string, productId: string, transactionId: string): Promise<{ progress: CharacterProgress; cores: number; applied: boolean; doubled: boolean; bonus: number; durable: boolean }> {
+  const r = await grantPurchase(userHash, productId, transactionId);
+  const saved = await loadCharacterProgress(userHash);
+  return { ...r, durable: saved.claimedRewards.includes(`purchase:${productId}:${transactionId}`) };
+}
+
+export type StoreBuyResult = { status: "granted" | "duplicate" | "pending" | "cancelled" | "unavailable"; progress?: CharacterProgress; cores: number; bonus: number };
+
+/** 실결제 — 환경의 스토어로 결제하고, 저장이 확인된 뒤에만 스토어에 완료를 알린다 */
+export async function buyWithStore(userHash: string, productId: string): Promise<StoreBuyResult> {
+  if (!paymentsConfigured() || !purchaseGrant(productId)) return { status: "unavailable", cores: 0, bonus: 0 };
+  const box: { r: Awaited<ReturnType<typeof grantDurably>> | null } = { r: null };
+  const grant = async (transactionId: string) => { box.r = await grantDurably(userHash, productId, transactionId); return box.r.durable; };
+  const result = paymentEnvironment() === "toss" ? await tossPurchase(productId, grant) : await playPurchase(productId, isConsumableProduct(productId), grant);
+  if (result.status === "verified" && box.r) return { status: box.r.applied ? "granted" : "duplicate", progress: box.r.progress, cores: box.r.cores, bonus: box.r.bonus };
+  if (result.status === "pending") return { status: "pending", cores: 0, bonus: 0 };
+  if (result.status === "not-configured") return { status: "unavailable", cores: 0, bonus: 0 };
+  return { status: "cancelled", cores: 0, bonus: 0 };
 }
