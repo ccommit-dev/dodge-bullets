@@ -73,4 +73,12 @@ for (const [ei, run] of series.entries()) {
 console.log(`접근 구간 표본 ${series.reduce((n, r) => n + r.length, 0)}개 · 동료가 몬스터 중심보다 오른쪽으로 나간 최대 ${worst.toFixed(0)}px ${worstAt}`);
 const ready = series.map((r) => r[r.length - 1]).filter((s) => s?.monster);
 for (const s of ready) console.log("정렬 뒤:", s.allies.map((a) => `${a.id}${a.faceLeft ? "(우측)" : ""} ${a.cx.toFixed(0)}`).join(" · "), "| 몬스터", s.monster.cx.toFixed(0));
-process.exit(worst > 0 ? 1 : 0);
+// 정렬 뒤에도 근접 동료가 몬스터 중심보다 오른쪽이면 실패 — 오른쪽 측면 슬롯을 없앴다 (2026-10-02)
+let worstReady = 0, worstReadyAt = "";
+for (const s of ready) for (const a of s.allies) {
+  if (!a.melee) continue;
+  const over = a.cx - s.monster.cx;
+  if (over > worstReady) { worstReady = over; worstReadyAt = `${a.id} ${a.cx.toFixed(0)} vs 몬스터 ${s.monster.cx.toFixed(0)}`; }
+}
+console.log(`정렬 뒤 동료가 몬스터 중심보다 오른쪽으로 나간 최대 ${worstReady.toFixed(0)}px ${worstReadyAt}`);
+process.exit(worst > 0 || worstReady > 0 ? 1 : 0);
