@@ -196,6 +196,7 @@ export function createBeatWorld(
     laneFlashMs: [0, 0, 0, 0],
     hitSteps: new Set<number>(),
     hitSteps2: new Set<number>(),
+    completedNotes: [],
     beatPosition: 0,
   };
   layout(world);
@@ -393,7 +394,8 @@ export function gainHeal(world: BeatWorld, amount: number): boolean {
 }
 
 /** 탭 결과 — hit: 노트를 침 · empty: 노트가 없는 스텝(판정·콤보·피해 없음, 소리만) · held: 롱노트 유지 중이라 무시 */
-export type BeatTapResult = "hit" | "empty" | "held";
+/** hit = 노트 완성(탭 노트 · 점프의 두 번째 레인) · hold-start = 롱노트 머리(꼬리까지 유지해야 완성) · jump-half = 점프의 한 레인만 */
+export type BeatTapResult = "hit" | "hold-start" | "jump-half" | "empty" | "held";
 export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapResult {
   // 롱노트를 누르고 있는 레인의 추가 입력(키 반복·홀드 연타)은 무시 — 유지 중에 MISS 로 끊기지 않게
   if ((session.holdLane === lane && session.holdEndStep >= 0) || (session.holdLane2 === lane && session.holdEndStep2 >= 0)) return "held";
@@ -440,6 +442,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
   }
 
   const onTime = bestIndex >= 0 && bestDistSec <= windowSec;
+  let result: BeatTapResult = "hit";
   const lock = onTime ? Math.max(0, 1 - bestDistSec / windowSec) : 0;
   const sound = onTime
     ? (bestSlot === 2 ? session.chart[bestIndex].jumpSound ?? session.chart[bestIndex].sound : session.chart[bestIndex].sound)
@@ -481,6 +484,17 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
       }
     }
     if (jumpDone) { world.score += 12 * world.scoreMultiplier; world.judgeText = ("JUMP " + world.judgeText) as `JUMP ${string}`; }
+    // 노트 종류별 완성 — 롱노트 머리·점프 한쪽은 아직 성공이 아니다 (보상은 completedNotes 에 쌓일 때만)
+    const isJump = !!session.chart[bestIndex].jumpSound;
+    if (holdLen > 0) {
+      world.judgeText = "HOLD ▸ 유지";
+      result = "hold-start";
+    } else if (isJump && !jumpDone) {
+      world.judgeText = "JUMP 1/2";
+      result = "jump-half";
+    } else {
+      world.completedNotes.push({ lane, judge: String(world.judgeText) });
+    }
   } else {
     // 노트가 없는 스텝의 탭 — 리듬 게임 관례대로 벌점 없음 (예전엔 MISS + 콤보 초기화라 홀드 중 반복 입력이 콤보를 끊었다)
     world.lastOffsetMs = 0;
@@ -491,6 +505,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
   }
 
   world.lastSound = sound;
+  if (result !== "hit") { world.timingHint = 1; world.judgeMs = 380; spawnMoveParticles(world, 12, LANE_HUE[lane], lane); return result; }
   // Deliberately no beatPulse/zoom/shake here: the note stream and the
   // BGM-driven stage must keep a steady tempo no matter how the player taps.
   world.timingHint = onTime ? 1 : 0.25;
@@ -535,6 +550,7 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
     world.judgeText = "PERFECT";
     world.judgeMs = 320;
     spawnMoveParticles(world, 18, LANE_HUE[lane], lane);
+    world.completedNotes.push({ lane, judge: "PERFECT" });
     return "release-good";
   }
   world.combo = 0;
@@ -553,11 +569,14 @@ export function settleHoldIfPassed(session: BeatSession): void {
   const position = world.beatPosition - session.calibrationSec / world.stepSec;
   // 홀드 점프의 두 번째 슬롯도 같은 규칙
   if (session.holdEndStep2 >= 0 && position > session.holdEndStep2 + 0.9) {
+    const lane2 = session.holdLane2 as NoteLane;
     session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1;
     bumpCombo(world, 1); world.score += 16 * world.scoreMultiplier;
+    world.completedNotes.push({ lane: lane2, judge: "HOLD" });
   }
   if (session.holdEndStep < 0) return;
   if (position > session.holdEndStep + 0.9) {
+    const lane1 = session.holdLane as NoteLane;
     session.holdLane = -1;
     session.holdEndStep = -1;
     world.holdLane = -1;
@@ -566,6 +585,7 @@ export function settleHoldIfPassed(session: BeatSession): void {
     world.score += 16 * world.scoreMultiplier;
     world.judgeText = gainHeal(world, 2) ? "HOLD ♥" : "HOLD";
     world.judgeMs = 320;
+    world.completedNotes.push({ lane: lane1, judge: "HOLD" });
   }
 }
 

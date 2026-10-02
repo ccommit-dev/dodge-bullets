@@ -123,7 +123,8 @@ ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, 
 await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("보급"))?.click());
 await sleep(400);
 const ops = await page.evaluate(() => ({
-  supplies: [...document.querySelectorAll(".exp-supply-list li")].length,
+  supplies: [...document.querySelectorAll(".exp-supply-list li:not(.exp-tower-ticket)")].length,
+  ticket: document.querySelector(".exp-supply-list .exp-tower-ticket")?.textContent.replace(/\s+/g, " ").trim() ?? "",
   buyable: [...document.querySelectorAll(".exp-supply-list button")].filter((b) => !b.disabled).length,
   dailies: [...document.querySelectorAll(".exp-daily-list li")].map((l) => l.querySelector("small")?.textContent ?? "?"),
   claimable: [...document.querySelectorAll(".exp-daily-list button")].filter((b) => !b.disabled).length,
@@ -131,6 +132,7 @@ const ops = await page.evaluate(() => ({
 }));
 ok("보급창 3종과 일일 임무 3종이 진행도와 함께 보인다",
   ops.supplies === 3 && ops.dailies.join() === "40/40,0/1,1/2", JSON.stringify(ops.dailies));
+ok("성벽이 열린 계정은 보급창에서 인장으로 성벽 등반권을 산다 (2026-10-02)", /성벽 등반권/.test(ops.ticket) && /인장 \d+|가득/.test(ops.ticket), ops.ticket);
 ok("목표를 채운 임무만 수령 버튼이 열리고 탭에 배지가 붙는다",
   ops.claimable === 1 && ops.dot === true, "claimable=" + ops.claimable + " dot=" + ops.dot);
 await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("강화"))?.click());

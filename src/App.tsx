@@ -12,7 +12,8 @@ const BeatGame = lazy(() => import("./BeatGame").then((m) => ({ default: m.BeatG
 const ForgeGame = lazy(() => import("./ForgeGame").then((m) => ({ default: m.ForgeGame })));
 import { TitansGame } from "./TitansGame";
 const CharacterStatus = lazy(() => import("./CharacterStatus").then((m) => ({ default: m.CharacterStatus })));
-import { AttendanceModal } from "./AttendanceModal";
+import { AttendanceModal, readAttendanceClaimedToday, readAttendanceDone } from "./AttendanceModal";
+import { TOWER_TICKET_SEALS, buyTowerTicketWithSeals, consumeTowerTicket, refillTowerTickets } from "./game/towerTickets";
 const EventCenter = lazy(() => import("./EventCenter").then((m) => ({ default: m.EventCenter })));
 import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { renderShareCard, shareCard } from "./ui/shareCard";
@@ -139,6 +140,8 @@ const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
 };
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
+/** 설정 메뉴에 보이는 빌드 표기 */
+const BUILD_LABEL = "2026.10";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
 /** 패배 팁 — 방어막을 마지막으로 깎은 쪽 기준 (방어막이 유일한 생명, 2026-10-02) */
 const DEATH_TIPS: Record<string, string> = {
@@ -294,6 +297,10 @@ function App() {
   const [testMode, setTestMode] = useState(() => { if (!QA_BUILD) return false; try { return localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; } });
   const buildTapsRef = useRef<number[]>([]);
   const tapBuildLabel = () => {
+    // 한 번 탭하면 빌드 정보를 보여 준다 — 예전엔 아무 반응이 없어 고장 난 메뉴로 보였다 (2026-10-02)
+    const env = paymentEnvironment();
+    setSettingsToast(`DODGE LAB · 빌드 ${BUILD_LABEL} · ${env === "toss" ? "토스" : env === "android" ? "안드로이드" : "웹"}`);
+    window.setTimeout(() => setSettingsToast(""), 2200);
     if (!QA_BUILD) return;
     const now = Date.now();
     buildTapsRef.current = [...buildTapsRef.current.filter((t) => now - t < 3000), now];
@@ -328,7 +335,13 @@ function App() {
   useEffect(() => { progressRef.current = progress; }, [progress]);
   const [shoulderDrop, setShoulderDrop] = useState("");
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
-  const [attendanceOpen, setAttendanceOpen] = useState(true);
+  // 부팅 때 저장을 읽고 정한다 — 30일을 다 받았거나(attendanceDone) 오늘 이미 받았으면 자동으로 열지 않는다 (2026-10-02)
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [attendanceDone, setAttendanceDone] = useState(false);
+  /** 웹에서 '게임 종료' — 토스 closeView 도 네이티브 종료도 없으면 탭이 그대로라 아무 일도 없던 것을 종료 화면으로 (2026-10-02) */
+  const [gameClosed, setGameClosed] = useState(false);
+  /** 클립보드가 막힌 환경(인앱 브라우저)에서 오류 로그를 직접 복사하도록 보여 주는 창 */
+  const [errorLogText, setErrorLogText] = useState("");
   const [eventOpen, setEventOpen] = useState(false);
   const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal" | "season">("daily");
   const [backupOpen, setBackupOpen] = useState(false);
@@ -485,6 +498,12 @@ function App() {
       setMaxHp(1 + stats.extraLives);
       setHp(1 + stats.extraLives);
       setBootReady(true);
+      // 끝없는 성벽 등반권 — 날짜가 바뀌었으면 무료분(3장)까지 채운다
+      if (refillTowerTickets(character) !== character) void updateCharacterProgress(key.hash, (c) => refillTowerTickets(c)).then(setProgress);
+      void Promise.all([readAttendanceDone(key.hash), readAttendanceClaimedToday(key.hash)]).then(([done, claimedToday]) => {
+        setAttendanceDone(done);
+        if (!done && !claimedToday) setAttendanceOpen(true);
+      });
 
       // 결제 환경은 부팅 때 한 번 정하고(토스 · 안드로이드 · 웹), 뒤에서 스토어 정산 — 가격 · 지급 전에 죽은 구매 복구 ·
       // 재설치 영구 상품 복원 · 환불 회수 (payments/reconcile). 부팅을 기다리게 하지 않는다
@@ -1223,6 +1242,27 @@ function App() {
   }, []);
 
   /** 보급 구매 — 인장을 "지금 쓰는" 자리. 칩과 같은 재화라 선택이 생긴다 */
+  /** 끝없는 성벽 — 등반권 1장을 쓰고 오른다. 없으면 어디서 사는지 알려 준다 (2026-10-02) */
+  const startTowerClimb = async () => {
+    if (progress.towerTickets <= 0) {
+      setSettingsToast(`등반권이 없습니다 · 매일 3장 무료 · 정비 > 보급(인장 ${TOWER_TICKET_SEALS}) · 사냥터 상점 '특별'(보석)`);
+      window.setTimeout(() => setSettingsToast(""), 3200);
+      return;
+    }
+    let spent = false;
+    const next = await updateCharacterProgress(userHashRef.current, (p) => { const n = consumeTowerTicket(p); spent = !!n; return n ?? p; });
+    setProgress(next);
+    if (spent) void handleStart(TOWER_START_INDEX);
+  };
+
+  /** 원정 보급창에서 인장으로 등반권 1장 */
+  const handleBuyTowerTicket = useCallback(() => {
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => buyTowerTicketWithSeals(p) ?? p);
+      setProgress(next);
+    })();
+  }, []);
+
   const handleBuySupply = useCallback((id: SupplyId) => {
     const def = SUPPLY_BY_ID[id];
     if (progress.expeditionSeals < def.seals) return;
@@ -1383,6 +1423,10 @@ function App() {
     // 네이티브(안드로이드/iOS)면 Capacitor 경로, 아니면 앱인토스 closeView.
     if (await exitAppNative()) return;
     await closeMiniApp();
+    // 토스 closeView 가 화면을 닫으면 여기까지 와도 보이지 않는다. 웹(카톡·브라우저 탭)은 스크립트로 탭을 닫을 수 없어
+    // 아무 일이 없었다 — 창 닫기를 시도하고, 남아 있으면 종료 화면을 덮는다 (저장은 이미 끝나 있다)
+    try { window.close(); } catch { /* 스크립트가 연 창이 아니면 닫히지 않는다 */ }
+    window.setTimeout(() => { if (!document.hidden) setGameClosed(true); }, 400);
   };
 
   const openCommunity = () => {
@@ -1448,14 +1492,16 @@ function App() {
                   <b>{soundOn ? "ON" : "OFF"}</b>
                 </button>
                 {/* 온보딩(§8) — 이벤트류는 마지막 단계(4)에서 열린다 */}
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={progress.onboardingStep < 4}
-                  onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}
-                >
-                  <span>출석 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "7일"}</b>
-                </button>
+                {!attendanceDone && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={progress.onboardingStep < 4}
+                    onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}
+                  >
+                    <span>출석 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "30일"}</b>
+                  </button>
+                )}
                 <button
                   type="button"
                   role="menuitem"
@@ -1487,16 +1533,23 @@ function App() {
                   <span>테스트 · 보석 무제한</span><b>{qaGemsEnabled() ? "ON" : "OFF"}</b>
                 </button>}
                 <button type="button" role="menuitem" className="settings-build" onClick={tapBuildLabel}>
-                  <span>DODGE LAB</span><b>{testMode ? "테스트 모드" : "빌드 2026.09"}</b>
+                  <span>DODGE LAB</span><b>{testMode ? "테스트 모드" : `빌드 ${BUILD_LABEL}`}</b>
                 </button>
                 <button
                   type="button"
                   role="menuitem"
-                  disabled={errorLogCount() === 0}
                   title="문의 시 GitHub Issues에 붙여넣어 주세요"
                   onClick={() => {
-                    void copyToClipboard(serializeErrorLog()).then((done) => {
-                      setSettingsToast(done ? "오류 로그를 클립보드에 복사했습니다" : "복사에 실패했습니다");
+                    // 0건이면 비활성 버튼이라 눌러도 아무 일이 없었다 — 안내를 띄운다. 클립보드가 막힌 인앱 브라우저에선 직접 복사 창 (2026-10-02)
+                    if (errorLogCount() === 0) {
+                      setSettingsToast("기록된 오류가 없습니다");
+                      window.setTimeout(() => setSettingsToast(""), 2200);
+                      return;
+                    }
+                    const text = serializeErrorLog();
+                    void copyToClipboard(text).then((done) => {
+                      if (!done) { setSettingsOpen(false); setErrorLogText(text); return; }
+                      setSettingsToast("오류 로그를 클립보드에 복사했습니다");
                       window.setTimeout(() => setSettingsToast(""), 2200);
                     });
                   }}
@@ -1504,16 +1557,13 @@ function App() {
                   <span>오류 로그 복사</span>
                   <b>{errorLogCount()}건</b>
                 </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={openCommunity}
-                  disabled={!COMMUNITY_URL}
-                  title={COMMUNITY_URL ? "공식 카페 글 열기" : "카페 주소 설정이 필요합니다"}
-                >
-                  <span>카페 글 가기</span>
-                  <b>{COMMUNITY_URL ? "↗" : "준비 중"}</b>
-                </button>
+                {/* 카페 주소가 없는 빌드에선 숨긴다 — "준비 중" 비활성 버튼은 고장 난 메뉴로 보였다 (2026-10-02) */}
+                {COMMUNITY_URL && (
+                  <button type="button" role="menuitem" onClick={openCommunity} title="공식 카페 글 열기">
+                    <span>카페 글 가기</span>
+                    <b>↗</b>
+                  </button>
+                )}
                 <button
                   type="button"
                   role="menuitem"
@@ -1727,14 +1777,15 @@ function App() {
                 {progress.dodgeBestStage >= STAGES.length && (
                   <button
                     type="button"
-                    className="cta cta-tower"
-                    onClick={() => void handleStart(TOWER_START_INDEX)}
+                    className={`cta cta-tower ${progress.towerTickets <= 0 ? "no-ticket" : ""}`}
+                    onClick={() => void startTowerClimb()}
                   >
                     <img src={assetUrl("ui/idle/tower.svg")} alt="" aria-hidden="true" />
-                    <b>끝없는 성벽 등반</b>
+                    <b>끝없는 성벽 등반 <i className="tower-ticket-count">등반권 {progress.towerTickets}</i></b>
                     <small>
                       최고 {progress.towerBestFloor}층 · 방치 배율 +
                       {(Math.min(10, Math.floor(progress.towerBestFloor / 100)) * 0.05).toFixed(2)}
+                      {progress.towerTickets <= 0 ? " · 등반권 없음" : " · 1회 1장"}
                     </small>
                   </button>
                 )}
@@ -1752,6 +1803,9 @@ function App() {
                 supplies={progress.expeditionSupplies}
                 daily={rolledDaily(progress.expeditionDaily)}
                 onBuySupply={handleBuySupply}
+                towerTickets={progress.towerTickets}
+                towerUnlocked={progress.dodgeBestStage >= STAGES.length}
+                onBuyTowerTicket={handleBuyTowerTicket}
                 onClaimDaily={handleClaimDaily}
                 chipLevels={progress.expeditionChips}
                 equippedChips={progress.equippedChips}
@@ -2085,7 +2139,7 @@ function App() {
       )}
       {/* 온보딩 첫 5분 대본(§8) — 신규(step<4)에게는 출석 모달을 띄우지 않는다 */}
       {bootReady && appMode === "titans" && progress.onboardingStep >= 4 && (
-        <AttendanceModal userHash={userHashRef.current} open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} />
+        <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
       )}
       {bootReady && appMode === "titans" && eventOpen && (
         <Suspense fallback={null}>
@@ -2104,6 +2158,26 @@ function App() {
         <SaveBackupModal userHash={userHashRef.current} onClose={() => setBackupOpen(false)} />
       )}
       {settingsToast && <div className="titans-toast settings-copy-toast">{settingsToast}</div>}
+      {errorLogText && (
+        <div className="exit-modal error-log-modal" role="dialog" aria-modal="true">
+          <div className="exit-card">
+            <h2 className="exit-title">오류 로그</h2>
+            <p className="exit-desc">이 브라우저는 자동 복사를 막았어요 · 아래 글을 길게 눌러 전체 선택 후 복사하세요</p>
+            <textarea className="error-log-text" readOnly value={errorLogText} onFocus={(e) => e.currentTarget.select()} rows={8} />
+            <button type="button" className="cta cta-ghost" onClick={() => setErrorLogText("")}>닫기</button>
+          </div>
+        </div>
+      )}
+      {gameClosed && (
+        <div className="exit-modal game-closed" role="dialog" aria-modal="true">
+          <div className="exit-card">
+            <p className="brand">DODGE LAB</p>
+            <h2 className="exit-title">게임을 종료했습니다</h2>
+            <p className="exit-desc">진행 상황은 저장됐어요. 이 탭(창)을 닫아도 됩니다.</p>
+            <button type="button" className="cta" onClick={() => window.location.reload()}>다시 시작</button>
+          </div>
+        </div>
+      )}
 
       {/* 개발 전용 UI 점검 패널 — `?qa=1`. DEV 상수 뒤라 프로덕션 번들에서 제거된다. */}
       {import.meta.env.DEV && qaMode && <IdleQaPanel userHash={userHashRef.current} />}

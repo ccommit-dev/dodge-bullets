@@ -96,7 +96,7 @@ export type BeatWorld = {
   lastSound: BeatSound | null;
   nextSound: BeatSound;
   timingHint: number;
-  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | `JUMP ${string}` | "";
+  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | "HOLD ▸ 유지" | `JUMP ${string}` | "";
   judgeMs: number;
   stageIndex: number;
   stageBannerMs: number;
@@ -119,6 +119,11 @@ export type BeatWorld = {
   holdEndStep2: number;
   /** 점프 노트의 두 번째 레인 타격 기록 (hitSteps 는 첫 레인) */
   hitSteps2: Set<number>;
+  /**
+   * 완성된 노트 — 레이드 보상(적 피해·재료·드롭 게이지)은 여기 쌓인 것만 준다 (2026-10-02, 사용자: "종류별로 다르게 입력하는 것처럼
+   * 보이는데 모두 1회성 입력으로 성공함"). 일반 노트는 탭, 홀드는 꼬리까지 유지, 점프는 두 레인을 다 쳐야 쌓인다. BeatGame 이 매 프레임 비운다
+   */
+  completedNotes: Array<{ lane: 0 | 1 | 2 | 3; judge: string }>;
   /** 0..1 lesson loop completion from distinct sounds recorded. */
   loopCompletion: number;
   /** Pad flash per lane (0=kick, 1=snare, 2=hat, 3=bass), milliseconds remaining. */

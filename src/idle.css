@@ -2405,3 +2405,7 @@
   .idle-status-card { display: none; }
   .idle-status-strip { display: flex; }
 }
+/* 성벽 등반권 (2026-10-02) — 제목 옆 보유 수, 없으면 버튼을 흐리게(누르면 구매 안내) */
+.cta-tower .tower-ticket-count { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 900; color: #1e1b4b; background: #c4b5fd; vertical-align: 2px; }
+.cta-tower.no-ticket { filter: saturate(.45) brightness(.8); }
+.cta-tower.no-ticket .tower-ticket-count { background: #fca5a5; color: #450a0a; }

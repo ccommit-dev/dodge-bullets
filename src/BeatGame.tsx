@@ -217,25 +217,20 @@ export function BeatGame({
    */
   const pointerLaneRef = useRef(new Map<number, NoteLane>());
   const slots = buildStageSlots("lesson");
+  const drainRaidRewardsRef = useRef<() => void>(() => {});
 
-  const playRaidLane = useCallback((lane: NoteLane) => {
+  /**
+   * 완성된 노트 하나의 레이드 보상 — 적 피해·악기 층·드롭 게이지·재료 (2026-10-02).
+   * 예전엔 누르는 순간 줬다: 롱노트 머리만 톡 치거나 점프 한쪽만 쳐도 PERFECT 와 피해가 나와 "모두 1회성 입력으로 성공"했다.
+   * 이제 world.completedNotes(탭 노트 · 끝까지 유지한 롱노트 · 두 레인을 다 친 점프)만 보상한다
+   */
+  const applyRaidReward = useCallback((lane: NoteLane, judge: string) => {
     const session = sessionRef.current;
     if (!session) return;
-    const result = performBeatLane(session, lane);
-    if (result === "held") return;
     const world = session.world;
-    const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "dodge" : "skill";
-    setPartyAction(action);
-    // 노트 없는 탭은 파티 동작만 — 피해·게이지·적 반격 없음 (연타 이득도, 벌점도 없다)
-    if (result === "empty") return;
-    const success = world.judgeText !== "MISS";
-    if (!success) {
-      setEnemyAction("skill");
-      window.setTimeout(() => setEnemyAction("idle"), 420);
-      return;
-    }
-    // 판정별 모션 (계획안 D): PERFECT → 피격 프레임 · GREAT/GOOD → 가드 · 스킬 레인 → 경직. MISS는 위에서 적의 반격(skill)
-    setEnemyAction(lane === 3 ? "stagger" : world.judgeText === "PERFECT" ? "hit" : "guard");
+    const perfect = judge.includes("PERFECT") || judge.startsWith("HOLD");
+    // 판정별 모션 (계획안 D): PERFECT → 피격 프레임 · GREAT/GOOD → 가드 · 스킬 레인 → 경직
+    setEnemyAction(lane === 3 ? "stagger" : perfect ? "hit" : "guard");
     window.setTimeout(() => setEnemyAction("idle"), lane === 3 ? 620 : 390);
 
     setInstrumentLayers((current) => {
@@ -243,7 +238,7 @@ export function BeatGame({
       next[lane] = Math.min(4, next[lane] + 1);
       return next;
     });
-    const gain = world.judgeText === "PERFECT" ? 5 : world.judgeText === "GREAT" ? 3 : 2;
+    const gain = perfect ? 5 : judge.includes("GREAT") ? 3 : 2;
     dropChargeRef.current = Math.min(100, dropChargeRef.current + gain);
     const buff = lane === 0 ? raidBuffRef.current.kick : lane === 3 ? raidBuffRef.current.drop : raidBuffRef.current.allies;
     let damage = [14, 7, 6, 25][lane] + buff * 7 + Math.floor(world.combo * .8);
@@ -255,7 +250,7 @@ export function BeatGame({
     }
     lastRaidTapRef.current = { lane, at: now };
     setDropCharge(dropChargeRef.current);
-    const materialDrop = (world.judgeText === "PERFECT" && Math.random() < .16) || (world.combo > 0 && world.combo % 12 === 0);
+    const materialDrop = (perfect && Math.random() < .16) || (world.combo > 0 && world.combo % 12 === 0);
     if (materialDrop) {
       materialGainRef.current += lane === 3 ? 2 : 1;
       setMaterialGain(materialGainRef.current);
@@ -264,6 +259,28 @@ export function BeatGame({
     setBeatEnemyHp(beatEnemyHpRef.current);
     if (beatEnemyHpRef.current === 0) world.elapsedMs = world.durationMs;
   }, []);
+
+  /** 쌓인 완성 노트를 모두 보상한다 — 탭 직후 · 롱노트 릴리즈 직후 · 매 프레임(꼬리를 지나 자동 성공한 롱노트) */
+  const drainRaidRewards = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const done = session.world.completedNotes.splice(0);
+    for (const n of done) applyRaidReward(n.lane, n.judge);
+  }, [applyRaidReward]);
+
+  useEffect(() => { drainRaidRewardsRef.current = drainRaidRewards; }, [drainRaidRewards]);
+
+  const playRaidLane = useCallback((lane: NoteLane) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const result = performBeatLane(session, lane);
+    if (result === "held") return;
+    const action = lane === 0 ? "attack" : lane === 1 ? "guard" : lane === 2 ? "dodge" : "skill";
+    setPartyAction(action);
+    // 노트 없는 탭은 파티 동작만 — 피해·게이지·적 반격 없음 (연타 이득도, 벌점도 없다)
+    // 롱노트 머리·점프 한쪽은 아직 완성이 아니다 — 보상은 완성될 때(drainRaidRewards)
+    drainRaidRewards();
+  }, [drainRaidRewards]);
 
   const stopLaneHold = useCallback((lane?: NoteLane) => {
     const lanes: NoteLane[] = lane === undefined ? [0,1,2,3] : [lane];
@@ -276,9 +293,15 @@ export function BeatGame({
       if (session) {
         const r = performBeatRelease(session, target);
         if (r === "release-good" && typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
+        if (r === "release-early") {
+          // 일찍 뗀 롱노트 — 적이 반격한다 (보상 없음)
+          setEnemyAction("skill");
+          window.setTimeout(() => setEnemyAction("idle"), 420);
+        }
+        drainRaidRewards();
       }
     });
-  }, []);
+  }, [drainRaidRewards]);
 
   // 키 다운 1회 = 탭 1회. 누르고 있는 동안은 롱노트 유지만 한다 (예전의 스텝마다 반복 발사는 홀드 규칙과 충돌하고 연타 이득을 줬다)
   const startLaneHold = useCallback((lane: NoteLane) => {
@@ -432,6 +455,7 @@ export function BeatGame({
           const event = updateBeatWorld(session, dtSec, true);
           // 롱노트를 끝까지 누른 채 꼬리를 지나면 자동 성공
           settleHoldIfPassed(session);
+          drainRaidRewardsRef.current();
           const w = session.world;
           // 박자 카운터 (계획안 D) — 비트마다 적이 맥동한다. 스텝/4 = 1비트 (subdivision은 마디당 스텝)
           const beatNo = Math.floor(w.beatPosition / Math.max(1, w.subdivision / 4));

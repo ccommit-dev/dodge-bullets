@@ -72,9 +72,9 @@ export function simulateChart(trackId, difficulty, profile = "competent", seed =
       const lane = W.laneOfSound(chart[i].sound);
       taps += 1;
       const res = W.performBeatLane(session, lane);
-      if (res === "hit") hits += 1;
+      if (res === "hit" || res === "hold-start" || res === "jump-half") hits += 1;   // 제때 친 탭 (완성 여부는 completedNotes)
       // 점프: 두 번째 레인도 같은 프레임에 (양손 동시)
-      if (chart[i].jumpSound) { taps += 1; if (W.performBeatLane(session, W.laneOfSound(chart[i].jumpSound)) === "hit") hits += 1; }
+      if (chart[i].jumpSound) { taps += 1; const r2 = W.performBeatLane(session, W.laneOfSound(chart[i].jumpSound)); if (r2 === "hit" || r2 === "hold-start" || r2 === "jump-half") hits += 1; }
     }
     W.settleHoldIfPassed(session);
     minHp = Math.min(minHp, world.hp);

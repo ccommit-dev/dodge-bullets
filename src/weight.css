@@ -42,7 +42,7 @@ button:active:not(:disabled) {
 .rebirth-button,
 .nav-popup-grid > button,
 .titans-page-links > button,
-.forge-mode-pick button,
+
 .forge-shop-card button,
 .idle-claim,
 .wall-banner-actions button,
@@ -68,7 +68,7 @@ button:active:not(:disabled) {
 .rebirth-button:active:not(:disabled),
 .nav-popup-grid > button:active:not(:disabled),
 .titans-page-links > button:active:not(:disabled),
-.forge-mode-pick button:active:not(:disabled),
+
 .forge-shop-card button:active:not(:disabled),
 .idle-claim:active:not(:disabled),
 .wall-banner-actions button:active:not(:disabled),

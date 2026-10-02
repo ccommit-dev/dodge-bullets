@@ -21,7 +21,7 @@ import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
-import { EquippedCharacter, armorTierOf } from "./ui/EquippedCharacter";
+import { armorTierOf } from "./ui/EquippedCharacter";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import type { ShoulderId } from "./progression/model";
 
@@ -35,7 +35,8 @@ type ForgeGameProps = {
   onBack: () => void;
 };
 
-type ForgeView = "title" | "forge" | "exchange" | "armor";
+/** 모드 선택 첫 화면(title)은 없앴다 — 대장간을 열면 바로 강화 화면 (2026-10-02) */
+type ForgeView = "forge" | "exchange" | "armor";
 type ForgePhase = "idle" | "forging" | "success" | "failure" | "sold";
 
 const MATERIAL_GUIDE = [
@@ -58,7 +59,7 @@ const MATERIAL_GUIDE = [
 export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [save, setSave] = useState<ForgeSave>(() => defaultForgeSave());
   const [ready, setReady] = useState(false);
-  const [view, setView] = useState<ForgeView>("title");
+  const [view, setView] = useState<ForgeView>("forge");
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [toast, setToast] = useState("");
   const [materials, setMaterials] = useState(0);
@@ -111,7 +112,6 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setEquippedShoulder(progress.equippedShoulder);
       setShoulderShards(progress.shoulderShards);
       setPhase(forge.pendingFailure ? "failure" : "idle");
-      setView(forge.pendingFailure || forge.level > 0 || forge.totalAttempts > 0 ? "forge" : "title");
       setReady(true);
     });
     return () => {
@@ -127,9 +127,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   }, [ready, save, userHash]);
 
   const tier = tierAt(save.level);
-  const chance = effectiveChance(tier, save.mode);
+  const chance = effectiveChance(tier);
   const boostedChance = Math.min(1, chance + (materials > 0 ? 0.08 : 0));
-  const sell = effectiveSell(tier, save.mode);
+  const sell = effectiveSell(tier);
   const ticketNeed = protectionCost(save.level);
   const maxed = save.level >= 15;
   const canEnhance = !maxed && coins >= tier.cost && phase === "idle";
@@ -139,7 +139,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const armorMaterialNeed = save.armorLevel < 5 ? 1 : 2 + Math.floor((save.armorLevel - 5) / 4);
   const armorBeatNeed = save.armorLevel < 5 ? 0 : 1 + Math.floor((save.armorLevel - 5) / 5);
   const armorChance = Math.max(.38, .94 - save.armorLevel * .045);
-  const armorSell = save.armorLevel <= 0 ? 0 : Math.floor(armorCost * (save.mode === "rush" ? 1.2 : .72));
+  const armorSell = save.armorLevel <= 0 ? 0 : Math.floor(armorCost * .72);
   const swordStyle = useMemo(
     () =>
       ({
@@ -163,12 +163,6 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       sharedCoins: Math.max(0, current.sharedCoins + delta),
       lastContent: "forge",
     }));
-  };
-
-  const startMode = (mode: ForgeSave["mode"]) => {
-    setSave((prev) => ({ ...prev, mode }));
-    setView("forge");
-    setPhase(save.pendingFailure ? "failure" : "idle");
   };
 
   const enhance = () => {
@@ -249,7 +243,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   };
 
   const collectShards = () => {
-    const gain = tier.shards * (save.mode === "rush" ? 2 : 1);
+    const gain = tier.shards;
     setSave((prev) => ({
       ...prev,
       level: 0,
@@ -361,13 +355,13 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   };
 
   const resetSave = () => {
-    if (!window.confirm("현재 모드 세이브를 초기화할까요?")) return;
+    if (!window.confirm("대장간 세이브를 초기화할까요?")) return;
     // goldMigrated를 유지한다 — 초기화할 때마다 개업 자금 50,000이 다시 지급되면
     // 리셋 버튼이 무한 골드 수도꼭지가 된다.
-    const next = { ...defaultForgeSave(), mode: save.mode, goldMigrated: save.goldMigrated };
+    const next = { ...defaultForgeSave(), goldMigrated: save.goldMigrated };
     setSave(next);
     setPhase("idle");
-    setView("title");
+    setView("forge");
     flashToast("세이브가 초기화되었습니다");
   };
 
@@ -450,38 +444,11 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
         </div>
       </header>
 
-      {view === "title" ? (
-        <main className="forge-title-screen">
-          <p className="forge-kicker">THIRD GAME · BLACKSMITH</p>
-          <EquippedCharacter mode="idle" frame={0} weaponLevel={save.level} shoulder={equippedShoulder} className="forge-character-preview" />
-          <h1>검 강화하기</h1>
-          <p className="forge-title-desc">
-            강화 · 실패 시 방지권 · 조각 줍기 · 조합소
-          </p>
-          <div className="forge-mode-pick">
-            <button type="button" onClick={() => startMode("steady")}>
-              <strong>이지모드</strong>
-              <span>기본 성공률 · 안정적으로 키우기</span>
-            </button>
-            <button type="button" className="risk" onClick={() => startMode("rush")}>
-              <strong>하드모드</strong>
-              <span>성공률 ↓ · 판매가·조각 보상 ↑</span>
-            </button>
-          </div>
-          <p className="forge-note">최고 기록 +{save.bestLevel} · 방지권 {save.tickets} · 조각 {save.shards}</p>
-          {(save.level > 0 || save.totalAttempts > 0) && (
-            <button type="button" className="forge-sell" onClick={() => setView("forge")}>
-              이어하기 (+{save.level} {tier.name})
-            </button>
-          )}
-        </main>
-      ) : (
+      {(
         <main className="forge-shell">
           <section className="forge-title-row">
             <div>
-              <p className="forge-kicker">
-                {save.mode === "rush" ? "HARD MODE" : "EASY MODE"}
-              </p>
+              <p className="forge-kicker">BLACKSMITH</p>
               <h1>{view === "armor" ? "보호구 강화하기" : "검 강화하기"}</h1>
             </div>
             <div className="forge-best">
@@ -628,9 +595,6 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 >
                   현재 검 판매 · {formatGold(sell)}G
                 </button>
-                <button type="button" className="forge-sell" onClick={() => setView("title")}>
-                  모드 선택으로
-                </button>
               </section>
             </>
           ) : view === "exchange" ? (
@@ -709,7 +673,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 세이브 초기화
               </button>
               <p className="forge-note">
-                실패 후 「줍기」로 조각을 모으세요. 하드모드는 조각·판매가가 더 높습니다.
+                실패 후 「줍기」로 조각을 모으세요. 조각은 방지권·새 검 조합에 씁니다.
               </p>
             </section>
           ) : (
@@ -751,7 +715,6 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                     </article>;
                   })}
                 </div>
-                <button type="button" className="forge-sell" onClick={() => setView("title")}>모드 선택으로</button>
               </section>
             </>
           )}
@@ -776,7 +739,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <small>보유 {save.tickets}장</small>
             </button>
             <button type="button" className="forge-scrap" onClick={collectShards}>
-              조각 {tier.shards * (save.mode === "rush" ? 2 : 1)}개 줍기
+              조각 {tier.shards}개 줍기
               <small>검은 +0으로 돌아갑니다</small>
             </button>
           </div>

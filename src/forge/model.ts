@@ -1,5 +1,3 @@
-export type ForgeMode = "steady" | "rush";
-
 export type SwordTier = {
   level: number;
   name: string;
@@ -22,7 +20,6 @@ export type ForgeSave = {
   shards: number;
   bestLevel: number;
   totalAttempts: number;
-  mode: ForgeMode;
   pendingFailure: boolean;
   /** 무한 재련 시도 횟수 (등급은 공유 진행도에 저장) */
   reforgeAttempts: number;
@@ -65,7 +62,6 @@ export function defaultForgeSave(): ForgeSave {
     shards: 0,
     bestLevel: 0,
     totalAttempts: 0,
-    mode: "steady",
     pendingFailure: false,
     reforgeAttempts: 0,
     armorLevel: 0,
@@ -93,7 +89,6 @@ export function normalizeForgeSave(value: Partial<ForgeSave> | null): ForgeSave 
     shards: integer(value.shards, base.shards),
     bestLevel: integer(value.bestLevel, base.bestLevel, FORGE_TIERS.length - 1),
     totalAttempts: integer(value.totalAttempts, base.totalAttempts),
-    mode: value.mode === "rush" ? "rush" : "steady",
     pendingFailure: value.pendingFailure === true,
   };
 }
@@ -102,12 +97,16 @@ export function tierAt(level: number): SwordTier {
   return FORGE_TIERS[Math.max(0, Math.min(FORGE_TIERS.length - 1, Math.floor(level)))];
 }
 
-export function effectiveChance(tier: SwordTier, mode: ForgeMode): number {
-  return Math.max(0.01, Math.min(1, tier.chance * (mode === "rush" ? 0.72 : 1)));
+/**
+ * 검 강화는 한 가지 모드뿐이다 (2026-10-02, 사용자: "이지모드 하드모드 개념 삭제 및 단일모드"). 예전 하드모드(성공률 ×0.72 ·
+ * 판매가 ×1.75 · 조각 ×2)는 저장에 남아 있어도 무시한다 — 표의 값(예전 이지모드)이 유일한 기준
+ */
+export function effectiveChance(tier: SwordTier): number {
+  return Math.max(0.01, Math.min(1, tier.chance));
 }
 
-export function effectiveSell(tier: SwordTier, mode: ForgeMode): number {
-  return Math.floor(tier.sell * (mode === "rush" ? 1.75 : 1));
+export function effectiveSell(tier: SwordTier): number {
+  return Math.floor(tier.sell);
 }
 
 export function protectionCost(level: number): number {

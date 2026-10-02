@@ -43,7 +43,7 @@ const titans = {
 };
 const forge = {
   gold: 0, goldMigrated: true, level: 15, tickets: 4, shards: 62,
-  bestLevel: 15, totalAttempts: 240, mode: "steady", pendingFailure: false, reforgeAttempts: 12,
+  bestLevel: 15, totalAttempts: 240, pendingFailure: false, reforgeAttempts: 12,
 };
 const attendance = {
   lastClaimDate: new Date().toLocaleDateString("sv-SE"),
