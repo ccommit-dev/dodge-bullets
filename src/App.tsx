@@ -1297,7 +1297,8 @@ function App() {
     setMenuTab("play");
     setProfileRefresh((value) => value + 1);
     setMode("titans");
-    void migrateLegacyProgress(userHashRef.current, progress).then(setProgress);
+    // 화면의 progress 가 아니라 저장본에서 합친다 — 오래된 화면 값이 부팅 결제 정산·다른 화면의 저장을 덮어쓰지 않게
+    void migrateLegacyProgress(userHashRef.current).then(setProgress);
   };
 
   // 보급소 삭제 후: 기동·검격 스탯은 캐릭터 성장에서 파생된다. 진행도가 바뀔 때마다

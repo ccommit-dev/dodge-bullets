@@ -9,6 +9,11 @@ const listeners = new Set<PriceListener>();
 
 export function setStorePrices(next: Map<string, string> | null): void {
   prices = next;
+  notifyStoreChanged();
+}
+
+/** 상점 표시가 바뀌었다 — 가격을 받았거나, 결제 준비 상태가 바뀌었다 (화면이 다시 그린다) */
+export function notifyStoreChanged(): void {
   listeners.forEach((fn) => fn());
 }
 

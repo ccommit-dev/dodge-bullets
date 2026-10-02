@@ -109,7 +109,7 @@ import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
-import { buyWithStore, firstDoubleAvailable, grantPurchase, packagePurchased, paidStoreVisible, paymentsConfigured } from "./payments/store";
+import { buyWithStore, firstDoubleAvailable, grantPurchase, packagePurchased, paidStoreNote, paidStoreVisible, paymentsConfigured } from "./payments/store";
 import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
 import { SwordArt } from "./forge/swords";
@@ -3046,7 +3046,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <p className="paid-gate-note">모험가 세트·캐릭터·월정액 상품은 출석 3일차(또는 Lv.20)부터 열립니다 — 먼저 성장 구조를 충분히 경험해 보세요.</p>
         )}
         {tab === "premium" && premiumCategory === "package" && !paidStoreVisible() && (
-          <p className="paid-gate-note">유료 상품은 토스 앱과 안드로이드 앱에서 구매할 수 있습니다.</p>
+          <p className="paid-gate-note">{paidStoreNote()}</p>
         )}
         {tab === "premium" && premiumCategory === "package" && paidStoreVisible() && STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id))).map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);

@@ -19,6 +19,7 @@ import type { CharacterProgress, ShoulderId } from "../progression/model";
 import { paymentEnvironment } from "./environment";
 import { playPurchase } from "./playBilling";
 import { tossPurchase } from "./tossIap";
+import { notifyStoreChanged } from "./prices";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
 export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost"] as const;
@@ -32,14 +33,29 @@ export const PERMANENT_PRODUCT_IDS: readonly string[] = STORE_PRODUCTS.filter((p
 export function isPermanentProduct(productId: string): boolean { return PERMANENT_PRODUCT_IDS.includes(productId); }
 export function isConsumableProduct(productId: string): boolean { return !isPermanentProduct(productId); }
 
-/** 안드로이드 결제 플러그인이 실제로 붙어 있는가 — 부팅 정산이 확인해 세운다 */
-let billingReady = false;
-export function setBillingReady(ready: boolean): void { billingReady = ready; }
+/**
+ * 안드로이드 결제 플러그인이 실제로 붙어 있는가 — 부팅 정산이 확인해 세운다. null = 아직 확인 전.
+ * 바뀌면 상점을 다시 그린다 — 가격 목록을 못 받아도 결제 준비 완료가 화면에 반영되게 (리뷰 2026-10-02)
+ */
+let billingReady: boolean | null = null;
+export function setBillingReady(ready: boolean): void {
+  if (billingReady === ready) return;
+  billingReady = ready;
+  notifyStoreChanged();
+}
 
 /** 이 환경에서 실결제가 되는가 — 토스 미니앱이거나, 결제 플러그인이 붙은 안드로이드 */
 export function paymentsConfigured(): boolean {
   const env = paymentEnvironment();
-  return env === "toss" || (env === "android" && billingReady);
+  return env === "toss" || (env === "android" && billingReady === true);
+}
+
+/** 유료 상품이 안 보일 때 대신 띄울 문구 — 환경마다 이유가 다르다 */
+export function paidStoreNote(): string {
+  const env = paymentEnvironment();
+  if (env === "android") return billingReady === null ? "결제를 불러오는 중입니다…" : "이 기기에서는 결제를 쓸 수 없습니다 (Google Play 확인)";
+  if (env === "toss") return "결제를 불러오는 중입니다…";
+  return "유료 상품은 토스 앱과 안드로이드 앱에서 구매할 수 있습니다.";
 }
 
 /** 유료 상품을 화면에 보일까 — 실결제가 되거나 QA 빌드(테스트 구매)일 때만. 웹 출시 빌드에서는 숨긴다 */

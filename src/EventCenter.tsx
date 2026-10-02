@@ -21,8 +21,8 @@ type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge" | "season"
 import { MISSION_ALL_DONE_GEMS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 import { SEASON, addSeasonXp, claimSeasonTier, claimableTiers, freeReward, normalizeSeason, paidGemTotal, paidReward, rewardLabel, seasonDaysLeft, seasonTier } from "./economy/seasonPass";
-import { buyWithStore, grantPurchase, paidStoreVisible, paymentsConfigured } from "./payments/store";
-import { priceLabel, productOnSale } from "./payments/prices";
+import { buyWithStore, grantPurchase, paidStoreNote, paidStoreVisible, paymentsConfigured } from "./payments/store";
+import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
 import { saveTitansSave } from "./titans/storage";
 
 /**
@@ -65,6 +65,9 @@ export function EventCenter({
   const [allTiers, setAllTiers] = useState(false);
   const [save, setSave] = useState<EventSave | null>(null);
   const [riftMessage, setRiftMessage] = useState("");
+  // 스토어 가격·결제 준비가 바뀌면 시즌 패스 버튼을 다시 그린다 (payments/prices)
+  const [, setStoreTick] = useState(0);
+  useEffect(() => { const off = onStorePricesChanged(() => setStoreTick((t) => t + 1)); return () => { off(); }; }, []);
   const [shadowLog, setShadowLog] = useState<{ id: string; win: boolean; text: string } | null>(null);
   // 화면 전환 콘텐츠 — 균열 진입은 원정대가 균열 몬스터를 쓸어 담는 연출, 랭크 시험은 그림자와의 대결 연출
   const [riftRun, setRiftRun] = useState<{ name: string; gold: number; exp: number; materials: number; shards: number; mult: number } | null>(null);
@@ -476,7 +479,7 @@ export function EventCenter({
                   <i className="season-xp"><em style={{ width: `${Math.min(100, ((sp.xp % SEASON.xpPerTier) / SEASON.xpPerTier) * 100)}%` }} /></i>
                   <span>다음 단까지 {SEASON.xpPerTier - (sp.xp % SEASON.xpPerTier)} XP · 루틴 {SEASON.xp.routine} · 토벌 완주 {SEASON.xp.missionsAll} · 주간 도전 {SEASON.xp.weeklyChallenge} · 균열 {SEASON.xp.rift}</span>
                 </div>
-                {sp.paid ? <span className="season-paid-badge">유료 트랙 활성</span> : !(paidStoreVisible() && productOnSale(SEASON.productId)) ? <span className="season-paid-badge">유료 트랙은 토스 앱·안드로이드 앱에서</span> : (
+                {sp.paid ? <span className="season-paid-badge">유료 트랙 활성</span> : !(paidStoreVisible() && productOnSale(SEASON.productId)) ? <span className="season-paid-badge">{paidStoreNote()}</span> : (
                   <button type="button" className="cta season-buy" onClick={() => void buySeasonPass()}>유료 트랙 {priceLabel({ id: SEASON.productId, displayPrice: SEASON.paidPriceLabel })}<small>보석 {paidGemTotal(sp.season)} · 조각 선택 3 · 시즌 스킨 · 무기 이펙트</small><span className="season-perks"><RewardIcon kind="gems" size={18} /><RewardIcon kind="shards" size={18} /><RewardIcon kind="allySkin" size={18} /><RewardIcon kind="weaponFx" size={18} /></span></button>
                 )}
               </header>
