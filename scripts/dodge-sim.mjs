@@ -105,6 +105,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   W.applyStats(w, shop.statsFromLevels(shop.derivedShopLevels({ ...growth, dodgeBestStage: stageIndex + 1 })));
   // 원거리 스킬 레벨 — opts.skills 로 넣으면 자동 발사가 켜진다 (레벨 0 = 기존 기준선)
   if (opts.skills) { w.skillLevels = { ...w.skillLevels, ...opts.skills }; w.rangedWeapon = opts.weapon ?? "none"; }
+  w.basicLevel = opts.basic ?? 0;
   W.resetRun(w, stageIndex);
   // 런 강화 카드(진화·콤보) — resetRun 이 카드를 비우므로 **그 뒤에** 얹는다
   if (opts.mods) w.runMods = { ...w.runMods, ...opts.mods, evolutions: { ...w.runMods.evolutions, ...(opts.mods.evolutions ?? {}) } };
@@ -135,9 +136,9 @@ export function simulateStage(stageIndex, seed, opts = {}) {
 
 /** 계정 단계 — 새 계정 / 중간 / 강함. 성장(레벨·검)·스킬·칩을 함께 올린다 */
 export const TIERS = {
-  new: { label: "새 계정", level: 8, sword: 3, bestStage: 1, skills: { fire: 1 }, chipLevels: {}, equipped: [null, null, null] },
-  mid: { label: "중간", level: 30, sword: 8, bestStage: 3, skills: { fire: 4, water: 4, ice: 3, earth: 3, ultimate: 3 }, chipLevels: { focus: 2, vitality: 2 }, equipped: ["focus", "vitality", null] },
-  strong: { label: "강함", level: 55, sword: 13, bestStage: 4, skills: { fire: 8, water: 8, ice: 8, earth: 8, bolt: 8, ultimate: 8 }, chipLevels: { focus: 4, barrage: 5, vitality: 5 }, equipped: ["focus", "barrage", "vitality"] },
+  new: { label: "새 계정", level: 8, sword: 3, bestStage: 1, basic: 0, skills: { fire: 1 }, chipLevels: {}, equipped: [null, null, null] },
+  mid: { label: "중간", level: 30, sword: 8, bestStage: 3, basic: 3, skills: { fire: 4, water: 4, ice: 3, earth: 3, ultimate: 3 }, chipLevels: { focus: 2, vitality: 2 }, equipped: ["focus", "vitality", null] },
+  strong: { label: "강함", level: 55, sword: 13, bestStage: 4, basic: 6, skills: { fire: 8, water: 8, ice: 8, earth: 8, bolt: 8, ultimate: 8 }, chipLevels: { focus: 4, barrage: 5, vitality: 5 }, equipped: ["focus", "barrage", "vitality"] },
 };
 
 /**
@@ -151,6 +152,7 @@ export function simulateRun(seed, tier = TIERS.new, opts = {}) {
   const w = W.createWorld(390, 700, 1);
   w.skillLevels = { ...w.skillLevels, ...tier.skills };
   w.rangedWeapon = tier.weapon ?? "bow";
+  w.basicLevel = tier.basic ?? 0;
   w.chips = CH.chipModsOf({ ...CH.emptyChipLevels(), ...tier.chipLevels }, tier.equipped, CH.chipSlotsOpen(tier.bestStage));
   w.collectionMul = SK.collectionCooldownMul(w.skillLevels);
   // App.loadLoadout 과 같은 순서 — 성장 파생 → 일섬 → 칩 → 이번 런 카드

@@ -20,6 +20,7 @@ writeFileSync(entry, [
   `export * as shop from "${root}/src/game/shop";`,
   `export * as input from "${root}/src/game/input";`,
   `export * as stages from "${root}/src/game/stages";`,
+  `export * as skills from "${root}/src/game/skills";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" } });
@@ -27,7 +28,7 @@ await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, p
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { tracks, rpg, bworld, arrows, world, shop, input, stages } = await import(pathToFileURL(out).href);
+const { tracks, rpg, bworld, arrows, world, shop, input, stages, skills } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -136,7 +137,19 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   const orb = put(1)[0]; orb.fromBoss = true; orb.kind = "aimed"; orb.x = w.player.x; orb.y = by - 60; orb.vy = 400;
   for (let f = 0; f < 40; f += 1) { world.updateWorld(w, 1 / 60, true, input.createInputState()); w.stageElapsedMs = 1000; w.player.invulnMs = 0; }
   ok("보스 마력탄은 방어막에 멈추지 않고 플레이어까지 온다", !orb.atBarrier && (!orb.active || orb.y > by), `at ${orb.atBarrier} y ${orb.y.toFixed(0)} active ${orb.active}`);
-  ok("몬스터 속도 배수 0.6 · 기본 사격 0.55초 · 생성 간격 1.8배 — 방어막 모델의 손잡이 (스윕 2026-10-01)", arrows.TUNING.monsterSpeedMul === 0.6 && arrows.TUNING.basicCooldown === 0.55 && arrows.TUNING.spawnScale === 1.8 && arrows.TUNING.barrierDmgPerStage === 0.2, JSON.stringify(arrows.TUNING));
+  ok("몬스터 속도 배수 0.42 · 기본 사격 0.55초 · 생성 간격 1.4배 · 피해 0.65 — 방어막 모델의 손잡이 (스윕 2026-10-02: 느리게·촘촘히·세게)", arrows.TUNING.monsterSpeedMul === 0.42 && arrows.TUNING.basicCooldown === 0.55 && arrows.TUNING.spawnScale === 1.4 && arrows.TUNING.barrierDmgMul === 0.65 && arrows.TUNING.barrierDmgPerStage === 0.15, JSON.stringify(arrows.TUNING));
+  // 1자 하강 — 보스·보스 마력탄 말고는 vx 가 0 (2026-10-02)
+  {
+    const w2 = mk(); world.resetRun(w2, 1); w2.rangedWeapon = "none";
+    const tilted = [];
+    for (let f = 0; f < 60 * 30; f += 1) {
+      world.updateWorld(w2, 1 / 60, true, input.createInputState()); w2.player.hp = w2.player.maxHp;
+      for (const ar of w2.arrows) if (ar.active && !ar.boss && !ar.fromBoss && ar.splitLevel === 0 && !ar.atBarrier && ar.warningMs <= 0 && Math.abs(ar.vx) > 0.5) tilted.push(ar.kind + ":" + ar.vx.toFixed(0));
+    }
+    ok("몬스터는 1자로 내려온다 — 2스테이지 30초 동안 가로 속도가 있는 몬스터가 없다", tilted.length === 0, tilted.slice(0, 4).join(","));
+    ok("돔 방어막 — 가운데가 가장 높고(−150) 가장자리는 낮다", Math.round(arrows.barrierYAt(w2, w2.width * 0.5)) === w2.floorY - 150 && arrows.barrierYAt(w2, w2.safeLeft + 10) > w2.floorY - 150 + 40 && arrows.barrierYAt(w2, w2.safeLeft + 10) < w2.floorY, `가운데 ${arrows.barrierYAt(w2, w2.width * 0.5).toFixed(0)} 가장자리 ${arrows.barrierYAt(w2, w2.safeLeft + 10).toFixed(0)} 바닥 ${w2.floorY}`);
+    ok("기본 사격 강화: Lv5 피해 1.75배 · 재사용 0.85배 · 비용 80·1.6^(n−1)", skills.basicDamageMul(5) === 1.75 && Math.abs(skills.basicCooldownMul(5) - 0.85) < 1e-9 && skills.basicShotCost(1) === 80 && skills.basicShotCost(2) === 128);
+  }
 }
 
 // ── 비트: 홀드 노트(실제 유지) · 회복 · 곡 특성(소리 크기) · 펌프식 레벨 특징 ──
@@ -246,7 +259,8 @@ const gate = (stage) => { const runs = [1, 2, 3, 4, 5].map((seed) => simulateSta
   const s1 = gate(0), s2 = gate(1);
   // 방어막 모델에서 '피격' = 보스 마력탄 + 방어막 붕괴(성문 피해). S1 은 붕괴 0 이어야 첫 플레이가 편하다
   ok("검객 봇: 1스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5 (방어막 붕괴 0 에 가깝게)", s1.clear >= 4 && s1.hits <= 1.5, `clear ${s1.clear}/5 hits ${s1.hits.toFixed(1)}`);
-  ok("검객 봇: 2스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 1.5", s2.clear >= 4 && s2.hits <= 1.5, `clear ${s2.clear}/5 hits ${s2.hits.toFixed(1)}`);
+  // 2026-10-02 "너무 쉽다" — 느리게·촘촘히·세게 한 뒤 S2 는 붕괴 1~2회(HP 5)가 보통. 1.5 → 2.0
+  ok("검객 봇: 2스테이지 5시드 중 4회 이상 클리어 · 평균 피격 ≤ 2.0", s2.clear >= 4 && s2.hits <= 2.0, `clear ${s2.clear}/5 hits ${s2.hits.toFixed(1)}`);
   const s4 = gate(3);
   // 스테이지 단독 S4 — 기준선(장궁 + 불화살 Lv1)이 새 런으로 S4 만 돌 때. 화살에 체력을 넣은 뒤에도
 // 예전 값(2/5 · 4.6)과 거의 같다(2/5 · 5.0). 중간 상태에서 5/5 가 나와 뺐다가 최종 상태를 재 보고 되살렸다 —
@@ -275,7 +289,8 @@ ok("검객 봇: 4스테이지(추격대장) 5시드 중 0~4회 클리어 · 붕�
   ok("일주일 · 강화를 하나도 못 하는 날이 없다 (이탈 지점)", weeks.every((w) => w.stallDays.length === 0), weeks.map((w) => w.stallDays.join(",") || "없음").join(" | "));
   ok("일주일 · 첫 판에 2스테이지 이상 간다 (첫 플레이가 벽이 아니다)", weeks.every((w) => w.firstRun >= 2), line);
   ok("일주일 · 사흘 안에 스킬 6종을 전부 배운다 (학습은 인장)", weeks.every((w) => w.allLearnedBy <= 3), line);
-  ok("일주일 · S4 를 나흘 안에 처음 깬다 (운 좋으면 첫날, 보통 2~3일 — 벽이되 막혀 있진 않다)", weeks.every((w) => w.s4By <= 4), line);
+  // 2026-10-02 "너무 쉽다"에 맞춰 느리게·촘촘히·세게 — S3 가 새 계정의 벽이 되고 S4 첫 클리어는 5~6일째로 밀렸다. 일주일 안이면 된다
+  ok("일주일 · S4 를 엿새 안에 처음 깬다 (벽이되 일주일 안에 뚫린다)", weeks.every((w) => w.s4By <= 6), line);
   ok("일주일 · 7일째에 만렙 스킬이 없고 누적 레벨 28 이상 (분량이 남아 있되 성장은 했다)", weeks.every((w) => w.maxedDay7 === 0 && w.totalDay7 >= 28), line);
 }
 }

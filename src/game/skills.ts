@@ -55,6 +55,14 @@ export function weaponCooldownMul(weapon: RangedWeaponId, family: SkillFamily): 
 /** 활/지팡이만 끼면 나가는 기본 화살 — 스킬이 아니라 무기의 것이다 */
 export const BASIC_SHOT_COOLDOWN = 0.55;   // 1.5 → 0.55 (2026-10-01 방어막): 할 일이 피하기에서 떨구기로 — 활이 쉴 새 없이 나간다
 export const BASIC_SHOT_SPEED = 720;
+/**
+ * 기본 사격 강화 (2026-10-02) — 정비 화면에서 **골드만으로** 올린다. 속성 화살과 달리 조각·인장이 없다:
+ * 활은 늘 쓰는 것이라 꾸준한 골드 싱크가 되고, 새 계정도 첫날부터 올릴 것이 있다. 레벨마다 피해 +15% · 재사용 −3%
+ */
+export const BASIC_LEVEL_MAX = 10;
+export function basicShotCost(level: number): number { return Math.round(80 * Math.pow(1.6, Math.max(1, level) - 1)); }
+export function basicDamageMul(level: number): number { return 1 + 0.15 * Math.max(0, level); }
+export function basicCooldownMul(level: number): number { return 1 - 0.03 * Math.max(0, level); }
 
 /* ────────────────── 속성 ────────────────── */
 

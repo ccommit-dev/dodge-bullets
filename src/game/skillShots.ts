@@ -2,7 +2,7 @@ import type { Arrow, GameWorld, RunMods } from "./types";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
 import { cutArrow, TUNING } from "./arrows";
 import {
-  arrowHpFor, BASIC_DAMAGE,
+  arrowHpFor, BASIC_DAMAGE, basicCooldownMul, basicDamageMul,
   BASIC_SHOT_SPEED,
   boltCooldown, boltDamage, boltPower, boltTargets,
   earthCooldown, earthDamage, earthPower, earthRadius,
@@ -308,7 +308,7 @@ export function skillCooldown(world: GameWorld, id: Exclude<ExpeditionSkillId, "
 
 /** 기본 사격 재사용(초) — 카드·칩·화살통이 줄인다 */
 export function basicCooldown(world: GameWorld): number {
-  return TUNING.basicCooldown * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
+  return TUNING.basicCooldown * basicCooldownMul(world.basicLevel) * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
     * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1);
 }
 
@@ -364,7 +364,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
           const conv = world.runMods.convert;
           spawn(world, {
             element: conv ?? "basic", basic: true, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-            radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 1, damage: BASIC_DAMAGE * (conv ? 1.2 : 1),
+            radius: evo === "beam" ? 12 : 9, lifeMs: 1400, power: 1, damage: BASIC_DAMAGE * basicDamageMul(world.basicLevel) * (conv ? 1.2 : 1),
             hits: world.runMods.shotPierce + (evo === "beam" ? 99 : 0), seeker: evo === "seeker",
           });
         }

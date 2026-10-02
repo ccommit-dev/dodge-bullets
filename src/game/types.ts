@@ -349,6 +349,8 @@ export type GameWorld = {
   boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
   skillLevels: ExpeditionSkillLevels;
+  /** 기본 사격 강화 레벨 (skills.basicDamageMul · basicCooldownMul) — 정비에서 골드로 올린다 (2026-10-02) */
+  basicLevel: number;
   /** 스킬별 남은 쿨타임(초) */
   skillTimers: Record<ExpeditionSkillId, number>;
   /** 장착한 원거리 무기 — 계열이 맞는 스킬의 쿨타임을 줄인다 */

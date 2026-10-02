@@ -65,7 +65,7 @@ import {
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
 import { applySkillLevels, collectionCooldownMul, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId } from "./game/skills";
-import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked } from "./game/skills";
+import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked, BASIC_LEVEL_MAX, basicShotCost } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import {
@@ -129,7 +129,7 @@ const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
 /** 사망 원인 → 다음 판을 위한 한 줄 (RETENTION G) */
 const DEATH_TIPS: Record<string, string> = {
-  homing: "달빛 늑대는 따라옵니다 — 멈추지 말고 계속 옆으로 걸으면 활이 먼저 잡습니다",
+  homing: "달빛 늑대왕은 단단하고 방어막을 세게 두드립니다 — 보이면 먼저 떨구세요",
   explosive: "폭염 비룡은 떨어지는 자리에서 멀리 — 폭발 범위가 넓어요",
   ricochet: "오우거는 벽에서 되돌아옵니다 — 벽에서 떨어져 서세요",
   fan: "고블린 떼는 한 마리만 잡으면 틈이 열립니다",
@@ -175,6 +175,7 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   stats.extraLives += m.maxHpBonus;
   applyStats(world, stats);
   world.skillLevels = { ...p.expeditionSkills };
+  world.basicLevel = p.expeditionBasic;
   world.rangedWeapon = p.expeditionWeapon;
   return stats;
 }
@@ -1035,6 +1036,24 @@ function App() {
     setShoulderDrop(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : "공유를 지원하지 않는 환경입니다");
   };
 
+  /** 기본 사격 강화 — 골드만 쓴다 (2026-10-02). 즉시 전투 월드에 반영 */
+  const handleUpgradeBasic = useCallback(() => {
+    const lv = progress.expeditionBasic;
+    if (lv >= BASIC_LEVEL_MAX || progress.sharedCoins < basicShotCost(lv + 1)) return;
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => {
+        const now = p.expeditionBasic;
+        if (now >= BASIC_LEVEL_MAX) return p;
+        const c = basicShotCost(now + 1);
+        if (p.sharedCoins < c) return p;
+        return { ...p, sharedCoins: p.sharedCoins - c, expeditionBasic: now + 1 };
+      });
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, [progress]);
+
   /** 스킬 강화 — 골드(공용 코인)와 **그 스킬의 조각**을 쓰고 레벨을 올린다. 즉시 스탯에 반영된다 */
   const handleUpgradeSkill = useCallback((id: ExpeditionSkillId) => {
     const current = progress;
@@ -1647,6 +1666,8 @@ function App() {
                 weapon={progress.expeditionWeapon}
                 onEquipWeapon={handleEquipWeapon}
                 onUpgrade={handleUpgradeSkill}
+                basicLevel={progress.expeditionBasic}
+                onUpgradeBasic={handleUpgradeBasic}
               />
             )}
           </div>

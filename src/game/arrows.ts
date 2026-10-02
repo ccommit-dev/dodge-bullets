@@ -73,12 +73,12 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
  * 게임은 런 시작마다 읽으므로 한 런 안에서는 고정이다
  */
 export const TUNING = {
-  monsterSpeedMul: 0.6,      // 몬스터는 걸어 내려온다 — 화살 속도의 60% (사용자: "조금 천천히")
-  spawnScale: 1.8,           // 생성 간격 배수 — 몬스터가 느려지고 방어막에 쌓이므로 드물게 (스윕 2026-10-01)
+  monsterSpeedMul: 0.42,     // 몬스터는 걸어 내려온다 — 화살 속도의 42% (0.6 → 0.42, 사용자: "너무 빨리 내려옴", 2026-10-02)
+  spawnScale: 1.4,           // 생성 간격 배수 — 1.8 → 1.4: 느려진 만큼 촘촘히, "너무 쉽다"에 맞춰 (스윕 2026-10-02)
   barrierHp: 120,
   barrierHitMs: 1200,        // 붙은 몬스터의 공격 주기
-  barrierDmgMul: 0.5,        // 종류별 방어막 피해 배수 (스윕: 1 이면 S2 부터 벽)
-  barrierDmgPerStage: 0.2,   // 스테이지마다 더해지는 피해 배수 — 뒤로 갈수록 세게 두드린다 (성장이 갈리는 지렛대)
+  barrierDmgMul: 0.65,       // 종류별 방어막 피해 배수 — 0.5 → 0.65 (1 이면 S2 부터 벽, 0.5 는 S1 이 긁히지도 않았다)
+  barrierDmgPerStage: 0.15,  // 스테이지마다 더해지는 피해 배수 — 뒤로 갈수록 세게 두드린다 (성장이 갈리는 지렛대)
   barrierRegen: 4,           // 초당 회복 (붙은 몬스터가 없을 때)
   basicCooldown: BASIC_SHOT_COOLDOWN,
   bossCutMul: 1,             // 보스 격추 수 배수
@@ -87,6 +87,17 @@ export const BARRIER_OFFSET = 150;          // 바닥선에서 위로 — 주인
 export const BARRIER_BREACH_MS = 900;       // 붕괴 연출 시간
 const BARRIER_STAND = 22;                   // 몬스터 중심이 띠에서 이만큼 위에 선다
 export function barrierY(world: GameWorld): number { return world.floorY - BARRIER_OFFSET; }
+/** 돔의 가로 반지름 — 화면 폭의 0.62배. 가장자리(x=safeLeft)에서 돔 높이는 꼭대기의 60% 쯤 */
+export function barrierRx(world: GameWorld): number { return world.width * 0.62; }
+/**
+ * 돔(반원) 방어막 (2026-10-02, 황야의 무법자) — 띠가 아니라 주인공을 덮는 반타원. x 에 따라 닿는 높이가 다르다:
+ * 가운데가 가장 높고(바닥선 −150) 가장자리로 갈수록 낮다. 몬스터는 자기 x 의 돔 표면에서 멈춘다
+ */
+export function barrierYAt(world: GameWorld, x: number): number {
+  const cx = world.width * 0.5, rx = barrierRx(world), ry = BARRIER_OFFSET;
+  const k = Math.max(0, 1 - ((x - cx) / rx) ** 2);
+  return world.floorY - ry * Math.sqrt(k);
+}
 /** 종류별 방어막 피해 — 덩치가 클수록 세다. 드래곤은 터지며 한 번에 크게(자폭) */
 export function barrierDamageOf(a: Pick<Arrow, "kind">): number {
   return a.kind === "explosive" ? 14 : a.kind === "ricochet" ? 9 : a.kind === "homing" ? 8 : a.kind === "aimed" ? 7 : 5;
@@ -173,7 +184,7 @@ function activate(
   // Spawn variation keeps repeated patterns from becoming a memorised wall.
   // Homing rounds remain readable thanks to their longer purple telegraph.
   const velocityJitter = 0.88 + Math.random() * 0.26;
-  const angleJitter = (Math.random() - 0.5) * 0.16;
+  const angleJitter = 0;   // 1자 하강 — 기울기 없음 (2026-10-02)
   const speed = Math.hypot(arrow.vx, arrow.vy) * velocityJitter;
   const heading = Math.atan2(arrow.vy, arrow.vx) + angleJitter;
   arrow.vx = Math.cos(heading) * speed;
@@ -183,9 +194,9 @@ function activate(
     arrow.kind = "homing";
     arrow.telegraph = "homing";
     arrow.warningMs = Math.max(warningMs, 680);
-    arrow.homingMs = 900 + Math.random() * 600;   // 1.8~3.1초 → 0.9~1.5초: 한 번 휘고 나면 곧게 떨어진다 (옆으로 걸으면 피해진다)
-    // 회전율 완화(1.25~2.35 → 0.9~1.8): 등 뒤로 감아 도는 궤도를 줄여 정면에서 벨 여지를 준다
-    arrow.homingTurnRate = 0.9 + Math.random() * 0.9;
+    // 달빛 늑대왕 — 휘지 않는다(1자 하강, 2026-10-02). 승격은 "정예 한 마리"(방어막 피해 8)라는 뜻만 남는다
+    arrow.homingMs = 0;
+    arrow.homingTurnRate = 0;
     arrow.hitRadius = HIT_R + 1;
   }
   arrow.splitLevel = 0;
@@ -251,10 +262,12 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
     }
     // 아래 세 패턴은 예전에 옆에서 왔다 — 화살은 **위에서 아래로만** (2026-10-01). 모양만 다르게: 측면 기습은 모서리에서 비스듬히,
     // 교차 사격은 양쪽 모서리에서 엇갈려, 휩쓸기는 왼쪽에서 오른쪽으로(또는 반대로) 훑으며 떨어진다
+    // 몬스터는 **1자로** 내려온다 (2026-10-02, 황야의 무법자) — 비스듬히 오던 측면·교차·부채·조준·튕김·폭발이 전부 수직.
+    // 패턴의 차이는 "어디서 나오나"뿐: 측면은 가장자리, 교차는 양쪽, 조준·폭발은 플레이어 머리 위, 부채는 셋이 나란히
     case "side": {
       const fromLeft = Math.random() < 0.5;
-      const x = fromLeft ? minX + spanX * 0.08 : maxX - spanX * 0.08;
-      activate(arrow, x, world.safeTop - 20, (fromLeft ? 1 : -1) * speed * 0.55, speed * 0.85);
+      const x = fromLeft ? minX + spanX * (0.04 + Math.random() * 0.12) : maxX - spanX * (0.04 + Math.random() * 0.12);
+      activate(arrow, x, world.safeTop - 20, 0, speed * 0.95);
       break;
     }
     case "cross": {
@@ -263,7 +276,7 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       } else {
         const fromLeft = Math.random() < 0.5;
         const x = fromLeft ? minX + spanX * (0.1 + Math.random() * 0.25) : maxX - spanX * (0.1 + Math.random() * 0.25);
-        activate(arrow, x, world.safeTop - 20, (fromLeft ? 1 : -1) * speed * 0.6, speed * 0.8);
+        activate(arrow, x, world.safeTop - 20, 0, speed * 0.9);
       }
       break;
     }
@@ -275,62 +288,37 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
     }
     case "burst": {
       const cx = minX + Math.random() * spanX;
-      activate(arrow, cx, world.safeTop - 20, (Math.random() - 0.5) * speed * 0.35, speed * 1.15);
+      activate(arrow, cx, world.safeTop - 20, 0, speed * 1.15);
       break;
     }
     case "aimed": {
       // 위쪽 어딘가에서 플레이어를 겨눈다 — 옆에서 오던 것을 위로 (2026-10-01)
-      const x = minX + Math.random() * spanX;
-      const y = world.safeTop - 20;
-      const targetX = world.player.x + world.player.vx * 0.28;
-      const targetY = world.player.y;
-      const dx = targetX - x;
-      const dy = targetY - y;
-      const len = Math.max(1, Math.hypot(dx, dy));
-      activate(arrow, x, y, (dx / len) * speed, (dy / len) * speed, "aimed", 800);
+      // 플레이어 머리 위에서 곧장 — "조준"은 나오는 자리가 플레이어를 따른다는 뜻
+      const x = Math.max(minX, Math.min(maxX, world.player.x + world.player.vx * 0.28 + (Math.random() - 0.5) * 40));
+      activate(arrow, x, world.safeTop - 20, 0, speed, "aimed", 800);
       break;
     }
     case "fan": {
-      const originX = minX + Math.random() * spanX;
-      const originY = world.safeTop - 20;
-      const baseAngle = Math.atan2(world.player.y - originY, world.player.x - originX);
+      // 셋이 나란히 — 고블린 떼
+      const originX = minX + 48 + Math.random() * Math.max(1, spanX - 96);
       for (let i = -1; i <= 1; i++) {
         const target = i === -1 ? arrow : acquire(world);
         if (!target) continue;
-        const angle = baseAngle + i * 0.2;
-        activate(target, originX, originY, Math.cos(angle) * speed, Math.sin(angle) * speed, "fan", 460);
+        activate(target, originX + i * 44, world.safeTop - 20 - Math.abs(i) * 18, 0, speed, "fan", 460);
       }
       break;
     }
     case "ricochet": {
       // 위 모서리에서 비스듬히 떨어지며 벽에 튕긴다 — 위로 되튀지는 않는다 (2026-10-01)
-      const fromLeft = Math.random() < 0.5;
-      const x = fromLeft ? minX + spanX * 0.05 : maxX - spanX * 0.05;
-      activate(
-        arrow,
-        x,
-        world.safeTop - 20,
-        (fromLeft ? 1 : -1) * speed * 0.8,
-        speed * 0.6,
-        "ricochet",
-        500,
-      );
+      // 오우거 — 느리고 단단하게 곧장 (벽 튕김 없음)
+      activate(arrow, minX + Math.random() * spanX, world.safeTop - 20, 0, speed * 0.75, "ricochet", 500);
+      arrow.bounces = 0;
       break;
     }
     case "explosive": {
-      const originX = minX + Math.random() * spanX;
-      const dx = world.player.x - originX;
-      const dy = world.player.y - (world.safeTop - 20);
-      const len = Math.max(1, Math.hypot(dx, dy));
-      activate(
-        arrow,
-        originX,
-        world.safeTop - 20,
-        (dx / len) * speed * 0.86,
-        (dy / len) * speed * 0.86,
-        "explosive",
-        560,
-      );
+      // 드래곤 — 플레이어 머리 위 근처에서 곧장
+      const originX = Math.max(minX, Math.min(maxX, world.player.x + (Math.random() - 0.5) * 80));
+      activate(arrow, originX, world.safeTop - 20, 0, speed * 0.86, "explosive", 560);
       break;
     }
   }
@@ -866,7 +854,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
 
     // ── 방어막 — 몬스터(보스·보스 마력탄·조각 제외)는 띠에서 멈춰 두드린다 ──
     if (!a.boss && !a.fromBoss && a.splitLevel === 0 && !a.reflected) {
-      const standY = barrierY(world) - BARRIER_STAND;
+      const standY = barrierYAt(world, a.x) - BARRIER_STAND;
       if (a.atBarrier) {
         a.y = standY; a.vx = 0; a.vy = 0;
         a.barrierHitMs -= dtSec * 1000;

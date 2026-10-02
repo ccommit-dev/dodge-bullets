@@ -2,7 +2,7 @@ import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, type Element } from "./skills";
 import { spiritPos } from "./skillShots";
-import { BARRIER_BREACH_MS, barrierY } from "./arrows";
+import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 
@@ -273,7 +273,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.setLineDash([]);
     ctx.fillStyle = warningColor;
     ctx.font = "800 11px system-ui";
-    const warningText = a.fromBoss ? "대장 사격" : a.telegraph === "homing" ? "추격" : a.telegraph === "sniper" ? "돌진" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "낙하" : a.telegraph === "dash" ? "돌파" : "떼";
+    const warningText = a.fromBoss ? "대장 사격" : a.telegraph === "homing" ? "정예" : a.telegraph === "sniper" ? "돌진" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "낙하" : a.telegraph === "dash" ? "돌파" : "떼";
     // 위는 상단 버튼·HUD 글자(왼쪽 열이 더 길다)·일섬 게이지, 아래는 스킬 슬롯·조작 버튼이 덮는다 — 그 사이에만 쓴다
     const lx = Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x));
     const top = labelBounds.top + (lx < labelBounds.leftColumn ? labelBounds.leftExtra : 0);
@@ -343,7 +343,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
 /** 성문 방어막 — 주인공 머리 위 띠. 색은 남은 HP(청록 → 호박 → 붉음), 맞으면 하얗게 번쩍이며 파문. 붕괴 중엔 점선과 복구 시계 */
 function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const y = barrierY(world);
-  const { width, safeLeft, safeRight } = world;
+  const { width } = world;
   const t = world.animClock;
   ctx.save();
   const breach = world.barrierDownMs > 0 ? world.barrierDownMs / BARRIER_BREACH_MS : 0;   // 1 → 0
@@ -351,7 +351,7 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     // 붕괴 충격파 — 띠에서 퍼지는 붉은 고리와 글자
     const k = 1 - breach;
     ctx.globalAlpha = breach * 0.9; ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 3 + k * 4; ctx.shadowColor = "#fb7185"; ctx.shadowBlur = 16;
-    ctx.beginPath(); ctx.ellipse(width * 0.5, y, 40 + k * width * 0.6, 10 + k * 40, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(width * 0.5, world.floorY, barrierRx(world) * (0.3 + k * 0.9), (world.floorY - y) * (0.3 + k * 0.9), 0, Math.PI, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = Math.min(1, breach * 1.6); ctx.fillStyle = "#fecaca"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
     ctx.fillText("방어막 붕괴 · 성문 피해", width * 0.5, y - 30 - k * 12);
     ctx.shadowBlur = 0;
@@ -359,27 +359,45 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const ratio = world.barrierMaxHp > 0 ? world.barrierHp / world.barrierMaxHp : 0;
   const flash = world.barrierFlashMs > 0 ? world.barrierFlashMs / 220 : 0;
   const color = ratio > 0.5 ? "#67e8f9" : ratio > 0.25 ? "#fbbf24" : "#fb7185";
-  const g = ctx.createLinearGradient(0, y - 16, 0, y + 4);
-  g.addColorStop(0, "rgba(103,232,249,0)"); g.addColorStop(1, color);
-  ctx.globalAlpha = 0.26 + flash * 0.4 + Math.sin(t * 3) * 0.04;
-  ctx.fillStyle = g; ctx.fillRect(safeLeft, y - 16, width - safeLeft - safeRight, 20);
-  ctx.globalAlpha = 0.85 + flash * 0.15;
-  ctx.strokeStyle = flash > 0 ? "#ffffff" : color; ctx.lineWidth = 2 + flash * 2; ctx.shadowColor = color; ctx.shadowBlur = 10 + flash * 10;
-  ctx.beginPath(); ctx.moveTo(safeLeft, y); ctx.lineTo(width - safeRight, y); ctx.stroke();
-  // 흐르는 점선 — 살아 있는 결계
-  ctx.globalAlpha = 0.35; ctx.lineWidth = 1; ctx.setLineDash([10, 14]); ctx.lineDashOffset = -t * 30;
-  ctx.beginPath(); ctx.moveTo(safeLeft, y - 7); ctx.lineTo(width - safeRight, y - 7); ctx.stroke(); ctx.setLineDash([]);
-  if (flash > 0) {
-    ctx.globalAlpha = flash * 0.8; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(world.barrierHitX, y, 26 * (1.4 - flash), 8 * (1.4 - flash), 0, 0, Math.PI * 2); ctx.stroke();
+  // ── 돔 (2026-10-02, 황야의 무법자) — 바닥선을 중심으로 한 반타원. 안은 육각 격자, 테두리는 HP 색 ──
+  const cx = width * 0.5, rx = barrierRx(world), ry = world.floorY - y, baseY = world.floorY;
+  const dome = () => { ctx.beginPath(); ctx.ellipse(cx, baseY, rx, ry, 0, Math.PI, Math.PI * 2); };
+  // 채움 — 위로 갈수록 진한 결계빛
+  const g = ctx.createLinearGradient(0, y, 0, baseY);
+  g.addColorStop(0, color); g.addColorStop(0.55, "rgba(103,232,249,.10)"); g.addColorStop(1, "rgba(103,232,249,0)");
+  ctx.globalAlpha = 0.16 + flash * 0.3 + Math.sin(t * 3) * 0.03;
+  dome(); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  // 육각 격자 — 돔 안에만
+  ctx.save(); dome(); ctx.closePath(); ctx.clip();
+  ctx.globalAlpha = 0.14 + flash * 0.2; ctx.strokeStyle = color; ctx.lineWidth = 1;
+  const hr = 22, hw = hr * Math.sqrt(3), hh = hr * 1.5;
+  for (let row = -1; row * hh < ry + hh; row += 1) {
+    for (let col = -1; col * hw < width + hw; col += 1) {
+      const hx = col * hw + (row % 2 ? hw / 2 : 0) + ((t * 6) % hw), hy = baseY - row * hh;
+      ctx.beginPath();
+      for (let k = 0; k < 6; k += 1) { const ang = Math.PI / 6 + k * Math.PI / 3; const px = hx + hr * Math.cos(ang), py = hy + hr * Math.sin(ang); if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+      ctx.closePath(); ctx.stroke();
+    }
   }
-  // HP 막대 — 오른쪽 끝, 띠 바로 아래 (주인공 머리 위 공간)
-  const bw = 92, bx = width - safeRight - bw - 6, by = y + 8;
+  ctx.restore();
+  // 테두리
+  ctx.globalAlpha = 0.9 + flash * 0.1;
+  ctx.strokeStyle = flash > 0 ? "#ffffff" : color; ctx.lineWidth = 3 + flash * 2; ctx.shadowColor = color; ctx.shadowBlur = 12 + flash * 10;
+  dome(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  if (flash > 0) {
+    // 맞은 자리의 파문 — 돔 표면 위
+    const hy = barrierYAt(world, world.barrierHitX);
+    ctx.globalAlpha = flash * 0.8; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(world.barrierHitX, hy, 26 * (1.4 - flash), 10 * (1.4 - flash), 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  // HP 막대 — 돔 꼭대기 바로 아래 가운데
+  const bw = 112, bx = cx - bw * 0.5, by = y + 34;   // 꼭대기에 선 몬스터와 겹치지 않게 돔 안쪽으로
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(15,23,42,.8)"; ctx.fillRect(bx, by, bw, 12);
   ctx.fillStyle = color; ctx.fillRect(bx + 2, by + 2, (bw - 4) * ratio, 8);
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "900 10px system-ui"; ctx.textAlign = "right"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
-  ctx.fillText(`방어막 ${Math.ceil(world.barrierHp)}`, bx - 6, by + 10);
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "900 10px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
+  ctx.fillText(`방어막 ${Math.ceil(world.barrierHp)}`, cx, by + 10);
   ctx.restore();
 }
 

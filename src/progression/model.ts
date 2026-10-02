@@ -47,6 +47,8 @@ export type CharacterProgress = {
   expeditionShards: SkillShards;
   /** 장착한 원거리 무기 — 캐릭터는 그대로, 무기만 탈착한다. 계열이 맞는 스킬 쿨타임을 줄인다 */
   expeditionWeapon: RangedWeaponId;
+  /** 기본 사격 강화 레벨 0~10 — 골드로 올린다 (game/skills.ts basicShotCost, 2026-10-02) */
+  expeditionBasic: number;
   /** 원정 칩 레벨 (game/chips.ts) — 랜덤에 좌우되지 않는 영구 패시브 */
   expeditionChips: ChipLevels;
   /** 칩 슬롯에 끼운 것. 슬롯 수는 원정 최고 스테이지로 열린다 */
@@ -198,6 +200,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     expeditionSeals: 0,
     expeditionShards: emptyShards(),
     expeditionWeapon: "bow",
+    expeditionBasic: 0,
     expeditionChips: emptyChipLevels(),
     equippedChips: [null, null, null],
     expeditionSupplies: emptySupplyStock(),
@@ -438,6 +441,7 @@ export function normalizeCharacterProgress(
       return CHIPS.some((c) => c.id === v) ? (v as ChipId) : null;
     }),
     // 맨손은 없다 — 활만 쓰는 콘텐츠다. 예전 저장의 "none" 과 모르는 값은 장궁으로 (2026-10-01)
+    expeditionBasic: integer(raw.expeditionBasic, 0, SKILL_MAX_LEVEL),
     expeditionWeapon: RANGED_WEAPONS.some((w) => w.id === raw.expeditionWeapon)
       ? (raw.expeditionWeapon as RangedWeaponId)
       : base.expeditionWeapon,

@@ -26,7 +26,7 @@ export const STAGES: StageDef[] = [
     durationMs: 32_000,
     baseReward: 370,
     speedMul: 0.86,
-    spawnMul: 0.78,
+    spawnMul: 1.45,   // 0.78 → 1.45 (2026-10-02): 방어막이 긁히지도 않던 1스테이지에 압박을 — 봇 최저 76, 붕괴 0.2
     intro: "활이 알아서 몬스터를 쏜다 — 방어막에 닿기 전에 떨구고, 새는 놈은 옆으로 피해라. 떨어진 결정이 대장간 강화석이 된다",
     platforms: [],
     patterns: [
