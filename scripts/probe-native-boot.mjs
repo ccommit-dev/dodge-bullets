@@ -1,11 +1,11 @@
 // 네이티브 부팅 모의 (2026-10-02) — window.Capacitor.isNativePlatform 을 true 로 세워 Capacitor WebView 처럼 부팅시키고 허브까지 가는지 본다.
 // 실기기에서 "준비 중…"에 멈춘 두 원인(토스 브리지 무응답 · Preferences 프록시의 then)을 되돌리면 여기서 걸린다.
 //   node scripts/probe-native-boot.mjs [out.png]   (vite 5173)
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const BASE = "http://localhost:5173";
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 page.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 200)));

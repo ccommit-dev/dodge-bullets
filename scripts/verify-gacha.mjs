@@ -2,14 +2,14 @@
  * 뽑기·스킬·과금 정합 e2e (과금 점검 5종) — 실제 DOM·저장소로 검증한다.
  *   node scripts/verify-gacha.mjs   (vite dev 서버 5173 필요)
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 const errors = [];

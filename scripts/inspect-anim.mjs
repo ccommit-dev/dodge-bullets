@@ -7,7 +7,7 @@
  * 산출: scratch/anim/{rest,attack,monster}.png
  */
 import { mkdirSync } from "node:fs";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = "http://localhost:5173";
 const OUT = process.env.OUT ?? "store/anim-inspect";
@@ -45,7 +45,7 @@ const titans = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 420, height: 760, deviceScaleFactor: 2 });
 

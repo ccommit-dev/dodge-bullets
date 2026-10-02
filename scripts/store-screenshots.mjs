@@ -8,7 +8,7 @@
  * 그대로 렌더하므로 합성이 아니라 진짜 앱 화면이다.
  */
 import { mkdirSync } from "node:fs";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = "http://localhost:5173";
 const OUT = "store/screenshots";
@@ -88,7 +88,7 @@ async function shot(page, name) {
   console.log("shot:", name);
 }
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--force-device-scale-factor=3"] });
+const browser = await launchBrowser({ args: ["--force-device-scale-factor=3"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 360, height: 640, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
 

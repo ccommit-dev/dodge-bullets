@@ -2,14 +2,14 @@
  * 이벤트·특별 상점 실상품 · 뽑기 페이지 실정보 · 결제 미연동 안내 e2e.
  *   node scripts/verify-shop.mjs   (vite dev 서버 5173 필요)
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 const errors = [];

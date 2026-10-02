@@ -10,7 +10,7 @@
  *
  * 사용: node scripts/verify-anim-clip.mjs [--json]
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:5173";
 const H = "mock-local-dev";
@@ -102,7 +102,7 @@ async function probeOver(page, ms = 3000, step = 60) {
   return [...worst.values()].sort((a, b) => b.over - a.over);
 }
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));

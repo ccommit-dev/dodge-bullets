@@ -7,7 +7,7 @@
  * 헤드리스 크롬의 window.open 은 새 탭을 만들 뿐 WebView 처럼 현재 화면을 갈아치우지 않는다 — 그래서 window.open 호출 자체를 기록해
  * "앱에서 blob 을 열려고 했는가"를 본다 (Capacitor Bridge.launchIntent 는 blob 스킴을 WebView 안에서 연다).
  */
-import puppeteer from "puppeteer";
+import { launchBrowser } from "./launch-browser.mjs";
 
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
@@ -16,7 +16,7 @@ const ok = (name, cond, detail = "") => { console.log(`${cond ? "PASS" : "FAIL"}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = [];
 
-const browser = await puppeteer.launch({ headless: "shell", args: ["--no-sandbox", "--disable-gpu"] });
+const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
