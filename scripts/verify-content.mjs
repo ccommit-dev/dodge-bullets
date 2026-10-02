@@ -21,6 +21,7 @@ writeFileSync(entry, [
   `export * as input from "${root}/src/game/input";`,
   `export * as stages from "${root}/src/game/stages";`,
   `export * as skills from "${root}/src/game/skills";`,
+  `export * as skillShots from "${root}/src/game/skillShots";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
@@ -28,7 +29,7 @@ await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, p
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { tracks, rpg, bworld, arrows, world, shop, input, stages, skills } = await import(pathToFileURL(out).href);
+const { tracks, rpg, bworld, arrows, world, shop, input, stages, skills, skillShots } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -94,21 +95,48 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   const startY = boss ? boss.y : 0;
   let settledAt = -1, minY = 1e9, maxY = -1e9;
   const orbIds = new Set();
-  let orbHits = 0;
+  const orbMiss = [];
   for (let f = 0; f < 60 * 14 && boss && boss.active && !w.bossDefeated; f += 1) {
-    const before = w.barrierHits;
     world.updateWorld(w, 1 / 60, true, input.createInputState());
     w.barrierHp = w.barrierMaxHp;
     if (w.bossDefeated) break;
     if (settledAt < 0 && Math.abs(boss.y - arrows.bossHoverY(w)) < 24) settledAt = f;
     if (settledAt >= 0) { minY = Math.min(minY, boss.y); maxY = Math.max(maxY, boss.y); }
-    w.arrows.forEach((x, i) => { if (x.active && x.fromBoss) orbIds.add(i + ":" + Math.round(x.x)); });
-    if (w.barrierHits > before && w.lastHitCause === "boss") orbHits += 1;
+    // 새로 나온 마력탄마다 — 그대로 날아가면 플레이어 머리 위 돔(±80px)에 떨어지는가. (돔에 맞으면 방어막이 깎이는 것은 아래 방어막 블록이 따로 본다 —
+    // 여기선 플레이어 사격이 마력탄을 떨구기도 해서 명중 수가 실행마다 다르다)
+    w.arrows.forEach((x, i) => {
+      if (!x.active || !x.fromBoss || x.vy <= 0) return;
+      const id = i + ":" + x.bossTier + ":" + Math.round(x.vx);
+      if (orbIds.has(id)) return;
+      orbIds.add(id);
+      const landX = x.x + x.vx * ((arrows.barrierY(w) - x.y) / x.vy);
+      if (Math.abs(landX - w.player.x) > 80) orbMiss.push(Math.round(landX - w.player.x));
+    });
   }
   ok("대장은 화면 맨 위 밖에서 나타나 내려온다 (첫 위치가 화면 위 밖)", !!boss && startY < w.safeTop, `첫 y ${startY.toFixed(0)} · 화면 위 ${w.safeTop}`);
   ok("대장은 자리를 잡으면 화면 위쪽(1/3 안)에 머물고, 몸이 화면 폭보다 크다(5배)", settledAt >= 0 && maxY < w.height / 3 && arrows.bossSize(1) >= w.width, `y ${minY.toFixed(0)}~${maxY.toFixed(0)} · 크기 ${arrows.bossSize(1)} vs 폭 ${w.width}`);
-  ok("대장 마력탄이 돔에 맞아 방어막을 깎는다 (플레이어는 맞지 않는다)", orbIds.size > 0 && orbHits > 0 && w.player.hp === w.player.maxHp, `마력탄 ${orbIds.size} · 돔 명중 ${orbHits}`);
+  ok("대장 마력탄은 플레이어 머리 위 돔을 겨눈다 (플레이어는 맞지 않는다)", orbIds.size > 0 && orbMiss.length === 0 && w.player.hp === w.player.maxHp, `마력탄 ${orbIds.size} · 빗나감 ${orbMiss.slice(0, 4).join(",")}`);
   ok("기본 사격만으로 보스가 깎인다 (8초 안에 격추 수가 줄거나 격파)", w.bossDefeated || !boss || !boss.active || boss.bossCutsLeft < boss.bossMaxCuts, w.bossDefeated ? "격파" : boss ? `${boss.bossCutsLeft}/${boss.bossMaxCuts}` : "없음");
+}
+
+// ── 기본 화살은 주인공이 쥔 활에서 나간다 (2026-10-02, "기본 화살 애니메이션이 없고 활이 볼품없음") ──
+{
+  const w = mk(); w.rangedWeapon = "bow"; w.stageElapsedMs = 1000;
+  const m = w.arrows.find((x) => !x.active);
+  Object.assign(m, { active: true, warningMs: 0, reflected: false, boss: false, fromBoss: false, splitLevel: 0, kind: "normal", hp: 0, maxHp: 0, x: w.player.x + 60, y: 200, vx: 0, vy: 0, atBarrier: false, hitRadius: 8 });
+  w.basicTimer = 0;
+  let shot = null, hand = null;
+  for (let f = 0; f < 10 && !shot; f += 1) {
+    hand = skillShots.bowHand(w);
+    world.updateWorld(w, 1 / 60, true, input.createInputState()); w.stageElapsedMs = 1000;
+    shot = w.skillShots.find((x) => x.active && x.basic) ?? null;
+  }
+  // 그려지는 출발점(판정 위치 + drawOx/Oy) — 한 프레임 날아간 만큼(속도 × 1/60) + 활 몸 앞(BOW_REACH) 안이어야 한다.
+  // 판정 출발점은 예전 그대로(플레이어 중심 −14) — 옮기면 곡선·주간 게이트가 흔들린다 (skillShots.bowHand 주석)
+  const d = shot ? Math.hypot(shot.x + shot.drawOx - hand.x, shot.y + shot.drawOy - hand.y) : 1e9;
+  const sp = shot ? Math.hypot(shot.vx, shot.vy) : 0;
+  ok("기본 화살은 활 손(바라보는 쪽 가슴 앞)에서 나가는 것으로 그려진다 — 몸 한가운데가 아니다", !!shot && d <= skillShots.BOW_REACH + sp / 60 + 2 && Math.abs(hand.x - w.player.x) >= 10 && hand.y < w.player.y - 20, `거리 ${d.toFixed(1)} · 손 ${hand && hand.x.toFixed(0)},${hand && hand.y.toFixed(0)} · 플레이어 ${w.player.x.toFixed(0)},${w.player.y.toFixed(0)}`);
+  ok("쏘는 순간 반동 연출(shotFlashMs)이 켜진다 — 시위 떨림·번쩍임", w.shotFlashMs > 0, String(w.shotFlashMs));
 }
 
 // ── 성문 방어막 (2026-10-01, 아웃로 디펜스) — 몬스터는 방어막에 멈춰 HP 를 깎고, 붕괴하면 성문 피해 1 · 붙은 몬스터 소멸 · 방어막 복구 ──
