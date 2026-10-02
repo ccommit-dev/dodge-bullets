@@ -1115,7 +1115,8 @@ function App() {
   const handleRestorePurchases = async () => {
     showToast("구매 내역을 확인하는 중…", 6000);
     const r = await reconcileStore(userHashRef.current);
-    window.dispatchEvent(new CustomEvent("dodgebullets:store-reconciled", { detail: { ...r, handled: false } }));
+    // 바뀐 것이 있을 때만 사냥터에 알린다 — 없을 때 알리면 사냥터가 "0건 회수" 토스트를 띄웠다
+    if (r.granted || r.revoked || r.cores) window.dispatchEvent(new CustomEvent("dodgebullets:store-reconciled", { detail: { ...r, handled: false } }));
     setProgress(await loadCharacterProgress(userHashRef.current));
     showToast(r.granted || r.revoked ? `구매 ${r.granted}건 지급 · ${r.revoked}건 회수` : "되살릴 구매가 없습니다");
   };
