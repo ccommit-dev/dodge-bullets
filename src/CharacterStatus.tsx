@@ -25,7 +25,7 @@ import {
   computeIdleYield,
   idleCapHours,
 } from "./progression/idle";
-import { HUNTING_AREAS } from "./titans/model";
+import { HUNTING_AREAS, huntingArea } from "./titans/model";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
 import {
   PET_DEFS,
@@ -38,8 +38,11 @@ import {
 import { starMilestoneMultiplier, starMilestoneNext, totalStars } from "./progression/collection";
 import { TITLES } from "./economy/gemCatalog";
 import { renderShareCard, shareCard } from "./ui/shareCard";
+import { shareCardExtras } from "./ui/shareCardData";
 import { sheetFor } from "./titans/anim";
 import { MonsterArt, monsterAssetFor } from "./titans/SpriteArt";
+import { bestiaryEntries } from "./titans/bestiary";
+import { assetUrl } from "./asset";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { openMomentOffer } from "./economy/momentOffers";
@@ -236,14 +239,16 @@ export function CharacterStatus({
             type="button"
             className="share-card-btn"
             onClick={() => {
-              void renderShareCard({
+              void shareCardExtras(userHash, progress).then((extras) => renderShareCard({
+                ...extras,
+                backdrop: huntingArea(Math.max(1, progress.titanBestStage)).background,
                 headline: "모험가 기록",
-                subline: `Lv.${progress.level} · 사냥터 Stage ${progress.titanBestStage} · 원정 별 ${Object.values(progress.dodgeStars).reduce((a, b) => a + b, 0)}/12${cosmeticLabels.length ? ` · ${cosmeticLabels.join(" · ")}` : ""}`,
+                subline: `Lv.${progress.level} · 사냥터 Stage ${progress.titanBestStage}${cosmeticLabels.length ? ` · ${cosmeticLabels.join(" · ")}` : ""}`,
                 power: summary.combatPower,
                 titleName: progress.activeTitle ? TITLES[progress.activeTitle]?.name : undefined,
                 titleColor: progress.activeTitle ? TITLES[progress.activeTitle]?.color : undefined,
                 characterSheet: sheetFor(progress.activeCharacter, "idle"),
-              }).then(async (blob) => {
+              })).then(async (blob) => {
                 if (!blob) return;
                 const result = await shareCard(blob);
                 setGrowthMessage(result === "shared" ? "기록 카드를 공유했습니다" : result === "opened" ? "기록 카드를 새 탭에 열었습니다 — 길게 눌러 저장" : result === "shown" ? "기록 카드를 띄웠습니다 — 스크린샷으로 저장하세요" : "공유를 지원하지 않는 환경입니다");
@@ -385,6 +390,30 @@ export function CharacterStatus({
             );
           })}
         </div>
+
+        {/* 몬스터 얼굴 도감 (2026-10-06) — 사냥터·성문 방어의 일반 변종과 대장. 열린 지역의 것만 보인다 */}
+        {(() => {
+          const entries = bestiaryEntries();
+          const openAreas = HUNTING_AREAS.slice(0, Math.max(1, progress.pioneeredArea)).map((a) => a.id);
+          const seen = entries.filter((e) => openAreas.includes(e.area));
+          return (
+            <>
+              <div className="legacy-heading"><div><small>BESTIARY</small><strong>몬스터 얼굴</strong></div><span>{seen.length}/{entries.length} 발견</span></div>
+              <div className="bestiary-grid">
+                {entries.map((e) => {
+                  const open = openAreas.includes(e.area);
+                  return (
+                    <div key={e.art} className={`bestiary-chip ${e.boss ? "boss" : ""} ${open ? "seen" : "unseen"}`} data-art={e.art}>
+                      <img src={assetUrl(`titans/generated/monsters/${e.art}.png`)} alt="" aria-hidden="true" />
+                      <b>{open ? e.name : "???"}</b>
+                      <small>{HUNTING_AREAS.find((a) => a.id === e.area)?.name}{e.boss ? " · 대장" : ""}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
 
         <div className="legacy-heading">
           <div><small>PETS</small><strong>도감의 아이들</strong></div>

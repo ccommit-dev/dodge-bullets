@@ -38,7 +38,9 @@ import { track as trackEvent } from "./analytics/events";
 import { weeklyRanking } from "./beat/ranking";
 import { shadowPortrait } from "./events/shadowArena";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
-import { loadCharacterProgress } from "./progression/storage";
+import { loadCharacterProgress, qaGemsEnabled } from "./progression/storage";
+import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, mergeBeatCosmetics, ownsBeatItem, type BeatShopItem } from "./beat/shop";
+import { WalletBar } from "./ui/WalletBar";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -139,6 +141,25 @@ export function BeatGame({
   const [variants, setVariants] = useState<Record<string, BeatDifficulty>>({});
   const variantOf = (track: BeatTrackDef): BeatDifficulty => variants[track.id] ?? track.difficulty;
   const [rpg, setRpg] = useState<BeatRpgProgress | null>(null);
+  /** 커스텀 상점 (2026-10-06) — 지휘 북·구호. 값은 붉은 보석 */
+  const [cosmetics, setCosmetics] = useState<BeatCosmetics | null>(null);
+  const [gems, setGems] = useState(0);
+  const [customOpen, setCustomOpen] = useState(false);
+  const buyOrEquipBeatItem = async (item: BeatShopItem) => {
+    const c = cosmeticsRef.current;
+    if (!c) return;
+    const owned = ownsBeatItem(c, item);
+    if (!owned && gems < item.cost) { setHubMsg(`붉은 보석이 ${(item.cost - gems).toLocaleString()} 모자랍니다`); return; }
+    const next = await updateCharacterProgress(userHash, (current) => {
+      if (ownsBeatItem(current.beatCosmetics, item)) return { ...current, beatCosmetics: equipBeatItem(current.beatCosmetics, item) };
+      if (current.redGems < item.cost) return current;
+      return { ...current, redGems: current.redGems - item.cost, beatCosmetics: grantBeatItem(current.beatCosmetics, item) };
+    });
+    cosmeticsRef.current = next.beatCosmetics;
+    setCosmetics(next.beatCosmetics);
+    setGems(next.redGems);
+    setHubMsg(owned ? `${item.name} 장착` : `${item.name} 구매 · 장착 — 다음 곡부터`);
+  };
   const [hubMsg, setHubMsg] = useState("");
   // 곡의 오디오 시계를 판정 기준으로 직접 사용한다. 별도 수동 싱크 UI는 제공하지 않는다.
   const calibrationMs = 0;
@@ -341,13 +362,21 @@ export function BeatGame({
 
   useEffect(() => {
     void (async () => {
-      const [u, c, r] = await Promise.all([
+      const [u, legacy, r, prog] = await Promise.all([
         loadBeatUnlock(userHash),
         loadBeatCosmetics(userHash),
         loadBeatRpg(userHash),
+        loadCharacterProgress(userHash),
       ]);
       setUnlocked(u);
+      // 커스텀 소유는 진행도 저장으로 옮겼다 (2026-10-06) — 옛 비트 전용 저장의 것을 한 번 합친다
+      const c = mergeBeatCosmetics(prog.beatCosmetics, legacy);
+      if (JSON.stringify(c) !== JSON.stringify(prog.beatCosmetics)) {
+        await updateCharacterProgress(userHash, (current) => ({ ...current, beatCosmetics: mergeBeatCosmetics(current.beatCosmetics, legacy) }));
+      }
       cosmeticsRef.current = c;
+      setCosmetics(c);
+      setGems(prog.redGems);
       setRpg(r);
       rpgRef.current = r;
       await saveBeatRpg(userHash, r);
@@ -706,7 +735,42 @@ export function BeatGame({
             <p className="subtitle">30초~2분 · 점수와 콤보로 실력을 시험하는 기록 도전 콘텐츠 — 곡을 선택하고 방향 노트로 보스를 격파하세요.</p>
             {/* 노트 종류 안내 — 손 게임 기준 (펌프의 발판 노트를 4레인 손 입력으로) */}
             <p className="beat-note-legend"><b>탭</b> 한 번 · <b>홀드</b> 꼬리까지 누르기 · <b>점프</b> 두 레인 동시 · <b>홀드 점프</b> 두 레인 동시 홀드 · <b>롤</b> 두 레인 교대 연타</p>
-            <p className="score-line">골드 {coins.toLocaleString()} · 명성 {rpg.fame}</p>
+            {/* 지갑 줄 — 골드·보석·명성 (2026-10-06, 예전 "골드 n · 명성 n" 한 줄) */}
+            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gold", amount: coins }, { kind: "gem", amount: gems }, { kind: "fame", amount: rpg.fame }]} onGemTap={() => setCustomOpen(true)} />
+            {/* 커스텀 상점 — 지휘 북(레일 빛) · 구호(노트 장식). 사냥터 상점 '외형' 탭과 같은 아이템 */}
+            {cosmetics && (
+              <div className={`beat-custom ${customOpen ? "open" : ""}`}>
+                <button type="button" className="beat-custom-toggle" aria-expanded={customOpen} onClick={() => setCustomOpen((v) => !v)}>
+                  <span className="beat-custom-now">
+                    <img src={beatItemIcon({ kind: "ring", id: cosmetics.ringSkin })} alt="" />
+                    <img src={beatItemIcon({ kind: "spike", id: cosmetics.spikeSkin })} alt="" />
+                  </span>
+                  <b>커스텀 상점</b>
+                  <small>{BEAT_SHOP_ITEMS.find((i) => i.kind === "ring" && i.id === cosmetics.ringSkin)?.name} · {BEAT_SHOP_ITEMS.find((i) => i.kind === "spike" && i.id === cosmetics.spikeSkin)?.name}</small>
+                  <i>{customOpen ? "접기" : "열기"}</i>
+                </button>
+                {customOpen && (["ring", "spike"] as const).map((kind) => (
+                  <div key={kind} className="beat-custom-group">
+                    <p>{kind === "ring" ? "지휘 북 — 판정 레일·패드의 빛" : "구호 — 내 노트 장식"}</p>
+                    <div className="beat-custom-grid">
+                      {BEAT_SHOP_ITEMS.filter((i) => i.kind === kind).map((item) => {
+                        const owned = ownsBeatItem(cosmetics, item);
+                        const on = equippedBeatItem(cosmetics, item);
+                        return (
+                          <button key={item.id} type="button" data-beat-item={`${item.kind}-${item.id}`} className={`beat-custom-item ${owned ? "owned" : ""} ${on ? "on" : ""}`}
+                            disabled={on || (!owned && gems < item.cost)} onClick={() => void buyOrEquipBeatItem(item)}>
+                            <img src={beatItemIcon(item)} alt="" />
+                            <b>{item.name}</b>
+                            <small>{item.desc}</small>
+                            <em>{on ? "장착 중" : owned ? "장착" : `💎 ${item.cost}`}</em>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {/* 주간 랭킹 (계획안 §7 · P1) — 로컬 기록 + 시드 Mock, 서버 랭킹은 P3 */}
             {(() => {
               const rk = weeklyRanking(rpg, userHash);

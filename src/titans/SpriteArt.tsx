@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
+import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
 const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
 
@@ -168,6 +169,12 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
   return { "--weapon-dx": `${a.dx}%`, "--weapon-dy": `${a.dy}%`, "--weapon-drot": `${a.rot}deg` } as CSSProperties;
 }
 
+/** 새 대장 10장 좌/우 여백 — scripts/place-monster.mjs --size 1024 실측 (2026-10-06) */
+const BOSS_MARGINS_20261006: Record<string, [number, number]> = {
+  "thorn-boar-king": [0.05, 0.05], "ancient-treant": [0.04, 0.04], "ruin-sentinel": [0.08, 0.08], "magma-golem": [0.03, 0.03], "void-lich": [0.05, 0.05], "goblin-warlord": [0.04, 0.04],
+  "spider-queen": [0.01, 0.01], minotaur: [0.03, 0.03], "fire-demon": [0.05, 0.05], "bone-dragon": [0.03, 0.03],
+};
+
 /** 몬스터 프레임 (계획안 B) — idle 원본 · hit/defeat는 scripts/make-monster-states.mjs가 파생한 <name>-hit/-defeat.png */
 export type MonsterFrameState = "idle" | "hit" | "defeat";
 /** 몬스터 원화의 좌/우 투명 여백 비율 (scripts 로 실측, 2026-09-14) — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다 */
@@ -177,13 +184,22 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   "abyss-titan": [0.02, 0.02], dragon: [0.04, 0.02], "flame-wyvern-clean": [0.2, 0.11], goblin: [0.04, 0.04],
   "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1],
   ogre: [0.05, 0.05], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14], "wolf-king-clean": [0.18, 0.13],
+  // 2026-10-06 새 원화 — scripts/place-monster.mjs 실측
+  "magma-imp": [0.08, 0.08], "void-imp": [0.09, 0.09], "goblin-shaman": [0.10, 0.09], "skeleton-goblin": [0.08, 0.08], "frost-wolf": [0.10, 0.10],
+  hellhound: [0.05, 0.05], "stone-troll": [0.04, 0.04], "armored-ogre": [0.03, 0.03], "lava-drake": [0.06, 0.06], "storm-drake": [0.02, 0.02],
+  ...BOSS_MARGINS_20261006,
 };
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];
 }
 
-export function monsterAssetFor(kind: TitanMonsterKind, area: HuntingAreaDef, boss: boolean, golden: boolean, state: MonsterFrameState = "idle"): string {
+export function monsterAssetFor(kind: TitanMonsterKind, area: HuntingAreaDef, boss: boolean, golden: boolean, state: MonsterFrameState = "idle", stage?: number): string {
+  // 사냥터 전장은 스테이지를 넘겨 지역 변종·보스 교대를 고른다 (2026-10-06). 도감·펫·이벤트는 stage 없이 대표 그림
+  if (stage !== undefined && !golden) {
+    const v = boss ? huntBossVariant(area, stage) : kind !== "boss" ? huntMonsterVariant(kind, area, stage) : null;
+    if (v) { const base = assetUrl(`titans/generated/monsters/${v.art}.png`); return state === "idle" ? base : base.replace(/\.png$/, `-${state}.png`); }
+  }
   // kind "boss"인데 boss=false는 펫(타이탄의 그림자) 렌더다 — 심연 타이탄 아트로 고정한다.
   // MONSTER_ASSET에는 boss 키가 없어 그대로 두면 src가 undefined로 깨진다.
   const base = golden
@@ -200,21 +216,24 @@ export function MonsterArt({
   boss,
   golden = false,
   state = "idle",
+  stage,
 }: {
   kind: TitanMonsterKind;
   area: HuntingAreaDef;
   boss: boolean;
   golden?: boolean;
   state?: MonsterFrameState;
+  /** 사냥터 스테이지 — 주면 지역 변종·보스 교대 그림 */
+  stage?: number;
 }) {
-  const idle = monsterAssetFor(kind, area, boss, golden, "idle");
-  const asset = monsterAssetFor(kind, area, boss, golden, state);
+  const idle = monsterAssetFor(kind, area, boss, golden, "idle", stage);
+  const asset = monsterAssetFor(kind, area, boss, golden, state, stage);
   // 세 프레임을 모두 마운트해 두고 보이는 것만 바꾼다 — 상태 전환 순간 이미지 로딩으로 깜빡이지 않게
   return (
     <div key={idle} className={`titan-monster-art frame-${state}`}>
       <img src={idle} alt="" className={state === "idle" ? "on" : ""} />
-      <img src={monsterAssetFor(kind, area, boss, golden, "hit")} alt="" className={state === "hit" ? "on" : ""} aria-hidden="true" />
-      <img src={monsterAssetFor(kind, area, boss, golden, "defeat")} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
+      <img src={monsterAssetFor(kind, area, boss, golden, "hit", stage)} alt="" className={state === "hit" ? "on" : ""} aria-hidden="true" />
+      <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
       <span className="monster-asset-current" data-src={asset} hidden />
     </div>
   );
@@ -411,4 +430,18 @@ function AllyWeapon({ id: rawId, anchor }: { id: TitanHeroId; anchor?: CSSProper
       )}
     </svg>
   );
+}
+
+/**
+ * 동료 대기 프레임의 원본 위치 — 캔버스(공유 카드)에서 자를 때 쓴다 (allyFrameStyle 과 같은 분기 순서, 2026-10-06).
+ * cols·rows 가 1 이면 낱장 PNG. wide 면 셀이 가로 1.5:1 이라 가운데 정사각만 쓰면 된다
+ */
+export function allyIdleCell(id: TitanHeroId, skin?: string): { src: string; cols: number; rows: number; row: number; wide: boolean } {
+  const skinDef = skin ? ALLY_SKINS[skin] : undefined;
+  if (skinDef?.ally === id && skin && SKIN_ROW[skin] !== undefined) return { src: SKIN_ATLAS, cols: 4, rows: SKIN_ROWS, row: SKIN_ROW[skin], wide: true };
+  if (skinDef?.ally === id && skin && SKIN_SPECIAL_ROW[skin] !== undefined) return { src: SKIN_SPECIAL_ATLAS, cols: 4, rows: SKIN_SPECIAL_ROWS, row: SKIN_SPECIAL_ROW[skin], wide: false };
+  if (VARIANT_ROW[id] !== undefined) return { src: VARIANT_ATLAS, cols: 4, rows: VARIANT_ROWS, row: VARIANT_ROW[id]!, wide: true };
+  if (SPECIAL_ROW[id] !== undefined) return { src: SPECIAL_ATLAS, cols: 4, rows: 4, row: SPECIAL_ROW[id]!, wide: false };
+  if (BASE_ROW[id] !== undefined) return { src: ALLY_ANIMATION_ATLAS, cols: 4, rows: 6, row: BASE_ROW[id]!, wide: true };
+  return { src: STANDALONE_ALLY[id] ?? ALLY_SHEET, cols: 1, rows: 1, row: 0, wide: false };
 }

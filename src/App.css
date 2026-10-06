@@ -4066,3 +4066,101 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .pioneer-row.stage-boss .pioneer-area { color: #f87171; font-weight: 900; }
 .pioneer-row.stage-midboss .pioneer-area { color: #fbbf24; font-weight: 800; }
 .pioneer-row:disabled { cursor: default; }
+/* 원정 지도 — 본선 줄 + 갈림길 줄 (2026-10-06) */
+.route-map { display: grid; gap: 4px; margin: 2px 0 6px; }
+.route-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px; align-items: stretch; gap: 0; }
+.route-row .pioneer-row { grid-template-columns: 30px minmax(0, 1fr) auto; margin: 0; }
+.route-side { position: relative; display: flex; align-items: center; padding-left: 12px; }
+.route-side.has-node.link-main::before { content: ""; position: absolute; left: 0; top: 50%; width: 12px; border-top: 2px dashed rgba(251, 191, 36, .7); }
+.route-side.has-node.link-up::before, .route-side.pipe::before { content: ""; position: absolute; left: calc(12px + 46px); top: -4px; height: calc(50% + 4px); border-left: 2px dashed rgba(251, 191, 36, .7); }
+.route-side.pipe::before { height: calc(100% + 8px); }
+.route-node { position: relative; z-index: 1; width: 100%; min-height: 44px; display: grid; gap: 1px; padding: 5px 6px; border-radius: 10px; border: 1px solid rgba(251, 191, 36, .45); background: linear-gradient(180deg, rgba(66, 32, 6, .75), rgba(15, 23, 42, .85)); color: #fde68a; font: inherit; text-align: left; cursor: pointer; }
+.route-node small { font-size: 9px; font-weight: 900; letter-spacing: .02em; color: #fbbf24; }
+.route-node b { font-size: 10.5px; font-weight: 900; color: #fff7ed; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-node i { font-style: normal; font-size: 9px; font-weight: 800; }
+.route-node .route-reward { color: #fca5a5; }
+.route-node .route-stars { color: #fde047; letter-spacing: 1px; }
+.route-node.route-elite { border-color: rgba(167, 139, 250, .55); background: linear-gradient(180deg, rgba(46, 16, 101, .75), rgba(15, 23, 42, .85)); }
+.route-node.route-elite small { color: #c4b5fd; }
+.route-node.route-secret { border-color: rgba(248, 113, 113, .7); background: linear-gradient(180deg, rgba(127, 29, 29, .8), rgba(15, 23, 42, .85)); box-shadow: 0 0 12px rgba(248, 113, 113, .25); }
+.route-node.route-secret small { color: #fca5a5; }
+.route-node.cleared { border-style: solid; box-shadow: inset 0 0 0 1px rgba(253, 224, 71, .5); }
+.route-node.locked { opacity: .5; cursor: default; filter: grayscale(.6); }
+.branch-note { color: #fde68a; }
+/* 지갑 줄 — 돈을 쓰는 화면마다 (2026-10-06) */
+.wallet-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 6px auto 8px; width: 100%; max-width: 560px; }
+.wallet-item { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 10px 4px 6px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, .28); background: rgba(8, 15, 30, .78); color: #e2e8f0; font: inherit; }
+.wallet-item img, .wallet-item .currency-icon { width: 22px; height: 22px; flex: 0 0 22px; object-fit: contain; }
+.wallet-text { display: grid; line-height: 1.05; text-align: left; }
+.wallet-text small { font-size: 9px; font-weight: 800; color: #94a3b8; letter-spacing: .02em; }
+.wallet-text strong { font-size: 14px; font-weight: 950; color: #fde68a; font-variant-numeric: tabular-nums; }
+.wallet-gem { border-color: rgba(248, 113, 113, .6); background: linear-gradient(180deg, rgba(127, 29, 29, .55), rgba(8, 15, 30, .85)); }
+.wallet-gem .wallet-text strong { color: #fca5a5; }
+.wallet-gem .wallet-text small { color: #fecaca; }
+button.wallet-gem { cursor: pointer; padding-right: 24px; }
+.wallet-plus { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; display: grid; place-items: center; border-radius: 50%; background: #ef4444; color: #fff; font-style: normal; font-size: 12px; font-weight: 900; line-height: 1; }
+.wallet-test { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: rgba(148, 163, 184, .25); color: #cbd5e1; font-style: normal; font-size: 8px; font-weight: 900; vertical-align: middle; }
+.wallet-stone .wallet-text strong { color: #93c5fd; }
+.wallet-seal .wallet-text strong { color: #c4b5fd; }
+/* 사냥터 머리 보석 칩 — 붉게, 크게 */
+.titans-wallet .titans-gem strong { color: #fca5a5; font-size: 15px; }
+.titans-wallet .titans-gem { cursor: pointer; }
+/* 구매 추천 (2026-10-06) */
+.battle-alert.tone-buy { border-color: rgba(248, 113, 113, .7); background: linear-gradient(90deg, rgba(127, 29, 29, .88), rgba(67, 20, 7, .82)); animation: advice-pulse 2.4s ease-in-out infinite; }
+.battle-alert.tone-buy small { color: #fecaca; }
+@keyframes advice-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); } 50% { box-shadow: 0 0 14px 2px rgba(248, 113, 113, .45); } }
+@media (prefers-reduced-motion: reduce) { .battle-alert.tone-buy { animation: none; } }
+.advice-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; background: rgba(2, 6, 23, .6); }
+.advice-sheet { width: min(100%, 560px); max-height: 82vh; overflow: auto; padding: 14px 14px calc(16px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; border: 1px solid rgba(248, 113, 113, .45); background: linear-gradient(180deg, #1c1020, #0b1220); color: #e2e8f0; }
+.advice-sheet header { position: relative; display: grid; gap: 2px; padding-right: 40px; }
+.advice-sheet header b { font-size: 17px; font-weight: 950; color: #fff7ed; }
+.advice-sheet header small { font-size: 11px; color: #94a3b8; font-weight: 700; }
+.advice-sheet header .hub-sheet-close { position: absolute; right: 0; top: 0; }
+.advice-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.advice-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, .25); background: rgba(15, 23, 42, .75); }
+.advice-row.cur-gems { border-color: rgba(248, 113, 113, .5); }
+.advice-row.goal { border-style: dashed; }
+.advice-rank { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: #fbbf24; color: #1c1917; font-weight: 950; font-size: 13px; }
+.advice-row.goal .advice-rank { background: #334155; color: #e2e8f0; }
+.advice-body { display: grid; gap: 2px; min-width: 0; }
+.advice-body b { font-size: 13.5px; font-weight: 900; color: #f8fafc; }
+.advice-body small { font-size: 11px; color: #cbd5e1; line-height: 1.35; }
+.advice-body em { font-style: normal; font-size: 11px; font-weight: 800; color: #fde68a; }
+.advice-row button { min-width: 56px; min-height: 40px; padding: 8px 12px; border-radius: 12px; border: 0; background: linear-gradient(180deg, #f59e0b, #ea580c); color: #1c1917; font: inherit; font-weight: 950; }
+.advice-inline { display: grid; gap: 1px; width: calc(100% - 16px); margin: 0 8px 8px; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(248, 113, 113, .5); background: linear-gradient(90deg, rgba(127, 29, 29, .6), rgba(15, 23, 42, .7)); color: #fee2e2; text-align: left; font: inherit; }
+.advice-inline small { font-size: 10px; font-weight: 900; color: #fca5a5; }
+.advice-inline b { font-size: 13px; font-weight: 900; color: #fff; }
+.advice-inline em { font-style: normal; font-size: 11px; color: #fecaca; }
+.hub-sheet-wallet { margin: 2px auto 6px; }
+/* 비트 커스텀 상점 (2026-10-06) */
+.beat-custom { width: 100%; margin: 4px 0 10px; border-radius: 16px; border: 1px solid rgba(192, 132, 252, .45); background: linear-gradient(180deg, rgba(59, 7, 100, .55), rgba(15, 23, 42, .78)); }
+.beat-custom-toggle { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: 10px; padding: 10px 12px; border: 0; background: none; color: #f5f3ff; font: inherit; text-align: left; cursor: pointer; }
+.beat-custom-toggle b { font-size: 14px; font-weight: 950; }
+.beat-custom-toggle small { grid-column: 2; font-size: 11px; color: #ddd6fe; }
+.beat-custom-toggle i { grid-row: 1 / span 2; grid-column: 3; font-style: normal; font-size: 11px; font-weight: 900; color: #e9d5ff; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(233, 213, 255, .4); }
+.beat-custom-now { grid-row: 1 / span 2; display: flex; }
+.beat-custom-now img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+.beat-custom-now img + img { margin-left: -8px; }
+.beat-custom-group { padding: 0 10px 10px; }
+.beat-custom-group > p { margin: 4px 2px 6px; font-size: 11.5px; font-weight: 900; color: #e9d5ff; text-align: left; }
+.beat-custom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.beat-custom-item { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, .3); background: rgba(15, 23, 42, .7); color: #e2e8f0; font: inherit; cursor: pointer; }
+.beat-custom-item img { width: 46px; height: 46px; object-fit: contain; }
+.beat-custom-item b { font-size: 11px; font-weight: 900; }
+.beat-custom-item small { font-size: 9.5px; color: #94a3b8; line-height: 1.25; min-height: 24px; }
+.beat-custom-item em { font-style: normal; font-size: 11px; font-weight: 950; color: #fca5a5; }
+.beat-custom-item.owned em { color: #a7f3d0; }
+.beat-custom-item.on { border-color: rgba(253, 224, 71, .75); box-shadow: inset 0 0 0 1px rgba(253, 224, 71, .5); }
+.beat-custom-item.on em { color: #fde047; }
+.beat-custom-item:disabled { cursor: default; }
+.beat-custom-item:disabled:not(.on) { opacity: .55; }
+.beat-custom-thumb { width: 52px; height: 52px; object-fit: contain; flex: 0 0 52px; }
+/* 몬스터 얼굴 도감 (2026-10-06) */
+.bestiary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; margin: 4px 0 14px; }
+.bestiary-chip { display: grid; justify-items: center; gap: 1px; padding: 6px 4px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, .22); background: rgba(15, 23, 42, .6); }
+.bestiary-chip img { width: 64px; height: 64px; object-fit: contain; object-position: center bottom; }
+.bestiary-chip b { font-size: 10.5px; font-weight: 900; color: #e2e8f0; text-align: center; line-height: 1.2; }
+.bestiary-chip small { font-size: 9px; color: #94a3b8; }
+.bestiary-chip.boss { border-color: rgba(248, 113, 113, .45); background: linear-gradient(180deg, rgba(127, 29, 29, .35), rgba(15, 23, 42, .7)); }
+.bestiary-chip.unseen img { filter: brightness(0) opacity(.45); }
+.bestiary-chip.unseen b { color: #64748b; }

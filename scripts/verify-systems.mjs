@@ -38,10 +38,13 @@ writeFileSync(entry, [
   `export * as dodgeOps from "${root}/src/game/expeditionOps";`,
   `export * as towerTickets from "${root}/src/game/towerTickets";`,
   `export * as forgeModel from "${root}/src/forge/model";`,
+  `export * as advice from "${root}/src/economy/purchaseAdvice";`,
+  `export * as beatShop from "${root}/src/beat/shop";`,
+  `export * as bestiary from "${root}/src/titans/bestiary";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1213,6 +1216,56 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
     /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
+}
+
+// ── 2026-10-06: 구매 추천 · 비트 커스텀 · 갈림길 저장 ──
+{
+  const save = { gold: 0, heroes: { ...model.emptyHeroLevels?.() ?? {} , mia: 5 }, equipmentTraining: { weaponMastery: 1, shoulderMastery: 0 } };
+  const poor = prog.normalizeCharacterProgress({ ...base, level: 20, redGems: 0, sharedCoins: 0, enhancementMaterials: 0, expeditionSeals: 0, partyIds: ["mia"] });
+  const listPoor = advice.purchaseAdvice(poor, save, 0);
+  ok("구매 추천: 빈 지갑이면 살 수 있는 것이 없고, 가장 가까운 목표 하나를 돌려준다(없으면 null)", advice.topAffordable(listPoor).length === 0 && listPoor.every((a) => !a.affordable), String(advice.closestGoal(listPoor)?.title ?? "null"));
+  const rich = prog.normalizeCharacterProgress({ ...base, level: 20, redGems: 5000, sharedCoins: 9e9, enhancementMaterials: 99999, expeditionSeals: 999, partyIds: ["mia"], towerOpen: true, towerTickets: 0 });
+  const listRich = advice.purchaseAdvice(rich, { ...save, gold: 9e12 }, 0);
+  const top = advice.topAffordable(listRich, 3);
+  ok("구매 추천: 재화가 넉넉하면 상위 3개가 모두 살 수 있고, 효과 순(새 스킬 무기 배우기가 맨 앞)", top.length === 3 && top[0].id.startsWith("learn:") && top.every((a, i, arr) => i === 0 || arr[i - 1].priority >= a.priority), top.map((a) => a.id).join(","));
+  ok("구매 추천: 실결제(₩)·외형 상품은 추천하지 않는다 — 통화는 사냥터 골드·골드·보석·강화석·인장·조각만", listRich.every((a) => ["huntGold", "gold", "gems", "stones", "seals", "shards"].includes(a.currency)) && !listRich.some((a) => /skin|외형|칭호|테마/.test(a.id + a.title)));
+  ok("구매 추천: 등반권은 성벽이 열렸고 오늘 표를 다 썼을 때만", listRich.some((a) => a.id === "gems:tower") && !advice.purchaseAdvice({ ...rich, towerTickets: 2 }, save, 0).some((a) => a.id === "gems:tower") && !advice.purchaseAdvice({ ...rich, towerOpen: false }, save, 0).some((a) => a.id === "gems:tower"));
+  const fc = dodgeSkills.weaponForgeCost(0);
+  const half = prog.normalizeCharacterProgress({ ...base, level: 1, sharedCoins: Math.floor(fc.gold / 2), enhancementMaterials: fc.stones * 2, partyIds: ["mia"] });
+  const goal = advice.closestGoal(advice.purchaseAdvice(half, save, 0));
+  ok("구매 추천: 못 사면 모인 비율과 모자란 양(\"골드 N 더\")을 알려 준다", !!goal && goal.ratio > 0 && goal.ratio < 1 && /더$/.test(advice.shortfallLabel(goal, half, save)), goal ? `${goal.title} ${Math.round(goal.ratio * 100)}% · ${advice.shortfallLabel(goal, half, save)}` : "");
+
+  // 비트 커스텀
+  const c0 = beatShop.emptyBeatCosmetics();
+  const gold = beatShop.BEAT_SHOP_ITEMS.find((i) => i.kind === "ring" && i.id === "gold");
+  const c1 = beatShop.grantBeatItem(c0, gold);
+  ok("비트 커스텀: 사면 소유 + 바로 장착 · 기본 아이템은 공짜로 항상 소유", c1.ownedRings.includes("gold") && c1.ringSkin === "gold" && beatShop.BEAT_SHOP_ITEMS.filter((i) => i.cost === 0).every((i) => beatShop.ownsBeatItem(c0, i)));
+  ok("비트 커스텀: 안 산 것은 장착되지 않는다", beatShop.equipBeatItem(c0, gold).ringSkin === "neon");
+  const legacy = { ...c0, ownedSpikes: ["triangle", "star"], spikeSkin: "star" };
+  const merged = beatShop.mergeBeatCosmetics(c1, legacy);
+  ok("비트 커스텀: 옛 비트 전용 저장과 합치면 소유는 합집합 · 장착은 둘 다 살린다", merged.ownedRings.includes("gold") && merged.ownedSpikes.includes("star") && merged.ringSkin === "gold" && merged.spikeSkin === "star", JSON.stringify(merged));
+  const np = prog.normalizeCharacterProgress({ ...base, beatCosmetics: { ringSkin: "ember", spikeSkin: "bolt", ownedRings: ["neon"], ownedSpikes: ["triangle", "bolt"] } });
+  ok("진행도 정규화: 비트 커스텀 — 안 산 북 장착은 기본으로 · 산 구호는 유지", np.beatCosmetics.ringSkin === "neon" && np.beatCosmetics.spikeSkin === "bolt", JSON.stringify(np.beatCosmetics));
+  ok("비트 커스텀: 아이콘이 모두 있다 (public/beat/custom)", beatShop.BEAT_SHOP_ITEMS.every((i) => existsSync(`${root}/public/beat/custom/${i.kind}-${i.id}.png`)), beatShop.BEAT_SHOP_ITEMS.filter((i) => !existsSync(`${root}/public/beat/custom/${i.kind}-${i.id}.png`)).map((i) => i.kind + "-" + i.id).join(","));
+  // 몬스터 ×3 — 새 원화 20장이 모두 파일·피격·처치 프레임·여백을 갖고, 어딘가에서 실제로 그려진다
+  const drawSrc = readFileSync(root + "/src/game/draw.ts", "utf8");
+  const spMod = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
+  const usedArts = new Set([...bestiary.bestiaryEntries().map((e) => e.art), ...stages.STAGES.map((x) => x.bossArt).filter(Boolean), ...stages.BRANCH_STAGES.map((x) => x.bossArt).filter(Boolean)]);
+  const missing = bestiary.NEW_MONSTER_ARTS.filter((a) => ["", "-hit", "-defeat"].some((suf) => !existsSync(root + "/public/titans/generated/monsters/" + a + suf + ".png")));
+  ok("몬스터 ×3: 새 원화 20장 — idle·피격·처치 프레임 파일이 모두 있다", bestiary.NEW_MONSTER_ARTS.length === 20 && missing.length === 0, missing.join(","));
+  const unused = bestiary.NEW_MONSTER_ARTS.filter((a) => !usedArts.has(a) && !drawSrc.includes('"' + a + '"'));
+  ok("몬스터 ×3: 새 원화 20장 모두 사냥터·성문 방어 어딘가에서 그려진다 (안 쓰는 잔재 없음)", unused.length === 0, unused.join(","));
+  const marginMissing = bestiary.NEW_MONSTER_ARTS.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; });
+  ok("몬스터 ×3: 새 원화마다 실측 여백(기본값 0.15 아님) — 근접 동료가 허공에 서지 않게", marginMissing.length === 0, marginMissing.join(","));
+  // 성문 방어 장별 변종 표·중간 보스·비밀 대장이 가리키는 그림이 모두 파일로 있다 (없으면 캔버스에 빈칸)
+  const variantBlock = drawSrc.slice(drawSrc.indexOf("= {", drawSrc.indexOf("export const MONSTER_VARIANTS")), drawSrc.indexOf("};", drawSrc.indexOf("export const MONSTER_VARIANTS")));
+  const variantArts = [...new Set([...variantBlock.matchAll(/"([a-z][a-z0-9-]+)"/g)].map((m) => m[1]))];
+  const gateArts = [...variantArts, ...stages.STAGES.map((x) => x.bossArt).filter(Boolean), ...stages.BRANCH_STAGES.map((x) => x.bossArt).filter(Boolean)];
+  const gateMissing = gateArts.filter((a) => !existsSync(root + "/public/titans/generated/monsters/" + a + ".png"));
+  ok("성문 방어: 장별 변종(6종 × 5장) · 중간 보스 5 · 비밀 대장 5 그림이 모두 있다", variantArts.length >= 12 && gateMissing.length === 0, gateMissing.join(",") || variantArts.length + "종");
+  ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자)", bestiary.bestiaryEntries().length === 30, String(bestiary.bestiaryEntries().length));
+  const nb = prog.normalizeCharacterProgress({ ...base, dodgeBranches: { "1-T": 3, "9-X": 2, "2-S": 7, junk: 1 } });
+  ok("진행도 정규화: 갈림길 별 — 알려진 키만 · 0~3", nb.dodgeBranches["1-T"] === 3 && nb.dodgeBranches["2-S"] === 3 && !("9-X" in nb.dodgeBranches) && !("junk" in nb.dodgeBranches), JSON.stringify(nb.dodgeBranches));
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

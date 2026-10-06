@@ -96,7 +96,7 @@ export type BeatWorld = {
   lastSound: BeatSound | null;
   nextSound: BeatSound;
   timingHint: number;
-  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | "HOLD ▸ 유지" | `JUMP ${string}` | "";
+  judgeText: "PERFECT" | "GREAT" | "GOOD" | "CLUTCH" | "MISS" | "PERFECT ♥" | "GREAT ♥" | "HOLD" | "HOLD ♥" | "HOLD ▸ 유지" | "HOLD 완료!" | "HOLD 완료 ♥" | "HOLD 끊김" | `JUMP ${string}` | "";
   judgeMs: number;
   stageIndex: number;
   stageBannerMs: number;
@@ -117,6 +117,14 @@ export type BeatWorld = {
   /** 홀드 점프의 두 번째 레인 (없으면 -1) */
   holdLane2: number;
   holdEndStep2: number;
+  /** 롱노트 머리 스텝 — 유지 진행률(머리 → 꼬리) 계산용 (2026-10-06) */
+  holdStartStep: number;
+  holdStartStep2: number;
+  /**
+   * 롱노트 결과 연출 (2026-10-06, 사용자: "HOLD 잘되고 있는지 실패한건지 더 가시화") —
+   * done = 꼬리까지 유지(금빛 고리), break = 일찍 뗌(붉은 금·"끊김"). ms 는 남은 연출 시간
+   */
+  holdFx: Array<{ lane: number; kind: "done" | "break"; ms: number; progress: number }>;
   /** 점프 노트의 두 번째 레인 타격 기록 (hitSteps 는 첫 레인) */
   hitSteps2: Set<number>;
   /**

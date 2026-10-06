@@ -192,6 +192,9 @@ export function createBeatWorld(
     holdEndStep: -1,
     holdLane2: -1,
     holdEndStep2: -1,
+    holdStartStep: -1,
+    holdStartStep2: -1,
+    holdFx: [],
     loopCompletion: 0,
     laneFlashMs: [0, 0, 0, 0],
     hitSteps: new Set<number>(),
@@ -477,10 +480,10 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
     if (holdLen > 0) {
       if (bestSlot === 2) {
         session.holdLane2 = lane; session.holdEndStep2 = bestIndex + holdLen;
-        world.holdLane2 = lane; world.holdEndStep2 = session.holdEndStep2;
+        world.holdLane2 = lane; world.holdEndStep2 = session.holdEndStep2; world.holdStartStep2 = bestIndex;
       } else {
         session.holdLane = lane; session.holdEndStep = bestIndex + holdLen;
-        world.holdLane = lane; world.holdEndStep = session.holdEndStep;
+        world.holdLane = lane; world.holdEndStep = session.holdEndStep; world.holdStartStep = bestIndex;
       }
     }
     if (jumpDone) { world.score += 12 * world.scoreMultiplier; world.judgeText = ("JUMP " + world.judgeText) as `JUMP ${string}`; }
@@ -540,23 +543,27 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
       : world.beatPosition) - session.calibrationSec / stepSec;
   const endStep = slot === 2 ? session.holdEndStep2 : session.holdEndStep;
   const distSec = (endStep - position) * stepSec;
+  const startStep = slot === 2 ? world.holdStartStep2 : world.holdStartStep;
+  const heldProgress = startStep >= 0 && endStep > startStep ? Math.max(0, Math.min(1, (position - startStep) / (endStep - startStep))) : 0;
   // 릴리즈 허용 창: 빠른 곡 0.22초, 느린 곡(4분음 채보)은 0.35초까지 — 꼬리 한 박 앞에서 떼는 초보의 손이 MISS 로 찍히지 않게 (2026-09-14)
   const windowSec = Math.max(0.22, Math.min(0.35, stepSec * 0.6));
-  if (slot === 2) { session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1; }
-  else { session.holdLane = -1; session.holdEndStep = -1; world.holdLane = -1; world.holdEndStep = -1; }
+  if (slot === 2) { session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1; world.holdStartStep2 = -1; }
+  else { session.holdLane = -1; session.holdEndStep = -1; world.holdLane = -1; world.holdEndStep = -1; world.holdStartStep = -1; }
   if (distSec <= windowSec) {
     bumpCombo(world, 1);
     world.score += 24 * world.scoreMultiplier;
-    world.judgeText = "PERFECT";
-    world.judgeMs = 320;
+    world.judgeText = "HOLD 완료!";
+    world.judgeMs = 520;
+    world.holdFx.push({ lane, kind: "done", ms: 650, progress: 1 });
     spawnMoveParticles(world, 18, LANE_HUE[lane], lane);
     world.completedNotes.push({ lane, judge: "PERFECT" });
     return "release-good";
   }
   world.combo = 0;
   world.comboTimerMs = 0;
-  world.judgeText = "MISS";
-  world.judgeMs = 320;
+  world.judgeText = "HOLD 끊김";
+  world.judgeMs = 620;
+  world.holdFx.push({ lane, kind: "break", ms: 750, progress: heldProgress });
   // 일찍 뗀 롱노트는 놓친 노트와 같다 — 유지해야 유효하다. 단 저레벨(유효 레벨 ≤ 3)은 콤보만 끊고 체력은 지킨다 (입문 채보에 롱노트를 섞으면서 초보 보호, 2026-09-14)
   const lenient = effectiveLevelOf(session.track) <= 3;
   if (world.invulnMs <= 0 && !lenient) { world.hp -= 1; world.invulnMs = 450; world.shakeMs = 120; }
@@ -570,8 +577,9 @@ export function settleHoldIfPassed(session: BeatSession): void {
   // 홀드 점프의 두 번째 슬롯도 같은 규칙
   if (session.holdEndStep2 >= 0 && position > session.holdEndStep2 + 0.9) {
     const lane2 = session.holdLane2 as NoteLane;
-    session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1;
+    session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1; world.holdStartStep2 = -1;
     bumpCombo(world, 1); world.score += 16 * world.scoreMultiplier;
+    world.holdFx.push({ lane: lane2, kind: "done", ms: 650, progress: 1 });
     world.completedNotes.push({ lane: lane2, judge: "HOLD" });
   }
   if (session.holdEndStep < 0) return;
@@ -581,10 +589,12 @@ export function settleHoldIfPassed(session: BeatSession): void {
     session.holdEndStep = -1;
     world.holdLane = -1;
     world.holdEndStep = -1;
+    world.holdStartStep = -1;
     bumpCombo(world, 1);
     world.score += 16 * world.scoreMultiplier;
-    world.judgeText = gainHeal(world, 2) ? "HOLD ♥" : "HOLD";
-    world.judgeMs = 320;
+    world.judgeText = gainHeal(world, 2) ? "HOLD 완료 ♥" : "HOLD 완료!";
+    world.judgeMs = 520;
+    world.holdFx.push({ lane: lane1, kind: "done", ms: 650, progress: 1 });
     world.completedNotes.push({ lane: lane1, judge: "HOLD" });
   }
 }
@@ -691,6 +701,10 @@ export function updateBeatWorld(
   world.timingHint = Math.max(0, world.timingHint - dtSec * 2.2);
   world.judgeMs = Math.max(0, world.judgeMs - dtSec * 1000);
   if (world.judgeMs <= 0) world.judgeText = "";
+  if (world.holdFx.length) {
+    for (const fx of world.holdFx) fx.ms -= dtSec * 1000;
+    world.holdFx = world.holdFx.filter((fx) => fx.ms > 0);
+  }
   world.stageBannerMs = Math.max(0, world.stageBannerMs - dtSec * 1000);
   world.zoomPulse = Math.max(0, world.zoomPulse - dtSec * 1.8);
 

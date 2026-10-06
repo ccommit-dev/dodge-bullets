@@ -100,6 +100,9 @@ import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { RewardIcon, grantRewardKinds } from "./ui/RewardIcon";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
+import { WalletBar, formatWallet } from "./ui/WalletBar";
+import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
+import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
@@ -1502,6 +1505,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     setCharacter(next);
   };
 
+  /** 비트 커스텀 구매·장착 — 소유는 진행도 저장에 (비트 메뉴의 커스텀 상점과 같은 아이템) */
+  const buyBeatCustom = async (item: BeatShopItem) => {
+    const owned = ownsBeatItem(character.beatCosmetics, item);
+    if (!owned && redGems < item.cost) return;
+    const next = await updateCharacterProgress(userHash, (current) => {
+      if (ownsBeatItem(current.beatCosmetics, item)) return { ...current, beatCosmetics: equipBeatItem(current.beatCosmetics, item) };
+      if (current.redGems < item.cost) return current;
+      return { ...current, redGems: current.redGems - item.cost, beatCosmetics: grantBeatItem(current.beatCosmetics, item) };
+    });
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(owned ? `${item.name} 장착 — 비트 수련에 적용` : `${item.name} 구매 · 장착 — 비트 수련에 적용`);
+  };
+
   /** 무기 외형 구매 — 확정 구매, 즉시 장착 */
   const buyWeaponSkin = async (skinId: string) => {
     const def = WEAPON_SKINS[skinId];
@@ -2009,6 +2026,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     () => recommendNext(character, save, events, { wall: wallInfo, equipped: save.skillInventory.equipped, now: nowTick }),
     [character, save, events, wallInfo, nowTick],
   );
+  // 구매 추천 (2026-10-06) — 재화가 모이면 지금 살 수 있는 것을 효과 순으로. 알림 줄에 저절로 뜬다
+  const advice = useMemo(() => purchaseAdvice({ ...character, redGems }, save, nowTick), [character, redGems, save, nowTick]);
+  const adviceTop = useMemo(() => topAffordable(advice, 3), [advice]);
+  const adviceGoal = useMemo(() => (adviceTop.length ? null : closestGoal(advice)), [advice, adviceTop]);
+  const [adviceOpen, setAdviceOpen] = useState(false);
+  const runAdvice = (a: AdviceAction) => {
+    setAdviceOpen(false);
+    if (a.kind === "content") onOpenContent(a.content);
+    else setTab(a.tab);
+  };
+  const adviceCost = (a: PurchaseAdvice) => a.cost.filter((c) => c.amount > 0).map((c) => `${CURRENCY_LABEL[c.currency]} ${formatWallet(c.amount)}`).join(" · ");
   const warmupLeft = Math.max(0, character.warmupUntil - nowTick);
   const idlePreview = useMemo(
     () => (character.sessionCount <= 3 ? computeIdleYield(character, save.stage, save.skillInventory.equipped, 8 * 3600) : null),
@@ -2146,7 +2174,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         </button>
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong>{formatGold(goldShown)}</strong></span>
-          <span title={qaGemsEnabled() ? "테스트 단계 · 보석 무제한" : undefined}><CurrencyIcon kind="gem" /><strong>{qaGemsEnabled() ? "∞" : formatGold(gemsShown)}</strong></span>
+          {/* 붉은 보석 — 테스트 빌드에서도 숫자로(예전 ∞ 라 보유량이 안 보였다), 누르면 상점 (2026-10-06) */}
+          <span className="titans-gem" role="button" tabIndex={0} title={qaGemsEnabled() ? "테스트 단계 · 보석 자동 충전" : "붉은 보석 · 누르면 상점"} onClick={() => setTab("premium")} onKeyDown={(e) => { if (e.key === "Enter") setTab("premium"); }}><CurrencyIcon kind="gem" /><strong data-wallet="gem">{formatGold(gemsShown)}</strong></span>
         </div>
       </header>
 
@@ -2203,8 +2232,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           "--hero-meet-left": `${encounterMotion.heroLeft}%`,
           "--monster-meet-right": `${encounterMotion.monsterRight}%`,
           // 근접 슬롯이 몬스터 박스가 아니라 '보이는' 몸 가장자리에 붙도록 — (옛 새끼 용처럼) 좌우 여백이 큰 원화에서 동료가 허공에 서던 문제
-          "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson))[0]),
-          "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson))[1]),
+          "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]),
+          "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[1]),
           "--encounter-duration": `${encounterMotion.durationMs}ms`,
         } as CSSProperties}
         onPointerDown={(e) => {
@@ -2286,6 +2315,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             area={area}
             boss={boss}
             golden={chesterson}
+            stage={save.stage}
             state={
               bossBreak >= 3 || (bossBreak === 0 && (battlePhase === "monster-death" || battlePhase === "stage-clear" || battlePhase === "stage-exit"))
                 ? "defeat"
@@ -2462,6 +2492,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               <b>{recommendation.title}</b><i>›</i>
             </button>
           )}
+          {/* 구매 추천은 성장 추천 다음 자리 (2026-10-06) */}
+          {adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`) && (
+            <button type="button" className="battle-alert tone-buy advice-alert" data-advice={adviceTop[0].id} onClick={() => setAdviceOpen(true)}>
+              <small>구매 추천{adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}</small>
+              <b>{adviceTop[0].title}</b><i>›</i>
+            </button>
+          )}
           {routine.filter((item) => item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)).map((item) => (
             <button key={item.id} type="button" className="battle-alert claim" onClick={() => { setDismissedAlerts((items) => [...items, `routine:${item.id}:${item.detail}`]); runRoutine(item); }}>
               <small>귀환 정산</small><b>{item.detail}</b><i>›</i>
@@ -2500,6 +2537,29 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         </button>
       </div>
 
+      {adviceOpen && (
+        <div className="advice-backdrop" role="presentation" onClick={() => setAdviceOpen(false)}>
+          <div className="advice-sheet" role="dialog" aria-label="구매 추천" onClick={(e) => e.stopPropagation()}>
+            <header><b>구매 추천</b><small>지금 가진 재화로 살 수 있는 것 · 효과 순</small><button type="button" className="hub-sheet-close" onClick={() => setAdviceOpen(false)} aria-label="닫기">×</button></header>
+            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gem", amount: redGems }, { kind: "gold", amount: save.gold, label: "사냥터 골드" }, { kind: "gold", amount: character.sharedCoins, label: "공용 골드" }, { kind: "stone", amount: character.enhancementMaterials }, { kind: "seal", amount: character.expeditionSeals }]} />
+            <ol className="advice-list">
+              {adviceTop.map((a, i) => (
+                <li key={a.id} className={`advice-row cur-${a.currency}`}>
+                  <span className="advice-rank">{i + 1}</span>
+                  <span className="advice-body"><b>{a.title}</b><small>{a.reason}</small><em>{adviceCost(a)}</em></span>
+                  <button type="button" onClick={() => { setDismissedAlerts((items) => [...items, `advice:${a.id}`]); runAdvice(a.action); }}>가기</button>
+                </li>
+              ))}
+              {adviceTop.length === 0 && adviceGoal && (
+                <li className="advice-row goal">
+                  <span className="advice-rank">◎</span>
+                  <span className="advice-body"><b>다음 목표 · {adviceGoal.title}</b><small>{adviceGoal.reason}</small><em>{shortfallLabel(adviceGoal, character, save)} 모으면 살 수 있어요 ({Math.round(adviceGoal.ratio * 100)}%)</em></span>
+                </li>
+              )}
+            </ol>
+          </div>
+        </div>
+      )}
       {/* 관리 페이지(동료·뽑기·상점)는 전장을 가리는 전체 페이지가 아니라 하단 바 위로 올라오는 시트다 (사용자 지시: 하단 UI) */}
       {MANAGEMENT_PAGE_COPY[tab] && <div className="hub-sheet-backdrop" onClick={() => setTab("sword")} aria-hidden="true" />}
       {/* 장비 성장·스킬은 전장 아래 인라인, 관리 페이지(동료·뽑기·상점)는 같은 섹션을 시트로 띄운다 */}
@@ -2524,6 +2584,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <button type="button" className="hub-sheet-close" onClick={() => setTab("sword")} aria-label="닫기">×</button>
         </header>
         )}
+        {/* 보석·골드를 쓰는 시트에는 지갑 줄 — 시트가 머리의 보석 칩을 가렸다 (2026-10-06) */}
+        {(tab === "premium" || tab === "event-shop" || tab === "event-shop2" || tab === "gacha") && (
+          <WalletBar className="hub-sheet-wallet" testGems={qaGemsEnabled()} items={[
+            { kind: "gem", amount: redGems },
+            { kind: "gold", amount: save.gold, label: "사냥터 골드" },
+            { kind: "stone", amount: character.enhancementMaterials },
+          ]} />
+        )}
+        {(tab === "premium" || tab === "event-shop2") && (() => {
+          const gemPick = advice.find((a) => a.currency === "gems" && a.affordable);
+          return gemPick ? (
+            <button type="button" className="advice-inline" data-advice={gemPick.id} onClick={() => setAdviceOpen(true)}>
+              <small>보석 추천</small><b>{gemPick.title}</b><em>{gemPick.reason}</em>
+            </button>
+          ) : null;
+        })()}
       <section className="titans-shop">
         {(tab === "sword" || tab === "heroes") && (
           <div className="bulk-toggle" role="group" aria-label="일괄 레벨업 수량">
@@ -2902,6 +2978,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     onClick={() => void (owned ? toggleWeaponSkin(skinId) : buyWeaponSkin(skinId))}
                   >
                     {owned ? (equipped ? "해제" : "장착") : `💎 ${def.gemCost}`}
+                  </button>
+                </article>
+              );
+            })}
+            {/* 비트 수련 커스텀 — 지휘 북 · 구호 (2026-10-06, "커스텀 아이템 리소스 및 상점 연동") */}
+            {premiumCategory === "weapon" && BEAT_SHOP_ITEMS.filter((item) => item.cost > 0).map((item) => {
+              const owned = ownsBeatItem(character.beatCosmetics, item);
+              const on = equippedBeatItem(character.beatCosmetics, item);
+              return (
+                <article key={`beat-${item.kind}-${item.id}`} className="titans-card premium-product-card gem-product beat-custom-product" data-beat-item={`${item.kind}-${item.id}`}>
+                  <img className="beat-custom-thumb" src={beatItemIcon(item)} alt="" aria-hidden="true" />
+                  <div><strong>{item.name} <em>{item.kind === "ring" ? "비트 · 지휘 북" : "비트 · 구호"}</em></strong><p>{item.desc}</p></div>
+                  <button type="button" disabled={on || (!owned && redGems < item.cost)} onClick={() => void buyBeatCustom(item)}>
+                    {on ? "장착 중" : owned ? "장착" : `💎 ${item.cost}`}
                   </button>
                 </article>
               );

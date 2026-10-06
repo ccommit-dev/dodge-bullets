@@ -16,7 +16,7 @@ import { assetUrl } from "../asset";
  */
 // 720px 축소본 — 원본(832×1216)을 매 프레임 그리면 저사양에서 첫 프레임이 끊긴다
 /** 장별 배경 (2026-10-02) — 1장 초원 외곽(s1) · 2장 달빛 숲(s5, 새로) · 3장 왕실 폐허(s3) · 4장 용암 협곡(s2) · 5장 심연의 성(s4) */
-const STAGE_BACKGROUNDS = [1, 5, 3, 2, 4].map((n) => assetUrl(`dodge/bg/s${n}.webp`));
+export const STAGE_BACKGROUNDS = [1, 5, 3, 2, 4].map((n) => assetUrl(`dodge/bg/s${n}.webp`));
 const bgCache: Array<HTMLImageElement | null> = [];
 function stageBackground(stageIndex: number): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -217,6 +217,7 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
 function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, floorY } = world;
   const img = stageBackground(world.stageIndex);
+  { const st = getStage(world.stageIndex); frameBossArt = st.bossArt; frameChapter = st.chapter; }
   if (img) {
     // cover 맞춤 + 느린 가로 패럴랙스(플레이어 x 에 따라 ±3%)
     const scale = Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
@@ -249,12 +250,31 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
 const MONSTER_SPRITE: Record<Arrow["kind"], string> = {
   normal: "slime", aimed: "shadow-wolf-clean", fan: "goblin", ricochet: "ogre", explosive: "dragon", homing: "moon-wolf-king-clean",
 };
+/**
+ * 장마다 같은 종족의 지역 변종 (2026-10-06, 사용자: "몬스터 종류가 너무 적음") — 몸집·움직임(종류)은 그대로라
+ * 오우거 계열은 튕기고 비룡 계열은 터진다는 것을 그림으로 읽는다. 장 0 새벽 초원 · 1 달빛 숲 · 2 왕실 폐허 · 3 용암 협곡 · 4 심연의 성
+ */
+export const MONSTER_VARIANTS: Record<Arrow["kind"], string[]> = {
+  normal: ["slime", "slime", "skeleton-goblin", "magma-imp", "void-imp"],
+  aimed: ["shadow-wolf-clean", "frost-wolf", "shadow-wolf-clean", "hellhound", "frost-wolf"],
+  fan: ["goblin", "goblin-shaman", "skeleton-goblin", "goblin-shaman", "skeleton-goblin"],
+  ricochet: ["ogre", "ogre", "stone-troll", "stone-troll", "armored-ogre"],
+  explosive: ["dragon", "dragon", "dragon", "lava-drake", "storm-drake"],
+  homing: ["moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean"],
+};
+function monsterSpriteFor(kind: Arrow["kind"], chapter: number): string {
+  const list = MONSTER_VARIANTS[kind];
+  return list?.[Math.max(0, Math.min(list.length - 1, chapter))] ?? MONSTER_SPRITE[kind];
+}
 /** 장 대장 — 사냥터 지역 보스와 같은 그림 (2026-10-02 다섯 장): 이끼 골렘 · 달빛 늑대왕 · 늑대 왕 · 화염 비룡 · 심연의 타이탄 */
 const BOSS_SPRITE = ["moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan"];
 /** 보스 바에 쓰는 대장 이름 — 사냥터 지역 보스와 같은 그림이라 이름도 같다 */
 export const BOSS_NAME = ["이끼 골렘", "달빛 늑대왕", "늑대 왕", "화염 비룡", "심연의 타이탄"];
+/** 이번 프레임 스테이지의 대장 그림 덮어쓰기(중간 보스·비밀 대장)와 장 — drawWorld 첫머리에서 맞춘다 (2026-10-06) */
+let frameBossArt: string | undefined;
+let frameChapter = 0;
 function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" | "hit" | "defeat"): HTMLImageElement | null {
-  const base = a.boss ? BOSS_SPRITE[Math.min(BOSS_SPRITE.length - 1, Math.max(0, a.bossTier - 1))] : MONSTER_SPRITE[a.kind];
+  const base = a.boss ? (frameBossArt ?? BOSS_SPRITE[Math.min(BOSS_SPRITE.length - 1, Math.max(0, a.bossTier - 1))]) : monsterSpriteFor(a.kind, frameChapter);
   return sprite(`titans/generated/monsters/${base}${state === "idle" ? "" : "-" + state}.png`);
 }
 /** 종류별 몸 크기(그림 높이 px) — 판정 반지름보다 크게, 사냥터 몬스터와 비슷한 체감 (34~52 → 56~88, 2026-10-01) */

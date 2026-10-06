@@ -103,7 +103,8 @@ ok("클리어 보상이 Preferences 에 저장된다", !!p1 && p1.sharedCoins > 
 // ── 5. 기록 카드 공유 — 앱에서는 blob 을 열지 않고 앱 안에 띄운다 (게임 화면이 그대로) ──
 await page.evaluate(() => document.querySelector(".share-card-btn")?.click());
 let overlay = false;
-for (let i = 0; i < 20 && !overlay; i += 1) { await sleep(200); overlay = await page.evaluate(() => !!document.querySelector(".share-card-overlay img")); }
+// 카드가 동료·장비 원화 10여 장을 읽는다(2026-10-06 개편) — 4초 → 12초까지 기다린다
+for (let i = 0; i < 60 && !overlay; i += 1) { await sleep(200); overlay = await page.evaluate(() => !!document.querySelector(".share-card-overlay img")); }
 const opened = await page.evaluate(() => window.__opened.slice());
 ok("공유 카드: window.open(blob) 을 부르지 않는다", opened.length === 0, opened.join(","));
 ok("공유 카드: 앱 안 오버레이에 카드가 뜨고 게임 화면(캔버스)은 남아 있다", overlay && await page.evaluate(() => !!document.querySelector("canvas")));
