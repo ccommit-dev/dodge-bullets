@@ -41,7 +41,7 @@ import { renderShareCard, shareCard } from "./ui/shareCard";
 import { shareCardExtras } from "./ui/shareCardData";
 import { sheetFor } from "./titans/anim";
 import { MonsterArt, monsterAssetFor } from "./titans/SpriteArt";
-import { bestiaryEntries } from "./titans/bestiary";
+import { bestiaryEntries, bestiaryThumb } from "./titans/bestiary";
 import { assetUrl } from "./asset";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
@@ -394,19 +394,19 @@ export function CharacterStatus({
         {/* 몬스터 얼굴 도감 (2026-10-06) — 사냥터·성문 방어의 일반 변종과 대장. 열린 지역의 것만 보인다 */}
         {(() => {
           const entries = bestiaryEntries();
-          const openAreas = HUNTING_AREAS.slice(0, Math.max(1, progress.pioneeredArea)).map((a) => a.id);
-          const seen = entries.filter((e) => openAreas.includes(e.area));
+          // 실제로 만난 것만 그림·이름 — 나머지는 검은 실루엣 + ??? (2026-10-06, 예전엔 '지역이 열렸는가'로 다 보였다)
+          const seen = entries.filter((e) => progress.seenMonsters.includes(e.art));
           return (
             <>
               <div className="legacy-heading"><div><small>BESTIARY</small><strong>몬스터 얼굴</strong></div><span>{seen.length}/{entries.length} 발견</span></div>
               <div className="bestiary-grid">
                 {entries.map((e) => {
-                  const open = openAreas.includes(e.area);
+                  const open = progress.seenMonsters.includes(e.art);
                   return (
                     <div key={e.art} className={`bestiary-chip ${e.boss ? "boss" : ""} ${open ? "seen" : "unseen"}`} data-art={e.art}>
-                      <img src={assetUrl(`titans/generated/monsters/${e.art}.png`)} alt="" aria-hidden="true" />
+                      <img src={assetUrl(bestiaryThumb(e.art))} alt="" aria-hidden="true" loading="lazy" />
                       <b>{open ? e.name : "???"}</b>
-                      <small>{HUNTING_AREAS.find((a) => a.id === e.area)?.name}{e.boss ? " · 대장" : ""}</small>
+                      <small>{open ? `${HUNTING_AREAS.find((a) => a.id === e.area)?.name}${e.boss ? " · 대장" : ""}` : `${HUNTING_AREAS.find((a) => a.id === e.area)?.name} 어딘가`}</small>
                     </div>
                   );
                 })}

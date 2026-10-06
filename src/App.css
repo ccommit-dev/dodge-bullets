@@ -4168,3 +4168,64 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .bestiary-chip.unseen b { color: #64748b; }
 /* 토스트는 화면 맨 아래(비트 패드·하단 버튼 자리)에 뜬다 — 손가락을 가로채지 않게 (2026-10-06 실기: 비트 연주 중 뒤로 가기 안내가 패드를 덮었다) */
 .titans-toast { pointer-events: none; }
+/* 가격 앞 붉은 보석 — 상단 지갑과 같은 아이콘 (2026-10-06, 예전 하늘색 💎 이모지) */
+.currency-icon.gem-mark { width: 1.15em; height: 1.15em; flex: 0 0 auto; vertical-align: -0.2em; margin-right: 3px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
+.titans-wallet .titans-stone img { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+.titans-wallet .titans-stone strong { color: #93c5fd; }
+@media (max-width: 380px) { .titans-wallet .titans-stone img { width: 15px; height: 15px; flex-basis: 15px; } }
+/* 그림 스킬 아이콘 (2026-10-06) */
+.skill-icon.has-art { padding: 0; overflow: hidden; background: radial-gradient(circle at 50% 40%, rgba(30,41,59,.4), rgba(2,6,23,.85)); }
+.skill-icon.has-art img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* ── 스킬 발동 연출: 모험가 → 몬스터 (2026-10-06) ──
+   transform·opacity 만 움직인다 (기기 실측: box-shadow·filter·background-position 애니메이션이 FPS 를 깎았다) */
+.skill-shot { position: absolute; z-index: 14; pointer-events: none; width: 0; height: 0; --c: #e2e8f0; --c2: #94a3b8; }
+.skill-shot.el-fire { --c: #fb923c; --c2: #dc2626; }
+.skill-shot.el-wind { --c: #5eead4; --c2: #0891b2; }
+.skill-shot.el-earth { --c: #fbbf24; --c2: #92400e; }
+.skill-shot.el-light { --c: #fde047; --c2: #f59e0b; }
+.skill-shot.el-blade { --c: #f1f5f9; --c2: #64748b; }
+/* 투사체 — 영웅 손에서 몬스터까지 날아간다 */
+.skill-shot.shot-shot > i { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff 0 18%, var(--c) 42%, var(--c2) 70%, transparent 72%); transform: rotate(var(--ang)); animation: skill-fly .23s cubic-bezier(.3,.6,.4,1) forwards; will-change: transform, opacity; }
+.skill-shot.shot-shot.big > i { left: -24px; top: -24px; width: 48px; height: 48px; }
+.skill-shot.shot-shot.el-blade > i, .skill-shot.shot-shot.el-wind > i { border-radius: 0; background: none; border-right: 5px solid var(--c); border-top: 2px solid transparent; border-bottom: 2px solid transparent; border-radius: 0 50% 50% 0 / 0 50% 50% 0; width: 28px; height: 44px; left: -14px; top: -22px; }
+.skill-shot.shot-shot.el-earth > i { border-radius: 30% 45% 35% 50%; background: radial-gradient(circle at 35% 35%, #fde68a 0 12%, var(--c) 35%, var(--c2) 80%); }
+.skill-shot.shot-shot > i::after { content: ""; position: absolute; right: 60%; top: 35%; width: 46px; height: 30%; border-radius: 999px; background: linear-gradient(90deg, transparent, var(--c)); opacity: .7; }
+@keyframes skill-fly { 0% { transform: translate(0, 0) rotate(var(--ang)) scale(.5); opacity: .4; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--ang)) scale(1.05); opacity: 1; } }
+/* 빛줄기 — 영웅에서 몬스터까지 한 줄 (빛 원소·관통 찌르기) */
+.skill-shot.shot-beam::before { content: ""; position: absolute; left: 0; top: -5px; width: var(--len); height: 10px; border-radius: 999px; background: linear-gradient(90deg, rgba(255,255,255,.95), var(--c) 30%, var(--c2)); transform-origin: 0 50%; transform: rotate(var(--ang)) scaleX(0); animation: skill-beam .42s ease-out forwards; will-change: transform, opacity; }
+.skill-shot.shot-beam.big::before { top: -9px; height: 18px; }
+@keyframes skill-beam { 0% { transform: rotate(var(--ang)) scaleX(0); opacity: 1; } 40% { transform: rotate(var(--ang)) scaleX(1); opacity: 1; } 100% { transform: rotate(var(--ang)) scaleX(1) scaleY(.2); opacity: 0; } }
+/* 명중 — 몬스터에서 원소 고리 + 스킬 아이콘 */
+.skill-shot.shot-impact::before { content: ""; position: absolute; left: -40px; top: -40px; width: 80px; height: 80px; border-radius: 50%; border: 6px solid var(--c); transform: scale(.3); opacity: .95; animation: skill-ring .55s ease-out forwards; will-change: transform, opacity; }
+.skill-shot.shot-impact.big::before { left: -64px; top: -64px; width: 128px; height: 128px; border-width: 9px; }
+.skill-shot.shot-impact .skill-icon { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%) scale(.4); border-radius: 50%; border: 2px solid var(--c); animation: skill-icon-pop .6s cubic-bezier(.2,1.4,.4,1) forwards; will-change: transform, opacity; }
+@keyframes skill-ring { to { transform: scale(1.5); opacity: 0; } }
+@keyframes skill-icon-pop { 0% { transform: translate(-50%, -50%) scale(.4); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 70% { transform: translate(-50%, -80%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -110%) scale(.9); opacity: 0; } }
+/* 연결선 — 영웅 → 동료 (대지 수호 · 뇌광 연쇄 · 별빛 처형의 고무) */
+.skill-shot.shot-link::before { content: ""; position: absolute; left: 0; top: -2px; width: var(--len); height: 4px; border-radius: 999px; background: repeating-linear-gradient(90deg, var(--c) 0 10px, transparent 10px 16px); transform-origin: 0 50%; transform: rotate(var(--ang)) scaleX(0); animation: skill-beam .5s ease-out forwards; }
+/* 오라 — 영웅 발밑 */
+.skill-shot.shot-aura::before { content: ""; position: absolute; left: -46px; top: -14px; width: 92px; height: 28px; border-radius: 50%; border: 4px solid var(--c); transform: scale(.4); opacity: 1; animation: skill-ring .7s ease-out forwards; }
+/* 모험가 이름표 · 강화 칸 */
+.hero-cast-tag { position: absolute; left: 50%; bottom: 104%; z-index: 9; display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px 2px 3px; border-radius: 999px; background: rgba(2, 6, 23, .82); border: 1.5px solid var(--c, #e2e8f0); white-space: nowrap; transform: translateX(-50%); animation: hero-tag-in .9s ease-out both; pointer-events: none; --c: #e2e8f0; }
+.hero-cast-tag.el-fire { --c: #fb923c; } .hero-cast-tag.el-wind { --c: #5eead4; } .hero-cast-tag.el-earth { --c: #fbbf24; } .hero-cast-tag.el-light { --c: #fde047; }
+.hero-cast-tag b { color: var(--c); font-size: 11px; font-weight: 950; letter-spacing: .02em; }
+.hero-cast-tag .skill-icon { border-radius: 50%; }
+@keyframes hero-tag-in { 0% { transform: translate(-50%, 8px) scale(.7); opacity: 0; } 18% { transform: translate(-50%, 0) scale(1.06); opacity: 1; } 80% { transform: translate(-50%, -4px) scale(1); opacity: 1; } 100% { transform: translate(-50%, -10px) scale(1); opacity: 0; } }
+.hero-buff-tray { position: absolute; left: 50%; top: -6px; z-index: 8; display: flex; gap: 2px; transform: translate(-50%, -100%); pointer-events: none; }
+.hero-buff { position: relative; display: grid; place-items: center; }
+.hero-buff .skill-icon { border-radius: 6px; border-width: 1.5px; }
+.hero-buff small { position: absolute; right: -4px; bottom: -4px; min-width: 13px; padding: 0 2px; border-radius: 6px; background: #0f172a; color: #fde68a; font-size: 9px; font-weight: 900; line-height: 13px; text-align: center; }
+.titans-float .float-label { display: block; font-style: normal; font-size: 10px; font-weight: 900; letter-spacing: .02em; color: #fef3c7; text-shadow: 0 1px 2px rgba(0,0,0,.9); }
+.perf-low .skill-shot.shot-shot > i::after, .perf-low .skill-shot.shot-aura { display: none; }
+@media (prefers-reduced-motion: reduce) { .skill-shot { display: none; } .hero-cast-tag { animation: none; } }
+/* 모험가 스킬 연계 줄 (2026-10-06) */
+.hero-skill-combo { display: flex; align-items: center; gap: 4px; margin: 6px 0 8px; padding: 6px; border-radius: 14px; background: rgba(2, 6, 23, .55); border: 1px solid rgba(148, 163, 184, .2); }
+.hero-skill-combo .combo-hero { width: 34px; height: 44px; flex: 0 0 34px; background-size: 400% 100%; background-position: 0 0; background-repeat: no-repeat; }
+.hero-skill-combo .combo-step { position: relative; display: grid; justify-items: center; gap: 1px; padding: 0; border: 0; background: none; color: #94a3b8; font: inherit; cursor: pointer; }
+.hero-skill-combo .combo-step:not(.passive)::after { content: "›"; position: absolute; right: -6px; top: 10px; color: #475569; font-weight: 900; }
+.hero-skill-combo .combo-step:nth-last-child(2)::after { content: ""; }
+.hero-skill-combo .combo-step.passive { margin-left: auto; padding-left: 8px; border-left: 1px dashed rgba(148, 163, 184, .3); }
+.hero-skill-combo .combo-step small { font-size: 9px; font-weight: 900; }
+.hero-skill-combo .combo-step.on small { color: #fde68a; }
+.hero-skill-combo .combo-empty { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; border: 1px dashed rgba(148, 163, 184, .35); font-size: 13px; color: #64748b; }
+.hero-skill-combo .combo-step .skill-icon { width: 34px; height: 34px; border-radius: 10px; }

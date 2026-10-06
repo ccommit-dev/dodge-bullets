@@ -5,3 +5,11 @@ export function CurrencyIcon({ kind, className = "" }: { kind: "gold" | "gem"; c
     <svg className={`currency-icon ${className}`} viewBox="0 0 32 32" role="img" aria-label="붉은 보석"><path d="m16 3 11 9-5 15H10L5 12z" fill="#ef4444" stroke="#fecaca" strokeWidth="2"/><path d="m5 12 11 5 11-5M16 3v14m-6 10 6-10 6 10" fill="none" stroke="#991b1b" strokeWidth="1.5"/></svg>
   );
 }
+
+/**
+ * 가격 앞 보석 표시 (2026-10-06, 사용자: "아직도 상단 ui에 하늘색 보석은 안보이네") — 가격은 하늘색 💎 이모지였고
+ * 상단 지갑은 붉은 보석이라 다른 재화로 보였다. 같은 재화(붉은 보석)이므로 같은 아이콘으로.
+ */
+export function GemMark() {
+  return <CurrencyIcon kind="gem" className="gem-mark" />;
+}

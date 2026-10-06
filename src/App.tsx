@@ -1,4 +1,4 @@
-import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS } from "./game/draw";
+import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
 import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import "./App.css";
@@ -421,6 +421,17 @@ function App() {
     });
     return () => dispose();
   }, [setMode]);
+
+  // 성문 방어에서 그린 몬스터를 도감 발견 기록에 — 판이 멈출 때마다(클리어·게임 오버·메뉴) 한 번 (2026-10-06)
+  useEffect(() => {
+    if (gameState === "playing" || gameState === "intro") return;
+    const drawn = takeDrawnMonsters();
+    if (drawn.length === 0) return;
+    void updateCharacterProgress(userHashRef.current, (current) => {
+      const add = drawn.filter((a) => !current.seenMonsters.includes(a));
+      return add.length ? { ...current, seenMonsters: [...current.seenMonsters, ...add] } : current;
+    }).then(setProgress).catch(() => {});
+  }, [gameState]);
 
   const syncState = useCallback((next: GameState) => {
     stateRef.current = next;

@@ -136,7 +136,8 @@ const seed = {
     dodgeStars: Object.fromEntries(Array.from({ length: 13 }, (_, i) => [String(i), (i % 3) + 1])), dodgeBranches: { "1-T": 3, "1-E1": 2 }, towerOpen: true,
     expeditionSeals: 400, enhancementMaterials: 300, expeditionSkills: { fire: 6, water: 4, ice: 4, earth: 4, bolt: 4, wind: 3, poison: 2, holy: 1, ultimate: 4 },
     expeditionLoadout: ["holy", "poison", "wind", "fire"], expeditionWeaponForge: { bow: 6, staff: 4 }, expeditionWeapon: "staff", claimedRewards: ["dodge-tutorial", "dodge-branch:1-T", "dodge-branch:1-E1"] }),
-  [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 18, bestStage: 18, gold: 4_000_000, heroes: { mia: 18, luna: 12, bronn: 10, sera: 14 }, lastActiveAt: now }),
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 18, bestStage: 18, gold: 4_000_000, heroes: { mia: 18, luna: 12, bronn: 10, sera: 14 }, lastActiveAt: now, autoSkill: false,
+    skillInventory: { learned: ["strike", "stoneGuard", "clone", "meteor"], levels: { strike: 3, stoneGuard: 2, clone: 2, meteor: 1 }, equipped: { starter: "strike", linkA: "stoneGuard", linkB: "clone", finisher: "meteor" }, skillCores: 0 } }),
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   "dodgebullets:test-phase": "0",
 };
@@ -155,6 +156,14 @@ const hub = await page.evaluate(() => ({ gem: document.querySelector(".titans-ge
 ok("B 사냥터: 붉은 보석 숫자(∞ 아님) · 구매 추천 알림", !!hub.gem && hub.gem !== "∞" && !!hub.advice, JSON.stringify(hub));
 const fpsB = await measureFps(5);
 ok("B 사냥터 FPS ≥ 30", fpsB.fps >= 30, JSON.stringify(fpsB));
+// 모험가 스킬 AUTO — 진짜 탭으로 켜고, 시전 연출(투사체·명중·이름표)이 도는 동안 FPS 를 같은 실행 안에서 비교 (2026-10-06)
+await tap(".qol-btn", "AUTO");
+await page.evaluate(() => { window.__casts = 0; new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".skill-shot.shot-shot, .skill-shot.shot-beam")) window.__casts += 1; }).observe(document.querySelector(".titans-field"), { childList: true, subtree: true }); });
+const fpsAuto = await measureFps(8);
+const casts = await page.evaluate(() => window.__casts);
+await shot("b1b-auto-cast");
+ok("B AUTO 스킬 시전 중 FPS — 시전 없을 때의 75% 이상 · 시전이 실제로 나갔다", casts >= 1 && fpsAuto.fps >= Math.min(30, fpsB.fps * 0.75), `없음 ${fpsB.fps} · 시전 중 ${fpsAuto.fps} · 시전 ${casts}회`);
+await tap(".qol-btn", "AUTO");
 await tap(".advice-alert"); await sleep(1200);
 const adv = await page.evaluate(() => [...document.querySelectorAll(".advice-row b")].map((b) => b.textContent));
 ok("B 구매 추천 시트가 열린다 (진짜 탭)", adv.length >= 1, adv.join(" | "));

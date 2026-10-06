@@ -293,13 +293,20 @@ def icon_refs() -> list[Image.Image]:
 
 
 def cmd_icon(a):
-    """보상 아이콘 1장 — IP-Adapter 참조는 동료가 아니라 기존 UI 아이콘. 출력 art-gen/out/icon-<id>.png (256px, 투명)"""
+    """보상 아이콘 — IP-Adapter 참조는 동료가 아니라 기존 UI 아이콘. 출력 art-gen/out/icon-<id>.png (256px, 투명).
+    --seeds 를 주면 파이프라인을 한 번만 올려 시드마다 icon-<id>-<seed>.png (2026-10-06, 스킬 아이콘 60장)"""
     pipe = load_pipe(ip=True)
     pipe.set_ip_adapter_scale(a.ip or 0.5)
-    g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
-    im = pipe(prompt=f"{a.prompt}, {ICON_STYLE}", negative_prompt=ICON_NEG, num_inference_steps=24, guidance_scale=6.5,
-              generator=g, width=1024, height=1024, ip_adapter_image=[icon_refs()]).images[0]
-    save(cutout(im).resize((256, 256), Image.LANCZOS), f"icon-{a.id}.png")
+    refs = icon_refs()
+    seeds = a.seeds or [a.seed or BASE_SEED]
+    for seed in seeds:
+        name = f"icon-{a.id}-{seed}.png" if a.seeds else f"icon-{a.id}.png"
+        if a.seeds and (OUT / name).exists():
+            continue
+        g = torch.Generator(dev()).manual_seed(seed)
+        im = pipe(prompt=f"{a.prompt}, {ICON_STYLE}", negative_prompt=ICON_NEG, num_inference_steps=24, guidance_scale=6.5,
+                  generator=g, width=1024, height=1024, ip_adapter_image=[refs]).images[0]
+        save(cutout(im).resize((256, 256), Image.LANCZOS), name)
 
 
 # CLIP 77토큰 한계: 자세 지시를 맨 앞에 두고 짧게 — 뒤에 붙는 STYLE 까지 합쳐 70토큰 안쪽 (긴 프롬프트는 뒷부분이 잘려 정면 캐릭터 시트가 나왔다)
@@ -440,7 +447,7 @@ if __name__ == "__main__":
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
-    ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
+    ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--seeds", type=int, nargs="*"); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
     ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.add_argument("--weapon", choices=["sword", "bow", "staff"], default="sword"); ha.add_argument("--no-pose", action="store_true"); ha.add_argument("--pose-set"); ha.add_argument("--cn", type=float); ha.add_argument("--frames"); ha.add_argument("--tag"); ha.set_defaults(fn=cmd_heroattack)

@@ -41,6 +41,7 @@ import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewar
 import { loadCharacterProgress, qaGemsEnabled } from "./progression/storage";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, mergeBeatCosmetics, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { WalletBar } from "./ui/WalletBar";
+import { GemMark } from "./ui/CurrencyIcon";
 import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
@@ -771,7 +772,7 @@ export function BeatGame({
                             <img src={beatItemIcon(item)} alt="" />
                             <b>{item.name}</b>
                             <small>{item.desc}</small>
-                            <em>{on ? "장착 중" : owned ? "장착" : `💎 ${item.cost}`}</em>
+                            <em>{on ? "장착 중" : owned ? "장착" : <><GemMark />{item.cost}</>}</em>
                           </button>
                         );
                       })}
