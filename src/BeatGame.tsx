@@ -41,6 +41,7 @@ import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewar
 import { loadCharacterProgress, qaGemsEnabled } from "./progression/storage";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, mergeBeatCosmetics, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { WalletBar } from "./ui/WalletBar";
+import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -164,6 +165,8 @@ export function BeatGame({
   // 곡의 오디오 시계를 판정 기준으로 직접 사용한다. 별도 수동 싱크 UI는 제공하지 않는다.
   const calibrationMs = 0;
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
+  const onCoinsRef = useRef(onCoins);
+  useEffect(() => { onCoinsRef.current = onCoins; }, [onCoins]);
   const [shoulderReward, setShoulderReward] = useState("");
   /** 결과 화면의 기록 비교 — 곡×난이도 최고 점수/콤보와 신기록 여부 (P0-3) */
   const [resultRecord, setResultRecord] = useState<{ bestScore: number; bestCombo: number; combo: number; newScore: boolean; newCombo: boolean } | null>(null);
@@ -191,7 +194,7 @@ export function BeatGame({
       await updateCharacterProgress(userHash, (current) => consumeAdReward(current, "beatDouble", today));
       const nextCoins = await saveCoins(userHash, coinsRef.current + coinGain);
       coinsRef.current = nextCoins;
-      onCoins(nextCoins);
+      onCoinsRef.current(nextCoins);
       setAdDouble("done");
     } catch {
       setAdDouble("none");
@@ -472,11 +475,15 @@ export function BeatGame({
     window.addEventListener("pointercancel", onPointerUp);
     const offVisibility = subscribeAppVisibility(onVisibility);
 
+    const watchFrames = frameMonitor();
     const loop = (ts: number) => {
       const ctx = canvas.getContext("2d");
       const session = sessionRef.current;
       if (ctx) {
         if (!lastTsRef.current) lastTsRef.current = ts;
+        // 저사양 모드 — 연주 중 첫 몇 초가 느리면 캔버스 흐림 그림자를 끈다 (ui/perfMode)
+        if (uiRef.current === "playing" && watchFrames(ts - lastTsRef.current)) setLowFx(true);
+        applyLowFx(ctx);
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05);
         lastTsRef.current = ts;
 
@@ -534,7 +541,7 @@ export function BeatGame({
             void (async () => {
               const nextCoins = await saveCoins(userHash, coinsRef.current + reward);
               coinsRef.current = nextCoins;
-              onCoins(nextCoins);
+              onCoinsRef.current(nextCoins);
               const unlockTo = Math.min(stageCount() - 1, w.stageIndex + 1);
               setUnlocked((prev) => Math.max(prev, unlockTo));
               await saveBeatUnlock(userHash, unlockTo);
@@ -621,7 +628,9 @@ export function BeatGame({
         sessionRef.current = null;
       }
     };
-  }, [calibrationMs, onCoins, playRaidLane, shoulderBlueprint, startLaneHold, stopLaneHold, syncUi, userHash]);
+  // onCoins 는 App 이 렌더마다 새로 만드는 함수다 — 의존성에 두면 App 이 한 번 다시 그려질 때(토스트 등) 이 effect 가 정리되며
+  // 연주 중인 곡 세션을 버렸다(화면은 연주 중인데 노트가 사라짐, 2026-10-06 에뮬레이터 실기). ref 로 읽는다. shoulderBlueprint 는 쓰지 않는 의존성이었다
+  }, [calibrationMs, playRaidLane, startLaneHold, stopLaneHold, syncUi, userHash]);
 
   /** 실패 완화 (RETENTION G): 같은 곡 즉시 재도전은 곡당 하루 1회 스태미나 무료 */
   const freeRetryKey = (trackId: string) => `dodgebullets:beat:freeRetry:${new Date().toLocaleDateString("sv-SE")}:${trackId}`;

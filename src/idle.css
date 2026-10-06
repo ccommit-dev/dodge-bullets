@@ -240,8 +240,10 @@
 .idle-chip b { color: #fde68a; font-size: 12px; white-space: nowrap; }
 .idle-chip small { color: #94a3b8; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 자동 사냥이 '돌고 있다'는 느낌 — 카드 하단을 스치는 빛 */
-.idle-status-sweep { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #34d399, transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: idle-sweep 2.8s linear infinite; opacity: 0.8; }
-@keyframes idle-sweep { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+/* 배경 위치 애니메이션은 매 프레임 다시 칠한다 — 실기기(에뮬레이터 WebView)에서 사냥터 FPS 를 깎아 transform 으로 (2026-10-06) */
+.idle-status-sweep { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden; opacity: 0.8; }
+.idle-status-sweep::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, #34d399, transparent); animation: idle-sweep 2.8s linear infinite; will-change: transform; }
+@keyframes idle-sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .idle-status-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; animation: idle-status-pulse 1.6s ease-in-out infinite; }
 @keyframes idle-status-pulse { 50% { opacity: 0.35; } }
 .idle-status-cap { color: #94a3b8; font-size: 10px; line-height: 1.3; word-break: keep-all; }

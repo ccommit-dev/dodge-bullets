@@ -41,10 +41,11 @@ writeFileSync(entry, [
   `export * as advice from "${root}/src/economy/purchaseAdvice";`,
   `export * as beatShop from "${root}/src/beat/shop";`,
   `export * as bestiary from "${root}/src/titans/bestiary";`,
+  `export * as perfMode from "${root}/src/ui/perfMode";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary } = await import(pathToFileURL(out).href);
+const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1266,6 +1267,16 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자)", bestiary.bestiaryEntries().length === 30, String(bestiary.bestiaryEntries().length));
   const nb = prog.normalizeCharacterProgress({ ...base, dodgeBranches: { "1-T": 3, "9-X": 2, "2-S": 7, junk: 1 } });
   ok("진행도 정규화: 갈림길 별 — 알려진 키만 · 0~3", nb.dodgeBranches["1-T"] === 3 && nb.dodgeBranches["2-S"] === 3 && !("9-X" in nb.dodgeBranches) && !("junk" in nb.dodgeBranches), JSON.stringify(nb.dodgeBranches));
+}
+
+// 저사양 모드 감시 (2026-10-06 실기) — 시간 기준: 앞 0.8초는 버리고 2초 평균 간격 22ms 초과면 한 번 true
+{
+  const slow = perfMode.frameMonitor(); let hit = 0; for (let i = 0; i < 400; i += 1) if (slow(30)) hit += 1;
+  const fast = perfMode.frameMonitor(); let hitF = 0; for (let i = 0; i < 400; i += 1) if (fast(16.7)) hitF += 1;
+  const spike = perfMode.frameMonitor(); let hitS = 0; for (let i = 0; i < 400; i += 1) if (spike(i % 50 === 0 ? 2000 : 16.7)) hitS += 1;
+  const late = perfMode.frameMonitor(); let lateAt = -1, tt = 0; for (let i = 0; i < 2000 && lateAt < 0; i += 1) { const dt = tt < 6000 ? 16.7 : 60; tt += dt; if (late(dt)) lateAt = Math.round(tt / 100) / 10; }
+  const crawl = perfMode.frameMonitor(); let crawlAt = -1; for (let i = 0; i < 40 && crawlAt < 0; i += 1) if (crawl(250)) crawlAt = (i + 1) * 0.25;
+  ok("저사양 감시: 33 FPS 면 한 번 켜고 · 60 FPS 면 안 켜고 · 백그라운드 복귀 같은 긴 틈은 무시 · 4 FPS 기기도 3초 안에 판정 · 곡 중간에 느려져도 켠다", hit === 1 && hitF === 0 && hitS === 0 && crawlAt > 0 && crawlAt <= 3 && lateAt > 6 && lateAt <= 8.2, `${hit} ${hitF} ${hitS} · 4FPS 판정 ${crawlAt}초 · 6초 뒤 느려지면 ${lateAt}초`);
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

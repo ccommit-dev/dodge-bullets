@@ -372,3 +372,14 @@ export function nextStageIndex(best: number, stars: Record<string, number>): num
   while (i + 1 < STAGES.length && stageUnlocked(i + 1, best, stars)) i += 1;
   return i;
 }
+
+/**
+ * HUD·안내의 스테이지 꼬리표 (2026-10-06 실기 플레이) — 갈림길은 표의 id(61~80)가 그대로 "Stage 62" 로 보였다.
+ * 본선 "Stage 13" · 갈림길 "1장 정예 ②" · 성벽 "12F"
+ */
+export function stageTag(index: number): string {
+  if (isTowerIndex(index)) return `${towerFloorOf(index)}F`;
+  const b = branchOf(index);
+  if (b) return `${b.chapter + 1}장 ${b.kind === "treasure" ? "보물 동굴" : b.kind === "secret" ? "비밀 대장" : b.id.endsWith("E1") ? "정예 ①" : "정예 ②"}`;
+  return `Stage ${getStage(index).id}`;
+}
