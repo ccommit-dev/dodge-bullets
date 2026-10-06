@@ -1,3 +1,5 @@
+import { emptyBeatCosmetics, normalizeBeatCosmetics } from "../beat/shop";
+import type { BeatCosmetics } from "../beat/types";
 import { emptySkills, type BeatSkills } from "../beat/rpg";
 import { CHIPS, CHIP_MAX_LEVEL, CHIP_SLOTS, emptyChipLevels, type ChipId, type ChipLevels } from "../game/chips";
 import {
@@ -130,6 +132,10 @@ export type CharacterProgress = {
   onboardingStep: number;
   /** dodge 스테이지 별점 (§4) — key는 스테이지 인덱스 "0"~"3", 성벽 미적용 */
   dodgeStars: Record<string, number>;
+  /** 비트 수련 커스텀(지휘 북·구호) 소유·장착 (2026-10-06) — 예전 비트 전용 저장에서 옮겨 왔다(mergeBeatCosmetics) */
+  beatCosmetics: BeatCosmetics;
+  /** 원정 갈림길 별점 (2026-10-06) — key 는 stages.BRANCHES id("1-T" · "3-S"). 본선 별 합·마일스톤에 들어가지 않는다 */
+  dodgeBranches: Record<string, number>;
   /** 보유 동료 스킨 id */
   ownedAllySkins: string[];
   /** 동료별 장착 스킨 (미장착 = 기본 외형) */
@@ -264,6 +270,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     journalClaimed: [],
     onboardingStep: 0,
     dodgeStars: {},
+    dodgeBranches: {},
+    beatCosmetics: emptyBeatCosmetics(),
     ownedAllySkins: [],
     equippedAllySkins: {},
     ownedWeaponSkins: [],
@@ -361,6 +369,16 @@ function onboardingStepOf(raw: Partial<CharacterProgress>): number {
     (raw.attendanceStreak ?? 0) > 0 ||
     (raw.pioneeredArea ?? 1) > 1;
   return hasProgress ? 4 : 0;
+}
+
+function dodgeBranchesOf(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (raw && typeof raw === "object") {
+    Object.entries(raw as Record<string, unknown>).forEach(([key, value]) => {
+      if (/^[1-5]-(T|E1|E2|S)$/.test(key) && typeof value === "number") out[key] = Math.max(0, Math.min(3, Math.floor(value)));
+    });
+  }
+  return out;
 }
 
 function dodgeStarsOf(raw: unknown): Record<string, number> {
@@ -570,6 +588,8 @@ export function normalizeCharacterProgress(
       : [],
     onboardingStep: onboardingStepOf(raw),
     dodgeStars: dodgeStarsOf(raw.dodgeStars),
+    dodgeBranches: dodgeBranchesOf(raw.dodgeBranches),
+    beatCosmetics: normalizeBeatCosmetics((raw.beatCosmetics && typeof raw.beatCosmetics === "object" ? raw.beatCosmetics : null) as Partial<BeatCosmetics> | null),
     ownedAllySkins: Array.isArray(raw.ownedAllySkins)
       ? [...new Set(raw.ownedAllySkins.filter((id): id is string => typeof id === "string"))].slice(0, 20)
       : [],

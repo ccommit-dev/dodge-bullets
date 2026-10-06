@@ -23,6 +23,8 @@ import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
 import { armorTierOf } from "./ui/EquippedCharacter";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
+import { WalletBar } from "./ui/WalletBar";
+import { qaGemsEnabled } from "./progression/storage";
 import type { ShoulderId } from "./progression/model";
 import { EXPEDITION_SKILLS, WEAPON_FORGE_MAX, weaponForgeCooldownMul, weaponForgeCost, weaponForgeDamageMul, type WeaponForgeLevels } from "./game/skills";
 
@@ -64,6 +66,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [toast, setToast] = useState("");
   const [materials, setMaterials] = useState(0);
+  const [gems, setGems] = useState(0);
   /** 대장간 지갑 = 공유 골드. 방치 정산이 여기로 들어오고 강화가 여기서 빠진다. */
   const [coins, setCoins] = useState(0);
   const [reforgeRank, setReforgeRank] = useState(0);
@@ -110,6 +113,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setCoins(progress.sharedCoins);
       setReforgeRank(progress.reforgeRank);
       setMaterials(progress.enhancementMaterials);
+      setGems(progress.redGems);
       firstClearRef.current = progress.firstClearDates.forge;
       setOwnedShoulders(progress.ownedShoulders);
       setEquippedShoulder(progress.equippedShoulder);
@@ -476,6 +480,12 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           <strong>{formatGold(coins)}</strong>
         </div>
       </header>
+      {/* 강화 재료까지 한 줄에 — 골드만 보여 강화석·보석 잔량을 몰랐다 (2026-10-06) */}
+      <WalletBar className="forge-wallet-bar" testGems={qaGemsEnabled()} items={[
+        { kind: "gold", amount: coins },
+        { kind: "gem", amount: gems },
+        { kind: "stone", amount: materials },
+      ]} />
 
       {(
         <main className="forge-shell">

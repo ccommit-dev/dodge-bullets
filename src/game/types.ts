@@ -189,6 +189,10 @@ export type StageDef = {
   chapter: number;
   slot: number;
   slotKind: StageSlotKind;
+  /** 대장 그림 덮어쓰기 — 중간 보스·비밀 대장 (titans/generated/monsters/<bossArt>.png). 없으면 장 대장 그림 */
+  bossArt?: string;
+  /** 갈림길 스테이지 종류 (stages.ts BRANCHES). 본선이면 없음 */
+  branch?: "treasure" | "elite" | "secret";
   patterns: ArrowPattern[];
   /** Platforms in normalized coords (0–1 of playfield). */
   platforms: Array<{ x: number; y: number; w: number; h: number }>;

@@ -118,7 +118,9 @@ ok("H 트리거 패키지(벽 돌파·환생) 노출 · 개척(지역3)도 노�
 ok("H 보석팩 3종에 첫 구매 2배 배지", r.badges === 3, String(r.badges));
 
 // ── G. 시즌 패스: 모험 팝업 진입 · 수령 · 유료 트랙 구매(QA) ──
-await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.seasonPass = { season: 0, xp: 520, paid: false, claimedFree: [], claimedPaid: [] }; q.partyIds = ["mia", "leon"]; localStorage.setItem(k, JSON.stringify(q)); }, H);
+// 현재 시즌 번호 — 0 으로 고정하면 시즌이 넘어간 날(2026-10-05~) 저장이 새 시즌으로 초기화돼 0/30단이 된다
+const SEASON_NOW = Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 8, 7)) / (28 * 86400000)));   // seasonPass.ts SEASON_EPOCH · SEASON.days
+await page.evaluate(({ h, SEASON_NOW }) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.seasonPass = { season: SEASON_NOW, xp: 520, paid: false, claimedFree: [], claimedPaid: [] }; q.partyIds = ["mia", "leon"]; localStorage.setItem(k, JSON.stringify(q)); }, { h: H, SEASON_NOW });
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();

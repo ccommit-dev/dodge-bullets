@@ -1,3 +1,4 @@
+import { rewardDepth } from "./stages";
 import type { GameWorld } from "./types";
 import { syncBarrierLives } from "./arrows";
 
@@ -186,7 +187,7 @@ function rollRarity(odds: Record<PerkRarity, number>, r: number): PerkRarity {
  * 카드 3장 — 자리마다 등급을 먼저 굴리고 그 등급에서 뽑는다.
  * 그 등급에 남은 카드가 없으면 한 단계씩 내려온다(에픽→레어→일반). 결정적 rng 를 넣으면 재현된다.
  */
-export function pickPerks(world: GameWorld, rng: () => number = Math.random, count = 3, stageIndex = world.stageIndex ?? 0): PerkDef[] {
+export function pickPerks(world: GameWorld, rng: () => number = Math.random, count = 3, stageIndex = rewardDepth(world.stageIndex ?? 0)): PerkDef[] {
   const pool = PERKS.filter((p) => p.available(world));
   // [정예 선발] 소모품 — 이번 3택만 전부 레어 이상. 쓰고 나면 꺼진다 (game/expeditionOps.ts)
   const odds = world.draftBoost ? { common: 0, rare: 0.55, epic: 0.45 } : rarityOdds(stageIndex);

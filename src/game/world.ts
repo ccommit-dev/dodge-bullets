@@ -6,7 +6,7 @@ import { emptySkillLevels } from "./skills";
 import type { InputState } from "./input";
 import { createPlayer, GRAVITY, resetPlayer } from "./player";
 import { emptyShopLevels, statsFromLevels } from "./shop";
-import { getStage } from "./stages";
+import { getStage, rewardDepth } from "./stages";
 import type { GameWorld, Platform, PlayerStats } from "./types";
 
 /**
@@ -318,7 +318,7 @@ function computeScore(
 ): number {
   const pace = Math.floor(elapsedMs / 70);
   const dodgePts = dodged * 12;
-  const stagePts = stageIndex * 80;
+  const stagePts = rewardDepth(stageIndex) * 80;   // 갈림길·성벽은 인덱스가 아니라 깊이로 (2026-10-06)
   const comboPts = Math.floor(combo * 4 + maxCombo * 6);
   return pace + dodgePts + stagePts + comboPts;
 }

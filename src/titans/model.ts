@@ -1,4 +1,5 @@
 import { assetUrl } from "../asset";
+import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
 export type TitanHeroId =
   | "mia"
@@ -450,6 +451,10 @@ export function monsterKind(stage: number, boss: boolean, chesterson: boolean): 
 
 export function monsterLabel(kind: TitanMonsterKind, chesterson: boolean, stage = 1): string {
   if (chesterson) return "황금사자";
+  // 지역 변종 이름 (2026-10-06 bestiary) — 그림과 이름이 같이 바뀐다
+  const area = huntingArea(stage);
+  const variant = kind === "boss" ? huntBossVariant(area, stage) : huntMonsterVariant(kind, area, stage);
+  if (variant) return variant.name;
   switch (kind) {
     case "slime":
       return "슬라임";

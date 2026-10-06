@@ -464,6 +464,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.lineWidth = 2;
       ctx.strokeStyle = "rgba(248,250,252,.9)";
       ctx.stroke();
+      drawSpikeDecor(ctx, world.cosmetics.spikeSkin, size, eased, world.elapsedMs);
     }
     if (eased > 0.3) {
       ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`;
@@ -545,16 +546,26 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   }
   ctx.restore();
 
+  drawHoldState(ctx, world, hitY, horizonY, position, preview);
+
   if (world.judgeText && world.judgeMs > 0) {
     const alpha = Math.min(1, world.judgeMs / 180);
     const scale = 1 + (420 - Math.min(420, world.judgeMs)) / 900;
     ctx.save();
-    ctx.translate(world.cx, hitY - 58);
+    // 홀드 고리·끊김 글자가 패드 바로 위에 있으므로 그동안 판정 글자를 한 줄 위로 (2026-10-06)
+    const holdUi = world.holdLane >= 0 || world.holdLane2 >= 0 || world.holdFx.length > 0;
+    ctx.translate(world.cx, hitY - (holdUi ? 104 : 58));
     ctx.scale(scale, scale);
     ctx.textAlign = "center";
     ctx.font = "900 26px system-ui, sans-serif";
     ctx.fillStyle =
-      world.judgeText.endsWith("♥")
+      world.judgeText === "HOLD 끊김"
+        ? `rgba(248, 113, 113, ${alpha})`
+        : world.judgeText.startsWith("HOLD 완료")
+        ? `rgba(253, 224, 71, ${alpha})`
+        : world.judgeText === "HOLD ▸ 유지"
+        ? `rgba(94, 234, 212, ${alpha})`
+        : world.judgeText.endsWith("♥")
         ? `rgba(74, 222, 128, ${alpha})`
         : world.judgeText === "PERFECT" || world.judgeText === "CLUTCH" || world.judgeText === "HOLD"
         ? `rgba(34, 211, 238, ${alpha})`
@@ -581,4 +592,147 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.fillText(world.lessonHint.slice(0, 36), world.cx, horizonY - 28);
     ctx.restore();
   }
+}
+
+/**
+ * 롱노트 상태 (2026-10-06, 사용자: "리듬게임에서는 HOLD 잘되고 있는지 실패한건지 더 가시화 명확히") —
+ * 예전에는 머리를 치는 순간 노트가 '소비'되어 몸통이 사라졌고, 유지 중인지·끊겼는지 화면에 아무것도 없었다.
+ *   유지 중: 패드에서 꼬리까지 빛줄기 + 패드의 진행률 고리 + "HOLD 63%"
+ *   완료: 금빛 고리가 퍼지며 "완료!"      끊김: 붉은 X · 금 간 고리 · "끊김" + 어디까지 버텼는지(%)
+ */
+function drawHoldState(ctx: CanvasRenderingContext2D, world: BeatWorld, hitY: number, horizonY: number, position: number, preview: number): void {
+  const slots: Array<[number, number, number]> = [[world.holdLane, world.holdStartStep, world.holdEndStep], [world.holdLane2, world.holdStartStep2, world.holdEndStep2]];
+  const t = world.elapsedMs * 0.001;
+  for (const [lane, start, end] of slots) {
+    if (lane < 0 || end < 0) continue;
+    const padX = laneXAt(world, lane as NoteLane, 1);
+    const tailEased = Math.max(0, Math.min(1, 1 - (end - position) / preview));
+    const tailX = laneXAt(world, lane as NoteLane, tailEased);
+    const tailY = horizonY + (hitY - horizonY) * tailEased;
+    const progress = start >= 0 && end > start ? Math.max(0, Math.min(1, (position - start) / (end - start))) : 0;
+    const accent = LANE_ACCENT[lane as NoteLane];
+    ctx.save();
+    // 빛줄기 — 남은 꼬리까지, 숨쉬듯 밝아진다
+    const pulse = 0.75 + Math.sin(t * 14) * 0.25;
+    const g = ctx.createLinearGradient(padX, hitY, tailX, tailY);
+    g.addColorStop(0, "rgba(255,255,255,.95)");
+    g.addColorStop(0.35, accent);
+    g.addColorStop(1, "rgba(253,224,71,.85)");
+    ctx.strokeStyle = g;
+    ctx.lineCap = "round";
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 24 * pulse;
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 16;
+    ctx.beginPath(); ctx.moveTo(padX, hitY); ctx.lineTo(tailX, tailY); ctx.stroke();
+    ctx.lineWidth = 6; ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.moveTo(padX, hitY); ctx.lineTo(tailX, tailY); ctx.stroke();
+    // 꼬리 캡 — 놓을 곳
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#fde047"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tailX, tailY, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // 패드 진행률 고리
+    const r = 30;
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "rgba(15,23,42,.75)";
+    ctx.beginPath(); ctx.arc(padX, hitY, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "#fde047"; ctx.shadowColor = "#fde047"; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(padX, hitY, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // 글자
+    ctx.textAlign = "center";
+    ctx.font = "900 15px system-ui, sans-serif";
+    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
+    const label = `HOLD ${Math.round(progress * 100)}%`;
+    ctx.strokeText(label, padX, hitY - r - 10);
+    ctx.fillStyle = "#fef08a";
+    ctx.fillText(label, padX, hitY - r - 10);
+    ctx.font = "800 11px system-ui, sans-serif";
+    ctx.strokeText("떼지 마세요", padX, hitY + r + 16);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText("떼지 마세요", padX, hitY + r + 16);
+    ctx.restore();
+  }
+  for (const fx of world.holdFx) {
+    const padX = laneXAt(world, fx.lane as NoteLane, 1);
+    const life = fx.kind === "done" ? 650 : 750;
+    const k = 1 - fx.ms / life;                 // 0 → 1
+    const alpha = Math.max(0, Math.min(1, fx.ms / 260));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = "center";
+    if (fx.kind === "done") {
+      ctx.strokeStyle = "#fde047"; ctx.shadowColor = "#fde047"; ctx.shadowBlur = 22; ctx.lineWidth = 6 * (1 - k) + 2;
+      ctx.beginPath(); ctx.arc(padX, hitY, 30 + k * 46, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.font = "900 18px system-ui, sans-serif";
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
+      ctx.strokeText("완료!", padX, hitY - 44 - k * 18);
+      ctx.fillStyle = "#fde047";
+      ctx.fillText("완료!", padX, hitY - 44 - k * 18);
+    } else {
+      // 금 간 고리 — 버틴 만큼만 남은 호가 붉게 흩어진다
+      ctx.strokeStyle = "#ef4444"; ctx.shadowColor = "#ef4444"; ctx.shadowBlur = 18; ctx.lineWidth = 5;
+      const segs = 8;
+      for (let i = 0; i < segs; i += 1) {
+        if (i / segs > Math.max(0.12, fx.progress)) break;
+        const a0 = -Math.PI / 2 + (i / segs) * Math.PI * 2 + 0.06, a1 = a0 + (Math.PI * 2) / segs - 0.12;
+        const push = k * 18;
+        const mid = (a0 + a1) / 2;
+        ctx.beginPath(); ctx.arc(padX + Math.cos(mid) * push, hitY + Math.sin(mid) * push, 30, a0, a1); ctx.stroke();
+      }
+      // 큰 X
+      const xr = 16 + k * 6;
+      ctx.lineWidth = 7; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(padX - xr, hitY - xr); ctx.lineTo(padX + xr, hitY + xr); ctx.moveTo(padX + xr, hitY - xr); ctx.lineTo(padX - xr, hitY + xr); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.font = "900 18px system-ui, sans-serif";
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
+      const text = `끊김 ${Math.round(fx.progress * 100)}%`;
+      ctx.strokeText(text, padX, hitY - 44 - k * 10);
+      ctx.fillStyle = "#f87171";
+      ctx.fillText(text, padX, hitY - 44 - k * 10);
+    }
+    ctx.restore();
+  }
+}
+
+/**
+ * 구호(내 노트 장식) — 비트 커스텀 상점 (2026-10-06). 예전엔 spikeSkin 을 사도 아무것도 그리지 않았다.
+ * 노트 기준 좌표(translate 이후)에서 그린다. 판정·크기는 바꾸지 않는다 — 외형 전용
+ */
+function drawSpikeDecor(ctx: CanvasRenderingContext2D, skin: BeatWorld["cosmetics"]["spikeSkin"], size: number, eased: number, ms: number): void {
+  if (skin === "triangle" || eased < 0.2) return;
+  ctx.save();
+  const bx = size * 0.95, by = -size * 0.8, br = Math.max(4, size * 0.42);
+  if (skin === "arrow") {
+    // 붉은 돌격 꼬리 — 노트 위(멀리) 쪽으로 세 줄
+    ctx.strokeStyle = "rgba(248,113,113,.85)"; ctx.lineCap = "round";
+    for (let i = -1; i <= 1; i += 1) {
+      ctx.lineWidth = Math.max(1.5, size * 0.12);
+      ctx.beginPath(); ctx.moveTo(i * size * 0.45, -size * 0.85); ctx.lineTo(i * size * 0.45, -size * (1.5 + Math.abs(i) * -0.2)); ctx.stroke();
+    }
+  } else if (skin === "diamond") {
+    ctx.strokeStyle = "rgba(125,211,252,.95)"; ctx.lineWidth = Math.max(2, size * 0.14);
+    ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 10;
+    const r = size * 1.25;
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 1.1, 0); ctx.lineTo(0, r); ctx.lineTo(-r * 1.1, 0); ctx.closePath(); ctx.stroke();
+  } else if (skin === "star") {
+    ctx.fillStyle = "#c084fc"; ctx.shadowColor = "#e9d5ff"; ctx.shadowBlur = 12;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i += 1) { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? br * 0.45 : br; ctx.lineTo(bx + Math.cos(a) * r, by + Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill();
+    const tw = 0.5 + 0.5 * Math.sin(ms * 0.012);
+    ctx.globalAlpha = tw; ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(-size * 0.9, -size * 0.7, Math.max(1.5, size * 0.1), 0, Math.PI * 2); ctx.fill();
+  } else if (skin === "bolt") {
+    ctx.strokeStyle = "rgba(253,224,71,.95)"; ctx.lineWidth = Math.max(1.5, size * 0.1); ctx.shadowColor = "#fde047"; ctx.shadowBlur = 12;
+    const j = (ms * 0.02) % 2 < 1 ? 1 : -1;
+    ctx.beginPath(); ctx.roundRect(-size * 1.0, -size * 0.9, size * 2.0, size * 1.8, size * 0.35); ctx.stroke();
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.moveTo(bx + br * 0.2, by - br); ctx.lineTo(bx - br * 0.55, by + br * 0.1 * j); ctx.lineTo(bx - br * 0.05, by + br * 0.1); ctx.lineTo(bx - br * 0.3, by + br); ctx.lineTo(bx + br * 0.55, by - br * 0.15); ctx.lineTo(bx + br * 0.05, by - br * 0.15); ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }

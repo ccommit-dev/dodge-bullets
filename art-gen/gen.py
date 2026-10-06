@@ -396,7 +396,8 @@ def cmd_monster(a):
         g = torch.Generator(dev()).manual_seed(seed)
         im = pipe(prompt=f"{a.prompt}, {MONSTER_STYLE}", negative_prompt=MONSTER_NEG, num_inference_steps=26,
                   guidance_scale=7.0, generator=g, width=1024, height=1024, ip_adapter_image=[refs]).images[0]
-        save(cutout(im).resize((512, 512), Image.LANCZOS), f"monster-{a.id}-s{seed}.png")
+        px = a.px or 512
+        save(cutout(im).resize((px, px), Image.LANCZOS), f"monster-{a.id}-s{seed}.png")
 
 
 BACKDROP_STYLE = (
@@ -444,7 +445,7 @@ if __name__ == "__main__":
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
     ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.add_argument("--weapon", choices=["sword", "bow", "staff"], default="sword"); ha.add_argument("--no-pose", action="store_true"); ha.add_argument("--pose-set"); ha.add_argument("--cn", type=float); ha.add_argument("--frames"); ha.add_argument("--tag"); ha.set_defaults(fn=cmd_heroattack)
     np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
-    mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.set_defaults(fn=cmd_monster)
+    mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.add_argument("--px", type=int); mo.set_defaults(fn=cmd_monster)
     bd = sub.add_parser("backdrop"); bd.add_argument("id"); bd.add_argument("prompt"); bd.add_argument("--seed", type=int); bd.add_argument("--seeds", type=int, nargs="*"); bd.set_defaults(fn=cmd_backdrop)
     v = sub.add_parser("cover"); v.add_argument("id"); v.add_argument("prompt"); v.add_argument("--seed", type=int); v.set_defaults(fn=cmd_cover)
     args = ap.parse_args()

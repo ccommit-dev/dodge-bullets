@@ -284,12 +284,19 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   const hTrack = { ...jt, level: 6 };   // 유효 레벨 > 3 — 일찍 떼면 HP 도 깎인다
   const mkHold = () => { const w = bworld.createBeatWorld(390, 700, 1, hTrack, "boots"); w.invulnMs = 0; w.hp = 5; w.beatPosition = 2; return { ...jses, world: w, chart: hchart, track: hTrack, hitSteps: new Set(), evaluatedStep: 0, holdLane: -1, holdEndStep: -1, holdLane2: -1, holdEndStep2: -1 }; };
   const h1 = mkHold(); const hr = bworld.performBeatLane(h1, 0); const rel = bworld.performBeatRelease(h1, 0);
-  ok("롱노트 머리만 톡 치고 떼면: hold-start → release-early · MISS · HP −1 · 완성 노트 0", hr === "hold-start" && rel === "release-early" && h1.world.judgeText === "MISS" && h1.world.hp === 4 && h1.world.completedNotes.length === 0, `${hr} ${rel} ${h1.world.judgeText} hp ${h1.world.hp} 완성 ${h1.world.completedNotes.length}`);
+  // 2026-10-06: 일찍 떼면 MISS 대신 "HOLD 끊김"(붉게) + 끊김 연출(어디까지 버텼는지) — "HOLD 잘되고 있는지 실패한건지 더 가시화"
+  ok("롱노트 머리만 톡 치고 떼면: hold-start → release-early · 'HOLD 끊김' · 끊김 연출 · HP −1 · 완성 노트 0", hr === "hold-start" && rel === "release-early" && h1.world.judgeText === "HOLD 끊김" && h1.world.holdFx.length === 1 && h1.world.holdFx[0].kind === "break" && h1.world.hp === 4 && h1.world.completedNotes.length === 0, `${hr} ${rel} ${h1.world.judgeText} fx ${JSON.stringify(h1.world.holdFx)} hp ${h1.world.hp} 완성 ${h1.world.completedNotes.length}`);
+  const hm = mkHold(); bworld.performBeatLane(hm, 0);
+  ok("롱노트를 누르는 동안 유지 상태가 보인다 — 레인 · 머리 스텝 · 꼬리 스텝이 월드에 있다(빛줄기·진행률 고리)", hm.world.holdLane === 0 && hm.world.holdStartStep === 2 && hm.world.holdEndStep === 5 && hm.world.judgeText === "HOLD ▸ 유지", JSON.stringify({ l: hm.world.holdLane, s: hm.world.holdStartStep, e: hm.world.holdEndStep }));
+  hm.world.beatPosition = 3.5; bworld.performBeatRelease(hm, 0);
+  ok("중간에 떼면 버틴 비율이 끊김 연출에 남는다 (머리 2 → 꼬리 5 에서 3.5 = 50%)", hm.world.holdFx[0]?.kind === "break" && Math.abs(hm.world.holdFx[0].progress - 0.5) < 0.01 && hm.world.holdLane === -1 && hm.world.holdStartStep === -1, JSON.stringify(hm.world.holdFx));
   const h2 = mkHold(); const hr2 = bworld.performBeatLane(h2, 0); const before = h2.world.completedNotes.length;
   h2.world.beatPosition = 5.2; const rel2 = bworld.performBeatRelease(h2, 0);
-  ok("롱노트를 꼬리까지 유지하고 떼면: 누를 땐 완성 0 · 뗄 때 release-good · 완성 노트 1", hr2 === "hold-start" && before === 0 && rel2 === "release-good" && h2.world.completedNotes.length === 1, `${hr2} ${before} ${rel2} ${h2.world.completedNotes.length}`);
+  ok("롱노트를 꼬리까지 유지하고 떼면: 누를 땐 완성 0 · 뗄 때 release-good · 'HOLD 완료!' · 금빛 연출 · 완성 노트 1", hr2 === "hold-start" && before === 0 && rel2 === "release-good" && h2.world.judgeText === "HOLD 완료!" && h2.world.holdFx[0]?.kind === "done" && h2.world.completedNotes.length === 1, `${hr2} ${before} ${rel2} ${h2.world.judgeText} ${h2.world.completedNotes.length}`);
+  for (let i = 0; i < 60; i += 1) bworld.updateBeatWorld(h2, 1 / 60, true);
+  ok("완료·끊김 연출은 1초 안에 사라진다", h2.world.holdFx.length === 0, String(h2.world.holdFx.length));
   const h3 = mkHold(); bworld.performBeatLane(h3, 0); h3.world.beatPosition = 6.1; bworld.settleHoldIfPassed(h3);
-  ok("롱노트를 누른 채 꼬리를 지나면 자동 완성 (완성 노트 1)", h3.world.completedNotes.length === 1 && h3.holdEndStep === -1, String(h3.world.completedNotes.length));
+  ok("롱노트를 누른 채 꼬리를 지나면 자동 완성 (완성 노트 1) · 'HOLD 완료' 연출", h3.world.completedNotes.length === 1 && h3.holdEndStep === -1 && String(h3.world.judgeText).startsWith("HOLD 완료") && h3.world.holdFx[0]?.kind === "done", `${h3.world.completedNotes.length} ${h3.world.judgeText}`);
   // 일반 탭 노트는 누르는 순간 완성
   const tchart = [0, 1, 2, 3].map(() => ({ sound: "boots", spike: false, lane: 0 })); tchart[2] = { sound: "boots", spike: true, lane: 0 };
   const tw = bworld.createBeatWorld(390, 700, 1, jt, "boots"); tw.beatPosition = 2;
@@ -341,6 +348,23 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
     stages.stageUnlocked(0, 1, {}) && !stages.stageUnlocked(1, 1, {}) && stages.stageUnlocked(1, 1, { 0: 1 }) && stages.stageUnlocked(4, 4, {}) && !stages.stageUnlocked(5, 4, {}) && stages.nextStageIndex(1, {}) === 0 && stages.nextStageIndex(4, {}) === 4);
   ok("끝없는 성벽 — 1장 대장(10)을 깨면 열린다 · 1층은 10 스테이지 수준 · 41층부터는 50 스테이지보다 단단하다 (조금 더 어렵게)",
     stages.TOWER_UNLOCK_STAGE === 10 && stages.getStage(stages.towerIndexOf(1)).monsterHp >= ST[9].monsterHp * 0.99 && stages.getStage(stages.towerIndexOf(50)).monsterHp > ST[49].monsterHp && stages.getStage(stages.towerIndexOf(50)).bossCuts >= ST[49].bossCuts);
+}
+
+// ── 갈림길 (2026-10-06, 사용자: "일직선으로 가는게 아니라 루트가 좀 있었으면 좋겠음") ──
+{
+  const B = stages.BRANCHES, ST = stages.STAGES;
+  ok("갈림길 20개 — 장마다 보물 동굴 · 정예 우회로 ①② · 비밀 대장", B.length === 20 && [0, 1, 2, 3, 4].every((c) => B.filter((b) => b.chapter === c).map((b) => b.kind).join() === "treasure,elite,elite,secret"));
+  ok("인덱스 — 본선 0~49 · 갈림길 50~69 · 성벽 70~ (층 번호는 그대로 1층부터)", stages.BRANCH_START_INDEX === 50 && stages.TOWER_START_INDEX === 70 && stages.isBranchIndex(50) && stages.isBranchIndex(69) && !stages.isBranchIndex(70) && stages.towerFloorOf(70) === 1 && stages.towerFloorOf(69) === 0 && stages.towerIndexOf(1) === 70);
+  ok("보상 깊이 — 성벽 층은 예전 인덱스(50 + 층 − 1)와 같다 · 갈림길은 기준 본선 스테이지 (인덱스를 옮겨도 경험치·조각·점수가 그대로)", stages.rewardDepth(stages.towerIndexOf(1)) === 50 && stages.rewardDepth(stages.towerIndexOf(12)) === 61 && stages.rewardDepth(B[0].index) === B[0].anchor && stages.rewardDepth(7) === 7);
+  ok("갈림길은 본선을 바꾸지 않는다 — 50 스테이지 표가 buildStage 그대로 · 열림/다음 스테이지 규칙은 본선만 본다", ST.every((x, i) => JSON.stringify(stages.buildStage(i)) === JSON.stringify(x)) && stages.nextStageIndex(4, {}) === 4 && !stages.stageUnlocked(50, 50, {}));
+  ok("비밀 대장은 장마다 다른 그림·이름 · 중간 보스도 제 그림(예전엔 장 대장의 '부대장')", new Set(B.filter((b) => b.kind === "secret").map((b) => stages.getStage(b.index).bossArt)).size === 5 && [4, 14, 24, 34, 44].every((i) => !!ST[i].bossArt && !ST[i].bossName.includes("부대장")), B.filter((b) => b.kind === "secret").map((b) => stages.getStage(b.index).bossName).join(","));
+  const stars0 = {}, b1 = B.find((b) => b.id === "1-E1"), b2 = B.find((b) => b.id === "1-E2"), bs = B.find((b) => b.id === "1-S"), bt = B.find((b) => b.id === "1-T");
+  ok("갈림길 열림 — 보물 동굴은 1-3 을 깨면, 정예 ①은 1-6, ②는 ①을 깨면, 비밀 대장은 ②를 깨면", !stages.branchUnlocked(bt, 1, stars0, {}) && stages.branchUnlocked(bt, 1, { 2: 1 }, {}) && stages.branchUnlocked(b1, 1, { 5: 1 }, {}) && !stages.branchUnlocked(b2, 1, { 5: 1, 6: 1 }, {}) && stages.branchUnlocked(b2, 1, {}, { "1-E1": 1 }) && stages.branchUnlocked(bs, 1, {}, { "1-E2": 2 }));
+  ok("옛 저장(별 없이 최고 기록만) — 최고 7 이면 1-3·1-6 을 깬 것으로 본다", stages.branchUnlocked(bt, 7, {}, {}) && stages.branchUnlocked(b1, 7, {}, {}) && !stages.branchUnlocked(b1, 5, {}, {}));
+  ok("첫 클리어 보상 — 보물: 골드·강화석 · 정예: 인장·강화석 / 방지권 · 비밀 대장: 보석 30~70", B.every((b) => b.kind === "treasure" ? b.firstReward.coins > 0 && b.firstReward.materials > 0 : b.kind === "secret" ? b.firstReward.gems >= 30 && b.firstReward.gems <= 70 : (b.firstReward.seals ?? 0) + (b.firstReward.forgeTickets ?? 0) > 0));
+  const { stageGate, profileFor } = await import(pathToFileURL(join(root, "scripts/dodge-sim.mjs")).href);
+  const rows = B.map((b) => ({ b, g: stageGate(b.index, profileFor(b.anchor), 5) }));
+  ok("갈림길 20개 · 기준 깊이의 기대 성장 계정이 5시드 중 3회 이상 깬다 (죽은 콘텐츠가 없다) · 풀 포화 없음", rows.every((r) => r.g.clear >= 3 && !r.g.pool), rows.map((r) => `${r.b.id}:${r.g.clear}`).join(" "));
 }
 
 // ── 진행 속도 · 대장 크기 (2026-10-02) ──
