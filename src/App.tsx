@@ -1,4 +1,4 @@
-import { preloadStageBackgrounds, STAGE_BACKGROUNDS } from "./game/draw";
+import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS } from "./game/draw";
 import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import "./App.css";
@@ -19,6 +19,7 @@ import { combatPower, emptyCharacterProgress, type CharacterProgress, type Shoul
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { WalletBar } from "./ui/WalletBar";
 import { shareCardExtras } from "./ui/shareCardData";
+import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
 import { TITLES } from "./economy/gemCatalog";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
@@ -68,7 +69,7 @@ import {
   statsFromLevels,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
+import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageTag, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
 import { RouteMap, branchRewardLabel } from "./game/RouteMap";
 import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
@@ -363,6 +364,8 @@ function App() {
   const [, setStoreTick] = useState(0);
   useEffect(() => { const off = onStorePricesChanged(() => setStoreTick((t) => t + 1)); return () => { off(); }; }, []);
   const appModeRef = useRef<AppMode>("titans");
+  /** 비트 연주 중 뒤로 가기 두 번 누르기 — 첫 번째 누른 시각 */
+  const backArmedAtRef = useRef(0);
 
   const setMode = useCallback((mode: AppMode) => {
     appModeRef.current = mode;
@@ -384,6 +387,29 @@ function App() {
         // 앱 안 공유 카드(ui/shareCard)가 떠 있으면 그것부터 닫는다 — 웹의 "탭 닫기"와 같은 자리
         const card = document.querySelector<HTMLButtonElement>(".share-card-overlay button");
         if (card) { card.click(); return true; }
+        // 2026-10-06 에뮬레이터 실기 플레이: 뒤로 가기가 무엇이 열려 있든 곧장 허브로 나가(전투 중이면 판을 버렸다) 앱을 최소화했다.
+        // ① 열린 시트·창(구매 추천 · 상점 시트 · 설정 등 '닫기' 버튼)부터 닫는다
+        const sheet = document.querySelector<HTMLElement>(".advice-backdrop");
+        if (sheet) { sheet.click(); return true; }
+        const close = [...document.querySelectorAll<HTMLButtonElement>('.hub-sheet-close, .modal-close, button[aria-label="닫기"]')].find((b) => b.offsetParent !== null);
+        if (close) { close.click(); return true; }
+        // ② 성문 방어 전투 중이면 일시정지, 일시정지면 이어 하기 — 판을 버리지 않는다
+        if (appModeRef.current === "dodge" && (stateRef.current === "playing" || stateRef.current === "paused")) {
+          const next = stateRef.current === "paused" ? "playing" : "paused";
+          lastTsRef.current = 0;
+          stateRef.current = next;
+          setGameState(next);
+          return true;
+        }
+        // ③ 비트 곡 연주 중엔 한 번 더 눌러야 나간다 (일시정지가 없는 리듬 판)
+        if (appModeRef.current === "beat" && document.querySelector(".beat-battle-canvas")) {
+          const nowMs = Date.now();
+          if (nowMs - backArmedAtRef.current > 2000) {
+            backArmedAtRef.current = nowMs;
+            showToast("한 번 더 누르면 연주를 그만두고 나갑니다", 2000);
+            return true;
+          }
+        }
         if (appModeRef.current !== "titans") {
           setMode("titans");
           return true;
@@ -662,6 +688,7 @@ function App() {
     document.addEventListener("gesturestart", onGesture, { passive: false });
     document.addEventListener("gesturechange", onGesture, { passive: false });
 
+    const watchDodgeFrames = frameMonitor();
     const loop = (ts: number) => {
       if (appModeRef.current !== "dodge") {
         rafRef.current = requestAnimationFrame(loop);
@@ -671,6 +698,9 @@ function App() {
       const ctx = canvasRef.current?.getContext("2d");
       if (world && ctx) {
         if (!lastTsRef.current) lastTsRef.current = ts;
+        // 저사양 모드 (ui/perfMode) — 전투 첫 3초가 느리면 캔버스 흐림 그림자를 끈다. 비트에서 켜졌어도 같이 적용
+        if (stateRef.current === "playing" && watchDodgeFrames(ts - lastTsRef.current)) setLowFx(true);
+        applyLowFx(ctx);
         // 첫 스테이지 슬로모션 튜토리얼 (점검표 #6): 첫 원정의 처음 7초만 45% 속도로,
         // 분열 화살 규칙을 안전하게 한 번 본 뒤 정상 속도로 복귀한다
         // 실시간 기준 7초 — 감속된 게임 시간(stageElapsedMs)으로 재면 실제로는 15초가 걸린다
@@ -1087,6 +1117,7 @@ function App() {
     // progressRef — 이 함수는 게임 루프의 오래된 클로저에서도 불린다
     loadLoadout(world, shopLevelsRef.current, progressRef.current);
     beginStage(world, index);
+    preloadStageSprites(index);
     const stage = getStage(index);
     setStageIndex(index);
     setStageLabel(stage.name);
@@ -1923,7 +1954,7 @@ function App() {
       {appMode === "dodge" && gameState === "intro" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">STAGE {stage.id}</p>
+            <p className="brand">{stageTag(stageIndex).toUpperCase()}</p>
             <h1 className="title">{stageLabel}</h1>
             <p className="subtitle">{stageIntro}</p>
             <p className="score-line">몰려오는 몬스터를 넘기고 대장 몬스터를 끝까지 쓰러뜨리면 스테이지 클리어</p>
@@ -1952,7 +1983,7 @@ function App() {
                 </span>
               )}
               <span className="hud-score">
-                {towerFloor > 0 ? `${towerFloor}F` : `Stage ${stage.id}`} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return `WAVE ${wv.index}/${wv.count}`; })()}
+                {stageTag(stageIndex)} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return `WAVE ${wv.index}/${wv.count}`; })()}
                 {combo >= 2 ? ` · x${combo}` : ""}
               </span>
               <span className="hud-hint">
@@ -2168,7 +2199,7 @@ function App() {
             <h1 className="title">{isNewRecord ? "신기록!" : "다시 도전?"}</h1>
             <p className="score-line">점수 {lastScore}</p>
             <p className="subtitle">
-              Stage {stage.id} · 최고 {highScore} · 코인 {coins}
+              {stageTag(stageIndex)} · 최고 {highScore} · 코인 {coins}
             </p>
             {deathTip && <p className="death-tip"><b>다음엔 이렇게</b> {deathTip}</p>}
             {(() => {

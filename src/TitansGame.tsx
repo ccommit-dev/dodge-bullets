@@ -84,7 +84,7 @@ import {
 } from "./titans/allies";
 import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
 import { assetUrl } from "./asset";
-import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt } from "./game/native";
+import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
 import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
@@ -377,6 +377,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     if (!at || unclaimed === 0) { void cancelLocalNotification([NOTIFY_ID.weeklyDeadline]); return; }
     void scheduleLocalNotification(NOTIFY_ID.weeklyDeadline, "주간 도전 마감 임박", `오늘 밤 초기화 — 아직 받지 않은 주간 보상 ${unclaimed}개가 있어요.`, at);
   }, []);
+  // 알림 권한은 두 번째 접속 · 튜토리얼 뒤에만 묻는다 (native.setNotifyPromptAllowed, 2026-10-06)
+  useEffect(() => { setNotifyPromptAllowed(character.sessionCount >= 2 && character.onboardingStep >= 4); }, [character.sessionCount, character.onboardingStep]);
   useEffect(() => { scheduleWeeklyDeadlineNotify(events); }, [events, scheduleWeeklyDeadlineNotify]);
   const scheduleIdleCapNotify = useCallback((progress: CharacterProgress) => {
     const at = new Date(Date.now() + idleCapHours(progress) * 3600 * 1000);

@@ -19,8 +19,11 @@ import { assetUrl } from "../asset";
 export const STAGE_BACKGROUNDS = [1, 5, 3, 2, 4].map((n) => assetUrl(`dodge/bg/s${n}.webp`));
 const bgCache: Array<HTMLImageElement | null> = [];
 function stageBackground(stageIndex: number): HTMLImageElement | null {
+  return chapterBackground(getStage(stageIndex).chapter);
+}
+function chapterBackground(chapter: number): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
-  const i = Math.max(0, Math.min(STAGE_BACKGROUNDS.length - 1, getStage(stageIndex).chapter));
+  const i = Math.max(0, Math.min(STAGE_BACKGROUNDS.length - 1, chapter));
   if (bgCache[i] === undefined) {
     const img = new Image();
     img.decoding = "async";
@@ -42,8 +45,28 @@ function sprite(path: string): HTMLImageElement | null {
 
 /** 시작 화면에서 4스테이지 배경을 미리 받아 둔다 (JSX 조건식에서 호출되므로 항상 true 를 돌려준다) */
 export function preloadStageBackgrounds(): true {
-  for (let i = 0; i < STAGE_BACKGROUNDS.length; i += 1) stageBackground(i);
+  // 장(0~4)마다 — 예전엔 stageBackground(0~4) 를 불러 스테이지 0~4(전부 1장)의 배경 하나만 받았다 (2026-10-06)
+  for (let c = 0; c < STAGE_BACKGROUNDS.length; c += 1) chapterBackground(c);
   return true;
+}
+
+/**
+ * 출격 안내 동안 그 스테이지의 몬스터·대장 그림을 받아 **디코딩까지** 끝내 둔다 (2026-10-06 실기 플레이) —
+ * 처음 그리는 순간 큰 PNG(대장 1024px)를 해독하느라 전투 첫 몇 초가 25 FPS 로 끊겼다(에뮬레이터 WebView, 자리 잡은 뒤 50).
+ */
+export function preloadStageSprites(stageIndex: number): void {
+  if (typeof Image === "undefined") return;
+  const st = getStage(stageIndex);
+  const names = new Set<string>();
+  for (const list of Object.values(MONSTER_VARIANTS)) names.add(list[Math.max(0, Math.min(list.length - 1, st.chapter))]);
+  names.add(st.bossArt ?? BOSS_SPRITE[Math.max(0, Math.min(BOSS_SPRITE.length - 1, st.bossTier))]);
+  chapterBackground(st.chapter);
+  for (const n of names) for (const suf of ["", "-hit", "-defeat"]) {
+    const path = `titans/generated/monsters/${n}${suf}.png`;
+    sprite(path);
+    const img = spriteCache.get(path);
+    img?.decode?.().catch(() => {});
+  }
 }
 
 /** 화살 스프라이트 캐시 — dodge/arrows/<element>.png (수평, 촉이 오른쪽) */

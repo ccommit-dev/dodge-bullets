@@ -61,6 +61,13 @@ export function weeklyDeadlineAt(now: Date = new Date()): Date | null {
 }
 
 let notifyPermissionAsked = false;
+/**
+ * 알림 권한을 '물어도 되는' 때 (2026-10-06, 에뮬레이터 실기 플레이에서 발견) — 예전엔 첫 실행 몇 초 만에(사냥터 부팅의 주간·픽업 알림 예약)
+ * 안드로이드 시스템 권한 창이 튜토리얼 위에 떴다. 창이 떠 있는 동안 앱은 일시정지(WebView 그리기 멈춤)되고, 무엇을 알려 줄지 모르는 새 유저는 대개 거절한다.
+ * 이제 두 번째 접속부터 · 튜토리얼이 끝난 뒤에만 묻는다. 그 전에는 이미 허용된 경우에만 예약한다
+ */
+let notifyPromptAllowed = false;
+export function setNotifyPromptAllowed(allowed: boolean): void { notifyPromptAllowed = allowed; }
 
 /**
  * 로컬 푸시 예약 (방치형 리텐션 축) — 방치 캡 도달·파견 귀환 알림.
@@ -83,16 +90,18 @@ export async function scheduleLocalNotification(
   if (!isNativePlatform() || at.getTime() <= Date.now()) return;
   try {
     const { LocalNotifications } = await import("@capacitor/local-notifications");
-    if (!notifyPermissionAsked) {
+    const status = await LocalNotifications.checkPermissions();
+    if (status.display !== "granted") {
+      if (!notifyPromptAllowed || notifyPermissionAsked) return;
       notifyPermissionAsked = true;
-      const status = await LocalNotifications.checkPermissions();
-      if (status.display !== "granted") {
-        const asked = await LocalNotifications.requestPermissions();
-        if (asked.display !== "granted") return;
-      }
+      const asked = await LocalNotifications.requestPermissions();
+      if (asked.display !== "granted") return;
     }
+    // isExactNotification: false — 플러그인 8.3 은 기본이 '정확한 알람'이라, 안드로이드 12+ 에서 그 권한이 없으면 예약할 때마다
+    // 시스템 "알람 및 리마인더" 설정 화면을 열어 게임을 가렸다 (2026-10-06 에뮬레이터 실기 플레이에서 발견, 사냥터 부팅 직후).
+    // 방치·주간 알림은 몇 분 늦어도 되므로 처음부터 부정확한 예약으로 둔다 — 설정 화면도, SCHEDULE_EXACT_ALARM 도 필요 없다
     await LocalNotifications.schedule({
-      notifications: [{ id, title, body, schedule: { at } }],
+      notifications: [{ id, title, body, schedule: { at }, isExactNotification: false }],
     });
   } catch {
     // ignore
