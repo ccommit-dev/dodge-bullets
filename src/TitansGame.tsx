@@ -99,8 +99,9 @@ import {
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { RewardIcon, grantRewardKinds } from "./ui/RewardIcon";
-import { CurrencyIcon } from "./ui/CurrencyIcon";
+import { CurrencyIcon, GemMark } from "./ui/CurrencyIcon";
 import { WalletBar, formatWallet } from "./ui/WalletBar";
+import { monsterArtKey } from "./titans/bestiary";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
@@ -155,7 +156,13 @@ type FloatText = {
   crit: boolean;
   source: FloatSource;
   hue?: number;
+  /** 스킬 숫자에 붙는 이름("질풍 보법")·아이콘 — 누가 무엇으로 때렸는지 */
+  label?: string;
+  skill?: TitanSkillId;
 };
+
+/** 스킬 발동 연출 한 조각 — 좌표는 필드 기준 px (2026-10-06) */
+type SkillShot = { id: number; kind: "shot" | "beam" | "impact" | "link" | "aura"; skill: TitanSkillId; element: string; x: number; y: number; dx: number; dy: number; ang: number; len: number; big: boolean };
 
 type FxBurst = {
   id: number;
@@ -224,6 +231,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [impact, setImpact] = useState<"normal" | "critical" | null>(null);
   const [floats, setFloats] = useState<FloatText[]>([]);
   const [fx, setFx] = useState<FxBurst[]>([]);
+  const [shots, setShots] = useState<SkillShot[]>([]);
+  const shotIdRef = useRef(0);
+  /** 버프 종류 → 건 스킬 (영웅 머리 위 강화 칸) */
+  const [buffSource, setBuffSource] = useState<Partial<Record<BuffKind, TitanSkillId>>>({});
   const [toast, setToast] = useState("");
   const [cds, setCds] = useState<CooldownMap>(() => emptyCds());
   const [buffs, setBuffs] = useState<BuffState>(EMPTY_BUFFS);
@@ -695,16 +706,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     clientY?: number,
     source: FloatSource = "hero",
     hue?: number,
+    label?: string,
+    skill?: TitanSkillId,
+    delayMs = 0,
   ) => {
     const rect = fieldRef.current?.getBoundingClientRect();
     const x = clientX && rect ? ((clientX - rect.left) / rect.width) * 100 : 58 + Math.random() * 16;
     const y = clientY && rect ? ((clientY - rect.top) / rect.height) * 100 : 30 + Math.random() * 16;
     const id = ++floatId.current;
     // 저사양 모드는 동시 숫자를 절반으로 — 숫자 폭주가 프레임을 먹는다
-    setFloats((prev) => [...prev.slice(lowFxRef.current ? -8 : -18), { id, x, y, text: formatGold(dmg), crit, source, hue }]);
-    window.setTimeout(() => {
-      setFloats((prev) => prev.filter((f) => f.id !== id));
-    }, 700);
+    const show = () => {
+      setFloats((prev) => [...prev.slice(lowFxRef.current ? -8 : -18), { id, x, y, text: formatGold(dmg), crit, source, hue, label, skill }]);
+      window.setTimeout(() => {
+        setFloats((prev) => prev.filter((f) => f.id !== id));
+      }, label ? 900 : 700);
+    };
+    if (delayMs > 0) window.setTimeout(show, delayMs); else show();
   };
 
   const playAttackAnim = () => {
@@ -719,11 +736,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     (
       raw: number,
       crit: boolean,
-      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number },
+      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number; label?: string; skill?: TitanSkillId; delayMs?: number },
     ) => {
       if (raw <= 0 || battlePhaseRef.current !== "combat") return;
       const dealt = Math.floor(raw);
-      pushFloat(dealt, crit, opts?.clientX, opts?.clientY, opts?.source ?? "hero", opts?.hue);
+      pushFloat(dealt, crit, opts?.clientX, opts?.clientY, opts?.source ?? "hero", opts?.hue, opts?.label, opts?.skill, opts?.delayMs);
       setMonsterHit((n) => n + 1);
       setImpact(crit ? "critical" : "normal");
       // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
@@ -1019,7 +1036,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
           burnAcc.current += dt;
           if (burnAcc.current >= 0.5) {
-            applyDamage(buff.burnPerSec * burnAcc.current, false, { source: "skill" });
+            applyDamage(buff.burnPerSec * burnAcc.current, false, { source: "skill", label: "화상" });
             burnAcc.current = 0;
           }
         } else burnAcc.current = 0;
@@ -1671,6 +1688,43 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     }
   };
 
+  /**
+   * 스킬 발동 연출 (2026-10-06, 사용자: "스킬이 현재 모험가 기준으로 발동되는지 구분이 안되 이팩트나 데미지를 실제 모험가가 쓰는걸로 보이게") —
+   * 예전엔 화면 고정 좌표(56%, 44%)에 폭발이 터지고 숫자가 아무 데나 떠 누가 쓴 기술인지 읽히지 않았다.
+   * 시전 순간 영웅·몬스터·동료의 실제 위치를 재서 영웅 → 몬스터로 날아가고(빛 원소·관통은 빛줄기), 몬스터에서 터지며 숫자에 스킬 이름이 붙는다.
+   * 동료 강화는 영웅 → 동료 연결선. transform·opacity 만 움직인다(기기 실측: box-shadow·filter 애니메이션이 FPS 를 깎았다).
+   */
+  const castGeometry = () => {
+    const field = fieldRef.current;
+    if (!field) return null;
+    const fr = field.getBoundingClientRect();
+    const hero = field.querySelector(".titans-hero .titans-hero-facing")?.getBoundingClientRect() ?? field.querySelector(".titans-hero")?.getBoundingClientRect();
+    const mon = field.querySelector(".titans-monster")?.getBoundingClientRect();
+    if (!hero || !mon || fr.width === 0) return null;
+    const allies = [...field.querySelectorAll(".titans-allies .titan-ally-art")].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2 - fr.left, y: r.top + r.height * 0.45 - fr.top };
+    });
+    return {
+      hx: hero.left + hero.width * 0.62 - fr.left, hy: hero.top + hero.height * 0.42 - fr.top,
+      mx: mon.left + mon.width * 0.42 - fr.left, my: mon.top + mon.height * 0.5 - fr.top,
+      clientMx: mon.left + mon.width * 0.42, clientMy: mon.top + mon.height * 0.38,
+      allies,
+    };
+  };
+  const spawnShot = (kind: SkillShot["kind"], skill: TitanSkillId, element: string, x: number, y: number, tx = x, ty = y, big = false, delayMs = 0) => {
+    const id = ++shotIdRef.current;
+    const dx = tx - x, dy = ty - y;
+    const shot: SkillShot = { id, kind, skill, element, x, y, dx, dy, ang: (Math.atan2(dy, dx) * 180) / Math.PI, len: Math.hypot(dx, dy), big };
+    const add = () => {
+      setShots((prev) => [...prev.slice(lowFxRef.current ? -3 : -7), shot]);
+      window.setTimeout(() => setShots((prev) => prev.filter((s) => s.id !== id)), kind === "impact" ? 620 : kind === "aura" ? 760 : 520);
+    };
+    if (delayMs > 0) window.setTimeout(add, delayMs); else add();
+  };
+  /** 시동기·마무리는 원소 투사체, 빛·관통은 빛줄기 — 명중 시각(ms) */
+  const SHOT_TRAVEL_MS = 230;
+
   const castSkill = (id: TitanSkillId) => {
     const def = SKILLS.find((s) => s.id === id);
     if (!def) return;
@@ -1680,18 +1734,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     setSkillVisual(id);
     window.setTimeout(() => setSkillVisual((active) => (active === id ? null : active)), 820);
     const visualKind: FxBurst["kind"] = def.slot === "starter" ? "strike" : def.slot === "finisher" ? "warcry" : def.element === "fire" ? "clone" : "crit";
-    pushFx(visualKind, 56, 44, def.element === "fire" ? 18 : def.element === "wind" ? 185 : def.element === "earth" ? 75 : def.element === "light" ? 48 : 330);
     // 효과 숫자는 titans/skills.ts 한 곳에서 온다. 레벨 = ×(1+0.05/Lv), 힐러 축복 = 쿨 −10%/명
     const level = Math.max(1, save.skillInventory.levels[id] ?? 1);
     const mult = skillLevelMult(level);
     const effect = SKILL_EFFECTS[id];
     setCds((prev) => ({ ...prev, [id]: def.cooldownSec * partyRoleEffects(characterRef.current.partyIds).cooldownMult }));
+    const geo = castGeometry();
+    // 위치를 못 재면(전장이 아직 안 그려짐) 예전 고정 위치 폭발로 — 잴 수 있으면 영웅에서 나가는 연출만 (2026-10-06)
+    if (!geo) pushFx(visualKind, 56, 44, def.element === "fire" ? 18 : def.element === "wind" ? 185 : def.element === "earth" ? 75 : def.element === "light" ? 48 : 330);
+    const ALLY_BUFF: TitanSkillId[] = ["stoneGuard", "thunderLink", "warcry"];
+    if (geo) {
+      // 영웅 발밑 원소 오라 — 누가 시전했는지
+      spawnShot("aura", id, def.element, geo.hx, geo.hy + 28);
+      if (effect.kind === "hit" || effect.kind === "execute") {
+        const beam = def.element === "light" || id === "pierce";
+        spawnShot(beam ? "beam" : "shot", id, def.element, geo.hx, geo.hy, geo.mx, geo.my, def.slot === "finisher");
+        spawnShot("impact", id, def.element, geo.mx, geo.my, geo.mx, geo.my, def.slot === "finisher", SHOT_TRAVEL_MS);
+      }
+      if (ALLY_BUFF.includes(id)) geo.allies.forEach((a, i) => spawnShot("link", id, def.element, geo.hx, geo.hy, a.x, a.y, false, 60 + i * 50));
+    }
     // 지속은 배속만큼 실시간이 줄어 쿨타임과 대칭 — ×2가 업타임을 2배로 만들던 버그 제거
     const durMs = buffDurationMs(def, level, saveRef.current.battleSpeed);
     const bossOnlyBurn = effect.kind === "buff" && !!effect.bossOnly;
     // 버프는 연장만 한다 — 짧은 버프가 긴 버프를 잘라먹지 않게 (수면 보법이 혈월 난무를 1초 줄이던 문제)
     const applyBuff = (kind: BuffKind, value: number) => {
       const until = now + durMs;
+      setBuffSource((prev) => (prev[kind] === id ? prev : { ...prev, [kind]: id }));
       setBuffs((b) => {
         switch (kind) {
           case "crit": return { ...b, critUntil: Math.max(b.critUntil, until), critBonus: value };
@@ -1705,12 +1773,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     };
     if (effect.kind === "hit" || effect.kind === "execute") {
       playAttackAnim();
-      if (def.slot === "starter") pushFx("slash", 30, 40);
-      else pushFx("warcry", 58, 42, def.element === "fire" ? 18 : 210);
+      if (!geo) {
+        if (def.slot === "starter") pushFx("slash", 30, 40);
+        else pushFx("warcry", 58, 42, def.element === "fire" ? 18 : 210);
+      }
       const { dmg, base } = computeTapHit();
       const low = effect.kind === "execute" && hpRef.current < monsterHp(saveRef.current.stage, bossRef.current) * 0.3;
       const hitMult = effect.kind === "execute" ? (low ? effect.lowMult : effect.mult) : effect.mult;
-      applyDamage(dmg * hitMult * mult, true, { source: "skill" });
+      applyDamage(dmg * hitMult * mult, true, { source: "skill", clientX: geo?.clientMx, clientY: geo?.clientMy, label: def.name, skill: id, delayMs: geo ? SHOT_TRAVEL_MS : 0 });
       if (effect.kind === "hit" && effect.buff) {
         applyBuff(effect.buff, effect.buff === "burn" ? base * (effect.buffValue ?? 0) * mult : (effect.buffValue ?? 1) * mult);
       }
@@ -1718,6 +1788,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       return;
     }
     if (effect.kind === "buff") {
+      // 강화도 모험가가 시전한다 — 예전엔 버프를 걸 때 영웅이 가만히 있어 누가 건 기술인지 읽히지 않았다 (2026-10-06)
+      playAttackAnim();
       const value =
         effect.buff === "burn" ? computeTapHit().base * effect.value * mult
         : effect.buff === "haste" ? effect.value
@@ -2039,6 +2111,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     else setTab(a.tab);
   };
   const adviceCost = (a: PurchaseAdvice) => a.cost.filter((c) => c.amount > 0).map((c) => `${CURRENCY_LABEL[c.currency]} ${formatWallet(c.amount)}`).join(" · ");
+  // 도감 발견 — 사냥터에 처음 나온 몬스터 그림을 기록한다 (2026-10-06, 미발견은 도감에서 실루엣)
+  const fieldArtKey = monsterArtKey(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage));
+  useEffect(() => {
+    if (!fieldArtKey || character.seenMonsters.includes(fieldArtKey) || fieldArtKey === "golden-lion-clean") return;
+    void updateCharacterProgress(userHash, (current) => (current.seenMonsters.includes(fieldArtKey) ? current : { ...current, seenMonsters: [...current.seenMonsters, fieldArtKey] })).then(setCharacter).catch(() => {});
+  }, [fieldArtKey, character.seenMonsters, userHash]);
   const warmupLeft = Math.max(0, character.warmupUntil - nowTick);
   const idlePreview = useMemo(
     () => (character.sessionCount <= 3 ? computeIdleYield(character, save.stage, save.skillInventory.equipped, 8 * 3600) : null),
@@ -2176,6 +2254,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         </button>
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong>{formatGold(goldShown)}</strong></span>
+          {/* 강화석(파란 수정) — 상점 강화석 상자·대장간이 쓰는데 머리에 없어 '하늘색 보석'이 안 보인다고 읽혔다 (2026-10-06) */}
+          <span className="titans-stone" title="강화석"><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="강화석" /><strong data-wallet="stone">{formatGold(character.enhancementMaterials)}</strong></span>
           {/* 붉은 보석 — 테스트 빌드에서도 숫자로(예전 ∞ 라 보유량이 안 보였다), 누르면 상점 (2026-10-06) */}
           <span className="titans-gem" role="button" tabIndex={0} title={qaGemsEnabled() ? "테스트 단계 · 보석 자동 충전" : "붉은 보석 · 누르면 상점"} onClick={() => setTab("premium")} onKeyDown={(e) => { if (e.key === "Enter") setTab("premium"); }}><CurrencyIcon kind="gem" /><strong data-wallet="gem">{formatGold(gemsShown)}</strong></span>
         </div>
@@ -2263,10 +2343,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           const element = SKILLS.find((s) => s.id === skillVisual)?.element ?? "blade";
           return (
             <div key={`${skillVisual}-${cds[skillVisual]}`} className={`skill-cutin cutin-${slot} element-${element}`} aria-hidden="true">
-              {slot === "starter" && <svg viewBox="0 0 200 120"><path className="cutin-arc" d="M12 96 C 60 10, 140 10, 188 96" /><path className="cutin-arc thin" d="M30 104 C 70 40, 130 40, 172 104" /></svg>}
-              {(slot === "linkA" || slot === "linkB") && <svg viewBox="0 0 200 200"><circle className="cutin-ring" cx="100" cy="100" r="78" /><circle className="cutin-ring inner" cx="100" cy="100" r="52" /><polygon className="cutin-star" points="100,30 118,86 176,86 129,120 146,176 100,142 54,176 71,120 24,86 82,86" /></svg>}
+              {/* 2026-10-06: 이름·마법진은 화면 가운데가 아니라 영웅 머리 위(hero-cast-tag)로 — 가운데에 뜨면 누가 썼는지 읽히지 않았다 */}
               {slot === "finisher" && <span className="cutin-flash" />}
-              <b className="cutin-name">{SKILLS.find((s) => s.id === skillVisual)?.name}</b>
             </div>
           );
         })()}
@@ -2278,6 +2356,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링 */}
           <span className="hero-marker" aria-hidden="true"><b>{TITLES[character.activeTitle ?? ""]?.name ?? (character.activeCharacter && character.activeCharacter !== "default" ? CHARACTER_LABEL[character.activeCharacter as CharacterSkinId] ?? "모험가" : "모험가")}</b><i>▼</i></span>
           <span className="hero-ring" aria-hidden="true" />
+          {/* 시전 이름표 — 영웅을 따라다닌다 (예전엔 화면 가운데 컷인) */}
+          {skillVisual && (() => {
+            const sd = SKILLS.find((s) => s.id === skillVisual);
+            return sd ? (
+              <span key={`tag-${skillVisual}-${cds[skillVisual]}`} className={`hero-cast-tag el-${sd.element}`} data-skill={skillVisual}>
+                <SkillIcon id={skillVisual} size={22} /><b>{sd.name}</b>
+              </span>
+            ) : null;
+          })()}
+          {/* 걸려 있는 강화 — 아이콘 + 남은 초 (어느 스킬이 모험가에게 걸려 있는지) */}
+          {(() => {
+            const rows = (Object.keys(buffSource) as BuffKind[]).map((k) => {
+              const until = k === "crit" ? buffs.critUntil : k === "clone" ? buffs.cloneUntil : k === "war" ? buffs.warcryUntil : k === "haste" ? buffs.hasteUntil : k === "freeze" ? buffs.freezeUntil : buffs.burnUntil;
+              return { k, skill: buffSource[k]!, left: Math.ceil((until - now) / 1000) };
+            }).filter((r) => r.left > 0);
+            return rows.length ? (
+              <span className="hero-buff-tray" aria-label="걸려 있는 스킬">
+                {rows.map((r) => <span key={r.k} className={`hero-buff k-${r.k}`}><SkillIcon id={r.skill} size={18} /><small>{r.left}</small></span>)}
+              </span>
+            ) : null;
+          })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
             <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} />
           </div>
@@ -2353,6 +2452,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           </button>
         )}
 
+        {/* 스킬 투사체·빛줄기·명중·연결선·오라 — 영웅 위치에서 출발 (2026-10-06) */}
+        {shots.map((s) => (
+          <span
+            key={s.id}
+            className={`skill-shot shot-${s.kind} el-${s.element} ${s.big ? "big" : ""}`}
+            style={{ left: `${s.x}px`, top: `${s.y}px`, "--dx": `${s.dx}px`, "--dy": `${s.dy}px`, "--ang": `${s.ang}deg`, "--len": `${s.len}px` } as CSSProperties}
+            data-skill={s.skill}
+            aria-hidden="true"
+          >
+            {s.kind === "impact" && <SkillIcon id={s.skill} size={s.big ? 46 : 34} />}
+            {s.kind === "shot" && <i />}
+          </span>
+        ))}
         {fx.map((f) => (
           <span
             key={f.id}
@@ -2372,6 +2484,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             style={{ left: `${f.x}%`, top: `${f.y}%`, ...(f.hue !== undefined ? { "--float-hue": f.hue } : {}) } as CSSProperties}
           >
             <i aria-hidden="true">{f.source === "tap" ? "☝" : f.source === "ally" ? "◆" : f.source === "skill" ? "✦" : "⚔"}</i>
+            {f.label && <em className="float-label">{f.label}</em>}
             {f.crit ? "CRIT " : ""}-{f.text}
           </span>
         ))}
@@ -2698,10 +2811,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               )}
               <div className="gacha-actions">
                 <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}>
-                  1회 <small>💎 {GACHA.singleCost}</small>
+                  1회 <small><GemMark />{GACHA.singleCost}</small>
                 </button>
                 <button type="button" className="gacha-ten" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}>
-                  10연 <small>💎 {GACHA.tenCost} · SR 이상 1 보장</small>
+                  10연 <small><GemMark />{GACHA.tenCost} · SR 이상 1 보장</small>
                 </button>
               </div>
               <small className="gacha-pity">
@@ -2746,8 +2859,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             </div>
             {momentOfferCard}
             <div className="gacha-page-actions">
-              <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small>💎 {GACHA.singleCost}</small></button>
-              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small>💎 {GACHA.tenCost}</small></button>
+              <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
+              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small></button>
               <button type="button" onClick={() => setShowGachaRates(true)}><b>확률 정보</b><small>등급별 확률 보기</small></button>
             </div>
           </section>
@@ -2817,7 +2930,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 <div className="ally-card-actions">
                   {shopOnly && lv === 0 ? (
                     <button type="button" disabled={redGems < (gemCost ?? 0)} onClick={() => void buyShopAlly(h.id)}>
-                      💎 {gemCost}
+                      <GemMark />{gemCost}
                     </button>
                   ) : (
                     <button type="button" disabled={locked || save.gold < cost} onClick={() => buyHero(h.id)}>
@@ -2865,8 +2978,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         {tab === "skills" && (
           <article className="titans-card skill-preset-card">
             <div className="party-panel-head">
-              <strong>스킬 프리셋</strong>
-              <small>학습한 스킬만 장착됩니다 · 예상 DPS 보정 +{skillDpsPreview}%</small>
+              <strong>모험가 스킬</strong>
+              <small>모험가가 직접 시전 · 학습한 스킬만 장착 · 예상 DPS 보정 +{skillDpsPreview}%</small>
+            </div>
+            {/* 모험가 스킬 연계 (2026-10-06) — 스킬은 동료가 아니라 모험가가 쓴다: 초상 → 시전 순서 ①~④ → 패시브 */}
+            <div className="hero-skill-combo" aria-label="모험가 스킬 시전 순서">
+              <span className="combo-hero" style={{ backgroundImage: `url(${assetUrl("titans/character/base/hero-idle.png")})` }} aria-hidden="true" />
+              {SLOT_ORDER.map((slot, i) => {
+                const eq = save.skillInventory.equipped[slot];
+                const locked = slotLevels(character)[slot] <= 0;
+                return (
+                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)} title={SLOT_LABEL[slot]}>
+                    {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? "🔒" : "+"}</span>}
+                    <small>{slot === "passive" ? "상시" : `${i + 1}`}</small>
+                  </button>
+                );
+              })}
             </div>
             <div className="preset-row">
               {SKILL_PRESETS.map((preset) => (
@@ -2886,7 +3013,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               const locked = slotLevels(character)[slot] <= 0;
               return (
                 <button key={slot} type="button" className={`${skillSlotTab === slot ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)}>
-                  <b>{SLOT_LABEL[slot]}</b>
+                  <b>{slot === "passive" ? "" : `${SLOT_ORDER.indexOf(slot) + 1} · `}{SLOT_LABEL[slot]}</b>
                   <small>{locked ? "잠김" : eq ? SKILLS.find((s) => s.id === eq)?.name : "비어 있음"}</small>
                 </button>
               );
@@ -2958,7 +3085,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 disabled={redGems < 120 || shardPackBoughtThisWeek(shardPackTarget) >= SHARD_PACK_WEEKLY_LIMIT || save.heroes[shardPackTarget] <= 0}
                 onClick={() => void buyShardPack()}
               >
-                💎 120
+                <GemMark />120
               </button>
             </article>}
             {/* 무기 외형 — 강화 티어 실루엣은 유지, 칼날 색·오라만 커스텀 */}
@@ -2979,7 +3106,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     disabled={!owned && redGems < def.gemCost}
                     onClick={() => void (owned ? toggleWeaponSkin(skinId) : buyWeaponSkin(skinId))}
                   >
-                    {owned ? (equipped ? "해제" : "장착") : `💎 ${def.gemCost}`}
+                    {owned ? (equipped ? "해제" : "장착") : <><GemMark />{def.gemCost}</>}
                   </button>
                 </article>
               );
@@ -2993,7 +3120,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   <img className="beat-custom-thumb" src={beatItemIcon(item)} alt="" aria-hidden="true" />
                   <div><strong>{item.name} <em>{item.kind === "ring" ? "비트 · 지휘 북" : "비트 · 구호"}</em></strong><p>{item.desc}</p></div>
                   <button type="button" disabled={on || (!owned && redGems < item.cost)} onClick={() => void buyBeatCustom(item)}>
-                    {on ? "장착 중" : owned ? "장착" : `💎 ${item.cost}`}
+                    {on ? "장착 중" : owned ? "장착" : <><GemMark />{item.cost}</>}
                   </button>
                 </article>
               );
@@ -3007,7 +3134,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   <span className="fx-thumb" style={{ "--fx-trail": def.trail } as CSSProperties} aria-hidden="true"><i /></span>
                   <div><strong>{def.name} <em>무기 이펙트</em></strong><p>{def.desc}</p></div>
                   <button type="button" disabled={!owned && (def.gemCost === null || redGems < def.gemCost)} onClick={() => void (owned ? toggleCosmetic("fx", fxId) : buyCosmetic("fx", fxId))}>
-                    {owned ? (equipped ? "해제" : "장착") : def.gemCost === null ? "시즌 한정" : `💎 ${def.gemCost}`}
+                    {owned ? (equipped ? "해제" : "장착") : def.gemCost === null ? "시즌 한정" : <><GemMark />{def.gemCost}</>}
                   </button>
                 </article>
               );
@@ -3020,7 +3147,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   <span className="theme-thumb" style={{ "--t-sky": def.sky, "--t-ground": def.ground, "--t-accent": def.accent } as CSSProperties} aria-hidden="true" />
                   <div><strong>{def.name} <em>전장 테마</em></strong><p>{def.desc}</p></div>
                   <button type="button" disabled={!owned && redGems < def.gemCost} onClick={() => void (owned ? toggleCosmetic("theme", themeId) : buyCosmetic("theme", themeId))}>
-                    {owned ? (equipped ? "해제" : "장착") : `💎 ${def.gemCost}`}
+                    {owned ? (equipped ? "해제" : "장착") : <><GemMark />{def.gemCost}</>}
                   </button>
                 </article>
               );
@@ -3036,7 +3163,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     <p>{def.desc}</p>
                   </div>
                   <button type="button" disabled={owned || redGems < def.gemCost} onClick={() => void buyTitle(titleId)}>
-                    {owned ? "보유 중" : `💎 ${def.gemCost}`}
+                    {owned ? "보유 중" : <><GemMark />{def.gemCost}</>}
                   </button>
                 </article>
               );
@@ -3049,7 +3176,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 <p>사냥터 골드 +{formatGold(goldPackAmount(character))} · 최고 스테이지 비례</p>
               </div>
               <button type="button" disabled={redGems < GEM_PACK.goldPackCost} onClick={() => void buyGoldPack()}>
-                💎 {GEM_PACK.goldPackCost}
+                <GemMark />{GEM_PACK.goldPackCost}
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
@@ -3059,7 +3186,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 <p>강화석 +{GEM_PACK.materialPackAmount} · 대장간·펫 간식 재료</p>
               </div>
               <button type="button" disabled={redGems < GEM_PACK.materialPackCost} onClick={() => void buyMaterialPack()}>
-                💎 {GEM_PACK.materialPackCost}
+                <GemMark />{GEM_PACK.materialPackCost}
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
@@ -3069,7 +3196,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 <p>스킬 코어 +{GEM_PACK.corePackAmount} · 새 스킬 학습 재료</p>
               </div>
               <button type="button" disabled={redGems < GEM_PACK.corePackCost} onClick={() => void buyCorePack()}>
-                💎 {GEM_PACK.corePackCost}
+                <GemMark />{GEM_PACK.corePackCost}
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
@@ -3089,7 +3216,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 }
                 onClick={() => void buyExpeditionFinish()}
               >
-                💎 {GEM_PACK.expeditionFinishCost}
+                <GemMark />{GEM_PACK.expeditionFinishCost}
               </button>
             </article></>}
             {/* 동료 스킨(코스튬) — 외형 전용 확정 구매. 얼터너티브(별도 동료)와 다른 축 */}
@@ -3109,7 +3236,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     disabled={owned || price === null || redGems < price}
                     onClick={() => void buyAllySkin(skinId)}
                   >
-                    {owned ? "보유 중" : price === null ? "시즌 한정" : pickupDeal ? <><s>{skinDef.gemCost}</s>💎 {price}</> : `💎 ${price}`}
+                    {owned ? "보유 중" : price === null ? "시즌 한정" : pickupDeal ? <><s>{skinDef.gemCost}</s><GemMark />{price}</> : <><GemMark />{price}</>}
                   </button>
                 </article>
               );
@@ -3136,7 +3263,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 disabled={redGems < 80 || character.idleBoostUntil > Date.now()}
                 onClick={() => void buyIdleBooster()}
               >
-                💎 80
+                <GemMark />80
               </button>
             </article>}
           </>
@@ -3192,7 +3319,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     <span className="reward-row">{grantRewardKinds(product.grant(character)).map((k) => <RewardIcon key={k} kind={k} size={22} />)}</span>
                   </div>
                   <button type="button" disabled={left <= 0 || redGems < product.gemCost || (!!product.grant(character).allyShards && save.heroes[shardPackTarget] <= 0)} onClick={() => void buyEventProduct(product)}>
-                    {left <= 0 ? "이번 주 한도 소진" : `💎 ${product.gemCost}`}
+                    {left <= 0 ? "이번 주 한도 소진" : <><GemMark />{product.gemCost}</>}
                   </button>
                 </article>
               );

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { assetUrl } from "../asset";
 import type { TitanSkillId } from "../titans/model";
 
 /**
@@ -27,13 +29,26 @@ const GLYPH: Record<TitanSkillId, string> = {
   elementalMastery: "M24 6l6 10-6 10-6-10z M12 26l6 10-6 10-6-10z M36 26l6 10-6 10-6-10z M18 26h12",
 };
 
-export function SkillIcon({ id }: { id: TitanSkillId }) {
+/**
+ * 2026-10-06 (사용자: "스킬 체계랑 icon 이팩트 전면 재생성") — 그림 아이콘(art-gen batch-titan-skills.sh → public/ui/skills/titans/<id>.png).
+ * 그림이 없거나 못 읽으면 예전 선 글리프로 떨어진다. size 는 발동 연출(영웅 이름표·명중 폭발·버프 칸)에서 작게 쓸 때
+ */
+export function skillIconUrl(id: TitanSkillId): string {
+  return assetUrl(`ui/skills/titans/${id}.png`);
+}
+
+export function SkillIcon({ id, size }: { id: TitanSkillId; size?: number }) {
+  const [broken, setBroken] = useState(false);
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
-    <span className={`skill-icon skill-icon-${id}`} aria-hidden="true">
-      <svg viewBox="0 0 48 48">
-        <path {...p} d={GLYPH[id]} />
-      </svg>
+    <span className={`skill-icon skill-icon-${id} ${broken ? "" : "has-art"}`} aria-hidden="true" style={size ? { width: size, height: size, flexBasis: size } : undefined}>
+      {broken ? (
+        <svg viewBox="0 0 48 48">
+          <path {...p} d={GLYPH[id]} />
+        </svg>
+      ) : (
+        <img src={skillIconUrl(id)} alt="" draggable={false} onError={() => setBroken(true)} />
+      )}
     </span>
   );
 }

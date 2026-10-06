@@ -1269,6 +1269,21 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("진행도 정규화: 갈림길 별 — 알려진 키만 · 0~3", nb.dodgeBranches["1-T"] === 3 && nb.dodgeBranches["2-S"] === 3 && !("9-X" in nb.dodgeBranches) && !("junk" in nb.dodgeBranches), JSON.stringify(nb.dodgeBranches));
 }
 
+// 도감 발견 기록 (2026-10-06, "미발견 몬스터는 그림자만") — 옛 저장은 처치 기록이 있는 원래 그림만, 새 원화 20장은 새로 만나야
+{
+  const leg = bestiary.legacySeenMonsters({ slime: 5, goblin: 0, wolf: 2, ogre: 0, dragon: 0, boss: 3 }, 2);
+  ok("발견 이전: 잡아 본 종류의 원래 그림 + 보스를 잡아 봤으면 열린 지역의 원래 대장 · 새 원화는 없다", JSON.stringify(leg) === JSON.stringify(["slime", "shadow-wolf-clean", "moss-golem-clean", "moon-wolf-king-clean"]) && !leg.some((a) => bestiary.NEW_MONSTER_ARTS.includes(a)), JSON.stringify(leg));
+  const { seenMonsters: _noSeen, ...legacyBase } = base;
+  const nOld = prog.normalizeCharacterProgress({ ...legacyBase, monsterKills: { slime: 1, goblin: 1, wolf: 0, ogre: 0, dragon: 0, boss: 0 }, pioneeredArea: 3 });
+  ok("진행도 정규화: 발견 기록이 없는 옛 저장은 처치 기록에서 만든다", JSON.stringify(nOld.seenMonsters) === JSON.stringify(["slime", "goblin"]), JSON.stringify(nOld.seenMonsters));
+  const nNew = prog.normalizeCharacterProgress({ ...base, seenMonsters: ["void-imp", "../x", 3, "void-imp"] });
+  ok("진행도 정규화: 발견 기록은 그림 이름만 · 중복 없이", JSON.stringify(nNew.seenMonsters) === JSON.stringify(["void-imp"]), JSON.stringify(nNew.seenMonsters));
+  ok("도감 썸네일 31장이 있다 (휴대폰에서 1024px 원화 대신)", bestiary.bestiaryEntries().every((e) => existsSync(root + "/public/" + bestiary.bestiaryThumb(e.art))), bestiary.bestiaryEntries().filter((e) => !existsSync(root + "/public/" + bestiary.bestiaryThumb(e.art))).map((e) => e.art).join(","));
+}
+
+// 모험가 스킬 그림 아이콘 20종 (2026-10-06, "스킬 체계랑 icon 이팩트 전면 재생성") — 없으면 선 글리프로 떨어지지만 전부 있어야 한다
+ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/titans)", model.SKILLS.every((sk) => existsSync(root + "/public/ui/skills/titans/" + sk.id + ".png")), model.SKILLS.filter((sk) => !existsSync(root + "/public/ui/skills/titans/" + sk.id + ".png")).map((sk) => sk.id).join(","));
+
 // 저사양 모드 감시 (2026-10-06 실기) — 시간 기준: 앞 0.8초는 버리고 2초 평균 간격 22ms 초과면 한 번 true
 {
   const slow = perfMode.frameMonitor(); let hit = 0; for (let i = 0; i < 400; i += 1) if (slow(30)) hit += 1;

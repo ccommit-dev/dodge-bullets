@@ -75,3 +75,25 @@ export const NEW_MONSTER_ARTS = [
   "magma-imp", "void-imp", "goblin-shaman", "skeleton-goblin", "frost-wolf", "hellhound", "stone-troll", "armored-ogre", "lava-drake", "storm-drake",
   "thorn-boar-king", "ancient-treant", "ruin-sentinel", "magma-golem", "void-lich", "goblin-warlord", "spider-queen", "minotaur", "fire-demon", "bone-dragon",
 ];
+
+/**
+ * 발견 기록 이전 (2026-10-06, 사용자: "미발견 몬스터는 그림자만 보이게") — 예전 저장에는 '본 몬스터' 기록이 없다.
+ * 처치 기록이 있는 종류의 **원래 그림**과, 보스를 잡아 본 계정이면 열린 지역의 원래 대장을 본 것으로 친다. 새 원화 20장은 새로 만나야 보인다
+ */
+const LEGACY_KIND_ART: Record<string, string> = { slime: "slime", goblin: "goblin", wolf: "shadow-wolf-clean", ogre: "ogre", dragon: "dragon" };
+const LEGACY_AREA_BOSS = ["moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan"];
+export function legacySeenMonsters(kills: Partial<Record<string, number>>, pioneeredArea: number): string[] {
+  const out = Object.entries(LEGACY_KIND_ART).filter(([k]) => (kills[k] ?? 0) > 0).map(([, art]) => art);
+  if ((kills.boss ?? 0) > 0) out.push(...LEGACY_AREA_BOSS.slice(0, Math.max(1, pioneeredArea)));
+  return out;
+}
+
+/** 원화 경로 → 도감 키(basename) */
+export function monsterArtKey(path: string): string {
+  return path.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
+}
+
+/** 도감 썸네일(128px) — 대장 원화는 1024px 라 도감 30칸이 휴대폰 회선에서 늦게 떴다 */
+export function bestiaryThumb(art: string): string {
+  return `titans/generated/monsters/thumbs/${art}.webp`;
+}

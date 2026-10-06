@@ -296,8 +296,12 @@ export const BOSS_NAME = ["이끼 골렘", "달빛 늑대왕", "늑대 왕", "�
 /** 이번 프레임 스테이지의 대장 그림 덮어쓰기(중간 보스·비밀 대장)와 장 — drawWorld 첫머리에서 맞춘다 (2026-10-06) */
 let frameBossArt: string | undefined;
 let frameChapter = 0;
+/** 이번 판에 그린 몬스터 그림 — 판이 끝나면 App 이 도감 발견 기록에 합친다 (2026-10-06) */
+const drawnMonsters = new Set<string>();
+export function takeDrawnMonsters(): string[] { const out = [...drawnMonsters]; drawnMonsters.clear(); return out; }
 function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" | "hit" | "defeat"): HTMLImageElement | null {
   const base = a.boss ? (frameBossArt ?? BOSS_SPRITE[Math.min(BOSS_SPRITE.length - 1, Math.max(0, a.bossTier - 1))]) : monsterSpriteFor(a.kind, frameChapter);
+  drawnMonsters.add(base);
   return sprite(`titans/generated/monsters/${base}${state === "idle" ? "" : "-" + state}.png`);
 }
 /** 종류별 몸 크기(그림 높이 px) — 판정 반지름보다 크게, 사냥터 몬스터와 비슷한 체감 (34~52 → 56~88, 2026-10-01) */

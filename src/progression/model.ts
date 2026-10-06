@@ -1,4 +1,5 @@
 import { emptyBeatCosmetics, normalizeBeatCosmetics } from "../beat/shop";
+import { legacySeenMonsters } from "../titans/bestiary";
 import type { BeatCosmetics } from "../beat/types";
 import { emptySkills, type BeatSkills } from "../beat/rpg";
 import { CHIPS, CHIP_MAX_LEVEL, CHIP_SLOTS, emptyChipLevels, type ChipId, type ChipLevels } from "../game/chips";
@@ -100,6 +101,8 @@ export type CharacterProgress = {
   allyShards: Record<TitanHeroId, number>;
   /** 몬스터 도감 — 종류별 처치 수 (마일스톤 → 골드 보너스) */
   monsterKills: Record<TitanMonsterKind, number>;
+  /** 실제로 만난 몬스터 그림(원화 basename) — 도감 '몬스터 얼굴'은 이것만 보이고 나머지는 실루엣 (2026-10-06) */
+  seenMonsters: string[];
   /** DPS 벽에 도달했던 지역 id — 벽 보상 1회 지급 + 환생 조건(≥3) 겸용 */
   wallAreas: string[];
   /** 방치 산출 2배 만료 시각 — 환생 복귀 버프·가속권이 공유 */
@@ -256,6 +259,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     allyStars: emptyAllyRecord(),
     allyShards: emptyAllyRecord(),
     monsterKills: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 },
+    seenMonsters: [],
     wallAreas: [],
     idleBoostUntil: 0,
     ownedCharacters: [],
@@ -537,6 +541,9 @@ export function normalizeCharacterProgress(
       dragon: integer(raw.monsterKills?.dragon, 0),
       boss: integer(raw.monsterKills?.boss, 0),
     },
+    seenMonsters: Array.isArray(raw.seenMonsters)
+      ? [...new Set(raw.seenMonsters.filter((id): id is string => typeof id === "string" && /^[a-z0-9-]{2,40}$/.test(id)))].slice(0, 80)
+      : legacySeenMonsters(raw.monsterKills ?? {}, integer(raw.pioneeredArea, 1)),
     wallAreas: Array.isArray(raw.wallAreas)
       ? [...new Set(raw.wallAreas.filter((id): id is string => typeof id === "string"))].slice(0, 10)
       : [],
