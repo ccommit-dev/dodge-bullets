@@ -13,8 +13,8 @@ export type WalletItem = { kind: WalletKind; amount: number; label?: string };
 const ICON: Partial<Record<WalletKind, string>> = {
   stone: "ui/attendance/enhance-stone.png",
   seal: "ui/attendance/expedition-seal.png",
-  ticket: "ui/idle/tower.svg",
-  fame: "ui/idle/star.svg",
+  ticket: "ui/idle/tower.png",
+  fame: "ui/idle/star.png",
 };
 const LABEL: Record<WalletKind, string> = { gold: "골드", gem: "붉은 보석", stone: "강화석", seal: "인장", fame: "명성", ticket: "등반권" };
 

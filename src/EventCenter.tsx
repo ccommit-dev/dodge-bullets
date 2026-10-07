@@ -344,13 +344,13 @@ export function EventCenter({
 
         {tab === "rift" && (
           <section className="rift-event">
-            <img className="rift-crest" src={assetUrl("ui/idle/rift.svg")} alt="" aria-hidden="true" />
+            <img className="rift-crest" src={assetUrl("ui/idle/rift.png")} alt="" aria-hidden="true" />
             <h3>
               {weekdayRift().name} <small className="rift-day-desc">오늘은 {weekdayRift().desc}</small>
             </h3>
             {riftEventFor() && (
               <div className="rift-event-banner" role="status">
-                <img src={assetUrl("ui/idle/weekend-rift.svg")} alt="" aria-hidden="true" />
+                <img src={assetUrl("ui/idle/weekend-rift.png")} alt="" aria-hidden="true" />
                 <div>
                   <b>{riftEventFor()!.name}</b>
                   <small>{riftEventFor()!.desc}</small>
@@ -401,7 +401,7 @@ export function EventCenter({
 
         {tab === "weekly" && (
           <section className="weekly-event shadow-arena">
-            <img className="shadow-crest" src={assetUrl("ui/idle/shadow-seal.svg")} alt="" aria-hidden="true" />
+            <img className="shadow-crest" src={assetUrl("ui/idle/shadow-seal.png")} alt="" aria-hidden="true" />
             <h3>주간 랭크 시험</h3>
             <p className="shadow-note">
               실제 유저와의 대전이 아닙니다. 주차마다 고정되는 <b>그림자 상대</b> 3인과 전투력을 겨룹니다.
@@ -518,7 +518,7 @@ export function EventCenter({
         })()}
         {tab === "journal" && (
           <section className="journal-event">
-            <img className="journal-crest" src={assetUrl("ui/idle/journal.svg")} alt="" aria-hidden="true" />
+            <img className="journal-crest" src={assetUrl("ui/idle/journal.png")} alt="" aria-hidden="true" />
             <h3>원정 일지</h3>
             <p className="journal-note">
               시즌도 리셋도 없는 누적 기록입니다. 목표를 달성하면 언제든 받을 수 있습니다.

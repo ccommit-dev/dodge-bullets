@@ -473,7 +473,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     <div className="forge-layer" style={forgeStyle}>
       <header className="forge-header">
         <button type="button" className="forge-back" onClick={() => void returnToHub()}>
-          ← 타이탄 사냥터
+          ← 사냥터
         </button>
         <div className="forge-wallet">
           <span>공유 GOLD</span>
@@ -585,7 +585,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   <section className={`reforge-panel reforge-${reforgePhase}`}>
                     <div className="reforge-heading">
                       <div className="reforge-title">
-                        <img src={assetUrl("ui/idle/anvil.svg")} alt="" aria-hidden="true" />
+                        <img src={assetUrl("ui/idle/anvil.png")} alt="" aria-hidden="true" />
                         <span>
                           <small>ENDLESS REFORGE</small>
                           <strong>무한 재련</strong>

@@ -1747,7 +1747,7 @@ function App() {
               type="button"
               className="exit-toggle"
               onClick={handleBackToHub}
-              aria-label="타이탄 사냥터로 돌아가기"
+              aria-label="사냥터로 돌아가기"
             >
               사냥터로
             </button>
@@ -1914,7 +1914,7 @@ function App() {
                     className={`cta cta-tower ${progress.towerTickets <= 0 ? "no-ticket" : ""}`}
                     onClick={() => void startTowerClimb()}
                   >
-                    <img src={assetUrl("ui/idle/tower.svg")} alt="" aria-hidden="true" />
+                    <img src={assetUrl("ui/idle/tower.png")} alt="" aria-hidden="true" />
                     <b>끝없는 성벽 등반 <i className="tower-ticket-count">등반권 {progress.towerTickets}</i></b>
                     <small>
                       최고 {progress.towerBestFloor}층 · 방치 배율 +
@@ -1924,7 +1924,7 @@ function App() {
                   </button>
                 )}
                 <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
-                  타이탄 사냥터
+                  사냥터로 돌아가기
                 </button>
               </>
             ) : (
@@ -2073,7 +2073,7 @@ function App() {
             {[1, 2, 3].map((n) => (
               <img
                 key={n}
-                src={assetUrl("ui/idle/star.svg")}
+                src={assetUrl("ui/idle/star.png")}
                 alt=""
                 className={n <= starResult.stars ? "earned" : "empty"}
                 style={{ animationDelay: `${(n - 1) * 0.16}s` }}
@@ -2133,7 +2133,7 @@ function App() {
                   {PERK_SKILL_ICON[perk.id as PerkId]
                     ? <img src={assetUrl(`dodge/skills/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={30} height={30} />
                     : PERK_ICON[perk.id as PerkId] === "exp"
-                      ? <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" width={30} height={30} />
+                      ? <img src={assetUrl("ui/idle/exp-orb.png")} alt="" width={30} height={30} />
                       : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={30} />}
                 </span>
                 <span className="perk-copy">
@@ -2234,7 +2234,7 @@ function App() {
               const def = MOMENT_OFFERS[offer.kind];
               return (
                 <div className="gate-offer">
-                  <img src={assetUrl("ui/idle/gate-supply.svg")} alt="" aria-hidden="true" />
+                  <img src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
                   <div>
                     <b>{def.title}</b>
                     <small>{def.subtitle}</small>

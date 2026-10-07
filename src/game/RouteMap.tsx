@@ -56,7 +56,7 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onS
                 {stage.name}
                 <span className="pioneer-stars" aria-label={`별 ${st}/3`}>
                   {[1, 2, 3].map((n) => (
-                    <img key={n} src={assetUrl("ui/idle/star.svg")} alt="" className={n <= st ? "on" : ""} />
+                    <img key={n} src={assetUrl("ui/idle/star.png")} alt="" className={n <= st ? "on" : ""} />
                   ))}
                 </span>
               </span>

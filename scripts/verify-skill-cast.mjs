@@ -75,7 +75,7 @@ await page.evaluate(() => {
     }
   }).observe(document.querySelector(".titans-field"), { childList: true, subtree: true });
 });
-// ① 시동기(초승 검격) — 투사체
+// ① 시동기(도토리 북치기) — 투사체
 ok("시동기 버튼을 진짜 탭", await tapSkill("strike"));
 // 고정 40ms 는 React 커밋 한 프레임과 경쟁했다(아케이드 UI·글꼴 적용 뒤 verify-all 안에서 실패) — 오라가 DOM 에 붙을 때까지 기다린다 (2026-10-07)
 await page.waitForSelector(".skill-shot.shot-aura", { timeout: 800 }).catch(() => {});
@@ -92,17 +92,17 @@ const near = (a, b, d) => Math.hypot(a.x - b.x, a.y - b.y) <= d;
 ok("투사체가 영웅 가까이(몸 반경 + 40px)에서 출발한다", !!shot && near(shot, g0.hero, Math.max(g0.hero.w, g0.hero.h) / 2 + 40), JSON.stringify({ shot, hero: g0.hero }));
 ok("투사체 끝이 몬스터 몸 안", !!shot && near({ x: shot.x + shot.dx, y: shot.y + shot.dy }, g0.mon, Math.max(g0.mon.w, g0.mon.h) / 2), JSON.stringify({ end: shot && { x: shot.x + shot.dx, y: shot.y + shot.dy }, mon: g0.mon }));
 ok("영웅 발밑 원소 오라", g0.shots.some((s) => s.kind === "shot-aura" && near(s, g0.hero, g0.hero.h)), JSON.stringify(g0.shots.map((s) => s.kind)));
-ok("영웅 머리 위 시전 이름표(초승 검격) · 화면 가운데 이름 컷인은 없다", /초승 검격/.test(g0.tag) && !g0.cutinName, g0.tag);
+ok("영웅 머리 위 시전 이름표(도토리 북치기) · 화면 가운데 이름 컷인은 없다", /도토리 북치기/.test(g0.tag) && !g0.cutinName, g0.tag);
 const log = await page.evaluate(() => window.__castLog);
 const shotT = log.find((e) => e.type === "shot")?.t ?? 0;
 const impact = log.find((e) => e.type === "impact");
 ok("명중은 몬스터에서 · 투사체가 날아간 뒤(0.2초 이상) 터진다", !!impact && near(impact, g1.mon, Math.max(g1.mon.w, g1.mon.h) / 2) && impact.t - shotT >= 180, JSON.stringify({ impact, dt: impact && Math.round(impact.t - shotT), mon: g1.mon }));
-const fl = log.find((e) => e.type === "float" && /초승 검격/.test(e.text));
+const fl = log.find((e) => e.type === "float" && /도토리 북치기/.test(e.text));
 ok("피해 숫자가 몬스터 위에 스킬 이름과 함께", !!fl && near(fl, g1.mon, Math.max(g1.mon.w, g1.mon.h)), JSON.stringify(log.filter((e) => e.type === "float")));
 await sleep(900);
 
-// ② 동료 강화(대지 수호) — 영웅 → 동료 연결선 · 강화 칸
-ok("연계 버튼(대지 수호) 진짜 탭", await tapSkill("stoneGuard"));
+// ② 동료 강화(댐 방벽 북소리) — 영웅 → 동료 연결선 · 강화 칸
+ok("연계 버튼(댐 방벽 북소리) 진짜 탭", await tapSkill("stoneGuard"));
 await sleep(200);
 const g2 = await geom();
 await page.screenshot({ path: `${OUT}/buff-link.png` });
@@ -113,8 +113,8 @@ const g3 = await geom();
 ok("걸린 강화는 영웅 머리 위 칸에 아이콘 + 남은 초", g3.tray >= 1, String(g3.tray));
 await sleep(700);
 
-// ③ 마무리(유성 낙하) — 큰 투사체
-ok("마무리 버튼(유성 낙하) 진짜 탭", await tapSkill("meteor"));
+// ③ 마무리(도토리 유성우) — 큰 투사체
+ok("마무리 버튼(도토리 유성우) 진짜 탭", await tapSkill("meteor"));
 await sleep(60);
 const g4 = await geom();
 await page.screenshot({ path: `${OUT}/finisher.png` });

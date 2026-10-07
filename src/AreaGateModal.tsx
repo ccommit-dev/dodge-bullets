@@ -23,7 +23,7 @@ export function AreaGateModal({ pioneeredArea, onGoDodge, onDismiss }: Props) {
         <div className="gate-doors" aria-hidden="true">
           <span className="gate-door left" />
           <span className="gate-door right" />
-          <img className="gate-crest" src={assetUrl("ui/idle/gate-locked.svg")} alt="" />
+          <img className="gate-crest" src={assetUrl("ui/idle/gate-locked.png")} alt="" />
           <span className="gate-seal">
             {pioneeredArea}/{HUNTING_AREAS.length}
           </span>
