@@ -86,7 +86,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   // 그림을 한 번에 읽는다 — 하나가 없어도 카드는 그린다
   const [backdrop, star, sheet, allyImgs, itemImgs] = await Promise.all([
     input.backdrop ? loadImage(input.backdrop) : Promise.resolve(null),
-    loadImage(assetUrl("ui/idle/star.svg")),
+    loadImage(assetUrl("ui/idle/star.png")),
     loadImage(input.characterSheet ?? assetUrl("titans/character/base/hero-idle.png")),
     Promise.all((input.allies ?? []).slice(0, 4).map((a) => loadImage(a.src))),
     Promise.all((input.items ?? []).slice(0, 6).map((it) => loadImage(it.src))),

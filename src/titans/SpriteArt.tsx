@@ -174,12 +174,12 @@ export type MonsterFrameState = "idle" | "hit" | "defeat";
 /** 몬스터 원화의 좌/우 투명 여백 비율 — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다.
  *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json) */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
-  "abyss-titan": [0.00, 0.00], "ancient-treant": [0.04, 0.04], "armored-ogre": [0.04, 0.04], "bone-dragon": [0.02, 0.02], dragon: [0.09, 0.09], "fire-demon": [0.12, 0.12],
-  "flame-wyvern-clean": [0.07, 0.07], "frost-wolf": [0.12, 0.12], goblin: [0.09, 0.09], "goblin-shaman": [0.04, 0.04], "goblin-warlord": [0.07, 0.07], "golden-lion-clean": [0.01, 0.00],
-  hellhound: [0.03, 0.03], "lava-drake": [0.04, 0.04], "magma-golem": [0.14, 0.14], "magma-imp": [0.08, 0.08], minotaur: [0.03, 0.03], "moon-wolf-king-clean": [0.10, 0.10],
-  "moss-golem-clean": [0.04, 0.04], ogre: [0.04, 0.04], "ruin-sentinel": [0.01, 0.01], "shadow-wolf-clean": [0.05, 0.05], "skeleton-goblin": [0.00, 0.00], slime: [0.07, 0.07],
-  "spider-queen": [0.00, 0.00], "stone-troll": [0.02, 0.02], "storm-drake": [0.00, 0.00], "thorn-boar-king": [0.09, 0.08], "void-imp": [0.04, 0.04], "void-lich": [0.01, 0.01],
-  "wolf-king-clean": [0.05, 0.05],
+  "abyss-titan": [0.06, 0.06], "ancient-treant": [0.01, 0.01], "armored-ogre": [0.03, 0.03], "bone-dragon": [0.06, 0.05], dragon: [0.06, 0.06], "fire-demon": [0.05, 0.05],
+  "flame-wyvern-clean": [0.03, 0.03], "frost-wolf": [0.10, 0.10], goblin: [0.04, 0.04], "goblin-shaman": [0.10, 0.10], "goblin-warlord": [0.04, 0.04], "golden-lion-clean": [0.04, 0.04],
+  hellhound: [0.02, 0.02], "lava-drake": [0.04, 0.03], "magma-golem": [0.02, 0.02], "magma-imp": [0.05, 0.05], minotaur: [0.03, 0.03], "moon-wolf-king-clean": [0.08, 0.08],
+  "moss-golem-clean": [0.05, 0.05], ogre: [0.08, 0.08], "ruin-sentinel": [0.06, 0.06], "shadow-wolf-clean": [0.04, 0.04], "skeleton-goblin": [0.07, 0.07], slime: [0.03, 0.03],
+  "spider-queen": [0.02, 0.02], "stone-troll": [0.03, 0.03], "storm-drake": [0.06, 0.06], "thorn-boar-king": [0.04, 0.04], "void-imp": [0.03, 0.03], "void-lich": [0.10, 0.10],
+  "wolf-king-clean": [0.09, 0.09],
 };
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";

@@ -74,6 +74,25 @@ if THEME == "beaver":
         "hit": "knocked back flinching surprised pose, off balance",
     }
 
+# ARTGEN_CHROMA=magenta|green (2026-10-07, pixcel-studio/NX Pixel 방식): 단색 키 배경으로 생성하고 rembg 대신
+# scripts/chroma-cut.mjs(키 거리 분류 + 테두리 소프트 언믹스)로 오려낸다 — isnet 이 남기던 반투명 띠·배경 조각이 없다.
+# 프롬프트의 "plain white background" 는 모듈 끝에서 키 배경 문구로 바뀐다(스타일 상수가 그 뒤에 정의되므로).
+CHROMA = os.environ.get("ARTGEN_CHROMA", "")
+CHROMA_BG = {"magenta": "solid flat pure magenta background (#ff00ff)", "green": "solid flat pure green background (#00ff00)"}
+
+
+def chroma_cutout(im: Image.Image) -> Image.Image:
+    import subprocess
+    OUT.mkdir(parents=True, exist_ok=True)
+    tmp, res = OUT / "_chroma-in.png", OUT / "_chroma-out.png"
+    im.convert("RGBA").save(tmp)
+    r = subprocess.run(["node", str(ROOT.parent / "scripts" / "chroma-cut.mjs"), str(tmp), str(res), CHROMA], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if r.returncode != 0:
+        raise RuntimeError("chroma-cut 실패: " + (r.stderr or r.stdout)[-400:])
+    print("chroma", r.stdout.strip()[:160])
+    return Image.open(res).convert("RGBA").copy()
+
+
 def env_refs() -> list[Image.Image] | None:
     """ARTGEN_REFS=a.png,b.png — IP-Adapter 참조를 바꾼다 (없으면 None → 기본 참조)"""
     v = os.environ.get("ARTGEN_REFS", "")
@@ -180,7 +199,36 @@ def pose_of(path: Path) -> Image.Image:
     return _pose(bg.convert("RGB"), hand_and_face=False, output_type="pil").resize((1024, 1024))
 
 
+RAW = os.environ.get("ARTGEN_RAW", "")
+# 2026-10-07: 기본은 pixcel-studio 위치 기반 매트(nx) — 배경 없는 참조(ARTGEN_REFS 에 우리 컷아웃)를 쓰면 흰 배경이 나오고
+# 그 위에선 rembg 보다 테두리가 또렷하다(불투명 비율 .91 → .995). 배경이 흰색이 아니면(풍경이 나오면) rembg 로 **알리고** 내려간다.
+# ARTGEN_CUT=rembg 로 예전 경로 강제.
+CUT = os.environ.get("ARTGEN_CUT", "nx")
+
+
+def nx_cutout(im: Image.Image) -> Image.Image:
+    import subprocess
+    OUT.mkdir(parents=True, exist_ok=True)
+    tmp, res = OUT / "_nx-in.png", OUT / "_nx-out.png"
+    im.convert("RGBA").save(tmp)
+    r = subprocess.run(["node", str(ROOT.parent / "scripts" / "nx-cutout.mjs"), str(tmp), str(res)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if r.returncode != 0:
+        raise RuntimeError("nx-cutout 실패: " + (r.stderr or r.stdout)[-400:])
+    print("nx-cutout", r.stdout.strip()[:160])
+    return Image.open(res).convert("RGBA").copy()
+
+
 def cutout(im: Image.Image) -> Image.Image:
+    if RAW:
+        OUT.mkdir(parents=True, exist_ok=True)
+        im.convert("RGBA").save(OUT / "_last-raw.png")
+    if CHROMA:
+        return chroma_cutout(im)
+    if CUT == "nx":
+        try:
+            return nx_cutout(im)
+        except RuntimeError as e:
+            print("WARN nx-cutout 거부(배경이 단색이 아님) → rembg:", str(e).splitlines()[-1][:120])
     global _session
     from rembg import remove, new_session
     if _session is None:
@@ -507,6 +555,15 @@ def cmd_cover(a):
               generator=g, width=1024, height=1024).images[0]
     save(im.resize((512, 512)), f"cover-{a.id}.png")
 
+
+if CHROMA:
+    for _n in ["STYLE", "ICON_STYLE", "NPC_STYLE", "PROP_STYLE", "MONSTER_STYLE"]:
+        if _n in globals():
+            # 배경 문구를 스타일 맨 앞에 — 뒤에만 두면 IP 참조 크롭의 풍경이 이겨 전체 장면을 그렸다(2026-10-07 거미 여왕 프로브)
+            globals()[_n] = "isolated on a " + CHROMA_BG[CHROMA] + ", chroma key studio shot, " + globals()[_n].replace("plain white background", "perfectly flat uniform background color, no gradient, no floor shadow")
+    for _n in ["NEG", "ICON_NEG", "NPC_NEG", "PROP_NEG", "MONSTER_NEG"]:
+        if _n in globals():
+            globals()[_n] = globals()[_n] + ", white background, gradient background, vignette, floor shadow, scenery, landscape, environment, sky, clouds, plants, trees, rocks, ground, grass, water"
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()

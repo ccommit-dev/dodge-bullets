@@ -126,7 +126,7 @@ export function CharacterStatus({
         ? { title: "대장간에서 장착 북 강화하기", content: "forge" as const }
         : summary.mastery < progress.level * 3
           ? { title: "비트 수련으로 스킬 숙련 올리기", content: "beat" as const }
-          : { title: "타이탄 사냥터에서 레벨 올리기", content: "titans" as const };
+          : { title: "사냥터에서 레벨 올리기", content: "titans" as const };
 
   const skills = (Object.keys(SKILL_LABEL) as SkillId[]).map((id) => ({
     id,

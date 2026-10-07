@@ -309,6 +309,20 @@ export * as season from "${root}/src/economy/seasonPass";`);
     // 2026-10-07 비버 테마: ember·frost 는 비버 기본 시트의 팔레트 파생(make-character-skins) — 원화 매니페스트는 빈 배열이 정상
     ok("아트gen 코스튬 매니페스트는 배열(비버 테마: 팔레트 파생이라 0종)", existsSync(cAuth) && Array.isArray(JSON.parse((await import("node:fs")).readFileSync(cAuth, "utf8"))));
   }
+  // 2026-10-07 생성 원화 QA 게이트 (pixcel-studio/NX Pixel 지표, scripts/sprite-qa.mjs): 배치된 동료 11 · 몬스터 31 이 한 마리·충분한 크기·불투명. 엔진(D:/aiContext/pixcel-studio)이 없는 CI 에선 건너뛴다
+  {
+    const engine = "D:/aiContext/pixcel-studio/src/core/segment.js";
+    if (!existsSync(engine)) ok("생성 원화 QA 게이트 — 엔진 없음(CI), 건너뜀", true);
+    else {
+      const { execFileSync } = await import("node:child_process");
+      const allies = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "bronn", "orion", "ember"].map((id) => join(root, `public/titans/generated/allies/${id}.png`));
+      const monsters = (await import("node:fs")).readdirSync(join(root, "public/titans/generated/monsters")).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$/.test(f)).map((f) => join(root, "public/titans/generated/monsters", f));
+      const out = execFileSync(process.execPath, [join(root, "scripts/sprite-qa.mjs"), "--json", ...allies, ...monsters], { encoding: "utf8" });
+      const res = JSON.parse(out.trim().split("\n").pop());
+      const bad = res.filter((r) => r.score < 60).map((r) => `${r.file.split(/[\\/]/).pop()}=${r.score}`);
+      ok(`생성 원화 QA ≥ 60 (동료 ${allies.length} · 몬스터 ${monsters.length}) — 한 마리·크기·불투명`, bad.length === 0, bad.join(" "));
+    }
+  }
   ok("J 스킨 썸네일·아틀라스 파일 존재", ["skins/ari-blaze.png", "skins/luna-eclipse.png", "skins/season-1.png", "ally-skin-special-atlas-v1.png"].every((f) => existsSync(join(root, "public/titans/generated/allies", f))));
 }
 
@@ -471,7 +485,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   for (let i = 0; i < 400; i += 1) worldMod.gainRunXp(w, 1);
   ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
   const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
-  ok("몬스터 보이는 여백: 가시 용 좌 9%·우 9% (2026-10-07 비버 테마 재생성), 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.09,0.09]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
+  ok("몬스터 보이는 여백: 가시 용 좌 6%·우 6% (2026-10-07 비버 테마 재생성, bv3), 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.06,0.06]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
 }
 
 // ── 콘텐츠 역할 분리 P1 ──

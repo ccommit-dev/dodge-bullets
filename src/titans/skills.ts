@@ -53,7 +53,7 @@ export const SKILL_EFFECTS: Record<TitanSkillId, SkillEffect> = {
 
 export const SLOT_LABEL: Record<TitanSkillSlot, string> = { starter: "시동기", linkA: "연계 A", linkB: "연계 B", finisher: "마무리", passive: "패시브" };
 export const SLOT_ORDER: TitanSkillSlot[] = ["starter", "linkA", "linkB", "finisher", "passive"];
-export const ELEMENT_LABEL_KR: Record<TitanSkillDef["element"], string> = { blade: "검", wind: "바람", fire: "불", earth: "땅", light: "빛" };
+export const ELEMENT_LABEL_KR: Record<TitanSkillDef["element"], string> = { blade: "북", wind: "바람", fire: "불", earth: "땅", light: "빛" };
 export const BUFF_LABEL: Record<BuffKind, string> = { crit: "치명", clone: "분신", war: "고무", haste: "가속", freeze: "빙결", burn: "화상" };
 
 /** 레벨 배율 — 강화가 실효과를 산다 */
@@ -158,7 +158,7 @@ export function autoSkillOrder(): TitanSkillId[] {
 /** 프리셋 — 슬롯별 후보 순서. 학습한 것 중 첫 번째가 장착된다 */
 export type SkillPreset = { id: string; name: string; desc: string; picks: Record<TitanSkillSlot, TitanSkillId[]> };
 export const SKILL_PRESETS: SkillPreset[] = [
-  // 은퇴 스킬(관통 찌르기·수면 보법·질풍 연계·혈월 난무·용염 숨결·별빛 처형·해일 폭발·검심 집중)은 뺐다 (2026-10-01)
+  // 은퇴 스킬(통나무 돌진·물수제비 스텝·급류 연타·붉은 달 난타·용암 북 울림·별빛 피날레·댐 수문 개방·북채 집중)은 뺐다 (2026-10-01)
   { id: "balance", name: "균형형", desc: "탭·동료 고루 강화", picks: { starter: ["strike", "emberCut", "frostEdge"], linkA: ["crit", "stoneGuard"], linkB: ["clone", "thunderLink"], finisher: ["meteor", "voidFinish"], passive: ["steel", "elementalMastery", "guardianSoul"] } },
   { id: "burst", name: "탭 폭발형", desc: "탭 연타 극대화", picks: { starter: ["emberCut", "strike", "frostEdge"], linkA: ["crit", "stoneGuard"], linkB: ["clone", "thunderLink"], finisher: ["voidFinish", "meteor"], passive: ["steel", "guardianSoul", "elementalMastery"] } },
   { id: "party", name: "원정대형", desc: "동료 DPS와 보스 시간", picks: { starter: ["frostEdge", "strike", "emberCut"], linkA: ["stoneGuard", "crit"], linkB: ["thunderLink", "clone"], finisher: ["meteor", "voidFinish"], passive: ["elementalMastery", "guardianSoul", "steel"] } },

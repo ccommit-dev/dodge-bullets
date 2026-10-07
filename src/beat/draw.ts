@@ -98,6 +98,19 @@ function musicClock(world: BeatWorld): MusicClock {
   };
 }
 
+/** 비트 무대 배경 그림 (2026-10-07, 사용자: "비트 배경 너무 그대로") — 콘셉트 04-beat 의 댐 요새 무대. BeatGame 이 setBeatStageImage 로 넣고,
+ *  다 받으면 네온 터널 대신 이 그림을 cover 로 깔고 어둡게 눌러 레일이 읽히게 한다. 없으면 예전 터널 그대로(조용한 폴백이 아니라 그림이 아직 없는 상태) */
+let stageImage: HTMLImageElement | null = null;
+let stageCache: HTMLCanvasElement | null = null;
+export function setBeatStageImage(url: string): void {
+  if (typeof Image === "undefined") return;
+  const img = new Image();
+  img.decoding = "async";
+  img.src = url;
+  stageImage = img;
+  stageCache = null;
+}
+
 const TUNNEL_RINGS = 12;
 const RING_SPACING = 0.62;
 /** Half-width in world units; small enough that near rings sweep past the camera. */
@@ -184,6 +197,33 @@ function drawStage3D(
 
   ctx.fillStyle = "#03030a";
   ctx.fillRect(-40, -40, width + 80, height + 80);
+
+  // 무대 그림 — cover 맞춤(가로·세로 어느 쪽이든), 위쪽은 살짝 어둡게 해 HUD·노트가 읽히게. 박자에 맞춰 아주 약하게 밝아진다
+  const stage = stageImage && stageImage.complete && stageImage.naturalWidth > 0 ? stageImage : null;
+  if (stage) {
+    // 매 프레임 원본(720×1052)을 cover 로 다시 축소하면 에뮬레이터에서 프레임이 튀어 패드 터치를 놓쳤다 — 화면 크기로 한 번 구워 둔다 (2026-10-07)
+    if (!stageCache || stageCache.width !== width || stageCache.height !== height) {
+      stageCache = document.createElement("canvas");
+      stageCache.width = width; stageCache.height = height;
+      const cc = stageCache.getContext("2d");
+      if (cc) {
+        const sc = Math.max(width / stage.naturalWidth, height / stage.naturalHeight);
+        const dw = stage.naturalWidth * sc, dh = stage.naturalHeight * sc;
+        cc.drawImage(stage, (width - dw) / 2, (height - dh) / 2, dw, dh);
+      }
+    }
+    ctx.drawImage(stageCache, 0, 0);
+    const dim = ctx.createLinearGradient(0, 0, 0, height);
+    dim.addColorStop(0, "rgba(2, 6, 23, .55)");
+    dim.addColorStop(0.55, "rgba(2, 6, 23, .35)");
+    dim.addColorStop(1, "rgba(2, 6, 23, .6)");
+    ctx.fillStyle = dim;
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = `rgba(125, 211, 252, ${(music.beatEnv * 0.06).toFixed(3)})`;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+    return;
+  }
 
   const haze = ctx.createRadialGradient(
     world.cx,
@@ -362,7 +402,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   ctx.lineTo(world.cx + nearHalf, hitY);
   ctx.lineTo(world.cx - nearHalf, hitY);
   ctx.closePath();
-  ctx.fillStyle = "rgba(15,23,42,.7)";
+  ctx.fillStyle = "rgba(40, 22, 8, .62)";
   ctx.fill();
   ctx.strokeStyle = palette.dim;
   ctx.lineWidth = 2;
@@ -373,7 +413,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.moveTo(laneXAt(world, lane, 0), horizonY);
     ctx.lineTo(laneXAt(world, lane, 1), hitY);
     const flash = world.laneFlashMs[lane] / PAD_FLASH_MS;
-    ctx.strokeStyle = flash > 0 ? LANE_ACCENT[lane] : "rgba(148,163,184,.2)";
+    ctx.strokeStyle = flash > 0 ? LANE_ACCENT[lane] : "rgba(246,215,160,.28)";
     ctx.lineWidth = flash > 0 ? 1 + flash * 2 : 1;
     ctx.globalAlpha = flash > 0 ? 0.35 + flash * 0.55 : 1;
     ctx.stroke();

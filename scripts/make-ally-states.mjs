@@ -13,7 +13,7 @@ import sharp from "sharp";
 import { existsSync } from "node:fs";
 
 const args = process.argv.slice(2);
-const stem = args[0] && !/^[a-z]+$/.test(args[0]) ? args.shift() : (args[0] === "bv2" || args[0] === "bv" ? args.shift() : "bv2");
+const stem = args[0] && /^bv\d*$/.test(args[0]) ? args.shift() : "bv2";   // bv · bv2 · bv3 …
 const ids = args.length ? args : ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "bronn", "orion", "ember"];
 const OUT = "art-gen/out";
 const clear = { r: 0, g: 0, b: 0, alpha: 0 };

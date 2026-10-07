@@ -242,31 +242,32 @@ export const HEROES: TitanHeroDef[] = ALL_HEROES.filter((h) => !RETIRED_ALLY_IDS
 
 export const ALL_SKILLS: TitanSkillDef[] = [
   // 설명은 titans/skills.ts SKILL_EFFECTS의 실제 효과와 1:1로 맞춘다 — 숫자는 카드가 skillEffectLabel로 보여준다.
+  // 2026-10-07 비버 키우기: 이름만 북·도토리·댐 테마로 (id · 효과 · 수치 불변 — 저장 호환)
   // ── 시동기 4종: 탭 배율 단발 + 서로 다른 부가 효과 ──
-  { id: "strike", name: "초승 검격", desc: "기본 시동기 — 빠른 단일 검격", slot: "starter", element: "blade", learnSpCost: 2, learnCoreCost: 0, maxLevel: 20, cooldownSec: 12, durationSec: 0 },
-  { id: "pierce", name: "관통 찌르기", desc: "가장 강한 단발 시동기", slot: "starter", element: "blade", learnSpCost: 3, learnCoreCost: 1, maxLevel: 20, cooldownSec: 10, durationSec: 0 },
-  { id: "emberCut", name: "잔불 베기", desc: "타격 후 화상 — 초당 탭 피해가 이어진다", slot: "starter", element: "fire", learnSpCost: 4, learnCoreCost: 1, maxLevel: 20, cooldownSec: 9, durationSec: 5 },
-  { id: "frostEdge", name: "서리 칼날", desc: "타격 후 빙결 — 보스 제한시간이 멈춘다", slot: "starter", element: "wind", learnSpCost: 4, learnCoreCost: 1, maxLevel: 20, cooldownSec: 11, durationSec: 4 },
+  { id: "strike", name: "도토리 북치기", desc: "기본 시동기 — 북 한 타", slot: "starter", element: "blade", learnSpCost: 2, learnCoreCost: 0, maxLevel: 20, cooldownSec: 12, durationSec: 0 },
+  { id: "pierce", name: "통나무 돌진", desc: "가장 강한 단발 시동기", slot: "starter", element: "blade", learnSpCost: 3, learnCoreCost: 1, maxLevel: 20, cooldownSec: 10, durationSec: 0 },
+  { id: "emberCut", name: "불꽃 장작 타", desc: "타격 후 화상 — 초당 탭 피해가 이어진다", slot: "starter", element: "fire", learnSpCost: 4, learnCoreCost: 1, maxLevel: 20, cooldownSec: 9, durationSec: 5 },
+  { id: "frostEdge", name: "얼음 물방울", desc: "타격 후 빙결 — 보스 제한시간이 멈춘다", slot: "starter", element: "wind", learnSpCost: 4, learnCoreCost: 1, maxLevel: 20, cooldownSec: 11, durationSec: 4 },
   // ── 연계 A 4종: 치명 · 짧은 치명 · 동료 강화 · 영웅 가속 ──
-  { id: "crit", name: "질풍 보법", desc: "치명 확률 대폭 상승", slot: "linkA", element: "wind", learnSpCost: 4, learnCoreCost: 1, maxLevel: 20, cooldownSec: 22, durationSec: 8 },
-  { id: "waterStep", name: "수면 보법", desc: "짧고 자주 — 치명 확률 상승", slot: "linkA", element: "wind", learnSpCost: 5, learnCoreCost: 1, maxLevel: 20, cooldownSec: 18, durationSec: 7 },
-  { id: "stoneGuard", name: "대지 수호", desc: "동료 전원의 공격력 강화 — 후반 핵심", slot: "linkA", element: "earth", learnSpCost: 6, learnCoreCost: 2, maxLevel: 20, cooldownSec: 21, durationSec: 9 },
-  { id: "galeChain", name: "질풍 연계", desc: "영웅 자동 공격 속도 2배", slot: "linkA", element: "wind", learnSpCost: 7, learnCoreCost: 2, maxLevel: 20, cooldownSec: 16, durationSec: 6 },
+  { id: "crit", name: "꼬리 치기 박자", desc: "치명 확률 대폭 상승", slot: "linkA", element: "wind", learnSpCost: 4, learnCoreCost: 1, maxLevel: 20, cooldownSec: 22, durationSec: 8 },
+  { id: "waterStep", name: "물수제비 스텝", desc: "짧고 자주 — 치명 확률 상승", slot: "linkA", element: "wind", learnSpCost: 5, learnCoreCost: 1, maxLevel: 20, cooldownSec: 18, durationSec: 7 },
+  { id: "stoneGuard", name: "댐 방벽 북소리", desc: "동료 전원의 공격력 강화 — 후반 핵심", slot: "linkA", element: "earth", learnSpCost: 6, learnCoreCost: 2, maxLevel: 20, cooldownSec: 21, durationSec: 9 },
+  { id: "galeChain", name: "급류 연타", desc: "영웅 자동 공격 속도 2배", slot: "linkA", element: "wind", learnSpCost: 7, learnCoreCost: 2, maxLevel: 20, cooldownSec: 16, durationSec: 6 },
   // ── 연계 B 4종: 분신 · 동료 번개 · 강한 분신 · 보스 화상 ──
-  { id: "clone", name: "화염 분신", desc: "탭 피해 2배", slot: "linkB", element: "fire", learnSpCost: 6, learnCoreCost: 2, maxLevel: 20, cooldownSec: 30, durationSec: 10 },
-  { id: "thunderLink", name: "뇌광 연쇄", desc: "동료 공격에 번개 — 동료 피해 상승", slot: "linkB", element: "light", learnSpCost: 8, learnCoreCost: 2, maxLevel: 20, cooldownSec: 25, durationSec: 9 },
-  { id: "bloodMoon", name: "혈월 난무", desc: "짧고 강한 분신 — 탭 피해 2.4배", slot: "linkB", element: "blade", learnSpCost: 9, learnCoreCost: 3, maxLevel: 20, cooldownSec: 28, durationSec: 8 },
-  { id: "dragonBreath", name: "용염 숨결", desc: "보스 전용 화상 — 초당 탭 피해 ×10", slot: "linkB", element: "fire", learnSpCost: 10, learnCoreCost: 3, maxLevel: 20, cooldownSec: 30, durationSec: 10 },
+  { id: "clone", name: "불씨 더블 비트", desc: "탭 피해 2배", slot: "linkB", element: "fire", learnSpCost: 6, learnCoreCost: 2, maxLevel: 20, cooldownSec: 30, durationSec: 10 },
+  { id: "thunderLink", name: "번개 합주", desc: "동료 공격에 번개 — 동료 피해 상승", slot: "linkB", element: "light", learnSpCost: 8, learnCoreCost: 2, maxLevel: 20, cooldownSec: 25, durationSec: 9 },
+  { id: "bloodMoon", name: "붉은 달 난타", desc: "짧고 강한 분신 — 탭 피해 2.4배", slot: "linkB", element: "blade", learnSpCost: 9, learnCoreCost: 3, maxLevel: 20, cooldownSec: 28, durationSec: 8 },
+  { id: "dragonBreath", name: "용암 북 울림", desc: "보스 전용 화상 — 초당 탭 피해 ×10", slot: "linkB", element: "fire", learnSpCost: 10, learnCoreCost: 3, maxLevel: 20, cooldownSec: 30, durationSec: 10 },
   // ── 마무리 4종: 파티 고무 · 최대 단발 · 빙결 · 처형 ──
-  { id: "warcry", name: "별빛 처형", desc: "마무리 타격 후 동료를 고무한다", slot: "finisher", element: "light", learnSpCost: 9, learnCoreCost: 3, maxLevel: 20, cooldownSec: 40, durationSec: 12 },
-  { id: "meteor", name: "유성 낙하", desc: "가장 강한 단발 마무리", slot: "finisher", element: "fire", learnSpCost: 12, learnCoreCost: 4, maxLevel: 20, cooldownSec: 38, durationSec: 0 },
-  { id: "tidalBurst", name: "해일 폭발", desc: "타격 후 빙결 — 보스 제한시간 정지", slot: "finisher", element: "wind", learnSpCost: 12, learnCoreCost: 4, maxLevel: 20, cooldownSec: 36, durationSec: 4 },
-  { id: "voidFinish", name: "심연 절단", desc: "보스 HP 30% 미만이면 처형 배율", slot: "finisher", element: "blade", learnSpCost: 15, learnCoreCost: 5, maxLevel: 20, cooldownSec: 42, durationSec: 0 },
+  { id: "warcry", name: "별빛 피날레", desc: "마무리 타격 후 동료를 고무한다", slot: "finisher", element: "light", learnSpCost: 9, learnCoreCost: 3, maxLevel: 20, cooldownSec: 40, durationSec: 12 },
+  { id: "meteor", name: "도토리 유성우", desc: "가장 강한 단발 마무리", slot: "finisher", element: "fire", learnSpCost: 12, learnCoreCost: 4, maxLevel: 20, cooldownSec: 38, durationSec: 0 },
+  { id: "tidalBurst", name: "댐 수문 개방", desc: "타격 후 빙결 — 보스 제한시간 정지", slot: "finisher", element: "wind", learnSpCost: 12, learnCoreCost: 4, maxLevel: 20, cooldownSec: 36, durationSec: 4 },
+  { id: "voidFinish", name: "가시덤불 처형", desc: "보스 HP 30% 미만이면 처형 배율", slot: "finisher", element: "blade", learnSpCost: 15, learnCoreCost: 5, maxLevel: 20, cooldownSec: 42, durationSec: 0 },
   // ── 패시브 4종: 탭 · 치명 · 보스 시간 · 동료 ──
-  { id: "steel", name: "강철 호흡", desc: "탭 피해 상시 증가", slot: "passive", element: "earth", learnSpCost: 5, learnCoreCost: 1, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
-  { id: "focus", name: "검심 집중", desc: "치명 확률 상시 증가", slot: "passive", element: "blade", learnSpCost: 7, learnCoreCost: 2, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
-  { id: "guardianSoul", name: "수호자의 혼", desc: "보스 제한시간 상시 연장", slot: "passive", element: "earth", learnSpCost: 8, learnCoreCost: 2, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
-  { id: "elementalMastery", name: "원소 공명", desc: "동료 피해 상시 증가", slot: "passive", element: "light", learnSpCost: 10, learnCoreCost: 3, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
+  { id: "steel", name: "단단한 앞니", desc: "탭 피해 상시 증가", slot: "passive", element: "earth", learnSpCost: 5, learnCoreCost: 1, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
+  { id: "focus", name: "북채 집중", desc: "치명 확률 상시 증가", slot: "passive", element: "blade", learnSpCost: 7, learnCoreCost: 2, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
+  { id: "guardianSoul", name: "댐지기의 혼", desc: "보스 제한시간 상시 연장", slot: "passive", element: "earth", learnSpCost: 8, learnCoreCost: 2, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
+  { id: "elementalMastery", name: "숲의 공명", desc: "동료 피해 상시 증가", slot: "passive", element: "light", learnSpCost: 10, learnCoreCost: 3, maxLevel: 20, cooldownSec: 0, durationSec: 0 },
 ];
 
 /** 스킬 목록 — 은퇴 스킬을 뺀 것 */

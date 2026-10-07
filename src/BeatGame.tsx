@@ -2,7 +2,9 @@ import type { BeatTrackDef } from "./beat/tracks";
 import type { BeatDifficulty } from "./beat/types";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "./asset";
-import { drawBeatFrame } from "./beat/draw";
+import { drawBeatFrame, setBeatStageImage } from "./beat/draw";
+// 비트 무대 배경 (2026-10-07) — 모듈 로드 시 한 번 받아 둔다
+setBeatStageImage(assetUrl("beat/bg/stage.webp"));
 import {
   applyLessonClear,
   buildStageSlots,
@@ -852,7 +854,7 @@ export function BeatGame({
                 이어서 연습하기
               </button>
               <button type="button" className="cta cta-ghost" onClick={onBack}>
-                타이탄 사냥터
+                사냥터로 돌아가기
               </button>
             </div>
           </div>

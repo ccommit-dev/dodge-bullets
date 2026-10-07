@@ -156,7 +156,7 @@ type FloatText = {
   crit: boolean;
   source: FloatSource;
   hue?: number;
-  /** 스킬 숫자에 붙는 이름("질풍 보법")·아이콘 — 누가 무엇으로 때렸는지 */
+  /** 스킬 숫자에 붙는 이름("꼬리 치기 박자")·아이콘 — 누가 무엇으로 때렸는지 */
   label?: string;
   skill?: TitanSkillId;
 };
@@ -263,7 +263,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const gemsShown = useTween(redGems);
   const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
-  // 하한 2 — 기본 스킬(초승 검격)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
+  // 하한 2 — 기본 스킬(도토리 북치기)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
   const skillTypeCapacity = Math.min(10, Math.max(2, Math.ceil(character.level / 10)));
   const [idleReport, setIdleReport] = useState<{
     result: IdleYield;
@@ -403,7 +403,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
 
   // 보스 제한시간 — 방진 시너지(§2)와 아기 늑대 펫(§1)이 연장한다.
   // spawn이 의존성 없는 콜백이라 ref로 전달한다.
-  // + 탱커 도발(역할 효과 +5초/명) + 수호자의 혼(패시브)
+  // + 탱커 도발(역할 효과 +5초/명) + 댐지기의 혼(패시브)
   const bossTimeSec = useMemo(
     () =>
       BOSS_TIME_SEC +
@@ -974,11 +974,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const now = performance.now();
     const inv = saveRef.current.skillInventory;
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
-    // 강철 호흡(패시브) — 탭 기본 피해 상시 증가
+    // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg);
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
-    // 검심 집중(패시브) + 치명 버프
+    // 북채 집중(패시브) + 치명 버프
     const critChance = Math.min(0.95, 0.08 + passive.critChance + (now < b.critUntil ? b.critBonus : 0));
     const crit = Math.random() < critChance;
     return { dmg: base * clone * (crit ? 3.2 : 1), crit, base };
@@ -1013,7 +1013,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         formationReadyRef.current &&
         document.visibilityState !== "hidden"
       ) {
-        // 순서: 연계(버프) → 시동기 → 마무리. 심연 절단은 보스 30% 미만(또는 시간 촉박)까지 아낀다
+        // 순서: 연계(버프) → 시동기 → 마무리. 가시덤불 처형은 보스 30% 미만(또는 시간 촉박)까지 아낀다
         for (const id of AUTO_SKILL_ORDER) {
           const sk = SKILLS.find((s) => s.id === id)!;
           if (cdsRef.current[id] > 0) continue;
@@ -1027,12 +1027,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       const buff = buffsRef.current;
       const inv = saveRef.current.skillInventory;
       const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
-      // 동료 배율 = 고무 버프(대지 수호·뇌광 연쇄·별빛 처형) × 원소 공명(패시브)
+      // 동료 배율 = 고무 버프(댐 방벽 북소리·번개 합주·별빛 피날레) × 숲의 공명(패시브)
       const war = (now < buff.warcryUntil ? buff.warMult : 1) * (1 + passive.allyDmg);
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
-        // 질풍 연계(가속) — 영웅 자동 공격 간격 단축
+        // 급류 연타(가속) — 영웅 자동 공격 간격 단축
         const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1);
-        // 화상(잔불 베기·용염 숨결) — 0.5초 단위로 몰아서 넣어 피해 숫자 도배를 막는다
+        // 화상(불꽃 장작 타·용암 북 울림) — 0.5초 단위로 몰아서 넣어 피해 숫자 도배를 막는다
         if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
           burnAcc.current += dt;
           if (burnAcc.current >= 0.5) {
@@ -1073,7 +1073,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       }
 
       if (bossRef.current) {
-        // 빙결(서리 칼날·해일 폭발) — 제한시간 정지
+        // 빙결(얼음 물방울·댐 수문 개방) — 제한시간 정지
         const left = bossLeftRef.current - (now < buffsRef.current.freezeUntil ? 0 : dt);
         bossLeftRef.current = left;
         setBossLeft(Math.max(0, left));
@@ -1554,7 +1554,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     );
     setCharacter(next);
     setRedGems(next.redGems);
-    flash(`${def.name} 장착 — 칼날이 물들었다`);
+    flash(`${def.name} 장착 — 북이 물들었다`);
   };
 
   const toggleWeaponSkin = async (skinId: string) => {
@@ -1756,7 +1756,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     // 지속은 배속만큼 실시간이 줄어 쿨타임과 대칭 — ×2가 업타임을 2배로 만들던 버그 제거
     const durMs = buffDurationMs(def, level, saveRef.current.battleSpeed);
     const bossOnlyBurn = effect.kind === "buff" && !!effect.bossOnly;
-    // 버프는 연장만 한다 — 짧은 버프가 긴 버프를 잘라먹지 않게 (수면 보법이 혈월 난무를 1초 줄이던 문제)
+    // 버프는 연장만 한다 — 짧은 버프가 긴 버프를 잘라먹지 않게 (물수제비 스텝이 붉은 달 난타를 1초 줄이던 문제)
     const applyBuff = (kind: BuffKind, value: number) => {
       const until = now + durMs;
       setBuffSource((prev) => (prev[kind] === id ? prev : { ...prev, [kind]: id }));
@@ -2219,7 +2219,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   if (!ready) {
     return (
       <div className="titans-layer titans-loading">
-        <p>타이탄 전장 준비 중…</p>
+        <p>댐 사냥터 준비 중…</p>
       </div>
     );
   }
@@ -2261,44 +2261,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         </div>
       </header>
 
-      <div className="titans-stagebar">
-        <div>
-          <p className="titans-kicker">BEAVER DAM · IDLE DEFENSE</p>
-          <h1>
-            STAGE {save.stage}
-            {boss ? " BOSS" : bossReady ? " · 10/10 · 반복 사냥" : ` · ${wave}/${MOBS_PER_STAGE}`}
-          </h1>
-          <small className="titans-area-name">{area.name} · STAGE {area.stageFrom}–{area.stageTo >= 9999 ? "∞" : area.stageTo}</small>
-          {warmupLeft > 0 && (
-            <span className="warmup-chip">워밍업 ×2 · {Math.floor(warmupLeft / 60000)}:{String(Math.floor((warmupLeft % 60000) / 1000)).padStart(2, "0")}</span>
-          )}
-          {idlePreview && !idleReport && (
-            <span className="idle-preview-chip" title="지금 닫아도 원정대가 8시간 동안 사냥합니다">
-              지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)}G
-            </span>
-          )}
-        </div>
-        <div className="titans-best">
-          최고
-          <strong>{save.bestStage}</strong>
-        </div>
-      </div>
-
-      {/* 방치 상태 카드 (계획안 §14 · P0-2) — 이 화면이 '일반 던전'이다: 앱을 닫아도 원정대가 자동으로 사냥하고 다시 열면 정산된다 */}
-      {ready && (() => {
-        const capHours = idleCapHours(character);
-        const full = computeIdleYield(character, save.stage, save.skillInventory.equipped, capHours * 3600);
-        const boosted = character.idleBoostUntil > nowTick;
-        return (
-          <div className="idle-status-card" role="status">
-            {/* 시간당 수급 수치는 마이페이지 '방치 수급' 으로 옮겼다 — 전장 위에는 "쌓이고 있다"만 남긴다 (사용자 지시 2026-09-21) */}
-            <span className="idle-status-head"><i className="idle-status-dot" />자동 사냥 중{boosted ? " · 가속 ×2" : ""}</span>
-            <span className="idle-status-cap">최대 {capHours}h 누적 시 <b>+{formatGold(full.gold)} 골드 · 강화석 {full.materials}</b> — 닫아도 계속 쌓이고, 다시 열면 정산됩니다</span>
-            <i className="idle-status-sweep" aria-hidden="true" />
-          </div>
-        );
-      })()}
-
       <section
         ref={fieldRef}
         className={`titans-field phase-${battlePhase} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
@@ -2324,13 +2286,40 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         }}
       >
         <div className="titans-background" aria-hidden="true" />
-        {/* 낮은 화면(≤720px)용 방치 상태 한 줄 — 블록 카드는 자리를 밀어 하단 내비와 겹치므로 필드 위에 띄운다 */}
-        {ready && (
-          <div className="idle-status-strip" role="status">
-            <i className="idle-status-dot" />자동 사냥 중
-            <small>최대 {idleCapHours(character)}h 누적 · 시간당 수급은 마이페이지</small>
+        {/* 2026-10-07 사용자: "스테이지 줄·자동 사냥 문구를 작게 해 맵 HP바 아래로, 맵은 더 크게" — 위에 있던 스테이지 줄·방치 카드를 전장 안 한 줄로 */}
+        <div className="titans-stagebar in-field">
+          <div>
+            <p className="titans-kicker">BEAVER DAM · IDLE DEFENSE</p>
+            <h1>
+              STAGE {save.stage}
+              {boss ? " BOSS" : bossReady ? " · 10/10 · 반복 사냥" : ` · ${wave}/${MOBS_PER_STAGE}`}
+            </h1>
+            <small className="titans-area-name">{area.name} · STAGE {area.stageFrom}–{area.stageTo >= 9999 ? "∞" : area.stageTo}</small>
+            {warmupLeft > 0 && (
+              <span className="warmup-chip">워밍업 ×2 · {Math.floor(warmupLeft / 60000)}:{String(Math.floor((warmupLeft % 60000) / 1000)).padStart(2, "0")}</span>
+            )}
+            {idlePreview && !idleReport && (
+              <span className="idle-preview-chip" title="지금 닫아도 원정대가 8시간 동안 사냥합니다">
+                지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)}G
+              </span>
+            )}
           </div>
-        )}
+          <div className="titans-best">
+            최고
+            <strong>{save.bestStage}</strong>
+          </div>
+        </div>
+        {ready && (() => {
+          const capHours = idleCapHours(character);
+          const full = computeIdleYield(character, save.stage, save.skillInventory.equipped, capHours * 3600);
+          const boosted = character.idleBoostUntil > nowTick;
+          return (
+            <div className="idle-status-strip" role="status">
+              <i className="idle-status-dot" />자동 사냥 중{boosted ? " · 가속 ×2" : ""}
+              <small>최대 {capHours}h 누적 시 +{formatGold(full.gold)}G · 강화석 {full.materials} — 닫아도 쌓이고 다시 열면 정산</small>
+            </div>
+          );
+        })()}
         {/* I 전장 테마 파티클 — 오로라 띠 · 꽃잎 · 공허 별 */}
         {equippedThemeDef && (
           <span className={`theme-particles theme-${equippedThemeDef.particles}`} aria-hidden="true">
@@ -2823,13 +2812,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             </div>
             {expeditionsDone > 0 && (
               <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
-                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+                <img src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
                 파견 {expeditionsDone}건 귀환 — 보상 받기
               </button>
             )}
             {expeditionsDone === 0 && character.expeditions.length > 0 && (
               <p className="expedition-progress">
-                <img src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+                <img src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
                 파견 {character.expeditions.length}팀 진행 중
               </p>
             )}
@@ -2886,7 +2875,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               ([skinId, def]) => def.ally === h.id && character.ownedAllySkins.includes(skinId),
             );
             return (
-              <article key={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""}`}>
+              <article key={h.id} data-ally={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""}`}>
                 <AllyArt id={h.id} skin={character.equippedAllySkins[h.id]} />
                 <div>
                   <strong>
@@ -3200,7 +3189,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
-              <img className="pack-icon" src={assetUrl("ui/idle/expedition.svg")} alt="" aria-hidden="true" />
+              <img className="pack-icon" src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
               <div>
                 <strong>파견 즉시 완료권</strong>
                 <p>
@@ -3341,7 +3330,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               ] as const).map((item) => {
                 const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
                 return <button key={item.id} type="button" className={locked ? "tab-locked" : ""} onClick={() => { if (locked) flash(LOCK_HINT[item.id as OnboardContent]); else { setNavPopup(null); onOpenContent(item.id); } }}>
-                  <ContentIcon name={item.icon} /><span><b>{item.label}</b><small>{item.desc}</small></span>{locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.svg")} alt="" />}
+                  <ContentIcon name={item.icon} /><span><b>{item.label}</b><small>{item.desc}</small></span>{locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
                 </button>;
               })}
             </div>
@@ -3349,11 +3338,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             <div className="nav-popup-grid adventure-grid">
               {routine.filter((item) => item.id !== "claim").map((item) => (
                 <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => { setNavPopup(null); runRoutine(item); }}>
-                  {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.svg" : item.id === "expedition" ? "ui/idle/expedition.svg" : "ui/idle/pioneer-flag.svg")} alt="" aria-hidden="true" />}
+                  {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.png" : item.id === "expedition" ? "ui/idle/expedition.png" : "ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />}
                   <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
                 </button>
               ))}
-              <button type="button" className="season-nav" onClick={() => { setNavPopup(null); onOpenEvents?.("season"); }}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.svg")} alt="" aria-hidden="true" /><span><b>시즌 패스</b><small>{character.seasonPass.season === seasonIndex() ? `${seasonTier(character.seasonPass.xp)}/${SEASON.tiers}단` : "새 시즌"} · D-{seasonDaysLeft()}</small></span></button>
+              <button type="button" className="season-nav" onClick={() => { setNavPopup(null); onOpenEvents?.("season"); }}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스</b><small>{character.seasonPass.season === seasonIndex() ? `${seasonTier(character.seasonPass.xp)}/${SEASON.tiers}단` : "새 시즌"} · D-{seasonDaysLeft()}</small></span></button>
               {/* 이벤트 상점은 하단 '상점' → '이벤트' 탭에 이미 있다 — 같은 화면으로 가는 두 번째 입구는 뺐다 (2026-09-18) */}
             </div>
           )}
@@ -3442,12 +3431,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           type="button"
           className={`coach-bubble coach-${coach.target}`}
           onClick={() => {
-            if (coach.target === "heroes") setTab("heroes");
-            if (coach.target === "sword") setTab("sword");
+            // 2026-10-07: 이미 그 탭에 있으면(탭 전환이 아무것도 안 했다) 대상 요소로 스크롤하고 2.4초 강조한다
+            const pulse = (sel: string) => {
+              const el = document.querySelector<HTMLElement>(sel);
+              if (!el) return false;
+              el.scrollIntoView({ block: "center", behavior: "smooth" });
+              el.classList.add("coach-pulse");
+              window.setTimeout(() => el.classList.remove("coach-pulse"), 2400);
+              return true;
+            };
+            if (coach.target === "heroes") { if (tab !== "heroes") setTab("heroes"); else pulse('[data-ally="mia"] .ally-card-actions button'); }
+            if (coach.target === "sword") { if (tab !== "sword") setTab("sword"); else pulse(".equipment-training-card button"); }
+            if (coach.target === "field") { fieldRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); flash("몬스터를 탭하면 공격합니다"); }
           }}
         >
           <span className="coach-hand" aria-hidden="true">☝</span>
-          {coach.text}
+          {coach.target === "heroes" && tab === "heroes" ? "스카우트 미아 카드의 소환 버튼을 누르세요" : coach.target === "sword" && tab === "sword" ? "무기 훈련 버튼을 누르세요" : coach.text}
         </button>
       )}
 
@@ -3472,7 +3471,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       {unlockBanner !== null && UNLOCK_BANNER[unlockBanner] && (
         <div className="content-unlock-banner" role="status">
           <span className="unlock-rays" aria-hidden="true" />
-          <img src={assetUrl("ui/idle/unlock-crest.svg")} alt="" aria-hidden="true" />
+          <img src={assetUrl("ui/idle/unlock-crest.png")} alt="" aria-hidden="true" />
           <b>{UNLOCK_BANNER[unlockBanner].title}</b>
           <small>{UNLOCK_BANNER[unlockBanner].desc}</small>
         </div>

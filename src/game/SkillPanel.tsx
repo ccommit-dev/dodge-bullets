@@ -149,7 +149,7 @@ export function SkillPanel({
                     return (
                       <div className="exp-fund">
                         <header>
-                          <img src={assetUrl("ui/idle/gate-fund.svg")} alt="" aria-hidden="true" />
+                          <img src={assetUrl("ui/idle/gate-fund.png")} alt="" aria-hidden="true" />
                           <span>
                             <b>성문 원정 기금 <i>영구</i></b>
                             <em>모두 달성 시 보석 {GATE_FUND_TOTAL_GEMS.toLocaleString()}{shop.fundRatio ? ` · 같은 금액 보석팩의 ×${shop.fundRatio.toFixed(1)}` : ""}</em>
@@ -180,7 +180,7 @@ export function SkillPanel({
                   })()}
                   {shop.onSale("gate-supply") && (
                     <div className="exp-store-row">
-                      <img src={assetUrl("ui/idle/gate-supply.svg")} alt="" aria-hidden="true" />
+                      <img src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
                       <span>
                         <b>성문 수비 보급</b>
                         <em>원정 인장 30 · 스킬 무기 조각 각 8 (11종) · 보석 40</em>
@@ -216,7 +216,7 @@ export function SkillPanel({
               })}
               {towerUnlocked && onBuyTowerTicket && (
                 <li className="exp-tower-ticket">
-                  <img src={assetUrl("ui/idle/tower.svg")} alt="" aria-hidden="true" />
+                  <img src={assetUrl("ui/idle/tower.png")} alt="" aria-hidden="true" />
                   <span>
                     <b>성벽 등반권 <i>×{towerTickets}</i></b>
                     <em>끝없는 성벽을 한 번 더 오른다 · 매일 {TOWER_DAILY_TICKETS}장 무료</em>
@@ -416,7 +416,7 @@ export function SkillPanel({
               </span>
               {ready && <span className="exp-skill-badge" aria-label="강화 가능">!</span>}
               {equipped && <span className="exp-skill-equipped">장착</span>}
-              {!unlocked && <img className="exp-skill-locked" src={assetUrl("ui/idle/lock.svg")} alt="" aria-hidden="true" />}
+              {!unlocked && <img className="exp-skill-locked" src={assetUrl("ui/idle/lock.png")} alt="" aria-hidden="true" />}
             </button>
           );
         })}

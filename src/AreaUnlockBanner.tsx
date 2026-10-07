@@ -37,7 +37,7 @@ export function AreaUnlockBanner({ area, onDone }: Props) {
       <span className="area-gate-half left" aria-hidden="true" />
       <span className="area-gate-half right" aria-hidden="true" />
       <div className="area-unlock-copy">
-        <img className="area-unlock-crest" src={assetUrl("ui/idle/pioneer-flag.svg")} alt="" aria-hidden="true" />
+        <img className="area-unlock-crest" src={assetUrl("ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />
         <p className="brand">AREA PIONEERED</p>
         <h2 style={{ color: area.accent }}>{area.name}</h2>
         <p className="area-unlock-range">

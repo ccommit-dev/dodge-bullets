@@ -119,18 +119,18 @@ await clickText(".skill-slot-tabs button", "패시브");
 await sleep(300);
 r = await page.evaluate(() => [...document.querySelectorAll(".skill-effect")].map((e) => e.textContent));
 ok("패시브 3종 효과 수치 표기", r.length === 3 && r.some((e) => /탭 피해 \+/.test(e)) && r.some((e) => /보스 제한시간 \+/.test(e)), r.join(" | "));
-// 패시브 학습(강철 호흡) → 학습 후 장착 상태
-await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /강철 호흡/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
+// 패시브 학습(단단한 앞니) → 학습 후 장착 상태
+await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
 await sleep(500);
 t = await titans();
 ok("패시브 학습 → 장착 (SP·코어 차감)", t.skillInventory.learned.includes("steel") && t.skillInventory.equipped.passive === "steel");
-// 전투 화면에서 질풍 보법(crit) 시전 → 버프 칩 "치명 +45%"
+// 전투 화면에서 꼬리 치기 박자(crit) 시전 → 버프 칩 "치명 +45%"
 await clickText(".titans-tabs button", "전장");
 await sleep(400);
-await page.evaluate(() => { [...document.querySelectorAll(".titans-skill-dock .titans-skill")].find((b) => /질풍/.test(b.textContent ?? "") || b.getAttribute("title")?.includes("질풍"))?.click(); });
+await page.evaluate(() => { [...document.querySelectorAll(".titans-skill-dock .titans-skill")].find((b) => b.querySelector(".skill-icon-crit") || /꼬리 치기/.test(b.textContent ?? "") || b.getAttribute("title")?.includes("꼬리 치기"))?.click(); });
 await sleep(500);
 r = await page.evaluate(() => [...document.querySelectorAll(".titans-buffs span")].map((s) => s.textContent));
-ok("질풍 보법 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명 \+45%/.test(x)), r.join("|"));
+ok("꼬리 치기 박자 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명 \+45%/.test(x)), r.join("|"));
 
 // ── 3. 과금 정합: 후원 일일 보석 · 무료 지급 게이트(DEV) ──
 await seed({ ...baseProgress, patronUntil: now + 86400000 * 10, patronClaimedDate: "" }, baseTitans);

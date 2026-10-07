@@ -102,7 +102,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
         <div className="idle-rays-clip" aria-hidden="true">
           <div className="idle-rays" />
         </div>
-        <img className="idle-crest" src={assetUrl("ui/idle/idle-report.svg")} alt="" aria-hidden="true" />
+        <img className="idle-crest" src={assetUrl("ui/idle/idle-report.png")} alt="" aria-hidden="true" />
         <p className="brand">IDLE REPORT</p>
         <h2 className="exit-title">귀환 정산</h2>
         <p className="idle-sub">
@@ -126,7 +126,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
             <span>공유 골드</span>
           </article>
           <article style={{ animationDelay: "90ms" }}>
-            <img src={assetUrl("ui/idle/exp-orb.svg")} alt="" aria-hidden="true" />
+            <img src={assetUrl("ui/idle/exp-orb.png")} alt="" aria-hidden="true" />
             <b>{exp.toLocaleString()}</b>
             <span>경험치</span>
           </article>
@@ -147,7 +147,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
         {/* 보상 → 사용처 연결 (점검표 #10): 강화석이 생긴 순간 대장간으로 바로 보낸다 */}
         {result.materials > 0 && (
           <button type="button" className="idle-forge-cta" onClick={() => onGoContent("forge")}>
-            <img src={assetUrl("ui/idle/anvil.svg")} alt="" aria-hidden="true" />
+            <img src={assetUrl("ui/idle/anvil.png")} alt="" aria-hidden="true" />
             <span>
               <b>강화석 {result.materials}개 — 대장간에서 바로 쓰기</b>
               <small>수령 후 대장간으로 이동 · 이번 강화 성공률 +8%p</small>
