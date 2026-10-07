@@ -2263,7 +2263,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
 
       <div className="titans-stagebar">
         <div>
-          <p className="titans-kicker">TAP TITANS · RPG</p>
+          <p className="titans-kicker">BEAVER DAM · IDLE DEFENSE</p>
           <h1>
             STAGE {save.stage}
             {boss ? " BOSS" : bossReady ? " · 10/10 · 반복 사냥" : ` · ${wave}/${MOBS_PER_STAGE}`}

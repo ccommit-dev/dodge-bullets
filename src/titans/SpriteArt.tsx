@@ -169,25 +169,17 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
   return { "--weapon-dx": `${a.dx}%`, "--weapon-dy": `${a.dy}%`, "--weapon-drot": `${a.rot}deg` } as CSSProperties;
 }
 
-/** 새 대장 10장 좌/우 여백 — scripts/place-monster.mjs --size 1024 실측 (2026-10-06) */
-const BOSS_MARGINS_20261006: Record<string, [number, number]> = {
-  "thorn-boar-king": [0.05, 0.05], "ancient-treant": [0.04, 0.04], "ruin-sentinel": [0.08, 0.08], "magma-golem": [0.03, 0.03], "void-lich": [0.05, 0.05], "goblin-warlord": [0.04, 0.04],
-  "spider-queen": [0.01, 0.01], minotaur: [0.03, 0.03], "fire-demon": [0.05, 0.05], "bone-dragon": [0.03, 0.03],
-};
-
 /** 몬스터 프레임 (계획안 B) — idle 원본 · hit/defeat는 scripts/make-monster-states.mjs가 파생한 <name>-hit/-defeat.png */
 export type MonsterFrameState = "idle" | "hit" | "defeat";
-/** 몬스터 원화의 좌/우 투명 여백 비율 (scripts 로 실측, 2026-09-14) — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다 */
+/** 몬스터 원화의 좌/우 투명 여백 비율 — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다.
+ *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json) */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
-  // MONSTER_ASSET · BOSS_ASSET 이 실제로 가리키는 11종만 둔다 — -clean 변종으로 교체되며 남았던
-  // flame-wyvern · moss-golem · ogre-king(-clean) · wolf · wolf-king 항목은 어느 경로로도 조회되지 않았다 (2026-09-21)
-  "abyss-titan": [0.02, 0.02], dragon: [0.04, 0.02], "flame-wyvern-clean": [0.2, 0.11], goblin: [0.04, 0.04],
-  "golden-lion-clean": [0.05, 0.03], "moon-wolf-king-clean": [0.01, 0.01], "moss-golem-clean": [0.13, 0.1],
-  ogre: [0.05, 0.05], "shadow-wolf-clean": [0.08, 0.06], slime: [0.14, 0.14], "wolf-king-clean": [0.18, 0.13],
-  // 2026-10-06 새 원화 — scripts/place-monster.mjs 실측
-  "magma-imp": [0.08, 0.08], "void-imp": [0.09, 0.09], "goblin-shaman": [0.10, 0.09], "skeleton-goblin": [0.08, 0.08], "frost-wolf": [0.10, 0.10],
-  hellhound: [0.05, 0.05], "stone-troll": [0.04, 0.04], "armored-ogre": [0.03, 0.03], "lava-drake": [0.06, 0.06], "storm-drake": [0.02, 0.02],
-  ...BOSS_MARGINS_20261006,
+  "abyss-titan": [0.00, 0.00], "ancient-treant": [0.04, 0.04], "armored-ogre": [0.04, 0.04], "bone-dragon": [0.02, 0.02], dragon: [0.09, 0.09], "fire-demon": [0.12, 0.12],
+  "flame-wyvern-clean": [0.07, 0.07], "frost-wolf": [0.12, 0.12], goblin: [0.09, 0.09], "goblin-shaman": [0.04, 0.04], "goblin-warlord": [0.07, 0.07], "golden-lion-clean": [0.01, 0.00],
+  hellhound: [0.03, 0.03], "lava-drake": [0.04, 0.04], "magma-golem": [0.14, 0.14], "magma-imp": [0.08, 0.08], minotaur: [0.03, 0.03], "moon-wolf-king-clean": [0.10, 0.10],
+  "moss-golem-clean": [0.04, 0.04], ogre: [0.04, 0.04], "ruin-sentinel": [0.01, 0.01], "shadow-wolf-clean": [0.05, 0.05], "skeleton-goblin": [0.00, 0.00], slime: [0.07, 0.07],
+  "spider-queen": [0.00, 0.00], "stone-troll": [0.02, 0.02], "storm-drake": [0.00, 0.00], "thorn-boar-king": [0.09, 0.08], "void-imp": [0.04, 0.04], "void-lich": [0.01, 0.01],
+  "wolf-king-clean": [0.05, 0.05],
 };
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";

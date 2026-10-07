@@ -38,11 +38,13 @@ function play(notes: Note[]): void {
   for (const note of notes) {
     const osc = audio.createOscillator();
     const gain = audio.createGain();
+    // 비버 테마(2026-10-07): 기본 음색을 나무 마림바(삼각파 + 빠른 감쇠)로 — 사각파·톱니파 지정은 그대로 둔다
     osc.type = note.type ?? "triangle";
     osc.frequency.setValueAtTime(note.freq, t0 + note.at);
     const peak = note.gain ?? 0.07;
     gain.gain.setValueAtTime(0.0001, t0 + note.at);
-    gain.gain.exponentialRampToValueAtTime(peak, t0 + note.at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + note.at + 0.008);
+    gain.gain.exponentialRampToValueAtTime(peak * 0.35, t0 + note.at + Math.min(note.dur * 0.4, 0.06));
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.at + note.dur);
     osc.connect(gain);
     gain.connect(master);

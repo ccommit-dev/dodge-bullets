@@ -1,4 +1,4 @@
-name: Deploy DODGE LAB to GitHub Pages
+name: Deploy Grow a Beaver to GitHub Pages
 
 on:
   push:

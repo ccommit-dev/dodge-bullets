@@ -142,7 +142,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   ctx.textAlign = "center";
   ctx.fillStyle = "#cbd5e1";
   ctx.font = `800 28px ${FONT}`;
-  ctx.fillText("DODGE LAB  ·  EXPEDITION RECORD", W / 2, 108);
+  ctx.fillText("GROW A BEAVER  ·  EXPEDITION RECORD", W / 2, 108);
   let y = 108;
   if (input.titleName) {
     y += 56;
@@ -318,12 +318,12 @@ function showCardOverlay(blob: Blob): void {
 }
 
 /** 공유 — Web Share(files) → 앱이면 앱 안 카드, 웹이면 새 탭 열기(저장 가능). 반환값은 어떤 경로였는지 */
-export async function shareCard(blob: Blob, fileName = "dodgelab-record.png"): Promise<"shared" | "opened" | "shown" | "failed"> {
+export async function shareCard(blob: Blob, fileName = "grow-a-beaver-record.png"): Promise<"shared" | "opened" | "shown" | "failed"> {
   const file = new File([blob], fileName, { type: "image/png" });
   try {
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.share && (!nav.canShare || nav.canShare({ files: [file] }))) {
-      await nav.share({ files: [file], title: "DODGE LAB 원정 기록" });
+      await nav.share({ files: [file], title: "비버 키우기 원정 기록" });
       return "shared";
     }
   } catch {

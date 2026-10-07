@@ -28,7 +28,10 @@ const fw = maxx - minx + 1, fh = maxy - miny + 1;
 const avail = Math.round(SIZE * (1 - BOTTOM));
 const scale = Math.min(avail / fh, SIZE / fw, 1);
 const w = Math.max(1, Math.round(fw * scale)), h = Math.max(1, Math.round(fh * scale));
-const fig = await sharp(src).extract({ left: minx, top: miny, width: fw, height: fh }).resize(w, h).png().toBuffer();
+const figRaw = await sharp(src).extract({ left: minx, top: miny, width: fw, height: fh }).resize(w, h).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+// 반투명 테두리 잔상 경화 — place-art.hardenAlpha 와 같은 곡선 (2026-10-07)
+for (let i = 3; i < figRaw.data.length; i += 4) { const v = figRaw.data[i]; figRaw.data[i] = v <= 48 ? 0 : v >= 168 ? 255 : Math.round((v - 48) * 255 / 120); }
+const fig = await sharp(figRaw.data, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer();
 const out = await sharp({ create: { width: SIZE, height: SIZE, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
   .composite([{ input: fig, left: Math.round((SIZE - w) / 2), top: SIZE - Math.round(SIZE * BOTTOM) - h }])
   .png().toBuffer();

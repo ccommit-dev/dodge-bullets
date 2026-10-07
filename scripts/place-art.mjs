@@ -59,7 +59,13 @@ async function bodyOnly(file) {
     const l = label[Math.floor(y / S) * w + Math.floor(x / S)];
     if (l >= 0 && !keep.has(l)) { data[(y * W + x) * C + 3] = 0; dropped += 1; }
   }
+  hardenAlpha(data, C);
   return { data, info, dropped, comps: comps.length, kept: keep.size };
+}
+
+/** rembg 의 반투명 테두리 잔상(알파 30~150 의 뿌연 띠)이 배경 위에서 오려 붙인 티를 냈다 — 48 이하는 지우고 168 이상은 불투명, 사이는 직선 (2026-10-07, 사용자: "배경이랑 캐릭터 경계가 어색") */
+export function hardenAlpha(data, channels) {
+  for (let i = channels - 1; i < data.length; i += channels) { const v = data[i]; data[i] = v <= 48 ? 0 : v >= 168 ? 255 : Math.round((v - 48) * 255 / 120); }
 }
 
 /** 본체만 남긴 트림 이미지 + 알파 무게중심 x(트림 기준, 0~1) */

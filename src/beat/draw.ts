@@ -1,4 +1,5 @@
 import { type BeatSound, type BeatWorld, type NoteLane, type RingSkinId } from "./types";
+import { drawDropShape, drawLeafShape } from "../ui/shapes";
 import { laneOfSound, laneXAt, PAD_FLASH_MS, railGeometry } from "./world";
 
 const RING_PALETTE: Record<
@@ -38,12 +39,14 @@ const RING_PALETTE: Record<
 };
 
 /** Pad accents shared with the DOM buttons so lane and key read as one thing. */
+/** 레인 = 노트 모양·색 (2026-10-07 비버 테마): 0 도토리(주황) · 1 잎(초록) · 2 물방울(파랑) · 3 음표(분홍) */
 const LANE_ACCENT: Record<NoteLane, string> = {
-  0: "#fbbf24",
-  1: "#f472b6",
-  2: "#22d3ee",
-  3: "#a78bfa",
+  0: "#f59e0b",
+  1: "#4ade80",
+  2: "#38bdf8",
+  3: "#f472b6",
 };
+const LANE_ACCENT_DARK: Record<NoteLane, string> = { 0: "#92400e", 1: "#166534", 2: "#075985", 3: "#9d174d" };
 
 const SOUND_SHORT: Record<BeatSound, string> = {
   boots: "B",
@@ -386,7 +389,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.beginPath();
     ctx.moveTo(world.cx - half, y);
     ctx.lineTo(world.cx + half, y);
-    ctx.strokeStyle = `rgba(34,211,238,${0.05 + eased * 0.16})`;
+    ctx.strokeStyle = `rgba(125,211,252,${0.06 + eased * 0.18})`;
     ctx.stroke();
   }
   ctx.restore();
@@ -453,19 +456,8 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
         ctx.fillText("HOLD", tailX, tailY - bodyW * 0.9);
       }
     }
-    ctx.beginPath();
-    ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * (step.holdSteps || step.holdTail ? 1.9 : 1.56), size * 0.3);
-    ctx.fillStyle = consumed ? "#94a3b8" : golden ? "#facc15" : step.spike ? "#fb4f6d" : LANE_ACCENT[lane];
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 8 + eased * 18;
-    ctx.fill();
-    if (step.spike && !consumed) {
-      ctx.shadowBlur = 0;
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "rgba(248,250,252,.9)";
-      ctx.stroke();
-      drawSpikeDecor(ctx, world.cosmetics.spikeSkin, size, eased, world.elapsedMs);
-    }
+    drawNoteBody(ctx, lane, size, eased, consumed, golden, !!(step.holdSteps || step.holdTail));
+    if (step.spike && !consumed) drawSpikeDecor(ctx, world.cosmetics.spikeSkin, size, eased, world.elapsedMs);
     if (eased > 0.3) {
       ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`;
       ctx.textAlign = "center";
@@ -504,12 +496,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y); ctx.stroke(); ctx.setLineDash([]);
       ctx.translate(x2, y);
       ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed2 ? 0.3 : 1);
-      ctx.beginPath();
-      ctx.roundRect(-size * 0.88, -size * 0.78, size * 1.76, size * (step.holdSteps ? 1.9 : 1.56), size * 0.3);
-      ctx.fillStyle = consumed2 ? "#94a3b8" : "#22d3ee";
-      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 8 + eased * 18;
-      ctx.fill();
-      if (!consumed2) { ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = "rgba(248,250,252,.9)"; ctx.stroke(); }
+      drawNoteBody(ctx, lane2, size, eased, consumed2, false, !!step.holdSteps);
       if (eased > 0.3) {
         ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#f8fafc"; ctx.shadowBlur = 0;
         ctx.fillText(LANE_SYMBOL[lane2], 0, -1);
@@ -534,15 +521,16 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  for (const p of world.particles) {
+  for (let i = 0; i < world.particles.length; i += 1) {
+    const p = world.particles[i];
     if (!p.active) continue;
     const alpha = p.lifeMs / p.maxLifeMs;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${p.hue}, 95%, 68%, ${alpha})`;
     ctx.shadowColor = `hsl(${p.hue}, 95%, 62%)`;
     ctx.shadowBlur = 14;
-    ctx.fill();
+    // 비버 테마(2026-10-07): 셋 중 하나는 돌아가는 잎, 나머지는 물방울
+    if (i % 3 === 0) drawLeafShape(ctx, p.x, p.y, p.size * alpha * 1.6, (1 - alpha) * 5 + i);
+    else drawDropShape(ctx, p.x, p.y, p.size * alpha);
   }
   ctx.restore();
 
@@ -733,6 +721,56 @@ function drawSpikeDecor(ctx: CanvasRenderingContext2D, skin: BeatWorld["cosmetic
     ctx.beginPath();
     ctx.moveTo(bx + br * 0.2, by - br); ctx.lineTo(bx - br * 0.55, by + br * 0.1 * j); ctx.lineTo(bx - br * 0.05, by + br * 0.1); ctx.lineTo(bx - br * 0.3, by + br); ctx.lineTo(bx + br * 0.55, by - br * 0.15); ctx.lineTo(bx + br * 0.05, by - br * 0.15); ctx.closePath();
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * 노트 본체 (2026-10-07 비버 테마) — 레인마다 다른 물건: 도토리 · 잎 · 물방울 · 음표. 예전엔 전부 붉은 둥근 사각형이었다.
+ * 노트 기준 좌표(translate 이후). 방향 화살표 글자는 위에 그대로 얹힌다(입력 신호)
+ */
+function drawNoteBody(ctx: CanvasRenderingContext2D, lane: NoteLane, size: number, eased: number, consumed: boolean, golden: boolean, tall: boolean): void {
+  const main = consumed ? "#94a3b8" : golden ? "#facc15" : LANE_ACCENT[lane];
+  const dark = consumed ? "#475569" : golden ? "#a16207" : LANE_ACCENT_DARK[lane];
+  const h = tall ? 1.9 : 1.56;
+  ctx.save();
+  ctx.shadowColor = main;
+  ctx.shadowBlur = consumed ? 0 : 8 + eased * 18;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(248,250,252,.9)";
+  if (lane === 0) {
+    // 도토리 — 아래 열매(밝은 갈색) + 위 깍정이(짙은 갈색) + 꼭지
+    ctx.fillStyle = consumed ? main : golden ? "#facc15" : "#fbbf24";
+    ctx.beginPath(); ctx.ellipse(0, size * 0.15, size * 0.78, size * h * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(0, -size * 0.32, size * 0.86, size * 0.36, 0, Math.PI, Math.PI * 2); ctx.lineTo(size * 0.86, -size * 0.2); ctx.lineTo(-size * 0.86, -size * 0.2); ctx.closePath(); ctx.fill();
+    ctx.fillRect(-size * 0.07, -size * 0.8, size * 0.14, size * 0.3);
+    if (!consumed) { ctx.shadowBlur = 0; ctx.beginPath(); ctx.ellipse(0, 0, size * 0.86, size * h * 0.5, 0, 0, Math.PI * 2); ctx.stroke(); }
+  } else if (lane === 1) {
+    // 잎 — 기울어진 타원 + 잎맥
+    ctx.fillStyle = main;
+    ctx.beginPath(); ctx.ellipse(0, 0, size * 0.62, size * h * 0.5, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = dark; ctx.lineWidth = Math.max(1.5, size * 0.1);
+    ctx.beginPath(); ctx.moveTo(-size * 0.36, size * 0.6); ctx.lineTo(size * 0.36, -size * 0.6); ctx.stroke();
+    if (!consumed) { ctx.strokeStyle = "rgba(248,250,252,.9)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, 0, size * 0.62, size * h * 0.5, -0.5, 0, Math.PI * 2); ctx.stroke(); }
+  } else if (lane === 2) {
+    // 물방울 — 위가 뾰족한 둥근 방울 + 하이라이트
+    ctx.fillStyle = main;
+    ctx.beginPath();
+    ctx.moveTo(0, -size * h * 0.55);
+    ctx.bezierCurveTo(size * 0.9, size * 0.05, size * 0.85, size * h * 0.45, 0, size * h * 0.48);
+    ctx.bezierCurveTo(-size * 0.85, size * h * 0.45, -size * 0.9, size * 0.05, 0, -size * h * 0.55);
+    ctx.closePath(); ctx.fill();
+    if (!consumed) { ctx.shadowBlur = 0; ctx.stroke(); ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.ellipse(-size * 0.25, size * 0.1, size * 0.14, size * 0.26, -0.4, 0, Math.PI * 2); ctx.fill(); }
+  } else {
+    // 음표 — 머리 + 기둥 + 깃발
+    ctx.fillStyle = main;
+    ctx.beginPath(); ctx.ellipse(-size * 0.2, size * h * 0.28, size * 0.5, size * 0.38, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillRect(size * 0.2, -size * h * 0.5, Math.max(2, size * 0.16), size * h * 0.78);
+    ctx.beginPath(); ctx.moveTo(size * 0.2, -size * h * 0.5); ctx.quadraticCurveTo(size * 0.95, -size * h * 0.3, size * 0.5, size * 0.1); ctx.quadraticCurveTo(size * 0.6, -size * h * 0.25, size * 0.2, -size * h * 0.28); ctx.closePath(); ctx.fill();
+    if (!consumed) { ctx.beginPath(); ctx.ellipse(-size * 0.2, size * h * 0.28, size * 0.5, size * 0.38, -0.4, 0, Math.PI * 2); ctx.stroke(); }
   }
   ctx.restore();
 }
