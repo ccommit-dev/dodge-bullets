@@ -18,6 +18,7 @@ const EventCenter = lazy(() => import("./EventCenter").then((m) => ({ default: m
 import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { WalletBar } from "./ui/WalletBar";
+import { ORIENTATION_LABEL, applyOrientation, loadOrientationPref, saveOrientationPref, type OrientationPref } from "./ui/orientation";
 import { shareCardExtras } from "./ui/shareCardData";
 import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
 import { TITLES } from "./economy/gemCatalog";
@@ -297,6 +298,16 @@ function App() {
   const [deathTip, setDeathTip] = useState("");
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
+  /** 화면 방향 — 자동 · 세로 · 가로 (2026-10-07). 부팅과 바뀔 때 기기에 건다 */
+  const [orientationPref, setOrientationPref] = useState<OrientationPref>(() => loadOrientationPref());
+  useEffect(() => { void applyOrientation(orientationPref); }, [orientationPref]);
+  const cycleOrientation = () => {
+    const order: OrientationPref[] = ["portrait", "auto", "landscape"];
+    const next = order[(order.indexOf(orientationPref) + 1) % order.length];
+    saveOrientationPref(next);
+    setOrientationPref(next);
+    showToast(next === "auto" ? "화면 방향 자동 — 기기를 돌리면 따라갑니다" : next === "portrait" ? "세로 고정" : "가로 고정", 2000);
+  };
   const [exitOpen, setExitOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 테스트 모드 — 빌드 라벨을 3초 안에 7번 탭하면 토글 (안드로이드 개발자 옵션식 숨은 제스처)
@@ -306,7 +317,7 @@ function App() {
   const tapBuildLabel = () => {
     // 한 번 탭하면 빌드 정보를 보여 준다 — 예전엔 아무 반응이 없어 고장 난 메뉴로 보였다 (2026-10-02)
     const env = paymentEnvironment();
-    setSettingsToast(`DODGE LAB · 빌드 ${BUILD_LABEL} · ${env === "toss" ? "토스" : env === "android" ? "안드로이드" : "웹"}`);
+    setSettingsToast(`비버 키우기 · 빌드 ${BUILD_LABEL} · ${env === "toss" ? "토스" : env === "android" ? "안드로이드" : "웹"}`);
     window.setTimeout(() => setSettingsToast(""), 2200);
     if (!QA_BUILD) return;
     const now = Date.now();
@@ -1599,6 +1610,9 @@ function App() {
                   <span>사운드</span>
                   <b>{soundOn ? "ON" : "OFF"}</b>
                 </button>
+                <button type="button" role="menuitem" className="settings-orientation" onClick={cycleOrientation} aria-label={`화면 방향 ${ORIENTATION_LABEL[orientationPref]}`}>
+                  <span>화면 방향</span><b>{ORIENTATION_LABEL[orientationPref]}</b>
+                </button>
                 {/* 온보딩(§8) — 이벤트류는 마지막 단계(4)에서 열린다 */}
                 {!attendanceDone && (
                   <button
@@ -1641,7 +1655,7 @@ function App() {
                   <span>테스트 · 보석 무제한</span><b>{qaGemsEnabled() ? "ON" : "OFF"}</b>
                 </button>}
                 <button type="button" role="menuitem" className="settings-build" onClick={tapBuildLabel}>
-                  <span>DODGE LAB</span><b>{testMode ? "테스트 모드" : `빌드 ${BUILD_LABEL}`}</b>
+                  <span>비버 키우기</span><b>{testMode ? "테스트 모드" : `빌드 ${BUILD_LABEL}`}</b>
                 </button>
                 <button
                   type="button"
@@ -1808,8 +1822,8 @@ function App() {
       {bootReady && appMode === "dodge" && gameState === "ready" && preloadStageBackgrounds() && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide exp-menu-content">
-            <p className="brand">GATE DEFENSE</p>
-            <h1 className="title">성문 방어전</h1>
+            <p className="brand">DAM DEFENSE</p>
+            <h1 className="title">댐 방어전</h1>
             <p className="subtitle">몬스터가 성문 <b>방어막</b>으로 걸어 내려온다 — <b>활</b>이 알아서 쏘고, 방어막이 깨지면 진다. 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             {/* 지갑 줄 — 골드·보석·강화석·인장 (2026-10-06, 예전 한 줄 글자 "코인 · 인장 · 최고") */}
@@ -2295,7 +2309,7 @@ function App() {
       {gameClosed && (
         <div className="exit-modal game-closed" role="dialog" aria-modal="true">
           <div className="exit-card">
-            <p className="brand">DODGE LAB</p>
+            <p className="brand">GROW A BEAVER</p>
             <h2 className="exit-title">게임을 종료했습니다</h2>
             <p className="exit-desc">진행 상황은 저장됐어요. 이 탭(창)을 닫아도 됩니다.</p>
             <button type="button" className="cta" onClick={() => window.location.reload()}>다시 시작</button>

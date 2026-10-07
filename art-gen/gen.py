@@ -50,6 +50,42 @@ NEG = (
     "multiple characters, chibi, flat vector, clipart, photo, 3d render, background scenery"
 )
 BASE_SEED = 20260904
+
+# ── 테마 (2026-10-07, "비버 키우기: 방치형 비트 디펜스" 리소스 전면 개편) ──
+# ARTGEN_THEME=beaver: 노션 콘셉트(art-gen/ref/beaver)의 치비 3D 장난감 렌더 화풍. 참조는 ARTGEN_REFS(쉼표 경로) 로 명시
+THEME = os.environ.get("ARTGEN_THEME", "")
+BEAVER_LOOK = (
+    "cute chibi anthropomorphic beaver, big round sparkling eyes, rosy cheeks, two front teeth, flat paddle tail, "
+    "3D toy render look, soft rounded shapes, glossy highlights, vibrant saturated colors, warm wood and bright blue water palette"
+)
+if THEME == "beaver":
+    STYLE = (
+        "full body cute chibi mobile game character, 3D toy render look, soft rounded shapes, glossy highlights, "
+        "vibrant saturated colors, clean silhouette, plain white background, no text, no watermark, single character, centered"
+    )
+    NEG = (
+        "lowres, blurry, deformed, extra limbs, bad anatomy, cropped, text, watermark, logo, frame, multiple characters, "
+        "realistic human, photo, dark gritty, scary, background scenery"
+    )
+    STATE_PROMPT = {
+        "idle": "standing relaxed idle pose, facing viewer slightly to the right, cheerful",
+        "run": "mid-stride running pose, facing right, cheerful",
+        "attack": "lunging forward striking attack pose, facing right, swinging weapon",
+        "hit": "knocked back flinching surprised pose, off balance",
+    }
+
+def env_refs() -> list[Image.Image] | None:
+    """ARTGEN_REFS=a.png,b.png — IP-Adapter 참조를 바꾼다 (없으면 None → 기본 참조)"""
+    v = os.environ.get("ARTGEN_REFS", "")
+    if not v:
+        return None
+    imgs = []
+    for f in v.split(","):
+        im = Image.open(f.strip()).convert("RGBA")
+        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+        bg.alpha_composite(im)
+        imgs.append(bg.convert("RGB").resize((384, 384)))
+    return imgs
 STATE_PROMPT = {
     "idle": "standing relaxed idle pose, facing viewer slightly to the right",
     "run": "mid-stride running pose, facing right",
@@ -120,6 +156,9 @@ def load_pipe(controlnet: bool = False, img2img: bool = False, ip: bool = True):
 
 
 def style_refs() -> list[Image.Image]:
+    e = env_refs()
+    if e:
+        return e
     files = sorted(glob.glob(str(REF / "*-idle.png")))[:4]
     imgs = []
     for f in files:
@@ -210,8 +249,9 @@ def cmd_char(a):
     for si, state in enumerate(["idle", "run", "attack", "hit"]):
         if only and state not in only:
             continue
-        pose = pose_of(REF / f"{base}-{state}.png")
-        im = gen_txt(f"{a.prompt}, {STATE_PROMPT[state]}", (a.seed or BASE_SEED) + si * 7, pose=pose)
+        # --no-pose: ControlNet 없이 글로만 자세 (2026-10-07 — 비버 테마는 치비라 사람 골격이 안 맞고, ControlNet 은 이 GPU 에서 25배 느렸다)
+        pose = None if getattr(a, "no_pose", False) else pose_of(REF / f"{base}-{state}.png")
+        im = gen_txt(f"{a.prompt}, {STATE_PROMPT[state]}", (a.seed or BASE_SEED) + si * 7, pose=pose, ip_scale=a.ip if getattr(a, "ip", None) is not None else 0.55)
         save(cutout(im), f"char-{a.id}-{state}.png")
 
 
@@ -278,10 +318,20 @@ ICON_STYLE = (
     "single object centered, large and readable, plain white background, no text, no watermark"
 )
 ICON_NEG = "text, letters, watermark, logo, blurry, lowres, multiple objects, character, person, frame, border, background scenery, photo, 3d render"
+if THEME == "beaver":
+    ICON_STYLE = (
+        # 2026-10-07 사용자: "아이콘·UI 조금 더 아케이드 비버 키우기에 맞게" — 굵은 외곽선·단순 덩어리·셀 셰이딩의 아케이드 아이콘
+        "bold arcade mobile game item icon, thick dark brown outline, chunky simplified rounded shape, flat cel shading with one glossy highlight, "
+        "vivid saturated candy colors, wood and acorn accents, single object centered, large and readable, plain white background, no text, no watermark"
+    )
+    ICON_NEG = "text, letters, watermark, logo, blurry, lowres, multiple objects, character, person, frame, border, background scenery, photo, dark gritty"
 
 
 def icon_refs() -> list[Image.Image]:
     """출석 보상 아이콘(public/ui/attendance)을 화풍 앵커로 — 같은 계열로 나와야 한 화면에 섞인다"""
+    e = env_refs()
+    if e:
+        return e
     d = ROOT.parent / "public" / "ui" / "attendance"
     imgs = []
     for f in ["event-chest.png", "gold.png", "skill-orb.png", "enhance-stone.png"]:
@@ -349,6 +399,8 @@ def cmd_heroattack(a):
                   if weapon == "bow" else
                   "holding one long wooden wizard staff with a glowing blue crystal on top, raising it forward, casting a spell, facing right, no bow"
                   if weapon == "staff" else
+                  "energetically beating a wooden log drum with two drumsticks, facing right, drumsticks raised mid-strike, cheerful"
+                  if weapon == "drum" else
                   "lunging sword slash attack pose, facing right, gripping a steel longsword")
         neg_extra = (", sword, blade, bow, bowstring, arrow" if weapon == "staff" else ", sword, blade") if weapon != "sword" else ""
         out = pipe(prompt=f"{a.prompt}, {action}, {STYLE}",
@@ -363,6 +415,12 @@ PROP_STYLE = (
     "held diagonally with the tip pointing to the upper right, centered, plain white background, no hands, no character, no text"
 )
 PROP_NEG = "hand, arm, person, character, text, letters, watermark, logo, blurry, lowres, multiple weapons, frame, border, background scenery, photo, 3d render"
+if THEME == "beaver":
+    PROP_STYLE = (
+        "single cute game item, 3D toy render look, chunky rounded shape, glossy highlights, vibrant colors, "
+        "held diagonally with the tip pointing to the upper right, centered, plain white background, no hands, no character, no text"
+    )
+    PROP_NEG = "hand, arm, person, character, animal, text, letters, watermark, logo, blurry, lowres, multiple objects, frame, border, background scenery, photo, dark gritty"
 
 
 def cmd_prop(a):
@@ -380,9 +438,16 @@ MONSTER_STYLE = (
     "standing upright facing the viewer, whole figure inside the frame with empty space below the feet, "
     "single creature, plain white background, no text, no watermark"
 )
+if THEME == "beaver":
+    MONSTER_STYLE = (
+        "cute cartoon mobile game monster, 3D toy render look, chunky rounded shapes, glossy highlights, vibrant colors, "
+        "full body from head to feet, whole figure inside the frame with empty space below, standing facing the viewer, "
+        "single creature, plain white background, no text, no watermark"
+    )
 MONSTER_NEG = (
     "cropped, cut off legs, cut off feet, out of frame, close-up, bust shot, portrait crop, waist up, "
-    "text, letters, watermark, logo, blurry, lowres, multiple creatures, person, human, frame, border, background scenery, photo, 3d render"
+    "text, letters, watermark, logo, blurry, lowres, multiple creatures, person, human, frame, border, background scenery, photo"
+    + ("" if THEME == "beaver" else ", 3d render")
 )
 
 
@@ -413,6 +478,11 @@ BACKDROP_STYLE = (
     "empty simple middle area with no focal object, no characters, no text, no watermark"
 )
 # UI 가 위에 얹히는 판이라 '읽히는 주인공'이 있으면 안 된다 — 인물·글자·강한 대비를 막는다
+if THEME == "beaver":
+    BACKDROP_STYLE = (
+        "cute mobile game background plate, 3D toy render look, lush pine forest and wooden beaver dam with waterfalls and bright blue lake, "
+        "soft volumetric light, vibrant saturated colors, painterly, empty simple middle area, no characters, no text, no watermark"
+    )
 BACKDROP_NEG = (
     "character, person, people, creature, close-up, text, letters, watermark, logo, ui, hud, buttons, frame, border, "
     "high contrast, busy detail, clutter, bright white, lowres, blurry, photo, 3d render"
@@ -443,14 +513,14 @@ if __name__ == "__main__":
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("smoke").set_defaults(fn=cmd_smoke)
     sub.add_parser("sample").set_defaults(fn=cmd_sample)
-    c = sub.add_parser("char"); c.add_argument("id"); c.add_argument("prompt"); c.add_argument("--pose-from"); c.add_argument("--seed", type=int); c.add_argument("--states", help="idle,run,attack,hit 중 일부만"); c.set_defaults(fn=cmd_char)
+    c = sub.add_parser("char"); c.add_argument("id"); c.add_argument("prompt"); c.add_argument("--pose-from"); c.add_argument("--seed", type=int); c.add_argument("--states", help="idle,run,attack,hit 중 일부만"); c.add_argument("--no-pose", action="store_true"); c.add_argument("--ip", type=float); c.set_defaults(fn=cmd_char)
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--seeds", type=int, nargs="*"); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
-    ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.add_argument("--weapon", choices=["sword", "bow", "staff"], default="sword"); ha.add_argument("--no-pose", action="store_true"); ha.add_argument("--pose-set"); ha.add_argument("--cn", type=float); ha.add_argument("--frames"); ha.add_argument("--tag"); ha.set_defaults(fn=cmd_heroattack)
+    ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.add_argument("--weapon", choices=["sword", "bow", "staff", "drum"], default="sword"); ha.add_argument("--no-pose", action="store_true"); ha.add_argument("--pose-set"); ha.add_argument("--cn", type=float); ha.add_argument("--frames"); ha.add_argument("--tag"); ha.set_defaults(fn=cmd_heroattack)
     np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
     mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.add_argument("--px", type=int); mo.set_defaults(fn=cmd_monster)
     bd = sub.add_parser("backdrop"); bd.add_argument("id"); bd.add_argument("prompt"); bd.add_argument("--seed", type=int); bd.add_argument("--seeds", type=int, nargs="*"); bd.set_defaults(fn=cmd_backdrop)

@@ -607,7 +607,7 @@ const LANE_FALLBACK_SOUND: Record<NoteLane, BeatSound> = {
 };
 
 /** Matches LANE_ACCENT in draw.ts. */
-const LANE_HUE: Record<NoteLane, number> = { 0: 42, 1: 330, 2: 187, 3: 270 };
+const LANE_HUE: Record<NoteLane, number> = { 0: 38, 1: 140, 2: 200, 3: 330 };   // 도토리·잎·물방울·음표 (2026-10-07)
 
 function spawnMoveParticles(
   world: BeatWorld,

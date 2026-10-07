@@ -34,7 +34,7 @@ export const LOCK_HINT: Record<OnboardContent, string> = {
 /** 개방 연출 배너 문구 (step → 방금 열린 콘텐츠) */
 export const UNLOCK_BANNER: Record<number, { title: string; desc: string }> = {
   1: { title: "성문 방어 개방", desc: "개척로가 열렸습니다 — 원정을 클리어하면 새 사냥터가 열립니다" },
-  2: { title: "대장간 개방", desc: "쌓인 골드로 검을 벼리세요 — 강화가 방치 배율(M)을 올립니다" },
+  2: { title: "대장간 개방", desc: "쌓인 골드로 북을 벼리세요 — 강화가 방치 배율(M)을 올립니다" },
   3: { title: "연습실 개방", desc: "비트 수련이 방치 효율(R)을 올립니다" },
   4: { title: "모든 콘텐츠 개방", desc: "이벤트와 보석 상점이 열렸습니다 — 모험가의 하루가 완성됐습니다" },
 };

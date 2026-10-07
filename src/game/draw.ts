@@ -6,6 +6,7 @@ import { drawWoodArrow } from "./arrowArt";
 import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
+import { drawDropShape, drawLeafShape } from "../ui/shapes";
 
 /**
  * 스테이지 배경 — 성문 방어 **전용** 배경 4종 (art-gen/batch-dodge-bg.sh).
@@ -446,13 +447,13 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   }
   const ratio = world.barrierMaxHp > 0 ? world.barrierHp / world.barrierMaxHp : 0;
   const flash = world.barrierFlashMs > 0 ? world.barrierFlashMs / 220 : 0;
-  const color = ratio > 0.5 ? "#67e8f9" : ratio > 0.25 ? "#fbbf24" : "#fb7185";
+  const color = ratio > 0.5 ? "#38bdf8" : ratio > 0.25 ? "#fbbf24" : "#fb7185";
   // ── 돔 (2026-10-02, 황야의 무법자) — 바닥선을 중심으로 한 반타원. 안은 육각 격자, 테두리는 HP 색 ──
   const cx = width * 0.5, rx = barrierRx(world), ry = world.floorY - y, baseY = world.floorY;
   const dome = () => { ctx.beginPath(); ctx.ellipse(cx, baseY, rx, ry, 0, Math.PI, Math.PI * 2); };
   // 채움 — 위로 갈수록 진한 결계빛
   const g = ctx.createLinearGradient(0, y, 0, baseY);
-  g.addColorStop(0, color); g.addColorStop(0.55, "rgba(103,232,249,.10)"); g.addColorStop(1, "rgba(103,232,249,0)");
+  g.addColorStop(0, color); g.addColorStop(0.55, "rgba(56,189,248,.12)"); g.addColorStop(1, "rgba(56,189,248,0)");
   ctx.globalAlpha = 0.16 + flash * 0.3 + Math.sin(t * 3) * 0.03;
   dome(); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
   // 육각 격자 — 돔 안에만
@@ -478,6 +479,19 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const hy = barrierYAt(world, world.barrierHitX);
     ctx.globalAlpha = flash * 0.8; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(world.barrierHitX, hy, 26 * (1.4 - flash), 10 * (1.4 - flash), 0, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // 통나무 댐 벽 — 돔 밑동을 따라 통나무 세 줄 (2026-10-07). 몬스터가 두드리는 '문'이 나무로 읽힌다
+  {
+    const logH = 7;
+    for (let row = 0; row < 3; row += 1) {
+      const ly = baseY - 4 - row * (logH + 1);
+      const half = rx * (0.98 - row * 0.03);
+      ctx.fillStyle = row % 2 ? "#8b5a2b" : "#a0672f";
+      ctx.beginPath(); ctx.roundRect(cx - half, ly - logH, half * 2, logH, logH / 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.14)";
+      ctx.fillRect(cx - half + 6, ly - logH + 1.5, half * 2 - 12, 1.5);
+    }
   }
   // HP 막대 — 돔 꼭대기 바로 아래 가운데
   const bw = 150, bx = cx - bw * 0.5, by = y + 30;   // 꼭대기에 선 몬스터와 겹치지 않게 돔 안쪽으로
@@ -565,13 +579,16 @@ function drawJuice(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.restore();
   }
 
-  // 파편 — 수명에 따라 작아지며 사라진다
-  for (const p of world.sparks) {
+  // 파편 — 수명에 따라 작아지며 사라진다. 비버 테마(2026-10-07): 홀수는 나뭇잎, 짝수는 물방울 모양
+  for (let i = 0; i < world.sparks.length; i += 1) {
+    const p = world.sparks[i];
     if (!p.active) continue;
     const k = p.ms / p.total;
     ctx.globalAlpha = Math.min(1, k * 1.6);
     ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.6, p.size * (0.4 + k * 0.6)), 0, Math.PI * 2); ctx.fill();
+    const r = Math.max(0.6, p.size * (0.4 + k * 0.6));
+    if (i % 2) drawLeafShape(ctx, p.x, p.y, r * 1.5, (1 - k) * 4 + i);
+    else drawDropShape(ctx, p.x, p.y, r);
   }
   ctx.globalAlpha = 1;
 
@@ -843,7 +860,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     } else if (d.kind === "spark") {
       ctx.globalAlpha = life;
       ctx.fillStyle = d.color; ctx.shadowColor = d.color; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.arc(0, 0, Math.max(0.6, d.len * 0.5 * life), 0, Math.PI * 2); ctx.fill();
+      drawLeafShape(ctx, 0, 0, Math.max(0.6, d.len * 0.75 * life), 0);   // 베기 파편도 잎 조각
     } else {
       ctx.globalAlpha = Math.min(1, life * 1.6);
       ctx.strokeStyle = d.color; ctx.fillStyle = d.color; ctx.lineWidth = 2.2; ctx.lineCap = "round";
@@ -959,3 +976,4 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   // 일제 사격·되쏘기는 없다 (2026-10-01) — 수동 동작의 연출 블록을 뺐다
 
 }
+

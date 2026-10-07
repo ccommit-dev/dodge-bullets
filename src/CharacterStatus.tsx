@@ -123,7 +123,7 @@ export function CharacterStatus({
     progress.enhancementMaterials < 8
       ? { title: "성문 방어에서 강화 재료 모으기", content: "dodge" as const }
       : progress.equippedWeaponLevel < Math.min(15, progress.level)
-        ? { title: "대장간에서 장착 검 강화하기", content: "forge" as const }
+        ? { title: "대장간에서 장착 북 강화하기", content: "forge" as const }
         : summary.mastery < progress.level * 3
           ? { title: "비트 수련으로 스킬 숙련 올리기", content: "beat" as const }
           : { title: "타이탄 사냥터에서 레벨 올리기", content: "titans" as const };

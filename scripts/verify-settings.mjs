@@ -66,7 +66,17 @@ await openMenu();
 s = await state();
 ok("메뉴에 비활성(고장처럼 보이는) 항목이 없다 · 카페 주소가 없으면 '카페 글 가기' 없음", !s.menu.some((m) => m.includes("[disabled]")) && !s.menu.some((m) => m.includes("카페")), s.menu.join(" | "));
 ok("출석 메뉴는 '30일' 판", s.menu.some((m) => m.startsWith("출석 이벤트30일")), s.menu.join(" | "));
-await tap(".settings-menu button", "DODGE LAB"); await sleep(300);
+// 화면 방향 (2026-10-07) — 세로 → 자동 → 가로 순환, 저장 · 다음 부팅에도 유지
+ok("메뉴에 '화면 방향' 항목 · 기본 세로", s.menu.some((m) => m.startsWith("화면 방향세로")), s.menu.filter((m) => m.startsWith("화면 방향")).join());
+await tap(".settings-menu button", "화면 방향"); await sleep(300);
+const oriAuto = await page.evaluate(() => ({ label: document.querySelector(".settings-orientation b")?.textContent, stored: localStorage.getItem("dodgebullets:orientation") }));
+ok("화면 방향 탭 → 자동 · localStorage 에 저장", oriAuto.label === "자동" && oriAuto.stored === "auto", JSON.stringify(oriAuto));
+await tap(".settings-menu button", "화면 방향"); await sleep(300);
+const oriLand = await page.evaluate(() => ({ label: document.querySelector(".settings-orientation b")?.textContent, stored: localStorage.getItem("dodgebullets:orientation") }));
+ok("한 번 더 → 가로", oriLand.label === "가로" && oriLand.stored === "landscape", JSON.stringify(oriLand));
+await tap(".settings-menu button", "화면 방향"); await sleep(300);
+ok("한 번 더 → 세로(처음으로)", await page.evaluate(() => localStorage.getItem("dodgebullets:orientation") === "portrait"));
+await tap(".settings-menu button", "비버 키우기"); await sleep(300);
 s = await state();
 ok("빌드 표기를 탭하면 빌드 정보 토스트", /빌드 2026/.test(s.toast), s.toast);
 await openMenu();

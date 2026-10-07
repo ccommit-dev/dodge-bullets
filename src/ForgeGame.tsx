@@ -276,7 +276,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       pendingFailure: false,
     }));
     setPhase("idle");
-    flashToast("방지권으로 검을 복구했습니다");
+    flashToast("방지권으로 북을 복구했습니다");
   };
 
   const collectShards = () => {
@@ -492,7 +492,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           <section className="forge-title-row">
             <div>
               <p className="forge-kicker">BLACKSMITH</p>
-              <h1>{view === "armor" ? "보호구 강화하기" : view === "weapons" ? "원정 무기 강화" : "검 강화하기"}</h1>
+              <h1>{view === "armor" ? "보호구 강화하기" : view === "weapons" ? "원정 무기 강화" : "북 강화하기"}</h1>
             </div>
             <div className="forge-best">
               최고 기록
@@ -688,7 +688,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <article className="forge-shop-card">
                 <div>
                   <strong>강화 방지권</strong>
-                  <p>실패 시 단계에 따라 1~5장 소모해 검을 살립니다.</p>
+                  <p>실패 시 단계에 따라 1~5장 소모해 북을 살립니다.</p>
                 </div>
                 <button type="button" disabled={coins < ticketPrice} onClick={buyTicket}>
                   {formatGold(ticketPrice)}G
@@ -714,7 +714,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <article className="forge-shop-card">
                 <div>
                   <strong>조각 → 검</strong>
-                  <p>조각 {swordCraftCost}개로 +3 강철 장검을 만듭니다.</p>
+                  <p>조각 {swordCraftCost}개로 +3 강철 테 북을 만듭니다.</p>
                 </div>
                 <button
                   type="button"
@@ -797,7 +797,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
         <div className="forge-failure" role="dialog" aria-modal="true">
           <div className="forge-failure-card">
             <p>ENHANCE FAILED</p>
-            <h2>검이 부서졌습니다</h2>
+            <h2>북이 부서졌습니다</h2>
             <span>
               +{save.level} {tier.name}
             </span>

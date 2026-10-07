@@ -126,13 +126,16 @@ export async function subscribeSafeInsets(
 
 /** 출시 가이드: 세로 고정 + OS 뒤로가기 제스처 차단 */
 export async function lockScreenForGame(): Promise<void> {
-  if (skipTossBridge()) return;   // 안드로이드는 AndroidManifest 의 screenOrientation="portrait"
+  if (skipTossBridge()) return;   // 안드로이드는 AndroidManifest fullUser + ui/orientation(설정) 가 맡는다 (2026-10-07)
   try {
     const { setDeviceOrientation, setIosSwipeGestureEnabled } = await import(
       "@apps-in-toss/web-framework"
     );
+    // 설정 '화면 방향'(ui/orientation) — 자동이면 고정하지 않는다
+    let pref = "portrait";
+    try { const v = localStorage.getItem("dodgebullets:orientation"); if (v === "auto" || v === "landscape") pref = v; } catch { /* 기본 세로 */ }
     await withTimeout(Promise.all([
-      setDeviceOrientation({ type: "portrait" }),
+      pref === "auto" ? Promise.resolve() : setDeviceOrientation({ type: pref === "landscape" ? "landscape" : "portrait" }),
       setIosSwipeGestureEnabled({ isEnabled: false }),
     ]), BRIDGE_TIMEOUT_MS, null);
   } catch {

@@ -306,7 +306,8 @@ export * as season from "${root}/src/economy/seasonPass";`);
     // 보스 피격·처치는 img2img 결과가 포즈로 읽히지 않아 절차적 파생을 유지 — authored 매니페스트가 없어야 make-monster-states 가 전부 파생한다
     ok("아트gen 보스는 절차적 파생 유지(monsters/authored.json 없음)", !existsSync(join(root, "public/titans/generated/monsters/authored.json")));
     const cAuth = join(root, "public/titans/character/skins/authored.json");
-    ok("아트gen 코스튬 원화 매니페스트 2종", existsSync(cAuth) && JSON.parse((await import("node:fs")).readFileSync(cAuth, "utf8")).length === 2);
+    // 2026-10-07 비버 테마: ember·frost 는 비버 기본 시트의 팔레트 파생(make-character-skins) — 원화 매니페스트는 빈 배열이 정상
+    ok("아트gen 코스튬 매니페스트는 배열(비버 테마: 팔레트 파생이라 0종)", existsSync(cAuth) && Array.isArray(JSON.parse((await import("node:fs")).readFileSync(cAuth, "utf8"))));
   }
   ok("J 스킨 썸네일·아틀라스 파일 존재", ["skins/ari-blaze.png", "skins/luna-eclipse.png", "skins/season-1.png", "ally-skin-special-atlas-v1.png"].every((f) => existsSync(join(root, "public/titans/generated/allies", f))));
 }
@@ -470,7 +471,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   for (let i = 0; i < 400; i += 1) worldMod.gainRunXp(w, 1);
   ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
   const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
-  ok("몬스터 보이는 여백: 보라 용 좌 4%·우 2% (2026-10-02 반실사 재생성), 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.04,0.02]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
+  ok("몬스터 보이는 여백: 가시 용 좌 9%·우 9% (2026-10-07 비버 테마 재생성), 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.09,0.09]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
 }
 
 // ── 콘텐츠 역할 분리 P1 ──
@@ -518,9 +519,10 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     let minx = Infinity, maxx = -1;
     for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 24) { if (x < minx) minx = x; if (x > maxx) maxx = x; }
     const fill = (maxx - minx + 1) / info.width;
-    if (fill < 0.7 || info.width > info.height) bad.push(`s${i}:${info.width}x${info.height} ${(fill * 100).toFixed(0)}%`);
+    // 2026-10-07 비버 테마: 강화 무기가 검 → 통나무 북이라 가로형(폭 ≤ 높이 1.3배)도 허용 — 본체가 폭을 채우는지만 본다
+    if (fill < 0.7 || info.width > info.height * 1.3) bad.push(`s${i}:${info.width}x${info.height} ${(fill * 100).toFixed(0)}%`);
   }
-  ok("검 원화 16장 모두 세로형이고 검이 폭의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
+  ok("북 원화 16장: 폭이 높이의 1.3배 이하이고 본체가 폭의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
 }
 
 // ── 성문 방어 영구 스킬 — 원거리 요격 (2026-09-28) ──
