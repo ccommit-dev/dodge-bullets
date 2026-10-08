@@ -1581,6 +1581,7 @@ function App() {
               {/* 2026-10-08 사용자: 설정 아이콘을 마이페이지 쪽에 — 생성 톱니 아이콘, 글자는 보조기술·검사용으로만 */}
               <img className="settings-gear" src={assetUrl("ui/content-icons/nav-settings.png")} alt="" aria-hidden="true" /><span className="settings-label">설정</span>
             </button>
+            {settingsOpen && <div className="settings-backdrop" onClick={() => setSettingsOpen(false)} aria-hidden="true" />}
             {settingsOpen && (
               <div className="settings-menu" role="menu">
                 <button

@@ -402,7 +402,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
   ctx.lineTo(world.cx + nearHalf, hitY);
   ctx.lineTo(world.cx - nearHalf, hitY);
   ctx.closePath();
-  ctx.fillStyle = "rgba(40, 22, 8, .62)";
+  ctx.fillStyle = "rgba(40, 22, 8, .38)";   // 무대 그림의 다리와 레일이 두 겹으로 보여 레일을 더 투명하게 (2026-10-08 검수 5)
   ctx.fill();
   ctx.strokeStyle = palette.dim;
   ctx.lineWidth = 2;
