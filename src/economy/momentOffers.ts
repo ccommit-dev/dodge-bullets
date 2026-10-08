@@ -6,10 +6,8 @@
  *
  *   boss-fail  두 번째 보스 실패(벽이 아닌 경우)     → 초급 모험가 세트 ₩3,900
  *   wall       지역 벽 최초 도달                     → 벽 돌파 세트 ₩5,900
- *   pioneer    지역 개척 완료 직후                   → 개척 축하 세트 ₩3,900
  *   rebirth    환생 직후                             → 환생 세트 ₩12,000
  *   pickup     픽업 회전 D-2                         → 붉은 보석 1,200 ₩15,000 (천장 절반 = 30회분)
- *   gate-wall  성문 방어 3·4스테이지에서 같은 판에 두 번째 실패 → 성문 수비 보급 ₩3,900 (2026-10-02)
  */
 import type { CharacterProgress } from "../progression/model";
 import { STORE_PRODUCTS } from "./productCatalog";
@@ -19,7 +17,7 @@ function packagePurchased(progress: CharacterProgress, productId: string): boole
   return progress.claimedRewards.some((k) => k.startsWith(`purchase:${productId}:`));
 }
 
-export type MomentOfferKind = "boss-fail" | "wall" | "pioneer" | "rebirth" | "pickup" | "gate-wall";
+export type MomentOfferKind = "boss-fail" | "wall" | "rebirth" | "pickup";   // 개척·성문(gate-wall)은 BM 간결화로 뺐다 (2026-10-08)
 export type MomentOfferDef = { productId: string; title: string; subtitle: string; bonusGems: number; windowMs: number };
 export type MomentOfferState = { kind: MomentOfferKind; until: number; bonusGems: number; openedAt: number };
 
@@ -27,9 +25,7 @@ const MIN = 60_000;
 export const MOMENT_OFFERS: Record<MomentOfferKind, MomentOfferDef> = {
   "boss-fail": { productId: "adventurer-starter", title: "보스가 벽처럼 느껴진다면", subtitle: "정찰 견갑 + 보석 80 + 골드 5,000 — 첫 보스는 견갑 하나로 넘어갑니다", bonusGems: 20, windowMs: 15 * MIN },
   wall: { productId: "pack-wall", title: "벽 도달 — 돌파 세트", subtitle: "편성 동료 조각 30 + 방치 2배 24시간 + 보석 100", bonusGems: 30, windowMs: 15 * MIN },
-  pioneer: { productId: "pack-pioneer", title: "개척 축하", subtitle: "새 지역 첫날을 위한 보석 120 + 강화석 40 + 조각 20", bonusGems: 30, windowMs: 30 * MIN },
   rebirth: { productId: "pack-rebirth", title: "환생 축하", subtitle: "두 번째 생을 위한 보석 400 + 스킬 코어 10 + 조각 40", bonusGems: 60, windowMs: 30 * MIN },
-  "gate-wall": { productId: "gate-supply", title: "성문이 버겁다면", subtitle: "원정 인장 30 + 스킬 무기 조각 각 8 — 새 무기를 배우고 바로 올린다", bonusGems: 20, windowMs: 15 * MIN },
   pickup: { productId: "gems-1200", title: "픽업 교체 D-2", subtitle: "보석 1,200이면 천장(60회)의 절반 — 첫 구매면 2배", bonusGems: 150, windowMs: 2 * 24 * 60 * MIN },
 };
 

@@ -12,7 +12,6 @@ const progress = {
   version: 5, level: 40, sharedCoins: 987654, equippedWeaponLevel: 10, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4,
   partyIds: ["mia"], partyCap: 4, attendanceStreak: 3, expeditionSeals: 12, expeditionSkills: { fire: 3, water: 1, ice: 0, earth: 0, bolt: 0, ultimate: 0 },
   expeditionWeapon: "bow", claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, dodgeStars: { "0": 3, "1": 2, "2": 1 },
-  momentOffers: { "gate-supply": { kind: "gate-wall", until: now + 14 * 60000, bonusGems: 20, openedAt: now } },
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });

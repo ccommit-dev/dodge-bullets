@@ -26,13 +26,23 @@ export function packageTriggered(trigger: PackageTrigger, progress: { pioneeredA
 /** 첫 구매 2배 대상 (H) — 보석팩 3종, 팩마다 1회 */
 export const FIRST_DOUBLE_IDS = ["gems-80", "gems-450", "gems-1200"] as const;
 
+/**
+ * ₩ 카탈로그 (2026-10-08 간결화, 브런치 "모바일 게임 BM/과금 기획 가이드" 송사리 모델: 하루 1천원 · 주말 5천원 · 월 패스 + 광고)
+ *   매일·주말   오늘의 보급 ₩1,000(1일 1회) · 주말 보급 ₩5,000(토·일, 주 1회)
+ *   보석        80 / 450 / 1,200 — 팩마다 첫 구매 2배
+ *   패스·영구   후원 계약 30일 · 광고 제거 · 성문 원정 기금
+ *   1회 한정    입문 세트 · 벽 돌파 · 환생 (순간 제안)
+ *   외형        캐릭터 2 · 코스튬 2 — 성능 차이는 거의 없다 (한정 아이템은 외형만, 가이드 5.4)
+ * 뺀 것: 중급·고급 모험가 세트(보석팩과 겹침) · 개척 축하 세트(오늘의 보급과 겹침) · 성문 수비 보급(보석+인장 조합이라 가치가 안 보였다)
+ */
 export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "gems-80", kind: "consumable", name: "붉은 보석 80", description: "성장 선택권과 외형 구매에 사용", displayPrice: "₩1,500", contents: ["붉은 보석 ×80"], visible: true },
   { id: "gems-450", kind: "consumable", name: "붉은 보석 450", description: "보너스 50개 포함", displayPrice: "₩7,500", badge: "POPULAR", contents: ["붉은 보석 ×450"], visible: true },
   { id: "gems-1200", kind: "consumable", name: "붉은 보석 1,200", description: "보너스 200개 포함", displayPrice: "₩15,000", contents: ["붉은 보석 ×1,200"], visible: true },
+  // ── 송사리 모델 (2026-10-08): 하루 ₩1,000 · 주말 ₩5,000 — 커피 한 잔 값의 습관 결제. 한도는 dealState 가 센다 ──
+  { id: "daily-deal", kind: "bundle", name: "오늘의 보급", description: "하루 1회 · 커피 한 잔 값", displayPrice: "₩1,000", badge: "매일", contents: ["붉은 보석 ×40", "강화석 ×15", "골드 ×3,000"], visible: true },
+  { id: "weekend-pack", kind: "bundle", name: "주말 보급 상자", description: "토·일 한정 · 주 1회", displayPrice: "₩5,000", badge: "주말", contents: ["붉은 보석 ×300", "강화석 ×60", "방치 가속 24h"], visible: true },
   { id: "adventurer-starter", kind: "bundle", name: "초급 모험가 세트", description: "초반 성장 시간을 줄이는 입문 패키지", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×80", "강화석 ×10", "정찰 견갑", "골드 ×5,000"], visible: true },
-  { id: "adventurer-mid", kind: "bundle", name: "중급 모험가 세트", description: "스킬과 견갑 성장을 위한 패키지", displayPrice: "₩12,000", contents: ["보석 ×250", "스킬 코어 ×5", "그림자 견갑 선택권", "골드 ×50,000"], visible: true },
-  { id: "adventurer-advanced", kind: "bundle", name: "고급 모험가 세트", description: "후반 장비와 스킬 성장을 위한 체험 패키지", displayPrice: "₩29,000", contents: ["보석 ×700", "스킬 코어 ×15", "용린 견갑", "강화석 ×30"], visible: true },
   // L 광고 제거 — 보상형 자리 3곳(정산 2배·가속 4h·보스 +10초)을 광고 없이 자동 적용하는 상품
   { id: "remove-ads", kind: "entitlement", name: "광고 제거", description: "보상형 광고 3곳을 광고 없이 자동 적용 (정산 2배 · 가속 4h · 보스 +10초)", displayPrice: "₩3,900", badge: "영구", contents: ["방치 정산 2배 1일 3회", "방치 가속 4h 1일 1회", "보스 실패 후 +10초 1회"], visible: true },
   // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──
@@ -43,12 +53,10 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "char-frost", kind: "entitlement", name: "코스튬: 서리 무희", description: "서릿발이 서린 푸른 모험가 — 외형 전용", displayPrice: "₩5,900", contents: ["코스튬"], visible: true },
   // 과금 점검: 20/일(600)은 ₩9.17/보석으로 1,200팩(₩12.50)을 무의미하게 만들었다 → 15/일(450, ₩12.2/보석) + 편의 효과
   { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 15 · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 15", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
-  // ── H 진행도 트리거 패키지 — 감정 고점(개척·벽·환생)에서 1회 ──
-  { id: "pack-pioneer", kind: "bundle", name: "개척 축하 세트", description: "새 지역을 열었을 때 1회", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×120", "강화석 ×40", "출전 동료 조각 ×20"], visible: true, trigger: "pioneer" },
+  // ── 순간 제안 패키지 (벽·환생) — 감정 고점에서 1회. 개척 축하는 뺐다 (오늘의 보급과 겹침, 2026-10-08) ──
   { id: "pack-wall", kind: "bundle", name: "벽 돌파 세트", description: "DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다", displayPrice: "₩5,900", badge: "1회", contents: ["출전 동료 조각 ×30", "방치 가속 24h", "보석 ×100"], visible: true, trigger: "wall" },
   { id: "pack-rebirth", kind: "bundle", name: "환생 세트", description: "첫 환생 후 1회 — 재시작을 빠르게", displayPrice: "₩12,000", badge: "1회", contents: ["보석 ×400", "스킬 코어 ×10", "출전 동료 조각 ×40"], visible: true, trigger: "rebirth" },
-  // 성문 방어 (2026-10-02) — 그동안 결제 접점이 없던 메인 콘텐츠. 무료 곡선은 그대로 두고 "벽에서 빨리 넘기"만 판다
-  { id: "gate-supply", kind: "bundle", name: "성문 수비 보급", description: "새 스킬 무기를 배우고 올릴 몫 — 성문이 버거울 때", displayPrice: "₩3,900", contents: ["원정 인장 ×30", "스킬 무기 조각 ×8 (10종 + 화살비 각각)", "보석 ×40"], visible: true },
+  // 성문 원정 기금 (2026-10-02) — 한 번 사면 성문을 깰 때마다 보석. 수비 보급(소모성)은 BM 간결화로 뺐다 (2026-10-08)
   { id: "gate-fund", kind: "entitlement", name: "성문 원정 기금", description: "한 번 사면 성문 방어를 깰 때마다 보석 — 이미 깬 단계는 바로 받는다", displayPrice: "₩9,900", badge: "영구", contents: ["스테이지 1~4 돌파 보석 100 · 150 · 250 · 400", "원정 별 6개 · 12개 보석 300 · 500", "모두 달성 시 보석 ×1,700 (달성한 단계만큼 받는다)"], visible: true },
   // G 시즌 패스 유료 트랙 — 이벤트 센터 시즌 탭에서 판매 (패키지 탭에는 숨김)
   { id: "season-pass", kind: "entitlement", name: "시즌 패스", description: "4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트", displayPrice: "₩7,900", badge: "시즌", contents: ["유료 트랙 30단"], visible: false },
@@ -89,3 +97,38 @@ export const GEM_PRODUCTS: GemProduct[] = [
 /** 조각팩 주간 구매 제한 — 과금 상한 설계 (동료당/주) */
 export const SHARD_PACK_WEEKLY_LIMIT = 3;
 export const SHARD_PACK_AMOUNT = 10;
+
+/** 패키지 탭 묶음 — 화면 순서. 카탈로그에 없는 id 는 무시된다 (시즌 패스는 이벤트 센터에서 판다) */
+export const PAID_GROUPS: ReadonlyArray<{ id: string; label: string; note: string; ids: readonly string[] }> = [
+  { id: "daily", label: "매일·주말", note: "커피 한 잔 값 · 하루 1회 · 주말 1회", ids: ["daily-deal", "weekend-pack"] },
+  { id: "gems", label: "붉은 보석", note: "팩마다 첫 구매 2배", ids: ["gems-80", "gems-450", "gems-1200"] },
+  { id: "pass", label: "패스·영구", note: "한 번 사면 계속", ids: ["patron-30d", "remove-ads", "gate-fund"] },
+  { id: "once", label: "1회 한정", note: "지금 이 순간에만", ids: ["adventurer-starter", "pack-wall", "pack-rebirth"] },
+  { id: "look", label: "캐릭터·코스튬", note: "외형 — 성능 차이 거의 없음", ids: ["char-obsidian", "char-dawn", "char-ember", "char-frost"] },
+];
+
+/** 한도 상품 — 오늘의 보급은 하루 1회, 주말 보급은 토·일에 주 1회. 기록 키는 deal:<id>:<날짜|주> (claimedRewards) */
+export const DEAL_IDS = ["daily-deal", "weekend-pack"] as const;
+export type DealState = "available" | "bought" | "weekday";
+
+function localDayKey(now: number): string { return new Date(now).toLocaleDateString("sv-SE"); }
+/** 월요일 시작 주 키 — 그 주 월요일의 날짜 */
+function localWeekKey(now: number): string {
+  const d = new Date(now);
+  const back = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - back);
+  return "w" + d.toLocaleDateString("sv-SE");
+}
+export function dealKey(productId: string, now: number): string | null {
+  if (productId === "daily-deal") return `deal:daily-deal:${localDayKey(now)}`;
+  if (productId === "weekend-pack") return `deal:weekend-pack:${localWeekKey(now)}`;
+  return null;
+}
+/** null = 한도 상품이 아니다. 주말 보급은 토(6)·일(0)만 판다 */
+export function dealState(progress: { claimedRewards: string[] }, productId: string, now: number = Date.now()): DealState | null {
+  const key = dealKey(productId, now);
+  if (!key) return null;
+  if (progress.claimedRewards.includes(key)) return "bought";
+  if (productId === "weekend-pack") { const day = new Date(now).getDay(); if (day !== 0 && day !== 6) return "weekday"; }
+  return "available";
+}

@@ -25,40 +25,25 @@ type DayReward = { name: string; amount: string; icon: string; rarity: "normal" 
 
 const d = (name: string, amount: string, icon: string, rarity: DayReward["rarity"], grant: Grant): DayReward => ({ name, amount, icon, rarity, grant });
 /**
- * 30칸 — 7일마다 큰 보상(7·14·21·28), 30일째 최종 보상. 보석은 소환 동선, 인장·조각은 성문 방어 스킬 무기,
- * 등반권은 끝없는 성벽 등반 티켓(하루 무료분 위에 얹힌다). 합계: 보석 600 · 인장 70 · 등반권 9
+ * 30칸 = 7일 리듬 ×4 + 마무리 2칸 (2026-10-08 간결화). 평일 6칸은 보석·강화석·견갑 조각·원정 인장 네 가지만 돌고,
+ * 7·14·21·28일째가 큰 보상(견갑 → 보석 100 → 보석 100+인장 → 보석 150), 30일째 용린 견갑. 주차가 오를수록 양이 는다.
+ * 등반권·스킬 포인트는 뺐다 — 출석은 "오늘도 보석" 한 줄로 읽혀야 한다. 합계: 보석 780 · 강화석 128 · 조각 130 · 인장 90 (옛 판 600·70·—·9장 등반권보다 보석은 늘고 종류는 줄었다)
  */
+const week = (w: number): DayReward[] => [
+  d("보석", String(20 + w * 5), "gem", "normal", { gems: 20 + w * 5 }),
+  d("강화석", String(8 + w * 4), "enhance-stone", "normal", { stones: 8 + w * 4 }),
+  d("조각", String(15 + w * 5), "shoulder-shards", "normal", { shards: 15 + w * 5 }),
+  d("보석", String(20 + w * 5), "gem", "normal", { gems: 20 + w * 5 }),
+  d("인장", String(10 + w * 5), "expedition-seal", "rare", { seals: 10 + w * 5 }),
+  d("강화석", String(12 + w * 4), "enhance-stone", "normal", { stones: 12 + w * 4 }),
+];
 export const ATTENDANCE_REWARDS: DayReward[] = [
-  d("보석", "20", "gem", "normal", { gems: 20 }),
-  d("견갑 조각", "15", "shoulder-shards", "normal", { shards: 15 }),
-  d("강화석", "5", "enhance-stone", "normal", { stones: 5 }),
-  d("원정 인장", "10", "expedition-seal", "rare", { seals: 10 }),
-  d("성벽 등반권", "2", "event-chest", "rare", { tickets: 2 }),
-  d("스킬 포인트", "2", "skill-orb", "rare", { skillPoints: 2 }),
-  d("정찰 견갑 + 보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
-  d("보석", "20", "gem", "normal", { gems: 20 }),
-  d("강화석", "8", "enhance-stone", "normal", { stones: 8 }),
-  d("견갑 조각", "20", "shoulder-shards", "normal", { shards: 20 }),
-  d("원정 인장", "10", "expedition-seal", "rare", { seals: 10 }),
-  d("성벽 등반권", "2", "event-chest", "rare", { tickets: 2 }),
-  d("스킬 포인트", "3", "skill-orb", "rare", { skillPoints: 3 }),
-  d("보석", "80", "gem", "epic", { gems: 80 }),
-  d("강화석", "10", "enhance-stone", "normal", { stones: 10 }),
-  d("보석", "20", "gem", "normal", { gems: 20 }),
-  d("원정 인장", "15", "expedition-seal", "rare", { seals: 15 }),
-  d("견갑 조각", "25", "shoulder-shards", "normal", { shards: 25 }),
-  d("스킬 포인트", "3", "skill-orb", "rare", { skillPoints: 3 }),
-  d("성벽 등반권", "2", "event-chest", "rare", { tickets: 2 }),
-  d("보석 + 강화석", "100", "gem", "epic", { gems: 100, stones: 10 }),
-  d("강화석", "12", "enhance-stone", "normal", { stones: 12 }),
-  d("보석", "30", "gem", "normal", { gems: 30 }),
-  d("원정 인장", "15", "expedition-seal", "rare", { seals: 15 }),
-  d("견갑 조각", "30", "shoulder-shards", "normal", { shards: 30 }),
-  d("스킬 포인트", "4", "skill-orb", "rare", { skillPoints: 4 }),
-  d("성벽 등반권", "3", "event-chest", "rare", { tickets: 3 }),
-  d("보석 + 인장", "100", "gem", "epic", { gems: 100, seals: 20 }),
-  d("강화석", "15", "enhance-stone", "normal", { stones: 15 }),
-  d("용린 견갑 + 보석", "160", "dragon-pauldron", "legend", { shoulder: "dragon", gems: 160 }),
+  ...week(0), d("견갑+보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
+  ...week(1), d("보석", "100", "gem", "epic", { gems: 100 }),
+  ...week(2), d("보석+인장", "100", "gem", "epic", { gems: 100, seals: 20 }),
+  ...week(3), d("보석", "150", "gem", "epic", { gems: 150 }),
+  d("조각", "40", "shoulder-shards", "rare", { shards: 40 }),
+  d("용린견갑+보석", "160", "dragon-pauldron", "legend", { shoulder: "dragon", gems: 160 }),
 ];
 
 const today = () => new Date().toLocaleDateString("sv-SE");

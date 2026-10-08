@@ -288,8 +288,8 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
 {
   // #4 스킬 코어는 진행도의 pendingSkillCores 로 — 호출부가 사냥터 저장에 직접 더하지 않는다
   fresh();
-  const r = store.applyPurchase(await P(), "adventurer-mid", "play:c", 0);
-  ok("결제 코어는 pendingSkillCores 에 쌓인다 (사냥터가 준비되면 옮긴다, 리뷰 #4)", r.progress.pendingSkillCores === 5 && r.cores === 5, String(r.progress.pendingSkillCores));
+  const r = store.applyPurchase(await P(), "pack-rebirth", "play:c", 0);
+  ok("결제 코어는 pendingSkillCores 에 쌓인다 (사냥터가 준비되면 옮긴다, 리뷰 #4)", r.progress.pendingSkillCores === 10 && r.cores === 10, String(r.progress.pendingSkillCores));
 }
 {
   // #1 지급 확인 읽기가 응답이 없으면 durable=false (로컬 사본을 '있다'로 착각하지 않는다)
@@ -342,10 +342,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
 {
   fresh();
   const p0 = await P();
-  const r = store.applyPurchase(p0, "gate-supply", "play:s1", 0);
-  const shards = Object.values(r.progress.expeditionShards);
-  // 2026-10-02: 스킬 무기 10종 + 화살비 = 조각 11종 (상품 값은 늘었다 — 옛 6종보다 적게 주지 않는다)
-  ok("성문 수비 보급: 인장 +30 · 스킬 무기 조각 11종 각 +8 · 보석 +40", r.applied && r.progress.expeditionSeals === p0.expeditionSeals + 30 && shards.length === 11 && Object.entries(r.progress.expeditionShards).every(([id, n]) => n === (p0.expeditionShards[id] ?? 0) + 8) && r.progress.redGems === p0.redGems + 40, JSON.stringify(r.progress.expeditionShards));
+  ok("성문 수비 보급은 카탈로그·스토어 목록에서 뺐다 (2026-10-08 BM 간결화)", !catalog.STORE_PRODUCTS.some((p) => p.id === "gate-supply") && !store.PLAY_PRODUCT_IDS.includes("gate-supply") && store.purchaseGrant("gate-supply") === null);
   // 기금: 산 뒤 이미 깬 단계는 바로 받고, 못 깬 단계는 못 받는다 · 두 번 받지 못한다
   const withStars = { ...p0, dodgeStars: { "0": 3, "1": 2, "2": 1 } };
   ok("기금: 사기 전에는 받을 수 없다", fund.claimGateFundTier(withStars, "s1").gems === 0);
@@ -386,12 +383,17 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   ok("토스 소모성 환불: 다시 돌려도 두 번 거두지 않는다", (await P()).redGems === after.redGems);
 }
 {
-  // 순간 제안 gate-wall — 유료 게이트(출석 3일 · Lv 20) 전에는 열리지 않는다
+  // 송사리 모델 (2026-10-08): 오늘의 보급·주말 보급 — 결제된 주문은 한도와 무관하게 지급하고, 한도 키(deal:)는 하루/주에 하나만
   fresh();
   const p0 = await P();
-  const early = moments.openMomentOffer({ ...p0, attendanceStreak: 0, level: 5 }, "gate-wall", 1000);
-  const open = moments.openMomentOffer({ ...p0, attendanceStreak: 3 }, "gate-wall", 1000);
-  ok("순간 제안 gate-wall: 유료 게이트 전 닫힘 · 뒤에는 성문 수비 보급 15분 창 · 보너스 보석 20", !early.momentOffers["gate-supply"] && open.momentOffers["gate-supply"]?.until === 1000 + 15 * 60000 && moments.momentBonusGems(open, "gate-supply", 2000) === 20);
+  const sat = Date.UTC(2026, 9, 10, 3);
+  const a = store.applyPurchase(p0, "daily-deal", "play:dd1", sat);
+  const b = store.applyPurchase(a.progress, "daily-deal", "play:dd2", sat + 1000);
+  const dealKeys = b.progress.claimedRewards.filter((k) => k.startsWith("deal:daily-deal:"));
+  ok("오늘의 보급 결제 2건: 둘 다 지급(보석 80·골드 6,000) · deal 키는 하루 1개", a.applied && b.applied && b.progress.redGems === p0.redGems + 80 && b.progress.sharedCoins === p0.sharedCoins + 6000 && dealKeys.length === 1, dealKeys.join(","));
+  const w = store.applyPurchase(p0, "weekend-pack", "play:wk1", sat);
+  ok("주말 보급 결제: 보석 300 · 강화석 60 · 가속 24h · 환불 장부(ledger) 기록", w.applied && w.progress.redGems === p0.redGems + 300 && w.progress.enhancementMaterials === p0.enhancementMaterials + 60 && w.progress.idleBoostUntil === sat + 24 * 3600000 && w.progress.claimedRewards.includes("ledger:weekend-pack:play:wk1:300"));
+  ok("카탈로그 묶음: 매일·주말 묶음이 첫 번째 · 중급/고급 모험가·개척 축하·성문 수비 보급 없음", catalog.PAID_GROUPS[0].ids.join(",") === "daily-deal,weekend-pack" && ["adventurer-mid", "adventurer-advanced", "pack-pioneer", "gate-supply"].every((id) => !store.PLAY_PRODUCT_IDS.includes(id)));
 }
 
 console.log(failed ? `${failed} FAIL` : "ALL PASS");

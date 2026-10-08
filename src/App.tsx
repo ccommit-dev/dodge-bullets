@@ -46,7 +46,7 @@ import {
   migrateLegacyProgress,
   updateCharacterProgress,
 } from "./progression/storage";
-import { activeMomentOffers, MOMENT_OFFERS, momentTimeLeft, openMomentOffer, paidOffersUnlocked } from "./economy/momentOffers";
+import { activeMomentOffers, MOMENT_OFFERS, momentTimeLeft, paidOffersUnlocked } from "./economy/momentOffers";
 import { STORE_PRODUCTS } from "./economy/productCatalog";
 import { claimGateFundTier, gemValueRatio, GATE_FUND_TOTAL_GEMS } from "./economy/gateFund";
 import { paidStoreNote, paidStoreVisible, purchaseInFlight, purchaseProduct } from "./payments/store";
@@ -371,7 +371,6 @@ function App() {
   const showToast = (msg: string, ms = 2400) => { setSettingsToast(msg); window.setTimeout(() => setSettingsToast(""), ms); };
   // 성문 보급소 결제 (2026-10-02) — 진행 중인 결제 상품 · 같은 판에서 성문에 진 횟수(3·4스테이지)
   const [buyingProduct, setBuyingProduct] = useState<string | null>(null);
-  const gateFailsRef = useRef<Record<number, number>>({});
   const [, setStoreTick] = useState(0);
   useEffect(() => { const off = onStorePricesChanged(() => setStoreTick((t) => t + 1)); return () => { off(); }; }, []);
   const appModeRef = useRef<AppMode>("titans");
@@ -870,13 +869,7 @@ function App() {
               dailyProgress: { skillKills: world.skillKills, epicPicks: world.epicPicks, clears: 0 },
               skillShards: shardDrops(world.runSkills, world.stageIndex, false, world.ultCount),
               lastContent: "dodge",
-            }).then(async (next) => {
-              // 성문 방어 3·4스테이지에서 두 번째 실패 — 성문 수비 보급 순간 제안 (유료 게이트·이미 열린 창은 openMomentOffer 가 거른다)
-              if (world.stageIndex >= 2) {
-                const fails = (gateFailsRef.current[world.stageIndex] ?? 0) + 1;
-                gateFailsRef.current[world.stageIndex] = fails;
-                if (fails >= 2) next = await updateCharacterProgress(userHashRef.current, (current) => openMomentOffer(current, "gate-wall"));
-              }
+            }).then((next) => {
               setProgress(next);
             });
             trackEvent("arrow_expedition_fail", { stage: world.stageIndex + 1, score: finalScore, duration: Math.round(world.elapsedMs / 1000) });
@@ -949,11 +942,11 @@ function App() {
               }));
             }
             if (openedArea > 0 && nextProgress.pioneeredArea < openedArea) {
-              // retention-4: 개척 직후 축하 제안(개척 축하 세트) — 사냥터로 돌아오면 카드가 뜬다
-              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => openMomentOffer({
+              // 개척 축하 세트(순간 제안)는 BM 간결화로 뺐다 (2026-10-08) — 개척 기록만 남긴다
+              nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
                 ...current,
                 pioneeredArea: Math.max(current.pioneeredArea, openedArea),
-              }, "pioneer"));
+              }));
               sfxAreaUnlock();
               setPioneeredAreaIndex(openedArea);
               // 첫 지역 개척 = 게임 루프가 처음으로 완성되는 감정 고점 — 리뷰 요청 적기
