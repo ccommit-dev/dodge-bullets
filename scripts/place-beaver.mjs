@@ -16,7 +16,10 @@ const node = (script, ...args) => { console.log("$", script, args.join(" ")); ex
 const pick = (stem, seeds) => {
   if (seedOverride[stem]) { const f = `${OUT}/${stem}-s${seedOverride[stem]}.png`; if (!existsSync(f)) throw new Error("없음: " + f); return f; }
   // 3차(bv3, 배경 없는 참조) 후보가 있으면 그 안에서 QA 최선, 없으면 1차 후보 안에서 QA 최선
-  const v3 = globOut(new RegExp("^" + stem.replace("-bv-", "-bv3-").replace(/[.*+?^$()|[\]\\]/g, "\\$&") + "-s\\d+\\.png$"));
+  const esc = (t) => t.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
+  const v4 = globOut(new RegExp("^" + esc(stem.replace("-bv-", "-bv5-")) + "-s\\d+\\.png$"));   // 20차 ¾ 앞·좌 몬스터
+  if (v4.length) return qaBest(stem, v4);
+  const v3 = globOut(new RegExp("^" + esc(stem.replace("-bv-", "-bv3-")) + "-s\\d+\\.png$"));
   const v1 = seeds.map((x) => `${OUT}/${stem}-s${x}.png`);
   return qaBest(stem, v3.length ? v3 : v1);
 };
@@ -32,7 +35,8 @@ const qaBest = (label, files) => {
 };
 const globOut = (re) => readdirSync(OUT).filter((f) => re.test(f)).map((f) => `${OUT}/${f}`);
 /** 주인공 대기 — 3차(beaverking3, 배경 없는 참조) 후보가 있으면 QA 로 고르고, 없으면 1차 수동 마스크본 */
-const heroIdlePath = () => seedOverride["heroidle"] ? `${OUT}/heroidle-beaverking3-${seedOverride["heroidle"]}.png` : (qaBest("hero-idle", globOut(/^heroidle-beaverking3-\d+\.png$/)) ?? `${OUT}/heroidle-beaverking-20261403.png`);
+// 18차(beaverking5, 측면 오른쪽 보기) 가 있으면 그것을 우선 (2026-10-08)
+const heroIdlePath = () => seedOverride["heroidle"] ? `${OUT}/heroidle-beaverking5-${seedOverride["heroidle"]}.png` : (qaBest("hero-idle", globOut(/^heroidle-beaverking5-\d+\.png$/)) ?? qaBest("hero-idle", globOut(/^heroidle-beaverking3-\d+\.png$/)) ?? `${OUT}/heroidle-beaverking-20261403.png`);
 const pickIcon = (stem) => { const s = seedOverride[stem] ?? "20261801"; const f = `${OUT}/icon-${stem}-${s}.png`; if (!existsSync(f)) throw new Error("없음: " + f); return f; };
 const backup = (file) => { if (!existsSync(file)) return; mkdirSync(`${OUT}/backup-human`, { recursive: true }); const b = `${OUT}/backup-human/${file.split("/").pop()}`; if (!existsSync(b)) copyFileSync(file, b); };
 const alpha = { r: 0, g: 0, b: 0, alpha: 0 };
@@ -78,12 +82,14 @@ if (want("allies")) {
   for (const id of ids) {
     // v2(털색 구분 · 자기 대기 참조, batch-beaver3.sh) 가 있으면 그것을, 없으면 1차 bv 를 꽂는다 (2026-10-07)
     let stem = existsSync(`${OUT}/char-bv2-${id}-hit.png`) ? "bv2" : "bv";
-    const v3 = globOut(new RegExp(`^char-bv3-${id}-idle-s\\d+\\.png$`));
-    if (v3.length) {
-      const best = seedOverride[`bv3-${id}`] ? `${OUT}/char-bv3-${id}-idle-s${seedOverride[`bv3-${id}`]}.png` : qaBest(`ally-${id}`, v3);
-      copyFileSync(best, `${OUT}/char-bv3-${id}-idle.png`);
-      node("scripts/make-ally-states.mjs", "bv3", id);
-      stem = "bv3";
+    for (const gen of ["bv5", "bv3"]) {   // 20차(¾ 앞·우) → 10차 순 (2026-10-08)
+      const cands = globOut(new RegExp(`^char-${gen}-${id}-idle-s\\d+\\.png$`));
+      if (!cands.length) continue;
+      const best = seedOverride[`${gen}-${id}`] ? `${OUT}/char-${gen}-${id}-idle-s${seedOverride[`${gen}-${id}`]}.png` : qaBest(`ally-${id}`, cands);
+      copyFileSync(best, `${OUT}/char-${gen}-${id}-idle.png`);
+      node("scripts/make-ally-states.mjs", gen, id);
+      stem = gen;
+      break;
     }
     if (!existsSync(`${OUT}/char-${stem}-${id}-hit.png`)) { console.log("skip", id, "(아직 없음)"); continue; }
     for (const st of ["idle", "run", "attack", "hit"]) { backup(`${OUT}/char-${id}-${st}.png`); copyFileSync(`${OUT}/char-${stem}-${id}-${st}.png`, `${OUT}/char-${id}-${st}.png`); }
@@ -136,7 +142,18 @@ if (want("monsters")) {
     if (o.length < b.length) writeFileSync(f, o);
   }
   mkdirSync("public/titans/generated/monsters/thumbs", { recursive: true });
-  for (const n of names) await sharp(`public/titans/generated/monsters/${n}.png`).resize(128, 128, { fit: "contain", background: alpha }).webp({ quality: 82, alphaQuality: 90 }).toFile(`public/titans/generated/monsters/thumbs/${n}.webp`);
+  // 도감 썸네일: 전체를 128 로 줄이면 얼굴이 안 보인다 — 불투명 bbox 의 위 60%(머리) 를 정사각으로 잘라 키운다 (2026-10-08 검수 14)
+  for (const n of names) {
+    const src = `public/titans/generated/monsters/${n}.png`;
+    const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let minx = info.width, maxx = -1, miny = info.height, maxy = -1;
+    for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 24) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+    const bw = Math.max(1, maxx - minx + 1), bh = Math.max(1, maxy - miny + 1);
+    const side = Math.min(info.width, info.height, Math.round(Math.max(bw * 0.9, bh * 0.62)));
+    const left = Math.max(0, Math.min(info.width - side, Math.round(minx + bw / 2 - side / 2)));
+    const top = Math.max(0, Math.min(info.height - side, miny));
+    await sharp(src).extract({ left, top, width: side, height: side }).resize(128, 128).webp({ quality: 82, alphaQuality: 90 }).toFile(`public/titans/generated/monsters/thumbs/${n}.webp`);
+  }
   writeFileSync(`${OUT}/beaver-monster-margins.json`, JSON.stringify(margins, null, 1));
   console.log("MARGINS", JSON.stringify(margins));
 }
@@ -153,7 +170,8 @@ if (want("backdrops")) {
   for (const [stem, dest, seeds] of BG) {
     // 12차(bv4, 아래 1/3 나무 무대) 가 있으면 그것 — 시드는 --seed=backdrop-bv4-<x>=... 로, 없으면 첫 시드 (2026-10-07)
     // 16차(bv5, 정면 측면·수평 다리) 는 --seed=backdrop-bv5-<x>=<seed> 로 고른 것만 쓴다 (2026-10-08) — 자동 선택은 안 한다(절반이 사선 다리)
-    const v5 = stem.replace(/^bv-/, "bv5-");
+    // 19차(bv6, 방어전·허브 수평 통나무 길) → 16차(bv5) 순으로 --seed 지정된 것만 (2026-10-08)
+    const v5 = ["bv6", "bv5"].map((g) => stem.replace(/^bv-/, g + "-")).find((k) => seedOverride[`backdrop-${k}`]) ?? stem.replace(/^bv-/, "bv5-");
     if (seedOverride[`backdrop-${v5}`]) { const f5 = `${OUT}/backdrop-${v5}-s${seedOverride[`backdrop-${v5}`]}.png`; if (!existsSync(f5)) throw new Error("없음: " + f5); const tall5 = /dodge|hub-|forge-/.test(dest); await sharp(f5).resize(720, tall5 ? 1052 : 960, { fit: "cover" }).webp({ quality: 80 }).toFile(dest); if (dest.includes("backgrounds/")) await sharp(f5).resize(720, 960, { fit: "cover" }).webp({ quality: 72 }).toFile(dest.replace(".webp", "-sm.webp")); console.log("bg(v5)", dest, f5.split("/").pop()); continue; }
     const v4 = stem.replace(/^bv-/, "bv4-");
     const v4seeds = seeds.map((x) => x + 400);
@@ -167,7 +185,7 @@ if (want("backdrops")) {
   }
   // 비트 무대 배경 (12차) — public/beat/bg/stage.webp, 캔버스가 cover 로 그린다
   const beat = [20262131, 20262132].map((x) => `${OUT}/backdrop-bv4-beat-s${x}.png`).find((f) => existsSync(f));
-  if (beat) { mkdirSync("public/beat/bg", { recursive: true }); await sharp(seedOverride["backdrop-bv4-beat"] ? `${OUT}/backdrop-bv4-beat-s${seedOverride["backdrop-bv4-beat"]}.png` : beat).resize(720, 1052, { fit: "cover" }).webp({ quality: 80 }).toFile("public/beat/bg/stage.webp"); console.log("bg public/beat/bg/stage.webp"); }
+  if (beat) { mkdirSync("public/beat/bg", { recursive: true }); await sharp(seedOverride["backdrop-bv6-beat"] ? `${OUT}/backdrop-bv6-beat-s${seedOverride["backdrop-bv6-beat"]}.png` : seedOverride["backdrop-bv4-beat"] ? `${OUT}/backdrop-bv4-beat-s${seedOverride["backdrop-bv4-beat"]}.png` : beat).resize(720, 1052, { fit: "cover" }).webp({ quality: 80 }).toFile("public/beat/bg/stage.webp"); console.log("bg public/beat/bg/stage.webp"); }
 }
 
 // ── 아이콘 ──

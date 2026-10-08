@@ -4733,3 +4733,53 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
   .ally-roster-grid { gap: 5px; }
   .bulk-toggle { margin: 0; }
 }
+
+/* ═══════════ 검수 A 항목 (2026-10-08 전 화면 재검수) ═══════════ */
+/* 1 설정 메뉴 뒷막 */
+.settings-backdrop { position: fixed; inset: 0; z-index: 69; background: rgba(6, 12, 24, .45); }
+.titans-header .settings-wrap .settings-menu { z-index: 71; }
+/* 2 콘텐츠 팝업: 큰 아이콘 + 한 줄 설명 */
+.nav-popup-grid button { min-height: 76px; padding: 8px 10px; }
+.nav-popup-grid button b, .nav-popup-grid button strong { font-size: 14px; }
+.nav-popup-grid button small, .nav-popup-grid button .nav-help { font-size: 11px; line-height: 1.3; }
+.nav-popup-grid button .content-icon { width: 40px; height: 40px; }
+/* 3 가로 원정 메뉴: 지도 3열 · 시작 버튼이 안 잘리게 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .exp-menu-content { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .exp-menu-content > * { grid-column: 1 / -1; }
+  .exp-menu-content > .cta { grid-column: auto; min-height: 40px; }
+  .exp-menu-content .pioneer-board { max-height: calc(100svh - 170px); }
+  .route-map { grid-template-columns: repeat(3, 1fr); }
+}
+/* 4 성문 방어 상단: 옛 남색 칩 → 나무 캡슐 */
+.sound-toggle, .exit-toggle, .battle-toggle { border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; }
+.sound-toggle[aria-pressed="true"] { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); border-color: var(--arc-ink); box-shadow: 0 3px 0 #92400e; }
+.hud-left .hud-score, .hud-left .hud-hint, .hud-left .hud-tower, .hud-left .threat-label { display: inline-block; padding: 2px 8px; border-radius: 999px; background: rgba(43, 22, 8, .62); border: 1px solid rgba(246, 215, 160, .35); }
+/* 5 비트 HUD 칩 · 게이지 */
+.beat-layer-mixer span { color: #e2cfae; border: 2px solid var(--arc-ink); border-radius: 10px; background: linear-gradient(180deg, #7a4a22, #4a2b12); font-size: 9px; }
+.beat-enemy-hp, .beat-fever { border: 2px solid var(--arc-ink); background: rgba(43, 22, 8, .8); height: 18px; }
+.beat-fever-trigger { border: 2px solid var(--arc-ink); border-radius: 14px; }
+/* 6 대장간: 무대 중앙 정렬 · 비활성 탭 가독 */
+.forge-stage { display: flex; justify-content: center; align-items: center; }
+.forge-stage > .sword-art, .forge-stage > svg, .forge-stage > img, .forge-stage > .shoulder-icon { margin: 0 auto; }
+.forge-tabs button { color: #e2cfae; }
+.forge-tabs button.on { color: var(--arc-ink); }
+/* 7 동료 카드 태그 가독 */
+.ally-roster-grid .ally-card .rarity-tag, .ally-roster-grid .ally-card .role-tag { font-size: 10px !important; padding: 1px 6px !important; border-radius: 999px; background: rgba(43, 22, 8, .7); }
+/* 8 마이페이지 캐릭터 카드 나무 판 · 제목 블록 중앙 */
+.character-hero-card { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 20px; background: linear-gradient(180deg, rgba(92, 56, 26, .94), rgba(50, 30, 14, .96)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 4px 0 #1f1109; }
+@media (min-width: 601px) { .character-headline, .character-title { text-align: center; } }
+/* 9 후원 계약 카드 나무 판 */
+.idle-patron-preview { border: 2px solid var(--arc-ink) !important; border-radius: 14px !important; background: linear-gradient(180deg, rgba(92, 56, 26, .94), rgba(50, 30, 14, .96)) !important; color: #f5e9d6; }
+/* 10 스킬 탭 전장 띠: 이름표 숨김 · HP 바를 위로 */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-field .titans-hp { top: 6px; }
+  .titans-layer.page-skills .titans-field .hero-marker, .titans-layer.page-skills .titans-field .titans-monster small, .titans-layer.page-skills .titans-field .titans-monster b { display: none; }
+}
+/* 가로 원정 메뉴: 설명 문단·최고 점수 숨김, 제목 작게 — 지도와 시작 버튼이 첫 화면에 들어오게 (검수 15 ③ 보강) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .exp-menu-content > .subtitle, .exp-menu-content > .score-line.exp-best-line { display: none; }
+  .exp-menu-content > .title { margin: 0; font-size: 20px; }
+  .exp-menu-content > .brand { font-size: 9px; margin: 0; }
+  .exp-menu-content .wallet-bar { grid-column: 1 / -1; }
+}
