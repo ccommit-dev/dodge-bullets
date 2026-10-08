@@ -42,10 +42,15 @@ writeFileSync(entry, [
   `export * as beatShop from "${root}/src/beat/shop";`,
   `export * as bestiary from "${root}/src/titans/bestiary";`,
   `export * as perfMode from "${root}/src/ui/perfMode";`,
+  `export * as huntPerks from "${root}/src/titans/huntPerks";`,
+  `export * as titansWeak from "${root}/src/titans/bossWeak";`,
+  `export * as allyFeatures from "${root}/src/titans/allyFeatures";`,
+  `export * as beatPerks from "${root}/src/beat/beatPerks";`,
+  `export * as dodgeWeak from "${root}/src/game/bossWeak";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -389,7 +394,7 @@ const eventShop = await (async () => {
   rmSync(d2, { recursive: true, force: true });
   return mod;
 })();
-ok("이벤트 상점 8종 · 이벤트 탭 3종 · 특별 탭 5종(등반권 2 포함) · 전부 보석 가격·주간 한도", eventShop.shop.EVENT_PRODUCTS.length === 8 && eventShop.shop.eventProductsFor("event-shop").length === 3 && eventShop.shop.eventProductsFor("event-shop2").length === 5 && eventShop.shop.EVENT_PRODUCTS.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1));
+ok("이벤트 상점 9종 · 이벤트 탭 4종(인장 묶음 포함) · 특별 탭 5종(등반권 2 포함) · 전부 보석 가격·주간 한도", eventShop.shop.EVENT_PRODUCTS.length === 9 && eventShop.shop.eventProductsFor("event-shop").length === 4 && eventShop.shop.eventProductsFor("event-shop2").length === 5 && eventShop.shop.EVENT_PRODUCTS.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1));
 ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 30 }).gold > eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 5 }).gold);
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");
@@ -485,9 +490,9 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 {
   const w = { runXp: 0, runLevel: 1, levelUps: 0, tempo: 1 };
   const worldMod = await import(pathToFileURL(out).href).then((m) => m.dodgeWorld);
-  for (let i = 0; i < 13; i += 1) worldMod.gainRunXp(w, 1);
-  ok("런 XP: 13 XP 로 레벨 2(필요 13) · 레벨업 1 · tempo 1.045", w.runLevel === 2 && w.levelUps === 1 && Math.abs(w.tempo - 1.045) < 1e-9 && w.runXp === 0, JSON.stringify(w));
-  for (let i = 0; i < 400; i += 1) worldMod.gainRunXp(w, 1);
+  for (let i = 0; i < 32; i += 1) worldMod.gainRunXp(w, 1);
+  ok("런 XP: 32 XP 로 레벨 2(필요 20+12) · 레벨업 1 · tempo 1.03 (2026-10-08: 스킬 처치 XP 와 함께 — 봇 시뮬 분당 1.4~3.6장)", w.runLevel === 2 && w.levelUps === 1 && Math.abs(w.tempo - 1.03) < 1e-9 && w.runXp === 0, JSON.stringify(w));
+  for (let i = 0; i < 2000; i += 1) worldMod.gainRunXp(w, 1);
   ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
   const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
   ok("몬스터 보이는 여백: 가시 용 좌우 4~12% (비버 테마 bv3, 재배치마다 ±1% 흔들려 범위로), 모르는 원화는 15/15", (() => { const [a, b] = sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png"); return a >= 0.04 && a <= 0.12 && b >= 0.04 && b <= 0.12; })() && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
@@ -1313,6 +1318,41 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const late = perfMode.frameMonitor(); let lateAt = -1, tt = 0; for (let i = 0; i < 2000 && lateAt < 0; i += 1) { const dt = tt < 6000 ? 16.7 : 60; tt += dt; if (late(dt)) lateAt = Math.round(tt / 100) / 10; }
   const crawl = perfMode.frameMonitor(); let crawlAt = -1; for (let i = 0; i < 40 && crawlAt < 0; i += 1) if (crawl(250)) crawlAt = (i + 1) * 0.25;
   ok("저사양 감시: 33 FPS 면 한 번 켜고 · 60 FPS 면 안 켜고 · 백그라운드 복귀 같은 긴 틈은 무시 · 4 FPS 기기도 3초 안에 판정 · 곡 중간에 느려져도 켠다", hit === 1 && hitF === 0 && hitS === 0 && crawlAt > 0 && crawlAt <= 3 && lateAt > 6 && lateAt <= 8.2, `${hit} ${hitF} ${hitS} · 4FPS 판정 ${crawlAt}초 · 6초 뒤 느려지면 ${lateAt}초`);
+}
+
+
+// ── Galactic Outlaw 루프 (2026-10-08, docs/LOOP_2026-10-08.md) — 사냥 강화 · 보스 약점 · 동료 특성 · 비트 강화/약점 레인 · 성문 약점 ──
+{
+  const ctx = { learned: ["strike", "emberCut", "frostEdge", "crit"], equipped: ["emberCut", "crit"] };
+  const m0 = huntPerks.emptyHuntMods();
+  const three = huntPerks.pickHuntPerks(m0, ctx, seq([0.5, 0.1, 0.5, 0.3, 0.5, 0.9]), 0);
+  ok("사냥 강화 3장 · 서로 다른 카드 · 장착 안 한 빙결 카드·열충격은 안 뜬다", three.length === 3 && new Set(three.map((p) => p.id)).size === 3 && !three.some((p) => p.id === "freezeLong" || p.id === "thermalShock"), three.map((p) => p.id).join());
+  const ctx2 = { learned: ctx.learned, equipped: ["emberCut", "frostEdge", "crit"] };
+  const thermal = huntPerks.HUNT_PERK_BY_ID.thermalShock;
+  ok("열충격(콤보)은 화상+빙결 둘 다 장착해야 · 한 번 고르면 다시 안 뜬다", !thermal.available(m0, ctx) && thermal.available(m0, ctx2) && !thermal.available(huntPerks.applyHuntPerk(m0, "thermalShock"), ctx2));
+  const m1 = huntPerks.applyHuntPerk(huntPerks.applyHuntPerk(m0, "tapUp"), "tapUp");
+  ok("같은 일반 카드 2번 → 탭 ×1.2544 · picked 2 · 칩 1종 ×2", Math.abs(m1.tapMul - 1.12 * 1.12) < 1e-9 && m1.picked.length === 2 && huntPerks.huntModsChips(m1)[0].count === 2);
+  const odds0 = huntPerks.huntRarityOdds(0), odds4 = huntPerks.huntRarityOdds(4);
+  ok("사냥 등급 확률: 지역이 깊을수록 에픽↑ · 합 1", odds4.epic > odds0.epic && Math.abs(odds0.common + odds0.rare + odds0.epic - 1) < 1e-9 && Math.abs(odds4.common + odds4.rare + odds4.epic - 1) < 1e-9);
+  const norm = huntPerks.normalizeHuntMods({ tapMul: 99, picked: ["tapUp", "nope"], weakHunt: true });
+  ok("huntMods 정규화: 상한 4 · 모르는 카드 제거 · 불리언 유지 · 빠진 값은 중립", norm.tapMul === 4 && norm.picked.join() === "tapUp" && norm.weakHunt === true && norm.cooldownMul === 1);
+  const w1 = titansWeak.rollBossWeak(1000, null, () => 0);
+  const w2 = titansWeak.rollBossWeak(9000, w1, () => 0);
+  ok("사냥터 보스 약점: 8초 창 · 직전과 다른 속성 · seq 증가", w1.until === 9000 && w2.element !== w1.element && w2.seq === 2, `${w1.element}→${w2.element}`);
+  ok("약점 판정: 같은 속성 스킬 명중 · 창 지나면 아님 · blade 는 약점 불가", titansWeak.skillHitsWeak(w1, w1.element, 2000) && !titansWeak.skillHitsWeak(w1, w1.element, 9000) && !titansWeak.skillHitsWeak(w1, "blade", 2000));
+  const fireWeak = { element: "fire", until: 5000, seq: 1 };
+  ok("약점 동료: 속성이 같은 동료만 (pyro=fire · mia=wind) · 편성 안 상성 수", titansWeak.allyHitsWeak(fireWeak, "pyro", 100) && !titansWeak.allyHitsWeak(fireWeak, "mia", 100) && titansWeak.partyWeakMatches(["pyro", "mia", "garen", "ari"], "fire") === 2);
+  const fx = allyFeatures.allyFeatureEffects(["leon", "pyro", "nox", "orion", "luna"]);
+  const none = allyFeatures.allyFeatureEffects(["mia"]);
+  ok("동료 특성 실효과: 레온 +2초 · 파이로 화상 ×1.5 · 녹스 연쇄 .3 · 오리온 보스 ×1.15 · 루나 빙결 ×1.3 · 없으면 중립", fx.weakWindowMs === 2000 && fx.burnMul === 1.5 && fx.critChain === 0.3 && fx.bossMul === 1.15 && fx.freezeMul === 1.3 && fx.active.length === 5 && none.burnMul === 1 && none.active.length === 0);
+  ok("특성 5명이 현역 동료다 (leon·pyro·nox·orion·luna)", ["leon", "pyro", "nox", "orion", "luna"].every((id) => model.HEROES.some((h) => h.id === id)));
+  const offerA = beatPerks.beatPerkOffer("track-1", "2026-10-08"), offerB = beatPerks.beatPerkOffer("track-1", "2026-10-08");
+  ok("비트 출격 강화: 3장 · 서로 다름 · 같은 곡·날은 같은 3장", offerA.length === 3 && new Set(offerA).size === 3 && offerA.join() === offerB.join() && offerA.every((id) => beatPerks.BEAT_PERK_BY_ID[id]), offerA.join());
+  const km = beatPerks.beatModsOf("kick"), fm = beatPerks.beatModsOf("feverLong"), wm = beatPerks.beatModsOf("weakTracker"), nm = beatPerks.beatModsOf(null);
+  ok("비트 강화 효과: 킥 레인 ×1.4 · FEVER +2000ms · 약점 ×3.5 · 없으면 중립(약점 ×2.5)", km.laneMul[0] === 1.4 && km.laneMul[3] === 1 && fm.feverExtraMs === 2000 && wm.weakMul === 3.5 && nm.weakMul === 2.5 && nm.comboMul === 1);
+  const lane8 = beatPerks.weakLaneAt(8500, 1, "t"), lane12 = beatPerks.weakLaneAt(12500, 1, "t"), lane16 = beatPerks.weakLaneAt(16500, 1, "t");
+  ok("약점 레인: 장 대장만 · 첫 8초 없음 · 8초 주기 앞 4초만 · 레인 0~3 · 남은 시간", beatPerks.weakLaneAt(8500, 0, "t") === null && beatPerks.weakLaneAt(3000, 1, "t") === null && lane8 !== null && lane8 >= 0 && lane8 <= 3 && lane12 === null && lane16 !== null && beatPerks.weakLaneLeftMs(8500) === 3500);
+  ok("성문 보스 약점: 장착 무기 중에서 · 직전 제외 · 기본 사격뿐이면 없음 · 무기 하나면 그것", dodgeWeak.rollDodgeWeak(["fire", "ice"], "fire") === "ice" && dodgeWeak.rollDodgeWeak(["fire", "ice"], "ice") === "fire" && dodgeWeak.rollDodgeWeak(["fire", "ice", "bolt"], null, 1) === "ice" && dodgeWeak.rollDodgeWeak(["basic"], null) === null && dodgeWeak.rollDodgeWeak(["fire"], "fire") === "fire" && dodgeWeak.DODGE_WEAK_EXTRA_POWER === 1);
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

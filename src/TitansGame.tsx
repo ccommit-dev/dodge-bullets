@@ -20,6 +20,7 @@ import {
   monsterKind,
   monsterLabel,
   playerIdleDps,
+  HUNTING_AREAS,
   huntingArea,
   stageClearBonus,
   equipmentTrainingCost,
@@ -30,6 +31,9 @@ import {
   type TitanSkillSlot,
   type TitansSave,
 } from "./titans/model";
+import { HUNT_RARITY_LABEL, applyHuntPerk, huntModsChips, pickHuntPerks, type HuntPerkDef, type HuntPerkId } from "./titans/huntPerks";
+import { WEAK_LABEL, WEAK_MUL, WEAK_WINDOW_MS, allyHitsWeak, partyWeakMatches, rollBossWeak, skillHitsWeak, type BossWeak } from "./titans/bossWeak";
+import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { AllyArt, MonsterArt, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
@@ -228,6 +232,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [hp, setHp] = useState(10);
   const [maxHp, setMaxHp] = useState(10);
   const [bossLeft, setBossLeft] = useState(BOSS_TIME_SEC);
+  // 보스 약점 (2026-10-08, titans/bossWeak.ts) — 8초마다 바뀐다. 사냥 강화 선택권이 있으면 3장을 띄운다 (titans/huntPerks.ts)
+  const [bossWeak, setBossWeak] = useState<BossWeak | null>(null);
+  const bossWeakRef = useRef<BossWeak | null>(null);
+  const [huntOffer, setHuntOffer] = useState<HuntPerkDef[]>([]);
   const [bossReady, setBossReady] = useState(false);
   const [monsterHit, setMonsterHit] = useState(0);
   /** 보스 처치 3단계 (계획안 B): 1 경직 → 2 균열 → 3 붕괴+골드 분출. 0이면 없음 */
@@ -457,8 +465,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       partySynergies(character.partyIds).effects.bossTimeBonus +
       partyRoleEffects(character.partyIds).bossTimeBonus +
       passiveTotals(save.skillInventory.learned, save.skillInventory.equipped, save.skillInventory.levels).bossTime +
-      activePetEffect(character.pets, character.activePet, "bossTime"),
-    [character.partyIds, character.pets, character.activePet, save.skillInventory],
+      activePetEffect(character.pets, character.activePet, "bossTime") +
+      save.huntMods.bossTimeBonus,
+    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods],
   );
   const bossTimeRef = useRef(bossTimeSec);
   useEffect(() => {
@@ -479,6 +488,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     chestRef.current = isChest;
     hpRef.current = mhp;
     bossLeftRef.current = bossTimeRef.current;
+    // 보스 약점 — 보스전 시작과 함께 첫 창. 일반 몬스터는 약점 없음
+    const weak = asBoss ? rollBossWeak(performance.now(), null, Math.random, WEAK_WINDOW_MS + saveRef.current.huntMods.weakWindowMs + allyFeatureEffects(characterRef.current.partyIds).weakWindowMs) : null;
+    bossWeakRef.current = weak;
+    setBossWeak(weak);
     formationReadyRef.current = false;
     setFormationReady(false);
     setFormationEngaged(false);
@@ -782,15 +795,38 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     setFrameIdx(0);
   };
 
+  const applyDamageRef = useRef<((raw: number, crit: boolean, opts?: { source?: FloatSource; label?: string; skill?: TitanSkillId; chain?: boolean }) => void) | null>(null);
   const applyDamage = useCallback(
     (
       raw: number,
       crit: boolean,
-      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number; label?: string; skill?: TitanSkillId; delayMs?: number },
+      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number; label?: string; skill?: TitanSkillId; delayMs?: number; chain?: boolean },
     ) => {
       if (raw <= 0 || battlePhaseRef.current !== "combat") return;
-      const dealt = Math.floor(raw);
-      pushFloat(dealt, crit, opts?.clientX, opts?.clientY, opts?.source ?? "hero", opts?.hue, opts?.label, opts?.skill, opts?.delayMs);
+      // 보스 약점 (2026-10-08): 약점 속성 스킬·같은 속성 동료는 ×1.6(+사냥 강화) · 오리온 성창은 보스 전체 ×1.15 · [약점 사냥]은 명중마다 +1초
+      let mul = 1;
+      let label = opts?.label;
+      if (bossRef.current) {
+        const pn = performance.now();
+        const wk = bossWeakRef.current;
+        const hm = saveRef.current.huntMods;
+        const af = allyFeatureEffects(characterRef.current.partyIds);
+        const skillEl = opts?.skill ? SKILLS.find((s) => s.id === opts.skill)?.element ?? "" : "";
+        const weakHit = (opts?.skill && skillHitsWeak(wk, skillEl, pn)) || (opts?.fromAlly && opts.fromAlly !== "tap" && allyHitsWeak(wk, opts.fromAlly, pn));
+        if (weakHit) {
+          mul *= WEAK_MUL + hm.weakBonus;
+          label = "약점!";
+          if (hm.weakHunt && opts?.skill) { bossLeftRef.current += 1; setBossLeft(bossLeftRef.current); }
+        }
+        mul *= af.bossMul;
+      }
+      const dealt = Math.floor(raw * mul);
+      pushFloat(dealt, crit, opts?.clientX, opts?.clientY, opts?.source ?? "hero", opts?.hue, label, opts?.skill, opts?.delayMs);
+      // [연쇄 번개]·녹스 치명 연계 — 치명 스킬 명중 뒤 한 번 더 (한 단계만, chain 표시로 재귀 차단)
+      if (crit && opts?.source === "skill" && !opts?.chain) {
+        const chain = (saveRef.current.huntMods.chainLightning ? 0.3 : 0) + allyFeatureEffects(characterRef.current.partyIds).critChain;
+        if (chain > 0) window.setTimeout(() => applyDamageRef.current?.(raw * chain, false, { source: "skill", label: "연쇄", skill: opts?.skill, chain: true }), 140 + (opts?.delayMs ?? 0));
+      }
       setMonsterHit((n) => n + 1);
       setImpact(crit ? "critical" : "normal");
       // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
@@ -818,6 +854,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       if (wasBoss) {
         bossFailStreakRef.current = 0;
         setWallInfo(null);
+        bossWeakRef.current = null;
+        setBossWeak(null);
       }
 
       // 도감 마일스톤 보너스: 10/100/1,000 처치 → +2/4/8%
@@ -901,6 +939,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         ...prev,
         gold: prev.gold + goldGain,
         skillInventory: wasBoss ? { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + 1 } : prev.skillInventory,
+        // 사냥 강화 (2026-10-08): 보스마다 선택권 +1(최대 3) · 새 지역으로 넘어가면 지역 효과는 비운다 (지역 = 런)
+        huntPicks: wasBoss ? Math.min(3, prev.huntPicks + 1) : prev.huntPicks,
+        huntMods: advancing && huntingArea(prev.stage + 1).id !== huntingArea(prev.stage).id ? { ...prev.huntMods, tapMul: 1, allyMul: 1, bossTimeBonus: 0, cooldownMul: 1, burnMul: 1, freezeMul: 1, critDmgMul: 1, weakWindowMs: 0, weakBonus: 0, weakHunt: false, thermalShock: false, chainLightning: false, picked: [] } : prev.huntMods,
         totalKills: prev.totalKills + 1,
         bestStage: advancing ? Math.max(prev.bestStage, prev.stage + 1) : prev.bestStage,
         stage: advancing ? prev.stage + 1 : prev.stage,
@@ -1020,6 +1061,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     [bossReady, later, spawn, userHash],
   );
 
+  useEffect(() => {
+    applyDamageRef.current = applyDamage;
+  }, [applyDamage]);
+
   const computeTapHit = useCallback(() => {
     const now = performance.now();
     const inv = saveRef.current.skillInventory;
@@ -1031,7 +1076,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     // 북채 집중(패시브) + 치명 버프
     const critChance = Math.min(0.95, 0.08 + passive.critChance + (now < b.critUntil ? b.critBonus : 0));
     const crit = Math.random() < critChance;
-    return { dmg: base * clone * (crit ? 3.2 : 1), crit, base };
+    // 사냥 강화 — 탭·스킬 배수와 치명 피해 배수 (지역 런 효과)
+    const hm = saveRef.current.huntMods;
+    return { dmg: base * hm.tapMul * clone * (crit ? 3.2 * hm.critDmgMul : 1), crit, base: base * hm.tapMul };
   }, [forgedWeaponLevel]);
 
   const doTap = useCallback(
@@ -1086,7 +1133,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
           burnAcc.current += dt;
           if (burnAcc.current >= 0.5) {
-            applyDamage(buff.burnPerSec * burnAcc.current, false, { source: "skill", label: "화상" });
+            applyDamage(buff.burnPerSec * burnAcc.current * saveRef.current.huntMods.burnMul * allyFeatureEffects(characterRef.current.partyIds).burnMul, false, { source: "skill", label: "화상" });
             burnAcc.current = 0;
           }
         } else burnAcc.current = 0;
@@ -1118,10 +1165,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
           pushFx("ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
-          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps, false, { fromAlly: h.id, source: "ally", hue: h.hue });
+          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul, false, { fromAlly: h.id, source: "ally", hue: h.hue });
         }
       }
 
+      // 보스 약점 창 교체 (2026-10-08) — 창이 닫히면 직전과 다른 속성으로. 레온 표식·[약점 관찰]이 창을 늘린다
+      if (bossRef.current && battlePhaseRef.current === "combat") {
+        const pn = performance.now();
+        const wk = bossWeakRef.current;
+        if (!wk || pn >= wk.until) {
+          const nw = rollBossWeak(pn, wk, Math.random, WEAK_WINDOW_MS + saveRef.current.huntMods.weakWindowMs + allyFeatureEffects(characterRef.current.partyIds).weakWindowMs);
+          bossWeakRef.current = nw;
+          setBossWeak(nw);
+        }
+      }
       if (bossRef.current) {
         // 빙결(얼음 물방울·댐 수문 개방) — 제한시간 정지
         const left = bossLeftRef.current - (now < buffsRef.current.freezeUntil ? 0 : dt);
@@ -1292,6 +1349,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         redGems: current.redGems - product.gemCost + (g.gems ?? 0),
         sharedCoins: current.sharedCoins + (g.gold ?? 0),
         enhancementMaterials: current.enhancementMaterials + (g.materials ?? 0),
+        expeditionSeals: current.expeditionSeals + (g.seals ?? 0),
         shoulderShards: current.shoulderShards + (g.shoulderShards ?? 0),
         allyShards: g.allyShards ? { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + g.allyShards } : current.allyShards,
         forgeTicketsPending: current.forgeTicketsPending + (g.forgeTickets ?? 0),
@@ -1755,7 +1813,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const level = Math.max(1, save.skillInventory.levels[id] ?? 1);
     const mult = skillLevelMult(level);
     const effect = SKILL_EFFECTS[id];
-    setCds((prev) => ({ ...prev, [id]: def.cooldownSec * partyRoleEffects(characterRef.current.partyIds).cooldownMult }));
+    setCds((prev) => ({ ...prev, [id]: def.cooldownSec * partyRoleEffects(characterRef.current.partyIds).cooldownMult * saveRef.current.huntMods.cooldownMul }));
     const geo = castGeometry();
     // 위치를 못 재면(전장이 아직 안 그려짐) 예전 고정 위치 폭발로 — 잴 수 있으면 영웅에서 나가는 연출만 (2026-10-06)
     if (!geo) pushFx(visualKind, 56, 44, def.element === "fire" ? 18 : def.element === "wind" ? 185 : def.element === "earth" ? 75 : def.element === "light" ? 48 : 330);
@@ -1775,7 +1833,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const bossOnlyBurn = effect.kind === "buff" && !!effect.bossOnly;
     // 버프는 연장만 한다 — 짧은 버프가 긴 버프를 잘라먹지 않게 (물수제비 스텝이 붉은 달 난타를 1초 줄이던 문제)
     const applyBuff = (kind: BuffKind, value: number) => {
-      const until = now + durMs;
+      // 빙결은 [깊은 얼음]·루나 결박만큼 길다. [열충격] — 불타는 적을 얼리면 탭 피해 ×6 폭발 (사냥 강화 콤보)
+      const freezeMul = kind === "freeze" ? saveRef.current.huntMods.freezeMul * allyFeatureEffects(characterRef.current.partyIds).freezeMul : 1;
+      const until = now + durMs * freezeMul;
+      if (kind === "freeze" && saveRef.current.huntMods.thermalShock && now < buffsRef.current.burnUntil) {
+        applyDamage(computeTapHit().base * 6, true, { source: "skill", label: "열충격", skill: id, delayMs: 200 });
+        pushFx("crit", 70, 40, 18);
+      }
       setBuffSource((prev) => (prev[kind] === id ? prev : { ...prev, [kind]: id }));
       setBuffs((b) => {
         switch (kind) {
@@ -1820,6 +1884,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   useEffect(() => {
     castSkillRef.current = castSkill;
   });
+
+  // 사냥 강화 3장 — 선택권이 생기면 그때의 지역·장착으로 뽑고, 고르면 비운다
+  useEffect(() => {
+    if (save.huntPicks <= 0) { if (huntOffer.length > 0) setHuntOffer([]); return; }
+    if (huntOffer.length > 0) return;
+    const areaIndex = Math.max(0, HUNTING_AREAS.findIndex((a) => a.id === huntingArea(save.stage).id));
+    const equipped = Object.values(save.skillInventory.equipped).filter((id): id is TitanSkillId => !!id);
+    setHuntOffer(pickHuntPerks(save.huntMods, { learned: save.skillInventory.learned, equipped }, Math.random, areaIndex));
+  }, [save.huntPicks, save.huntMods, save.stage, save.skillInventory, huntOffer.length]);
+  const pickHunt = (perk: HuntPerkDef) => {
+    setSave((prev) => ({ ...prev, huntMods: applyHuntPerk(prev.huntMods, perk.id as HuntPerkId), huntPicks: Math.max(0, prev.huntPicks - 1) }));
+    setHuntOffer([]);
+    pushFx(perk.rarity === "epic" ? "warcry" : "crit", 50, 40, perk.rarity === "epic" ? 290 : 45);
+    flash(`[${HUNT_RARITY_LABEL[perk.rarity]}] ${perk.label} — 이 지역에서 적용`);
+  };
 
   // 이벤트 센터가 저장을 바꾸면 루틴 보드·추천이 즉시 따라온다 · 1초 틱은 워밍업 타이머용
   useEffect(() => {
@@ -2446,6 +2525,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             </span>
           )}
           <strong>{label}</strong>
+          {/* 보스 약점 배지 (2026-10-08) — 속성·남은 시간 링. 같은 속성 스킬·동료가 ×1.6 */}
+          {boss && bossWeak && (
+            <i key={bossWeak.seq} className={`boss-weak weak-${bossWeak.element}`} style={{ "--weak-ms": `${Math.max(500, bossWeak.until - performance.now())}ms` } as CSSProperties} aria-label={`약점 ${WEAK_LABEL[bossWeak.element]}`}>
+              <b>약점</b><span>{WEAK_LABEL[bossWeak.element]}</span>
+            </i>
+          )}
           {monsterAction === "prepare" && <i className="monster-telegraph" aria-hidden="true" />}
           {monsterAction === "attack" && <i className="monster-attack-fx" aria-hidden="true" />}
         </div>
@@ -2600,6 +2685,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           </div>
         )}
         {!freeRetryCard && momentOfferCard}
+        {/* 사냥 강화 3택 (2026-10-08) — 보스를 잡을 때마다 한 장. 성문 방어 카드와 같은 문법(등급·콤보·필요 스킬) */}
+        {!freeRetryCard && save.huntPicks > 0 && huntOffer.length > 0 && (
+          <div className="hunt-pick-bar" role="dialog" aria-label="사냥 강화 선택" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="hunt-pick-head"><b>사냥 강화</b><small>보스 처치 보상 · 이 지역에서만 · 남은 선택 {save.huntPicks}</small></div>
+            <div className="hunt-pick-cards">
+              {huntOffer.map((perk, i) => (
+                <button key={perk.id} type="button" className={`perk-choice hunt-perk rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => pickHunt(perk)}>
+                  <b><i className={`perk-rarity r-${perk.rarity}`}>{HUNT_RARITY_LABEL[perk.rarity]}</i>{perk.label}{perk.combo && <i className="perk-combo">콤보</i>}</b>
+                  <small>{perk.desc}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {save.huntMods.picked.length > 0 && (
+          <div className="hunt-mods-chips" aria-label="지역 사냥 강화">
+            {huntModsChips(save.huntMods).map((c) => <span key={c.id} className={`hunt-mod-chip r-${c.rarity}`}>{c.label}{c.count > 1 ? ` ×${c.count}` : ""}</span>)}
+          </div>
+        )}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
           {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
             <button
@@ -2781,6 +2885,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   </>
                 );
               })()}
+              {/* 동료 특성 실효과 (2026-10-08) · 약점 상성 — 편성이 보스에서 시험받는다 */}
+              {allyFeatureEffects(character.partyIds).active.map((id) => (
+                <span key={id} className="synergy-chip feature-chip on" title={ALLY_FEATURES[id].desc}>{ALLY_FEATURES[id].label}</span>
+              ))}
+              <span className="synergy-chip weak-chip on" title="보스 약점(불·바람·땅)이 뜰 때 같은 속성 동료는 피해 ×1.6 — 세 속성을 고루 두면 어떤 약점이든 답이 있다">
+                약점 상성 불 {partyWeakMatches(character.partyIds, "fire")} · 바람 {partyWeakMatches(character.partyIds, "wind")} · 땅 {partyWeakMatches(character.partyIds, "earth")}
+              </span>
             </div>
             <div className="party-tools">
               <div className="role-filter" role="group" aria-label="역할 필터">
@@ -3184,7 +3295,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               <RewardIcon kind="gold" size={38} className="pack-icon" />
               <div>
                 <strong>황금 보급 상자</strong>
-                <p>사냥터 골드 +{formatGold(goldPackAmount(character))} · 최고 스테이지 비례</p>
+                <p>사냥터 골드 +{formatGold(goldPackAmount(character))} · 최고 스테이지 비례 <i className="feeds">→ 동료 레벨 · 무기 훈련</i></p>
               </div>
               <button type="button" disabled={redGems < GEM_PACK.goldPackCost} onClick={() => void buyGoldPack()}>
                 <GemMark />{GEM_PACK.goldPackCost}
@@ -3194,13 +3305,30 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               <RewardIcon kind="materials" size={38} className="pack-icon" />
               <div>
                 <strong>강화석 상자</strong>
-                <p>강화석 +{GEM_PACK.materialPackAmount} · 대장간·펫 간식 재료</p>
+                <p>강화석 +{GEM_PACK.materialPackAmount} · 대장간·펫 간식 재료 <i className="feeds">→ 북 강화 · 보호구</i></p>
               </div>
               <button type="button" disabled={redGems < GEM_PACK.materialPackCost} onClick={() => void buyMaterialPack()}>
                 <GemMark />{GEM_PACK.materialPackCost}
               </button>
             </article>
-</>}
+            {/* 루프 ⑤ (2026-10-08): 빌드를 바꾸는 보석 상품 — 성문 방어 칩·스킬 무기의 인장. 이벤트 상점 상품을 재화 탭에도 보인다 */}
+            {(() => {
+              const sp = eventProductsFor("event-shop").find((p) => p.id === "gem-seal-pack");
+              if (!sp) return null;
+              const left = sp.weeklyLimit - eventBuysThisWeek(character, sp.id, currentWeekKey());
+              return (
+                <article className="titans-card premium-product-card gem-product seal-product">
+                  <img className="pack-icon" src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
+                  <div>
+                    <strong>원정 인장 묶음 <em>주 {sp.weeklyLimit}회</em></strong>
+                    <p>원정 인장 +20 · 이번 주 {Math.max(0, left)}회 남음 <i className="feeds">→ 성문 방어 칩 · 스킬 무기</i></p>
+                  </div>
+                  <button type="button" disabled={redGems < sp.gemCost || left <= 0} onClick={() => void buyEventProduct(sp)}>
+                    {left <= 0 ? "이번 주 한도" : <><GemMark />{sp.gemCost}</>}
+                  </button>
+                </article>
+              );
+            })()}</>}
             {/* 동료 스킨(코스튬) — 외형 전용 확정 구매. 얼터너티브(별도 동료)와 다른 축 */}
             {premiumCategory === "ally" && Object.entries(ALLY_SKINS).filter(([skinId, def]) => def.gemCost !== null || character.ownedAllySkins.includes(skinId)).map(([skinId, skinDef]) => {
               const owned = character.ownedAllySkins.includes(skinId);
@@ -3238,7 +3366,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               <RewardIcon kind="boost" size={38} className="pack-icon" />
               <div>
                 <strong>방치 가속권 24h {character.idleBoostUntil > Date.now() && <em>적용 중</em>}</strong>
-                <p>24시간 동안 방치 산출 2배 · 중첩 불가</p>
+                <p>24시간 동안 방치 산출 2배 · 중첩 불가 <i className="feeds">→ 방치 정산 골드·경험치</i></p>
               </div>
               <button
                 type="button"

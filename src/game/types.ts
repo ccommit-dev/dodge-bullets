@@ -27,6 +27,10 @@ export type Player = {
   slowCdMs: number;
   slowActiveMs: number;
   landingFxMs: number;
+  /** 쏘는 동작 남은 시간(ms) — 기본 사격·스킬 무기 발사마다 300ms, 무기 시트 4프레임이 한 번 돈다 (2026-10-08) */
+  shootMs: number;
+  /** 마지막으로 쏜 각도 — 쏘는 동안 몸이 그쪽으로 기운다 */
+  shootAngle: number;
 };
 
 export type Arrow = {
@@ -356,7 +360,7 @@ export type GameWorld = {
   /** 스킬을 습득한 순간 주인공을 감싸는 빛 */
   heroAura: { element: Element; ms: number } | null;
   /** 상성 명중 표시 — 자리·속성·남은 시간(ms). 표에만 있던 상성을 화면에서 체감하게 (2026-09-29) */
-  affinityPop: { x: number; y: number; element: Element; ms: number } | null;
+  affinityPop: { x: number; y: number; element: Element; ms: number; text?: string } | null;
   /** 번개화살 연쇄 선 — 쏜 자리에서 표적들로. ms 가 0 이 되면 사라진다 */
   /** 쓰러지는 몬스터 — 쓰러짐 프레임이 커지며 사라진다 (2026-10-01) */
   fades: Array<{ kind: Arrow["kind"]; boss: boolean; bossTier: number; x: number; y: number; size: number; ms: number; facing: number }>;
@@ -413,6 +417,8 @@ export type GameWorld = {
   chips: ChipMods;
   /** 마지막 피격 원인 — 게임오버 화면의 "다음엔 이렇게" 팁 근거 (RETENTION G) */
   lastHitCause: "normal" | "aimed" | "fan" | "ricochet" | "explosive" | "homing" | "boss" | "fragment" | "barrier" | "";
+  /** 보스 약점 무기 (2026-10-08, game/bossWeak.ts) — 장착 무기 중 하나, 파편 패턴마다 바뀐다. 약점 명중은 처치 −1 추가 */
+  bossWeak: Element | null;
   bossSpawned: boolean;
   bossDefeated: boolean;
   bossCutsLeft: number;

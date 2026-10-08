@@ -47,7 +47,7 @@ await sleep(600);
 await clickText(".hub-sheet-switch button", "이벤트");
 await sleep(500);
 r = await page.evaluate(() => ({ cards: [...document.querySelectorAll(".event-offer-card")].map((c) => ({ name: c.querySelector("h2")?.textContent, price: c.querySelector("button")?.textContent, gemIcon: !!c.querySelector("button .gem-mark"), left: c.querySelector("small")?.textContent, summary: c.querySelector("p")?.textContent })) }));
-ok("이벤트 상점 3종 · 보석 가격(상단 지갑과 같은 붉은 보석 아이콘) · 주간 한도 표기", r.cards.length === 3 && r.cards.every((c) => c.gemIcon && /\d+/.test(c.price ?? "") && /남음/.test(c.left ?? "")), JSON.stringify(r.cards.map((c) => c.price + "|" + c.left)));
+ok("이벤트 상점 4종(2026-10-08 원정 인장 묶음 포함) · 보석 가격(상단 지갑과 같은 붉은 보석 아이콘) · 주간 한도 표기", r.cards.length === 4 && r.cards.every((c) => c.gemIcon && /\d+/.test(c.price ?? "") && /남음/.test(c.left ?? "")), JSON.stringify(r.cards.map((c) => c.price + "|" + c.left)));
 ok("수량이 진행도 비례 문구(골드 K/M)", r.cards.some((c) => /골드 [\d.]+[KM]/.test(c.summary ?? "")), r.cards[0]?.summary);
 const before = await prog();
 const beforeT = await titans();
