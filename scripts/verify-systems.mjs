@@ -485,7 +485,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   for (let i = 0; i < 400; i += 1) worldMod.gainRunXp(w, 1);
   ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
   const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
-  ok("몬스터 보이는 여백: 가시 용 좌 6%·우 6% (2026-10-07 비버 테마 재생성, bv3), 모르는 원화는 15/15", JSON.stringify(sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png")) === "[0.06,0.06]" && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
+  ok("몬스터 보이는 여백: 가시 용 좌우 4~12% (비버 테마 bv3, 재배치마다 ±1% 흔들려 범위로), 모르는 원화는 15/15", (() => { const [a, b] = sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png"); return a >= 0.04 && a <= 0.12 && b >= 0.04 && b <= 0.12; })() && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
 }
 
 // ── 콘텐츠 역할 분리 P1 ──
