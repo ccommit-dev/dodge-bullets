@@ -301,7 +301,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 30, durationMs: 1250 });
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -315,6 +315,48 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const floatId = useRef(0);
   const fxId = useRef(0);
   const fieldRef = useRef<HTMLDivElement>(null);
+  // 간단한 충돌 분리 (2026-10-08, 사용자: "캐릭터별 간단한 충돌 체크로 간격을 벌려줘") — 발 높이가 비슷한(같은 줄) 주인공·동료끼리
+  // 가로로 35% 넘게 겹치면 뒤에 선 동료를 민다(원거리는 왼쪽, 근접은 오른쪽). 겹침이 없어지면 서서히 제자리로. 슬롯 % 계산은 그대로 두고 margin 만 더한다
+  useEffect(() => {
+    const tick = () => {
+      const field = fieldRef.current;
+      if (!field) return;
+      const hero = field.querySelector<HTMLElement>(".titans-hero");
+      const allies = [...field.querySelectorAll<HTMLElement>(".titan-ally-art[data-party-slot]")];
+      const boxes = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el) => ({ el, r: el.getBoundingClientRect() }));
+      for (let i = 1; i < boxes.length; i += 1) {
+        const b = boxes[i];
+        let dx = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
+        let pushed = false;
+        for (let j = 0; j < 1; j += 1) {   // 주인공과의 겹침만 — 동료끼리는 슬롯(줄·x)이 이미 가른다(verify-play-art 0%)
+          const a = boxes[j];
+          if (Math.abs(a.r.bottom - b.r.bottom) > 26) continue;   // 다른 줄은 앞뒤 깊이 (호흡·공격 바운스 ±6px 를 넘는 여유)
+          const overlap = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+          const minW = Math.min(a.r.width, b.r.width);
+          if (overlap > minW * 0.35) {
+            const push = Math.min(18, overlap - minW * 0.35 + 2);
+            dx += b.el.classList.contains("combat-ranged") ? -push : push;
+            pushed = true;
+          }
+        }
+        if (!pushed) dx *= 0.9;
+        dx = Math.max(-60, Math.min(60, dx));
+        // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
+        const fr = field.getBoundingClientRect();
+        const cur = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
+        // 원거리는 전장 왼쪽 28px(자세 애니메이션 폭) 안쪽까지만, 근접은 몬스터 왼쪽 가장자리(−6px)까지만 — 몬스터 오른쪽에서 치면 안 된다
+        const mon = field.querySelector<HTMLElement>(".titans-monster")?.getBoundingClientRect();
+        const minDx = fr.left + 28 - (b.r.left - cur);
+        const maxDx = mon ? mon.left - 6 - (b.r.right - cur) : fr.right - 28 - (b.r.right - cur);
+        dx = Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), dx));
+        const next = Math.abs(dx) < 0.5 ? 0 : Math.round(dx);
+        const prev = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
+        if (Math.abs(next - prev) >= 2) b.el.style.setProperty("--sep-dx", `${next}px`);   // 2px 미만 변화는 쓰지 않는다 — 전환이 계속 돌지 않게
+      }
+    };
+    const id = window.setInterval(tick, 320);
+    return () => window.clearInterval(id);
+  }, []);
   const toastTimer = useRef<number | null>(null);
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
@@ -440,10 +482,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const durationMs = Math.round(speedBase * (.88 + Math.random() * .24));
     setEncounterMotion({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
+      // 2026-10-08 사용자: 주인공·동료 겹침 — 주인공 54~66px 가 되면서 근접 슬롯(몬스터 왼쪽에 붙음)과 100% 겹쳤다.
+      // 몬스터를 오른쪽으로(30 → 16%) 물려 왼쪽부터 원거리(0~3%) · 주인공(28%) · 근접(몬스터 왼쪽) · 몬스터 네 띠가 생긴다
       heroLeft: 26 + Math.random() * 2,
       // 흔들림을 ±1%로 — 근접 동료가 몬스터 좌표에 붙으므로(App.css) 넓게 흔들면 주인공과 겹친다
       // 용은 2026-10-02 에 보이는 몸이 상자를 꽉 채우는 드레이크로 바뀌어(여백 23/32% → 4/2%) 근접 동료가 20px 왼쪽에 붙으며 주인공을 덮었다 — 더 오른쪽에 세운다
-      monsterRight: (rolledKind === "dragon" ? 17 : 29) + Math.random() * 2,
+      // 390px 실측: 몬스터 오른쪽 8% → 왼쪽 가장자리 247px, 근접 163~237, 주인공 26% = 101~155, 원거리 0~3% = 50~124 — 네 띠가 겹치지 않는다
+      monsterRight: (rolledKind === "dragon" ? 2 : 8) + Math.random() * 2,
       durationMs,
     });
     window.requestAnimationFrame(() => setFormationEngaged(true));
@@ -3445,7 +3490,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             if (coach.target === "field") { fieldRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); flash("몬스터를 탭하면 공격합니다"); }
           }}
         >
-          <span className="coach-hand" aria-hidden="true">☝</span>
+          <img className="coach-hand" src={assetUrl("ui/content-icons/ui-pointer.png")} alt="" aria-hidden="true" />
           {coach.target === "heroes" && tab === "heroes" ? "스카우트 미아 카드의 소환 버튼을 누르세요" : coach.target === "sword" && tab === "sword" ? "무기 훈련 버튼을 누르세요" : coach.text}
         </button>
       )}

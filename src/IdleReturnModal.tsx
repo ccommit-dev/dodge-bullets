@@ -137,7 +137,7 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
           </article>
           {result.allyShardDrops > 0 && (
             <article style={{ animationDelay: "270ms" }}>
-              <span className="idle-shard-orb" aria-hidden="true">★</span>
+              <img className="idle-shard-orb" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" />
               <b>{result.allyShardDrops}</b>
               <span>동료 조각</span>
             </article>

@@ -4426,3 +4426,72 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .titans-field .titans-stagebar.in-field { width: auto; }
 /* 전장 오른쪽 위 스킵 버튼과 "최고" 가 겹쳤다 — 스테이지 줄은 스킵 버튼 왼쪽까지만 */
 .titans-field .titans-stagebar.in-field { right: 76px; }
+
+/* ═══════════ 에뮬레이터 투어에서 남은 남색 판 (2026-10-08): 콘텐츠 팝업 · 설정 메뉴 · 동료/상점 시트 · 마이페이지 카드 · 출석 창 ═══════════ */
+.bottom-nav-popup { color: #f5e9d6; border: 3px solid var(--arc-ink); border-radius: 20px; background: linear-gradient(180deg, rgba(92, 56, 26, .97), rgba(50, 30, 14, .98)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 6px 0 #1f1109, 0 18px 50px rgba(0, 0, 0, .58); }
+.nav-popup-grid button { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 14px; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 3px 0 #1f1109; }
+.nav-popup-grid button small, .nav-popup-grid button .nav-help { color: #e2cfae; }
+.settings-menu { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 16px; background: linear-gradient(180deg, rgba(92, 56, 26, .98), rgba(50, 30, 14, .98)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 5px 0 #1f1109, 0 12px 28px rgba(0, 0, 0, .5); }
+.settings-menu button { color: #f5e9d6; }
+.settings-menu button b { color: #fde68a; }
+.settings-menu button:disabled { opacity: .5; }
+.game-root .titans-layer .titans-shop, .game-root .titans-layer.is-management-page .titans-shop { color: #f5e9d6; border: 3px solid var(--arc-ink); background: linear-gradient(180deg, rgba(92, 56, 26, .96), rgba(50, 30, 14, .97)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 -6px 24px rgba(0, 0, 0, .45); }
+.hub-sheet-head, .hub-sheet-head h2, .hub-sheet-head p { color: #f5e9d6; }
+.status-card, .equipment-strip div, .legacy-growth, .evolution-tree button, .collection-summary, .pet-grid > *, .codex-grid > * { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 14px; background: linear-gradient(180deg, rgba(92, 56, 26, .92), rgba(50, 30, 14, .94)); box-shadow: 0 2px 0 #1f1109; }
+.status-card small, .equipment-strip small, .status-copy { color: #e2cfae; }
+.equipment-strip strong { color: #fde68a; }
+.evolution-tree button.selected { border-color: var(--arc-sun); box-shadow: 0 2px 0 #92400e, 0 0 14px rgba(251, 191, 36, .35); }
+.legacy-heading, .legacy-heading strong { color: #fde68a; }
+.attendance-card { color: #f5e9d6; border: 3px solid var(--arc-ink); border-radius: 20px; background: linear-gradient(180deg, rgba(92, 56, 26, .97), rgba(50, 30, 14, .98)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 6px 0 #1f1109; }
+.attendance-card .brand { color: var(--arc-sun); }
+/* 출석·방치 보고·종료 확인 창(exit-modal / exit-card) — 아직 남색이던 마지막 창들 */
+.exit-modal, .exit-card { color: #f5e9d6; border: 3px solid var(--arc-ink); border-radius: 20px; background: linear-gradient(180deg, rgba(92, 56, 26, .97), rgba(50, 30, 14, .98)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 6px 0 #1f1109, 0 18px 50px rgba(0, 0, 0, .55); }
+.exit-modal .brand, .exit-card .brand { color: var(--arc-sun); }
+.exit-modal .exit-title, .exit-card .exit-title { color: #fff7e6; }
+.attendance-progress, .exit-modal p, .exit-card p { color: #e2cfae; }
+
+/* ═══════════ 모바일 형식 (2026-10-08, 사용자: "웹 형식의 스크롤 UI 를 전면 모바일 형식으로 · 설정 아이콘을 마이페이지 쪽에") ═══════════
+   · 스크롤바를 보이지 않게(터치 스크롤만), 패널 안쪽 스크롤 대신 화면 전체가 흐르게, 창은 손잡이 띠가 있는 시트처럼
+   · 설정은 톱니 아이콘 하나로 마이페이지 버튼 왼쪽에 붙는다 */
+*, *::before, *::after { scrollbar-width: none; }
+*::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.titans-layer, .hub-sheet, .titans-shop, .overlay-content, .exit-modal, .exit-card, .advice-sheet, .bottom-nav-popup, .settings-menu, .forge-layer, .beat-layer { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* 시트 손잡이 띠 — 창마다 */
+.exit-modal::before, .exit-card::before, .game-overlay .overlay-content::before, .bottom-nav-popup::before { content: ""; display: block; width: 44px; height: 5px; margin: -4px auto 10px; border-radius: 999px; background: rgba(246, 215, 160, .45); }
+.exit-modal, .exit-card, .game-overlay .overlay-content { width: min(100%, 440px); max-height: min(92svh, 920px); overflow-y: auto; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+/* 설정 — 톱니 하나 */
+.settings-toggle { width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0; }
+.settings-toggle .settings-gear { width: 26px; height: 26px; object-fit: contain; }
+.settings-toggle .settings-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sound-dock .settings-wrap { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; z-index: 62; }
+.titans-header { padding-left: 48px; }
+@media (max-width: 600px) {
+  .titans-header { margin-top: 0; padding-left: 48px; }
+  /* 패널 안쪽 스크롤 → 화면 스크롤 */
+  .titans-shop { max-height: none; overflow: visible; }
+  .game-overlay { align-items: flex-end; padding: 0 !important; }
+  .game-overlay .overlay-content, .exit-modal { width: 100%; max-width: none; border-radius: 22px 22px 0 0; border-bottom-width: 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .5); }
+}
+/* 설정 톱니가 왼쪽에 붙으면서 마이페이지 글자가 잘렸다 — 지갑을 줄이고 이름 글자를 작게 */
+@media (max-width: 600px) {
+  .titans-header { gap: 6px; }
+  .titans-back { flex: 0 0 auto; }
+  .titans-back .mypage-label { font-size: 11px; }
+  .titans-wallet { flex: 0 1 auto; min-width: 0; gap: 5px; padding: 5px 8px; font-size: 12px; }
+}
+/* 정정: .exit-modal 은 전체 화면 뒷막(absolute inset:0)이고 창은 그 안의 .exit-card 다 — 뒷막은 어둡게만, 나무 판·손잡이·폭은 카드에 (2026-10-08) */
+.exit-modal { width: auto; max-height: none; overflow: visible; border: 0; border-radius: 0; box-shadow: none; padding: 12px; background: rgba(6, 12, 24, .72); }   /* blur 뒷막은 에뮬레이터·저사양에서 프레임을 떨어뜨린다 */
+.exit-modal::before { display: none; }
+.exit-modal .exit-card, .attendance-card, .idle-card { width: min(100%, 440px); max-height: min(92svh, 920px); overflow-y: auto; color: #f5e9d6; border: 3px solid var(--arc-ink); border-radius: 22px; background: linear-gradient(180deg, rgba(92, 56, 26, .97), rgba(50, 30, 14, .98)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 6px 0 #1f1109, 0 18px 50px rgba(0, 0, 0, .55); }
+.exit-modal .exit-card::before { content: ""; display: block; width: 44px; height: 5px; margin: -2px auto 10px; border-radius: 999px; background: rgba(246, 215, 160, .45); }
+@media (max-width: 600px) {
+  .exit-modal { align-items: flex-end; padding: 0; }
+  .exit-modal .exit-card, .attendance-card, .idle-card { width: 100%; max-width: none; border-radius: 22px 22px 0 0; border-bottom-width: 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .5); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+/* 충돌 분리 오프셋 (TitansGame 의 간단한 충돌 체크가 넣는다) — 슬롯 좌표에 margin 으로만 더한다 */
+/* margin 은 매 프레임 레이아웃을 다시 계산해 스킬 시전 중 FPS 가 43 → 29 로 떨어졌다(에뮬레이터) — translate 는 합성만 */
+.titans-allies .titan-ally-art[data-party-slot] { translate: var(--sep-dx, 0px) 0; transition: left var(--encounter-duration, 1.15s) linear, bottom .28s ease, translate .32s ease; }
+/* 글자 아이콘 → 생성 아이콘 (2026-10-08): 코치 손가락 · 뒤로 화살표 · 닫기 X */
+.coach-hand { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; margin-right: 4px; }
+.ui-back-icon { width: 18px; height: 18px; object-fit: contain; vertical-align: -4px; margin-right: 2px; }
+.hub-sheet-close, .nav-popup-close, .advice-close { font-size: 0; width: 32px; height: 32px; padding: 0; border: 0; background: url("/ui/content-icons/ui-close.png") center / 26px no-repeat; }

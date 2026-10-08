@@ -1587,7 +1587,8 @@ function App() {
               aria-expanded={settingsOpen}
               aria-haspopup="menu"
             >
-              <span aria-hidden="true">⚙</span> 설정
+              {/* 2026-10-08 사용자: 설정 아이콘을 마이페이지 쪽에 — 생성 톱니 아이콘, 글자는 보조기술·검사용으로만 */}
+              <img className="settings-gear" src={assetUrl("ui/content-icons/nav-settings.png")} alt="" aria-hidden="true" /><span className="settings-label">설정</span>
             </button>
             {settingsOpen && (
               <div className="settings-menu" role="menu">

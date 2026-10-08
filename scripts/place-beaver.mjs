@@ -152,6 +152,9 @@ if (want("backdrops")) {
   ];
   for (const [stem, dest, seeds] of BG) {
     // 12차(bv4, 아래 1/3 나무 무대) 가 있으면 그것 — 시드는 --seed=backdrop-bv4-<x>=... 로, 없으면 첫 시드 (2026-10-07)
+    // 16차(bv5, 정면 측면·수평 다리) 는 --seed=backdrop-bv5-<x>=<seed> 로 고른 것만 쓴다 (2026-10-08) — 자동 선택은 안 한다(절반이 사선 다리)
+    const v5 = stem.replace(/^bv-/, "bv5-");
+    if (seedOverride[`backdrop-${v5}`]) { const f5 = `${OUT}/backdrop-${v5}-s${seedOverride[`backdrop-${v5}`]}.png`; if (!existsSync(f5)) throw new Error("없음: " + f5); const tall5 = /dodge|hub-|forge-/.test(dest); await sharp(f5).resize(720, tall5 ? 1052 : 960, { fit: "cover" }).webp({ quality: 80 }).toFile(dest); if (dest.includes("backgrounds/")) await sharp(f5).resize(720, 960, { fit: "cover" }).webp({ quality: 72 }).toFile(dest.replace(".webp", "-sm.webp")); console.log("bg(v5)", dest, f5.split("/").pop()); continue; }
     const v4 = stem.replace(/^bv-/, "bv4-");
     const v4seeds = seeds.map((x) => x + 400);
     const useV4 = v4seeds.some((x) => existsSync(`${OUT}/backdrop-${v4}-s${x}.png`));
