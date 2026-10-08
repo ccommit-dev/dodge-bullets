@@ -355,8 +355,13 @@ export * as pay from "${root}/src/payments/store";`);
   ok("후원 미리보기: 캡 +2h × 시급(10K) = 20,000 골드", pv && pv.extraGold === 20000 && pv.extraHours === 2, JSON.stringify(pv));
   ok("후원 미리보기 제외: 후원 중 · 8h 미만 · 게이트 전", mo.patronPreview({ patronUntil: t0 + 1, attendanceStreak: 3, level: 5 }, 9 * 3600, 3600, 80000, 8 * 3600, t0) === null && mo.patronPreview({ patronUntil: 0, attendanceStreak: 3, level: 5 }, 7 * 3600, 0, 1, 1, t0) === null && mo.patronPreview({ patronUntil: 0, attendanceStreak: 1, level: 5 }, 9 * 3600, 3600, 1, 1, t0) === null);
   // retention-4: 개척·환생 제안 — 30분 창, 트리거 팩 구매 후 재개방 없음
-  const pio = mo.openMomentOffer(p0, "pioneer", t0);
-  ok("개척 축하 제안: pack-pioneer 30분 창 · 보너스 30", pio.momentOffers["pack-pioneer"]?.kind === "pioneer" && pio.momentOffers["pack-pioneer"].until === t0 + 30 * 60000 && pio.momentOffers["pack-pioneer"].bonusGems === 30);
+  ok("개척 축하·성문 제안은 뺐다 (2026-10-08 간결화) — 순간 제안은 보스 실패·벽·환생·픽업 4종", JSON.stringify(Object.keys(mo.MOMENT_OFFERS).sort()) === JSON.stringify(["boss-fail", "pickup", "rebirth", "wall"]), Object.keys(mo.MOMENT_OFFERS).join(","));
+  // 송사리 모델: 오늘의 보급 하루 1회 · 주말 보급 토·일 주 1회 (QA 지급만 막고 결제된 주문은 지급)
+  const mon = Date.UTC(2026, 9, 5, 3);   // 2026-10-05 월 (KST 낮)
+  const sat = Date.UTC(2026, 9, 10, 3);  // 2026-10-10 토
+  ok("오늘의 보급: 처음 available → 산 뒤 bought · 다음날 다시 available", product.dealState(p0, "daily-deal", mon) === "available" && (() => { const b = mo.pay.applyPurchase(p0, "daily-deal", "qa-d1", mon); return b.applied && b.progress.redGems === 40 && b.progress.enhancementMaterials === p0.enhancementMaterials + 15 && product.dealState(b.progress, "daily-deal", mon) === "bought" && !mo.pay.applyPurchase(b.progress, "daily-deal", "qa-d2", mon + 60000).applied && mo.pay.applyPurchase(b.progress, "daily-deal", "play:d3", mon + 60000).applied && product.dealState(b.progress, "daily-deal", mon + 86400000) === "available"; })());
+  ok("주말 보급: 평일 weekday · 토요일 available → 산 뒤 그 주 bought · 다음 주 available · 가속 24h", product.dealState(p0, "weekend-pack", mon) === "weekday" && product.dealState(p0, "weekend-pack", sat) === "available" && (() => { const b = mo.pay.applyPurchase(p0, "weekend-pack", "qa-w1", sat); return b.applied && b.progress.redGems === 300 && b.progress.idleBoostUntil === sat + 24 * 3600000 && product.dealState(b.progress, "weekend-pack", sat + 86400000) === "bought" && product.dealState(b.progress, "weekend-pack", sat + 7 * 86400000) === "available"; })());
+  ok("패키지 묶음 5개 · 묶음 id 는 모두 카탈로그에 있다", product.PAID_GROUPS.length === 5 && product.PAID_GROUPS.every((g) => g.ids.every((id) => product.STORE_PRODUCTS.some((p) => p.id === id))));
   const reb = mo.openMomentOffer(p0, "rebirth", t0);
   ok("환생 축하 제안: pack-rebirth 30분 창 · 보너스 60 · 구매 시 보석 400+60·코어 10", reb.momentOffers["pack-rebirth"]?.bonusGems === 60 && (() => { const r = mo.pay.applyPurchase(reb, "pack-rebirth", "tx-r", t0 + 1000); return r.applied && r.bonus === 60 && r.progress.redGems === 460 && r.cores === 10; })());
   // retention-5: 픽업 D-2 제안 — 창은 회전 종료 시각과 정의 창(2일) 중 이른 쪽, 첫 구매 2배 + 보너스 150
@@ -405,7 +410,7 @@ ok("L 광고 제거 구매 → adFree", eventShop.pay.applyPurchase(base, "remov
   // 상품당 1회는 판매 화면의 규칙 — QA 지급은 막고, **결제된** 두 번째 주문은 지급한다(돈을 냈는데 못 받는 일 없게, 2026-10-02 리뷰)
   ok("H 벽 돌파 세트: 출전 1번 동료 조각 +30 · 가속 24h · QA 재지급 막힘 · 결제된 재주문은 지급", w1.applied && w1.progress.allyShards.mia === 30 && w1.progress.idleBoostUntil === 24 * 3600000 && !w2.applied && w3.applied);
   ok("H 트리거 조건: 개척 2지역·벽 경험·환생 1회", product.packageTriggered("pioneer", p0) && product.packageTriggered("wall", p0) && product.packageTriggered("rebirth", p0) && !product.packageTriggered("rebirth", base));
-  ok("H 트리거 패키지 3종 카탈로그·Play id 등록", ["pack-pioneer", "pack-wall", "pack-rebirth"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.trigger) && eventShop.pay.PLAY_PRODUCT_IDS.includes(id)));
+  ok("H 트리거 패키지 2종(벽·환생) 카탈로그·Play id 등록 · 개척 축하는 없음", !product.STORE_PRODUCTS.some((p) => p.id === "pack-pioneer") && ["pack-wall", "pack-rebirth"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.trigger) && eventShop.pay.PLAY_PRODUCT_IDS.includes(id)));
 }
 ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, weeklyEventBuys: { week: "2026-36", bought: { x: 2 } }, forgeTicketsPending: 3 }); return n.weeklyEventBuys.bought.x === 2 && n.forgeTicketsPending === 3; })());
 

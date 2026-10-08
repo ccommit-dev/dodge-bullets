@@ -178,18 +178,6 @@ export function SkillPanel({
                       </div>
                     );
                   })()}
-                  {shop.onSale("gate-supply") && (
-                    <div className="exp-store-row">
-                      <img src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
-                      <span>
-                        <b>성문 수비 보급</b>
-                        <em>원정 인장 30 · 스킬 무기 조각 각 8 (11종) · 보석 40</em>
-                      </span>
-                      <button type="button" className="exp-store-buy" disabled={shop.busy !== null} onClick={() => shop.onBuy("gate-supply")}>
-                        {shop.busy === "gate-supply" ? "결제 중…" : shop.price("gate-supply")}
-                      </button>
-                    </div>
-                  )}
                 </>)}
             </section>
           )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -107,7 +107,7 @@ import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAfforda
 import { SkillIcon } from "./ui/SkillIcon";
 import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
-import { PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, packageTriggered } from "./economy/productCatalog";
+import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
 import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
@@ -1667,40 +1667,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     flash(`강화석 상자 개봉 — +${GEM_PACK.materialPackAmount}`);
   };
 
-  const buyCorePack = async () => {
-    if (redGems < GEM_PACK.corePackCost) return;
-    const next = await updateCharacterProgress(userHash, (current) =>
-      current.redGems < GEM_PACK.corePackCost
-        ? current
-        : { ...current, redGems: current.redGems - GEM_PACK.corePackCost },
-    );
-    if (next.redGems === redGems) return;
-    setCharacter(next);
-    setRedGems(next.redGems);
-    setSave((prev) => ({
-      ...prev,
-      skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + GEM_PACK.corePackAmount },
-    }));
-    flash(`스킬 코어 상자 개봉 — +${GEM_PACK.corePackAmount}`);
-  };
-
-  /** 파견 즉시 완료권 — 가장 먼저 끝나는 진행 중 파견 1건을 바로 귀환시킨다 */
-  const buyExpeditionFinish = async () => {
-    const running = character.expeditions.filter((e) => e.endsAt > Date.now());
-    if (running.length === 0 || redGems < GEM_PACK.expeditionFinishCost) return;
-    const next = await updateCharacterProgress(userHash, (current) => {
-      const active = [...current.expeditions].sort((a, b) => a.endsAt - b.endsAt).find((e) => e.endsAt > Date.now());
-      if (!active || current.redGems < GEM_PACK.expeditionFinishCost) return current;
-      return {
-        ...current,
-        redGems: current.redGems - GEM_PACK.expeditionFinishCost,
-        expeditions: current.expeditions.map((e) => (e === active ? { ...e, endsAt: Date.now() } : e)),
-      };
-    });
-    setCharacter(next);
-    setRedGems(next.redGems);
-    flash("파견대가 즉시 귀환했습니다 — 동료 탭에서 보상을 받으세요");
-  };
+  // 스킬 코어 상자·파견 즉시 완료권은 BM 간결화로 뺐다 (2026-10-08) — 코어는 성문 방어·시즌 패스, 파견은 기다리는 콘텐츠
 
   const buyHero = (id: TitanHeroId) => {
     const def = HEROES.find((h) => h.id === id);
@@ -1981,10 +1948,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       "gems-450": { gems: 450, gold: 0, materials: 0, cores: 0 },
       "gems-1200": { gems: 1200, gold: 0, materials: 0, cores: 0 },
       "adventurer-starter": { gems: 80, gold: 5000, materials: 10, cores: 0, shoulder: "scout" },
-      "adventurer-mid": { gems: 250, gold: 50000, materials: 0, cores: 5, shoulder: "shadow" },
-      "adventurer-advanced": { gems: 700, gold: 0, materials: 30, cores: 15, shoulder: "dragon" },
-      // H 트리거 패키지 (QA 무료 경로) — 실결제 지급은 payments/store.ts applyPurchase가 담당
-      "pack-pioneer": { gems: 120, gold: 0, materials: 40, cores: 0 },
+      // 송사리 모델 (2026-10-08) — QA 무료 경로. 실결제 지급·한도 기록은 payments/store.ts applyPurchase 가 담당
+      "daily-deal": { gems: 40, gold: 3000, materials: 15, cores: 0 },
+      "weekend-pack": { gems: 300, gold: 0, materials: 60, cores: 0 },
+      // 순간 제안 패키지 (QA 무료 경로)
       "pack-wall": { gems: 100, gold: 0, materials: 0, cores: 0 },
       "pack-rebirth": { gems: 400, gold: 0, materials: 0, cores: 10 },
     };
@@ -3233,36 +3200,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 <GemMark />{GEM_PACK.materialPackCost}
               </button>
             </article>
-            <article className="titans-card premium-product-card gem-product">
-              <RewardIcon kind="cores" size={38} className="pack-icon" />
-              <div>
-                <strong>스킬 코어 상자</strong>
-                <p>스킬 코어 +{GEM_PACK.corePackAmount} · 새 스킬 학습 재료</p>
-              </div>
-              <button type="button" disabled={redGems < GEM_PACK.corePackCost} onClick={() => void buyCorePack()}>
-                <GemMark />{GEM_PACK.corePackCost}
-              </button>
-            </article>
-            <article className="titans-card premium-product-card gem-product">
-              <img className="pack-icon" src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
-              <div>
-                <strong>파견 즉시 완료권</strong>
-                <p>
-                  진행 중 파견 1건 즉시 귀환
-                  {character.expeditions.filter((e) => e.endsAt > Date.now()).length === 0 && " · 진행 중인 파견 없음"}
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={
-                  redGems < GEM_PACK.expeditionFinishCost ||
-                  character.expeditions.filter((e) => e.endsAt > Date.now()).length === 0
-                }
-                onClick={() => void buyExpeditionFinish()}
-              >
-                <GemMark />{GEM_PACK.expeditionFinishCost}
-              </button>
-            </article></>}
+</>}
             {/* 동료 스킨(코스튬) — 외형 전용 확정 구매. 얼터너티브(별도 동료)와 다른 축 */}
             {premiumCategory === "ally" && Object.entries(ALLY_SKINS).filter(([skinId, def]) => def.gemCost !== null || character.ownedAllySkins.includes(skinId)).map(([skinId, skinDef]) => {
               const owned = character.ownedAllySkins.includes(skinId);
@@ -3319,8 +3257,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         {tab === "premium" && premiumCategory === "package" && !paidStoreVisible() && (
           <p className="paid-gate-note">{paidStoreNote()}</p>
         )}
-        {tab === "premium" && premiumCategory === "package" && paidStoreVisible() && STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id))).map((product) => {
+        {tab === "premium" && premiumCategory === "package" && paidStoreVisible() && (() => {
+          // 2026-10-08 송사리 모델 — 상품을 5묶음(매일·주말 / 보석 / 패스·영구 / 1회 한정 / 외형)으로 보여 준다. 묶음 안 순서는 PAID_GROUPS
+          const paidList = STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id)));
+          return PAID_GROUPS.map((group) => {
+          const items = group.ids.map((id) => paidList.find((p) => p.id === id)).filter((p): p is (typeof paidList)[number] => !!p);
+          if (items.length === 0) return null;
+          return <Fragment key={group.id}><h4 className="paid-group-head">{group.label} <small>{group.note}</small></h4>{items.map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
+          const deal = dealState(character, product.id, nowTick);
+          const dealLabel = deal === "bought" ? (product.id === "daily-deal" ? "오늘 구매 완료" : "이번 주 구매 완료") : deal === "weekday" ? "토·일 한정" : null;
           const doubleReady = firstDoubleAvailable(character, product.id);
           // 실결제 전용 상품(캐릭터·월정액)은 무료 체험 지급 대상이 아니다 — Play Billing 연동 후 판매
           const paidOnly = product.id.startsWith("char-") || product.id === "patron-30d" || product.id === "remove-ads";
@@ -3334,11 +3280,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             return pct ? <em className="gem-bonus-badge">+{pct}% 보너스</em> : null;
           })()}{product.id === "gate-fund" && <em className="gem-bonus-badge">수령: 성문 방어 › 보급·임무</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{product.description}</p><small>{doubleReady ? `${product.contents.join(" · ")} → 첫 구매 시 보석 2배` : product.contents.join(" · ")}</small></div>
           {paidOnly || !FREE_STORE_ENABLED ? (
-            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : QA_BUILD && testModeEnabled() ? "테스트 구매 (즉시 지급)" : "토스 앱·안드로이드 앱에서 구매할 수 있습니다"} disabled={claimingProduct !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : priceLabel(product)}</button>
+            <button type="button" className={paymentsConfigured() ? "paid-buy" : ""} title={paymentsConfigured() ? "스토어 결제" : QA_BUILD && testModeEnabled() ? "테스트 구매 (즉시 지급)" : "토스 앱·안드로이드 앱에서 구매할 수 있습니다"} disabled={claimingProduct !== null || dealLabel !== null} onClick={() => void buyPaidProduct(product.id)}>{claimingProduct === product.id ? "결제 중…" : dealLabel ?? priceLabel(product)}</button>
           ) : (
-            <button type="button" disabled={claimed || claimingProduct !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : "무료 1회 (QA)"}</button>
+            <button type="button" disabled={claimed || claimingProduct !== null || dealLabel !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : dealLabel ?? "무료 1회 (QA)"}</button>
           )}
-        </article>})}
+        </article>;})}</Fragment>;
+          });
+        })()}
         {(tab === "event-shop" || tab === "event-shop2") && (
           <div className="event-offer-grid">
             {/* 실상품 (economy/eventShop.ts): 확정 구매 · 주간 한도 · 진행도 비례 수량 */}

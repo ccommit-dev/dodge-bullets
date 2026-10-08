@@ -16,7 +16,7 @@ import { huntingArea } from "./titans/model";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { sfxRiftClaim } from "./ui/sfx";
 
-type EventTab = "daily" | "rift" | "weekly" | "journal" | "challenge" | "season";
+type EventTab = "daily" | "rift" | "weekly" | "journal" | "season";   // 2026-10-08: 주간 도전은 weekly 탭 안으로 (탭 6 → 5)
 
 import { MISSION_ALL_DONE_GEMS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
@@ -295,18 +295,16 @@ export function EventCenter({
         <p className="brand">ADVENTURE EVENT</p>
         <h2 className="exit-title">모험가 이벤트</h2>
         <div className="event-tabs">
-          {(["daily", "rift", "challenge", "weekly", "season", "journal"] as EventTab[]).map((id) => (
+          {(["daily", "rift", "weekly", "season", "journal"] as EventTab[]).map((id) => (
             <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
               {id === "daily"
                 ? "토벌령"
                 : id === "rift"
                   ? "차원 균열"
                   : id === "weekly"
-                    ? "랭크 시험"
+                    ? "주간 도전"
                     : id === "season"
                       ? "시즌 패스"
-                    : id === "challenge"
-                      ? "주간 도전"
                       : "원정 일지"}
             </button>
           ))}
@@ -399,6 +397,34 @@ export function EventCenter({
           </section>
         )}
 
+        {/* 2026-10-08: 주간 도전(목표 3종)을 먼저, 그 아래 랭크 시험 — 탭 6 → 5 */}
+        {tab === "weekly" && (
+          <section className="journal-event weekly-challenge">
+            <h3>주간 도전</h3>
+            <p className="journal-note">이번 주({save.week}) 3가지 — 요일 균열과 함께 돌아갑니다. 월요일에 새 목표로 바뀝니다.</p>
+            <div className="event-list journal-list">
+              {weeklyChallenges(save.week).map((ch) => {
+                const current = ch.progressOf(save);
+                const done = current >= ch.goal;
+                const claimed = save.weeklyClaimed.includes(ch.id);
+                return (
+                  <article key={ch.id} className={claimed ? "claimed" : ""}>
+                    <div>
+                      <b>{ch.title}</b>
+                      <span>{Math.min(ch.goal, current)} / {ch.goal}</span>
+                      <i><em style={{ width: `${Math.min(100, (current / ch.goal) * 100)}%` }} /></i>
+                      <small className="journal-reward"><RewardChip kind={ch.reward.kind} label={weeklyRewardLabel(ch.reward)} /></small>
+                    </div>
+                    <button disabled={!done || claimed} onClick={() => void claimWeekly(ch.id)}>
+                      {claimed ? "완료" : done ? "받기" : "진행중"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {tab === "weekly" && (
           <section className="weekly-event shadow-arena">
             <img className="shadow-crest" src={assetUrl("ui/idle/shadow-seal.png")} alt="" aria-hidden="true" />
@@ -429,33 +455,6 @@ export function EventCenter({
                     </div>
                     <button disabled={cleared} onClick={() => void challengeShadow(opponent)}>
                       {cleared ? "돌파" : "도전"}
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {tab === "challenge" && (
-          <section className="journal-event weekly-challenge">
-            <h3>주간 도전</h3>
-            <p className="journal-note">이번 주({save.week}) 3가지 — 요일 균열과 함께 돌아갑니다. 월요일에 새 목표로 바뀝니다.</p>
-            <div className="event-list journal-list">
-              {weeklyChallenges(save.week).map((ch) => {
-                const current = ch.progressOf(save);
-                const done = current >= ch.goal;
-                const claimed = save.weeklyClaimed.includes(ch.id);
-                return (
-                  <article key={ch.id} className={claimed ? "claimed" : ""}>
-                    <div>
-                      <b>{ch.title}</b>
-                      <span>{Math.min(ch.goal, current)} / {ch.goal}</span>
-                      <i><em style={{ width: `${Math.min(100, (current / ch.goal) * 100)}%` }} /></i>
-                      <small className="journal-reward"><RewardChip kind={ch.reward.kind} label={weeklyRewardLabel(ch.reward)} /></small>
-                    </div>
-                    <button disabled={!done || claimed} onClick={() => void claimWeekly(ch.id)}>
-                      {claimed ? "완료" : done ? "받기" : "진행중"}
                     </button>
                   </article>
                 );

@@ -4831,3 +4831,18 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .character-equipment-preview .character-equipment-facing { width: 36px; height: 72px; --hero-size: 36px; }
 .character-equipment-preview .equipped-character { width: 36px; height: 72px; }
 .character-equipment-preview .character-equipment-facing { transform: none; }   /* 옛 translate(-17.6%) 오프셋 제거 */
+
+/* ── 패키지 탭 묶음 머리글 (2026-10-08, 송사리 모델: 매일·주말 / 보석 / 패스·영구 / 1회 한정 / 외형) ── */
+.paid-group-head { margin: 10px 2px 4px; font: 700 13px/1.2 "Jua", sans-serif; color: var(--arc-ink, #3a2410); display: flex; align-items: baseline; gap: 6px; }
+.paid-group-head small { font-size: 11px; font-weight: 400; opacity: .7; }
+.paid-group-head:first-child { margin-top: 2px; }
+.page-premium .titans-shop .paid-group-head { grid-column: 1 / -1; }
+
+/* 이벤트 센터 탭 5개 — 가로 스크롤 없이 한 줄 · 주간 탭은 목표 먼저, 랭크 시험은 작게 (2026-10-08) */
+@media (max-width: 600px) {
+  .event-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); overflow-x: visible; padding: 6px 4px; }
+  .event-tabs button { padding: 9px 2px; font-size: 10px; letter-spacing: -.2px; }
+  .shadow-arena .shadow-crest { width: 48px; height: 48px; }
+  .shadow-arena h3 { font-size: 15px; }
+  .shadow-arena .shadow-note { font-size: 11px; margin: 2px 0 4px; }
+}

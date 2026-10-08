@@ -11,7 +11,7 @@
  * 영수증 검증: 현재는 플러그인이 돌려준 결과를 신뢰한다(로컬). 서버 검증을 붙일 때는
  * verifyReceipt()만 교체하면 된다 (LIVEOPS §3.5 — 서버 검증 도입 시 개인정보 방침 재작성).
  */
-import { FIRST_DOUBLE_IDS, PATRON, STORE_PRODUCTS } from "../economy/productCatalog";
+import { FIRST_DOUBLE_IDS, PATRON, STORE_PRODUCTS, dealKey, dealState } from "../economy/productCatalog";
 import { closeMomentOffer, momentBonusGems } from "../economy/momentOffers";
 import { normalizeSeason } from "../economy/seasonPass";
 import { QA_BUILD, readProgressReliably, testModeEnabled, updateCharacterProgress } from "../progression/storage";
@@ -23,7 +23,7 @@ import type { PurchaseResult } from "./adapter";
 import { notifyStoreChanged } from "./prices";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
-export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "adventurer-mid", "adventurer-advanced", "char-obsidian", "char-dawn", "patron-30d", "pack-pioneer", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost", "gate-supply", "gate-fund"] as const;
+export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "daily-deal", "weekend-pack", "char-obsidian", "char-dawn", "patron-30d", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost", "gate-fund"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
 /**
@@ -71,22 +71,21 @@ export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
     case "gems-80": return { gems: 80 };
     case "gems-450": return { gems: 450 };
     case "gems-1200": return { gems: 1200 };
+    // 송사리 모델 (2026-10-08) — 하루 ₩1,000 · 주말 ₩5,000. 한도는 dealState, 기록은 deal: 키
+    case "daily-deal": return { gems: 40, materials: 15, gold: 3000 };
+    case "weekend-pack": return { gems: 300, materials: 60, idleBoostHours: 24 };
     case "adventurer-starter": return { gems: 80, gold: 5000, materials: 10, shoulder: "scout" };
-    case "adventurer-mid": return { gems: 250, gold: 50000, cores: 5, shoulder: "shadow" };
-    case "adventurer-advanced": return { gems: 700, materials: 30, cores: 15, shoulder: "dragon" };
     case "char-obsidian": return { character: "obsidian" };
     case "char-dawn": return { character: "dawn" };
     case "char-ember": return { character: "ember" };
     case "char-frost": return { character: "frost" };
     case "patron-30d": return { patronDays: PATRON.days };
     // H 트리거 패키지
-    case "pack-pioneer": return { gems: 120, materials: 40, allyShards: 20 };
     case "pack-wall": return { allyShards: 30, idleBoostHours: 24, gems: 100 };
     case "pack-rebirth": return { gems: 400, cores: 10, allyShards: 40 };
     case "season-pass": return { seasonPaid: true };
     case "remove-ads": return { adFree: true };
     // 성문 방어 (2026-10-02)
-    case "gate-supply": return { seals: 30, skillShards: 8, gems: 40 };
     case "gate-fund": return { gateFund: true };
     default: return null;
   }
@@ -112,7 +111,9 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
   const product = STORE_PRODUCTS.find((p) => p.id === productId);
   // 회수된 주문(revoked:)은 다시 지급하지 않는다 — 환불 뒤 복구가 같은 주문을 또 지급하는 일이 없게
   // 트리거 팩 1회 규칙은 판매 화면의 것 — **결제된** 두 번째 주문은 지급한다(돈을 냈는데 못 받고 토스 주문이 영원히 대기하던 것, 리뷰 #5). QA 지급만 막는다
-  if (!grant || current.claimedRewards.includes(key) || current.claimedRewards.includes(`revoked:${productId}:${transactionId}`) || (product?.trigger && transactionId.startsWith("qa-") && packagePurchased(current, productId))) {
+  if (!grant || current.claimedRewards.includes(key) || current.claimedRewards.includes(`revoked:${productId}:${transactionId}`) || (product?.trigger && transactionId.startsWith("qa-") && packagePurchased(current, productId))
+    // 한도 상품(오늘의 보급·주말 보급)도 QA 지급만 막는다 — 결제된 주문은 늘 지급
+    || (transactionId.startsWith("qa-") && dealState(current, productId, now) !== null && dealState(current, productId, now) !== "available")) {
     return { progress: current, cores: 0, applied: false, doubled: false, bonus: 0 };
   }
   const doubled = firstDoubleAvailable(current, productId);
@@ -140,7 +141,7 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
       ? (Object.fromEntries(Object.entries(current.expeditionShards).map(([id, n]) => [id, n + (grant.skillShards ?? 0)])) as CharacterProgress["expeditionShards"])
       : current.expeditionShards,
     gateFund: grant.gateFund ? { ...current.gateFund, paid: true } : current.gateFund,
-    claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : []), ...(gems > 0 ? [`ledger:${productId}:${transactionId}:${gems}`] : [])],
+    claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : []), ...(gems > 0 ? [`ledger:${productId}:${transactionId}:${gems}`] : []), ...(dealKey(productId, now) && !current.claimedRewards.includes(dealKey(productId, now)!) ? [dealKey(productId, now)!] : [])],
   };
   const withOffer = closeMomentOffer(progress, productId);
   return { progress: withOffer, cores: grant.cores ?? 0, applied: true, doubled, bonus };

@@ -114,8 +114,10 @@ await sleep(600);
 await clickText(".premium-category-tabs button", "패키지");
 await sleep(400);
 r = await page.evaluate(() => ({ names: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent), badges: document.querySelectorAll(".first-double-badge").length }));
-ok("H 트리거 패키지(벽 돌파·환생) 노출 · 개척(지역3)도 노출", r.names.some((n) => /벽 돌파/.test(n)) && r.names.some((n) => /환생 세트/.test(n)) && r.names.some((n) => /개척 축하/.test(n)), r.names.filter((n) => /세트/.test(n)).join("|"));
+ok("H 트리거 패키지(벽 돌파·환생) 노출 · 개척 축하는 없다(2026-10-08 간결화) · 오늘의 보급·주말 보급 카드", r.names.some((n) => /벽 돌파/.test(n)) && r.names.some((n) => /환생 세트/.test(n)) && !r.names.some((n) => /개척 축하/.test(n)) && r.names.some((n) => /오늘의 보급/.test(n)) && r.names.some((n) => /주말 보급/.test(n)), r.names.join("|"));
 ok("H 보석팩 3종에 첫 구매 2배 배지", r.badges === 3, String(r.badges));
+r = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".paid-group-head")].map((h) => h.firstChild?.textContent?.trim()), names: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent) }));
+ok("패키지 탭 5묶음(매일·주말/보석/패스·영구/1회 한정/캐릭터·코스튬) · 중급·고급 모험가 세트 없음", r.heads.length === 5 && r.heads[0] === "매일·주말" && !r.names.some((n) => /중급 모험가|고급 모험가/.test(n)), r.heads.join("/"));
 
 // ── G. 시즌 패스: 모험 팝업 진입 · 수령 · 유료 트랙 구매(QA) ──
 // 현재 시즌 번호 — 0 으로 고정하면 시즌이 넘어간 날(2026-10-05~) 저장이 새 시즌으로 초기화돼 0/30단이 된다
