@@ -2527,7 +2527,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           <strong>{label}</strong>
           {/* 보스 약점 배지 (2026-10-08) — 속성·남은 시간 링. 같은 속성 스킬·동료가 ×1.6 */}
           {boss && bossWeak && (
-            <i key={bossWeak.seq} className={`boss-weak weak-${bossWeak.element}`} style={{ "--weak-ms": `${Math.max(500, bossWeak.until - performance.now())}ms` } as CSSProperties} aria-label={`약점 ${WEAK_LABEL[bossWeak.element]}`}>
+            <i key={bossWeak.seq} className={`boss-weak weak-${bossWeak.element}`} style={{ "--weak-ms": `${bossWeak.windowMs}ms` } as CSSProperties} aria-label={`약점 ${WEAK_LABEL[bossWeak.element]}`}>
               <b>약점</b><span>{WEAK_LABEL[bossWeak.element]}</span>
             </i>
           )}
