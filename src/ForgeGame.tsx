@@ -473,7 +473,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     <div className="forge-layer" style={forgeStyle}>
       <header className="forge-header">
         <button type="button" className="forge-back" onClick={() => void returnToHub()}>
-          ← 사냥터
+          <img className="ui-back-icon" src={assetUrl("ui/content-icons/ui-back.png")} alt="" aria-hidden="true" /> 사냥터
         </button>
         <div className="forge-wallet">
           <span>공유 GOLD</span>

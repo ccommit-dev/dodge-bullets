@@ -327,6 +327,21 @@ def cmd_costume(a):
             save(cutout(im), f"costume-{a.id}-{mode}-{i}.png")
 
 
+def cmd_recolor(a):
+    """고른 그림(투명 PNG)의 색만 바꾼다 — img2img, IP 참조 없이(참조가 털색을 다시 갈색으로 끌었다). 자세·의상·크기는 strength 가 낮을수록 유지.
+    2026-10-08 동료 털색 구분용. 출력 art-gen/out/<out>.png (오려낸 뒤)"""
+    src = Image.open(a.file).convert("RGBA")
+    pipe = load_pipe(img2img=True)
+    pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.0)
+    g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
+    bg = Image.new("RGBA", src.size, (255, 255, 255, 255))
+    bg.alpha_composite(src)
+    init = bg.convert("RGB").resize((1024, 1024))
+    im = pipe(prompt=f"{a.prompt}, {STYLE}", negative_prompt=NEG + ", brown fur, tan fur", image=init, strength=a.strength, num_inference_steps=26,
+              guidance_scale=7.0, generator=g, ip_adapter_image=[style_refs()]).images[0]
+    save(cutout(im), f"{a.out}.png")
+
+
 def cmd_boss(a):
     src = Image.open(a.file).convert("RGBA")
     seed = a.seed or BASE_SEED
@@ -542,7 +557,9 @@ def cmd_backdrop(a):
     pipe = load_pipe(ip=False)
     for seed in (a.seeds or [a.seed or BASE_SEED]):
         g = torch.Generator(dev()).manual_seed(seed)
-        im = pipe(prompt=f"{a.prompt}, {BACKDROP_STYLE}", negative_prompt=BACKDROP_NEG, num_inference_steps=26,
+        # ARTGEN_BG_NEG: 배경 전용 추가 네거티브(16차: 아이소메트릭·부감 금지)
+        neg = BACKDROP_NEG + ((", " + os.environ["ARTGEN_BG_NEG"]) if os.environ.get("ARTGEN_BG_NEG") else "")
+        im = pipe(prompt=f"{a.prompt}, {BACKDROP_STYLE}", negative_prompt=neg, num_inference_steps=26,
                   guidance_scale=6.0, generator=g, width=832, height=1216).images[0]
         save(im, f"backdrop-{a.id}-s{seed}.png")
 
@@ -573,6 +590,7 @@ if __name__ == "__main__":
     c = sub.add_parser("char"); c.add_argument("id"); c.add_argument("prompt"); c.add_argument("--pose-from"); c.add_argument("--seed", type=int); c.add_argument("--states", help="idle,run,attack,hit 중 일부만"); c.add_argument("--no-pose", action="store_true"); c.add_argument("--ip", type=float); c.set_defaults(fn=cmd_char)
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
+    rc = sub.add_parser("recolor"); rc.add_argument("file"); rc.add_argument("out"); rc.add_argument("prompt"); rc.add_argument("--strength", type=float, default=0.5); rc.add_argument("--seed", type=int); rc.add_argument("--ip", type=float); rc.set_defaults(fn=cmd_recolor)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--seeds", type=int, nargs="*"); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
