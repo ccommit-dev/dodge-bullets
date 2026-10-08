@@ -5,6 +5,8 @@ import { drawRecurveBow } from "./arrowArt";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
+/** 쏘는 동작 길이(ms) — 기본 사격 재사용(0.55s)보다 짧아 연사해도 프레임이 매번 처음부터 돈다 */
+export const SHOOT_MS = 300;
 /** Source sheet faces left; multiply logical facing by this when drawing. */
 // 대기 시트가 오른쪽을 보는 원화로 교체됐다(2026-09-08) — 예전 정면/왼쪽 시트는 -1 이었다
 const EXPEDITION_NATIVE_FACING = 1;
@@ -59,6 +61,41 @@ function drawHeroBow(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player)
   ctx.restore();
 }
 
+/**
+ * 지팡이 (2026-10-08, 사용자: "활이나 지팡이로 마법을 쏠 때 애니메이션이 동작을 안 해") — 장착 무기가 지팡이면 활 대신
+ * 지팡이를 조준 방향으로 들고, 재사용이 차는 동안 끝의 구슬이 커지며, 쏘는 순간(shotFlashMs) 구슬이 터지고 고리가 퍼진다.
+ */
+function drawHeroStaff(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player): void {
+  const hand = bowHand(world);
+  const L = p.radius * 2.6;
+  const release = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
+  const cd = Math.max(0.01, basicCooldownOf(world));
+  const charge = Math.min(1, 1 - Math.max(0, world.basicTimer) / cd);
+  ctx.save();
+  ctx.translate(hand.x, hand.y);
+  ctx.rotate(world.aimAngle);
+  ctx.translate(-4 * release, 0);   // 반동
+  if (p.anim === "hit") ctx.globalAlpha = 0.75;
+  // 막대 — 조준선 위로 L 만큼
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#5b3a1e"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-L * 0.35, 0); ctx.lineTo(L * 0.6, 0); ctx.stroke();
+  ctx.strokeStyle = "#d9a441"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-L * 0.3, -1); ctx.lineTo(L * 0.55, -1); ctx.stroke();
+  // 구슬 — 재사용이 찰수록 크고 밝다. 쏘는 순간 터지며 고리가 퍼진다
+  const orb = 4 + charge * 3 + release * 5;
+  const g = ctx.createRadialGradient(L * 0.62, 0, 1, L * 0.62, 0, orb * 2.2);
+  g.addColorStop(0, "#ffffff"); g.addColorStop(0.35, "#93c5fd"); g.addColorStop(1, "rgba(59,130,246,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(L * 0.62, 0, orb * 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = release > 0 ? "#ffffff" : "#bfdbfe";
+  ctx.beginPath(); ctx.arc(L * 0.62, 0, orb * 0.7, 0, Math.PI * 2); ctx.fill();
+  if (release > 0) {
+    ctx.strokeStyle = `rgba(191,219,254,${0.9 * release})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(L * 0.62, 0, orb * 2.6 * (1.4 - release), 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export function createPlayer(width: number, floorY: number): Player {
   return {
     x: width / 2,
@@ -79,6 +116,8 @@ export function createPlayer(width: number, floorY: number): Player {
     slowCdMs: 0,
     slowActiveMs: 0,
     landingFxMs: 0,
+    shootMs: 0,
+    shootAngle: -Math.PI / 2,
   };
 }
 
@@ -98,6 +137,8 @@ export function resetPlayer(player: Player, width: number, floorY: number, extra
   player.dashCdMs = 0;
   player.dashActiveMs = 0;
   player.slowCdMs = 0;
+  player.shootMs = 0;
+  player.shootAngle = -Math.PI / 2;
   player.slowActiveMs = 0;
   player.landingFxMs = 0;
 }
@@ -122,7 +163,9 @@ export function drawStickman(
   const idleHero = getExpeditionHero();
   // 검 시트(hero-attack-sheet)는 지웠다 — 활만 쓰는 콘텐츠다 (2026-10-01). 일제 사격은 **장착 무기의** 시트
   // (활을 당기는 / 지팡이를 드는 같은 인물)로 그리고, 시트가 없으면 대기 시트 위에 무기를 당기는 포즈로 그린다.
-  const attackHero = p.anim === "skill" ? getWeaponAttackSheet(world.rangedWeapon) : null;
+  // 쏘는 동작 (2026-10-08, 사용자: "활이나 지팡이로 쏠 때 애니메이션이 동작을 안 해"): 기본 사격·스킬 무기 발사마다 무기 시트가 한 번 돈다
+  const shooting = p.shootMs > 0 && p.anim !== "dead" && p.anim !== "hit" && p.anim !== "dash";
+  const attackHero = p.anim === "skill" || shooting ? getWeaponAttackSheet(world.rangedWeapon) : null;
   const hero = attackHero ?? idleHero;
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
@@ -131,7 +174,7 @@ export function drawStickman(
     const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
     // 무기 시트는 메김 → 당김 → 놓음 → 복귀 순서라 돌리지 않고 한 번만 지나간다 (SWING_MS 320ms ÷ 4)
-    const frame = attackHero ? Math.min(3, Math.floor(p.animTime / 0.085)) : Math.floor(p.animTime * frameRate) % 4;
+    const frame = attackHero ? (p.anim === "skill" ? Math.min(3, Math.floor(p.animTime / 0.085)) : Math.min(3, Math.floor((SHOOT_MS - p.shootMs) / (SHOOT_MS / 4)))) : Math.floor(p.animTime * frameRate) % 4;
     const drawHeight = p.radius * 4.7;
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
     ctx.save();
@@ -141,6 +184,21 @@ export function drawStickman(
     const nativeFacing = EXPEDITION_NATIVE_FACING;   // 무기 시트도 대기처럼 오른쪽을 본다 (prompt: facing right)
     ctx.scale(p.facing * nativeFacing, 1);
     if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
+    // 위를 바라본다 (2026-10-08, 사용자: "방어 원정에서는 위를 바라보고"): 몬스터는 위에서 내려오므로 조준 각도만큼
+    // 몸이 뒤로 젖혀지고 머리가 들린다. 옆모습 원화라 완전한 뒷모습은 못 되지만 "위를 보며 쏜다"가 읽힌다
+    if (p.anim !== "dead" && p.anim !== "hit") {
+      const aimUp = Math.max(0, -Math.sin(world.aimAngle));
+      const aimFwd = Math.cos(world.aimAngle) * p.facing;   // 바라보는 쪽이면 +, 등 뒤면 −
+      ctx.rotate(-0.2 * aimUp * (aimFwd >= 0 ? 1 : -1) - 0.08 * aimUp);
+      ctx.translate(0, -3 * aimUp);
+    }
+    if (shooting) {
+      // 쏘는 순간 — 당겼다 놓는 반동: 300ms 안에서 뒤로 2px → 앞으로 5px, 살짝 늘어난다
+      const k = 1 - p.shootMs / SHOOT_MS;
+      const rel = k < 0.3 ? 0 : Math.sin(((k - 0.3) / 0.7) * Math.PI);
+      ctx.translate(-2 * (1 - rel) + 5 * rel, -2 * rel);
+      ctx.scale(1 + 0.04 * rel, 1 - 0.03 * rel);
+    }
     if (p.anim === "jump" || p.anim === "fall") {
       // 고정 포즈(-0.08 / +0.06)는 정점과 착지에서 순간 전환되어 뚝 튄다.
       // 수직 속도를 그대로 포즈로 환산하면 상승→정점→낙하가 한 곡선으로 이어진다.
@@ -200,7 +258,7 @@ export function drawStickman(
       drawHeight,
     );
         ctx.restore();
-    if (p.anim !== "dead") drawHeroBow(ctx, world, p);
+    if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
 
     if (p.landingFxMs > 0) {
       const progress = 1 - p.landingFxMs / 180;

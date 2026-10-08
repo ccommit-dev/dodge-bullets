@@ -99,6 +99,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     runSkills: {},
     collectionMul: 1,
     affinityPop: null,
+    bossWeak: null,
     sparks: makeSparks(),
     shakeMs: 0,
     shakeAmp: 0,
@@ -175,11 +176,12 @@ function clampX(world: GameWorld): void {
 /** 대장 처치 수 — 스테이지 표(stages.ts bossCuts: 4 + 0.55×스테이지, 중간 보스 ×1.25 · 장 대장 ×2)가 기준 (2026-10-02) */
 export function bossCutsFor(stageIndex: number): number { return Math.max(1, Math.round(getStage(stageIndex).bossCuts * TUNING.bossCutMul)); }   // 2 → 6 (2026-10-01): 좌우 이동만 남은 뒤 성장이 갈리는 지렛대는 보스를 깎는 속도다 — 새 계정 S4 2/20 · 중간 10/20 · 강함 18/20
 
-/** 런 레벨업에 필요한 XP — 베기 1 · 회피 1 · 보스 베기 4. 레벨이 오를수록 더 필요하다 */
+/** 런 레벨업에 필요한 XP — 베기 1 · 회피 1 · 보스 베기 4 · 스킬 처치 1 (2026-10-08). 30~60초마다 한 장이 목표 — 봇 시뮬(scratchpad measure-picks)로 맞췄다 */
 export function runXpToNext(level: number): number {
-  return 8 + level * 5;
+  return 20 + level * 12;
 }
-export const RUN_TEMPO_PER_LEVEL = 0.045;
+// 2026-10-08: 스킬 처치도 XP 를 주어 레벨이 2~3배 자주 오른다 — 템포는 레벨당 4.5% → 3% 로 완만하게 (상한 ×1.25 는 그대로)
+export const RUN_TEMPO_PER_LEVEL = 0.03;
 export const RUN_TEMPO_CAP = 1.25;
 /** 런 XP 획득 — 레벨업하면 levelUps 를 올리고(UI 가 성장 선택으로 소비) tempo 를 올린다 */
 export function gainRunXp(world: GameWorld, amount: number): void {
@@ -223,6 +225,7 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.slashDebris.forEach((d) => { d.active = false; });
   world.bossSpawned = false;
   world.bossDefeated = false;
+  world.bossWeak = null;
   world.bossCutsLeft = 0;
   world.bossMaxCuts = bossCutsFor(stageIndex);
   world.runXp = 0;
@@ -267,6 +270,7 @@ export function beginStage(world: GameWorld, stageIndex: number): void {
   world.slashDebris.forEach((d) => { d.active = false; });
   world.bossSpawned = false;
   world.bossDefeated = false;
+  world.bossWeak = null;
   world.bossCutsLeft = 0;
   world.bossMaxCuts = bossCutsFor(stageIndex);
   resetArrows(world);
@@ -387,6 +391,7 @@ export function updateWorld(
 
   // Anim state
   if (wasOnGround === false && p.onGround) p.landingFxMs = 180;
+  if (p.shootMs > 0) p.shootMs = Math.max(0, p.shootMs - dtSec * 1000);
 
   if (p.anim !== "dead" && p.anim !== "hit") {
     if (p.dashActiveMs > 0) {

@@ -1,6 +1,9 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
-import { cutArrow, TUNING } from "./arrows";
+import { cutArrow, pushSlashFx, TUNING } from "./arrows";
+import { gainRunXp } from "./world";
+import { DODGE_WEAK_EXTRA_POWER } from "./bossWeak";
+import { SHOOT_MS } from "./player";
 import {
   arrowHpFor, BASIC_DAMAGE, basicCooldownMul, basicDamageMul,
   BASIC_SHOT_SPEED,
@@ -273,10 +276,14 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage
     }
   }
   if (a.boss) {
-    if (p <= 0) return false;
+    // 약점 무기 (2026-10-08): 처치 −1 추가 · "약점!" 팝. 기본 사격(위력 0)은 약점이어도 흠집을 못 낸다
+    const weak = world.bossWeak !== null && element === world.bossWeak && power > 0;
+    const pw = p + (weak ? DODGE_WEAK_EXTRA_POWER : 0);
+    if (pw <= 0) return false;
     // 보스는 위력만큼 '격추'한다 — 마지막 한 번까지 사격이 한다(일제 사격이 없어졌으므로, 2026-10-01). 파편·격파는 arrows.cutArrow 가 맡는다
     let took = 0;
-    for (let i = 0; i < p && a.active && a.bossCutsLeft > 0; i += 1) { cutArrow(world, a, 1e9); took += 1; }
+    for (let i = 0; i < pw && a.active && a.bossCutsLeft > 0; i += 1) { cutArrow(world, a, 1e9); took += 1; }
+    if (took > 0 && weak) { world.affinityPop = { x: a.x, y: a.y, element, ms: 620, text: "약점!" }; spawnFx(world, element, a.x, a.y, 34, 460); }
     if (took > 0) {
       world.skillKills += 1;
       burst(world, element, a.x, a.y, 10 + took * 3, 190);
@@ -291,6 +298,9 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage
   a.active = false;
   world.skillKills += 1;
   world.supplies += 1;
+  // 루프 ① (2026-10-08): 스킬 처치도 런 XP — 카드가 보스 구간에만 몰리지 않고 30~60초마다 온다 · ③ 피해 숫자가 뜬다
+  gainRunXp(world, 1);
+  pushSlashFx(world, a.x, a.y, Math.round(damage * aff.mul * world.runMods.damageMul * 100), false, aff.power > 0, 0.3, ((Math.floor(a.x) % 13) - 6));
   // 손맛 — 파편이 튀고 연속 요격이 쌓인다. 얼어붙은 것을 부수면 얼음 조각이 더 튄다
   burst(world, chilled ? "ice" : element, a.x, a.y, chilled ? 12 : 7, 150);
   world.streak = world.streakMs > 0 ? world.streak + 1 : 1;
@@ -317,6 +327,12 @@ function recoil(world: GameWorld, ang: number, from?: { x: number; y: number }):
   world.shotFlashMs = 160;
   world.shotAngle = ang;
   world.sfx.shot += 1;
+  // 주인공이 쏘는 쪽을 본다 + 쏘는 동작 (2026-10-08) — 정령(from)이 쏠 때도 주인공은 그쪽을 본다
+  const p = world.player;
+  p.shootMs = SHOOT_MS;
+  p.shootAngle = ang;
+  const cx = Math.cos(ang);
+  if (cx > 0.18) p.facing = 1; else if (cx < -0.18) p.facing = -1;
   const ox = from ? from.x : world.player.x, oy = from ? from.y : world.player.y - 14;
   const reach = from ? BOW_REACH + 12 : 16;
   const mx = ox + Math.cos(ang) * reach, my = oy + Math.sin(ang) * reach;

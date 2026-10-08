@@ -2,6 +2,7 @@ import { getStage } from "./stages";
 import { BASIC_SHOT_COOLDOWN, gaugeGainMul } from "./skills";
 import { bossCutsFor, gainRunXp } from "./world";
 import { bossPatternFor } from "./bossPatterns";
+import { loadoutElements, rollDodgeWeak } from "./bossWeak";
 import type { Arrow, ArrowPattern, GameWorld } from "./types";
 
 const POOL_SIZE = 260;   // 120 → 260: 몬스터가 3배 느려져 화면에 오래 머문다 — 풀이 마르면 생성이 조용히 빠져 쉬워 보인다
@@ -450,11 +451,12 @@ export function spawnCutDebris(world: GameWorld, a: Arrow, mode: "shatter" | "re
   }
 }
 
-function pushSlashFx(world: GameWorld, x: number, y: number, value: number, boss: boolean, crit = false, energy = 0): void {
+export function pushSlashFx(world: GameWorld, x: number, y: number, value: number, boss: boolean, crit = false, energy = 0, dx?: number): void {
   const fx = world.slashHitFx.find((item) => !item.active) ?? world.slashHitFx[0];
   if (!fx) return;
   fx.active = true;
-  fx.x = x + (Math.random() - 0.5) * 18;
+  // dx 를 주면 결정적(스킬 처치 숫자 — 봇 시뮬 수열을 안 건드린다), 없으면 검격처럼 흔든다
+  fx.x = x + (dx ?? (Math.random() - 0.5) * 18);
   fx.y = y - 8;
   fx.value = value;
   fx.lifeMs = boss ? 850 : crit ? 780 : 620;
@@ -650,7 +652,11 @@ function splitArrow(world: GameWorld, arrow: Arrow): void {
     // 처치 수가 TUNING.bossCutMul(3)배가 된 뒤로 깎일 때마다 파편·튀기를 하면 세 배가 쏟아져 몬스터 풀이 찼다(시뮬 45 스테이지) —
     // 배수만큼에 한 번만 (예전 빈도)
     const beat = (arrow.bossMaxCuts - arrow.bossCutsLeft) % Math.max(1, Math.round(TUNING.bossCutMul)) === 0;
-    if (beat) spawnBossSplitPattern(world, { ...arrow });
+    if (beat) {
+      spawnBossSplitPattern(world, { ...arrow });
+      // 파편 패턴과 함께 약점도 바뀐다 — 보스가 "다음 답"을 요구한다
+      world.bossWeak = rollDodgeWeak(loadoutElements(world.runSkills), world.bossWeak);
+    }
     if (arrow.bossCutsLeft <= 0) {
       arrow.active = false;
       world.bossDefeated = true;
@@ -743,6 +749,8 @@ function spawnBossArrow(world: GameWorld): void {
   world.bossSpawned = true;
   world.bossCutsLeft = cuts;
   world.bossMaxCuts = cuts;
+  // 보스 약점 (2026-10-08) — 장착 무기 중 하나. 기본 사격뿐이면 없다
+  world.bossWeak = rollDodgeWeak(loadoutElements(world.runSkills), null, world.stageIndex);
 }
 
 /** @returns accumulated damage from projectiles that hit this frame. */

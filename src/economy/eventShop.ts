@@ -20,6 +20,8 @@ export type EventGrant = {
   /** 대장간 방지권 — ForgeSave.tickets (사냥터에서 즉시 반영은 progress 경유 불가라 forgeTickets 필드에 적립) */
   forgeTickets?: number;
   gems?: number;
+  /** 원정 인장 — 성문 방어 칩·스킬 무기를 올린다 (2026-10-08, 루프 ⑤ 메타 상품) */
+  seals?: number;
   /** 방치 가속 시간(h) */
   idleBoostHours?: number;
   /** 끝없는 성벽 등반권 (game/towerTickets) */
@@ -61,6 +63,12 @@ export const EVENT_PRODUCTS: EventProduct[] = [
     id: "ev-boss-supply", tab: "event-shop", name: "보스 토벌 보급품", desc: "강화 방지권 · 강화석 · 골드", badge: "LIMITED", icon: "forge", gemCost: 90, weeklyLimit: 3,
     grant: (p) => ({ forgeTickets: 2, materials: 30, gold: bossGold(p, 600) }),
     summary: (p) => `방지권 2 · 강화석 30 · 골드 ${fmt(bossGold(p, 600))}`,
+  },
+  // ── 루프 ⑤ 메타 상품 (2026-10-08, docs/LOOP_2026-10-08.md): 빌드를 바꾸는 유일한 보석 상품 — 재화 탭에도 같이 보인다 ──
+  {
+    id: "gem-seal-pack", tab: "event-shop", name: "원정 인장 묶음", desc: "성문 방어 칩·스킬 무기를 올리는 인장", badge: "META", icon: "dodge", gemCost: 90, weeklyLimit: 3,
+    grant: () => ({ seals: 20 }),
+    summary: () => "원정 인장 20 (주 3회)",
   },
   // ── 특별 상점: 성장 가속 ──
   {

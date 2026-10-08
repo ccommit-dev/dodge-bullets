@@ -1,6 +1,6 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
-import { ELEMENT_COLOR, type Element } from "./skills";
+import { ELEMENT_COLOR, ELEMENT_LABEL, type Element } from "./skills";
 import { spiritPos } from "./skillShots";
 import { drawWoodArrow } from "./arrowArt";
 import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
@@ -205,8 +205,9 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = ELEMENT_COLOR[ap.element];
     ctx.strokeStyle = "rgba(2,6,23,.85)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
     ctx.font = "900 15px system-ui"; ctx.textAlign = "center";
-    ctx.strokeText("상성!", ap.x, ap.y - 14 - t * 26);
-    ctx.fillText("상성!", ap.x, ap.y - 14 - t * 26);
+    const popText = ap.text ?? "상성!";
+    ctx.strokeText(popText, ap.x, ap.y - 14 - t * 26);
+    ctx.fillText(popText, ap.x, ap.y - 14 - t * 26);
     ctx.restore();
   }
 
@@ -963,7 +964,9 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = "#fff";
     ctx.font = "900 11px system-ui";
     ctx.textAlign = "center";
-    ctx.fillText(`${getStage(world.stageIndex).bossName} · 남은 처치 ${world.bossCutsLeft}/${world.bossMaxCuts}`, width * 0.5, barY + 17);
+    ctx.fillText(`${getStage(world.stageIndex).bossName} · 남은 처치 ${world.bossCutsLeft}/${world.bossMaxCuts}${world.bossWeak ? ` · 약점 ${ELEMENT_LABEL[world.bossWeak]}` : ""}`, width * 0.5, barY + 17);
+    // 약점 무기 색 점 — 글자 색만으로는 못 알아본다
+    if (world.bossWeak) { ctx.fillStyle = ELEMENT_COLOR[world.bossWeak]; ctx.beginPath(); ctx.arc(barX + barW - 10, barY + 12.5, 5, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
   }
 

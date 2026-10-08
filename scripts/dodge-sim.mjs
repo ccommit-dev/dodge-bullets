@@ -163,7 +163,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     // 실제 초(= 월드 초 ÷ pace) — 대장이 나온 뒤 쓰러지기까지
     bossFightSec: bossAt >= 0 && killedAt > 0 ? Math.round((killedAt - bossAt) / 60) : -1,
     realSec: Math.round(frames / 60),
-    skillKills: w.skillKills, ultCount: w.ultCount, runSkills: Object.keys(w.runSkills).filter((k) => w.runSkills[k]),
+    skillKills: w.skillKills, ultCount: w.ultCount, picks: w.runLevel - 1, runSkills: Object.keys(w.runSkills).filter((k) => w.runSkills[k]),
     hits: 0, barrierBreaks: w.barrierBreaks,
   };
 }
