@@ -4783,3 +4783,51 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
   .exp-menu-content > .brand { font-size: 9px; margin: 0; }
   .exp-menu-content .wallet-bar { grid-column: 1 / -1; }
 }
+
+/* ═══════════ 마이페이지 — 모바일 게임 프로필 (2026-10-08 사용자: "UI 가 너무 웹스럽고 난잡, 단순·명료하게") ═══════════
+   머리: 제목 한 줄 + 아이콘 버튼 두 개 · 설명 문단 없음. 카드: 아바타 · 이름/레벨/칭호 · 전투력 한 줄, 아래 3칸 수치, 방치 수급 한 줄 */
+.character-page { padding-top: max(60px, env(safe-area-inset-top) + 52px) !important; padding-left: 12px !important; padding-right: 12px !important; }
+.character-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+.character-header > div { display: flex; align-items: center; gap: 8px; }
+.character-header .character-eyebrow { display: none; }
+.character-header h1 { margin: 0; font-size: 22px; line-height: 1; }
+.character-header > div > p:not(.character-eyebrow) { display: none; }
+.character-header .share-card-btn, .character-header .character-back { min-height: 36px; padding: 4px 12px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; font-size: 12px; white-space: nowrap; }
+.character-header .character-back { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 3px 0 #92400e; }
+/* 프로필 카드: 2열(아바타 | 정체성) + 전체 폭 수치 줄 */
+.character-hero-card { display: grid; grid-template-columns: 84px minmax(0, 1fr); grid-template-areas: "art id" "stats stats" "idle idle"; gap: 8px 12px; padding: 12px; }
+.character-equipment-preview { grid-area: art; width: 84px; height: 84px; margin: 0; border: 2px solid var(--arc-ink); border-radius: 18px; background: rgba(43, 22, 8, .55); overflow: hidden; display: grid; place-items: end center; }
+.character-identity { grid-area: id; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
+.character-identity span { font-size: 11px; color: #e2cfae; }
+.character-identity strong { font-size: 30px; line-height: 1; color: #fde68a; font-family: "Jua", sans-serif; font-weight: 400; }
+.character-identity small { font-size: 10px; color: #c9b08a; }
+.character-identity .character-exp { height: 6px; border-radius: 999px; background: rgba(43, 22, 8, .7); overflow: hidden; }
+.character-identity .character-exp b { display: block; height: 100%; background: linear-gradient(90deg, #7dd3fc, #38bdf8); }
+.character-identity .character-title { font-size: 11px; }
+.cosmetic-chips { display: none; }
+.character-quick-stats { grid-area: stats; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.character-quick-stats span { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border: 2px solid var(--arc-ink); border-radius: 12px; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-size: 10px; color: #e2cfae; text-align: center; }
+.character-quick-stats span b { font-size: 15px; color: #fff7e6; }
+.character-idle-yield { grid-area: idle; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; border-radius: 999px; background: rgba(43, 22, 8, .55); border: 1px solid rgba(246, 215, 160, .3); }
+.character-idle-head { font-size: 11px; color: #bbf7d0; font-weight: 800; }
+.character-idle-head em { color: #e2cfae; font-style: normal; font-weight: 600; margin-left: 4px; }
+.character-idle-chips { display: flex; gap: 6px; margin-left: auto; }
+.character-idle-chips span { font-size: 11px; color: #e2cfae; }
+.character-idle-chips b { color: #fde68a; }
+.character-idle-yield small { display: none; }
+/* 묶음 탭·섹션 제목 */
+.legacy-growth { margin-top: 8px; padding: 10px; }
+.mypage-tabs button { min-height: 40px; font-size: 13px; }
+.legacy-heading { margin: 4px 0 6px; }
+.legacy-heading small { display: none; }
+.legacy-heading strong { font-size: 15px; }
+/* 장비 띠: 3칸 아이콘 칩 */
+.equipment-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; padding: 0; border: 0; background: none; box-shadow: none; }
+.equipment-strip div { padding: 8px 6px; text-align: center; }
+.equipment-strip small { font-size: 10px; margin-bottom: 2px; }
+.equipment-strip strong { font-size: 12px; }
+/* 프로필 아바타: 84px 칸 안에 전신(1:2 시트) 이 들어오게 — 전엔 칸보다 커서 머리만 보였다 */
+.character-equipment-preview { place-items: center; padding: 4px; }
+.character-equipment-preview .character-equipment-facing { width: 36px; height: 72px; --hero-size: 36px; }
+.character-equipment-preview .equipped-character { width: 36px; height: 72px; }
+.character-equipment-preview .character-equipment-facing { transform: none; }   /* 옛 translate(-17.6%) 오프셋 제거 */
