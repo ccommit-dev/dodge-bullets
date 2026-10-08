@@ -74,6 +74,7 @@ export function CharacterStatus({
 }: CharacterStatusProps) {
   const [beat, setBeat] = useState<BeatRpgProgress | null>(null);
   const [forge, setForge] = useState<ForgeSave>(() => defaultForgeSave());
+  const [mypageTab, setMypageTab] = useState<"character" | "codex" | "pet" | "badge">("character");
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
   const [growthMessage, setGrowthMessage] = useState("");
@@ -307,6 +308,11 @@ export function CharacterStatus({
       </section>
 
       <section className="legacy-growth">
+        {/* 긴 세로 스크롤 대신 묶음 탭 (2026-10-08 사용자: "스크롤 없이, 페이지를 추가하더라도") */}
+        <nav className="mypage-tabs" role="tablist">
+          {([["character", "캐릭터·칭호"], ["codex", "도감"], ["pet", "펫"], ["badge", "배지·진화"]] as const).map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={mypageTab === k} className={mypageTab === k ? "on" : ""} onClick={() => setMypageTab(k)}>{label}</button>)}
+        </nav>
+        <div className={`mypage-group ${mypageTab === "character" ? "" : "hidden"}`}>
         <div className="legacy-heading"><div><small>CHARACTER</small><strong>플레이어블 캐릭터</strong></div><span>{1 + progress.ownedCharacters.length}종 보유</span></div>
         <div className="character-skin-row">
           {CHARACTER_SKINS.map((skin) => {
@@ -372,6 +378,8 @@ export function CharacterStatus({
           </>
         )}
 
+        </div>
+        <div className={`mypage-group ${mypageTab === "codex" ? "" : "hidden"}`}>
         <div className="legacy-heading"><div><small>CODEX</small><strong>몬스터 도감</strong></div><span>처치 마일스톤 → 골드 보너스</span></div>
         <div className="codex-grid">
           {(Object.keys(progress.monsterKills) as Array<keyof typeof progress.monsterKills>).map((kind) => {
@@ -415,6 +423,8 @@ export function CharacterStatus({
           );
         })()}
 
+        </div>
+        <div className={`mypage-group ${mypageTab === "pet" ? "" : "hidden"}`}>
         <div className="legacy-heading">
           <div><small>PETS</small><strong>도감의 아이들</strong></div>
           <span>{PET_IDS.filter((id) => (progress.pets[id] ?? 0) > 0).length}/{PET_IDS.length} 부화</span>
@@ -475,6 +485,8 @@ export function CharacterStatus({
             );
           })}
         </div>
+        </div>
+        <div className={`mypage-group ${mypageTab === "badge" ? "" : "hidden"}`}>
         <p className="collection-summary">
           성급 도감 ★{totalStars(progress)} 합계 · 방치 배율 +{starMilestoneMultiplier(progress).toFixed(2)} 영구
           {starMilestoneNext(progress) !== null && ` · 다음 마일스톤 ★${starMilestoneNext(progress)}`}
@@ -493,6 +505,7 @@ export function CharacterStatus({
         <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""}`} disabled={!canRebirth} onClick={() => void rebirth()}>
           환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/3 지역`}
         </button>
+        </div>
         {growthMessage && <p className="growth-message">{growthMessage}</p>}
       </section>
 

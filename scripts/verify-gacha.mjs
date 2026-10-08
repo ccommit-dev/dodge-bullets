@@ -97,6 +97,8 @@ await sleep(2200);
 await closeModal();
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
+// 2026-10-08: 도감이 쪽으로 나뉘어 엠버(13번째)는 마지막 쪽에 있다
+await page.evaluate(() => { const tabs = [...document.querySelectorAll(".ally-pages button")]; tabs[tabs.length - 1]?.click(); }); await sleep(300);
 const gateClicked = await page.evaluate(() => { const card = [...document.querySelectorAll(".ally-card")].find((c) => /엠버/.test(c.textContent)); const btn = card?.querySelector(".ally-party-toggle"); btn?.click(); return !!btn; });
 await sleep(500);
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");

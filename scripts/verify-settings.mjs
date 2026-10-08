@@ -53,7 +53,8 @@ const gemsNow = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodg
 // 1) 출석: 첫날 자동으로 30일 판이 뜬다 (개발 서버의 '보석 무제한' 테스트 모드가 보석을 채워 두므로 지급 전후 차이로 잰다)
 await seed(null);
 let s = await state();
-ok("부팅 때 30일 출석 판이 자동으로 뜬다 (30칸 · 제목)", s.tiles === 30 && s.attendance.includes("30일 출석"), `칸 ${s.tiles}`);
+// 2026-10-08: 30칸 한 판 → 15일 두 쪽(스크롤 없이) — 한 쪽 15칸 + 쪽 버튼 2개
+ok("부팅 때 30일 출석 판이 자동으로 뜬다 (15칸 × 2쪽 · 제목)", s.tiles === 15 && s.attendance.includes("30일 출석") && s.attendance.includes("DAY 16"), `칸 ${s.tiles}`);
 let g0 = await gemsNow();
 await tap(".attendance-modal button", "DAY 1 보상 받기"); await sleep(900);
 let p = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);

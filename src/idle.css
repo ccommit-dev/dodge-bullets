@@ -2411,3 +2411,31 @@
 .cta-tower .tower-ticket-count { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 900; color: #1e1b4b; background: #c4b5fd; vertical-align: 2px; }
 .cta-tower.no-ticket { filter: saturate(.45) brightness(.8); }
 .cta-tower.no-ticket .tower-ticket-count { background: #fca5a5; color: #450a0a; }
+
+/* ═══════════ 모바일 게임식 귀환 정산 (2026-10-08, 사용자: "유아이가 아직 너무 웹 같아") — 표 대신 아이콘 칩 한 줄 · 작은 문구 · 큰 수령 버튼 ═══════════ */
+.idle-card { gap: 8px; padding: 14px 14px max(14px, env(safe-area-inset-bottom)); }
+.idle-crest { width: 56px; height: 56px; margin: 0 auto -4px; }
+.idle-card .brand { font-size: 11px; letter-spacing: .14em; }
+.idle-card .exit-title { margin: 0; font-size: 22px; }
+.idle-sub { margin: 0; font-size: 12px; color: #e2cfae; }
+.idle-capped { margin: 0; padding: 4px 10px; font-size: 11px; border-radius: 999px; }
+.idle-loot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0; }
+.idle-loot article { flex: 1 1 28%; min-width: 0; padding: 8px 4px; border: 2px solid var(--arc-ink); border-radius: 14px; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; }
+.idle-loot article b { font-size: 16px; color: #fde68a; }
+.idle-loot article span { font-size: 9px; color: #e2cfae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.idle-loot .currency-icon, .idle-loot img { width: 30px; height: 30px; }
+.idle-forge-cta { padding: 7px 10px; border: 2px solid var(--arc-ink); border-radius: 14px; background: linear-gradient(180deg, #8a5527, #5a3517); color: #f5e9d6; box-shadow: 0 2px 0 #1f1109; }
+.idle-forge-cta b { font-size: 12px; } .idle-forge-cta small { font-size: 10px; color: #e2cfae; }
+/* R·M·T 세 줄 막대 → 한 줄 칩 */
+.idle-factors { display: flex; gap: 6px; margin: 0; }
+.idle-factors > div { flex: 1; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 6px; padding: 4px 8px; border-radius: 999px; background: rgba(43, 22, 8, .55); }
+.idle-factors small { grid-column: 1 / -1; font-size: 8px; letter-spacing: .06em; color: #c9b08a; }
+.idle-factors i { height: 4px; }
+.idle-factors strong { font-size: 11px; color: #fde68a; }
+.idle-bottleneck { padding: 6px 10px; border: 2px solid var(--arc-ink); border-radius: 14px; background: linear-gradient(180deg, rgba(92, 56, 26, .9), rgba(50, 30, 14, .92)); }
+.idle-bottleneck b { font-size: 12px; } .idle-bottleneck small { font-size: 10px; }
+.idle-card .cta.idle-claim { min-height: 52px; font-size: 18px; }
+.idle-patron-preview { padding: 8px 10px; border: 2px solid rgba(246, 215, 160, .3); border-radius: 14px; }
+.idle-patron-preview b { font-size: 11px; } .idle-patron-preview p { font-size: 10px; margin: 2px 0; }
+/* 보상 칩 4개가 한 줄에 — 4번째(동료 조각)가 전체 폭으로 늘어났다 */
+.idle-loot article { flex: 1 1 22%; max-width: 32%; }

@@ -4495,3 +4495,241 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .coach-hand { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; margin-right: 4px; }
 .ui-back-icon { width: 18px; height: 18px; object-fit: contain; vertical-align: -4px; margin-right: 2px; }
 .hub-sheet-close, .nav-popup-close, .advice-close { font-size: 0; width: 32px; height: 32px; padding: 0; border: 0; background: url("/ui/content-icons/ui-close.png") center / 26px no-repeat; }
+
+/* ═══════════ 지면이 잘려 캐릭터가 떠 보이던 것 (2026-10-08): cover 로 가운데를 보여 주면 넓은 전장에서 아래 1/3 의 다리가 잘린다 — 항상 바닥을 맞춘다 ═══════════ */
+.titans-background { background-position: center bottom; }
+/* 설정이 사냥터 헤더 안(마이페이지 왼쪽)에 들어왔다 — 고정 위치 해제. 마이페이지 화면에선 예전처럼 독에 */
+.titans-header .settings-wrap { position: relative; z-index: 70; margin-right: 2px; }   /* static 이면 메뉴가 레이어 바닥(y 852)에 떨어져 화면 밖이었다 */
+.titans-header .settings-wrap .settings-menu { top: calc(100% + 8px); left: 0; }
+.titans-header { padding-left: 0; }
+@media (max-width: 600px) { .titans-header { padding-left: 0; } }
+/* 오른쪽을 보고 생성된 몬스터 3종(가시덤불 늑대 · 불꽃 와이번 · 가시 비룡)은 좌우 반전 — 몬스터는 모두 왼쪽(주인공 쪽)을 본다 (2026-10-08). scale 은 대기 키프레임의 transform 과 합성된다 */
+.titan-monster-art.face-flip > img { scale: -1 1; }
+/* 헤더 정렬 (2026-10-08 사용자: "마이페이지 정렬 다시") — space-between 이 톱니·마이페이지·지갑을 벌려 놓았다: 톱니 바로 옆에 마이페이지, 지갑만 오른쪽 */
+.titans-header { justify-content: flex-start; gap: 6px; padding-left: 0; }
+.titans-header .titans-wallet { margin-left: auto; }
+.titans-header .titans-back { display: flex; align-items: center; gap: 7px; min-height: 40px; padding: 4px 12px 4px 6px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; font-size: 13px; }
+.titans-header .titans-back:active { transform: translateY(2px); box-shadow: 0 1px 0 #1f1109; }
+.titans-header .mypage-icon { width: 30px; height: 30px; flex-basis: 30px; border: 2px solid var(--arc-ink); border-radius: 50%; background-color: #3b2212; }
+.titans-header .mypage-label small { color: #e2cfae; }
+@media (max-width: 600px) { .titans-header { padding-left: 0; gap: 6px; } .titans-header .titans-back { padding: 4px 10px 4px 5px; } }
+
+/* ═══════════ 상점·재화 통일 (2026-10-08 사용자: "보석·재화·UI 통일감이 없다") — 재화 아이콘은 생성 그림(황금 도토리·루비) 하나로, 상점 카드·탭·알림·구매 버튼은 나무 판 + 아케이드 노랑 ═══════════ */
+.currency-icon { object-fit: contain; }
+.gem-mark { width: 16px; height: 16px; flex: 0 0 16px; vertical-align: -3px; }
+.titans-shop .premium-product-card, .page-premium .premium-product-card, .titans-card.premium-product-card { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 18px; background: linear-gradient(180deg, rgba(92, 56, 26, .94), rgba(50, 30, 14, .96)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 4px 0 #1f1109; }
+.premium-product-card h3, .premium-product-card b, .premium-product-card strong { color: #fff7e6; }
+.premium-product-card p, .premium-product-card small { color: #e2cfae; }
+.premium-product-card button, .premium-product-card .cta { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: "Jua", sans-serif; font-weight: 400; }
+.premium-product-card button:disabled { opacity: .55; box-shadow: 0 2px 0 #92400e; }
+.premium-product-card button:active { transform: translateY(3px); box-shadow: 0 1px 0 #92400e; }
+.premium-category-tabs button { color: #f6d7a0; border: 2px solid var(--arc-ink); border-radius: 999px; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 3px 0 #1f1109; }
+.hub-sheet-wallet, .titans-wallet { gap: 6px; }
+.hub-sheet-wallet > span, .hub-sheet-wallet > button { border: 2px solid var(--arc-ink); border-radius: 999px; background: linear-gradient(180deg, #7a4a22, #4a2b12); color: #fde68a; box-shadow: 0 2px 0 #1f1109; }
+.battle-alert.tone-buy, .advice-alert { color: #f5e9d6; border: 2px solid #b91c1c; background: linear-gradient(90deg, rgba(92, 40, 26, .95), rgba(60, 30, 14, .92)); }
+.battle-alert.tone-buy::after { box-shadow: inset 0 0 8px 1px rgba(248, 113, 113, .35); }
+.battle-alert.tone-buy small { color: #fca5a5; }
+.advice-sheet { color: #f5e9d6; }
+.advice-row, .advice-rank, .advice-body { color: #f5e9d6; }
+/* 뽑기 버튼(초록·주황) → 아케이드 노랑 + 나무 */
+.gacha-actions button { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: "Jua", sans-serif; font-weight: 400; }
+.gacha-actions button.gacha-ten { color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 4px 0 #1f1109, inset 0 2px 0 rgba(255, 255, 255, .18); }
+.gacha-actions button:disabled { opacity: .55; }
+.gacha-empty { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 16px; background: linear-gradient(180deg, rgba(76, 29, 149, .55), rgba(50, 30, 14, .94)); }
+
+/* ═══════════ 스크롤 줄이기 (2026-10-08 사용자: "스크롤 없이, 페이지를 추가하더라도 가독성 좋게") ═══════════ */
+/* 출석: 15일씩 두 쪽 · 3열 5줄로 칸을 키운다 */
+.attendance-pages { display: flex; gap: 6px; justify-content: center; margin: 4px 0 0; }
+.attendance-pages button { padding: 6px 14px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.attendance-pages button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
+.attendance-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.attendance-grid div { min-height: 84px; }
+.attendance-grid b { font-size: 12px; } .attendance-grid div > span:last-child { font-size: 11px; }
+/* 원정 지도: 한 줄 높이를 줄여 한 장 10칸이 한 화면에 */
+.pioneer-row { min-height: 34px; padding: 4px 8px; }
+.pioneer-name { font-size: 12px; }
+.route-node { min-height: 36px; padding: 3px 6px; }
+/* 허브 성장 패널: 폰에서 카드 2열 — 훈련 4장이 한 화면에 */
+@media (max-width: 600px) {
+  .titans-layer:not(.is-management-page) .titans-shop { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .titans-layer:not(.is-management-page) .titans-shop > .titans-card { margin: 0; padding: 8px; }
+  .titans-layer:not(.is-management-page) .titans-shop > .titans-card h3, .titans-layer:not(.is-management-page) .titans-shop > .titans-card b { font-size: 12px; }
+  .titans-layer:not(.is-management-page) .titans-shop > .titans-card p, .titans-layer:not(.is-management-page) .titans-shop > .titans-card small { font-size: 10px; }
+  .titans-layer:not(.is-management-page) .titans-shop > .titans-skill-panel, .titans-layer:not(.is-management-page) .titans-shop > .skill-preset-row, .titans-layer:not(.is-management-page) .titans-shop > [class*="skill"] { grid-column: 1 / -1; }
+}
+/* 마이페이지 묶음 탭 */
+.mypage-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 0 0 10px; }
+.mypage-tabs button { min-height: 36px; padding: 4px; border: 2px solid var(--arc-ink); border-radius: 12px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.mypage-tabs button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
+.mypage-group.hidden { display: none; }
+/* 원정 메뉴: 설명 문단·여백을 줄이고 지도를 2열로 — 1장 10칸이 한 화면에 (실측 1255px → 목표 ≤ 780px) */
+@media (max-width: 600px) {
+  .exp-menu-content > .subtitle, .exp-menu-content > p.subtitle { display: none; }
+  .exp-menu-content { gap: 8px; }
+  .route-map { grid-template-columns: 1fr 1fr; gap: 4px 6px; }
+  .route-row { grid-template-columns: minmax(0, 1fr) 62px; }
+  .route-side { padding-left: 6px; }
+  .route-node { min-height: 32px; padding: 2px 4px; }
+  .route-node small { font-size: 8px; }
+  .pioneer-row { min-height: 30px; padding: 3px 6px; grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .pioneer-name { font-size: 11px; }
+  .pioneer-stars, .route-stars { font-size: 9px; }
+  .pioneer-board { padding: 8px; }
+}
+/* 스킬 탭: 전장 490 + 머리·탭·내비 168 = 658 이라 패널 186px 뿐 → 스킬 탭일 땐 전장을 230px 띠로, 프리셋 카드는 3칸 한 줄, 학습 카드는 2열 (실측 1287 → ≤ 844) */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-field { height: 230px; min-height: 230px; }
+  .titans-layer.page-skills .titans-field .idle-status-strip { display: none; }
+  .titans-layer.page-skills .titans-shop > .skill-preset-card { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 6px; }
+  .titans-layer.page-skills .titans-shop > .skill-preset-card > h3, .titans-layer.page-skills .titans-shop > .skill-preset-card > p, .titans-layer.page-skills .titans-shop > .skill-preset-card > header { grid-column: 1 / -1; margin: 0; font-size: 11px; }
+  .titans-layer.page-skills .titans-shop > .skill-preset-card small, .titans-layer.page-skills .titans-shop > .skill-preset-card p:not(:first-child) { display: none; }
+  .titans-layer.page-skills .titans-shop > .skill-slot-tabs { grid-column: 1 / -1; }
+  .titans-layer.page-skills .titans-shop > .skill-learn-card { grid-column: auto; }
+}
+/* 원정 메뉴: 브랜드 줄·최고 점수 줄 숨김, 제목 축소, 보조 CTA 두 개를 한 줄 (실측 911 → ≤ 773) */
+@media (max-width: 600px) {
+  .exp-menu-content > .score-line.exp-best-line { display: none; }
+  .exp-menu-content > .brand { margin: 0; font-size: 10px; }   /* 브랜드 줄은 남긴다 — verify-dodge-hud 가 상단 버튼과의 겹침을 이 줄로 잰다 */
+  .exp-menu-content > .title { margin: 0; font-size: 22px; }
+  .exp-menu-content { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .exp-menu-content > * { grid-column: 1 / -1; }
+  .exp-menu-content > .cta.cta-tower, .exp-menu-content > .cta.cta-ghost { grid-column: auto; min-height: 40px; font-size: 13px; }
+  .pioneer-board { padding: 6px; }
+}
+/* 원정 메뉴 CTA 가 그리드 칸에서 63~98px 로 늘어났다 — 높이 고정, 보조 CTA 의 설명 줄은 숨김 */
+@media (max-width: 600px) {
+  .exp-menu-content > .cta { min-height: 44px; max-height: 48px; padding: 6px 10px; font-size: 15px; }
+  .exp-menu-content > .cta small { display: none; }
+  .pioneer-heading { font-size: 11px; margin: 0 0 4px; }
+  .pioneer-board > p, .pioneer-star-hint { display: none; }
+  .chapter-tab { padding: 4px 2px; } .chapter-tab b { font-size: 11px; } .chapter-tab small { font-size: 8px; }
+}
+/* 스킬 학습 카드: 2열에선 234px 로 늘어났다 — 한 줄짜리 가로 카드(아이콘 · 이름/효과 · 버튼)로 */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-shop > .skill-learn-card { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding: 6px 8px; min-height: 0; }
+  .titans-layer.page-skills .skill-learn-card p, .titans-layer.page-skills .skill-learn-card small { margin: 0; font-size: 10px; line-height: 1.25; }
+  .titans-layer.page-skills .skill-learn-card h3, .titans-layer.page-skills .skill-learn-card b, .titans-layer.page-skills .skill-learn-card strong { font-size: 12px; margin: 0; }
+  .titans-layer.page-skills .skill-learn-card .skill-card-actions { display: grid; gap: 4px; }
+  .titans-layer.page-skills .skill-learn-card .skill-card-actions button { padding: 5px 9px; font-size: 11px; min-height: 30px; }
+  .titans-layer.page-skills .skill-preset-card p { display: none; }
+  .titans-layer.page-skills .skill-preset-card button { padding: 5px 4px; font-size: 11px; min-height: 34px; }
+}
+/* 스킬 탭 마지막 88px: 전장 띠 200px · 프리셋 카드 머리글 숨김 */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-field { height: 200px; min-height: 200px; }
+  .titans-layer.page-skills .skill-preset-card > h3, .titans-layer.page-skills .skill-preset-card > header, .titans-layer.page-skills .skill-preset-card > .legacy-heading { display: none; }
+  .titans-layer.page-skills .skill-preset-card button { min-height: 30px; padding: 4px; }
+  .titans-layer.page-skills .skill-preset-card button small { display: none; }
+}
+/* 스킬 탭 마지막 54px: 전장 띠 170px · 패널 머리 설명 숨김 · 간격 4px */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-field { height: 170px; min-height: 170px; }
+  .titans-layer.page-skills .party-panel-head small { display: none; }
+  .titans-layer.page-skills .titans-shop { gap: 4px; }
+  .titans-layer.page-skills .skill-slot-tabs button { min-height: 32px; padding: 4px 2px; font-size: 11px; }
+}
+/* 스킬 탭의 전장 띠(170px)엔 HP 바와 캐릭터만 — 스테이지 줄·알림·스킬 독·AUTO 는 스킬 관리 중엔 숨긴다(겹쳐서 읽히지 않았다) */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-field .titans-stagebar.in-field, .titans-layer.page-skills .titans-field .battle-alert-stack, .titans-layer.page-skills .titans-field .titans-skill-dock, .titans-layer.page-skills .titans-field .battle-qol, .titans-layer.page-skills .titans-field .titans-transition-skip { display: none; }
+  .titans-layer.page-skills .titans-field { --hero-size: clamp(40px, 9%, 48px); --ally-size: 58px; --monster-size: 84px; --boss-size: 110px; }
+}
+/* 설정 버튼에도 글자 (2026-10-08 사용자: "설정도 텍스트 추가") — 마이페이지와 같은 나무 캡슐: 톱니 + '설정' */
+.titans-header .settings-toggle { width: auto; height: auto; min-height: 40px; padding: 4px 12px 4px 6px; gap: 6px; justify-content: flex-start; border-radius: 999px; font-family: "Jua", sans-serif; font-weight: 400; font-size: 13px; color: #fde68a; }
+.titans-header .settings-toggle .settings-gear { width: 28px; height: 28px; }
+.titans-header .settings-toggle .settings-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: nowrap; }
+@media (max-width: 600px) { .titans-header .settings-toggle { padding: 4px 10px 4px 5px; } }
+
+/* ═══════════ 성장 패널 정리 (2026-10-08 사용자: "UI 여백이 난해 · 위치·크기·분류 다시") — 탭 + 일괄 레벨업 + 카드가 한 판으로 읽히게 ═══════════ */
+.titans-layer:not(.is-management-page) .titans-growth-tabs { margin: 0 auto; padding: 6px 6px 0; border: 2px solid var(--arc-ink); border-bottom: 0; border-radius: 18px 18px 0 0; background: linear-gradient(180deg, rgba(92, 56, 26, .94), rgba(70, 42, 20, .94)); gap: 6px; }
+.titans-layer:not(.is-management-page) .titans-growth-tabs button { min-height: 44px; font-size: 14px; }
+.titans-layer:not(.is-management-page) .titans-shop { margin: 0 auto 8px; padding: 10px; border: 2px solid var(--arc-ink); border-top: 0; border-radius: 0 0 18px 18px; background: linear-gradient(180deg, rgba(70, 42, 20, .94), rgba(50, 30, 14, .96)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .2), 0 5px 0 #1f1109; }
+/* 일괄 레벨업: 라벨 + 세 칩을 오른쪽 정렬한 한 줄, 카드와 같은 폭 */
+.bulk-toggle { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 0 0 4px; padding: 0; }
+.bulk-toggle span { margin-right: auto; color: #e2cfae; font-size: 11px; font-family: "Jua", sans-serif; }
+.bulk-toggle button { min-width: 44px; min-height: 30px; padding: 3px 10px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.bulk-toggle button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
+/* 훈련 카드: 아이콘 44 · 글 · 버튼 64 의 한 줄, 높이 64 고정 */
+.equipment-training-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 64px; padding: 8px 10px; margin: 0; }
+.equipment-training-card .training-item-icon, .equipment-training-card > svg, .equipment-training-card > img, .equipment-training-card > .shoulder-icon { width: 44px; height: 44px; }
+.equipment-training-card strong { display: block; font-size: 14px; line-height: 1.2; color: #fff7e6; }
+.equipment-training-card p { margin: 2px 0 0; font-size: 11px; line-height: 1.3; color: #e2cfae; }
+.equipment-training-card > button { min-width: 64px; min-height: 40px; padding: 6px 12px; border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #bae6fd, var(--arc-sky) 60%, #38bdf8); box-shadow: 0 3px 0 #0c4a6e, inset 0 2px 0 rgba(255, 255, 255, .6); font-family: "Jua", sans-serif; font-weight: 400; font-size: 14px; }
+.equipment-training-card > button:disabled { opacity: .5; }
+/* 넓은 화면: 패널·내비 폭을 720 으로 맞춰 줄 맞춤 */
+.titans-bottom-nav { width: min(720px, calc(100vw - 20px)); }
+@media (max-width: 600px) {
+  .titans-layer:not(.is-management-page) .titans-shop { display: grid; grid-template-columns: 1fr; gap: 6px; }
+}
+/* 폰 바닥 시트는 상단 버튼(사운드·사냥터, 높이 ~50px) 아래에서 시작한다 */
+@media (max-width: 600px) { .game-overlay .overlay-content, .exp-menu-content { max-height: calc(100svh - 64px); } }
+/* 스킬 탭 마지막 22px: 버프 줄 숨김 · 패널 안쪽 여백 6px */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-buffs { display: none; }
+  .titans-layer.page-skills .titans-shop { padding: 6px; }
+}
+
+/* ═══════════ 넓은 화면에서 성장 패널이 내비에 잘림 · 동료 쪽 탭 (2026-10-08) ═══════════ */
+@media (min-width: 601px) {
+  .titans-field { height: clamp(360px, 44vh, 520px); }
+  .titans-layer { padding-bottom: 120px !important; }
+}
+.ally-pages { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 2px 0 6px; }
+.ally-pages button { min-height: 32px; padding: 4px 12px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.ally-pages button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
+/* 설정·마이페이지 캡슐은 붙여서 */
+.titans-header { gap: 4px; }
+.titans-header .settings-wrap { margin-right: 0; }
+/* 대장간: 강화 버튼·판매 버튼을 아케이드 노랑/나무로, 안내 글은 읽히는 색으로 띄워서(어두운 판 위 #8c6b59 가 겹쳐 보였다) */
+.forge-button { border: 2px solid var(--arc-ink); border-radius: 16px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 5px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: "Jua", sans-serif; font-weight: 400; }
+.forge-sell { border: 2px solid var(--arc-ink); border-radius: 16px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 5px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; }
+.forge-note { margin: 10px 0 0; padding: 8px 10px; color: #e2cfae; font-size: 11px; border-radius: 12px; background: rgba(43, 22, 8, .55); }
+.forge-shell { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+/* 동료 카드: 버튼 3개를 세로로 쌓던 것을 한 줄로 — 카드 높이 1/2, 6장 한 쪽이 스크롤 없이 */
+.ally-card-actions { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+.ally-card-actions > button { flex: 1 1 30%; min-width: 0; min-height: 36px; padding: 4px 6px; font-size: 12px; }
+.ally-roster-grid .ally-card { padding: 8px; }
+/* 동료 시트: 스크롤 영역이 471px 뿐이었다(시트가 화면 중간부터) → 시트를 위로 키우고(100svh−110) 카드를 84px 한 줄형으로. 쪽당 6장 = 504px */
+@media (max-width: 600px) {
+  .hub-sheet { max-height: calc(100svh - 110px); }
+  .ally-roster-grid .ally-card { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 8px; padding: 6px 8px; min-height: 0; }
+  .ally-roster-grid .ally-card > .ally-portrait, .ally-roster-grid .ally-card > img, .ally-roster-grid .ally-card > .ally-art { width: 48px; height: 48px; grid-row: span 2; }
+  .ally-roster-grid .ally-card .ally-card-actions { flex-direction: row !important; flex-wrap: nowrap; gap: 4px; grid-column: 2; }
+  .ally-roster-grid .ally-card .ally-card-actions > button { flex: 1 1 0; min-height: 32px !important; padding: 2px 4px !important; font-size: 11px !important; }
+  .ally-roster-grid .ally-card p, .ally-roster-grid .ally-card small { font-size: 10px; line-height: 1.25; margin: 0; }
+  .party-panel { padding: 8px; }
+  .party-panel .party-panel-head small { display: none; }
+}
+/* 스킬 탭: 학습 카드가 4장이면 다시 넘친다 — 전장은 HP 바 + 작은 스프라이트 120px 띠로 */
+@media (max-width: 600px) {
+  .titans-layer.page-skills .titans-field { height: 120px; min-height: 120px; }
+  .titans-layer.page-skills .titans-field { --hero-size: 30px; --ally-size: 42px; --monster-size: 60px; --boss-size: 80px; }
+}
+/* 동료 카드 초상(AllyArt = .titan-ally-art) 48px */
+@media (max-width: 600px) {
+  .ally-roster-grid .ally-card { --ally-size: 48px; }
+  .ally-roster-grid .ally-card > .titan-ally-art { width: 48px; height: 48px; grid-row: span 2; align-self: start; }
+  .ally-roster-grid .ally-card > div > strong { font-size: 12px; line-height: 1.2; }
+  .ally-roster-grid .ally-card .ally-feature, .ally-roster-grid .ally-card .ally-shards { font-size: 10px; margin: 0; }
+}
+/* 동료·상점 시트가 화면 중간(top 297)부터 시작해 472px 뿐이었다 — 폰에선 머리(지갑 줄) 바로 아래부터 바닥 내비까지 */
+@media (max-width: 600px) {
+  .titans-layer.is-management-page .hub-sheet { top: max(100px, calc(env(safe-area-inset-top) + 88px)) !important; bottom: 62px !important; max-height: none !important; height: auto !important; }
+}
+/* 동료 카드 글 묶음 75px → 50px: 설명 줄 숨김 · 태그 작게 */
+@media (max-width: 600px) {
+  .ally-roster-grid .ally-card .ally-feature { display: none; }
+  .ally-roster-grid .ally-card .rarity-tag, .ally-roster-grid .ally-card .role-tag { font-size: 8px; padding: 0 4px; }
+  .ally-roster-grid .ally-card .ally-stars { font-size: 10px; }
+}
+/* 동료 시트 마지막 168px: 시너지 칩 줄·요약 설명 숨김, 카드 글 묶음을 두 줄(이름 · 별+조각 한 줄)로 */
+@media (max-width: 600px) {
+  .titans-layer.page-heroes .party-synergies { display: none; }
+  .ally-roster-summary { min-height: 0; padding: 2px 0; }
+  .ally-roster-summary small { display: none; }
+  .ally-roster-grid .ally-card > div { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+  .ally-roster-grid .ally-card > div > strong { flex: 1 1 100%; }
+  .ally-roster-grid .ally-card .ally-stars, .ally-roster-grid .ally-card .ally-shards { display: inline-flex; margin: 0; font-size: 10px; }
+  .ally-roster-grid .ally-card { gap: 2px 8px; padding: 5px 8px; }
+  .ally-roster-grid { gap: 5px; }
+  .bulk-toggle { margin: 0; }
+}

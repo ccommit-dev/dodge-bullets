@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -128,11 +128,15 @@ type TitansGameProps = {
   /** 견갑 강화 단계 — 전장 견갑 외형 티어 */
   armorLevel?: number;
   onOpenContent: (content: "dodge" | "beat" | "forge" | "profile") => void;
+  /** 설정 버튼+메뉴 — 헤더의 마이페이지 왼쪽에 (App 이 만든다) */
+  settingsNode?: ReactNode;
   /** 이벤트 센터를 특정 탭으로 연다 (추천 배너·루틴 보드) */
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal" | "season") => void;
 };
 
 type ShopTab = "sword" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+/** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
+const ALLY_PAGE_SIZE = typeof window !== "undefined" && window.innerWidth <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
 const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
   heroes: { kicker: "ALLY ARCHIVE", title: "동료 도감", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
   gacha: { kicker: "ALLY RECRUIT", title: "동료 뽑기", desc: "지역 픽업 동료를 소환하고 천장 진행도를 확인하세요." },
@@ -213,7 +217,7 @@ const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
   (QA_BUILD && typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
-export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>("sword");
@@ -279,6 +283,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [unlockBanner, setUnlockBanner] = useState<number | null>(null);
   /** 동료 탭 역할 필터 (점검표 #4) */
   const [allyFilter, setAllyFilter] = useState<"all" | "melee" | "ranged" | "tank" | "healer">("all");
+  const [allyPage, setAllyPage] = useState(0);   // 동료 도감 쪽(6장씩)
   /** 이벤트 저장(균열·토벌령·주간) — 루틴 보드·추천 엔진이 읽는다 */
   const [events, setEvents] = useState<EventSave>(() => emptyEventSave());
   const [navPopup, setNavPopup] = useState<"content" | "adventure" | null>(null);
@@ -2293,6 +2298,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   return (
     <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab}`} style={pad}>
       <header className="titans-header">
+        {settingsNode}
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${assetUrl("titans/character/base/hero-idle.png")})` }} />
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
@@ -2899,9 +2905,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             </div>
           </section>
         )}
-        {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`}>
+        {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`} data-roster-count={HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
           <header className="ally-roster-summary"><strong>동료 도감 {HEROES.length}명</strong><small>역할과 속성을 섞어 편성하세요.</small></header>
-          {HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).map((h) => {
+          {/* 13장 세로 스크롤 → 6장씩 쪽 (2026-10-08 사용자: "동료 쪽 스크롤 남아 있는 거 리팩토링") */}
+          {(() => { const roster = HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter); const pages = Math.max(1, Math.ceil(roster.length / ALLY_PAGE_SIZE)); const pg = Math.min(allyPage, pages - 1); return pages > 1 ? (
+            <nav className="ally-pages" role="tablist" aria-label="동료 쪽">{Array.from({ length: pages }, (_, i) => <button key={i} type="button" role="tab" aria-selected={pg === i} className={pg === i ? "on" : ""} onClick={() => setAllyPage(i)}>{i * ALLY_PAGE_SIZE + 1}–{Math.min(roster.length, (i + 1) * ALLY_PAGE_SIZE)}</button>)}</nav>
+          ) : null; })()}
+          {HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).slice(Math.min(allyPage, Math.max(0, Math.ceil(HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length / ALLY_PAGE_SIZE) - 1)) * ALLY_PAGE_SIZE, Math.min(allyPage, Math.max(0, Math.ceil(HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length / ALLY_PAGE_SIZE) - 1)) * ALLY_PAGE_SIZE + ALLY_PAGE_SIZE).map((h) => {
             const lv = save.heroes[h.id];
             const gemCost = SHOP_ALLY_GEM_COST[h.id];
             const shopOnly = gemCost !== undefined;

@@ -181,6 +181,8 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   "spider-queen": [0.02, 0.02], "stone-troll": [0.03, 0.03], "storm-drake": [0.06, 0.06], "thorn-boar-king": [0.04, 0.04], "void-imp": [0.03, 0.03], "void-lich": [0.10, 0.10],
   "wolf-king-clean": [0.09, 0.09],
 };
+/** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함"). 시트로 눈으로 고른 목록 */
+const FLIP_MONSTERS = new Set(["shadow-wolf-clean", "flame-wyvern-clean", "dragon", "shadow-wolf-clean-hit", "shadow-wolf-clean-defeat", "flame-wyvern-clean-hit", "flame-wyvern-clean-defeat", "dragon-hit", "dragon-defeat"]);
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];
@@ -222,7 +224,7 @@ export function MonsterArt({
   const asset = monsterAssetFor(kind, area, boss, golden, state, stage);
   // 세 프레임을 모두 마운트해 두고 보이는 것만 바꾼다 — 상태 전환 순간 이미지 로딩으로 깜빡이지 않게
   return (
-    <div key={idle} className={`titan-monster-art frame-${state}`}>
+    <div key={idle} className={`titan-monster-art frame-${state} ${FLIP_MONSTERS.has(idle.split("/").pop()?.replace(/\.png$/, "") ?? "") ? "face-flip" : ""}`}>
       <img src={idle} alt="" className={state === "idle" ? "on" : ""} />
       <img src={monsterAssetFor(kind, area, boss, golden, "hit", stage)} alt="" className={state === "hit" ? "on" : ""} aria-hidden="true" />
       <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
