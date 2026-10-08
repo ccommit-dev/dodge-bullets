@@ -16,13 +16,13 @@ export const WEAK_WINDOW_MS = 8000;
 /** 약점 명중 배수 — 탭은 해당 없음(속성이 없다). huntMods.weakBonus 가 더해진다 */
 export const WEAK_MUL = 1.6;
 
-export type BossWeak = { element: WeakElement; until: number; seq: number };
+export type BossWeak = { element: WeakElement; until: number; seq: number; /** 창 길이(ms) — 배지 링 애니메이션은 이 값만 읽어 렌더마다 다시 시작하지 않는다 */ windowMs: number };
 
 /** 새 약점 — 직전과 다른 속성. seq 는 "몇 번째 창인가"(화면 애니메이션 키) */
 export function rollBossWeak(now: number, prev: BossWeak | null, rng: () => number = Math.random, windowMs = WEAK_WINDOW_MS): BossWeak {
   const pool = prev ? WEAK_ELEMENTS.filter((e) => e !== prev.element) : WEAK_ELEMENTS;
   const element = pool[Math.floor(rng() * pool.length)] ?? "fire";
-  return { element, until: now + windowMs, seq: (prev?.seq ?? 0) + 1 };
+  return { element, until: now + windowMs, seq: (prev?.seq ?? 0) + 1, windowMs };
 }
 
 export function weakActive(weak: BossWeak | null, now: number): weak is BossWeak {

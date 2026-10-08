@@ -1340,7 +1340,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const w2 = titansWeak.rollBossWeak(9000, w1, () => 0);
   ok("사냥터 보스 약점: 8초 창 · 직전과 다른 속성 · seq 증가", w1.until === 9000 && w2.element !== w1.element && w2.seq === 2, `${w1.element}→${w2.element}`);
   ok("약점 판정: 같은 속성 스킬 명중 · 창 지나면 아님 · blade 는 약점 불가", titansWeak.skillHitsWeak(w1, w1.element, 2000) && !titansWeak.skillHitsWeak(w1, w1.element, 9000) && !titansWeak.skillHitsWeak(w1, "blade", 2000));
-  const fireWeak = { element: "fire", until: 5000, seq: 1 };
+  const fireWeak = { element: "fire", until: 5000, seq: 1, windowMs: 8000 };
   ok("약점 동료: 속성이 같은 동료만 (pyro=fire · mia=wind) · 편성 안 상성 수", titansWeak.allyHitsWeak(fireWeak, "pyro", 100) && !titansWeak.allyHitsWeak(fireWeak, "mia", 100) && titansWeak.partyWeakMatches(["pyro", "mia", "garen", "ari"], "fire") === 2);
   const fx = allyFeatures.allyFeatureEffects(["leon", "pyro", "nox", "orion", "luna"]);
   const none = allyFeatures.allyFeatureEffects(["mia"]);
