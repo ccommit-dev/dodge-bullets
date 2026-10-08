@@ -84,6 +84,8 @@ export async function readAttendanceClaimedToday(userHash: string): Promise<bool
 export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: { userHash: string; open: boolean; onClose: () => void; onUpdated: (p: CharacterProgress) => void; onDone?: () => void }) {
   const [save, setSave] = useState<AttendanceSave | null>(null);
   const [message, setMessage] = useState("");
+  // 15일씩 두 쪽 — 기본은 오늘이 있는 쪽. 훅은 조기 return 보다 위에(아래 두면 "Rendered more hooks" 로 허브 전체가 죽었다, 2026-10-08)
+  const [pageOverride, setPage] = useState<number | null>(null);
   /** 수령 진행 중 잠금 — 저장이 끝나기 전 연타하면 보상이 이중 지급된다. */
   const [claiming, setClaiming] = useState(false);
   useEffect(() => {
@@ -96,6 +98,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
   if (!open || !save) return null;
   const day = attendanceDay(save);
   const finished = day >= ATTENDANCE_DAYS;
+  const page = pageOverride ?? (day >= 15 ? 1 : 0);
   const claimed = save.lastClaimDate === today();
   const claim = async () => {
     // 게이트는 "오늘 이미 받았는가"와 "지금 저장 중인가" 둘뿐이다 (기기 시계 역행 가드는 피드백 없는 함정이라 없앴다)
@@ -132,11 +135,15 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
     <div className="exit-card attendance-card attendance-30">
       <p className="brand">DAILY CHECK</p><h2 className="exit-title">30일 출석 보상</h2>
       <p className="attendance-progress">{Math.min(day, ATTENDANCE_DAYS)} / {ATTENDANCE_DAYS}일 · 7·14·21·28일 큰 보상 · 30일째 용린 견갑</p>
-      <div className="attendance-grid">{ATTENDANCE_REWARDS.map((reward, i) => <div key={`${reward.name}-${i}`} className={`${i === day && !finished ? "today" : ""} ${i < day ? "done" : ""} rarity-${reward.rarity}`}>
+      {/* 30칸을 한 판에 깔면 스크롤이 생겼다 — 15일씩 두 쪽, 오늘이 있는 쪽을 먼저 (2026-10-08 사용자: "스크롤 없이, 페이지를 추가하더라도 가독성") */}
+      <div className="attendance-pages" role="tablist">
+        {[0, 1].map((p) => <button key={p} type="button" role="tab" aria-selected={page === p} className={page === p ? "on" : ""} onClick={() => setPage(p)}>DAY {p * 15 + 1}–{p * 15 + 15}</button>)}
+      </div>
+      <div className="attendance-grid">{ATTENDANCE_REWARDS.slice(page * 15, page * 15 + 15).map((reward, k) => { const i = page * 15 + k; return <div key={`${reward.name}-${i}`} className={`${i === day && !finished ? "today" : ""} ${i < day ? "done" : ""} rarity-${reward.rarity}`}>
         <b>DAY {i + 1}</b>
         <span className="attendance-reward-art"><img src={assetUrl(`ui/attendance/${reward.icon}.png`)} alt={reward.name} /></span>
         <span>{reward.name} ×{reward.amount}</span>
-      </div>)}</div>
+      </div>; })}</div>
       <p className="attendance-streak">
         연속 {save.consecutiveDays}일 · 방치 시간 +{Math.min(2, Math.floor(save.consecutiveDays / 3))}시간
         {save.consecutiveDays % 3 !== 0 && save.consecutiveDays < 6 && (

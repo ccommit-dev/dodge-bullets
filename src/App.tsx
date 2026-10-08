@@ -1568,17 +1568,8 @@ function App() {
     paddingRight: insets.right,
   } as const;
 
-  return (
-    <div className="game-root">
-      <canvas
-        ref={canvasRef}
-        className={`game-canvas ${appMode === "dodge" ? "is-active" : "is-inactive"}`}
-        aria-label="성문 방어 게임 화면"
-        aria-hidden={appMode !== "dodge"}
-      />
-
-      <div className="sound-dock" style={dockStyle}>
-        {(appMode === "titans" || appMode === "profile") && (
+  // 설정 메뉴 — 사냥터에서는 TitansGame 헤더(마이페이지 옆)에, 마이페이지에서는 독에 그린다 (2026-10-08 사용자: "설정 버튼을 마이페이지 쪽으로")
+  const settingsNode = (
           <div className="settings-wrap">
             <button
               type="button"
@@ -1702,7 +1693,19 @@ function App() {
               </div>
             )}
           </div>
-        )}
+  );
+
+  return (
+    <div className="game-root">
+      <canvas
+        ref={canvasRef}
+        className={`game-canvas ${appMode === "dodge" ? "is-active" : "is-inactive"}`}
+        aria-label="성문 방어 게임 화면"
+        aria-hidden={appMode !== "dodge"}
+      />
+
+      <div className="sound-dock" style={dockStyle}>
+        {appMode === "profile" && settingsNode}
         {appMode === "dodge" && (
           <>
             <button
@@ -1808,6 +1811,7 @@ function App() {
 
       {bootReady && appMode === "titans" && (
         <TitansGame
+          settingsNode={settingsNode}
           insets={insets}
           userHash={userHashRef.current}
           forgedWeaponLevel={progress.equippedWeaponLevel}

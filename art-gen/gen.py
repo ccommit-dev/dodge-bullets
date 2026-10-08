@@ -582,6 +582,15 @@ if CHROMA:
         if _n in globals():
             globals()[_n] = globals()[_n] + ", white background, gradient background, vignette, floor shadow, scenery, landscape, environment, sky, clouds, plants, trees, rocks, ground, grass, water"
 
+# ARTGEN_FACE="facing left"|"facing right" (2026-10-08, 사용자: 캐릭터는 오른쪽 · 몬스터는 왼쪽): 스타일의 "정면" 문구를 측면 보기로 바꾼다
+FACE = os.environ.get("ARTGEN_FACE", "")
+if FACE:
+    MONSTER_STYLE = MONSTER_STYLE.replace("standing facing the viewer", "standing, " + FACE).replace("standing upright facing the viewer", "standing upright, " + FACE)
+    STATE_PROMPT["idle"] = STATE_PROMPT["idle"].replace("facing viewer slightly to the right", FACE)   # FACE 문구를 그대로(측면이든 3/4 이든)
+    HERO_IDLE_RIGHT = HERO_IDLE_RIGHT.replace("three-quarter view facing right", FACE)
+    NEG = NEG + ", front view, facing the viewer, facing camera"
+    MONSTER_NEG = MONSTER_NEG + ", front view, facing the viewer, facing camera"
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)

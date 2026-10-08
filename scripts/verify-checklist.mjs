@@ -77,10 +77,12 @@ r = await page.evaluate(() => ({ chips: [...document.querySelectorAll(".role-fil
 ok("#4 역할 필터 4종+전체", r.chips.join(",") === "전체,근딜,원딜,탱커,힐러", r.chips.join(","));
 await clickText(".role-filter button", "원딜");
 await sleep(300);
-const rangedCount = await page.evaluate(() => document.querySelectorAll(".ally-card").length);
+// 2026-10-08: 도감이 4~6장씩 쪽으로 나뉘어 화면의 카드 수는 늘 한 쪽 분량이다 — 필터 결과 수는 data-roster-count 로 잰다
+const rosterCount = () => page.evaluate(() => Number(document.querySelector(".ally-roster-grid")?.getAttribute("data-roster-count") ?? document.querySelectorAll(".ally-card").length));
+const rangedCount = await rosterCount();
 await clickText(".role-filter button", "전체");
 await sleep(300);
-const allCount = await page.evaluate(() => document.querySelectorAll(".ally-card").length);
+const allCount = await rosterCount();
 ok("#4 필터가 카드 수를 줄임", rangedCount > 0 && rangedCount < allCount, `${rangedCount}/${allCount}`);
 await clickText(".recommend-party", "추천");
 await sleep(600);
