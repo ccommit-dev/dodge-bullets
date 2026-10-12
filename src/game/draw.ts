@@ -239,6 +239,20 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   }
 }
 
+/** 가로 띠 배경의 하늘색 — 그림 맨 윗줄 가운데 픽셀을 한 번 읽어 둔다 (띠 위 빈 하늘을 같은 색으로) */
+const skyCache = new WeakMap<HTMLImageElement, string>();
+function skyColorOf(img: HTMLImageElement): string {
+  const hit = skyCache.get(img);
+  if (hit) return hit;
+  let color = "#9fd8f0";
+  try {
+    const c = document.createElement("canvas"); c.width = 8; c.height = 2;
+    const cc = c.getContext("2d");
+    if (cc) { cc.drawImage(img, 0, 0, img.naturalWidth, 4, 0, 0, 8, 2); const d = cc.getImageData(0, 0, 8, 1).data; let r = 0, g = 0, b = 0; for (let i = 0; i < 8; i += 1) { r += d[i * 4]; g += d[i * 4 + 1]; b += d[i * 4 + 2]; } color = `rgb(${Math.round(r / 8)},${Math.round(g / 8)},${Math.round(b / 8)})`; }
+  } catch { /* 캔버스 오염 등 — 기본 하늘색 */ }
+  skyCache.set(img, color);
+  return color;
+}
 function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, floorY } = world;
   const img = stageBackground(world.stageIndex);
@@ -246,16 +260,26 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
   // 땅을 걷는 맵 (2026-10-12): 배경은 지평선 띠 — 아래 가장자리를 바닥선에 맞추고(가로 꽉 채움), 그 아래는 평평한 흙 띠
   if (img) {
     const wide = img.naturalWidth > img.naturalHeight;
-    const scale = wide ? Math.max(width / img.naturalWidth, (floorY + 12) / img.naturalHeight) : Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
+    // 가로 띠는 폭에 맞춰 바닥선 위에 앉히고(세로로 늘리지 않는다 — 늘리면 울타리만 꽉 찬다), 위 남는 하늘은 띠 꼭대기 색으로 채운다
+    const scale = wide ? width / img.naturalWidth : Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
     const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
     const shift = ((world.player.x / Math.max(1, width)) - 0.5) * width * 0.06;
     ctx.save();
     ctx.globalAlpha = 1;
+    if (wide) {
+      // 띠 위 하늘: 꼭대기는 띠 색보다 밝게, 띠에 닿을수록 띠 색으로 — 단색 벽처럼 보이지 않게
+      const base = skyColorOf(img);
+      const top = base.replace(/rgb((d+),(d+),(d+))/, (_m, r, g, b) => `rgb(${Math.min(255, Math.round(+r + (255 - +r) * 0.45))},${Math.min(255, Math.round(+g + (255 - +g) * 0.45))},${Math.min(255, Math.round(+b + (255 - +b) * 0.45))})`);
+      const skyH = Math.max(0, floorY + 12 - dh + 2);
+      const sky = ctx.createLinearGradient(0, 0, 0, skyH);
+      sky.addColorStop(0, top); sky.addColorStop(1, base);
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, width, skyH);
+    }
     ctx.drawImage(img, (width - dw) / 2 - shift, (wide ? floorY + 12 : floorY + 40) - dh, dw, dh);
     // 옛 세로 그림은 어둡게 눌렀다 — 납작한 가로 띠는 밝은 그대로, 위쪽만 살짝 눌러 HUD 가 읽히게
     const dim = ctx.createLinearGradient(0, 0, 0, floorY);
-    dim.addColorStop(0, wide ? "rgba(8, 14, 28, 0.38)" : "rgba(8, 14, 28, 0.48)");
-    dim.addColorStop(1, wide ? "rgba(8, 14, 28, 0.04)" : "rgba(8, 14, 28, 0.48)");
+    dim.addColorStop(0, wide ? "rgba(8, 14, 28, 0.16)" : "rgba(8, 14, 28, 0.48)");
+    dim.addColorStop(1, wide ? "rgba(8, 14, 28, 0.02)" : "rgba(8, 14, 28, 0.48)");
     ctx.fillStyle = dim;
     ctx.fillRect(0, 0, width, floorY);
     ctx.restore();
