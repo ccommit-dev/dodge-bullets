@@ -5000,3 +5000,52 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .legacy-growth, .status-card, .character-goal { background: var(--flat-cream); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); }
 .legacy-growth h3, .legacy-growth p, .legacy-growth small, .status-card b, .status-card p, .status-card small, .status-card h3, .character-goal b, .character-goal small, .character-goal p { color: var(--flat-ink); }
 .share-card-btn, .character-back { background: var(--flat-yellow); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
+
+/* ── 납작 테마 잔여 정리 (2026-10-12, DOM 탐침): 큰 나무 컨테이너·시트 머리·보조 칩까지 크림/갈색으로 ── */
+.game-root .titans-layer .titans-shop, .game-root .titans-layer.is-management-page .titans-shop, .titans-layer:not(.is-management-page) .titans-shop, .titans-layer:not(.is-management-page) .titans-growth-tabs {
+  color: var(--flat-ink); border: 2px solid var(--flat-ink); background: #f7e6c4; box-shadow: 0 4px 0 var(--flat-cream-2); }
+.titans-shop p, .titans-shop small, .titans-shop strong, .titans-shop b, .titans-shop h2, .titans-shop h3, .titans-shop label { color: var(--flat-ink); }
+.hub-sheet, .hub-sheet-head, .hub-sheet-body { background: #f7e6c4; color: var(--flat-ink); }
+.hub-sheet-head button, .hub-sheet-switch { background: transparent; }
+.ally-roster-summary, .gacha-stage-page, .gacha-level, .advice-inline, .hero-skill-combo, .season-pass, .season-head, .season-cell, .mission-card, .journal-reward, .codex-chip, .bestiary-chip, .bulk-toggle, .party-panel-head, .exit-modal.event-modal .event-card {
+  color: var(--flat-ink); border: 2px solid var(--flat-ink); background: var(--flat-cream); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.ally-roster-summary b, .ally-roster-summary small, .gacha-stage-page b, .gacha-stage-page small, .gacha-level b, .gacha-level small, .advice-inline b, .advice-inline small, .advice-inline p, .season-head b, .season-head small, .season-cell b, .season-cell small, .mission-card b, .mission-card small, .mission-card p, .journal-reward b, .codex-chip b, .codex-chip small, .bestiary-chip b, .bestiary-chip small { color: var(--flat-ink); }
+.season-cell.free { background: #e6f4d8; }
+.season-cell.paid, .season-cell.locked { background: #efe3cf; }
+.codex-chip.unseen, .bestiary-chip.unseen { background: #e8dfcc; color: #8a7760; }
+.hero-skill-combo .locked, .hero-skill-combo .on.locked { background: #e8dfcc; color: #8a7760; border: 2px solid var(--flat-ink); }
+.hero-skill-combo .on { background: var(--flat-yellow); color: var(--flat-ink); }
+.titans-card .skill-level-button, .skill-level-button { border: 2px solid var(--flat-ink) !important; border-radius: 12px !important; background: var(--flat-blue) !important; color: #fff !important; box-shadow: 0 3px 0 var(--flat-blue-2) !important; }
+.bulk-toggle button { border: 2px solid var(--flat-ink); border-radius: 10px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.bulk-toggle button.on { background: var(--flat-yellow); }
+.role-filter button { border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); opacity: 1; }
+.role-filter button.on { background: var(--flat-yellow); color: var(--flat-ink); }
+.character-page { background: transparent; }
+.speed-toggle .speed-lock { margin-left: 4px; font-size: 10px; font-style: normal; opacity: .8; }
+.battle-toggle, .speed-toggle { border: 2px solid var(--flat-ink); background: var(--flat-yellow); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
+/* 캡처 보정 (2026-10-12): 시즌 패스 칸 글자·머리, 편성 머리글, 추천 설명, 일괄 레벨업 라벨이 크림 위 크림이었다 */
+.season-cell, .season-cell *, .season-row, .season-row * { color: var(--flat-ink); }
+.season-cell.locked *, .season-row.locked * { color: #8a7760; }
+.season-head { background: var(--flat-cream); background-image: none; }
+.season-head *, .season-pass .season-more, .season-pass button { color: var(--flat-ink); }
+.party-panel-head, .party-panel-head *, .bulk-toggle, .bulk-toggle *, .ally-roster-summary * { color: var(--flat-ink); }
+.party-panel-head { border: 0; background: transparent; box-shadow: none; }
+.advice-inline p, .advice-inline small, .advice-inline b { color: var(--flat-ink); }
+.titans-toast { background: var(--flat-ink); color: #fff3d6; border: 2px solid #fff3d6; }
+.season-tiers li, .season-tiers li > b, .season-tiers li > span, .season-tiers .season-more { color: var(--flat-ink); }
+.season-cell:disabled, .season-cell:disabled * { color: #8a7760; opacity: 1; }
+.season-cell.claimed { background: #e6f4d8; }
+/* 특이도 보정 (2026-10-12 스타일 탐침): 원래 규칙(.party-panel-head strong · .bulk-toggle span/button · .role-filter button · .season-head b/small)이 더 구체적이라 이겼다 */
+.hub-sheet .party-panel-head strong, .titans-shop .party-panel-head strong, .party-panel .party-panel-head strong { color: var(--flat-ink); }
+.titans-shop .bulk-toggle span, .hub-sheet .bulk-toggle span { color: var(--flat-ink); }
+.titans-shop .bulk-toggle button, .hub-sheet .bulk-toggle button { color: var(--flat-ink); background: var(--flat-cream); border: 2px solid var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.titans-shop .bulk-toggle button.on, .hub-sheet .bulk-toggle button.on { background: var(--flat-yellow); color: var(--flat-ink); }
+.party-panel .role-filter button, .party-tools .role-filter button { color: var(--flat-ink); background: var(--flat-cream); }
+.party-panel .role-filter button.on, .party-tools .role-filter button.on { background: var(--flat-yellow); }
+.season-pass .season-head { background: var(--flat-cream); background-image: none; }
+.season-pass .season-head b, .season-pass .season-head small, .season-pass .season-head p, .season-pass .season-head span { color: var(--flat-ink); }
+.season-pass .season-cell.free span, .season-pass .season-cell.free b, .season-pass .season-cell.paid span, .season-pass .season-cell.paid b { color: var(--flat-ink); }
+.season-pass .season-cell:disabled span, .season-pass .season-cell:disabled b { color: #8a7760; }
+.ally-card .ally-star-up:disabled, .ally-card button:disabled { opacity: 1; }
+.season-pass .season-cell.paid { background: #efe3cf; }
+.season-pass .season-cell.paid.claimed { background: #e6f4d8; }

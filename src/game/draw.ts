@@ -281,7 +281,8 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
   if (img) {
     const wide = img.naturalWidth > img.naturalHeight;
     // 가로 띠는 폭에 맞춰 바닥선 위에 앉히고(세로로 늘리지 않는다 — 늘리면 울타리만 꽉 찬다), 위 남는 하늘은 띠 꼭대기 색으로 채운다
-    const scale = wide ? width / img.naturalWidth : Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
+    // 2026-10-12 (사용자: "맵 잘려 보임"): 폭 맞춤(세로 폰에서 띠가 화면 1/4)이 아니라 바닥선 위 높이의 62% 까지 키우고 가로는 가운데를 쓴다
+    const scale = wide ? Math.max(width / img.naturalWidth, (floorY * 0.62) / img.naturalHeight) : Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
     const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
     const shift = ((world.player.x / Math.max(1, width)) - 0.5) * width * 0.06;
     ctx.save();
