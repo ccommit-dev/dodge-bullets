@@ -282,11 +282,12 @@ export function drawStickman(
       drawHeight,
     );
     // 파츠 오버레이 (2026-10-12) — 사냥터 EquippedCharacter 와 같은 앵커(프레임 %): 가슴 → 투구 (무기는 활·지팡이가 따로 그린다)
-    drawGearPart(ctx, "boots", p.gear.boots, 50, 95, 0.5, drawWidth, drawHeight);
-    drawGearPart(ctx, "shield", p.gear.shield, 30, 72, 0.42, drawWidth, drawHeight);
-    drawGearPart(ctx, "armor", p.gear.armor, 50, 70, 0.62, drawWidth, drawHeight);
-    drawGearPart(ctx, "gloves", p.gear.gloves, 78, 68, 0.3, drawWidth, drawHeight);
-    drawGearPart(ctx, "helmet", p.gear.helmet, 48, 40, 0.62, drawWidth, drawHeight);
+    // 배율은 DOM 오버레이(CSS 폭% × 앵커 scale)의 1.2배 — 7차 실제 원화는 여백이 없어 예전 .62 가 몸통을 다 덮었다 (2026-10-12 밤)
+    drawGearPart(ctx, "boots", p.gear.boots, 50, 95, 0.28, drawWidth, drawHeight);
+    drawGearPart(ctx, "shield", p.gear.shield, 30, 72, 0.2, drawWidth, drawHeight);
+    drawGearPart(ctx, "armor", p.gear.armor, 50, 73, 0.34, drawWidth, drawHeight);
+    drawGearPart(ctx, "gloves", p.gear.gloves, 78, 68, 0.11, drawWidth, drawHeight);
+    drawGearPart(ctx, "helmet", p.gear.helmet, 48, 40, 0.42, drawWidth, drawHeight);
         ctx.restore();
     if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
 

@@ -66,8 +66,9 @@
 | 가격 | ₩2,900 (카탈로그 자리값, 콘솔 가격이 화면에 그대로 뜬다) |
 | 지급 | `CharacterProgress.dodgeSpeed3 = true` → 성문 방어 배속 버튼 ×1→×2→×3. 환불 시 `revokePurchase` 가 false 로 되돌린다 |
 
-1. **플레이 콘솔** › 수익 창출 › 인앱 상품 › 상품 만들기 → ID `dodge-x3`, 이름·설명·가격 위 표, 상태 **활성**. 라이선스 테스터 계정으로 내부 테스트 트랙에서 구매 → 앱 성문 방어 배속 버튼 ×3 확인.
-2. **앱인토스 콘솔** › 인앱결제 › 상품 등록 → SKU `dodge-x3`, 일회성(영구), 같은 가격. 토스 앱에서 `getProductItemList` 에 떠야 상점에 보인다(콘솔에 없는 상품은 숨김).
+1. **플레이 콘솔** › 수익 창출 › 인앱 상품 › **가져오기** → `store/play-in-app-products.csv` 업로드(17종 전부, `dodge-x3` 포함 · 관리형 상품 · ko_KR 이름/설명 · 가격 마이크로 단위). 손으로 만들 땐 ID `dodge-x3`, 이름·설명·가격 위 표, 상태 **활성**. 라이선스 테스터 계정으로 내부 테스트 트랙에서 구매 → 앱 성문 방어 배속 버튼 ×3 확인.
+2. **앱인토스 콘솔** › 인앱결제 › 상품 등록 → `store/toss-in-app-products.json` 의 값을 옮겨 적는다(SKU `dodge-x3`, 일회성(영구), ₩2,900). 토스는 가져오기가 없다. 토스 앱에서 `getProductItemList` 에 떠야 상점에 보인다(콘솔에 없는 상품은 숨김).
+   - 두 파일은 `node scripts/export-store-products.mjs` 가 카탈로그·`PLAY_PRODUCT_IDS` 에서 만들고, `verify-payments` 가 `--check` 로 카탈로그와 어긋나지 않았는지 본다 — 상품을 바꾸면 다시 내보내 커밋한다.
 3. 등록 뒤 `node scripts/verify-payments.mjs` 는 코드 쪽 정합만 본다 — 실제 구매는 사람이 1건 해 보고 `claimedRewards` 에 `purchase:dodge-x3:<orderId>` 가 남는지 확인.
 
 ## 출시 빌드와 QA 빌드

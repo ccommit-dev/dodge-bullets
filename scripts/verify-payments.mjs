@@ -6,6 +6,7 @@
  */
 import { build } from "esbuild";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -399,6 +400,12 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const w = store.applyPurchase(p0, "weekend-pack", "play:wk1", sat);
   ok("주말 보급 결제: 보석 300 · 강화석 60 · 가속 24h · 환불 장부(ledger) 기록", w.applied && w.progress.redGems === p0.redGems + 300 && w.progress.enhancementMaterials === p0.enhancementMaterials + 60 && w.progress.idleBoostUntil === sat + 24 * 3600000 && w.progress.claimedRewards.includes("ledger:weekend-pack:play:wk1:300"));
   ok("카탈로그 묶음: 매일·주말 묶음이 첫 번째 · 중급/고급 모험가·개척 축하·성문 수비 보급 없음", catalog.PAID_GROUPS[0].ids.join(",") === "daily-deal,weekend-pack" && ["adventurer-mid", "adventurer-advanced", "pack-pioneer", "gate-supply"].every((id) => !store.PLAY_PRODUCT_IDS.includes(id)));
+}
+
+{
+  // 콘솔 등록 데이터(store/play-in-app-products.csv · toss-in-app-products.json)가 카탈로그·PLAY_PRODUCT_IDS 와 같은가 (2026-10-12)
+  const r = spawnSync(process.execPath, ["scripts/export-store-products.mjs", "--check"], { encoding: "utf8" });
+  ok("스토어 등록 데이터(플레이 CSV · 토스 JSON)가 카탈로그와 같다 — 다르면 node scripts/export-store-products.mjs", r.status === 0, (r.stdout + r.stderr).trim().split("\n").pop());
 }
 
 console.log(failed ? `${failed} FAIL` : "ALL PASS");
