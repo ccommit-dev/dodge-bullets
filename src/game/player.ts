@@ -141,7 +141,7 @@ export function createPlayer(width: number, floorY: number): Player {
     landingFxMs: 0,
     shootMs: 0,
     shootAngle: -Math.PI / 2,
-    gear: { helmet: 0, armor: 0, weapon: 0 },
+    gear: { helmet: 0, armor: 0, weapon: 0, shield: 0, gloves: 0, boots: 0 },
   };
 }
 
@@ -282,7 +282,10 @@ export function drawStickman(
       drawHeight,
     );
     // 파츠 오버레이 (2026-10-12) — 사냥터 EquippedCharacter 와 같은 앵커(프레임 %): 가슴 → 투구 (무기는 활·지팡이가 따로 그린다)
+    drawGearPart(ctx, "boots", p.gear.boots, 50, 95, 0.5, drawWidth, drawHeight);
+    drawGearPart(ctx, "shield", p.gear.shield, 30, 72, 0.42, drawWidth, drawHeight);
     drawGearPart(ctx, "armor", p.gear.armor, 50, 70, 0.62, drawWidth, drawHeight);
+    drawGearPart(ctx, "gloves", p.gear.gloves, 78, 68, 0.3, drawWidth, drawHeight);
     drawGearPart(ctx, "helmet", p.gear.helmet, 48, 40, 0.62, drawWidth, drawHeight);
         ctx.restore();
     if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }

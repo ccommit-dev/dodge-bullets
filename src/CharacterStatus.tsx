@@ -1,3 +1,4 @@
+import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
 import { useEffect, useMemo, useState } from "react";
 import { loadBeatRpg } from "./game/storage";
 import { skillTotal, SKILL_LABEL, type BeatRpgProgress, type SkillId } from "./beat/rpg";
@@ -267,7 +268,7 @@ export function CharacterStatus({
       <section className="character-hero-card">
         <div className="character-equipment-preview">
           <div className="character-equipment-facing">
-            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} />
+            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} gear={{ shield: shieldTierOf(progress.dodgeBestStage), gloves: glovesTierOf(titans.equipmentTraining.weaponMastery), boots: bootsTierOf(progress.towerBestFloor) }} />
           </div>
         </div>
         <div className="character-identity">
