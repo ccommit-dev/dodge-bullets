@@ -2363,6 +2363,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         className={`titans-field phase-${battlePhase} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
+        data-area={area.id}
         style={{
           ...(equippedThemeDef ? { "--fx-theme": "1" } : {}),
           ...(equippedFxDef ? { "--fx-trail": equippedFxDef.trail, "--fx-rot": `${equippedFxDef.hue - 200}deg` } : {}),
@@ -2383,6 +2384,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         }}
       >
         <div className="titans-background" aria-hidden="true" />
+        {/* 땅 띠 (2026-10-12, 사용자: "땅을 걷는 듯한 맵"): 배경은 위 지평선 띠, 아래는 평평한 흙 — 캐릭터가 이 위에 선다 */}
+        <div className="titans-ground" aria-hidden="true" />
         {/* 2026-10-07 사용자: "스테이지 줄·자동 사냥 문구를 작게 해 맵 HP바 아래로, 맵은 더 크게" — 위에 있던 스테이지 줄·방치 카드를 전장 안 한 줄로 */}
         <div className="titans-stagebar in-field">
           <div>

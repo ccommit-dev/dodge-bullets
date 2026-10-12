@@ -207,9 +207,18 @@ function drawStage3D(
       stageCache.width = width; stageCache.height = height;
       const cc = stageCache.getContext("2d");
       if (cc) {
-        const sc = Math.max(width / stage.naturalWidth, height / stage.naturalHeight);
-        const dw = stage.naturalWidth * sc, dh = stage.naturalHeight * sc;
-        cc.drawImage(stage, (width - dw) / 2, (height - dh) / 2, dw, dh);
+        if (stage.naturalWidth > stage.naturalHeight) {
+          // 가로 지평선 띠 (2026-10-12): 위에 가로 꽉 채워 깔고 그 아래는 평평한 무대 바닥
+          const sc = width / stage.naturalWidth;
+          const dh = stage.naturalHeight * sc;
+          cc.drawImage(stage, 0, 0, width, dh);
+          cc.fillStyle = "#8a5a2b"; cc.fillRect(0, dh, width, height - dh);
+          cc.fillStyle = "#a9733a"; cc.fillRect(0, dh - 3, width, 6);
+        } else {
+          const sc = Math.max(width / stage.naturalWidth, height / stage.naturalHeight);
+          const dw = stage.naturalWidth * sc, dh = stage.naturalHeight * sc;
+          cc.drawImage(stage, (width - dw) / 2, (height - dh) / 2, dw, dh);
+        }
       }
     }
     ctx.drawImage(stageCache, 0, 0);
