@@ -23,7 +23,7 @@ import type { PurchaseResult } from "./adapter";
 import { notifyStoreChanged } from "./prices";
 
 /** Play Console에 등록할 상품 id — productCatalog의 id와 1:1 */
-export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "daily-deal", "weekend-pack", "char-obsidian", "char-dawn", "patron-30d", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost", "gate-fund"] as const;
+export const PLAY_PRODUCT_IDS = ["gems-80", "gems-450", "gems-1200", "adventurer-starter", "daily-deal", "weekend-pack", "char-obsidian", "char-dawn", "patron-30d", "pack-wall", "pack-rebirth", "season-pass", "remove-ads", "char-ember", "char-frost", "gate-fund", "dodge-x3"] as const;
 export type PlayProductId = (typeof PLAY_PRODUCT_IDS)[number];
 
 /**
@@ -65,7 +65,7 @@ export function paidStoreVisible(): boolean {
 }
 
 /** 상품별 지급 내용 — productCatalog의 contents 문구와 일치해야 한다. allyShards는 출전 1번 동료에게 */
-export type PurchaseGrantSpec = Partial<{ seals: number; skillShards: number; gateFund: boolean; gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean; adFree: boolean }>;
+export type PurchaseGrantSpec = Partial<{ seals: number; skillShards: number; gateFund: boolean; dodgeSpeed3: boolean; gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean; adFree: boolean }>;
 export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
   switch (productId) {
     case "gems-80": return { gems: 80 };
@@ -87,6 +87,7 @@ export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
     case "remove-ads": return { adFree: true };
     // 성문 방어 (2026-10-02)
     case "gate-fund": return { gateFund: true };
+    case "dodge-x3": return { dodgeSpeed3: true };
     default: return null;
   }
 }
@@ -141,6 +142,7 @@ export function applyPurchase(current: CharacterProgress, productId: string, tra
       ? (Object.fromEntries(Object.entries(current.expeditionShards).map(([id, n]) => [id, n + (grant.skillShards ?? 0)])) as CharacterProgress["expeditionShards"])
       : current.expeditionShards,
     gateFund: grant.gateFund ? { ...current.gateFund, paid: true } : current.gateFund,
+    dodgeSpeed3: grant.dodgeSpeed3 ? true : current.dodgeSpeed3,
     claimedRewards: [...current.claimedRewards, key, ...(doubled ? [`first-double:${productId}`] : []), ...(gems > 0 ? [`ledger:${productId}:${transactionId}:${gems}`] : []), ...(dealKey(productId, now) && !current.claimedRewards.includes(dealKey(productId, now)!) ? [dealKey(productId, now)!] : [])],
   };
   const withOffer = closeMomentOffer(progress, productId);
@@ -161,6 +163,7 @@ export function revokePurchase(current: CharacterProgress, productId: string, tr
   if (!stillOwned && grant?.adFree) next = { ...next, adFree: false };
   // 원정 기금 환불 — 남은 단계만 거둔다(이미 받은 보석은 그대로)
   if (!stillOwned && grant?.gateFund) next = { ...next, gateFund: { ...next.gateFund, paid: false } };
+  if (!stillOwned && grant?.dodgeSpeed3) next = { ...next, dodgeSpeed3: false };
   if (!stillOwned && grant?.character) {
     const ch = grant.character;
     next = { ...next, ownedCharacters: next.ownedCharacters.filter((c) => c !== ch), activeCharacter: next.activeCharacter === ch ? "default" : next.activeCharacter };

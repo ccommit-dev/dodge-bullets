@@ -1733,14 +1733,17 @@ function App() {
                 <button
                   type="button"
                   className="battle-toggle speed-toggle"
-                  aria-label={`전투 속도 ${speedMul === 1 ? "1배" : "2배"}`}
+                  aria-label={`전투 속도 ${speedMul}배`}
                   onClick={() => {
-                    const next = speedRef.current === 1 ? 2 : 1;
+                    // ×3 는 유료(dodge-x3). 미보유면 ×2 에서 안내만 하고 ×1 로 돌아간다 (2026-10-12)
+                    const cur = speedRef.current;
+                    const next = cur === 1 ? 2 : cur === 2 ? (progress.dodgeSpeed3 ? 3 : 1) : 1;
+                    if (cur === 2 && !progress.dodgeSpeed3) showBanner("×3 배속은 상점 · 패키지의 '성문 방어 ×3 배속'", "영구 ₩2,900", false);
                     speedRef.current = next;
                     setSpeedMul(next);
                   }}
                 >
-                  ×{speedMul === 1 ? "1" : "2"}
+                  ×{speedMul}{!progress.dodgeSpeed3 && speedMul === 2 ? <i className="speed-lock" aria-hidden="true">🔒3</i> : null}
                 </button>
               </>
             )}

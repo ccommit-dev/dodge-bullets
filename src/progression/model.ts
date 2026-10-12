@@ -187,6 +187,8 @@ export type CharacterProgress = {
   equippedTheme: string;
   /** 광고 제거 구매 (L) — 보상형 자리 3곳을 광고 없이 자동 적용 */
   adFree: boolean;
+  /** 성문 방어 ×3 배속 (2026-10-12, 실결제 영구 상품 dodge-x3) */
+  dodgeSpeed3: boolean;
   /** 보상형 광고 일일 카운터 (L) */
   adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number; dodgeDouble: number; beatDouble: number };
   /** 결제로 받았지만 아직 사냥터 저장에 들어가지 않은 스킬 코어 — 사냥터가 준비되면 옮긴다 (2026-10-02 리뷰 #4) */
@@ -300,6 +302,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     ownedThemes: [],
     equippedTheme: "",
     adFree: false,
+    dodgeSpeed3: false,
     adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 },
     momentOffers: {},
     gateFund: emptyGateFund(),
@@ -652,6 +655,7 @@ export function normalizeCharacterProgress(
     ownedThemes: Array.isArray(raw.ownedThemes) ? [...new Set(raw.ownedThemes.filter((id): id is string => typeof id === "string"))].slice(0, 20) : [],
     equippedTheme: typeof raw.equippedTheme === "string" && Array.isArray(raw.ownedThemes) && raw.ownedThemes.includes(raw.equippedTheme) ? raw.equippedTheme : "",
     adFree: raw.adFree === true,
+    dodgeSpeed3: raw.dodgeSpeed3 === true,
     pendingSkillCores: integer(raw.pendingSkillCores, 0, 100000),
     gateFund: (() => {
       const g = raw.gateFund as { paid?: unknown; claimed?: unknown } | undefined;

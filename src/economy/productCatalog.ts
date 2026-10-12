@@ -57,6 +57,8 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "pack-wall", kind: "bundle", name: "벽 돌파 세트", description: "DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다", displayPrice: "₩5,900", badge: "1회", contents: ["출전 동료 조각 ×30", "방치 가속 24h", "보석 ×100"], visible: true, trigger: "wall" },
   { id: "pack-rebirth", kind: "bundle", name: "환생 세트", description: "첫 환생 후 1회 — 재시작을 빠르게", displayPrice: "₩12,000", badge: "1회", contents: ["보석 ×400", "스킬 코어 ×10", "출전 동료 조각 ×40"], visible: true, trigger: "rebirth" },
   // 성문 원정 기금 (2026-10-02) — 한 번 사면 성문을 깰 때마다 보석. 수비 보급(소모성)은 BM 간결화로 뺐다 (2026-10-08)
+  // 성문 방어 ×3 배속 (2026-10-12, 사용자: "댐원정 X3 유료 결제 아이템") — 영구. 시간 절약형(가이드 3.6 플레이 효율), 밸런스는 그대로
+  { id: "dodge-x3", kind: "entitlement", name: "성문 방어 ×3 배속", description: "성문 방어 전투 속도 ×3 — 한 판이 1/3 시간", displayPrice: "₩2,900", badge: "영구", contents: ["성문 방어 ×3 배속 버튼"], visible: true },
   { id: "gate-fund", kind: "entitlement", name: "성문 원정 기금", description: "한 번 사면 성문 방어를 깰 때마다 보석 — 이미 깬 단계는 바로 받는다", displayPrice: "₩9,900", badge: "영구", contents: ["스테이지 1~4 돌파 보석 100 · 150 · 250 · 400", "원정 별 6개 · 12개 보석 300 · 500", "모두 달성 시 보석 ×1,700 (달성한 단계만큼 받는다)"], visible: true },
   // G 시즌 패스 유료 트랙 — 이벤트 센터 시즌 탭에서 판매 (패키지 탭에는 숨김)
   { id: "season-pass", kind: "entitlement", name: "시즌 패스", description: "4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트", displayPrice: "₩7,900", badge: "시즌", contents: ["유료 트랙 30단"], visible: false },
@@ -102,7 +104,7 @@ export const SHARD_PACK_AMOUNT = 10;
 export const PAID_GROUPS: ReadonlyArray<{ id: string; label: string; note: string; ids: readonly string[] }> = [
   { id: "daily", label: "매일·주말", note: "커피 한 잔 값 · 하루 1회 · 주말 1회", ids: ["daily-deal", "weekend-pack"] },
   { id: "gems", label: "붉은 보석", note: "팩마다 첫 구매 2배", ids: ["gems-80", "gems-450", "gems-1200"] },
-  { id: "pass", label: "패스·영구", note: "한 번 사면 계속", ids: ["patron-30d", "remove-ads", "gate-fund"] },
+  { id: "pass", label: "패스·영구", note: "한 번 사면 계속", ids: ["patron-30d", "remove-ads", "dodge-x3", "gate-fund"] },
   { id: "once", label: "1회 한정", note: "지금 이 순간에만", ids: ["adventurer-starter", "pack-wall", "pack-rebirth"] },
   { id: "look", label: "캐릭터·코스튬", note: "외형 — 성능 차이 거의 없음", ids: ["char-obsidian", "char-dawn", "char-ember", "char-frost"] },
 ];

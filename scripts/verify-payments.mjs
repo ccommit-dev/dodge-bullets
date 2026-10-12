@@ -72,7 +72,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const ids = catalog.STORE_PRODUCTS.map((p) => p.id).sort();
   const play = [...store.PLAY_PRODUCT_IDS].sort();
   ok("상품 ID: 카탈로그 = 스토어 등록 목록 (양방향)", JSON.stringify(ids) === JSON.stringify(play), `카탈로그만 ${ids.filter((i) => !play.includes(i)).join(",") || "-"} · 등록만 ${play.filter((i) => !ids.includes(i)).join(",") || "-"}`);
-  ok("영구 상품 = 광고 제거 + 캐릭터 4종 + 성문 원정 기금, 시즌 패스·성문 수비 보급은 소모성", JSON.stringify([...store.PERMANENT_PRODUCT_IDS].sort()) === JSON.stringify(["char-dawn", "char-ember", "char-frost", "char-obsidian", "gate-fund", "remove-ads"]) && store.isConsumableProduct("gate-supply") && store.isConsumableProduct("season-pass"), [...store.PERMANENT_PRODUCT_IDS].join(","));
+  ok("영구 상품 = 광고 제거 + 캐릭터 4종 + 성문 원정 기금, 시즌 패스·성문 수비 보급은 소모성", JSON.stringify([...store.PERMANENT_PRODUCT_IDS].sort()) === JSON.stringify(["char-dawn", "char-ember", "char-frost", "char-obsidian", "dodge-x3", "gate-fund", "remove-ads"]) && store.isConsumableProduct("gate-supply") && store.isConsumableProduct("season-pass"), [...store.PERMANENT_PRODUCT_IDS].join(","));
 }
 
 // ── 진행도 갱신은 한 줄로 ──
@@ -342,6 +342,11 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
 {
   fresh();
   const p0 = await P();
+  {
+    const x = store.applyPurchase(p0, "dodge-x3", "play:x3", 0);
+    const back = store.revokePurchase(x.progress, "dodge-x3", "play:x3");
+    ok("성문 ×3 배속(영구): 사면 dodgeSpeed3 · 환불하면 거둔다 · 패스·영구 묶음에 있다", x.applied && x.progress.dodgeSpeed3 === true && back.progress.dodgeSpeed3 === false && catalog.PAID_GROUPS.find((g) => g.id === "pass").ids.includes("dodge-x3"));
+  }
   ok("성문 수비 보급은 카탈로그·스토어 목록에서 뺐다 (2026-10-08 BM 간결화)", !catalog.STORE_PRODUCTS.some((p) => p.id === "gate-supply") && !store.PLAY_PRODUCT_IDS.includes("gate-supply") && store.purchaseGrant("gate-supply") === null);
   // 기금: 산 뒤 이미 깬 단계는 바로 받고, 못 깬 단계는 못 받는다 · 두 번 받지 못한다
   const withStars = { ...p0, dodgeStars: { "0": 3, "1": 2, "2": 1 } };
