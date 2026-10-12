@@ -253,7 +253,7 @@ def gen_txt(prompt: str, seed: int, pose: Image.Image | None = None, steps: int 
     pipe = load_pipe(controlnet=pose is not None)
     pipe.set_ip_adapter_scale(ip_scale)
     g = torch.Generator(dev()).manual_seed(seed)
-    kwargs = dict(prompt=f"{prompt}, {STYLE}", negative_prompt=(NEG + ", " + neg_extra) if neg_extra else NEG, num_inference_steps=steps, guidance_scale=6.5,
+    kwargs = dict(prompt=f"{FLAT_PREFIX}{prompt}, {STYLE}", negative_prompt=(NEG + ", " + neg_extra) if neg_extra else NEG, num_inference_steps=steps, guidance_scale=6.5,
                   generator=g, width=size[0], height=size[1], ip_adapter_image=[style_refs()])
     if pose is not None:
         kwargs.update(image=pose, controlnet_conditioning_scale=0.8)
@@ -529,7 +529,7 @@ def cmd_monster(a):
         refs = style_refs()
     for seed in (a.seeds or [a.seed or BASE_SEED]):
         g = torch.Generator(dev()).manual_seed(seed)
-        im = pipe(prompt=f"{a.prompt}, {MONSTER_STYLE}", negative_prompt=MONSTER_NEG, num_inference_steps=26,
+        im = pipe(prompt=f"{FLAT_PREFIX}{a.prompt}, {MONSTER_STYLE}", negative_prompt=MONSTER_NEG, num_inference_steps=26,
                   guidance_scale=7.0, generator=g, width=1024, height=1024, ip_adapter_image=[refs]).images[0]
         px = a.px or 512
         save(cutout(im).resize((px, px), Image.LANCZOS), f"monster-{a.id}-s{seed}.png")
@@ -559,8 +559,12 @@ def cmd_backdrop(a):
         g = torch.Generator(dev()).manual_seed(seed)
         # ARTGEN_BG_NEG: 배경 전용 추가 네거티브(16차: 아이소메트릭·부감 금지)
         neg = BACKDROP_NEG + ((", " + os.environ["ARTGEN_BG_NEG"]) if os.environ.get("ARTGEN_BG_NEG") else "")
-        im = pipe(prompt=f"{a.prompt}, {BACKDROP_STYLE}", negative_prompt=neg, num_inference_steps=26,
-                  guidance_scale=6.0, generator=g, width=832, height=1216).images[0]
+        # ARTGEN_BG_SIZE=1216x832 (2026-10-12): 옆에서 본 지평선 띠는 가로가 맞다. 없으면 세로(832x1216)
+        bw, bh = (832, 1216)
+        if os.environ.get("ARTGEN_BG_SIZE"):
+            bw, bh = [int(x) for x in os.environ["ARTGEN_BG_SIZE"].lower().split("x")]
+        im = pipe(prompt=f"{FLAT_PREFIX}{a.prompt}, {BACKDROP_STYLE}", negative_prompt=neg, num_inference_steps=26,
+                  guidance_scale=6.0, generator=g, width=bw, height=bh).images[0]
         save(im, f"backdrop-{a.id}-s{seed}.png")
 
 
@@ -581,6 +585,34 @@ if CHROMA:
     for _n in ["NEG", "ICON_NEG", "NPC_NEG", "PROP_NEG", "MONSTER_NEG"]:
         if _n in globals():
             globals()[_n] = globals()[_n] + ", white background, gradient background, vignette, floor shadow, scenery, landscape, environment, sky, clouds, plants, trees, rocks, ground, grass, water"
+
+# ARTGEN_LOOK=flat (2026-10-12, 사용자: "카피바라 키우기 느낌으로 디자인 다시"): 3D 토이 렌더 → 납작한 벡터 카툰.
+# 굵은 외곽선 · 셀 셰이딩 · 단순 도형 · 파스텔. 배경은 옆에서 본 2D 횡스크롤 — 위 1/3 하늘·집·나무, 아래 2/3 넓고 평평한 흙 땅(캐릭터가 걷는 곳)
+LOOK = os.environ.get("ARTGEN_LOOK", "")
+# 프롬프트 맨 앞에 붙는 짧은 스타일 접두어 — CLIP 은 77 토큰 뒤를 버리므로 화풍은 앞에, 긴 묘사는 뒤에 (flat 이 아니면 빈 문자열)
+FLAT_PREFIX = ""
+if LOOK == "flat":
+    FLAT_PREFIX = "flat vector cartoon, thick dark outlines, cel shading, sticker style, chibi, "
+    _3D = ["3D toy render look, soft rounded shapes, glossy highlights, ", "3D toy render look, chunky rounded shapes, glossy highlights, ", "3D toy render look, "]
+    for _n in ["BEAVER_LOOK", "STYLE", "MONSTER_STYLE", "PROP_STYLE"]:
+        if _n in globals():
+            _v = globals()[_n]
+            for _t in _3D:
+                _v = _v.replace(_t, "simple flat shapes, ")
+            globals()[_n] = _v
+    for _n in ["NEG", "MONSTER_NEG", "PROP_NEG"]:
+        if _n in globals():
+            globals()[_n] = globals()[_n] + ", 3d render, glossy, realistic shading, gradients, painterly, fur texture, photo, soft shading, semi-realistic, floor shadow, ground circle, standing on a platform, base disc"
+    BACKDROP_STYLE = (
+        "cute 2D side-scrolling mobile game background strip, flat vector cartoon illustration, thick clean outlines, cel shading, bright pastel colors, "
+        "seen at eye level from the side like a platformer: a single wide scene, sky above, a row of small cartoon buildings and trees standing on one flat ground line, "
+        "a flat strip of tan dirt ground along the bottom edge, one continuous picture, no characters, no text, no watermark"
+    )
+    BACKDROP_NEG = (
+        "character, person, people, creature, close-up, text, letters, watermark, logo, ui, hud, buttons, frame, border, busy detail, clutter, "
+        "lowres, blurry, photo, 3d render, isometric, top-down view, bird's eye view, aerial view, perspective road, vanishing point, painterly, realistic, gradients, water in the middle, "
+        "comic panels, grid, collage, multiple panels, split frames, border, storyboard"
+    )
 
 # ARTGEN_FACE="facing left"|"facing right" (2026-10-08, 사용자: 캐릭터는 오른쪽 · 몬스터는 왼쪽): 스타일의 "정면" 문구를 측면 보기로 바꾼다
 FACE = os.environ.get("ARTGEN_FACE", "")

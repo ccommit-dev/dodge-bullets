@@ -243,28 +243,34 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
   const { width, height, floorY } = world;
   const img = stageBackground(world.stageIndex);
   { const st = getStage(world.stageIndex); frameBossArt = st.bossArt; frameChapter = st.chapter; }
+  // 땅을 걷는 맵 (2026-10-12): 배경은 지평선 띠 — 아래 가장자리를 바닥선에 맞추고(가로 꽉 채움), 그 아래는 평평한 흙 띠
   if (img) {
-    // cover 맞춤 + 느린 가로 패럴랙스(플레이어 x 에 따라 ±3%)
-    const scale = Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
+    const wide = img.naturalWidth > img.naturalHeight;
+    const scale = wide ? Math.max(width / img.naturalWidth, (floorY + 12) / img.naturalHeight) : Math.max(width / img.naturalWidth, (floorY + 40) / img.naturalHeight);
     const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
     const shift = ((world.player.x / Math.max(1, width)) - 0.5) * width * 0.06;
     ctx.save();
     ctx.globalAlpha = 1;
-    ctx.drawImage(img, (width - dw) / 2 - shift, floorY + 40 - dh, dw, dh);
-    ctx.fillStyle = "rgba(8, 14, 28, 0.48)";
-    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, (width - dw) / 2 - shift, (wide ? floorY + 12 : floorY + 40) - dh, dw, dh);
+    // 옛 세로 그림은 어둡게 눌렀다 — 납작한 가로 띠는 밝은 그대로, 위쪽만 살짝 눌러 HUD 가 읽히게
+    const dim = ctx.createLinearGradient(0, 0, 0, floorY);
+    dim.addColorStop(0, wide ? "rgba(8, 14, 28, 0.38)" : "rgba(8, 14, 28, 0.48)");
+    dim.addColorStop(1, wide ? "rgba(8, 14, 28, 0.04)" : "rgba(8, 14, 28, 0.48)");
+    ctx.fillStyle = dim;
+    ctx.fillRect(0, 0, width, floorY);
     ctx.restore();
   }
-  // 지면: 바닥선 아래 어두운 띠 + 잔디/돌 결
-  const g = ctx.createLinearGradient(0, floorY, 0, height);
-  g.addColorStop(0, "rgba(30, 41, 59, 0.95)");
-  g.addColorStop(1, "rgba(2, 6, 23, 1)");
-  ctx.fillStyle = g;
+  // 흙 띠: 평평한 황토 + 위 가장자리 잔디 줄 + 띄엄띄엄 흙 자국 (참고: 카피바라 키우기)
+  ctx.fillStyle = "#c9a062";
   ctx.fillRect(0, floorY, width, height - floorY);
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.12)";
-  ctx.lineWidth = 1;
-  for (let x = (world.animClock * 8) % 28; x < width; x += 28) {
-    ctx.beginPath(); ctx.moveTo(x, floorY + 6); ctx.lineTo(x + 10, floorY + 6); ctx.stroke();
+  ctx.fillStyle = "#7fb84a";
+  ctx.fillRect(0, floorY - 2, width, 5);
+  ctx.fillStyle = "#5e8f36";
+  ctx.fillRect(0, floorY + 3, width, 2);
+  ctx.fillStyle = "rgba(120, 86, 40, 0.28)";
+  for (let x = ((world.animClock * 8) % 96) - 96; x < width + 96; x += 96) {
+    ctx.beginPath(); ctx.ellipse(x + 30, floorY + 22, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + 74, floorY + 44, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
 

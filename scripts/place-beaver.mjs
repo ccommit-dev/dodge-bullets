@@ -12,11 +12,17 @@ const OUT = "art-gen/out";
 const groups = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const want = (g) => groups.length === 0 || groups.includes("all") || groups.includes(g);
 const seedOverride = Object.fromEntries(process.argv.filter((a) => a.startsWith("--seed")).flatMap((a) => a.replace(/^--seed=?/, "").split(",")).filter(Boolean).map((kv) => kv.split("=")));
+// --flip=hero,mia,monster-bv-slime … : 왼쪽을 보고 나온 납작 원화를 오른쪽 보기로 뒤집어 쓴다 (2026-10-12). 반전본은 art-gen/out/flip-<파일명>
+const flips = new Set(process.argv.filter((a) => a.startsWith("--flip")).flatMap((a) => a.replace(/^--flip=?/, "").split(",")).filter(Boolean));
+const flippedPath = (file) => `${OUT}/flip-${file.split("/").pop()}`;
+const flipIfWanted = async (file, key) => { if (!flips.has(key)) return file; const out = flippedPath(file); await sharp(file).flop().png().toFile(out); console.log("flip", key, out.split("/").pop()); return out; };
 const node = (script, ...args) => { console.log("$", script, args.join(" ")); execFileSync(process.execPath, [script, ...args], { stdio: "inherit" }); };
 const pick = (stem, seeds) => {
   if (seedOverride[stem]) { const f = `${OUT}/${stem}-s${seedOverride[stem]}.png`; if (!existsSync(f)) throw new Error("없음: " + f); return f; }
   // 3차(bv3, 배경 없는 참조) 후보가 있으면 그 안에서 QA 최선, 없으면 1차 후보 안에서 QA 최선
   const esc = (t) => t.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
+  const v6 = globOut(new RegExp("^" + esc(stem.replace("-bv-", "-capy2-")) + "-s\\d+\\.png$"));   // 카피 2차(납작 벡터, 2026-10-12)
+  if (v6.length) return qaBest(stem, v6);
   const v4 = globOut(new RegExp("^" + esc(stem.replace("-bv-", "-bv5-")) + "-s\\d+\\.png$"));   // 20차 ¾ 앞·좌 몬스터
   if (v4.length) return qaBest(stem, v4);
   const v3 = globOut(new RegExp("^" + esc(stem.replace("-bv-", "-bv3-")) + "-s\\d+\\.png$"));
@@ -36,7 +42,7 @@ const qaBest = (label, files) => {
 const globOut = (re) => readdirSync(OUT).filter((f) => re.test(f)).map((f) => `${OUT}/${f}`);
 /** 주인공 대기 — 3차(beaverking3, 배경 없는 참조) 후보가 있으면 QA 로 고르고, 없으면 1차 수동 마스크본 */
 // 18차(beaverking5, 측면 오른쪽 보기) 가 있으면 그것을 우선 (2026-10-08)
-const heroIdlePath = () => seedOverride["heroidle"] ? `${OUT}/heroidle-beaverking5-${seedOverride["heroidle"]}.png` : (qaBest("hero-idle", globOut(/^heroidle-beaverking5-\d+\.png$/)) ?? qaBest("hero-idle", globOut(/^heroidle-beaverking3-\d+\.png$/)) ?? `${OUT}/heroidle-beaverking-20261403.png`);
+const heroIdlePath = () => seedOverride["heroidle-capy2"] ? `${OUT}/heroidle-capy2-${seedOverride["heroidle-capy2"]}.png` : globOut(/^heroidle-capy2-\d+\.png$/).length ? qaBest("hero-idle", globOut(/^heroidle-capy2-\d+\.png$/)) : seedOverride["heroidle"] ? `${OUT}/heroidle-beaverking5-${seedOverride["heroidle"]}.png` : (qaBest("hero-idle", globOut(/^heroidle-beaverking5-\d+\.png$/)) ?? qaBest("hero-idle", globOut(/^heroidle-beaverking3-\d+\.png$/)) ?? `${OUT}/heroidle-beaverking-20261403.png`);
 const pickIcon = (stem) => { const s = seedOverride[stem] ?? "20261801"; const f = `${OUT}/icon-${stem}-${s}.png`; if (!existsSync(f)) throw new Error("없음: " + f); return f; };
 const backup = (file) => { if (!existsSync(file)) return; mkdirSync(`${OUT}/backup-human`, { recursive: true }); const b = `${OUT}/backup-human/${file.split("/").pop()}`; if (!existsSync(b)) copyFileSync(file, b); };
 const alpha = { r: 0, g: 0, b: 0, alpha: 0 };
@@ -49,13 +55,24 @@ const toIcon = async (src, dest, size = 128, pad = 0.06) => {
 };
 
 // ── 주인공 — 사냥터 대기·공격 시트 + 코스튬 4종 파생 ──
+/** 납작 원화의 공격 4프레임 — 대기 한 장을 앞으로 기울이고 키운다 (동료 make-ally-states 와 같은 원리). 0 준비 → 1 당김 → 2 내리침 → 3 복귀 */
+const deriveAttackFrames = async (idle, prefix) => {
+  const steps = [{ rot: -3, sc: 1.0 }, { rot: -8, sc: 1.02 }, { rot: 10, sc: 1.06 }, { rot: 3, sc: 1.01 }];
+  const m = await sharp(idle).metadata();
+  for (const [i, st] of steps.entries()) {
+    const buf = await sharp(idle).resize(Math.round(m.width * st.sc), Math.round(m.height * st.sc)).png().toBuffer();
+    await sharp(buf).rotate(st.rot, { background: alpha }).resize(m.width, m.height, { fit: "contain", background: alpha, position: "south" }).png().toFile(`${prefix}-${i}.png`);
+  }
+};
 if (want("hero")) {
-  const heroIdle = heroIdlePath();
+  const heroIdle = await flipIfWanted(heroIdlePath(), "hero");
+  const flat = /heroidle-capy2/.test(heroIdle);
   const atk3 = [0, 1, 2, 3].every((i) => existsSync(`${OUT}/heroattack-beaverking3-${i}.png`));
-  console.log("hero idle", heroIdle.split("/").pop(), "attack", atk3 ? "beaverking3" : "beaverking(1차)");
+  console.log("hero idle", heroIdle.split("/").pop(), "attack", flat ? "대기에서 파생(납작)" : atk3 ? "beaverking3" : "beaverking(1차)");
+  if (flat) await deriveAttackFrames(heroIdle, `${OUT}/hero-attack`);
   for (let i = 0; i < 4; i += 1) {
     copyFileSync(heroIdle, `${OUT}/hero-idle-${i}.png`);
-    copyFileSync(`${OUT}/heroattack-beaverking${atk3 ? "3" : ""}-${i}.png`, `${OUT}/hero-attack-${i}.png`);
+    if (!flat) copyFileSync(`${OUT}/heroattack-beaverking${atk3 ? "3" : ""}-${i}.png`, `${OUT}/hero-attack-${i}.png`);
   }
   node("scripts/place-art.mjs", "hero");
   // ember·frost 는 사람 주인공의 생성 코스튬이었다 — 비버 기본 시트에서 팔레트로 다시 파생하게 authored 에서 뺀다
@@ -67,7 +84,9 @@ if (want("hero")) {
 if (want("defense")) {
   backup(`${OUT}/heroidle-base-20260918-pose.png`);
   copyFileSync(heroIdlePath(), `${OUT}/heroidle-base-20260918-pose.png`);
+  const defIdle = await flipIfWanted(heroIdlePath(), "hero");
   for (const w of ["bow", "staff"]) {
+    if (/heroidle-capy2/.test(defIdle)) { console.log("defense", w, "대기에서 파생(납작)"); await deriveAttackFrames(defIdle, `${OUT}/heroattack-${w}`); node("scripts/make-hero-attack-sheet.mjs", w); continue; }
     // 11차(beaverking3, QA 로 고른 대기 참조) 프레임이 4장 다 있으면 그것 (2026-10-07)
     const v3 = [0, 1, 2, 3].every((i) => existsSync(`${OUT}/heroattack-beaverking3-${i}-${w}.png`));
     console.log("defense", w, v3 ? "beaverking3" : "beaverking(1차)");
@@ -82,11 +101,11 @@ if (want("allies")) {
   for (const id of ids) {
     // v2(털색 구분 · 자기 대기 참조, batch-beaver3.sh) 가 있으면 그것을, 없으면 1차 bv 를 꽂는다 (2026-10-07)
     let stem = existsSync(`${OUT}/char-bv2-${id}-hit.png`) ? "bv2" : "bv";
-    for (const gen of ["bv5", "bv3"]) {   // 20차(¾ 앞·우) → 10차 순 (2026-10-08)
+    for (const gen of ["capy2", "bv5", "bv3"]) {   // 카피 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
       const cands = globOut(new RegExp(`^char-${gen}-${id}-idle-s\\d+\\.png$`));
       if (!cands.length) continue;
       const best = seedOverride[`${gen}-${id}`] ? `${OUT}/char-${gen}-${id}-idle-s${seedOverride[`${gen}-${id}`]}.png` : qaBest(`ally-${id}`, cands);
-      copyFileSync(best, `${OUT}/char-${gen}-${id}-idle.png`);
+      copyFileSync(await flipIfWanted(best, id), `${OUT}/char-${gen}-${id}-idle.png`);
       node("scripts/make-ally-states.mjs", gen, id);
       stem = gen;
       break;
@@ -167,7 +186,24 @@ if (want("backdrops")) {
     ["bv-dodge4", "public/dodge/bg/s2.webp", [20261717, 20261718]], ["bv-dodge5", "public/dodge/bg/s4.webp", [20261719, 20261720]],
     ["bv-hub", "public/ui/bg/hub-backdrop.webp", [20261721, 20261722]], ["bv-forge", "public/ui/bg/forge-backdrop.webp", [20261723, 20261724]],
   ];
+  const CAPY_BG = { meadow: 20272101, forest: 20272103, ruins: 20272105, volcano: 20272107, abyss: 20272109, dodge1: 20272111, dodge2: 20272113, dodge3: 20272115, dodge4: 20272117, dodge5: 20272119, hub: 20272121, forge: 20272123 };
   for (const [stem, dest, seeds] of BG) {
+    const key = stem.replace(/^bv-/, "");
+    const c2seed = seedOverride[`backdrop-capy2-${key}`] ?? [CAPY_BG[key], CAPY_BG[key] + 1].find((x) => existsSync(`${OUT}/backdrop-capy2-${key}-s${x}.png`));
+    if (c2seed && existsSync(`${OUT}/backdrop-capy2-${key}-s${c2seed}.png`)) {
+      const src2 = `${OUT}/backdrop-capy2-${key}-s${c2seed}.png`;
+      const tallShell = /hub-|forge-/.test(dest);
+      if (tallShell) {
+        // 앱 셸 배경: 위에 띠(720×492) + 아래 평평한 흙색
+        const strip = await sharp(src2).resize(720, 492, { fit: "cover" }).png().toBuffer();
+        await sharp({ create: { width: 720, height: 1052, channels: 3, background: "#d4ac6a" } }).composite([{ input: strip, top: 0, left: 0 }]).webp({ quality: 80 }).toFile(dest);
+      } else {
+        await sharp(src2).resize(720, 492, { fit: "cover" }).webp({ quality: 82 }).toFile(dest);
+        if (dest.includes("backgrounds/")) await sharp(src2).resize(720, 492, { fit: "cover" }).webp({ quality: 72 }).toFile(dest.replace(".webp", "-sm.webp"));
+      }
+      console.log("bg capy2", dest, c2seed);
+      continue;
+    }
     // 12차(bv4, 아래 1/3 나무 무대) 가 있으면 그것 — 시드는 --seed=backdrop-bv4-<x>=... 로, 없으면 첫 시드 (2026-10-07)
     // 16차(bv5, 정면 측면·수평 다리) 는 --seed=backdrop-bv5-<x>=<seed> 로 고른 것만 쓴다 (2026-10-08) — 자동 선택은 안 한다(절반이 사선 다리)
     // 19차(bv6, 방어전·허브 수평 통나무 길) → 16차(bv5) 순으로 --seed 지정된 것만 (2026-10-08)
@@ -184,7 +220,9 @@ if (want("backdrops")) {
     console.log("bg", dest);
   }
   // 비트 무대 배경 (12차) — public/beat/bg/stage.webp, 캔버스가 cover 로 그린다
-  const beat = [20262131, 20262132].map((x) => `${OUT}/backdrop-bv4-beat-s${x}.png`).find((f) => existsSync(f));
+  const beatCapy = seedOverride["backdrop-capy2-beat"] ?? [20272125, 20272126].find((x) => existsSync(`${OUT}/backdrop-capy2-beat-s${x}.png`));
+  if (beatCapy) { mkdirSync("public/beat/bg", { recursive: true }); await sharp(`${OUT}/backdrop-capy2-beat-s${beatCapy}.png`).resize(720, 492, { fit: "cover" }).webp({ quality: 82 }).toFile("public/beat/bg/stage.webp"); console.log("bg capy2 beat", beatCapy); }
+  const beat = beatCapy ? null : [20262131, 20262132].map((x) => `${OUT}/backdrop-bv4-beat-s${x}.png`).find((f) => existsSync(f));
   if (beat) { mkdirSync("public/beat/bg", { recursive: true }); await sharp(seedOverride["backdrop-bv6-beat"] ? `${OUT}/backdrop-bv6-beat-s${seedOverride["backdrop-bv6-beat"]}.png` : seedOverride["backdrop-bv4-beat"] ? `${OUT}/backdrop-bv4-beat-s${seedOverride["backdrop-bv4-beat"]}.png` : beat).resize(720, 1052, { fit: "cover" }).webp({ quality: 80 }).toFile("public/beat/bg/stage.webp"); console.log("bg public/beat/bg/stage.webp"); }
 }
 
