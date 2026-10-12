@@ -19,6 +19,8 @@ const flipIfWanted = async (file, key) => { if (!flips.has(key)) return file; co
 const node = (script, ...args) => { console.log("$", script, args.join(" ")); execFileSync(process.execPath, [script, ...args], { stdio: "inherit" }); };
 const pick = (stem, seeds) => {
   if (seedOverride[stem]) { const f = `${OUT}/${stem}-s${seedOverride[stem]}.png`; if (!existsSync(f)) throw new Error("없음: " + f); return f; }
+  // 세대별 시드 지정: --seed=monster-capy2-slime=20262702 처럼 세대 이름을 넣은 키 (2026-10-12)
+  for (const gen of ["capy2", "bv5", "bv3"]) { const k = stem.replace("-bv-", `-${gen}-`); if (seedOverride[k]) { const f = `${OUT}/${k}-s${seedOverride[k]}.png`; if (!existsSync(f)) throw new Error("없음: " + f); return f; } }
   // 3차(bv3, 배경 없는 참조) 후보가 있으면 그 안에서 QA 최선, 없으면 1차 후보 안에서 QA 최선
   const esc = (t) => t.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   const v6 = globOut(new RegExp("^" + esc(stem.replace("-bv-", "-capy2-")) + "-s\\d+\\.png$"));   // 카피 2차(납작 벡터, 2026-10-12)
