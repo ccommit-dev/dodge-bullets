@@ -5049,3 +5049,8 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .ally-card .ally-star-up:disabled, .ally-card button:disabled { opacity: 1; }
 .season-pass .season-cell.paid { background: #efe3cf; }
 .season-pass .season-cell.paid.claimed { background: #e6f4d8; }
+
+/* 방패·장갑·신발 오버레이 (2026-10-12): 방패는 몸 뒤(z 1), 장갑은 무기 손 위(z 4), 신발은 몸 앞 바닥(z 3) */
+.equipment-shield { position: absolute; z-index: 1; width: 42%; height: auto; pointer-events: none; transform-origin: 50% 50%; }
+.equipment-gloves { position: absolute; z-index: 4; width: 30%; height: auto; pointer-events: none; transform-origin: 50% 50%; }
+.equipment-boots { position: absolute; z-index: 3; width: 50%; height: auto; pointer-events: none; transform-origin: 50% 50%; }

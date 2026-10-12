@@ -614,6 +614,18 @@ if LOOK == "flat":
         "comic panels, grid, collage, multiple panels, split frames, border, storyboard"
     )
 
+# ARTGEN_ICON_KIND=gear (2026-10-12): 파츠(투구·갑옷·무기·방패·장갑·신발) 아이콘 — 5차에서 ICON_STYLE 의 "item" 문구와 동료 참조에 끌려
+# 18장 전부 보석 박힌 보물상자가 나왔다. 장비 한 점만, 상자·보석 더미·캐릭터 금지
+if os.environ.get("ARTGEN_ICON_KIND") == "gear":
+    ICON_STYLE = (
+        "a single piece of fantasy equipment drawn alone, flat vector cartoon, thick dark brown outline, cel shading, simple chunky shape, "
+        "bright flat colors, centered, large, plain white background, no text, no watermark"
+    )
+    ICON_NEG = (
+        "treasure chest, chest, box, crate, loot box, gem pile, coins, pile of items, multiple objects, character, person, animal, beaver, face, "
+        "text, letters, watermark, logo, blurry, lowres, frame, border, background scenery, photo, 3d render, glossy, gradients"
+    )
+
 # ARTGEN_FACE="facing left"|"facing right" (2026-10-08, 사용자: 캐릭터는 오른쪽 · 몬스터는 왼쪽): 스타일의 "정면" 문구를 측면 보기로 바꾼다
 FACE = os.environ.get("ARTGEN_FACE", "")
 if FACE:

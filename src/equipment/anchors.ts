@@ -7,6 +7,10 @@ export type EquipmentFrameAnchors = {
   head: EquipmentAnchor;
   /** 가슴 갑옷 — 몸통 중심 */
   chest: EquipmentAnchor;
+  /** 방패 — 뒷손(등 쪽 어깨 아래). 2026-10-12 */
+  offHand: EquipmentAnchor;
+  /** 신발 — 발 사이 바닥 */
+  feet: EquipmentAnchor;
 };
 
 /** 파츠 티어 (1~3: 나무 · 철 · 금) — 그림은 public/titans/gear/<part>-<tier>.png (카피 5차 아이콘에서 오려 둠) */
@@ -17,7 +21,13 @@ export function helmetTierOf(armorLevel: number): GearTier { return armorLevel >
 export function chestTierOf(shoulder: string | null | undefined): GearTier { return !shoulder ? 0 : shoulder === "scout" ? 1 : shoulder === "dragon" ? 3 : 2; }
 /** 무기 파츠 티어 — 대장간 검 강화: 1~4 나무 · 5~9 철 · 10+ 금 */
 export function weaponTierOf(weaponLevel: number): GearTier { return weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : weaponLevel >= 1 ? 1 : 0; }
-export const GEAR_URL = (part: "helmet" | "armor" | "weapon", tier: GearTier) => `titans/gear/${part}-${tier}.png`;
+export const GEAR_URL = (part: "helmet" | "armor" | "weapon" | "shield" | "gloves" | "boots", tier: GearTier) => `titans/gear/${part}-${tier}.png`;
+/** 방패 티어 — 성문 방어 최고 스테이지: 5 나무 · 15 철 · 30 금 */
+export function shieldTierOf(dodgeBestStage: number): GearTier { return dodgeBestStage >= 30 ? 3 : dodgeBestStage >= 15 ? 2 : dodgeBestStage >= 5 ? 1 : 0; }
+/** 장갑 티어 — 무기 숙련(사냥터 훈련): 5 나무 · 15 철 · 30 금 */
+export function glovesTierOf(weaponMastery: number): GearTier { return weaponMastery >= 30 ? 3 : weaponMastery >= 15 ? 2 : weaponMastery >= 5 ? 1 : 0; }
+/** 신발 티어 — 끝없는 성벽 최고 층: 10 나무 · 30 철 · 60 금 */
+export function bootsTierOf(towerBestFloor: number): GearTier { return towerBestFloor >= 60 ? 3 : towerBestFloor >= 30 ? 2 : towerBestFloor >= 10 ? 1 : 0; }
 
 /** 망토 앵커 — 두 어깨의 중점에서 등 뒤로. 프레임마다 어깨가 움직이므로 어깨 앵커에서 파생한다 (x/y %, rotation deg, scale) */
 export function capeAnchor(frame: EquipmentFrameAnchors, mode: "idle" | "attack"): EquipmentAnchor {
@@ -33,10 +43,10 @@ export function capeAnchor(frame: EquipmentFrameAnchors, mode: "idle" | "attack"
  */
 // 2026-10-12 납작 주인공(heroidle-capy2-20272001 반전): 인물이 프레임 y 31~100% · x 3~93%. 머리 중심 (48, 44) · 앞손 (78, 68) · 어깨 y 56
 export const IDLE_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = [
-  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 } },
-  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 } },
-  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 } },
-  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 } },
+  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 }, offHand: { x: 30, y: 72, rotation: 0, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
+  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 }, offHand: { x: 30, y: 72, rotation: 0, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
+  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 }, offHand: { x: 30, y: 72, rotation: 0, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
+  { hand: { x: 78, y: 68, rotation: 20, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -6, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 10, scale: .58 }, head: { x: 48, y: 40, rotation: -4, scale: .62 }, chest: { x: 50, y: 70, rotation: 0, scale: .62 }, offHand: { x: 30, y: 72, rotation: 0, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
 ];
 
 /**
@@ -46,8 +56,8 @@ export const IDLE_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = [
  */
 // 2026-10-12: 공격 시트는 대기 한 장을 −3°·−8°·+10°·+3° 기울인 파생(place-beaver deriveAttackFrames) — 같은 앵커에 기울기만 더한다
 export const ATTACK_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = [
-  { hand: { x: 77, y: 67, rotation: 10, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -9, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 7, scale: .58 }, head: { x: 48, y: 40, rotation: -7, scale: .62 }, chest: { x: 50, y: 70, rotation: -3, scale: .62 } },
-  { hand: { x: 76, y: 66, rotation: 0, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -14, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 2, scale: .58 }, head: { x: 47, y: 40, rotation: -12, scale: .62 }, chest: { x: 50, y: 70, rotation: -8, scale: .62 } },
-  { hand: { x: 80, y: 70, rotation: 48, scale: .34 }, shoulderLeft: { x: 37, y: 58, rotation: 4, scale: .55 }, shoulderRight: { x: 65, y: 57, rotation: 20, scale: .58 }, head: { x: 50, y: 41, rotation: 6, scale: .62 }, chest: { x: 51, y: 71, rotation: 10, scale: .62 } },
-  { hand: { x: 78, y: 68, rotation: 26, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -3, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 13, scale: .58 }, head: { x: 48, y: 40, rotation: -1, scale: .62 }, chest: { x: 50, y: 70, rotation: 3, scale: .62 } },
+  { hand: { x: 77, y: 67, rotation: 10, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -9, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 7, scale: .58 }, head: { x: 48, y: 40, rotation: -7, scale: .62 }, chest: { x: 50, y: 70, rotation: -3, scale: .62 }, offHand: { x: 30, y: 72, rotation: -3, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
+  { hand: { x: 76, y: 66, rotation: 0, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -14, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 2, scale: .58 }, head: { x: 47, y: 40, rotation: -12, scale: .62 }, chest: { x: 50, y: 70, rotation: -8, scale: .62 }, offHand: { x: 30, y: 72, rotation: -8, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
+  { hand: { x: 80, y: 70, rotation: 48, scale: .34 }, shoulderLeft: { x: 37, y: 58, rotation: 4, scale: .55 }, shoulderRight: { x: 65, y: 57, rotation: 20, scale: .58 }, head: { x: 50, y: 41, rotation: 6, scale: .62 }, chest: { x: 51, y: 71, rotation: 10, scale: .62 }, offHand: { x: 31, y: 73, rotation: 10, scale: .42 }, feet: { x: 51, y: 95, rotation: 0, scale: .5 } },
+  { hand: { x: 78, y: 68, rotation: 26, scale: .32 }, shoulderLeft: { x: 36, y: 57, rotation: -3, scale: .55 }, shoulderRight: { x: 64, y: 56, rotation: 13, scale: .58 }, head: { x: 48, y: 40, rotation: -1, scale: .62 }, chest: { x: 50, y: 70, rotation: 3, scale: .62 }, offHand: { x: 30, y: 72, rotation: 3, scale: .42 }, feet: { x: 50, y: 95, rotation: 0, scale: .5 } },
 ];

@@ -34,6 +34,7 @@ import {
 import { HUNT_RARITY_LABEL, applyHuntPerk, huntModsChips, pickHuntPerks, type HuntPerkDef, type HuntPerkId } from "./titans/huntPerks";
 import { WEAK_LABEL, WEAK_MUL, WEAK_WINDOW_MS, allyHitsWeak, partyWeakMatches, rollBossWeak, skillHitsWeak, type BossWeak } from "./titans/bossWeak";
 import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
+import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
 import { AllyArt, MonsterArt, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
@@ -2472,7 +2473,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={{ shield: shieldTierOf(character.dodgeBestStage), gloves: glovesTierOf(save.equipmentTraining.weaponMastery), boots: bootsTierOf(character.towerBestFloor) }} />
           </div>
         </div>
 

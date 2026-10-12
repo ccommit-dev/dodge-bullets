@@ -20,6 +20,8 @@ type Props = {
   weaponSkin?: string;
   /** 견갑 강화 단계 — 5/10/15 마다 외형 티어(테두리 빛 → 보석 → 프리즘)가 바뀐다 */
   armorLevel?: number;
+  /** 방패·장갑·신발 티어 (2026-10-12) — 0 없음 · 1 나무 · 2 철 · 3 금. 호출부가 anchors.*TierOf 로 계산 */
+  gear?: { shield?: number; gloves?: number; boots?: number };
 };
 
 /** 견갑 강화 외형 티어: 0 없음 · 1 (+1~4) 광택 · 2 (+5~9) 푸른 테두리 빛 · 3 (+10~14) 금빛 + 보석 · 4 (+15) 프리즘 */
@@ -29,7 +31,7 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
 
 const shoulderIndex: Record<ShoulderId, number> = { scout: 0, shadow: 1, ogre: 2, dragon: 3 };
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0 }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, gear }: Props) {
   const index = Math.max(0, Math.min(3, frame));
   const anchor = (mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS)[index];
   const armorTier = armorTierOf(armorLevel);
@@ -53,8 +55,11 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = nul
       {cape && <i className={`equipment-cape cape-tier-${armorTier}`} style={{ left: `${cape.x}%`, top: `${cape.y}%`, "--cape-base": `translate(-50%,-12%) rotate(${cape.rotation}deg) scale(${cape.scale})`, transform: "var(--cape-base)", backgroundImage: `url(${assetUrl("titans/equipment/cape/cape.png")})` } as CSSProperties} aria-hidden="true" />}
       {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} back`} style={{ ...part(anchor.shoulderRight), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
       <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundPosition: `${(index / 3) * 100}% 0` }} />
+      {(gear?.boots ?? 0) > 0 && <img className={`equipment-boots gear-tier-${gear?.boots}`} style={part(anchor.feet)} src={assetUrl(GEAR_URL("boots", (gear?.boots ?? 0) as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+      {(gear?.shield ?? 0) > 0 && <img className={`equipment-shield gear-tier-${gear?.shield}`} style={part(anchor.offHand)} src={assetUrl(GEAR_URL("shield", (gear?.shield ?? 0) as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {/* 가슴 갑옷·투구 (2026-10-12) — 납작 파츠 그림을 앵커에 얹는다. 파일이 없으면(아직 배치 전) 조용히 숨긴다 */}
       {chestTierOf(shoulder) > 0 && <img className={`equipment-chest gear-tier-${chestTierOf(shoulder)}`} style={part(anchor.chest)} src={assetUrl(GEAR_URL("armor", chestTierOf(shoulder)))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+      {(gear?.gloves ?? 0) > 0 && <img className={`equipment-gloves gear-tier-${gear?.gloves}`} style={part({ ...anchor.hand, scale: 0.3 })} src={assetUrl(GEAR_URL("gloves", (gear?.gloves ?? 0) as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {helmetTierOf(armorLevel) > 0 && <img className={`equipment-helmet gear-tier-${helmetTierOf(armorLevel)}`} style={part(anchor.head)} src={assetUrl(GEAR_URL("helmet", helmetTierOf(armorLevel)))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {shoulder && armorTier >= 3 && <b className="armor-gem" style={{ left: `${anchor.shoulderLeft.x}%`, top: `${anchor.shoulderLeft.y - 6}%` }} aria-hidden="true" />}
       {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} front`} style={{ ...part(anchor.shoulderLeft), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
