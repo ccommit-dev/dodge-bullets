@@ -5054,3 +5054,6 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .equipment-shield { position: absolute; z-index: 1; width: 42%; height: auto; pointer-events: none; transform-origin: 50% 50%; }
 .equipment-gloves { position: absolute; z-index: 4; width: 30%; height: auto; pointer-events: none; transform-origin: 50% 50%; }
 .equipment-boots { position: absolute; z-index: 3; width: 50%; height: auto; pointer-events: none; transform-origin: 50% 50%; }
+/* 마이페이지 장착 장비 띠 — 마지막 남은 짙은 칩 (2026-10-12) */
+.equipment-strip > div, .character-page .equipment-strip > div { background: var(--flat-cream); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.equipment-strip small, .equipment-strip strong { color: var(--flat-ink); }
