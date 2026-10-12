@@ -30,7 +30,7 @@ for (const [id, stem] of Object.entries(CARDS)) {
   const seed = seedOverride[stem] ?? ["20275201", "20275202"].find((s) => existsSync(`${OUT}/backdrop-capy5-${stem}-s${s}.png`));
   const src = seed && `${OUT}/backdrop-capy5-${stem}-s${seed}.png`;
   if (!src || !existsSync(src)) { console.log("skip card", id); continue; }
-  await sharp(src).resize(320, 320, { fit: "cover" }).webp({ quality: 82 }).toFile(`public/ui/content-cards/${id}.webp`);
+  await sharp(src).resize(320, 160, { fit: "cover", position: "bottom" }).webp({ quality: 82 }).toFile(`public/ui/content-cards/${id}.webp`);
   placed += 1;
 }
 console.log("placed", placed);
