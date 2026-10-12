@@ -14,7 +14,8 @@ mkdirSync("public/titans/gear", { recursive: true });
 mkdirSync("public/ui/gear", { recursive: true });
 mkdirSync("public/ui/content-cards", { recursive: true });
 let placed = 0;
-for (const part of ["helmet", "armor", "weapon", "shield", "gloves", "boots"]) {
+// 5차 아이콘은 ICON_STYLE 의 보물상자 문구에 끌려 전부 보석 박힌 상자가 나왔다(2026-10-12 접촉 시트) — SKIP_ICONS=1 이면 납작 SVG(make-placeholder-gear) 를 그대로 둔다
+for (const part of process.env.SKIP_ICONS ? [] : ["helmet", "armor", "weapon", "shield", "gloves", "boots"]) {
   for (const tier of [1, 2, 3]) {
     const seed = seedOverride[`${part}-${tier}`] ?? ["20275101", "20275102"].find((s) => existsSync(`${OUT}/icon-capy5-${part}-${tier}-${s}.png`));
     const src = seed && `${OUT}/icon-capy5-${part}-${tier}-${seed}.png`;

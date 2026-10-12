@@ -174,16 +174,16 @@ export type MonsterFrameState = "idle" | "hit" | "defeat";
 /** 몬스터 원화의 좌/우 투명 여백 비율 — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다.
  *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json) */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
-  slime: [0.13, 0.13], goblin: [0.16, 0.15], "shadow-wolf-clean": [0.12, 0.12], ogre: [0.06, 0.06], dragon: [0.06, 0.06], "magma-imp": [0.18, 0.18],
-  "void-imp": [0.19, 0.18], "goblin-shaman": [0.26, 0.26], "skeleton-goblin": [0.10, 0.10], "frost-wolf": [0.17, 0.17], hellhound: [0.04, 0.04], "stone-troll": [0.21, 0.21],
-  "armored-ogre": [0.20, 0.19], "lava-drake": [0.04, 0.03], "storm-drake": [0.07, 0.07], "moss-golem-clean": [0.18, 0.18], "moon-wolf-king-clean": [0.18, 0.18], "wolf-king-clean": [0.12, 0.12],
-  "flame-wyvern-clean": [0.06, 0.06], "abyss-titan": [0.20, 0.20], "thorn-boar-king": [0.04, 0.04], "ancient-treant": [0.16, 0.16], "ruin-sentinel": [0.21, 0.21], "magma-golem": [0.11, 0.11],
-  "void-lich": [0.19, 0.19], "goblin-warlord": [0.07, 0.07], "spider-queen": [0.09, 0.09], minotaur: [0.06, 0.06], "fire-demon": [0.05, 0.05], "bone-dragon": [0.08, 0.08],
-  "golden-lion-clean": [0.13, 0.13],
+  slime: [0.16, 0.15], goblin: [0.09, 0.09], "shadow-wolf-clean": [0.09, 0.09], ogre: [0.09, 0.09], dragon: [0.09, 0.09], "magma-imp": [0.18, 0.18],
+  "void-imp": [0.14, 0.14], "goblin-shaman": [0.06, 0.06], "skeleton-goblin": [0.08, 0.08], "frost-wolf": [0.14, 0.14], hellhound: [0.06, 0.06], "stone-troll": [0.19, 0.19],
+  "armored-ogre": [0.10, 0.10], "lava-drake": [0.03, 0.03], "storm-drake": [0.07, 0.07], "moss-golem-clean": [0.15, 0.15], "moon-wolf-king-clean": [0.14, 0.14], "wolf-king-clean": [0.23, 0.23],
+  "flame-wyvern-clean": [0.14, 0.14], "abyss-titan": [0.19, 0.19], "thorn-boar-king": [0.05, 0.05], "ancient-treant": [0.09, 0.09], "ruin-sentinel": [0.16, 0.16], "magma-golem": [0.16, 0.15],
+  "void-lich": [0.08, 0.08], "goblin-warlord": [0.06, 0.06], "spider-queen": [0.08, 0.07], minotaur: [0.06, 0.06], "fire-demon": [0.06, 0.06], "bone-dragon": [0.06, 0.06],
+  "golden-lion-clean": [0.11, 0.11],
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */
-const FLIP_MONSTERS = new Set<string>(["armored-ogre", "armored-ogre-hit", "armored-ogre-defeat", "hellhound", "hellhound-hit", "hellhound-defeat", "ancient-treant", "ancient-treant-hit", "ancient-treant-defeat", "goblin-warlord", "goblin-warlord-hit", "goblin-warlord-defeat"]);
+const FLIP_MONSTERS = new Set<string>(["fire-demon", "fire-demon-hit", "fire-demon-defeat", "spider-queen", "spider-queen-hit", "spider-queen-defeat", "thorn-boar-king", "thorn-boar-king-hit", "thorn-boar-king-defeat", "void-lich", "void-lich-hit", "void-lich-defeat"]);
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];
