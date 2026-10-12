@@ -4984,8 +4984,8 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .bottom-nav-popup header b { color: var(--flat-ink); }
 .season-paid-card, .event-card .season-paid { color: #fff; }
 /* 콘텐츠 카드: 아이콘을 숨기면 글자가 42px 칸으로 들어가 세로로 섰다 — 그림 카드는 한 칸 그리드 (2026-10-12) */
-.nav-popup-grid > button[data-card] { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 600px) { .nav-popup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nav-popup-grid > button[data-card] { min-height: 150px; padding-bottom: 82px; background-size: 92% auto; } }
+.nav-popup-grid > button[data-card] { grid-template-columns: minmax(0, 1fr); align-content: start; padding-bottom: 52%; background-size: 100% auto; background-position: center bottom; }
+@media (max-width: 600px) { .nav-popup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* 마이페이지 영웅 카드 안 칩·수치도 납작 크림 (2026-10-12) */
 .character-quick-stats > *, .character-idle-yield, .character-idle-yield > *, .character-exp, .cosmetic-chips > * { background: #fff8e6; color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
 .character-quick-stats b, .character-quick-stats strong, .character-quick-stats small, .character-idle-yield b, .character-idle-yield small, .character-identity, .character-identity b, .character-identity small, .character-title { color: var(--flat-ink); }
