@@ -236,6 +236,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [bossWeak, setBossWeak] = useState<BossWeak | null>(null);
   const bossWeakRef = useRef<BossWeak | null>(null);
   const [huntOffer, setHuntOffer] = useState<HuntPerkDef[]>([]);
+  // 접이식 (2026-10-12, 보완 2): 바가 배경 띠를 가렸다 — 새 선택권이 오면 6초만 펼치고 칩으로 접는다
+  const [huntBarOpen, setHuntBarOpen] = useState(false);
   const [bossReady, setBossReady] = useState(false);
   const [monsterHit, setMonsterHit] = useState(0);
   /** 보스 처치 3단계 (계획안 B): 1 경직 → 2 균열 → 3 붕괴+골드 분출. 0이면 없음 */
@@ -1892,6 +1894,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const areaIndex = Math.max(0, HUNTING_AREAS.findIndex((a) => a.id === huntingArea(save.stage).id));
     const equipped = Object.values(save.skillInventory.equipped).filter((id): id is TitanSkillId => !!id);
     setHuntOffer(pickHuntPerks(save.huntMods, { learned: save.skillInventory.learned, equipped }, Math.random, areaIndex));
+    setHuntBarOpen(true);
+    const t = window.setTimeout(() => setHuntBarOpen(false), 6000);
+    return () => window.clearTimeout(t);
   }, [save.huntPicks, save.huntMods, save.stage, save.skillInventory, huntOffer.length]);
   const pickHunt = (perk: HuntPerkDef) => {
     setSave((prev) => ({ ...prev, huntMods: applyHuntPerk(prev.huntMods, perk.id as HuntPerkId), huntPicks: Math.max(0, prev.huntPicks - 1) }));
@@ -2689,9 +2694,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         )}
         {!freeRetryCard && momentOfferCard}
         {/* 사냥 강화 3택 (2026-10-08) — 보스를 잡을 때마다 한 장. 성문 방어 카드와 같은 문법(등급·콤보·필요 스킬) */}
-        {!freeRetryCard && save.huntPicks > 0 && huntOffer.length > 0 && (
+        {!freeRetryCard && save.huntPicks > 0 && huntOffer.length > 0 && !huntBarOpen && (
+          <button type="button" className="hunt-pick-chip" onPointerDown={(e) => e.stopPropagation()} onClick={() => setHuntBarOpen(true)}>사냥 강화 <b>{save.huntPicks}</b> ▸</button>
+        )}
+        {!freeRetryCard && save.huntPicks > 0 && huntOffer.length > 0 && huntBarOpen && (
           <div className="hunt-pick-bar" role="dialog" aria-label="사냥 강화 선택" onPointerDown={(e) => e.stopPropagation()}>
-            <div className="hunt-pick-head"><b>사냥 강화</b><small>보스 처치 보상 · 이 지역에서만 · 남은 선택 {save.huntPicks}</small></div>
+            <div className="hunt-pick-head"><b>사냥 강화</b><small>보스 처치 보상 · 이 지역에서만 · 남은 선택 {save.huntPicks}</small><button type="button" className="hunt-pick-fold" onClick={() => setHuntBarOpen(false)} aria-label="접기">▾</button></div>
             <div className="hunt-pick-cards">
               {huntOffer.map((perk, i) => (
                 <button key={perk.id} type="button" className={`perk-choice hunt-perk rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => pickHunt(perk)}>
@@ -3463,7 +3471,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 { id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", icon: "forge" },
               ] as const).map((item) => {
                 const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
-                return <button key={item.id} type="button" className={locked ? "tab-locked" : ""} onClick={() => { if (locked) flash(LOCK_HINT[item.id as OnboardContent]); else { setNavPopup(null); onOpenContent(item.id); } }}>
+                return <button key={item.id} type="button" data-card={item.id} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${item.id}.webp`)})` } as CSSProperties} className={locked ? "tab-locked" : ""} onClick={() => { if (locked) flash(LOCK_HINT[item.id as OnboardContent]); else { setNavPopup(null); onOpenContent(item.id); } }}>
                   <ContentIcon name={item.icon} /><span><b>{item.label}</b><small>{item.desc}</small></span>{locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
                 </button>;
               })}

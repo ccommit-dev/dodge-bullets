@@ -183,7 +183,7 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */
-const FLIP_MONSTERS = new Set<string>([]);
+const FLIP_MONSTERS = new Set<string>(["armored-ogre", "armored-ogre-hit", "armored-ogre-defeat", "hellhound", "hellhound-hit", "hellhound-defeat", "ancient-treant", "ancient-treant-hit", "ancient-treant-defeat", "goblin-warlord", "goblin-warlord-hit", "goblin-warlord-defeat"]);
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];

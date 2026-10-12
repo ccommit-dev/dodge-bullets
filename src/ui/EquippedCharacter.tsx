@@ -4,7 +4,7 @@ import { tierAt } from "../forge/model";
 import { SwordArt } from "../forge/swords";
 import { WEAPON_SKINS } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS, capeAnchor } from "../equipment/anchors";
+import { ATTACK_EQUIPMENT_ANCHORS, GEAR_URL, IDLE_EQUIPMENT_ANCHORS, capeAnchor, chestTierOf, helmetTierOf } from "../equipment/anchors";
 import { sheetFor } from "../titans/anim";
 
 type Props = {
@@ -53,6 +53,9 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = nul
       {cape && <i className={`equipment-cape cape-tier-${armorTier}`} style={{ left: `${cape.x}%`, top: `${cape.y}%`, "--cape-base": `translate(-50%,-12%) rotate(${cape.rotation}deg) scale(${cape.scale})`, transform: "var(--cape-base)", backgroundImage: `url(${assetUrl("titans/equipment/cape/cape.png")})` } as CSSProperties} aria-hidden="true" />}
       {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} back`} style={{ ...part(anchor.shoulderRight), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
       <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundPosition: `${(index / 3) * 100}% 0` }} />
+      {/* 가슴 갑옷·투구 (2026-10-12) — 납작 파츠 그림을 앵커에 얹는다. 파일이 없으면(아직 배치 전) 조용히 숨긴다 */}
+      {chestTierOf(shoulder) > 0 && <img className={`equipment-chest gear-tier-${chestTierOf(shoulder)}`} style={part(anchor.chest)} src={assetUrl(GEAR_URL("armor", chestTierOf(shoulder)))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+      {helmetTierOf(armorLevel) > 0 && <img className={`equipment-helmet gear-tier-${helmetTierOf(armorLevel)}`} style={part(anchor.head)} src={assetUrl(GEAR_URL("helmet", helmetTierOf(armorLevel)))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {shoulder && armorTier >= 3 && <b className="armor-gem" style={{ left: `${anchor.shoulderLeft.x}%`, top: `${anchor.shoulderLeft.y - 6}%` }} aria-hidden="true" />}
       {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} front`} style={{ ...part(anchor.shoulderLeft), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
       {(weaponLevel > 0 || blade) && (

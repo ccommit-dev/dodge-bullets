@@ -5,6 +5,29 @@ import { drawRecurveBow } from "./arrowArt";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
+/** 파츠 그림 캐시 — titans/gear/<part>-<tier>.png (없으면 그리지 않는다) */
+const gearImgs = new Map<string, HTMLImageElement | null>();
+function gearImage(part: string, tier: number): HTMLImageElement | null {
+  const key = `${part}-${tier}`;
+  if (!gearImgs.has(key)) {
+    const img = new Image();
+    img.onerror = () => gearImgs.set(key, null);
+    img.src = assetUrl(`titans/gear/${key}.png`);
+    gearImgs.set(key, img);
+  }
+  const img = gearImgs.get(key);
+  return img && img.complete && img.naturalWidth > 0 ? img : null;
+}
+/** 프레임 % 앵커에 파츠를 얹는다 — 호출 시점의 변환(캐릭터 발밑 원점·facing 스케일)을 그대로 쓴다 */
+function drawGearPart(ctx: CanvasRenderingContext2D, part: string, tier: number, ax: number, ay: number, scale: number, drawWidth: number, drawHeight: number): void {
+  if (tier <= 0) return;
+  const img = gearImage(part, tier);
+  if (!img) return;
+  const w = drawWidth * scale, h = w * (img.naturalHeight / img.naturalWidth);
+  const x = -drawWidth / 2 + (ax / 100) * drawWidth, y = -drawHeight + (ay / 100) * drawHeight;
+  ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+}
+
 /** 쏘는 동작 길이(ms) — 기본 사격 재사용(0.55s)보다 짧아 연사해도 프레임이 매번 처음부터 돈다 */
 export const SHOOT_MS = 300;
 /** Source sheet faces left; multiply logical facing by this when drawing. */
@@ -118,6 +141,7 @@ export function createPlayer(width: number, floorY: number): Player {
     landingFxMs: 0,
     shootMs: 0,
     shootAngle: -Math.PI / 2,
+    gear: { helmet: 0, armor: 0, weapon: 0 },
   };
 }
 
@@ -257,6 +281,9 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
+    // 파츠 오버레이 (2026-10-12) — 사냥터 EquippedCharacter 와 같은 앵커(프레임 %): 가슴 → 투구 (무기는 활·지팡이가 따로 그린다)
+    drawGearPart(ctx, "armor", p.gear.armor, 50, 70, 0.62, drawWidth, drawHeight);
+    drawGearPart(ctx, "helmet", p.gear.helmet, 48, 40, 0.62, drawWidth, drawHeight);
         ctx.restore();
     if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
 

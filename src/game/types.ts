@@ -27,6 +27,8 @@ export type Player = {
   slowCdMs: number;
   slowActiveMs: number;
   landingFxMs: number;
+  /** 장착 파츠 티어 (2026-10-12): 0 없음 · 1 나무 · 2 철 · 3 금 — App 이 진행도(견갑 강화·견갑 종류·검 강화)에서 싣는다 */
+  gear: { helmet: number; armor: number; weapon: number };
   /** 쏘는 동작 남은 시간(ms) — 기본 사격·스킬 무기 발사마다 300ms, 무기 시트 4프레임이 한 번 돈다 (2026-10-08) */
   shootMs: number;
   /** 마지막으로 쏜 각도 — 쏘는 동안 몸이 그쪽으로 기운다 */

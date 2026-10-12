@@ -1,3 +1,4 @@
+import { chestTierOf, helmetTierOf, weaponTierOf } from "./equipment/anchors";
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
 import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
@@ -198,6 +199,8 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   world.skillLevels = { ...p.expeditionSkills };
   // 기본 사격 = 대장간 활 단계 · 스킬 무기는 장착한 넷(2026-10-02)
   world.weaponForge = { ...p.expeditionWeaponForge };
+  // 파츠 티어 (2026-10-12) — 사냥터와 같은 규칙: 투구 ← 견갑 강화, 가슴 ← 견갑 종류, 무기 ← 검 강화
+  world.player.gear = { helmet: helmetTierOf(p.shoulderEnhance ?? 0), armor: chestTierOf(p.equippedShoulder), weapon: weaponTierOf(p.equippedWeaponLevel) };
   world.basicLevel = p.expeditionWeaponForge.bow;
   world.loadout = p.expeditionLoadout.filter((id) => (p.expeditionSkills[id] ?? 0) > 0);
   world.rangedWeapon = p.expeditionWeapon;

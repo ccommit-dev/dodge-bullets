@@ -367,10 +367,11 @@ export function playerIdleDps(swordLevel: number): number {
 }
 
 export function formatGold(value: number): string {
-  if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
-  if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
-  if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
-  if (value >= 1e4) return `${(value / 1e3).toFixed(1)}K`;
+  // 반올림 경계 (2026-10-12, 사용자: "금액 잘림"): 999,950 은 "1000.0K" 가 아니라 "1.00M" — 자릿수가 한 칸 늘어 지갑 칩에서 잘렸다
+  if (value >= 999.5e9) return `${(value / 1e12).toFixed(2)}T`;
+  if (value >= 999.5e6) return `${(value / 1e9).toFixed(2)}B`;
+  if (value >= 999.95e3) return `${(value / 1e6).toFixed(2)}M`;
+  if (value >= 9999.5) return `${(value / 1e3).toFixed(1)}K`;
   return Math.floor(value).toLocaleString();
 }
 
