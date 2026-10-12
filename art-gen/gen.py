@@ -417,7 +417,7 @@ def cmd_icon(a):
         if a.seeds and (OUT / name).exists():
             continue
         g = torch.Generator(dev()).manual_seed(seed)
-        im = pipe(prompt=f"{a.prompt}, {ICON_STYLE}", negative_prompt=ICON_NEG, num_inference_steps=24, guidance_scale=6.5,
+        im = pipe(prompt=f"{FLAT_PREFIX}{a.prompt}, {ICON_STYLE}", negative_prompt=ICON_NEG, num_inference_steps=24, guidance_scale=6.5,
                   generator=g, width=1024, height=1024, ip_adapter_image=[refs]).images[0]
         save(cutout(im).resize((256, 256), Image.LANCZOS), name)
 

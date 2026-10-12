@@ -4907,3 +4907,96 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .titans-allies { bottom: 18%; }
 .titans-monster { bottom: 22%; }
 .titans-field.boss .titans-background { filter: saturate(1.1) brightness(.88); }
+
+/* ── 보완 2: 사냥 강화 접힌 칩 ── */
+.hunt-pick-chip { position: absolute; left: 10px; top: 112px; z-index: 6; padding: 5px 10px; border: 2px solid #3b2415; border-radius: 999px; background: #f2c232; color: #3b2415; font: 800 12px/1.2 "Jua", sans-serif; box-shadow: 0 3px 0 #a7781a; }
+.hunt-pick-chip b { color: #b91c1c; }
+.hunt-pick-head { position: relative; }
+.hunt-pick-fold { position: absolute; right: 0; top: -4px; width: 26px; height: 22px; border: 0; border-radius: 8px; background: rgba(255,255,255,.12); color: #fde68a; font-size: 12px; }
+/* ── 보완 3: 몬스터 피격은 번쩍임 중심 — 납작 원화에서 스티커가 크게 흔들리지 않게 반동 진폭을 줄인다 ── */
+@keyframes monster-hit-recoil-a { 0% { transform: translateX(0); } 40% { transform: translateX(2px); } 100% { transform: translateX(0); } }
+@keyframes monster-hit-recoil-b { 0% { transform: translateX(0); } 40% { transform: translateX(2px); } 100% { transform: translateX(0); } }
+.titans-monster.hit-a, .titans-monster.hit-b { filter: brightness(1.45) saturate(1.1); }
+/* ── 지갑 칩 잘림 (2026-10-12): 세 칩이 폰 폭에서 오른쪽으로 밀렸다 — 칩을 줄이고 긴 숫자는 글자 크기를 낮춘다 ── */
+.titans-header .titans-wallet { flex: 1 1 auto; min-width: 0; max-width: 56%; justify-content: flex-end; overflow: hidden; }
+.titans-wallet span { min-width: 0; }
+.titans-wallet strong { font-size: 12px; white-space: nowrap; }
+@media (max-width: 420px) { .titans-wallet strong { font-size: 11px; } .titans-wallet span + span { padding-left: 5px; } .titans-wallet .currency-icon, .titans-wallet .titans-stone img { width: 15px; height: 15px; flex-basis: 15px; } }
+/* ── 보완 5: 납작 단색 버튼·탭·카드 (참고: 카피바라 키우기) — 굵은 갈색 외곽선 · 단색 면 · 아래 그림자 한 줄. 나무 결 그라데이션은 뺀다 ── */
+:root { --flat-ink: #3b2415; --flat-cream: #fff3d6; --flat-cream-2: #f3dfb3; --flat-green: #7ac142; --flat-green-2: #4f8f2a; --flat-yellow: #f2c232; --flat-yellow-2: #b98a16; --flat-blue: #5bb1ff; --flat-blue-2: #2f79c4; --flat-red: #ef5a5a; }
+.cta { border: 3px solid var(--flat-ink); border-radius: 16px; background: var(--flat-green); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); box-shadow: 0 5px 0 var(--flat-green-2); font-family: "Jua", sans-serif; }
+.cta:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--flat-green-2); }
+.cta.cta-ghost { background: var(--flat-cream); color: var(--flat-ink); text-shadow: none; box-shadow: 0 5px 0 var(--flat-cream-2); }
+.titans-bottom-nav { border: 3px solid var(--flat-ink); border-radius: 18px 18px 0 0; background: var(--flat-cream); box-shadow: none; }
+.titans-bottom-nav button { color: var(--flat-ink); background: transparent; border-radius: 12px; }
+.titans-bottom-nav button.on { background: var(--flat-yellow); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
+.titans-content-tabs button, .premium-category-tabs button, .hub-sheet-switch button, .event-tabs button, .titans-growth-tabs button, .exp-menu-tabs button, .mypage-tabs button, .attendance-pages button, .role-filter button, .ally-pages button {
+  border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); font-family: "Jua", sans-serif; }
+.titans-content-tabs button.on, .premium-category-tabs button.on, .hub-sheet-switch button.on, .event-tabs button.on, .titans-growth-tabs button.on, .exp-menu-tabs button.on, .mypage-tabs button.on, .attendance-pages button.on, .attendance-pages button[aria-selected="true"], .role-filter button.on, .ally-pages button.on {
+  background: var(--flat-yellow); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
+.titans-header, .titans-wallet, .hub-sheet-wallet > span, .hub-sheet-wallet > button { border: 2px solid var(--flat-ink); background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.titans-wallet strong, .titans-wallet .titans-stone strong { color: var(--flat-ink); }
+.titans-back, .settings-toggle { border: 2px solid var(--flat-ink); border-radius: 14px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.titans-back .mypage-label, .settings-toggle .settings-label { color: var(--flat-ink); }
+.premium-product-card > button, .ally-card button, .skill-card button, .titans-upgrade-row button, .equip-row button, .exp-store-buy, .recommend-party, .gacha-actions button, .moment-buy {
+  border: 2px solid var(--flat-ink) !important; border-radius: 12px !important; background: var(--flat-blue) !important; color: #fff !important; text-shadow: 0 1px 0 rgba(0,0,0,.25); box-shadow: 0 3px 0 var(--flat-blue-2) !important; font-family: "Jua", sans-serif; }
+.premium-product-card > button:disabled, .ally-card button:disabled, .skill-card button:disabled { background: #c9bda8 !important; box-shadow: 0 3px 0 #9d9076 !important; color: #6b5b48 !important; }
+.titans-card, .premium-product-card, .ally-card, .skill-preset-card, .advice-sheet, .idle-status-card { border: 2px solid var(--flat-ink); border-radius: 16px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); }
+.titans-card p, .premium-product-card p, .ally-card p, .titans-card small, .premium-product-card small, .ally-card small, .premium-product-card strong, .titans-card strong, .ally-card strong, .ally-card h3, .titans-card h3 { color: var(--flat-ink); }
+.premium-product-card p .feeds { color: var(--flat-blue-2); }
+.qol-btn { border: 2px solid var(--flat-ink); border-radius: 10px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.qol-btn.on { background: var(--flat-yellow); }
+.hunt-pick-bar { border-color: var(--flat-ink); background: var(--flat-cream); box-shadow: 0 4px 0 var(--flat-cream-2); }
+.hunt-pick-head, .hunt-pick-head small { color: var(--flat-ink); }
+.hunt-pick-fold { background: rgba(59,36,21,.12); color: var(--flat-ink); }
+.paid-group-head { color: var(--flat-ink); }
+
+/* ── 파츠 오버레이 (2026-10-12): 투구·가슴 갑옷 — 납작 파츠 그림을 앵커(프레임 %)에 ── */
+.equipment-helmet, .equipment-chest { position: absolute; z-index: 3; width: 60%; height: auto; pointer-events: none; transform-origin: 50% 50%; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+.equipment-chest { z-index: 2; }
+.equipped-character.mode-attack .equipment-helmet { transition: transform .08s linear; }
+/* 콘텐츠 선택 카드 그림 (2026-10-12): public/ui/content-cards/<id>.webp — 카드 오른쪽에 납작 일러스트 */
+/* 콘텐츠 카드 그림은 카드 아래쪽에 깔고 글자는 위에 — 오른쪽 여백을 주면 3열 그리드에서 글자가 세로로 섰다 (2026-10-12 캡처) */
+.nav-popup-grid button[data-card] { background-image: var(--card-art); background-repeat: no-repeat; background-position: center bottom; background-size: 100% auto; padding-bottom: 56px; }
+.nav-popup-grid button[data-card] .content-icon { display: none; }
+
+/* ── 납작 테마 특이도 보정 (2026-10-12): 나무 결 규칙(.page-premium·.titans-shop·.titans-header .titans-back·equipment-training-card)이 이기던 곳 ── */
+.page-premium .premium-product-card, .titans-shop .premium-product-card, .titans-card.premium-product-card, .page-premium .premium-product-card.gem-product { border: 2px solid var(--flat-ink); background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); }
+.page-premium .premium-product-card p, .titans-shop .premium-product-card p, .page-premium .premium-product-card strong, .titans-shop .premium-product-card strong, .page-premium .premium-product-card small { color: var(--flat-ink); }
+.page-premium .premium-product-card > button, .titans-shop .premium-product-card > button { color: #fff; background: var(--flat-blue); box-shadow: 0 3px 0 var(--flat-blue-2); border: 2px solid var(--flat-ink); }
+.titans-header .titans-back { border: 2px solid var(--flat-ink); background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.titans-header .titans-back .mypage-label, .titans-header .titans-back small { color: var(--flat-ink); }
+.titans-card.equipment-training-card, .equipment-training-card .training-item { background: var(--flat-cream); color: var(--flat-ink); }
+.equipment-training-card strong, .equipment-training-card p, .equipment-training-card small { color: var(--flat-ink); }
+.hub-sheet .titans-card, .hub-sheet .ally-card, .hub-sheet .gacha-panel, .party-panel { background: var(--flat-cream); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); }
+.hub-sheet .titans-card p, .hub-sheet .titans-card small, .hub-sheet .ally-card p, .hub-sheet .ally-card small, .party-panel strong, .party-panel small { color: var(--flat-ink); }
+.synergy-chip { border: 2px solid var(--flat-ink); background: #fff8e6; color: var(--flat-ink); }
+.synergy-chip.on { background: var(--flat-green); color: #fff; }
+.event-offer-card, .exp-store, .idle-card, .attendance-card, .event-card { color: var(--flat-ink); }
+
+/* ── 납작 테마 확장 (2026-10-12): 마이페이지·이벤트·출석·정산 카드도 크림 면 + 갈색 글자 ── */
+.exit-modal .exit-card, .attendance-card, .idle-card, .event-card, .character-hero-card, .mypage-group, .nav-popup-grid button, .bottom-nav-popup, .hub-sheet-body, .mypage-stat, .character-equipment-chip, .growth-next, .character-page .titans-card {
+  color: var(--flat-ink); border: 2px solid var(--flat-ink); border-radius: 18px; background: var(--flat-cream); box-shadow: 0 4px 0 var(--flat-cream-2); }
+.exit-card .brand, .event-card .brand, .character-hero-card small, .character-hero-card p, .mypage-group p, .mypage-group small, .mypage-group b, .mypage-group strong, .nav-popup-grid button b, .nav-popup-grid button small, .exit-card p, .exit-card small, .event-card p, .event-card small, .event-card b { color: var(--flat-ink); }
+.exit-card .exit-title, .event-card .exit-title, .character-hero-card strong, .character-hero-card b { color: var(--flat-ink); }
+.nav-popup-grid button { background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.nav-popup-grid button.done { background: #e6f4d8; }
+.bottom-nav-popup header b { color: var(--flat-ink); }
+.season-paid-card, .event-card .season-paid { color: #fff; }
+/* 콘텐츠 카드: 아이콘을 숨기면 글자가 42px 칸으로 들어가 세로로 섰다 — 그림 카드는 한 칸 그리드 (2026-10-12) */
+.nav-popup-grid > button[data-card] { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 600px) { .nav-popup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nav-popup-grid > button[data-card] { min-height: 150px; padding-bottom: 82px; background-size: 92% auto; } }
+/* 마이페이지 영웅 카드 안 칩·수치도 납작 크림 (2026-10-12) */
+.character-quick-stats > *, .character-idle-yield, .character-idle-yield > *, .character-exp, .cosmetic-chips > * { background: #fff8e6; color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.character-quick-stats b, .character-quick-stats strong, .character-quick-stats small, .character-idle-yield b, .character-idle-yield small, .character-identity, .character-identity b, .character-identity small, .character-title { color: var(--flat-ink); }
+.character-equipment-preview { background: #fff8e6; border: 2px solid var(--flat-ink); }
+/* 마이페이지 나머지 어두운 칩·카드 (2026-10-12, DOM 탐침: character-quick-stats span · character-skin-chip · legacy-growth · character-goal · status-card · share-card-btn) */
+.character-quick-stats span { background: #fff8e6; color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.character-quick-stats span b { color: var(--flat-ink); }
+.character-skin-chip { background: #fff8e6; color: var(--flat-ink); border: 2px solid var(--flat-ink); }
+.character-skin-chip.active { background: var(--flat-yellow); border-color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
+.character-skin-chip.locked { background: #e8dfcc; color: #8a7760; }
+.character-skin-chip b, .character-skin-chip small { color: inherit; }
+.legacy-growth, .status-card, .character-goal { background: var(--flat-cream); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); }
+.legacy-growth h3, .legacy-growth p, .legacy-growth small, .status-card b, .status-card p, .status-card small, .status-card h3, .character-goal b, .character-goal small, .character-goal p { color: var(--flat-ink); }
+.share-card-btn, .character-back { background: var(--flat-yellow); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }

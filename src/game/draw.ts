@@ -239,6 +239,25 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   }
 }
 
+/** 납작 구름 (2026-10-12, 보완 1): 흰 타원 3개를 겹친 덩어리 4개가 띠 위 하늘을 천천히 흐른다. 외곽선은 하늘색보다 조금 짙게 */
+function drawFlatClouds(ctx: CanvasRenderingContext2D, width: number, skyH: number, clock: number, shift: number): void {
+  if (skyH < 60) return;
+  const clouds = [[0.12, 0.28, 1.0], [0.48, 0.16, 0.8], [0.78, 0.36, 1.15], [0.95, 0.12, 0.7]];
+  ctx.save();
+  ctx.lineWidth = 3; ctx.lineJoin = "round";
+  for (const [fx, fy, sc] of clouds) {
+    const x = ((fx * width + clock * 6 * sc - shift * 0.5) % (width + 160)) - 80;
+    const y = Math.min(skyH - 24, fy * skyH + 20);
+    const s = 26 * sc;
+    const blob = (dx: number, dy: number, r: number) => { ctx.beginPath(); ctx.ellipse(x + dx, y + dy, r * 1.35, r, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); };
+    ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.strokeStyle = "rgba(90,120,150,.55)";
+    blob(0, 0, s); blob(s * 1.1, -s * 0.25, s * 0.8); blob(-s * 1.0, s * 0.1, s * 0.7); blob(s * 0.3, s * 0.35, s * 0.9);
+    // 겹친 외곽선을 지운다 — 덩어리 전체를 한 번 더 흰색으로
+    ctx.strokeStyle = "transparent"; blob(0, 0, s * 0.96); blob(s * 1.1, -s * 0.25, s * 0.76); blob(-s * 1.0, s * 0.1, s * 0.66); blob(s * 0.3, s * 0.35, s * 0.86);
+  }
+  ctx.restore();
+}
+
 /** 가로 띠 배경의 하늘색 — 그림 맨 윗줄 가운데 픽셀을 한 번 읽어 둔다 (띠 위 빈 하늘을 같은 색으로) */
 const skyCache = new WeakMap<HTMLImageElement, string>();
 function skyColorOf(img: HTMLImageElement): string {
@@ -248,7 +267,8 @@ function skyColorOf(img: HTMLImageElement): string {
   try {
     const c = document.createElement("canvas"); c.width = 8; c.height = 2;
     const cc = c.getContext("2d");
-    if (cc) { cc.drawImage(img, 0, 0, img.naturalWidth, 4, 0, 0, 8, 2); const d = cc.getImageData(0, 0, 8, 1).data; let r = 0, g = 0, b = 0; for (let i = 0; i < 8; i += 1) { r += d[i * 4]; g += d[i * 4 + 1]; b += d[i * 4 + 2]; } color = `rgb(${Math.round(r / 8)},${Math.round(g / 8)},${Math.round(b / 8)})`; }
+    // 맨 윗줄 8칸 중 가장 밝고 파란 칸(나무·집이 걸린 칸은 어둡다)을 하늘색으로 — 평균을 쓰면 올리브색 벽이 됐다 (2026-10-12)
+    if (cc) { cc.drawImage(img, 0, 0, img.naturalWidth, Math.max(2, Math.round(img.naturalHeight * 0.06)), 0, 0, 8, 2); const d = cc.getImageData(0, 0, 8, 2).data; let best = -1; for (let i = 0; i < 16; i += 1) { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2]; const score = b * 1.2 + g * 0.6 + r * 0.2; if (score > best) { best = score; color = `rgb(${r},${g},${b})`; } } }
   } catch { /* 캔버스 오염 등 — 기본 하늘색 */ }
   skyCache.set(img, color);
   return color;
@@ -269,11 +289,13 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
     if (wide) {
       // 띠 위 하늘: 꼭대기는 띠 색보다 밝게, 띠에 닿을수록 띠 색으로 — 단색 벽처럼 보이지 않게
       const base = skyColorOf(img);
-      const top = base.replace(/rgb((d+),(d+),(d+))/, (_m, r, g, b) => `rgb(${Math.min(255, Math.round(+r + (255 - +r) * 0.45))},${Math.min(255, Math.round(+g + (255 - +g) * 0.45))},${Math.min(255, Math.round(+b + (255 - +b) * 0.45))})`);
+      // 꼭대기는 고정 하늘색 — 띠 꼭대기에서 뽑은 색을 밝히면 올리브·회색이 됐다 (2026-10-12 캡처)
+      const top = "#bfe4f6";
       const skyH = Math.max(0, floorY + 12 - dh + 2);
       const sky = ctx.createLinearGradient(0, 0, 0, skyH);
       sky.addColorStop(0, top); sky.addColorStop(1, base);
       ctx.fillStyle = sky; ctx.fillRect(0, 0, width, skyH);
+      drawFlatClouds(ctx, width, skyH, world.animClock, shift);
     }
     ctx.drawImage(img, (width - dw) / 2 - shift, (wide ? floorY + 12 : floorY + 40) - dh, dw, dh);
     // 옛 세로 그림은 어둡게 눌렀다 — 납작한 가로 띠는 밝은 그대로, 위쪽만 살짝 눌러 HUD 가 읽히게
