@@ -175,15 +175,15 @@ export type MonsterFrameState = "idle" | "hit" | "defeat";
  *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json) */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   slime: [0.13, 0.13], goblin: [0.16, 0.15], "shadow-wolf-clean": [0.12, 0.12], ogre: [0.06, 0.06], dragon: [0.06, 0.06], "magma-imp": [0.18, 0.18],
-  "void-imp": [0.19, 0.18], "goblin-shaman": [0.26, 0.26], "skeleton-goblin": [0.10, 0.10], "frost-wolf": [0.19, 0.19], hellhound: [0.04, 0.04], "stone-troll": [0.21, 0.21],
-  "armored-ogre": [0.20, 0.19], "lava-drake": [0.04, 0.03], "storm-drake": [0.07, 0.07], "moss-golem-clean": [0.18, 0.18], "moon-wolf-king-clean": [0.18, 0.18], "wolf-king-clean": [0.23, 0.23],
+  "void-imp": [0.19, 0.18], "goblin-shaman": [0.26, 0.26], "skeleton-goblin": [0.10, 0.10], "frost-wolf": [0.17, 0.17], hellhound: [0.04, 0.04], "stone-troll": [0.21, 0.21],
+  "armored-ogre": [0.20, 0.19], "lava-drake": [0.04, 0.03], "storm-drake": [0.07, 0.07], "moss-golem-clean": [0.18, 0.18], "moon-wolf-king-clean": [0.18, 0.18], "wolf-king-clean": [0.12, 0.12],
   "flame-wyvern-clean": [0.06, 0.06], "abyss-titan": [0.20, 0.20], "thorn-boar-king": [0.04, 0.04], "ancient-treant": [0.16, 0.16], "ruin-sentinel": [0.21, 0.21], "magma-golem": [0.11, 0.11],
-  "void-lich": [0.19, 0.19], "goblin-warlord": [0.07, 0.07], "spider-queen": [0.09, 0.09], minotaur: [0.12, 0.12], "fire-demon": [0.05, 0.05], "bone-dragon": [0.08, 0.08],
+  "void-lich": [0.19, 0.19], "goblin-warlord": [0.07, 0.07], "spider-queen": [0.09, 0.09], minotaur: [0.06, 0.06], "fire-demon": [0.05, 0.05], "bone-dragon": [0.08, 0.08],
   "golden-lion-clean": [0.13, 0.13],
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */
-const FLIP_MONSTERS = new Set(["minotaur", "minotaur-hit", "minotaur-defeat"]);
+const FLIP_MONSTERS = new Set<string>([]);
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];
