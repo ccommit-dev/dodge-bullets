@@ -286,7 +286,7 @@ export function drawStickman(
     drawGearPart(ctx, "boots", p.gear.boots, 50, 95, 0.28, drawWidth, drawHeight);
     drawGearPart(ctx, "shield", p.gear.shield, 30, 72, 0.2, drawWidth, drawHeight);
     drawGearPart(ctx, "armor", p.gear.armor, 50, 73, 0.34, drawWidth, drawHeight);
-    drawGearPart(ctx, "gloves", p.gear.gloves, 78, 68, 0.11, drawWidth, drawHeight);
+    drawGearPart(ctx, "gloves", p.gear.gloves, 78, 68, 0.2, drawWidth, drawHeight);
     drawGearPart(ctx, "helmet", p.gear.helmet, 48, 40, 0.42, drawWidth, drawHeight);
         ctx.restore();
     if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
