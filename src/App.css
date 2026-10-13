@@ -812,8 +812,7 @@
   inset: 0;
   z-index: 1;
   background: #03030a;
-  font-family:
-    Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
 }
 
 .beat-layer .game-overlay {
@@ -1446,7 +1445,7 @@
   background:
     radial-gradient(circle at 50% 28%, rgba(194, 65, 12, 0.18), transparent 34%),
     linear-gradient(180deg, #0d0908 0%, #170d09 54%, #070606 100%);
-  font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
   touch-action: pan-y;
   --shell-backdrop: url("/ui/bg/forge-backdrop.webp");
 }
@@ -2081,7 +2080,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
   background:
     radial-gradient(circle at 70% 18%, rgba(253, 224, 71, 0.07), transparent 42%),
     linear-gradient(180deg, #060d18 0%, #0a1728 45%, #0c1c2e 100%);
-  font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
   touch-action: manipulation;
   --shell-backdrop: url("/ui/bg/hub-backdrop.webp");
 }
@@ -4296,13 +4295,13 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
    · 패널은 밝은 나무 테두리 두 겹(밝은 안쪽 선 + 진한 바깥 선) — 콘셉트의 두툼한 나무 판 */
 .game-root { --arc-ink: #2b1608; --arc-edge: #f6d7a0; --arc-sun: #fbbf24; --arc-sky: #7dd3fc; }
 .game-root h1, .game-root h2, .game-root h3, .titans-stagebar h1, .beat-title, .character-headline h1, .legacy-heading strong, .hub-sheet-title, .overlay-content h1, .overlay-content h2 {
-  font-family: "Jua", Inter, Pretendard, -apple-system, "Segoe UI", sans-serif; font-weight: 400; letter-spacing: 0;
+  font-family: var(--font-ui); font-weight: 400; letter-spacing: 0;
 }
 .titans-stagebar h1 { color: #fff7e6; -webkit-text-stroke: 0; text-shadow: 0 3px 0 var(--arc-ink), -1px 0 0 var(--arc-ink), 1px 0 0 var(--arc-ink), 0 -1px 0 var(--arc-ink), 0 0 16px rgba(56, 189, 248, .35); }
-.titans-kicker { font-family: "Jua", sans-serif; font-weight: 400; letter-spacing: .08em; color: var(--arc-sun); }
+.titans-kicker { font-family: var(--font-ui); font-weight: 400; letter-spacing: .08em; color: var(--arc-sun); }
 /* 버튼 — 두툼한 아케이드 캡슐 */
 .cta, .cta.cta-ghost, .titans-bottom-nav button.on, .titans-growth-tabs button, .hub-sheet-switch button, .premium-category-tabs button, .exp-menu-tabs button, .chapter-tab, .idle-claim, .settings-toggle {
-  font-family: "Jua", Inter, Pretendard, sans-serif; font-weight: 400; letter-spacing: .01em;
+  font-family: var(--font-ui); font-weight: 400; letter-spacing: .01em;
 }
 .cta { border: 3px solid var(--arc-ink); border-radius: 18px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 5px 0 #92400e, 0 9px 18px rgba(0, 0, 0, .4), inset 0 2px 0 rgba(255, 255, 255, .55); text-shadow: 0 1px 0 rgba(255, 255, 255, .45); }
 .cta:active { transform: translateY(4px); box-shadow: 0 1px 0 #92400e, 0 3px 8px rgba(0, 0, 0, .4), inset 0 2px 0 rgba(255, 255, 255, .55); }
@@ -4314,7 +4313,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .hub-sheet-switch button.on, .premium-category-tabs button.on { color: var(--arc-ink); border: 2px solid var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 3px 0 #92400e; }
 /* 하단 내비 — 나무 판 위 캡슐, 활성은 노란 캡슐에 외곽선 */
 .titans-bottom-nav { border: 3px solid var(--arc-ink); border-radius: 22px; background: linear-gradient(180deg, #8a5527 0%, #5a3517 40%, #3b2212 100%); box-shadow: 0 6px 0 #1f1109, 0 10px 24px rgba(0, 0, 0, .55), inset 0 2px 0 rgba(255, 255, 255, .18); }
-.titans-bottom-nav button { font-family: "Jua", sans-serif; font-weight: 400; font-size: 10px; color: #f6d7a0; text-shadow: 0 1px 0 rgba(0, 0, 0, .5); }
+.titans-bottom-nav button { font-family: var(--font-ui); font-weight: 400; font-size: 10px; color: #f6d7a0; text-shadow: 0 1px 0 rgba(0, 0, 0, .5); }
 .titans-bottom-nav button.on { color: var(--arc-ink); border: 2px solid var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 3px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .6); text-shadow: none; }
 /* 패널 — 두 겹 나무 테두리 */
 .titans-card, .hub-sheet, .overlay-content, .premium-product-card, .ally-card, .skill-preset-card, .advice-sheet, .idle-status-card, .titans-header, .titans-wallet {
@@ -4364,16 +4363,16 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 
 /* ═══════════ 원정 메뉴 · 지도 · 비트 HUD 도 나무 판으로 (2026-10-07, 사용자: "UI 너무 그대로") — 남색 유리판이 남아 있던 곳 ═══════════ */
 .game-overlay .overlay-content, .exp-menu-content { color: #f5e9d6; border: 3px solid var(--arc-ink); border-radius: 20px; background: linear-gradient(180deg, rgba(92, 56, 26, .96), rgba(50, 30, 14, .97)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .35), 0 6px 0 #1f1109, 0 12px 28px rgba(0, 0, 0, .5); }
-.game-overlay .brand, .exp-menu-content .brand { color: var(--arc-sun); font-family: "Jua", sans-serif; font-weight: 400; letter-spacing: .1em; }
+.game-overlay .brand, .exp-menu-content .brand { color: var(--arc-sun); font-family: var(--font-ui); font-weight: 400; letter-spacing: .1em; }
 .game-overlay .subtitle, .exp-menu-content .subtitle, .exp-menu-content p { color: #e2cfae; }
-.exp-menu-tabs button { border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; }
+.exp-menu-tabs button { border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 3px 0 #1f1109; font-family: var(--font-ui); font-weight: 400; }
 .exp-menu-tabs button.on { color: var(--arc-ink); background: linear-gradient(180deg, #bae6fd, var(--arc-sky) 60%, #38bdf8); box-shadow: 0 3px 0 #0c4a6e, inset 0 2px 0 rgba(255, 255, 255, .6); }
 .chapter-tab { border: 2px solid var(--arc-ink); border-radius: 12px; color: #f6d7a0; background: linear-gradient(180deg, #6b4120, #3b2212); box-shadow: 0 3px 0 #1f1109; }
 .chapter-tab.on { color: var(--arc-ink); border-color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 3px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); }
 .chapter-tab.on small { color: #7c2d12; }
 .chapter-tab.locked { opacity: .6; }
 .pioneer-board { border: 2px solid var(--arc-ink); border-radius: 16px; background: linear-gradient(180deg, rgba(70, 42, 20, .9), rgba(40, 24, 10, .92)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .25); }
-.pioneer-heading, .chapter-title { color: #fde68a; font-family: "Jua", sans-serif; font-weight: 400; }
+.pioneer-heading, .chapter-title { color: #fde68a; font-family: var(--font-ui); font-weight: 400; }
 .pioneer-row, .pioneer-stage { color: #f5e9d6; border: 2px solid rgba(43, 22, 8, .9); border-radius: 12px; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 2px 0 #1f1109; }
 .pioneer-row.on, .pioneer-stage.on, .pioneer-row.current, .pioneer-stage.current { background: linear-gradient(180deg, #fde68a, var(--arc-sun)); color: var(--arc-ink); }
 .pioneer-row.locked, .pioneer-stage.locked { opacity: .55; }
@@ -4383,12 +4382,12 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .route-node small { color: #fde68a; }
 .route-side.has-node.link-main::before, .route-side.has-node.link-up::before, .route-side.pipe::before { border-color: rgba(246, 215, 160, .7); }
 /* 성문 방어 HUD · 비트 HUD · 지휘 판 · 패드 */
-.hud-left, .hud-score, .hud-hint, .hud-tower { color: #fff7e6; text-shadow: 0 2px 0 var(--arc-ink), 0 0 10px rgba(0, 0, 0, .5); font-family: "Jua", sans-serif; font-weight: 400; }
+.hud-left, .hud-score, .hud-hint, .hud-tower { color: #fff7e6; text-shadow: 0 2px 0 var(--arc-ink), 0 0 10px rgba(0, 0, 0, .5); font-family: var(--font-ui); font-weight: 400; }
 .beat-command-party { border: 3px solid var(--arc-ink); border-radius: 18px; background: linear-gradient(180deg, rgba(92, 56, 26, .94), rgba(50, 30, 14, .96)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 5px 0 #1f1109, 0 10px 24px rgba(0, 0, 0, .5); }
 .beat-command-party > * { color: #f5e9d6; }
 .beat-pad { border: 3px solid var(--arc-ink); border-radius: 18px; color: #fff7e6; background: linear-gradient(180deg, #8a5527 0%, #5a3517 60%, #3b2212 100%); box-shadow: 0 5px 0 #1f1109, 0 9px 18px rgba(0, 0, 0, .45), inset 0 2px 0 rgba(255, 255, 255, .18); }
 .beat-pad span { color: var(--pad-accent, #7dd3fc); text-shadow: 0 0 10px var(--pad-tint, rgba(56, 189, 248, .4)), 0 2px 0 var(--arc-ink); }
-.beat-pad small { color: #f6d7a0; font-family: "Jua", sans-serif; font-weight: 400; }
+.beat-pad small { color: #f6d7a0; font-family: var(--font-ui); font-weight: 400; }
 .beat-pad:active { box-shadow: 0 1px 0 #1f1109; filter: brightness(1.15); }   /* translateY 는 길게 누르기(스킬 패드) 중 요소가 움직여 기기에서 터치가 빠졌다 (device-play 2026-10-07) */
 .beat-pad.direction-left, .beat-pad.direction-right { --pad-accent: #7dd3fc; }
 .beat-pad.direction-down { --pad-accent: #fde68a; }
@@ -4411,7 +4410,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 @keyframes coach-pulse { 50% { transform: scale(1.08); } }
 /* 대장간·조합소 뒤로 가기 — 설정 버튼과 같은 나무 캡슐, 지갑과 같은 줄 */
 .forge-header { padding-left: 0; }
-.forge-back { border: 2px solid var(--arc-ink); border-radius: 999px; padding: 7px 14px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; font-size: 13px; }
+.forge-back { border: 2px solid var(--arc-ink); border-radius: 999px; padding: 7px 14px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: var(--font-ui); font-weight: 400; font-size: 13px; }
 .forge-back:active { transform: translateY(2px); box-shadow: 0 1px 0 #1f1109; }
 /* 출석·방치 보고·이벤트 창도 나무 판 (2026-10-07) */
 .attendance-grid div { border: 2px solid var(--arc-ink); border-radius: 12px; color: #f5e9d6; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; }
@@ -4509,7 +4508,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 /* 헤더 정렬 (2026-10-08 사용자: "마이페이지 정렬 다시") — space-between 이 톱니·마이페이지·지갑을 벌려 놓았다: 톱니 바로 옆에 마이페이지, 지갑만 오른쪽 */
 .titans-header { justify-content: flex-start; gap: 6px; padding-left: 0; }
 .titans-header .titans-wallet { margin-left: auto; }
-.titans-header .titans-back { display: flex; align-items: center; gap: 7px; min-height: 40px; padding: 4px 12px 4px 6px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; font-size: 13px; }
+.titans-header .titans-back { display: flex; align-items: center; gap: 7px; min-height: 40px; padding: 4px 12px 4px 6px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: var(--font-ui); font-weight: 400; font-size: 13px; }
 .titans-header .titans-back:active { transform: translateY(2px); box-shadow: 0 1px 0 #1f1109; }
 .titans-header .mypage-icon { width: 30px; height: 30px; flex-basis: 30px; border: 2px solid var(--arc-ink); border-radius: 50%; background-color: #3b2212; }
 .titans-header .mypage-label small { color: #e2cfae; }
@@ -4521,7 +4520,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .titans-shop .premium-product-card, .page-premium .premium-product-card, .titans-card.premium-product-card { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 18px; background: linear-gradient(180deg, rgba(92, 56, 26, .94), rgba(50, 30, 14, .96)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .3), 0 4px 0 #1f1109; }
 .premium-product-card h3, .premium-product-card b, .premium-product-card strong { color: #fff7e6; }
 .premium-product-card p, .premium-product-card small { color: #e2cfae; }
-.premium-product-card button, .premium-product-card .cta { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: "Jua", sans-serif; font-weight: 400; }
+.premium-product-card button, .premium-product-card .cta { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: var(--font-ui); font-weight: 400; }
 .premium-product-card button:disabled { opacity: .55; box-shadow: 0 2px 0 #92400e; }
 .premium-product-card button:active { transform: translateY(3px); box-shadow: 0 1px 0 #92400e; }
 .premium-category-tabs button { color: #f6d7a0; border: 2px solid var(--arc-ink); border-radius: 999px; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 3px 0 #1f1109; }
@@ -4533,7 +4532,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .advice-sheet { color: #f5e9d6; }
 .advice-row, .advice-rank, .advice-body { color: #f5e9d6; }
 /* 뽑기 버튼(초록·주황) → 아케이드 노랑 + 나무 */
-.gacha-actions button { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: "Jua", sans-serif; font-weight: 400; }
+.gacha-actions button { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: var(--font-ui); font-weight: 400; }
 .gacha-actions button.gacha-ten { color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 4px 0 #1f1109, inset 0 2px 0 rgba(255, 255, 255, .18); }
 .gacha-actions button:disabled { opacity: .55; }
 .gacha-empty { color: #f5e9d6; border: 2px solid var(--arc-ink); border-radius: 16px; background: linear-gradient(180deg, rgba(76, 29, 149, .55), rgba(50, 30, 14, .94)); }
@@ -4541,7 +4540,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 /* ═══════════ 스크롤 줄이기 (2026-10-08 사용자: "스크롤 없이, 페이지를 추가하더라도 가독성 좋게") ═══════════ */
 /* 출석: 15일씩 두 쪽 · 3열 5줄로 칸을 키운다 */
 .attendance-pages { display: flex; gap: 6px; justify-content: center; margin: 4px 0 0; }
-.attendance-pages button { padding: 6px 14px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.attendance-pages button { padding: 6px 14px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: var(--font-ui); font-size: 12px; }
 .attendance-pages button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
 .attendance-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
 .attendance-grid div { min-height: 84px; }
@@ -4560,7 +4559,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 }
 /* 마이페이지 묶음 탭 */
 .mypage-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 0 0 10px; }
-.mypage-tabs button { min-height: 36px; padding: 4px; border: 2px solid var(--arc-ink); border-radius: 12px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.mypage-tabs button { min-height: 36px; padding: 4px; border: 2px solid var(--arc-ink); border-radius: 12px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: var(--font-ui); font-size: 12px; }
 .mypage-tabs button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
 .mypage-group.hidden { display: none; }
 /* 원정 메뉴: 설명 문단·여백을 줄이고 지도를 2열로 — 1장 10칸이 한 화면에 (실측 1255px → 목표 ≤ 780px) */
@@ -4635,7 +4634,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
   .titans-layer.page-skills .titans-field { --hero-size: clamp(40px, 9%, 48px); --ally-size: 58px; --monster-size: 84px; --boss-size: 110px; }
 }
 /* 설정 버튼에도 글자 (2026-10-08 사용자: "설정도 텍스트 추가") — 마이페이지와 같은 나무 캡슐: 톱니 + '설정' */
-.titans-header .settings-toggle { width: auto; height: auto; min-height: 40px; padding: 4px 12px 4px 6px; gap: 6px; justify-content: flex-start; border-radius: 999px; font-family: "Jua", sans-serif; font-weight: 400; font-size: 13px; color: #fde68a; }
+.titans-header .settings-toggle { width: auto; height: auto; min-height: 40px; padding: 4px 12px 4px 6px; gap: 6px; justify-content: flex-start; border-radius: 999px; font-family: var(--font-ui); font-weight: 400; font-size: 13px; color: #fde68a; }
 .titans-header .settings-toggle .settings-gear { width: 28px; height: 28px; }
 .titans-header .settings-toggle .settings-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: nowrap; }
 @media (max-width: 600px) { .titans-header .settings-toggle { padding: 4px 10px 4px 5px; } }
@@ -4646,15 +4645,15 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .titans-layer:not(.is-management-page) .titans-shop { margin: 0 auto 8px; padding: 10px; border: 2px solid var(--arc-ink); border-top: 0; border-radius: 0 0 18px 18px; background: linear-gradient(180deg, rgba(70, 42, 20, .94), rgba(50, 30, 14, .96)); box-shadow: inset 0 0 0 2px rgba(246, 215, 160, .2), 0 5px 0 #1f1109; }
 /* 일괄 레벨업: 라벨 + 세 칩을 오른쪽 정렬한 한 줄, 카드와 같은 폭 */
 .bulk-toggle { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 0 0 4px; padding: 0; }
-.bulk-toggle span { margin-right: auto; color: #e2cfae; font-size: 11px; font-family: "Jua", sans-serif; }
-.bulk-toggle button { min-width: 44px; min-height: 30px; padding: 3px 10px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.bulk-toggle span { margin-right: auto; color: #e2cfae; font-size: 11px; font-family: var(--font-ui); }
+.bulk-toggle button { min-width: 44px; min-height: 30px; padding: 3px 10px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: var(--font-ui); font-size: 12px; }
 .bulk-toggle button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
 /* 훈련 카드: 아이콘 44 · 글 · 버튼 64 의 한 줄, 높이 64 고정 */
 .equipment-training-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 64px; padding: 8px 10px; margin: 0; }
 .equipment-training-card .training-item-icon, .equipment-training-card > svg, .equipment-training-card > img, .equipment-training-card > .shoulder-icon { width: 44px; height: 44px; }
 .equipment-training-card strong { display: block; font-size: 14px; line-height: 1.2; color: #fff7e6; }
 .equipment-training-card p { margin: 2px 0 0; font-size: 11px; line-height: 1.3; color: #e2cfae; }
-.equipment-training-card > button { min-width: 64px; min-height: 40px; padding: 6px 12px; border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #bae6fd, var(--arc-sky) 60%, #38bdf8); box-shadow: 0 3px 0 #0c4a6e, inset 0 2px 0 rgba(255, 255, 255, .6); font-family: "Jua", sans-serif; font-weight: 400; font-size: 14px; }
+.equipment-training-card > button { min-width: 64px; min-height: 40px; padding: 6px 12px; border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #bae6fd, var(--arc-sky) 60%, #38bdf8); box-shadow: 0 3px 0 #0c4a6e, inset 0 2px 0 rgba(255, 255, 255, .6); font-family: var(--font-ui); font-weight: 400; font-size: 14px; }
 .equipment-training-card > button:disabled { opacity: .5; }
 /* 넓은 화면: 패널·내비 폭을 720 으로 맞춰 줄 맞춤 */
 .titans-bottom-nav { width: min(720px, calc(100vw - 20px)); }
@@ -4675,14 +4674,14 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
   .titans-layer { padding-bottom: 120px !important; }
 }
 .ally-pages { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 2px 0 6px; }
-.ally-pages button { min-height: 32px; padding: 4px 12px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: "Jua", sans-serif; font-size: 12px; }
+.ally-pages button { min-height: 32px; padding: 4px 12px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #f6d7a0; background: linear-gradient(180deg, #7a4a22, #4a2b12); box-shadow: 0 2px 0 #1f1109; font-family: var(--font-ui); font-size: 12px; }
 .ally-pages button.on { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 2px 0 #92400e; }
 /* 설정·마이페이지 캡슐은 붙여서 */
 .titans-header { gap: 4px; }
 .titans-header .settings-wrap { margin-right: 0; }
 /* 대장간: 강화 버튼·판매 버튼을 아케이드 노랑/나무로, 안내 글은 읽히는 색으로 띄워서(어두운 판 위 #8c6b59 가 겹쳐 보였다) */
-.forge-button { border: 2px solid var(--arc-ink); border-radius: 16px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 5px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: "Jua", sans-serif; font-weight: 400; }
-.forge-sell { border: 2px solid var(--arc-ink); border-radius: 16px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 5px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; }
+.forge-button { border: 2px solid var(--arc-ink); border-radius: 16px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 5px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: var(--font-ui); font-weight: 400; }
+.forge-sell { border: 2px solid var(--arc-ink); border-radius: 16px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 5px 0 #1f1109; font-family: var(--font-ui); font-weight: 400; }
 .forge-note { margin: 10px 0 0; padding: 8px 10px; color: #e2cfae; font-size: 11px; border-radius: 12px; background: rgba(43, 22, 8, .55); }
 .forge-shell { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 /* 동료 카드: 버튼 3개를 세로로 쌓던 것을 한 줄로 — 카드 높이 1/2, 6장 한 쪽이 스크롤 없이 */
@@ -4753,7 +4752,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
   .route-map { grid-template-columns: repeat(3, 1fr); }
 }
 /* 4 성문 방어 상단: 옛 남색 칩 → 나무 캡슐 */
-.sound-toggle, .exit-toggle, .battle-toggle { border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; }
+.sound-toggle, .exit-toggle, .battle-toggle { border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: var(--font-ui); font-weight: 400; }
 .sound-toggle[aria-pressed="true"] { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); border-color: var(--arc-ink); box-shadow: 0 3px 0 #92400e; }
 .hud-left .hud-score, .hud-left .hud-hint, .hud-left .hud-tower, .hud-left .threat-label { display: inline-block; padding: 2px 8px; border-radius: 999px; background: rgba(43, 22, 8, .62); border: 1px solid rgba(246, 215, 160, .35); }
 /* 5 비트 HUD 칩 · 게이지 */
@@ -4793,14 +4792,14 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .character-header .character-eyebrow { display: none; }
 .character-header h1 { margin: 0; font-size: 22px; line-height: 1; }
 .character-header > div > p:not(.character-eyebrow) { display: none; }
-.character-header .share-card-btn, .character-header .character-back { min-height: 36px; padding: 4px 12px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: "Jua", sans-serif; font-weight: 400; font-size: 12px; white-space: nowrap; }
+.character-header .share-card-btn, .character-header .character-back { min-height: 36px; padding: 4px 12px; border: 2px solid var(--arc-ink); border-radius: 999px; color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 3px 0 #1f1109; font-family: var(--font-ui); font-weight: 400; font-size: 12px; white-space: nowrap; }
 .character-header .character-back { color: var(--arc-ink); background: linear-gradient(180deg, #fde68a, var(--arc-sun)); box-shadow: 0 3px 0 #92400e; }
 /* 프로필 카드: 2열(아바타 | 정체성) + 전체 폭 수치 줄 */
 .character-hero-card { display: grid; grid-template-columns: 84px minmax(0, 1fr); grid-template-areas: "art id" "stats stats" "idle idle"; gap: 8px 12px; padding: 12px; }
 .character-equipment-preview { grid-area: art; width: 84px; height: 84px; margin: 0; border: 2px solid var(--arc-ink); border-radius: 18px; background: rgba(43, 22, 8, .55); overflow: hidden; display: grid; place-items: end center; }
 .character-identity { grid-area: id; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
 .character-identity span { font-size: 11px; color: #e2cfae; }
-.character-identity strong { font-size: 30px; line-height: 1; color: #fde68a; font-family: "Jua", sans-serif; font-weight: 400; }
+.character-identity strong { font-size: 30px; line-height: 1; color: #fde68a; font-family: var(--font-ui); font-weight: 400; }
 .character-identity small { font-size: 10px; color: #c9b08a; }
 .character-identity .character-exp { height: 6px; border-radius: 999px; background: rgba(43, 22, 8, .7); overflow: hidden; }
 .character-identity .character-exp b { display: block; height: 100%; background: linear-gradient(90deg, #7dd3fc, #38bdf8); }
@@ -4924,14 +4923,14 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 @media (max-width: 420px) { .titans-wallet strong { font-size: 11px; } .titans-wallet span + span { padding-left: 5px; } .titans-wallet .currency-icon, .titans-wallet .titans-stone img { width: 15px; height: 15px; flex-basis: 15px; } }
 /* ── 보완 5: 납작 단색 버튼·탭·카드 (참고: 카피바라 키우기) — 굵은 갈색 외곽선 · 단색 면 · 아래 그림자 한 줄. 나무 결 그라데이션은 뺀다 ── */
 :root { --flat-ink: #3b2415; --flat-cream: #fff3d6; --flat-cream-2: #f3dfb3; --flat-green: #7ac142; --flat-green-2: #4f8f2a; --flat-yellow: #f2c232; --flat-yellow-2: #b98a16; --flat-blue: #5bb1ff; --flat-blue-2: #2f79c4; --flat-red: #ef5a5a; }
-.cta { border: 3px solid var(--flat-ink); border-radius: 16px; background: var(--flat-green); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); box-shadow: 0 5px 0 var(--flat-green-2); font-family: "Jua", sans-serif; }
+.cta { border: 3px solid var(--flat-ink); border-radius: 16px; background: var(--flat-green); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); box-shadow: 0 5px 0 var(--flat-green-2); font-family: var(--font-ui); }
 .cta:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--flat-green-2); }
 .cta.cta-ghost { background: var(--flat-cream); color: var(--flat-ink); text-shadow: none; box-shadow: 0 5px 0 var(--flat-cream-2); }
 .titans-bottom-nav { border: 3px solid var(--flat-ink); border-radius: 18px 18px 0 0; background: var(--flat-cream); box-shadow: none; }
 .titans-bottom-nav button { color: var(--flat-ink); background: transparent; border-radius: 12px; }
 .titans-bottom-nav button.on { background: var(--flat-yellow); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
 .titans-content-tabs button, .premium-category-tabs button, .hub-sheet-switch button, .event-tabs button, .titans-growth-tabs button, .exp-menu-tabs button, .mypage-tabs button, .attendance-pages button, .role-filter button, .ally-pages button {
-  border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); font-family: "Jua", sans-serif; }
+  border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); font-family: var(--font-ui); }
 .titans-content-tabs button.on, .premium-category-tabs button.on, .hub-sheet-switch button.on, .event-tabs button.on, .titans-growth-tabs button.on, .exp-menu-tabs button.on, .mypage-tabs button.on, .attendance-pages button.on, .attendance-pages button[aria-selected="true"], .role-filter button.on, .ally-pages button.on {
   background: var(--flat-yellow); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-yellow-2); }
 .titans-header, .titans-wallet, .hub-sheet-wallet > span, .hub-sheet-wallet > button { border: 2px solid var(--flat-ink); background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
@@ -4939,7 +4938,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .titans-back, .settings-toggle { border: 2px solid var(--flat-ink); border-radius: 14px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
 .titans-back .mypage-label, .settings-toggle .settings-label { color: var(--flat-ink); }
 .premium-product-card > button, .ally-card button, .skill-card button, .titans-upgrade-row button, .equip-row button, .exp-store-buy, .recommend-party, .gacha-actions button, .moment-buy {
-  border: 2px solid var(--flat-ink) !important; border-radius: 12px !important; background: var(--flat-blue) !important; color: #fff !important; text-shadow: 0 1px 0 rgba(0,0,0,.25); box-shadow: 0 3px 0 var(--flat-blue-2) !important; font-family: "Jua", sans-serif; }
+  border: 2px solid var(--flat-ink) !important; border-radius: 12px !important; background: var(--flat-blue) !important; color: #fff !important; text-shadow: 0 1px 0 rgba(0,0,0,.25); box-shadow: 0 3px 0 var(--flat-blue-2) !important; font-family: var(--font-ui); }
 .premium-product-card > button:disabled, .ally-card button:disabled, .skill-card button:disabled { background: #c9bda8 !important; box-shadow: 0 3px 0 #9d9076 !important; color: #6b5b48 !important; }
 .titans-card, .premium-product-card, .ally-card, .skill-preset-card, .advice-sheet, .idle-status-card { border: 2px solid var(--flat-ink); border-radius: 16px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); }
 .titans-card p, .premium-product-card p, .ally-card p, .titans-card small, .premium-product-card small, .ally-card small, .premium-product-card strong, .titans-card strong, .ally-card strong, .ally-card h3, .titans-card h3 { color: var(--flat-ink); }

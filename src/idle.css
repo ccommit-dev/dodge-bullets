@@ -1031,7 +1031,7 @@
   border-radius: 10px;
   background: rgba(8, 18, 33, 0.8);
   color: #cbd5f5;
-  font-family: Consolas, monospace;
+  font-family: var(--font-ui);
   font-size: 10px;
   line-height: 1.4;
   resize: vertical;
