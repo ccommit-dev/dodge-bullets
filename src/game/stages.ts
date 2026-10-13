@@ -146,6 +146,22 @@ function buildPatterns(index: number, chapter: ChapterDef, slot: SlotDef, durati
   });
 }
 
+/**
+ * 스테이지 타입 3종 (2026-10-13, docs/FOCUS_CAPYGO P1 — 카피바라 Go! 챕터 타입 순환 60/30/5일):
+ *   long  긴 공성 — 웨이브가 길고 레벨업 카드가 기본 장치(개막·혼성·포위전·중간 보스·장 대장)
+ *   short 짧은 돌격 — 빠르게 끝나고 상인(인장 → 카드)이 선다(떼·돌진·협공)
+ *   tower 타워형 — 카드를 먼저 고르고 단단한 정예를 연속으로 받는다(정예·정예 혼성)
+ * 한 장(10칸) 안에서 long·short·tower 가 섞여 돌아간다. 2택 사건(dayEvents)이 타입을 따른다
+ */
+export type StageType = "long" | "short" | "tower";
+export const STAGE_TYPE_LABEL: Record<StageType, string> = { long: "긴 공성", short: "짧은 돌격", tower: "타워형" };
+export function stageType(index: number): StageType {
+  const kind = getStage(index).slotKind;
+  if (kind === "swarm" || kind === "rush" || kind === "pincer") return "short";
+  if (kind === "elite" || kind === "elitemix") return "tower";
+  return "long";
+}
+
 /** stageIndex(0~49) → 스테이지. 결정적 */
 export function buildStage(index: number): StageDef {
   const i = Math.max(0, Math.min(CHAPTER_COUNT * STAGES_PER_CHAPTER - 1, index));

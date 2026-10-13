@@ -111,7 +111,7 @@ ok("C 마무리 컷인(플래시)", /cutin-finisher/.test(c4.cutin) && c4.flash,
 
 // ── D. 비트 적: 박자 맥동 + 판정별 모션 ──
 await page.evaluate(() => localStorage.setItem("dodgebullets:beat:calibrationMs", "0"));
-await clickText(".titans-bottom-nav button", "콘텐츠");
+await clickText(".titans-bottom-nav button", "모험");
 await sleep(400);
 await clickText(".nav-popup-grid button", "비트 수련");
 await sleep(1500);

@@ -39,7 +39,7 @@ await page.screenshot({ path: `${OUT}/01-shop-package.png` });
 await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(400);
 
 // 2. 성문 방어 › 정비 › 보급·임무
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1500);
 await clickText("button", "정비"); await sleep(700);
 await clickText("button", "보급 · 임무"); await sleep(600);

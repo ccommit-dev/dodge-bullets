@@ -177,7 +177,7 @@ const shop = await page.evaluate(() => ({ sheet: !!document.querySelector(".hub-
 ok("B 보석 칩 탭 → 상점 시트 + 지갑 줄", shop.sheet && shop.wallet >= 3, JSON.stringify(shop));
 await shot("b3-shop");
 await tap(".hub-sheet-close"); await sleep(700);
-await tap(".titans-bottom-nav button", "콘텐츠"); await sleep(900);
+await tap(".titans-bottom-nav button", "모험"); await sleep(900);
 await tap(".nav-popup-grid button", "성문 방어"); await sleep(2500);
 await tap(".chapter-tab", "1장"); await sleep(600);
 const route = await page.evaluate(() => ({ rows: document.querySelectorAll(".route-row").length, nodes: [...document.querySelectorAll(".route-node")].map((n) => n.dataset.branch + (n.disabled ? "잠김" : "")), wallet: document.querySelectorAll(".exp-menu-content .wallet-item").length }));
@@ -208,7 +208,7 @@ await shot("b7-paused");
 await launch();
 await sleep(5000);
 for (let i = 0; i < 3; i += 1) { if (!(await tap(".idle-claim"))) break; await sleep(800); }
-await tap(".titans-bottom-nav button", "콘텐츠"); await sleep(900);
+await tap(".titans-bottom-nav button", "모험"); await sleep(900);
 await tap(".nav-popup-grid button", "비트 수련"); await sleep(2500);
 await shot("c1-beat-menu");
 const custom = await page.evaluate(() => ({ wallet: document.querySelectorAll(".wallet-bar .wallet-item").length, custom: !!document.querySelector(".beat-custom-toggle") }));

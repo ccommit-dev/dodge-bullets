@@ -26,14 +26,14 @@ const ALL_ALLY_SKINS: Record<string, AllySkinDef> = {
     ally: "garen",
     name: "용암 기사 가렌",
     desc: "화산의 무구를 두른 가렌 — 외형 전용",
-    url: assetUrl("titans/generated/allies/garen-magma.png"),
+    url: assetUrl("titans/generated/allies/skins/garen-magma.png"),   // 2026-10-13: 인간 tint 잔재 → 비버 스킨 썸네일
     gemCost: 300,
   },
   "leon-frost": {
     ally: "leon",
     name: "설원 궁수 레온",
     desc: "설원 위장을 입은 레온 — 외형 전용",
-    url: assetUrl("titans/generated/allies/leon-frost.png"),
+    url: assetUrl("titans/generated/allies/skins/leon-frost.png"),
     gemCost: 300,
   },
   "ari-blaze": { ally: "ari", name: "불꽃의 용기사 아리", desc: "황금빛 화염을 두른 용기사 아리 — 외형 전용", url: assetUrl("titans/generated/allies/skins/ari-blaze.png"), gemCost: 300 },

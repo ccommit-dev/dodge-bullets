@@ -55,7 +55,7 @@ await clickText(".premium-category-tabs button", "재화"); await sleep(500);
 await shot("05-shop-currency-seal");
 const shop = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent.trim()));
 // 5) 비트 수련 허브 출격 강화 칩 → 2번 곡(장 대장) 약점 레인
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(600);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(600);
 await clickText("button", "비트 수련"); await sleep(1500);
 await shot("06-beat-hub-perks");
 const perks = await page.evaluate(() => [...document.querySelectorAll(".schedule-perks .perk-chip")].slice(0, 6).map((c) => c.textContent + (c.classList.contains("on") ? "*" : "")));

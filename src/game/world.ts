@@ -119,6 +119,12 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     draftBoost: false,
     primedMs: 0,
     runMods: emptyRunMods(),
+    barrierTakenMul: 1,
+    coinBonusMul: 1,
+    runXpMul: 1,
+    restBonus: 0,
+    perkRerolled: false,
+    evolutionPath: "novice",
     chips: emptyChipMods(),
     ultFlashMs: 0,
     reflectKills: 0,
@@ -185,7 +191,7 @@ export const RUN_TEMPO_PER_LEVEL = 0.03;
 export const RUN_TEMPO_CAP = 1.25;
 /** 런 XP 획득 — 레벨업하면 levelUps 를 올리고(UI 가 성장 선택으로 소비) tempo 를 올린다 */
 export function gainRunXp(world: GameWorld, amount: number): void {
-  world.runXp += amount;
+  world.runXp += amount * (world.runXpMul || 1);
   while (world.runXp >= runXpToNext(world.runLevel)) {
     world.runXp -= runXpToNext(world.runLevel);
     world.runLevel += 1;
@@ -239,6 +245,9 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.hitStopMs = 0;
   // 카드는 런 단위 — 새 런에서만 비운다 (스테이지 경계에서는 유지)
   world.runMods = emptyRunMods();
+  world.barrierTakenMul = 1;
+  world.coinBonusMul = 1;
+  world.perkRerolled = false;   // runXpMul·restBonus 는 특성이라 loadLoadout 이 둔다
   // 장착한 스킬 무기는 런 시작부터 쏜다 (2026-10-02) — 예전엔 런 중 카드로 '습득'해야 나갔다
   world.runSkills = {};
   for (const id of world.loadout ?? []) if ((world.skillLevels[id] ?? 0) > 0) world.runSkills[id] = true;

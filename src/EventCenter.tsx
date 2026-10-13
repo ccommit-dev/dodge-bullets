@@ -18,6 +18,7 @@ import { sfxRiftClaim } from "./ui/sfx";
 
 type EventTab = "daily" | "rift" | "weekly" | "journal" | "season";   // 2026-10-08: 주간 도전은 weekly 탭 안으로 (탭 6 → 5)
 
+import { grantChest } from "./economy/chests";
 import { MISSION_ALL_DONE_GEMS, RIFT_SECONDS, dailyMissionsDone, dateKey, loadEventSave, riftAttemptsFor, saveEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 import { SEASON, addSeasonXp, claimSeasonTier, claimableTiers, freeReward, normalizeSeason, paidGemTotal, paidReward, rewardLabel, seasonDaysLeft, seasonTier } from "./economy/seasonPass";
@@ -176,6 +177,8 @@ export function EventCenter({
       `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
     );
     await persist({ ...save, riftAttempts: save.riftAttempts + 1, weeklyRiftRuns: save.weeklyRiftRuns + 1 });
+    // 비버 상자 (economy/chests, 2026-10-13 P2): 오늘 균열을 다 쓰면 상자 1개
+    if (save.riftAttempts + 1 >= riftAttemptsFor(progress.patronUntil)) onUpdated(await updateCharacterProgress(userHash, (current) => grantChest(current)));
   };
 
   /** 주간 도전 수령 (RETENTION F) */

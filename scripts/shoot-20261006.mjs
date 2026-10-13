@@ -50,7 +50,7 @@ await page.evaluate(() => document.querySelector(".beat-custom-product")?.scroll
 await page.screenshot({ path: `${OUT}/04-shop-beat.png` });
 await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(300);
 // 원정 지도
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 await clickText(".chapter-tab", "1장"); await sleep(300);
 facts.expWallet = await page.evaluate(() => [...document.querySelectorAll(".exp-menu-content .wallet-item")].map((e) => e.textContent.replace(/\s+/g, " ").trim()));
@@ -67,7 +67,7 @@ await page.screenshot({ path: `${OUT}/07-branch-intro.png` });
 // 비트 메뉴
 await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2200);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) c.click(); } });
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "비트 수련"); await sleep(1600);
 facts.beatToggle = await tap(".beat-custom-toggle"); await sleep(400);
 facts.beatItems = await page.evaluate(() => document.querySelectorAll(".beat-custom-item").length);

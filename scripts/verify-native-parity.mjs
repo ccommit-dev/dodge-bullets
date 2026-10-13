@@ -35,7 +35,7 @@ const readProgress = () => page.evaluate((k) => { try { return JSON.parse(localS
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const closeModal = () => page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".battle-alert-stack, .titans-tabs, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } });
 const waitHub = async () => { for (let i = 0; i < 40; i += 1) { await sleep(250); if (await page.evaluate(() => !!document.querySelector(".titans-bottom-nav") && !document.querySelector(".titans-loading"))) return true; } return false; };
-const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1500); };
+const openContent = async (label) => { await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1500); };
 
 // ── 1. 새 기기 부팅 — 저장은 Capacitor Preferences(웹 구현은 CapacitorStorage. 접두 localStorage)로 ──
 await page.goto(BASE, { waitUntil: "networkidle0" });

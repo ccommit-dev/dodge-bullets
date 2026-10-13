@@ -202,7 +202,7 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
     for (const tier of order.slice(order.indexOf(want))) {
       const tierPool = pool.filter((p) => p.rarity === tier && !out.includes(p));
       if (!tierPool.length) continue;
-      taken = tierPool[Math.floor(rng() * tierPool.length) % tierPool.length];
+      taken = weightedPick(tierPool, world.evolutionPath ?? "novice", rng);
       break;
     }
     if (!taken) {
@@ -213,6 +213,27 @@ export function pickPerks(world: GameWorld, rng: () => number = Math.random, cou
     out.push(taken);
   }
   return out;
+}
+
+/**
+ * 빌드 계열 가중 (2026-10-13, docs/FOCUS_CAPYGO P2 — 카피바라 Go! 영웅의 전승: 계열마다 스킬 풀이 갈린다).
+ * 진화 경로가 맞는 카드는 2배 무게 — 검성(swordmaster)은 기본 사격·연사·과부하 같은 화살 카드, 수호자(guardian)는 회복·일섬 게이지,
+ * 비전(arcane)은 스킬 습득·진화·콤보. 초심자(novice)는 가중 없음. 다른 계열 카드가 사라지진 않는다(선택의 폭은 남긴다)
+ */
+export type BuildPath = "novice" | "swordmaster" | "guardian" | "arcane";
+export function buildWeight(perk: PerkDef, path: BuildPath): number {
+  if (path === "novice") return 1;
+  const arcane = !!perk.evolution || !!perk.combo || !!perk.learns || (perk.needs?.some((n) => n !== "basic") ?? false);
+  const guardian = perk.id === "heal" || perk.id === "gauge";
+  const sword = !arcane && !guardian;
+  const match = path === "arcane" ? arcane : path === "guardian" ? guardian : sword;
+  return match ? 2 : 1;
+}
+function weightedPick(list: PerkDef[], path: BuildPath, rng: () => number): PerkDef {
+  const total = list.reduce((s, p) => s + buildWeight(p, path), 0);
+  let roll = rng() * total;
+  for (const p of list) { roll -= buildWeight(p, path); if (roll <= 0) return p; }
+  return list[list.length - 1];
 }
 
 /** 무기만 있으면 뜨는 카드 — 다른 스킬을 요구하지 않는 것만 (콤보·원소 전환은 스킬도 필요하다) */

@@ -26,6 +26,7 @@ import { ShoulderIcon } from "./ui/ShoulderIcon";
 import { WalletBar } from "./ui/WalletBar";
 import { qaGemsEnabled } from "./progression/storage";
 import type { ShoulderId } from "./progression/model";
+import { TALENTS, TALENT_BY_ID, masteryPoints, masteryState, type TalentId } from "./forge/talents";
 import { EXPEDITION_SKILLS, WEAPON_FORGE_MAX, weaponForgeCooldownMul, weaponForgeCost, weaponForgeDamageMul, type WeaponForgeLevels } from "./game/skills";
 
 /** Original delays were ~650/720ms; 3× faster ≈ 217/240. */
@@ -76,6 +77,10 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [shoulderShards, setShoulderShards] = useState(0);
   /** 성문 방어 활·지팡이 강화 단계 (2026-10-02) */
   const [expForge, setExpForge] = useState<WeaponForgeLevels>({ bow: 0, staff: 0 });
+  /** 장인 이정표 (forge/talents, 2026-10-13): 영구 특성 · 받은 골드 이정표 수 · 선택 시트 */
+  const [talents, setTalents] = useState<TalentId[]>([]);
+  const [goldClaimed, setGoldClaimed] = useState(0);
+  const [pickOpen, setPickOpen] = useState(false);
   const timerRef = useRef<number | null>(null);
   const firstClearRef = useRef("");
   const toastRef = useRef<number | null>(null);
@@ -119,6 +124,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setEquippedShoulder(progress.equippedShoulder);
       setShoulderShards(progress.shoulderShards);
       setExpForge(progress.expeditionWeaponForge);
+      setTalents(progress.talents);
+      setGoldClaimed(progress.masteryGoldClaimed);
       setPhase(forge.pendingFailure ? "failure" : "idle");
       setReady(true);
     });
@@ -202,6 +209,17 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     if (done) flashToast(`${kind === "bow" ? "원정 장궁" : "수정 지팡이"} +${next.expeditionWeaponForge[kind]} 강화 성공`);
   };
 
+  /** 한 단계 되돌리기 — 올릴 때 낸 골드(tierAt(level-1).cost)와 강화석 1을 그대로 돌려준다 */
+  const revertOne = async () => {
+    if (save.level <= 0 || phase !== "idle") return;
+    const refund = tierAt(save.level - 1).cost;
+    const nextLevel = save.level - 1;
+    setSave((prev) => ({ ...prev, level: nextLevel }));
+    setCoins((v) => v + refund);
+    setMaterials((v) => v + 1);
+    await updateCharacterProgress(userHash, (current) => ({ ...current, sharedCoins: current.sharedCoins + refund, enhancementMaterials: current.enhancementMaterials + 1, equippedWeaponLevel: nextLevel, lastContent: "forge" }));
+    flashToast(`되돌리기 · +${nextLevel} · 골드 ${formatGold(refund)} · 강화석 +1 환급`);
+  };
   const enhance = () => {
     if (!canEnhance) return;
     const success = Math.random() < boostedChance;
@@ -489,6 +507,52 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
       {(
         <main className="forge-shell">
+          {/* 장인 이정표 (docs/FOCUS_CAPYGO P1): 10점마다 등급, 4점 골드 · 7점 영구 특성 — "다음 보상이 보이는 중간 계단" */}
+          {(() => {
+            const pts = masteryPoints({ bestLevel: save.bestLevel, bestArmorLevel: save.bestArmorLevel, bow: expForge.bow, staff: expForge.staff });
+            const m = masteryState(pts, goldClaimed, talents);
+            const claimGold = async () => {
+              const next = await updateCharacterProgress(userHash, (p) => {
+                const st = masteryState(pts, p.masteryGoldClaimed, p.talents);
+                if (st.goldPending <= 0) return p;
+                return { ...p, sharedCoins: p.sharedCoins + st.goldPendingAmount, masteryGoldClaimed: p.masteryGoldClaimed + st.goldPending };
+              });
+              setCoins(next.sharedCoins); setGoldClaimed(next.masteryGoldClaimed);
+              setToast(`장인 이정표 · 골드 +${m.goldPendingAmount.toLocaleString()}`);
+            };
+            const pickTalent = async (id: TalentId) => {
+              const next = await updateCharacterProgress(userHash, (p) => {
+                const st = masteryState(pts, p.masteryGoldClaimed, p.talents);
+                if (st.picksPending <= 0 || p.talents.includes(id)) return p;
+                return { ...p, talents: [...p.talents, id] };
+              });
+              setTalents(next.talents); setPickOpen(false);
+              setToast(`영구 특성 · ${TALENT_BY_ID[id].name}`);
+            };
+            return (
+              <section className="forge-mastery" data-mastery-rank={m.rank} data-mastery-points={m.points}>
+                <div className="forge-mastery-head">
+                  <b>장인 {m.rank + 1}등급</b>
+                  <small>{m.points}점 · 다음 {m.next.kind === "gold" ? "골드" : m.next.kind === "pick" ? "특성 선택" : "승급"}까지 {m.next.left}점</small>
+                </div>
+                <i className="forge-mastery-bar" aria-hidden="true"><b style={{ width: `${m.within * 10}%` }} /><em className="m-gold" /><em className="m-pick" /></i>
+                <div className="forge-mastery-actions">
+                  {m.goldPending > 0 && <button type="button" className="mastery-claim-gold" onClick={() => void claimGold()}>골드 +{m.goldPendingAmount.toLocaleString()} 받기</button>}
+                  {m.picksPending > 0 && <button type="button" className="mastery-pick" onClick={() => setPickOpen(true)}>영구 특성 고르기 ({m.picksPending})</button>}
+                  {talents.length > 0 && <span className="forge-talents">{talents.map((t) => <em key={t} title={TALENT_BY_ID[t].desc}>{TALENT_BY_ID[t].name}</em>)}</span>}
+                  {m.goldPending === 0 && m.picksPending === 0 && talents.length === 0 && <small>북·보호구·원정 무기 강화 점수를 모으면 골드와 영구 특성</small>}
+                </div>
+                {pickOpen && (
+                  <div className="forge-pick" role="dialog" aria-label="영구 특성 선택">
+                    {TALENTS.filter((t) => !talents.includes(t.id)).map((t) => (
+                      <button key={t.id} type="button" data-talent={t.id} onClick={() => void pickTalent(t.id)}><b>{t.name}</b><small>{t.desc}</small></button>
+                    ))}
+                    <button type="button" className="forge-pick-later" onClick={() => setPickOpen(false)}>나중에</button>
+                  </div>
+                )}
+              </section>
+            );
+          })()}
           <section className="forge-title-row">
             <div>
               <p className="forge-kicker">BLACKSMITH</p>
@@ -580,6 +644,12 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 >
                   {maxed ? "최고 단계 달성" : phase === "forging" ? "두드리는 중…" : "강화하기"}
                 </button>
+                {/* 되돌리기 (2026-10-13 P2 — 카피바라 Go! 강등 100% 환급): 한 단계 내리고 그 단계에 쓴 골드·강화석을 전액 돌려준다. 실수 비용 0 */}
+                {save.level > 0 && phase === "idle" && (
+                  <button type="button" className="forge-revert" onClick={() => void revertOne()}>
+                    되돌리기 · +{save.level} → +{save.level - 1} · 골드 {formatGold(tierAt(save.level - 1).cost)} 환급
+                  </button>
+                )}
 
                 {maxed && (
                   <section className={`reforge-panel reforge-${reforgePhase}`}>
