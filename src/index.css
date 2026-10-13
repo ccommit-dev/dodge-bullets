@@ -1,5 +1,7 @@
 :root {
-  font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  /* 비버 키우기 글꼴 (2026-10-13, 사용자: "UI 글꼴도 컨셉에 맞게 모두"): 둥근 카툰 Jua 를 본문까지 전부. Pretendard 는 글리프 없을 때 대체 */
+  --font-ui: "Jua", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-family: var(--font-ui);
   color: #f8fafc;
   background-color: #0b1220;
   font-synthesis: none;
