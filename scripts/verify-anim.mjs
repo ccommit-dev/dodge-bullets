@@ -72,7 +72,8 @@ const kindAnims = await page.evaluate(() => {
 });
 const expectAnim = { slime: ["slime-idle", "slime-pounce"], goblin: ["goblin-idle", "goblin-jab"], wolf: ["wolf-idle", "wolf-pounce"], dragon: ["dragon-hover", "dragon-breath"], ogre: ["ogre-breathe", "ogre-smash"], boss: ["ogre-breathe", "ogre-smash"] };
 ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => kindAnims[k]?.idle === idle && kindAnims[k]?.attack === attack), JSON.stringify(kindAnims));
-ok("B 3프레임이 모두 마운트되어 있다(idle·hit·defeat)", await page.evaluate(() => document.querySelectorAll(".titan-monster-art img").length === 3 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']")));
+// 2026-10-13: 공격 프레임(-attack.png) 추가 → 4장
+ok("B 4프레임이 모두 마운트되어 있다(idle·hit·attack·defeat)", await page.evaluate(() => document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
 // 보스: 강한 파티로 즉시 처치 → 3단계 클래스 관찰
 await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9 },
   { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 60, leon: 60 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now });

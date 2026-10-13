@@ -18,7 +18,7 @@ import { existsSync, readFileSync } from "node:fs";
 const AUTHORED = existsSync(`${DIR}/authored.json`) ? JSON.parse(readFileSync(`${DIR}/authored.json`, "utf8")) : [];
 /** 인자로 이름을 주면 그것만 다시 만든다 (예: 보스 원화 고해상도화 뒤 4종만, 2026-10-02) */
 const ONLY = process.argv.slice(2);
-const SOURCES = readdirSync(DIR).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$/.test(f) && !AUTHORED.includes(f.replace(/\.png$/, "")))
+const SOURCES = readdirSync(DIR).filter((f) => /\.png$/.test(f) && !/-hit\.png$|-defeat\.png$|-attack\.png$/.test(f) && !AUTHORED.includes(f.replace(/\.png$/, "")))
   .filter((f) => ONLY.length === 0 || ONLY.includes(f.slice(0, -4)));
 
 /** 균열 마스크 — 결정적 선 패턴(랜덤 아님, 재생성해도 같은 결과) */
@@ -43,6 +43,14 @@ function crackSvg(w, h) {
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${lines.join("")}</svg>`);
 }
 
+/** 회전으로 커진 캔버스를 원래 w×h 로 되돌린다 — contain 축소가 아니라 가운데·아래 기준 잘라내기(크기가 줄어 "공격할 때 작아짐"이 보였다, 2026-10-13) */
+async function fitBack(buf, w, h) {
+  const m = await sharp(buf).metadata();
+  const padded = (m.width < w || m.height < h) ? await sharp(buf).extend({ left: Math.max(0, Math.ceil((w - m.width) / 2)), right: Math.max(0, Math.ceil((w - m.width) / 2)), top: Math.max(0, h - m.height), bottom: 0, background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer() : buf;
+  const pm = await sharp(padded).metadata();
+  return sharp(padded).extract({ left: Math.floor((pm.width - w) / 2), top: pm.height - h, width: w, height: h }).png().toBuffer();
+}
+
 for (const file of SOURCES) {
   const src = `${DIR}/${file}`;
   const base = file.replace(/\.png$/, "");
@@ -57,9 +65,11 @@ for (const file of SOURCES) {
     if (data[i + 3] === 0) continue;
     for (let c = 0; c < 3; c += 1) data[i + c] = Math.min(255, Math.round(data[i + c] * 0.72 + 255 * 0.28));
   }
-  await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
-    .png()
-    .toFile(`${DIR}/${base}-hit.png`);
+  // 2026-10-13 (사용자: "몬스터 피격 애니메이션 어색"): 흰 보간만으로는 "맞았다"가 안 읽혔다 → 뒤(오른쪽)로 8° 젖히고 가로 .95 로 눌러(contain: 원화가 프레임을 꽉 채워 잘라내기는 머리·날개가 잘린다) 반동을 더한다 (왼쪽을 보는 원본 기준; 반전 몬스터는 CSS 가 통째로 뒤집어 방향이 맞다)
+  const hitBuf = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
+  await sharp(await sharp(hitBuf).resize(Math.round(w * 0.95), h, { fit: "fill" }).png().toBuffer()).rotate(8, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(`${DIR}/${base}-hit.png`);
+  // attack (2026-10-13): 앞(왼쪽)으로 8° 숙이고 가로 1.06 으로 늘린 돌진 — SpriteArt 가 action-attack 동안 -attack.png 를 쓴다
+  await sharp(await sharp(src).resize(Math.round(w * 1.06), Math.round(h * 0.98), { fit: "fill" }).png().toBuffer()).rotate(-8, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(`${DIR}/${base}-attack.png`);
 
   // defeat: 회색조 + 균열 마스크(dest-out) + 살짝 납작
   const cracked = await sharp(src).grayscale().modulate({ brightness: 0.85 }).composite([{ input: crackSvg(w, h), blend: "dest-out" }]).png().toBuffer();
@@ -68,6 +78,6 @@ for (const file of SOURCES) {
     .resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toFile(`${DIR}/${base}-defeat.png`);
-  console.log(`${base}: hit + defeat`);
+  console.log(`${base}: hit + attack + defeat`);
 }
-console.log(`generated ${SOURCES.length * 2} frames → ${DIR}`);
+console.log(`generated ${SOURCES.length * 3} frames → ${DIR}`);

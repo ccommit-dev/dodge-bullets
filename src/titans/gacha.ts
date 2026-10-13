@@ -20,6 +20,8 @@ export const GACHA = {
   pityLimit: 60,
   pickupWeight: 2,
   pickupCount: 2,
+  /** 풀 최소 인원 — 모자라면 다음 해금 순으로 보충 (2026-10-13) */
+  minPool: 5,
   rarityRate: { R: 0.6, SR: 0.3, SSR: 0.1 } as Record<AllyRarity, number>,
   dupeShards: { R: 10, SR: 20, SSR: 40 } as Record<AllyRarity, number>,
 } as const;
@@ -59,6 +61,12 @@ export function gachaPool(stage: number, pioneeredArea: number, now: number = Da
   const rotationDaysLeft = pickupRotationDaysLeft(now);
   const rotationPool = candidates.length;
   const members = [...base.map((h) => h.id), ...pickups];
+  // 최소 풀 (2026-10-13, 사용자: "동료 뽑기에 하나의 클래스만 나오는 현상"): 1지역(스테이지 1~5)은 해금 동료가 미아·레온 둘뿐이라
+  // R 근접·원거리만 나오고 10연 SR 보장도 SR 이 없어 무효였다 → 개척 상한 밖이라도 다음 해금 순으로 채워 최소 5명(역할·등급이 섞이게)
+  for (const h of eligible.sort((a, b) => a.unlockStage - b.unlockStage)) {
+    if (members.length >= GACHA.minPool) break;
+    if (!members.includes(h.id)) members.push(h.id);
+  }
   // 등급별 확률 — 비어 있는 등급은 존재하는 등급에 비례 재분배
   const present = RARITIES.filter((r) => members.some((id) => ALLY_RARITY[id] === r));
   const presentSum = present.reduce((s, r) => s + GACHA.rarityRate[r], 0);
