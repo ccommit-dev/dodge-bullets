@@ -22,7 +22,9 @@ for (const part of process.env.SKIP_ICONS ? [] : ["helmet", "armor", "weapon", "
     const seed = seedOverride[`${part}-${tier}`] ?? (gen === "capy7" ? ["20277101", "20277102"] : ["20275101", "20275102"]).find((sd) => existsSync(`${OUT}/icon-${gen}-${part}-${tier}-${sd}.png`));
     const src = gen && seed && `${OUT}/icon-${gen}-${part}-${tier}-${seed}.png`;
     if (!src || !existsSync(src)) { console.log("skip", part, tier); continue; }
-    const trimmed = await sharp(src).trim({ threshold: 8 }).png().toBuffer();
+    // 티어 색조 (2026-10-13): 생성본이 나무·철·금 프롬프트에도 거의 회백색+노랑이라 1·2·3 이 안 갈렸다 — 명도는 두고 색만 입힌다(외곽선은 어두운 채)
+    const TINT = { 1: { r: 200, g: 130, b: 55 }, 2: { r: 150, g: 172, b: 205 }, 3: { r: 240, g: 190, b: 60 } };
+    const trimmed = await sharp(src).trim({ threshold: 8 }).tint(process.env.NO_TINT ? { r: 255, g: 255, b: 255 } : TINT[tier]).png().toBuffer();
     await sharp(trimmed).resize(256, 256, { fit: "contain", background: alpha }).png().toFile(`public/titans/gear/${part}-${tier}.png`);
     await sharp(trimmed).resize(116, 116, { fit: "contain", background: alpha }).extend({ top: 6, bottom: 6, left: 6, right: 6, background: alpha }).png().toFile(`public/ui/gear/${part}-${tier}.png`);
     placed += 1;
