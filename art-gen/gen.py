@@ -342,6 +342,23 @@ def cmd_recolor(a):
     save(cutout(im), f"{a.out}.png")
 
 
+STATE_PROMPTS = {
+    # 공격은 앞(화면 오른쪽, 동료)/왼쪽(몬스터)으로 몸을 내미는 돌진, 피격은 뒤로 젖히는 반동 — 방향 단어는 호출 쪽 prompt 가 준다
+    "attack": "mid-attack action pose, lunging forward, swinging the weapon, body leaning forward, dynamic motion",
+    "hit": "recoiling from a heavy blow, staggered backwards, flinching, eyes squeezed shut, body leaning back",
+}
+
+
+def cmd_states(a):
+    """states (2026-10-13 보완): 대기 한 장을 기울이던 파생 대신 img2img(strength 0.42)로 같은 캐릭터의 공격·피격 자세를 그린다.
+    boss 모드와 같은 방식 — 초기 이미지가 자기 대기라 체형·털색·의상이 남는다. 결과는 <out>-attack.png · <out>-hit.png"""
+    src = Image.open(a.file).convert("RGBA")
+    seed = a.seed or BASE_SEED
+    for i, st in enumerate(a.only):
+        im = gen_img2img(src, f"{a.prompt}, {STATE_PROMPTS[st]}", seed + i, strength=a.strength, ip_scale=a.ip)
+        save(cutout(im), f"{a.out}-{st}.png")
+
+
 def cmd_boss(a):
     src = Image.open(a.file).convert("RGBA")
     seed = a.seed or BASE_SEED
@@ -645,6 +662,9 @@ if __name__ == "__main__":
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
     rc = sub.add_parser("recolor"); rc.add_argument("file"); rc.add_argument("out"); rc.add_argument("prompt"); rc.add_argument("--strength", type=float, default=0.5); rc.add_argument("--seed", type=int); rc.add_argument("--ip", type=float); rc.set_defaults(fn=cmd_recolor)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
+    # states (2026-10-13): 자기 대기 PNG 를 img2img 초기 이미지로 공격·피격 포즈를 그린다 — 체형·의상은 남고 자세만 바뀐다
+    stt = sub.add_parser("states"); stt.add_argument("file"); stt.add_argument("out"); stt.add_argument("prompt"); stt.add_argument("--seed", type=int)
+    stt.add_argument("--strength", type=float, default=0.42); stt.add_argument("--ip", type=float, default=0.4); stt.add_argument("--only", nargs="*", default=["attack", "hit"]); stt.set_defaults(fn=cmd_states)
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--seeds", type=int, nargs="*"); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)

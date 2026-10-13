@@ -5,6 +5,7 @@
  * 몬스터·아이콘은 시드가 둘이라 기본은 첫 시드, --seed 로 바꾼다. 끝에 몬스터 좌우 여백(MONSTER_VISIBLE_MARGIN 용)을 찍는다.
  */
 import sharp from "sharp";
+import { tiltFrame } from "./lib/derive-frame.mjs";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 
@@ -59,13 +60,16 @@ const toIcon = async (src, dest, size = 128, pad = 0.06) => {
 // ── 주인공 — 사냥터 대기·공격 시트 + 코스튬 4종 파생 ──
 /** 납작 원화의 공격 4프레임 — 대기 한 장을 앞으로 기울이고 키운다 (동료 make-ally-states 와 같은 원리). 0 준비 → 1 당김 → 2 내리침 → 3 복귀 */
 const deriveAttackFrames = async (idle, prefix) => {
-  // 2026-10-13 (사용자: "공격 애니메이션 어색"): −3·−8·+10·+3° 는 흔들림 정도 → 뒤로 젖혔다(−4·−10°) 앞으로 숙이는 돌진(+12°, 1.06배)·되돌림(+4°)
-  const steps = [{ rot: -4, sc: 1.0 }, { rot: -10, sc: 1.02 }, { rot: 12, sc: 1.06 }, { rot: 4, sc: 1.01 }];   // 원화가 프레임을 꽉 채워 잘라내기는 왕관이 잘린다 → contain 유지, 각도만 키움 (2026-10-13)
-  const m = await sharp(idle).metadata();
+  // 2026-10-13 보완: 뒤로 젖힘(−4·−10°) → 돌진(+14°, 1.08배) → 되돌림(+4°). bbox 기준 배치(derive-frame.tiltFrame)라 넘칠 때만 줄어든다 —
+  // 변환값을 <prefix>-transform.json 에 적어 compute-attack-anchors 가 같은 변환으로 앵커를 옮긴다
+  const steps = [{ rot: -4, sx: 1.0, sy: 1.0 }, { rot: -10, sx: 1.02, sy: 1.02 }, { rot: 14, sx: 1.08, sy: 1.06 }, { rot: 4, sx: 1.01, sy: 1.01 }];
+  const transforms = [];
   for (const [i, st] of steps.entries()) {
-    const buf = await sharp(idle).resize(Math.round(m.width * st.sc), Math.round(m.height * st.sc)).png().toBuffer();
-    await sharp(buf).rotate(st.rot, { background: alpha }).resize(m.width, m.height, { fit: "contain", background: alpha, position: "south" }).png().toFile(`${prefix}-${i}.png`);
+    const { buffer, transform } = await tiltFrame(idle, st);
+    await sharp(buffer).toFile(`${prefix}-${i}.png`);
+    transforms.push({ ...st, ...transform });
   }
+  writeFileSync(`${prefix}-transform.json`, JSON.stringify(transforms, null, 1));
 };
 if (want("hero")) {
   const heroIdle = await flipIfWanted(heroIdlePath(), "hero");
@@ -113,6 +117,8 @@ if (want("allies")) {
       const best = seedOverride[`${gen}-${gid}`] ? `${OUT}/char-${gen}-${gid}-idle-s${seedOverride[`${gen}-${gid}`]}.png` : qaBest(`ally-${gid}`, cands);
       copyFileSync(await flipIfWanted(best, gid), `${OUT}/char-${gen}-${gid}-idle.png`);
       node("scripts/make-ally-states.mjs", gen, gid);
+      // 포즈 img2img 결과(gen.py states → art-gen/out/st-<id>-attack/hit.png)가 있으면 기울임 파생 대신 쓴다 (2026-10-13 보완). 반전된 대기에서 만든 것이라 다시 반전하지 않는다
+      for (const st of ["attack", "hit"]) { const posed = seedOverride[`states-${gid}`] === "off" ? null : `${OUT}/st-${gid}-${st}.png`; if (posed && existsSync(posed)) { copyFileSync(posed, `${OUT}/char-${gen}-${gid}-${st}.png`); console.log("posed", gid, st); } }
       stem = gen;
       break;
     }

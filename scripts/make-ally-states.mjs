@@ -35,6 +35,6 @@ for (const id of ids) {
   // 이동은 앞으로 기울인 달리기 스쿼시, 공격은 앞으로 크게 숙인 돌진(가로 늘림), 피격은 뒤로 젖힌 반동(세로 눌림·밝게·붉은 기)
   await derive(idle, `${OUT}/char-${stem}-${id}-run.png`, { rot: 7, sx: 1.06, sy: 0.93, bright: 1 });
   await derive(idle, `${OUT}/char-${stem}-${id}-attack.png`, { rot: 16, sx: 1.12, sy: 0.98, bright: 1.04 });
-  await derive(idle, `${OUT}/char-${stem}-${id}-hit.png`, { rot: -18, sx: 0.92, sy: 1.04, bright: 1.3, tint: { r: 255, g: 200, b: 200 } });
+  await derive(idle, `${OUT}/char-${stem}-${id}-hit.png`, { rot: -18, sx: 0.92, sy: 1.04, bright: 1.18 });   // tint 제거(2026-10-13 보완): 아틀라스에 분홍이 고정되면 CSS 플래시와 겹쳐 짙어졌다 — 밝기만 살짝, 색은 CSS(ally-hit-recoil)가 낸다
   console.log("derived", id);
 }
