@@ -2517,7 +2517,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 ? "defeat"
                 : impact || bossBreak === 1
                   ? "hit"
-                  : "idle"
+                  : monsterAction === "attack"
+                    ? "attack"   // 2026-10-13: 돌진 프레임(-attack.png, make-monster-states) — CSS 돌진과 겹쳐 "친다"가 읽힌다
+                    : "idle"
             }
           />
           {/* 상태 이펙트 (계획안 C): 화상 불꽃 · 빙결 결정 — HUD 칩 없이도 전장에서 읽힌다 */}

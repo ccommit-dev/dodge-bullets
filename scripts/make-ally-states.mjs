@@ -18,11 +18,12 @@ const ids = args.length ? args : ["mia", "leon", "sera", "garen", "ari", "nox", 
 const OUT = "art-gen/out";
 const clear = { r: 0, g: 0, b: 0, alpha: 0 };
 
-async function derive(src, dst, { rot, sx, sy, bright }) {
+async function derive(src, dst, { rot, sx, sy, bright, tint }) {
   const m = await sharp(src).metadata();
   const w = Math.round(m.width * sx), h = Math.round(m.height * sy);
   let img = sharp(src).resize(w, h);
   if (bright && bright !== 1) img = img.modulate({ brightness: bright });
+  if (tint) img = img.tint(tint);
   const buf = await img.png().toBuffer();
   await sharp(buf).rotate(rot, { background: clear }).png().toFile(dst);
 }
@@ -30,8 +31,10 @@ async function derive(src, dst, { rot, sx, sy, bright }) {
 for (const id of ids) {
   const idle = `${OUT}/char-${stem}-${id}-idle.png`;
   if (!existsSync(idle)) { console.log("skip", id, "(대기 없음)"); continue; }
-  await derive(idle, `${OUT}/char-${stem}-${id}-run.png`, { rot: 4, sx: 1.03, sy: 0.96, bright: 1 });
-  await derive(idle, `${OUT}/char-${stem}-${id}-attack.png`, { rot: 9, sx: 1.04, sy: 1.04, bright: 1 });
-  await derive(idle, `${OUT}/char-${stem}-${id}-hit.png`, { rot: -10, sx: 0.98, sy: 0.98, bright: 1.25 });
+  // 2026-10-13 (사용자: "공격·피격 애니메이션 어색한 거 재생성"): 4°·9°·−10° 는 같은 스티커가 살짝 흔들리는 정도라 상태가 안 읽혔다 —
+  // 이동은 앞으로 기울인 달리기 스쿼시, 공격은 앞으로 크게 숙인 돌진(가로 늘림), 피격은 뒤로 젖힌 반동(세로 눌림·밝게·붉은 기)
+  await derive(idle, `${OUT}/char-${stem}-${id}-run.png`, { rot: 7, sx: 1.06, sy: 0.93, bright: 1 });
+  await derive(idle, `${OUT}/char-${stem}-${id}-attack.png`, { rot: 16, sx: 1.12, sy: 0.98, bright: 1.04 });
+  await derive(idle, `${OUT}/char-${stem}-${id}-hit.png`, { rot: -18, sx: 0.92, sy: 1.04, bright: 1.3, tint: { r: 255, g: 200, b: 200 } });
   console.log("derived", id);
 }

@@ -6,7 +6,7 @@
  */
 import sharp from "sharp";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 
 const OUT = "art-gen/out";
 const groups = process.argv.slice(2).filter((a) => !a.startsWith("--"));
@@ -59,7 +59,8 @@ const toIcon = async (src, dest, size = 128, pad = 0.06) => {
 // ── 주인공 — 사냥터 대기·공격 시트 + 코스튬 4종 파생 ──
 /** 납작 원화의 공격 4프레임 — 대기 한 장을 앞으로 기울이고 키운다 (동료 make-ally-states 와 같은 원리). 0 준비 → 1 당김 → 2 내리침 → 3 복귀 */
 const deriveAttackFrames = async (idle, prefix) => {
-  const steps = [{ rot: -3, sc: 1.0 }, { rot: -8, sc: 1.02 }, { rot: 10, sc: 1.06 }, { rot: 3, sc: 1.01 }];
+  // 2026-10-13 (사용자: "공격 애니메이션 어색"): −3·−8·+10·+3° 는 흔들림 정도 → 뒤로 젖혔다(−4·−10°) 앞으로 숙이는 돌진(+12°, 1.06배)·되돌림(+4°)
+  const steps = [{ rot: -4, sc: 1.0 }, { rot: -10, sc: 1.02 }, { rot: 12, sc: 1.06 }, { rot: 4, sc: 1.01 }];   // 원화가 프레임을 꽉 채워 잘라내기는 왕관이 잘린다 → contain 유지, 각도만 키움 (2026-10-13)
   const m = await sharp(idle).metadata();
   for (const [i, st] of steps.entries()) {
     const buf = await sharp(idle).resize(Math.round(m.width * st.sc), Math.round(m.height * st.sc)).png().toBuffer();
@@ -99,21 +100,24 @@ if (want("defense")) {
 
 // ── 동료 11 — authored 행 + 개별 PNG → 기본 아틀라스(6행) 다시 짜기 → 변형·스킨 아틀라스 → 재패킹 ──
 if (want("allies")) {
-  const ids = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "bronn", "orion", "ember"];
+  // 2026-10-13 (사용자: "동료인데 왼쪽을 보는지 … 애니메이션 포함 다시 확인수정"): 아틀라스에 인간 원화로 남아 있던 iris·cain·sylph 와
+  // 특수 스킨 mia_dark·sera_light 도 8차(batch-capy8, 오른쪽 엄격) 비버로 — 생성 파일명은 밑줄 대신 하이픈(mia-dark)
+  const ids = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "bronn", "orion", "ember", "iris", "cain", "sylph", "mia_dark", "sera_light"];
   for (const id of ids) {
+    const gid = id.replace(/_/g, "-");
     // v2(털색 구분 · 자기 대기 참조, batch-beaver3.sh) 가 있으면 그것을, 없으면 1차 bv 를 꽂는다 (2026-10-07)
     let stem = existsSync(`${OUT}/char-bv2-${id}-hit.png`) ? "bv2" : "bv";
-    for (const gen of ["capy5", "capy2", "bv5", "bv3"]) {   // 카피 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
-      const cands = globOut(new RegExp(`^char-${gen}-${id}-idle-s\\d+\\.png$`));
+    for (const gen of ["capy8", "capy5", "capy2", "bv5", "bv3"]) {   // 카피 8차(추가 5명) → 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
+      const cands = globOut(new RegExp(`^char-${gen}-${gid}-idle-s\\d+\\.png$`));
       if (!cands.length) continue;
-      const best = seedOverride[`${gen}-${id}`] ? `${OUT}/char-${gen}-${id}-idle-s${seedOverride[`${gen}-${id}`]}.png` : qaBest(`ally-${id}`, cands);
-      copyFileSync(await flipIfWanted(best, id), `${OUT}/char-${gen}-${id}-idle.png`);
-      node("scripts/make-ally-states.mjs", gen, id);
+      const best = seedOverride[`${gen}-${gid}`] ? `${OUT}/char-${gen}-${gid}-idle-s${seedOverride[`${gen}-${gid}`]}.png` : qaBest(`ally-${gid}`, cands);
+      copyFileSync(await flipIfWanted(best, gid), `${OUT}/char-${gen}-${gid}-idle.png`);
+      node("scripts/make-ally-states.mjs", gen, gid);
       stem = gen;
       break;
     }
-    if (!existsSync(`${OUT}/char-${stem}-${id}-hit.png`)) { console.log("skip", id, "(아직 없음)"); continue; }
-    for (const st of ["idle", "run", "attack", "hit"]) { backup(`${OUT}/char-${id}-${st}.png`); copyFileSync(`${OUT}/char-${stem}-${id}-${st}.png`, `${OUT}/char-${id}-${st}.png`); }
+    if (!existsSync(`${OUT}/char-${stem}-${gid}-hit.png`)) { console.log("skip", id, "(아직 없음)"); continue; }
+    for (const st of ["idle", "run", "attack", "hit"]) { backup(`${OUT}/char-${id}-${st}.png`); copyFileSync(`${OUT}/char-${stem}-${gid}-${st}.png`, `${OUT}/char-${id}-${st}.png`); }
     console.log("ally", id, stem);
     node("scripts/place-art.mjs", "char", id);
   }
@@ -123,6 +127,34 @@ if (want("allies")) {
   for (const [i, id] of base.entries()) rows.push({ input: await sharp(`public/titans/generated/allies/authored/${id}-row.png`).resize(1254, 209, { fit: "fill" }).png().toBuffer(), left: 0, top: i * 209 });
   await sharp({ create: { width: 1254, height: 209 * 6, channels: 4, background: alpha } }).composite(rows).png().toFile("public/titans/generated/allies/ally-animation-atlas-v1.png");
   console.log("base atlas 1254x1254");
+  // 특수 아틀라스(정사각 셀 313.5, 4행: 0·1 미사용 · 2 mia_dark · 3 sera_light) — authored 행(가로 셀)을 정사각 셀에 아래 정렬로 옮긴다.
+  // make-variant-atlas 가 이 파일에서 sera_light-halo 스킨을 tint 하므로 그보다 먼저 (2026-10-13)
+  {
+    const SP = "public/titans/generated/allies/ally-special-animation-atlas-v1.png";
+    const sm = await sharp(SP).metadata(); const cell = Math.floor(sm.height / 4), cw = Math.floor(sm.width / 4);
+    const comps = [];
+    for (const [row, id] of [[2, "mia_dark"], [3, "sera_light"]]) {
+      const rowFile = `public/titans/generated/allies/authored/${id}-row.png`;
+      if (!existsSync(rowFile) || !ids.includes(id)) continue;
+      const rm = await sharp(rowFile).metadata(); const fw = Math.floor(rm.width / 4);
+      for (let c = 0; c < 4; c += 1) {
+        const cellBuf = await sharp(rowFile).extract({ left: c * fw, top: 0, width: fw, height: rm.height }).png().toBuffer();   // extract 와 trim 을 한 파이프에 두면 trim 이 먼저 적용돼 bad extract area
+        const frame = await sharp(cellBuf).trim({ threshold: 8 }).png().toBuffer();
+        const fm = await sharp(frame).metadata(); const k = Math.min((cw * 0.9) / fm.width, (cell * 0.96) / fm.height);
+        const w = Math.round(fm.width * k), h = Math.round(fm.height * k);
+        comps.push({ input: await sharp(frame).resize(w, h).png().toBuffer(), left: c * cw + Math.round((cw - w) / 2), top: row * cell + (cell - h) });
+      }
+      console.log("special row", row, id, "<- authored");
+      // 개별 PNG 폴백 이름은 하이픈(SpriteArt STANDALONE_ALLY: mia-dark.png · sera-light.png)
+      if (existsSync(`public/titans/generated/allies/${id}.png`)) copyFileSync(`public/titans/generated/allies/${id}.png`, `public/titans/generated/allies/${id.replace(/_/g, "-")}.png`);
+    }
+    if (comps.length) {
+      // 기존 0·1행(미사용)은 그대로 두고 2·3행만 비운 뒤 얹는다
+      const keep = await sharp(SP).extract({ left: 0, top: 0, width: sm.width, height: cell * 2 }).png().toBuffer();
+      await sharp({ create: { width: sm.width, height: sm.height, channels: 4, background: alpha } }).composite([{ input: keep, left: 0, top: 0 }, ...comps]).png().toFile(SP + ".tmp");
+      renameSync(SP + ".tmp", SP);
+    }
+  }
   node("scripts/make-variant-atlas.mjs");
   node("scripts/make-variant-standalone.mjs");
   node("scripts/repack-ally-atlas.mjs");
@@ -191,6 +223,15 @@ if (want("backdrops")) {
   const CAPY_BG = { meadow: 20272101, forest: 20272103, ruins: 20272105, volcano: 20272107, abyss: 20272109, dodge1: 20272111, dodge2: 20272113, dodge3: 20272115, dodge4: 20272117, dodge5: 20272119, hub: 20272121, forge: 20272123 };
   for (const [stem, dest, seeds] of BG) {
     const key = stem.replace(/^bv-/, "");
+    // 9차(capy9, 2026-10-13, 사용자: "댐지키기 배경 잘림"): 성문 방어 5장은 세로 832×1216 생성본을 720×1052 로 — 바닥선 위를 한 장이 다 덮는다(draw.ts 는 세로 그림이면 바닥 기준 cover)
+    if (/dodge/.test(dest)) {
+      const c9 = seedOverride[`backdrop-capy9-${key}`] ?? [20272911 + (Number(key.replace("dodge", "")) - 1) * 2, 20272912 + (Number(key.replace("dodge", "")) - 1) * 2].find((x) => existsSync(`${OUT}/backdrop-capy9-${key}-s${x}.png`));
+      if (c9 && existsSync(`${OUT}/backdrop-capy9-${key}-s${c9}.png`)) {
+        await sharp(`${OUT}/backdrop-capy9-${key}-s${c9}.png`).resize(720, 1052, { fit: "cover", position: "bottom" }).webp({ quality: 82 }).toFile(dest);
+        console.log("bg capy9 (tall)", dest, c9);
+        continue;
+      }
+    }
     const c2seed = seedOverride[`backdrop-capy2-${key}`] ?? [CAPY_BG[key], CAPY_BG[key] + 1].find((x) => existsSync(`${OUT}/backdrop-capy2-${key}-s${x}.png`));
     if (c2seed && existsSync(`${OUT}/backdrop-capy2-${key}-s${c2seed}.png`)) {
       const src2 = `${OUT}/backdrop-capy2-${key}-s${c2seed}.png`;

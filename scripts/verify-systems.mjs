@@ -59,9 +59,12 @@ const seq = (vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 
 // ── 1. 뽑기 ──
 const p1 = gacha.gachaPool(1, 1);
-ok("풀 stage1: 기본 mia + 픽업 leon (sera는 지역1 상한 5 밖)", p1.entries.map((e) => e.id).sort().join() === "leon,mia" && p1.pickups.join() === "leon", JSON.stringify(p1.entries.map((e) => [e.id, e.rate.toFixed(3)])));
+// 2026-10-13 최소 풀 5: stage1 은 mia + 픽업 leon 에 다음 해금 순(sera 6 · pyro 8 · garen 10)을 보충 — 역할 4종(근접·원거리·탱커)·등급 R/SR 이 섞인다
+ok("풀 stage1: 기본 mia + 픽업 leon + 최소 풀 보충 sera·pyro·garen (한 역할·한 등급만 나오지 않게)", p1.entries.map((e) => e.id).sort().join() === "garen,leon,mia,pyro,sera" && p1.pickups.join() === "leon", JSON.stringify(p1.entries.map((e) => [e.id, e.rate.toFixed(3)])));
+ok("풀 stage1: 역할 3종 이상 · SR 포함", new Set(p1.entries.map((e) => allies.ALLY_ROLE[e.id])).size >= 3 && p1.entries.some((e) => e.rarity === "SR"));
 ok("풀 확률 합 = 1", Math.abs(p1.entries.reduce((s, e) => s + e.rate, 0) - 1) < 1e-9);
-ok("픽업 가중 2배 (leon 2/3)", Math.abs(p1.entries.find((e) => e.id === "leon").rate - 2 / 3) < 1e-9);
+ok("픽업 가중 2배 (R 띠 안에서 leon = 2/4)", Math.abs(p1.entries.find((e) => e.id === "leon").rate - p1.bandRate.R * 0.5) < 1e-9);
+ok("stage1 10연: SR 이상 1명 보장이 실제로 동작(풀에 SR 이 있다)", gacha.pullTen(p1, allies.emptyAllyRecord(), 0, () => 0.0).results.some((r) => r.rarity !== "R"));
 const p12 = gacha.gachaPool(12, 3);
 ok("풀 stage12/지역3: 상점 동료 제외", p12.entries.every((e) => allies.SHOP_ALLY_GEM_COST[e.id] === undefined));
 // terra 은퇴(2026-10-01) — stage 12 · 지역3(상한 15)에서 다음 해금은 ari 16 뿐이라 상한 밖 → 픽업 없음

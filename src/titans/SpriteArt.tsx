@@ -170,7 +170,7 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
 }
 
 /** 몬스터 프레임 (계획안 B) — idle 원본 · hit/defeat는 scripts/make-monster-states.mjs가 파생한 <name>-hit/-defeat.png */
-export type MonsterFrameState = "idle" | "hit" | "defeat";
+export type MonsterFrameState = "idle" | "hit" | "attack" | "defeat";   // attack: 2026-10-13 돌진 프레임(make-monster-states)
 /** 몬스터 원화의 좌/우 투명 여백 비율 — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다.
  *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json) */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
@@ -183,7 +183,8 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */
-const FLIP_MONSTERS = new Set<string>(["fire-demon", "fire-demon-hit", "fire-demon-defeat", "spider-queen", "spider-queen-hit", "spider-queen-defeat", "thorn-boar-king", "thorn-boar-king-hit", "thorn-boar-king-defeat", "void-lich", "void-lich-hit", "void-lich-defeat"]);
+// 2026-10-13 재검(접촉 시트 육안): spider-queen 은 원본이 왼쪽이라 반전이 오히려 오른쪽을 보게 했다 → 제거 · void-lich 는 정면 → 제거 · flame-wyvern·lava-drake 는 원본이 오른쪽(머리가 오른쪽) → 추가
+const FLIP_MONSTERS = new Set<string>(["fire-demon", "fire-demon-hit", "fire-demon-defeat", "thorn-boar-king", "thorn-boar-king-hit", "thorn-boar-king-defeat", "flame-wyvern-clean", "flame-wyvern-clean-hit", "flame-wyvern-clean-defeat", "lava-drake", "lava-drake-hit", "lava-drake-defeat"]);
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];
@@ -228,6 +229,7 @@ export function MonsterArt({
     <div key={idle} className={`titan-monster-art frame-${state} ${FLIP_MONSTERS.has(idle.split("/").pop()?.replace(/\.png$/, "") ?? "") ? "face-flip" : ""}`}>
       <img src={idle} alt="" className={state === "idle" ? "on" : ""} />
       <img src={monsterAssetFor(kind, area, boss, golden, "hit", stage)} alt="" className={state === "hit" ? "on" : ""} aria-hidden="true" />
+      <img src={monsterAssetFor(kind, area, boss, golden, "attack", stage)} alt="" className={state === "attack" ? "on" : ""} aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />
       <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
       <span className="monster-asset-current" data-src={asset} hidden />
     </div>
