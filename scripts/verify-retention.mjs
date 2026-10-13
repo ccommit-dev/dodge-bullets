@@ -32,7 +32,7 @@ async function seed(progress, titans, extra = {}) {
 const closeModal = async () => { await page.evaluate(() => { const claim = document.querySelector(".idle-claim"); if (claim) { claim.click(); return; } [...document.querySelectorAll("button")].filter((b) => !b.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((b) => /수령|받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 /** 콘텐츠(성문 방어·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
-const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
+const openContent = async (label) => { await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 
 const baseProgress = { version: 5, onboardingStep: 4, level: 8, exp: 3000, attendanceStreak: 1, redGems: 100, sharedCoins: 50000, enhancementMaterials: 20,
@@ -56,7 +56,8 @@ const routineChips = async () => {
   await clickText(".titans-bottom-nav button", "모험");
   await sleep(400);
   const chips = await page.evaluate(() => [...document.querySelectorAll(".nav-popup-grid.adventure-grid > button")].slice(0, 4).map((c) => c.querySelector("b")?.textContent + (c.classList.contains("done") ? "✓" : "")));
-  await clickText(".titans-bottom-nav button", "모험");
+  // 2026-10-13: 모험은 팝업이 아니라 허브 탭 — 사냥터로 돌아간다
+  await clickText(".titans-bottom-nav button", "사냥터");
   await sleep(300);
   return chips;
 };

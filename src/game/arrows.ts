@@ -143,7 +143,7 @@ export function resetBarrier(world: GameWorld): void {
   world.barrierBreachDamage = 0;
 }
 function hitBarrier(world: GameWorld, a: Arrow, damage = barrierDamageOf(a)): void {
-  world.barrierHp = Math.max(0, world.barrierHp - damage * TUNING.barrierDmgMul * getStage(world.stageIndex).barrierDmgMul);
+  world.barrierHp = Math.max(0, world.barrierHp - damage * TUNING.barrierDmgMul * (world.barrierTakenMul ?? 1) * getStage(world.stageIndex).barrierDmgMul);
   world.lastHitCause = a.fromBoss ? "boss" : a.splitLevel > 0 ? "fragment" : a.kind;
   world.barrierFlashMs = 220;
   world.barrierHitX = a.x;

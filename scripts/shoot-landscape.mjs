@@ -26,7 +26,7 @@ facts.hub = await page.evaluate(() => {
   return { field: f && [Math.round(f.x), Math.round(f.y), Math.round(f.width), Math.round(f.height)], nav: nav && [Math.round(nav.y), Math.round(nav.height)], tabsRightOfField: !!(f && tabs && tabs.x >= f.x + f.width - 2), hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
 });
 await page.screenshot({ path: `${OUT}/land-hub.png` });
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(600);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(600);
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1800);
 facts.dodgeMenu = await page.evaluate(() => ({ cta: !!document.querySelector(".exp-menu-content .cta"), hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 }));
 await page.screenshot({ path: `${OUT}/land-dodge-menu.png` });
@@ -36,7 +36,7 @@ facts.battle = await page.evaluate(() => { const w = window.__dodgeWorld; const 
 await page.screenshot({ path: `${OUT}/land-battle.png` });
 await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2200);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) c.click(); } });
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(600);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(600);
 await clickText(".nav-popup-grid button", "비트 수련"); await sleep(1800);
 await page.screenshot({ path: `${OUT}/land-beat-menu.png` });
 await clickText(".cta", "이어서 연습하기"); await sleep(4000);

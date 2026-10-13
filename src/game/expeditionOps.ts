@@ -73,6 +73,8 @@ export type DailyState = {
   day: string;
   counts: Record<DailyId, number>;
   claimed: DailyId[];
+  /** 오늘 쓴 소탕 횟수 (2026-10-13, docs/FOCUS_CAPYGO P0 — 카피바라 Go! 탐방 배율) */
+  sweeps: number;
 };
 
 export function dayKey(now = Date.now()): string {
@@ -82,7 +84,7 @@ export function dayKey(now = Date.now()): string {
 }
 
 export function emptyDaily(now = Date.now()): DailyState {
-  return { day: dayKey(now), counts: { intercept: 0, epic: 0, clear: 0 }, claimed: [] };
+  return { day: dayKey(now), counts: { intercept: 0, epic: 0, clear: 0 }, claimed: [], sweeps: 0 };
 }
 
 /** 날짜가 바뀌었으면 새 하루로 — 읽는 쪽이 매번 이걸 지나게 한다 */

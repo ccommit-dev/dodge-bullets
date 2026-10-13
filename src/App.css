@@ -5060,3 +5060,80 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 /* 개척 상한 밖 동료 안내 (2026-10-13 보완): 뽑기 최소 풀로 미리 얻은 동료는 출전이 막힌다 — 카드·뽑기 연출에 작은 칩으로 */
 .ally-card .ceiling-tag, .gacha-card-front .ceiling-tag { display: inline-block; margin: 2px 0 0; padding: 1px 7px; border: 2px solid var(--flat-ink); border-radius: 999px; background: #efe3cf; color: #8a7760; font-size: 10px; font-weight: 700; font-style: normal; line-height: 1.5; vertical-align: middle; }
 .gacha-card-front .ceiling-tag { display: block; margin: 4px auto 0; width: fit-content; }
+/* ── 모험 허브 (2026-10-13, docs/FOCUS_CAPYGO P0): 카드 6장 + 루틴 줄 ── */
+.hub-page { display: grid; gap: 10px; padding: 0 0 8px; }
+.hub-page .hub-routine { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hub-page .hub-routine > button { min-height: 56px; grid-template-columns: 30px minmax(0, 1fr); padding: 7px 8px; }
+.hub-page .hub-routine .nav-icon-svg, .hub-page .hub-routine .content-icon { width: 28px; height: 28px; }
+.hub-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hub-card { position: relative; min-height: 112px; display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: 8px; padding: 10px; text-align: left;
+  border: 2px solid var(--flat-ink); border-radius: 14px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); overflow: hidden; }
+.hub-card::before { content: ""; position: absolute; inset: auto 0 0 0; height: 46%; background: var(--card-art, none) center bottom / cover no-repeat; opacity: .35; pointer-events: none; }
+.hub-card > * { position: relative; }
+.hub-card .content-icon, .hub-card .nav-icon-svg { width: 36px; height: 36px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+.hub-card-body { display: grid; gap: 2px; min-width: 0; }
+.hub-card-body b { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.hub-card-body small { font-size: 11px; color: #6b5338; line-height: 1.3; }
+.hub-card-body .hub-remaining { color: var(--flat-ink); font-weight: 700; }
+.hub-feeds { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.hub-feeds em { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; border: 1.5px solid var(--flat-ink); background: #fff8e6; }
+.hub-dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; border: 1.5px solid #fff; box-shadow: 0 0 0 1px #ef4444; }
+.hub-card.tab-locked { opacity: .55; }
+.hub-card .tab-lock { position: absolute; right: 8px; top: 8px; width: 22px; }
+@media (max-width: 360px) { .hub-cards { grid-template-columns: minmax(0, 1fr); } }
+.hub-page .hub-routine .nav-help { display: none; }
+.hub-page .hub-routine > button { min-height: 52px; }
+.hub-page .hub-routine > button span { gap: 1px; }
+.hub-page .hub-routine > button b { font-size: 13px; }
+.hub-page .hub-routine > button small { font-size: 11px; }
+/* 성문 소탕 (2026-10-13, FOCUS_CAPYGO P0) */
+.sweep-row { margin-top: 8px; padding: 8px 10px; border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); display: grid; gap: 6px; }
+.sweep-row > b { font-size: 12px; }
+.sweep-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.sweep-buttons button { padding: 7px 0; border: 2px solid var(--flat-ink); border-radius: 10px; background: var(--flat-yellow); color: var(--flat-ink); font-weight: 800; box-shadow: 0 2px 0 var(--flat-yellow-2); }
+.sweep-buttons button:disabled { background: #e8dfcc; color: #8a7760; box-shadow: none; opacity: .8; }
+
+/* 2택 사건 (2026-10-13, FOCUS_CAPYGO P1) */
+.day-event-row { margin-top: 8px; padding: 8px 10px; border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); display: grid; gap: 6px; }
+.day-event-row > b { font-size: 12px; }
+.day-event-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.day-event-choices button { display: grid; gap: 2px; padding: 7px 8px; text-align: left; border: 2px solid var(--flat-ink); border-radius: 10px; background: #fff8e6; color: var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.day-event-choices button.on { background: var(--flat-yellow); box-shadow: 0 2px 0 var(--flat-yellow-2); }
+.day-event-choices button:disabled { opacity: .55; }
+.day-event-choices button b { font-size: 13px; }
+.day-event-choices button small { font-size: 10px; line-height: 1.3; }
+.pact-offer { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: min(320px, 92%); z-index: 16; padding: 8px 10px; border: 2px solid var(--flat-ink); border-radius: 14px; background: rgba(255,243,214,.96); color: var(--flat-ink); box-shadow: 0 4px 0 var(--flat-cream-2); display: grid; gap: 6px; animation: pact-in .25s ease-out; }
+.pact-offer > b { font-size: 13px; text-align: center; }
+.pact-offer > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pact-offer button { display: grid; gap: 2px; padding: 7px 8px; border: 2px solid var(--flat-ink); border-radius: 10px; color: var(--flat-ink); text-align: left; }
+.pact-offer .pact-angel { background: #e6f4d8; } .pact-offer .pact-demon { background: #f3dbe8; }
+.pact-offer button b { font-size: 12px; } .pact-offer button small { font-size: 10px; line-height: 1.25; }
+@keyframes pact-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+.cta .stage-type { font-style: normal; font-size: 11px; opacity: .85; }
+.perk-reroll { display: block; margin: 0 auto 8px; padding: 6px 12px; border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-cream); color: var(--flat-ink); font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--flat-cream-2); }
+
+/* 대장간 장인 이정표 (2026-10-13, FOCUS_CAPYGO P1) */
+.forge-mastery { margin: 0 0 10px; padding: 8px 10px; border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); display: grid; gap: 6px; }
+.forge-mastery-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.forge-mastery-head b { font-size: 13px; } .forge-mastery-head small { font-size: 11px; color: #6b5338; }
+.forge-mastery-bar { position: relative; display: block; height: 10px; border: 2px solid var(--flat-ink); border-radius: 999px; background: #fff8e6; overflow: visible; }
+.forge-mastery-bar > b { display: block; height: 100%; border-radius: 999px; background: var(--flat-yellow); transition: width .3s; }
+.forge-mastery-bar em { position: absolute; top: -4px; width: 10px; height: 14px; border: 2px solid var(--flat-ink); border-radius: 3px; transform: translateX(-50%); }
+.forge-mastery-bar .m-gold { left: 40%; background: #f2c232; } .forge-mastery-bar .m-pick { left: 70%; background: #5bb1ff; }
+.forge-mastery-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 22px; }
+.forge-mastery-actions button { padding: 5px 10px; border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-yellow); color: var(--flat-ink); font-size: 12px; font-weight: 800; box-shadow: 0 2px 0 var(--flat-yellow-2); }
+.forge-mastery-actions .mastery-pick { background: var(--flat-blue); color: #fff; box-shadow: 0 2px 0 var(--flat-blue-2); }
+.forge-mastery-actions small { font-size: 11px; color: #6b5338; }
+.forge-talents { display: flex; flex-wrap: wrap; gap: 4px; } .forge-talents em { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 7px; border: 1.5px solid var(--flat-ink); border-radius: 999px; background: #fff8e6; }
+.forge-pick { display: grid; gap: 6px; padding-top: 4px; }
+.forge-pick button { display: grid; gap: 2px; padding: 7px 10px; text-align: left; border: 2px solid var(--flat-ink); border-radius: 10px; background: #fff8e6; color: var(--flat-ink); box-shadow: 0 2px 0 var(--flat-cream-2); }
+.forge-pick button b { font-size: 13px; } .forge-pick button small { font-size: 11px; line-height: 1.3; }
+.forge-pick .forge-pick-later { background: #e8dfcc; text-align: center; }
+
+/* 비버 상자 줄 · 대장간 되돌리기 (2026-10-13, FOCUS_CAPYGO P2) */
+.hub-chests { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border: 2px solid var(--flat-ink); border-radius: 12px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
+.hub-chests .nav-icon-svg { width: 30px; height: 30px; }
+.hub-chests span { display: grid; gap: 1px; min-width: 0; } .hub-chests b { font-size: 13px; } .hub-chests small { font-size: 10px; color: #6b5338; line-height: 1.3; }
+.hub-chest-open { padding: 6px 12px; border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-yellow); color: var(--flat-ink); font-weight: 800; font-size: 12px; box-shadow: 0 2px 0 var(--flat-yellow-2); }
+.hub-chest-open:disabled { background: #e8dfcc; color: #8a7760; box-shadow: none; }
+.forge-revert { display: block; width: 100%; margin-top: 6px; padding: 7px 10px; border: 2px solid var(--flat-ink); border-radius: 10px; background: #fff8e6; color: var(--flat-ink); font-size: 12px; font-weight: 700; box-shadow: 0 2px 0 var(--flat-cream-2); }

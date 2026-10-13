@@ -15,6 +15,10 @@ import { TitansGame } from "./TitansGame";
 const CharacterStatus = lazy(() => import("./CharacterStatus").then((m) => ({ default: m.CharacterStatus })));
 import { AttendanceModal, readAttendanceClaimedToday, readAttendanceDone } from "./AttendanceModal";
 import { TOWER_TICKET_SEALS, buyTowerTicketWithSeals, consumeTowerTicket, refillTowerTickets } from "./game/towerTickets";
+import { SWEEP_MULTIPLIERS, applySweep, canSweep, sweepBudget, sweepStageIndex, sweepsLeft, type SweepMultiplier, type SweepReward } from "./game/sweep";
+import { MERCHANT_SEALS, applyDayChoice, dayEventFor, type DayEvent, type DayEventChoice } from "./game/dayEvents";
+import { TALENT_EFFECT, hasTalent } from "./forge/talents";
+import { grantChest } from "./economy/chests";
 const EventCenter = lazy(() => import("./EventCenter").then((m) => ({ default: m.EventCenter })));
 import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { renderShareCard, shareCard } from "./ui/shareCard";
@@ -71,7 +75,7 @@ import {
   statsFromLevels,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageTag, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
+import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, STAGE_TYPE_LABEL, stageType, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageTag, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
 import { RouteMap, branchRewardLabel } from "./game/RouteMap";
 import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
@@ -200,6 +204,10 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   // 기본 사격 = 대장간 활 단계 · 스킬 무기는 장착한 넷(2026-10-02)
   world.weaponForge = { ...p.expeditionWeaponForge };
   // 파츠 티어 (2026-10-12) — 사냥터와 같은 규칙: 투구 ← 견갑 강화, 가슴 ← 견갑 종류, 무기 ← 검 강화
+  // 영구 특성 (forge/talents, 2026-10-13): 지식욕 런 XP · 황야 서바이벌 휴식 보너스
+  world.runXpMul = hasTalent(p.talents, "scholar") ? TALENT_EFFECT.scholarRunXpMul : 1;
+  world.evolutionPath = p.evolutionPath;   // 빌드 계열 → 카드 풀 가중 (perks.buildWeight)
+  world.restBonus = hasTalent(p.talents, "survivor") ? TALENT_EFFECT.survivorRestBarrier - 0.2 : 0;
   world.player.gear = { helmet: helmetTierOf(p.shoulderEnhance ?? 0), armor: chestTierOf(p.equippedShoulder), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: 0, boots: bootsTierOf(p.towerBestFloor) };
   world.basicLevel = p.expeditionWeaponForge.bow;
   world.loadout = p.expeditionLoadout.filter((id) => (p.expeditionSkills[id] ?? 0) > 0);
@@ -355,6 +363,16 @@ function App() {
   const progressRef = useRef(progress);
   useEffect(() => { progressRef.current = progress; }, [progress]);
   const [shoulderDrop, setShoulderDrop] = useState("");
+  /** 허브에서 "끝없는 성벽"을 눌러 성문 메뉴에 들어왔다 — 메뉴가 뜨면 한 번 등반을 시작한다 (2026-10-13 P0) */
+  const [towerIntent, setTowerIntent] = useState(false);
+  /** 2택 사건 (2026-10-13 P1, game/dayEvents): 출발 전 선택(메뉴에서 고름, 기본 첫째) · 대장 직전 계약 제안(HUD, 8초) */
+  const [startChoice, setStartChoice] = useState<DayEventChoice["id"] | null>(null);
+  const startChoiceRef = useRef<DayEventChoice["id"] | null>(null);
+  useEffect(() => { startChoiceRef.current = startChoice; }, [startChoice]);
+  const [pactOffer, setPactOffer] = useState<DayEvent | null>(null);
+  const pactTimerRef = useRef(0);
+  /** 등반권은 시작이 아니라 첫 층을 깼을 때 쓴다(실패해도 미소모, 카피바라 Go! 자원 던전 규칙) — 이번 등반에서 아직 안 썼으면 true */
+  const towerTicketPendingRef = useRef(false);
   /** 갈림길 클리어 안내 — 견갑 드롭 문구가 덮어쓰지 않게 따로 둔다 */
   const [branchNote, setBranchNote] = useState("");
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
@@ -829,6 +847,9 @@ function App() {
               hudBossRef.current = true;
               const bp = bossPatternFor(world.stageIndex + 1);
               showBanner(`BOSS · ${bp.name}`, bp.hint, true);
+              // 2택 사건(계약) — 8초 동안 HUD 에 두 버튼, 안 고르면 그냥 지나간다(멈추지 않는다)
+              const pact = dayEventFor(world.stageIndex, "boss");
+              if (pact) { setPactOffer(pact); window.clearTimeout(pactTimerRef.current); pactTimerRef.current = window.setTimeout(() => setPactOffer(null), 8000); }
             }
           }
           if (world.combo !== hudComboRef.current) {
@@ -959,6 +980,10 @@ function App() {
             // 끝없는 성벽 — 층 기록은 방치 배율(M)로 환산된다. 100층당 ×+0.05.
             const floor = towerFloorOf(world.stageIndex);
             if (floor > 0) {
+              if (towerTicketPendingRef.current) {
+                towerTicketPendingRef.current = false;
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => consumeTowerTicket(current) ?? current);
+              }
               if (floor > nextProgress.towerBestFloor) {
                 nextProgress = await updateCharacterProgress(userHashRef.current, (current) => ({
                   ...current,
@@ -967,6 +992,8 @@ function App() {
               }
               if (floor % 10 === 0) {
                 sfxTowerMilestone();
+                // 비버 상자 (economy/chests, 2026-10-13 P2): 성벽 10층마다 1개 — 허브 상자 줄에서 연다
+                nextProgress = await updateCharacterProgress(userHashRef.current, (current) => grantChest(current));
                 // 성벽 10층마다 동료 조각 +1 (LIVEOPS §2.2)
                 const titansSave = await loadTitansSave(userHashRef.current);
                 nextProgress = await updateCharacterProgress(userHashRef.current, (current) => {
@@ -1192,6 +1219,22 @@ function App() {
       }
     }
     prepareWorldForStage(fromStage);
+    // 출발 전 2택 사건 — 메뉴에서 고른 것(없으면 첫째 = 안전한 쪽). 상인은 인장이 있어야 한다
+    setPactOffer(null);
+    const startEv = dayEventFor(fromStage, "start");
+    if (startEv && world) {
+      let pick: DayEventChoice["id"] = startEv.choices.some((c) => c.id === startChoiceRef.current) ? (startChoiceRef.current as DayEventChoice["id"]) : startEv.choices[0].id;
+      const chosen = startEv.choices.find((c) => c.id === pick)!;
+      if (chosen.seals) {
+        if (progress.expeditionSeals >= chosen.seals) {
+          const cost = chosen.seals;
+          void updateCharacterProgress(userHashRef.current, (p) => ({ ...p, expeditionSeals: Math.max(0, p.expeditionSeals - cost) })).then(setProgress);
+        } else pick = startEv.choices[0].id;
+      }
+      applyDayChoice(world, pick);
+      const shown = startEv.choices.find((c) => c.id === pick)!;
+      showBanner(shown.label, shown.desc, false);
+    }
     scoreRef.current = 0;
     setScore(0);
     setCombo(0);
@@ -1366,10 +1409,27 @@ function App() {
       window.setTimeout(() => setSettingsToast(""), 3200);
       return;
     }
-    let spent = false;
-    const next = await updateCharacterProgress(userHashRef.current, (p) => { const n = consumeTowerTicket(p); spent = !!n; return n ?? p; });
+    // 2026-10-13 P0: 등반권은 첫 층을 깼을 때 쓴다 — 1층에서 죽으면 그대로. 시작 조건(>0)만 본다
+    towerTicketPendingRef.current = true;
+    void handleStart(TOWER_START_INDEX);
+  };
+  // 허브 "끝없는 성벽" 카드 → 성문 메뉴가 뜨면 한 번만 등반 시작 (2026-10-13 P0)
+  useEffect(() => {
+    if (!towerIntent || appMode !== "dodge" || gameState !== "ready") return;
+    setTowerIntent(false);
+    void startTowerClimb();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [towerIntent, appMode, gameState]);
+
+  /** 소탕 — 예산을 쓰고 보상을 받는다 (game/sweep) */
+  const doSweep = async (stageIndex: number, mult: SweepMultiplier) => {
+    const check = canSweep(progress, stageIndex, mult);
+    if (!check.ok) { setSettingsToast(check.reason); window.setTimeout(() => setSettingsToast(""), 2800); return; }
+    const box: { reward: SweepReward | null } = { reward: null };
+    const next = await updateCharacterProgress(userHashRef.current, (p) => { const r = applySweep(p, stageIndex, mult); box.reward = r.reward; return r.progress; });
     setProgress(next);
-    if (spent) void handleStart(TOWER_START_INDEX);
+    const got = box.reward;
+    if (got) setShoulderDrop(`소탕 ×${mult} · S${stageIndex + 1} · 코인 +${got.coins.toLocaleString()} · 견갑 조각 +${got.shoulderShards}`);
   };
 
   /** 원정 보급창에서 인장으로 등반권 1장 */
@@ -1469,7 +1529,7 @@ function App() {
     const stage = getStage(world.stageIndex);
     const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
   const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2
-    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24));
+    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24) * world.coinBonusMul * (hasTalent(progress.talents, "gold-digger") ? TALENT_EFFECT.goldDiggerCoinMul : 1));   // coinBonusMul: 2택 사건 "통과" · 골드 디거 특성 (2026-10-13)
     const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
     soundRef.current.stopBgm();
     soundRef.current.playCoin();
@@ -1818,6 +1878,8 @@ function App() {
           armorLevel={progress.armorLevel}
           onOpenEvents={(tab) => { setEventTab(tab); setEventOpen(true); }}
           onOpenContent={(content) => {
+            // 허브 카드 "끝없는 성벽" (2026-10-13 P0): 성문 메뉴로 가서 등반권이 있으면 바로 오른다
+            if (content === "tower") { syncState("ready"); setMode("dodge"); setTowerIntent(true); return; }
             if (content === "dodge") syncState("ready");
             setMode(content);
           }}
@@ -1902,8 +1964,47 @@ function App() {
                       </div>
 
                       <button type="button" className="cta" onClick={() => void handleStart(next)}>
-                        스테이지 {Math.floor(next / STAGES_PER_CHAPTER) + 1}-{(next % STAGES_PER_CHAPTER) + 1} 시작 · {STAGES[next].name}
+                        스테이지 {Math.floor(next / STAGES_PER_CHAPTER) + 1}-{(next % STAGES_PER_CHAPTER) + 1} 시작 · {STAGES[next].name} · <i className="stage-type">{STAGE_TYPE_LABEL[stageType(next)]}</i>
                       </button>
+                      {/* 출발 전 2택 사건 (2026-10-13 P1, game/dayEvents) — 첫째가 기본값, 상인은 인장이 있어야 */}
+                      {(() => {
+                        const ev = dayEventFor(next, "start");
+                        if (!ev) return null;
+                        const sel = ev.choices.some((c) => c.id === startChoice) ? startChoice : ev.choices[0].id;
+                        return (
+                          <div className="day-event-row" data-day-event={ev.id}>
+                            <b>{ev.title}</b>
+                            <div className="day-event-choices">
+                              {ev.choices.map((c) => (
+                                <button key={c.id} type="button" className={sel === c.id ? "on" : ""} disabled={!!c.seals && progress.expeditionSeals < c.seals} onClick={() => setStartChoice(c.id)}>
+                                  <b>{c.label}</b><small>{c.desc}{c.seals && progress.expeditionSeals < c.seals ? ` · 인장 ${progress.expeditionSeals}/${MERCHANT_SEALS}` : ""}</small>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* 소탕 (2026-10-13, docs/FOCUS_CAPYGO P0 — 카피바라 Go! 탐방 배율): 최고 −1 스테이지 보상을 전투 없이 배율만큼. 하루 5회(×3 배속 보유자 10회, ×10 은 그들만) */}
+                      {(() => {
+                        const top = sweepStageIndex(progress);
+                        if (top === null) return null;
+                        const left = sweepsLeft(progress);
+                        return (
+                          <div className="sweep-row" data-sweep-stage={top}>
+                            <b>소탕 · S{top + 1} 보상을 전투 없이 · 오늘 {left}/{sweepBudget(progress)}</b>
+                            <div className="sweep-buttons">
+                              {SWEEP_MULTIPLIERS.map((m) => {
+                                const c = canSweep(progress, top, m);
+                                return (
+                                  <button key={m} type="button" className={`sweep-x${m}`} disabled={!c.ok} title={c.ok ? `×${m} 소탕` : c.reason} onClick={() => void doSweep(top, m)}>
+                                    ×{m}{m === 10 && !progress.dodgeSpeed3 ? " 🔒" : ""}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>
                   );
                 })()}
@@ -2024,6 +2125,18 @@ function App() {
               <i className="expedition-progress"><b style={{ width: `${expeditionRatio * 100}%` }} /></i>
             </div>
             {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
+            {pactOffer && (
+              <div className="pact-offer" role="group" aria-label={pactOffer.title}>
+                <b>{pactOffer.title}</b>
+                <div>
+                  {pactOffer.choices.map((c) => (
+                    <button key={c.id} type="button" className={`pact-${c.id}`} onClick={() => { const w = worldRef.current; if (w) applyDayChoice(w, c.id); showBanner(c.label, c.desc, true); window.clearTimeout(pactTimerRef.current); setPactOffer(null); }}>
+                      <b>{c.label}</b><small>{c.desc}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {hudBanner && (
               <div key={hudBanner.key} className={`wave-banner ${hudBanner.boss ? "is-boss" : ""}`} aria-live="polite">
                 <b>{hudBanner.title}</b>
@@ -2120,6 +2233,11 @@ function App() {
                 </p>
               );
             })()}
+            {hasTalent(progress.talents, "flex") && !(worldRef.current?.perkRerolled ?? true) && (
+              <button type="button" className="perk-reroll" onClick={() => { const w = worldRef.current; if (!w || w.perkRerolled) return; w.perkRerolled = true; setPerkOptions(pickPerks(w)); }}>
+                융통 · 카드 다시 뽑기 (이번 판 1회)
+              </button>
+            )}
             {perkOptions.map((perk, i) => (
               <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id} rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => {
                 const world = worldRef.current;

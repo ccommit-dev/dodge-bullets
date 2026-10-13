@@ -59,7 +59,7 @@ await closeModals(); await clickText(".titans-bottom-nav button", "모험"); awa
 await page.evaluate(() => document.querySelector(".season-nav")?.click()); await sleep(700); await shot("08-events");
 await clickText(".event-tabs button", "주간 도전"); await sleep(400); await shot("09-events-weekly");
 await closeModals(); await closeModals(); await sleep(400);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(700); await shot("10-contents");
+await clickText(".titans-bottom-nav button", "모험"); await sleep(700); await shot("10-contents");
 await closeModals(); await clickText(".titans-bottom-nav button", "사냥터"); await sleep(500);
 await clickText("button", "스킬"); await sleep(600); await shot("11-skills");
 await page.evaluate(() => document.querySelector(".mypage-icon")?.closest("button")?.click() ?? [...document.querySelectorAll("button")].find((b) => b.textContent.includes("마이페이지"))?.click()); await sleep(800); await shot("12-mypage");

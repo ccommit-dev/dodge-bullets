@@ -83,7 +83,7 @@ ok("러시 구매: 선택한 동료(레온) 조각 +30", (p4.allyShards.leon ?? 
 // ── 대장간 진입 시 방지권 이관 ──
 await clickText(".hub-sheet-close", "×");
 await sleep(300);
-await clickText(".titans-bottom-nav button", "콘텐츠");
+await clickText(".titans-bottom-nav button", "모험");
 await sleep(400);
 await clickText(".nav-popup-grid button", "대장간");
 await sleep(1800);

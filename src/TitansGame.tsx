@@ -93,13 +93,14 @@ import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDe
 import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
+import { hubCards } from "./titans/hubCards";
+import { CHEST_POINTS_FOR_CHEST, CHEST_TABLE, grantChest, openChest } from "./economy/chests";
 import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
   LOCK_HINT,
   UNLOCK_BANNER,
   contentUnlocked,
   onboardingTargetStep,
-  type OnboardContent,
 } from "./progression/onboarding";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
@@ -132,17 +133,19 @@ type TitansGameProps = {
   forgedWeaponLevel?: number;
   /** 견갑 강화 단계 — 전장 견갑 외형 티어 */
   armorLevel?: number;
-  onOpenContent: (content: "dodge" | "beat" | "forge" | "profile") => void;
+  onOpenContent: (content: "dodge" | "beat" | "forge" | "profile" | "tower") => void;
   /** 설정 버튼+메뉴 — 헤더의 마이페이지 왼쪽에 (App 이 만든다) */
   settingsNode?: ReactNode;
   /** 이벤트 센터를 특정 탭으로 연다 (추천 배너·루틴 보드) */
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal" | "season") => void;
 };
 
-type ShopTab = "sword" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 const ALLY_PAGE_SIZE = typeof window !== "undefined" && window.innerWidth <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
 const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
+  // 모험 허브 (2026-10-13, docs/FOCUS_CAPYGO P0): 콘텐츠·모험 팝업 둘을 한 화면으로 — 카드 6장 + 루틴 줄
+  hub: { kicker: "ADVENTURE", title: "모험", desc: "오늘 할 수 있는 콘텐츠와 남은 횟수 · 빨간 점은 지금 보상이 남은 것" },
   heroes: { kicker: "ALLY ARCHIVE", title: "동료 도감", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
   gacha: { kicker: "ALLY RECRUIT", title: "동료 뽑기", desc: "지역 픽업 동료를 소환하고 천장 진행도를 확인하세요." },
   premium: { kicker: "PREMIUM SHOP", title: "상점", desc: "재화, 성장 패키지, 동료와 외형 상품을 확인하세요." },
@@ -1455,7 +1458,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       }
       const party = [...current.partyIds];
       for (const id of newIds) if (!party.includes(id) && party.length < slots) party.push(id);
-      return { ...current, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaPulls: current.gachaPulls + count };
+      // 10연이면 비버 상자 1개 (economy/chests, 2026-10-13 P2)
+      const withChest = count === 10 ? grantChest(current) : current;
+      return { ...withChest, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaPulls: current.gachaPulls + count };
     });
     if (!paid) return;
     setCharacter(next);
@@ -2192,11 +2197,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   // ── 리텐션: 루틴 보드 · 추천 1개 · 워밍업 · 종료 예고 ──
   const routine = useMemo(() => routineItems(character, events, nowTick), [character, events, nowTick]);
   useEffect(() => {
-    if (navPopup !== "content") return;
+    if (tab !== "hub") return;
     let alive = true;
     void loadBeatRpg(userHash).then((r) => { if (alive) setBeatBestScore(bestScoreOverall(r)); });
     return () => { alive = false; };
-  }, [navPopup, userHash]);
+  }, [tab, userHash]);
+  const hubCardList = useMemo(() => hubCards(character, events, { beatBest: beatBestScore, now: nowTick }), [character, events, beatBestScore, nowTick]);
   const routineReward = routineRewardAvailable(character, routine);
   const recommendation = useMemo(
     () => recommendNext(character, save, events, { wall: wallInfo, equipped: save.skillInventory.equipped, now: nowTick }),
@@ -2348,7 +2354,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   })();
 
   return (
-    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab}`} style={pad}>
+    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""}`} style={pad}>
       <header className="titans-header">
         {settingsNode}
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
@@ -2871,6 +2877,59 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           </>
         )}
 
+        {tab === "hub" && (
+          <section className="hub-page" aria-label="모험 허브">
+            {/* 루틴 줄 — 예전 '모험' 팝업의 항목(정산 제외)과 시즌. 같은 클래스라 캡처·검사 스크립트가 그대로 찾는다 */}
+            <div className="nav-popup-grid adventure-grid hub-routine">
+              {routine.filter((item) => item.id !== "claim").map((item) => (
+                <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => runRoutine(item)}>
+                  {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.png" : item.id === "expedition" ? "ui/idle/expedition.png" : "ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />}
+                  <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
+                </button>
+              ))}
+              <button type="button" className="season-nav" onClick={() => onOpenEvents?.("season")}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스 {seasonIndex(nowTick)}</b><small>티어 {seasonTier(character.seasonPass.xp)} · {seasonDaysLeft(nowTick)}일 남음</small></span></button>
+            </div>
+            {/* 비버 상자 줄 (economy/chests, P2): 성벽 10층 · 균열 3회 · 10연에서 오고, 열면 포인트 → 100점에 상자 1 */}
+            <div className="hub-chests" data-chests={character.chests}>
+              <img className="nav-icon-svg" src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
+              <span>
+                <b>비버 상자 {character.chests}개</b>
+                <small>포인트 {character.chestPoints}/{CHEST_POINTS_FOR_CHEST} · {CHEST_TABLE.map((d) => `${d.label.split(" (")[0]} ${d.percent}%`).join(" · ")}</small>
+              </span>
+              <button type="button" className="hub-chest-open" disabled={character.chests <= 0} onClick={() => {
+                void updateCharacterProgress(userHash, (current) => openChest(current, Math.random, () => randomOwnedAlly(saveRef.current.heroes, Math.random, current.partyIds)).progress).then((next) => {
+                  const opened = next.chestsOpened - character.chestsOpened;
+                  if (opened > 0) {
+                    const gotMat = next.enhancementMaterials - character.enhancementMaterials, gotSeal = next.expeditionSeals - character.expeditionSeals;
+                    flash(gotMat > 0 ? `상자 · 강화석 +${gotMat}` : gotSeal > 0 ? `상자 · 인장 +${gotSeal}` : "상자 · 동료 조각 +3");
+                  }
+                  setCharacter(next);
+                });
+              }}>{character.chests > 0 ? "열기" : "없음"}</button>
+            </div>
+            {/* 카드 6장 (titans/hubCards): 남은 횟수 · 오늘 재화 · 빨간 점(최대 3) */}
+            <div className="hub-cards nav-popup-grid">
+              {hubCardList.map((card) => (
+                <button key={card.id} type="button" data-card={card.id} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
+                  onClick={() => {
+                    if (card.locked) { flash(card.lockHint ?? "아직 잠겨 있습니다"); return; }
+                    if (card.go.kind === "content") onOpenContent(card.go.content);
+                    else if (card.go.kind === "events") { if (onOpenEvents) onOpenEvents(card.go.tab); else flash("설정 → 모험가 이벤트에서 열 수 있습니다"); }
+                    else setTab(card.go.tab);
+                  }}>
+                  {card.id === "dodge" || card.id === "beat" || card.id === "forge" ? <ContentIcon name={card.id} /> : <img className="nav-icon-svg" src={assetUrl(card.id === "tower" ? "ui/idle/tower.png" : card.id === "rift" ? "ui/idle/rift.png" : "ui/idle/expedition.png")} alt="" aria-hidden="true" />}
+                  <span className="hub-card-body">
+                    <b>{card.label}{card.dot && <i className="hub-dot" aria-label="지금 할 수 있음" />}</b>
+                    <small>{card.desc}</small>
+                    <small className="hub-remaining">{card.remaining}</small>
+                    <span className="hub-feeds" aria-label="오늘 얻는 것">{card.feeds.map((x) => <em key={x}>{x}</em>)}</span>
+                  </span>
+                  {card.locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         {tab === "heroes" && (
           <article className="titans-card party-panel">
             <div className="party-panel-head">
@@ -3464,41 +3523,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       </section>
       </div>
 
-      {navPopup && (
-        <div className={`bottom-nav-popup popup-${navPopup}`} role="dialog" aria-label={navPopup === "content" ? "콘텐츠 선택" : "모험 메뉴"}>
-          <header><b>{navPopup === "content" ? "콘텐츠" : "모험"}</b><button type="button" onClick={() => setNavPopup(null)}>×</button></header>
-          {navPopup === "content" ? (
-            <div className="nav-popup-grid">
-              {([
-                { id: "dodge", label: "성문 방어", desc: `직접 플레이 · 50 스테이지 · 스킬 무기 → 강화석·견갑 ${character.dodgeBestStage > 0 ? `· 최고 S${character.dodgeBestStage}` : ""}`, icon: "dodge" },
-                { id: "beat", label: "비트 수련", desc: `30초~2분 기록 도전 → 견갑 조각 ${beatBestScore > 0 ? `· 최고점수 ${beatBestScore.toLocaleString()}` : ""}`, icon: "beat" },
-                { id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", icon: "forge" },
-              ] as const).map((item) => {
-                const locked = !contentUnlocked(character.onboardingStep, item.id as OnboardContent);
-                return <button key={item.id} type="button" data-card={item.id} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${item.id}.webp`)})` } as CSSProperties} className={locked ? "tab-locked" : ""} onClick={() => { if (locked) flash(LOCK_HINT[item.id as OnboardContent]); else { setNavPopup(null); onOpenContent(item.id); } }}>
-                  <ContentIcon name={item.icon} /><span><b>{item.label}</b><small>{item.desc}</small></span>{locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
-                </button>;
-              })}
-            </div>
-          ) : (
-            <div className="nav-popup-grid adventure-grid">
-              {routine.filter((item) => item.id !== "claim").map((item) => (
-                <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => { setNavPopup(null); runRoutine(item); }}>
-                  {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.png" : item.id === "expedition" ? "ui/idle/expedition.png" : "ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />}
-                  <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
-                </button>
-              ))}
-              <button type="button" className="season-nav" onClick={() => { setNavPopup(null); onOpenEvents?.("season"); }}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스</b><small>{character.seasonPass.season === seasonIndex() ? `${seasonTier(character.seasonPass.xp)}/${SEASON.tiers}단` : "새 시즌"} · D-{seasonDaysLeft()}</small></span></button>
-              {/* 이벤트 상점은 하단 '상점' → '이벤트' 탭에 이미 있다 — 같은 화면으로 가는 두 번째 입구는 뺐다 (2026-09-18) */}
-            </div>
-          )}
-        </div>
-      )}
-
       <nav className="titans-bottom-nav compact" aria-label="주요 메뉴">
         <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("sword"); }}><ContentIcon name="hunt" /><span>사냥터</span></button>
-        <button type="button" className={navPopup === "content" ? "on" : ""} onClick={() => setNavPopup((open) => open === "content" ? null : "content")}><ContentIcon name="dodge" /><span>콘텐츠</span></button>
-        <button type="button" className={navPopup === "adventure" ? "on" : ""} onClick={() => setNavPopup((open) => open === "adventure" ? null : "adventure")}><ContentIcon name="event" /><span>모험</span></button>
+        <button type="button" className={tab === "hub" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("hub"); }}><ContentIcon name="event" /><span>모험</span></button>
         <button type="button" className={tab === "heroes" || tab === "gacha" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("heroes"); }}><ContentIcon name="ally" /><span>동료</span></button>
         <button type="button" className={tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("premium"); }}><ContentIcon name="shop" /><span>상점</span></button>
       </nav>

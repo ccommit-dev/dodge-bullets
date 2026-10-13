@@ -378,6 +378,16 @@ export type GameWorld = {
    */
   barrierHp: number;
   barrierMaxHp: number;
+  /** 2택 사건(dayEvents): 악마 계약 — 방어막이 받는 피해 배수. 1 = 기본 */
+  barrierTakenMul: number;
+  /** 2택 사건: 상인 통과 — 결과 코인 배수. 1 = 기본 */
+  coinBonusMul: number;
+  /** 특성(지식욕) 런 XP 배수 · 특성(황야 서바이벌) 휴식 방어막 추가분 · 특성(융통) 이번 판 카드 재선택 썼는가 (forge/talents, 2026-10-13) */
+  runXpMul: number;
+  restBonus: number;
+  perkRerolled: boolean;
+  /** 진화 경로(progression.evolutionPath) — 레벨업 카드 풀을 가른다 (perks.buildWeight, 2026-10-13 P2). novice = 가중 없음 */
+  evolutionPath: "novice" | "swordmaster" | "guardian" | "arcane";
   barrierDownMs: number;
   barrierFlashMs: number;
   barrierHitX: number;

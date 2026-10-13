@@ -37,6 +37,11 @@ writeFileSync(entry, [
   `export * as dodgeChips from "${root}/src/game/chips";`,
   `export * as dodgeOps from "${root}/src/game/expeditionOps";`,
   `export * as towerTickets from "${root}/src/game/towerTickets";`,
+  `export * as hub from "${root}/src/titans/hubCards";`,
+  `export * as sweep from "${root}/src/game/sweep";`,
+  `export * as dayEvents from "${root}/src/game/dayEvents";`,
+  `export * as talents from "${root}/src/forge/talents";`,
+  `export * as chests from "${root}/src/economy/chests";`,
   `export * as forgeModel from "${root}/src/forge/model";`,
   `export * as advice from "${root}/src/economy/purchaseAdvice";`,
   `export * as beatShop from "${root}/src/beat/shop";`,
@@ -50,7 +55,7 @@ writeFileSync(entry, [
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1358,6 +1363,69 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("성문 보스 약점: 장착 무기 중에서 · 직전 제외 · 기본 사격뿐이면 없음 · 무기 하나면 그것", dodgeWeak.rollDodgeWeak(["fire", "ice"], "fire") === "ice" && dodgeWeak.rollDodgeWeak(["fire", "ice"], "ice") === "fire" && dodgeWeak.rollDodgeWeak(["fire", "ice", "bolt"], null, 1) === "ice" && dodgeWeak.rollDodgeWeak(["basic"], null) === null && dodgeWeak.rollDodgeWeak(["fire"], "fire") === "fire" && dodgeWeak.DODGE_WEAK_EXTRA_POWER === 1);
 }
 
+// ── 모험 허브 카드 6장 (2026-10-13, docs/FOCUS_CAPYGO P0) ──
+{
+  const p0 = { ...prog.emptyCharacterProgress(), onboardingStep: 4, towerOpen: false, towerTickets: 3, towerBestFloor: 0, dodgeBestStage: 3, enhancementMaterials: 40, expeditions: [], patronUntil: 0 };
+  const ev = events.emptyEventSave();
+  const cards = hub.hubCards(p0, ev, { beatBest: 0, now: Date.now() });
+  ok("허브 카드 6장 · 순서 성문→비트→성벽→균열→대장간→파견", cards.map((c) => c.id).join() === "dodge,beat,tower,rift,forge,expedition");
+  ok("빨간 점은 최대 3개 · 잠긴 카드(성벽 미개방)엔 없다", cards.filter((c) => c.dot).length <= hub.HUB_DOT_MAX && cards.find((c) => c.id === "tower").locked && !cards.find((c) => c.id === "tower").dot);
+  ok("카드마다 남은 횟수와 오늘 재화가 있다", cards.every((c) => c.remaining.length > 0 && c.feeds.length > 0));
+  const open = hub.hubCards({ ...p0, towerOpen: true, towerTickets: 0 }, ev, {});
+  ok("성벽: 등반권 0이면 점 없음 · 남은 칸에 0/3", !open.find((c) => c.id === "tower").dot && /0\/3/.test(open.find((c) => c.id === "tower").remaining));
+  const used = hub.hubCards(p0, { ...ev, riftAttempts: 3 }, {});
+  ok("균열 3/3 소진이면 점 없음", !used.find((c) => c.id === "rift").dot);
+}
+// ── 성문 소탕 배율 (2026-10-13, docs/FOCUS_CAPYGO P0) ──
+{
+  const p0 = { ...prog.emptyCharacterProgress(), dodgeBestStage: 6, dodgeSpeed3: false, sharedCoins: 0, shoulderShards: 0 };
+  ok("소탕 예산: 기본 5 · ×3 배속 보유 10 · 소탕 가능 최고 = 최고 스테이지 −1(S5 = index 4)", sweep.sweepBudget(p0) === 5 && sweep.sweepBudget({ ...p0, dodgeSpeed3: true }) === 10 && sweep.sweepStageIndex(p0) === 4 && sweep.sweepStageIndex({ ...p0, dodgeBestStage: 1 }) === null);
+  ok("최고 스테이지 자체(index 5)·갈림길·성벽·×10(미보유)은 거부, index 4 ×5 는 허용", !sweep.canSweep(p0, 5, 1).ok && !sweep.canSweep(p0, stages.TOWER_START_INDEX, 1).ok && !sweep.canSweep(p0, 4, 10).ok && sweep.canSweep(p0, 4, 5).ok && sweep.canSweep({ ...p0, dodgeSpeed3: true }, 4, 10).ok);
+  const r1 = sweep.sweepReward(4, 1), r3 = sweep.sweepReward(4, 3);
+  ok("보상 = 한 판 기대값 × 배율 (코인 baseReward×0.72, 견갑 조각 기대값) · 런 XP 없음", r1.coins === Math.floor(stages.getStage(4).baseReward * 0.72) && r3.coins === r1.coins * 3 && r3.clears === 3 && r1.shoulderShards >= 2);
+  const a = sweep.applySweep(p0, 4, 3);
+  const b = sweep.applySweep(a.progress, 4, 3);
+  ok("적용: 코인·조각 증가 · 일일 클리어 +3 · 예산 5 에서 3 쓰면 다음 ×3 거부(2 남음)", a.reward && a.progress.sharedCoins === r3.coins && a.progress.expeditionDaily.sweeps === 3 && a.progress.expeditionDaily.counts.clear === 3 && !b.reward && /2회 남음/.test(b.reason ?? ""));
+}
+// ── 2택 사건 · 스테이지 타입 (2026-10-13, docs/FOCUS_CAPYGO P1) ──
+{
+  const types = Array.from({ length: 50 }, (_, i) => stages.stageType(i));
+  ok("본선 50 스테이지에 타입 3종(긴 공성·짧은 돌격·타워형)이 모두 있고 장마다 섞인다", new Set(types).size === 3 && new Set(types.slice(0, 10)).size === 3);
+  const evs = Array.from({ length: 50 }, (_, i) => dayEvents.dayEventFor(i, "start"));
+  ok("출발 사건: 본선 전부 있음 · 타입별 첫째(기본)가 안전한 쪽(휴식/통과) 또는 타워형은 카드 · 갈림길·성벽은 없음", evs.every(Boolean) && evs.every((e, i) => (stages.stageType(i) === "short" ? e.choices[0].id === "pass" : stages.stageType(i) === "tower" ? e.choices[0].id === "push" : e.choices[0].id === "rest")) && dayEvents.dayEventFor(stages.TOWER_START_INDEX, "start") === null && dayEvents.dayEventFor(stages.BRANCH_START_INDEX, "start") === null);
+  ok("대장 사건(계약)은 장 대장·중간 보스 칸에만", dayEvents.dayEventFor(9, "boss")?.id === "pact" && dayEvents.dayEventFor(0, "boss") === null);
+  const w = () => ({ barrierHp: 50, barrierMaxHp: 100, levelUps: 0, coinBonusMul: 1, barrierTakenMul: 1, runMods: { damageMul: 1 } });
+  const a1 = w(); dayEvents.applyDayChoice(a1, "rest"); const a2 = w(); dayEvents.applyDayChoice(a2, "push"); const a3 = w(); dayEvents.applyDayChoice(a3, "demon"); const a4 = w(); dayEvents.applyDayChoice(a4, "pass");
+  ok("효과: 휴식 방어막 +20(상한) · 강행/상인 카드 1 · 악마 피해 ×1.6·방어막 피해 ×1.25 · 통과 코인 ×1.05", a1.barrierHp === 70 && a2.levelUps === 1 && Math.abs(a3.runMods.damageMul - 1.6) < 1e-9 && Math.abs(a3.barrierTakenMul - 1.25) < 1e-9 && Math.abs(a4.coinBonusMul - 1.05) < 1e-9);
+}
+// ── 대장간 장인 이정표 · 영구 특성 (2026-10-13, docs/FOCUS_CAPYGO P1) ──
+{
+  const pts = talents.masteryPoints({ bestLevel: 8, bestArmorLevel: 5, bow: 2, staff: 2 });   // 17점 = 2등급 7점
+  const m = talents.masteryState(pts, 0, []);
+  ok("장인 점수 17 → 1등급(0-based) · 등급 안 7점 · 골드 이정표 2개(4·14) · 특성 선택 2개(7·17) · 다음은 승급까지 3점", m.rank === 1 && m.within === 7 && m.goldPending === 2 && m.goldPendingAmount === 2000 + 4000 && m.picksPending === 2 && m.next.kind === "rank" && m.next.left === 3);
+  const m2 = talents.masteryState(pts, 2, ["flex"]);
+  ok("받은 뒤: 골드 0 · 선택 1 남음 · 특성은 5개 상한", m2.goldPending === 0 && m2.picksPending === 1 && talents.pickMilestonesEarned(999) === 5);
+  const base = { ...prog.emptyCharacterProgress(), dodgeBestStage: 6, talents: [] };
+  ok("특성 건장: 소탕 예산 5 → 6 · ×3 배속 보유면 11", sweep.sweepBudget({ ...base, talents: ["sturdy"] }) === 6 && sweep.sweepBudget({ ...base, talents: ["sturdy"], dodgeSpeed3: true }) === 11);
+  const w = { barrierHp: 50, barrierMaxHp: 100, levelUps: 0, coinBonusMul: 1, barrierTakenMul: 1, restBonus: 0.1, runMods: { damageMul: 1 } };
+  dayEvents.applyDayChoice(w, "rest");
+  ok("특성 황야 서바이벌: 휴식 방어막 +30%", w.barrierHp === 80);
+  ok("저장 정규화: 모르는 특성 id 는 버리고 중복은 하나로", prog.normalizeCharacterProgress({ ...base, talents: ["flex", "flex", "nope"] }).talents.join() === "flex");
+}
+// ── 비버 상자 루프 · 빌드 계열 카드 가중 (2026-10-13, docs/FOCUS_CAPYGO P2) ──
+{
+  const p0 = { ...prog.emptyCharacterProgress(), chests: 0, chestPoints: 90, enhancementMaterials: 0, expeditionSeals: 0 };
+  ok("상자 확률 공시 합 100 · 상자 없으면 열리지 않는다", chests.CHEST_TABLE.reduce((s, d) => s + d.percent, 0) === 100 && chests.openChest(p0).drop === null);
+  const g = chests.grantChest(p0, 1);
+  const r = chests.openChest(g, () => 0.1, () => null);   // 0.1 → 강화석
+  ok("열기: 강화석 +20 · 포인트 90+10=100 → 상자 1 환급(포인트 0) · 연 횟수 1", r.drop?.kind === "materials" && r.progress.enhancementMaterials === 20 && r.progress.chests === 1 && r.bonusChest && r.progress.chestPoints === 0 && r.progress.chestsOpened === 1);
+  const r2 = chests.openChest({ ...g, chestPoints: 0 }, () => 0.99, () => "mia");
+  ok("조각 드랍은 고른 동료에게 +3", r2.drop?.kind === "shards" && r2.progress.allyShards.mia === 3);
+  ok("저장 정규화: chests·chestPoints 기본 0", prog.normalizeCharacterProgress({ ...p0, chests: undefined }).chests === 0);
+  const sample = perks.PERKS ?? [];
+  const arcaneCards = sample.filter((p) => perks.buildWeight(p, "arcane") === 2), swordCards = sample.filter((p) => perks.buildWeight(p, "swordmaster") === 2), guardCards = sample.filter((p) => perks.buildWeight(p, "guardian") === 2);
+  ok("빌드 계열 가중: 세 계열 모두 2배 카드가 있고 초심자는 전부 1 · 한 카드가 두 계열에 동시에 2배는 아니다", arcaneCards.length > 0 && swordCards.length > 0 && guardCards.length > 0 && sample.every((p) => perks.buildWeight(p, "novice") === 1) && sample.every((p) => [perks.buildWeight(p, "arcane"), perks.buildWeight(p, "swordmaster"), perks.buildWeight(p, "guardian")].filter((w) => w === 2).length === 1));
+}
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
 const fails = results.filter((r) => r[0] === "FAIL").length;
 console.log(fails === 0 ? "\nALL PASS" : `\n${fails} FAIL`);

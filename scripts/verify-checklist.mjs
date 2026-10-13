@@ -25,7 +25,7 @@ async function seed(progress, titans, extra = {}) {
 const closeModal = async () => { await page.evaluate(() => { [...document.querySelectorAll("button")].find((b) => /받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 /** 콘텐츠(성문 방어·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
-const openContent = async (label) => { await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
+const openContent = async (label) => { await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", label); await sleep(1200); };
 const now = Date.now();
 
 // ── A. 신규 유저 ──

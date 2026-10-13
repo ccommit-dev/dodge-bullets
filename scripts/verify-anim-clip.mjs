@@ -140,12 +140,12 @@ await clickText("button", "동료 뽑기"); await sleep(700);
 await clickText("button", "10회"); await sleep(400);
 screens.push(["동료 뽑기", await probeOver(page, 3600)]);
 await seed(12);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "대장간"); await sleep(1500);
 await clickText("button", "^강화하기$"); await sleep(300);
 screens.push(["대장간 강화", await probeOver(page, 2600)]);
 await seed(12);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "비트 수련"); await sleep(1600);
 screens.push(["비트 허브", await probeOver(page, 2600)]);
 

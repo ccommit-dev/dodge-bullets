@@ -26,7 +26,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2600);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) c.click(); } });
 await sleep(600);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 await page.screenshot({ path: `${OUT}/01-menu.png` });
 await page.evaluate(() => document.querySelector(".pioneer-board")?.scrollIntoView({ block: "start" })); await sleep(300);
@@ -59,7 +59,7 @@ console.log("boss", JSON.stringify(await page.evaluate(() => { const w = window.
 await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.barrierHp = 0; } }); await sleep(2500);
 await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2600);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) c.click(); } }); await sleep(500);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(400);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "대장간"); await sleep(1800);
 await clickText(".forge-tabs button", "원정 무기"); await sleep(600);
 await page.screenshot({ path: `${OUT}/08-forge-weapons.png` });

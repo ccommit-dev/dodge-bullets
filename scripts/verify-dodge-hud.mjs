@@ -65,16 +65,17 @@ await page.evaluate(() => {
   }
 });
 await sleep(900);
-await clickText(".titans-bottom-nav button", "콘텐츠"); await sleep(700);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
 // 콘텐츠 팝업이 화면 안에 다 들어오고, 비트 수련까지 모든 칸이 보인다 (등장 애니메이션 끝 프레임이 팝업을 반 화면 밀어내던 것, 2026-10-02)
 {
   const pop = await page.evaluate(() => {
     const vw = window.innerWidth, vh = window.innerHeight;
-    const box = document.querySelector(".bottom-nav-popup")?.getBoundingClientRect();
-    const cells = [...document.querySelectorAll(".nav-popup-grid > button")].map((b) => { const r = b.getBoundingClientRect(); return { name: b.textContent.replace(/\s+/g, " ").trim().slice(0, 8), inside: r.left >= 0 && r.right <= vw && r.top >= 0 && r.bottom <= vh }; });
+    // 2026-10-13: 콘텐츠 팝업 → 모험 허브 탭(.hub-page). 카드 6장(.hub-cards)이 화면 안에 있고 비트 수련이 보인다
+    const box = document.querySelector(".hub-page")?.getBoundingClientRect();
+    const cells = [...document.querySelectorAll(".hub-cards > button")].map((b) => { const r = b.getBoundingClientRect(); return { name: b.textContent.replace(/\s+/g, " ").trim().slice(0, 8), inside: r.left >= 0 && r.right <= vw }; });
     return { vw, box: box ? { left: Math.round(box.left), right: Math.round(box.right) } : null, cells };
   });
-  ok("콘텐츠 팝업이 화면 안에 있고 모든 칸(비트 수련 포함)이 보인다", !!pop.box && pop.box.left >= 0 && pop.box.right <= pop.vw && pop.cells.length >= 3 && pop.cells.every((c) => c.inside) && pop.cells.some((c) => c.name.includes("비트")), JSON.stringify(pop));
+  ok("모험 허브가 화면 안에 있고 카드 6장(비트 수련 포함)이 가로로 안 잘린다", !!pop.box && pop.box.left >= 0 && pop.box.right <= pop.vw && pop.cells.length >= 3 && pop.cells.every((c) => c.inside) && pop.cells.some((c) => c.name.includes("비트")), JSON.stringify(pop));
 }
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
 

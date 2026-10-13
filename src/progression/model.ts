@@ -13,6 +13,7 @@ import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../t
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
+import { TALENTS, type TalentId } from "../forge/talents";
 
 export const PROGRESSION_VERSION = 5;
 
@@ -189,6 +190,13 @@ export type CharacterProgress = {
   adFree: boolean;
   /** 성문 방어 ×3 배속 (2026-10-12, 실결제 영구 상품 dodge-x3) */
   dodgeSpeed3: boolean;
+  /** 대장간 장인 이정표 영구 특성 (2026-10-13, forge/talents) · 받은 골드 이정표 수 */
+  talents: TalentId[];
+  masteryGoldClaimed: number;
+  /** 비버 상자 루프 (2026-10-13, economy/chests): 안 연 상자 · 상자 포인트(100 → 상자 1) · 연 횟수 */
+  chests: number;
+  chestPoints: number;
+  chestsOpened: number;
   /** 보상형 광고 일일 카운터 (L) */
   adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number; dodgeDouble: number; beatDouble: number };
   /** 결제로 받았지만 아직 사냥터 저장에 들어가지 않은 스킬 코어 — 사냥터가 준비되면 옮긴다 (2026-10-02 리뷰 #4) */
@@ -303,6 +311,11 @@ export function emptyCharacterProgress(): CharacterProgress {
     equippedTheme: "",
     adFree: false,
     dodgeSpeed3: false,
+    talents: [],
+    masteryGoldClaimed: 0,
+    chests: 0,
+    chestPoints: 0,
+    chestsOpened: 0,
     adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 },
     momentOffers: {},
     gateFund: emptyGateFund(),
@@ -486,6 +499,7 @@ export function normalizeCharacterProgress(
           epic: integer(d.counts?.epic, 0),
           clear: integer(d.counts?.clear, 0),
         },
+        sweeps: integer(d.sweeps, 0),
         claimed: Array.isArray(d.claimed)
           ? d.claimed.filter((x): x is DailyId => DAILIES.some((t) => t.id === x))
           : [],
@@ -656,6 +670,11 @@ export function normalizeCharacterProgress(
     equippedTheme: typeof raw.equippedTheme === "string" && Array.isArray(raw.ownedThemes) && raw.ownedThemes.includes(raw.equippedTheme) ? raw.equippedTheme : "",
     adFree: raw.adFree === true,
     dodgeSpeed3: raw.dodgeSpeed3 === true,
+    talents: Array.isArray(raw.talents) ? [...new Set(raw.talents.filter((t): t is TalentId => TALENTS.some((d) => d.id === t)))] : [],
+    masteryGoldClaimed: integer(raw.masteryGoldClaimed, 0),
+    chests: integer(raw.chests, 0),
+    chestPoints: integer(raw.chestPoints, 0),
+    chestsOpened: integer(raw.chestsOpened, 0),
     pendingSkillCores: integer(raw.pendingSkillCores, 0, 100000),
     gateFund: (() => {
       const g = raw.gateFund as { paid?: unknown; claimed?: unknown } | undefined;
