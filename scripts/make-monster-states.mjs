@@ -10,6 +10,7 @@
  *   node scripts/make-monster-states.mjs [이름 ...]
  */
 import sharp from "sharp";
+import { tiltFrame } from "./lib/derive-frame.mjs";
 import { readdirSync } from "node:fs";
 
 const DIR = "public/titans/generated/monsters";
@@ -67,9 +68,12 @@ for (const file of SOURCES) {
   }
   // 2026-10-13 (사용자: "몬스터 피격 애니메이션 어색"): 흰 보간만으로는 "맞았다"가 안 읽혔다 → 뒤(오른쪽)로 8° 젖히고 가로 .95 로 눌러(contain: 원화가 프레임을 꽉 채워 잘라내기는 머리·날개가 잘린다) 반동을 더한다 (왼쪽을 보는 원본 기준; 반전 몬스터는 CSS 가 통째로 뒤집어 방향이 맞다)
   const hitBuf = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
-  await sharp(await sharp(hitBuf).resize(Math.round(w * 0.95), h, { fit: "fill" }).png().toBuffer()).rotate(8, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(`${DIR}/${base}-hit.png`);
+  // 2026-10-13 보완: contain 통째 축소 대신 bbox 기준(derive-frame.tiltFrame) — 넘칠 때만 그만큼 줄여 돌진·반동 때 몸 크기가 유지된다
+  await sharp((await tiltFrame(hitBuf, { rot: 8, sx: 0.95 })).buffer).toFile(`${DIR}/${base}-hit.png`);
   // attack (2026-10-13): 앞(왼쪽)으로 8° 숙이고 가로 1.06 으로 늘린 돌진 — SpriteArt 가 action-attack 동안 -attack.png 를 쓴다
-  await sharp(await sharp(src).resize(Math.round(w * 1.06), Math.round(h * 0.98), { fit: "fill" }).png().toBuffer()).rotate(-8, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(`${DIR}/${base}-attack.png`);
+  await sharp((await tiltFrame(src, { rot: -10, sx: 1.08, sy: 0.98 })).buffer).toFile(`${DIR}/${base}-attack.png`);
+  // 포즈 img2img 결과(gen.py states → art-gen/out/st-<name>-attack/hit.png)가 있으면 그것을 원본 크기 틀에 맞춰 덮어쓴다 (2026-10-13 보완)
+  for (const st of ["attack", "hit"]) { const posed = `art-gen/out/st-${base}-${st}.png`; if (existsSync(posed)) { await sharp(posed).resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(`${DIR}/${base}-${st}.png`); console.log(`${base}: posed ${st}`); } }
 
   // defeat: 회색조 + 균열 마스크(dest-out) + 살짝 납작
   const cracked = await sharp(src).grayscale().modulate({ brightness: 0.85 }).composite([{ input: crackSvg(w, h), blend: "dest-out" }]).png().toBuffer();

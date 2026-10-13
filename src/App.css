@@ -5057,3 +5057,6 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 /* 마이페이지 장착 장비 띠 — 마지막 남은 짙은 칩 (2026-10-12) */
 .equipment-strip > div, .character-page .equipment-strip > div { background: var(--flat-cream); color: var(--flat-ink); border: 2px solid var(--flat-ink); box-shadow: 0 3px 0 var(--flat-cream-2); }
 .equipment-strip small, .equipment-strip strong { color: var(--flat-ink); }
+/* 개척 상한 밖 동료 안내 (2026-10-13 보완): 뽑기 최소 풀로 미리 얻은 동료는 출전이 막힌다 — 카드·뽑기 연출에 작은 칩으로 */
+.ally-card .ceiling-tag, .gacha-card-front .ceiling-tag { display: inline-block; margin: 2px 0 0; padding: 1px 7px; border: 2px solid var(--flat-ink); border-radius: 999px; background: #efe3cf; color: #8a7760; font-size: 10px; font-weight: 700; font-style: normal; line-height: 1.5; vertical-align: middle; }
+.gacha-card-front .ceiling-tag { display: block; margin: 4px auto 0; width: fit-content; }

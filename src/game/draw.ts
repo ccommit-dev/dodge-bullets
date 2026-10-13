@@ -18,20 +18,26 @@ import { drawDropShape, drawLeafShape } from "../ui/shapes";
 // 720px 축소본 — 원본(832×1216)을 매 프레임 그리면 저사양에서 첫 프레임이 끊긴다
 /** 장별 배경 (2026-10-02) — 1장 초원 외곽(s1) · 2장 달빛 숲(s5, 새로) · 3장 왕실 폐허(s3) · 4장 용암 협곡(s2) · 5장 심연의 성(s4) */
 export const STAGE_BACKGROUNDS = [1, 5, 3, 2, 4].map((n) => assetUrl(`dodge/bg/s${n}.webp`));
+// 가로 화면(태블릿·PC)용 지평선 띠 (2026-10-13 보완): 세로 그림은 가로가 긴 화면에서 좌우가 잘린다 → 캔버스가 가로로 길면 2차 가로 띠를 쓴다
+export const STAGE_BACKGROUNDS_WIDE = [1, 5, 3, 2, 4].map((n) => assetUrl(`dodge/bg/s${n}-wide.webp`));
 const bgCache: Array<HTMLImageElement | null> = [];
+const bgCacheWide: Array<HTMLImageElement | null> = [];
+/** 캔버스 비율로 고른다 — 바닥선 위 영역이 가로로 더 길면 가로 띠 */
+let preferWide = false;
 function stageBackground(stageIndex: number): HTMLImageElement | null {
   return chapterBackground(getStage(stageIndex).chapter);
 }
-function chapterBackground(chapter: number): HTMLImageElement | null {
+function chapterBackground(chapter: number, wide: boolean = preferWide): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   const i = Math.max(0, Math.min(STAGE_BACKGROUNDS.length - 1, chapter));
-  if (bgCache[i] === undefined) {
+  const cache = wide ? bgCacheWide : bgCache;
+  if (cache[i] === undefined) {
     const img = new Image();
     img.decoding = "async";
-    img.src = STAGE_BACKGROUNDS[i];
-    bgCache[i] = img;
+    img.src = (wide ? STAGE_BACKGROUNDS_WIDE : STAGE_BACKGROUNDS)[i];
+    cache[i] = img;
   }
-  const img = bgCache[i];
+  const img = cache[i];
   return img && img.complete && img.naturalWidth > 0 ? img : null;
 }
 
@@ -47,7 +53,7 @@ function sprite(path: string): HTMLImageElement | null {
 /** 시작 화면에서 4스테이지 배경을 미리 받아 둔다 (JSX 조건식에서 호출되므로 항상 true 를 돌려준다) */
 export function preloadStageBackgrounds(): true {
   // 장(0~4)마다 — 예전엔 stageBackground(0~4) 를 불러 스테이지 0~4(전부 1장)의 배경 하나만 받았다 (2026-10-06)
-  for (let c = 0; c < STAGE_BACKGROUNDS.length; c += 1) chapterBackground(c);
+  for (let c = 0; c < STAGE_BACKGROUNDS.length; c += 1) { chapterBackground(c, false); chapterBackground(c, true); }
   return true;
 }
 
@@ -275,6 +281,8 @@ function skyColorOf(img: HTMLImageElement): string {
 }
 function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const { width, height, floorY } = world;
+  // 바닥선 위 영역이 가로로 더 길면(태블릿 가로·PC) 가로 띠, 아니면 세로 그림 (2026-10-13 보완)
+  preferWide = width > floorY * 1.15;
   const img = stageBackground(world.stageIndex);
   { const st = getStage(world.stageIndex); frameBossArt = st.bossArt; frameChapter = st.chapter; }
   // 땅을 걷는 맵 (2026-10-12): 배경은 지평선 띠 — 아래 가장자리를 바닥선에 맞추고(가로 꽉 채움), 그 아래는 평평한 흙 띠

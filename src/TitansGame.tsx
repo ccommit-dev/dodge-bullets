@@ -3031,6 +3031,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     <em className={`role-tag element-${ALLY_ELEMENT[h.id]}`}>{ELEMENT_LABEL[ALLY_ELEMENT[h.id]]}</em>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
                   </strong>
+                  {lv > 0 && !canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <small className="ceiling-tag" title="성문 방어로 지역을 개척하면 출전합니다">STAGE {h.unlockStage} 개척 후 출전</small>}
                   {lv > 0 && (
                     <span className="ally-stars" aria-label={`성급 ${stars}/${cap}`}>
                       {Array.from({ length: cap }, (_, i) => (
@@ -3533,6 +3534,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                       <AllyArt id={r.id} />
                       <b>{h.name}</b>
                       <small>{r.duplicate ? `중복 · 조각 +${r.shards}` : "새 동료!"}</small>
+                      {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <small className="ceiling-tag">STAGE {h.unlockStage} 개척 후 출전</small>}
                     </div>
                   </div>
                 </div>
