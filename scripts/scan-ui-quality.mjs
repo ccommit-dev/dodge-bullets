@@ -61,6 +61,20 @@ const scan = (name) => page.evaluate(async (name) => {
     const txt = btn.innerText.trim().replace(/\s+/g, " ");
     if (txt && rr.width > 0 && over > 0.5 && !seen.has(`btn|${txt}`)) { seen.add(`btn|${txt}`); out.push({ screen: name, kind: "clip", cls: String(btn.className).slice(0, 60), btn: "border", text: txt.slice(0, 30), over: Math.round(over * 10) / 10, ellipsis: false }); }
   }
+  // ③ 대비: 글자색과 실제 바탕(위로 올라가며 처음 만나는 불투명 배경) 대비 < 3:1 — 잠금·비활성(흐림 처리)은 뺀다 (2026-10-14 가독성)
+  const rgb = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(",").map((x) => parseFloat(x)); return { r, g, b, a }; };
+  const relL = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const cs = getComputedStyle(n); if (cs.backgroundImage !== "none") return null; const c = rgb(cs.backgroundColor); if (c && c.a >= 0.5) return c; } return null; };
+  const seenC = new Set();
+  const textWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let t = textWalker.nextNode(); t; t = textWalker.nextNode()) {
+    const txt = t.textContent.trim(); const el = t.parentElement;
+    if (!txt || txt.length < 2 || !el || !visible(el) || el.closest("canvas, svg, .titans-field, button:disabled, [aria-disabled=true], .locked, .tab-locked, .done")) continue;
+    let dim = false; for (let n = el; n; n = n.parentElement) { if (+getComputedStyle(n).opacity < 0.95) { dim = true; break; } } if (dim) continue;
+    const cs = getComputedStyle(el); const fg = rgb(cs.color); const bg = bgOf(el); if (!fg || !bg || fg.a < 0.9) continue;
+    const L1 = relL(fg), L2 = relL(bg); const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+    if (ratio < 3) { const key = `${el.className}|${txt.slice(0, 12)}`; if (seenC.has(key)) continue; seenC.add(key); out.push({ screen: name, kind: "contrast", cls: String(el.className).slice(0, 50), par: `${el.parentElement?.className ?? ""} < ${el.parentElement?.parentElement?.className ?? ""}`.slice(0, 80), text: txt.slice(0, 24), how: `${ratio.toFixed(2)} ${cs.color}`, bg: `rgb(${bg.r},${bg.g},${bg.b})` }); }
+  }
   // ② 남색·검정 배경
   const lum = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(",").map((x) => parseFloat(x)); const navyOrBlack = b >= r - 4 || Math.max(r, g, b) < 30; /* 남색·검정만 — 갈색 잉크·나무색은 테마 */ return { l: navyOrBlack ? (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 : 1, a }; };
   const seenDark = new Set();
@@ -73,7 +87,7 @@ const scan = (name) => page.evaluate(async (name) => {
     if (r.width * r.height > vw * vh * 0.85 && (cs.position === "fixed" || cs.position === "absolute")) continue;   // 전체 화면 막
     let dark = false, how = "";
     const bg = lum(cs.backgroundColor);
-    if (bg && bg.a >= 0.55 && bg.l < 0.2) { dark = true; how = cs.backgroundColor; }
+    if (bg && bg.a >= 0.45 && bg.l < 0.2) { dark = true; how = cs.backgroundColor; }   // 반투명(45%~) 남색도 판으로 보인다
     if (!dark && cs.backgroundImage.includes("gradient")) {
       const cols = cs.backgroundImage.match(/rgba?\([^)]+\)/g) ?? [];
       const ds = cols.map(lum).filter((x) => x && x.a >= 0.55);
@@ -113,11 +127,25 @@ for (const [w, h] of VIEWPORTS) {
   await clickText("button", "스킬"); await sleep(600); await shot("06-skills");
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("마이페이지"))?.click()); await sleep(1000);
   await closeModals(); await sleep(300); await shot("07-mypage");
+  // 2026-10-14 보완: 대장간·이벤트·비트·성문 메뉴도 돈다 (대장간이 남색 판 그대로였다)
+  const toHub = async () => { await page.evaluate(() => document.querySelector(".character-back")?.click()); await sleep(900); await closeModals(); await clickText(".titans-bottom-nav button", "모험"); await sleep(700); };
+  await toHub();
+  await page.evaluate(() => [...document.querySelectorAll(".hub-card")].find((b) => b.textContent.includes("대장간"))?.click()); await sleep(2200);
+  await shot("08-forge");
+  for (const t of ["조합소", "보호구", "원정 무기", "장비"]) { await page.evaluate((t) => [...document.querySelectorAll(".forge-tabs button")].find((b) => b.textContent.trim() === t)?.click(), t); await sleep(500); await shot(`09-forge-${t}`); }
+  await page.evaluate(() => document.querySelector(".forge-back")?.click()); await sleep(1500); await closeModals();
+  await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
+  await page.evaluate(() => document.querySelector(".season-nav")?.click()); await sleep(900); await shot("10-events");
+  await closeModals(); await page.keyboard.press("Escape"); await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(닫기|×)$/.test(b.textContent.trim()) && b.closest(".event-center, .event-sheet, [role=dialog]"))?.click()); await sleep(500);
+  await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
+  await page.evaluate(() => [...document.querySelectorAll(".hub-card")].find((b) => b.textContent.includes("비트 수련"))?.click()); await sleep(2200); await shot("11-beat-menu");
 }
 writeFileSync(`${OUT}/ui-quality.json`, JSON.stringify(all, null, 1));
-const clip = all.filter((x) => x.kind === "clip"), dark = all.filter((x) => x.kind === "dark");
+const clip = all.filter((x) => x.kind === "clip"), dark = all.filter((x) => x.kind === "dark"), contrast = all.filter((x) => x.kind === "contrast");
 const uniq = (arr) => [...new Map(arr.map((x) => [`${x.cls}|${x.text}`, x])).values()];
 console.log("CLIP", clip.length); for (const x of uniq(clip)) console.log("  clip", x.screen, "|", x.cls, "|", x.text, x.ellipsis ? "(…)" : `+${x.over}px`);
 console.log("DARK", dark.length); for (const x of uniq(dark)) console.log("  dark", x.screen, "|", x.tag, x.cls, "|", x.text, "|", x.how.slice(0, 40));
 await browser.close();
-process.exit(clip.length + dark.length === 0 ? 0 : 1);
+console.log("CONTRAST", contrast.length); for (const x of uniq(contrast)) console.log("  contrast", x.screen, "|", x.cls, "|", x.text, "|", x.how);
+process.exit(clip.length + dark.length + contrast.length === 0 ? 0 : 1);
