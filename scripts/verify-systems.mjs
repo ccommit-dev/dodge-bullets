@@ -1435,6 +1435,8 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("시그니처: 모든 동료에 이름·설명이 있고 이름이 겹치지 않는다", sigs.every(([, g]) => g.move && g.desc && g.move !== "필살기") && new Set(sigs.map(([, g]) => g.move)).size === sigs.length);
   const avg = sigs.map(([id, g]) => { let t = 0; for (let n = 1; n <= g.every * 30; n++) t += allySig.isSignatureHit(g, n) ? g.mul : allySig.signatureBaseMul(g); return [id, t / (g.every * 30)]; });
   ok("시그니처: 한 바퀴 평균 피해 배수 = 1 (밸런스 불변) · 평범한 타 배수 > 0", avg.every(([, a]) => Math.abs(a - 1) < 1e-9) && sigs.every(([, g]) => allySig.signatureBaseMul(g) > 0), JSON.stringify(avg.filter(([, a]) => Math.abs(a - 1) >= 1e-9)));
+  const fxText = sigs.map(([id, g]) => [id, g.fx, allySig.signatureEffect(g)]);
+  ok("시그니처 부가 효과: 힐러(빛 고리)=쿨타임 −0.25초 · 탱커(충격파)=대장 시간 0.2초 정지 · 나머지는 없음 · 설명에 없는 효과(회복·보호막) 문구 없음", fxText.every(([, fx, t]) => (fx === "halo" ? /쿨타임 −0.25초/.test(t) : fx === "quake" ? /0.2초 멈춤/.test(t) : t === "")) && sigs.every(([, g]) => !/회복|보호막|밀쳐/.test(g.desc)), JSON.stringify(fxText.filter(([, , t]) => t)));
   ok("시그니처: 이펙트 모양 4종 이상이 실제로 쓰인다", new Set(sigs.map(([, g]) => g.fx)).size >= 4);
   const bars = model.HEROES.map((h) => allySig.allyStatBars(h.attackInterval, allySig.allySignature(h.id)));
   ok("능력치 막대: 1~5 · 공속·한방 모두 값이 갈린다", bars.every((b) => b.speed >= 1 && b.speed <= 5 && b.burst >= 1 && b.burst <= 5) && new Set(bars.map((b) => b.speed)).size >= 3 && new Set(bars.map((b) => b.burst)).size >= 3);

@@ -21,21 +21,21 @@ const RAW: Record<TitanHeroId, { move: string; desc: string; fx?: SigFx; every?:
   mia: { move: "쌍단검 난무", desc: "2연격 끝에 X자 베기", every: 5, mul: 2.4 },
   leon: { move: "약점 표식 화살", desc: "꿰뚫는 한 발 — 보스 약점 창을 늘린다" },
   sera: { move: "마력탄 폭발", desc: "마력탄이 터지며 범위 피해", fx: "bolt", every: 3, mul: 1.6 },
-  garen: { move: "대검 내려찍기", desc: "땅을 울리는 중량 일격", every: 3, mul: 1.6 },
+  garen: { move: "대검 내려찍기", desc: "땅을 울려 대장을 비틀거리게", every: 3, mul: 1.6 },
   ari: { move: "화염 돌진창", desc: "창끝 불꽃으로 꿰뚫는 돌진" },
   nox: { move: "그림자 이중베기", desc: "치명 뒤 보이지 않는 두 번째 칼날", every: 5, mul: 2.4 },
-  luna: { move: "성광 결박", desc: "빛 고리가 적을 묶는다", every: 3, mul: 1.6 },
+  luna: { move: "성광 결박", desc: "빛 고리가 파티의 기술을 서두르게 한다", every: 3, mul: 1.6 },
   volt: { move: "포탑 일제 사격", desc: "설치한 포탑이 한꺼번에 쏜다", fx: "bolt" },
   mia_dark: { move: "그림자 잔상베기", desc: "연격이 그림자 잔상을 남긴다", every: 5, mul: 2.4 },
-  sera_light: { move: "성광 폭발", desc: "빛 마력탄이 광역으로 터진다" },
+  sera_light: { move: "성광 축복", desc: "햇살이 파티의 기술을 다시 채운다" },
   pyro: { move: "화염 회전베기", desc: "불꽃을 두른 쌍검 회전", fx: "slash" },
-  marina: { move: "치유 파도", desc: "물결이 파티를 씻고 보호막을 친다", every: 3, mul: 1.6 },
-  terra: { move: "지진 반격", desc: "방패로 막고 땅을 울려 되친다", every: 3, mul: 1.6 },
+  marina: { move: "치유 파도", desc: "물결이 파티를 씻어 기술을 빨리 돌린다", every: 3, mul: 1.6 },
+  terra: { move: "지진 반격", desc: "방패로 막고 땅을 울려 대장을 멈춘다", every: 3, mul: 1.6 },
   zephyr: { move: "관통 질풍화살", desc: "바람을 타고 줄지어 꿰뚫는 화살", every: 5, mul: 2.4 },
-  bronn: { move: "용암 반격", desc: "맞은 만큼 용암 대검으로 돌려준다", every: 3, mul: 1.6 },
+  bronn: { move: "용암 반격", desc: "용암 대검이 땅을 갈라 대장을 멈춘다", every: 3, mul: 1.6 },
   iris: { move: "빙결 창", desc: "얼음 창이 박히며 적을 느리게", fx: "bolt" },
   cain: { move: "뇌광 발도", desc: "번개처럼 뽑는 한 칼 — 치명 연쇄", every: 5, mul: 2.4 },
-  sylph: { move: "정령 질풍", desc: "바람 정령이 파티를 감싸 빨라진다" },
+  sylph: { move: "정령 질풍", desc: "바람 정령이 파티의 기술을 재촉한다" },
   orion: { move: "성창 낙하", desc: "하늘에서 성창이 떨어진다 — 보스 특화", fx: "bolt" },
   ember: { move: "불사조 강하", desc: "불사조가 내려꽂혀 전장을 태운다", fx: "bolt", every: 3, mul: 1.6 },
 };
@@ -58,6 +58,18 @@ export function isSignatureHit(sig: AllySignature, attackNo: number): boolean {
   return attackNo > 0 && attackNo % sig.every === 0;
 }
 
+/**
+ * 모양별 실제 부가 효과 (2026-10-14 보완: "회복·보호막 설명이 실제 효과가 없다") — 사냥터엔 파티 체력이 없으므로
+ * 힐러(빛 고리) = 모든 스킬 쿨타임을 줄이고, 탱커(충격파) = 대장 제한 시간을 잠깐 멈춘다(빙결과 같은 정지). 나머지는 피해만.
+ */
+export const SIG_HALO_CD_SEC = 0.25;
+export const SIG_QUAKE_FREEZE_MS = 200;
+export function signatureEffect(sig: AllySignature): string {
+  if (sig.fx === "halo") return `모든 스킬 쿨타임 −${SIG_HALO_CD_SEC}초`;
+  if (sig.fx === "quake") return `대장 제한 시간 ${SIG_QUAKE_FREEZE_MS / 1000}초 멈춤`;
+  return "";
+}
+
 export const SIG_FX_LABEL: Record<SigFx, string> = { slash: "베기", arrow: "투사체", bolt: "마법탄", quake: "충격파", halo: "빛 고리" };
 
 /** 도감·뽑기 능력치 막대 (1~5) — 공속은 공격 간격, 한방은 시그니처 1타가 몇 초치 DPS 인가(간격 × 배수) */
@@ -71,5 +83,6 @@ export function allyStatBars(attackInterval: number, sig: AllySignature): { spee
 
 /** 한 줄 요약 — "5타마다 ×2.4 · 베기" */
 export function signatureRhythm(sig: AllySignature): string {
-  return `${sig.every}타마다 ×${sig.mul} · ${SIG_FX_LABEL[sig.fx]}`;
+  const fx = signatureEffect(sig);
+  return `${sig.every}타마다 ×${sig.mul} · ${SIG_FX_LABEL[sig.fx]}${fx ? ` · ${fx}` : ""}`;
 }
