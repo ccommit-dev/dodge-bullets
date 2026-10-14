@@ -48,6 +48,23 @@ for (const [i, party] of PARTIES.entries()) {
   const field = await page.$(".titans-field");
   await (field ?? page).screenshot({ path: `${OUT}/party-${i + 1}-${party.join("-")}.png` });
   ok(`파티 ${i + 1} (${party.join("·")}): 4명 모두 출전 · 좌우 반전 없음`, party.every((id) => r.some((a) => a.id === id)) && r.every((a) => !a.mirrored), JSON.stringify(r));
+  // 시그니처 실전 (2026-10-14 보완: "힐러·탱커만 쟀다") — 9초 싸우며 DEV 히트 로그·기술 이름 라벨·이펙트 모양을 모은다
+  await page.evaluate(() => { window.__huntHitLog = []; });
+  const labels = new Set(), fxSeen = new Set();
+  for (let k = 0; k < 90; k += 1) {
+    const snap = await page.evaluate(() => ({ l: [...document.querySelectorAll(".titans-float.src-ally .float-label")].map((e) => e.textContent), f: [...document.querySelectorAll('.titans-fx[class*="titans-fx-sig-"]')].map((e) => [...e.classList].find((c) => c.startsWith("titans-fx-sig-")).slice(14)) }));
+    snap.l.forEach((x) => labels.add(x)); snap.f.forEach((x) => fxSeen.add(x));
+    await sleep(100);
+  }
+  const hits = await page.evaluate(() => window.__huntHitLog ?? []);
+  const per = party.map((id) => {
+    const hs = hits.filter((h) => h.id === id), sigs = hs.filter((h) => h.sig), norm = hs.filter((h) => !h.sig);
+    const sigRatio = sigs.length ? sigs[0].dmg / sigs[0].base : null, normRatio = norm.length ? norm[0].dmg / norm[0].base : null;
+    const every = sigs.length >= 2 ? sigs[1].no - sigs[0].no : null;   // 이어진 두 시그니처 타 번호의 차 = N (공격 수는 로그를 비우기 전부터 이어진다)
+    return { id, hits: hs.length, sigs: sigs.length, every, sigX: sigRatio && +sigRatio.toFixed(3), normX: normRatio && +normRatio.toFixed(3), move: sigs[0]?.move ?? hs[0]?.move, fx: hs[0]?.fx,
+      onBeat: sigs.every((h) => h.no % every === 0) && norm.every((h) => h.no % every !== 0), label: labels.has(sigs[0]?.move ?? "?"), fxShown: fxSeen.has(hs[0]?.fx ?? "?") };
+  });
+  ok(`파티 ${i + 1}: 동료마다 시그니처가 N타째에 실제로 나가고(배수 = 표기) 기술 이름 라벨·이펙트 모양이 화면에 뜬다`, per.every((p) => p.sigs >= 2 && p.every >= 3 && p.onBeat && p.sigX > 1.5 && p.normX < 1 && p.label && p.fxShown), JSON.stringify(per));
 }
 ok(`출전 가능한 동료 ${ALL.length}명 전원이 사냥터에 실제로 그려졌다`, ALL.every((id) => seen.has(id)), [...ALL].filter((id) => !seen.has(id)).join(",") || "all");
 
