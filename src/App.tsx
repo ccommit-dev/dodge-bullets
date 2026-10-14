@@ -1,3 +1,4 @@
+import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen";
 import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } from "./equipment/anchors";
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
 import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
@@ -391,6 +392,19 @@ function App() {
   const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal" | "season">("daily");
   const [backupOpen, setBackupOpen] = useState(false);
   const [settingsToast, setSettingsToast] = useState("");
+  // 인앱 브라우저 가로 안내 (2026-10-14) — 카카오톡 등에서 가로로 돌리면 도구줄이 화면을 먹는다. 한 번 닫으면 그 기기에선 다시 안 뜬다
+  const [inAppLandscape, setInAppLandscape] = useState(false);
+  useEffect(() => {
+    const fm = fullscreenMode();
+    if (fm.kind !== "external" && fm.kind !== "guide") return;
+    let dismissed = false;
+    try { dismissed = localStorage.getItem("dodgebullets:inapp-fs-hint") === "1"; } catch { /* 저장 불가 환경 */ }
+    if (dismissed) return;
+    const mq = window.matchMedia("(orientation: landscape) and (max-height: 560px)");
+    const on = () => setInAppLandscape(mq.matches);
+    on(); mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
   const showToast = (msg: string, ms = 2400) => { setSettingsToast(msg); window.setTimeout(() => setSettingsToast(""), ms); };
   // 성문 보급소 결제 (2026-10-02) — 진행 중인 결제 상품 · 같은 판에서 성문에 진 횟수(3·4스테이지)
   const [buyingProduct, setBuyingProduct] = useState<string | null>(null);
@@ -1673,22 +1687,27 @@ function App() {
                   <b>{fxLow ? "저사양" : "전체"}</b>
                 </button>
                 {/* 전체 화면 (2026-10-14, 사용자: "가로모드 전체화면"): 브라우저 주소창·도구줄을 숨긴다. 지원 브라우저(안드로이드 크롬 등)에서만 보이고, 앱(Capacitor)은 이미 전체 화면 */}
-                {typeof document !== "undefined" && document.fullscreenEnabled && !(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="settings-fullscreen"
-                    onClick={() => {
-                      const el = document.documentElement;
-                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-                      else void el.requestFullscreen({ navigationUI: "hide" }).catch(() => undefined);
-                      setSettingsOpen(false);
-                    }}
-                  >
-                    <span>전체 화면</span>
-                    <b>{document.fullscreenElement ? "끄기" : "켜기"}</b>
-                  </button>
-                )}
+                {/* 인앱 브라우저(카카오톡 등)는 Fullscreen API 가 없다 → "브라우저로 열기"(카카오 openExternal · 안드로이드 크롬 intent) 또는 안내 (2026-10-14 보완) */}
+                {(() => {
+                  const fm = fullscreenMode();
+                  if (fm.kind === "none") return null;
+                  return (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={`settings-fullscreen fs-${fm.kind}`}
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        if (fm.kind === "toggle") void toggleFullscreen();
+                        else if (fm.kind === "external") { showToast(`${fm.app} 밖 브라우저로 엽니다 — 거기서 전체 화면이 됩니다`, 2600); window.location.href = fm.url; }
+                        else showToast(`${fm.app} 안에서는 전체 화면이 안 됩니다 — 오른쪽 위 메뉴 → '다른 브라우저로 열기'`, 3600);
+                      }}
+                    >
+                      <span>전체 화면</span>
+                      <b>{fm.kind === "toggle" ? (isFullscreen() ? "끄기" : "켜기") : "브라우저로 열기"}</b>
+                    </button>
+                  );
+                })()}
                 <button type="button" role="menuitem" className="settings-orientation" onClick={cycleOrientation} aria-label={`화면 방향 ${ORIENTATION_LABEL[orientationPref]}`}>
                   <span>화면 방향</span><b>{ORIENTATION_LABEL[orientationPref]}</b>
                 </button>
@@ -2449,6 +2468,20 @@ function App() {
         <SaveBackupModal userHash={userHashRef.current} onClose={() => setBackupOpen(false)} />
       )}
       {settingsToast && <div className="titans-toast settings-copy-toast">{settingsToast}</div>}
+      {inAppLandscape && (() => {
+        const fm = fullscreenMode();
+        if (fm.kind !== "external" && fm.kind !== "guide") return null;
+        const close = () => { setInAppLandscape(false); try { localStorage.setItem("dodgebullets:inapp-fs-hint", "1"); } catch { /* 저장 불가 */ } };
+        return (
+          <div className="inapp-fs-hint" role="status">
+            <span>{fm.app} 안에서는 위아래 도구줄이 화면을 가립니다</span>
+            {fm.kind === "external"
+              ? <button type="button" onClick={() => { close(); window.location.href = fm.url; }}>브라우저로 열어 전체 화면</button>
+              : <small>오른쪽 위 메뉴 → 다른 브라우저로 열기</small>}
+            <button type="button" className="inapp-fs-close" aria-label="닫기" onClick={close}>×</button>
+          </div>
+        );
+      })()}
       {errorLogText && (
         <div className="exit-modal error-log-modal" role="dialog" aria-modal="true">
           <div className="exit-card">

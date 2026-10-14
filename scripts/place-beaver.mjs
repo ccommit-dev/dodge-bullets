@@ -114,8 +114,9 @@ if (want("allies")) {
     const gid = id.replace(/_/g, "-");
     // v2(털색 구분 · 자기 대기 참조, batch-beaver3.sh) 가 있으면 그것을, 없으면 1차 bv 를 꽂는다 (2026-10-07)
     let stem = existsSync(`${OUT}/char-bv2-${id}-hit.png`) ? "bv2" : "bv";
-    for (const gen of ["capy8", "capy5", "capy2", "bv5", "bv3"]) {   // 카피 8차(추가 5명) → 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
+    for (const gen of ["capy12", "capy8", "capy5", "capy2", "bv5", "bv3"]) {   // 카피 12차(정면 4명 → 오른쪽 ¾, 고정표로만) → 8차(추가 5명) → 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
       const pin = FACING[id];
+      if (gen === "capy12" && !pin) continue;   // 12차는 사람이 고른 시드만(고정표) — 자동 선택 금지
       if (pin && !pin.src.startsWith(`char-${gen}-${gid}-idle-s`)) continue;
       const cands = globOut(new RegExp(`^char-${gen}-${gid}-idle-s\\d+\\.png$`));
       if (!cands.length) continue;
