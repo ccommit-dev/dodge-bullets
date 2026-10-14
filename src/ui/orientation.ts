@@ -2,16 +2,22 @@
  * 화면 방향 (2026-10-07, 사용자: "모바일 세로모드를 지원기능 추가").
  * 예전엔 안드로이드 매니페스트가 세로로 고정이었고 설정에 선택이 없었다. 이제 매니페스트는 fullUser(기기 회전 따름)이고
  * 여기서 사용자 선택(자동 · 세로 고정 · 가로 고정)을 저장해 앱(@capacitor/screen-orientation)과 웹(screen.orientation.lock, 지원 브라우저만)에 건다.
- * 기본은 **세로 고정** — 지금까지의 플레이와 같다. 가로는 콘셉트 그림(노션)의 가로 화면 레이아웃(App.css @media landscape)이 받는다.
+ * 기본은 **자동**(2026-10-14, 사용자: "가로모드 · 모바일에서 이질감 없게") — 기기를 돌리면 가로 레이아웃(App.css @media landscape)이 받는다.
+ * 토스 미니앱만 출시 가이드(세로 고정)에 따라 기본 세로 — game/toss.ts lockScreenForGame 과 같은 판단.
  */
 export type OrientationPref = "auto" | "portrait" | "landscape";
 const KEY = "dodgebullets:orientation";
 
+/** 저장된 선택이 없을 때 — 토스 미니앱은 세로, 그 밖(안드로이드 앱·웹·카카오톡 인앱)은 자동 */
+export function defaultOrientationPref(ua: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): OrientationPref {
+  return /toss/i.test(ua) ? "portrait" : "auto";
+}
+
 export function loadOrientationPref(): OrientationPref {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "auto" || v === "landscape" ? v : "portrait";
-  } catch { return "portrait"; }
+    return v === "auto" || v === "landscape" || v === "portrait" ? v : defaultOrientationPref();
+  } catch { return defaultOrientationPref(); }
 }
 
 export function saveOrientationPref(p: OrientationPref): void {

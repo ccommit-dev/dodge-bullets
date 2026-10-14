@@ -5359,11 +5359,11 @@ small, p, li, .nav-help, .hub-card-body small, .gacha-detail > p, .gacha-detail 
 
 .titans-fx-sig-arrow { border-radius: 0; height: 8px; margin-top: -4px; background: linear-gradient(90deg, transparent, hsl(var(--fx-hue) 90% 70%) 55%, #fff 92%, transparent); filter: drop-shadow(0 0 6px hsl(var(--fx-hue) 95% 60%)); animation: fx-sig-arrow .45s cubic-bezier(.4,0,.6,1) forwards; }
 .titans-fx-sig-arrow::after { content: ""; position: absolute; right: -6px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; border: 3px solid hsl(var(--fx-hue) 95% 75%); opacity: 0; animation: fx-sig-pop .3s .3s ease-out forwards; }
-@keyframes fx-sig-arrow { 0% { transform: translateX(-140px) scaleX(.5); opacity: 0; } 20% { opacity: 1; } 70% { transform: translateX(0) scaleX(1); opacity: 1; } 100% { transform: translateX(8px) scaleX(.3); opacity: 0; } }
+@keyframes fx-sig-arrow { 0% { transform: translateX(-60px) scaleX(.5); opacity: 0; } 20% { opacity: 1; } 70% { transform: translateX(0) scaleX(1); opacity: 1; } 100% { transform: translateX(8px) scaleX(.3); opacity: 0; } }
 
 .titans-fx-sig-bolt { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, hsl(var(--fx-hue) 95% 68%) 40%, transparent 70%); animation: fx-sig-bolt .55s cubic-bezier(.3,0,.5,1) forwards; }
 .titans-fx-sig-bolt::after { content: ""; position: absolute; inset: -30px; border-radius: 50%; border: 4px dashed hsl(var(--fx-hue) 95% 75%); opacity: 0; animation: fx-sig-burst .35s .3s ease-out forwards; }
-@keyframes fx-sig-bolt { 0% { transform: translate(-130px, -40px) scale(.5); opacity: 0; } 15% { opacity: 1; } 55% { transform: translate(0, 0) scale(1); } 75% { transform: scale(1.8); opacity: .9; } 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes fx-sig-bolt { 0% { transform: translate(-80px, -30px) scale(.5); opacity: 0; } 15% { opacity: 1; } 55% { transform: translate(0, 0) scale(1); } 75% { transform: scale(1.8); opacity: .9; } 100% { transform: scale(2.2); opacity: 0; } }
 @keyframes fx-sig-burst { 0% { transform: scale(.3) rotate(0); opacity: 1; } 100% { transform: scale(1.2) rotate(90deg); opacity: 0; } }
 @keyframes fx-sig-pop { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
 
