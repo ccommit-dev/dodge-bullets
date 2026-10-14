@@ -10,7 +10,7 @@ have() { [ -f "$O/$1" ]; }
 sh() { for sd in $3 $(( $3 + 100 )); do have "char-capy10-$1-idle-s$sd.png" || { ARTGEN_FACE="$LEFT" ARTGEN_REFS="$REFS" "$PY" art-gen/gen.py char "capy10-$1" "DARK PURPLE furred shadow beaver $2, glowing violet eyes, chibi, paddle tail, full body" --no-pose --seed "$sd" --ip 0.3 --states idle && cp "$O/char-capy10-$1-idle.png" "$O/char-capy10-$1-idle-s$sd.png"; }; done; }
 sh swordsman  "swordsman with a dark katana" 20262901
 sh tracker    "tracker with a hood and crossbow" 20262902
-sh ascetic    "monk with prayer beads and staff" 20262903
+sh ascetic    "monk with prayer beads and staff" 20262913   # 20262903 은 SDXL 이 두 번 멈춘 시드
 sh gatekeeper "gatekeeper with a tall shield and spear" 20262904
 sh wanderer   "wanderer with a tattered cape and stick" 20262905
 sh executor   "executor with a huge axe and iron mask" 20262906
