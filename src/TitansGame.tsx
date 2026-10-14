@@ -96,6 +96,7 @@ import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "
 import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { hubCards } from "./titans/hubCards";
+import { lowFxOn } from "./ui/perfMode";
 import { CHEST_POINTS_FOR_CHEST, CHEST_TABLE, grantChest, openChest } from "./economy/chests";
 import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
@@ -2358,7 +2359,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   })();
 
   return (
-    <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""}`} style={pad}>
+    <div className={`titans-layer ${lowFxRef.current || lowFxOn() ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""}`} style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${assetUrl("titans/character/base/hero-idle.png")})` }} />

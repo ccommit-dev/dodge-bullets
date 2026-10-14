@@ -8,7 +8,7 @@
  *   node scripts/device-play.mjs [outDir] [--no-install]
  * 준비: VITE_QA_BUILD=true npx vite build → npx cap sync android → android/gradlew assembleDebug
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import puppeteer from "puppeteer";
@@ -23,8 +23,28 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const ok = (name, cond, detail = "") => { results.push([cond ? "PASS" : "FAIL", name, detail]); console.log(cond ? "PASS" : "FAIL", name, detail ? "— " + detail : ""); };
 
-const devices = adb("devices").split("\n").slice(1).filter((l) => /\tdevice$/.test(l));
-if (devices.length === 0) { console.log("FAIL 연결된 안드로이드 기기 없음 — USB 디버깅을 켜고 연결하세요"); process.exit(2); }
+const listDevices = () => adb("devices").split("\n").slice(1).filter((l) => /\tdevice$/.test(l));
+let devices = listDevices();
+// 2026-10-14: 기기가 없으면 에뮬레이터(medium_phone)를 셸과 분리해 띄우고 부팅을 기다린다 — 세션 재시작마다 떨어지던 것을 손으로 재기동하지 않게.
+// --no-emulator 면 예전처럼 바로 실패. 에뮬레이터 경로는 EMULATOR 환경 변수 또는 SDK 기본 위치
+if (devices.length === 0 && !process.argv.includes("--no-emulator")) {
+  const EMU = process.env.EMULATOR ?? join(process.env.LOCALAPPDATA ?? "", "Android/Sdk/emulator/emulator.exe");
+  const AVD = process.env.AVD ?? "medium_phone";
+  if (existsSync(EMU)) {
+    console.log(`기기 없음 → 에뮬레이터 ${AVD} 시작 (${EMU})`);
+    try { adb("kill-server"); } catch { /* ignore */ }
+    const child = spawn(EMU, ["-avd", AVD, "-no-snapshot-load", "-no-boot-anim"], { detached: true, stdio: "ignore", windowsHide: true });
+    child.unref();
+    for (let i = 0; i < 60; i += 1) {
+      await sleep(6000);
+      let booted = "";
+      try { booted = execFileSync(ADB, ["-s", "emulator-5554", "shell", "getprop", "sys.boot_completed"], { encoding: "utf8" }).trim(); } catch { /* not yet */ }
+      if (booted === "1") { console.log(`부팅 완료 (${(i + 1) * 6}s) · 40초 안정화`); await sleep(40000); break; }
+    }
+    devices = listDevices();
+  }
+}
+if (devices.length === 0) { console.log("FAIL 연결된 안드로이드 기기 없음 — USB 디버깅을 켜고 연결하세요 (에뮬레이터 자동 시작 실패)"); process.exit(2); }
 const model = adb("shell", "getprop", "ro.product.model");
 const sdk = adb("shell", "getprop", "ro.build.version.sdk");
 const [sw, sh] = (adb("shell", "wm", "size").match(/(\d+)x(\d+)/) ?? []).slice(1).map(Number);
