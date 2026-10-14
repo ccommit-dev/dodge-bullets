@@ -53,12 +53,13 @@ writeFileSync(entry, [
   `export * as beatPerks from "${root}/src/beat/beatPerks";`,
   `export * as dodgeWeak from "${root}/src/game/bossWeak";`,
   `export * as allySig from "${root}/src/titans/allySignature";`,
+  `export * as orientation from "${root}/src/ui/orientation";`,
   `export * as fullscreen from "${root}/src/ui/fullscreen";`,
   `export * as onboarding from "${root}/src/progression/onboarding";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1458,6 +1459,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const chrome = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/129.0 Mobile Safari/537.36";
   const href = "https://ccommit-dev.github.io/dodge-bullets/game/?q=1";
   ok("인앱 판별: 카카오·인스타·네이버는 인앱 · 토스·크롬은 아니다", fullscreen.inAppBrowser(kakaoA) === "kakao" && fullscreen.inAppBrowser(kakaoI) === "kakao" && fullscreen.inAppBrowser(instaI) === "instagram" && fullscreen.inAppBrowser(naverA) === "naver" && fullscreen.inAppBrowser(toss) === null && fullscreen.inAppBrowser(chrome) === null);
+  ok("화면 방향 기본값: 토스 미니앱은 세로 고정(출시 가이드) · 안드로이드 앱·크롬·카카오톡 인앱은 자동(가로로 돌리면 가로)", orientation.defaultOrientationPref(toss) === "portrait" && orientation.defaultOrientationPref(chrome) === "auto" && orientation.defaultOrientationPref(kakaoA) === "auto" && orientation.defaultOrientationPref(kakaoI) === "auto");
   ok("외부 열기: 카카오(안드·iOS)는 openExternal 에 주소를 인코딩해 싣는다", fullscreen.externalOpenUrl("kakao", href, kakaoA) === "kakaotalk://web/openExternal?url=" + encodeURIComponent(href) && fullscreen.externalOpenUrl("kakao", href, kakaoI)?.startsWith("kakaotalk://web/openExternal?url="));
   const intent = fullscreen.externalOpenUrl("naver", href, naverA);
   ok("외부 열기: 안드로이드 다른 인앱은 크롬 intent(경로·쿼리 보존 + 폴백 주소) · iOS 인스타는 null(안내)", !!intent && intent.startsWith("intent://ccommit-dev.github.io/dodge-bullets/game/?q=1#Intent;scheme=https;package=com.android.chrome;") && intent.includes("S.browser_fallback_url=") && fullscreen.externalOpenUrl("instagram", href, instaI) === null, intent ?? "");
