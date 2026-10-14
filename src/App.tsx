@@ -25,7 +25,7 @@ import { renderShareCard, shareCard } from "./ui/shareCard";
 import { WalletBar } from "./ui/WalletBar";
 import { ORIENTATION_LABEL, applyOrientation, loadOrientationPref, saveOrientationPref, type OrientationPref } from "./ui/orientation";
 import { shareCardExtras } from "./ui/shareCardData";
-import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
+import { applyLowFx, frameMonitor, lowFxOn, setLowFx } from "./ui/perfMode";
 import { TITLES } from "./economy/gemCatalog";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
@@ -309,6 +309,8 @@ function App() {
   const [deathTip, setDeathTip] = useState("");
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
+  /** 이펙트 토글 (2026-10-14 보완): 저사양 모드(ui/perfMode)를 설정에서 직접 켜고 끈다 — 자동 감지(느린 기기)와 같은 키 */
+  const [fxLow, setFxLow] = useState(() => lowFxOn());
   /** 화면 방향 — 자동 · 세로 · 가로 (2026-10-07). 부팅과 바뀔 때 기기에 건다 */
   const [orientationPref, setOrientationPref] = useState<OrientationPref>(() => loadOrientationPref());
   useEffect(() => { void applyOrientation(orientationPref); }, [orientationPref]);
@@ -1658,6 +1660,17 @@ function App() {
                 >
                   <span>사운드</span>
                   <b>{soundOn ? "ON" : "OFF"}</b>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="settings-fx"
+                  onClick={() => { const next = !fxLow; setLowFx(next); setFxLow(next); }}
+                  aria-pressed={!fxLow}
+                  title="저사양: 반짝이·광선·흐림 그림자 같은 이펙트를 줄인다 (느린 기기에서 자동으로 켜지기도 한다)"
+                >
+                  <span>이펙트</span>
+                  <b>{fxLow ? "저사양" : "전체"}</b>
                 </button>
                 <button type="button" role="menuitem" className="settings-orientation" onClick={cycleOrientation} aria-label={`화면 방향 ${ORIENTATION_LABEL[orientationPref]}`}>
                   <span>화면 방향</span><b>{ORIENTATION_LABEL[orientationPref]}</b>

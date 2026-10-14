@@ -15,7 +15,9 @@ const alpha = { r: 0, g: 0, b: 0, alpha: 0 };
 let placed = 0;
 for (const id of IDS) {
   const cands = readdirSync(OUT).filter((f) => new RegExp(`^char-capy10-${id}-idle-s\\d+\\.png$`).test(f)).sort();
-  const file = seedOverride[id] ? `${OUT}/char-capy10-${id}-idle-s${seedOverride[id]}.png` : cands[0] && `${OUT}/${cands[0]}`;
+  // 2026-10-14 보완: recolor 로 털을 보라로 바꾼 shadow-<id>.png(batch-capy10r)가 있으면 그것을 우선 쓴다 (NO_RECOLOR=1 로 끔)
+  const recolored = `${OUT}/shadow-${id}.png`;
+  const file = !process.env.NO_RECOLOR && existsSync(recolored) ? recolored : seedOverride[id] ? `${OUT}/char-capy10-${id}-idle-s${seedOverride[id]}.png` : cands[0] && `${OUT}/${cands[0]}`;
   if (!file || !existsSync(file)) { console.log("skip", id); continue; }
   const facing = await facingOf(file);
   let img = sharp(file).trim({ threshold: 8 });
