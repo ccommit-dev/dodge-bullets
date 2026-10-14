@@ -1,5 +1,5 @@
 import { AllySigInfo } from "./titans/AllySigInfo";
-import { allySignature, isSignatureHit, signatureBaseMul, type SigFx } from "./titans/allySignature";
+import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { SafeInsets } from "./game/toss";
 import {
@@ -386,6 +386,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const toastTimer = useRef<number | null>(null);
   /** 동료별 누적 공격 수 — N 타마다 시그니처 기술 (allySignature.ts) */
   const allyAttackNo = useRef<Partial<Record<TitanHeroId, number>>>({});
+  // DEV 훅 (2026-10-14) — 시그니처 부가 효과 실검사(shoot-all-allies)가 대장 제한 시간·정지 시각을 읽는다. 출시 번들엔 없다
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current });
+    return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; };
+  }, []);
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
   const burnAcc = useRef(0);
@@ -1184,6 +1190,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           const no = (allyAttackNo.current[h.id] = (allyAttackNo.current[h.id] ?? 0) + 1);
           const isSig = isSignatureHit(sig, no);
           pushFx(isSig ? `sig-${sig.fx}` : "ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
+          // 부가 효과 (2026-10-14 보완) — 힐러 빛 고리: 모든 스킬 쿨 −0.25초 · 탱커 충격파: 대장 제한 시간 0.2초 정지
+          if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
+          if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
+          if (isSig && sig.fx === "quake" && bossRef.current) { const until = performance.now() + SIG_QUAKE_FREEZE_MS; buffsRef.current = { ...buffsRef.current, freezeUntil: Math.max(buffsRef.current.freezeUntil, until) }; setBuffs((b) => ({ ...b, freezeUntil: Math.max(b.freezeUntil, until) })); }
           applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * (isSig ? sig.mul : signatureBaseMul(sig)), false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
         }
       }

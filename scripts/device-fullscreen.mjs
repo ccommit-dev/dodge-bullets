@@ -63,6 +63,18 @@ try {
   ok("전체 화면이 켜지고 보이는 높이가 늘어난다(주소창·도구줄 숨김)", after.fs && after.h > before.h, `${before.h} → ${after.h} · field ${after.field}`);
   ok("전체 화면에서도 사냥터가 화면 높이를 채운다(필드 ≥ 화면 높이의 75%)", after.field >= after.h * 0.75, `${after.field}/${after.h}`);
   await page.evaluate(() => document.exitFullscreen?.().catch(() => undefined));
+  await sleep(800);
+  // 인앱 → 크롬 탈출 주소(안드로이드 intent)가 실제 안드로이드에서 크롬으로 열리는가 — 게임 코드(fullscreen.ts)가 만든 주소 그대로를 링크로 눌러 본다
+  const intentUrl = await page.evaluate(async () => {
+    const m = await import("/src/ui/fullscreen.ts");
+    return m.externalOpenUrl("naver", `${location.origin}/?intent-ok=1`, "Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Chrome/129.0 Mobile Safari/537.36 NAVER(inapp; search; 2000; 12.6.4)");
+  });
+  await page.evaluate((u) => { const a = document.createElement("a"); a.id = "intent-probe"; a.href = u; a.textContent = "intent"; a.style.cssText = "position:fixed;left:40px;top:40px;z-index:9999;padding:20px;background:#fff"; document.body.appendChild(a); }, intentUrl);
+  await page.tap("#intent-probe");
+  let opened = false;
+  for (let i = 0; i < 12 && !opened; i += 1) { await sleep(1000); opened = (await browser.targets()).some((t) => t.url().includes("intent-ok=1")); }
+  writeFileSync(`${OUT}/3-intent.png`, cap());
+  ok("인앱 탈출 intent 주소(fullscreen.ts 생성)가 안드로이드 크롬에서 그 페이지를 연다", !!intentUrl && opened, String(intentUrl).slice(0, 120));
 } catch (e) {
   ok("실행", false, String(e).slice(0, 300));
 } finally {
