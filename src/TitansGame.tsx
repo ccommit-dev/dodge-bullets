@@ -1194,7 +1194,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
           if (isSig && sig.fx === "quake" && bossRef.current) { const until = performance.now() + SIG_QUAKE_FREEZE_MS; buffsRef.current = { ...buffsRef.current, freezeUntil: Math.max(buffsRef.current.freezeUntil, until) }; setBuffs((b) => ({ ...b, freezeUntil: Math.max(b.freezeUntil, until) })); }
-          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * (isSig ? sig.mul : signatureBaseMul(sig)), false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
+          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul;
+          const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
+          if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
+          applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
         }
       }
 
