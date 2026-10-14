@@ -73,10 +73,12 @@ import {
   EXPEDITION_HOURS,
   EXPEDITION_MAX,
   RARITY_COLOR,
+  RARITY_LABEL,
   ELEMENT_LABEL,
   ROLE_LABEL,
   SHOP_ALLY_GEM_COST,
   STAR_CAP,
+  STAR_MULT,
   effectiveStars,
   expeditionReward,
   partySlotCount,
@@ -258,6 +260,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [buffs, setBuffs] = useState<BuffState>(EMPTY_BUFFS);
   /** 소환 결과 연출 (확률형 재설계) — 카드 뒤집기 모달. null이면 닫힘 */
   const [gachaReveal, setGachaReveal] = useState<PullResult[] | null>(null);
+  /** 연출 카드 설명 (2026-10-14): 탭/마우스 오버한 카드 — 등급 설명·역할·특성·능력치 */
+  const [gachaFocus, setGachaFocus] = useState<number | null>(null);
   /** 소환진 사전 연출 (계획안 E) — 1.2초 뒤 gachaReveal로 넘어간다 */
   const [gachaSummoning, setGachaSummoning] = useState<{ tier: "R" | "SR" | "SSR"; count: number } | null>(null);
   const [showGachaRates, setShowGachaRates] = useState(false);
@@ -2356,7 +2360,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   return (
     <div className={`titans-layer ${lowFxRef.current ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""}`} style={pad}>
       <header className="titans-header">
-        {settingsNode}
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${assetUrl("titans/character/base/hero-idle.png")})` }} />
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
@@ -3528,6 +3531,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         <button type="button" className={tab === "hub" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("hub"); }}><ContentIcon name="event" /><span>모험</span></button>
         <button type="button" className={tab === "heroes" || tab === "gacha" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("heroes"); }}><ContentIcon name="ally" /><span>동료</span></button>
         <button type="button" className={tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("premium"); }}><ContentIcon name="shop" /><span>상점</span></button>
+        {/* 설정 (2026-10-14 사용자: "설정 아이콘을 상점 탭 오른쪽으로") — 메뉴는 위로 연다 */}
+        {settingsNode}
       </nav>
 
       {toast && <div className="titans-toast">{toast}</div>}
@@ -3553,21 +3558,45 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;
               return (
-                <div key={`${r.id}-${i}`} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}>
+                <div key={`${r.id}-${i}`} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${gachaFocus === i ? "is-focus" : ""}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
+                  role="button" tabIndex={0} aria-label={`${RARITY_LABEL[r.rarity]} ${h.name}`} title={`${RARITY_LABEL[r.rarity]}(${r.rarity}) · ${ROLE_LABEL[ALLY_ROLE[h.id]]} · ${h.feature}`}
+                  onMouseEnter={() => setGachaFocus(i)} onClick={() => setGachaFocus((f) => (f === i ? null : i))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setGachaFocus(i); } }}>
                   <div className="gacha-card-inner">
-                    <div className="gacha-card-back">?</div>
+                    <div className="gacha-card-back"><i className="gacha-back-sigil" aria-hidden="true" /></div>
                     <div className="gacha-card-front">
-                      <em style={{ color: RARITY_COLOR[r.rarity] }}>{r.rarity}{r.pickup ? " · 픽업" : ""}</em>
-                      <AllyArt id={r.id} />
+                      <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}<i>{RARITY_LABEL[r.rarity]}</i>{r.pickup && <i className="pickup">픽업</i>}<i className="star">★{STAR_CAP[r.rarity]}</i></em>
+                      {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`}>🔒 S{h.unlockStage}</i>}
+                      <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true"><i /><i /><i /><i /><i /><i /></i>}</span>
                       <b>{h.name}</b>
                       <small>{r.duplicate ? `중복 · 조각 +${r.shards}` : "새 동료!"}</small>
-                      {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <small className="ceiling-tag">STAGE {h.unlockStage} 개척 후 출전</small>}
                     </div>
                   </div>
                 </div>
               );
             })}
-            <button type="button" className="cta gacha-close" onClick={() => setGachaReveal(null)}>확인</button>
+            {/* 설명 패널 — 탭/마우스 오버한 카드. 등급이 능력치에 어떻게 닿는지(성급 상한·중복 조각·파견 조각·고유 특성) */}
+            {(() => {
+              const r = gachaFocus !== null ? gachaReveal[gachaFocus] : null;
+              const h = r ? HEROES.find((x) => x.id === r.id) : null;
+              if (!r || !h) return <p className="gacha-detail gacha-detail-hint">카드를 누르면 등급·역할·특성 설명이 보입니다</p>;
+              const feat = ALLY_FEATURES[r.id as keyof typeof ALLY_FEATURES];
+              const dupe = GACHA.dupeShards[r.rarity];
+              const expMul = { R: 1, SR: 1.5, SSR: 2 }[r.rarity];
+              return (
+                <div className={`gacha-detail rarity-${r.rarity.toLowerCase()}`} onClick={(e) => e.stopPropagation()}>
+                  <b><em style={{ color: RARITY_COLOR[r.rarity] }}>{RARITY_LABEL[r.rarity]} {r.rarity}</em> {h.name}</b>
+                  <small>{h.role} · {ROLE_LABEL[ALLY_ROLE[h.id]]} · {ELEMENT_LABEL[ALLY_ELEMENT[h.id]]} 속성 · {h.attackType}</small>
+                  <p>{h.feature}{feat ? ` · 고유 특성 「${feat.label}」 ${feat.desc}` : ""}</p>
+                  <ul>
+                    <li>기본 DPS <b>{h.baseDps.toLocaleString()}</b></li>
+                    <li>성급 상한 <b>★{STAR_CAP[r.rarity]}</b> (최대 ×{STAR_MULT[STAR_CAP[r.rarity]]})</li>
+                    <li>중복 조각 <b>+{dupe}</b> · 파견 조각 <b>×{expMul}</b></li>
+                    {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <li className="warn">STAGE {h.unlockStage} 지역을 성문 방어로 개척해야 출전</li>}
+                  </ul>
+                </div>
+              );
+            })()}
+            <button type="button" className="cta gacha-close" onClick={() => { setGachaReveal(null); setGachaFocus(null); }}>확인</button>
           </div>
         </div>
       )}
