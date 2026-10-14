@@ -1,3 +1,4 @@
+import { GEAR_ENHANCE_MAX, GEAR_PARTS, GEAR_PART_DEF, emptyGearLevels, gearEnhanceCost, gearTierOfEnhance, type GearLevels, type GearPart } from "./equipment/parts";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
@@ -40,7 +41,7 @@ type ForgeGameProps = {
 };
 
 /** 모드 선택 첫 화면(title)은 없앴다 — 대장간을 열면 바로 강화 화면 (2026-10-02). weapons = 성문 방어의 활·지팡이 */
-type ForgeView = "forge" | "exchange" | "armor" | "weapons";
+type ForgeView = "forge" | "exchange" | "armor" | "weapons" | "gear";
 type ForgePhase = "idle" | "forging" | "success" | "failure" | "sold";
 
 const MATERIAL_GUIDE = [
@@ -67,6 +68,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [toast, setToast] = useState("");
   const [materials, setMaterials] = useState(0);
+  /** 장비 강화 (2026-10-14, equipment/parts) — 투구·갑옷·장갑·신발 +0~+10 */
+  const [gearEnh, setGearEnh] = useState<GearLevels>(emptyGearLevels());
   const [gems, setGems] = useState(0);
   /** 대장간 지갑 = 공유 골드. 방치 정산이 여기로 들어오고 강화가 여기서 빠진다. */
   const [coins, setCoins] = useState(0);
@@ -118,6 +121,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setCoins(progress.sharedCoins);
       setReforgeRank(progress.reforgeRank);
       setMaterials(progress.enhancementMaterials);
+      setGearEnh(progress.gearEnhance ?? emptyGearLevels());
       setGems(progress.redGems);
       firstClearRef.current = progress.firstClearDates.forge;
       setOwnedShoulders(progress.ownedShoulders);
@@ -454,6 +458,19 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     flashToast(id ? "견갑을 장착했습니다" : "견갑을 해제했습니다");
   };
 
+  const enhanceGear = async (part: GearPart) => {
+    const cost = gearEnhanceCost(gearEnh[part]);
+    if (!cost || coins < cost.coins || materials < cost.materials || phase !== "idle") return;
+    setCoins((v) => v - cost.coins);
+    setMaterials((v) => v - cost.materials);
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const ge = current.gearEnhance ?? emptyGearLevels();
+      return { ...current, sharedCoins: Math.max(0, current.sharedCoins - cost.coins), enhancementMaterials: Math.max(0, current.enhancementMaterials - cost.materials), gearEnhance: { ...ge, [part]: Math.min(GEAR_ENHANCE_MAX, ge[part] + 1) }, lastContent: "forge" };
+    });
+    setGearEnh(next.gearEnhance);
+    flashToast(`${GEAR_PART_DEF[part].name} 강화 성공 +${next.gearEnhance[part]}`);
+  };
+
   const enhanceArmor = async () => {
     if (!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle") return;
     setCoins((value) => value - armorCost);
@@ -556,7 +573,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           <section className="forge-title-row">
             <div>
               <p className="forge-kicker">BLACKSMITH</p>
-              <h1>{view === "armor" ? "보호구 강화하기" : view === "weapons" ? "원정 무기 강화" : "북 강화하기"}</h1>
+              <h1>{view === "armor" ? "보호구 강화하기" : view === "weapons" ? "원정 무기 강화" : view === "gear" ? "장비 강화" : "북 강화하기"}</h1>
             </div>
             <div className="forge-best">
               최고 기록
@@ -581,6 +598,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             </button>
             <button type="button" className={view === "armor" ? "on" : ""} onClick={() => setView("armor")}>보호구</button>
             <button type="button" className={view === "weapons" ? "on" : ""} onClick={() => setView("weapons")}>원정 무기</button>
+            <button type="button" className={view === "gear" ? "on" : ""} onClick={() => setView("gear")}>장비</button>
           </div>
 
           {view === "forge" ? (
@@ -711,6 +729,28 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </button>
               </section>
             </>
+          ) : view === "gear" ? (
+            /* 장비 강화 — 사냥터 장비 성장의 파츠 4종. 실패·하락 없음(카피바라 장비처럼 재료만 모으면 오른다) · 숙련 효과 +10%/강화 · 그림 티어 +1 나무 · +5 철 · +10 금 */
+            <section className="forge-panel gear-forge-panel" aria-label="장비 강화">
+              <p className="gear-forge-note">사냥터 <b>장비 성장</b>에서 숙련을 올리고, 여기서 강화하면 효과가 강화 1단계마다 10% 커집니다.</p>
+              {GEAR_PARTS.map((part) => {
+                const def = GEAR_PART_DEF[part];
+                const lv = gearEnh[part];
+                const cost = gearEnhanceCost(lv);
+                const can = !!cost && coins >= cost.coins && materials >= cost.materials && phase === "idle";
+                return (
+                  <article key={part} className={`gear-forge-row gear-${part}`} data-gear-part={part}>
+                    <img src={assetUrl(`titans/gear/${part}-${Math.max(1, gearTierOfEnhance(lv))}.png`)} alt="" aria-hidden="true" />
+                    <div>
+                      <strong>{def.name} +{lv}</strong>
+                      <small>{def.stat} 효과 ×{(1 + 0.1 * lv).toFixed(1)}{cost ? ` → ×${(1 + 0.1 * (lv + 1)).toFixed(1)}` : " (최대)"}</small>
+                      {cost && <small>{formatGold(cost.coins)}G · 강화석 {cost.materials}개</small>}
+                    </div>
+                    <button type="button" className="forge-button" disabled={!can} onClick={() => void enhanceGear(part)}>{cost ? "강화" : "최대"}</button>
+                  </article>
+                );
+              })}
+            </section>
           ) : view === "weapons" ? (
             <section className="forge-expweapons">
               <p className="forge-note">성문 방어의 무기 — 강화는 확정(실패·파괴 없음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>

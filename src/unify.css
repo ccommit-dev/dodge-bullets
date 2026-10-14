@@ -102,3 +102,14 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 .hub-cards .hub-card.tab-locked .hub-card-body small, .hub-cards .hub-card.tab-locked .hub-card-body p { color: #5a3f27 !important; }
 .hub-cards .hub-card.tab-locked { filter: none !important; }
 .hub-cards .hub-card.tab-locked .nav-icon-svg, .hub-cards .hub-card.tab-locked::before { filter: grayscale(.7) opacity(.8); }
+
+/* ── 장비 파츠 4종 (2026-10-14, equipment/parts) — 사냥터 장비 성장 줄 · 대장간 장비 강화 ── */
+.gear-part-card .gear-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--flat-cream-2); border: 2px solid var(--flat-ink); }
+.gear-part-card .gear-icon img { width: 40px; height: 40px; object-fit: contain; }
+.gear-forge-panel { display: grid; gap: 8px; }
+.gear-forge-note { margin: 0 0 2px; font-size: 13px; color: var(--flat-ink); }
+.gear-forge-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border: 2px solid var(--flat-ink); border-radius: 14px; background: var(--flat-cream); color: var(--flat-ink); }
+.gear-forge-row img { width: 46px; height: 46px; object-fit: contain; }
+.gear-forge-row strong { display: block; font-size: 15px; }
+.gear-forge-row small { display: block; font-size: 12px; color: #5a3f27; }
+.gear-forge-row .forge-button { min-width: 64px; padding: 8px 12px; }

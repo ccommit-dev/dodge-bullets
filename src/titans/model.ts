@@ -85,7 +85,8 @@ export type TitansSave = {
   stage: number;
   bestStage: number;
   swordLevel: number;
-  equipmentTraining: { weaponMastery: number; shoulderMastery: number };
+  /** 장비 숙련 — 무기·견갑 + 파츠 4종(투구·갑옷·장갑·신발, 2026-10-14 equipment/parts) */
+  equipmentTraining: { weaponMastery: number; shoulderMastery: number; helmetMastery: number; armorMastery: number; glovesMastery: number; bootsMastery: number };
   skillInventory: {
     learned: TitanSkillId[];
     levels: Record<TitanSkillId, number>;
@@ -291,7 +292,7 @@ export function defaultTitansSave(): TitansSave {
     stage: 1,
     bestStage: 1,
     swordLevel: 1,
-    equipmentTraining: { weaponMastery: 1, shoulderMastery: 0 },
+    equipmentTraining: { weaponMastery: 1, shoulderMastery: 0, helmetMastery: 0, armorMastery: 0, glovesMastery: 0, bootsMastery: 0 },
     skillInventory: defaultSkillInventory(),
     heroes: emptyHeroLevels(),
     pendingRefund: null,
@@ -348,6 +349,10 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     equipmentTraining: {
       weaponMastery: Math.max(1, n(value.equipmentTraining?.weaponMastery, legacySword, 9999)),
       shoulderMastery: n(value.equipmentTraining?.shoulderMastery, 0, 9999),
+      helmetMastery: n(value.equipmentTraining?.helmetMastery, 0, 9999),
+      armorMastery: n(value.equipmentTraining?.armorMastery, 0, 9999),
+      glovesMastery: n(value.equipmentTraining?.glovesMastery, 0, 9999),
+      bootsMastery: n(value.equipmentTraining?.bootsMastery, 0, 9999),
     },
     skillInventory: { learned: [...new Set(learned)], levels, equipped, skillCores: n(value.skillInventory?.skillCores, 0, 9999) + refund.cores },
     heroes,

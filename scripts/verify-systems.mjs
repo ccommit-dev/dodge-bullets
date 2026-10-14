@@ -53,13 +53,14 @@ writeFileSync(entry, [
   `export * as beatPerks from "${root}/src/beat/beatPerks";`,
   `export * as dodgeWeak from "${root}/src/game/bossWeak";`,
   `export * as allySig from "${root}/src/titans/allySignature";`,
+  `export * as parts from "${root}/src/equipment/parts";`,
   `export * as orientation from "${root}/src/ui/orientation";`,
   `export * as fullscreen from "${root}/src/ui/fullscreen";`,
   `export * as onboarding from "${root}/src/progression/onboarding";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1463,6 +1464,24 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("외부 열기: 카카오(안드·iOS)는 openExternal 에 주소를 인코딩해 싣는다", fullscreen.externalOpenUrl("kakao", href, kakaoA) === "kakaotalk://web/openExternal?url=" + encodeURIComponent(href) && fullscreen.externalOpenUrl("kakao", href, kakaoI)?.startsWith("kakaotalk://web/openExternal?url="));
   const intent = fullscreen.externalOpenUrl("naver", href, naverA);
   ok("외부 열기: 안드로이드 다른 인앱은 크롬 intent(경로·쿼리 보존 + 폴백 주소) · iOS 인스타는 null(안내)", !!intent && intent.startsWith("intent://ccommit-dev.github.io/dodge-bullets/game/?q=1#Intent;scheme=https;package=com.android.chrome;") && intent.includes("S.browser_fallback_url=") && fullscreen.externalOpenUrl("instagram", href, instaI) === null, intent ?? "");
+}
+// ── 장비 파츠 4종 (2026-10-14, 사용자: "카피바라 키우기처럼 파츠 4개 더 · 총 6개 성장 및 강화 · 대장간에도") ──
+{
+  const P = parts.GEAR_PARTS;
+  ok("파츠 4종(투구·갑옷·장갑·신발) · 숙련 비용은 레벨마다 오른다", P.join() === "helmet,armor,gloves,boots" && P.every((p) => parts.gearTrainingCost(p, 10) > parts.gearTrainingCost(p, 9) && parts.gearTrainingCost(p, 0) > 0));
+  const zero = parts.gearEffects(undefined, undefined);
+  ok("숙련 0 이면 효과 없음(대장 시간 0 · 골드 ×1 · 치명 0 · 속도 0)", zero.bossTimeSec === 0 && zero.goldMul === 1 && zero.critChance === 0 && zero.autoSpeed === 0);
+  const big = parts.gearEffects({ helmet: 9999, armor: 9999, gloves: 9999, boots: 9999 }, { helmet: 10, armor: 10, gloves: 10, boots: 10 });
+  ok("효과 상한: 대장 시간 +8초 · 골드 ×2.5 · 치명 +15%p · 자동 공격 +30%", big.bossTimeSec === 8 && Math.abs(big.goldMul - 2.5) < 1e-9 && Math.abs(big.critChance - 0.15) < 1e-9 && Math.abs(big.autoSpeed - 0.3) < 1e-9, JSON.stringify(big));
+  ok("대장간 강화는 숙련 효과를 +10%/단계 키운다 (투구 Lv10 · +5 → 1.5초)", Math.abs(parts.gearPartValue("helmet", 10, 5) - 1.5) < 1e-9 && Math.abs(parts.gearPartValue("helmet", 10, 0) - 1.0) < 1e-9);
+  ok("강화 비용: +0→+1 은 800G·강화석 1 · +10 이 끝(null) · 그림 티어 +1 나무 · +5 철 · +10 금", parts.gearEnhanceCost(0).coins === 800 && parts.gearEnhanceCost(0).materials === 1 && parts.gearEnhanceCost(10) === null && parts.gearTierOfEnhance(1) === 1 && parts.gearTierOfEnhance(5) === 2 && parts.gearTierOfEnhance(10) === 3 && parts.gearTierOfEnhance(0) === 0);
+  const old = prog.normalizeCharacterProgress({ ...prog.emptyCharacterProgress(), gearEnhance: undefined });
+  const odd = prog.normalizeCharacterProgress({ ...prog.emptyCharacterProgress(), gearEnhance: { helmet: 99, armor: -3, nope: 4 } });
+  ok("저장 정규화: 옛 저장은 강화 0 · 범위 밖은 0~10 으로", JSON.stringify(old.gearEnhance) === JSON.stringify({ helmet: 0, armor: 0, gloves: 0, boots: 0 }) && odd.gearEnhance.helmet === 10 && odd.gearEnhance.armor === 0 && !("nope" in odd.gearEnhance));
+  const ts = model.normalizeTitansSave({ equipmentTraining: { weaponMastery: 3, shoulderMastery: 1 } });
+  ok("사냥 저장 정규화: 옛 저장은 파츠 숙련 0", ts.equipmentTraining.helmetMastery === 0 && ts.equipmentTraining.armorMastery === 0 && ts.equipmentTraining.glovesMastery === 0 && ts.equipmentTraining.bootsMastery === 0 && ts.equipmentTraining.weaponMastery === 3);
+  const adv = advice.purchaseAdvice({ ...prog.emptyCharacterProgress() }, { gold: 1e9, heroes: model.defaultTitansSave().heroes, equipmentTraining: ts.equipmentTraining });
+  ok("구매 추천에 가장 싼 파츠 숙련이 하나 들어간다", adv.some((a) => /^train:(helmet|armor|gloves|boots)$/.test(a.id)), adv.map((a) => a.id).join());
 }
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
 const fails = results.filter((r) => r[0] === "FAIL").length;

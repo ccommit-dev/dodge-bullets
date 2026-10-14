@@ -6,6 +6,7 @@
  * 원칙: 실결제(₩) 상품은 추천하지 않는다 — 결제 접점은 정해진 자리(순간 제안·상점)에만 둔다. 외형(능력치 없음)도 추천하지 않는다.
  * 순수 함수 — 저장을 바꾸지 않는다. 허브 '구매 추천' 알림과 상점 시트가 같은 결과를 쓴다.
  */
+import { GEAR_PARTS, GEAR_PART_DEF, gearPartValue, gearTrainingCost } from "../equipment/parts";
 import type { CharacterProgress } from "../progression/model";
 import { EXPEDITION_SKILLS, SKILL_MAX_LEVEL, WEAPON_FORGE_MAX, skillCost, skillUnlocked, weaponForgeCost, type ExpeditionSkillId } from "../game/skills";
 import { TOWER_TICKET_SEALS } from "../game/towerTickets";
@@ -100,6 +101,12 @@ export function purchaseAdvice(progress: CharacterProgress, save: Pick<TitansSav
   const mastery = save.equipmentTraining?.weaponMastery ?? 0;
   push({ id: "train:weapon", title: `무기 숙련 Lv.${mastery} → ${mastery + 1}`, reason: "기본 공격력·자동 공격 속도·치명타", currency: "huntGold", priority: 66,
     cost: [{ currency: "huntGold", amount: equipmentTrainingCost("weapon", mastery) }], action: { kind: "tab", tab: "sword" } });
+  // 장비 파츠 4종(2026-10-14) — 가장 싸게 오르는 파츠 하나만(상한 도달 제외)
+  const et = save.equipmentTraining as Partial<Record<"helmetMastery" | "armorMastery" | "glovesMastery" | "bootsMastery", number>> | undefined;
+  const part = GEAR_PARTS.map((p) => { const lv = et?.[`${p}Mastery` as "helmetMastery"] ?? 0; return { p, lv, cost: gearTrainingCost(p, lv), capped: gearPartValue(p, lv, 0) >= GEAR_PART_DEF[p].cap }; })
+    .filter((x) => !x.capped).sort((x, y) => x.cost - y.cost)[0];
+  if (part) push({ id: `train:${part.p}`, title: `${GEAR_PART_DEF[part.p].name} 숙련 Lv.${part.lv} → ${part.lv + 1}`, reason: GEAR_PART_DEF[part.p].stat, currency: "huntGold", priority: 64,
+    cost: [{ currency: "huntGold", amount: part.cost }], action: { kind: "tab", tab: "sword" } });
 
   // ── 붉은 보석 — 능력치로 바로 바뀌는 것만 ──
   if (progress.towerOpen && progress.towerTickets <= 0) {

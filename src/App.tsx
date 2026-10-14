@@ -1,3 +1,4 @@
+import { gearTierOfEnhance } from "./equipment/parts";
 import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen";
 import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } from "./equipment/anchors";
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
@@ -210,7 +211,10 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   world.runXpMul = hasTalent(p.talents, "scholar") ? TALENT_EFFECT.scholarRunXpMul : 1;
   world.evolutionPath = p.evolutionPath;   // 빌드 계열 → 카드 풀 가중 (perks.buildWeight)
   world.restBonus = hasTalent(p.talents, "survivor") ? TALENT_EFFECT.survivorRestBarrier - 0.2 : 0;
-  world.player.gear = { helmet: helmetTierOf(p.shoulderEnhance ?? 0), armor: chestTierOf(p.equippedShoulder), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: 0, boots: bootsTierOf(p.towerBestFloor) };
+  // 파츠 그림 티어 = 예전 규칙과 대장간 장비 강화(equipment/parts) 중 높은 쪽 (2026-10-14)
+  const ge = p.gearEnhance ?? { helmet: 0, armor: 0, gloves: 0, boots: 0 };
+  const hi = (a: number, b: number) => Math.max(a, b) as 0 | 1 | 2 | 3;
+  world.player.gear = { helmet: hi(helmetTierOf(p.shoulderEnhance ?? 0), gearTierOfEnhance(ge.helmet)), armor: hi(chestTierOf(p.equippedShoulder), gearTierOfEnhance(ge.armor)), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: gearTierOfEnhance(ge.gloves), boots: hi(bootsTierOf(p.towerBestFloor), gearTierOfEnhance(ge.boots)) };
   world.basicLevel = p.expeditionWeaponForge.bow;
   world.loadout = p.expeditionLoadout.filter((id) => (p.expeditionSkills[id] ?? 0) > 0);
   world.rangedWeapon = p.expeditionWeapon;

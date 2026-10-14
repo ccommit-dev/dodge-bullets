@@ -1,3 +1,4 @@
+import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhance, gearTrainingCost, type GearPart } from "./equipment/parts";
 import { AllySigInfo } from "./titans/AllySigInfo";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -147,6 +148,8 @@ type TitansGameProps = {
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal" | "season") => void;
 };
 
+/** 사냥 저장의 숙련 → 파츠 숙련표 (2026-10-14) */
+const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
 type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 const ALLY_PAGE_SIZE = typeof window !== "undefined" && window.innerWidth <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
@@ -496,8 +499,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       partyRoleEffects(character.partyIds).bossTimeBonus +
       passiveTotals(save.skillInventory.learned, save.skillInventory.equipped, save.skillInventory.levels).bossTime +
       activePetEffect(character.pets, character.activePet, "bossTime") +
-      save.huntMods.bossTimeBonus,
-    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods],
+      save.huntMods.bossTimeBonus +
+      gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).bossTimeSec,   // 투구 (equipment/parts)
+    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods, save.equipmentTraining, character.gearEnhance],
   );
   const bossTimeRef = useRef(bossTimeSec);
   useEffect(() => {
@@ -905,6 +909,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           codexMult *
           petGold *
           warmupMult *
+          gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).goldMul *   // 갑옷 (equipment/parts)
           (firstClearToday ? 2 : 1),
       );
       if (firstClearToday) {
@@ -1104,7 +1109,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
-    const critChance = Math.min(0.95, 0.08 + passive.critChance + (now < b.critUntil ? b.critBonus : 0));
+    const critChance = Math.min(0.95, 0.08 + passive.critChance + (now < b.critUntil ? b.critBonus : 0) + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).critChance);   // + 장갑
     const crit = Math.random() < critChance;
     // 사냥 강화 — 탭·스킬 배수와 치명 피해 배수 (지역 런 효과)
     const hm = saveRef.current.huntMods;
@@ -1158,7 +1163,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       const war = (now < buff.warcryUntil ? buff.warMult : 1) * (1 + passive.allyDmg);
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         // 급류 연타(가속) — 영웅 자동 공격 간격 단축
-        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1);
+        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1) / (1 + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).autoSpeed);   // ÷ 신발
         // 화상(불꽃 장작 타·용암 북 울림) — 0.5초 단위로 몰아서 넣어 피해 숫자 도배를 막는다
         if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
           burnAcc.current += dt;
@@ -1324,7 +1329,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     return () => window.removeEventListener("keydown", onKey);
   }, [ready, doTap]);
 
-  const trainEquipment = async (slot: "weapon" | "shoulder") => {
+  const trainEquipment = async (slot: "weapon" | "shoulder" | GearPart) => {
+    if (slot !== "weapon" && slot !== "shoulder") {
+      // 파츠 4종 — 사냥 골드만, 무기처럼 일괄 구매 (2026-10-14)
+      const pkey = `${slot}Mastery` as "helmetMastery" | "armorMastery" | "glovesMastery" | "bootsMastery";
+      const plevel = save.equipmentTraining[pkey] ?? 0;
+      const pq = bulkUpgradeQuote((l) => gearTrainingCost(slot, l), plevel, save.gold, buyAmount);
+      if (pq.count === 0) return;
+      setSave((prev) => ({ ...prev, gold: prev.gold - pq.cost, equipmentTraining: { ...prev.equipmentTraining, [pkey]: (prev.equipmentTraining[pkey] ?? 0) + pq.count } }));
+      flash(`${GEAR_PART_DEF[slot].name} 숙련 Lv.${plevel + pq.count}${pq.count > 1 ? ` (+${pq.count})` : ""}`);
+      return;
+    }
     const key = slot === "weapon" ? "weaponMastery" : "shoulderMastery";
     const level = save.equipmentTraining[key];
     if (slot === "shoulder") {
@@ -2516,7 +2531,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={{ shield: shieldTierOf(character.dodgeBestStage), gloves: glovesTierOf(save.equipmentTraining.weaponMastery), boots: bootsTierOf(character.towerBestFloor) }} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={{ shield: shieldTierOf(character.dodgeBestStage), gloves: Math.max(glovesTierOf(save.equipmentTraining.weaponMastery), gearTierOfEnhance(character.gearEnhance?.gloves ?? 0)) as 0 | 1 | 2 | 3, boots: Math.max(bootsTierOf(character.towerBestFloor), gearTierOfEnhance(character.gearEnhance?.boots ?? 0)) as 0 | 1 | 2 | 3 }} />
           </div>
         </div>
 
@@ -2914,6 +2929,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               <div><strong>{equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].name : "견갑 미장착"} · 숙련 Lv.{save.equipmentTraining.shoulderMastery}</strong><p>{equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].effect : "기본 견갑"} · 다음 {formatGold(equipmentTrainingCost("shoulder", save.equipmentTraining.shoulderMastery))}G{shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition > 0 ? ` · 원정 강화석 ${shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition}` : ""}{shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat > 0 ? ` · 비트 견갑 조각 ${shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat}` : ""}</p></div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("shoulder", save.equipmentTraining.shoulderMastery) || character.enhancementMaterials < shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition || character.shoulderShards < shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat} onClick={() => void trainEquipment("shoulder")}>훈련</button>
             </article>
+            {/* 파츠 4종 (2026-10-14, 사용자: "카피바라 키우기처럼 파츠 4개 더 · 총 6개 성장") — 숙련은 사냥 골드, 강화는 대장간 */}
+            {GEAR_PARTS.map((part) => {
+              const def = GEAR_PART_DEF[part];
+              const lv = save.equipmentTraining[`${part}Mastery` as "helmetMastery"] ?? 0;
+              const enh = character.gearEnhance?.[part] ?? 0;
+              const cost = gearTrainingCost(part, lv);
+              const now = gearPartValue(part, lv, enh), next = gearPartValue(part, lv + 1, enh);
+              const capped = now >= def.cap;
+              return (
+                <article key={part} className={`titans-card equipment-training-card gear-part-card gear-${part}`} data-gear-part={part}>
+                  <div className="training-item-icon gear-icon"><img src={assetUrl(`titans/gear/${part === "armor" ? "armor" : part}-${Math.max(1, gearTierOfEnhance(enh))}.png`)} alt="" aria-hidden="true" /></div>
+                  <div>
+                    <strong>{def.name}{enh > 0 ? ` +${enh}` : ""} · 숙련 Lv.{lv}</strong>
+                    <p>{def.stat} {def.format(now)}{capped ? " (최대)" : ` → ${def.format(next)}`} · 다음 {formatGold(cost)}G</p>
+                  </div>
+                  <button type="button" disabled={capped || save.gold < cost} onClick={() => void trainEquipment(part)}>{capped ? "최대" : "훈련"}</button>
+                </article>
+              );
+            })}
           </>
         )}
 
