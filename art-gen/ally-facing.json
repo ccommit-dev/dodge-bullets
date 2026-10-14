@@ -1,0 +1,19 @@
+{
+  "_note": "동료 방향 고정표 (2026-10-14). 사람 눈·꼬리 규칙으로 정했다: 꼬리가 화면 왼쪽(몸 뒤)이면 오른쪽을 본다. flip 은 원본(src) 기준 절대값이라 다시 돌려도 뒤집힘이 쌓이지 않는다. 정면(leon·ari·sylph)은 허용.",
+  "mia": { "src": "char-capy5-mia-idle-s20262641.png", "flip": true },
+  "leon": { "src": "char-capy5-leon-idle-s20262742.png", "flip": true },
+  "sera": { "src": "char-capy5-sera-idle-s20262643.png", "flip": true },
+  "garen": { "src": "char-capy5-garen-idle-s20262744.png", "flip": false },
+  "ari": { "src": "char-capy5-ari-idle-s20262645.png", "flip": false },
+  "nox": { "src": "char-capy5-nox-idle-s20262646.png", "flip": false },
+  "luna": { "src": "char-capy5-luna-idle-s20262647.png", "flip": true },
+  "volt": { "src": "char-capy5-volt-idle-s20262648.png", "flip": true },
+  "bronn": { "src": "char-capy5-bronn-idle-s20262649.png", "flip": false },
+  "orion": { "src": "char-capy5-orion-idle-s20262750.png", "flip": true },
+  "ember": { "src": "char-capy5-ember-idle-s20262651.png", "flip": false },
+  "iris": { "src": "char-capy8-iris-idle-s20262862.png", "flip": false },
+  "cain": { "src": "char-capy8-cain-idle-s20262873.png", "flip": true },
+  "sylph": { "src": "char-capy8-sylph-idle-s20262884.png", "flip": true },
+  "mia_dark": { "src": "char-capy8-mia-dark-idle-s20262891.png", "flip": false },
+  "sera_light": { "src": "char-capy8-sera-light-idle-s20262802.png", "flip": true }
+}

@@ -1,3 +1,5 @@
+import { AllySigInfo } from "./titans/AllySigInfo";
+import { allySignature, isSignatureHit, signatureBaseMul, type SigFx } from "./titans/allySignature";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { SafeInsets } from "./game/toss";
 import {
@@ -181,7 +183,7 @@ type SkillShot = { id: number; kind: "shot" | "beam" | "impact" | "link" | "aura
 
 type FxBurst = {
   id: number;
-  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry";
+  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | `sig-${SigFx}`;
   x: number;
   y: number;
   hue?: number;
@@ -382,6 +384,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     return () => window.clearInterval(id);
   }, []);
   const toastTimer = useRef<number | null>(null);
+  /** 동료별 누적 공격 수 — N 타마다 시그니처 기술 (allySignature.ts) */
+  const allyAttackNo = useRef<Partial<Record<TitanHeroId, number>>>({});
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
   const burnAcc = useRef(0);
@@ -1175,8 +1179,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
           if (allyAttackAcc.current[h.id] < h.attackInterval) continue;
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
-          pushFx("ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
-          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul, false, { fromAlly: h.id, source: "ally", hue: h.hue });
+          // 시그니처 (2026-10-14) — N 타마다 이름 있는 기술 ×mul, 나머지 타는 평균이 1 이 되게 낮춘다(밸런스 불변)
+          const sig = allySignature(h.id);
+          const no = (allyAttackNo.current[h.id] = (allyAttackNo.current[h.id] ?? 0) + 1);
+          const isSig = isSignatureHit(sig, no);
+          pushFx(isSig ? `sig-${sig.fx}` : "ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
+          applyDamage(heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * (isSig ? sig.mul : signatureBaseMul(sig)), false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
         }
       }
 
@@ -2927,8 +2935,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     <small>{card.desc}</small>
                     <small className="hub-remaining">{card.remaining}</small>
                     <span className="hub-feeds" aria-label="오늘 얻는 것">{card.feeds.map((x) => <em key={x}>{x}</em>)}</span>
+                    {/* 잠금 조건 + 진행도 (2026-10-14, 사용자: "언제 해금되는지 불친절") — 누르지 않아도 카드 위에 보인다 */}
+                    {card.locked && card.unlock && (
+                      <span className="hub-unlock" aria-label={`잠금 해제 조건: ${card.unlock.label}`}>
+                        <b>🔒 {card.unlock.label}</b>
+                        {card.unlock.goal > 1 && <i className="hub-unlock-bar"><i style={{ width: `${Math.round((card.unlock.now / card.unlock.goal) * 100)}%` }} /></i>}
+                        {card.unlock.goal > 1 && <small>{card.unlock.unit === "S" ? `지금 S${card.unlock.now}` : `지금 ${card.unlock.now} / ${card.unlock.goal} ${card.unlock.unit}`}</small>}
+                      </span>
+                    )}
                   </span>
                   {card.locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
+                  {card.locked && card.lockHint && <span className="hub-unlock-tip" role="tooltip">{card.lockHint}</span>}
                 </button>
               ))}
             </div>
@@ -3111,6 +3128,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                         : `${h.attackType} · ${h.attackInterval.toFixed(2)}초 · DPS ${formatGold(heroDps(h, lv || 1) * mult)}`}
                   </p>
                   <small className="ally-feature">{h.feature}</small>
+                  <AllySigInfo hero={h} />
                   {lv > 0 && (
                     <small className="ally-shards">
                       조각 {shards}
@@ -3577,6 +3595,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                     <b style={{ color: RARITY_COLOR[r.rarity] }}>{RARITY_LABEL[r.rarity]} {r.rarity}</b> {h.name}
                     <small>{ROLE_LABEL[ALLY_ROLE[h.id]]} · {ELEMENT_LABEL[ALLY_ELEMENT[h.id]]} · {h.attackType}</small>
                     <small>{h.feature}</small>
+                    <AllySigInfo hero={h} compact />
                     <small>DPS {h.baseDps.toLocaleString()} · ★{STAR_CAP[r.rarity]} (×{STAR_MULT[STAR_CAP[r.rarity]]}) · 중복 조각 +{GACHA.dupeShards[r.rarity]}</small>
                   </span>
                 </div>
@@ -3595,6 +3614,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   <b><em style={{ color: RARITY_COLOR[r.rarity] }}>{RARITY_LABEL[r.rarity]} {r.rarity}</em> {h.name}</b>
                   <small>{h.role} · {ROLE_LABEL[ALLY_ROLE[h.id]]} · {ELEMENT_LABEL[ALLY_ELEMENT[h.id]]} 속성 · {h.attackType}</small>
                   <p>{h.feature}{feat ? ` · 고유 특성 「${feat.label}」 ${feat.desc}` : ""}</p>
+                  <AllySigInfo hero={h} />
                   <ul>
                     <li>기본 DPS <b>{h.baseDps.toLocaleString()}</b></li>
                     <li>성급 상한 <b>★{STAR_CAP[r.rarity]}</b> (최대 ×{STAR_MULT[STAR_CAP[r.rarity]]})</li>

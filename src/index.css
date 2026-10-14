@@ -1,6 +1,10 @@
 :root {
   /* 비버 키우기 글꼴 (2026-10-13, 사용자: "UI 글꼴도 컨셉에 맞게 모두"): 둥근 카툰 Jua 를 본문까지 전부. Pretendard 는 글리프 없을 때 대체 */
-  --font-ui: "Jua", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  /* 2026-10-14 (사용자: "폰트가 어색 · 더 귀엽게 · 가독성"): 본문은 작은 크기에서도 또렷한 고운돋움, 제목·버튼·숫자는 둥근 해바라기(Sunflower) 굵게.
+     Jua 는 남은 글리프 대체용으로 뒤에 둔다 */
+  --font-body: "Gowun Dodum", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-cute: "Sunflower", "Jua", "Gowun Dodum", "Pretendard", sans-serif;
+  --font-ui: var(--font-body);
   font-family: var(--font-ui);
   color: #f8fafc;
   background-color: #0b1220;

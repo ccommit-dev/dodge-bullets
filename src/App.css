@@ -5280,3 +5280,124 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .gacha-card:focus-visible .gacha-tip b { display: block; font-weight: 400; } .gacha-card:focus-visible .gacha-tip small { display: block; font-size: 10px; color: #6b5338; }
 .gacha-reveal-grid .gacha-card:nth-child(5n+1):focus-visible .gacha-tip { left: 0; transform: none; } .gacha-reveal-grid .gacha-card:nth-child(5n):focus-visible .gacha-tip { left: auto; right: 0; transform: none; }
 .gacha-reveal-grid .gacha-card:nth-child(-n+5):focus-visible .gacha-tip { bottom: auto; top: calc(100% + 8px); }
+
+/* ═══ 글꼴 두 벌 (2026-10-14, 사용자: "폰트가 어색 · 더 귀엽게 · 가독성도") ═══
+   본문(--font-body 고운돋움)은 :root 기본값. 제목·버튼·탭·숫자·이름만 둥근 해바라기(--font-cute 700).
+   크기 하한: 본문 11px · 보조 10px (폰 390px 기준), 대비: 크림 위 연분홍·연노랑 글자를 진하게 */
+.game-root h1, .game-root h2, .game-root h3, .titans-stagebar h1, .beat-title, .hub-sheet-title, .overlay-content h1, .overlay-content h2,
+.cta, button, .titans-bottom-nav button span, .titans-tabs button, .titans-growth-tabs button, .hub-sheet-switch button, .premium-category-tabs button,
+.titans-wallet, .wallet-bar, .gem-chip, .titans-card strong, .ally-card strong, .hub-card-body b, .gacha-card-front > b, .gacha-rarity-badge, .gacha-detail > b,
+.titans-stagebar, .hero-marker b, .mypage-label, .settings-toggle .settings-label, .titans-kicker, .wave-banner b, .combo-flash, .run-level,
+.forge-mastery-head b, .forge-best strong, .hub-chests b, .day-event-row > b, .sweep-row > b, .pact-offer > b, .damage-float, .titans-float {
+  font-family: var(--font-cute); font-weight: 700; letter-spacing: 0;
+}
+.titans-bottom-nav button span { font-weight: 500; }
+/* 본문 블록은 다시 고운돋움(버튼 안 설명문 포함) */
+small, p, li, .nav-help, .hub-card-body small, .gacha-detail > p, .gacha-detail ul, .gacha-detail > small, .gacha-tip small,
+.ally-card small, .titans-card p, .titans-card small, .settings-menu button small, .exp-menu-content p, .day-event-choices small, .pact-offer small, .forge-mastery-head small {
+  font-family: var(--font-body); font-weight: 400;
+}
+/* 크기 하한 */
+.titans-card small, .ally-card small, .hub-card-body small, .gacha-detail ul, .gacha-detail > small, .day-event-choices button small, .pact-offer button small, .forge-mastery-actions small, .hub-chests small { font-size: max(11px, 1em) !important; }
+.gacha-card-front > small, .gacha-rarity-badge, .gacha-stat, .hub-feeds em, .ceiling-tag, .gacha-lock { font-size: max(10px, 1em) !important; }
+/* 대비: 크림 바탕 위 옅은 글자 */
+.hub-sheet-head small, .premium-hero small, .hub-sheet .subtitle, .gem-advice small { color: #8a3b52 !important; }
+.titans-stagebar .titans-kicker, .titans-stagebar small { color: #fff7e6 !important; text-shadow: 0 1px 0 #2b1608, 0 0 6px rgba(0,0,0,.55); }
+.titans-field .qol-btn, .titans-field .auto-toggle, .titans-field .speed-btn { opacity: 1 !important; color: #3b2415 !important; background: #fff3d6 !important; border: 2px solid #3b2415 !important; box-shadow: 0 2px 0 #c9a46a; }
+/* AUTO·×2 — 모래 위에서 흐려 보였다(사용자 캡처): 크림 바탕·잉크 테두리·켜지면 노랑, 글자 11px */
+.titans-skill-dock .battle-qol .qol-btn { opacity: 1 !important; color: var(--flat-ink) !important; background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; box-shadow: 0 2px 0 var(--flat-cream-2) !important; font-family: var(--font-cute); font-weight: 700; font-size: 11px !important; filter: none !important; }
+.titans-skill-dock .battle-qol .qol-btn.on { background: var(--flat-yellow) !important; box-shadow: 0 2px 0 var(--flat-yellow-2) !important; }
+.titans-kicker { color: #fff7e6 !important; text-shadow: 0 1px 0 #2b1608, 1px 0 0 #2b1608, -1px 0 0 #2b1608, 0 0 6px rgba(0,0,0,.5); }
+/* 상점 보석 추천 이유(연분홍)·지갑 라벨(연노랑) — 크림 위에서 안 읽혔다(사용자 캡처) */
+.advice-inline em { color: #8a3b52 !important; font-style: normal; font-family: var(--font-body); }
+.titans-shop .wallet-bar small, .titans-shop .wallet-chip small, .wallet-bar small { color: #6b5338 !important; }
+.wallet-bar b, .wallet-chip b { -webkit-text-stroke: 0 !important; text-shadow: none !important; color: var(--flat-ink) !important; }
+/* 잠긴 허브 카드 — 조건·진행 막대가 늘 보이고, 마우스/포커스 시 말풍선, 누르면 토스트 (2026-10-14) */
+.hub-card.tab-locked { opacity: 1; filter: saturate(.7); }
+.hub-card.tab-locked .hub-card-body > small, .hub-card.tab-locked .hub-feeds { opacity: .55; }
+.hub-unlock { display: grid; gap: 3px; margin-top: 4px; padding: 5px 7px; border: 2px dashed var(--flat-ink); border-radius: 10px; background: #fff8e6; }
+.hub-unlock b { font-size: 11px; color: #8a3b52; }
+.hub-unlock small { font-size: 10px !important; color: #6b5338; font-family: var(--font-body); }
+.hub-unlock-bar { display: block; height: 7px; border: 1.5px solid var(--flat-ink); border-radius: 999px; background: #efe3cf; overflow: hidden; }
+.hub-unlock-bar > i { display: block; height: 100%; background: var(--flat-yellow); }
+.hub-unlock-tip { display: none; position: absolute; left: 8px; right: 8px; bottom: calc(100% + 6px); z-index: 20; padding: 7px 9px; border: 2px solid var(--flat-ink); border-radius: 10px; background: var(--flat-cream); color: var(--flat-ink); font-family: var(--font-body); font-size: 11px; line-height: 1.35; box-shadow: 0 3px 0 var(--flat-cream-2), 0 8px 18px rgba(0,0,0,.3); pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .hub-card.tab-locked:hover .hub-unlock-tip { display: block; } }
+.hub-card.tab-locked:focus-visible .hub-unlock-tip { display: block; }
+.hub-card { overflow: visible; }
+/* .nav-popup-grid span{display:grid} 가 말풍선을 늘 보이게 했다 — 우선순위를 올린다 */
+.hub-cards .hub-card .hub-unlock-tip { display: none; position: absolute; }
+@media (hover: hover) and (pointer: fine) { .hub-cards .hub-card.tab-locked:hover .hub-unlock-tip { display: block; } }
+.hub-cards .hub-card.tab-locked:focus-visible .hub-unlock-tip { display: block; }
+.hub-cards .hub-card .hub-unlock { display: grid; }
+
+/* ═══ 가로 화면 (2026-10-14, 사용자: "가로모드에 콘텐츠가 전체화면이 안 됨 · 모바일에서 이질감 없게") ═══
+   폰 가로(높이 ≤ 560)에서 위 머리줄 + 아래 내비가 세로 공간의 1/3 을 먹어 사냥터가 상자에 갇혀 보였다.
+   · 하단 내비 → 오른쪽 세로 레일(64px) · 머리줄은 얇게 · 사냥터는 왼쪽 열 전체 높이
+   · 비트: 파티 판이 노트 레일 왼쪽 절반을 덮었다 → 위쪽 얇은 띠로 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .titans-bottom-nav.compact, .titans-bottom-nav { left: auto; right: max(4px, env(safe-area-inset-right)); top: max(4px, env(safe-area-inset-top)); bottom: max(4px, env(safe-area-inset-bottom)); width: 64px; transform: none; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); gap: 3px; padding: 4px; overflow: visible; border-radius: 16px; }
+  .titans-bottom-nav button, .titans-bottom-nav .settings-wrap .settings-toggle { min-width: 0; min-height: 0; height: 100%; padding: 2px; font-size: 10px; }
+  .titans-bottom-nav .content-icon, .titans-bottom-nav .settings-wrap .settings-toggle .settings-gear { width: 22px; height: 22px; }
+  .titans-bottom-nav .settings-wrap .settings-menu { bottom: 0; right: calc(100% + 8px); max-height: calc(100dvh - 16px); }
+  .titans-layer { padding: 4px calc(76px + env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left)) !important; column-gap: 8px; grid-template-columns: minmax(0, 58%) minmax(0, 1fr); }
+  .titans-layer > .titans-header { min-height: 0; padding-top: 0; margin-bottom: 2px; }
+  .titans-layer > .titans-header .titans-back, .titans-layer > .titans-header .titans-wallet { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+  .titans-layer > .titans-field { height: calc(100dvh - 54px); min-height: 200px; }
+  .hub-sheet { right: calc(76px + env(safe-area-inset-right)); max-height: calc(100dvh - 12px); }
+  .beat-command-party { top: max(6px, env(safe-area-inset-top)); left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 62vw); padding: 4px 8px; }
+  .beat-command-party .beat-command-track { height: 58px; }
+  .beat-command-party .beat-layer-mixer, .beat-command-party .beat-fever-trigger { display: none; }
+}
+
+/* ── 동료 시그니처 기술 이펙트 (2026-10-14) — 역할마다 모양이 다르다: 베기 호 · 투사체 · 마법탄 · 충격파 · 빛 고리.
+   transform·opacity 만 움직이고, perf-low 에선 그림자·두 번째 층을 끈다 */
+.titans-fx[class*="titans-fx-sig-"] { width: 120px; height: 120px; margin: -60px 0 0 -60px; z-index: 7; }
+.titans-fx-sig-slash { border-radius: 50%; border: 6px solid transparent; border-top-color: hsl(var(--fx-hue) 95% 70%); border-right-color: hsl(var(--fx-hue) 95% 82%); filter: drop-shadow(0 0 8px hsl(var(--fx-hue) 95% 60%)); animation: fx-sig-slash .5s cubic-bezier(.2,.8,.3,1) forwards; }
+.titans-fx-sig-slash::after { content: ""; position: absolute; inset: 14px; border-radius: 50%; border: 4px solid transparent; border-bottom-color: hsl(var(--fx-hue) 95% 78%); border-left-color: #fff; animation: fx-sig-slash2 .5s .08s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes fx-sig-slash { 0% { transform: rotate(-120deg) scale(.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: rotate(60deg) scale(1.15); opacity: 0; } }
+@keyframes fx-sig-slash2 { 0% { transform: rotate(120deg) scale(.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: rotate(-60deg) scale(1.1); opacity: 0; } }
+
+.titans-fx-sig-arrow { border-radius: 0; height: 8px; margin-top: -4px; background: linear-gradient(90deg, transparent, hsl(var(--fx-hue) 90% 70%) 55%, #fff 92%, transparent); filter: drop-shadow(0 0 6px hsl(var(--fx-hue) 95% 60%)); animation: fx-sig-arrow .45s cubic-bezier(.4,0,.6,1) forwards; }
+.titans-fx-sig-arrow::after { content: ""; position: absolute; right: -6px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; border: 3px solid hsl(var(--fx-hue) 95% 75%); opacity: 0; animation: fx-sig-pop .3s .3s ease-out forwards; }
+@keyframes fx-sig-arrow { 0% { transform: translateX(-140px) scaleX(.5); opacity: 0; } 20% { opacity: 1; } 70% { transform: translateX(0) scaleX(1); opacity: 1; } 100% { transform: translateX(8px) scaleX(.3); opacity: 0; } }
+
+.titans-fx-sig-bolt { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, hsl(var(--fx-hue) 95% 68%) 40%, transparent 70%); animation: fx-sig-bolt .55s cubic-bezier(.3,0,.5,1) forwards; }
+.titans-fx-sig-bolt::after { content: ""; position: absolute; inset: -30px; border-radius: 50%; border: 4px dashed hsl(var(--fx-hue) 95% 75%); opacity: 0; animation: fx-sig-burst .35s .3s ease-out forwards; }
+@keyframes fx-sig-bolt { 0% { transform: translate(-130px, -40px) scale(.5); opacity: 0; } 15% { opacity: 1; } 55% { transform: translate(0, 0) scale(1); } 75% { transform: scale(1.8); opacity: .9; } 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes fx-sig-burst { 0% { transform: scale(.3) rotate(0); opacity: 1; } 100% { transform: scale(1.2) rotate(90deg); opacity: 0; } }
+@keyframes fx-sig-pop { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+
+.titans-fx-sig-quake { border-radius: 50%; border: 5px solid hsl(var(--fx-hue) 85% 65%); background: radial-gradient(circle, hsl(var(--fx-hue) 90% 70% / .35), transparent 65%); transform: scaleY(.4); animation: fx-sig-quake .6s ease-out forwards; }
+.titans-fx-sig-quake::after { content: "🛡"; position: absolute; left: 50%; top: 50%; font-size: 34px; line-height: 1; transform: translate(-50%, -50%); animation: fx-sig-shield .6s ease-out forwards; }
+@keyframes fx-sig-quake { 0% { transform: scaleY(.4) scale(.3); opacity: 1; } 100% { transform: scaleY(.4) scale(1.6); opacity: 0; } }
+@keyframes fx-sig-shield { 0% { transform: translate(-50%, -50%) scaleY(2.5) scale(.6); opacity: 0; } 25% { transform: translate(-50%, -50%) scaleY(2.5) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -80%) scaleY(2.5) scale(1); opacity: 0; } }
+
+.titans-fx-sig-halo { border-radius: 50%; border: 3px solid hsl(var(--fx-hue) 90% 80%); box-shadow: inset 0 0 18px hsl(var(--fx-hue) 95% 75% / .7); animation: fx-sig-halo .65s ease-out forwards; }
+.titans-fx-sig-halo::after { content: "✚"; position: absolute; left: 50%; top: 50%; font-size: 30px; line-height: 1; color: hsl(var(--fx-hue) 95% 82%); transform: translate(-50%, -50%); animation: fx-sig-plus .65s ease-out forwards; }
+@keyframes fx-sig-halo { 0% { transform: scale(1.5); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(.4); opacity: 0; } }
+@keyframes fx-sig-plus { 0% { transform: translate(-50%, -30%) scale(.5); opacity: 0; } 35% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -110%) scale(.9); opacity: 0; } }
+
+/* 시그니처 이름 — 동료 피해 숫자 위 라벨을 기술 색으로 */
+.titans-float.src-ally .float-label { color: #fff; background: hsl(var(--float-hue, 200) 70% 38% / .85); padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+
+.titans-layer.perf-low .titans-fx[class*="titans-fx-sig-"] { filter: none; box-shadow: none; }
+.titans-layer.perf-low .titans-fx[class*="titans-fx-sig-"]::after { display: none; }
+@media (prefers-reduced-motion: reduce) { .titans-fx[class*="titans-fx-sig-"], .titans-fx[class*="titans-fx-sig-"]::after { animation-duration: .01s; } }
+
+/* 동료 시그니처 표기 (도감·뽑기 공통) */
+.ally-sig { display: grid; gap: 2px; margin-top: 4px; padding: 5px 8px; border-radius: 10px; background: hsl(var(--sig-hue, 200) 75% 94%); border: 1.5px solid hsl(var(--sig-hue, 200) 55% 72%); text-align: left; }
+.ally-sig.compact { padding: 3px 6px; margin-top: 2px; }
+.ally-sig .ally-sig-name { display: flex; align-items: center; gap: 5px; font-family: var(--font-cute); font-weight: 700; font-size: 13px; color: hsl(var(--sig-hue, 200) 60% 30%); }
+.ally-sig-name i { width: 14px; height: 14px; flex: none; border-radius: 50%; background: radial-gradient(circle, #fff 0 25%, hsl(var(--sig-hue, 200) 95% 65%) 55%, transparent 72%); }
+.ally-sig.fx-slash .ally-sig-name i { border-radius: 0; background: none; border-top: 3px solid hsl(var(--sig-hue, 200) 95% 75%); border-right: 3px solid #fff; transform: rotate(-35deg); border-radius: 50%; }
+.ally-sig.fx-arrow .ally-sig-name i { height: 4px; border-radius: 2px; background: linear-gradient(90deg, transparent, hsl(var(--sig-hue, 200) 95% 70%), #fff); }
+.ally-sig.fx-quake .ally-sig-name i { background: none; border: 3px solid hsl(var(--sig-hue, 200) 85% 65%); transform: scaleY(.55); }
+.ally-sig.fx-halo .ally-sig-name i { background: none; border: 2px solid hsl(var(--sig-hue, 200) 95% 82%); box-shadow: inset 0 0 5px hsl(var(--sig-hue, 200) 95% 75%); }
+.ally-sig .ally-sig-rhythm { font-size: 11px; color: #4a3b2c; line-height: 1.35; }
+.ally-sig-bars { display: flex; gap: 10px; flex-wrap: wrap; }
+.ally-sig-bars > span { display: inline-flex; align-items: center; gap: 2px; }
+.ally-sig-bars em { font-style: normal; font-size: 10px; color: #6b5a48; margin-right: 3px; }
+.ally-sig-bars i { display: inline-block; }
+.ally-sig-bars i { width: 9px; height: 6px; border-radius: 2px; background: rgba(120, 100, 80, .2); }
+.ally-sig-bars i.on { background: hsl(var(--sig-hue, 200) 90% 62%); }
+

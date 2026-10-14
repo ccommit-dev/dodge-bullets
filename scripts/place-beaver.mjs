@@ -107,15 +107,25 @@ if (want("allies")) {
   // 2026-10-13 (사용자: "동료인데 왼쪽을 보는지 … 애니메이션 포함 다시 확인수정"): 아틀라스에 인간 원화로 남아 있던 iris·cain·sylph 와
   // 특수 스킨 mia_dark·sera_light 도 8차(batch-capy8, 오른쪽 엄격) 비버로 — 생성 파일명은 밑줄 대신 하이픈(mia-dark)
   const ids = ["mia", "leon", "sera", "garen", "ari", "nox", "luna", "volt", "bronn", "orion", "ember", "iris", "cain", "sylph", "mia_dark", "sera_light"];
+  // 방향 고정표 (2026-10-14) — 동료마다 원본 파일과 반전 여부를 절대값으로 적는다(art-gen/ally-facing.json).
+  // --flip 목록·자동 선택보다 우선하고, 다시 돌려도 뒤집힘이 쌓이지 않는다. 고르는 기준은 사람 눈 + 꼬리 규칙(꼬리가 화면 왼쪽이면 오른쪽을 본다)
+  const FACING = existsSync("art-gen/ally-facing.json") ? JSON.parse(readFileSync("art-gen/ally-facing.json", "utf8")) : {};
   for (const id of ids) {
     const gid = id.replace(/_/g, "-");
     // v2(털색 구분 · 자기 대기 참조, batch-beaver3.sh) 가 있으면 그것을, 없으면 1차 bv 를 꽂는다 (2026-10-07)
     let stem = existsSync(`${OUT}/char-bv2-${id}-hit.png`) ? "bv2" : "bv";
     for (const gen of ["capy8", "capy5", "capy2", "bv5", "bv3"]) {   // 카피 8차(추가 5명) → 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
+      const pin = FACING[id];
+      if (pin && !pin.src.startsWith(`char-${gen}-${gid}-idle-s`)) continue;
       const cands = globOut(new RegExp(`^char-${gen}-${gid}-idle-s\\d+\\.png$`));
       if (!cands.length) continue;
-      const best = seedOverride[`${gen}-${gid}`] ? `${OUT}/char-${gen}-${gid}-idle-s${seedOverride[`${gen}-${gid}`]}.png` : qaBest(`ally-${gid}`, cands);
-      copyFileSync(await flipIfWanted(best, gid), `${OUT}/char-${gen}-${gid}-idle.png`);
+      const best = pin ? `${OUT}/${pin.src}` : seedOverride[`${gen}-${gid}`] ? `${OUT}/char-${gen}-${gid}-idle-s${seedOverride[`${gen}-${gid}`]}.png` : qaBest(`ally-${gid}`, cands);
+      if (pin && !existsSync(best)) throw new Error("방향 고정표 원본 없음: " + best);
+      let src = best;
+      if (pin?.flip) { src = flippedPath(best); await sharp(best).flop().png().toFile(src); }
+      else if (!pin) src = await flipIfWanted(best, gid);
+      if (pin) console.log("facing", id, pin.src, pin.flip ? "flip" : "as-is");
+      copyFileSync(src, `${OUT}/char-${gen}-${gid}-idle.png`);
       node("scripts/make-ally-states.mjs", gen, gid);
       // 포즈 img2img 결과(gen.py states → art-gen/out/st-<id>-attack/hit.png)가 있으면 기울임 파생 대신 쓴다 (2026-10-13 보완). 반전된 대기에서 만든 것이라 다시 반전하지 않는다
       for (const st of ["attack", "hit"]) { const posed = seedOverride[`states-${gid}`] === "off" ? null : `${OUT}/st-${gid}-${st}.png`; if (posed && existsSync(posed)) { copyFileSync(posed, `${OUT}/char-${gen}-${gid}-${st}.png`); console.log("posed", gid, st); } }

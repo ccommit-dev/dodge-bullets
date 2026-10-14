@@ -1672,6 +1672,23 @@ function App() {
                   <span>이펙트</span>
                   <b>{fxLow ? "저사양" : "전체"}</b>
                 </button>
+                {/* 전체 화면 (2026-10-14, 사용자: "가로모드 전체화면"): 브라우저 주소창·도구줄을 숨긴다. 지원 브라우저(안드로이드 크롬 등)에서만 보이고, 앱(Capacitor)은 이미 전체 화면 */}
+                {typeof document !== "undefined" && document.fullscreenEnabled && !(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="settings-fullscreen"
+                    onClick={() => {
+                      const el = document.documentElement;
+                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+                      else void el.requestFullscreen({ navigationUI: "hide" }).catch(() => undefined);
+                      setSettingsOpen(false);
+                    }}
+                  >
+                    <span>전체 화면</span>
+                    <b>{document.fullscreenElement ? "끄기" : "켜기"}</b>
+                  </button>
+                )}
                 <button type="button" role="menuitem" className="settings-orientation" onClick={cycleOrientation} aria-label={`화면 방향 ${ORIENTATION_LABEL[orientationPref]}`}>
                   <span>화면 방향</span><b>{ORIENTATION_LABEL[orientationPref]}</b>
                 </button>

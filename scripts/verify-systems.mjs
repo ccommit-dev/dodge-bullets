@@ -52,10 +52,12 @@ writeFileSync(entry, [
   `export * as allyFeatures from "${root}/src/titans/allyFeatures";`,
   `export * as beatPerks from "${root}/src/beat/beatPerks";`,
   `export * as dodgeWeak from "${root}/src/game/bossWeak";`,
+  `export * as allySig from "${root}/src/titans/allySignature";`,
+  `export * as onboarding from "${root}/src/progression/onboarding";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1425,6 +1427,23 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const sample = perks.PERKS ?? [];
   const arcaneCards = sample.filter((p) => perks.buildWeight(p, "arcane") === 2), swordCards = sample.filter((p) => perks.buildWeight(p, "swordmaster") === 2), guardCards = sample.filter((p) => perks.buildWeight(p, "guardian") === 2);
   ok("빌드 계열 가중: 세 계열 모두 2배 카드가 있고 초심자는 전부 1 · 한 카드가 두 계열에 동시에 2배는 아니다", arcaneCards.length > 0 && swordCards.length > 0 && guardCards.length > 0 && sample.every((p) => perks.buildWeight(p, "novice") === 1) && sample.every((p) => [perks.buildWeight(p, "arcane"), perks.buildWeight(p, "swordmaster"), perks.buildWeight(p, "guardian")].filter((w) => w === 2).length === 1));
+}
+// ── 동료 시그니처 · 잠금 안내 (2026-10-14, 사용자: "동료별 특징을 모르겠어" · "모험 콘텐츠 언제 해금되는지 불친절") ──
+{
+  const sigs = model.HEROES.map((h) => [h.id, allySig.allySignature(h.id)]);
+  ok("시그니처: 모든 동료에 이름·설명이 있고 이름이 겹치지 않는다", sigs.every(([, g]) => g.move && g.desc && g.move !== "필살기") && new Set(sigs.map(([, g]) => g.move)).size === sigs.length);
+  const avg = sigs.map(([id, g]) => { let t = 0; for (let n = 1; n <= g.every * 30; n++) t += allySig.isSignatureHit(g, n) ? g.mul : allySig.signatureBaseMul(g); return [id, t / (g.every * 30)]; });
+  ok("시그니처: 한 바퀴 평균 피해 배수 = 1 (밸런스 불변) · 평범한 타 배수 > 0", avg.every(([, a]) => Math.abs(a - 1) < 1e-9) && sigs.every(([, g]) => allySig.signatureBaseMul(g) > 0), JSON.stringify(avg.filter(([, a]) => Math.abs(a - 1) >= 1e-9)));
+  ok("시그니처: 이펙트 모양 4종 이상이 실제로 쓰인다", new Set(sigs.map(([, g]) => g.fx)).size >= 4);
+  const bars = model.HEROES.map((h) => allySig.allyStatBars(h.attackInterval, allySig.allySignature(h.id)));
+  ok("능력치 막대: 1~5 · 공속·한방 모두 값이 갈린다", bars.every((b) => b.speed >= 1 && b.speed <= 5 && b.burst >= 1 && b.burst <= 5) && new Set(bars.map((b) => b.speed)).size >= 3 && new Set(bars.map((b) => b.burst)).size >= 3);
+  const fresh = { ...prog.emptyCharacterProgress(), onboardingStep: 0, titanBestStage: 3, dodgeBestStage: 0, pioneeredArea: 1, towerOpen: false };
+  const u = (c, p = fresh) => onboarding.unlockInfo(c, p);
+  ok("잠금 안내: 새 계정은 성문 방어 = 사냥터 Stage 5 · 진행 3/5", u("dodge").label === "사냥터 Stage 5" && u("dodge").now === 3 && u("dodge").goal === 5 && !u("dodge").done);
+  ok("잠금 안내: 앞 단계가 막힌 대장간·비트는 '먼저 …' 로 자기 최종 조건을 함께 말한다", u("forge").label.startsWith("먼저 ") && u("forge").label.includes("첫 지역 개척") && u("beat").label.includes("사냥터 Stage 10") && u("forge").hint !== u("beat").hint);
+  ok("잠금 안내: 열린 콘텐츠는 done · 성벽은 S10 대장", u("dodge", { ...fresh, onboardingStep: 4 }).done && u("tower").label.includes("S10"));
+  const cards = hub.hubCards(fresh, events.emptyEventSave ? events.emptyEventSave() : { riftAttempts: 0 }, {});
+  ok("허브 카드: 잠긴 카드마다 진행도·안내 문구가 붙는다", cards.filter((c) => c.locked).every((c) => c.unlock && !c.unlock.done && c.lockHint && c.lockHint.length > 8));
 }
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
 const fails = results.filter((r) => r[0] === "FAIL").length;
