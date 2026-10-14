@@ -342,6 +342,25 @@ def cmd_recolor(a):
     save(cutout(im), f"{a.out}.png")
 
 
+def cmd_restyle(a):
+    """restyle (2026-10-14, 사용자: "투디 스프라이트로 생성된 동료·몬스터·보스를 기존 동료처럼 3차원 리소스로") —
+    지금 원화(납작, 방향·의상 확정)를 초기 이미지로 img2img 해 3D 토이 렌더 화풍만 바꾼다. 자세·방향·의상은 strength 가 낮을수록 유지.
+    ARTGEN_LOOK 은 비워 둔다(STYLE = 3D 토이). 참조(ARTGEN_REFS)는 예전 3D 원화를 약하게(--ip) — 음영·질감만 끈다.
+    여러 시드: --seeds. 출력 art-gen/out/<out>-s<seed>.png (오려낸 뒤)"""
+    src = Image.open(a.file).convert("RGBA")
+    neg = NEG + ", flat vector, cel shading, thick black outlines, sticker, 2d, flat colors, lineart"
+    for sd in (a.seeds or [a.seed or BASE_SEED]):
+        pipe = load_pipe(img2img=True)
+        pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.25)
+        g = torch.Generator(dev()).manual_seed(sd)
+        bg = Image.new("RGBA", src.size, (255, 255, 255, 255))
+        bg.alpha_composite(src)
+        init = bg.convert("RGB").resize((1024, 1024))
+        im = pipe(prompt=f"{a.prompt}, soft 3d render, volumetric shading, glossy toy, {STYLE}", negative_prompt=neg, image=init, strength=a.strength,
+                  num_inference_steps=28, guidance_scale=6.5, generator=g, ip_adapter_image=[style_refs()]).images[0]
+        save(cutout(im), f"{a.out}-s{sd}.png")
+
+
 STATE_PROMPTS = {
     # 공격은 앞(화면 오른쪽, 동료)/왼쪽(몬스터)으로 몸을 내미는 돌진, 피격은 뒤로 젖히는 반동 — 방향 단어는 호출 쪽 prompt 가 준다
     "attack": "mid-attack action pose, lunging forward, swinging the weapon, body leaning forward, dynamic motion",
@@ -660,6 +679,7 @@ if __name__ == "__main__":
     c = sub.add_parser("char"); c.add_argument("id"); c.add_argument("prompt"); c.add_argument("--pose-from"); c.add_argument("--seed", type=int); c.add_argument("--states", help="idle,run,attack,hit 중 일부만"); c.add_argument("--no-pose", action="store_true"); c.add_argument("--ip", type=float); c.set_defaults(fn=cmd_char)
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
+    rs = sub.add_parser("restyle"); rs.add_argument("file"); rs.add_argument("out"); rs.add_argument("prompt"); rs.add_argument("--strength", type=float, default=0.55); rs.add_argument("--seed", type=int); rs.add_argument("--seeds", type=int, nargs="*"); rs.add_argument("--ip", type=float); rs.set_defaults(fn=cmd_restyle)
     rc = sub.add_parser("recolor"); rc.add_argument("file"); rc.add_argument("out"); rc.add_argument("prompt"); rc.add_argument("--strength", type=float, default=0.5); rc.add_argument("--seed", type=int); rc.add_argument("--ip", type=float); rc.set_defaults(fn=cmd_recolor)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
     # states (2026-10-13): 자기 대기 PNG 를 img2img 초기 이미지로 공격·피격 포즈를 그린다 — 체형·의상은 남고 자세만 바뀐다

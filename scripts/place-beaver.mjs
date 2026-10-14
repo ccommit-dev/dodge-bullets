@@ -114,9 +114,9 @@ if (want("allies")) {
     const gid = id.replace(/_/g, "-");
     // v2(털색 구분 · 자기 대기 참조, batch-beaver3.sh) 가 있으면 그것을, 없으면 1차 bv 를 꽂는다 (2026-10-07)
     let stem = existsSync(`${OUT}/char-bv2-${id}-hit.png`) ? "bv2" : "bv";
-    for (const gen of ["capy12", "capy8", "capy5", "capy2", "bv5", "bv3"]) {   // 카피 12차(정면 4명 → 오른쪽 ¾, 고정표로만) → 8차(추가 5명) → 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
+    for (const gen of ["r3d", "capy12", "capy8", "capy5", "capy2", "bv5", "bv3"]) {   // 카피 12차(정면 4명 → 오른쪽 ¾, 고정표로만) → 8차(추가 5명) → 5차(엄격 방향) → 2차(납작, 2026-10-12) → 20차(¾ 앞·우) → 10차 순
       const pin = FACING[id];
-      if (gen === "capy12" && !pin) continue;   // 12차는 사람이 고른 시드만(고정표) — 자동 선택 금지
+      if ((gen === "capy12" || gen === "r3d") && !pin) continue;   // 12차·3D(r3d, restyle) 는 사람이 고른 시드만(고정표) — 자동 선택 금지
       if (pin && !pin.src.startsWith(`char-${gen}-${gid}-idle-s`)) continue;
       const cands = globOut(new RegExp(`^char-${gen}-${gid}-idle-s\\d+\\.png$`));
       if (!cands.length) continue;
@@ -194,8 +194,11 @@ const MON = [
 if (want("monsters")) {
   const margins = {};
   const names = [];
+  // 3D 고정표 (2026-10-14, 사용자: "몬스터·보스를 3차원 리소스로") — art-gen/monster-3d.json {대상이름: 원화 파일}. 있으면 자동 선택보다 우선
+  const M3D = existsSync("art-gen/monster-3d.json") ? JSON.parse(readFileSync("art-gen/monster-3d.json", "utf8")) : {};
   for (const [stem, dest, size, seeds] of MON) {
-    const src = pick(`monster-${stem}`, seeds);
+    const src = M3D[dest] ? `${OUT}/${M3D[dest]}` : pick(`monster-${stem}`, seeds);
+    if (M3D[dest]) { if (!existsSync(src)) throw new Error("3D 고정표 원본 없음: " + src); console.log("3d", dest, M3D[dest]); }
     const out = execFileSync(process.execPath, ["scripts/place-monster.mjs", src, dest, "--size", String(size)], { encoding: "utf8" });
     const m = out.match(/\[([\d.]+), ([\d.]+)\]/);
     if (m) margins[dest] = [Number(m[1]), Number(m[2])];

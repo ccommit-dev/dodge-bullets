@@ -103,6 +103,9 @@ await clickText('[role="menuitem"]', "마이페이지");
 await sleep(700);
 await clickText("button", "대장간");
 await sleep(1000);
+// 2026-10-14: 마이페이지 바로가기는 모드를 바로 켜지 않고 모험 허브로 보낸다(잠금을 거치게) — 허브의 대장간 카드로 들어간다
+await page.evaluate(() => [...document.querySelectorAll(".hub-card")].find((b) => b.textContent.includes("대장간"))?.click());
+await sleep(1500);
 // 이지/하드 모드 선택 화면은 2026-10-02 에 없앴다 — 대장간은 바로 강화 화면
 await sleep(600);
 r = await page.evaluate(() => document.body.textContent.includes("정제"));
