@@ -5401,3 +5401,10 @@ small, p, li, .nav-help, .hub-card-body small, .gacha-detail > p, .gacha-detail 
 .ally-sig-bars i { width: 9px; height: 6px; border-radius: 2px; background: rgba(120, 100, 80, .2); }
 .ally-sig-bars i.on { background: hsl(var(--sig-hue, 200) 90% 62%); }
 
+
+/* 인앱 브라우저 가로 안내 띠 (2026-10-14) — 레일과 겹치지 않게 왼쪽 위, 작게 */
+.inapp-fs-hint { position: fixed; z-index: 70; left: max(8px, env(safe-area-inset-left)); top: 6px; right: 84px; display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 12px; border: 2px solid var(--flat-ink, #3b2a1a); border-radius: 12px; background: var(--flat-cream, #fff6e0); color: var(--flat-ink, #3b2a1a); font-size: 12px; box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+.inapp-fs-hint span { flex: 1; min-width: 0; }
+.inapp-fs-hint button { flex: none; border: 2px solid var(--flat-ink, #3b2a1a); border-radius: 10px; background: #ffd34e; color: var(--flat-ink, #3b2a1a); font-family: var(--font-cute); font-weight: 700; font-size: 12px; padding: 4px 10px; min-height: 30px; }
+.inapp-fs-hint .inapp-fs-close { background: transparent; border: 0; font-size: 18px; padding: 0 6px; }
+.inapp-fs-hint small { font-size: 11px; opacity: .85; }
