@@ -3562,15 +3562,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                   role="button" tabIndex={0} aria-label={`${RARITY_LABEL[r.rarity]} ${h.name}`} title={`${RARITY_LABEL[r.rarity]}(${r.rarity}) · ${ROLE_LABEL[ALLY_ROLE[h.id]]} · ${h.feature}`}
                   onMouseEnter={() => setGachaFocus(i)} onClick={() => setGachaFocus((f) => (f === i ? null : i))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setGachaFocus(i); } }}>
                   <div className="gacha-card-inner">
-                    <div className="gacha-card-back"><i className="gacha-back-sigil" aria-hidden="true" /></div>
+                    <div className="gacha-card-back"><i className="gacha-back-sigil" aria-hidden="true" /><i className="gacha-back-glow" aria-hidden="true" /></div>
                     <div className="gacha-card-front">
                       <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}<i>{RARITY_LABEL[r.rarity]}</i>{r.pickup && <i className="pickup">픽업</i>}<i className="star">★{STAR_CAP[r.rarity]}</i></em>
                       {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`}>🔒 S{h.unlockStage}</i>}
-                      <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true"><i /><i /><i /><i /><i /><i /></i>}</span>
+                      <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true">{Array.from({ length: r.rarity === "SSR" ? 8 : 4 }, (_, k) => <i key={k} />)}</i>}</span>
                       <b>{h.name}</b>
                       <small>{r.duplicate ? `중복 · 조각 +${r.shards}` : "새 동료!"}</small>
                     </div>
                   </div>
+                  {/* 데스크톱 말풍선 (2026-10-14 보완): hover 가 되는 기기에서만 CSS 로 보인다 — 탭 기기는 아래 설명 패널 */}
+                  <span className="gacha-tip" role="tooltip">
+                    <b style={{ color: RARITY_COLOR[r.rarity] }}>{RARITY_LABEL[r.rarity]} {r.rarity}</b> {h.name}
+                    <small>{ROLE_LABEL[ALLY_ROLE[h.id]]} · {ELEMENT_LABEL[ALLY_ELEMENT[h.id]]} · {h.attackType}</small>
+                    <small>{h.feature}</small>
+                    <small>DPS {h.baseDps.toLocaleString()} · ★{STAR_CAP[r.rarity]} (×{STAR_MULT[STAR_CAP[r.rarity]]}) · 중복 조각 +{GACHA.dupeShards[r.rarity]}</small>
+                  </span>
                 </div>
               );
             })}
