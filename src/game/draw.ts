@@ -210,7 +210,7 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.globalAlpha = Math.min(1, ap.ms / 200);
     ctx.fillStyle = ELEMENT_COLOR[ap.element];
     ctx.strokeStyle = "rgba(2,6,23,.85)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
-    ctx.font = "900 15px system-ui"; ctx.textAlign = "center";
+    ctx.font = "700 15px Sunflower, sans-serif"; ctx.textAlign = "center";
     const popText = ap.text ?? "상성!";
     ctx.strokeText(popText, ap.x, ap.y - 14 - t * 26);
     ctx.fillText(popText, ap.x, ap.y - 14 - t * 26);
@@ -422,7 +422,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     }
     ctx.setLineDash([]);
     ctx.fillStyle = warningColor;
-    ctx.font = "800 11px system-ui";
+    ctx.font = "700 11px Sunflower, sans-serif";
     const warningText = a.fromBoss ? "대장 사격" : a.telegraph === "homing" ? "정예" : a.telegraph === "sniper" ? "돌진" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "낙하" : a.telegraph === "dash" ? "돌파" : "떼";
     // 위는 상단 버튼·HUD 글자(왼쪽 열이 더 길다)·일섬 게이지, 아래는 스킬 슬롯·조작 버튼이 덮는다 — 그 사이에만 쓴다
     const lx = Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x));
@@ -503,7 +503,7 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const k = 1 - breach;
     ctx.globalAlpha = breach * 0.9; ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 3 + k * 4; ctx.shadowColor = "#fb7185"; ctx.shadowBlur = 16;
     ctx.beginPath(); ctx.ellipse(width * 0.5, world.floorY, barrierRx(world) * (0.3 + k * 0.9), (world.floorY - y) * (0.3 + k * 0.9), 0, Math.PI, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = Math.min(1, breach * 1.6); ctx.fillStyle = "#fecaca"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
+    ctx.globalAlpha = Math.min(1, breach * 1.6); ctx.fillStyle = "#fecaca"; ctx.font = "700 13px Sunflower, sans-serif"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 6;
     ctx.fillText("방어막 붕괴", width * 0.5, y - 30 - k * 12);
     ctx.shadowBlur = 0;
   }
@@ -560,8 +560,8 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(15,23,42,.85)"; ctx.fillRect(bx, by, bw, 16);
   ctx.fillStyle = color; ctx.fillRect(bx + 2, by + 2, (bw - 4) * ratio, 12);
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "900 10px system-ui"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
-  ctx.fillStyle = "#0f172a"; ctx.font = "900 11px system-ui";
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "700 10px Sunflower, sans-serif"; ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
+  ctx.fillStyle = "#0f172a"; ctx.font = "700 11px Sunflower, sans-serif";
   ctx.fillText(`방어막 ${Math.ceil(world.barrierHp)} / ${world.barrierMaxHp}`, cx, by + 12);
   ctx.restore();
 }
@@ -660,7 +660,7 @@ function drawJuice(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const size = Math.min(26, 13 + world.streak * 0.9) * (1 + pop * 0.35);
     ctx.save();
     ctx.globalAlpha = Math.min(1, world.streakMs / 400);
-    ctx.font = `900 ${size.toFixed(1)}px system-ui`; ctx.textAlign = "center";
+    ctx.font = `700 ${size.toFixed(1)}px Sunflower, sans-serif`; ctx.textAlign = "center";
     ctx.lineJoin = "round"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
     ctx.fillStyle = world.streak >= 10 ? "#fde047" : world.streak >= 6 ? "#fdba74" : "#e0f2fe";
     const y = world.player.y - 62;
@@ -796,7 +796,7 @@ function drawSlashGauge(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   ctx.fillStyle = full ? "#fde68a" : "#f59e0b";
   ctx.fillRect(trackerX + 10, trackerY + 14, gw * Math.min(1, world.slashGauge / 100), 7);
   ctx.fillStyle = full ? "#fde68a" : "#e0f2fe";
-  ctx.font = "900 10px system-ui";
+  ctx.font = "700 10px Sunflower, sans-serif";
   ctx.fillText(full ? "화살비 준비" : `화살비 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
   ctx.restore();
 }
@@ -862,7 +862,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
       ctx.strokeRect(chestX - 21, chestY - 17, 42, 27);
     }
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "800 11px system-ui";
+    ctx.font = "700 11px Sunflower, sans-serif";
     ctx.fillText("재료 상자", chestX - 27, chestY - 30);
     ctx.restore();
   }
@@ -872,7 +872,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const label = world.lastCut === "reflect" ? "되쏘기!" : world.lastCut === "ult" ? "화살비" : "처치";
     ctx.globalAlpha = Math.min(1, world.lastCutMs / 300);
     ctx.fillStyle = world.lastCut === "reflect" ? "#fde68a" : world.lastCut === "ult" ? "#f8fafc" : "#67e8f9";
-    ctx.font = `900 ${world.lastCut === "ult" ? 34 : 16}px system-ui`;
+    ctx.font = `700 ${world.lastCut === "ult" ? 34 : 16}px Sunflower, sans-serif`;
     ctx.textAlign = "center";
     // 화살비는 화면 전체의 사건이라 가운데 위에 — 주인공 머리 위에 두면 "처치 ×N" 과 겹친다 (2026-10-01 캡처)
     if (world.lastCut === "ult") { ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14; ctx.fillText(label, width * 0.5, height * 0.4); }
@@ -980,7 +980,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const midColor = fx.boss ? "#fde047" : fx.crit ? "#fde68a" : tier === 2 ? "#fb923c" : tier === 1 ? "#a78bfa" : "#67e8f9";
     const lowColor = fx.boss ? "#fb7185" : fx.crit ? "#f97316" : tier === 2 ? "#ef4444" : tier === 1 ? "#7c3aed" : "#0ea5e9";
     const size = fx.boss ? 30 : fx.crit ? 28 : 20 + tier * 2;
-    ctx.font = `italic 1000 ${size}px system-ui, sans-serif`;
+    ctx.font = `italic 700 ${size}px Sunflower, sans-serif`;
     ctx.lineWidth = fx.boss || fx.crit ? 7 : 5;
     ctx.strokeStyle = fx.crit ? "#7c2d12" : "#3b0764";
     ctx.shadowColor = fx.crit ? "#fbbf24" : midColor;
@@ -993,13 +993,13 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = grad;
     ctx.fillText(String(fx.value), 0, 0);
     if (fx.crit) {
-      ctx.font = "italic 900 11px system-ui, sans-serif";
+      ctx.font = "italic 700 11px Sunflower, sans-serif";
       ctx.lineWidth = 3;
       ctx.strokeText("CRITICAL", 0, -size * 0.78);
       ctx.fillStyle = "#fef3c7";
       ctx.fillText("CRITICAL", 0, -size * 0.78);
     } else if (tier === 2 && !fx.boss) {
-      ctx.font = "900 9px system-ui, sans-serif";
+      ctx.font = "700 9px Sunflower, sans-serif";
       ctx.lineWidth = 3;
       ctx.strokeText("HIGH ENERGY", 0, -size * 0.8);
       ctx.fillStyle = "#ffedd5";
@@ -1023,7 +1023,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillStyle = "#ef4444";
     ctx.fillRect(barX + 3, barY + 3, (barW - 6) * ratio, 19);
     ctx.fillStyle = "#fff";
-    ctx.font = "900 11px system-ui";
+    ctx.font = "700 11px Sunflower, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(`${getStage(world.stageIndex).bossName} · 남은 처치 ${world.bossCutsLeft}/${world.bossMaxCuts}${world.bossWeak ? ` · 약점 ${ELEMENT_LABEL[world.bossWeak]}` : ""}`, width * 0.5, barY + 17);
     // 약점 무기 색 점 — 글자 색만으로는 못 알아본다

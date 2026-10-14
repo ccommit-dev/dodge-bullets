@@ -376,7 +376,7 @@ function drawLoopStack(ctx: CanvasRenderingContext2D, world: BeatWorld): void {
   const x = world.safeLeft + 14;
   const y = world.safeTop + 116;
   ctx.save();
-  ctx.font = "700 10px system-ui, sans-serif";
+  ctx.font = "700 10px Sunflower, sans-serif";
   ctx.fillStyle = "rgba(226,232,240,.62)";
   ctx.fillText("YOUR LOOP", x, y);
   entries.forEach(([sound, count], index) => {
@@ -499,7 +499,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.strokeStyle = "rgba(248,250,252,.9)";
       ctx.stroke();
       if (eased > 0.5) {
-        ctx.font = `900 ${Math.round(7 + eased * 4)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(7 + eased * 4)}px Sunflower, sans-serif`;
         ctx.textAlign = "center";
         ctx.fillStyle = "rgba(248,250,252,.9)";
         ctx.fillText("HOLD", tailX, tailY - bodyW * 0.9);
@@ -508,27 +508,27 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     drawNoteBody(ctx, lane, size, eased, consumed, golden, !!(step.holdSteps || step.holdTail));
     if (step.spike && !consumed) drawSpikeDecor(ctx, world.cosmetics.spikeSkin, size, eased, world.elapsedMs);
     if (eased > 0.3) {
-      ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`;
+      ctx.font = `700 ${Math.round(13 + eased * 15)}px Sunflower, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#f8fafc";
       ctx.shadowBlur = 0;
       ctx.fillText(LANE_SYMBOL[lane], 0, -1);
       if (step.holdSteps) {
-        ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(7 + eased * 5)}px Sunflower, sans-serif`;
         ctx.fillStyle = "#fde047";
         ctx.fillText(step.jumpSound ? `HOLD JUMP ×${step.holdSteps}` : `HOLD ×${step.holdSteps}`, 0, -size * .92);
       } else if (step.jumpSound) {
-        ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(7 + eased * 5)}px Sunflower, sans-serif`;
         ctx.fillStyle = "#a5f3fc";
         ctx.fillText("JUMP", 0, -size * .92);
       } else if (step.roll) {
-        ctx.font = `900 ${Math.round(7 + eased * 5)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(7 + eased * 5)}px Sunflower, sans-serif`;
         ctx.fillStyle = "#f9a8d4";
         ctx.fillText("ROLL", 0, -size * .92);
       }
       if (eased > 0.62) {
-        ctx.font = `800 ${Math.round(6 + eased * 4)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(6 + eased * 4)}px Sunflower, sans-serif`;
         ctx.fillStyle = "rgba(248,250,252,.82)";
         ctx.fillText(SOUND_SHORT[step.sound], 0, size * 0.48);
       }
@@ -547,7 +547,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
       ctx.globalAlpha = (0.35 + eased * 0.65) * fade * (consumed2 ? 0.3 : 1);
       drawNoteBody(ctx, lane2, size, eased, consumed2, false, !!step.holdSteps);
       if (eased > 0.3) {
-        ctx.font = `900 ${Math.round(13 + eased * 15)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#f8fafc"; ctx.shadowBlur = 0;
+        ctx.font = `700 ${Math.round(13 + eased * 15)}px Sunflower, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#f8fafc"; ctx.shadowBlur = 0;
         ctx.fillText(LANE_SYMBOL[lane2], 0, -1);
       }
       ctx.restore();
@@ -594,7 +594,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.translate(world.cx, hitY - (holdUi ? 104 : 58));
     ctx.scale(scale, scale);
     ctx.textAlign = "center";
-    ctx.font = "900 26px system-ui, sans-serif";
+    ctx.font = "700 26px Sunflower, sans-serif";
     ctx.fillStyle =
       world.judgeText === "HOLD 끊김"
         ? `rgba(248, 113, 113, ${alpha})`
@@ -619,12 +619,12 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     const alpha = Math.min(1, world.stageBannerMs / 350);
     ctx.save();
     ctx.textAlign = "center";
-    ctx.font = "900 28px system-ui, sans-serif";
+    ctx.font = "700 28px Sunflower, sans-serif";
     ctx.fillStyle = `rgba(248, 250, 252, ${alpha})`;
     ctx.shadowColor = palette.glow;
     ctx.shadowBlur = 28;
     ctx.fillText(world.stageBannerText, world.cx, horizonY - 54);
-    ctx.font = "700 13px system-ui, sans-serif";
+    ctx.font = "700 13px Sunflower, sans-serif";
     ctx.fillStyle = `rgba(34, 211, 238, ${alpha * 0.9})`;
     ctx.fillText(world.lessonHint.slice(0, 36), world.cx, horizonY - 28);
     ctx.restore();
@@ -678,13 +678,13 @@ function drawHoldState(ctx: CanvasRenderingContext2D, world: BeatWorld, hitY: nu
     ctx.shadowBlur = 0;
     // 글자
     ctx.textAlign = "center";
-    ctx.font = "900 15px system-ui, sans-serif";
+    ctx.font = "700 15px Sunflower, sans-serif";
     ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
     const label = `HOLD ${Math.round(progress * 100)}%`;
     ctx.strokeText(label, padX, hitY - r - 10);
     ctx.fillStyle = "#fef08a";
     ctx.fillText(label, padX, hitY - r - 10);
-    ctx.font = "800 11px system-ui, sans-serif";
+    ctx.font = "700 11px Sunflower, sans-serif";
     ctx.strokeText("떼지 마세요", padX, hitY + r + 16);
     ctx.fillStyle = "#e2e8f0";
     ctx.fillText("떼지 마세요", padX, hitY + r + 16);
@@ -702,7 +702,7 @@ function drawHoldState(ctx: CanvasRenderingContext2D, world: BeatWorld, hitY: nu
       ctx.strokeStyle = "#fde047"; ctx.shadowColor = "#fde047"; ctx.shadowBlur = 22; ctx.lineWidth = 6 * (1 - k) + 2;
       ctx.beginPath(); ctx.arc(padX, hitY, 30 + k * 46, 0, Math.PI * 2); ctx.stroke();
       ctx.shadowBlur = 0;
-      ctx.font = "900 18px system-ui, sans-serif";
+      ctx.font = "700 18px Sunflower, sans-serif";
       ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
       ctx.strokeText("완료!", padX, hitY - 44 - k * 18);
       ctx.fillStyle = "#fde047";
@@ -723,7 +723,7 @@ function drawHoldState(ctx: CanvasRenderingContext2D, world: BeatWorld, hitY: nu
       ctx.lineWidth = 7; ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(padX - xr, hitY - xr); ctx.lineTo(padX + xr, hitY + xr); ctx.moveTo(padX + xr, hitY - xr); ctx.lineTo(padX - xr, hitY + xr); ctx.stroke();
       ctx.shadowBlur = 0;
-      ctx.font = "900 18px system-ui, sans-serif";
+      ctx.font = "700 18px Sunflower, sans-serif";
       ctx.lineWidth = 4; ctx.strokeStyle = "rgba(2,6,23,.85)";
       const text = `끊김 ${Math.round(fx.progress * 100)}%`;
       ctx.strokeText(text, padX, hitY - 44 - k * 10);

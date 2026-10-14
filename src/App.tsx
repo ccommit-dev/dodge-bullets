@@ -6,6 +6,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSPrope
 import "./App.css";
 import "./idle.css";
 import "./weight.css";
+import "./unify.css";   // 2026-10-14 UI 통일(글꼴·남색 판·글자 잘림) — 반드시 마지막
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
@@ -392,6 +393,8 @@ function App() {
   const [eventTab, setEventTab] = useState<"daily" | "rift" | "weekly" | "journal" | "season">("daily");
   const [backupOpen, setBackupOpen] = useState(false);
   const [settingsToast, setSettingsToast] = useState("");
+  /** 사냥터를 다시 열 때 첫 탭 — 마이페이지 바로가기는 "hub"(모험 허브) */
+  const [titansStartTab, setTitansStartTab] = useState<"sword" | "hub">("sword");
   // 인앱 브라우저 가로 안내 (2026-10-14) — 카카오톡 등에서 가로로 돌리면 도구줄이 화면을 먹는다. 한 번 닫으면 그 기기에선 다시 안 뜬다
   const [inAppLandscape, setInAppLandscape] = useState(false);
   useEffect(() => {
@@ -1888,10 +1891,12 @@ function App() {
           onProgressChange={setProgress}
           refreshKey={profileRefresh}
           onOpenContent={(content) => {
-            if (content === "dodge") syncState("ready");
-            setMode(content);
+            // 마이페이지에서 성문 방어·비트·대장간을 바로 켜던 버그 (2026-10-14, 사용자: "마이 페이지 쪽에서는 모험 플레이할 수 있는 버그") —
+            // 잠금(온보딩 단계)도 거치지 않고 출격했다. 이제 사냥터 말고는 모험 허브로 보내 잠금·안내를 거친다
+            setTitansStartTab(content === "titans" ? "sword" : "hub");
+            setMode("titans");
           }}
-          onBack={() => setMode("titans")}
+          onBack={() => { setTitansStartTab("sword"); setMode("titans"); }}
         />
         </Suspense>
       )}
@@ -1920,6 +1925,7 @@ function App() {
 
       {bootReady && appMode === "titans" && (
         <TitansGame
+          initialTab={titansStartTab}
           settingsNode={settingsNode}
           insets={insets}
           userHash={userHashRef.current}

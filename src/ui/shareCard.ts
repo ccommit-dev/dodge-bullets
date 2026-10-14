@@ -40,7 +40,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-const FONT = "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+const FONT = "Sunflower, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
 
 function panel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, stroke: string, fill = "rgba(8,14,28,0.72)") {
   ctx.save();
@@ -53,13 +53,13 @@ function panel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
 /** 글자가 칸보다 길면 줄인다 */
 function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number, weight: number, size: number, min = 16) {
   let s = size;
-  ctx.font = `${weight} ${s}px ${FONT}`;
-  while (s > min && ctx.measureText(text).width > maxW) { s -= 2; ctx.font = `${weight} ${s}px ${FONT}`; }
+  ctx.font = `${Math.min(700, weight)} ${s}px ${FONT}`;
+  while (s > min && ctx.measureText(text).width > maxW) { s -= 2; ctx.font = `${Math.min(700, weight)} ${s}px ${FONT}`; }
 }
 
 function sectionTitle(ctx: CanvasRenderingContext2D, text: string, y: number, W: number, gold: string) {
   ctx.save();
-  ctx.font = `900 30px ${FONT}`;
+  ctx.font = `700 30px ${FONT}`;
   ctx.textAlign = "center";
   const tw = ctx.measureText(text).width;
   ctx.strokeStyle = `${gold}aa`; ctx.lineWidth = 2;
@@ -141,13 +141,13 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   // ── 머리: 브랜드 · 칭호 · 제목 · 부제 · 별 ──
   ctx.textAlign = "center";
   ctx.fillStyle = "#cbd5e1";
-  ctx.font = `800 28px ${FONT}`;
+  ctx.font = `700 28px ${FONT}`;
   ctx.fillText("GROW A BEAVER  ·  EXPEDITION RECORD", W / 2, 108);
   let y = 108;
   if (input.titleName) {
     y += 56;
     ctx.fillStyle = input.titleColor ?? gold;
-    ctx.font = `900 40px ${FONT}`;
+    ctx.font = `700 40px ${FONT}`;
     ctx.shadowColor = input.titleColor ?? gold; ctx.shadowBlur = 24;
     ctx.fillText(`✦ ${input.titleName} ✦`, W / 2, y);
     ctx.shadowBlur = 0;
@@ -196,7 +196,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   const px = 540, pw = W - 80 - px;
   panel(ctx, px, heroTop + 10, pw, 150, 26, `${gold}88`);
   ctx.textAlign = "center";
-  ctx.fillStyle = "#94a3b8"; ctx.font = `800 28px ${FONT}`;
+  ctx.fillStyle = "#94a3b8"; ctx.font = `700 28px ${FONT}`;
   ctx.fillText("통합 전투력", px + pw / 2, heroTop + 56);
   ctx.fillStyle = gold; ctx.shadowColor = gold; ctx.shadowBlur = 18;
   fitText(ctx, input.power.toLocaleString(), pw - 40, 900, 78, 40);
@@ -208,7 +208,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
     const cw = (pw - 16) / 2, ch = 96;
     const cx = px + (i % 2) * (cw + 16), cy = heroTop + 178 + Math.floor(i / 2) * (ch + 12);
     panel(ctx, cx, cy, cw, ch, 20, `${accent}55`, "rgba(8,14,28,0.66)");
-    ctx.fillStyle = "#94a3b8"; ctx.font = `800 22px ${FONT}`;
+    ctx.fillStyle = "#94a3b8"; ctx.font = `700 22px ${FONT}`;
     ctx.fillText(st.label, cx + cw / 2, cy + 34);
     ctx.fillStyle = "#f8fafc";
     fitText(ctx, st.value, cw - 20, 900, 38, 20);
@@ -246,7 +246,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
       fitText(ctx, a.name, cw - 16, 900, 26, 16);
       ctx.fillText(a.name, cx + cw / 2, cy + ch - 30);
       if (a.level !== undefined) {
-        ctx.fillStyle = gold; ctx.font = `800 19px ${FONT}`;
+        ctx.fillStyle = gold; ctx.font = `700 19px ${FONT}`;
         ctx.fillText(`Lv.${a.level}`, cx + cw / 2, cy + ch - 9);
       }
     });
@@ -306,7 +306,7 @@ function showCardOverlay(blob: Blob): void {
   img.style.cssText = "max-width:92vw;max-height:70vh;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.6)";
   const note = document.createElement("p");
   note.textContent = "스크린샷으로 저장해 공유하세요";
-  note.style.cssText = "margin:0;color:#e2e8f0;font:800 13px system-ui,sans-serif";
+  note.style.cssText = "margin:0;color:#e2e8f0;font:700 13px Sunflower,sans-serif";
   const close = document.createElement("button");
   close.type = "button"; close.textContent = "닫기"; close.className = "cta";
   close.style.cssText = "width:auto;min-width:140px";
