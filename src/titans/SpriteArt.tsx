@@ -252,7 +252,7 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
   return 0;
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -282,7 +282,8 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     const t = window.setTimeout(() => setFlinching(false), 260);
     return () => window.clearTimeout(t);
   }, [hitPulse]);
-  const ranged = base === "leon" || base === "sera" || base === "volt" || id === "sera_light";
+  // 역할표(ALLY_ROLE)로 줄을 정한다 (2026-10-14) — 예전엔 leon·sera·volt·sera_light 만 원거리로 하드코딩돼 힐러(루나·마리나)·원딜(오리온·엠버)이 근접 자리로 갔다
+  const ranged = cell ? cell === "L" : line ? line === "back" : base === "leon" || base === "sera" || base === "volt" || id === "sera_light";
   const slot = partySlot === undefined ? undefined : Math.max(0, Math.min(5, partySlot));
   // 대기 시에는 주인공(좌측 2%~약 18%) 바깥에서 시작한다. 모바일에서도
   // 20%가 최소 안전선이라 캐릭터와 첫 동료의 바운딩 박스가 겹치지 않는다.
@@ -332,6 +333,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
     // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
+    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex) : {}),
   } as CSSProperties);
   return (
     <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
@@ -361,6 +363,37 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
       {attacking && pulse > 0 && <i key={`fx-${pulse}`} className={`ally-attack-fx ${ranged ? "ranged" : "melee"}`} aria-hidden="true" />}
     </div>
   );
+}
+
+/**
+ * 줄 대형 (2026-10-14, 사용자: "스테이지 클리어마다 동료가 같은 자리로 걸어가고 동료끼리 충돌체크가 안 돼서 어색").
+ * 예전: 근접은 모두 몬스터 가장자리 같은 x 에 서고 줄(바닥 높이) 15% 만 달라 세로로 겹쳐 쌓였고(실측 37~47%),
+ *       원거리도 0~3% 같은 x 에 서 92% 겹쳤다. 동료 칸 높이(78px)가 동료 컨테이너 높이(251px)의 31% 라 줄만으론 못 가른다.
+ * 이제 두 줄(앞 1% · 뒤 = 본체 높이만큼 위) × 가로 칸(그린 몸 폭 = 칸의 0.68배) 격자에 줄별 순번으로 겹치지 않게 놓는다.
+ *   칸 6개: 몬스터 가장자리 R0(앞)·R1(뒤) · 주인공 뒤 L0(0,앞)·L1(−1,앞)·L2(−0.7,뒤)·L3(+0.2,뒤).
+ *   주인공(키 132px)이 두 줄을 다 덮어 주인공과 몬스터 사이엔 한 칸 폭(48px)뿐이다 — 근딜·탱커가 R0·R1 을 먼저 쓰고,
+ *   넘치는 근딜과 원딜·힐러는 L 칸을 차례로 쓴다(근딜 3명째가 주인공을 50% 덮던 문제). 줄 순번 대신 파티 전체로 칸을 배정한다.
+ * 대기(--party-home-*)는 같은 격자를 통째로 왼쪽으로 민 것이라, 걸어 들어오고 나갈 때도 서로의 앞뒤·간격이 그대로다(엇갈려 지나가지 않는다).
+ */
+const LEFT_CELLS: [number, number][] = [[0.12, 0], [-0.8, 0], [-0.7, 1], [0.2, 1]];   // 주인공 왼쪽 92px 에 두 칸 — −1 칸은 전장 왼쪽 밖으로 나갔다
+/** 파티(순서대로, 줄 표시) → 각자의 칸. TitansGame 이 부른다 */
+export function formationCells(lines: ("front" | "back")[]): { cell: "R" | "L"; index: number }[] {
+  let r = 0, l = 0;
+  return lines.map((ln) => (ln === "front" && r < 2 ? { cell: "R" as const, index: r++ } : { cell: "L" as const, index: l++ }));
+}
+const ROW_BOTTOM = ["1%", "calc(var(--ally-size, 78px) * 0.98)"];
+function lineFormation(cell: "R" | "L", index: number): Record<string, string> {
+  const [col, row] = cell === "R" ? [0, Math.min(1, index)] : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
+  const step = "var(--ally-size, 78px) * 0.68";
+  const bottom = ROW_BOTTOM[row];
+  if (cell === "R") {
+    // 교전 x 는 CSS 의 근접 공식(몬스터 보이는 몸 가장자리) + --party-melee-dx — 칸만큼 왼쪽으로
+    const dx = `calc(${-col} * ${step})`;
+    const edge = `calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * (1 - var(--monster-ml, .22)) - 6px - var(--ally-size, 86px) * .88 + ${dx})`;
+    return { "--party-melee-dx": dx, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${edge} - 18%)`, "--party-z": row === 0 ? "4" : "2" };
+  }
+  const x = `calc(${col} * ${step})`;
+  return { "--party-combat-x": x, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${x} - 4%)`, "--party-z": row === 0 ? "4" : "2" };
 }
 
 /** 원화 무기가 있는 동료 — scripts/place-props.mjs 가 넣는다. 루나·볼트는 그림에 무기가 포함(AUTHORED_WEAPON_BAKED) */

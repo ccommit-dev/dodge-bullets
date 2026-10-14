@@ -261,7 +261,7 @@ export function CharacterStatus({
           </button>
         </div>
         <button type="button" className="character-back" onClick={onBack}>
-          콘텐츠
+          사냥터로
         </button>
       </header>
 

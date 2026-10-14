@@ -37,7 +37,7 @@ import { HUNT_RARITY_LABEL, applyHuntPerk, huntModsChips, pickHuntPerks, type Hu
 import { WEAK_LABEL, WEAK_MUL, WEAK_WINDOW_MS, allyHitsWeak, partyWeakMatches, rollBossWeak, skillHitsWeak, type BossWeak } from "./titans/bossWeak";
 import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
-import { AllyArt, MonsterArt, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
+import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
@@ -141,6 +141,8 @@ type TitansGameProps = {
   onOpenContent: (content: "dodge" | "beat" | "forge" | "profile" | "tower") => void;
   /** 설정 버튼+메뉴 — 헤더의 마이페이지 왼쪽에 (App 이 만든다) */
   settingsNode?: ReactNode;
+  /** 처음 열 탭 (2026-10-14) — 마이페이지의 콘텐츠 바로가기는 모드를 바로 켜지 않고 모험 허브(hub)로 보낸다 */
+  initialTab?: ShopTab;
   /** 이벤트 센터를 특정 탭으로 연다 (추천 배너·루틴 보드) */
   onOpenEvents?: (tab: "daily" | "rift" | "weekly" | "journal" | "season") => void;
 };
@@ -230,10 +232,10 @@ const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
   (QA_BUILD && typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
-export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<ShopTab>("sword");
+  const [tab, setTab] = useState<ShopTab>(initialTab ?? "sword");
   const [premiumCategory, setPremiumCategory] = useState<PremiumCategory>("currency");
   const [wave, setWave] = useState(1);
   const [boss, setBoss] = useState(false);
@@ -349,23 +351,30 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
       if (!field) return;
       const hero = field.querySelector<HTMLElement>(".titans-hero");
       const allies = [...field.querySelectorAll<HTMLElement>(".titan-ally-art[data-party-slot]")];
-      const boxes = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el) => ({ el, r: el.getBoundingClientRect() }));
+      // 칸 상자엔 투명 여백이 양옆 22% 씩 있다 — 그린 몸(가운데)만으로 잰다. 칸 전체로 재면 주인공과 닿지도 않은 동료를 밀어 옆 동료에 올렸다
+      const coreRect = (el: HTMLElement, trim: number) => { const r = el.getBoundingClientRect(); const t = r.width * trim; return { left: r.left + t, right: r.right - t, width: r.width - 2 * t, bottom: r.bottom }; };
+      const boxes = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el, k) => ({ el, r: coreRect(el, k === 0 ? 0.15 : 0.22) }));
       for (let i = 1; i < boxes.length; i += 1) {
         const b = boxes[i];
         let dx = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
         let pushed = false;
-        for (let j = 0; j < 1; j += 1) {   // 주인공과의 겹침만 — 동료끼리는 슬롯(줄·x)이 이미 가른다(verify-play-art 0%)
+        // 주인공 + 앞서 놓인 동료 전부와 잰다 (2026-10-14, 사용자: "동료끼리 충돌체크가 안 돼서 어색") — 예전엔 주인공만 봐서,
+        // 주인공을 피해 왼쪽으로 민 원거리 동료가 옆 동료 위로 14px 올라탔다(luna×orion 28%)
+        for (let j = 0; j < i; j += 1) {
           const a = boxes[j];
           if (Math.abs(a.r.bottom - b.r.bottom) > 26) continue;   // 다른 줄은 앞뒤 깊이 (호흡·공격 바운스 ±6px 를 넘는 여유)
           const overlap = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
           const minW = Math.min(a.r.width, b.r.width);
           if (overlap > minW * 0.35) {
             const push = Math.min(18, overlap - minW * 0.35 + 2);
-            dx += b.el.classList.contains("combat-ranged") ? -push : push;
+            // 주인공에게서는 예전 규칙(원거리 왼쪽 · 근접 오른쪽), 동료끼리는 멀어지는 쪽으로
+            const away = j === 0 ? (b.el.classList.contains("combat-ranged") ? -1 : 1) : (b.r.left + b.r.width / 2 < a.r.left + a.r.width / 2 ? -1 : 1);
+            dx += away * push;
             pushed = true;
           }
         }
-        if (!pushed) dx *= 0.9;
+        // 겹침이 풀리면 제자리로 — 10% 씩 줄이면 2px 미만 변화는 쓰지 않는 규칙(아래)에 걸려 14px 에서 영영 멈췄다(luna 가 걸을 때 한 번 밀린 채 옆 동료 위에 남음). 최소 2px 씩 줄인다
+        if (!pushed) dx = Math.sign(dx) * Math.max(0, Math.abs(dx) - Math.max(2, Math.abs(dx) * 0.1));
         dx = Math.max(-60, Math.min(60, dx));
         // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
         const fr = field.getBoundingClientRect();
@@ -2159,6 +2168,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id) && canFieldAlly(h.id, h.unlockStage, fieldCeiling)),
     [save.heroes, character.partyIds, fieldCeiling],
   );
+  // 대형 칸 (2026-10-14) — 근딜·탱커가 몬스터 앞 두 칸(R), 나머지는 주인공 뒤 칸(L). 역할표(ALLY_ROLE)로 정한다
+  const allyLines = useMemo(() => allies.map((h) => (ALLY_ROLE[h.id] === "ranged" || ALLY_ROLE[h.id] === "healer" ? "back" as const : "front" as const)), [allies]);
+  const allyCells = useMemo(() => formationCells(allyLines), [allyLines]);
   const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea), [save.stage, character.pioneeredArea]);
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
   useEffect(() => {
@@ -2515,6 +2527,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               key={h.id}
               id={h.id}
               partySlot={allySlot}
+              line={allyLines[allySlot]}
+              cell={allyCells[allySlot].cell}
+              lineIndex={allyCells[allySlot].index}
               skin={character.equippedAllySkins[h.id]}
               attacking
               pulse={allyPulse[h.id] ?? 0}
