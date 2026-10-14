@@ -113,3 +113,54 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 .gear-forge-row strong { display: block; font-size: 15px; }
 .gear-forge-row small { display: block; font-size: 12px; color: #5a3f27; }
 .gear-forge-row .forge-button { min-width: 64px; padding: 8px 12px; }
+
+/* ── 대장간·이벤트·비트 메뉴의 남은 남색/검정 판 (scan-ui-quality 확장 투어, 2026-10-14) ── */
+.wallet-item { background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; box-shadow: 0 2px 0 rgba(59, 36, 21, .25) !important; }
+.wallet-item .wallet-text strong, .wallet-item strong { color: var(--flat-ink) !important; text-shadow: none !important; }
+.wallet-item .wallet-text small, .wallet-item small { color: #6b4e33 !important; }
+.forge-wallet { background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; }
+.forge-wallet * { color: var(--flat-ink) !important; text-shadow: none !important; }
+.forge-tabs { background: rgba(255, 243, 214, .92) !important; border: 2px solid var(--flat-ink) !important; }
+.forge-tabs button { color: var(--flat-ink) !important; text-shadow: none !important; }
+.forge-tabs button.on { background: var(--flat-yellow) !important; color: var(--flat-ink) !important; }
+.forge-exchange { background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; }
+.forge-exchange :is(b, strong, small, span, p, h2, h3) { color: var(--flat-ink); text-shadow: none !important; }
+.event-tabs { background: var(--flat-cream-2) !important; border-bottom: 2px solid rgba(59, 36, 21, .25) !important; }
+.event-tabs button { color: var(--flat-ink) !important; text-shadow: none !important; }
+.event-tabs button.on, .event-tabs button[aria-selected="true"] { background: var(--flat-yellow) !important; }
+/* 비트 메뉴 카드·칩 */
+.beat-rank-panel, .beat-custom, .schedule-card, .variant-chip, .perk-chip { background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; box-shadow: 0 2px 0 rgba(59, 36, 21, .25) !important; }
+.beat-rank-panel *, .beat-custom *, .schedule-card *, .variant-chip *, .perk-chip * { color: var(--flat-ink); text-shadow: none !important; }
+.schedule-card.today { background: #fff6c7 !important; box-shadow: 0 0 0 2px var(--flat-yellow), 0 2px 0 rgba(59, 36, 21, .25) !important; }
+.variant-chip.on, .variant-chip[aria-pressed="true"], .perk-chip.on { background: var(--flat-yellow) !important; }
+.variant-chip.locked { background: #eadbbb !important; color: #7a634c !important; }
+
+/* ── 대비 (scan-ui-quality ③, 2026-10-14 "가독성") ──
+   흰 글자 버튼: 하늘색(#5bb1ff)·연두(#7ac142) 위 흰 글자 대비 2.2~2.3 → 한 단계 진한 파랑·초록(3.5~3.8) */
+:root { --flat-blue: #3a86d4; --flat-blue-2: #24609c; --flat-green: #4f9a2c; --flat-green-2: #3a7520; }
+/* 어두운 테마 때 쓰던 옅은 글자색(하늘·회청·민트·연보라·베이지·연노랑·청록)이 크림 위에 남은 곳 */
+.preset-row button, .preset-row button * { color: var(--flat-ink) !important; }
+.character-identity *, .character-idle-chips *, .status-card .status-copy * { color: #5a3f27 !important; }
+.character-goal small, .character-goal em { color: #9a5b00 !important; }
+.status-card .status-enter { color: #0f766e !important; }
+.character-skin-chip.active * { color: var(--flat-ink) !important; }
+.beat-custom-toggle, .beat-custom-toggle *, .beat-custom * { color: var(--flat-ink) !important; }
+.schedule-card .schedule-day { color: #0e7490 !important; }
+.beat-rank-panel, .beat-rank-panel * { color: var(--flat-ink) !important; }
+.beat-rank-panel [class^="rank-"] b, .beat-rank-panel [class^="rank-"] strong { color: #9a5b00 !important; }
+.beat-rank-panel small { color: #6b4e33 !important; }
+.party-tools .role-filter button.on, .party-tools .role-filter button.on * { color: var(--flat-ink) !important; }
+.party-synergies .synergy-chip.on, .party-synergies .synergy-chip.on * { color: #166534 !important; }
+.ally-party-toggle.benched-action { color: #5a3f27 !important; }
+.titans-card .party-panel-head small, .titans-card .party-panel-head span { color: #6b4e33 !important; }
+/* 반투명 남색·검정 판(55% 미만이라 ② 에 안 걸리던 것) */
+.character-idle-chips > *, .character-idle-chips span { background: var(--flat-cream-2) !important; border: 1.5px solid rgba(59, 36, 21, .35) !important; }
+.ally-party-toggle.benched-action { background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; }
+.forge-shop-card, .forge-inventory, .forge-inventory > * { background: var(--flat-cream) !important; border-color: var(--flat-ink) !important; color: var(--flat-ink) !important; }
+.forge-shop-card *, .forge-inventory * { color: var(--flat-ink) !important; text-shadow: none !important; }
+.character-goal, .character-goal * { color: var(--flat-ink) !important; }
+.character-goal > :first-child { color: #9a5b00 !important; }
+/* 대장간 강화 정보 칸(강화 비용·성공 확률) · 사냥터 체력바 빈 칸 */
+.forge-panel > div, .forge-stats > div, .forge-panel .forge-stat { background: var(--flat-cream) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; }
+.forge-panel > div *, .forge-stats > div * { color: var(--flat-ink) !important; text-shadow: none !important; }
+.titans-hp { background: rgba(59, 36, 21, .35) !important; }
