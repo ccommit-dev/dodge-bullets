@@ -95,7 +95,7 @@ await clickText("button", "패키지");
 await sleep(400);
 r = await page.evaluate(() => ({ activeCat: [...document.querySelectorAll("button.on")].map((b) => b.textContent.trim()).filter((x) => x.length < 6), note: !!document.querySelector(".paid-gate-note"), paid: [...document.querySelectorAll(".premium-product-card")].filter((c) => /모험가 세트|캐릭터:|월정액/.test(c.textContent)).length }));
 ok("#14 출석 0일: 유료 패키지 숨김 + 안내", r.note && r.paid === 0, JSON.stringify(r) + " cats=" + catBtns.join("/"));
-await clickText("button", "설정");
+await clickText(".settings-toggle", "설정");   // 2026-10-14: 설정 버튼이 하단 바로 옮겨가 DOM 끝에 있다
 await sleep(400);
 r = await page.evaluate(() => document.querySelector(".menu-badge-warn")?.textContent);
 ok("#13 세이브 백업 '권장' 배지", r === "권장", r);

@@ -47,7 +47,8 @@ const tap = async (sel, text) => {
   await page.touchscreen.tap(box.x, box.y); return true;
 };
 const closeIdle = () => page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) c.click(); } });
-const openMenu = async () => { if (!(await page.evaluate(() => !!document.querySelector(".settings-menu")))) { await tap("button", "설정"); await sleep(400); } };
+// 2026-10-14: 설정 버튼이 하단 바(상점 오른쪽)로 옮겨가 DOM 끝에 있다 — 글자 "설정"이 든 첫 버튼이 아니라 .settings-toggle 을 누른다
+const openMenu = async () => { if (!(await page.evaluate(() => !!document.querySelector(".settings-menu")))) { await tap(".settings-toggle", "설정"); await sleep(400); } };
 
 const gemsNow = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)).redGems, H);
 // 1) 출석: 첫날 자동으로 30일 판이 뜬다 (개발 서버의 '보석 무제한' 테스트 모드가 보석을 채워 두므로 지급 전후 차이로 잰다)
