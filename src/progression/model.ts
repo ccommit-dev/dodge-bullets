@@ -1,3 +1,4 @@
+import { GEAR_ENHANCE_MAX, normalizeGearLevels } from "../equipment/parts";
 import { emptyBeatCosmetics, normalizeBeatCosmetics } from "../beat/shop";
 import { legacySeenMonsters } from "../titans/bestiary";
 import type { BeatCosmetics } from "../beat/types";
@@ -154,6 +155,8 @@ export type CharacterProgress = {
   activeTitle: string;
   /** 보호구(견갑) 강화 단계 — 대장간에서 검처럼 강화한다 (0~10). 파괴 없음 */
   shoulderEnhance: number;
+  /** 대장간 장비 강화 — 투구·갑옷·장갑·신발 +0~+10 (2026-10-14, equipment/parts) */
+  gearEnhance: { helmet: number; armor: number; gloves: number; boots: number };
   lastContent: "dodge" | "beat" | "forge" | "titans" | null;
   updatedAt: number;
   /** 복귀 워밍업(RETENTION C) — 골드 ×2가 끝나는 시각(ms). 0이면 없음 */
@@ -293,6 +296,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     ownedTitles: [],
     activeTitle: "",
     shoulderEnhance: 0,
+    gearEnhance: { helmet: 0, armor: 0, gloves: 0, boots: 0 },
     warmupUntil: 0,
     warmupDay: { date: "", count: 0 },
     routineClaimedDate: "",
@@ -637,6 +641,7 @@ export function normalizeCharacterProgress(
         ? raw.activeTitle
         : "",
     shoulderEnhance: integer(raw.shoulderEnhance, 0, 10),
+    gearEnhance: normalizeGearLevels(raw.gearEnhance, GEAR_ENHANCE_MAX),
     warmupUntil: integer(raw.warmupUntil, 0),
     warmupDay:
       raw.warmupDay && typeof raw.warmupDay.date === "string"
