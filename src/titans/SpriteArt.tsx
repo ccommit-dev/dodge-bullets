@@ -95,6 +95,8 @@ const SPECIAL_ROW: Partial<Record<TitanHeroId, number>> = { mia_dark: 2, sera_li
 // J: SSR 스킨 10종 + 시즌 한정 2종 — 순서는 make-variant-atlas.mjs SKINS와 같다 (가로 셀 12행)
 /** 생성 원화(art-gen) 동료 — 무기가 그림에 포함돼 있어 장착 파츠(.ally-weapon)를 겹쳐 그리면 검이 두 자루가 된다 */
 const AUTHORED_WEAPON_BAKED = new Set<TitanHeroId>(["luna", "volt", "bronn", "iris", "cain", "sylph", "orion", "ember"]);
+/** 비버 원화 전환 뒤 모든 동료(변형·스킨 포함)가 무기를 그림에 들고 있다 (2026-10-14) */
+const ALL_ALLIES_WEAPON_BAKED = true;
 const SKIN_ROW: Record<string, number> = { "garen-magma": 0, "leon-frost": 1, "ari-blaze": 2, "nox-abyss": 3, "bronn-iron": 4, "iris-prism": 5, "cain-ash": 6, "sylph-dawn": 7, "orion-nova": 8, "ember-ruby": 9, "season-1": 10, "season-2": 11, "luna-eclipse": 12 };
 const SKIN_ROWS = 13;
 // 특수 아틀라스 기반(정사각 셀) 스킨 — 루나·세라 라이트
@@ -369,7 +371,8 @@ function AllyWeapon({ id: rawId, anchor }: { id: TitanHeroId; anchor?: CSSProper
   const id = ALT_BASE[rawId] ?? rawId;
   const ranged = id === "leon" || id === "sera";
   // 생성 원화 동료는 무기가 그림에 있다 — 장착 파츠를 겹치면 검이 두 자루가 된다
-  if (AUTHORED_WEAPON_BAKED.has(rawId)) return null;
+  // 2026-10-14: 16명 모두 비버 원화(무기 포함)로 바뀌어 옛 인간 원화 무기 오버레이(오른쪽 위로 뻗은 주황 검 등)가 거꾸로 든 두 번째 무기처럼 보였다 → 전부 끈다
+  if (ALL_ALLIES_WEAPON_BAKED || AUTHORED_WEAPON_BAKED.has(rawId)) return null;
   // 생성 원화 무기(art-gen prop → public/titans/equipment/weapons/ally/<id>.png, 좌하→우상 대각선) — 네온 벡터가 페인팅 동료와 겉돌던 것을 교체.
   // 앵커·애니메이션 CSS(.ally-weapon / .weapon-<id>)는 그대로 — 같은 정사각 박스 안에서 같은 구도다.
   if (ALLY_WEAPON_PAINTED.has(id)) {

@@ -5,7 +5,7 @@
  * 탭하면 그 콘텐츠로 간다 — 안내가 곧 내비게이션이다(routine 과 같은 원칙).
  */
 import type { CharacterProgress } from "../progression/model";
-import { contentUnlocked } from "../progression/onboarding";
+import { contentUnlocked, unlockInfo, type UnlockInfo } from "../progression/onboarding";
 import { dateKey, riftAttemptsFor, type EventSave } from "../events/eventSave";
 import { TOWER_DAILY_TICKETS } from "../game/towerTickets";
 import { EXPEDITION_MAX } from "./allies";
@@ -28,6 +28,8 @@ export type HubCard = {
   /** 지금 할 수 있고 오늘 보상이 남았다 */
   dot: boolean;
   locked: boolean;
+  /** 잠금 조건과 진행도 (2026-10-14) — 카드 위 진행 막대·말풍선·토스트가 같이 쓴다 */
+  unlock?: UnlockInfo;
   /** 잠겼을 때 이유 */
   lockHint?: string;
   go: HubGo;
@@ -50,27 +52,27 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
     {
       id: "dodge", label: "성문 방어", desc: "직접 플레이 · 50 스테이지 · 스킬 무기", feeds: ["강화석", "견갑 조각", "인장"],
       remaining: progress.dodgeBestStage > 0 ? `최고 S${progress.dodgeBestStage} · 다음 S${progress.dodgeBestStage + 1}` : "첫 출격",
-      dot: !dodgeToday, locked: !contentUnlocked(step, "dodge"), lockHint: "튜토리얼을 마치면 열립니다", go: { kind: "content", content: "dodge" },
+      dot: !dodgeToday, locked: !contentUnlocked(step, "dodge"), lockHint: unlockInfo("dodge", progress).hint, unlock: unlockInfo("dodge", progress), go: { kind: "content", content: "dodge" },
     },
     {
       id: "beat", label: "비트 수련", desc: "30초~2분 기록 도전", feeds: ["견갑 조각"],
       remaining: (opts.beatBest ?? 0) > 0 ? `최고 ${(opts.beatBest ?? 0).toLocaleString()}점` : "첫 연주",
-      dot: !beatToday, locked: !contentUnlocked(step, "beat"), lockHint: "성문 방어 1회 뒤 열립니다", go: { kind: "content", content: "beat" },
+      dot: !beatToday, locked: !contentUnlocked(step, "beat"), lockHint: unlockInfo("beat", progress).hint, unlock: unlockInfo("beat", progress), go: { kind: "content", content: "beat" },
     },
     {
       id: "tower", label: "끝없는 성벽", desc: "죽을 때까지 층을 잇는 한 판 · 실패해도 등반권은 그대로", feeds: ["동료 조각", "방치 배율"],
       remaining: progress.towerOpen ? `등반권 ${progress.towerTickets}/${TOWER_DAILY_TICKETS} · 최고 ${progress.towerBestFloor}층` : "1장 대장을 깨면 열림",
-      dot: progress.towerOpen && progress.towerTickets > 0, locked: !progress.towerOpen, lockHint: "성문 방어 1장 대장(S10)을 깨면 열립니다", go: { kind: "content", content: "tower" },
+      dot: progress.towerOpen && progress.towerTickets > 0, locked: !progress.towerOpen, lockHint: unlockInfo("tower", progress).hint, unlock: unlockInfo("tower", progress), go: { kind: "content", content: "tower" },
     },
     {
       id: "rift", label: "균열", desc: "방치 2시간치를 즉시 정산 · 요일마다 보상 축", feeds: ["골드", "강화석", "조각"],
       remaining: riftLeft > 0 ? `오늘 ${riftMax - riftLeft}/${riftMax}` : `${riftMax}/${riftMax} 완료`,
-      dot: riftLeft > 0, locked: !contentUnlocked(step, "events"), lockHint: "모험가 이벤트가 열리면 들어갑니다", go: { kind: "events", tab: "rift" },
+      dot: riftLeft > 0, locked: !contentUnlocked(step, "events"), lockHint: unlockInfo("events", progress).hint, unlock: unlockInfo("events", progress), go: { kind: "events", tab: "rift" },
     },
     {
       id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", feeds: ["장비 +1"],
       remaining: forgeToday ? "오늘 강화 성공" : `강화석 ${progress.enhancementMaterials.toLocaleString()}`,
-      dot: !forgeToday && progress.enhancementMaterials > 0, locked: !contentUnlocked(step, "forge"), lockHint: "성문 방어 1회 뒤 열립니다", go: { kind: "content", content: "forge" },
+      dot: !forgeToday && progress.enhancementMaterials > 0, locked: !contentUnlocked(step, "forge"), lockHint: unlockInfo("forge", progress).hint, unlock: unlockInfo("forge", progress), go: { kind: "content", content: "forge" },
     },
     {
       id: "expedition", label: "파견", desc: "동료를 보내 두면 시간이 지난 뒤 들고 돌아온다", feeds: ["강화석", "조각"],

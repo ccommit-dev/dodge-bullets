@@ -43,7 +43,8 @@ ok("A 동료 프레임: 3초 관찰 동안 미아·레온·파이로가 2가지 
 // 명패: 칭호·코스튬이 없으면 "모험가" (이름 없는 빈 명패가 아니다)
 ok("A'' 주인공 명패 기본값은 '모험가'", (await page.evaluate(() => document.querySelector(".titans-hero .hero-marker b, .hero-marker b")?.textContent?.trim())) === "모험가", await page.evaluate(() => document.querySelector(".hero-marker b")?.textContent ?? "(none)"));
 ok("A 변형(파이로)은 변형 아틀라스 · 셀 비율 유지(폭 150% · 높이 114.35%)", await page.evaluate(() => { const b = document.querySelector(".titans-allies .ally-pyro .ally-body"); return !!b && /variant/.test(b.style.backgroundImage) && b.style.width === "150%" && b.style.height === "114.35%"; }));
-ok("A 무기 앵커 오프셋이 프레임마다 다르다(공격 시 --weapon-drot ≠ 0deg)", [...framesSeen.values()].some((set) => [...set].some((s) => /frame-2\|.*\|-\d+deg/.test(s))), [...(framesSeen.get("mia") ?? [])].slice(0, 3).join(" ; "));
+// 2026-10-14: 비버 원화는 무기를 그림에 들고 있다 — 인간 원화 시절 무기 덧그림(.ally-weapon)이 거꾸로 얹혀 "왼쪽을 본다"로 읽혔다. 덧그림이 하나도 없어야 한다
+ok("A 동료 무기 덧그림 없음(무기는 원화에 포함 · 프레임 기록에 drot 없음)", (await page.evaluate(() => document.querySelectorAll(".titans-allies .ally-weapon").length)) === 0 && [...framesSeen.values()].every((set) => [...set].every((s) => s.endsWith("|undefined"))), [...(framesSeen.get("mia") ?? [])].slice(0, 3).join(" ; "));
 
 // ── B. 몬스터 피격 프레임 + 보스 3단계 ──
 const hitSeen = await (async () => {
