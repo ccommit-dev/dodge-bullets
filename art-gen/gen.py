@@ -553,7 +553,7 @@ def cmd_prop(a):
     pipe = load_pipe(ip=True)
     pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.35)
     g = torch.Generator(dev()).manual_seed(a.seed or BASE_SEED)
-    im = pipe(prompt=f"{a.prompt}, {PROP_STYLE}", negative_prompt=PROP_NEG, num_inference_steps=24, guidance_scale=7.0,
+    im = pipe(prompt=f"{a.prompt}, {PROP_STYLE}", negative_prompt=PROP_NEG + os.environ.get("ARTGEN_NEG_EXTRA", ""),   # 2026-10-15 ARTGEN_NEG_EXTRA: 참조 모양 끌림 막기(", barrel, drum") num_inference_steps=24, guidance_scale=7.0,
               generator=g, width=1024, height=1024, ip_adapter_image=[style_refs()]).images[0]
     save(cutout(im).resize((512, 512), Image.LANCZOS), f"prop-{a.id}.png")
 
