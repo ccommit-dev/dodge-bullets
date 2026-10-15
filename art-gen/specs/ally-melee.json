@@ -1,0 +1,11 @@
+[
+ {"name":"idle-0","pose":"hero-idle-0","action":"standing idle, relaxed, holding its weapon"},
+ {"name":"idle-1","pose":"hero-idle-2","action":"standing idle, breathing in, holding its weapon","seed_offset":1},
+ {"name":"walk-0","pose":"mia-run","action":"walking forward to the right, mid stride"},
+ {"name":"walk-1","pose":"mia-run","action":"walking forward to the right, the other leg forward","seed_offset":2,"cn":0.5},
+ {"name":"attack-0","pose":"hero-attack-0","action":"crouching wind-up before a strike"},
+ {"name":"attack-1","pose":"hero-attack-1","action":"swinging the weapon forward, fast strike"},
+ {"name":"attack-2","pose":"hero-attack-2","action":"lunging forward, strike lands, motion"},
+ {"name":"attack-3","pose":"hero-attack-3","action":"follow-through after the strike"},
+ {"name":"hit-0","pose":"mia-hit","action":"recoiling from a heavy hit, flinching, eyes squeezed shut"}
+]

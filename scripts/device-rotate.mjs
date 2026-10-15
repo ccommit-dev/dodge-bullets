@@ -41,7 +41,8 @@ const facts = () => page.evaluate(() => {
     w: innerWidth, h: innerHeight, type: screen.orientation?.type,
     pref: localStorage.getItem("dodgebullets:orientation"),
     label: document.querySelector(".settings-orientation b")?.textContent ?? null,
-    tabsRightOfField: !!(f && tabs && tabs.x >= f.x + f.width - 2),
+    // 2026-10-15: 가로는 필드가 가로 전체(레일 제외)를 쓰고 장비 성장·스킬 탭은 필드 아래 서랍으로
+    tabsBelowWideField: !!(f && tabs && tabs.y >= f.y + f.height - 2 && f.width >= window.innerWidth * 0.75),
     hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   };
 });
@@ -67,7 +68,7 @@ adb("shell", "settings", "put", "system", "user_rotation", "1");
 await sleep(2500);
 let f1 = await facts();
 ok("기본 자동 + 기기 가로 → 앱 WebView 가로 (설정 없이)", f1.w > f1.h, `${f1.w}×${f1.h} ${f1.type ?? ""} rot=${rotation()}`);
-ok("가로 레이아웃: 사냥터 왼쪽 · 성장 탭 오른쪽", f1.tabsRightOfField, "");
+ok("가로 레이아웃: 사냥터가 가로 75% 이상 · 성장 탭은 아래(서랍)", f1.tabsBelowWideField, "");
 ok("가로 스크롤 없음", !f1.hScroll, "");
 shot("rot-auto-landscape.png");
 

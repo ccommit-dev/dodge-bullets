@@ -1,0 +1,6 @@
+[
+ {"name":"idle-1","action":"idle, gently bouncing, slightly squashed","face":"facing left"},
+ {"name":"attack-0","action":"rearing back, about to attack, mouth open","face":"facing left","seed_offset":1},
+ {"name":"attack-1","action":"lunging forward to the left, biting attack, motion","face":"facing left","seed_offset":2},
+ {"name":"hit-0","action":"recoiling from a heavy hit, flinching, eyes squeezed shut","face":"facing left","seed_offset":3}
+]
