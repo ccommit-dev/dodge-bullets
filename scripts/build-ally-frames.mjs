@@ -42,6 +42,40 @@ async function strip(files, w, h, top, bottom, maxW, dest) {
   await sharp({ create: { width: w * files.length, height: h, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(comps).webp({ quality: 88, alphaQuality: 92 }).toFile(dest);
 }
 
+/** 품질 문 (2026-10-15) — 오려내기가 실패해 배경 상자가 남았거나(네 모서리 불투명) 거의 빈 그림이면 버리고 가까운 프레임으로 대신한다 */
+const SUBST = { "idle-0": "idle-1", "idle-1": "idle-0", "walk-0": "idle-0", "walk-1": "walk-0", "attack-0": "attack-2", "attack-1": "attack-2", "attack-3": "attack-2", "attack-2": "attack-1", "hit-0": "idle-0" };
+async function frameStats(file) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const al = (x, y) => data[(y * info.width + x) * 4 + 3];
+  const corners = [al(2, 2), al(info.width - 3, 2), al(2, info.height - 3), al(info.width - 3, info.height - 3)].filter((v) => v > 200).length;
+  let opaque = 0, grey = 0, x0 = info.width, x1 = -1, y0 = info.height, y1 = -1;
+  for (let y = 0; y < info.height; y += 2) for (let x = 0; x < info.width; x += 2) {
+    const i = (y * info.width + x) * 4; if (data[i + 3] <= 40) continue; opaque += 1;
+    const r = data[i], g = data[i + 1], bl = data[i + 2], mx = Math.max(r, g, bl), mn = Math.min(r, g, bl);
+    const band = Math.round(Math.min(info.width, info.height) * 0.03);
+    if (x < band || x >= info.width - band || y < band) grey += 1;   // 캔버스 위·옆 가장자리 띠에 닿은 불투명 = 남은 배경 조각(발은 아래라 뺀다)
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const total = (info.width / 2) * (info.height / 2);
+  return { corners, frac: opaque / total, greyFrac: grey / total, aspect: x1 > x0 ? (y1 - y0) / (x1 - x0) : 0 };
+}
+/** 품질 문 — 배경 상자·조각(모서리 불투명 · 밝은 무채색 6% 넘게) · 거의 빈 그림 · 같은 동료의 다른 프레임보다 1.4배 넘게 길쭉함(두 마리가 위아래로 겹침) */
+async function resolveSet(names, path) {
+  const stats = {};
+  for (const n of names) { const file = path(n); if (existsSync(file)) stats[n] = await frameStats(file); }
+  const aspects = Object.values(stats).map((t) => t.aspect).sort((p, q) => p - q);
+  const med = aspects[Math.floor(aspects.length / 2)] || 1;
+  const bad = (n) => { const t = stats[n]; return !t || t.corners >= 1 || t.greyFrac > 0.0012 || t.frac < 0.02 || t.frac > 0.7 || t.aspect > med * 1.16; };
+  const out = [];
+  for (const n of names) {
+    let cur = n, hops = 0;
+    while (bad(cur) && hops < 4) { cur = SUBST[cur] ?? "idle-0"; hops += 1; }
+    if (cur !== n) console.log("  대신", n, "→", cur, JSON.stringify(stats[n] ? { c: stats[n].corners, g: +stats[n].greyFrac.toFixed(2), asp: +(stats[n].aspect / med).toFixed(2) } : {}));
+    out.push(path(cur));
+  }
+  return out;
+}
+
 const files = readdirSync(OUT).filter((f) => f.startsWith("frame-") && f.endsWith(".png"));
 const ids = [...new Set(files.map((f) => f.replace(/^frame-/, "").replace(/-(idle|walk|attack|hit)-\d\.png$/, "")))];
 const allies = [], monsters = [];
@@ -51,12 +85,14 @@ for (const id of ids) {
   if (id.startsWith("m-")) {
     const art = id.slice(2);
     const idle0 = `${OUT}/monster-r3d-${art}-s20263601.png`;
-    const set = MON_NAMES.map((n) => (n === "idle-0" ? idle0 : `${OUT}/frame-${id}-${n}.png`));
+    if (MON_NAMES.slice(1).filter((n) => existsSync(`${OUT}/frame-${id}-${n}.png`)).length < 4 || !existsSync(idle0)) { console.log("skip monster", art, "(아직 생성 중)"); continue; }
+    const set = await resolveSet(MON_NAMES, (n) => (n === "idle-0" ? idle0 : `${OUT}/frame-${id}-${n}.png`));
     if (!set.every(existsSync)) { console.log("skip monster", art, "(프레임 부족)"); continue; }
     await strip(set, MW, MH, 0.06, 0.99, 0.96, `public/titans/generated/monsters/frames/${art}.webp`);
     monsters.push(art); console.log("monster", art);
   } else {
-    const set = ALLY_NAMES.map((n) => `${OUT}/frame-${id}-${n}.png`);
+    if (ALLY_NAMES.filter((n) => existsSync(`${OUT}/frame-${id}-${n}.png`)).length < 9) { console.log("skip ally", id, "(아직 생성 중)"); continue; }
+    const set = await resolveSet(ALLY_NAMES, (n) => `${OUT}/frame-${id}-${n}.png`);
     if (!set.every(existsSync)) { console.log("skip ally", id, "(프레임 부족)", ALLY_NAMES.filter((n, i) => !existsSync(set[i])).join(",")); continue; }
     await strip(set, CW, CH, 0.05, 0.87, 0.6, `public/titans/generated/allies/frames/${id}.webp`);
     allies.push(id); console.log("ally", id);
