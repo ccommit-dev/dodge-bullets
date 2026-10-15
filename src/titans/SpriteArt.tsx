@@ -232,7 +232,7 @@ export function MonsterArt({
   const art = idle.split("/").pop()?.replace(/.png$/, "") ?? "";
   if (!golden && hasMonsterFrames(art)) {
     return (
-      <div key={idle} className={`titan-monster-art has-frames frame-${state}`}>
+      <div key={idle} className={`titan-monster-art has-frames frame-${state} ${FLIP_MONSTERS.has(art) ? "face-flip" : ""}`}>
         <i className={`monster-frames mf-${state}`} style={{ backgroundImage: `url(${assetUrl(`titans/generated/monsters/frames/${art}.webp`)})` }} aria-hidden="true" />
         <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
         <span className="monster-asset-current" data-src={asset} hidden />
