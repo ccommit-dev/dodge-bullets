@@ -88,6 +88,9 @@ const owned0 = allies.emptyAllyRecord();
 // 천장: 59 누적 후 → SSR 확정
 const pityPull = gacha.pullOnce(p30, owned0, 59, () => 0.0);
 ok("천장 60회째 SSR 확정 · 카운터 0", pityPull.result.rarity === "SSR" && pityPull.pity === 0, JSON.stringify(pityPull.result));
+// 2026-10-15 버그("천장 80/60 · 초기화 안 됨"): 전설이 없는 초반 풀에서도 천장에 닿으면 그 풀 최고 등급 보장 + 카운터 0 · 평소엔 59 를 넘지 않는다
+{ const noSsr = gacha.gachaPool(1, 1); const at = gacha.pullOnce(noSsr, owned0, 59, () => 0.0); const over = gacha.pullOnce(noSsr, owned0, 79, () => 0.99); const mid = gacha.pullOnce(noSsr, owned0, 58, () => 0.99);
+  ok("천장(전설 없는 풀): 60회째 그 풀 최고 등급(SR) 보장 · 카운터 0 · 옛 80 도 다음 뽑기에 0 · 평소 카운터 ≤ 59", !noSsr.entries.some((e) => e.rarity === "SSR") && at.result.rarity === "SR" && at.pity === 0 && over.pity === 0 && mid.pity === 59, JSON.stringify({ at: at.result.rarity, atP: at.pity, overP: over.pity, midP: mid.pity })); }
 const noPity = gacha.pullOnce(p30, owned0, 10, () => 0.0);
 ok("천장 전엔 rng 0 → R (정렬상 첫 항목)", noPity.result.rarity === "R" && noPity.pity === 11);
 // 10연 SR 보장: rng가 항상 R 구간(0.0)이면 마지막 1장이 SR 이상
