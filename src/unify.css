@@ -216,3 +216,11 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 .equipped-character .equipment-boots { width: 86% !important; margin-top: 4%; }
 .equipped-character .equipment-weapon-alt { position: absolute; z-index: 5; width: 190%; margin-top: 46%; margin-left: 2%;   /* 손 앵커 scale(.32) 를 상쇄 → 칸의 약 60% */ height: auto; pointer-events: none; transform-origin: 50% 91%; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .equipped-character.mode-attack .equipment-weapon-alt { transition: transform .08s linear; }
+
+/* 장비 성장 아이콘 크기 통일 (2026-10-15 보완, 사용자: "무기·견갑 아이콘 다른 장비랑 크기 통일") — 모든 줄 52px */
+.equipment-training-card .training-item-icon.weapon img, .equipment-training-card .training-item-icon.weapon .sword-art, .equipment-training-card .training-item-icon.weapon svg { width: 52px !important; max-width: 52px !important; height: 52px !important; object-fit: contain; }
+.equipment-training-card .shoulder-icon { width: 56px !important; height: 56px !important; flex: 0 0 56px !important; }
+.equipment-training-card .shoulder-icon .shoulder-icon-part { width: 54px !important; height: 54px !important; filter: drop-shadow(0 3px 2px rgba(59, 36, 21, .3)) !important; }
+/* 무기 종류 칩 — 일반 버튼 스타일(큰 파란 버튼)을 덮어 작게 */
+.equipment-training-card .weapon-kind-chips .weapon-kind-chip { min-height: 24px !important; height: 26px !important; padding: 0 10px !important; font-size: 12px !important; background: var(--flat-cream) !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink) !important; border-radius: 999px !important; box-shadow: 0 2px 0 rgba(59, 36, 21, .25) !important; width: auto !important; }
+.equipment-training-card .weapon-kind-chips .weapon-kind-chip.on { background: var(--flat-yellow) !important; }

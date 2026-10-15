@@ -114,3 +114,5 @@
 .titan-monster-art.has-frames > img { opacity: 0; }
 .titan-monster-art.has-frames > img.on { opacity: 1; }
 .perf-low .titan-monster-art.has-frames.frame-idle .monster-frames { animation: none; }
+/* 오른쪽을 보고 그려진 원화(FLIP_MONSTERS)는 띠도 같이 뒤집어 왼쪽을 보게 */
+.titan-monster-art.has-frames.face-flip > .monster-frames { scale: -1 1; }

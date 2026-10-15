@@ -9,7 +9,7 @@
  * 끝에 src/titans/frameSets.ts 를 다시 써서 띠가 있는 id 를 게임에 알린다.
  */
 import sharp from "sharp";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const OUT = "art-gen/out";
 const ALLY_NAMES = ["idle-0", "idle-1", "walk-0", "walk-1", "attack-0", "attack-1", "attack-2", "attack-3", "hit-0"];
@@ -23,6 +23,22 @@ async function trimmed(file) {
   for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 30) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   if (x1 < 0) throw new Error("빈 그림 " + file);
   return sharp(file).extract({ left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 }).png().toBuffer();
+}
+
+/**
+ * 방향 맞추기 (2026-10-15, 사용자: "공격·피격 애니메이션이 오른쪽 방향을 바라보면서 자연스럽게") — 생성 프레임 중 왼쪽을 보는 것이 섞였다.
+ * 프레임을 기준 대기(ally-facing.json 의 오른쪽 원화)와 그대로·좌우 반전 두 가지로 비교해(48×48 · 색+알파), 반전이 4% 넘게 더 닮으면 반전한다.
+ */
+async function sig(buf) { return (await sharp(buf).resize(48, 48, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } }).ensureAlpha().raw().toBuffer()); }
+const dist = (a, b) => { let d = 0; for (let i = 0; i < a.length; i += 4) { const wa = a[i + 3] / 255, wb = b[i + 3] / 255; d += Math.abs(a[i] * wa - b[i] * wb) + Math.abs(a[i + 1] * wa - b[i + 1] * wb) + Math.abs(a[i + 2] * wa - b[i + 2] * wb) + Math.abs(a[i + 3] - b[i + 3]); } return d; };
+const FLIPPED = [];
+async function oriented(file, refBuf) {
+  if (!refBuf) return file;
+  const img = await trimmed(file);
+  const ref = await sig(refBuf), same = await sig(img), mir = await sig(await sharp(img).flop().png().toBuffer());
+  const ds = dist(ref, same), dm = dist(ref, mir);
+  if (dm < ds * 0.96) { const out = file.replace(/.png$/, ".flop.png"); await sharp(file).flop().png().toFile(out); FLIPPED.push(file.split("/").pop()); return out; }
+  return file;
 }
 
 /** 칸에 앉힌다 — 인물 세로를 top..bottom 비율에, 가로는 maxW 비율 안, 가운데·바닥 맞춤 */
@@ -92,7 +108,10 @@ for (const id of ids) {
     monsters.push(art); console.log("monster", art);
   } else {
     if (ALLY_NAMES.filter((n) => existsSync(`${OUT}/frame-${id}-${n}.png`)).length < 9) { console.log("skip ally", id, "(아직 생성 중)"); continue; }
-    const set = await resolveSet(ALLY_NAMES, (n) => `${OUT}/frame-${id}-${n}.png`);
+    const set0 = await resolveSet(ALLY_NAMES, (n) => `${OUT}/frame-${id}-${n}.png`);
+    const facing = JSON.parse(readFileSync("art-gen/ally-facing.json", "utf8"))[id];
+    const refBuf = facing ? await trimmed(`${OUT}/${facing.src}`) : null;
+    const set = []; for (const f of set0) set.push(await oriented(f, refBuf));
     if (!set.every(existsSync)) { console.log("skip ally", id, "(프레임 부족)", ALLY_NAMES.filter((n, i) => !existsSync(set[i])).join(",")); continue; }
     await strip(set, CW, CH, 0.05, 0.87, 0.6, `public/titans/generated/allies/frames/${id}.webp`);
     allies.push(id); console.log("ally", id);
@@ -102,4 +121,4 @@ writeFileSync("src/titans/frameSets.ts", `/** 생성 프레임 띠가 있는 동
 export const ALLY_FRAME_SET: readonly string[] = ${JSON.stringify(allies.sort())};
 export const MONSTER_FRAME_SET: readonly string[] = ${JSON.stringify(monsters.sort())};
 `);
-console.log("allies", allies.length, "monsters", monsters.length);
+console.log("allies", allies.length, "monsters", monsters.length, "반전", FLIPPED.length, FLIPPED.join(" "));
