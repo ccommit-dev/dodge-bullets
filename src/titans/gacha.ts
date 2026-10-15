@@ -103,12 +103,15 @@ export function pullOnce(
   const ssr = pool.entries.filter((e) => e.rarity === "SSR");
   const srPlus = pool.entries.filter((e) => e.rarity !== "R");
   let candidates = pool.entries;
-  if (pity >= GACHA.pityLimit - 1 && ssr.length > 0) candidates = ssr;
+  // 천장 (2026-10-15 버그 수정: "천장 초기화 안 되고 계속 남아 있다" — 80/60) — 풀에 전설이 없으면(초반 지역) 보장이 영영 안 터져
+  // 카운터가 60을 넘어 계속 올랐다. 이제 천장에 닿으면 그 풀의 최고 등급을 보장하고 카운터를 0으로 되돌린다
+  const atPity = pity >= GACHA.pityLimit - 1;
+  if (atPity) candidates = ssr.length > 0 ? ssr : srPlus.length > 0 ? srPlus : pool.entries;
   else if (guaranteeMin === "SSR" && ssr.length > 0) candidates = ssr;
   else if (guaranteeMin === "SR" && srPlus.length > 0) candidates = srPlus;
   const picked = weightedPick(candidates, rng);
   const duplicate = owned[picked.id] > 0;
-  const nextPity = picked.rarity === "SSR" ? 0 : pity + 1;
+  const nextPity = picked.rarity === "SSR" || atPity ? 0 : Math.min(GACHA.pityLimit - 1, pity + 1);
   return {
     result: { id: picked.id, rarity: picked.rarity, pickup: picked.pickup, duplicate, shards: duplicate ? GACHA.dupeShards[picked.rarity] : 0, pityBefore: pity },
     pity: nextPity,

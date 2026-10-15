@@ -1492,8 +1492,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
     if (redGems < cost || gacha.entries.length === 0) return;
     const pulled =
       count === 10
-        ? pullTen(gacha, save.heroes, character.gachaPity)
-        : (() => { const r = pullOnce(gacha, save.heroes, character.gachaPity); return { results: [r.result], pity: r.pity }; })();
+        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity))
+        : (() => { const r = pullOnce(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity)); return { results: [r.result], pity: r.pity }; })();   // 옛 저장의 60 초과 카운터는 천장 직전으로
     const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).map((r) => r.id))];
     let paid = false;
     const next = await updateCharacterProgress(userHash, (current) => {
@@ -3092,7 +3092,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
                 </button>
               </div>
               <small className="gacha-pity">
-                전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회 · 중복 시 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 뽑은 동료는 빈 슬롯에 자동 출전
+                {gacha.entries.some((e) => e.rarity === "SSR") ? "전설" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회 · 중복 시 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 뽑은 동료는 빈 슬롯에 자동 출전
               </small>
             </div>
             {expeditionsDone > 0 && (
@@ -3127,9 +3127,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
               </div>
             </div>
             <div className="gacha-level">
-              <b>천장 {character.gachaPity}/{GACHA.pityLimit}</b>
+              <b>천장 {Math.min(GACHA.pityLimit, character.gachaPity)}/{GACHA.pityLimit}</b>
               <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
-              <span>전설 확정까지 {Math.max(0, GACHA.pityLimit - character.gachaPity)}회</span>
+              <span>{gacha.entries.some((e) => e.rarity === "SSR") ? "전설" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
             </div>
             {momentOfferCard}
             <div className="gacha-page-actions">
