@@ -21,7 +21,7 @@ export function helmetTierOf(armorLevel: number): GearTier { return armorLevel >
 export function chestTierOf(shoulder: string | null | undefined): GearTier { return !shoulder ? 0 : shoulder === "scout" ? 1 : shoulder === "dragon" ? 3 : 2; }
 /** 무기 파츠 티어 — 대장간 검 강화: 1~4 나무 · 5~9 철 · 10+ 금 */
 export function weaponTierOf(weaponLevel: number): GearTier { return weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : weaponLevel >= 1 ? 1 : 0; }
-export const GEAR_URL = (part: "helmet" | "armor" | "weapon" | "shield" | "gloves" | "boots", tier: GearTier) => `titans/gear/${part}-${tier}.png`;
+export const GEAR_URL = (part: "helmet" | "armor" | "weapon" | "shield" | "gloves" | "boots" | "bow" | "staff", tier: GearTier) => `titans/gear/${part}-${tier}.png`;
 /** 방패 티어 — 성문 방어 최고 스테이지: 5 나무 · 15 철 · 30 금 */
 export function shieldTierOf(dodgeBestStage: number): GearTier { return dodgeBestStage >= 30 ? 3 : dodgeBestStage >= 15 ? 2 : dodgeBestStage >= 5 ? 1 : 0; }
 /** 장갑 티어 — 무기 숙련(사냥터 훈련): 5 나무 · 15 철 · 30 금 */

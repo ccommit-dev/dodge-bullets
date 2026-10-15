@@ -70,6 +70,10 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [materials, setMaterials] = useState(0);
   /** 장비 강화 (2026-10-14, equipment/parts) — 투구·갑옷·장갑·신발 +0~+10 */
   const [gearEnh, setGearEnh] = useState<GearLevels>(emptyGearLevels());
+  /** 무대에 올릴 장비·원정 무기 (2026-10-15, 사용자: "장비 강화도 북 강화하기처럼 리소스가 다 있어야") */
+  const [selGear, setSelGear] = useState<GearPart>("helmet");
+  const [selWeapon, setSelWeapon] = useState<"bow" | "staff">("bow");
+  const [gearFlash, setGearFlash] = useState(0);
   const [gems, setGems] = useState(0);
   /** 대장간 지갑 = 공유 골드. 방치 정산이 여기로 들어오고 강화가 여기서 빠진다. */
   const [coins, setCoins] = useState(0);
@@ -468,6 +472,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       return { ...current, sharedCoins: Math.max(0, current.sharedCoins - cost.coins), enhancementMaterials: Math.max(0, current.enhancementMaterials - cost.materials), gearEnhance: { ...ge, [part]: Math.min(GEAR_ENHANCE_MAX, ge[part] + 1) }, lastContent: "forge" };
     });
     setGearEnh(next.gearEnhance);
+    setGearFlash((n) => n + 1);
     flashToast(`${GEAR_PART_DEF[part].name} 강화 성공 +${next.gearEnhance[part]}`);
   };
 
@@ -732,6 +737,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           ) : view === "gear" ? (
             /* 장비 강화 — 사냥터 장비 성장의 파츠 4종. 실패·하락 없음(카피바라 장비처럼 재료만 모으면 오른다) · 숙련 효과 +10%/강화 · 그림 티어 +1 나무 · +5 철 · +10 금 */
             <section className="forge-panel gear-forge-panel" aria-label="장비 강화">
+              <ForgeShowcase src={assetUrl(`titans/gear/${selGear}-${Math.max(1, gearTierOfEnhance(gearEnh[selGear]))}.png`)} level={gearEnh[selGear]} name={GEAR_PART_DEF[selGear].name} tier={Math.max(1, gearTierOfEnhance(gearEnh[selGear])) as 1 | 2 | 3} flash={gearFlash} />
               <p className="gear-forge-note">사냥터 <b>장비 성장</b>에서 숙련을 올리고, 여기서 강화하면 효과가 강화 1단계마다 10% 커집니다.</p>
               {GEAR_PARTS.map((part) => {
                 const def = GEAR_PART_DEF[part];
@@ -739,20 +745,21 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 const cost = gearEnhanceCost(lv);
                 const can = !!cost && coins >= cost.coins && materials >= cost.materials && phase === "idle";
                 return (
-                  <article key={part} className={`gear-forge-row gear-${part}`} data-gear-part={part}>
+                  <article key={part} className={`gear-forge-row gear-${part} ${selGear === part ? "on" : ""}`} data-gear-part={part} onClick={() => setSelGear(part)}>
                     <img src={assetUrl(`titans/gear/${part}-${Math.max(1, gearTierOfEnhance(lv))}.png`)} alt="" aria-hidden="true" />
                     <div>
                       <strong>{def.name} +{lv}</strong>
                       <small>{def.stat} 효과 ×{(1 + 0.1 * lv).toFixed(1)}{cost ? ` → ×${(1 + 0.1 * (lv + 1)).toFixed(1)}` : " (최대)"}</small>
                       {cost && <small>{formatGold(cost.coins)}G · 강화석 {cost.materials}개</small>}
                     </div>
-                    <button type="button" className="forge-button" disabled={!can} onClick={() => void enhanceGear(part)}>{cost ? "강화" : "최대"}</button>
+                    <button type="button" className="forge-button" disabled={!can} onClick={(e) => { e.stopPropagation(); setSelGear(part); void enhanceGear(part); }}>{cost ? "강화" : "최대"}</button>
                   </article>
                 );
               })}
             </section>
           ) : view === "weapons" ? (
             <section className="forge-expweapons">
+              <ForgeShowcase src={assetUrl(`titans/gear/${selWeapon}-${expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1}.png`)} level={expForge[selWeapon]} name={selWeapon === "bow" ? "원정 장궁" : "수정 지팡이"} tier={(expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1) as 1 | 2 | 3} flash={gearFlash} />
               <p className="forge-note">성문 방어의 무기 — 강화는 확정(실패·파괴 없음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>
               {(["bow", "staff"] as const).map((kind) => {
                 const lv = expForge[kind];
@@ -762,7 +769,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 const family = kind === "bow" ? "physical" : "magic";
                 const weapons = EXPEDITION_SKILLS.filter((d) => d.family === family).map((d) => d.weapon);
                 return (
-                  <article key={kind} className={`forge-expweapon ${kind}`}>
+                  <article key={kind} className={`forge-expweapon ${kind} ${selWeapon === kind ? "on" : ""}`} onClick={() => setSelWeapon(kind)}>
                     <img src={assetUrl(`dodge/weapons/icon-${kind}.png`)} alt="" aria-hidden="true" />
                     <div>
                       <strong>{kind === "bow" ? "원정 장궁" : "수정 지팡이"} +{lv}</strong>
@@ -772,7 +779,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                       </p>
                       <p className={`forge-expweapon-cost ${can ? "" : "short"}`}>{maxed ? "최대 강화" : `골드 ${formatGold(cost.gold)} · 강화석 ${cost.stones} (보유 ${materials})`}</p>
                     </div>
-                    <button type="button" className="forge-button" disabled={!can} onClick={() => void upgradeExpWeapon(kind)}>
+                    <button type="button" className="forge-button" disabled={!can} onClick={(e) => { e.stopPropagation(); setSelWeapon(kind); setGearFlash((n) => n + 1); void upgradeExpWeapon(kind); }}>
                       {maxed ? "최대" : "강화"}
                     </button>
                   </article>
@@ -930,5 +937,21 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
       {toast && <div className="forge-toast">{toast}</div>}
     </div>
+  );
+}
+
+
+/** 대장간 무대 (2026-10-15) — 북 강화하기와 같은 무대(불티·오라·이름판)에 장비·원정 무기를 크게 올린다. 강화하면 번쩍 */
+function ForgeShowcase({ src, level, name, tier, flash }: { src: string; level: number; name: string; tier: 1 | 2 | 3; flash: number }) {
+  return (
+    <section className={`forge-stage forge-showcase showcase-tier-${tier}`} data-showcase={name}>
+      <div className="forge-embers" aria-hidden="true">
+        {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ "--ember-i": i, left: `${6 + ((i * 37) % 88)}%` } as CSSProperties} />)}
+      </div>
+      <div className="sword-aura" />
+      <img key={flash} className={`showcase-item ${flash > 0 ? "just-enhanced" : ""}`} src={src} alt="" aria-hidden="true" />
+      <div className="forge-sword-name"><span>+{level}</span><strong>{name}</strong></div>
+      {flash > 0 && <div key={`f${flash}`} className="forge-impact success">SUCCESS!</div>}
+    </section>
   );
 }

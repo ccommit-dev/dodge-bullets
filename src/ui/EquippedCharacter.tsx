@@ -21,7 +21,9 @@ type Props = {
   /** 견갑 강화 단계 — 5/10/15 마다 외형 티어(테두리 빛 → 보석 → 프리즘)가 바뀐다 */
   armorLevel?: number;
   /** 방패·장갑·신발 티어 (2026-10-12) — 0 없음 · 1 나무 · 2 철 · 3 금. 호출부가 anchors.*TierOf 로 계산 */
-  gear?: { shield?: number; gloves?: number; boots?: number };
+  gear?: { shield?: number; gloves?: number; boots?: number; helmet?: number; armor?: number };
+  /** 무기 종류 (2026-10-15) — 북(대장간 북 그림) · 활 · 지팡이(파츠 그림, 티어는 weaponLevel 눈금) */
+  weaponKind?: "drum" | "bow" | "staff";
 };
 
 /** 견갑 강화 외형 티어: 0 없음 · 1 (+1~4) 광택 · 2 (+5~9) 푸른 테두리 빛 · 3 (+10~14) 금빛 + 보석 · 4 (+15) 프리즘 */
@@ -31,7 +33,11 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
 
 const shoulderIndex: Record<ShoulderId, number> = { scout: 0, shadow: 1, ogre: 2, dragon: 3 };
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, gear }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, gear, weaponKind = "drum" }: Props) {
+  // 투구·갑옷: 장비 파츠(사냥터 숙련 · 대장간 강화)가 있으면 그 티어, 없으면 예전 규칙(견갑 강화·장착 견갑) (2026-10-15)
+  const helmetTier = Math.max(gear?.helmet ?? 0, helmetTierOf(armorLevel));
+  const chestTier = Math.max(gear?.armor ?? 0, chestTierOf(shoulder));
+  const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const index = Math.max(0, Math.min(3, frame));
   const anchor = (mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS)[index];
   const armorTier = armorTierOf(armorLevel);
@@ -58,12 +64,16 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = nul
       {(gear?.boots ?? 0) > 0 && <img className={`equipment-boots gear-tier-${gear?.boots}`} style={part(anchor.feet)} src={assetUrl(GEAR_URL("boots", (gear?.boots ?? 0) as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {(gear?.shield ?? 0) > 0 && <img className={`equipment-shield gear-tier-${gear?.shield}`} style={part(anchor.offHand)} src={assetUrl(GEAR_URL("shield", (gear?.shield ?? 0) as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {/* 가슴 갑옷·투구 (2026-10-12) — 납작 파츠 그림을 앵커에 얹는다. 파일이 없으면(아직 배치 전) 조용히 숨긴다 */}
-      {chestTierOf(shoulder) > 0 && <img className={`equipment-chest gear-tier-${chestTierOf(shoulder)}`} style={part(anchor.chest)} src={assetUrl(GEAR_URL("armor", chestTierOf(shoulder)))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+      {chestTier > 0 && <img className={`equipment-chest gear-tier-${chestTier}`} style={part(anchor.chest)} src={assetUrl(GEAR_URL("armor", chestTier as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {(gear?.gloves ?? 0) > 0 && <img className={`equipment-gloves gear-tier-${gear?.gloves}`} style={part({ ...anchor.hand, scale: 0.5 })} src={assetUrl(GEAR_URL("gloves", (gear?.gloves ?? 0) as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
-      {helmetTierOf(armorLevel) > 0 && <img className={`equipment-helmet gear-tier-${helmetTierOf(armorLevel)}`} style={part(anchor.head)} src={assetUrl(GEAR_URL("helmet", helmetTierOf(armorLevel)))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+      {helmetTier > 0 && <img className={`equipment-helmet gear-tier-${helmetTier}`} style={part(anchor.head)} src={assetUrl(GEAR_URL("helmet", helmetTier as 1 | 2 | 3))} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       {shoulder && armorTier >= 3 && <b className="armor-gem" style={{ left: `${anchor.shoulderLeft.x}%`, top: `${anchor.shoulderLeft.y - 6}%` }} aria-hidden="true" />}
       {shoulder && <i className={`equipment-shoulder shoulder-${shoulder} front`} style={{ ...part(anchor.shoulderLeft), backgroundImage: `url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})`, backgroundPosition: `${(shoulderIndex[shoulder] / 3) * 100}% center` }} />}
-      {(weaponLevel > 0 || blade) && (
+      {/* 활·지팡이 (2026-10-15) — 북 대신 손 앵커에 파츠 그림. 공격 프레임 앵커를 그대로 따라가 휘두른다 */}
+      {weaponKind !== "drum" && !blade && (
+        <img className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier}`} style={weaponPart} src={assetUrl(`titans/gear/${weaponKind}-${weaponTier}.png`)} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+      )}
+      {(weaponLevel > 0 || blade) && (weaponKind === "drum" || blade) && (
         <div
           className={`equipment-weapon ${blade ? "has-blade-skin" : ""}`}
           style={blade ? { ...weaponPart, "--blade-aura": blade.aura } as CSSProperties : weaponPart}
