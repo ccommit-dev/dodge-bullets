@@ -206,3 +206,13 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 .gear-forge-row.on, .forge-expweapon.on { box-shadow: 0 0 0 3px var(--flat-yellow), 0 3px 0 rgba(59, 36, 21, .25) !important; }
 .forge-expweapons { display: grid; gap: 8px; }
 .titans-layer.perf-low .forge-showcase .showcase-item, .perf-low .forge-showcase .showcase-item { animation: none; }
+
+/* ── 주인공 장착 파츠 크기·자리 (2026-10-15) — 앵커(anchors.ts)는 예전 원화 기준이라 지금 큰 머리 비버에선
+   가슴 앵커가 얼굴, 파츠가 칸의 15~25% 로 작았다. 칸(가로 66 · 세로 132) 기준: 왕관 30~47% · 얼굴 47~80% · 망토/몸 78~100%.
+   투구 = 왕관을 덮는 크기 · 갑옷 = 몸(망토) 위로 내림 · 장갑 = 몸 오른쪽 · 신발 = 발밑. 앵커의 프레임별 움직임(회전·흔들림)은 그대로 따라간다 */
+.equipped-character .equipment-helmet { width: 98% !important; margin-top: -4%; }
+.equipped-character .equipment-chest { width: 92% !important; margin-top: 30%; z-index: 4 !important; }
+.equipped-character .equipment-gloves { width: 46% !important; margin-top: 34%; margin-left: -6%; z-index: 5 !important; }
+.equipped-character .equipment-boots { width: 86% !important; margin-top: 4%; }
+.equipped-character .equipment-weapon-alt { position: absolute; z-index: 5; width: 190%; margin-top: 46%; margin-left: 2%;   /* 손 앵커 scale(.32) 를 상쇄 → 칸의 약 60% */ height: auto; pointer-events: none; transform-origin: 50% 91%; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
+.equipped-character.mode-attack .equipment-weapon-alt { transition: transform .08s linear; }

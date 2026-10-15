@@ -1,0 +1,9 @@
+{
+  "_note": "장비 파츠 채택본 (2026-10-15) — scripts/place-gear.mjs 가 읽어 public/titans/gear/<part>-<tier>.png (나무·철·금 색 입힘)",
+  "helmet": { "src": "prop-gear-helmet-s20263705.png", "cropBottom": 0.16 },
+  "armor": { "src": "prop-gear-armor-s20263715.png" },
+  "gloves": { "src": "prop-gear-gloves-s20263721.png" },
+  "boots": { "src": "prop-gear-boots-s20263731.png" },
+  "bow": { "src": "prop-gear-bow-s20263747.png" },
+  "staff": { "src": "prop-gear-staff-s20263751.png" }
+}
