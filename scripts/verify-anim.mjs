@@ -51,11 +51,12 @@ const hitSeen = await (async () => {
   let seen = false;
   for (let i = 0; i < 20 && !seen; i += 1) {
     await sleep(100);
-    seen = await page.evaluate(() => !!document.querySelector(".titan-monster-art.frame-hit img.on[src*='-hit.png']"));
+    // 2026-10-15: 생성 프레임 띠(.has-frames)면 피격 칸(5칸 중 마지막 = 100%)이 보이면 된다
+    seen = await page.evaluate(() => !!document.querySelector(".titan-monster-art.frame-hit img.on[src*='-hit.png']") || [...document.querySelectorAll(".titan-monster-art.has-frames.frame-hit .monster-frames")].some((e) => getComputedStyle(e).backgroundPosition.startsWith("100%")));
   }
   return seen;
 })();
-ok("B 피격 프레임(-hit.png)이 타격 시 표시된다", hitSeen);
+ok("B 피격 프레임(-hit.png 또는 띠의 피격 칸)이 타격 시 표시된다", hitSeen);
 // B' 종별 동작 — kind 클래스를 바꿔 가며 계산된 animation-name 이 종별 키프레임인지 (슬라임·고블린·늑대·용·오우거·보스)
 const kindAnims = await page.evaluate(() => {
   const el = document.querySelector(".titans-monster"); const art = el?.querySelector(".titan-monster-art"); const img = art?.querySelector("img");
@@ -74,7 +75,7 @@ const kindAnims = await page.evaluate(() => {
 const expectAnim = { slime: ["slime-idle", "slime-pounce"], goblin: ["goblin-idle", "goblin-jab"], wolf: ["wolf-idle", "wolf-pounce"], dragon: ["dragon-hover", "dragon-breath"], ogre: ["ogre-breathe", "ogre-smash"], boss: ["ogre-breathe", "ogre-smash"] };
 ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => kindAnims[k]?.idle === idle && kindAnims[k]?.attack === attack), JSON.stringify(kindAnims));
 // 2026-10-13: 공격 프레임(-attack.png) 추가 → 4장
-ok("B 4프레임이 모두 마운트되어 있다(idle·hit·attack·defeat)", await page.evaluate(() => document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
+ok("B 프레임이 모두 마운트되어 있다(옛: idle·hit·attack·defeat 4장 · 새: 5칸 띠 + 처치 그림)", await page.evaluate(() => (!!document.querySelector(".titan-monster-art.has-frames .monster-frames") && !!document.querySelector(".titan-monster-art.has-frames img[src*='-defeat.png']")) || document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
 // 보스: 강한 파티로 즉시 처치 → 3단계 클래스 관찰
 await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9 },
   { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 60, leon: 60 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now });

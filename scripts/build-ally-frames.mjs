@@ -102,7 +102,8 @@ for (const id of ids) {
     const art = id.slice(2);
     const idle0 = `${OUT}/monster-r3d-${art}-s20263601.png`;
     if (MON_NAMES.slice(1).filter((n) => existsSync(`${OUT}/frame-${id}-${n}.png`)).length < 4 || !existsSync(idle0)) { console.log("skip monster", art, "(아직 생성 중)"); continue; }
-    const set = await resolveSet(MON_NAMES, (n) => (n === "idle-0" ? idle0 : `${OUT}/frame-${id}-${n}.png`));
+    const mset0 = await resolveSet(MON_NAMES, (n) => (n === "idle-0" ? idle0 : `${OUT}/frame-${id}-${n}.png`));
+    const mref = await trimmed(idle0); const set = []; for (const f of mset0) set.push(f === idle0 ? f : await oriented(f, mref));   // 띠 전체를 대기0(원화) 방향에 맞춘다
     if (!set.every(existsSync)) { console.log("skip monster", art, "(프레임 부족)"); continue; }
     await strip(set, MW, MH, 0.06, 0.99, 0.96, `public/titans/generated/monsters/frames/${art}.webp`);
     monsters.push(art); console.log("monster", art);
