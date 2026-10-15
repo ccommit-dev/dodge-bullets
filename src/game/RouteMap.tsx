@@ -52,15 +52,16 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onS
               onClick={() => onStart(index)}
             >
               <span className="pioneer-stage">{chapter + 1}-{k + 1}</span>
-              <span className="pioneer-name">
-                {stage.name}
+              <span className="pioneer-name">{stage.name}</span>
+              {/* 별·체력은 이름 아래 한 줄 (2026-10-15 — 두 칸 지도에서 이름이 한 글자로 눌렸다) */}
+              <span className="pioneer-meta">
                 <span className="pioneer-stars" aria-label={`별 ${st}/3`}>
                   {[1, 2, 3].map((n) => (
                     <img key={n} src={assetUrl("ui/idle/star.png")} alt="" className={n <= st ? "on" : ""} />
                   ))}
                 </span>
+                <span className="pioneer-area">{stage.slotKind === "boss" ? "장 대장" : stage.slotKind === "midboss" ? "중간 보스" : unlocked ? `체력 ×${stage.monsterHp}` : "🔒"}</span>
               </span>
-              <span className="pioneer-area">{stage.slotKind === "boss" ? "장 대장" : stage.slotKind === "midboss" ? "중간 보스" : unlocked ? `체력 ×${stage.monsterHp}` : "🔒"}</span>
             </button>
             <div className={`route-side ${node ? `has-node link-${chainParent(node) ? "up" : "main"}` : pipe ? "pipe" : ""}`}>
               {node && (() => {

@@ -13,6 +13,7 @@
  *   node scripts/make-variant-atlas.mjs
  */
 import sharp from "sharp";
+import { outfitRecolor } from "./outfit-recolor.mjs";
 
 const BASE = "public/titans/generated/allies/ally-animation-atlas-v1.png";
 const COLS = 4;
@@ -65,33 +66,6 @@ const meta = await sharp(BASE).metadata();
 const cellH = Math.floor(meta.height / ROWS);
 const stripW = meta.width;
 
-/**
- * 옷·장비만 색 바꾸기 (2026-10-15, 사용자: "리소스 어색한 거" — 스킨이 한 색으로 덮여 납작해 보였다).
- * 털·피부(색상 10~50° 의 갈색·크림)와 무채색(흰·검정 외곽선)은 그대로 두고, 나머지(옷·갑옷·무기)만 스킨 색(rgb)으로 —
- * 밝기는 원래 픽셀 그대로라 음영·광택이 남는다. 3D 원화의 입체감을 살린다.
- */
-async function outfitRecolor(buf, rgb, brightness, saturation) {
-  const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const tl = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255 || 0.5;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] < 20) continue;
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
-    let h = 0; if (mx !== mn) { if (mx === r) h = 60 * (((g - b) / (mx - mn)) % 6); else if (mx === g) h = 60 * ((b - r) / (mx - mn) + 2); else h = 60 * ((r - g) / (mx - mn) + 4); } if (h < 0) h += 360;
-    const fur = h >= 10 && h <= 50 && sat > 0.12 && sat < 0.75;
-    const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    if (fur) continue;
-    // 무채색: 외곽선(어두움)·흰 하이라이트는 그대로, 중간 밝기 금속(은 갑옷·칼날)은 절반만 물들인다
-    if (sat < 0.12 && (l < 0.28 || l > 0.9)) continue;
-    const k = l / tl;
-    const mix = sat < 0.12 ? 0.5 : 0.85;
-    data[i] = Math.min(255, r * (1 - mix) + rgb[0] * k * mix);
-    data[i + 1] = Math.min(255, g * (1 - mix) + rgb[1] * k * mix);
-    data[i + 2] = Math.min(255, b * (1 - mix) + rgb[2] * k * mix);
-  }
-  return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).modulate({ brightness: (brightness - 1) * 0.5 + 1, saturation: Math.max(1, saturation) }).png().toBuffer();
-}
-
 async function tintedRow(baseId, rgb, brightness, saturation) {
   // 기본 6명은 기본 아틀라스, 변형 10명은 변형 아틀라스(같은 셀 크기)에서 행을 가져온다
   const fromVariant = BASE_ROW[baseId] === undefined;
@@ -112,7 +86,8 @@ async function thumb(rowBuf, cell, id) {
 
 import { existsSync } from "node:fs";
 /** 생성 원화(scripts/place-art.mjs char)가 있으면 tint 대신 그 행을 쓴다 */
-const authoredRow = (id) => { const p = `public/titans/generated/allies/authored/${id}-row.png`; return existsSync(p) ? p : null; };
+// 동료 생성 원화 행은 public/…/authored, 스킨 3D 행(build-skin-frames.mjs)은 art-gen/skin-rows
+const authoredRow = (id) => [`public/titans/generated/allies/authored/${id}-row.png`, `art-gen/skin-rows/${id}-row.png`].find((p) => existsSync(p)) ?? null;
 
 async function buildAtlas(list, outFile) {
   const rows = [];
@@ -132,7 +107,8 @@ import { mkdirSync } from "node:fs";
 mkdirSync("public/titans/generated/allies/skins", { recursive: true });
 await buildAtlas(VARIANTS, "public/titans/generated/allies/ally-variant-atlas-v1.png");
 await buildAtlas(SKINS, "public/titans/generated/allies/ally-skin-atlas-v1.png");
-for (const [id, base, rgb, b, sat] of SKINS) await thumb(await tintedRow(base, rgb, b, sat), cellH, id);
+// 스킨 3D 행(build-skin-frames.mjs → art-gen/skin-rows)이 있으면 그 행에서 썸네일을 뜬다
+for (const [id, base, rgb, b, sat] of SKINS) await thumb(authoredRow(id) ? await sharp(authoredRow(id)).resize(stripW, cellH, { fit: "fill" }).png().toBuffer() : await tintedRow(base, rgb, b, sat), cellH, id);
 {
   const sm = await sharp(SPECIAL_ATLAS).metadata();
   const cell = Math.floor(sm.height / 4);

@@ -4,6 +4,7 @@ import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 import { ALLY_FRAME_SET, MONSTER_FRAME_SET } from "./frameSets";
+import { SKIN_FRAME_SET } from "./skinFrameSets";
 
 const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
 
@@ -77,7 +78,7 @@ const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
  * 상태: 0 대기 · 1 이동 · 2 공격 · 3 피격. 아틀라스는 4열이고 행이 동료다.
  *   기본 6명   ally-animation-atlas-v1.png         4×6 (셀 313.5×209, 가로 1.5:1)
  *   변형 12명  ally-variant-atlas-v1.png           4×12 (기본 행의 tint 파생 — make-variant-atlas.mjs; 루나·볼트 포함)
- *   스킨 12종  ally-skin-atlas-v1.png              4×12 (기본·변형 행 tint — J SSR 스킨 + 시즌 한정)
+ *   스킨 13종  ally-skin-atlas-v1.png              4×13 (판매 10종은 3D 스킨 띠 frames/<skin>.webp 에서 뜬 행 — build-skin-frames.mjs · 나머지는 색 파생)
  *   특수 스킨  ally-skin-special-atlas-v1.png      4×2 (정사각 셀 — 루나·세라 라이트)
  *   특수 4명   ally-special-animation-atlas-v1.png 4×4 (정사각 셀)
  * 셀이 가로로 넓은 아틀라스는 .titan-ally-art(정사각)에 그대로 채우면 세로로 1.5배 늘어난다 —
@@ -259,9 +260,10 @@ export const ALLY_WALK_FRAME_MS = 140;
 /**
  * 생성 프레임 띠 (2026-10-15, 사용자: "캐릭터처럼 공격·피격·대기·걷기 애니메이션") — 띠가 있는 동료는 아틀라스 한 칸 대신
  * 9칸 [대기0·대기1·걷기0·걷기1·공격0(예비)·공격1·공격2(타격)·공격3(따라가기)·피격] 에서 고른다. 칸 비율·인물 위치는 아틀라스와 같다.
- * 스킨을 입었으면 예전 아틀라스(스킨 행)를 쓴다.
+ * 스킨을 입었으면 그 스킨의 3D 띠(frames/<skin>.webp — build-skin-frames.mjs, 2026-10-15)를, 띠가 없는 스킨이면 예전 아틀라스(스킨 행)를 쓴다.
  */
-export function hasAllyFrames(id: TitanHeroId, skin?: string): boolean { return !skin && ALLY_FRAME_SET.includes(id); }
+const wornSkinFrames = (id: TitanHeroId, skin?: string): string | null => (skin && ALLY_SKINS[skin]?.ally === id && SKIN_FRAME_SET.includes(skin) ? skin : null);
+export function hasAllyFrames(id: TitanHeroId, skin?: string): boolean { return skin && ALLY_SKINS[skin]?.ally === id ? SKIN_FRAME_SET.includes(skin) : ALLY_FRAME_SET.includes(id); }
 export function allyFramesIndex(v: { flinching: boolean; attackPhase: "none" | "windup" | "strike" | "recover"; approaching: boolean; walkTick: number }): number {
   if (v.flinching) return 8;
   if (v.attackPhase === "windup") return 4;
@@ -270,8 +272,8 @@ export function allyFramesIndex(v: { flinching: boolean; attackPhase: "none" | "
   if (v.approaching) return v.walkTick % 2 === 0 ? 2 : 3;
   return 0;   // 대기 — CSS(.frames-idle)가 0·1 칸을 번갈아 보인다
 }
-export function allyFramesStyle(id: TitanHeroId, index: number): CSSProperties {
-  return { ...WIDE_CELL, backgroundImage: `url(${assetUrl(`titans/generated/allies/frames/${id}.webp`)})`, backgroundSize: "900% 100%", backgroundPosition: `${(index / 8) * 100}% 0%`, backgroundRepeat: "no-repeat" };
+export function allyFramesStyle(id: TitanHeroId, index: number, skin?: string): CSSProperties {
+  return { ...WIDE_CELL, backgroundImage: `url(${assetUrl(`titans/generated/allies/frames/${wornSkinFrames(id, skin) ?? id}.webp`)})`, backgroundSize: "900% 100%", backgroundPosition: `${(index / 8) * 100}% 0%`, backgroundRepeat: "no-repeat" };
 }
 export function hasMonsterFrames(art: string): boolean { return MONSTER_FRAME_SET.includes(art); }
 
@@ -386,7 +388,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
             const framesIdx = hasAllyFrames(id, skin) ? allyFramesIndex({ flinching, attackPhase, approaching, walkTick }) : -1;
             return (
               <>
-                <div className={`ally-body frame-${state} ${framesIdx >= 0 ? `has-frames fi-${framesIdx} ${framesIdx === 0 ? "frames-idle" : ""}` : ""}`} style={framesIdx >= 0 ? allyFramesStyle(id, framesIdx) : allyFrameStyle(id, state, skin)} />
+                <div className={`ally-body frame-${state} ${framesIdx >= 0 ? `has-frames fi-${framesIdx} ${framesIdx === 0 ? "frames-idle" : ""}` : ""}`} style={framesIdx >= 0 ? allyFramesStyle(id, framesIdx, skin) : allyFrameStyle(id, state, skin)} />
                 <AllyWeapon id={id} anchor={weaponAnchorStyle(id, state)} />
               </>
             );

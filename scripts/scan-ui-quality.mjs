@@ -136,10 +136,24 @@ for (const [w, h] of VIEWPORTS) {
   await page.evaluate(() => document.querySelector(".forge-back")?.click()); await sleep(1500); await closeModals();
   await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
   await page.evaluate(() => document.querySelector(".season-nav")?.click()); await sleep(900); await shot("10-events");
+  // 2026-10-15 보완 (사용자: "이 탭들은 검사 범위에서 빠져 있었다") — 이벤트 탭 전부(주간 도전 아래 주간 랭크 시험까지 스크롤)
+  for (const t of ["주간 도전", "원정 일지", "토벌령", "차원 균열"]) {
+    await page.evaluate((t) => [...document.querySelectorAll(".event-tabs button")].find((b) => b.textContent.includes(t))?.click(), t); await sleep(500); await shot(`10-events-${t}`);
+    if (t === "주간 도전") { await page.evaluate(() => [...document.querySelectorAll("h3")].find((h) => h.textContent.includes("주간 랭크 시험"))?.scrollIntoView({ block: "center" })); await sleep(400); await shot("10-events-랭크시험"); }
+  }
   await closeModals(); await page.keyboard.press("Escape"); await sleep(300);
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(닫기|×)$/.test(b.textContent.trim()) && b.closest(".event-center, .event-sheet, [role=dialog]"))?.click()); await sleep(500);
   await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
   await page.evaluate(() => [...document.querySelectorAll(".hub-card")].find((b) => b.textContent.includes("비트 수련"))?.click()); await sleep(2200); await shot("11-beat-menu");
+  // 2026-10-15 보완 — 상점 외형·동료 탭, 성문 방어 지도(스테이지 칸)·전투 HUD(단계·점수·위협도 알약)
+  await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2400); await closeModals(); await sleep(300);
+  await clickText(".titans-bottom-nav button", "상점"); await sleep(700);
+  for (const t of ["외형", "동료"]) { await clickText(".premium-category-tabs button", t); await sleep(600); await shot(`12-shop-${t}`); }
+  await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2400); await closeModals(); await sleep(300);
+  await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
+  await page.evaluate(() => [...document.querySelectorAll(".hub-card")].find((b) => b.textContent.includes("성문 방어"))?.click()); await sleep(2200); await shot("13-dodge-map");
+  await clickText(".exp-menu-content .cta", "시작"); await sleep(1500);
+  await clickText(".intro-start, .cta.intro-cta, .overlay-content .cta", ""); await sleep(3000); await shot("14-dodge-hud");
 }
 writeFileSync(`${OUT}/ui-quality.json`, JSON.stringify(all, null, 1));
 const clip = all.filter((x) => x.kind === "clip"), dark = all.filter((x) => x.kind === "dark"), contrast = all.filter((x) => x.kind === "contrast");

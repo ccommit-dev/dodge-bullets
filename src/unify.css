@@ -245,7 +245,7 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 /* 성문 방어 전투 상단 알약 */
 .hud-left .hud-score, .hud-left .hud-hint, .hud-left .hud-tower, .hud-left .threat-label { background: rgba(255, 243, 214, .92) !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink); text-shadow: none !important; }
 /* 대장간 보호구 무대의 견갑 — 좁은 화면용 .shoulder-icon{width:38px} 가 무대에도 걸려 가는 조각만 보였다. 시트 칸 비율(543:724) 그대로 크게 */
-.armor-forge-stage > .shoulder-icon { width: min(48vw, 190px) !important; height: auto !important; aspect-ratio: 543 / 724; flex: none !important; }
+.armor-forge-stage > .shoulder-icon { width: min(58vw, 230px) !important; height: auto !important; aspect-ratio: 543 / 724; flex: none !important; }
 .armor-forge-stage > .shoulder-icon .shoulder-icon-part { width: 100% !important; height: 100% !important; }
 
 /* 2026-10-15 원화 감사 — 무기 외형(진홍·빙하·황금 북 스킨). 시트 칸(512×1024)을 같은 비율로 줄인다
@@ -263,3 +263,60 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 .skill-slot b { color: var(--flat-ink) !important; text-shadow: 0 0 2px #fff3d6, 0 0 2px #fff3d6 !important; }
 .skill-dock-auto { background: rgba(255, 243, 214, .92) !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink); }
 .action-note { color: #f3dfb3 !important; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+
+/* ── 2026-10-15 원화 감사 2차 (사용자: "이 탭들은 검사 범위에서 빠져 있었다" — scan-ui-quality 에 이벤트 전 탭·상점 외형/동료·성문 지도/전투를 넣고 잡힌 것) ──
+   성문 방어 지도: 판을 크림으로 바꾼 뒤 글자가 옛 밝은색(연노랑·청록·흰)이라 안 보였다 → 진갈색 계열.
+   두 칸 지도에서 "체력 ×0.85" 가 이름 칸을 한 글자로 눌렀다 → 이름 위 · 별/체력 아래 두 줄 */
+.route-row .pioneer-row, .pioneer-row { display: grid !important; grid-template-columns: 26px minmax(0, 1fr) !important; grid-template-rows: auto auto; column-gap: 6px; row-gap: 1px; align-items: center; text-align: left; }
+.pioneer-row .pioneer-stage { grid-row: 1 / span 2; }
+.pioneer-row .pioneer-name { grid-column: 2; min-width: 0; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pioneer-row .pioneer-meta { grid-column: 2; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.pioneer-row .pioneer-stars { margin-left: 0 !important; }
+.pioneer-row .pioneer-stars img { width: 10px !important; height: 10px !important; }
+.pioneer-row .pioneer-area { color: #6b4a2b !important; font-size: 9.5px !important; font-weight: 800; white-space: nowrap; }
+.pioneer-row.stage-boss .pioneer-area { color: #b42318 !important; }
+.pioneer-row.stage-midboss .pioneer-area { color: #9a5b00 !important; }
+.route-node small { color: #8a5a00 !important; }
+.route-node.route-elite small { color: #6d3fc0 !important; }
+.route-node.route-secret small { color: #b42318 !important; }
+.route-node b { color: var(--flat-ink) !important; }
+.route-node .route-reward { color: #b42318 !important; }
+.route-node .route-stars { color: #b98a16 !important; }
+.chapter-title, .pioneer-heading, .pioneer-heading b { color: var(--flat-ink) !important; }
+.pioneer-heading span { color: #2f7a4a !important; }
+/* 이벤트: 원정 일지 제목 · 진행 막대 바탕 · 차원 균열 미리보기 칸 */
+.journal-event h3 { color: var(--flat-ink) !important; }
+.event-list article i { background: rgba(59, 36, 21, .18) !important; }
+.rift-preview > div { background: var(--flat-cream) !important; border: 2px solid rgba(59, 36, 21, .35) !important; }
+.rift-preview span { color: #6b4a2b !important; }
+.rift-preview strong { color: #2f7a4a !important; }
+/* 상점: 분홍 알약 위 노란 글자(대비 1.3) → 짙은 빨강 · 조각 상자 고르기 */
+.gem-product em { color: #7f1d1d !important; }
+.shard-pack-select { background: var(--flat-cream) !important; color: var(--flat-ink) !important; border: 2px solid rgba(59, 36, 21, .45) !important; }
+/* 성문 방어 전투: 귀환(남은 초) 단추 */
+.action-btn.extract-btn { background: rgba(255, 243, 214, .9) !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink) !important; }
+.route-node b { white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: clip !important; }
+.pioneer-row .pioneer-name { white-space: normal !important; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: clip !important; line-height: 1.15; word-break: keep-all; }
+.pioneer-row .pioneer-meta { gap: 3px; }
+.pioneer-row .pioneer-stars img { width: 9px !important; height: 9px !important; }
+.exp-menu-tabs button { overflow: visible !important; }   /* "!" 배지가 모서리 밖으로 3px 나온다 — 잘리지 않게 */
+.pioneer-row .pioneer-meta { flex-wrap: wrap; row-gap: 0; }   /* 칸이 좁으면(두 칸 지도 ~60px) 체력 글자가 별 아래로 내려간다 */
+@media (max-width: 520px) { .route-row .pioneer-row, .pioneer-row { grid-template-columns: 22px minmax(0, 1fr) !important; column-gap: 5px; padding-left: 4px !important; padding-right: 4px !important; } }
+.exp-menu-tabs .exp-tab-badge { right: 2px !important; top: 2px !important; width: 14px !important; height: 14px !important; font-size: 9px !important; }
+/* 가로 원정 메뉴(지도 3열) — 갈림길 칸이 기본 104px 그대로라 스테이지 칸이 29px 로 눌렸다 → 세로 두 칸 지도와 같은 62px */
+@media (orientation: landscape) and (max-height: 560px) {
+  .route-row { grid-template-columns: minmax(0, 1fr) 62px !important; }
+  .route-side { padding-left: 6px !important; }
+  .route-row .pioneer-row, .pioneer-row { grid-template-columns: 22px minmax(0, 1fr) !important; column-gap: 5px; padding-left: 4px !important; padding-right: 4px !important; }
+}
+@media (orientation: landscape) and (max-height: 560px) { .route-map { grid-template-columns: 1fr 1fr !important; } }   /* 판 폭 ~430px 에 3열은 칸이 70px — 2열로(지도는 판 안에서 스크롤) */
+/* 이벤트 큰 판(주간 랭크 시험·시즌 패스·일지 보상·균열 주간·일지 안내) — 짙은 갈색 그라데이션 위 설명 글이 어두운 글자라 안 보였다
+   (사용자: "주간 랭크 시험 칸이 아직 진한 남색 그라데이션") → 크림 판 · 글자는 진갈색, 강조만 색 */
+.journal-reward, .season-pass, .weekly-event, .rift-week, .journal-note { background: var(--flat-cream-2) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; }
+:is(.journal-reward, .season-pass, .weekly-event, .rift-week, .journal-note) :is(h3, h4, p, span, small, em) { color: var(--flat-ink); text-shadow: none !important; }
+:is(.journal-reward, .season-pass, .weekly-event, .rift-week, .journal-note) strong { color: #2f7a4a !important; text-shadow: none !important; }
+.shadow-note { color: #5a3d22 !important; }
+.shadow-note b { color: #6d3fc0 !important; }
+.shadow-power { color: var(--flat-ink) !important; }
+.shadow-power strong { color: #2f7a4a !important; }
+.armor-forge-stage > .shoulder-icon { box-shadow: none !important; }   /* 아이콘 칸의 안쪽 흰 빛(inset 12px)이 무대에선 옅은 사각 판으로 보였다 */
