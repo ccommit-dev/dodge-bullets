@@ -522,6 +522,32 @@ if THEME == "beaver":
     PROP_NEG = "hand, arm, person, character, animal, text, letters, watermark, logo, blurry, lowres, multiple objects, frame, border, background scenery, photo, dark gritty"
 
 
+def cmd_frames(a):
+    """frames (2026-10-15, 사용자: "캐릭터처럼 애니메이션 끝부분·공격·피격·대기·걷기 애니메이션이 부족한 몬스터·동료 재생성") —
+    주인공 공격 4프레임과 같은 방식: 정체성은 자기 대기(--ref)를 IP-Adapter 로, 자세는 프레임마다 OpenPose 참조(없으면 ControlNet 0),
+    시드는 고정. --spec 은 JSON 파일/문자열 [{"name":"attack-0","pose":"hero-attack-0","action":"..."}]. 출력 frame-<id>-<name>.png (이미 있으면 건너뜀)"""
+    im = Image.open(a.ref).convert("RGBA")
+    bg = Image.new("RGBA", im.size, (255, 255, 255, 255)); bg.alpha_composite(im)
+    ref = bg.convert("RGB").resize((384, 384))
+    specs = json.loads(Path(a.spec).read_text(encoding="utf-8")) if a.spec.endswith(".json") else json.loads(a.spec)
+    pipe = load_pipe(controlnet=True)
+    pipe.set_ip_adapter_scale(a.ip if a.ip is not None else 0.65)
+    blank = Image.new("RGB", (832, 1216), (0, 0, 0))
+    for sp in specs:
+        name = f"frame-{a.id}-{sp['name']}.png"
+        if (OUT / name).exists():
+            continue
+        pose = pose_of(REF / f"{sp['pose']}.png") if sp.get("pose") else None
+        g = torch.Generator(dev()).manual_seed((a.seed or BASE_SEED) + int(sp.get("seed_offset", 0)))
+        face = sp.get("face", "facing right")
+        cn = float(sp.get("cn", a.cn if a.cn is not None else 0.8)) if pose is not None else 0.0
+        out = pipe(prompt=f"{a.prompt}, {sp['action']}, {face}, {STYLE}",
+                   negative_prompt=NEG + ", back view, character sheet, multiple views, multiple characters, " + ("facing left" if "right" in face else "facing right"),
+                   num_inference_steps=24, guidance_scale=6.5, generator=g, width=832, height=1216, ip_adapter_image=[[ref]],
+                   image=pose if pose is not None else blank, controlnet_conditioning_scale=cn).images[0]
+        save(cutout(out), name)
+
+
 def cmd_prop(a):
     """무기·소품 1장 — 화풍 참조는 동료 원화(style_refs), 대각선(좌하→우상) 구도. 출력 prop-<id>.png (512px 투명)"""
     pipe = load_pipe(ip=True)
@@ -688,6 +714,7 @@ if __name__ == "__main__":
     ic = sub.add_parser("icon"); ic.add_argument("id"); ic.add_argument("prompt"); ic.add_argument("--seed", type=int); ic.add_argument("--seeds", type=int, nargs="*"); ic.add_argument("--ip", type=float); ic.set_defaults(fn=cmd_icon)
     hi = sub.add_parser("heroidle"); hi.add_argument("id"); hi.add_argument("prompt"); hi.add_argument("--seed", type=int); hi.add_argument("--seeds", type=int, nargs="*"); hi.add_argument("--ip", type=float); hi.add_argument("--pose-from"); hi.set_defaults(fn=cmd_heroidle)
     pr = sub.add_parser("prop"); pr.add_argument("id"); pr.add_argument("prompt"); pr.add_argument("--seed", type=int); pr.add_argument("--ip", type=float); pr.set_defaults(fn=cmd_prop)
+    fr = sub.add_parser("frames"); fr.add_argument("id"); fr.add_argument("prompt"); fr.add_argument("--ref", required=True); fr.add_argument("--spec", required=True); fr.add_argument("--seed", type=int); fr.add_argument("--ip", type=float); fr.add_argument("--cn", type=float); fr.set_defaults(fn=cmd_frames)
     ha = sub.add_parser("heroattack"); ha.add_argument("id"); ha.add_argument("prompt"); ha.add_argument("--ref", required=True); ha.add_argument("--seed", type=int); ha.add_argument("--ip", type=float); ha.add_argument("--weapon", choices=["sword", "bow", "staff", "drum"], default="sword"); ha.add_argument("--no-pose", action="store_true"); ha.add_argument("--pose-set"); ha.add_argument("--cn", type=float); ha.add_argument("--frames"); ha.add_argument("--tag"); ha.set_defaults(fn=cmd_heroattack)
     np_ = sub.add_parser("npc"); np_.add_argument("id"); np_.add_argument("prompt"); np_.add_argument("--seed", type=int); np_.add_argument("--seeds", type=int, nargs="*"); np_.add_argument("--ip", type=float); np_.add_argument("--ref"); np_.set_defaults(fn=cmd_npc)
     mo = sub.add_parser("monster"); mo.add_argument("id"); mo.add_argument("prompt"); mo.add_argument("--seed", type=int); mo.add_argument("--seeds", type=int, nargs="*"); mo.add_argument("--ip", type=float); mo.add_argument("--ref"); mo.add_argument("--px", type=int); mo.set_defaults(fn=cmd_monster)

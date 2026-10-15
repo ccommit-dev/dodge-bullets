@@ -239,6 +239,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>(initialTab ?? "sword");
+  /** 가로 화면의 장비 성장·스킬 서랍 (2026-10-15, 사용자: "가로모드에 장비성장 스킬 ui 가 하단으로 빠지고 맵이 잘 보이게") — 세로에선 쓰지 않는다 */
+  const [growthOpen, setGrowthOpen] = useState(false);
   const [premiumCategory, setPremiumCategory] = useState<PremiumCategory>("currency");
   const [wave, setWave] = useState(1);
   const [boss, setBoss] = useState(false);
@@ -2407,7 +2409,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   })();
 
   return (
-    <div className={`titans-layer ${lowFxRef.current || lowFxOn() ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""}`} style={pad}>
+    <div className={`titans-layer ${lowFxRef.current || lowFxOn() ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""} ${growthOpen ? "growth-open" : ""}`} style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${assetUrl("titans/character/base/hero-idle.png")})` }} />
@@ -2830,12 +2832,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
 
 
       <div className="titans-tabs titans-growth-tabs">
-        <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => setTab("sword")}> 
+        <button type="button" className={tab === "sword" ? "on" : ""} aria-expanded={growthOpen && tab === "sword"} onClick={() => { setGrowthOpen((o) => (tab === "sword" ? !o : true)); setTab("sword"); }}>
           장비 성장
         </button>
-        <button type="button" className={tab === "skills" ? "on" : ""} onClick={() => setTab("skills")}>
+        <button type="button" className={tab === "skills" ? "on" : ""} aria-expanded={growthOpen && tab === "skills"} onClick={() => { setGrowthOpen((o) => (tab === "skills" ? !o : true)); setTab("skills"); }}>
           스킬
         </button>
+        <button type="button" className="growth-drawer-close" aria-label="서랍 닫기" onClick={() => setGrowthOpen(false)}>▾</button>
       </div>
 
       {adviceOpen && (
