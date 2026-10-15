@@ -116,3 +116,10 @@
 .perf-low .titan-monster-art.has-frames.frame-idle .monster-frames { animation: none; }
 /* 오른쪽을 보고 그려진 원화(FLIP_MONSTERS)는 띠도 같이 뒤집어 왼쪽을 보게 */
 .titan-monster-art.has-frames.face-flip > .monster-frames { scale: -1 1; }
+
+/* 몬스터 덤빔 기울기 (2026-10-15 보완: "정면 몬스터가 덤빌 때 왼쪽으로 트는 느낌이 약하다") — 예비 칸은 뒤(오른쪽)로 젖히고, 덤빔 칸은 왼쪽(동료 쪽)으로 숙이며 늘어난다 */
+.titans-monster.action-prepare .titan-monster-art.has-frames .monster-frames { transform-origin: 50% 95%; transform: rotate(6deg) scale(.96, 1.04); transition: transform .12s ease-out; }
+.titans-monster.action-attack .titan-monster-art.has-frames .monster-frames { transform-origin: 50% 95%; transform: rotate(-11deg) skewX(-7deg) scale(1.06, .95); transition: transform .08s ease-in; }
+.titans-monster.action-attack .titan-monster-art.has-frames.face-flip .monster-frames, .titans-monster.action-prepare .titan-monster-art.has-frames.face-flip .monster-frames { scale: -1 1; }
+.titan-monster-art.has-frames .monster-frames { transition: transform .2s ease-out; }
+.perf-low .titans-monster .titan-monster-art.has-frames .monster-frames { transition: none; }
