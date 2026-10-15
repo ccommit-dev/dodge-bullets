@@ -18,13 +18,27 @@ function gearImage(part: string, tier: number): HTMLImageElement | null {
   const img = gearImgs.get(key);
   return img && img.complete && img.naturalWidth > 0 ? img : null;
 }
-/** 프레임 % 앵커에 파츠를 얹는다 — 호출 시점의 변환(캐릭터 발밑 원점·facing 스케일)을 그대로 쓴다 */
-function drawGearPart(ctx: CanvasRenderingContext2D, part: string, tier: number, ax: number, ay: number, scale: number, drawWidth: number, drawHeight: number): void {
+/**
+ * 시트별 인물 상자(프레임 %, 4칸 평균 — 2026-10-15 원화 감사에서 잼). 대기 시트(hero-idle, 443×887 칸)는 위 31% 가 비어 있고
+ * 무기 시트(hero-bow/staff, 780×887 칸)는 꽉 차 있어, 같은 높이로 그리면 쏠 때마다(0.55초마다) 주인공이 1.4배 커졌다 줄었다.
+ * 인물 키를 무기 시트 기준(약 75px — 활·지팡이 길이가 이 크기에 맞춰져 있다)으로 맞추고, 파츠는 인물 상자 기준으로 앉힌다.
+ */
+type FigBox = { x0: number; x1: number; y0: number; y1: number };
+const FIG_IDLE: FigBox = { x0: 2.9, x1: 93, y0: 30.9, y1: 99.9 };
+const FIG_WEAPON: FigBox = { x0: 13.4, x1: 86.6, y0: 2.4, y1: 99.7 };
+/** 파츠 자리 — 인물 상자 기준(u 가로 · v 세로 0~1 · size = 파츠 폭 ÷ 인물 키). 사냥터 EquippedCharacter(unify.css 로 맞춘 자리)와 같은 값.
+ *  예전 프레임 % 앵커(가슴 73%)는 큰 머리 비버에선 얼굴이라 갑옷이 주둥이를 덮었다 */
+const GEAR_SPOTS: readonly (readonly [part: "boots" | "shield" | "armor" | "gloves" | "helmet", u: number, v: number, size: number])[] = [
+  ["boots", 0.523, 0.958, 0.312], ["shield", 0.367, 0.8, 0.21], ["armor", 0.523, 0.828, 0.346], ["gloves", 0.767, 0.784, 0.167], ["helmet", 0.6, 0.125, 0.49],
+];
+/** 인물 상자 기준 자리에 파츠를 얹는다 — 호출 시점의 변환(캐릭터 발밑 원점·facing 스케일)을 그대로 쓴다 */
+function drawGearPart(ctx: CanvasRenderingContext2D, part: string, tier: number, u: number, v: number, size: number, fig: FigBox, drawWidth: number, drawHeight: number): void {
   if (tier <= 0) return;
   const img = gearImage(part, tier);
   if (!img) return;
-  const w = drawWidth * scale, h = w * (img.naturalHeight / img.naturalWidth);
-  const x = -drawWidth / 2 + (ax / 100) * drawWidth, y = -drawHeight + (ay / 100) * drawHeight;
+  const figW = ((fig.x1 - fig.x0) / 100) * drawWidth, figH = ((fig.y1 - fig.y0) / 100) * drawHeight;
+  const w = figH * size, h = w * (img.naturalHeight / img.naturalWidth);
+  const x = -drawWidth / 2 + (fig.x0 / 100) * drawWidth + u * figW, y = -drawHeight + (fig.y0 / 100) * drawHeight + v * figH;
   ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
 }
 
@@ -199,7 +213,8 @@ export function drawStickman(
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
     // 무기 시트는 메김 → 당김 → 놓음 → 복귀 순서라 돌리지 않고 한 번만 지나간다 (SWING_MS 320ms ÷ 4)
     const frame = attackHero ? (p.anim === "skill" ? Math.min(3, Math.floor(p.animTime / 0.085)) : Math.min(3, Math.floor((SHOOT_MS - p.shootMs) / (SHOOT_MS / 4)))) : Math.floor(p.animTime * frameRate) % 4;
-    const drawHeight = p.radius * 4.7;
+    const fig = attackHero ? FIG_WEAPON : FIG_IDLE;
+    const drawHeight = (p.radius * 4.7 * (FIG_WEAPON.y1 - FIG_WEAPON.y0)) / (fig.y1 - fig.y0);   // 인물 키를 시트와 상관없이 같게
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
     ctx.save();
     ctx.translate(p.x, p.y + p.radius);
@@ -281,13 +296,8 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
-    // 파츠 오버레이 (2026-10-12) — 사냥터 EquippedCharacter 와 같은 앵커(프레임 %): 가슴 → 투구 (무기는 활·지팡이가 따로 그린다)
-    // 배율은 DOM 오버레이(CSS 폭% × 앵커 scale)의 1.2배 — 7차 실제 원화는 여백이 없어 예전 .62 가 몸통을 다 덮었다 (2026-10-12 밤)
-    drawGearPart(ctx, "boots", p.gear.boots, 50, 95, 0.28, drawWidth, drawHeight);
-    drawGearPart(ctx, "shield", p.gear.shield, 30, 72, 0.2, drawWidth, drawHeight);
-    drawGearPart(ctx, "armor", p.gear.armor, 50, 73, 0.34, drawWidth, drawHeight);
-    drawGearPart(ctx, "gloves", p.gear.gloves, 78, 68, 0.2, drawWidth, drawHeight);
-    drawGearPart(ctx, "helmet", p.gear.helmet, 48, 40, 0.42, drawWidth, drawHeight);
+    // 파츠 오버레이 (2026-10-12) — 사냥터 EquippedCharacter 와 같은 자리(인물 상자 기준): 신발 → 방패 → 갑옷 → 장갑 → 투구 (무기는 활·지팡이가 따로 그린다)
+    for (const [part, u, v, size] of GEAR_SPOTS) drawGearPart(ctx, part, p.gear[part], u, v, size, fig, drawWidth, drawHeight);
         ctx.restore();
     if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
 

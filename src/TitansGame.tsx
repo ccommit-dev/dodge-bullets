@@ -3395,7 +3395,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <GemMark />120
               </button>
             </article>}
-            {/* 무기 외형 — 강화 티어 실루엣은 유지, 칼날 색·오라만 커스텀 */}
+            {/* 무기 외형 — 북 스킨 3종(진홍·빙하·황금, premium-weapon-sheet) · 오라 색 */}
             {premiumCategory === "weapon" && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
               const owned = character.ownedWeaponSkins.includes(skinId);
               const equipped = character.equippedWeaponSkin === skinId;
