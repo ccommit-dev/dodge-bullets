@@ -24,24 +24,24 @@ export type WeaponSkinDef = {
 
 export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
   "blade-crimson": {
-    name: "진홍 마검",
-    desc: "핏빛 마력이 칼날을 타고 흐른다 — 외형 전용",
+    name: "진홍 루비 북",
+    desc: "붉은 옻칠에 루비가 빛나는 북 — 외형 전용",
     hue: 350,
     aura: "#f87171",
     gemCost: 450,
     spriteIndex: 0,
   },
   "blade-glacier": {
-    name: "빙하의 검",
-    desc: "만년설의 냉기가 서린 칼날 — 외형 전용",
+    name: "빙하 서리 북",
+    desc: "얼음 결정이 맺힌 차가운 북 — 외형 전용",
     hue: 195,
     aura: "#7dd3fc",
     gemCost: 450,
     spriteIndex: 1,
   },
   "blade-solar": {
-    name: "황금 성검",
-    desc: "태양의 축복이 깃든 칼날 — 외형 전용",
+    name: "황금 태양 북",
+    desc: "태양 문양이 반짝이는 황금 북 — 외형 전용",
     hue: 46,
     aura: "#fcd34d",
     gemCost: 600,

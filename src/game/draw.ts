@@ -785,17 +785,18 @@ function drawSlashGauge(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   const trackerX = width - world.safeRight - trackerW - 12;
   const trackerY = world.safeTop + 76;
   const full = world.slashGauge >= 100;
-  ctx.fillStyle = "rgba(8,47,73,.82)";
-  ctx.strokeStyle = full ? "#fde68a" : "rgba(103,232,249,.7)";
+  // 크림 판·진갈색 테두리 (2026-10-15 원화 감사) — 옆 DOM 알약(단계·점수·위협도)과 같은 색. 예전 남색 판만 따로 놀았다
+  ctx.fillStyle = full ? "rgba(255,236,170,.95)" : "rgba(255,243,214,.92)";
+  ctx.strokeStyle = full ? "#b98a16" : "#3b2415";
   ctx.lineWidth = 2;
-  ctx.fillRect(trackerX, trackerY, trackerW, 26);
-  ctx.strokeRect(trackerX, trackerY, trackerW, 26);
+  ctx.beginPath(); ctx.roundRect(trackerX, trackerY, trackerW, 26, 9); ctx.fill(); ctx.stroke();
   const gw = trackerW - 20;
-  ctx.fillStyle = "rgba(15,23,42,.8)";
-  ctx.fillRect(trackerX + 10, trackerY + 14, gw, 7);
-  ctx.fillStyle = full ? "#fde68a" : "#f59e0b";
-  ctx.fillRect(trackerX + 10, trackerY + 14, gw * Math.min(1, world.slashGauge / 100), 7);
-  ctx.fillStyle = full ? "#fde68a" : "#e0f2fe";
+  ctx.fillStyle = "rgba(59,36,21,.22)";
+  ctx.beginPath(); ctx.roundRect(trackerX + 10, trackerY + 14, gw, 7, 3.5); ctx.fill();
+  ctx.fillStyle = full ? "#f2c232" : "#f59e0b";
+  const fillW = gw * Math.min(1, world.slashGauge / 100);
+  if (fillW > 0) { ctx.beginPath(); ctx.roundRect(trackerX + 10, trackerY + 14, fillW, 7, Math.min(3.5, fillW / 2)); ctx.fill(); }
+  ctx.fillStyle = full ? "#8a5a00" : "#3b2415";
   ctx.font = "700 10px Sunflower, sans-serif";
   ctx.fillText(full ? "화살비 준비" : `화살비 ${Math.round(world.slashGauge)}%`, trackerX + 10, trackerY + 11);
   ctx.restore();

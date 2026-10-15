@@ -2,12 +2,16 @@
  * 주인공 3D 화풍 (2026-10-15, 중단 훅: "주인공만 납작 그림이라 3D 동료·장비와 안 맞는다").
  *   node scripts/hero-3d-frames.mjs split     — 기본 시트(대기·공격 4칸)를 art-gen/out/hero-src-<mode>-<i>.png 로 나눈다(흰 바탕 · 원래 칸 크기)
  *   node scripts/hero-3d-frames.mjs assemble  — art-gen/out/hero-r3d-<mode>-<i>-s<seed>.png(gen.py restyle 결과)를 원래 칸의 그림 상자에 같은 크기·자리로 앉혀 시트를 다시 만든다
+ *   … split|assemble --weapons — 성문 방어 일제 사격 시트(hero-bow/staff-sheet, 780 칸 4개)를 같은 방식으로 (art-gen/queue7.sh)
  * 그림 상자(불투명 bbox)를 칸마다 그대로 지켜 장비 앵커(anchors.ts — 칸 기준 %)가 그대로 맞는다. 예전 시트는 art-gen/out/hero-sheet-backup/ 에.
  */
 import sharp from "sharp";
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 
-const SHEETS = { idle: "public/titans/character/base/hero-idle.png", attack: "public/titans/character/base/hero-attack.png" };
+// 2026-10-15: --weapons 면 성문 방어 일제 사격 시트(활·지팡이 4칸)를 같은 방식으로
+const SHEETS = process.argv.includes("--weapons")
+  ? { bow: "public/titans/generated/hero-bow-sheet.png", staff: "public/titans/generated/hero-staff-sheet.png" }
+  : { idle: "public/titans/character/base/hero-idle.png", attack: "public/titans/character/base/hero-attack.png" };
 const OUT = "art-gen/out";
 const mode = process.argv[2];
 
@@ -27,7 +31,11 @@ for (const [m, file] of Object.entries(SHEETS)) {
   const fw = Math.floor(meta.width / 4), fh = meta.height;
   if (mode === "split") {
     for (let i = 0; i < 4; i += 1) {
-      await sharp(orig).extract({ left: i * fw, top: 0, width: fw, height: fh }).png().toFile(`${OUT}/hero-src-${m}-${i}.png`);
+      const cell = await sharp(orig).extract({ left: i * fw, top: 0, width: fw, height: fh }).png().toBuffer();
+      await sharp(cell).toFile(`${OUT}/hero-src-${m}-${i}.png`);
+      // 정사각 패딩본(생성용 — 1024 정사각으로 늘어나 납작해지지 않게)
+      const S = Math.max(fw, fh);
+      await sharp({ create: { width: S, height: S, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: cell, left: Math.round((S - fw) / 2), top: Math.round((S - fh) / 2) }]).png().toFile(`${OUT}/hero-sq-${m}-${i}.png`);
     }
     console.log("split", m, fw, fh);
   } else if (mode === "assemble") {
