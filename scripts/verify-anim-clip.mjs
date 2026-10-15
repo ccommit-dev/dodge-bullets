@@ -23,6 +23,8 @@ const IGNORE_ANIM = [
   "party-run-out", "party-run-in", "monster-enter-right", "boss-enter-right", "monster-defeat",
   "stage-parallax-in", "stage-parallax-out", "idle-sweep", "gacha-burst", "gacha-rays", "gacha-shine",
   "beat-fever-field", "rift-step-in", "wave-banner", "summon-sparks", "battle-alert-in", "float-up", "rift-float-up",
+  // 2026-10-15: 뽑기 햇살(가려진 줄무늬)·색종이·팝 · 걷기 먼지 — 막을 넘는 게 연출
+  "cute-spin", "confetti-fall", "cute-pop", "walk-dust", "card-drop", "ring-pop",
 ];
 
 /** 애니메이션 중인 요소마다 (레이아웃 박스, 변환 박스, 클리핑 조상) 을 잰다 */
@@ -64,15 +66,18 @@ const PROBE = `(() => {
     const anim = cs.animationName;
     if (anim === "none" || IGNORE.some((a) => anim.includes(a))) continue;
     if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) continue;
-    const r = el.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) continue;
+    const r0 = el.getBoundingClientRect();
+    if (r0.width < 2 || r0.height < 2) continue;
+    // 동료 칸 그림(.ally-body)은 폭 150% 에 투명 여백이 양옆 27.5% 씩 — 그린 몸(가운데 45%)만 잰다 (2026-10-15, 다른 겹침 검사와 같은 기준)
+    const trim = el.classList.contains("ally-body") ? 0.275 : (el.classList.contains("ally-swing") || el.classList.contains("ally-idle")) ? 0.16 : 0;   // 칸(78px) 안 그린 몸 ≈ 52px
+    const r = { left: r0.left + r0.width * trim, right: r0.right - r0.width * trim, top: r0.top, bottom: r0.bottom, width: r0.width * (1 - 2 * trim), height: r0.height };
     const clip = clipAncestor(el);
     if (!clip) continue;
     if (transitioning && field.contains(el)) continue;
     if (movedByAncestor(el, clip)) continue;
     const c = clip.getBoundingClientRect();
     const lb = layoutBox(el);
-    const lay = { left: lb.left, right: lb.left + lb.width, top: lb.top, bottom: lb.top + lb.height };
+    const lay = { left: lb.left + lb.width * trim, right: lb.left + lb.width * (1 - trim), top: lb.top, bottom: lb.top + lb.height };
     // 레이아웃 자체가 이미 밖이면 스크롤·의도 배치다 — 변환이 만든 초과분만 본다
     const over = {
       left: Math.max(0, (c.left - r.left) - Math.max(0, c.left - lay.left)),

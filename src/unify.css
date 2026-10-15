@@ -185,3 +185,24 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
   .titans-layer.growth-open:not(.is-management-page) > .hub-inline > .titans-shop { transform: none; visibility: visible; }
   .titans-layer:not(.is-management-page) > .titans-growth-tabs { position: relative; z-index: 41; }
 }
+
+/* ── 장비 성장 아이콘 통일 (2026-10-15, 사용자: "아이콘과 배경이 무기 숙련처럼 · 통일") — 무기 숙련처럼 상자 없이 그림만 ── */
+.equipment-training-card .training-item-icon, .equipment-training-card .gear-icon, .equipment-training-card .shoulder-icon { background: none !important; border: 0 !important; box-shadow: none !important; width: 56px !important; height: 56px !important; display: grid; place-items: center; }
+.equipment-training-card .training-item-icon img, .equipment-training-card .gear-icon img { width: 52px !important; height: 52px !important; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(59, 36, 21, .3)); }
+.equipment-training-card > :first-child:not(button) { background: none !important; border: 0 !important; }
+.weapon-kind-chips { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.weapon-kind-chip { padding: 2px 10px; min-height: 26px; border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-cream); color: var(--flat-ink); font-size: 12px; font-weight: 700; }
+.weapon-kind-chip.on { background: var(--flat-yellow); }
+
+/* ── 대장간 무대 — 장비·원정 무기 (2026-10-15) ── 북 무대(.forge-stage)와 같은 틀에 그림만 바꾼다 */
+.forge-showcase { display: grid; place-items: center; min-height: 230px; }
+.forge-showcase .showcase-item { position: relative; z-index: 2; width: min(62%, 220px); aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(0, 0, 0, .4)); animation: showcase-float 3.2s ease-in-out infinite; }
+.forge-showcase .showcase-item.just-enhanced { animation: showcase-hit .6s cubic-bezier(.3, 1.6, .5, 1), showcase-float 3.2s ease-in-out .6s infinite; }
+@keyframes showcase-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
+@keyframes showcase-hit { 0% { transform: scale(.8); filter: brightness(2) drop-shadow(0 0 20px #ffd84d); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.forge-showcase.showcase-tier-2 .sword-aura { box-shadow: 0 0 60px rgba(148, 197, 255, .55) inset; }
+.forge-showcase.showcase-tier-3 .sword-aura { box-shadow: 0 0 70px rgba(255, 216, 77, .7) inset; }
+.gear-forge-row, .forge-expweapon { cursor: pointer; }
+.gear-forge-row.on, .forge-expweapon.on { box-shadow: 0 0 0 3px var(--flat-yellow), 0 3px 0 rgba(59, 36, 21, .25) !important; }
+.forge-expweapons { display: grid; gap: 8px; }
+.titans-layer.perf-low .forge-showcase .showcase-item, .perf-low .forge-showcase .showcase-item { animation: none; }

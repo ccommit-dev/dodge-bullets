@@ -235,7 +235,7 @@ const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
   (QA_BUILD && typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
-export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>(initialTab ?? "sword");
@@ -295,6 +295,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   const gemsShown = useTween(redGems);
   const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
+  // 주인공 무기 (2026-10-15, 사용자: "캐릭터 아이템도 북 외에도 두 가지 더") — 북은 대장간 북(+0~15), 활·지팡이는 대장간 원정 무기(+0~20 → 15 눈금)
+  const weaponKind = character.equippedWeaponKind ?? "drum";
+  const forgedWeaponLevel = weaponKind === "drum" ? drumLevel : Math.round(((character.expeditionWeaponForge ?? { bow: 0, staff: 0 })[weaponKind] ?? 0) * 15 / 20);
   // 하한 2 — 기본 스킬(도토리 북치기)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
   const skillTypeCapacity = Math.min(10, Math.max(2, Math.ceil(character.level / 10)));
   const [idleReport, setIdleReport] = useState<{
@@ -2188,6 +2191,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
   // 대형 칸 (2026-10-14) — 근딜·탱커가 몬스터 앞 두 칸(R), 나머지는 주인공 뒤 칸(L). 역할표(ALLY_ROLE)로 정한다
   const allyLines = useMemo(() => allies.map((h) => (ALLY_ROLE[h.id] === "ranged" || ALLY_ROLE[h.id] === "healer" ? "back" as const : "front" as const)), [allies]);
   const allyCells = useMemo(() => formationCells(allyLines), [allyLines]);
+  // 주인공 장착 파츠 (2026-10-15, 사용자: "장비 성장 아이템들이 캐릭터에 장착되게") — 숙련 Lv1 이면 나무로 보이고, 대장간 강화 +5 철 · +10 금
+  const heroGear = useMemo(() => {
+    const m = gearMasteryOf(save.equipmentTraining), e = character.gearEnhance ?? { helmet: 0, armor: 0, gloves: 0, boots: 0 };
+    const pt = (p: GearPart) => (m[p] >= 1 ? Math.max(1, gearTierOfEnhance(e[p])) : 0);
+    return {
+      shield: shieldTierOf(character.dodgeBestStage),
+      helmet: pt("helmet"), armor: pt("armor"),
+      gloves: Math.max(glovesTierOf(save.equipmentTraining.weaponMastery), pt("gloves")),
+      boots: Math.max(bootsTierOf(character.towerBestFloor), pt("boots")),
+    };
+  }, [save.equipmentTraining, character.gearEnhance, character.dodgeBestStage, character.towerBestFloor]);
   const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea), [save.stage, character.pioneeredArea]);
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
   useEffect(() => {
@@ -2533,7 +2547,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={{ shield: shieldTierOf(character.dodgeBestStage), gloves: Math.max(glovesTierOf(save.equipmentTraining.weaponMastery), gearTierOfEnhance(character.gearEnhance?.gloves ?? 0)) as 0 | 1 | 2 | 3, boots: Math.max(bootsTierOf(character.towerBestFloor), gearTierOfEnhance(character.gearEnhance?.boots ?? 0)) as 0 | 1 | 2 | 3 }} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -2923,8 +2937,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel = 0, armorLevel
         {tab === "sword" && (
           <>
             <article className="titans-card equipment-training-card">
-              <div className="training-item-icon weapon"><SwordArt level={Math.min(15, forgedWeaponLevel)} hue={tierAt(Math.min(15, forgedWeaponLevel)).hue} name="장착 대검" /></div>
-              <div><strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>기본 공격력·자동 공격 속도·치명타 성장 · 다음 {formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</p></div>
+              <div className="training-item-icon weapon">{weaponKind === "drum" ? <SwordArt level={Math.min(15, forgedWeaponLevel)} hue={tierAt(Math.min(15, forgedWeaponLevel)).hue} name="장착 대검" /> : <img src={assetUrl(`titans/gear/${weaponKind}-${forgedWeaponLevel >= 10 ? 3 : forgedWeaponLevel >= 5 ? 2 : 1}.png`)} alt="" aria-hidden="true" />}</div>
+              <div>
+                <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>기본 공격력·자동 공격 속도·치명타 성장 · 다음 {formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</p>
+                {/* 무기 종류 (2026-10-15) — 북 · 활 · 지팡이. 강화 단계는 대장간(북 / 원정 무기) */}
+                <span className="weapon-kind-chips" role="group" aria-label="주인공 무기">
+                  {([["drum", "북", drumLevel], ["bow", "활", Math.round(((character.expeditionWeaponForge?.bow ?? 0) * 15) / 20)], ["staff", "지팡이", Math.round(((character.expeditionWeaponForge?.staff ?? 0) * 15) / 20)]] as const).map(([k, label, lv]) => (
+                    <button key={k} type="button" className={`weapon-kind-chip ${weaponKind === k ? "on" : ""}`} aria-pressed={weaponKind === k} onClick={() => { if (weaponKind === k) return; void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${label} 장착 · +${lv}`); }); }}>
+                      {label} +{lv}
+                    </button>
+                  ))}
+                </span>
+              </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련</button>
             </article>
             <article className="titans-card equipment-training-card">
