@@ -408,7 +408,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
  *   넘치는 근딜과 원딜·힐러는 L 칸을 차례로 쓴다(근딜 3명째가 주인공을 50% 덮던 문제). 줄 순번 대신 파티 전체로 칸을 배정한다.
  * 대기(--party-home-*)는 같은 격자를 통째로 왼쪽으로 민 것이라, 걸어 들어오고 나갈 때도 서로의 앞뒤·간격이 그대로다(엇갈려 지나가지 않는다).
  */
-const LEFT_CELLS: [number, number][] = [[0.12, 0], [-0.8, 0], [-0.7, 1], [0.2, 1]];   // 주인공 왼쪽 92px 에 두 칸 — −1 칸은 전장 왼쪽 밖으로 나갔다
+const LEFT_CELLS: [number, number][] = [[0.14, 0], [-0.9, 0], [-0.75, 1], [0.3, 1]];   // 뒤 두 칸 간격 1.05칸 — 공격 동작이 커져(anim-plus) 0.9칸에선 23~28% 겹쳤다   // 주인공 왼쪽 92px 에 두 칸 — −1 칸은 전장 왼쪽 밖으로 나갔다
 /** 파티(순서대로, 줄 표시) → 각자의 칸. TitansGame 이 부른다 */
 export function formationCells(lines: ("front" | "back")[]): { cell: "R" | "L"; index: number }[] {
   let r = 0, l = 0;
@@ -416,7 +416,7 @@ export function formationCells(lines: ("front" | "back")[]): { cell: "R" | "L"; 
 }
 const ROW_BOTTOM = ["1%", "calc(var(--ally-size, 78px) * 0.98)"];
 function lineFormation(cell: "R" | "L", index: number): Record<string, string> {
-  const [col, row] = cell === "R" ? [0, Math.min(1, index)] : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
+  const [col, row] = cell === "R" ? [index >= 1 ? 0.6 : 0, Math.min(1, index)]   /* 뒷줄 근접은 0.3칸 뒤 — 큰 돌진 동작(anim-plus)에서 앞줄과 세로로 겹치지 않게 */ : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
   const step = "var(--ally-size, 78px) * 0.68";
   const bottom = ROW_BOTTOM[row];
   if (cell === "R") {

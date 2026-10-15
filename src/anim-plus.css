@@ -23,8 +23,8 @@
 @keyframes ally-body-melee-pose {
   0% { transform: none; }
   22% { transform: translate(-8px, 1px) rotate(-7deg) scale(.95, 1.05); }
-  42% { transform: translate(16px, -2px) rotate(8deg) scale(1.1, .93); }
-  60% { transform: translate(12px, 0) rotate(5deg) scale(1.04, .98); }
+  42% { transform: translate(12px, -2px) rotate(7deg) scale(1.07, .95); }
+  60% { transform: translate(9px, 0) rotate(4deg) scale(1.03, .98); }
   80% { transform: translate(3px, 0) rotate(-1deg) scale(.99, 1.01); }
   100% { transform: none; }
 }
@@ -39,14 +39,14 @@
 .titan-ally-art.was-hit.hit-0 .ally-swing, .titan-ally-art.was-hit.hit-1 .ally-swing { animation-duration: .42s !important; }
 @keyframes ally-hit-recoil-a {
   0% { transform: none; }
-  20% { transform: translate(-12px, -2px) rotate(-9deg) scale(.94, 1.04); filter: brightness(1.9) saturate(.6); }
+  20% { transform: translate(-9px, -2px) rotate(-8deg) scale(.95, 1.03); filter: brightness(1.9) saturate(.6); }
   45% { transform: translate(-6px, 0) rotate(-4deg) scale(1.02, .98); filter: none; }
   70% { transform: translate(-2px, 0) rotate(1deg); }
   100% { transform: none; }
 }
 @keyframes ally-hit-recoil-b {
   0% { transform: none; }
-  20% { transform: translate(-12px, -2px) rotate(-9deg) scale(.94, 1.04); filter: brightness(1.9) saturate(.6); }
+  20% { transform: translate(-9px, -2px) rotate(-8deg) scale(.95, 1.03); filter: brightness(1.9) saturate(.6); }
   45% { transform: translate(-6px, 0) rotate(-4deg) scale(1.02, .98); filter: none; }
   70% { transform: translate(-2px, 0) rotate(1deg); }
   100% { transform: none; }
