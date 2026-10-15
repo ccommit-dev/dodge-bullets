@@ -3,6 +3,7 @@ import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
+import { ALLY_FRAME_SET, MONSTER_FRAME_SET } from "./frameSets";
 
 const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
 
@@ -226,6 +227,18 @@ export function MonsterArt({
 }) {
   const idle = monsterAssetFor(kind, area, boss, golden, "idle", stage);
   const asset = monsterAssetFor(kind, area, boss, golden, state, stage);
+  // 생성 프레임 띠 (2026-10-15) — 있으면 대기 0·1 · 예비 · 덤빔 · 피격을 띠에서 고른다(전장의 .action-prepare/.action-attack 이 칸을 바꾼다).
+  // 띠는 이미 왼쪽을 보게 만들어 두어 face-flip 을 쓰지 않는다. 쓰러짐은 예전 처치 그림
+  const art = idle.split("/").pop()?.replace(/.png$/, "") ?? "";
+  if (!golden && hasMonsterFrames(art)) {
+    return (
+      <div key={idle} className={`titan-monster-art has-frames frame-${state}`}>
+        <i className={`monster-frames mf-${state}`} style={{ backgroundImage: `url(${assetUrl(`titans/generated/monsters/frames/${art}.webp`)})` }} aria-hidden="true" />
+        <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
+        <span className="monster-asset-current" data-src={asset} hidden />
+      </div>
+    );
+  }
   // 세 프레임을 모두 마운트해 두고 보이는 것만 바꾼다 — 상태 전환 순간 이미지 로딩으로 깜빡이지 않게
   return (
     <div key={idle} className={`titan-monster-art frame-${state} ${FLIP_MONSTERS.has(idle.split("/").pop()?.replace(/\.png$/, "") ?? "") ? "face-flip" : ""}`}>
@@ -243,6 +256,25 @@ export const ALLY_ATTACK_TIMING = { windupMs: 90, strikeMs: 240, recoverMs: 150 
 /** 걷기 프레임 교대 주기 — 0.28s 한 걸음 */
 export const ALLY_WALK_FRAME_MS = 140;
 /** 상태 → 아틀라스 프레임 (0 대기 · 1 이동 · 2 공격 · 3 피격). 우선순위: 피격 > 공격 > 걷기 */
+/**
+ * 생성 프레임 띠 (2026-10-15, 사용자: "캐릭터처럼 공격·피격·대기·걷기 애니메이션") — 띠가 있는 동료는 아틀라스 한 칸 대신
+ * 9칸 [대기0·대기1·걷기0·걷기1·공격0(예비)·공격1·공격2(타격)·공격3(따라가기)·피격] 에서 고른다. 칸 비율·인물 위치는 아틀라스와 같다.
+ * 스킨을 입었으면 예전 아틀라스(스킨 행)를 쓴다.
+ */
+export function hasAllyFrames(id: TitanHeroId, skin?: string): boolean { return !skin && ALLY_FRAME_SET.includes(id); }
+export function allyFramesIndex(v: { flinching: boolean; attackPhase: "none" | "windup" | "strike" | "recover"; approaching: boolean; walkTick: number }): number {
+  if (v.flinching) return 8;
+  if (v.attackPhase === "windup") return 4;
+  if (v.attackPhase === "strike") return 6;
+  if (v.attackPhase === "recover") return 7;
+  if (v.approaching) return v.walkTick % 2 === 0 ? 2 : 3;
+  return 0;   // 대기 — CSS(.frames-idle)가 0·1 칸을 번갈아 보인다
+}
+export function allyFramesStyle(id: TitanHeroId, index: number): CSSProperties {
+  return { ...WIDE_CELL, backgroundImage: `url(${assetUrl(`titans/generated/allies/frames/${id}.webp`)})`, backgroundSize: "900% 100%", backgroundPosition: `${(index / 8) * 100}% 0%`, backgroundRepeat: "no-repeat" };
+}
+export function hasMonsterFrames(art: string): boolean { return MONSTER_FRAME_SET.includes(art); }
+
 export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "windup" | "strike" | "recover"; approaching: boolean; walkTick: number }): AllyFrameState {
   if (v.flinching) return 3;
   if (v.attackPhase === "strike") return 2;
@@ -351,9 +383,10 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
           {(() => {
             const state: AllyFrameState = allyFrameFor({ flinching, attackPhase, approaching, walkTick });
+            const framesIdx = hasAllyFrames(id, skin) ? allyFramesIndex({ flinching, attackPhase, approaching, walkTick }) : -1;
             return (
               <>
-                <div className={`ally-body frame-${state}`} style={allyFrameStyle(id, state, skin)} />
+                <div className={`ally-body frame-${state} ${framesIdx >= 0 ? `has-frames fi-${framesIdx} ${framesIdx === 0 ? "frames-idle" : ""}` : ""}`} style={framesIdx >= 0 ? allyFramesStyle(id, framesIdx) : allyFrameStyle(id, state, skin)} />
                 <AllyWeapon id={id} anchor={weaponAnchorStyle(id, state)} />
               </>
             );
