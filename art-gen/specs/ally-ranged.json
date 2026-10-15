@@ -1,0 +1,11 @@
+[
+ {"name":"idle-0","pose":"hero-idle-0","action":"standing idle, relaxed, holding its weapon"},
+ {"name":"idle-1","pose":"hero-idle-2","action":"standing idle, breathing in, holding its weapon","seed_offset":1},
+ {"name":"walk-0","pose":"mia-run","action":"walking forward to the right, mid stride"},
+ {"name":"walk-1","pose":"mia-run","action":"walking forward to the right, the other leg forward","seed_offset":2,"cn":0.5},
+ {"name":"attack-0","action":"preparing to cast or shoot, weapon pulled back, leaning back slightly"},
+ {"name":"attack-1","action":"casting a spell or shooting forward to the right, weapon thrust forward, glowing","seed_offset":3},
+ {"name":"attack-2","action":"releasing the shot or spell to the right, arms forward, motion","seed_offset":4},
+ {"name":"attack-3","action":"after the shot, relaxing, weapon lowered","seed_offset":5},
+ {"name":"hit-0","pose":"mia-hit","action":"recoiling from a heavy hit, flinching, eyes squeezed shut"}
+]

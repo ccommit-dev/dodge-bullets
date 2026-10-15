@@ -96,3 +96,21 @@
   70% { transform: translateX(2px) rotate(.5deg) scale(1.01, .99); }
   100% { transform: none; }
 }
+
+/* 생성 프레임 띠 — 대기는 0·1 칸을 번갈아(숨쉬기 그림), 숨쉬기 변형도 함께 */
+.titan-ally-art:not(.is-approaching) .ally-body.has-frames.frames-idle { animation: ally-body-breathe 1.9s ease-in-out infinite, ally-frames-idle 1.9s steps(1, end) infinite; }
+@keyframes ally-frames-idle { 0% { background-position: 0% 0%; } 50% { background-position: 12.5% 0%; } }
+.perf-low .titan-ally-art .ally-body.has-frames.frames-idle { animation: ally-body-breathe 1.9s ease-in-out infinite; }
+
+/* 몬스터 프레임 띠 (5칸: 대기0·대기1·예비·덤빔·피격) */
+.titan-monster-art.has-frames { position: relative; }
+.titan-monster-art.has-frames .monster-frames { position: absolute; inset: 0; background-size: 500% 100%; background-repeat: no-repeat; background-position: 0% 0%; }
+.titan-monster-art.has-frames.frame-idle .monster-frames { animation: monster-frames-idle 1.6s steps(1, end) infinite; }
+@keyframes monster-frames-idle { 0% { background-position: 0% 0%; } 50% { background-position: 25% 0%; } }
+.titans-monster.action-prepare .titan-monster-art.has-frames .monster-frames { animation: none; background-position: 50% 0%; }
+.titans-monster.action-attack .titan-monster-art.has-frames .monster-frames { animation: none; background-position: 75% 0%; }
+.titan-monster-art.has-frames.frame-hit .monster-frames { animation: none; background-position: 100% 0%; }
+.titan-monster-art.has-frames.frame-defeat .monster-frames { opacity: 0; }
+.titan-monster-art.has-frames > img { opacity: 0; }
+.titan-monster-art.has-frames > img.on { opacity: 1; }
+.perf-low .titan-monster-art.has-frames.frame-idle .monster-frames { animation: none; }
