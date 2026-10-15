@@ -1,7 +1,8 @@
 /**
  * 동료 스킨(코스튬) 카탈로그 — 같은 동료의 외형만 바꾼다 (성급·레벨 공유).
  * 얼터너티브 동료(별도 캐릭터, §9)와 다른 축의 확정 구매 상품이다.
- * 아트는 scripts/make-variant-atlas.mjs가 tint 파생으로 생성한다 (전투 아틀라스 + 상점 썸네일).
+ * 아트: 판매 스킨 10종은 동료 3D 프레임 9칸을 테마로 다시 렌더한 띠(scripts/build-skin-frames.mjs → frames/<skin>.webp, 2026-10-15),
+ * 아틀라스 4칸·상점 썸네일은 그 띠에서 뜬다(make-variant-atlas.mjs 가 art-gen/skin-rows/<skin>-row.png 를 쓴다). 은퇴 동료 스킨은 예전 색 파생 그대로.
  *
  * J: SSR 10명 스킨 각 300 보석. 해당 동료가 현재 픽업이면 20% 할인(240) — 픽업 기간의 구매 동기 연결.
  *    season-N 은 시즌 패스 유료 15단 보상 — gemCost null(비매품).

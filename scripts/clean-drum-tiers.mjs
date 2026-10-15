@@ -16,7 +16,7 @@ const hsl = (r, g, b) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, 
 const rgb = (h, s, l) => { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2; const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]; return [(r + m) * 255, (g + m) * 255, (b + m) * 255].map((v) => Math.round(Math.max(0, Math.min(255, v)))); };
 
 for (let t = 0; t < 16; t += 1) {
-  if (t === 2) continue;   // 2단계는 새로 그렸다 — scripts/place-drum-art.mjs (이 스크립트 뒤에 돌린다)
+  if (t === 0 || t === 2) continue;   // 0·2단계는 새로 그렸다 — scripts/place-drum-art.mjs (이 스크립트 뒤에 돌린다)
   const name = `s${String(t).padStart(2, "0")}.png`;
   if (!existsSync(`${BAK}/${name}`)) copyFileSync(`${DIR}/${name}`, `${BAK}/${name}`);
   const { data, info } = await sharp(`${BAK}/${name}`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });

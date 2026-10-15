@@ -26,6 +26,7 @@ function gearImage(part: string, tier: number): HTMLImageElement | null {
 type FigBox = { x0: number; x1: number; y0: number; y1: number };
 const FIG_IDLE: FigBox = { x0: 2.9, x1: 93, y0: 30.9, y1: 99.9 };
 const FIG_WEAPON: FigBox = { x0: 13.4, x1: 86.6, y0: 2.4, y1: 99.7 };
+const HERO_FIG_RADII = 5.2;
 /** 파츠 자리 — 인물 상자 기준(u 가로 · v 세로 0~1 · size = 파츠 폭 ÷ 인물 키). 사냥터 EquippedCharacter(unify.css 로 맞춘 자리)와 같은 값.
  *  예전 프레임 % 앵커(가슴 73%)는 큰 머리 비버에선 얼굴이라 갑옷이 주둥이를 덮었다 */
 const GEAR_SPOTS: readonly (readonly [part: "boots" | "shield" | "armor" | "gloves" | "helmet", u: number, v: number, size: number])[] = [
@@ -214,9 +215,12 @@ export function drawStickman(
     // 무기 시트는 메김 → 당김 → 놓음 → 복귀 순서라 돌리지 않고 한 번만 지나간다 (SWING_MS 320ms ÷ 4)
     const frame = attackHero ? (p.anim === "skill" ? Math.min(3, Math.floor(p.animTime / 0.085)) : Math.min(3, Math.floor((SHOOT_MS - p.shootMs) / (SHOOT_MS / 4)))) : Math.floor(p.animTime * frameRate) % 4;
     const fig = attackHero ? FIG_WEAPON : FIG_IDLE;
-    const drawHeight = (p.radius * 4.7 * (FIG_WEAPON.y1 - FIG_WEAPON.y0)) / (fig.y1 - fig.y0);   // 인물 키를 시트와 상관없이 같게
+    // 인물 키를 시트와 상관없이 같게 — 반지름 5.2배(≈77px). 예전 4.57배(67px)는 폰에서 작다고 읽혔다(2026-10-15 원화 감사).
+    // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(앞 20 · 턱 −28)로 함께 옮겼다. 판정 반지름은 그대로
+    const drawHeight = (p.radius * HERO_FIG_RADII * 100) / (fig.y1 - fig.y0);
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
     ctx.save();
+    ctx.imageSmoothingQuality = "high";   // 780px 칸을 ~150 실픽셀로 줄인다 — 기본(low)은 거칠고 흐릿했다
     ctx.translate(p.x, p.y + p.radius);
     // 시트마다 기준 방향이 다르다: idle 시트는 왼쪽(-1), 검격 시트는 4프레임 모두
     // 오른쪽(+1)을 본다. 일괄 -1을 곱하면 검격이 바라보는 방향과 반대로 베어진다.

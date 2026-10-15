@@ -361,6 +361,40 @@ def cmd_restyle(a):
         save(cutout(im), f"{a.out}-s{sd}.png")
 
 
+def cmd_restyle_batch(a):
+    """restyle-batch (2026-10-15, 사용자: "어색한 거 모두 다시 재생성") — restyle 을 모델 한 번 올려 여러 장.
+    jobs.json = [{"file", "out", "prompt", "strength", "seed", "ip", "refs": [png...]}] · 출력 art-gen/out/<out>-s<seed>.png, 이미 있으면 건너뛴다.
+    refs 는 job 마다 IP 참조(없으면 ARTGEN_REFS/기본). 스킨 프레임 9칸 × 10종처럼 장수가 많을 때 호출마다 모델을 다시 올리는 시간을 없앤다."""
+    import json
+    jobs = json.loads(Path(a.jobs).read_text(encoding="utf-8"))
+    neg = NEG + ", flat vector, cel shading, thick black outlines, sticker, 2d, flat colors, lineart"
+    done = 0
+    for j in jobs:
+        sd = int(j.get("seed", BASE_SEED))
+        if (OUT / f"{j['out']}-s{sd}.png").exists():
+            continue
+        refs = None
+        if j.get("refs"):
+            refs = []
+            for f in j["refs"]:
+                im = Image.open(f).convert("RGBA")
+                bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+                bg.alpha_composite(im)
+                refs.append(bg.convert("RGB").resize((384, 384)))
+        pipe = load_pipe(img2img=True)
+        pipe.set_ip_adapter_scale(float(j.get("ip", 0.25)))
+        g = torch.Generator(dev()).manual_seed(sd)
+        src = Image.open(j["file"]).convert("RGBA")
+        bg = Image.new("RGBA", src.size, (255, 255, 255, 255))
+        bg.alpha_composite(src)
+        init = bg.convert("RGB").resize((1024, 1024))
+        im = pipe(prompt=f"{j['prompt']}, soft 3d render, volumetric shading, glossy toy, {STYLE}", negative_prompt=neg, image=init, strength=float(j.get("strength", 0.5)),
+                  num_inference_steps=28, guidance_scale=6.5, generator=g, ip_adapter_image=[refs or style_refs()]).images[0]
+        save(cutout(im), f"{j['out']}-s{sd}.png")
+        done += 1
+    print("restyle-batch done", done, "of", len(jobs))
+
+
 STATE_PROMPTS = {
     # 공격은 앞(화면 오른쪽, 동료)/왼쪽(몬스터)으로 몸을 내미는 돌진, 피격은 뒤로 젖히는 반동 — 방향 단어는 호출 쪽 prompt 가 준다
     "attack": "mid-attack action pose, lunging forward, swinging the weapon, body leaning forward, dynamic motion",
@@ -706,6 +740,7 @@ if __name__ == "__main__":
     h = sub.add_parser("hero"); h.add_argument("prompt"); h.add_argument("--seed", type=int); h.set_defaults(fn=cmd_hero)
     k = sub.add_parser("costume"); k.add_argument("id"); k.add_argument("prompt"); k.add_argument("--seed", type=int); k.set_defaults(fn=cmd_costume)
     rs = sub.add_parser("restyle"); rs.add_argument("file"); rs.add_argument("out"); rs.add_argument("prompt"); rs.add_argument("--strength", type=float, default=0.55); rs.add_argument("--seed", type=int); rs.add_argument("--seeds", type=int, nargs="*"); rs.add_argument("--ip", type=float); rs.set_defaults(fn=cmd_restyle)
+    rb = sub.add_parser("restyle-batch"); rb.add_argument("jobs"); rb.set_defaults(fn=cmd_restyle_batch)
     rc = sub.add_parser("recolor"); rc.add_argument("file"); rc.add_argument("out"); rc.add_argument("prompt"); rc.add_argument("--strength", type=float, default=0.5); rc.add_argument("--seed", type=int); rc.add_argument("--ip", type=float); rc.set_defaults(fn=cmd_recolor)
     b = sub.add_parser("boss"); b.add_argument("file"); b.add_argument("prompt"); b.add_argument("--seed", type=int); b.set_defaults(fn=cmd_boss)
     # states (2026-10-13): 자기 대기 PNG 를 img2img 초기 이미지로 공격·피격 포즈를 그린다 — 체형·의상은 남고 자세만 바뀐다

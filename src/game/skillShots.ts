@@ -394,8 +394,9 @@ function freeze(world: GameWorld, a: Arrow, slow: number, chillMs: number): void
  * 활 손 — 주인공이 활을 쥔 자리(바라보는 쪽 가슴 앞). 그리기(player.ts drawHeroBow)가 여기에 활을 쥐고, 기본 화살은 **그림만** 여기 활 앞에서
  * 출발해 60px 안에 실제 궤적(플레이어 중심 −14 에서 나간 것)에 합쳐진다. 판정 출발점을 활 손으로 옮기면 20px 차이에 주간·곡선 게이트가
  * 경계에서 흔들려(중간 S4 8 → 6, 주간 첫 S4 7일) 판정은 그대로 두었다 (2026-10-02)
+ * 2026-10-15: 주인공을 77px 로 키운 뒤(player.ts HERO_FIG_RADII) 예전 손(12, −34)이 주둥이 위라 활이 얼굴을 가렸다 → 앞으로 20 · 턱 높이 −28
  */
-export const BOW_HAND_X = 12, BOW_HAND_Y = -34, BOW_REACH = 8;
+export const BOW_HAND_X = 20, BOW_HAND_Y = -28, BOW_REACH = 8;
 export function bowHand(world: GameWorld): { x: number; y: number } {
   return { x: world.player.x + world.player.facing * BOW_HAND_X, y: world.player.y + BOW_HAND_Y };
 }
