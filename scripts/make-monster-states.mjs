@@ -71,7 +71,7 @@ for (const file of SOURCES) {
   // 2026-10-13 보완: contain 통째 축소 대신 bbox 기준(derive-frame.tiltFrame) — 넘칠 때만 그만큼 줄여 돌진·반동 때 몸 크기가 유지된다
   await sharp((await tiltFrame(hitBuf, { rot: 8, sx: 0.95 })).buffer).toFile(`${DIR}/${base}-hit.png`);
   // attack (2026-10-13): 앞(왼쪽)으로 8° 숙이고 가로 1.06 으로 늘린 돌진 — SpriteArt 가 action-attack 동안 -attack.png 를 쓴다
-  await sharp((await tiltFrame(src, { rot: -10, sx: 1.08, sy: 0.98 })).buffer).toFile(`${DIR}/${base}-attack.png`);
+  await sharp((await tiltFrame(src, { rot: -7, sx: 1.03, sy: 0.99 })).buffer).toFile(`${DIR}/${base}-attack.png`);   // 2026-10-15: −10°·1.08 은 넓은 3D 몬스터(네발짐승)를 칸 밖으로 밀었다 — 덤비는 움직임은 anim-plus.css 가 맡는다
   // 포즈 img2img 결과(gen.py states → art-gen/out/st-<name>-attack/hit.png)가 있으면 그것을 원본 크기 틀에 맞춰 덮어쓴다 (2026-10-13 보완)
   for (const st of ["attack", "hit"]) { const posed = `art-gen/out/st-${base}-${st}.png`; if (existsSync(posed)) { await sharp(posed).resize(w, h, { fit: "contain", position: "bottom", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(`${DIR}/${base}-${st}.png`); console.log(`${base}: posed ${st}`); } }
 

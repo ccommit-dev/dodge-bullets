@@ -25,8 +25,8 @@ for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1)
 if (maxx < 0) { console.error("빈 이미지"); process.exit(1); }
 const fw = maxx - minx + 1, fh = maxy - miny + 1;
 // 발 여백을 뺀 높이에 맞춰 축소 — 가로도 캔버스를 넘지 않게
-const avail = Math.round(SIZE * (1 - BOTTOM));
-const scale = Math.min(avail / fh, SIZE / fw, 1);
+const avail = Math.round(SIZE * (1 - BOTTOM - 0.05));   // 위 5% 여백 — 뿔·귀가 위 가장자리에 닿지 않게 (2026-10-15)
+const scale = Math.min(avail / fh, (SIZE * 0.9) / fw, 1);   // 양옆 5% 여백 — 피격·처치 파생(기울임)이 가장자리에서 잘리지 않게 (2026-10-15)
 const w = Math.max(1, Math.round(fw * scale)), h = Math.max(1, Math.round(fh * scale));
 const figRaw = await sharp(src).extract({ left: minx, top: miny, width: fw, height: fh }).resize(w, h).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 // 반투명 테두리 잔상 경화 — place-art.hardenAlpha 와 같은 곡선 (2026-10-07)
