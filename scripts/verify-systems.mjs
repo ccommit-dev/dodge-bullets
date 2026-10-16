@@ -1045,15 +1045,11 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       return { H, W, ratios: out };
     };
     const idle = await figureRatios(join(root, "public/titans/character/base/hero-idle.png"));
-    for (const w of ["bow", "staff"]) {
-      const file = join(root, `public/titans/generated/hero-${w}-sheet.png`);
-      if (!existsSync(file)) { ok(`${w} 일제 사격 시트가 있다`, false, "없음 — bash art-gen/batch-dodge-hero-bow.sh → node scripts/make-hero-attack-sheet.mjs " + w); continue; }
-      const sheet = await figureRatios(file);
-      ok(`${w} 시트: 프레임 높이가 대기 시트와 같고 4프레임이다 (같은 drawHeight 로 그린다)`, sheet.H === idle.H && sheet.W % 4 === 0, sheet.W + "×" + sheet.H);
-      ok(`${w} 시트: 4프레임의 인물 높이가 대기와 같은 배율이다 (각 ≥ 70% · 평균 ≥ 80%)`,
-        sheet.ratios.every((r) => r >= 0.7) && sheet.ratios.reduce((p, q) => p + q, 0) / 4 >= 0.8,
-        "대기 " + (idle.ratios[0] * 100).toFixed(0) + "% · " + w + " " + sheet.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
-    }
+    // 2026-10-16: 따로 그린 활·지팡이 사격 시트를 걷었다 — 칸마다 다른 그림이라 쏠 때 생김새가 바뀌고 파츠가 어긋났다.
+    // 성문 방어는 대기 시트(대기 한 장 파생) 하나로 그리고 쏘는 동작은 캔버스 기울임으로 준다
+    const playerSrc = readFileSync(join(root, "src/game/player.ts"), "utf8");
+    ok("성문 방어 주인공은 대기 시트 하나로 그린다 — 사격 시트(hero-bow/staff-sheet)를 쓰지 않는다", !/hero-\$\{|hero-bow-sheet|hero-staff-sheet/.test(playerSrc) && !existsSync(join(root, "public/titans/generated/hero-bow-sheet.png")));
+    ok("대기 시트 4칸의 인물 높이가 고르다 (파생 숨쉬기 — 칸마다 ±3% 안)", Math.max(...idle.ratios) - Math.min(...idle.ratios) <= 0.03, idle.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
   }
 
   // ── 상성이 체감된다 (2026-09-29 재검토) — 표에만 있던 상성이 보스가 아니면 아무 효과가 없었다.

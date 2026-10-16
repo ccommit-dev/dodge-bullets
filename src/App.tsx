@@ -8,7 +8,7 @@ import "./App.css";
 import "./idle.css";
 import "./weight.css";
 import "./unify.css";   // 2026-10-14 UI 통일(글꼴·남색 판·글자 잘림)
-import "./gacha-cute.css";   // 2026-10-15 뽑기 연출 재설계
+import "./gacha-fx.css";   // 2026-10-16 뽑기 빛·폭죽 (원래 연출 위에 덧댐 — gacha-cute 재설계는 되돌렸다)
 import "./anim-plus.css";   // 2026-10-15 동료·몬스터 애니메이션 보강 — 반드시 마지막
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";

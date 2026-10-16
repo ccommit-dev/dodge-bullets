@@ -210,12 +210,13 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 /* ── 주인공 장착 파츠 크기·자리 (2026-10-15) — 앵커(anchors.ts)는 예전 원화 기준이라 지금 큰 머리 비버에선
    가슴 앵커가 얼굴, 파츠가 칸의 15~25% 로 작았다. 칸(가로 66 · 세로 132) 기준: 왕관 30~47% · 얼굴 47~80% · 망토/몸 78~100%.
    투구 = 왕관을 덮는 크기 · 갑옷 = 몸(망토) 위로 내림 · 장갑 = 몸 오른쪽 · 신발 = 발밑. 앵커의 프레임별 움직임(회전·흔들림)은 그대로 따라간다 */
-.equipped-character .equipment-helmet { width: 110% !important; margin-top: -1%; margin-left: 9%; }   /* 왕관 가운데(가로 57%)가 머리 앵커(48%)보다 오른쪽 — 예전엔 왕관 오른쪽이 투구 밖으로 삐져나왔다 */
-.equipped-character .equipment-chest { width: 92% !important; margin-top: 30%; z-index: 4 !important; }
-.equipped-character .equipment-gloves { width: 46% !important; margin-top: 34%; margin-left: -6%; z-index: 5 !important; }
-.equipped-character .equipment-boots { width: 86% !important; margin-top: 4%; }
-.equipped-character .equipment-shield { width: 70% !important; margin-top: 28%; margin-left: 6%; }   /* 왼손 앵커(30%,72%)도 얼굴 높이였다 → 몸 왼쪽(36%,86%) */
-.equipped-character .equipment-weapon-alt { position: absolute; z-index: 5; width: 190%; margin-top: 46%; margin-left: 2%;   /* 손 앵커 scale(.32) 를 상쇄 → 칸의 약 60% */ height: auto; pointer-events: none; transform-origin: 50% 91%; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
+/* 2026-10-16: 자리 보정 여백은 앵커(src/equipment/heroAnchors.ts — 대기 한 장 파생 변환으로 계산)에 접어 넣었다 → 여기는 크기만. 여백이 남으면 기운 칸에서 파츠가 몸을 못 따라간다 */
+.equipped-character .equipment-helmet { width: 110% !important; margin: 0 !important; }
+.equipped-character .equipment-chest { width: 92% !important; margin: 0 !important; z-index: 4 !important; }
+.equipped-character .equipment-gloves { width: 46% !important; margin-top: -12%; margin-left: -6%; z-index: 5 !important; }   /* 손 앵커(78,91)에서 앞발(72,85)로 — 상자 폭 기준 여백(세로 −6% = 폭 −12%) */
+.equipped-character .equipment-boots { width: 86% !important; margin: 0 !important; }
+.equipped-character .equipment-shield { width: 70% !important; margin: 0 !important; }
+.equipped-character .equipment-weapon-alt { position: absolute; z-index: 5; width: 190%; margin-top: 0; margin-left: 2%;   /* 손 앵커 scale(.32) 를 상쇄 → 칸의 약 60% */ height: auto; pointer-events: none; transform-origin: 50% 91%; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .equipped-character.mode-attack .equipment-weapon-alt { transition: transform .08s linear; }
 
 /* 장비 성장 아이콘 크기 통일 (2026-10-15 보완, 사용자: "무기·견갑 아이콘 다른 장비랑 크기 통일") — 모든 줄 52px */
@@ -253,7 +254,7 @@ b, strong, h1, h2, h3, h4, h5, h6, th, .cta, button { font-weight: 700; }
 .premium-weapon-thumb, .premium-weapon-part { background-size: 300% auto !important; }
 /* 북(기본·스킨) 장착 — 손 앵커 scale(.32) 때문에 볼 옆에 주인공 폭 17% 로 떠 있었다(모노클처럼 보임).
    활·지팡이처럼 손에 쥔 크기(주인공 폭 약 36%)로 키우고 손 높이까지 내린다. 스킨 북도 기본 북과 같은 크기·중심(위 32%) */
-.equipped-character .equipment-weapon { width: 90%; height: 46%; translate: 0 50%; }
+.equipped-character .equipment-weapon { width: 90%; height: 46%; }   /* 손 앵커가 y 91 로 내려가 예전 translate 50% 는 뺐다 */
 .premium-weapon-part { inset: -62% -43% -26% !important; }
 .blade-product .blade-thumb { flex: 0 0 64px !important; height: 64px !important; border: 2px solid var(--flat-ink) !important; background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--blade-aura) 38%, #fff3d6), var(--flat-cream-2) 72%) !important; }
 

@@ -23,9 +23,10 @@ function gearImage(part: string, tier: number): HTMLImageElement | null {
  * 무기 시트(hero-bow/staff, 780×887 칸)는 꽉 차 있어, 같은 높이로 그리면 쏠 때마다(0.55초마다) 주인공이 1.4배 커졌다 줄었다.
  * 인물 키를 무기 시트 기준(약 75px — 활·지팡이 길이가 이 크기에 맞춰져 있다)으로 맞추고, 파츠는 인물 상자 기준으로 앉힌다.
  */
+// 2026-10-16: 따로 그린 활·지팡이 시트(hero-bow/staff-sheet)는 걷었다 — 칸마다 다른 그림이라 쏠 때 생김새가 바뀌고 파츠가 어긋났다.
+// 대기 시트(대기 한 장 파생 — scripts/derive-anim-hero.mjs) 하나로 그리고, 쏘는 동작은 아래 캔버스 기울임으로 준다(파츠가 같은 변환을 탄다)
 type FigBox = { x0: number; x1: number; y0: number; y1: number };
 const FIG_IDLE: FigBox = { x0: 2.9, x1: 93, y0: 30.9, y1: 99.9 };
-const FIG_WEAPON: FigBox = { x0: 13.4, x1: 86.6, y0: 2.4, y1: 99.7 };
 const HERO_FIG_RADII = 5.2;
 /** 파츠 자리 — 인물 상자 기준(u 가로 · v 세로 0~1 · size = 파츠 폭 ÷ 인물 키). 사냥터 EquippedCharacter(unify.css 로 맞춘 자리)와 같은 값.
  *  예전 프레임 % 앵커(가슴 73%)는 큰 머리 비버에선 얼굴이라 갑옷이 주둥이를 덮었다 */
@@ -57,23 +58,6 @@ function getExpeditionHero(): HTMLImageElement | null {
     expeditionHero.src = assetUrl("titans/character/base/hero-idle.png");
   }
   return expeditionHero;
-}
-
-/**
- * 무기별 일제 사격 시트 — 대기 원화와 같은 인물이 활을 당기거나 지팡이를 드는 4프레임
- * (art-gen heroattack --weapon, scripts/make-hero-attack-sheet.mjs, 2026-10-01). 프레임 규격은 대기와 같다(높이 887 · 바닥 885).
- * 아직 안 실렸거나 파일이 없으면 null — 그때는 대기 시트 위에 무기를 당기는 포즈로 그린다.
- */
-const weaponAttackSheets: Record<string, HTMLImageElement> = {};
-function getWeaponAttackSheet(id: string): HTMLImageElement | null {
-  if (typeof Image === "undefined" || id === "none") return null;
-  if (!weaponAttackSheets[id]) {
-    const img = new Image();
-    img.src = assetUrl(`titans/generated/hero-${id}-sheet.png`);
-    weaponAttackSheets[id] = img;
-  }
-  const img = weaponAttackSheets[id];
-  return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
 /**
@@ -200,21 +184,17 @@ export function drawStickman(
   ctx.fill();
 
   const idleHero = getExpeditionHero();
-  // 검 시트(hero-attack-sheet)는 지웠다 — 활만 쓰는 콘텐츠다 (2026-10-01). 일제 사격은 **장착 무기의** 시트
-  // (활을 당기는 / 지팡이를 드는 같은 인물)로 그리고, 시트가 없으면 대기 시트 위에 무기를 당기는 포즈로 그린다.
   // 쏘는 동작 (2026-10-08, 사용자: "활이나 지팡이로 쏠 때 애니메이션이 동작을 안 해"): 기본 사격·스킬 무기 발사마다 무기 시트가 한 번 돈다
   const shooting = p.shootMs > 0 && p.anim !== "dead" && p.anim !== "hit" && p.anim !== "dash";
-  const attackHero = p.anim === "skill" || shooting ? getWeaponAttackSheet(world.rangedWeapon) : null;
-  const hero = attackHero ?? idleHero;
+  const hero = idleHero;   // 2026-10-16: 쏠 때도 같은 대기 시트 — 동작은 아래 캔버스 기울임(당김 ↶ · 놓음 ↷)
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
     // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
     const frameCount = 4;
     const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
-    // 무기 시트는 메김 → 당김 → 놓음 → 복귀 순서라 돌리지 않고 한 번만 지나간다 (SWING_MS 320ms ÷ 4)
-    const frame = attackHero ? (p.anim === "skill" ? Math.min(3, Math.floor(p.animTime / 0.085)) : Math.min(3, Math.floor((SHOOT_MS - p.shootMs) / (SHOOT_MS / 4)))) : Math.floor(p.animTime * frameRate) % 4;
-    const fig = attackHero ? FIG_WEAPON : FIG_IDLE;
+    const frame = Math.floor(p.animTime * frameRate) % 4;
+    const fig = FIG_IDLE;
     // 인물 키를 시트와 상관없이 같게 — 반지름 5.2배(≈77px). 예전 4.57배(67px)는 폰에서 작다고 읽혔다(2026-10-15 원화 감사).
     // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(앞 20 · 턱 −28)로 함께 옮겼다. 판정 반지름은 그대로
     const drawHeight = (p.radius * HERO_FIG_RADII * 100) / (fig.y1 - fig.y0);
@@ -240,6 +220,7 @@ export function drawStickman(
       const k = 1 - p.shootMs / SHOOT_MS;
       const rel = k < 0.3 ? 0 : Math.sin(((k - 0.3) / 0.7) * Math.PI);
       ctx.translate(-2 * (1 - rel) + 5 * rel, -2 * rel);
+      ctx.rotate(-0.05 * Math.min(1, k / 0.3) * (1 - rel) + 0.08 * rel);   // 당길 때 뒤로 젖혔다가 놓으며 앞으로 숙인다 — 파츠도 같이 기운다
       ctx.scale(1 + 0.04 * rel, 1 - 0.03 * rel);
     }
     if (p.anim === "jump" || p.anim === "fall") {
@@ -263,6 +244,7 @@ export function drawStickman(
       drawPhase = phase < 0.28 ? phase / 0.28 : 1;
       releasePhase = phase < 0.28 ? 0 : Math.sin(((phase - 0.28) / 0.72) * Math.PI);
       ctx.translate(-p.facing * 3 * drawPhase + p.facing * 6 * releasePhase, -1 * releasePhase);
+      ctx.rotate(-0.07 * drawPhase * (1 - releasePhase) + 0.1 * releasePhase);
       ctx.scale(1 + releasePhase * 0.03, 1 - releasePhase * 0.02);
     }
     // 피격 — 반투명만으로는 "맞았다"가 안 읽혔다. 맞은 쪽 반대로 몸이 젖혀졌다가 돌아오고 붉게 번쩍인다 (2026-10-01)
