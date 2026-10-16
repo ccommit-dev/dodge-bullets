@@ -54,6 +54,33 @@ ok("새로고침 뒤에도 잠금 유지", c.hub.locked === b.hub.locked && c.sl
 await tap7();
 const d = await state();
 ok("다시 7탭 ON: 전부 열림", d.qa === "1" && d.hub.locked === 0 && d.slots.locked === 0 && d.dodge.weaponLocked === 0 && d.dodge.skillLocks === 0, JSON.stringify(d));
+// ── 풀린 콘텐츠가 실제로 열리는가 (잠금 모양만이 아니라) · 출석은 메뉴로만 ──
+const progress2 = { ...progress, towerTickets: 3 };
+const seed = async () => {
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress2), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0" });
+  await page.reload({ waitUntil: "networkidle0" }); await sleep(2500);
+  await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
+  await sleep(800);
+};
+const toasts = () => page.evaluate(() => [...document.querySelectorAll(".titans-toast, .settings-toast, .flash, [role=status]")].map((e) => e.textContent.trim()).filter(Boolean).join(" | "));
+const expect = { beat: ".beat-layer", forge: ".forge-layer", tower: "canvas", rift: ".event-modal" };
+for (const card of ["beat", "forge", "tower", "rift"]) {
+  await seed();
+  await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("모험"))?.click()); await sleep(700);
+  await page.evaluate((c) => document.querySelector(`.hub-card[data-card=${c}]`)?.click(), card); await sleep(400);
+  const t = await toasts();
+  await sleep(2600);
+  const r = await page.evaluate((sel) => ({ shown: !!document.querySelector(sel), hub: !!document.querySelector(".hub-page") }), expect[card]);
+  ok(`${card} 카드가 실제로 열린다 (${expect[card]})`, r.shown && !/열립니다|잠겨|잠금/.test(t), `${JSON.stringify(r)} toast=${t.slice(0, 80)}`);
+}
+// 설정 → 출석 이벤트 (신규라도 테스트 모드면 메뉴로 열린다 · 부팅 자동 열림은 없다)
+await seed();
+const autoOpened = await page.evaluate(() => !!document.querySelector(".attendance-modal"));
+ok("신규 부팅 때 출석 창이 저절로 뜨지 않는다", !autoOpened);
+await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);
+await page.evaluate(() => [...document.querySelectorAll("[role=menuitem]")].find((b) => b.textContent.includes("출석 이벤트"))?.click()); await sleep(1200);
+ok("설정 → 출석 이벤트가 열린다", await page.evaluate(() => !!document.querySelector(".attendance-modal")));
+await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);
 ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 await browser.close();
