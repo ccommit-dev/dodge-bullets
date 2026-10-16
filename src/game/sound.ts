@@ -94,13 +94,16 @@ export function createSoundController(initialEnabled = loadSoundEnabled()): Soun
       const AC =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      ctx = new AC();
+      // Web Audio 가 없거나 막힌 브라우저(일부 인앱 WebView · WebKit 검사 빌드)에서 new AC() 가 던져
+      // 처리 안 된 Promise 거부가 됐다(2026-10-16 WebKit 검사) → 소리 없이 게임은 그대로
+      if (!AC) return;
+      try { ctx = new AC(); } catch { ctx = null; return; }
       master = ctx.createGain();
       master.gain.value = 1;
       master.connect(ctx.destination);
     }
     if (ctx.state === "suspended") {
-      await ctx.resume();
+      await ctx.resume().catch(() => {});
     }
     unlocked = true;
   };

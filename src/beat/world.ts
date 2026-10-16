@@ -316,9 +316,12 @@ export async function createBeatSession(
     const AC =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    ctx = new AC();
-    master = createAudioChain(ctx);
-    if (ctx.state === "suspended") await ctx.resume();
+    // Web Audio 가 없는 브라우저에서도 연주 화면은 뜨게(소리 없이) — 2026-10-16 WebKit 검사
+    try { ctx = AC ? new AC() : null; } catch { ctx = null; }
+    if (ctx) {
+      master = createAudioChain(ctx);
+      if (ctx.state === "suspended") await ctx.resume().catch(() => {});
+    }
   }
 
   const box = createBeatboxPlayer(
