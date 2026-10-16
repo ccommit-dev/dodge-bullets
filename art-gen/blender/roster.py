@@ -8,7 +8,7 @@ HERO = dict(FUR, hat='crown', band='#3fb6c9', cape='#7fd0e8')
 
 ALLIES = {
     'mia': dict(FUR, hat='cap', hat_color='#3a9a5a', hat_color2='#2a7a44', scarf='#2fb8a6', weapon_r='axe', weapon_l='dagger', role='melee'),
-    'leon': dict(FUR, hat='cap', hat_color='#5aa83a', hat_color2='#3d7a2a', scarf='#7ec8e8', weapon_r='bow', role='bow'),   # 활은 카메라 쪽 손 — 먼 손에 쥐면 큰 머리에 가려 위 절반이 안 보였다
+    'leon': dict(FUR, hat='cap', hat_color='#5aa83a', hat_color2='#3d7a2a', scarf='#7ec8e8', weapon_l='bow', role='bow'),   # 활은 적 쪽(화면 오른쪽) 손 — 머리에 가리지 않게 손을 낮게·바깥으로 뻗는다
     'sera': dict(FUR, hat='wizard', hat_color='#5a8ee0', robe='#b77ce0', trim='#f2c232', weapon_r='staff', weapon_color='#7fe3ff', role='mage'),
     'garen': dict(FUR, hat='helmet', hat_color='#d8dde6', hat_color2='#d8403a', armor='#cfd6df', trim='#d8403a', weapon_r='sword', weapon_l='shield', weapon_l_color='#d8403a', role='tank'),
     'ari': dict(FUR, hat='hood', hat_color='#d8403a', cape='#c8352e', weapon_r='lance', weapon_color='#f2c232', role='melee'),
@@ -51,18 +51,18 @@ ATTACK = {
              dict(lean=2, arm_r=-50, arm_r_out=12, aim_r=0, arm_l=40, aim_l=10, dy=0.01),
              dict(lean=18, squash=0.9, arm_r=80, aim_r=102, arm_l=55, aim_l=20, head=10, dy=0.07, tail=-14),
              dict(lean=9, squash=0.97, arm_r=60, aim_r=112, arm_l=45, aim_l=15, head=5, dy=0.04)],
-    # 활: 활을 쥔 손(카메라 쪽)을 적 쪽으로 내밀고 몸을 당겼다가(뒤로 젖힘) 놓는 순간 앞으로 튄다
-    'bow': [dict(lean=-4, arm_r=60, aim_r=0, arm_l=20, head=2),
-            dict(lean=-8, arm_r=82, aim_r=-5, arm_l=-30, head=1, squash=1.03, tail=6),
-            dict(lean=8, arm_r=92, aim_r=5, arm_l=40, head=5, dy=0.03, squash=0.95, tail=-8),
-            dict(lean=3, arm_r=75, aim_r=0, arm_l=15, head=2)],
+    # 활: 적 쪽 손(왼손, 화면 오른쪽)을 머리 아래 높이로 바깥·앞으로 뻗어 활을 세우고, 오른손이 몸 앞을 가로질러 시위를 당겼다 놓는다
+    'bow': [dict(lean=-4, arm_l=45, arm_l_out=35, aim_l=0, arm_r=30, arm_r_out=-25, head=2),
+            dict(lean=-8, arm_l=55, arm_l_out=40, aim_l=-4, arm_r=10, arm_r_out=-10, head=1, squash=1.03, tail=6),
+            dict(lean=8, arm_l=60, arm_l_out=42, aim_l=4, arm_r=45, arm_r_out=-35, head=5, dy=0.03, squash=0.95, tail=-8),
+            dict(lean=3, arm_l=50, arm_l_out=36, aim_l=0, arm_r=35, arm_r_out=-28, head=2)],
     # 지팡이: 위로 치켜들었다가 앞으로 내밀며 시전
     'mage': [dict(lean=-8, squash=1.04, arm_r=-110, aim_r=-20, arm_l=40, head=-8, tail=8),
-             dict(lean=-2, arm_r=-150, aim_r=10, arm_l=50, head=-10, squash=1.05),
+             dict(lean=-2, arm_r=-135, aim_r=20, arm_l=50, head=-10, squash=1.04),
              dict(lean=14, squash=0.95, arm_r=95, aim_r=95, arm_l=-30, head=8, dy=0.05),
              dict(lean=6, arm_r=70, aim_r=80, arm_l=-10, head=4, dy=0.03)],
     'healer': [dict(lean=-6, arm_r=-120, aim_r=0, arm_l=60, aim_l=10, head=-10, squash=1.03),
-               dict(lean=-8, arm_r=-170, aim_r=5, arm_l=70, aim_l=10, head=-14, squash=1.06, dz=0.02),
+               dict(lean=-8, arm_r=-145, aim_r=25, arm_l=70, aim_l=10, head=-12, squash=1.04),
                dict(lean=12, squash=0.94, arm_r=60, aim_r=100, arm_l=50, aim_l=20, head=8, dy=0.04),
                dict(lean=5, arm_r=30, aim_r=60, arm_l=40, aim_l=15, head=3)],
     # 기타: 몸을 젖혔다가 크게 긁는다
@@ -74,9 +74,9 @@ ATTACK = {
 # 기타·활은 무기를 쥔 손이 다르다 — 기타는 몸 앞에 매고(오른손) 왼손으로 줄을 짚는다
 def ally_poses(role):
     idle, hit = _IDLE, _HIT
-    if role == 'bow':   # 활은 손을 조금 들어야 아래 끝이 바닥 밑으로 안 내려간다
-        idle = [dict(P, arm_r=P.get('arm_r', 0) + 40) for P in _IDLE]
-        hit = dict(_HIT, arm_r=10)
+    if role == 'bow':   # 활(왼손)은 조금 들고 바깥으로 — 아래 끝이 바닥 밑으로 안 내려가고 몸에 안 가린다
+        idle = [dict(P, arm_l=P.get('arm_l', 0) + 30, arm_l_out=20) for P in _IDLE]
+        hit = dict(_HIT, arm_l=10)
     return idle + ATTACK.get(role, ATTACK['melee']) + [hit]
 
 
@@ -90,37 +90,37 @@ HERO_ATTACK = [dict(lean=-6, squash=1.02, arm_r=-110, arm_r_out=20, aim_r=-20, a
 # 몬스터 — 원형 biped(이족) · quad(사족) · blob(슬라임) · spider. FLIP_MONSTERS 4종은 원화가 오른쪽을 보므로 오른쪽을 보게 렌더한다
 B = 'biped'
 MONSTERS = {
-    'abyss-titan': dict(kind=B, arm_thick=1.55, color='#7a3fa0', belly='#f2b33d', accent='#ff9a3d', iris='#ffd34d', cyclops=True, eye_size=0.1, horns='curl', horn='#5a3a6a', crest=True, spots=8, head_r=(0.33, 0.29, 0.29), body_r=(0.3, 0.26, 0.3), head_z=0.74, shoulder=(0.27, 0.48), height=1.0),
-    'ancient-treant': dict(kind=B, arm_thick=1.55, color='#6b7a3a', belly='#f2a93b', glow_belly=True, accent='#9ad04a', iris='#ffd34d', moss=True, horns='straight', horn='#6a4a2a', head_r=(0.29, 0.26, 0.28), body_r=(0.3, 0.26, 0.3), head_z=0.76, shoulder=(0.27, 0.48), spots=6),
-    'armored-ogre': dict(kind=B, arm_thick=1.55, color='#8a4a9a', belly='#f2c94c', accent='#ff9a3d', iris='#7fe8ff', horns='curl', horn='#d8c8a8', armor=True, metal='#a0a8b8', crest=True, head_r=(0.3, 0.27, 0.28), body_r=(0.32, 0.27, 0.32), head_z=0.78, shoulder=(0.29, 0.5)),
-    'bone-dragon': dict(kind=B, wing_size=1.25, color='#e08a3a', belly='#f5d7a0', accent='#c03fe0', wing='#c03fe0', wings=True, snout=True, horns='straight', horn='#f1e4c8', tail=True, tail_tip=True, iris='#7fe8ff', spots=6),
-    'dragon': dict(kind=B, wing_size=1.25, color='#e0843a', belly='#f5d7a0', accent='#ffd34d', wing='#d8662a', wings=True, snout=True, horns='straight', tail=True, tail_tip=True, iris='#5be0ff'),
-    'fire-demon': dict(kind=B, wing_size=1.25, color='#d0502a', belly='#ffb347', glow_belly=True, accent='#ffd34d', wing='#b8402a', wings=True, horns='curl', horn='#5a2a2a', iris='#5bffb0', crest=True, spots=8),
-    'flame-wyvern-clean': dict(kind=B, wing_size=1.25, color='#c8452a', belly='#ffd34d', accent='#ff8a3d', wing='#e0662a', wings=True, snout=True, horns='straight', tail=True, tail_tip=True, iris='#5be0ff', spots=6),
+    'abyss-titan': dict(kind=B, fierce=True, arm_thick=1.55, color='#7a3fa0', belly='#f2b33d', accent='#ff9a3d', iris='#ffd34d', cyclops=True, eye_size=0.1, horns='curl', horn='#5a3a6a', crest=True, spots=8, head_r=(0.33, 0.29, 0.29), body_r=(0.3, 0.26, 0.3), head_z=0.74, shoulder=(0.27, 0.48), height=1.0),
+    'ancient-treant': dict(kind=B, fierce=True, arm_thick=1.55, color='#6b7a3a', belly='#f2a93b', glow_belly=True, accent='#9ad04a', iris='#ffd34d', moss=True, horns='straight', horn='#6a4a2a', head_r=(0.29, 0.26, 0.28), body_r=(0.3, 0.26, 0.3), head_z=0.76, shoulder=(0.27, 0.48), spots=6),
+    'armored-ogre': dict(kind=B, fierce=True, arm_thick=1.55, color='#8a4a9a', belly='#f2c94c', accent='#ff9a3d', iris='#7fe8ff', horns='curl', horn='#d8c8a8', armor=True, metal='#a0a8b8', crest=True, head_r=(0.34, 0.31, 0.31), body_r=(0.32, 0.27, 0.32), head_z=0.78, shoulder=(0.29, 0.5)),
+    'bone-dragon': dict(kind=B, plates=True, wing_size=1.25, color='#e08a3a', belly='#f5d7a0', accent='#c03fe0', wing='#c03fe0', wings=True, snout=True, horns='straight', horn='#f1e4c8', tail=True, tail_tip=True, iris='#7fe8ff', spots=6),
+    'dragon': dict(kind=B, plates=True, wing_size=1.25, color='#e0843a', belly='#f5d7a0', accent='#ffd34d', wing='#d8662a', wings=True, snout=True, horns='straight', tail=True, tail_tip=True, iris='#5be0ff'),
+    'fire-demon': dict(kind=B, fierce=True, wing_size=1.25, color='#d0502a', belly='#ffb347', glow_belly=True, accent='#ffd34d', wing='#b8402a', wings=True, horns='curl', horn='#5a2a2a', iris='#5bffb0', crest=True, spots=8),
+    'flame-wyvern-clean': dict(kind=B, plates=True, wing_size=1.25, color='#c8452a', belly='#ffd34d', accent='#ff8a3d', wing='#e0662a', wings=True, snout=True, horns='straight', tail=True, tail_tip=True, iris='#5be0ff', spots=6),
     'frost-wolf': dict(kind='quad', color='#e6dcf0', belly='#ffffff', dark='#7a6a9a', iris='#3cc8ff', eye_size=0.07, mane='#c8b8e8'),
     'goblin': dict(kind=B, color='#7d4a6c', belly='#f2c94c', accent='#ff8a3d', iris='#5be05a', eye_size=0.11, ears='bat', wings=True, wing='#5b7a3a', crest=True, spots=10, head_r=(0.33, 0.29, 0.3), body_r=(0.2, 0.18, 0.22), head_z=0.66, shoulder=(0.17, 0.36), tail=True),
     'goblin-shaman': dict(kind=B, color='#b04a3a', belly='#ffb347', glow_belly=True, accent='#3cc8b0', iris='#3cc8b0', ears='bat', crest=True, head_r=(0.32, 0.28, 0.29), body_r=(0.21, 0.19, 0.23), head_z=0.67, shoulder=(0.18, 0.37), weapon='staff', weapon_color='#3cc8b0', spots=6),
-    'goblin-warlord': dict(kind=B, color='#8a4a3a', belly='#f2c94c', accent='#9ad04a', iris='#9ad04a', horns='curl', crest=True, head_r=(0.31, 0.28, 0.29), body_r=(0.23, 0.2, 0.25), head_z=0.7, shoulder=(0.2, 0.4), weapon='axe', weapon_color='#cfd6df', spots=6),
+    'goblin-warlord': dict(kind=B, fierce=True, color='#8a4a3a', belly='#f2c94c', accent='#9ad04a', iris='#9ad04a', horns='curl', crest=True, head_r=(0.31, 0.28, 0.29), body_r=(0.23, 0.2, 0.25), head_z=0.7, shoulder=(0.2, 0.4), weapon='axe', weapon_color='#cfd6df', spots=6),
     'golden-lion-clean': dict(kind='quad', color='#e0a43a', belly='#f5d7a0', dark='#8a5a2a', iris='#5bd0ff', mane='#b0702a', ears='wolf'),
     'hellhound': dict(kind='quad', color='#a03a3a', belly='#f2a23a', dark='#4a2020', iris='#ffd34d', horns=True, flames=True, ears='wolf'),
-    'lava-drake': dict(kind=B, wing_size=1.25, color='#b8402a', belly='#ffb347', accent='#ff8a3d', wing='#e0662a', wings=True, snout=True, horns='straight', tail=True, tail_tip=True, iris='#5be0ff', spots=6, head_r=(0.28, 0.26, 0.26)),
-    'magma-golem': dict(kind=B, arm_thick=1.55, color='#8a3030', belly='#ffcc33', glow_belly=True, accent='#ff8a3d', glow=True, iris='#5bffb0', eye_size=0.07, head_r=(0.26, 0.24, 0.23), body_r=(0.36, 0.29, 0.34), head_z=0.84, shoulder=(0.33, 0.56), spots=10),
+    'lava-drake': dict(kind=B, plates=True, wing_size=1.25, color='#b8402a', belly='#ffb347', accent='#ff8a3d', wing='#e0662a', wings=True, snout=True, horns='straight', tail=True, tail_tip=True, iris='#5be0ff', spots=6, head_r=(0.28, 0.26, 0.26)),
+    'magma-golem': dict(kind=B, fierce=True, arm_thick=1.55, color='#8a3030', belly='#ffcc33', glow_belly=True, accent='#ff8a3d', glow=True, iris='#5bffb0', eye_size=0.07, head_r=(0.26, 0.24, 0.23), body_r=(0.36, 0.29, 0.34), head_z=0.84, shoulder=(0.33, 0.56), spots=10),
     'magma-imp': dict(kind=B, color='#c0402a', belly='#ffcc33', accent='#ffd34d', iris='#5be0ff', horns='curl', horn='#6a3a2a', head_r=(0.32, 0.28, 0.29), body_r=(0.21, 0.19, 0.23), head_z=0.67, shoulder=(0.18, 0.37), spots=8, tail=True),
-    'minotaur': dict(kind=B, arm_thick=1.55, color='#8a4a30', belly='#f2b33d', accent='#ff8a3d', iris='#ffd34d', horns='curl', horn='#f1e4c8', snout=True, head_r=(0.3, 0.28, 0.28), body_r=(0.3, 0.26, 0.31), head_z=0.76, shoulder=(0.27, 0.48), spots=6),
+    'minotaur': dict(kind=B, fierce=True, arm_thick=1.55, color='#8a4a30', belly='#f2b33d', accent='#ff8a3d', iris='#ffd34d', horns='curl', horn='#f1e4c8', snout=True, head_r=(0.33, 0.31, 0.31), body_r=(0.3, 0.26, 0.31), head_z=0.76, shoulder=(0.27, 0.48), spots=6),
     'moon-wolf-king-clean': dict(kind='quad', color='#e8d8f0', belly='#ffffff', dark='#8a6ab0', iris='#c084fc', mane='#f4ecff', horns=True, ears='wolf', crown=True),
-    'moss-golem-clean': dict(kind=B, arm_thick=1.55, color='#6aa83a', belly='#b9ab8f', dark='#4a5a2a', iris='#ff6a3a', horns='straight', horn='#5a3a2a', moss=True, head_r=(0.27, 0.24, 0.23), body_r=(0.34, 0.28, 0.33), head_z=0.84, shoulder=(0.31, 0.55)),
-    'ogre': dict(kind=B, arm_thick=1.55, color='#8a4a4a', belly='#f2c94c', accent='#9ad04a', iris='#5be0ff', moss=True, horns='straight', tusks=True, head_r=(0.29, 0.27, 0.27), body_r=(0.34, 0.28, 0.33), head_z=0.8, shoulder=(0.31, 0.53)),
-    'ruin-sentinel': dict(kind=B, arm_thick=1.55, color='#7a3a4a', belly='#ff9a3d', accent='#ff8a3d', iris='#5be0ff', eye_size=0.1, armor=True, metal='#8a6a7a', crest=True, horns='straight', head_r=(0.28, 0.26, 0.26), body_r=(0.3, 0.26, 0.3), head_z=0.76, shoulder=(0.28, 0.5)),
+    'moss-golem-clean': dict(kind=B, fierce=True, arm_thick=1.55, color='#6aa83a', belly='#b9ab8f', dark='#4a5a2a', iris='#ff6a3a', horns='straight', horn='#5a3a2a', moss=True, head_r=(0.27, 0.24, 0.23), body_r=(0.34, 0.28, 0.33), head_z=0.84, shoulder=(0.31, 0.55)),
+    'ogre': dict(kind=B, fierce=True, arm_thick=1.55, color='#8a4a4a', belly='#f2c94c', accent='#9ad04a', iris='#5be0ff', moss=True, horns='straight', tusks=True, head_r=(0.34, 0.31, 0.31), body_r=(0.34, 0.28, 0.33), head_z=0.8, shoulder=(0.31, 0.53)),
+    'ruin-sentinel': dict(kind=B, fierce=True, arm_thick=1.55, color='#7a3a4a', belly='#ff9a3d', accent='#ff8a3d', iris='#5be0ff', eye_size=0.1, armor=True, metal='#8a6a7a', crest=True, horns='straight', head_r=(0.28, 0.26, 0.26), body_r=(0.3, 0.26, 0.3), head_z=0.76, shoulder=(0.28, 0.5)),
     'shadow-wolf-clean': dict(kind='quad', color='#e8b84a', belly='#f5e0a0', dark='#5a3a2a', iris='#ff4a3a', mane='#5a3a2a', ears='wolf'),
     'skeleton-goblin': dict(kind=B, color='#b0503a', belly='#ffd34d', accent='#ff9a3d', iris='#5be05a', horns='curl', wings=True, wing='#5a2a3a', head_r=(0.3, 0.27, 0.28), body_r=(0.2, 0.18, 0.22), head_z=0.67, shoulder=(0.17, 0.37), weapon='spear', weapon_color='#cfd6df'),
-    'slime': dict(kind='blob', color='#6fd36a', iris='#2a2a2a', eye_size=0.09, drip=True),
+    'slime': dict(kind=B, color='#7cc84a', belly='#f2d36b', dark='#3f6a2a', accent='#e8452c', iris='#ff7a2a', eye_size=0.085, horns='straight', horn='#7a4a2a', wings=True, wing='#d8552c', wing_size=0.7, spots=16, tail=True, head_r=(0.34, 0.3, 0.31), body_r=(0.25, 0.22, 0.25), head_z=0.66, shoulder=(0.21, 0.38)),   # 원화(초록 꼬마 용)대로 — 젤리 모양은 2026-10-16 되돌림
     'spider-queen': dict(kind='spider', color='#9a3ab0', belly='#ffd34d', accent='#ffd34d', dark='#5a2a6a', horn='#f1e4c8', iris='#ffd34d', crown=True),
-    'stone-troll': dict(kind=B, arm_thick=1.55, color='#5a9a3a', belly='#c8a86a', accent='#9ad04a', iris='#ffd34d', moss=True, horns='straight', horn='#5a4a3a', tusks=True, head_r=(0.3, 0.27, 0.27), body_r=(0.32, 0.27, 0.32), head_z=0.78, shoulder=(0.29, 0.51)),
-    'storm-drake': dict(kind=B, wing_size=1.25, color='#d8d0e8', belly='#f5f0ff', accent='#7fe8ff', wing='#f4f0ff', wings=True, snout=True, horns='straight', horn='#4a3a5a', tail=True, iris='#3cc8ff'),
-    'thorn-boar-king': dict(kind=B, color='#8a3a2a', belly='#f2b33d', accent='#9ad04a', iris='#ffd34d', horns='curl', tusks=True, snout=True, crest=True, wings=True, wing='#e0662a', head_r=(0.31, 0.28, 0.28), body_r=(0.28, 0.24, 0.29), head_z=0.74, shoulder=(0.25, 0.46)),
+    'stone-troll': dict(kind=B, maw_open=True, fierce=True, arm_thick=1.55, color='#5a9a3a', belly='#c8a86a', accent='#9ad04a', iris='#ffd34d', moss=True, horns='straight', horn='#5a4a3a', tusks=True, head_r=(0.35, 0.31, 0.31), body_r=(0.32, 0.27, 0.32), head_z=0.78, shoulder=(0.29, 0.51)),
+    'storm-drake': dict(kind=B, plates=True, wing_size=1.25, color='#d8d0e8', belly='#f5f0ff', accent='#7fe8ff', wing='#f4f0ff', wings=True, snout=True, horns='straight', horn='#4a3a5a', tail=True, iris='#3cc8ff'),
+    'thorn-boar-king': dict(kind=B, fierce=True, color='#8a3a2a', belly='#f2b33d', accent='#9ad04a', iris='#ffd34d', horns='curl', tusks=True, snout=True, crest=True, wings=True, wing='#e0662a', head_r=(0.31, 0.28, 0.28), body_r=(0.28, 0.24, 0.29), head_z=0.74, shoulder=(0.25, 0.46)),
     'void-imp': dict(kind=B, color='#6a3a9a', belly='#ffd34d', accent='#c084fc', iris='#5be0ff', eye_size=0.1, horns='curl', wings=True, wing='#4a2a7a', head_r=(0.33, 0.29, 0.3), body_r=(0.21, 0.19, 0.23), head_z=0.67, shoulder=(0.18, 0.37)),
-    'void-lich': dict(kind=B, color='#6a3a8a', belly='#c084fc', glow_belly=True, accent='#c084fc', iris='#ff6aff', horns='curl', horn='#3a2a4a', wings=True, wing='#4a2a6a', crest=True, weapon='staff', weapon_color='#c084fc', head_r=(0.28, 0.26, 0.27), body_r=(0.24, 0.21, 0.26), head_z=0.72, shoulder=(0.21, 0.42)),
-    'wolf-king-clean': dict(kind=B, color='#7a3a5a', belly='#ffd34d', accent='#ff9a3d', iris='#5bffb0', ears='wolf', mane='#5a2a3a', crown=True, head_r=(0.3, 0.27, 0.28), body_r=(0.26, 0.22, 0.27), head_z=0.72, shoulder=(0.22, 0.44)),
+    'void-lich': dict(kind=B, fierce=True, color='#6a3a8a', belly='#c084fc', glow_belly=True, accent='#c084fc', iris='#ff6aff', horns='curl', horn='#3a2a4a', wings=True, wing='#4a2a6a', crest=True, weapon='staff', weapon_color='#c084fc', head_r=(0.28, 0.26, 0.27), body_r=(0.24, 0.21, 0.26), head_z=0.72, shoulder=(0.21, 0.42)),
+    'wolf-king-clean': dict(kind=B, fierce=True, color='#7a3a5a', belly='#ffd34d', accent='#ff9a3d', iris='#5bffb0', ears='wolf', mane='#5a2a3a', crown=True, head_r=(0.3, 0.27, 0.28), body_r=(0.26, 0.22, 0.27), head_z=0.72, shoulder=(0.22, 0.44)),
 }
 FLIP_MONSTERS = {'fire-demon', 'thorn-boar-king', 'flame-wyvern-clean', 'lava-drake'}
 

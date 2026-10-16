@@ -89,6 +89,17 @@ function arrowImg(element: Element): HTMLImageElement | null {
   return arrowImgs[element] ?? null;
 }
 
+/** 원소별 명중 폭발 띠 — public/titans/fx/impact-<name>.webp (6칸 × 256², art-gen/blender/fx.py) */
+const IMPACT_OF: Record<Element, string> = { basic: "blade", fire: "fire", water: "water", ice: "ice", earth: "earth", bolt: "bolt", wind: "wind", poison: "poison", holy: "light", shadow: "shadow", meteor: "fire" };
+const impactImgs: Record<string, HTMLImageElement> = {};
+function impactStrip(element: Element): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  const name = IMPACT_OF[element] ?? "blade";
+  if (!impactImgs[name]) { const img = new Image(); img.src = assetUrl(`titans/fx/impact-${name}.webp`); impactImgs[name] = img; }
+  const img = impactImgs[name];
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+
 /**
  * 활 사격 — 실제 화살 물체 · 궤적 · 명중 이펙트 (2026-09-29).
  * 적 화살(붉은 계열)과 섞이지 않게 아군 화살은 스프라이트 + 속성색 궤적으로 그린다.
@@ -221,6 +232,14 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   for (const f of world.skillFx) {
     if (!f.active) continue;
     const t = 1 - f.ms / f.total;           // 0 → 1
+    // 2026-10-16 2차 (사용자: "성문 방어(캔버스) 쪽 이펙트도"): Blender 로 렌더한 원소별 폭발 띠(6칸) — 사냥터와 같은 그림. 못 읽으면 아래 선 그림
+    const strip = impactStrip(f.element);
+    if (strip) {
+      const size = Math.max(56, f.radius * 3.2);
+      const frame = Math.min(5, Math.floor(t * 6));
+      ctx.drawImage(strip, frame * 256, 0, 256, 256, f.x - size / 2, f.y - size / 2, size, size);
+      continue;
+    }
     const color = ELEMENT_COLOR[f.element];
     ctx.save();
     ctx.globalAlpha = (1 - t) * 0.9;
