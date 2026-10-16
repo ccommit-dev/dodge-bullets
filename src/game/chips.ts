@@ -1,4 +1,5 @@
 import type { ExpeditionSkillId } from "./skills";
+import { qaUnlockOpen } from "../progression/qaUnlock";
 
 /**
  * 원정 칩 — 랜덤에 좌우되지 않는 영구 패시브 (2026-09-28).
@@ -83,7 +84,7 @@ export function chipCost(level: number): number {
 }
 
 export function chipSlotsOpen(dodgeBestStage: number): number {
-  return CHIP_SLOT_UNLOCK.filter((s) => dodgeBestStage >= s).length;
+  return qaUnlockOpen() ? CHIP_SLOT_UNLOCK.length : CHIP_SLOT_UNLOCK.filter((s) => dodgeBestStage >= s).length;
 }
 
 /** 끼운 칩들을 하나의 값으로 — 같은 칩을 두 칸에 끼워도 한 번만 센다 */

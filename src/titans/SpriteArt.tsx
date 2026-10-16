@@ -286,7 +286,19 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
   return 0;
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number }) {
+/**
+ * 스테이지마다 다른 자리·흔들림 (2026-10-16, 사용자: "동료들의 움직임이 스테이지마다 y값이 너무 동일 — 랜덤성 움직임").
+ * (스테이지, 동료) 로 정해지는 의사난수 — 같은 스테이지에선 매 렌더 같고, 스테이지가 바뀌면 자리(위로 0~14px · 앞줄만 좌우 ±7px)와
+ * 제자리 흔들림(좌우 2~6px · 위아래 1~4px · 2.2~4.2초 · 시작 위상)이 바뀐다. 대형 칸·충돌 분리(--sep-dx)는 그대로 둔다.
+ */
+export function allyStageJitter(stage: number, id: string): { jx: number; jy: number; wx: number; wy: number; wd: number; wdelay: number } {
+  let h = 2166136261 ^ Math.imul(stage + 1, 2654435761);
+  for (let i = 0; i < id.length; i += 1) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  const r = () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  return { jy: Math.round(r() * 14), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 1 + Math.round(r() * 3), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10 };
+}
+
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -367,7 +379,8 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
     // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
-    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex) : {}),
+    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex, stage === undefined || cell === "L" ? 0 : allyStageJitter(stage, id).jx) : {}),
+    ...(stage === undefined ? {} : (() => { const j = allyStageJitter(stage, id); return { "--party-jy": `${j.jy}px`, "--aw-x": `${cell === "L" ? 0 : j.wx}px`, "--aw-y": `${j.wy}px`, "--aw-d": `${j.wd}s`, "--aw-delay": `${j.wdelay}s` }; })()),
   } as CSSProperties);
   return (
     <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
@@ -381,6 +394,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
         - .ally-weapon은 무기 없는 베이스와 분리된 장착 파츠다. 근거리/원거리별
           피벗과 공격 궤적이 다르므로 몸을 흔들지 않고 무기만 자연스럽게 움직인다.
       */}
+      <div className="ally-wander">
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
           {(() => {
@@ -394,6 +408,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
             );
           })()}
         </div>
+      </div>
       </div>
       {attacking && pulse > 0 && <i key={`fx-${pulse}`} className={`ally-attack-fx ${ranged ? "ranged" : "melee"}`} aria-hidden="true" />}
     </div>
@@ -417,17 +432,17 @@ export function formationCells(lines: ("front" | "back")[]): { cell: "R" | "L"; 
   return lines.map((ln) => (ln === "front" && r < 2 ? { cell: "R" as const, index: r++ } : { cell: "L" as const, index: l++ }));
 }
 const ROW_BOTTOM = ["1%", "calc(var(--ally-size, 78px) * 0.98)"];
-function lineFormation(cell: "R" | "L", index: number): Record<string, string> {
+function lineFormation(cell: "R" | "L", index: number, jx = 0): Record<string, string> {
   const [col, row] = cell === "R" ? [index >= 1 ? 0.6 : 0, Math.min(1, index)]   /* 뒷줄 근접은 0.3칸 뒤 — 큰 돌진 동작(anim-plus)에서 앞줄과 세로로 겹치지 않게 */ : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
   const step = "var(--ally-size, 78px) * 0.68";
   const bottom = ROW_BOTTOM[row];
   if (cell === "R") {
     // 교전 x 는 CSS 의 근접 공식(몬스터 보이는 몸 가장자리) + --party-melee-dx — 칸만큼 왼쪽으로
-    const dx = `calc(${-col} * ${step})`;
+    const dx = `calc(${-col} * ${step} + ${jx}px)`;   // jx — 스테이지마다 다른 좌우 자리(allyStageJitter)
     const edge = `calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * (1 - var(--monster-ml, .22)) - 6px - var(--ally-size, 86px) * .88 + ${dx})`;
     return { "--party-melee-dx": dx, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${edge} - 18%)`, "--party-z": row === 0 ? "4" : "2" };
   }
-  const x = `calc(${col} * ${step})`;
+  const x = `calc(${col} * ${step} + ${jx}px)`;
   return { "--party-combat-x": x, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${x} - 4%)`, "--party-z": row === 0 ? "4" : "2" };
 }
 

@@ -2,8 +2,9 @@ import { gearTierOfEnhance } from "./equipment/parts";
 import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen";
 import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } from "./equipment/anchors";
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
-import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled } from "./progression/storage";
-import { Suspense, lazy, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled, qaUnlockAll } from "./progression/storage";
+import { qaUnlockOpen, setQaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import "./App.css";
 import "./idle.css";
 import "./weight.css";
@@ -126,6 +127,9 @@ import {
   runXpToNext,
 } from "./game/world";
 
+// 테스트 모드 해금을 첫 그리기 전에 정한다 — 사냥터 카드·스킬 칸이 처음부터 같은 값을 본다 (progression/qaUnlock)
+if (QA_BUILD) setQaUnlockOpen(qaUnlockAll());
+
 function applyInsetsToWorld(world: GameWorld, insets: SafeInsets): void {
   world.safeTop = insets.top;
   world.safeRight = insets.right;
@@ -220,7 +224,9 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   world.player.gear = { helmet: hi(helmetTierOf(p.shoulderEnhance ?? 0), gearTierOfEnhance(ge.helmet)), armor: hi(chestTierOf(p.equippedShoulder), gearTierOfEnhance(ge.armor)), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: gearTierOfEnhance(ge.gloves), boots: hi(bootsTierOf(p.towerBestFloor), gearTierOfEnhance(ge.boots)) };
   world.basicLevel = p.expeditionWeaponForge.bow;
   world.loadout = p.expeditionLoadout.filter((id) => (p.expeditionSkills[id] ?? 0) > 0);
-  world.rangedWeapon = p.expeditionWeapon;
+  // 테스트 모드에서 낀 잠긴 무기는 테스트 모드를 끄면 활로 쏜다 — 읽을 때만 바꾸고 저장은 그대로 (2026-10-16)
+  const wdef = WEAPON_BY_ID[p.expeditionWeapon];
+  world.rangedWeapon = wdef && !weaponUnlocked(wdef, p.dodgeBestStage) ? "bow" : p.expeditionWeapon;
   return stats;
 }
 
@@ -334,7 +340,9 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 테스트 모드 — 빌드 라벨을 3초 안에 7번 탭하면 토글 (안드로이드 개발자 옵션식 숨은 제스처)
   // 출시 빌드(QA_BUILD false)에서는 제스처도 플래그도 없다 — 테스터 기기에 남은 qa-mode=1 도 무시
-  const [testMode, setTestMode] = useState(() => { if (!QA_BUILD) return false; try { return localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; } });
+  // 테스트 모드 = 콘텐츠·스킬 칸 전부 해금 (2026-10-16) — QA 빌드는 기본 켜짐, 끄면 qa-mode="0" 이 남는다 (storage.qaUnlockAll)
+  const [testMode, setTestMode] = useState(() => qaUnlockAll());
+  const qaOpen = useSyncExternalStore(subscribeQaUnlock, qaUnlockOpen, () => false);
   const buildTapsRef = useRef<number[]>([]);
   const tapBuildLabel = () => {
     // 한 번 탭하면 빌드 정보를 보여 준다 — 예전엔 아무 반응이 없어 고장 난 메뉴로 보였다 (2026-10-02)
@@ -347,9 +355,11 @@ function App() {
     if (buildTapsRef.current.length < 7) return;
     buildTapsRef.current = [];
     const next = !testMode;
-    try { if (next) localStorage.setItem(QA_MODE_KEY, "1"); else { localStorage.removeItem(QA_MODE_KEY); localStorage.removeItem(QA_GEMS_KEY); } } catch { /* 저장 불가 환경 */ }
+    // 끌 때 removeItem 이 아니라 "0" — 지우면 다시 불러올 때 QA 기본값(켜짐)으로 돌아가 해금이 다시 풀린다
+    try { if (next) localStorage.setItem(QA_MODE_KEY, "1"); else { localStorage.setItem(QA_MODE_KEY, "0"); localStorage.removeItem(QA_GEMS_KEY); } } catch { /* 저장 불가 환경 */ }
     setTestMode(next);
-    setSettingsToast(next ? "테스트 모드 ON — 보석 무제한 메뉴가 열립니다" : "테스트 모드 OFF");
+    setQaUnlockOpen(next);
+    setSettingsToast(next ? "테스트 모드 ON — 콘텐츠·스킬 칸 전부 열림 · 보석 무제한 메뉴" : "테스트 모드 OFF — 해금 규칙이 다시 걸립니다");
     window.setTimeout(() => setSettingsToast(""), 2200);
   };
   const [insets, setInsets] = useState<SafeInsets>(() => normalizeInsets(null));
@@ -1726,19 +1736,19 @@ function App() {
                   <button
                     type="button"
                     role="menuitem"
-                    disabled={progress.onboardingStep < 4}
+                    disabled={(progress.onboardingStep < 4 && !qaOpen)}
                     onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}
                   >
-                    <span>출석 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "30일"}</b>
+                    <span>출석 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "30일"}</b>
                   </button>
                 )}
                 <button
                   type="button"
                   role="menuitem"
-                  disabled={progress.onboardingStep < 4}
+                  disabled={(progress.onboardingStep < 4 && !qaOpen)}
                   onClick={() => { setSettingsOpen(false); setEventOpen(true); }}
                 >
-                  <span>모험가 이벤트</span><b>{progress.onboardingStep < 4 ? "잠김" : "NEW"}</b>
+                  <span>모험가 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "NEW"}</b>
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
@@ -2076,7 +2086,7 @@ function App() {
                       .map((sp) => `${sp.name}${progress.expeditionSupplies[sp.id] > 1 ? ` (남은 ${progress.expeditionSupplies[sp.id]})` : ""}`).join(" · ")}
                   </p>
                 )}
-                {progress.towerOpen && (
+                {(progress.towerOpen || qaOpen) && (
                   <button
                     type="button"
                     className={`cta cta-tower ${progress.towerTickets <= 0 ? "no-ticket" : ""}`}
@@ -2106,7 +2116,7 @@ function App() {
                 daily={rolledDaily(progress.expeditionDaily)}
                 onBuySupply={handleBuySupply}
                 towerTickets={progress.towerTickets}
-                towerUnlocked={progress.towerOpen}
+                towerUnlocked={progress.towerOpen || qaOpen}
                 onBuyTowerTicket={handleBuyTowerTicket}
                 onClaimDaily={handleClaimDaily}
                 chipLevels={progress.expeditionChips}

@@ -1,5 +1,6 @@
 import type { PlayerStats } from "./types";
 import { STAGES, getStage } from "./stages";
+import { qaUnlockOpen } from "../progression/qaUnlock";
 
 /**
  * 성문 방어 영구 스킬 — **속성 화살** (2026-09-29).
@@ -724,9 +725,9 @@ export function skillSummary(levels: ExpeditionSkillLevels): { totalLevels: numb
  * 두 번째 인자는 **계정 레벨**, 세 번째는 그 무기의 현재 레벨
  */
 export function skillUnlocked(def: ExpeditionSkillDef, accountLevel: number, currentLevel = 0): boolean {
-  return currentLevel > 0 || accountLevel >= def.unlockLevel;
+  return qaUnlockOpen() || currentLevel > 0 || accountLevel >= def.unlockLevel;
 }
 
 export function weaponUnlocked(def: RangedWeaponDef, dodgeBestStage: number): boolean {
-  return dodgeBestStage >= def.unlockStage;
+  return qaUnlockOpen() || dodgeBestStage >= def.unlockStage;
 }

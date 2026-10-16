@@ -9,6 +9,7 @@
  * step은 단조 증가라 조건을 다시 잃어도 잠기지 않는다.
  */
 import type { CharacterProgress } from "./model";
+import { qaUnlockOpen } from "./qaUnlock";
 
 export type OnboardContent = "dodge" | "forge" | "beat" | "events";
 
@@ -20,7 +21,7 @@ export const CONTENT_UNLOCK_STEP: Record<OnboardContent, number> = {
 };
 
 export function contentUnlocked(step: number, content: OnboardContent): boolean {
-  return step >= CONTENT_UNLOCK_STEP[content];
+  return qaUnlockOpen() || step >= CONTENT_UNLOCK_STEP[content];
 }
 
 /** 잠긴 탭을 눌렀을 때의 안내 — "무엇을 하면 열리는지"가 핵심 */
@@ -39,7 +40,7 @@ export type UnlockInfo = { done: boolean; label: string; now: number; goal: numb
 export function unlockInfo(content: OnboardContent | "tower", p: Pick<CharacterProgress, "onboardingStep" | "titanBestStage" | "pioneeredArea" | "towerOpen" | "dodgeBestStage">): UnlockInfo {
   if (content === "tower") {
     const goal = 10;
-    return { done: p.towerOpen, label: `성문 방어 S${goal} 클리어`, now: Math.min(goal, p.dodgeBestStage), goal, unit: "S", hint: `성문 방어 1장 대장(S${goal})을 깨면 끝없는 성벽이 열립니다 · 지금 S${p.dodgeBestStage}` };
+    return { done: p.towerOpen || qaUnlockOpen(), label: `성문 방어 S${goal} 클리어`, now: Math.min(goal, p.dodgeBestStage), goal, unit: "S", hint: `성문 방어 1장 대장(S${goal})을 깨면 끝없는 성벽이 열립니다 · 지금 S${p.dodgeBestStage}` };
   }
   const step = p.onboardingStep;
   if (contentUnlocked(step, content)) return { done: true, label: "열림", now: 1, goal: 1, unit: "", hint: "" };

@@ -9,6 +9,7 @@ import { contentUnlocked, unlockInfo, type UnlockInfo } from "../progression/onb
 import { dateKey, riftAttemptsFor, type EventSave } from "../events/eventSave";
 import { TOWER_DAILY_TICKETS } from "../game/towerTickets";
 import { EXPEDITION_MAX } from "./allies";
+import { qaUnlockOpen } from "../progression/qaUnlock";
 
 export type HubCardId = "dodge" | "beat" | "tower" | "rift" | "forge" | "expedition";
 export type HubGo =
@@ -45,6 +46,7 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
   const riftLeft = Math.max(0, riftMax - events.riftAttempts);
   const activeExpeditions = progress.expeditions.filter((e) => e.endsAt > now).length;
   const step = progress.onboardingStep;
+  const towerOpen = progress.towerOpen || qaUnlockOpen();   // 테스트 모드 해금 (progression/qaUnlock)
   const dodgeToday = progress.firstClearDates.dodge === today;
   const beatToday = progress.firstClearDates.beat === today;
   const forgeToday = progress.firstClearDates.forge === today;
@@ -61,8 +63,8 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
     },
     {
       id: "tower", label: "끝없는 성벽", desc: "죽을 때까지 층을 잇는 한 판 · 실패해도 등반권은 그대로", feeds: ["동료 조각", "방치 배율"],
-      remaining: progress.towerOpen ? `등반권 ${progress.towerTickets}/${TOWER_DAILY_TICKETS} · 최고 ${progress.towerBestFloor}층` : "1장 대장을 깨면 열림",
-      dot: progress.towerOpen && progress.towerTickets > 0, locked: !progress.towerOpen, lockHint: unlockInfo("tower", progress).hint, unlock: unlockInfo("tower", progress), go: { kind: "content", content: "tower" },
+      remaining: towerOpen ? `등반권 ${progress.towerTickets}/${TOWER_DAILY_TICKETS} · 최고 ${progress.towerBestFloor}층` : "1장 대장을 깨면 열림",
+      dot: towerOpen && progress.towerTickets > 0, locked: !towerOpen, lockHint: unlockInfo("tower", progress).hint, unlock: unlockInfo("tower", progress), go: { kind: "content", content: "tower" },
     },
     {
       id: "rift", label: "균열", desc: "방치 2시간치를 즉시 정산 · 요일마다 보상 축", feeds: ["골드", "강화석", "조각"],

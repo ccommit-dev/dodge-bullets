@@ -20,6 +20,7 @@ import {
   skillCost,
   skillSummary,
   skillUnlocked,
+  weaponUnlocked,
   type ExpeditionSkillDef,
   type ExpeditionSkillId,
   type ExpeditionSkillLevels,
@@ -251,7 +252,7 @@ export function SkillPanel({
         <b>원거리 무기</b>
         <div>
           {RANGED_WEAPONS.map((w) => {
-            const unlocked = dodgeBestStage >= w.unlockStage;
+            const unlocked = weaponUnlocked(w, dodgeBestStage);
             const on = weapon === w.id;
             return (
               <button
