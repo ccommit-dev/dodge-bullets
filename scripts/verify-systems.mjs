@@ -1254,7 +1254,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
 
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
-    /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = p\.expeditionWeapon/.test(appSrc));
+    /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = [^;\n]*p\.expeditionWeapon/.test(appSrc));   // 2026-10-16: 테스트 모드에서 낀 잠긴 무기는 읽을 때 활로
 }
 
 // ── 2026-10-06: 구매 추천 · 비트 커스텀 · 갈림길 저장 ──

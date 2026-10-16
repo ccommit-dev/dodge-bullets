@@ -1,7 +1,8 @@
 import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhance, gearTrainingCost, type GearPart } from "./equipment/parts";
 import { AllySigInfo } from "./titans/AllySigInfo";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -300,7 +301,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const weaponKind = character.equippedWeaponKind ?? "drum";
   const forgedWeaponLevel = weaponKind === "drum" ? drumLevel : Math.round(((character.expeditionWeaponForge ?? { bow: 0, staff: 0 })[weaponKind] ?? 0) * 15 / 20);
   // 하한 2 — 기본 스킬(도토리 북치기)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
-  const skillTypeCapacity = Math.min(10, Math.max(2, Math.ceil(character.level / 10)));
+  // 테스트 모드 해금 (2026-10-16, progression/qaUnlock) — 스킬 칸·보유 한도·콘텐츠 카드 잠금을 읽을 때만 연다. 설정에서 끄면 바로 다시 잠긴다
+  const qaOpen = useSyncExternalStore(subscribeQaUnlock, qaUnlockOpen, () => false);
+  const skillTypeCapacity = qaOpen ? 10 : Math.min(10, Math.max(2, Math.ceil(character.level / 10)));
   const [idleReport, setIdleReport] = useState<{
     result: IdleYield;
     stage: number;
@@ -1295,32 +1298,65 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return () => window.clearInterval(id);
   }, [ready, applyDamage, spawn, userHash]);
 
+  // 몬스터 기질 (2026-10-16, 사용자: "몬스터도 너무 가만히 있어 — 공격·피격 등 스테이지마다 랜덤성 요소로 긴장감") — 스테이지마다 정해진다
+  const temper = useMemo(() => monsterTemper(save.stage, boss), [save.stage, boss]);
+  const monsterCounterRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!ready || battlePhase !== "combat" || !formationReady) {
       setMonsterAction("idle");
       return;
     }
-    let prepareTimer = 0;
-    let recoverTimer = 0;
-    const trigger = () => {
+    const timers: number[] = [];
+    const later = (fn: () => void, ms: number) => { timers.push(window.setTimeout(fn, ms)); };
+    // 타이밍 체인: 준비(0.32s 클립) → 타격(0.48s 클립) → 복귀. 클립 내부 타이밍은 그대로 두고(줄이면 모션이 뭉개진다) 간격·횟수만 흔든다
+    let busyUntil = 0;   // 덤비는 중엔 반격·다음 공격을 겹치지 않는다
+    const strike = (prep: number) => {
+      busyUntil = performance.now() + prep + 540;
       setMonsterAction("prepare");
-      // 타이밍 체인: 준비(0.32s 클립) → 타격(0.48s 클립) → 복귀.
-      // 기존 220/620ms는 준비를 클립 69%에서, 타격을 완료 80ms 전에 잘라
-      // 웅크리다 말고 돌진하다 마는 어색한 모션이 됐다. 클립 길이에 맞춘다.
-      prepareTimer = window.setTimeout(() => setMonsterAction("attack"), boss ? 360 : 320);
-      window.setTimeout(() => setAllyHitPulse((pulse) => pulse + 1), boss ? 430 : 390);
-      recoverTimer = window.setTimeout(() => setMonsterAction("idle"), boss ? 900 : 860);
+      later(() => setMonsterAction("attack"), prep);
+      later(() => setAllyHitPulse((pulse) => pulse + 1), prep + 70);
+      later(() => setMonsterAction("idle"), prep + 540);
+      return prep + 540;
     };
-    // 배속 시 공격 주기만 조인다 — 클립 내부 타이밍을 줄이면 모션이 뭉개진다
-    const interval = window.setInterval(trigger, (boss ? 2100 : 2900) / save.battleSpeed);
-    const first = window.setTimeout(trigger, (boss ? 900 : 1400) / save.battleSpeed);
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(first);
-      window.clearTimeout(prepareTimer);
-      window.clearTimeout(recoverTimer);
+    // 맞으면 가끔 바로 되받아친다(기질 counter 확률) — 일반 몬스터는 1초 안에 쓰러져 정해진 주기로는 한 번도 못 덤볐다
+    monsterCounterRef.current = () => {
+      if (performance.now() < busyUntil + 250 || Math.random() >= temper.counter) return;
+      strike(200);
     };
-  }, [battlePhase, boss, formationReady, ready, save.battleSpeed]);
+    const cycle = () => {
+      let busy: number;
+      if (Math.random() < temper.feint) {
+        // 헛손질 — 웅크렸다가 안 친다(다음 공격 타이밍을 못 읽게)
+        busyUntil = performance.now() + 300;
+        setMonsterAction("prepare");
+        later(() => setMonsterAction("idle"), 300);
+        busy = 300;
+      } else {
+        busy = strike(boss ? 360 : 320);
+        // 연속 공격 — 짧게 한 번 더(준비 0.2초)
+        if (Math.random() < temper.combo) { const at = busy + 140; later(() => strike(200), at); busy = at + 740; }
+      }
+      // 다음 공격까지 — 기질 속도 × 0.55~1.25 무작위 (배속이면 조인다). 화면 연출만이라 밸런스와 무관
+      const gap = ((boss ? 1800 : 2300) * temper.pace * (0.55 + Math.random() * 0.7)) / save.battleSpeed;
+      later(cycle, Math.max(busy + 200, gap));
+    };
+    // 첫 덤빔은 자리 잡자마자(0.25~0.6초) — 예전 1.4초는 일반 몬스터가 쓰러진 뒤라 "가만히 있다"로 보였다 (2026-10-16)
+    later(cycle, ((boss ? 520 : 420) * (0.6 + Math.random() * 0.8)) / save.battleSpeed);
+    return () => { timers.forEach((t) => window.clearTimeout(t)); monsterCounterRef.current = null; };
+  }, [battlePhase, boss, formationReady, ready, save.battleSpeed, temper]);
+  useEffect(() => { if (monsterHit > 0) monsterCounterRef.current?.(); }, [monsterHit]);
+  // 제자리에서 어슬렁 — 교전 중 0.9~1.8초마다 다른 자리로 조금씩 움직인다(기질 폭만큼). 공격·피격 모션은 그 위에서 그대로
+  const [monsterDrift, setMonsterDrift] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    if (!ready || battlePhase !== "combat" || !formationReady || temper.wanderX <= 0) { setMonsterDrift({ x: 0, y: 0 }); return; }
+    let t = 0;
+    const step = () => {
+      setMonsterDrift({ x: Math.round((Math.random() * 2 - 1) * temper.wanderX), y: -Math.round(Math.random() * temper.wanderY) });
+      t = window.setTimeout(step, 900 + Math.random() * 900);
+    };
+    t = window.setTimeout(step, 250);
+    return () => window.clearTimeout(t);
+  }, [battlePhase, formationReady, ready, temper]);
 
   useEffect(() => {
     if (!ready) return;
@@ -2018,7 +2054,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (!def || !save.skillInventory.learned.includes(id)) return;
     // 슬롯은 연습실에서 해금한다 — 비트 숙련이 0레벨이면 장착할 수 없다.
     const equippedNow = save.skillInventory.equipped[def.slot] === id;
-    if (!equippedNow && slotLevels(character)[def.slot] <= 0) {
+    if (!equippedNow && !qaOpen && slotLevels(character)[def.slot] <= 0) {
       const beatSkill = BEAT_SKILL_BY_SLOT[def.slot];
       flash(`연습실에서 ${SKILL_LABEL[beatSkill]} 숙련 5를 먼저 올리세요`);
       return;
@@ -2262,7 +2298,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       });
     }
     return goals;
-  }, [save.heroes, save.stage, save.skillInventory, character.pioneeredArea, character.onboardingStep, skillPoints, onOpenContent]);
+  }, [save.heroes, save.stage, save.skillInventory, character.pioneeredArea, character.onboardingStep, skillPoints, onOpenContent, qaOpen]);
 
   // ── 리텐션: 루틴 보드 · 추천 1개 · 워밍업 · 종료 예고 ──
   const routine = useMemo(() => routineItems(character, events, nowTick), [character, events, nowTick]);
@@ -2272,7 +2308,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     void loadBeatRpg(userHash).then((r) => { if (alive) setBeatBestScore(bestScoreOverall(r)); });
     return () => { alive = false; };
   }, [tab, userHash]);
-  const hubCardList = useMemo(() => hubCards(character, events, { beatBest: beatBestScore, now: nowTick }), [character, events, beatBestScore, nowTick]);
+  const hubCardList = useMemo(() => hubCards(character, events, { beatBest: beatBestScore, now: nowTick }), [character, events, beatBestScore, nowTick, qaOpen]);
   const routineReward = routineRewardAvailable(character, routine);
   const recommendation = useMemo(
     () => recommendNext(character, save, events, { wall: wallInfo, equipped: save.skillInventory.equipped, now: nowTick }),
@@ -2348,7 +2384,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setSave((prev) => {
       const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = { ...prev.skillInventory.equipped };
       for (const slot of SLOT_ORDER) {
-        if (locks[slot] <= 0) continue;
+        if (locks[slot] <= 0 && !qaOpen) continue;
         const pick = preset.picks[slot].find((id) => prev.skillInventory.learned.includes(id));
         if (pick) equipped[slot] = pick;
       }
@@ -2548,7 +2584,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} hideHelmet />
           </div>
         </div>
 
@@ -2568,6 +2604,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               hitPulse={allyHitPulse}
               engaged={formationEngaged}
               approaching={formationEngaged && !formationReady}
+              stage={save.stage}
             />
           ))}
         </div>
@@ -2583,7 +2620,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
-        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${impact === "critical" ? "critical" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`}>
+        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} atk-${temper.style} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${monsterHit > 0 && (monsterHit * 7 + save.stage * 3) % 4 === 0 ? "hit-strong" : ""} ${impact === "critical" ? "critical" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`} style={{ translate: `${monsterDrift.x}px ${monsterDrift.y}px` }}>
+          {/* 스테이지 기질(atk-*)의 몸놀림은 이 겉 상자에서 — 안쪽 그림은 종별 공격 키프레임(슬라임 덮치기·고블린 찌르기 …)을 그대로 쓴다 */}
+          <div className="monster-temper">
           <MonsterArt
             kind={kind}
             area={area}
@@ -2600,6 +2639,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     : "idle"
             }
           />
+          </div>
           {/* 상태 이펙트 (계획안 C): 화상 불꽃 · 빙결 결정 — HUD 칩 없이도 전장에서 읽힌다 */}
           <span className="status-layer" aria-hidden="true">
             {now < buffs.burnUntil && (!buffs.burnBossOnly || boss) && <i className="st-burn"><b /><b /><b /></i>}
@@ -3295,7 +3335,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <span className="combo-hero" style={{ backgroundImage: `url(${assetUrl("titans/character/base/hero-idle.png")})` }} aria-hidden="true" />
               {SLOT_ORDER.map((slot, i) => {
                 const eq = save.skillInventory.equipped[slot];
-                const locked = slotLevels(character)[slot] <= 0;
+                const locked = !qaOpen && slotLevels(character)[slot] <= 0;
                 return (
                   <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)} title={SLOT_LABEL[slot]}>
                     {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? "🔒" : "+"}</span>}
@@ -3319,7 +3359,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <nav className="skill-slot-tabs" aria-label="스킬 슬롯">
             {SLOT_ORDER.map((slot) => {
               const eq = save.skillInventory.equipped[slot];
-              const locked = slotLevels(character)[slot] <= 0;
+              const locked = !qaOpen && slotLevels(character)[slot] <= 0;
               return (
                 <button key={slot} type="button" className={`${skillSlotTab === slot ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)}>
                   <b>{slot === "passive" ? "" : `${SLOT_ORDER.indexOf(slot) + 1} · `}{SLOT_LABEL[slot]}</b>
@@ -3339,8 +3379,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const beatSkill = BEAT_SKILL_BY_SLOT[sk.slot];
             const mastery = character.beatSkills[beatSkill];
             const slotLevel = slotLevels(character)[sk.slot];
+            const slotShut = slotLevel <= 0 && !qaOpen;
             const toNext = masteryToNextSlotLevel(mastery);
-            return <article key={sk.id} className={`titans-card skill-learn-card element-${sk.element} ${equipped ? "equipped" : ""} ${slotLevel <= 0 ? "slot-locked" : ""} ${learned ? "" : "unlearned"}`}>
+            return <article key={sk.id} className={`titans-card skill-learn-card element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"}`}>
               <SkillIcon id={sk.id} />
               <div>
                 <strong>
@@ -3350,8 +3391,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </strong>
                 <p className="skill-effect">{skillEffectLabel(sk.id, Math.max(1, level))}</p>
                 <p>{sk.desc}{learned && level < sk.maxLevel ? ` · 다음 Lv: ${skillEffectLabel(sk.id, level + 1).split(" · ")[0]}` : ""}</p>
-                <small className={`slot-link ${slotLevel <= 0 ? "locked" : ""}`}>
-                  <em>{SKILL_LABEL[beatSkill]}</em> 숙련 {mastery} · 슬롯 {slotLevel > 0 ? `Lv.${slotLevel}` : "잠김"}
+                <small className={`slot-link ${slotShut ? "locked" : ""}`}>
+                  <em>{SKILL_LABEL[beatSkill]}</em> 숙련 {mastery} · 슬롯 {slotLevel > 0 ? `Lv.${slotLevel}` : slotShut ? "잠김" : "테스트 해금"}
                   {toNext !== null && ` · 다음까지 ${toNext}`}
                   {slotLevel > 0 && ` · 방치 효율 +${(slotLevel * IDLE.ratePerSlotLevel * 100).toFixed(1)}%p`}
                 </small>
@@ -3815,4 +3856,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       )}
     </div>
   );
+}
+
+/**
+ * 몬스터 기질 (2026-10-16) — 스테이지로 정해지는 의사난수. 같은 스테이지는 늘 같고, 스테이지마다 달라 긴장감이 생긴다.
+ *   pace 공격 간격 배수 0.75~1.3 · combo 연속 공격 확률 0~0.45 · feint 헛손질 확률 0~0.22
+ *   style 덤비는 모양(lunge 앞으로 · leap 뛰어올라 내리찍기 · slam 내려치기 · dash 길게 돌진) · wander 어슬렁 폭(px) · counter 맞으면 되받아칠 확률 0.06~0.18
+ * 대장은 더 사납게(연속 공격 +0.15, 간격 ×0.9).
+ */
+export function monsterTemper(stage: number, boss: boolean): { pace: number; combo: number; feint: number; style: "lunge" | "leap" | "slam" | "dash"; wanderX: number; wanderY: number; counter: number } {
+  let h = Math.imul(stage + 7, 2654435761) ^ (boss ? 0x9e3779b9 : 0);
+  const r = () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  const styles = ["lunge", "leap", "slam", "dash"] as const;
+  return {
+    pace: (0.75 + r() * 0.55) * (boss ? 0.9 : 1),
+    combo: Math.min(0.6, r() * 0.45 + (boss ? 0.15 : 0)),
+    feint: r() * 0.22,
+    style: styles[Math.floor(r() * styles.length)],
+    wanderX: 4 + Math.round(r() * 10),
+    wanderY: Math.round(r() * 6),
+    counter: 0.06 + r() * 0.12 + (boss ? 0.06 : 0),   // 맞을 때마다 되받아칠 확률 — 아군 타격이 초당 여러 번이라 작게
+  };
 }

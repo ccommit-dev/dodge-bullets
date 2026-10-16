@@ -170,6 +170,20 @@ export function qaGemsEnabled(): boolean {
   if (testPhaseActive()) return true;
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1" && (import.meta.env.DEV || localStorage.getItem(QA_MODE_KEY) === "1"); } catch { return false; }
 }
+/**
+ * 테스트 모드 = 콘텐츠·스킬 칸 전부 해금 (2026-10-16, progression/qaUnlock). QA 빌드에서는 기본 켜짐(테스트 단계와 같다).
+ * 설정의 빌드 라벨 7탭으로 끄면 qa-mode="0" 이 남아 다시 불러와도 해금 규칙이 돌아온다 — removeItem 이면 기본값(켜짐)으로 되돌아간다.
+ * 검증 하니스(test-phase=0)는 기본 꺼짐. 출시 빌드는 늘 false (키 문자열도 번들에서 빠진다).
+ */
+export function qaUnlockAll(): boolean {
+  if (!QA_BUILD) return false;
+  try {
+    const v = typeof localStorage === "undefined" ? null : localStorage.getItem(QA_MODE_KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch { return false; }
+  return testPhaseActive();
+}
 export const QA_GEMS_AMOUNT = 999_999;
 
 /**

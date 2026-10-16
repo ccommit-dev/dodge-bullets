@@ -24,6 +24,8 @@ type Props = {
   gear?: { shield?: number; gloves?: number; boots?: number; helmet?: number; armor?: number };
   /** 무기 종류 (2026-10-15) — 북(대장간 북 그림) · 활 · 지팡이(파츠 그림, 티어는 weaponLevel 눈금) */
   weaponKind?: "drum" | "bow" | "staff";
+  /** 투구를 그리지 않는다 (2026-10-16, 사용자: "던전 사냥터에 투구 탈착은 제거") — 사냥터 전장. 투구 효과(보스 시간)는 그대로 */
+  hideHelmet?: boolean;
 };
 
 /** 견갑 강화 외형 티어: 0 없음 · 1 (+1~4) 광택 · 2 (+5~9) 푸른 테두리 빛 · 3 (+10~14) 금빛 + 보석 · 4 (+15) 프리즘 */
@@ -33,9 +35,9 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
 
 const shoulderIndex: Record<ShoulderId, number> = { scout: 0, shadow: 1, ogre: 2, dragon: 3 };
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, gear, weaponKind = "drum" }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, shoulder = null, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, gear, weaponKind = "drum", hideHelmet = false }: Props) {
   // 투구·갑옷: 장비 파츠(사냥터 숙련 · 대장간 강화)가 있으면 그 티어, 없으면 예전 규칙(견갑 강화·장착 견갑) (2026-10-15)
-  const helmetTier = Math.max(gear?.helmet ?? 0, helmetTierOf(armorLevel));
+  const helmetTier = hideHelmet ? 0 : Math.max(gear?.helmet ?? 0, helmetTierOf(armorLevel));
   const chestTier = Math.max(gear?.armor ?? 0, chestTierOf(shoulder));
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const index = Math.max(0, Math.min(3, frame));
