@@ -288,14 +288,14 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
 
 /**
  * 스테이지마다 다른 자리·흔들림 (2026-10-16, 사용자: "동료들의 움직임이 스테이지마다 y값이 너무 동일 — 랜덤성 움직임").
- * (스테이지, 동료) 로 정해지는 의사난수 — 같은 스테이지에선 매 렌더 같고, 스테이지가 바뀌면 자리(위로 0~14px · 앞줄만 좌우 ±7px)와
- * 제자리 흔들림(좌우 2~6px · 위아래 1~4px · 2.2~4.2초 · 시작 위상)이 바뀐다. 대형 칸·충돌 분리(--sep-dx)는 그대로 둔다.
+ * (스테이지, 동료) 로 정해지는 의사난수 — 같은 스테이지에선 매 렌더 같고, 스테이지가 바뀌면 자리(위로 0~24px · 앞줄만 좌우 ±7px)와
+ * 제자리 흔들림(좌우 2~6px · 위아래 2~6px · 2.2~4.2초 · 시작 위상)이 바뀐다. 대형 칸·충돌 분리(--sep-dx)는 그대로 둔다.
  */
 export function allyStageJitter(stage: number, id: string): { jx: number; jy: number; wx: number; wy: number; wd: number; wdelay: number } {
   let h = 2166136261 ^ Math.imul(stage + 1, 2654435761);
   for (let i = 0; i < id.length; i += 1) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
   const r = () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
-  return { jy: Math.round(r() * 14), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 1 + Math.round(r() * 3), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10 };
+  return { jy: Math.round(r() * 24), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10 };
 }
 
 export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number }) {

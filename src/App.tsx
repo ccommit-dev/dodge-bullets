@@ -400,6 +400,8 @@ function App() {
   // 부팅 때 저장을 읽고 정한다 — 30일을 다 받았거나(attendanceDone) 오늘 이미 받았으면 자동으로 열지 않는다 (2026-10-02)
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [attendanceDone, setAttendanceDone] = useState(false);
+  // 설정 메뉴로 연 출석 — 테스트 모드에선 신규(step<4)도 메뉴로 열 수 있다. 부팅 자동 열림은 그대로 step 4 부터 (2026-10-16)
+  const [attendanceByMenu, setAttendanceByMenu] = useState(false);
   /** 원정 메뉴에서 펼친 장 — null 이면 다음 스테이지의 장 */
   const [expChapter, setExpChapter] = useState<number | null>(null);
   /** 웹에서 '게임 종료' — 토스 closeView 도 네이티브 종료도 없으면 탭이 그대로라 아무 일도 없던 것을 종료 화면으로 (2026-10-02) */
@@ -1737,7 +1739,7 @@ function App() {
                     type="button"
                     role="menuitem"
                     disabled={(progress.onboardingStep < 4 && !qaOpen)}
-                    onClick={() => { setSettingsOpen(false); setAttendanceOpen(true); }}
+                    onClick={() => { setSettingsOpen(false); setAttendanceByMenu(true); setAttendanceOpen(true); }}
                   >
                     <span>출석 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "30일"}</b>
                   </button>
@@ -2471,8 +2473,8 @@ function App() {
         </div>
       )}
       {/* 온보딩 첫 5분 대본(§8) — 신규(step<4)에게는 출석 모달을 띄우지 않는다 */}
-      {bootReady && appMode === "titans" && progress.onboardingStep >= 4 && (
-        <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => setAttendanceOpen(false)} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
+      {bootReady && appMode === "titans" && (progress.onboardingStep >= 4 || (qaOpen && attendanceByMenu)) && (
+        <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => { setAttendanceOpen(false); setAttendanceByMenu(false); }} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
       )}
       {bootReady && appMode === "titans" && eventOpen && (
         <Suspense fallback={null}>
