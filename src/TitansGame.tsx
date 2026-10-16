@@ -2642,6 +2642,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             data-skill={s.skill}
             aria-hidden="true"
           >
+            {s.kind === "impact" && <i className="fx-burst" />}
             {s.kind === "impact" && <SkillIcon id={s.skill} size={s.big ? 46 : 34} />}
             {s.kind === "shot" && <i />}
           </span>

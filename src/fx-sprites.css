@@ -1,0 +1,44 @@
+/* 무기·스킬 이펙트 스프라이트 (2026-10-16, 사용자: "스킬, 무기 이펙트 잘되게 리소스 다시 생성 — mascot-3d-film").
+   Blender 로 렌더한 발광 3D 이펙트 띠(public/titans/fx/<name>.webp, 6칸 — art-gen/blender/fx.py → scripts/assemble-fx.mjs).
+   예전 CSS 동그라미·그라데이션(테두리 원 · 원뿔 그라데이션) 대신 진짜 베기 궤적·충격 고리·원소 입자가 나온다.
+   넘기기는 transform 만(translateX steps) — background-position 애니메이션은 기기에서 FPS 를 깎았다(App.css .skill-shot 주석). */
+@keyframes fx-strip6 { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.fx-sprite-host { overflow: hidden !important; border: 0 !important; box-shadow: none !important; background: none !important; border-radius: 0 !important; }
+
+/* 무기 베기 — 영웅 공격·탭 (.titans-fx-slash). 무기 이펙트(상점)를 끼면 그 색 궤적 */
+.titans-fx.titans-fx-slash { width: 104px; height: 104px; margin: -52px 0 0 -52px; overflow: hidden; border: 0; box-shadow: none; border-radius: 0; animation: none; filter: none !important; }
+.titans-fx.titans-fx-slash::before { content: ""; position: absolute; left: 0; top: 0; inset: auto; width: 600%; height: 100%; border: 0; border-radius: 0; transform: none; background: url("/titans/fx/slash-default.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .3s steps(6, end) forwards; }
+.titans-field[data-weapon-fx="fx-crimson"] .titans-fx-slash::before { background-image: url("/titans/fx/slash-crimson.webp"); }
+.titans-field[data-weapon-fx="fx-glacier"] .titans-fx-slash::before { background-image: url("/titans/fx/slash-glacier.webp"); }
+.titans-field[data-weapon-fx="fx-solar"] .titans-fx-slash::before { background-image: url("/titans/fx/slash-solar.webp"); }
+.titans-field[data-weapon-fx="fx-season"] .titans-fx-slash::before { background-image: url("/titans/fx/slash-season.webp"); }
+
+/* 일반 명중 · 스킬 큰 이펙트 */
+.titans-fx.titans-fx-hit, .titans-fx.titans-fx-strike, .titans-fx.titans-fx-crit, .titans-fx.titans-fx-clone, .titans-fx.titans-fx-warcry { overflow: hidden; border: 0; box-shadow: none; background: none; border-radius: 0; animation: none; filter: none; }
+.titans-fx.titans-fx-hit { width: 76px; height: 76px; margin: -38px 0 0 -38px; }
+.titans-fx.titans-fx-hit::before, .titans-fx.titans-fx-strike::before, .titans-fx.titans-fx-crit::before, .titans-fx.titans-fx-clone::before, .titans-fx.titans-fx-warcry::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/impact-blade.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .42s steps(6, end) forwards;
+}
+.titans-fx.titans-fx-strike::before { background-image: url("/titans/fx/slash-solar.webp"); animation-duration: .5s; }
+.titans-field[data-weapon-fx="fx-crimson"] .titans-fx-strike::before { background-image: url("/titans/fx/slash-crimson.webp"); }
+.titans-field[data-weapon-fx="fx-glacier"] .titans-fx-strike::before { background-image: url("/titans/fx/slash-glacier.webp"); }
+.titans-field[data-weapon-fx="fx-season"] .titans-fx-strike::before { background-image: url("/titans/fx/slash-season.webp"); }
+.titans-fx.titans-fx-crit::before { background-image: url("/titans/fx/impact-crit.webp"); animation-duration: .55s; }
+.titans-fx.titans-fx-clone::before { background-image: url("/titans/fx/impact-fire.webp"); animation-duration: .55s; }
+.titans-fx.titans-fx-warcry::before { background-image: url("/titans/fx/impact-warcry.webp"); animation-duration: .6s; }
+
+/* 스킬 명중 — 원소별 폭발(예전 단색 고리) + 아이콘 팝은 그대로 */
+.skill-shot.shot-impact::before { left: -60px; top: -60px; width: 120px; height: 120px; border: 0; border-radius: 0; transform: none; opacity: 1; overflow: hidden; background: none; animation: none; }
+.skill-shot.shot-impact.big::before { left: -90px; top: -90px; width: 180px; height: 180px; border: 0; }
+.skill-shot.shot-impact > .fx-burst { position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; overflow: hidden; pointer-events: none; }
+.skill-shot.shot-impact.big > .fx-burst { left: -90px; top: -90px; width: 180px; height: 180px; }
+.skill-shot.shot-impact > .fx-burst::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/impact-blade.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .5s steps(6, end) forwards; }
+.skill-shot.el-fire > .fx-burst::before { background-image: url("/titans/fx/impact-fire.webp"); }
+.skill-shot.el-wind > .fx-burst::before { background-image: url("/titans/fx/impact-wind.webp"); }
+.skill-shot.el-earth > .fx-burst::before { background-image: url("/titans/fx/impact-earth.webp"); }
+.skill-shot.el-light > .fx-burst::before { background-image: url("/titans/fx/impact-light.webp"); }
+
+@media (prefers-reduced-motion: reduce) {
+  .titans-fx.titans-fx-slash::before, .titans-fx::before, .skill-shot.shot-impact > .fx-burst::before { animation-duration: .01s; }
+}
+.perf-low .skill-shot.shot-impact > .fx-burst { display: none; }
