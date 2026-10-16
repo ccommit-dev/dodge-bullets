@@ -1,9 +1,39 @@
 {
-  "_note": "장비 파츠 채택본 (2026-10-15 개정, 사용자: '북과 어울리게(화풍)') — 북 원화를 화풍 참조로 티어마다 따로 그린 그림. scripts/place-gear.mjs",
-  "helmet": { "1": "prop-g2-helmet-1-s20264010.png", "2": "prop-g2-helmet-2-s20264021.png", "3": "prop-g2-helmet-3-s20264032.png" },
-  "armor": { "1": "prop-g2-armor-1-s20264112.png", "2": "prop-g2-armor-2-s20264122.png", "3": "prop-g2-armor-3-s20264130.png" },
-  "gloves": { "1": "prop-g2-gloves-1-s20264212.png", "2": "prop-g2-gloves-2-s20264221.png", "3": "prop-g2-gloves-3-s20264232.png" },
-  "boots": { "1": "prop-g2-boots-1-s20264311.png", "2": "prop-g2-boots-2-s20264321.png", "3": "prop-g2-boots-3-s20264332.png" },
-  "bow": { "1": "prop-g2-bow-1-s20264411.png", "2": "prop-g2-bow-2-s20264421.png", "3": "prop-g2-bow-3-s20264431.png" },
-  "staff": { "1": "prop-g2-staff-2-s20264521.png", "2": "prop-g2-staff-2-s20264520.png", "3": "prop-g2-staff-3-s20264530.png" }
+  "_note": "장비 파츠 채택본 (2026-10-15 개정, 사용자: '북과 어울리게(화풍)') — 북 원화를 화풍 참조로 티어마다 따로 그린 그림. scripts/place-gear.mjs · 2026-10-16 견갑 4종(종류별 키, art-gen/batch-shoulder.sh) → public/titans/gear/shoulder-<id>.png",
+  "helmet": {
+    "1": "prop-g2-helmet-1-s20264010.png",
+    "2": "prop-g2-helmet-2-s20264021.png",
+    "3": "prop-g2-helmet-3-s20264032.png"
+  },
+  "armor": {
+    "1": "prop-g2-armor-1-s20264112.png",
+    "2": "prop-g2-armor-2-s20264122.png",
+    "3": "prop-g2-armor-3-s20264130.png"
+  },
+  "gloves": {
+    "1": "prop-g2-gloves-1-s20264212.png",
+    "2": "prop-g2-gloves-2-s20264221.png",
+    "3": "prop-g2-gloves-3-s20264232.png"
+  },
+  "boots": {
+    "1": "prop-g2-boots-1-s20264311.png",
+    "2": "prop-g2-boots-2-s20264321.png",
+    "3": "prop-g2-boots-3-s20264332.png"
+  },
+  "bow": {
+    "1": "prop-g2-bow-1-s20264411.png",
+    "2": "prop-g2-bow-2-s20264421.png",
+    "3": "prop-g2-bow-3-s20264431.png"
+  },
+  "staff": {
+    "1": "prop-g2-staff-2-s20264521.png",
+    "2": "prop-g2-staff-2-s20264520.png",
+    "3": "prop-g2-staff-3-s20264530.png"
+  },
+  "shoulder": {
+    "scout": "prop-g2-shoulder-scout-s20266002.png",
+    "shadow": "prop-g2-shoulder-shadow-s20266102.png",
+    "ogre": "prop-g2-shoulder-ogre-s20266203.png",
+    "dragon": "prop-g2-shoulder-dragon-s20266303.png"
+  }
 }
