@@ -34,6 +34,12 @@ IMPACT = {
     'light': ('#fffbe0', '#facc15', 'rays'),
     'crit': ('#ffe4ea', '#e11d48', 'shards'),
     'warcry': ('#fff1d6', '#f97316', 'stars'),
+    # 성문 방어(캔버스) 원소 — 2026-10-16 2차: 물·얼음·번개·독·그림자 (불·흙·바람·빛은 위와 같은 그림)
+    'water': ('#e0f7ff', '#3b9eff', 'drops'),
+    'ice': ('#f0fdff', '#67e8f9', 'icicles'),
+    'bolt': ('#fffbd0', '#facc15', 'zigzag'),
+    'poison': ('#ecfccb', '#84cc16', 'bubbles'),
+    'shadow': ('#ede9fe', '#7c3aed', 'shards'),
 }
 
 
@@ -183,7 +189,7 @@ def build_impact(el, i):
     core, glow, kind = IMPACT[el]
     t = (i + 1) / N
     fade = 1.0 if t < 0.5 else max(0.0, 1 - (t - 0.5) / 0.55)
-    rnd = random.Random(hash(el) & 0xff)
+    rnd = random.Random(sum(map(ord, el)))
     # 번쩍 — 첫 두 칸 가운데 별
     if i < 3:
         s = [0.42, 0.5, 0.3][i]
@@ -220,6 +226,35 @@ def build_impact(el, i):
             s = 0.15 * (1 - t * 0.35)
             blob(f'p{k}i', x, z - t * t * 0.25, s + 0.018, ink_mat(), y=0.0, seg=7, wob=0.25, rnd=random.Random(k))
             blob(f'p{k}', x, z - t * t * 0.25, s, emit_mat(f'rock{k % 2}', '#c2410c' if k % 2 else '#a16207', 1.3, fade), y=-0.01, seg=7, wob=0.25, rnd=random.Random(k))
+        elif kind == 'drops':   # 물방울 — 바깥으로 튀며 떨어진다
+            h = 0.3 * (1 - t * 0.4)
+            flame(f'p{k}i', x, z - t * t * 0.2, h + 0.04, 0.12 + 0.02, a - math.pi / 2, ink_mat(), y=0.0, fade=fade)
+            flame(f'p{k}', x, z - t * t * 0.2, h, 0.12, a - math.pi / 2, emit_mat('p', glow, 3.0, fade), y=-0.01, fade=fade)
+            blob(f'p{k}h', x - 0.02, z - t * t * 0.2 + 0.03, 0.025, emit_mat('ph', core, 5.0, fade), y=-0.02, seg=10)
+        elif kind == 'icicles':   # 고드름 — 길쭉한 수정
+            s2 = 0.26 * (1 - t * 0.4)
+            star(f'p{k}i', x, z, s2 + 0.03, ink_mat(), points=2, inner=0.22, rot=a, y=0.0, fade=fade)
+            star(f'p{k}', x, z, s2, emit_mat('p', glow, 3.5, fade), points=2, inner=0.22, rot=a, y=-0.01, fade=fade)
+            star(f'p{k}c', x, z, s2 * 0.55, emit_mat('pc', core, 5.0, fade), points=2, inner=0.18, rot=a, y=-0.02, fade=fade)
+        elif kind == 'zigzag':   # 번개 — 꺾인 띠
+            pts = [(x * 0.35, z * 0.35)]
+            for j in range(1, 4):
+                u = j / 3
+                off = (0.06 if j % 2 else -0.06)
+                pts.append((x * (0.35 + 0.65 * u) - math.sin(a) * off, z * (0.35 + 0.65 * u) + math.cos(a) * off))
+            for j in range(len(pts) - 1):
+                (x0, z0), (x1, z1) = pts[j], pts[j + 1]
+                ang = math.atan2(z1 - z0, x1 - x0); L2 = math.hypot(x1 - x0, z1 - z0)
+                for nm, wd, mt, yy in ((f'p{k}_{j}i', 0.045, ink_mat(), 0.0), (f'p{k}_{j}', 0.03, emit_mat('p', glow, 4.0, fade), -0.01), (f'p{k}_{j}c', 0.012, emit_mat('pc', core, 6.0, fade), -0.02)):
+                    cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+                    ca, sa = math.cos(ang), math.sin(ang)
+                    v = [(cx - ca * L2 / 2 - sa * wd, yy, cz - sa * L2 / 2 + ca * wd), (cx + ca * L2 / 2 - sa * wd, yy, cz + sa * L2 / 2 + ca * wd), (cx + ca * L2 / 2 + sa * wd, yy, cz + sa * L2 / 2 - ca * wd), (cx - ca * L2 / 2 + sa * wd, yy, cz - sa * L2 / 2 - ca * wd)]
+                    obj_from(nm, v, [(0, 1, 2, 3)], [fade] * 4, mt)
+        elif kind == 'bubbles':   # 독 거품 — 동그란 방울이 부풀었다 터진다
+            r2 = (0.06 + 0.06 * (k % 3) / 2) * (0.6 + t * 0.8) * (1 if t < 0.8 else 0.4)
+            blob(f'p{k}i', x, z + t * 0.15, r2 + 0.02, ink_mat(), y=0.0, seg=18)
+            blob(f'p{k}', x, z + t * 0.15, r2, emit_mat('p', glow, 3.0, fade), y=-0.01, seg=18)
+            blob(f'p{k}h', x - r2 * 0.35, z + t * 0.15 + r2 * 0.35, r2 * 0.25, emit_mat('ph', core, 5.0, fade), y=-0.02, seg=10)
         elif kind == 'rays':
             L = 0.42 * (1 - t * 0.3)
             ribbon(f'p{k}i', a - 0.07, a + 0.07, d - 0.012, d + L + 0.012, ink_mat(), n=4, y=0.0, taper=False, fade_tail=False)

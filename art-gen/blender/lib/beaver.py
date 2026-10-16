@@ -281,7 +281,7 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
     return out
 
 
-WEAPON_SCALE = {'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 1.0, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.9}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
+WEAPON_SCALE = {'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 1.0, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
 
 
 def build(name, cfg, coll=None):

@@ -76,11 +76,20 @@ const UNIT = 1024 / 2.3;
 const CW = 470, CH = 358, FEET = 0.87;
 const K_ALLY = (CH * 0.655) / (0.95 * UNIT);
 const done = { allies: [], skins: [], monsters: [] };
+// 비버는 모두 같은 배율 — 칸에 안 드는 캐릭터가 하나라도 있으면 그 값으로 전원을 맞춘다(2026-10-16 2차: 모자·방패 든 동료만 3% 작았다)
+let kBeaver = K_ALLY;
+const beavers = {};
+for (const id of [...ALLIES, ...SKINS]) {
+  const c = await load(id); if (!c) continue;
+  beavers[id] = c;
+  kBeaver = Math.min(kBeaver, fitScale(c.frames, K_ALLY, CW, CH, CW / 2, CH * FEET, 4));
+}
+console.log("beaver k", kBeaver.toFixed(3), "(목표", K_ALLY.toFixed(3) + ")");
 for (const id of [...ALLIES, ...SKINS]) {
   if (!want(id)) continue;
-  const c = await load(id); if (!c) { console.log("skip", id); continue; }
+  const c = beavers[id]; if (!c) { console.log("skip", id); continue; }
   c.frames[8].hit = true;
-  const k = fitScale(c.frames, K_ALLY, CW, CH, CW / 2, CH * FEET, 4);
+  const k = kBeaver;
   await strip(c.frames, k, CW, CH, CW / 2, CH * FEET, "webp", `public/titans/generated/allies/frames/${id}.webp`);
   // 아틀라스 행(4칸: 대기 · 예비 · 휘두름 · 피격) — make-variant-atlas(스킨) · 아래 patchAtlases(동료)
   const row = await strip([0, 4, 5, 8].map((i) => c.frames[i]), k, CW, CH, CW / 2, CH * FEET, null, null);

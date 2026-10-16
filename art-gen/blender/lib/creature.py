@@ -16,6 +16,45 @@ def _m(name, color, rough=0.5, metal=0.0, emit=None, es=0.0, coat=0.2):
     return C.principled(f"mon_{name}_{color}_{metal}_{es}", color, rough=rough, metal=metal, coat=coat, emit=emit, emit_strength=es)
 
 
+def _skin(color, dark, bump=0.25):
+    """몬스터 피부 (2026-10-16 2차, 사용자: "디테일이 줄어 장난감 같다") — 발쪽으로 짙어지는 그라데이션(월드 z) + 노이즈 결 + 거친 반사.
+    단색 매끈한 플라스틱이 원화의 채색·질감과 가장 달랐다"""
+    m, fresh = C.new_mat(f"monskin_{color}_{dark}_{bump}")
+    if not fresh:
+        return m
+    nt = m.node_tree
+    b = nt.nodes['Principled BSDF']
+    b.inputs['Roughness'].default_value = 0.55
+    b.inputs['Coat Weight'].default_value = 0.12
+    b.inputs['Sheen Weight'].default_value = 0.25
+    geo = nt.nodes.new('ShaderNodeNewGeometry')
+    sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+    nt.links.new(geo.outputs['Position'], sep.inputs[0])
+    mr = nt.nodes.new('ShaderNodeMapRange')
+    mr.inputs['From Min'].default_value = 0.0
+    mr.inputs['From Max'].default_value = 0.75
+    nt.links.new(sep.outputs['Z'], mr.inputs['Value'])
+    noise = nt.nodes.new('ShaderNodeTexNoise')
+    noise.inputs['Scale'].default_value = 9.0
+    noise.inputs['Detail'].default_value = 6.0
+    mixc = nt.nodes.new('ShaderNodeMix'); mixc.data_type = 'RGBA'
+    mixc.inputs['A'].default_value = C.srgb(dark)
+    mixc.inputs['B'].default_value = C.srgb(color)
+    nt.links.new(mr.outputs['Result'], mixc.inputs['Factor'])
+    # 노이즈로 얼룩 — 색을 살짝 흔든다
+    mix2 = nt.nodes.new('ShaderNodeMix'); mix2.data_type = 'RGBA'; mix2.blend_type = 'MULTIPLY'
+    mix2.inputs['Factor'].default_value = 0.22
+    nt.links.new(mixc.outputs['Result'], mix2.inputs['A'])
+    nt.links.new(noise.outputs['Color'], mix2.inputs['B'])
+    nt.links.new(mix2.outputs['Result'], b.inputs['Base Color'])
+    bp = nt.nodes.new('ShaderNodeBump')
+    bp.inputs['Strength'].default_value = bump
+    bp.inputs['Distance'].default_value = 0.02
+    nt.links.new(noise.outputs['Fac'], bp.inputs['Height'])
+    nt.links.new(bp.outputs['Normal'], b.inputs['Normal'])
+    return m
+
+
 def _bones(kind, cfg):
     H = cfg.get('height', 1.0)
     if kind == 'biped':
@@ -70,6 +109,34 @@ def _bones(kind, cfg):
         B[f'sleg{i}.R'] = ((-0.12, y, z), (-0.45, y - 0.05, 0.0), 'root')
         B[f'sleg{i}.L'] = ((0.12, y, z), (0.45, y - 0.05, 0.0), 'root')
     return B
+
+
+def fierce_face(add, hc, hr, cfg, coll, M):
+    """찡그린 얼굴 — V 자 눈썹(안쪽이 내려감) + 눈 위를 덮는 눈꺼풀(안쪽으로 기울어 노려봄) + 미간 주름"""
+    spread, up = cfg.get('eye_spread', 0.38), cfg.get('eye_up', 0.1)
+    r = cfg.get('eye_size', 0.062)
+    for sx in ((0,) if cfg.get('cyclops') else (-1, 1)):
+        rr = r * (1.6 if sx == 0 else 1.0)
+        p, n = C.on_ellipsoid(hc, hr, Vector((sx * spread, -1.0, up)))
+        tilt = 0.0 if sx == 0 else -sx * 0.45   # 안쪽이 내려간다
+        lid_c = p + n * (rr * 0.25) + Vector((0, 0, rr * 0.55))
+        add('head', C.mesh_obj(f'lid{sx}', C.ellipsoid(lid_c, (rr * 1.2, rr * 0.55, rr * 0.5), rot=(C.look_rot(n).to_matrix() @ Matrix.Rotation(tilt, 3, 'Z')).to_euler()), M['skin'], coll, outline=OUT * 0.6))
+        bp = p + n * (rr * 0.3) + Vector((0, 0, rr * 1.15))
+        add('head', C.mesh_obj(f'brow{sx}', C.box(bp, (rr * 2.3, 0.035, 0.032), bevel=0.012, rot=Euler((0, tilt * 0.9, 0))), M['dark'], coll, outline=OUT * 0.6))
+    if not cfg.get('cyclops'):
+        mp, mn = C.on_ellipsoid(hc, hr, Vector((0, -1.0, up + 0.12)))
+        add('head', C.mesh_obj('frown', C.box(mp + mn * 0.01, (0.012, 0.01, 0.05), bevel=0.004), M['dark'], coll))
+
+
+def grimace(add, mz, hr, cfg, coll, M):
+    """이빨을 드러낸 입 — 넓은 어두운 입 + 윗니 줄 + 아래에서 솟은 엄니"""
+    big = 1.45 if cfg.get('maw_open') else 1.0   # 트롤은 크게 벌린 보라 입
+    add('head', C.mesh_obj('maw', C.ellipsoid(mz + Vector((0, 0.0, 0.03)), (hr[0] * (0.42 + 0.12 * (big - 1)), hr[1] * 0.14, hr[2] * 0.16 * big)), _m('maw', '#7a2a8a' if big > 1 else '#5a1a24', rough=0.5), coll, outline=OUT * 0.5))
+    for k in range(5):
+        x = (k - 2) * hr[0] * 0.17
+        add('head', C.mesh_obj(f'tooth{k}', C.cone(mz + Vector((x, -hr[1] * 0.17, 0.07)), 0.022, 0.0, 0.05, seg=8, rot=Euler((math.pi, 0, 0))), M['tooth'], coll, outline=OUT * 0.35))
+    for sx in (-1, 1):
+        add('jaw', C.mesh_obj(f'ltusk{sx}', C.cone(mz + Vector((sx * hr[0] * 0.33, -hr[1] * 0.15, 0.0)), 0.03, 0.0, 0.09, seg=10), M['tooth'], coll, outline=OUT * 0.4))
 
 
 def bat_wing(name, root, sx, size, M, coll):
@@ -189,7 +256,7 @@ def build(name, cfg, coll=None):
 
     col = cfg.get('color', '#7a4a7a')
     M = {
-        'skin': _m('skin', col, rough=0.5, coat=0.25),
+        'skin': _skin(col, cfg.get('dark', '#3b2a3b'), 0.35 if cfg.get('fierce') else 0.2),
         'belly': _m('belly', cfg.get('belly', '#f2c94c'), rough=0.5),
         'dark': _m('dark', cfg.get('dark', '#3b2a3b'), rough=0.6),
         'accent': _m('acc', cfg.get('accent', '#ff8a3d'), rough=0.4, emit=cfg.get('accent') if cfg.get('glow') else None, es=1.5 if cfg.get('glow') else 0),
@@ -212,8 +279,10 @@ def build(name, cfg, coll=None):
         bc = Vector((0, 0, br[2] + 0.06))
         hc = Vector((0, -0.02, hz))
         add('body', C.mesh_obj('body', C.ellipsoid(bc, br, egg=0.15), M['skin'], coll, outline=OUT))
-        # 배 — 마디진 배판(가로 띠 4장, 위가 좁다) — 한 덩어리 타원은 밋밋했다
-        for k in range(4):
+        # 배 — 용 계열은 마디진 배판(가로 띠 4장), 나머지는 원화처럼 큰 노란 배 한 덩어리
+        if not cfg.get('plates'):
+            add('body', C.mesh_obj('belly', C.ellipsoid(bc + Vector((0, -br[1] * 0.42, -0.01)), (br[0] * 0.78, br[1] * 0.62, br[2] * 0.86)), M['belly'], coll, outline=OUT * 0.5))
+        for k in range(4 if cfg.get('plates') else 0):
             t = k / 3
             pz = bc.z + br[2] * (0.55 - t * 1.05)
             wdt = br[0] * (0.52 + 0.18 * math.sin(math.pi * (0.25 + t * 0.6)))
@@ -230,11 +299,12 @@ def build(name, cfg, coll=None):
             for sx in (-1, 1):
                 add('head', C.mesh_obj(f'nostril{sx}', C.ellipsoid(sp[-1] + Vector((sx * 0.04, -0.01, hr[0] * 0.3)), (0.02, 0.015, 0.012)), M['dark'], coll))
         _eyes(add, hcf, hr_, cfg, coll, M, spread=cfg.get('eye_spread', 0.38), up=cfg.get('eye_up', 0.1))
-        if cfg.get('arm_thick', 1.0) > 1.2:   # 거인형은 눈썹뼈를 내밀어 험상궂게
-            bp, bn = C.on_ellipsoid(hcf, hr_, Vector((0, -1.0, 0.42)))
-            add('head', C.mesh_obj('brow', C.ellipsoid(bp - bn * 0.01, (hr[0] * 0.62, 0.05, 0.045), rot=C.look_rot(bn)), M['dark'], coll, outline=OUT * 0.6))
+        if cfg.get('fierce') or cfg.get('arm_thick', 1.0) > 1.2:
+            fierce_face(add, hcf, hr_, cfg, coll, M)
         # 입(턱 뼈) — 벌리면 이빨
         mz = hcf + Vector((0, -hr_[1] * 0.9, -hr[2] * 0.5))
+        if cfg.get('fierce'):
+            grimace(add, mz, hr, cfg, coll, M)
         add('jaw', C.mesh_obj('jaw', C.ellipsoid(mz, (hr[0] * 0.45, hr[1] * 0.25, hr[2] * 0.16)), M['skin'], coll, outline=OUT))
         add('head', C.mesh_obj('mouth', C.ellipsoid(mz + Vector((0, -0.01, 0.02)), (hr[0] * 0.38, hr[1] * 0.18, hr[2] * 0.12)), M['mouth'], coll))
         for sx in (-1, 1):
@@ -277,6 +347,13 @@ def build(name, cfg, coll=None):
             ar = cfg.get('arm_thick', 1.0)   # 골렘·오우거·트롤은 굵은 팔과 큰 주먹(머리는 작다) — 실루엣이 임프와 달라야 한다
             add(f'arm.{side}', C.mesh_obj(f'arm{side}', C.tube([sh, sh.lerp(hd, 0.5), hd], [0.08 * ar, 0.07 * ar, 0.065 * ar], seg=14), M['skin'], coll, outline=OUT))
             add(f'arm.{side}', C.mesh_obj(f'fist{side}', C.ellipsoid(hd, (0.08 * ar, 0.075 * ar, 0.075 * ar)), M['dark'] if ar > 1.2 else M['skin'], coll, outline=OUT))
+            if cfg.get('fierce'):
+                for k in range(3):   # 어깨 가시 3개 · 주먹 마디 가시 2개
+                    d = Vector((sx * 0.5, 0.2 - k * 0.25, 1.0)).normalized()
+                    add(f'arm.{side}', C.mesh_obj(f'sspike{side}{k}', C.cone(sh + d * 0.07 * ar, 0.04 * ar, 0.0, 0.13 * ar - k * 0.02, seg=8, rot=C.look_rot(d)), M['horn'], coll, outline=OUT * 0.5))
+                for k in (-1, 1):
+                    d = Vector((sx * 0.3, -1, 0.2)).normalized()
+                    add(f'arm.{side}', C.mesh_obj(f'kspike{side}{k}', C.cone(hd + Vector((k * 0.035 * ar, -0.07 * ar, 0.03)), 0.022, 0.0, 0.06, seg=8, rot=C.look_rot(d)), M['horn'], coll, outline=OUT * 0.4))
             for k in (-1, 0, 1):
                 add(f'arm.{side}', C.mesh_obj(f'claw{side}{k}', C.cone(hd + Vector((k * 0.035, -0.07, -0.03)), 0.02, 0.0, 0.07, seg=8, rot=Euler((math.radians(110), 0, 0))), M['claw'], coll, outline=OUT * 0.4))
             # 다리
@@ -298,7 +375,7 @@ def build(name, cfg, coll=None):
             on_head = k % 3 == 0
             d = Vector((rnd.uniform(-1, 1), rnd.uniform(-0.3, 1), rnd.uniform(-0.6, 1))).normalized()
             p, n = C.on_ellipsoid(hc, hr, d) if on_head else C.on_ellipsoid(bc, br, d)
-            r = rnd.choice((0.022, 0.03, 0.04, 0.05))
+            r = rnd.choice((0.03, 0.04, 0.05, 0.065))   # 원화처럼 눈에 띄는 반점
             add('head' if on_head else 'body', C.mesh_obj(f'spot{k}', C.ellipsoid(p - n * 0.004, (r, r * 0.8, 0.012), rot=C.look_rot(n)), gm, coll, outline=OUT * 0.35))
         # 등 가시 줄 — 머리 뒤에서 꼬리까지
         if cfg.get('spikes', True):
