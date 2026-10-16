@@ -23,7 +23,7 @@ import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
 import { armorTierOf } from "./ui/EquippedCharacter";
-import { ShoulderIcon } from "./ui/ShoulderIcon";
+import { ShoulderIcon, shoulderIconUrl } from "./ui/ShoulderIcon";
 import { WalletBar } from "./ui/WalletBar";
 import { qaGemsEnabled } from "./progression/storage";
 import type { ShoulderId } from "./progression/model";
@@ -898,7 +898,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                     const owned = ownedShoulders.includes(item.id);
                     const equipped = equippedShoulder === item.id;
                     return <article key={item.id} className="titans-card">
-                      <i className={`armor-preview armor-${item.id}`} style={{ backgroundImage:`url(${assetUrl("titans/equipment/shoulders/shoulder-tier-sheet.png")})` }} />
+                      <i className={`armor-preview armor-${item.id}`} style={{ backgroundImage:`url(${shoulderIconUrl(item.id)})`, backgroundSize:"contain", backgroundPosition:"center" }} />
                       <div><strong>{item.name}</strong><p>{item.effect} · {owned ? "보유" : "미획득"}</p></div>
                       <button type="button" disabled={!owned} onClick={() => equipShoulder(equipped ? null : item.id)}>{equipped ? "해제" : "장착"}</button>
                     </article>;

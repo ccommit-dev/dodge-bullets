@@ -23,9 +23,12 @@ async function bbox(buf) {
   return { x0, y0, x1, y1, w: info.width, h: info.height };
 }
 
+const ONLY = process.argv[2];   // node scripts/place-gear.mjs shoulder — 그 파츠만 다시 놓는다
 for (const [part, picksByTier] of Object.entries(PICKS)) {
-  if (part.startsWith("_")) continue;
-  for (const tier of [1, 2, 3]) {
+  if (part.startsWith("_") || (ONLY && part !== ONLY)) continue;
+  // 키는 티어(1·2·3) 또는 종류 이름 — 견갑은 등급이 종류에 붙어 shoulder-<scout|shadow|ogre|dragon>.png (2026-10-16)
+  const keys = picksByTier.src ? [1, 2, 3] : Object.keys(picksByTier).filter((k) => !k.startsWith("_"));
+  for (const tier of keys) {
   const pick = typeof picksByTier[String(tier)] === "string" ? { src: picksByTier[String(tier)] } : (picksByTier[String(tier)] ?? picksByTier);
   const src = `art-gen/out/${pick.src}`;
   if (!existsSync(src)) { console.log("skip", part, "(원본 없음)", src); continue; }

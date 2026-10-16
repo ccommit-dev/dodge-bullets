@@ -119,7 +119,7 @@ import { monsterArtKey } from "./titans/bestiary";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
-import { ShoulderIcon } from "./ui/ShoulderIcon";
+import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
@@ -2994,7 +2994,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련</button>
             </article>
             <article className="titans-card equipment-training-card">
-              <ShoulderIcon id={equippedShoulder} />
+              {/* 다른 파츠와 같은 틀·크기 (2026-10-16) — 미장착이면 정찰 견갑을 흐리게 */}
+              <div className={`training-item-icon gear-icon shoulder-gear ${equippedShoulder ? "" : "is-empty"}`}><img src={shoulderIconUrl(equippedShoulder ?? "scout")} alt="" aria-hidden="true" /></div>
               <div><strong>{equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].name : "견갑 미장착"} · 숙련 Lv.{save.equipmentTraining.shoulderMastery}</strong><p>{equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].effect : "기본 견갑"} · 다음 {formatGold(equipmentTrainingCost("shoulder", save.equipmentTraining.shoulderMastery))}G{shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition > 0 ? ` · 원정 강화석 ${shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition}` : ""}{shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat > 0 ? ` · 비트 견갑 조각 ${shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat}` : ""}</p></div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("shoulder", save.equipmentTraining.shoulderMastery) || character.enhancementMaterials < shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).expedition || character.shoulderShards < shoulderTrainingMaterials(save.equipmentTraining.shoulderMastery).beat} onClick={() => void trainEquipment("shoulder")}>훈련</button>
             </article>
