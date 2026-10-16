@@ -22,10 +22,10 @@
 .combat-melee .ally-swing.is-attacking .ally-body { animation-duration: .58s !important; }
 @keyframes ally-body-melee-pose {
   0% { transform: none; }
-  22% { transform: translate(-8px, 1px) rotate(-7deg) scale(.95, 1.05); }
-  42% { transform: translate(12px, -2px) rotate(7deg) scale(1.07, .95); }
-  60% { transform: translate(9px, 0) rotate(4deg) scale(1.03, .98); }
-  80% { transform: translate(3px, 0) rotate(-1deg) scale(.99, 1.01); }
+  22% { transform: translate(-8px, 1px) rotate(-3deg) scale(.98, 1.02); }
+  42% { transform: translate(12px, -2px) rotate(3deg) scale(1.03, .98); }
+  60% { transform: translate(9px, 0) rotate(2deg); }
+  80% { transform: translate(3px, 0) rotate(-.5deg); }
   100% { transform: none; }
 }
 .combat-ranged .ally-swing.is-attacking .ally-body { animation-duration: .5s !important; }
@@ -97,7 +97,8 @@
   100% { transform: none; }
 }
 
-/* 생성 프레임 띠 — 대기는 0·1 칸을 번갈아(숨쉬기 그림), 숨쉬기 변형도 함께 */
+/* 생성 프레임 띠 — 대기는 0·1 칸을 번갈아(숨쉬기 그림), 숨쉬기 변형도 함께.
+   2026-10-16: 띠가 대기 한 장의 변형(기울임·늘임·잔상 — scripts/derive-anim.mjs)이 되어 아래·위의 CSS 기울기는 절반 이하로 줄였다(겹치면 25° 넘게 꺾였다) */
 .titan-ally-art:not(.is-approaching) .ally-body.has-frames.frames-idle { animation: ally-body-breathe 1.9s ease-in-out infinite, ally-frames-idle 1.9s steps(1, end) infinite; }
 @keyframes ally-frames-idle { 0% { background-position: 0% 0%; } 50% { background-position: 12.5% 0%; } }
 .perf-low .titan-ally-art .ally-body.has-frames.frames-idle { animation: ally-body-breathe 1.9s ease-in-out infinite; }
@@ -118,8 +119,8 @@
 .titan-monster-art.has-frames.face-flip > .monster-frames { scale: -1 1; }
 
 /* 몬스터 덤빔 기울기 (2026-10-15 보완: "정면 몬스터가 덤빌 때 왼쪽으로 트는 느낌이 약하다") — 예비 칸은 뒤(오른쪽)로 젖히고, 덤빔 칸은 왼쪽(동료 쪽)으로 숙이며 늘어난다 */
-.titans-monster.action-prepare .titan-monster-art.has-frames .monster-frames { transform-origin: 50% 95%; transform: rotate(6deg) scale(.96, 1.04); transition: transform .12s ease-out; }
-.titans-monster.action-attack .titan-monster-art.has-frames .monster-frames { transform-origin: 50% 95%; transform: rotate(-11deg) skewX(-7deg) scale(1.06, .95); transition: transform .08s ease-in; }
+.titans-monster.action-prepare .titan-monster-art.has-frames .monster-frames { transform-origin: 50% 95%; transform: rotate(2deg); transition: transform .12s ease-out; }
+.titans-monster.action-attack .titan-monster-art.has-frames .monster-frames { transform-origin: 50% 95%; transform: rotate(-3deg) skewX(-3deg); transition: transform .08s ease-in; }
 .titans-monster.action-attack .titan-monster-art.has-frames.face-flip .monster-frames, .titans-monster.action-prepare .titan-monster-art.has-frames.face-flip .monster-frames { scale: -1 1; }
 .titan-monster-art.has-frames .monster-frames { transition: transform .2s ease-out; }
 .perf-low .titans-monster .titan-monster-art.has-frames .monster-frames { transition: none; }

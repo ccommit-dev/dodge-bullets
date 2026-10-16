@@ -42,7 +42,8 @@ for (let i = 0; i < 25; i += 1) {
 ok("A 동료 프레임: 3초 관찰 동안 미아·레온·파이로가 2가지 이상 프레임(대기/공격)을 보인다", ["mia", "leon", "pyro"].every((id) => (framesSeen.get(id)?.size ?? 0) >= 2), [...framesSeen].map(([k, v]) => `${k}:${v.size}`).join(" "));
 // 명패: 칭호·코스튬이 없으면 "모험가" (이름 없는 빈 명패가 아니다)
 ok("A'' 주인공 명패 기본값은 '모험가'", (await page.evaluate(() => document.querySelector(".titans-hero .hero-marker b, .hero-marker b")?.textContent?.trim())) === "모험가", await page.evaluate(() => document.querySelector(".hero-marker b")?.textContent ?? "(none)"));
-ok("A 변형(파이로)은 변형 아틀라스 · 셀 비율 유지(폭 150% · 높이 114.35%)", await page.evaluate(() => { const b = document.querySelector(".titans-allies .ally-pyro .ally-body"); return !!b && /variant/.test(b.style.backgroundImage) && b.style.width === "150%" && b.style.height === "114.35%"; }));
+// 2026-10-16: 파이로도 대기 한 장 파생 띠(frames/pyro.webp — derive-anim.mjs)가 생겼다 — 띠 또는 변형 아틀라스, 어느 쪽이든 셀 비율은 같아야 한다
+ok("A 변형(파이로)은 자기 띠(frames/pyro) 또는 변형 아틀라스 · 셀 비율 유지(폭 150% · 높이 114.35%)", await page.evaluate(() => { const b = document.querySelector(".titans-allies .ally-pyro .ally-body"); return !!b && /frames\/pyro|variant/.test(b.style.backgroundImage) && b.style.width === "150%" && b.style.height === "114.35%"; }));
 // 2026-10-14: 비버 원화는 무기를 그림에 들고 있다 — 인간 원화 시절 무기 덧그림(.ally-weapon)이 거꾸로 얹혀 "왼쪽을 본다"로 읽혔다. 덧그림이 하나도 없어야 한다
 ok("A 동료 무기 덧그림 없음(무기는 원화에 포함 · 프레임 기록에 drot 없음)", (await page.evaluate(() => document.querySelectorAll(".titans-allies .ally-weapon").length)) === 0 && [...framesSeen.values()].every((set) => [...set].every((s) => s.endsWith("|undefined"))), [...(framesSeen.get("mia") ?? [])].slice(0, 3).join(" ; "));
 

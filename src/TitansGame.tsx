@@ -38,6 +38,7 @@ import { HUNT_RARITY_LABEL, applyHuntPerk, huntModsChips, pickHuntPerks, type Hu
 import { WEAK_LABEL, WEAK_MUL, WEAK_WINDOW_MS, allyHitsWeak, partyWeakMatches, rollBossWeak, skillHitsWeak, type BossWeak } from "./titans/bossWeak";
 import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
+import { GachaFx } from "./ui/GachaFx";
 import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
@@ -3648,11 +3649,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {/* 소환진 (계획안 E) — 등급 예고 색(파랑 R · 보라 SR · 금 SSR)으로 1.2초 기대감을 만든 뒤 카드 공개 */}
       {gachaSummoning && (
         <div className={`gacha-reveal gacha-summoning tier-${gachaSummoning.tier.toLowerCase()}`} role="status" aria-label="소환 중">
-          {/* 2026-10-15 재설계 (사용자: "AI 티가 너무 난다 · 더 귀엽고 화려하게") — 마법진 대신 나무 무대 햇살 + 통통 튀는 도토리 + 도토리·잎·별 팝 */}
-          <div className="gacha-summon-circle cute">
-            <i className="cute-sunburst" aria-hidden="true" />
-            <span className="summon-acorn" aria-hidden="true"><i className="cap" /><i className="nut" /><i className="shine" /><i className="face" /></span>
-            <span className="summon-pops" aria-hidden="true">{Array.from({ length: 12 }, (_, k) => <i key={k} className={["pop-acorn", "pop-leaf", "pop-star"][k % 3]} style={{ "--a": `${k * 30}deg`, "--d": `${0.55 + (k % 4) * 0.04}s` } as CSSProperties} />)}</span>
+          {/* 2026-10-16 (사용자: "가챠 이펙트 원복하고 원래 내용에 조금 더 화려하게 — 폭죽·조명 연산 이펙트") — 원래 마법진 그대로 + 뒤에 GachaFx(빛·폭죽 캔버스) */}
+          <GachaFx tier={gachaSummoning.tier} phase="summon" />
+          <div className="gacha-summon-circle">
+            <i className="ring r1" /><i className="ring r2" /><i className="ring r3" />
+            <i className="sparks" aria-hidden="true" /><i className="sparks s2" aria-hidden="true" />
+            <svg viewBox="0 0 200 200" aria-hidden="true"><polygon className="sigil" points="100,18 128,72 186,80 143,120 156,180 100,150 44,180 57,120 14,80 72,72" /><circle className="sigil-ring" cx="100" cy="100" r="88" /></svg>
             <b>{gachaSummoning.count === 10 ? "10회 소환" : "소환"}</b>
             <small>{gachaSummoning.tier === "SSR" ? "전설의 기운이 감돕니다" : gachaSummoning.tier === "SR" ? "영웅의 기운" : "동료가 응답합니다"}</small>
           </div>
@@ -3661,8 +3663,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {/* 소환 연출 — 카드가 순서대로 뒤집히고 등급색으로 빛난다. 새 동료/중복 조각을 구분해 보여준다 */}
       {gachaReveal && (
         <div className={`gacha-reveal gacha-result ${gachaReveal.some((r) => r.rarity === "SSR") ? "has-ssr" : gachaReveal.some((r) => r.rarity === "SR") ? "has-sr" : ""}`} role="dialog" aria-label="소환 결과" onClick={() => setGachaReveal(null)}>
-          <i className="cute-sunburst" aria-hidden="true" />
-          {gachaReveal.some((r) => r.rarity !== "R") && <span className="gacha-confetti" aria-hidden="true">{Array.from({ length: 24 }, (_, k) => <i key={k} style={{ "--x": `${(k * 37) % 100}%`, "--d": `${0.2 + (k % 6) * 0.12}s`, "--r": `${(k * 53) % 360}deg`, "--c": ["#f2c232", "#ef5a5a", "#5bb1ff", "#7ac142", "#c084fc"][k % 5] } as CSSProperties} />)}</span>}
+          <i className="gacha-burst" aria-hidden="true" />
+          <i className="gacha-rays" aria-hidden="true" />
+          <GachaFx tier={gachaReveal.some((r) => r.rarity === "SSR") ? "SSR" : gachaReveal.some((r) => r.rarity === "SR") ? "SR" : "R"} phase="reveal" />
+          <i className="gacha-light-sweep" aria-hidden="true" />
           <div className={`gacha-reveal-grid count-${gachaReveal.length}`} onClick={(e) => e.stopPropagation()}>
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;
