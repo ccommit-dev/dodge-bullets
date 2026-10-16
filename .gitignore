@@ -45,3 +45,6 @@ art-gen/out/
 art-gen/hf-cache/
 art-gen/*.log
 art-gen/out/
+
+# Blender 스크립트 캐시
+art-gen/blender/**/__pycache__/

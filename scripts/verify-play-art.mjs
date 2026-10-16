@@ -90,18 +90,21 @@ ok("동료가 전장 밖으로 나가지 않음", offField.length === 0, offFiel
 const stateReport = Object.entries(statesSeen).map(([id, s]) => `${id}:${[...s].filter(Boolean).sort().join("")}`).join(" ");
 ok("각 동료가 2개 이상 상태 프레임(대기·이동/공격)을 보임", Object.values(statesSeen).every((s) => [...s].filter(Boolean).length >= 2), stateReport);
 
-// 상태별 셀 크기 팝 검사 — 아틀라스 셀 4개의 본체 bbox 높이 편차 (place-art 균일 배율이면 ≤ 12%)
+// 상태별 셀 크기 팝 검사 — 아틀라스 셀 4개(대기·예비·휘두름·피격).
+// 2026-10-16: 동료가 Blender 3D 리그 렌더(art-gen/blender · assemble-b3d)가 되면서 예비 칸은 무기를 머리 위로 든다 → bbox 높이는 정당하게 커진다.
+// 이 검사의 뜻(칸마다 다른 그림·다른 배율로 크기가 튀지 않는가)을 지키려고 높이 대신 "발 바닥선이 같은가(±3px)" 와
+// "가장 작은 칸이 가장 큰 칸의 70% 이상(배율이 칸마다 바뀌면 깨진다)" 을 잰다. 배율은 assemble-b3d 가 캐릭터마다 하나만 쓴다.
 const popReport = await page.evaluate(async () => {
   const load = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = src; });
   const img = await load("/titans/generated/allies/ally-variant-atlas-v1.png");
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const cw = img.width / 4, ch = img.height / 12, out = {};
   const ids = ["pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember", "luna", "volt"];
-  for (let r = 4; r < 12; r += 1) { const hs = []; for (let col = 0; col < 4; col += 1) { const d = g.getImageData(col * cw, r * ch, cw, ch).data; let minY = ch, maxY = 0; for (let y = 0; y < ch; y += 1) for (let x = 0; x < cw; x += 1) if (d[(y * cw + x) * 4 + 3] > 24) { if (y < minY) minY = y; if (y > maxY) maxY = y; } hs.push(maxY - minY + 1); } out[ids[r]] = hs; }
+  for (let r = 4; r < 12; r += 1) { const hs = [], bs = []; for (let col = 0; col < 4; col += 1) { const d = g.getImageData(col * cw, r * ch, cw, ch).data; let minY = ch, maxY = 0; for (let y = 0; y < ch; y += 1) for (let x = 0; x < cw; x += 1) if (d[(y * cw + x) * 4 + 3] > 24) { if (y < minY) minY = y; if (y > maxY) maxY = y; } hs.push(maxY - minY + 1); bs.push(maxY); } out[ids[r]] = { hs, bs }; }
   return out;
 });
-const pops = Object.entries(popReport).map(([id, hs]) => [id, (Math.max(...hs) - Math.min(...hs)) / Math.max(...hs)]);
-ok("상태 전환 시 본체 높이 편차 ≤ 12% (크기 팝 없음)", pops.every(([, v]) => v <= 0.12), pops.map(([id, v]) => `${id}:${(v * 100).toFixed(0)}%`).join(" "));
+const pops = Object.entries(popReport).map(([id, { hs, bs }]) => [id, Math.max(...bs) - Math.min(...bs), Math.min(...hs) / Math.max(...hs)]);
+ok("상태 전환 시 크기 팝 없음 — 발 바닥선 ±3px · 가장 작은 칸 ≥ 가장 큰 칸의 70%", pops.every(([, db, r]) => db <= 3 && r >= 0.7), pops.map(([id, db, r]) => `${id}:바닥${db}px·${(r * 100).toFixed(0)}%`).join(" "));
 
 await browser.close();
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

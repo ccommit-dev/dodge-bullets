@@ -2,6 +2,7 @@ import type { GameWorld, Player } from "./types";
 import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
 import { drawRecurveBow } from "./arrowArt";
+import { HERO_FIG, HERO_GEAR_SPOTS } from "../equipment/heroAnchors";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -24,15 +25,13 @@ function gearImage(part: string, tier: number): HTMLImageElement | null {
  * 인물 키를 무기 시트 기준(약 75px — 활·지팡이 길이가 이 크기에 맞춰져 있다)으로 맞추고, 파츠는 인물 상자 기준으로 앉힌다.
  */
 // 2026-10-16: 따로 그린 활·지팡이 시트(hero-bow/staff-sheet)는 걷었다 — 칸마다 다른 그림이라 쏠 때 생김새가 바뀌고 파츠가 어긋났다.
-// 대기 시트(대기 한 장 파생 — scripts/derive-anim-hero.mjs) 하나로 그리고, 쏘는 동작은 아래 캔버스 기울임으로 준다(파츠가 같은 변환을 탄다)
+// 대기 시트(Blender 3D 리그 — art-gen/blender, scripts/assemble-b3d.mjs) 하나로 그리고, 쏘는 동작은 아래 캔버스 기울임으로 준다(파츠가 같은 변환을 탄다)
 type FigBox = { x0: number; x1: number; y0: number; y1: number };
-const FIG_IDLE: FigBox = { x0: 2.9, x1: 93, y0: 30.9, y1: 99.9 };
+/** 대기 시트 인물 상자 — assemble-b3d 가 렌더에서 재서 heroAnchors.ts 에 쓴다 */
+const FIG_IDLE: FigBox = HERO_FIG;
 const HERO_FIG_RADII = 5.2;
-/** 파츠 자리 — 인물 상자 기준(u 가로 · v 세로 0~1 · size = 파츠 폭 ÷ 인물 키). 사냥터 EquippedCharacter(unify.css 로 맞춘 자리)와 같은 값.
- *  예전 프레임 % 앵커(가슴 73%)는 큰 머리 비버에선 얼굴이라 갑옷이 주둥이를 덮었다 */
-const GEAR_SPOTS: readonly (readonly [part: "boots" | "shield" | "armor" | "gloves" | "helmet", u: number, v: number, size: number])[] = [
-  ["boots", 0.523, 0.958, 0.312], ["shield", 0.367, 0.8, 0.21], ["armor", 0.523, 0.828, 0.346], ["gloves", 0.767, 0.784, 0.167], ["helmet", 0.6, 0.125, 0.49],
-];
+/** 파츠 자리 — 인물 상자 기준(u 가로 · v 세로 0~1 · size = 파츠 폭 ÷ 인물 키). 사냥터 EquippedCharacter 와 같은 뼈 투영값 */
+const GEAR_SPOTS: readonly (readonly [part: "boots" | "shield" | "armor" | "gloves" | "helmet", u: number, v: number, size: number])[] = HERO_GEAR_SPOTS;
 /** 인물 상자 기준 자리에 파츠를 얹는다 — 호출 시점의 변환(캐릭터 발밑 원점·facing 스케일)을 그대로 쓴다 */
 function drawGearPart(ctx: CanvasRenderingContext2D, part: string, tier: number, u: number, v: number, size: number, fig: FigBox, drawWidth: number, drawHeight: number): void {
   if (tier <= 0) return;
