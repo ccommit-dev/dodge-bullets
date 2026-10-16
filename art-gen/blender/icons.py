@@ -72,9 +72,12 @@ def flames(c, s=1.0, n=3, color='#ff7a2a'):
 
 
 def droplet(c, s=1.0, color='#4ab0ff'):
-    pts = spline([c + Vector((0, 0, -0.18 * s)), c + Vector((0, 0, 0.05 * s)), c + Vector((0, 0, 0.3 * s))], 12)
-    ob('drop', C.tube(pts, interp([0.001, 0.2 * s, 0.0], len(pts)), seg=24), mat('drop', color, 0.08, emit=color, es=0.4))
-    ob('drophi', C.ellipsoid(c + Vector((-0.06 * s, -0.17 * s, 0.02 * s)), (0.035 * s, 0.01, 0.06 * s)), mat('hi', '#ffffff', 0.2, emit='#ffffff', es=2), 0)
+    """물방울 — 둥근 아래(구) + 위로 뾰족한 끝(구에 맞닿은 원뿔). 예전 관 모양은 마름모로 보였다"""
+    R = 0.2 * s
+    m = mat('drop', color, 0.08, emit=color, es=0.4)
+    ob('drop', C.ellipsoid(c + Vector((0, 0, -0.04 * s)), (R, R * 0.9, R)), m)
+    ob('droptip', C.cone(c + Vector((0, 0, 0.12 * s)), R * 0.86, 0.0, 0.3 * s, seg=32), m)
+    ob('drophi', C.ellipsoid(c + Vector((-0.07 * s, -R * 0.95, 0.0)), (0.035 * s, 0.01, 0.06 * s)), mat('hi', '#ffffff', 0.2, emit='#ffffff', es=2), 0)
 
 
 def crystal(c, s=1.0, color='#8ae8ff', rot=0.0):
@@ -187,9 +190,9 @@ EMBLEM = {
     'galeChain': ('wind', lambda: swirl(Vector((0, -0.2, 0)), 1.25)),
     'clone': ('fire', lambda: (drum(Vector((-0.2, -0.18, -0.08)), 0.75), drum(Vector((0.22, -0.28, -0.14)), 0.75, '#e8742f'), flames(Vector((0.0, -0.4, 0.12)), 0.6))),
     'thunderLink': ('light', lambda: bolt_shape(Vector((0, -0.2, 0)), 1.25)),
-    'bloodMoon': ('blade', lambda: moon(Vector((-0.04, -0.2, 0.02)), 1.3)),
+    'bloodMoon': ('blade', lambda: moon(Vector((0.04, -0.2, 0.02)), 1.15)),
     'dragonBreath': ('fire', lambda: (drum(Vector((0, -0.2, -0.16)), 1.0, '#a8301f', glow='#ff7a2a'), flames(Vector((0, -0.3, 0.06)), 0.8, color='#ff5a1f'))),
-    'warcry': ('light', lambda: star(Vector((0, -0.2, 0.02)), 1.6)),
+    'warcry': ('light', lambda: star(Vector((0, -0.2, 0.02)), 1.15)),
     'meteor': ('fire', lambda: (flames(Vector((0.14, -0.2, 0.05)), 0.9), acorn(Vector((-0.12, -0.35, -0.14)), 1.1, 0.5))),
     'tidalBurst': ('wind', lambda: (shield(Vector((0, -0.18, 0.08)), 0.85, '#7a5a3a'), droplet(Vector((-0.14, -0.34, -0.26)), 0.6), droplet(Vector((0.16, -0.34, -0.28)), 0.6))),
     'voidFinish': ('blade', lambda: thorns(Vector((0, -0.2, 0)), 1.3)),
@@ -207,7 +210,7 @@ EMBLEM = {
     'd-wind': ('wind', lambda: (swirl(Vector((0, -0.2, 0)), 1.1), C.mesh_obj('boomer', C.tube(spline([Vector((-0.3, -0.35, 0.25)), Vector((0, -0.35, 0.05)), Vector((0.3, -0.35, 0.25))], 10), 0.05, seg=10), mat('bm', '#d8a24a', 0.5), outline=O))),
     'd-poison': ('poison', lambda: (arrow_obj(Vector((0, -0.2, 0)), 1.0, tip='#9ad04a', glow='#9ad04a', fletch='#7a3ac8'), C.mesh_obj('bub', C.ellipsoid(Vector((-0.22, -0.34, -0.22)), (0.12, 0.12, 0.12)), mat('bub', '#b8f05a', 0.1, emit='#b8f05a', es=1.2), outline=O))),
     'd-holy': ('holy', lambda: (star(Vector((0, -0.2, 0.0)), 1.1, '#fff6b8'), C.mesh_obj('halo', C.torus(Vector((0, -0.12, 0)), 0.5, 0.03, seg=48, rot=Euler((math.radians(90), 0, 0))), mat('halo', '#ffe08a', 0.3, emit='#ffe08a', es=1.5), outline=O * 0.6))),
-    'd-shadow': ('shadow', lambda: star(Vector((0, -0.2, 0)), 1.3, '#4a3a6a', 4)),
+    'd-shadow': ('shadow', lambda: star(Vector((0, -0.2, 0)), 1.15, '#4a3a6a', 4)),
     'd-meteor': ('meteor', lambda: (flames(Vector((0.16, -0.2, 0.1)), 0.9), C.mesh_obj('met', C.ellipsoid(Vector((-0.12, -0.34, -0.14)), (0.24, 0.22, 0.22)), mat('met', '#6a4a3a', 0.8, emit='#ff7a2a', es=0.4), outline=O))),
     'd-ultimate': ('basic', lambda: (arrow_obj(Vector((-0.22, -0.2, 0.05)), 0.85, -30), arrow_obj(Vector((0.0, -0.24, 0.1)), 0.85, -45), arrow_obj(Vector((0.22, -0.28, 0.15)), 0.85, -60))),
 }

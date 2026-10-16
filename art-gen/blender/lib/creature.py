@@ -46,7 +46,21 @@ def _skin(color, dark, bump=0.25):
     mix2.inputs['Factor'].default_value = 0.22
     nt.links.new(mixc.outputs['Result'], mix2.inputs['A'])
     nt.links.new(noise.outputs['Color'], mix2.inputs['B'])
-    nt.links.new(mix2.outputs['Result'], b.inputs['Base Color'])
+    # 잔무늬 (2026-10-16 3차, 사용자: "예전 그림의 잔무늬·잎 장식") — 보로노이 비늘: 칸 가장자리를 짙게
+    vor = nt.nodes.new('ShaderNodeTexVoronoi')
+    vor.feature = 'DISTANCE_TO_EDGE'
+    vor.inputs['Scale'].default_value = 26.0
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = (0.52, 0.52, 0.52, 1)
+    ramp.color_ramp.elements[1].position = 0.09
+    ramp.color_ramp.elements[1].color = (1, 1, 1, 1)
+    nt.links.new(vor.outputs['Distance'], ramp.inputs['Fac'])
+    mix3 = nt.nodes.new('ShaderNodeMix'); mix3.data_type = 'RGBA'; mix3.blend_type = 'MULTIPLY'
+    mix3.inputs['Factor'].default_value = 1.0
+    nt.links.new(mix2.outputs['Result'], mix3.inputs['A'])
+    nt.links.new(ramp.outputs['Color'], mix3.inputs['B'])
+    nt.links.new(mix3.outputs['Result'], b.inputs['Base Color'])
     bp = nt.nodes.new('ShaderNodeBump')
     bp.inputs['Strength'].default_value = bump
     bp.inputs['Distance'].default_value = 0.02
@@ -109,6 +123,32 @@ def _bones(kind, cfg):
         B[f'sleg{i}.R'] = ((-0.12, y, z), (-0.45, y - 0.05, 0.0), 'root')
         B[f'sleg{i}.L'] = ((0.12, y, z), (0.45, y - 0.05, 0.0), 'root')
     return B
+
+
+def leaf_mesh(base, d, L):
+    """잎 한 장 — base 에서 d 방향으로 뻗는 납작한 물방울(가운데 잎맥 접힘)"""
+    import bmesh
+    d = Vector(d).normalized()
+    side = d.cross(Vector((0, 0, 1)))
+    if side.length < 1e-3:
+        side = Vector((1, 0, 0))
+    side.normalize()
+    up = side.cross(d).normalized()
+    bm = bmesh.new()
+    n = 10
+    left, right = [], []
+    for i in range(n + 1):
+        t = i / n
+        w = math.sin(math.pi * t) * (1 - 0.35 * t) * L * 0.42
+        p = Vector(base) + d * (L * t) + up * (0.012 * math.sin(math.pi * t))
+        left.append(bm.verts.new(p - side * w))
+        right.append(bm.verts.new(p + side * w))
+    mid = [bm.verts.new(Vector(base) + d * (L * i / n) + up * 0.02 * math.sin(math.pi * i / n)) for i in range(n + 1)]
+    for i in range(n):
+        bm.faces.new((left[i], left[i + 1], mid[i + 1], mid[i]))
+        bm.faces.new((mid[i], mid[i + 1], right[i + 1], right[i]))
+    bm.normal_update()
+    return bm
 
 
 def fierce_face(add, hc, hr, cfg, coll, M):
@@ -384,6 +424,20 @@ def build(name, cfg, coll=None):
                 d = Vector((0, 0.95, 0.75 - t * 1.2)).normalized()
                 p, n = C.on_ellipsoid(hc, hr, d) if k < 2 else C.on_ellipsoid(bc, br, Vector((0, 1, 0.9 - (t - 0.3) * 1.6)).normalized())
                 add('head' if k < 2 else 'body', C.mesh_obj(f'spike{k}', C.cone(p + n * 0.03, 0.045 - t * 0.012, 0.0, 0.11 - t * 0.03, seg=8, rot=C.look_rot(n)), M['accent'], coll, outline=OUT * 0.5))
+        if cfg.get('leaves'):
+            lm = _m('leafdeco', cfg.get('leaf', '#7ac83a'), rough=0.5)
+            ld = _m('leafdeco2', cfg.get('leaf2', '#4f9a2a'), rough=0.5)
+            for side, sx in (('R', -1), ('L', 1)):
+                sh = Vector(bones[f'arm.{side}'][0])
+                for k in range(4):
+                    a = math.radians(-50 + k * 33)
+                    d = Vector((sx * math.cos(a) * 0.9, -0.15 + 0.1 * k, math.sin(a) + 0.6)).normalized()
+                    add(f'arm.{side}', C.mesh_obj(f'sleaf{side}{k}', leaf_mesh(sh + d * 0.08, d, 0.24 + 0.04 * (k % 2)), lm if k % 2 else ld, coll, outline=OUT * 0.55))
+            for k in range(7):   # 목 깃
+                a = math.radians(-150 + k * 50)
+                d = Vector((math.sin(a) * 0.9, -math.cos(a) * 0.9, -0.35)).normalized()
+                base = Vector((0, 0, bc.z + br[2] * 0.82)) + Vector((math.sin(a) * br[0] * 0.75, -math.cos(a) * br[1] * 0.75, 0))
+                add('body', C.mesh_obj(f'cleaf{k}', leaf_mesh(base, d, 0.2), lm if k % 2 else ld, coll, outline=OUT * 0.55))
         if cfg.get('moss'):
             mm = _m('moss', '#5aa63a', rough=0.8)
             for k, d in enumerate([Vector((0, 0.1, 1)), Vector((0.6, 0, 0.7)), Vector((-0.6, 0.2, 0.7)), Vector((0.3, -0.4, 0.8))]):
