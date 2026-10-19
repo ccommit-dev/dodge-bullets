@@ -47,7 +47,7 @@ for (let round = 0; round < 4; round += 1) {
       }
       const m = document.querySelector(".titan-monster-art.anim2 .monster-frames");
       if (m) { const cs = getComputedStyle(m); r.mon = [cs.backgroundPositionX, cs.backgroundPositionY]; }
-      const h = document.querySelector(".titans-hero .equipment-base");
+      const h = document.querySelector(".titans-hero .equipment-base.is-on") ?? document.querySelector(".titans-hero .equipment-base");   // 2판은 세 시트 층 중 보이는 것
       if (h) { const cs = getComputedStyle(h); r.hero = [cs.backgroundImage.split("/").pop(), cs.backgroundPositionX]; }
       out.push(r);
       if (performance.now() - t0 < 2200) requestAnimationFrame(tick); else resolve(out);

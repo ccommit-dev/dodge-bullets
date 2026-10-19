@@ -39,10 +39,15 @@ export const IDLE_FRAME_MS = 240;
 /** 공격 한 번 길이 — 2판은 8칸 480ms(anim-layout.json) */
 export const ATTACK_CLIP_MS = HERO_ANIM ? Math.round(heroFrameMs("attack") * 8) : 420;
 
+/** 미리 받은 주인공 시트 — 참조를 쥐고 있어야 풀어 둔 그림이 바로 버려지지 않는다 (2026-10-19) */
+const heldSheets: HTMLImageElement[] = [];
 export function preloadTitanSheets(): void {
+  if (heldSheets.length) return;
   for (const src of HERO_ANIM ? (["idle", "walk", "attack"] as const).map((m) => sheetFor("default", m)) : [IDLE_SHEET, ATTACK_SHEET]) {
     const img = new Image();
     img.decoding = "async";
     img.src = src;
+    void img.decode?.().catch(() => {});
+    heldSheets.push(img);
   }
 }
