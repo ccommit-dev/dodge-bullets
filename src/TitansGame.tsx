@@ -341,7 +341,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250 });
+  // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250, seq: 0 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -541,7 +542,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     const durationMs = Math.round(speedBase * (.88 + Math.random() * .24));
-    setEncounterMotion({
+    setEncounterMotion((prev) => ({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       // 2026-10-08 사용자: 주인공·동료 겹침 — 주인공 54~66px 가 되면서 근접 슬롯(몬스터 왼쪽에 붙음)과 100% 겹쳤다.
       // 몬스터를 오른쪽으로(30 → 16%) 물려 왼쪽부터 원거리(0~3%) · 주인공(28%) · 근접(몬스터 왼쪽) · 몬스터 네 띠가 생긴다
@@ -551,7 +552,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 390px 실측: 몬스터 오른쪽 8% → 왼쪽 가장자리 247px, 근접 163~237, 주인공 26% = 101~155, 원거리 0~3% = 50~124 — 네 띠가 겹치지 않는다
       monsterRight: (rolledKind === "dragon" ? 2 : 8) + Math.random() * 2,
       durationMs,
-    });
+      seq: prev.seq + 1,
+    }));
     window.requestAnimationFrame(() => setFormationEngaged(true));
     const approachMs = durationMs + 120;
     const formationTimer = window.setTimeout(() => {
@@ -2605,6 +2607,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               engaged={formationEngaged}
               approaching={formationEngaged && !formationReady}
               stage={save.stage}
+              encounter={encounterMotion.seq}
             />
           ))}
         </div>
