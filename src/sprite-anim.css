@@ -1,0 +1,64 @@
+/* ── 애니메이션 2판 (2026-10-19, 사용자: "모든 캐릭터, 동료의 애니메이션이 아직도 어색 — 다시 만들어서 적용") ──
+   칸(프레임) 시트가 동작을 다 갖는다(src/titans/spriteAnim.ts 가 steps 로 넘긴다). 1판에서 칸 위에 겹쳐 돌던
+   CSS 흔들기·기울임(숨 · 걷기 까딱 · 공격 기울임 · 피격 회전)은 주기가 제각각이라 떨림처럼 보였다 → .anim2 에선 끈다.
+   남기는 것: 이동(근접 돌진 거리 · 원거리 반동 · 피격 밀림)만 — 칸이 모르는 몸 전체 위치. 공격 길이(560ms)에 맞춘다. */
+
+/* 동료 */
+.ally-body.anim2 { position: absolute; background: none !important; }
+.ally-sprite { position: absolute; inset: 0; display: block; pointer-events: none; }
+.titan-ally-art.anim2 .ally-idle,
+.titan-ally-art.anim2.is-approaching .ally-idle,
+.titans-layer.perf-low .titan-ally-art.anim2 .ally-idle { animation: none !important; transform: none !important; }
+.titan-ally-art.anim2 .ally-body,
+.titan-ally-art.anim2.is-approaching .ally-body,
+.titan-ally-art.anim2 .ally-swing.is-attacking .ally-body { animation: none !important; transform: none !important; }   /* 윤곽 그림자(filter)는 남긴다 — 사냥터 공통 잉크 윤곽 */
+.titan-ally-art.anim2 .ally-swing,
+.titan-ally-art.anim2.is-approaching .ally-swing,
+.titan-ally-art.anim2.was-hit .ally-swing { animation: none !important; transform: none !important; }
+/* 근접: 예비에서 반 발 물러섰다가(−3px) 휘두름·임팩트에서 몬스터 쪽으로 12px — 칸의 예비(0~2) · 휘두름(3) · 임팩트(4~5) · 복귀(6~7)와 같은 박자 */
+.titan-ally-art.anim2.combat-melee .ally-swing.is-attacking { animation: a2-lunge-melee var(--a2-atk, .56s) linear both !important; }
+/* 원거리: 놓는 순간(칸 4) 뒤로 4px 튕긴다 */
+.titan-ally-art.anim2.combat-ranged .ally-swing.is-attacking { animation: a2-recoil-ranged var(--a2-atk, .56s) ease-out both !important; }
+/* 피격: 뒤로 밀렸다 돌아온다(피격 4칸 320ms). hit-0/1 을 번갈아 매번 다시 돈다 */
+.titan-ally-art.anim2.was-hit.hit-0:not(.a2-atk) .ally-swing { animation: a2-knock-a .32s ease-out !important; }
+.titan-ally-art.anim2.was-hit.hit-1:not(.a2-atk) .ally-swing { animation: a2-knock-b .32s ease-out !important; }
+@keyframes a2-lunge-melee { 0% { translate: 0 0; } 30% { translate: -3px 0; } 45% { translate: 9px 0; } 72% { translate: 12px 0; } 100% { translate: 0 0; } }
+@keyframes a2-recoil-ranged { 0%, 45% { translate: 0 0; } 60% { translate: -4px 0; } 100% { translate: 0 0; } }
+@keyframes a2-knock-a { 0% { translate: 0 0; } 30% { translate: -6px 0; } 100% { translate: 0 0; } }
+@keyframes a2-knock-b { 0% { translate: 0 0; } 30% { translate: -6px 0; } 100% { translate: 0 0; } }
+
+/* 몬스터 — 칸 그림 상자 · 쓰러짐 그림 · 오른쪽을 보게 렌더한 4종 뒤집기 */
+.titan-monster-art.anim2 { position: relative; }
+.titan-monster-art.anim2 .monster-frames { position: absolute; inset: 0; display: block; }
+.titan-monster-art.anim2 > img { opacity: 0; }
+.titan-monster-art.anim2 > img.on { opacity: 1; }
+.titan-monster-art.anim2.face-flip > .monster-frames { scale: -1 1; }
+
+/* 주인공 — 2판 시트(대기·걷기·공격)가 숨·걷기를 갖는다 */
+.titans-hero .equipped-character.anim2,
+.titans-hero.is-approaching .equipped-character.anim2,
+.titans-hero:not(.is-approaching) .titans-hero-facing.facing-idle .equipped-character.anim2 { animation: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ally-sprite, .titan-monster-art.anim2 .monster-frames { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
+/* 저사양: 대기 숨만 한 번 돌고 멈춘다(걷기·공격·피격은 그대로 — 칸 넘기기는 작은 상자 다시 그리기라 가볍다) */
+.perf-low .ally-body.act-idle .ally-sprite, .perf-low .titan-monster-art.anim2 .monster-frames.act-idle { animation-iteration-count: 1 !important; }
+
+/* 동료 공격 이펙트(칼바람 고리·탄 줄기)는 임팩트 칸(8칸 중 4칸째 ≈ 0.25초)에 터진다 — 1판은 공격 시작과 함께 떠서 휘두르기 전에 번쩍였다 */
+.titan-ally-art.anim2 .ally-attack-fx { animation: a2-ally-fx calc(var(--a2-atk, .56s) * 1.1) ease-out forwards; }
+@keyframes a2-ally-fx {
+  0%, 38% { opacity: 0; transform: scale(.65); }
+  40% { opacity: 1; transform: scale(.65); }
+  100% { opacity: 0; transform: scale(1.3) translateX(6px); }
+}
+
+/* 몬스터 2판 — 칸이 숨·예비·덤빔·피격 자세(눌림·숙임·입 벌림)를 갖는다. 종별 CSS(슬라임 덮치기·고블린 찌르기 …)의 눌림·회전은
+   칸과 겹쳐 과해져(두 번 찌그러진다) 몸 전체 이동만 남긴다 — 예비는 반 발 물러서고, 덤빔은 동료 쪽으로 24px. 걸어 들어올 때 흔들기는 그대로(걷기 줄이 없다) */
+.titans-monster.action-idle:not(.is-approaching) .titan-monster-art.anim2 { animation: none !important; }
+.titans-monster.action-prepare .titan-monster-art.anim2 { animation: a2-mon-prep .24s ease-out both !important; }
+.titans-monster.combat-melee.action-attack .titan-monster-art.anim2 { animation: a2-mon-melee .5s cubic-bezier(.25, .8, .3, 1) both !important; }
+.titans-monster.combat-ranged.action-attack .titan-monster-art.anim2 { animation: a2-mon-ranged .5s ease-out both !important; }
+@keyframes a2-mon-prep { to { transform: translateX(6px); } }
+@keyframes a2-mon-melee { 0% { transform: translateX(6px); } 40% { transform: translateX(-24px); } 65% { transform: translateX(-20px); } 100% { transform: none; } }
+@keyframes a2-mon-ranged { 0% { transform: translateX(4px); } 40% { transform: translateX(-8px); } 100% { transform: none; } }

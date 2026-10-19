@@ -3,11 +3,10 @@ import { AllySigInfo } from "./titans/AllySigInfo";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
+import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
-  IDLE_FRAME_MS,
-  SPRITE_FRAME_COUNT,
   preloadTitanSheets, CHARACTER_LABEL, type CharacterSkinId } from "./titans/anim";
 import {
   BOSS_TIME_SEC,
@@ -282,7 +281,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [frameIdx, setFrameIdx] = useState(0);
   const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
   const [allyPulse, setAllyPulse] = useState<Record<string, number>>({});
-  const [allyHitPulse, setAllyHitPulse] = useState(0);
+  // 몬스터 한 번 덤빔 = 동료 한 명 피격 (2026-10-19) — 예전엔 한 카운터를 전원이 받아 덤빌 때마다 파티가 같이 움찔하고 공격이 끊겼다
+  const [allyHit, setAllyHit] = useState<Record<string, number>>({});
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
@@ -422,6 +422,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const attackUntil = useRef(0);
   const animResetRef = useRef(false);
   const animModeRef = useRef<"idle" | "attack">("idle");
+  /** 주인공이 걸어 들어오는 중 — 칸 넘기기(rAF)가 걷기 칸을 쓴다 */
+  const heroWalkRef = useRef(false);
+  useEffect(() => { heroWalkRef.current = formationEngaged && !formationReady; }, [formationEngaged, formationReady]);
   const battlePhaseRef = useRef<BattlePhase>("combat");
   const battleTimers = useRef<number[]>([]);
   const pendingStageRef = useRef<number | null>(null);
@@ -754,11 +757,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         setFrameIdx(0);
         acc = 0;
       }
-      const step = attacking ? ATTACK_CLIP_MS / SPRITE_FRAME_COUNT : IDLE_FRAME_MS;
+      // 애니메이션 2판(2026-10-19): 동작마다 칸 수·속도가 다르다 — 대기 6칸 1.2s · 걷기 6칸 0.6s(걸어 들어올 때) · 공격 8칸 0.48s
+      const mode = attacking ? "attack" : heroWalkRef.current ? "walk" : "idle";
+      const step = heroFrameMs(mode);
       if (acc >= step) {
         const steps = Math.floor(acc / step);
         acc -= steps * step;
-        setFrameIdx((i) => (i + steps) % SPRITE_FRAME_COUNT);
+        setFrameIdx((i) => (i + steps) % heroFrames(mode));
       }
       raf = requestAnimationFrame(tick);
     };
@@ -1316,7 +1321,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       busyUntil = performance.now() + prep + 540;
       setMonsterAction("prepare");
       later(() => setMonsterAction("attack"), prep);
-      later(() => setAllyHitPulse((pulse) => pulse + 1), prep + 70);
+      later(() => {
+        const ids = characterRef.current.partyIds.filter((pid) => (saveRef.current.heroes[pid as TitanHeroId] ?? 0) > 0);
+        const target = ids[Math.floor(Math.random() * ids.length)];
+        if (target) setAllyHit((prev) => ({ ...prev, [target]: (prev[target] ?? 0) + 1 }));
+      }, prep + 70);
       later(() => setMonsterAction("idle"), prep + 540);
       return prep + 540;
     };
@@ -2586,7 +2595,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <EquippedCharacter mode={animMode === "attack" ? "attack" : formationEngaged && !formationReady ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -2603,11 +2612,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               skin={character.equippedAllySkins[h.id]}
               attacking
               pulse={allyPulse[h.id] ?? 0}
-              hitPulse={allyHitPulse}
+              hitPulse={allyHit[h.id] ?? 0}
               engaged={formationEngaged}
               approaching={formationEngaged && !formationReady}
               stage={save.stage}
               encounter={encounterMotion.seq}
+              speed={save.battleSpeed}
             />
           ))}
         </div>
@@ -2632,6 +2642,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             boss={boss}
             golden={chesterson}
             stage={save.stage}
+            action={monsterAction}
+            hitKey={monsterHit}
             state={
               bossBreak >= 3 || (bossBreak === 0 && (battlePhase === "monster-death" || battlePhase === "stage-clear" || battlePhase === "stage-exit"))
                 ? "defeat"

@@ -36,14 +36,14 @@ await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins
 const framesSeen = new Map();
 for (let i = 0; i < 25; i += 1) {
   await sleep(120);
-  const snap = await page.evaluate(() => [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((el) => ({ id: [...el.classList].find((c) => c.startsWith("ally-"))?.slice(5), pos: el.querySelector(".ally-body")?.style.backgroundPosition, frame: [...(el.querySelector(".ally-body")?.classList ?? [])].find((c) => c.startsWith("frame-")), drot: el.querySelector(".ally-weapon")?.style.getPropertyValue("--weapon-drot") })));
+  const snap = await page.evaluate(() => [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((el) => ({ id: [...el.classList].find((c) => c.startsWith("ally-"))?.slice(5), pos: el.querySelector(".ally-sprite") ? getComputedStyle(el.querySelector(".ally-sprite")).backgroundPosition : el.querySelector(".ally-body")?.style.backgroundPosition, frame: [...(el.querySelector(".ally-body")?.classList ?? [])].find((c) => c.startsWith("frame-") || c.startsWith("act-")), drot: el.querySelector(".ally-weapon")?.style.getPropertyValue("--weapon-drot") })));
   for (const s of snap) { if (!framesSeen.has(s.id)) framesSeen.set(s.id, new Set()); framesSeen.get(s.id).add(`${s.frame}|${s.pos}|${s.drot}`); }
 }
 ok("A 동료 프레임: 3초 관찰 동안 미아·레온·파이로가 2가지 이상 프레임(대기/공격)을 보인다", ["mia", "leon", "pyro"].every((id) => (framesSeen.get(id)?.size ?? 0) >= 2), [...framesSeen].map(([k, v]) => `${k}:${v.size}`).join(" "));
 // 명패: 칭호·코스튬이 없으면 "모험가" (이름 없는 빈 명패가 아니다)
 ok("A'' 주인공 명패 기본값은 '모험가'", (await page.evaluate(() => document.querySelector(".titans-hero .hero-marker b, .hero-marker b")?.textContent?.trim())) === "모험가", await page.evaluate(() => document.querySelector(".hero-marker b")?.textContent ?? "(none)"));
 // 2026-10-16: 파이로도 대기 한 장 파생 띠(frames/pyro.webp — derive-anim.mjs)가 생겼다 — 띠 또는 변형 아틀라스, 어느 쪽이든 셀 비율은 같아야 한다
-ok("A 변형(파이로)은 자기 띠(frames/pyro) 또는 변형 아틀라스 · 셀 비율 유지(폭 150% · 높이 114.35%)", await page.evaluate(() => { const b = document.querySelector(".titans-allies .ally-pyro .ally-body"); return !!b && /frames\/pyro|variant/.test(b.style.backgroundImage) && b.style.width === "150%" && b.style.height === "114.35%"; }));
+ok("A 변형(파이로)은 자기 띠(frames/pyro) 또는 변형 아틀라스 · 셀 비율 유지(폭 150% · 높이 114.35%)", await page.evaluate(() => { const b = document.querySelector(".titans-allies .ally-pyro .ally-body"); const sp = b?.querySelector(".ally-sprite"); return !!b && (/frames\/pyro|variant/.test(b.style.backgroundImage) || /anim\/allies\/pyro/.test(sp?.style.backgroundImage ?? "")) && b.style.width === "150%" && b.style.height === "114.35%"; }));
 // 2026-10-14: 비버 원화는 무기를 그림에 들고 있다 — 인간 원화 시절 무기 덧그림(.ally-weapon)이 거꾸로 얹혀 "왼쪽을 본다"로 읽혔다. 덧그림이 하나도 없어야 한다
 ok("A 동료 무기 덧그림 없음(무기는 원화에 포함 · 프레임 기록에 drot 없음)", (await page.evaluate(() => document.querySelectorAll(".titans-allies .ally-weapon").length)) === 0 && [...framesSeen.values()].every((set) => [...set].every((s) => s.endsWith("|undefined"))), [...(framesSeen.get("mia") ?? [])].slice(0, 3).join(" ; "));
 
@@ -53,7 +53,7 @@ const hitSeen = await (async () => {
   for (let i = 0; i < 60 && !seen; i += 1) {   // 50ms × 60 — 피격 칸은 짧게만 보인다(100ms 표본이 가끔 놓쳤다)
     await sleep(50);
     // 2026-10-15: 생성 프레임 띠(.has-frames)면 피격 칸(5칸 중 마지막 = 100%)이 보이면 된다
-    seen = await page.evaluate(() => !!document.querySelector(".titan-monster-art.frame-hit img.on[src*='-hit.png']") || [...document.querySelectorAll(".titan-monster-art.has-frames.frame-hit .monster-frames")].some((e) => getComputedStyle(e).backgroundPosition.startsWith("100%")));
+    seen = await page.evaluate(() => !!document.querySelector(".titan-monster-art.frame-hit img.on[src*='-hit.png']") || [...document.querySelectorAll(".titan-monster-art.has-frames.frame-hit .monster-frames")].some((e) => getComputedStyle(e).backgroundPosition.startsWith("100%")) || [...document.querySelectorAll(".titan-monster-art.anim2.frame-hit .monster-frames")].some((e) => getComputedStyle(e).backgroundPositionY === "100%"));
   }
   return seen;
 })();
@@ -68,15 +68,17 @@ const kindAnims = await page.evaluate(() => {
     const idle = getComputedStyle(img).animationName;
     el.className = el.className.replace("action-idle", "action-attack");
     const attack = getComputedStyle(art).animationName;
-    out[kind] = { idle, attack };
+    out[kind] = { idle, attack, a2: art.classList.contains("anim2") };
   }
   el.className = orig;
   return out;
 });
 const expectAnim = { slime: ["slime-idle", "slime-pounce"], goblin: ["goblin-idle", "goblin-jab"], wolf: ["wolf-idle", "wolf-pounce"], dragon: ["dragon-hover", "dragon-breath"], ogre: ["ogre-breathe", "ogre-smash"], boss: ["ogre-breathe", "ogre-smash"] };
-ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => kindAnims[k]?.idle === idle && kindAnims[k]?.attack === attack), JSON.stringify(kindAnims));
+// 2026-10-19 애니메이션 2판: 2판 시트 몬스터는 종별 덮치기·찌르기 자세를 렌더 칸이 갖고(art-gen/blender anim2.monster_actions), CSS 는 몸 이동만(a2-mon-melee/ranged — 칸과 겹치면 두 번 찌그러졌다).
+// 대기 이름(img)은 그대로 종별. 2판이 아니면 예전처럼 종별 공격 키프레임
+ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => kindAnims[k]?.idle === idle && kindAnims[k]?.attack === (kindAnims[k]?.a2 ? (k === "dragon" ? "a2-mon-ranged" : "a2-mon-melee") : attack)), JSON.stringify(kindAnims));
 // 2026-10-13: 공격 프레임(-attack.png) 추가 → 4장
-ok("B 프레임이 모두 마운트되어 있다(옛: idle·hit·attack·defeat 4장 · 새: 5칸 띠 + 처치 그림)", await page.evaluate(() => (!!document.querySelector(".titan-monster-art.has-frames .monster-frames") && !!document.querySelector(".titan-monster-art.has-frames img[src*='-defeat.png']")) || document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
+ok("B 프레임이 모두 마운트되어 있다(옛: idle·hit·attack·defeat 4장 · 띠: 5칸 + 처치 그림 · 2판: 동작 시트 + 처치 그림)", await page.evaluate(() => (!!document.querySelector(".titan-monster-art.anim2 .monster-frames") && !!document.querySelector(".titan-monster-art.anim2 img[src*='-defeat.png']")) || (!!document.querySelector(".titan-monster-art.has-frames .monster-frames") && !!document.querySelector(".titan-monster-art.has-frames img[src*='-defeat.png']")) || document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
 // 보스: 강한 파티로 즉시 처치 → 3단계 클래스 관찰
 await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9 },
   { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 60, leon: 60 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now });

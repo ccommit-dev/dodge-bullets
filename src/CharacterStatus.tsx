@@ -1,3 +1,4 @@
+import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
 import { useEffect, useMemo, useState } from "react";
 import { loadBeatRpg } from "./game/storage";
@@ -88,7 +89,8 @@ export function CharacterStatus({
 
   useEffect(() => {
     // idle 프레임은 AI 보일링이 있어 느리게 돌려야 떨림이 아닌 호흡으로 읽힌다 (anim.ts 참조)
-    const id = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 240);
+    // 대기 칸 수·속도는 애니메이션 2판 배치(spriteAnim) — 예전 4칸 240ms 고정은 6칸 시트에서 0~3칸만 돌다 튀었다
+    const id = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % heroFrames("idle")), heroFrameMs("idle"));
     return () => window.clearInterval(id);
   }, []);
 
@@ -336,7 +338,7 @@ export function CharacterStatus({
                 }}
               >
                 {/* 캐릭터 썸네일 — 대기 시트 1프레임 (텍스트만 있던 칩에 얼굴을) */}
-                <i className="skin-thumb" style={{ backgroundImage: `url(${sheetFor(skin, "idle")})` }} aria-hidden="true" />
+                <i className="skin-thumb" style={{ backgroundImage: `url(${sheetFor(skin, "idle")})`, backgroundSize: `${heroFrames("idle") * 100}% 100%` }} aria-hidden="true" />
                 <b>{CHARACTER_LABEL[skin]}</b>
                 <small>
                   {[skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : owned ? "패시브 없음" : "", owned ? "" : "미보유"].filter(Boolean).join(" · ")}

@@ -5,6 +5,7 @@ import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 import { ALLY_FRAME_SET, MONSTER_FRAME_SET } from "./frameSets";
 import { SKIN_FRAME_SET } from "./skinFrameSets";
+import { ALLY_ANIM_MS, allyAnimStyle, hasAllyAnim, hasMonsterAnim, monsterAnimStyle, type AllyAnimAction, type MonsterAnimAction } from "./spriteAnim";
 
 const ALLY_SHEET = assetUrl("titans/generated/ally-roster-weaponless-v2.png");
 
@@ -217,6 +218,8 @@ export function MonsterArt({
   golden = false,
   state = "idle",
   stage,
+  action,
+  hitKey = 0,
 }: {
   kind: TitanMonsterKind;
   area: HuntingAreaDef;
@@ -225,12 +228,27 @@ export function MonsterArt({
   state?: MonsterFrameState;
   /** 사냥터 스테이지 — 주면 지역 변종·보스 교대 그림 */
   stage?: number;
+  /** 전장의 몬스터 동작(TitansGame monsterAction) — 2판 시트의 예비 줄을 고른다 */
+  action?: "idle" | "prepare" | "attack";
+  /** 맞은 횟수 — 피격 줄을 매번 처음부터 */
+  hitKey?: number;
 }) {
   const idle = monsterAssetFor(kind, area, boss, golden, "idle", stage);
   const asset = monsterAssetFor(kind, area, boss, golden, state, stage);
   // 생성 프레임 띠 (2026-10-15) — 있으면 대기 0·1 · 예비 · 덤빔 · 피격을 띠에서 고른다(전장의 .action-prepare/.action-attack 이 칸을 바꾼다).
   // 띠는 이미 왼쪽을 보게 만들어 두어 face-flip 을 쓰지 않는다. 쓰러짐은 예전 처치 그림
   const art = idle.split("/").pop()?.replace(/.png$/, "") ?? "";
+  // 애니메이션 2판 (2026-10-19) — 대기 4 · 예비 2 · 덤빔 4 · 피격 2 칸 시트를 CSS steps 로. 오른쪽을 보게 렌더한 4종은 face-flip 이 뒤집는다
+  if (!golden && hasMonsterAnim(art)) {
+    const a: MonsterAnimAction = action === "prepare" ? "prepare" : state === "attack" || action === "attack" ? "attack" : state === "hit" ? "hit" : "idle";   // 덤비는 중엔 맞아도 덤빔 줄을 끝까지
+    return (
+      <div key={idle} className={`titan-monster-art anim2 frame-${state} ${FLIP_MONSTERS.has(art) ? "face-flip" : ""}`}>
+        <i key={`${a}-${a === "hit" ? hitKey : 0}`} className={`monster-frames anim2 act-${a}`} style={state === "defeat" ? { opacity: 0 } : monsterAnimStyle(art, a, 0, boss)} aria-hidden="true" />
+        <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
+        <span className="monster-asset-current" data-src={asset} hidden />
+      </div>
+    );
+  }
   if (!golden && hasMonsterFrames(art)) {
     return (
       <div key={idle} className={`titan-monster-art has-frames frame-${state} ${FLIP_MONSTERS.has(art) ? "face-flip" : ""}`}>
@@ -306,7 +324,7 @@ export function allyStageJitter(stage: number, id: string, encounter = 0, row = 
   return { jy: party + col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10 };
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -314,6 +332,23 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   // 단일 프레임 320ms 고정은 "포즈가 바뀐다"일 뿐 "친다"로 안 읽혔다.
   const [attackPhase, setAttackPhase] = useState<"none" | "windup" | "strike" | "recover">("none");
   const [flinching, setFlinching] = useState(false);
+  // 애니메이션 2판 (2026-10-19) — 시트(줄 = 동작)가 있으면 동작마다 6~8칸을 CSS steps 로 돌린다(spriteAnim). 스킨은 그 스킨 시트가 있을 때만
+  const sheetId = skin && ALLY_SKINS[skin]?.ally === id ? skin : id;
+  const anim2 = hasAllyAnim(sheetId);
+  const [a2, setA2] = useState<{ action: "attack" | "hit" | null; n: number }>({ action: null, n: 0 });
+  useEffect(() => {
+    if (!anim2 || !(attacking && pulse > 0)) return;
+    setA2((v) => ({ action: "attack", n: v.n + 1 }));
+    const t = window.setTimeout(() => setA2((v) => (v.action === "attack" ? { action: null, n: v.n } : v)), ALLY_ANIM_MS.attack / Math.max(1, speed));
+    return () => window.clearTimeout(t);
+  }, [anim2, attacking, pulse, speed]);
+  useEffect(() => {
+    if (!anim2 || hitPulse <= 0) return;
+    setA2((v) => (v.action === "attack" ? v : { action: "hit", n: v.n + 1 }));   // 공격 중이면 끊지 않는다(임팩트까지 간다)
+    const t = window.setTimeout(() => setA2((v) => (v.action === "hit" ? { action: null, n: v.n } : v)), ALLY_ANIM_MS.hit / Math.max(1, speed));
+    return () => window.clearTimeout(t);
+  }, [anim2, hitPulse, speed]);
+  const a2Action: AllyAnimAction = a2.action ?? (approaching ? "walk" : "idle");
   useEffect(() => {
     if (!(attacking && pulse > 0)) return;
     setAttackPhase("windup");
@@ -391,7 +426,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     ...(stage === undefined ? {} : (() => { const j = cell && lineIndex !== undefined ? allyStageJitter(stage, id, encounter, formationRow(cell, lineIndex), formationColumn(cell, lineIndex)) : allyStageJitter(stage, id, encounter); return { "--party-jy": `${j.jy}px`, "--aw-x": `${cell === "L" ? 0 : j.wx}px`, "--aw-y": `${j.wy}px`, "--aw-d": `${j.wd}s`, "--aw-delay": `${j.wdelay}s` }; })()),
   } as CSSProperties);
   return (
-    <div data-party-slot={slot} style={partyStyle} className={`titan-ally-art ally-${id} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
+    <div data-party-slot={slot} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해
@@ -405,7 +440,12 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
       <div className="ally-wander">
       <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
-          {(() => {
+          {anim2 ? (
+            // 2판: 몸 상자는 그대로(WIDE_CELL), 안쪽 칸 그림만 동작 줄을 돈다 — 같은 동작이 다시 오면 key 로 처음부터
+            <div className={`ally-body anim2 act-${a2Action}`} style={WIDE_CELL}>
+              <i key={`${a2Action}-${a2.n}`} className="ally-sprite" style={allyAnimStyle(sheetId, a2Action, (allyIndex[id] ?? 0) * -270, speed)} aria-hidden="true" />
+            </div>
+          ) : (() => {
             const state: AllyFrameState = allyFrameFor({ flinching, attackPhase, approaching, walkTick });
             const framesIdx = hasAllyFrames(id, skin) ? allyFramesIndex({ flinching, attackPhase, approaching, walkTick }) : -1;
             return (

@@ -3,6 +3,7 @@ import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
 import { drawRecurveBow } from "./arrowArt";
 import { HERO_FIG } from "../equipment/heroAnchors";
+import { HERO_ANIM, heroFrameMs, heroFrames } from "../titans/spriteAnim";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
@@ -22,15 +23,20 @@ export const SHOOT_MS = 300;
 /** Source sheet faces left; multiply logical facing by this when drawing. */
 // 대기 시트가 오른쪽을 보는 원화로 교체됐다(2026-09-08) — 예전 정면/왼쪽 시트는 -1 이었다
 const EXPEDITION_NATIVE_FACING = 1;
-let expeditionHero: HTMLImageElement | null = null;
+const expeditionHero: Partial<Record<"idle" | "walk", HTMLImageElement>> = {};
 
-function getExpeditionHero(): HTMLImageElement | null {
+/** 성문 방어 주인공 시트 — 애니메이션 2판(2026-10-19)이면 대기 6칸 · 걷기 6칸 webp, 아니면 1판 대기 4칸 PNG. 둘 다 처음에 같이 받는다 */
+function getExpeditionHero(mode: "idle" | "walk"): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
-  if (!expeditionHero) {
-    expeditionHero = new Image();
-    expeditionHero.src = assetUrl("titans/character/base/hero-idle.png");
+  if (!expeditionHero.idle) {
+    for (const m of HERO_ANIM ? (["idle", "walk"] as const) : (["idle"] as const)) {
+      const img = new Image();
+      img.src = assetUrl(HERO_ANIM ? `titans/anim/hero/hero-${m}.webp` : "titans/character/base/hero-idle.png");
+      expeditionHero[m] = img;
+    }
   }
-  return expeditionHero;
+  const want = HERO_ANIM ? expeditionHero[mode] : undefined;
+  return want?.complete && want.naturalWidth > 0 ? want : expeditionHero.idle ?? null;
 }
 
 /**
@@ -156,17 +162,20 @@ export function drawStickman(
   ctx.ellipse(p.x, floorY - 2, p.radius * 1.15 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const idleHero = getExpeditionHero();
+  const sheetMode: "idle" | "walk" = HERO_ANIM && p.anim === "run" ? "walk" : "idle";
+  const idleHero = getExpeditionHero(sheetMode);
   // 쏘는 동작 (2026-10-08, 사용자: "활이나 지팡이로 쏠 때 애니메이션이 동작을 안 해"): 기본 사격·스킬 무기 발사마다 무기 시트가 한 번 돈다
   const shooting = p.shootMs > 0 && p.anim !== "dead" && p.anim !== "hit" && p.anim !== "dash";
   const hero = idleHero;   // 2026-10-16: 쏠 때도 같은 대기 시트 — 동작은 아래 캔버스 기울임(당김 ↶ · 놓음 ↷)
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
     // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
-    const frameCount = 4;
+    // 2판: 걷기 시트가 실제로 받아졌을 때만 걷기 칸 수(받기 전엔 대기 시트로 그린다)
+    const usedMode: "idle" | "walk" = HERO_ANIM && hero === expeditionHero.walk ? "walk" : "idle";
+    const frameCount = heroFrames(usedMode);
     const frameWidth = hero.naturalWidth / frameCount;
-    const frameRate = p.anim === "run" ? 10 : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 5;
-    const frame = Math.floor(p.animTime * frameRate) % 4;
+    const frameRate = p.anim === "run" ? 1000 / heroFrameMs("walk") : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 1000 / heroFrameMs("idle");
+    const frame = Math.floor(p.animTime * frameRate) % frameCount;
     const fig = FIG_IDLE;
     // 인물 키를 시트와 상관없이 같게 — 반지름 5.2배(≈77px). 예전 4.57배(67px)는 폰에서 작다고 읽혔다(2026-10-15 원화 감사).
     // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(앞 20 · 턱 −28)로 함께 옮겼다. 판정 반지름은 그대로
@@ -179,7 +188,7 @@ export function drawStickman(
     // 오른쪽(+1)을 본다. 일괄 -1을 곱하면 검격이 바라보는 방향과 반대로 베어진다.
     const nativeFacing = EXPEDITION_NATIVE_FACING;   // 무기 시트도 대기처럼 오른쪽을 본다 (prompt: facing right)
     ctx.scale(p.facing * nativeFacing, 1);
-    if (p.anim === "run") ctx.rotate(Math.sin(p.animTime * 18) * 0.025);
+    if (p.anim === "run" && !HERO_ANIM) ctx.rotate(Math.sin(p.animTime * 18) * 0.025);   // 2판은 걷기 칸이 뒤뚱거림을 갖는다
     // 위를 바라본다 (2026-10-08, 사용자: "방어 원정에서는 위를 바라보고"): 몬스터는 위에서 내려오므로 조준 각도만큼
     // 몸이 뒤로 젖혀지고 머리가 들린다. 옆모습 원화라 완전한 뒷모습은 못 되지만 "위를 보며 쏜다"가 읽힌다
     if (p.anim !== "dead" && p.anim !== "hit") {
