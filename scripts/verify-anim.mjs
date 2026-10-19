@@ -50,7 +50,8 @@ ok("A 동료 무기 덧그림 없음(무기는 원화에 포함 · 프레임 기
 // ── B. 몬스터 피격 프레임 + 보스 3단계 ──
 const hitSeen = await (async () => {
   let seen = false;
-  for (let i = 0; i < 60 && !seen; i += 1) {   // 50ms × 60 — 피격 칸은 짧게만 보인다(100ms 표본이 가끔 놓쳤다)
+  // 2026-10-19: 2판은 예비·덤빔 중에 맞으면 덤빔 줄을 끝까지 그린다(SpriteArt) — 3초 동안 맞는 순간이 모두 덤빔 중이면 놓쳐 8초로 늘렸다
+  for (let i = 0; i < 160 && !seen; i += 1) {   // 50ms × 160 — 피격 칸은 짧게만 보인다(100ms 표본이 가끔 놓쳤다)
     await sleep(50);
     // 2026-10-15: 생성 프레임 띠(.has-frames)면 피격 칸(5칸 중 마지막 = 100%)이 보이면 된다
     seen = await page.evaluate(() => !!document.querySelector(".titan-monster-art.frame-hit img.on[src*='-hit.png']") || [...document.querySelectorAll(".titan-monster-art.has-frames.frame-hit .monster-frames")].some((e) => getComputedStyle(e).backgroundPosition.startsWith("100%")) || [...document.querySelectorAll(".titan-monster-art.anim2.frame-hit .monster-frames")].some((e) => getComputedStyle(e).backgroundPositionY === "100%"));

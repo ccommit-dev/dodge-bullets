@@ -11,6 +11,7 @@
  */
 import sharp from "sharp";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { makeHeroPortrait } from "./make-hero-portrait.mjs";
 
 const SRC = "art-gen/out/b3d2";
 const LAYOUT = JSON.parse(readFileSync("art-gen/anim-layout.json", "utf8"));
@@ -210,6 +211,7 @@ ${out.attack.map(fmt).join("\n")}
 /** 성문 방어 — 대기 시트 인물 상자(칸 %) */
 export const HERO_FIG = ${JSON.stringify(fig)};
 `);
+    await makeHeroPortrait("public/titans/anim/hero/hero-idle.webp", H.sheets.idle.frames);   // 아이콘용 초상
     done.hero = true;
     console.log("hero k", k.toFixed(3), "fig", JSON.stringify(fig));
   }

@@ -25,6 +25,10 @@ export function sheetFor(character: string, mode: HeroAnimMode): string {
   if (isSkin(character)) return assetUrl(`titans/character/skins/hero-${m}-${character}.png`);
   return m === "attack" ? ATTACK_SHEET : IDLE_SHEET;
 }
+/** 주인공 초상(머리~가슴 정사각, scripts/make-hero-portrait.mjs) — 마이페이지 · 스킬 연계 · 순위 아이콘. 1:2 칸 시트를 정사각에 늘리면 납작했다 (2026-10-19) */
+export function heroPortrait(): string {
+  return HERO_ANIM ? assetUrl("titans/anim/hero/hero-portrait.webp") : IDLE_SHEET;
+}
 export const SPRITE_FRAME_COUNT = 4;
 /**
  * idle 시트의 4프레임은 자세가 아니라 AI 생성 특유의 미세한 그림 차이다.

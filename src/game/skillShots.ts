@@ -395,8 +395,10 @@ function freeze(world: GameWorld, a: Arrow, slow: number, chillMs: number): void
  * 출발해 60px 안에 실제 궤적(플레이어 중심 −14 에서 나간 것)에 합쳐진다. 판정 출발점을 활 손으로 옮기면 20px 차이에 주간·곡선 게이트가
  * 경계에서 흔들려(중간 S4 8 → 6, 주간 첫 S4 7일) 판정은 그대로 두었다 (2026-10-02)
  * 2026-10-15: 주인공을 77px 로 키운 뒤(player.ts HERO_FIG_RADII) 예전 손(12, −34)이 주둥이 위라 활이 얼굴을 가렸다 → 앞으로 20 · 턱 높이 −28
+ * 2026-10-19: 왕관을 벗긴 2판 주인공(인물 69px)에서 −28 은 눈높이 — 코 −22 · 입 −16 · 턱 −10 · 대기 시트의 내민 손 (+25, −5).
+ *   위로 겨누면 가로로 누운 활이 주둥이를 덮었다 → 내민 손 자리(가슴 앞) 24 · −8
  */
-export const BOW_HAND_X = 20, BOW_HAND_Y = -28, BOW_REACH = 8;
+export const BOW_HAND_X = 24, BOW_HAND_Y = -8, BOW_REACH = 8;
 export function bowHand(world: GameWorld): { x: number; y: number } {
   return { x: world.player.x + world.player.facing * BOW_HAND_X, y: world.player.y + BOW_HAND_Y };
 }
