@@ -6,6 +6,7 @@
  * 배경 원화 · 금테 액자 · 주인공 + 전투력 + 기록 4칸 · 함께한 동료 4명 초상(레벨) · 장비(대검·견갑·장착 스킬 무기)를 한 장에.
  * 예전 카드는 남색 바탕에 글자 두 줄 · 실루엣 · 전투력 하나였다.
  */
+import { sheetFor } from "../titans/anim";
 import { assetUrl } from "../asset";
 import { isNativePlatform } from "../game/native";
 
@@ -87,7 +88,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   const [backdrop, star, sheet, allyImgs, itemImgs] = await Promise.all([
     input.backdrop ? loadImage(input.backdrop) : Promise.resolve(null),
     loadImage(assetUrl("ui/idle/star.png")),
-    loadImage(input.characterSheet ?? assetUrl("titans/character/base/hero-idle.png")),
+    loadImage(input.characterSheet ?? sheetFor("default", "idle")),
     Promise.all((input.allies ?? []).slice(0, 4).map((a) => loadImage(a.src))),
     Promise.all((input.items ?? []).slice(0, 6).map((it) => loadImage(it.src))),
   ]);

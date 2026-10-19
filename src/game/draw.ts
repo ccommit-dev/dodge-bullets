@@ -390,6 +390,8 @@ function monsterBase(a: Pick<Arrow, "kind" | "boss" | "bossTier">): string {
  * 애니메이션 2판 시트(2026-10-19, 사냥터와 같은 3D 리그 칸) — 일반 몬스터만. 대장은 화면에 아주 크게(수백 px) 그려 384px 칸이 흐려지므로
  * 1024px 원화를 그대로 쓴다. 줄: 대기(내려오며 숨) · 덤빔(방어막에 붙어 찧을 때) · 피격(맞은 140ms)
  */
+/** 오른쪽을 보게 그린 종 — 사냥터 SpriteArt 의 FLIP_MONSTERS(face-flip)와 같은 넷 */
+const FLIP_RIGHT_FACING = new Set(["fire-demon", "thorn-boar-king", "flame-wyvern-clean", "lava-drake"]);
 function monsterSheet(a: Pick<Arrow, "kind" | "boss" | "bossTier">): HTMLImageElement | null {
   const base = monsterBase(a);
   // 대장은 큰 칸(576²) 시트 — 없으면 원화(1024px)를 그대로(작은 칸은 대장 크기에서 흐렸다)
@@ -485,7 +487,8 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   const size = monsterSize(a);
   const t = performance.now() * 0.001;
   const walk = Math.sin(t * 9 + a.x * 0.05);                    // 걷는 들썩임 — 개체마다 위상이 다르다
-  const facing = a.vx < -5 ? -1 : a.vx > 5 ? 1 : 1;
+  // 몬스터·대장은 늘 왼쪽을 본다(방향 규칙) — 움직임 따라 뒤집으면 왼쪽으로 갈 때 오른쪽을 봤다. 오른쪽을 보게 그린 4종만 뒤집는다 (2026-10-19)
+  const facing = FLIP_RIGHT_FACING.has(monsterBase(a)) ? -1 : 1;
   ctx.save();
   // 발밑 그림자
   ctx.fillStyle = "rgba(0,0,0,.28)";

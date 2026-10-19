@@ -221,7 +221,7 @@ export const HERO_FIG = ${JSON.stringify(fig)};
   const cur = existsSync(path) ? readFileSync(path, "utf8") : "";
   const keep = (name) => JSON.parse((cur.match(new RegExp(`${name}[^=]*=\\s*(\\[[^\\]]*\\])`)) ?? [, "[]"])[1]);
   const heroReady = done.hero || /HERO_ANIM_READY = true/.test(cur);
-  const keepHd = () => { const m = cur.match(/MONSTER_HD[^=]*=s*({[^}]*})/); return m ? JSON.parse(m[1]) : {}; };
+  const keepHd = () => { const m = cur.match(/MONSTER_HD[^=]*=\s*({[^}]*})/); return m ? JSON.parse(m[1]) : {}; };
   const strip = (o) => JSON.parse(JSON.stringify(o, (k, v) => (k === "_note" ? undefined : v)));
   writeFileSync(path, `/** 애니메이션 2판 배치 — scripts/assemble-anim2.mjs 가 art-gen/anim-layout.json 에서 쓴다 (손대지 말 것).
  * 시트는 줄 = 동작 · 칸 = 프레임. ms 는 한 바퀴(loop) 또는 한 번 재생 시간. 게임(SpriteArt · EquippedCharacter · player · sprite-anim.css)이 이 값으로 칸을 넘긴다 */

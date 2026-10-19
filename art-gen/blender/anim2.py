@@ -199,6 +199,8 @@ def beaver_actions(role, hero=False, weapon=None):
     if hero:   # 주인공 무기는 게임이 손 앵커에 덧그린다 — 예비 0~2칸은 먼 손이 머리 뒤라 무기를 몸 뒤에 그리게 표시(wb)
         for i in (0, 1, 2):
             out['attack'][i]['wb'] = 1
+        for i in (3, 4, 5, 6, 7):   # 휘두름~정착: 손을 바깥으로 — 덧그린 북이 주둥이를 덮지 않고 얼굴 오른쪽에 온다
+            out['attack'][i]['arm_l_out'] = max(out['attack'][i]['arm_l_out'], 50)
     extra =LONG_AIM.get(weapon, 0) if role in ('melee', 'tank') and not hero else 0
     if extra:
         for i, w in LONG_W.items():
