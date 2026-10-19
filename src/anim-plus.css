@@ -128,6 +128,9 @@
 /* ── 2026-10-16 랜덤성 (사용자: "동료 y 값이 스테이지마다 너무 같다 · 몬스터가 너무 가만히 있다 — 공격·피격 랜덤으로 긴장감") ── */
 /* 동료: 스테이지마다 다른 높이(--party-jy, SpriteArt allyStageJitter) + 제자리 어슬렁(교전 중, 동료마다 폭·주기·위상이 다르다) */
 .titans-allies .titan-ally-art[data-party-slot] { bottom: calc(var(--party-lane-y) + var(--party-jy, 0px)); }
+/* 걸어 들어가는 동안 높이도 옮겨 간다 (2026-10-19, 사용자: "걸어오는 건 되는데 y값이 일정") — 만남마다 새로 뽑은 --party-jy 로, 걷는 시간(--encounter-duration) 동안 비스듬히.
+   예전 bottom .28s 는 높이가 걷기 전에 툭 바뀌었다(App.css 4493 의 같은 선택자를 덮는다) */
+.titans-allies .titan-ally-art[data-party-slot] { transition: left var(--encounter-duration, 1.15s) linear, bottom var(--encounter-duration, 1.15s) ease-in-out, translate .32s ease; }
 .titans-allies .titan-ally-art[data-party-slot].is-engaged { bottom: calc(var(--party-combat-y, var(--party-lane-y)) + var(--party-jy, 0px)); }
 .ally-wander { width: 100%; height: 100%; }
 .titan-ally-art.is-engaged:not(.is-approaching) .ally-wander { animation: ally-wander var(--aw-d, 3s) ease-in-out var(--aw-delay, 0s) infinite; }
