@@ -2,23 +2,10 @@ import type { GameWorld, Player } from "./types";
 import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
 import { drawRecurveBow } from "./arrowArt";
-import { HERO_FIG, HERO_GEAR_SPOTS } from "../equipment/heroAnchors";
+import { HERO_FIG } from "../equipment/heroAnchors";
 
 const GRAVITY = 1650;
 const BASE_RADIUS = 16;
-/** 파츠 그림 캐시 — titans/gear/<part>-<tier>.png (없으면 그리지 않는다) */
-const gearImgs = new Map<string, HTMLImageElement | null>();
-function gearImage(part: string, tier: number): HTMLImageElement | null {
-  const key = `${part}-${tier}`;
-  if (!gearImgs.has(key)) {
-    const img = new Image();
-    img.onerror = () => gearImgs.set(key, null);
-    img.src = assetUrl(`titans/gear/${key}.png`);
-    gearImgs.set(key, img);
-  }
-  const img = gearImgs.get(key);
-  return img && img.complete && img.naturalWidth > 0 ? img : null;
-}
 /**
  * 시트별 인물 상자(프레임 %, 4칸 평균 — 2026-10-15 원화 감사에서 잼). 대기 시트(hero-idle, 443×887 칸)는 위 31% 가 비어 있고
  * 무기 시트(hero-bow/staff, 780×887 칸)는 꽉 차 있어, 같은 높이로 그리면 쏠 때마다(0.55초마다) 주인공이 1.4배 커졌다 줄었다.
@@ -30,19 +17,6 @@ type FigBox = { x0: number; x1: number; y0: number; y1: number };
 /** 대기 시트 인물 상자 — assemble-b3d 가 렌더에서 재서 heroAnchors.ts 에 쓴다 */
 const FIG_IDLE: FigBox = HERO_FIG;
 const HERO_FIG_RADII = 5.2;
-/** 파츠 자리 — 인물 상자 기준(u 가로 · v 세로 0~1 · size = 파츠 폭 ÷ 인물 키). 사냥터 EquippedCharacter 와 같은 뼈 투영값 */
-const GEAR_SPOTS: readonly (readonly [part: "boots" | "shield" | "armor" | "gloves" | "helmet", u: number, v: number, size: number])[] = HERO_GEAR_SPOTS;
-/** 인물 상자 기준 자리에 파츠를 얹는다 — 호출 시점의 변환(캐릭터 발밑 원점·facing 스케일)을 그대로 쓴다 */
-function drawGearPart(ctx: CanvasRenderingContext2D, part: string, tier: number, u: number, v: number, size: number, fig: FigBox, drawWidth: number, drawHeight: number): void {
-  if (tier <= 0) return;
-  const img = gearImage(part, tier);
-  if (!img) return;
-  const figW = ((fig.x1 - fig.x0) / 100) * drawWidth, figH = ((fig.y1 - fig.y0) / 100) * drawHeight;
-  const w = figH * size, h = w * (img.naturalHeight / img.naturalWidth);
-  const x = -drawWidth / 2 + (fig.x0 / 100) * drawWidth + u * figW, y = -drawHeight + (fig.y0 / 100) * drawHeight + v * figH;
-  ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
-}
-
 /** 쏘는 동작 길이(ms) — 기본 사격 재사용(0.55s)보다 짧아 연사해도 프레임이 매번 처음부터 돈다 */
 export const SHOOT_MS = 300;
 /** Source sheet faces left; multiply logical facing by this when drawing. */
@@ -281,8 +255,7 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
-    // 파츠 오버레이 (2026-10-12) — 사냥터 EquippedCharacter 와 같은 자리(인물 상자 기준): 신발 → 방패 → 갑옷 → 장갑 → 투구 (무기는 활·지팡이가 따로 그린다)
-    for (const [part, u, v, size] of GEAR_SPOTS) drawGearPart(ctx, part, p.gear[part], u, v, size, fig, drawWidth, drawHeight);
+    // 파츠 오버레이는 걷었다 (2026-10-19, 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게") — 무기(활·지팡이)만 아래에서 그린다
         ctx.restore();
     if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
 
