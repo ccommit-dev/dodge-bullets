@@ -37,13 +37,14 @@ for (const [dev, w, h] of DEVICES) {
   await sleep(1200);
   // 동료·몬스터 띠 · 이펙트 띠 · 아이콘이 이 엔진에서 실제로 디코딩되는가
   const decode = await page.evaluate(async () => {
-    const urls = ["/titans/generated/allies/frames/mia.webp", "/titans/generated/allies/frames/leon.webp", "/titans/generated/monsters/frames/goblin.webp", "/titans/fx/slash-default.webp", "/titans/fx/impact-fire.webp", "/ui/skills/titans/meteor.png", "/titans/character/base/hero-attack.png"];
+    const urls = ["/titans/anim/allies/mia.webp", "/titans/anim/allies/leon.webp", "/titans/anim/monsters/goblin.webp", "/titans/anim/hero/hero-idle.webp", "/titans/anim/hero/hero-attack.webp", "/titans/fx/slash-default.webp", "/titans/fx/impact-fire.webp", "/ui/skills/titans/meteor.png", "/titans/character/base/hero-attack.png"];
     const out = {};
     for (const u of urls) out[u.split("/").pop()] = await new Promise((res) => { const i = new Image(); i.onload = () => res(i.naturalWidth); i.onerror = () => res(0); i.src = u; });
     return out;
   });
   ok(`${dev} 그림 디코딩(webp 띠 · 이펙트 · 아이콘 · 주인공 시트)`, Object.values(decode).every((v) => v > 0), JSON.stringify(decode));
-  const allyBg = await page.evaluate(() => [...document.querySelectorAll(".titans-allies .ally-body")].map((e) => getComputedStyle(e).backgroundImage.includes("frames/") ? 1 : 0).reduce((a, b) => a + b, 0));
+  // 2026-10-19 애니메이션 2판: 동료 칸 그림은 .ally-body 안의 .ally-sprite(anim/allies/<id>.webp) — 1판 띠(frames/)도 센다
+  const allyBg = await page.evaluate(() => [...document.querySelectorAll(".titans-allies .ally-body")].map((e) => { const sp = e.querySelector(".ally-sprite"); return (sp ? getComputedStyle(sp).backgroundImage : getComputedStyle(e).backgroundImage).match(/anim\/allies\/|frames\//) ? 1 : 0; }).reduce((a, b) => a + b, 0));
   ok(`${dev} 사냥터 동료가 3D 프레임 띠로 그려진다`, allyBg >= 3, `띠 동료 ${allyBg}`);
   const layout = async (screen) => {
     const r = await page.evaluate(() => {

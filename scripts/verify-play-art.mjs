@@ -36,7 +36,7 @@ const rects = () => page.evaluate(() => {
   const r = (el, core = 1) => { const b = el.getBoundingClientRect(); const w = b.width * core; return { x: b.x + (b.width - w) / 2, y: b.y, w, h: b.height }; };
   // .ally-body 는 셀 폭 150%(투명 여백 포함)라 그린 인물은 중앙 45% 폭, 영웅·몬스터도 여백을 빼고 중앙 55%
   const field = document.querySelector(".titans-field");
-  const allies = [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((e) => ({ id: (e.className.match(/ ally-([a-z_]+)/) || [])[1], approaching: e.classList.contains("is-approaching"), state: e.querySelector(".ally-body")?.className.match(/frame-(\d)/)?.[1], ...r(e.querySelector(".ally-body") || e, 0.45) }));
+  const allies = [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((e) => ({ id: (e.className.match(/ ally-([a-z_]+)/) || [])[1], approaching: e.classList.contains("is-approaching"), state: (() => { const m = e.querySelector(".ally-body")?.className.match(/frame-(\d)|act-([a-z]+)/); return m ? (m[1] ?? m[2]) : undefined; })(), ...r(e.querySelector(".ally-body") || e, 0.45) }));
   const hero = document.querySelector(".titans-hero"); const monster = document.querySelector(".titan-monster-art");
   const phase = (field?.className.match(/phase-([a-z-]+)/) || [])[1] || "";
   return { phase, heroApproaching: !!hero?.classList.contains("is-approaching"), field: field ? r(field) : null, allies, hero: hero ? r(hero, 0.55) : null, monster: monster ? r(monster, 0.7) : null, boss: !!document.querySelector(".titans-field.boss") };

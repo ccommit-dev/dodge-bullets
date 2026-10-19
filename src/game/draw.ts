@@ -6,6 +6,7 @@ import { drawWoodArrow } from "./arrowArt";
 import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
+import { ANIM_LAYOUT, MONSTER_ANIM_SET, MONSTER_HD } from "../titans/animLayout";
 import { drawDropShape, drawLeafShape } from "../ui/shapes";
 
 /**
@@ -68,6 +69,7 @@ export function preloadStageSprites(stageIndex: number): void {
   for (const list of Object.values(MONSTER_VARIANTS)) names.add(list[Math.max(0, Math.min(list.length - 1, st.chapter))]);
   names.add(st.bossArt ?? BOSS_SPRITE[Math.max(0, Math.min(BOSS_SPRITE.length - 1, st.bossTier))]);
   chapterBackground(st.chapter);
+  for (const n of names) if (MONSTER_ANIM_SET.includes(n)) sprite(`titans/anim/monsters/${n}.webp`);   // 애니메이션 2판 시트(일반 몬스터)
   for (const n of names) for (const suf of ["", "-hit", "-defeat"]) {
     const path = `titans/generated/monsters/${n}${suf}.png`;
     sprite(path);
@@ -381,8 +383,21 @@ let frameChapter = 0;
 /** 이번 판에 그린 몬스터 그림 — 판이 끝나면 App 이 도감 발견 기록에 합친다 (2026-10-06) */
 const drawnMonsters = new Set<string>();
 export function takeDrawnMonsters(): string[] { const out = [...drawnMonsters]; drawnMonsters.clear(); return out; }
+function monsterBase(a: Pick<Arrow, "kind" | "boss" | "bossTier">): string {
+  return a.boss ? (frameBossArt ?? BOSS_SPRITE[Math.min(BOSS_SPRITE.length - 1, Math.max(0, a.bossTier - 1))]) : monsterSpriteFor(a.kind, frameChapter);
+}
+/**
+ * 애니메이션 2판 시트(2026-10-19, 사냥터와 같은 3D 리그 칸) — 일반 몬스터만. 대장은 화면에 아주 크게(수백 px) 그려 384px 칸이 흐려지므로
+ * 1024px 원화를 그대로 쓴다. 줄: 대기(내려오며 숨) · 덤빔(방어막에 붙어 찧을 때) · 피격(맞은 140ms)
+ */
+function monsterSheet(a: Pick<Arrow, "kind" | "boss" | "bossTier">): HTMLImageElement | null {
+  const base = monsterBase(a);
+  // 대장은 큰 칸(576²) 시트 — 없으면 원화(1024px)를 그대로(작은 칸은 대장 크기에서 흐렸다)
+  if (a.boss) return MONSTER_HD[base] ? sprite(`titans/anim/monsters-hd/${base}.webp`) : null;
+  return MONSTER_ANIM_SET.includes(base) ? sprite(`titans/anim/monsters/${base}.webp`) : null;
+}
 function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" | "hit" | "defeat"): HTMLImageElement | null {
-  const base = a.boss ? (frameBossArt ?? BOSS_SPRITE[Math.min(BOSS_SPRITE.length - 1, Math.max(0, a.bossTier - 1))]) : monsterSpriteFor(a.kind, frameChapter);
+  const base = monsterBase(a);
   drawnMonsters.add(base);
   return sprite(`titans/generated/monsters/${base}${state === "idle" ? "" : "-" + state}.png`);
 }
@@ -487,10 +502,22 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
   const lunge = a.atBarrier ? Math.max(0, Math.sin(t * 7 + a.x * 0.1)) * 8 : 0;
   ctx.translate(a.x, a.y + walk * 2 + lunge);
   ctx.scale(facing, 1);
-  // 걷기 — 가로 폭이 살짝 벌어졌다 오므라든다 (슬라임은 더 출렁인다)
-  const squash = (a.kind === "normal" ? 0.08 : 0.035) * walk;
+  const sheet = monsterSheet(a);
+  // 걷기 — 가로 폭이 살짝 벌어졌다 오므라든다 (슬라임은 더 출렁인다). 2판 시트는 칸이 숨을 쉬어 눌림을 더하지 않는다
+  const squash = sheet ? 0 : (a.kind === "normal" ? 0.08 : 0.035) * walk;
   ctx.scale(1 + squash, 1 - squash);
-  if (img) {
+  if (sheet) {
+    // 칸 안 몬스터: 대기 높이가 칸의 76% · 발이 95.5% → 몸 가운데가 칸 위에서 57.5% (assemble-anim2). 대기 높이를 size 에 맞춘다
+    const L = ANIM_LAYOUT.monster, rows = Object.keys(L.actions).length;
+    const act = a.hitFlashMs > 0 ? L.actions.hit : a.atBarrier ? L.actions.attack : L.actions.idle;
+    const phase = a.hitFlashMs > 0 ? 1 - a.hitFlashMs / 140 : a.atBarrier ? (((t * 7 + a.x * 0.1) / (Math.PI * 2)) % 1 + 1) % 1 : ((t * 1000 + a.x * 37) % act.ms) / act.ms;
+    const fi = Math.max(0, Math.min(act.frames - 1, Math.floor(phase * act.frames)));
+    const sw = sheet.naturalWidth / L.cols, sh = sheet.naturalHeight / rows;
+    // 일반: 대기 몸 높이 = size. 대장: 예전 원화에서 몸이 차지하던 높이(size × 비율)를 지킨다 — 대장 크기는 밸런스 값
+    const dh = (a.boss ? size * (MONSTER_HD[monsterBase(a)] ?? 0.85) : size) / 0.76, dw = dh * (sw / sh);
+    if (a.boss) ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(sheet, fi * sw, act.row * sh, sw, sh, -dw / 2, -dh * 0.575, dw, dh);
+  } else if (img) {
     const w = size * (img.naturalWidth / img.naturalHeight);
     if (a.boss) ctx.imageSmoothingQuality = "high";   // 1024px 원화(2026-10-02 고해상도화)를 폰에서 960~1440 실픽셀로 — 부드럽게
     ctx.drawImage(img, -w / 2, -size / 2, w, size);

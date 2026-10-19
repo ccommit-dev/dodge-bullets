@@ -259,8 +259,11 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
     elif kind == 'bow':
         # 활 면은 X-Z(옆) — 3/4 화면에서 D 모양이 보이게(Y-Z 면은 거의 옆선으로만 보였다)
         pts = [g + Vector((0.16 * math.cos(t) - 0.16, 0, 0.3 * math.sin(t))) for t in [(-1.25 + 2.5 * k / 16) for k in range(17)]]   # 깊게 휜 D — 가운데(손잡이)가 앞으로
-        out.append(C.mesh_obj('bow', C.tube(pts, 0.016, seg=10), wood, coll, outline=OUT * 0.6))
-        out.append(C.mesh_obj('string', C.tube([pts[0], pts[-1]], 0.004, seg=6), _accent('string', '#f5f0e6'), coll))
+        # 2026-10-19 애니메이션 2판: 갈색 가는 활(굵기 0.016)이 털색에 묻혀 2px 선으로만 보였다 — 굵게(0.028) · 밝은 황금 나무색 · 끝 장식 · 시위 굵게
+        out.append(C.mesh_obj('bow', C.tube(pts, 0.028, seg=10), _accent('bowwood', '#e2a24a', rough=0.45), coll, outline=OUT * 0.7))
+        for tip in (pts[0], pts[-1]):
+            out.append(C.mesh_obj('bowtip', C.ellipsoid(tip, (0.03, 0.03, 0.03)), _accent('bowtip', '#f7e6a8', rough=0.3), coll, outline=OUT * 0.5))
+        out.append(C.mesh_obj('string', C.tube([pts[0], pts[-1]], 0.007, seg=6), _accent('string', '#fffaf0'), coll))
     elif kind == 'guitar':
         out.append(C.mesh_obj('g_body', C.ellipsoid(g + Vector((0.08, -0.06, -0.02)), (0.13, 0.05, 0.11)), _accent('gbody', color, rough=0.35), coll, outline=OUT * 0.6))
         out.append(C.mesh_obj('g_hole', C.ellipsoid(g + Vector((0.07, -0.11, 0.0)), (0.035, 0.008, 0.035)), _accent('hole', '#3b2415'), coll))
@@ -281,7 +284,9 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
     return out
 
 
-WEAPON_SCALE = {'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 1.0, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
+# 2026-10-19 애니메이션 2판: 칼은 목록에 없어 기본 1.35 였다 — 왼손으로 적 쪽에 내려치면 칸 오른쪽을 넘거나(비버 전원 배율 0.394) 땅에 꽂혔다(+10~20px).
+# 칼 1.1 · 창 0.9 에 임팩트 112~120° 면 둘 다 안 넘는다(pose_lab 실측)
+WEAPON_SCALE = {'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 0.9, 'sword': 1.1, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
 
 
 def build(name, cfg, coll=None):
@@ -394,8 +399,14 @@ def pose(rig, P):
             pb[f'hand.{S}'].rotation_quaternion = _rot_local(arm, f'hand.{S}', X, P[f'aim_{s}'] + P.get(f'arm_{s}', 0))
         else:
             pb[f'hand.{S}'].rotation_quaternion = _rot_local(arm, f'hand.{S}', X, -P.get(f'wrist_{s}', 0))
+        # 손목 비틀기(무기 축 둘레, 2026-10-19 anim2) — 활 면(D 모양)을 카메라 쪽으로 돌린다
+        if P.get(f'twist_{s}', 0):
+            pb[f'hand.{S}'].rotation_quaternion = pb[f'hand.{S}'].rotation_quaternion @ _rot_local(arm, f'hand.{S}', Y, P[f'twist_{s}'])
     pb['leg.R'].rotation_quaternion = _rot_local(arm, 'leg.R', X, -P.get('leg_r', 0))
     pb['leg.L'].rotation_quaternion = _rot_local(arm, 'leg.L', X, -P.get('leg_l', 0))
     pb['tail'].rotation_quaternion = _rot_local(arm, 'tail', X, P.get('tail', 0))
     pb['root'].location = (P.get('dx', 0), P.get('dz', 0), P.get('dy', 0))   # 뼈 로컬: X 옆 · Y 위 · Z 앞(-Y 월드)
+    # 전신 눌림·늘림(머리까지 — 만화식 squash & stretch, 2026-10-19 anim2). 뿌리 뼈 머리(발밑)를 기준으로 줄어 발은 바닥에 붙어 있다
+    sa = P.get('sq_all', 1.0)
+    pb['root'].scale = (1 / math.sqrt(sa), sa, 1 / math.sqrt(sa))
     bpy.context.view_layer.update()

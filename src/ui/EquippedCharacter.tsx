@@ -4,11 +4,14 @@ import { tierAt } from "../forge/model";
 import { SwordArt } from "../forge/swords";
 import { WEAPON_SKINS } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
 import { sheetFor } from "../titans/anim";
+import { HERO_ANIM, heroFrames, type HeroAnimMode } from "../titans/spriteAnim";
 
 type Props = {
-  mode: "idle" | "attack";
+  /** 대기 · 걷기(2판, 걸어 들어올 때) · 공격 */
+  mode: HeroAnimMode;
+  /** 칸 번호 — 동작의 칸 수로 나눈 나머지를 쓴다(부르는 쪽은 그냥 늘어나는 수를 줘도 된다) */
   frame: number;
   weaponLevel?: number;
   /** 장착 견갑 — 그리지 않는다(아래 참고). 효과·강화 화면은 그대로 */
@@ -39,8 +42,10 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
  */
 export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "drum" }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
-  const index = Math.max(0, Math.min(3, frame));
-  const anchor = (mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS)[index];
+  const frames = heroFrames(mode);
+  const index = ((Math.floor(frame) % frames) + frames) % frames;
+  const anchors = mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : mode === "walk" && HERO_ANIM ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
+  const anchor = anchors[Math.min(index, anchors.length - 1)];
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
   const sheet = sheetFor(character, mode);
@@ -51,10 +56,12 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const weaponPart: CSSProperties = {
     left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%`,
     transform: `translate(-50%,-91%) rotate(${anchor.hand.rotation}deg) scale(${anchor.hand.scale})`,
+    // 예비 칸(먼 손이 큰 머리 뒤)은 몸 뒤에 — 몸·머리에 가린 부분은 숨고 실루엣 밖으로 나온 부분만 보인다(3D 동료처럼)
+    ...(anchor.hand.behind ? { zIndex: 1 } : {}),
   };
   return (
-    <div className={`equipped-character mode-${mode} evolution-${evolution} ${character ? `costume-${character}` : ""} armor-tier-${armorTier} ${className}`} data-armor-tier={armorTier}>
-      <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundPosition: `${(index / 3) * 100}% 0` }} />
+    <div className={`equipped-character mode-${mode} ${HERO_ANIM ? "anim2" : ""} evolution-${evolution} ${character ? `costume-${character}` : ""} armor-tier-${armorTier} ${className}`} data-armor-tier={armorTier}>
+      <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundSize: `${frames * 100}% 100%`, backgroundPosition: `${frames > 1 ? (index / (frames - 1)) * 100 : 0}% 0` }} />
       {/* 활·지팡이 (2026-10-15) — 북 대신 손 앵커에 파츠 그림. 공격 프레임 앵커를 그대로 따라가 휘두른다 */}
       {weaponKind !== "drum" && !blade && (
         <img className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier}`} style={weaponPart} src={assetUrl(`titans/gear/${weaponKind}-${weaponTier}.png`)} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />

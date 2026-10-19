@@ -287,7 +287,12 @@ const art = await (async () => {
   })();
   ok("I 무기 이펙트 3종 판매(300) + 시즌 1종 비매품 · 테마 3종(400) · 코스튬 2종", Object.values(cos.WEAPON_FX).filter((f) => f.gemCost === 300).length === 3 && cos.WEAPON_FX["fx-season"].gemCost === null && Object.values(cos.THEMES).every((t) => t.gemCost === 400) && Object.keys(cos.COSTUMES).length === 2);
   ok("I 코스튬이 캐릭터 목록·라벨에 등록", cos.anim.CHARACTER_SKINS.includes("ember") && cos.anim.CHARACTER_SKINS.includes("frost") && !!cos.anim.CHARACTER_LABEL.frost);
-  ok("아트5 코스튬 2종이 CSS 필터가 아닌 실제 시트(skins/hero-idle-<id>.png)로 해석되고 파일이 존재", ["ember", "frost"].every((id) => cos.anim.sheetFor(id, "idle").includes("skins/hero-idle-" + id) && cos.anim.sheetFor(id, "attack").includes("skins/hero-attack-" + id) && existsSync(join(root, "public/titans/character/skins", "hero-idle-" + id + ".png"))));
+  // 2026-10-19 애니메이션 2판: 주인공 시트가 anim/hero/hero-<동작>-<스킨>.webp(make-character-skins --anim2) — 1판 PNG(skins/)도 받는다
+  ok("아트5 코스튬 2종이 CSS 필터가 아닌 실제 시트로 해석되고 파일이 존재(2판 webp · 1판 PNG)", ["ember", "frost"].every((id) => {
+    const idle = cos.anim.sheetFor(id, "idle"), atk = cos.anim.sheetFor(id, "attack");
+    if (idle.includes("anim/hero/hero-idle-" + id)) return atk.includes("anim/hero/hero-attack-" + id) && ["idle", "walk", "attack"].every((m) => existsSync(join(root, "public/titans/anim/hero", `hero-${m}-${id}.webp`)));
+    return idle.includes("skins/hero-idle-" + id) && atk.includes("skins/hero-attack-" + id) && existsSync(join(root, "public/titans/character/skins", "hero-idle-" + id + ".png"));
+  }));
   ok("I 코스튬 상품 char-ember/char-frost 카탈로그·Play id", ["char-ember", "char-frost"].every((id) => product.STORE_PRODUCTS.some((p) => p.id === id && p.visible)));
   ok("I 진행도 정규화: 미보유 이펙트/테마 장착은 해제", (() => { const n = prog.normalizeCharacterProgress({ ...base, ownedWeaponFx: ["fx-crimson"], equippedWeaponFx: "fx-solar", ownedThemes: [], equippedTheme: "theme-void" }); return n.equippedWeaponFx === "" && n.equippedTheme === ""; })());
 }
@@ -1044,11 +1049,24 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
       }
       return { H, W, ratios: out };
     };
-    const idle = await figureRatios(join(root, "public/titans/character/base/hero-idle.png"));
+    // 2026-10-19 애니메이션 2판이면 6칸 webp 대기 시트(칸 수는 anim-layout.json) — 앞 4칸을 잰다
+    const a2Idle = join(root, "public/titans/anim/hero/hero-idle.webp");
+    const idle = await (async () => {
+      if (!existsSync(a2Idle)) return figureRatios(join(root, "public/titans/character/base/hero-idle.png"));
+      const n = JSON.parse(readFileSync(join(root, "art-gen/anim-layout.json"), "utf8")).hero.sheets.idle.frames;
+      const { data, info } = await sharp(a2Idle).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const W = info.width, H = info.height, FW = W / n, out = [];
+      for (let fr = 0; fr < n; fr += 1) {
+        let y0 = 1e9, y1 = -1;
+        for (let y = 0; y < H; y += 1) for (let x = Math.floor(fr * FW); x < Math.floor((fr + 1) * FW); x += 1) if (data[(y * W + x) * 4 + 3] > 30) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        out.push((y1 - y0 + 1) / H);
+      }
+      return { H, W, ratios: out };
+    })();
     // 2026-10-16: 따로 그린 활·지팡이 사격 시트를 걷었다 — 칸마다 다른 그림이라 쏠 때 생김새가 바뀌고 파츠가 어긋났다.
     // 성문 방어는 대기 시트(대기 한 장 파생) 하나로 그리고 쏘는 동작은 캔버스 기울임으로 준다
     const playerSrc = readFileSync(join(root, "src/game/player.ts"), "utf8");
-    ok("성문 방어 주인공은 대기 시트 하나로 그린다 — 사격 시트(hero-bow/staff-sheet)를 쓰지 않는다", !/hero-\$\{|hero-bow-sheet|hero-staff-sheet/.test(playerSrc) && !existsSync(join(root, "public/titans/generated/hero-bow-sheet.png")));
+    ok("성문 방어 주인공은 대기 시트 하나로 그린다 — 사격 시트(hero-bow/staff-sheet)를 쓰지 않는다", !/hero-bow-sheet|hero-staff-sheet/.test(playerSrc) && (!/hero-\$\{/.test(playerSrc) || /\["idle", "walk"\]/.test(playerSrc)) && !existsSync(join(root, "public/titans/generated/hero-bow-sheet.png")));
     ok("대기 시트 4칸의 인물 높이가 고르다 (파생 숨쉬기 — 칸마다 ±3% 안)", Math.max(...idle.ratios) - Math.min(...idle.ratios) <= 0.03, idle.ratios.map((r) => (r * 100).toFixed(0) + "%").join("/"));
   }
 

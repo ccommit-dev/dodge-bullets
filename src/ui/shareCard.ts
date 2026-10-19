@@ -185,7 +185,8 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   ctx.fillStyle = "rgba(0,0,0,.45)";
   ctx.beginPath(); ctx.ellipse(270, heroTop + heroH - 18, 150, 22, 0, 0, Math.PI * 2); ctx.fill();
   if (sheet) {
-    const fw = sheet.width / 4;
+    // 칸 수는 시트 비율로 — 칸 하나가 세로의 절반 폭(1판 4칸 PNG · 2판 6칸 webp 둘 다, 2026-10-19)
+    const fw = sheet.width / Math.max(1, Math.round(sheet.width / (sheet.height * 0.4995)));
     const dh = heroH - 20, dw = (dh * fw) / sheet.height;
     ctx.save();
     ctx.shadowColor = accent; ctx.shadowBlur = 36;

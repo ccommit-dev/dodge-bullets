@@ -564,4 +564,6 @@ def pose(rig, P):
         if bn.startswith('sleg'):
             pb[bn].rotation_quaternion = _rot_local(arm, bn, X, P.get('slegs', 0) * (1 if '0' in bn else 0.5))
     pb['root'].location = (P.get('dx', 0), P.get('dz', 0), P.get('dy', 0))
+    sa = P.get('sq_all', 1.0)   # 전신 눌림·늘림(anim2, 2026-10-19) — 발밑 기준
+    pb['root'].scale = (1 / math.sqrt(sa), sa, 1 / math.sqrt(sa))
     bpy.context.view_layer.update()

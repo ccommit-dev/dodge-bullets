@@ -1,3 +1,4 @@
+import { HERO_ATTACK_IMPACT, heroFrames } from "./titans/spriteAnim";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { combatPower, type CharacterProgress } from "./progression/model";
 import { testModeEnabled, updateCharacterProgress } from "./progression/storage";
@@ -629,7 +630,7 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
         <div className="rift-run-party">
           {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tl.strike >= 0 ? tl.strike * 3 + i : 0} hitPulse={tl.monsters.some((p) => p === "attack") || tl.boss === "attack" ? tick : 0} partySlot={i} engaged />)}
           <span className={`rift-hero ${tl.strike >= 0 ? "is-striking" : ""}`} aria-hidden="true">
-            <EquippedCharacter mode={tl.strike >= 0 ? "attack" : "idle"} frame={tick % 4} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+            <EquippedCharacter mode={tl.strike >= 0 ? "attack" : "idle"} frame={tick % heroFrames(tl.strike >= 0 ? "attack" : "idle")} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
           </span>
         </div>
         <div className="rift-run-monsters">
@@ -677,7 +678,7 @@ function DuelOverlay({ duel, progress, onClose }: { duel: { name: string; title:
   return (
     <div className={`duel-overlay phase-${phase} ${duel.win ? "win" : "lose"}`} role="status" onClick={onClose}>
       <div className="duel-side me">
-        <EquippedCharacter mode={phase === 2 && duel.win ? "attack" : "idle"} frame={phase === 2 ? 3 : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+        <EquippedCharacter mode={phase === 2 && duel.win ? "attack" : "idle"} frame={phase === 2 ? HERO_ATTACK_IMPACT : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
         <b>나</b>
         <i className="duel-bar"><em style={{ width: phase >= 1 ? `${(duel.playerRoll / top) * 100}%` : "0%" }} /></i>
         <span>{Math.floor(duel.playerRoll).toLocaleString()}</span>

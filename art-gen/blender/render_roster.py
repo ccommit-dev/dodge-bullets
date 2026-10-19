@@ -111,6 +111,7 @@ def run(who):
     print('DONE', who)
 
 
-argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-for w in argv:
-    run(w)
+if __name__ == '__main__':   # render_anim2 가 도우미(setup·px·bone_point·HERO_PARTS)를 불러 쓴다
+    argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    for w in argv:
+        run(w)

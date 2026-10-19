@@ -1,4 +1,5 @@
 import { assetUrl } from "../asset";
+import { HERO_ANIM, heroFrameMs, type HeroAnimMode } from "./spriteAnim";
 
 export const IDLE_SHEET = assetUrl("titans/character/base/hero-idle.png");
 export const ATTACK_SHEET = assetUrl("titans/character/base/hero-attack.png");
@@ -16,11 +17,13 @@ export const CHARACTER_LABEL: Record<CharacterSkinId, string> = {
   frost: "서리 무희",
 };
 
-export function sheetFor(character: string, mode: "idle" | "attack"): string {
-  if (character === "obsidian" || character === "dawn" || character === "ember" || character === "frost") {
-    return assetUrl(`titans/character/skins/hero-${mode}-${character}.png`);
-  }
-  return mode === "attack" ? ATTACK_SHEET : IDLE_SHEET;
+const isSkin = (character: string) => character === "obsidian" || character === "dawn" || character === "ember" || character === "frost";
+/** 주인공 시트 — 애니메이션 2판(2026-10-19)이면 대기 6 · 걷기 6 · 공격 8칸 webp(스킨은 make-character-skins --anim2 파생), 아니면 1판 4칸 PNG */
+export function sheetFor(character: string, mode: HeroAnimMode): string {
+  if (HERO_ANIM) return assetUrl(`titans/anim/hero/hero-${mode}${isSkin(character) ? `-${character}` : ""}.webp`);
+  const m = mode === "walk" ? "idle" : mode;
+  if (isSkin(character)) return assetUrl(`titans/character/skins/hero-${m}-${character}.png`);
+  return m === "attack" ? ATTACK_SHEET : IDLE_SHEET;
 }
 export const SPRITE_FRAME_COUNT = 4;
 /**
@@ -29,10 +32,11 @@ export const SPRITE_FRAME_COUNT = 4;
  * 240ms면 호흡하는 미묘한 움직임으로 읽힌다.
  */
 export const IDLE_FRAME_MS = 240;
-export const ATTACK_CLIP_MS = 420;
+/** 공격 한 번 길이 — 2판은 8칸 480ms(anim-layout.json) */
+export const ATTACK_CLIP_MS = HERO_ANIM ? Math.round(heroFrameMs("attack") * 8) : 420;
 
 export function preloadTitanSheets(): void {
-  for (const src of [IDLE_SHEET, ATTACK_SHEET]) {
+  for (const src of HERO_ANIM ? (["idle", "walk", "attack"] as const).map((m) => sheetFor("default", m)) : [IDLE_SHEET, ATTACK_SHEET]) {
     const img = new Image();
     img.decoding = "async";
     img.src = src;

@@ -7,14 +7,20 @@
  *   흑요석 검사(obsidian): 한랭 색조 + 저채도 + 어두운 톤 (hue -140°)
  *   새벽의 무희(dawn):     웜 핑크/골드 (hue +130°, 밝게)
  *
- *   node scripts/make-character-skins.mjs
+ *   node scripts/make-character-skins.mjs           — 1판 4칸 PNG(character/base → character/skins)
+ *   node scripts/make-character-skins.mjs --anim2   — 애니메이션 2판(2026-10-19) 대기·걷기·공격 webp(anim/hero → anim/hero/hero-<동작>-<스킨>.webp)
  */
 import sharp from "sharp";
 
-const SHEETS = [
-  ["public/titans/character/base/hero-idle.png", "hero-idle"],
-  ["public/titans/character/base/hero-attack.png", "hero-attack"],
-];
+const ANIM2 = process.argv.includes("--anim2");
+const SHEETS = ANIM2
+  ? ["idle", "walk", "attack"].map((m) => [`public/titans/anim/hero/hero-${m}.webp`, `hero-${m}`])
+  : [
+    ["public/titans/character/base/hero-idle.png", "hero-idle"],
+    ["public/titans/character/base/hero-attack.png", "hero-attack"],
+  ];
+const outPath = (base, id) => (ANIM2 ? `public/titans/anim/hero/${base}-${id}.webp` : `public/titans/character/skins/${base}-${id}.png`);
+const save = (img, out) => (ANIM2 ? img.webp({ quality: 90, alphaQuality: 94, effort: 5 }) : img.png()).toFile(out);
 
 const SKINS = [
   { id: "obsidian", hue: 220, saturation: 0.55, brightness: 0.82 },
@@ -32,9 +38,9 @@ const AUTHORED = existsSync("public/titans/character/skins/authored.json") ? JSO
 for (const [src, base] of SHEETS) {
   for (const { id, hue, saturation, brightness, cast, castMix = 0 } of SKINS) {
     if (AUTHORED.includes(id)) { console.log("skip", id, "(authored 원화 시트)"); continue; }
-    const out = `public/titans/character/skins/${base}-${id}.png`;
+    const out = outPath(base, id);
     if (!cast) {
-      await sharp(src).modulate({ hue, saturation, brightness }).png().toFile(out);
+      await save(sharp(src).modulate({ hue, saturation, brightness }), out);
     } else {
       // 알파가 있는 픽셀만 색 캐스트를 multiply로 섞는다 — 투명 배경은 그대로
       const { data, info } = await sharp(src).modulate({ hue, saturation, brightness }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -42,7 +48,7 @@ for (const [src, base] of SHEETS) {
         if (data[i + 3] === 0) continue;
         for (let c = 0; c < 3; c += 1) data[i + c] = Math.round(data[i + c] * (1 - castMix) + (data[i + c] * cast[c] / 255) * castMix);
       }
-      await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } }).png().toFile(out);
+      await save(sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } }), out);
     }
     console.log("generated", out);
   }
