@@ -2584,7 +2584,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} hideHelmet />
+            <EquippedCharacter mode={animMode} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
