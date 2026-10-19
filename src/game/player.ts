@@ -17,7 +17,9 @@ const BASE_RADIUS = 16;
 type FigBox = { x0: number; x1: number; y0: number; y1: number };
 /** 대기 시트 인물 상자 — assemble-b3d 가 렌더에서 재서 heroAnchors.ts 에 쓴다 */
 const FIG_IDLE: FigBox = HERO_FIG;
-const HERO_FIG_RADII = 5.2;
+// 2026-10-19: 왕관을 벗겨(주인공은 무기만) 인물 상자 위끝이 32.2% → 43.7% 로 내려왔다. 5.2 그대로면 몸이 1.2배 커져 얼굴이
+// 활 손(BOW_HAND_Y) 높이까지 내려와 위로 겨눈 활이 주둥이를 가렸다 → 몸 크기를 예전과 같게 5.2 × 56.2/67.7
+const HERO_FIG_RADII = 4.32;
 /** 쏘는 동작 길이(ms) — 기본 사격 재사용(0.55s)보다 짧아 연사해도 프레임이 매번 처음부터 돈다 */
 export const SHOOT_MS = 300;
 /** Source sheet faces left; multiply logical facing by this when drawing. */

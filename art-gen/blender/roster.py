@@ -4,7 +4,8 @@
 
 FUR = dict(fur='#8f6243', light='#f2dcc2', dark='#6a4228')
 
-HERO = dict(FUR, hat='crown', band='#3fb6c9', cape='#7fd0e8')
+# 2026-10-19 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게" — 왕관·띠·망토도 뺀 맨 비버(무기는 게임이 손 앵커에 그린다)
+HERO = dict(FUR)
 
 ALLIES = {
     'mia': dict(FUR, hat='cap', hat_color='#3a9a5a', hat_color2='#2a7a44', scarf='#2fb8a6', weapon_r='axe', weapon_l='dagger', role='melee'),

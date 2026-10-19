@@ -55,7 +55,8 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const blade = weaponSkin ? WEAPON_SKINS[weaponSkin] : undefined;
   const weaponPart: CSSProperties = {
     left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%`,
-    transform: `translate(-50%,-91%) rotate(${anchor.hand.rotation}deg) scale(${anchor.hand.scale})`,
+    // 2판: 무기 그림을 손 오른쪽(바깥)으로 — 손 한가운데 두면 반이 얼굴(주둥이)을 덮었다(2026-10-19 칸별 캡처)
+    transform: `translate(${HERO_ANIM ? -34 : -50}%,-91%) rotate(${anchor.hand.rotation}deg) scale(${anchor.hand.scale})`,
     // 예비 칸(먼 손이 큰 머리 뒤)은 몸 뒤에 — 몸·머리에 가린 부분은 숨고 실루엣 밖으로 나온 부분만 보인다(3D 동료처럼)
     ...(anchor.hand.behind ? { zIndex: 1 } : {}),
   };
