@@ -80,8 +80,9 @@ ok("시동기 버튼을 진짜 탭", await tapSkill("strike"));
 // 고정 40ms 는 React 커밋 한 프레임과 경쟁했다(아케이드 UI·글꼴 적용 뒤 verify-all 안에서 실패) — 오라가 DOM 에 붙을 때까지 기다린다 (2026-10-07)
 await page.waitForSelector(".skill-shot.shot-aura", { timeout: 800 }).catch(() => {});
 await sleep(20);
-await page.screenshot({ path: `${OUT}/cast-0ms.png` });
+// 위치를 먼저 잰다 — 스크린샷(수십 ms)이 끝나면 짧은 오라가 이미 사라져 1/3 꼴로 빠졌다(2026-10-19, 주인공 시트 세 층 뒤)
 const g0 = await geom();
+await page.screenshot({ path: `${OUT}/cast-0ms.png` });
 await sleep(110);
 await page.screenshot({ path: `${OUT}/cast-150ms.png` });
 await sleep(150);
