@@ -1,4 +1,4 @@
-import { sheetFor } from "./titans/anim";
+import { heroPortrait } from "./titans/anim";
 import { heroFrames } from "./titans/spriteAnim";
 import type { BeatTrackDef } from "./beat/tracks";
 import type { BeatDifficulty } from "./beat/types";
@@ -824,11 +824,11 @@ export function BeatGame({
                   {rk.rows.slice(0, 5).map((row) => (
                     <span key={row.rank} className={`rank-${row.rank} ${row.me ? "me" : ""}`}>
                       <em>{row.rank}위</em>
-                      <i className={`rank-avatar ${row.me ? "is-me" : ""}`} style={{ backgroundImage: `url(${row.me ? sheetFor("default", "idle") : shadowPortrait(row.name)})` }} aria-hidden="true" />
+                      <i className={`rank-avatar ${row.me ? "is-me" : ""}`} style={{ ...(row.me ? { backgroundImage: `url(${heroPortrait()})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundImage: `url(${shadowPortrait(row.name)})` }) }} aria-hidden="true" />
                       {row.name}<strong>{row.score.toLocaleString()}</strong>
                     </span>
                   ))}
-                  {rk.myRank > 5 && <span className="me"><em>{rk.myRank}위</em><i className="rank-avatar is-me" style={{ backgroundImage: `url(${sheetFor("default", "idle")})` }} aria-hidden="true" />나<strong>{rk.myScore.toLocaleString()}</strong></span>}
+                  {rk.myRank > 5 && <span className="me"><em>{rk.myRank}위</em><i className="rank-avatar is-me" style={{ backgroundImage: `url(${heroPortrait()})`, backgroundSize: "cover", backgroundPosition: "center" }} aria-hidden="true" />나<strong>{rk.myScore.toLocaleString()}</strong></span>}
                   <small className="beat-rank-next">{rk.myScore === 0 ? "한 곡을 클리어하면 내 기록이 랭킹에 오릅니다" : rk.nextTarget ? `다음 순위까지 ${(rk.nextTarget - rk.myScore).toLocaleString()}점` : "이번 주 1위 — 기록을 지키세요"}</small>
                 </div>
               );

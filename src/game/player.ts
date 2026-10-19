@@ -180,7 +180,7 @@ export function drawStickman(
     const frame = Math.floor(p.animTime * frameRate) % frameCount;
     const fig = FIG_IDLE;
     // 인물 키를 시트와 상관없이 같게 — 반지름 5.2배(≈77px). 예전 4.57배(67px)는 폰에서 작다고 읽혔다(2026-10-15 원화 감사).
-    // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(앞 20 · 턱 −28)로 함께 옮겼다. 판정 반지름은 그대로
+    // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(가슴 앞 24 · −8, 2026-10-19). 판정 반지름은 그대로
     const drawHeight = (p.radius * HERO_FIG_RADII * 100) / (fig.y1 - fig.y0);
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
     ctx.save();

@@ -142,7 +142,8 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   // 판정 출발점은 예전 그대로(플레이어 중심 −14) — 옮기면 곡선·주간 게이트가 흔들린다 (skillShots.bowHand 주석)
   const d = shot ? Math.hypot(shot.x + shot.drawOx - hand.x, shot.y + shot.drawOy - hand.y) : 1e9;
   const sp = shot ? Math.hypot(shot.vx, shot.vy) : 0;
-  ok("기본 화살은 활 손(바라보는 쪽 가슴 앞)에서 나가는 것으로 그려진다 — 몸 한가운데가 아니다", !!shot && d <= skillShots.BOW_REACH + sp / 60 + 2 && Math.abs(hand.x - w.player.x) >= 10 && hand.y < w.player.y - 20, `거리 ${d.toFixed(1)} · 손 ${hand && hand.x.toFixed(0)},${hand && hand.y.toFixed(0)} · 플레이어 ${w.player.x.toFixed(0)},${w.player.y.toFixed(0)}`);
+  ok("기본 화살은 활 손(바라보는 쪽 가슴 앞)에서 나가는 것으로 그려진다 — 몸 한가운데가 아니다", !!shot && d <= skillShots.BOW_REACH + sp / 60 + 2 && Math.abs(hand.x - w.player.x) >= 10 && hand.y < w.player.y - 4 && hand.y > w.player.y - 16,   // 가슴 앞 — 턱(−10)~눈(−30) 사이면 위로 겨눈 활이 얼굴을 덮는다(2026-10-19)
+    `거리 ${d.toFixed(1)} · 손 ${hand && hand.x.toFixed(0)},${hand && hand.y.toFixed(0)} · 플레이어 ${w.player.x.toFixed(0)},${w.player.y.toFixed(0)}`);
   ok("쏘는 순간 반동 연출(shotFlashMs)이 켜진다 — 시위 떨림·번쩍임", w.shotFlashMs > 0, String(w.shotFlashMs));
 }
 

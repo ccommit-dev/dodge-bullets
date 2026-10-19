@@ -4,7 +4,7 @@ import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_Q
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
-import { sheetFor } from "./titans/anim";
+import { heroPortrait } from "./titans/anim";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -2475,7 +2475,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     <div className={`titans-layer ${lowFxRef.current || lowFxOn() ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""} ${growthOpen ? "growth-open" : ""}`} style={pad}>
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
-          <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${sheetFor("default", "idle")})`, backgroundSize:`${heroFrames("idle") * 100}% 100%` }} />
+          <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${heroPortrait()})`, backgroundSize:"cover", backgroundPosition:"center" }} />
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
         </button>
         <div className="titans-wallet">
@@ -3349,7 +3349,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
             {/* 모험가 스킬 연계 (2026-10-06) — 스킬은 동료가 아니라 모험가가 쓴다: 초상 → 시전 순서 ①~④ → 패시브 */}
             <div className="hero-skill-combo" aria-label="모험가 스킬 시전 순서">
-              <span className="combo-hero" style={{ backgroundImage: `url(${sheetFor("default", "idle")})`, backgroundSize: `${heroFrames("idle") * 100}% 100%` }} aria-hidden="true" />
+              <span className="combo-hero" style={{ backgroundImage: `url(${heroPortrait()})`, backgroundSize: "contain", backgroundPosition: "center" }} aria-hidden="true" />
               {SLOT_ORDER.map((slot, i) => {
                 const eq = save.skillInventory.equipped[slot];
                 const locked = !qaOpen && slotLevels(character)[slot] <= 0;
