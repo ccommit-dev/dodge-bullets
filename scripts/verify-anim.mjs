@@ -59,6 +59,16 @@ const hitSeen = await (async () => {
   return seen;
 })();
 ok("B 피격 프레임(-hit.png 또는 띠의 피격 칸)이 타격 시 표시된다", hitSeen);
+// 2026-10-19: 2판 몬스터는 덤빔 중에 맞아도 덤빔 줄을 끝까지 그린다 — 대신 맞은 동안(frame-hit) 하얗게 번쩍여 맞은 티를 낸다
+const flash = await (async () => {
+  for (let i = 0; i < 160; i += 1) {
+    await sleep(50);
+    const f = await page.evaluate(() => [...document.querySelectorAll(".titan-monster-art.anim2.frame-hit > .monster-frames")].map((e) => getComputedStyle(e).filter));
+    if (f.length) return f[0];
+  }
+  return null;
+})();
+if (flash !== null || (await page.$(".titan-monster-art.anim2"))) ok("B 2판 몬스터 맞은 순간 하얗게 번쩍인다(덤빔 중에 맞아도)", !!flash && /brightness/.test(flash), String(flash));
 // B' 종별 동작 — kind 클래스를 바꿔 가며 계산된 animation-name 이 종별 키프레임인지 (슬라임·고블린·늑대·용·오우거·보스)
 const kindAnims = await page.evaluate(() => {
   const el = document.querySelector(".titans-monster"); const art = el?.querySelector(".titan-monster-art"); const img = art?.querySelector("img");
