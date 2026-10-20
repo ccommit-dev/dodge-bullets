@@ -2499,7 +2499,8 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
    좌표계 주의: 동료 칸의 left 는 .titans-allies 기준이고 이 컨테이너는 필드보다 --allies-left 만큼 오른쪽에서 시작한다 —
    그만큼 빼지 않아 오른쪽 근접 동료가 몬스터에서 40px 떨어져 허공을 치고 있었다 (2026-09-18).
    그린 인물은 칸 안에서 가로 28.5%~88% 를 차지하고, 좌우 반전(face-left) 슬롯은 뒤집혀 12%~71.5% 가 된다 (아틀라스 실측). */
-.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * (1 - var(--monster-ml, .22)) - 6px - var(--ally-size, 86px) * .88 + var(--party-melee-dx, 0px)); }
+/* 근접 자리는 스테이지 첫 몬스터 기준으로 굳힌다(--party-meet-right · --party-ml, TitansGame 2026-10-20 "첫 공격 전에만 움직이게") — 다음 몬스터는 보이는 몸 가장자리가 이 자리에 오도록 제가 맞춰 선다 */
+.titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--allies-left, 0%) - var(--party-meet-right, var(--monster-meet-right, 30%)) - var(--monster-size, 112px) * (1 - var(--party-ml, var(--monster-ml, .22))) - 6px - var(--ally-size, 86px) * .88 + var(--party-melee-dx, 0px)); }
 .titans-field.boss .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee { left: calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--boss-size, 136px) * (1 - var(--monster-ml, .22)) - 6px - var(--ally-size, 86px) * .88 + var(--party-melee-dx, 0px)); }
 .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee.face-left { left: calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * var(--monster-mr, .22) - 8px - var(--ally-size, 86px) * .12 + var(--party-melee-dx, 0px)); }
 .titans-field.boss .titans-allies .titan-ally-art[data-party-slot].is-engaged.combat-melee.face-left { left: calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--boss-size, 136px) * var(--monster-mr, .22) - 8px - var(--ally-size, 86px) * .12 + var(--party-melee-dx, 0px)); }

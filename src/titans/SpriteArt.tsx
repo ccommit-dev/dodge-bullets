@@ -319,10 +319,10 @@ export function allyStageJitter(stage: number, id: string, encounter = 0, row = 
   // 2026-10-20 사용자: 파티 공통 높이(0~18px)는 TitansGame 의 만남 깊이(--encounter-lane, 몬스터 · 주인공 · 동료가 같이 0~15%)로 옮겼다 —
   // 여기엔 동료끼리의 간격(열 · 뒷줄)만 남긴다. wk = 걷는 시간 배수(0.78~1) — 동료마다 걸음이 달라 한 덩어리로 미끄러지지 않는다(1 이하라 교전 전에 도착)
   const colR = rng(mix(seed, "col:" + column)); colR();
-  // 2026-10-20 "더 넓게 분산": 열 0~14 → 0~20px · 뒷줄 각자 0~8 → 0~10px (더 넓히면 깊이 15% 에서 뒷줄 발이 풀밭 선에 닿는다 — 최악 실측)
-  const col = Math.round(colR() * 20);
+  // 열 0~14px · 뒷줄 각자 0~8px — 2026-10-20 "더 넓게 분산" 때 0~20 · 0~10 으로 넓혔다가 앞뒤 줄 동료가 겹쳐(verify-formation 중앙값 12→14%) 되돌렸다. 분산은 두 무리 깊이가 맡는다
+  const col = Math.round(colR() * 14);
   const r = rng(mix(seed, id));
-  const own = Math.round(r() * 10);
+  const own = Math.round(r() * 8);
   return { jy: col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10, wk: Math.round((0.78 + r() * 0.22) * 100) / 100 };
 }
 
@@ -501,7 +501,7 @@ function lineFormation(cell: "R" | "L", index: number, jx = 0): Record<string, s
   if (cell === "R") {
     // 교전 x 는 CSS 의 근접 공식(몬스터 보이는 몸 가장자리) + --party-melee-dx — 칸만큼 왼쪽으로
     const dx = `calc(${-col} * ${step} + ${jx}px)`;   // jx — 스테이지마다 다른 좌우 자리(allyStageJitter)
-    const edge = `calc(100% - var(--allies-left, 0%) - var(--monster-meet-right, 30%) - var(--monster-size, 112px) * (1 - var(--monster-ml, .22)) - 6px - var(--ally-size, 86px) * .88 + ${dx})`;
+    const edge = `calc(100% - var(--allies-left, 0%) - var(--party-meet-right, var(--monster-meet-right, 30%)) - var(--monster-size, 112px) * (1 - var(--party-ml, var(--monster-ml, .22))) - 6px - var(--ally-size, 86px) * .88 + ${dx})`;
     return { "--party-melee-dx": dx, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${edge} - 18%)`, "--party-z": row === 0 ? "4" : "2" };
   }
   const x = `calc(${col} * ${step} + ${jx}px)`;

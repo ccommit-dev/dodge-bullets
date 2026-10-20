@@ -157,15 +157,16 @@ type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "ev
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 /**
  * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
- * 왼쪽 무리(주인공 · 원거리)는 −10~15%: 아래(앞)로도 내려온다 — 그 아래는 AUTO · 배속 버튼(위끝 81px)뿐이라 −10%(≈47px)까지 발이 버튼 위에 남는다(375px 실측).
- * 오른쪽 무리(몬스터 · 근접)는 0~15%: 바로 아래에 알림 칩(위끝 102px)이 있어 더 못 내린다.
- * 둘 다 위쪽(왼쪽 > 2.5 · 오른쪽 > 7.5)이면 왼쪽을 아래 절반으로 뒤집어 아래 땅이 비지 않게 한다.
+ * 왼쪽 무리(주인공 · 원거리)는 −16~6%(위로는 얕게 — 원거리 셋이 앞뒤 줄로 서는 대열은 깊을수록 세로 간격이 좁아져 서로 28% 겹쳤다, verify-formation [back]): 아래(앞)로도 내려온다 — AUTO · 배속 버튼을 스킬 줄 왼쪽 끝에 세로로 옮겨(위끝 62px) 그 위까지 땅을 쓴다.
+ * −16%(375px 전장 ≈75px)에서 주인공 발 84px · 원거리 발 79px. −18% 는 주인공 무기가 알림 칩 왼끝에 닿았다(실측).
+ * 오른쪽 무리(몬스터 · 근접)는 0~12%: 바로 아래에 알림 칩(위끝 102px)이 있어 더 못 내리고, 12% 넘으면 원근(÷60)에서 뒷줄 발이 풀밭 선에 닿는다.
+ * 둘 다 위쪽(왼쪽 > 0 · 오른쪽 > 7.5)이면 왼쪽을 아래쪽(−16~0%)으로 옮겨 아래 땅이 비지 않게 한다.
  */
-const LANE_L_MIN = -10, LANE_MAX = 15;
+const LANE_L_MIN = -16, LANE_L_MAX = 6, LANE_MAX = 12;
 function lanePair(): { laneL: number; laneR: number } {
-  let l = LANE_L_MIN + Math.random() * (LANE_MAX - LANE_L_MIN);
+  let l = LANE_L_MIN + Math.random() * (LANE_L_MAX - LANE_L_MIN);
   const r = Math.random() * LANE_MAX;
-  if (l > 2.5 && r > 7.5) l = 2.5 - (l - 2.5);
+  if (l > 0 && r > LANE_MAX / 2) l = (l / LANE_L_MAX) * LANE_L_MIN;
   return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10 };
 }
 const ALLY_PAGE_SIZE = typeof window !== "undefined" && appWidth() <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
@@ -364,8 +365,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [monsterIn, setMonsterIn] = useState(false);
   const stageAtSpawnRef = useRef<number | null>(null);
   // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
-  // laneL · laneR — 만남 깊이(전장 높이 %, 0~15). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0 });
+  // laneL · laneR — 만남 깊이(전장 높이 %, 왼쪽 −16~6 · 오른쪽 0~12, lanePair). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
+  // partyMeetRight · partyMl — 스테이지 첫 몬스터의 자리 · 보이는 몸 왼쪽 여백. 근접 동료 자리를 이것으로 굳히고, 다음 몬스터가 제 여백만큼 비켜 선다
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0, partyMeetRight: 8, partyMl: 0.22 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -589,9 +591,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 390px 실측: 몬스터 오른쪽 8% → 왼쪽 가장자리 247px, 근접 163~237, 주인공 26% = 101~155, 원거리 0~3% = 50~124 — 네 띠가 겹치지 않는다
       monsterRight: (rolledKind === "dragon" ? 2 : 8) + monsterJit,
       monsterJit,
+      partyMeetRight: (rolledKind === "dragon" ? 2 : 8) + monsterJit,
+      partyMl: monsterVisibleMargin(monsterAssetFor(rolledKind, huntingArea(stage), asBoss, isChest, "idle", stage))[0],
       durationMs,
       seq: prev.seq + 1,
-      // 무리마다 깊이 0~15%(390px 전장 0~74px). 위로만(아래는 AUTO · 배속 버튼 줄), 15% 넘으면 뒷줄 발이 풀밭 선에 닿는다
+      // 무리마다 깊이 — lanePair 주석
       ...lanePair(),
     }));
     window.requestAnimationFrame(() => { setFormationEngaged(true); setMonsterIn(true); if (stageStart) setPartyApproach(true); });
@@ -2533,7 +2537,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           "--area-accent": area.accent,
           "--area-background": `url(${area.background})`,
           "--hero-meet-left": `${encounterMotion.heroLeft}%`,
-          "--monster-meet-right": `${encounterMotion.monsterRight}%`,
+          "--party-meet-right": `${encounterMotion.partyMeetRight}%`,
+          "--party-ml": String(encounterMotion.partyMl),
+          // 일반 몬스터: 보이는 몸 왼쪽 가장자리가 스테이지 첫 몬스터와 같은 자리에 오도록 — 근접 동료가 몬스터마다 옮겨 서지 않는다.
+          // 대장은 몸(--boss-size)이 달라 예전처럼 제 자리에 서고 근접 동료가 한 번 옮겨 선다
+          "--monster-meet-right": boss ? `${encounterMotion.monsterRight}%` : `calc(${encounterMotion.partyMeetRight}% + var(--monster-size, 112px) * (${monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]} - ${encounterMotion.partyMl}))`,
           // 근접 슬롯이 몬스터 박스가 아니라 '보이는' 몸 가장자리에 붙도록 — (옛 새끼 용처럼) 좌우 여백이 큰 원화에서 동료가 허공에 서던 문제
           "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]),
           "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[1]),
