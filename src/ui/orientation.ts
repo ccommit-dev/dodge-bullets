@@ -47,5 +47,6 @@ export async function applyOrientation(p: OrientationPref): Promise<"native" | "
 
 /** 지금 가로인가 — 레이아웃·검사용 */
 export function isLandscapeNow(): boolean {
-  return typeof window !== "undefined" && window.innerWidth > window.innerHeight;
+  // PC 웹 기둥은 세로 화면처럼 쓴다 (ui/webFrame)
+  return typeof window !== "undefined" && !document.documentElement.classList.contains("web-frame") && window.innerWidth > window.innerHeight;
 }

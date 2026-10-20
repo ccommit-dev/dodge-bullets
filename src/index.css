@@ -32,3 +32,10 @@ body,
 body {
   min-width: 320px;
 }
+
+/* PC 웹 세로 기둥 (2026-10-20, src/ui/webFrame.ts) — 앱을 폰 폭으로 가운데 세우고 바깥은 흐린 마을 배경.
+   #root 의 transform 이 fixed 자식(시트 · 캔버스 · 내비 · 배경막)을 기둥 안에 가둔다. 폰 · 태블릿 · 앱은 클래스가 안 붙어 그대로 */
+html.web-frame { --vw: 4.6px; background: #120b05; }
+html.web-frame body { position: relative; background: transparent; }
+html.web-frame body::before { content: ""; position: fixed; inset: -24px; z-index: 0; pointer-events: none; background: url("/ui/bg/hub-backdrop.webp") center / cover no-repeat; filter: blur(14px) brightness(.42) saturate(.85); }
+html.web-frame #root { position: relative; z-index: 1; width: min(100%, 460px); margin: 0 auto; overflow: hidden; transform: translateZ(0); box-shadow: 0 0 0 2px rgba(43, 22, 8, .9), 0 24px 70px rgba(0, 0, 0, .65); }
