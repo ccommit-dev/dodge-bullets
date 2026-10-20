@@ -133,14 +133,15 @@
 .titans-allies .titan-ally-art[data-party-slot] { transition: left calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) linear, bottom calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) ease-in-out, scale calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) ease-in-out, translate .32s ease; }
 /* 만남 깊이 — 두 무리가 따로 (2026-10-20, 사용자: "땅은 그대로 두고 캐릭터 · 동료 · 몬스터가 더 넓게 분산되게").
    한 덩어리로 같이 오르내리면 깊은 만남(15% 근처)에서 대열이 위에 몰려 아래 땅이 비었다 →
-   왼쪽 무리(주인공 + 원거리 동료 L 칸, --lane-l, −10~15%)와 오른쪽 무리(몬스터 + 근접 동료 R 칸, --lane-r, 0~15%)가 따로 걷는다.
-   음수 = 앞(아래)으로 내려와 세로 간격이 벌어진다(몸은 1 보다 안 키운다 — 왼쪽 끝 원거리 동료가 전장 밖으로 6px 삐져나갔다, verify-anim-clip) — 왼쪽 아래엔 AUTO · 배속 버튼뿐, 오른쪽 아래엔 알림 칩이 바로 있어 오른쪽은 0 아래로 안 간다.
+   왼쪽 무리(주인공 + 원거리 동료 L 칸, --lane-l, −16~6%)와 오른쪽 무리(몬스터 + 근접 동료 R 칸, --lane-r, 0~12%)가 따로 걷는다.
+   음수 = 앞(아래)으로 내려와 세로 간격이 벌어진다(몸은 1 보다 안 키운다 — 왼쪽 끝 원거리 동료가 전장 밖으로 6px 삐져나갔다, verify-anim-clip). — 왼쪽 아래엔 AUTO · 배속 버튼뿐, 오른쪽 아래엔 알림 칩이 바로 있어 오른쪽은 0 아래로 안 간다.
    근접 동료는 몬스터와 같은 깊이라 몬스터 옆에 붙는 자리는 그대로. 둘 다 위쪽이면 왼쪽을 아래 절반으로 뒤집어(TitansGame lanePair) 땅 아래쪽도 늘 쓴다.
    동료는 컨테이너(전장 높이 52%) 안에 있어 전장 % 깊이를 ÷ 0.52 해 같은 높이로 맞춘다. 걸음은 각자 배수(--walk-k 0.78~1).
-   원근: 깊을수록 대열 세로 간격 ×(1 − 깊이/27) · 몸 ×(1 − 깊이×0.006) — 15% 에서도 뒷줄 발이 풀밭 선 아래(390px 실측). 깊이 0 이면 예전과 같다 */
-.titans-field .titans-hero { scale: calc(1 - max(var(--lane-ln, 0), 0) * 0.006); bottom: calc(22% + var(--lane-l, 0%)); transition: left var(--encounter-duration, 1.15s) linear, bottom var(--encounter-duration, 1.15s) ease-in-out, scale var(--encounter-duration, 1.15s) ease-in-out; }
-.titans-field .titans-monster { scale: calc(1 - var(--lane-rn, 0) * 0.006); bottom: calc(22% + var(--lane-r, 0%)); }
-.titans-field .titans-allies .titan-ally-art[data-party-slot] { --lk: calc(1 - var(--ally-lane-n, 0) / 27); scale: calc(1 - max(var(--ally-lane-n, 0), 0) * 0.006); }
+   원근: 깊을수록 대열 세로 간격과 몸을 **같은 비율** k = 1 − 깊이/60 으로 줄인다(12% 에서 0.8). 간격만 좁히면(÷27) 앞뒤 줄 동료가 15~27% 겹쳤다(verify-formation) —
+   같이 줄이면 겹침 비율이 깊이 0 과 같다. 12% 에서 뒷줄 발이 풀밭 선 아래(실측). 깊이 0 이면 예전과 같다 */
+.titans-field .titans-hero { scale: min(1, 1 - var(--lane-ln, 0) / 60); bottom: calc(22% + var(--lane-l, 0%)); transition: left var(--encounter-duration, 1.15s) linear, bottom var(--encounter-duration, 1.15s) ease-in-out, scale var(--encounter-duration, 1.15s) ease-in-out; }
+.titans-field .titans-monster { scale: min(1, 1 - var(--lane-rn, 0) / 60); bottom: calc(22% + var(--lane-r, 0%)); }
+.titans-field .titans-allies .titan-ally-art[data-party-slot] { --lk: calc(1 - var(--ally-lane-n, 0) / 60); scale: min(1, var(--lk)); }
 .titans-allies .titan-ally-art[data-party-slot].is-engaged { bottom: calc((var(--party-combat-y, var(--party-lane-y)) + var(--party-jy, 0px)) * var(--lk, 1) + var(--ally-lane, 0%) / 0.52); }
 .ally-wander { width: 100%; height: 100%; }
 /* 교전 중 제자리 어슬렁은 끈다 (2026-10-20, 사용자: "stage 가 갱신되고 첫 공격 전에만 움직이게") — 숨 · 공격 · 피격 칸은 시트가 그대로 움직인다 */

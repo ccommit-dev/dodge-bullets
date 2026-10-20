@@ -1639,7 +1639,8 @@
 }
 .titans-skill-dock > * { pointer-events: auto; }
 /* 설정 토글(자동 시전·배속)은 전투 행동이 아니다 — 스킬 줄에서 빼 왼쪽 위로 */
-.titans-skill-dock .battle-qol { position: absolute; left: 2px; bottom: 46px; flex-direction: row; gap: 4px; }
+/* 2026-10-20: 스킬 줄 왼쪽 끝에 세로로 — 예전엔 스킬 줄 위(bottom 46px)에 가로로 떠 왼쪽 아래 땅을 막아 주인공 무리가 그 위로만 섰다(사용자 "더 넓게 분산") */
+.titans-skill-dock .battle-qol { position: absolute; left: 2px; bottom: 0; flex-direction: column; gap: 3px; }
 .titans-skill-dock .qol-btn { min-width: 32px; height: 24px; padding: 0 6px; font-size: 9px; }
 .titans-skill-dock .titans-skill {
   position: relative;

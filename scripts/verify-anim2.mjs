@@ -112,7 +112,8 @@ for (const id of ids) {
 }
 const walkers = ids.filter((id) => (seen[id].walk?.size ?? 0) > 0);
 // 2026-10-20: 걸어 들어가기는 스테이지 첫 몬스터에서만(사용자 "첫 공격 전에만 움직이게") — 불러온 직후 한 번이라 아래 표본 직전에 다시 불러온다
-ok("걷기 줄이 걸어 들어올 때 돈다(6칸 중 5칸 이상 보임)", walkers.length > 0 && walkers.every((id) => seen[id].walk.size >= 5), walkers.map((id) => `${id}:${[...seen[id].walk].join("")}`).join(" "));
+// 걷기는 스테이지 첫 몬스터에서 한 번(빠르면 0.9초) — 실시간 표본(부하 땐 ~10fps)이 칸을 건너뛴다. 4칸이면 줄이 돈다는 근거로 충분(순서는 위 결정적 검사)
+ok("걷기 줄이 걸어 들어올 때 돈다(6칸 중 4칸 이상 보임)", walkers.length > 0 && walkers.every((id) => seen[id].walk.size >= 4), walkers.map((id) => `${id}:${[...seen[id].walk].join("")}`).join(" "));
 ok("칸 위 CSS 흔들기가 꺼져 있다(.ally-idle 애니메이션 없음 · .ally-body 변형 없음)", overlay && overlay[0] === "none" && (overlay[1] === "none" || overlay[1] === "matrix(1, 0, 0, 1, 0, 0)"), JSON.stringify(overlay));
 // 몬스터 칸 순서 — 동료와 같은 결정적 검사(멈추고 칸 한가운데 시각으로 옮겨 읽는다)
 const monStep = await page.evaluate(() => {
