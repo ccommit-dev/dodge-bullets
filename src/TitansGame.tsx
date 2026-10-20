@@ -155,10 +155,17 @@ type TitansGameProps = {
 const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
 type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
-/** 두 무리 깊이(0~15%) — 따로 뽑되 둘 다 깊은 쪽(> 7.5)이면 한쪽을 뒤집어 땅 아래쪽도 늘 쓴다 (2026-10-20, "더 넓게 분산") */
+/**
+ * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
+ * 왼쪽 무리(주인공 · 원거리)는 −10~15%: 아래(앞)로도 내려온다 — 그 아래는 AUTO · 배속 버튼(위끝 81px)뿐이라 −10%(≈47px)까지 발이 버튼 위에 남는다(375px 실측).
+ * 오른쪽 무리(몬스터 · 근접)는 0~15%: 바로 아래에 알림 칩(위끝 102px)이 있어 더 못 내린다.
+ * 둘 다 위쪽(왼쪽 > 2.5 · 오른쪽 > 7.5)이면 왼쪽을 아래 절반으로 뒤집어 아래 땅이 비지 않게 한다.
+ */
+const LANE_L_MIN = -10, LANE_MAX = 15;
 function lanePair(): { laneL: number; laneR: number } {
-  let l = Math.random() * 15, r = Math.random() * 15;
-  if (l > 7.5 && r > 7.5) { if (Math.random() < 0.5) l = 15 - l; else r = 15 - r; }
+  let l = LANE_L_MIN + Math.random() * (LANE_MAX - LANE_L_MIN);
+  const r = Math.random() * LANE_MAX;
+  if (l > 2.5 && r > 7.5) l = 2.5 - (l - 2.5);
   return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10 };
 }
 const ALLY_PAGE_SIZE = typeof window !== "undefined" && appWidth() <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
@@ -349,9 +356,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
+  // 2026-10-20 사용자: "공격할 때마다 움직이는데 — stage 가 갱신되고 첫 공격 전에만 움직이게".
+  // 예전엔 몬스터가 나올 때마다(스테이지당 10번) 대열을 풀고(formationEngaged=false) 다시 걸어 들어갔다. 이제
+  // partyApproach — 스테이지 첫 몬스터에서만 주인공 · 동료가 걸어 들어간다(그 뒤 몬스터들은 제자리에서 맞이한다)
+  // monsterIn — 몬스터는 나올 때마다 오른쪽에서 걸어 들어온다(대열과 따로)
+  const [partyApproach, setPartyApproach] = useState(false);
+  const [monsterIn, setMonsterIn] = useState(false);
+  const stageAtSpawnRef = useRef<number | null>(null);
   // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
   // laneL · laneR — 만남 깊이(전장 높이 %, 0~15). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250, seq: 0, laneL: 0, laneR: 0 });
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -435,7 +449,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const heroWalkRef = useRef(false);
   /** 이번 만남 걷는 시간 ÷ 기준 1250ms — 주인공 걷기 칸도 그만큼 느리게/빠르게 (발이 미끄러지지 않게) */
   const heroWalkRateRef = useRef(1);
-  useEffect(() => { heroWalkRef.current = formationEngaged && !formationReady; }, [formationEngaged, formationReady]);
+  useEffect(() => { heroWalkRef.current = partyApproach; }, [partyApproach]);
   const battlePhaseRef = useRef<BattlePhase>("combat");
   const battleTimers = useRef<number[]>([]);
   const pendingStageRef = useRef<number | null>(null);
@@ -552,13 +566,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setBossWeak(weak);
     formationReadyRef.current = false;
     setFormationReady(false);
-    setFormationEngaged(false);
+    // 스테이지 첫 몬스터(웨이브 1 · 스테이지가 바뀜)만 대열을 다시 짠다 — 그 뒤엔 주인공 · 동료가 제자리
+    const stageStart = nextWave === 1 || stageAtSpawnRef.current !== stage;
+    stageAtSpawnRef.current = stage;
+    setMonsterIn(false);
+    if (stageStart) setFormationEngaged(false);
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     // 걷는 속도 (2026-10-20, 사용자: "걷는 속도도 항상 같지 않게") — 종별 기준에 만남마다 0.7~1.3배(예전 0.88~1.12 는 늘 같아 보였다)
     const durationMs = Math.round(speedBase * (.7 + Math.random() * .6));
-    heroWalkRateRef.current = durationMs / 1250;
-    setEncounterMotion((prev) => ({
+    if (stageStart) heroWalkRateRef.current = durationMs / 1250;
+    // 스테이지 중간 몬스터: 대열 자리(주인공 x · 두 무리 깊이 · 동료 개인 자리 seq)는 그대로, 몬스터 걷는 시간 · 자리만 새로
+    // 몬스터 자리 흔들림(monsterJit 0~2%)도 스테이지마다 — 근접 동료가 몬스터 x 에 붙어 몬스터마다 4px 씩 움직였다. 용만 종별로 더 오른쪽(겹침 방지)
+    const monsterJit = Math.random() * 2;
+    setEncounterMotion((prev) => !stageStart ? { ...prev, monsterRight: (rolledKind === "dragon" ? 2 : 8) + prev.monsterJit, durationMs } : ({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       // 2026-10-08 사용자: 주인공·동료 겹침 — 주인공 54~66px 가 되면서 근접 슬롯(몬스터 왼쪽에 붙음)과 100% 겹쳤다.
       // 몬스터를 오른쪽으로(30 → 16%) 물려 왼쪽부터 원거리(0~3%) · 주인공(28%) · 근접(몬스터 왼쪽) · 몬스터 네 띠가 생긴다
@@ -566,17 +587,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 흔들림을 ±1%로 — 근접 동료가 몬스터 좌표에 붙으므로(App.css) 넓게 흔들면 주인공과 겹친다
       // 용은 2026-10-02 에 보이는 몸이 상자를 꽉 채우는 드레이크로 바뀌어(여백 23/32% → 4/2%) 근접 동료가 20px 왼쪽에 붙으며 주인공을 덮었다 — 더 오른쪽에 세운다
       // 390px 실측: 몬스터 오른쪽 8% → 왼쪽 가장자리 247px, 근접 163~237, 주인공 26% = 101~155, 원거리 0~3% = 50~124 — 네 띠가 겹치지 않는다
-      monsterRight: (rolledKind === "dragon" ? 2 : 8) + Math.random() * 2,
+      monsterRight: (rolledKind === "dragon" ? 2 : 8) + monsterJit,
+      monsterJit,
       durationMs,
       seq: prev.seq + 1,
       // 무리마다 깊이 0~15%(390px 전장 0~74px). 위로만(아래는 AUTO · 배속 버튼 줄), 15% 넘으면 뒷줄 발이 풀밭 선에 닿는다
       ...lanePair(),
     }));
-    window.requestAnimationFrame(() => setFormationEngaged(true));
+    window.requestAnimationFrame(() => { setFormationEngaged(true); setMonsterIn(true); if (stageStart) setPartyApproach(true); });
     const approachMs = durationMs + 120;
     const formationTimer = window.setTimeout(() => {
       formationReadyRef.current = true;
       setFormationReady(true);
+      setPartyApproach(false);
     }, approachMs);
     battleTimers.current.push(formationTimer);
   }, []);
@@ -1374,14 +1397,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 제자리에서 어슬렁 — 교전 중 0.9~1.8초마다 다른 자리로 조금씩 움직인다(기질 폭만큼). 공격·피격 모션은 그 위에서 그대로
   const [monsterDrift, setMonsterDrift] = useState({ x: 0, y: 0 });
   useEffect(() => {
-    if (!ready || battlePhase !== "combat" || !formationReady || temper.wanderX <= 0) { setMonsterDrift({ x: 0, y: 0 }); return; }
-    let t = 0;
-    const step = () => {
-      setMonsterDrift({ x: Math.round((Math.random() * 2 - 1) * temper.wanderX), y: -Math.round(Math.random() * temper.wanderY) });
-      t = window.setTimeout(step, 900 + Math.random() * 900);
-    };
-    t = window.setTimeout(step, 250);
-    return () => window.clearTimeout(t);
+    // 2026-10-20 사용자: "첫 공격 전에만 움직이게" — 교전 중 어슬렁(0.9~1.8초마다 자리 이동)은 끈다. 공격 · 피격 모션(제자리로 돌아오는 것)은 그대로.
+    // 상태는 남겨 둔다 — 인라인 translate 가 idle.css 의 지상 띠 올림(−52px)을 덮어 온 몬스터 높이를 그대로 두려고
+    setMonsterDrift({ x: 0, y: 0 });
   }, [battlePhase, formationReady, ready, temper]);
 
   useEffect(() => {
@@ -2584,7 +2602,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
           );
         })()}
-        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`}>
+        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`}>
           {/* 칭호 이름표 — 과금 점검: 칭호가 전투에서 전혀 보이지 않아 150~250보석 가치가 없었다 */}
           {character.activeTitle && TITLES[character.activeTitle] && (
             <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
@@ -2614,7 +2632,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
-            <EquippedCharacter mode={animMode === "attack" ? "attack" : formationEngaged && !formationReady ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <EquippedCharacter mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -2633,7 +2651,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               pulse={allyPulse[h.id] ?? 0}
               hitPulse={allyHit[h.id] ?? 0}
               engaged={formationEngaged}
-              approaching={formationEngaged && !formationReady}
+              approaching={partyApproach}
               stage={save.stage}
               encounter={encounterMotion.seq}
               speed={save.battleSpeed}
@@ -2653,7 +2671,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
-        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} atk-${temper.style} ${formationEngaged ? "is-engaged" : ""} ${formationEngaged && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${monsterHit > 0 && (monsterHit * 7 + save.stage * 3) % 4 === 0 ? "hit-strong" : ""} ${impact === "critical" ? "critical" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`} style={{ translate: `${monsterDrift.x}px ${monsterDrift.y}px` }}>
+        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} atk-${temper.style} ${monsterIn ? "is-engaged" : ""} ${monsterIn && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${monsterHit > 0 && (monsterHit * 7 + save.stage * 3) % 4 === 0 ? "hit-strong" : ""} ${impact === "critical" ? "critical" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`} style={{ translate: `${monsterDrift.x}px ${monsterDrift.y}px` }}>
           {/* 스테이지 기질(atk-*)의 몸놀림은 이 겉 상자에서 — 안쪽 그림은 종별 공격 키프레임(슬라임 덮치기·고블린 찌르기 …)을 그대로 쓴다 */}
           <div className="monster-temper">
           <MonsterArt
