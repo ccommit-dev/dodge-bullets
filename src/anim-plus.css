@@ -145,7 +145,8 @@
    같이 줄이면 겹침 비율이 깊이 0 과 같다. 9% 에서 뒷줄 발이 풀밭 선 아래(실측). 깊이 0 이면 예전과 같다 */
 .titans-field .titans-hero { scale: min(1, 1 - var(--lane-ln, 0) / 60); bottom: calc(22% + var(--lane-l, 0%)); transition: left var(--encounter-duration, 1.15s) linear, bottom var(--encounter-duration, 1.15s) ease-in-out, scale var(--encounter-duration, 1.15s) ease-in-out; }
 .titans-field .titans-monster { scale: min(1, 1 - var(--lane-rn, 0) / 60); bottom: calc(22% + var(--lane-r, 0%)); }
-.titans-field .titans-allies .titan-ally-art[data-party-slot] { --lk: calc(1 - var(--ally-lane-n, 0) / 60); scale: min(1, var(--lk)); }
+/* 낮은 전장(< 440px)은 대열 세로 간격만 0.65배(--fk, TitansGame) — 동료 몸(px)에 비해 전장이 작아 뒷줄 발이 풀밭 선 위로 올라갔다(360×640 실측). 몸 크기는 그대로 */
+.titans-field .titans-allies .titan-ally-art[data-party-slot] { --lk: calc((1 - var(--ally-lane-n, 0) / 60) * var(--fk, 1)); scale: min(1, 1 - var(--ally-lane-n, 0) / 60); }
 .titans-allies .titan-ally-art[data-party-slot].is-engaged { bottom: calc((var(--party-combat-y, var(--party-lane-y)) + var(--party-jy, 0px)) * var(--lk, 1) + var(--ally-lane, 0%) / 0.52); }
 .ally-wander { width: 100%; height: 100%; }
 /* 교전 중 제자리 어슬렁은 끈다 (2026-10-20, 사용자: "stage 가 갱신되고 첫 공격 전에만 움직이게") — 숨 · 공격 · 피격 칸은 시트가 그대로 움직인다 */

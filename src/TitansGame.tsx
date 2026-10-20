@@ -165,9 +165,9 @@ type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "ev
  */
 /**
  * 전장이 낮으면(< 440px — 360×640 등) 동료 몸(px)에 비해 전장이 작아 넓은 깊이에서 머리가 HUD · 알림 칩에 닿았다(실측 allyTop 78px).
- * 그때는 알림 칩을 예전 자리(오른쪽 아래)에 두고 깊이를 좁힌다(왼쪽 −8~3 · 오른쪽 0~5). 넓은 전장(390×844 의 490px 등)은 위 범위.
+ * 그때는 알림 칩을 예전 자리(오른쪽 아래)에 두고 깊이를 좁힌다(왼쪽 −9~3 · 오른쪽 0~7, 대열 세로 간격 0.65배 — 왼쪽 −10% 부터 주인공 무기 끝이 오른쪽 아래 칩에 닿았다, 360×640 실측). 넓은 전장(390×844 의 490px 등)은 위 범위.
  */
-const LANES_WIDE = { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, LANES_COMPACT = { lMin: -8, lMax: 3, rMin: 0, rMax: 5 };
+const LANES_WIDE = { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, LANES_COMPACT = { lMin: -9, lMax: 3, rMin: 0, rMax: 7 };
 const WIDE_FIELD_MIN_H = 440;
 function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean } {
   const { lMin, lMax, rMin, rMax } = wide ? LANES_WIDE : LANES_COMPACT;
@@ -2552,6 +2552,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           "--lane-l": `${encounterMotion.laneL}%`,
           "--lane-ln": String(encounterMotion.laneL),   // 원근(대열 세로 간격 · 몸 크기)용 숫자 — anim-plus.css
           "--lane-r": `${encounterMotion.laneR}%`,
+          "--fk": encounterMotion.wide ? "1" : "0.65",   // 낮은 전장 대열 세로 간격(anim-plus.css) — 0.8 은 개인 간격 최대 · 오른쪽 5% 에서 뒷줄 발이 풀밭 선 2px 아래뿐(360×640)
           "--lane-rn": String(encounterMotion.laneR),
         } as CSSProperties}
         onPointerDown={(e) => {
