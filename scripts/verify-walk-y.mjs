@@ -16,10 +16,10 @@ const rows = [], encs = [];
 for (let i = 0; i < 160; i += 1) {
   rows.push(await page.evaluate(() => {
     const f = document.querySelector(".titans-field")?.getBoundingClientRect();
-    // 2026-10-20: 몬스터 · 주인공 발 높이와 이번 만남 깊이 · 걷는 시간도 같이 적는다(만남 깊이 --encounter-lane · 걷기 0.7~1.3배)
+    // 2026-10-20: 몬스터 · 주인공 발 높이와 이번 만남 깊이(왼쪽 무리 --lane-l · 오른쪽 무리 --lane-r) · 걷는 시간도 같이 적는다(걷기 0.7~1.3배)
     const fs = getComputedStyle(document.querySelector(".titans-field"));
     const m = document.querySelector(".titans-monster")?.getBoundingClientRect(), h = document.querySelector(".titans-hero")?.getBoundingClientRect();
-    window.__enc = { lane: fs.getPropertyValue("--encounter-lane").trim(), dur: fs.getPropertyValue("--encounter-duration").trim(), mon: m ? Math.round(f.bottom - m.bottom) : null, hero: h ? Math.round(f.bottom - h.bottom) : null };
+    window.__enc = { lane: fs.getPropertyValue("--lane-l").trim() + "/" + fs.getPropertyValue("--lane-r").trim(), l: parseFloat(fs.getPropertyValue("--lane-l")), r: parseFloat(fs.getPropertyValue("--lane-r")), dur: fs.getPropertyValue("--encounter-duration").trim(), mon: m ? Math.round(f.bottom - m.bottom) : null, ground: Math.round(f.height * (1 - parseFloat(fs.getPropertyValue("--ground-top") || "44") / 100)), hero: h ? Math.round(f.bottom - h.bottom) : null };
     return [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => { const r = a.getBoundingClientRect(); return { id: a.className.match(/ ally-(\w+)/)?.[1], app: a.classList.contains("is-approaching"), y: Math.round(f.bottom - r.bottom), x: Math.round(r.left) }; });
   }));
   encs.push(await page.evaluate(() => window.__enc));
@@ -47,7 +47,15 @@ const encList = []; for (const e of encs) { if (!e) continue; const last = encLi
 const span = (k) => { const v = encList.map((e) => e[k]).filter((x) => x !== null); return v.length ? Math.max(...v) - Math.min(...v) : 0; };
 console.log("만남", encList.map((e) => `${e.lane} ${e.dur} 몬${e.mon} 주${e.hero}`).join(" | "));
 ok("몬스터 발 높이가 만남마다 달라진다(예전엔 늘 같았다) — 20px 이상 차이", encList.length >= 3 && span("mon") >= 20, `${span("mon")}px`);
-ok("주인공도 몬스터와 같은 깊이로 — 주인공 높이 차가 몬스터 높이 차의 절반 이상", span("hero") >= span("mon") * 0.5, `주 ${span("hero")} · 몬 ${span("mon")}`);
+ok("주인공 높이도 만남마다 달라진다 — 20px 이상 차이", span("hero") >= 20, `${span("hero")}px`);
+// 사용자 "더 넓게 분산" (2026-10-20): 두 무리가 따로 — 주인공과 몬스터 높이 차가 만남마다 달라지고, 두 무리가 함께 깊은 쪽(> 7.5%)에 몰리지 않는다
+const gaps = encList.filter((e) => e.mon !== null && e.hero !== null).map((e) => e.hero - e.mon);
+ok("주인공 · 몬스터 무리가 따로 움직인다 — 둘의 높이 차가 만남마다 20px 이상 달라진다", gaps.length >= 3 && Math.max(...gaps) - Math.min(...gaps) >= 20, gaps.join(","));
+ok("두 무리가 같이 깊은 쪽에 몰리지 않는다 — 만남마다 한쪽은 7.5% 이하", encList.every((e) => !(e.l > 7.5 && e.r > 7.5)), encList.map((e) => e.lane).join(" "));
+// 풀밭 선(--ground-top) 위 배경 그림에 발이 뜨지 않는다 — 깊은 무리 + 넓힌 개인 간격의 최악에서도
+const ground = encs.find((e) => e?.ground)?.ground ?? 0;
+const topFeet = Math.max(...rows.flat().map((a) => a.y));
+ok("동료 발이 풀밭 선 아래 — 가장 높은 발 ≤ 땅 높이 − 4px", ground > 0 && topFeet <= ground - 4, `발 ${topFeet} · 땅 ${ground}`);
 ok("걷는 시간이 만남마다 다르다 — 3가지 이상", new Set(encList.map((e) => e.dur)).size >= 3, [...new Set(encList.map((e) => e.dur))].join(","));
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 await browser.close();

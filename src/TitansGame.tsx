@@ -155,6 +155,12 @@ type TitansGameProps = {
 const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
 type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
+/** 두 무리 깊이(0~15%) — 따로 뽑되 둘 다 깊은 쪽(> 7.5)이면 한쪽을 뒤집어 땅 아래쪽도 늘 쓴다 (2026-10-20, "더 넓게 분산") */
+function lanePair(): { laneL: number; laneR: number } {
+  let l = Math.random() * 15, r = Math.random() * 15;
+  if (l > 7.5 && r > 7.5) { if (Math.random() < 0.5) l = 15 - l; else r = 15 - r; }
+  return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10 };
+}
 const ALLY_PAGE_SIZE = typeof window !== "undefined" && appWidth() <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
 const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
   // 모험 허브 (2026-10-13, docs/FOCUS_CAPYGO P0): 콘텐츠·모험 팝업 둘을 한 화면으로 — 카드 6장 + 루틴 줄
@@ -344,8 +350,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
   // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
-  // laneY — 만남 깊이(전장 높이 %, 0~15) · 몬스터 · 주인공 · 동료가 같이 그 높이에서 싸운다 (2026-10-20, 사용자: "몬스터 y 가 stage 가 달라져도 항상 고정")
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250, seq: 0, laneY: 0 });
+  // laneL · laneR — 만남 깊이(전장 높이 %, 0~15). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250, seq: 0, laneL: 0, laneR: 0 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -563,8 +569,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       monsterRight: (rolledKind === "dragon" ? 2 : 8) + Math.random() * 2,
       durationMs,
       seq: prev.seq + 1,
-      // 만남 깊이 0~15%(390px 전장 0~74px) — 예전 파티 공통 0~18px 의 약 4~5배. 위로만(아래는 AUTO · 배속 버튼 줄), 15% 넘으면 뒷줄 발이 풀밭 선에 닿는다
-      laneY: Math.round(Math.random() * 150) / 10,
+      // 무리마다 깊이 0~15%(390px 전장 0~74px). 위로만(아래는 AUTO · 배속 버튼 줄), 15% 넘으면 뒷줄 발이 풀밭 선에 닿는다
+      ...lanePair(),
     }));
     window.requestAnimationFrame(() => setFormationEngaged(true));
     const approachMs = durationMs + 120;
@@ -2514,8 +2520,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]),
           "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[1]),
           "--encounter-duration": `${encounterMotion.durationMs}ms`,
-          "--encounter-lane": `${encounterMotion.laneY}%`,
-          "--lane-n": String(encounterMotion.laneY),   // 원근(대열 세로 간격 · 몸 크기)용 숫자 — anim-plus.css
+          "--lane-l": `${encounterMotion.laneL}%`,
+          "--lane-ln": String(encounterMotion.laneL),   // 원근(대열 세로 간격 · 몸 크기)용 숫자 — anim-plus.css
+          "--lane-r": `${encounterMotion.laneR}%`,
+          "--lane-rn": String(encounterMotion.laneR),
         } as CSSProperties}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
