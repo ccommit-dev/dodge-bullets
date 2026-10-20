@@ -344,7 +344,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
   // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250, seq: 0 });
+  // laneY — 만남 깊이(전장 높이 %, 0~15) · 몬스터 · 주인공 · 동료가 같이 그 높이에서 싸운다 (2026-10-20, 사용자: "몬스터 y 가 stage 가 달라져도 항상 고정")
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, durationMs: 1250, seq: 0, laneY: 0 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -426,6 +427,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const animModeRef = useRef<"idle" | "attack">("idle");
   /** 주인공이 걸어 들어오는 중 — 칸 넘기기(rAF)가 걷기 칸을 쓴다 */
   const heroWalkRef = useRef(false);
+  /** 이번 만남 걷는 시간 ÷ 기준 1250ms — 주인공 걷기 칸도 그만큼 느리게/빠르게 (발이 미끄러지지 않게) */
+  const heroWalkRateRef = useRef(1);
   useEffect(() => { heroWalkRef.current = formationEngaged && !formationReady; }, [formationEngaged, formationReady]);
   const battlePhaseRef = useRef<BattlePhase>("combat");
   const battleTimers = useRef<number[]>([]);
@@ -546,7 +549,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setFormationEngaged(false);
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
-    const durationMs = Math.round(speedBase * (.88 + Math.random() * .24));
+    // 걷는 속도 (2026-10-20, 사용자: "걷는 속도도 항상 같지 않게") — 종별 기준에 만남마다 0.7~1.3배(예전 0.88~1.12 는 늘 같아 보였다)
+    const durationMs = Math.round(speedBase * (.7 + Math.random() * .6));
+    heroWalkRateRef.current = durationMs / 1250;
     setEncounterMotion((prev) => ({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       // 2026-10-08 사용자: 주인공·동료 겹침 — 주인공 54~66px 가 되면서 근접 슬롯(몬스터 왼쪽에 붙음)과 100% 겹쳤다.
@@ -558,6 +563,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       monsterRight: (rolledKind === "dragon" ? 2 : 8) + Math.random() * 2,
       durationMs,
       seq: prev.seq + 1,
+      // 만남 깊이 0~15%(390px 전장 0~74px) — 예전 파티 공통 0~18px 의 약 4~5배. 위로만(아래는 AUTO · 배속 버튼 줄), 15% 넘으면 뒷줄 발이 풀밭 선에 닿는다
+      laneY: Math.round(Math.random() * 150) / 10,
     }));
     window.requestAnimationFrame(() => setFormationEngaged(true));
     const approachMs = durationMs + 120;
@@ -761,7 +768,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
       // 애니메이션 2판(2026-10-19): 동작마다 칸 수·속도가 다르다 — 대기 6칸 1.2s · 걷기 6칸 0.6s(걸어 들어올 때) · 공격 8칸 0.48s
       const mode = attacking ? "attack" : heroWalkRef.current ? "walk" : "idle";
-      const step = heroFrameMs(mode);
+      const step = heroFrameMs(mode) * (mode === "walk" ? heroWalkRateRef.current : 1);
       if (acc >= step) {
         const steps = Math.floor(acc / step);
         acc -= steps * step;
@@ -2507,6 +2514,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]),
           "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[1]),
           "--encounter-duration": `${encounterMotion.durationMs}ms`,
+          "--encounter-lane": `${encounterMotion.laneY}%`,
+          "--lane-n": String(encounterMotion.laneY),   // 원근(대열 세로 간격 · 몸 크기)용 숫자 — anim-plus.css
         } as CSSProperties}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
@@ -2620,6 +2629,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               stage={save.stage}
               encounter={encounterMotion.seq}
               speed={save.battleSpeed}
+              walkRate={encounterMotion.durationMs / 1250}
             />
           ))}
         </div>

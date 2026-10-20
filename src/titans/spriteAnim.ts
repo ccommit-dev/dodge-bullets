@@ -44,9 +44,10 @@ export function hasAllyAnim(sheetId: string): boolean { return ALLY_ANIM_SET.inc
 export function hasMonsterAnim(art: string): boolean { return MONSTER_ANIM_SET.includes(art); }
 
 /** speed — 전투 배속(×2 면 공격·피격을 반 시간에). 빠른 동료(0.6초 간격)가 ×2 에서 0.3초마다 공격해 560ms 공격이 임팩트 전에 다시 시작됐다 */
-export function allyAnimStyle(sheetId: string, action: AllyAnimAction, delayMs = 0, speed = 1): CSSProperties {
+/** loopScale — 반복 동작 한 바퀴 시간 배수(걷기: 이번 만남 걷는 시간 · 동료 걸음 배수에 맞춰 발이 미끄러지지 않게, 2026-10-20) */
+export function allyAnimStyle(sheetId: string, action: AllyAnimAction, delayMs = 0, speed = 1, loopScale = 1): CSSProperties {
   const L = ANIM_LAYOUT.ally, a = L.actions[action];
-  const ms = a.loop ? a.ms : a.ms / Math.max(1, speed);
+  const ms = a.loop ? Math.round(a.ms * loopScale) : a.ms / Math.max(1, speed);
   return sheetAnimStyle(assetUrl(`titans/anim/allies/${sheetId}.webp`), L.cols, Object.keys(L.actions).length, a.row, a.frames, ms, a.loop, a.loop ? delayMs : 0);
 }
 /** boss — 대장이면 큰 칸(576²) 시트(있을 때). 칸 배치는 같고 그림만 크다 */

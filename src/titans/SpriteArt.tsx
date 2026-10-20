@@ -310,21 +310,22 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
  * (2026-10-19, 사용자: "걸어오는 건 되는데 y값이 일정해서 어색 — 랜덤값") 걸어 들어가는 동안 그 높이로 비스듬히 옮겨 간다(anim-plus.css bottom 전환).
  * 제자리 흔들림(좌우 2~6px · 위아래 2~6px · 2.2~4.2초 · 시작 위상)이 바뀐다. 대형 칸·충돌 분리(--sep-dx)는 그대로 둔다.
  */
-export function allyStageJitter(stage: number, id: string, encounter = 0, row = 0, column = ""): { jx: number; jy: number; wx: number; wy: number; wd: number; wdelay: number } {
+export function allyStageJitter(stage: number, id: string, encounter = 0, row = 0, column = ""): { jx: number; jy: number; wx: number; wy: number; wd: number; wdelay: number; wk: number } {
   const seed = 2166136261 ^ Math.imul(stage + 1, 2654435761) ^ Math.imul(encounter + 7, 374761393);
   const rng = (start: number) => { let h = start; return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; };
   const mix = (start: number, key: string) => { let h = start; for (let i = 0; i < key.length; i += 1) h = Math.imul(h ^ key.charCodeAt(i), 16777619); return h; };
   // 높이 = 파티 공통(만남마다 0~18px — 대형 전체가 오르내린다) + 열(앞·뒷줄이 같은 세로 열을 쓰는 짝, 0~14px) + 뒷줄만 각자 위로(0~8px).
   // 각자 0~36px 로 따로 뽑았더니 같은 열의 앞·뒷줄이 세로로 붙어 41% 겹쳤다 — 열 단위로 같이 오르내리면 두 줄 간격은 줄지 않고, 열마다 높이는 다르다
-  const party = Math.round(rng(seed)() * 18);
+  // 2026-10-20 사용자: 파티 공통 높이(0~18px)는 TitansGame 의 만남 깊이(--encounter-lane, 몬스터 · 주인공 · 동료가 같이 0~15%)로 옮겼다 —
+  // 여기엔 동료끼리의 간격(열 · 뒷줄)만 남긴다. wk = 걷는 시간 배수(0.78~1) — 동료마다 걸음이 달라 한 덩어리로 미끄러지지 않는다(1 이하라 교전 전에 도착)
   const colR = rng(mix(seed, "col:" + column)); colR();
   const col = Math.round(colR() * 14);
   const r = rng(mix(seed, id));
   const own = Math.round(r() * 8);
-  return { jy: party + col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10 };
+  return { jy: col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10, wk: Math.round((0.78 + r() * 0.22) * 100) / 100 };
 }
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number }) {
+export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1, walkRate = 1 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number; /** 이번 만남 걷는 시간 ÷ 기준(1250ms) — 걷기 칸 한 바퀴를 그만큼 늘이고 줄인다 (2026-10-20) */ walkRate?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -412,6 +413,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
   const rightFlank = !ranged && slot !== undefined && slot % 2 === 1;
   const faceLeft = false;
   void engaged; void approaching;
+  const jit = stage === undefined ? null : cell && lineIndex !== undefined ? allyStageJitter(stage, id, encounter, formationRow(cell, lineIndex), formationColumn(cell, lineIndex)) : allyStageJitter(stage, id, encounter);
   const partyStyle = slot === undefined ? undefined : ({
     "--party-home-x": `${homeX}%`,
     "--party-lane-y": `${laneY}%`,
@@ -422,8 +424,8 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
     // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
-    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex, stage === undefined || cell === "L" ? 0 : allyStageJitter(stage, id, encounter, formationRow(cell, lineIndex), formationColumn(cell, lineIndex)).jx) : {}),
-    ...(stage === undefined ? {} : (() => { const j = cell && lineIndex !== undefined ? allyStageJitter(stage, id, encounter, formationRow(cell, lineIndex), formationColumn(cell, lineIndex)) : allyStageJitter(stage, id, encounter); return { "--party-jy": `${j.jy}px`, "--aw-x": `${cell === "L" ? 0 : j.wx}px`, "--aw-y": `${j.wy}px`, "--aw-d": `${j.wd}s`, "--aw-delay": `${j.wdelay}s` }; })()),
+    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex, !jit || cell === "L" ? 0 : jit.jx) : {}),
+    ...(!jit ? {} : { "--party-jy": `${jit.jy}px`, "--aw-x": `${cell === "L" ? 0 : jit.wx}px`, "--aw-y": `${jit.wy}px`, "--aw-d": `${jit.wd}s`, "--aw-delay": `${jit.wdelay}s`, "--walk-k": String(jit.wk) }),
   } as CSSProperties);
   return (
     <div data-party-slot={slot} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
@@ -443,7 +445,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
           {anim2 ? (
             // 2판: 몸 상자는 그대로(WIDE_CELL), 안쪽 칸 그림만 동작 줄을 돈다 — 같은 동작이 다시 오면 key 로 처음부터
             <div className={`ally-body anim2 act-${a2Action}`} style={WIDE_CELL}>
-              <i key={`${a2Action}-${a2.n}`} className="ally-sprite" style={allyAnimStyle(sheetId, a2Action, (allyIndex[id] ?? 0) * -270, speed)} aria-hidden="true" />
+              <i key={`${a2Action}-${a2.n}`} className="ally-sprite" style={allyAnimStyle(sheetId, a2Action, (allyIndex[id] ?? 0) * -270, speed, a2Action === "walk" ? walkRate * (jit?.wk ?? 1) : 1)} aria-hidden="true" />
             </div>
           ) : (() => {
             const state: AllyFrameState = allyFrameFor({ flinching, attackPhase, approaching, walkTick });
