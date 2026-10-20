@@ -31,6 +31,7 @@ const EventCenter = lazy(() => import("./EventCenter").then((m) => ({ default: m
 import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { WalletBar } from "./ui/WalletBar";
+import { appWidth } from "./ui/webFrame";
 import { ORIENTATION_LABEL, applyOrientation, loadOrientationPref, saveOrientationPref, type OrientationPref } from "./ui/orientation";
 import { shareCardExtras } from "./ui/shareCardData";
 import { applyLowFx, frameMonitor, lowFxOn, setLowFx } from "./ui/perfMode";
@@ -544,7 +545,7 @@ function App() {
     if (!canvas) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const width = window.innerWidth;
+    const width = appWidth();   // PC 웹이면 폰 폭 기둥 (ui/webFrame)
     const height = window.innerHeight;
 
     canvas.width = Math.floor(width * dpr);

@@ -1,4 +1,5 @@
 import { heroPortrait } from "./titans/anim";
+import { appWidth } from "./ui/webFrame";
 import { heroFrames } from "./titans/spriteAnim";
 import type { BeatTrackDef } from "./beat/tracks";
 import type { BeatDifficulty } from "./beat/types";
@@ -414,7 +415,7 @@ export function BeatGame({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const width = window.innerWidth;
+    const width = appWidth();   // PC 웹이면 폰 폭 기둥 (ui/webFrame)
     const height = window.innerHeight;
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
@@ -696,7 +697,7 @@ export function BeatGame({
     setShoulderBlueprint(shoulderForTrack(slot.stageIndex));
 
     const canvas = canvasRef.current;
-    const width = window.innerWidth;
+    const width = appWidth();   // PC 웹이면 폰 폭 기둥 (ui/webFrame)
     const height = window.innerHeight;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const track = slot.track;
