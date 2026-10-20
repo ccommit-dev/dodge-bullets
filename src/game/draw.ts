@@ -1,7 +1,6 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, ELEMENT_LABEL, type Element } from "./skills";
-import { spiritPos } from "./skillShots";
 import { drawWoodArrow } from "./arrowArt";
 import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
@@ -773,54 +772,8 @@ function drawWeaponProjectile(ctx: CanvasRenderingContext2D, element: "wind" | "
   ctx.shadowBlur = 0;
 }
 
-/**
- * 장착한 스킬 무기 넷 — 주인공 머리 위에 반원으로 떠 있는 정령 (2026-10-02, 아웃로 디펜스). 무기마다 제 아이콘·속성 빛.
- * 장착이 없으면(또는 옛 시뮬 월드) 예전처럼 원거리 무기 하나를 그린다
- */
-function drawLoadoutSpirits(ctx: CanvasRenderingContext2D, world: GameWorld): boolean {
-  const loadout = world.loadout ?? [];
-  if (!loadout.length || world.player.anim === "dead") return false;
-  loadout.forEach((id, slot) => {
-    const { x, y } = spiritPos(world, slot);
-    const img = sprite(`dodge/skills/${id}.png`);
-    const glow = ELEMENT_COLOR[id];
-    const cd = world.skillTimers?.[id] ?? 0;
-    ctx.save();
-    const g = ctx.createRadialGradient(x, y, 2, x, y, 22);
-    g.addColorStop(0, "rgba(255,255,255,.35)"); g.addColorStop(0.55, glow + "55"); g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
-    if (img) {
-      ctx.shadowColor = glow; ctx.shadowBlur = cd <= 0.15 ? 14 : 6;
-      ctx.drawImage(img, x - 15, y - 15, 30, 30);
-    } else {
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-  });
-  return true;
-}
-
-function drawWeaponSpirit(ctx: CanvasRenderingContext2D, world: GameWorld): void {
-  if (drawLoadoutSpirits(ctx, world)) return;
-  if (world.rangedWeapon === "none" || world.player.anim === "dead") return;
-  const img = sprite(`dodge/weapons/${world.rangedWeapon}.png`);
-  const { x, y } = spiritPos(world);
-  const glow = ELEMENT_COLOR[world.rangedWeapon === "staff" ? "ice" : "earth"];
-  ctx.save();
-  const g = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, 26);
-  g.addColorStop(0, "rgba(255,255,255,.35)"); g.addColorStop(0.5, glow + "55"); g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y + 4, 26, 0, Math.PI * 2); ctx.fill();
-  ctx.translate(x, y);
-  ctx.rotate(world.aimAngle + Math.PI / 2 + Math.sin(world.animClock * 1.3) * 0.06);
-  if (img) {
-    const h = 40, w = h * (img.naturalWidth / img.naturalHeight);
-    ctx.shadowColor = glow; ctx.shadowBlur = 10;
-    ctx.drawImage(img, -w / 2, -h / 2, w, h);
-  } else {
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
+/* 주인공 머리 위에 떠 있던 스킬 무기 정령 아이콘(drawLoadoutSpirits · drawWeaponSpirit)은 지웠다 (2026-10-20, 사용자: "댐 방어전에 스킬 아이콘이 떠 있는 게 어색해 — 삭제").
+   스킬 탄은 그 자리(skillShots spiritPos — 머리 위 반원)에서 그대로 나간다: 판정 출발점을 옮기면 곡선 · 게이트 밸런스가 흔들린다 (bowHand 주석) */
 
 /** 캔버스 글자가 DOM HUD 에 가려지지 않는 세로 범위 — drawFrameInner 가 매 프레임 채운다 */
 const labelBounds = { top: 120, bottom: 600, leftColumn: 205, leftExtra: 72 };
@@ -1081,7 +1034,6 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.restore();
   }
 
-  drawWeaponSpirit(ctx, world);
   drawSkillShots(ctx, world);
   drawStickman(ctx, world);
   drawJuice(ctx, world);

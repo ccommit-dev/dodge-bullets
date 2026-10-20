@@ -1,62 +1,88 @@
-/** 동료 걸어 들어오는 높이 검사 (2026-10-19, 사용자: "동료 stage마다 걸어오는 건 되는데 y값이 일정해서 어색 — 랜덤값") — node scripts/verify-walk-y.mjs (vite 5173)
- * 몬스터가 새로 나올 때마다(만남) 동료가 새 높이로 비스듬히 걸어 들어가는지: 동료마다 만남 사이 도착 높이가 8px 이상 달라지고,
- * 같은 만남에서도 동료끼리 높이가 갈린다(한 줄로 서지 않는다). 겹침·전장 밖은 verify-formation · verify-play-art 가 본다 */
+/** 사냥터 대열 위치 · 걷기 검사 — node scripts/verify-walk-y.mjs (vite 5173)
+ * 사용자 지시 이력:
+ *  2026-10-19 "동료 stage마다 걸어오는 건 되는데 y값이 일정 — 랜덤값"
+ *  2026-10-20 "몬스터 y 고정 — 넓게" → "땅은 그대로 두고 더 넓게 분산"(두 무리 깊이: 왼쪽 주인공 · 원거리 −10~15% / 오른쪽 몬스터 · 근접 0~15%)
+ *  2026-10-20 "걷는 속도도 항상 같지 않게" · "공격할 때마다 움직이는데 — stage 가 갱신되고 첫 공격 전에만 움직이게"
+ * A. 스테이지 시작(새로고침 = 그 스테이지 웨이브 1)마다: 두 무리 깊이 · 주인공 · 몬스터 · 동료 높이가 달라지고, 걷는 시간이 다르다
+ * B. 같은 스테이지 안 다음 몬스터들: 주인공 · 동료는 제자리(걸어 들어가지 않는다) · 몬스터만 오른쪽에서 걸어 들어온다 · 몬스터가 교전 중 어슬렁대지 않는다
+ * C. 발이 풀밭 선 아래 · 두 무리가 같이 위쪽에 몰리지 않는다. 겹침 · 전장 밖은 verify-formation · verify-play-art 가 본다 */
 import { launchBrowser } from "./launch-browser.mjs";
-const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
+const BASE = "http://localhost:5173", H = "mock-local-dev";
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 await page.goto(BASE, { waitUntil: "networkidle0" });
-const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "leon", "garen", "luna"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99 };
-const titans = { gold: 40000, stage: 12, bestStage: 12, heroes: { mia: 20, leon: 20, garen: 20, luna: 20 }, lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "networkidle0" }); await sleep(2000);
-await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
-// 120ms 마다 동료 4명의 발 높이(필드 바닥 기준 px)와 접근 여부를 적는다
-const rows = [], encs = [];
-for (let i = 0; i < 160; i += 1) {
-  rows.push(await page.evaluate(() => {
-    const f = document.querySelector(".titans-field")?.getBoundingClientRect();
-    // 2026-10-20: 몬스터 · 주인공 발 높이와 이번 만남 깊이(왼쪽 무리 --lane-l · 오른쪽 무리 --lane-r) · 걷는 시간도 같이 적는다(걷기 0.7~1.3배)
-    const fs = getComputedStyle(document.querySelector(".titans-field"));
-    const m = document.querySelector(".titans-monster")?.getBoundingClientRect(), h = document.querySelector(".titans-hero")?.getBoundingClientRect();
-    window.__enc = { lane: fs.getPropertyValue("--lane-l").trim() + "/" + fs.getPropertyValue("--lane-r").trim(), l: parseFloat(fs.getPropertyValue("--lane-l")), r: parseFloat(fs.getPropertyValue("--lane-r")), dur: fs.getPropertyValue("--encounter-duration").trim(), mon: m ? Math.round(f.bottom - m.bottom) : null, ground: Math.round(f.height * (1 - parseFloat(fs.getPropertyValue("--ground-top") || "44") / 100)), hero: h ? Math.round(f.bottom - h.bottom) : null };
-    return [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => { const r = a.getBoundingClientRect(); return { id: a.className.match(/ ally-(\w+)/)?.[1], app: a.classList.contains("is-approaching"), y: Math.round(f.bottom - r.bottom), x: Math.round(r.left) }; });
-  }));
-  encs.push(await page.evaluate(() => window.__enc));
-  await sleep(120);
-}
-// 접근 구간마다: 시작 y · 끝 y (동료별)
-const byAlly = {};
-let prevApp = false, seg = -1;
-for (const r of rows) {
-  const app = r.some((a) => a.app);
-  if (app && !prevApp) seg += 1;
-  prevApp = app;
-  for (const a of r) { const k = a.id; (byAlly[k] ??= {}); (byAlly[k][seg] ??= { start: a.y, end: a.y, app: false }); if (a.app) { byAlly[k][seg].app = true; } byAlly[k][seg].end = a.y; }
-}
 let fails = 0; const ok = (n, c, i = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${i ? " — " + i : ""}`); if (!c) fails += 1; };
-const ends = {};
-for (const [id, segs] of Object.entries(byAlly)) { const list = Object.entries(segs).filter(([k]) => Number(k) >= 0).map(([, v]) => v); ends[id] = list.map((v) => v.end); console.log(id, list.map((v) => `${v.start}→${v.end}`).join("  ")); }
-const ids = Object.keys(ends), n = Math.min(...ids.map((id) => ends[id].length));
-ok("만남이 4번 이상 잡혔다", n >= 4, `만남 ${n}`);
-ok("동료마다 만남 사이 도착 높이가 8px 이상 달라진다", ids.every((id) => Math.max(...ends[id]) - Math.min(...ends[id]) >= 8), ids.map((id) => `${id} ${Math.max(...ends[id]) - Math.min(...ends[id])}px`).join(" · "));
-const spreadEnc = Array.from({ length: n }, (_, k) => { const ys = ids.filter((id) => id !== "garen").map((id) => ends[id][k]); return Math.max(...ys) - Math.min(...ys); });
-ok("같은 만남에서도 앞줄 동료끼리 높이가 갈린다(한 줄로 서지 않는다)", spreadEnc.filter((d) => d >= 4).length >= Math.ceil(n / 2), spreadEnc.join(","));
-// 만남마다(깊이 값이 바뀔 때) 깊이 · 걷는 시간 · 몬스터 · 주인공 발 높이(만남 끝 무렵 = 다음 값이 오기 직전)
-const encList = []; for (const e of encs) { if (!e) continue; const last = encList[encList.length - 1]; if (!last || last.lane !== e.lane || last.dur !== e.dur) encList.push({ ...e }); else Object.assign(last, { mon: e.mon, hero: e.hero }); }
-const span = (k) => { const v = encList.map((e) => e[k]).filter((x) => x !== null); return v.length ? Math.max(...v) - Math.min(...v) : 0; };
-console.log("만남", encList.map((e) => `${e.lane} ${e.dur} 몬${e.mon} 주${e.hero}`).join(" | "));
-ok("몬스터 발 높이가 만남마다 달라진다(예전엔 늘 같았다) — 20px 이상 차이", encList.length >= 3 && span("mon") >= 20, `${span("mon")}px`);
-ok("주인공 높이도 만남마다 달라진다 — 20px 이상 차이", span("hero") >= 20, `${span("hero")}px`);
-// 사용자 "더 넓게 분산" (2026-10-20): 두 무리가 따로 — 주인공과 몬스터 높이 차가 만남마다 달라지고, 두 무리가 함께 깊은 쪽(> 7.5%)에 몰리지 않는다
-const gaps = encList.filter((e) => e.mon !== null && e.hero !== null).map((e) => e.hero - e.mon);
-ok("주인공 · 몬스터 무리가 따로 움직인다 — 둘의 높이 차가 만남마다 20px 이상 달라진다", gaps.length >= 3 && Math.max(...gaps) - Math.min(...gaps) >= 20, gaps.join(","));
-ok("두 무리가 같이 깊은 쪽에 몰리지 않는다 — 만남마다 한쪽은 7.5% 이하", encList.every((e) => !(e.l > 7.5 && e.r > 7.5)), encList.map((e) => e.lane).join(" "));
-// 풀밭 선(--ground-top) 위 배경 그림에 발이 뜨지 않는다 — 깊은 무리 + 넓힌 개인 간격의 최악에서도
-const ground = encs.find((e) => e?.ground)?.ground ?? 0;
-const topFeet = Math.max(...rows.flat().map((a) => a.y));
-ok("동료 발이 풀밭 선 아래 — 가장 높은 발 ≤ 땅 높이 − 4px", ground > 0 && topFeet <= ground - 4, `발 ${topFeet} · 땅 ${ground}`);
-ok("걷는 시간이 만남마다 다르다 — 3가지 이상", new Set(encList.map((e) => e.dur)).size >= 3, [...new Set(encList.map((e) => e.dur))].join(","));
+
+const seed = async () => {
+  const now = Date.now();
+  const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "leon", "garen", "luna"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99 };
+  const titans = { gold: 40000, stage: 12, bestStage: 12, heroes: { mia: 20, leon: 20, garen: 20, luna: 20 }, lastActiveAt: now };
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+  await page.reload({ waitUntil: "networkidle0" }); await sleep(1500);
+  await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
+};
+const snap = () => page.evaluate(() => {
+  const fe = document.querySelector(".titans-field"); if (!fe) return null;
+  const f = fe.getBoundingClientRect(), fs = getComputedStyle(fe);
+  const b = (e) => e ? Math.round(f.bottom - e.getBoundingClientRect().bottom) : null;
+  const m = document.querySelector(".titans-monster"), h = document.querySelector(".titans-hero");
+  const allies = [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")];
+  return {
+    l: parseFloat(fs.getPropertyValue("--lane-l")), r: parseFloat(fs.getPropertyValue("--lane-r")), dur: fs.getPropertyValue("--encounter-duration").trim(),
+    ground: Math.round(f.height * (1 - parseFloat(fs.getPropertyValue("--ground-top") || "44") / 100)),
+    hero: b(h), heroX: h ? Math.round(h.getBoundingClientRect().left) : null, mon: b(m), monX: m ? Math.round(m.getBoundingClientRect().left) : null,
+    allies: allies.map((a) => ({ id: a.className.match(/ ally-(\w+)/)?.[1], y: b(a), x: Math.round(a.getBoundingClientRect().left), app: a.classList.contains("is-approaching") })),
+    // 몬스터 자리 = 계산된 bottom + 인라인 translate y (상자 크기는 피격 회전 · 쓰러짐 모션에 따라 출렁여 자리 판정에 안 쓴다)
+    monPos: m ? Math.round(parseFloat(getComputedStyle(m).bottom) - (parseFloat((getComputedStyle(m).translate || "0px 0px").split(" ")[1] ?? "0") || 0)) : null,
+    combat: fe.classList.contains("phase-combat"), boss: fe.classList.contains("boss"),
+    heroApp: h?.classList.contains("is-approaching") ?? false, monApp: m?.classList.contains("is-approaching") ?? false, hp: document.querySelector(".titans-stagebar, .titans-field")?.textContent?.match(/(\d+)\s*\/\s*10/)?.[1] ?? null,
+  };
+});
+
+// ── A. 스테이지 시작 5번 ──
+const starts = [];
+for (let k = 0; k < 5; k += 1) {
+  await seed();
+  let s = null;
+  for (let i = 0; i < 40; i += 1) { s = await snap(); if (s && !s.heroApp && s.allies.length && s.allies.every((a) => !a.app)) break; await sleep(150); }
+  await sleep(400); s = await snap();
+  starts.push(s);
+  console.log(`시작 ${k}: 깊이 ${s.l}/${s.r} · ${s.dur} · 주 ${s.hero} · 몬 ${s.mon} · 동료 ${s.allies.map((a) => a.y).join(",")}`);
+}
+const span = (vals) => { const v = vals.filter((x) => Number.isFinite(x)); return v.length ? Math.max(...v) - Math.min(...v) : 0; };
+ok("스테이지 시작마다 주인공 높이가 달라진다 — 20px 이상", span(starts.map((s) => s.hero)) >= 20, `${span(starts.map((s) => s.hero))}px`);
+ok("스테이지 시작마다 몬스터 높이가 달라진다 — 20px 이상", span(starts.map((s) => s.mon)) >= 20, `${span(starts.map((s) => s.mon))}px`);
+const gaps = starts.map((s) => s.hero - s.mon);
+ok("두 무리가 따로 — 주인공 · 몬스터 높이 차가 스테이지마다 20px 이상 달라진다", span(gaps) >= 20, gaps.join(","));
+ok("동료마다 스테이지 사이 높이가 8px 이상 달라진다", starts[0].allies.every((a0) => span(starts.map((s) => s.allies.find((a) => a.id === a0.id)?.y)) >= 8), starts[0].allies.map((a0) => `${a0.id} ${span(starts.map((s) => s.allies.find((a) => a.id === a0.id)?.y))}px`).join(" · "));
+ok("걷는 시간이 스테이지마다 다르다 — 3가지 이상", new Set(starts.map((s) => s.dur)).size >= 3, starts.map((s) => s.dur).join(","));
+ok("깊이 범위 — 왼쪽 −10~15% · 오른쪽 0~15% · 둘이 같이 위쪽(왼쪽 > 2.5 · 오른쪽 > 7.5)에 몰리지 않는다", starts.every((s) => s.l >= -10 && s.l <= 15 && s.r >= 0 && s.r <= 15 && !(s.l > 2.5 && s.r > 7.5)), starts.map((s) => `${s.l}/${s.r}`).join(" "));
+ok("같은 스테이지에서도 앞줄 동료끼리 높이가 갈린다(한 줄로 서지 않는다)", starts.filter((s) => span(s.allies.filter((a) => a.id !== "garen").map((a) => a.y)) >= 4).length >= 3, starts.map((s) => span(s.allies.filter((a) => a.id !== "garen").map((a) => a.y))).join(","));
+
+// ── B. 같은 스테이지 안: 다음 몬스터들 ──
+const base = starts[starts.length - 1];
+const rows = [];
+for (let i = 0; i < 110; i += 1) { rows.push(await snap()); await sleep(110); }   // 약 12초 — 몬스터 여러 마리
+// 스테이지를 깨고 나가는 연출(party-run-out)은 빼고 교전 단계만 — 다음 스테이지로 넘어가면 깊이가 바뀌어 걸러진다
+const sameStage = rows.filter((s) => s && s.combat && s.l === base.l && s.r === base.r);
+const monArrivals = sameStage.filter((s, i) => i > 0 && s.monApp && !sameStage[i - 1].monApp).length;
+ok("같은 스테이지에서 다음 몬스터가 걸어 들어왔다(1마리 이상)", monArrivals >= 1, `등장 ${monArrivals} · 표본 ${sameStage.length}`);
+ok("다음 몬스터 때 주인공 · 동료는 걸어 들어가지 않는다(is-approaching 없음)", sameStage.every((s) => !s.heroApp && s.allies.every((a) => !a.app)), "");
+const heroYs = sameStage.map((s) => s.hero), heroXs = sameStage.map((s) => s.heroX);
+ok("다음 몬스터 때 주인공 자리 그대로 — 높이 · 가로 3px 이내", span(heroYs) <= 3 && span(heroXs) <= 3, `높이 ${span(heroYs)} · 가로 ${span(heroXs)}`);
+// 대장(웨이브 10)은 몸이 커서 근접 동료가 그 몸 가장자리로 한 번 옮겨 선다 — 일반 몬스터끼리 · 대장 동안을 따로 잰다
+const groupMove = (rowsG, id) => Math.max(span(rowsG.map((s) => s.allies.find((a) => a.id === id)?.y)), span(rowsG.map((s) => s.allies.find((a) => a.id === id)?.x)));
+const allyMove = base.allies.map((a0) => Math.max(groupMove(sameStage.filter((s) => !s.boss), a0.id), groupMove(sameStage.filter((s) => s.boss), a0.id)));
+ok("다음 몬스터 때 동료 자리 그대로 — 높이 · 가로 3px 이내", allyMove.every((d) => d <= 3), base.allies.map((a, i) => `${a.id} ${allyMove[i]}`).join(" · "));
+const fighting = sameStage.filter((s) => !s.monApp);
+ok("교전 중 몬스터가 어슬렁대지 않는다 — 자리(bottom − translate) 1px 이내(첫 공격 뒤엔 제자리)", span(fighting.map((s) => s.monPos)) <= 1, `${span(fighting.map((s) => s.monPos))}px`);
+
+// ── C. 풀밭 선 ──
+const all = [...starts, ...sameStage];
+const topFeet = Math.max(...all.flatMap((s) => s.allies.map((a) => a.y)));
+ok("동료 발이 풀밭 선 아래 — 가장 높은 발 ≤ 땅 높이 − 4px", topFeet <= base.ground - 4, `발 ${topFeet} · 땅 ${base.ground}`);
+ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 await browser.close();
 process.exit(fails ? 1 : 0);

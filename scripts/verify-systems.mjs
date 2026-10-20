@@ -1028,7 +1028,8 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("장착 중인 무기를 다시 눌러도 맨손이 되지 않는다", !app.includes("p.expeditionWeapon === id ? \"none\" : id") && app.includes("if (id === \"none\") return p;"));
     // 일제 사격 연출 — 검 호(arc) 대신 화살 부채꼴. 판정 폭(SWING_ARC)을 그대로 쓴다
     const draw = readFileSync(join(root, "src/game/draw.ts"), "utf8");
-    ok("수동 사격 연출(검 호·되쏘기 링)이 없고 무기 정령을 그린다", !draw.includes("SWING_ARC") && !draw.includes("REFLECT_DIST") && draw.includes("function drawWeaponSpirit"));
+    // 2026-10-20 사용자: "댐 방어전에 스킬 아이콘이 떠 있는 게 어색해 — 삭제" — 머리 위 무기 정령 아이콘은 그리지 않는다
+    ok("수동 사격 연출(검 호·되쏘기 링)이 없고 머리 위 스킬 아이콘(무기 정령)도 그리지 않는다", !draw.includes("SWING_ARC") && !draw.includes("REFLECT_DIST") && !draw.includes("function drawWeaponSpirit") && !draw.includes("function drawLoadoutSpirits"));
     // 모델 — 일제 사격은 **장착 무기의 시트**(같은 인물이 활을 당기는 / 지팡이를 드는 4프레임)로, 시트가 없으면
     // 대기 시트 위에 무기를 당기는 포즈(drawPhase)로 그린다. 시트에는 무기가 그려져 있으므로 그 위에 무기를 또 올리지 않는다
     const player = readFileSync(join(root, "src/game/player.ts"), "utf8");

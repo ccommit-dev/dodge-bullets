@@ -33,7 +33,10 @@ const rowName = Object.fromEntries(Object.entries(A).map(([k, v]) => [v.row, k])
 const seen = {}, seqs = {}, mon = {}, hero = { sheets: new Set(), frames: new Set() };
 let overlay = null;
 const tapper = setInterval(() => { page.evaluate(() => { const f = document.querySelector(".titans-field"); if (!f) return; const r = f.getBoundingClientRect(); f.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: r.left + r.width * 0.6, clientY: r.top + r.height * 0.5 })); }).catch(() => {}); }, 900);
+// 2026-10-20: 걸어 들어가기는 스테이지 첫 몬스터에서만 — 다시 불러와 그 걷기가 첫 표본 창 안에 들어오게 한다
+await page.reload({ waitUntil: "domcontentloaded" });
 for (let round = 0; round < 4; round += 1) {
+  if (round === 0) await page.waitForSelector(".titans-field", { timeout: 15000 }).catch(() => {});
   const samples = await page.evaluate(() => new Promise((resolve) => {
     const out = []; const t0 = performance.now();
     const tick = () => {
@@ -108,6 +111,7 @@ for (const id of ids) {
   ok(`${id} 공격 줄이 실제 전투에서 재생된다(3칸 이상 보임)`, (s.attack?.size ?? 0) >= 3, [...(s.attack ?? [])].sort((x, y) => x - y).join(","));
 }
 const walkers = ids.filter((id) => (seen[id].walk?.size ?? 0) > 0);
+// 2026-10-20: 걸어 들어가기는 스테이지 첫 몬스터에서만(사용자 "첫 공격 전에만 움직이게") — 불러온 직후 한 번이라 아래 표본 직전에 다시 불러온다
 ok("걷기 줄이 걸어 들어올 때 돈다(6칸 중 5칸 이상 보임)", walkers.length > 0 && walkers.every((id) => seen[id].walk.size >= 5), walkers.map((id) => `${id}:${[...seen[id].walk].join("")}`).join(" "));
 ok("칸 위 CSS 흔들기가 꺼져 있다(.ally-idle 애니메이션 없음 · .ally-body 변형 없음)", overlay && overlay[0] === "none" && (overlay[1] === "none" || overlay[1] === "matrix(1, 0, 0, 1, 0, 0)"), JSON.stringify(overlay));
 // 몬스터 칸 순서 — 동료와 같은 결정적 검사(멈추고 칸 한가운데 시각으로 옮겨 읽는다)
