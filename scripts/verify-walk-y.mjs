@@ -10,6 +10,7 @@
  * B. 아래 땅: 만남마다 가장 낮은 캐릭터 발이 아래 UI(AUTO · 배속 위끝) 근처까지 내려온다 — 아래 땅이 비지 않는다
  * C. 교전 중(걸어 들어온 뒤 ~ 몬스터가 쓰러지기 전): 공격 · 피격이 있어도 주인공 · 동료(보이는 몸) · 몬스터 그림이 제자리(가운데 2px 이내)
  * D. 동료 발이 풀밭 선 아래 · 캐릭터 몸이 UI(AUTO · 배속 · 스킬 · 알림 칩)와 겹치지 않는다
+ * F. 걸어 들어오기(2026-10-20 "몬스터도 오른쪽 끝에서부터 · 캐릭터도 방향이 정해지면 자연스럽게 — 지금은 y로 각각 움직임"): 화면에 보이는 동안 발 높이가 안 바뀐다(가로로만) · 몬스터는 전장 오른쪽 밖에서 시작
  * E. 이펙트가 캐릭터 몸 근처(2026-10-20 사용자 "이펙트 위치가 이상해") — 타격 · 피해 숫자는 몬스터, 베기는 주인공, 동료 공격은 동료 */
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev";
@@ -71,6 +72,27 @@ for (const scr of SCREENS) {
       })(),
     };
   });
+  // ── F: 화면 갱신마다 재는 걷기 (8초) ──
+  const walk = await page.evaluate(() => new Promise((res) => {
+    const fe = document.querySelector(".titans-field"); const out = { yJumps: [], monStarts: [] }; const prev = {}; let monPrevIn = true; const t0 = performance.now();
+    const tick = () => {
+      const f = fe.getBoundingClientRect();
+      const els = [["hero", document.querySelector(".titans-hero")], ...[...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => [a.className.match(/ ally-([a-z_]+)/)?.[1], a])];
+      for (const [id, e] of els) {
+        if (!e) continue; const r = e.getBoundingClientRect(); const visible = r.right > f.left + 4 && r.left < f.right - 4; const y = Math.round(f.bottom - r.bottom);
+        if (prev[id]?.visible && visible && Math.abs(prev[id].y - y) > 2) out.yJumps.push(`${id} ${prev[id].y}→${y}`);
+        prev[id] = { y, visible };
+      }
+      const m = document.querySelector(".titans-monster"); const engaged = !!m?.classList.contains("is-engaged");
+      if (m && engaged && !monPrevIn) out.monStarts.push(Math.round(m.getBoundingClientRect().left - f.right));
+      monPrevIn = engaged;
+      if (performance.now() - t0 < 8000) requestAnimationFrame(tick); else res(out);
+    };
+    tick();
+  }));
+  ok(`[${scr.name}] 걸어 들어올 때 보이는 캐릭터 발 높이가 안 바뀐다(가로로만 걷는다)`, walk.yJumps.length === 0, walk.yJumps.slice(0, 3).join(" · "));
+  ok(`[${scr.name}] 몬스터는 전장 오른쪽 밖에서 걸어 들어온다(등장 순간 왼쪽 끝 > 전장 오른쪽)`, walk.monStarts.length >= 2 && walk.monStarts.every((d) => d >= 0), walk.monStarts.join(","));
+
   const rows = [];
   for (let i = 0; i < 200; i += 1) { const s = await snap(); if (s) rows.push(s); await sleep(110); }   // 약 22초 — 몬스터 여러 마리
 

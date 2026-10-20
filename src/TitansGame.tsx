@@ -374,6 +374,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // monsterIn — 몬스터가 오른쪽에서 걸어 들어오는 것(대열과 같은 때)
   const [partyApproach, setPartyApproach] = useState(false);
   const [monsterIn, setMonsterIn] = useState(false);
+  const spawnedOnceRef = useRef(false);
   // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
   // laneL · laneR — 만남 깊이(전장 높이 %, 왼쪽 −16~6 · 오른쪽 −7~9, lanePair). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
   // partyMeetRight · partyMl — 스테이지 첫 몬스터의 자리 · 보이는 몸 왼쪽 여백. 근접 동료 자리를 이것으로 굳히고, 다음 몬스터가 제 여백만큼 비켜 선다
@@ -596,15 +597,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setBossWeak(weak);
     formationReadyRef.current = false;
     setFormationReady(false);
+    // 자리 다시 잡기는 대열이 화면 밖일 때만 (2026-10-20, 사용자: "몬스터도 오른쪽 끝에서부터 걸어오게 · 캐릭터도 자연스럽게 방향이 정해지면 걸어오게 —
+    // 지금은 어색하게 y로 각각 움직임"). STAGE CLEAR 뒤엔 대열이 오른쪽으로 뛰어 나갔다(stage-exit) 왼쪽에서 들어오므로(stage-enter) 그 사이 새 높이로 옮겨
+    // 두면 화면에서는 왼쪽에서 가로로 걸어 들어온다. 대장 바로 부르기처럼 대열이 화면에 있으면 자리를 그대로 두고 몬스터만 들어온다
+    const relocate = battlePhaseRef.current === "stage-exit" || !spawnedOnceRef.current;
+    spawnedOnceRef.current = true;
     setMonsterIn(false);
-    setFormationEngaged(false);
+    if (relocate) setFormationEngaged(false);
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     // 걷는 속도 (2026-10-20, 사용자: "걷는 속도도 항상 같지 않게") — 종별 기준에 만남마다 0.7~1.3배(예전 0.88~1.12 는 늘 같아 보였다)
     const durationMs = Math.round(speedBase * (.7 + Math.random() * .6));
-    heroWalkRateRef.current = durationMs / 1250;
+    if (relocate) heroWalkRateRef.current = durationMs / 1250;
     const monsterJit = Math.random() * 2;
-    setEncounterMotion((prev) => ({
+    setEncounterMotion((prev) => !relocate ? { ...prev, durationMs, monsterRight: (rolledKind === "dragon" ? 2 : 8) + prev.monsterJit, partyMl: prev.partyMl } : ({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       // 2026-10-08 사용자: 주인공·동료 겹침 — 주인공 54~66px 가 되면서 근접 슬롯(몬스터 왼쪽에 붙음)과 100% 겹쳤다.
       // 몬스터를 오른쪽으로(30 → 16%) 물려 왼쪽부터 원거리(0~3%) · 주인공(28%) · 근접(몬스터 왼쪽) · 몬스터 네 띠가 생긴다
@@ -622,7 +628,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 전장이 아직 안 그려졌으면(불러온 직후 첫 스테이지) 창 높이로 가늠 — 390×844 창의 전장 490 · 360×640 은 380 (전장 ≈ 창 높이의 0.58)
       ...lanePair((document.querySelector(".titans-field")?.getBoundingClientRect().height || window.innerHeight * 0.58) >= WIDE_FIELD_MIN_H),
     }));
-    window.requestAnimationFrame(() => { setFormationEngaged(true); setMonsterIn(true); setPartyApproach(true); });
+    // 두 프레임 뒤에 — 한 프레임 안에 꺼짐 · 켜짐이 같이 계산되면 몬스터가 오른쪽 밖 자리를 거치지 않고(전환 없음) 걸어 들어오지 않았다
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => { setFormationEngaged(true); setMonsterIn(true); if (relocate) setPartyApproach(true); }));
     const approachMs = durationMs + 120;
     const formationTimer = window.setTimeout(() => {
       formationReadyRef.current = true;

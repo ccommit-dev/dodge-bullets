@@ -130,7 +130,9 @@
 .titans-allies .titan-ally-art[data-party-slot] { bottom: calc((var(--party-lane-y) + var(--party-jy, 0px)) * var(--lk, 1) + var(--ally-lane, 0%) / 0.52); }
 /* 걸어 들어가는 동안 높이도 옮겨 간다 (2026-10-19, 사용자: "걸어오는 건 되는데 y값이 일정") — 만남마다 새로 뽑은 --party-jy 로, 걷는 시간(--encounter-duration) 동안 비스듬히.
    예전 bottom .28s 는 높이가 걷기 전에 툭 바뀌었다(App.css 4493 의 같은 선택자를 덮는다) */
-.titans-allies .titan-ally-art[data-party-slot] { transition: left calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) linear, bottom calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) ease-in-out, scale calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) ease-in-out, translate .32s ease; }
+/* 2026-10-20 사용자: "캐릭터도 자연스럽게 방향이 정해지면 걸어오게 — 지금은 어색하게 y로 각각 움직임" — 높이(bottom) · 크기(scale)는 전환 없이 바뀐다.
+   높이는 대열이 화면 밖(STAGE CLEAR 뒤 뛰어 나간 사이)일 때만 바꾸므로(TitansGame relocate) 화면에선 왼쪽에서 가로로만 걸어 들어온다 */
+.titans-allies .titan-ally-art[data-party-slot] { transition: left calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) linear, translate .32s ease; }
 /* 알림 칩(받을 보상 · 구매 추천)은 전장 오른쪽 위 — HUD 줄(사냥 상태 띠 끝 ≈99px) 바로 아래 배경 그림 칸 (2026-10-20, 사용자 "땅은 그대로 두고 더 넓게 분산").
    오른쪽 아래(스킬 줄 위)에 있을 땐 몬스터 무리가 그 위로만 서서 오른쪽 아래 땅이 비었다. 가장 깊은(9%) 뒷줄 머리 ≈170px · 대장 머리 ≈210px 라 겹치지 않는다(390px 실측).
    전장이 낮으면(< 440px, TitansGame WIDE_FIELD_MIN_H) 예전 자리(오른쪽 아래) 그대로 — 그때는 깊이 범위도 좁다 */
@@ -143,7 +145,7 @@
    동료는 컨테이너(전장 높이 52%) 안에 있어 전장 % 깊이를 ÷ 0.52 해 같은 높이로 맞춘다. 걸음은 각자 배수(--walk-k 0.78~1).
    원근: 깊을수록 대열 세로 간격과 몸을 **같은 비율** k = 1 − 깊이/60 으로 줄인다(9% 에서 0.85). 간격만 좁히면(÷27) 앞뒤 줄 동료가 15~27% 겹쳤다(verify-formation) —
    같이 줄이면 겹침 비율이 깊이 0 과 같다. 9% 에서 뒷줄 발이 풀밭 선 아래(실측). 깊이 0 이면 예전과 같다 */
-.titans-field .titans-hero { scale: min(1, 1 - var(--lane-ln, 0) / 60); bottom: calc(22% + var(--lane-l, 0%)); transition: left var(--encounter-duration, 1.15s) linear, bottom var(--encounter-duration, 1.15s) ease-in-out, scale var(--encounter-duration, 1.15s) ease-in-out; }
+.titans-field .titans-hero { scale: min(1, 1 - var(--lane-ln, 0) / 60); bottom: calc(22% + var(--lane-l, 0%)); transition: left var(--encounter-duration, 1.15s) linear; }
 .titans-field .titans-monster { scale: min(1, 1 - var(--lane-rn, 0) / 60); bottom: calc(22% + var(--lane-r, 0%)); }
 /* 낮은 전장(< 440px)은 대열 세로 간격만 0.65배(--fk, TitansGame) — 동료 몸(px)에 비해 전장이 작아 뒷줄 발이 풀밭 선 위로 올라갔다(360×640 실측). 몸 크기는 그대로 */
 .titans-field .titans-allies .titan-ally-art[data-party-slot] { --lk: calc((1 - var(--ally-lane-n, 0) / 60) * var(--fk, 1)); scale: min(1, 1 - var(--ally-lane-n, 0) / 60); }
@@ -157,7 +159,10 @@
   62% { transform: translate(calc(var(--aw-x, 3px) * 0.3), calc(var(--aw-y, 2px) * -0.4)); }
 }
 /* 몬스터: 어슬렁(JS 가 translate 를 바꾼다 — 부드럽게) · 스테이지마다 다른 덤비기(atk-*) · 가끔 크게 밀리는 피격(hit-strong) */
-.titans-monster { transition: right var(--encounter-duration, 1.25s) linear, bottom var(--encounter-duration, 1.25s) ease-in-out, scale var(--encounter-duration, 1.25s) ease-in-out, transform .08s ease, translate .85s ease-in-out; }
+.titans-monster { transition: right var(--encounter-duration, 1.25s) linear, transform .08s ease, translate .85s ease-in-out; }
+/* 몬스터는 오른쪽 끝(전장 밖)에서 걸어 들어온다 (2026-10-20 사용자) — 들어오기 전엔 몸이 다 가려지는 자리에 전환 없이 놓고(높이 · 크기도 그때 바뀐다)
+   등장(is-engaged) 순간부터 오른쪽 → 왼쪽 가로로만 걷는다. 예전 −7% 는 몸 대부분이 이미 화면 안이라 그 자리에서 나타났다 */
+.titans-field .titans-monster:not(.is-engaged) { right: -40%; transition: none; }
 /* 덤비기 모양은 겉 상자(.monster-temper)에 얹는다 — 안쪽 그림의 종별 공격(verify-anim B')은 그대로, 몸 전체가 뛰거나·내려찍거나·길게 돌진한다. lunge 는 종별 기본 그대로 */
 .monster-temper { transform-origin: 50% 90%; }
 .titans-monster.atk-leap.action-attack .monster-temper { animation: temper-leap .6s cubic-bezier(.3,.7,.3,1) both; }
