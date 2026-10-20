@@ -319,9 +319,10 @@ export function allyStageJitter(stage: number, id: string, encounter = 0, row = 
   // 2026-10-20 사용자: 파티 공통 높이(0~18px)는 TitansGame 의 만남 깊이(--encounter-lane, 몬스터 · 주인공 · 동료가 같이 0~15%)로 옮겼다 —
   // 여기엔 동료끼리의 간격(열 · 뒷줄)만 남긴다. wk = 걷는 시간 배수(0.78~1) — 동료마다 걸음이 달라 한 덩어리로 미끄러지지 않는다(1 이하라 교전 전에 도착)
   const colR = rng(mix(seed, "col:" + column)); colR();
-  const col = Math.round(colR() * 14);
+  // 2026-10-20 "더 넓게 분산": 열 0~14 → 0~20px · 뒷줄 각자 0~8 → 0~10px (더 넓히면 깊이 15% 에서 뒷줄 발이 풀밭 선에 닿는다 — 최악 실측)
+  const col = Math.round(colR() * 20);
   const r = rng(mix(seed, id));
-  const own = Math.round(r() * 8);
+  const own = Math.round(r() * 10);
   return { jy: col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10, wk: Math.round((0.78 + r() * 0.22) * 100) / 100 };
 }
 
@@ -426,6 +427,9 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
     ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex, !jit || cell === "L" ? 0 : jit.jx) : {}),
     ...(!jit ? {} : { "--party-jy": `${jit.jy}px`, "--aw-x": `${cell === "L" ? 0 : jit.wx}px`, "--aw-y": `${jit.wy}px`, "--aw-d": `${jit.wd}s`, "--aw-delay": `${jit.wdelay}s`, "--walk-k": String(jit.wk) }),
+    // 무리 깊이 — 근접(R 칸)은 몬스터 무리, 원거리(L 칸)는 주인공 무리 (TitansGame --lane-r/--lane-l, anim-plus.css)
+    "--ally-lane": cell === "R" ? "var(--lane-r, 0%)" : "var(--lane-l, 0%)",
+    "--ally-lane-n": cell === "R" ? "var(--lane-rn, 0)" : "var(--lane-ln, 0)",
   } as CSSProperties);
   return (
     <div data-party-slot={slot} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>

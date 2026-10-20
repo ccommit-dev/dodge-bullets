@@ -429,7 +429,13 @@ function App() {
     on(); mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
   }, []);
-  const showToast = (msg: string, ms = 2400) => { setSettingsToast(msg); window.setTimeout(() => setSettingsToast(""), ms); };
+  // 앞 안내의 지우기 타이머를 끊는다 — 안 그러면 연달아 띄운 새 안내를 앞 타이머가 일찍 지웠다(빌드 정보 → 오류 로그 복사, verify-settings 2026-10-20)
+  const settingsToastTimer = useRef<number | null>(null);
+  const showToast = (msg: string, ms = 2400) => {
+    setSettingsToast(msg);
+    if (settingsToastTimer.current !== null) window.clearTimeout(settingsToastTimer.current);
+    settingsToastTimer.current = window.setTimeout(() => { settingsToastTimer.current = null; setSettingsToast(""); }, ms);
+  };
   // 성문 보급소 결제 (2026-10-02) — 진행 중인 결제 상품 · 같은 판에서 성문에 진 횟수(3·4스테이지)
   const [buyingProduct, setBuyingProduct] = useState<string | null>(null);
   const [, setStoreTick] = useState(0);
