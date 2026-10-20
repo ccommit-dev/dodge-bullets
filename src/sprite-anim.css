@@ -85,3 +85,17 @@
 @keyframes mon-hit-flash { 0%, 100% { filter: none; } 30% { filter: brightness(1.8); } }
 .titans-field .titans-monster.hit-a, .titans-field .titans-monster.hit-b { animation-name: mon-hit-flash !important; animation-duration: .16s !important; animation-timing-function: ease-out !important; }
 @keyframes titan-skill-strike { 45% { transform: scale(1.06); filter: brightness(1.25); } }
+/* 동료가 공격 중에 맞을 때 남던 예전 피격 밀림(App.css ally-hit-recoil-a/b · anim-plus ally-hit-recoil-back-a/b, translate)도 번쩍으로 — 교전 중 제자리(verify-walk-y 가 6px 를 잡았다) */
+@keyframes ally-hit-recoil-a { 0%, 100% { filter: none; } 30% { filter: brightness(1.7) saturate(.6); } }
+@keyframes ally-hit-recoil-b { 0%, 100% { filter: none; } 30% { filter: brightness(1.7) saturate(.6); } }
+@keyframes ally-hit-recoil-back-a { 0%, 100% { filter: none; } 30% { filter: brightness(1.7) saturate(.6); } }
+@keyframes ally-hit-recoil-back-b { 0%, 100% { filter: none; } 30% { filter: brightness(1.7) saturate(.6); } }
+/* 황금 몬스터(2판 시트가 없어 예전 그림, SpriteArt golden)도 교전 중 제자리 — 예전 종별 예비 · 덤빔(ogre-windup · ogre-smash 등 translate)이 남아
+   몬스터가 공격 때 9~30px 움직였다(verify-walk-y 가 '황금' 만남에서 잡았다). 대기 들썩임도 끈다 */
+.titans-field .titans-monster.action-prepare .titan-monster-art:not(.anim2) { animation: a2-mon-prep .24s ease-out both !important; }
+.titans-field .titans-monster.action-attack .titan-monster-art:not(.anim2) { animation: a2-mon-melee .5s ease-out both !important; }
+.titans-field .titans-monster.action-idle:not(.is-approaching) .titan-monster-art:not(.anim2) { animation: none !important; }
+/* 마력탄 시그니처를 몬스터에 꽂으며(2026-10-20 "이펙트를 캐릭터 · 몬스터 근처로") 끝 고리가 너무 컸다 — 몸 2.2배 × 고리(−30px) 1.2배 ≈ 280px 라
+   오른쪽 몬스터에서 전장 밖 30px(verify-anim-clip). 몸 1.6배 · 고리 −16px 로 몬스터 둘레에서 터지게 */
+@keyframes fx-sig-bolt { 0% { transform: translate(-80px, -30px) scale(.5); opacity: 0; } 15% { opacity: 1; } 55% { transform: translate(0, 0) scale(1); } 75% { transform: scale(1.4); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+.titans-fx-sig-bolt::after { inset: -16px; }

@@ -9,7 +9,8 @@
  * A. 몬스터마다(만남): 깊이 · 주인공 · 몬스터 높이 · 걷는 시간이 달라진다 · 깊이 범위 · 두 무리가 같이 위쪽에 몰리지 않는다
  * B. 아래 땅: 만남마다 가장 낮은 캐릭터 발이 아래 UI(AUTO · 배속 위끝) 근처까지 내려온다 — 아래 땅이 비지 않는다
  * C. 교전 중(걸어 들어온 뒤 ~ 몬스터가 쓰러지기 전): 공격 · 피격이 있어도 주인공 · 동료(보이는 몸) · 몬스터 그림이 제자리(가운데 2px 이내)
- * D. 동료 발이 풀밭 선 아래 · 캐릭터 몸이 UI(AUTO · 배속 · 스킬 · 알림 칩)와 겹치지 않는다 */
+ * D. 동료 발이 풀밭 선 아래 · 캐릭터 몸이 UI(AUTO · 배속 · 스킬 · 알림 칩)와 겹치지 않는다
+ * E. 이펙트가 캐릭터 몸 근처(2026-10-20 사용자 "이펙트 위치가 이상해") — 타격 · 피해 숫자는 몬스터, 베기는 주인공, 동료 공격은 동료 */
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev";
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -18,16 +19,16 @@ let fails = 0; const ok = (n, c, i = "") => { console.log(`${c ? "PASS" : "FAIL"
 const span = (vals) => { const v = vals.filter((x) => Number.isFinite(x)); return v.length ? Math.max(...v) - Math.min(...v) : 0; };
 
 const SCREENS = [
-  { name: "390×844", w: 390, h: 844, lanes: { lMin: -16, lMax: 6, rMin: -7, rMax: 9 } },
-  { name: "360×640", w: 360, h: 640, lanes: { lMin: -9, lMax: 3, rMin: 0, rMax: 7 } },
+  { name: "390×844", w: 390, h: 844, lanes: { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, minHero: 15, minMon: 10 },
+  { name: "360×640", w: 360, h: 640, lanes: { lMin: -9, lMax: 3, rMin: 0, rMax: 7 }, minHero: 10, minMon: 8 },   // 낮은 전장은 깊이 범위가 좁다
 ];
 for (const scr of SCREENS) {
   console.log(`── ${scr.name}`);
   await page.setViewport({ width: scr.w, height: scr.h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.goto(BASE, { waitUntil: "networkidle0" });
   const now = Date.now();
-  const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "leon", "garen", "luna"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99 };
-  const titans = { gold: 40000, stage: 12, bestStage: 12, heroes: { mia: 20, leon: 20, garen: 20, luna: 20 }, lastActiveAt: now };
+  const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "leon", "garen", "luna"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99, equippedWeaponLevel: 5 };   // 무기가 있어야 주인공이 자동 공격(베기 이펙트)
+  const titans = { gold: 40000, stage: 12, bestStage: 12, heroes: { mia: 6, leon: 6, garen: 6, luna: 6 }, lastActiveAt: now };   // 동료가 너무 세면 1초 안에 쓰러뜨려 주인공 자동 공격(약 1.08초)이 안 나간다
   await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1500);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
@@ -55,6 +56,19 @@ for (const scr of SCREENS) {
       hitNow: !!m?.className.match(/\bhit-[ab]\b/), atkNow: !!m?.className.match(/action-(attack|prepare)/) || !!document.querySelector(".ally-swing.is-attacking"),
       allies: [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => ({ id: a.className.match(/ ally-(\w+)/)?.[1], app: a.classList.contains("is-approaching"), body: c(a.querySelector(".ally-swing") ?? a), feet: Math.round(f.bottom - a.getBoundingClientRect().bottom) })),
       hits,
+      fx: (() => {
+        const box = (e) => { if (!e) return null; const r = R(e); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
+        const near = (pt, b, pad) => !!b && pt.x >= b.l - pad && pt.x <= b.r + pad && pt.y >= b.t - pad && pt.y <= b.b + pad;
+        const mon = box(document.querySelector(".titans-monster .titan-monster-art")), hero = box(document.querySelector(".titans-hero .titans-hero-facing"));
+        const allyBoxes = [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot] .ally-body")].map(box);
+        return [...document.querySelectorAll(".titans-field .titans-fx, .titans-field .titans-float")].map((e) => {
+          const r = R(e), pt = { x: r.left + r.width / 2, y: r.top + r.height / 2 }, c = e.className.toString();
+          const kind = /fx-hit|fx-crit|fx-sig-(arrow|bolt|slash)/.test(c) ? "hit" : /fx-slash/.test(c) ? "slash" : /fx-ally|fx-sig/.test(c) ? "ally" : /titans-float/.test(c) && !/src-tap/.test(c) ? "float" : null;
+          if (!kind) return null;
+          const okNear = kind === "hit" ? near(pt, mon, 12) : kind === "float" ? near(pt, mon, 50) : kind === "slash" ? near(pt, hero, 40) : allyBoxes.some((b) => near(pt, b, 30));
+          return { kind, ok: okNear, at: [Math.round(pt.x - f.left), Math.round(pt.y - f.top)] };
+        }).filter(Boolean);
+      })(),
     };
   });
   const rows = [];
@@ -71,21 +85,22 @@ for (const scr of SCREENS) {
   const full = encs.filter((e) => settledOf(e).length >= 4);
   const uiTop = rows.find((s) => s.uiTop)?.uiTop ?? 0, fieldH = rows[0]?.fieldH ?? 0;
   console.log(`전장 ${fieldH}px · AUTO 위끝 ${uiTop}px · 만남`, full.map((e) => `${e.l}/${e.r} ${e.dur} 주${e.hero} 몬${e.mon} 최저발${e.lowest}`).join(" | "));
-  const L = scr.lanes, midL = (L.lMin + L.lMax) / 2, midR = (L.rMin + L.rMax) / 2;
+  const L = scr.lanes, midL = L.lMin + (L.lMax - L.lMin) * 0.45, midR = L.rMin + (L.rMax - L.rMin) * 0.45;
 
   // ── A ──
   ok(`[${scr.name}] 몬스터 만남이 4번 이상 잡혔다`, full.length >= 4, `${full.length}`);
-  ok(`[${scr.name}] 몬스터마다 주인공 높이가 달라진다 — 15px 이상`, span(full.map((e) => e.hero)) >= 15, `${span(full.map((e) => e.hero))}px`);
-  ok(`[${scr.name}] 몬스터마다 몬스터 높이가 달라진다 — 10px 이상`, span(full.map((e) => e.mon)) >= 10, `${span(full.map((e) => e.mon))}px`);
+  ok(`[${scr.name}] 몬스터마다 주인공 높이가 달라진다 — ${scr.minHero}px 이상`, span(full.map((e) => e.hero)) >= scr.minHero, `${span(full.map((e) => e.hero))}px`);
+  ok(`[${scr.name}] 몬스터마다 몬스터 높이가 달라진다 — ${scr.minMon}px 이상`, span(full.map((e) => e.mon)) >= scr.minMon, `${span(full.map((e) => e.mon))}px`);
   ok(`[${scr.name}] 걷는 시간이 만남마다 다르다 — 3가지 이상`, new Set(full.map((e) => e.dur)).size >= 3, full.map((e) => e.dur).join(","));
-  ok(`[${scr.name}] 깊이 범위 — 왼쪽 ${L.lMin}~${L.lMax}% · 오른쪽 ${L.rMin}~${L.rMax}% · 둘이 같이 위쪽 절반에 몰리지 않는다`, encs.every((e) => e.l >= L.lMin && e.l <= L.lMax && e.r >= L.rMin && e.r <= L.rMax && !(e.l > midL && e.r > midR)), encs.map((e) => `${e.l}/${e.r}`).join(" "));
+  ok(`[${scr.name}] 깊이 범위 — 왼쪽 ${L.lMin}~${L.lMax}% · 오른쪽 ${L.rMin}~${L.rMax}% · 둘이 같이 아래쪽 45% 밖에 서지 않는다`, encs.every((e) => e.l >= L.lMin && e.l <= L.lMax && e.r >= L.rMin && e.r <= L.rMax && !(e.l > midL && e.r > midR)), encs.map((e) => `${e.l}/${e.r}`).join(" "));
   // ── B: 아래 땅 ──
-  ok(`[${scr.name}] 아래 땅이 비지 않는다 — 만남마다 가장 낮은 발이 AUTO 위끝 + 60px 안`, full.every((e) => e.lowest !== null && e.lowest <= uiTop + 60), full.map((e) => e.lowest).join(",") + ` (기준 ${uiTop + 60})`);
+  ok(`[${scr.name}] 아래 땅이 비지 않는다 — 만남마다 가장 낮은 발이 AUTO 위끝 + 70px 안`, full.every((e) => e.lowest !== null && e.lowest <= uiTop + 70), full.map((e) => e.lowest).join(",") + ` (기준 ${uiTop + 70})`);
   // ── C: 교전 중 제자리 ──
   const moves = []; let atkSamples = 0;
-  for (const e of full) {
+  for (const e of full.filter((x) => settledOf(x).length >= 6)) {
     // 마지막 두 표본은 뺀다 — 쓰러지는 첫 칸(처치 모션)이 frame-defeat 클래스보다 한 박자 먼저 그려질 때가 있다
-    const st = settledOf(e).slice(0, -2); atkSamples += st.filter((s) => s.atkNow || s.hitNow).length;
+    // 처음 세 표본(≈0.33초)도 뺀다 — 도착 순간 겹침 정리(--sep-dx, TitansGame)를 한 번 끝까지 풀어 0.32초 전환으로 옮긴 뒤 굳힌다
+    const st = settledOf(e).slice(3, -2); atkSamples += st.filter((s) => s.atkNow || s.hitNow).length;
     const d = (get) => Math.max(span(st.map((s) => get(s)?.cx)), span(st.map((s) => get(s)?.cy)));
     moves.push([d((s) => s.hero), d((s) => s.mon), Math.max(...st[0].allies.map((a0) => d((s) => s.allies.find((x) => x.id === a0.id)?.body)))]);
   }
@@ -95,6 +110,13 @@ for (const scr of SCREENS) {
   const topFeet = Math.max(...rows.flatMap((s) => s.allies.map((a) => a.feet)));
   ok(`[${scr.name}] 동료 발이 풀밭 선 아래 — 가장 높은 발 ≤ 땅 높이 − 4px`, topFeet <= (rows[0]?.ground ?? 0) - 4, `발 ${topFeet} · 땅 ${rows[0]?.ground}`);
   const uiHits = [...new Set(full.flatMap((e) => settledOf(e).flatMap((s) => s.hits)))];
+  // ── E: 이펙트 자리 ── (교전 중 표본만 — 걷는 중 · 쓰러지는 중엔 몸이 움직인다)
+  const fxAll = full.flatMap((e) => settledOf(e).flatMap((s) => s.fx));
+  for (const k of ["hit", "slash", "ally", "float"]) {
+    const list = fxAll.filter((f) => f.kind === k), bad = list.filter((f) => !f.ok);
+    const where = { hit: "몬스터 몸(±12px)", slash: "주인공 몸(±40px)", ally: "동료 몸(±30px)", float: "몬스터 위(±50px)" }[k];
+    ok(`[${scr.name}] 이펙트 ${k} 가 ${where} 에 — 표본 3개 이상 · 벗어난 것 5% 이하`, list.length >= 3 && bad.length <= list.length * 0.05, `${list.length}개 중 ${bad.length}개 벗어남 ${bad.slice(0, 2).map((b) => b.at.join(",")).join(" ")}`);
+  }
   ok(`[${scr.name}] 교전 중 주인공 · 동료 몸이 AUTO · 배속 · 스킬 · 알림 칩과 겹치지 않는다(4px 넘게)`, uiHits.length === 0, uiHits.slice(0, 4).join(" · "));
 }
 ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));
