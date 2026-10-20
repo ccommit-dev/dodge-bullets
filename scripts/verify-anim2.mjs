@@ -50,7 +50,8 @@ for (let round = 0; round < 4; round += 1) {
       const h = document.querySelector(".titans-hero .equipment-base.is-on") ?? document.querySelector(".titans-hero .equipment-base");   // 2판은 세 시트 층 중 보이는 것
       if (h) { const cs = getComputedStyle(h); r.hero = [cs.backgroundImage.split("/").pop(), cs.backgroundPositionX]; }
       out.push(r);
-      if (performance.now() - t0 < 2200) requestAnimationFrame(tick); else resolve(out);
+      // 3.2초 (2026-10-20): 만남마다 걷는 시간이 0.7~1.3배가 되어(최대 약 2초) 2.2초 창이 거의 걷기로 차면 공격 칸을 2개만 보았다
+      if (performance.now() - t0 < 3200) requestAnimationFrame(tick); else resolve(out);
     };
     requestAnimationFrame(tick);
   }));
