@@ -161,7 +161,7 @@ type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "ev
  * −16%(375px 전장 ≈75px)에서 주인공 발 84px · 원거리 발 79px. −18% 는 주인공 무기가 알림 칩 왼끝에 닿았다(실측).
  * 오른쪽 무리(몬스터 · 근접)는 −7~9%: 알림 칩을 전장 오른쪽 위로 옮겨 스킬 줄(위끝 49px) 위까지 내려온다(몬스터 이름표가 스킬 줄 위에 남는 −7%).
  *   9% 넘으면 뒷줄 발이 풀밭 선에 닿는다(실측: 개인 간격 최대 · 10% 에서 스테이지 나갈 때 선 위, 12% 는 교전 중에도 3px 넘음).
- * 둘 다 위쪽 절반이면 한쪽(반반)을 제 범위 아래쪽 절반으로 뒤집어 아래 땅이 비지 않게 한다.
+ * 둘 다 제 범위 아래쪽 45% 밖이면 한쪽(반반)을 뒤집어 아래 땅이 비지 않게 한다.
  */
 /**
  * 전장이 낮으면(< 440px — 360×640 등) 동료 몸(px)에 비해 전장이 작아 넓은 깊이에서 머리가 HUD · 알림 칩에 닿았다(실측 allyTop 78px).
@@ -173,8 +173,11 @@ function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean 
   const { lMin, lMax, rMin, rMax } = wide ? LANES_WIDE : LANES_COMPACT;
   let l = lMin + Math.random() * (lMax - lMin);
   let r = rMin + Math.random() * (rMax - rMin);
-  if (l > (lMin + lMax) / 2 && r > (rMin + rMax) / 2) {
-    if (Math.random() < 0.5) l = lMin + (lMax - l); else r = rMin + (rMax - r);
+  // 둘 다 아래쪽 45% 밖이면 한쪽을 뒤집는다 — 절반 기준이면 가운데쯤에 둘이 서서 아래 땅이 빌 때가 있었다(verify-walk-y 최저 발 126px)
+  const tl = lMin + (lMax - lMin) * 0.45, tr = rMin + (rMax - rMin) * 0.45;
+  if (l > tl && r > tr) {
+    // 가운데 기준 뒤집기는 45% 선을 넘겨 그대로 위쪽에 남기도 해서 비율로 아래쪽 45% 안에 옮긴다
+    if (Math.random() < 0.5) l = lMin + ((l - tl) / (lMax - tl)) * (tl - lMin); else r = rMin + ((r - tr) / (rMax - tr)) * (tr - rMin);
   }
   return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10, wide };
 }
@@ -389,50 +392,68 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const fxId = useRef(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   // 간단한 충돌 분리 (2026-10-08, 사용자: "캐릭터별 간단한 충돌 체크로 간격을 벌려줘") — 발 높이가 비슷한(같은 줄) 주인공·동료끼리
+  const sepFrozenRef = useRef(false);
   // 가로로 35% 넘게 겹치면 뒤에 선 동료를 민다(원거리는 왼쪽, 근접은 오른쪽). 겹침이 없어지면 서서히 제자리로. 슬롯 % 계산은 그대로 두고 margin 만 더한다
   useEffect(() => {
     const tick = () => {
       const field = fieldRef.current;
       if (!field) return;
+      // 교전 중(다 걸어 들어온 뒤)엔 도착 순간 한 번 끝까지 풀고(같은 계산을 여러 번 돌려 수렴) 다음 만남까지 굳힌다 (2026-10-20, 사용자 "첫 공격 전에만 움직이게").
+      // 예전처럼 320ms 마다 밀고 · 2px 씩 되돌리면 교전 중 동료가 4~8px 미끄러졌다(verify-walk-y). 걸을 때는 예전대로 틱마다 한 번
+      const settled = field.classList.contains("phase-combat") && !field.querySelector(".is-approaching");
+      if (!settled) sepFrozenRef.current = false;
+      else if (sepFrozenRef.current) return;
       const hero = field.querySelector<HTMLElement>(".titans-hero");
       const allies = [...field.querySelectorAll<HTMLElement>(".titan-ally-art[data-party-slot]")];
       // 칸 상자엔 투명 여백이 양옆 22% 씩 있다 — 그린 몸(가운데)만으로 잰다. 칸 전체로 재면 주인공과 닿지도 않은 동료를 밀어 옆 동료에 올렸다
       const coreRect = (el: HTMLElement, trim: number) => { const r = el.getBoundingClientRect(); const t = r.width * trim; return { left: r.left + t, right: r.right - t, width: r.width - 2 * t, bottom: r.bottom }; };
-      const boxes = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el, k) => ({ el, r: coreRect(el, k === 0 ? 0.15 : 0.22) }));
-      for (let i = 1; i < boxes.length; i += 1) {
-        const b = boxes[i];
-        let dx = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
-        let pushed = false;
-        // 주인공 + 앞서 놓인 동료 전부와 잰다 (2026-10-14, 사용자: "동료끼리 충돌체크가 안 돼서 어색") — 예전엔 주인공만 봐서,
-        // 주인공을 피해 왼쪽으로 민 원거리 동료가 옆 동료 위로 14px 올라탔다(luna×orion 28%)
-        for (let j = 0; j < i; j += 1) {
-          const a = boxes[j];
-          if (Math.abs(a.r.bottom - b.r.bottom) > 26) continue;   // 다른 줄은 앞뒤 깊이 (호흡·공격 바운스 ±6px 를 넘는 여유)
-          const overlap = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
-          const minW = Math.min(a.r.width, b.r.width);
-          if (overlap > minW * 0.35) {
-            const push = Math.min(18, overlap - minW * 0.35 + 2);
-            // 주인공에게서는 예전 규칙(원거리 왼쪽 · 근접 오른쪽), 동료끼리는 멀어지는 쪽으로
-            const away = j === 0 ? (b.el.classList.contains("combat-ranged") ? -1 : 1) : (b.r.left + b.r.width / 2 < a.r.left + a.r.width / 2 ? -1 : 1);
-            dx += away * push;
-            pushed = true;
+      // 바탕 상자(지금 --sep-dx 를 뺀 것) + 계산 중 dx — 여러 번 돌릴 때 매번 다시 재지 않고 dx 만 옮긴다
+      const items = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el, k) => {
+        const cur = k === 0 ? 0 : Number.parseFloat(el.style.getPropertyValue("--sep-dx")) || 0;
+        const r = coreRect(el, k === 0 ? 0.15 : 0.22);
+        return { el, cur, dx: cur, base: { left: r.left - cur, right: r.right - cur, width: r.width, bottom: r.bottom } };
+      });
+      const rectOf = (it: (typeof items)[number]) => ({ left: it.base.left + it.dx, right: it.base.right + it.dx, width: it.base.width, bottom: it.base.bottom });
+      const fr = field.getBoundingClientRect();
+      // 원거리는 전장 왼쪽 28px(자세 애니메이션 폭) 안쪽까지만, 근접은 몬스터 왼쪽 가장자리(−6px)까지만 — 몬스터 오른쪽에서 치면 안 된다
+      const mon = field.querySelector<HTMLElement>(".titans-monster")?.getBoundingClientRect();
+      for (let round = 0; round < (settled ? 10 : 1); round += 1) {
+        for (let i = 1; i < items.length; i += 1) {
+          const b = items[i], br = rectOf(b);
+          let dx = b.dx;
+          let pushed = false;
+          // 되돌림은 겹침이 20% 밑일 때만 — 35% 경계에서 밀고 되돌리기를 되풀이하지 않게. 밀린 뒤 20~35% 사이면 그 자리에 머문다
+          let relaxOk = true;
+          // 주인공 + 앞서 놓인 동료 전부와 잰다 (2026-10-14, 사용자: "동료끼리 충돌체크가 안 돼서 어색") — 예전엔 주인공만 봐서,
+          // 주인공을 피해 왼쪽으로 민 원거리 동료가 옆 동료 위로 14px 올라탔다(luna×orion 28%)
+          for (let j = 0; j < i; j += 1) {
+            const ar = rectOf(items[j]);
+            if (Math.abs(ar.bottom - br.bottom) > 26) continue;   // 다른 줄은 앞뒤 깊이 (호흡·공격 바운스 ±6px 를 넘는 여유)
+            const overlap = Math.min(ar.right, br.right) - Math.max(ar.left, br.left);
+            const minW = Math.min(ar.width, br.width);
+            if (overlap > minW * 0.2) relaxOk = false;
+            if (overlap > minW * 0.35) {
+              const push = Math.min(18, overlap - minW * 0.35 + 2);
+              // 주인공에게서는 예전 규칙(원거리 왼쪽 · 근접 오른쪽), 동료끼리는 멀어지는 쪽으로
+              const away = j === 0 ? (b.el.classList.contains("combat-ranged") ? -1 : 1) : (br.left + br.width / 2 < ar.left + ar.width / 2 ? -1 : 1);
+              dx += away * push;
+              pushed = true;
+            }
           }
+          // 겹침이 풀리면 제자리로 — 최소 2px 씩 줄인다(10% 만 줄이면 2px 미만 변화는 쓰지 않는 규칙에 걸려 14px 에서 영영 멈췄다)
+          if (!pushed && relaxOk) dx = Math.sign(dx) * Math.max(0, Math.abs(dx) - Math.max(2, Math.abs(dx) * 0.1));
+          dx = Math.max(-60, Math.min(60, dx));
+          // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
+          const minDx = fr.left + 28 - b.base.left;
+          const maxDx = mon ? mon.left - 6 - b.base.right : fr.right - 28 - b.base.right;
+          b.dx = Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), dx));
         }
-        // 겹침이 풀리면 제자리로 — 10% 씩 줄이면 2px 미만 변화는 쓰지 않는 규칙(아래)에 걸려 14px 에서 영영 멈췄다(luna 가 걸을 때 한 번 밀린 채 옆 동료 위에 남음). 최소 2px 씩 줄인다
-        if (!pushed) dx = Math.sign(dx) * Math.max(0, Math.abs(dx) - Math.max(2, Math.abs(dx) * 0.1));
-        dx = Math.max(-60, Math.min(60, dx));
-        // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
-        const fr = field.getBoundingClientRect();
-        const cur = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
-        // 원거리는 전장 왼쪽 28px(자세 애니메이션 폭) 안쪽까지만, 근접은 몬스터 왼쪽 가장자리(−6px)까지만 — 몬스터 오른쪽에서 치면 안 된다
-        const mon = field.querySelector<HTMLElement>(".titans-monster")?.getBoundingClientRect();
-        const minDx = fr.left + 28 - (b.r.left - cur);
-        const maxDx = mon ? mon.left - 6 - (b.r.right - cur) : fr.right - 28 - (b.r.right - cur);
-        dx = Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), dx));
-        const next = Math.abs(dx) < 0.5 ? 0 : Math.round(dx);
-        const prev = Number.parseFloat(b.el.style.getPropertyValue("--sep-dx")) || 0;
-        if (Math.abs(next - prev) >= 2) b.el.style.setProperty("--sep-dx", `${next}px`);   // 2px 미만 변화는 쓰지 않는다 — 전환이 계속 돌지 않게
       }
+      for (const it of items.slice(1)) {
+        const next = Math.abs(it.dx) < 0.5 ? 0 : Math.round(it.dx);
+        if (Math.abs(next - it.cur) >= 2) it.el.style.setProperty("--sep-dx", `${next}px`);   // 2px 미만 변화는 쓰지 않는다 — 전환이 계속 돌지 않게
+      }
+      if (settled) sepFrozenRef.current = true;
     };
     const id = window.setInterval(tick, 320);
     return () => window.clearInterval(id);
@@ -856,6 +877,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setFx((prev) => prev.filter((f) => f.id !== id));
     }, kind === "slash" ? 320 : kind === "hit" || kind === "ally" ? 420 : 850);
   };
+  /**
+   * 이펙트를 캐릭터 몸 위에 (2026-10-20, 사용자: "이펙트 위치가 이상해 — 캐릭터나 몬스터 근처로").
+   * 예전엔 전장 고정 % (타격 72~82% · 38~52% 등)라 만남마다 깊이가 바뀌는 몬스터 · 대열(두 무리 깊이)을 따라가지 못하고 허공에 떴다.
+   * 지금 그 캐릭터 상자를 재서 상자 안 비율(fx, fy)에 놓는다. 못 재면(전장 밖 · 아직 안 그려짐) 예전 고정 자리
+   */
+  const fxSpot = (target: "monster" | "hero" | "pet" | TitanHeroId, fx: number, fy: number, fallbackX: number, fallbackY: number, jitter = 0): { x: number; y: number } => {
+    const field = fieldRef.current;
+    const sel = target === "monster" ? ".titans-monster .titan-monster-art" : target === "hero" ? ".titans-hero .titans-hero-facing" : target === "pet" ? ".titans-pet" : `.titans-allies .ally-${target} .ally-body`;
+    const el = field?.querySelector(sel) ?? (target === "hero" ? field?.querySelector(".titans-hero") : target !== "monster" && target !== "pet" ? field?.querySelector(`.titans-allies .ally-${target}`) : null);
+    const fr = field?.getBoundingClientRect(), r = el?.getBoundingClientRect();
+    if (!fr || !r || fr.width === 0 || r.width === 0) return { x: fallbackX, y: fallbackY };
+    const j = () => (Math.random() - 0.5) * 2 * jitter;
+    return { x: ((r.left + r.width * (fx + j()) - fr.left) / fr.width) * 100, y: ((r.top + r.height * (fy + j()) - fr.top) / fr.height) * 100 };
+  };
+  const pushFxAt = (kind: FxBurst["kind"], target: Parameters<typeof fxSpot>[0], fx: number, fy: number, fallbackX: number, fallbackY: number, hue?: number, jitter = 0) => {
+    const { x, y } = fxSpot(target, fx, fy, fallbackX, fallbackY, jitter);
+    // 가장자리 캐릭터에 붙인 이펙트가 전장 밖으로 나가지 않게 반폭만큼 안쪽으로 — 시그니처(120px · 회전 · 고리)가 왼쪽 끝 원거리 동료 · 오른쪽 몬스터에서 삐져나갔다(verify-anim-clip)
+    const fw = fieldRef.current?.getBoundingClientRect().width ?? 0;
+    const half = fw > 0 ? ((kind.startsWith("sig-") ? 100 : 30) / fw) * 100 : 0;   // 시그니처는 120px 사각이 돌며 대각선 ≈170px
+    pushFx(kind, Math.max(half, Math.min(100 - half, x)), y, hue);
+  };
 
   const pushFloat = (
     dmg: number,
@@ -869,8 +911,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     delayMs = 0,
   ) => {
     const rect = fieldRef.current?.getBoundingClientRect();
-    const x = clientX && rect ? ((clientX - rect.left) / rect.width) * 100 : 58 + Math.random() * 16;
-    const y = clientY && rect ? ((clientY - rect.top) / rect.height) * 100 : 30 + Math.random() * 16;
+    // 좌표가 없으면 몬스터 머리 위(지금 상자에서) — 예전 고정 58~74% · 30~46% 는 깊이가 바뀐 몬스터와 떨어져 떴다 (2026-10-20)
+    const spot = clientX && clientY && rect ? null : fxSpot("monster", 0.5, 0.12, 58 + Math.random() * 16, 30 + Math.random() * 16, 0.18);
+    const x = spot ? spot.x : ((clientX! - rect!.left) / rect!.width) * 100;
+    const y = spot ? spot.y : ((clientY! - rect!.top) / rect!.height) * 100;
     const id = ++floatId.current;
     // 저사양 모드는 동시 숫자를 절반으로 — 숫자 폭주가 프레임을 먹는다
     const show = () => {
@@ -927,8 +971,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
       // 피격 프레임은 짧게(90/130ms) — 파티 4명이 연타하면 흰 프레임이 거의 상시 노출되던 문제
       window.setTimeout(() => setImpact(null), crit ? 130 : 90);
-      pushFx("hit", 72 + Math.random() * 10, 38 + Math.random() * 14);
-      if (crit) pushFx("crit", 70, 40, 38);
+      pushFxAt("hit", "monster", 0.45, 0.5, 72 + Math.random() * 10, 38 + Math.random() * 14, undefined, 0.12);
+      if (crit) pushFxAt("crit", "monster", 0.45, 0.45, 70, 40, 38);
 
       const next = hpRef.current - dealt;
       if (next > 0) {
@@ -1018,8 +1062,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (born.length > 0) {
             flash(`${PET_DEFS[born[0]].name} 부화! 마이페이지에서 확인하세요`);
             // 필드 펫 자리(좌측)에서 황금 버스트 — 부화가 눈에 보이게
-            pushFx("crit", 15, 50, 45);
-            pushFx("warcry", 15, 50, 45);
+            pushFxAt("crit", "pet", 0.5, 0.5, 15, 50, 45);
+            pushFxAt("warcry", "pet", 0.5, 0.5, 15, 50, 45);
           }
         });
       }
@@ -1182,7 +1226,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (battlePhaseRef.current !== "combat" || !formationReadyRef.current) return;
       const { dmg, crit } = computeTapHit();
       playAttackAnim();
-      pushFx("slash", 28 + Math.random() * 8, 42 + Math.random() * 10);
+      pushFxAt("slash", "hero", 0.95, 0.5, 28 + Math.random() * 8, 42 + Math.random() * 10, undefined, 0.08);
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
       applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap" });
     },
@@ -1241,7 +1285,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           animResetRef.current = true;
           setAnimMode("attack");
           setFrameIdx(0);
-          pushFx("slash", 31, 45);
+          pushFxAt("slash", "hero", 0.95, 0.5, 31, 45);
           applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery), false, { fromAlly: "tap", source: "hero" });
         }
       } else {
@@ -1264,7 +1308,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const sig = allySignature(h.id);
           const no = (allyAttackNo.current[h.id] = (allyAttackNo.current[h.id] ?? 0) + 1);
           const isSig = isSignatureHit(sig, no);
-          pushFx(isSig ? `sig-${sig.fx}` : "ally", 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue);
+          // 시그니처: 화살 · 마력탄 · 베기는 날아가 꽂히는 곳(몬스터), 충격파는 탱커 발밑, 빛 고리는 힐러 몸. 평타 고리는 그 동료 앞
+          if (!isSig) pushFxAt("ally", h.id, 0.75, 0.5, 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue, 0.08);
+          else if (sig.fx === "quake") pushFxAt(`sig-${sig.fx}`, h.id, 0.5, 0.9, 40, 60, h.hue);
+          else if (sig.fx === "halo") pushFxAt(`sig-${sig.fx}`, h.id, 0.5, 0.45, 40, 55, h.hue);
+          else pushFxAt(`sig-${sig.fx}`, "monster", 0.42, 0.5, 72, 45, h.hue, 0.08);
           // 부가 효과 (2026-10-14 보완) — 힐러 빛 고리: 모든 스킬 쿨 −0.25초 · 탱커 충격파: 대장 제한 시간 0.2초 정지
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
@@ -1897,7 +1945,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}`);
     if (lv === 0) {
       setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
-      pushFx("ally", 36, 58, def.hue);
+      pushFxAt("ally", id, 0.5, 0.5, 36, 58, def.hue);
       // 첫 소환은 빈 슬롯에 자동 출전 — 소환했는데 안 싸우는 상황을 막는다.
       // 도감(§7) 보유 판정용 ★1 기록도 여기서 함께 남긴다.
       void updateCharacterProgress(userHash, (current) => {
@@ -1989,7 +2037,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const until = now + durMs * freezeMul;
       if (kind === "freeze" && saveRef.current.huntMods.thermalShock && now < buffsRef.current.burnUntil) {
         applyDamage(computeTapHit().base * 6, true, { source: "skill", label: "열충격", skill: id, delayMs: 200 });
-        pushFx("crit", 70, 40, 18);
+        pushFxAt("crit", "monster", 0.45, 0.45, 70, 40, 18);
       }
       setBuffSource((prev) => (prev[kind] === id ? prev : { ...prev, [kind]: id }));
       setBuffs((b) => {
@@ -2006,8 +2054,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (effect.kind === "hit" || effect.kind === "execute") {
       playAttackAnim();
       if (!geo) {
-        if (def.slot === "starter") pushFx("slash", 30, 40);
-        else pushFx("warcry", 58, 42, def.element === "fire" ? 18 : 210);
+        if (def.slot === "starter") pushFxAt("slash", "hero", 0.95, 0.5, 30, 40);
+        else pushFxAt("warcry", "monster", 0.45, 0.5, 58, 42, def.element === "fire" ? 18 : 210);
       }
       const { dmg, base } = computeTapHit();
       const low = effect.kind === "execute" && hpRef.current < monsterHp(saveRef.current.stage, bossRef.current) * 0.3;
