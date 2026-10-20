@@ -131,14 +131,18 @@
 /* 걸어 들어가는 동안 높이도 옮겨 간다 (2026-10-19, 사용자: "걸어오는 건 되는데 y값이 일정") — 만남마다 새로 뽑은 --party-jy 로, 걷는 시간(--encounter-duration) 동안 비스듬히.
    예전 bottom .28s 는 높이가 걷기 전에 툭 바뀌었다(App.css 4493 의 같은 선택자를 덮는다) */
 .titans-allies .titan-ally-art[data-party-slot] { transition: left calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) linear, bottom calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) ease-in-out, scale calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) ease-in-out, translate .32s ease; }
+/* 알림 칩(받을 보상 · 구매 추천)은 전장 오른쪽 위 — HUD 줄(사냥 상태 띠 끝 ≈99px) 바로 아래 배경 그림 칸 (2026-10-20, 사용자 "땅은 그대로 두고 더 넓게 분산").
+   오른쪽 아래(스킬 줄 위)에 있을 땐 몬스터 무리가 그 위로만 서서 오른쪽 아래 땅이 비었다. 가장 깊은(9%) 뒷줄 머리 ≈170px · 대장 머리 ≈210px 라 겹치지 않는다(390px 실측).
+   전장이 낮으면(< 440px, TitansGame WIDE_FIELD_MIN_H) 예전 자리(오른쪽 아래) 그대로 — 그때는 깊이 범위도 좁다 */
+.titans-field.lanes-wide .battle-alert-stack { top: 104px; bottom: auto; justify-content: flex-start; }
 /* 만남 깊이 — 두 무리가 따로 (2026-10-20, 사용자: "땅은 그대로 두고 캐릭터 · 동료 · 몬스터가 더 넓게 분산되게").
    한 덩어리로 같이 오르내리면 깊은 만남(15% 근처)에서 대열이 위에 몰려 아래 땅이 비었다 →
-   왼쪽 무리(주인공 + 원거리 동료 L 칸, --lane-l, −16~6%)와 오른쪽 무리(몬스터 + 근접 동료 R 칸, --lane-r, 0~12%)가 따로 걷는다.
-   음수 = 앞(아래)으로 내려와 세로 간격이 벌어진다(몸은 1 보다 안 키운다 — 왼쪽 끝 원거리 동료가 전장 밖으로 6px 삐져나갔다, verify-anim-clip). — 왼쪽 아래엔 AUTO · 배속 버튼뿐, 오른쪽 아래엔 알림 칩이 바로 있어 오른쪽은 0 아래로 안 간다.
+   왼쪽 무리(주인공 + 원거리 동료 L 칸, --lane-l, −16~6%)와 오른쪽 무리(몬스터 + 근접 동료 R 칸, --lane-r, −7~9%)가 따로 걷는다.
+   음수 = 앞(아래)으로 내려와 세로 간격이 벌어진다(몸은 1 보다 안 키운다 — 왼쪽 끝 원거리 동료가 전장 밖으로 6px 삐져나갔다, verify-anim-clip). — 아래는 스킬 줄(AUTO · 배속도 그 왼쪽 끝)뿐이라 두 무리 다 그 위까지 내려온다.
    근접 동료는 몬스터와 같은 깊이라 몬스터 옆에 붙는 자리는 그대로. 둘 다 위쪽이면 왼쪽을 아래 절반으로 뒤집어(TitansGame lanePair) 땅 아래쪽도 늘 쓴다.
    동료는 컨테이너(전장 높이 52%) 안에 있어 전장 % 깊이를 ÷ 0.52 해 같은 높이로 맞춘다. 걸음은 각자 배수(--walk-k 0.78~1).
-   원근: 깊을수록 대열 세로 간격과 몸을 **같은 비율** k = 1 − 깊이/60 으로 줄인다(12% 에서 0.8). 간격만 좁히면(÷27) 앞뒤 줄 동료가 15~27% 겹쳤다(verify-formation) —
-   같이 줄이면 겹침 비율이 깊이 0 과 같다. 12% 에서 뒷줄 발이 풀밭 선 아래(실측). 깊이 0 이면 예전과 같다 */
+   원근: 깊을수록 대열 세로 간격과 몸을 **같은 비율** k = 1 − 깊이/60 으로 줄인다(9% 에서 0.85). 간격만 좁히면(÷27) 앞뒤 줄 동료가 15~27% 겹쳤다(verify-formation) —
+   같이 줄이면 겹침 비율이 깊이 0 과 같다. 9% 에서 뒷줄 발이 풀밭 선 아래(실측). 깊이 0 이면 예전과 같다 */
 .titans-field .titans-hero { scale: min(1, 1 - var(--lane-ln, 0) / 60); bottom: calc(22% + var(--lane-l, 0%)); transition: left var(--encounter-duration, 1.15s) linear, bottom var(--encounter-duration, 1.15s) ease-in-out, scale var(--encounter-duration, 1.15s) ease-in-out; }
 .titans-field .titans-monster { scale: min(1, 1 - var(--lane-rn, 0) / 60); bottom: calc(22% + var(--lane-r, 0%)); }
 .titans-field .titans-allies .titan-ally-art[data-party-slot] { --lk: calc(1 - var(--ally-lane-n, 0) / 60); scale: min(1, var(--lk)); }

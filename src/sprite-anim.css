@@ -22,10 +22,12 @@
 /* 피격: 뒤로 밀렸다 돌아온다(피격 4칸 320ms). hit-0/1 을 번갈아 매번 다시 돈다 */
 .titan-ally-art.anim2.was-hit.hit-0:not(.a2-atk) .ally-swing { animation: a2-knock-a .32s ease-out !important; }
 .titan-ally-art.anim2.was-hit.hit-1:not(.a2-atk) .ally-swing { animation: a2-knock-b .32s ease-out !important; }
-@keyframes a2-lunge-melee { 0% { translate: 0 0; } 30% { translate: -3px 0; } 45% { translate: 9px 0; } 72% { translate: 12px 0; } 100% { translate: 0 0; } }
-@keyframes a2-recoil-ranged { 0%, 45% { translate: 0 0; } 60% { translate: -4px 0; } 100% { translate: 0 0; } }
-@keyframes a2-knock-a { 0% { translate: 0 0; } 30% { translate: -6px 0; } 100% { translate: 0 0; } }
-@keyframes a2-knock-b { 0% { translate: 0 0; } 30% { translate: -6px 0; } 100% { translate: 0 0; } }
+/* 2026-10-20 사용자: "공격할 때마다 움직이는데 — 몬스터가 나오고 첫 공격 전에만 움직이게" — 교전 중 공격 · 피격 때 몸이 자리를 옮기는 이동(translate)을 뺐다.
+   동작 이름은 그대로(검사 · 종별 연결), 몸은 제자리에서 시트 칸이 공격 자세를 보이고 밝기만 번쩍인다 */
+@keyframes a2-lunge-melee { 0%, 100% { filter: none; } 45% { filter: brightness(1.18); } }
+@keyframes a2-recoil-ranged { 0%, 45%, 100% { filter: none; } 60% { filter: brightness(1.15); } }
+@keyframes a2-knock-a { 0%, 100% { filter: none; } 30% { filter: brightness(1.7) saturate(.6); } }
+@keyframes a2-knock-b { 0%, 100% { filter: none; } 30% { filter: brightness(1.7) saturate(.6); } }
 
 /* 몬스터 — 칸 그림 상자 · 쓰러짐 그림 · 오른쪽을 보게 렌더한 4종 뒤집기 */
 .titan-monster-art.anim2 { position: relative; }
@@ -69,6 +71,17 @@
 .titans-monster.action-prepare .titan-monster-art.anim2 { animation: a2-mon-prep .24s ease-out both !important; }
 .titans-monster.combat-melee.action-attack .titan-monster-art.anim2 { animation: a2-mon-melee .5s cubic-bezier(.25, .8, .3, 1) both !important; }
 .titans-monster.combat-ranged.action-attack .titan-monster-art.anim2 { animation: a2-mon-ranged .5s ease-out both !important; }
-@keyframes a2-mon-prep { to { transform: translateX(6px); } }
-@keyframes a2-mon-melee { 0% { transform: translateX(6px); } 40% { transform: translateX(-24px); } 65% { transform: translateX(-20px); } 100% { transform: none; } }
-@keyframes a2-mon-ranged { 0% { transform: translateX(4px); } 40% { transform: translateX(-8px); } 100% { transform: none; } }
+/* 몬스터도 제자리(위 주석) — 예비는 살짝 밝게, 덤빔은 번쩍 */
+@keyframes a2-mon-prep { to { filter: brightness(1.1); } }
+@keyframes a2-mon-melee { 0%, 100% { filter: none; } 40% { filter: brightness(1.22); } }
+@keyframes a2-mon-ranged { 0%, 100% { filter: none; } 40% { filter: brightness(1.15); } }
+
+/* 교전 중 자리 이동 끔 (2026-10-20, 위 주석과 같은 지시) — 앞서 정의된 같은 이름 키프레임을 뒤에서 덮는다(마지막 정의가 이긴다):
+   기질 덤비기(뛰기 · 내려찍기 · 돌진 · 반동, anim-plus) · 맞을 때 뒤로 밀림(종별 · 치명) · 주인공 스킬 돌진(App.css titan-skill-strike 34px) */
+@keyframes temper-leap { 0%, 100% { filter: none; } 40% { filter: brightness(1.15); } }
+@keyframes temper-slam { 0%, 100% { filter: none; } 40% { filter: brightness(1.15); } }
+@keyframes temper-dash { 0%, 100% { filter: none; } 40% { filter: brightness(1.15); } }
+@keyframes temper-recoil { 0%, 100% { filter: none; } 30% { filter: brightness(1.12); } }
+@keyframes mon-hit-flash { 0%, 100% { filter: none; } 30% { filter: brightness(1.8); } }
+.titans-field .titans-monster.hit-a, .titans-field .titans-monster.hit-b { animation-name: mon-hit-flash !important; animation-duration: .16s !important; animation-timing-function: ease-out !important; }
+@keyframes titan-skill-strike { 45% { transform: scale(1.06); filter: brightness(1.25); } }

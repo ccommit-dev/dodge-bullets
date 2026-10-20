@@ -159,15 +159,24 @@ type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "ev
  * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
  * 왼쪽 무리(주인공 · 원거리)는 −16~6%(위로는 얕게 — 원거리 셋이 앞뒤 줄로 서는 대열은 깊을수록 세로 간격이 좁아져 서로 28% 겹쳤다, verify-formation [back]): 아래(앞)로도 내려온다 — AUTO · 배속 버튼을 스킬 줄 왼쪽 끝에 세로로 옮겨(위끝 62px) 그 위까지 땅을 쓴다.
  * −16%(375px 전장 ≈75px)에서 주인공 발 84px · 원거리 발 79px. −18% 는 주인공 무기가 알림 칩 왼끝에 닿았다(실측).
- * 오른쪽 무리(몬스터 · 근접)는 0~12%: 바로 아래에 알림 칩(위끝 102px)이 있어 더 못 내리고, 12% 넘으면 원근(÷60)에서 뒷줄 발이 풀밭 선에 닿는다.
- * 둘 다 위쪽(왼쪽 > 0 · 오른쪽 > 7.5)이면 왼쪽을 아래쪽(−16~0%)으로 옮겨 아래 땅이 비지 않게 한다.
+ * 오른쪽 무리(몬스터 · 근접)는 −7~9%: 알림 칩을 전장 오른쪽 위로 옮겨 스킬 줄(위끝 49px) 위까지 내려온다(몬스터 이름표가 스킬 줄 위에 남는 −7%).
+ *   9% 넘으면 뒷줄 발이 풀밭 선에 닿는다(실측: 개인 간격 최대 · 10% 에서 스테이지 나갈 때 선 위, 12% 는 교전 중에도 3px 넘음).
+ * 둘 다 위쪽 절반이면 한쪽(반반)을 제 범위 아래쪽 절반으로 뒤집어 아래 땅이 비지 않게 한다.
  */
-const LANE_L_MIN = -16, LANE_L_MAX = 6, LANE_MAX = 12;
-function lanePair(): { laneL: number; laneR: number } {
-  let l = LANE_L_MIN + Math.random() * (LANE_L_MAX - LANE_L_MIN);
-  const r = Math.random() * LANE_MAX;
-  if (l > 0 && r > LANE_MAX / 2) l = (l / LANE_L_MAX) * LANE_L_MIN;
-  return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10 };
+/**
+ * 전장이 낮으면(< 440px — 360×640 등) 동료 몸(px)에 비해 전장이 작아 넓은 깊이에서 머리가 HUD · 알림 칩에 닿았다(실측 allyTop 78px).
+ * 그때는 알림 칩을 예전 자리(오른쪽 아래)에 두고 깊이를 좁힌다(왼쪽 −8~3 · 오른쪽 0~5). 넓은 전장(390×844 의 490px 등)은 위 범위.
+ */
+const LANES_WIDE = { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, LANES_COMPACT = { lMin: -8, lMax: 3, rMin: 0, rMax: 5 };
+const WIDE_FIELD_MIN_H = 440;
+function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean } {
+  const { lMin, lMax, rMin, rMax } = wide ? LANES_WIDE : LANES_COMPACT;
+  let l = lMin + Math.random() * (lMax - lMin);
+  let r = rMin + Math.random() * (rMax - rMin);
+  if (l > (lMin + lMax) / 2 && r > (rMin + rMax) / 2) {
+    if (Math.random() < 0.5) l = lMin + (lMax - l); else r = rMin + (rMax - r);
+  }
+  return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10, wide };
 }
 const ALLY_PAGE_SIZE = typeof window !== "undefined" && appWidth() <= 600 ? 4 : 6;   // 폰 세로 시트(≈680px)엔 4장, 넓은 화면 6장
 const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
@@ -357,17 +366,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [monsterAction, setMonsterAction] = useState<"idle" | "prepare" | "attack">("idle");
   const [formationEngaged, setFormationEngaged] = useState(false);
   const [formationReady, setFormationReady] = useState(false);
-  // 2026-10-20 사용자: "공격할 때마다 움직이는데 — stage 가 갱신되고 첫 공격 전에만 움직이게".
-  // 예전엔 몬스터가 나올 때마다(스테이지당 10번) 대열을 풀고(formationEngaged=false) 다시 걸어 들어갔다. 이제
-  // partyApproach — 스테이지 첫 몬스터에서만 주인공 · 동료가 걸어 들어간다(그 뒤 몬스터들은 제자리에서 맞이한다)
-  // monsterIn — 몬스터는 나올 때마다 오른쪽에서 걸어 들어온다(대열과 따로)
+  // 2026-10-20 사용자: "공격할 때마다 움직이는데 — stage 가 갱신되고 첫 공격 전에만 움직이게". 사용자의 "stage" = 몬스터 한 마리(STAGE CLEAR 마다, 확인함).
+  // 몬스터가 나올 때마다 주인공 · 동료가 새 자리로 걸어 들어가고(partyApproach), 교전 중엔 공격 때 몸이 자리를 옮기는 돌진 · 반동을 모두 뺐다(anim-plus.css).
+  // monsterIn — 몬스터가 오른쪽에서 걸어 들어오는 것(대열과 같은 때)
   const [partyApproach, setPartyApproach] = useState(false);
   const [monsterIn, setMonsterIn] = useState(false);
-  const stageAtSpawnRef = useRef<number | null>(null);
   // seq — 만남(몬스터 등장)마다 1씩. 동료가 걸어 들어갈 높이를 만남마다 새로 뽑는다 (SpriteArt allyStageJitter)
-  // laneL · laneR — 만남 깊이(전장 높이 %, 왼쪽 −16~6 · 오른쪽 0~12, lanePair). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
+  // laneL · laneR — 만남 깊이(전장 높이 %, 왼쪽 −16~6 · 오른쪽 −7~9, lanePair). 왼쪽 무리(주인공 · 원거리 동료)와 오른쪽 무리(몬스터 · 근접 동료)가 따로 (2026-10-20, 사용자: "몬스터 y 고정" → "더 넓게 분산")
   // partyMeetRight · partyMl — 스테이지 첫 몬스터의 자리 · 보이는 몸 왼쪽 여백. 근접 동료 자리를 이것으로 굳히고, 다음 몬스터가 제 여백만큼 비켜 선다
-  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0, partyMeetRight: 8, partyMl: 0.22 });
+  const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0, wide: false, partyMeetRight: 8, partyMl: 0.22 });
 
   const saveRef = useRef(save);
   const characterRef = useRef(character);
@@ -568,20 +575,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setBossWeak(weak);
     formationReadyRef.current = false;
     setFormationReady(false);
-    // 스테이지 첫 몬스터(웨이브 1 · 스테이지가 바뀜)만 대열을 다시 짠다 — 그 뒤엔 주인공 · 동료가 제자리
-    const stageStart = nextWave === 1 || stageAtSpawnRef.current !== stage;
-    stageAtSpawnRef.current = stage;
     setMonsterIn(false);
-    if (stageStart) setFormationEngaged(false);
+    setFormationEngaged(false);
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     // 걷는 속도 (2026-10-20, 사용자: "걷는 속도도 항상 같지 않게") — 종별 기준에 만남마다 0.7~1.3배(예전 0.88~1.12 는 늘 같아 보였다)
     const durationMs = Math.round(speedBase * (.7 + Math.random() * .6));
-    if (stageStart) heroWalkRateRef.current = durationMs / 1250;
-    // 스테이지 중간 몬스터: 대열 자리(주인공 x · 두 무리 깊이 · 동료 개인 자리 seq)는 그대로, 몬스터 걷는 시간 · 자리만 새로
-    // 몬스터 자리 흔들림(monsterJit 0~2%)도 스테이지마다 — 근접 동료가 몬스터 x 에 붙어 몬스터마다 4px 씩 움직였다. 용만 종별로 더 오른쪽(겹침 방지)
+    heroWalkRateRef.current = durationMs / 1250;
     const monsterJit = Math.random() * 2;
-    setEncounterMotion((prev) => !stageStart ? { ...prev, monsterRight: (rolledKind === "dragon" ? 2 : 8) + prev.monsterJit, durationMs } : ({
+    setEncounterMotion((prev) => ({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
       // 2026-10-08 사용자: 주인공·동료 겹침 — 주인공 54~66px 가 되면서 근접 슬롯(몬스터 왼쪽에 붙음)과 100% 겹쳤다.
       // 몬스터를 오른쪽으로(30 → 16%) 물려 왼쪽부터 원거리(0~3%) · 주인공(28%) · 근접(몬스터 왼쪽) · 몬스터 네 띠가 생긴다
@@ -596,9 +598,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       durationMs,
       seq: prev.seq + 1,
       // 무리마다 깊이 — lanePair 주석
-      ...lanePair(),
+      // 전장이 아직 안 그려졌으면(불러온 직후 첫 스테이지) 창 높이로 가늠 — 390×844 창의 전장 490 · 360×640 은 380 (전장 ≈ 창 높이의 0.58)
+      ...lanePair((document.querySelector(".titans-field")?.getBoundingClientRect().height || window.innerHeight * 0.58) >= WIDE_FIELD_MIN_H),
     }));
-    window.requestAnimationFrame(() => { setFormationEngaged(true); setMonsterIn(true); if (stageStart) setPartyApproach(true); });
+    window.requestAnimationFrame(() => { setFormationEngaged(true); setMonsterIn(true); setPartyApproach(true); });
     const approachMs = durationMs + 120;
     const formationTimer = window.setTimeout(() => {
       formationReadyRef.current = true;
@@ -2525,7 +2528,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        className={`titans-field phase-${battlePhase} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         data-area={area.id}
