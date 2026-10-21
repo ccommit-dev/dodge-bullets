@@ -72,6 +72,13 @@
 .skill-shot.shot-proj.el-water > i::before { background-image: url("/titans/fx/proj-water.webp"); }
 .skill-shot.shot-proj.el-earth > i::before { background-image: url("/titans/fx/proj-earth.webp"); }
 .skill-shot.shot-proj.el-wind > i::before { background-image: url("/titans/fx/proj-wind.webp"); }
+/* 주인공 스킬 투사체(.shot-shot)도 같은 탄 그림 — 불 · 바람 · 땅(빛은 빛줄기, 칼날은 예전 칼날 모양). 예전 CSS 그라데이션 공 대신 */
+.skill-shot.shot-shot.el-fire > i, .skill-shot.shot-shot.el-wind > i, .skill-shot.shot-shot.el-earth > i { left: -73px; top: -53px; width: 106px; height: 106px; border: 0; border-radius: 0; background: none; overflow: hidden; transform-origin: 69% 50%; animation: proj-fly .23s cubic-bezier(.3, .6, .4, 1) forwards; }
+.skill-shot.shot-shot.big.el-fire > i, .skill-shot.shot-shot.big.el-wind > i, .skill-shot.shot-shot.big.el-earth > i { left: -91px; top: -66px; width: 132px; height: 132px; }
+.skill-shot.shot-shot.el-fire > i::after, .skill-shot.shot-shot.el-wind > i::after, .skill-shot.shot-shot.el-earth > i::after { content: none; }
+.skill-shot.shot-shot.el-fire > i::before, .skill-shot.shot-shot.el-wind > i::before, .skill-shot.shot-shot.el-earth > i::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/proj-fire.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .3s steps(6, end) infinite; }
+.skill-shot.shot-shot.el-wind > i::before { background-image: url("/titans/fx/proj-wind.webp"); }
+.skill-shot.shot-shot.el-earth > i::before { background-image: url("/titans/fx/proj-earth.webp"); }
 @keyframes proj-fly { 0% { transform: translate(0, 0) rotate(var(--ang)) scale(.7); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--ang)) scale(1); opacity: 1; } }
 
 /* 몬스터 피격 — 한 번 짧게 하얗게, 곧 제 색 (2026-10-21, 사용자: "몬스터 피격은 한 번만 짧게 하얗게 번쩍인 뒤 원래 색으로 — 몬스터가 늘 보이게").
@@ -82,7 +89,7 @@
 @keyframes mon-flash-big { 0% { filter: brightness(2.1) saturate(.25); } 45% { filter: brightness(1.25); } 100% { filter: none; } }
 .titans-field .titan-monster-art.anim2.frame-hit > .monster-frames, .titans-field .titan-monster-art.frame-hit > img.on { filter: drop-shadow(0 0 1.2px rgba(30, 14, 4, 1)) drop-shadow(0 0 1px rgba(30, 14, 4, .85)); }
 /* 제자리 찌그러짐 — 발(아래 가운데)을 붙인 채 scale 만. 큰 타격은 더 깊게 */
-.monster-squash { transform-origin: 100% 96%; }   /* 오른쪽 아래 기준 — 1.08배 · 찌그러짐이 전장 오른쪽 끝 밖으로 나가지 않게(verify-anim-clip) */
+.monster-squash { transform-origin: 50% 96%; }   /* 가운데 아래 기준 — 찌그러져도 몸 가운데가 그 자리 */
 .titans-field .titans-monster.hit-a .monster-squash { animation: mon-squash-a .16s ease-out; }
 .titans-field .titans-monster.hit-b .monster-squash { animation: mon-squash-b .16s ease-out; }
 .titans-field .titans-monster.hit-big.hit-a .monster-squash { animation: mon-squash-big-a .24s cubic-bezier(.2, .9, .3, 1.2); }
@@ -93,7 +100,7 @@
 @keyframes mon-squash-big-b { 0% { transform: scale(1.12, .86); } 45% { transform: scale(.96, 1.04); } 100% { transform: none; } }
 
 /* 히트스톱 — 치명타 · 스킬 · 특수기 순간 캐릭터 칸 · 몸놀림을 0.06초 세운다(이펙트는 계속). 자리 이동 없음 */
-.titans-field.hitstop .titans-monster, .titans-field.hitstop .titans-monster *, .titans-field.hitstop .titans-hero *, .titans-field.hitstop .titans-allies * { animation-play-state: paused !important; }
+.titans-field[data-hitstop] .titans-monster, .titans-field[data-hitstop] .titans-monster *, .titans-field[data-hitstop] .titans-hero *, .titans-field[data-hitstop] .titans-allies * { animation-play-state: paused !important; }
 
 /* 피해 숫자 — 평타 연타는 숫자 하나(.sum)가 커지며 제자리에서 다시 튀고, 멈추면 올라가 사라진다. 치명타만 크고 굵게 */
 .titans-field .titans-float.sum { color: #fff7d6; font-size: 17px; letter-spacing: -.01em; text-shadow: 0 2px 0 #3b2a10, 0 0 6px rgba(0,0,0,.7); animation: titans-float-sum .78s ease-out forwards; }
@@ -115,7 +122,7 @@
   background: radial-gradient(ellipse at center, rgba(18, 8, 2, .62), rgba(18, 8, 2, .32) 50%, transparent 70%);
 }
 /* 일반 몬스터만 1.08배 — 발을 붙인 채(scale 은 찌그러짐 transform 과 따로 곱해진다). 대장 크기는 밸런스 값이라 그대로 */
-.titans-field .titans-monster:not(.kind-boss) .monster-squash { scale: 1.08; }
+.titans-field .titans-monster:not(.kind-boss) .monster-temper { scale: 1.08; transform-origin: 100% 96%; }   /* 고정 배율은 겉 상자에 오른쪽 아래 기준 — 전장 오른쪽 끝 밖으로 자라지 않게(verify-anim-clip) */
 
 @media (prefers-reduced-motion: reduce) {
   .monster-squash { animation: none !important; }

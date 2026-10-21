@@ -921,8 +921,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const pn = performance.now();
     if (!el || lowFxRef.current || pn - hitStopAtRef.current < 220) return;
     hitStopAtRef.current = pn;
-    el.classList.add("hitstop");
-    window.setTimeout(() => el.classList.remove("hitstop"), 60);
+    // data 속성으로 — 같은 순간 setImpact 가 전장 className 을 통째로 다시 써서 classList 로 붙인 클래스는 바로 지워졌다
+    el.dataset.hitstop = "1";
+    window.setTimeout(() => { delete el.dataset.hitstop; }, 60);
   };
   /**
    * 원거리 · 힐러 동료의 탄 — 동료 손에서 몬스터까지 날아가는 속성 탄(public/titans/fx/proj-<속성>.webp, fx2.py).
