@@ -210,17 +210,22 @@ type FloatText = {
   /** 스킬 숫자에 붙는 이름("꼬리 치기 박자")·아이콘 — 누가 무엇으로 때렸는지 */
   label?: string;
   skill?: TitanSkillId;
+  /** 평타 연타 합산 숫자(2026-10-21) — 같은 숫자에 더하며 다시 튀어 오른다(bump 가 key) */
+  sum?: boolean;
+  bump?: number;
 };
 
 /** 스킬 발동 연출 한 조각 — 좌표는 필드 기준 px (2026-10-06) */
-type SkillShot = { id: number; kind: "shot" | "beam" | "impact" | "link" | "aura"; skill: TitanSkillId; element: string; x: number; y: number; dx: number; dy: number; ang: number; len: number; big: boolean };
+type SkillShot = { id: number; kind: "shot" | "beam" | "impact" | "link" | "aura" | "proj"; skill?: TitanSkillId; fly?: number; element: string; x: number; y: number; dx: number; dy: number; ang: number; len: number; big: boolean };
 
 type FxBurst = {
   id: number;
-  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | `sig-${SigFx}`;
+  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | "spark" | "burst" | "debris" | `sig-${SigFx}`;
   x: number;
   y: number;
   hue?: number;
+  /** 때린 쪽 속성(fire·water·earth·wind·blade·light) — 타격 그림 색 (2026-10-21) */
+  el?: string;
 };
 
 /** 버프 상태 — 만료 시각(performance.now 기준)과 그때의 수치. 값은 titans/skills.ts가 정한다 */
@@ -391,6 +396,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const cdsRef = useRef(cds);
   const floatId = useRef(0);
   const fxId = useRef(0);
+  /** 평타 합산 숫자 — 지금 올라가는 숫자에 더한다 (2026-10-21, 사용자: "피해 숫자는 연타를 하나로 합쳐 올라가게") */
+  const sumFloatRef = useRef<{ id: number; total: number; at: number; bump: number; timer: number; x: number; y: number } | null>(null);
+  /** 몬스터 번쩍임 간격 · 히트스톱 간격 — 동료 넷이 연타해도 몬스터가 늘 보이게 */
+  const lastFlashRef = useRef(0);
+  const hitStopAtRef = useRef(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   // 간단한 충돌 분리 (2026-10-08, 사용자: "캐릭터별 간단한 충돌 체크로 간격을 벌려줘") — 발 높이가 비슷한(같은 줄) 주인공·동료끼리
   const sepFrozenRef = useRef(false);
@@ -877,12 +887,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       .finally(() => { coresMovingRef.current = false; });
   }, [ready, character.pendingSkillCores, userHash]);
 
-  const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number) => {
+  const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number, el?: string) => {
     const id = ++fxId.current;
-    setFx((prev) => [...prev.slice(lowFxRef.current ? -8 : -22), { id, kind, x, y, hue }]);
+    setFx((prev) => [...prev.slice(lowFxRef.current ? -8 : -22), { id, kind, x, y, hue, el }]);
     window.setTimeout(() => {
       setFx((prev) => prev.filter((f) => f.id !== id));
-    }, kind === "slash" ? 320 : kind === "hit" || kind === "ally" ? 420 : 850);
+    }, kind === "slash" ? 320 : kind === "hit" || kind === "ally" || kind === "spark" ? 420 : kind === "burst" || kind === "debris" ? 620 : 850);
   };
   /**
    * 이펙트를 캐릭터 몸 위에 (2026-10-20, 사용자: "이펙트 위치가 이상해 — 캐릭터나 몬스터 근처로").
@@ -898,12 +908,45 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const j = () => (Math.random() - 0.5) * 2 * jitter;
     return { x: ((r.left + r.width * (fx + j()) - fr.left) / fr.width) * 100, y: ((r.top + r.height * (fy + j()) - fr.top) / fr.height) * 100 };
   };
-  const pushFxAt = (kind: FxBurst["kind"], target: Parameters<typeof fxSpot>[0], fx: number, fy: number, fallbackX: number, fallbackY: number, hue?: number, jitter = 0) => {
+  const pushFxAt = (kind: FxBurst["kind"], target: Parameters<typeof fxSpot>[0], fx: number, fy: number, fallbackX: number, fallbackY: number, hue?: number, jitter = 0, el?: string) => {
     const { x, y } = fxSpot(target, fx, fy, fallbackX, fallbackY, jitter);
     // 가장자리 캐릭터에 붙인 이펙트가 전장 밖으로 나가지 않게 반폭만큼 안쪽으로 — 시그니처(120px · 회전 · 고리)가 왼쪽 끝 원거리 동료 · 오른쪽 몬스터에서 삐져나갔다(verify-anim-clip)
     const fw = fieldRef.current?.getBoundingClientRect().width ?? 0;
-    const half = fw > 0 ? ((kind.startsWith("sig-") ? 100 : 30) / fw) * 100 : 0;   // 시그니처는 120px 사각이 돌며 대각선 ≈170px
-    pushFx(kind, Math.max(half, Math.min(100 - half, x)), y, hue);
+    const half = fw > 0 ? ((kind.startsWith("sig-") ? 100 : kind === "burst" ? 68 : kind === "debris" || kind === "spark" ? 46 : 30) / fw) * 100 : 0;   // 시그니처는 120px 사각이 돌며 대각선 ≈170px · 큰 폭발 136px · 불꽃 · 파편 92px
+    pushFx(kind, Math.max(half, Math.min(100 - half, x)), y, hue, el);
+  };
+  /** 치명타 · 스킬 · 특수기 순간 캐릭터를 0.06초 멈춘다(히트스톱) — 이펙트는 계속 돈다. 자리는 안 움직인다 (2026-10-21) */
+  const hitStop = () => {
+    const el = fieldRef.current;
+    const pn = performance.now();
+    if (!el || lowFxRef.current || pn - hitStopAtRef.current < 220) return;
+    hitStopAtRef.current = pn;
+    el.classList.add("hitstop");
+    window.setTimeout(() => el.classList.remove("hitstop"), 60);
+  };
+  /**
+   * 원거리 · 힐러 동료의 탄 — 동료 손에서 몬스터까지 날아가는 속성 탄(public/titans/fx/proj-<속성>.webp, fx2.py).
+   * 공격 칸의 놓는 순간(≈0.2초)에 떠나 거리 비례로 날아가고, 돌려준 ms 뒤에 피해 · 타격 그림이 난다. 못 재면 0 (2026-10-21)
+   */
+  const spawnAllyProj = (id: TitanHeroId, el: string, big: boolean): number => {
+    const field = fieldRef.current;
+    const fr = field?.getBoundingClientRect();
+    const a = field?.querySelector(`.titans-allies .ally-${id} .ally-body`)?.getBoundingClientRect();
+    const m = field?.querySelector(".titans-monster .titan-monster-art")?.getBoundingClientRect();
+    if (!fr || !a || !m || fr.width === 0 || a.width === 0 || m.width === 0) return 0;
+    const x = a.left + a.width * 0.78 - fr.left, y = a.top + a.height * 0.42 - fr.top;
+    const tx = m.left + m.width * 0.4 - fr.left, ty = m.top + m.height * (0.42 + Math.random() * 0.16) - fr.top;
+    if (tx <= x) return 0;
+    const fly = Math.round(Math.min(360, Math.max(150, Math.hypot(tx - x, ty - y) / 1.1)));
+    const release = 200;
+    const sid = ++shotIdRef.current;
+    const dx = tx - x, dy = ty - y;
+    const shot: SkillShot = { id: sid, kind: "proj", element: el, x, y, dx, dy, ang: (Math.atan2(dy, dx) * 180) / Math.PI, len: Math.hypot(dx, dy), big, fly };
+    window.setTimeout(() => {
+      setShots((prev) => [...prev.slice(lowFxRef.current ? -4 : -10), shot]);
+      window.setTimeout(() => setShots((prev) => prev.filter((s) => s.id !== sid)), fly + 40);
+    }, release);
+    return release + fly;
   };
 
   const pushFloat = (
@@ -916,7 +959,35 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     label?: string,
     skill?: TitanSkillId,
     delayMs = 0,
+    merge = false,
   ) => {
+    // 평타 연타는 숫자 하나에 더한다 — 0.6초 안에 다시 맞으면 같은 숫자가 커지며 제자리에서 다시 튀고, 멈추면 올라가 사라진다
+    if (merge) {
+      const pn = performance.now();
+      const cur = sumFloatRef.current;
+      if (cur && pn - cur.at < 600) {
+        cur.total += dmg; cur.at = pn; cur.bump += 1;
+        window.clearTimeout(cur.timer);
+        const { id, total, bump, x, y } = cur;
+        setFloats((prev) => (prev.some((f) => f.id === id)
+          ? prev.map((f) => (f.id === id ? { ...f, text: formatGold(total), bump } : f))
+          : [...prev, { id, x, y, text: formatGold(total), crit: false, source, sum: true, bump }]));
+        cur.timer = window.setTimeout(() => {
+          setFloats((prev) => prev.filter((f) => f.id !== id));
+          if (sumFloatRef.current?.id === id) sumFloatRef.current = null;
+        }, 780);
+        return;
+      }
+      const spot = fxSpot("monster", 0.5, 0.14, 62 + Math.random() * 10, 34 + Math.random() * 10, 0.08);
+      const id = ++floatId.current;
+      const timer = window.setTimeout(() => {
+        setFloats((prev) => prev.filter((f) => f.id !== id));
+        if (sumFloatRef.current?.id === id) sumFloatRef.current = null;
+      }, 780);
+      sumFloatRef.current = { id, total: dmg, at: pn, bump: 0, timer, x: spot.x, y: spot.y };
+      setFloats((prev) => [...prev.slice(lowFxRef.current ? -8 : -18), { id, x: spot.x, y: spot.y, text: formatGold(dmg), crit: false, source, sum: true, bump: 0 }]);
+      return;
+    }
     const rect = fieldRef.current?.getBoundingClientRect();
     // 좌표가 없으면 몬스터 머리 위(지금 상자에서) — 예전 고정 58~74% · 30~46% 는 깊이가 바뀐 몬스터와 떨어져 떴다 (2026-10-20)
     const spot = clientX && clientY && rect ? null : fxSpot("monster", 0.5, 0.12, 58 + Math.random() * 16, 30 + Math.random() * 16, 0.18);
@@ -967,19 +1038,46 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         mul *= af.bossMul;
       }
       const dealt = Math.floor(raw * mul);
-      pushFloat(dealt, crit, opts?.clientX, opts?.clientY, opts?.source ?? "hero", opts?.hue, label, opts?.skill, opts?.delayMs);
+      // 타격 표현 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") —
+      // 때린 쪽 속성: 동료 = ALLY_ELEMENT, 스킬 = 스킬 원소, 화상 = 불, 주인공 · 탭 = 칼날
+      const hitEl = opts?.skill
+        ? (SKILLS.find((s) => s.id === opts.skill)?.element ?? "blade")
+        : opts?.label === "화상"
+          ? "fire"
+          : opts?.fromAlly && opts.fromAlly !== "tap"
+            ? ALLY_ELEMENT[opts.fromAlly]
+            : "blade";
+      const big = crit || (opts?.source === "ally" && !!opts?.label);
+      const physical = !opts?.skill && opts?.label !== "화상" && (!opts?.fromAlly || opts.fromAlly === "tap" || ALLY_ROLE[opts.fromAlly] === "melee" || ALLY_ROLE[opts.fromAlly] === "tank");
+      const merge = !big && !label && !opts?.delayMs && (opts?.source === "ally" || opts?.source === "hero");   // 탭은 손가락 자리에 따로 (verify-checklist #2)
+      pushFloat(dealt, crit, merge ? undefined : opts?.clientX, merge ? undefined : opts?.clientY, opts?.source ?? "hero", opts?.hue, label, opts?.skill, opts?.delayMs, merge);
       // [연쇄 번개]·녹스 치명 연계 — 치명 스킬 명중 뒤 한 번 더 (한 단계만, chain 표시로 재귀 차단)
       if (crit && opts?.source === "skill" && !opts?.chain) {
         const chain = (saveRef.current.huntMods.chainLightning ? 0.3 : 0) + allyFeatureEffects(characterRef.current.partyIds).critChain;
         if (chain > 0) window.setTimeout(() => applyDamageRef.current?.(raw * chain, false, { source: "skill", label: "연쇄", skill: opts?.skill, chain: true }), 140 + (opts?.delayMs ?? 0));
       }
-      setMonsterHit((n) => n + 1);
-      setImpact(crit ? "critical" : "normal");
-      // 클래스를 애니메이션(0.12s/0.16s)보다 먼저 떼면 반동이 중간에 끊겨 스냅된다.
-      // 피격 프레임은 짧게(90/130ms) — 파티 4명이 연타하면 흰 프레임이 거의 상시 노출되던 문제
-      window.setTimeout(() => setImpact(null), crit ? 130 : 90);
-      pushFxAt("hit", "monster", 0.45, 0.5, 72 + Math.random() * 10, 38 + Math.random() * 14, undefined, 0.12);
-      if (crit) pushFxAt("crit", "monster", 0.45, 0.45, 70, 40, 38);
+      // 몬스터 번쩍임 · 찌그러짐 · 타격 그림 — 탄이 날아가는 스킬은 꽂히는 순간(delayMs)에
+      const hitFx = () => {
+        const pn = performance.now();
+        // 번쩍임은 한 번 짧게 — 동료 넷이 연타하면 0.15초 안 재타격은 번쩍임을 다시 켜지 않아 몬스터 제 색이 보인다
+        if (big || pn - lastFlashRef.current > 150) {
+          lastFlashRef.current = pn;
+          setMonsterHit((n) => n + 1);
+        }
+        setImpact(big ? "critical" : "normal");
+        // 피격 프레임은 짧게(90/130ms) — 파티 4명이 연타하면 흰 프레임이 거의 상시 노출되던 문제
+        window.setTimeout(() => setImpact(null), big ? 130 : 90);
+        if (big) {
+          // 탄으로 날아간 스킬은 명중 칸(.shot-impact)이 같은 폭발을 그린다 — 겹치지 않게
+          if (!(opts?.skill && opts?.delayMs)) pushFxAt("burst", "monster", 0.45, 0.48, 72, 42, undefined, 0.06, hitEl);
+          if (!lowFxRef.current) pushFxAt("debris", "monster", 0.42, 0.62, 72, 50, undefined, 0.06, hitEl);
+          hitStop();
+        } else {
+          pushFxAt("spark", "monster", 0.42, 0.5, 72 + Math.random() * 10, 38 + Math.random() * 14, undefined, 0.12, hitEl);
+          if (physical && !lowFxRef.current && Math.random() < 0.45) pushFxAt("debris", "monster", 0.42, 0.62, 72, 50, undefined, 0.1, hitEl);
+        }
+      };
+      if (opts?.delayMs) window.setTimeout(hitFx, opts.delayMs); else hitFx();
 
       const next = hpRef.current - dealt;
       if (next > 0) {
@@ -1316,10 +1414,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const no = (allyAttackNo.current[h.id] = (allyAttackNo.current[h.id] ?? 0) + 1);
           const isSig = isSignatureHit(sig, no);
           // 시그니처: 화살 · 마력탄 · 베기는 날아가 꽂히는 곳(몬스터), 충격파는 탱커 발밑, 빛 고리는 힐러 몸. 평타 고리는 그 동료 앞
-          if (!isSig) pushFxAt("ally", h.id, 0.75, 0.5, 40 + Math.random() * 18, 55 + Math.random() * 10, h.hue, 0.08);
-          else if (sig.fx === "quake") pushFxAt(`sig-${sig.fx}`, h.id, 0.5, 0.9, 40, 60, h.hue);
-          else if (sig.fx === "halo") pushFxAt(`sig-${sig.fx}`, h.id, 0.5, 0.45, 40, 55, h.hue);
-          else pushFxAt(`sig-${sig.fx}`, "monster", 0.42, 0.5, 72, 45, h.hue, 0.08);
+          // 평타는 예전 동료 앞 고리(.titans-fx-ally) 대신 — 근접은 휘두르는 칸이, 원거리 · 힐러는 날아가는 탄(spawnAllyProj)이 보여 준다 (2026-10-21)
+          // 타격 그림은 applyDamage 가 몬스터에 낸다
+          if (isSig && sig.fx === "quake") pushFxAt(`sig-${sig.fx}`, h.id, 0.5, 0.9, 40, 60, h.hue);
+          else if (isSig && sig.fx === "halo") pushFxAt(`sig-${sig.fx}`, h.id, 0.5, 0.45, 40, 55, h.hue);
+          else if (isSig) pushFxAt(`sig-${sig.fx}`, "monster", 0.42, 0.5, 72, 45, h.hue, 0.08);
           // 부가 효과 (2026-10-14 보완) — 힐러 빛 고리: 모든 스킬 쿨 −0.25초 · 탱커 충격파: 대장 제한 시간 0.2초 정지
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
@@ -1327,7 +1426,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul;
           const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
           if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
-          applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
+          const land = () => applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
+          // 원거리 · 힐러는 탄이 꽂히는 순간에 피해 — 눈으로 따라간다 (2026-10-21, 사용자: "공격이 몬스터까지 날아가는 탄과 궤적")
+          const role = ALLY_ROLE[h.id];
+          const flight = role === "ranged" || role === "healer" ? spawnAllyProj(h.id, ALLY_ELEMENT[h.id], isSig) : 0;
+          if (flight > 0) window.setTimeout(land, flight); else land();
         }
       }
 
@@ -2044,7 +2147,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const until = now + durMs * freezeMul;
       if (kind === "freeze" && saveRef.current.huntMods.thermalShock && now < buffsRef.current.burnUntil) {
         applyDamage(computeTapHit().base * 6, true, { source: "skill", label: "열충격", skill: id, delayMs: 200 });
-        pushFxAt("crit", "monster", 0.45, 0.45, 70, 40, 18);
+        pushFxAt("burst", "monster", 0.45, 0.45, 70, 40, 18, 0, "fire");
       }
       setBuffSource((prev) => (prev[kind] === id ? prev : { ...prev, [kind]: id }));
       setBuffs((b) => {
@@ -2738,9 +2841,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           단일 "hit" 클래스를 monsterHit % 2로 토글하면 절반의 타격에는 클래스가 떨어져
           반동이 아예 재생되지 않는다 (같은 이름은 재적용해도 재시작하지 않으므로).
         */}
-        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} atk-${temper.style} ${monsterIn ? "is-engaged" : ""} ${monsterIn && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${monsterHit > 0 && (monsterHit * 7 + save.stage * 3) % 4 === 0 ? "hit-strong" : ""} ${impact === "critical" ? "critical" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`} style={{ translate: `${monsterDrift.x}px ${monsterDrift.y}px` }}>
+        <div className={`titans-monster kind-${kind} combat-${monsterRanged ? "ranged" : "melee"} atk-${temper.style} ${monsterIn ? "is-engaged" : ""} ${monsterIn && !formationReady ? "is-approaching" : ""} action-${monsterAction} ${monsterHit > 0 ? (monsterHit % 2 ? "hit-a" : "hit-b") : ""} ${monsterHit > 0 && (monsterHit * 7 + save.stage * 3) % 4 === 0 ? "hit-strong" : ""} ${impact === "critical" ? "critical hit-big" : ""} ${now < buffs.freezeUntil ? "st-frozen" : ""} ${now < buffs.burnUntil && (!buffs.burnBossOnly || boss) ? "st-burning" : ""}`} style={{ translate: `${monsterDrift.x}px ${monsterDrift.y}px` }}>
           {/* 스테이지 기질(atk-*)의 몸놀림은 이 겉 상자에서 — 안쪽 그림은 종별 공격 키프레임(슬라임 덮치기·고블린 찌르기 …)을 그대로 쓴다 */}
           <div className="monster-temper">
+          {/* 맞을 때 제자리에서 찌그러지는 상자(2026-10-21) — 발이 바닥에 붙은 채 scale 만, 자리 이동 없음 */}
+          <div className="monster-squash">
           <MonsterArt
             kind={kind}
             area={area}
@@ -2759,6 +2864,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     : "idle"
             }
           />
+          </div>
           </div>
           {/* 상태 이펙트 (계획안 C): 화상 불꽃 · 빙결 결정 — HUD 칩 없이도 전장에서 읽힌다 */}
           <span className="status-layer" aria-hidden="true">
@@ -2798,19 +2904,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <span
             key={s.id}
             className={`skill-shot shot-${s.kind} el-${s.element} ${s.big ? "big" : ""}`}
-            style={{ left: `${s.x}px`, top: `${s.y}px`, "--dx": `${s.dx}px`, "--dy": `${s.dy}px`, "--ang": `${s.ang}deg`, "--len": `${s.len}px` } as CSSProperties}
+            style={{ left: `${s.x}px`, top: `${s.y}px`, "--dx": `${s.dx}px`, "--dy": `${s.dy}px`, "--ang": `${s.ang}deg`, "--len": `${s.len}px`, ...(s.fly ? { "--fly": `${s.fly}ms` } : {}) } as CSSProperties}
             data-skill={s.skill}
             aria-hidden="true"
           >
             {s.kind === "impact" && <i className="fx-burst" />}
-            {s.kind === "impact" && <SkillIcon id={s.skill} size={s.big ? 46 : 34} />}
-            {s.kind === "shot" && <i />}
+            {s.kind === "impact" && s.skill && <SkillIcon id={s.skill} size={s.big ? 46 : 34} />}
+            {(s.kind === "shot" || s.kind === "proj") && <i />}
           </span>
         ))}
         {fx.map((f) => (
           <span
             key={f.id}
-            className={`titans-fx titans-fx-${f.kind}`}
+            className={`titans-fx titans-fx-${f.kind}${f.el ? ` el-${f.el}` : ""}`}
             style={{
               left: `${f.x}%`,
               top: `${f.y}%`,
@@ -2821,13 +2927,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
         {floats.map((f) => (
           <span
-            key={f.id}
-            className={`titans-float src-${f.source} ${f.crit ? "crit" : ""}`}
+            key={f.sum ? `${f.id}-${f.bump ?? 0}` : f.id}
+            className={`titans-float src-${f.source} ${f.crit ? "crit" : ""} ${f.sum ? "sum" : ""}`}
+            data-bump={f.sum ? f.bump ?? 0 : undefined}
             style={{ left: `${f.x}%`, top: `${f.y}%`, ...(f.hue !== undefined ? { "--float-hue": f.hue } : {}) } as CSSProperties}
           >
-            <i aria-hidden="true">{f.source === "tap" ? "☝" : f.source === "ally" ? "◆" : f.source === "skill" ? "✦" : "⚔"}</i>
+            {!f.sum && <i aria-hidden="true">{f.source === "tap" ? "☝" : f.source === "ally" ? "◆" : f.source === "skill" ? "✦" : "⚔"}</i>}
             {f.label && <em className="float-label">{f.label}</em>}
-            {f.crit ? "CRIT " : ""}-{f.text}
+            {f.crit && <small className="float-crit">CRIT</small>}-{f.text}
           </span>
         ))}
 

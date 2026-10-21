@@ -53,8 +53,8 @@ for (const scr of SCREENS) {
       fieldH: Math.round(f.height), ground: Math.round(f.height * (1 - parseFloat(fs.getPropertyValue("--ground-top") || "44") / 100)), uiTop: qol.length ? Math.max(...qol) : 0,
       combat: fe.classList.contains("phase-combat"), boss: fe.classList.contains("boss"),
       hero: c(document.querySelector(".titans-hero")), heroApp: !!document.querySelector(".titans-hero.is-approaching"),
-      mon: c(document.querySelector(".titans-monster .titan-monster-art")), monFeet: m ? Math.round(f.bottom - R(m).bottom) : null, monApp: !!m?.classList.contains("is-approaching"), monDead: !!document.querySelector(".titan-monster-art.frame-defeat"),
-      hitNow: !!m?.className.match(/\bhit-[ab]\b/), atkNow: !!m?.className.match(/action-(attack|prepare)/) || !!document.querySelector(".ally-swing.is-attacking"),
+      mon: c(document.querySelector(".titans-monster .titan-monster-art")), monPlace: c(document.querySelector(".titans-monster .monster-temper")), monFeet: m ? Math.round(f.bottom - R(m).bottom) : null, monApp: !!m?.classList.contains("is-approaching"), monDead: !!document.querySelector(".titan-monster-art.frame-defeat"),
+      hitNow: !!m?.className.match(/\bhit-[ab]\b/), monFilter: m ? getComputedStyle(m).filter : "none", sumBumps: [...document.querySelectorAll(".titans-float.sum")].map((e) => Number(e.dataset.bump ?? 0)), atkNow: !!m?.className.match(/action-(attack|prepare)/) || !!document.querySelector(".ally-swing.is-attacking"),
       allies: [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => ({ id: a.className.match(/ ally-(\w+)/)?.[1], app: a.classList.contains("is-approaching"), body: c(a.querySelector(".ally-swing") ?? a), feet: Math.round(f.bottom - a.getBoundingClientRect().bottom) })),
       hits,
       fx: (() => {
@@ -62,17 +62,18 @@ for (const scr of SCREENS) {
         const near = (pt, b, pad) => !!b && pt.x >= b.l - pad && pt.x <= b.r + pad && pt.y >= b.t - pad && pt.y <= b.b + pad;
         const mon = box(document.querySelector(".titans-monster .titan-monster-art")), hero = box(document.querySelector(".titans-hero .titans-hero-facing"));
         const allyBoxes = [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot] .ally-body")].map(box);
-        return [...document.querySelectorAll(".titans-field .titans-fx, .titans-field .titans-float")].map((e) => {
+        // 원거리 · 힐러 탄(.shot-proj)은 0×0 출발점 상자 — 동료 몸에서 떠나는지(ally) 잰다 (2026-10-21)
+        return [...document.querySelectorAll(".titans-field .titans-fx, .titans-field .titans-float, .titans-field .skill-shot.shot-proj")].map((e) => {
           const r = R(e), pt = { x: r.left + r.width / 2, y: r.top + r.height / 2 }, c = e.className.toString();
-          const kind = /fx-hit|fx-crit|fx-sig-(arrow|bolt|slash)/.test(c) ? "hit" : /fx-slash/.test(c) ? "slash" : /fx-ally|fx-sig/.test(c) ? "ally" : /titans-float/.test(c) && !/src-tap/.test(c) ? "float" : null;
+          const kind = /fx-hit|fx-spark|fx-burst|fx-debris|fx-crit|fx-sig-(arrow|bolt|slash)/.test(c) ? "hit" : /fx-slash/.test(c) ? "slash" : /fx-ally|fx-sig|shot-proj/.test(c) ? "ally" : /titans-float/.test(c) && !/src-tap/.test(c) ? "float" : null;
           if (!kind) return null;
-          const okNear = kind === "hit" ? near(pt, mon, 12) : kind === "float" ? near(pt, mon, 50) : kind === "slash" ? near(pt, hero, 40) : allyBoxes.some((b) => near(pt, b, 30));
-          return { kind, ok: okNear, at: [Math.round(pt.x - f.left), Math.round(pt.y - f.top)] };
+          const okNear = kind === "hit" ? near(pt, mon, /fx-debris/.test(c) ? 30 : 12) : kind === "float" ? near(pt, mon, 50) : kind === "slash" ? near(pt, hero, 40) : allyBoxes.some((b) => near(pt, b, 30));
+          return { kind, ok: okNear, at: [Math.round(pt.x - f.left), Math.round(pt.y - f.top)], cls: c };
         }).filter(Boolean);
       })(),
     };
   });
-  // ── F: 화면 갱신마다 재는 걷기 (8초) ──
+  // ── F: 화면 갱신마다 재는 걷기 (10초 — 원거리 탄이 꽂힐 때 피해라 처치가 조금 늦어 8초엔 등장이 한 번뿐일 때가 있었다) ──
   const walk = await page.evaluate(() => new Promise((res) => {
     const fe = document.querySelector(".titans-field"); const out = { yJumps: [], monStarts: [] }; const prev = {}; let monPrevIn = true; const t0 = performance.now();
     const tick = () => {
@@ -86,7 +87,7 @@ for (const scr of SCREENS) {
       const m = document.querySelector(".titans-monster"); const engaged = !!m?.classList.contains("is-engaged");
       if (m && engaged && !monPrevIn) out.monStarts.push(Math.round(m.getBoundingClientRect().left - f.right));
       monPrevIn = engaged;
-      if (performance.now() - t0 < 8000) requestAnimationFrame(tick); else res(out);
+      if (performance.now() - t0 < 10000) requestAnimationFrame(tick); else res(out);
     };
     tick();
   }));
@@ -124,7 +125,8 @@ for (const scr of SCREENS) {
     // 처음 세 표본(≈0.33초)도 뺀다 — 도착 순간 겹침 정리(--sep-dx, TitansGame)를 한 번 끝까지 풀어 0.32초 전환으로 옮긴 뒤 굳힌다
     const st = settledOf(e).slice(3, -2); atkSamples += st.filter((s) => s.atkNow || s.hitNow).length;
     const d = (get) => Math.max(span(st.map((s) => get(s)?.cx)), span(st.map((s) => get(s)?.cy)));
-    moves.push([d((s) => s.hero), d((s) => s.mon), Math.max(...st[0].allies.map((a0) => d((s) => s.allies.find((x) => x.id === a0.id)?.body)))]);
+    // 몬스터 자리는 찌그러짐(.monster-squash, 발 붙인 scale) 바깥 상자로 — 맞을 때 키가 눌려 그림 가운데가 내려가는 건 자리 이동이 아니다 (2026-10-21)
+    moves.push([d((s) => s.hero), d((s) => s.monPlace ?? s.mon), Math.max(...st[0].allies.map((a0) => d((s) => s.allies.find((x) => x.id === a0.id)?.body)))]);
   }
   ok(`[${scr.name}] 교전 중 공격 · 피격 표본이 있다`, atkSamples >= 5, `${atkSamples}`);
   ok(`[${scr.name}] 교전 중 주인공 · 동료(보이는 몸) · 몬스터가 제자리 — 가운데 2px 이내`, moves.every((m) => m.every((v) => v <= 2)), moves.map((m) => `주${m[0]}·몬${m[1]}·동${m[2]}`).join(" "));
@@ -139,6 +141,15 @@ for (const scr of SCREENS) {
     const where = { hit: "몬스터 몸(±12px)", slash: "주인공 몸(±40px)", ally: "동료 몸(±30px)", float: "몬스터 위(±50px)" }[k];
     ok(`[${scr.name}] 이펙트 ${k} 가 ${where} 에 — 표본 3개 이상 · 벗어난 것 5% 이하`, list.length >= 3 && bad.length <= list.length * 0.05, `${list.length}개 중 ${bad.length}개 벗어남 ${bad.slice(0, 2).map((b) => b.at.join(",")).join(" ")}`);
   }
+  // ── G: 타격 표현 (2026-10-21) — 흰 조준선 대신 속성 색 · 몬스터는 대부분 제 색 · 평타 숫자는 합쳐진다 ──
+  const els = new Set(fxAll.filter((f) => /fx-spark/.test(f.cls ?? "")).map((f) => f.cls.match(/\bel-(\w+)/)?.[1]).filter(Boolean));
+  ok(`[${scr.name}] 타격 그림이 때린 쪽 속성 색 — 2가지 이상 · 예전 흰 조준선(.titans-fx-hit) 없음`, els.size >= 2 && !fxAll.some((f) => /titans-fx-hit\b/.test(f.cls ?? "")), [...els].join(","));
+  ok(`[${scr.name}] 원거리 · 힐러 탄이 날아간다(.shot-proj 표본 2개 이상)`, fxAll.filter((f) => /shot-proj/.test(f.cls ?? "")).length >= 2, `${fxAll.filter((f) => /shot-proj/.test(f.cls ?? "")).length}개`);
+  const combatRows = full.flatMap((e) => settledOf(e));
+  // 번쩍임 끝 칸이 남은 brightness(1) saturate(1) 은 제 색과 같다 — 밝기 1.05 넘는 표본만 센다
+  const lit = combatRows.filter((s) => Number(s.monFilter?.match(/brightness\(([\d.]+)\)/)?.[1] ?? 1) > 1.05).length;
+  ok(`[${scr.name}] 몬스터가 대부분 제 색 — 밝기 필터가 걸린 표본 35% 이하`, combatRows.length > 0 && lit <= combatRows.length * 0.35, `${lit}/${combatRows.length}`);
+  ok(`[${scr.name}] 평타 피해 숫자가 하나로 합쳐진다(합산 숫자에 더해진 표본)`, rows.some((s) => s.sumBumps.some((b) => b >= 1)) && rows.every((s) => s.sumBumps.length <= 2), `최대 동시 ${Math.max(0, ...rows.map((s) => s.sumBumps.length))}`);
   ok(`[${scr.name}] 교전 중 주인공 · 동료 몸이 AUTO · 배속 · 스킬 · 알림 칩과 겹치지 않는다(4px 넘게)`, uiHits.length === 0, uiHits.slice(0, 4).join(" · "));
 }
 ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));

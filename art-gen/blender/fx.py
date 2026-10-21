@@ -272,17 +272,24 @@ def render(name, builder, key):
     print('DONE', name)
 
 
-C.reset()
-C.setup_render(res=(RES, RES), samples=24)
-bpy.context.scene.render.film_transparent = True
-w = bpy.data.worlds.new('w'); bpy.context.scene.world = w
-cam = bpy.data.cameras.new('cam'); cam.type = 'ORTHO'; cam.ortho_scale = 2.2
-co = bpy.data.objects.new('cam', cam); bpy.context.scene.collection.objects.link(co)
-co.location = (0, -5, 0); co.rotation_euler = Euler((math.radians(90), 0, 0))
-bpy.context.scene.camera = co
+def setup_scene(samples=24):
+    """직교 카메라 · 투명 배경 · Cycles — fx2.py 도 같이 쓴다. FX_CPU=1 이면 CPU(사용자 GPU 렌더와 겹칠 때)"""
+    C.reset()
+    C.setup_render(res=(RES, RES), samples=samples)
+    if os.environ.get("FX_CPU") == "1":
+        bpy.context.scene.cycles.device = "CPU"
+    bpy.context.scene.render.film_transparent = True
+    w = bpy.data.worlds.new("w"); bpy.context.scene.world = w
+    cam = bpy.data.cameras.new("cam"); cam.type = "ORTHO"; cam.ortho_scale = 2.2
+    co = bpy.data.objects.new("cam", cam); bpy.context.scene.collection.objects.link(co)
+    co.location = (0, -5, 0); co.rotation_euler = Euler((math.radians(90), 0, 0))
+    bpy.context.scene.camera = co
 
-argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-names = argv or [f'slash-{k}' for k in SLASH] + [f'impact-{k}' for k in IMPACT]
-for nm in names:
-    kind, key = nm.split('-', 1)
-    render(nm, build_slash if kind == 'slash' else build_impact, key)
+
+if __name__ == "__main__":
+    setup_scene()
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    names = argv or [f"slash-{k}" for k in SLASH] + [f"impact-{k}" for k in IMPACT]
+    for nm in names:
+        kind, key = nm.split("-", 1)
+        render(nm, build_slash if kind == "slash" else build_impact, key)
