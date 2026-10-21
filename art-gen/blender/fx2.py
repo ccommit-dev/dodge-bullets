@@ -212,6 +212,14 @@ def build_proj(el, i):
             z = rnd.uniform(-0.16, 0.16)
             x0 = rnd.uniform(-0.75, 0.05)
             _crescent(f'w{k}', x0, z - 0.3, 0.3, math.pi / 2 - 0.5, math.pi / 2 + 0.5, 0.012, F.emit_mat('wl', glow, 3.0, 0.8), 0.0, 0.8)
+    elif el == 'blade':   # 칼날 검기 — 볼록한 쪽이 앞(+x)인 초승달 + 뒤로 남는 속도선
+        cx = hx - 0.26
+        _crescent('bi', cx, 0, 0.3, -1.2, 1.2, 0.075, ink, 0.012, 1.0)
+        _crescent('bg', cx, 0, 0.3, -1.15, 1.15, 0.06, F.emit_mat('bg', glow, 3.8, 1.0), 0.006, 1.0)
+        _crescent('bc', cx + 0.012, 0, 0.3, -1.05, 1.05, 0.026, F.emit_mat('bc', core, 6.0, 1.0), 0.0, 1.0)
+        for k in range(4):
+            z = (k - 1.5) * 0.09 + rnd.uniform(-0.02, 0.02)
+            needle(f'sp{k}', hx - 0.45 - rnd.uniform(0, 0.25), z, 0.0, rnd.uniform(0.14, 0.24), 0.012, F.emit_mat('sp', accent, 3.2, 0.8), y=-0.004, back=1.2)
     else:
         R = 0.17 if el != 'earth' else 0.15
         # 꼬리 — 머리 뒤로 가늘어지는 혜성 꼬리 + 입자
@@ -227,6 +235,8 @@ def build_proj(el, i):
                 F.flame(f'e{k}', x, z, s * 2.2, s, math.pi / 2, F.emit_mat('ef', accent, 4.0, 0.9), y=-0.005)
             elif el == 'water':
                 F.blob(f'e{k}', x, z, s, F.emit_mat('ew', accent, 3.5, 0.85), y=-0.005, seg=10)
+            elif el == 'light':
+                F.star(f'e{k}', x, z, s * 1.6, F.emit_mat('el', accent, 4.5, 0.9), points=4, y=-0.005)
             else:
                 chunk(f'e{k}', x, z, s, k, F.emit_mat('ee', accent, 1.5, 0.9), y=-0.005, seed=k + i)
         # 머리
@@ -238,6 +248,8 @@ def build_proj(el, i):
             F.blob('headi', hx, 0, R + 0.025, ink, y=0.012, seg=28)
             F.blob('head', hx, 0, R, F.emit_mat('hd', glow, 3.6, 1.0), y=0.006, seg=28)
             F.blob('headc', hx + 0.03, 0.02, R * 0.55, F.emit_mat('hc', core, 6.0, 1.0), y=0.0, seg=24)
+            if el == 'light':
+                F.star('hs', hx, 0, R * 1.5, F.emit_mat('hs', core, 7.0, 1.0), points=4, y=-0.004)
             if el == 'fire':
                 for k in range(5):
                     a = math.pi * 0.55 + k * 0.22 + (i % 2) * 0.1

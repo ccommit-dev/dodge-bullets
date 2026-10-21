@@ -1,0 +1,88 @@
+/* 2026-10-21 UI 정리 — 사용자: "UI가 너무 방대하고 조잡해 · 가독성 신경써서 단순화" · "상점탭 이벤트, 특별 UI 배경이 어색해 고급스럽게" ·
+   "오늘도 환생2 처럼 장비 성장 UI에 자동 업그레이드 모드". 앞 파일들 규칙을 덮으려고 마지막에 불러온다(App.tsx) */
+
+/* ── 자동 강화 스위치 ── */
+.auto-train-toggle { grid-column: 1 / -1; display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 10px; width: 100%; margin: 0 0 6px; padding: 8px 12px; border: 2px solid var(--flat-ink, #3b2415); border-radius: 14px; background: var(--flat-cream, #fff6e3); color: var(--flat-ink, #3b2415); text-align: left; box-shadow: 0 3px 0 var(--flat-cream-2, #e8cf9f); font-family: var(--font-ui, inherit); }
+.auto-train-toggle > i { grid-row: 1 / span 2; position: relative; width: 40px; height: 22px; border: 2px solid var(--flat-ink, #3b2415); border-radius: 999px; background: #d6c3a0; transition: background .18s; }
+.auto-train-toggle > i::after { content: ""; position: absolute; top: 1px; left: 1px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 0 rgba(0, 0, 0, .3); transition: transform .18s; }
+.auto-train-toggle > b { font-size: 14px; font-weight: 900; line-height: 1.1; }
+.auto-train-toggle > small { color: #7a5a3a; font-size: 11px; line-height: 1.2; }
+.auto-train-toggle.on { background: linear-gradient(180deg, #fff1b8, #fde68a); }
+.auto-train-toggle.on > i { background: #22a35a; }
+.auto-train-toggle.on > i::after { transform: translateX(18px); }
+.auto-train-toggle.on > b::after { content: " · 켜짐"; color: #15803d; }
+.auto-train-toggle.waiting > b::after { content: " · 대기"; color: #b45309; }
+/* 자동으로 산 칸 — 테두리 반짝 + 오른쪽 끝 +1 */
+.equipment-training-card.auto-hit { animation: auto-hit-glow .5s ease-out; }
+.equipment-training-card.auto-hit::after { content: "+1"; position: absolute; right: 12px; top: 6px; color: #15803d; font-weight: 900; font-size: 14px; pointer-events: none; animation: auto-hit-up .6s ease-out forwards; }
+.equipment-training-card { position: relative; }
+@keyframes auto-hit-glow { 0% { box-shadow: 0 0 0 3px #facc15, 0 3px 0 var(--flat-cream-2, #e8cf9f); } 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0), 0 3px 0 var(--flat-cream-2, #e8cf9f); } }
+@keyframes auto-hit-up { from { transform: translateY(4px); opacity: 1; } to { transform: translateY(-10px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .equipment-training-card.auto-hit, .equipment-training-card.auto-hit::after { animation: none; } }
+
+/* ── 상점 이벤트 · 특별 카드 — 고급 판 (사용자: "백그라운드 배경이 너무 어색해 고급스럽게") ──
+   예전: 청록 · 보라 · 적갈 원색 그라데이션 위에 평면 테마의 진갈색 글자(대비 낮음). 지금: 짙은 남색 판 + 금 이중 테두리 + 비스듬한 빛 한 줄 +
+   금 메달 액자 그림 · 금 제목 · 크림 설명. 상품마다 다른 건 위 띠 색 하나(루비 · 자수정 · 에메랄드)뿐 */
+.titans-layer .event-offer-card, .hub-sheet .event-offer-card {
+  --offer-accent: #e11d48; --gold: #f5c96a; --gold-deep: #a8762a;
+  position: relative; grid-template-columns: 92px 1fr; gap: 12px; padding: 16px 14px 14px; isolation: isolate;
+  border: 1.5px solid var(--gold); border-radius: 16px; color: #f6ead2;
+  background:
+    linear-gradient(115deg, transparent 0 38%, rgba(255, 236, 190, .07) 44%, transparent 50%),
+    radial-gradient(120% 90% at 0% 0%, rgba(245, 201, 106, .14), transparent 55%),
+    linear-gradient(180deg, #1c2340 0%, #121729 100%);
+  box-shadow: inset 0 0 0 3px #121729, inset 0 0 0 4px rgba(245, 201, 106, .45), 0 4px 0 #0a0d18, 0 10px 22px rgba(0, 0, 0, .35);
+}
+.titans-layer .event-offer-card::before, .hub-sheet .event-offer-card::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: linear-gradient(90deg, transparent, var(--offer-accent), transparent); z-index: -1; }
+.titans-layer .event-offer-card.offer-2, .hub-sheet .event-offer-card.offer-2 { --offer-accent: #a855f7; }
+.titans-layer .event-offer-card.offer-3, .hub-sheet .event-offer-card.offer-3 { --offer-accent: #10b981; }
+.titans-layer .event-offer-card.offer-4, .hub-sheet .event-offer-card.offer-4 { --offer-accent: #38bdf8; }
+/* 그림 — 금 테 메달 */
+.titans-layer .event-offer-art, .hub-sheet .event-offer-art { position: static; width: 92px; height: 92px; min-height: 0; align-self: start; border-radius: 50%; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 38%, #2c3763 0%, #161c33 70%); box-shadow: inset 0 0 0 3px #121729, inset 0 0 18px rgba(245, 201, 106, .25), 0 0 0 1px var(--gold-deep); }
+.titans-layer .event-offer-art .content-icon, .hub-sheet .event-offer-art .content-icon { width: 64px; height: 64px; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .45)); }
+/* 배지 — 카드 왼쪽 위 리본 */
+.titans-layer .event-offer-art span:not(.content-icon), .hub-sheet .event-offer-art span:not(.content-icon) { top: -1px; left: 14px; padding: 3px 9px 4px; border-radius: 0 0 8px 8px; color: #fff7e0; background: var(--offer-accent); font-size: 10px; letter-spacing: .08em; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+/* 글자 */
+.titans-layer .event-offer-card small, .hub-sheet .event-offer-card small { color: #c9b98f; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.titans-layer .event-offer-card h2, .hub-sheet .event-offer-card h2 { margin: 2px 0 4px; color: var(--gold); font-size: 17px; line-height: 1.2; text-shadow: 0 1px 0 #000; }
+.titans-layer .event-offer-card p, .hub-sheet .event-offer-card p { margin: 0; color: #e9dfc8; font-size: 12.5px; line-height: 1.4; }
+.titans-layer .event-offer-card .reward-row, .hub-sheet .event-offer-card .reward-row { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(245, 201, 106, .22); }
+/* 구매 — 금 버튼 */
+.titans-layer .event-offer-card button, .hub-sheet .event-offer-card button { grid-column: 1 / -1; min-height: 44px; margin-top: 2px; border: 1.5px solid #fff1c4; border-radius: 12px; color: #3a2405; background: linear-gradient(180deg, #ffe7a3 0%, #f5c96a 45%, #d99a2b 100%); box-shadow: 0 3px 0 #7a5214, inset 0 1px 0 rgba(255, 255, 255, .7); font-size: 16px; font-weight: 900; }
+.titans-layer .event-offer-card button:disabled, .hub-sheet .event-offer-card button:disabled { color: #8d8a80; background: #2a2f45; border-color: #3d4463; box-shadow: none; }
+/* 조각 받을 동료 줄 — 판과 같은 결 */
+.hub-sheet .event-shard-target { display: flex; align-items: center; gap: 8px; color: #5a3d1e; font-size: 12px; font-weight: 800; }
+
+/* ── 댐 방어전 정비 — 단순화 (사용자: "UI가 너무 방대하고 조잡해 — 가독성 신경써서 단순화", IMG_8583) ──
+   강화 한 장(1,600px)을 스킬 / 칩 / 보급·임무 세 탭으로 나눴고(SkillPanel), 여기서는 글자를 키우고 장식을 걷는다:
+   큰 보라 배너 → 한 줄 알약 · 3분할 세그먼트 탭 · 9~10px 글자 → 11~12px · 빨간 ! 원 → 작은 점 · 무기 설명 한 줄 */
+.exp-skill-panel { gap: 10px; }
+.exp-skill-banner.compact { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(253, 224, 71, .35); background: rgba(4, 14, 28, .55); }
+.exp-skill-banner.compact b { color: #e9dfc8; font-size: 12px; }
+.exp-skill-banner.compact strong { color: #fde047; font-size: 18px; line-height: 1; }
+.exp-skill-banner.compact small { color: #c9b98f; font-size: 11px; }
+.exp-sub-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 3px; border-radius: 12px; background: rgba(0, 0, 0, .3); border: 1px solid rgba(255, 255, 255, .08); }
+.exp-sub-tabs button { padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; color: #c9b98f; font-size: 13px; font-weight: 800; }
+.exp-sub-tabs button.on { background: linear-gradient(180deg, #fde68a, #f5b83d); color: #3a2405; box-shadow: 0 2px 0 #7a5214; }
+.exp-sub-tabs button small { margin-left: 2px; font-size: 11px; opacity: .8; }
+/* 무기 카드 — 설명 한 줄 */
+.exp-weapon-card em { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: 11px; }
+.exp-weapon-row > b, .exp-chip-row > b { font-size: 13px; }
+/* 기본 사격 · 칩 목록 · 스킬 카드 글자 키우기 */
+.exp-basic-row b { font-size: 13px; }
+.exp-basic-row em, .exp-chip-list em { font-size: 11.5px; line-height: 1.35; }
+.exp-chip-list b { font-size: 13px; }
+.exp-learn-hint { padding: 0; background: none; color: #c9b98f; font-size: 11.5px; text-align: left; }
+.exp-skill-card .exp-skill-body > b { font-size: 13px; }
+.exp-skill-card .exp-skill-bar small { font-size: 10.5px; }
+/* 강화 가능 표시 — 큰 빨간 ! 원 대신 작은 점(카드마다 떠서 시끄러웠다) */
+.exp-skill-badge { width: 9px; height: 9px; right: 7px; top: 7px; font-size: 0; color: transparent; box-shadow: 0 0 0 2px rgba(15, 23, 42, .9); }
+/* 스킬 카드는 빈칸 없이 차례대로 — 갈래(물리 왼쪽 · 마법 오른쪽) 고정 열은 갈래 줄을 뺀 뒤 구멍만 남겼다. 갈래는 카드 왼쪽 색 띠로 */
+.exp-skill-grid { grid-auto-flow: row dense; }
+.exp-skill-card.fam-physical, .exp-skill-card.fam-magic { grid-column: auto; }
+.exp-skill-card.fam-physical { box-shadow: inset 3px 0 0 #f59e0b; }
+.exp-skill-card.fam-magic { box-shadow: inset 3px 0 0 #a78bfa; }
+
+/* 사냥터 위 "자동 사냥 중" 줄 — 8px 보조 글이 읽히지 않았다. 한 줄 · 11px */
+.titans-field .idle-status-strip { flex-wrap: nowrap; gap: 6px; font-size: 11px; white-space: nowrap; overflow: hidden; }
+.titans-field .idle-status-strip small { overflow: hidden; text-overflow: ellipsis; color: #f1e3c4; font-size: 11px; font-weight: 700; }

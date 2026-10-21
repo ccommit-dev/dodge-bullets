@@ -129,3 +129,56 @@ export function sfxRiftClaim(): void {
     { freq: 880, at: 0.2, dur: 0.34, type: "sine", gain: 0.04 },
   ]);
 }
+
+/* ── 사냥터 타격음 (2026-10-21, 사용자: "지금 들어간 원화는 효과음 없이 화면만 바뀝니다" 마저 수정) ──
+   속성 색 불꽃 · 큰 폭발 · 동료 탄에 맞춘 짧은 합성음. 동료 넷이 연타하므로 부르는 쪽(TitansGame)이 간격을 둔다 */
+let noiseBuf: AudioBuffer | null = null;
+function noise(at: number, dur: number, gain: number, freq: number, q = 1, kind: BiquadFilterType = "bandpass", sweepTo?: number): void {
+  if (!loadSoundEnabled()) return;
+  const audio = context();
+  if (!audio || !master) return;
+  if (audio.state === "suspended") void audio.resume().catch(() => undefined);
+  if (!noiseBuf) {
+    noiseBuf = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.5), audio.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i += 1) d[i] = Math.random() * 2 - 1;
+  }
+  const t0 = audio.currentTime + at;
+  const src = audio.createBufferSource();
+  src.buffer = noiseBuf;
+  const filter = audio.createBiquadFilter();
+  filter.type = kind;
+  filter.Q.value = q;
+  filter.frequency.setValueAtTime(freq, t0);
+  if (sweepTo) filter.frequency.exponentialRampToValueAtTime(sweepTo, t0 + dur);
+  const g = audio.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(filter); filter.connect(g); g.connect(master);
+  src.start(t0); src.stop(t0 + dur + 0.02);
+}
+const EL_PITCH: Record<string, { f: number; type: OscillatorType }> = {
+  fire: { f: 196, type: "sawtooth" }, water: { f: 523, type: "sine" }, earth: { f: 110, type: "square" },
+  wind: { f: 880, type: "triangle" }, blade: { f: 1318, type: "triangle" }, light: { f: 1046, type: "sine" },
+};
+/** 평타 — 짧은 "탁" + 속성 음 한 점 */
+export function sfxHuntHit(el: string): void {
+  const p = EL_PITCH[el] ?? EL_PITCH.blade;
+  noise(0, 0.05, 0.05, el === "earth" ? 600 : 2200, 1.2);
+  play([{ freq: p.f, at: 0, dur: 0.06, type: p.type, gain: 0.018 }]);
+}
+/** 치명타 · 스킬 · 특수기 — 저음 쿵 + 터지는 잡음 + 위로 반짝 */
+export function sfxHuntBurst(el: string): void {
+  const p = EL_PITCH[el] ?? EL_PITCH.blade;
+  noise(0, 0.28, 0.11, 1600, 0.7, "lowpass", 300);
+  play([
+    { freq: 82, at: 0, dur: 0.22, type: "sine", gain: 0.12 },
+    { freq: p.f, at: 0.01, dur: 0.16, type: p.type, gain: 0.03 },
+    { freq: p.f * 1.5, at: 0.06, dur: 0.2, type: "sine", gain: 0.02 },
+  ]);
+}
+/** 동료 탄 발사 — 바람 가르는 짧은 휙 */
+export function sfxHuntShoot(el: string): void {
+  noise(0, 0.12, 0.025, el === "earth" ? 500 : 1200, 2, "bandpass", el === "earth" ? 300 : 3200);
+}

@@ -1,4 +1,4 @@
-import { HUNT_PICK_CAP, emptyHuntMods, normalizeHuntMods, type HuntMods } from "./huntPerks";
+import { emptyHuntMods, type HuntMods } from "./huntPerks";
 import { assetUrl } from "../asset";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
@@ -362,8 +362,9 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     autoSkill: value.autoSkill === true,
     battleSpeed: value.battleSpeed === 2 ? 2 : 1,
     lastActiveAt: n(value.lastActiveAt, Date.now(), Date.now()),
-    huntMods: normalizeHuntMods(value.huntMods),
-    huntPicks: n(value.huntPicks, 0, HUNT_PICK_CAP),
+    // 사냥 강화 3택은 뺐다(2026-10-21, 사용자: "사냥터에서도 3개중 하나 선택하는 내용은 제거") — 남은 강화 · 선택권도 중립으로
+    huntMods: emptyHuntMods(),
+    huntPicks: 0,
   };
 }
 

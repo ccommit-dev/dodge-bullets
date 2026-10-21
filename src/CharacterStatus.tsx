@@ -80,6 +80,13 @@ export function CharacterStatus({
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
   const [growthMessage, setGrowthMessage] = useState("");
+  // 결과 문구는 화면 아래 토스트로 2.8초 (2026-10-21, 사용자: "마이페이지 동작을 안하네") — 예전엔 위 카드 맨 아래 한 줄이라
+  // 도감 · 펫 · 배지 탭(길이 1,400px)에서 누르면 결과가 화면 밖에 떠 아무 반응이 없어 보였다
+  useEffect(() => {
+    if (!growthMessage) return;
+    const t = window.setTimeout(() => setGrowthMessage(""), 2800);
+    return () => window.clearTimeout(t);
+  }, [growthMessage]);
   /** I 외형: 장착 중인 무기 이펙트·전장 테마 이름 — 마이페이지 칩 + 공유 카드 서브라인 */
   const cosmeticLabels = [
     progress.equippedWeaponFx && WEAPON_FX[progress.equippedWeaponFx] ? `⚔ ${WEAPON_FX[progress.equippedWeaponFx].name}` : "",
@@ -458,8 +465,8 @@ export function CharacterStatus({
                 <button
                   type="button"
                   className="pet-figure"
-                  disabled={!hatched}
-                  onClick={() => void equipPet(id)}
+                  aria-disabled={!hatched}
+                  onClick={() => (hatched ? void equipPet(id) : setGrowthMessage(`아직 알 — 이 몬스터를 ${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치하면 부화합니다`))}
                   title={hatched ? (active ? "장착 해제" : "장착") : `${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치`}
                 >
                   <MonsterArt kind={id} area={HUNTING_AREAS[0]} boss={false} golden={false} />
@@ -505,11 +512,11 @@ export function CharacterStatus({
           <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존 · 방치 시간 +2h</small></button>
           <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>비트 · 방치 효율 +3%p</small></button>
         </div>
-        <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""}`} disabled={!canRebirth} onClick={() => void rebirth()}>
+        <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
           환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/3 지역`}
         </button>
         </div>
-        {growthMessage && <p className="growth-message">{growthMessage}</p>}
+        {growthMessage && <p className="growth-message mypage-toast" role="status">{growthMessage}</p>}
       </section>
 
       <section className="equipment-strip" aria-label="장착 장비">

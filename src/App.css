@@ -3527,7 +3527,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .evolution-tree b,.evolution-tree small { display:block; }
 .evolution-tree small { margin-top:3px; color:#94a3b8; font-size:8px; }
 .rebirth-button { width:100%; margin-top:9px; padding:10px; border:1px solid rgba(94,234,212,.45); border-radius:11px; color:#07111f; background:#5eead4; font-weight:900; cursor:pointer; }
-.rebirth-button:disabled { color:#64748b; background:#172033; cursor:not-allowed; }
+.rebirth-button:disabled, .rebirth-button.is-locked { color:#64748b; background:#172033; cursor:not-allowed; }
 .growth-message { margin:8px 0 0; color:#fde68a; font-size:10px; text-align:center; }
 .evolution-swordmaster { filter:drop-shadow(0 0 10px rgba(239,68,68,.55)); }
 .evolution-guardian { filter:drop-shadow(0 0 10px rgba(59,130,246,.55)); }

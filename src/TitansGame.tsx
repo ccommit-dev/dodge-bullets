@@ -25,7 +25,6 @@ import {
   monsterKind,
   monsterLabel,
   playerIdleDps,
-  HUNTING_AREAS,
   huntingArea,
   stageClearBonus,
   equipmentTrainingCost,
@@ -36,7 +35,6 @@ import {
   type TitanSkillSlot,
   type TitansSave,
 } from "./titans/model";
-import { HUNT_RARITY_LABEL, applyHuntPerk, huntModsChips, pickHuntPerks, type HuntPerkDef, type HuntPerkId } from "./titans/huntPerks";
 import { WEAK_LABEL, WEAK_MUL, WEAK_WINDOW_MS, allyHitsWeak, partyWeakMatches, rollBossWeak, skillHitsWeak, type BossWeak } from "./titans/bossWeak";
 import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
@@ -70,7 +68,7 @@ import {
 import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
-import { sfxGateBlocked, sfxSlotUnlock } from "./ui/sfx";
+import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
 import {
   ALLY_IDS,
   ALLY_ELEMENT,
@@ -285,9 +283,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 보스 약점 (2026-10-08, titans/bossWeak.ts) — 8초마다 바뀐다. 사냥 강화 선택권이 있으면 3장을 띄운다 (titans/huntPerks.ts)
   const [bossWeak, setBossWeak] = useState<BossWeak | null>(null);
   const bossWeakRef = useRef<BossWeak | null>(null);
-  const [huntOffer, setHuntOffer] = useState<HuntPerkDef[]>([]);
-  // 접이식 (2026-10-12, 보완 2): 바가 배경 띠를 가렸다 — 새 선택권이 오면 6초만 펼치고 칩으로 접는다
-  const [huntBarOpen, setHuntBarOpen] = useState(false);
   const [bossReady, setBossReady] = useState(false);
   const [monsterHit, setMonsterHit] = useState(0);
   /** 보스 처치 3단계 (계획안 B): 1 경직 → 2 균열 → 3 붕괴+골드 분출. 0이면 없음 */
@@ -347,6 +342,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   /** QoL — 일괄 레벨업 수량 (0 = MAX) */
   const [buyAmount, setBuyAmount] = useState<1 | 10 | 0>(1);
+  /**
+   * 자동 강화 (2026-10-21, 사용자: "오늘도 환생2 처럼 장비 성장 UI에 자동으로 업그레이드 모드를 추가해줘") — 켜 두면 장비 성장 탭이 열려 있는 동안
+   * 0.3초마다 무기 · 파츠 4종 중 가장 싼 훈련 1단계를 사냥 골드로 산다(견갑은 강화석 · 조각을 써서 빼다). 켬/끔은 이 기기에 기억
+   */
+  const [autoTrain, setAutoTrain] = useState(() => { try { return localStorage.getItem("dodgebullets:auto-train") === "1"; } catch { return false; } });
+  const [autoTrainHit, setAutoTrainHit] = useState<{ slot: string; seq: number; count: number } | null>(null);
   /** 온보딩(§8) 개방 연출 — 방금 열린 단계 번호 */
   const [unlockBanner, setUnlockBanner] = useState<number | null>(null);
   /** 동료 탭 역할 필터 (점검표 #4) */
@@ -401,6 +402,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 몬스터 번쩍임 간격 · 히트스톱 간격 — 동료 넷이 연타해도 몬스터가 늘 보이게 */
   const lastFlashRef = useRef(0);
   const hitStopAtRef = useRef(0);
+  /** 타격음 간격 — 동료 넷 연타가 소리를 덮지 않게 평타 70ms · 탄 110ms (2026-10-21) */
+  const sfxAtRef = useRef({ hit: 0, shoot: 0 });
   const fieldRef = useRef<HTMLDivElement>(null);
   // 간단한 충돌 분리 (2026-10-08, 사용자: "캐릭터별 간단한 충돌 체크로 간격을 벌려줘") — 발 높이가 비슷한(같은 줄) 주인공·동료끼리
   const sepFrozenRef = useRef(false);
@@ -915,15 +918,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const half = fw > 0 ? ((kind.startsWith("sig-") ? 100 : kind === "burst" ? 68 : kind === "debris" || kind === "spark" ? 46 : 30) / fw) * 100 : 0;   // 시그니처는 120px 사각이 돌며 대각선 ≈170px · 큰 폭발 136px · 불꽃 · 파편 92px
     pushFx(kind, Math.max(half, Math.min(100 - half, x)), y, hue, el);
   };
-  /** 치명타 · 스킬 · 특수기 순간 캐릭터를 0.06초 멈춘다(히트스톱) — 이펙트는 계속 돈다. 자리는 안 움직인다 (2026-10-21) */
-  const hitStop = () => {
+  /** 치명타 · 스킬 · 특수기 순간 캐릭터를 0.06초 멈춘다(히트스톱) — 이펙트는 계속 돈다. 자리는 안 움직인다 (2026-10-21). 평타는 짧게(0.035초, 0.4초에 한 번) */
+  const hitStop = (ms = 60, gap = 220) => {
     const el = fieldRef.current;
     const pn = performance.now();
-    if (!el || lowFxRef.current || pn - hitStopAtRef.current < 220) return;
+    if (!el || pn - hitStopAtRef.current < gap) return;   // 저사양에서도 — data 속성 하나라 비용이 거의 없다
     hitStopAtRef.current = pn;
     // data 속성으로 — 같은 순간 setImpact 가 전장 className 을 통째로 다시 써서 classList 로 붙인 클래스는 바로 지워졌다
     el.dataset.hitstop = "1";
-    window.setTimeout(() => { delete el.dataset.hitstop; }, 60);
+    window.setTimeout(() => { delete el.dataset.hitstop; }, ms);
   };
   /**
    * 원거리 · 힐러 동료의 탄 — 동료 손에서 몬스터까지 날아가는 속성 탄(public/titans/fx/proj-<속성>.webp, fx2.py).
@@ -944,6 +947,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const dx = tx - x, dy = ty - y;
     const shot: SkillShot = { id: sid, kind: "proj", element: el, x, y, dx, dy, ang: (Math.atan2(dy, dx) * 180) / Math.PI, len: Math.hypot(dx, dy), big, fly };
     window.setTimeout(() => {
+      const pn = performance.now();
+      if (pn - sfxAtRef.current.shoot > 110) { sfxAtRef.current.shoot = pn; sfxHuntShoot(el); }
       setShots((prev) => [...prev.slice(lowFxRef.current ? -4 : -10), shot]);
       window.setTimeout(() => setShots((prev) => prev.filter((s) => s.id !== sid)), fly + 40);
     }, release);
@@ -991,7 +996,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }
     const rect = fieldRef.current?.getBoundingClientRect();
     // 좌표가 없으면 몬스터 머리 위(지금 상자에서) — 예전 고정 58~74% · 30~46% 는 깊이가 바뀐 몬스터와 떨어져 떴다 (2026-10-20)
-    const spot = clientX && clientY && rect ? null : fxSpot("monster", 0.5, 0.12, 58 + Math.random() * 16, 30 + Math.random() * 16, 0.18);
+    // 치명타는 몬스터 머리 위로 — 손가락 · 명중 자리(몬스터 몸 38%)에 두면 큰 글자 · 이름이 아래 몬스터 이름표와 겹쳤다 (2026-10-21)
+    const spot = clientX && clientY && rect && !crit ? null : fxSpot("monster", 0.5, crit ? -0.06 : 0.12, 58 + Math.random() * 16, crit ? 24 : 30 + Math.random() * 16, crit ? 0.06 : 0.18);
     const x = spot ? spot.x : ((clientX! - rect!.left) / rect!.width) * 100;
     const y = spot ? spot.y : ((clientY! - rect!.top) / rect!.height) * 100;
     const id = ++floatId.current;
@@ -1068,6 +1074,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         setImpact(big ? "critical" : "normal");
         // 피격 프레임은 짧게(90/130ms) — 파티 4명이 연타하면 흰 프레임이 거의 상시 노출되던 문제
         window.setTimeout(() => setImpact(null), big ? 130 : 90);
+        if (big) sfxHuntBurst(hitEl);
+        else if (pn - sfxAtRef.current.hit > 70) { sfxAtRef.current.hit = pn; sfxHuntHit(hitEl); }
         if (big) {
           // 탄으로 날아간 스킬은 명중 칸(.shot-impact)이 같은 폭발을 그린다 — 겹치지 않게
           if (!(opts?.skill && opts?.delayMs)) pushFxAt("burst", "monster", 0.45, 0.48, 72, 42, undefined, 0.06, hitEl);
@@ -1075,6 +1083,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           hitStop();
         } else {
           pushFxAt("spark", "monster", 0.42, 0.5, 72 + Math.random() * 10, 38 + Math.random() * 14, undefined, 0.12, hitEl);
+          if (physical) hitStop(35, 400);
           if (physical && !lowFxRef.current && Math.random() < 0.45) pushFxAt("debris", "monster", 0.42, 0.62, 72, 50, undefined, 0.1, hitEl);
         }
       };
@@ -1186,7 +1195,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         gold: prev.gold + goldGain,
         skillInventory: wasBoss ? { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + 1 } : prev.skillInventory,
         // 사냥 강화 (2026-10-08): 보스마다 선택권 +1(최대 3) · 새 지역으로 넘어가면 지역 효과는 비운다 (지역 = 런)
-        huntPicks: wasBoss ? Math.min(3, prev.huntPicks + 1) : prev.huntPicks,
+        huntPicks: 0,   // 사냥 강화 3택 제거 (2026-10-21)
         huntMods: advancing && huntingArea(prev.stage + 1).id !== huntingArea(prev.stage).id ? { ...prev.huntMods, tapMul: 1, allyMul: 1, bossTimeBonus: 0, cooldownMul: 1, burnMul: 1, freezeMul: 1, critDmgMul: 1, weakWindowMs: 0, weakBonus: 0, weakHunt: false, thermalShock: false, chainLightning: false, picked: [] } : prev.huntMods,
         totalKills: prev.totalKills + 1,
         bestStage: advancing ? Math.max(prev.bestStage, prev.stage + 1) : prev.bestStage,
@@ -1630,6 +1639,37 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }));
     flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}`);
   };
+
+  // 자동 강화 루프 — 저장은 함수형 setSave 안에서 다시 계산(같은 틱에 두 번 사지 않게), 표시는 마지막으로 산 칸만 반짝
+  useEffect(() => {
+    try { localStorage.setItem("dodgebullets:auto-train", autoTrain ? "1" : "0"); } catch { /* 저장 못 해도 이번 실행엔 켜짐 */ }
+    if (!autoTrain || tab !== "sword") return;
+    const id = window.setInterval(() => {
+      const cur = saveRef.current;
+      const options: { slot: "weapon" | GearPart; cost: number }[] = [{ slot: "weapon", cost: equipmentTrainingCost("weapon", cur.equipmentTraining.weaponMastery) }];
+      for (const part of GEAR_PARTS) {
+        const lv = cur.equipmentTraining[`${part}Mastery` as "helmetMastery"] ?? 0;
+        const enh = characterRef.current.gearEnhance?.[part] ?? 0;
+        if (gearPartValue(part, lv, enh) >= GEAR_PART_DEF[part].cap) continue;
+        options.push({ slot: part, cost: gearTrainingCost(part, lv) });
+      }
+      const pick = options.filter((o) => o.cost <= cur.gold).sort((a, b) => a.cost - b.cost)[0];
+      if (!pick) return;
+      const key = pick.slot === "weapon" ? "weaponMastery" : (`${pick.slot}Mastery` as "helmetMastery");
+      setSave((prev) => {
+        const lv = prev.equipmentTraining[key] ?? 0;
+        const cost = pick.slot === "weapon" ? equipmentTrainingCost("weapon", lv) : gearTrainingCost(pick.slot, lv);
+        if (prev.gold < cost) return prev;
+        return { ...prev, gold: prev.gold - cost, equipmentTraining: { ...prev.equipmentTraining, [key]: lv + 1 } };
+      });
+      setAutoTrainHit((h) => ({ slot: pick.slot, seq: (h?.seq ?? 0) + 1, count: (h?.count ?? 0) + 1 }));
+    }, 300);
+    return () => window.clearInterval(id);
+  }, [autoTrain, tab]);
+  const autoTrainAffordable = tab === "sword" && (save.gold >= equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery) || GEAR_PARTS.some((part) => {
+    const lv = save.equipmentTraining[`${part}Mastery` as "helmetMastery"] ?? 0;
+    return gearPartValue(part, lv, character.gearEnhance?.[part] ?? 0) < GEAR_PART_DEF[part].cap && save.gold >= gearTrainingCost(part, lv);
+  }));
 
   /** 이번 주 조각팩 구매 횟수 — 주간 제한(과금 상한 설계)의 판정 */
   const shardPackBoughtThisWeek = (id: TitanHeroId): number => {
@@ -2132,7 +2172,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 영웅 발밑 원소 오라 — 누가 시전했는지
       spawnShot("aura", id, def.element, geo.hx, geo.hy + 28);
       if (effect.kind === "hit" || effect.kind === "execute") {
-        const beam = def.element === "light" || id === "pierce";
+        const beam = id === "pierce";   // 빛 스킬도 이제 탄 그림(proj-light) — 빛줄기는 관통 찌르기만 (2026-10-21)
         spawnShot(beam ? "beam" : "shot", id, def.element, geo.hx, geo.hy, geo.mx, geo.my, def.slot === "finisher");
         spawnShot("impact", id, def.element, geo.mx, geo.my, geo.mx, geo.my, def.slot === "finisher", SHOT_TRAVEL_MS);
       }
@@ -2195,23 +2235,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     castSkillRef.current = castSkill;
   });
 
-  // 사냥 강화 3장 — 선택권이 생기면 그때의 지역·장착으로 뽑고, 고르면 비운다
-  useEffect(() => {
-    if (save.huntPicks <= 0) { if (huntOffer.length > 0) setHuntOffer([]); return; }
-    if (huntOffer.length > 0) return;
-    const areaIndex = Math.max(0, HUNTING_AREAS.findIndex((a) => a.id === huntingArea(save.stage).id));
-    const equipped = Object.values(save.skillInventory.equipped).filter((id): id is TitanSkillId => !!id);
-    setHuntOffer(pickHuntPerks(save.huntMods, { learned: save.skillInventory.learned, equipped }, Math.random, areaIndex));
-    setHuntBarOpen(true);
-    const t = window.setTimeout(() => setHuntBarOpen(false), 6000);
-    return () => window.clearTimeout(t);
-  }, [save.huntPicks, save.huntMods, save.stage, save.skillInventory, huntOffer.length]);
-  const pickHunt = (perk: HuntPerkDef) => {
-    setSave((prev) => ({ ...prev, huntMods: applyHuntPerk(prev.huntMods, perk.id as HuntPerkId), huntPicks: Math.max(0, prev.huntPicks - 1) }));
-    setHuntOffer([]);
-    pushFx(perk.rarity === "epic" ? "warcry" : "crit", 50, 40, perk.rarity === "epic" ? 290 : 45);
-    flash(`[${HUNT_RARITY_LABEL[perk.rarity]}] ${perk.label} — 이 지역에서 적용`);
-  };
 
   // 이벤트 센터가 저장을 바꾸면 루틴 보드·추천이 즉시 따라온다 · 1초 틱은 워밍업 타이머용
   useEffect(() => {
@@ -2687,7 +2710,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        className={`titans-field phase-${battlePhase} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         data-area={area.id}
@@ -2745,14 +2768,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <strong>{save.bestStage}</strong>
           </div>
         </div>
-        {ready && (() => {
+        {/* 같은 말(닫아도 쌓인다)을 하는 "지금 닫아도 8시간 후" 칩(첫 3세션)이 떠 있으면 줄은 숨긴다 — WebKit 에서 둘이 겹쳤다 (2026-10-21 단순화) */}
+        {ready && !(idlePreview && !idleReport) && (() => {
           const capHours = idleCapHours(character);
           const full = computeIdleYield(character, save.stage, save.skillInventory.equipped, capHours * 3600);
           const boosted = character.idleBoostUntil > nowTick;
           return (
             <div className="idle-status-strip" role="status">
               <i className="idle-status-dot" />자동 사냥 중{boosted ? " · 가속 ×2" : ""}
-              <small>최대 {capHours}h 누적 시 +{formatGold(full.gold)}G · 강화석 {full.materials} — 닫아도 쌓이고 다시 열면 정산</small>
+              <small>{capHours}시간 쌓으면 +{formatGold(full.gold)}G · 강화석 {full.materials}</small>
             </div>
           );
         })()}
@@ -3043,28 +3067,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </div>
         )}
         {!freeRetryCard && momentOfferCard}
-        {/* 사냥 강화 3택 (2026-10-08) — 보스를 잡을 때마다 한 장. 성문 방어 카드와 같은 문법(등급·콤보·필요 스킬) */}
-        {!freeRetryCard && save.huntPicks > 0 && huntOffer.length > 0 && !huntBarOpen && (
-          <button type="button" className="hunt-pick-chip" onPointerDown={(e) => e.stopPropagation()} onClick={() => setHuntBarOpen(true)}>사냥 강화 <b>{save.huntPicks}</b> ▸</button>
-        )}
-        {!freeRetryCard && save.huntPicks > 0 && huntOffer.length > 0 && huntBarOpen && (
-          <div className="hunt-pick-bar" role="dialog" aria-label="사냥 강화 선택" onPointerDown={(e) => e.stopPropagation()}>
-            <div className="hunt-pick-head"><b>사냥 강화</b><small>보스 처치 보상 · 이 지역에서만 · 남은 선택 {save.huntPicks}</small><button type="button" className="hunt-pick-fold" onClick={() => setHuntBarOpen(false)} aria-label="접기">▾</button></div>
-            <div className="hunt-pick-cards">
-              {huntOffer.map((perk, i) => (
-                <button key={perk.id} type="button" className={`perk-choice hunt-perk rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => pickHunt(perk)}>
-                  <b><i className={`perk-rarity r-${perk.rarity}`}>{HUNT_RARITY_LABEL[perk.rarity]}</i>{perk.label}{perk.combo && <i className="perk-combo">콤보</i>}</b>
-                  <small>{perk.desc}</small>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {save.huntMods.picked.length > 0 && (
-          <div className="hunt-mods-chips" aria-label="지역 사냥 강화">
-            {huntModsChips(save.huntMods).map((c) => <span key={c.id} className={`hunt-mod-chip r-${c.rarity}`}>{c.label}{c.count > 1 ? ` ×${c.count}` : ""}</span>)}
-          </div>
-        )}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
           {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
             <button
@@ -3189,6 +3191,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           ) : null;
         })()}
       <section className="titans-shop">
+        {tab === "sword" && (
+          <button
+            type="button"
+            className={`auto-train-toggle ${autoTrain ? "on" : ""} ${autoTrain && !autoTrainAffordable ? "waiting" : ""}`}
+            aria-pressed={autoTrain}
+            onClick={() => { setAutoTrain((v) => !v); setAutoTrainHit(null); }}
+          >
+            <i aria-hidden="true" />
+            <b>자동 강화</b>
+            <small>{autoTrain ? (autoTrainAffordable ? `가장 싼 장비부터 · ${autoTrainHit?.count ?? 0}회` : "골드 모으는 중 — 모이면 이어서") : "켜 두면 골드로 알아서 훈련"}</small>
+          </button>
+        )}
         {(tab === "sword" || tab === "heroes") && (
           <div className="bulk-toggle" role="group" aria-label="일괄 레벨업 수량">
             <span>일괄 레벨업</span>
@@ -3206,7 +3220,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         )}
         {tab === "sword" && (
           <>
-            <article className="titans-card equipment-training-card">
+            <article key={autoTrainHit?.slot === "weapon" ? `w${autoTrainHit.seq}` : "w"} className={`titans-card equipment-training-card ${autoTrainHit?.slot === "weapon" ? "auto-hit" : ""}`}>
               <div className="training-item-icon weapon">{weaponKind === "drum" ? <SwordArt level={Math.min(15, forgedWeaponLevel)} hue={tierAt(Math.min(15, forgedWeaponLevel)).hue} name="장착 대검" /> : <img src={assetUrl(`titans/gear/${weaponKind}-${forgedWeaponLevel >= 10 ? 3 : forgedWeaponLevel >= 5 ? 2 : 1}.png`)} alt="" aria-hidden="true" />}</div>
               <div>
                 <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>기본 공격력·자동 공격 속도·치명타 성장 · 다음 {formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</p>
@@ -3236,7 +3250,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const now = gearPartValue(part, lv, enh), next = gearPartValue(part, lv + 1, enh);
               const capped = now >= def.cap;
               return (
-                <article key={part} className={`titans-card equipment-training-card gear-part-card gear-${part}`} data-gear-part={part}>
+                <article key={autoTrainHit?.slot === part ? `${part}${autoTrainHit.seq}` : part} className={`titans-card equipment-training-card gear-part-card gear-${part} ${autoTrainHit?.slot === part ? "auto-hit" : ""}`} data-gear-part={part}>
                   <div className="training-item-icon gear-icon"><img src={assetUrl(`titans/gear/${part === "armor" ? "armor" : part}-${Math.max(1, gearTierOfEnhance(enh))}.png`)} alt="" aria-hidden="true" /></div>
                   <div>
                     <strong>{def.name}{enh > 0 ? ` +${enh}` : ""} · 숙련 Lv.{lv}</strong>
