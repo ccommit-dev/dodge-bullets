@@ -271,7 +271,9 @@
 .variant-chip { font-size: 11px !important; }
 .beat-rank-next { font-size: 11px !important; }
 .forge-layer .forge-stats :is(span, small) { font-size: 11px !important; }
-.forge-layer p { font-size: max(12px, 1em); }
+.forge-layer p { font-size: max(12px, 0.75rem); }
+.forge-shop-card p { font-size: 12px !important; line-height: 1.4; color: var(--rd-ink2); }
+.forge-shop-card :is(b, strong, h3) { font-size: 14px !important; }
 .forge-layer .forge-best { color: var(--rd-ink2) !important; }
 .skill-slot b, .skill-dock-auto { font-size: 11px !important; }
 /* 댐 방어전 — 갈색 판 위 흐린 글(빈 칸 번호 · 잠긴 장 탭 · 소제목 옆 작은 글) */
@@ -311,3 +313,11 @@
 .route-node { padding-left: 3px !important; padding-right: 3px !important; }
 .route-node .route-lock { font-size: 13px !important; }
 .route-node small { white-space: nowrap !important; }
+
+/* ── 판 안의 판 3차 — 대장간 · 비트 수련 ── */
+.forge-exchange { border: 0 !important; box-shadow: none !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }   /* 조합소 카드 넷을 감싼 판 — 카드만 남긴다 */
+.forge-stats > * { border: 0 !important; box-shadow: none !important; }
+.forge-mastery-bar, .forge-mastery-bar > * { border-width: 0 !important; }
+.forge-mastery-bar { background: rgba(59, 36, 21, .14) !important; }
+.beat-rank-panel .rank-avatar { border: 0 !important; box-shadow: none !important; }
+.beat-custom > * { border: 0 !important; }
