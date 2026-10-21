@@ -33,12 +33,93 @@
 .skill-shot.shot-impact > .fx-burst { position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; overflow: hidden; pointer-events: none; }
 .skill-shot.shot-impact.big > .fx-burst { left: -90px; top: -90px; width: 180px; height: 180px; }
 .skill-shot.shot-impact > .fx-burst::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/impact-blade.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .5s steps(6, end) forwards; }
-.skill-shot.el-fire > .fx-burst::before { background-image: url("/titans/fx/impact-fire.webp"); }
-.skill-shot.el-wind > .fx-burst::before { background-image: url("/titans/fx/impact-wind.webp"); }
-.skill-shot.el-earth > .fx-burst::before { background-image: url("/titans/fx/impact-earth.webp"); }
-.skill-shot.el-light > .fx-burst::before { background-image: url("/titans/fx/impact-light.webp"); }
+/* 2026-10-21: 스킬 명중도 새 큰 폭발(burst-*, fx2.py — 섬광 · 얇은 충격파 · 원소 파편)으로 */
+.skill-shot > .fx-burst::before { background-image: url("/titans/fx/burst-blade.webp"); }
+.skill-shot.el-fire > .fx-burst::before { background-image: url("/titans/fx/burst-fire.webp"); }
+.skill-shot.el-wind > .fx-burst::before { background-image: url("/titans/fx/burst-wind.webp"); }
+.skill-shot.el-earth > .fx-burst::before { background-image: url("/titans/fx/burst-earth.webp"); }
+.skill-shot.el-light > .fx-burst::before { background-image: url("/titans/fx/burst-light.webp"); }
+
+/* ── 타격 표현 2 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") ──
+   art-gen/blender/fx2.py → assemble-fx: hit-<속성>(작은 불꽃, 오른쪽으로 튐) · burst-<속성>(섬광 + 충격파 + 파편) · debris-rock(포물선 파편) · proj-<속성>(날아가는 탄) */
+.titans-fx.titans-fx-spark, .titans-fx.titans-fx-burst, .titans-fx.titans-fx-debris { overflow: hidden; border: 0; box-shadow: none; background: none; border-radius: 0; animation: none; filter: none; }
+.titans-fx.titans-fx-spark { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
+.titans-fx.titans-fx-burst { z-index: 7; width: 136px; height: 136px; margin: -68px 0 0 -68px; }
+.titans-fx.titans-fx-debris { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
+.titans-fx.titans-fx-spark::before, .titans-fx.titans-fx-burst::before, .titans-fx.titans-fx-debris::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/hit-blade.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .36s steps(6, end) forwards;
+}
+.titans-fx-spark.el-fire::before { background-image: url("/titans/fx/hit-fire.webp"); }
+.titans-fx-spark.el-water::before { background-image: url("/titans/fx/hit-water.webp"); }
+.titans-fx-spark.el-earth::before { background-image: url("/titans/fx/hit-earth.webp"); }
+.titans-fx-spark.el-wind::before { background-image: url("/titans/fx/hit-wind.webp"); }
+.titans-fx-spark.el-light::before { background-image: url("/titans/fx/hit-light.webp"); }
+.titans-fx.titans-fx-burst::before { background-image: url("/titans/fx/burst-blade.webp"); animation-duration: .54s; }
+.titans-fx-burst.el-fire::before { background-image: url("/titans/fx/burst-fire.webp"); }
+.titans-fx-burst.el-water::before { background-image: url("/titans/fx/burst-water.webp"); }
+.titans-fx-burst.el-earth::before { background-image: url("/titans/fx/burst-earth.webp"); }
+.titans-fx-burst.el-wind::before { background-image: url("/titans/fx/burst-wind.webp"); }
+.titans-fx-burst.el-light::before { background-image: url("/titans/fx/burst-light.webp"); }
+.titans-fx.titans-fx-debris::before { background-image: url("/titans/fx/debris-rock.webp"); animation-duration: .56s; }
+/* 무기 이펙트(상점)를 낀 주인공 평타는 그 색 불꽃 — 칼날 기본은 금빛 */
+.titans-field[data-weapon-fx="fx-crimson"] .titans-fx-spark.el-blade::before { background-image: url("/titans/fx/hit-fire.webp"); }
+.titans-field[data-weapon-fx="fx-glacier"] .titans-fx-spark.el-blade::before { background-image: url("/titans/fx/hit-water.webp"); }
+
+/* 원거리 · 힐러 동료의 탄 — 동료 손 → 몬스터. 머리(칸의 69%)가 출발점 · 회전 중심, 꼬리 혜성은 칸 안에 그려져 있다. 날아가는 시간은 거리 비례(--fly) */
+.skill-shot.shot-proj > i { position: absolute; left: -61px; top: -44px; width: 88px; height: 88px; overflow: hidden; transform-origin: 69% 50%; animation: proj-fly var(--fly, .24s) linear forwards; will-change: transform, opacity; }
+.skill-shot.shot-proj.big > i { left: -77px; top: -56px; width: 112px; height: 112px; }
+.skill-shot.shot-proj > i::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/proj-fire.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .3s steps(6, end) infinite; }
+.skill-shot.shot-proj.el-water > i::before { background-image: url("/titans/fx/proj-water.webp"); }
+.skill-shot.shot-proj.el-earth > i::before { background-image: url("/titans/fx/proj-earth.webp"); }
+.skill-shot.shot-proj.el-wind > i::before { background-image: url("/titans/fx/proj-wind.webp"); }
+@keyframes proj-fly { 0% { transform: translate(0, 0) rotate(var(--ang)) scale(.7); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--ang)) scale(1); opacity: 1; } }
+
+/* 몬스터 피격 — 한 번 짧게 하얗게, 곧 제 색 (2026-10-21, 사용자: "몬스터 피격은 한 번만 짧게 하얗게 번쩍인 뒤 원래 색으로 — 몬스터가 늘 보이게").
+   예전엔 겉 상자 밝기 1.45(App.css, 애니메이션이 끝나도 hit-a/b 클래스가 남아 늘 켜짐) × 번쩍 1.8 × 칸 그림 1.45 + 흰 그림자가 겹쳐 하얗게 바랬다 */
+.titans-field .titans-monster.hit-a, .titans-field .titans-monster.hit-b { filter: none; animation-name: mon-flash-once !important; animation-duration: .11s !important; animation-timing-function: ease-out !important; }
+.titans-field .titans-monster.hit-big.hit-a, .titans-field .titans-monster.hit-big.hit-b { animation-duration: .16s !important; animation-name: mon-flash-big !important; }
+@keyframes mon-flash-once { 0% { filter: brightness(1.55) saturate(.7); } 100% { filter: none; } }
+@keyframes mon-flash-big { 0% { filter: brightness(2.1) saturate(.25); } 45% { filter: brightness(1.25); } 100% { filter: none; } }
+.titans-field .titan-monster-art.anim2.frame-hit > .monster-frames, .titans-field .titan-monster-art.frame-hit > img.on { filter: drop-shadow(0 0 1.2px rgba(30, 14, 4, 1)) drop-shadow(0 0 1px rgba(30, 14, 4, .85)); }
+/* 제자리 찌그러짐 — 발(아래 가운데)을 붙인 채 scale 만. 큰 타격은 더 깊게 */
+.monster-squash { transform-origin: 100% 96%; }   /* 오른쪽 아래 기준 — 1.08배 · 찌그러짐이 전장 오른쪽 끝 밖으로 나가지 않게(verify-anim-clip) */
+.titans-field .titans-monster.hit-a .monster-squash { animation: mon-squash-a .16s ease-out; }
+.titans-field .titans-monster.hit-b .monster-squash { animation: mon-squash-b .16s ease-out; }
+.titans-field .titans-monster.hit-big.hit-a .monster-squash { animation: mon-squash-big-a .24s cubic-bezier(.2, .9, .3, 1.2); }
+.titans-field .titans-monster.hit-big.hit-b .monster-squash { animation: mon-squash-big-b .24s cubic-bezier(.2, .9, .3, 1.2); }
+@keyframes mon-squash-a { 0% { transform: scale(1.04, .95); } 100% { transform: none; } }
+@keyframes mon-squash-b { 0% { transform: scale(1.04, .95); } 100% { transform: none; } }
+@keyframes mon-squash-big-a { 0% { transform: scale(1.12, .86); } 45% { transform: scale(.96, 1.04); } 100% { transform: none; } }
+@keyframes mon-squash-big-b { 0% { transform: scale(1.12, .86); } 45% { transform: scale(.96, 1.04); } 100% { transform: none; } }
+
+/* 히트스톱 — 치명타 · 스킬 · 특수기 순간 캐릭터 칸 · 몸놀림을 0.06초 세운다(이펙트는 계속). 자리 이동 없음 */
+.titans-field.hitstop .titans-monster, .titans-field.hitstop .titans-monster *, .titans-field.hitstop .titans-hero *, .titans-field.hitstop .titans-allies * { animation-play-state: paused !important; }
+
+/* 피해 숫자 — 평타 연타는 숫자 하나(.sum)가 커지며 제자리에서 다시 튀고, 멈추면 올라가 사라진다. 치명타만 크고 굵게 */
+.titans-field .titans-float.sum { color: #fff7d6; font-size: 17px; letter-spacing: -.01em; text-shadow: 0 2px 0 #3b2a10, 0 0 6px rgba(0,0,0,.7); animation: titans-float-sum .78s ease-out forwards; }
+@keyframes titans-float-sum { 0% { transform: scale(1.28); opacity: 1; } 14% { transform: scale(1); } 55% { transform: translateY(-4px); opacity: 1; } 100% { transform: translateY(-34px); opacity: 0; } }
+.titans-field .titans-float.crit { color: #fff2a8; font-size: 30px; font-weight: 1000; letter-spacing: -.02em; -webkit-text-stroke: 1.5px #b91c1c; paint-order: stroke fill; text-shadow: 0 3px 0 #7f1d1d, 0 0 14px rgba(251, 113, 133, .75); animation: titans-float-crit .9s cubic-bezier(.2, 1.3, .4, 1) forwards; z-index: 8; }
+.titans-field .titans-float.crit .float-crit { display: block; font-size: 11px; line-height: 1; letter-spacing: .12em; -webkit-text-stroke: 0; color: #fecaca; }
+@keyframes titans-float-crit { 0% { transform: scale(.4); opacity: 0; } 18% { transform: scale(1.3); opacity: 1; } 34% { transform: scale(1); } 75% { transform: translateY(-14px); opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+
+/* ── 장면 대비 (2026-10-21, 사용자: "땅 띠 바깥 배경을 살짝 어둡게 · 캐릭터 윤곽과 발밑 그림자를 진하게 · 몬스터를 조금 크게") ──
+   배경 그림(땅 위)은 어둡고 채도를 낮춰 뒤로, 땅 띠는 가장자리 · 아래만 살짝 그늘 — 가운데 전투 자리가 제일 밝다 */
+.titans-field .titans-background { filter: saturate(.8) contrast(.92) brightness(.72) blur(1px); }
+.titans-field.boss .titans-background { filter: saturate(.95) contrast(.95) brightness(.64) blur(1px); }
+.titans-field .titans-ground::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 58%, rgba(28, 14, 6, .26)), radial-gradient(ellipse 70% 90% at 55% 30%, transparent 62%, rgba(28, 14, 6, .2)); }
+/* 진한 잉크 윤곽 — 동료 · 주인공 · 몬스터(2판 칸 그림 .monster-frames 는 예전 규칙에서 빠져 윤곽이 없었다) */
+.titans-field .ally-body, .titans-field .titan-monster-art > img, .titans-field .titan-monster-art .monster-frames, .titans-field .equipped-character .equipment-base { filter: drop-shadow(0 0 1.2px rgba(30, 14, 4, 1)) drop-shadow(0 0 1px rgba(30, 14, 4, .85)); }
+/* 발밑 그림자 — 가운데를 진하게, 가장자리는 짧게 */
+.titans-field .titan-ally-art::after, .titans-field .titans-hero::after, .titans-field .titans-monster::after {
+  background: radial-gradient(ellipse at center, rgba(18, 8, 2, .62), rgba(18, 8, 2, .32) 50%, transparent 70%);
+}
+/* 일반 몬스터만 1.08배 — 발을 붙인 채(scale 은 찌그러짐 transform 과 따로 곱해진다). 대장 크기는 밸런스 값이라 그대로 */
+.titans-field .titans-monster:not(.kind-boss) .monster-squash { scale: 1.08; }
 
 @media (prefers-reduced-motion: reduce) {
+  .monster-squash { animation: none !important; }
   .titans-fx.titans-fx-slash::before, .titans-fx::before, .skill-shot.shot-impact > .fx-burst::before { animation-duration: .01s; }
 }
 .perf-low .skill-shot.shot-impact > .fx-burst { display: none; }
+.perf-low .titans-fx.titans-fx-debris { display: none; }

@@ -63,7 +63,8 @@ ok("B 피격 프레임(-hit.png 또는 띠의 피격 칸)이 타격 시 표시�
 const flash = await (async () => {
   for (let i = 0; i < 160; i += 1) {
     await sleep(50);
-    const f = await page.evaluate(() => [...document.querySelectorAll(".titan-monster-art.anim2.frame-hit > .monster-frames")].map((e) => getComputedStyle(e).filter));
+    // 2026-10-21: 번쩍임은 겉 상자(.titans-monster) 한 번 짧게 — 칸 그림 필터를 겹치면 몬스터가 하얗게 바랬다(fx-sprites.css)
+    const f = await page.evaluate(() => [...document.querySelectorAll(".titans-monster")].filter((m) => m.querySelector(".titan-monster-art.anim2.frame-hit")).map((m) => getComputedStyle(m).filter).filter((x) => /brightness/.test(x)));
     if (f.length) return f[0];
   }
   return null;
