@@ -401,7 +401,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const sumFloatRef = useRef<{ id: number; total: number; at: number; bump: number; timer: number; x: number; y: number } | null>(null);
   /** 몬스터 번쩍임 간격 · 히트스톱 간격 — 동료 넷이 연타해도 몬스터가 늘 보이게 */
   const lastFlashRef = useRef(0);
-  const hitStopAtRef = useRef(0);
+  const hitStopAtRef = useRef({ big: 0, small: 0 });
   /** 타격음 간격 — 동료 넷 연타가 소리를 덮지 않게 평타 70ms · 탄 110ms (2026-10-21) */
   const sfxAtRef = useRef({ hit: 0, shoot: 0 });
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -922,11 +922,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const hitStop = (ms = 60, gap = 220) => {
     const el = fieldRef.current;
     const pn = performance.now();
-    if (!el || pn - hitStopAtRef.current < gap) return;   // 저사양에서도 — data 속성 하나라 비용이 거의 없다
-    hitStopAtRef.current = pn;
+    // 큰 타격과 평타는 따로 센다 — 같은 시각을 쓰면 근접 평타의 짧은 멈춤 뒤 0.22초 안의 치명 · 스킬 · 특수기 멈춤이 빠졌다. 평타는 큰 멈춤 직후엔 쉰다
+    const big = ms >= 50;
+    const at = hitStopAtRef.current;
+    if (!el || (big ? pn - at.big < gap : pn - at.small < gap || pn - at.big < 220)) return;   // 저사양에서도 — data 속성 하나라 비용이 거의 없다
+    if (big) at.big = pn; else at.small = pn;
     // data 속성으로 — 같은 순간 setImpact 가 전장 className 을 통째로 다시 써서 classList 로 붙인 클래스는 바로 지워졌다
     el.dataset.hitstop = "1";
-    window.setTimeout(() => { delete el.dataset.hitstop; }, ms);
+    const until = Math.max(Number(el.dataset.hitstopUntil ?? 0), pn + ms);   // 짧은 멈춤이 끝나며 진행 중인 큰 멈춤을 자르지 않게
+    el.dataset.hitstopUntil = String(until);
+    window.setTimeout(() => { if (performance.now() >= until - 2 && Number(el.dataset.hitstopUntil) === until) delete el.dataset.hitstop; }, until - pn);
   };
   /**
    * 원거리 · 힐러 동료의 탄 — 동료 손에서 몬스터까지 날아가는 속성 탄(public/titans/fx/proj-<속성>.webp, fx2.py).
