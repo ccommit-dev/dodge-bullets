@@ -78,7 +78,7 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onS
                     title={open ? node.name : "앞 칸을 깨면 열린다"}
                   >
                     <small>{KIND_LABEL[node.kind]}{node.kind === "elite" ? (node.id.endsWith("E1") ? " ①" : " ②") : ""}</small>
-                    <b>{open ? node.name : "🔒 잠김"}</b>
+                    <b>{open ? node.name : "🔒"}</b>
                     {bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft && <i className="route-reward">{branchRewardLabel(node.firstReward).split(" · ")[0]}</i>}
                   </button>
                 );
