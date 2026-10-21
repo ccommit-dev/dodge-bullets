@@ -31,7 +31,19 @@ const MEASURE = () => {
   const vw = innerWidth, vh = innerHeight;
   const visible = (el) => { const cs = getComputedStyle(el); if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity < 0.05) return false; const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw; };
   const lum = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(",").map((x) => parseFloat(x)); const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return { L: 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b), a }; };
-  const bgOf = (el) => { for (let n = el; n && n !== document.documentElement; n = n.parentElement) { const cs = getComputedStyle(n); if (cs.backgroundImage !== "none" && !/^url\(/.test(cs.backgroundImage) === false) return null; if (cs.backgroundImage !== "none") return null; const l = lum(cs.backgroundColor); if (l && l.a >= 0.85) return l.L; } return null; };
+  // 배경: 단색은 그대로, 그라데이션은 불투명한 색 멈춤들의 평균 밝기(그림 url 배경은 못 재서 뺀다)
+  const bgOf = (el) => {
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (cs.backgroundImage !== "none") {
+        if (cs.backgroundImage.includes("url(")) return null;
+        const cols = [...cs.backgroundImage.matchAll(/rgba?\([^)]+\)/g)].map((m) => lum(m[0])).filter((c) => c && c.a >= 0.85);
+        if (cols.length) return cols.reduce((a, c) => a + c.L, 0) / cols.length;
+      }
+      const l = lum(cs.backgroundColor); if (l && l.a >= 0.85) return l.L;
+    }
+    return null;
+  };
   const small = [], faint = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let t = walker.nextNode(); t; t = walker.nextNode()) {
@@ -42,7 +54,8 @@ const MEASURE = () => {
     const owner = el.className.toString().split(" ")[0] || (el.parentElement?.className.toString().split(" ")[0] ?? "") + ">" + el.tagName.toLowerCase();
     const tag = `${el.tagName.toLowerCase()}.${owner} "${txt.slice(0, 14)}"`;
     if (fs < 11) small.push(`${fs}px ${tag}`);
-    const fg = lum(cs.color); const bg = bgOf(el);
+    const clipText = /text/.test(cs.webkitBackgroundClip || cs.backgroundClip || "");   // 글자에 그라데이션을 칠한 제목은 배경 비교가 의미 없다
+    const fg = clipText ? null : lum(cs.color); const bg = bgOf(el);
     if (fg && bg !== null) { const hi = Math.max(fg.L, bg), lo = Math.min(fg.L, bg); const ratio = (hi + 0.05) / (lo + 0.05); const need = fs >= 18 || (fs >= 14 && +cs.fontWeight >= 700) ? 3 : 4.5; if (ratio < need) faint.push(`${ratio.toFixed(1)} ${tag}`); }
   }
   let boxes = 0; const boxSamples = [], boxAllList = [];
@@ -80,6 +93,17 @@ await nav("모험"); await sleep(600);
 await clickText(".hub-cards > button, .nav-popup-grid button", "대장간"); await sleep(1500); await shot("14-forge");
 await page.evaluate(() => document.querySelector(".forge-back, .forge-layer .character-back, .forge-layer button[aria-label*='사냥']")?.click()); await sleep(900); await closeModals();
 await page.evaluate(() => document.querySelector(".titans-back")?.click()); await sleep(1500); await shot("15-mypage");
+// ── 2부 (2026-10-21 보완): 대장간 탭 · 이벤트 센터 탭 · 비트 수련 메뉴 · 성문 방어 전투 HUD ──
+const fresh = async () => { await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2200); await closeModals(); await sleep(400); };
+await fresh(); await nav("모험"); await sleep(600);
+await clickText(".hub-cards > button, .hub-card, .nav-popup-grid button", "대장간"); await sleep(1800);
+for (const t of ["조합소", "보호구", "원정 무기", "장비"]) { if (await page.evaluate((t) => { const b = [...document.querySelectorAll(".forge-tabs button")].find((x) => x.textContent.trim() === t); b?.click(); return !!b; }, t)) { await sleep(400); await shot(`16-forge-${t}`); } }
+await fresh(); await nav("모험"); await sleep(600);
+if (await page.evaluate(() => { const b = document.querySelector(".season-nav"); b?.click(); return !!b; })) { await sleep(900); await shot("17-events"); for (const t of ["주간 도전", "원정 일지", "토벌령", "차원 균열"]) { if (await page.evaluate((t) => { const b = [...document.querySelectorAll(".event-tabs button")].find((x) => x.textContent.includes(t)); b?.click(); return !!b; }, t)) { await sleep(500); await shot(`17-events-${t}`); } } }
+await fresh(); await nav("모험"); await sleep(600);
+if (await clickText(".hub-cards > button, .hub-card", "비트 수련")) { await sleep(2200); await closeModals(); await shot("18-beat-menu"); }
+await fresh(); await nav("모험"); await sleep(600);
+if (await clickText(".hub-cards > button, .hub-card, .nav-popup-grid button", "방어")) { await sleep(1800); await closeModals(); await clickText(".exp-menu-content .cta", "시작"); await sleep(1500); await clickText(".intro-start, .cta.intro-cta, .overlay-content .cta", ""); await sleep(3000); await shot("19-dodge-hud"); }
 writeFileSync(`${OUT}/readability.json`, JSON.stringify(rows, null, 1));
 for (const r of rows) console.log(`${r.name.padEnd(16)} 작은글 ${String(r.small).padStart(3)} · 흐린글 ${String(r.faint).padStart(3)} · 겹친판 ${String(r.boxes).padStart(3)}  ${r.smallS.slice(0, 2).join(" | ")} ${r.faintS.slice(0, 2).join(" | ")}`);
 const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
