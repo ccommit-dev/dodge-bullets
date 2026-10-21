@@ -25,6 +25,8 @@ const IGNORE_ANIM = [
   "beat-fever-field", "rift-step-in", "wave-banner", "summon-sparks", "battle-alert-in", "float-up", "rift-float-up",
   // 2026-10-15: 뽑기 햇살(가려진 줄무늬)·색종이·팝 · 걷기 먼지 — 막을 넘는 게 연출
   "cute-spin", "confetti-fall", "cute-pop", "walk-dust", "card-drop", "ring-pop",
+  // 2026-10-21: 대열 다시 들어오기(걷는 시간 동안 왼쪽 화면 밖에서) — party-run-in 과 같은 등장 연출
+  "party-walk-in",
 ];
 
 /** 애니메이션 중인 요소마다 (레이아웃 박스, 변환 박스, 클리핑 조상) 을 잰다 */

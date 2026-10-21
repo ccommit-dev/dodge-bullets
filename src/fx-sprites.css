@@ -45,6 +45,8 @@
 .titans-fx.titans-fx-spark, .titans-fx.titans-fx-burst, .titans-fx.titans-fx-debris { overflow: hidden; border: 0; box-shadow: none; background: none; border-radius: 0; animation: none; filter: none; }
 .titans-fx.titans-fx-spark { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
 .titans-fx.titans-fx-burst { z-index: 7; width: 136px; height: 136px; margin: -68px 0 0 -68px; }
+/* 가운데 섬광을 옅게(마스크) — 큰 폭발이 0.2초 동안 몬스터를 통째로 가렸다 (2026-10-21). 섬광 · 충격파 · 파편은 둘레에서 보인다 */
+.titans-fx.titans-fx-burst, .skill-shot.shot-impact > .fx-burst { -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .28) 0 16%, rgba(0, 0, 0, .7) 30%, #000 46%); mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .28) 0 16%, rgba(0, 0, 0, .7) 30%, #000 46%); }
 .titans-fx.titans-fx-debris { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
 .titans-fx.titans-fx-spark::before, .titans-fx.titans-fx-burst::before, .titans-fx.titans-fx-debris::before {
   content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/hit-blade.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .36s steps(6, end) forwards;
@@ -72,13 +74,15 @@
 .skill-shot.shot-proj.el-water > i::before { background-image: url("/titans/fx/proj-water.webp"); }
 .skill-shot.shot-proj.el-earth > i::before { background-image: url("/titans/fx/proj-earth.webp"); }
 .skill-shot.shot-proj.el-wind > i::before { background-image: url("/titans/fx/proj-wind.webp"); }
-/* 주인공 스킬 투사체(.shot-shot)도 같은 탄 그림 — 불 · 바람 · 땅(빛은 빛줄기, 칼날은 예전 칼날 모양). 예전 CSS 그라데이션 공 대신 */
-.skill-shot.shot-shot.el-fire > i, .skill-shot.shot-shot.el-wind > i, .skill-shot.shot-shot.el-earth > i { left: -73px; top: -53px; width: 106px; height: 106px; border: 0; border-radius: 0; background: none; overflow: hidden; transform-origin: 69% 50%; animation: proj-fly .23s cubic-bezier(.3, .6, .4, 1) forwards; }
-.skill-shot.shot-shot.big.el-fire > i, .skill-shot.shot-shot.big.el-wind > i, .skill-shot.shot-shot.big.el-earth > i { left: -91px; top: -66px; width: 132px; height: 132px; }
-.skill-shot.shot-shot.el-fire > i::after, .skill-shot.shot-shot.el-wind > i::after, .skill-shot.shot-shot.el-earth > i::after { content: none; }
-.skill-shot.shot-shot.el-fire > i::before, .skill-shot.shot-shot.el-wind > i::before, .skill-shot.shot-shot.el-earth > i::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/proj-fire.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .3s steps(6, end) infinite; }
+/* 주인공 스킬 투사체(.shot-shot)도 같은 탄 그림 — 불 · 바람 · 땅 · 칼날(초승달 검기) · 빛(별 꼬리, 관통 찌르기만 빛줄기). 예전 CSS 그라데이션 공 대신 */
+.skill-shot.shot-shot.el-fire > i, .skill-shot.shot-shot.el-wind > i, .skill-shot.shot-shot.el-earth > i, .skill-shot.shot-shot.el-blade > i, .skill-shot.shot-shot.el-light > i { left: -73px; top: -53px; width: 106px; height: 106px; border: 0; border-radius: 0; background: none; overflow: hidden; transform-origin: 69% 50%; animation: proj-fly .23s cubic-bezier(.3, .6, .4, 1) forwards; }
+.skill-shot.shot-shot.big.el-fire > i, .skill-shot.shot-shot.big.el-wind > i, .skill-shot.shot-shot.big.el-earth > i, .skill-shot.shot-shot.big.el-blade > i, .skill-shot.shot-shot.big.el-light > i { left: -91px; top: -66px; width: 132px; height: 132px; }
+.skill-shot.shot-shot.el-fire > i::after, .skill-shot.shot-shot.el-wind > i::after, .skill-shot.shot-shot.el-earth > i::after, .skill-shot.shot-shot.el-blade > i::after, .skill-shot.shot-shot.el-light > i::after { content: none; }
+.skill-shot.shot-shot.el-fire > i::before, .skill-shot.shot-shot.el-wind > i::before, .skill-shot.shot-shot.el-earth > i::before, .skill-shot.shot-shot.el-blade > i::before, .skill-shot.shot-shot.el-light > i::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/proj-fire.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .3s steps(6, end) infinite; }
 .skill-shot.shot-shot.el-wind > i::before { background-image: url("/titans/fx/proj-wind.webp"); }
 .skill-shot.shot-shot.el-earth > i::before { background-image: url("/titans/fx/proj-earth.webp"); }
+.skill-shot.shot-shot.el-blade > i::before { background-image: url("/titans/fx/proj-blade.webp"); }
+.skill-shot.shot-shot.el-light > i::before { background-image: url("/titans/fx/proj-light.webp"); }
 @keyframes proj-fly { 0% { transform: translate(0, 0) rotate(var(--ang)) scale(.7); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--ang)) scale(1); opacity: 1; } }
 
 /* 몬스터 피격 — 한 번 짧게 하얗게, 곧 제 색 (2026-10-21, 사용자: "몬스터 피격은 한 번만 짧게 하얗게 번쩍인 뒤 원래 색으로 — 몬스터가 늘 보이게").
@@ -130,3 +134,20 @@
 }
 .perf-low .skill-shot.shot-impact > .fx-burst { display: none; }
 .perf-low .titans-fx.titans-fx-debris { display: none; }
+
+/* 마이페이지 결과 토스트 (2026-10-21, 사용자: "마이페이지 동작을 안하네") — 누른 자리와 상관없이 화면 아래 가운데에 */
+.growth-message.mypage-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 90; max-width: min(88vw, 400px); margin: 0; padding: 10px 16px; border: 2px solid #3b2415; border-radius: 14px; background: rgba(43, 26, 12, .94); color: #fde68a; font-size: 13px; font-weight: 800; line-height: 1.35; text-align: center; transform: translateX(-50%); box-shadow: 0 4px 0 #1f1109, 0 10px 24px rgba(0, 0, 0, .4); pointer-events: none; animation: mypage-toast-in .22s ease-out; }
+@keyframes mypage-toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.pet-figure[aria-disabled="true"] { cursor: help; }
+
+/* 대열 다시 들어오기 = 걷는 시간 (2026-10-21, 사용자: "동료 캐릭터 걷는속도랑 배치속도가 안맞아 배치가 너무 빨리돼서 어색") —
+   예전 party-run-in 은 0.46초에 375px(≈1,300px/s)를 미끄러져 들어온 뒤 남은 1~1.5초를 제자리걸음했다(_probe-ally-walk).
+   걷기 칸 속도가 만남 걷는 시간(--encounter-duration, 종별 0.6~2초)에 맞춰져 있으니 이동도 같은 시간에. stage-enter 단계는 0.48초라
+   걷는 동안 붙어 있는 party-entering(partyApproach) 으로 이어 간다 — 같은 이름이라 단계가 바뀌어도 애니메이션이 다시 시작하지 않는다 */
+.titans-field.phase-stage-enter .titans-hero, .titans-field.party-entering .titans-hero { animation: party-walk-in var(--encounter-duration, 1.25s) cubic-bezier(.3, .4, .55, 1) both; }
+.titans-field.phase-stage-enter .titans-allies, .titans-field.party-entering .titans-allies { animation: party-walk-in var(--encounter-duration, 1.25s) .06s cubic-bezier(.3, .4, .55, 1) both; }
+@keyframes party-walk-in { from { transform: translateX(max(-80vw, -520px)); } to { transform: none; } }   /* 80vw — 걸음 한 바퀴(2걸음) ≈ 150px · 가장 오른쪽 근접 동료도 화면 밖에서 시작 */
+/* 몬스터도 0.62초 미끄러짐(boss-enter-right) 없이 — 오른쪽 밖(right −40%)에서 걷는 시간 동안 right 전환으로만 들어온다 */
+.titans-field.phase-stage-enter .titans-monster { animation: none; }
+/* 퇴장도 가로로만 — 예전 22% 지점 4px 뛰어오름(translateY −4px)이 "y 로 움직인다"로 보였다(verify-walk-y F). 뒤에 정의해 App.css 키프레임을 덮는다 */
+@keyframes party-run-out { 0% { transform: translateX(0); } 22% { transform: translateX(-14px); } 100% { transform: translateX(min(112vw, 760px)); } }

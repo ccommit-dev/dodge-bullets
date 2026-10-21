@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { assetUrl } from "../asset";
 import { TOWER_DAILY_TICKETS, TOWER_TICKET_MAX, TOWER_TICKET_SEALS } from "./towerTickets";
-import { perksForBasicOnly, perksUnlockedBy, RARITY_LABEL } from "./perks";
+import { perksUnlockedBy, RARITY_LABEL } from "./perks";
 import { GATE_FUND_TIERS, GATE_FUND_TOTAL_GEMS, gateFundReadyGems, type GateFundState } from "../economy/gateFund";
 import { chipCost, CHIPS, CHIP_BY_ID, CHIP_MAX_LEVEL, type ChipId, type ChipLevels } from "./chips";
 import {
@@ -15,7 +15,6 @@ import {
   SKILL_MAX_LEVEL,
   BASIC_SHOT_COOLDOWN, basicCooldownMul, basicDamageMul,
   LOADOUT_MAX,
-  weaponForgeDamageMul,
   type SkillWeaponId,
   skillCost,
   skillSummary,
@@ -103,12 +102,12 @@ function canAfford(gold: number, have: number, seals: number, cost: { gold: numb
 }
 
 export function SkillPanel({
-  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, shop, accountLevel = 1, loadout = [], onToggleLoadout, forge = { bow: 0, staff: 0 },
+  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, shop, accountLevel = 1, loadout = [], onToggleLoadout,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
   supplies, daily, onBuySupply, onClaimDaily, shards, towerTickets = 0, towerUnlocked = false, onBuyTowerTicket,
 }: Props) {
-  /** 화면이 길어져 둘로 나눈다 — 강화 / 보급·임무 */
-  const [tab, setTab] = useState<"upgrade" | "supply">("upgrade");
+  /** 화면이 길어 셋으로 나눈다 — 스킬 / 칩 / 보급·임무 (2026-10-21, 사용자: "UI가 너무 방대하고 조잡해 — 가독성 신경써서 단순화". 예전 강화 탭 한 장이 1,600px) */
+  const [tab, setTab] = useState<"upgrade" | "chips" | "supply">("upgrade");
   const [openId, setOpenId] = useState<ExpeditionSkillId | null>(null);
   /** 어느 슬롯에 끼울지 고르는 중 — null 이면 칩 목록만 본다 */
   const [pickSlot, setPickSlot] = useState<number | null>(null);
@@ -119,16 +118,18 @@ export function SkillPanel({
 
   return (
     <div className="exp-skill-panel">
-      <div className="exp-skill-banner">
-        {/* 배너의 숫자는 실제로 걸리는 효과다 — 참고 게임의 "총 ○○ 증가 +N%" */}
-        <b>수집 보너스 · 모든 화살 재사용</b>
+      <div className="exp-skill-banner compact">
+        {/* 배너의 숫자는 실제로 걸리는 효과다 — 한 줄 알약으로 (예전 큰 보라 판) */}
+        <b>수집 보너스</b>
         <strong>−{summary.bonusPct}%</strong>
-        <small>누적 스킬 레벨 {summary.totalLevels} · 레벨 하나당 −0.3% (최대 −18%)</small>
+        <small>화살 재사용 · 누적 {summary.totalLevels}레벨</small>
       </div>
 
       <div className="exp-sub-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "upgrade"}
-          className={tab === "upgrade" ? "on" : ""} onClick={() => setTab("upgrade")}>강화</button>
+          className={tab === "upgrade" ? "on" : ""} onClick={() => setTab("upgrade")}>스킬</button>
+        <button type="button" role="tab" aria-selected={tab === "chips"}
+          className={tab === "chips" ? "on" : ""} onClick={() => setTab("chips")}>칩 <small>{equippedChips.filter(Boolean).length}/{chipSlots}</small></button>
         <button type="button" role="tab" aria-selected={tab === "supply"}
           className={tab === "supply" ? "on" : ""} onClick={() => setTab("supply")}>
           보급 · 임무
@@ -247,35 +248,7 @@ export function SkillPanel({
         </div>
       ) : (<>
 
-      {/* 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (사용자 지시 2026-09-28) */}
-      <div className="exp-weapon-row">
-        <b>원거리 무기</b>
-        <div>
-          {RANGED_WEAPONS.map((w) => {
-            const unlocked = weaponUnlocked(w, dodgeBestStage);
-            const on = weapon === w.id;
-            return (
-              <button
-                key={w.id}
-                type="button"
-                className={`exp-weapon-card ${on ? "on" : ""} ${unlocked ? "" : "locked"}`}
-                disabled={!unlocked}
-                aria-pressed={on}
-                onClick={() => onEquipWeapon(w.id)}
-              >
-                {/* 카드는 아이콘판 — 부착용 원화(${w.id}.png)는 가는 선이라 34px 에서 뭉개진다 (2026-09-28) */}
-                <img src={assetUrl(`dodge/weapons/icon-${w.id}.png`)} alt="" aria-hidden="true" />
-                <span>
-                  <b>{w.name}</b>
-                  <em>{unlocked ? w.desc : `${w.unlockStage}스테이지 클리어 시 해금`}</em>
-                </span>
-                <i>{on ? "장착 중" : unlocked ? "장착" : "잠김"}</i>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
+      {tab === "chips" && (<>
       {/* 원정 칩 — 가이드의 영구 성장 2순위. 랜덤에 좌우되지 않는 고정 패시브이고,
           스킬과 **같은 인장**을 쓰므로 "지금 무엇에 먼저 쓸까"라는 선택이 생긴다 (2026-09-28) */}
       <div className="exp-chip-row">
@@ -333,6 +306,37 @@ export function SkillPanel({
         </ul>
         {pickSlot !== null && <p className="exp-chip-hint">{pickSlot + 1}번 슬롯에 끼울 칩을 고르세요 — 슬롯을 다시 누르면 취소</p>}
       </div>
+      </>)}
+      {tab === "upgrade" && (<>
+      {/* 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (사용자 지시 2026-09-28) */}
+      <div className="exp-weapon-row">
+        <b>원거리 무기</b>
+        <div>
+          {RANGED_WEAPONS.map((w) => {
+            const unlocked = weaponUnlocked(w, dodgeBestStage);
+            const on = weapon === w.id;
+            return (
+              <button
+                key={w.id}
+                type="button"
+                className={`exp-weapon-card ${on ? "on" : ""} ${unlocked ? "" : "locked"}`}
+                disabled={!unlocked}
+                aria-pressed={on}
+                onClick={() => onEquipWeapon(w.id)}
+              >
+                {/* 카드는 아이콘판 — 부착용 원화(${w.id}.png)는 가는 선이라 34px 에서 뭉개진다 (2026-09-28) */}
+                <img src={assetUrl(`dodge/weapons/icon-${w.id}.png`)} alt="" aria-hidden="true" />
+                <span>
+                  <b>{w.name}</b>
+                  <em>{unlocked ? w.desc : `${w.unlockStage}스테이지 클리어 시 해금`}</em>
+                </span>
+                <i>{on ? "장착 중" : unlocked ? "장착" : "잠김"}</i>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 
       {/* 기본 사격 — 무기만 있으면 항상 나간다. 스킬이 없어도 런 중 카드가 열린다는 것을 알려 준다 (2026-09-29) */}
       {weapon !== "none" && (
@@ -340,13 +344,13 @@ export function SkillPanel({
           {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
           <img src={assetUrl(`dodge/weapons/icon-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
-            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} · 대장간 활 +{basicLevel} <i>피해 ×{basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 보스도 깎는다</i></b>
-            <em>강화는 대장간 「원정 무기」 탭 — 활: 기본 사격·물리 무기 ×{weaponForgeDamageMul(forge.bow).toFixed(2)} · 지팡이: 마법 무기 ×{weaponForgeDamageMul(forge.staff).toFixed(2)} · 런 중 카드 {perksForBasicOnly().length}장</em>
+            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} · 대장간 활 +{basicLevel}</b>
+            <em>피해 ×{basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 강화는 대장간</em>
           </span>
         </div>
       )}
 
-      <p className="exp-learn-hint">스킬 무기는 <b>계정 레벨로 해금</b> → 인장으로 배우고 → <b>4칸에 장착</b>하면 그 판 처음부터 쏩니다. 쓴 무기의 조각이 돌아옵니다</p>
+      <p className="exp-learn-hint">장착 4칸 — 판 시작부터 쏩니다</p>
 
       {/* 장착 4칸 (2026-10-02, 아웃로 디펜스) — 칸을 누르면 해제, 카드의 [장착] 으로 끼운다 */}
       <div className="exp-loadout" aria-label="장착한 스킬 무기">
@@ -363,12 +367,7 @@ export function SkillPanel({
         })}
       </div>
 
-      {/* 갈래 — 기본 사격에서 물리(장궁)·마법(지팡이)로 갈라지고 일섬으로 모인다. 장착 무기의 갈래가 밝다 */}
-      <div className="exp-tree" aria-hidden="true">
-        <span className={`exp-tree-branch ${weapon === "bow" ? "on" : ""}`}>물리 화살 <i>장궁 상성</i></span>
-        <span className="exp-tree-root">┬</span>
-        <span className={`exp-tree-branch ${weapon === "staff" ? "on" : ""}`}>마법 화살 <i>지팡이 상성</i></span>
-      </div>
+      {/* 갈래 줄(물리 · 마법 상성)은 뺐다 — 장착 무기와 상성인 카드는 .affine 으로 밝게 표시된다 */}
 
       <div className="exp-skill-grid">
         {[...EXPEDITION_SKILLS].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)).map((def) => {
@@ -411,6 +410,7 @@ export function SkillPanel({
         })}
       </div>
 
+      </>)}
       </>)}
 
       {open && (() => {

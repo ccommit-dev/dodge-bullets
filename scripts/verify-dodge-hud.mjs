@@ -137,7 +137,7 @@ ok("보급창 3종과 일일 임무 3종이 진행도와 함께 보인다",
 ok("성벽이 열린 계정은 보급창에서 인장으로 성벽 등반권을 산다 (2026-10-02)", /성벽 등반권/.test(ops.ticket) && /인장 \d+|가득/.test(ops.ticket), ops.ticket);
 ok("목표를 채운 임무만 수령 버튼이 열리고 탭에 배지가 붙는다",
   ops.claimable === 1 && ops.dot === true, "claimable=" + ops.claimable + " dot=" + ops.dot);
-await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("강화"))?.click());
+await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("스킬"))?.click());   // 2026-10-21: 강화 → 스킬 / 칩 둘로
 await sleep(300);
 
 // 스킬별 조각 — 참고 게임의 126/225. 공용 인장이었을 때는 모든 카드의 분자가 같았다
@@ -153,6 +153,7 @@ const banner = await page.evaluate(() => document.querySelector(".exp-skill-bann
 ok("배너가 실제 수집 보너스를 말한다 (누적 20레벨 → −6%)", !!banner && banner.includes("수집 보너스") && banner.includes("6%") && banner.includes("20"), banner);
 
 // 원정 칩 — 가이드의 영구 성장 2순위. 슬롯(끼운 것)과 목록(가진 것)이 나뉘어 보여야 한다
+await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.startsWith("칩"))?.click()); await sleep(300);
 const chipUi = await page.evaluate(() => ({
   slots: [...document.querySelectorAll(".exp-chip-slot")].length,
   filled: [...document.querySelectorAll(".exp-chip-slot img")].length,
@@ -165,6 +166,7 @@ ok("칩 슬롯 3칸 중 2칸이 차 있고, 목록 6종이 실제 수치를 말�
   && chipUi.list[3].includes("80%"),
   JSON.stringify(chipUi.list.slice(0, 4)));
 ok("끼운 칩 2종이 목록에서 장착 표시된다", chipUi.equipped === 2, String(chipUi.equipped));
+await page.evaluate(() => [...document.querySelectorAll(".exp-sub-tabs button")].find((b) => b.textContent.includes("스킬"))?.click()); await sleep(300);
 
 // 강화 화면이 "이 스킬을 올리면 런 중에 뭐가 열리는지" 를 보여 준다 (가이드의 투자 조언)
 // 해금 레벨 순(화염·물살·서리·바위·번개·…) — 서리 지팡이(얼음)는 3번째. 습득 카드가 없어져(2026-10-02) 카드 6장(에픽 4)
