@@ -19,6 +19,8 @@ export function branchRewardLabel(r: BranchReward): string {
 }
 
 const KIND_LABEL: Record<BranchDef["kind"], string> = { treasure: "보물 동굴", elite: "정예 우회로", secret: "비밀 대장" };
+/** 옆 칸(폭 62px)에 넣는 짧은 이름 — 긴 이름은 aria-label */
+const KIND_SHORT: Record<BranchDef["kind"], string> = { treasure: "보물", elite: "정예", secret: "비밀" };
 
 type Props = {
   chapter: number;
@@ -76,10 +78,11 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onS
                     className={`route-node route-${node.kind} ${bs > 0 ? "cleared" : ""} ${open ? "" : "locked"}`}
                     onClick={() => onStart(node.index)}
                     title={open ? node.name : "앞 칸을 깨면 열린다"}
+                    aria-label={open ? `${KIND_LABEL[node.kind]} ${node.name}` : `${KIND_LABEL[node.kind]} 잠김`}
                   >
-                    <small>{KIND_LABEL[node.kind]}{node.kind === "elite" ? (node.id.endsWith("E1") ? " ①" : " ②") : ""}</small>
-                    <b>{open ? node.name : "🔒"}</b>
-                    {bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft && <i className="route-reward">{branchRewardLabel(node.firstReward).split(" · ")[0]}</i>}
+                    <small>{KIND_SHORT[node.kind]}{node.kind === "elite" ? (node.id.endsWith("E1") ? " ①" : " ②") : ""}</small>
+                    {/* 옆 칸(폭 62px)은 종류 · 보상 두 줄만 — 이름까지 넣으면 좁은 화면(WebKit)에서 한 글자씩 세로로 쌓였다 (2026-10-21). 이름은 aria-label · title */}
+                    {!open ? <i className="route-lock">🔒</i> : bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft ? <i className="route-reward">{branchRewardLabel(node.firstReward).split(" · ")[0]}</i> : <i className="route-go">입장</i>}
                   </button>
                 );
               })()}

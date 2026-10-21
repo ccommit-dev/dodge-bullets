@@ -256,3 +256,58 @@
 .exp-menu-content .exp-fund-tiers li b { color: #fde68a !important; font-size: 12px !important; }
 .exp-menu-content .exp-store, .exp-menu-content .exp-tower-ticket { background: rgba(28, 16, 6, .55) !important; border-color: rgba(255, 222, 168, .2) !important; }
 .titans-field:not(.lanes-wide) .battle-alert small { display: none !important; }   /* 낮은 전장 — 칩 색이 종류를 말하니 앞 꼬리표를 빼고 제목을 다 보인다 */
+
+/* ── 가독성 3차 — 이벤트 센터 · 비트 수련 · 대장간 조합소 · 성문 방어 전투 HUD · 댐 방어전 빈 칸 (검사 범위를 넓혀 찾은 것) ── */
+.event-card .event-tabs button { font-size: 12px !important; }
+.event-card .reward-chip { font-size: 11px !important; color: var(--rd-ink2) !important; }
+.event-card .season-cell { font-size: 11px !important; color: var(--rd-ink2) !important; }
+.event-card .season-cell :is(span, small, b, i) { color: inherit; }
+.event-card .season-head :is(span, small) { font-size: 11.5px !important; }
+.event-card :is(.shadow-info span, .shadow-info small, .rift-week span, .schedule-day, .schedule-cost, .axis-chip, .perk-chip, .rift-day-desc, .today) { font-size: 11px !important; }
+.event-card .journal-note { font-size: 11.5px !important; }
+.event-card .today { color: var(--rd-ink) !important; }
+.event-card .cta small { font-size: 11px !important; color: #fff !important; }
+.beat-note-legend, .beat-note-legend b { font-size: 11.5px !important; }
+.variant-chip { font-size: 11px !important; }
+.beat-rank-next { font-size: 11px !important; }
+.forge-layer .forge-stats :is(span, small) { font-size: 11px !important; }
+.forge-layer p { font-size: max(12px, 1em); }
+.forge-layer .forge-best { color: var(--rd-ink2) !important; }
+.skill-slot b, .skill-dock-auto { font-size: 11px !important; }
+/* 댐 방어전 — 갈색 판 위 흐린 글(빈 칸 번호 · 잠긴 장 탭 · 소제목 옆 작은 글) */
+.exp-menu-content .exp-loadout-slot:not(.on) span, .exp-menu-content .exp-chip-empty { color: rgba(255, 240, 210, .78) !important; }
+.exp-menu-content .chapter-tab small { color: #f6ead2 !important; }
+.exp-menu-content :is(.exp-chip-row, .exp-ops) small { color: #e6d3b0 !important; }
+.exp-menu-content .exp-fund-tiers li i { color: #e6d3b0 !important; }
+.event-card .event-list article span, .event-card .event-list article small { font-size: max(11px, 1em); }
+.event-card .event-list article > div > span, .event-card .rift-preview span, .event-card .rift-preview small { font-size: 11px !important; }
+.beat-rank-panel small, .beat-layer .schedule-day { font-size: 11px !important; }
+.variant-chip { color: var(--rd-ink) !important; }
+.forge-layer .forge-best { color: #f6ead2 !important; }
+.exp-menu-content .chapter-tab small { color: inherit !important; }
+.exp-menu-content .chapter-tab:not(.on) small { color: #f6ead2 !important; }
+.event-card .cta small { color: #fff !important; opacity: 1 !important; }
+.event-card .cta.season-buy:not(:disabled) { background-color: #2f7d1c !important; color: #fff !important; }
+.variant-chip.locked { opacity: 1 !important; color: #6b5a44 !important; background: #e4d6b8 !important; }
+.forge-stats :is(span, small) { font-size: 11px !important; }
+.perk-chip { font-size: 11px !important; }
+.forge-inventory span, .reforge-stats span { font-size: 11px !important; }
+.hero-skill-combo .combo-step.on small { color: var(--rd-ink) !important; }
+/* 지도 머리 줄 초록 글자 — 크림 판 위 대비 4.0 → 6 */
+.exp-menu-content .pioneer-heading span { color: #1f6b3a !important; }
+
+/* ── 판 안의 판 걷기 2차 — 바깥 판 하나만 테두리, 안쪽은 연한 면으로 ── */
+.titans-header { border-width: 0 !important; }
+.hero-skill-combo { border: 0 !important; background: rgba(59, 36, 21, .06) !important; box-shadow: none !important; }
+.hero-skill-combo .combo-empty { border: 0 !important; background: rgba(59, 36, 21, .08) !important; }
+.ally-card .ally-sig { border: 0 !important; box-shadow: none !important; }
+.ally-card .ally-sig * { border: 0 !important; }
+.character-hero-card :is(.character-quick-stats > *, .character-exp, .character-idle-yield) { border: 0 !important; box-shadow: none !important; background: rgba(59, 36, 21, .06) !important; }
+.character-hero-card .character-idle-chips span { border: 0 !important; background: rgba(59, 36, 21, .08) !important; }
+.event-card .journal-reward, .event-card .reward-chip { border: 0 !important; box-shadow: none !important; background: rgba(59, 36, 21, .07) !important; }
+.event-card :is(.journal-event, .weekly-event, .rift-week) :is(div, span, li):not(.cta):not(button) { border-width: 0 !important; }
+.event-card .rift-week > * { background: rgba(59, 36, 21, .05); border-radius: 10px; }
+.route-node .route-reward, .route-node .route-go { white-space: nowrap !important; font-size: 11px !important; letter-spacing: -.05em; }
+.route-node { padding-left: 3px !important; padding-right: 3px !important; }
+.route-node .route-lock { font-size: 13px !important; }
+.route-node small { white-space: nowrap !important; }
