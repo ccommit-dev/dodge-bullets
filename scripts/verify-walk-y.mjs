@@ -94,6 +94,8 @@ for (const scr of SCREENS) {
   ok(`[${scr.name}] 걸어 들어올 때 보이는 캐릭터 발 높이가 안 바뀐다(가로로만 걷는다)`, walk.yJumps.length === 0, walk.yJumps.slice(0, 3).join(" · "));
   ok(`[${scr.name}] 몬스터는 전장 오른쪽 밖에서 걸어 들어온다(등장 순간 왼쪽 끝 > 전장 오른쪽)`, walk.monStarts.length >= 2 && walk.monStarts.every((d) => d >= 0), walk.monStarts.join(","));
 
+  // 히트스톱(치명 · 스킬 · 특수기) — 전장 data-hitstop 이 붙는 횟수 · 0.06초 뒤 떨어지는지 (2026-10-21)
+  await page.evaluate(() => { const fe = document.querySelector(".titans-field"); window.__hs = { on: 0, maxMs: 0, t: 0 }; new MutationObserver(() => { const pn = performance.now(); if (fe.dataset.hitstop) { window.__hs.on += 1; window.__hs.t = pn; } else if (window.__hs.t) window.__hs.maxMs = Math.max(window.__hs.maxMs, Math.round(pn - window.__hs.t)); }).observe(fe, { attributes: true, attributeFilter: ["data-hitstop"] }); });
   const rows = [];
   for (let i = 0; i < 200; i += 1) { const s = await snap(); if (s) rows.push(s); await sleep(110); }   // 약 22초 — 몬스터 여러 마리
 
@@ -149,6 +151,8 @@ for (const scr of SCREENS) {
   // 번쩍임 끝 칸이 남은 brightness(1) saturate(1) 은 제 색과 같다 — 밝기 1.05 넘는 표본만 센다
   const lit = combatRows.filter((s) => Number(s.monFilter?.match(/brightness\(([\d.]+)\)/)?.[1] ?? 1) > 1.05).length;
   ok(`[${scr.name}] 몬스터가 대부분 제 색 — 밝기 필터가 걸린 표본 35% 이하`, combatRows.length > 0 && lit <= combatRows.length * 0.35, `${lit}/${combatRows.length}`);
+  const hs = await page.evaluate(() => window.__hs);
+  ok(`[${scr.name}] 히트스톱이 걸리고 0.15초 안에 풀린다`, hs.on >= 2 && hs.maxMs > 0 && hs.maxMs <= 150, JSON.stringify(hs));
   ok(`[${scr.name}] 평타 피해 숫자가 하나로 합쳐진다(합산 숫자에 더해진 표본)`, rows.some((s) => s.sumBumps.some((b) => b >= 1)) && rows.every((s) => s.sumBumps.length <= 2), `최대 동시 ${Math.max(0, ...rows.map((s) => s.sumBumps.length))}`);
   ok(`[${scr.name}] 교전 중 주인공 · 동료 몸이 AUTO · 배속 · 스킬 · 알림 칩과 겹치지 않는다(4px 넘게)`, uiHits.length === 0, uiHits.slice(0, 4).join(" · "));
 }
