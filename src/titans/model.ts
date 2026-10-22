@@ -420,6 +420,19 @@ export function tapDamage(swordLevel: number): number {
 export function swordUpgradeCost(level: number): number {
   return Math.floor(20 * Math.pow(1.17, level - 1));
 }
+/** 환생 출발 골드 (2026-10-22 아처 키우기 7번 "환생 직후 체감 이득") — 환생 전 최고 스테이지에 비례. 30 → 약 6K · 60 → 약 18만 */
+export function rebirthStartGold(bestStage: number): number { return Math.floor(200 * Math.pow(1.12, Math.min(90, Math.max(1, bestStage)))); }
+/** 환생 결정 — CharacterStatus 와 미리 보기가 같은 식을 쓴다 */
+export function rebirthCrystals(bestStage: number): number { return Math.max(3, Math.floor(Math.sqrt(Math.max(0, bestStage)) * 3)); }
+/** 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 동료 10연차(보석 900) 한 번 + 여유 */
+export const WELCOME_GIFT_GEMS = 1000;
+/** 번개 (2026-10-22 아처 키우기 2번) — 무기 숙련과 따로 오르는 탭 강화 줄. 단계마다 탭 피해 +12% · LIGHTNING_EVERY 번째 탭마다 번개가 떨어진다 */
+export const LIGHTNING_EVERY = 10;
+export function lightningCost(level: number): number { return Math.floor(150 * Math.pow(1.24, level)); }
+/** 탭 피해 배율 */
+export function lightningTapMul(level: number): number { return 1 + 0.12 * Math.max(0, level); }
+/** 번개 한 번 = 탭 기본 피해 × (4 + 0.5·단계). 0단계는 번개 없음 */
+export function lightningBoltMul(level: number): number { return level > 0 ? 4 + 0.5 * level : 0; }
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
 
 export function heroUpgradeCost(def: TitanHeroDef, level: number): number {

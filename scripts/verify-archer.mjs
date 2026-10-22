@@ -14,10 +14,12 @@ writeFileSync(entry, [
   `export * as disc from "${root}/src/titans/discovery";`,
   `export * as model from "${root}/src/titans/model";`,
   `export * as prog from "${root}/src/progression/model";`,
+  `export * as coins from "${root}/src/titans/eventCoins";`,
+  `export * as shop from "${root}/src/economy/eventShop";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { acorns: A, ladder: L, disc: D, model: M, prog: P } = await import(pathToFileURL(out).href);
+const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 let fails = 0;
@@ -60,6 +62,20 @@ ok("캐릭터 진행 기본값 · 정규화에 사다리 · 발견", P.emptyChar
 // ── 4. 첫 발견 ──
 ok("발견 보상: 몬스터 20 · 동료 50 · 도토리 Lv1 0 · Lv5 50 · 상한 150", D.discoveryGems("monster", "goblin") === 20 && D.discoveryGems("ally", "mia") === 50 && D.discoveryGems("acorn", 1) === 0 && D.discoveryGems("acorn", 5) === 50 && D.discoveryGems("acorn", 99) === 150);
 ok("발견 키 · 정규화(중복 제거 · 문자열만)", D.discoveryKey("acorn", 3) === "acorn:3" && D.normalizeDiscovered(["a", "a", 3, "b"]).join() === "a,b");
+
+// ── 2. 번개 ──
+ok("번개: 0단계는 번개 없음 · 1단계 ×4.5 · 탭 +12%/단계 · 값은 단계마다 오른다", M.lightningBoltMul(0) === 0 && M.lightningBoltMul(1) === 4.5 && Math.abs(M.lightningTapMul(5) - 1.6) < 1e-9 && M.lightningCost(0) === 150 && M.lightningCost(10) > M.lightningCost(9) && M.LIGHTNING_EVERY === 10);
+// ── 5. 환영 선물 ──
+ok("환영 선물 보석으로 동료 10연차(900)를 한 번 뽑을 수 있다", M.WELCOME_GIFT_GEMS >= 900);
+// ── 7. 환생 ──
+ok("환생 출발 골드: 최고 스테이지에 비례(30 → 수천 · 60 → 십만대) · 결정 식", M.rebirthStartGold(30) > 5000 && M.rebirthStartGold(30) < 7000 && M.rebirthStartGold(60) > M.rebirthStartGold(30) * 20 && M.rebirthCrystals(36) === 18 && M.rebirthCrystals(0) === 3, `${M.rebirthStartGold(30)} · ${M.rebirthStartGold(60)}`);
+// ── 8. 이벤트 코인 ──
+ok("코인 드롭: 일반 3% 1~3개 · 대장 35% 3~5개", C.rollCoinDrop(0.029, 0, false) === 1 && C.rollCoinDrop(0.029, 0.99, false) === 3 && C.rollCoinDrop(0.031, 0, false) === 0 && C.rollCoinDrop(0.34, 0.5, true) === 4 && C.rollCoinDrop(0.36, 0, true) === 0);
+let n = 0, got = 0; for (let i = 0; i < 20000; i += 1) { const c = C.rollCoinDrop(Math.random(), Math.random(), false); if (c > 0) { n += 1; got += c; } }
+ok("코인 드롭 빈도: 2만 마리에 약 600번(±150) · 평균 2개", n > 450 && n < 750 && Math.abs(got / n - 2) < 0.2, `${n}번 · 평균 ${(got / n).toFixed(2)}`);
+const coinProducts = S.eventProductsFor("event-shop").filter((p) => p.coinCost);
+ok("이벤트 상점에 코인 교환 칸 3개 · 보석 값 0", coinProducts.length === 3 && coinProducts.every((p) => p.gemCost === 0 && p.weeklyLimit > 0));
+ok("캐릭터 진행에 이벤트 코인(기본 0 · 정규화)", P.emptyCharacterProgress().eventCoins === 0 && P.normalizeCharacterProgress({ eventCoins: 42 }).eventCoins === 42 && P.normalizeCharacterProgress({ eventCoins: -5 }).eventCoins === 0);
 
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 process.exit(fails ? 1 : 0);

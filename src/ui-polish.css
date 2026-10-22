@@ -597,3 +597,38 @@
 @keyframes reward-pop-out { to { opacity: 0; transform: translate(-50%, -10px); } }
 @media (prefers-reduced-motion: reduce) { .reward-pop, .acorn-slot.match, .acorn-pop { animation: none !important; } }
 .titans-field:not(.lanes-wide) .battle-alert-stack > *:nth-child(n+2) { display: none !important; }   /* 낮은 전장 — 알림 칩은 맨 위 하나만(주인공과 겹치지 않게 · 덜 조잡하게) */
+/* 번개 강화 줄 (2026-10-22 아처 키우기 2번) — 카드 아이콘 · 몬스터 위로 떨어지는 번개 */
+.titans-fx-bolt { width: 48px; height: 190px; margin: -190px 0 0 -24px; z-index: 8; border-radius: 0; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px hsl(var(--fx-hue, 205) 100% 55%)) drop-shadow(0 0 2px #1e3a8a); transform-origin: 50% 100%; animation: fx-bolt .7s linear forwards; }
+.titans-fx-bolt::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #fff7c2, #ffe14a 35%, #fff 60%, #ffe14a); clip-path: polygon(58% 0, 14% 52%, 46% 52%, 22% 100%, 88% 40%, 56% 40%, 84% 0); }
+.titans-fx-bolt::after { content: ""; position: absolute; left: 50%; bottom: -16px; width: 84px; height: 32px; margin-left: -42px; border-radius: 50%; background: radial-gradient(ellipse, #fff 0 22%, #ffe14a 42%, hsl(var(--fx-hue, 205) 95% 70% / .7) 58%, transparent 72%); }
+@keyframes fx-bolt { 0% { transform: scaleY(.1); opacity: 0; } 10% { transform: scaleY(1); opacity: 1; } 26% { opacity: .55; } 36% { opacity: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .titans-fx-bolt { animation-duration: .01s; } }
+/* 이벤트 코인 (2026-10-22 아처 키우기 8번) — 지갑 · 가격 표시 · 몬스터에서 튀어 오르는 코인 */
+.coin-mark { display: inline-block; flex: none; width: 22px; height: 22px; border-radius: 50%; vertical-align: -5px; margin-right: 3px; background: radial-gradient(circle at 35% 30%, #fff7cf 0 14%, #ffd54a 30%, #e3a412 72%, #a86b06); box-shadow: inset 0 0 0 2px #b9780a, inset 0 0 0 4px #ffe58a; }
+.wallet-item .coin-mark { width: 24px; height: 24px; margin: 0; }
+.titans-fx-coin { width: 26px; height: 26px; margin: -13px 0 0 -13px; z-index: 9; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff7cf 0 14%, #ffd54a 30%, #e3a412 72%, #a86b06); box-shadow: inset 0 0 0 2px #b9780a, inset 0 0 0 4px #ffe58a, 0 0 12px #ffd54a; animation: fx-coin .85s cubic-bezier(.2,.9,.3,1) forwards; }
+.titans-fx-coin::after { position: absolute; left: 30px; top: 2px; font-size: 15px; font-weight: 900; color: #ffe066; -webkit-text-stroke: 3px #5a3500; paint-order: stroke fill; white-space: nowrap; }
+.titans-fx-coin.el-c1::after { content: "+1"; } .titans-fx-coin.el-c2::after { content: "+2"; } .titans-fx-coin.el-c3::after { content: "+3"; } .titans-fx-coin.el-c4::after { content: "+4"; } .titans-fx-coin.el-c5::after { content: "+5"; }
+@keyframes fx-coin { 0% { transform: translateY(10px) scale(.4); opacity: 0; } 20% { transform: translateY(-26px) scale(1.15); opacity: 1; } 45% { transform: translateY(-20px) scale(1); } 80% { opacity: 1; } 100% { transform: translateY(-46px) scale(.9); opacity: 0; } }   /* 회전은 뺐다 — +N 글자가 거울처럼 뒤집혔다 */
+.event-offer-card.coin-offer { border-color: #e3a412; }
+/* 환영 선물 팝업 — 오래 보이게 */
+.reward-pop.tone-gift { background: linear-gradient(180deg, #ffd9e4, #fff8e6); animation: reward-pop-in .5s cubic-bezier(.2, 1.4, .4, 1) both, reward-pop-out .4s ease-in 4.4s forwards; }
+.reward-pop.tone-gift small { color: #be123c; }
+/* 뽑기 중복 → 다음 성급 조각 진행 (2026-10-22 아처 키우기 6번) */
+.gacha-card-front .dup-progress { display: grid; gap: 2px; justify-items: center; font-style: normal; font-size: 13px; font-weight: 800; line-height: 1.15; color: inherit; }
+.gacha-card-front .dup-bar { display: block; width: 86%; height: 6px; border-radius: 3px; background: rgba(0,0,0,.35); overflow: hidden; }
+.gacha-card-front .dup-bar > i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ffd54a, #fff3a6); transition: width .6s ease .5s; }
+.gacha-card-front .dup-progress.ready { color: #fde047; }
+.gacha-card-front .dup-progress.ready .dup-bar > i { background: linear-gradient(90deg, #f59e0b, #fde047); box-shadow: 0 0 8px #fde047; }
+/* 환생 미리 보기 */
+.rebirth-preview { margin: 8px 4px 12px; font-size: 13px; font-weight: 700; line-height: 1.4; color: var(--rd-ink2, #6b4a2f); }
+@media (prefers-reduced-motion: reduce) { .titans-fx-coin { animation-duration: .01s; } }
+.gacha-detail li.dup-ready { color: #b45309; font-weight: 900; }
+.gacha-card-front .dup-progress { white-space: nowrap; letter-spacing: -.02em; }
+/* 조각 진행은 그림 아래쪽에 겹쳐 — 10연 카드 높이가 고정이라 줄을 더하면 잘렸다 */
+.gacha-card.dup .gacha-art { filter: none; }
+.gacha-card.dup .gacha-art .titan-ally-art { filter: saturate(.75); }
+.gacha-art .dup-progress { position: absolute; left: 2px; right: 2px; bottom: 0; z-index: 6; padding: 3px 2px 3px; border-radius: 6px; background: rgba(28, 16, 6, .78); color: #fff; }
+.gacha-art .dup-progress.ready { background: rgba(92, 52, 0, .86); box-shadow: 0 0 8px rgba(253, 224, 71, .7); }
+.equipment-training-card .training-item-icon.lightning-icon { font-size: 40px; line-height: 1; filter: drop-shadow(0 0 6px #ffd23f) drop-shadow(0 3px 2px rgba(59, 36, 21, .3)); }   /* 다른 파츠 아이콘처럼 판 없이(unify.css) — 큰 번개 + 금빛 */
+.gacha-art .dup-progress { font-size: 13px; letter-spacing: -.04em; overflow: hidden; text-overflow: clip; }
