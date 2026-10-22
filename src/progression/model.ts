@@ -10,6 +10,8 @@ import {
 } from "../game/expeditionOps";
 import { emptyShards, emptySkillLevels, emptyWeaponForge, migrateSkillLevels, normalizeLoadout, RANGED_WEAPONS, SKILL_MAX_LEVEL, WEAPON_FORGE_MAX, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillShards, type SkillWeaponId, type WeaponForgeLevels } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
+import { emptyLadder, normalizeLadder, type BossLadder } from "../titans/bossLadder";
+import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { allyCollectionPower, petCollectionPower } from "./collection";
@@ -210,6 +212,12 @@ export type CharacterProgress = {
   gateFund: GateFundState;
   /** 순간 제안 창 (economy/momentOffers): 상품 id → 만료·보너스 */
   momentOffers: Record<string, { kind: string; until: number; bonusGems: number; openedAt: number }>;
+  /** 대장 사다리 — 처음 깬 대장마다 영구 특성 (2026-10-22, titans/bossLadder.ts) */
+  bossLadder: BossLadder;
+  /** 첫 발견 보상을 받은 키 (titans/discovery.ts) — "monster:goblin" · "ally:mia" · "acorn:5" */
+  discovered: string[];
+  /** 기존 저장의 이미 만난 몬스터 · 동료를 발견 목록에 한 번 옮겼는가 (옛 계정이 업데이트 직후 몰아서 받지 않게) */
+  discoverySeeded: boolean;
 };
 
 export function expForLevel(level: number): number {
@@ -327,6 +335,9 @@ export function emptyCharacterProgress(): CharacterProgress {
     momentOffers: {},
     gateFund: emptyGateFund(),
     pendingSkillCores: 0,
+    bossLadder: emptyLadder(),
+    discovered: [],
+    discoverySeeded: false,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -713,6 +724,9 @@ export function normalizeCharacterProgress(
       content === "dodge" || content === "beat" || content === "forge" || content === "titans"
         ? content
         : null,
+    bossLadder: normalizeLadder((raw as { bossLadder?: unknown }).bossLadder),
+    discovered: normalizeDiscovered((raw as { discovered?: unknown }).discovered),
+    discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
 }

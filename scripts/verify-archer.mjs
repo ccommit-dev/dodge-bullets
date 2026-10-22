@@ -1,0 +1,65 @@
+// 아처 키우기 차용 — 도토리 합성 · 대장 사다리 · 첫 발견 (2026-10-22) 순수 로직 검사.  node scripts/verify-archer.mjs
+import { build } from "esbuild";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const root = process.cwd().replace(/\\/g, "/");
+const dir = mkdtempSync(join(tmpdir(), "archer-"));
+const entry = join(dir, "entry.ts");
+writeFileSync(entry, [
+  `export * as acorns from "${root}/src/titans/acorns";`,
+  `export * as ladder from "${root}/src/titans/bossLadder";`,
+  `export * as disc from "${root}/src/titans/discovery";`,
+  `export * as model from "${root}/src/titans/model";`,
+  `export * as prog from "${root}/src/progression/model";`,
+].join("\n"));
+const out = join(dir, "bundle.mjs");
+await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
+const { acorns: A, ladder: L, disc: D, model: M, prog: P } = await import(pathToFileURL(out).href);
+rmSync(dir, { recursive: true, force: true });
+
+let fails = 0;
+const ok = (name, cond, detail = "") => { console.log(`${cond ? "PASS" : "FAIL"} ${name}${detail ? " — " + detail : ""}`); if (!cond) fails += 1; };
+
+// ── 1. 도토리 ──
+let s = A.emptyAcorns();
+ok("빈 도토리 판: 12칸 비어 있음", s.grid.length === 12 && A.freeSlots(s) === 12);
+s = A.tickAcorns(s, A.ACORN_MAKE_SEC * 3 + 1);
+ok("6초마다 하나 — 19초면 3개 · 남은 1초", s.grid.filter((l) => l === 1).length === 3 && Math.abs(s.acc - 1) < 1e-9, JSON.stringify(s.grid.slice(0, 4)));
+const m = A.mergeAcorns(s, 0, 1);
+ok("같은 단계 둘을 합치면 한 단계 위 · 앞 칸은 빈다 · 새 최고", !!m && m.state.grid[1] === 2 && m.state.grid[0] === 0 && m.made === 2 && m.isNewBest);
+ok("다른 단계 · 같은 칸 · 빈 칸은 합쳐지지 않는다", A.mergeAcorns(m.state, 1, 2) === null && A.mergeAcorns(s, 0, 0) === null && A.mergeAcorns(m.state, 0, 2) === null);
+let full = A.emptyAcorns(); full = A.tickAcorns(full, 1000);
+ok("칸이 가득 차면 더 만들지 않고 쌓인 시간도 한 개 분량에서 멈춘다", A.freeSlots(full) === 0 && full.acc <= A.ACORN_MAKE_SEC);
+const e = A.equipAcorn(m.state, 1, "mia");
+ok("끼우기: 동료에게 Lv2 · 칸은 비거나 예전 것으로", e && e.allyAmmo.mia === 2 && e.grid[1] === 0);
+const e2 = A.equipAcorn({ ...e, grid: e.grid.map((l, i) => (i === 5 ? 4 : l)) }, 5, "mia");
+ok("맞바꿈: 더 높은 도토리를 끼우면 예전 도토리가 그 칸으로", e2.allyAmmo.mia === 4 && e2.grid[5] === 2);
+const muls = [1, 3, 5, 8, 12].map((l) => A.acornMul(l));
+ok("배율이 단계마다 눈에 띄게 뛴다 (Lv1 ×1.10 · Lv5 ×1.90 · Lv12 ×4.84)", Math.abs(muls[0] - 1.1) < 1e-9 && Math.abs(muls[2] - 1.9) < 1e-9 && Math.abs(muls[4] - 4.84) < 1e-9 && muls.every((v, i) => i === 0 || v > muls[i - 1]), muls.map((v) => v.toFixed(2)).join(" "));
+ok("끼운 것 없음 = ×1", A.acornMul(0) === 1 && A.acornMul(undefined) === 1);
+const norm = A.normalizeAcorns({ grid: [3, 99, -1, "x"], allyAmmo: { mia: 7, leon: 0 }, acc: 99 });
+ok("정규화: 단계 0~12 · 빈 동료 제거 · acc 상한 · 최고 단계 계산", norm.grid[0] === 3 && norm.grid[1] === 12 && norm.grid[2] === 0 && norm.allyAmmo.mia === 7 && !("leon" in norm.allyAmmo) && norm.acc === A.ACORN_MAKE_SEC && norm.best === 12);
+ok("사냥 저장에 도토리 · 번개 기본값", M.defaultTitansSave().acorns.grid.length === 12 && M.defaultTitansSave().lightningLevel === 0 && M.normalizeTitansSave({}).acorns.best === 0);
+
+// ── 3. 대장 사다리 ──
+let lad = L.emptyLadder();
+const seq = [];
+for (let st = 1; st <= 8; st += 1) { const r = L.climbLadder(lad, st); seq.push(r.perk); lad = r.ladder; }
+ok("처음 깬 대장마다 특성이 차례로 오른다 (동료 → 탭 → 골드 → 공속)", seq.join(",") === "ally,tap,gold,speed,ally,tap,gold,speed", seq.join(","));
+ok("이미 깬 높이(환생 뒤 다시)는 오르지 않는다", L.climbLadder(lad, 5).perk === null && L.climbLadder(lad, 8).perk === null);
+const fx = L.ladderEffects(lad);
+ok("효과 배율: 동료 ×1.06 · 탭 ×1.10 · 골드 ×1.06 · 공속 ×1.04", Math.abs(fx.allyMul - 1.06) < 1e-9 && Math.abs(fx.tapMul - 1.1) < 1e-9 && Math.abs(fx.goldMul - 1.06) < 1e-9 && Math.abs(fx.speedMul - 1.04) < 1e-9);
+let capped = { top: 0, ranks: { ally: L.LADDER_CAP, tap: L.LADDER_CAP, gold: 0, speed: 0 } };
+ok("최대 칸에 닿은 특성은 건너뛴다", L.perkForStage(capped, 1) === "gold");
+ok("보상 문구에 전후가 있다", /0% → 3%/.test(L.perkLabel(L.emptyLadder(), "ally")), L.perkLabel(L.emptyLadder(), "ally"));
+ok("캐릭터 진행 기본값 · 정규화에 사다리 · 발견", P.emptyCharacterProgress().bossLadder.top === 0 && Array.isArray(P.emptyCharacterProgress().discovered) && P.normalizeCharacterProgress({ bossLadder: { top: 9, ranks: { ally: 3 } } }).bossLadder.ranks.ally === 3);
+
+// ── 4. 첫 발견 ──
+ok("발견 보상: 몬스터 20 · 동료 50 · 도토리 Lv1 0 · Lv5 50 · 상한 150", D.discoveryGems("monster", "goblin") === 20 && D.discoveryGems("ally", "mia") === 50 && D.discoveryGems("acorn", 1) === 0 && D.discoveryGems("acorn", 5) === 50 && D.discoveryGems("acorn", 99) === 150);
+ok("발견 키 · 정규화(중복 제거 · 문자열만)", D.discoveryKey("acorn", 3) === "acorn:3" && D.normalizeDiscovered(["a", "a", 3, "b"]).join() === "a,b");
+
+console.log(fails ? `${fails} FAIL` : "ALL PASS");
+process.exit(fails ? 1 : 0);
