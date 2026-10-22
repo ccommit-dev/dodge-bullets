@@ -27,7 +27,7 @@ const closeModals = () => page.evaluate(() => { for (let k = 0; k < 5; k += 1) {
 const clickText = (sel, re) => page.evaluate((sel, src) => { const b = [...document.querySelectorAll(sel)].find((x) => new RegExp(src).test(x.textContent.trim())); b?.click(); return !!b; }, sel, re);
 await closeModals(); await sleep(500);
 
-const MEASURE = () => {
+const MEASURE = (minPx) => {
   const vw = innerWidth, vh = innerHeight;
   const visible = (el) => { const cs = getComputedStyle(el); if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity < 0.05) return false; const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw; };
   const lum = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(",").map((x) => parseFloat(x)); const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return { L: 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b), a }; };
@@ -53,7 +53,7 @@ const MEASURE = () => {
     const cs = getComputedStyle(el); const fs = parseFloat(cs.fontSize);
     const owner = el.className.toString().split(" ")[0] || (el.parentElement?.className.toString().split(" ")[0] ?? "") + ">" + el.tagName.toLowerCase();
     const tag = `${el.tagName.toLowerCase()}.${owner} "${txt.slice(0, 14)}"`;
-    if (fs < 11) small.push(`${fs}px ${tag}`);
+    if (fs < minPx) small.push(`${fs}px ${tag}`);
     const clipText = /text/.test(cs.webkitBackgroundClip || cs.backgroundClip || "");   // 글자에 그라데이션을 칠한 제목은 배경 비교가 의미 없다
     const fg = clipText ? null : lum(cs.color); const bg = bgOf(el);
     if (fg && bg !== null) { const hi = Math.max(fg.L, bg), lo = Math.min(fg.L, bg); const ratio = (hi + 0.05) / (lo + 0.05); const need = fs >= 18 || (fs >= 14 && +cs.fontWeight >= 700) ? 3 : 4.5; if (ratio < need) faint.push(`${ratio.toFixed(1)} ${tag}`); }
@@ -69,7 +69,7 @@ const MEASURE = () => {
   return { small: small.length, faint: faint.length, boxes, smallS: [...new Set(small)].slice(0, 6), faintS: [...new Set(faint)].slice(0, 6), boxS: boxSamples, smallAll: small, faintAll: faint, boxAll: boxAllList };
 };
 const rows = [];
-const shot = async (name) => { await sleep(350); await page.screenshot({ path: `${OUT}/${name}.png` }); const m = await page.evaluate(MEASURE); rows.push({ name, ...m }); };
+const shot = async (name) => { await sleep(350); await page.screenshot({ path: `${OUT}/${name}.png` }); const m = await page.evaluate(MEASURE, Number(process.env.READ_MIN) || 12); rows.push({ name, ...m }); };
 const nav = (t) => clickText(".titans-bottom-nav button", t);
 const sheetClose = () => page.evaluate(() => document.querySelector(".hub-sheet-close")?.click());
 
@@ -110,5 +110,5 @@ const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
 console.log(`합계 작은글 ${sum("small")} · 흐린글 ${sum("faint")} · 겹친판 ${sum("boxes")} · 오류 ${errors.length}`);
 await browser.close();
 const bad = rows.flatMap((r) => r.smallAll.filter((x) => !/^0px /.test(x)).map((x) => `${r.name} 작은글 ${x}`).concat(r.faintAll.map((x) => `${r.name} 흐린글 ${x}`)));
-console.log(bad.length ? `FAIL 가독성 ${bad.length}건 — ${bad.slice(0, 6).join(" | ")}` : "PASS 가독성 — 11px 미만 글자 0 · 대비 부족 0");
+console.log(bad.length ? `FAIL 가독성 ${bad.length}건 — ${bad.slice(0, 6).join(" | ")}` : `PASS 가독성 — ${Number(process.env.READ_MIN) || 12}px 미만 글자 0 · 대비 부족 0`);
 process.exit(bad.length ? 1 : 0);
