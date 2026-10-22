@@ -51,7 +51,8 @@ const MEASURE = (minPx) => {
     if (el.closest(".titans-field .titans-float, .titans-field .titans-fx, .skill-shot, canvas, [aria-hidden=true], .sr-only")) continue;
     const r = el.getBoundingClientRect(); if (r.width <= 2 || r.height <= 2) continue;
     const cs = getComputedStyle(el); const fs = parseFloat(cs.fontSize);
-    const owner = el.className.toString().split(" ")[0] || (el.parentElement?.className.toString().split(" ")[0] ?? "") + ">" + el.tagName.toLowerCase();
+    const gp = (n) => { for (let q = n, d = 0; q && d < 4; q = q.parentElement, d += 1) { const c = q.className?.toString().split(" ")[0]; if (c) return c; } return "-"; };
+    const owner = el.className.toString().split(" ")[0] || gp(el.parentElement) + ">" + el.tagName.toLowerCase();
     const tag = `${el.tagName.toLowerCase()}.${owner} "${txt.slice(0, 14)}"`;
     if (fs < minPx) small.push(`${fs}px ${tag}`);
     const clipText = /text/.test(cs.webkitBackgroundClip || cs.backgroundClip || "");   // 글자에 그라데이션을 칠한 제목은 배경 비교가 의미 없다
@@ -69,7 +70,7 @@ const MEASURE = (minPx) => {
   return { small: small.length, faint: faint.length, boxes, smallS: [...new Set(small)].slice(0, 6), faintS: [...new Set(faint)].slice(0, 6), boxS: boxSamples, smallAll: small, faintAll: faint, boxAll: boxAllList };
 };
 const rows = [];
-const shot = async (name) => { await sleep(350); await page.screenshot({ path: `${OUT}/${name}.png` }); const m = await page.evaluate(MEASURE, Number(process.env.READ_MIN) || 12); rows.push({ name, ...m }); };
+const shot = async (name) => { await sleep(350); await page.screenshot({ path: `${OUT}/${name}.png` }); const m = await page.evaluate(MEASURE, Number(process.env.READ_MIN) || 13); rows.push({ name, ...m }); };
 const nav = (t) => clickText(".titans-bottom-nav button", t);
 const sheetClose = () => page.evaluate(() => document.querySelector(".hub-sheet-close")?.click());
 
@@ -110,5 +111,5 @@ const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
 console.log(`합계 작은글 ${sum("small")} · 흐린글 ${sum("faint")} · 겹친판 ${sum("boxes")} · 오류 ${errors.length}`);
 await browser.close();
 const bad = rows.flatMap((r) => r.smallAll.filter((x) => !/^0px /.test(x)).map((x) => `${r.name} 작은글 ${x}`).concat(r.faintAll.map((x) => `${r.name} 흐린글 ${x}`)));
-console.log(bad.length ? `FAIL 가독성 ${bad.length}건 — ${bad.slice(0, 6).join(" | ")}` : `PASS 가독성 — ${Number(process.env.READ_MIN) || 12}px 미만 글자 0 · 대비 부족 0`);
+console.log(bad.length ? `FAIL 가독성 ${bad.length}건 — ${bad.slice(0, 6).join(" | ")}` : `PASS 가독성 — ${Number(process.env.READ_MIN) || 13}px 미만 글자 0 · 대비 부족 0`);
 process.exit(bad.length ? 1 : 0);
