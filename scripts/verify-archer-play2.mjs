@@ -107,6 +107,50 @@ const rb = await page.evaluate(() => ({ btn: document.querySelector(".rebirth-bu
 ok("환생 단추: 첫 환생 뒤엔 'DPS 벽 0/1 지역'(예전엔 /3 고정)", /DPS 벽 0\/1 지역/.test(rb.btn), rb.btn);
 ok("환생 미리 보기: 결정 +18 · 방치 배율 전후 · 출발 골드", /결정 \+18/.test(rb.pre) && /→/.test(rb.pre) && /출발 골드/.test(rb.pre), rb.pre);
 
+// ── 5'. 첫 10연 최고 등급 확정 ──
+await seed(baseProgress({ redGems: 2000, gachaPulls: 0, gachaPity: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 10, leon: 10 }, lastActiveAt: now });
+await closeModals(); await sleep(300);
+await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
+await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
+const badge = await page.evaluate(() => document.querySelector(".gacha-page-actions .first-ten-badge")?.textContent ?? "");
+await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
+await sleep(2400);
+const topCls = /전설/.test(badge) ? "rarity-ssr" : "rarity-sr";
+const first = await page.evaluate((c) => ({ n: document.querySelectorAll(".gacha-card").length, top: document.querySelectorAll(`.gacha-card.${c}`).length }), topCls);
+ok("첫 10연: '첫 10연 … 확정' 표시 · 결과에 그 등급 1명 이상", /첫 10연 (전설|희귀) 확정/.test(badge) && first.n === 10 && first.top >= 1, `${badge} · ${first.top}/${first.n}`);
+await clickText(".gacha-close", "확인"); await sleep(300);
+const badgeAfter = await page.evaluate(() => !!document.querySelector(".gacha-page-actions .first-ten-badge"));
+ok("두 번째부터는 확정 표시 없음", !badgeAfter);
+
+// ── 5''. 깜짝 선물 — 환영 선물을 받은 계정의 첫 대장 처치 ──
+await seed(baseProgress({ redGems: 100, claimedRewards: ["dodge-tutorial", "welcome-gift"] }), { gold: 1000, stage: 1, bestStage: 1, totalKills: 5, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
+await closeModals();
+for (let i = 0; i < 120 && !(await page.$(".titans-boss-challenge")); i += 1) await sleep(250);
+await page.evaluate(() => document.querySelector(".titans-boss-challenge")?.click());
+for (let i = 0; i < 120 && !pops.some((t) => /깜짝 선물/.test(t)); i += 1) await sleep(250);
+await sleep(600);
+p = await prog();
+ok("첫 대장 처치 → '깜짝 선물 · 붉은 보석 +500' · 받음 기록", pops.some((t) => /깜짝 선물/.test(t) && /500/.test(t)) && p.redGems >= 600 && (p.claimedRewards ?? []).includes("surprise-gift"), `보석 ${p.redGems}`);
+
+// ── 7'. 자동 환생 — 마이페이지 스위치 → 사냥터로 돌아오면 조건을 채운 채라 바로 환생 ──
+await seed(baseProgress({ rebirthCount: 1, wallAreas: ["meadow"], titanBestStage: 30, autoRebirth: false, inheritanceCrystals: 0 }), { gold: 500, stage: 9, bestStage: 30, totalKills: 400, heroes: { mia: 40, leon: 40 }, lastActiveAt: now, acorns: { grid: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], allyAmmo: { mia: 4 }, best: 4, acc: 0 } });
+await closeModals(); await sleep(3200);
+ok("자동 환생 꺼짐 → 조건을 채워도 환생하지 않는다", (await prog()).rebirthCount === 1);
+await page.evaluate(() => document.querySelector(".titans-back")?.click()); await sleep(1500);
+await clickText(".mypage-tabs button", "배지"); await sleep(400);
+await page.evaluate(() => document.querySelector(".auto-rebirth-toggle")?.click()); await sleep(600);
+ok("마이페이지 '자동 환생' 스위치 → 저장 켜짐", (await prog()).autoRebirth === true && (await page.evaluate(() => document.querySelector(".auto-rebirth-toggle")?.getAttribute("aria-checked"))) === "true");
+await clickText("button", "사냥터로"); await sleep(1200);
+for (let i = 0; i < 40 && !pops.some((t) => /자동 환생/.test(t)); i += 1) await sleep(250);
+await sleep(1500);
+p = await prog(); const tr = await tit();
+ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +16 · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 16 && tr.stage <= 2 && tr.gold >= 5000 && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
+const killsBefore = (await tit()).totalKills ?? 0;
+for (let i = 0; i < 60; i += 1) { await page.keyboard.press("Space"); await sleep(120); }
+ok("자동 환생 뒤 사냥이 다시 돈다(1층 몬스터를 다시 잡는다)", ((await tit()).totalKills ?? 0) > killsBefore, `${killsBefore} → ${(await tit()).totalKills}`);
+await sleep(3000);
+ok("환생은 한 번만(되풀이 없음)", (await prog()).rebirthCount === 2);
+
 ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 await browser.close(); process.exit(fails ? 1 : 0);

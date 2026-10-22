@@ -33,6 +33,7 @@ import {
   lightningCost,
   lightningTapMul,
   WELCOME_GIFT_GEMS,
+  SURPRISE_GIFT_GEMS,
   tapDamage,
   type TitanHeroId,
   type TitanMonsterKind,
@@ -75,6 +76,7 @@ import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
+import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { ACORN_MAKE_SEC, acornMul, acornName, equipAcorn, freeSlots, mergeAcorns, tickAcorns } from "./titans/acorns";
 import { AcornPanel } from "./titans/AcornPanel";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
@@ -363,6 +365,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 보상 팝업 — 첫 발견 · 대장 사다리 (2026-10-22 아처 키우기 3 · 4번) */
   const [rewardPop, setRewardPop] = useState<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift"; key: number } | null>(null);
   const discoveredLocalRef = useRef(new Set<string>());
+  /** 자동 환생 뒤 사냥터를 처음 불러올 때와 같은 길로 다시 세운다(편성 · 스테이지 · 저장) */
+  const [reloadKey, setReloadKey] = useState(0);
+  const autoRebirthBusyRef = useRef(false);
   const rewardQueueRef = useRef<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift" }[]>([]);
   const rewardBusyRef = useRef(false);
   const toggleCard = (id: string) => (e: { target: EventTarget | null }) => { if ((e.target as Element | null)?.closest?.("button, select, a, input")) return; setOpenCard((cur) => (cur === id ? null : id)); };
@@ -779,6 +784,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       spawn(resumeStage, 1, false);
       setReady(true);
       scheduleIdleCapNotify(progress);
+      // 자동 환생을 켰는데 이미 조건을 채운 채 들어오면(마이페이지에서 켜고 돌아온 경우) 잠깐 뒤 환생
+      if (progress.autoRebirth && canRebirthNow(progress)) window.setTimeout(() => void autoRebirthRef.current(), 2500);
       // 세션 카운트(종료 예고 카드는 첫 3세션) + 이벤트 저장 로드
       void updateCharacterProgress(userHash, (current) => {
         // 원정 후원 계약(월정액) — 하루 1회 보석 지급. 결제 연동 시 patronUntil이 세팅된다
@@ -786,7 +793,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const patronDue = current.patronUntil > Date.now() && current.patronClaimedDate !== today;
         return {
           ...current,
-          sessionCount: current.sessionCount + 1,
+          sessionCount: current.sessionCount + (reloadKey > 0 ? 0 : 1),   // 자동 환생으로 다시 불러온 것은 새 세션이 아니다
           redGems: current.redGems + (patronDue ? PATRON.dailyGems : 0),
           patronClaimedDate: patronDue ? today : current.patronClaimedDate,
         };
@@ -803,7 +810,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       battleTimers.current.forEach(window.clearTimeout);
       battleTimers.current = [];
     };
-  }, [userHash, spawn, scheduleIdleCapNotify]);
+  }, [userHash, spawn, scheduleIdleCapNotify, reloadKey]);
 
   useEffect(() => {
     if (!ready) return;
@@ -923,6 +930,31 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       .then((next) => { setCharacter(next); setRedGems(next.redGems); });
     showRewardPop("discovery", discoveryTitle(kind), name, gems > 0 ? `첫 발견 보상 · 보석 +${gems}` : "도감에 기록");
   };
+  /** 자동 환생 — 마이페이지 단추와 같은 처리(progression/rebirth.ts) 뒤 사냥터를 다시 불러온다 */
+  const autoRebirth = async () => {
+    const cur = characterRef.current;
+    if (autoRebirthBusyRef.current || !cur.autoRebirth || !canRebirthNow(cur)) return;
+    autoRebirthBusyRef.current = true;
+    try {
+      const r = await performRebirth(userHash, cur);
+      setCharacter(r.next);
+      setRedGems(r.next.redGems);
+      // 진행 중이던 전투 연출(STAGE CLEAR → 퇴장 → 입장)을 끊는다 — 다시 불러오기가 그 타이머를 지워 단계가 멈춰 있었다
+      battlePhaseRef.current = "combat";
+      setBattlePhase("combat");
+      pendingStageRef.current = null;
+      setBossReady(false);
+      bossFailStreakRef.current = 0;
+      setReady(false);
+      setReloadKey((k) => k + 1);
+      // later() 는 다시 불러오기 정리에서 지워진다 — 그냥 타이머로
+      window.setTimeout(() => showRewardPop("ladder", `자동 환생 · ${r.next.rebirthCount}회`, "1층부터 다시", `결정 +${r.crystals} · 출발 골드 ${formatGold(r.startGold)} · 24시간 방치 2배`), 600);
+    } finally {
+      autoRebirthBusyRef.current = false;
+    }
+  };
+  const autoRebirthRef = useRef(autoRebirth);
+  autoRebirthRef.current = autoRebirth;
   const flash = (msg: string) => {
     setToast(msg);
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
@@ -1285,6 +1317,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         setBossReady(false);
         const clearedStage = s.stage;
         // 대장 사다리 (2026-10-22 아처 키우기 3번) — 처음 깬 대장 높이마다 영구 특성 한 칸
+        // 깜짝 선물 (2026-10-22 아처 키우기 5번) — 환영 선물을 받은 새 계정이 처음 대장을 잡으면 +500 한 번
+        if (characterRef.current.claimedRewards.includes("welcome-gift") && !characterRef.current.claimedRewards.includes("surprise-gift")) {
+          void updateCharacterProgress(userHash, (cur) => (cur.claimedRewards.includes("surprise-gift") ? cur : { ...cur, redGems: cur.redGems + SURPRISE_GIFT_GEMS, claimedRewards: [...cur.claimedRewards, "surprise-gift"] }))
+            .then((next) => { setCharacter(next); setRedGems(next.redGems); });
+          later(() => showRewardPop("gift", "깜짝 선물", `붉은 보석 +${SURPRISE_GIFT_GEMS}`, "첫 대장 처치 축하 — 10연차 첫 회는 최고 등급 확정"), 900);
+        }
         const climbed = climbLadder(characterRef.current.bossLadder, clearedStage);
         if (climbed.perk) {
           const perk = climbed.perk;
@@ -1610,6 +1648,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 setCharacter(next);
                 setRedGems(next.redGems);
                 flash(`${huntingArea(saveRef.current.stage).name}의 벽 도달 · 보석 +30`);
+                // 자동 환생 (2026-10-22 아처 키우기 7번) — 조건을 채우면 잠깐 알린 뒤 바로 환생
+                if (next.autoRebirth && canRebirthNow(next)) window.setTimeout(() => void autoRebirthRef.current(), 1600);
               });
             }
           }
@@ -1909,7 +1949,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (redGems < cost || gacha.entries.length === 0) return;
     const pulled =
       count === 10
-        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity))
+        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, character.gachaPulls === 0)
         : (() => { const r = pullOnce(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity)); return { results: [r.result], pity: r.pity }; })();   // 옛 저장의 60 초과 카운터는 천장 직전으로
     const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).map((r) => r.id))];
     let paid = false;
@@ -3606,7 +3646,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {momentOfferCard}
             <div className="gacha-page-actions">
               <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
-              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small></button>
+              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small>{character.gachaPulls === 0 && <em className="first-ten-badge">첫 10연 {gacha.entries.some((e) => e.rarity === "SSR") ? "전설" : "희귀"} 확정</em>}</button>
               <button type="button" onClick={() => setShowGachaRates(true)}><b>확률 정보</b><small>등급별 확률 보기</small></button>
             </div>
           </section>

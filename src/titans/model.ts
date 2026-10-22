@@ -426,6 +426,8 @@ export function rebirthStartGold(bestStage: number): number { return Math.floor(
 export function rebirthCrystals(bestStage: number): number { return Math.max(3, Math.floor(Math.sqrt(Math.max(0, bestStage)) * 3)); }
 /** 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 동료 10연차(보석 900) 한 번 + 여유 */
 export const WELCOME_GIFT_GEMS = 1000;
+/** 깜짝 선물 — 환영 선물을 받은 새 계정의 첫 대장 처치 때 한 번 */
+export const SURPRISE_GIFT_GEMS = 500;
 /** 번개 (2026-10-22 아처 키우기 2번) — 무기 숙련과 따로 오르는 탭 강화 줄. 단계마다 탭 피해 +12% · LIGHTNING_EVERY 번째 탭마다 번개가 떨어진다 */
 export const LIGHTNING_EVERY = 10;
 export function lightningCost(level: number): number { return Math.floor(150 * Math.pow(1.24, level)); }

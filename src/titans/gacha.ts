@@ -124,13 +124,17 @@ export function pullTen(
   owned: Record<TitanHeroId, number>,
   pity: number,
   rng: () => number = Math.random,
+  /** 첫 10연 (2026-10-22 아처 키우기 5번 "바로 10연차로 4성 경험") — 풀의 최고 등급 1명 확정 */
+  firstTen = false,
 ): { results: PullResult[]; pity: number } {
   const heroes = { ...owned };
   const results: PullResult[] = [];
   let p = pity;
+  const top: AllyRarity = pool.entries.some((e) => e.rarity === "SSR") ? "SSR" : "SR";
   for (let i = 0; i < 10; i += 1) {
+    const needTop = i === 9 && firstTen && !results.some((r) => r.rarity === top);
     const last = i === 9 && !results.some((r) => r.rarity !== "R");
-    const { result, pity: np } = pullOnce(pool, heroes, p, rng, last ? "SR" : null);
+    const { result, pity: np } = pullOnce(pool, heroes, p, rng, needTop ? top : last ? "SR" : null);
     results.push(result);
     p = np;
     if (!result.duplicate) heroes[result.id] = 1;
