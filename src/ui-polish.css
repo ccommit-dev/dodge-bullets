@@ -101,29 +101,29 @@
 
 /* ── 사냥터 머리 · 전장 위 글 ── */
 .titans-kicker { display: none !important; }   /* "BEAVER DAM · IDLE DEFENSE" 7px 장식 글 — 스테이지 이름이 이미 말한다 */
-.titans-area-name { font-size: 12px !important; }
-.titans-best { font-size: 12px !important; }
-.titans-hp span { font-size: 12px !important; }
-.battle-alert small { font-size: 12px !important; }
-.battle-alert b { font-size: 12px !important; }
-.pioneer-stage, .pioneer-area { font-size: 12px !important; }
-.titans-skill small { font-size: 12px !important; }
-.mypage-label small { font-size: 12px !important; }
-.wallet-text small, .wallet-item small, .titans-wallet small { font-size: 12px !important; }
+.titans-area-name { font-size: 13px !important; }
+.titans-best { font-size: 13px !important; }
+.titans-hp span { font-size: 13px !important; }
+.battle-alert small { font-size: 13px !important; }
+.battle-alert b { font-size: 13px !important; }
+.pioneer-stage, .pioneer-area { font-size: 13px !important; }
+.titans-skill small { font-size: 13px !important; }
+.mypage-label small { font-size: 13px !important; }
+.wallet-text small, .wallet-item small, .titans-wallet small { font-size: 13px !important; }
 /* 머리 막대 — 큰 캡슐 안에 캡슐 둘(마이페이지 · 지갑)이 겹쳐 보였다. 바깥 막대 테두리 · 판을 걷고 두 알약만 */
 .titans-header { border-color: transparent !important; background: transparent !important; box-shadow: none !important; }
 
 /* ── 시트(동료 · 상점 · 스킬): 판 안의 판 걷기 ── */
 .hub-sheet .titans-shop { border: 0 !important; background: transparent !important; box-shadow: none !important; padding-left: 0; padding-right: 0; }
-.hub-sheet-switch button { font-size: 13px !important; padding-left: 12px !important; padding-right: 12px !important; }
+.hub-sheet-switch button { font-size: 14px !important; padding-left: 12px !important; padding-right: 12px !important; }
 .bulk-toggle { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 2px !important; }
-.bulk-toggle span { font-size: 12px !important; color: var(--rd-ink2) !important; }
-.bulk-toggle button { font-size: 12px !important; }
+.bulk-toggle span { font-size: 13px !important; color: var(--rd-ink2) !important; }
+.bulk-toggle button { font-size: 13px !important; }
 .ally-roster-summary { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 2px 2px 0 !important; }
-.ally-roster-summary small { font-size: 12px !important; color: var(--rd-mute) !important; }
+.ally-roster-summary small { font-size: 13px !important; color: var(--rd-mute) !important; }
 
 /* ── 꼬리표 — 테두리 없는 연한 알약, 색은 뜻이 있는 것만(등급 · 속성) ── */
-:is(.rarity-tag, .role-tag, .skill-element-tag, .skill-level-tag, .skill-equipped-tag) { border: 0 !important; background: var(--rd-tag) !important; color: var(--rd-ink2) !important; font-size: 12px !important; font-weight: 800 !important; padding: 1px 7px !important; border-radius: 999px !important; box-shadow: none !important; text-shadow: none !important; }
+:is(.rarity-tag, .role-tag, .skill-element-tag, .skill-level-tag, .skill-equipped-tag) { border: 0 !important; background: var(--rd-tag) !important; color: var(--rd-ink2) !important; font-size: 13px !important; font-weight: 800 !important; padding: 1px 7px !important; border-radius: 999px !important; box-shadow: none !important; text-shadow: none !important; }
 .rarity-r .rarity-tag { background: #dbeafe !important; color: #1e40af !important; }
 .rarity-sr .rarity-tag { background: #ede9fe !important; color: #5b21b6 !important; }
 .rarity-ssr .rarity-tag, .rarity-ur .rarity-tag { background: #fef3c7 !important; color: #92400e !important; }
@@ -133,83 +133,83 @@
 .role-tag.element-earth, .element-earth .skill-element-tag { background: #fef3c7 !important; color: #92400e !important; }
 .skill-equipped-tag { background: #d1fae5 !important; color: #047857 !important; }
 .ally-stars i:not(.on) { color: rgba(59, 36, 21, .22) !important; }
-.synergy-chip { font-size: 12px !important; border: 0 !important; background: var(--rd-tag) !important; color: var(--rd-mute) !important; padding: 2px 8px !important; border-radius: 999px !important; }
+.synergy-chip { font-size: 13px !important; border: 0 !important; background: var(--rd-tag) !important; color: var(--rd-mute) !important; padding: 2px 8px !important; border-radius: 999px !important; }
 .synergy-chip.on { background: #dcfce7 !important; color: #166534 !important; }
-.role-filter button { font-size: 12px !important; }
-.recommend-party { font-size: 12px !important; }
+.role-filter button { font-size: 13px !important; }
+.recommend-party { font-size: 13px !important; }
 
 /* ── 동료 카드 ── */
-.ally-card p { font-size: 12px !important; color: var(--rd-ink2) !important; }
-.ally-card .ally-feature { font-size: 12px !important; color: var(--rd-mute) !important; }
+.ally-card p { font-size: 13px !important; color: var(--rd-ink2) !important; }
+.ally-card .ally-feature { font-size: 13px !important; color: var(--rd-mute) !important; }
 .gacha-head strong { color: var(--rd-ink) !important; }
-.gacha-empty { font-size: 12px !important; }
+.gacha-empty { font-size: 13px !important; }
 
 /* ── 모험가 스킬 카드 — 연노랑 효과 줄 · 16px 숙련 줄이 뒤섞였다 ── */
-.skill-learn-card p { font-size: 12px !important; color: var(--rd-ink2) !important; line-height: 1.4; }
+.skill-learn-card p { font-size: 13px !important; color: var(--rd-ink2) !important; line-height: 1.4; }
 .skill-learn-card p.skill-effect { color: #9a3412 !important; font-weight: 800; }
-.skill-learn-card .slot-link, .skill-learn-card .slot-link em, .skill-learn-card small { font-size: 12px !important; color: var(--rd-mute) !important; }
-.skill-slot-tabs small { font-size: 12px !important; color: var(--rd-mute) !important; }
+.skill-learn-card .slot-link, .skill-learn-card .slot-link em, .skill-learn-card small { font-size: 13px !important; color: var(--rd-mute) !important; }
+.skill-slot-tabs small { font-size: 13px !important; color: var(--rd-mute) !important; }
 .combo-empty { color: var(--rd-mute) !important; }
 
 /* ── 버튼 대비 — 흰 글자 파랑 · 빨강 버튼을 한 단계 짙게(3.8 → 5) ── */
 .titans-card button:not(:disabled):is([class*="level"], [class*="star"], .recommend-party), .ally-card-actions button:not(:disabled):not(.bench), .recommend-party, .ally-star-up, .exp-store-buy { filter: none; }
 .recommend-party, .ally-star-up, .skill-level-button, .exp-store-buy { background: #1d4ed8 !important; }
-.exp-tab-badge { background: #dc2626 !important; font-size: 12px !important; }
+.exp-tab-badge { background: #dc2626 !important; font-size: 13px !important; }
 
 /* ── 상점 배지 — 흰 글자가 읽히게 짙은 색 ── */
 .titans-layer .event-offer-card, .hub-sheet .event-offer-card { --offer-accent: #be123c; }
 .titans-layer .event-offer-card.offer-2, .hub-sheet .event-offer-card.offer-2 { --offer-accent: #7e22ce; }
 .titans-layer .event-offer-card.offer-3, .hub-sheet .event-offer-card.offer-3 { --offer-accent: #047857; }
 .titans-layer .event-offer-card.offer-4, .hub-sheet .event-offer-card.offer-4 { --offer-accent: #0369a1; }
-.titans-layer .event-offer-art span:not(.content-icon), .hub-sheet .event-offer-art span:not(.content-icon) { font-size: 12px !important; }
+.titans-layer .event-offer-art span:not(.content-icon), .hub-sheet .event-offer-art span:not(.content-icon) { font-size: 13px !important; }
 
 /* ── 댐 방어전 ── */
-.exp-menu-content .brand { font-size: 12px !important; }
-.exp-chip-act { font-size: 12px !important; }
-.exp-loadout-slot em { font-size: 12px !important; }
-.exp-skill-body em { font-size: 12.5px !important; }
-.exp-skill-bar small { font-size: 12px !important; }
-.exp-chip-empty { font-size: 12px !important; }
-.exp-weapon-card i { font-size: 12px !important; }
-.route-node small, .chapter-tab small, .route-reward { font-size: 12px !important; }
-.route-node b { font-size: 12px !important; }
+.exp-menu-content .brand { font-size: 13px !important; }
+.exp-chip-act { font-size: 13px !important; }
+.exp-loadout-slot em { font-size: 13px !important; }
+.exp-skill-body em { font-size: 13.5px !important; }
+.exp-skill-bar small { font-size: 13px !important; }
+.exp-chip-empty { font-size: 13px !important; }
+.exp-weapon-card i { font-size: 13px !important; }
+.route-node small, .chapter-tab small, .route-reward { font-size: 13px !important; }
+.route-node b { font-size: 13px !important; }
 
 /* ── 마이페이지 · 대장간 ── */
-.character-identity small, .character-quick-stats span, .legacy-heading span { font-size: 12px !important; }
-.character-skin-chip small { font-size: 12px !important; }
+.character-identity small, .character-quick-stats span, .legacy-heading span { font-size: 13px !important; }
+.character-skin-chip small { font-size: 13px !important; }
 .character-skin-chip b { color: var(--rd-ink) !important; }
-.forge-layer small { font-size: 12px !important; }
+.forge-layer small { font-size: 13px !important; }
 
 /* ── 2차: 남은 작은 글 · 대비 ── */
 :root { --flat-blue: #2b72d6; --flat-blue-2: #1d4fa0; }   /* 흰 글자 파랑 버튼 대비 3.8 → 5.0 (평면 테마 변수 하나로 모든 파랑 버튼) */
-.hub-sheet .ally-roster-grid .ally-card :is(.rarity-tag, .role-tag), .titans-layer .ally-roster-grid .ally-card :is(.rarity-tag, .role-tag) { font-size: 12px !important; padding: 1px 7px !important; border: 0 !important; }
+.hub-sheet .ally-roster-grid .ally-card :is(.rarity-tag, .role-tag), .titans-layer .ally-roster-grid .ally-card :is(.rarity-tag, .role-tag) { font-size: 13px !important; padding: 1px 7px !important; border: 0 !important; }
 .ally-stars i.on { color: #d97706 !important; }
-.titans-bottom-nav span { font-size: 12px !important; }
-.equipment-training-card p { font-size: 12px !important; color: var(--rd-ink2) !important; line-height: 1.35; }
-.ally-sig em, .ally-sig small { font-size: 12px !important; }
-.premium-product-card em, .premium-product-card .feeds, .premium-product-card p { font-size: 12.5px !important; }
-.titans-card > button, .premium-product-card > button { font-size: 13px !important; }
-.advice-inline small { font-size: 12px !important; }
-.pioneer-board .pioneer-area, .titans-layer .pioneer-area { font-size: 12px !important; }
-.exp-chip-list :is(small, i), .exp-supply-list :is(small, i, em), .exp-store :is(small, i, em), .exp-daily-list :is(small, i, em) { font-size: 12px !important; }
-.exp-tab-badge { font-size: 12px !important; }
-.exp-skill-equipped { font-size: 12px !important; }
-.forge-wallet span, .forge-best { font-size: 12px !important; }
+.titans-bottom-nav span { font-size: 13px !important; }
+.equipment-training-card p { font-size: 13px !important; color: var(--rd-ink2) !important; line-height: 1.35; }
+.ally-sig em, .ally-sig small { font-size: 13px !important; }
+.premium-product-card em, .premium-product-card .feeds, .premium-product-card p { font-size: 13.5px !important; }
+.titans-card > button, .premium-product-card > button { font-size: 14px !important; }
+.advice-inline small { font-size: 13px !important; }
+.pioneer-board .pioneer-area, .titans-layer .pioneer-area { font-size: 13px !important; }
+.exp-chip-list :is(small, i), .exp-supply-list :is(small, i, em), .exp-store :is(small, i, em), .exp-daily-list :is(small, i, em) { font-size: 13px !important; }
+.exp-tab-badge { font-size: 13px !important; }
+.exp-skill-equipped { font-size: 13px !important; }
+.forge-wallet span, .forge-best { font-size: 13px !important; }
 .forge-kicker { display: none !important; }   /* "BLACKSMITH" 장식 글 */
-.character-idle-head em, .character-goal span, .character-goal b, .status-copy small { font-size: 12px !important; }
+.character-idle-head em, .character-goal span, .character-goal b, .status-copy small { font-size: 13px !important; }
 .legacy-heading span { color: var(--rd-ink2) !important; }
 .hub-chest-open { background: #1d4ed8 !important; color: #fff !important; }
 
-.exp-menu-content .exp-weapon-card em, .exp-menu-content .exp-chip-row small, .exp-menu-content .exp-ops small, .exp-menu-content .exp-ops em, .exp-menu-content .exp-ops i { font-size: 12px !important; }
-.exp-menu-content .exp-tab-badge, .exp-menu-tabs .exp-tab-badge { font-size: 12px !important; }
-.forge-layer :is(.forge-stats, .forge-odds) span { font-size: 12px !important; }
-.equipment-strip small { font-size: 12px !important; }
+.exp-menu-content .exp-weapon-card em, .exp-menu-content .exp-chip-row small, .exp-menu-content .exp-ops small, .exp-menu-content .exp-ops em, .exp-menu-content .exp-ops i { font-size: 13px !important; }
+.exp-menu-content .exp-tab-badge, .exp-menu-tabs .exp-tab-badge { font-size: 13px !important; }
+.forge-layer :is(.forge-stats, .forge-odds) span { font-size: 13px !important; }
+.equipment-strip small { font-size: 13px !important; }
 .ally-stars i.on { color: #b45309 !important; }
 /* 칩 · 보급 목록 — 이름 13 · 설명 12 · 버튼 12 (설명이 이름보다 커지지 않게) */
-.exp-chip-list b, .exp-supply-list b, .exp-daily-list b { font-size: 13px !important; }
-.exp-chip-list em, .exp-supply-list em, .exp-daily-list em { font-size: 12px !important; line-height: 1.35; }
-.exp-chip-list button, .exp-supply-list button, .exp-daily-list button, .exp-store button { font-size: 12px !important; }
-.forge-layer .forge-wallet span { font-size: 12px !important; }
+.exp-chip-list b, .exp-supply-list b, .exp-daily-list b { font-size: 14px !important; }
+.exp-chip-list em, .exp-supply-list em, .exp-daily-list em { font-size: 13px !important; line-height: 1.35; }
+.exp-chip-list button, .exp-supply-list button, .exp-daily-list button, .exp-store button { font-size: 13px !important; }
+.forge-layer .forge-wallet span { font-size: 13px !important; }
 .gacha-stage-page .gacha-actions button:not(.gacha-ten), .hub-sheet .gacha-actions button:not(.gacha-ten) { background: #1d4ed8 !important; color: #fff !important; }
 .gacha-actions button small { color: inherit !important; opacity: .92; }
 .cta .stage-type { opacity: 1 !important; }
@@ -220,23 +220,23 @@
 
 /* ── 상점 — 분류 탭은 같은 폭 · 넉넉한 높이, 상품 카드는 제목 · 한 줄 설명 · 값 버튼만 ── */
 .premium-category-tabs { display: grid !important; grid-template-columns: repeat(5, 1fr); gap: 6px !important; margin: 8px 0 !important; }
-.premium-category-tabs button { min-height: 34px !important; padding: 4px 2px !important; font-size: 13px !important; line-height: 1.2 !important; border-radius: 10px !important; white-space: nowrap; }
+.premium-category-tabs button { min-height: 34px !important; padding: 4px 2px !important; font-size: 14px !important; line-height: 1.2 !important; border-radius: 10px !important; white-space: nowrap; }
 .premium-product-card .feeds { display: none !important; }   /* "→ 동료 레벨 · 무기 훈련" — 어디에 쓰는지 줄은 상품 설명과 겹쳐 빽빽했다 */
-.premium-product-card strong, .premium-product-card h3, .premium-product-card b:first-child { font-size: 14px !important; }
-.premium-product-card p { font-size: 12px !important; line-height: 1.4 !important; color: var(--rd-ink2) !important; }
+.premium-product-card strong, .premium-product-card h3, .premium-product-card b:first-child { font-size: 15px !important; }
+.premium-product-card p { font-size: 13px !important; line-height: 1.4 !important; color: var(--rd-ink2) !important; }
 
 /* ── 댐 방어전 지도 갈림길 칸(폭 62px) — 줄마다 한 줄 · 말줄임, 잠긴 칸은 보상 글을 숨기고 자물쇠만 ── */
 .route-node { overflow: hidden; padding: 4px 5px !important; align-content: center; }
 .route-node :is(small, b, i) { display: block; min-width: 0; white-space: normal !important; overflow: visible; text-overflow: clip !important; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.2; }
-.route-node small { font-size: 12px !important; }
-.route-node b { font-size: 12.5px !important; }
+.route-node small { font-size: 13px !important; }
+.route-node b { font-size: 13.5px !important; }
 .route-node.locked .route-reward { display: none !important; }
-.route-node.locked b { font-size: 12px !important; }
+.route-node.locked b { font-size: 13px !important; }
 
 /* 전장 알림 칩 — 글자를 키운 만큼(8.5/10 → 11/11.5px) 열을 넓혀 한 줄에 다 보이게(말줄임 없이) */
 .titans-field.lanes-wide .battle-alert-stack { width: min(248px, 66%) !important; }
-.titans-field .battle-alert small { font-size: 12px !important; }
-.titans-field .battle-alert b { font-size: 12.5px !important; }
+.titans-field .battle-alert small { font-size: 13px !important; }
+.titans-field .battle-alert b { font-size: 13.5px !important; }
 .titans-field.lanes-wide .battle-alert-stack { width: min(256px, 72%) !important; }   /* 낮은 전장(<440px)은 칩이 아래쪽 주인공 곁이라 폭을 그대로 — 넓히면 주인공과 겹쳤다(verify-walk-y 360×640) */
 .titans-field .battle-alert b { letter-spacing: -.02em; }
 .skill-equipped-tag, .skill-level-tag, .skill-element-tag { height: auto !important; line-height: 1.35 !important; overflow: visible !important; }
@@ -252,38 +252,38 @@
 .exp-menu-content .exp-learn-hint { color: #e6d3b0 !important; }
 .exp-menu-content .exp-fund { border-color: rgba(245, 201, 106, .55) !important; background: linear-gradient(180deg, rgba(60, 34, 12, .75), rgba(28, 16, 6, .7)) !important; }
 .exp-menu-content .exp-fund header b { color: #f5c96a !important; }
-.exp-menu-content .exp-fund-tiers li { background: rgba(28, 16, 6, .5) !important; color: #e9dfc8 !important; font-size: 12px !important; }
-.exp-menu-content .exp-fund-tiers li b { color: #fde68a !important; font-size: 12px !important; }
+.exp-menu-content .exp-fund-tiers li { background: rgba(28, 16, 6, .5) !important; color: #e9dfc8 !important; font-size: 13px !important; }
+.exp-menu-content .exp-fund-tiers li b { color: #fde68a !important; font-size: 13px !important; }
 .exp-menu-content .exp-store, .exp-menu-content .exp-tower-ticket { background: rgba(28, 16, 6, .55) !important; border-color: rgba(255, 222, 168, .2) !important; }
 .titans-field:not(.lanes-wide) .battle-alert small { display: none !important; }   /* 낮은 전장 — 칩 색이 종류를 말하니 앞 꼬리표를 빼고 제목을 다 보인다 */
 
 /* ── 가독성 3차 — 이벤트 센터 · 비트 수련 · 대장간 조합소 · 성문 방어 전투 HUD · 댐 방어전 빈 칸 (검사 범위를 넓혀 찾은 것) ── */
-.event-card .event-tabs button { font-size: 12px !important; }
-.event-card .reward-chip { font-size: 12px !important; color: var(--rd-ink2) !important; }
-.event-card .season-cell { font-size: 12px !important; color: var(--rd-ink2) !important; }
+.event-card .event-tabs button { font-size: 13px !important; }
+.event-card .reward-chip { font-size: 13px !important; color: var(--rd-ink2) !important; }
+.event-card .season-cell { font-size: 13px !important; color: var(--rd-ink2) !important; }
 .event-card .season-cell :is(span, small, b, i) { color: inherit; }
-.event-card .season-head :is(span, small) { font-size: 12.5px !important; }
-.event-card :is(.shadow-info span, .shadow-info small, .rift-week span, .schedule-day, .schedule-cost, .axis-chip, .perk-chip, .rift-day-desc, .today) { font-size: 12px !important; }
-.event-card .journal-note { font-size: 12.5px !important; }
+.event-card .season-head :is(span, small) { font-size: 13.5px !important; }
+.event-card :is(.shadow-info span, .shadow-info small, .rift-week span, .schedule-day, .schedule-cost, .axis-chip, .perk-chip, .rift-day-desc, .today) { font-size: 13px !important; }
+.event-card .journal-note { font-size: 13.5px !important; }
 .event-card .today { color: var(--rd-ink) !important; }
-.event-card .cta small { font-size: 12px !important; color: #fff !important; }
-.beat-note-legend, .beat-note-legend b { font-size: 12.5px !important; }
-.variant-chip { font-size: 12px !important; }
-.beat-rank-next { font-size: 12px !important; }
-.forge-layer .forge-stats :is(span, small) { font-size: 12px !important; }
+.event-card .cta small { font-size: 13px !important; color: #fff !important; }
+.beat-note-legend, .beat-note-legend b { font-size: 13.5px !important; }
+.variant-chip { font-size: 13px !important; }
+.beat-rank-next { font-size: 13px !important; }
+.forge-layer .forge-stats :is(span, small) { font-size: 13px !important; }
 .forge-layer p { font-size: max(12px, 0.75rem); }
-.forge-shop-card p { font-size: 12px !important; line-height: 1.4; color: var(--rd-ink2); }
-.forge-shop-card :is(b, strong, h3) { font-size: 14px !important; }
+.forge-shop-card p { font-size: 13px !important; line-height: 1.4; color: var(--rd-ink2); }
+.forge-shop-card :is(b, strong, h3) { font-size: 15px !important; }
 .forge-layer .forge-best { color: var(--rd-ink2) !important; }
-.skill-slot b, .skill-dock-auto { font-size: 12px !important; }
+.skill-slot b, .skill-dock-auto { font-size: 13px !important; }
 /* 댐 방어전 — 갈색 판 위 흐린 글(빈 칸 번호 · 잠긴 장 탭 · 소제목 옆 작은 글) */
 .exp-menu-content .exp-loadout-slot:not(.on) span, .exp-menu-content .exp-chip-empty { color: rgba(255, 240, 210, .78) !important; }
 .exp-menu-content .chapter-tab small { color: #f6ead2 !important; }
 .exp-menu-content :is(.exp-chip-row, .exp-ops) small { color: #e6d3b0 !important; }
 .exp-menu-content .exp-fund-tiers li i { color: #e6d3b0 !important; }
 .event-card .event-list article span, .event-card .event-list article small { font-size: max(11px, 1em); }
-.event-card .event-list article > div > span, .event-card .rift-preview span, .event-card .rift-preview small { font-size: 12px !important; }
-.beat-rank-panel small, .beat-layer .schedule-day { font-size: 12px !important; }
+.event-card .event-list article > div > span, .event-card .rift-preview span, .event-card .rift-preview small { font-size: 13px !important; }
+.beat-rank-panel small, .beat-layer .schedule-day { font-size: 13px !important; }
 .variant-chip { color: var(--rd-ink) !important; }
 .forge-layer .forge-best { color: #f6ead2 !important; }
 .exp-menu-content .chapter-tab small { color: inherit !important; }
@@ -291,9 +291,9 @@
 .event-card .cta small { color: #fff !important; opacity: 1 !important; }
 .event-card .cta.season-buy:not(:disabled) { background-color: #2f7d1c !important; color: #fff !important; }
 .variant-chip.locked { opacity: 1 !important; color: #6b5a44 !important; background: #e4d6b8 !important; }
-.forge-stats :is(span, small) { font-size: 12px !important; }
-.perk-chip { font-size: 12px !important; }
-.forge-inventory span, .reforge-stats span { font-size: 12px !important; }
+.forge-stats :is(span, small) { font-size: 13px !important; }
+.perk-chip { font-size: 13px !important; }
+.forge-inventory span, .reforge-stats span { font-size: 13px !important; }
 .hero-skill-combo .combo-step.on small { color: var(--rd-ink) !important; }
 /* 지도 머리 줄 초록 글자 — 크림 판 위 대비 4.0 → 6 */
 .exp-menu-content .pioneer-heading span { color: #1f6b3a !important; }
@@ -309,9 +309,9 @@
 .event-card .journal-reward, .event-card .reward-chip { border: 0 !important; box-shadow: none !important; background: rgba(59, 36, 21, .07) !important; }
 .event-card :is(.journal-event, .weekly-event, .rift-week) :is(div, span, li):not(.cta):not(button) { border-width: 0 !important; }
 .event-card .rift-week > * { background: rgba(59, 36, 21, .05); border-radius: 10px; }
-.route-node .route-reward, .route-node .route-go { white-space: nowrap !important; font-size: 11.5px !important; letter-spacing: -.05em; }
+.route-node .route-reward, .route-node .route-go { white-space: nowrap !important; font-size: 12.5px !important; letter-spacing: -.05em; }
 .route-node { padding-left: 3px !important; padding-right: 3px !important; }
-.route-node .route-lock { font-size: 13px !important; }
+.route-node .route-lock { font-size: 14px !important; }
 .route-node small { white-space: nowrap !important; }
 
 /* ── 판 안의 판 3차 — 대장간 · 비트 수련 ── */
@@ -337,12 +337,12 @@
 .character-page .legacy-growth { border: 0 !important; box-shadow: none !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }
 .forge-stats * { border-width: 0 !important; }
 .overlay-content .wallet-item { background: rgba(255, 240, 210, .94) !important; }   /* 어두운 판(댐 방어전 · 비트) 위 재화 알약은 크림 면 — 진갈색 글자가 묻히지 않게 */
-.status-copy em, .schedule-cost { font-size: 12px !important; }
+.status-copy em, .schedule-cost { font-size: 13px !important; }
 /* 시즌 패스 머리 — 왼쪽 정보 열이 좁게 눌려 한두 글자씩 줄바꿈됐다: 위아래로 쌓는다 */
 .event-card .season-head { display: grid !important; grid-template-columns: 1fr !important; gap: 8px !important; }
 .event-card .season-head > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .event-card .brand, .beat-layer .overlay-content .brand { display: none !important; }   /* 영문 장식 글(ADVENTURE EVENT · IDLE BEAT DEFENSE) — 한글 제목이 같은 말 */
-.schedule-best, .schedule-day, .schedule-copy small { font-size: 12px !important; }
+.schedule-best, .schedule-day, .schedule-copy small { font-size: 13px !important; }
 .exit-card.event-card .journal-event *, .exit-card.event-card .weekly-event *, .exit-card.event-card .rift-week * { border-width: 0 !important; }
 .exit-card.event-card .journal-event .cta, .exit-card.event-card .weekly-event .cta, .exit-card.event-card :is(.journal-event, .weekly-event) button { border-width: 2px !important; }
 .forge-page .forge-stats *, div.forge-stats.forge-stats-4 > *, div.forge-stats.forge-stats-4 * { border-width: 0 !important; }
@@ -376,7 +376,7 @@
 .ally-card .ally-feature, .ally-card .ally-sig-bars { display: none !important; }
 .ally-card .ally-sig { padding: 6px 10px !important; }
 .ally-card .ally-sig-rhythm { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-.ally-card .ally-shards { font-size: 13px !important; font-weight: 800; color: var(--rd-ink2) !important; }
+.ally-card .ally-shards { font-size: 14px !important; font-weight: 800; color: var(--rd-ink2) !important; }
 
 /* ── 이벤트: 보상 칩이 줄 끝까지 늘어난 긴 알약 → 내용 폭만 ── */
 .event-card :is(.journal-reward, .reward-row) { display: inline-flex !important; width: auto !important; max-width: 100%; justify-self: start; }
@@ -394,8 +394,8 @@
 /* 마이페이지 바로가기 카드 — 아이콘 · (제목/값) · 들어가기 를 한 줄에 */
 .character-page .status-card { display: grid !important; grid-template-columns: 40px minmax(0, 1fr) auto !important; align-items: center !important; gap: 10px !important; text-align: left !important; }
 .character-page .status-card .status-copy { display: grid !important; gap: 1px; min-width: 0; }
-.character-page .status-card .status-copy strong { font-size: 14px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.character-page .status-card .status-enter { grid-column: auto !important; position: static !important; align-self: center; font-size: 12px !important; white-space: nowrap; }
+.character-page .status-card .status-copy strong { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.character-page .status-card .status-enter { grid-column: auto !important; position: static !important; align-self: center; font-size: 13px !important; white-space: nowrap; }
 /* 환생 버튼(잠김) — 짙은 남색 막대 → 크림 판 위 연한 막대 */
 .character-page .rebirth-button.is-locked, .character-page .rebirth-button:disabled { background: rgba(59, 36, 21, .08) !important; color: var(--rd-mute) !important; border: 2px dashed rgba(59, 36, 21, .3) !important; }
 .ally-star-up:disabled, .ally-card-actions button:disabled { color: #5e4229 !important; background: #e4d6b8 !important; opacity: 1 !important; box-shadow: none !important; }
@@ -403,7 +403,7 @@
 /* 따로 불러오는 화면을 못 불러왔을 때(LazyBoundary) — 빈 화면 대신 */
 .lazy-failed { position: fixed; inset: 0; z-index: 80; display: grid; place-content: center; gap: 10px; padding: 24px; text-align: center; background: #f7e6c4; color: var(--rd-ink); }
 .lazy-failed b { font-size: 18px; }
-.lazy-failed small { font-size: 13px; color: var(--rd-ink2); line-height: 1.45; }
+.lazy-failed small { font-size: 14px; color: var(--rd-ink2); line-height: 1.45; }
 .lazy-failed div { display: flex; gap: 10px; justify-content: center; margin-top: 6px; }
 .lazy-failed button { min-height: 44px; padding: 0 18px; border: 2px solid var(--rd-ink); border-radius: 12px; font-size: 15px; font-weight: 800; }
 .lazy-failed .lazy-retry { background: #f2c232; color: var(--rd-ink); }
@@ -415,12 +415,12 @@
 /* 마이페이지 아래 — 무기 · 견갑 · 재료 칸은 바로가기 "아이템 · 강화" 와 같은 말, 맨 아래 안내 글도 뺀다 */
 .character-page .equipment-strip, .character-page .character-footnote { display: none !important; }
 /* 동료 카드 — 개척 전 출전 잠김 표시: 큰 굵은 알약 → 작은 흐린 글 */
-.ally-card .ceiling-tag { display: block !important; width: fit-content; margin: 2px 0 !important; padding: 1px 8px !important; border: 0 !important; border-radius: 999px !important; background: rgba(59, 36, 21, .08) !important; color: var(--rd-mute) !important; font-size: 12.5px !important; font-weight: 800 !important; }
+.ally-card .ceiling-tag { display: block !important; width: fit-content; margin: 2px 0 !important; padding: 1px 8px !important; border: 0 !important; border-radius: 999px !important; background: rgba(59, 36, 21, .08) !important; color: var(--rd-mute) !important; font-size: 13.5px !important; font-weight: 800 !important; }
 /* 파견 4h · 8h · 12h — 세로로 눌린 작은 기둥 셋 → 버튼 줄 아래 한 줄 "파견 4h 8h 12h" */
 .ally-card .ally-card-actions { flex-wrap: wrap !important; }
 .ally-card .ally-expedition-send { flex: 1 0 100% !important; display: flex !important; align-items: center; gap: 6px !important; margin-top: 2px; }
-.ally-card .ally-expedition-send::before { content: "파견"; color: var(--rd-mute); font-size: 12px; font-weight: 800; }
-.ally-card .ally-expedition-send button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; min-height: 32px !important; padding: 0 6px !important; writing-mode: horizontal-tb !important; font-size: 12px !important; background: #fff8e6 !important; color: var(--rd-ink) !important; border: 2px solid rgba(59, 36, 21, .35) !important; box-shadow: none !important; }
+.ally-card .ally-expedition-send::before { content: "파견"; color: var(--rd-mute); font-size: 13px; font-weight: 800; }
+.ally-card .ally-expedition-send button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; min-height: 32px !important; padding: 0 6px !important; writing-mode: horizontal-tb !important; font-size: 13px !important; background: #fff8e6 !important; color: var(--rd-ink) !important; border: 2px solid rgba(59, 36, 21, .35) !important; box-shadow: none !important; }
 /* 벤치로 — 흰 버튼에 파란 아래 그림자가 남아 있었다 */
 .ally-card .ally-party-toggle.benched-action { box-shadow: 0 2px 0 rgba(59, 36, 21, .25) !important; }
 /* 카드 안 비활성 버튼(골드 부족 강화 · 승급 · 학습 · 레벨업) — 흐린 반투명 대신 같은 모양의 읽히는 회갈색 */
@@ -436,7 +436,7 @@
 .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions { grid-column: 3 !important; grid-row: 1 / span 2 !important; display: flex !important; flex-direction: column !important; align-items: stretch; gap: 6px !important; margin: 0 !important; }
 .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions > :is(.ally-party-toggle, .ally-expedition-send, .ally-star-up:disabled) { display: none !important; }
 .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions button { min-width: 84px; min-height: 36px !important; }
-.ally-roster-grid .ally-card:not(.is-open) .ally-expedition-status { font-size: 12px; color: var(--rd-mute); }
+.ally-roster-grid .ally-card:not(.is-open) .ally-expedition-status { font-size: 13px; color: var(--rd-mute); }
 /* 펼친 카드 — 버튼 줄은 오른쪽 정렬 */
 .ally-roster-grid .ally-card.is-open .ally-card-actions { justify-content: flex-end !important; }
 /* ── 스킬 ── */
@@ -448,7 +448,7 @@
 .skill-card-actions button { min-width: 84px; min-height: 36px; }
 /* 펼침 단서 — 접힌 카드 오른쪽 아래 작은 ⌄ */
 .ally-roster-grid .ally-card:not(.is-open), .skill-learn-card:not(.is-open) { position: relative; }
-.ally-roster-grid .ally-card:not(.is-open)::after, .skill-learn-card:not(.is-open)::after { content: "⌄"; position: absolute; left: 50%; bottom: 1px; transform: translateX(-50%); color: rgba(59, 36, 21, .35); font-size: 12px; line-height: 1; pointer-events: none; }
+.ally-roster-grid .ally-card:not(.is-open)::after, .skill-learn-card:not(.is-open)::after { content: "⌄"; position: absolute; left: 50%; bottom: 1px; transform: translateX(-50%); color: rgba(59, 36, 21, .35); font-size: 13px; line-height: 1; pointer-events: none; }
 /* 버튼 줄이기 — 스킬 프리셋 셋 · 동료 역할 필터 다섯은 숨긴다(추천 편성 · 칸 탭으로 충분), 접힌 동료는 역할 꼬리표도 빼 이름을 다 보인다 */
 .skill-preset-card .preset-row, .party-panel .role-filter { display: none !important; }
 .ally-roster-grid .ally-card:not(.is-open) .role-tag:not([class*="element-"]) { display: none !important; }
@@ -460,7 +460,7 @@
 .hub-sheet .event-offer-card p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .hub-sheet .event-offer-card .reward-row { display: none !important; }
 .hub-sheet .event-offer-card > button { grid-column: 3 !important; min-width: 78px; min-height: 40px !important; margin: 0 !important; padding: 0 12px !important; font-size: 15px !important; }
-.hub-sheet .event-offer-art span:not(.content-icon) { left: 8px !important; font-size: 12px !important; padding: 1px 6px 2px !important; letter-spacing: .02em !important; }
+.hub-sheet .event-offer-art span:not(.content-icon) { left: 8px !important; font-size: 13px !important; padding: 1px 6px 2px !important; letter-spacing: .02em !important; }
 /* 원정대 편성 판 — 제목 왼쪽 · 추천 편성 버튼 오른쪽 한 줄 */
 .party-panel { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: center !important; gap: 6px 10px !important; }
 .party-panel > :not(.party-panel-head):not(.party-tools) { grid-column: 1 / -1; }
@@ -468,23 +468,82 @@
 .party-panel .party-panel-head small { display: none !important; }
 
 /* ═══════════ 가독성 8차 — 최소 12px (2026-10-22, 사용자: "가독성 추가") ═══════════ */
-.hub-feeds em { font-size: 12.5px !important; }
-.qol-btn { font-size: 12.5px !important; }
-.mypage-label, .character-identity span, .character-idle-head { font-size: 12px !important; }
-.titans-wallet strong, .titans-stone strong, .titans-header strong { font-size: 12.5px !important; }
-.chapter-tab b, .pioneer-name, .character-skin-chip b { font-size: 12.5px !important; }
-:is(.forge-shop-card, .ally-card-actions, .skill-card-actions) button, .ally-star-up, .skill-level-button, .titans-transition-skip, .season-expand { font-size: 13px !important; }
-.beat-custom-toggle :is(small, i), .threat-label, .shadow-note, .shadow-note b, :is(.rank-1, .rank-2, .rank-3, .rank-4, .rank-5, .me) em, .run-level, .stage-type, .exp-store b, .schedule-hint, .action-note { font-size: 12px !important; }
-.route-node .route-reward { font-size: 12px !important; letter-spacing: -.06em !important; }
+.hub-feeds em { font-size: 13.5px !important; }
+.qol-btn { font-size: 13.5px !important; }
+.mypage-label, .character-identity span, .character-idle-head { font-size: 13px !important; }
+.titans-wallet strong, .titans-stone strong, .titans-header strong { font-size: 13.5px !important; }
+.chapter-tab b, .pioneer-name, .character-skin-chip b { font-size: 13.5px !important; }
+:is(.forge-shop-card, .ally-card-actions, .skill-card-actions) button, .ally-star-up, .skill-level-button, .titans-transition-skip, .season-expand { font-size: 14px !important; }
+.beat-custom-toggle :is(small, i), .threat-label, .shadow-note, .shadow-note b, :is(.rank-1, .rank-2, .rank-3, .rank-4, .rank-5, .me) em, .run-level, .stage-type, .exp-store b, .schedule-hint, .action-note { font-size: 13px !important; }
+.route-node .route-reward { font-size: 13px !important; letter-spacing: -.06em !important; }
 /* 본문 줄 간격 — 크림 판 설명 글 */
 :is(.hub-sheet, .titans-layer, .character-page, .event-card, .exp-menu-content) p { line-height: 1.45; }
-.hub-cards .hub-feeds em { font-size: 12.5px !important; }
-.titans-skill-dock .battle-qol .qol-btn, .titans-field .qol-btn { font-size: 12.5px !important; }
-.ally-roster-grid .ally-card .ally-card-actions > button { font-size: 13px !important; }
-.skill-slot-tabs button b, .skill-slot-tabs button { font-size: 12px !important; }
-.gacha-page-actions button small, .gacha-stage-page small { font-size: 12px !important; }
-.exp-menu-content .exp-ops b, .exp-menu-content .exp-store b { font-size: 12.5px !important; }
+.hub-cards .hub-feeds em { font-size: 13.5px !important; }
+.titans-skill-dock .battle-qol .qol-btn, .titans-field .qol-btn { font-size: 13.5px !important; }
+.ally-roster-grid .ally-card .ally-card-actions > button { font-size: 14px !important; }
+.skill-slot-tabs button b, .skill-slot-tabs button { font-size: 13px !important; }
+.gacha-page-actions button small, .gacha-stage-page small { font-size: 13px !important; }
+.exp-menu-content .exp-ops b, .exp-menu-content .exp-store b { font-size: 13.5px !important; }
 .event-card .weekly-event button, .event-card .rank-trial button, .event-card button { font-size: max(12.5px, 1em); }
-.pioneer-heading, .pioneer-heading span { font-size: 12px !important; }
-.chapter-title { font-size: 12.5px !important; }
+.pioneer-heading, .pioneer-heading span { font-size: 13px !important; }
+.chapter-title { font-size: 13.5px !important; }
 .skill-slot-tabs button, .skill-slot-tabs button b { white-space: nowrap !important; letter-spacing: -.03em; } .skill-slot-tabs button { padding: 4px 2px !important; }
+
+/* ═══════════ 가독성 9차 — 최소 13px (2026-10-22, 사용자: "글자를 더 키워라") ═══════════ */
+.titans-field .idle-status-strip, .titans-field .idle-status-strip small { font-size: 13px !important; }
+.titans-monster > strong { font-size: 13px !important; }
+:is(.event-offer-card, .season-nav, .nav-popup-grid, .exp-skill-banner, .exp-sub-tabs, .auto-train-toggle) small { font-size: 13px !important; }
+.hub-sheet .event-offer-card p, .titans-layer .event-offer-card p { font-size: 13px !important; }
+.weapon-kind-chip, .ally-pages button, .hub-chest-open, .exp-menu-tabs button, .battle-toggle, .share-card-btn, .character-back { font-size: 13.5px !important; }
+.titans-card > div > strong, .titans-card strong, .party-panel-head strong, .forge-stats strong, .rift-preview strong, .character-goal strong { font-size: max(14px, 1em) !important; }
+.ally-stars i { font-size: 13px !important; }
+:is(.character-idle-chips, .exp-skill-banner, .season-tier, .exp-weapon-card, .shadow-info, .forge-note, .gear-forge-note, .day-event-row, .beat-rank-panel) b { font-size: 13px !important; }
+.character-idle-chips span, .exp-basic-row em, .forge-note, .gear-forge-note, .shadow-power, .exp-learn-hint, .event-shard-target { font-size: 13px !important; }
+:is(.rank-1, .rank-2, .rank-3, .rank-4, .rank-5, .me), :is(.rank-1, .rank-2, .rank-3, .rank-4, .rank-5, .me) strong { font-size: 13px !important; }
+.mypage-tabs button.on, .hub-sheet-switch button.on, .premium-category-tabs button.on, .titans-growth-tabs button.on { font-size: inherit; }
+.equipment-training-card .weapon-kind-chip, .weapon-kind-chips .weapon-kind-chip { font-size: 13px !important; }
+.titans-shop .equipment-training-card .weapon-kind-chips .weapon-kind-chip { font-size: 13px !important; height: 28px !important; }
+.titans-field.lanes-wide .battle-alert-stack { width: min(276px, 78%) !important; }
+.route-node .route-reward { white-space: normal !important; letter-spacing: -.03em !important; line-height: 1.15 !important; }
+.pioneer-name { white-space: normal !important; word-break: keep-all; line-height: 1.2; }
+.pioneer-heading b { font-size: 13px !important; }
+.pioneer-row .pioneer-name { display: block !important; -webkit-line-clamp: unset !important; overflow: visible !important; }
+
+/* ═══════════ 포인트 색 (2026-10-22, 사용자: "배경 색도 포인트가 없음 — 조금 더 수정") ═══════════
+   모든 판이 같은 크림 · 갈색이라 밋밋했다 — 뜻이 있는 곳에만 색: 카드 왼쪽 색 띠 + 옅은 물들임(등급 · 속성 · 상품 종류),
+   섹션 제목 앞 노랑 막대, 시트 위 따뜻한 빛 · 머리 아래 금줄 */
+/* 시트 */
+.hub-sheet { background: linear-gradient(180deg, #ffe3a3 0, #f7e6c4 140px) !important; }
+.hub-sheet .hub-sheet-head { border-bottom: 3px solid #f2c232 !important; }
+/* 섹션 제목 앞 막대 */
+:is(.ally-roster-summary strong, .party-panel-head strong, .skill-preset-card .party-panel-head strong, .legacy-heading strong, .exp-weapon-row > b, .exp-chip-row > b)::before { content: ""; display: inline-block; width: 4px; height: .95em; margin-right: 7px; border-radius: 2px; background: #f2a516; vertical-align: -2px; }
+/* 동료 카드 — 등급 색 */
+.ally-roster-grid .ally-card { box-shadow: inset 5px 0 0 var(--rar, #c9a46a), 0 3px 0 var(--flat-cream-2, #e8cf9f) !important; background: linear-gradient(90deg, var(--rar-tint, #fff8e6) 0, #fff8e6 42%) !important; }
+.ally-roster-grid .ally-card.rarity-r { --rar: #3b82f6; --rar-tint: #e3eeff; }
+.ally-roster-grid .ally-card.rarity-sr { --rar: #8b5cf6; --rar-tint: #efe7ff; }
+.ally-roster-grid .ally-card.rarity-ssr { --rar: #f59e0b; --rar-tint: #fff1c7; }
+.ally-roster-grid .ally-card.rarity-ur { --rar: #ef4444; --rar-tint: #ffe4e1; }
+.ally-roster-grid .ally-card.in-party { border-color: #22a35a !important; }
+/* 스킬 카드 — 속성 색 */
+.skill-learn-card { box-shadow: inset 5px 0 0 var(--el, #c9a46a), 0 3px 0 var(--flat-cream-2, #e8cf9f) !important; background: linear-gradient(90deg, var(--el-tint, #fff8e6) 0, #fff8e6 45%) !important; }
+.skill-learn-card.element-fire { --el: #ef4444; --el-tint: #ffe6e1; }
+.skill-learn-card.element-wind { --el: #10b981; --el-tint: #dcf7ec; }
+.skill-learn-card.element-earth { --el: #d97706; --el-tint: #fff0d1; }
+.skill-learn-card.element-light { --el: #eab308; --el-tint: #fff7cc; }
+.skill-learn-card.element-blade { --el: #64748b; --el-tint: #edf0f4; }
+.skill-learn-card.equipped { border-color: #22a35a !important; }
+/* 상점 상품 — 금빛 띠 */
+.hub-sheet .premium-product-card { box-shadow: inset 5px 0 0 #f2a516, 0 3px 0 var(--flat-cream-2, #e8cf9f) !important; background: linear-gradient(90deg, #fff0c4 0, #fff8e6 40%) !important; }
+/* 장비 성장 카드 — 갈색 띠 + 자동 강화 켜짐은 초록 */
+.titans-layer .equipment-training-card { box-shadow: inset 5px 0 0 #b98a16, 0 3px 0 var(--flat-cream-2, #e8cf9f) !important; }
+/* 마이페이지 — 위 카드 금줄 · 바로가기 아이콘 색에 맞춘 띠 */
+.character-page .character-hero-card { border-top: 4px solid #f2a516 !important; background: linear-gradient(180deg, #fff1c7 0, #fff8e6 90px) !important; }
+.character-page .status-card.status-skill { box-shadow: inset 5px 0 0 #f2a516 !important; }
+.character-page .status-card.status-wealth { box-shadow: inset 5px 0 0 #22b8cf !important; }
+.character-page .status-card.status-hunt { box-shadow: inset 5px 0 0 #8b5cf6 !important; }
+.character-page .status-card.status-item { box-shadow: inset 5px 0 0 #f97316 !important; }
+.character-page .character-goal { box-shadow: inset 5px 0 0 #22a35a !important; background: linear-gradient(90deg, #e3f7e9 0, #fff8e6 45%) !important; }
+/* 이벤트 센터 — 임무 카드 보라 띠 */
+.event-card .mission-card { box-shadow: inset 5px 0 0 #8b5cf6 !important; }
+.character-page .mypage-tabs button { font-size: 13.5px !important; white-space: nowrap !important; padding-left: 2px !important; padding-right: 2px !important; letter-spacing: -.03em; }
+.ally-stars i.on { color: #a14a05 !important; }
