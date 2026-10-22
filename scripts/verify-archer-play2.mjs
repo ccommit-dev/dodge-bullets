@@ -11,8 +11,8 @@ const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebu
 const tit = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`) ?? "{}"), H);
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const baseProgress = (extra = {}) => ({ version: 5, level: 10, redGems: 100, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime", "monster:goblin", "monster:bat", "ally:mia", "ally:leon"], ...extra });
-const seed = async (progress, titans) => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+const seed = async (progress, titans, attendance = { lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) => {
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) if (v !== null) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: attendance ? JSON.stringify(attendance) : null, "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
 };
 const closeModals = () => page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
@@ -21,21 +21,18 @@ const pops = []; await page.exposeFunction("__pop", (t) => pops.push(t));
 await page.evaluateOnNewDocument(() => { document.addEventListener("DOMContentLoaded", () => new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".reward-pop")) window.__pop(n.textContent); }).observe(document.body, { childList: true, subtree: true })); });
 const watchPops = async () => {};
 
-// ── 5. 환영 선물 — 정말 처음인 계정(세션 0 · 처치 0 · 1층) ──
-await seed(baseProgress({ sessionCount: 0, redGems: 0, discovered: [] }), { gold: 0, stage: 1, bestStage: 1, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now });
-await watchPops();
-for (let i = 0; i < 24 && !pops.some((t) => /환영 선물/.test(t)); i += 1) await sleep(250);
+// ── 5. 출석 첫날 보석 1000 — 출석을 한 번도 안 받은 계정은 부팅 때 출석 판이 뜬다 ──
+await seed(baseProgress({ sessionCount: 0, redGems: 0, discovered: [] }), { gold: 0, stage: 1, bestStage: 1, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now }, null);
+for (let i = 0; i < 20 && !(await page.$(".attendance-modal")); i += 1) await sleep(250);
+const day1 = await page.evaluate(() => document.querySelector(".attendance-modal .attendance-grid > div")?.textContent ?? "");
+ok("출석 판 DAY 1 칸 = 보석 1000", /1000/.test(day1), day1);
+await page.evaluate(() => document.querySelector(".attendance-modal .cta:not(.cta-ghost)")?.click()); await sleep(1200);
 let p = await prog();
-ok("처음 계정 → '환영 선물 · 붉은 보석 +1,000' 팝업 · 보석 +1000 · 받음 기록", pops.some((t) => /환영 선물/.test(t) && /1,000/.test(t)) && p.redGems >= 1000 && (p.claimedRewards ?? []).includes("welcome-gift"), `${pops.find((t) => /환영/.test(t)) ?? "(팝업 없음)"} · 보석 ${p.redGems}`);
+ok("첫 출석 → 보석 +1000 · welcome-gift 기록(깜짝 선물 조건)", p.redGems >= 1000 && (p.claimedRewards ?? []).includes("welcome-gift"), `보석 ${p.redGems}`);
 const gemsAfterGift = p.redGems;
 await page.reload({ waitUntil: "networkidle0" }); await sleep(1800);
 p = await prog();
-ok("다시 들어와도 한 번만(보석이 1000 더 늘지 않는다)", p.redGems - gemsAfterGift < 1000, `${gemsAfterGift} → ${p.redGems}`);
-// 옛 계정(세션 9)은 받지 않는다
-await seed(baseProgress({ redGems: 50 }), { gold: 0, stage: 1, bestStage: 1, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now });
-await sleep(1500);
-p = await prog();
-ok("옛 계정(세션 9)은 환영 선물 없음", !(p.claimedRewards ?? []).includes("welcome-gift") && p.redGems < 1000, `보석 ${p.redGems}`);
+ok("같은 날 다시 들어와도 한 번만", p.redGems - gemsAfterGift < 1000 && !(await page.$(".attendance-modal")), `${gemsAfterGift} → ${p.redGems}`);
 
 // ── 2. 번개 강화 줄 ──
 await seed(baseProgress(), { gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 0 });
@@ -115,12 +112,16 @@ await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
 const badge = await page.evaluate(() => document.querySelector(".gacha-page-actions .first-ten-badge")?.textContent ?? "");
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(2400);
-const topCls = /전설/.test(badge) ? "rarity-ssr" : "rarity-sr";
-const first = await page.evaluate((c) => ({ n: document.querySelectorAll(".gacha-card").length, top: document.querySelectorAll(`.gacha-card.${c}`).length }), topCls);
-ok("첫 10연: '첫 10연 … 확정' 표시 · 결과에 그 등급 1명 이상", /첫 10연 (전설|희귀) 확정/.test(badge) && first.n === 10 && first.top >= 1, `${badge} · ${first.top}/${first.n}`);
+const first = await page.evaluate(() => ({ n: document.querySelectorAll(".gacha-card").length, ssr: [...document.querySelectorAll(".gacha-card.rarity-ssr")].map((c) => ({ name: c.querySelector(".gacha-card-front b")?.textContent, lock: !!c.querySelector(".gacha-lock") })) }));
+ok("첫 10연: '첫 10연 전설 확정' · 결과에 전설 1명 이상(초반 지역 풀에 전설이 없어도) · 잠금 표시 없음", /첫 10연 전설 확정/.test(badge) && first.n === 10 && first.ssr.length >= 1 && first.ssr.every((c) => !c.lock), `${badge} · ${JSON.stringify(first.ssr)}`);
 await clickText(".gacha-close", "확인"); await sleep(300);
 const badgeAfter = await page.evaluate(() => !!document.querySelector(".gacha-page-actions .first-ten-badge"));
 ok("두 번째부터는 확정 표시 없음", !badgeAfter);
+p = await prog();
+const passId = (p.claimedRewards ?? []).find((k) => k.startsWith("field-pass:"))?.slice(11);
+ok("전설은 출전 허가 · 편성에 자동으로 들어간다", !!passId && (p.partyIds ?? []).includes(passId), `${passId} · 편성 ${JSON.stringify(p.partyIds)}`);
+await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(2500);
+ok("사냥터 전장에 그 전설이 같이 싸운다", await page.evaluate((id) => !!document.querySelector(`.titans-allies .ally-${id}`), passId), passId);
 
 // ── 5''. 깜짝 선물 — 환영 선물을 받은 계정의 첫 대장 처치 ──
 await seed(baseProgress({ redGems: 100, claimedRewards: ["dodge-tutorial", "welcome-gift"] }), { gold: 1000, stage: 1, bestStage: 1, totalKills: 5, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
