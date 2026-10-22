@@ -343,3 +343,6 @@
 .event-card .season-head > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .event-card .brand, .beat-layer .overlay-content .brand { display: none !important; }   /* 영문 장식 글(ADVENTURE EVENT · IDLE BEAT DEFENSE) — 한글 제목이 같은 말 */
 .schedule-best, .schedule-day, .schedule-copy small { font-size: 11px !important; }
+.exit-card.event-card .journal-event *, .exit-card.event-card .weekly-event *, .exit-card.event-card .rift-week * { border-width: 0 !important; }
+.exit-card.event-card .journal-event .cta, .exit-card.event-card .weekly-event .cta, .exit-card.event-card :is(.journal-event, .weekly-event) button { border-width: 2px !important; }
+.forge-page .forge-stats *, div.forge-stats.forge-stats-4 > *, div.forge-stats.forge-stats-4 * { border-width: 0 !important; }
