@@ -166,8 +166,9 @@ export function partyRoleEffects(party: TitanHeroId[]): { bossTimeBonus: number;
  * 상점 전용 동료(unlockStage 9999)는 항상 편성 가능. 뽑기 픽업은 개척 상한 안에서만 뽑히므로
  * 뽑은 동료는 언제나 즉시 출전할 수 있다.
  */
-export function canFieldAlly(id: TitanHeroId, unlockStage: number, stageCeiling: number): boolean {
-  return SHOP_ALLY_GEM_COST[id] !== undefined || unlockStage <= stageCeiling;
+/** passes — 진행의 claimedRewards. "field-pass:<id>" 가 있으면 지역과 관계없이 출전(첫 10연 전설, 2026-10-22) */
+export function canFieldAlly(id: TitanHeroId, unlockStage: number, stageCeiling: number, passes: readonly string[] = []): boolean {
+  return SHOP_ALLY_GEM_COST[id] !== undefined || unlockStage <= stageCeiling || passes.includes(`field-pass:${id}`);
 }
 
 /* ───────────────────────── 파견 (CRUMBLE_GAP §3 · 길드 대체) ───────────────────────── */

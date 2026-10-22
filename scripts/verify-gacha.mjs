@@ -73,7 +73,7 @@ ok("공시: 상점 전용 동료(루나·볼트) 제외", !r.rows.some((t) => /�
 await clickText(".gacha-rates-sheet button", "닫기");
 await sleep(300);
 const gemsBefore = (await prog()).redGems;
-const discoveredBefore = new Set(((await prog()).discovered ?? []).filter((k) => k.startsWith("ally:"))).size;
+const discoveredBeforeKeys = new Set((await prog()).discovered ?? []);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(2000); // 소환진 1.2s 후 카드 공개
 r = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, fronts: [...document.querySelectorAll(".gacha-card-front b")].map((b) => b.textContent), labels: [...document.querySelectorAll(".gacha-card-front small")].map((s) => s.textContent) }));
@@ -81,8 +81,9 @@ let p = await prog();
 let t = await titans();
 ok("10연 → 카드 10장 연출", r.cards === 10, String(r.cards));
 // 2026-10-22: 처음 합류한 동료마다 첫 발견 보상 +50 보석(titans/discovery) — 그만큼 덜 줄어든다
-const discoveryGems = 50 * new Set((p.discovered ?? []).filter((k) => k.startsWith("ally:"))).size;
-ok("보석 −900(+ 새 동료 첫 발견 50씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 - discoveryGems + discoveredBefore * 50 && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
+// 새 발견 키를 모두 센다 — 첫 10연 전설이 바로 싸워 새 몬스터(+20)도 그 사이에 잡힌다
+const discoveryGems = [...new Set(p.discovered ?? [])].filter((k) => !discoveredBeforeKeys.has(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 50 : k.startsWith("monster:") ? 20 : Math.min(150, Number(k.split(":")[1]) >= 2 ? 10 * Number(k.split(":")[1]) : 0)), 0);
+ok("보석 −900(+ 새 동료 첫 발견 50씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 - discoveryGems && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
 ok("10연 SR 이상 1명 이상 (보장)", r.fronts.length === 10 && (await page.evaluate(() => [...document.querySelectorAll(".gacha-card")].some((c) => /rarity-sr|rarity-ssr/.test(c.className)))));
 const newNames = r.labels.filter((l) => /새 동료/.test(l)).length;
 const dupShards = r.labels.filter((l) => /조각 \+/.test(l)).length;

@@ -40,7 +40,10 @@ export function pickupRotationDaysLeft(now: number = Date.now()): number {
   const elapsed = (now - ROTATION_EPOCH) % period;
   return Math.max(1, Math.ceil((period - elapsed) / 86400000));
 }
-export type PullResult = { id: TitanHeroId; rarity: AllyRarity; pickup: boolean; duplicate: boolean; shards: number; pityBefore: number };
+export type PullResult = { id: TitanHeroId; rarity: AllyRarity; pickup: boolean; duplicate: boolean; shards: number; pityBefore: number; /** 첫 10연 전설 — 지역과 관계없이 출전 */ fieldPass?: boolean };
+
+/** 첫 10연에 풀에 전설이 없을 때 줄 전설 — 스테이지로 가장 먼저 열리는 전설 (상점 전용 제외) */
+export const FIRST_TEN_SSR: TitanHeroId | null = [...HEROES].filter((h) => ALLY_RARITY[h.id] === "SSR" && h.unlockStage < 9999).sort((a, b) => a.unlockStage - b.unlockStage)[0]?.id ?? null;
 
 /** 개척한 지역까지의 최대 스테이지 — progression/idle.stageCeilingFor와 같은 규칙 (순환 import 회피) */
 function ceilingOf(pioneeredArea: number): number {
@@ -124,17 +127,26 @@ export function pullTen(
   owned: Record<TitanHeroId, number>,
   pity: number,
   rng: () => number = Math.random,
-  /** 첫 10연 (2026-10-22 아처 키우기 5번 "바로 10연차로 4성 경험") — 풀의 최고 등급 1명 확정 */
+  /** 첫 10연 (2026-10-22 아처 키우기 5번 "바로 10연차로 4성 경험") — 전설 1명 확정 */
   firstTen = false,
+  /** 풀에 전설이 없을 때(초반 지역) 대신 줄 전설 — 이 동료는 출전 허가(field-pass)를 같이 받는다 */
+  fallbackSsr: TitanHeroId | null = null,
 ): { results: PullResult[]; pity: number } {
   const heroes = { ...owned };
   const results: PullResult[] = [];
   let p = pity;
-  const top: AllyRarity = pool.entries.some((e) => e.rarity === "SSR") ? "SSR" : "SR";
+  const poolHasSsr = pool.entries.some((e) => e.rarity === "SSR");
   for (let i = 0; i < 10; i += 1) {
-    const needTop = i === 9 && firstTen && !results.some((r) => r.rarity === top);
+    const needSsr = i === 9 && firstTen && !results.some((r) => r.rarity === "SSR");
+    if (needSsr && !poolHasSsr && fallbackSsr) {
+      const duplicate = (heroes[fallbackSsr] ?? 0) > 0;
+      results.push({ id: fallbackSsr, rarity: "SSR", pickup: false, duplicate, shards: duplicate ? GACHA.dupeShards.SSR : 0, pityBefore: p, fieldPass: true });
+      p = 0;
+      if (!duplicate) heroes[fallbackSsr] = 1;
+      continue;
+    }
     const last = i === 9 && !results.some((r) => r.rarity !== "R");
-    const { result, pity: np } = pullOnce(pool, heroes, p, rng, needTop ? top : last ? "SR" : null);
+    const { result, pity: np } = pullOnce(pool, heroes, p, rng, needSsr ? "SSR" : last ? "SR" : null);
     results.push(result);
     p = np;
     if (!result.duplicate) heroes[result.id] = 1;

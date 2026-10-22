@@ -60,7 +60,7 @@ let g0 = await gemsNow();
 await tap(".attendance-modal button", "DAY 1 보상 받기"); await sleep(900);
 let p = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 const att = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:attendance:v1:${h}`)), H);
-ok("DAY 1 수령 → 보석 +20 · 누적 1일", p.redGems - g0 === 20 && att.totalDays === 1, `gems +${p.redGems - g0} total ${att.totalDays}`);
+ok("DAY 1 수령 → 첫 출석 보석 +1000(2026-10-22 아처 5번) · 누적 1일", p.redGems - g0 === 1000 && att.totalDays === 1, `gems +${p.redGems - g0} total ${att.totalDays}`);
 await closeIdle(); await sleep(300);
 
 // 2) 메뉴 항목 반응

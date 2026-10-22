@@ -32,7 +32,6 @@ import {
   lightningBoltMul,
   lightningCost,
   lightningTapMul,
-  WELCOME_GIFT_GEMS,
   SURPRISE_GIFT_GEMS,
   tapDamage,
   type TitanHeroId,
@@ -48,7 +47,7 @@ import { GachaFx } from "./ui/GachaFx";
 import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
-import { GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
+import { FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
@@ -756,12 +755,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setEquippedShoulder(progress.equippedShoulder);
       setSkillPoints(progress.skillPoints);
       setRedGems(progress.redGems);
-      // 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 정말 처음인 계정만(세션 0 · 처치 0 · 1층) · 한 번
-      if (progress.sessionCount === 0 && loaded.totalKills === 0 && loaded.bestStage <= 1 && !progress.claimedRewards.includes("welcome-gift")) {
-        void updateCharacterProgress(userHash, (cur) => (cur.claimedRewards.includes("welcome-gift") ? cur : { ...cur, redGems: cur.redGems + WELCOME_GIFT_GEMS, claimedRewards: [...cur.claimedRewards, "welcome-gift"] }))
-          .then((next) => { setCharacter(next); setRedGems(next.redGems); });
-        window.setTimeout(() => showRewardPop("gift", "환영 선물", `붉은 보석 +${WELCOME_GIFT_GEMS.toLocaleString()}`, "상점 › 동료 뽑기에서 10연차를 한 번 뽑아 보세요"), 1400);
-      }
+      // 첫 접속 보석 1000 은 30일 출석 첫날 칸으로 옮겼다(AttendanceModal, 2026-10-22 "출석 1,000") — 받으면 claimedRewards 에 welcome-gift
       if (!progress.discoverySeeded) {
         const seeded = [
           ...Object.entries(progress.monsterKills).filter(([, n]) => (n ?? 0) > 0).map(([k]) => discoveryKey("monster", k)),
@@ -1321,7 +1315,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         if (characterRef.current.claimedRewards.includes("welcome-gift") && !characterRef.current.claimedRewards.includes("surprise-gift")) {
           void updateCharacterProgress(userHash, (cur) => (cur.claimedRewards.includes("surprise-gift") ? cur : { ...cur, redGems: cur.redGems + SURPRISE_GIFT_GEMS, claimedRewards: [...cur.claimedRewards, "surprise-gift"] }))
             .then((next) => { setCharacter(next); setRedGems(next.redGems); });
-          later(() => showRewardPop("gift", "깜짝 선물", `붉은 보석 +${SURPRISE_GIFT_GEMS}`, "첫 대장 처치 축하 — 10연차 첫 회는 최고 등급 확정"), 900);
+          later(() => showRewardPop("gift", "깜짝 선물", `붉은 보석 +${SURPRISE_GIFT_GEMS}`, "첫 대장 처치 축하 — 첫 10연은 전설 확정"), 900);
         }
         const climbed = climbLadder(characterRef.current.bossLadder, clearedStage);
         if (climbed.perk) {
@@ -1949,9 +1943,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (redGems < cost || gacha.entries.length === 0) return;
     const pulled =
       count === 10
-        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, character.gachaPulls === 0)
+        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, character.gachaPulls === 0, FIRST_TEN_SSR)
         : (() => { const r = pullOnce(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity)); return { results: [r.result], pity: r.pity }; })();   // 옛 저장의 60 초과 카운터는 천장 직전으로
-    const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).map((r) => r.id))];
+    // 높은 등급부터 빈 편성 칸에 — 첫 10연 전설이 맨 뒤에 나와 칸이 차서 못 들어가던 것(2026-10-22)
+    const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).sort((x, y) => ["R", "SR", "SSR"].indexOf(y.rarity) - ["R", "SR", "SSR"].indexOf(x.rarity)).map((r) => r.id))];
     let paid = false;
     const next = await updateCharacterProgress(userHash, (current) => {
       if (current.redGems < cost) return current;
@@ -1967,7 +1962,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       for (const id of newIds) if (!party.includes(id) && party.length < slots) party.push(id);
       // 10연이면 비버 상자 1개 (economy/chests, 2026-10-13 P2)
       const withChest = count === 10 ? grantChest(current) : current;
-      return { ...withChest, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaPulls: current.gachaPulls + count };
+      // 첫 10연 전설이 아직 못 여는 지역 동료면 출전 허가를 같이 — 뽑고 바로 같이 싸워 봐야 "4성 경험"
+      const passes = pulled.results.filter((r) => r.fieldPass).map((r) => `field-pass:${r.id}`);
+      const claimed = passes.length > 0 ? [...new Set([...withChest.claimedRewards, ...passes])] : withChest.claimedRewards;
+      return { ...withChest, claimedRewards: claimed, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaPulls: current.gachaPulls + count };
     });
     if (!paid) return;
     setCharacter(next);
@@ -2021,7 +2019,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (onExpedition) return;
     // 개척 상한 게이트 — 소환으로 얻은 후반 동료가 Lv.1로 25스테이지를 건너뛰던 구멍을 막는다
     const def = HEROES.find((h) => h.id === id);
-    if (def && !character.partyIds.includes(id) && !canFieldAlly(id, def.unlockStage, stageCeilingFor(character.pioneeredArea))) {
+    if (def && !character.partyIds.includes(id) && !canFieldAlly(id, def.unlockStage, stageCeilingFor(character.pioneeredArea), character.claimedRewards)) {
       flash(`${def.name}은(는) STAGE ${def.unlockStage} 지역을 개척해야 출전합니다 — 성문 방어으로 지역을 여세요`);
       return;
     }
@@ -2624,8 +2622,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setCharacter(next);
   };
   const allies = useMemo(
-    () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id) && canFieldAlly(h.id, h.unlockStage, fieldCeiling)),
-    [save.heroes, character.partyIds, fieldCeiling],
+    () => HEROES.filter((h) => save.heroes[h.id] > 0 && character.partyIds.includes(h.id) && canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards)),
+    [save.heroes, character.partyIds, fieldCeiling, character.claimedRewards],
   );
   // 대형 칸 (2026-10-14) — 근딜·탱커가 몬스터 앞 두 칸(R), 나머지는 주인공 뒤 칸(L). 역할표(ALLY_ROLE)로 정한다
   const allyLines = useMemo(() => allies.map((h) => (ALLY_ROLE[h.id] === "ranged" || ALLY_ROLE[h.id] === "healer" ? "back" as const : "front" as const)), [allies]);
@@ -2798,7 +2796,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 추천 편성 (점검표 #4) — DPS 상위를 뽑되 원거리 2명을 보장해 엄호 사격 시너지를 켠다 */
   const recommendParty = async () => {
     const ceiling = stageCeilingFor(character.pioneeredArea);
-    const owned = HEROES.filter((h) => save.heroes[h.id] > 0 && canFieldAlly(h.id, h.unlockStage, ceiling) && !character.expeditions.some((e) => e.allyId === h.id));
+    const owned = HEROES.filter((h) => save.heroes[h.id] > 0 && canFieldAlly(h.id, h.unlockStage, ceiling, character.claimedRewards) && !character.expeditions.some((e) => e.allyId === h.id));
     const slots = partySlotCount(character.towerBestFloor, character.partyCap);
     const dpsOf = (h: (typeof HEROES)[number]) =>
       heroDps(h, save.heroes[h.id]) * starMultiplier(effectiveStars(character.allyStars[h.id], save.heroes[h.id]));
@@ -3646,7 +3644,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {momentOfferCard}
             <div className="gacha-page-actions">
               <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
-              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small>{character.gachaPulls === 0 && <em className="first-ten-badge">첫 10연 {gacha.entries.some((e) => e.rarity === "SSR") ? "전설" : "희귀"} 확정</em>}</button>
+              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small>{character.gachaPulls === 0 && <em className="first-ten-badge">첫 10연 전설 확정</em>}</button>
               <button type="button" onClick={() => setShowGachaRates(true)}><b>확률 정보</b><small>등급별 확률 보기</small></button>
             </div>
           </section>
@@ -3685,7 +3683,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <em className={`role-tag element-${ALLY_ELEMENT[h.id]}`}>{ELEMENT_LABEL[ALLY_ELEMENT[h.id]]}</em>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
                   </strong>
-                  {lv > 0 && !canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <small className="ceiling-tag" title="성문 방어로 지역을 개척하면 출전합니다">STAGE {h.unlockStage} 개척 후 출전</small>}
+                  {lv > 0 && !canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <small className="ceiling-tag" title="성문 방어로 지역을 개척하면 출전합니다">STAGE {h.unlockStage} 개척 후 출전</small>}
                   {lv > 0 && (
                     <span className="ally-stars" aria-label={`성급 ${stars}/${cap}`}>
                       {Array.from({ length: cap }, (_, i) => (
@@ -4170,7 +4168,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <div className="gacha-card-back"><i className="gacha-back-sigil" aria-hidden="true" /><i className="gacha-back-glow" aria-hidden="true" /></div>
                     <div className="gacha-card-front">
                       <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}<i>{RARITY_LABEL[r.rarity]}</i>{r.pickup && <i className="pickup">픽업</i>}<i className="star">★{STAR_CAP[r.rarity]}</i></em>
-                      {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`}>🔒 S{h.unlockStage}</i>}
+                      {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`}>🔒 S{h.unlockStage}</i>}
                       <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true">{Array.from({ length: r.rarity === "SSR" ? 8 : 4 }, (_, k) => <i key={k} />)}</i>}
 {r.duplicate && (() => {
                         // 중복은 재료 — 다음 성급까지 조각이 얼마나 찼는지 (2026-10-22 아처 키우기 6번). 같은 동료가 뒤에 또 나오면 그 몫은 빼고 차례로 찬다
@@ -4230,7 +4228,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                         ? <li>성급 <b>★{st} 최대</b></li>
                         : <li className={have >= need ? "dup-ready" : ""}>★{st + 1} 조각 <b>{have}/{need}</b> · 피해 <b>×{STAR_MULT[st]} → ×{STAR_MULT[st + 1]}</b>{have >= need ? " · 동료 탭에서 승급" : ""}</li>;
                     })()}
-                    {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <li className="warn">STAGE {h.unlockStage} 지역을 성문 방어로 개척해야 출전</li>}
+                    {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <li className="warn">STAGE {h.unlockStage} 지역을 성문 방어로 개척해야 출전</li>}
                   </ul>
                 </div>
               );

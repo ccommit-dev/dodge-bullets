@@ -3,6 +3,7 @@ import { storageGet, storageSet } from "./game/toss";
 import { updateCharacterProgress } from "./progression/storage";
 import type { CharacterProgress, ShoulderId } from "./progression/model";
 import { assetUrl } from "./asset";
+import { WELCOME_GIFT_GEMS } from "./titans/model";
 
 /**
  * 30일 출석 (2026-10-02, 사용자: "출석체크 이벤트는 30일 버전으로 수정하고 완료되면 설정칸에서 안보이게").
@@ -37,8 +38,9 @@ const week = (w: number): DayReward[] => [
   d("인장", String(10 + w * 5), "expedition-seal", "rare", { seals: 10 + w * 5 }),
   d("강화석", String(12 + w * 4), "enhance-stone", "normal", { stones: 12 + w * 4 }),
 ];
+// 첫날 칸 = 보석 1000 (2026-10-22 아처 키우기 5번 "출석 다이아 1,000 → 바로 10연차") — 깜짝 선물 500(첫 대장)과 함께 첫 10연(900)을 바로 뽑는다
 export const ATTENDANCE_REWARDS: DayReward[] = [
-  ...week(0), d("견갑+보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
+  d("첫 출석 보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS }), ...week(0).slice(1), d("견갑+보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
   ...week(1), d("보석", "100", "gem", "epic", { gems: 100 }),
   ...week(2), d("보석+인장", "100", "gem", "epic", { gems: 100, seals: 20 }),
   ...week(3), d("보석", "150", "gem", "epic", { gems: 150 }),
@@ -104,6 +106,8 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
         skillPoints: current.skillPoints + (g.skillPoints ?? 0),
         towerTickets: current.towerTickets + (g.tickets ?? 0),
         ownedShoulders: g.shoulder ? [...new Set([...current.ownedShoulders, g.shoulder])] : current.ownedShoulders,
+        // 첫날 보석 1000 을 받았다는 표시 — 첫 대장 처치의 깜짝 선물 500 이 이걸 본다(TitansGame)
+        claimedRewards: day === 0 && !current.claimedRewards.includes("welcome-gift") ? [...current.claimedRewards, "welcome-gift"] : current.claimedRewards,
       }));
       const next: AttendanceSave = { lastClaimDate: today(), lastClaimTimestamp: Date.now(), consecutiveDays: streak, boardIndex: day + 1, totalDays: day + 1 };
       await storageSet(ATTENDANCE_KEY(userHash), JSON.stringify(next));

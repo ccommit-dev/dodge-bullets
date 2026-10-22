@@ -17,10 +17,11 @@ writeFileSync(entry, [
   `export * as coins from "${root}/src/titans/eventCoins";`,
   `export * as shop from "${root}/src/economy/eventShop";`,
   `export * as gacha from "${root}/src/titans/gacha";`,
+  `export * as allies from "${root}/src/titans/allies";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S, gacha: G } = await import(pathToFileURL(out).href);
+const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S, gacha: G, allies: AL } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 let fails = 0;
@@ -87,6 +88,11 @@ for (let i = 0; i < 300; i += 1) {
   if (!G.pullTen(pool, {}, 0, Math.random, false).results.some((r) => r.rarity === top)) plainMiss += 1;
 }
 ok(`첫 10연은 늘 최고 등급(${top}) 1명 이상 · 보통 10연은 아닐 때가 있다`, firstOk === 300 && plainMiss > 0, `확정 ${firstOk}/300 · 보통 빗나감 ${plainMiss}`);
+const early = G.gachaPool(2, 1);
+let earlyOk = 0;
+for (let i = 0; i < 200; i += 1) { const r = G.pullTen(early, {}, 0, Math.random, true, G.FIRST_TEN_SSR).results; if (r.some((x) => x.rarity === "SSR" && x.fieldPass === true && x.id === G.FIRST_TEN_SSR)) earlyOk += 1; }
+ok("초반 풀(전설 없음)에서도 첫 10연은 전설(가장 먼저 열리는 전설) + 출전 허가", !early.entries.some((e) => e.rarity === "SSR") && earlyOk === 200 && !!G.FIRST_TEN_SSR, `${G.FIRST_TEN_SSR} · ${earlyOk}/200`);
+ok("출전 허가: field-pass 가 있으면 지역 잠금을 넘는다(없으면 잠김)", AL.canFieldAlly("ari", 16, 15, ["field-pass:ari"]) === true && AL.canFieldAlly("ari", 16, 15, []) === false && AL.canFieldAlly("ari", 16, 15) === false);
 ok("환영 1000 + 깜짝 500", M.WELCOME_GIFT_GEMS === 1000 && M.SURPRISE_GIFT_GEMS === 500);
 ok("캐릭터 진행에 자동 환생(기본 꺼짐)", P.emptyCharacterProgress().autoRebirth === false && P.normalizeCharacterProgress({ autoRebirth: true }).autoRebirth === true);
 
