@@ -28,6 +28,11 @@ import {
   huntingArea,
   stageClearBonus,
   equipmentTrainingCost,
+  LIGHTNING_EVERY,
+  lightningBoltMul,
+  lightningCost,
+  lightningTapMul,
+  WELCOME_GIFT_GEMS,
   tapDamage,
   type TitanHeroId,
   type TitanMonsterKind,
@@ -69,6 +74,7 @@ import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
+import { rollCoinDrop } from "./titans/eventCoins";
 import { ACORN_MAKE_SEC, acornMul, acornName, equipAcorn, freeSlots, mergeAcorns, tickAcorns } from "./titans/acorns";
 import { AcornPanel } from "./titans/AcornPanel";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
@@ -222,7 +228,7 @@ type SkillShot = { id: number; kind: "shot" | "beam" | "impact" | "link" | "aura
 
 type FxBurst = {
   id: number;
-  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | "spark" | "burst" | "debris" | `sig-${SigFx}`;
+  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | "spark" | "burst" | "debris" | "bolt" | "coin" | `sig-${SigFx}`;
   x: number;
   y: number;
   hue?: number;
@@ -350,12 +356,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [openCard, setOpenCard] = useState<string | null>(null);
   /** 도토리 — 다음 도토리까지 쌓인 초(저장은 하나 만들 때만) · 진행 표시(도토리 탭일 때만 갱신) (2026-10-22 아처 키우기 1번) */
   const acornAccRef = useRef(0);
+  const lightningTapRef = useRef(0);
   const tabRef = useRef<ShopTab>("sword");
   const [acornProgress, setAcornProgress] = useState(0);
   const acornProgAtRef = useRef(0);
   /** 보상 팝업 — 첫 발견 · 대장 사다리 (2026-10-22 아처 키우기 3 · 4번) */
-  const [rewardPop, setRewardPop] = useState<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder"; key: number } | null>(null);
+  const [rewardPop, setRewardPop] = useState<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift"; key: number } | null>(null);
   const discoveredLocalRef = useRef(new Set<string>());
+  const rewardQueueRef = useRef<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift" }[]>([]);
+  const rewardBusyRef = useRef(false);
   const toggleCard = (id: string) => (e: { target: EventTarget | null }) => { if ((e.target as Element | null)?.closest?.("button, select, a, input")) return; setOpenCard((cur) => (cur === id ? null : id)); };
   /**
    * 자동 강화 (2026-10-21, 사용자: "오늘도 환생2 처럼 장비 성장 UI에 자동으로 업그레이드 모드를 추가해줘") — 켜 두면 장비 성장 탭이 열려 있는 동안
@@ -742,6 +751,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setEquippedShoulder(progress.equippedShoulder);
       setSkillPoints(progress.skillPoints);
       setRedGems(progress.redGems);
+      // 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 정말 처음인 계정만(세션 0 · 처치 0 · 1층) · 한 번
+      if (progress.sessionCount === 0 && loaded.totalKills === 0 && loaded.bestStage <= 1 && !progress.claimedRewards.includes("welcome-gift")) {
+        void updateCharacterProgress(userHash, (cur) => (cur.claimedRewards.includes("welcome-gift") ? cur : { ...cur, redGems: cur.redGems + WELCOME_GIFT_GEMS, claimedRewards: [...cur.claimedRewards, "welcome-gift"] }))
+          .then((next) => { setCharacter(next); setRedGems(next.redGems); });
+        window.setTimeout(() => showRewardPop("gift", "환영 선물", `붉은 보석 +${WELCOME_GIFT_GEMS.toLocaleString()}`, "상점 › 동료 뽑기에서 10연차를 한 번 뽑아 보세요"), 1400);
+      }
       if (!progress.discoverySeeded) {
         const seeded = [
           ...Object.entries(progress.monsterKills).filter(([, n]) => (n ?? 0) > 0).map(([k]) => discoveryKey("monster", k)),
@@ -883,10 +898,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return () => cancelAnimationFrame(raf);
   }, [ready]);
 
-  const showRewardPop = (tone: "discovery" | "ladder", kicker: string, title: string, detail: string) => {
-    const key = Date.now() + Math.random();
-    setRewardPop({ tone, kicker, title, detail, key });
-    window.setTimeout(() => setRewardPop((cur) => (cur?.key === key ? null : cur)), 2800);
+  // 보상 팝업은 줄을 세운다 — 환영 선물 위로 첫 처치 발견이 바로 덮어 쓰던 것(2026-10-22). 밀리면 오래된 발견부터 버린다
+  const pumpRewardPop = () => {
+    const next = rewardQueueRef.current.shift();
+    if (!next) { rewardBusyRef.current = false; setRewardPop(null); return; }
+    rewardBusyRef.current = true;
+    setRewardPop({ ...next, key: Date.now() + Math.random() });
+    window.setTimeout(pumpRewardPop, next.tone === "gift" ? 4800 : 2800);
+  };
+  const showRewardPop = (tone: "discovery" | "ladder" | "gift", kicker: string, title: string, detail: string) => {
+    const q = rewardQueueRef.current;
+    q.push({ tone, kicker, title, detail });
+    if (q.length > 3) { const i = q.findIndex((x) => x.tone === "discovery"); q.splice(i >= 0 ? i : 0, 1); }
+    if (!rewardBusyRef.current) pumpRewardPop();
   };
   /** 첫 발견 — 처음 한 번만 보석 + 팝업 (titans/discovery.ts). 옮겨 담기(seeded) 전에는 주지 않는다 */
   const discover = (kind: DiscoveryKind, id: string | number, name: string) => {
@@ -1152,6 +1176,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 킬마다 storage 쓰기를 하면 저장 부하가 크다.
       const killedKind = monsterKind(s.stage, wasBoss, chestRef.current);
       discover("monster", killedKind, monsterLabel(killedKind, chestRef.current, s.stage));
+      // 이벤트 코인 (2026-10-22 아처 키우기 8번) — 가끔 떨어진다. 드물어서 떨어질 때만 저장
+      const coins = rollCoinDrop(Math.random(), Math.random(), wasBoss);
+      if (coins > 0) {
+        pushFxAt("coin", "monster", 0.5, 0.35, 62, 34, undefined, 0.04, `c${coins}`);
+        void updateCharacterProgress(userHash, (cur) => ({ ...cur, eventCoins: cur.eventCoins + coins })).then(setCharacter);
+      }
       killCountsRef.current[killedKind] = (killCountsRef.current[killedKind] ?? 0) + 1;
       if (wasBoss) {
         bossFailStreakRef.current = 0;
@@ -1383,7 +1413,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     // × 대장 사다리 탭 피해 × 번개 강화(1 + 0.12·단계) — 2026-10-22 아처 키우기 2 · 3번
-    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * (1 + 0.12 * saveRef.current.lightningLevel);
+    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * lightningTapMul(saveRef.current.lightningLevel);
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
@@ -1402,6 +1432,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       pushFxAt("slash", "hero", 0.95, 0.5, 28 + Math.random() * 8, 42 + Math.random() * 10, undefined, 0.08);
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
       applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap" });
+      // 번개 (2026-10-22 아처 키우기 2번) — 단계가 있으면 LIGHTNING_EVERY 번째 탭마다 몬스터 머리 위로 번개
+      const lv = saveRef.current.lightningLevel;
+      if (lv > 0) {
+        lightningTapRef.current += 1;
+        if (lightningTapRef.current >= LIGHTNING_EVERY) {
+          lightningTapRef.current = 0;
+          pushFxAt("bolt", "monster", 0.5, 0.15, 62, 20, 205);
+          applyDamage(computeTapHit().base * lightningBoltMul(lv), true, { source: "skill", label: "번개", delayMs: 180 });
+        }
+      }
     },
     [applyDamage, computeTapHit],
   );
@@ -1714,6 +1754,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}${slot === "weapon" ? ` · 탭 피해 ${formatGold(tapDamage(level + fw))} → ${formatGold(tapDamage(level + quote.count + fw))}` : ""}`);
   };
 
+  /** 번개 강화 줄 (2026-10-22 아처 키우기 2번) */
+  const trainLightning = () => {
+    const level = save.lightningLevel;
+    const quote = bulkUpgradeQuote(lightningCost, level, save.gold, buyAmount);
+    if (quote.count === 0) return;
+    setSave((prev) => ({ ...prev, gold: prev.gold - quote.cost, lightningLevel: prev.lightningLevel + quote.count }));
+    flash(`번개 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""} · 탭 피해 +${Math.round((lightningTapMul(level) - 1) * 100)}% → +${Math.round((lightningTapMul(level + quote.count) - 1) * 100)}% · 번개 ×${lightningBoltMul(level)} → ×${lightningBoltMul(level + quote.count)}`);
+  };
+
   // 자동 강화 루프 — 저장은 함수형 setSave 안에서 다시 계산(같은 틱에 두 번 사지 않게), 표시는 마지막으로 산 칸만 반짝
   useEffect(() => {
     try { localStorage.setItem("dodgebullets:auto-train", autoTrain ? "1" : "0"); } catch { /* 저장 못 해도 이번 실행엔 켜짐 */ }
@@ -1755,13 +1804,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 이벤트·특별 상점 (확정 구매, 주간 한도). 골드는 공유 지갑, 코어는 사냥터 저장, 방지권은 대장간 진입 시 이관 */
   const buyEventProduct = async (product: EventProduct) => {
     const week = currentWeekKey();
-    if (redGems < product.gemCost || eventBuysThisWeek(character, product.id, week) >= product.weeklyLimit) return;
+    if (redGems < product.gemCost || (product.coinCost ?? 0) > character.eventCoins || eventBuysThisWeek(character, product.id, week) >= product.weeklyLimit) return;
     const target = shardPackTarget;
     let grant: EventGrant | null = null;
     const next = await updateCharacterProgress(userHash, (current) => {
       const record = current.weeklyEventBuys.week === week ? current.weeklyEventBuys : { week, bought: {} };
       const bought = record.bought[product.id] ?? 0;
-      if (bought >= product.weeklyLimit || current.redGems < product.gemCost) return current;
+      if (bought >= product.weeklyLimit || current.redGems < product.gemCost || current.eventCoins < (product.coinCost ?? 0)) return current;
       const g = product.grant(current);
       // 등반권은 보유 상한이 있다 — 넘치게 사면 보석만 사라진다
       if (g.towerTickets && current.towerTickets + g.towerTickets > TOWER_TICKET_MAX) return current;
@@ -1769,6 +1818,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       return {
         ...current,
         redGems: current.redGems - product.gemCost + (g.gems ?? 0),
+        eventCoins: current.eventCoins - (product.coinCost ?? 0),
         sharedCoins: current.sharedCoins + (g.gold ?? 0),
         enhancementMaterials: current.enhancementMaterials + (g.materials ?? 0),
         expeditionSeals: current.expeditionSeals + (g.seals ?? 0),
@@ -3262,7 +3312,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <WalletBar className="hub-sheet-wallet" testGems={qaGemsEnabled()} items={[
             { kind: "gem", amount: redGems },
             { kind: "gold", amount: save.gold, label: "사냥터 골드" },
-            { kind: "stone", amount: character.enhancementMaterials },
+            tab === "event-shop" ? { kind: "coin", amount: character.eventCoins } : { kind: "stone", amount: character.enhancementMaterials },
           ]} />
         )}
         {(tab === "premium" || tab === "event-shop2") && (() => {
@@ -3336,6 +3386,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </span>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련</button>
+            </article>
+            <article className="titans-card equipment-training-card lightning-card">
+              <div className="training-item-icon lightning-icon" aria-hidden="true">⚡</div>
+              <div>
+                <strong>번개 · Lv.{save.lightningLevel}</strong>
+                <p>탭 피해 +{Math.round((lightningTapMul(save.lightningLevel) - 1) * 100)}% → +{Math.round((lightningTapMul(save.lightningLevel + 1) - 1) * 100)}% · {LIGHTNING_EVERY}번째 탭마다 번개 ×{lightningBoltMul(save.lightningLevel)} → ×{lightningBoltMul(save.lightningLevel + 1)} · 다음 {formatGold(lightningCost(save.lightningLevel))}G</p>
+              </div>
+              <button type="button" disabled={save.gold < lightningCost(save.lightningLevel)} onClick={trainLightning}>강화</button>
             </article>
             <article className="titans-card equipment-training-card">
               {/* 다른 파츠와 같은 틀·크기 (2026-10-16) — 미장착이면 정찰 견갑을 흐리게 */}
@@ -4003,7 +4061,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const bought = eventBuysThisWeek(character, product.id, currentWeekKey());
               const left = product.weeklyLimit - bought;
               return (
-                <article key={product.id} className={`event-offer-card offer-${index + 1}`}>
+                <article key={product.id} className={`event-offer-card offer-${index + 1}${product.coinCost ? " coin-offer" : ""}`}>
                   <div className="event-offer-art"><ContentIcon name={product.icon as ContentIconName} /><span>{product.badge}</span></div>
                   <div>
                     <small>이번 주 {left}/{product.weeklyLimit}회 남음</small>
@@ -4011,8 +4069,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <p>{product.summary(character)}</p>
                     <span className="reward-row">{grantRewardKinds(product.grant(character)).map((k) => <RewardIcon key={k} kind={k} size={22} />)}</span>
                   </div>
-                  <button type="button" disabled={left <= 0 || redGems < product.gemCost || (!!product.grant(character).allyShards && save.heroes[shardPackTarget] <= 0)} onClick={() => void buyEventProduct(product)}>
-                    {left <= 0 ? "이번 주 한도 소진" : <><GemMark />{product.gemCost}</>}
+                  <button type="button" disabled={left <= 0 || redGems < product.gemCost || character.eventCoins < (product.coinCost ?? 0) || (!!product.grant(character).allyShards && save.heroes[shardPackTarget] <= 0)} onClick={() => void buyEventProduct(product)}>
+                    {left <= 0 ? "이번 주 한도 소진" : product.coinCost ? <><i className="coin-mark" aria-hidden="true" />{product.coinCost}</> : <><GemMark />{product.gemCost}</>}
                   </button>
                 </article>
               );
@@ -4073,7 +4131,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <div className="gacha-card-front">
                       <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}<i>{RARITY_LABEL[r.rarity]}</i>{r.pickup && <i className="pickup">픽업</i>}<i className="star">★{STAR_CAP[r.rarity]}</i></em>
                       {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`}>🔒 S{h.unlockStage}</i>}
-                      <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true">{Array.from({ length: r.rarity === "SSR" ? 8 : 4 }, (_, k) => <i key={k} />)}</i>}</span>
+                      <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true">{Array.from({ length: r.rarity === "SSR" ? 8 : 4 }, (_, k) => <i key={k} />)}</i>}
+{r.duplicate && (() => {
+                        // 중복은 재료 — 다음 성급까지 조각이 얼마나 찼는지 (2026-10-22 아처 키우기 6번). 같은 동료가 뒤에 또 나오면 그 몫은 빼고 차례로 찬다
+                        const later = gachaReveal.slice(i + 1).filter((x) => x.id === r.id && x.duplicate).reduce((a, x) => a + x.shards, 0);
+                        const have = Math.max(0, (character.allyShards[r.id] ?? 0) - later);
+                        const st = Math.max(1, character.allyStars[r.id] ?? 1);
+                        const need = shardCostToNext(r.id, st);
+                        if (need === null) return <em className="dup-progress max">★{st} 최대</em>;
+                        const ready = have >= need;
+                        return (
+                          <em className={`dup-progress ${ready ? "ready" : ""}`}>
+                            <i className="dup-bar"><i style={{ width: `${Math.min(100, (have / need) * 100)}%` }} /></i>
+                            {ready ? `★${st + 1} 승급` : `${have}/${need}`}
+                          </em>
+                        );
+                      })()}
+                      </span>
                       <b>{h.name}</b>
                       <small>{r.duplicate ? `중복 · 조각 +${r.shards}` : "새 동료!"}</small>
                     </div>
@@ -4107,6 +4181,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <li>기본 DPS <b>{h.baseDps.toLocaleString()}</b></li>
                     <li>성급 상한 <b>★{STAR_CAP[r.rarity]}</b> (최대 ×{STAR_MULT[STAR_CAP[r.rarity]]})</li>
                     <li>중복 조각 <b>+{dupe}</b> · 파견 조각 <b>×{expMul}</b></li>
+                    {/* 중복은 재료 — 지금 조각으로 다음 성급까지, 오르면 피해 배율 전 → 후 (2026-10-22 아처 키우기 6번) */}
+                    {r.duplicate && (() => {
+                      const st = Math.max(1, character.allyStars[r.id] ?? 1);
+                      const need = shardCostToNext(r.id, st);
+                      const have = character.allyShards[r.id] ?? 0;
+                      return need === null
+                        ? <li>성급 <b>★{st} 최대</b></li>
+                        : <li className={have >= need ? "dup-ready" : ""}>★{st + 1} 조각 <b>{have}/{need}</b> · 피해 <b>×{STAR_MULT[st]} → ×{STAR_MULT[st + 1]}</b>{have >= need ? " · 동료 탭에서 승급" : ""}</li>;
+                    })()}
                     {!canFieldAlly(h.id, h.unlockStage, fieldCeiling) && <li className="warn">STAGE {h.unlockStage} 지역을 성문 방어로 개척해야 출전</li>}
                   </ul>
                 </div>

@@ -36,6 +36,8 @@ export type EventProduct = {
   badge: string;
   icon: "dodge" | "beat" | "forge" | "hunt";
   gemCost: number;
+  /** 이벤트 코인 가격 — 있으면 보석 대신 코인으로 산다 (2026-10-22 아처 키우기 8번) */
+  coinCost?: number;
   /** 주간 구매 한도 */
   weeklyLimit: number;
   /** 진행도 비례 수량 계산 */
@@ -69,6 +71,22 @@ export const EVENT_PRODUCTS: EventProduct[] = [
     id: "gem-seal-pack", tab: "event-shop", name: "원정 인장 묶음", desc: "성문 방어 칩·스킬 무기를 올리는 인장", badge: "META", icon: "dodge", gemCost: 90, weeklyLimit: 3,
     grant: () => ({ seals: 20 }),
     summary: () => "원정 인장 20 (주 3회)",
+  },
+  // ── 코인 교환 (2026-10-22 아처 키우기 8번) — 사냥 중 몬스터가 떨어뜨린 이벤트 코인으로 산다 ──
+  {
+    id: "coin-stone", tab: "event-shop", name: "코인 교환 · 강화석", desc: "이벤트 코인으로 강화석", badge: "COIN", icon: "forge", gemCost: 0, coinCost: 20, weeklyLimit: 5,
+    grant: () => ({ materials: 25 }),
+    summary: () => "강화석 25",
+  },
+  {
+    id: "coin-shards", tab: "event-shop", name: "코인 교환 · 동료 조각", desc: "원하는 동료 조각", badge: "COIN", icon: "hunt", gemCost: 0, coinCost: 40, weeklyLimit: 3,
+    grant: () => ({ allyShards: 10 }),
+    summary: () => "동료 조각 10(선택)",
+  },
+  {
+    id: "coin-gems", tab: "event-shop", name: "코인 교환 · 보석", desc: "붉은 보석", badge: "COIN", icon: "beat", gemCost: 0, coinCost: 60, weeklyLimit: 2,
+    grant: () => ({ gems: 40 }),
+    summary: () => "보석 40",
   },
   // ── 특별 상점: 성장 가속 ──
   {

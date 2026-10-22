@@ -7,7 +7,7 @@
 import { spawnSync } from "node:child_process";
 
 const NODE_SUITES = ["verify-systems", "verify-content", "verify-payments", "beat-chart-report", "first-session-probe", "audit-anim2-motion", "verify-archer"];
-const BROWSER_SUITES = ["probe-native-boot", "verify-native-parity", "verify-shop", "verify-checklist", "verify-retention", "verify-offers", "verify-gacha", "verify-anim", "verify-anim-clip", "verify-play-art", "verify-dodge-hud", "verify-settings", "verify-skill-cast", "inspect-formation", "inspect-mobile", "verify-qa-unlock", "verify-walk-y", "verify-anim2", "verify-web-frame", "verify-formation", "scan-readability", "verify-card-fold", "verify-archer-play"];
+const BROWSER_SUITES = ["probe-native-boot", "verify-native-parity", "verify-shop", "verify-checklist", "verify-retention", "verify-offers", "verify-gacha", "verify-anim", "verify-anim-clip", "verify-play-art", "verify-dodge-hud", "verify-settings", "verify-skill-cast", "inspect-formation", "inspect-mobile", "verify-qa-unlock", "verify-walk-y", "verify-anim2", "verify-web-frame", "verify-formation", "scan-readability", "verify-card-fold", "verify-archer-play", "verify-archer-play2"];
 const nodeOnly = process.argv.includes("--node");
 const suites = nodeOnly ? NODE_SUITES : [...NODE_SUITES, ...BROWSER_SUITES];
 const failed = [];

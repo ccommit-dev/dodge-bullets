@@ -218,6 +218,8 @@ export type CharacterProgress = {
   discovered: string[];
   /** 기존 저장의 이미 만난 몬스터 · 동료를 발견 목록에 한 번 옮겼는가 (옛 계정이 업데이트 직후 몰아서 받지 않게) */
   discoverySeeded: boolean;
+  /** 이벤트 코인 (titans/eventCoins.ts) — 몬스터가 가끔 떨어뜨린다 · 이벤트 상점 코인 칸에서 쓴다 (2026-10-22 아처 키우기 8번) */
+  eventCoins: number;
 };
 
 export function expForLevel(level: number): number {
@@ -338,6 +340,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     bossLadder: emptyLadder(),
     discovered: [],
     discoverySeeded: false,
+    eventCoins: 0,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -727,6 +730,7 @@ export function normalizeCharacterProgress(
     bossLadder: normalizeLadder((raw as { bossLadder?: unknown }).bossLadder),
     discovered: normalizeDiscovered((raw as { discovered?: unknown }).discovered),
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
+    eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
 }

@@ -415,7 +415,9 @@ const eventShop = await (async () => {
   rmSync(d2, { recursive: true, force: true });
   return mod;
 })();
-ok("이벤트 상점 9종 · 이벤트 탭 4종(인장 묶음 포함) · 특별 탭 5종(등반권 2 포함) · 전부 보석 가격·주간 한도", eventShop.shop.EVENT_PRODUCTS.length === 9 && eventShop.shop.eventProductsFor("event-shop").length === 4 && eventShop.shop.eventProductsFor("event-shop2").length === 5 && eventShop.shop.EVENT_PRODUCTS.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1));
+// 2026-10-22: 이벤트 탭 끝에 코인 교환 3종(보석 0 · 이벤트 코인 가격)
+const gemProducts = eventShop.shop.EVENT_PRODUCTS.filter((p) => !p.coinCost);
+ok("이벤트 상점 보석 상품 9종 · 이벤트 탭 4종(인장 묶음 포함)+코인 교환 3종 · 특별 탭 5종(등반권 2 포함) · 전부 가격·주간 한도", gemProducts.length === 9 && eventShop.shop.eventProductsFor("event-shop").filter((p) => !p.coinCost).length === 4 && eventShop.shop.eventProductsFor("event-shop").filter((p) => p.coinCost).length === 3 && eventShop.shop.eventProductsFor("event-shop2").length === 5 && gemProducts.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1) && eventShop.shop.EVENT_PRODUCTS.every((p) => (p.gemCost > 0 || (p.coinCost ?? 0) > 0) && p.weeklyLimit >= 1));
 ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 30 }).gold > eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 5 }).gold);
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");

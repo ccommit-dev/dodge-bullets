@@ -27,7 +27,8 @@ import {
   computeIdleYield,
   idleCapHours,
 } from "./progression/idle";
-import { HUNTING_AREAS, huntingArea } from "./titans/model";
+import { HUNTING_AREAS, huntingArea, rebirthCrystals, rebirthStartGold } from "./titans/model";
+import { formatWallet } from "./ui/WalletBar";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
 import {
   PET_DEFS,
@@ -210,8 +211,9 @@ export function CharacterStatus({
       return;
     }
     setRebirthConfirm(false);
-    const crystals = Math.max(3, Math.floor(Math.sqrt(progress.titanBestStage) * 3));
-    await rebirthResetTitans(userHash);
+    const crystals = rebirthCrystals(progress.titanBestStage);
+    const startGold = rebirthStartGold(progress.titanBestStage);
+    await rebirthResetTitans(userHash, startGold);
     // retention-4: 환생 직후 축하 제안(환생 세트) — 같은 갱신에서 열어 lost update 방지
     const next = await updateCharacterProgress(userHash, (current) => openMomentOffer({
       ...current,
@@ -228,7 +230,7 @@ export function CharacterStatus({
       claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
     }, "rebirth"));
     onProgressChange(next);
-    setGrowthMessage(`계승 완료 · 결정 +${crystals} (배율 +${(crystals * 0.02).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배`);
+    setGrowthMessage(`계승 완료 · 결정 +${crystals} (배율 +${(crystals * 0.02).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
   };
 
   return (
@@ -513,8 +515,12 @@ export function CharacterStatus({
           <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>비트 · 방치 효율 +3%p</small></button>
         </div>
         <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
-          환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/3 지역`}
+          환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/${needAreas} 지역`}
         </button>
+        {/* 환생하면 무엇을 받는지 먼저 (2026-10-22 아처 키우기 7번) — 전 → 후 */}
+        <p className="rebirth-preview">
+          환생하면 결정 +{rebirthCrystals(progress.titanBestStage)} (방치 배율 +{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)} → +{((progress.inheritanceCrystals + rebirthCrystals(progress.titanBestStage)) * IDLE.multPerCrystal).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배 · 출발 골드 {formatWallet(rebirthStartGold(progress.titanBestStage))} · 대장 사다리 유지
+        </p>
         </div>
         {growthMessage && <p className="growth-message mypage-toast" role="status">{growthMessage}</p>}
       </section>

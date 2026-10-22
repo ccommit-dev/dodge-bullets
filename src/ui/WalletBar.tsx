@@ -6,7 +6,7 @@ import { CurrencyIcon } from "./CurrencyIcon";
  * 돈을 쓰는 화면(원정 정비 · 비트 수련 · 대장간 · 상점 시트)마다 같은 모양으로 맨 위에 둔다.
  * 붉은 보석은 항상 붉은 숫자로 — 예전엔 사냥터 머리 오른쪽 작은 칩 하나뿐이었고, 테스트 빌드에서는 숫자 대신 ∞ 였다.
  */
-export type WalletKind = "gold" | "gem" | "stone" | "seal" | "fame" | "ticket";
+export type WalletKind = "gold" | "gem" | "stone" | "seal" | "fame" | "ticket" | "coin";
 
 export type WalletItem = { kind: WalletKind; amount: number; label?: string };
 
@@ -16,7 +16,7 @@ const ICON: Partial<Record<WalletKind, string>> = {
   ticket: "ui/idle/tower.png",
   fame: "ui/idle/star.png",
 };
-const LABEL: Record<WalletKind, string> = { gold: "골드", gem: "붉은 보석", stone: "강화석", seal: "인장", fame: "명성", ticket: "등반권" };
+const LABEL: Record<WalletKind, string> = { gold: "골드", gem: "붉은 보석", stone: "강화석", seal: "인장", fame: "명성", ticket: "등반권", coin: "이벤트 코인" };
 
 export function formatWallet(n: number): string {
   const v = Math.max(0, Math.floor(n));
@@ -32,7 +32,7 @@ export function WalletBar({ items, onGemTap, testGems = false, className = "" }:
       {items.map((it) => {
         const body = (
           <>
-            {it.kind === "gold" || it.kind === "gem" ? <CurrencyIcon kind={it.kind} /> : <img src={assetUrl(ICON[it.kind] ?? "")} alt="" aria-hidden="true" />}
+            {it.kind === "coin" ? <i className="coin-mark" aria-hidden="true" /> : it.kind === "gold" || it.kind === "gem" ? <CurrencyIcon kind={it.kind} /> : <img src={assetUrl(ICON[it.kind] ?? "")} alt="" aria-hidden="true" />}
             <span className="wallet-text">
               <small>{it.label ?? LABEL[it.kind]}</small>
               <strong data-wallet={it.kind}>{formatWallet(it.amount)}{it.kind === "gem" && testGems && <em className="wallet-test">TEST</em>}</strong>

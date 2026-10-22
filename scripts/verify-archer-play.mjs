@@ -32,6 +32,8 @@ const gemsBefore = (await prog()).redGems;
 await page.evaluate(() => document.querySelectorAll(".acorn-slot")[0].click()); await sleep(150);
 ok("고르면 같은 단계 칸이 '합칠 수 있음'으로", await page.evaluate(() => document.querySelectorAll(".acorn-slot.match").length) === 1);
 await page.evaluate(() => document.querySelectorAll(".acorn-slot")[1].click()); await sleep(900);
+// 보상 팝업은 줄을 서서(몬스터 발견 팝업 뒤) 늦게 뜰 수 있다
+for (let i = 0; i < 28 && !pops.some((t) => /새 도토리 발견/.test(t)); i += 1) await sleep(250);
 const t1 = await tit();
 ok("Lv2 + Lv2 → Lv3 (앞 칸 빔)", t1.acorns.grid[1] === 3 && t1.acorns.grid[0] === 0 && t1.acorns.best === 3, JSON.stringify(t1.acorns.grid.slice(0, 4)));
 ok("새 단계 → '새 도토리 발견' 팝업 + 보석 +30", pops.some((t) => /새 도토리 발견/.test(t)) && (await prog()).redGems - gemsBefore >= 30, `보석 ${gemsBefore} → ${(await prog()).redGems}`);
