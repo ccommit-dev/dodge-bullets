@@ -73,13 +73,16 @@ ok("공시: 상점 전용 동료(루나·볼트) 제외", !r.rows.some((t) => /�
 await clickText(".gacha-rates-sheet button", "닫기");
 await sleep(300);
 const gemsBefore = (await prog()).redGems;
+const discoveredBefore = new Set(((await prog()).discovered ?? []).filter((k) => k.startsWith("ally:"))).size;
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(2000); // 소환진 1.2s 후 카드 공개
 r = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, fronts: [...document.querySelectorAll(".gacha-card-front b")].map((b) => b.textContent), labels: [...document.querySelectorAll(".gacha-card-front small")].map((s) => s.textContent) }));
 let p = await prog();
 let t = await titans();
 ok("10연 → 카드 10장 연출", r.cards === 10, String(r.cards));
-ok("보석 −900 · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
+// 2026-10-22: 처음 합류한 동료마다 첫 발견 보상 +50 보석(titans/discovery) — 그만큼 덜 줄어든다
+const discoveryGems = 50 * new Set((p.discovered ?? []).filter((k) => k.startsWith("ally:"))).size;
+ok("보석 −900(+ 새 동료 첫 발견 50씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 - discoveryGems + discoveredBefore * 50 && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
 ok("10연 SR 이상 1명 이상 (보장)", r.fronts.length === 10 && (await page.evaluate(() => [...document.querySelectorAll(".gacha-card")].some((c) => /rarity-sr|rarity-ssr/.test(c.className)))));
 const newNames = r.labels.filter((l) => /새 동료/.test(l)).length;
 const dupShards = r.labels.filter((l) => /조각 \+/.test(l)).length;

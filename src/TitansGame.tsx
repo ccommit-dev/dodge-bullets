@@ -69,6 +69,10 @@ import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
+import { ACORN_MAKE_SEC, acornMul, acornName, equipAcorn, freeSlots, mergeAcorns, tickAcorns } from "./titans/acorns";
+import { AcornPanel } from "./titans/AcornPanel";
+import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
+import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
   ALLY_ELEMENT,
@@ -151,7 +155,7 @@ type TitansGameProps = {
 
 /** 사냥 저장의 숙련 → 파츠 숙련표 (2026-10-14) */
 const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
-type ShopTab = "sword" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+type ShopTab = "sword" | "acorn" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 /**
  * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
@@ -344,6 +348,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [buyAmount, setBuyAmount] = useState<1 | 10 | 0>(1);
   /** 펼친 카드(동료 · 스킬) — 접힌 카드는 이름 · 한 줄 · 오른쪽 주 버튼 하나만, 누르면 설명 · 보조 버튼 (2026-10-22, 사용자: "버튼과 글자가 너무 많다 · 버튼은 최대한 우측") */
   const [openCard, setOpenCard] = useState<string | null>(null);
+  /** 도토리 — 다음 도토리까지 쌓인 초(저장은 하나 만들 때만) · 진행 표시(도토리 탭일 때만 갱신) (2026-10-22 아처 키우기 1번) */
+  const acornAccRef = useRef(0);
+  const tabRef = useRef<ShopTab>("sword");
+  const [acornProgress, setAcornProgress] = useState(0);
+  const acornProgAtRef = useRef(0);
+  /** 보상 팝업 — 첫 발견 · 대장 사다리 (2026-10-22 아처 키우기 3 · 4번) */
+  const [rewardPop, setRewardPop] = useState<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder"; key: number } | null>(null);
+  const discoveredLocalRef = useRef(new Set<string>());
   const toggleCard = (id: string) => (e: { target: EventTarget | null }) => { if ((e.target as Element | null)?.closest?.("button, select, a, input")) return; setOpenCard((cur) => (cur === id ? null : id)); };
   /**
    * 자동 강화 (2026-10-21, 사용자: "오늘도 환생2 처럼 장비 성장 UI에 자동으로 업그레이드 모드를 추가해줘") — 켜 두면 장비 성장 탭이 열려 있는 동안
@@ -520,6 +532,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   useEffect(() => {
     characterRef.current = character;
   }, [character]);
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
   useEffect(() => {
     waveRef.current = wave;
   }, [wave]);
@@ -727,6 +742,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setEquippedShoulder(progress.equippedShoulder);
       setSkillPoints(progress.skillPoints);
       setRedGems(progress.redGems);
+      if (!progress.discoverySeeded) {
+        const seeded = [
+          ...Object.entries(progress.monsterKills).filter(([, n]) => (n ?? 0) > 0).map(([k]) => discoveryKey("monster", k)),
+          ...HEROES.filter((h) => (loaded.heroes[h.id] ?? 0) > 0).map((h) => discoveryKey("ally", h.id)),
+          ...Array.from({ length: Math.max(0, loaded.acorns.best) }, (_, i) => discoveryKey("acorn", i + 1)),
+        ];
+        void updateCharacterProgress(userHash, (cur) => ({ ...cur, discoverySeeded: true, discovered: [...new Set([...cur.discovered, ...seeded])] })).then(setCharacter);
+      }
 
       // 오프라인 10분 이상일 때만 정산 화면과 보상을 만든다.
       // 짧은 새로고침·콘텐츠 이동은 보상 수령 시각도 변경하지 않는다.
@@ -860,6 +883,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return () => cancelAnimationFrame(raf);
   }, [ready]);
 
+  const showRewardPop = (tone: "discovery" | "ladder", kicker: string, title: string, detail: string) => {
+    const key = Date.now() + Math.random();
+    setRewardPop({ tone, kicker, title, detail, key });
+    window.setTimeout(() => setRewardPop((cur) => (cur?.key === key ? null : cur)), 2800);
+  };
+  /** 첫 발견 — 처음 한 번만 보석 + 팝업 (titans/discovery.ts). 옮겨 담기(seeded) 전에는 주지 않는다 */
+  const discover = (kind: DiscoveryKind, id: string | number, name: string) => {
+    const key = discoveryKey(kind, id);
+    const c = characterRef.current;
+    if (!c.discoverySeeded || c.discovered.includes(key) || discoveredLocalRef.current.has(key)) return;
+    discoveredLocalRef.current.add(key);
+    const gems = discoveryGems(kind, id);
+    void updateCharacterProgress(userHash, (cur) => (cur.discovered.includes(key) ? cur : { ...cur, discovered: [...cur.discovered, key], redGems: cur.redGems + gems }))
+      .then((next) => { setCharacter(next); setRedGems(next.redGems); });
+    showRewardPop("discovery", discoveryTitle(kind), name, gems > 0 ? `첫 발견 보상 · 보석 +${gems}` : "도감에 기록");
+  };
   const flash = (msg: string) => {
     setToast(msg);
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
@@ -1112,6 +1151,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 몬스터 도감 (LIVEOPS §2.3) — 종별 카운트는 배치로 모아 보스 클리어 때 플러시.
       // 킬마다 storage 쓰기를 하면 저장 부하가 크다.
       const killedKind = monsterKind(s.stage, wasBoss, chestRef.current);
+      discover("monster", killedKind, monsterLabel(killedKind, chestRef.current, s.stage));
       killCountsRef.current[killedKind] = (killCountsRef.current[killedKind] ?? 0) + 1;
       if (wasBoss) {
         bossFailStreakRef.current = 0;
@@ -1138,6 +1178,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           petGold *
           warmupMult *
           gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).goldMul *   // 갑옷 (equipment/parts)
+          ladderEffects(characterRef.current.bossLadder).goldMul *   // 대장 사다리 (2026-10-22)
           (firstClearToday ? 2 : 1),
       );
       if (firstClearToday) {
@@ -1213,6 +1254,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (wasBoss) {
         setBossReady(false);
         const clearedStage = s.stage;
+        // 대장 사다리 (2026-10-22 아처 키우기 3번) — 처음 깬 대장 높이마다 영구 특성 한 칸
+        const climbed = climbLadder(characterRef.current.bossLadder, clearedStage);
+        if (climbed.perk) {
+          const perk = climbed.perk;
+          const detail = perkLabel(characterRef.current.bossLadder, perk);
+          void updateCharacterProgress(userHash, (cur) => ({ ...cur, bossLadder: climbLadder(cur.bossLadder, clearedStage).ladder })).then(setCharacter);
+          later(() => showRewardPop("ladder", `대장 사다리 Lv.${ladderLevel(climbed.ladder)}`, `${LADDER_LABEL[perk]} 영구 상승`, detail), 500);
+        }
         // 보스 처치 보상은 막혀도 그대로 준다 — 잡은 건 잡은 것이다.
         void grantCharacterReward(userHash, `titans:${clearedStage}:${Date.now()}`, {
           exp: PROGRESSION_BALANCE.titans.bossExpBase + clearedStage * 8,
@@ -1333,7 +1382,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const inv = saveRef.current.skillInventory;
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
-    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg);
+    // × 대장 사다리 탭 피해 × 번개 강화(1 + 0.12·단계) — 2026-10-22 아처 키우기 2 · 3번
+    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * (1 + 0.12 * saveRef.current.lightningLevel);
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
@@ -1389,9 +1439,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
       // 동료 배율 = 고무 버프(댐 방벽 북소리·번개 합주·별빛 피날레) × 숲의 공명(패시브)
       const war = (now < buff.warcryUntil ? buff.warMult : 1) * (1 + passive.allyDmg);
+      if (document.visibilityState !== "hidden") {
+        // 도토리 (2026-10-22 아처 키우기 1번) — 사냥터 화면이 보이는 동안 만든다(걷기 · 처치 연출 중에도 — 교전만 세면 센 동료일수록 거의 안 생겼다). 하나가 찰 때만 저장(setSave)
+        if (freeSlots(saveRef.current.acorns) > 0) {
+          acornAccRef.current += dt;
+          if (saveRef.current.acorns.acc + acornAccRef.current >= ACORN_MAKE_SEC) {
+            const add = acornAccRef.current;
+            acornAccRef.current = 0;
+            setSave((prev) => ({ ...prev, acorns: tickAcorns(prev.acorns, add) }));
+          }
+        }
+        if (tabRef.current === "acorn" && now - acornProgAtRef.current > 400) {
+          acornProgAtRef.current = now;
+          setAcornProgress(Math.min(1, (saveRef.current.acorns.acc + acornAccRef.current) / ACORN_MAKE_SEC));
+        }
+      }
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         // 급류 연타(가속) — 영웅 자동 공격 간격 단축
-        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1) / (1 + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).autoSpeed);   // ÷ 신발
+        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1) / (1 + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).autoSpeed) / ladderEffects(characterRef.current.bossLadder).speedMul;   // ÷ 신발 · ÷ 대장 사다리 공속
         // 화상(불꽃 장작 타·용암 북 울림) — 0.5초 단위로 몰아서 넣어 피해 숫자 도배를 막는다
         if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
           burnAcc.current += dt;
@@ -1441,7 +1506,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
           if (isSig && sig.fx === "quake" && bossRef.current) { const until = performance.now() + SIG_QUAKE_FREEZE_MS; buffsRef.current = { ...buffsRef.current, freezeUntil: Math.max(buffsRef.current.freezeUntil, until) }; setBuffs((b) => ({ ...b, freezeUntil: Math.max(b.freezeUntil, until) })); }
-          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul;
+          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * acornMul(saveRef.current.acorns.allyAmmo[h.id]) * ladderEffects(characterRef.current.bossLadder).allyMul;   // × 도토리 · 대장 사다리 (2026-10-22)
           const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
           if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
           const land = () => applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
@@ -1645,7 +1710,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       gold: prev.gold - quote.cost,
       equipmentTraining: { ...prev.equipmentTraining, [key]: prev.equipmentTraining[key] + quote.count },
     }));
-    flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}`);
+    const fw = Math.floor(forgedWeaponLevel * 1.5);
+    flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}${slot === "weapon" ? ` · 탭 피해 ${formatGold(tapDamage(level + fw))} → ${formatGold(tapDamage(level + quote.count + fw))}` : ""}`);
   };
 
   // 자동 강화 루프 — 저장은 함수형 setSave 안에서 다시 계산(같은 틱에 두 번 사지 않게), 표시는 마지막으로 산 칸만 반짝
@@ -1781,6 +1847,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setSave((prev) => ({ ...prev, heroes: { ...prev.heroes, [id]: 1 } }));
     setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
     flash(`${def.name} 합류! (★1)`);
+    discover("ally", id, def.name);
   };
 
   /**
@@ -1815,6 +1882,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (!paid) return;
     setCharacter(next);
     setRedGems(next.redGems);
+    for (const id of newIds) discover("ally", id, HEROES.find((h) => h.id === id)?.name ?? id);
     if (newIds.length > 0) {
       setSave((cur) => {
         const heroes = { ...cur.heroes };
@@ -2101,7 +2169,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       gold: prev.gold - quote.cost,
       heroes: { ...prev.heroes, [id]: prev.heroes[id] + quote.count },
     }));
-    flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}`);
+    // 레벨업은 DPS 전후를 같이 (2026-10-22 "효과가 안 보이는 강화" 피하기)
+    const stars = starMultiplier(effectiveStars(character.allyStars[id], Math.max(1, lv + quote.count)));
+    flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""} · DPS ${formatGold(heroDps(def, lv) * stars)} → ${formatGold(heroDps(def, lv + quote.count) * stars)}`);
+    if (lv === 0) discover("ally", id, def.name);
     if (lv === 0) {
       setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
       pushFxAt("ally", id, 0.5, 0.5, 36, 58, def.hue);
@@ -3006,6 +3077,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             }}
           >
             보스 도전하기
+            {perkForStage(character.bossLadder, save.stage) && <small className="boss-ladder-hint">처치 시 {LADDER_LABEL[perkForStage(character.bossLadder, save.stage)!]} 영구 +</small>}
           </button>
         )}
         {/* L 보상형 광고: 보스 실패 후 +10초 — 미연동이면 자리 없음 */}
@@ -3129,6 +3201,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <button type="button" className={tab === "sword" ? "on" : ""} aria-expanded={growthOpen && tab === "sword"} onClick={() => { setGrowthOpen((o) => (tab === "sword" ? !o : true)); setTab("sword"); }}>
           장비 성장
         </button>
+        <button type="button" className={tab === "acorn" ? "on" : ""} aria-expanded={growthOpen && tab === "acorn"} onClick={() => { setGrowthOpen((o) => (tab === "acorn" ? !o : true)); setTab("acorn"); }}>
+          도토리{freeSlots(save.acorns) === 0 && <i className="tab-dot" aria-label="칸이 가득" />}
+        </button>
         <button type="button" className={tab === "skills" ? "on" : ""} aria-expanded={growthOpen && tab === "skills"} onClick={() => { setGrowthOpen((o) => (tab === "skills" ? !o : true)); setTab("skills"); }}>
           스킬
         </button>
@@ -3199,6 +3274,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           ) : null;
         })()}
       <section className="titans-shop">
+        {tab === "acorn" && (
+          <AcornPanel
+            state={save.acorns}
+            progress={acornProgress}
+            party={character.partyIds.map((id) => ({ id, name: HEROES.find((h) => h.id === id)?.name ?? id }))}
+            onMerge={(from, to) => {
+              const r = mergeAcorns(saveRef.current.acorns, from, to);
+              if (!r) return;
+              setSave((prev) => { const rr = mergeAcorns(prev.acorns, from, to); return rr ? { ...prev, acorns: rr.state } : prev; });
+              if (r.isNewBest) discover("acorn", r.made, `${acornName(r.made)} Lv.${r.made}`);
+            }}
+            onEquip={(slot, ally) => {
+              const before = saveRef.current.acorns.allyAmmo[ally] ?? 0;
+              const lvNew = saveRef.current.acorns.grid[slot];
+              setSave((prev) => { const st = equipAcorn(prev.acorns, slot, ally); return st ? { ...prev, acorns: st } : prev; });
+              flash(`${HEROES.find((h) => h.id === ally)?.name ?? ""} 도토리 Lv.${lvNew} · 피해 ×${acornMul(before).toFixed(2)} → ×${acornMul(lvNew).toFixed(2)}`);
+            }}
+          />
+        )}
         {tab === "sword" && (
           <button
             type="button"
@@ -3231,7 +3325,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <article key={autoTrainHit?.slot === "weapon" ? `w${autoTrainHit.seq}` : "w"} className={`titans-card equipment-training-card ${autoTrainHit?.slot === "weapon" ? "auto-hit" : ""}`}>
               <div className="training-item-icon weapon">{weaponKind === "drum" ? <SwordArt level={Math.min(15, forgedWeaponLevel)} hue={tierAt(Math.min(15, forgedWeaponLevel)).hue} name="장착 대검" /> : <img src={assetUrl(`titans/gear/${weaponKind}-${forgedWeaponLevel >= 10 ? 3 : forgedWeaponLevel >= 5 ? 2 : 1}.png`)} alt="" aria-hidden="true" />}</div>
               <div>
-                <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>기본 공격력·자동 공격 속도·치명타 성장 · 다음 {formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</p>
+                <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>탭 피해 {formatGold(tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)))} → {formatGold(tapDamage(save.equipmentTraining.weaponMastery + 1 + Math.floor(forgedWeaponLevel * 1.5)))} · 다음 {formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</p>
                 {/* 무기 종류 (2026-10-15) — 북 · 활 · 지팡이. 강화 단계는 대장간(북 / 원정 무기) */}
                 <span className="weapon-kind-chips" role="group" aria-label="주인공 무기">
                   {([["drum", "북", drumLevel], ["bow", "활", Math.round(((character.expeditionWeaponForge?.bow ?? 0) * 15) / 20)], ["staff", "지팡이", Math.round(((character.expeditionWeaponForge?.staff ?? 0) * 15) / 20)]] as const).map(([k, label, lv]) => (
@@ -3507,7 +3601,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       ? `보석 상점 전용 동료 · ${h.attackType}`
                       : locked
                         ? `STAGE ${h.unlockStage} 해금 · ${h.attackType}`
-                        : `${h.attackType} · ${h.attackInterval.toFixed(2)}초 · DPS ${formatGold(heroDps(h, lv || 1) * mult)}`}
+                        : `${h.attackType} · DPS ${formatGold(heroDps(h, lv || 1) * mult * acornMul(save.acorns.allyAmmo[h.id]))}${lv > 0 ? ` → ${formatGold(heroDps(h, lv + 1) * mult * acornMul(save.acorns.allyAmmo[h.id]))}` : ""}${(save.acorns.allyAmmo[h.id] ?? 0) > 0 ? ` · 도토리 Lv.${save.acorns.allyAmmo[h.id]}` : ""}`}
                   </p>
                   <small className="ally-feature">{h.feature}</small>
                   <AllySigInfo hero={h} />
@@ -3938,6 +4032,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       </nav>
 
       {toast && <div className="titans-toast">{toast}</div>}
+      {rewardPop && (
+        <div key={rewardPop.key} className={`reward-pop tone-${rewardPop.tone}`} role="status">
+          <small>{rewardPop.kicker}</small>
+          <b>{rewardPop.title}</b>
+          {rewardPop.detail && <em>{rewardPop.detail}</em>}
+        </div>
+      )}
 
       {/* 소환진 (계획안 E) — 등급 예고 색(파랑 R · 보라 SR · 금 SSR)으로 1.2초 기대감을 만든 뒤 카드 공개 */}
       {gachaSummoning && (

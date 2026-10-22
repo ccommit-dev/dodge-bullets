@@ -547,3 +547,53 @@
 .event-card .mission-card { box-shadow: inset 5px 0 0 #8b5cf6 !important; }
 .character-page .mypage-tabs button { font-size: 13.5px !important; white-space: nowrap !important; padding-left: 2px !important; padding-right: 2px !important; letter-spacing: -.03em; }
 .ally-stars i.on { color: #a14a05 !important; }
+
+/* ═══════════ 아처 키우기 차용 (2026-10-22) — 도토리 합성 · 대장 사다리 · 첫 발견 ═══════════ */
+/* 도토리 합성 판 */
+.acorn-panel { grid-column: 1 / -1; display: grid; gap: 10px; padding: 12px; border: 2px solid var(--rd-ink); border-radius: 16px; background: linear-gradient(180deg, #fff1c7 0, #fff8e6 80px); box-shadow: inset 5px 0 0 #b98a16, 0 3px 0 var(--flat-cream-2, #e8cf9f); color: var(--rd-ink); }
+.acorn-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.acorn-head > div { display: grid; gap: 2px; min-width: 0; }
+.acorn-head b { font-size: 16px; }
+.acorn-head small { font-size: 13px; color: var(--rd-mute); }
+.acorn-make { position: relative; flex: 0 0 132px; height: 30px; overflow: hidden; border: 2px solid rgba(59, 36, 21, .35); border-radius: 999px; background: #f3dfb3; }
+.acorn-make i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #f5c96a, #e8a43a); transition: width .4s linear; }
+.acorn-make em { position: relative; display: grid; place-items: center; height: 100%; font-style: normal; font-size: 13px; font-weight: 800; color: var(--rd-ink); white-space: nowrap; }
+.acorn-make.is-full { border-color: #dc2626; }
+.acorn-make.is-full em { font-size: 12.5px; color: #991b1b; }
+.acorn-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.acorn-slot { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 2px solid rgba(59, 36, 21, .3); border-radius: 14px; background: #fbeccb; cursor: pointer; transition: transform .12s, border-color .12s, box-shadow .12s; }
+.acorn-slot.empty { background: repeating-linear-gradient(135deg, #f6e4bd 0 8px, #f1dcb0 8px 16px); border-style: dashed; }
+.acorn-slot img { width: 62%; height: 62%; object-fit: contain; filter: none; }
+.acorn-slot b { position: absolute; right: 5px; bottom: 3px; min-width: 22px; padding: 0 5px; border-radius: 999px; background: var(--rd-ink); color: #fff6dc; font-size: 13px; line-height: 20px; text-align: center; }
+.acorn-slot.pair { border-color: #e8a43a; box-shadow: 0 0 0 2px rgba(245, 201, 106, .55); }
+.acorn-slot.picked { transform: translateY(-3px) scale(1.04); border-color: #2b72d6; box-shadow: 0 0 0 3px rgba(43, 114, 214, .35), 0 4px 0 rgba(59, 36, 21, .2); background: #e7f0ff; }
+.acorn-slot.match { border-color: #22a35a; box-shadow: 0 0 0 3px rgba(34, 163, 90, .4); animation: acorn-match 0.9s ease-in-out infinite alternate; }
+@keyframes acorn-match { to { transform: scale(1.05); } }
+.acorn-pop { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); color: #15803d; font-style: normal; font-weight: 900; font-size: 16px; pointer-events: none; animation: acorn-pop .7s ease-out forwards; }
+@keyframes acorn-pop { from { opacity: 1; transform: translate(-50%, 6px) scale(.8); } to { opacity: 0; transform: translate(-50%, -18px) scale(1.2); } }
+.acorn-allies { display: grid; gap: 6px; }
+.acorn-allies > small { font-size: 13px; color: var(--rd-ink2); font-weight: 700; }
+.acorn-allies > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.acorn-ally { display: grid; gap: 1px; padding: 8px 10px; border: 2px solid rgba(59, 36, 21, .3); border-radius: 12px; background: #fff8e6; color: var(--rd-ink); text-align: left; }
+.acorn-ally b { font-size: 14px; }
+.acorn-ally span { font-size: 13px; color: var(--rd-mute); }
+.acorn-ally em { font-style: normal; font-size: 13px; font-weight: 900; color: #15803d; }
+.acorn-ally:disabled { opacity: 1; }
+.acorn-ally.ready { border-color: #2b72d6; background: #eef4ff; }
+.acorn-ally.up { border-color: #22a35a; background: #e3f7e9; }
+.acorn-empty-party { font-size: 13px; color: var(--rd-mute); }
+.titans-growth-tabs .tab-dot { display: inline-block; width: 8px; height: 8px; margin-left: 4px; border-radius: 50%; background: #dc2626; vertical-align: 2px; }
+/* 대장 도전 단추 아래 영구 보상 한 줄 */
+.titans-boss-challenge .boss-ladder-hint { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 800; opacity: .95; }
+/* 보상 팝업 — 첫 발견(초록) · 대장 사다리(금) */
+.reward-pop { position: fixed; left: 50%; top: calc(18% + env(safe-area-inset-top)); z-index: 95; display: grid; gap: 2px; min-width: 220px; max-width: min(88vw, 360px); padding: 12px 18px 14px; border: 3px solid var(--rd-ink); border-radius: 18px; text-align: center; color: var(--rd-ink); transform: translateX(-50%); box-shadow: 0 5px 0 rgba(59, 36, 21, .35), 0 14px 30px rgba(0, 0, 0, .35); pointer-events: none; animation: reward-pop-in .5s cubic-bezier(.2, 1.4, .4, 1) both, reward-pop-out .4s ease-in 2.4s forwards; }
+.reward-pop.tone-discovery { background: linear-gradient(180deg, #e3f7e9, #fff8e6); }
+.reward-pop.tone-ladder { background: linear-gradient(180deg, #ffe7a3, #fff8e6); }
+.reward-pop small { font-size: 13px; font-weight: 900; letter-spacing: .04em; color: #92400e; }
+.reward-pop.tone-discovery small { color: #15803d; }
+.reward-pop b { font-size: 19px; }
+.reward-pop em { font-style: normal; font-size: 14px; font-weight: 800; color: var(--rd-ink2); }
+@keyframes reward-pop-in { from { opacity: 0; transform: translate(-50%, 16px) scale(.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes reward-pop-out { to { opacity: 0; transform: translate(-50%, -10px); } }
+@media (prefers-reduced-motion: reduce) { .reward-pop, .acorn-slot.match, .acorn-pop { animation: none !important; } }
+.titans-field:not(.lanes-wide) .battle-alert-stack > *:nth-child(n+2) { display: none !important; }   /* 낮은 전장 — 알림 칩은 맨 위 하나만(주인공과 겹치지 않게 · 덜 조잡하게) */

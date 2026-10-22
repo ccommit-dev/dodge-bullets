@@ -1,4 +1,5 @@
 import { emptyHuntMods, type HuntMods } from "./huntPerks";
+import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
 import { assetUrl } from "../asset";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
@@ -107,6 +108,10 @@ export type TitansSave = {
   huntMods: HuntMods;
   /** 아직 안 고른 사냥 강화 선택권 — 보스 처치마다 +1, 최대 HUNT_PICK_CAP */
   huntPicks: number;
+  /** 도토리 탄약 합성 (2026-10-22, titans/acorns.ts) */
+  acorns: AcornState;
+  /** 탭 번개 강화 단계 (2026-10-22) — 탭 피해 ×(1 + 0.12·단계) · 번개 연출 */
+  lightningLevel: number;
 };
 
 export const MOBS_PER_STAGE = 10;
@@ -303,6 +308,8 @@ export function defaultTitansSave(): TitansSave {
     lastActiveAt: Date.now(),
     huntMods: emptyHuntMods(),
     huntPicks: 0,
+    acorns: emptyAcorns(),
+    lightningLevel: 0,
   };
 }
 
@@ -365,6 +372,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     // 사냥 강화 3택은 뺐다(2026-10-21, 사용자: "사냥터에서도 3개중 하나 선택하는 내용은 제거") — 남은 강화 · 선택권도 중립으로
     huntMods: emptyHuntMods(),
     huntPicks: 0,
+    acorns: normalizeAcorns((value as { acorns?: unknown }).acorns),
+    lightningLevel: n((value as { lightningLevel?: unknown }).lightningLevel, 0, 500),
   };
 }
 
@@ -403,7 +412,9 @@ export function stageClearBonus(stage: number): number {
 
 export function tapDamage(swordLevel: number): number {
   // 하한 2 — 첫 탭이 1이면 초반 몬스터(HP 7~14)를 10번 넘게 눌러야 해 첫 60초가 늘어진다
-  return Math.max(2, Math.floor(1.2 * Math.pow(1.145, swordLevel - 1)));
+  // 단계마다 최소 +1 (2026-10-22, 아처 키우기 "효과가 안 보이는 강화" 피하기) — 예전 floor(1.2·1.145^n) 는 Lv1~6 이 전부 2 라 무기 숙련을 올려도 탭 피해가 그대로였다.
+  // 지수 성장은 그대로 두고 단계만큼 더해 초반에도 숫자가 오른다(후반은 지수 항이 압도해 거의 같다)
+  return Math.max(2, Math.floor(1 + swordLevel + 1.2 * (Math.pow(1.145, swordLevel - 1) - 1)));
 }
 
 export function swordUpgradeCost(level: number): number {
