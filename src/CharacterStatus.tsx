@@ -5,7 +5,7 @@ import { loadBeatRpg } from "./game/storage";
 import { skillTotal, SKILL_LABEL, type BeatRpgProgress, type SkillId } from "./beat/rpg";
 import { loadForgeSave } from "./forge/storage";
 import { defaultForgeSave, tierAt, type ForgeSave } from "./forge/model";
-import { loadTitansSave, rebirthResetTitans } from "./titans/storage";
+import { loadTitansSave } from "./titans/storage";
 import {
   HEROES,
   defaultTitansSave,
@@ -29,6 +29,7 @@ import {
 } from "./progression/idle";
 import { HUNTING_AREAS, huntingArea, rebirthCrystals, rebirthStartGold } from "./titans/model";
 import { formatWallet } from "./ui/WalletBar";
+import { canRebirthNow, performRebirth, rebirthNeedAreas } from "./progression/rebirth";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
 import {
   PET_DEFS,
@@ -48,7 +49,6 @@ import { bestiaryEntries, bestiaryThumb } from "./titans/bestiary";
 import { assetUrl } from "./asset";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
-import { openMomentOffer } from "./economy/momentOffers";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
 
@@ -149,12 +149,14 @@ export function CharacterStatus({
   // 환생 리워크 (LIVEOPS §1.4): 스테이지 숫자 대신 "벽에 부딪힌 지역 수"가 조건.
   // 벽 도달은 TitansGame이 wallAreas에 기록한다 — 유저 입장에선 "2개 지역에서 한계를
   // 본 뒤 다시 태어난다"는 서사가 Stage 30보다 명확하다.
-  // 3 → 2: 밸런스 시뮬에서 15~30일이 Stage 29 정체였고 환생이 30일에야 1회 — 2개 지역이면 개척 완료(9일) 직후 열린다
-  const REBIRTH_WALL_AREAS = 2;
-  // 첫 환생 뒤에는 **한 지역**이면 된다 — 환생이 벽 기록을 비우고 다시 오르면 마지막 지역에서만 막히므로, "2개 지역"을
-  // 계속 요구하면 두 번째 환생이 영원히 불가능했다 (30일 시뮬: 14일째부터 16일간 Stage 33 정체, 2026-10-01)
-  const needAreas = progress.rebirthCount >= 1 ? 1 : REBIRTH_WALL_AREAS;
-  const canRebirth = progress.wallAreas.length >= needAreas;
+  // 지역 수 · 환생 처리는 progression/rebirth.ts (사냥터 자동 환생과 같이 쓴다)
+  const needAreas = rebirthNeedAreas(progress);
+  const canRebirth = canRebirthNow(progress);
+  const toggleAutoRebirth = async () => {
+    const next = await updateCharacterProgress(userHash, (current) => ({ ...current, autoRebirth: !current.autoRebirth }));
+    onProgressChange(next);
+    setGrowthMessage(next.autoRebirth ? "자동 환생 켜짐 — 사냥터에서 벽 조건을 채우면 바로 환생하고 1층부터 다시 오릅니다" : "자동 환생 꺼짐");
+  };
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
     if (progress.rebirthCount < 1 || progress.evolutionPoints < 1) {
@@ -211,24 +213,7 @@ export function CharacterStatus({
       return;
     }
     setRebirthConfirm(false);
-    const crystals = rebirthCrystals(progress.titanBestStage);
-    const startGold = rebirthStartGold(progress.titanBestStage);
-    await rebirthResetTitans(userHash, startGold);
-    // retention-4: 환생 직후 축하 제안(환생 세트) — 같은 갱신에서 열어 lost update 방지
-    const next = await updateCharacterProgress(userHash, (current) => openMomentOffer({
-      ...current,
-      rebirthCount: current.rebirthCount + 1,
-      inheritanceCrystals: current.inheritanceCrystals + crystals,
-      evolutionPoints: current.evolutionPoints + 1,
-      // 벽 기록은 소모 — 다음 환생도 다시 2개 지역의 벽을 봐야 한다
-      wallAreas: [],
-      // 동료 레벨이 리셋되므로 편성·파견도 비운다 (partyCap 하한과 펫은 보존)
-      partyIds: [],
-      expeditions: [],
-      // 복귀 버프: 24시간 방치 산출 2배 (P1 따라잡기와 함께 재등반을 가속)
-      idleBoostUntil: Date.now() + 24 * 3600 * 1000,
-      claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
-    }, "rebirth"));
+    const { next, crystals, startGold } = await performRebirth(userHash, progress);   // progression/rebirth.ts — 사냥터 자동 환생과 같은 길
     onProgressChange(next);
     setGrowthMessage(`계승 완료 · 결정 +${crystals} (배율 +${(crystals * 0.02).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
   };
@@ -516,6 +501,10 @@ export function CharacterStatus({
         </div>
         <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
           환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/${needAreas} 지역`}
+        </button>
+        {/* 자동 환생 (2026-10-22 아처 키우기 7번 — "언제까지 환생하냐, 귀찮다") */}
+        <button type="button" className={`auto-rebirth-toggle ${progress.autoRebirth ? "on" : ""}`} role="switch" aria-checked={progress.autoRebirth} onClick={() => void toggleAutoRebirth()}>
+          <i aria-hidden="true" /><span><b>자동 환생</b><small>벽 조건을 채우면 사냥터에서 바로 환생</small></span>
         </button>
         {/* 환생하면 무엇을 받는지 먼저 (2026-10-22 아처 키우기 7번) — 전 → 후 */}
         <p className="rebirth-preview">

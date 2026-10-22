@@ -220,6 +220,8 @@ export type CharacterProgress = {
   discoverySeeded: boolean;
   /** 이벤트 코인 (titans/eventCoins.ts) — 몬스터가 가끔 떨어뜨린다 · 이벤트 상점 코인 칸에서 쓴다 (2026-10-22 아처 키우기 8번) */
   eventCoins: number;
+  /** 자동 환생 (progression/rebirth.ts) — 켜면 사냥터에서 벽 조건을 채우는 순간 환생 (2026-10-22 아처 키우기 7번) */
+  autoRebirth: boolean;
 };
 
 export function expForLevel(level: number): number {
@@ -341,6 +343,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     discovered: [],
     discoverySeeded: false,
     eventCoins: 0,
+    autoRebirth: false,
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -731,6 +734,7 @@ export function normalizeCharacterProgress(
     discovered: normalizeDiscovered((raw as { discovered?: unknown }).discovered),
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
     eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),
+    autoRebirth: (raw as { autoRebirth?: unknown }).autoRebirth === true,
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
 }

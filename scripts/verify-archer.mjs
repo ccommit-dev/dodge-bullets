@@ -16,10 +16,11 @@ writeFileSync(entry, [
   `export * as prog from "${root}/src/progression/model";`,
   `export * as coins from "${root}/src/titans/eventCoins";`,
   `export * as shop from "${root}/src/economy/eventShop";`,
+  `export * as gacha from "${root}/src/titans/gacha";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S } = await import(pathToFileURL(out).href);
+const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S, gacha: G } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 let fails = 0;
@@ -76,6 +77,18 @@ ok("코인 드롭 빈도: 2만 마리에 약 600번(±150) · 평균 2개", n > 
 const coinProducts = S.eventProductsFor("event-shop").filter((p) => p.coinCost);
 ok("이벤트 상점에 코인 교환 칸 3개 · 보석 값 0", coinProducts.length === 3 && coinProducts.every((p) => p.gemCost === 0 && p.weeklyLimit > 0));
 ok("캐릭터 진행에 이벤트 코인(기본 0 · 정규화)", P.emptyCharacterProgress().eventCoins === 0 && P.normalizeCharacterProgress({ eventCoins: 42 }).eventCoins === 42 && P.normalizeCharacterProgress({ eventCoins: -5 }).eventCoins === 0);
+
+// ── 5'. 첫 10연 최고 등급 확정 · 깜짝 선물 ──
+const pool = G.gachaPool(40, 6);
+const top = pool.entries.some((e) => e.rarity === "SSR") ? "SSR" : "SR";
+let firstOk = 0, plainMiss = 0;
+for (let i = 0; i < 300; i += 1) {
+  if (G.pullTen(pool, {}, 0, Math.random, true).results.some((r) => r.rarity === top)) firstOk += 1;
+  if (!G.pullTen(pool, {}, 0, Math.random, false).results.some((r) => r.rarity === top)) plainMiss += 1;
+}
+ok(`첫 10연은 늘 최고 등급(${top}) 1명 이상 · 보통 10연은 아닐 때가 있다`, firstOk === 300 && plainMiss > 0, `확정 ${firstOk}/300 · 보통 빗나감 ${plainMiss}`);
+ok("환영 1000 + 깜짝 500", M.WELCOME_GIFT_GEMS === 1000 && M.SURPRISE_GIFT_GEMS === 500);
+ok("캐릭터 진행에 자동 환생(기본 꺼짐)", P.emptyCharacterProgress().autoRebirth === false && P.normalizeCharacterProgress({ autoRebirth: true }).autoRebirth === true);
 
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 process.exit(fails ? 1 : 0);

@@ -632,3 +632,13 @@
 .gacha-art .dup-progress.ready { background: rgba(92, 52, 0, .86); box-shadow: 0 0 8px rgba(253, 224, 71, .7); }
 .equipment-training-card .training-item-icon.lightning-icon { font-size: 40px; line-height: 1; filter: drop-shadow(0 0 6px #ffd23f) drop-shadow(0 3px 2px rgba(59, 36, 21, .3)); }   /* 다른 파츠 아이콘처럼 판 없이(unify.css) — 큰 번개 + 금빛 */
 .gacha-art .dup-progress { font-size: 13px; letter-spacing: -.04em; overflow: hidden; text-overflow: clip; }
+/* 첫 10연 확정 표시 · 자동 환생 스위치 (2026-10-22 아처 키우기 5 · 7번) */
+.gacha-page-actions .first-ten-badge { display: block; margin-top: 3px; padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(90deg, #9d174d, #b45309); box-shadow: 0 2px 0 rgba(0, 0, 0, .2); }   /* 흰 글자 대비 4.5 이상(scan-readability) */
+.auto-rebirth-toggle { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 8px; padding: 9px 12px; border: 2px solid var(--rd-line, #d9c6a5); border-radius: 14px; background: #fffaf0; color: var(--rd-ink, #3b2415); text-align: left; cursor: pointer; }
+.auto-rebirth-toggle > i { position: relative; flex: none; width: 40px; height: 22px; border-radius: 11px; background: #cbb89a; transition: background .2s; }
+.auto-rebirth-toggle > i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .2s; }
+.auto-rebirth-toggle.on > i { background: #16a34a; }
+.auto-rebirth-toggle.on > i::after { transform: translateX(18px); }
+.auto-rebirth-toggle span { display: grid; gap: 1px; }
+.auto-rebirth-toggle b { font-size: 15px; }
+.auto-rebirth-toggle small { font-size: 13px; color: var(--rd-ink2, #6b4a2f); }
