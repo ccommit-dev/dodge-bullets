@@ -425,3 +425,44 @@
 .ally-card .ally-party-toggle.benched-action { box-shadow: 0 2px 0 rgba(59, 36, 21, .25) !important; }
 /* 카드 안 비활성 버튼(골드 부족 강화 · 승급 · 학습 · 레벨업) — 흐린 반투명 대신 같은 모양의 읽히는 회갈색 */
 :is(.titans-card, .hub-sheet .titans-card) button:disabled { opacity: 1 !important; filter: none !important; background: #e9dcc0 !important; background-image: none !important; color: #6b4e33 !important; border-color: rgba(59, 36, 21, .3) !important; box-shadow: none !important; text-shadow: none !important; }
+
+/* ═══════════ 단순화 7차 — 접는 카드 (2026-10-22, 사용자: "버튼과 글자가 너무 많다 · 버튼도 최대한 우측으로") ═══════════
+   동료 · 스킬 카드는 접힌 상태 = [그림] [이름 · 한 줄] [주 버튼 하나 — 오른쪽]. 카드를 누르면(.is-open) 설명 · 보조 버튼이 펼쳐진다 */
+.ally-card, .skill-learn-card { cursor: pointer; }
+/* ── 동료 ── */
+.ally-roster-grid .ally-card:not(.is-open) { display: grid !important; grid-template-columns: 52px minmax(0, 1fr) auto !important; align-items: center !important; gap: 4px 10px !important; padding: 8px 10px !important; }
+.ally-roster-grid .ally-card:not(.is-open) > .titan-ally-art { grid-row: 1 / span 2; }
+.ally-roster-grid .ally-card:not(.is-open) :is(.ally-sig, .ally-feature, .ally-shards, .ally-skin-chip, .ally-skins) { display: none !important; }
+.ally-roster-grid .ally-card:not(.is-open) .ally-card-actions { grid-column: 3 !important; grid-row: 1 / span 2 !important; display: flex !important; flex-direction: column !important; align-items: stretch; gap: 6px !important; margin: 0 !important; }
+.ally-roster-grid .ally-card:not(.is-open) .ally-card-actions > :is(.ally-party-toggle, .ally-expedition-send, .ally-star-up:disabled) { display: none !important; }
+.ally-roster-grid .ally-card:not(.is-open) .ally-card-actions button { min-width: 84px; min-height: 36px !important; }
+.ally-roster-grid .ally-card:not(.is-open) .ally-expedition-status { font-size: 11px; color: var(--rd-mute); }
+/* 펼친 카드 — 버튼 줄은 오른쪽 정렬 */
+.ally-roster-grid .ally-card.is-open .ally-card-actions { justify-content: flex-end !important; }
+/* ── 스킬 ── */
+.skill-learn-card:not(.is-open) :is(p:not(.skill-effect), .slot-link, small, .skill-element-tag) { display: none !important; }
+.skill-learn-card:not(.is-open) .skill-card-actions { flex-direction: column; justify-content: center; }
+.skill-learn-card.equipped:not(.is-open) .skill-card-actions > button:first-child { display: none !important; }   /* 장착 중이면 주 버튼 = 강화 (해제는 펼쳐서) */
+.skill-learn-card:not(.equipped):not(.is-open) .skill-card-actions > .skill-level-button { display: none !important; }   /* 아니면 주 버튼 = 장착 / 학습 */
+.skill-card-actions { align-self: center; margin-left: auto; }
+.skill-card-actions button { min-width: 84px; min-height: 36px; }
+/* 펼침 단서 — 접힌 카드 오른쪽 아래 작은 ⌄ */
+.ally-roster-grid .ally-card:not(.is-open), .skill-learn-card:not(.is-open) { position: relative; }
+.ally-roster-grid .ally-card:not(.is-open)::after, .skill-learn-card:not(.is-open)::after { content: "⌄"; position: absolute; left: 50%; bottom: 1px; transform: translateX(-50%); color: rgba(59, 36, 21, .35); font-size: 12px; line-height: 1; pointer-events: none; }
+/* 버튼 줄이기 — 스킬 프리셋 셋 · 동료 역할 필터 다섯은 숨긴다(추천 편성 · 칸 탭으로 충분), 접힌 동료는 역할 꼬리표도 빼 이름을 다 보인다 */
+.skill-preset-card .preset-row, .party-panel .role-filter { display: none !important; }
+.ally-roster-grid .ally-card:not(.is-open) .role-tag:not([class*="element-"]) { display: none !important; }
+/* 이벤트 · 특별 상점 — 큰 카드(메달 · 설명 · 보상 줄 · 가득 찬 버튼) → 줄: [메달] [이름 · 한 줄] [값 버튼 오른쪽] */
+.hub-sheet .event-offer-card { grid-template-columns: 60px minmax(0, 1fr) auto !important; align-items: center !important; gap: 10px !important; padding: 12px !important; }
+.hub-sheet .event-offer-art { width: 60px !important; height: 60px !important; }
+.hub-sheet .event-offer-art .content-icon { width: 42px !important; height: 42px !important; }
+.hub-sheet .event-offer-card h2 { font-size: 15px !important; margin: 0 0 2px !important; }
+.hub-sheet .event-offer-card p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.hub-sheet .event-offer-card .reward-row { display: none !important; }
+.hub-sheet .event-offer-card > button { grid-column: 3 !important; min-width: 78px; min-height: 40px !important; margin: 0 !important; padding: 0 12px !important; font-size: 15px !important; }
+.hub-sheet .event-offer-art span:not(.content-icon) { left: 8px !important; font-size: 11px !important; padding: 1px 6px 2px !important; letter-spacing: .02em !important; }
+/* 원정대 편성 판 — 제목 왼쪽 · 추천 편성 버튼 오른쪽 한 줄 */
+.party-panel { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: center !important; gap: 6px 10px !important; }
+.party-panel > :not(.party-panel-head):not(.party-tools) { grid-column: 1 / -1; }
+.party-panel .party-tools { display: flex !important; justify-content: flex-end !important; margin: 0 !important; }
+.party-panel .party-panel-head small { display: none !important; }
