@@ -346,3 +346,56 @@
 .exit-card.event-card .journal-event *, .exit-card.event-card .weekly-event *, .exit-card.event-card .rift-week * { border-width: 0 !important; }
 .exit-card.event-card .journal-event .cta, .exit-card.event-card .weekly-event .cta, .exit-card.event-card :is(.journal-event, .weekly-event) button { border-width: 2px !important; }
 .forge-page .forge-stats *, div.forge-stats.forge-stats-4 > *, div.forge-stats.forge-stats-4 * { border-width: 0 !important; }
+
+/* ═══════════ 단순화 5차 (2026-10-22, 사용자: "성장·스킬·동료 패널 · 상점·이벤트 아직 조잡 · 상점이나 마이페이지쪽 이어서 정리") ═══════════
+   글자 크기 · 대비는 끝났고, 이번엔 한 화면에 보이는 정보 줄 수를 줄인다 — 카드마다 "제목 · 한 줄 · 행동 버튼" */
+
+/* ── 시트 머리 전환 탭: 청록→노랑 그라데이션 켜짐 → 단색 노랑, 글자 키움 ── */
+.hub-sheet-switch { gap: 4px !important; }
+.hub-sheet-switch button.on { background: #f2c232 !important; background-image: none !important; color: var(--rd-ink) !important; box-shadow: 0 2px 0 #b98a16 !important; }
+
+/* ── 상점: 2열 작은 카드 → 1열 목록 줄(그림 · 이름/한 줄 · 값 버튼) ── */
+.hub-sheet .titans-shop:has(.premium-product-card) { grid-template-columns: 1fr !important; }
+.hub-sheet .premium-product-card { display: grid !important; grid-template-columns: 44px minmax(0, 1fr) auto !important; align-items: center !important; gap: 10px !important; padding: 10px 12px !important; min-height: 0 !important; }
+.hub-sheet .premium-product-card > img, .hub-sheet .premium-product-card > .reward-icon { width: 40px !important; height: 40px !important; margin: 0 !important; }
+.hub-sheet .premium-product-card > div { display: grid; gap: 2px; min-width: 0; text-align: left !important; }
+.hub-sheet .premium-product-card p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0 !important; }
+.hub-sheet .premium-product-card > button { grid-column: auto !important; width: auto !important; min-width: 76px; min-height: 38px !important; margin: 0 !important; padding: 0 12px !important; }
+/* 보석 추천 큰 판 → 한 줄 */
+.hub-sheet .advice-inline { display: flex !important; align-items: baseline; gap: 6px; padding: 8px 12px !important; }
+.hub-sheet .advice-inline em { display: none !important; }
+
+/* ── 모험가 스킬 카드: 숙련 줄(킥 숙련 0 · 슬롯 잠김 …) 숨기고 설명 한 줄 ── */
+.skill-learn-card .slot-link { display: none !important; }
+.skill-learn-card p:not(.skill-effect) { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.skill-slot-tabs small { display: none !important; }   /* 칸 탭마다 "잠김" 두 번째 줄 — 흐린 탭 색이 이미 잠김을 말한다 */
+.skill-slot-tabs button { min-height: 32px !important; padding: 4px 6px !important; }
+.preset-row button small { display: none !important; }   /* 프리셋 설명 줄 — 이름만 */
+
+/* ── 동료 카드: 특징 줄 · 특수기 막대 숨김, 조각 줄 작게 ── */
+.ally-card .ally-feature, .ally-card .ally-sig-bars { display: none !important; }
+.ally-card .ally-sig { padding: 6px 10px !important; }
+.ally-card .ally-sig-rhythm { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.ally-card .ally-shards { font-size: 13px !important; font-weight: 800; color: var(--rd-ink2) !important; }
+
+/* ── 이벤트: 보상 칩이 줄 끝까지 늘어난 긴 알약 → 내용 폭만 ── */
+.event-card :is(.journal-reward, .reward-row) { display: inline-flex !important; width: auto !important; max-width: 100%; justify-self: start; }
+
+/* ── 마이페이지 ── */
+/* 바로가기 카드 넷(스킬 수련 · 재화 · 레벨 · 아이템) — 큰 카드의 세부 숫자 줄을 빼고 한 줄로 */
+.character-page .status-card { padding: 10px 12px !important; min-height: 0 !important; }
+.character-page .status-card .status-copy em, .character-page .status-card .status-copy small:not(:first-child) { display: none !important; }
+.character-page .status-card img, .character-page .status-card .status-icon { width: 40px !important; height: 40px !important; }
+/* 계승과 진화 — 짙은 갈색 막대 셋이 크림 판에서 무거웠다: 크림 버튼 + 테두리 */
+.character-page .evolution-tree button { background: #fff8e6 !important; color: var(--rd-ink) !important; border: 2px solid rgba(59, 36, 21, .35) !important; box-shadow: none !important; }
+.character-page .evolution-tree button b { color: var(--rd-ink) !important; }
+.character-page .evolution-tree button small { color: var(--rd-mute) !important; }
+.character-page .evolution-tree button.selected { background: #fde68a !important; border-color: #b98a16 !important; }
+/* 마이페이지 바로가기 카드 — 아이콘 · (제목/값) · 들어가기 를 한 줄에 */
+.character-page .status-card { display: grid !important; grid-template-columns: 40px minmax(0, 1fr) auto !important; align-items: center !important; gap: 10px !important; text-align: left !important; }
+.character-page .status-card .status-copy { display: grid !important; gap: 1px; min-width: 0; }
+.character-page .status-card .status-copy strong { font-size: 14px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.character-page .status-card .status-enter { grid-column: auto !important; position: static !important; align-self: center; font-size: 12px !important; white-space: nowrap; }
+/* 환생 버튼(잠김) — 짙은 남색 막대 → 크림 판 위 연한 막대 */
+.character-page .rebirth-button.is-locked, .character-page .rebirth-button:disabled { background: rgba(59, 36, 21, .08) !important; color: var(--rd-mute) !important; border: 2px dashed rgba(59, 36, 21, .3) !important; }
+.ally-star-up:disabled, .ally-card-actions button:disabled { color: #5e4229 !important; background: #e4d6b8 !important; opacity: 1 !important; box-shadow: none !important; }
