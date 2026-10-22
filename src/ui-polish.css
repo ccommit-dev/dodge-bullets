@@ -399,3 +399,29 @@
 /* 환생 버튼(잠김) — 짙은 남색 막대 → 크림 판 위 연한 막대 */
 .character-page .rebirth-button.is-locked, .character-page .rebirth-button:disabled { background: rgba(59, 36, 21, .08) !important; color: var(--rd-mute) !important; border: 2px dashed rgba(59, 36, 21, .3) !important; }
 .ally-star-up:disabled, .ally-card-actions button:disabled { color: #5e4229 !important; background: #e4d6b8 !important; opacity: 1 !important; box-shadow: none !important; }
+
+/* 따로 불러오는 화면을 못 불러왔을 때(LazyBoundary) — 빈 화면 대신 */
+.lazy-failed { position: fixed; inset: 0; z-index: 80; display: grid; place-content: center; gap: 10px; padding: 24px; text-align: center; background: #f7e6c4; color: var(--rd-ink); }
+.lazy-failed b { font-size: 18px; }
+.lazy-failed small { font-size: 13px; color: var(--rd-ink2); line-height: 1.45; }
+.lazy-failed div { display: flex; gap: 10px; justify-content: center; margin-top: 6px; }
+.lazy-failed button { min-height: 44px; padding: 0 18px; border: 2px solid var(--rd-ink); border-radius: 12px; font-size: 15px; font-weight: 800; }
+.lazy-failed .lazy-retry { background: #f2c232; color: var(--rd-ink); }
+.lazy-failed .lazy-back { background: #fff8e6; color: var(--rd-ink); }
+
+/* ═══════════ 단순화 6차 (2026-10-22, 사용자 캡처: 스킬 · 마이페이지 · 동료 도감) ═══════════ */
+/* 마이페이지 — 화면 고정 설정 톱니가 스크롤하는 도감 · 진화 칸을 덮었다. 설정은 사냥터 아래 막대에 있으니 마이페이지에선 숨긴다 */
+.game-root:has(.character-page) .sound-dock .settings-wrap { display: none !important; }
+/* 마이페이지 아래 — 무기 · 견갑 · 재료 칸은 바로가기 "아이템 · 강화" 와 같은 말, 맨 아래 안내 글도 뺀다 */
+.character-page .equipment-strip, .character-page .character-footnote { display: none !important; }
+/* 동료 카드 — 개척 전 출전 잠김 표시: 큰 굵은 알약 → 작은 흐린 글 */
+.ally-card .ceiling-tag { display: block !important; width: fit-content; margin: 2px 0 !important; padding: 1px 8px !important; border: 0 !important; border-radius: 999px !important; background: rgba(59, 36, 21, .08) !important; color: var(--rd-mute) !important; font-size: 11.5px !important; font-weight: 800 !important; }
+/* 파견 4h · 8h · 12h — 세로로 눌린 작은 기둥 셋 → 버튼 줄 아래 한 줄 "파견 4h 8h 12h" */
+.ally-card .ally-card-actions { flex-wrap: wrap !important; }
+.ally-card .ally-expedition-send { flex: 1 0 100% !important; display: flex !important; align-items: center; gap: 6px !important; margin-top: 2px; }
+.ally-card .ally-expedition-send::before { content: "파견"; color: var(--rd-mute); font-size: 12px; font-weight: 800; }
+.ally-card .ally-expedition-send button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; min-height: 32px !important; padding: 0 6px !important; writing-mode: horizontal-tb !important; font-size: 12px !important; background: #fff8e6 !important; color: var(--rd-ink) !important; border: 2px solid rgba(59, 36, 21, .35) !important; box-shadow: none !important; }
+/* 벤치로 — 흰 버튼에 파란 아래 그림자가 남아 있었다 */
+.ally-card .ally-party-toggle.benched-action { box-shadow: 0 2px 0 rgba(59, 36, 21, .25) !important; }
+/* 카드 안 비활성 버튼(골드 부족 강화 · 승급 · 학습 · 레벨업) — 흐린 반투명 대신 같은 모양의 읽히는 회갈색 */
+:is(.titans-card, .hub-sheet .titans-card) button:disabled { opacity: 1 !important; filter: none !important; background: #e9dcc0 !important; background-image: none !important; color: #6b4e33 !important; border-color: rgba(59, 36, 21, .3) !important; box-shadow: none !important; text-shadow: none !important; }
