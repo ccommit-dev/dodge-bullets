@@ -342,6 +342,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [battlePhase, setBattlePhase] = useState<BattlePhase>("combat");
   /** QoL — 일괄 레벨업 수량 (0 = MAX) */
   const [buyAmount, setBuyAmount] = useState<1 | 10 | 0>(1);
+  /** 펼친 카드(동료 · 스킬) — 접힌 카드는 이름 · 한 줄 · 오른쪽 주 버튼 하나만, 누르면 설명 · 보조 버튼 (2026-10-22, 사용자: "버튼과 글자가 너무 많다 · 버튼은 최대한 우측") */
+  const [openCard, setOpenCard] = useState<string | null>(null);
+  const toggleCard = (id: string) => (e: { target: EventTarget | null }) => { if ((e.target as Element | null)?.closest?.("button, select, a, input")) return; setOpenCard((cur) => (cur === id ? null : id)); };
   /**
    * 자동 강화 (2026-10-21, 사용자: "오늘도 환생2 처럼 장비 성장 UI에 자동으로 업그레이드 모드를 추가해줘") — 켜 두면 장비 성장 탭이 열려 있는 동안
    * 0.3초마다 무기 · 파츠 4종 중 가장 싼 훈련 1단계를 사냥 골드로 산다(견갑은 강화석 · 조각을 써서 빼다). 켬/끔은 이 기기에 기억
@@ -3481,7 +3484,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               ([skinId, def]) => def.ally === h.id && character.ownedAllySkins.includes(skinId),
             );
             return (
-              <article key={h.id} data-ally={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""}`}>
+              <article key={h.id} data-ally={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""} ${openCard === `ally:${h.id}` ? "is-open" : ""}`} onClick={toggleCard(`ally:${h.id}`)}>
                 <AllyArt id={h.id} skin={character.equippedAllySkins[h.id]} />
                 <div>
                   <strong>
@@ -3629,7 +3632,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const slotLevel = slotLevels(character)[sk.slot];
             const slotShut = slotLevel <= 0 && !qaOpen;
             const toNext = masteryToNextSlotLevel(mastery);
-            return <article key={sk.id} className={`titans-card skill-learn-card element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"}`}>
+            return <article key={sk.id} className={`titans-card skill-learn-card element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
               <SkillIcon id={sk.id} />
               <div>
                 <strong>
