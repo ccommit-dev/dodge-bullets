@@ -321,3 +321,25 @@
 .forge-mastery-bar { background: rgba(59, 36, 21, .14) !important; }
 .beat-rank-panel .rank-avatar { border: 0 !important; box-shadow: none !important; }
 .beat-custom > * { border: 0 !important; }
+
+/* ── 판 안의 판 4차 — 재화 알약 · 작은 액자들 ── */
+/* 재화 줄: 알약마다 테두리(3~4개)가 판 위에서 시끄러웠다 — 테두리 없는 연한 면 알약 */
+:is(.hub-sheet, .overlay-content) .wallet-item { border: 0 !important; box-shadow: none !important; background: rgba(59, 36, 21, .08) !important; }
+.overlay-content.exp-menu-content .wallet-item { background: rgba(255, 240, 210, .92) !important; }
+.hub-sheet .hub-chests { border: 0 !important; box-shadow: none !important; }
+.exp-menu-content .exp-skill-banner.compact, .exp-menu-content .exp-sub-tabs { border: 0 !important; }
+:is(.hub-sheet, .titans-layer) .event-offer-card .reward-row { border-top: 0 !important; padding-top: 4px !important; }
+.event-card :is(.season-head, .journal-note, .season-pass > *, .weekly-event > *, .journal-event > *) { border: 0 !important; box-shadow: none !important; }
+.event-card .season-pass { border-width: 0 !important; }
+.event-card .mission-card { box-shadow: none !important; }
+.hub-sheet .gacha-stage-page { border: 0 !important; box-shadow: none !important; background: transparent !important; }
+.hub-sheet .gacha-stage-page .gacha-level { border: 0 !important; }
+.character-page .legacy-growth { border: 0 !important; box-shadow: none !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }
+.forge-stats * { border-width: 0 !important; }
+.overlay-content .wallet-item { background: rgba(255, 240, 210, .94) !important; }   /* 어두운 판(댐 방어전 · 비트) 위 재화 알약은 크림 면 — 진갈색 글자가 묻히지 않게 */
+.status-copy em, .schedule-cost { font-size: 11px !important; }
+/* 시즌 패스 머리 — 왼쪽 정보 열이 좁게 눌려 한두 글자씩 줄바꿈됐다: 위아래로 쌓는다 */
+.event-card .season-head { display: grid !important; grid-template-columns: 1fr !important; gap: 8px !important; }
+.event-card .season-head > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.event-card .brand, .beat-layer .overlay-content .brand { display: none !important; }   /* 영문 장식 글(ADVENTURE EVENT · IDLE BEAT DEFENSE) — 한글 제목이 같은 말 */
+.schedule-best, .schedule-day, .schedule-copy small { font-size: 11px !important; }
