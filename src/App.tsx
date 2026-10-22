@@ -19,6 +19,7 @@ import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
 // 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
 import { installChunkReload, withChunkReload } from "./ui/chunkReload";
+import { LazyBoundary } from "./ui/LazyBoundary";
 installChunkReload();
 const BeatGame = lazy(() => withChunkReload(() => import("./BeatGame")).then((m) => ({ default: m.BeatGame })));
 const ForgeGame = lazy(() => withChunkReload(() => import("./ForgeGame")).then((m) => ({ default: m.ForgeGame })));
@@ -1911,6 +1912,7 @@ function App() {
       )}
 
       {bootReady && appMode === "profile" && (
+        <LazyBoundary label="마이페이지" onBack={() => { setTitansStartTab("sword"); setMode("titans"); }}>
         <Suspense fallback={<div className="lazy-screen" aria-busy="true" />}>
         <CharacterStatus
           insets={insets}
@@ -1929,9 +1931,11 @@ function App() {
           onBack={() => { setTitansStartTab("sword"); setMode("titans"); }}
         />
         </Suspense>
+        </LazyBoundary>
       )}
 
       {bootReady && appMode === "beat" && (
+        <LazyBoundary label="비트 수련" onBack={handleBackToHub}>
         <Suspense fallback={<div className="lazy-screen" aria-busy="true" />}>
         <BeatGame
           insets={insets}
@@ -1945,12 +1949,15 @@ function App() {
           onBack={handleBackToHub}
         />
         </Suspense>
+        </LazyBoundary>
       )}
 
       {bootReady && appMode === "forge" && (
+        <LazyBoundary label="대장간" onBack={handleBackToHub}>
         <Suspense fallback={<div className="lazy-screen" aria-busy="true" />}>
           <ForgeGame insets={insets} userHash={userHashRef.current} onBack={handleBackToHub} />
         </Suspense>
+        </LazyBoundary>
       )}
 
       {bootReady && appMode === "titans" && (
@@ -2488,9 +2495,11 @@ function App() {
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => { setAttendanceOpen(false); setAttendanceByMenu(false); }} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
       )}
       {bootReady && appMode === "titans" && eventOpen && (
+        <LazyBoundary label="이벤트" onBack={() => setEventOpen(false)}>
         <Suspense fallback={null}>
           <EventCenter userHash={userHashRef.current} progress={progress} open={eventOpen} initialTab={eventTab} onClose={() => setEventOpen(false)} onUpdated={setProgress} />
         </Suspense>
+        </LazyBoundary>
       )}
 
       {pioneeredAreaIndex !== null && (
