@@ -88,7 +88,7 @@ import {
   statsFromLevels,
 } from "./game/shop";
 import { createSoundController, loadSoundEnabled } from "./game/sound";
-import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, STAGE_TYPE_LABEL, stageType, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageTag, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
+import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageTag, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
 import { RouteMap, branchRewardLabel } from "./game/RouteMap";
 import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
@@ -2056,7 +2056,7 @@ function App() {
                       </div>
 
                       <button type="button" className="cta" onClick={() => void handleStart(next)}>
-                        스테이지 {Math.floor(next / STAGES_PER_CHAPTER) + 1}-{(next % STAGES_PER_CHAPTER) + 1} 시작 · {STAGES[next].name} · <i className="stage-type">{STAGE_TYPE_LABEL[stageType(next)]}</i>
+                        스테이지 {Math.floor(next / STAGES_PER_CHAPTER) + 1}-{(next % STAGES_PER_CHAPTER) + 1} 시작 · {STAGES[next].name}
                       </button>
                       {/* 출발 전 2택 사건 (2026-10-13 P1, game/dayEvents) — 첫째가 기본값, 상인은 인장이 있어야 */}
                       {(() => {

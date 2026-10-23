@@ -35,37 +35,41 @@ type Props = {
 export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onStart }: Props) {
   const branches = BRANCHES.filter((b) => b.chapter === chapter);
   const chainParent = (b: BranchDef) => ("branch" in b.requires ? branches.find((x) => x.id === (b.requires as { branch: string }).branch) : undefined);
+  // 한 줄 목록 (2026-10-23, 사용자: "UI 조잡한 부분 마저 단순화") — 두 줄 격자 + 옆 칸 갈림길은 이름이 두 줄로 꺾이고 별 · 자물쇠 · 체력이 칸마다 겹쳐 조잡했다.
+  // 이제 한 줄에 [번호] 이름 … [대장 표시 · 별] [갈림길 칩] — 잠긴 칸은 흐리게만(자물쇠 · 별 자리 없음), 체력 배율은 뺐다(출발 단추 · 전투 안에서 본다)
+  void chainParent;
   return (
-    <div className="route-map" data-chapter={chapter}>
+    <div className="route-map route-list" data-chapter={chapter}>
       {Array.from({ length: STAGES_PER_CHAPTER }, (_, k) => {
         const index = chapter * STAGES_PER_CHAPTER + k;
         const stage = STAGES[index];
         const unlocked = stageUnlocked(index, best, stars);
         const st = stars[String(index)] ?? 0;
         const node = branches.find((b) => b.row === k + 1);
-        // 갈림길 사이를 잇는 세로 길 — 위 칸의 갈림길이 아래 칸 갈림길의 선행이면 그 사이 줄에 관을 그린다
-        const pipe = !node && branches.some((b) => { const p = chainParent(b); return !!p && p.row < k + 1 && b.row > k + 1; });
         return (
-          <div key={stage.id} className="route-row">
+          <div key={stage.id} className={`route-row ${node ? "with-branch" : ""}`}>
             <button
               type="button"
               disabled={!unlocked}
               className={`pioneer-row stage-${stage.slotKind} ${st > 0 ? "opened" : ""} ${unlocked ? "" : "far"} ${index === next ? "next" : ""}`}
               onClick={() => onStart(index)}
+              aria-label={`${chapter + 1}-${k + 1} ${stage.name}${unlocked ? ` · 별 ${st}/3` : " · 잠김"}`}
             >
               <span className="pioneer-stage">{chapter + 1}-{k + 1}</span>
               <span className="pioneer-name">{stage.name}</span>
-              {/* 별·체력은 이름 아래 한 줄 (2026-10-15 — 두 칸 지도에서 이름이 한 글자로 눌렸다) */}
               <span className="pioneer-meta">
-                <span className="pioneer-stars" aria-label={`별 ${st}/3`}>
-                  {[1, 2, 3].map((n) => (
-                    <img key={n} src={assetUrl("ui/idle/star.png")} alt="" className={n <= st ? "on" : ""} />
-                  ))}
-                </span>
-                <span className="pioneer-area">{stage.slotKind === "boss" ? "장 대장" : stage.slotKind === "midboss" ? "중간 보스" : unlocked ? `체력 ×${stage.monsterHp}` : "🔒"}</span>
+                {(stage.slotKind === "boss" || stage.slotKind === "midboss") && <span className="pioneer-area">{stage.slotKind === "boss" ? "대장" : "중보스"}</span>}
+                {st > 0 && (
+                  <span className="pioneer-stars" aria-hidden="true">
+                    {[1, 2, 3].map((n) => (
+                      <img key={n} src={assetUrl("ui/idle/star.png")} alt="" className={n <= st ? "on" : ""} />
+                    ))}
+                  </span>
+                )}
+                {index === next && st === 0 && <span className="pioneer-go">도전</span>}
               </span>
             </button>
-            <div className={`route-side ${node ? `has-node link-${chainParent(node) ? "up" : "main"}` : pipe ? "pipe" : ""}`}>
+            <div className="route-side">
               {node && (() => {
                 const open = branchUnlocked(node, best, stars, branchStars);
                 const bs = branchStars[node.id] ?? 0;
@@ -80,9 +84,9 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onS
                     title={open ? node.name : "앞 칸을 깨면 열린다"}
                     aria-label={open ? `${KIND_LABEL[node.kind]} ${node.name}` : `${KIND_LABEL[node.kind]} 잠김`}
                   >
-                    <small>{KIND_SHORT[node.kind]}{node.kind === "elite" ? (node.id.endsWith("E1") ? " ①" : " ②") : ""}</small>
-                    {/* 옆 칸(폭 62px)은 종류 · 보상 두 줄만 — 이름까지 넣으면 좁은 화면(WebKit)에서 한 글자씩 세로로 쌓였다 (2026-10-21). 이름은 aria-label · title */}
-                    {!open ? <i className="route-lock">🔒</i> : bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft ? <i className="route-reward">{branchRewardLabel(node.firstReward).split(" · ")[0]}</i> : <i className="route-go">입장</i>}
+                    <small>{KIND_SHORT[node.kind]}{node.kind === "elite" ? (node.id.endsWith("E1") ? "①" : "②") : ""}</small>
+                    {/* 칩 한 줄 — 열렸으면 별 또는 첫 보상 한 가지, 잠겼으면 종류만(흐리게) */}
+                    {open && (bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft ? <i className="route-reward" title={branchRewardLabel(node.firstReward)}>{branchRewardLabel(node.firstReward).split(" · ")[0].split(" ")[0]}</i> : null)}
                   </button>
                 );
               })()}
