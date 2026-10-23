@@ -62,6 +62,14 @@ for (const b of ["meadow", "forest", "volcano", "ruins"]) {
   sprites[`bg:${b}`] = { src: "data:image/webp;base64," + (await sharp(buf).webp({ quality: 70 }).toBuffer()).toString("base64"), w: 720, h: 400 };
 }
 await flat("logo", "docs/assets/app-logo.png", 128, { trim: false });
+// 댐 방어전(성문 방어) · 비트 수련 (2026-10-23 릴스 추가)
+for (const n of [1, 3]) { const buf = await sharp(`public/dodge/bg/s${n}.webp`).resize({ width: 720, height: 1052 }).png().toBuffer(); sprites[`bg:dam${n}`] = { src: "data:image/webp;base64," + (await sharp(buf).webp({ quality: 70 }).toBuffer()).toString("base64"), w: 720, h: 1052 }; }
+for (const a of ["basic", "fire", "ice", "bolt"]) await flat(`arrow:${a}`, `public/dodge/arrows/${a}.png`, 14);
+for (const k of ["fire", "ice", "meteor", "bolt", "holy"]) await flat(`skill:${k}`, `public/dodge/skills/${k}.png`, 72);
+{ const buf = await sharp("public/beat/bg/stage.webp").png().toBuffer(); sprites["bg:beat"] = { src: "data:image/webp;base64," + (await sharp(buf).webp({ quality: 72 }).toBuffer()).toString("base64"), w: 720, h: 492 }; }
+await flat("cover:city", "public/beat/covers/black-city-beat.png", 96, { trim: false });
+await flat("cover:arcade", "public/beat/covers/arcade-overdrive.png", 96, { trim: false });
+await flat("gear:shoulder-dragon", "public/titans/gear/shoulder-dragon.png", 110);
 const json = JSON.stringify({ sprites });
 writeFileSync(`${OUT}/art.json`, json);
 console.log("sprites", Object.keys(sprites).length, "bytes", json.length);
