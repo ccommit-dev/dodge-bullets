@@ -4173,9 +4173,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   <div className="gacha-card-inner">
                     <div className="gacha-card-back"><i className="gacha-back-sigil" aria-hidden="true" /><i className="gacha-back-glow" aria-hidden="true" /></div>
                     <div className="gacha-card-front">
-                      <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}<i>{RARITY_LABEL[r.rarity]}</i>{r.pickup && <i className="pickup">픽업</i>}<i className="star">★{STAR_CAP[r.rarity]}</i></em>
-                      {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`}>🔒 S{h.unlockStage}</i>}
+                      {/* 카드 머리 한 줄: 등급 · (잠금) — 2026-10-23 아이폰 캡처: 잠금 "🔒 S10" 이 등급 표를 덮었고 ★ 가 잘렸다. 자세한 건 카드를 누르면 설명 패널 */}
+                      <span className="gacha-card-head">
+                        <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}{r.pickup && <i className="pickup">픽업</i>}</em>
+                        {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`} aria-label={`STAGE ${h.unlockStage} 개척 후 출전`}>🔒</i>}
+                      </span>
                       <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true">{Array.from({ length: r.rarity === "SSR" ? 8 : 4 }, (_, k) => <i key={k} />)}</i>}
+                      </span>
+                      <b>{h.name.split(" ").slice(-1)[0]}</b>
 {r.duplicate && (() => {
                         // 중복은 재료 — 다음 성급까지 조각이 얼마나 찼는지 (2026-10-22 아처 키우기 6번). 같은 동료가 뒤에 또 나오면 그 몫은 빼고 차례로 찬다
                         const later = gachaReveal.slice(i + 1).filter((x) => x.id === r.id && x.duplicate).reduce((a, x) => a + x.shards, 0);
@@ -4191,9 +4196,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                           </em>
                         );
                       })()}
-                      </span>
-                      <b>{h.name}</b>
-                      <small>{r.duplicate ? `중복 · 조각 +${r.shards}` : "새 동료!"}</small>
+                      <small>{r.duplicate ? `조각 +${r.shards}` : "새 동료!"}</small>
                     </div>
                   </div>
                   {/* 데스크톱 말풍선 (2026-10-14 보완): hover 가 되는 기기에서만 CSS 로 보인다 — 탭 기기는 아래 설명 패널 */}
