@@ -46,5 +46,81 @@ window.KIT = (() => {
     G.text(name, 180, y + 13, { size: 13, color: '#fff', stroke: '#2a1606', sw: 4 });
   }
   const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
-  return { unit, attack, hit, tick, stage, bossBar, fmt };
+
+  /* 비트 수련 — 네 줄 노트가 판정선으로 떨어진다. 패드(← 공격 · ↓ 방어 · ↑ 회피 · → 스킬)를 박자에 맞춰 누른다.
+   * chart: [[박(0부터), 줄], …] · bpm · onHit(lane, judge) · onMiss(lane). 손대지 않으면 auto 가 정확히 누른다 */
+  function beat(opts) {
+    const LANES = 4, X = (i) => 45 + i * 90, TOP = 262, JL = 474, SPEED = opts.speed || 300;
+    const lead = (JL - TOP) / SPEED;
+    const spb = 60 / opts.bpm;
+    const notes = opts.chart.map(([b, l]) => ({ t: lead + 0.6 + b * spb, lane: l, done: false, judge: '' }));
+    const B = { t: 0, notes, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, padT: [0, 0, 0, 0], judgeT: 0, judge: '', fever: false, over: false, LABEL: ['공격', '방어', '회피', '스킬'], ARROW: ['←', '↓', '↑', '→'] };
+    B.end = notes[notes.length - 1].t + 0.6;
+    function hit(lane, auto) {
+      B.padT[lane] = 0.14;
+      const n = notes.filter((x) => !x.done && x.lane === lane).sort((a, b) => a.t - b.t)[0];
+      if (!n) return null;
+      const d = Math.abs(n.t - B.t);
+      if (d > 0.16) return null;
+      n.done = true;
+      const j = auto || d < 0.07 ? 'PERFECT' : 'GOOD';
+      n.judge = j; B.judge = j; B.judgeT = 0.5;
+      if (j === 'PERFECT') B.perfect += 1; else B.good += 1;
+      B.combo += 1; B.maxCombo = Math.max(B.maxCombo, B.combo);
+      if (!B.fever && B.combo >= (opts.feverAt || 12)) { B.fever = true; opts.onFever && opts.onFever(); }
+      opts.onHit && opts.onHit(lane, j);
+      return j;
+    }
+    B.press = (lane) => hit(lane, false);
+    B.update = (dt, idle) => {
+      B.t += dt;
+      for (let i = 0; i < 4; i++) B.padT[i] = Math.max(0, B.padT[i] - dt);
+      B.judgeT = Math.max(0, B.judgeT - dt);
+      for (const n of notes) {
+        if (n.done) continue;
+        if (idle && Math.abs(n.t - B.t) < 0.02) hit(n.lane, true);
+        else if (B.t - n.t > 0.18) { n.done = true; n.judge = 'MISS'; B.miss += 1; B.combo = 0; B.judge = 'MISS'; B.judgeT = 0.5; opts.onMiss && opts.onMiss(n.lane); }
+      }
+      if (!B.over && B.t > B.end) { B.over = true; opts.onEnd && opts.onEnd(); }
+    };
+    B.next = () => notes.filter((n) => !n.done).sort((a, b) => a.t - b.t)[0];
+    B.padRect = (i) => ({ x: X(i) - 40, y: 494, w: 80, h: 70 });
+    B.laneAt = (x, y) => (y >= 262 ? Math.max(0, Math.min(3, Math.floor(x / 90))) : -1);
+    B.draw = (G, ctx) => {
+      // 줄
+      ctx.fillStyle = B.fever ? 'rgba(80,20,90,.92)' : 'rgba(18,12,30,.92)'; ctx.fillRect(0, 256, 360, 300);
+      for (let i = 0; i < LANES; i++) {
+        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.06)'; ctx.fillRect(i * 90, 256, 90, 236);
+        if (B.padT[i] > 0) { ctx.fillStyle = `rgba(255,210,63,${B.padT[i] * 2})`; ctx.fillRect(i * 90, 256, 90, 236); }
+      }
+      ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, JL - 2, 360, 4);
+      // 노트
+      const COL = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b'];
+      for (const n of notes) {
+        if (n.done) continue;
+        const y = JL - (n.t - B.t) * SPEED;
+        if (y < 250 || y > 520) continue;
+        G.rr(X(n.lane) - 30, y - 10, 60, 20, 10, COL[n.lane], '#fff', 2);
+      }
+      // 패드
+      for (let i = 0; i < LANES; i++) {
+        const r = B.padRect(i), pr = B.padT[i] > 0;
+        G.rr(r.x + 3, r.y + (pr ? 3 : 0), r.w - 6, r.h - 8, 14, pr ? '#ffd23f' : '#2b1a0e', COL[i], 3);
+        G.text(B.ARROW[i], X(i), r.y + 22 + (pr ? 3 : 0), { size: 24, color: pr ? '#1b1206' : '#fff' });
+        G.text(B.LABEL[i], X(i), r.y + 46 + (pr ? 3 : 0), { size: 13, color: pr ? '#1b1206' : '#f5d9a8' });
+      }
+      if (B.judgeT > 0) {
+        const c = B.judge === 'PERFECT' ? '#ffd23f' : B.judge === 'GOOD' ? '#86efac' : '#fca5a5';
+        G.text(B.judge, 180, 330, { size: 30 * (0.9 + B.judgeT * 0.4), color: c, stroke: '#2a1606', sw: 6, alpha: Math.min(1, B.judgeT * 3) });
+      }
+      if (B.combo >= 2) G.text(`${B.combo} COMBO`, 180, 372, { size: 22, color: '#fff', stroke: '#2a1606', sw: 5 });
+      if (B.fever) G.text('FEVER!', 300, 280, { size: 18, color: '#f0abfc', stroke: '#2a1606', sw: 5, alpha: 0.6 + Math.sin(B.t * 10) * 0.4 });
+    };
+    return B;
+  }
+
+  /* 댐 방어전 — 세 줄(왼 · 가운데 · 오른)로 몬스터가 위에서 성문(GATE_Y)으로 내려온다. 원근: 위는 작게 */
+  const LANE_X = [80, 180, 280], GATE_Y = 312;
+  const depth = (y) => 0.55 + Math.max(0, Math.min(1, (y - 70) / (GATE_Y - 70))) * 0.45;
+  return { unit, attack, hit, tick, stage, bossBar, fmt, beat, LANE_X, GATE_Y, depth };
 })();

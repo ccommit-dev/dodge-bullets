@@ -10,7 +10,7 @@ const OUT = "art-gen/out/reels/site";
 const ART = JSON.parse(readFileSync("art-gen/out/reels/art.json", "utf8")).sprites;
 const engine = readFileSync(`${R}/engine.js`, "utf8");
 const kit = readFileSync(`${R}/kit.js`, "utf8");
-const ORDER = ["acorn-merge", "lightning-tap", "boss-ladder", "first-ten", "drum-forge", "party-assemble"];
+const ORDER = ["acorn-merge", "dam-hold", "beat-combo", "lightning-tap", "boss-ladder", "dam-skill", "first-ten", "beat-shoulder", "drum-forge", "party-assemble"];
 const scenes = ORDER.filter((id) => readdirSync(`${R}/scenes`).includes(`${id}.js`));
 
 function pickArt(src) {
@@ -22,7 +22,7 @@ function pickArt(src) {
     const head = k.split(":")[0];
     if (k.startsWith("drum:") && /drum:/.test(src)) want.add(k);
     else if (k.startsWith("bg:") && src.includes(k)) want.add(k);
-    else if (k.startsWith("gear:") && src.includes(k)) want.add(k);
+    else if (/^(gear|arrow|skill|cover):/.test(k) && (src.includes(k) || src.includes(head + ":$"))) want.add(k);
     else if (/^(gem|chest|stone)$/.test(k) && src.includes(`'${k}'`)) want.add(k);
     else if (ids.has(head)) want.add(k);
   }
