@@ -10,7 +10,7 @@ const OUT = "art-gen/out/reels/site";
 const ART = JSON.parse(readFileSync("art-gen/out/reels/art.json", "utf8")).sprites;
 const engine = readFileSync(`${R}/engine.js`, "utf8");
 const kit = readFileSync(`${R}/kit.js`, "utf8");
-const ORDER = ["acorn-merge", "dam-hold", "beat-combo", "lightning-tap", "boss-ladder", "dam-skill", "first-ten", "beat-shoulder", "drum-forge", "party-assemble"];
+const ORDER = ["acorn-merge", "dam-hold", "beat-combo", "lightning-tap", "boss-ladder", "dam-skill", "first-ten", "beat-shoulder", "drum-forge", "party-assemble", "golden-monster", "rebirth-speed", "idle-wake"];
 const scenes = ORDER.filter((id) => readdirSync(`${R}/scenes`).includes(`${id}.js`));
 
 function pickArt(src) {

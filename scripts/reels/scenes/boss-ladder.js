@@ -18,9 +18,10 @@ window.RF_SCENE = (() => {
     K.hp -= dmg; if (K.boss.mode === 'idle') KIT.hit(K.boss);
     G.float(KIT.fmt(dmg), K.boss.x + (Math.random() * 40 - 20), 290, big ? '#ffd23f' : '#fff', big ? 28 : 20);
     if (K.hp <= 0) {
-      K.dying = 0.9; G.sfx('win'); G.burst(K.boss.x, 330, '#ffd23f', 30, 220); G.shake(8, 0.3);
+      K.dying = 0.9; G.sfx('win'); G.burst(K.boss.x, 330, '#ffd23f', 44, 260); G.impact(1.3); G.coins(K.boss.x, 330, 14);
       const [p, d] = PERKS[K.stage];
       K.ladder = K.stage + 1;
+      if (K.stage < 2) G.stamp(`사다리 Lv.${K.ladder}!`, '#ffd23f', 240, 0.9);
       G.pop(`대장 사다리 Lv.${K.ladder}`, `${p} 영구 상승`, d, 'gold', 1.9);
       if (K.stage === 0) G.emit('choice', { firstBoss: true });
       if (K.stage === 2) { G.climax(); G.caption('영구 특성은 환생해도 그대로!'); G.finish(2.2); }
@@ -32,6 +33,7 @@ window.RF_SCENE = (() => {
     id: 'boss-ladder',
     introDur: 1.5,
     hook: ['대장 잡을 때마다', '영구 강화'],
+    climaxStamp: '영구 강화!!', raysAt: [274, 330],
     caption0: '대장을 탭해서 공격!',
     endLines: ['한 번 잡은 대장 = 영원한 특성', '동료 · 탭 · 골드 · 공속이 차례로'],
     init(G) {

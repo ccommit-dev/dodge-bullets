@@ -25,6 +25,7 @@
   .top { flex: none; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
   .top h1 { margin: 0; font: 22px/1 var(--ui); letter-spacing: 0.01em; }
   .top .note { font-size: 11px; color: var(--sub); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+  .top .shuffle { flex: none; border: 1px solid var(--line); background: #2a2018; color: var(--fg); border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
   .top .count { margin-left: auto; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
   svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
   .feed { flex: 1; min-height: 0; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; }
@@ -80,6 +81,7 @@
     <h1>릴스</h1>
     <span class="note">비버 키우기 · 사내 검토용 미리보기</span>
     <span class="count" id="count"></span>
+    <button class="shuffle" id="shuffle" type="button" aria-label="아무 릴스로">🔀 랜덤</button>
   </header>
   <main class="feed" id="feed"></main>
 </div>
@@ -111,7 +113,15 @@
       cap: '나무북 +0 → 왕관북 +15, 실패는 방지권이 막아 줌 🥁', tags: '#비버키우기 #북강화' },
     { src: 'party-assemble/index.html', likes: '4.1만', comments: '2,877', shares: '2,013',
       cap: '혼자선 드래곤한테 간지럼, 넷이 모이니 녹는다 🐉', tags: '#비버키우기 #원정대' },
+    { src: 'golden-monster/index.html', likes: '6.2만', comments: '5,104', shares: '3,980',
+      cap: '황금 슬라임 연타했더니 잭팟 25만 골드 💰', tags: '#비버키우기 #황금몬스터' },
+    { src: 'rebirth-speed/index.html', likes: '3.7만', comments: '2,218', shares: '1,506',
+      cap: '30층 벽에 막혀서 환생했더니 45층까지 질주 🚀', tags: '#비버키우기 #환생' },
+    { src: 'idle-wake/index.html', likes: '5.4만', comments: '4,032', shares: '2,771',
+      cap: '자고 일어났더니 비버들이 124만 골드 벌어 옴 ☀️', tags: '#비버키우기 #방치보상' },
   ];
+  // 링크를 열 때마다 순서를 섞는다 — 매번 다른 릴스부터(2026-10-23 사용자: 링크로 들어오면 랜덤하게 쇼츠 이동)
+  for (let i = SLIDES.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [SLIDES[i], SLIDES[j]] = [SLIDES[j], SLIDES[i]]; }
   const STORE = 'https://ccommit-dev.github.io/dodge-bullets/';
   const ICON = {
     heart: '<svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.4 0 5.5 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>',
@@ -239,6 +249,7 @@
   });
   const up = document.getElementById('up'), down = document.getElementById('down');
   up.addEventListener('click', () => go(active - 1));
+  document.getElementById('shuffle').addEventListener('click', () => { let n = active; while (posts.length > 1 && n === active) n = Math.floor(Math.random() * posts.length); go(n); });
   down.addEventListener('click', () => go(active + 1));
   window.__feed = { active: () => active, go, events, ctaShown: (i) => posts[i].stage.classList.contains('done'), count: posts.length,
     state: (i) => { const f = posts[i] && posts[i].frame; try { return f && f.contentWindow.__rf ? f.contentWindow.__rf.state() : null; } catch (err) { return null; } } };

@@ -11,7 +11,7 @@ window.RF_SCENE = (() => {
     K.joined.push(i);
     const a = ALLY[i];
     K.units.push({ id: a[0], x: -40, tx: a[3], y: 412 + (i % 2) * 14, s: 0.95, mode: 'walk', mt: 0, phase: i * 0.2, atk: Math.random() * 0.5 });
-    G.sfx('coin'); G.float(`DPS ${before} → ${dps()}`, 180, 120, '#ffe066', 24, 1.3);
+    G.sfx('coin'); G.float(`DPS ${before} → ${dps()}`, 180, 150, '#ffe066', 28, 1.3); G.stamp('합류!', '#7ee081', 220, 0.7); G.speed(0.5); G.punch(0.03);
     if (K.joined.length === 1) G.emit('choice', { first: a[0] });
     G.caption(K.joined.length < 4 ? `${a[1]} 합류! (${K.joined.length}/4)` : '원정대 완성! 일제 공격');
   }
@@ -19,6 +19,7 @@ window.RF_SCENE = (() => {
     id: 'party-assemble',
     introDur: 1.6,
     hook: ['혼자서는 못 이긴다', '원정대 모으기'],
+    climaxStamp: '드래곤 처치!!', raysAt: [292, 320],
     caption0: '동료 카드를 눌러 합류',
     endLines: ['동료 넷 · 역할 넷 · 시너지', '원정대를 꾸리고 드래곤을 넘자'],
     init() {
@@ -46,7 +47,7 @@ window.RF_SCENE = (() => {
         if (K.boss.mode === 'idle' && K.joined.length) KIT.hit(K.boss);
         G.float(KIT.fmt(d), K.boss.x - 20 + Math.random() * 40, 270, K.joined.length >= 3 ? '#ffd23f' : '#fff', 14 + K.joined.length * 4, 0.8);
         G.sfx('hit');
-        if (K.hp <= 0) { K.dead = true; G.climax(); G.sfx('win'); G.burst(K.boss.x, 320, '#ffd23f', 50, 280); G.shake(12, 0.5); G.pop('원정대 완성', '드래곤 처치!', `DPS 12 → ${dps()} · 동료 시너지 발동`, 'gold', 2.4); G.finish(2.4); }
+        if (K.hp <= 0) { K.dead = true; G.climax(); G.sfx('win'); G.burst(K.boss.x, 320, '#ffd23f', 70, 320); G.impact(2); G.coins(K.boss.x, 320, 34); G.pop('원정대 완성', '드래곤 처치!', `DPS 12 → ${dps()} · 동료 시너지 발동`, 'gold', 2.4); G.finish(2.4); }
       }
       if (G.phase === 'play' && G.idle > 1.3) {
         const i = [0, 1, 2, 3].find((j) => !K.joined.includes(j));

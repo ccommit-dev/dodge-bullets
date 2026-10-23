@@ -10,7 +10,7 @@ window.RF_SCENE = (() => {
   }
   function pick(G, i) {
     if (K.card !== 'open') return;
-    K.card = 'done'; K.arrow = CARDS[i].k; G.sfx('merge'); G.flash(CARDS[i].col, 0.12);
+    K.card = 'done'; K.arrow = CARDS[i].k; G.sfx('merge'); G.flash(CARDS[i].col, 0.12); G.stamp(i === 0 ? '불화살!!' : '얼음비!!', CARDS[i].col, 220, 0.9); G.punch(0.05);
     G.emit('choice', { skill: CARDS[i].k }); G.caption(`${CARDS[i].name}! 세 줄을 한 번에`);
     K.ultT = 0;
   }
@@ -22,6 +22,7 @@ window.RF_SCENE = (() => {
     id: 'dam-skill',
     introDur: 1.5,
     hook: ['화살 한 줄로는', '못 막는다'],
+    climaxStamp: '운석 낙하!!', raysAt: [180, 200],
     caption0: '화살은 자동 · 곧 스킬 고르기',
     endLines: ['고를 때마다 바뀌는 화살', '스킬 무기 10종 · 궁극기 운석'],
     init() {
@@ -63,7 +64,7 @@ window.RF_SCENE = (() => {
       if (K.meteor >= 0) {
         K.meteor += dt;
         if (K.meteor > 0.7 && !K.boom) {
-          K.boom = true; G.flash('#fff3a0', 0.3); G.shake(14, 0.6); G.sfx('bolt');
+          K.boom = true; G.flash('#fff3a0', 0.3); G.impact(2.2); G.sfx('bolt'); G.coins(180, 220, 30); G.stamp('대폭발!!', '#ff8a1f', 260, 1.2);
           for (const m of K.mons) { m.dead = true; K.kills += 1; G.burst(m.x, m.y - 30, '#f97316', 16, 220); }
           G.pop('운석 낙하', `한 번에 ${K.kills}마리`, '성문 방어 · 스킬 무기 10종 중 하나', 'gold', 2.4); G.finish(2.6);
         }

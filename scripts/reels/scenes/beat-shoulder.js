@@ -14,6 +14,7 @@ window.RF_SCENE = (() => {
     id: 'beat-shoulder',
     introDur: 1.5,
     hook: ['16비트 챕터를 넘기면', '견갑이 떨어진다'],
+    climaxStamp: '획득!!', raysAt: [180, 430],
     caption0: '곡을 고르고 시작',
     endLines: ['비트 수련 보상 = 견갑', '정찰 · 그림자 · 오우거 · 용린 견갑'],
     init(G) {
@@ -23,7 +24,7 @@ window.RF_SCENE = (() => {
       B = KIT.beat({ chart: CHART, bpm: 150, speed: 360, feverAt: 10,
         onHit: (lane, j) => { KIT.attack(lane % 2 ? K.leon : K.hero, 0.3); KIT.hit(K.boss); K.hp = Math.max(0, K.hp - 0.034); G.sfx(j === 'PERFECT' ? 'coin' : 'tap'); },
         onMiss: () => { G.shake(3, 0.15); G.sfx('fail'); },
-        onFever: () => { G.flash('#f0abfc', 0.15); G.sfx('legend'); },
+        onFever: () => { G.flash('#f0abfc', 0.15); G.sfx('legend'); G.stamp('FEVER!!', '#f0abfc', 200); G.speed(1.2); },
         onEnd: () => done(G) });
     },
     onTap(G, x, y) {
@@ -49,7 +50,7 @@ window.RF_SCENE = (() => {
       if (K.opened) {
         K.chest += dt;
         if (K.chest > 0.6 && !K.revealed) {
-          K.revealed = true; G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.3); G.burst(180, 330, '#ffd23f', 50, 260);
+          K.revealed = true; G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.3); G.burst(180, 430, '#ffd23f', 60, 300); G.coins(180, 470, 24); G.impact(1.5);
           G.pop('16비트 챕터 보상', '용린 견갑 획득!', `${B.miss === 0 ? 'S' : 'A'} 랭크 · 스킬 숙련 +1 · 견갑 조각 +40`, 'gold', 2.6);
           G.finish(2.8);
         }
