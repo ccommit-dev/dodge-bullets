@@ -1747,6 +1747,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (pq.count === 0) return;
       setSave((prev) => ({ ...prev, gold: prev.gold - pq.cost, equipmentTraining: { ...prev.equipmentTraining, [pkey]: (prev.equipmentTraining[pkey] ?? 0) + pq.count } }));
       flash(`${GEAR_PART_DEF[slot].name} 숙련 Lv.${plevel + pq.count}${pq.count > 1 ? ` (+${pq.count})` : ""}`);
+      setAutoTrainHit((h) => ({ slot, seq: (h?.seq ?? 0) + 1, count: pq.count }));   // 손으로 훈련해도 카드 아이콘이 튄다 (2026-10-23)
       return;
     }
     const key = slot === "weapon" ? "weaponMastery" : "shoulderMastery";
@@ -1785,6 +1786,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       gold: prev.gold - quote.cost,
       equipmentTraining: { ...prev.equipmentTraining, [key]: prev.equipmentTraining[key] + quote.count },
     }));
+    if (slot === "weapon") setAutoTrainHit((h) => ({ slot, seq: (h?.seq ?? 0) + 1, count: quote.count }));
     const fw = Math.floor(forgedWeaponLevel * 1.5);
     flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}${slot === "weapon" ? ` · 탭 피해 ${formatGold(tapDamage(level + fw))} → ${formatGold(tapDamage(level + quote.count + fw))}` : ""}`);
   };

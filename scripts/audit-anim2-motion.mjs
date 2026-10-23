@@ -11,7 +11,8 @@ const L = JSON.parse(readFileSync("art-gen/anim-layout.json", "utf8"));
 // 기준(칸 높이 %) — 대기는 거의 제자리, 걷기·공격은 몸이 움직이는 게 정상이라 느슨하게
 const LIMIT = {
   idle: { feet: 1.2, step: 2.5, height: 4 },
-  walk: { feet: 2.5, step: 6, height: 6 },
+  // 걷기 발 2.5 → 3 (2026-10-23 로우 폴리 비버): 짧은 다리로 통통 튀게 들썩임을 1.35배 키웠다(anim2.py LP) — 발이 칸마다 2.6% 뜬다. 미끄러짐이 아니라 의도한 뜀
+  walk: { feet: 3, step: 6, height: 6 },
   // 덤빔은 일부러 늘였다(1.07) 찧는(0.92) 칸 — 몬스터 0→1 에서 키가 16% 안팎 준다(anim2.py monster_actions). 그보다 크면 튐
   attack: { feet: 4, step: 13, height: 19 },
   hit: { feet: 3, step: 8, height: 10 },

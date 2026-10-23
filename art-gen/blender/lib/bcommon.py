@@ -151,11 +151,16 @@ def collection(name):
     return c
 
 
+# 로우 폴리 모드 (2026-10-23, 참고: BEAVER RAMPAGE) — 0 이면 끔. 켜 두면(몬스터를 짓는 동안) 타원체 · 관 · 원뿔의 면 수를 줄이고 평면 셰이딩.
+# 눈처럼 둥글어야 하는 부품은 짓는 쪽에서 잠깐 끈다(creature._eyes)
+FACET = 0
+
+
 def mesh_obj(name, bm, mat=None, coll=None, smooth=True, outline=0.0):
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
-    if smooth:
+    if smooth and not FACET:
         for p in me.polygons:
             p.use_smooth = True
     o = bpy.data.objects.new(name, me)
@@ -169,6 +174,8 @@ def mesh_obj(name, bm, mat=None, coll=None, smooth=True, outline=0.0):
 
 def ellipsoid(center, radii, egg=0.0, seg=48, rings=32, rot=None):
     """타원체 bmesh — egg>0 이면 아래가 넓다. rot: Euler 라디안(중심 기준)"""
+    if FACET:
+        seg, rings = min(seg, FACET), min(rings, max(5, FACET * 2 // 3))
     bm = bmesh.new()
     bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=rings, radius=1.0)
     R = rot.to_matrix() if rot is not None else None
@@ -201,6 +208,8 @@ def _frames_along(pts):
 def tube(pts, radii, seg=16, caps=True):
     """점 배열을 따라가는 관(반지름 배열). 끝은 반구 대신 평평한 뚜껑"""
     pts = [Vector(p) for p in pts]
+    if FACET:
+        seg = min(seg, max(6, FACET - 4))
     if not isinstance(radii, (list, tuple)):
         radii = [radii] * len(pts)
     bm = bmesh.new()

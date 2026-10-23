@@ -4,12 +4,16 @@
 """
 import bpy
 import math
+import os
 from mathutils import Vector, Matrix, Euler, Quaternion
 
 from lib import bcommon as C
 from lib.beaver import _armature, _attach, spline, interp, _shell, _rot_local
 
 OUT = 0.016
+# 로우 폴리 (2026-10-23, 사용자: "동료 · 몬스터 · 보스도 각각" — 비버와 같은 BEAVER RAMPAGE 풍) — 각진 면 · 무광 단색 피부 · 큰 흰자 눈
+LOWPOLY = os.environ.get('BEAVER_STYLE', 'lowpoly') == 'lowpoly'
+FACETS = 12
 
 
 def _m(name, color, rough=0.5, metal=0.0, emit=None, es=0.0, coat=0.2):
@@ -19,6 +23,32 @@ def _m(name, color, rough=0.5, metal=0.0, emit=None, es=0.0, coat=0.2):
 def _skin(color, dark, bump=0.25):
     """몬스터 피부 (2026-10-16 2차, 사용자: "디테일이 줄어 장난감 같다") — 발쪽으로 짙어지는 그라데이션(월드 z) + 노이즈 결 + 거친 반사.
     단색 매끈한 플라스틱이 원화의 채색·질감과 가장 달랐다"""
+    if LOWPOLY:   # 무광 단색 + 발쪽으로 짙어지는 그라데이션만(노이즈 · 비늘 무늬는 각진 면과 겹쳐 지저분했다)
+        m, fresh = C.new_mat(f"monskin_lp_{color}_{dark}")
+        if not fresh:
+            return m
+        nt = m.node_tree
+        b = nt.nodes['Principled BSDF']
+        b.inputs['Roughness'].default_value = 0.88
+        b.inputs['Coat Weight'].default_value = 0.0
+        geo = nt.nodes.new('ShaderNodeNewGeometry')
+        sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+        nt.links.new(geo.outputs['Position'], sep.inputs[0])
+        mr = nt.nodes.new('ShaderNodeMapRange')
+        mr.inputs['From Min'].default_value = -0.1
+        mr.inputs['From Max'].default_value = 0.6
+        nt.links.new(sep.outputs['Z'], mr.inputs['Value'])
+        mixc = nt.nodes.new('ShaderNodeMix'); mixc.data_type = 'RGBA'
+        mixc.inputs['A'].default_value = C.srgb(dark)
+        mixc.inputs['B'].default_value = C.srgb(color)
+        mixc.clamp_factor = True
+        mr2 = nt.nodes.new('ShaderNodeMath'); mr2.operation = 'MULTIPLY_ADD'
+        mr2.inputs[1].default_value = 0.45
+        mr2.inputs[2].default_value = 0.55   # 아래도 본색의 절반 이상 — 너무 어둡지 않게
+        nt.links.new(mr.outputs['Result'], mr2.inputs[0])
+        nt.links.new(mr2.outputs['Value'], mixc.inputs['Factor'])
+        nt.links.new(mixc.outputs['Result'], b.inputs['Base Color'])
+        return m
     m, fresh = C.new_mat(f"monskin_{color}_{dark}_{bump}")
     if not fresh:
         return m
@@ -266,12 +296,29 @@ class CRig:
 
 
 def _eyes(add, head_c, head_r, cfg, coll, M, bone='head', spread=0.38, up=0.12, size=1.0):
+    saved = C.FACET
+    C.FACET = 0
+    try:
+        _eyes_round(add, head_c, head_r, cfg, coll, M, bone, spread, up, size)
+    finally:
+        C.FACET = saved
+
+
+def _eyes_round(add, head_c, head_r, cfg, coll, M, bone, spread, up, size):
     for sx in ((0,) if cfg.get('cyclops') else (-1, 1)):
         if sx == 0:
             size *= 1.7
         p, n = C.on_ellipsoid(head_c, head_r, Vector((sx * spread, -1.0, up)))
         rot = C.look_rot(n)
         r = cfg.get('eye_size', 0.085) * size
+        if LOWPOLY:   # 흰자를 크게(1.3배) · 검은 눈동자 · 그 둘레에 얇은 색 홍채(종족 색은 남긴다)
+            r *= 1.3
+            add(bone, C.mesh_obj(f'eyew{sx}', C.ellipsoid(p - n * 0.01, (r * 1.05, r * 1.15, r * 0.45), rot=rot), M['eyew'], coll, outline=OUT * 0.8))
+            pc = p + n * (r * 0.4) + Vector((-sx * r * 0.12, 0, -r * 0.08))
+            add(bone, C.mesh_obj(f'iris{sx}', C.ellipsoid(pc, (r * 0.6, r * 0.66, r * 0.12), rot=rot), M['iris'], coll))
+            add(bone, C.mesh_obj(f'pupil{sx}', C.ellipsoid(pc + n * (r * 0.06), (r * 0.46, r * 0.52, r * 0.1), rot=rot), M['pupil'], coll))
+            add(bone, C.mesh_obj(f'ehi{sx}', C.ellipsoid(pc + n * (r * 0.14) + Vector((-r * 0.18, 0, r * 0.22)), (r * 0.16, r * 0.16, r * 0.05), rot=rot), M['hi'], coll))
+            continue
         add(bone, C.mesh_obj(f'eyew{sx}', C.ellipsoid(p - n * 0.01, (r * 1.05, r * 1.15, r * 0.45), rot=rot), M['eyew'], coll, outline=OUT * 0.7))
         add(bone, C.mesh_obj(f'iris{sx}', C.ellipsoid(p + n * (r * 0.22), (r * 0.72, r * 0.78, r * 0.3), rot=rot), M['iris'], coll))
         add(bone, C.mesh_obj(f'pupil{sx}', C.ellipsoid(p + n * (r * 0.36), (r * 0.34, r * 0.5, r * 0.2), rot=rot), M['pupil'], coll))
@@ -279,6 +326,17 @@ def _eyes(add, head_c, head_r, cfg, coll, M, bone='head', spread=0.38, up=0.12, 
 
 
 def build(name, cfg, coll=None):
+    if not LOWPOLY:
+        return _build(name, cfg, coll)
+    saved = C.FACET
+    C.FACET = FACETS
+    try:
+        return _build(name, cfg, coll)
+    finally:
+        C.FACET = saved
+
+
+def _build(name, cfg, coll=None):
     coll = coll or C.collection(name)
     kind = cfg.get('kind', 'biped')
     bones = _bones(kind, cfg)
@@ -301,7 +359,7 @@ def build(name, cfg, coll=None):
         'dark': _m('dark', cfg.get('dark', '#3b2a3b'), rough=0.6),
         'accent': _m('acc', cfg.get('accent', '#ff8a3d'), rough=0.4, emit=cfg.get('accent') if cfg.get('glow') else None, es=1.5 if cfg.get('glow') else 0),
         'horn': _m('horn', cfg.get('horn', '#f1e4c8'), rough=0.35),
-        'eyew': _m('eyew', cfg.get('sclera', '#fff3d6'), rough=0.2, coat=0.6),
+        'eyew': _m('eyew', '#fbf8f2' if LOWPOLY else cfg.get('sclera', '#fff3d6'), rough=0.45 if LOWPOLY else 0.2, coat=0.1 if LOWPOLY else 0.6),
         'iris': _m('iris', cfg.get('iris', '#3ad15a'), rough=0.15, emit=cfg.get('iris', '#3ad15a'), es=1.6),
         'pupil': _m('pupil', '#120a0a', rough=0.15),
         'hi': _m('hi', '#ffffff', emit='#ffffff', es=1.5),
