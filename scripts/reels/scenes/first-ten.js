@@ -16,12 +16,13 @@ window.RF_SCENE = (() => {
       G.burst(cardRect(i).x + 28, cardRect(i).y + 60, '#ffd23f', 50, 280);
       G.climax(); G.pop('전설 SSR · 첫 10연 확정', '용기사 아리', '새 동료 합류 · 보석 +50', 'gold', 2.6);
       G.caption('첫 10연은 전설 1명 확정!'); G.finish(2.8);
-    } else { G.sfx('flip'); G.caption(K.opened < 9 ? `${10 - K.opened}장 남음 — 전설은 어디에?` : '마지막 한 장…!'); }
+    } else { G.sfx('flip'); if (c.r[1] === 'SR') { G.punch(0.03); G.float('SR!', cardRect(i).x + 28, cardRect(i).y + 20, '#c4b5fd', 26, 0.8); } G.caption(K.opened < 9 ? `${10 - K.opened}장 남음 — 전설은 어디에?` : '마지막 한 장…!'); }
   }
   return {
     id: 'first-ten',
     introDur: 1.5,
     hook: ['첫 10연차', '전설 확정'],
+    climaxStamp: '전설!!', raysAt: [180, 300],
     caption0: '10회 소환 단추를 눌러요',
     endLines: ['시작하자마자 전설 동료', '출석 1,000 + 깜짝 500 보석으로 바로'],
     init(G) {

@@ -9,7 +9,7 @@ window.RF_SCENE = (() => {
     K.boss.mode === 'idle' && KIT.hit(K.boss);
     if (K.ring >= EVERY) {
       K.ring = 0; K.bolts += 1; K.boltT = 0.55;
-      dmg += 18 * 6; G.flash('#fff6c4', 0.2); G.shake(10, 0.35); G.sfx('bolt');
+      dmg += 18 * 6; G.flash('#fff6c4', 0.2); G.impact(1.5); G.sfx('bolt'); G.stamp('⚡ 번개!!', '#ffe066', 220, 0.8); G.speed(0.5);
       G.float('⚡ 번개 ×6!', 270, 210, '#ffe066', 30, 1.1);
       G.caption(K.bolts === 1 ? '10번째 탭 = 번개!' : `번개 ${K.bolts}번째`);
       if (K.bolts === 1) G.emit('choice', { bolt: 1 });
@@ -17,7 +17,7 @@ window.RF_SCENE = (() => {
     K.hp = Math.max(0, K.hp - dmg);
     G.float(KIT.fmt(dmg), 270 + (Math.random() * 40 - 20), 290, dmg > 60 ? '#ffd23f' : '#fff', dmg > 60 ? 34 : 22);
     if (K.hp <= 0 && !K.dead) {
-      K.dead = true; G.climax(); G.sfx('win'); G.burst(270, 320, '#ffd23f', 40, 260); G.shake(12, 0.5);
+      K.dead = true; G.climax(); G.sfx('win'); G.burst(270, 320, '#ffd23f', 60, 300); G.impact(2); G.coins(270, 320, 30);
       G.pop('번개 강화', 'Lv.1 → Lv.5', '탭 피해 +12% → +60% · 번개 ×4.5 → ×6.5', 'gold', 2.4);
       G.caption('오우거 처치!'); G.finish(2.4);
     }
@@ -26,6 +26,7 @@ window.RF_SCENE = (() => {
     id: 'lightning-tap',
     introDur: 1.5,
     hook: ['10번째 탭마다', '⚡ 번개가 떨어진다'],
+    climaxStamp: 'K.O.!!', raysAt: [270, 320],
     caption0: '아래 단추를 연타!',
     endLines: ['탭 한 번 한 번이 쌓여 번개로', '번개 강화 줄은 따로 성장'],
     init(G) {

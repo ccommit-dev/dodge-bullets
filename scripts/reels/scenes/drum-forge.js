@@ -11,13 +11,14 @@ window.RF_SCENE = (() => {
   }
   function resolve(G) {
     if (K.lv === 7 && !K.failed) {
-      K.failed = true; G.sfx('fail'); G.shake(6, 0.3); G.flash('#7f1d1d', 0.18);
+      K.failed = true; G.sfx('fail'); G.shake(10, 0.4); G.flash('#7f1d1d', 0.22); G.stamp('실패…', '#fca5a5', 240, 0.9);
       G.float('실패…', 180, 230, '#fca5a5', 30, 1.1);
       G.pop('강화 방지권 사용', '+7 그대로 지킴', '실패해도 단계가 내려가지 않아요', 'purple', 1.5);
       return;
     }
     const before = K.lv;
-    K.lv += 1; K.flashT = 0.4; G.sfx('merge'); G.burst(180, 300, K.lv >= 11 ? '#ffd23f' : '#fff3a0', 24, 200);
+    K.lv += 1; K.flashT = 0.4; G.sfx('merge'); G.burst(180, 300, K.lv >= 11 ? '#ffd23f' : '#fff3a0', 30, 240); G.punch(0.04); G.hitstop(0.04);
+    if ([5, 10].includes(K.lv)) { G.stamp(`+${K.lv}!!`, '#ffd23f', 236); G.coins(180, 300, 12); G.rays(180, 300, 1); }
     G.float(`+${K.lv}`, 180, 210, '#ffe066', 34, 0.9);
     if ([5, 7, 11, 15].includes(K.lv)) G.pop('외형 변화!', NAMES[K.lv], `+${before} → +${K.lv} · 공격력 ×${(1 + K.lv * 0.18).toFixed(2)}`, 'gold', 1.6);
     G.caption(`+${K.lv} ${NAMES[K.lv]}`);
@@ -28,6 +29,7 @@ window.RF_SCENE = (() => {
     popY: 236,
     introDur: 1.5,
     hook: ['나무북이', '왕관북이 되기까지'],
+    climaxStamp: '+15 왕관북!!', raysAt: [180, 300],
     caption0: '강화 단추를 눌러요',
     endLines: ['북 하나로 +15 까지', '단계마다 생김새가 바뀐다'],
     init() { K = { lv: 0, busy: 0, hammer: 0, tries: 0, failed: false, flashT: 0, auto: 0 }; },

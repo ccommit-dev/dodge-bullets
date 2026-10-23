@@ -5,7 +5,8 @@ window.RF_SCENE = (() => {
   let K;
   function startWave(G, w) {
     K.wave = w; K.queue = WAVES[w].map((id, i) => ({ id, at: i * 0.42, lane: id === 'armored-ogre' ? 1 : (i * 2 + w) % 3 }));
-    K.wt = 0; G.caption(w === 2 ? '대장 등장! 가운데를 지켜라' : `WAVE ${w + 1}/3 — 줄을 탭해 이동`);
+    K.wt = 0; if (w > 0) G.stamp(w === 2 ? 'BOSS!!' : `WAVE ${w + 1}`, w === 2 ? '#ff6b6b' : '#fff', 200, 0.9);
+    G.caption(w === 2 ? '대장 등장! 가운데를 지켜라' : `WAVE ${w + 1}/3 — 줄을 탭해 이동`);
     if (w === 2) G.pop('WAVE 3/3', '대장 · 갑옷 오우거', '성문을 지켜라', 'pink', 1.4);
   }
   function move(G, lane) {
@@ -17,6 +18,7 @@ window.RF_SCENE = (() => {
     id: 'dam-hold',
     introDur: 1.5,
     hook: ['댐이 뚫리기 직전', '막아라!'],
+    climaxStamp: '성문 사수!!', raysAt: [180, 220],
     caption0: '줄을 탭해 이동 · 활은 자동',
     endLines: ['손가락 하나로 지키는 성문', '웨이브를 막으면 원정 인장'],
     init(G) {
@@ -37,7 +39,7 @@ window.RF_SCENE = (() => {
       // 몬스터 이동 · 성문 충돌
       for (const m of K.mons) {
         KIT.tick(m, dt); m.y += m.sp * dt; m.s = depth(m.y) * (m.boss ? 1.05 : 1);
-        if (m.y >= GATE_Y) { m.dead = true; K.gate = Math.max(18, K.gate - (m.boss ? 30 : 9)); G.shake(6, 0.25); G.sfx('fail'); G.float(m.boss ? '-30%' : '-9%', m.x, GATE_Y - 20, '#fca5a5', 22); }
+        if (m.y >= GATE_Y) { m.dead = true; K.gate = Math.max(18, K.gate - (m.boss ? 30 : 9)); G.shake(8, 0.3); G.flash('#ef4444', 0.14); G.sfx('fail'); G.float(m.boss ? '-30%' : '-9%', m.x, GATE_Y - 20, '#fca5a5', 22); }
       }
       // 자동 사격 — 0.22초마다 지금 줄로
       K.shootT += dt;
@@ -50,7 +52,7 @@ window.RF_SCENE = (() => {
         const t = K.mons.find((m) => !m.dead && m.lane === s.lane && Math.abs(m.y - 30 - s.y) < 26);
         if (t) {
           s.dead = true; t.hp -= 1; KIT.hit(t); G.sfx('hit'); G.float(t.boss ? '12' : '8', t.x + 14, t.y - 70 * t.s, '#fff', 16, 0.6);
-          if (t.hp <= 0) { t.dead = true; K.cleared += 1; G.burst(t.x, t.y - 40, t.boss ? '#ffd23f' : '#fde68a', t.boss ? 40 : 12, t.boss ? 260 : 140); G.sfx('coin'); }
+          if (t.hp <= 0) { t.dead = true; K.cleared += 1; G.burst(t.x, t.y - 40, t.boss ? '#ffd23f' : '#fde68a', t.boss ? 50 : 16, t.boss ? 300 : 160); G.coins(t.x, t.y - 40, t.boss ? 24 : 3); if (t.boss) G.impact(2); else G.punch(0.02); }
         }
         if (s.y < 60) s.dead = true;
       }

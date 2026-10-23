@@ -13,12 +13,14 @@ window.RF_SCENE = (() => {
     K.hp = Math.max(0, K.hp - dmg); KIT.hit(K.boss);
     G.float(KIT.fmt(dmg), 285 + Math.random() * 30 - 15, 140, judge === 'PERFECT' ? '#ffd23f' : '#fff', judge === 'PERFECT' ? 22 : 17, 0.6);
     G.sfx(judge === 'PERFECT' ? 'coin' : 'tap');
+    if (judge === 'PERFECT') G.punch(0.015);
+    if (B.combo > 0 && B.combo % 6 === 0) { G.float(`${B.combo} COMBO!`, 180, 400, '#ffd23f', 30, 0.9); G.coins(285, 180, 5); }
     if (!K.firstHit) { K.firstHit = true; G.emit('choice', { judge }); }
   }
   function finish(G) {
     if (K.done) return; K.done = true;
     const rank = B.miss === 0 ? 'S' : B.miss < 3 ? 'A' : 'B';
-    G.climax(); G.sfx('win'); G.flash('#fff3a0', 0.2);
+    G.climax(); G.sfx('win'); G.flash('#fff3a0', 0.2); G.stamp(`${rank} 랭크!!`, '#ffd23f', 330); G.coins(285, 190, 24);
     G.pop(`${rank} 랭크 · MAX ${B.maxCombo} COMBO`, '고블린 족장 처치!', `PERFECT ${B.perfect} · GOOD ${B.good} · MISS ${B.miss}`, 'purple', 2.4);
     G.caption('연주로 이기는 원정'); G.finish(2.4);
   }
@@ -36,7 +38,7 @@ window.RF_SCENE = (() => {
       B = KIT.beat({ chart: CHART, bpm: 120, feverAt: 12,
         onHit: (lane, j) => act(G, lane, j),
         onMiss: () => { G.shake(3, 0.15); G.sfx('fail'); KIT.attack(K.boss, 0.35); },
-        onFever: () => { G.flash('#f0abfc', 0.15); G.sfx('legend'); G.caption('FEVER! 피해 2배'); },
+        onFever: () => { G.flash('#f0abfc', 0.15); G.sfx('legend'); G.caption('FEVER! 피해 2배'); G.stamp('FEVER!!', '#f0abfc', 200); G.speed(1.4); G.rays(290, 200, 1.2, '#f0abfc'); },
         onEnd: () => finish(G) });
     },
     onTap(G, x, y) {

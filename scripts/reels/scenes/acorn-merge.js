@@ -15,12 +15,13 @@ window.RF_SCENE = (() => {
     K.grid[b] = lv; K.grid[a] = 0; K.sel = -1;
     K.pops.push({ i: b, t: 0 });
     const r = slotRect(b);
-    G.burst(r.x + r.w / 2, r.y + r.h / 2, tintOf(lv), 16, 140); G.sfx('merge');
+    G.burst(r.x + r.w / 2, r.y + r.h / 2, tintOf(lv), 26, 200); G.sfx('merge'); G.punch(0.03 + lv * 0.006);
     if (!K.merged) { K.merged = true; G.emit('choice', { merged: lv - 1 }); }
     if (lv > K.top) {
       K.top = lv;
       K.mulShow = { from: before, to: mul(lv), t: 0 };
       G.float(`피해 ×${before.toFixed(2)} → ×${mul(lv).toFixed(2)}`, 96, 260, '#ffe066', 20, 1.4);
+      if (lv >= 3 && lv < 5) G.stamp(`Lv.${lv}!`, tintOf(lv), 250, 0.8);
       if (lv >= 3) G.pop('새 도토리 발견', `도토리 Lv.${lv}`, `첫 발견 보상 · 보석 +${10 * lv}`, 'green', 1.6);
       G.caption(lv >= 5 ? '최고 단계 도토리 완성!' : `Lv.${lv} — 미아가 바로 쓴다`);
     }
@@ -30,6 +31,7 @@ window.RF_SCENE = (() => {
     id: 'acorn-merge',
     introDur: 1.6,
     hook: ['도토리 두 개를', '합치면?'],
+    climaxStamp: '최강 도토리!!', raysAt: [100, 300],
     caption0: '같은 단계 둘을 차례로 누르기',
     endLines: ['도토리 두 개 = 더 센 도토리', '합칠수록 동료 피해 ×4.8까지'],
     init(G) {
@@ -68,9 +70,9 @@ window.RF_SCENE = (() => {
           const dmg = (K.power > 0 ? 160 : 12) * mul(best()) * (0.9 + Math.random() * 0.2);
           K.hp -= dmg; KIT.hit(K.mon); G.sfx('hit');
           G.float(KIT.fmt(dmg), K.mon.x + (Math.random() * 30 - 15), 300, K.power > 0 ? '#ffd23f' : '#fff', K.power > 0 ? 34 : 22);
-          if (K.power > 0) { G.shake(8); G.flash('#fff3a0', 0.12); }
+          if (K.power > 0) { G.impact(1.4); G.flash('#fff3a0', 0.12); }
           if (K.hp <= 0) {
-            G.burst(K.mon.x, 360, '#ffd23f', 22, 200); G.float('+골드', K.mon.x, 330, '#ffe066', 20); G.sfx('coin');
+            G.burst(K.mon.x, 360, '#ffd23f', 30, 240); G.coins(K.mon.x, 340, K.power > 0 ? 16 : 6); G.float('+골드', K.mon.x, 330, '#ffe066', 20);
             K.kills += 1; spawn(G);
             if (K.power > 0 && K.kills >= 3 && !K.done) { K.done = true; G.finish(1.4); }
           }
