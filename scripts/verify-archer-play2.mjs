@@ -88,8 +88,8 @@ await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
 await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(2400);
-const dup = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, dups: document.querySelectorAll(".gacha-card.dup").length, prog: [...document.querySelectorAll(".gacha-card .dup-progress")].map((e) => e.textContent), bars: [...document.querySelectorAll(".gacha-card .dup-bar > i")].map((e) => e.style.width) }));
-ok("10연 중복 카드마다 '★2 a/b' 또는 '★2 승급!' + 막대", dup.dups > 0 && dup.prog.length === dup.dups && dup.prog.every((t) => /^\d+\/\d+$|★\d 승급|최대/.test(t)) && dup.bars.every((w) => /%$/.test(w)), `${dup.cards}장 · 중복 ${dup.dups} · ${dup.prog.slice(0, 3).join(" | ")}`);
+const dup = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, dups: document.querySelectorAll(".gacha-card.dup").length, prog: [...document.querySelectorAll(".gacha-card .dup-progress")].map((e) => e.getAttribute("title") ?? ""), art: [...document.querySelectorAll(".gacha-card.dup")].map((c) => { const a = c.querySelector(".gacha-art").getBoundingClientRect(), d = c.querySelector(".dup-progress").getBoundingClientRect(); return d.height / a.height; }), bars: [...document.querySelectorAll(".gacha-card .dup-bar > i")].map((e) => e.style.width) }));
+ok("10연 중복 카드마다 막대 + 제목(★2까지 a/b · ★2 승급 가능) · 그림의 1/4 이하만 덮는다", dup.dups > 0 && dup.prog.length === dup.dups && dup.prog.every((t) => /★\d까지 \d+\/\d+|★\d 승급 가능|최대/.test(t)) && dup.bars.every((w) => /%$/.test(w)) && dup.art.every((r) => r <= 0.25), `${dup.cards}장 · 중복 ${dup.dups} · ${dup.prog.slice(0, 3).join(" | ")}`);
 // 카드를 누르면 설명 패널에 조각 진행 · 승급 배율 전후
 await page.evaluate(() => document.querySelector(".gacha-card.dup")?.click()); await sleep(300);
 const detail = await page.evaluate(() => document.querySelector(".gacha-detail")?.textContent ?? "");

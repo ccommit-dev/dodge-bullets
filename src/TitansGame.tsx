@@ -4165,7 +4165,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;
               return (
-                <div key={`${r.id}-${i}`} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${gachaFocus === i ? "is-focus" : ""}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
+                <div key={`${r.id}-${i}`} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${r.duplicate && (() => { const st = Math.max(1, character.allyStars[r.id] ?? 1); const need = shardCostToNext(r.id, st); return need !== null && (character.allyShards[r.id] ?? 0) >= need; })() ? "dup-ready-card" : ""} ${gachaFocus === i ? "is-focus" : ""}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
                   role="button" tabIndex={0} aria-label={`${RARITY_LABEL[r.rarity]} ${h.name}`} title={`${RARITY_LABEL[r.rarity]}(${r.rarity}) · ${ROLE_LABEL[ALLY_ROLE[h.id]]} · ${h.feature}`}
                   onMouseEnter={() => setGachaFocus(i)} onClick={() => setGachaFocus((f) => (f === i ? null : i))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setGachaFocus(i); } }}>
                   <div className="gacha-card-inner">
@@ -4180,12 +4180,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                         const have = Math.max(0, (character.allyShards[r.id] ?? 0) - later);
                         const st = Math.max(1, character.allyStars[r.id] ?? 1);
                         const need = shardCostToNext(r.id, st);
-                        if (need === null) return <em className="dup-progress max">★{st} 최대</em>;
+                        if (need === null) return <em className="dup-progress max" title={`★${st} 최대`} aria-label={`★${st} 최대`}><i className="dup-bar"><i style={{ width: "100%" }} /></i></em>;
                         const ready = have >= need;
                         return (
-                          <em className={`dup-progress ${ready ? "ready" : ""}`}>
+                          // 작은 카드(10연 · 360px 폭은 그림 칸 45×40)에서 글자 판이 비버를 다 가렸다 — 그림 위에는 얇은 막대만, 승급 가능이면 작은 ★ 표만. 숫자는 title · 설명 패널
+                          <em className={`dup-progress ${ready ? "ready" : ""}`} title={ready ? `★${st + 1} 승급 가능` : `★${st + 1}까지 ${have}/${need}`} aria-label={ready ? `★${st + 1} 승급 가능` : `★${st + 1}까지 ${have}/${need}`}>
                             <i className="dup-bar"><i style={{ width: `${Math.min(100, (have / need) * 100)}%` }} /></i>
-                            {ready ? `★${st + 1} 승급` : `${have}/${need}`}
                           </em>
                         );
                       })()}
