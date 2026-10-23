@@ -693,6 +693,54 @@
 .route-map.route-list .route-node.locked { opacity: .45; }
 /* 출발 · 사건 · 별 안내 정리 */
 .exp-menu-content .pioneer-star-hint { display: none !important; }
+/* ═══════════ 마이페이지 배지 · 계승 정리 (2026-10-23, 사용자 아이폰 캡처: 잠긴 배지가 흐려 안 읽힘 · 판 가장자리에 붙음 · 환생 문단이 길다) ═══════════ */
+.character-page .mypage-group { padding: 12px 12px 14px; box-sizing: border-box; }
+.character-page .mp-badges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 14px; }
+.character-page .mp-badge { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 10px; border-radius: 12px; opacity: 1 !important; filter: none !important; box-shadow: none !important; }
+.character-page .mp-badge.earned { background: #ffe7a3 !important; border: 2px solid #c8962a !important; }
+.character-page .mp-badge.locked { background: #f3e8d4 !important; border: 2px dashed rgba(59, 36, 21, .22) !important; }
+.character-page .mp-badge > b { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; background: #f2c232 !important; color: #3b2415 !important; }
+.character-page .mp-badge.locked > b { background: rgba(59, 36, 21, .1) !important; font-size: 13px; }
+.character-page .mp-badge > span { display: grid; gap: 1px; min-width: 0; }
+.character-page .mp-badge strong { font-size: 14px !important; line-height: 1.2; color: #3b2415 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.character-page .mp-badge small { font-size: 13px !important; line-height: 1.2; color: #7a5a3a !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.character-page .mp-badge.locked strong { color: #6b4a2f !important; }
+/* 계승 */
+.character-page .mp-rebirth { display: grid; gap: 8px; margin: 0 0 14px; }
+.character-page .mp-gain { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.character-page .mp-gain li { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; min-width: 0; padding: 7px 10px; border-radius: 10px; background: #fff8e6; border: 1.5px solid rgba(59, 36, 21, .14); }
+.character-page .mp-gain span { font-size: 13px !important; font-weight: 700; color: #7a5a3a !important; white-space: nowrap; }
+.character-page .mp-gain b { font-size: 14px !important; font-weight: 900; color: #3b2415 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.character-page .mp-rebirth .rebirth-button { position: relative; overflow: hidden; margin: 0 !important; min-height: 46px; font-size: 15px !important; }
+.character-page .mp-rebirth .rebirth-button.is-locked { border: 2px solid rgba(59, 36, 21, .25) !important; background: #f3e8d4 !important; color: #6b4a2f !important; box-shadow: none !important; }
+.character-page .mp-rebirth .rebirth-button.is-locked::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--wall-p, 0%); background: rgba(242, 194, 50, .45); z-index: 0; }
+.character-page .mp-rebirth .rebirth-button > * , .character-page .mp-rebirth .rebirth-button { z-index: 1; }
+.character-page .mp-rebirth .auto-rebirth-toggle { margin: 0; }
+/* 진화 계통 — 세 칸 한 줄, 첫 환생 전엔 잠금 표시 */
+.character-page .mp-evo { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px; }
+.character-page .mp-evo button { padding: 9px 6px !important; min-height: 0 !important; border-radius: 12px !important; }
+.character-page .mp-evo button b { font-size: 15px !important; }
+.character-page .mp-evo button small { font-size: 13px !important; line-height: 1.25; margin-top: 2px; }
+.character-page .mp-evo.is-locked button:not(.selected) { opacity: .62; }
+.character-page .mp-gain li.wide { grid-column: 1 / -1; }
+.character-page .mp-badge small { white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.character-page .mp-evo.is-locked button:not(.selected) { opacity: 1; background: #f3e8d4 !important; }
+.character-page .mp-evo.is-locked button small { color: #7a5a3a !important; }
+/* ═══════════ 10연 결과 카드 정리 (2026-10-23 아이폰 캡처) — 머리 한 줄(등급 · 잠금) · 그림 · 짧은 이름 · 조각 막대 · 조각 수 — 칸이 같은 높이 ═══════════ */
+.gacha-reveal .gacha-card-front { display: flex !important; flex-direction: column !important; align-items: stretch !important; justify-content: flex-start !important; gap: 2px !important; padding: 5px 5px 6px !important; overflow: hidden; }
+.gacha-reveal .gacha-card-head { position: relative; z-index: 7; display: flex; align-items: center; justify-content: space-between; gap: 2px; min-height: 20px; }
+.gacha-reveal .gacha-card-head .gacha-rarity-badge { position: static !important; align-self: auto; padding: 0 7px !important; height: 20px; font-size: 13px !important; line-height: 18px; letter-spacing: 0; }
+.gacha-reveal .gacha-card-head .gacha-rarity-badge i.pickup { font-size: 13px !important; margin-left: 2px; }
+.gacha-reveal .gacha-card-head .gacha-lock { position: static !important; display: grid; place-items: center; width: 22px; height: 20px; padding: 0 !important; font-size: 12px !important; border-radius: 8px !important; background: #f3e8d4 !important; }
+.gacha-reveal .gacha-card-front .gacha-art { flex: 1 1 auto !important; min-height: 40px; display: grid; place-items: end center; overflow: visible; }
+.gacha-reveal .gacha-card-front > b { margin: 0 !important; padding: 0 !important; background: none !important; text-align: center; font-size: 14px !important; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gacha-reveal .gacha-card-front > .dup-progress { position: static !important; display: block; padding: 0 !important; margin: 1px 6% 0; background: none !important; box-shadow: none !important; }
+.gacha-reveal .gacha-card-front > .dup-progress .dup-bar { width: 100%; height: 6px; border: 1px solid rgba(40, 24, 10, .7); }
+.gacha-reveal .gacha-card-front > .dup-progress.ready .dup-bar { border-color: #f59e0b; box-shadow: 0 0 6px #fde047; }
+.gacha-reveal .gacha-card-front > small { text-align: center; font-size: 13px !important; line-height: 1.15; white-space: nowrap; font-weight: 800; }
+.gacha-reveal .gacha-card.new .gacha-card-front > small { color: #15803d !important; }
+.gacha-reveal .gacha-reveal-grid.count-10 .gacha-card { aspect-ratio: auto !important; height: 138px !important; }
+.gacha-reveal .gacha-card-front .gacha-art { min-height: 56px; }
 /* 댐 방어전 정비 탭 정리 (2026-10-23, 사용자: "UI 조잡한 부분 마저") — 수집 보너스는 판이 아니라 얇은 한 줄 · 미보유 칩은 흐리게(꼬리 글 대신) ·
    성문 원정 기금 단계표 6줄은 접는다 · 칩 · 보급 설명은 한 줄로 */
 .exp-skill-panel .exp-skill-banner.compact { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 4px 6px !important; justify-content: center; gap: 6px; min-height: 0 !important; }

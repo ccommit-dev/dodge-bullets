@@ -1,6 +1,6 @@
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { loadBeatRpg } from "./game/storage";
 import { skillTotal, SKILL_LABEL, type BeatRpgProgress, type SkillId } from "./beat/rpg";
 import { loadForgeSave } from "./forge/storage";
@@ -489,27 +489,44 @@ export function CharacterStatus({
           {starMilestoneNext(progress) !== null && ` · 다음 마일스톤 ★${starMilestoneNext(progress)}`}
         </p>
 
+        {/* 배지 · 계승 정리 (2026-10-23, 사용자 캡처: 잠긴 배지가 흐려 안 읽히고 · 판 안쪽 여백 없이 가장자리에 붙고 · 환생 문단이 길었다) */}
         <div className="legacy-heading"><div><small>COLLECTION</small><strong>모험 배지</strong></div><span>{earnedBadges.length}/{BADGES.length}</span></div>
-        <div className="badge-grid">
-          {BADGES.map((badge) => <div key={badge.id} className={`badge-chip ${earnedBadges.includes(badge.id) ? "earned" : "locked"}`} title={badge.condition}><b>{badge.icon}</b><span>{badge.name}<small>{badge.condition}</small></span></div>)}
+        <div className="badge-grid mp-badges">
+          {BADGES.map((badge) => {
+            const on = earnedBadges.includes(badge.id);
+            return (
+              <div key={badge.id} className={`badge-chip mp-badge ${on ? "earned" : "locked"}`} title={badge.condition}>
+                <b aria-hidden="true">{on ? badge.icon : "🔒"}</b>
+                <span><strong>{badge.name}</strong><small>{badge.condition}</small></span>
+              </div>
+            );
+          })}
         </div>
-        <div className="legacy-heading"><div><small>REBIRTH · EVOLUTION</small><strong>계승과 진화</strong></div><span>결정 {progress.inheritanceCrystals} · 배율 +{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)}</span></div>
-        <div className="evolution-tree">
+        <div className="legacy-heading"><div><small>REBIRTH</small><strong>계승</strong></div><span>결정 {progress.inheritanceCrystals} · 배율 +{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)}</span></div>
+        <div className="mp-rebirth">
+          {/* 환생하면 받는 것 — 한 줄씩 이름 · 값 */}
+          <ul className="rebirth-preview mp-gain" aria-label="환생하면 받는 것">
+            <li><span>결정</span> <b>+{rebirthCrystals(progress.titanBestStage)}</b></li>
+            <li className="wide"><span>방치 배율</span> <b>+{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)} → +{((progress.inheritanceCrystals + rebirthCrystals(progress.titanBestStage)) * IDLE.multPerCrystal).toFixed(2)}</b></li>
+            <li><span>진화 포인트</span> <b>+1</b></li>
+            <li><span>방치 산출</span> <b>24시간 2배</b></li>
+            <li><span>출발 골드</span> <b>{formatWallet(rebirthStartGold(progress.titanBestStage))}</b></li>
+            <li><span>대장 사다리</span> <b>유지</b></li>
+          </ul>
+          <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} style={{ "--wall-p": `${Math.min(100, (progress.wallAreas.length / needAreas) * 100)}%` } as CSSProperties} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
+            {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : `환생 ${progress.rebirthCount + 1}회째 시작`) : `환생 ${progress.rebirthCount}회 · DPS 벽 ${progress.wallAreas.length}/${needAreas} 지역`}
+          </button>
+          {/* 자동 환생 (2026-10-22 아처 키우기 7번 — "언제까지 환생하냐, 귀찮다") */}
+          <button type="button" className={`auto-rebirth-toggle ${progress.autoRebirth ? "on" : ""}`} role="switch" aria-checked={progress.autoRebirth} onClick={() => void toggleAutoRebirth()}>
+            <i aria-hidden="true" /><span><b>자동 환생</b><small>벽 조건을 채우면 사냥터에서 바로 환생</small></span>
+          </button>
+        </div>
+        <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `진화 포인트 ${progress.evolutionPoints}`}</span></div>
+        <div className={`evolution-tree mp-evo ${progress.rebirthCount < 1 ? "is-locked" : ""}`}>
           <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타 · 방치 배율 +0.15</small></button>
           <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존 · 방치 시간 +2h</small></button>
           <button type="button" className={progress.evolutionPath === "arcane" ? "selected" : ""} onClick={() => void chooseEvolution("arcane")}><b>공명술사</b><small>비트 · 방치 효율 +3%p</small></button>
         </div>
-        <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
-          환생 {progress.rebirthCount}회 · {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : "계승 시작") : `DPS 벽 ${progress.wallAreas.length}/${needAreas} 지역`}
-        </button>
-        {/* 자동 환생 (2026-10-22 아처 키우기 7번 — "언제까지 환생하냐, 귀찮다") */}
-        <button type="button" className={`auto-rebirth-toggle ${progress.autoRebirth ? "on" : ""}`} role="switch" aria-checked={progress.autoRebirth} onClick={() => void toggleAutoRebirth()}>
-          <i aria-hidden="true" /><span><b>자동 환생</b><small>벽 조건을 채우면 사냥터에서 바로 환생</small></span>
-        </button>
-        {/* 환생하면 무엇을 받는지 먼저 (2026-10-22 아처 키우기 7번) — 전 → 후 */}
-        <p className="rebirth-preview">
-          환생하면 결정 +{rebirthCrystals(progress.titanBestStage)} (방치 배율 +{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)} → +{((progress.inheritanceCrystals + rebirthCrystals(progress.titanBestStage)) * IDLE.multPerCrystal).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배 · 출발 골드 {formatWallet(rebirthStartGold(progress.titanBestStage))} · 대장 사다리 유지
-        </p>
         </div>
         {growthMessage && <p className="growth-message mypage-toast" role="status">{growthMessage}</p>}
       </section>

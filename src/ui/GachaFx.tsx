@@ -105,11 +105,14 @@ export function GachaFx({ tier, phase }: { tier: Tier; phase: "summon" | "reveal
       // 폭죽 로켓
       for (const r of rockets) {
         if (t < r.at || r.y <= r.ty) continue;
+        // 결과 화면에선 올라가는 꼬리 선 없이 그 높이에서 바로 터진다 — 카드 뒤로 가는 가는 선이 깨진 화면처럼 보였다(2026-10-23 아이폰 캡처)
+        if (phase === "reveal") { burst(r.x, r.ty, r.c, r.big, r.willow); r.y = r.ty - 1; continue; }
         const pY = r.y, pX = r.x;
         r.x += r.vx * dt; r.y += r.vy * dt; r.vy *= 0.985;
         ctx.strokeStyle = hexA(r.c, 0.8); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(pX, pY + 16); ctx.lineTo(r.x, r.y); ctx.stroke();
         ctx.fillStyle = hexA("#ffffff", 0.95); ctx.beginPath(); ctx.arc(r.x, r.y, 2.2, 0, Math.PI * 2); ctx.fill();
-        if (r.y <= r.ty) burst(r.x, r.y, r.c, r.big, r.willow);
+        // 느려져 멈춘 로켓은 그 자리에서 터뜨리고 끝낸다 — 목표 높이에 못 닿으면 같은 자리에 꼬리 선이 계속 남았다(2026-10-23 아이폰 캡처)
+        if (r.y <= r.ty || r.vy > -60) { burst(r.x, r.y, r.c, r.big, r.willow); r.y = r.ty - 1; }
       }
       // 조명 — 터진 자리 둘레를 밝혔다 사라지는 큰 방사형 빛
       for (let i = lights.length - 1; i >= 0; i -= 1) {
@@ -145,7 +148,8 @@ export function GachaFx({ tier, phase }: { tier: Tier; phase: "summon" | "reveal
     };
     raf = requestAnimationFrame(frame);
     window.addEventListener("resize", fit);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); };
+    // 정리할 때 판도 지운다 — 멈춘 마지막 칸(날던 로켓 꼬리)이 결과 화면에 계속 남았다(2026-10-23 아이폰 캡처)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); ctx.globalCompositeOperation = "source-over"; ctx.clearRect(0, 0, cv.width, cv.height); };
   }, [tier, phase]);
   return <canvas ref={ref} className={`gacha-fx gacha-fx-${phase} tier-${tier.toLowerCase()}`} aria-hidden="true" />;
 }
