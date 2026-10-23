@@ -5,6 +5,7 @@
 """
 import bpy
 import math
+import os
 from mathutils import Vector, Matrix, Euler, Quaternion
 
 from lib import bcommon as C
@@ -19,6 +20,24 @@ HAND_R = Vector((-0.23, -0.1, 0.18))
 HAND_L = Vector((0.23, -0.1, 0.18))
 OUT = 0.014   # 외곽선 두께(캐릭터 단위)
 
+# 그림체 (2026-10-23, 사용자: "비버가 귀엽지가 않아") — BEAVER_STYLE=old 로 예전 얼굴 · 재질을 그대로 다시 뽑을 수 있다.
+# cute: 눈을 크게 · 낮게 · 넓게(아기 얼굴 비율), 하이라이트 둘, 주둥이 · 코를 작게, 볼 · 귀를 크게, 털은 무광(플라스틱 같은 번들거림을 뺀다)
+STYLE = os.environ.get('BEAVER_STYLE', 'lowpoly')
+CUTE = STYLE == 'cute'
+# lowpoly (2026-10-23, 사용자 참고: BEAVER RAMPAGE 의 로우 폴리 비버) — 머리와 몸이 한 덩어리인 달걀형, 큰 흰자 눈(가운데 모임), 자두색 세모 코,
+# 볼 두 덩이 아래로 크게 드러난 하얀 앞니, 짧은 팔다리, 납작한 노 꼬리, 각진 면(평면 셰이딩). 그대로 베끼지 않고 '느낌'만 — 비율 · 얼굴 구성 · 질감
+LOWPOLY = STYLE == 'lowpoly'
+OLD_BODY_C, OLD_BODY_R = Vector((0.0, 0.0, 0.205)), (0.19, 0.175, 0.205)
+if LOWPOLY:
+    HEAD_C = Vector((0.0, 0.0, 0.64))
+    HEAD_R = (0.3, 0.275, 0.3)
+    BODY_C = Vector((0.0, 0.0, 0.3))
+    BODY_R = (0.31, 0.28, 0.3)
+    SHOULDER_R = Vector((-0.27, -0.03, 0.42))
+    SHOULDER_L = Vector((0.27, -0.03, 0.42))
+    HAND_R = Vector((-0.35, -0.12, 0.24))
+    HAND_L = Vector((0.35, -0.12, 0.24))
+
 BONES = {
     # name: (head, tail, parent)
     'root': ((0, 0, 0), (0, 0, 0.08), None),
@@ -32,6 +51,10 @@ BONES = {
     'leg.L': ((0.095, -0.01, 0.12), (0.105, -0.05, 0.0), 'root'),
     'tail': ((0, 0.15, 0.1), (0, 0.34, 0.3), 'body'),
 }
+if LOWPOLY:   # 넓어진 몸 — 다리는 바깥으로, 꼬리 뼈는 엉덩이 뒤
+    BONES['leg.R'] = ((-0.14, -0.01, 0.12), (-0.15, -0.05, 0.0), 'root')
+    BONES['leg.L'] = ((0.14, -0.01, 0.12), (0.15, -0.05, 0.0), 'root')
+    BONES['tail'] = ((0, 0.25, 0.08), (0, 0.5, 0.12), 'body')
 
 
 class Rig:
@@ -100,14 +123,20 @@ def _mats(cfg):
     light = cfg.get('light', '#f3dcc0')
     dark = cfg.get('dark', '#6e4426')
     return {
-        'fur': C.principled(f"fur_{fur}", fur, rough=0.55, sss=0.12, coat=0.12, sheen=0.4),
-        'light': C.principled(f"light_{light}", light, rough=0.5, sss=0.15, coat=0.12, sheen=0.3),
-        'dark': C.principled(f"dark_{dark}", dark, rough=0.6, sheen=0.3),
+        'fur': C.principled(f"fur_{fur}_{STYLE}", fur, rough=0.92, coat=0.0, sheen=0.0) if LOWPOLY else C.principled(f"fur_{fur}_{STYLE}", fur, rough=0.82 if CUTE else 0.55, sss=0.14 if CUTE else 0.12, coat=0.0 if CUTE else 0.12, sheen=0.25 if CUTE else 0.4),
+        'light': C.principled(f"light_{light}_{STYLE}", light, rough=0.9, coat=0.0) if LOWPOLY else C.principled(f"light_{light}_{STYLE}", light, rough=0.8 if CUTE else 0.5, sss=0.18 if CUTE else 0.15, coat=0.0 if CUTE else 0.12, sheen=0.2 if CUTE else 0.3),
+        'dark': C.principled(f"dark_{dark}_{STYLE}", dark, rough=0.8 if CUTE else 0.6, coat=0.0 if CUTE else 0.25, sheen=0.3),
         'inner': C.principled('inner_ear', '#f2a3b4', rough=0.5),
-        'eye': C.principled('eye', '#1a0f0a', rough=0.12, coat=1.0),
+        'eye': C.principled(f'eye_{STYLE}', '#140b07' if CUTE else '#1a0f0a', rough=0.3 if CUTE else 0.12, coat=0.25 if CUTE else 1.0),
+        'iris': C.principled('iris', '#5a321c', rough=0.35, coat=0.2),
+        'sclera': C.principled('sclera', '#fbf8f2', rough=0.45, coat=0.15),
+        'pupil': C.principled('pupil', '#050302', rough=0.55, coat=0.0),
+        'plum': C.principled('plum_nose', '#4a2230', rough=0.6, coat=0.1),
+        'mouth': C.principled('mouth', '#3a1a12', rough=0.8),
+        'paddle': C.principled('paddle', '#5b3b27', rough=0.85),
         'white': C.principled('eye_hi', '#ffffff', rough=0.3, emit='#ffffff', emit_strength=1.2),
         'nose': C.principled('nose', '#24140d', rough=0.25, coat=0.8),
-        'blush': C.principled('blush', '#f59a9a', rough=0.6),
+        'blush': C.principled(f'blush_{STYLE}', '#ff8fa0' if CUTE else '#f59a9a', rough=0.7, coat=0.0),
         'tooth': C.principled('tooth', '#fffaf0', rough=0.35),
     }
 
@@ -167,7 +196,7 @@ def hat(kind, cfg, coll):
         steel = _accent('steel', col, rough=0.25, metal=0.8)
         trim = _accent('trim', col2, rough=0.3, metal=0.6)
         bm = C.ellipsoid(HEAD_C + Vector((0, 0.01, 0.06)), (HEAD_R[0] * 1.06, HEAD_R[1] * 1.06, HEAD_R[2] * 0.98))
-        for v in [v for v in bm.verts if v.co.z < HEAD_C.z + 0.15 and v.co.y < HEAD_C.y - 0.05]:   # 얼굴(눈 z≈0.66)은 열어 둔다
+        for v in [v for v in bm.verts if v.co.z < HEAD_C.z + (0.25 if LOWPOLY else 0.15) and v.co.y < HEAD_C.y - 0.05]:   # 얼굴(눈 z≈0.66 · 로우 폴리는 눈이 더 위)은 열어 둔다
             bm.verts.remove(v)
         out.append(_shell(C.mesh_obj('helmet', bm, steel, coll, outline=OUT), 0.02))
         out.append(C.mesh_obj('helmet_crest', C.ellipsoid(top + Vector((0, 0.0, 0.04)), (0.03, 0.2, 0.08)), trim, coll, outline=OUT * 0.8))
@@ -180,6 +209,11 @@ def hat(kind, cfg, coll):
 
 def scarf(color, coll):
     m = _accent('scarf', color, rough=0.55)
+    if LOWPOLY:
+        out = [C.mesh_obj('scarf', C.torus(Vector((0, -0.01, 0.47)), 0.262, 0.042, rot=Euler((math.radians(8), 0, 0))), m, coll, outline=OUT)]
+        pts = spline([Vector((-0.09, -0.27, 0.45)), Vector((-0.11, -0.3, 0.37)), Vector((-0.1, -0.31, 0.3))], 10)
+        out.append(C.mesh_obj('scarf_tail', C.tube(pts, interp([0.05, 0.045, 0.026], len(pts)), seg=14), m, coll, outline=OUT))
+        return out
     out = [C.mesh_obj('scarf', C.torus(Vector((0, -0.01, 0.385)), 0.165, 0.048, rot=Euler((math.radians(8), 0, 0))), m, coll, outline=OUT)]
     pts = spline([Vector((-0.06, -0.17, 0.37)), Vector((-0.075, -0.2, 0.3)), Vector((-0.06, -0.21, 0.23))], 10)
     out.append(C.mesh_obj('scarf_tail', C.tube(pts, interp([0.055, 0.05, 0.028], len(pts)), seg=14), m, coll, outline=OUT))
@@ -199,6 +233,13 @@ def cape(color, coll, clasp='#f2c232'):
 
 def robe(color, coll, trim='#f2c232'):
     m = _accent('robe', color, rough=0.55)
+    if LOWPOLY:
+        bm = C.ellipsoid(BODY_C + Vector((0, 0.0, -0.04)), (BODY_R[0] * 1.03, BODY_R[1] * 1.03, BODY_R[2] * 0.86), egg=0.18, seg=11, rings=8)
+        for v in [v for v in bm.verts if v.co.z > BODY_C.z + 0.16]:
+            v.co.z = BODY_C.z + 0.16
+        out = [C.mesh_obj('robe', bm, m, coll, smooth=False, outline=OUT)]
+        out.append(C.mesh_obj('robe_trim', C.torus(Vector((0, 0, 0.05)), 0.275, 0.022), _accent('trim', trim, rough=0.3, metal=0.5), coll, outline=OUT * 0.5))
+        return out
     bm = C.ellipsoid(BODY_C + Vector((0, 0, -0.01)), (BODY_R[0] * 1.12, BODY_R[1] * 1.12, BODY_R[2] * 1.05), egg=0.25)
     out = [C.mesh_obj('robe', bm, m, coll, outline=OUT)]
     out.append(C.mesh_obj('robe_trim', C.torus(Vector((0, 0, 0.04)), 0.2, 0.02), _accent('trim', trim, rough=0.3, metal=0.5), coll, outline=OUT * 0.5))
@@ -289,6 +330,62 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
 WEAPON_SCALE = {'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 0.9, 'sword': 1.1, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
 
 
+def _fit_body(o):
+    if not LOWPOLY:
+        return o
+    k = (BODY_R[0] / OLD_BODY_R[0] * 1.02, BODY_R[1] / OLD_BODY_R[1] * 1.02, BODY_R[2] / OLD_BODY_R[2])
+    for v in o.data.vertices:
+        v.co = Vector((v.co.x * k[0], v.co.y * k[1], BODY_C.z + (v.co.z - OLD_BODY_C.z) * k[2]))
+    return o
+
+
+def _lp(name, bm, mat, coll, outline=OUT):
+    """로우 폴리 조각 — 평면 셰이딩(각진 면)"""
+    return C.mesh_obj(name, bm, mat, coll, smooth=False, outline=outline)
+
+
+def _lowpoly_body(add, M, coll, cfg):
+    """달걀형 한 덩어리 비버 — 머리(위 덩이)는 head 뼈에 붙어 끄덕이고, 몸(아래 덩이)이 더 넓어 이음매 없이 이어진다"""
+    add('head', _lp('head', C.ellipsoid(HEAD_C, HEAD_R, egg=0.12, seg=11, rings=8), M['fur'], coll))
+    add('body', _lp('body', C.ellipsoid(BODY_C, BODY_R, egg=0.16, seg=11, rings=8), M['fur'], coll))
+    if not (cfg.get('robe') or cfg.get('armor')):   # 로브 · 갑옷이 있으면 배 무늬가 옷을 뚫고 나왔다
+        add('body', _lp('belly', C.ellipsoid(BODY_C + Vector((0, -0.2, -0.04)), (0.19, 0.1, 0.19), egg=0.1, seg=9, rings=6), M['light'], coll, OUT * 0.6))
+    # 눈 — 큰 흰자 · 가운데로 모인 검은 눈동자 · 작은 반사광 (위쪽 · 가깝게)
+    for sx in (-1, 1):
+        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.36, -1.0, 0.42)), egg=0.12)
+        rot = C.look_rot(n)
+        add('head', C.mesh_obj(f'eye{sx}', C.ellipsoid(p - n * 0.02, (0.085, 0.095, 0.05), rot=rot, seg=20, rings=12), M['sclera'], coll, outline=OUT * 0.8))
+        pc = p + n * 0.036 + Vector((-sx * 0.016, 0, -0.01))   # 흰자 겉면 위에 — 안에 묻혀 초승달처럼 잘리던 것
+        add('head', C.mesh_obj(f'pupil{sx}', C.ellipsoid(pc, (0.05, 0.058, 0.008), rot=rot, seg=16, rings=10), M['pupil'], coll))
+        add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(pc + n * 0.012 + Vector((-0.014, 0, 0.022)), (0.016, 0.016, 0.004), rot=rot, seg=10, rings=6), M['white'], coll))
+        # 귀 — 작고 둥근(어두운 안쪽)
+        ep = HEAD_C + Vector((sx * 0.22, 0.04, 0.25))
+        add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.075, 0.045, 0.07), seg=8, rings=6), M['fur'], coll))
+        add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, -0.005)), (0.045, 0.02, 0.042), seg=8, rings=6), M['dark'], coll, 0))
+        # 볼 두 덩이(주둥이) — 코 아래 양쪽
+        add('head', _lp(f'cheek{sx}', C.ellipsoid(HEAD_C + Vector((sx * 0.085, -0.25, -0.07)), (0.1, 0.075, 0.075), seg=9, rings=6), M['light'], coll))
+        # 앞니 — 크고 하얗게(볼 아래로 길게)
+        add('head', C.mesh_obj(f'tooth{sx}', C.box(HEAD_C + Vector((sx * 0.03, -0.3, -0.2)), (0.052, 0.022, 0.11), bevel=0.008), M['tooth'], coll, smooth=False, outline=OUT * 0.6))
+    add('head', _lp('mouth', C.ellipsoid(HEAD_C + Vector((0, -0.25, -0.15)), (0.09, 0.05, 0.05), seg=8, rings=5), M['mouth'], coll, 0))
+    # 코 — 자두색 세모(위가 넓다)
+    nose = C.ellipsoid(HEAD_C + Vector((0, -0.3, 0.0)), (0.07, 0.04, 0.045), seg=6, rings=4)
+    for v in nose.verts:
+        dz = v.co.z - HEAD_C.z
+        v.co.x = v.co.x * (1.0 + dz * 7)   # 아래로 갈수록 좁아지는 세모
+    add('head', _lp('nose', nose, M['plum'], coll, OUT * 0.6))
+    # 팔 — 짧고 굵게 · 발톱 끝(어두운 손)
+    for side, sh, hd in (('R', SHOULDER_R, HAND_R), ('L', SHOULDER_L, HAND_L)):
+        add(f'arm.{side}', _lp(f'arm{side}', C.tube([sh, sh.lerp(hd, 0.5), hd], [0.075, 0.068, 0.06], seg=8), M['fur'], coll))
+        add(f'hand.{side}', _lp(f'paw{side}', C.ellipsoid(hd, (0.062, 0.058, 0.06), seg=8, rings=6), M['dark'], coll))
+    # 다리 · 발
+    for sx, side in ((-1, 'R'), (1, 'L')):
+        add(f'leg.{side}', _lp(f'leg{side}', C.ellipsoid(Vector((sx * 0.14, -0.03, 0.07)), (0.085, 0.085, 0.08), seg=8, rings=6), M['fur'], coll))
+        add(f'leg.{side}', _lp(f'foot{side}', C.ellipsoid(Vector((sx * 0.15, -0.08, 0.022)), (0.085, 0.1, 0.03), seg=8, rings=5), M['dark'], coll))
+    # 꼬리 — 납작한 노(비버 꼬리) · 엉덩이 뒤에서 살짝 들린다
+    tail = C.ellipsoid(Vector((0, 0.42, 0.06)), (0.13, 0.2, 0.028), seg=10, rings=6, rot=Euler((math.radians(-14), 0, 0)))
+    add('tail', _lp('tail', tail, M['paddle'], coll))
+
+
 def build(name, cfg, coll=None):
     coll = coll or C.collection(name)
     M = _mats(cfg)
@@ -298,43 +395,68 @@ def build(name, cfg, coll=None):
     def add(bone, o):
         parts[bone].append(o)
 
-    # 머리
-    add('head', C.mesh_obj('head', C.ellipsoid(HEAD_C, HEAD_R, egg=0.08), M['fur'], coll, outline=OUT))
-    add('head', C.mesh_obj('muzzle', C.ellipsoid(HEAD_C + Vector((0, -0.24, -0.1)), (0.16, 0.115, 0.115)), M['light'], coll, outline=OUT))
-    add('head', C.mesh_obj('nose', C.ellipsoid(HEAD_C + Vector((0, -0.36, -0.05)), (0.045, 0.03, 0.03)), M['nose'], coll))
-    for sx in (-1, 1):
-        add('head', C.mesh_obj(f'tooth{sx}', C.box(HEAD_C + Vector((sx * 0.018, -0.338, -0.17)), (0.03, 0.016, 0.05), bevel=0.006), M['tooth'], coll, outline=OUT * 0.5))
-    # 눈 · 하이라이트 · 볼 · 귀
-    for sx in (-1, 1):
-        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.36, -1.0, 0.13)))
-        rot = C.look_rot(n)
-        add('head', C.mesh_obj(f'eye{sx}', C.ellipsoid(p - n * 0.012, (0.064, 0.08, 0.03), rot=rot), M['eye'], coll))
-        add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(p + n * 0.018 + Vector((-0.018, 0, 0.032)), (0.024, 0.024, 0.006), rot=rot), M['white'], coll))
-        bp, bn = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.68, -0.85, -0.16)))
-        add('head', C.mesh_obj(f'blush{sx}', C.ellipsoid(bp - bn * 0.008, (0.055, 0.035, 0.012), rot=C.look_rot(bn)), M['blush'], coll))
-        ep = HEAD_C + Vector((sx * 0.26, 0.05, 0.235))
-        add('head', C.mesh_obj(f'ear{sx}', C.ellipsoid(ep, (0.078, 0.045, 0.072)), M['fur'], coll, outline=OUT))
-        add('head', C.mesh_obj(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, 0)), (0.048, 0.02, 0.044)), M['inner'], coll))
-    if cfg.get('tuft', True):
-        pts = spline([HEAD_C + Vector((0.03, -0.12, 0.3)), HEAD_C + Vector((-0.02, -0.22, 0.24)), HEAD_C + Vector((-0.07, -0.28, 0.15))], 12)
-        add('head', C.mesh_obj('tuft', C.tube(pts, interp([0.075, 0.05, 0.012], len(pts)), seg=14), M['dark'], coll, outline=OUT))
-    # 몸 · 배
-    add('body', C.mesh_obj('body', C.ellipsoid(BODY_C, BODY_R, egg=0.12), M['fur'], coll, outline=OUT))
-    add('body', C.mesh_obj('belly', C.ellipsoid(BODY_C + Vector((0, -0.11, -0.02)), (0.135, 0.09, 0.155), egg=0.15), M['light'], coll, outline=OUT * 0.6))
-    # 팔 + 앞발
-    for side, sh, hd in (('R', SHOULDER_R, HAND_R), ('L', SHOULDER_L, HAND_L)):
-        add(f'arm.{side}', C.mesh_obj(f'arm{side}', C.tube([sh, sh.lerp(hd, 0.5), hd], [0.055, 0.05, 0.046], seg=16), M['fur'], coll, outline=OUT))
-        add(f'hand.{side}', C.mesh_obj(f'paw{side}', C.ellipsoid(hd, (0.054, 0.05, 0.054)), M['fur'], coll, outline=OUT))
-    # 다리 · 발
-    for sx, side in ((-1, 'R'), (1, 'L')):
-        add(f'leg.{side}', C.mesh_obj(f'leg{side}', C.ellipsoid(Vector((sx * 0.095, -0.02, 0.065)), (0.065, 0.065, 0.075)), M['fur'], coll, outline=OUT))
-        add(f'leg.{side}', C.mesh_obj(f'foot{side}', C.ellipsoid(Vector((sx * 0.1, -0.06, 0.02)), (0.07, 0.085, 0.028)), M['dark'], coll, outline=OUT))
-    # 꼬리 — 크고 폭신한 꼬리(원화처럼 끝이 밝다)
-    tp = spline([Vector((0, 0.14, 0.09)), Vector((0, 0.25, 0.14)), Vector((0, 0.32, 0.26)), Vector((0, 0.31, 0.4)), Vector((0, 0.26, 0.48))], 24)
-    tr = interp([0.06, 0.11, 0.125, 0.1, 0.025], len(tp))
-    add('tail', C.mesh_obj('tail', C.tube(tp, tr, seg=22), M['fur'], coll, outline=OUT))
-    k = int(len(tp) * 0.72)
-    add('tail', C.mesh_obj('tailtip', C.tube(tp[k:], [r * 1.04 for r in tr[k:]], seg=22), M['light'], coll))
+    if LOWPOLY:
+        _lowpoly_body(add, M, coll, cfg)
+    else:
+        # 머리
+        add('head', C.mesh_obj('head', C.ellipsoid(HEAD_C, HEAD_R, egg=0.08), M['fur'], coll, outline=OUT))
+        if CUTE:   # 작고 낮은 주둥이 · 작은 코 · 동그란 앞니 두 개 — 얼굴 아래쪽 1/3 에 모아 아기 얼굴 비율
+            add('head', C.mesh_obj('muzzle', C.ellipsoid(HEAD_C + Vector((0, -0.25, -0.13)), (0.125, 0.095, 0.09)), M['light'], coll, outline=OUT))
+            add('head', C.mesh_obj('nose', C.ellipsoid(HEAD_C + Vector((0, -0.345, -0.085)), (0.034, 0.022, 0.024)), M['nose'], coll))
+            for sx in (-1, 1):
+                add('head', C.mesh_obj(f'tooth{sx}', C.box(HEAD_C + Vector((sx * 0.019, -0.322, -0.19)), (0.033, 0.016, 0.046), bevel=0.012), M['tooth'], coll, outline=OUT * 0.5))
+        else:
+            add('head', C.mesh_obj('muzzle', C.ellipsoid(HEAD_C + Vector((0, -0.24, -0.1)), (0.16, 0.115, 0.115)), M['light'], coll, outline=OUT))
+            add('head', C.mesh_obj('nose', C.ellipsoid(HEAD_C + Vector((0, -0.36, -0.05)), (0.045, 0.03, 0.03)), M['nose'], coll))
+            for sx in (-1, 1):
+                add('head', C.mesh_obj(f'tooth{sx}', C.box(HEAD_C + Vector((sx * 0.018, -0.338, -0.17)), (0.03, 0.016, 0.05), bevel=0.006), M['tooth'], coll, outline=OUT * 0.5))
+        # 눈 · 하이라이트 · 볼 · 귀
+        for sx in (-1, 1):
+            if CUTE:   # 크고(1.35배) 낮고(코 높이 가까이) 넓게 — 큰 하이라이트 + 작은 반사광 둘
+                p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.43, -1.0, 0.08)))
+                rot = C.look_rot(n)
+                add('head', C.mesh_obj(f'eye{sx}', C.ellipsoid(p - n * 0.014, (0.086, 0.104, 0.034), rot=rot), M['eye'], coll))
+                add('head', C.mesh_obj(f'iris{sx}', C.ellipsoid(p + n * 0.012 + Vector((0, 0, -0.025)), (0.05, 0.05, 0.008), rot=rot), M['iris'], coll))
+                add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(p + n * 0.02 + Vector((-0.026, 0, 0.042)), (0.032, 0.032, 0.007), rot=rot), M['white'], coll))
+                add('head', C.mesh_obj(f'eyehi2{sx}', C.ellipsoid(p + n * 0.02 + Vector((0.026, 0, -0.04)), (0.014, 0.014, 0.005), rot=rot), M['white'], coll))
+                bp, bn = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.82, -0.62, -0.22)))
+                add('head', C.mesh_obj(f'blush{sx}', C.ellipsoid(bp - bn * 0.008, (0.075, 0.045, 0.012), rot=C.look_rot(bn)), M['blush'], coll))
+                ep = HEAD_C + Vector((sx * 0.27, 0.05, 0.24))
+                add('head', C.mesh_obj(f'ear{sx}', C.ellipsoid(ep, (0.092, 0.05, 0.088)), M['fur'], coll, outline=OUT))
+                add('head', C.mesh_obj(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.032, 0)), (0.058, 0.02, 0.054)), M['inner'], coll))
+                continue
+            p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.36, -1.0, 0.13)))
+            rot = C.look_rot(n)
+            add('head', C.mesh_obj(f'eye{sx}', C.ellipsoid(p - n * 0.012, (0.064, 0.08, 0.03), rot=rot), M['eye'], coll))
+            add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(p + n * 0.018 + Vector((-0.018, 0, 0.032)), (0.024, 0.024, 0.006), rot=rot), M['white'], coll))
+            bp, bn = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.68, -0.85, -0.16)))
+            add('head', C.mesh_obj(f'blush{sx}', C.ellipsoid(bp - bn * 0.008, (0.055, 0.035, 0.012), rot=C.look_rot(bn)), M['blush'], coll))
+            ep = HEAD_C + Vector((sx * 0.26, 0.05, 0.235))
+            add('head', C.mesh_obj(f'ear{sx}', C.ellipsoid(ep, (0.078, 0.045, 0.072)), M['fur'], coll, outline=OUT))
+            add('head', C.mesh_obj(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, 0)), (0.048, 0.02, 0.044)), M['inner'], coll))
+        if cfg.get('tuft', True) and CUTE:   # 뿔처럼 읽히던 긴 털 → 작은 곱슬 한 가닥(2026-10-23)
+            pts = spline([HEAD_C + Vector((0.0, -0.06, 0.33)), HEAD_C + Vector((-0.03, -0.13, 0.36)), HEAD_C + Vector((-0.07, -0.15, 0.32)), HEAD_C + Vector((-0.06, -0.12, 0.28))], 14)
+            add('head', C.mesh_obj('tuft', C.tube(pts, interp([0.045, 0.035, 0.025, 0.01], len(pts)), seg=14), M['dark'], coll, outline=OUT * 0.8))
+        elif cfg.get('tuft', True):
+            pts = spline([HEAD_C + Vector((0.03, -0.12, 0.3)), HEAD_C + Vector((-0.02, -0.22, 0.24)), HEAD_C + Vector((-0.07, -0.28, 0.15))], 12)
+            add('head', C.mesh_obj('tuft', C.tube(pts, interp([0.075, 0.05, 0.012], len(pts)), seg=14), M['dark'], coll, outline=OUT))
+        # 몸 · 배
+        add('body', C.mesh_obj('body', C.ellipsoid(BODY_C, BODY_R, egg=0.12), M['fur'], coll, outline=OUT))
+        add('body', C.mesh_obj('belly', C.ellipsoid(BODY_C + Vector((0, -0.11, -0.02)), (0.135, 0.09, 0.155), egg=0.15), M['light'], coll, outline=OUT * 0.6))
+        # 팔 + 앞발
+        for side, sh, hd in (('R', SHOULDER_R, HAND_R), ('L', SHOULDER_L, HAND_L)):
+            add(f'arm.{side}', C.mesh_obj(f'arm{side}', C.tube([sh, sh.lerp(hd, 0.5), hd], [0.055, 0.05, 0.046], seg=16), M['fur'], coll, outline=OUT))
+            add(f'hand.{side}', C.mesh_obj(f'paw{side}', C.ellipsoid(hd, (0.054, 0.05, 0.054)), M['fur'], coll, outline=OUT))
+        # 다리 · 발
+        for sx, side in ((-1, 'R'), (1, 'L')):
+            add(f'leg.{side}', C.mesh_obj(f'leg{side}', C.ellipsoid(Vector((sx * 0.095, -0.02, 0.065)), (0.065, 0.065, 0.075)), M['fur'], coll, outline=OUT))
+            add(f'leg.{side}', C.mesh_obj(f'foot{side}', C.ellipsoid(Vector((sx * 0.1, -0.06, 0.02)), (0.07, 0.085, 0.028)), M['dark'], coll, outline=OUT))
+        # 꼬리 — 크고 폭신한 꼬리(원화처럼 끝이 밝다)
+        tp = spline([Vector((0, 0.14, 0.09)), Vector((0, 0.25, 0.14)), Vector((0, 0.32, 0.26)), Vector((0, 0.31, 0.4)), Vector((0, 0.26, 0.48))], 24)
+        tr = interp([0.06, 0.11, 0.125, 0.1, 0.025], len(tp))
+        add('tail', C.mesh_obj('tail', C.tube(tp, tr, seg=22), M['fur'], coll, outline=OUT))
+        k = int(len(tp) * 0.72)
+        add('tail', C.mesh_obj('tailtip', C.tube(tp[k:], [r * 1.04 for r in tr[k:]], seg=22), M['light'], coll))
     # 의상
     for o in hat(cfg.get('hat', 'none'), cfg, coll):
         add('head', o)
@@ -349,7 +471,7 @@ def build(name, cfg, coll=None):
             add('body', o)
     if cfg.get('cape'):
         for o in cape(cfg['cape'], coll):
-            add('body', o)
+            add('body', _fit_body(o))
     # 무기
     if cfg.get('weapon_r'):
         for o in weapon(cfg['weapon_r'], HAND_R, coll, cfg.get('weapon_color', '#cfd6df'), cfg.get('weapon_wood', '#8a5a2b')):

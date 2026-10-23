@@ -32,6 +32,9 @@ def lerp(a, b, w):
 
 
 TAU = 2 * math.pi
+# 탄력 배율 (2026-10-23, 참고: BEAVER RAMPAGE) — 로우 폴리 달걀 비버는 몸 전체가 말랑하게 출렁여야 산다.
+# 대기 숨쉬기 · 걷기 뒤뚱 · 공격 눌림/늘림을 키운다. BEAVER_STYLE 이 lowpoly 가 아니면 예전 값(1)
+LP = os.environ.get('BEAVER_STYLE', 'lowpoly') == 'lowpoly'
 
 
 # ── 비버(동료·스킨·주인공) ──
@@ -76,9 +79,14 @@ def beaver_idle(base, n):
         t = i / n
         s, c = math.sin(TAU * t), math.cos(TAU * t)
         breath = (1 - c) / 2   # 0 → 1 → 0
-        P = dict(squash=1 - 0.024 * breath, sq_all=1 + 0.006 * s, head=2.6 * breath, tail=7 * s, side=1.4 * math.sin(TAU * t + 1.2),
-                 arm_r=base.get('arm_r', 0) + 3.5 * s, arm_l=base.get('arm_l', 0) - 3.5 * s,
-                 aim_r=base.get('aim_r', 12) + 2.5 * s, aim_l=base.get('aim_l', 12) - 2.5 * s)
+        if LP:   # 숨이 눈에 보이게 — 몸 눌림 5% · 전신 늘림 2% · 머리 끄덕 5° · 좌우 흔들 3° · 꼬리 노 젓기 · 팔 까딱
+            P = dict(squash=1 - 0.05 * breath, sq_all=1 + 0.02 * s, head=5.0 * breath - 1.0, tail=14 * s, side=3.0 * math.sin(TAU * t + 1.2),
+                     arm_r=base.get('arm_r', 0) + 7 * s, arm_l=base.get('arm_l', 0) - 7 * s,
+                     aim_r=base.get('aim_r', 12) + 5 * s, aim_l=base.get('aim_l', 12) - 5 * s)
+        else:
+            P = dict(squash=1 - 0.024 * breath, sq_all=1 + 0.006 * s, head=2.6 * breath, tail=7 * s, side=1.4 * math.sin(TAU * t + 1.2),
+                     arm_r=base.get('arm_r', 0) + 3.5 * s, arm_l=base.get('arm_l', 0) - 3.5 * s,
+                     aim_r=base.get('aim_r', 12) + 2.5 * s, aim_l=base.get('aim_l', 12) - 2.5 * s)
         out.append(full(P, base, FULL_BEAVER))
     return out
 
@@ -89,9 +97,10 @@ def beaver_walk(base, n, bow=False):
     for i in range(n):
         t = (i + 0.5) / n   # 반 칸 밀어 양쪽 끝 자세(내딛기)를 한 번씩 정확히 지난다
         s, c = math.sin(TAU * t), math.cos(TAU * t)
-        P = dict(leg_r=28 * s, leg_l=-28 * s,
-                 arm_r=base.get('arm_r', 0) - 18 * s, arm_l=base.get('arm_l', 0) + (6 if bow else 18) * s,
-                 dz=0.021 * c * c, squash=1.018 - 0.058 * s * s, side=4.5 * s, lean=5.0,
+        k = 1.35 if LP else 1.0   # 로우 폴리: 짧은 다리로 통통 — 뒤뚱 · 들썩임을 크게
+        P = dict(leg_r=30 * s, leg_l=-30 * s,
+                 arm_r=base.get('arm_r', 0) - 18 * k * s, arm_l=base.get('arm_l', 0) + (6 if bow else 18 * k) * s,
+                 dz=0.021 * k * c * c, squash=1.018 - 0.058 * k * s * s, side=4.5 * (1.6 if LP else 1.0) * s, lean=5.0,
                  head=2 - 2.2 * math.cos(2 * TAU * t), tail=10 * math.sin(TAU * t + math.pi / 2),
                  aim_r=base.get('aim_r', 12) + 6 * s, aim_l=base.get('aim_l', 12) - 6 * s)
         out.append(full(P, base, FULL_BEAVER))
@@ -196,6 +205,10 @@ def beaver_actions(role, hero=False, weapon=None):
         'walk': beaver_walk(base, L['walk']['frames'], bow=role == 'bow'),
         'attack': [full(P, base, FULL_BEAVER) for P in ATTACK8['melee' if hero or role not in ATTACK8 else role]],
     }
+    if LP:   # 공격 눌림 · 늘림을 1.6배 — 웅크렸다 튀어 나가는 만화 탄력(머리까지 같이 → 달걀 몸이 출렁)
+        for P in out['attack']:
+            P['sq_all'] = 1 + (P['sq_all'] - 1) * 1.6
+            P['squash'] = 1 + (P['squash'] - 1) * 1.6
     if hero:   # 주인공 무기는 게임이 손 앵커에 덧그린다 — 예비 0~2칸은 먼 손이 머리 뒤라 무기를 몸 뒤에 그리게 표시(wb)
         for i in (0, 1, 2):
             out['attack'][i]['wb'] = 1
