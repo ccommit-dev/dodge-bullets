@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { storageGet, storageSet } from "./game/toss";
-import { updateCharacterProgress } from "./progression/storage";
+import { loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
 import type { CharacterProgress, ShoulderId } from "./progression/model";
 import { assetUrl } from "./asset";
 import { WELCOME_GIFT_GEMS } from "./titans/model";
@@ -38,15 +38,27 @@ const week = (w: number): DayReward[] => [
   d("인장", String(10 + w * 5), "expedition-seal", "rare", { seals: 10 + w * 5 }),
   d("강화석", String(12 + w * 4), "enhance-stone", "normal", { stones: 12 + w * 4 }),
 ];
-// 첫날 칸 = 보석 1000 (2026-10-22 아처 키우기 5번 "출석 다이아 1,000 → 바로 10연차") — 깜짝 선물 500(첫 대장)과 함께 첫 10연(900)을 바로 뽑는다
 export const ATTENDANCE_REWARDS: DayReward[] = [
-  d("첫 출석 보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS }), ...week(0).slice(1), d("견갑+보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
+  ...week(0), d("견갑+보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
   ...week(1), d("보석", "100", "gem", "epic", { gems: 100 }),
   ...week(2), d("보석+인장", "100", "gem", "epic", { gems: 100, seals: 20 }),
   ...week(3), d("보석", "150", "gem", "epic", { gems: 150 }),
   d("조각", "40", "shoulder-shards", "rare", { shards: 40 }),
   d("용린견갑+보석", "160", "dragon-pauldron", "legend", { shoulder: "dragon", gems: 160 }),
 ];
+
+/**
+ * 새 계정의 첫날 칸 = 보석 1000 (2026-10-22 아처 키우기 5번 "출석 다이아 1,000 → 바로 10연차") — 깜짝 선물 500(첫 대장)과 함께 첫 10연(900)을 바로.
+ * 새 계정만(2026-10-23): 출석을 한 번도 안 받았을 뿐 이미 한참 논 옛 계정이 업데이트 뒤 1000 을 받지 않게 — 그런 계정은 예전 첫날 칸(보석 20)
+ */
+export const WELCOME_DAY1: DayReward = d("첫 출석 보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS });
+export function isNewAccount(p: Pick<CharacterProgress, "titanBestStage" | "gachaPulls" | "rebirthCount">): boolean {
+  return p.titanBestStage <= 3 && p.gachaPulls === 0 && p.rebirthCount === 0;
+}
+/** 이 계정이 받을 하루치 — 첫날만 새 계정이면 1000 */
+export function rewardFor(day: number, newAccount: boolean): DayReward {
+  return day === 0 && newAccount ? WELCOME_DAY1 : ATTENDANCE_REWARDS[day];
+}
 
 const today = () => new Date().toLocaleDateString("sv-SE");
 
@@ -75,12 +87,15 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
   const [pageOverride, setPage] = useState<number | null>(null);
   /** 수령 진행 중 잠금 — 저장이 끝나기 전 연타하면 보상이 이중 지급된다. */
   const [claiming, setClaiming] = useState(false);
+  /** 첫날 칸 표시용 — 지급은 claim 안에서 그때 진행으로 다시 판정한다 */
+  const [newAccount, setNewAccount] = useState(false);
   useEffect(() => {
     // 열릴 때마다 다시 읽는다 — 부팅 시 1회만 읽으면 모달을 닫았다 여는 사이에
     // 바뀐 저장소(자정 경과, 다른 탭)와 어긋난 상태를 보여준다.
     if (!open) return;
     setMessage("");
     void storageGet(ATTENDANCE_KEY(userHash)).then((raw) => setSave(parseSave(raw)));
+    void loadCharacterProgress(userHash).then((p) => setNewAccount(isNewAccount(p)));
   }, [userHash, open]);
   if (!open || !save) return null;
   const day = attendanceDay(save);
@@ -92,11 +107,15 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
     if (claimed || claiming || finished) return;
     setClaiming(true);
     try {
-      const g = ATTENDANCE_REWARDS[day].grant;
+      let given: DayReward = ATTENDANCE_REWARDS[day];
       // 어제 받았으면 연속, 하루라도 건너뛰면 1부터. 방치 시간 캡(T) 보너스에 쓰인다 — 판(칸)은 리셋되지 않는다
       const yesterday = new Date(Date.now() - 86_400_000).toLocaleDateString("sv-SE");
       const streak = save.lastClaimDate === yesterday ? save.consecutiveDays + 1 : 1;
-      const progress = await updateCharacterProgress(userHash, (current) => ({
+      const progress = await updateCharacterProgress(userHash, (current) => {
+        const welcome = day === 0 && isNewAccount(current);
+        given = rewardFor(day, welcome);
+        const g = given.grant;
+        return {
         ...current,
         attendanceStreak: streak,
         redGems: current.redGems + (g.gems ?? 0),
@@ -107,13 +126,14 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
         towerTickets: current.towerTickets + (g.tickets ?? 0),
         ownedShoulders: g.shoulder ? [...new Set([...current.ownedShoulders, g.shoulder])] : current.ownedShoulders,
         // 첫날 보석 1000 을 받았다는 표시 — 첫 대장 처치의 깜짝 선물 500 이 이걸 본다(TitansGame)
-        claimedRewards: day === 0 && !current.claimedRewards.includes("welcome-gift") ? [...current.claimedRewards, "welcome-gift"] : current.claimedRewards,
-      }));
+        claimedRewards: welcome && !current.claimedRewards.includes("welcome-gift") ? [...current.claimedRewards, "welcome-gift"] : current.claimedRewards,
+        };
+      });
       const next: AttendanceSave = { lastClaimDate: today(), lastClaimTimestamp: Date.now(), consecutiveDays: streak, boardIndex: day + 1, totalDays: day + 1 };
       await storageSet(ATTENDANCE_KEY(userHash), JSON.stringify(next));
       setSave(next);
       onUpdated(progress);
-      setMessage(`DAY ${day + 1} ${ATTENDANCE_REWARDS[day].name} ×${ATTENDANCE_REWARDS[day].amount} 수령 완료!`);
+      setMessage(`DAY ${day + 1} ${given.name} ×${given.amount} 수령 완료!`);
       if (next.totalDays >= ATTENDANCE_DAYS) onDone?.();
       onClose();
     } finally {
@@ -128,7 +148,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
       <div className="attendance-pages" role="tablist">
         {[0, 1].map((p) => <button key={p} type="button" role="tab" aria-selected={page === p} className={page === p ? "on" : ""} onClick={() => setPage(p)}>DAY {p * 15 + 1}–{p * 15 + 15}</button>)}
       </div>
-      <div className="attendance-grid">{ATTENDANCE_REWARDS.slice(page * 15, page * 15 + 15).map((reward, k) => { const i = page * 15 + k; return <div key={`${reward.name}-${i}`} className={`${i === day && !finished ? "today" : ""} ${i < day ? "done" : ""} rarity-${reward.rarity}`}>
+      <div className="attendance-grid">{ATTENDANCE_REWARDS.slice(page * 15, page * 15 + 15).map((base, k) => { const i = page * 15 + k; const reward = i === 0 && newAccount && day === 0 ? WELCOME_DAY1 : base; return <div key={`${reward.name}-${i}`} className={`${i === day && !finished ? "today" : ""} ${i < day ? "done" : ""} rarity-${reward.rarity}`}>
         <b>DAY {i + 1}</b>
         <span className="attendance-reward-art"><img src={assetUrl(`ui/attendance/${reward.icon}.png`)} alt={reward.name} /></span>
         <span>{reward.name} ×{reward.amount}</span>
