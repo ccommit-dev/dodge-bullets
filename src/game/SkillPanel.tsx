@@ -157,6 +157,9 @@ export function SkillPanel({
                             <em>모두 달성 시 보석 {GATE_FUND_TOTAL_GEMS.toLocaleString()}{shop.fundRatio ? ` · 같은 금액 보석팩의 ×${shop.fundRatio.toFixed(1)}` : ""}</em>
                           </span>
                         </header>
+                        {/* 단계표 6줄은 접어 둔다 (2026-10-23 "조잡") — 받을 보석이 있으면 펼친 채로 */}
+                        <details className="exp-fund-more" open={shop.fund.paid && ready > 0}>
+                        <summary>단계별 보석 {GATE_FUND_TIERS.length}단계 보기</summary>
                         <ul className="exp-fund-tiers">
                           {GATE_FUND_TIERS.map((t) => {
                             const done = t.done({ dodgeStars: shop.stars });
@@ -172,6 +175,7 @@ export function SkillPanel({
                             );
                           })}
                         </ul>
+                        </details>
                         {!shop.fund.paid && (
                           <button type="button" className="exp-store-buy" disabled={shop.busy !== null} onClick={() => shop.onBuy("gate-fund")}>
                             {shop.busy === "gate-fund" ? "결제 중…" : `${shop.price("gate-fund")} 구매${ready > 0 ? ` · 바로 보석 ${ready}` : ""}`}
@@ -281,11 +285,11 @@ export function SkillPanel({
             const slot = equippedChips.indexOf(c.id);
             const on = slot >= 0 && slot < chipSlots;
             return (
-              <li key={c.id} className={on ? "on" : ""}>
+              <li key={c.id} className={`${on ? "on" : ""} ${lv <= 0 ? "unowned" : ""}`}>
                 <img src={assetUrl(`dodge/chips/${c.id}.png`)} alt="" aria-hidden="true" />
                 <span>
                   <b>{c.name} <i>Lv.{lv}</i></b>
-                  <em>{lv > 0 ? c.desc(lv) : c.desc(1) + " (미보유)"}</em>
+                  <em>{c.desc(Math.max(1, lv))}</em>
                 </span>
                 {pickSlot !== null
                   ? (
@@ -350,7 +354,6 @@ export function SkillPanel({
         </div>
       )}
 
-      <p className="exp-learn-hint">장착 4칸 — 판 시작부터 쏩니다</p>
 
       {/* 장착 4칸 (2026-10-02, 아웃로 디펜스) — 칸을 누르면 해제, 카드의 [장착] 으로 끼운다 */}
       <div className="exp-loadout" aria-label="장착한 스킬 무기">

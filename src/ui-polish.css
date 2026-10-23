@@ -693,3 +693,17 @@
 .route-map.route-list .route-node.locked { opacity: .45; }
 /* 출발 · 사건 · 별 안내 정리 */
 .exp-menu-content .pioneer-star-hint { display: none !important; }
+/* 댐 방어전 정비 탭 정리 (2026-10-23, 사용자: "UI 조잡한 부분 마저") — 수집 보너스는 판이 아니라 얇은 한 줄 · 미보유 칩은 흐리게(꼬리 글 대신) ·
+   성문 원정 기금 단계표 6줄은 접는다 · 칩 · 보급 설명은 한 줄로 */
+.exp-skill-panel .exp-skill-banner.compact { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 4px 6px !important; justify-content: center; gap: 6px; min-height: 0 !important; }
+.exp-skill-panel .exp-skill-banner.compact b { font-size: 13px !important; color: #e6d3b0 !important; font-weight: 800; }
+.exp-skill-panel .exp-skill-banner.compact strong { font-size: 14px !important; }
+.exp-skill-panel .exp-skill-banner.compact small { font-size: 13px !important; color: #cbb592 !important; }
+.exp-chip-list li.unowned { opacity: .62; }
+.exp-chip-list li em, .exp-supply-list li em { display: block; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
+.exp-fund-more { margin: 4px 0 6px; }
+.exp-fund-more > summary { cursor: pointer; list-style: none; padding: 6px 10px; border-radius: 10px; font-size: 13px; font-weight: 900; color: #f5c96a; background: rgba(28, 16, 6, .35); text-align: center; }
+.exp-fund-more > summary::-webkit-details-marker { display: none; }
+.exp-fund-more > summary::after { content: " ▾"; }
+.exp-fund-more[open] > summary::after { content: " ▴"; }
+.exp-fund-more[open] > summary { margin-bottom: 4px; }
