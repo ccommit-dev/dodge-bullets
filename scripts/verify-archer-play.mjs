@@ -35,7 +35,8 @@ await page.evaluate(() => document.querySelectorAll(".acorn-slot")[1].click()); 
 // 보상 팝업은 줄을 서서(몬스터 발견 팝업 뒤) 늦게 뜰 수 있다
 for (let i = 0; i < 28 && !pops.some((t) => /새 도토리 발견/.test(t)); i += 1) await sleep(250);
 const t1 = await tit();
-ok("Lv2 + Lv2 → Lv3 (앞 칸 빔)", t1.acorns.grid[1] === 3 && t1.acorns.grid[0] === 0 && t1.acorns.best === 3, JSON.stringify(t1.acorns.grid.slice(0, 4)));
+// 앞 칸은 비지만 6초 생산이 곧바로 그 빈칸에 Lv1 을 넣을 수 있다(전체 검사처럼 느릴 때) — 0 또는 새 Lv1
+ok("Lv2 + Lv2 → Lv3 (앞 칸 빔 · 새로 생긴 Lv1 은 허용)", t1.acorns.grid[1] === 3 && t1.acorns.grid[0] <= 1 && t1.acorns.best === 3, JSON.stringify(t1.acorns.grid.slice(0, 4)));
 ok("새 단계 → '새 도토리 발견' 팝업 + 보석 +30", pops.some((t) => /새 도토리 발견/.test(t)) && (await prog()).redGems - gemsBefore >= 30, `보석 ${gemsBefore} → ${(await prog()).redGems}`);
 // 끼우기 — 전후 배율
 await page.evaluate(() => document.querySelectorAll(".acorn-slot")[1].click()); await sleep(150);

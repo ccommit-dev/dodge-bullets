@@ -51,7 +51,7 @@ export const ATTENDANCE_REWARDS: DayReward[] = [
  * 새 계정의 첫날 칸 = 보석 1000 (2026-10-22 아처 키우기 5번 "출석 다이아 1,000 → 바로 10연차") — 깜짝 선물 500(첫 대장)과 함께 첫 10연(900)을 바로.
  * 새 계정만(2026-10-23): 출석을 한 번도 안 받았을 뿐 이미 한참 논 옛 계정이 업데이트 뒤 1000 을 받지 않게 — 그런 계정은 예전 첫날 칸(보석 20)
  */
-export const WELCOME_DAY1: DayReward = d("첫 출석 보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS });
+export const WELCOME_DAY1: DayReward = d("보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS });
 export function isNewAccount(p: Pick<CharacterProgress, "titanBestStage" | "gachaPulls" | "rebirthCount">): boolean {
   return p.titanBestStage <= 3 && p.gachaPulls === 0 && p.rebirthCount === 0;
 }

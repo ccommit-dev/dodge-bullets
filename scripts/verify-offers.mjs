@@ -15,6 +15,10 @@ await page.setViewport({ width: 390, height: 844 });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 120)));
 const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
+// 저장 심기는 다음 문서가 열릴 때(앱 스크립트보다 먼저) — 살아 있는 페이지에 쓰면 돌던 게임의 저장이 곧바로 덮었다(2026-10-23, 코인 · 발견 저장이 잦아져 드러났다)
+const seedThenGoto = async (fn, arg) => { const id = await page.evaluateOnNewDocument(fn, arg); await page.goto(BASE, { waitUntil: "networkidle0" }); await page.removeScriptToEvaluateOnNewDocument(id.identifier); };
+// 그 사이 첫 발견 보상(몬스터 +20 · 동료 +50) — 보석 증감 단언에서 뺀다
+const discoveryGemsSince = (before, after) => [...new Set(after.discovered ?? [])].filter((k) => !(before.discovered ?? []).includes(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 50 : k.startsWith("monster:") ? 20 : Math.min(150, Number(k.split(":")[1]) >= 2 ? 10 * Number(k.split(":")[1]) : 0)), 0);
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const closeModal = async () => { await page.evaluate(() => { for (let k = 0; k < 3; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid, .moment-offer")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } }); await sleep(800); };
 
@@ -94,8 +98,7 @@ ok("미리보기에서 구매(QA) → patronUntil ≈ +30일 · 구매 기록", 
 ok("구매 후 미리보기 사라짐(후원 중)", await page.evaluate(() => !document.querySelector(".idle-patron-preview")));
 
 // ── retention-4: 벽 2지역 → 마이페이지 환생(2회 클릭) → 사냥터 복귀 시 환생 세트 카드 ──
-await page.evaluate(({ h }) => { const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.wallAreas = ["meadow", "forest"]; q.titanBestStage = 12; q.idleClaimedAt = Date.now(); localStorage.setItem(pk, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.lastActiveAt = Date.now(); localStorage.setItem(tk, JSON.stringify(t)); }, { h: H });
-await page.goto(BASE, { waitUntil: "networkidle0" });
+await seedThenGoto(({ h }) => { const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.wallAreas = ["meadow", "forest"]; q.titanBestStage = 12; q.idleClaimedAt = Date.now(); localStorage.setItem(pk, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.lastActiveAt = Date.now(); localStorage.setItem(tk, JSON.stringify(t)); }, { h: H });
 await sleep(2000);
 await closeModal();
 await clickText("button", "설정"); await sleep(400);
@@ -119,8 +122,7 @@ ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.produ
   const k = Math.floor((Date.now() - EPOCH) / PERIOD) + 1;
   const fake = EPOCH + k * PERIOD - 2 * 86400000 + 3600000;
   await page.evaluateOnNewDocument((f) => { const real = Date.now; Date.now = () => f + (real() - f); (window).__fakeStart = f; Date.now = () => f; }, fake);
-  await page.evaluate(({ h }) => { const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.pioneeredArea = 5; q.redGems = 0; q.claimedRewards = (q.claimedRewards || []).filter((k) => !k.startsWith("first-double:")); q.momentOffers = {}; localStorage.setItem(pk, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.stage = 5; localStorage.setItem(tk, JSON.stringify(t)); }, { h: H });
-  await page.goto(BASE, { waitUntil: "networkidle0" });
+  await seedThenGoto(({ h }) => { const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.pioneeredArea = 5; q.redGems = 0; q.claimedRewards = (q.claimedRewards || []).filter((k) => !k.startsWith("first-double:")); q.momentOffers = {}; localStorage.setItem(pk, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.stage = 5; localStorage.setItem(tk, JSON.stringify(t)); }, { h: H });
   await sleep(2000);
   await closeModal();
   await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
@@ -128,10 +130,11 @@ ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.produ
   r = await page.evaluate(() => { const days = [...document.querySelectorAll("small")].map((x) => x.textContent).find((t) => /회전까지/.test(t ?? "")) ?? ""; const c = document.querySelector(".moment-offer[data-product]"); return { days, card: c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent, sub: c.querySelector(".moment-sub")?.textContent } : null }; });
   ok("뽑기 페이지 → 픽업 교체 D-1 알림 예약 호출(id 3)", await page.evaluate(() => (window.__notifyLog || []).some((n) => n.id === 3)));
   ok("픽업 회전 D-2 · 뽑기 페이지에 보석 1,200 제안 카드(첫 구매 2배 · +150)", /회전까지 [12]일/.test(r.days ?? "") && r.card?.product === "gems-1200" && /첫 구매 2배/.test(r.card.head ?? "") && /\+150/.test(r.card.sub ?? ""), JSON.stringify(r));
+  const pBuy = await prog();
   await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
   await sleep(1200);
   p = await prog();
-  ok("픽업 제안 구매(QA, 첫 구매) → 보석 2,400 + 150 = 2,550 · 제안 제거", p.redGems === 2550 && !p.momentOffers?.["gems-1200"], `gems=${p.redGems}`);
+  ok("픽업 제안 구매(QA, 첫 구매) → 보석 2,400 + 150 = 2,550 · 제안 제거", p.redGems - pBuy.redGems - discoveryGemsSince(pBuy, p) === 2550 && !p.momentOffers?.["gems-1200"], `gems=${p.redGems}`);
   await page.evaluateOnNewDocument(() => {});
 }
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));

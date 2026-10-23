@@ -101,6 +101,7 @@ import {
   partySlotCount,
   partyRoleEffects,
   canFieldAlly,
+  fieldedParty,
   partySynergies,
   shardCostToNext,
   starMultiplier,
@@ -610,7 +611,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const bossTimeSec = useMemo(
     () =>
       BOSS_TIME_SEC +
-      partySynergies(character.partyIds).effects.bossTimeBonus +
+      partySynergies(fieldedParty(character.partyIds, stageCeilingFor(character.pioneeredArea), character.claimedRewards)).effects.bossTimeBonus +
       partyRoleEffects(character.partyIds).bossTimeBonus +
       passiveTotals(save.skillInventory.learned, save.skillInventory.equipped, save.skillInventory.levels).bossTime +
       activePetEffect(character.pets, character.activePet, "bossTime") +
@@ -1558,7 +1559,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         // 보호구 강화(대장간)는 동료 지원 배율로 붙는다 — 견갑 훈련(사냥터 골드)과 별개 축
         const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025 + (characterRef.current.shoulderEnhance ?? 0) * 0.02;
         // 편성(§2): 출전 슬롯에 오른 동료만 싸운다 · 엄호 사격 시너지가 DPS를 증폭한다
-        const synergyDps = partySynergies(characterRef.current.partyIds).effects.dpsMult;
+        const synergyDps = partySynergies(fieldedParty(characterRef.current.partyIds, stageCeilingFor(characterRef.current.pioneeredArea), characterRef.current.claimedRewards)).effects.dpsMult;
         for (const h of HEROES) {
           const level = saveRef.current.heroes[h.id];
           if (level <= 0 || !characterRef.current.partyIds.includes(h.id)) continue;
@@ -2597,7 +2598,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const label = monsterLabel(kind, chesterson, save.stage);
   // 편성(§2) — 출전 동료만 DPS·필드 렌더에 반영한다
   const partySlots = partySlotCount(character.towerBestFloor, character.partyCap);
-  const synergy = useMemo(() => partySynergies(character.partyIds), [character.partyIds]);
+  const synergy = useMemo(() => partySynergies(fieldedParty(character.partyIds, stageCeilingFor(character.pioneeredArea), character.claimedRewards)), [character.partyIds, character.pioneeredArea, character.claimedRewards]);
   const now = performance.now();
   const fieldCeiling = stageCeilingFor(character.pioneeredArea);
   /** I 외형: 장착한 무기 이펙트·전장 테마 정의 (없으면 undefined) */
