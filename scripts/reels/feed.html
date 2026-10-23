@@ -1,0 +1,241 @@
+<title>비버 키우기 릴스</title>
+<style>
+  /* 레이아웃: 세로 릴스 한 장씩 — 9:16 플레이어블 카드 + 오른쪽 반응 줄(좁은 화면은 카드 아래 한 줄) + 계정 · 캡션 · 오디오 줄.
+     릴스는 늘 어두운 화면이라 어두운 한 가지 모습으로 고정한다. 강조색은 비버 키우기 도토리 금빛 */
+  :root {
+    color-scheme: dark;
+    --bg: #0b0806;
+    --fg: #f6efe6;
+    --sub: #b3a492;
+    --line: #2e241b;
+    --hot: #ff8a1f;
+    --hot-ink: #1b1206;
+    --like: #ff3b4e;
+    --ring-a: #ffd23f;
+    --ring-b: #c8642a;
+    --tag: #ffd99a;
+    --ui: "Jua", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    --body: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Segoe UI", sans-serif;
+    --rail: 52px; --gap: 12px; --meta: 104px;
+  }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 var(--body); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  button { font: inherit; color: inherit; }
+  button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 6px; }
+  .app { height: 100%; display: flex; flex-direction: column; }
+  .top { flex: none; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+  .top h1 { margin: 0; font: 22px/1 var(--ui); letter-spacing: 0.01em; }
+  .top .note { font-size: 11px; color: var(--sub); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+  .top .count { margin-left: auto; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+  .feed { flex: 1; min-height: 0; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; }
+  .feed:focus { outline: none; }
+  .feed::-webkit-scrollbar { display: none; }
+  .slide { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; justify-content: center; align-items: center; box-sizing: border-box; padding: 6px 16px 10px; }
+  .reel { display: flex; align-items: flex-end; gap: var(--gap); }
+  .stage { display: flex; flex-direction: column; width: var(--cw, 340px); }
+  .media { position: relative; width: var(--cw, 340px); height: var(--ch, 604px); border-radius: 12px; overflow: hidden; background: #120b06; }
+  .media iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #120b06; }
+  .media .poster { position: absolute; inset: 0; display: grid; place-items: center; color: var(--sub); font-size: 13px; }
+  .meta { height: var(--meta); box-sizing: border-box; padding: 10px 2px 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ring { width: 32px; height: 32px; border-radius: 50%; padding: 2px; background: linear-gradient(135deg, var(--ring-a), var(--ring-b)); flex: none; box-sizing: border-box; }
+  .avatar { width: 100%; height: 100%; border-radius: 50%; background: var(--hot-ink) center/cover; border: 2px solid var(--bg); box-sizing: border-box; }
+  .who b { font: 15px/1 var(--ui); white-space: nowrap; }
+  .who .ad { color: var(--sub); font-size: 13px; white-space: nowrap; }
+  .follow { margin-left: 4px; background: none; border: 1px solid #5a4a3a; border-radius: 8px; padding: 3px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .follow.on { border-color: var(--line); color: var(--sub); }
+  .cap { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cap .tag { color: var(--tag); }
+  .tail { height: 34px; display: flex; align-items: center; }
+  .audio { display: flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; }
+  .audio span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .audio svg { width: 14px; height: 14px; flex: none; }
+  .cta { display: none; width: 100%; height: 34px; border: 0; border-radius: 8px; background: var(--hot); color: var(--hot-ink); font: 15px/1 var(--ui); cursor: pointer; padding: 0 12px; justify-content: space-between; align-items: center; text-decoration: none; box-sizing: border-box; }
+  .done .cta { display: flex; animation: pop 0.35s ease-out; }
+  .done .audio { display: none; }
+  @keyframes pop { from { transform: scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 16px; width: var(--rail); padding-bottom: calc(var(--meta) + 2px); }
+  .rail button { background: none; border: 0; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rail .liked svg { fill: var(--like); stroke: var(--like); }
+  .rail .saved svg { fill: var(--fg); }
+  .rail .disc { width: 28px; height: 28px; border-radius: 7px; border: 2px solid var(--fg); background: var(--hot-ink) center/cover; }
+  .nav { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: none; flex-direction: column; gap: 12px; z-index: 5; }
+  .nav button { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #2a2018; cursor: pointer; display: grid; place-items: center; }
+  .nav svg { width: 20px; height: 20px; }
+  .nav button:disabled { opacity: 0.35; cursor: default; }
+  @media (min-width: 760px) { .nav { display: flex; } }
+  .narrow .reel { flex-direction: column; align-items: stretch; gap: 0; width: var(--cw, 340px); }
+  .narrow .meta, .narrow .rail { width: var(--cw, 340px); box-sizing: border-box; }
+  .narrow .rail { flex-direction: row; width: auto; padding: 8px 2px 0; gap: 18px; order: 2; }
+  .narrow .rail button { flex-direction: row; gap: 5px; }
+  .narrow .rail .more, .narrow .rail .disc { display: none; }
+  .narrow .stage { display: contents; }
+  .narrow .media { order: 1; }
+  .narrow .meta { order: 3; padding-top: 4px; }
+  @media (prefers-reduced-motion: reduce) { .done .cta { animation: none; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<div class="app">
+  <header class="top">
+    <h1>릴스</h1>
+    <span class="note">비버 키우기 · 사내 검토용 미리보기</span>
+    <span class="count" id="count"></span>
+  </header>
+  <main class="feed" id="feed"></main>
+</div>
+<div class="nav"><button id="up" type="button" aria-label="이전 릴스"><svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></svg></button><button id="down" type="button" aria-label="다음 릴스"><svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></svg></button></div>
+<script>
+(() => {
+  'use strict';
+  // 비버 키우기 유도 광고 릴스 피드 — 메이플 키우기 릴스와 같은 플레이어블 약속(replayform 메시지)을 쓴다.
+  // 아래 "지금 플레이" 줄은 광고가 끝(end)났을 때만 나온다. 그 전에는 오디오 줄이다. 특정 SNS 의 이름 · 상표는 쓰지 않는다.
+  const LOGO = '__LOGO__';
+  const SLIDES = [
+    { src: 'acorn-merge/index.html', likes: '2.9만', comments: '1,108', shares: '774',
+      cap: '도토리 두 개를 합치면 동료가 두 배로 🌰', tags: '#비버키우기 #도토리합성' },
+    { src: 'lightning-tap/index.html', likes: '3.4만', comments: '1,652', shares: '1,031',
+      cap: '탭 열 번에 한 번, 번개가 떨어진다 ⚡', tags: '#비버키우기 #번개탭' },
+    { src: 'boss-ladder/index.html', likes: '2.2만', comments: '904', shares: '688',
+      cap: '대장 잡을 때마다 영구 특성, 환생해도 그대로 🪜', tags: '#비버키우기 #대장사다리' },
+    { src: 'first-ten/index.html', likes: '5.6만', comments: '4,219', shares: '3,377',
+      cap: '첫 10연차는 전설 확정이래서 해봄 ✨', tags: '#비버키우기 #첫10연' },
+    { src: 'drum-forge/index.html', likes: '3.8만', comments: '2,506', shares: '1,448',
+      cap: '나무북 +0 → 왕관북 +15, 실패는 방지권이 막아 줌 🥁', tags: '#비버키우기 #북강화' },
+    { src: 'party-assemble/index.html', likes: '4.1만', comments: '2,877', shares: '2,013',
+      cap: '혼자선 드래곤한테 간지럼, 넷이 모이니 녹는다 🐉', tags: '#비버키우기 #원정대' },
+  ];
+  const STORE = 'https://ccommit-dev.github.io/dodge-bullets/';
+  const ICON = {
+    heart: '<svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.4 0 5.5 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>',
+    comment: '<svg viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20l1.2-4.1A8.5 8.5 0 1 1 20.5 11.5z"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><path d="M21 3 10 13"/><path d="M21 3 14.5 21l-4.5-8-8-4.5z"/></svg>',
+    save: '<svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4.5-6 4.5z"/></svg>',
+    more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>',
+    note: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  };
+  const feed = document.getElementById('feed');
+  feed.tabIndex = -1;
+  const posts = SLIDES.map((s, i) => {
+    const el = document.createElement('section');
+    el.className = 'slide'; el.dataset.index = i;
+    el.innerHTML = `
+      <article class="reel">
+        <div class="stage">
+          <div class="media"><div class="poster">불러오는 중…</div></div>
+          <div class="meta">
+            <div class="who">
+              <div class="ring"><div class="avatar" style="background-image:url(${LOGO})"></div></div>
+              <b>비버 키우기</b><span class="ad">· 광고</span>
+              <button class="follow" type="button">팔로우</button>
+            </div>
+            <div class="cap">${s.cap} <span class="tag">${s.tags}</span></div>
+            <div class="tail">
+              <div class="audio">${ICON.note}<span>비버 키우기 · 오리지널 오디오</span></div>
+              <a class="cta" href="${STORE}" target="_blank" rel="noopener"><span>지금 플레이</span><span aria-hidden="true">›</span></a>
+            </div>
+          </div>
+        </div>
+        <div class="rail">
+          <button class="like" type="button" aria-label="좋아요">${ICON.heart}<span>${s.likes}</span></button>
+          <button type="button" aria-label="댓글">${ICON.comment}<span>${s.comments}</span></button>
+          <button type="button" aria-label="공유">${ICON.share}<span>${s.shares}</span></button>
+          <button class="save" type="button" aria-label="저장">${ICON.save}</button>
+          <button class="more" type="button" aria-label="더 보기">${ICON.more}</button>
+          <div class="disc" aria-hidden="true" style="background-image:url(${LOGO})"></div>
+        </div>
+      </article>`;
+    el.querySelector('.like').addEventListener('click', (e) => e.currentTarget.classList.toggle('liked'));
+    el.querySelector('.save').addEventListener('click', (e) => e.currentTarget.classList.toggle('saved'));
+    el.querySelector('.follow').addEventListener('click', (e) => { const b = e.currentTarget; b.classList.toggle('on'); b.textContent = b.classList.contains('on') ? '팔로잉' : '팔로우'; });
+    el.querySelector('.cta').addEventListener('click', () => record(i, 'cta_bar'));
+    feed.appendChild(el);
+    return { el, media: el.querySelector('.media'), stage: el.querySelector('.reel'), frame: null, ready: false, timer: 0, visited: false };
+  });
+
+  function layout() {
+    const narrow = window.innerWidth < 560;
+    document.body.classList.toggle('narrow', narrow);
+    const meta = narrow ? 128 : 104, railW = narrow ? 0 : 52 + 12;
+    const h = feed.clientHeight - 16 - meta, w = window.innerWidth - 32 - railW;
+    const ch = Math.max(200, Math.min(h, w * 16 / 9)), cw = Math.round(ch * 9 / 16);
+    const r = document.documentElement.style;
+    r.setProperty('--cw', cw + 'px'); r.setProperty('--ch', Math.round(ch) + 'px'); r.setProperty('--meta', meta + 'px');
+  }
+  layout();
+  window.addEventListener('resize', layout);
+
+  let active = -1;
+  const events = [];
+  function record(i, event, data) { events.push({ i, event, data: data || null, t: Math.round(performance.now()) }); }
+  function send(i, msg) { const f = posts[i] && posts[i].frame; if (f && f.contentWindow) f.contentWindow.postMessage(msg, '*'); }
+  function mount(i) {
+    const p = posts[i];
+    if (p.frame) return;
+    const f = document.createElement('iframe');
+    f.src = SLIDES[i].src; f.title = `플레이어블 광고 ${i + 1}`; f.allow = 'autoplay';
+    p.media.appendChild(f); p.frame = f; p.ready = false;
+    // 프레임이 열리지 않는 미리보기 환경이면 파일을 읽어 srcdoc 으로(광고 파일은 그림까지 한 파일이라 그대로 돈다)
+    p.timer = setTimeout(() => {
+      if (p.ready || p.frame !== f) return;
+      fetch(SLIDES[i].src).then((r) => r.text()).then((html) => { if (!p.ready && p.frame === f) { f.removeAttribute('src'); f.srcdoc = html; } }).catch(() => {});
+    }, 4000);
+  }
+  function unmount(i) { const p = posts[i]; if (!p.frame) return; clearTimeout(p.timer); p.frame.remove(); p.frame = null; p.ready = false; p.stage.classList.remove('done'); }
+  const countEl = document.getElementById('count');
+  function setActive(i) {
+    if (i === active || i < 0 || i >= posts.length) return;
+    const prev = active; active = i;
+    posts.forEach((p, j) => { if (Math.abs(j - i) <= 1) mount(j); else unmount(j); });
+    if (prev >= 0) send(prev, { replayform: 'pause' });
+    const p = posts[i];
+    if (p.visited) { send(i, { replayform: 'restart' }); p.stage.classList.remove('done'); } else send(i, { replayform: 'resume' });
+    p.visited = true;
+    posts.forEach((q, j) => { if (j !== i && Math.abs(j - i) <= 1) send(j, { replayform: 'pause' }); });
+    up.disabled = i === 0; down.disabled = i === posts.length - 1;
+    countEl.textContent = `${i + 1} / ${posts.length}`;
+    const fe = document.activeElement;
+    if (fe && fe.tagName === 'IFRAME' && fe !== p.frame) feed.focus({ preventScroll: true });
+    record(i, 'active');
+  }
+  function go(i) {
+    const n = Math.max(0, Math.min(posts.length - 1, i)), target = n * feed.clientHeight;
+    feed.scrollTo({ top: target, behavior: 'smooth' });
+    setTimeout(() => { if (Math.abs(feed.scrollTop - target) > 2) { feed.scrollTop = target; setActive(n); } }, 450);
+  }
+  const io = new IntersectionObserver((entries) => { for (const e of entries) if (e.isIntersecting && e.intersectionRatio >= 0.6) setActive(+e.target.dataset.index); }, { root: feed, threshold: [0.6] });
+  posts.forEach((p) => io.observe(p.el));
+
+  let wheelAcc = 0, wheelLock = 0;
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || d.source !== 'replayform') return;
+    const i = posts.findIndex((p) => p.frame && p.frame.contentWindow === e.source);
+    if (i < 0) return;
+    record(i, d.event, d.data);
+    if (d.event === 'ready') { posts[i].ready = true; send(i, { replayform: i === active ? 'resume' : 'pause' }); }
+    else if (d.event === 'swipe' && i === active) go(active + (d.data.dir === 'next' ? 1 : -1));
+    else if (d.event === 'key' && i === active) go(active + (/Down/.test(d.data.key) ? 1 : -1));
+    else if (d.event === 'wheel' && i === active) {
+      const now = performance.now(); if (now < wheelLock) return;
+      wheelAcc += d.data.dy;
+      if (Math.abs(wheelAcc) > 60) { go(active + (wheelAcc > 0 ? 1 : -1)); wheelAcc = 0; wheelLock = now + 700; }
+    } else if (d.event === 'end') posts[i].stage.classList.add('done');
+    else if (d.event === 'replay') posts[i].stage.classList.remove('done');
+  });
+  // 게임 키(Space · Ctrl · Z)는 지금 보이는 릴스로
+  const GAME_KEY = /^(Control| |z|Z)$/;
+  window.addEventListener('keydown', (e) => {
+    if (/^(ArrowDown|PageDown)$/.test(e.key)) { e.preventDefault(); go(active + 1); return; }
+    if (/^(ArrowUp|PageUp)$/.test(e.key)) { e.preventDefault(); go(active - 1); return; }
+    if (GAME_KEY.test(e.key) && active >= 0) { e.preventDefault(); if (!e.repeat) send(active, { replayform: 'key', type: 'down', key: e.key }); }
+  });
+  const up = document.getElementById('up'), down = document.getElementById('down');
+  up.addEventListener('click', () => go(active - 1));
+  down.addEventListener('click', () => go(active + 1));
+  window.__feed = { active: () => active, go, events, ctaShown: (i) => posts[i].stage.classList.contains('done'), count: posts.length,
+    state: (i) => { const f = posts[i] && posts[i].frame; try { return f && f.contentWindow.__rf ? f.contentWindow.__rf.state() : null; } catch (err) { return null; } } };
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  feed.scrollTop = 0;
+  setActive(0);
+})();
+</script>
