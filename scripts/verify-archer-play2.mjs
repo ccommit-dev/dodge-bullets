@@ -152,6 +152,43 @@ ok("자동 환생 뒤 사냥이 다시 돈다(1층 몬스터를 다시 잡는다
 await sleep(3000);
 ok("환생은 한 번만(되풀이 없음)", (await prog()).rebirthCount === 2);
 
+// ── 7''. 자동 환생 — 전투 도중 벽(같은 지역 대장 2연속 실패) → 바로 환생 (2026-10-23) ──
+// 동료 없이 주인공(무기 Lv0)만: 3층 일반 몬스터는 탭으로 잡히고 대장(×11)은 30초 안에 못 잡는다
+await seed(baseProgress({ rebirthCount: 1, wallAreas: [], autoRebirth: true, titanBestStage: 12, inheritanceCrystals: 0, partyIds: [] }), { gold: 0, stage: 3, bestStage: 12, totalKills: 400, heroes: {}, lastActiveAt: now });
+await closeModals(); await sleep(500);
+const tapUntilBoss = async () => { for (let i = 0; i < 900 && !(await page.$(".titans-boss-challenge")); i += 1) { await page.keyboard.press("Space"); await sleep(70); } return !!(await page.$(".titans-boss-challenge")); };
+const bossFail = async () => {
+  const ready = await tapUntilBoss();
+  await page.evaluate(() => document.querySelector(".titans-boss-challenge")?.click());
+  await sleep(34000);   // 탭하지 않고 제한시간(30초)을 넘긴다
+  await page.evaluate(() => [...document.querySelectorAll(".moment-offer button")].find((b) => /괜찮아요|나중에/.test(b.textContent))?.click());
+  return ready;
+};
+const r1 = await bossFail();
+ok("대장 1차 실패(자동 환생 조건 아님)", r1 && (await prog()).rebirthCount === 1 && ((await prog()).wallAreas ?? []).length === 0, JSON.stringify((await prog()).wallAreas));
+const r2 = await bossFail();
+for (let i = 0; i < 30 && !pops.some((t) => /자동 환생 · 2회/.test(t)); i += 1) await sleep(250);
+await sleep(1500);
+p = await prog();
+const tw = await tit();
+ok("대장 2차 실패 → 벽 기록 → 그 자리에서 자동 환생(2회 · 벽 기록 비움 · 1층 · 팝업)", r2 && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && tw.stage <= 2 && pops.some((t) => /자동 환생 · 2회/.test(t)), `환생 ${p.rebirthCount} · 벽 ${JSON.stringify(p.wallAreas)} · ${tw.stage}층`);
+
+// ── 5'''. 옛 계정(출석을 한 번도 안 받았지만 이미 진행함)은 첫날 1000 이 아니라 예전 20 ──
+await seed(baseProgress({ redGems: 0, titanBestStage: 30, gachaPulls: 40 }), { gold: 0, stage: 20, bestStage: 30, totalKills: 900, heroes: { mia: 30, leon: 30 }, lastActiveAt: now }, null);
+for (let i = 0; i < 20 && !(await page.$(".attendance-modal")); i += 1) await sleep(250);
+const oldDay1 = await page.evaluate(() => document.querySelector(".attendance-modal .attendance-grid > div")?.textContent ?? "");
+await page.evaluate(() => document.querySelector(".attendance-modal .cta:not(.cta-ghost)")?.click()); await sleep(1200);
+p = await prog();
+ok("옛 계정 첫 출석: 판도 지급도 보석 20 · welcome-gift 없음", /×20/.test(oldDay1) && !/1000/.test(oldDay1) && p.redGems >= 20 && p.redGems < 1000 && !(p.claimedRewards ?? []).includes("welcome-gift"), `${oldDay1} · 보석 ${p.redGems}`);
+
+// ── 체험 출전 — 첫 10연 전설(아리)은 지역이 열리기 전엔 "열린 가장 센 동료의 2배"까지만 ──
+await seed(baseProgress({ redGems: 0, claimedRewards: ["dodge-tutorial", "field-pass:ari"], partyIds: ["mia", "ari"], pioneeredArea: 3 }), { gold: 0, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 5, ari: 1 }, lastActiveAt: now });
+await closeModals(); await sleep(300);
+await clickText(".titans-bottom-nav button", "동료"); await sleep(600);
+await clickText(".ally-pages button", "5–8"); await sleep(400);   // 도감은 4장씩 — 아리는 둘째 쪽
+const ariCard = await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].map((c) => c.textContent).find((t) => /아리/.test(t) && /DPS/.test(t)) ?? "");
+ok("아리 카드에 '체험 ×0.xx(STAGE 16 개척 시 제 힘)'", /체험 ×0\.\d\d\(STAGE 16 개척 시 제 힘\)/.test(ariCard), ariCard.slice(0, 120));
+
 ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 await browser.close(); process.exit(fails ? 1 : 0);

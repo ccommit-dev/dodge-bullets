@@ -18,10 +18,12 @@ writeFileSync(entry, [
   `export * as shop from "${root}/src/economy/eventShop";`,
   `export * as gacha from "${root}/src/titans/gacha";`,
   `export * as allies from "${root}/src/titans/allies";`,
+  `export * as trial from "${root}/src/titans/trialAlly";`,
+  `export * as idle from "${root}/src/progression/idle";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S, gacha: G, allies: AL } = await import(pathToFileURL(out).href);
+const { acorns: A, ladder: L, disc: D, model: M, prog: P, coins: C, shop: S, gacha: G, allies: AL, trial: T, idle: I } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 let fails = 0;
@@ -93,6 +95,14 @@ let earlyOk = 0;
 for (let i = 0; i < 200; i += 1) { const r = G.pullTen(early, {}, 0, Math.random, true, G.FIRST_TEN_SSR).results; if (r.some((x) => x.rarity === "SSR" && x.fieldPass === true && x.id === G.FIRST_TEN_SSR)) earlyOk += 1; }
 ok("초반 풀(전설 없음)에서도 첫 10연은 전설(가장 먼저 열리는 전설) + 출전 허가", !early.entries.some((e) => e.rarity === "SSR") && earlyOk === 200 && !!G.FIRST_TEN_SSR, `${G.FIRST_TEN_SSR} · ${earlyOk}/200`);
 ok("출전 허가: field-pass 가 있으면 지역 잠금을 넘는다(없으면 잠김)", AL.canFieldAlly("ari", 16, 15, ["field-pass:ari"]) === true && AL.canFieldAlly("ari", 16, 15, []) === false && AL.canFieldAlly("ari", 16, 15) === false);
+// ── 체험 출전 · 방치 (2026-10-23) ──
+const ari = M.HEROES.find((h) => h.id === "ari");
+ok("체험 출전: 지역3(상한 15)에선 아리 ×(2×가렌 120/620)=0.39 · 지역이 열리면 ×1 · 열린 동료는 늘 ×1", Math.abs(T.trialDpsMul(ari, 15) - 240 / 620) < 1e-9 && T.trialDpsMul(ari, 16) === 1 && T.trialDpsMul(M.HEROES.find((h) => h.id === "leon"), 15) === 1, T.trialDpsMul(ari, 15).toFixed(3));
+ok("체험 아리는 그 지역 최강(가렌)의 2배를 넘지 않는다 — 초반(상한 5)엔 레온 6 의 2배", Math.abs(ari.baseDps * T.trialDpsMul(ari, 5) - 12) < 1e-9 && Math.abs(ari.baseDps * T.trialDpsMul(ari, 15) - 240) < 1e-9);
+const idleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["mia", "leon"], level: 10 });
+const y1 = I.computeIdleYield(idleBase, 8, {}, 4 * 3600, 1e12);
+const y2 = I.computeIdleYield({ ...idleBase, partyIds: ["mia", "leon", "ari"], claimedRewards: ["field-pass:ari"] }, 8, {}, 4 * 3600, 1e12);
+ok("방치 보상은 동료 DPS 를 쓰지 않는다 — 아리가 편성에 있어도 골드 · 경험 · 강화석 같음(스테이지 · 배율로만)", y1.gold === y2.gold && y1.exp === y2.exp && y1.materials === y2.materials, `${y1.gold} / ${y2.gold}`);
 ok("환영 1000 + 깜짝 500", M.WELCOME_GIFT_GEMS === 1000 && M.SURPRISE_GIFT_GEMS === 500);
 ok("캐릭터 진행에 자동 환생(기본 꺼짐)", P.emptyCharacterProgress().autoRebirth === false && P.normalizeCharacterProgress({ autoRebirth: true }).autoRebirth === true);
 
