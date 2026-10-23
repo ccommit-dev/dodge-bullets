@@ -310,7 +310,7 @@ export function allyFrameFor(v: { flinching: boolean; attackPhase: "none" | "win
  * (2026-10-19, 사용자: "걸어오는 건 되는데 y값이 일정해서 어색 — 랜덤값") 걸어 들어가는 동안 그 높이로 비스듬히 옮겨 간다(anim-plus.css bottom 전환).
  * 제자리 흔들림(좌우 2~6px · 위아래 2~6px · 2.2~4.2초 · 시작 위상)이 바뀐다. 대형 칸·충돌 분리(--sep-dx)는 그대로 둔다.
  */
-export function allyStageJitter(stage: number, id: string, encounter = 0, row = 0, column = ""): { jx: number; jy: number; wx: number; wy: number; wd: number; wdelay: number; wk: number } {
+export function allyStageJitter(stage: number, id: string, encounter = 0, row = 0, column = ""): { jx: number; jy: number; wx: number; wy: number; wd: number; wdelay: number; wk: number; rx: number } {
   const seed = 2166136261 ^ Math.imul(stage + 1, 2654435761) ^ Math.imul(encounter + 7, 374761393);
   const rng = (start: number) => { let h = start; return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; };
   const mix = (start: number, key: string) => { let h = start; for (let i = 0; i < key.length; i += 1) h = Math.imul(h ^ key.charCodeAt(i), 16777619); return h; };
@@ -323,8 +323,25 @@ export function allyStageJitter(stage: number, id: string, encounter = 0, row = 
   const col = Math.round(colR() * 14);
   const r = rng(mix(seed, id));
   const own = Math.round(r() * 8);
-  return { jy: col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10, wk: Math.round((0.78 + r() * 0.22) * 100) / 100 };
+  return { jy: col + (row >= 1 ? own : 0), jx: Math.round((r() - 0.5) * 14), wx: 2 + Math.round(r() * 4), wy: 2 + Math.round(r() * 4), wd: 2.2 + Math.round(r() * 20) / 10, wdelay: -Math.round(r() * 30) / 10, wk: Math.round((0.78 + r() * 0.22) * 100) / 100, rx: allyRangeOffset(stage, id) };
 }
+
+/**
+ * 사거리 차이 (2026-10-23, 사용자: "근거리 · 원거리 X 는 형태에 따라서만 다르다 — 같은 타입이어도 RANGE 가 조금씩 다르고, STAGE 가 바뀌면 자연스럽게 몬스터에게 가게 랜덤 변화").
+ * 0~1 값 = 동료마다 고정된 제 사거리(이름으로 정한다 · 50%) + 스테이지마다 새로 뽑는 몫(50%). 스테이지가 바뀌면 대열이 새 자리로 걸어 들어간다(교전 x 는 CSS 전환).
+ * 만남(몬스터 한 마리)마다 바꾸지 않는다 — 같은 스테이지 안에서 매번 자리를 옮기면 산만했다
+ */
+export function allyRangeOffset(stage: number, id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i += 1) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  const own = ((h >>> 0) % 1000) / 999;
+  let s = Math.imul((stage + 1) ^ (h >>> 3), 2654435761);
+  s = Math.imul(s ^ (s >>> 15), 2246822507); s ^= s >>> 13;
+  const roll = ((s >>> 0) % 1000) / 999;
+  return Math.round((own * 0.5 + roll * 0.5) * 100) / 100;
+}
+/** 사거리 폭(px) — 근접은 몬스터에서 0~34px 물러서고, 원거리도 0~18px 뒤로(사거리가 긴 동료일수록 멀리) — 앞으로 밀면 주인공을 덮었다(verify-formation 27~34%) */
+export const ALLY_RANGE_SPAN = { melee: 34, ranged: 18 } as const;
 
 export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1, walkRate = 1 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number; /** 이번 만남 걷는 시간 ÷ 기준(1250ms) — 걷기 칸 한 바퀴를 그만큼 늘이고 줄인다 (2026-10-20) */ walkRate?: number }) {
   const base = ALT_BASE[id] ?? id;
@@ -425,7 +442,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
     // 전에는 앞줄이 8 이라 주인공을 덮었고, 뒷줄은 2 로 주인공과 같아 DOM 순서상 역시 주인공을 덮었다 (2026-09-21)
     "--party-z": String((combatY ?? 0) <= 9 ? 4 : 2),
-    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex, !jit || cell === "L" ? 0 : jit.jx) : {}),
+    ...(cell && lineIndex !== undefined ? lineFormation(cell, lineIndex, (!jit || cell === "L" ? 0 : jit.jx) + (!jit ? 0 : cell === "R" ? -Math.round(jit.rx * ALLY_RANGE_SPAN.melee) : -Math.round(jit.rx * ALLY_RANGE_SPAN.ranged))) : {}),
     ...(!jit ? {} : { "--party-jy": `${jit.jy}px`, "--aw-x": `${cell === "L" ? 0 : jit.wx}px`, "--aw-y": `${jit.wy}px`, "--aw-d": `${jit.wd}s`, "--aw-delay": `${jit.wdelay}s`, "--walk-k": String(jit.wk) }),
     // 무리 깊이 — 근접(R 칸)은 몬스터 무리, 원거리(L 칸)는 주인공 무리 (TitansGame --lane-r/--lane-l, anim-plus.css)
     "--ally-lane": cell === "R" ? "var(--lane-r, 0%)" : "var(--lane-l, 0%)",
