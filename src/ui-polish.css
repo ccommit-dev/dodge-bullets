@@ -665,3 +665,8 @@
 .gacha-art .dup-progress.ready .dup-bar { border-color: #fde047; box-shadow: 0 0 8px #fde047; }
 .gacha-art .dup-progress.max .dup-bar > i { background: linear-gradient(90deg, #a78bfa, #f0abfc); }
 .gacha-card.dup-ready-card .gacha-card-front { box-shadow: 0 0 0 2px #fde047, 0 0 12px rgba(253, 224, 71, .8); }
+/* 주인공 머리 위 명패 · 칭호 · 시전 이름표 (2026-10-23, 사용자: "모험가 표시가 너무 멀리 — 주인공 바로 위로") — 시트 칸 맨 위가 아니라
+   그림의 실제 머리 높이(HERO_FIG.y0, 조립이 쓴다 · 로우 폴리 주인공은 칸 위 58% 가 빈칸)에 붙인다 */
+.titans-hero .hero-marker { bottom: calc(100% - var(--hero-fig-top, 0%) + 2px); }
+.titans-hero .hero-title-plate { top: calc(var(--hero-fig-top, 0%) - 34px); }
+.titans-hero .hero-cast-tag { bottom: calc(100% - var(--hero-fig-top, 0%) + 18px); }
