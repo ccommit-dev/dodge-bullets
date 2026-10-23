@@ -18,7 +18,7 @@ import {
   type TitanSkillSlot,
   huntingArea,
 } from "../titans/model";
-import { partySynergies } from "../titans/allies";
+import { fieldedParty, partySynergies } from "../titans/allies";
 import { activePetEffect } from "../titans/pets";
 import { CHARACTER_PASSIVE, PATRON } from "../economy/productCatalog";
 import { starMilestoneMultiplier } from "./collection";
@@ -124,7 +124,7 @@ export function idleRate(
   // 균형 편성 시너지(§2)는 캡 밖 가산 — 상한을 다 채운 뒤에도 편성이 의미를 갖게
   // 흑요석 검사(유료 캐릭터) 패시브 +1%p — 카탈로그가 약속한 효과의 실제 구현
   const obsidian = progress.ownedCharacters.includes("obsidian") ? CHARACTER_PASSIVE.obsidianIdleRate : 0;
-  return Math.min(IDLE.rateCap, raw) + partySynergies(progress.partyIds).effects.idleRateBonus + obsidian;
+  return Math.min(IDLE.rateCap, raw) + partySynergies(fieldedParty(progress.partyIds, stageCeilingFor(progress.pioneeredArea), progress.claimedRewards)).effects.idleRateBonus + obsidian;
 }
 
 /** M — 산출 배율. forge · 환생 · 끝없는 성벽이 올린다. */
@@ -249,7 +249,7 @@ export function computeIdleYield(
   const materials = Math.floor((perHour * multiplier * seconds * ogrePet) / 3600) * boost;
   // 조각 드랍: 기본 4h당 1개 — 꼬마 고블린 펫은 주기를 줄이고, SSR 2+ 시너지는 개수를 2배로
   const goblinPet = 1 + activePetEffect(progress.pets, progress.activePet, "shard");
-  const shardMult = partySynergies(progress.partyIds).effects.shardMult;
+  const shardMult = partySynergies(fieldedParty(progress.partyIds, stageCeilingFor(progress.pioneeredArea), progress.claimedRewards)).effects.shardMult;
   const allyShardDrops = Math.floor(seconds / ((4 * 3600) / goblinPet)) * shardMult;
 
   return {

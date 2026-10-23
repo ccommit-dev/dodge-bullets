@@ -6,7 +6,7 @@
  * - 집중도: 조각이 방치·균열·주간 시험·성벽 4곳에서 나와 전 콘텐츠에 수집 동기
  * - 결제: 동료 "획득"은 과금 가능하지만 "성급"은 조각 파밍으로만 — 확정 구매 원칙
  */
-import { RETIRED_ALLY_IDS, type TitanHeroId } from "./model";
+import { HEROES, RETIRED_ALLY_IDS, type TitanHeroId } from "./model";
 
 export type AllyRarity = "R" | "SR" | "SSR";
 
@@ -166,6 +166,14 @@ export function partyRoleEffects(party: TitanHeroId[]): { bossTimeBonus: number;
  * 상점 전용 동료(unlockStage 9999)는 항상 편성 가능. 뽑기 픽업은 개척 상한 안에서만 뽑히므로
  * 뽑은 동료는 언제나 즉시 출전할 수 있다.
  */
+/**
+ * 실제로 출전하는 편성 (2026-10-23) — 지역 잠금을 넘는(또는 출전 허가가 있는) 동료만. 편성 시너지(전투 DPS · 대장 시간 · 방치 효율 · 조각 드랍)가 이걸 본다.
+ * 예전엔 편성 목록 전체를 셌다 — 잠겨서 싸우지 않는 동료도 방치 시너지를 켰다
+ */
+export function fieldedParty(partyIds: readonly TitanHeroId[], stageCeiling: number, passes: readonly string[] = []): TitanHeroId[] {
+  return partyIds.filter((id) => { const h = HEROES.find((x) => x.id === id); return !!h && canFieldAlly(id, h.unlockStage, stageCeiling, passes); });
+}
+
 /** passes — 진행의 claimedRewards. "field-pass:<id>" 가 있으면 지역과 관계없이 출전(첫 10연 전설, 2026-10-22) */
 export function canFieldAlly(id: TitanHeroId, unlockStage: number, stageCeiling: number, passes: readonly string[] = []): boolean {
   return SHOP_ALLY_GEM_COST[id] !== undefined || unlockStage <= stageCeiling || passes.includes(`field-pass:${id}`);

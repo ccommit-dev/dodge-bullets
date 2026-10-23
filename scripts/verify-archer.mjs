@@ -103,6 +103,14 @@ const idleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredAre
 const y1 = I.computeIdleYield(idleBase, 8, {}, 4 * 3600, 1e12);
 const y2 = I.computeIdleYield({ ...idleBase, partyIds: ["mia", "leon", "ari"], claimedRewards: ["field-pass:ari"] }, 8, {}, 4 * 3600, 1e12);
 ok("방치 보상은 동료 DPS 를 쓰지 않는다 — 아리가 편성에 있어도 골드 · 경험 · 강화석 같음(스테이지 · 배율로만)", y1.gold === y2.gold && y1.exp === y2.exp && y1.materials === y2.materials, `${y1.gold} / ${y2.gold}`);
+// ── 방치 보상과 지역 잠금 (2026-10-23) — 편성 시너지는 실제로 출전하는 동료만 센다(잠금 · 출전 허가를 그대로) ──
+ok("출전 편성: 지역3(상한 15)에서 잠긴 녹스(24) · 허가 없는 아리(16)는 빠지고, 허가 있는 아리는 들어간다", AL.fieldedParty(["mia", "leon", "ari", "nox"], 15, []).join() === "mia,leon" && AL.fieldedParty(["mia", "leon", "ari", "nox"], 15, ["field-pass:ari"]).join() === "mia,leon,ari");
+const ssrBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["ari", "nox"], level: 10 });
+const lockedY = I.computeIdleYield(ssrBase, 8, {}, 16 * 3600, 1e12);
+const passY = I.computeIdleYield({ ...ssrBase, claimedRewards: ["field-pass:ari", "field-pass:nox"] }, 8, {}, 16 * 3600, 1e12);
+ok("방치 조각 드랍: 잠긴 전설 둘은 '전설의 공명'(조각 2배)을 켜지 않는다 · 둘 다 출전 허가면 켠다", lockedY.allyShardDrops * 2 === passY.allyShardDrops && lockedY.allyShardDrops > 0, `${lockedY.allyShardDrops} / ${passY.allyShardDrops}`);
+const roleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["mia", "leon", "garen"], level: 10 });
+ok("방치 효율: 3역할 '균형 편성' +1%p 는 출전하는 셋일 때만 — 가렌(10)은 지역3에서 출전 · 지역1(상한 5)이면 잠겨 빠진다", I.idleRate(roleBase, {}) > I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}), `${I.idleRate(roleBase, {}).toFixed(3)} / ${I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}).toFixed(3)}`);
 ok("환영 1000 + 깜짝 500", M.WELCOME_GIFT_GEMS === 1000 && M.SURPRISE_GIFT_GEMS === 500);
 ok("캐릭터 진행에 자동 환생(기본 꺼짐)", P.emptyCharacterProgress().autoRebirth === false && P.normalizeCharacterProgress({ autoRebirth: true }).autoRebirth === true);
 
