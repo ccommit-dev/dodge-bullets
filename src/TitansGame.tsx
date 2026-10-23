@@ -76,6 +76,7 @@ import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
 import { trialDpsMul } from "./titans/trialAlly";
+import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { ACORN_MAKE_SEC, acornMul, acornName, equipAcorn, freeSlots, mergeAcorns, tickAcorns } from "./titans/acorns";
 import { AcornPanel } from "./titans/AcornPanel";
@@ -2967,7 +2968,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
           );
         })()}
-        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`}>
+        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
           {/* 칭호 이름표 — 과금 점검: 칭호가 전투에서 전혀 보이지 않아 150~250보석 가치가 없었다 */}
           {character.activeTitle && TITLES[character.activeTitle] && (
             <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
