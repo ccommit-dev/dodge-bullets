@@ -885,3 +885,40 @@
 .expedition-ally-name .rar-ssr { color: #b45309; }
 .expedition-ally-name .rar-sr { color: #7c3aed; }
 .expedition-ally-name .rar-r { color: #1d4ed8; }
+
+/* ── 퀘스트 탭 — 시간마다 골드 (2026-10-26, "오늘도 환생 2" 첨부 화면 — titans/QuestPanel.tsx) ── */
+.quest-panel { grid-column: 1 / -1; display: grid; gap: 8px; padding: 10px; border: 2px solid var(--rd-ink); border-radius: 16px; background: linear-gradient(180deg, #fff1c7 0, #fff8e6 70px); box-shadow: inset 5px 0 0 #b98a16, 0 3px 0 var(--flat-cream-2, #e8cf9f); color: var(--rd-ink); }
+.quest-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.quest-head > b { font-size: 16px; font-weight: 900; }
+.quest-head > span { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; background: #3b2415; color: #ffe066; font-size: 14px; font-weight: 900; }
+.quest-head > span .currency-icon { width: 16px; height: 16px; flex-basis: 16px; }
+.quest-head > small { flex-basis: 100%; font-size: 13px; font-weight: 700; color: #5e4229; }
+.quest-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.quest-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) 74px; align-items: center; gap: 8px; padding: 6px; border-radius: 12px; background: #5a3a22; border: 2px solid #3b2415; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+.quest-icon { position: relative; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 10px; background: radial-gradient(circle at 50% 40%, #fff3d0, #e8c38a); border: 2px solid #3b2415; overflow: hidden; }
+.quest-icon img { width: 46px; height: 46px; object-fit: contain; }
+.quest-icon > b { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 2px; background: rgba(27, 18, 11, .82); color: #fff; font-size: 13px; font-weight: 900; line-height: 16px; text-align: center; }
+.quest-main { display: grid; gap: 3px; min-width: 0; }
+.quest-main > strong { display: flex; align-items: center; gap: 6px; min-width: 0; color: #fff3d0; font-size: 14px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quest-mul { flex: none; padding: 0 5px; border-radius: 6px; background: #f2a516; color: #3b2415; font-style: normal; font-size: 13px; font-weight: 900; }
+.quest-bar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 24px; padding: 0 8px 0 4px; border-radius: 8px; background: #2a1a10; border: 1.5px solid #1b120b; overflow: hidden; }
+.quest-bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #d4e84a, #8fbf1f); transition: width .25s linear; }
+.quest-pay { position: relative; display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border-radius: 6px; background: rgba(27, 18, 11, .72); color: #ffe066; font-size: 13px; font-weight: 900; }
+.quest-pay .currency-icon { width: 14px; height: 14px; flex-basis: 14px; }
+.quest-bar > em { position: relative; font-style: normal; font-size: 13px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }
+.quest-main > .quest-next { font-size: 13px; font-weight: 700; color: #f6dcae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quest-buy { display: grid; justify-items: center; gap: 1px; min-height: 50px; padding: 4px 2px; border: 2px solid #3b2415; border-radius: 10px; background: linear-gradient(180deg, #ffd34d, #f2a516); color: #3b2415; font-size: 14px; font-weight: 900; box-shadow: 0 3px 0 rgba(0, 0, 0, .35); cursor: pointer; }
+.quest-buy small { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 900; color: #5e3a12; }
+.quest-buy small .currency-icon { width: 13px; height: 13px; flex-basis: 13px; filter: none; }
+.quest-buy.unlock { background: linear-gradient(180deg, #e9d5ff, #c084fc); }
+.quest-buy.is-off { background: #8a6a4a; border-color: #3b2415; box-shadow: none; color: #f3e6c8; }
+.quest-buy.is-off small { color: #f3e6c8; }
+.quest-row.is-locked .quest-icon img { filter: grayscale(1) brightness(.7); }
+.quest-row.is-locked .quest-main > strong { color: #d9c4a3; }
+.quest-row.is-hidden { opacity: .55; }
+.quest-row.paid .quest-bar { animation: quest-paid .5s ease-out; }
+@keyframes quest-paid { 0% { box-shadow: 0 0 0 0 rgba(255, 224, 102, .9); } 100% { box-shadow: 0 0 0 6px rgba(255, 224, 102, 0); } }
+@media (prefers-reduced-motion: reduce) { .quest-row.paid .quest-bar { animation: none; } .quest-bar > i { transition: none; } }
+.quest-icon > b small { font-size: 13px; font-weight: 800; color: #e8c38a; }
+.quest-buy.block-stage, .quest-buy.block-cap, .quest-buy.block-prev { background: #4a2f1c; color: #e8c38a; }
+.quest-buy.block-stage small, .quest-buy.block-cap small { color: #d9c4a3; }
