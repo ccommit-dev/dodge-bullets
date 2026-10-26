@@ -390,20 +390,26 @@ export function BeatGame({
 
   // 연주 중 돌아가기 (2026-10-26, 사용자: "비트 원정에 게임 중 돌아가기 UI 추가") — 예전엔 안드로이드 뒤로 가기 두 번 말고는 곡이 끝날 때까지 나갈 길이 없었다.
   // 누르면 곡(오디오 시계 · 반주)을 멈추고 묻는다: 계속 · 곡 목록으로 · 사냥터로. 스태미나는 이미 썼으니 그대로다
-  const [quitAsk, setQuitAsk] = useState(false);
+  // 모바일 (2026-10-26 점검): 앱을 내렸다 오면 멈춤 카드를 띄운 채 기다린다 — 예전엔 돌아오자마자 곡이 다시 흘렀고, 카드가 떠 있어도 반주가 카드 뒤에서 다시 울렸다.
+  // 안드로이드 뒤로 가기도 이 카드를 연다(App.tsx) — quitAskRef 는 그 둘이 읽는 지금 값
+  const [quitAsk, setQuitAskState] = useState(false);
+  const quitAskRef = useRef(false);
+  const setQuitAsk = (v: boolean) => { quitAskRef.current = v; setQuitAskState(v); };
+  // AudioContext 가 없는 엔진(카카오톡 인앱 등 · 사운드 끔)은 곡 시계가 프레임 시간이라 루프가 quitAskRef 를 보고 멈춘다
   const pauseForQuit = () => {
     const session = sessionRef.current;
-    if (!session?.ctx) return;
+    if (!session) return;
     session.backingAudio?.pause();
-    void session.ctx.suspend();
+    if (session.ctx) void session.ctx.suspend();
     setQuitAsk(true);
   };
   const resumeFromQuit = () => {
     const session = sessionRef.current;
     setQuitAsk(false);
-    if (!session?.ctx) return;
+    if (!session) return;
     lastTsRef.current = 0;
-    void session.ctx.resume().then(() => session.backingAudio?.play()).catch(() => {});
+    if (session.ctx) void session.ctx.resume().then(() => session.backingAudio?.play()).catch(() => {});
+    else void session.backingAudio?.play().catch(() => {});
   };
   const quitRun = (to: "menu" | "hunt") => {
     setQuitAsk(false);
@@ -506,13 +512,16 @@ export function BeatGame({
     // 웹 visibilitychange + Capacitor pause/resume (ui/appLifecycle) — 앱에서 백그라운드를 놓치면 오디오 시계가 어긋난다
     const onVisibility = (hidden: boolean) => {
       const session = sessionRef.current;
-      if (!session?.ctx) return;
+      if (!session) return;
       if (hidden) {
         session.backingAudio?.pause();
-        void session.ctx.suspend();
+        if (session.ctx) void session.ctx.suspend();
+        if (uiRef.current === "playing") setQuitAsk(true);
       } else {
+        if (quitAskRef.current) return;   // 멈춤 카드에서 계속을 누를 때까지 그대로
         lastTsRef.current = 0;
-        void session.ctx.resume().then(() => session.backingAudio?.play()).catch(() => {});
+        if (session.ctx) void session.ctx.resume().then(() => session.backingAudio?.play()).catch(() => {});
+        else void session.backingAudio?.play().catch(() => {});
       }
     };
 
@@ -540,7 +549,7 @@ export function BeatGame({
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05);
         lastTsRef.current = ts;
 
-        if (session && uiRef.current === "playing") {
+        if (session && uiRef.current === "playing" && !quitAskRef.current) {
           const event = updateBeatWorld(session, dtSec, true);
           // 롱노트를 끝까지 누른 채 꼬리를 지나면 자동 성공
           settleHoldIfPassed(session);

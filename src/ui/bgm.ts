@@ -4,9 +4,14 @@
  * 저장소에 이미 있는 로열티 프리 곡(public/audio · LICENSE-cybernetic-overload.md — ElevenLabs gaming music)을 화면마다 하나씩 반복한다.
  * 비트 수련은 곡이 게임 자체라 끈다. 사운드 토글(game/sound.ts saveSoundEnabled → "dodge-sound-change" 이벤트)을 그대로 따르고,
  * 브라우저 자동 재생 정책 때문에 첫 터치 · 키 입력 뒤에 시작한다. 탭을 숨기면 멈추고 돌아오면 이어 튼다. 곡이 바뀌면 0.6초 동안 줄였다 키운다.
+ *
+ * 모바일 (2026-10-26 점검): 아이폰 사파리는 audio.volume 을 무시한다(늘 1) — 그대로 두면 배경 음악이 효과음보다 크게, 줄임 없이 끊겨 바뀐다.
+ * 그래서 소리 크기는 Web Audio 게인으로 잡는다(AudioContext 가 없는 엔진만 audio.volume). 첫 터치에서 재생이 거절되면(아이폰은 touchend · click 이
+ * 확실한 제스처) 다음 터치에서 다시 시도하고, 곡이 필요 없는 화면에서 첫 터치가 와도 무음으로 한 번 틀어 요소를 풀어 둔다.
  */
 import { assetUrl } from "../asset";
 import { loadSoundEnabled } from "../game/sound";
+import { subscribeAppVisibility } from "./appLifecycle";
 
 export type BgmScene = "hunt" | "dodge" | "forge" | "menu" | "off";
 
@@ -22,47 +27,85 @@ export const BGM_VOLUME = 0.32;
 let audio: HTMLAudioElement | null = null;
 let scene: BgmScene = "off";
 let unlocked = false;
+/** 사용자 제스처 안에서 한 번이라도 재생에 성공했다 — 그 뒤로는 제스처 없이도 같은 요소를 틀 수 있다 */
+let primed = false;
 let fadeTimer: number | null = null;
 let started = false;
+let ctx: AudioContext | null = null;
+let gain: GainNode | null = null;
+let level = 0;
+/** 앱이 백그라운드 — 안드로이드 앱은 visibilitychange 를 놓칠 수 있어 Capacitor pause/resume 도 함께 듣는다(ui/appLifecycle) */
+let appHidden = false;
 
 const want = (): string | null => (scene === "off" || !loadSoundEnabled() ? null : BGM_TRACK[scene]);
+
+function setLevel(v: number): void {
+  level = Math.max(0, Math.min(1, v));
+  if (gain && ctx) gain.gain.setValueAtTime(level, ctx.currentTime);
+  else if (audio) audio.volume = level;
+}
 
 function fadeTo(target: number, ms: number, done?: () => void): void {
   if (!audio) { done?.(); return; }
   if (fadeTimer !== null) window.clearInterval(fadeTimer);
-  const el = audio;
-  const from = el.volume, steps = Math.max(1, Math.round(ms / 40));
+  const from = level, steps = Math.max(1, Math.round(ms / 40));
   let i = 0;
   fadeTimer = window.setInterval(() => {
     i += 1;
-    el.volume = Math.max(0, Math.min(1, from + (target - from) * (i / steps)));
+    setLevel(from + (target - from) * (i / steps));
     if (i >= steps) { if (fadeTimer !== null) window.clearInterval(fadeTimer); fadeTimer = null; done?.(); }
   }, 40);
+}
+
+function ensureAudio(): HTMLAudioElement {
+  if (audio) return audio;
+  audio = new Audio();
+  audio.loop = true;
+  audio.preload = "auto";
+  audio.setAttribute("playsinline", "");
+  return audio;
+}
+
+/** 첫 제스처 안에서 — 게인 노드로 잇는다. AudioContext 가 없거나 실패하면 audio.volume 으로 */
+function ensureGraph(el: HTMLAudioElement): void {
+  if (ctx) { if (ctx.state !== "running") void ctx.resume().catch(() => undefined); return; }
+  const AC = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
+    ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AC) { el.volume = level; return; }
+  try {
+    ctx = new AC();
+    gain = ctx.createGain();
+    gain.gain.value = level;
+    ctx.createMediaElementSource(el).connect(gain);
+    gain.connect(ctx.destination);
+    el.volume = 1;
+    void ctx.resume().catch(() => undefined);
+  } catch {
+    ctx = null; gain = null;
+    el.volume = level;
+  }
 }
 
 function apply(): void {
   if (typeof window === "undefined") return;
   const src = want();
-  if (!src || document.visibilityState === "hidden") {
+  if (!src || appHidden || document.visibilityState === "hidden") {
     if (audio && !audio.paused) fadeTo(0, 300, () => audio?.pause());
     return;
   }
   if (!unlocked) return;   // 첫 사용자 입력을 기다린다
   const url = assetUrl(src);
-  if (!audio) {
-    audio = new Audio();
-    audio.loop = true;
-    audio.preload = "auto";
-    audio.volume = 0;
-  }
-  const el = audio;
-  const play = () => { el.play().then(() => fadeTo(BGM_VOLUME, 600)).catch(() => undefined); };
+  const el = ensureAudio();
+  if (ctx && ctx.state !== "running") void ctx.resume().catch(() => undefined);
+  const play = () => {
+    el.play().then(() => { primed = true; fadeTo(BGM_VOLUME, 600); }).catch(() => { if (!primed) unlocked = false; });
+  };
   if (el.dataset.src !== url) {
     const swap = () => { el.dataset.src = url; el.src = url; el.currentTime = 0; play(); };
-    if (!el.paused && el.volume > 0.01) fadeTo(0, 600, swap); else swap();
+    if (!el.paused && level > 0.01) fadeTo(0, 600, swap); else swap();
   } else if (el.paused) {
     play();
-  } else if (el.volume < BGM_VOLUME - 0.01) {
+  } else if (level < BGM_VOLUME - 0.01) {
     fadeTo(BGM_VOLUME, 400);
   }
 }
@@ -75,24 +118,28 @@ export function setBgmScene(next: BgmScene): void {
 }
 
 /** 지금 재생 중인 곡(검사용) */
-export function bgmState(): { scene: BgmScene; src: string | null; playing: boolean; unlocked: boolean } {
-  return { scene, src: audio?.dataset.src ?? null, playing: !!audio && !audio.paused, unlocked };
+export function bgmState(): { scene: BgmScene; src: string | null; playing: boolean; unlocked: boolean; level: number; output: "gain" | "element" | "none" } {
+  return { scene, src: audio?.dataset.src ?? null, playing: !!audio && !audio.paused, unlocked, level: Math.round(level * 100) / 100, output: gain ? "gain" : audio ? "element" : "none" };
 }
 
 function start(): void {
   if (started || typeof window === "undefined") return;
   started = true;
-  const unlock = () => {
-    if (unlocked) return;
+  const gesture = () => {
+    const el = ensureAudio();
+    ensureGraph(el);
+    if (primed) { if (ctx && ctx.state !== "running") void ctx.resume().catch(() => undefined); return; }
     unlocked = true;
-    window.removeEventListener("pointerdown", unlock, true);
-    window.removeEventListener("keydown", unlock, true);
-    apply();
+    if (want()) { apply(); return; }
+    // 곡이 없는 화면(비트 · 성문 전투)에서 온 첫 터치 — 무음으로 한 번 틀어 요소를 풀어 둔다
+    if (!el.src) { el.dataset.src = assetUrl(BGM_TRACK.hunt); el.src = el.dataset.src; }
+    el.muted = true;
+    el.play().then(() => { el.pause(); el.muted = false; primed = true; }).catch(() => { el.muted = false; unlocked = false; });
   };
-  window.addEventListener("pointerdown", unlock, true);
-  window.addEventListener("keydown", unlock, true);
+  // 아이폰은 pointerdown 을 재생 제스처로 안 쳐 줄 때가 있다 — touchend · click 도 받고, 성공할 때까지 매 터치 다시 시도한다
+  for (const type of ["pointerdown", "touchend", "click", "keydown"]) window.addEventListener(type, gesture, true);
   window.addEventListener("dodge-sound-change", apply);
-  document.addEventListener("visibilitychange", apply);
+  subscribeAppVisibility((hidden) => { appHidden = hidden; apply(); });
 }
 
 // 검사용 — 개발 서버에서만 window.__bgm() 으로 지금 곡을 본다(scripts/_probe-bgm.mjs)

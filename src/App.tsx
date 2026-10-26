@@ -447,8 +447,6 @@ function App() {
   const [, setStoreTick] = useState(0);
   useEffect(() => { const off = onStorePricesChanged(() => setStoreTick((t) => t + 1)); return () => { off(); }; }, []);
   const appModeRef = useRef<AppMode>("titans");
-  /** 비트 연주 중 뒤로 가기 두 번 누르기 — 첫 번째 누른 시각 */
-  const backArmedAtRef = useRef(0);
 
   const setMode = useCallback((mode: AppMode) => {
     appModeRef.current = mode;
@@ -484,14 +482,12 @@ function App() {
           setGameState(next);
           return true;
         }
-        // ③ 비트 곡 연주 중엔 한 번 더 눌러야 나간다 (일시정지가 없는 리듬 판)
+        // ③ 비트 곡 연주 중 — 멈춤 카드(BeatGame .beat-quit-modal)를 연다 · 카드가 떠 있으면 닫고 이어 친다 (2026-10-26 모바일 점검: 예전 "두 번 누르면 나감"은 판을 버렸다)
         if (appModeRef.current === "beat" && document.querySelector(".beat-battle-canvas")) {
-          const nowMs = Date.now();
-          if (nowMs - backArmedAtRef.current > 2000) {
-            backArmedAtRef.current = nowMs;
-            showToast("한 번 더 누르면 연주를 그만두고 나갑니다", 2000);
-            return true;
-          }
+          const resume = [...document.querySelectorAll<HTMLButtonElement>(".beat-quit-card .cta")].find((b) => b.textContent?.includes("계속"));
+          if (resume) { resume.click(); return true; }
+          const pause = document.querySelector<HTMLButtonElement>(".beat-quit-btn");
+          if (pause) { pause.click(); return true; }
         }
         if (appModeRef.current !== "titans") {
           setMode("titans");
