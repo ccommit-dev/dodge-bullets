@@ -81,6 +81,8 @@ import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { ACORN_MAKE_SEC, acornMul, acornName, equipAcorn, freeSlots, mergeAcorns, tickAcorns } from "./titans/acorns";
 import { AcornPanel } from "./titans/AcornPanel";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
+import { freeCrystals, permanentEffects } from "./progression/crystalTree";
+import { grantRelicShards, relicDef, relicIconUrl, relicStars, RELIC_FAMILY_LABEL, RELIC_SET, setActive } from "./titans/relics";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
@@ -368,12 +370,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [acornProgress, setAcornProgress] = useState(0);
   const acornProgAtRef = useRef(0);
   /** 보상 팝업 — 첫 발견 · 대장 사다리 (2026-10-22 아처 키우기 3 · 4번) */
-  const [rewardPop, setRewardPop] = useState<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift"; key: number } | null>(null);
+  const [rewardPop, setRewardPop] = useState<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift" | "relic"; icon?: string; key: number } | null>(null);
   const discoveredLocalRef = useRef(new Set<string>());
   /** 자동 환생 뒤 사냥터를 처음 불러올 때와 같은 길로 다시 세운다(편성 · 스테이지 · 저장) */
   const [reloadKey, setReloadKey] = useState(0);
   const autoRebirthBusyRef = useRef(false);
-  const rewardQueueRef = useRef<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift" }[]>([]);
+  const rewardQueueRef = useRef<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift" | "relic"; icon?: string }[]>([]);
+  /** 불 유물 세트 화상 — 준 피해의 일부를 모았다가 0.6초마다 화상 숫자로 (titans/relics.ts) */
+  const relicBurnPoolRef = useRef(0);
+  const relicBurnAccRef = useRef(0);
   const rewardBusyRef = useRef(false);
   const toggleCard = (id: string) => (e: { target: EventTarget | null }) => { if ((e.target as Element | null)?.closest?.("button, select, a, input")) return; setOpenCard((cur) => (cur === id ? null : id)); };
   /**
@@ -619,15 +624,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       passiveTotals(save.skillInventory.learned, save.skillInventory.equipped, save.skillInventory.levels).bossTime +
       activePetEffect(character.pets, character.activePet, "bossTime") +
       save.huntMods.bossTimeBonus +
-      gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).bossTimeSec,   // 투구 (equipment/parts)
-    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods, save.equipmentTraining, character.gearEnhance],
+      gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).bossTimeSec +   // 투구 (equipment/parts)
+      permanentEffects(character).bossTimeSec,   // 서리 유물 (titans/relics.ts)
+    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods, save.equipmentTraining, character.gearEnhance, character.relics],
   );
+  /** 결정 강화 트리 × 유물 (progression/crystalTree.ts, 2026-10-26) — 탭 · 동료 · 대장 · 골드 배율 */
+  const perm = useMemo(() => permanentEffects(character), [character.crystalTree, character.relics]);
+  const permRef = useRef(perm);
+  permRef.current = perm;
   const bossTimeRef = useRef(bossTimeSec);
   useEffect(() => {
     bossTimeRef.current = bossTimeSec;
   }, [bossTimeSec]);
 
   const spawn = useCallback((stage: number, nextWave: number, asBoss: boolean) => {
+    relicBurnPoolRef.current = 0;   // 앞 대상에 모인 화상이 새 몬스터에 떨어지지 않게
     const isChest = !asBoss && Math.random() < 0.04;
     const mhp = monsterHp(stage, asBoss) * (isChest ? 1.6 : 1);
     setWave(nextWave);
@@ -913,9 +924,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setRewardPop({ ...next, key: Date.now() + Math.random() });
     window.setTimeout(pumpRewardPop, next.tone === "gift" ? 4800 : 2800);
   };
-  const showRewardPop = (tone: "discovery" | "ladder" | "gift", kicker: string, title: string, detail: string) => {
+  const showRewardPop = (tone: "discovery" | "ladder" | "gift" | "relic", kicker: string, title: string, detail: string, icon?: string) => {
     const q = rewardQueueRef.current;
-    q.push({ tone, kicker, title, detail });
+    q.push({ tone, kicker, title, detail, icon });
     if (q.length > 3) { const i = q.findIndex((x) => x.tone === "discovery"); q.splice(i >= 0 ? i : 0, 1); }
     if (!rewardBusyRef.current) pumpRewardPop();
   };
@@ -948,7 +959,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setReady(false);
       setReloadKey((k) => k + 1);
       // later() 는 다시 불러오기 정리에서 지워진다 — 그냥 타이머로
-      window.setTimeout(() => showRewardPop("ladder", `자동 환생 · ${r.next.rebirthCount}회`, "1층부터 다시", `결정 +${r.crystals} · 출발 골드 ${formatGold(r.startGold)} · 24시간 방치 2배`), 600);
+      window.setTimeout(() => showRewardPop("ladder", `자동 환생 · ${r.next.rebirthCount}회`, `${r.startStage}층부터 다시`, `결정 +${r.crystals}(쓸 결정 ${freeCrystals(r.next)} — 마이페이지 결정 강화) · 출발 골드 ${formatGold(r.startGold)} · 24시간 방치 2배`), 600);
     } finally {
       autoRebirthBusyRef.current = false;
     }
@@ -1145,9 +1156,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           label = "약점!";
           if (hm.weakHunt && opts?.skill) { bossLeftRef.current += 1; setBossLeft(bossLeftRef.current); }
         }
-        mul *= af.bossMul;
+        mul *= af.bossMul * permRef.current.bossMul;   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26)
       }
       const dealt = Math.floor(raw * mul);
+      if (permRef.current.burnShare > 0 && opts?.label !== "화상") relicBurnPoolRef.current += raw * permRef.current.burnShare;
       // 타격 표현 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") —
       // 때린 쪽 속성: 동료 = ALLY_ELEMENT, 스킬 = 스킬 원소, 화상 = 불, 주인공 · 탭 = 칼날
       const hitEl = opts?.skill
@@ -1241,6 +1253,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           warmupMult *
           gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).goldMul *   // 갑옷 (equipment/parts)
           ladderEffects(characterRef.current.bossLadder).goldMul *   // 대장 사다리 (2026-10-22)
+          permRef.current.goldMul *   // 결정 트리 처치 골드 · 황금 유물 (2026-10-26)
           (firstClearToday ? 2 : 1),
       );
       if (firstClearToday) {
@@ -1331,6 +1344,29 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const detail = perkLabel(characterRef.current.bossLadder, perk);
           void updateCharacterProgress(userHash, (cur) => ({ ...cur, bossLadder: climbLadder(cur.bossLadder, clearedStage).ladder })).then(setCharacter);
           later(() => showRewardPop("ladder", `대장 사다리 Lv.${ladderLevel(climbed.ladder)}`, `${LADDER_LABEL[perk]} 영구 상승`, detail), 500);
+        } else if (Math.random() < permRef.current.relicChance) {
+          // 유물 (2026-10-26, "오늘도 환생 2" 차용) — 이미 잡아 본 높이의 대장을 다시 잡으면 확률로 조각 1개. 환생해도 남는다
+          const roll = Math.random();
+          const before = characterRef.current.relics;
+          const { got } = grantRelicShards(before, 1, () => roll);
+          if (got.length) {
+            const id = got[0];
+            void updateCharacterProgress(userHash, (cur) => ({ ...cur, relics: grantRelicShards(cur.relics, 1, () => roll).state })).then((next) => {
+              setCharacter(next);
+              const def = relicDef(id);
+              const stars = relicStars(next.relics, id);
+              const newStar = stars > relicStars(before, id);
+              const setNow = setActive(next.relics, def.family) && !setActive(before, def.family);
+              const shards = next.relics[id] ?? 0;
+              later(() => showRewardPop(
+                "relic",
+                setNow ? `${RELIC_FAMILY_LABEL[def.family]} 세트 완성!` : newStar ? `유물 ${"★".repeat(stars)}` : "유물 조각",
+                def.name,
+                setNow ? `${RELIC_SET[def.family].name} — ${RELIC_SET[def.family].blurb}` : newStar ? "마이페이지 · 유물에서 확인" : `조각 ${shards % 3 === 0 ? 3 : shards % 3}/3 · 다시 잡은 대장`,
+                relicIconUrl(id),
+              ), 500);
+            });
+          }
         }
         // 보스 처치 보상은 막혀도 그대로 준다 — 잡은 건 잡은 것이다.
         void grantCharacterReward(userHash, `titans:${clearedStage}:${Date.now()}`, {
@@ -1459,7 +1495,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     // × 대장 사다리 탭 피해 × 번개 강화(1 + 0.12·단계) — 2026-10-22 아처 키우기 2 · 3번
-    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * lightningTapMul(saveRef.current.lightningLevel);
+    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * lightningTapMul(saveRef.current.lightningLevel) * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
@@ -1551,6 +1587,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             burnAcc.current = 0;
           }
         } else burnAcc.current = 0;
+        // 불 유물 세트 화상 — 모은 피해를 0.6초마다 한 번에 (숫자 도배 방지)
+        if (relicBurnPoolRef.current > 0) {
+          relicBurnAccRef.current += dt;
+          if (relicBurnAccRef.current >= 0.6) {
+            const pool = relicBurnPoolRef.current;
+            relicBurnPoolRef.current = 0;
+            relicBurnAccRef.current = 0;
+            applyDamage(pool, false, { source: "skill", label: "화상" });
+          }
+        }
         autoAttackAcc.current += dt;
         if (autoAttackAcc.current >= autoInterval) {
           autoAttackAcc.current %= autoInterval;
@@ -1592,7 +1638,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
           if (isSig && sig.fx === "quake" && bossRef.current) { const until = performance.now() + SIG_QUAKE_FREEZE_MS; buffsRef.current = { ...buffsRef.current, freezeUntil: Math.max(buffsRef.current.freezeUntil, until) }; setBuffs((b) => ({ ...b, freezeUntil: Math.max(b.freezeUntil, until) })); }
-          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * acornMul(saveRef.current.acorns.allyAmmo[h.id]) * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, stageCeilingFor(characterRef.current.pioneeredArea));   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
+          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * acornMul(saveRef.current.acorns.allyAmmo[h.id]) * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, stageCeilingFor(characterRef.current.pioneeredArea)) * permRef.current.allyMul;   // × 결정 트리 공격력 · 화염 깃털 (2026-10-26)   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
           const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
           if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
           const land = () => applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
@@ -4227,6 +4273,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {toast && <div className="titans-toast">{toast}</div>}
       {rewardPop && (
         <div key={rewardPop.key} className={`reward-pop tone-${rewardPop.tone}`} role="status">
+          {rewardPop.icon && <img className="reward-pop-icon" src={assetUrl(rewardPop.icon)} alt="" aria-hidden="true" />}
           <small>{rewardPop.kicker}</small>
           <b>{rewardPop.title}</b>
           {rewardPop.detail && <em>{rewardPop.detail}</em>}

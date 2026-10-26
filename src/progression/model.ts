@@ -11,6 +11,8 @@ import {
 import { emptyShards, emptySkillLevels, emptyWeaponForge, migrateSkillLevels, normalizeLoadout, RANGED_WEAPONS, SKILL_MAX_LEVEL, WEAPON_FORGE_MAX, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillShards, type SkillWeaponId, type WeaponForgeLevels } from "../game/skills";
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { emptyLadder, normalizeLadder, type BossLadder } from "../titans/bossLadder";
+import { emptyCrystalTree, normalizeCrystalTree, type CrystalTree } from "./crystalTree";
+import { normalizeRelics, type RelicState } from "../titans/relics";
 import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
@@ -222,6 +224,10 @@ export type CharacterProgress = {
   eventCoins: number;
   /** 자동 환생 (progression/rebirth.ts) — 켜면 사냥터에서 벽 조건을 채우는 순간 환생 (2026-10-22 아처 키우기 7번) */
   autoRebirth: boolean;
+  /** 결정 영구 강화 트리 (progression/crystalTree.ts, 2026-10-26) — 줄마다 단계 · 진화 포인트로 연 특수 줄 */
+  crystalTree: CrystalTree;
+  /** 유물 조각 (titans/relics.ts, 2026-10-26) — 환생해도 남는다 */
+  relics: RelicState;
 };
 
 export function expForLevel(level: number): number {
@@ -344,6 +350,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     discoverySeeded: false,
     eventCoins: 0,
     autoRebirth: false,
+    crystalTree: emptyCrystalTree(),
+    relics: {},
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -735,6 +743,8 @@ export function normalizeCharacterProgress(
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
     eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),
     autoRebirth: (raw as { autoRebirth?: unknown }).autoRebirth === true,
+    crystalTree: normalizeCrystalTree((raw as { crystalTree?: unknown }).crystalTree, integer(raw.inheritanceCrystals, 0)),
+    relics: normalizeRelics((raw as { relics?: unknown }).relics),
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
 }

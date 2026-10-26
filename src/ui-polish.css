@@ -756,6 +756,53 @@
 .exp-fund-more[open] > summary::after { content: " ▴"; }
 .exp-fund-more[open] > summary { margin-bottom: 4px; }
 
+/* ── 결정 강화 트리 · 유물 (2026-10-26, "오늘도 환생 2" 차용 — ui/LegacyPanels.tsx) ── */
+.character-page .mp-crystal-tree { display: grid; gap: 6px; margin: 0 0 14px; }
+.character-page .mp-crystal-tree ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.character-page .ct-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px 6px 6px; border-radius: 12px; background: #fff8e6; border: 1.5px solid rgba(59, 36, 21, .14); }
+.character-page .ct-row img { width: 40px; height: 40px; object-fit: contain; }
+.character-page .ct-row.is-locked img { filter: grayscale(.85) opacity(.6); }
+.character-page .ct-copy { display: grid; gap: 1px; min-width: 0; }
+.character-page .ct-copy > b { font-size: 15px !important; font-weight: 900; color: #3b2415 !important; }
+.character-page .ct-copy > b small { margin-left: 4px; font-size: 13px !important; font-weight: 800; color: #7a5a3a !important; }
+.character-page .ct-copy em { font-style: normal; font-size: 13px !important; font-weight: 700; color: #5e4229 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.character-page .ct-copy em b { color: #15803d !important; font-weight: 900; }
+.character-page .ct-buy { display: grid; justify-items: center; gap: 0; min-width: 64px; padding: 5px 8px; border: 2px solid #3b2415; border-radius: 12px; background: linear-gradient(180deg, #ffd34d, #f2a516); color: #3b2415; font-size: 14px; font-weight: 900; box-shadow: 0 3px 0 rgba(59, 36, 21, .35); cursor: pointer; }
+.character-page .ct-buy small { font-size: 13px; font-weight: 800; color: #5e3a12; }
+.character-page .ct-buy.key { background: linear-gradient(180deg, #e9d5ff, #c084fc); }
+.character-page .ct-buy.is-off { background: #f3e8d4; border-color: rgba(59, 36, 21, .3); box-shadow: none; color: #6b4a2f; }
+.character-page .ct-buy.is-off small { color: #7a5a3a; }
+.character-page .ct-row.is-max .ct-buy { background: #e3f7e9; border-color: #15803d; color: #15803d; }
+.character-page .ct-special-label { margin: 4px 0 0; font-size: 13px; font-weight: 800; color: #6b21a8; }
+.character-page .ct-reset { justify-self: end; padding: 4px 10px; border: 1.5px solid rgba(59, 36, 21, .3); border-radius: 10px; background: #fffaf0; color: #5e4229; font-size: 13px; font-weight: 800; cursor: pointer; }
+.character-page .legacy-heading .ct-free { color: #6b21a8; font-weight: 900; }
+.character-page .mp-relics { display: grid; gap: 8px; margin: 0 0 14px; }
+.character-page .relic-how { margin: 0; font-size: 13px; font-weight: 700; color: #5e4229; }
+.character-page .relic-family { padding: 8px; border-radius: 14px; border: 1.5px solid rgba(59, 36, 21, .16); background: #fff8e6; }
+.character-page .relic-family.fam-fire { background: linear-gradient(180deg, #ffe9d6, #fff8e6); }
+.character-page .relic-family.fam-frost { background: linear-gradient(180deg, #e2f3ff, #fff8e6); }
+.character-page .relic-family.fam-gold { background: linear-gradient(180deg, #fff1b8, #fff8e6); }
+.character-page .relic-family.set-on { border: 2px solid #f2a516; box-shadow: 0 0 0 2px rgba(242, 165, 22, .25); }
+.character-page .relic-family header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; min-width: 0; }
+.character-page .relic-family header > b { flex: none; font-size: 15px; font-weight: 900; color: #3b2415; }
+.character-page .relic-set { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; min-width: 0; font-size: 13px; font-weight: 900; color: #92400e; }
+.character-page .relic-set small { font-size: 13px; font-weight: 700; color: #5e4229; }
+.character-page .relic-family.set-on .relic-set { color: #15803d; }
+.character-page .relic-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.character-page .relic-tile { display: grid; justify-items: center; gap: 1px; min-width: 0; padding: 6px 4px 7px; border-radius: 12px; background: rgba(255, 255, 255, .7); border: 1.5px solid rgba(59, 36, 21, .12); text-align: center; }
+.character-page .relic-tile img { width: 52px; height: 52px; object-fit: contain; }
+.character-page .relic-tile.unowned img { filter: grayscale(1) brightness(.75) opacity(.55); }
+.character-page .relic-tile > b { font-size: 13px; font-weight: 900; color: #3b2415; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.character-page .relic-tile > small { font-size: 13px; font-weight: 700; color: #5e4229; line-height: 1.2; }
+.character-page .relic-stars { font-style: normal; font-size: 13px; font-weight: 900; color: #e0a10a; letter-spacing: -1px; }
+.character-page .relic-tile.unowned .relic-stars { color: #7a5a3a; letter-spacing: 0; }
+.character-page .relic-bar { display: block; width: 80%; height: 5px; margin-top: 3px; border-radius: 3px; background: rgba(59, 36, 21, .15); overflow: hidden; }
+.character-page .relic-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f2a516, #ffd34d); }
+.reward-pop.tone-relic { background: linear-gradient(180deg, #f3e8ff, #fff8e6); }
+.reward-pop.tone-relic small { color: #6b21a8; }
+.reward-pop .reward-pop-icon { justify-self: center; width: 56px; height: 56px; margin: -4px 0 2px; object-fit: contain; animation: reward-relic-bob 1.2s ease-in-out infinite alternate; }
+@keyframes reward-relic-bob { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-4px) rotate(6deg); } }
+@media (prefers-reduced-motion: reduce) { .reward-pop .reward-pop-icon { animation: none; } }
 /* 견갑 강화 실패 — 금 가고 깨진다 (2026-10-26, 사용자: "깨지는 게 없음"). armor-crack = 방지권으로 막음(금만) · armor-break = 깨짐(조각 + 한 단계 하락) */
 .armor-forge-stage.armor-crack .shoulder-icon, .armor-forge-stage.armor-break .shoulder-icon { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97); }
 .armor-forge-stage.armor-break .shoulder-icon { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97), armor-dim 1.4s ease-out; }

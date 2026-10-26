@@ -10,6 +10,8 @@ import { earnedBadgeIds } from "./badges";
 import { openMomentOffer } from "../economy/momentOffers";
 import { rebirthResetTitans } from "../titans/storage";
 import { rebirthCrystals, rebirthStartGold, type TitansSave } from "../titans/model";
+import { boostedRebirthCrystals, rebirthStartStage, skippedStageGold } from "./crystalTree";
+import { stageCeilingFor } from "./idle";
 
 // 3 → 2: 밸런스 시뮬에서 15~30일이 Stage 29 정체였고 환생이 30일에야 1회 — 2개 지역이면 개척 완료(9일) 직후 열린다
 export const REBIRTH_WALL_AREAS = 2;
@@ -23,11 +25,21 @@ export function canRebirthNow(progress: Pick<CharacterProgress, "rebirthCount" |
   return progress.wallAreas.length >= rebirthNeedAreas(progress);
 }
 
+/**
+ * 환생하면 받는 것 — 마이페이지 미리 보기와 performRebirth 가 같은 값을 쓴다.
+ * 결정 = 최고 스테이지 식 × 결정 트리 환생 결정 줄 × 비버 왕관 유물 · 시작 층 = 결정 트리 시작 스테이지 줄(건너뛴 층 골드를 출발 골드에 얹는다)
+ */
+export function rebirthGains(progress: Pick<CharacterProgress, "titanBestStage" | "crystalTree" | "relics" | "pioneeredArea">): { crystals: number; startGold: number; startStage: number } {
+  const crystals = boostedRebirthCrystals(rebirthCrystals(progress.titanBestStage), progress);
+  const startStage = rebirthStartStage(progress.crystalTree, progress.titanBestStage, stageCeilingFor(progress.pioneeredArea));
+  const startGold = rebirthStartGold(progress.titanBestStage) + skippedStageGold(startStage);
+  return { crystals, startGold, startStage };
+}
+
 /** 사냥터를 초기화하고 계승 보상을 준다. 결정 · 출발 골드는 환생 전 최고 스테이지로 정한다 */
-export async function performRebirth(userHash: string, progress: CharacterProgress): Promise<{ next: CharacterProgress; titans: TitansSave; crystals: number; startGold: number }> {
-  const crystals = rebirthCrystals(progress.titanBestStage);
-  const startGold = rebirthStartGold(progress.titanBestStage);
-  const titans = await rebirthResetTitans(userHash, startGold);
+export async function performRebirth(userHash: string, progress: CharacterProgress): Promise<{ next: CharacterProgress; titans: TitansSave; crystals: number; startGold: number; startStage: number }> {
+  const { crystals, startGold, startStage } = rebirthGains(progress);
+  const titans = await rebirthResetTitans(userHash, startGold, startStage);
   // retention-4: 환생 직후 축하 제안(환생 세트) — 같은 갱신에서 열어 lost update 방지
   const next = await updateCharacterProgress(userHash, (current) => openMomentOffer({
     ...current,
@@ -43,5 +55,5 @@ export async function performRebirth(userHash: string, progress: CharacterProgre
     idleBoostUntil: Date.now() + 24 * 3600 * 1000,
     claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
   }, "rebirth"));
-  return { next, titans, crystals, startGold };
+  return { next, titans, crystals, startGold, startStage };
 }

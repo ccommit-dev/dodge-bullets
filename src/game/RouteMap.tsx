@@ -15,6 +15,7 @@ export function branchRewardLabel(r: BranchReward): string {
   if (r.seals) parts.push(`인장 ${r.seals}`);
   if (r.forgeTickets) parts.push(`방지권 ${r.forgeTickets}`);
   if (r.shoulderShards) parts.push(`견갑 조각 ${r.shoulderShards}`);
+  if (r.relicShards) parts.push(`유물 조각 ${r.relicShards}`);
   return parts.join(" · ");
 }
 
