@@ -361,6 +361,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 도토리 — 다음 도토리까지 쌓인 초(저장은 하나 만들 때만) · 진행 표시(도토리 탭일 때만 갱신) (2026-10-22 아처 키우기 1번) */
   const acornAccRef = useRef(0);
   const lightningTapRef = useRef(0);
+  /** 전환이 끝나면 부를 spawn(스테이지, 처치 수) — 건너뛰기가 같은 걸 바로 부른다 */
+  const pendingSpawnRef = useRef<[number, number] | null>(null);
   const tabRef = useRef<ShopTab>("sword");
   const [acornProgress, setAcornProgress] = useState(0);
   const acornProgAtRef = useRef(0);
@@ -742,7 +744,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
 
       // 개척하지 않은 지역으로는 진입할 수 없다 — 저장값이 앞서 있으면 경계로 되돌린다.
-      const ceiling = stageCeilingFor(progress.pioneeredArea);
+      const ceiling = qaUnlockOpen() ? Number.MAX_SAFE_INTEGER : stageCeilingFor(progress.pioneeredArea);   // 테스트 모드는 지역 문 없음(대장 처치 판정과 같이)
       const stage = Math.min(loaded.stage, ceiling);
       // idleClaimedAt은 마지막 보상 수령 시각이라 플레이 중에도 오래될 수 있다.
       // 실제 사냥터 저장 시각을 써야 콘텐츠 탭 이동을 오프라인 복귀로 오인하지 않는다.
@@ -1294,8 +1296,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 지역 개척 게이트 — 미개척 지역으로는 넘어갈 수 없다. 성문 방어으로만 열린다.
       // 스테이지 증가보다 **먼저** 판정해야 한다. 나중에 보면 이미 상한을 넘긴 뒤라
       // 헤더는 다음 스테이지를 가리키는데 몬스터는 이전 스테이지가 나온다.
+      // 테스트 모드(qaUnlock)에서는 지역 문을 연다 (2026-10-26 사용자: "보스 잡아도 다음 스테이지로 안 넘어간다" — QA 배포는 테스트 모드가 기본이라
+      // 지역 끝 대장을 잡아도 성문 방어 개척 전에는 같은 스테이지에 머물렀다). 테스트 모드를 끄면 예전처럼 성문 방어로 연다
       const gateBlocked =
-        wasBoss && s.stage >= stageCeilingFor(characterRef.current.pioneeredArea);
+        wasBoss && !qaUnlockOpen() && s.stage >= stageCeilingFor(characterRef.current.pioneeredArea);
       const advancing = wasBoss && !gateBlocked;
 
       setSave((prev) => ({
@@ -1362,6 +1366,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           later(() => flash("잠깐 닫았다 와도 원정대가 계속 사냥합니다 — 방치 보상이 쌓여요"), 1700);
         }
         pendingStageRef.current = s.stage + 1;
+        pendingSpawnRef.current = [s.stage + 1, 1];
         later(() => {
           battlePhaseRef.current = "stage-clear";
           setBattlePhase("stage-clear");
@@ -1371,6 +1376,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           setBattlePhase("stage-exit");
         }, 820);
         later(() => {
+          pendingSpawnRef.current = null;
           spawn(s.stage + 1, 1, false);
           battlePhaseRef.current = "stage-enter";
           setBattlePhase("stage-enter");
@@ -1395,6 +1401,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         }
         setBossReady(true);
         pendingStageRef.current = s.stage;
+        pendingSpawnRef.current = [s.stage, MOBS_PER_STAGE];
         flash("일반 스테이지 완료 · 보스 도전 가능!");
         later(() => {
           battlePhaseRef.current = "stage-clear";
@@ -1405,6 +1412,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           setBattlePhase("stage-exit");
         }, 680);
         later(() => {
+          pendingSpawnRef.current = null;
           spawn(s.stage, MOBS_PER_STAGE, false);
           battlePhaseRef.current = "stage-enter";
           setBattlePhase("stage-enter");
@@ -1414,6 +1422,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           setBattlePhase("combat");
         }, 1840);
       } else {
+        pendingSpawnRef.current = [s.stage, waveRef.current + 1];
         later(() => {
           pendingStageRef.current = s.stage;
           battlePhaseRef.current = "stage-clear";
@@ -1424,6 +1433,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           setBattlePhase("stage-exit");
         }, 540);
         later(() => {
+          pendingSpawnRef.current = null;
           spawn(s.stage, waveRef.current + 1, false);
           battlePhaseRef.current = "stage-enter";
           setBattlePhase("stage-enter");
@@ -2581,13 +2591,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }
   };
 
+  // 전환 건너뛰기 (2026-10-26 사용자: "스킵하면 다음 스테이지로 안 넘어간다") — 예전엔 일반 몬스터 사이 전환에서도 spawn(스테이지, 1)을 불러
+  // 처치 수가 매번 1로 되돌아갔다(10마리를 못 채워 대장 · 다음 스테이지가 영영 안 왔다). 이제 전환이 하려던 spawn 을 그대로 한다 — 이미 나왔으면 다시 부르지 않는다
   const skipStageTransition = () => {
-    const nextStage = pendingStageRef.current;
-    if (nextStage === null) return;
+    if (pendingStageRef.current === null && pendingSpawnRef.current === null) return;
     battleTimers.current.forEach(window.clearTimeout);
     battleTimers.current = [];
     pendingStageRef.current = null;
-    spawn(nextStage, bossReady ? MOBS_PER_STAGE : 1, false);
+    const next = pendingSpawnRef.current;
+    pendingSpawnRef.current = null;
+    if (next) spawn(next[0], next[1], false);
     battlePhaseRef.current = "combat";
     setBattlePhase("combat");
   };
