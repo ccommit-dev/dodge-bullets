@@ -15,7 +15,7 @@ import { starMultiplier } from "../titans/allies";
 export type RecommendAction =
   | { kind: "content"; content: "dodge" | "beat" | "forge" }
   | { kind: "events"; tab: "rift" | "daily" | "journal" | "weekly" }
-  | { kind: "tab"; tab: "heroes" | "skills" | "sword" }
+  | { kind: "tab"; tab: "heroes" | "skills" | "sword" | "expedition" }
   | { kind: "none" };
 
 export type Recommendation = {
@@ -100,7 +100,7 @@ export function recommendNext(
   // 1. 수령 가능
   const expeditionDone = progress.expeditions.filter((e) => e.endsAt <= now).length;
   if (expeditionDone > 0) {
-    return { id: "expedition", tone: "claim", title: `파견 ${expeditionDone}건 귀환`, desc: "동료 조각·강화석이 도착했습니다", cta: "받기", action: { kind: "tab", tab: "heroes" } };
+    return { id: "expedition", tone: "claim", title: `파견 ${expeditionDone}건 귀환`, desc: "동료 조각·강화석이 도착했습니다", cta: "받기", action: { kind: "tab", tab: "expedition" } };
   }
   const journal = JOURNAL_ENTRIES.find((e) => { const p = e.progressOf(progress); return p.current >= p.goal && !progress.journalClaimed.includes(e.id); });
   if (journal) {

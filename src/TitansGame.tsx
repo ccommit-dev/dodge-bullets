@@ -165,7 +165,7 @@ type TitansGameProps = {
 
 /** 사냥 저장의 숙련 → 파츠 숙련표 (2026-10-14) */
 const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
-type ShopTab = "sword" | "acorn" | "hub" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+type ShopTab = "sword" | "acorn" | "hub" | "expedition" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 /**
  * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
@@ -197,6 +197,7 @@ const ALLY_PAGE_SIZE = typeof window !== "undefined" && appWidth() <= 600 ? 4 : 
 const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
   // 모험 허브 (2026-10-13, docs/FOCUS_CAPYGO P0): 콘텐츠·모험 팝업 둘을 한 화면으로 — 카드 6장 + 루틴 줄
   hub: { kicker: "ADVENTURE", title: "모험", desc: "오늘 할 수 있는 콘텐츠와 남은 횟수 · 빨간 점은 지금 보상이 남은 것" },
+  expedition: { kicker: "EXPEDITION", title: "파견", desc: "벤치 동료를 보내 두면 시간이 지난 뒤 조각·강화석을 들고 돌아옵니다." },
   heroes: { kicker: "ALLY ARCHIVE", title: "동료 도감", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
   gacha: { kicker: "ALLY RECRUIT", title: "동료 뽑기", desc: "지역 픽업 동료를 소환하고 천장 진행도를 확인하세요." },
   premium: { kicker: "PREMIUM SHOP", title: "상점", desc: "재화, 성장 패키지, 동료와 외형 상품을 확인하세요." },
@@ -3353,6 +3354,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <button type="button" className={tab === "gacha" ? "on" : ""} onClick={() => setTab("gacha")}>동료 뽑기</button>
             </nav>
           )}
+          {tab === "expedition" && (
+            <nav className="hub-sheet-switch" aria-label="파견 메뉴">
+              <button type="button" onClick={() => setTab("hub")}>모험</button>
+              <button type="button" className="on">파견</button>
+            </nav>
+          )}
           {(tab === "premium" || tab === "event-shop" || tab === "event-shop2") && (
             <nav className="hub-sheet-switch" aria-label="상점 메뉴">
               <button type="button" className={tab === "premium" ? "on" : ""} onClick={() => setTab("premium")}>상점</button>
@@ -3541,6 +3548,73 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
           </section>
         )}
+        {tab === "expedition" && (() => {
+          // 파견 전용 화면 (2026-10-26 사용자: "파견 콘텐츠 수정") — 예전엔 허브 카드가 동료 도감으로만 보내고 보내기 단추는 접힌 동료 카드 안에 숨어 있었다.
+          // 위: 자리 2칸(남은 시간 · 진행 막대 · 들고 올 것) · 가운데: 귀환 수령 · 아래: 보낼 수 있는 벤치 동료와 시간별 보상
+          const leftText = (ms: number) => { const min = Math.ceil(ms / 60000); return min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`; };
+          const rarityRank = { SSR: 0, SR: 1, R: 2 } as const;
+          const bench = HEROES.filter((h) => save.heroes[h.id] > 0 && !character.partyIds.includes(h.id) && !character.expeditions.some((e) => e.allyId === h.id))
+            .sort((a, b) => rarityRank[ALLY_RARITY[a.id]] - rarityRank[ALLY_RARITY[b.id]]);
+          const full = character.expeditions.length >= EXPEDITION_MAX;
+          return (
+            <section className="expedition-panel" aria-label="파견" data-slots={character.expeditions.length} data-done={expeditionsDone}>
+              <div className="expedition-slots">
+                {Array.from({ length: EXPEDITION_MAX }, (_, i) => {
+                  const e = character.expeditions[i];
+                  if (!e) return <div key={`empty-${i}`} className="expedition-slot empty"><b>빈 자리</b><small>아래에서 동료와 시간을 고르세요</small></div>;
+                  const h = HEROES.find((x) => x.id === e.allyId)!;
+                  const left = Math.max(0, e.endsAt - nowTick);
+                  const done = left <= 0;
+                  const r = expeditionReward(e.allyId, effectiveStars(character.allyStars[e.allyId], save.heroes[e.allyId]), e.hours);
+                  return (
+                    <div key={e.allyId} className={`expedition-slot ${done ? "done" : ""}`}>
+                      <AllyArt id={e.allyId} skin={character.equippedAllySkins[e.allyId]} />
+                      <span>
+                        <b>{h.name} · {e.hours}시간</b>
+                        <small className="expedition-left">{done ? "귀환 완료" : `${leftText(left)} 남음`}</small>
+                        <i className="expedition-bar"><i style={{ width: `${Math.round((1 - left / (e.hours * 3600000)) * 100)}%` }} /></i>
+                        <small>조각 +{r.shards} · 강화석 +{r.materials}{r.gems > 0 ? ` · 보석 +${r.gems}` : ""}</small>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {expeditionsDone > 0 && (
+                <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
+                  <img src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
+                  파견 {expeditionsDone}건 귀환 — 보상 받기
+                </button>
+              )}
+              <h3 className="expedition-bench-title">보낼 수 있는 동료 {bench.length}명{full ? " · 자리가 다 찼어요" : ""}</h3>
+              {bench.length === 0 ? (
+                <p className="expedition-empty">출전 중이 아닌 동료가 없습니다 — 동료 도감에서 벤치로 내리거나 새 동료를 소환하면 보낼 수 있어요</p>
+              ) : (
+                <div className="expedition-bench">
+                  {bench.map((h) => {
+                    const stars = effectiveStars(character.allyStars[h.id], save.heroes[h.id]);
+                    return (
+                      <article key={h.id} className="expedition-ally" data-ally={h.id}>
+                        <AllyArt id={h.id} skin={character.equippedAllySkins[h.id]} />
+                        <span className="expedition-ally-name"><b>{h.name}</b><small className={`rar-${ALLY_RARITY[h.id].toLowerCase()}`}>{ALLY_RARITY[h.id]} ★{stars}</small></span>
+                        <span className="expedition-hours">
+                          {EXPEDITION_HOURS.map((hours) => {
+                            const r = expeditionReward(h.id, stars, hours);
+                            return (
+                              <button key={hours} type="button" disabled={full} onClick={() => void sendExpedition(h.id, hours)}>
+                                <b>{hours}시간</b>
+                                <small>조각 {r.shards} · 석 {r.materials}{r.gems > 0 ? ` · 보석 ${r.gems}` : ""}</small>
+                              </button>
+                            );
+                          })}
+                        </span>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })()}
         {tab === "heroes" && (
           <article className="titans-card party-panel">
             <div className="party-panel-head">
@@ -3765,11 +3839,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       {inParty ? "벤치로" : "출전"}
                     </button>
                   )}
-                  {lv > 0 && expedition && (
+                  {lv > 0 && expedition && (expeditionLeft > 0 ? (
                     <span className="ally-expedition-status">
-                      파견 중 · {Math.ceil(expeditionLeft / 60000)}분 남음
+                      파견 중 · {(() => { const min = Math.ceil(expeditionLeft / 60000); return min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`; })()} 남음
                     </span>
-                  )}
+                  ) : (
+                    <button type="button" className="ally-expedition-status returned" onClick={(ev) => { ev.stopPropagation(); void claimExpeditions(); }}>
+                      파견 귀환 · 보상 받기
+                    </button>
+                  ))}
                   {lv > 0 && !inParty && !expedition && character.expeditions.length < EXPEDITION_MAX && (
                     <span className="ally-expedition-send">
                       {EXPEDITION_HOURS.map((hours) => (

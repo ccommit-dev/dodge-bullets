@@ -15,7 +15,7 @@ export type HubCardId = "dodge" | "beat" | "tower" | "rift" | "forge" | "expedit
 export type HubGo =
   | { kind: "content"; content: "dodge" | "beat" | "forge" | "tower" }
   | { kind: "events"; tab: "rift" }
-  | { kind: "tab"; tab: "heroes" };
+  | { kind: "tab"; tab: "heroes" | "expedition" };
 
 export type HubCard = {
   id: HubCardId;
@@ -79,7 +79,7 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
     {
       id: "expedition", label: "파견", desc: "동료를 보내 두면 시간이 지난 뒤 들고 돌아온다", feeds: ["강화석", "조각"],
       remaining: activeExpeditions > 0 ? `${activeExpeditions}/${EXPEDITION_MAX} 진행 중` : `빈 자리 ${EXPEDITION_MAX}`,
-      dot: activeExpeditions < EXPEDITION_MAX, locked: false, go: { kind: "tab", tab: "heroes" },
+      dot: activeExpeditions < EXPEDITION_MAX, locked: false, go: { kind: "tab", tab: "expedition" },
     },
   ];
   // 잠긴 카드엔 점이 없다. 점은 위에서부터 최대 3개

@@ -19,6 +19,7 @@ import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
 // 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
 import { installChunkReload, withChunkReload } from "./ui/chunkReload";
+import { setBgmScene } from "./ui/bgm";
 import { LazyBoundary } from "./ui/LazyBoundary";
 installChunkReload();
 const BeatGame = lazy(() => withChunkReload(() => import("./BeatGame")).then((m) => ({ default: m.BeatGame })));
@@ -26,7 +27,7 @@ const ForgeGame = lazy(() => withChunkReload(() => import("./ForgeGame")).then((
 import { TitansGame } from "./TitansGame";
 const CharacterStatus = lazy(() => withChunkReload(() => import("./CharacterStatus")).then((m) => ({ default: m.CharacterStatus })));
 import { AttendanceModal, readAttendanceClaimedToday, readAttendanceDone } from "./AttendanceModal";
-import { TOWER_TICKET_SEALS, buyTowerTicketWithSeals, consumeTowerTicket, refillTowerTickets } from "./game/towerTickets";
+import { TOWER_DAILY_TICKETS, TOWER_TICKET_SEALS, buyTowerTicketWithSeals, consumeTowerTicket, refillTowerTickets } from "./game/towerTickets";
 import { SWEEP_MULTIPLIERS, applySweep, canSweep, sweepBudget, sweepStageIndex, sweepsLeft, type SweepMultiplier, type SweepReward } from "./game/sweep";
 import { MERCHANT_SEALS, applyDayChoice, dayEventFor, type DayEvent, type DayEventChoice } from "./game/dayEvents";
 import { TALENT_EFFECT, hasTalent } from "./forge/talents";
@@ -527,6 +528,11 @@ function App() {
   const unlockAudio = useCallback(async () => {
     await soundRef.current.unlock();
   }, []);
+
+  // 배경 음악 (2026-10-26, ui/bgm.ts) — 화면마다 한 곡. 비트 수련은 곡이 게임이라 끄고, 성문 방어는 전투 중엔 자기 음악(SoundController)이 있어 메뉴에서만
+  useEffect(() => {
+    setBgmScene(appMode === "titans" ? "hunt" : appMode === "forge" ? "forge" : appMode === "profile" ? "menu" : appMode === "dodge" ? (gameState === "playing" ? "off" : "dodge") : "off");
+  }, [appMode, gameState]);
 
   const toggleSound = useCallback(async () => {
     await unlockAudio();
@@ -1463,13 +1469,11 @@ function App() {
     towerTicketPendingRef.current = true;
     void handleStart(TOWER_START_INDEX);
   };
-  // 허브 "끝없는 성벽" 카드 → 성문 메뉴가 뜨면 한 번만 등반 시작 (2026-10-13 P0)
+  // 허브 "끝없는 성벽" 카드 → 출발 카드 (2026-10-26 사용자: "무한성벽 콘텐츠 수정") — 예전엔 누르자마자 1층이 시작돼 등반권·최고 층·보상을 볼 틈이 없었다.
+  // 카드는 성문 메뉴 위에 뜨고, 등반 시작을 눌러야 오른다. 성문 방어를 떠나면 의도는 지운다
   useEffect(() => {
-    if (!towerIntent || appMode !== "dodge" || gameState !== "ready") return;
-    setTowerIntent(false);
-    void startTowerClimb();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [towerIntent, appMode, gameState]);
+    if (towerIntent && appMode !== "dodge") setTowerIntent(false);
+  }, [towerIntent, appMode]);
 
   /** 소탕 — 예산을 쓰고 보상을 받는다 (game/sweep) */
   const doSweep = async (stageIndex: number, mult: SweepMultiplier) => {
@@ -2124,6 +2128,29 @@ function App() {
                 <button type="button" className="cta cta-ghost" onClick={handleBackToHub}>
                   사냥터로 돌아가기
                 </button>
+                {towerIntent && gameState === "ready" && (
+                  <div className="tower-brief-modal" role="dialog" aria-modal="true" aria-label="끝없는 성벽">
+                    <div className="tower-brief-card">
+                      <img src={assetUrl("ui/idle/tower.png")} alt="" aria-hidden="true" />
+                      <b className="tower-brief-title">끝없는 성벽</b>
+                      <p className="tower-brief-rule">쓰러질 때까지 1층부터 층을 잇는 한 판 · 1층을 깨야 등반권 1장을 써요</p>
+                      <div className="tower-brief-stats">
+                        <span><small>최고 기록</small><b>{progress.towerBestFloor}층</b></span>
+                        <span className={progress.towerTickets <= 0 ? "empty" : ""}><small>등반권</small><b>{progress.towerTickets}장</b></span>
+                        <span><small>방치 배율</small><b>+{(Math.min(10, Math.floor(progress.towerBestFloor / 100)) * 0.05).toFixed(2)}</b></span>
+                      </div>
+                      <ul className="tower-brief-rewards">
+                        <li>10층마다 비버 상자 1개 · 동료 조각 +1</li>
+                        <li>최고 기록 100층마다 방치 배율 +0.05</li>
+                        {progress.towerBestFloor < 100 && <li>최고 {progress.towerBestFloor < 50 ? 50 : 100}층 첫 도달 · 동료 출전 자리 +1</li>}
+                      </ul>
+                      {progress.towerTickets <= 0 && <p className="tower-brief-empty">등반권이 없어요 · 매일 {TOWER_DAILY_TICKETS}장 무료 · 정비 › 보급(인장 {TOWER_TICKET_SEALS})</p>}
+                      <button type="button" className="cta" disabled={progress.towerTickets <= 0} onClick={() => { setTowerIntent(false); void startTowerClimb(); }}>등반 시작</button>
+                      <button type="button" className="cta cta-ghost" onClick={() => setTowerIntent(false)}>성문 메뉴 보기</button>
+                      <button type="button" className="cta cta-ghost" onClick={() => { setTowerIntent(false); handleBackToHub(); }}>사냥터로 돌아가기</button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <SkillPanel

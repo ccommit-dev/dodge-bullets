@@ -14,6 +14,8 @@ export function saveSoundEnabled(enabled: boolean): void {
   } catch {
     // ignore
   }
+  // 배경 음악(ui/bgm.ts)이 토글을 따라 멈추고 다시 튼다
+  try { window.dispatchEvent(new Event("dodge-sound-change")); } catch { /* 창이 없는 환경(노드 검사) */ }
 }
 
 type Tone = {

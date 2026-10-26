@@ -476,6 +476,13 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     flashToast(`${GEAR_PART_DEF[part].name} 강화 성공 +${next.gearEnhance[part]}`);
   };
 
+  /** 견갑 강화 실패 연출 — seq 가 바뀔 때마다 다시 튼다 */
+  const [armorFail, setArmorFail] = useState<{ seq: number; protectedBy: boolean } | null>(null);
+  useEffect(() => {
+    if (!armorFail) return;
+    const t = window.setTimeout(() => setArmorFail(null), 1400);
+    return () => window.clearTimeout(t);
+  }, [armorFail]);
   const enhanceArmor = async () => {
     if (!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle") return;
     setCoins((value) => value - armorCost);
@@ -487,6 +494,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       const success = Math.random() < armorChance;
       setSave((current) => ({ ...current, tickets:!success&&current.tickets>0?current.tickets-1:current.tickets, armorAttempts:current.armorAttempts+1, armorLevel:success?Math.min(15,current.armorLevel+1):!success&&current.tickets<=0?Math.max(0,current.armorLevel-1):current.armorLevel, bestArmorLevel:success?Math.max(current.bestArmorLevel,current.armorLevel+1):current.bestArmorLevel }));
       setPhase(success ? "success" : "idle");
+      // 실패 = 견갑이 금 가며 조각이 튄다 (2026-10-26, 사용자: "깨지는 게 없음") — 방지권으로 막았으면 금만 가고, 없으면 깨지며 한 단계 내려간다
+      if (!success) setArmorFail((f) => ({ seq: (f?.seq ?? 0) + 1, protectedBy: save.tickets > 0 }));
       flashToast(success ? `보호구 강화 성공 +${save.armorLevel+1}` : save.tickets>0 ? "보호구 강화 실패 · 방지권으로 단계 보호" : "보호구 강화 실패 · 1단계 하락");
       timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
     }, FORGE_MS);
@@ -868,12 +877,19 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           ) : (
             /* 견갑 강화 — 검 강화와 같은 골격(무대 → 패널 → 4스탯 → 안내 → 강화 → 판매)으로 통일 (사용자 지시) */
             <>
-              <section className={`forge-stage armor-forge-stage forge-phase-${phase} armor-tier-${armorTierOf(save.armorLevel)}`} data-armor-tier={armorTierOf(save.armorLevel)}>
+              <section className={`forge-stage armor-forge-stage forge-phase-${phase} armor-tier-${armorTierOf(save.armorLevel)} ${armorFail ? (armorFail.protectedBy ? "armor-crack" : "armor-break") : ""}`} data-armor-tier={armorTierOf(save.armorLevel)}>
                 <div className="forge-embers" aria-hidden="true">{Array.from({length:12},(_,i)=><i key={i} style={{"--ember-i":i,left:`${6+((i*37)%88)}%`} as CSSProperties}/>)}</div>
                 <div className="sword-aura" />
                 <ShoulderIcon id={equippedShoulder} />
                 <div className="forge-sword-name"><span>+{save.armorLevel}</span><strong>{equippedShoulder ? shoulderMeta.find((item)=>item.id===equippedShoulder)?.name : "견갑 미장착"}</strong></div>
                 {phase === "forging" && <div className="forge-impact">강화 중…</div>}{phase === "success" && <div className="forge-impact success">SUCCESS!</div>}{phase === "sold" && <div className="forge-impact sold">SOLD</div>}
+                {armorFail && (
+                  <div key={armorFail.seq} className="armor-shatter" aria-hidden="true">
+                    <svg className="armor-cracks" viewBox="0 0 100 100"><path d="M50 8 L46 30 L56 44 L42 62 L52 80 L47 96" /><path d="M56 44 L74 38 L86 46" /><path d="M42 62 L24 58 L14 70" /><path d="M46 30 L30 22" /></svg>
+                    {!armorFail.protectedBy && Array.from({ length: 10 }, (_, i) => <i key={i} className="armor-shard" style={{ "--a": `${i * 36 + (i % 2) * 14}deg`, "--d": `${70 + ((i * 23) % 60)}px`, "--r": `${(i % 2 ? 1 : -1) * (120 + i * 30)}deg` } as CSSProperties} />)}
+                  </div>
+                )}
+                {armorFail && <div key={`t${armorFail.seq}`} className={`forge-impact fail ${armorFail.protectedBy ? "protected" : "drop"}`}>{armorFail.protectedBy ? "FAIL · 방지권 보호" : "BREAK! −1 단계"}</div>}
               </section>
 
               <section className="forge-panel armor-panel">
