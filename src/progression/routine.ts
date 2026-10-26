@@ -13,7 +13,7 @@ export type RoutineItem = {
   detail: string;
   done: boolean;
   /** 탭 시 이동 — titans 탭 id 또는 콘텐츠 */
-  go: { kind: "content"; content: "forge" } | { kind: "events"; tab: "rift" | "daily" } | { kind: "tab"; tab: "heroes" } | { kind: "claim" };
+  go: { kind: "content"; content: "forge" } | { kind: "events"; tab: "rift" | "daily" } | { kind: "tab"; tab: "heroes" | "expedition" } | { kind: "claim" };
 };
 
 export const ROUTINE_REWARD_GEMS = 15;
@@ -41,7 +41,7 @@ export function routineItems(progress: CharacterProgress, events: EventSave, now
     // "토벌" 과 별도의 "일일 퀘스트" 버튼이 같은 화면·같은 설명으로 두 번 있었다 — 진행 상태가 보이는 이쪽만 남기고 이름을 합쳤다 (2026-09-18)
     { id: "mission", label: "일일 퀘스트", detail: missionsDone ? "모두 수령" : "미수령", done: missionsDone, go: { kind: "events", tab: "daily" } },
     { id: "forge", label: "강화", detail: forgedToday ? "오늘 성공" : "1회 성공", done: forgedToday, go: { kind: "content", content: "forge" } },
-    { id: "expedition", label: "파견", detail: expeditionActive ? "진행 중" : "보내기", done: expeditionActive, go: { kind: "tab", tab: "heroes" } },
+    { id: "expedition", label: "파견", detail: expeditionActive ? "진행 중" : "보내기", done: expeditionActive, go: { kind: "tab", tab: "expedition" } },
   ];
 }
 

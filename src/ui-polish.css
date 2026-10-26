@@ -755,3 +755,86 @@
 .exp-fund-more > summary::after { content: " ▾"; }
 .exp-fund-more[open] > summary::after { content: " ▴"; }
 .exp-fund-more[open] > summary { margin-bottom: 4px; }
+
+/* 견갑 강화 실패 — 금 가고 깨진다 (2026-10-26, 사용자: "깨지는 게 없음"). armor-crack = 방지권으로 막음(금만) · armor-break = 깨짐(조각 + 한 단계 하락) */
+.armor-forge-stage.armor-crack .shoulder-icon, .armor-forge-stage.armor-break .shoulder-icon { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97); }
+.armor-forge-stage.armor-break .shoulder-icon { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97), armor-dim 1.4s ease-out; }
+.armor-shatter { position: absolute; left: 50%; top: 42%; width: 46%; aspect-ratio: 1; translate: -50% -50%; pointer-events: none; z-index: 6; }
+.armor-cracks { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.armor-cracks path { fill: none; stroke: #fff8e1; stroke-width: 2.6; stroke-linejoin: round; filter: drop-shadow(0 0 3px #1b120b) drop-shadow(0 0 6px rgba(255, 210, 120, .9)); stroke-dasharray: 160; stroke-dashoffset: 160; animation: crack-draw .32s .12s ease-out forwards, crack-fade .5s .9s ease-in forwards; }
+.armor-shard { position: absolute; left: 50%; top: 50%; width: 16px; height: 13px; margin: -6px 0 0 -8px; background: linear-gradient(135deg, #e9ffd0, #6aa83a 60%, #3f6a2a); clip-path: polygon(50% 0, 100% 40%, 70% 100%, 0 70%); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5)); animation: shard-fly .9s .18s cubic-bezier(.15, .6, .4, 1) both; }
+.forge-impact.fail { color: #fff; font-weight: 900; top: auto !important; bottom: 22% !important; }
+.forge-impact.fail.drop { background: linear-gradient(180deg, #e8452c, #a31f12) !important; animation: fail-pop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+.forge-impact.fail.protected { background: linear-gradient(180deg, #5b6b8a, #39445c) !important; animation: fail-pop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes armor-shake { 10%, 90% { translate: -2px 0; } 20%, 80% { translate: 4px 0; } 30%, 50%, 70% { translate: -7px 0; rotate: -3deg; } 40%, 60% { translate: 7px 0; rotate: 3deg; } }
+@keyframes armor-dim { 0%, 30% { filter: none; } 45% { filter: brightness(1.8) saturate(.4); } 100% { filter: none; } }
+@keyframes crack-draw { to { stroke-dashoffset: 0; } }
+@keyframes crack-fade { to { opacity: 0; } }
+@keyframes shard-fly { 0% { transform: rotate(var(--a)) translateX(0) rotate(0); opacity: 1; } 75% { opacity: 1; } 100% { transform: rotate(var(--a)) translateX(var(--d)) rotate(var(--r)) translateY(28px); opacity: 0; } }
+@keyframes fail-pop { 0% { scale: .4; opacity: 0; } 100% { scale: 1; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .armor-shard, .armor-cracks path, .armor-forge-stage .shoulder-icon { animation-duration: .01s !important; } }
+/* 비트 연주 중 돌아가기 (2026-10-26, 사용자: "비트 원정에 게임 중 돌아가기 UI") — HUD 왼쪽 일시정지 단추 · 멈춤 카드 */
+.beat-hud .beat-quit-btn { flex: none; width: 40px; height: 40px; margin-right: 8px; border-radius: 12px; border: 2px solid rgba(59, 36, 21, .8); background: #fff7e6; color: #3b2415; font-size: 14px; font-weight: 900; letter-spacing: -2px; box-shadow: 0 3px 0 rgba(59, 36, 21, .45); cursor: pointer; }
+.beat-hud .beat-quit-btn:active { translate: 0 2px; box-shadow: 0 1px 0 rgba(59, 36, 21, .45); }
+.beat-quit-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(10, 6, 2, .62); }
+.beat-quit-card { width: min(320px, 100%); display: grid; gap: 10px; padding: 20px 18px; border-radius: 18px; border: 3px solid #3b2415; background: #fff7e6; color: #3b2415; text-align: center; box-shadow: 0 8px 0 rgba(0, 0, 0, .3); }
+.beat-quit-card b { font-size: 19px; }
+.beat-quit-card p { margin: 0 0 4px; font-size: 14px; color: #6b4a2f; }
+.beat-quit-card .cta { width: 100%; }
+
+/* 파견 전용 화면 (2026-10-26, TitansGame tab "expedition") — 자리 2칸 · 귀환 수령 · 벤치 동료별 시간 단추와 들고 올 것 */
+.expedition-panel { display: grid; gap: 10px; padding: 4px 2px 8px; color: #3b2415; }
+.expedition-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.expedition-slot { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 8px; min-height: 84px; padding: 8px; border-radius: 14px; border: 2px solid rgba(59, 36, 21, .35); background: #fff8e6; }
+.expedition-slot .titan-ally-art { --ally-size: 48px; width: 48px; }
+.expedition-slot > span { display: grid; gap: 3px; min-width: 0; }
+.expedition-slot b { font-size: 14px; }
+.expedition-slot small { font-size: 12px; color: #6b4a2f; }
+.expedition-slot.empty { grid-template-columns: 1fr; place-content: center; text-align: center; border-style: dashed; background: rgba(255, 248, 230, .55); }
+.expedition-slot.done { border-color: #f2a516; background: #fff1c2; }
+.expedition-slot.done .expedition-left { color: #b45309; font-weight: 800; }
+.expedition-bar { display: block; height: 6px; border-radius: 99px; background: rgba(59, 36, 21, .15); overflow: hidden; }
+.expedition-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f2c232, #f2a516); }
+.expedition-panel .expedition-claim { width: 100%; justify-content: center; min-height: 44px; font-size: 15px; }
+.expedition-bench-title { margin: 4px 0 0; font-size: 15px; color: #3b2415; }
+.expedition-empty { margin: 0; padding: 12px; border-radius: 12px; background: #fff8e6; font-size: 13px; color: #6b4a2f; }
+.expedition-bench { display: grid; gap: 8px; }
+.expedition-ally { display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "art name" "hours hours"; align-items: center; gap: 6px 8px; padding: 8px; border-radius: 14px; border: 2px solid rgba(59, 36, 21, .25); background: #fff8e6; }
+.expedition-ally .titan-ally-art { grid-area: art; --ally-size: 44px; width: 44px; }
+.expedition-ally-name { grid-area: name; display: flex; align-items: baseline; gap: 8px; }
+.expedition-ally-name b { font-size: 15px; }
+.expedition-ally-name small { font-size: 12px; font-weight: 800; }
+.expedition-hours { grid-area: hours; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.expedition-hours button { display: grid; gap: 1px; min-height: 44px; padding: 4px; border-radius: 10px; border: 2px solid rgba(59, 36, 21, .45); background: #fff; color: #3b2415; cursor: pointer; }
+.expedition-hours button b { font-size: 14px; }
+.expedition-hours button small { font-size: 11px; color: #6b4a2f; }
+.expedition-hours button:disabled { opacity: .45; cursor: default; }
+.expedition-hours button:active:not(:disabled) { translate: 0 1px; }
+.ally-card button.ally-expedition-status.returned { border: 2px solid #f2a516; border-radius: 10px; background: #fff1c2; color: #92400e; font-size: 13px; font-weight: 800; padding: 4px 8px; }
+
+/* 끝없는 성벽 출발 카드 (2026-10-26, App.tsx towerIntent) — 허브 카드를 누르면 바로 1층이 시작되던 것 대신 */
+.tower-brief-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(10, 6, 2, .62); }
+.tower-brief-card { width: min(340px, 100%); display: grid; gap: 10px; padding: 18px 18px 16px; border-radius: 18px; border: 3px solid #3b2415; background: #fff7e6; color: #3b2415; text-align: center; box-shadow: 0 8px 0 rgba(0, 0, 0, .3); }
+.tower-brief-card > img { width: 56px; height: 56px; margin: 0 auto; object-fit: contain; }
+.tower-brief-title { font-size: 20px; }
+.tower-brief-rule { margin: 0; font-size: 13px; color: #6b4a2f; }
+.tower-brief-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tower-brief-stats span { display: grid; gap: 2px; padding: 8px 4px; border-radius: 12px; background: #fff; border: 2px solid rgba(59, 36, 21, .2); }
+.tower-brief-stats small { font-size: 12px; color: #6b4a2f; }
+.tower-brief-stats b { font-size: 17px; }
+.tower-brief-stats span.empty b { color: #b91c1c; }
+.tower-brief-rewards { margin: 0; padding: 8px 10px; list-style: none; display: grid; gap: 4px; border-radius: 12px; background: #fff1c2; font-size: 13px; text-align: left; }
+.tower-brief-rewards li::before { content: "◆ "; color: #f2a516; }
+.tower-brief-empty { margin: 0; font-size: 13px; color: #b91c1c; font-weight: 700; }
+.tower-brief-card .cta { width: 100%; }
+/* 성문 메뉴 안이라 메뉴 단추 규칙(초록)이 보조 단추까지 덮고, 옛 남색판용 파견 수령 글자가 크림 판에서 흐렸다 — 카드 안에서 다시 잡는다 */
+.tower-brief-card .tower-brief-rule { color: #5a3a22 !important; opacity: 1 !important; }
+.tower-brief-card .cta { min-height: 46px; font-size: 16px; }
+.tower-brief-card .cta.cta-ghost { background: #fff !important; color: #3b2415 !important; border: 2px solid rgba(59, 36, 21, .5) !important; box-shadow: 0 3px 0 rgba(59, 36, 21, .3) !important; text-shadow: none !important; min-height: 42px; font-size: 15px; }
+.tower-brief-card .cta:disabled { opacity: .5; }
+.expedition-panel .expedition-claim { display: flex; align-items: center; gap: 8px; color: #fff !important; background: linear-gradient(180deg, #f2a516, #d97706) !important; border: 2px solid #92400e !important; box-shadow: 0 3px 0 #92400e; text-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+.expedition-panel .expedition-claim img { width: 26px; height: 26px; }
+.tower-brief-card .tower-brief-empty { color: #b91c1c !important; opacity: 1 !important; }
+.expedition-ally-name .rar-ssr { color: #b45309; }
+.expedition-ally-name .rar-sr { color: #7c3aed; }
+.expedition-ally-name .rar-r { color: #1d4ed8; }

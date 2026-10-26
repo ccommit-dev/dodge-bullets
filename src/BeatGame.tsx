@@ -388,6 +388,34 @@ export function BeatGame({
     setUi(next);
   }, []);
 
+  // 연주 중 돌아가기 (2026-10-26, 사용자: "비트 원정에 게임 중 돌아가기 UI 추가") — 예전엔 안드로이드 뒤로 가기 두 번 말고는 곡이 끝날 때까지 나갈 길이 없었다.
+  // 누르면 곡(오디오 시계 · 반주)을 멈추고 묻는다: 계속 · 곡 목록으로 · 사냥터로. 스태미나는 이미 썼으니 그대로다
+  const [quitAsk, setQuitAsk] = useState(false);
+  const pauseForQuit = () => {
+    const session = sessionRef.current;
+    if (!session?.ctx) return;
+    session.backingAudio?.pause();
+    void session.ctx.suspend();
+    setQuitAsk(true);
+  };
+  const resumeFromQuit = () => {
+    const session = sessionRef.current;
+    setQuitAsk(false);
+    if (!session?.ctx) return;
+    lastTsRef.current = 0;
+    void session.ctx.resume().then(() => session.backingAudio?.play()).catch(() => {});
+  };
+  const quitRun = (to: "menu" | "hunt") => {
+    setQuitAsk(false);
+    if (sessionRef.current) {
+      disposeBeatSession(sessionRef.current);
+      sessionRef.current = null;
+    }
+    pendingClearRef.current = false;
+    syncUi("menu");
+    if (to === "hunt") onBack();
+  };
+
   useEffect(() => {
     void (async () => {
       const [u, legacy, r, prog] = await Promise.all([
@@ -771,6 +799,17 @@ export function BeatGame({
   return (
     <div className="beat-layer">
       <canvas ref={canvasRef} className={`game-canvas ${ui === "playing" ? "beat-battle-canvas" : ""}`} />
+      {ui === "playing" && quitAsk && (
+        <div className="beat-quit-modal" role="dialog" aria-modal="true" aria-label="연주 멈춤">
+          <div className="beat-quit-card">
+            <b>연주를 멈췄어요</b>
+            <p>나가면 이번 곡 기록과 보상은 남지 않아요</p>
+            <button type="button" className="cta" onClick={resumeFromQuit}>계속 연주하기</button>
+            <button type="button" className="cta cta-ghost" onClick={() => quitRun("menu")}>곡 목록으로</button>
+            <button type="button" className="cta cta-ghost" onClick={() => quitRun("hunt")}>사냥터로 돌아가기</button>
+          </div>
+        </div>
+      )}
 
       {ui === "menu" && rpg && (
         <div className="game-overlay">
@@ -924,6 +963,7 @@ export function BeatGame({
             <div className="beat-layer-mixer">{["KICK","SNARE","HAT","BASS"].map((label,index)=><span key={label} className={instrumentLayers[index] > 0 ? "on" : ""}><b>{label}</b><i>{"●".repeat(instrumentLayers[index])}{"○".repeat(4-instrumentLayers[index])}</i></span>)}</div>
           </div>
           <div className="hud beat-hud" style={dockStyle}>
+            <button type="button" className="beat-quit-btn" onClick={pauseForQuit} aria-label="연주 멈추고 돌아가기">❚❚</button>
             <div className="hud-left">
               <span className="hud-score beat-track-name">
                 {activeSlotRef.current?.kind === "spar" ? "SPAR" : "MARCH"} {stageNo}/
