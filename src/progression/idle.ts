@@ -23,6 +23,8 @@ import { activePetEffect } from "../titans/pets";
 import { CHARACTER_PASSIVE, PATRON } from "../economy/productCatalog";
 import { starMilestoneMultiplier } from "./collection";
 import type { CharacterProgress } from "./model";
+import { treeIdleMult } from "./crystalTree";
+import { relicEffects } from "../titans/relics";
 
 /** 일반 성문 방어 스테이지 수 — T 보너스의 상한 근거. */
 /** 방치 시간 보너스를 주는 원정 스테이지 수 — 50 스테이지가 된 뒤에도(2026-10-02) 예전처럼 앞 4 스테이지까지만 (방치 경제를 그대로 둔다) */
@@ -37,7 +39,7 @@ export const IDLE = {
   multCap: 3,
   /** bestForgeLevel 최대 15 → +0.90 */
   multPerForgeLevel: 0.06,
-  /** 환생 리워크(LIVEOPS §1.4)로 0.01→0.02 — 첫 환생 +0.32, 리셋 비용에 걸맞은 보상 */
+  /** 환생 리워크(LIVEOPS §1.4)로 0.01→0.02. 2026-10-26 부터는 결정 트리 방치 효율 줄(단계당 결정 2 = +0.04)이 같은 값을 준다 — 표시용으로만 남김 */
   multPerCrystal: 0.02,
   /** 끝없는 성벽 100층당 +0.05, 최대 +0.50 */
   multPerTowerHundred: 0.05,
@@ -130,7 +132,8 @@ export function idleRate(
 /** M — 산출 배율. forge · 환생 · 끝없는 성벽이 올린다. */
 export function idleMultiplier(progress: CharacterProgress): number {
   const forge = progress.bestForgeLevel * IDLE.multPerForgeLevel;
-  const crystals = progress.inheritanceCrystals * IDLE.multPerCrystal;
+  // 결정 배율은 결정 트리 방치 효율 줄로 옮겼다 (crystalTree.ts, 2026-10-26) · 서리 유물 눈꽃 결정도 여기
+  const crystals = treeIdleMult(progress.crystalTree) + relicEffects(progress.relics).idleMul;
   const tower = Math.min(
     IDLE.multTowerCap,
     Math.floor(progress.towerBestFloor / 100) * IDLE.multPerTowerHundred,

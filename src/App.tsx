@@ -91,6 +91,7 @@ import {
 import { createSoundController, loadSoundEnabled } from "./game/sound";
 import { BRANCHES, CHAPTERS, PATTERN_LABEL, STAGES, STAGES_PER_CHAPTER, TOWER_START_INDEX, TOWER_UNLOCK_STAGE, areaOpenedByClear, branchOf, getStage, isBranchIndex, isLastStage, nextStageIndex, rewardDepth, stageTag, stageUnlocked, towerFloorOf, waveAt } from "./game/stages";
 import { RouteMap, branchRewardLabel } from "./game/RouteMap";
+import { grantRelicShards } from "./titans/relics";
 import { RewardIcon, type RewardIconKind } from "./ui/RewardIcon";
 import { track as trackEvent } from "./analytics/events";
 import { bossPatternFor } from "./game/bossPatterns";
@@ -1082,6 +1083,7 @@ function App() {
                     redGems: current.redGems + (r.gems ?? 0),
                     forgeTicketsPending: current.forgeTicketsPending + (r.forgeTickets ?? 0),
                     shoulderShards: current.shoulderShards + (r.shoulderShards ?? 0),
+                    relics: grantRelicShards(current.relics, r.relicShards ?? 0).state,   // 유물 조각 (titans/relics.ts, 2026-10-26)
                   }),
                 };
               });

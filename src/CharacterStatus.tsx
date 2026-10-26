@@ -23,13 +23,14 @@ import {
 } from "./progression/model";
 import { updateCharacterProgress } from "./progression/storage";
 import {
-  IDLE,
   computeIdleYield,
   idleCapHours,
 } from "./progression/idle";
-import { HUNTING_AREAS, huntingArea, rebirthCrystals, rebirthStartGold } from "./titans/model";
+import { HUNTING_AREAS, huntingArea } from "./titans/model";
 import { formatWallet } from "./ui/WalletBar";
-import { canRebirthNow, performRebirth, rebirthNeedAreas } from "./progression/rebirth";
+import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas } from "./progression/rebirth";
+import { freeCrystals, treeIdleMult } from "./progression/crystalTree";
+import { CrystalTreePanel, RelicPanel } from "./ui/LegacyPanels";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
 import {
   PET_DEFS,
@@ -152,10 +153,11 @@ export function CharacterStatus({
   // 지역 수 · 환생 처리는 progression/rebirth.ts (사냥터 자동 환생과 같이 쓴다)
   const needAreas = rebirthNeedAreas(progress);
   const canRebirth = canRebirthNow(progress);
+  const gains = rebirthGains(progress);
   const toggleAutoRebirth = async () => {
     const next = await updateCharacterProgress(userHash, (current) => ({ ...current, autoRebirth: !current.autoRebirth }));
     onProgressChange(next);
-    setGrowthMessage(next.autoRebirth ? "자동 환생 켜짐 — 사냥터에서 벽 조건을 채우면 바로 환생하고 1층부터 다시 오릅니다" : "자동 환생 꺼짐");
+    setGrowthMessage(next.autoRebirth ? `자동 환생 켜짐 — 사냥터에서 벽 조건을 채우면 바로 환생하고 ${rebirthGains(next).startStage}층부터 다시 오릅니다` : "자동 환생 꺼짐");
   };
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
@@ -213,9 +215,9 @@ export function CharacterStatus({
       return;
     }
     setRebirthConfirm(false);
-    const { next, crystals, startGold } = await performRebirth(userHash, progress);   // progression/rebirth.ts — 사냥터 자동 환생과 같은 길
+    const { next, crystals, startGold, startStage } = await performRebirth(userHash, progress);   // progression/rebirth.ts — 사냥터 자동 환생과 같은 길
     onProgressChange(next);
-    setGrowthMessage(`계승 완료 · 결정 +${crystals} (배율 +${(crystals * 0.02).toFixed(2)}) · 진화 포인트 +1 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
+    setGrowthMessage(`계승 완료 · 결정 +${crystals} (결정 강화에 쓰세요) · 진화 포인트 +1 · ${startStage}층부터 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
   };
 
   return (
@@ -502,25 +504,27 @@ export function CharacterStatus({
             );
           })}
         </div>
-        <div className="legacy-heading"><div><small>REBIRTH</small><strong>계승</strong></div><span>결정 {progress.inheritanceCrystals} · 배율 +{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)}</span></div>
+        <div className="legacy-heading"><div><small>REBIRTH</small><strong>계승</strong></div><span>결정 {freeCrystals(progress)} / {progress.inheritanceCrystals} · 방치 +{treeIdleMult(progress.crystalTree).toFixed(2)}</span></div>
         <div className="mp-rebirth">
           {/* 환생하면 받는 것 — 한 줄씩 이름 · 값 */}
           <ul className="rebirth-preview mp-gain" aria-label="환생하면 받는 것">
-            <li><span>결정</span> <b>+{rebirthCrystals(progress.titanBestStage)}</b></li>
-            <li className="wide"><span>방치 배율</span> <b>+{(progress.inheritanceCrystals * IDLE.multPerCrystal).toFixed(2)} → +{((progress.inheritanceCrystals + rebirthCrystals(progress.titanBestStage)) * IDLE.multPerCrystal).toFixed(2)}</b></li>
+            <li><span>결정</span> <b>+{gains.crystals}</b></li>
+            <li className="wide"><span>시작 스테이지</span> <b>{gains.startStage}층부터{gains.startStage > 1 ? " · 건너뛴 층 골드 포함" : ""}</b></li>
             <li><span>진화 포인트</span> <b>+1</b></li>
             <li><span>방치 산출</span> <b>24시간 2배</b></li>
-            <li><span>출발 골드</span> <b>{formatWallet(rebirthStartGold(progress.titanBestStage))}</b></li>
-            <li><span>대장 사다리</span> <b>유지</b></li>
+            <li><span>출발 골드</span> <b>{formatWallet(gains.startGold)}</b></li>
+            <li><span>사다리 · 유물</span> <b>유지</b></li>
           </ul>
           <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} style={{ "--wall-p": `${Math.min(100, (progress.wallAreas.length / needAreas) * 100)}%` } as CSSProperties} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
             {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : `환생 ${progress.rebirthCount + 1}회째 시작`) : `환생 ${progress.rebirthCount}회 · DPS 벽 ${progress.wallAreas.length}/${needAreas} 지역`}
           </button>
           {/* 자동 환생 (2026-10-22 아처 키우기 7번 — "언제까지 환생하냐, 귀찮다") */}
           <button type="button" className={`auto-rebirth-toggle ${progress.autoRebirth ? "on" : ""}`} role="switch" aria-checked={progress.autoRebirth} onClick={() => void toggleAutoRebirth()}>
-            <i aria-hidden="true" /><span><b>자동 환생</b><small>벽 조건을 채우면 사냥터에서 바로 환생</small></span>
+            <i aria-hidden="true" /><span><b>자동 환생</b><small>벽 조건을 채우면 사냥터에서 바로 환생 · {gains.startStage}층부터</small></span>
           </button>
         </div>
+        <CrystalTreePanel userHash={userHash} progress={progress} onProgressChange={onProgressChange} onMessage={setGrowthMessage} />
+        <RelicPanel progress={progress} />
         <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `진화 포인트 ${progress.evolutionPoints}`}</span></div>
         <div className={`evolution-tree mp-evo ${progress.rebirthCount < 1 ? "is-locked" : ""}`}>
           <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타 · 방치 배율 +0.15</small></button>

@@ -102,7 +102,8 @@ await closeModals(); await sleep(300);
 await page.evaluate(() => document.querySelector(".titans-back")?.click()); await sleep(1600);
 const rb = await page.evaluate(() => ({ btn: document.querySelector(".rebirth-button")?.textContent ?? "", pre: document.querySelector(".rebirth-preview")?.textContent ?? "" }));
 ok("환생 단추: 첫 환생 뒤엔 'DPS 벽 0/1 지역'(예전엔 /3 고정)", /DPS 벽 0\/1 지역/.test(rb.btn), rb.btn);
-ok("환생 미리 보기: 결정 +18 · 방치 배율 전후 · 출발 골드", /결정 \+18/.test(rb.pre) && /→/.test(rb.pre) && /출발 골드/.test(rb.pre), rb.pre);
+// 2026-10-26 — 방치 배율 전후는 결정 강화 트리(방치 효율 줄)로 옮겼다 · 대신 시작 스테이지
+ok("환생 미리 보기: 결정 +18 · 시작 스테이지 · 출발 골드", /결정 \+18/.test(rb.pre) && /시작 스테이지\s*1층부터/.test(rb.pre) && /출발 골드/.test(rb.pre), rb.pre);
 
 // ── 5'. 첫 10연 최고 등급 확정 ──
 await seed(baseProgress({ redGems: 2000, gachaPulls: 0, gachaPity: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 10, leon: 10 }, lastActiveAt: now });

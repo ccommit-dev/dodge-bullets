@@ -217,7 +217,8 @@ export function areaOpenedByClear(stageIndex: number): number {
  * 인덱스: 본선 0~49 · 갈림길 50~69 · 성벽 70~ (예전 성벽 50~ — 층 번호·보상 깊이는 그대로)
  */
 export type BranchKind = "treasure" | "elite" | "secret";
-export type BranchReward = { coins?: number; materials?: number; seals?: number; gems?: number; forgeTickets?: number; shoulderShards?: number };
+/** relicShards — 유물 조각 (titans/relics.ts, 2026-10-26 — 성문 방어 갈림길 ↔ 사냥터 유물을 잇는다) */
+export type BranchReward = { coins?: number; materials?: number; seals?: number; gems?: number; forgeTickets?: number; shoulderShards?: number; relicShards?: number };
 export type BranchDef = {
   /** 저장 키 — "1-T" · "1-E1" · "1-E2" · "1-S" (장 1-based) */
   id: string;
@@ -276,9 +277,10 @@ function buildBranch(k: number): { def: BranchDef; stage: StageDef } {
     // 본선과 다른 순서 — 인덱스를 비틀어 풀에서 고른다
     patterns: buildPatterns(anchor + 17 + k, ch, { ...slot, density: slot.density * lay.density }, durationMs),
   };
-  const firstReward: BranchReward = lay.kind === "treasure" ? { coins: Math.round(base.baseReward * 10), materials: 20 + chapter * 10 }
-    : lay.kind === "secret" ? { gems: 30 + chapter * 10, seals: 20 + chapter * 10, shoulderShards: 20 + chapter * 10 }
-    : lay.key === "E1" ? { seals: 12 + chapter * 6, materials: 15 + chapter * 8 } : { forgeTickets: 1, materials: 25 + chapter * 10 };
+  // 유물 조각 — 비밀 대장 3(★1 하나) · 정예 ② 2 · 정예 ① · 보물 1
+  const firstReward: BranchReward = lay.kind === "treasure" ? { coins: Math.round(base.baseReward * 10), materials: 20 + chapter * 10, relicShards: 1 }
+    : lay.kind === "secret" ? { gems: 30 + chapter * 10, seals: 20 + chapter * 10, shoulderShards: 20 + chapter * 10, relicShards: 3 }
+    : lay.key === "E1" ? { seals: 12 + chapter * 6, materials: 15 + chapter * 8, relicShards: 1 } : { forgeTickets: 1, materials: 25 + chapter * 10, relicShards: 2 };
   const def: BranchDef = { id, index, chapter, kind: lay.kind, anchor, row: lay.row, name, firstReward,
     requires: lay.requires === "main" ? { main: anchor } : { branch: `${chapter + 1}-${lay.requires}` } };
   return { def, stage };

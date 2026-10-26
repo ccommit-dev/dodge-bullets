@@ -26,13 +26,16 @@ export async function saveTitansSave(userHash: string, value: TitansSave): Promi
  * 리셋: stage·골드·동료 레벨·장비 훈련. 보존: 스킬 인벤토리(SP·코어로 배운 것),
  * 그리고 CharacterProgress 쪽 영구 성장 전부(성급·재련·개척·최고기록).
  */
-/** startGold — 환생 직후 바로 동료 · 무기를 올릴 출발 골드 (model.rebirthStartGold, 2026-10-22 아처 키우기 7번) */
-export async function rebirthResetTitans(userHash: string, startGold = 0): Promise<TitansSave> {
+/** startGold — 환생 직후 바로 동료 · 무기를 올릴 출발 골드 (model.rebirthStartGold, 2026-10-22 아처 키우기 7번)
+ *  startStage — 결정 트리 시작 스테이지 줄 (progression/crystalTree.ts, 2026-10-26). 1 이면 예전처럼 1층 */
+export async function rebirthResetTitans(userHash: string, startGold = 0, startStage = 1): Promise<TitansSave> {
   const current = await loadTitansSave(userHash);
   const fresh = defaultTitansSave();
   return saveTitansSave(userHash, {
     ...fresh,
     gold: fresh.gold + startGold,
+    stage: Math.max(1, Math.floor(startStage)),
+    bestStage: Math.max(1, Math.floor(startStage)),
     acorns: current.acorns,   // 도토리는 환생해도 남는다 — 다시 오를 때 동료에 바로 끼운다
     skillInventory: current.skillInventory,
     totalKills: current.totalKills,
