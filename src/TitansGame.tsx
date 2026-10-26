@@ -80,6 +80,8 @@ import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { ACORN_MAKE_SEC, acornMul, acornName, equipAcorn, freeSlots, mergeAcorns, tickAcorns } from "./titans/acorns";
 import { AcornPanel } from "./titans/AcornPanel";
+import { QuestPanel } from "./titans/QuestPanel";
+import { buyQuest, QUESTS, questBlock, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
 import { grantRelicShards, relicDef, relicIconUrl, relicStars, RELIC_FAMILY_LABEL, RELIC_SET, setActive } from "./titans/relics";
@@ -167,7 +169,7 @@ type TitansGameProps = {
 
 /** 사냥 저장의 숙련 → 파츠 숙련표 (2026-10-14) */
 const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
-type ShopTab = "sword" | "acorn" | "hub" | "expedition" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+type ShopTab = "sword" | "acorn" | "quest" | "hub" | "expedition" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 /**
  * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
@@ -363,6 +365,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [openCard, setOpenCard] = useState<string | null>(null);
   /** 도토리 — 다음 도토리까지 쌓인 초(저장은 하나 만들 때만) · 진행 표시(도토리 탭일 때만 갱신) (2026-10-22 아처 키우기 1번) */
   const acornAccRef = useRef(0);
+  /** 퀘스트 (titans/quests.ts, 2026-10-26) — 주기 진행은 ref 로 돌리고 골드가 들어올 때만 저장 · 화면 막대는 퀘스트 탭일 때만 250ms 마다 */
+  const questAccRef = useRef(0);
+  const questProgRef = useRef<number[]>([]);
+  const [questProg, setQuestProg] = useState<number[]>([]);
+  const [questDone, setQuestDone] = useState<{ rows: number[]; key: number } | null>(null);
   const lightningTapRef = useRef(0);
   /** 전환이 끝나면 부를 spawn(스테이지, 처치 수) — 건너뛰기가 같은 걸 바로 부른다 */
   const pendingSpawnRef = useRef<[number, number] | null>(null);
@@ -1574,6 +1581,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         if (tabRef.current === "acorn" && now - acornProgAtRef.current > 400) {
           acornProgAtRef.current = now;
           setAcornProgress(Math.min(1, (saveRef.current.acorns.acc + acornAccRef.current) / ACORN_MAKE_SEC));
+        }
+        // 퀘스트 — 배속과 무관하게 실제 시간으로 돈다
+        questAccRef.current += dt / Math.max(1, saveRef.current.battleSpeed);
+        if (questAccRef.current >= 0.25) {
+          const add = questAccRef.current;
+          questAccRef.current = 0;
+          if (questProgRef.current.length !== QUESTS.length) questProgRef.current = saveRef.current.quests.prog.slice();
+          const r = tickQuests({ levels: saveRef.current.quests.levels, prog: questProgRef.current }, add);
+          questProgRef.current = r.state.prog;
+          if (r.gold > 0) {
+            const prog = r.state.prog.slice();
+            setSave((prev) => ({ ...prev, gold: prev.gold + r.gold, quests: { levels: prev.quests.levels, prog } }));
+            if (tabRef.current === "quest") setQuestDone({ rows: r.done, key: now });
+          }
+          if (tabRef.current === "quest") setQuestProg(r.state.prog);
         }
       }
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
@@ -3360,6 +3382,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <button type="button" className={tab === "skills" ? "on" : ""} aria-expanded={growthOpen && tab === "skills"} onClick={() => { setGrowthOpen((o) => (tab === "skills" ? !o : true)); setTab("skills"); }}>
           스킬
         </button>
+        {/* 퀘스트 (2026-10-26, "오늘도 환생 2" — 시간마다 골드) — 지금 살 수 있는 줄이 있으면 점 */}
+        <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
+          퀘스트{QUESTS.some((_, i) => questBlock(save.quests, i, save.gold, save.bestStage) === null) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
+        </button>
         <button type="button" className="growth-drawer-close" aria-label="서랍 닫기" onClick={() => setGrowthOpen(false)}>▾</button>
       </div>
 
@@ -3433,6 +3459,29 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           ) : null;
         })()}
       <section className="titans-shop">
+        {tab === "quest" && (
+          <QuestPanel
+            key={questDone?.key ?? 0}
+            state={save.quests}
+            gold={save.gold}
+            bestStage={save.bestStage}
+            prog={questProg.length ? questProg : save.quests.prog}
+            done={questDone?.rows ?? []}
+            onBuy={(i) => {
+              const cur = saveRef.current;
+              const r = buyQuest(cur.quests, i, cur.gold, cur.bestStage);
+              if (!r) {
+                const lv = cur.quests.levels[i];
+                const why = questBlock(cur.quests, i, cur.gold, cur.bestStage);
+                flash(why === "stage" ? `${QUESTS[i].stage}층에 닿으면 열립니다` : why === "cap" ? `레벨 상한 — 사냥터 층이 오르면 더 올릴 수 있어요` : why === "prev" ? "앞 퀘스트를 먼저 여세요" : why === "max" ? "최대 레벨입니다" : `골드가 모자랍니다 — ${formatGold(questCost(i, lv))} 필요`);
+                return;
+              }
+              const lv = saveRef.current.quests.levels[i];
+              setSave((prev) => { const rr = buyQuest(prev.quests, i, prev.gold, prev.bestStage); return rr ? { ...prev, gold: prev.gold - rr.cost, quests: { levels: rr.state.levels, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
+              flash(lv === 0 ? `퀘스트 열림 · ${QUESTS[i].name}` : `${QUESTS[i].name} Lv.${lv + 1} · 한 번에 ${formatGold(questPay(i, lv))} → ${formatGold(questPay(i, lv + 1))}`);
+            }}
+          />
+        )}
         {tab === "acorn" && (
           <AcornPanel
             state={save.acorns}

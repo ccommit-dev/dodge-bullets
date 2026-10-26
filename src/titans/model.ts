@@ -1,5 +1,6 @@
 import { emptyHuntMods, type HuntMods } from "./huntPerks";
 import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
+import { emptyQuests, normalizeQuests, type QuestState } from "./quests";
 import { assetUrl } from "../asset";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
@@ -112,6 +113,8 @@ export type TitansSave = {
   acorns: AcornState;
   /** 탭 번개 강화 단계 (2026-10-22) — 탭 피해 ×(1 + 0.12·단계) · 번개 연출 */
   lightningLevel: number;
+  /** 퀘스트 — 시간마다 골드 (titans/quests.ts, 2026-10-26) · 환생하면 첫 줄 Lv.1 로 */
+  quests: QuestState;
 };
 
 export const MOBS_PER_STAGE = 10;
@@ -310,6 +313,7 @@ export function defaultTitansSave(): TitansSave {
     huntPicks: 0,
     acorns: emptyAcorns(),
     lightningLevel: 0,
+    quests: emptyQuests(),
   };
 }
 
@@ -374,6 +378,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     huntPicks: 0,
     acorns: normalizeAcorns((value as { acorns?: unknown }).acorns),
     lightningLevel: n((value as { lightningLevel?: unknown }).lightningLevel, 0, 500),
+    quests: normalizeQuests((value as { quests?: unknown }).quests),
   };
 }
 

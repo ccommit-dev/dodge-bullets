@@ -234,6 +234,101 @@ def t_relic(_):
     gem('spark', '#ffd34d', Vector((-0.2, -0.08, 0.26)), 0.08)
 
 
+
+# ── 퀘스트 (2026-10-26 — 사냥터 퀘스트 탭 8줄) ──
+WOOD, WOOD_D, BARK = '#b9783a', '#8a5a2b', '#7a4a22'
+
+
+def log(name, a, b, r, cap='#e8c38a'):
+    ob(name, C.tube([a, b], r, seg=8), m('bark', BARK))
+    d = (b - a).normalized()
+    for k, end in enumerate((a, b)):
+        ob(f'{name}_ring{k}', C.ellipsoid(end + d * (0.005 if k else -0.005), (r * 0.92, r * 0.92, r * 0.92)), m('cut', cap), O * 0.5)
+
+
+def q_twigs(_):
+    for k, dx in enumerate((-0.14, 0.0, 0.14, -0.06, 0.07)):
+        a = Vector((dx * 0.5, 0.03 * (k % 3) - 0.03, -0.62)); b = Vector((dx * 2.4, 0.03 * (k % 3) - 0.03, 0.62 - 0.08 * (k % 2)))
+        ob(f'twig{k}', C.tube([a, b], [0.05, 0.035], seg=6), m('twig', WOOD_D))
+        ob(f'leaf{k}', C.ellipsoid(b + Vector((0.07, -0.02, 0.02)), (0.1, 0.03, 0.06), rot=Euler((0, math.radians(-30), 0))), m('leaf', '#6fbf4a'), O * 0.6)
+    ob('tie', C.torus(Vector((0, 0.02, -0.05)), 0.17, 0.04, seg=12, ring=6), m('tie', '#e8452c'))
+
+
+def q_acorns(_):
+    def acorn(at, s):
+        ob('nut', C.ellipsoid(at, (0.2 * s, 0.19 * s, 0.24 * s), egg=-0.25), m('nut', '#c9893a'))
+        cap = C.ellipsoid(at + Vector((0, 0, 0.17 * s)), (0.23 * s, 0.22 * s, 0.12 * s))
+        for v in [v for v in cap.verts if v.co.z < at.z + 0.13 * s]:
+            cap.verts.remove(v)
+        ob('cap', cap, m('cap', '#7a4a22'))
+        ob('stem', C.tube([at + Vector((0, 0, 0.27 * s)), at + Vector((0.04 * s, 0, 0.36 * s))], 0.03 * s, seg=5), m('stem', '#5a3418'), O * 0.6)
+    acorn(Vector((-0.28, 0.05, -0.32)), 1.2)
+    acorn(Vector((0.3, 0.05, -0.32)), 1.15)
+    acorn(Vector((0.0, -0.08, 0.1)), 1.3)
+    ob('base', C.ellipsoid(Vector((0, 0.05, -0.6)), (0.62, 0.32, 0.08)), m('grass', '#7cc04a'))
+
+
+def q_dam_patch(_):
+    for k in range(3):
+        z = -0.45 + k * 0.3
+        log(f'log{k}', Vector((-0.6 + 0.05 * k, 0, z)), Vector((0.6 - 0.05 * k, 0, z)), 0.15)
+    ob('mud', C.ellipsoid(Vector((0.1, -0.14, -0.1)), (0.32, 0.08, 0.22), egg=0.1), m('mud', '#6b4a2f', rough=0.95))
+    ob('trowel', C.box(Vector((0.42, -0.2, 0.3)), (0.24, 0.03, 0.16), rot=Euler((0, math.radians(-25), 0))), metal_m('#a3acb6'))
+    ob('handle', C.tube([Vector((0.5, -0.2, 0.4)), Vector((0.66, -0.2, 0.62))], 0.04, seg=6), m('handle', WOOD))
+
+
+def q_river_patrol(_):
+    ob('tube1', C.tube([Vector((-0.6, 0, -0.3)), Vector((-0.05, 0, 0.0))], [0.14, 0.14], seg=10), metal_m('#c9893a'))
+    ob('tube2', C.tube([Vector((-0.05, 0, 0.0)), Vector((0.35, 0, 0.22))], [0.11, 0.11], seg=10), metal_m('#e8b23a'))
+    ob('tube3', C.tube([Vector((0.35, 0, 0.22)), Vector((0.6, 0, 0.36))], [0.085, 0.085], seg=10), metal_m('#c9893a'))
+    ob('lens', C.ellipsoid(Vector((-0.62, -0.01, -0.31)), (0.12, 0.12, 0.12)), m('lens', '#bfe8ff', rough=0.15, emit='#e8f8ff', es=0.3), O * 0.5)
+    ob('wave', C.tube([Vector((-0.7 + 0.14 * k, -0.1, -0.62 + 0.05 * math.sin(k * 1.6))) for k in range(11)], 0.05, seg=6), m('water', '#4fa8e8'), O * 0.6)
+
+
+def q_log_haul(_):
+    log('log', Vector((-0.6, 0, 0.12)), Vector((0.6, 0, 0.12)), 0.22)
+    ob('cart', C.box(Vector((0, 0, -0.18)), (1.1, 0.5, 0.1)), m('cart', WOOD))
+    for sx in (-1, 1):
+        ob(f'wheel{sx}', C.torus(Vector((sx * 0.38, -0.27, -0.4)), 0.15, 0.05, seg=12, ring=6, rot=Euler((math.radians(90), 0, 0))), m('wheel', WOOD_D))
+        ob(f'hub{sx}', C.ellipsoid(Vector((sx * 0.38, -0.29, -0.4)), (0.06, 0.04, 0.06)), metal_m('#a3acb6'), O * 0.5)
+    ob('rope', C.torus(Vector((0, 0, 0.12)), 0.24, 0.035, seg=12, ring=6, rot=Euler((0, math.radians(90), 0))), m('rope', '#e8d29a'))
+
+
+def q_village_guard(_):
+    ob('shaft', C.tube([Vector((0.3, 0.05, -0.75)), Vector((0.3, 0.05, 0.6))], 0.04, seg=6), m('shaft', WOOD_D))
+    ob('head', C.cone(Vector((0.3, 0.05, 0.72)), 0.1, 0.0, 0.3, seg=4), metal_m('#d4dde6'))
+    ob('flag', C.box(Vector((0.42, 0.05, 0.45)), (0.2, 0.02, 0.14)), m('flag', '#e8452c'), O * 0.6)
+    ob('shield', C.tube([Vector((-0.15, 0.02, -0.05)), Vector((-0.15, -0.1, -0.05))], 0.42, seg=12), m('shield', '#3f7fc4'))
+    ob('rim', C.torus(Vector((-0.15, -0.11, -0.05)), 0.4, 0.045, seg=14, ring=6, rot=Euler((math.radians(90), 0, 0))), metal_m('#e8b23a'))
+    ob('boss', C.ellipsoid(Vector((-0.15, -0.14, -0.05)), (0.1, 0.05, 0.1)), metal_m('#e8b23a'), O * 0.5)
+
+
+def q_dam_road(_):
+    ob('plank', C.box(Vector((-0.1, 0.05, -0.35)), (1.1, 0.3, 0.12), rot=Euler((0, math.radians(-8), 0))), m('plank', '#d9a560'))
+    for k in range(3):
+        ob(f'nail{k}', C.ellipsoid(Vector((-0.5 + 0.35 * k, -0.11, -0.3 + 0.05 * k)), (0.035, 0.03, 0.035)), metal_m('#7c858f'), O * 0.4)
+    r = Euler((0, math.radians(30), 0))
+    ob('hhandle', C.tube([Vector((0.05, -0.05, -0.2)), Vector((0.5, -0.05, 0.62))], 0.05, seg=8), m('handle', WOOD))
+    ob('hhead', C.box(Vector((0.52, -0.05, 0.62)), (0.42, 0.16, 0.16), rot=r), metal_m('#a3acb6'))
+
+
+def q_great_dam(_):
+    for row in range(3):
+        for k in range(4 - row):
+            x = -0.48 + row * 0.16 + k * 0.32
+            z = -0.4 + row * 0.27
+            log(f'l{row}{k}', Vector((x, -0.25, z)), Vector((x, 0.25, z)), 0.13)
+    ob('water', C.ellipsoid(Vector((0, 0.45, -0.25)), (0.7, 0.25, 0.3)), m('water', '#4fa8e8', rough=0.3), O * 0.5)
+    ob('pole', C.tube([Vector((0.45, -0.1, 0.0)), Vector((0.45, -0.1, 0.78))], 0.03, seg=6), m('pole', BARK))
+    ob('pennant', C.box(Vector((0.6, -0.1, 0.66)), (0.28, 0.02, 0.16)), m('flag', '#f2c232'), O * 0.6)
+
+
+QUEST_JOBS = {
+    'quest-twigs': (q_twigs, (-14, 10), 1.7), 'quest-acorns': (q_acorns, (-14, 16), 1.6), 'quest-dam-patch': (q_dam_patch, (-20, 14), 1.7),
+    'quest-river-patrol': (q_river_patrol, (-10, 12), 1.7), 'quest-log-haul': (q_log_haul, (-22, 14), 1.7), 'quest-village-guard': (q_village_guard, (-14, 10), 1.8),
+    'quest-dam-road': (q_dam_road, (-16, 12), 1.7), 'quest-great-dam': (q_great_dam, (-28, 18), 1.7),
+}
+
 JOBS = {
     'ember-ring': (ember_ring, (-18, 14), 1.9), 'flame-feather': (flame_feather, (-12, 10), 2.0), 'lava-heart': (lava_heart, (-16, 12), 1.7),
     'frost-horn': (frost_horn, (-14, 10), 1.9), 'snow-crystal': (snow_crystal, (0, 6), 1.8), 'ice-lantern': (ice_lantern, (-20, 14), 1.8),
@@ -243,6 +338,7 @@ JOBS = {
     'tree-start': (t_start, (-26, 14), 1.8), 'tree-crystal': (t_crystal, (-16, 12), 1.6), 'tree-boss': (t_boss, (-16, 10), 1.7),
     'tree-relic': (t_relic, (-14, 10), 1.6),
 }
+JOBS.update(QUEST_JOBS)
 RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard']
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']
@@ -250,6 +346,8 @@ names = []
 for a in argv:
     if a == 'relics':
         names += RELICS
+    elif a == 'quests':
+        names += list(QUEST_JOBS)
     elif a == 'tree':
         names += [k for k in JOBS if k.startswith('tree-')]
     else:
