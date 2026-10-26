@@ -31,7 +31,7 @@ export function QuestPanel({ state, gold, bestStage, prog, done = [], onBuy }: P
       <header className="quest-head">
         <b>퀘스트</b>
         <span><CurrencyIcon kind="gold" /> 초당 {formatGold(Math.round(perSec))}</span>
-        <small>사냥터가 보이는 동안 저절로 돈다 · 레벨 상한은 층이 오를수록 · Lv {nextMilestone(1)} · 25 · 50 마다 보상 ×2</small>
+        <small>사냥 중 저절로 골드 · Lv {nextMilestone(1)} · 25 · 50 마다 보상 ×2</small>
       </header>
       <ol className="quest-list">
         {QUESTS.map((q, i) => {

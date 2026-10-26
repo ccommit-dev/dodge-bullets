@@ -934,3 +934,22 @@
 }
 /* 비트 멈춤 단추 — .hud 가 pointer-events: none 이라 단추도 이어받아, 폰에서 누르면 아래 캔버스(레인 탭)가 받았다 (2026-10-26 WebKit 실터치 검사) */
 .beat-hud .beat-quit-btn { position: relative; z-index: 6; pointer-events: auto; touch-action: manipulation; }
+
+/* ── 카드 글자 3단 (2026-10-26 사용자: "글이 너무 길고 제목과 설명 음영처리를 다르게") ──
+   제목 = 진한 잉크 900 · 설명 = 옅은 갈색 500 (대비 약 5:1) · 효과/수치 = 노란 칩 · 비용 = 단추 안 작은 글씨.
+   예전엔 제목·설명·효과가 모두 같은 잉크색·굵기라 한 덩어리로 읽혔다 (상점은 효과 줄이 제목보다 컸다) */
+.titans-layer .premium-product-card > div > strong,
+.titans-layer .equipment-training-card > div > strong,
+.mp-relics .relic-tile > b { color: #2b1a0d !important; font-weight: 900 !important; }
+.titans-layer .premium-product-card > div > p,
+.titans-layer .equipment-training-card > div > p,
+.quest-panel .quest-head > small,
+.mp-relics p.relic-how { color: #7f5f3f !important; font-weight: 500 !important; font-size: 13px !important; line-height: 1.35 !important; text-shadow: none !important; }
+.titans-layer .premium-product-card > div > p { margin: 2px 0 0 !important; -webkit-line-clamp: 1 !important; }
+.titans-layer .premium-product-card .shop-lines { display: flex !important; flex-wrap: wrap; gap: 4px; margin-top: 5px; font-size: 0 !important; }
+.titans-layer .premium-product-card .shop-lines > i { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #fff1c2; border: 1px solid rgba(180, 120, 20, .35); color: #8a4b0c !important; font-size: 13px !important; font-weight: 800; font-style: normal; line-height: 1.35; }
+.titans-layer .equipment-training-card > button .btn-cost { display: block; margin-top: 1px; font-size: 13px !important; font-weight: 700; line-height: 1.1; opacity: .85; letter-spacing: 0; }
+/* 유물 — 이름(제목) · 효과(옅은 주황) · 별/미보유(작은 칩) · 세트 설명은 한 줄 아래 옅게 */
+.mp-relics .relic-tile > small { color: #9a5b13 !important; font-weight: 700 !important; font-size: 13px !important; }
+.mp-relics .relic-tile.unowned .relic-stars { display: inline-block; padding: 0 7px; border-radius: 999px; background: rgba(59, 36, 21, .08); color: #7f5f3f !important; font-size: 13px !important; font-weight: 700 !important; }
+.mp-relics .relic-family header .relic-set small { display: block; margin-top: 1px; color: #7f5f3f !important; font-weight: 500 !important; font-size: 13px !important; }

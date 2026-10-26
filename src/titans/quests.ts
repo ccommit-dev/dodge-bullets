@@ -14,7 +14,7 @@ export type QuestDef = { id: string; name: string; sec: number; pay: number; unl
 // (그냥 AdCap 처럼 두면 퀘스트 골드를 다시 퀘스트에 넣는 복리로 5층에서 20분 만에 사냥 골드의 3000배가 됐다 — 그래서 층마다 레벨 상한)
 export const QUESTS: readonly QuestDef[] = [
   { id: "twigs", name: "나뭇가지 줍기", sec: 3, pay: 1, unlock: 10, growth: 1.1, stage: 1 },
-  { id: "acorns", name: "도토리 모으기", sec: 6, pay: 3, unlock: 500, growth: 1.1, stage: 5 },
+  { id: "acorns", name: "나무 열매 모으기", sec: 6, pay: 3, unlock: 500, growth: 1.1, stage: 5 },
   { id: "dam-patch", name: "댐 틈 메우기", sec: 12, pay: 8, unlock: 2_400, growth: 1.1, stage: 10 },
   { id: "river-patrol", name: "강가 순찰", sec: 25, pay: 60, unlock: 11_000, growth: 1.1, stage: 15 },
   { id: "log-haul", name: "통나무 나르기", sec: 50, pay: 900, unlock: 52_000, growth: 1.1, stage: 20 },
