@@ -18,10 +18,12 @@ writeFileSync(entry, [
   `export * as parts from "${root}/src/equipment/parts";`,
   `export * as skills from "${root}/src/game/skills";`,
   `export * as gacha from "${root}/src/titans/gacha";`,
+  `export * as allies from "${root}/src/titans/allies";`,
+  `export * as catalog from "${root}/src/economy/productCatalog";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": '"false"' } });
-const { relics: R, forge: F, parts: P, skills: S, gacha: G } = await import(pathToFileURL(out).href);
+const { relics: R, forge: F, parts: P, skills: S, gacha: G, allies: A, catalog: CAT } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const PRINT = process.argv.includes("--print");
@@ -51,7 +53,13 @@ const days = (draws) => (draws * tenUnit) / GEMS_PER_DAY;
 const all5 = R.RELICS.length * R.RELIC_SHARDS_PER_STAR * R.RELIC_MAX_STAR;
 const relicRow = { firstSetDraws: mean(firstSet).toFixed(1), firstSetDays: days(mean(firstSet)).toFixed(1), allOneDraws: mean(allOne).toFixed(1), allOneDays: days(mean(allOne)).toFixed(1), all5Draws: all5, all5Days: days(all5).toFixed(0), tenUnit, allySingle: G.GACHA.singleCost };
 if (PRINT) console.log("relic", JSON.stringify(relicRow));
-// 기준: 동료 1회(100)보다 싸고(조각 하나는 ★ 의 1/3), 무과금 첫 세트 2~4주 · 9종 ★1 1~3달 · 전부 ★5 는 3달 이상(긴 소비처 — 대장 재처치 드랍은 따로 더 준다)
+// 기준은 게임 안 숫자에서 온다 — 상점 "성급 조각 선택팩"(원하는 동료 조각 10개 = 120 보석)으로 동료 첫 승급(★1→★2 조각 20) = 240 보석.
+// 유물 ★ 하나(조각 3개)는 무엇이 나올지 못 고르니 이보다 싸야 하고, 같은 보석 소비처로서 너무 싸지 않게 그 절반 이상.
+const pack = CAT.GEM_PRODUCTS.find((x) => x.id === "shard-pack");
+const allyStarGems = (pack.gemCost / 10) * A.STAR_SHARD_COST[1];
+const relicStarGems = R.RELIC_DRAW.singleCost * R.RELIC_SHARDS_PER_STAR;
+ok("유물 ★ 하나는 고르는 동료 첫 승급(조각팩)보다 싸고 그 절반 이상", relicStarGems < allyStarGems && relicStarGems >= allyStarGems / 2, `유물 ★ ${relicStarGems} · 동료 ★2 ${allyStarGems} 보석`);
+// 아래 일수는 참고(무과금 하루 약 38.6 보석) — 첫 세트 2~4주 · 9종 ★1 1~3달 · 전부 ★5 는 3달 이상(긴 소비처 · 대장 재처치 드랍은 따로)
 ok("유물 한 조각은 동료 1회보다 싸다", R.RELIC_DRAW.singleCost < G.GACHA.singleCost && R.RELIC_DRAW.tenCost === R.RELIC_DRAW.singleCost * 9, `조각 ${R.RELIC_DRAW.singleCost} · 10회 ${R.RELIC_DRAW.tenCost} · 동료 ${G.GACHA.singleCost}`);
 ok("무과금 첫 세트 14~28일", days(mean(firstSet)) >= 14 && days(mean(firstSet)) <= 28, `${relicRow.firstSetDraws}회 · ${relicRow.firstSetDays}일`);
 ok("무과금 9종 ★1 30~90일", days(mean(allOne)) >= 30 && days(mean(allOne)) <= 90, `${relicRow.allOneDraws}회 · ${relicRow.allOneDays}일`);
@@ -82,11 +90,19 @@ for (const [name, max, costOf] of [["장비 +10", P.GEAR_ENHANCE_MAX, gearCost],
   }
 }
 if (PRINT) console.log("forge", JSON.stringify(rows, null, 1));
-// 기준: 끝까지 올리는 기대 비용은 예전의 2~3.5배(파괴가 실제로 아프되 끝없이 늘지 않게) · 운 나쁜 10% 도 6배 안 · 방지권 3장이면 기대 비용 2.5배 안
+// 기준은 게임 안 두 위험 강화에서 온다 — 대장간 북(실패 = 파괴 +0, FORGE_TIERS) 과 보호구(실패 = 1단계 하락, ForgeGame armorChance 와 같은 식).
+// 사용자 요청 "무기처럼 파괴" → 북의 앞 구간(+5까지)만큼은 아프고, 이미 있는 보호구 규칙보다는 순해야 한다(장비 · 원정 무기는 사냥 · 성문 방어 진행에 바로 걸린다).
+const drumTo = (target) => { const flatD = F.FORGE_TIERS.slice(0, target).reduce((a, t) => a + t.cost, 0); const xs = []; for (let k = 0; k < 2000; k++) { let lv = 0, g = 0, n = 0; while (lv < target && n < 1e6) { n += 1; g += F.FORGE_TIERS[lv].cost; if (rng() < F.FORGE_TIERS[lv].chance) lv += 1; else lv = 0; } xs.push(g / flatD); } return mean(xs); };
+const drum5 = drumTo(5);
+const armChance = (lv) => Math.max(0.38, 0.94 - lv * 0.045), armCost = (lv) => Math.floor(500 * Math.pow(1.72, lv));
+const armFlat = Array.from({ length: 15 }, (_, l) => armCost(l)).reduce((a, b) => a + b, 0);
+const armOldRuns = Array.from({ length: 3000 }, () => { let lv = 0, g = 0; while (lv < 15) { g += armCost(lv); if (rng() < armChance(lv)) lv += 1; else lv = Math.max(0, lv - 1); } return g / armFlat; });
+const armorRuleX = mean(armOldRuns), armorRuleP90 = pct(armOldRuns, 0.9);
+if (PRINT) console.log("anchors", JSON.stringify({ drumTo5: drum5.toFixed(2), armorRuleX: armorRuleX.toFixed(2), armorRuleP90: armorRuleP90.toFixed(2) }));
 for (const name of ["장비 +10", "원정 무기 +20"]) {
   const a = rows[`${name} 방지권0`], b = rows[`${name} 방지권3`];
-  ok(`${name}: 방지권 없이 기대 골드 ×2~3.5 · 하위 10% ×6 안`, a.goldX >= 2 && a.goldX <= 3.5 && a.goldP90X <= 6, `×${a.goldX} (P90 ×${a.goldP90X}) · 강화석 ×${a.stonesX} · 한 번이라도 파괴 ${Math.round(a.anyDestroy * 100)}%`);
-  ok(`${name}: 방지권 3장이면 기대 골드 ×2.5 안`, b.goldX <= 2.5, `×${b.goldX} · 파괴 ${Math.round(b.anyDestroy * 100)}%`);
+  ok(`${name}: 기대 골드가 북 +5 (×${drum5.toFixed(1)}) 이상 · 보호구 하락 규칙 (×${armorRuleX.toFixed(1)}) 이하 · 하위 10% 도 보호구(×${armorRuleP90.toFixed(1)}) 이하`, a.goldX >= drum5 && a.goldX <= armorRuleX && a.goldP90X <= armorRuleP90, `×${a.goldX} (P90 ×${a.goldP90X}) · 강화석 ×${a.stonesX} · 한 번이라도 파괴 ${Math.round(a.anyDestroy * 100)}%`);
+  ok(`${name}: 방지권을 쓰면 확실히 덜 아프다(3장 → 기대 골드가 없을 때보다 낮음)`, Number(b.goldX) < Number(a.goldX) && b.anyDestroy < a.anyDestroy, `×${b.goldX} · 파괴 ${Math.round(b.anyDestroy * 100)}%`);
 }
 // 보호구 (+15): 예전 = 실패하면 1단계 하락 · 지금 = 그중 enhanceRisk(lv,15).destroy 만큼 +0. 성공은 ForgeGame armorChance 와 같은 식
 const armorChance = (lv) => Math.max(0.38, 0.94 - lv * 0.045);

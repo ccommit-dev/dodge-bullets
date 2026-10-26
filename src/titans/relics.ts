@@ -141,7 +141,8 @@ export function relicIconUrl(id: RelicId): string {
  * 상점 유물 뽑기 (2026-10-26, 사용자: "유물은 상점에서 뽑을 수 있게 UI 및 시스템 추가").
  * 한 번 = 조각 1개. 아직 다 모으지 않은 유물 중 **균등 확률**(확률 공시 그대로 — grantRelicShards 의 "모으던 것부터" 몰아주기와 다르다).
  * 10회는 10% 싸다. 모든 유물이 ★5 면 뽑을 수 없다.
- * 가격은 scripts/verify-relic-forge-econ.mjs 로 맞췄다 — 동료 1회(100)보다 싼 조각 하나 · 무과금(하루 약 38.6 보석) 첫 세트 약 24일 ·
+ * 가격 기준은 게임 안 숫자(scripts/verify-relic-forge-econ.mjs): 유물 ★ 하나(조각 3 = 180 보석)는 무엇이 나올지 못 고르니 상점 조각팩으로
+ * 고르는 동료 첫 승급(조각 20 = 240 보석)보다 싸고 그 절반 이상. 참고로 무과금(하루 약 38.6 보석) 첫 세트 약 24일 ·
  * 9종 ★1 약 46일 · 전부 ★5 약 115일(대장 재처치 드랍은 따로).
  */
 export const RELIC_DRAW = { singleCost: 60, tenCost: 540 } as const;
