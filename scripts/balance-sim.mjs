@@ -291,6 +291,8 @@ function simulate(kind) {
         wallStreak = 0;
         wallSet.clear();
         p.inheritanceCrystals += Math.max(3, Math.floor(Math.sqrt(p.titanBestStage) * 3));
+        // 2026-10-26 결정 강화 트리 — 결정은 써야 효과가 난다. 시뮬은 예전과 같게 방치 효율 줄(결정 2 = +0.04)에 넣는다 (공격력 · 시작 스테이지 줄은 playTitans 밖이라 미반영)
+        p.crystalTree = { ...p.crystalTree, idle: Math.min(60, Math.floor(p.inheritanceCrystals / 2)) };
         p.rebirthCount += 1;
         rebirths += 1;
         titansState.stage = 1;
