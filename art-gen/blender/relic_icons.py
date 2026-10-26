@@ -117,15 +117,13 @@ def ice_lantern(_):
 
 # ── 황금 계열 ──
 def golden_acorn(_):
-    ob('nut', C.ellipsoid(Vector((0, 0, -0.18)), (0.4, 0.38, 0.48), egg=-0.25), metal_m('#f2c232'))
-    ob('shine', C.ellipsoid(Vector((-0.16, -0.3, -0.05)), (0.07, 0.03, 0.12)), m('shine', '#fff7c0', rough=0.3, emit='#fff7c0', es=0.6), 0)
-    cap = C.ellipsoid(Vector((0, 0, 0.22)), (0.46, 0.44, 0.24))
-    for v in [v for v in cap.verts if v.co.z < 0.14]:
-        cap.verts.remove(v)
-    ob('cap', cap, m('cap', '#b5762e'))
-    ob('rim', C.torus(Vector((0, 0, 0.16)), 0.44, 0.05, seg=14, ring=6), m('cap', '#9a6234'))
-    ob('stem', C.tube([Vector((0, 0, 0.42)), Vector((0.08, 0, 0.6))], 0.05, seg=6), m('stem', '#7a4a22'))
-    gem('g', '#4fd8ff', Vector((0.0, -0.4, -0.2)), 0.07)
+    # 황금 열매 (2026-10-26 — 도토리 콘텐츠 삭제에 맞춰 이름 · 그림을 도토리 → 둥근 황금 열매로. id 는 저장 호환으로 그대로)
+    ob('fruit', C.ellipsoid(Vector((0, 0, -0.12)), (0.5, 0.48, 0.48)), metal_m('#f2c232'))
+    ob('dimple', C.ellipsoid(Vector((0, 0, 0.32)), (0.12, 0.12, 0.05)), metal_m('#c98a12'), O * 0.5)
+    ob('shine', C.ellipsoid(Vector((-0.2, -0.38, 0.05)), (0.08, 0.03, 0.14)), m('shine', '#fff7c0', rough=0.3, emit='#fff7c0', es=0.6), 0)
+    ob('stem', C.tube([Vector((0, 0, 0.3)), Vector((0.06, 0, 0.56))], 0.05, seg=6), m('stem', '#7a4a22'))
+    ob('leaf', C.ellipsoid(Vector((0.26, 0.0, 0.52)), (0.24, 0.05, 0.1)), m('leaf', '#5fae3a'))
+    gem('g', '#4fd8ff', Vector((0.0, -0.47, -0.16)), 0.07)
 
 
 def lucky_coin(_):
@@ -322,6 +320,37 @@ def q_great_dam(_):
     ob('pennant', C.box(Vector((0.6, -0.1, 0.66)), (0.28, 0.02, 0.16)), m('flag', '#f2c232'), O * 0.6)
 
 
+# ── 재화 아이콘 (2026-10-26 사용자: "붉은 보석, 강화석도 UI 가 너무 복잡해 조금 더 단순하게" · "성장은 도토리인데 골드로" — 골드가 도토리 그림이었다)
+# 장식 테두리 없이 물건 하나 — 금화 한 닢 · 루비 한 알 · 푸른 결정 하나. → public/ui/attendance/{gold,gem,enhance-stone}.png (128²)
+def cur_gold(_):
+    ob('coin', C.tube([Vector((0, 0.07, 0)), Vector((0, -0.07, 0))], 0.66, seg=16), metal_m('#f2c232'))
+    ob('rim', C.torus(Vector((0, -0.075, 0)), 0.58, 0.05, seg=16, ring=6, rot=Euler((math.radians(90), 0, 0))), metal_m('#d99a14'))
+    ob('face', C.tube([Vector((0, -0.07, 0)), Vector((0, -0.1, 0))], 0.4, seg=16), metal_m('#ffd95a'), O * 0.6)
+    ob('shine', C.ellipsoid(Vector((-0.2, -0.12, 0.2)), (0.07, 0.02, 0.12)), m('shine', '#fff7c0', rough=0.3, emit='#fff7c0', es=0.7), 0)
+
+
+def cur_gem(_):
+    saved = C.FACET
+    C.FACET = 8
+    ob('crown', C.cone(Vector((0, 0, 0.16)), 0.6, 0.36, 0.3, seg=8), m('ruby', '#e0283c', rough=0.25, emit='#ff4a5a', es=0.25))
+    ob('pavilion', C.cone(Vector((0, 0, -0.3)), 0.0, 0.6, 0.62, seg=8), m('ruby_d', '#b81428', rough=0.25, emit='#e0283c', es=0.2))
+    ob('table', C.cone(Vector((0, 0, 0.32)), 0.36, 0.36, 0.02, seg=8), m('ruby_t', '#ff6070', rough=0.2, emit='#ff8a96', es=0.35), 0)
+    C.FACET = saved
+
+
+def cur_stone(_):
+    saved = C.FACET
+    C.FACET = 6
+    ob('body', C.cone(Vector((0, 0, -0.14)), 0.46, 0.46, 0.62, seg=6), m('crys', '#3fb6f0', rough=0.25, emit='#7fd8ff', es=0.3))
+    ob('tip', C.cone(Vector((0, 0, 0.36)), 0.46, 0.0, 0.4, seg=6), m('crys_t', '#8ae4ff', rough=0.2, emit='#b8f0ff', es=0.4))
+    ob('base', C.ellipsoid(Vector((0, 0.05, -0.5)), (0.62, 0.34, 0.08)), m('rock', '#8a7a6a', rough=0.95))
+    C.FACET = saved
+
+
+CUR_JOBS = {
+    'cur-gold': (cur_gold, (-18, 8), 1.6), 'cur-gem': (cur_gem, (-14, 18), 1.6), 'cur-stone': (cur_stone, (-16, 10), 1.6),
+}
+
 QUEST_JOBS = {
     'quest-twigs': (q_twigs, (-14, 10), 1.7), 'quest-acorns': (q_acorns, (-14, 16), 1.6), 'quest-dam-patch': (q_dam_patch, (-20, 14), 1.7),
     'quest-river-patrol': (q_river_patrol, (-10, 12), 1.7), 'quest-log-haul': (q_log_haul, (-22, 14), 1.7), 'quest-village-guard': (q_village_guard, (-14, 10), 1.8),
@@ -338,6 +367,7 @@ JOBS = {
     'tree-relic': (t_relic, (-14, 10), 1.6),
 }
 JOBS.update(QUEST_JOBS)
+JOBS.update(CUR_JOBS)
 RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard']
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']

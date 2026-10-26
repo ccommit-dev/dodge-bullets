@@ -93,6 +93,8 @@ p = await prog();
 const shardTotal = Object.values(p.relics ?? {}).reduce((a, b) => a + b, 0);
 ok("이미 잡아 본 높이의 대장 처치 → '유물 조각' 팝업 · 조각 +1(새 유물부터)", pops.some((t) => /유물/.test(t)) && shardTotal === 10, `${pops.filter((t) => /유물/.test(t)).join(" | ")} · ${JSON.stringify(p.relics)}`);
 ok("유물 팝업에 유물 아이콘(떠 있는 동안 DOM 확인)", relicIcon);
+// 화상은 0.6초마다 모아서 뜬다 — 대장이 빨리 죽어 유물 팝업이 먼저 오면 아직 한 번도 안 떴을 수 있어(전체 검사에서 1/2 흔들림), 뜰 때까지 최대 6초 더 싸운다
+for (let i = 0; i < 50 && !(await page.evaluate(() => window.__burn)); i += 1) { await page.keyboard.press("Space"); await sleep(120); }
 ok("불 세트 → 전투 중 '화상' 숫자", (await page.evaluate(() => window.__burn)) >= 1, `화상 ${await page.evaluate(() => window.__burn)}`);
 await page.evaluate(() => { Math.random = window.__rand; });
 
