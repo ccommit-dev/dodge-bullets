@@ -7,6 +7,8 @@ import {
   defaultForgeSave,
   effectiveChance,
   effectiveSell,
+  enhanceRisk,
+  rollEnhance,
   formatGold,
   protectionCost,
   reforgeChance,
@@ -163,6 +165,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const armorMaterialNeed = save.armorLevel < 5 ? 1 : 2 + Math.floor((save.armorLevel - 5) / 4);
   const armorBeatNeed = save.armorLevel < 5 ? 0 : 1 + Math.floor((save.armorLevel - 5) / 5);
   const armorChance = Math.max(.38, .94 - save.armorLevel * .045);
+  /** 방지권 없이 실패했을 때 그중 파괴(+0) 비율 — 장비 · 원정 무기와 같은 곡선 (forge/model enhanceRisk) */
+  const armorDestroy = enhanceRisk(save.armorLevel, 15).destroy;
   const armorSell = save.armorLevel <= 0 ? 0 : Math.floor(armorCost * .72);
   const swordStyle = useMemo(
     () =>
@@ -195,27 +199,45 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
    */
   const upgradeExpWeapon = async (kind: keyof WeaponForgeLevels) => {
     const lv = expForge[kind];
-    if (lv >= WEAPON_FORGE_MAX) return;
+    if (lv >= WEAPON_FORGE_MAX || phase !== "idle") return;
     const cost = weaponForgeCost(lv + 1);
     if (coins < cost.gold || materials < cost.stones) return;
+    // 2026-10-26: 확정 강화 → 무기처럼 성공 확률 · 파괴 확률 (forge/model enhanceRisk)
+    const outcome = rollEnhance(enhanceRisk(lv, WEAPON_FORGE_MAX));
+    const shielded = outcome === "destroy" && save.tickets > 0;
+    const destroyed = outcome === "destroy" && !shielded;
+    if (shielded) setSave((prev) => ({ ...prev, tickets: Math.max(0, prev.tickets - 1) }));
     let done = false;
     const next = await updateCharacterProgress(userHash, (current) => {
       const now = current.expeditionWeaponForge[kind];
       const c = weaponForgeCost(now + 1);
       if (now >= WEAPON_FORGE_MAX || current.sharedCoins < c.gold || current.enhancementMaterials < c.stones) return current;
       done = true;
+      const after = outcome === "success" ? now + 1 : destroyed ? 0 : now;
       return {
         ...current,
         sharedCoins: current.sharedCoins - c.gold,
-        enhancementMaterials: current.enhancementMaterials - c.stones,
-        expeditionWeaponForge: { ...current.expeditionWeaponForge, [kind]: now + 1 },
+        enhancementMaterials: current.enhancementMaterials - c.stones + (destroyed ? now : 0),
+        expeditionWeaponForge: { ...current.expeditionWeaponForge, [kind]: after },
         lastContent: "forge",
       };
     });
     setCoins(next.sharedCoins);
     setMaterials(next.enhancementMaterials);
     setExpForge(next.expeditionWeaponForge);
-    if (done) flashToast(`${kind === "bow" ? "원정 장궁" : "수정 지팡이"} +${next.expeditionWeaponForge[kind]} 강화 성공`);
+    if (!done) return;
+    const name = kind === "bow" ? "원정 장궁" : "수정 지팡이";
+    riskFeedback(`weapon-${kind}`, outcome, shielded, `${name} +${next.expeditionWeaponForge[kind]} 강화 성공`, name, lv);
+  };
+
+  /** 보호구 · 장비 · 원정 무기 강화 결과 알림 — 실패는 금만, 파괴는 줄이 흔들리며 +0 (방지권이 막으면 금만) */
+  const [riskHit, setRiskHit] = useState<{ key: string; kind: "fail" | "destroy" | "shield"; seq: number } | null>(null);
+  const riskFeedback = (key: string, outcome: "success" | "fail" | "destroy", shielded: boolean, okText: string, name: string, lv: number) => {
+    if (outcome === "success") { flashToast(okText); return; }
+    const kind = outcome === "fail" ? "fail" : shielded ? "shield" : "destroy";
+    setRiskHit((h) => ({ key, kind, seq: (h?.seq ?? 0) + 1 }));
+    haptic(kind === "destroy" ? "heavy" : "hit");
+    flashToast(kind === "fail" ? `${name} 강화 실패 · +${lv} 유지` : kind === "shield" ? `${name} 파괴 위기 · 방지권 1장으로 막음` : `${name} 파괴! +${lv} → +0 · 강화석 +${lv} 환급`);
   };
 
   /** 한 단계 되돌리기 — 올릴 때 낸 골드(tierAt(level-1).cost)와 강화석 1을 그대로 돌려준다 */
@@ -464,21 +486,28 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   };
 
   const enhanceGear = async (part: GearPart) => {
-    const cost = gearEnhanceCost(gearEnh[part]);
+    const lv = gearEnh[part];
+    const cost = gearEnhanceCost(lv);
     if (!cost || coins < cost.coins || materials < cost.materials || phase !== "idle") return;
+    // 2026-10-26: 실패·하락 없던 장비 강화 → 무기처럼 성공 확률 · 파괴 확률
+    const outcome = rollEnhance(enhanceRisk(lv, GEAR_ENHANCE_MAX));
+    const shielded = outcome === "destroy" && save.tickets > 0;
+    const destroyed = outcome === "destroy" && !shielded;
+    if (shielded) setSave((prev) => ({ ...prev, tickets: Math.max(0, prev.tickets - 1) }));
     setCoins((v) => v - cost.coins);
-    setMaterials((v) => v - cost.materials);
+    setMaterials((v) => v - cost.materials + (destroyed ? lv : 0));
     const next = await updateCharacterProgress(userHash, (current) => {
       const ge = current.gearEnhance ?? emptyGearLevels();
-      return { ...current, sharedCoins: Math.max(0, current.sharedCoins - cost.coins), enhancementMaterials: Math.max(0, current.enhancementMaterials - cost.materials), gearEnhance: { ...ge, [part]: Math.min(GEAR_ENHANCE_MAX, ge[part] + 1) }, lastContent: "forge" };
+      const after = outcome === "success" ? Math.min(GEAR_ENHANCE_MAX, ge[part] + 1) : destroyed ? 0 : ge[part];
+      return { ...current, sharedCoins: Math.max(0, current.sharedCoins - cost.coins), enhancementMaterials: Math.max(0, current.enhancementMaterials - cost.materials + (destroyed ? ge[part] : 0)), gearEnhance: { ...ge, [part]: after }, lastContent: "forge" };
     });
     setGearEnh(next.gearEnhance);
-    setGearFlash((n) => n + 1);
-    flashToast(`${GEAR_PART_DEF[part].name} 강화 성공 +${next.gearEnhance[part]}`);
+    if (outcome === "success") setGearFlash((n) => n + 1);
+    riskFeedback(`gear-${part}`, outcome, shielded, `${GEAR_PART_DEF[part].name} 강화 성공 +${next.gearEnhance[part]}`, GEAR_PART_DEF[part].name, lv);
   };
 
   /** 견갑 강화 실패 연출 — seq 가 바뀔 때마다 다시 튼다 */
-  const [armorFail, setArmorFail] = useState<{ seq: number; protectedBy: boolean } | null>(null);
+  const [armorFail, setArmorFail] = useState<{ seq: number; protectedBy: boolean; destroyed?: boolean } | null>(null);
   useEffect(() => {
     if (!armorFail) return;
     const t = window.setTimeout(() => setArmorFail(null), 1400);
@@ -492,15 +521,19 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     setPhase("forging");
     await updateCharacterProgress(userHash, (current) => ({ ...current, sharedCoins:Math.max(0,current.sharedCoins-armorCost), enhancementMaterials:Math.max(0,current.enhancementMaterials-armorMaterialNeed), shoulderShards:Math.max(0,current.shoulderShards-armorBeatNeed), lastContent:"forge" }));
     timerRef.current = window.setTimeout(() => {
-      const success = Math.random() < armorChance;
-      setSave((current) => ({ ...current, tickets:!success&&current.tickets>0?current.tickets-1:current.tickets, armorAttempts:current.armorAttempts+1, armorLevel:success?Math.min(15,current.armorLevel+1):!success&&current.tickets<=0?Math.max(0,current.armorLevel-1):current.armorLevel, bestArmorLevel:success?Math.max(current.bestArmorLevel,current.armorLevel+1):current.bestArmorLevel }));
+      // 파괴 (2026-10-26, 사용자: "보호구도 무기처럼 파괴 확률") — 장비 · 원정 무기와 같은 한 번 굴림(rollEnhance).
+      // 방지권이 있으면 실패 · 파괴 모두 단계 보호, 없으면 파괴는 +0 · 그냥 실패는 예전처럼 1단계 하락
+      const outcome = rollEnhance({ success: armorChance, destroy: armorDestroy });
+      const success = outcome === "success";
+      const destroyed = outcome === "destroy" && save.tickets <= 0;
+      setSave((current) => ({ ...current, tickets:!success&&current.tickets>0?current.tickets-1:current.tickets, armorAttempts:current.armorAttempts+1, armorLevel:success?Math.min(15,current.armorLevel+1):destroyed?0:!success&&current.tickets<=0?Math.max(0,current.armorLevel-1):current.armorLevel, bestArmorLevel:success?Math.max(current.bestArmorLevel,current.armorLevel+1):current.bestArmorLevel }));
       setPhase(success ? "success" : "idle");
       // 실패 = 견갑이 금 가며 조각이 튄다 (2026-10-26, 사용자: "깨지는 게 없음") — 방지권으로 막았으면 금만 가고, 없으면 깨지며 한 단계 내려간다
       if (!success) {
-        setArmorFail((f) => ({ seq: (f?.seq ?? 0) + 1, protectedBy: save.tickets > 0 }));
+        setArmorFail((f) => ({ seq: (f?.seq ?? 0) + 1, protectedBy: save.tickets > 0, destroyed }));
         haptic(save.tickets > 0 ? "hit" : "heavy");   // 모바일 손맛 — 깨질 땐 묵직하게 (안드로이드만, iOS 는 조용히 무시)
       }
-      flashToast(success ? `보호구 강화 성공 +${save.armorLevel+1}` : save.tickets>0 ? "보호구 강화 실패 · 방지권으로 단계 보호" : "보호구 강화 실패 · 1단계 하락");
+      flashToast(success ? `보호구 강화 성공 +${save.armorLevel+1}` : save.tickets>0 ? "보호구 강화 실패 · 방지권으로 단계 보호" : destroyed ? `보호구 파괴! +${save.armorLevel} → +0` : "보호구 강화 실패 · 1단계 하락");
       timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
     }, FORGE_MS);
   };
@@ -751,19 +784,20 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             /* 장비 강화 — 사냥터 장비 성장의 파츠 4종. 실패·하락 없음(카피바라 장비처럼 재료만 모으면 오른다) · 숙련 효과 +10%/강화 · 그림 티어 +1 나무 · +5 철 · +10 금 */
             <section className="forge-panel gear-forge-panel" aria-label="장비 강화">
               <ForgeShowcase src={assetUrl(`titans/gear/${selGear}-${Math.max(1, gearTierOfEnhance(gearEnh[selGear]))}.png`)} level={gearEnh[selGear]} name={GEAR_PART_DEF[selGear].name} tier={Math.max(1, gearTierOfEnhance(gearEnh[selGear])) as 1 | 2 | 3} flash={gearFlash} />
-              <p className="gear-forge-note">사냥터 <b>장비 성장</b>에서 숙련을 올리고, 여기서 강화하면 효과가 강화 1단계마다 10% 커집니다.</p>
+              <p className="gear-forge-note">강화 1단계마다 효과 +10% · 높은 단계는 실패 · 파괴(+0) 확률이 있어요 — 방지권이 있으면 파괴를 막습니다 ({save.tickets}장)</p>
               {GEAR_PARTS.map((part) => {
                 const def = GEAR_PART_DEF[part];
                 const lv = gearEnh[part];
                 const cost = gearEnhanceCost(lv);
                 const can = !!cost && coins >= cost.coins && materials >= cost.materials && phase === "idle";
                 return (
-                  <article key={part} className={`gear-forge-row gear-${part} ${selGear === part ? "on" : ""}`} data-gear-part={part} onClick={() => setSelGear(part)}>
+                  <article key={riskHit?.key === `gear-${part}` ? `${part}-${riskHit.seq}` : part} className={`gear-forge-row gear-${part} ${selGear === part ? "on" : ""} ${riskHit?.key === `gear-${part}` ? `risk-${riskHit.kind}` : ""}`} data-gear-part={part} onClick={() => setSelGear(part)}>
                     <img src={assetUrl(`titans/gear/${part}-${Math.max(1, gearTierOfEnhance(lv))}.png`)} alt="" aria-hidden="true" />
                     <div>
                       <strong>{def.name} +{lv}</strong>
                       <small>{def.stat} 효과 ×{(1 + 0.1 * lv).toFixed(1)}{cost ? ` → ×${(1 + 0.1 * (lv + 1)).toFixed(1)}` : " (최대)"}</small>
                       {cost && <small>{formatGold(cost.coins)}G · 강화석 {cost.materials}개</small>}
+                      {cost && <small className="forge-risk">성공 {Math.round(enhanceRisk(lv, GEAR_ENHANCE_MAX).success * 100)}%{enhanceRisk(lv, GEAR_ENHANCE_MAX).destroy > 0 ? ` · 실패 시 파괴 ${Math.round(enhanceRisk(lv, GEAR_ENHANCE_MAX).destroy * 100)}%` : ""}</small>}
                     </div>
                     <button type="button" className="forge-button" disabled={!can} onClick={(e) => { e.stopPropagation(); setSelGear(part); void enhanceGear(part); }}>{cost ? "강화" : "최대"}</button>
                   </article>
@@ -773,7 +807,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           ) : view === "weapons" ? (
             <section className="forge-expweapons">
               <ForgeShowcase src={assetUrl(`titans/gear/${selWeapon}-${expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1}.png`)} level={expForge[selWeapon]} name={selWeapon === "bow" ? "원정 장궁" : "수정 지팡이"} tier={(expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1) as 1 | 2 | 3} flash={gearFlash} />
-              <p className="forge-note">성문 방어의 무기 — 강화는 확정(실패·파괴 없음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>
+              <p className="forge-note">성문 방어의 무기 — 높은 단계는 실패 · 파괴(+0) 확률이 있어요(방지권 {save.tickets}장이 파괴를 막음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>
               {(["bow", "staff"] as const).map((kind) => {
                 const lv = expForge[kind];
                 const maxed = lv >= WEAPON_FORGE_MAX;
@@ -782,7 +816,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 const family = kind === "bow" ? "physical" : "magic";
                 const weapons = EXPEDITION_SKILLS.filter((d) => d.family === family).map((d) => d.weapon);
                 return (
-                  <article key={kind} className={`forge-expweapon ${kind} ${selWeapon === kind ? "on" : ""}`} onClick={() => setSelWeapon(kind)}>
+                  <article key={riskHit?.key === `weapon-${kind}` ? `${kind}-${riskHit.seq}` : kind} className={`forge-expweapon ${kind} ${selWeapon === kind ? "on" : ""} ${riskHit?.key === `weapon-${kind}` ? `risk-${riskHit.kind}` : ""}`} onClick={() => setSelWeapon(kind)}>
                     <img src={assetUrl(`dodge/weapons/icon-${kind}.png`)} alt="" aria-hidden="true" />
                     <div>
                       <strong>{kind === "bow" ? "원정 장궁" : "수정 지팡이"} +{lv}</strong>
@@ -791,6 +825,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                         피해 ×{weaponForgeDamageMul(lv).toFixed(2)}{maxed ? "" : ` → ×${weaponForgeDamageMul(lv + 1).toFixed(2)}`} · 재사용 ×{weaponForgeCooldownMul(lv).toFixed(3)}{maxed ? "" : ` → ×${weaponForgeCooldownMul(lv + 1).toFixed(3)}`}
                       </p>
                       <p className={`forge-expweapon-cost ${can ? "" : "short"}`}>{maxed ? "최대 강화" : `골드 ${formatGold(cost.gold)} · 강화석 ${cost.stones} (보유 ${materials})`}</p>
+                      {!maxed && <p className="forge-risk">성공 {Math.round(enhanceRisk(lv, WEAPON_FORGE_MAX).success * 100)}%{enhanceRisk(lv, WEAPON_FORGE_MAX).destroy > 0 ? ` · 실패 시 파괴 ${Math.round(enhanceRisk(lv, WEAPON_FORGE_MAX).destroy * 100)}%` : ""}</p>}
                     </div>
                     <button type="button" className="forge-button" disabled={!can} onClick={(e) => { e.stopPropagation(); setSelWeapon(kind); setGearFlash((n) => n + 1); void upgradeExpWeapon(kind); }}>
                       {maxed ? "최대" : "강화"}
@@ -893,7 +928,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                     {!armorFail.protectedBy && Array.from({ length: 10 }, (_, i) => <i key={i} className="armor-shard" style={{ "--a": `${i * 36 + (i % 2) * 14}deg`, "--d": `${70 + ((i * 23) % 60)}px`, "--r": `${(i % 2 ? 1 : -1) * (120 + i * 30)}deg` } as CSSProperties} />)}
                   </div>
                 )}
-                {armorFail && <div key={`t${armorFail.seq}`} className={`forge-impact fail ${armorFail.protectedBy ? "protected" : "drop"}`}>{armorFail.protectedBy ? "FAIL · 방지권 보호" : "BREAK! −1 단계"}</div>}
+                {armorFail && <div key={`t${armorFail.seq}`} className={`forge-impact fail ${armorFail.protectedBy ? "protected" : "drop"}`}>{armorFail.protectedBy ? "FAIL · 방지권 보호" : armorFail.destroyed ? "파괴! +0" : "BREAK! −1 단계"}</div>}
               </section>
 
               <section className="forge-panel armor-panel">
@@ -902,12 +937,12 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   <div>
                     <span>성공 확률</span>
                     <strong>{save.armorLevel >= 15 ? "—" : `${Math.round(armorChance * 100)}%`}</strong>
-                    {save.armorLevel < 15 && <small>강화석 {armorMaterialNeed}개{armorBeatNeed > 0 ? ` · 견갑 조각 ${armorBeatNeed}개` : ""} 사용</small>}
+                    {save.armorLevel < 15 && <small>{armorDestroy > 0 ? `실패 시 파괴 ${Math.round(armorDestroy * 100)}% · ` : ""}강화석 {armorMaterialNeed}개{armorBeatNeed > 0 ? ` · 견갑 조각 ${armorBeatNeed}개` : ""}</small>}
                   </div>
                   <div><span>판매 가격</span><strong>{formatGold(armorSell)}G</strong></div>
                   <div><span>방지권</span><strong>{save.tickets}장</strong></div>
                 </div>
-                <p className="forge-note">보유 강화석 {materials}개 · 견갑 조각 {shoulderShards}개 · 실패 시 방지권 1장 자동 사용, 없으면 1단계 하락</p>
+                <p className="forge-note">보유 강화석 {materials}개 · 견갑 조각 {shoulderShards}개 · 실패 시 방지권 1장 자동 사용, 없으면 1단계 하락(높은 단계는 파괴 · +0)</p>
                 <p className="forge-note forge-refine-note">비트 수련에서 견갑 조각을, 성문 방어에서 강화석을 획득합니다.</p>
                 <button type="button" className="forge-button" disabled={!equippedShoulder || save.armorLevel >= 15 || coins < armorCost || materials < armorMaterialNeed || shoulderShards < armorBeatNeed || phase !== "idle"} onClick={() => void enhanceArmor()}>
                   {save.armorLevel >= 15 ? "최고 단계 달성" : phase === "forging" ? "두드리는 중…" : !equippedShoulder ? "견갑을 먼저 장착하세요" : "강화하기"}

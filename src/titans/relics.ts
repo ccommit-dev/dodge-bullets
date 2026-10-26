@@ -136,3 +136,31 @@ export function relicStatText(def: RelicDef, stars: number): string {
 export function relicIconUrl(id: RelicId): string {
   return `titans/relics/${id}.png`;
 }
+
+/**
+ * 상점 유물 뽑기 (2026-10-26, 사용자: "유물은 상점에서 뽑을 수 있게 UI 및 시스템 추가").
+ * 한 번 = 조각 1개. 아직 다 모으지 않은 유물 중 **균등 확률**(확률 공시 그대로 — grantRelicShards 의 "모으던 것부터" 몰아주기와 다르다).
+ * 10회는 10% 싸다. 모든 유물이 ★5 면 뽑을 수 없다.
+ * 가격은 scripts/verify-relic-forge-econ.mjs 로 맞췄다 — 동료 1회(100)보다 싼 조각 하나 · 무과금(하루 약 38.6 보석) 첫 세트 약 24일 ·
+ * 9종 ★1 약 46일 · 전부 ★5 약 115일(대장 재처치 드랍은 따로).
+ */
+export const RELIC_DRAW = { singleCost: 60, tenCost: 540 } as const;
+
+/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 */
+export function relicDrawRates(state: RelicState): { id: RelicId; rate: number }[] {
+  const open = RELICS.filter((r) => !relicMaxed(state, r.id));
+  return RELICS.map((r) => ({ id: r.id, rate: open.some((o) => o.id === r.id) ? 1 / open.length : 0 }));
+}
+
+export function drawRelicShards(state: RelicState, n: number, rng: () => number = Math.random): { state: RelicState; got: RelicId[] } {
+  const next: RelicState = { ...state };
+  const got: RelicId[] = [];
+  for (let i = 0; i < n; i++) {
+    const open = RELICS.filter((r) => !relicMaxed(next, r.id));
+    if (!open.length) break;
+    const pick = open[Math.min(open.length - 1, Math.floor(rng() * open.length))];
+    next[pick.id] = (next[pick.id] ?? 0) + 1;
+    got.push(pick.id);
+  }
+  return { state: next, got };
+}

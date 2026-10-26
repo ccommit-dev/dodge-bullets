@@ -953,3 +953,56 @@
 .mp-relics .relic-tile > small { color: #9a5b13 !important; font-weight: 700 !important; font-size: 13px !important; }
 .mp-relics .relic-tile.unowned .relic-stars { display: inline-block; padding: 0 7px; border-radius: 999px; background: rgba(59, 36, 21, .08); color: #7f5f3f !important; font-size: 13px !important; font-weight: 700 !important; }
 .mp-relics .relic-family header .relic-set small { display: block; margin-top: 1px; color: #7f5f3f !important; font-weight: 500 !important; font-size: 13px !important; }
+
+/* ── 첫 접속 게임 가이드 (2026-10-26, ui/GameGuide) — 출석 창(.exit-modal z 20) · 시트 위 ── */
+.game-guide-modal { position: fixed; inset: 0; z-index: 140; display: grid; place-items: center; padding: 16px; background: rgba(10, 6, 2, .66); }
+.game-guide-card { width: min(360px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 10px; padding: 18px 16px 16px; border-radius: 18px; border: 3px solid #3b2415; background: #fff7e6; color: #2b1a0d; box-shadow: 0 8px 0 rgba(0, 0, 0, .3); }
+.game-guide-kicker { color: #9a5b13; font-size: 13px; font-weight: 800; text-align: center; }
+.game-guide-title { font-size: 20px; font-weight: 900; text-align: center; }
+.game-guide-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.game-guide-steps li { display: grid; grid-template-columns: 24px 40px 1fr; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #fff; border: 2px solid rgba(59, 36, 21, .15); }
+.game-guide-num { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #f2c232; color: #3b2415; font-size: 13px; font-weight: 900; }
+.game-guide-steps img { width: 40px; height: 40px; object-fit: contain; }
+.game-guide-text { display: grid; gap: 1px; min-width: 0; }
+.game-guide-text strong { font-size: 15px; font-weight: 900; color: #2b1a0d; }
+.game-guide-text small { font-size: 13px; font-weight: 500; color: #7f5f3f; line-height: 1.35; }
+.game-guide-start { width: 100%; min-height: 48px; font-size: 17px; }
+
+/* ── 유물 — 성장 서랍 4번째 탭 · 상점 유물 뽑기 · 결과 창 (2026-10-26) ── */
+.growth-relic-panel { display: grid; gap: 10px; padding: 4px 2px 10px; }
+.relic-shop-link { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border-radius: 12px; border: 2px solid #3b2415; background: #f2c232; color: #2b1a0d; font-size: 15px; font-weight: 900; box-shadow: 0 3px 0 rgba(59, 36, 21, .45); cursor: pointer; }
+.relic-shop-link .currency-icon { width: 22px; height: 22px; }
+.relic-draw-page { display: grid; gap: 10px; }
+.relic-draw-hero { display: grid; justify-items: center; gap: 4px; padding: 14px 12px; border-radius: 16px; border: 2px solid #3b2415; background: linear-gradient(180deg, #fff1c2, #fff8e6); text-align: center; }
+.relic-draw-icons { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; width: 100%; max-width: 340px; }
+.relic-draw-icons img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: grayscale(1) opacity(.55); }
+.relic-draw-icons img.owned { filter: none; }
+.relic-draw-hero strong { font-size: 19px; font-weight: 900; color: #2b1a0d; }
+.relic-draw-hero p { margin: 0; font-size: 13px; font-weight: 500; color: #7f5f3f; }
+.relic-draw-hero small { font-size: 13px; font-weight: 800; color: #9a5b13; }
+.relic-draw-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.relic-draw-actions button { display: grid; gap: 2px; justify-items: center; min-height: 56px; border-radius: 14px; border: 2px solid #3b2415; background: #2f7ae0; color: #fff; box-shadow: 0 3px 0 #1d4f9a; cursor: pointer; }
+.relic-draw-actions button b { font-size: 16px; font-weight: 900; }
+.relic-draw-actions button small { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; }
+.relic-draw-actions button:disabled { opacity: .5; cursor: default; }
+.relic-rates-link { justify-self: center; background: none; border: 0; color: #7f5f3f; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.relic-rates { list-style: none; margin: 0; padding: 8px 10px; display: grid; gap: 4px; border-radius: 12px; background: #fff; border: 2px solid rgba(59, 36, 21, .15); }
+.relic-rates li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: #2b1a0d; }
+.relic-rates img { width: 28px; height: 28px; object-fit: contain; }
+.relic-rates b { color: #9a5b13; font-weight: 800; }
+.relic-draw-modal { position: fixed; inset: 0; z-index: 130; display: grid; place-items: center; padding: 16px; background: rgba(10, 6, 2, .66); }
+.relic-draw-card { width: min(360px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 12px; padding: 18px 16px 16px; border-radius: 18px; border: 3px solid #3b2415; background: #fff7e6; text-align: center; box-shadow: 0 8px 0 rgba(0, 0, 0, .3); animation: relic-pop .35s ease-out; }
+.relic-draw-card > b { font-size: 19px; font-weight: 900; color: #2b1a0d; }
+.relic-draw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.relic-draw-item { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; background: #fff; border: 2px solid rgba(242, 165, 22, .55); }
+.relic-draw-item img { width: 56px; height: 56px; object-fit: contain; }
+.relic-draw-item span { font-size: 13px; font-weight: 900; color: #2b1a0d; }
+.relic-draw-item small { font-size: 13px; font-weight: 700; color: #9a5b13; }
+.relic-draw-card .cta { width: 100%; }
+@keyframes relic-pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ── 대장간 보호구 · 장비 · 원정 무기 파괴 확률 (2026-10-26) — 확률 줄 · 실패/파괴 흔들림 ── */
+.forge-risk { margin: 2px 0 0; color: #b45309 !important; font-size: 13px !important; font-weight: 800 !important; }
+.gear-forge-row.risk-fail, .forge-expweapon.risk-fail, .gear-forge-row.risk-shield, .forge-expweapon.risk-shield { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97); }
+.gear-forge-row.risk-destroy, .forge-expweapon.risk-destroy { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97), risk-destroy-flash 1.2s ease-out; }
+@keyframes risk-destroy-flash { 0%, 30% { box-shadow: 0 0 0 3px #dc2626, 0 0 18px rgba(220, 38, 38, .6); } 100% { box-shadow: none; } }

@@ -24,9 +24,9 @@ for (let i = 0; i < 40 && !((await prog()).discovered ?? []).some((k) => k.start
 const p0 = await prog();
 ok("몬스터 첫 처치 → 발견 기록 + 보석 +20", (p0.discovered ?? []).some((k) => k.startsWith("monster:")) && p0.redGems >= 120, `${JSON.stringify(p0.discovered)} · 보석 ${p0.redGems}`);
 
-// 도토리 콘텐츠는 뺐다 (2026-10-26 사용자: "도토리 콘텐츠 삭제 · 오늘도 환생 자동 돈 버는 시스템으로") — 그 자리(두 번째 성장 탭)가 퀘스트
+// 도토리 콘텐츠는 뺐다 (2026-10-26 사용자: "도토리 콘텐츠 삭제 · 오늘도 환생 자동 돈 버는 시스템으로") — 퀘스트가 그 자리를 잇고, 같은 날 2×2(퀘스트 왼쪽 아래 · 유물 4번째)
 const growthTabs = await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].map((b) => b.textContent.trim()).filter((t) => t && t !== "▾"));
-ok("성장 탭: 도토리 없음 · 두 번째가 퀘스트", !growthTabs.some((t) => /도토리/.test(t)) && /^퀘스트/.test(growthTabs[1] ?? ""), growthTabs.join(" | "));
+ok("성장 탭: 도토리 없음 · 2×2 장비 성장 · 스킬 / 퀘스트 · 유물 (2026-10-26)", !growthTabs.some((t) => /도토리/.test(t)) && /^퀘스트/.test(growthTabs[2] ?? "") && /^유물/.test(growthTabs[3] ?? ""), growthTabs.join(" | "));
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => /^퀘스트/.test(b.textContent.trim()))?.click()); await sleep(500);
 ok("퀘스트 탭 → 퀘스트 판 · 도토리 판 없음", !!(await page.$(".quest-panel")) && !(await page.$(".acorn-panel")));
 const goldQ0 = (await tit()).gold;

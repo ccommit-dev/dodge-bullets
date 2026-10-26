@@ -145,3 +145,27 @@ export function formatGold(value: number): string {
   if (value >= 10_000) return `${Math.floor(value / 10_000).toLocaleString()}만`;
   return value.toLocaleString();
 }
+
+/**
+ * 보호구 · 장비 파츠 · 원정 무기 강화 위험 (2026-10-26 사용자: "보호구, 장비, 원정무기 모두 무기처럼 파괴 확률 넣어줘").
+ * 성공 = +0 에서 100% → 끝 단계 근처 바닥(10단계 30% · 20단계 35%). 실패하면 그중 일부가 파괴(+0 으로) — 단계의 30% 지점부터 생겨 끝에서 상한.
+ * 상한은 사다리가 길수록 낮다(10단계 25% · 15단계 16% · 20단계 12%) — 같은 25% 면 +20 원정 무기는 끝까지 예전의 ×5(하위 10% ×10)였다.
+ * 숫자는 scripts/verify-relic-forge-econ.mjs 로 맞췄다: 끝까지 기대 골드 예전의 ×2~3.5 · 하위 10% ×6 안 · 방지권 3장이면 ×2.5 안.
+ * 파괴는 대장간 방지권(ForgeSave.tickets)이 있으면 한 장 써서 막는다(단계 유지). 파괴되면 올린 단계만큼 강화석을 돌려준다.
+ */
+export function enhanceRisk(level: number, max: number): { success: number; destroy: number } {
+  const m = Math.max(1, max);
+  const f = Math.max(0, Math.min(1, level / m));
+  const floor = 0.3 + Math.max(0, m - 10) * 0.005;
+  const cap = 0.25 * Math.pow(Math.min(1, 10 / m), 1.05);
+  const success = Math.max(floor, 1 - (1 - floor) * Math.pow(f, 1.1));
+  const destroy = f < 0.3 ? 0 : Math.min(cap, (f - 0.3) * (cap / 0.7));
+  return { success, destroy };
+}
+
+/** 한 번 굴린 결과 — rng 하나로 성공 · 실패 · 파괴를 가른다(시험에서 고정) */
+export function rollEnhance(risk: { success: number; destroy: number }, rng: () => number = Math.random): "success" | "fail" | "destroy" {
+  const r = rng();
+  if (r < risk.success) return "success";
+  return (r - risk.success) / Math.max(1e-9, 1 - risk.success) < risk.destroy ? "destroy" : "fail";
+}

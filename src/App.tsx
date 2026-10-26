@@ -20,6 +20,7 @@ import { assetUrl } from "./asset";
 // 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
 import { installChunkReload, withChunkReload } from "./ui/chunkReload";
 import { setBgmScene } from "./ui/bgm";
+import { GameGuide, guideSeen, isNewPlayer, markGuideSeen } from "./ui/GameGuide";
 import { LazyBoundary } from "./ui/LazyBoundary";
 installChunkReload();
 const BeatGame = lazy(() => withChunkReload(() => import("./BeatGame")).then((m) => ({ default: m.BeatGame })));
@@ -407,6 +408,9 @@ function App() {
   const [pioneeredAreaIndex, setPioneeredAreaIndex] = useState<number | null>(null);
   // 부팅 때 저장을 읽고 정한다 — 30일을 다 받았거나(attendanceDone) 오늘 이미 받았으면 자동으로 열지 않는다 (2026-10-02)
   const [attendanceOpen, setAttendanceOpen] = useState(false);
+  /** 첫 접속 게임 가이드 (ui/GameGuide, 2026-10-26) — 처음 온 사람에게만 · 한 번 닫으면 끝 · 설정 메뉴에서 다시 연다 */
+  const [guideOpen, setGuideOpen] = useState(false);
+  const guideCheckedRef = useRef(false);
   const [attendanceDone, setAttendanceDone] = useState(false);
   // 설정 메뉴로 연 출석 — 테스트 모드에선 신규(step<4)도 메뉴로 열 수 있다. 부팅 자동 열림은 그대로 step 4 부터 (2026-10-16)
   const [attendanceByMenu, setAttendanceByMenu] = useState(false);
@@ -530,6 +534,16 @@ function App() {
   useEffect(() => {
     setBgmScene(appMode === "titans" ? "hunt" : appMode === "forge" ? "forge" : appMode === "profile" ? "menu" : appMode === "dodge" ? (gameState === "playing" ? "off" : "dodge") : "off");
   }, [appMode, gameState]);
+
+  // 부팅이 끝나고 저장을 읽은 뒤 한 번만 판단 — 기존 사용자는 띄우지 않고 본 것으로 기록(업데이트 뒤 갑자기 뜨지 않게)
+  useEffect(() => {
+    if (!bootReady || guideCheckedRef.current) return;
+    guideCheckedRef.current = true;
+    if (guideSeen()) return;
+    if (isNewPlayer(progress)) setGuideOpen(true);
+    else markGuideSeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bootReady]);
 
   const toggleSound = useCallback(async () => {
     await unlockAudio();
@@ -1747,6 +1761,9 @@ function App() {
                 <button type="button" role="menuitem" className="settings-orientation" onClick={cycleOrientation} aria-label={`화면 방향 ${ORIENTATION_LABEL[orientationPref]}`}>
                   <span>화면 방향</span><b>{ORIENTATION_LABEL[orientationPref]}</b>
                 </button>
+                <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setGuideOpen(true); }}>
+                  <span>게임 가이드</span><b>진행법</b>
+                </button>
                 {/* 온보딩(§8) — 이벤트류는 마지막 단계(4)에서 열린다 */}
                 {!attendanceDone && (
                   <button
@@ -2515,6 +2532,8 @@ function App() {
           </div>
         </div>
       )}
+      {/* 첫 접속 가이드 — 출석 창보다 위 (가이드를 닫은 뒤에 출석이 보인다) */}
+      {bootReady && guideOpen && <GameGuide onClose={() => setGuideOpen(false)} />}
       {/* 온보딩 첫 5분 대본(§8) — 신규(step<4)에게는 출석 모달을 띄우지 않는다 */}
       {bootReady && appMode === "titans" && (progress.onboardingStep >= 4 || (qaOpen && attendanceByMenu)) && (
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => { setAttendanceOpen(false); setAttendanceByMenu(false); }} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
