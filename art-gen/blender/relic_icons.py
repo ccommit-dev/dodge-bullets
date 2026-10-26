@@ -255,17 +255,16 @@ def q_twigs(_):
 
 
 def q_acorns(_):
-    def acorn(at, s):
-        ob('nut', C.ellipsoid(at, (0.2 * s, 0.19 * s, 0.24 * s), egg=-0.25), m('nut', '#c9893a'))
-        cap = C.ellipsoid(at + Vector((0, 0, 0.17 * s)), (0.23 * s, 0.22 * s, 0.12 * s))
-        for v in [v for v in cap.verts if v.co.z < at.z + 0.13 * s]:
-            cap.verts.remove(v)
-        ob('cap', cap, m('cap', '#7a4a22'))
-        ob('stem', C.tube([at + Vector((0, 0, 0.27 * s)), at + Vector((0.04 * s, 0, 0.36 * s))], 0.03 * s, seg=5), m('stem', '#5a3418'), O * 0.6)
-    acorn(Vector((-0.28, 0.05, -0.32)), 1.2)
-    acorn(Vector((0.3, 0.05, -0.32)), 1.15)
-    acorn(Vector((0.0, -0.08, 0.1)), 1.3)
-    ob('base', C.ellipsoid(Vector((0, 0.05, -0.6)), (0.62, 0.32, 0.08)), m('grass', '#7cc04a'))
+    # 나무 열매 모으기 (2026-10-26 사용자: "도토리 콘텐츠 삭제" — 이름을 열매로 바꾸며 그림도 도토리 → 빨간 열매 송이)
+    stem_top = Vector((0.0, 0.0, 0.62))
+    ob('stem', C.tube([stem_top, Vector((-0.05, 0, 0.2)), Vector((0.0, 0, -0.05))], 0.035, seg=6), m('stem', '#5a3418'), O * 0.6)
+    for k, (at, r) in enumerate([((-0.3, 0.0, -0.18), 0.21), ((0.26, 0.0, -0.2), 0.2), ((-0.04, -0.06, -0.42), 0.22), ((0.02, 0.04, 0.02), 0.19), ((-0.36, 0.04, -0.5), 0.17), ((0.36, 0.04, -0.48), 0.17)]):
+        c = Vector(at)
+        ob(f'berry{k}', C.ellipsoid(c, (r, r * 0.95, r)), m('berry', '#d8323a', rough=0.45))
+        ob(f'shine{k}', C.ellipsoid(c + Vector((-0.06 * r / 0.2, -0.9 * r, 0.08 * r / 0.2)), (0.045, 0.02, 0.045)), m('shine', '#ffd0d0', rough=0.3), 0)
+    ob('leafL', C.ellipsoid(Vector((-0.26, 0.02, 0.5)), (0.26, 0.05, 0.11)), m('leaf', '#5fae3a'))
+    ob('leafR', C.ellipsoid(Vector((0.24, 0.02, 0.44)), (0.22, 0.05, 0.1)), m('leaf', '#4f9a30'))
+    ob('base', C.ellipsoid(Vector((0, 0.05, -0.7)), (0.62, 0.32, 0.07)), m('grass', '#7cc04a'))
 
 
 def q_dam_patch(_):
