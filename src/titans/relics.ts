@@ -27,7 +27,7 @@ export const RELICS: readonly RelicDef[] = [
   { id: "frost-horn", family: "frost", name: "서리 뿔피리", stat: "bossTimeSec", perStar: 1.5, blurb: "대장 제한 시간" },
   { id: "snow-crystal", family: "frost", name: "눈꽃 결정", stat: "idleMul", perStar: 0.04, blurb: "방치 배율" },
   { id: "ice-lantern", family: "frost", name: "얼음 등불", stat: "bossMul", perStar: 0.04, blurb: "대장 피해" },
-  { id: "golden-acorn", family: "gold", name: "황금 도토리", stat: "goldMul", perStar: 0.05, blurb: "처치 골드" },
+  { id: "golden-acorn", family: "gold", name: "황금 열매", stat: "goldMul", perStar: 0.05, blurb: "처치 골드" },
   { id: "lucky-coin", family: "gold", name: "행운 동전", stat: "goldMul", perStar: 0.04, blurb: "처치 골드" },
   { id: "beaver-crown", family: "gold", name: "비버 왕관", stat: "crystalMul", perStar: 0.04, blurb: "환생 결정" },
 ];
@@ -35,9 +35,9 @@ export const RELICS: readonly RelicDef[] = [
 export const RELIC_FAMILY_LABEL: Record<RelicFamily, string> = { fire: "불", frost: "서리", gold: "황금" };
 /** 세트 효과 — 같은 계열 3개 모두 ★1 이상 */
 export const RELIC_SET: Record<RelicFamily, { name: string; blurb: string }> = {
-  fire: { name: "화상", blurb: "준 피해의 20%가 화상으로 한 번 더" },
-  frost: { name: "얼어붙은 대장", blurb: "대장 제한 시간 +6초 · 대장 피해 +10%" },
-  gold: { name: "황금 손길", blurb: "처치 골드 +25% · 유물 조각 확률 +4%p" },
+  fire: { name: "화상", blurb: "피해 20% 화상 추가" },
+  frost: { name: "얼어붙은 대장", blurb: "대장 시간 +6초 · 피해 +10%" },
+  gold: { name: "황금 손길", blurb: "골드 +25% · 조각 확률 +4%p" },
 };
 export const FIRE_SET_BURN_SHARE = 0.2;
 

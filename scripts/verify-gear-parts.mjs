@@ -22,7 +22,7 @@ await page.reload({ waitUntil: "networkidle0" }); await sleep(2500);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 await sleep(500);
 const cards = await page.evaluate(() => [...document.querySelectorAll(".equipment-training-card")].map((c) => c.querySelector("strong")?.textContent ?? ""));
-ok("장비 성장 6칸: 무기·견갑 + 투구·갑옷·장갑·신발", cards.length === 6 && ["투구", "갑옷", "장갑", "신발"].every((n) => cards.some((c) => c.startsWith(n))), cards.join(" | "));
+ok("장비 성장 7칸: 무기·번개·견갑 + 투구·갑옷·장갑·신발 (번개 2026-10-22)", cards.length === 7 && cards.some((c) => c.startsWith("번개")) && ["투구", "갑옷", "장갑", "신발"].every((n) => cards.some((c) => c.startsWith(n))), cards.join(" | "));
 const gold0 = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)).gold, H);
 await page.evaluate(() => document.querySelector('.gear-part-card[data-gear-part="helmet"] button')?.click()); await sleep(1500);
 const helmetText = await page.evaluate(() => document.querySelector('.gear-part-card[data-gear-part="helmet"] strong')?.textContent ?? "");

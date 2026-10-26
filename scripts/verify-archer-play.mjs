@@ -1,4 +1,4 @@
-// 아처 키우기 차용 — 실제 화면 검사 (2026-10-22): 도토리 합성 · 끼우기 · 생산 · 첫 발견 팝업 · 대장 사다리 · 강화 전후 수치.
+// 아처 키우기 차용 — 실제 화면 검사 (2026-10-22): 첫 발견 팝업 · 대장 사다리 · 강화 전후 수치. 도토리는 2026-10-26 퀘스트로 바뀜.
 //   node scripts/verify-archer-play.mjs   (vite 5173)
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -24,34 +24,14 @@ for (let i = 0; i < 40 && !((await prog()).discovered ?? []).some((k) => k.start
 const p0 = await prog();
 ok("몬스터 첫 처치 → 발견 기록 + 보석 +20", (p0.discovered ?? []).some((k) => k.startsWith("monster:")) && p0.redGems >= 120, `${JSON.stringify(p0.discovered)} · 보석 ${p0.redGems}`);
 
-// 도토리 탭 · 합성
-await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("도토리"))?.click()); await sleep(500);
-ok("도토리 탭 · 판 · 12칸", await page.evaluate(() => document.querySelectorAll(".acorn-panel .acorn-slot").length) === 12);
-ok("짝이 있는 칸이 표시된다(Lv2 둘)", await page.evaluate(() => document.querySelectorAll(".acorn-slot.pair").length) >= 2);
-const gemsBefore = (await prog()).redGems;
-await page.evaluate(() => document.querySelectorAll(".acorn-slot")[0].click()); await sleep(150);
-ok("고르면 같은 단계 칸이 '합칠 수 있음'으로", await page.evaluate(() => document.querySelectorAll(".acorn-slot.match").length) === 1);
-await page.evaluate(() => document.querySelectorAll(".acorn-slot")[1].click()); await sleep(900);
-// 보상 팝업은 줄을 서서(몬스터 발견 팝업 뒤) 늦게 뜰 수 있다
-for (let i = 0; i < 28 && !pops.some((t) => /새 도토리 발견/.test(t)); i += 1) await sleep(250);
-const t1 = await tit();
-// 앞 칸은 비지만 6초 생산이 곧바로 그 빈칸에 Lv1 을 넣을 수 있다(전체 검사처럼 느릴 때) — 0 또는 새 Lv1
-ok("Lv2 + Lv2 → Lv3 (앞 칸 빔 · 새로 생긴 Lv1 은 허용)", t1.acorns.grid[1] === 3 && t1.acorns.grid[0] <= 1 && t1.acorns.best === 3, JSON.stringify(t1.acorns.grid.slice(0, 4)));
-ok("새 단계 → '새 도토리 발견' 팝업 + 보석 +30", pops.some((t) => /새 도토리 발견/.test(t)) && (await prog()).redGems - gemsBefore >= 30, `보석 ${gemsBefore} → ${(await prog()).redGems}`);
-// 끼우기 — 전후 배율
-await page.evaluate(() => document.querySelectorAll(".acorn-slot")[1].click()); await sleep(150);
-const pre = await page.evaluate(() => [...document.querySelectorAll(".acorn-ally")].map((b) => b.textContent));
-ok("고른 뒤 동료 칸에 바뀔 배율이 미리 보인다(→ ×1.42)", pre.some((t) => /→ ×1\.42/.test(t)), pre.join(" | "));
-await page.evaluate(() => document.querySelector(".acorn-ally")?.click()); await sleep(600);
-const t2 = await tit();
-const toast = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
-ok("끼우기 → 동료에 Lv3 · 칸 비움 · 토스트에 ×1.00 → ×1.42", t2.acorns.allyAmmo.mia === 3 && t2.acorns.grid[1] === 0 && /×1\.00 → ×1\.42/.test(toast), `${JSON.stringify(t2.acorns.allyAmmo)} · ${toast}`);
-// 생산
-const count1 = (t2.acorns.grid.filter((l) => l > 0)).length;
-await sleep(13500);
-const t3 = await tit();
-ok("사냥 중 도토리가 저절로 생긴다(13초에 1개 이상)", t3.acorns.grid.filter((l) => l > 0).length > count1, `${count1} → ${t3.acorns.grid.filter((l) => l > 0).length}`);
-ok("다음 도토리 진행 막대", await page.evaluate(() => !!document.querySelector(".acorn-make em")?.textContent.match(/다음 도토리|가득/)));
+// 도토리 콘텐츠는 뺐다 (2026-10-26 사용자: "도토리 콘텐츠 삭제 · 오늘도 환생 자동 돈 버는 시스템으로") — 그 자리(두 번째 성장 탭)가 퀘스트
+const growthTabs = await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].map((b) => b.textContent.trim()).filter((t) => t && t !== "▾"));
+ok("성장 탭: 도토리 없음 · 두 번째가 퀘스트", !growthTabs.some((t) => /도토리/.test(t)) && /^퀘스트/.test(growthTabs[1] ?? ""), growthTabs.join(" | "));
+await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => /^퀘스트/.test(b.textContent.trim()))?.click()); await sleep(500);
+ok("퀘스트 탭 → 퀘스트 판 · 도토리 판 없음", !!(await page.$(".quest-panel")) && !(await page.$(".acorn-panel")));
+const goldQ0 = (await tit()).gold;
+await sleep(4000);
+ok("사냥 중 퀘스트가 저절로 골드를 준다(4초)", (await tit()).gold > goldQ0 || (await page.evaluate(() => !!document.querySelector(".quest-bar"))), `골드 ${goldQ0} → ${(await tit()).gold}`);
 
 // 대장 사다리 — 10마리 잡고 보스 도전 단추에 영구 보상 표시 → 처치
 for (let i = 0; i < 120 && !(await page.$(".titans-boss-challenge")); i += 1) await sleep(250);

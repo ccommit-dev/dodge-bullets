@@ -86,7 +86,7 @@ export function RelicPanel({ progress }: Pick<Props, "progress">) {
     <>
       <div className="legacy-heading"><div><small>RELIC</small><strong>유물</strong></div><span>{owned}/{RELICS.length} · 조각 {chance}%</span></div>
       <div className="mp-relics">
-        <p className="relic-how">다시 잡은 대장 · 갈림길 첫 보상에서 조각 · 조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 환생해도 남음</p>
+        <p className="relic-how">조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 대장 재처치 · 갈림길에서 · 환생해도 유지</p>
         {FAMILIES.map((f) => {
           const on = setActive(progress.relics, f);
           return (
@@ -101,7 +101,7 @@ export function RelicPanel({ progress }: Pick<Props, "progress">) {
                     <div key={r.id} className={`relic-tile ${stars >= 1 ? "owned" : "unowned"}`} data-relic={r.id}>
                       <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
                       <b>{r.name}</b>
-                      <i className="relic-stars" aria-label={`별 ${stars}`}>{stars >= 1 ? "★".repeat(stars) : "조각"}</i>
+                      <i className="relic-stars" aria-label={`별 ${stars}`}>{stars >= 1 ? "★".repeat(stars) : "미보유"}</i>
                       <small>{relicStatText(r, stars)}</small>
                       <span className="relic-bar"><i style={{ width: `${(into / RELIC_SHARDS_PER_STAR) * 100}%` }} /></span>
                     </div>
