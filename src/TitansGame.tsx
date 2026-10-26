@@ -373,6 +373,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const lightningTapRef = useRef(0);
   /** 전환이 끝나면 부를 spawn(스테이지, 처치 수) — 건너뛰기가 같은 걸 바로 부른다 */
   const pendingSpawnRef = useRef<[number, number] | null>(null);
+  /** spawn 이 건 "대열 준비" 타이머 — 이게 돌아야 교전이 시작된다. 전환 스킵은 이것만 남기고 지운다 */
+  const formationTimerRef = useRef<number | null>(null);
+  // 관리 시트는 탭이 바뀌어도 같은 요소라 스크롤이 남는다 — 모험 맨 아래 파견 카드를 누르면 파견 화면이 아래로 내려간 채 열려 자리 · 수령 단추가 머리 밑에 숨었다 (2026-10-26 모바일 점검)
+  const hubSheetRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { hubSheetRef.current?.scrollTo({ top: 0 }); }, [tab]);
   const tabRef = useRef<ShopTab>("sword");
   const [acornProgress, setAcornProgress] = useState(0);
   const acornProgAtRef = useRef(0);
@@ -704,6 +709,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setFormationReady(true);
       setPartyApproach(false);
     }, approachMs);
+    formationTimerRef.current = formationTimer;
     battleTimers.current.push(formationTimer);
   }, []);
 
@@ -2664,8 +2670,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 처치 수가 매번 1로 되돌아갔다(10마리를 못 채워 대장 · 다음 스테이지가 영영 안 왔다). 이제 전환이 하려던 spawn 을 그대로 한다 — 이미 나왔으면 다시 부르지 않는다
   const skipStageTransition = () => {
     if (pendingStageRef.current === null && pendingSpawnRef.current === null) return;
-    battleTimers.current.forEach(window.clearTimeout);
-    battleTimers.current = [];
+    // 대열 준비 타이머는 남긴다 — 새 몬스터가 이미 나온 뒤(입장 연출 중)에 누르면 그 타이머까지 지워 교전이 영영 시작되지 않았다.
+    // 폰 터치는 클릭보다 늦게 닿아 이 구간에 자주 걸렸다 (2026-10-26 모바일 실터치 검사: 스킵 한 번 뒤 사냥이 멈춤)
+    const keep = formationTimerRef.current;
+    battleTimers.current.forEach((id) => { if (id !== keep) window.clearTimeout(id); });
+    battleTimers.current = keep !== null ? [keep] : [];
     pendingStageRef.current = null;
     const next = pendingSpawnRef.current;
     pendingSpawnRef.current = null;
@@ -3415,7 +3424,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {/* 관리 페이지(동료·뽑기·상점)는 전장을 가리는 전체 페이지가 아니라 하단 바 위로 올라오는 시트다 (사용자 지시: 하단 UI) */}
       {MANAGEMENT_PAGE_COPY[tab] && <div className="hub-sheet-backdrop" onClick={() => setTab("sword")} aria-hidden="true" />}
       {/* 장비 성장·스킬은 전장 아래 인라인, 관리 페이지(동료·뽑기·상점)는 같은 섹션을 시트로 띄운다 */}
-      <div className={MANAGEMENT_PAGE_COPY[tab] ? "hub-sheet" : "hub-inline"} role={MANAGEMENT_PAGE_COPY[tab] ? "dialog" : undefined} aria-label={MANAGEMENT_PAGE_COPY[tab]?.title}>
+      <div ref={hubSheetRef} className={MANAGEMENT_PAGE_COPY[tab] ? "hub-sheet" : "hub-inline"} role={MANAGEMENT_PAGE_COPY[tab] ? "dialog" : undefined} aria-label={MANAGEMENT_PAGE_COPY[tab]?.title}>
         {MANAGEMENT_PAGE_COPY[tab] && <button type="button" className="hub-sheet-handle" onClick={() => setTab("sword")} aria-label="닫기"><i /></button>}
         {MANAGEMENT_PAGE_COPY[tab] && (
         <header className="hub-sheet-head">
@@ -3658,7 +3667,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   const e = character.expeditions[i];
                   if (!e) return <div key={`empty-${i}`} className="expedition-slot empty"><b>빈 자리</b><small>아래에서 동료와 시간을 고르세요</small></div>;
                   const h = HEROES.find((x) => x.id === e.allyId)!;
-                  const left = Math.max(0, e.endsAt - nowTick);
+                  const left = Math.min(e.hours * 3600000, Math.max(0, e.endsAt - Date.now()));   // nowTick 은 최대 1초 늦어 갓 보낸 파견이 "8시간 1분" 으로 보였다
                   const done = left <= 0;
                   const r = expeditionReward(e.allyId, effectiveStars(character.allyStars[e.allyId], save.heroes[e.allyId]), e.hours);
                   return (

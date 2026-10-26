@@ -27,6 +27,7 @@ import { ShoulderIcon, shoulderIconUrl } from "./ui/ShoulderIcon";
 import { WalletBar } from "./ui/WalletBar";
 import { qaGemsEnabled } from "./progression/storage";
 import type { ShoulderId } from "./progression/model";
+import { haptic } from "./ui/haptics";
 import { TALENTS, TALENT_BY_ID, masteryPoints, masteryState, type TalentId } from "./forge/talents";
 import { EXPEDITION_SKILLS, WEAPON_FORGE_MAX, weaponForgeCooldownMul, weaponForgeCost, weaponForgeDamageMul, type WeaponForgeLevels } from "./game/skills";
 
@@ -495,7 +496,10 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setSave((current) => ({ ...current, tickets:!success&&current.tickets>0?current.tickets-1:current.tickets, armorAttempts:current.armorAttempts+1, armorLevel:success?Math.min(15,current.armorLevel+1):!success&&current.tickets<=0?Math.max(0,current.armorLevel-1):current.armorLevel, bestArmorLevel:success?Math.max(current.bestArmorLevel,current.armorLevel+1):current.bestArmorLevel }));
       setPhase(success ? "success" : "idle");
       // 실패 = 견갑이 금 가며 조각이 튄다 (2026-10-26, 사용자: "깨지는 게 없음") — 방지권으로 막았으면 금만 가고, 없으면 깨지며 한 단계 내려간다
-      if (!success) setArmorFail((f) => ({ seq: (f?.seq ?? 0) + 1, protectedBy: save.tickets > 0 }));
+      if (!success) {
+        setArmorFail((f) => ({ seq: (f?.seq ?? 0) + 1, protectedBy: save.tickets > 0 }));
+        haptic(save.tickets > 0 ? "hit" : "heavy");   // 모바일 손맛 — 깨질 땐 묵직하게 (안드로이드만, iOS 는 조용히 무시)
+      }
       flashToast(success ? `보호구 강화 성공 +${save.armorLevel+1}` : save.tickets>0 ? "보호구 강화 실패 · 방지권으로 단계 보호" : "보호구 강화 실패 · 1단계 하락");
       timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
     }, FORGE_MS);

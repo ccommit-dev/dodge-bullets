@@ -922,3 +922,15 @@
 .quest-icon > b small { font-size: 13px; font-weight: 800; color: #e8c38a; }
 .quest-buy.block-stage, .quest-buy.block-cap, .quest-buy.block-prev { background: #4a2f1c; color: #e8c38a; }
 .quest-buy.block-stage small, .quest-buy.block-cap small { color: #d9c4a3; }
+/* 성벽 출발 카드 — 짧은 화면(아이폰 SE · 카카오톡 막대) 에서 단추가 잘리지 않게 (2026-10-26 모바일 점검) */
+.tower-brief-card { max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-height: 640px) {
+  .tower-brief-card { gap: 7px; padding: 14px 14px 12px; }
+  .tower-brief-card > img { display: none; }
+  .tower-brief-stats span { padding: 5px 4px; }
+  .tower-brief-rewards { padding: 6px 10px; gap: 2px; }
+  .tower-brief-card .cta { min-height: 42px; font-size: 15px; }
+  .tower-brief-card .cta.cta-ghost { min-height: 38px; }
+}
+/* 비트 멈춤 단추 — .hud 가 pointer-events: none 이라 단추도 이어받아, 폰에서 누르면 아래 캔버스(레인 탭)가 받았다 (2026-10-26 WebKit 실터치 검사) */
+.beat-hud .beat-quit-btn { position: relative; z-index: 6; pointer-events: auto; touch-action: manipulation; }
