@@ -36,34 +36,28 @@ const GEMS_PER_DAY = 25 + (120 + 150) / 7;
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 const pct = (a, q) => { const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
 
-// ── 유물 뽑기 ──
+// ── 유물 뽑기 ── (2026-10-27 45ce776 부터 등급별: 일반 = 사냥 골드 · 레어 = 강화석 · 유니크 = 보석 60/540 — 계열마다 등급 하나씩)
 const RUNS = 4000;
-const firstSet = [], allOne = [];
-for (let k = 0; k < RUNS; k++) {
-  let st = {}, n = 0, set = 0, one = 0;
-  while (!(set && one) && n < 500) {
-    st = R.drawRelicShards(st, 1, rng).state; n += 1;
-    if (!set && ["fire", "frost", "gold"].some((f) => R.setActive(st, f))) set = n;
-    if (!one && R.RELICS.every((r) => R.relicStars(st, r.id) >= 1)) one = n;
-  }
-  firstSet.push(set); allOne.push(one);
-}
 const tenUnit = R.RELIC_DRAW.tenCost / 10;
 const days = (draws) => (draws * tenUnit) / GEMS_PER_DAY;
-const all5 = R.RELICS.length * R.RELIC_SHARDS_PER_STAR * R.RELIC_MAX_STAR;
-const relicRow = { firstSetDraws: mean(firstSet).toFixed(1), firstSetDays: days(mean(firstSet)).toFixed(1), allOneDraws: mean(allOne).toFixed(1), allOneDays: days(mean(allOne)).toFixed(1), all5Draws: all5, all5Days: days(all5).toFixed(0), tenUnit, allySingle: G.GACHA.singleCost };
-if (PRINT) console.log("relic", JSON.stringify(relicRow));
-// 기준은 게임 안 숫자에서 온다 — 상점 "성급 조각 선택팩"(원하는 동료 조각 10개 = 120 보석)으로 동료 첫 승급(★1→★2 조각 20) = 240 보석.
-// 유물 ★ 하나(조각 3개)는 무엇이 나올지 못 고르니 이보다 싸야 하고, 같은 보석 소비처로서 너무 싸지 않게 그 절반 이상.
+// 등급 뽑기는 그 등급 3종만 · 균등(확률 공시 그대로)
+const tierOk = R.RELIC_TIERS.every((t) => { const rates = R.relicDrawRates({}, t).filter((x) => x.rate > 0); return rates.length === 3 && rates.every((x) => Math.abs(x.rate - 1 / 3) < 1e-9 && R.RELIC_TIER[x.id] === t); });
+let leak = false; { let st = {}; for (let i = 0; i < 200; i++) { const d = R.drawRelicShards(st, 1, rng, "unique"); if (d.got.some((id) => R.RELIC_TIER[id] !== "unique")) leak = true; st = d.state; } }
+ok("등급 뽑기: 그 등급 3종만 · 각 1/3 (보석 뽑기에서 일반 · 레어가 안 나온다)", tierOk && !leak);
+// 기준은 게임 안 숫자 — 상점 "성급 조각 선택팩"(원하는 동료 조각 10개 = 120 보석)으로 동료 첫 승급(★1→★2 조각 20) = 240 보석.
+// 유니크 ★ 하나(조각 3개)는 무엇이 나올지 못 고르니 이보다 싸야 하고, 같은 보석 소비처로서 너무 싸지 않게 그 절반 이상.
 const pack = CAT.GEM_PRODUCTS.find((x) => x.id === "shard-pack");
 const allyStarGems = (pack.gemCost / 10) * A.STAR_SHARD_COST[1];
-const relicStarGems = R.RELIC_DRAW.singleCost * R.RELIC_SHARDS_PER_STAR;
-ok("유물 ★ 하나는 고르는 동료 첫 승급(조각팩)보다 싸고 그 절반 이상", relicStarGems < allyStarGems && relicStarGems >= allyStarGems / 2, `유물 ★ ${relicStarGems} · 동료 ★2 ${allyStarGems} 보석`);
-// 아래 일수는 참고(무과금 하루 약 38.6 보석) — 첫 세트 2~4주 · 9종 ★1 1~3달 · 전부 ★5 는 3달 이상(긴 소비처 · 대장 재처치 드랍은 따로)
-ok("유물 한 조각은 동료 1회보다 싸다", R.RELIC_DRAW.singleCost < G.GACHA.singleCost && R.RELIC_DRAW.tenCost === R.RELIC_DRAW.singleCost * 9, `조각 ${R.RELIC_DRAW.singleCost} · 10회 ${R.RELIC_DRAW.tenCost} · 동료 ${G.GACHA.singleCost}`);
-ok("무과금 첫 세트 14~28일", days(mean(firstSet)) >= 14 && days(mean(firstSet)) <= 28, `${relicRow.firstSetDraws}회 · ${relicRow.firstSetDays}일`);
-ok("무과금 9종 ★1 30~90일", days(mean(allOne)) >= 30 && days(mean(allOne)) <= 90, `${relicRow.allOneDraws}회 · ${relicRow.allOneDays}일`);
-ok("전부 ★5 는 90일 이상(긴 소비처)", days(all5) >= 90, `${all5}회 · ${relicRow.all5Days}일`);
+const relicStarGems = R.relicTierDrawCost("unique", 1).single * R.RELIC_SHARDS_PER_STAR;
+ok("유니크 ★ 하나(보석)는 고르는 동료 첫 승급(조각팩)보다 싸고 그 절반 이상", relicStarGems < allyStarGems && relicStarGems >= allyStarGems / 2, `유니크 ★ ${relicStarGems} · 동료 ★2 ${allyStarGems} 보석`);
+ok("유니크 한 번은 동료 1회보다 싸다 · 10회는 9회 값", R.RELIC_DRAW.singleCost < G.GACHA.singleCost && R.RELIC_DRAW.tenCost === R.RELIC_DRAW.singleCost * 9, `유니크 ${R.RELIC_DRAW.singleCost} · 10회 ${R.RELIC_DRAW.tenCost} · 동료 ${G.GACHA.singleCost}`);
+// 참고(단언 아님): 보석만으로 유니크 3종 ★1 · 유니크 3종 ★5 — 무과금 하루 약 38.6 보석
+const uniqueOne = [];
+for (let k = 0; k < RUNS; k++) { let st = {}, n = 0; while (n < 500 && !R.RELICS.filter((r) => R.RELIC_TIER[r.id] === "unique").every((r) => R.relicStars(st, r.id) >= 1)) { st = R.drawRelicShards(st, 1, rng, "unique").state; n += 1; } uniqueOne.push(n); }
+const unique5 = 3 * R.RELIC_SHARDS_PER_STAR * R.RELIC_MAX_STAR;
+const relicRow = { uniqueAllOneDraws: mean(uniqueOne).toFixed(1), uniqueAllOneDays: days(mean(uniqueOne)).toFixed(1), uniqueAll5Draws: unique5, uniqueAll5Days: days(unique5).toFixed(0), commonAtStage30: R.relicTierDrawCost("common", 30).single, rare: R.relicTierDrawCost("rare", 1).single };
+console.log("참고 — 보석 뽑기로 유니크 3종 ★1 약", relicRow.uniqueAllOneDays, "일 · 유니크 3종 ★5 약", relicRow.uniqueAll5Days, "일 (무과금 하루 약 38.6 보석)");
+if (PRINT) console.log("relic", JSON.stringify(relicRow));
 
 // ── 강화 위험 ──
 // 정책: 될 때까지 누른다. tickets = 처음 가진 방지권(파괴를 한 번씩 막는다)
