@@ -460,6 +460,26 @@ function equippedSkinsOf(
   return out;
 }
 
+/**
+ * 무기 4종 일회성 이전 (2026-10-27 난이도 감사) — 무기 개편(bf8e840) 때 옛 저장은 모두 검(옛 북 단계)이 됐고,
+ * 성문 방어에서 활 · 지팡이를 주력으로 키운 계정은 그 강화가 무시돼 장 대장 30 · 50 을 못 깼다(시뮬 0/4).
+ * 한 번만: 지금 검이고 옛 원정 무기(활 · 지팡이 · 창)의 단계(0~20)가 검 단계(0~15 → 0~20)보다 높으면 그 무기를 장착한다.
+ * 직접 다른 무기를 고른 계정은 그대로. 이전했다는 표시는 claimedRewards 의 WEAPON_KIND_MIGRATED
+ */
+export const WEAPON_KIND_MIGRATED = "migrate:weapon-kind-v2";
+function migratedWeaponKind(raw: Partial<CharacterProgress>): WeaponKind {
+  const kind = normalizeWeaponKind(raw.equippedWeaponKind);
+  const done = Array.isArray(raw.claimedRewards) && raw.claimedRewards.includes(WEAPON_KIND_MIGRATED);
+  if (done || kind !== "sword") return kind;
+  const old = raw.expeditionWeapon as string | undefined;
+  if (old !== "bow" && old !== "staff" && old !== "spear") return kind;
+  const forge = (raw.expeditionWeaponForge ?? {}) as Partial<Record<"bow" | "staff" | "spear", number>>;
+  const legacyBow = old === "bow" ? Math.min(WEAPON_FORGE_MAX, integer(raw.expeditionBasic, 0, SKILL_MAX_LEVEL) * 2) : 0;
+  const oldLv20 = Math.max(legacyBow, integer(forge[old], 0, WEAPON_FORGE_MAX));
+  const swordLv20 = Math.round((Math.min(15, integer(raw.equippedWeaponLevel, 0, 9999)) * 20) / 15);
+  return oldLv20 > swordLv20 ? old : kind;
+}
+
 export function normalizeCharacterProgress(
   raw: Partial<CharacterProgress> | null,
 ): CharacterProgress {
@@ -552,7 +572,7 @@ export function normalizeCharacterProgress(
       const legacyBow = Math.min(WEAPON_FORGE_MAX, integer(raw.expeditionBasic, 0, SKILL_MAX_LEVEL) * 2);
       return { bow: Math.max(legacyBow, integer(r.bow, 0, WEAPON_FORGE_MAX)), staff: integer(r.staff, 0, WEAPON_FORGE_MAX), spear: integer(r.spear, 0, WEAPON_FORGE_MAX) };
     })(),
-    equippedWeaponKind: normalizeWeaponKind(raw.equippedWeaponKind),
+    equippedWeaponKind: migratedWeaponKind(raw),
     expeditionLoadout: normalizeLoadout(raw.expeditionLoadout, expeditionSkills),
     dodgeStageSchema: 2,
     towerOpen: raw.towerOpen === true || (raw.dodgeStageSchema ?? 0) < 2 && (integer(raw.dodgeBestStage, 1, 9999) >= 4 || integer(raw.towerBestFloor, 0, 99999) > 0),
@@ -565,9 +585,7 @@ export function normalizeCharacterProgress(
     titanBestStage: Math.max(1, integer(raw.titanBestStage, 1, 9999)),
     beatSkills,
     skillPoints: integer(raw.skillPoints, base.skillPoints),
-    claimedRewards: Array.isArray(raw.claimedRewards)
-      ? [...new Set(raw.claimedRewards.filter((id): id is string => typeof id === "string"))].slice(-500)
-      : [],
+    claimedRewards: [...new Set([...(Array.isArray(raw.claimedRewards) ? raw.claimedRewards.filter((id): id is string => typeof id === "string") : []), WEAPON_KIND_MIGRATED])].slice(-500),
     claimedBadges: Array.isArray(raw.claimedBadges)
       ? [...new Set(raw.claimedBadges.filter((id): id is string => typeof id === "string"))].slice(-100)
       : [],
