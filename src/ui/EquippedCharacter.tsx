@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
-import { tierAt } from "../forge/model";
-import { SwordArt, swordImageUrl } from "../forge/swords";
 import { WEAPON_SKINS } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
 import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
@@ -30,7 +29,7 @@ type Props = {
   /** 방패·장갑·신발·투구·갑옷 티어 — 그리지 않는다. 장비 효과·성장 아이콘은 그대로 */
   gear?: { shield?: number; gloves?: number; boots?: number; helmet?: number; armor?: number };
   /** 무기 종류 (2026-10-15) — 북(대장간 북 그림) · 활 · 지팡이(파츠 그림, 티어는 weaponLevel 눈금) */
-  weaponKind?: "drum" | "bow" | "staff";
+  weaponKind?: "sword" | "spear" | "bow" | "staff";
 };
 
 /** 견갑 강화 외형 티어: 0 없음 · 1 (+1~4) 광택 · 2 (+5~9) 푸른 테두리 빛 · 3 (+10~14) 금빛 + 보석 · 4 (+15) 프리즘 — 대장간 무대가 쓴다 */
@@ -43,7 +42,7 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
  * 예전에는 투구·갑옷·장갑·신발·방패·견갑·망토 파츠를 뼈 앵커에 얹었지만 칸마다 몸과 따로 놀아 어색했다 — 이제 무기(북·활·지팡이·무기 외형)만 손에 든다.
  * 왕관·띠·등 망토는 3D 주인공 모델(art-gen/blender roster HERO) 자체의 생김새라 장비가 아니다. 장비 효과·성장/강화 화면 아이콘은 그대로.
  */
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "drum" }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword" }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
@@ -52,13 +51,13 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
   const sheet = sheetFor(character, mode);
-  const tier = tierAt(Math.min(15, weaponLevel));
   // 무기 외형(상점) — 티어 색을 덮어쓰고 오라를 두른다. 실루엣(티어)은 유지 =
   // 강화 단계는 형태로, 커스텀은 색으로 읽힌다.
   const blade = weaponSkin ? WEAPON_SKINS[weaponSkin] : undefined;
   // 탈착 (2026-10-23, 사용자: "무기 파츠 … 탈착 애니메이션") — 무기(종류 · 단계 · 외형)가 바뀌면 옛 무기는 손에서 빙글 떨어져 나가고(gear-detach)
   // 새 무기는 반짝 고리와 함께 튀어 들어온다(gear-attach). 처음 그릴 때는 움직이지 않는다
-  const weaponKey = blade ? `skin-${weaponSkin}` : weaponKind === "drum" ? (weaponLevel > 0 ? `drum-${Math.min(15, weaponLevel)}` : "none") : `${weaponKind}-${weaponTier}`;
+  // 2026-10-27 무기 4종 — 검 · 창 · 활 · 지팡이 모두 장비 그림(titans/weapons weaponIconPath). 예전 북(SwordArt)은 검 그림으로 바뀌었다
+  const weaponKey = blade ? `skin-${weaponSkin}` : `${weaponKind}-${weaponTier}`;
   const prevKey = useRef(weaponKey);
   const [swap, setSwap] = useState<{ from: string; seq: number }>({ from: "", seq: 0 });
   useEffect(() => {
@@ -69,7 +68,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     const t = window.setTimeout(() => setSwap((cur) => (cur.from === from ? { ...cur, from: "" } : cur)), 560);
     return () => window.clearTimeout(t);
   }, [weaponKey]);
-  const ghostSrc = swap.from.startsWith("drum-") ? swordImageUrl(Number(swap.from.slice(5))) : /^(bow|staff)-\d$/.test(swap.from) ? assetUrl(`titans/gear/${swap.from}.png`) : "";
+  const ghostSrc = /^(sword|spear|bow|staff)-\d$/.test(swap.from) ? assetUrl(`titans/gear/${swap.from.replace(/^sword-/, "weapon-")}.png`) : "";
   const weaponPart: CSSProperties = {
     left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%`,
     // 2판: 무기 그림을 손 오른쪽(바깥)으로 — 손 한가운데 두면 반이 얼굴(주둥이)을 덮었다(2026-10-19 칸별 캡처)
@@ -86,19 +85,15 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
         return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${sheetFor(character, m)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
       }) : <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundSize: `${frames * 100}% 100%`, backgroundPosition: `${frames > 1 ? (index / (frames - 1)) * 100 : 0}% 0` }} />}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
-      {swap.from && ghostSrc && <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ${swap.from.startsWith("drum-") ? "ghost-drum" : "ghost-alt"}`} style={weaponPart} src={ghostSrc} alt="" aria-hidden="true" />}
+      {swap.from && ghostSrc && <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach $ghost-alt`} style={weaponPart} src={ghostSrc} alt="" aria-hidden="true" />}
       {swap.seq > 0 && weaponKey !== "none" && <i key={`flash-${swap.seq}`} className="gear-swap-flash" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
-      {/* 활·지팡이 (2026-10-15) — 북 대신 손 앵커에 파츠 그림. 공격 프레임 앵커를 그대로 따라가 휘두른다 */}
-      {weaponKind !== "drum" && !blade && (
-        <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${swap.seq > 0 ? "gear-attach" : ""}`} style={weaponPart} src={assetUrl(`titans/gear/${weaponKind}-${weaponTier}.png`)} alt="" aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+      {/* 무기 4종 (2026-10-27) — 손 앵커에 장비 그림. 공격 프레임 앵커를 그대로 따라가 휘두른다 */}
+      {!blade && (
+        <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${swap.seq > 0 ? "gear-attach" : ""}`} style={weaponPart} src={assetUrl(weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
       )}
-      {(weaponLevel > 0 || blade) && (weaponKind === "drum" || blade) && (
-        <div
-          key={`${weaponKey}-${swap.seq}`}
-          className={`equipment-weapon ${blade ? "has-blade-skin" : ""} ${swap.seq > 0 ? "gear-attach" : ""}`}
-          style={blade ? { ...weaponPart, "--blade-aura": blade.aura } as CSSProperties : weaponPart}
-        >
-          {blade ? <i className="premium-weapon-part" style={{ backgroundImage:`url(${assetUrl("titans/equipment/weapons/premium-weapon-sheet.png")})`, backgroundPosition:`${blade.spriteIndex / 2 * 100}% center` }} /> : <SwordArt level={Math.min(15, weaponLevel)} hue={tier.hue} name={tier.name} />}
+      {blade && (
+        <div key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon has-blade-skin ${swap.seq > 0 ? "gear-attach" : ""}`} style={{ ...weaponPart, "--blade-aura": blade.aura } as CSSProperties}>
+          <i className="premium-weapon-part" style={{ backgroundImage:`url(${assetUrl("titans/equipment/weapons/premium-weapon-sheet.png")})`, backgroundPosition:`${blade.spriteIndex / 2 * 100}% center` }} />
         </div>
       )}
     </div>

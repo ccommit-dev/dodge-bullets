@@ -68,6 +68,32 @@ function drawHeroBow(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player)
  * 지팡이 (2026-10-08, 사용자: "활이나 지팡이로 마법을 쏠 때 애니메이션이 동작을 안 해") — 장착 무기가 지팡이면 활 대신
  * 지팡이를 조준 방향으로 들고, 재사용이 차는 동안 끝의 구슬이 커지며, 쏘는 순간(shotFlashMs) 구슬이 터지고 고리가 퍼진다.
  */
+/** 검 · 창 (2026-10-27 무기 4종) — 조준 방향으로 들고, 쏘는 순간(shotFlashMs) 검은 크게 휘두르고 창은 앞으로 찌른다 */
+function drawHeroMelee(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player, kind: "sword" | "spear"): void {
+  const hand = bowHand(world);
+  const release = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
+  ctx.save();
+  ctx.translate(hand.x, hand.y);
+  ctx.rotate(world.aimAngle + (kind === "sword" ? (release > 0 ? 0.9 * release - 0.45 : -0.5) : 0));
+  if (kind === "spear") ctx.translate(8 * release, 0);   // 찌르기
+  if (p.anim === "hit") ctx.globalAlpha = 0.75;
+  ctx.lineCap = "round";
+  if (kind === "sword") {
+    const L = p.radius * 2.2;
+    ctx.strokeStyle = "#7a4a22"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
+    ctx.strokeStyle = "#e8b23a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(3, -7); ctx.lineTo(3, 7); ctx.stroke();
+    ctx.fillStyle = "#e5edf5"; ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(5, -3.5); ctx.lineTo(L, -2); ctx.lineTo(L + 7, 0); ctx.lineTo(L, 2); ctx.lineTo(5, 3.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else {
+    const L = p.radius * 3;
+    ctx.strokeStyle = "#8a5a2b"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-L * 0.35, 0); ctx.lineTo(L * 0.75, 0); ctx.stroke();
+    ctx.fillStyle = "#e5e7eb"; ctx.strokeStyle = "#374151"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(L * 0.95, 0); ctx.lineTo(L * 0.72, -5); ctx.lineTo(L * 0.72, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#e8452c"; ctx.beginPath(); ctx.arc(L * 0.7, 3, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawHeroStaff(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player): void {
   const hand = bowHand(world);
   const L = p.radius * 2.6;
@@ -268,7 +294,7 @@ export function drawStickman(
     );
     // 파츠 오버레이는 걷었다 (2026-10-19, 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게") — 무기(활·지팡이)만 아래에서 그린다
         ctx.restore();
-    if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else drawHeroBow(ctx, world, p); }
+    if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else if (world.rangedWeapon === "sword" || world.rangedWeapon === "spear") drawHeroMelee(ctx, world, p, world.rangedWeapon); else drawHeroBow(ctx, world, p); }
 
     if (p.landingFxMs > 0) {
       const progress = 1 - p.landingFxMs / 180;

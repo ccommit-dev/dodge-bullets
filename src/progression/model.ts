@@ -1,4 +1,5 @@
 import { GEAR_ENHANCE_MAX, normalizeGearLevels } from "../equipment/parts";
+import { normalizeWeaponKind, type WeaponKind } from "../titans/weapons";
 import { emptyBeatCosmetics, normalizeBeatCosmetics } from "../beat/shop";
 import { legacySeenMonsters } from "../titans/bestiary";
 import type { BeatCosmetics } from "../beat/types";
@@ -61,8 +62,8 @@ export type CharacterProgress = {
   expeditionBasic: number;
   /** 대장간 활·지팡이 강화 단계 0~20 — 활: 기본 사격·물리 스킬 무기, 지팡이: 마법 스킬 무기 (2026-10-02) */
   expeditionWeaponForge: WeaponForgeLevels;
-  /** 주인공이 사냥터에서 드는 무기 (2026-10-15, 사용자: "캐릭터 아이템도 북 외에도 두 가지 더") — 북(대장간) · 활 · 지팡이(대장간 원정 무기) */
-  equippedWeaponKind: "drum" | "bow" | "staff";
+  /** 주인공 무기 (2026-10-27 4종 — titans/weapons.ts) — 검(대장간 단계, 예전 북 자리) · 창 · 활 · 지팡이(대장간 무기 강화). 사냥터 · 댐 방어전 공용 */
+  equippedWeaponKind: WeaponKind;
   /** 장착한 스킬 무기 (최대 4) — 그 판은 처음부터 쏜다 (2026-10-02) */
   expeditionLoadout: SkillWeaponId[];
   /**
@@ -267,7 +268,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     expeditionWeapon: "bow",
     expeditionBasic: 0,
     expeditionWeaponForge: emptyWeaponForge(),
-    equippedWeaponKind: "drum",
+    equippedWeaponKind: "sword",
     expeditionLoadout: ["fire"],
     dodgeStageSchema: 2,
     towerOpen: false,
@@ -549,9 +550,9 @@ export function normalizeCharacterProgress(
     expeditionWeaponForge: (() => {
       const r = (raw.expeditionWeaponForge ?? {}) as Partial<WeaponForgeLevels>;
       const legacyBow = Math.min(WEAPON_FORGE_MAX, integer(raw.expeditionBasic, 0, SKILL_MAX_LEVEL) * 2);
-      return { bow: Math.max(legacyBow, integer(r.bow, 0, WEAPON_FORGE_MAX)), staff: integer(r.staff, 0, WEAPON_FORGE_MAX) };
+      return { bow: Math.max(legacyBow, integer(r.bow, 0, WEAPON_FORGE_MAX)), staff: integer(r.staff, 0, WEAPON_FORGE_MAX), spear: integer(r.spear, 0, WEAPON_FORGE_MAX) };
     })(),
-    equippedWeaponKind: raw.equippedWeaponKind === "bow" || raw.equippedWeaponKind === "staff" ? raw.equippedWeaponKind : "drum",
+    equippedWeaponKind: normalizeWeaponKind(raw.equippedWeaponKind),
     expeditionLoadout: normalizeLoadout(raw.expeditionLoadout, expeditionSkills),
     dodgeStageSchema: 2,
     towerOpen: raw.towerOpen === true || (raw.dodgeStageSchema ?? 0) < 2 && (integer(raw.dodgeBestStage, 1, 9999) >= 4 || integer(raw.towerBestFloor, 0, 99999) > 0),

@@ -166,6 +166,26 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.globalAlpha = s.fade;
     // 화살 물체
     ctx.translate(sx, sy); ctx.rotate(ang);
+    if (s.basic && world.rangedWeapon === "sword") {
+      // 검기 (2026-10-27) — 초승달 모양 빛 베기
+      const tint = s.element === "basic" ? "#e0f2fe" : color;
+      ctx.shadowColor = tint; ctx.shadowBlur = 12;
+      ctx.strokeStyle = tint; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(-6, 0, 16, -1.1, 1.1); ctx.stroke();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(-6, 0, 16, -0.8, 0.8); ctx.stroke();
+      ctx.restore();
+      continue;
+    }
+    if (s.basic && world.rangedWeapon === "spear") {
+      // 창끝 찌르기 (2026-10-27) — 긴 자루 끝 날 · 꿰뚫는 잔상
+      ctx.strokeStyle = "#8a5a2b"; ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(4, 0); ctx.stroke();
+      ctx.fillStyle = s.element === "basic" ? "#e5e7eb" : color; ctx.strokeStyle = "#374151"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(3, -5); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      continue;
+    }
     if (s.basic && world.rangedWeapon === "staff") {
       // 지팡이의 기본 사격은 마력탄 — 나무 화살이 지팡이에서 나가면 어색하다 (2026-09-29)
       const r = s.radius > 10 ? 9 : 7;

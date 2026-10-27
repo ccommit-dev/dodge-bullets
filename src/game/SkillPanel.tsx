@@ -11,6 +11,7 @@ import {
 import {
   EXPEDITION_SKILLS,
   RANGED_WEAPONS,
+  WEAPON_BY_ID,
   SKILL_BY_ID,
   SKILL_MAX_LEVEL,
   BASIC_SHOT_COOLDOWN, basicCooldownMul, basicDamageMul,
@@ -314,7 +315,7 @@ export function SkillPanel({
       {tab === "upgrade" && (<>
       {/* 무기 탈착 — 캐릭터는 그대로, 활/지팡이만 바꿔 끼운다 (사용자 지시 2026-09-28) */}
       <div className="exp-weapon-row">
-        <b>원거리 무기</b>
+        <b>무기 · 사냥터와 공용</b>
         <div>
           {RANGED_WEAPONS.map((w) => {
             const unlocked = weaponUnlocked(w, dodgeBestStage);
@@ -348,7 +349,7 @@ export function SkillPanel({
           {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
           <img src={assetUrl(`dodge/weapons/icon-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
-            <b>{weapon === "staff" ? "마력탄" : "기본 사격"} · 대장간 활 +{basicLevel}</b>
+            <b>{weapon === "staff" ? "마력탄" : weapon === "sword" ? "검기" : weapon === "spear" ? "찌르기" : "기본 사격"} · {WEAPON_BY_ID[weapon]?.name ?? "무기"} +{basicLevel}</b>
             <em>피해 ×{basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 강화는 대장간</em>
           </span>
         </div>

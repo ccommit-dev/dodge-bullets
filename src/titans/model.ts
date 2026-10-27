@@ -97,6 +97,10 @@ export type TitansSave = {
     levels: Record<TitanSkillId, number>;
     equipped: Partial<Record<TitanSkillSlot, TitanSkillId>>;
     skillCores: number;
+    /** 무기별 스킬 세트 (2026-10-27, "변하는 무기마다 스킬도 무기에 따라 설정할 수 있게") — 무기를 바꾸면 equipped 와 맞바꾼다 */
+    loadouts?: Partial<Record<"sword" | "spear" | "bow" | "staff", Partial<Record<TitanSkillSlot, TitanSkillId>>>>;
+    /** 지금 equipped 가 어느 무기의 세트인가 — 장착 무기와 다르면 사냥터가 맞바꾼다(대장간에서 무기를 바꿔도 따라온다) */
+    loadoutKind?: "sword" | "spear" | "bow" | "staff";
   };
   heroes: Record<TitanHeroId, number>;
   /** 은퇴한 동료·스킬의 환불 — 진행도(보석·SP)에 아직 안 얹은 것. TitansGame 부팅이 얹고 비운다 */
@@ -374,7 +378,14 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
       glovesMastery: n(value.equipmentTraining?.glovesMastery, 0, 9999),
       bootsMastery: n(value.equipmentTraining?.bootsMastery, 0, 9999),
     },
-    skillInventory: { learned: [...new Set(learned)], levels, equipped, skillCores: n(value.skillInventory?.skillCores, 0, 9999) + refund.cores },
+    skillInventory: {
+      learned: [...new Set(learned)], levels, equipped, skillCores: n(value.skillInventory?.skillCores, 0, 9999) + refund.cores,
+      // 무기별 스킬 세트 — 배운 스킬 · 맞는 칸만 남긴다
+      loadouts: Object.fromEntries(Object.entries((value.skillInventory as { loadouts?: Record<string, Partial<Record<TitanSkillSlot, TitanSkillId>>> } | undefined)?.loadouts ?? {})
+        .filter(([k]) => k === "sword" || k === "spear" || k === "bow" || k === "staff")
+        .map(([k, eq]) => [k, Object.fromEntries(Object.entries(eq ?? {}).filter(([slot, id]) => learned.includes(id as TitanSkillId) && SKILLS.find((sk) => sk.id === id)?.slot === slot))])),
+      loadoutKind: ((k) => (k === "spear" || k === "bow" || k === "staff" || k === "sword" ? k : undefined))((value.skillInventory as { loadoutKind?: unknown } | undefined)?.loadoutKind),
+    },
     heroes,
     pendingRefund: refund.gems > 0 || refund.sp > 0 ? { gems: refund.gems, sp: refund.sp } : null,
     totalKills: n(value.totalKills, 0),
