@@ -28,6 +28,7 @@ const progress = {
   expeditionSkills: { fire: 6, water: 4, ice: 2, earth: 2, bolt: 2, ultimate: 4 },
   expeditionShards: { fire: 30, water: 2, ice: 9, earth: 0, bolt: 5, ultimate: 12 },
   expeditionWeapon: "staff",
+  equippedWeaponKind: "staff",   // 2026-10-27 무기 4종 — 댐 방어전 무기 = 사냥터 장착 무기
   expeditionChips: { focus: 3, barrage: 3, ember: 2, rime: 4, vitality: 2, edge: 1 },
   equippedChips: ["focus", "rime", null],
   expeditionSupplies: { draft: 1, primed: 0, insurance: 2 },
@@ -100,8 +101,8 @@ const skillUi = await page.evaluate(() => {
   };
 });
 // 2026-10-02: 스킬 무기 10종 + 화살비 = 카드 11장
-ok("스킬 화면: 원거리 무기 2종 + 스킬 무기 10종·화살비, 저장된 지팡이가 장착 상태", menu
-  && skillUi.weapons === 2 && skillUi.skills === 11 && skillUi.on[1] === true && skillUi.on[0] === false,
+ok("스킬 화면: 무기 4종(검 · 창 · 활 · 지팡이) + 스킬 무기 10종·화살비, 저장된 지팡이가 장착 상태", menu
+  && skillUi.weapons === 4 && skillUi.skills === 11 && skillUi.on[3] === true && skillUi.on[0] === false,
   JSON.stringify(skillUi.on));
 // 메뉴 머리 — 상단 버튼(사운드·사냥터로)이 제목 위에 겹치지 않고, 인장 잔액이 보인다 (2026-09-29 캡처)
 {

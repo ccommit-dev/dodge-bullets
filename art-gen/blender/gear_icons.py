@@ -236,6 +236,57 @@ def drum(level):
         ob(f'tip{sx}', C.ellipsoid(Vector((sx * 0.67, -0.31, 0.97)), (0.07, 0.07, 0.07)), m('tipb', '#f1e4c8'))
 
 
+
+# ── 무기 4종 (2026-10-27, 사용자: "비버의 무기가 북이라 너무 어색해 … 검 · 창 · 활 · 지팡이") ──
+def spear(t):
+    T = TIER[t]
+    ob('shaft', C.tube([Vector((0, 0, -0.85)), Vector((0, 0, 0.5))], 0.04, seg=8), m('shaft', '#8a5a2b' if t == 1 else T['main']))
+    head = C.cone(Vector((0, 0, 0.72)), 0.13, 0.0, 0.42, seg=4)
+    ob('head', head, metal_m(T['metal'] if t > 1 else '#c8d2dc'))
+    ob('collar', C.tube([Vector((0, 0, 0.46)), Vector((0, 0, 0.54))], 0.075, seg=8), metal_m(T['trim']))
+    for k, z in enumerate((-0.15, 0.05)):
+        ob(f'wrap{k}', C.tube([Vector((0, 0, z)), Vector((0, 0, z + 0.08))], 0.052, seg=8), m('wrap', T['cloth']), O * 0.6)
+    if t >= 2:   # 술 장식
+        pts = spline([Vector((0, 0, 0.5)), Vector((0.12, -0.02, 0.36)), Vector((0.16, -0.02, 0.18))], 8)
+        ob('tassel', C.tube(pts, interp([0.05, 0.04, 0.012], len(pts)), seg=6), m('tassel', '#e8452c' if t == 2 else '#ffd34d'))
+    if T['gem']:
+        gem('g', T['gem'], Vector((0, -0.05, 0.5)), 0.05)
+    ob('butt', C.cone(Vector((0, 0, -0.92)), 0.05, 0.0, 0.12, seg=6, rot=Euler((math.radians(180), 0, 0))), metal_m(T['trim']))
+
+
+def sword_lv(level):
+    """대장간 검 16단계 (예전 북 drum(level) 자리) — 0~4 나무 · 쇠, 5~9 푸른 강철, 10~15 황금 · 보석 · 빛 · 날개"""
+    t = 1 if level < 5 else 2 if level < 10 else 3
+    T = TIER[t]
+    blade_c = '#c8d2dc' if level < 2 else T['metal'] if t > 1 else '#d4dde6'
+    if level <= 1:
+        blade_c = '#c9a46a'   # 나무 검
+    blade = C.box(Vector((0, 0, 0.32)), (0.17 + 0.006 * level, 0.05, 0.95), bevel=0.0)
+    for v in blade.verts:
+        if v.co.z > 0.62:
+            v.co.x *= max(0.05, (0.8 - v.co.z) / 0.18)
+    es = 0.0 if level < 7 else 0.25 + 0.06 * (level - 7)
+    ob('blade', blade, m('blade', blade_c, rough=0.4, metal=0.0 if level <= 1 else 0.6, emit=blade_c if es else None, es=es))
+    ob('guard', C.box(Vector((0, 0, -0.18)), (0.52 + 0.02 * min(level, 10), 0.11, 0.09)), metal_m(T['trim']))
+    ob('grip', C.tube([Vector((0, 0, -0.2)), Vector((0, 0, -0.5))], 0.055, seg=8), m('grip', T['main']))
+    ob('pommel', C.ellipsoid(Vector((0, 0, -0.55)), (0.08, 0.08, 0.08)), metal_m(T['trim']))
+    if level >= 3:   # 가드 보석
+        cols = ['#4fd8ff', '#e8467c', '#9ad04a', '#ffd34d']
+        for k in range(min(3, 1 + (level - 3) // 3)):
+            gem(f'gem{k}', cols[(level + k) % 4], Vector((-0.16 + 0.16 * k, -0.07, -0.18)), 0.05)
+    if level >= 5:   # 칼날 홈(룬)
+        ob('fuller', C.box(Vector((0, -0.03, 0.3)), (0.04, 0.01, 0.6)), m('rune', '#7fd4ff' if t == 2 else '#ffd34d', emit='#7fd4ff' if t == 2 else '#ffd34d', es=0.9), 0)
+    if level >= 11:   # 가드 날개
+        for sx in (-1, 1):
+            pts = spline([Vector((sx * 0.26, 0, -0.16)), Vector((sx * 0.5, 0, -0.02)), Vector((sx * 0.56, 0, 0.22))], 8)
+            ob(f'wing{sx}', C.tube(pts, interp([0.07, 0.05, 0.01], len(pts)), seg=6), metal_m('#ffd34d'))
+    if level >= 15:   # 왕관 손잡이
+        for k in range(5):
+            a = 2 * math.pi * k / 5
+            ob(f'crown{k}', C.cone(Vector((0.07 * math.cos(a), 0.07 * math.sin(a), -0.6)), 0.03, 0.0, 0.1, seg=5, rot=Euler((math.radians(180), 0, 0))), metal_m('#ffd34d'), O * 0.5)
+
+
+
 # 3/4 로 보일 파츠 — (옆으로 도는 각, 앞으로 숙이는 각)
 TURN = {'helmet': (-32, 8), 'armor': (-26, 4), 'gloves': (-30, 6), 'boots': (-62, 4), 'shoulder': (-58, 14)}
 
@@ -244,6 +295,7 @@ for t in (1, 2, 3):
     JOBS[f'weapon-{t}'] = (sword, t, (25, 15), 2.0)
     JOBS[f'bow-{t}'] = (bow, t, (-20, 12), 2.1)
     JOBS[f'staff-{t}'] = (staff, t, (-20, 12), 2.1)
+    JOBS[f'spear-{t}'] = (spear, t, (-20, 12), 2.2)
     JOBS[f'shield-{t}'] = (shield, t, (-25, 12), 1.9)
     JOBS[f'helmet-{t}'] = (helmet, t, (-30, 18), 1.75)
     JOBS[f'armor-{t}'] = (armor, t, (-28, 14), 1.75)
@@ -253,14 +305,17 @@ for k in SHOULDERS:
     JOBS[f'shoulder-{k}'] = (shoulder, k, (-35, 24), 1.9)
 for lv in range(16):
     JOBS[f'drum-{lv:02d}'] = (drum, lv, (-24, 22), 2.3)
+    JOBS[f'sword-{lv:02d}'] = (sword_lv, lv, (25, 15), 2.0)
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['gear', 'drums']
 names = []
 for a in argv:
     if a == 'gear':
-        names += [k for k in JOBS if not k.startswith('drum-')]
+        names += [k for k in JOBS if not k.startswith('drum-') and not k.startswith('sword-')]
     elif a == 'drums':
         names += [k for k in JOBS if k.startswith('drum-')]
+    elif a == 'swords':
+        names += [k for k in JOBS if k.startswith('sword-')]
     else:
         names.append(a)
 os.makedirs(OUTDIR, exist_ok=True)

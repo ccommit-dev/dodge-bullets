@@ -231,11 +231,16 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   const ge = p.gearEnhance ?? { helmet: 0, armor: 0, gloves: 0, boots: 0 };
   const hi = (a: number, b: number) => Math.max(a, b) as 0 | 1 | 2 | 3;
   world.player.gear = { helmet: hi(helmetTierOf(p.shoulderEnhance ?? 0), gearTierOfEnhance(ge.helmet)), armor: hi(chestTierOf(p.equippedShoulder), gearTierOfEnhance(ge.armor)), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: gearTierOfEnhance(ge.gloves), boots: hi(bootsTierOf(p.towerBestFloor), gearTierOfEnhance(ge.boots)) };
-  world.basicLevel = p.expeditionWeaponForge.bow;
+  // 무기 4종 (2026-10-27) — 댐 방어전 무기 = 사냥터 장착 무기. 기본 사격 단계 = 그 무기의 단계(검은 대장간 0~15 → 0~20), 물리 스킬 배수도 장착 물리 무기의 단계
+  const wk = p.equippedWeaponKind;
+  const swordLv20 = Math.round((Math.min(15, p.equippedWeaponLevel) * 20) / 15);
+  const physLv = wk === "sword" ? swordLv20 : wk === "spear" ? p.expeditionWeaponForge.spear : p.expeditionWeaponForge.bow;
+  world.weaponForge = { ...p.expeditionWeaponForge, bow: physLv };
+  world.basicLevel = wk === "sword" ? swordLv20 : p.expeditionWeaponForge[wk];
   world.loadout = p.expeditionLoadout.filter((id) => (p.expeditionSkills[id] ?? 0) > 0);
   // 테스트 모드에서 낀 잠긴 무기는 테스트 모드를 끄면 활로 쏜다 — 읽을 때만 바꾸고 저장은 그대로 (2026-10-16)
-  const wdef = WEAPON_BY_ID[p.expeditionWeapon];
-  world.rangedWeapon = wdef && !weaponUnlocked(wdef, p.dodgeBestStage) ? "bow" : p.expeditionWeapon;
+  const wdef = WEAPON_BY_ID[wk];
+  world.rangedWeapon = wdef && !weaponUnlocked(wdef, p.dodgeBestStage) ? "sword" : wk;
   return stats;
 }
 
@@ -1426,7 +1431,8 @@ function App() {
         const def = id === "none" ? null : WEAPON_BY_ID[id];
         if (def && !weaponUnlocked(def, p.dodgeBestStage)) return p;   // 잠긴 무기는 못 낀다
         if (id === "none") return p;                                       // 맨손은 없다 — 활만 쓰는 콘텐츠다 (2026-10-01)
-        return { ...p, expeditionWeapon: id };
+        // 2026-10-27 — 사냥터 · 댐 방어전 공용 장착 무기(equippedWeaponKind)를 바꾼다
+        return { ...p, expeditionWeapon: id, equippedWeaponKind: id };
       });
       setProgress(next);
       const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
@@ -2186,10 +2192,10 @@ function App() {
                 chipSlots={chipSlotsOpen(progress.dodgeBestStage)}
                 onUpgradeChip={handleUpgradeChip}
                 onEquipChip={handleEquipChip}
-                weapon={progress.expeditionWeapon}
+                weapon={progress.equippedWeaponKind}
                 onEquipWeapon={handleEquipWeapon}
                 onUpgrade={handleUpgradeSkill}
-                basicLevel={progress.expeditionBasic}
+                basicLevel={progress.equippedWeaponKind === "sword" ? Math.round((Math.min(15, progress.equippedWeaponLevel) * 20) / 15) : progress.expeditionWeaponForge[progress.equippedWeaponKind]}
                 accountLevel={progress.level}
                 loadout={progress.expeditionLoadout}
                 onToggleLoadout={handleToggleLoadout}
@@ -2288,7 +2294,7 @@ function App() {
             <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
               {skillHud.map((s) => (
                 <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""}`} title={s.id === "basic" ? "기본 사격" : SKILL_BY_ID[s.id].name}>
-                  <img src={assetUrl(s.id === "basic" ? `dodge/weapons/icon-${progress.expeditionWeapon === "staff" ? "staff" : "bow"}.png` : `dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
+                  <img src={assetUrl(s.id === "basic" ? `dodge/weapons/icon-${progress.equippedWeaponKind}.png` : `dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
                   {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
                   <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />
                   {s.id !== "basic" && <b>{s.lv}</b>}

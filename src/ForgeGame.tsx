@@ -1,4 +1,5 @@
 import { GEAR_ENHANCE_MAX, GEAR_PARTS, GEAR_PART_DEF, emptyGearLevels, gearEnhanceCost, gearTierOfEnhance, type GearLevels, type GearPart } from "./equipment/parts";
+import { WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
@@ -75,7 +76,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [gearEnh, setGearEnh] = useState<GearLevels>(emptyGearLevels());
   /** 무대에 올릴 장비·원정 무기 (2026-10-15, 사용자: "장비 강화도 북 강화하기처럼 리소스가 다 있어야") */
   const [selGear, setSelGear] = useState<GearPart>("helmet");
-  const [selWeapon, setSelWeapon] = useState<"bow" | "staff">("bow");
+  const [selWeapon, setSelWeapon] = useState<"bow" | "staff" | "spear">("bow");
+  /** 장착 무기 (2026-10-27 무기 4종) — 첫 탭은 이 무기를 강화한다: 검 = 강화 무대(단계 0~15), 창 · 활 · 지팡이 = 무기 카드(0~20) */
+  const [equippedKind, setEquippedKind] = useState<WeaponKind>("sword");
   const [gearFlash, setGearFlash] = useState(0);
   const [gems, setGems] = useState(0);
   /** 대장간 지갑 = 공유 골드. 방치 정산이 여기로 들어오고 강화가 여기서 빠진다. */
@@ -86,7 +89,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [shoulderShards, setShoulderShards] = useState(0);
   /** 성문 방어 활·지팡이 강화 단계 (2026-10-02) */
-  const [expForge, setExpForge] = useState<WeaponForgeLevels>({ bow: 0, staff: 0 });
+  const [expForge, setExpForge] = useState<WeaponForgeLevels>({ bow: 0, staff: 0, spear: 0 });
   /** 장인 이정표 (forge/talents, 2026-10-13): 영구 특성 · 받은 골드 이정표 수 · 선택 시트 */
   const [talents, setTalents] = useState<TalentId[]>([]);
   const [goldClaimed, setGoldClaimed] = useState(0);
@@ -135,6 +138,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       setEquippedShoulder(progress.equippedShoulder);
       setShoulderShards(progress.shoulderShards);
       setExpForge(progress.expeditionWeaponForge);
+      setEquippedKind(progress.equippedWeaponKind);
+      if (progress.equippedWeaponKind !== "sword") setSelWeapon(progress.equippedWeaponKind);
       setTalents(progress.talents);
       setGoldClaimed(progress.masteryGoldClaimed);
       setPhase(forge.pendingFailure ? "failure" : "idle");
@@ -153,6 +158,15 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   }, [ready, save, userHash]);
 
   const tier = tierAt(save.level);
+  /** 첫 탭은 장착 무기 — 검이 아니면 무기 카드 화면으로 */
+  const effView: ForgeView = view === "forge" && equippedKind !== "sword" ? "weapons" : view;
+  const equipKind = async (k: WeaponKind) => {
+    if (k === equippedKind) return;
+    const next = await updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k }));
+    setEquippedKind(next.equippedWeaponKind);
+    if (k !== "sword") setSelWeapon(k);
+    flashToast(`${WEAPON_LABEL[k]} 장착 — 사냥터 · 댐 방어전 공용 · ${weaponStatText(k)}`);
+  };
   const chance = effectiveChance(tier);
   const boostedChance = Math.min(1, chance + (materials > 0 ? 0.08 : 0));
   const sell = effectiveSell(tier);
@@ -226,7 +240,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     setMaterials(next.enhancementMaterials);
     setExpForge(next.expeditionWeaponForge);
     if (!done) return;
-    const name = kind === "bow" ? "원정 장궁" : "수정 지팡이";
+    const name = WEAPON_FORGE_NAME[kind];
     riskFeedback(`weapon-${kind}`, outcome, shielded, `${name} +${next.expeditionWeaponForge[kind]} 강화 성공`, name, lv);
   };
 
@@ -325,7 +339,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       pendingFailure: false,
     }));
     setPhase("idle");
-    flashToast("방지권으로 북을 복구했습니다");
+    flashToast("방지권으로 검을 복구했습니다");
   };
 
   const collectShards = () => {
@@ -624,11 +638,11 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           <section className="forge-title-row">
             <div>
               <p className="forge-kicker">BLACKSMITH</p>
-              <h1>{view === "armor" ? "보호구 강화하기" : view === "weapons" ? "원정 무기 강화" : view === "gear" ? "장비 강화" : "북 강화하기"}</h1>
+              <h1>{view === "armor" ? "보호구 강화하기" : effView === "weapons" ? `${WEAPON_FORGE_NAME[equippedKind]} 강화` : view === "gear" ? "장비 강화" : "검 강화하기"}</h1>
             </div>
             <div className="forge-best">
               최고 기록
-              <strong>+{view === "armor" ? save.bestArmorLevel : view === "weapons" ? Math.max(expForge.bow, expForge.staff) : save.bestLevel}</strong>
+              <strong>+{view === "armor" ? save.bestArmorLevel : effView === "weapons" && equippedKind !== "sword" ? expForge[equippedKind] : save.bestLevel}</strong>
             </div>
           </section>
 
@@ -648,11 +662,21 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               조합소
             </button>
             <button type="button" className={view === "armor" ? "on" : ""} onClick={() => setView("armor")}>보호구</button>
-            <button type="button" className={view === "weapons" ? "on" : ""} onClick={() => setView("weapons")}>원정 무기</button>
             <button type="button" className={view === "gear" ? "on" : ""} onClick={() => setView("gear")}>장비</button>
           </div>
 
-          {view === "forge" ? (
+          {/* 무기 바꾸기 (2026-10-27) — 장착 무기가 사냥터 · 댐 방어전 공용. 첫 탭은 장착 무기를 강화한다 */}
+          {view === "forge" && (
+            <div className="forge-weapon-kinds" role="group" aria-label="장착 무기">
+              {WEAPON_KINDS.map((k) => (
+                <button key={k} type="button" className={equippedKind === k ? "on" : ""} aria-pressed={equippedKind === k} onClick={() => void equipKind(k)}>
+                  <img src={assetUrl(weaponIconPath(k, k === "sword" ? save.level : Math.round((expForge[k] * 15) / 20)))} alt="" aria-hidden="true" />
+                  <b>{WEAPON_LABEL[k]}</b><small>+{k === "sword" ? save.level : expForge[k]}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          {effView === "forge" ? (
             <>
               <section className={`forge-stage forge-phase-${phase}`} style={swordStyle}>
                 <div className="forge-embers" aria-hidden="true">
@@ -804,22 +828,22 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 );
               })}
             </section>
-          ) : view === "weapons" ? (
+          ) : effView === "weapons" ? (
             <section className="forge-expweapons">
-              <ForgeShowcase src={assetUrl(`titans/gear/${selWeapon}-${expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1}.png`)} level={expForge[selWeapon]} name={selWeapon === "bow" ? "원정 장궁" : "수정 지팡이"} tier={(expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1) as 1 | 2 | 3} flash={gearFlash} />
+              <ForgeShowcase src={assetUrl(weaponIconPath(selWeapon, Math.round((expForge[selWeapon] * 15) / 20)))} level={expForge[selWeapon]} name={WEAPON_FORGE_NAME[selWeapon]} tier={(expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1) as 1 | 2 | 3} flash={gearFlash} />
               <p className="forge-note">성문 방어의 무기 — 높은 단계는 실패 · 파괴(+0) 확률이 있어요(방지권 {save.tickets}장이 파괴를 막음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>
-              {(["bow", "staff"] as const).map((kind) => {
+              {(equippedKind === "sword" ? [] : [equippedKind]).map((kind) => {
                 const lv = expForge[kind];
                 const maxed = lv >= WEAPON_FORGE_MAX;
                 const cost = weaponForgeCost(lv + 1);
                 const can = !maxed && coins >= cost.gold && materials >= cost.stones;
-                const family = kind === "bow" ? "physical" : "magic";
+                const family = kind === "staff" ? "magic" : "physical";
                 const weapons = EXPEDITION_SKILLS.filter((d) => d.family === family).map((d) => d.weapon);
                 return (
                   <article key={riskHit?.key === `weapon-${kind}` ? `${kind}-${riskHit.seq}` : kind} className={`forge-expweapon ${kind} ${selWeapon === kind ? "on" : ""} ${riskHit?.key === `weapon-${kind}` ? `risk-${riskHit.kind}` : ""}`} onClick={() => setSelWeapon(kind)}>
-                    <img src={assetUrl(`dodge/weapons/icon-${kind}.png`)} alt="" aria-hidden="true" />
+                    <img src={assetUrl(weaponIconPath(kind, Math.round((lv * 15) / 20)))} alt="" aria-hidden="true" />
                     <div>
-                      <strong>{kind === "bow" ? "원정 장궁" : "수정 지팡이"} +{lv}</strong>
+                      <strong>{WEAPON_FORGE_NAME[kind]} +{lv}</strong>
                       <p>{kind === "bow" ? "기본 사격 · " : ""}{weapons.join(" · ")}</p>
                       <p className="forge-expweapon-stat">
                         피해 ×{weaponForgeDamageMul(lv).toFixed(2)}{maxed ? "" : ` → ×${weaponForgeDamageMul(lv + 1).toFixed(2)}`} · 재사용 ×{weaponForgeCooldownMul(lv).toFixed(3)}{maxed ? "" : ` → ×${weaponForgeCooldownMul(lv + 1).toFixed(3)}`}
@@ -853,7 +877,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <article className="forge-shop-card">
                 <div>
                   <strong>강화 방지권</strong>
-                  <p>실패 시 단계에 따라 1~5장 소모해 북을 살립니다.</p>
+                  <p>실패 시 단계에 따라 1~5장 소모해 검을 살립니다.</p>
                 </div>
                 <button type="button" disabled={coins < ticketPrice} onClick={buyTicket}>
                   {formatGold(ticketPrice)}G
@@ -879,7 +903,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <article className="forge-shop-card">
                 <div>
                   <strong>조각 → 검</strong>
-                  <p>조각 {swordCraftCost}개로 +3 강철 테 북을 만듭니다.</p>
+                  <p>조각 {swordCraftCost}개로 +3 강철 검을 만듭니다.</p>
                 </div>
                 <button
                   type="button"
@@ -969,7 +993,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
         <div className="forge-failure" role="dialog" aria-modal="true">
           <div className="forge-failure-card">
             <p>ENHANCE FAILED</p>
-            <h2>북이 부서졌습니다</h2>
+            <h2>검이 부서졌습니다</h2>
             <span>
               +{save.level} {tier.name}
             </span>

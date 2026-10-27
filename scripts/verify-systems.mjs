@@ -562,13 +562,14 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   for (let i = 0; i < 16; i += 1) {
     const p = join(root, "public/forge/swords", "s" + String(i).padStart(2, "0") + ".png");
     const { data, info } = await sharp(p).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
-    let minx = Infinity, maxx = -1;
-    for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 24) { if (x < minx) minx = x; if (x > maxx) maxx = x; }
-    const fill = (maxx - minx + 1) / info.width;
+    let minx = Infinity, maxx = -1, miny = Infinity, maxy = -1;
+    for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 24) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+    // 2026-10-27 무기 4종: 북 → 검(세로형) — 본체가 폭 또는 높이의 70% 이상을 채우면 된다
+    const fill = Math.max((maxx - minx + 1) / info.width, (maxy - miny + 1) / info.height);
     // 2026-10-07 비버 테마: 강화 무기가 검 → 통나무 북이라 가로형(폭 ≤ 높이 1.3배)도 허용 — 본체가 폭을 채우는지만 본다
     if (fill < 0.7 || info.width > info.height * 1.3) bad.push(`s${i}:${info.width}x${info.height} ${(fill * 100).toFixed(0)}%`);
   }
-  ok("북 원화 16장: 폭이 높이의 1.3배 이하이고 본체가 폭의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
+  ok("대장간 검 원화 16장: 폭이 높이의 1.3배 이하이고 본체가 폭 또는 높이의 70% 이상을 채운다 (scripts/trim-sword-art.mjs)", bad.length === 0, bad.join(" "));
 }
 
 // ── 성문 방어 영구 스킬 — 원거리 요격 (2026-09-28) ──
@@ -1274,7 +1275,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
 
   ok("loadLoadout 이 스킬 레벨과 장착 무기를 함께 싣는다",
-    /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = [^;\n]*p\.expeditionWeapon/.test(appSrc));   // 2026-10-16: 테스트 모드에서 낀 잠긴 무기는 읽을 때 활로
+    /world\.skillLevels = \{ \.\.\.p\.expeditionSkills \}/.test(appSrc) && /world\.rangedWeapon = [^;\n]*wk;/.test(appSrc) && /const wk = p\.equippedWeaponKind;/.test(appSrc));   // 2026-10-27 무기 4종 — 댐 방어전 무기 = 사냥터 장착 무기   // 2026-10-16: 테스트 모드에서 낀 잠긴 무기는 읽을 때 활로
 }
 
 // ── 2026-10-06: 구매 추천 · 비트 커스텀 · 갈림길 저장 ──

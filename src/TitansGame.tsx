@@ -80,9 +80,10 @@ import { trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { QuestPanel } from "./titans/QuestPanel";
-import { RelicTabPanel } from "./titans/RelicTabPanel";
+import { WEAPON_EFFECTS, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK, tierRates } from "./titans/summonLevel";
 import type { Tier as AllyRarity } from "./titans/allyRoster";
+import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
@@ -150,8 +151,6 @@ import { firstDoubleAvailable, packagePurchased, paidStoreNote, paidStoreVisible
 import { gemPackBonusPercent } from "./economy/gateFund";
 import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
 import { weekKey as currentWeekKey } from "./events/shadowArena";
-import { SwordArt } from "./forge/swords";
-import { tierAt } from "./forge/model";
 import { TOWER_TICKET_MAX } from "./game/towerTickets";
 
 type TitansGameProps = {
@@ -381,8 +380,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
   // 주인공 무기 (2026-10-15, 사용자: "캐릭터 아이템도 북 외에도 두 가지 더") — 북은 대장간 북(+0~15), 활·지팡이는 대장간 원정 무기(+0~20 → 15 눈금)
-  const weaponKind = character.equippedWeaponKind ?? "drum";
-  const forgedWeaponLevel = weaponKind === "drum" ? drumLevel : Math.round(((character.expeditionWeaponForge ?? { bow: 0, staff: 0 })[weaponKind] ?? 0) * 15 / 20);
+  // 주인공 무기 4종 (2026-10-27, titans/weapons.ts) — 검은 대장간 단계(예전 북 자리), 창 · 활 · 지팡이는 대장간 무기 강화(0~20 → 15 눈금)
+  const weaponKind: WeaponKind = character.equippedWeaponKind ?? "sword";
+  const forgedWeaponLevel = weaponHuntLevel(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
+  const weaponKindRef = useRef<WeaponKind>(weaponKind);
+  weaponKindRef.current = weaponKind;
+  const weaponTechRef = useRef(0);
   // 하한 2 — 기본 스킬(도토리 북치기)이 시동기 한도 1을 선점해 Lv.11까지 다른 시동기를 못 배우던 함정 제거
   // 테스트 모드 해금 (2026-10-16, progression/qaUnlock) — 스킬 칸·보유 한도·콘텐츠 카드 잠금을 읽을 때만 연다. 설정에서 끄면 바로 다시 잠긴다
   const qaOpen = useSyncExternalStore(subscribeQaUnlock, qaUnlockOpen, () => false);
@@ -1217,8 +1220,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           label = "약점!";
           if (hm.weakHunt && opts?.skill) { bossLeftRef.current += 1; setBossLeft(bossLeftRef.current); }
         }
-        mul *= af.bossMul * permRef.current.bossMul;   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26)
+        mul *= af.bossMul * permRef.current.bossMul * WEAPON_EFFECTS[weaponKindRef.current].bossMul;   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26) · 창 (2026-10-27)
       }
+      if (opts?.skill) mul *= WEAPON_EFFECTS[weaponKindRef.current].skillDmgMul;   // 지팡이 — 스킬 피해 (2026-10-27)
       const dealt = Math.floor(raw * mul);
       if (permRef.current.burnShare > 0 && opts?.label !== "화상") relicBurnPoolRef.current += raw * permRef.current.burnShare;
       // 타격 표현 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") —
@@ -1556,11 +1560,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     // × 대장 사다리 탭 피해 × 번개 강화(1 + 0.12·단계) — 2026-10-22 아처 키우기 2 · 3번
-    const base = tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * lightningTapMul(saveRef.current.lightningLevel) * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
+    const base = WEAPON_EFFECTS[weaponKindRef.current].tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * lightningTapMul(saveRef.current.lightningLevel) * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
-    const critChance = Math.min(0.95, 0.08 + passive.critChance + (now < b.critUntil ? b.critBonus : 0) + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).critChance);   // + 장갑
+    const critChance = Math.min(0.95, 0.08 + WEAPON_EFFECTS[weaponKindRef.current].critAdd + passive.critChance + (now < b.critUntil ? b.critBonus : 0) + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).critChance);   // + 장갑
     const crit = Math.random() < critChance;
     // 사냥 강화 — 탭·스킬 배수와 치명 피해 배수 (지역 런 효과)
     const hm = saveRef.current.huntMods;
@@ -1584,6 +1588,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           pushFxAt("bolt", "monster", 0.5, 0.15, 62, 20, 205);
           applyDamage(computeTapHit().base * lightningBoltMul(lv), true, { source: "skill", label: "번개", delayMs: 180 });
         }
+      }
+      // 무기 기술 (2026-10-27, titans/weapons.ts) — 무기마다 N 번째 탭에 이름 있는 한 방(번개와 따로 센다)
+      const tech = WEAPON_TECH[weaponKindRef.current];
+      weaponTechRef.current += 1;
+      if (weaponTechRef.current >= tech.every) {
+        weaponTechRef.current = 0;
+        const mul = bossRef.current && tech.bossMul ? tech.bossMul : tech.mul;
+        if (tech.fx === "bolt") pushFxAt("bolt", "monster", 0.5, 0.3, 58, 30, 285);
+        else pushFxAt("slash", "monster", 0.5, 0.45, 44, 50, undefined, 0.05);
+        applyDamage(computeTapHit().base * mul, true, { source: "hero", label: tech.name, delayMs: 120 });
       }
     },
     [applyDamage, computeTapHit],
@@ -1642,7 +1656,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         // 급류 연타(가속) — 영웅 자동 공격 간격 단축
-        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1) / (1 + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).autoSpeed) / ladderEffects(characterRef.current.bossLadder).speedMul;   // ÷ 신발 · ÷ 대장 사다리 공속
+        const autoInterval = Math.max(.48, 1.08 - Math.min(.6, saveRef.current.equipmentTraining.weaponMastery * .012)) * (now < buff.hasteUntil ? buff.hasteMult : 1) / (1 + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).autoSpeed) / ladderEffects(characterRef.current.bossLadder).speedMul / WEAPON_EFFECTS[weaponKindRef.current].autoSpeedMul;   // ÷ 신발 · ÷ 대장 사다리 공속 · ÷ 활(2026-10-27)
         // 화상(불꽃 장작 타·용암 북 울림) — 0.5초 단위로 몰아서 넣어 피해 숫자 도배를 막는다
         if (now < buff.burnUntil && buff.burnPerSec > 0 && (!buff.burnBossOnly || bossRef.current)) {
           burnAcc.current += dt;
@@ -2487,6 +2501,27 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 시동기·마무리는 원소 투사체, 빛·관통은 빛줄기 — 명중 시각(ms) */
   const SHOT_TRAVEL_MS = 230;
 
+  /** 무기 바꾸기 (2026-10-27) — 장착만 바꾸고, 스킬 세트는 아래 효과가 맞바꾼다(대장간에서 바꿔도 같은 길) */
+  const equipWeapon = (k: WeaponKind) => {
+    if (weaponKindRef.current === k) return;
+    weaponTechRef.current = 0;
+    void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${WEAPON_LABEL[k]} 장착 · ${weaponStatText(k)} · ${WEAPON_LABEL[k]} 스킬 세트`); });
+  };
+  // 무기별 스킬 세트 — 지금 세트(loadoutKind)를 그 무기에 맡기고, 장착 무기에 맡겨 둔 세트를 꺼낸다(처음이면 지금 세트 그대로)
+  useEffect(() => {
+    if (!ready) return;
+    const inv = saveRef.current.skillInventory;
+    const from = inv.loadoutKind;
+    if (from === weaponKind) return;
+    setSave((prev) => {
+      const cur = prev.skillInventory;
+      if (cur.loadoutKind === weaponKind) return prev;
+      const loadouts = cur.loadoutKind ? { ...(cur.loadouts ?? {}), [cur.loadoutKind]: { ...cur.equipped } } : { ...(cur.loadouts ?? {}) };
+      const stored = loadouts[weaponKind];
+      return { ...prev, skillInventory: { ...cur, loadouts, loadoutKind: weaponKind, equipped: stored && Object.keys(stored).length ? { ...stored } : { ...cur.equipped } } };
+    });
+  }, [ready, weaponKind]);
+
   const castSkill = (id: TitanSkillId) => {
     const def = SKILLS.find((s) => s.id === id);
     if (!def) return;
@@ -2500,7 +2535,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const level = Math.max(1, save.skillInventory.levels[id] ?? 1);
     const mult = skillLevelMult(level);
     const effect = SKILL_EFFECTS[id];
-    setCds((prev) => ({ ...prev, [id]: def.cooldownSec * partyRoleEffects(characterRef.current.partyIds).cooldownMult * saveRef.current.huntMods.cooldownMul }));
+    setCds((prev) => ({ ...prev, [id]: def.cooldownSec * partyRoleEffects(characterRef.current.partyIds).cooldownMult * saveRef.current.huntMods.cooldownMul * WEAPON_EFFECTS[weaponKindRef.current].skillCdMul }));   // × 지팡이 (2026-10-27)
     const geo = castGeometry();
     // 위치를 못 재면(전장이 아직 안 그려짐) 예전 고정 위치 폭발로 — 잴 수 있으면 영웅에서 나가는 연출만 (2026-10-06)
     if (!geo) pushFx(visualKind, 56, 44, def.element === "fire" ? 18 : def.element === "wind" ? 185 : def.element === "earth" ? 75 : def.element === "light" ? 48 : 330);
@@ -3625,17 +3660,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {tab === "sword" && (
           <>
             <article key={autoTrainHit?.slot === "weapon" ? `w${autoTrainHit.seq}` : "w"} className={`titans-card equipment-training-card ${autoTrainHit?.slot === "weapon" ? "auto-hit" : ""}`}>
-              <div className="training-item-icon weapon">{weaponKind === "drum" ? <SwordArt level={Math.min(15, forgedWeaponLevel)} hue={tierAt(Math.min(15, forgedWeaponLevel)).hue} name="장착 대검" /> : <img src={assetUrl(`titans/gear/${weaponKind}-${forgedWeaponLevel >= 10 ? 3 : forgedWeaponLevel >= 5 ? 2 : 1}.png`)} alt="" aria-hidden="true" />}</div>
+              <div className="training-item-icon weapon"><img src={assetUrl(weaponIconPath(weaponKind, forgedWeaponLevel))} alt="" aria-hidden="true" /></div>
               <div>
                 <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>탭 피해 {formatGold(tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)))} → {formatGold(tapDamage(save.equipmentTraining.weaponMastery + 1 + Math.floor(forgedWeaponLevel * 1.5)))}</p>
-                {/* 무기 종류 (2026-10-15) — 북 · 활 · 지팡이. 강화 단계는 대장간(북 / 원정 무기) */}
-                <span className="weapon-kind-chips" role="group" aria-label="주인공 무기">
-                  {([["drum", "북", drumLevel], ["bow", "활", Math.round(((character.expeditionWeaponForge?.bow ?? 0) * 15) / 20)], ["staff", "지팡이", Math.round(((character.expeditionWeaponForge?.staff ?? 0) * 15) / 20)]] as const).map(([k, label, lv]) => (
-                    <button key={k} type="button" className={`weapon-kind-chip ${weaponKind === k ? "on" : ""}`} aria-pressed={weaponKind === k} onClick={() => { if (weaponKind === k) return; void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${label} 장착 · +${lv}`); }); }}>
-                      {label} +{lv}
-                    </button>
-                  ))}
+                {/* 무기 4종 (2026-10-27) — 검 · 창 · 활 · 지팡이. 강화는 대장간(장착 무기) · 바꾸면 그 무기의 스킬 세트로 */}
+                <span className="weapon-kind-chips four" role="group" aria-label="주인공 무기">
+                  {WEAPON_KINDS.map((k) => {
+                    const lv = weaponHuntLevel(k, drumLevel, character.expeditionWeaponForge ?? {});
+                    return (
+                      <button key={k} type="button" className={`weapon-kind-chip ${weaponKind === k ? "on" : ""}`} aria-pressed={weaponKind === k} title={`${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`} onClick={() => equipWeapon(k)}>
+                        {WEAPON_LABEL[k]} +{lv}
+                      </button>
+                    );
+                  })}
                 </span>
+                <small className="weapon-kind-stat">{weaponStatText(weaponKind)} · 기술 {WEAPON_TECH[weaponKind].name} — {WEAPON_TECH[weaponKind].desc}</small>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련<small className="btn-cost">{formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</small></button>
             </article>
@@ -3917,6 +3956,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <p>{gacha.pickups.length ? `픽업 확률 2배 · STAGE ${gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.unlockStage).join("·")} 동료를 먼저 만난다` : "성문 방어으로 다음 지역을 개척하면 픽업이 열립니다"} · 10회 소환 시 SR 이상 1명 보장</p>
               </div>
             </div>
+            {(() => {
+              const sp = summonLevelProgress(character.gachaPulls);
+              const next = sp.to !== null ? tierRates(sp.level + 1) : null;
+              return (
+                <>
+                  <div className="gacha-level summon-level">
+                    <b>뽑기 Lv.{sp.level}</b>
+                    <i><em style={{ width: `${sp.to === null ? 100 : Math.min(100, ((character.gachaPulls - sp.from) / (sp.to - sp.from)) * 100)}%` }} /></i>
+                    <span>{sp.to === null ? "최고 레벨" : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 ${(next!.SSR * 100).toFixed(1)}%`}</span>
+                  </div>
+                  <ul className="summon-tier-rates" aria-label="지금 등급 확률">
+                    {TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{gacha.bandRate[t] > 0 ? `${(gacha.bandRate[t] * 100).toFixed(gacha.bandRate[t] < 0.01 ? 2 : 1)}%` : "—"}</small></li>)}
+                  </ul>
+                </>
+              );
+            })()}
             <div className="gacha-level">
               <b>천장 {Math.min(GACHA.pityLimit, character.gachaPity)}/{GACHA.pityLimit}</b>
               <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
@@ -3962,22 +4017,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   <strong>
                     <em className="rarity-tag" style={{ color: RARITY_COLOR[rarity] }}>{rarity}</em>
                     <em className="role-tag">{ROLE_LABEL[ALLY_ROLE[h.id]]}</em>
-            {(() => {
-              const sp = summonLevelProgress(character.gachaPulls);
-              const next = sp.to !== null ? tierRates(sp.level + 1) : null;
-              return (
-                <>
-                  <div className="gacha-level summon-level">
-                    <b>뽑기 Lv.{sp.level}</b>
-                    <i><em style={{ width: `${sp.to === null ? 100 : Math.min(100, ((character.gachaPulls - sp.from) / (sp.to - sp.from)) * 100)}%` }} /></i>
-                    <span>{sp.to === null ? "최고 레벨" : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 ${(next!.SSR * 100).toFixed(1)}%`}</span>
-                  </div>
-                  <ul className="summon-tier-rates" aria-label="지금 등급 확률">
-                    {TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{gacha.bandRate[t] > 0 ? `${(gacha.bandRate[t] * 100).toFixed(gacha.bandRate[t] < 0.01 ? 2 : 1)}%` : "—"}</small></li>)}
-                  </ul>
-                </>
-              );
-            })()}
                     <em className={`role-tag element-${ALLY_ELEMENT[h.id]}`}>{ELEMENT_LABEL[ALLY_ELEMENT[h.id]]}</em>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
                   </strong>
@@ -4071,7 +4110,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <article className="titans-card skill-preset-card">
             <div className="party-panel-head">
               <strong>모험가 스킬</strong>
-              <small>모험가가 직접 시전 · 학습한 스킬만 장착 · 예상 DPS 보정 +{skillDpsPreview}%</small>
+              <small>{WEAPON_LABEL[weaponKind]} 스킬 세트 — 무기마다 따로 기억 · 학습한 스킬만 장착 · 예상 DPS 보정 +{skillDpsPreview}%</small>
             </div>
             {/* 모험가 스킬 연계 (2026-10-06) — 스킬은 동료가 아니라 모험가가 쓴다: 초상 → 시전 순서 ①~④ → 패시브 */}
             <div className="hero-skill-combo" aria-label="모험가 스킬 시전 순서">

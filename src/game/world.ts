@@ -112,7 +112,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     skillTimers: { fire: 0, water: 0, ice: 0, earth: 0, bolt: 0, wind: 0, poison: 0, holy: 0, shadow: 0, meteor: 0, ultimate: 0 },
     rangedWeapon: "none",
     loadout: [],
-    weaponForge: { bow: 0, staff: 0 },
+    weaponForge: { bow: 0, staff: 0, spear: 0 },
     holyBeam: null,
     skillKills: 0,
     epicPicks: 0,

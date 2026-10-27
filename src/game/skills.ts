@@ -22,7 +22,8 @@ import { qaUnlockOpen } from "../progression/qaUnlock";
 
 /* ────────────────── 원거리 무기 (탈착) ────────────────── */
 
-export type RangedWeaponId = "none" | "bow" | "staff";
+/** 2026-10-27 무기 4종 — 검 · 창 추가. 댐 방어전 무기 = 사냥터 장착 무기(CharacterProgress.equippedWeaponKind) */
+export type RangedWeaponId = "none" | "sword" | "spear" | "bow" | "staff";
 
 export type RangedWeaponDef = {
   id: Exclude<RangedWeaponId, "none">;
@@ -39,6 +40,8 @@ export type SkillFamily = "physical" | "magic" | "none";
 
 export const RANGED_WEAPONS: RangedWeaponDef[] = [
   // 맨손은 없다 — 활만 쓰는 콘텐츠다. 저장의 "none" 은 장궁으로 되돌린다 (progression/model.ts, 2026-10-01)
+  { id: "sword", name: "비버 대검", desc: "검기 — 짧은 거리 큰 피해(×1.8) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
+  { id: "spear", name: "강철 장창", desc: "찌르기 — 화살 하나 더 꿰뚫기(×1.2) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
   { id: "bow", name: "장궁", desc: "기본 사격 + 일제 사격 · 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
   { id: "staff", name: "수정 지팡이", desc: "마력탄 + 일제 사격 · 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
 ];
@@ -223,9 +226,10 @@ export function normalizeLoadout(raw: unknown, levels: Partial<ExpeditionSkillLe
  * 활 = 기본 사격(주인공의 활)과 **물리** 스킬 무기, 지팡이 = **마법** 스킬 무기. 골드 + 강화석, 확정 강화(파괴 없음).
  * 예전 '기본 사격 강화'(정비, 골드만)는 활 강화로 옮겼다 — 저장의 expeditionBasic 은 활 단계로 이관된다.
  */
-export type WeaponForgeLevels = { bow: number; staff: number };
+/** 2026-10-27 창(spear) 추가 — 주인공 무기 4종(검 = 대장간 단계 · 창 · 활 · 지팡이 = 이 표) */
+export type WeaponForgeLevels = { bow: number; staff: number; spear: number };
 export const WEAPON_FORGE_MAX = 20;
-export function emptyWeaponForge(): WeaponForgeLevels { return { bow: 0, staff: 0 }; }
+export function emptyWeaponForge(): WeaponForgeLevels { return { bow: 0, staff: 0, spear: 0 }; }
 /** 한 단계 비용 — 골드는 1.32배씩, 강화석은 단계마다 +2 */
 export function weaponForgeCost(level: number): { gold: number; stones: number } {
   const n = Math.max(1, level);
