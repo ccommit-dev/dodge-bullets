@@ -21,7 +21,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,6 +35,19 @@ jobs:
         with:
           path: docs
 
+      # 2026-10-27 #213: 기본 "pages-build-deployment"(브랜치 배포)가 같은 배포 잠금을 잡고 있으면
+      # "Deployment request failed … due to in progress deployment" 로 거절된다(위 concurrency 는 이 워크플로끼리만 막는다).
+      # 그때는 그 배포가 끝나길 기다렸다 한 번 더 — 사이트는 같은 docs/ 라 결과는 같다
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Wait for the in-progress deployment
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 90
+
+      - name: Deploy to GitHub Pages (retry)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
