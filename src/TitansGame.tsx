@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhance, gearTrainingCost, type GearPart } from "./equipment/parts";
 import { appWidth } from "./ui/webFrame";
 import { AllySigInfo } from "./titans/AllySigInfo";
@@ -1244,7 +1245,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (import.meta.env.DEV) {
         // 탭 · 자동(주인공 자동 공격) · 기술(무기 기술) · 동료 · 스킬(스킬 · 화상 · 번개)
         const k = opts?.fromAlly && opts.fromAlly !== "tap" ? "ally" : opts?.source === "hero" ? (opts?.fromAlly === "tap" ? "auto" : "tech") : opts?.source === "skill" ? "skill" : "tap";
-        devDmgRef.current[k] = (devDmgRef.current[k] ?? 0) + dealt;
+        const kk = bossRef.current ? `${k}@boss` : k;   // 대장에게 준 피해는 따로 — 대장 실패 뒤 일반 몬스터 피해가 섞이지 않게
+        devDmgRef.current[kk] = (devDmgRef.current[kk] ?? 0) + dealt;
         devDmgRef.current[bossRef.current ? "boss" : "mob"] = (devDmgRef.current[bossRef.current ? "boss" : "mob"] ?? 0) + dealt;
       }
       if (permRef.current.burnShare > 0 && opts?.label !== "화상") relicBurnPoolRef.current += raw * permRef.current.burnShare;
@@ -4704,11 +4706,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </div>
         </div>
       )}
-      {rebalanceInfo && (
+      {/* 문서 끝(body)에 띄운다 — 사냥터 안 층(stacking context)에 있으면 App 의 첫 접속 출석 창 아래에 깔렸다 */}
+      {rebalanceInfo && createPortal(
         <div className="relic-draw-modal rebalance-modal" role="dialog" aria-modal="true" aria-label="동료 밸런스 조정 안내" onClick={() => setRebalanceInfo(null)}>
           <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
             <b>동료 밸런스 조정</b>
-            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 이미 쓴 골드로 새 비용에서 레벨을 다시 맞췄어요.</p>
+            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 키워 둔 동료는 예전 힘 이상이 되도록 레벨을 올려 드렸어요.</p>
             <ul className="rebalance-list">
               {rebalanceInfo.changes.slice(0, 6).map((c) => (
                 <li key={c.id}><span>{HEROES.find((h) => h.id === c.id)?.name ?? c.id}</span><b>Lv.{c.from} → Lv.{c.to}</b></li>
@@ -4718,7 +4721,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {rebalanceInfo.gold > 0 && <p className="rebalance-gold"><CurrencyIcon kind="gold" /> 남은 골드 {formatGold(rebalanceInfo.gold)} 돌려받음</p>}
             <button type="button" className="cta" onClick={() => setRebalanceInfo(null)}>확인</button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
       {relicDrawResult && (
         <div className="relic-draw-modal" role="dialog" aria-modal="true" aria-label="유물 뽑기 결과" onClick={() => setRelicDrawResult(null)}>

@@ -1,5 +1,5 @@
 import { emptyHuntMods, type HuntMods } from "./huntPerks";
-import { NEW_ALLIES, newAllyBaseCost, newAllyBaseDps, preRebalanceBaseCost, type NewAllyId } from "./allyRoster";
+import { NEW_ALLIES, newAllyBaseCost, newAllyBaseDps, preRebalanceBaseCost, preRebalanceBaseDps, type NewAllyId } from "./allyRoster";
 import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
 import { emptyQuests, normalizeQuests, type QuestState } from "./quests";
 import { assetUrl } from "../asset";
@@ -347,19 +347,27 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   for (const h of HEROES) {
     heroes[h.id] = n(value.heroes?.[h.id], 0, 9999);
   }
-  // 동료 값 조정 (2026-10-27 난이도 감사: 오리온 ×0.4 · 새 40명 두 층 아래 곡선) — 값이 내려간 동료는 이미 쓴 골드로 새 값에서
-  // 다시 레벨을 맞추고 남는 골드를 돌려준다. 힘이 0.4 배로 줄던 오리온이 같은 골드로 약 0.75 배 · 새 동료는 약 0.8 배 로 덜 깎인다
+  // 동료 값 조정 (2026-10-27 난이도 감사: 오리온 ×0.4 · 새 40명 두 층 아래 곡선) — 값이 내려간 동료는 다시 레벨을 맞춘다.
+  // 판 2 (같은 날 아쉬운 점 "다시 계산해도 완전히 회복되진 않아요"): 쓴 골드로 오를 레벨과 예전 힘 이상이 되는 레벨 중 큰 쪽.
+  // 골드 쪽이 크면 남는 골드도 돌려준다. 판 1 로 이미 다시 계산된 저장(골드 기준)은 원래 레벨을 거꾸로 찾아 힘 기준까지 올린다(골드는 그대로)
   let rebalanceGold = 0;
   const rebalanceChanges: { id: TitanHeroId; from: number; to: number }[] = [];
-  if ((value.allyRebalance ?? 0) < ALLY_REBALANCE_VERSION) {
+  const doneVersion = value.allyRebalance ?? 0;
+  if (doneVersion < ALLY_REBALANCE_VERSION) {
     for (const h of HEROES) {
-      const old = PRE_REBALANCE_BASE_COST[h.id];
-      if (old === undefined || old <= h.baseCost || heroes[h.id] <= 1) continue;
-      const r = relevelAlly(old, h.baseCost, heroes[h.id]);
-      if (r.level === heroes[h.id] && r.gold <= 0) continue;
-      rebalanceChanges.push({ id: h.id, from: heroes[h.id], to: r.level });
-      heroes[h.id] = r.level;
-      rebalanceGold += r.gold;
+      const old = PRE_REBALANCE_BASE_COST[h.id], oldDps = PRE_REBALANCE_BASE_DPS[h.id];
+      if (old === undefined || oldDps === undefined || old <= h.baseCost || heroes[h.id] <= 1) continue;
+      const from = heroes[h.id];
+      // 판 1 저장: 지금 레벨 = 골드 기준 레벨 → 그 레벨이 나오는 원래 레벨 중 가장 높은 것
+      let orig = from;
+      if (doneVersion === 1) { orig = 1; for (let l = 2; l <= from; l += 1) if (relevelAlly(old, h.baseCost, l, oldDps, h.baseDps, false).level <= from) orig = l; else break; }
+      const r = relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps);
+      const to = Math.max(from, r.level);
+      const gold = doneVersion === 1 ? 0 : r.gold;   // 판 1 은 남는 골드를 이미 돌려줬다
+      if (to === from && gold <= 0) continue;
+      rebalanceChanges.push({ id: h.id, from, to });
+      heroes[h.id] = to;
+      rebalanceGold += gold;
     }
   }
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
@@ -498,18 +506,24 @@ export function lightningTapMul(level: number): number { return 1 + 0.12 * Math.
 export function lightningBoltMul(level: number): number { return level > 0 ? 4 + 0.5 * level : 0; }
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
 
-/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다 */
-export const ALLY_REBALANCE_VERSION = 1;
+/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 */
+export const ALLY_REBALANCE_VERSION = 2;
 /** 조정 전 값 — 값이 내려간 동료만(오리온 · 새 40명). 마리나는 값과 힘이 같이 올라 다시 계산하지 않는다 */
 export const PRE_REBALANCE_BASE_COST: Partial<Record<TitanHeroId, number>> = {
   orion: 1_150_000,
   ...Object.fromEntries(NEW_ALLIES.map((d) => [d.id, preRebalanceBaseCost(d)])),
 };
+/** 조정 전 힘 */
+export const PRE_REBALANCE_BASE_DPS: Partial<Record<TitanHeroId, number>> = {
+  orion: 75_000,
+  ...Object.fromEntries(NEW_ALLIES.map((d) => [d.id, preRebalanceBaseDps(d)])),
+};
 /**
- * 옛 값(oldBase)으로 Lv.1 → level 까지 쓴 골드를 새 값(newBase)으로 다시 써서 오를 수 있는 레벨과 남는 골드.
- * Lv.1 은 뽑기로 공짜일 수 있어 세지 않는다(값 1.19 배 곡선 · heroUpgradeCost 와 같은 계산)
+ * 다시 맞춘 레벨 — ① 옛 값(oldBase)으로 Lv.1 → level 까지 쓴 골드를 새 값(newBase)으로 다시 써서 오를 레벨(남는 골드는 돌려준다)
+ * ② 새 힘(newDps)으로 예전 힘(oldDps · level) 이상이 되는 가장 낮은 레벨. 둘 중 큰 쪽 — ②가 크면 골드는 돌려주지 않는다(이미 더 받았다).
+ * Lv.1 은 뽑기로 공짜일 수 있어 세지 않는다(값 1.19 배 곡선 · heroUpgradeCost 와 같은 계산). powerFloor=false 면 ①만(판 1 거꾸로 찾기)
  */
-export function relevelAlly(oldBase: number, newBase: number, level: number): { level: number; gold: number } {
+export function relevelAlly(oldBase: number, newBase: number, level: number, oldDps = 0, newDps = 0, powerFloor = true): { level: number; gold: number } {
   let spent = 0;
   for (let l = 1; l < level; l += 1) spent += Math.floor(oldBase * Math.pow(1.19, l));
   let lv = 1, used = 0;
@@ -518,7 +532,12 @@ export function relevelAlly(oldBase: number, newBase: number, level: number): { 
     if (used + c > spent) break;
     used += c; lv += 1;
   }
-  return { level: Math.max(level, lv), gold: Math.max(0, spent - used) };
+  const goldLevel = Math.max(level, lv);
+  if (!powerFloor || oldDps <= 0 || newDps <= 0) return { level: goldLevel, gold: Math.max(0, spent - used) };
+  const want = heroDps({ baseDps: oldDps } as TitanHeroDef, level);
+  let pl = level;
+  while (pl < 9999 && heroDps({ baseDps: newDps } as TitanHeroDef, pl) < want) pl += 1;
+  return pl > goldLevel ? { level: pl, gold: 0 } : { level: goldLevel, gold: Math.max(0, spent - used) };
 }
 
 export function heroUpgradeCost(def: TitanHeroDef, level: number): number {
