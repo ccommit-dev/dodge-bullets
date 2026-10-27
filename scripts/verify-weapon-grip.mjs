@@ -5,6 +5,25 @@
 // 손잡이 점은 화면 그림이 아니라 계산된 변환으로 잰다: transform-origin · translate · rotate · scale · transform 을 CSS 순서대로 곱해
 // 그림 안 손잡이(%)가 화면 어디에 오는지 구하고, 손 앵커(left/top %)와의 거리를 본다. 탈착은 Web Animations 를 멈춰 시점별로 잰다
 import { launchBrowser } from "./launch-browser.mjs";
+import sharp from "sharp";
+// 활이 얼굴을 가리나 (2026-10-27, "활이 몇 칸에서 주둥이 앞에 겹친다") — 시트 칸마다 코(짙은 자줏빛 덩이) 위치를 재 두고, 활 시위가 코 높이에서 코보다 오른쪽(적 쪽)에 있는지 본다
+const rgb2hsl = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; if (!d) return [0, 0, l]; const s = d / (1 - Math.abs(2 * l - 1)); const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(h * 60 + 360) % 360, s, l]; };
+async function noses(file, cellW, n) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const out = [];
+  for (let f = 0; f < n; f += 1) { let sx = 0, sy = 0, c = 0; for (let y = 0; y < info.height * 0.8; y += 1) for (let x = f * cellW; x < (f + 1) * cellW; x += 1) { const i = (y * info.width + x) * 4; if (data[i + 3] < 200) continue; const [h, sa, l] = rgb2hsl(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255); if ((h > 300 || h < 5) && sa > 0.15 && l > 0.18 && l < 0.42) { sx += x - f * cellW; sy += y; c += 1; } } out.push(c ? { x: (sx / c / cellW) * 100, y: (sy / c / info.height) * 100 } : null); }
+  return out;
+}
+// 무기 외형 그림 — 금 · 황갈 장식(색상 33~65°)은 원본과 한 픽셀도 다르지 않다 (2026-10-27, "금색 장식 부분은 외형에 따라 다른 색으로 바뀌어요" · 1단계 날밑도)
+async function goldChanged(base, skin) {
+  const A = await sharp(base).ensureAlpha().raw().toBuffer(), B = await sharp(skin).ensureAlpha().raw().toBuffer();
+  let gold = 0, diff = 0, body = 0;
+  for (let i = 0; i < A.length; i += 4) { if (A[i + 3] < 128) continue; const [h, sa, l] = rgb2hsl(A[i] / 255, A[i + 1] / 255, A[i + 2] / 255); const same = A[i] === B[i] && A[i + 1] === B[i + 1] && A[i + 2] === B[i + 2]; if (h >= 33 && h <= 65 && sa >= 0.12 && l >= 0.12) { gold += 1; if (!same) diff += 1; } else if (!same) body += 1; }
+  return { gold, diff, body };
+}
+const SKIN_GOLD = [];
+for (const skin of ["blade-crimson", "blade-glacier", "blade-solar"]) for (const k of ["weapon", "spear", "bow", "staff"]) for (const t of [1, 2, 3]) SKIN_GOLD.push({ id: `${skin}/${k}-${t}`, ...(await goldChanged(`public/titans/gear/${k}-${t}.png`, `public/titans/gear/skins/${skin}/${k}-${t}.png`)) });
+const NOSE = { idle: await noses("public/titans/anim/hero/hero-idle.webp", 377, 6), walk: await noses("public/titans/anim/hero/hero-walk.webp", 377, 6), attack: await noses("public/titans/anim/hero/hero-attack-bow.webp", 470, 8) };
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -42,7 +61,11 @@ await page.evaluateOnNewDocument(() => {
     const par = img.offsetParent;
     const ax = (parseFloat(img.style.left) / 100) * par.clientWidth, ay = (parseFloat(img.style.top) / 100) * par.clientHeight;
     const ang = (Math.atan2(m.b, m.a) * 180) / Math.PI;
-    return { dx: p.x - ax, dy: p.y - ay, dist: Math.hypot(p.x - ax, p.y - ay), box: par.clientWidth, angle: ang, pose: img.dataset.pose ?? "", cast: img.classList.contains("weapon-cast") };
+    // 활 시위(그림 가로 41.6%) 위 점들 — 상자 % 로
+    const str = [10, 20, 30, 40, 50, 60, 70, 80, 90].map((yy) => { const q = m.transformPoint(new DOMPoint(0.416 * w, (yy / 100) * h)); return { x: (q.x / par.clientWidth) * 100, y: (q.y / par.clientHeight) * 100 }; });
+    const on = par.querySelector(".equipment-base.is-on"); const mode = (on?.className.match(/sheet-(\w+)/) ?? [])[1] ?? "idle"; const nf = mode === "attack" ? 8 : 6;
+    const idx = Math.round((parseFloat(on?.style.backgroundPosition ?? "0") / 100) * (nf - 1));
+    return { str, mode, idx, dx: p.x - ax, dy: p.y - ay, dist: Math.hypot(p.x - ax, p.y - ay), box: par.clientWidth, angle: ang, pose: img.dataset.pose ?? "", cast: img.classList.contains("weapon-cast") };
   };
 });
 
@@ -58,6 +81,7 @@ for (let k = 0; k < 4; k += 1) {
   const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0, sheets: new Set() };
   for (let i = 0; i < 120; i += 1) {
     const r = await page.evaluate(() => { const img = document.querySelector(".titans-hero .equipment-weapon-alt"); if (!img || img.getAnimations().some((a) => /gear-grab/.test(a.animationName) && a.playState === "running")) return null; const atk = !!img.closest(".mode-attack"); const target = parseFloat((img.style.transform.match(/rotate\((-?[\d.]+)deg\)/) ?? [])[1]); const sheet = (img.closest(".equipped-character")?.querySelector(".equipment-base.sheet-attack")?.style.backgroundImage.match(/hero-attack[\w-]*\.webp/) ?? [""])[0]; return { ...window.__grip(img), atk, target, sheet }; });
+    if (r && kind === "bow") { const nose = NOSE[r.mode]?.[r.idx]; if (nose) { const near = r.str.filter((q) => q.y >= nose.y - 12 && q.y <= nose.y + 5); const gap = near.length ? Math.min(...near.map((q) => q.x - nose.x)) : 99; s.noseGap = Math.min(s.noseGap ?? 99, gap); s.noseN = (s.noseN ?? 0) + 1; if (gap < (s.noseWorst?.gap ?? 99)) s.noseWorst = { gap: +gap.toFixed(1), mode: r.mode, idx: r.idx }; } }
     if (r) { s.n += 1; s.box = r.box; if (r.sheet) s.sheets.add(r.sheet); s.worst = Math.max(s.worst, r.dist); if (r.atk) { s.atk += 1; if (r.pose) s.poses.add(r.pose); if (Number.isFinite(r.target)) s.angles.push(Math.round(r.target)); if (r.cast) s.cast += 1; } }
     await sleep(45);
   }
@@ -72,7 +96,8 @@ ok("공격 몸 동작 시트: 검 hero-attack · 창/활/지팡이 hero-attack-<
 ok("공격 칸을 잡았다(무기마다 3칸 이상)", [sw, sp, bw, st].every((s) => s.atk >= 3), [sw, sp, bw, st].map((s) => `${s.kind}:${s.atk}`).join(" "));
 ok("검은 시트 손뼈 그대로 휘두른다(자세 표 없음)", sw.poses.size === 0, [...sw.poses].join(","));
 ok("창은 찌르기 — 공격 칸 기울기가 모두 수평 가까이(68~94°)", sp.poses.size >= 2 && sp.angles.length >= 3 && sp.angles.every((a) => a >= 68 && a <= 94), sp.angles.join(","));
-ok("활은 세워 든 채 당긴다(−12~4°)", bw.poses.size >= 2 && bw.angles.length >= 3 && bw.angles.every((a) => a >= -12 && a <= 4), bw.angles.join(","));
+ok("활은 세워 든 채 당기며 위 끝을 적 쪽으로(0~14°)", bw.poses.size >= 2 && bw.angles.length >= 3 && bw.angles.every((a) => a >= 0 && a <= 14), bw.angles.join(","));
+ok("활 시위가 얼굴을 가리지 않는다 — 대기 · 걷기 · 공격 모든 칸에서 코 높이의 시위가 코보다 상자 폭 3% 이상 오른쪽", (bw.noseN ?? 0) > 40 && bw.noseGap >= 3, `${bw.noseN}칸 · 가장 가까운 ${JSON.stringify(bw.noseWorst)}`);
 ok("지팡이는 치켜들었다 내뻗는다(−34~40°) · 내뻗는 칸에 보석 빛", st.poses.size >= 2 && st.angles.length >= 3 && st.angles.every((a) => a >= -34 && a <= 40) && (st.cast > 0 || st.atk < 6), `${st.angles.join(",")} · 빛 ${st.cast}`);
 
 // ── 2. 탈착 — 떼는 무기는 손에서 시작해 아래로 떨어지고, 끼우는 무기는 아래에서 올라와 손에서 멈춘다 ──
@@ -119,6 +144,7 @@ ok("비트 판정 레일 상품 이름에 '북' 없음", beat.names.length >= 4 
 await page.evaluate(() => document.querySelector(".blade-product")?.scrollIntoView({ block: "center" })); await sleep(200);
 await page.screenshot({ path: "art-gen/out/weapon-grip-shop.png" });
 
+ok("무기 외형 36장: 금 · 황갈 장식 픽셀은 원본 그대로 · 몸통은 바뀐다", SKIN_GOLD.length === 36 && SKIN_GOLD.every((x) => x.diff === 0 && x.body > 200), SKIN_GOLD.filter((x) => x.diff || x.body <= 200).map((x) => `${x.id} 장식${x.diff}/${x.gold} 몸통${x.body}`).join(" · ") || `장식 ${SKIN_GOLD.reduce((a, x) => a + x.gold, 0)}px 모두 그대로`);
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");
 await browser.close();

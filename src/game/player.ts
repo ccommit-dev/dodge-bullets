@@ -3,9 +3,15 @@ import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
 import { drawRecurveBow } from "./arrowArt";
 import { HERO_FIG } from "../equipment/heroAnchors";
+import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS } from "../equipment/anchors";
 import { HERO_ANIM, heroFrameMs, heroFrames } from "../titans/spriteAnim";
+import { ANIM_LAYOUT } from "../titans/animLayout";
 
 const GRAVITY = 1650;
+/** 주인공 시트 칸 가로 ÷ 세로 (anim-layout.json hero) — 손 앵커를 px 로 바꿀 때 */
+function heroFrameAspect(mode: "idle" | "attack"): number {
+  return ANIM_LAYOUT.hero.sheets[mode].width / ANIM_LAYOUT.hero.cellHeight;
+}
 const BASE_RADIUS = 16;
 /**
  * 시트별 인물 상자(프레임 %, 4칸 평균 — 2026-10-15 원화 감사에서 잼). 대기 시트(hero-idle, 443×887 칸)는 위 31% 가 비어 있고
@@ -39,6 +45,24 @@ function getExpeditionHero(mode: "idle" | "walk"): HTMLImageElement | null {
   }
   const want = HERO_ANIM ? expeditionHero[mode] : undefined;
   return want?.complete && want.naturalWidth > 0 ? want : expeditionHero.idle ?? null;
+}
+
+/**
+ * 쏠 때 몸 동작 = 장착 무기의 공격 시트 (2026-10-27, 사용자: "활·지팡이 동작 — 몸 전체가 활을 당기거나 지팡이를 드는 동작", 사냥터와 같은 시트).
+ * 검 hero-attack · 창/활/지팡이 hero-attack-<무기> (art-gen/blender anim2 HERO_WEAPON_ATTACK). 쏠 때마다(SHOOT_MS) 8칸이 한 번 돈다.
+ * 받기 전엔 예전처럼 대기 시트 + 캔버스 기울임. 캔버스 무기(활 · 지팡이 · 검 · 창)는 손 앵커가 움직인 만큼 같이 옮긴다(발사 위치 bowHand 는 그대로)
+ */
+const expeditionAttack: Partial<Record<string, HTMLImageElement>> = {};
+function getExpeditionAttack(kind: string): HTMLImageElement | null {
+  if (typeof Image === "undefined" || !HERO_ANIM) return null;
+  let img = expeditionAttack[kind];
+  if (!img) {
+    img = new Image();
+    img.src = assetUrl(`titans/anim/hero/hero-attack${kind === "sword" ? "" : `-${kind}`}.webp`);
+    void img.decode?.().catch(() => {});
+    expeditionAttack[kind] = img;
+  }
+  return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
 /**
@@ -194,21 +218,31 @@ export function drawStickman(
   const idleHero = getExpeditionHero(sheetMode);
   // 쏘는 동작 (2026-10-08, 사용자: "활이나 지팡이로 쏠 때 애니메이션이 동작을 안 해"): 기본 사격·스킬 무기 발사마다 무기 시트가 한 번 돈다
   const shooting = p.shootMs > 0 && p.anim !== "dead" && p.anim !== "hit" && p.anim !== "dash";
-  const hero = idleHero;   // 2026-10-16: 쏠 때도 같은 대기 시트 — 동작은 아래 캔버스 기울임(당김 ↶ · 놓음 ↷)
+  // 2026-10-16: 쏠 때도 같은 대기 시트 + 캔버스 기울임이었다 → 2026-10-27: 무기별 공격 시트가 있으면 쏘는 동안 그 시트(몸 전체가 당기고 · 들고 · 찌른다)
+  const attackSheet = shooting && world.rangedWeapon !== "none" ? getExpeditionAttack(world.rangedWeapon) : null;
+  const hero = attackSheet ?? idleHero;
+  let handShift = { x: 0, y: 0 };
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
     // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
     // 2판: 걷기 시트가 실제로 받아졌을 때만 걷기 칸 수(받기 전엔 대기 시트로 그린다)
-    const usedMode: "idle" | "walk" = HERO_ANIM && hero === expeditionHero.walk ? "walk" : "idle";
+    const usedMode: "idle" | "walk" | "attack" = attackSheet ? "attack" : HERO_ANIM && hero === expeditionHero.walk ? "walk" : "idle";
     const frameCount = heroFrames(usedMode);
     const frameWidth = hero.naturalWidth / frameCount;
     const frameRate = p.anim === "run" ? 1000 / heroFrameMs("walk") : p.anim === "dash" ? 14 : p.anim === "skill" ? 7 : 1000 / heroFrameMs("idle");
-    const frame = Math.floor(p.animTime * frameRate) % frameCount;
+    const shootK = 1 - p.shootMs / SHOOT_MS;
+    const frame = attackSheet ? Math.min(frameCount - 1, Math.floor(shootK * frameCount)) : Math.floor(p.animTime * frameRate) % frameCount;
     const fig = FIG_IDLE;
     // 인물 키를 시트와 상관없이 같게 — 반지름 5.2배(≈77px). 예전 4.57배(67px)는 폰에서 작다고 읽혔다(2026-10-15 원화 감사).
     // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(가슴 앞 24 · −8, 2026-10-19). 판정 반지름은 그대로
     const drawHeight = (p.radius * HERO_FIG_RADII * 100) / (fig.y1 - fig.y0);
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
+    if (attackSheet) {   // 손 앵커(칸 %)가 대기 0칸에서 움직인 만큼 — 대기 칸 폭 기준과 공격 칸 폭 기준을 각각 화면 px 로
+      const a = attackAnchorsFor(world.rangedWeapon)[frame]?.hand, i0 = IDLE_EQUIPMENT_ANCHORS[0]?.hand;
+      const idleW = drawHeight * (heroFrameAspect("idle"));
+      if (a && i0) handShift = { x: p.facing * ((a.x / 100 - 0.5) * drawWidth - (i0.x / 100 - 0.5) * idleW), y: ((a.y - i0.y) / 100) * drawHeight };
+    }
+    if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dodgeHeroSheet?: string }).__dodgeHeroSheet = attackSheet ? `attack-${world.rangedWeapon}:${frame}` : usedMode;
     ctx.save();
     ctx.imageSmoothingQuality = "high";   // 780px 칸을 ~150 실픽셀로 줄인다 — 기본(low)은 거칠고 흐릿했다
     ctx.translate(p.x, p.y + p.radius);
@@ -225,7 +259,7 @@ export function drawStickman(
       ctx.rotate(-0.2 * aimUp * (aimFwd >= 0 ? 1 : -1) - 0.08 * aimUp);
       ctx.translate(0, -3 * aimUp);
     }
-    if (shooting) {
+    if (shooting && !attackSheet) {
       // 쏘는 순간 — 당겼다 놓는 반동: 300ms 안에서 뒤로 2px → 앞으로 5px, 살짝 늘어난다
       const k = 1 - p.shootMs / SHOOT_MS;
       const rel = k < 0.3 ? 0 : Math.sin(((k - 0.3) / 0.7) * Math.PI);
@@ -294,7 +328,12 @@ export function drawStickman(
     );
     // 파츠 오버레이는 걷었다 (2026-10-19, 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게") — 무기(활·지팡이)만 아래에서 그린다
         ctx.restore();
-    if (p.anim !== "dead") { if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else if (world.rangedWeapon === "sword" || world.rangedWeapon === "spear") drawHeroMelee(ctx, world, p, world.rangedWeapon); else drawHeroBow(ctx, world, p); }
+    if (p.anim !== "dead") {
+      ctx.save();
+      ctx.translate(handShift.x, handShift.y);   // 공격 시트의 손을 따라간다(대기면 0)
+      if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else if (world.rangedWeapon === "sword" || world.rangedWeapon === "spear") drawHeroMelee(ctx, world, p, world.rangedWeapon); else drawHeroBow(ctx, world, p);
+      ctx.restore();
+    }
 
     if (p.landingFxMs > 0) {
       const progress = 1 - p.landingFxMs / 180;
