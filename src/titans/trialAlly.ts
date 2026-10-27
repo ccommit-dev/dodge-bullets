@@ -8,7 +8,17 @@
 import { HEROES, type TitanHeroDef } from "./model";
 import { SHOP_ALLY_GEM_COST } from "./allies";
 
-export const TRIAL_BEST_MUL = 2;
+/** 2 → 1.5 (2026-10-27 난이도 감사: 신화 · 초월 픽업이 그 층 필요 DPS 의 4.9~6.5배였다) */
+export const TRIAL_BEST_MUL = 1.5;
+
+/**
+ * 체험 기준 층 (2026-10-27) — 지역 상한만 보던 것을 "이번 환생 최고 층"까지로 좁힌다(최소 5).
+ * 지역 안이라도 아직 닿지 않은 층의 동료(뽑기 픽업 · 첫 10연)는 그 층에 닿을 때까지 체험 세기.
+ * 최고 층 기준이라 앞 층으로 돌아가 파밍해도 힘이 줄지 않는다
+ */
+export function trialCeiling(regionCeiling: number, bestStage: number): number {
+  return Math.min(regionCeiling, Math.max(5, Math.floor(bestStage)));
+}
 
 /** 이 지역 상한까지 스테이지로 열리는 동료 중 가장 높은 기본 DPS */
 export function bestUnlockedBaseDps(stageCeiling: number): number {
