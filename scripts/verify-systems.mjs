@@ -82,7 +82,7 @@ ok("픽업 = 지역 상한(15) 안 · 아직 못 만난 동료 최대 2명", p12
 const p30 = gacha.gachaPool(30, 5);
 { const lv1 = summon.tierRates(1); const present = summon.TIERS.filter((t) => p30.entries.some((e) => e.rarity === t)); const sum = present.reduce((t, r) => t + lv1[r], 0);
   ok("등급 확률 = 뽑기 Lv1 표를 풀에 있는 등급으로 정규화", present.every((t) => Math.abs(p30.bandRate[t] - lv1[t] / sum) < 1e-9), JSON.stringify(p30.bandRate)); }
-ok("뽑기 레벨: 전설 Lv1 2% → Lv10 13.5% · 초월 Lv1 0.1% 미만 · 레벨 경계(0·10·30…)", Math.abs(summon.tierRates(1).SSR - 0.02) < 1e-9 && Math.abs(summon.tierRates(10).SSR - 0.135) < 1e-9 && summon.tierRates(1).LR < 0.001 && summon.summonLevel(0) === 1 && summon.summonLevel(9) === 1 && summon.summonLevel(10) === 2 && summon.summonLevel(9999) === 10);
+ok("뽑기 레벨: 전설 Lv1 2% → Lv10 13.5% · 초월 Lv1 0.1% 미만 · 레벨 경계(0·5·15…)", Math.abs(summon.tierRates(1).SSR - 0.02) < 1e-9 && Math.abs(summon.tierRates(10).SSR - 0.135) < 1e-9 && summon.tierRates(1).LR < 0.001 && summon.summonLevel(0) === 1 && summon.summonLevel(4) === 1 && summon.summonLevel(5) === 2 && summon.summonLevel(260) === 10 && summon.summonLevel(259) === 9 && summon.summonLevel(9999) === 10);
 const p30hi = gacha.gachaPool(30, 5, Date.now(), 10);
 ok("뽑기 레벨이 오르면 전설 이상 확률이 오른다(같은 풀)", ["SSR", "UR", "LR"].every((t) => p30hi.bandRate[t] >= p30.bandRate[t]) && p30hi.bandRate.N < p30.bandRate.N, JSON.stringify(p30hi.bandRate));
 ok("최고 등급 개별 확률 < 낮은 등급 개별 확률(공시 정합)", Math.max(...p30.entries.filter((e) => RANK[e.rarity] >= RANK.SSR).map((e) => e.rate)) < Math.min(...p30.entries.filter((e) => e.rarity === "N").map((e) => e.rate)));

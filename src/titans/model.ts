@@ -247,14 +247,16 @@ export const ALL_HEROES: TitanHeroDef[] = [
     feature: "빛으로 재해석된 마력탄 — 광역 성광 폭발", attackType: "범위 성광", attackInterval: 1.25,
   },
   { id:"pyro", name:"화염검 파이로", role:"화염 근접 딜러", unlockStage:8, baseCost:1_750, baseDps:55, hue:12, feature:"화상 중첩 — 화상 틱 피해 ×1.5", attackType:"화염 쌍검", attackInterval:.78 },
-  { id:"marina", name:"파도사제 마리나", role:"회복 지원", unlockStage:12, baseCost:2_650, baseDps:95, hue:195, feature:"아군 회복과 물 보호막", attackType:"수류 마법", attackInterval:1.45 },
+  // 마리나 · 오리온 (2026-10-27 난이도 감사): 마리나는 12층 동료 중 가장 약해 아무도 안 쓰고(95 — 10층 가렌의 0.8배), 오리온은 30층에 34층 실프의 2.7배라
+  // 30~40층을 혼자 건너뛰게 했다 → 마리나 ×2 · 오리온 ×0.4. 값도 같은 배율이라 골드 효율(EFF_PTS 기준점)은 그대로
+  { id:"marina", name:"파도사제 마리나", role:"회복 지원", unlockStage:12, baseCost:5_300, baseDps:190, hue:195, feature:"아군 회복과 물 보호막", attackType:"수류 마법", attackInterval:1.45 },
   { id:"terra", name:"대지방패 테라", role:"전열 탱커", unlockStage:14, baseCost:4_700, baseDps:180, hue:82, feature:"공격을 막고 지진 반격", attackType:"방패 강타", attackInterval:1.6 },
   { id:"zephyr", name:"바람궁수 제피르", role:"고속 원거리", unlockStage:18, baseCost:17_000, baseDps:720, hue:155, feature:"관통 화살 연속 사격", attackType:"질풍 화살", attackInterval:.68 },
   { id:"bronn", name:"용암기사 브론", role:"중갑 근접", unlockStage:22, baseCost:35_000, baseDps:1_650, hue:25, feature:"피격 시 용암 반격", attackType:"용암 대검", attackInterval:1.35 },
   { id:"iris", name:"빙결술사 아이리스", role:"제어 원거리", unlockStage:26, baseCost:84_000, baseDps:4_300, hue:205, feature:"적 공격 속도를 낮추는 빙결", attackType:"빙결 창", attackInterval:1.18 },
   { id:"cain", name:"뇌광검 카인", role:"치명 근접", unlockStage:30, baseCost:210_000, baseDps:11_500, hue:55, feature:"치명타마다 연쇄 번개", attackType:"뇌광 발도", attackInterval:.58 },
   { id:"sylph", name:"정령왕 실프", role:"바람 지원", unlockStage:34, baseCost:470_000, baseDps:28_000, hue:135, feature:"파티 공격 속도 강화", attackType:"정령 탄환", attackInterval:.82 },
-  { id:"orion", name:"성창 오리온", role:"보스 전문", unlockStage:30, baseCost:1_150_000, baseDps:75_000, hue:225, feature:"성창 — 보스에게 피해 +15%", attackType:"성창 투척", attackInterval:1.05 },
+  { id:"orion", name:"성창 오리온", role:"보스 전문", unlockStage:30, baseCost:460_000, baseDps:30_000, hue:225, feature:"성창 — 보스에게 피해 +15%", attackType:"성창 투척", attackInterval:1.05 },
   { id:"ember", name:"불사조 엠버", role:"전설 광역 딜러", unlockStage:48, baseCost:2_800_000, baseDps:210_000, hue:350, feature:"전장을 태우는 불사조 폭발", attackType:"불사조 강하", attackInterval:1.3 },
 ];
 

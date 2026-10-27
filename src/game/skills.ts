@@ -40,10 +40,10 @@ export type SkillFamily = "physical" | "magic" | "none";
 
 export const RANGED_WEAPONS: RangedWeaponDef[] = [
   // 맨손은 없다 — 활만 쓰는 콘텐츠다. 저장의 "none" 은 장궁으로 되돌린다 (progression/model.ts, 2026-10-01)
-  { id: "sword", name: "비버 대검", desc: "검기 — 조금 짧은 거리 큰 피해(×1.5) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
-  { id: "spear", name: "강철 장창", desc: "찌르기 — 화살 하나 더 꿰뚫기(×1.2) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
-  { id: "bow", name: "장궁", desc: "기본 사격 + 일제 사격 · 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
-  { id: "staff", name: "수정 지팡이", desc: "마력탄 + 일제 사격 · 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
+  { id: "sword", name: "비버 대검", desc: "검기 — 조금 짧은 거리 큰 검기(×1.2) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
+  { id: "spear", name: "강철 장창", desc: "찌르기 — 빠르고 긴 찌르기(×1.2) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
+  { id: "bow", name: "장궁", desc: "기본 사격(×1.1) + 일제 사격 · 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
+  { id: "staff", name: "수정 지팡이", desc: "마력탄(×1.1) + 일제 사격 · 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
 ];
 
 export const WEAPON_BY_ID: Record<string, RangedWeaponDef> =
@@ -233,7 +233,8 @@ export function emptyWeaponForge(): WeaponForgeLevels { return { bow: 0, staff: 
 /** 한 단계 비용 — 골드는 1.32배씩, 강화석은 단계마다 +2 */
 export function weaponForgeCost(level: number): { gold: number; stones: number } {
   const n = Math.max(1, level);
-  return { gold: Math.round(1_500 * Math.pow(1.32, n - 1)), stones: 2 + n * 2 };
+  // 골드 증가 1.32 → 1.45 (2026-10-27 감사: +20 까지 258만으로 검(+15 약 1.6억)의 1/60 이라 같은 골드면 지팡이 · 창이 검의 2배 넘게 셌다)
+  return { gold: Math.round(1_500 * Math.pow(1.45, n - 1)), stones: 2 + n * 2 };
 }
 /** 피해 배수 — 단계마다 +8% (20단계 ×2.6) */
 export function weaponForgeDamageMul(level: number): number { return 1 + 0.08 * Math.max(0, Math.min(WEAPON_FORGE_MAX, level)); }

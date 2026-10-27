@@ -2,7 +2,9 @@
  * 동료 뽑기 레벨 (2026-10-27, 사용자: "동료를 스테이지별이 아니라 동뽑 레벨이 있어서 레벨별 SSR 확률을 높이게 · SSR 도 초반에 희박하게").
  *
  * 누적 뽑기 수(CharacterProgress.gachaPulls)로 레벨 1~10. 등급 확률은 층이 아니라 이 레벨이 정한다.
- *   Lv1 전설(SSR) 2% · 신화 0.3% · 초월 0.02% — 처음엔 희박하고, 뽑을수록 오른다(Lv10 전설 13.5% · 신화 4% · 초월 1.3%).
+ *   Lv1 전설(SSR) 2% · 신화 0.3% · 초월 0.02% — 처음엔 희박하고, 뽑을수록 오른다(Lv10 전설 13.5% · 신화 4.2% · 초월 0.8%).
+ * 2026-10-27 난이도 감사: 레벨 문턱 절반(Lv10 520 → 260회) · 초월 확률 Lv10 1.3 → 0.8% 대신 초월 천장 200회(gacha.ts) —
+ *   무과금 첫 초월이 운에 따라 1년 넘게 걸리던 것(평균 약 545일)을 천장으로 끊는다.
  * 뽑기 풀(누가 나오나)은 여전히 개척 지역 안 — 지역에 없는 등급의 확률은 있는 등급에 비례해 나눈다(titans/gacha.ts).
  */
 import type { Tier } from "./allyRoster";
@@ -10,7 +12,7 @@ import type { Tier } from "./allyRoster";
 export const TIERS: readonly Tier[] = ["N", "R", "SR", "SSR", "UR", "LR"];
 
 /** 레벨 n 이 되는 누적 뽑기 수 (index 0 = Lv1) */
-export const SUMMON_LEVEL_PULLS = [0, 10, 30, 60, 100, 150, 220, 300, 400, 520] as const;
+export const SUMMON_LEVEL_PULLS = [0, 5, 15, 30, 50, 75, 110, 150, 200, 260] as const;
 export const SUMMON_MAX_LEVEL = SUMMON_LEVEL_PULLS.length;
 
 /** 레벨별 등급 확률(%) — 각 줄 합 100 */
@@ -21,10 +23,10 @@ const RATE_PCT: readonly (readonly [number, number, number, number, number, numb
   [40, 37, 17, 4.8, 1, 0.2],
   [36, 37, 19, 6, 1.7, 0.3],
   [32, 37, 21, 7.4, 2.2, 0.4],
-  [28, 37, 23, 8.8, 2.6, 0.6],
-  [25, 36, 25, 10, 3.2, 0.8],
-  [22, 35, 27, 11.6, 3.4, 1],
-  [20, 33, 28, 13.5, 4.2, 1.3],
+  [28.1, 37, 23, 8.8, 2.6, 0.5],
+  [25.2, 36, 25, 10, 3.2, 0.6],
+  [22.3, 35, 27, 11.6, 3.4, 0.7],
+  [20.5, 33, 28, 13.5, 4.2, 0.8],
 ];
 
 export function summonLevel(pulls: number): number {

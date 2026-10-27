@@ -62,7 +62,7 @@ export const NEW_ALLIES: readonly NewAllyDef[] = [
   { id: "sage", name: "숲현자 세이지", tier: "SR", role: "healer", element: "earth", stage: 21, hue: 100, attackType: "숲의 지팡이", attackInterval: 1.3, feature: "숲의 기운으로 기술을 서두른다", move: "숲의 가호", desc: "나뭇잎 고리가 파티를 감싼다" },
   { id: "hawk", name: "매눈 호크", tier: "SR", role: "ranged", element: "wind", stage: 26, hue: 30, attackType: "매 화살", attackInterval: 0.95, feature: "매처럼 노리는 저격", move: "매의 눈 저격", desc: "약점을 꿰뚫는 한 발" },
   { id: "tide", name: "해일 타이드", tier: "SR", role: "ranged", element: "water", stage: 29, hue: 210, attackType: "해일 마법", attackInterval: 1.3, feature: "해일 마법", move: "해일 소환", desc: "큰 물결이 전장을 덮친다", fx: "bolt" },
-  { id: "anvil", name: "모루 앤빌", tier: "SR", role: "tank", element: "fire", stage: 38, hue: 20, attackType: "망치 · 방패", attackInterval: 1.5, feature: "모루처럼 단단한 방어", move: "모루 내려치기", desc: "땅이 울리는 내려치기" },
+  { id: "anvil", name: "모루 앤빌", tier: "SR", role: "tank", element: "fire", stage: 35, hue: 20, attackType: "망치 · 방패", attackInterval: 1.5, feature: "모루처럼 단단한 방어", move: "모루 내려치기", desc: "땅이 울리는 내려치기" },
   // ── UR 신화 ──
   { id: "aurora", name: "오로라 여사제", tier: "UR", role: "healer", element: "water", stage: 15, hue: 165, attackType: "오로라 지팡이", attackInterval: 1.25, feature: "오로라 빛이 기술을 크게 서두른다", move: "오로라 장막", desc: "하늘빛 장막이 파티를 감싼다" },
   { id: "titan", name: "대지거인 타이탄", tier: "UR", role: "tank", element: "earth", stage: 22, hue: 45, attackType: "거인 도끼", attackInterval: 1.55, feature: "땅을 가르는 거인", move: "대지 분쇄", desc: "땅을 갈라 대장을 멈춘다" },
@@ -92,8 +92,8 @@ function curve(pts: [number, number][], s: number, beyond: number): number {
   return pts[0][1];
 }
 export function newAllyBaseDps(d: Pick<NewAllyDef, "stage" | "tier">): number {
-  const v = curve(DPS_PTS, d.stage, 1.3) * TIER_POWER[d.tier];
-  return v < 10 ? Math.round(v * 10) / 10 : Math.round(v);
+  // 값(정수)을 먼저 정하고 힘 = 값 × 효율 — 골드 효율이 열리는 층의 효율과 정확히 같다(낮은 층 동료는 값이 100대라 반올림이 효율을 1% 넘게 흔들었다)
+  return newAllyBaseCost(d) * effAt(d.stage);
 }
 /** 기존 동료의 골드 효율(baseDps ÷ baseCost) — 층이 오를수록 늘어난다(verify-systems "골드 효율 단조"). 새 동료 값은 이 효율을 층으로 보간해 정한다 */
 const EFF_PTS: [number, number][] = [[1, 0.024], [3, 6 / 230], [6, 28 / 950], [8, 55 / 1750], [10, 120 / 3600], [12, 95 / 2650], [16, 620 / 15500], [22, 1650 / 35000], [24, 3200 / 65000], [30, 75000 / 1150000], [48, 210000 / 2800000]];
@@ -107,8 +107,9 @@ function effAt(s: number): number {
   return EFF_PTS[0][1];
 }
 export function newAllyBaseCost(d: Pick<NewAllyDef, "stage" | "tier">): number {
-  // 내림 — 반올림으로 효율이 같은 층 기존 동료보다 낮아지지 않게
-  return Math.max(1, Math.floor(newAllyBaseDps(d) / effAt(d.stage)));
+  // 힘은 두 층 아래 곡선 (2026-10-27 난이도 감사: 새 40명이 층마다 두세 명씩 끼어 1~29층 원정대가 예전보다 1.6~2.0배 셌다)
+  const dps = curve(DPS_PTS, Math.max(1, d.stage - 2), 1.3) * TIER_POWER[d.tier];
+  return Math.max(1, Math.round(dps / effAt(d.stage)));
 }
 /** 참고용 — 예전 값 곡선(층별) × 등급 */
 export function newAllyCostCurve(d: Pick<NewAllyDef, "stage" | "tier">): number {
