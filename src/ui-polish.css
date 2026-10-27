@@ -1213,3 +1213,11 @@
 .ally-pages { display: flex !important; flex-wrap: nowrap !important; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .ally-pages::-webkit-scrollbar { display: none; }
 .ally-pages button { flex: 0 0 auto; }
+
+/* ── A: 무기 탈착 — 손으로 쥐는 느낌 (2026-10-27, "무기 탈착 애니메이션이 너무 어색해 실제 손으로 든 것처럼") ──
+   회전축이 그림 안 손잡이(EquippedCharacter WEAPON_GRIP · translate 는 --grip-x/y 를 이어 쓴다)라, 떼면 손에서 미끄러져 아래로 떨어지며 눕고, 끼우면 아래에서 손으로 올라와 쥐어지며 살짝 출렁인다 */
+.equipped-character .equipment-weapon-alt.gear-attach { animation: gear-grab .42s cubic-bezier(.25, 1.4, .45, 1) both; }
+.equipped-character .equipment-weapon-ghost.gear-detach { animation: gear-drop .5s cubic-bezier(.45, 0, .85, .55) forwards; }
+@keyframes gear-grab { 0% { translate: var(--grip-x, 0) calc(var(--grip-y, 0%) + 22px); scale: .55; rotate: -28deg; opacity: 0; } 55% { translate: var(--grip-x, 0) calc(var(--grip-y, 0%) - 3px); scale: 1.06; rotate: 7deg; opacity: 1; } 80% { translate: var(--grip-x, 0) calc(var(--grip-y, 0%) + 1px); scale: .98; rotate: -2deg; } 100% { translate: var(--grip-x, 0) var(--grip-y, 0); scale: 1; rotate: 0deg; opacity: 1; } }
+@keyframes gear-drop { 0% { translate: var(--grip-x, 0) var(--grip-y, 0); opacity: 1; } 30% { translate: calc(var(--grip-x, 0%) + 4px) calc(var(--grip-y, 0%) + 5px); rotate: 18deg; opacity: 1; } 100% { translate: calc(var(--grip-x, 0%) + 16px) calc(var(--grip-y, 0%) + 48px); rotate: 95deg; scale: .92; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .equipped-character .equipment-weapon-alt.gear-attach, .equipped-character .equipment-weapon-ghost.gear-detach { animation: none !important; } }
