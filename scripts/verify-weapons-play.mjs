@@ -71,12 +71,27 @@ await clickText(".exp-menu-tabs button", "원정"); await sleep(500); await clic
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 for (let i = 0; i < 20 && !(await page.evaluate(() => !!window.__dodgeWorld)); i += 1) await sleep(250);
 // 실제로 쏘고 떨어뜨리는가 — 진행이 1/3 속도라 실제 40초(게임 약 13초). 처음 검기(0.38초)는 위쪽 몬스터에 닿지 못해 처치 0 이었다(2026-10-27)
-let shotFrames = 0;
-for (let i = 0; i < 200; i += 1) { if (await page.evaluate(() => (window.__dodgeWorld?.skillShots ?? []).some((s) => s.active && s.basic))) shotFrames += 1; await sleep(200); }
+let shotFrames = 0; const swordSheets = new Set();
+for (let i = 0; i < 200; i += 1) { if (await page.evaluate(() => (window.__dodgeWorld?.skillShots ?? []).some((s) => s.active && s.basic))) shotFrames += 1; swordSheets.add(await page.evaluate(() => window.__dodgeHeroSheet ?? "")); await sleep(200); }
 const w = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { weapon: w.rangedWeapon, basic: w.basicLevel, kills: w.skillKills } : null; });
 ok("댐 방어전 무기 = 장착한 검 · 기본 단계 = 검 +6 → 8/20", !!w && w.weapon === "sword" && w.basic === 8, JSON.stringify(w));
 ok("검기가 실제로 나가고 화살 · 몬스터를 떨어뜨린다", shotFrames > 20 && (w?.kills ?? 0) >= 1, `검기 ${shotFrames}프레임 · 처치 ${w?.kills}`);
 await page.screenshot({ path: "art-gen/out/weapons-dodge-sword.png" });
+// 쏠 때 몸 동작 = 무기 공격 시트 (2026-10-27, "무기별 몸 동작은 사냥터에만") — player.ts 가 DEV 에서 __dodgeHeroSheet 에 그린 시트 · 칸을 남긴다
+const swordAtk = [...swordSheets].filter((x) => /^attack-sword:/.test(x));
+ok("댐 방어전 검: 쏠 때 검 공격 시트(hero-attack)의 여러 칸을 돈다", new Set(swordAtk).size >= 3, [...swordSheets].slice(0, 12).join(" "));
+
+// ── 5. 댐 방어전 — 활로 싸울 때 몸이 활 공격 시트(당겼다 놓기)를 돈다 ──
+await seed({ ...base, equippedWeaponKind: "bow" }, titansBase);
+await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
+await clickText(".exp-menu-tabs button", "원정"); await sleep(500); await clickText("button", "스테이지"); await sleep(1800);
+await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
+for (let i = 0; i < 20 && !(await page.evaluate(() => !!window.__dodgeWorld)); i += 1) await sleep(250);
+const bowSheets = new Set(); let bowShot = false;
+for (let i = 0; i < 160; i += 1) { const v = await page.evaluate(() => window.__dodgeHeroSheet ?? ""); bowSheets.add(v); if (!bowShot && v === "attack-bow:4") { bowShot = true; await page.screenshot({ path: "art-gen/out/weapons-dodge-bow-shot.png" }); } await sleep(60); }
+const bw = await page.evaluate(() => window.__dodgeWorld?.rangedWeapon);
+const bowAtk = [...bowSheets].filter((x) => /^attack-bow:/.test(x));
+ok("댐 방어전 활: 무기 = 활 · 쏠 때 활 공격 시트(hero-attack-bow) 4칸 이상 · 대기 칸으로 돌아온다", bw === "bow" && new Set(bowAtk).size >= 4 && bowSheets.has("idle"), `${bw} · ${[...bowSheets].sort().join(" ")}`);
 
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 await browser.close();
