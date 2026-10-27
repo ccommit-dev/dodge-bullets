@@ -439,15 +439,15 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         const evo = world.runMods.evolutions.basic;
         const hand = bowHand(world);
         for (const t of targets) {
-          // 무기 4종 (2026-10-27) — 검: 짧은 거리(0.26초) 큰 검기 · 창: 한 번 더 꿰뚫는 찌르기 · 활 · 지팡이는 예전 그대로
+          // 무기 4종 (2026-10-27) — 검: 조금 짧은 거리(0.75초 ≈ 675px · 처음 0.38초는 위쪽 몬스터에 닿지 못해 처치 0 이었다) 큰 검기 · 창: 한 번 더 꿰뚫는 찌르기 · 활 · 지팡이는 예전 그대로
           const wpn = world.rangedWeapon;
           const sp = evo === "beam" ? 1000 : evo === "seeker" ? 540 : wpn === "sword" ? 900 : wpn === "spear" ? 820 : BASIC_SHOT_SPEED;
           const ang = aimAt(t, sp);
           const conv = world.runMods.convert;
-          const wMul = wpn === "sword" ? 1.8 : wpn === "spear" ? 1.2 : 1;
+          const wMul = wpn === "sword" ? 1.5 : wpn === "spear" ? 1.2 : 1;
           const shot = spawn(world, {
             element: conv ?? "basic", basic: true, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-            radius: evo === "beam" ? 12 : wpn === "sword" ? 16 : 9, lifeMs: wpn === "sword" && evo !== "beam" ? 380 : wpn === "spear" ? 1000 : 1400, power: 1, damage: BASIC_DAMAGE * basicDamageMul(world.basicLevel) * (conv ? 1.2 : 1) * wMul,
+            radius: evo === "beam" ? 12 : wpn === "sword" ? 16 : 9, lifeMs: wpn === "sword" && evo !== "beam" ? 750 : wpn === "spear" ? 1000 : 1400, power: 1, damage: BASIC_DAMAGE * basicDamageMul(world.basicLevel) * (conv ? 1.2 : 1) * wMul,
             hits: world.runMods.shotPierce + (evo === "beam" ? 99 : 0) + (wpn === "spear" ? 1 : 0), seeker: evo === "seeker",
           });
           // 그림은 활 앞(화살받침)에서 — 판정 출발점과의 차이는 그리기가 60px 안에 메운다

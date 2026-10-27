@@ -40,7 +40,7 @@ export type SkillFamily = "physical" | "magic" | "none";
 
 export const RANGED_WEAPONS: RangedWeaponDef[] = [
   // 맨손은 없다 — 활만 쓰는 콘텐츠다. 저장의 "none" 은 장궁으로 되돌린다 (progression/model.ts, 2026-10-01)
-  { id: "sword", name: "비버 대검", desc: "검기 — 짧은 거리 큰 피해(×1.8) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
+  { id: "sword", name: "비버 대검", desc: "검기 — 조금 짧은 거리 큰 피해(×1.5) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
   { id: "spear", name: "강철 장창", desc: "찌르기 — 화살 하나 더 꿰뚫기(×1.2) · 물리 화살 재사용 −12%", affinity: "physical", unlockStage: 0 },
   { id: "bow", name: "장궁", desc: "기본 사격 + 일제 사격 · 물리 화살(물·흙) 재사용 −12%", affinity: "physical", unlockStage: 0 },
   { id: "staff", name: "수정 지팡이", desc: "마력탄 + 일제 사격 · 마법 화살(불·얼음·번개) 재사용 −12%", affinity: "magic", unlockStage: 2 },
