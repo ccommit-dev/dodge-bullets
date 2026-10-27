@@ -1,5 +1,6 @@
 // 무기 4종 실제 DPS — 통제 측정 (2026-10-27 아쉬운 점 "실제 차이를 확정"). 죽지 않는 몬스터(40층) · 대장은 원정대가 버티는 층(29) · 고정 난수 · 출처별(대장은 @boss 로 따로)
-// 결과(4회 · 검 기준): 스킬 아닌 피해는 ±몇 % 로 안정 — 창 일반 ×0.86~0.98 · 대장 ×1.16 / 활 ×1.01~1.25 / 지팡이 ×0.80~0.98. 스킬(운석 · 치명 · 약점 ×1.6)이 흔들림의 대부분
+// 결과(2026-10-27 · 치명 기댓값 · 약점 끔 · 검 기준): 창 방치 ×0.84 · 탭 ×0.87 · 대장 ×1.12 / 활 ×0.99 · ×0.98 · ×1.00 / 지팡이 ×0.99 · ×0.97 · ×0.90. 스킬 긴 평균 창 ×0.82 · 활 ×0.89 · 지팡이 ×0.95 (설계 0.85 · 0.88 · 0.97).
+// 대장의 스킬은 한 판 값이 아니라 긴 평균 × 대장 배율 — 대장 제한 30초 < 운석 쿨 38초라 한 판에 운석 0~1번(쿨타임 위상)에 달린다
 //   node scripts/_probe-weapon-dps2.mjs [stage=40] [sec=30]   (vite 5173)
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -22,6 +23,8 @@ const titansBase = { gold: 1e6, stage: 8, bestStage: 8, totalKills: 100, heroes:
 
 // 고정 난수 — 무기마다 같은 치명 · 스킬 굴림 (페이지마다 새로 심는다)
 await page.evaluateOnNewDocument(() => { let s = 20261027; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; });
+// DEV 측정 모드 — 치명은 기댓값 · 대장 약점(무작위 ×1.6) 끔 (TitansGame __huntProbe). 운석 몇 번의 치명이 ±15% 흔들던 것을 없앤다
+await page.evaluateOnNewDocument(() => { window.__huntProbe = { expectCrit: true, noWeak: true }; });
 const STAGE = Number(process.argv[2] ?? 40), SEC = Number(process.argv[3] ?? 30), REPS = Number(process.argv[4] ?? 2), BOSS_STAGE = Number(process.argv[5] ?? 29);
 const heroes = { mia: 30, leon: 30, sera: 25, garen: 25 };
 const skills = { learned: ["strike", "crit", "clone", "meteor", "steel"], levels: { strike: 1, crit: 1, clone: 1, meteor: 1, steel: 1 }, equipped: { starter: "strike", linkA: "crit", linkB: "clone", finisher: "meteor", passive: "steel" }, skillCores: 0 };
