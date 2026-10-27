@@ -88,7 +88,15 @@ await clickText(".exp-menu-tabs button", "원정"); await sleep(500); await clic
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 for (let i = 0; i < 20 && !(await page.evaluate(() => !!window.__dodgeWorld)); i += 1) await sleep(250);
 const bowSheets = new Set(); let bowShot = false;
-for (let i = 0; i < 160; i += 1) { const v = await page.evaluate(() => window.__dodgeHeroSheet ?? ""); bowSheets.add(v); if (!bowShot && v === "attack-bow:4") { bowShot = true; await page.screenshot({ path: "art-gen/out/weapons-dodge-bow-shot.png" }); } await sleep(60); }
+// 표본 수 대신 월드 시간으로 — 헤드리스 rAF 가 10fps 로 묶이면(화면 꺼짐 · 잠금) 160표본 안에 몬스터가 사거리에 오지 않았다(2026-10-27).
+// 활 공격 칸 4개 이상 + 대기 칸을 보거나, 월드 20초(실제 최대 3분)까지
+for (let i = 0; i < 3000; i += 1) {
+  const v = await page.evaluate(() => ({ sheet: window.__dodgeHeroSheet ?? "", el: window.__dodgeWorld?.stageElapsedMs ?? 0 }));
+  bowSheets.add(v.sheet);
+  if (!bowShot && v.sheet === "attack-bow:4") { bowShot = true; await page.screenshot({ path: "art-gen/out/weapons-dodge-bow-shot.png" }); }
+  if ((new Set([...bowSheets].filter((x) => /^attack-bow:/.test(x))).size >= 4 && bowSheets.has("idle")) || v.el > 20000) break;
+  await sleep(60);
+}
 const bw = await page.evaluate(() => window.__dodgeWorld?.rangedWeapon);
 const bowAtk = [...bowSheets].filter((x) => /^attack-bow:/.test(x));
 ok("댐 방어전 활: 무기 = 활 · 쏠 때 활 공격 시트(hero-attack-bow) 4칸 이상 · 대기 칸으로 돌아온다", bw === "bow" && new Set(bowAtk).size >= 4 && bowSheets.has("idle"), `${bw} · ${[...bowSheets].sort().join(" ")}`);
