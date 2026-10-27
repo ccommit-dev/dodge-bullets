@@ -162,6 +162,14 @@ export function stageType(index: number): StageType {
   return "long";
 }
 
+/**
+ * 튀는 칸 누그러뜨리기 (2026-10-27 난이도 감사 · 아쉬운 점 "활 · 지팡이 23 · 48층에서 한 판씩 진다") — 무기 탓이 아니라 칸 탓이었다:
+ * 기대 성장 계정(지팡이 · 12시드)이 22 · 24층은 12/12 · 방어막 최저 97~99% 인데 23층(2장 혼성: 스윕 + 부채꼴)만 8/12 · 29%,
+ * 48 · 49층(4장 포위전 · 정예 혼성)이 11/12 · 41~42%. 다른 장의 같은 칸(13 · 33 · 43 · 18 · 28 · 38)은 모두 12/12 · 96% 이상.
+ * 생성 간격만 늘린다(spawnScale) — 체력 · 대장 · 체크포인트(1 · 5 · 10 · … · 50) 칸은 그대로라 성장 벽 검사가 바뀌지 않는다
+ */
+const SPAWN_EASE: Partial<Record<number, number>> = { 22: 1.15, 47: 1.16, 48: 1.14 };
+
 /** stageIndex(0~49) → 스테이지. 결정적 */
 export function buildStage(index: number): StageDef {
   const i = Math.max(0, Math.min(CHAPTER_COUNT * STAGES_PER_CHAPTER - 1, index));
@@ -178,7 +186,7 @@ export function buildStage(index: number): StageDef {
     baseReward: Math.round(370 * Math.pow(1.06, i) * (slot.kind === "boss" ? 1.6 : slot.kind === "midboss" ? 1.25 : 1)),
     speedMul: round2(c.speedBase * Math.pow(c.speedGrowth, i) * slot.speed),
     spawnMul: round2(Math.pow(c.densityGrowth, i)),
-    spawnScale: 1,
+    spawnScale: SPAWN_EASE[i] ?? 1,
     monsterHp: round2(c.hpBase * Math.pow(c.hpGrowth, i) * CHAPTER_HP[chapter] * slot.hp),
     barrierDmgMul: round2(1 + c.barrierDmgPerStage * i),
     bossCuts: Math.round((c.bossCutsBase + c.bossCutsPerStage * i) * slot.bossCuts),

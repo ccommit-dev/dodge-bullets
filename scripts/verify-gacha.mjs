@@ -58,11 +58,14 @@ r = await page.evaluate(() => ({
   pity: document.querySelector(".gacha-level:not(.summon-level) span")?.textContent,
   summon: document.querySelector(".gacha-level.summon-level")?.textContent,
   tierChips: document.querySelectorAll(".summon-tier-rates li").length,
+  lrPity: document.querySelector(".gacha-lr-pity")?.textContent,
 }));
 r.roleChips = roleChips;
 // 2026-10-27 동료 60명 — 지역3 상한(15) 안에 아직 못 만난 동료(페블 13 · 프로스트 14 · 오로라 15)가 생겨 픽업이 다시 있다(최대 2명)
 ok("뽑기 시트 · 픽업 최대 2명", r.panel && r.pickups.length >= 1 && r.pickups.length <= 2, r.pickups.join("|"));
 ok("뽑기 레벨 줄 · 6등급 확률 칩", /뽑기 Lv\.\d/.test(r.summon ?? "") && r.tierChips === 6, `${r.summon} · 칩 ${r.tierChips}`);
+// 초월 천장 (2026-10-27 아쉬운 점) — 초월이 없는 초반 지역(상한 15)에서도 게이지가 보이고 쌓인다
+ok("초월 천장 게이지: 초반 지역에도 보인다 · 'STAGE 23 지역부터'", /초월 천장 0.200/.test(r.lrPity ?? "") && /쌓는 중 · 초월은 STAGE 23 지역부터/.test(r.lrPity ?? ""), r.lrPity);
 ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
@@ -165,6 +168,18 @@ await clickText(".premium-category-tabs button", "재화");
 await sleep(300);
 r = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card p")].map((p) => p.textContent).find((x) => /사냥터 골드/.test(x)));
 ok("황금 보급 상자 수량 표기(×3000 반영)", /\+/.test(r ?? ""), r);
+
+// ── 동료 값 조정 안내 (2026-10-27 아쉬운 점: 오리온 · 새 동료 약화) — 옛 저장은 쓴 골드로 레벨을 다시 맞추고 한 번 알린다 ──
+await seed(baseProgress, { ...baseTitans, gold: 1000, heroes: { mia: 12, leon: 8, orion: 30, storm: 15 } });
+const reb = await page.evaluate(() => ({ modal: document.querySelector(".rebalance-modal")?.textContent ?? "" }));
+await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "닫기" && !b.closest(".rebalance-modal"))?.click()); await sleep(500);
+await page.screenshot({ path: "art-gen/out/rebalance-notice.png" });
+await page.evaluate(() => [...document.querySelectorAll(".rebalance-modal button")].find((b) => /확인/.test(b.textContent))?.click()); await sleep(500);
+const tReb = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)), H);
+ok("옛 저장 동료 다시 계산 안내: 오리온 Lv.30 → 35 · 스톰 15 → 18 · 남은 골드", /동료 밸런스 조정/.test(reb.modal) && /오리온/.test(reb.modal) && /Lv.30 → Lv.35/.test(reb.modal) && /Lv.15 → Lv.18/.test(reb.modal) && /돌려받음/.test(reb.modal), reb.modal.slice(0, 120));
+ok("다시 계산이 저장된다 · 안내는 한 번만", tReb.heroes.orion === 35 && tReb.heroes.storm === 18 && tReb.allyRebalance === 1 && !tReb.rebalanceNotice && tReb.gold > 1000, JSON.stringify({ o: tReb.heroes.orion, s: tReb.heroes.storm, g: tReb.gold, v: tReb.allyRebalance }));
+await page.reload({ waitUntil: "networkidle0" }); await sleep(2000);
+ok("다시 열어도 안내가 또 뜨지 않는다", !(await page.$(".rebalance-modal")));
 
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();

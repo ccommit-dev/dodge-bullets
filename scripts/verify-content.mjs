@@ -383,6 +383,9 @@ ok("대장 크기 2/3 — 5배(480+)에서 줄였다 · 화면 폭(390)보다 �
   const underAll = rows.filter((r) => r.under !== null);
   const underPct = Math.round(underAll.reduce((s2, r) => s2 + r.under, 0) / (underAll.length * 5) * 100);
   ok("50 스테이지 · 덜 자란 계정의 체크포인트 클리어는 전체 30% 이하", underPct <= 30, underPct + "%");
+  // 튀는 칸 (2026-10-27 · stages.SPAWN_EASE) — 23층(2장 혼성) · 48 · 49층(4장 포위전 · 정예 혼성)만 앞뒤 칸보다 훨씬 어려웠다(23층 12시드 8/12 · 방어막 최저 29%)
+  const spikes = [22, 47, 48].map((i) => ({ i, g: stageGate(i, profileFor(i), 5) }));
+  ok("튀는 칸 누그러뜨림: 23 · 48 · 49층 기대 성장 계정 5/5 · 방어막 최저 평균 40% 이상", spikes.every((x) => x.g.clear === 5 && x.g.minPct >= 40), spikes.map((x) => `${x.i + 1}:${x.g.clear}/${x.g.minPct}%`).join(" "));
   ok("몬스터 풀이 차지 않는다 (생성이 조용히 빠지면 쉬워 보인다)", rows.every((r) => !r.pool), rows.filter((r) => r.pool).map((r) => r.stage + 1).join(","));
   ok("진행 속도 — 체크포인트 한 판이 실제 75초 이상 (예전 30~60초의 약 2~3배)", rows.every((r) => r.realSec >= 75), rows.map((r) => r.realSec).join(" "));
   const p20 = profileFor(19);

@@ -60,7 +60,7 @@ ok("④ 심연 층당 처치 골드 ≈ ×1.30 (예전 ×1.26)", step > 1.28 && 
 ok("④ 24층 전 골드는 그대로", M.killGold(20, false, false) === Math.max(1, Math.floor(5 * Math.pow(1.26, 19) * M.huntingArea(20).rewardMultiplier)));
 
 // ⑤ 무기 — 창은 대장 특화 · 활은 탭 1.0 + 자동 공격 속도
-ok("⑤ 무기: 창 대장 ×1.35 · 활 탭 ×1.0 · 활 자동 ×1.25 · 활 기술 4탭 ×2.2", W.WEAPON_EFFECTS.spear.bossMul === 1.35 && W.WEAPON_EFFECTS.bow.tapMul === 1 && W.WEAPON_EFFECTS.bow.autoSpeedMul === 1.25 && W.WEAPON_TECH.bow.every === 4 && W.WEAPON_TECH.bow.mul === 2.2);
+ok("⑤ 무기: 창 대장 ×1.35 · 활 탭 ×1.15 · 활 자동 ×1.25 · 활 기술 4탭 ×2.2", W.WEAPON_EFFECTS.spear.bossMul === 1.35 && W.WEAPON_EFFECTS.bow.tapMul === 1.15 && W.WEAPON_EFFECTS.bow.autoSpeedMul === 1.25 && W.WEAPON_TECH.bow.every === 4 && W.WEAPON_TECH.bow.mul === 2.2);
 // ⑤ 동료 곡선
 const H = (id) => M.HEROES.find((h) => h.id === id);
 ok("⑤ 마리나 ×2 (190 · 5300) · 오리온 ×0.4 (30000 · 460000) — 골드 효율 그대로", H("marina").baseDps === 190 && H("marina").baseCost === 5300 && H("orion").baseDps === 30000 && H("orion").baseCost === 460000 && H("orion").unlockStage === 30);
@@ -84,11 +84,35 @@ ok("⑤ 초월 천장: 199회 누적이면 200회째 초월 확정 · 카운터 
 const miss = G.pullOnce(lrPool, owned, 0, () => 0, null, 10);
 ok("⑤ 초월이 아니면 +1", miss.result.rarity !== "LR" && miss.lrPity === 11);
 const early = G.pullOnce(noLrPool, owned, 0, () => 0.5, null, 10);
-ok("⑤ 초월이 없는 풀에선 세지 않는다", early.lrPity === 10);
+ok("⑤ 초반 지역(초월 없는 풀)도 센다 — 초반에 많이 뽑아도 천장이 버려지지 않는다", early.lrPity === 11);
+const full = G.pullOnce(noLrPool, owned, 0, () => 0.5, null, G.GACHA.lrPityLimit - 1);
+ok("⑤ 초월 없는 풀에서 가득 차면 199 에서 기다린다(초월이 아닌 결과)", full.result.rarity !== "LR" && full.lrPity === G.GACHA.lrPityLimit - 1);
+const carry = G.pullOnce(lrPool, owned, 0, () => 0, null, full.lrPity);
+ok("⑤ 그 뒤 초월 있는 풀의 첫 소환 = 초월 확정", carry.result.rarity === "LR" && carry.lrPity === 0);
+ok("⑤ 초월 처음 열리는 층 = 23(셀레스)", G.FIRST_LR_STAGE === 23, String(G.FIRST_LR_STAGE));
 let lpSim = 0, got = 0;
 for (let i = 0; i < 20; i += 1) { const t = G.pullTen(lrPool, owned, 0, () => 0, false, null, lpSim); lpSim = t.lrPity; got += t.results.filter((r) => r.rarity === "LR").length; }
 ok("⑤ 운이 없어도(초월을 안 뽑는 난수) 10연 20번 = 200회째에 초월 정확히 1명", got === 1 && lpSim === 0, `200회 중 초월 ${got}번`);
 ok("⑤ 옛 저장(초월 천장 없음)은 0 으로", P.normalizeCharacterProgress({ ...base }).gachaLrPity === 0 && P.normalizeCharacterProgress({ ...base, gachaLrPity: 9999 }).gachaLrPity === 199);
+
+// ⑥ 아쉬운 점 — 값이 내려간 동료는 쓴 골드로 다시 레벨을 맞춘다(한 번만)
+{
+  const orion = H("orion");
+  const pw = (base, lv) => base * Math.pow(1.125, lv - 1) * (lv >= 10 ? 1.5 : 1) * (lv >= 25 ? 2 : 1) * (lv >= 50 ? 2.5 : 1) * (lv >= 100 ? 3 : 1);
+  const r = M.relevelAlly(1_150_000, orion.baseCost, 30);
+  const ratio = pw(orion.baseDps, r.level) / pw(75_000, 30);
+  ok("⑥ 오리온 Lv.30 → 쓴 골드로 다시 맞추면 예전 힘의 0.7 배 이상(0.4 배 아님)", r.level > 30 && ratio >= 0.7 && ratio < 1.05, `Lv.${r.level} · ×${ratio.toFixed(2)} · 남은 골드 ${r.gold}`);
+  const raw = { heroes: { orion: 30, marina: 20, storm: 15, mia: 40 }, gold: 1000, stage: 30, bestStage: 30 };
+  const once = M.normalizeTitansSave(raw);
+  ok("⑥ 옛 저장: 오리온 · 새 동료(스톰)만 다시 계산 · 마리나 · 미아는 그대로 · 남은 골드 얹기 · 안내 남김",
+    once.heroes.orion === r.level && once.heroes.storm > 15 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.gold > 1000 && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
+    JSON.stringify({ orion: once.heroes.orion, storm: once.heroes.storm, gold: once.gold, n: once.rebalanceNotice?.changes }));
+  const twice = M.normalizeTitansSave({ ...once, rebalanceNotice: null });
+  ok("⑥ 한 번만 — 다시 불러와도 레벨 · 골드가 그대로", twice.heroes.orion === once.heroes.orion && twice.heroes.storm === once.heroes.storm && twice.gold === once.gold && twice.rebalanceNotice === null);
+  ok("⑥ 새 계정 · 환생 저장은 다시 계산하지 않는다", M.defaultTitansSave().allyRebalance === M.ALLY_REBALANCE_VERSION && M.normalizeTitansSave({ ...M.defaultTitansSave(), heroes: { orion: 30 } }).heroes.orion === 30);
+  const lv1 = M.normalizeTitansSave({ heroes: { orion: 1 }, gold: 0 });
+  ok("⑥ Lv.1(뽑기로 받은 것)은 건드리지 않는다", lv1.heroes.orion === 1 && lv1.gold === 0 && !lv1.rebalanceNotice);
+}
 
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 process.exit(fails ? 1 : 0);

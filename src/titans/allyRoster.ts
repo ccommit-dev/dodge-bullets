@@ -111,6 +111,12 @@ export function newAllyBaseCost(d: Pick<NewAllyDef, "stage" | "tier">): number {
   const dps = curve(DPS_PTS, Math.max(1, d.stage - 2), 1.3) * TIER_POWER[d.tier];
   return Math.max(1, Math.round(dps / effAt(d.stage)));
 }
+/** 2026-10-27 조정 전 값 — 열리는 층 곡선 그대로의 힘 ÷ 효율(내림). 이미 올린 레벨을 새 값으로 다시 계산할 때만 쓴다(model.relevelAlly) */
+export function preRebalanceBaseCost(d: Pick<NewAllyDef, "stage" | "tier">): number {
+  const v = curve(DPS_PTS, d.stage, 1.3) * TIER_POWER[d.tier];
+  const dps = v < 10 ? Math.round(v * 10) / 10 : Math.round(v);
+  return Math.max(1, Math.floor(dps / effAt(d.stage)));
+}
 /** 참고용 — 예전 값 곡선(층별) × 등급 */
 export function newAllyCostCurve(d: Pick<NewAllyDef, "stage" | "tier">): number {
   return Math.round(curve(COST_PTS, d.stage, 1.25) * TIER_POWER[d.tier]);

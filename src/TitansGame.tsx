@@ -48,7 +48,7 @@ import { BOSS_ATTACK_GAP_MS, MOB_ATTACK_GAP_MS, bossHitFraction, bossPace, party
 import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
-import { FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
+import { FIRST_LR_STAGE, FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinIcon, weaponSkinStyle } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
@@ -351,6 +351,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return () => window.clearTimeout(t);
   }, [expeditionSendPop]);
   const [showRelicRates, setShowRelicRates] = useState(false);
+  /** 동료 값 조정 다시 계산 안내 (2026-10-27) — normalizeTitansSave 가 남긴 rebalanceNotice */
+  const [rebalanceInfo, setRebalanceInfo] = useState<NonNullable<TitansSave["rebalanceNotice"]> | null>(null);
   /** 상점 유물 뽑기 — 고른 등급 탭 */
   const [relicShopTier, setRelicShopTier] = useState<RelicTier>("common");
   const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot>("starter");
@@ -386,6 +388,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const weaponKind: WeaponKind = character.equippedWeaponKind ?? "sword";
   const forgedWeaponLevel = weaponHuntLevel(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
   /** 메인 루프(의존성 고정)가 읽는 지금 무기 단계 */
+  /** DEV — 준 피해 합계(출처별). 무기 밸런스를 실제 게임에서 잰다(scripts/_probe-weapon-dps.mjs) */
+  const devDmgRef = useRef<Record<string, number>>({});
   const forgedWeaponLevelRef = useRef(forgedWeaponLevel);
   forgedWeaponLevelRef.current = forgedWeaponLevel;
   const weaponKindRef = useRef<WeaponKind>(weaponKind);
@@ -569,8 +573,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // DEV 훅 (2026-10-14) — 시그니처 부가 효과 실검사(shoot-all-allies)가 대장 제한 시간·정지 시각을 읽는다. 출시 번들엔 없다
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current });
-    return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; };
+    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
+    (window as unknown as { __huntDmgReset?: () => void }).__huntDmgReset = () => { devDmgRef.current = {}; };
+    return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; delete (window as unknown as { __huntDmgReset?: unknown }).__huntDmgReset; };
   }, []);
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
@@ -821,6 +826,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         progress = { ...progress, redGems: progress.redGems + r.gems, skillPoints: progress.skillPoints + r.sp };
         void updateCharacterProgress(userHash, (current) => ({ ...current, redGems: current.redGems + r.gems, skillPoints: current.skillPoints + r.sp }));
         loaded.pendingRefund = null;
+        void saveTitansSave(userHash, loaded);
+      }
+
+      // 동료 값 조정(2026-10-27) — 다시 계산한 레벨 · 돌려준 골드를 한 번 알리고 비운다
+      if (loaded.rebalanceNotice && loaded.rebalanceNotice.changes.length > 0) {
+        setRebalanceInfo(loaded.rebalanceNotice);
+        loaded.rebalanceNotice = null;
         void saveTitansSave(userHash, loaded);
       }
 
@@ -1229,6 +1241,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
       if (opts?.skill) mul *= WEAPON_EFFECTS[weaponKindRef.current].skillDmgMul;   // 지팡이 — 스킬 피해 (2026-10-27)
       const dealt = Math.floor(raw * mul);
+      if (import.meta.env.DEV) {
+        // 탭 · 자동(주인공 자동 공격) · 기술(무기 기술) · 동료 · 스킬(스킬 · 화상 · 번개)
+        const k = opts?.fromAlly && opts.fromAlly !== "tap" ? "ally" : opts?.source === "hero" ? (opts?.fromAlly === "tap" ? "auto" : "tech") : opts?.source === "skill" ? "skill" : "tap";
+        devDmgRef.current[k] = (devDmgRef.current[k] ?? 0) + dealt;
+        devDmgRef.current[bossRef.current ? "boss" : "mob"] = (devDmgRef.current[bossRef.current ? "boss" : "mob"] ?? 0) + dealt;
+      }
       if (permRef.current.burnShare > 0 && opts?.label !== "화상") relicBurnPoolRef.current += raw * permRef.current.burnShare;
       // 타격 표현 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") —
       // 때린 쪽 속성: 동료 = ALLY_ELEMENT, 스킬 = 스킬 원소, 화상 = 불, 주인공 · 탭 = 칼날
@@ -3988,13 +4006,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
               <span>{gacha.entries.some((e) => TIER_RANK[e.rarity] >= TIER_RANK.SSR) ? "전설 이상" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
             </div>
-            {gacha.entries.some((e) => e.rarity === "LR") && (
-              <div className="gacha-level gacha-lr-pity">
-                <b>초월 천장 {character.gachaLrPity}/{GACHA.lrPityLimit}</b>
-                <i><em style={{ width: `${Math.min(100, (character.gachaLrPity / GACHA.lrPityLimit) * 100)}%` }} /></i>
-                <span>초월 확정까지 {Math.max(1, GACHA.lrPityLimit - character.gachaLrPity)}회</span>
-              </div>
-            )}
+            {/* 초월 천장 — 초반 지역에서도 쌓인다. 풀에 초월이 없으면 확정은 초월 지역(FIRST_LR_STAGE~)에서 */}
+            <div className="gacha-level gacha-lr-pity">
+              <b>초월 천장 {character.gachaLrPity}/{GACHA.lrPityLimit}</b>
+              <i><em style={{ width: `${Math.min(100, (character.gachaLrPity / GACHA.lrPityLimit) * 100)}%` }} /></i>
+              <span>{gacha.entries.some((e) => e.rarity === "LR")
+                ? `초월 확정까지 ${Math.max(1, GACHA.lrPityLimit - character.gachaLrPity)}회`
+                : character.gachaLrPity >= GACHA.lrPityLimit - 1
+                  ? `가득 참 · STAGE ${FIRST_LR_STAGE} 지역 첫 소환에 초월 확정`
+                  : `쌓는 중 · 초월은 STAGE ${FIRST_LR_STAGE} 지역부터`}</span>
+            </div>
             {momentOfferCard}
             <div className="gacha-page-actions">
               <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
@@ -4683,6 +4704,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </div>
         </div>
       )}
+      {rebalanceInfo && (
+        <div className="relic-draw-modal rebalance-modal" role="dialog" aria-modal="true" aria-label="동료 밸런스 조정 안내" onClick={() => setRebalanceInfo(null)}>
+          <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
+            <b>동료 밸런스 조정</b>
+            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 이미 쓴 골드로 새 비용에서 레벨을 다시 맞췄어요.</p>
+            <ul className="rebalance-list">
+              {rebalanceInfo.changes.slice(0, 6).map((c) => (
+                <li key={c.id}><span>{HEROES.find((h) => h.id === c.id)?.name ?? c.id}</span><b>Lv.{c.from} → Lv.{c.to}</b></li>
+              ))}
+              {rebalanceInfo.changes.length > 6 && <li><span>외 {rebalanceInfo.changes.length - 6}명</span><b /></li>}
+            </ul>
+            {rebalanceInfo.gold > 0 && <p className="rebalance-gold"><CurrencyIcon kind="gold" /> 남은 골드 {formatGold(rebalanceInfo.gold)} 돌려받음</p>}
+            <button type="button" className="cta" onClick={() => setRebalanceInfo(null)}>확인</button>
+          </div>
+        </div>
+      )}
       {relicDrawResult && (
         <div className="relic-draw-modal" role="dialog" aria-modal="true" aria-label="유물 뽑기 결과" onClick={() => setRelicDrawResult(null)}>
           <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
@@ -4711,7 +4748,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <p>
               뽑기 Lv.{summonLv}(누적 {character.gachaPulls}회) 등급 확률 {TIERS.map((t) => `${TIER_LABEL[t]} ${(gacha.bandRate[t] * 100).toFixed(2)}%`).join(" · ")}
               <br />풀 = STAGE {save.stage} 이하로 만난 동료 + 픽업 {gacha.pickups.length}명(같은 등급 내 2배) · 상점 전용 동료 제외
-              <br />천장: 전설 이상 없이 {GACHA.pityLimit}회째 소환은 전설 이상 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 초월 천장: 초월이 있는 풀에서 초월 없이 {GACHA.lrPityLimit}회째 소환은 초월 확정 (현재 {character.gachaLrPity}회) · 10연: SR 이상 1명 보장
+              <br />천장: 전설 이상 없이 {GACHA.pityLimit}회째 소환은 전설 이상 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 초월 천장: 초월 없이 {GACHA.lrPityLimit}회째 소환은 초월 확정 — 초반 지역 소환도 세고, 확정은 STAGE {FIRST_LR_STAGE} 지역부터 (현재 {character.gachaLrPity}회) · 10연: SR 이상 1명 보장
               <br />중복: 조각 {TIERS.map((t) => `${TIER_LABEL[t]} ${GACHA.dupeShards[t]}`).join(" / ")} · 누적 소환 {character.gachaPulls}회 · 뽑기 레벨은 누적 {SUMMON_LEVEL_PULLS.join(" · ")}회에 오른다
             </p>
             <table>
