@@ -67,11 +67,15 @@ ok("창 강화 → 단계가 바뀐다(성공 +1 · 실패 그대로 · 파괴 0
 // ── 4. 댐 방어전 — 장착 무기(검)로 싸운다 ──
 await seed({ ...base, equippedWeaponKind: "sword" }, titansBase);
 await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
-await page.evaluate(() => [...document.querySelectorAll(".route-row button, .pioneer-row button, button")].find((b) => /도전|출발|시작/.test(b.textContent))?.click()); await sleep(1500);
+await clickText(".exp-menu-tabs button", "원정"); await sleep(500); await clickText("button", "스테이지"); await sleep(1800);
+await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 for (let i = 0; i < 20 && !(await page.evaluate(() => !!window.__dodgeWorld)); i += 1) await sleep(250);
-await sleep(2500);
-const w = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { weapon: w.rangedWeapon, basic: w.basicLevel, shots: (w.shots ?? []).filter((s) => s.active && s.basic).length } : null; });
+// 실제로 쏘고 떨어뜨리는가 — 진행이 1/3 속도라 실제 40초(게임 약 13초). 처음 검기(0.38초)는 위쪽 몬스터에 닿지 못해 처치 0 이었다(2026-10-27)
+let shotFrames = 0;
+for (let i = 0; i < 200; i += 1) { if (await page.evaluate(() => (window.__dodgeWorld?.skillShots ?? []).some((s) => s.active && s.basic))) shotFrames += 1; await sleep(200); }
+const w = await page.evaluate(() => { const w = window.__dodgeWorld; return w ? { weapon: w.rangedWeapon, basic: w.basicLevel, kills: w.skillKills } : null; });
 ok("댐 방어전 무기 = 장착한 검 · 기본 단계 = 검 +6 → 8/20", !!w && w.weapon === "sword" && w.basic === 8, JSON.stringify(w));
+ok("검기가 실제로 나가고 화살 · 몬스터를 떨어뜨린다", shotFrames > 20 && (w?.kills ?? 0) >= 1, `검기 ${shotFrames}프레임 · 처치 ${w?.kills}`);
 await page.screenshot({ path: "art-gen/out/weapons-dodge-sword.png" });
 
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));

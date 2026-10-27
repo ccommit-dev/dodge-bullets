@@ -81,7 +81,7 @@ import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { QuestPanel } from "./titans/QuestPanel";
 import { WEAPON_EFFECTS, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
-import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK, tierRates } from "./titans/summonLevel";
+import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
 import type { Tier as AllyRarity } from "./titans/allyRoster";
 import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
@@ -3958,13 +3958,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
             {(() => {
               const sp = summonLevelProgress(character.gachaPulls);
-              const next = sp.to !== null ? tierRates(sp.level + 1) : null;
+              // 다음 레벨 확률도 지금 풀(개척 지역)로 — 기본표(tierRates)를 그대로 보이면 지역에 전설이 없을 때 받을 수 없는 확률을 공시하게 된다
+              const nextBand = sp.to !== null ? gachaPool(save.stage, character.pioneeredArea, Date.now(), sp.level + 1).bandRate : null;
+              const topNow = gacha.bandRate.SSR + gacha.bandRate.UR + gacha.bandRate.LR;
+              const topNext = nextBand ? nextBand.SSR + nextBand.UR + nextBand.LR : topNow;
               return (
                 <>
                   <div className="gacha-level summon-level">
                     <b>뽑기 Lv.{sp.level}</b>
                     <i><em style={{ width: `${sp.to === null ? 100 : Math.min(100, ((character.gachaPulls - sp.from) / (sp.to - sp.from)) * 100)}%` }} /></i>
-                    <span>{sp.to === null ? "최고 레벨" : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 ${(next!.SSR * 100).toFixed(1)}%`}</span>
+                    <span>{sp.to === null ? "최고 레벨" : topNext <= 0 ? `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 이 지역엔 전설 없음` : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 이상 ${(topNow * 100).toFixed(1)}% → ${(topNext * 100).toFixed(1)}%`}</span>
                   </div>
                   <ul className="summon-tier-rates" aria-label="지금 등급 확률">
                     {TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{gacha.bandRate[t] > 0 ? `${(gacha.bandRate[t] * 100).toFixed(gacha.bandRate[t] < 0.01 ? 2 : 1)}%` : "—"}</small></li>)}

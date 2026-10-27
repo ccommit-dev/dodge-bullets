@@ -1208,3 +1208,8 @@
 .forge-weapon-kinds button img { width: 22px !important; height: 22px !important; max-width: 22px; }
 .forge-weapon-kinds button b { font-size: 13px; white-space: nowrap; letter-spacing: -.5px; }
 .weapon-kind-chips.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ── A: 동료 도감 쪽 단추 — 53명(2026-10-27)이라 쪽이 14개, 여러 줄로 꺾여 카드를 하단 메뉴 밑으로 밀었다 → 한 줄 가로 스크롤 ── */
+.ally-pages { display: flex !important; flex-wrap: nowrap !important; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.ally-pages::-webkit-scrollbar { display: none; }
+.ally-pages button { flex: 0 0 auto; }

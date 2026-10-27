@@ -35,10 +35,12 @@ await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 await clickText(".hub-sheet-switch button", "동료 뽑기");
 await sleep(600);
-let r = await page.evaluate(() => ({ badge: document.querySelector(".gacha-rarity-badge")?.textContent, title: document.querySelector(".gacha-stage-hero h2")?.textContent, kicker: document.querySelector(".gacha-stage-hero small")?.textContent, level: document.querySelector(".gacha-level b")?.textContent, bar: document.querySelector(".gacha-level em")?.style.width }));
-// 테라 은퇴(2026-10-01) — 이 픽스처(지역3 상한 15)에는 픽업이 없다. 배지는 픽업 등급을 주장하지 않고 제목은 "준비 중"을 말해야 한다
-ok("뽑기 배지: 픽업이 없으면 등급 픽업을 주장하지 않는다", !/픽업/.test(r.badge ?? ""), r.badge ?? "(없음)");
-ok("뽑기 제목 = 픽업 준비 중 · 지역 키커", /픽업 준비/.test(r.title ?? "") && /붉은 폐허/.test(r.kicker ?? ""), `${r.kicker} / ${r.title}`);
+let r = await page.evaluate(() => ({ badge: document.querySelector(".gacha-rarity-badge")?.textContent, title: document.querySelector(".gacha-stage-hero h2")?.textContent, kicker: document.querySelector(".gacha-stage-hero small")?.textContent, level: document.querySelector(".gacha-level:not(.summon-level) b")?.textContent, bar: document.querySelector(".gacha-level:not(.summon-level) em")?.style.width }));
+// 2026-10-27 동료 60명 — 지역3(상한 15)에도 아직 못 만난 동료(조약돌 페블 · 서리검 프로스트 · 오로라)가 생겨 픽업이 다시 있다.
+// 배지 · 제목 · 키커가 서로 맞는지만 본다: 픽업이 있으면 제목이 그 이름 · 키커에 PICK UP · 배지는 픽업 등급, 없으면 "준비 중"
+{ const hasPick = /PICK UP/.test(r.kicker ?? "");
+  ok("뽑기 배지: 픽업 등급을 주장하는 건 픽업이 있을 때만", hasPick ? /픽업/.test(r.badge ?? "") : !/픽업/.test(r.badge ?? ""), `${r.badge ?? "(없음)"} · ${r.kicker}`);
+  ok("뽑기 제목 · 지역 키커(붉은 폐허) — 픽업 이름 또는 준비 중", /붉은 폐허/.test(r.kicker ?? "") && (hasPick ? !/준비/.test(r.title ?? "") : /픽업 준비/.test(r.title ?? "")), `${r.kicker} / ${r.title}`); }
 ok("천장 게이지 = gachaPity/60 (24 → 40%)", /24\/60/.test(r.level ?? "") && r.bar === "40%", `${r.level} ${r.bar}`);
 
 // ── 이벤트 상점: 실상품 · 구매 · 주간 한도 ──
@@ -260,7 +262,8 @@ r = await page.evaluate(() => ({
   seasonTwoHidden: ![...document.querySelectorAll(".skin-product")].some((c) => /시즌 2/.test(c.textContent)),
 }));
 ok("J 동료 탭 스킨 카드 9장(판매 8 + 보유한 시즌 1 — 은퇴 동료 스킨 4장 제외) · 미보유 시즌 2는 숨김", r.cards === 9 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
-ok("J 픽업 스킨 2장에만 -20% 배지 · 240 표시 (로테이션 무관)", r.deals.length === 2 && r.deals.every((d) => /240/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
+// 2026-10-27 동료 60명 — 픽업이 스킨 없는 새 동료일 수 있어 할인 카드 수는 0~2. 할인은 늘 240, 할인 아닌 카드엔 240 없음
+ok("J 픽업 스킨에만 -20% 배지 · 240 표시 (0~2장 · 로테이션 무관)", r.deals.length <= 2 && r.deals.every((d) => /240/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
 if (r.deals.length > 0) {
   await page.evaluate(() => document.querySelector(".skin-product.pickup-deal button")?.click());
   await sleep(800);
