@@ -42,6 +42,13 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
  * 예전에는 투구·갑옷·장갑·신발·방패·견갑·망토 파츠를 뼈 앵커에 얹었지만 칸마다 몸과 따로 놀아 어색했다 — 이제 무기(북·활·지팡이·무기 외형)만 손에 든다.
  * 왕관·띠·등 망토는 3D 주인공 모델(art-gen/blender roster HERO) 자체의 생김새라 장비가 아니다. 장비 효과·성장/강화 화면 아이콘은 그대로.
  */
+/** 무기 그림 안 손잡이 [가로 %, 세로 %, 기본 기울기°] — 검 손잡이(77%) · 창 자루 아래 1/3(67%) · 활 가운데 · 지팡이 아래(75%) */
+const WEAPON_GRIP: Record<"sword" | "spear" | "bow" | "staff", [number, number, number]> = { sword: [50, 77, 0], spear: [50, 67, 0], bow: [50, 50, 0], staff: [50, 75, 0] };
+
+function gripStyle(g: [number, number, number], rotation: number, scale: number): CSSProperties {
+  return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
+}
+
 export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword" }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const frames = heroFrames(mode);
@@ -69,10 +76,15 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     return () => window.clearTimeout(t);
   }, [weaponKey]);
   const ghostSrc = /^(sword|spear|bow|staff)-\d$/.test(swap.from) ? assetUrl(`titans/gear/${swap.from.replace(/^sword-/, "weapon-")}.png`) : "";
+  // 손잡이 점 (2026-10-27, 사용자: "무기 탈착 애니메이션이 너무 어색해 실제 손으로 든 것처럼") — 장비 그림(titans/gear) 안에서 손이 쥐는 곳(%, 모델 치수로 계산).
+  // 예전엔 북 그림에 맞춘 translate(-34%,-91%) 를 그대로 써서 세로형 검 · 창의 손잡이가 손 오른쪽 위로 떠 있었다. 이제 손잡이가 손 앵커에 오고 그 점을 축으로 돈다
+  const grip = blade ? null : WEAPON_GRIP[weaponKind];
   const weaponPart: CSSProperties = {
     left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%`,
-    // 2판: 무기 그림을 손 오른쪽(바깥)으로 — 손 한가운데 두면 반이 얼굴(주둥이)을 덮었다(2026-10-19 칸별 캡처)
-    transform: `translate(${HERO_ANIM ? -34 : -50}%,-91%) rotate(${anchor.hand.rotation}deg) scale(${anchor.hand.scale})`,
+    // 2판: 무기 그림을 손 오른쪽(바깥)으로 — 손 한가운데 두면 반이 얼굴(주둥이)을 덮었다(2026-10-19 칸별 캡처) · 무기 4종은 손잡이 점 기준
+    // 손잡이 맞춤은 transform 이 아니라 translate 속성으로 — 탈착 키프레임의 rotate · scale 은 transform 보다 먼저 적용돼, translate 가 transform 안에 있으면
+    // 회전축이 손잡이가 아니라 손 오른쪽 아래(상자 크기만큼)로 밀려 끼우는 순간 무기가 손 밖에서 돌았다(2026-10-27 캡처). --grip-x/y 는 키프레임이 이어 쓴다
+    ...(grip ? gripStyle(grip, anchor.hand.rotation, anchor.hand.scale) : { transform: `translate(${HERO_ANIM ? -34 : -50}%,-91%) rotate(${anchor.hand.rotation}deg) scale(${anchor.hand.scale})` }),
     // 예비 칸(먼 손이 큰 머리 뒤)은 몸 뒤에 — 몸·머리에 가린 부분은 숨고 실루엣 밖으로 나온 부분만 보인다(3D 동료처럼)
     ...(anchor.hand.behind ? { zIndex: 1 } : {}),
   };
@@ -85,7 +97,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
         return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${sheetFor(character, m)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
       }) : <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundSize: `${frames * 100}% 100%`, backgroundPosition: `${frames > 1 ? (index / (frames - 1)) * 100 : 0}% 0` }} />}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
-      {swap.from && ghostSrc && <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach $ghost-alt`} style={weaponPart} src={ghostSrc} alt="" aria-hidden="true" />}
+      {swap.from && ghostSrc && (() => { const g = WEAPON_GRIP[(swap.from.split("-")[0] as "sword" | "spear" | "bow" | "staff")] ?? WEAPON_GRIP.sword; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}
       {swap.seq > 0 && weaponKey !== "none" && <i key={`flash-${swap.seq}`} className="gear-swap-flash" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
       {/* 무기 4종 (2026-10-27) — 손 앵커에 장비 그림. 공격 프레임 앵커를 그대로 따라가 휘두른다 */}
       {!blade && (
