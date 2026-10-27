@@ -21,10 +21,12 @@ export type WeaponEffects = {
 };
 const BASE: WeaponEffects = { tapMul: 1, critAdd: 0, bossMul: 1, autoSpeedMul: 1, skillCdMul: 1, skillDmgMul: 1 };
 
+// 2026-10-27 난이도 감사: 같은 단계에서 검이 사실상 최강 · 활은 모든 상황 꼴찌(×0.70~0.76) · 창은 대장 특화인데 대장에서도 검 이하(×0.94~0.99)였다.
+// 창 대장 1.2 → 1.35 · 활 탭 0.9 → 1.0(자동 공격 속도는 동료에게도 — TitansGame). 검 · 지팡이는 그대로(옛 계정이 모두 검이라 검을 깎으면 벽이 당겨진다)
 export const WEAPON_EFFECTS: Record<WeaponKind, WeaponEffects> = {
   sword: { ...BASE, tapMul: 1.2, critAdd: 0.05 },
-  spear: { ...BASE, bossMul: 1.2 },
-  bow: { ...BASE, tapMul: 0.9, autoSpeedMul: 1.25 },
+  spear: { ...BASE, bossMul: 1.35 },
+  bow: { ...BASE, tapMul: 1.0, autoSpeedMul: 1.25 },
   staff: { ...BASE, tapMul: 0.9, skillCdMul: 0.85, skillDmgMul: 1.2 },
 };
 
@@ -33,7 +35,7 @@ export type WeaponTech = { name: string; every: number; mul: number; bossMul?: n
 export const WEAPON_TECH: Record<WeaponKind, WeaponTech> = {
   sword: { name: "연속 베기", every: 6, mul: 2.5, fx: "slash", desc: "6탭마다 두 번 베기 ×2.5" },
   spear: { name: "관통 찌르기", every: 8, mul: 2, bossMul: 4, fx: "slash", desc: "8탭마다 꿰뚫기 ×2 · 대장 ×4" },
-  bow: { name: "연사", every: 5, mul: 1.8, fx: "arrow", desc: "5탭마다 화살 연사 ×1.8" },
+  bow: { name: "연사", every: 4, mul: 2.2, fx: "arrow", desc: "4탭마다 화살 연사 ×2.2" },   // 5탭 ×1.8 → 4탭 ×2.2 (2026-10-27 감사)
   staff: { name: "마력 폭발", every: 8, mul: 3, fx: "bolt", desc: "8탭마다 마력 폭발 ×3" },
 };
 

@@ -383,6 +383,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 주인공 무기 4종 (2026-10-27, titans/weapons.ts) — 검은 대장간 단계(예전 북 자리), 창 · 활 · 지팡이는 대장간 무기 강화(0~20 → 15 눈금)
   const weaponKind: WeaponKind = character.equippedWeaponKind ?? "sword";
   const forgedWeaponLevel = weaponHuntLevel(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
+  /** 메인 루프(의존성 고정)가 읽는 지금 무기 단계 */
+  const forgedWeaponLevelRef = useRef(forgedWeaponLevel);
+  forgedWeaponLevelRef.current = forgedWeaponLevel;
   const weaponKindRef = useRef<WeaponKind>(weaponKind);
   weaponKindRef.current = weaponKind;
   const weaponTechRef = useRef(0);
@@ -1684,7 +1687,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           setAnimMode("attack");
           setFrameIdx(0);
           pushFxAt("slash", "hero", 0.95, 0.5, 31, 45);
-          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery), false, { fromAlly: "tap", source: "hero" });
+          // 자동 공격에도 대장간 단계 · 무기 탭 배율 (2026-10-27 감사: 예전엔 숙련만 봐서 방치하면 대장간 강화가 사냥 DPS 를 전혀 안 올렸다)
+          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * WEAPON_EFFECTS[weaponKindRef.current].tapMul, false, { fromAlly: "tap", source: "hero" });
         }
       } else {
         autoAttackAcc.current = 0;
@@ -1698,7 +1702,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         for (const h of HEROES) {
           const level = saveRef.current.heroes[h.id];
           if (level <= 0 || !characterRef.current.partyIds.includes(h.id)) continue;
-          allyAttackAcc.current[h.id] += dt;
+          allyAttackAcc.current[h.id] += dt * WEAPON_EFFECTS[weaponKindRef.current].autoSpeedMul;   // 활 — 동료 공격 속도도 (2026-10-27 감사)
           if (allyAttackAcc.current[h.id] < h.attackInterval) continue;
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
@@ -2128,8 +2132,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (redGems < cost || gacha.entries.length === 0) return;
     const pulled =
       count === 10
-        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, character.gachaPulls === 0, FIRST_TEN_SSR)
-        : (() => { const r = pullOnce(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity)); return { results: [r.result], pity: r.pity }; })();   // 옛 저장의 60 초과 카운터는 천장 직전으로
+        ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, character.gachaPulls === 0, FIRST_TEN_SSR, character.gachaLrPity)
+        : (() => { const r = pullOnce(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, null, character.gachaLrPity); return { results: [r.result], pity: r.pity, lrPity: r.lrPity }; })();   // 옛 저장의 60 초과 카운터는 천장 직전으로
     // 높은 등급부터 빈 편성 칸에 — 첫 10연 전설이 맨 뒤에 나와 칸이 차서 못 들어가던 것(2026-10-22)
     const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).sort((x, y) => TIERS.indexOf(y.rarity) - TIERS.indexOf(x.rarity)).map((r) => r.id))];
     let paid = false;
@@ -2150,7 +2154,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 첫 10연 전설이 아직 못 여는 지역 동료면 출전 허가를 같이 — 뽑고 바로 같이 싸워 봐야 "4성 경험"
       const passes = pulled.results.filter((r) => r.fieldPass).map((r) => `field-pass:${r.id}`);
       const claimed = passes.length > 0 ? [...new Set([...withChest.claimedRewards, ...passes])] : withChest.claimedRewards;
-      return { ...withChest, claimedRewards: claimed, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaPulls: current.gachaPulls + count };
+      return { ...withChest, claimedRewards: claimed, redGems: current.redGems - cost, allyStars: stars, allyShards: shards, partyIds: party, gachaPity: pulled.pity, gachaLrPity: pulled.lrPity, gachaPulls: current.gachaPulls + count };
     });
     if (!paid) return;
     setCharacter(next);
@@ -3982,6 +3986,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
               <span>{gacha.entries.some((e) => TIER_RANK[e.rarity] >= TIER_RANK.SSR) ? "전설 이상" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
             </div>
+            {gacha.entries.some((e) => e.rarity === "LR") && (
+              <div className="gacha-level gacha-lr-pity">
+                <b>초월 천장 {character.gachaLrPity}/{GACHA.lrPityLimit}</b>
+                <i><em style={{ width: `${Math.min(100, (character.gachaLrPity / GACHA.lrPityLimit) * 100)}%` }} /></i>
+                <span>초월 확정까지 {Math.max(1, GACHA.lrPityLimit - character.gachaLrPity)}회</span>
+              </div>
+            )}
             {momentOfferCard}
             <div className="gacha-page-actions">
               <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
@@ -4668,7 +4679,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <p>
               뽑기 Lv.{summonLv}(누적 {character.gachaPulls}회) 등급 확률 {TIERS.map((t) => `${TIER_LABEL[t]} ${(gacha.bandRate[t] * 100).toFixed(2)}%`).join(" · ")}
               <br />풀 = STAGE {save.stage} 이하로 만난 동료 + 픽업 {gacha.pickups.length}명(같은 등급 내 2배) · 상점 전용 동료 제외
-              <br />천장: 전설 이상 없이 {GACHA.pityLimit}회째 소환은 전설 이상 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 10연: SR 이상 1명 보장
+              <br />천장: 전설 이상 없이 {GACHA.pityLimit}회째 소환은 전설 이상 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 초월 천장: 초월이 있는 풀에서 초월 없이 {GACHA.lrPityLimit}회째 소환은 초월 확정 (현재 {character.gachaLrPity}회) · 10연: SR 이상 1명 보장
               <br />중복: 조각 {TIERS.map((t) => `${TIER_LABEL[t]} ${GACHA.dupeShards[t]}`).join(" / ")} · 누적 소환 {character.gachaPulls}회 · 뽑기 레벨은 누적 {SUMMON_LEVEL_PULLS.join(" · ")}회에 오른다
             </p>
             <table>

@@ -176,6 +176,8 @@ export type CharacterProgress = {
   sessionCount: number;
   /** 소환 천장 카운터 — SSR 없이 누적된 뽑기 수 (60에서 확정) */
   gachaPity: number;
+  /** 초월 천장 카운터 — 초월이 있는 풀에서 초월 없이 누적된 뽑기 수 (200에서 확정, 2026-10-27) */
+  gachaLrPity: number;
   /** 누적 뽑기 수 (공시·통계) */
   gachaPulls: number;
   /** 원정 후원 계약 만료 시각(ms). 0이면 없음 */
@@ -324,6 +326,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     routineClaimedDate: "",
     sessionCount: 0,
     gachaPity: 0,
+    gachaLrPity: 0,
     gachaPulls: 0,
     patronUntil: 0,
     patronClaimedDate: "",
@@ -698,6 +701,7 @@ export function normalizeCharacterProgress(
     routineClaimedDate: typeof raw.routineClaimedDate === "string" ? raw.routineClaimedDate : "",
     sessionCount: integer(raw.sessionCount, 0, 999999),
     gachaPity: integer(raw.gachaPity, 0, 999),
+    gachaLrPity: integer(raw.gachaLrPity, 0, 199),
     gachaPulls: integer(raw.gachaPulls, 0, 9999999),
     patronUntil: integer(raw.patronUntil, 0),
     patronClaimedDate: typeof raw.patronClaimedDate === "string" ? raw.patronClaimedDate : "",

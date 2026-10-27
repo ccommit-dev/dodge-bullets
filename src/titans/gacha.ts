@@ -5,9 +5,10 @@
  * - 풀 = 현재 스테이지 이하로 해금된 동료(기본) + 픽업 2명(개척 상한 안의 다음 동료).
  *   상점 전용 동료(SHOP_ALLY_GEM_COST)는 풀에서 제외 — 확정 구매가 뽑기에 열위가 되지 않게.
  * - 등급 확률은 뽑기 레벨(누적 뽑기 수, titans/summonLevel.ts)이 정한다 — 2026-10-27 6등급(N · R · SR · SSR · UR · LR) ·
- *   Lv1 전설 2% 로 희박하게 시작해 Lv10 전설 13.5% · 신화 4% · 초월 1.3%. 풀에 없는 등급의 확률은 있는 등급에 비례 재분배.
+ *   Lv1 전설 2% 로 희박하게 시작해 Lv10 전설 13.5% · 신화 4.2% · 초월 0.8%. 풀에 없는 등급의 확률은 있는 등급에 비례 재분배.
  * - 픽업은 같은 등급 안에서 가중치 2배.
  * - 천장: 전설 이상 없이 60회 → 61회째 전설 이상 확정(픽업 우선). 전설 이상을 뽑으면 카운터 리셋.
+ * - 초월 천장 (2026-10-27): 풀에 초월이 있을 때 초월 없이 200회 → 200회째 초월 확정. 초월이 없는 풀(초반 지역)에서는 세지 않는다.
  * - 10연: 900보석(10% 할인) + 영웅(SR) 이상 1명 보장.
  * - 중복: 등급별 조각 N 5 / R 10 / SR 20 / SSR 40 / UR 60 / LR 80 — 성급 곡선(★1→2 = 20)과 맞춘다.
  * - 확률 공시: rateTable()이 동료별 확률을 %로 돌려준다 (게임산업법 공시 화면용).
@@ -23,6 +24,8 @@ export const GACHA = {
   singleCost: 100,
   tenCost: 900,
   pityLimit: 60,
+  /** 초월(LR) 천장 — 초월이 있는 풀에서만 센다 */
+  lrPityLimit: 200,
   pickupWeight: 2,
   pickupCount: 2,
   /** 풀 최소 인원 — 모자라면 다음 해금 순으로 보충 (2026-10-13) */
@@ -115,7 +118,9 @@ export function pullOnce(
   pity: number,
   rng: () => number = Math.random,
   guaranteeMin: AllyRarity | null = null,
-): { result: PullResult; pity: number } {
+  /** 초월 천장 카운터 — 초월 없이 누적된 뽑기 수(초월이 있는 풀에서만) */
+  lrPity = 0,
+): { result: PullResult; pity: number; lrPity: number } {
   const ssr = pool.entries.filter((e) => isTop(e.rarity));
   const srPlus = pool.entries.filter((e) => TIER_RANK[e.rarity] >= TIER_RANK.SR);
   let candidates = pool.entries;
@@ -124,15 +129,20 @@ export function pullOnce(
   const atPity = pity >= GACHA.pityLimit - 1;
   // 전설 이상이 없는 풀이면 그 풀의 가장 높은 등급
   const topRank = Math.max(...pool.entries.map((e) => TIER_RANK[e.rarity]));
-  if (atPity) candidates = ssr.length > 0 ? ssr : pool.entries.filter((e) => TIER_RANK[e.rarity] === topRank);
+  const lr = pool.entries.filter((e) => e.rarity === "LR");
+  const atLrPity = lr.length > 0 && lrPity >= GACHA.lrPityLimit - 1;
+  if (atLrPity) candidates = lr;
+  else if (atPity) candidates = ssr.length > 0 ? ssr : pool.entries.filter((e) => TIER_RANK[e.rarity] === topRank);
   else if (guaranteeMin === "SSR" && ssr.length > 0) candidates = ssr;
   else if (guaranteeMin === "SR" && srPlus.length > 0) candidates = srPlus;
   const picked = weightedPick(candidates, rng);
   const duplicate = owned[picked.id] > 0;
   const nextPity = isTop(picked.rarity) || atPity ? 0 : Math.min(GACHA.pityLimit - 1, pity + 1);
+  const nextLr = picked.rarity === "LR" ? 0 : lr.length > 0 ? Math.min(GACHA.lrPityLimit - 1, lrPity + 1) : lrPity;
   return {
     result: { id: picked.id, rarity: picked.rarity, pickup: picked.pickup, duplicate, shards: duplicate ? GACHA.dupeShards[picked.rarity] : 0, pityBefore: pity },
     pity: nextPity,
+    lrPity: nextLr,
   };
 }
 
@@ -146,10 +156,12 @@ export function pullTen(
   firstTen = false,
   /** 풀에 전설이 없을 때(초반 지역) 대신 줄 전설 — 이 동료는 출전 허가(field-pass)를 같이 받는다 */
   fallbackSsr: TitanHeroId | null = null,
-): { results: PullResult[]; pity: number } {
+  lrPity = 0,
+): { results: PullResult[]; pity: number; lrPity: number } {
   const heroes = { ...owned };
   const results: PullResult[] = [];
   let p = pity;
+  let lp = lrPity;
   const poolHasSsr = pool.entries.some((e) => isTop(e.rarity));
   for (let i = 0; i < 10; i += 1) {
     const needSsr = i === 9 && firstTen && !results.some((r) => isTop(r.rarity));
@@ -161,12 +173,13 @@ export function pullTen(
       continue;
     }
     const last = i === 9 && !results.some((r) => TIER_RANK[r.rarity] >= TIER_RANK.SR);
-    const { result, pity: np } = pullOnce(pool, heroes, p, rng, needSsr ? "SSR" : last ? "SR" : null);
+    const { result, pity: np, lrPity: nl } = pullOnce(pool, heroes, p, rng, needSsr ? "SSR" : last ? "SR" : null, lp);
     results.push(result);
     p = np;
+    lp = nl;
     if (!result.duplicate) heroes[result.id] = 1;
   }
-  return { results, pity: p };
+  return { results, pity: p, lrPity: lp };
 }
 
 /** 확률 공시 — 동료별 확률(%)과 등급 합계 */

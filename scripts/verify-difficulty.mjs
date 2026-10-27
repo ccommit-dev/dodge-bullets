@@ -1,5 +1,5 @@
 // 난이도 감사(2026-10-27) 수정 — 순수 로직 검사.  node scripts/verify-difficulty.mjs
-// ② 옛 활 · 지팡이 주력 계정의 무기 이전 · ③ 6등급 버그 · 체험 출전 상한 · ④ 심연 골드 곡선
+// ② 옛 활 · 지팡이 주력 계정의 무기 이전 · ③ 6등급 버그 · 체험 출전 상한 · ④ 심연 골드 곡선 · ⑤ 무기 · 동료 곡선 · 뽑기 레벨 · 초월 천장
 import { build } from "esbuild";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,10 +14,14 @@ writeFileSync(entry, [
   `export * as allies from "${root}/src/titans/allies";`,
   `export * as trial from "${root}/src/titans/trialAlly";`,
   `export * as model from "${root}/src/titans/model";`,
+  `export * as roster from "${root}/src/titans/allyRoster";`,
+  `export * as gacha from "${root}/src/titans/gacha";`,
+  `export * as summon from "${root}/src/titans/summonLevel";`,
+  `export * as weapons from "${root}/src/titans/weapons";`,
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": '"false"' } });
-const { prog: P, allies: AL, trial: TR, model: M } = await import(pathToFileURL(out).href);
+const { prog: P, allies: AL, trial: TR, model: M, roster: RO, gacha: G, summon: S, weapons: W } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 let fails = 0;
 const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
@@ -54,6 +58,37 @@ ok("④ 심연 보정: 24층까지 1 · 25층 ×1.03 · 40층 ×1.03^16", M.abys
 const step = M.killGold(41, false, false) / M.killGold(40, false, false);
 ok("④ 심연 층당 처치 골드 ≈ ×1.30 (예전 ×1.26)", step > 1.28 && step < 1.32, step.toFixed(3));
 ok("④ 24층 전 골드는 그대로", M.killGold(20, false, false) === Math.max(1, Math.floor(5 * Math.pow(1.26, 19) * M.huntingArea(20).rewardMultiplier)));
+
+// ⑤ 무기 — 창은 대장 특화 · 활은 탭 1.0 + 자동 공격 속도
+ok("⑤ 무기: 창 대장 ×1.35 · 활 탭 ×1.0 · 활 자동 ×1.25 · 활 기술 4탭 ×2.2", W.WEAPON_EFFECTS.spear.bossMul === 1.35 && W.WEAPON_EFFECTS.bow.tapMul === 1 && W.WEAPON_EFFECTS.bow.autoSpeedMul === 1.25 && W.WEAPON_TECH.bow.every === 4 && W.WEAPON_TECH.bow.mul === 2.2);
+// ⑤ 동료 곡선
+const H = (id) => M.HEROES.find((h) => h.id === id);
+ok("⑤ 마리나 ×2 (190 · 5300) · 오리온 ×0.4 (30000 · 460000) — 골드 효율 그대로", H("marina").baseDps === 190 && H("marina").baseCost === 5300 && H("orion").baseDps === 30000 && H("orion").baseCost === 460000 && H("orion").unlockStage === 30);
+ok("⑤ 앤빌 35층 (34~37층 빈칸 메움)", H("anvil").unlockStage === 35);
+const news = RO.NEW_ALLIES.map((d) => ({ d, h: H(d.id) }));
+const effOf = (h) => h.baseDps / h.baseCost;
+ok("⑤ 새 동료: 같은 층 동료끼리 골드 효율이 같다(반올림 흔들림 없음)", news.every(({ d, h }) => news.filter((o) => o.d.stage === d.stage).every((o) => Math.abs(effOf(o.h) / effOf(h) - 1) < 1e-9)));
+const storm = news.find((x) => x.d.id === "storm").h;   // SR 10층 — 예전엔 10층 곡선(120), 이제 8층 곡선
+ok("⑤ 새 동료 힘 = 두 층 아래 곡선 (영웅 스톰 10층 < 120 · > 50)", storm.baseDps < 120 && storm.baseDps > 50, String(Math.round(storm.baseDps)));
+// ⑤ 뽑기 레벨 · 초월 천장
+ok("⑤ 뽑기 레벨 문턱 절반 (Lv10 = 260회)", S.SUMMON_LEVEL_PULLS[9] === 260 && S.summonLevel(259) === 9 && S.summonLevel(260) === 10);
+const lrRates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((lv) => S.tierRates(lv).LR);
+ok("⑤ 초월 확률 Lv10 0.8% · 레벨 따라 단조 증가", Math.abs(lrRates[9] - 0.008) < 1e-9 && lrRates.every((r, i) => i === 0 || r > lrRates[i - 1]), lrRates.map((r) => (r * 100).toFixed(2)).join(" "));
+ok("⑤ 레벨마다 확률 합 100%", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((lv) => Math.abs(Object.values(S.tierRates(lv)).reduce((a, b) => a + b, 0) - 1) < 1e-9));
+const owned = Object.fromEntries(M.HEROES.map((h) => [h.id, 0]));
+const lrPool = G.gachaPool(60, 99, Date.now(), 10);
+const noLrPool = G.gachaPool(1, 1, Date.now(), 1);
+ok("⑤ 시험 풀: 60층 풀엔 초월이 있고 1층 풀엔 없다", lrPool.entries.some((e) => e.rarity === "LR") && !noLrPool.entries.some((e) => e.rarity === "LR"));
+const atLr = G.pullOnce(lrPool, owned, 0, () => 0.999, null, G.GACHA.lrPityLimit - 1);
+ok("⑤ 초월 천장: 199회 누적이면 200회째 초월 확정 · 카운터 0", atLr.result.rarity === "LR" && atLr.lrPity === 0, JSON.stringify({ r: atLr.result.rarity, lp: atLr.lrPity }));
+const miss = G.pullOnce(lrPool, owned, 0, () => 0, null, 10);
+ok("⑤ 초월이 아니면 +1", miss.result.rarity !== "LR" && miss.lrPity === 11);
+const early = G.pullOnce(noLrPool, owned, 0, () => 0.5, null, 10);
+ok("⑤ 초월이 없는 풀에선 세지 않는다", early.lrPity === 10);
+let lpSim = 0, got = 0;
+for (let i = 0; i < 20; i += 1) { const t = G.pullTen(lrPool, owned, 0, () => 0, false, null, lpSim); lpSim = t.lrPity; got += t.results.filter((r) => r.rarity === "LR").length; }
+ok("⑤ 운이 없어도(초월을 안 뽑는 난수) 10연 20번 = 200회째에 초월 정확히 1명", got === 1 && lpSim === 0, `200회 중 초월 ${got}번`);
+ok("⑤ 옛 저장(초월 천장 없음)은 0 으로", P.normalizeCharacterProgress({ ...base }).gachaLrPity === 0 && P.normalizeCharacterProgress({ ...base, gachaLrPity: 9999 }).gachaLrPity === 199);
 
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 process.exit(fails ? 1 : 0);

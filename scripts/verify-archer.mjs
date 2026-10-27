@@ -101,7 +101,7 @@ ok("출전 허가: field-pass 가 있으면 지역 잠금을 넘는다(없으면
 const ari = M.HEROES.find((h) => h.id === "ari");
 // 2026-10-27 동료 60명 — "그 지역 최강"은 새 동료가 될 수 있어 고정 숫자(가렌 120) 대신 그 지역 최강(bestUnlockedBaseDps)으로
 { const best15 = T.bestUnlockedBaseDps(15), best5 = T.bestUnlockedBaseDps(5);
-  ok("체험 출전: 지역3(상한 15)에선 아리 ×(2×그 지역 최강/620) · 지역이 열리면 ×1 · 열린 동료는 늘 ×1", Math.abs(T.trialDpsMul(ari, 15) - Math.min(1, (2 * best15) / ari.baseDps)) < 1e-9 && T.trialDpsMul(ari, 16) === 1 && T.trialDpsMul(M.HEROES.find((h) => h.id === "leon"), 15) === 1, `${T.trialDpsMul(ari, 15).toFixed(3)} · 최강 ${best15}`);
+  ok("체험 출전: 지역3(상한 15)에선 아리 ×(체험 배수×그 지역 최강/620) · 지역이 열리면 ×1 · 열린 동료는 늘 ×1", Math.abs(T.trialDpsMul(ari, 15) - Math.min(1, (T.TRIAL_BEST_MUL * best15) / ari.baseDps)) < 1e-9 && T.trialDpsMul(ari, 16) === 1 && T.trialDpsMul(M.HEROES.find((h) => h.id === "leon"), 15) === 1, `${T.trialDpsMul(ari, 15).toFixed(3)} · 최강 ${best15}`);
   ok("체험 아리는 그 지역 최강의 2배를 넘지 않는다", ari.baseDps * T.trialDpsMul(ari, 5) <= 2 * best5 + 1e-9 && ari.baseDps * T.trialDpsMul(ari, 15) <= 2 * best15 + 1e-9, `상한5 최강 ${best5} · 상한15 최강 ${best15}`); }
 const idleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["mia", "leon"], level: 10 });
 const y1 = I.computeIdleYield(idleBase, 8, {}, 4 * 3600, 1e12);
