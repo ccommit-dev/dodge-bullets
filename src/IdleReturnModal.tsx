@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { assetUrl } from "./asset";
 import { formatGold } from "./titans/model";
-import { IDLE, formatDuration, type IdleBottleneck, type IdleYield } from "./progression/idle";
+import { formatDuration, type IdleBottleneck, type IdleYield } from "./progression/idle";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
 import { sfxIdleClaim } from "./ui/sfx";
 
@@ -59,14 +59,7 @@ function useCountUp(target: number, durationMs = 900, delayMs = 0): number {
   return value;
 }
 
-const CONTENT_LABEL: Record<IdleBottleneck["content"], string> = {
-  titans: "사냥터",
-  dodge: "성문 방어",
-  beat: "연습실",
-  forge: "대장간",
-};
-
-export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoContent, adOption = null, adBusy = false, onClaimDouble, patronOption = null, onBuyPatron }: Props) {
+export function IdleReturnModal({ result, stage, onClaim, adOption = null, adBusy = false, onClaimDouble, patronOption = null, onBuyPatron }: Props) {
   const gold = useCountUp(result.gold, 950);
   const exp = useCountUp(result.exp, 950, 120);
   const materials = useCountUp(result.materials, 950, 240);
@@ -76,19 +69,6 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
     sfxIdleClaim();
   }, []);
 
-  const ratePct = Math.round(result.rate * 100);
-  const rateFill = useMemo(
-    () => `${Math.min(100, (result.rate / IDLE.rateCap) * 100)}%`,
-    [result.rate],
-  );
-  const multFill = useMemo(
-    () => `${Math.min(100, ((result.multiplier - 1) / (IDLE.multCap - 1)) * 100)}%`,
-    [result.multiplier],
-  );
-  const capFill = useMemo(
-    () => `${Math.min(100, (result.capHours / IDLE.hoursCap) * 100)}%`,
-    [result.capHours],
-  );
 
   const claim = () => {
     if (claiming) return;
@@ -96,127 +76,35 @@ export function IdleReturnModal({ result, stage, bottleneck, onClaim, onGoConten
     window.setTimeout(onClaim, 260);
   };
 
+  // 완전 단순화 (2026-10-27, 사용자: "귀환 정산 UI 완전 단순화") — 제목 · 한 줄(시간 · 스테이지) · 받은 것 · 받기 단추만.
+  // 예전의 빛 · 문장 · R/M/T 막대 · 병목 안내 · 대장간 바로가기 · "수령하고 ~로" 는 뺐다(병목 · 바로가기는 사냥터 추천 줄에 이미 있다).
+  // 광고 2배 · 후원 미리보기는 상품이 있을 때만 한 줄씩 아래에
   return (
-    <div className={`exit-modal idle-modal ${claiming ? "is-claiming" : ""}`} role="dialog" aria-modal="true">
+    <div className={`exit-modal idle-modal idle-simple ${claiming ? "is-claiming" : ""}`} role="dialog" aria-modal="true">
       <div className="exit-card idle-card">
-        <div className="idle-rays-clip" aria-hidden="true">
-          <div className="idle-rays" />
-        </div>
-        <img className="idle-crest" src={assetUrl("ui/idle/idle-report.png")} alt="" aria-hidden="true" />
-        <p className="brand">IDLE REPORT</p>
         <h2 className="exit-title">귀환 정산</h2>
         <p className="idle-sub">
-          {result.endStage > stage
-            ? `Stage ${stage} → ${result.endStage} · ${formatDuration(result.seconds)} 동안 원정대가 전진했습니다`
-            : `Stage ${stage} · ${formatDuration(result.seconds)} 동안 원정대가 사냥했습니다`}
-          {result.boosted && <em className="idle-boost-tag"> ×2 부스트</em>}
+          {formatDuration(result.seconds)} 사냥{result.endStage > stage ? ` · Stage ${stage} → ${result.endStage}` : ` · Stage ${stage}`}
+          {result.boosted && <em className="idle-boost-tag"> ×2</em>}
+          {result.cappedOut && <em className="idle-cap-tag"> · 최대 {result.capHours}시간</em>}
         </p>
-
-        {result.cappedOut && (
-          <p className="idle-capped">
-            <span>CAP</span> {result.capHours}시간에서 누적이 멈췄습니다 ·{" "}
-            {formatDuration(result.wastedSeconds)} 손실
-          </p>
-        )}
-
         <div className="idle-loot">
-          <article style={{ animationDelay: "0ms" }}>
-            <CurrencyIcon kind="gold" />
-            <b>{formatGold(gold)}</b>
-            <span>공유 골드</span>
-          </article>
-          <article style={{ animationDelay: "90ms" }}>
-            <img src={assetUrl("ui/idle/exp-orb.png")} alt="" aria-hidden="true" />
-            <b>{exp.toLocaleString()}</b>
-            <span>경험치</span>
-          </article>
-          <article style={{ animationDelay: "180ms" }}>
-            <img src={assetUrl("ui/attendance/enhance-stone.png")} alt="" />
-            <b>{materials.toLocaleString()}</b>
-            <span>강화석 · 대장간 성공률 +8%p</span>
-          </article>
-          {result.allyShardDrops > 0 && (
-            <article style={{ animationDelay: "270ms" }}>
-              <img className="idle-shard-orb" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" />
-              <b>{result.allyShardDrops}</b>
-              <span>동료 조각</span>
-            </article>
-          )}
+          <article><CurrencyIcon kind="gold" /><b>{formatGold(gold)}</b><span>골드</span></article>
+          <article><img src={assetUrl("ui/idle/exp-orb.png")} alt="" aria-hidden="true" /><b>{exp.toLocaleString()}</b><span>경험치</span></article>
+          {materials > 0 && <article><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /><b>{materials.toLocaleString()}</b><span>강화석</span></article>}
+          {result.allyShardDrops > 0 && <article><img className="idle-shard-orb" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><b>{result.allyShardDrops}</b><span>동료 조각</span></article>}
         </div>
-
-        {/* 보상 → 사용처 연결 (점검표 #10): 강화석이 생긴 순간 대장간으로 바로 보낸다 */}
-        {result.materials > 0 && (
-          <button type="button" className="idle-forge-cta" onClick={() => onGoContent("forge")}>
-            <img src={assetUrl("ui/idle/anvil.png")} alt="" aria-hidden="true" />
-            <span>
-              <b>강화석 {result.materials}개 — 대장간에서 바로 쓰기</b>
-              <small>수령 후 대장간으로 이동 · 이번 강화 성공률 +8%p</small>
-            </span>
-            <em>›</em>
+        <button type="button" className="cta idle-claim" onClick={claim}>받기</button>
+        {adOption && (
+          <button type="button" className="cta cta-ghost idle-claim-ad" disabled={adBusy} onClick={() => void onClaimDouble?.()}>
+            {adBusy ? "광고 재생 중…" : adOption === "free" ? "2배로 받기 (광고 제거 보유)" : "광고 보고 2배로 받기"}
           </button>
         )}
-
-        <div className="idle-factors">
-          <div>
-            <small>R · 효율</small>
-            <i>
-              <em style={{ width: rateFill }} />
-            </i>
-            <strong>{ratePct}%</strong>
-          </div>
-          <div>
-            <small>M · 배율</small>
-            <i>
-              <em style={{ width: multFill }} />
-            </i>
-            <strong>×{result.multiplier.toFixed(2)}</strong>
-          </div>
-          <div>
-            <small>T · 시간</small>
-            <i>
-              <em style={{ width: capFill }} />
-            </i>
-            <strong>{result.capHours}h</strong>
-          </div>
-        </div>
-
-        <div className={`idle-bottleneck bottleneck-${bottleneck.variable}`}>
-          <span className="idle-bottleneck-tag">{bottleneck.variable}</span>
-          <div>
-            <b>{bottleneck.title}</b>
-            <small>{bottleneck.hint}</small>
-          </div>
-        </div>
-
-        <button type="button" className="cta idle-claim" onClick={claim}>
-          보상 수령
-        </button>
-        {/* L 보상형 광고: 정산 2배 — 미연동이면 자리 자체가 없다 */}
         {patronOption && (
           <div className="idle-patron-preview" data-extra-gold={patronOption.extraGold}>
-            <b>후원 계약이었다면 이번 정산 +{patronOption.extraGold.toLocaleString()} 골드</b>
-            <span>{patronOption.price}</span>
-            <p>방치 캡 +{patronOption.extraHours}시간 · 매일 보석 15 · 균열 +1회 — 30일</p>
-            <button type="button" className="patron-buy" disabled={patronOption.busy} onClick={() => void onBuyPatron?.()}>원정 후원 계약 30일<em>{patronOption.price}</em></button>
+            <b>후원 계약이면 +{patronOption.extraGold.toLocaleString()} 골드</b>
+            <button type="button" className="patron-buy" disabled={patronOption.busy} onClick={() => void onBuyPatron?.()}>30일 <em>{patronOption.price}</em></button>
           </div>
-        )}
-        {adOption && (
-          <button type="button" className="cta idle-claim-ad" disabled={adBusy} onClick={() => void onClaimDouble?.()}>
-            {adBusy ? "광고 재생 중…" : adOption === "free" ? "광고 제거 보유 · 2배로 받기" : "광고 보고 2배로 받기"}
-            <small>{adOption === "free" ? "광고 없이 자동 적용" : "오늘 남은 횟수 포함 · 30초 광고"}</small>
-          </button>
-        )}
-        {bottleneck.content !== "titans" && (
-          <button
-            type="button"
-            className="cta cta-ghost"
-            onClick={() => {
-              setClaiming(true);
-              window.setTimeout(() => onGoContent(bottleneck.content as "dodge" | "beat" | "forge"), 200);
-            }}
-          >
-            수령하고 {CONTENT_LABEL[bottleneck.content]}(으)로
-          </button>
         )}
       </div>
     </div>

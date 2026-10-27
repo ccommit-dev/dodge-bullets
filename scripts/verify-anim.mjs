@@ -90,7 +90,8 @@ const expectAnim = { slime: ["slime-idle", "slime-pounce"], goblin: ["goblin-idl
 // 대기 이름(img)은 그대로 종별. 2판이 아니면 예전처럼 종별 공격 키프레임
 ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => kindAnims[k]?.idle === idle && kindAnims[k]?.attack === (kindAnims[k]?.a2 ? (k === "dragon" ? "a2-mon-ranged" : "a2-mon-melee") : attack)), JSON.stringify(kindAnims));
 // 2026-10-13: 공격 프레임(-attack.png) 추가 → 4장
-ok("B 프레임이 모두 마운트되어 있다(옛: idle·hit·attack·defeat 4장 · 띠: 5칸 + 처치 그림 · 2판: 동작 시트 + 처치 그림)", await page.evaluate(() => (!!document.querySelector(".titan-monster-art.anim2 .monster-frames") && !!document.querySelector(".titan-monster-art.anim2 img[src*='-defeat.png']")) || (!!document.querySelector(".titan-monster-art.has-frames .monster-frames") && !!document.querySelector(".titan-monster-art.has-frames img[src*='-defeat.png']")) || document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
+// 2026-10-27: 띠 · 2판 몬스터는 쓰러질 때도 같은 시트(피격 칸)를 쓴다 — 옛 처치 그림(-defeat.png, 다른 그림체)을 붙이지 않는다
+ok("B 프레임이 모두 마운트되어 있다(옛: idle·hit·attack·defeat 4장 · 띠 · 2판: 동작 시트 하나 — 처치 그림 없음)", await page.evaluate(() => (!!document.querySelector(".titan-monster-art.anim2 .monster-frames") && !document.querySelector(".titan-monster-art.anim2 img[src*='-defeat.png']")) || (!!document.querySelector(".titan-monster-art.has-frames .monster-frames") && !document.querySelector(".titan-monster-art.has-frames img[src*='-defeat.png']")) || document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
 // 보스: 강한 파티로 즉시 처치 → 3단계 클래스 관찰
 await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9 },
   { stage: 6, bestStage: 6, gold: 100000, heroes: { mia: 60, leon: 60 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now });
@@ -100,7 +101,7 @@ ok("B 보스 도전 버튼 등장", bossBtn);
 const stages = new Set();
 for (let i = 0; i < 80; i += 1) {
   await sleep(50);
-  const cls = await page.evaluate(() => { const f = document.querySelector(".titans-field"); return { c: f?.className ?? "", crack: !!document.querySelector(".boss-crack"), burst: document.querySelectorAll(".boss-gold-burst i").length, defeat: !!document.querySelector(".titan-monster-art img.on[src*='-defeat.png']") }; });
+  const cls = await page.evaluate(() => { const f = document.querySelector(".titans-field"); return { c: f?.className ?? "", crack: !!document.querySelector(".boss-crack"), burst: document.querySelectorAll(".boss-gold-burst i").length, defeat: !!document.querySelector(".titan-monster-art.frame-defeat, .titan-monster-art img.on[src*='-defeat.png']") }; });
   if (/boss-break-1/.test(cls.c)) stages.add("1");
   if (/boss-break-2/.test(cls.c) && cls.crack) stages.add("2");
   if (/boss-break-3/.test(cls.c) && cls.burst >= 10 && cls.defeat) stages.add("3");

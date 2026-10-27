@@ -111,7 +111,7 @@
 .titans-monster.action-prepare .titan-monster-art.has-frames .monster-frames { animation: none; background-position: 50% 0%; }
 .titans-monster.action-attack .titan-monster-art.has-frames .monster-frames { animation: none; background-position: 75% 0%; }
 .titan-monster-art.has-frames.frame-hit .monster-frames { animation: none; background-position: 100% 0%; }
-.titan-monster-art.has-frames.frame-defeat .monster-frames { opacity: 0; }
+/* 2026-10-27: 쓰러짐도 같은 띠(피격 칸)를 보인다 — 옛 처치 그림으로 바꾸지 않음 */
 .titan-monster-art.has-frames > img { opacity: 0; }
 .titan-monster-art.has-frames > img.on { opacity: 1; }
 .perf-low .titan-monster-art.has-frames.frame-idle .monster-frames { animation: none; }
