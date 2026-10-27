@@ -4,7 +4,8 @@ import type { BeatCosmetics, RingSkinId, SpikeSkinId } from "./types";
 /**
  * 비트 수련 커스텀 아이템 (2026-10-06, 사용자: "커스텀 아이템 리소스 및 상점 연동 진행").
  * 예전엔 표와 저장만 있고 사는 화면이 없었다(구호는 그리지도 않았다). 이제:
- *   지휘 북 = 판정 레일·패드·고리의 빛 색 · 구호 = 내 노트에 붙는 문장(紋章)과 테두리
+ *   판정 레일 = 판정 레일·패드·고리의 빛 색 · 구호 = 내 노트에 붙는 문장(紋章)과 테두리
+ *   2026-10-27: 예전 이름 '○○ 지휘 북' · 북 아이콘은 사냥터 상점 '외형'에서 주인공 무기(옛 북)처럼 읽혀 '○○ 레일'로, 아이콘은 레일 그림(art-gen/beat-rail-icons.mjs)으로 바꿨다
  *   값은 붉은 보석(외형 전용, 능력치 없음) · 비트 메뉴 '커스텀'과 사냥터 상점 '외형' 탭 두 곳에서 사고 장착한다
  *   아이콘 public/beat/custom/<ring|spike>-<id>.png (art-gen batch-monsters-x3.sh 끝부분)
  * 소유·장착은 진행도 저장(CharacterProgress.beatCosmetics)에 둔다 — 보석 차감과 지급이 한 번의 저장이 된다.
@@ -15,11 +16,11 @@ export type BeatShopItem =
   | { kind: "spike"; id: SpikeSkinId; name: string; desc: string; cost: number };
 
 export const BEAT_SHOP_ITEMS: BeatShopItem[] = [
-  { kind: "ring", id: "neon", name: "훈련 지휘 북", desc: "판정 레일을 청록 네온으로 — 기본", cost: 0 },
-  { kind: "ring", id: "gold", name: "황금 전진 북", desc: "레일·패드·판정 고리가 황금빛으로", cost: 80 },
-  { kind: "ring", id: "magenta", name: "공명의 전투 북", desc: "선명한 자홍빛 공명 레일", cost: 100 },
-  { kind: "ring", id: "ice", name: "빙결 수호 북", desc: "서리 낀 하늘색 레일과 차가운 고리", cost: 120 },
-  { kind: "ring", id: "ember", name: "용화염 지휘 북", desc: "불꽃처럼 타오르는 주황 레일", cost: 140 },
+  { kind: "ring", id: "neon", name: "훈련 네온 레일", desc: "판정 레일을 청록 네온으로 — 기본", cost: 0 },
+  { kind: "ring", id: "gold", name: "황금 전진 레일", desc: "레일·패드·판정 고리가 황금빛으로", cost: 80 },
+  { kind: "ring", id: "magenta", name: "공명 자홍 레일", desc: "선명한 자홍빛 공명 레일", cost: 100 },
+  { kind: "ring", id: "ice", name: "빙결 수호 레일", desc: "서리 낀 하늘색 레일과 차가운 고리", cost: 120 },
+  { kind: "ring", id: "ember", name: "용화염 레일", desc: "불꽃처럼 타오르는 주황 레일", cost: 140 },
   { kind: "spike", id: "triangle", name: "기본 구호", desc: "장식 없는 훈련용 노트 — 기본", cost: 0 },
   { kind: "spike", id: "arrow", name: "돌격 구호", desc: "노트 뒤로 붉은 돌격 꼬리가 달린다", cost: 90 },
   { kind: "spike", id: "diamond", name: "수호 구호", desc: "노트를 푸른 마름모 방패가 감싼다", cost: 110 },

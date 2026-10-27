@@ -55,10 +55,10 @@ const summary = {};
 for (let k = 0; k < 4; k += 1) {
   await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), k); await sleep(700);
   const kind = await page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1]);
-  const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0 };
+  const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0, sheets: new Set() };
   for (let i = 0; i < 120; i += 1) {
-    const r = await page.evaluate(() => { const img = document.querySelector(".titans-hero .equipment-weapon-alt"); if (!img || img.getAnimations().some((a) => /gear-grab/.test(a.animationName) && a.playState === "running")) return null; const atk = !!img.closest(".mode-attack"); const target = parseFloat((img.style.transform.match(/rotate\((-?[\d.]+)deg\)/) ?? [])[1]); return { ...window.__grip(img), atk, target }; });
-    if (r) { s.n += 1; s.box = r.box; s.worst = Math.max(s.worst, r.dist); if (r.atk) { s.atk += 1; if (r.pose) s.poses.add(r.pose); if (Number.isFinite(r.target)) s.angles.push(Math.round(r.target)); if (r.cast) s.cast += 1; } }
+    const r = await page.evaluate(() => { const img = document.querySelector(".titans-hero .equipment-weapon-alt"); if (!img || img.getAnimations().some((a) => /gear-grab/.test(a.animationName) && a.playState === "running")) return null; const atk = !!img.closest(".mode-attack"); const target = parseFloat((img.style.transform.match(/rotate\((-?[\d.]+)deg\)/) ?? [])[1]); const sheet = (img.closest(".equipped-character")?.querySelector(".equipment-base.sheet-attack")?.style.backgroundImage.match(/hero-attack[\w-]*\.webp/) ?? [""])[0]; return { ...window.__grip(img), atk, target, sheet }; });
+    if (r) { s.n += 1; s.box = r.box; if (r.sheet) s.sheets.add(r.sheet); s.worst = Math.max(s.worst, r.dist); if (r.atk) { s.atk += 1; if (r.pose) s.poses.add(r.pose); if (Number.isFinite(r.target)) s.angles.push(Math.round(r.target)); if (r.cast) s.cast += 1; } }
     await sleep(45);
   }
   summary[kind] = s;
@@ -67,6 +67,8 @@ for (let k = 0; k < 4; k += 1) {
   await page.screenshot({ path: `art-gen/out/weapon-grip-${kind}.png` });
 }
 const sw = summary.sword, sp = summary.spear, bw = summary.bow, st = summary.staff;
+// 몸 동작도 무기별 (2026-10-27 "활·지팡이 동작: 몸 동작은 검과 같은 시트") — 공격 시트가 무기마다 다르다(검 = 기본 hero-attack)
+ok("공격 몸 동작 시트: 검 hero-attack · 창/활/지팡이 hero-attack-<무기>", [...sw.sheets].join() === "hero-attack.webp" && [...sp.sheets].join() === "hero-attack-spear.webp" && [...bw.sheets].join() === "hero-attack-bow.webp" && [...st.sheets].join() === "hero-attack-staff.webp", [sw, sp, bw, st].map((s) => [...s.sheets].join("+")).join(" · "));
 ok("공격 칸을 잡았다(무기마다 3칸 이상)", [sw, sp, bw, st].every((s) => s.atk >= 3), [sw, sp, bw, st].map((s) => `${s.kind}:${s.atk}`).join(" "));
 ok("검은 시트 손뼈 그대로 휘두른다(자세 표 없음)", sw.poses.size === 0, [...sw.poses].join(","));
 ok("창은 찌르기 — 공격 칸 기울기가 모두 수평 가까이(68~94°)", sp.poses.size >= 2 && sp.angles.length >= 3 && sp.angles.every((a) => a >= 68 && a <= 94), sp.angles.join(","));
@@ -98,17 +100,22 @@ await sleep(900);
 await seed({ ...base, equippedWeaponKind: "spear", ownedWeaponSkins: ["blade-crimson"], equippedWeaponSkin: "blade-crimson" });
 const sk = await page.evaluate(() => {
   const img = document.querySelector(".titans-hero .equipment-weapon-alt.weapon-skin");
-  return { img: !!img, src: img?.getAttribute("src") ?? "", hue: img ? getComputedStyle(img).getPropertyValue("--skin-hue").trim() : "", filter: img ? getComputedStyle(img).filter : "", drum: document.querySelectorAll(".titans-hero .premium-weapon-part, .titans-hero .has-blade-skin").length, grip: img ? window.__grip(img) : null };
+  return { img: !!img, src: img?.getAttribute("src") ?? "",  filter: img ? getComputedStyle(img).filter : "", drum: document.querySelectorAll(".titans-hero .premium-weapon-part, .titans-hero .has-blade-skin").length, grip: img ? window.__grip(img) : null };
 });
-ok("외형 장착: 손에 장착 무기(창) 그림 · 북 그림 없음", sk.img && /titans\/gear\/spear-\d\.png/.test(sk.src) && sk.drum === 0, `${sk.src} · 북 ${sk.drum}`);
-ok("외형 장착: 색 돌리기(진홍 = 140deg) · 오라", sk.hue === "140deg" && /hue-rotate/.test(sk.filter) && /drop-shadow/.test(sk.filter), `${sk.hue} · ${sk.filter.slice(0, 60)}`);
+ok("외형 장착: 손에 장착 무기(창) 그림 · 북 그림 없음", sk.img && /titans\/gear\/(skins\/[\w-]+\/)?spear-\d\.png/.test(sk.src) && sk.drum === 0, `${sk.src} · 북 ${sk.drum}`);
+// 외형 색은 미리 칠한 그림(몸통 색만 · 금 장식 그대로) — 그림 전체를 돌리는 hue-rotate 는 쓰지 않는다
+ok("외형 장착: 몸통만 칠한 외형 그림(skins/blade-crimson) · 오라 · 색 돌리기 없음", /titans\/gear\/skins\/blade-crimson\/spear-\d\.png/.test(sk.src) && !/hue-rotate/.test(sk.filter) && /drop-shadow/.test(sk.filter), `${sk.src} · ${sk.filter.slice(0, 60)}`);
 ok("외형 장착: 손잡이가 손에", !!sk.grip && sk.grip.dist <= sk.grip.box * 0.05, sk.grip ? sk.grip.dist.toFixed(1) + "px" : "");
 await page.evaluate(() => document.querySelector(".titans-hero")?.scrollIntoView({ block: "center" }));
 await page.screenshot({ path: "art-gen/out/weapon-grip-skin.png" });
 await clickText(".titans-bottom-nav button", "상점"); await sleep(700);
 await clickText(".titans-premium-tabs button, button", "외형"); await sleep(600);
 const shop = await page.evaluate(() => ({ thumbs: [...document.querySelectorAll(".blade-product .weapon-skin-thumb")].map((i) => i.getAttribute("src")), names: [...document.querySelectorAll(".blade-product strong")].map((s) => s.textContent), drum: document.querySelectorAll(".blade-product .premium-weapon-thumb").length }));
-ok("상점 외형 3종: 썸네일 = 장착 무기(창) 그림 · 이름에 '북' 없음", shop.thumbs.length === 3 && shop.thumbs.every((s) => /spear-\d\.png/.test(s ?? "")) && shop.drum === 0 && shop.names.every((n) => !/북/.test(n)), `${shop.thumbs.length}장 · ${shop.names.join(" / ")}`);
+ok("상점 외형 3종: 썸네일 = 장착 무기(창) 그림 · 이름에 '북' 없음", shop.thumbs.length === 3 && shop.thumbs.every((s) => /skins\/blade-[a-z]+\/spear-\d\.png/.test(s ?? "")) && new Set(shop.thumbs).size === 3 && shop.drum === 0 && shop.names.every((n) => !/북/.test(n)), `${shop.thumbs.length}장 · ${shop.names.join(" / ")}`);
+// 비트 디펜스 판정 레일 상품 — 무기 외형과 소제목으로 갈리고, 이름 · 아이콘이 '북' 이 아니다 (2026-10-27 "황금 전진 북 · 공명의 전투 북 — 같은 이름 유의")
+const beat = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".premium-subhead")].map((h) => h.childNodes[0]?.textContent?.trim()), names: [...document.querySelectorAll(".beat-custom-product strong")].map((s) => s.textContent), headBeforeBeat: (() => { const h = [...document.querySelectorAll(".premium-subhead")].find((x) => /비트/.test(x.textContent)); const b = document.querySelector(".beat-custom-product"); return !!h && !!b && !!(h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); })() }));
+ok("상점 외형 소제목 3개: 주인공 무기 외형 · 비트 디펜스 꾸미기 · 무기 이펙트", beat.heads.length === 3 && /무기 외형/.test(beat.heads[0]) && /비트/.test(beat.heads[1]) && /이펙트/.test(beat.heads[2]) && beat.headBeforeBeat, beat.heads.join(" / "));
+ok("비트 판정 레일 상품 이름에 '북' 없음", beat.names.length >= 4 && beat.names.every((n) => !/북/.test(n)), beat.names.join(" / "));
 await page.evaluate(() => document.querySelector(".blade-product")?.scrollIntoView({ block: "center" })); await sleep(200);
 await page.screenshot({ path: "art-gen/out/weapon-grip-shop.png" });
 

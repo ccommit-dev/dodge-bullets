@@ -5,6 +5,7 @@
  *   동료·스킨  public/titans/anim/allies/<id>.webp   (8칸 × 4줄: 대기 · 걷기 · 공격 · 피격)
  *   몬스터     public/titans/anim/monsters/<art>.webp (4칸 × 4줄: 대기 · 예비 · 덤빔 · 피격)
  *   주인공     public/titans/anim/hero/hero-{idle,walk,attack}.webp (한 줄씩) + src/equipment/heroAnchors.ts(손 뼈 투영 — 무기가 따라간다)
+ *              무기별 공격(2026-10-27) hero-attack-{spear,bow,staff}.webp — 렌더 id hero-spear · hero-bow · hero-staff, 주인공과 같은 배율(k)
  * 그리고 게임이 읽는 src/titans/animLayout.ts(배치 + 시트가 있는 id) 를 쓴다.
  * 배율: 비버(동료·스킨)는 전원 같은 값 하나(칸을 넘는 자세가 있으면 그 값으로 전원), 몬스터·주인공은 각자 하나 — 칸마다 바꾸지 않는다(크기 팝 없음).
  * 피격 칸은 meta 의 tint(0~1)만큼 흰·붉게 물들인다.
@@ -196,6 +197,22 @@ if (want("hero")) {
       await sharp(buf).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero/hero-${mode}.webp`);
       out[mode] = anchorsOf(frames, s.width);
     }
+    // 무기별 공격 시트 — 배율 k 는 주인공 기본 시트에서 정한 값 그대로(무기를 바꿔도 몸 크기가 같다). 칸을 넘으면 잘리니 경고만
+    const weaponOut = {};
+    for (const kind of ["spear", "bow", "staff"]) {
+      const w = await load(`hero-${kind}`);
+      if (!w) continue;
+      const s = H.sheets.attack, frames = w.actions.attack;
+      if (frames.length !== s.frames) throw new Error(`hero-${kind} attack: ${frames.length} ≠ ${s.frames}`);
+      const kk = fitScale(frames, k, s.width, FH, PX + (s.width - FW) / 2, PY, 3);
+      if (kk < k * 0.985) console.warn(`hero-${kind}: 칸을 넘는 칸이 있다 — 필요한 배율 ${kk.toFixed(3)} < ${k.toFixed(3)} (잘린다)`);
+      const ops = [];
+      for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, w.res, k, i * s.width, 0, s.width, FH, PX + (s.width - FW) / 2, PY)));
+      const buf = await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer();
+      await sharp(buf).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero/hero-attack-${kind}.webp`);
+      weaponOut[kind] = anchorsOf(frames, s.width);
+      console.log("hero weapon sheet", kind);
+    }
     const fmt = (f) => "  { " + Object.entries(f).map(([n, a]) => `${n}: { x: ${a.x}, y: ${a.y}, rotation: ${a.rotation}, scale: ${a.scale}${a.behind ? ", behind: true" : ""} }`).join(", ") + " },";
     const b = idle[0].box;
     const fig = { x0: r1(((PX + (b.x0 - idle[0].pivot[0]) * k) / FW) * 100), x1: r1(((PX + (b.x1 - idle[0].pivot[0]) * k) / FW) * 100), y0: r1(((PY + (b.y0 - idle[0].pivot[1]) * k) / FH) * 100), y1: 99.9 };
@@ -213,6 +230,10 @@ ${out.walk.map(fmt).join("\n")}
 export const HERO_ATTACK_ANCHORS: EquipmentFrameAnchors[] = [
 ${out.attack.map(fmt).join("\n")}
 ];
+/** 무기별 공격 시트(hero-attack-<무기>.webp, 2026-10-27) — 창 찌르기 · 활 당기기 · 지팡이 들어 내뻗기. 검은 HERO_ATTACK_ANCHORS */
+export const HERO_WEAPON_ATTACK_ANCHORS: Partial<Record<"spear" | "bow" | "staff", EquipmentFrameAnchors[]>> = {
+${Object.entries(weaponOut).map(([kind, fr]) => `  ${kind}: [\n${fr.map((f) => "  " + fmt(f)).join("\n")}\n  ],`).join("\n")}
+};
 /** 성문 방어 — 대기 시트 인물 상자(칸 %) */
 export const HERO_FIG = ${JSON.stringify(fig)};
 `);

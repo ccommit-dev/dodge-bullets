@@ -14,7 +14,9 @@ import sharp from "sharp";
 
 const ANIM2 = process.argv.includes("--anim2");
 const SHEETS = ANIM2
-  ? ["idle", "walk", "attack"].map((m) => [`public/titans/anim/hero/hero-${m}.webp`, `hero-${m}`])
+  ? (process.argv.includes("--weapons") ? [] : ["idle", "walk", "attack"].map((m) => [`public/titans/anim/hero/hero-${m}.webp`, `hero-${m}`]))
+    // 무기별 공격 시트(2026-10-27) — --weapons 면 이것만 파생
+    .concat(["spear", "bow", "staff"].filter((k) => existsSync(`public/titans/anim/hero/hero-attack-${k}.webp`)).map((k) => [`public/titans/anim/hero/hero-attack-${k}.webp`, `hero-attack-${k}`]))
   : [
     ["public/titans/character/base/hero-idle.png", "hero-idle"],
     ["public/titans/character/base/hero-attack.png", "hero-attack"],

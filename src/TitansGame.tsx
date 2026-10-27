@@ -50,7 +50,7 @@ import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
-import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinStyle } from "./economy/gemCatalog";
+import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinIcon, weaponSkinStyle } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, QA_BUILD, qaGemsEnabled, testModeEnabled, updateCharacterProgress } from "./progression/storage";
@@ -4281,7 +4281,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               return (
                 <article key={skinId} className="titans-card premium-product-card gem-product blade-product">
                   <span className="blade-thumb" style={weaponSkinStyle(def) as CSSProperties} aria-hidden="true">
-                    <img className="weapon-skin-thumb weapon-skin" src={assetUrl(weaponIconPath(weaponKind, forgedWeaponLevel))} alt="" />
+                    <img className="weapon-skin-thumb weapon-skin" src={assetUrl(weaponSkinIcon(skinId, weaponKind, forgedWeaponLevel))} alt="" />
                   </span>
                   <div>
                     <strong>{def.name} <em>무기 외형</em></strong>
@@ -4297,21 +4297,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </article>
               );
             })}
-            {/* 비트 수련 커스텀 — 지휘 북 · 구호 (2026-10-06, "커스텀 아이템 리소스 및 상점 연동") */}
+            {/* 비트 수련 커스텀 — 판정 레일 · 구호 (2026-10-06, "커스텀 아이템 리소스 및 상점 연동").
+                2026-10-27: 무기 외형과 섞여 '북' 이 주인공 무기처럼 읽혔다 → 소제목으로 갈라 비트 디펜스 꾸미기임을 밝힌다 */}
+            {premiumCategory === "weapon" && <p className="premium-subhead">비트 디펜스 꾸미기 <small>판정 레일 빛 · 노트 장식 — 주인공 무기와 무관</small></p>}
             {premiumCategory === "weapon" && BEAT_SHOP_ITEMS.filter((item) => item.cost > 0).map((item) => {
               const owned = ownsBeatItem(character.beatCosmetics, item);
               const on = equippedBeatItem(character.beatCosmetics, item);
               return (
                 <article key={`beat-${item.kind}-${item.id}`} className="titans-card premium-product-card gem-product beat-custom-product" data-beat-item={`${item.kind}-${item.id}`}>
+            {premiumCategory === "weapon" && <p className="premium-subhead">주인공 무기 외형 <small>장착한 검 · 창 · 활 · 지팡이 색</small></p>}
                   <img className="beat-custom-thumb" src={beatItemIcon(item)} alt="" aria-hidden="true" />
-                  <div><strong>{item.name} <em>{item.kind === "ring" ? "비트 · 지휘 북" : "비트 · 구호"}</em></strong><p>{item.desc}</p></div>
+                  <div><strong>{item.name} <em>{item.kind === "ring" ? "비트 · 판정 레일" : "비트 · 구호"}</em></strong><p>{item.desc}</p></div>
                   <button type="button" disabled={on || (!owned && redGems < item.cost)} onClick={() => void buyBeatCustom(item)}>
                     {on ? "장착 중" : owned ? "장착" : <><GemMark />{item.cost}</>}
                   </button>
                 </article>
               );
             })}
-            {/* I 무기 이펙트 · 전장 테마 — 외형 탭 */}
+            {/* I 무기 이펙트 · 전장 테마 — 외형 탭 (소제목: 위 비트 꾸미기와 갈라 사냥터 것임을 밝힌다) */}
+            {premiumCategory === "weapon" && <p className="premium-subhead">무기 이펙트 · 전장 테마 <small>사냥터 타격 빛 · 배경</small></p>}
             {premiumCategory === "weapon" && Object.entries(WEAPON_FX).filter(([, def]) => def.gemCost !== null || character.ownedWeaponFx.includes("fx-season")).map(([fxId, def]) => {
               const owned = character.ownedWeaponFx.includes(fxId);
               const equipped = character.equippedWeaponFx === fxId;

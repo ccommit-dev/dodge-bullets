@@ -261,3 +261,42 @@ def monster_actions(kind, mon_poses):
     for name, poses in out.items():
         assert len(poses) == L[name]['frames'], (name, len(poses))
     return out
+
+
+# ── 주인공 무기별 공격 (2026-10-27, 사용자: "활·지팡이 동작: 몸 동작은 검과 같은 시트 — 몸 전체가 활을 당기거나 지팡이를 드는 동작이 아니다") ──
+# 검은 위 'melee'(주인공 공격 시트 hero-attack). 창 · 활 · 지팡이는 몸 전체가 무기에 맞게 움직이는 시트를 따로 렌더한다(hero-attack-<무기>).
+# 무기 그림은 게임이 왼손(hand.L) 앵커에 덧그린다 — 왼손 = 무기 손, 오른손(카메라 쪽)은 활 시위를 당기는 손.
+HERO_WEAPON_ATTACK = {
+    # 창: 손을 허리 뒤로 당겨 웅크렸다가(팔 아래 · 뒤 — pose_lab 2026-10-27 후보 a) → 몸을 앞으로 밀며 팔을 수평으로 곧게 내뻗어 찌른다(후보 t1) → 당겨 복귀
+    'spear': [
+        dict(sq_all=0.97, arm_l=0, arm_l_out=22, aim_l=70, arm_r=10, lean=-4, head=-2, dy=-0.012, tail=6),
+        dict(sq_all=1.03, arm_l=-28, arm_l_out=17, aim_l=84, arm_r=18, lean=-7, head=-4, dy=-0.03, tail=10, yaw=-2),
+        dict(sq_all=0.94, arm_l=-40, arm_l_out=15, aim_l=90, arm_r=20, lean=-8, head=-5, dy=-0.036, tail=12, yaw=-3),
+        dict(sq_all=1.06, arm_l=40, arm_l_out=26, aim_l=94, arm_r=-4, lean=6, head=3, dy=0.045, tail=-2, yaw=6),
+        dict(sq_all=0.9, squash=0.97, arm_l=84, arm_l_out=30, aim_l=96, arm_r=-14, lean=11, head=6, dy=0.085, tail=-12, yaw=9),
+        dict(sq_all=0.93, squash=0.98, arm_l=88, arm_l_out=30, aim_l=98, arm_r=-14, lean=11, head=7, dy=0.09, tail=-14, yaw=9),
+        dict(sq_all=1.01, arm_l=50, arm_l_out=30, aim_l=78, arm_r=0, lean=4, head=3, dy=0.035, tail=-4, yaw=4),
+        dict(sq_all=1.0, arm_l=28, arm_l_out=28, aim_l=52, arm_r=4, lean=1, head=1, dy=0.006, tail=2, yaw=1),
+    ],
+    'bow': ATTACK8['bow'],     # 활(왼손)은 세워 두고 오른손이 시위를 당겼다(몸 젖힘 · 늘림) 놓는다(앞으로 튕기며 눌림)
+    'staff': ATTACK8['mage'],  # 지팡이를 어깨 위 바깥으로 높이 들어 모았다가 → 적 쪽으로 곧게 내밀며 쏜다
+}
+HERO_WEAPON_BASE = {'spear': 'melee', 'bow': 'bow', 'staff': 'mage'}
+
+
+def hero_weapon_attack(kind):
+    """주인공 무기별 공격 8칸 — 기본 자세는 역할(활 · 마법)에서, 탄력 배율은 주인공 근접과 같다"""
+    role = HERO_WEAPON_BASE[kind]
+    base = beaver_base(role, hero=(role == 'melee'))
+    out = [full(P, base, FULL_BEAVER) for P in HERO_WEAPON_ATTACK[kind]]
+    if LP:
+        for P in out:
+            P['sq_all'] = 1 + (P['sq_all'] - 1) * 1.6
+            P['squash'] = 1 + (P['squash'] - 1) * 1.6
+    if kind == 'staff':   # 덧그린 지팡이가 주둥이를 덮지 않게 내뻗는 칸도 손을 조금 바깥으로 · 높이 든 칸(1~2)은 머리 뒤
+        for i in (3, 4, 5, 6, 7):
+            out[i]['arm_l_out'] = max(out[i]['arm_l_out'], 34)
+        for i in (1, 2):
+            out[i]['wb'] = 1
+    assert len(out) == LAYOUT['hero']['sheets']['attack']['frames']
+    return out

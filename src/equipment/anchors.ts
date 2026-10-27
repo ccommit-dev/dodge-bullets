@@ -1,4 +1,4 @@
-import { HERO_ATTACK_ANCHORS, HERO_IDLE_ANCHORS, HERO_WALK_ANCHORS } from "./heroAnchors";
+import { HERO_ATTACK_ANCHORS, HERO_IDLE_ANCHORS, HERO_WALK_ANCHORS, HERO_WEAPON_ATTACK_ANCHORS } from "./heroAnchors";
 
 /** behind — 그 칸에서는 무기를 몸 뒤에 그린다(애니메이션 2판 주인공 예비 칸: 먼 손이 머리 뒤라 앞에 그리면 얼굴을 덮었다) */
 export type EquipmentAnchor = { x: number; y: number; rotation: number; scale: number; behind?: boolean };
@@ -47,5 +47,9 @@ export function capeAnchor(frame: EquipmentFrameAnchors, mode: "idle" | "attack"
  */
 export const IDLE_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = HERO_IDLE_ANCHORS;
 export const ATTACK_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = HERO_ATTACK_ANCHORS;
+/** 무기별 공격 시트의 손 앵커 (2026-10-27) — 창 · 활 · 지팡이는 몸 동작이 달라 손 자리도 다르다. 없으면 검(기본) 표 */
+export function attackAnchorsFor(kind: string | undefined): EquipmentFrameAnchors[] {
+  return (kind === "spear" || kind === "bow" || kind === "staff" ? HERO_WEAPON_ATTACK_ANCHORS[kind] : undefined) ?? HERO_ATTACK_ANCHORS;
+}
 /** 걷기 칸(애니메이션 2판, 2026-10-19) — 걸어 들어올 때 무기가 걷는 손을 따라간다 */
 export const WALK_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = HERO_WALK_ANCHORS;
