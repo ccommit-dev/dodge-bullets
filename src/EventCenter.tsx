@@ -665,32 +665,60 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
   );
 }
 
-/** 랭크 시험 연출 — 주인공과 그림자 상대의 전투력 게이지가 맞붙는다 (2.6초, 탭하면 건너뜀) */
+/**
+ * 랭크 시험 연출 — 주인공과 그림자 상대가 실제로 번갈아 덤빈다 (2026-10-27, 사용자: "주간 도전 실제 공격 모션 + 우측 상단 스킵(누르면 지금처럼 바로 결과)").
+ * 예전엔 전투력 막대 두 개가 차오르고 승패 글자만 떴다. 이제 주인공이 먼저 치고, 한 번에 상대 체력의 1/4 씩 깎는다:
+ * 주인공 한 방 = 내 전투력/4 · 상대 한 방 = 상대 전투력/4, 체력 = 받는 쪽 상대 전투력 → 전투력이 높은 쪽이 반드시 먼저 쓰러뜨린다(판정은 resolveShadow 그대로).
+ * 오른쪽 위 "스킵"은 곧바로 결과(예전처럼). 결과가 뜬 뒤엔 화면을 누르거나 2초 뒤 닫힌다.
+ */
+type DuelSwing = { by: "me" | "foe"; dmg: number; meHp: number; foeHp: number };
+export function duelSwings(playerRoll: number, opponentRoll: number): DuelSwing[] {
+  const meMax = Math.max(1, opponentRoll), foeMax = Math.max(1, playerRoll);
+  let meHp = meMax, foeHp = foeMax;
+  const meHit = Math.max(1, playerRoll / 4), foeHit = Math.max(1, opponentRoll / 4);
+  const out: DuelSwing[] = [];
+  for (let i = 0; i < 10 && meHp > 0 && foeHp > 0; i += 1) {
+    if (i % 2 === 0) { const d = Math.min(foeHp, meHit); foeHp -= d; out.push({ by: "me", dmg: d, meHp, foeHp }); }
+    else { const d = Math.min(meHp, foeHit); meHp -= d; out.push({ by: "foe", dmg: d, meHp, foeHp }); }
+  }
+  return out;
+}
+const DUEL_SWING_MS = 520;
 function DuelOverlay({ duel, progress, onClose }: { duel: { name: string; title: string; win: boolean; playerRoll: number; opponentRoll: number; bonus: number }; progress: CharacterProgress; onClose: () => void }) {
-  const [phase, setPhase] = useState(0);
+  const swings = useMemo(() => duelSwings(duel.playerRoll, duel.opponentRoll), [duel.playerRoll, duel.opponentRoll]);
+  const meMax = Math.max(1, duel.opponentRoll), foeMax = Math.max(1, duel.playerRoll);
+  // step: -1 = 다가서기 · 0..n-1 = 몇 번째 공격 · n = 결과
+  const [step, setStep] = useState(-1);
+  const done = step >= swings.length;
   useEffect(() => {
-    const t1 = window.setTimeout(() => setPhase(1), 200);
-    const t2 = window.setTimeout(() => setPhase(2), 1500);
-    const t3 = window.setTimeout(onClose, 3200);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); };
-  }, [onClose]);
-  const top = Math.max(duel.playerRoll, duel.opponentRoll, 1);
+    if (done) { const t = window.setTimeout(onClose, 2000); return () => window.clearTimeout(t); }
+    const t = window.setTimeout(() => setStep((v) => v + 1), step < 0 ? 450 : DUEL_SWING_MS);
+    return () => window.clearTimeout(t);
+  }, [step, done, onClose]);
+  const sw = step >= 0 && step < swings.length ? swings[step] : null;
+  const last = swings[swings.length - 1];
+  const meHp = done ? last?.meHp ?? meMax : sw ? sw.meHp : meMax;
+  const foeHp = done ? last?.foeHp ?? foeMax : sw ? sw.foeHp : foeMax;
+  const meStrike = sw?.by === "me", foeStrike = sw?.by === "foe";
   return (
-    <div className={`duel-overlay phase-${phase} ${duel.win ? "win" : "lose"}`} role="status" onClick={onClose}>
-      <div className="duel-side me">
-        <EquippedCharacter mode={phase === 2 && duel.win ? "attack" : "idle"} frame={phase === 2 ? HERO_ATTACK_IMPACT : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
-        <b>나</b>
-        <i className="duel-bar"><em style={{ width: phase >= 1 ? `${(duel.playerRoll / top) * 100}%` : "0%" }} /></i>
-        <span>{Math.floor(duel.playerRoll).toLocaleString()}</span>
+    <div className={`duel-overlay duel-fight ${done ? "is-done" : ""} ${duel.win ? "win" : "lose"}`} role="status" onClick={done ? onClose : undefined}>
+      {!done && <button type="button" className="duel-skip" onClick={(e) => { e.stopPropagation(); setStep(swings.length); }}>스킵 ›</button>}
+      <div className="duel-stage">
+        <div className={`duel-fighter me ${step >= 0 ? "engaged" : ""} ${meStrike ? "striking" : ""} ${foeStrike ? "hurt" : ""} ${done && !duel.win ? "down" : ""}`}>
+          <EquippedCharacter key={`me-${step}`} mode={meStrike ? "attack" : "idle"} frame={meStrike ? HERO_ATTACK_IMPACT : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+          {foeStrike && sw && <b key={`fm-${step}`} className="duel-float foe-dmg">-{Math.round(sw.dmg).toLocaleString()}</b>}
+        </div>
+        <div className={`duel-fighter foe ${step >= 0 ? "engaged" : ""} ${foeStrike ? "striking" : ""} ${meStrike ? "hurt" : ""} ${done && duel.win ? "down" : ""}`}>
+          <span className="shadow-figure big" aria-hidden="true"><img className="shadow-portrait" src={shadowPortrait(duel.name)} alt="" /></span>
+          {meStrike && sw && <b key={`mf-${step}`} className="duel-float me-dmg">-{Math.round(sw.dmg).toLocaleString()}</b>}
+        </div>
       </div>
-      <b className="duel-vs">{phase === 2 ? (duel.win ? "승리" : "패배") : "VS"}</b>
-      <div className="duel-side foe">
-        <span className="shadow-figure big" aria-hidden="true"><img className="shadow-portrait" src={shadowPortrait(duel.name)} alt="" /></span>
-        <b>{duel.name}</b>
-        <i className="duel-bar foe"><em style={{ width: phase >= 1 ? `${(duel.opponentRoll / top) * 100}%` : "0%" }} /></i>
-        <span>{Math.floor(duel.opponentRoll).toLocaleString()}</span>
+      <div className="duel-hud">
+        <div className="duel-side me"><b>나</b><i className="duel-bar"><em style={{ width: `${(meHp / meMax) * 100}%` }} /></i><span>{Math.floor(duel.playerRoll).toLocaleString()}</span></div>
+        <b className="duel-vs">{done ? (duel.win ? "승리" : "패배") : "VS"}</b>
+        <div className="duel-side foe"><b>{duel.name}</b><i className="duel-bar foe"><em style={{ width: `${(foeHp / foeMax) * 100}%` }} /></i><span>{Math.floor(duel.opponentRoll).toLocaleString()}</span></div>
       </div>
-      {phase === 2 && <small className="duel-result">{duel.win ? `주간 보너스 +${duel.bonus.toFixed(2)} · 공유 코인·견갑 조각·동료 조각 획득` : "전투력을 올려 다시 도전하세요 — 장비 강화·동료 성급이 전투력을 올린다"}</small>}
+      {done && <small className="duel-result">{duel.win ? `주간 보너스 +${duel.bonus.toFixed(2)} · 공유 코인·견갑 조각·동료 조각 획득` : "전투력을 올려 다시 도전하세요 — 장비 강화·동료 성급이 전투력을 올립니다"}</small>}
     </div>
   );
 }

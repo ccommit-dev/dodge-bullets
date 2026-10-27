@@ -56,8 +56,9 @@ await seed(
     beatSkills: { kick: 5, hat: 5, snare: 5, fire: 5, throat: 5 } },
   { stage: 6, bestStage: 6, gold: 50000, heroes: { mia: 5, leon: 3, sera: 2, garen: 1 }, skillInventory: { learned: ["strike", "crit", "clone"], levels: { strike: 1, crit: 1, clone: 1 }, equipped: { starter: "strike" }, skillCores: 5 }, lastActiveAt: now - 3 * 3600 * 1000 },
 );
-r = await page.evaluate(() => ({ modal: !!document.querySelector(".idle-modal"), cta: document.querySelector(".idle-forge-cta b")?.textContent }));
-ok("#10 정산 팝업 대장간 CTA", r.modal && /강화석/.test(r.cta ?? ""), JSON.stringify(r));
+// 2026-10-27 정산 창 완전 단순화(사용자) — 대장간 바로가기 · R/M/T 막대 · 병목 안내를 빼고 받은 것 · 받기만. 강화석이 받은 것에 보인다
+r = await page.evaluate(() => ({ modal: !!document.querySelector(".idle-modal.idle-simple"), stone: [...document.querySelectorAll(".idle-loot article span")].some((x) => /강화석/.test(x.textContent)), claim: document.querySelector(".idle-claim")?.textContent, clutter: document.querySelectorAll(".idle-factors, .idle-bottleneck, .idle-forge-cta, .idle-rays").length }));
+ok("#10 정산 팝업 단순(받은 것에 강화석 · 받기 · 막대/병목/바로가기 없음)", r.modal && r.stone && /받기/.test(r.claim ?? "") && r.clutter === 0, JSON.stringify(r));
 await closeModal();
 // 목표는 전장 우하단 알림 핀(추천 1 + 목표 2)으로 표시된다
 r = await page.evaluate(() => ({ goals: [...document.querySelectorAll(".battle-alert b")].map((b) => b.textContent) }));

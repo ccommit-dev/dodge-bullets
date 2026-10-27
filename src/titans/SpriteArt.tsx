@@ -240,11 +240,12 @@ export function MonsterArt({
   const art = idle.split("/").pop()?.replace(/.png$/, "") ?? "";
   // 애니메이션 2판 (2026-10-19) — 대기 4 · 예비 2 · 덤빔 4 · 피격 2 칸 시트를 CSS steps 로. 오른쪽을 보게 렌더한 4종은 face-flip 이 뒤집는다
   if (!golden && hasMonsterAnim(art)) {
-    const a: MonsterAnimAction = action === "prepare" ? "prepare" : state === "attack" || action === "attack" ? "attack" : state === "hit" ? "hit" : "idle";   // 덤비는 중엔 맞아도 덤빔 줄을 끝까지
+    // 쓰러짐 (2026-10-27 사용자: "몬스터 죽는 애니를 원래 리소스와 비슷하게") — 예전엔 쓰러지는 순간 2판 시트를 숨기고 옛 처치 그림(다른 그림체)으로 바꿨다.
+    // 이제 같은 시트의 피격 줄을 한 번 보여 주고(전장 .phase-monster-death 의 튕겨 쓰러짐 · 흐려짐이 움직임을 맡는다) 그림은 바꾸지 않는다
+    const a: MonsterAnimAction = state === "defeat" ? "hit" : action === "prepare" ? "prepare" : state === "attack" || action === "attack" ? "attack" : state === "hit" ? "hit" : "idle";   // 덤비는 중엔 맞아도 덤빔 줄을 끝까지
     return (
       <div key={idle} className={`titan-monster-art anim2 frame-${state} ${FLIP_MONSTERS.has(art) ? "face-flip" : ""}`}>
-        <i key={`${a}-${a === "hit" ? hitKey : 0}`} className={`monster-frames anim2 act-${a}`} style={state === "defeat" ? { opacity: 0 } : monsterAnimStyle(art, a, 0, boss)} aria-hidden="true" />
-        <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
+        <i key={`${a}-${a === "hit" ? hitKey : 0}-${state === "defeat" ? "d" : ""}`} className={`monster-frames anim2 act-${a}`} style={monsterAnimStyle(art, a, 0, boss)} aria-hidden="true" />
         <span className="monster-asset-current" data-src={asset} hidden />
       </div>
     );
@@ -252,8 +253,8 @@ export function MonsterArt({
   if (!golden && hasMonsterFrames(art)) {
     return (
       <div key={idle} className={`titan-monster-art has-frames frame-${state} ${FLIP_MONSTERS.has(art) ? "face-flip" : ""}`}>
-        <i className={`monster-frames mf-${state}`} style={{ backgroundImage: `url(${assetUrl(`titans/generated/monsters/frames/${art}.webp`)})` }} aria-hidden="true" />
-        <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
+        {/* 쓰러짐도 같은 띠의 피격 칸 — 옛 처치 그림으로 바꾸지 않는다 (2026-10-27) */}
+        <i className={`monster-frames mf-${state === "defeat" ? "hit" : state}`} style={{ backgroundImage: `url(${assetUrl(`titans/generated/monsters/frames/${art}.webp`)})` }} aria-hidden="true" />
         <span className="monster-asset-current" data-src={asset} hidden />
       </div>
     );

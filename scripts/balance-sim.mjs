@@ -47,6 +47,7 @@ const forge = await import(await bundle("src/forge/model.ts", "forge.mjs"));
 const titans = await import(await bundle("src/titans/model.ts", "titans.mjs"));
 const progression = await import(await bundle("src/progression/model.ts", "progression.mjs"));
 const allies = await import(await bundle("src/titans/allies.ts", "allies.mjs"));
+const bossPressure = await import(await bundle("src/titans/bossPressure.ts", "bossPressure.mjs"));
 
 // ── 재현 가능한 난수 ──────────────────────────────────────────────
 function mulberry32(a) {
@@ -108,7 +109,8 @@ function playTitans(state, seconds, stageCeiling) {
     // 보스는 제한 시간 안에 못 잡으면 진행이 막힌다 — 이게 진짜 벽이다.
     const bossHp = titans.monsterHp(state.stage, true);
     const bossTime = bossHp / dps;
-    if (bossTime > titans.BOSS_TIME_SEC) {
+    // 대장의 반격 (2026-10-27, titans/bossPressure): 원정대가 쓰러지기 전에 잡아야 한다 — 페이스² > 1/s ⇔ 걸리는 시간 ≤ 제한시간 × √s (역할 보정은 빼고 보수적으로)
+    if (bossTime > titans.BOSS_TIME_SEC * Math.sqrt(bossPressure.bossPressureScale(state.stage))) {
       // 벽에 막힘 — 남은 시간은 현재 스테이지 반복 사냥으로 골드만 번다.
       const perLoop = Math.max(0.5, mobTime);
       const loops = Math.floor(t / perLoop);

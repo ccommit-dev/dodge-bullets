@@ -44,6 +44,7 @@ import { WEAK_LABEL, WEAK_MUL, WEAK_WINDOW_MS, allyHitsWeak, partyWeakMatches, r
 import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
 import { GachaFx } from "./ui/GachaFx";
+import { BOSS_ATTACK_GAP_MS, MOB_ATTACK_GAP_MS, bossHitFraction, bossPace, partyMaxHpLabel } from "./titans/bossPressure";
 import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
@@ -343,6 +344,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [showGachaRates, setShowGachaRates] = useState(false);
   /** 상점 유물 뽑기 결과 (titans/relics drawRelicShards, 2026-10-26) — 나온 조각 차례 */
   const [relicDrawResult, setRelicDrawResult] = useState<RelicId[] | null>(null);
+  /** 파견 출정 팝업 (2026-10-27, 사용자: "파견 출정 시 간단한 애니 팝업") — 동료가 오른쪽으로 걸어 나간다 · 1.6초 뒤 저절로 닫힘 */
+  const [expeditionSendPop, setExpeditionSendPop] = useState<{ allyId: TitanHeroId; hours: number; seq: number } | null>(null);
+  useEffect(() => {
+    if (!expeditionSendPop) return;
+    const t = window.setTimeout(() => setExpeditionSendPop(null), 1600);
+    return () => window.clearTimeout(t);
+  }, [expeditionSendPop]);
   const [showRelicRates, setShowRelicRates] = useState(false);
   const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot>("starter");
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
@@ -351,6 +359,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [allyPulse, setAllyPulse] = useState<Record<string, number>>({});
   // 몬스터 한 번 덤빔 = 동료 한 명 피격 (2026-10-19) — 예전엔 한 카운터를 전원이 받아 덤빌 때마다 파티가 같이 움찔하고 공격이 끊겼다
   const [allyHit, setAllyHit] = useState<Record<string, number>>({});
+  /** 원정대 체력 (titans/bossPressure, 2026-10-27) — 대장전마다 1 에서 시작, 대장의 공격이 깎는다. 0 이면 대장 도전 실패 */
+  const partyHpRef = useRef(1);
+  const [partyHp, setPartyHp] = useState(1);
+  const partyDownRef = useRef(false);
+  const lastBossHitLeftRef = useRef(0);
+  /** 동료 위 피해 숫자 — 몬스터 · 대장의 공격 */
+  const [partyDmg, setPartyDmg] = useState<{ id: string; text: string; key: number; boss: boolean } | null>(null);
   const [equippedShoulder, setEquippedShoulder] = useState<ShoulderId | null>(null);
   const [skillPoints, setSkillPoints] = useState(0);
   const [redGems, setRedGems] = useState(0);
@@ -681,6 +696,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     chestRef.current = isChest;
     hpRef.current = mhp;
     bossLeftRef.current = bossTimeRef.current;
+    // 원정대 체력은 대장전마다 가득 (일반 몬스터의 공격은 숫자만)
+    partyHpRef.current = 1;
+    setPartyHp(1);
+    partyDownRef.current = false;
+    lastBossHitLeftRef.current = bossTimeRef.current;
     // 보스 약점 — 보스전 시작과 함께 첫 창. 일반 몬스터는 약점 없음
     const weak = asBoss ? rollBossWeak(performance.now(), null, Math.random, WEAK_WINDOW_MS + saveRef.current.huntMods.weakWindowMs + allyFeatureEffects(characterRef.current.partyIds).weakWindowMs) : null;
     bossWeakRef.current = weak;
@@ -729,6 +749,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     formationTimerRef.current = formationTimer;
     battleTimers.current.push(formationTimer);
   }, []);
+  // DEV 훅 (2026-10-27) — 대장의 반격 실검사(_probe-b-items)가 일반 몬스터 10마리를 기다리지 않고 지금 층의 대장전을 연다. 출시 번들엔 없다
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __huntStartBoss?: () => void }).__huntStartBoss = () => {
+      setBossReady(false);
+      spawn(saveRef.current.stage, MOBS_PER_STAGE, true);
+      battlePhaseRef.current = "combat";
+      setBattlePhase("combat");
+    };
+    return () => { delete (window as unknown as { __huntStartBoss?: unknown }).__huntStartBoss; };
+  }, [spawn]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1698,7 +1729,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         bossLeftRef.current = left;
         setBossLeft(Math.max(0, left));
         if (left <= 0) {
-          flash("보스 실패 · 다시 도전!");
+          flash(partyDownRef.current ? "원정대가 쓰러졌다 · 동료를 키워 다시 도전!" : "보스 실패 · 다시 도전!");
+          partyDownRef.current = false;
           // 벽 미터 (RETENTION D): 제한시간 동안 깎은 비율 — 추천 배너가 정량 게이지로 보여준다
           setWallInfo({ ratio: Math.max(0.02, Math.min(0.99, 1 - hpRef.current / Math.max(1, monsterHp(saveRef.current.stage, true)))), stage: saveRef.current.stage });
           setBossReady(true);
@@ -1778,6 +1810,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const ids = characterRef.current.partyIds.filter((pid) => (saveRef.current.heroes[pid as TitanHeroId] ?? 0) > 0);
         const target = ids[Math.floor(Math.random() * ids.length)];
         if (target) setAllyHit((prev) => ({ ...prev, [target]: (prev[target] ?? 0) + 1 }));
+        // 실제 피해 (2026-10-27, titans/bossPressure) — 대장은 원정대 체력을 깎고(0 이면 실패), 일반 몬스터는 숫자만
+        const stageNow = saveRef.current.stage;
+        const label = partyMaxHpLabel(stageNow);
+        if (bossRef.current && !partyDownRef.current) {
+          const T = Math.max(1, bossTimeRef.current);
+          const left = bossLeftRef.current;
+          const gap = Math.max(0.3, Math.min(4, lastBossHitLeftRef.current - left));
+          lastBossHitLeftRef.current = left;
+          const hpMax = Math.max(1, monsterHp(stageNow, true));
+          const role = partyRoleEffects(characterRef.current.partyIds);
+          const frac = bossHitFraction(stageNow, role.tanks, role.healers, bossPace(hpRef.current / hpMax, 1 - left / T), T, gap);
+          partyHpRef.current = Math.max(0, partyHpRef.current - frac);
+          setPartyHp(partyHpRef.current);
+          if (target) setPartyDmg({ id: target, text: `-${Math.max(1, Math.round(frac * label)).toLocaleString()}`, key: performance.now(), boss: true });
+          if (partyHpRef.current <= 0) { partyDownRef.current = true; bossLeftRef.current = 0; }
+        } else if (target) {
+          setPartyDmg({ id: target, text: `-${Math.max(1, Math.round(label * (0.02 + Math.random() * 0.02))).toLocaleString()}`, key: performance.now(), boss: false });
+        }
       }, prep + 70);
       later(() => setMonsterAction("idle"), prep + 540);
       return prep + 540;
@@ -1801,7 +1851,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         if (Math.random() < temper.combo) { const at = busy + 140; later(() => strike(200), at); busy = at + 740; }
       }
       // 다음 공격까지 — 기질 속도 × 0.55~1.25 무작위 (배속이면 조인다). 화면 연출만이라 밸런스와 무관
-      const gap = ((boss ? 1800 : 2300) * temper.pace * (0.55 + Math.random() * 0.7)) / save.battleSpeed;
+      const gap = ((boss ? BOSS_ATTACK_GAP_MS : MOB_ATTACK_GAP_MS) * temper.pace * (0.55 + Math.random() * 0.7)) / save.battleSpeed;   // 2026-10-27: 1.8 · 2.3초 → 1.1 · 1.5초 ("너무 공격을 안 해")
       later(cycle, Math.max(busy + 200, gap));
     };
     // 첫 덤빔은 자리 잡자마자(0.25~0.6초) — 예전 1.4초는 일반 몬스터가 쓰러진 뒤라 "가만히 있다"로 보였다 (2026-10-16)
@@ -2178,7 +2228,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     );
     setCharacter(next);
     const name = HEROES.find((h) => h.id === id)?.name ?? "동료";
-    flash(`${name} ${hours}시간 파견 출발`);
+    setExpeditionSendPop((prev) => ({ allyId: id, hours, seq: (prev?.seq ?? 0) + 1 }));
     const slot = next.expeditions.findIndex((e) => e.allyId === id);
     if (slot >= 0) {
       void scheduleLocalNotification(
@@ -3148,6 +3198,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               walkRate={encounterMotion.durationMs / 1250}
             />
           ))}
+          {/* 맞은 동료 위 피해 숫자 (2026-10-27, titans/bossPressure) — 대장은 붉게 크게 */}
+          {partyDmg && <b key={partyDmg.key} className={`party-dmg-float ${partyDmg.boss ? "boss" : ""}`} style={{ "--slot": Math.max(0, allies.findIndex((h) => h.id === partyDmg.id)) } as CSSProperties}>{partyDmg.text}</b>}
         </div>
 
         {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
@@ -3265,12 +3317,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </span>
         </div>
 
-        {boss && (
+        {boss && (<>
+          <div className={`titans-party-hp ${partyHp < 0.3 ? "low" : ""}`} role="meter" aria-label="원정대 체력" aria-valuenow={Math.round(partyHp * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <i><em style={{ width: `${partyHp * 100}%` }} /></i>
+            <small>원정대 {Math.round(partyHp * partyMaxHpLabel(save.stage)).toLocaleString()}</small>
+          </div>
           <div className="titans-boss-timer">
             BOSS {bossLeft.toFixed(1)}s
             <i style={{ width: `${(bossLeft / bossTimeSec) * 100}%` }} />
           </div>
-        )}
+        </>)}
 
         {bossReady && !boss && battlePhase === "combat" && (
           <button
@@ -4528,6 +4584,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       )}
 
       {/* 확률 공시 — 게임산업법 확률형 아이템 표시. 풀·등급·동료별 확률·천장·보장 규칙 */}
+      {expeditionSendPop && (
+        <div key={expeditionSendPop.seq} className="expedition-send-pop" role="status" aria-live="polite" onClick={() => setExpeditionSendPop(null)}>
+          <div className="expedition-send-card">
+            <div className="expedition-send-road" aria-hidden="true">
+              <span className="expedition-send-walker"><AllyArt id={expeditionSendPop.allyId} skin={character.equippedAllySkins[expeditionSendPop.allyId]} /></span>
+              <i className="expedition-send-dust" />
+            </div>
+            <b>{HEROES.find((h) => h.id === expeditionSendPop.allyId)?.name ?? "동료"} 파견 출발!</b>
+            <small>{expeditionSendPop.hours}시간 뒤 조각 · 강화석을 들고 돌아와요</small>
+          </div>
+        </div>
+      )}
       {relicDrawResult && (
         <div className="relic-draw-modal" role="dialog" aria-modal="true" aria-label="유물 뽑기 결과" onClick={() => setRelicDrawResult(null)}>
           <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
