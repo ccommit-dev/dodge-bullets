@@ -1041,3 +1041,30 @@
 .relic-stars-row { font-style: normal; font-size: 13px; letter-spacing: -1px; color: #e0a10a; }
 .relic-stars-row em { font-style: normal; color: rgba(59, 36, 21, .3); }
 .relic-state.is-off .relic-stars-row em { color: rgba(255, 243, 208, .35); }
+
+/* ── A: 상점 유물 뽑기 — 등급 · 재화별 카드 (2026-10-27, "재화 UI 처럼 · 일반 레어 유니크 재화별 분리") ── */
+.titans-shop .relic-tier-shop { display: grid; gap: 10px; }
+.titans-shop .relic-tier-intro { margin: 0; font-size: 13px; font-weight: 800; color: #5e4229; }
+.titans-shop .relic-tier-shop .relic-tier-card { display: grid !important; grid-template-columns: 72px minmax(0, 1fr) !important; align-items: center; gap: 6px 10px; min-height: 0 !important; padding: 10px !important; border: 2px solid #3b2415 !important; border-radius: 16px !important; color: #3b2415 !important; }
+.titans-shop .relic-tier-shop .relic-tier-card.tier-common { background: linear-gradient(180deg, #fff6d8, #fff8e6) !important; }
+.titans-shop .relic-tier-shop .relic-tier-card.tier-rare { background: linear-gradient(180deg, #dbeafe, #fff8e6) !important; }
+.titans-shop .relic-tier-shop .relic-tier-card.tier-unique { background: linear-gradient(180deg, #f3e8ff, #fff8e6) !important; box-shadow: 0 0 0 2px rgba(168, 85, 247, .35), 0 3px 0 rgba(59, 36, 21, .25) !important; }
+.relic-tier-icons { position: relative; display: block; width: 72px; height: 60px; }
+.relic-tier-icons img { position: absolute; width: 40px; height: 40px; object-fit: contain; filter: grayscale(.6) opacity(.8); }
+.relic-tier-icons img.owned { filter: none; }
+.relic-tier-icons img:nth-child(1) { left: 0; top: 0; }
+.relic-tier-icons img:nth-child(2) { left: 30px; top: 6px; }
+.relic-tier-icons img:nth-child(3) { left: 14px; top: 22px; }
+.titans-shop .relic-tier-card > div { min-width: 0; }
+.titans-shop .relic-tier-card > div strong { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 900; color: #2b1a0d !important; }
+.titans-shop .relic-tier-card > div strong em { padding: 0 7px; border-radius: 999px; background: #3b2415; color: #ffe066 !important; font-style: normal; font-size: 13px; font-weight: 900; }
+.titans-shop .relic-tier-card > div p { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: #5e4229 !important; }
+.relic-tier-buy { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.titans-shop .relic-tier-buy button { display: grid; justify-items: center; gap: 0; min-height: 46px; padding: 4px 6px; border: 2px solid #3b2415; border-radius: 12px; background: linear-gradient(180deg, #ffd34d, #f2a516); color: #3b2415; box-shadow: 0 3px 0 rgba(59, 36, 21, .35); cursor: pointer; }
+.titans-shop .relic-tier-buy button b { font-size: 15px; font-weight: 900; color: #3b2415 !important; }
+.titans-shop .relic-tier-buy button small { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 900; color: #3b2415 !important; }
+.titans-shop .relic-tier-buy button small .currency-icon, .relic-cost-stone { width: 15px; height: 15px; flex: 0 0 15px; object-fit: contain; filter: none; }
+.titans-shop .relic-tier-buy button:disabled { background: #e8dcc4; box-shadow: none; opacity: 1; }
+.titans-shop .relic-tier-buy button:disabled b, .titans-shop .relic-tier-buy button:disabled small { color: #7a5a3a !important; }
+.relic-tab-family .quest-pay { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.relic-tab-family .quest-bar > em { flex: none; }
