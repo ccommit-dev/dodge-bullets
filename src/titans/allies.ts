@@ -7,8 +7,13 @@
  * - 결제: 동료 "획득"은 과금 가능하지만 "성급"은 조각 파밍으로만 — 확정 구매 원칙
  */
 import { HEROES, RETIRED_ALLY_IDS, type TitanHeroId } from "./model";
+import { NEW_ALLIES, NEW_ALLY_IDS, type Tier } from "./allyRoster";
+import { TIER_COLOR, TIER_LABEL } from "./summonLevel";
 
-export type AllyRarity = "R" | "SR" | "SSR";
+const fromNew = <V,>(f: (d: (typeof NEW_ALLIES)[number]) => V) => Object.fromEntries(NEW_ALLIES.map((d) => [d.id, f(d)])) as Record<(typeof NEW_ALLY_IDS)[number], V>;
+
+/** 6등급 (2026-10-27) — N 일반 · R 희귀 · SR 영웅 · SSR 전설 · UR 신화 · LR 초월. 기존 R · SR · SSR 키는 그대로(저장 · CSS rarity-ssr) */
+export type AllyRarity = Tier;
 
 export const ALLY_RARITY: Record<TitanHeroId, AllyRarity> = {
   mia: "R",
@@ -23,13 +28,14 @@ export const ALLY_RARITY: Record<TitanHeroId, AllyRarity> = {
   sera_light: "SSR",
   pyro:"R", marina:"SR", terra:"SR", zephyr:"SR", bronn:"SSR",
   iris:"SSR", cain:"SSR", sylph:"SSR", orion:"SSR", ember:"SSR",
+  ...fromNew((d) => d.tier),
 };
 
-export const RARITY_LABEL: Record<AllyRarity, string> = { R: "희귀", SR: "영웅", SSR: "전설" };
-export const RARITY_COLOR: Record<AllyRarity, string> = { R: "#7dd3fc", SR: "#c4b5fd", SSR: "#fcd34d" };
+export const RARITY_LABEL: Record<AllyRarity, string> = TIER_LABEL;
+export const RARITY_COLOR: Record<AllyRarity, string> = TIER_COLOR;
 
-/** 등급별 성급 상한 — R ★3 / SR ★4 / SSR ★5 */
-export const STAR_CAP: Record<AllyRarity, number> = { R: 3, SR: 4, SSR: 5 };
+/** 등급별 성급 상한 — N · R ★3 / SR ★4 / SSR · UR · LR ★5 */
+export const STAR_CAP: Record<AllyRarity, number> = { N: 3, R: 3, SR: 4, SSR: 5, UR: 5, LR: 5 };
 
 /** 성급 DPS 배율 (index = 성급). ★0은 미보유. */
 export const STAR_MULT = [0, 1, 1.6, 2.6, 4.2, 7] as const;
@@ -68,7 +74,7 @@ export function emptyAllyRecord(): Record<TitanHeroId, number> {
 }
 
 /** 전체 id (은퇴 포함) — 저장 이관용 */
-export const ALL_ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember", "luna", "volt", "mia_dark", "sera_light"];
+export const ALL_ALLY_IDS: TitanHeroId[] = ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "terra", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember", "luna", "volt", "mia_dark", "sera_light", ...NEW_ALLY_IDS];
 /** 로스터 — 은퇴 동료(model.RETIRED_ALLY_IDS)를 뺀 13명 */
 export const ALLY_IDS: TitanHeroId[] = ALL_ALLY_IDS.filter((id) => !RETIRED_ALLY_IDS.includes(id));
 export { RETIRED_ALLY_IDS };
@@ -91,6 +97,7 @@ export const ALLY_ROLE: Record<TitanHeroId, AllyRole> = {
   sera_light: "healer",
   pyro:"melee", marina:"healer", terra:"tank", zephyr:"ranged", bronn:"tank",
   iris:"ranged", cain:"melee", sylph:"healer", orion:"ranged", ember:"ranged",
+  ...fromNew((d) => d.role),
 };
 
 export const ROLE_LABEL: Record<AllyRole, string> = { melee: "근딜", ranged: "원딜", tank: "탱커", healer: "힐러" };
@@ -99,6 +106,7 @@ export const ALLY_ELEMENT: Record<TitanHeroId, AllyElement> = {
   nox:"wind", luna:"earth", volt:"fire", mia_dark:"water", sera_light:"water",
   pyro:"fire", marina:"water", terra:"earth", zephyr:"wind", bronn:"fire",
   iris:"water", cain:"wind", sylph:"wind", orion:"earth", ember:"fire",
+  ...fromNew((d) => d.element),
 };
 export const ELEMENT_LABEL: Record<AllyElement, string> = { fire:"불", water:"물", earth:"흙", wind:"바람" };
 
@@ -192,12 +200,12 @@ export function expeditionReward(
   stars: number,
   hours: number,
 ): { shards: number; materials: number; gems: number } {
-  const rarityMult = { R: 1, SR: 1.5, SSR: 2 }[ALLY_RARITY[allyId]];
+  const rarityMult = { N: 0.75, R: 1, SR: 1.5, SSR: 2, UR: 2.5, LR: 3 }[ALLY_RARITY[allyId]];
   const starMult = 1 + Math.max(0, stars - 1) * 0.25;
   return {
     shards: Math.max(1, Math.round((hours / 4) * rarityMult * starMult)),
     materials: Math.max(1, Math.round((hours / 2) * starMult)),
-    gems: ALLY_RARITY[allyId] === "SSR" && hours >= 12 ? 5 : 0,
+    gems: (ALLY_RARITY[allyId] === "SSR" || ALLY_RARITY[allyId] === "UR" || ALLY_RARITY[allyId] === "LR") && hours >= 12 ? 5 : 0,
   };
 }
 

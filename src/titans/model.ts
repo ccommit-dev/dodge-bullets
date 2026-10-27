@@ -1,4 +1,5 @@
 import { emptyHuntMods, type HuntMods } from "./huntPerks";
+import { NEW_ALLIES, newAllyBaseCost, newAllyBaseDps, type NewAllyId } from "./allyRoster";
 import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
 import { emptyQuests, normalizeQuests, type QuestState } from "./quests";
 import { assetUrl } from "../asset";
@@ -17,7 +18,9 @@ export type TitanHeroId =
   | "mia_dark"
   | "sera_light"
   | "pyro" | "marina" | "terra" | "zephyr" | "bronn"
-  | "iris" | "cain" | "sylph" | "orion" | "ember";
+  | "iris" | "cain" | "sylph" | "orion" | "ember"
+  // 동료 3배 (2026-10-27) — 새 40명은 titans/allyRoster.ts
+  | NewAllyId;
 
 export type TitanSkillId =
   | "strike" | "crit" | "clone" | "warcry" | "steel"
@@ -250,6 +253,12 @@ export const ALL_HEROES: TitanHeroDef[] = [
   { id:"orion", name:"성창 오리온", role:"보스 전문", unlockStage:30, baseCost:1_150_000, baseDps:75_000, hue:225, feature:"성창 — 보스에게 피해 +15%", attackType:"성창 투척", attackInterval:1.05 },
   { id:"ember", name:"불사조 엠버", role:"전설 광역 딜러", unlockStage:48, baseCost:2_800_000, baseDps:210_000, hue:350, feature:"전장을 태우는 불사조 폭발", attackType:"불사조 강하", attackInterval:1.3 },
 ];
+
+// 동료 3배 (2026-10-27) — 새 40명. 열리는 층 · 힘은 allyRoster(기존 동료의 층별 곡선 × 등급 배율)
+ALL_HEROES.push(...NEW_ALLIES.map((d): TitanHeroDef => ({
+  id: d.id, name: d.name, role: d.feature, unlockStage: d.stage, baseCost: newAllyBaseCost(d), baseDps: newAllyBaseDps(d),
+  hue: d.hue, feature: d.feature, attackType: d.attackType, attackInterval: d.attackInterval,
+})));
 
 /** 로스터 — 은퇴 동료를 뺀 것 */
 export const HEROES: TitanHeroDef[] = ALL_HEROES.filter((h) => !RETIRED_ALLY_IDS.includes(h.id));

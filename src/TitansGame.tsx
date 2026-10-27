@@ -80,6 +80,8 @@ import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { QuestPanel } from "./titans/QuestPanel";
 import { RelicTabPanel } from "./titans/RelicTabPanel";
+import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK, tierRates } from "./titans/summonLevel";
+import type { Tier as AllyRarity } from "./titans/allyRoster";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
@@ -337,7 +339,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 연출 카드 설명 (2026-10-14): 탭/마우스 오버한 카드 — 등급 설명·역할·특성·능력치 */
   const [gachaFocus, setGachaFocus] = useState<number | null>(null);
   /** 소환진 사전 연출 (계획안 E) — 1.2초 뒤 gachaReveal로 넘어간다 */
-  const [gachaSummoning, setGachaSummoning] = useState<{ tier: "R" | "SR" | "SSR"; count: number } | null>(null);
+  const [gachaSummoning, setGachaSummoning] = useState<{ tier: AllyRarity; count: number } | null>(null);
   const [showGachaRates, setShowGachaRates] = useState(false);
   /** 상점 유물 뽑기 결과 (titans/relics drawRelicShards, 2026-10-26) — 나온 조각 차례 */
   const [relicDrawResult, setRelicDrawResult] = useState<RelicId[] | null>(null);
@@ -2097,10 +2099,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setAllyPulse((prev) => { const out = { ...prev }; for (const id of newIds) out[id] = (out[id] ?? 0) + 1; return out; });
     }
     // 사전 연출 (계획안 E): 소환진 1.2s — 색은 최종 최고 등급을 예고하되 30%는 한 단계 위로 페이크
-    const order = ["R", "SR", "SSR"] as const;
-    const best = pulled.results.map((r) => r.rarity).sort((a, b) => order.indexOf(b) - order.indexOf(a))[0] ?? "R";
-    const fake = best !== "SSR" && Math.random() < 0.3;
-    const tease = fake ? order[Math.min(2, order.indexOf(best) + 1)] : best;
+    // 6등급 (2026-10-27) — 소환진 색은 최고 등급을 예고하되 30%는 한 단계 위로 페이크(초월은 페이크 없음)
+    const order = TIERS;
+    const best = pulled.results.map((r) => r.rarity).sort((a, b) => TIER_RANK[b] - TIER_RANK[a])[0] ?? "R";
+    const fake = best !== "LR" && Math.random() < 0.3;
+    const tease = fake ? order[Math.min(order.length - 1, TIER_RANK[best] + 1)] : best;
     setGachaSummoning({ tier: tease, count });
     window.setTimeout(() => {
       setGachaSummoning(null);
@@ -2762,7 +2765,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       boots: Math.max(bootsTierOf(character.towerBestFloor), pt("boots")),
     };
   }, [save.equipmentTraining, character.gearEnhance, character.dodgeBestStage, character.towerBestFloor]);
-  const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea), [save.stage, character.pioneeredArea]);
+  // 뽑기 레벨(누적 뽑기 수)이 등급 확률을 정한다 (2026-10-27 · titans/summonLevel.ts)
+  const summonLv = summonLevel(character.gachaPulls);
+  const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea, Date.now(), summonLv), [save.stage, character.pioneeredArea, summonLv]);
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
   useEffect(() => {
     if (tab !== "gacha" || gacha.rotationPool <= 2) return;
@@ -3680,7 +3685,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           // 파견 전용 화면 (2026-10-26 사용자: "파견 콘텐츠 수정") — 예전엔 허브 카드가 동료 도감으로만 보내고 보내기 단추는 접힌 동료 카드 안에 숨어 있었다.
           // 위: 자리 2칸(남은 시간 · 진행 막대 · 들고 올 것) · 가운데: 귀환 수령 · 아래: 보낼 수 있는 벤치 동료와 시간별 보상
           const leftText = (ms: number) => { const min = Math.ceil(ms / 60000); return min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`; };
-          const rarityRank = { SSR: 0, SR: 1, R: 2 } as const;
+          const rarityRank = { LR: 0, UR: 1, SSR: 2, SR: 3, R: 4, N: 5 } as const;
           const bench = HEROES.filter((h) => save.heroes[h.id] > 0 && !character.partyIds.includes(h.id) && !character.expeditions.some((e) => e.allyId === h.id))
             .sort((a, b) => rarityRank[ALLY_RARITY[a.id]] - rarityRank[ALLY_RARITY[b.id]]);
           const full = character.expeditions.length >= EXPEDITION_MAX;
@@ -3859,7 +3864,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <div className="gacha-level">
               <b>천장 {Math.min(GACHA.pityLimit, character.gachaPity)}/{GACHA.pityLimit}</b>
               <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
-              <span>{gacha.entries.some((e) => e.rarity === "SSR") ? "전설" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
+              <span>{gacha.entries.some((e) => TIER_RANK[e.rarity] >= TIER_RANK.SSR) ? "전설 이상" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
             </div>
             {momentOfferCard}
             <div className="gacha-page-actions">
@@ -3901,6 +3906,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   <strong>
                     <em className="rarity-tag" style={{ color: RARITY_COLOR[rarity] }}>{rarity}</em>
                     <em className="role-tag">{ROLE_LABEL[ALLY_ROLE[h.id]]}</em>
+            {(() => {
+              const sp = summonLevelProgress(character.gachaPulls);
+              const next = sp.to !== null ? tierRates(sp.level + 1) : null;
+              return (
+                <>
+                  <div className="gacha-level summon-level">
+                    <b>뽑기 Lv.{sp.level}</b>
+                    <i><em style={{ width: `${sp.to === null ? 100 : Math.min(100, ((character.gachaPulls - sp.from) / (sp.to - sp.from)) * 100)}%` }} /></i>
+                    <span>{sp.to === null ? "최고 레벨" : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 ${(next!.SSR * 100).toFixed(1)}%`}</span>
+                  </div>
+                  <ul className="summon-tier-rates" aria-label="지금 등급 확률">
+                    {TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{gacha.bandRate[t] > 0 ? `${(gacha.bandRate[t] * 100).toFixed(gacha.bandRate[t] < 0.01 ? 2 : 1)}%` : "—"}</small></li>)}
+                  </ul>
+                </>
+              );
+            })()}
                     <em className={`role-tag element-${ALLY_ELEMENT[h.id]}`}>{ELEMENT_LABEL[ALLY_ELEMENT[h.id]]}</em>
                     {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
                   </strong>
@@ -4475,7 +4496,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               if (!r || !h) return <p className="gacha-detail gacha-detail-hint">카드를 누르면 등급·역할·특성 설명이 보입니다</p>;
               const feat = ALLY_FEATURES[r.id as keyof typeof ALLY_FEATURES];
               const dupe = GACHA.dupeShards[r.rarity];
-              const expMul = { R: 1, SR: 1.5, SSR: 2 }[r.rarity];
+              const expMul = { N: 0.75, R: 1, SR: 1.5, SSR: 2, UR: 2.5, LR: 3 }[r.rarity];
               return (
                 <div className={`gacha-detail rarity-${r.rarity.toLowerCase()}`} onClick={(e) => e.stopPropagation()}>
                   <b><em style={{ color: RARITY_COLOR[r.rarity] }}>{RARITY_LABEL[r.rarity]} {r.rarity}</em> {h.name}</b>
@@ -4533,10 +4554,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <div className="gacha-rates-sheet" onClick={(e) => e.stopPropagation()}>
             <strong>동료 소환 확률 공시</strong>
             <p>
-              등급 확률 R {(gacha.bandRate.R * 100).toFixed(0)}% · SR {(gacha.bandRate.SR * 100).toFixed(0)}% · SSR {(gacha.bandRate.SSR * 100).toFixed(0)}%
+              뽑기 Lv.{summonLv}(누적 {character.gachaPulls}회) 등급 확률 {TIERS.map((t) => `${TIER_LABEL[t]} ${(gacha.bandRate[t] * 100).toFixed(2)}%`).join(" · ")}
               <br />풀 = STAGE {save.stage} 이하로 만난 동료 + 픽업 {gacha.pickups.length}명(같은 등급 내 2배) · 상점 전용 동료 제외
-              <br />천장: SSR 없이 {GACHA.pityLimit}회째 소환은 SSR 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 10연: SR 이상 1명 보장
-              <br />중복: 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 누적 소환 {character.gachaPulls}회
+              <br />천장: 전설 이상 없이 {GACHA.pityLimit}회째 소환은 전설 이상 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 10연: SR 이상 1명 보장
+              <br />중복: 조각 {TIERS.map((t) => `${TIER_LABEL[t]} ${GACHA.dupeShards[t]}`).join(" / ")} · 누적 소환 {character.gachaPulls}회 · 뽑기 레벨은 누적 {SUMMON_LEVEL_PULLS.join(" · ")}회에 오른다
             </p>
             <table>
               <thead><tr><th>동료</th><th>등급</th><th>확률</th></tr></thead>
@@ -4544,7 +4565,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 {rateTable(gacha).map((row) => (
                   <tr key={row.id}>
                     <td>{HEROES.find((h) => h.id === row.id)?.name}{row.pickup ? " (픽업)" : ""}</td>
-                    <td style={{ color: RARITY_COLOR[row.rarity] }}>{row.rarity}</td>
+                    <td style={{ color: RARITY_COLOR[row.rarity] }}>{TIER_LABEL[row.rarity]}</td>
                     <td>{row.percent}%</td>
                   </tr>
                 ))}

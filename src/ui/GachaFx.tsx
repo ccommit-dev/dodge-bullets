@@ -8,14 +8,18 @@ import { useEffect, useRef } from "react";
  *   reveal : 번쩍(화면 꽃빛) → 충격파 고리 → 폭죽(아래에서 쏘아 올려 터지고 · 중력 · 꼬리 · 반짝임). SSR 은 금빛 버들 폭죽·무지개
  * 등급색 R 하늘 · SR 보라·분홍 · SSR 금+무지개, 폭죽 수 R 3 · SR 6 · SSR 11. 정해진 시간 뒤 멈춘다(배터리). 움직임 줄이기면 빛 한 번만.
  */
-type Tier = "R" | "SR" | "SSR";
+// 6등급 (2026-10-27, "레벨에 따라 리소스 · 스킬 애니메이션도 현질 유도하게 화려하게") — 신화 진홍+금 · 초월 무지개+청록, 폭죽 16 · 22
+type Tier = "N" | "R" | "SR" | "SSR" | "UR" | "LR";
 const PALETTE: Record<Tier, string[]> = {
+  N: ["#e2e8f0", "#cbd5e1", "#f8fafc"],
   R: ["#7dd3fc", "#38bdf8", "#e0f2fe", "#a5f3fc"],
   SR: ["#c084fc", "#f0abfc", "#a78bfa", "#fbcfe8", "#e9d5ff"],
   SSR: ["#fde047", "#facc15", "#fb923c", "#f472b6", "#60a5fa", "#4ade80", "#fff7ae"],
+  UR: ["#fb7185", "#f43f5e", "#fde047", "#fbbf24", "#fff1f2", "#fecdd3"],
+  LR: ["#5eead4", "#22d3ee", "#a78bfa", "#f0abfc", "#fde047", "#4ade80", "#ffffff", "#60a5fa", "#fb7185"],
 };
-const CORE: Record<Tier, string> = { R: "#38bdf8", SR: "#a855f7", SSR: "#fbbf24" };
-const ROCKETS: Record<Tier, number> = { R: 3, SR: 6, SSR: 11 };
+const CORE: Record<Tier, string> = { N: "#94a3b8", R: "#38bdf8", SR: "#a855f7", SSR: "#fbbf24", UR: "#f43f5e", LR: "#2dd4bf" };
+const ROCKETS: Record<Tier, number> = { N: 2, R: 3, SR: 6, SSR: 11, UR: 16, LR: 22 };
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; c: string; s: number; drag: number; g: number; tw: number; px: number; py: number };
 type Rocket = { x: number; y: number; vx: number; vy: number; ty: number; c: string; at: number; big: boolean; willow: boolean };
@@ -42,10 +46,11 @@ export function GachaFx({ tier, phase }: { tier: Tier; phase: "summon" | "reveal
     const pick = () => pal[(Math.random() * pal.length) | 0];
     const sparks: Spark[] = [], rockets: Rocket[] = [], lights: Light[] = [], rings: Ring[] = [];
     const cx = () => W / 2, cy = () => H * (phase === "summon" ? 0.5 : 0.42);
-    const END = reduce ? 0.6 : phase === "summon" ? 1.35 : tier === "SSR" ? 6 : 4.5;
+    const top = tier === "SSR" || tier === "UR" || tier === "LR";
+    const END = reduce ? 0.6 : phase === "summon" ? 1.35 : tier === "LR" ? 8 : tier === "UR" ? 7 : top ? 6 : 4.5;
 
     // 소환: 빛 알갱이 — 각도·반지름·각속도
-    const motes = phase === "summon" ? Array.from({ length: tier === "SSR" ? 120 : tier === "SR" ? 90 : 64 }, () => ({ a: Math.random() * Math.PI * 2, r0: 0.45 + Math.random() * 0.35, w: 1.6 + Math.random() * 1.8, c: pick(), s: 1.2 + Math.random() * 2.2, d: Math.random() * 0.35 })) : [];
+    const motes = phase === "summon" ? Array.from({ length: tier === "LR" ? 200 : tier === "UR" ? 160 : tier === "SSR" ? 120 : tier === "SR" ? 90 : 64 }, () => ({ a: Math.random() * Math.PI * 2, r0: 0.45 + Math.random() * 0.35, w: 1.6 + Math.random() * 1.8, c: pick(), s: 1.2 + Math.random() * 2.2, d: Math.random() * 0.35 })) : [];
 
     const burst = (x: number, y: number, c: string, big: boolean, willow: boolean) => {
       const n = (big ? 110 : 70) + ((Math.random() * 20) | 0);
@@ -54,7 +59,7 @@ export function GachaFx({ tier, phase }: { tier: Tier; phase: "summon" | "reveal
         const a = (k / n) * Math.PI * 2 + Math.random() * 0.12;
         const v = sp * (0.35 + Math.random() * 0.65);
         const col = Math.random() < 0.7 ? c : pick();
-        sparks.push({ x, y, px: x, py: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: willow ? 1.9 + Math.random() * 0.6 : 0.9 + Math.random() * 0.6, c: willow ? "#fde68a" : col, s: willow ? 1.6 : 1.4 + Math.random() * 1.4, drag: willow ? 1.6 : 2.4, g: willow ? 150 : 95, tw: Math.random() < (tier === "SSR" ? 0.45 : 0.25) ? 8 + Math.random() * 10 : 0 });
+        sparks.push({ x, y, px: x, py: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: willow ? 1.9 + Math.random() * 0.6 : 0.9 + Math.random() * 0.6, c: willow ? "#fde68a" : col, s: willow ? 1.6 : 1.4 + Math.random() * 1.4, drag: willow ? 1.6 : 2.4, g: willow ? 150 : 95, tw: Math.random() < (top ? 0.45 : 0.25) ? 8 + Math.random() * 10 : 0 });
       }
       lights.push({ x, y, r: Math.min(W, H) * (big ? 0.85 : 0.6), life: 0, max: 0.75, c, a: big ? 0.5 : 0.36 });
       rings.push({ x, y, life: 0, max: 0.45, c, r: big ? 120 : 80 });
@@ -69,7 +74,7 @@ export function GachaFx({ tier, phase }: { tier: Tier; phase: "summon" | "reveal
         const n = ROCKETS[tier];
         for (let k = 0; k < n; k += 1) {
           const x = W * (0.12 + ((k * 0.618) % 1) * 0.76);
-          rockets.push({ x, y: H + 10, vx: (Math.random() - 0.5) * 40, vy: -(H * 0.95 + Math.random() * H * 0.25), ty: H * (0.1 + Math.random() * 0.32), c: pick(), at: 0.12 + k * (tier === "SSR" ? 0.42 : 0.5) + Math.random() * 0.15, big: tier === "SSR" ? k % 2 === 0 : k % 3 === 0, willow: tier === "SSR" && k % 4 === 1 });
+          rockets.push({ x, y: H + 10, vx: (Math.random() - 0.5) * 40, vy: -(H * 0.95 + Math.random() * H * 0.25), ty: H * (0.1 + Math.random() * 0.32), c: pick(), at: 0.12 + k * (tier === "LR" ? 0.28 : tier === "UR" ? 0.34 : top ? 0.42 : 0.5) + Math.random() * 0.15, big: top ? k % 2 === 0 : k % 3 === 0, willow: top && k % 4 === 1 });
         }
       }
     }

@@ -9,6 +9,7 @@
  */
 import type { TitanHeroId } from "./model";
 import { ALLY_ROLE, type AllyRole } from "./allies";
+import { NEW_ALLIES } from "./allyRoster";
 
 export type SigFx = "slash" | "arrow" | "bolt" | "quake" | "halo";
 export type AllySignature = { move: string; fx: SigFx; every: number; mul: number; desc: string };
@@ -38,7 +39,9 @@ const RAW: Record<TitanHeroId, { move: string; desc: string; fx?: SigFx; every?:
   sylph: { move: "정령 질풍", desc: "바람 정령이 파티의 기술을 재촉한다" },
   orion: { move: "성창 낙하", desc: "하늘에서 성창이 떨어진다 — 보스 특화", fx: "bolt" },
   ember: { move: "불사조 강하", desc: "불사조가 내려꽂혀 전장을 태운다", fx: "bolt", every: 3, mul: 1.6 },
-};
+  // 동료 3배 (2026-10-27) — 느린 중량형(1.3초 이상)은 3타마다 ×1.6, 빠른 연타형(0.85초 안쪽)은 5타마다 ×2.4
+  ...Object.fromEntries(NEW_ALLIES.map((d) => [d.id, { move: d.move, desc: d.desc, fx: d.fx, ...(d.attackInterval >= 1.3 ? { every: 3, mul: 1.6 } : d.attackInterval <= 0.85 ? { every: 5, mul: 2.4 } : {}) }])),
+} as Record<TitanHeroId, { move: string; desc: string; fx?: SigFx; every?: number; mul?: number }>;
 
 export const SIGNATURE_EVERY = 4;
 export const SIGNATURE_MUL = 1.9;

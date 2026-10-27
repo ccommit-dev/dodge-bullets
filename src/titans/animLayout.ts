@@ -99,7 +99,7 @@ export const ANIM_LAYOUT = {
     }
   }
 } as const;
-export const ALLY_ANIM_SET: readonly string[] = ["ari","ari-blaze","bronn","bronn-iron","ember","ember-ruby","garen","garen-magma","leon","leon-frost","luna","luna-eclipse","marina","mia","nox","nox-abyss","orion","orion-nova","pyro","season-1","season-2","sera","volt"];
+export const ALLY_ANIM_SET: readonly string[] = ["abyss","anvil","ari","ari-blaze","ash","aurora","birch","blaze","bobo","bronn","bronn-iron","brook","celes","cinder","coral","dodo","ember","ember-ruby","flint","frost","gaia","gale","garen","garen-magma","gugu","haha","hawk","inferno","kiki","leon","leon-frost","leviathan","lulu","luna","luna-eclipse","marina","mia","momo","moss","nana","nox","nox-abyss","orion","orion-nova","pebble","phoenix","pipi","pyro","rara","reed","sage","season-1","season-2","sera","sisi","solar","storm","tempest","tide","titan","toto","volt","willow"];
 export const MONSTER_ANIM_SET: readonly string[] = ["abyss-titan","ancient-treant","armored-ogre","bone-dragon","dragon","fire-demon","flame-wyvern-clean","frost-wolf","goblin","goblin-shaman","goblin-warlord","golden-lion-clean","hellhound","lava-drake","magma-golem","magma-imp","minotaur","moon-wolf-king-clean","moss-golem-clean","ogre","ruin-sentinel","shadow-wolf-clean","skeleton-goblin","slime","spider-queen","stone-troll","storm-drake","thorn-boar-king","void-imp","void-lich","wolf-king-clean"];
 export const HERO_ANIM_READY = true;
 /** 큰 칸(576²) 대장 시트가 있는 종 → 원래 원화(PNG)에서 몸이 차지한 세로 비율(그 화면 크기를 지키려고) */

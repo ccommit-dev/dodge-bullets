@@ -83,22 +83,26 @@ ok("캐릭터 진행에 이벤트 코인(기본 0 · 정규화)", P.emptyCharact
 
 // ── 5'. 첫 10연 최고 등급 확정 · 깜짝 선물 ──
 const pool = G.gachaPool(40, 6);
-const top = pool.entries.some((e) => e.rarity === "SSR") ? "SSR" : "SR";
+// 2026-10-27 6등급 — 첫 10연 보장은 "전설 이상"(전설 · 신화 · 초월)
+const isTop = (r) => r === "SSR" || r === "UR" || r === "LR";
+const top = "전설 이상";
 let firstOk = 0, plainMiss = 0;
 for (let i = 0; i < 300; i += 1) {
-  if (G.pullTen(pool, {}, 0, Math.random, true).results.some((r) => r.rarity === top)) firstOk += 1;
-  if (!G.pullTen(pool, {}, 0, Math.random, false).results.some((r) => r.rarity === top)) plainMiss += 1;
+  if (G.pullTen(pool, {}, 0, Math.random, true).results.some((r) => isTop(r.rarity))) firstOk += 1;
+  if (!G.pullTen(pool, {}, 0, Math.random, false).results.some((r) => isTop(r.rarity))) plainMiss += 1;
 }
 ok(`첫 10연은 늘 최고 등급(${top}) 1명 이상 · 보통 10연은 아닐 때가 있다`, firstOk === 300 && plainMiss > 0, `확정 ${firstOk}/300 · 보통 빗나감 ${plainMiss}`);
 const early = G.gachaPool(2, 1);
 let earlyOk = 0;
 for (let i = 0; i < 200; i += 1) { const r = G.pullTen(early, {}, 0, Math.random, true, G.FIRST_TEN_SSR).results; if (r.some((x) => x.rarity === "SSR" && x.fieldPass === true && x.id === G.FIRST_TEN_SSR)) earlyOk += 1; }
-ok("초반 풀(전설 없음)에서도 첫 10연은 전설(가장 먼저 열리는 전설) + 출전 허가", !early.entries.some((e) => e.rarity === "SSR") && earlyOk === 200 && !!G.FIRST_TEN_SSR, `${G.FIRST_TEN_SSR} · ${earlyOk}/200`);
+ok("초반 풀(전설 없음)에서도 첫 10연은 전설(가장 먼저 열리는 전설) + 출전 허가", !early.entries.some((e) => isTop(e.rarity)) && earlyOk === 200 && !!G.FIRST_TEN_SSR, `${G.FIRST_TEN_SSR} · ${earlyOk}/200`);
 ok("출전 허가: field-pass 가 있으면 지역 잠금을 넘는다(없으면 잠김)", AL.canFieldAlly("ari", 16, 15, ["field-pass:ari"]) === true && AL.canFieldAlly("ari", 16, 15, []) === false && AL.canFieldAlly("ari", 16, 15) === false);
 // ── 체험 출전 · 방치 (2026-10-23) ──
 const ari = M.HEROES.find((h) => h.id === "ari");
-ok("체험 출전: 지역3(상한 15)에선 아리 ×(2×가렌 120/620)=0.39 · 지역이 열리면 ×1 · 열린 동료는 늘 ×1", Math.abs(T.trialDpsMul(ari, 15) - 240 / 620) < 1e-9 && T.trialDpsMul(ari, 16) === 1 && T.trialDpsMul(M.HEROES.find((h) => h.id === "leon"), 15) === 1, T.trialDpsMul(ari, 15).toFixed(3));
-ok("체험 아리는 그 지역 최강(가렌)의 2배를 넘지 않는다 — 초반(상한 5)엔 레온 6 의 2배", Math.abs(ari.baseDps * T.trialDpsMul(ari, 5) - 12) < 1e-9 && Math.abs(ari.baseDps * T.trialDpsMul(ari, 15) - 240) < 1e-9);
+// 2026-10-27 동료 60명 — "그 지역 최강"은 새 동료가 될 수 있어 고정 숫자(가렌 120) 대신 그 지역 최강(bestUnlockedBaseDps)으로
+{ const best15 = T.bestUnlockedBaseDps(15), best5 = T.bestUnlockedBaseDps(5);
+  ok("체험 출전: 지역3(상한 15)에선 아리 ×(2×그 지역 최강/620) · 지역이 열리면 ×1 · 열린 동료는 늘 ×1", Math.abs(T.trialDpsMul(ari, 15) - Math.min(1, (2 * best15) / ari.baseDps)) < 1e-9 && T.trialDpsMul(ari, 16) === 1 && T.trialDpsMul(M.HEROES.find((h) => h.id === "leon"), 15) === 1, `${T.trialDpsMul(ari, 15).toFixed(3)} · 최강 ${best15}`);
+  ok("체험 아리는 그 지역 최강의 2배를 넘지 않는다", ari.baseDps * T.trialDpsMul(ari, 5) <= 2 * best5 + 1e-9 && ari.baseDps * T.trialDpsMul(ari, 15) <= 2 * best15 + 1e-9, `상한5 최강 ${best5} · 상한15 최강 ${best15}`); }
 const idleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["mia", "leon"], level: 10 });
 const y1 = I.computeIdleYield(idleBase, 8, {}, 4 * 3600, 1e12);
 const y2 = I.computeIdleYield({ ...idleBase, partyIds: ["mia", "leon", "ari"], claimedRewards: ["field-pass:ari"] }, 8, {}, 4 * 3600, 1e12);

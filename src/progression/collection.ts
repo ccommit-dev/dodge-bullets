@@ -9,11 +9,11 @@ import { ALLY_IDS, ALLY_RARITY } from "../titans/allies";
 import { PET_IDS } from "../titans/pets";
 import type { CharacterProgress } from "./model";
 
-/** 동료 도감 — 최초 획득 시 영구 전투력 (R 20 / SR 50 / SSR 120) */
+/** 동료 도감 — 최초 획득 시 영구 전투력 (N 10 / R 20 / SR 50 / SSR 120 / UR 200 / LR 320) */
 export function allyCollectionPower(progress: CharacterProgress): number {
   return ALLY_IDS.reduce((sum, id) => {
     if ((progress.allyStars[id] ?? 0) <= 0) return sum;
-    return sum + { R: 20, SR: 50, SSR: 120 }[ALLY_RARITY[id]];
+    return sum + { N: 10, R: 20, SR: 50, SSR: 120, UR: 200, LR: 320 }[ALLY_RARITY[id]];
   }, 0);
 }
 

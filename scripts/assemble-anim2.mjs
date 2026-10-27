@@ -17,7 +17,10 @@ const SRC = "art-gen/out/b3d2";
 const LAYOUT = JSON.parse(readFileSync("art-gen/anim-layout.json", "utf8"));
 const roster = readFileSync("art-gen/blender/roster.py", "utf8");
 const keysOf = (name) => { const a = roster.indexOf(`${name} = {`); let d = 0, i = roster.indexOf("{", a); const st = i; for (; i < roster.length; i += 1) { if (roster[i] === "{") d += 1; else if (roster[i] === "}") { d -= 1; if (!d) break; } } return [...roster.slice(st, i).matchAll(/^    '([a-z0-9_-]+)':/gm)].map((m) => m[1]); };
-const ALLIES = keysOf("ALLIES"), SKINS = keysOf("SKINS"), MONSTERS = keysOf("MONSTERS");
+// 동료 3배 (2026-10-27) — 새 40명은 roster_ext.py 의 NEW_ALLIES (roster.py 가 ALLIES.update 로 합친다)
+const rosterExt = existsSync("art-gen/blender/roster_ext.py") ? readFileSync("art-gen/blender/roster_ext.py", "utf8") : "";
+const NEW_ALLY_KEYS = [...rosterExt.matchAll(/^    '([a-z0-9_-]+)': dict\(/gm)].map((m) => m[1]);
+const ALLIES = [...keysOf("ALLIES"), ...NEW_ALLY_KEYS], SKINS = keysOf("SKINS"), MONSTERS = keysOf("MONSTERS");
 const blank = (w, h) => ({ create: { width: Math.round(w), height: Math.round(h), channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
 
 async function bbox(file) {
@@ -102,6 +105,8 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     kB = Math.min(kB, fitScale(allFrames(c), K, CW, CH, CW / 2, CH * A.feet, 3));
   }
   if (Object.keys(beavers).length) console.log("beaver k", kB.toFixed(3), "(목표", K.toFixed(3) + ")");
+  // 새 동료가 공유 배율을 깎으면 기존 동료까지 작아진다 — 기존만으로 잰 값과 견준다
+  { let kOld = K; for (const [id, c] of Object.entries(beavers)) if (!NEW_ALLY_KEYS.includes(id)) kOld = Math.min(kOld, fitScale(allFrames(c), K, CW, CH, CW / 2, CH * A.feet, 3)); console.log("beaver k (기존만)", kOld.toFixed(3)); }
   mkdirSync("public/titans/anim/allies", { recursive: true });
   for (const [id, c] of Object.entries(beavers)) {
     if (!want(id)) continue;
@@ -111,7 +116,7 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     const cellOf = async (f) => sharp(blank(CW, CH)).composite(await cellOps(f, c.res, kB, 0, 0, CW, CH, CW / 2, CH * A.feet)).png().toBuffer();
     const idle0 = await cellOf(c.actions.idle[0]);
     const portrait = `public/titans/generated/allies/${id}.png`;
-    if (existsSync(portrait)) await sharp(idle0).trim().png().toFile(portrait);
+    if (existsSync(portrait) || NEW_ALLY_KEYS.includes(id)) await sharp(idle0).trim().png().toFile(portrait);
     const thumb = `public/titans/generated/allies/skins/${id}.png`;
     if (existsSync(thumb)) await sharp(idle0).resize(313, 239, { fit: "fill" }).png().toFile(thumb);
     const cells = [c.actions.idle[0], c.actions.attack[1], c.actions.attack[4], c.actions.hit[0]];
