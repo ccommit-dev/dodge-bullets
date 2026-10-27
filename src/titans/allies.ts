@@ -139,12 +139,13 @@ export function partySynergies(party: TitanHeroId[]): { list: Synergy[]; effects
   const roles = party.map((id) => ALLY_ROLE[id]);
   const melee = roles.filter((r) => r === "melee" || r === "tank").length;
   const ranged = roles.filter((r) => r === "ranged").length;
-  const ssr = party.filter((id) => ALLY_RARITY[id] === "SSR").length;
+  // 전설 이상(전설 · 신화 · 초월) — 6등급(2026-10-27) 뒤에도 "SSR" 만 세서 신화 · 초월 편성은 공명이 안 켜졌다(난이도 감사)
+  const ssr = party.filter((id) => ALLY_RARITY[id] === "SSR" || ALLY_RARITY[id] === "UR" || ALLY_RARITY[id] === "LR").length;
   const distinctRoles = new Set(roles).size;
   const list: Synergy[] = [
     { id: "phalanx", name: "방진", desc: "근접 3+ · 보스 시간 +4초", active: melee >= 3 },
     { id: "volley", name: "엄호 사격", desc: "원거리 2+ · DPS +8%", active: ranged >= 2 },
-    { id: "legend", name: "전설의 공명", desc: "SSR 2+ · 조각 드랍 2배", active: ssr >= 2 },
+    { id: "legend", name: "전설의 공명", desc: "전설 이상 2+ · 조각 드랍 2배", active: ssr >= 2 },
     { id: "balance", name: "균형 편성", desc: "3역할 혼성 · 방치 효율 +1%p", active: distinctRoles >= 3 },
   ];
   return {

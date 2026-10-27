@@ -76,7 +76,7 @@ import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
-import { trialDpsMul } from "./titans/trialAlly";
+import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { QuestPanel } from "./titans/QuestPanel";
@@ -1716,7 +1716,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
           if (isSig && sig.fx === "quake" && bossRef.current) { const until = performance.now() + SIG_QUAKE_FREEZE_MS; buffsRef.current = { ...buffsRef.current, freezeUntil: Math.max(buffsRef.current.freezeUntil, until) }; setBuffs((b) => ({ ...b, freezeUntil: Math.max(b.freezeUntil, until) })); }
-          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, stageCeilingFor(characterRef.current.pioneeredArea)) * permRef.current.allyMul;   // × 결정 트리 공격력 · 화염 깃털 (2026-10-26)   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
+          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, trialCeiling(stageCeilingFor(characterRef.current.pioneeredArea), saveRef.current.bestStage)) * permRef.current.allyMul;   // × 결정 트리 공격력 · 화염 깃털 (2026-10-26)   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
           const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
           if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
           const land = () => applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined });
@@ -2131,7 +2131,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         ? pullTen(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity), Math.random, character.gachaPulls === 0, FIRST_TEN_SSR)
         : (() => { const r = pullOnce(gacha, save.heroes, Math.min(GACHA.pityLimit - 1, character.gachaPity)); return { results: [r.result], pity: r.pity }; })();   // 옛 저장의 60 초과 카운터는 천장 직전으로
     // 높은 등급부터 빈 편성 칸에 — 첫 10연 전설이 맨 뒤에 나와 칸이 차서 못 들어가던 것(2026-10-22)
-    const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).sort((x, y) => ["R", "SR", "SSR"].indexOf(y.rarity) - ["R", "SR", "SSR"].indexOf(x.rarity)).map((r) => r.id))];
+    const newIds = [...new Set(pulled.results.filter((r) => !r.duplicate).sort((x, y) => TIERS.indexOf(y.rarity) - TIERS.indexOf(x.rarity)).map((r) => r.id))];
     let paid = false;
     const next = await updateCharacterProgress(userHash, (current) => {
       if (current.redGems < cost) return current;
@@ -3946,7 +3946,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {/* 자리표시자 마감: 배지 = 픽업 최고 등급, 제목 = 지역·픽업 이름, 게이지 = 천장 진행도(gachaPity/60) */}
             <div className="gacha-stage-hero">
               {gacha.pickups.length > 0 && (() => {
-                const best = gacha.pickups.map((id) => ALLY_RARITY[id]).sort((a, b) => ["R", "SR", "SSR"].indexOf(b) - ["R", "SR", "SSR"].indexOf(a))[0];
+                const best = gacha.pickups.map((id) => ALLY_RARITY[id]).sort((a, b) => TIERS.indexOf(b) - TIERS.indexOf(a))[0];
                 return <span className="gacha-rarity-badge" style={{ background: `linear-gradient(135deg, ${RARITY_COLOR[best]}, #ec4899)` }}>{best} 픽업</span>;
               })()}
               <div className="gacha-pickup-showcase">
@@ -4039,7 +4039,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       ? `보석 상점 전용 동료 · ${h.attackType}`
                       : locked
                         ? `STAGE ${h.unlockStage} 해금 · ${h.attackType}`
-                        : `${h.attackType} · DPS ${formatGold(heroDps(h, lv || 1) * mult * trialDpsMul(h, fieldCeiling))}${lv > 0 ? ` → ${formatGold(heroDps(h, lv + 1) * mult * trialDpsMul(h, fieldCeiling))}` : ""}${(save.acorns.allyAmmo[h.id] ?? 0) > 0 ? ` · 도토리 Lv.${save.acorns.allyAmmo[h.id]}` : ""}${trialDpsMul(h, fieldCeiling) < 1 ? ` · 체험 ×${trialDpsMul(h, fieldCeiling).toFixed(2)}(STAGE ${h.unlockStage} 개척 시 제 힘)` : ""}`}
+                        : `${h.attackType} · DPS ${formatGold(heroDps(h, lv || 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}${lv > 0 ? ` → ${formatGold(heroDps(h, lv + 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}` : ""}${(save.acorns.allyAmmo[h.id] ?? 0) > 0 ? ` · 도토리 Lv.${save.acorns.allyAmmo[h.id]}` : ""}${trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)) < 1 ? ` · 체험 ×${trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)).toFixed(2)}(STAGE ${h.unlockStage} 개척 시 제 힘)` : ""}`}
                   </p>
                   <small className="ally-feature">{h.feature}</small>
                   <AllySigInfo hero={h} />
@@ -4617,7 +4617,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                         : <li className={have >= need ? "dup-ready" : ""}>★{st + 1} 조각 <b>{have}/{need}</b> · 피해 <b>×{STAR_MULT[st]} → ×{STAR_MULT[st + 1]}</b>{have >= need ? " · 동료 탭에서 승급" : ""}</li>;
                     })()}
                     {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <li className="warn">STAGE {h.unlockStage} 지역을 성문 방어로 개척해야 출전</li>}
-                    {canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && trialDpsMul(h, fieldCeiling) < 1 && <li className="trial">체험 출전 · 피해 ×{trialDpsMul(h, fieldCeiling).toFixed(2)} — STAGE {h.unlockStage} 개척 시 제 힘</li>}
+                    {canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)) < 1 && <li className="trial">체험 출전 · 피해 ×{trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)).toFixed(2)} — STAGE {h.unlockStage} 개척 시 제 힘</li>}
                   </ul>
                 </div>
               );
