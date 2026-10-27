@@ -72,12 +72,13 @@ const flash = await (async () => {
 if (flash !== null || (await page.$(".titan-monster-art.anim2"))) ok("B 2판 몬스터 맞은 순간 하얗게 번쩍인다(덤빔 중에 맞아도)", !!flash && /brightness/.test(flash), String(flash));
 // B' 종별 동작 — kind 클래스를 바꿔 가며 계산된 animation-name 이 종별 키프레임인지 (슬라임·고블린·늑대·용·오우거·보스)
 const kindAnims = await page.evaluate(() => {
+  // 2026-10-27: 2판 시트 몬스터는 숨은 처치 그림 img 를 더는 붙이지 않는다(쓰러짐도 같은 시트) — 대기는 시트 칸이 맡으니 img 가 없으면 대기 이름은 null
   const el = document.querySelector(".titans-monster"); const art = el?.querySelector(".titan-monster-art"); const img = art?.querySelector("img");
-  if (!el || !art || !img) return null;
+  if (!el || !art) return null;
   const orig = el.className; const out = {};
   for (const kind of ["slime", "goblin", "wolf", "dragon", "ogre", "boss"]) {
     el.className = orig.replace(/kind-[a-z]+/, "kind-" + kind).replace(/action-[a-z]+/, "action-idle").replace(/combat-[a-z]+/, kind === "dragon" ? "combat-ranged" : "combat-melee");
-    const idle = getComputedStyle(img).animationName;
+    const idle = img ? getComputedStyle(img).animationName : null;
     el.className = el.className.replace("action-idle", "action-attack");
     const attack = getComputedStyle(art).animationName;
     out[kind] = { idle, attack, a2: art.classList.contains("anim2") };
@@ -88,7 +89,7 @@ const kindAnims = await page.evaluate(() => {
 const expectAnim = { slime: ["slime-idle", "slime-pounce"], goblin: ["goblin-idle", "goblin-jab"], wolf: ["wolf-idle", "wolf-pounce"], dragon: ["dragon-hover", "dragon-breath"], ogre: ["ogre-breathe", "ogre-smash"], boss: ["ogre-breathe", "ogre-smash"] };
 // 2026-10-19 애니메이션 2판: 2판 시트 몬스터는 종별 덮치기·찌르기 자세를 렌더 칸이 갖고(art-gen/blender anim2.monster_actions), CSS 는 몸 이동만(a2-mon-melee/ranged — 칸과 겹치면 두 번 찌그러졌다).
 // 대기 이름(img)은 그대로 종별. 2판이 아니면 예전처럼 종별 공격 키프레임
-ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => kindAnims[k]?.idle === idle && kindAnims[k]?.attack === (kindAnims[k]?.a2 ? (k === "dragon" ? "a2-mon-ranged" : "a2-mon-melee") : attack)), JSON.stringify(kindAnims));
+ok("B' 종별 대기·공격 키프레임이 실제로 적용된다 (slime/goblin/wolf/dragon/ogre/boss)", !!kindAnims && Object.entries(expectAnim).every(([k, [idle, attack]]) => (kindAnims[k]?.a2 ? true : kindAnims[k]?.idle === idle) && kindAnims[k]?.attack === (kindAnims[k]?.a2 ? (k === "dragon" ? "a2-mon-ranged" : "a2-mon-melee") : attack)), JSON.stringify(kindAnims));
 // 2026-10-13: 공격 프레임(-attack.png) 추가 → 4장
 // 2026-10-27: 띠 · 2판 몬스터는 쓰러질 때도 같은 시트(피격 칸)를 쓴다 — 옛 처치 그림(-defeat.png, 다른 그림체)을 붙이지 않는다
 ok("B 프레임이 모두 마운트되어 있다(옛: idle·hit·attack·defeat 4장 · 띠 · 2판: 동작 시트 하나 — 처치 그림 없음)", await page.evaluate(() => (!!document.querySelector(".titan-monster-art.anim2 .monster-frames") && !document.querySelector(".titan-monster-art.anim2 img[src*='-defeat.png']")) || (!!document.querySelector(".titan-monster-art.has-frames .monster-frames") && !document.querySelector(".titan-monster-art.has-frames img[src*='-defeat.png']")) || document.querySelectorAll(".titan-monster-art img").length === 4 && !!document.querySelector(".titan-monster-art img[src*='-defeat.png']") && !!document.querySelector(".titan-monster-art img[src*='-attack.png']")));
