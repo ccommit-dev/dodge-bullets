@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
-import { WEAPON_SKINS } from "../economy/gemCatalog";
+import { WEAPON_SKINS, weaponSkinStyle } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
 import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
 import { sheetFor } from "../titans/anim";
@@ -43,10 +43,24 @@ export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
  * 왕관·띠·등 망토는 3D 주인공 모델(art-gen/blender roster HERO) 자체의 생김새라 장비가 아니다. 장비 효과·성장/강화 화면 아이콘은 그대로.
  */
 /** 무기 그림 안 손잡이 [가로 %, 세로 %, 기본 기울기°] — 검 손잡이(77%) · 창 자루 아래 1/3(67%) · 활 가운데 · 지팡이 아래(75%) */
-const WEAPON_GRIP: Record<"sword" | "spear" | "bow" | "staff", [number, number, number]> = { sword: [50, 77, 0], spear: [50, 67, 0], bow: [50, 50, 0], staff: [50, 75, 0] };
+export const WEAPON_GRIP: Record<"sword" | "spear" | "bow" | "staff", [number, number, number]> = { sword: [50, 77, 0], spear: [50, 67, 0], bow: [58, 50, 0], staff: [50, 75, 0] };
 
-function gripStyle(g: [number, number, number], rotation: number, scale: number): CSSProperties {
-  return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
+/** 공격 칸별 무기 자세 (2026-10-27, 사용자: "휘두르는 동작은 무기 4종이 같아요. 창도 찌르지 않고 검처럼 휘둘러요") — 칸 진행 0~1 을 칸 수만큼 나눈 표.
+ * [절대 기울기°(0 = 위, 90 = 적 쪽 오른쪽), 손잡이 세로 %(창: 자루를 손에서 앞으로 밀어낸다), 가로 배율(활: 시위를 당기면 활이 좁아진다)]
+ * 검은 표가 없다 = 시트 손뼈 회전 그대로 휘두른다(뒤로 들었다 앞으로 내리친다) */
+export const WEAPON_ATTACK_POSE: Record<"spear" | "bow" | "staff", Array<[number, number, number]>> = {
+  // 창: 수평으로 겨눈 채 뒤로 당겼다가(손잡이 46%) 앞으로 쭉 찌르고(90%) 돌아온다 — 기울기는 70~92° 안에서만
+  spear: [[72, 52, 1], [74, 46, 1], [76, 46, 1], [82, 64, 1], [90, 90, 1], [91, 92, 1], [86, 78, 1], [78, 62, 1]],
+  // 활: 세워 든 채 시위를 당기며(가로 .88) 살짝 젖히고, 놓는 칸에 튕겨 펴진다(1.08)
+  bow: [[-3, 50, 1], [-6, 50, .94], [-9, 50, .88], [-7, 50, .9], [1, 50, 1.08], [2, 50, 1.02], [0, 50, 1], [-2, 50, 1]],
+  // 지팡이: 머리 위로 치켜들었다가(−16°) 적 쪽으로 내뻗으며(35°) 보석이 빛난다(.weapon-cast). 넷째 칸은 손이 몸 앞이라 왼쪽으로 기울면 얼굴을 가려(2026-10-27 캡처) 6° 로 세운다
+  staff: [[-8, 75, 1], [-14, 75, 1], [-16, 75, 1], [6, 75, 1], [30, 75, 1], [36, 75, 1], [20, 75, 1], [4, 75, 1]],
+};
+/** 지팡이 보석이 빛나는 칸(진행 비율) — 내뻗는 두 칸 */
+const STAFF_CAST = (t: number) => t >= 0.5 && t < 0.75;
+
+function gripStyle(g: [number, number, number], rotation: number, scale: number, sx = 1): CSSProperties {
+  return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale * sx}, ${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
 }
 
 export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword" }: Props) {
@@ -64,7 +78,8 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   // 탈착 (2026-10-23, 사용자: "무기 파츠 … 탈착 애니메이션") — 무기(종류 · 단계 · 외형)가 바뀌면 옛 무기는 손에서 빙글 떨어져 나가고(gear-detach)
   // 새 무기는 반짝 고리와 함께 튀어 들어온다(gear-attach). 처음 그릴 때는 움직이지 않는다
   // 2026-10-27 무기 4종 — 검 · 창 · 활 · 지팡이 모두 장비 그림(titans/weapons weaponIconPath). 예전 북(SwordArt)은 검 그림으로 바뀌었다
-  const weaponKey = blade ? `skin-${weaponSkin}` : `${weaponKind}-${weaponTier}`;
+  // 외형도 무기 종류 · 단계와 같이 키에 — 외형을 낀 채 종류를 바꿔도 떼고 끼운다. 키 끝 두 마디가 언제나 종류-단계라 떼는 그림을 거기서 찾는다
+  const weaponKey = blade ? `skin-${weaponSkin}-${weaponKind}-${weaponTier}` : `${weaponKind}-${weaponTier}`;
   const prevKey = useRef(weaponKey);
   const [swap, setSwap] = useState<{ from: string; seq: number }>({ from: "", seq: 0 });
   useEffect(() => {
@@ -75,16 +90,23 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     const t = window.setTimeout(() => setSwap((cur) => (cur.from === from ? { ...cur, from: "" } : cur)), 560);
     return () => window.clearTimeout(t);
   }, [weaponKey]);
-  const ghostSrc = /^(sword|spear|bow|staff)-\d$/.test(swap.from) ? assetUrl(`titans/gear/${swap.from.replace(/^sword-/, "weapon-")}.png`) : "";
+  const ghostM = /(?:^skin-([\w-]+?)-)?(sword|spear|bow|staff)-(\d)$/.exec(swap.from);
+  const ghostSrc = ghostM ? assetUrl(`titans/gear/${ghostM[2] === "sword" ? "weapon" : ghostM[2]}-${ghostM[3]}.png`) : "";
+  const ghostSkin = ghostM?.[1] ? WEAPON_SKINS[ghostM[1]] : undefined;
   // 손잡이 점 (2026-10-27, 사용자: "무기 탈착 애니메이션이 너무 어색해 실제 손으로 든 것처럼") — 장비 그림(titans/gear) 안에서 손이 쥐는 곳(%, 모델 치수로 계산).
   // 예전엔 북 그림에 맞춘 translate(-34%,-91%) 를 그대로 써서 세로형 검 · 창의 손잡이가 손 오른쪽 위로 떠 있었다. 이제 손잡이가 손 앵커에 오고 그 점을 축으로 돈다
-  const grip = blade ? null : WEAPON_GRIP[weaponKind];
+  const baseGrip = WEAPON_GRIP[weaponKind];
+  // 공격 칸이면 무기마다 자세를 바꾼다 — 검은 시트 손뼈 그대로, 창은 찌르기 · 활은 당겨 쏘기 · 지팡이는 치켜들어 내뻗기
+  const attackT = mode === "attack" ? index / Math.max(1, frames) : -1;
+  const pose = attackT >= 0 && weaponKind !== "sword" ? WEAPON_ATTACK_POSE[weaponKind][Math.min(7, Math.floor(attackT * 8))] : null;
+  const grip: [number, number, number] = pose ? [baseGrip[0], pose[1], pose[0] - anchor.hand.rotation] : baseGrip;
+  const casting = weaponKind === "staff" && attackT >= 0 && STAFF_CAST(attackT);
   const weaponPart: CSSProperties = {
     left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%`,
     // 2판: 무기 그림을 손 오른쪽(바깥)으로 — 손 한가운데 두면 반이 얼굴(주둥이)을 덮었다(2026-10-19 칸별 캡처) · 무기 4종은 손잡이 점 기준
     // 손잡이 맞춤은 transform 이 아니라 translate 속성으로 — 탈착 키프레임의 rotate · scale 은 transform 보다 먼저 적용돼, translate 가 transform 안에 있으면
     // 회전축이 손잡이가 아니라 손 오른쪽 아래(상자 크기만큼)로 밀려 끼우는 순간 무기가 손 밖에서 돌았다(2026-10-27 캡처). --grip-x/y 는 키프레임이 이어 쓴다
-    ...(grip ? gripStyle(grip, anchor.hand.rotation, anchor.hand.scale) : { transform: `translate(${HERO_ANIM ? -34 : -50}%,-91%) rotate(${anchor.hand.rotation}deg) scale(${anchor.hand.scale})` }),
+    ...gripStyle(grip, anchor.hand.rotation, anchor.hand.scale, pose?.[2] ?? 1),
     // 예비 칸(먼 손이 큰 머리 뒤)은 몸 뒤에 — 몸·머리에 가린 부분은 숨고 실루엣 밖으로 나온 부분만 보인다(3D 동료처럼)
     ...(anchor.hand.behind ? { zIndex: 1 } : {}),
   };
@@ -97,17 +119,11 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
         return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${sheetFor(character, m)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
       }) : <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundSize: `${frames * 100}% 100%`, backgroundPosition: `${frames > 1 ? (index / (frames - 1)) * 100 : 0}% 0` }} />}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
-      {swap.from && ghostSrc && (() => { const g = WEAPON_GRIP[(swap.from.split("-")[0] as "sword" | "spear" | "bow" | "staff")] ?? WEAPON_GRIP.sword; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}
+      {swap.from && ghostSrc && ghostM && (() => { const g = WEAPON_GRIP[ghostM[2] as "sword" | "spear" | "bow" | "staff"]; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt ${ghostSkin ? "weapon-skin" : ""}`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale), ...(ghostSkin ? weaponSkinStyle(ghostSkin) : {}) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}
       {swap.seq > 0 && weaponKey !== "none" && <i key={`flash-${swap.seq}`} className="gear-swap-flash" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
-      {/* 무기 4종 (2026-10-27) — 손 앵커에 장비 그림. 공격 프레임 앵커를 그대로 따라가 휘두른다 */}
-      {!blade && (
-        <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${swap.seq > 0 ? "gear-attach" : ""}`} style={weaponPart} src={assetUrl(weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
-      )}
-      {blade && (
-        <div key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon has-blade-skin ${swap.seq > 0 ? "gear-attach" : ""}`} style={{ ...weaponPart, "--blade-aura": blade.aura } as CSSProperties}>
-          <i className="premium-weapon-part" style={{ backgroundImage:`url(${assetUrl("titans/equipment/weapons/premium-weapon-sheet.png")})`, backgroundPosition:`${blade.spriteIndex / 2 * 100}% center` }} />
-        </div>
-      )}
+      {/* 무기 4종 (2026-10-27) — 손 앵커에 장비 그림, 손잡이 점으로 쥔다. 공격 칸은 무기마다 자세(WEAPON_ATTACK_POSE)
+          상점 무기 외형은 같은 그림의 색 바꾸기 + 오라(weapon-skin) — 예전 북 그림(premium-weapon-sheet)은 무기가 검 · 창 · 활 · 지팡이로 바뀐 뒤 손에 북을 들게 했다 */}
+      <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${blade ? "weapon-skin" : ""} ${swap.seq > 0 ? "gear-attach" : ""} ${casting ? "weapon-cast" : ""}`} data-pose={pose ? `${weaponKind}-${Math.min(7, Math.floor(attackT * 8))}` : undefined} style={{ ...weaponPart, ...(blade ? weaponSkinStyle(blade) : {}) }} src={assetUrl(weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
     </div>
   );
 }

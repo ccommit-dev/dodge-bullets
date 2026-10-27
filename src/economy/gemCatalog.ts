@@ -24,30 +24,37 @@ export type WeaponSkinDef = {
 
 export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
   "blade-crimson": {
-    name: "진홍 루비 북",
-    desc: "붉은 옻칠에 루비가 빛나는 북 — 외형 전용",
+    name: "진홍 루비",
+    desc: "장착한 무기가 붉은 루비 빛으로 물든다 — 검 · 창 · 활 · 지팡이 모두 · 외형 전용",
     hue: 350,
     aura: "#f87171",
     gemCost: 450,
     spriteIndex: 0,
   },
   "blade-glacier": {
-    name: "빙하 서리 북",
-    desc: "얼음 결정이 맺힌 차가운 북 — 외형 전용",
+    name: "빙하 서리",
+    desc: "장착한 무기에 얼음 결정 빛이 맺힌다 — 검 · 창 · 활 · 지팡이 모두 · 외형 전용",
     hue: 195,
     aura: "#7dd3fc",
     gemCost: 450,
     spriteIndex: 1,
   },
   "blade-solar": {
-    name: "황금 태양 북",
-    desc: "태양 문양이 반짝이는 황금 북 — 외형 전용",
+    name: "황금 태양",
+    desc: "장착한 무기가 황금 햇빛으로 반짝인다 — 검 · 창 · 활 · 지팡이 모두 · 외형 전용",
     hue: 46,
     aura: "#fcd34d",
     gemCost: 600,
     spriteIndex: 2,
   },
 };
+
+/** 무기 외형 = 장착 무기 그림(titans/gear 4종)의 색 돌리기 + 오라 (2026-10-27). 무기 그림의 바탕색(파란 자루 · 210°)을 외형 hue 로 돌린다.
+ * 예전 북 그림(premium-weapon-sheet · spriteIndex)은 무기가 검 · 창 · 활 · 지팡이로 바뀐 뒤 손에 북을 들게 해 더는 그리지 않는다 */
+export const WEAPON_ART_BASE_HUE = 210;
+export function weaponSkinStyle(def: WeaponSkinDef): Record<string, string> {
+  return { "--skin-hue": `${def.hue - WEAPON_ART_BASE_HUE}deg`, "--blade-aura": def.aura };
+}
 
 /* ── 칭호 — 마이페이지 프로필에 표시. 수집·과시 축 ── */
 export type TitleDef = {
