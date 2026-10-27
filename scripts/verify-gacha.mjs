@@ -55,11 +55,14 @@ r = await page.evaluate(() => ({
   pickups: [...document.querySelectorAll(".gacha-pickup-showcase .titan-ally-art")].map((el) => [...el.classList].find((c) => c.startsWith("ally-"))),
   ten: document.querySelector(".gacha-page-actions button:nth-child(2)")?.textContent,
   guarantee: document.querySelector(".gacha-stage-hero p")?.textContent,
-  pity: document.querySelector(".gacha-level span")?.textContent,
+  pity: document.querySelector(".gacha-level:not(.summon-level) span")?.textContent,
+  summon: document.querySelector(".gacha-level.summon-level")?.textContent,
+  tierChips: document.querySelectorAll(".summon-tier-rates li").length,
 }));
 r.roleChips = roleChips;
-// 테라 은퇴(2026-10-01) — 지역3 상한(15) 안에 다음 해금이 없어 픽업이 비는 것이 맞다 (gachaPool 과 같은 답)
-ok("뽑기 시트 · 픽업 없음 (지역3 상한 15 안에 다음 해금이 없다)", r.panel && r.pickups.length === 0, r.pickups.join("|"));
+// 2026-10-27 동료 60명 — 지역3 상한(15) 안에 아직 못 만난 동료(페블 13 · 프로스트 14 · 오로라 15)가 생겨 픽업이 다시 있다(최대 2명)
+ok("뽑기 시트 · 픽업 최대 2명", r.panel && r.pickups.length >= 1 && r.pickups.length <= 2, r.pickups.join("|"));
+ok("뽑기 레벨 줄 · 6등급 확률 칩", /뽑기 Lv\.\d/.test(r.summon ?? "") && r.tierChips === 6, `${r.summon} · 칩 ${r.tierChips}`);
 ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
@@ -101,8 +104,12 @@ await sleep(2200);
 await closeModal();
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
-// 2026-10-08: 도감이 쪽으로 나뉘어 엠버(13번째)는 마지막 쪽에 있다
-await page.evaluate(() => { const tabs = [...document.querySelectorAll(".ally-pages button")]; tabs[tabs.length - 1]?.click(); }); await sleep(300);
+// 도감이 쪽으로 나뉜다 — 동료 53명(2026-10-27)이라 엠버가 있는 쪽을 찾아 넘긴다
+for (let pg = 0; pg < 20; pg += 1) {
+  if (await page.evaluate(() => [...document.querySelectorAll(".ally-card")].some((c) => /엠버/.test(c.textContent)))) break;
+  const more = await page.evaluate((pg) => { const tabs = [...document.querySelectorAll(".ally-pages button")]; tabs[pg + 1]?.click(); return !!tabs[pg + 1]; }, pg); await sleep(250);
+  if (!more) break;
+}
 const gateClicked = await page.evaluate(() => { const card = [...document.querySelectorAll(".ally-card")].find((c) => /엠버/.test(c.textContent)); const btn = card?.querySelector(".ally-party-toggle"); btn?.click(); return !!btn; });
 await sleep(500);
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");

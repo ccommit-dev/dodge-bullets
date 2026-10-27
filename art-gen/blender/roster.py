@@ -139,3 +139,7 @@ MON_POSES = {
     'blob': [dict(), dict(squash=0.95), dict(squash=0.78, dy=-0.03), dict(squash=1.18, lean=12, jaw=1, dy=0.09, dz=0.04), dict(squash=0.9, lean=-12, dy=-0.05)],
     'spider': [dict(), dict(squash=0.97, slegs=3), dict(lean=-10, arm_r=-60, arm_l=-60, jaw=10, slegs=-6, dy=-0.03), dict(lean=12, arm_r=70, arm_l=70, jaw=25, slegs=8, dy=0.08), dict(lean=-12, slegs=-8, dy=-0.05, jaw=15)],
 }
+
+# 동료 3배 (2026-10-27) — 새 40명은 roster_ext.py
+from roster_ext import NEW_ALLIES
+ALLIES.update(NEW_ALLIES)

@@ -15,6 +15,7 @@ writeFileSync(entry, [
   `export * as model from "${root}/src/titans/model";`,
   `export * as allies from "${root}/src/titans/allies";`,
   `export * as gacha from "${root}/src/titans/gacha";`,
+  `export * as summon from "${root}/src/titans/summonLevel";`,
   `export * as skills from "${root}/src/titans/skills";`,
   `export * as idle from "${root}/src/progression/idle";`,
   `export * as prog from "${root}/src/progression/model";`,
@@ -60,52 +61,49 @@ writeFileSync(entry, [
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { summon, parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
 const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
 const seq = (vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 
-// ── 1. 뽑기 ──
+// ── 1. 뽑기 ── (2026-10-27 6등급 · 뽑기 레벨 · 동료 60명 — 고정 명단 대신 규칙으로 단언)
+const RANK = summon.TIER_RANK;
 const p1 = gacha.gachaPool(1, 1);
-// 2026-10-13 최소 풀 5: stage1 은 mia + 픽업 leon 에 다음 해금 순(sera 6 · pyro 8 · garen 10)을 보충 — 역할 4종(근접·원거리·탱커)·등급 R/SR 이 섞인다
-ok("풀 stage1: 기본 mia + 픽업 leon + 최소 풀 보충 sera·pyro·garen (한 역할·한 등급만 나오지 않게)", p1.entries.map((e) => e.id).sort().join() === "garen,leon,mia,pyro,sera" && p1.pickups.join() === "leon", JSON.stringify(p1.entries.map((e) => [e.id, e.rate.toFixed(3)])));
-ok("풀 stage1: 역할 3종 이상 · SR 포함", new Set(p1.entries.map((e) => allies.ALLY_ROLE[e.id])).size >= 3 && p1.entries.some((e) => e.rarity === "SR"));
+ok("풀 stage1: 최소 5명 · 역할 3종 이상 · 한 등급만 나오지 않게", p1.entries.length >= 5 && new Set(p1.entries.map((e) => allies.ALLY_ROLE[e.id])).size >= 3 && new Set(p1.entries.map((e) => e.rarity)).size >= 2, JSON.stringify(p1.entries.map((e) => e.id + ":" + e.rarity)));
+ok("풀 stage1: 1층 동료(미아 등)는 늘 들어 있다", ["mia", "toto"].every((id) => p1.entries.some((e) => e.id === id)));
 ok("풀 확률 합 = 1", Math.abs(p1.entries.reduce((s, e) => s + e.rate, 0) - 1) < 1e-9);
-ok("픽업 가중 2배 (R 띠 안에서 leon = 2/4)", Math.abs(p1.entries.find((e) => e.id === "leon").rate - p1.bandRate.R * 0.5) < 1e-9);
-ok("stage1 10연: SR 이상 1명 보장이 실제로 동작(풀에 SR 이 있다)", gacha.pullTen(p1, allies.emptyAllyRecord(), 0, () => 0.0).results.some((r) => r.rarity !== "R"));
+{ const pk = p1.pickups[0]; const band = p1.entries.filter((e) => e.rarity === p1.entries.find((x) => x.id === pk)?.rarity); const w = band.reduce((t, e) => t + (p1.pickups.includes(e.id) ? 2 : 1), 0);
+  ok("픽업 가중 2배 (같은 등급 띠 안에서)", !!pk && Math.abs(p1.entries.find((e) => e.id === pk).rate - (p1.bandRate[band[0].rarity] * 2) / w) < 1e-9, pk); }
 const p12 = gacha.gachaPool(12, 3);
 ok("풀 stage12/지역3: 상점 동료 제외", p12.entries.every((e) => allies.SHOP_ALLY_GEM_COST[e.id] === undefined));
-// terra 은퇴(2026-10-01) — stage 12 · 지역3(상한 15)에서 다음 해금은 ari 16 뿐이라 상한 밖 → 픽업 없음
-ok("픽업 = 다음 2명 (지역3 상한 15 안에 다음 해금이 없다 → 픽업 없음)", p12.pickups.join() === "", p12.pickups.join());
-const p20 = gacha.gachaPool(20, 4);
-ok("stage20/지역4 픽업 2명 = bronn(22)·(23 이하 없음 → bronn만)", p20.pickups.join() === "bronn", p20.pickups.join());
+ok("픽업 = 지역 상한(15) 안 · 아직 못 만난 동료 최대 2명", p12.pickups.length <= 2 && p12.pickups.every((id) => { const h = model.HEROES.find((x) => x.id === id); return h.unlockStage > 12 && h.unlockStage <= 15; }), p12.pickups.join());
 const p30 = gacha.gachaPool(30, 5);
-ok("등급 확률 R60/SR30/SSR10 (전 등급 존재 시)", Math.abs(p30.bandRate.R - 0.6) < 1e-9 && Math.abs(p30.bandRate.SSR - 0.1) < 1e-9, JSON.stringify(p30.bandRate));
-ok("SSR 픽업 개별 확률 = R 개별 확률보다 낮음(공시 정합)", p30.entries.find((e) => e.rarity === "SSR").rate < p30.entries.find((e) => e.rarity === "R").rate);
+{ const lv1 = summon.tierRates(1); const present = summon.TIERS.filter((t) => p30.entries.some((e) => e.rarity === t)); const sum = present.reduce((t, r) => t + lv1[r], 0);
+  ok("등급 확률 = 뽑기 Lv1 표를 풀에 있는 등급으로 정규화", present.every((t) => Math.abs(p30.bandRate[t] - lv1[t] / sum) < 1e-9), JSON.stringify(p30.bandRate)); }
+ok("뽑기 레벨: 전설 Lv1 2% → Lv10 13.5% · 초월 Lv1 0.1% 미만 · 레벨 경계(0·10·30…)", Math.abs(summon.tierRates(1).SSR - 0.02) < 1e-9 && Math.abs(summon.tierRates(10).SSR - 0.135) < 1e-9 && summon.tierRates(1).LR < 0.001 && summon.summonLevel(0) === 1 && summon.summonLevel(9) === 1 && summon.summonLevel(10) === 2 && summon.summonLevel(9999) === 10);
+const p30hi = gacha.gachaPool(30, 5, Date.now(), 10);
+ok("뽑기 레벨이 오르면 전설 이상 확률이 오른다(같은 풀)", ["SSR", "UR", "LR"].every((t) => p30hi.bandRate[t] >= p30.bandRate[t]) && p30hi.bandRate.N < p30.bandRate.N, JSON.stringify(p30hi.bandRate));
+ok("최고 등급 개별 확률 < 낮은 등급 개별 확률(공시 정합)", Math.max(...p30.entries.filter((e) => RANK[e.rarity] >= RANK.SSR).map((e) => e.rate)) < Math.min(...p30.entries.filter((e) => e.rarity === "N").map((e) => e.rate)));
 const owned0 = allies.emptyAllyRecord();
-// 천장: 59 누적 후 → SSR 확정
 const pityPull = gacha.pullOnce(p30, owned0, 59, () => 0.0);
-ok("천장 60회째 SSR 확정 · 카운터 0", pityPull.result.rarity === "SSR" && pityPull.pity === 0, JSON.stringify(pityPull.result));
-// 2026-10-15 버그("천장 80/60 · 초기화 안 됨"): 전설이 없는 초반 풀에서도 천장에 닿으면 그 풀 최고 등급 보장 + 카운터 0 · 평소엔 59 를 넘지 않는다
-{ const noSsr = gacha.gachaPool(1, 1); const at = gacha.pullOnce(noSsr, owned0, 59, () => 0.0); const over = gacha.pullOnce(noSsr, owned0, 79, () => 0.99); const mid = gacha.pullOnce(noSsr, owned0, 58, () => 0.99);
-  ok("천장(전설 없는 풀): 60회째 그 풀 최고 등급(SR) 보장 · 카운터 0 · 옛 80 도 다음 뽑기에 0 · 평소 카운터 ≤ 59", !noSsr.entries.some((e) => e.rarity === "SSR") && at.result.rarity === "SR" && at.pity === 0 && over.pity === 0 && mid.pity === 59, JSON.stringify({ at: at.result.rarity, atP: at.pity, overP: over.pity, midP: mid.pity })); }
+ok("천장 60회째 전설 이상 확정 · 카운터 0", RANK[pityPull.result.rarity] >= RANK.SSR && pityPull.pity === 0, JSON.stringify(pityPull.result));
+{ const noSsr = gacha.gachaPool(1, 1); const best = Math.max(...noSsr.entries.map((e) => RANK[e.rarity])); const at = gacha.pullOnce(noSsr, owned0, 59, () => 0.0); const over = gacha.pullOnce(noSsr, owned0, 79, () => 0.99); const mid = gacha.pullOnce(noSsr, owned0, 58, () => 0.99);
+  ok("천장(전설 없는 풀): 60회째 그 풀 최고 등급 보장 · 카운터 0 · 옛 80 도 다음 뽑기에 0 · 평소 카운터 ≤ 59", best < RANK.SSR && RANK[at.result.rarity] === best && at.pity === 0 && over.pity === 0 && mid.pity === 59, `${at.result.rarity} ${at.pity} ${over.pity} ${mid.pity}`); }
 const noPity = gacha.pullOnce(p30, owned0, 10, () => 0.0);
-ok("천장 전엔 rng 0 → R (정렬상 첫 항목)", noPity.result.rarity === "R" && noPity.pity === 11);
-// 10연 SR 보장: rng가 항상 R 구간(0.0)이면 마지막 1장이 SR 이상
+ok("천장 전엔 rng 0 → 가장 낮은 등급(정렬상 첫 항목)", noPity.result.rarity === p30.entries[0].rarity && RANK[noPity.result.rarity] === Math.min(...p30.entries.map((e) => RANK[e.rarity])) && noPity.pity === 11);
 const ten = gacha.pullTen(p30, owned0, 0, () => 0.0);
-ok("10연 SR 이상 1명 보장", ten.results.some((r) => r.rarity !== "R") && ten.results.filter((r) => r.rarity !== "R").length === 1, ten.results.map((r) => r.rarity).join());
+ok("10연 영웅(SR) 이상 1명 보장", ten.results.filter((r) => RANK[r.rarity] >= RANK.SR).length === 1, ten.results.map((r) => r.rarity).join());
 ok("10연 같은 동료 2회 → 두 번째는 중복 조각", ten.results.filter((r) => r.id === ten.results[0].id).slice(1).every((r) => r.duplicate && r.shards === gacha.GACHA.dupeShards[r.rarity]));
-const ownedMia = { ...owned0, mia: 5 };
-const dup = gacha.pullOnce(gacha.gachaPool(1, 1), ownedMia, 0, () => 0.0);
-ok("보유 동료 중복 → 등급별 조각 (R 10)", dup.result.duplicate && dup.result.shards === 10, JSON.stringify(dup.result));
+{ const ownAll = Object.fromEntries(Object.keys(owned0).map((k) => [k, 5])); const dup = gacha.pullOnce(gacha.gachaPool(1, 1), ownAll, 0, () => 0.0);
+  ok("보유 동료 중복 → 등급별 조각 (N 5 · R 10 · SR 20 · SSR 40 · UR 60 · LR 80)", dup.result.duplicate && dup.result.shards === gacha.GACHA.dupeShards[dup.result.rarity] && gacha.GACHA.dupeShards.N === 5 && gacha.GACHA.dupeShards.LR === 80, JSON.stringify(dup.result)); }
 ok("확률 공시 표: 항목 수 = 풀 크기 · % 문자열", gacha.rateTable(p30).length === p30.entries.length && /^\d+\.\d{2}$/.test(gacha.rateTable(p30)[0].percent));
 ok("10연 900 = 1회 100 × 10 × 0.9", gacha.GACHA.tenCost === 900 && gacha.GACHA.singleCost === 100);
 // 몬테카를로: 10만 회 등급 분포가 공시와 ±1%p
-let cnt = { R: 0, SR: 0, SSR: 0 };
+const cnt = Object.fromEntries(summon.TIERS.map((t) => [t, 0]));
 for (let i = 0; i < 100000; i += 1) cnt[gacha.pullOnce(p30, owned0, 0).result.rarity] += 1;
-ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", Math.abs(cnt.R / 1e5 - 0.6) < 0.01 && Math.abs(cnt.SSR / 1e5 - 0.1) < 0.01, JSON.stringify(cnt));
+ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", summon.TIERS.every((t) => Math.abs(cnt[t] / 1e5 - p30.bandRate[t]) < 0.01), JSON.stringify(cnt));
 
 // ── 1b. K: 무과금 보석 경로 · 픽업 2주 회전 ──
 {
@@ -128,7 +126,7 @@ ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", Math.abs(cnt.R / 
   const a = gacha.gachaPool(5, 5, t0);
   const b = gacha.gachaPool(5, 5, t0 + 14 * 86400000);
   ok("K 픽업 2주 회전: 후보 3명 이상이면 14일 뒤 픽업이 바뀐다", a.rotationPool >= 3 && a.pickups.join() !== b.pickups.join() && a.pickups.length === 2, `${a.pickups.join()} → ${b.pickups.join()} (${a.rotationDaysLeft}일 남음)`);
-  ok("K 후보 2명 이하면 회전 없음 (stage12/지역3 → terra 고정)", gacha.gachaPool(12, 3, t0).pickups.join() === gacha.gachaPool(12, 3, t0 + 14 * 86400000).pickups.join());
+  { const few = gacha.gachaPool(50, 5, t0); ok("K 후보 2명 이하면 회전 없음 (stage50 — 남은 동료 1~2명)", few.rotationPool <= 2 && few.pickups.join() === gacha.gachaPool(50, 5, t0 + 14 * 86400000).pickups.join(), `후보 ${few.rotationPool} · ${few.pickups.join()}`); }
   ok("K 회전해도 풀 확률 합 1 · 픽업 가중 유지", Math.abs(b.entries.reduce((s, e) => s + e.rate, 0) - 1) < 1e-9 && b.entries.filter((e) => e.pickup).length === 2);
 }
 
@@ -161,9 +159,10 @@ const slotSets = ["starter", "linkA", "linkB", "finisher"].map((slot) => model.S
 ok("슬롯 내 효과 중복 없음 (clone=dragonBreath 해소)", slotSets.every((set) => new Set(set).size === set.length));
 ok("meteor = 가장 강한 단발 마무리, voidFinish = 처형 (마무리 둘의 역할이 다르다)", skills.SKILL_EFFECTS.meteor.kind === "hit" && skills.SKILL_EFFECTS.voidFinish.kind === "execute");
 // ── 정리 (2026-10-01): 역할이 겹치는 동료 7·스킬 8 은퇴. 로스터에서 빠지고, 보유분은 환불로 바뀐다
-ok("로스터 13명 — 근딜 4 · 원딜 5 · 탱커 2 · 힐러 2, 속성 넷 전부", (() => {
-  const roles = allies.ALLY_IDS.map((id) => allies.ALLY_ROLE[id]); const el = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_ELEMENT[id]));
-  return allies.ALLY_IDS.length === 13 && roles.filter((r) => r === "melee").length === 4 && roles.filter((r) => r === "ranged").length === 5 && roles.filter((r) => r === "tank").length === 2 && roles.filter((r) => r === "healer").length === 2 && el.size === 4;
+// 2026-10-27 동료 3배 — 기존 13명 + 새 40명 = 53명(은퇴 제외). 역할마다 8명 이상 · 속성 넷 · 6등급 모두
+ok("로스터 53명 — 역할마다 8명 이상, 속성 넷 · 6등급 전부", (() => {
+  const roles = allies.ALLY_IDS.map((id) => allies.ALLY_ROLE[id]); const el = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_ELEMENT[id])); const tiers = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_RARITY[id]));
+  return allies.ALLY_IDS.length === 53 && ["melee", "ranged", "tank", "healer"].every((r) => roles.filter((x) => x === r).length >= 8) && el.size === 4 && tiers.size === 6;
 })(), allies.ALLY_IDS.join());
 ok("은퇴 동료는 로스터·뽑기·상점·스킨에 없다", model.RETIRED_ALLY_IDS.every((id) => !allies.ALLY_IDS.includes(id) && !model.HEROES.some((h) => h.id === id) && allies.SHOP_ALLY_GEM_COST[id] === undefined && gacha.gachaPool(60, 5).entries.every((e) => e.id !== id)));
 ok("은퇴 동료의 등급·상점가 표가 allies 와 같다 (환불 근거)", model.RETIRED_ALLY_IDS.every((id) => model.RETIRED_ALLY_RARITY[id] === allies.ALLY_RARITY[id]) && model.RETIRED_ALLY_SHOP_GEMS.mia_dark === 600 && model.RETIRED_ALLY_SHOP_GEMS.sera_light === 1100);

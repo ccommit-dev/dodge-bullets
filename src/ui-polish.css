@@ -1068,3 +1068,46 @@
 .titans-shop .relic-tier-buy button:disabled b, .titans-shop .relic-tier-buy button:disabled small { color: #7a5a3a !important; }
 .relic-tab-family .quest-pay { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .relic-tab-family .quest-bar > em { flex: none; }
+
+/* ── A: 동료 6등급 화려함 (2026-10-27, "레벨에 따라 리소스 · 스킬 애니메이션도 현질 유도하게 화려하게") ── */
+/* 전장 — 신화(UR) 진홍·금 맥박 오라 · 초월(LR) 무지개 회전 오라 (발밑 · ::before, 그림자 ::after 와 겹치지 않게) */
+.titans-allies :is(.ally-aurora, .ally-titan, .ally-solar, .ally-tempest, .ally-abyss, .ally-phoenix).titan-ally-art::before,
+.titans-allies :is(.ally-celes, .ally-gaia, .ally-inferno, .ally-leviathan).titan-ally-art::before {
+  content: ""; position: absolute; left: 50%; bottom: -6%; width: 110%; height: 26%; transform: translateX(-50%); border-radius: 50%; pointer-events: none; z-index: -1;
+  background: radial-gradient(ellipse, rgba(251, 113, 133, .55), rgba(251, 191, 36, .25) 45%, transparent 70%);
+  box-shadow: 0 0 18px rgba(251, 113, 133, .55); animation: tier-ur-pulse 1.4s ease-in-out infinite alternate;
+}
+.titans-allies :is(.ally-celes, .ally-gaia, .ally-inferno, .ally-leviathan).titan-ally-art::before {
+  background: conic-gradient(from 0deg, rgba(94, 234, 212, .7), rgba(167, 139, 250, .7), rgba(240, 171, 252, .7), rgba(253, 224, 71, .7), rgba(74, 222, 128, .7), rgba(94, 234, 212, .7));
+  -webkit-mask: radial-gradient(ellipse, #000 35%, transparent 70%); mask: radial-gradient(ellipse, #000 35%, transparent 70%);
+  box-shadow: 0 0 24px rgba(94, 234, 212, .6); animation: tier-lr-spin 2.4s linear infinite;
+}
+@keyframes tier-ur-pulse { from { opacity: .6; transform: translateX(-50%) scale(.92); } to { opacity: 1; transform: translateX(-50%) scale(1.08); } }
+@keyframes tier-lr-spin { from { filter: hue-rotate(0deg) brightness(1.1); } to { filter: hue-rotate(360deg) brightness(1.1); } }
+/* 뽑기 카드 · 상세 · 도감 카드 · 픽업 */
+.gacha-card.rarity-n .gacha-card-front { border-color: #94a3b8; background: linear-gradient(180deg, #f8fafc, #e2e8f0); }
+.gacha-card.rarity-ur .gacha-card-front { border-color: #e11d48; background: linear-gradient(180deg, #fff1f2, #fecdd3); box-shadow: 0 0 0 2px rgba(251, 113, 133, .9), 0 0 30px rgba(244, 63, 94, .75); animation: gacha-ssr-glow 1s ease-in-out infinite alternate; }
+.gacha-card.rarity-lr .gacha-card-front { border-color: #0d9488; background: linear-gradient(135deg, #ccfbf1, #ede9fe 35%, #fef9c3 65%, #dcfce7); box-shadow: 0 0 0 3px rgba(94, 234, 212, .95), 0 0 36px rgba(167, 139, 250, .85); animation: tier-lr-spin 2s linear infinite; }
+.gacha-card.rarity-ur .gacha-back-glow, .gacha-card.rarity-lr .gacha-back-glow { opacity: 1; box-shadow: 0 0 0 3px #fb7185, 0 0 34px rgba(244, 63, 94, .95); animation: gacha-ssr-glow .8s ease-in-out infinite alternate; }
+.gacha-card.rarity-lr .gacha-back-glow { box-shadow: 0 0 0 3px #5eead4, 0 0 40px rgba(167, 139, 250, .95); }
+.gacha-detail.rarity-ur { border-color: #e11d48; background: linear-gradient(180deg, #fff1f2, #fff3d6); }
+.gacha-detail.rarity-lr { border-color: #0d9488; background: linear-gradient(180deg, #ccfbf1, #fff3d6); }
+.titans-card.ally-card.rarity-ur { box-shadow: inset 0 0 0 2px #fb7185, 0 0 14px rgba(244, 63, 94, .45) !important; }
+.titans-card.ally-card.rarity-lr { box-shadow: inset 0 0 0 2px #5eead4, 0 0 18px rgba(167, 139, 250, .55) !important; }
+.titans-card.ally-card.rarity-n { box-shadow: inset 0 0 0 2px #cbd5e1 !important; }
+/* 소환진 색 — 신화 진홍 · 초월 청록(+무지개) */
+.gacha-summoning.tier-ur .gacha-summon-circle { filter: hue-rotate(-40deg) saturate(1.6) drop-shadow(0 0 18px #f43f5e); }
+.gacha-summoning.tier-lr .gacha-summon-circle { animation: tier-lr-spin 1.2s linear infinite; filter: drop-shadow(0 0 22px #5eead4); }
+.gacha-summoning.tier-n .gacha-summon-circle { filter: grayscale(.8); }
+/* 뽑기 레벨 · 지금 등급 확률 칩 */
+.summon-tier-rates { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 4px 0 8px; padding: 0; list-style: none; }
+.summon-tier-rates li { display: grid; justify-items: center; padding: 4px 2px; border-radius: 10px; border: 2px solid rgba(59, 36, 21, .3); background: #fff8e6; }
+.summon-tier-rates li b { font-size: 13px; font-weight: 900; color: #3b2415; }
+.summon-tier-rates li small { font-size: 13px; font-weight: 800; color: #5e4229; white-space: nowrap; }
+.summon-tier-rates li.rarity-n { border-color: #94a3b8; }
+.summon-tier-rates li.rarity-r { border-color: #38bdf8; }
+.summon-tier-rates li.rarity-sr { border-color: #a855f7; }
+.summon-tier-rates li.rarity-ssr { border-color: #f59e0b; background: #fff7d1; }
+.summon-tier-rates li.rarity-ur { border-color: #e11d48; background: #fff1f2; }
+.summon-tier-rates li.rarity-lr { border-color: #0d9488; background: linear-gradient(135deg, #ccfbf1, #ede9fe, #fef9c3); }
+@media (prefers-reduced-motion: reduce) { .titans-allies .titan-ally-art::before, .gacha-card.rarity-lr .gacha-card-front, .gacha-summoning.tier-lr .gacha-summon-circle { animation: none !important; } }

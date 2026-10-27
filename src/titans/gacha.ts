@@ -4,15 +4,20 @@
  * 설계 (과금 점검 후 재설계):
  * - 풀 = 현재 스테이지 이하로 해금된 동료(기본) + 픽업 2명(개척 상한 안의 다음 동료).
  *   상점 전용 동료(SHOP_ALLY_GEM_COST)는 풀에서 제외 — 확정 구매가 뽑기에 열위가 되지 않게.
- * - 등급 확률 R 60 / SR 30 / SSR 10. 풀에 없는 등급의 확률은 있는 등급에 비례 재분배.
+ * - 등급 확률은 뽑기 레벨(누적 뽑기 수, titans/summonLevel.ts)이 정한다 — 2026-10-27 6등급(N · R · SR · SSR · UR · LR) ·
+ *   Lv1 전설 2% 로 희박하게 시작해 Lv10 전설 13.5% · 신화 4% · 초월 1.3%. 풀에 없는 등급의 확률은 있는 등급에 비례 재분배.
  * - 픽업은 같은 등급 안에서 가중치 2배.
- * - 천장: SSR 없이 60회 → 61회째 SSR 확정(픽업 우선). SSR을 뽑으면 카운터 리셋.
- * - 10연: 900보석(10% 할인) + SR 이상 1명 보장.
- * - 중복: 등급별 조각 R 10 / SR 20 / SSR 40 — 성급 곡선(★1→2 = 20)과 맞춘다.
+ * - 천장: 전설 이상 없이 60회 → 61회째 전설 이상 확정(픽업 우선). 전설 이상을 뽑으면 카운터 리셋.
+ * - 10연: 900보석(10% 할인) + 영웅(SR) 이상 1명 보장.
+ * - 중복: 등급별 조각 N 5 / R 10 / SR 20 / SSR 40 / UR 60 / LR 80 — 성급 곡선(★1→2 = 20)과 맞춘다.
  * - 확률 공시: rateTable()이 동료별 확률을 %로 돌려준다 (게임산업법 공시 화면용).
  */
 import { HEROES, HUNTING_AREAS, type TitanHeroId } from "./model";
-import { ALLY_RARITY, SHOP_ALLY_GEM_COST, type AllyRarity } from "./allies";
+import { ALLY_RARITY, ALLY_ROLE, SHOP_ALLY_GEM_COST, type AllyRarity } from "./allies";
+import { TIERS, TIER_RANK, tierRates } from "./summonLevel";
+
+/** 전설(SSR) 이상 — 천장 · 첫 10연 보장 */
+const isTop = (r: AllyRarity) => TIER_RANK[r] >= TIER_RANK.SSR;
 
 export const GACHA = {
   singleCost: 100,
@@ -22,8 +27,7 @@ export const GACHA = {
   pickupCount: 2,
   /** 풀 최소 인원 — 모자라면 다음 해금 순으로 보충 (2026-10-13) */
   minPool: 5,
-  rarityRate: { R: 0.6, SR: 0.3, SSR: 0.1 } as Record<AllyRarity, number>,
-  dupeShards: { R: 10, SR: 20, SSR: 40 } as Record<AllyRarity, number>,
+  dupeShards: { N: 5, R: 10, SR: 20, SSR: 40, UR: 60, LR: 80 } as Record<AllyRarity, number>,
 } as const;
 
 export type GachaEntry = { id: TitanHeroId; rarity: AllyRarity; rate: number; pickup: boolean };
@@ -51,9 +55,10 @@ function ceilingOf(pioneeredArea: number): number {
   return HUNTING_AREAS[index].stageTo;
 }
 
-const RARITIES: AllyRarity[] = ["R", "SR", "SSR"];
+const RARITIES: readonly AllyRarity[] = TIERS;
 
-export function gachaPool(stage: number, pioneeredArea: number, now: number = Date.now()): GachaPool {
+/** summonLv — 뽑기 레벨(1~10). 등급 확률을 정한다 · 풀(누가 나오나)은 여전히 지역 안 */
+export function gachaPool(stage: number, pioneeredArea: number, now: number = Date.now(), summonLv = 1): GachaPool {
   const ceiling = ceilingOf(pioneeredArea);
   const eligible = HEROES.filter((h) => SHOP_ALLY_GEM_COST[h.id] === undefined && h.unlockStage < 9999);
   const base = eligible.filter((h) => h.unlockStage <= stage);
@@ -70,11 +75,19 @@ export function gachaPool(stage: number, pioneeredArea: number, now: number = Da
     if (members.length >= GACHA.minPool) break;
     if (!members.includes(h.id)) members.push(h.id);
   }
+  // 역할 3종 이상 (2026-10-27 동료 60명 — 1지역 동료가 늘어 최소 5명이 근접 · 원거리로만 찰 수 있다): 빠진 역할의 가장 이른 동료를 하나씩
+  for (const role of ["tank", "healer", "melee", "ranged"] as const) {
+    if (new Set(members.map((id) => ALLY_ROLE[id])).size >= 3) break;
+    if (members.some((id) => ALLY_ROLE[id] === role)) continue;
+    const add = eligible.find((h) => ALLY_ROLE[h.id] === role && !members.includes(h.id));
+    if (add) members.push(add.id);
+  }
   // 등급별 확률 — 비어 있는 등급은 존재하는 등급에 비례 재분배
   const present = RARITIES.filter((r) => members.some((id) => ALLY_RARITY[id] === r));
-  const presentSum = present.reduce((s, r) => s + GACHA.rarityRate[r], 0);
-  const bandRate = { R: 0, SR: 0, SSR: 0 } as Record<AllyRarity, number>;
-  for (const r of present) bandRate[r] = GACHA.rarityRate[r] / presentSum;
+  const levelRate = tierRates(summonLv);
+  const presentSum = present.reduce((s, r) => s + levelRate[r], 0);
+  const bandRate = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0, LR: 0 } as Record<AllyRarity, number>;
+  for (const r of present) bandRate[r] = levelRate[r] / presentSum;
   const entries: GachaEntry[] = [];
   for (const r of present) {
     const ids = members.filter((id) => ALLY_RARITY[id] === r);
@@ -103,18 +116,20 @@ export function pullOnce(
   rng: () => number = Math.random,
   guaranteeMin: AllyRarity | null = null,
 ): { result: PullResult; pity: number } {
-  const ssr = pool.entries.filter((e) => e.rarity === "SSR");
-  const srPlus = pool.entries.filter((e) => e.rarity !== "R");
+  const ssr = pool.entries.filter((e) => isTop(e.rarity));
+  const srPlus = pool.entries.filter((e) => TIER_RANK[e.rarity] >= TIER_RANK.SR);
   let candidates = pool.entries;
   // 천장 (2026-10-15 버그 수정: "천장 초기화 안 되고 계속 남아 있다" — 80/60) — 풀에 전설이 없으면(초반 지역) 보장이 영영 안 터져
   // 카운터가 60을 넘어 계속 올랐다. 이제 천장에 닿으면 그 풀의 최고 등급을 보장하고 카운터를 0으로 되돌린다
   const atPity = pity >= GACHA.pityLimit - 1;
-  if (atPity) candidates = ssr.length > 0 ? ssr : srPlus.length > 0 ? srPlus : pool.entries;
+  // 전설 이상이 없는 풀이면 그 풀의 가장 높은 등급
+  const topRank = Math.max(...pool.entries.map((e) => TIER_RANK[e.rarity]));
+  if (atPity) candidates = ssr.length > 0 ? ssr : pool.entries.filter((e) => TIER_RANK[e.rarity] === topRank);
   else if (guaranteeMin === "SSR" && ssr.length > 0) candidates = ssr;
   else if (guaranteeMin === "SR" && srPlus.length > 0) candidates = srPlus;
   const picked = weightedPick(candidates, rng);
   const duplicate = owned[picked.id] > 0;
-  const nextPity = picked.rarity === "SSR" || atPity ? 0 : Math.min(GACHA.pityLimit - 1, pity + 1);
+  const nextPity = isTop(picked.rarity) || atPity ? 0 : Math.min(GACHA.pityLimit - 1, pity + 1);
   return {
     result: { id: picked.id, rarity: picked.rarity, pickup: picked.pickup, duplicate, shards: duplicate ? GACHA.dupeShards[picked.rarity] : 0, pityBefore: pity },
     pity: nextPity,
@@ -135,9 +150,9 @@ export function pullTen(
   const heroes = { ...owned };
   const results: PullResult[] = [];
   let p = pity;
-  const poolHasSsr = pool.entries.some((e) => e.rarity === "SSR");
+  const poolHasSsr = pool.entries.some((e) => isTop(e.rarity));
   for (let i = 0; i < 10; i += 1) {
-    const needSsr = i === 9 && firstTen && !results.some((r) => r.rarity === "SSR");
+    const needSsr = i === 9 && firstTen && !results.some((r) => isTop(r.rarity));
     if (needSsr && !poolHasSsr && fallbackSsr) {
       const duplicate = (heroes[fallbackSsr] ?? 0) > 0;
       results.push({ id: fallbackSsr, rarity: "SSR", pickup: false, duplicate, shards: duplicate ? GACHA.dupeShards.SSR : 0, pityBefore: p, fieldPass: true });
@@ -145,7 +160,7 @@ export function pullTen(
       if (!duplicate) heroes[fallbackSsr] = 1;
       continue;
     }
-    const last = i === 9 && !results.some((r) => r.rarity !== "R");
+    const last = i === 9 && !results.some((r) => TIER_RANK[r.rarity] >= TIER_RANK.SR);
     const { result, pity: np } = pullOnce(pool, heroes, p, rng, needSsr ? "SSR" : last ? "SR" : null);
     results.push(result);
     p = np;

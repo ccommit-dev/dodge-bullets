@@ -183,10 +183,15 @@ p = await prog();
 ok("옛 계정 첫 출석: 판도 지급도 보석 20 · welcome-gift 없음", /×20/.test(oldDay1) && !/1000/.test(oldDay1) && p.redGems >= 20 && p.redGems < 1000 && !(p.claimedRewards ?? []).includes("welcome-gift"), `${oldDay1} · 보석 ${p.redGems}`);
 
 // ── 체험 출전 — 첫 10연 전설(아리)은 지역이 열리기 전엔 "열린 가장 센 동료의 2배"까지만 ──
-await seed(baseProgress({ redGems: 0, claimedRewards: ["dodge-tutorial", "field-pass:ari"], partyIds: ["mia", "ari"], pioneeredArea: 3 }), { gold: 0, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 5, ari: 1 }, lastActiveAt: now });
+// 2026-10-27 동료 60명 — 지역3(상한 15)엔 신화 오로라(15층)가 있어 "열린 최강의 2배"가 아리보다 커진다(체험 ×1). 체험이 걸리는 지역2(상한 10)로 본다
+await seed(baseProgress({ redGems: 0, claimedRewards: ["dodge-tutorial", "field-pass:ari"], partyIds: ["mia", "ari"], pioneeredArea: 2 }), { gold: 0, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 5, ari: 1 }, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(600);
-await clickText(".ally-pages button", "5–8"); await sleep(400);   // 도감은 4장씩 — 아리는 둘째 쪽
+for (let pg = 0; pg < 20; pg += 1) {   // 도감은 쪽으로 나뉜다 — 아리가 있는 쪽까지 넘긴다
+  if (await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].some((c) => /아리/.test(c.textContent) && /DPS/.test(c.textContent)))) break;
+  const more = await page.evaluate((pg) => { const tabs = [...document.querySelectorAll(".ally-pages button")]; tabs[pg + 1]?.click(); return !!tabs[pg + 1]; }, pg); await sleep(250);
+  if (!more) break;
+}
 const ariCard = await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].map((c) => c.textContent).find((t) => /아리/.test(t) && /DPS/.test(t)) ?? "");
 ok("아리 카드에 '체험 ×0.xx(STAGE 16 개척 시 제 힘)'", /체험 ×0\.\d\d\(STAGE 16 개척 시 제 힘\)/.test(ariCard), ariCard.slice(0, 120));
 

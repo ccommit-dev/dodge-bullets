@@ -25,7 +25,7 @@ const BOSS_ASSET: Record<string, string> = {
   abyss: assetUrl("titans/generated/monsters/abyss-titan.png"),
 };
 
-const allyIndex: Record<TitanHeroId, number> = {
+const allyIndex: Partial<Record<TitanHeroId, number>> = {
   mia: 0,
   leon: 1,
   sera: 2,
@@ -461,7 +461,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
           피벗과 공격 궤적이 다르므로 몸을 흔들지 않고 무기만 자연스럽게 움직인다.
       */}
       <div className="ally-wander">
-      <div className="ally-idle" style={{ animationDelay: `${allyIndex[id] * -0.27}s` }}>
+      <div className="ally-idle" style={{ animationDelay: `${(allyIndex[id] ?? 0) * -0.27}s` }}>
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
           {anim2 ? (
             // 2판: 몸 상자는 그대로(WIDE_CELL), 안쪽 칸 그림만 동작 줄을 돈다 — 같은 동작이 다시 오면 key 로 처음부터
