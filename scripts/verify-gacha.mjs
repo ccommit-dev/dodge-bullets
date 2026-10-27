@@ -171,13 +171,15 @@ ok("황금 보급 상자 수량 표기(×3000 반영)", /\+/.test(r ?? ""), r);
 
 // ── 동료 값 조정 안내 (2026-10-27 아쉬운 점: 오리온 · 새 동료 약화) — 옛 저장은 쓴 골드로 레벨을 다시 맞추고 한 번 알린다 ──
 await seed(baseProgress, { ...baseTitans, gold: 1000, heroes: { mia: 12, leon: 8, orion: 30, storm: 15 } });
-const reb = await page.evaluate(() => ({ modal: document.querySelector(".rebalance-modal")?.textContent ?? "" }));
+const reb = await page.evaluate(() => { const card = document.querySelector(".rebalance-modal .relic-draw-card"); const r = card?.getBoundingClientRect(); const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null; return { modal: document.querySelector(".rebalance-modal")?.textContent ?? "", onTop: !!top?.closest(".rebalance-modal"), attendance: !!document.querySelector(".attendance-modal"), topCls: top?.className ?? "" }; });
+await page.screenshot({ path: "art-gen/out/rebalance-notice-first.png" });
+ok("안내가 출석 창보다 위에 뜬다(첫 화면 가운데 = 안내)", reb.onTop, `출석 창 ${reb.attendance} · 맨 위 ${reb.topCls}`);
 await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "닫기" && !b.closest(".rebalance-modal"))?.click()); await sleep(500);
 await page.screenshot({ path: "art-gen/out/rebalance-notice.png" });
 await page.evaluate(() => [...document.querySelectorAll(".rebalance-modal button")].find((b) => /확인/.test(b.textContent))?.click()); await sleep(500);
 const tReb = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)), H);
-ok("옛 저장 동료 다시 계산 안내: 오리온 Lv.30 → 35 · 스톰 15 → 18 · 남은 골드", /동료 밸런스 조정/.test(reb.modal) && /오리온/.test(reb.modal) && /Lv.30 → Lv.35/.test(reb.modal) && /Lv.15 → Lv.18/.test(reb.modal) && /돌려받음/.test(reb.modal), reb.modal.slice(0, 120));
-ok("다시 계산이 저장된다 · 안내는 한 번만", tReb.heroes.orion === 35 && tReb.heroes.storm === 18 && tReb.allyRebalance === 1 && !tReb.rebalanceNotice && tReb.gold > 1000, JSON.stringify({ o: tReb.heroes.orion, s: tReb.heroes.storm, g: tReb.gold, v: tReb.allyRebalance }));
+ok("옛 저장 동료 다시 계산 안내: 오리온 Lv.30 → 38 · 스톰 15 → 22 · 예전 힘 이상", /동료 밸런스 조정/.test(reb.modal) && /오리온/.test(reb.modal) && /Lv.30 → Lv.38/.test(reb.modal) && /Lv.15 → Lv.22/.test(reb.modal) && /예전 힘 이상/.test(reb.modal), reb.modal.slice(0, 120));
+ok("다시 계산이 저장된다 · 안내는 한 번만", tReb.heroes.orion === 38 && tReb.heroes.storm === 22 && tReb.allyRebalance === 2 && !tReb.rebalanceNotice, JSON.stringify({ o: tReb.heroes.orion, s: tReb.heroes.storm, g: tReb.gold, v: tReb.allyRebalance }));
 await page.reload({ waitUntil: "networkidle0" }); await sleep(2000);
 ok("다시 열어도 안내가 또 뜨지 않는다", !(await page.$(".rebalance-modal")));
 

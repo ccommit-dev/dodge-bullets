@@ -60,7 +60,7 @@ ok("④ 심연 층당 처치 골드 ≈ ×1.30 (예전 ×1.26)", step > 1.28 && 
 ok("④ 24층 전 골드는 그대로", M.killGold(20, false, false) === Math.max(1, Math.floor(5 * Math.pow(1.26, 19) * M.huntingArea(20).rewardMultiplier)));
 
 // ⑤ 무기 — 창은 대장 특화 · 활은 탭 1.0 + 자동 공격 속도
-ok("⑤ 무기: 창 대장 ×1.35 · 활 탭 ×1.15 · 활 자동 ×1.25 · 활 기술 4탭 ×2.2", W.WEAPON_EFFECTS.spear.bossMul === 1.35 && W.WEAPON_EFFECTS.bow.tapMul === 1.15 && W.WEAPON_EFFECTS.bow.autoSpeedMul === 1.25 && W.WEAPON_TECH.bow.every === 4 && W.WEAPON_TECH.bow.mul === 2.2);
+ok("⑤ 무기: 창 탭 ×1.12 · 대장 ×1.25 · 활 탭 ×1.15 · 활 자동 ×1.25 · 활 기술 4탭 ×2.2", W.WEAPON_EFFECTS.spear.tapMul === 1.12 && W.WEAPON_EFFECTS.spear.bossMul === 1.25 && W.WEAPON_EFFECTS.bow.tapMul === 1.15 && W.WEAPON_EFFECTS.bow.autoSpeedMul === 1.25 && W.WEAPON_TECH.bow.every === 4 && W.WEAPON_TECH.bow.mul === 2.2);
 // ⑤ 동료 곡선
 const H = (id) => M.HEROES.find((h) => h.id === id);
 ok("⑤ 마리나 ×2 (190 · 5300) · 오리온 ×0.4 (30000 · 460000) — 골드 효율 그대로", H("marina").baseDps === 190 && H("marina").baseCost === 5300 && H("orion").baseDps === 30000 && H("orion").baseCost === 460000 && H("orion").unlockStage === 30);
@@ -95,20 +95,23 @@ for (let i = 0; i < 20; i += 1) { const t = G.pullTen(lrPool, owned, 0, () => 0,
 ok("⑤ 운이 없어도(초월을 안 뽑는 난수) 10연 20번 = 200회째에 초월 정확히 1명", got === 1 && lpSim === 0, `200회 중 초월 ${got}번`);
 ok("⑤ 옛 저장(초월 천장 없음)은 0 으로", P.normalizeCharacterProgress({ ...base }).gachaLrPity === 0 && P.normalizeCharacterProgress({ ...base, gachaLrPity: 9999 }).gachaLrPity === 199);
 
-// ⑥ 아쉬운 점 — 값이 내려간 동료는 쓴 골드로 다시 레벨을 맞춘다(한 번만)
+// ⑥ 아쉬운 점 — 값이 내려간 동료는 다시 레벨을 맞춘다(한 번만). 판 2: 예전 힘 이상 보장
 {
-  const orion = H("orion");
-  const pw = (base, lv) => base * Math.pow(1.125, lv - 1) * (lv >= 10 ? 1.5 : 1) * (lv >= 25 ? 2 : 1) * (lv >= 50 ? 2.5 : 1) * (lv >= 100 ? 3 : 1);
-  const r = M.relevelAlly(1_150_000, orion.baseCost, 30);
-  const ratio = pw(orion.baseDps, r.level) / pw(75_000, 30);
-  ok("⑥ 오리온 Lv.30 → 쓴 골드로 다시 맞추면 예전 힘의 0.7 배 이상(0.4 배 아님)", r.level > 30 && ratio >= 0.7 && ratio < 1.05, `Lv.${r.level} · ×${ratio.toFixed(2)} · 남은 골드 ${r.gold}`);
+  const pw = (base, lv) => M.heroDps({ baseDps: base }, lv);
+  const cases = [["orion", 30], ["orion", 10], ["storm", 15], ["celes", 20], ["toto", 12]].map(([id, L]) => {
+    const h = H(id); const r = M.relevelAlly(M.PRE_REBALANCE_BASE_COST[id], h.baseCost, L, M.PRE_REBALANCE_BASE_DPS[id], h.baseDps);
+    return { id, L, to: r.level, ratio: pw(h.baseDps, r.level) / pw(M.PRE_REBALANCE_BASE_DPS[id], L) };
+  });
+  ok("⑥ 다시 맞춘 레벨은 예전 힘 이상(×1.0~1.2) — 오리온 · 새 동료", cases.every((c) => c.ratio >= 1 && c.ratio < 1.2), cases.map((c) => `${c.id} ${c.L}→${c.to} ×${c.ratio.toFixed(2)}`).join(" · "));
   const raw = { heroes: { orion: 30, marina: 20, storm: 15, mia: 40 }, gold: 1000, stage: 30, bestStage: 30 };
   const once = M.normalizeTitansSave(raw);
-  ok("⑥ 옛 저장: 오리온 · 새 동료(스톰)만 다시 계산 · 마리나 · 미아는 그대로 · 남은 골드 얹기 · 안내 남김",
-    once.heroes.orion === r.level && once.heroes.storm > 15 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.gold > 1000 && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
-    JSON.stringify({ orion: once.heroes.orion, storm: once.heroes.storm, gold: once.gold, n: once.rebalanceNotice?.changes }));
+  ok("⑥ 옛 저장: 오리온 30 → 38 · 스톰 15 → 22 · 마리나 · 미아 그대로 · 안내 남김",
+    once.heroes.orion === 38 && once.heroes.storm === 22 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
+    JSON.stringify({ orion: once.heroes.orion, storm: once.heroes.storm, gold: once.gold }));
   const twice = M.normalizeTitansSave({ ...once, rebalanceNotice: null });
   ok("⑥ 한 번만 — 다시 불러와도 레벨 · 골드가 그대로", twice.heroes.orion === once.heroes.orion && twice.heroes.storm === once.heroes.storm && twice.gold === once.gold && twice.rebalanceNotice === null);
+  const v1 = M.normalizeTitansSave({ heroes: { orion: 35, storm: 18 }, gold: 5, allyRebalance: 1 });
+  ok("⑥ 판 1 로 이미 맞춘 저장(오리온 35 · 스톰 18)도 힘 기준까지(38 · 22) · 골드는 그대로", v1.heroes.orion === 38 && v1.heroes.storm === 22 && v1.gold === 5 && v1.allyRebalance === 2, JSON.stringify({ o: v1.heroes.orion, s: v1.heroes.storm, g: v1.gold }));
   ok("⑥ 새 계정 · 환생 저장은 다시 계산하지 않는다", M.defaultTitansSave().allyRebalance === M.ALLY_REBALANCE_VERSION && M.normalizeTitansSave({ ...M.defaultTitansSave(), heroes: { orion: 30 } }).heroes.orion === 30);
   const lv1 = M.normalizeTitansSave({ heroes: { orion: 1 }, gold: 0 });
   ok("⑥ Lv.1(뽑기로 받은 것)은 건드리지 않는다", lv1.heroes.orion === 1 && lv1.gold === 0 && !lv1.rebalanceNotice);
