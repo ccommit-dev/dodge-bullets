@@ -23,10 +23,12 @@ const BASE: WeaponEffects = { tapMul: 1, critAdd: 0, bossMul: 1, autoSpeedMul: 1
 
 // 2026-10-27 난이도 감사: 같은 단계에서 검이 사실상 최강 · 활은 모든 상황 꼴찌(×0.70~0.76) · 창은 대장 특화인데 대장에서도 검 이하(×0.94~0.99)였다.
 // 창 대장 1.2 → 1.35 · 활 탭 0.9 → 1.0(자동 공격 속도는 동료에게도 — TitansGame). 검 · 지팡이는 그대로(옛 계정이 모두 검이라 검을 깎으면 벽이 당겨진다)
+// 같은 날 아쉬운 점: 계산 모델에 자동 공격(대장간 단계 · 탭 배율)과 활 속도 → 동료를 넣고 다시 재니 활이 아직 ×0.79~0.86 —
+// 검의 탭 ×1.2 · 치명이 탭 · 스킬 · 자동 공격 모두에 붙어서다. 활 탭 1.0 → 1.15 로 ×0.91~0.98 (창 일반 ×0.75~0.83 · 대장 ×1.05~1.12 · 지팡이 ×0.87~1.06)
 export const WEAPON_EFFECTS: Record<WeaponKind, WeaponEffects> = {
   sword: { ...BASE, tapMul: 1.2, critAdd: 0.05 },
   spear: { ...BASE, bossMul: 1.35 },
-  bow: { ...BASE, tapMul: 1.0, autoSpeedMul: 1.25 },
+  bow: { ...BASE, tapMul: 1.15, autoSpeedMul: 1.25 },
   staff: { ...BASE, tapMul: 0.9, skillCdMul: 0.85, skillDmgMul: 1.2 },
 };
 

@@ -176,7 +176,7 @@ export type CharacterProgress = {
   sessionCount: number;
   /** 소환 천장 카운터 — SSR 없이 누적된 뽑기 수 (60에서 확정) */
   gachaPity: number;
-  /** 초월 천장 카운터 — 초월이 있는 풀에서 초월 없이 누적된 뽑기 수 (200에서 확정, 2026-10-27) */
+  /** 초월 천장 카운터 — 초월 없이 누적된 뽑기 수 (200회째 확정 · 초반 지역에서도 센다, 2026-10-27) */
   gachaLrPity: number;
   /** 누적 뽑기 수 (공시·통계) */
   gachaPulls: number;

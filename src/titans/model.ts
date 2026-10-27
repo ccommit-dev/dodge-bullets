@@ -1,5 +1,5 @@
 import { emptyHuntMods, type HuntMods } from "./huntPerks";
-import { NEW_ALLIES, newAllyBaseCost, newAllyBaseDps, type NewAllyId } from "./allyRoster";
+import { NEW_ALLIES, newAllyBaseCost, newAllyBaseDps, preRebalanceBaseCost, type NewAllyId } from "./allyRoster";
 import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
 import { emptyQuests, normalizeQuests, type QuestState } from "./quests";
 import { assetUrl } from "../asset";
@@ -105,6 +105,10 @@ export type TitansSave = {
   heroes: Record<TitanHeroId, number>;
   /** 은퇴한 동료·스킬의 환불 — 진행도(보석·SP)에 아직 안 얹은 것. TitansGame 부팅이 얹고 비운다 */
   pendingRefund: { gems: number; sp: number } | null;
+  /** 동료 값 조정 다시 계산 표시 (2026-10-27) — 1 이면 끝. 없으면(옛 저장) normalizeTitansSave 가 한 번 다시 계산한다 */
+  allyRebalance?: number;
+  /** 다시 계산 결과 안내 — TitansGame 부팅이 알리고 비운다 */
+  rebalanceNotice?: { gold: number; changes: { id: TitanHeroId; from: number; to: number }[] } | null;
   totalKills: number;
   totalTaps: number;
   /** QoL — 스킬 자동 시전 (쿨타임 찬 액티브를 자동 사용) */
@@ -319,6 +323,8 @@ export function defaultTitansSave(): TitansSave {
     skillInventory: defaultSkillInventory(),
     heroes: emptyHeroLevels(),
     pendingRefund: null,
+    allyRebalance: ALLY_REBALANCE_VERSION,
+    rebalanceNotice: null,
     totalKills: 0,
     totalTaps: 0,
     autoSkill: false,
@@ -340,6 +346,21 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   const heroes = emptyHeroLevels();
   for (const h of HEROES) {
     heroes[h.id] = n(value.heroes?.[h.id], 0, 9999);
+  }
+  // 동료 값 조정 (2026-10-27 난이도 감사: 오리온 ×0.4 · 새 40명 두 층 아래 곡선) — 값이 내려간 동료는 이미 쓴 골드로 새 값에서
+  // 다시 레벨을 맞추고 남는 골드를 돌려준다. 힘이 0.4 배로 줄던 오리온이 같은 골드로 약 0.75 배 · 새 동료는 약 0.8 배 로 덜 깎인다
+  let rebalanceGold = 0;
+  const rebalanceChanges: { id: TitanHeroId; from: number; to: number }[] = [];
+  if ((value.allyRebalance ?? 0) < ALLY_REBALANCE_VERSION) {
+    for (const h of HEROES) {
+      const old = PRE_REBALANCE_BASE_COST[h.id];
+      if (old === undefined || old <= h.baseCost || heroes[h.id] <= 1) continue;
+      const r = relevelAlly(old, h.baseCost, heroes[h.id]);
+      if (r.level === heroes[h.id] && r.gold <= 0) continue;
+      rebalanceChanges.push({ id: h.id, from: heroes[h.id], to: r.level });
+      heroes[h.id] = r.level;
+      rebalanceGold += r.gold;
+    }
   }
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
   // 은퇴 환불 — 보유하던 은퇴 동료는 등급별 보석(+상점가), 배운 은퇴 스킬은 SP·코어를 돌려준다. 한 번만: 이 함수가 지운 뒤에는 원본에 없다
@@ -367,8 +388,9 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   } else {
     for (const skill of SKILLS) if (learned.includes(skill.id)) equipped[skill.slot] = equipped[skill.slot] ?? skill.id;
   }
+  const prevNotice = value.rebalanceNotice && Array.isArray(value.rebalanceNotice.changes) ? value.rebalanceNotice : null;
   return {
-    gold: n(value.gold, 0),
+    gold: n(value.gold, 0) + rebalanceGold,
     stage: Math.max(1, n(value.stage, 1, 9999)),
     bestStage: Math.max(1, n(value.bestStage, 1, 9999)),
     swordLevel: legacySword,
@@ -390,6 +412,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     },
     heroes,
     pendingRefund: refund.gems > 0 || refund.sp > 0 ? { gems: refund.gems, sp: refund.sp } : null,
+    allyRebalance: ALLY_REBALANCE_VERSION,
+    rebalanceNotice: rebalanceChanges.length > 0 ? { gold: rebalanceGold, changes: rebalanceChanges } : prevNotice,
     totalKills: n(value.totalKills, 0),
     totalTaps: n(value.totalTaps, 0),
     autoSkill: value.autoSkill === true,
@@ -473,6 +497,29 @@ export function lightningTapMul(level: number): number { return 1 + 0.12 * Math.
 /** 번개 한 번 = 탭 기본 피해 × (4 + 0.5·단계). 0단계는 번개 없음 */
 export function lightningBoltMul(level: number): number { return level > 0 ? 4 + 0.5 * level : 0; }
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
+
+/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다 */
+export const ALLY_REBALANCE_VERSION = 1;
+/** 조정 전 값 — 값이 내려간 동료만(오리온 · 새 40명). 마리나는 값과 힘이 같이 올라 다시 계산하지 않는다 */
+export const PRE_REBALANCE_BASE_COST: Partial<Record<TitanHeroId, number>> = {
+  orion: 1_150_000,
+  ...Object.fromEntries(NEW_ALLIES.map((d) => [d.id, preRebalanceBaseCost(d)])),
+};
+/**
+ * 옛 값(oldBase)으로 Lv.1 → level 까지 쓴 골드를 새 값(newBase)으로 다시 써서 오를 수 있는 레벨과 남는 골드.
+ * Lv.1 은 뽑기로 공짜일 수 있어 세지 않는다(값 1.19 배 곡선 · heroUpgradeCost 와 같은 계산)
+ */
+export function relevelAlly(oldBase: number, newBase: number, level: number): { level: number; gold: number } {
+  let spent = 0;
+  for (let l = 1; l < level; l += 1) spent += Math.floor(oldBase * Math.pow(1.19, l));
+  let lv = 1, used = 0;
+  while (lv < 9999) {
+    const c = Math.floor(newBase * Math.pow(1.19, lv));
+    if (used + c > spent) break;
+    used += c; lv += 1;
+  }
+  return { level: Math.max(level, lv), gold: Math.max(0, spent - used) };
+}
 
 export function heroUpgradeCost(def: TitanHeroDef, level: number): number {
   if (level <= 0) return def.baseCost;

@@ -8,7 +8,8 @@
  *   Lv1 전설 2% 로 희박하게 시작해 Lv10 전설 13.5% · 신화 4.2% · 초월 0.8%. 풀에 없는 등급의 확률은 있는 등급에 비례 재분배.
  * - 픽업은 같은 등급 안에서 가중치 2배.
  * - 천장: 전설 이상 없이 60회 → 61회째 전설 이상 확정(픽업 우선). 전설 이상을 뽑으면 카운터 리셋.
- * - 초월 천장 (2026-10-27): 풀에 초월이 있을 때 초월 없이 200회 → 200회째 초월 확정. 초월이 없는 풀(초반 지역)에서는 세지 않는다.
+ * - 초월 천장 (2026-10-27): 초월 없이 200회 → 200회째 초월 확정. 초반 지역(초월 없는 풀)에서 뽑은 것도 센다 —
+ *   다 차면 199 에서 멈춰 기다리다가 초월이 있는 풀의 첫 소환에서 확정(초반에 많이 뽑아도 천장이 버려지지 않게).
  * - 10연: 900보석(10% 할인) + 영웅(SR) 이상 1명 보장.
  * - 중복: 등급별 조각 N 5 / R 10 / SR 20 / SSR 40 / UR 60 / LR 80 — 성급 곡선(★1→2 = 20)과 맞춘다.
  * - 확률 공시: rateTable()이 동료별 확률을 %로 돌려준다 (게임산업법 공시 화면용).
@@ -24,7 +25,7 @@ export const GACHA = {
   singleCost: 100,
   tenCost: 900,
   pityLimit: 60,
-  /** 초월(LR) 천장 — 초월이 있는 풀에서만 센다 */
+  /** 초월(LR) 천장 — 초반 지역에서도 세고, 확정은 초월이 있는 풀에서 */
   lrPityLimit: 200,
   pickupWeight: 2,
   pickupCount: 2,
@@ -118,7 +119,7 @@ export function pullOnce(
   pity: number,
   rng: () => number = Math.random,
   guaranteeMin: AllyRarity | null = null,
-  /** 초월 천장 카운터 — 초월 없이 누적된 뽑기 수(초월이 있는 풀에서만) */
+  /** 초월 천장 카운터 — 초월 없이 누적된 뽑기 수 */
   lrPity = 0,
 ): { result: PullResult; pity: number; lrPity: number } {
   const ssr = pool.entries.filter((e) => isTop(e.rarity));
@@ -138,7 +139,7 @@ export function pullOnce(
   const picked = weightedPick(candidates, rng);
   const duplicate = owned[picked.id] > 0;
   const nextPity = isTop(picked.rarity) || atPity ? 0 : Math.min(GACHA.pityLimit - 1, pity + 1);
-  const nextLr = picked.rarity === "LR" ? 0 : lr.length > 0 ? Math.min(GACHA.lrPityLimit - 1, lrPity + 1) : lrPity;
+  const nextLr = picked.rarity === "LR" ? 0 : Math.min(GACHA.lrPityLimit - 1, lrPity + 1);
   return {
     result: { id: picked.id, rarity: picked.rarity, pickup: picked.pickup, duplicate, shards: duplicate ? GACHA.dupeShards[picked.rarity] : 0, pityBefore: pity },
     pity: nextPity,
@@ -183,6 +184,9 @@ export function pullTen(
 }
 
 /** 확률 공시 — 동료별 확률(%)과 등급 합계 */
+/** 초월 동료가 처음 열리는 층 — 초월 천장 안내용 */
+export const FIRST_LR_STAGE: number = Math.min(...HEROES.filter((h) => ALLY_RARITY[h.id] === "LR" && h.unlockStage < 9999).map((h) => h.unlockStage));
+
 export function rateTable(pool: GachaPool): { id: TitanHeroId; rarity: AllyRarity; pickup: boolean; percent: string }[] {
   return [...pool.entries]
     .sort((a, b) => (a.rarity === b.rarity ? b.rate - a.rate : RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity)))

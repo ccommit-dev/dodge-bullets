@@ -61,3 +61,11 @@
 }
 .relic-tab-empty b { font-size: 15px; font-weight: 900; color: #3b2415; }
 .relic-tab-empty small { font-size: 13px; font-weight: 700; color: #5e4229; }
+
+/* 동료 밸런스 조정 안내 (2026-10-27) — 유물 결과 창(.relic-draw-card) 판을 빌린다 */
+.rebalance-modal .rebalance-lead { margin: 4px 0 8px; font-size: 13px; font-weight: 700; line-height: 1.45; color: #5e4229; text-align: center; }
+.rebalance-modal .rebalance-list { list-style: none; margin: 0 0 8px; padding: 6px 10px; display: grid; gap: 4px; border-radius: 12px; background: #fff; border: 2px solid rgba(59, 36, 21, .15); }
+.rebalance-modal .rebalance-list li { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: #2b1a0d; }
+.rebalance-modal .rebalance-list li b { font-weight: 900; color: #9a5b13; white-space: nowrap; }
+.rebalance-modal .rebalance-gold { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 0 0 8px; font-size: 14px; font-weight: 900; color: #3b2415; }
+.rebalance-modal .rebalance-gold .currency-icon { width: 18px; height: 18px; }
