@@ -1226,7 +1226,10 @@
    공격 칸 자세는 EquippedCharacter WEAPON_ATTACK_POSE. 칸 사이는 회전(transform)만 잇는다 — 창 찌르기의 손잡이 점(translate · transform-origin)까지 이으면
    둘이 따로 움직여 중간 순간 손잡이가 손에서 8px 벗어났다(verify-weapon-grip). 손잡이 이동은 칸 단위로 끊어도 시트 칸처럼 읽힌다 */
 .equipped-character .equipment-weapon-alt.weapon-cast { filter: drop-shadow(0 0 5px #67e8f9) drop-shadow(0 0 12px rgba(103, 232, 249, .75)) brightness(1.18); }
-/* 무기 외형 = 장착 무기 그림 색 돌리기 + 오라 (gemCatalog weaponSkinStyle: --skin-hue · --blade-aura) */
-.equipped-character .equipment-weapon-alt.weapon-skin, .equipped-character .equipment-weapon-ghost.weapon-skin { filter: hue-rotate(var(--skin-hue, 0deg)) saturate(1.3) drop-shadow(0 0 4px var(--blade-aura)) drop-shadow(0 0 10px color-mix(in srgb, var(--blade-aura) 50%, transparent)); }
-.equipped-character .equipment-weapon-alt.weapon-skin.weapon-cast { filter: hue-rotate(var(--skin-hue, 0deg)) saturate(1.3) drop-shadow(0 0 6px var(--blade-aura)) drop-shadow(0 0 14px var(--blade-aura)) brightness(1.18); }
-.blade-product .blade-thumb img.weapon-skin-thumb { width: 34px; height: 52px; object-fit: contain; filter: hue-rotate(var(--skin-hue, 0deg)) saturate(1.3) drop-shadow(0 0 4px var(--blade-aura)); }
+/* 무기 외형 = 몸통 색만 칠한 장착 무기 그림(gemCatalog weaponSkinIcon) + 오라(--blade-aura) — 색 돌리기(hue-rotate)는 금 장식까지 바꿔 뺐다 */
+.equipped-character .equipment-weapon-alt.weapon-skin, .equipped-character .equipment-weapon-ghost.weapon-skin { filter: drop-shadow(0 0 4px var(--blade-aura)) drop-shadow(0 0 10px color-mix(in srgb, var(--blade-aura) 50%, transparent)); }
+.equipped-character .equipment-weapon-alt.weapon-skin.weapon-cast { filter: drop-shadow(0 0 6px var(--blade-aura)) drop-shadow(0 0 14px var(--blade-aura)) brightness(1.18); }
+.blade-product .blade-thumb img.weapon-skin-thumb { width: 34px; height: 52px; object-fit: contain; filter: drop-shadow(0 0 4px var(--blade-aura)); }
+/* 상점 외형 탭 소제목 — 무기 외형 · 비트 디펜스 꾸미기 · 무기 이펙트를 가른다 (2026-10-27, "황금 전진 북 · 공명의 전투 북 — 같은 이름 유의") */
+.titans-shop .premium-subhead, .premium-subhead { grid-column: 1 / -1; margin: 10px 2px 2px; font-size: 14px; font-weight: 900; color: var(--flat-ink, #3b2415); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.premium-subhead small { font-size: 13px; font-weight: 700; color: #7a5a3a; }

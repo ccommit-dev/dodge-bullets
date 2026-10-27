@@ -19,8 +19,13 @@ export const CHARACTER_LABEL: Record<CharacterSkinId, string> = {
 
 const isSkin = (character: string) => character === "obsidian" || character === "dawn" || character === "ember" || character === "frost";
 /** 주인공 시트 — 애니메이션 2판(2026-10-19)이면 대기 6 · 걷기 6 · 공격 8칸 webp(스킨은 make-character-skins --anim2 파생), 아니면 1판 4칸 PNG */
-export function sheetFor(character: string, mode: HeroAnimMode): string {
-  if (HERO_ANIM) return assetUrl(`titans/anim/hero/hero-${mode}${isSkin(character) ? `-${character}` : ""}.webp`);
+/** 무기별 공격 시트가 있는 무기 (2026-10-27, 사용자: "활·지팡이 동작 — 몸 전체가 활을 당기거나 지팡이를 드는 동작") — 창 찌르기 · 활 당기기 · 지팡이 들어 내뻗기.
+ * art-gen/blender/anim2.py HERO_WEAPON_ATTACK → render_anim2 hero-<무기> → assemble-anim2 → hero-attack-<무기>[-스킨].webp. 검은 hero-attack */
+export const HERO_WEAPON_SHEETS = ["spear", "bow", "staff"] as const;
+export type HeroWeaponSheet = (typeof HERO_WEAPON_SHEETS)[number];
+export const hasWeaponSheet = (kind: string | undefined): kind is HeroWeaponSheet => (HERO_WEAPON_SHEETS as readonly string[]).includes(kind ?? "");
+export function sheetFor(character: string, mode: HeroAnimMode, weaponKind?: string): string {
+  if (HERO_ANIM) return assetUrl(`titans/anim/hero/hero-${mode}${mode === "attack" && hasWeaponSheet(weaponKind) ? `-${weaponKind}` : ""}${isSkin(character) ? `-${character}` : ""}.webp`);
   const m = mode === "walk" ? "idle" : mode;
   if (isSkin(character)) return assetUrl(`titans/character/skins/hero-${m}-${character}.png`);
   return m === "attack" ? ATTACK_SHEET : IDLE_SHEET;

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
-import { WEAPON_SKINS, weaponSkinStyle } from "../economy/gemCatalog";
+import { WEAPON_SKINS, weaponSkinIcon, weaponSkinStyle } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { ATTACK_EQUIPMENT_ANCHORS, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
 import { sheetFor } from "../titans/anim";
 import { HERO_ANIM, heroFrames, type HeroAnimMode } from "../titans/spriteAnim";
 
@@ -49,8 +49,9 @@ export const WEAPON_GRIP: Record<"sword" | "spear" | "bow" | "staff", [number, n
  * [절대 기울기°(0 = 위, 90 = 적 쪽 오른쪽), 손잡이 세로 %(창: 자루를 손에서 앞으로 밀어낸다), 가로 배율(활: 시위를 당기면 활이 좁아진다)]
  * 검은 표가 없다 = 시트 손뼈 회전 그대로 휘두른다(뒤로 들었다 앞으로 내리친다) */
 export const WEAPON_ATTACK_POSE: Record<"spear" | "bow" | "staff", Array<[number, number, number]>> = {
-  // 창: 수평으로 겨눈 채 뒤로 당겼다가(손잡이 46%) 앞으로 쭉 찌르고(90%) 돌아온다 — 기울기는 70~92° 안에서만
-  spear: [[72, 52, 1], [74, 46, 1], [76, 46, 1], [82, 64, 1], [90, 90, 1], [91, 92, 1], [86, 78, 1], [78, 62, 1]],
+  // 창: 수평으로 겨눈 채 허리로 당겼다가 앞으로 찌르고 돌아온다 — 기울기는 70~92° 안에서만. 몸 · 팔 찌르기는 무기별 시트(hero-attack-spear)가 하고
+  // 여기 손잡이 이동(54 → 76%)은 끝을 조금 더 밀어 주는 정도(시트 전엔 46 → 92% 로 혼자 찔렀다)
+  spear: [[72, 58, 1], [74, 56, 1], [76, 54, 1], [82, 62, 1], [90, 74, 1], [91, 76, 1], [86, 70, 1], [78, 64, 1]],
   // 활: 세워 든 채 시위를 당기며(가로 .88) 살짝 젖히고, 놓는 칸에 튕겨 펴진다(1.08)
   bow: [[-3, 50, 1], [-6, 50, .94], [-9, 50, .88], [-7, 50, .9], [1, 50, 1.08], [2, 50, 1.02], [0, 50, 1], [-2, 50, 1]],
   // 지팡이: 머리 위로 치켜들었다가(−16°) 적 쪽으로 내뻗으며(35°) 보석이 빛난다(.weapon-cast). 넷째 칸은 손이 몸 앞이라 왼쪽으로 기울면 얼굴을 가려(2026-10-27 캡처) 6° 로 세운다
@@ -67,11 +68,12 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
-  const anchors = mode === "attack" ? ATTACK_EQUIPMENT_ANCHORS : mode === "walk" && HERO_ANIM ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
+  // 공격 칸은 무기별 시트의 손 앵커(창 · 활 · 지팡이 — 2026-10-27), 검은 기본
+  const anchors = mode === "attack" ? attackAnchorsFor(weaponKind) : mode === "walk" && HERO_ANIM ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
   const anchor = anchors[Math.min(index, anchors.length - 1)];
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
-  const sheet = sheetFor(character, mode);
+  const sheet = sheetFor(character, mode, weaponKind);
   // 무기 외형(상점) — 티어 색을 덮어쓰고 오라를 두른다. 실루엣(티어)은 유지 =
   // 강화 단계는 형태로, 커스텀은 색으로 읽힌다.
   const blade = weaponSkin ? WEAPON_SKINS[weaponSkin] : undefined;
@@ -91,7 +93,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     return () => window.clearTimeout(t);
   }, [weaponKey]);
   const ghostM = /(?:^skin-([\w-]+?)-)?(sword|spear|bow|staff)-(\d)$/.exec(swap.from);
-  const ghostSrc = ghostM ? assetUrl(`titans/gear/${ghostM[2] === "sword" ? "weapon" : ghostM[2]}-${ghostM[3]}.png`) : "";
+  const ghostSrc = ghostM ? assetUrl(`titans/gear/${ghostM[1] ? `skins/${ghostM[1]}/` : ""}${ghostM[2] === "sword" ? "weapon" : ghostM[2]}-${ghostM[3]}.png`) : "";
   const ghostSkin = ghostM?.[1] ? WEAPON_SKINS[ghostM[1]] : undefined;
   // 손잡이 점 (2026-10-27, 사용자: "무기 탈착 애니메이션이 너무 어색해 실제 손으로 든 것처럼") — 장비 그림(titans/gear) 안에서 손이 쥐는 곳(%, 모델 치수로 계산).
   // 예전엔 북 그림에 맞춘 translate(-34%,-91%) 를 그대로 써서 세로형 검 · 창의 손잡이가 손 오른쪽 위로 떠 있었다. 이제 손잡이가 손 앵커에 오고 그 점을 축으로 돈다
@@ -116,14 +118,14 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
           몸이 1~3 칸(최대 100ms) 사라졌다(무기·그림자만 남음). 몬스터(SpriteArt)처럼 세 시트를 다 깔아 두고 지금 것만 보인다 — 대기 줄이 DOM 맨 앞(재는 검사들이 첫 것을 본다) */}
       {HERO_ANIM ? HERO_MODES.map((m) => {
         const n = heroFrames(m), on = m === mode;
-        return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${sheetFor(character, m)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
+        return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${sheetFor(character, m, weaponKind)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
       }) : <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundSize: `${frames * 100}% 100%`, backgroundPosition: `${frames > 1 ? (index / (frames - 1)) * 100 : 0}% 0` }} />}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
       {swap.from && ghostSrc && ghostM && (() => { const g = WEAPON_GRIP[ghostM[2] as "sword" | "spear" | "bow" | "staff"]; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt ${ghostSkin ? "weapon-skin" : ""}`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale), ...(ghostSkin ? weaponSkinStyle(ghostSkin) : {}) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}
       {swap.seq > 0 && weaponKey !== "none" && <i key={`flash-${swap.seq}`} className="gear-swap-flash" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
       {/* 무기 4종 (2026-10-27) — 손 앵커에 장비 그림, 손잡이 점으로 쥔다. 공격 칸은 무기마다 자세(WEAPON_ATTACK_POSE)
           상점 무기 외형은 같은 그림의 색 바꾸기 + 오라(weapon-skin) — 예전 북 그림(premium-weapon-sheet)은 무기가 검 · 창 · 활 · 지팡이로 바뀐 뒤 손에 북을 들게 했다 */}
-      <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${blade ? "weapon-skin" : ""} ${swap.seq > 0 ? "gear-attach" : ""} ${casting ? "weapon-cast" : ""}`} data-pose={pose ? `${weaponKind}-${Math.min(7, Math.floor(attackT * 8))}` : undefined} style={{ ...weaponPart, ...(blade ? weaponSkinStyle(blade) : {}) }} src={assetUrl(weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
+      <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${blade ? "weapon-skin" : ""} ${swap.seq > 0 ? "gear-attach" : ""} ${casting ? "weapon-cast" : ""}`} data-pose={pose ? `${weaponKind}-${Math.min(7, Math.floor(attackT * 8))}` : undefined} style={{ ...weaponPart, ...(blade ? weaponSkinStyle(blade) : {}) }} src={assetUrl(blade && weaponSkin ? weaponSkinIcon(weaponSkin, weaponKind, weaponLevel) : weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
     </div>
   );
 }

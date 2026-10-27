@@ -1,5 +1,5 @@
 """애니메이션 2판 렌더 (2026-10-19) — blender -b -P art-gen/blender/render_anim2.py -- <id> [<id> …]
-id: hero · 동료 id · 스킨 id · 몬스터 art. 동작마다 칸을 art-gen/out/b3d2/<id>/<동작>_<i>.png 로, meta.json 에
+id: hero · hero-spear|hero-bow|hero-staff(무기별 공격 한 줄) · 동료 id · 스킨 id · 몬스터 art. 동작마다 칸을 art-gen/out/b3d2/<id>/<동작>_<i>.png 로, meta.json 에
 {res, actions: {동작: [{pivot, tint, parts?}]}} 를 쓴다. 자세는 anim2.py(동작마다 6~8칸 · 고리 · 예비/임팩트/복귀),
 칸 수는 art-gen/anim-layout.json. 카메라·조명·재질은 1판(render_roster)과 같아 그림체가 같다. 조립은 scripts/assemble-anim2.mjs."""
 import bpy
@@ -56,6 +56,9 @@ def run(who, only=None):
     if who == 'hero':
         rig = BV.build('hero', R.HERO)
         render_actions(rig, A2.beaver_actions('melee', hero=True), BV.pose, outdir, cam, math.radians(RR.YAW), 1, HERO_PARTS2, only)
+    elif who.startswith('hero-') and who[5:] in A2.HERO_WEAPON_ATTACK:   # 주인공 무기별 공격 시트(창 · 활 · 지팡이, 2026-10-27) — 공격 한 줄만
+        rig = BV.build('hero', R.HERO)
+        render_actions(rig, {'attack': A2.hero_weapon_attack(who[5:])}, BV.pose, outdir, cam, math.radians(RR.YAW), 1, HERO_PARTS2, only)
     elif who in R.ALLIES or who in R.SKINS:
         if who in R.SKINS:
             base, over = R.SKINS[who]

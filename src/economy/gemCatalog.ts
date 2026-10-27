@@ -8,6 +8,7 @@
  * 스케일해 초반엔 싸구려, 후반엔 유의미한 팩이 되는 것을 막는다 (데이터 기반).
  */
 import { killGold } from "../titans/model";
+import { weaponIconPath, type WeaponKind } from "../titans/weapons";
 import type { CharacterProgress } from "../progression/model";
 
 /* ── 무기 외형 (커스텀) — 강화 티어 색을 덮어쓰는 칼날 외형. 성능 무관 ── */
@@ -49,11 +50,14 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
   },
 };
 
-/** 무기 외형 = 장착 무기 그림(titans/gear 4종)의 색 돌리기 + 오라 (2026-10-27). 무기 그림의 바탕색(파란 자루 · 210°)을 외형 hue 로 돌린다.
- * 예전 북 그림(premium-weapon-sheet · spriteIndex)은 무기가 검 · 창 · 활 · 지팡이로 바뀐 뒤 손에 북을 들게 해 더는 그리지 않는다 */
-export const WEAPON_ART_BASE_HUE = 210;
+/** 무기 외형 = 장착 무기 그림(titans/gear 4종 × 3단계)의 몸통 색만 칠한 그림 + 오라 (2026-10-27).
+ * 그림은 art-gen/weapon-skin-tint.mjs 가 만든다(public/titans/gear/skins/<외형 id>/) — 금 장식 · 흰 날 · 보석 · 술은 그대로.
+ * 처음엔 CSS hue-rotate 로 그림 전체를 돌려 금 장식까지 색이 바뀌었다. 예전 북 그림(premium-weapon-sheet · spriteIndex)은 더는 그리지 않는다 */
+export function weaponSkinIcon(skinId: string, kind: WeaponKind, level15: number): string {
+  return weaponIconPath(kind, level15).replace("titans/gear/", `titans/gear/skins/${skinId}/`);
+}
 export function weaponSkinStyle(def: WeaponSkinDef): Record<string, string> {
-  return { "--skin-hue": `${def.hue - WEAPON_ART_BASE_HUE}deg`, "--blade-aura": def.aura };
+  return { "--blade-aura": def.aura };
 }
 
 /* ── 칭호 — 마이페이지 프로필에 표시. 수집·과시 축 ── */
