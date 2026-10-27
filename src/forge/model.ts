@@ -152,6 +152,7 @@ export function formatGold(value: number): string {
  * 상한은 사다리가 길수록 낮다(10단계 25% · 15단계 16% · 20단계 12%) — 같은 25% 면 +20 원정 무기는 끝까지 예전의 ×5(하위 10% ×10)였다.
  * 기준은 게임 안 두 위험 강화(scripts/verify-relic-forge-econ.mjs): 끝까지 기대 골드가 대장간 북 +5 까지(×1.8) 이상 — "무기처럼" 아프고 —
  * 이미 있는 보호구 하락 규칙(×8.7)보다는 순하다(장비 · 원정 무기는 사냥 · 성문 진행에 바로 걸린다). 지금 장비 +10 · 원정 무기 +20 모두 약 ×2.9.
+ * 2026-10-27 사용자 확정: ×2.9 유지(×4 · ×2 안과 견준 뒤 "지금처럼").
  * 파괴는 대장간 방지권(ForgeSave.tickets)이 있으면 한 장 써서 막는다(단계 유지). 파괴되면 올린 단계만큼 강화석을 돌려준다.
  */
 export function enhanceRisk(level: number, max: number): { success: number; destroy: number } {
