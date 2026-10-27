@@ -50,7 +50,7 @@ import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
-import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount } from "./economy/gemCatalog";
+import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinStyle } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, QA_BUILD, qaGemsEnabled, testModeEnabled, updateCharacterProgress } from "./progression/storage";
@@ -4261,14 +4261,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <GemMark />120
               </button>
             </article>}
-            {/* 무기 외형 — 북 스킨 3종(진홍·빙하·황금, premium-weapon-sheet) · 오라 색 */}
+            {/* 무기 외형 3종(진홍·빙하·황금) — 지금 장착한 무기 그림의 색 바꾸기 · 오라 (2026-10-27, 북 그림 대신) */}
             {premiumCategory === "weapon" && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
               const owned = character.ownedWeaponSkins.includes(skinId);
               const equipped = character.equippedWeaponSkin === skinId;
               return (
                 <article key={skinId} className="titans-card premium-product-card gem-product blade-product">
-                  <span className="blade-thumb" style={{ "--blade-aura": def.aura } as CSSProperties} aria-hidden="true">
-                    <i className="premium-weapon-thumb" style={{ backgroundImage:`url(${assetUrl("titans/equipment/weapons/premium-weapon-sheet.png")})`, backgroundPosition:`${def.spriteIndex / 2 * 100}% center` }} />
+                  <span className="blade-thumb" style={weaponSkinStyle(def) as CSSProperties} aria-hidden="true">
+                    <img className="weapon-skin-thumb weapon-skin" src={assetUrl(weaponIconPath(weaponKind, forgedWeaponLevel))} alt="" />
                   </span>
                   <div>
                     <strong>{def.name} <em>무기 외형</em></strong>
