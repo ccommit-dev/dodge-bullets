@@ -190,9 +190,11 @@ ok("E 소환 직후 소환진이 뜨고 카드는 아직 없다", e1.circle && !
 await sleep(1300);
 const e2 = await page.evaluate(() => ({ circle: !!document.querySelector(".gacha-summon-circle"), cards: document.querySelectorAll(".gacha-card").length }));
 ok("E 1.2초 뒤 소환진이 사라지고 카드 10장 공개", !e2.circle && e2.cards === 10, JSON.stringify(e2));
-// 등급 예고 정합: 결과 최고 등급이 SSR이면 소환진은 반드시 금색 (페이크는 상향만)
-const hadSsr = await page.evaluate(() => !!document.querySelector(".gacha-card.rarity-ssr"));
-ok("E 예고 색 규칙: 결과에 SSR이 있으면 예고는 금색이어야 함 (상향 페이크만 허용)", !hadSsr || e1.tier === "tier-ssr", `ssr=${hadSsr} tease=${e1.tier}`);
+// 등급 예고 정합 (2026-10-27 6등급): 예고 색은 결과 최고 등급이거나 한 단계 위(상향 페이크)만 — 결과보다 낮게 예고하지 않는다
+const RANK = { n: 0, r: 1, sr: 2, ssr: 3, ur: 4, lr: 5 };
+const bestRank = await page.evaluate(() => Math.max(...[...document.querySelectorAll(".gacha-card")].map((c) => { const m = [...c.classList].find((x) => x.startsWith("rarity-")); return { n: 0, r: 1, sr: 2, ssr: 3, ur: 4, lr: 5 }[m?.slice(7)] ?? -1; })));
+const teaseRank = RANK[(e1.tier ?? "").slice(5)] ?? -1;
+ok("E 예고 색 규칙: 예고 = 결과 최고 등급 또는 한 단계 위(상향 페이크만)", teaseRank === bestRank || teaseRank === bestRank + 1, `best=${bestRank} tease=${e1.tier}`);
 
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));
 await browser.close();
