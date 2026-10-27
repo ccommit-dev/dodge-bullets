@@ -1233,7 +1233,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const af = allyFeatureEffects(characterRef.current.partyIds);
         const skillEl = opts?.skill ? SKILLS.find((s) => s.id === opts.skill)?.element ?? "" : "";
         const weakHit = (opts?.skill && skillHitsWeak(wk, skillEl, pn)) || (opts?.fromAlly && opts.fromAlly !== "tap" && allyHitsWeak(wk, opts.fromAlly, pn));
-        if (weakHit) {
+        // DEV 측정 모드 — 대장 약점(무작위 속성 ×1.6)을 끈다. 무기마다 굴림 순서가 달라 약점이 다르게 걸렸다
+        if (weakHit && !(import.meta.env.DEV && (window as unknown as { __huntProbe?: { noWeak?: boolean } }).__huntProbe?.noWeak)) {
           mul *= WEAK_MUL + hm.weakBonus;
           label = "약점!";
           if (hm.weakHunt && opts?.skill) { bossLeftRef.current += 1; setBossLeft(bossLeftRef.current); }
@@ -1590,9 +1591,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
     const critChance = Math.min(0.95, 0.08 + WEAPON_EFFECTS[weaponKindRef.current].critAdd + passive.critChance + (now < b.critUntil ? b.critBonus : 0) + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).critChance);   // + 장갑
-    const crit = Math.random() < critChance;
     // 사냥 강화 — 탭·스킬 배수와 치명 피해 배수 (지역 런 효과)
     const hm = saveRef.current.huntMods;
+    // DEV 측정 모드 (scripts/_probe-weapon-dps2.mjs) — 치명을 굴리지 않고 기댓값으로. 운석 같은 큰 한 방 몇 번의 치명이 측정을 ±15% 흔들었다
+    if (import.meta.env.DEV && (window as unknown as { __huntProbe?: { expectCrit?: boolean } }).__huntProbe?.expectCrit) {
+      return { dmg: base * hm.tapMul * clone * (1 + Math.min(1, critChance) * (3.2 * hm.critDmgMul - 1)), crit: false, base: base * hm.tapMul };
+    }
+    const crit = Math.random() < critChance;
     return { dmg: base * hm.tapMul * clone * (crit ? 3.2 * hm.critDmgMul : 1), crit, base: base * hm.tapMul };
   }, [forgedWeaponLevel]);
 
@@ -4711,7 +4716,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <div className="relic-draw-modal rebalance-modal" role="dialog" aria-modal="true" aria-label="동료 밸런스 조정 안내" onClick={() => setRebalanceInfo(null)}>
           <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
             <b>동료 밸런스 조정</b>
-            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 키워 둔 동료는 예전 힘 이상이 되도록 레벨을 올려 드렸어요.</p>
+            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 키워 둔 동료는 예전 힘과 같아지도록 레벨을 올려 드렸어요.</p>
             <ul className="rebalance-list">
               {rebalanceInfo.changes.slice(0, 6).map((c) => (
                 <li key={c.id}><span>{HEROES.find((h) => h.id === c.id)?.name ?? c.id}</span><b>Lv.{c.from} → Lv.{c.to}</b></li>
@@ -4719,6 +4724,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               {rebalanceInfo.changes.length > 6 && <li><span>외 {rebalanceInfo.changes.length - 6}명</span><b /></li>}
             </ul>
             {rebalanceInfo.gold > 0 && <p className="rebalance-gold"><CurrencyIcon kind="gold" /> 남은 골드 {formatGold(rebalanceInfo.gold)} 돌려받음</p>}
+            {rebalanceInfo.gold < 0 && <p className="rebalance-gold rebalance-gold-back"><CurrencyIcon kind="gold" /> 1차 조정 때 돌려받은 골드 {formatGold(-rebalanceInfo.gold)}는 이번 레벨에 포함했어요</p>}
             <button type="button" className="cta" onClick={() => setRebalanceInfo(null)}>확인</button>
           </div>
         </div>,

@@ -222,7 +222,8 @@ ok("I 진홍 잔영 300 + 오로라 밤 400 구매 → 즉시 장착 · 보석 1
 r = await page.evaluate(() => { const f = document.querySelector(".titans-field"); const cs = getComputedStyle(f); return { fx: f?.dataset.weaponFx, theme: f?.dataset.theme, sky: cs.getPropertyValue("--area-sky").trim(), trail: cs.getPropertyValue("--fx-trail").trim(), particles: !!document.querySelector(".theme-particles.theme-aurora"), btn: document.querySelector(".fx-product button")?.textContent }; });
 ok("I 전장에 data-weapon-fx/theme · 하늘색 테마 오버라이드 · 오로라 파티클 · 버튼 해제", r.fx === "fx-crimson" && r.theme === "theme-aurora" && r.sky === "#0f172a" && r.trail === "#f87171" && r.particles && r.btn === "해제", JSON.stringify(r));
 await page.evaluate(() => document.querySelector(".theme-product button")?.click());
-await sleep(600);
+// 고정 0.6초 대신 저장이 바뀔 때까지(최대 4초) — 전체 검사 부하에서 저장 · 다시 그리기가 0.6초를 넘겨 한 번 실패했다(2026-10-27)
+for (let i = 0; i < 20; i += 1) { await sleep(200); if ((await prog()).equippedTheme === "" && await page.evaluate(() => !document.querySelector(".titans-field")?.dataset.theme)) break; }
 ip = await prog();
 r = await page.evaluate(() => ({ theme: document.querySelector(".titans-field")?.dataset.theme ?? null, btn: document.querySelector(".theme-product button")?.textContent }));
 ok("I 테마 해제 → data-theme 제거 · 보유 유지 · 버튼 장착", ip.equippedTheme === "" && ip.ownedThemes.includes("theme-aurora") && r.theme === null && r.btn === "장착", JSON.stringify(r));

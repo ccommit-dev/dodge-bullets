@@ -358,13 +358,16 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
       const old = PRE_REBALANCE_BASE_COST[h.id], oldDps = PRE_REBALANCE_BASE_DPS[h.id];
       if (old === undefined || oldDps === undefined || old <= h.baseCost || heroes[h.id] <= 1) continue;
       const from = heroes[h.id];
+      // 판 2 저장(예전 힘 '이상'으로 이미 올림)은 그대로 — 레벨을 깎지 않는다
+      if (doneVersion === 2) continue;
       // 판 1 저장: 지금 레벨 = 골드 기준 레벨 → 그 레벨이 나오는 원래 레벨 중 가장 높은 것
       let orig = from;
       if (doneVersion === 1) { orig = 1; for (let l = 2; l <= from; l += 1) if (relevelAlly(old, h.baseCost, l, oldDps, h.baseDps, false).level <= from) orig = l; else break; }
       const r = relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps);
       const to = Math.max(from, r.level);
-      const gold = doneVersion === 1 ? 0 : r.gold;   // 판 1 은 남는 골드를 이미 돌려줬다
-      if (to === from && gold <= 0) continue;
+      // 판 1 은 남는 골드를 이미 돌려줬다 — 이번에 힘으로 맞춰 준 레벨에 그 골드가 포함된다(두 번 받지 않게 거둔다 · 가진 골드까지만)
+      const gold = doneVersion === 1 ? (to > from ? -relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps, false).gold : 0) : r.gold;
+      if (to === from && gold === 0) continue;
       rebalanceChanges.push({ id: h.id, from, to });
       heroes[h.id] = to;
       rebalanceGold += gold;
@@ -398,7 +401,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   }
   const prevNotice = value.rebalanceNotice && Array.isArray(value.rebalanceNotice.changes) ? value.rebalanceNotice : null;
   return {
-    gold: n(value.gold, 0) + rebalanceGold,
+    gold: Math.max(0, n(value.gold, 0) + rebalanceGold),
     stage: Math.max(1, n(value.stage, 1, 9999)),
     bestStage: Math.max(1, n(value.bestStage, 1, 9999)),
     swordLevel: legacySword,
@@ -421,7 +424,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     heroes,
     pendingRefund: refund.gems > 0 || refund.sp > 0 ? { gems: refund.gems, sp: refund.sp } : null,
     allyRebalance: ALLY_REBALANCE_VERSION,
-    rebalanceNotice: rebalanceChanges.length > 0 ? { gold: rebalanceGold, changes: rebalanceChanges } : prevNotice,
+    // 안내의 골드 = 실제로 오간 골드(거둘 때는 가진 골드까지만)
+    rebalanceNotice: rebalanceChanges.length > 0 ? { gold: Math.max(0, n(value.gold, 0) + rebalanceGold) - n(value.gold, 0), changes: rebalanceChanges } : prevNotice,
     totalKills: n(value.totalKills, 0),
     totalTaps: n(value.totalTaps, 0),
     autoSkill: value.autoSkill === true,
@@ -506,8 +510,8 @@ export function lightningTapMul(level: number): number { return 1 + 0.12 * Math.
 export function lightningBoltMul(level: number): number { return level > 0 ? 4 + 0.5 * level : 0; }
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
 
-/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 */
-export const ALLY_REBALANCE_VERSION = 2;
+/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 · 3 = 예전 힘에 가장 가깝게 + 판 1 환급 골드 회수 */
+export const ALLY_REBALANCE_VERSION = 3;
 /** 조정 전 값 — 값이 내려간 동료만(오리온 · 새 40명). 마리나는 값과 힘이 같이 올라 다시 계산하지 않는다 */
 export const PRE_REBALANCE_BASE_COST: Partial<Record<TitanHeroId, number>> = {
   orion: 1_150_000,
@@ -534,9 +538,11 @@ export function relevelAlly(oldBase: number, newBase: number, level: number, old
   }
   const goldLevel = Math.max(level, lv);
   if (!powerFloor || oldDps <= 0 || newDps <= 0) return { level: goldLevel, gold: Math.max(0, spent - used) };
+  // 판 3 (같은 날 아쉬운 점 "예전 힘 이상이라 이득"): 예전 힘에 가장 가까운 레벨(±6%) — 한 단계가 ×1.125 라 '이상'은 최대 +12.5% 를 더 줬다
   const want = heroDps({ baseDps: oldDps } as TitanHeroDef, level);
   let pl = level;
   while (pl < 9999 && heroDps({ baseDps: newDps } as TitanHeroDef, pl) < want) pl += 1;
+  if (pl > level && Math.abs(heroDps({ baseDps: newDps } as TitanHeroDef, pl - 1) / want - 1) < Math.abs(heroDps({ baseDps: newDps } as TitanHeroDef, pl) / want - 1)) pl -= 1;
   return pl > goldLevel ? { level: pl, gold: 0 } : { level: goldLevel, gold: Math.max(0, spent - used) };
 }
 
