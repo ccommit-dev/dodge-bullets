@@ -4303,6 +4303,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </button>
             </article>}
             {/* 무기 외형 3종(진홍·빙하·황금) — 지금 장착한 무기 그림의 색 바꾸기 · 오라 (2026-10-27, 북 그림 대신) */}
+            {premiumCategory === "weapon" && <p className="premium-subhead">주인공 무기 외형 <small>장착한 검 · 창 · 활 · 지팡이 색</small></p>}
             {premiumCategory === "weapon" && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
               const owned = character.ownedWeaponSkins.includes(skinId);
               const equipped = character.equippedWeaponSkin === skinId;
@@ -4333,7 +4334,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const on = equippedBeatItem(character.beatCosmetics, item);
               return (
                 <article key={`beat-${item.kind}-${item.id}`} className="titans-card premium-product-card gem-product beat-custom-product" data-beat-item={`${item.kind}-${item.id}`}>
-            {premiumCategory === "weapon" && <p className="premium-subhead">주인공 무기 외형 <small>장착한 검 · 창 · 활 · 지팡이 색</small></p>}
                   <img className="beat-custom-thumb" src={beatItemIcon(item)} alt="" aria-hidden="true" />
                   <div><strong>{item.name} <em>{item.kind === "ring" ? "비트 · 판정 레일" : "비트 · 구호"}</em></strong><p>{item.desc}</p></div>
                   <button type="button" disabled={on || (!owned && redGems < item.cost)} onClick={() => void buyBeatCustom(item)}>
