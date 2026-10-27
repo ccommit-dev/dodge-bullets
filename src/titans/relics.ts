@@ -1,3 +1,4 @@
+import { killGold } from "./model";
 /**
  * 유물 (2026-10-26, 사용자: "오늘도 환생 2" 차용 3번 — 대장 사다리를 반복형으로 넓힌다).
  *
@@ -148,17 +149,42 @@ export function relicIconUrl(id: RelicId): string {
 /** 2026-10-27 사용자 확정: 1회 60 유지(40 · 80 안과 견준 뒤 "지금처럼") */
 export const RELIC_DRAW = { singleCost: 60, tenCost: 540 } as const;
 
-/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 */
-export function relicDrawRates(state: RelicState): { id: RelicId; rate: number }[] {
-  const open = RELICS.filter((r) => !relicMaxed(state, r.id));
+/**
+ * 등급 뽑기 (2026-10-27, 사용자: "상점 유물 뽑기는 재화 UI 처럼 · 유물도 일반 레어 유니크 유물 뽑기를 재화별 분리").
+ * 계열마다 일반 · 레어 · 유니크가 하나씩 — 어느 등급 뽑기로도 세 계열이 다 나와 세트를 맞출 수 있다.
+ *   일반 = 사냥 골드(층이 오르면 값도 — 사냥 골드 5분치) · 레어 = 강화석 30 · 유니크 = 보석 60(위 RELIC_DRAW, 사용자 확정 그대로). 10회는 10% 싸다.
+ */
+export type RelicTier = "common" | "rare" | "unique";
+export const RELIC_TIERS: readonly RelicTier[] = ["common", "rare", "unique"];
+export const RELIC_TIER: Record<RelicId, RelicTier> = {
+  "ember-ring": "common", "flame-feather": "rare", "lava-heart": "unique",
+  "frost-horn": "common", "snow-crystal": "rare", "ice-lantern": "unique",
+  "lucky-coin": "common", "golden-acorn": "rare", "beaver-crown": "unique",
+};
+export const RELIC_TIER_LABEL: Record<RelicTier, string> = { common: "일반", rare: "레어", unique: "유니크" };
+export type RelicDrawCurrency = "gold" | "stone" | "gem";
+export const RELIC_TIER_CURRENCY: Record<RelicTier, RelicDrawCurrency> = { common: "gold", rare: "stone", unique: "gem" };
+export const RELIC_STONE_DRAW = { singleCost: 30, tenCost: 270 } as const;
+
+/** 등급 뽑기 값 — 일반은 지금 층의 사냥 골드 5분치(처치 골드 × 초당 0.7 × 300초, 최소 100) */
+export function relicTierDrawCost(tier: RelicTier, stage: number): { single: number; ten: number } {
+  if (tier === "unique") return { single: RELIC_DRAW.singleCost, ten: RELIC_DRAW.tenCost };
+  if (tier === "rare") return { single: RELIC_STONE_DRAW.singleCost, ten: RELIC_STONE_DRAW.tenCost };
+  const single = Math.max(100, Math.round(killGold(Math.max(1, stage), false, false) * 0.7 * 300));
+  return { single, ten: single * 9 };
+}
+
+/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 · tier 를 주면 그 등급 뽑기(다른 등급은 0) */
+export function relicDrawRates(state: RelicState, tier?: RelicTier): { id: RelicId; rate: number }[] {
+  const open = RELICS.filter((r) => !relicMaxed(state, r.id) && (!tier || RELIC_TIER[r.id] === tier));
   return RELICS.map((r) => ({ id: r.id, rate: open.some((o) => o.id === r.id) ? 1 / open.length : 0 }));
 }
 
-export function drawRelicShards(state: RelicState, n: number, rng: () => number = Math.random): { state: RelicState; got: RelicId[] } {
+export function drawRelicShards(state: RelicState, n: number, rng: () => number = Math.random, tier?: RelicTier): { state: RelicState; got: RelicId[] } {
   const next: RelicState = { ...state };
   const got: RelicId[] = [];
   for (let i = 0; i < n; i++) {
-    const open = RELICS.filter((r) => !relicMaxed(next, r.id));
+    const open = RELICS.filter((r) => !relicMaxed(next, r.id) && (!tier || RELIC_TIER[r.id] === tier));
     if (!open.length) break;
     const pick = open[Math.min(open.length - 1, Math.floor(rng() * open.length))];
     next[pick.id] = (next[pick.id] ?? 0) + 1;

@@ -74,6 +74,31 @@ await page.evaluate(() => document.querySelector(".relic-tab-panel")?.scrollInto
 await page.screenshot({ path: "art-gen/out/relic-tab.png" });
 await page.evaluate(() => document.querySelector(".relic-tab-draw")?.click()); await sleep(600);
 ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!document.querySelector(".relic-draw-page")));
+// ── 4. 상점 유물 뽑기 — 등급 · 재화별 (2026-10-27: 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석) ──
+{
+  const cards = await page.evaluate(() => [...document.querySelectorAll(".relic-tier-card")].map((c) => ({ tier: c.dataset.tier, text: c.textContent })));
+  ok("유물 뽑기 카드 3장: 일반(골드) · 레어(강화석) · 유니크(보석 60)", cards.length === 3 && /일반 유물 ?골드/.test(cards[0].text) && /레어 유물 ?강화석/.test(cards[1].text) && /유니크 유물 ?보석/.test(cards[2].text) && /60/.test(cards[2].text), cards.map((c) => c.text.slice(0, 30)).join(" | "));
+  await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
+  await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
+  await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
+  await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
+  const g0 = (await tit()).gold;
+  const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
+  const draw = async (tier, n) => { await page.evaluate(({ tier, n }) => document.querySelector(`.relic-tier-card[data-tier="${tier}"] .relic-tier-buy button:nth-child(${n})`)?.click(), { tier, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
+  await draw("common", 1);
+  let pr = await prog(); const g1 = (await tit()).gold;
+  const common = ["ember-ring", "frost-horn", "lucky-coin"], rare = ["flame-feather", "snow-crystal", "golden-acorn"], unique = ["lava-heart", "ice-lantern", "beaver-crown"];
+  const sum = (ids) => ids.reduce((a, id) => a + (pr.relics[id] ?? 0), 0);
+  ok("일반 1회 → 골드가 줄고 일반 유물 조각 1", g1 < g0 && sum(common) === 1 && sum(rare) + sum(unique) === 0, `골드 ${g0} → ${g1} · ${JSON.stringify(pr.relics)}`);
+  await draw("rare", 1); pr = await prog();
+  ok("레어 1회 → 강화석 −30 · 레어 조각 1", pr.enhancementMaterials === 70 && sum(rare) === 1, `강화석 ${pr.enhancementMaterials} · ${JSON.stringify(pr.relics)}`);
+  await draw("unique", 1); pr = await prog();
+  ok("유니크 1회 → 보석 −60(QA 빌드는 보석 고정 999,999) · 유니크 조각 1", (pr.redGems === 140 || pr.redGems >= 999000) && sum(unique) === 1, `보석 ${pr.redGems} · ${JSON.stringify(pr.relics)}`);
+  const lay2 = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, over: [...document.querySelectorAll(".relic-tier-card, .relic-tier-card *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== "visible").map((e) => e.className + ":" + e.textContent.slice(0, 16)), small: [...document.querySelectorAll(".relic-tier-shop *")].filter((e) => e.childElementCount === 0 && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).map((e) => e.textContent.slice(0, 12)) }));
+  ok("유물 상점 390px 넘침 없음 · 13px 미만 없음", lay2.sw <= 390 && lay2.over.length === 0 && lay2.small.length === 0, JSON.stringify(lay2));
+  await page.evaluate(() => document.querySelector(".relic-tier-shop")?.scrollIntoView({ block: "start" })); await sleep(300);
+  await page.screenshot({ path: "art-gen/out/relic-shop.png" });
+}
 ok("성장 탭에 '퀘스트' 점(살 수 있음 표시) 동작", await page.evaluate(() => !!document.querySelector(".titans-growth-tabs button")));
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 await browser.close();
