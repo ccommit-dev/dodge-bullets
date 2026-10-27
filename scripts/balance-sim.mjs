@@ -93,13 +93,20 @@ const SHARD_MULT = Number(flag("shardmult", 1));
  * 빠진다. HP가 골드보다 빠르게 늘기 때문에 진행은 반드시 감속하는데, 고정 가정은
  * 그 벽을 지워 버려 30일차에 천문학적 수치가 나온다. 실제 함수로 벽을 재현한다.
  */
+/** 사냥터 편성 칸 — partySlotCount 기본(성벽 50 · 100층 전) */
+const PARTY_SIZE = 4;
+
 function playTitans(state, seconds, stageCeiling) {
   let t = seconds;
   let advanced = 0;
   let wall = false;
   while (t > 0) {
+    // 편성은 상위 4명만 싸운다 (2026-10-27 난이도 감사: 예전엔 보유 동료 전부의 합이라 동료 60명 뒤 DPS 가 부풀었다)
+    const partyDps = titans.HEROES
+      .map((h) => titans.heroDps(h, state.heroes[h.id] ?? 0) * allies.starMultiplier(allies.effectiveStars(state.stars?.[h.id], state.heroes[h.id] ?? 0)))
+      .sort((a, b) => b - a).slice(0, PARTY_SIZE).reduce((a, b) => a + b, 0);
     const dps =
-      titans.totalHeroDps(state.heroes, (id) => allies.starMultiplier(allies.effectiveStars(state.stars?.[id], state.heroes[id]))) +
+      partyDps +
       titans.playerIdleDps(state.weaponMastery) +
       titans.tapDamage(state.weaponMastery) * ASSUMPTIONS.tapsPerSecond;
 
@@ -113,7 +120,8 @@ function playTitans(state, seconds, stageCeiling) {
     if (bossTime > titans.BOSS_TIME_SEC * Math.sqrt(bossPressure.bossPressureScale(state.stage))) {
       // 벽에 막힘 — 남은 시간은 현재 스테이지 반복 사냥으로 골드만 번다.
       const perLoop = Math.max(0.5, mobTime);
-      const loops = Math.floor(t / perLoop);
+      // 소수 바퀴도 센다 — 내림이면 마리당 수십 초인 벽에서 수입이 0 이 돼 첫 환생 뒤 21일이 고정됐다(난이도 감사 2026-10-27)
+      const loops = t / perLoop;
       state.gold += loops * titans.MOBS_PER_STAGE * titans.killGold(state.stage, false, false);
       spendTitansGold(state);
       wall = true;
@@ -298,7 +306,7 @@ function simulate(kind) {
         p.rebirthCount += 1;
         rebirths += 1;
         titansState.stage = 1;
-        titansState.gold = 0;
+        titansState.gold = titans.rebirthStartGold(p.titanBestStage);   // 게임과 같은 출발 골드 (2026-10-27)
         for (const id of Object.keys(titansState.heroes)) titansState.heroes[id] = 0;
         titansState.weaponMastery = 1;
         boostNextDay = true; // 다음날 정산에만 2배 적용

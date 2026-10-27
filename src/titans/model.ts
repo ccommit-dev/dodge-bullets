@@ -428,11 +428,21 @@ export function killGold(stage: number, boss: boolean, chesterson: boolean): num
   let gold = base * (boss ? 7.5 : 1);
   if (chesterson) gold *= 10;
   gold *= huntingArea(stage).rewardMultiplier;
+  gold *= abyssGoldBoost(stage);
   return Math.max(1, Math.floor(gold));
 }
 
+/**
+ * 심연 골드 보정 (2026-10-27 난이도 감사) — 24층 전엔 지역 보상 배율(1 → 5)이 층당 골드를 ×1.35 쯤으로 올려 체력 ×1.38 을 따라갔는데,
+ * 24층 뒤(심연, 마지막 지역)엔 골드 ×1.26 대 체력 ×1.38 이라 층마다 머무는 시간이 계속 불었다(하루 20분 기준 60층 약 140일).
+ * 24층부터 층마다 ×1.03 을 더해 층당 골드 ≈ ×1.30 — 감사 모델로 60층 누적 47.5h → 20.8h
+ */
+export function abyssGoldBoost(stage: number): number {
+  return stage > 24 ? Math.pow(1.03, stage - 24) : 1;
+}
+
 export function stageClearBonus(stage: number): number {
-  return Math.floor(28 * Math.pow(1.3, stage - 1));
+  return Math.floor(28 * Math.pow(1.3, stage - 1) * abyssGoldBoost(stage));
 }
 
 export function tapDamage(swordLevel: number): number {

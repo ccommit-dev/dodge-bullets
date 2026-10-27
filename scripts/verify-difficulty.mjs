@@ -49,5 +49,11 @@ const cap = TR.TRIAL_BEST_MUL * TR.bestUnlockedBaseDps(11);
 const worst = Math.max(...above.map((h) => h.baseDps * TR.trialDpsMul(h, TR.trialCeiling(15, 11))));
 ok("③ 지역 안 · 아직 못 닿은 층의 동료는 최고 층 최강의 1.5배까지만", above.length > 0 && worst <= cap + 1e-6, `최대 ${Math.round(worst)} ≤ ${Math.round(cap)} (${above.length}명)`);
 
+// ④ 심연 골드 곡선 — 24층 뒤 층당 골드가 체력(×1.38)을 예전(×1.26)보다 가까이 따라간다
+ok("④ 심연 보정: 24층까지 1 · 25층 ×1.03 · 40층 ×1.03^16", M.abyssGoldBoost(24) === 1 && Math.abs(M.abyssGoldBoost(25) - 1.03) < 1e-9 && Math.abs(M.abyssGoldBoost(40) - Math.pow(1.03, 16)) < 1e-9);
+const step = M.killGold(41, false, false) / M.killGold(40, false, false);
+ok("④ 심연 층당 처치 골드 ≈ ×1.30 (예전 ×1.26)", step > 1.28 && step < 1.32, step.toFixed(3));
+ok("④ 24층 전 골드는 그대로", M.killGold(20, false, false) === Math.max(1, Math.floor(5 * Math.pow(1.26, 19) * M.huntingArea(20).rewardMultiplier)));
+
 console.log(fails ? `${fails} FAIL` : "ALL PASS");
 process.exit(fails ? 1 : 0);
