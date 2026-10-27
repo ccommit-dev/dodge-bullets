@@ -1,0 +1,63 @@
+/* 유물 뽑기 2판 · 사냥터 유물 탭 빈 칸 (2026-10-27, 사용자: "유물이 상점탭에서 뽑기 ui로 · 가지고 있는것만 사냥터 유물 탭에서")
+   동료 소환 화면(.gacha-stage-hero · .gacha-level · .gacha-page-actions)의 판을 빌리고, 등급 탭 · 진열대 · 등급 색만 여기서 정한다. */
+
+.relic-gacha-page { display: grid; gap: 10px; grid-column: 1 / -1; min-width: 0; width: 100%; }   /* 상점 칸은 2열 판 — 한 칸에 갇히지 않게 줄 전체 */
+
+/* 등급 탭 — 일반(골드) · 레어(강화석) · 유니크(보석) */
+.relic-gacha-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.relic-gacha-tiers button {
+  display: grid; justify-items: center; gap: 0; min-height: 48px; padding: 4px 6px; cursor: pointer;
+  border: 2px solid var(--flat-ink, #3b2415); border-radius: 12px; background: #fff8e6; color: #3b2415;
+}
+.relic-gacha-tiers button b { font-size: 15px; font-weight: 900; color: #3b2415 !important; }
+.relic-gacha-tiers button small { font-size: 13px; font-weight: 800; color: #6b4e33 !important; }
+.relic-gacha-tiers button.on { box-shadow: 0 3px 0 var(--flat-ink, #3b2415); transform: translateY(-1px); }
+.relic-gacha-tiers button.tier-common.on { background: #ffe9a8; }
+.relic-gacha-tiers button.tier-rare.on { background: #bfdbfe; }
+.relic-gacha-tiers button.tier-unique.on { background: #e9d5ff; }
+
+/* 진열대 — 동료 소환의 무대와 같은 자리, 높이만 유물 셋에 맞게 */
+.relic-gacha-page .gacha-stage-hero.relic-gacha-hero {
+  min-height: 0; padding: 34px 10px 12px; gap: 8px; overflow: hidden;
+  border: 2px solid var(--flat-ink, #3b2415); border-radius: 16px; background: linear-gradient(180deg, #fff1c2, #fff8e6);
+}
+.relic-gacha-page .relic-gacha-hero.tier-rare { background: linear-gradient(180deg, #cfe3ff, #fff8e6); }
+.relic-gacha-page .relic-gacha-hero.tier-unique { background: linear-gradient(180deg, #ead9ff, #fff8e6); box-shadow: 0 0 0 2px rgba(168, 85, 247, .35); }
+.relic-gacha-page .relic-gacha-hero::before { content: none; }   /* 돌아가는 무지개 고리(App.css)는 상자 밖으로 삐져 가로 넘침을 만든다 */
+.relic-gacha-badge {
+  position: absolute; top: 8px; left: 8px; z-index: 2; padding: 2px 10px; border-radius: 999px;
+  border: 2px solid var(--flat-ink, #3b2415); background: #ffe066; color: #3b2415; font-size: 13px; font-weight: 900;
+}
+.relic-gacha-hero.tier-rare .relic-gacha-badge { background: #93c5fd; }
+.relic-gacha-hero.tier-unique .relic-gacha-badge { background: #d8b4fe; }
+.relic-gacha-showcase { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; }
+.relic-gacha-showcase figure { margin: 0; display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.relic-gacha-showcase img {
+  width: clamp(64px, 20vw, 92px); height: clamp(64px, 20vw, 92px); object-fit: contain;
+  filter: grayscale(.7) opacity(.75); animation: relic-gacha-bob 2.6s ease-in-out infinite;
+}
+.relic-gacha-showcase figure:nth-child(2) img { animation-delay: -.9s; }
+.relic-gacha-showcase figure:nth-child(3) img { animation-delay: -1.7s; }
+.relic-gacha-showcase figure.owned img { filter: drop-shadow(0 0 8px rgba(255, 214, 102, .9)); }
+.relic-gacha-showcase figcaption { display: grid; justify-items: center; min-width: 0; max-width: 100%; }
+.relic-gacha-showcase figcaption b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 900; color: #3b2415 !important; }
+.relic-gacha-showcase figcaption small { font-size: 13px; font-weight: 800; letter-spacing: 0; color: #9a5b13 !important; }
+.relic-gacha-showcase figure:not(.owned) figcaption small { color: #7a5a3a !important; }
+.relic-gacha-hero > div:last-child small { font-size: 13px; letter-spacing: .08em; color: #7a5a3a !important; }
+.relic-gacha-hero h2 { margin: 2px 0; font-size: 22px !important; }
+.relic-gacha-hero p { margin: 0; font-size: 13px; font-weight: 700; color: #5e4229 !important; }
+@keyframes relic-gacha-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .relic-gacha-showcase img { animation: none; } }
+
+.relic-gacha-level b, .relic-gacha-level span { font-size: 13px; }
+.relic-gacha-buy button small { display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 13px; }
+.relic-gacha-buy button small .currency-icon, .relic-gacha-buy .relic-cost-stone { width: 15px; height: 15px; flex: 0 0 15px; object-fit: contain; }
+.relic-gacha-buy button:disabled { opacity: .55; cursor: default; }
+
+/* 사냥터 유물 탭 — 가진 유물이 없을 때 */
+.relic-tab-empty {
+  display: grid; gap: 4px; margin: 6px 0 0; padding: 14px 12px; text-align: center;
+  border: 2px dashed rgba(59, 36, 21, .35); border-radius: 14px; background: #fff8e6;
+}
+.relic-tab-empty b { font-size: 15px; font-weight: 900; color: #3b2415; }
+.relic-tab-empty small { font-size: 13px; font-weight: 700; color: #5e4229; }

@@ -87,7 +87,7 @@ import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
-import { drawRelicShards, grantRelicShards, relicDef, relicDrawRates, relicIconUrl, relicStars, relicTierDrawCost, RELICS, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_TIER, RELIC_TIER_CURRENCY, RELIC_TIER_LABEL, RELIC_TIERS, setActive, type RelicId, type RelicTier } from "./titans/relics";
+import { drawRelicShards, grantRelicShards, relicDef, relicDrawRates, relicIconUrl, relicStars, relicTierDrawCost, RELICS, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_TIER, RELIC_TIER_CURRENCY, RELIC_TIER_LABEL, RELIC_TIERS, setActive, type RelicId, type RelicTier } from "./titans/relics";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
@@ -351,6 +351,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return () => window.clearTimeout(t);
   }, [expeditionSendPop]);
   const [showRelicRates, setShowRelicRates] = useState(false);
+  /** 상점 유물 뽑기 — 고른 등급 탭 */
+  const [relicShopTier, setRelicShopTier] = useState<RelicTier>("common");
   const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot>("starter");
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
   const [frameIdx, setFrameIdx] = useState(0);
@@ -4209,44 +4211,70 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <nav className="premium-category-tabs" aria-label="상점 카테고리">
               {([['currency','재화'],['package','패키지'],['relic','유물'],['ally','동료'],['title','칭호'],['weapon','외형']] as const).map(([id,label])=><button key={id} type="button" className={premiumCategory===id?'on':''} onClick={()=>setPremiumCategory(id)}>{label}</button>)}
             </nav>
-            {/* 유물 뽑기 (2026-10-26) — 보석 → 유물 조각, 9종 균등 확률(공시) · 다 모은 유물은 빠진다 */}
-            {/* 유물 뽑기 (2026-10-27, "재화 UI 처럼 · 일반 레어 유니크를 재화별로") — 재화 칸과 같은 카드 셋: 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석 */}
-            {premiumCategory === "relic" && (
-              <section className="relic-draw-page relic-tier-shop" aria-label="유물 뽑기">
-                <p className="relic-tier-intro">계열마다 일반 · 레어 · 유니크 · 조각 3개 = ★1 · 같은 계열 3개면 세트</p>
-                {RELIC_TIERS.map((tier) => {
-                  const rates = relicDrawRates(character.relics, tier);
-                  const open = rates.filter((x) => x.rate > 0).length;
-                  const cost = relicTierDrawCost(tier, save.stage);
-                  const cur = RELIC_TIER_CURRENCY[tier];
-                  const have = cur === "gold" ? save.gold : cur === "stone" ? character.enhancementMaterials : redGems;
-                  const mark = cur === "gold" ? <CurrencyIcon kind="gold" /> : cur === "stone" ? <img className="relic-cost-stone" src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /> : <GemMark />;
-                  const fmt = (n: number) => (cur === "gold" ? formatGold(n) : n.toLocaleString());
-                  const mine = RELICS.filter((r) => RELIC_TIER[r.id] === tier);
-                  return (
-                    <article key={tier} className={`titans-card premium-product-card gem-product relic-tier-card tier-${tier}`} data-tier={tier}>
-                      <span className="relic-tier-icons">{mine.map((r) => <img key={r.id} src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" className={relicStars(character.relics, r.id) >= 1 ? "owned" : ""} />)}</span>
-                      <div>
-                        <strong>{RELIC_TIER_LABEL[tier]} 유물 <em>{cur === "gold" ? "골드" : cur === "stone" ? "강화석" : "보석"}</em></strong>
-                        <p>{mine.map((r) => r.name).join(" · ")} · {open > 0 ? `각 ${(100 / open).toFixed(1)}%` : "모두 ★5"}</p>
-                      </div>
-                      <span className="relic-tier-buy">
-                        <button type="button" disabled={have < cost.single || open === 0} onClick={() => void drawRelic(tier, 1)}><b>1회</b><small>{mark}{fmt(cost.single)}</small></button>
-                        <button type="button" disabled={have < cost.ten || open === 0} onClick={() => void drawRelic(tier, 10)}><b>10회</b><small>{mark}{fmt(cost.ten)}</small></button>
-                      </span>
-                    </article>
-                  );
-                })}
-                <button type="button" className="relic-rates-link" onClick={() => setShowRelicRates((v) => !v)}>{showRelicRates ? "확률 접기" : "확률 보기"}</button>
-                {showRelicRates && (
-                  <ul className="relic-rates" aria-label="유물 뽑기 확률">
-                    {RELIC_TIERS.flatMap((tier) => relicDrawRates(character.relics, tier).filter((x) => RELIC_TIER[x.id] === tier).map((x) => (
-                      <li key={x.id}><img src={assetUrl(relicIconUrl(x.id))} alt="" aria-hidden="true" /><span>{RELIC_TIER_LABEL[tier]} · {relicDef(x.id).name}</span><b>{x.rate > 0 ? `${(x.rate * 100).toFixed(1)}%` : "완성 · 제외"}</b></li>
-                    )))}
-                  </ul>
-                )}
-              </section>
-            )}
+            {/* 유물 뽑기 (2026-10-26 보석 → 조각 · 10-27 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석) · 다 모은 유물은 빠진다 */}
+            {/* 유물 뽑기 2판 (2026-10-27, 사용자: "유물이 상점탭에서 뽑기 ui로") — 동료 소환 화면과 같은 꼴: 등급 탭 · 진열대 · 보유 게이지 · 1회 / 10회 / 확률 */}
+            {premiumCategory === "relic" && (() => {
+              const tier = relicShopTier;
+              const rates = relicDrawRates(character.relics, tier);
+              const open = rates.filter((x) => x.rate > 0).length;
+              const cost = relicTierDrawCost(tier, save.stage);
+              const curOf = (t: RelicTier) => RELIC_TIER_CURRENCY[t];
+              const curLabel = (t: RelicTier) => (curOf(t) === "gold" ? "골드" : curOf(t) === "stone" ? "강화석" : "보석");
+              const cur = curOf(tier);
+              const have = cur === "gold" ? save.gold : cur === "stone" ? character.enhancementMaterials : redGems;
+              const mark = cur === "gold" ? <CurrencyIcon kind="gold" /> : cur === "stone" ? <img className="relic-cost-stone" src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /> : <GemMark />;
+              const fmt = (n: number) => (cur === "gold" ? formatGold(n) : n.toLocaleString());
+              const mine = RELICS.filter((r) => RELIC_TIER[r.id] === tier);
+              const starsNow = mine.reduce((a, r) => a + relicStars(character.relics, r.id), 0);
+              const starsMax = mine.length * RELIC_MAX_STAR;
+              return (
+                <section className={`relic-draw-page relic-gacha-page tier-${tier}`} aria-label="유물 뽑기">
+                  <nav className="relic-gacha-tiers" role="tablist" aria-label="유물 등급">
+                    {RELIC_TIERS.map((t) => (
+                      <button key={t} type="button" role="tab" aria-selected={t === tier} className={`tier-${t} ${t === tier ? "on" : ""}`} data-tier={t} onClick={() => setRelicShopTier(t)}>
+                        <b>{RELIC_TIER_LABEL[t]}</b><small>{curLabel(t)}</small>
+                      </button>
+                    ))}
+                  </nav>
+                  <article className={`gacha-stage-hero relic-gacha-hero tier-${tier}`} data-tier={tier}>
+                    <span className="relic-gacha-badge">{RELIC_TIER_LABEL[tier]} 유물</span>
+                    <div className="relic-gacha-showcase">
+                      {mine.map((r) => {
+                        const st = relicStars(character.relics, r.id);
+                        return (
+                          <figure key={r.id} className={st >= 1 ? "owned" : ""} data-relic={r.id}>
+                            <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
+                            <figcaption><b>{r.name}</b><small>{st >= 1 ? `★${st}` : "미보유"}</small></figcaption>
+                          </figure>
+                        );
+                      })}
+                    </div>
+                    <div>
+                      <small>RELIC · {curLabel(tier)}</small>
+                      <h2>{RELIC_TIER_LABEL[tier]} 유물 뽑기</h2>
+                      <p>{open > 0 ? `3종 중 하나 · 각 ${(100 / open).toFixed(1)}%` : "모두 ★5 — 이 등급 완성"} · 조각 3개 = ★1 · 같은 계열 3개면 세트</p>
+                    </div>
+                  </article>
+                  <div className="gacha-level relic-gacha-level">
+                    <b>보유 ★{starsNow}/{starsMax}</b>
+                    <i><em style={{ width: `${Math.min(100, (starsNow / starsMax) * 100)}%` }} /></i>
+                    <span>{curLabel(tier)} {fmt(have)} 보유</span>
+                  </div>
+                  <div className="gacha-page-actions relic-draw-actions relic-gacha-buy">
+                    <button type="button" disabled={have < cost.single || open === 0} onClick={() => void drawRelic(tier, 1)}><b>1회 뽑기</b><small>{mark}{fmt(cost.single)}</small></button>
+                    <button type="button" disabled={have < cost.ten || open === 0} onClick={() => void drawRelic(tier, 10)}><b>10회 뽑기</b><small>{mark}{fmt(cost.ten)}</small></button>
+                    <button type="button" className="relic-gacha-rates" onClick={() => setShowRelicRates((v) => !v)}><b>확률 정보</b><small>{showRelicRates ? "접기" : "유물별 확률"}</small></button>
+                  </div>
+                  {showRelicRates && (
+                    <ul className="relic-rates" aria-label="유물 뽑기 확률">
+                      {RELIC_TIERS.flatMap((t) => relicDrawRates(character.relics, t).filter((x) => RELIC_TIER[x.id] === t).map((x) => (
+                        <li key={x.id}><img src={assetUrl(relicIconUrl(x.id))} alt="" aria-hidden="true" /><span>{RELIC_TIER_LABEL[t]}({curLabel(t)}) · {relicDef(x.id).name}</span><b>{x.rate > 0 ? `${(x.rate * 100).toFixed(1)}%` : "완성 · 제외"}</b></li>
+                      )))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })()}
             {/* 보석 소비형 상품 (LIVEOPS §3.3) — 확정 구매, 확률 없음 */}
             {premiumCategory === "ally" && <article className="titans-card premium-product-card gem-product">
               <CurrencyIcon kind="gem" />
