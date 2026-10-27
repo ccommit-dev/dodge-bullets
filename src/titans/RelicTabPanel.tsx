@@ -1,0 +1,74 @@
+import { assetUrl } from "../asset";
+import { CurrencyIcon } from "../ui/CurrencyIcon";
+import {
+  RELICS, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SHARDS_PER_STAR, relicIconUrl, relicStars, relicStatText, setActive, type RelicFamily, type RelicState,
+} from "./relics";
+
+/**
+ * 사냥터 성장 서랍 · 유물 탭 (2026-10-27, 사용자: "유물 탭에 퀘스트 UI 처럼 수정").
+ * 퀘스트 탭과 같은 줄 모양(.quest-row 판) — [아이콘 · ★] [이름 · 조각 막대 · 효과] [다음 ★ 까지]. 계열마다 세트 머리줄.
+ * 마이페이지 계승 칸의 RelicPanel(.mp-relics)은 그대로 둔다(같은 데이터를 다른 자리에서 보여 줄 뿐).
+ */
+type Props = {
+  relics: RelicState;
+  /** 다시 잡은 대장 조각 확률(0~1) */
+  chance: number;
+  onDraw: () => void;
+};
+
+const FAMILIES: RelicFamily[] = ["fire", "frost", "gold"];
+
+export function RelicTabPanel({ relics, chance, onDraw }: Props) {
+  const owned = RELICS.filter((r) => relicStars(relics, r.id) >= 1).length;
+  return (
+    <div className="quest-panel relic-tab-panel">
+      <header className="quest-head relic-tab-head">
+        <b>유물</b>
+        <span>보유 {owned}/{RELICS.length}</span>
+        <button type="button" className="relic-tab-draw" onClick={onDraw}>
+          <b>유물 뽑기</b>
+          <small><CurrencyIcon kind="gem" />상점</small>
+        </button>
+        <small>조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 대장 다시 잡기 {Math.round(chance * 100)}% · 갈림길 · 환생해도 유지</small>
+      </header>
+      {FAMILIES.map((f) => {
+        const on = setActive(relics, f);
+        const have = RELICS.filter((r) => r.family === f && relicStars(relics, r.id) >= 1).length;
+        return (
+          <section key={f} className={`relic-tab-family fam-${f} ${on ? "set-on" : ""}`} aria-label={`${RELIC_FAMILY_LABEL[f]} 계열`}>
+            <h4><b>{RELIC_FAMILY_LABEL[f]}</b><span>{on ? "세트 ✔" : `세트 ${have}/3`} · {RELIC_SET[f].name}</span><small>{RELIC_SET[f].blurb}</small></h4>
+            <ol className="quest-list">
+              {RELICS.filter((r) => r.family === f).map((r) => {
+                const shards = relics[r.id] ?? 0;
+                const stars = relicStars(relics, r.id);
+                const max = stars >= RELIC_MAX_STAR;
+                const into = max ? RELIC_SHARDS_PER_STAR : shards % RELIC_SHARDS_PER_STAR;
+                return (
+                  <li key={r.id} className={`quest-row relic-row ${stars < 1 ? "is-locked" : ""}`} data-relic={r.id}>
+                    <span className="quest-icon">
+                      <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
+                      <b>{stars >= 1 ? `★${stars}` : "미보유"}</b>
+                    </span>
+                    <span className="quest-main">
+                      <strong>{r.name}</strong>
+                      <span className="quest-bar" aria-label={`조각 ${into}/${RELIC_SHARDS_PER_STAR}`}>
+                        <i style={{ width: `${(into / RELIC_SHARDS_PER_STAR) * 100}%` }} />
+                        <span className="quest-pay">{relicStatText(r, Math.max(1, stars))}</span>
+                        <em>{max ? "MAX" : `${into}/${RELIC_SHARDS_PER_STAR}`}</em>
+                      </span>
+                      <small className="quest-next">{stars < 1 ? `조각 ${RELIC_SHARDS_PER_STAR}개로 얻기` : max ? "최대 ★5" : `다음 ★${stars + 1} · ${relicStatText(r, stars + 1)}`}</small>
+                    </span>
+                    <span className={`quest-buy relic-state ${stars < 1 ? "is-off" : ""}`}>
+                      <i className="relic-stars-row" aria-label={`별 ${stars}`}>{"★".repeat(stars)}<em>{"★".repeat(RELIC_MAX_STAR - stars)}</em></i>
+                      <small>{max ? "완성" : `조각 ${shards}`}</small>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
