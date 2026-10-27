@@ -1006,3 +1006,38 @@
 .gear-forge-row.risk-fail, .forge-expweapon.risk-fail, .gear-forge-row.risk-shield, .forge-expweapon.risk-shield { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97); }
 .gear-forge-row.risk-destroy, .forge-expweapon.risk-destroy { animation: armor-shake .45s cubic-bezier(.36, .07, .19, .97), risk-destroy-flash 1.2s ease-out; }
 @keyframes risk-destroy-flash { 0%, 30% { box-shadow: 0 0 0 3px #dc2626, 0 0 18px rgba(220, 38, 38, .6); } 100% { box-shadow: none; } }
+
+/* ── A: 퀘스트 10분 보너스 단추 (2026-10-27, "10분당 초당 금액의 100배") ── */
+.quest-head { position: relative; padding-right: 128px; min-height: 44px; }
+.quest-bonus { position: absolute; top: 0; right: 0; display: grid; justify-items: center; gap: 0; width: 120px; padding: 4px 6px; border: 2px solid #3b2415; border-radius: 12px; background: linear-gradient(180deg, #7ee081, #22a352); color: #10301a; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); cursor: pointer; animation: quest-bonus-glow 1.6s ease-in-out infinite; }
+.quest-head > .quest-bonus b { font-size: 14px; font-weight: 900; color: #10301a; }
+.quest-head > .quest-bonus small { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 900; color: #10301a; white-space: nowrap; }
+.quest-bonus small .currency-icon { width: 13px; height: 13px; flex-basis: 13px; filter: none; }
+.quest-bonus.is-off { background: #e8dcc4; color: #6b4a2f; box-shadow: none; animation: none; }
+.quest-head > .quest-bonus.is-off b, .quest-head > .quest-bonus.is-off small { color: #6b4a2f; }
+@keyframes quest-bonus-glow { 50% { box-shadow: 0 3px 0 rgba(0, 0, 0, .3), 0 0 0 4px rgba(126, 224, 129, .45); } }
+@media (prefers-reduced-motion: reduce) { .quest-bonus { animation: none; } }
+
+/* ── A: 사냥터 유물 탭 — 퀘스트 줄 모양 (2026-10-27, "유물 탭에 퀘스트 UI 처럼" — titans/RelicTabPanel.tsx) ── */
+.relic-tab-head { padding-right: 128px; min-height: 44px; position: relative; }
+.relic-tab-draw { position: absolute; top: 0; right: 0; display: grid; justify-items: center; width: 120px; padding: 4px 6px; border: 2px solid #3b2415; border-radius: 12px; background: linear-gradient(180deg, #e9d5ff, #a855f7); box-shadow: 0 3px 0 rgba(0, 0, 0, .3); cursor: pointer; }
+.relic-tab-head > .relic-tab-draw b { font-size: 14px; font-weight: 900; color: #2e1065; }
+.relic-tab-head > .relic-tab-draw small { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 900; color: #3b0764; }
+.relic-tab-draw small .currency-icon { width: 13px; height: 13px; flex-basis: 13px; filter: none; }
+.relic-tab-family { display: grid; gap: 6px; }
+.relic-tab-family > h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; margin: 4px 0 0; }
+.relic-tab-family > h4 > b { font-size: 15px; font-weight: 900; color: #3b2415; }
+.relic-tab-family > h4 > span { font-size: 13px; font-weight: 900; color: #92400e; }
+.relic-tab-family.set-on > h4 > span { color: #15803d; }
+.relic-tab-family > h4 > small { flex-basis: 100%; font-size: 13px; font-weight: 700; color: #5e4229; }
+.relic-tab-family.fam-fire .quest-row { background: #6a3420; }
+.relic-tab-family.fam-frost .quest-row { background: #2f4a63; }
+.relic-tab-family.fam-gold .quest-row { background: #5f4a1c; }
+.relic-tab-family .quest-row.is-locked { opacity: .78; }
+.relic-tab-family .quest-pay { color: #fff3d0; }
+.relic-tab-family .quest-bar > i { background: linear-gradient(180deg, #ffd34d, #f2a516); }
+.relic-state { cursor: default; background: #fff3d6; }
+.relic-state.is-off { background: #8a6a4a; }
+.relic-stars-row { font-style: normal; font-size: 13px; letter-spacing: -1px; color: #e0a10a; }
+.relic-stars-row em { font-style: normal; color: rgba(59, 36, 21, .3); }
+.relic-state.is-off .relic-stars-row em { color: rgba(255, 243, 208, .35); }

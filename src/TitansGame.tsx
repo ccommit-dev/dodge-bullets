@@ -79,11 +79,11 @@ import { trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth } from "./progression/rebirth";
 import { QuestPanel } from "./titans/QuestPanel";
-import { buyQuest, QUESTS, questBlock, questCost, questPay, tickQuests } from "./titans/quests";
+import { RelicTabPanel } from "./titans/RelicTabPanel";
+import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
 import { drawRelicShards, grantRelicShards, relicDef, relicDrawRates, relicIconUrl, relicStars, RELIC_DRAW, RELIC_FAMILY_LABEL, RELIC_SET, setActive, type RelicId } from "./titans/relics";
-import { RelicPanel } from "./ui/LegacyPanels";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
@@ -1597,11 +1597,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const add = questAccRef.current;
           questAccRef.current = 0;
           if (questProgRef.current.length !== QUESTS.length) questProgRef.current = saveRef.current.quests.prog.slice();
-          const r = tickQuests({ levels: saveRef.current.quests.levels, prog: questProgRef.current }, add);
+          const r = tickQuests({ ...saveRef.current.quests, prog: questProgRef.current }, add);
           questProgRef.current = r.state.prog;
           if (r.gold > 0) {
             const prog = r.state.prog.slice();
-            setSave((prev) => ({ ...prev, gold: prev.gold + r.gold, quests: { levels: prev.quests.levels, prog } }));
+            setSave((prev) => ({ ...prev, gold: prev.gold + r.gold, quests: { ...prev.quests, prog } }));
             if (tabRef.current === "quest") setQuestDone({ rows: r.done, key: now });
           }
           if (tabRef.current === "quest") setQuestProg(r.state.prog);
@@ -3413,7 +3413,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </button>
         {/* 퀘스트 (2026-10-26, "오늘도 환생 2" — 시간마다 골드) · 2×2 의 왼쪽 아래 — 지금 살 수 있는 줄이 있으면 점 */}
         <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
-          퀘스트{QUESTS.some((_, i) => questBlock(save.quests, i, save.gold, save.bestStage) === null) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
+          퀘스트{(QUESTS.some((_, i) => questBlock(save.quests, i, save.gold) === null) || (questBonusLeftMs(save.quests, Date.now()) === 0 && questBonusAmount(save.quests) > 0)) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
         </button>
         {/* 유물 (2026-10-26, 사용자: "4번째에는 유물 추가") — 마이페이지에만 있던 유물 판을 성장 서랍으로 · 뽑기는 상점 */}
         <button type="button" className={tab === "relic" ? "on" : ""} aria-expanded={growthOpen && tab === "relic"} onClick={() => { setGrowthOpen((o) => (tab === "relic" ? !o : true)); setTab("relic"); }}>
@@ -3493,32 +3493,38 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         })()}
       <section className="titans-shop">
         {tab === "relic" && (
-          <section className="growth-relic-panel" aria-label="유물">
-            <RelicPanel progress={character} />
-            <button type="button" className="relic-shop-link" onClick={() => { setPremiumCategory("relic"); setTab("premium"); }}>
-              <CurrencyIcon kind="gem" /> 상점에서 유물 뽑기
-            </button>
-          </section>
+          <RelicTabPanel relics={character.relics} chance={perm.relicChance} onDraw={() => { setPremiumCategory("relic"); setTab("premium"); }} />
         )}
         {tab === "quest" && (
           <QuestPanel
             key={questDone?.key ?? 0}
             state={save.quests}
             gold={save.gold}
-            bestStage={save.bestStage}
             prog={questProg.length ? questProg : save.quests.prog}
             done={questDone?.rows ?? []}
+            onBonus={() => {
+              // 10분 보너스 (2026-10-27, 사용자: "10분당 돈을 현재 초당 금액의 100배 더 주는 버튼")
+              const r = claimQuestBonus(saveRef.current.quests, Date.now());
+              if (!r) {
+                const left = questBonusLeftMs(saveRef.current.quests, Date.now());
+                flash(left > 0 ? `10분 보너스 · ${Math.ceil(left / 60000)}분 뒤에 다시` : "퀘스트를 먼저 돌려 보세요");
+                return;
+              }
+              setSave((prev) => { const rr = claimQuestBonus(prev.quests, Date.now()); return rr ? { ...prev, gold: prev.gold + rr.gold, quests: { ...rr.state, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
+              flash(`10분 보너스 · 골드 +${formatGold(r.gold)}`);
+              showRewardPop("gift", "퀘스트 10분 보너스", `골드 +${formatGold(r.gold)}`, "초당 퀘스트 골드 × 100 · 10분 뒤 다시");
+            }}
             onBuy={(i) => {
               const cur = saveRef.current;
-              const r = buyQuest(cur.quests, i, cur.gold, cur.bestStage);
+              const r = buyQuest(cur.quests, i, cur.gold);
               if (!r) {
                 const lv = cur.quests.levels[i];
-                const why = questBlock(cur.quests, i, cur.gold, cur.bestStage);
-                flash(why === "stage" ? `${QUESTS[i].stage}층에 닿으면 열립니다` : why === "cap" ? `레벨 상한 — 사냥터 층이 오르면 더 올릴 수 있어요` : why === "prev" ? "앞 퀘스트를 먼저 여세요" : why === "max" ? "최대 레벨입니다" : `골드가 모자랍니다 — ${formatGold(questCost(i, lv))} 필요`);
+                const why = questBlock(cur.quests, i, cur.gold);
+                flash(why === "prev" ? "앞 퀘스트를 먼저 여세요" : why === "max" ? "최대 레벨입니다" : `골드가 모자랍니다 — ${formatGold(questCost(i, lv))} 필요`);
                 return;
               }
               const lv = saveRef.current.quests.levels[i];
-              setSave((prev) => { const rr = buyQuest(prev.quests, i, prev.gold, prev.bestStage); return rr ? { ...prev, gold: prev.gold - rr.cost, quests: { levels: rr.state.levels, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
+              setSave((prev) => { const rr = buyQuest(prev.quests, i, prev.gold); return rr ? { ...prev, gold: prev.gold - rr.cost, quests: { ...rr.state, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
               flash(lv === 0 ? `퀘스트 열림 · ${QUESTS[i].name}` : `${QUESTS[i].name} Lv.${lv + 1} · 한 번에 ${formatGold(questPay(i, lv))} → ${formatGold(questPay(i, lv + 1))}`);
             }}
           />

@@ -1,4 +1,4 @@
-// 사냥터 퀘스트 — 시간마다 골드 (2026-10-26) 순수 로직 검사.  node scripts/verify-quests.mjs
+// 사냥터 퀘스트 — 시간마다 골드 (2026-10-26 · 10-27 층 잠금 제거 · Lv25 · 10분 보너스) 순수 로직 검사.  node scripts/verify-quests.mjs
 import { build } from "esbuild";
 import { mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +19,7 @@ const ok = (name, cond, detail = "") => { console.log(`${cond ? "PASS" : "FAIL"}
 
 // ── 1. 시작 · 지급 ──
 const s0 = Q.emptyQuests();
-ok("처음: 8줄 · 첫 줄만 Lv.1", Q.QUESTS.length === 8 && s0.levels.join(",") === "1,0,0,0,0,0,0,0");
+ok("처음: 8줄 · 첫 줄만 Lv.1 · 보너스 받은 적 없음", Q.QUESTS.length === 8 && s0.levels.join(",") === "1,0,0,0,0,0,0,0" && s0.bonusAt === 0);
 let t = Q.tickQuests(s0, 2.9);
 ok("주기(3초) 전엔 0", t.gold === 0 && Math.abs(t.state.prog[0] - 2.9) < 1e-9);
 t = Q.tickQuests(t.state, 0.2);
@@ -28,56 +28,63 @@ const big = Q.tickQuests(s0, 10);
 ok("10초 한꺼번에 = 3주기 · 남은 1초", big.gold === 3 && Math.abs(big.state.prog[0] - 1) < 1e-9);
 ok("잠긴 줄은 돌지 않는다", big.state.prog.slice(1).every((x) => x === 0));
 
-// ── 2. 강화 · 열기 · 마일스톤 ──
-ok("두 번째 줄: 5층 전엔 못 연다(까닭 stage)", Q.questBlock(s0, 1, 1e12, 4) === "stage" && Q.buyQuest(s0, 1, 1e12, 4) === null);
-ok("세 번째 줄: 앞 줄이 잠겼으면 못 연다(까닭 prev)", Q.questBlock(s0, 2, 1e12, 99) === "prev");
-let b = Q.buyQuest(s0, 1, 499, 5);
-ok("골드가 모자라면 실패(까닭 gold)", b === null && Q.questBlock(s0, 1, 499, 5) === "gold");
-b = Q.buyQuest(s0, 1, 500, 5);
-ok("5층 · 500 골드 → 두 번째 줄 열림", b && b.state.levels[1] === 1 && b.cost === 500);
-ok("레벨 상한: 여는 층 5 · 한 층마다 +2", Q.questLevelCap(0, 1) === 5 && Q.questLevelCap(0, 3) === 9 && Q.questLevelCap(1, 4) === 0 && Q.questLevelCap(1, 6) === 7);
-const capped = { levels: [5, 0, 0, 0, 0, 0, 0, 0], prog: s0.prog };
-ok("상한에 닿으면 골드가 있어도 못 올린다(까닭 cap)", Q.questBlock(capped, 0, 1e12, 1) === "cap" && Q.questBlock(capped, 0, 1e12, 2) === null);
-ok("Lv 값은 계단식(×1.1)", Q.questCost(0, 1) === Math.ceil(10 * 1.1) && Q.questCost(0, 10) === Math.ceil(10 * 1.1 ** 10));
-ok("보상 = 기본 × Lv · Lv10 부터 ×2", Q.questPay(0, 9) === 9 && Q.questPay(0, 10) === 20 && Q.questPay(0, 25) === 100 && Q.milestoneMul(200) === 32);
-ok("다음 마일스톤", Q.nextMilestone(1) === 10 && Q.nextMilestone(10) === 25 && Q.nextMilestone(200) === null);
-ok("아래 줄일수록 여는 층 · 주기 · Lv.1 초당 보상이 커진다", Q.QUESTS.slice(1).every((q, i) => q.stage > Q.QUESTS[i].stage && q.sec > Q.QUESTS[i].sec && q.pay / q.sec >= Q.QUESTS[i].pay / Q.QUESTS[i].sec));
+// ── 2. 골드로만 열기 · Lv25 ──
+ok("층 잠금 없음 — 골드만 있으면 둘째 줄을 연다", Q.questBlock(s0, 1, Q.questCost(1, 0)) === null && Q.buyQuest(s0, 1, Q.questCost(1, 0)).state.levels[1] === 1);
+ok("앞 줄이 잠겼으면 못 연다(까닭 prev)", Q.questBlock(s0, 2, 1e15) === "prev");
+ok("골드가 모자라면 실패(까닭 gold)", Q.buyQuest(s0, 1, Q.questCost(1, 0) - 1) === null && Q.questBlock(s0, 1, 0) === "gold");
+let st = s0;
+for (let k = 0; k < 40; k += 1) { const r = Q.buyQuest(st, 0, 1e15); if (r) st = r.state; }
+ok("최대 Lv 25 에서 멈춘다(까닭 max)", st.levels[0] === 25 && Q.questBlock(st, 0, 1e15) === "max");
+ok("Lv 값은 계단식(첫 줄 ×1.25 · 나머지 ×1.2)", Q.questCost(0, 1) === Math.ceil(10 * 1.25) && Q.questCost(1, 3) === Math.ceil(7900 * 1.2 ** 3));
+ok("보상 = 기본 × Lv · Lv10 ×2 · Lv25 ×4", Q.questPay(0, 9) === 9 && Q.questPay(0, 10) === 20 && Q.questPay(0, 25) === 100);
+ok("아래 줄일수록 여는 값 · 주기 · Lv.1 초당 보상이 커진다", Q.QUESTS.slice(1).every((q, i) => q.unlock > Q.QUESTS[i].unlock && q.sec > Q.QUESTS[i].sec && q.pay / q.sec >= Q.QUESTS[i].pay / Q.QUESTS[i].sec));
 
-// ── 3. 저장 정리 · 환생 ──
-const n = Q.normalizeQuests({ levels: [0, 3.7, -1, 999, "x"], prog: [5, 1.5, 9, 99] });
-ok("정리: 첫 줄 최소 Lv.1 · 소수 버림 · 음수 0 · 상한 300 · 주기 넘는 진행 깎음", n.levels[0] === 1 && n.levels[1] === 3 && n.levels[2] === 0 && n.levels[3] === 300 && n.levels[4] === 0 && n.prog[0] === 3 && n.prog[1] === 1.5 && n.prog[2] === 0 && n.prog[3] === 25, JSON.stringify(n));
-ok("옛 저장(quests 없음) → 첫 줄 Lv.1", JSON.stringify(M.normalizeTitansSave({ gold: 5 }).quests.levels) === JSON.stringify(s0.levels));
+// ── 3. 10분 보너스 ──
+const now = 1_800_000_000_000;
+const lv5 = { ...s0, levels: [5, 0, 0, 0, 0, 0, 0, 0] };
+const per = Q.questGoldPerSec(lv5);
+const b1 = Q.claimQuestBonus(lv5, now);
+ok("10분 보너스 = 초당 퀘스트 골드 × 100", b1 && b1.gold === Math.floor(per * 100) && b1.state.bonusAt === now, `${per}/s → ${b1?.gold}`);
+ok("받은 뒤 10분 동안은 못 받는다", Q.claimQuestBonus(b1.state, now + 9 * 60_000) === null && Q.questBonusLeftMs(b1.state, now + 9 * 60_000) === 60_000);
+ok("10분 지나면 다시 · 쌓이지 않는다(30분 뒤에도 한 번)", Q.claimQuestBonus(b1.state, now + 10 * 60_000)?.gold === b1.gold && Q.claimQuestBonus(Q.claimQuestBonus(b1.state, now + 30 * 60_000).state, now + 30 * 60_000) === null);
+
+// ── 4. 저장 정리 · 환생 ──
+const n = Q.normalizeQuests({ levels: [0, 3.7, -1, 999, "x"], prog: [5, 1.5, 9, 99], bonusAt: 123.9 });
+ok("정리: 첫 줄 최소 Lv.1 · 소수 버림 · 음수 0 · 상한 25 · 주기 넘는 진행 깎음 · bonusAt", n.levels[0] === 1 && n.levels[1] === 3 && n.levels[2] === 0 && n.levels[3] === 25 && n.levels[4] === 0 && n.prog[0] === 3 && n.prog[1] === 1.5 && n.prog[2] === 0 && n.prog[3] === 25 && n.bonusAt === 123, JSON.stringify(n));
+ok("옛 저장(Lv 300 까지 오른 줄 · bonusAt 없음)도 25 · 0 으로", Q.normalizeQuests({ levels: [120, 40] }).levels.slice(0, 2).join() === "25,25" && Q.normalizeQuests({ levels: [1] }).bonusAt === 0);
+ok("옛 저장(quests 없음) → 첫 줄 Lv.1", JSON.stringify(M.normalizeTitansSave({ gold: 5 }).quests) === JSON.stringify(s0));
 ok("환생(빈 사냥터 저장)이면 첫 줄 Lv.1 로", JSON.stringify(M.defaultTitansSave().quests) === JSON.stringify(Q.emptyQuests()));
 
-// ── 4. 크기 — 사냥 골드와 견주기 ──
-// 사냥 골드(초당) ≈ 처치 골드 × 초당 처치 0.7. 그 골드를 1분마다 퀘스트에 탐욕(가장 빨리 돌려받는 것)으로 다시 넣으면 퀘스트 초당이 어디까지 오르나
-const hunt = (stage) => M.killGold(stage, false, false) * 0.7;   // 지역 보상 배율 포함
-const greedy = (minutes, stage) => {
-  let st = Q.emptyQuests(), gold = 0;
-  for (let m = 0; m < minutes; m += 1) {
-    const r = Q.tickQuests(st, 60); st = r.state; gold += r.gold + hunt(stage) * 60 * 0.3;   // 사냥 골드의 30% 만 퀘스트에 쓴다고 본다
+// ── 5. 폭주 막기 — 퀘스트 골드만으로 복리(10분 보너스 포함 · 탐욕 구매) ──
+// 층 잠금이 없으니 여는 값 · 증가율로 막는다. 사냥 골드(초당 처치 골드 × 0.7)와 견준 목표: 1시간 · 하루 · 일주일 뒤에도 그 무렵 사냥터 층의 사냥 골드를 크게 넘지 않는다
+const hunt = (stage) => M.killGold(stage, false, false) * 0.7;
+const simQuestOnly = (minutes) => {
+  let s = Q.emptyQuests(), gold = 0;
+  for (let m = 1; m <= minutes; m += 1) {
+    const r = Q.tickQuests(s, 60); s = r.state; gold += r.gold;
+    const bonus = Q.claimQuestBonus(s, m * 60_000 + 1_000_000); if (bonus) { s = bonus.state; gold += bonus.gold; }
     for (;;) {
-      let best = -1, bestPay = Infinity;
+      let best = -1, bp = Infinity;
       for (let i = 0; i < Q.QUESTS.length; i += 1) {
-        const lv = st.levels[i]; if (Q.questBlock(st, i, gold, stage)) continue;
-        const cost = Q.questCost(i, lv);
-        const gain = (Q.questPay(i, lv + 1) - Q.questPay(i, lv)) / Q.QUESTS[i].sec;
-        const payback = cost / Math.max(1e-9, gain);
-        if (payback < bestPay) { bestPay = payback; best = i; }
+        if (Q.questBlock(s, i, gold)) continue;
+        const lv = s.levels[i]; const gain = (Q.questPay(i, lv + 1) - Q.questPay(i, lv)) / Q.QUESTS[i].sec;
+        const pb = Q.questCost(i, lv) / Math.max(1e-9, gain); if (pb < bp) { bp = pb; best = i; }
       }
       if (best < 0) break;
-      const r2 = Q.buyQuest(st, best, gold, stage); st = r2.state; gold -= r2.cost;
+      const r2 = Q.buyQuest(s, best, gold); s = r2.state; gold -= r2.cost;
     }
   }
-  return Q.questGoldPerSec(st);
+  return Q.questGoldPerSec(s);
 };
-// 한 층에 오래 머물며 퀘스트 골드를 전부 다시 넣어도(복리) 상한이 막는다 — 1~60층 어디서도 사냥 골드의 15~150%
-for (const [stage, mins] of [[1, 30], [5, 60], [10, 120], [15, 180], [20, 240], [30, 360], [40, 480], [50, 600], [60, 600]]) {
-  const q = greedy(mins, stage), h = hunt(stage);
-  ok(`Stage ${stage} · ${mins}분 머물며 다 넣어도 퀘스트 초당 = 사냥 골드의 15~150%`, q >= h * 0.15 && q <= h * 1.5, `퀘스트 ${Math.round(q)}/s · 사냥 ${Math.round(h)}/s (${Math.round((q / h) * 100)}%)`);
+for (const [label, minutes, stage] of [["1시간", 60, 10], ["하루", 1440, 25], ["3일", 4320, 30], ["7일", 10080, 40]]) {
+  const q = simQuestOnly(minutes), h = hunt(stage);
+  ok(`퀘스트만 ${label} 굴려도 ${stage}층 사냥 골드의 150% 이하`, q <= h * 1.5, `퀘스트 ${Math.round(q)}/s · ${stage}층 사냥 ${Math.round(h)}/s (${Math.round((q / h) * 100)}%)`);
 }
+ok("그래도 첫 10분 안에 초당 수입이 눈에 띄게 오른다(첫 줄 Lv.10 이상)", (() => { let s = Q.emptyQuests(), g = 0; for (let k = 0; k < 600; k += 1) { const r = Q.tickQuests(s, 1); s = r.state; g += r.gold + hunt(3); const b = Q.buyQuest(s, 0, g); if (b) { s = b.state; g -= b.cost; } } return s.levels[0] >= 10; })());
+const maxAll = Q.questGoldPerSec({ levels: Q.QUESTS.map(() => 25) });
+ok("모두 Lv25 = 끝판(50층 무렵) 사냥 골드 정도", maxAll >= hunt(45) && maxAll <= hunt(55), `${Math.round(maxAll)}/s · 45층 ${Math.round(hunt(45))} · 55층 ${Math.round(hunt(55))}`);
 
-// ── 5. 아이콘 ──
+// ── 6. 아이콘 ──
 const missing = Q.QUESTS.map((q) => `public/titans/quests/${q.id}.png`).filter((f) => !existsSync(f));
 ok("퀘스트 아이콘 8장", missing.length === 0, missing.join(" "));
 
