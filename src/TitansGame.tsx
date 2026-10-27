@@ -1739,7 +1739,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
       if (bossRef.current) {
         // 빙결(얼음 물방울·댐 수문 개방) — 제한시간 정지
-        const left = bossLeftRef.current - (now < buffsRef.current.freezeUntil ? 0 : dt);
+        // 등장 걷기 동안도 정지 (2026-10-27 난이도 감사): 원정대가 자리 잡기 전엔 아무도 못 때리는데 시간이 흘러,
+        // 대장의 반격(bossPressure)이 그 1~2초를 "느린 페이스"로 읽어 첫 한 대에 체력 19% 를 깎았다(×2 배속이면 두 배 — 걷기는 실제 시간)
+        const left = bossLeftRef.current - (now < buffsRef.current.freezeUntil || !formationReadyRef.current ? 0 : dt);
         bossLeftRef.current = left;
         setBossLeft(Math.max(0, left));
         if (left <= 0) {
