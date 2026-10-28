@@ -36,12 +36,18 @@ ok("사냥터 무기 칩 넘침 없음", chipOver.length === 0, chipOver.join("|
 
 // ── 2. 무기별 스킬 세트 — 검 세트(강타) · 창으로 바꾸고 세트를 치명으로 · 검으로 돌아오면 강타 ──
 await page.evaluate(() => [...document.querySelectorAll(".weapon-kind-chip")][1].click()); await sleep(900);
+// 2026-10-28 장비 탈부착은 다음 스테이지에 — 고르면 저장 · 점선 칩 · '다음 스테이지부터', 사냥터 무기는 아직 검
+const pend = await page.evaluate(() => ({ pending: !!document.querySelector(".weapon-kind-chip.pending"), stat: document.querySelector(".weapon-kind-stat")?.textContent ?? "", hero: document.querySelector("[data-weapon-kind]")?.getAttribute("data-weapon-kind") ?? null }));
+const tPend = await tit();
+ok("무기를 바꾸면 저장은 바로 · 사냥터는 다음 스테이지부터(점선 칩 · 안내 · 스킬 세트는 아직 그대로)", pend.pending && /다음 스테이지부터 창/.test(pend.stat) && tPend.skillInventory.loadoutKind !== "spear", JSON.stringify(pend));
+await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);   // 다음 스테이지로 넘어간 것처럼
 p = await prog(); let t = await tit();
 ok("창 장착 → 저장 · 처음 무기라 지금 세트 그대로 · loadoutKind = spear", p.equippedWeaponKind === "spear" && t.skillInventory.equipped.starter === "strike" && t.skillInventory.loadoutKind === "spear", JSON.stringify(t.skillInventory.equipped));
 await page.evaluate((H) => { const k = `dodgebullets:titans:${H}`; const s = JSON.parse(localStorage.getItem(k)); s.skillInventory.equipped = { starter: "emberCut" }; localStorage.setItem(k, JSON.stringify(s)); }, H);
 await page.reload({ waitUntil: "networkidle0" }); await sleep(1300);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비 성장"))?.click()); await sleep(500);
 await page.evaluate(() => [...document.querySelectorAll(".weapon-kind-chip")][0].click()); await sleep(900);
+await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);
 t = await tit();
 ok("검으로 돌아오면 검 세트(북치기) · 창 세트(장작 타)는 맡겨 둔다", t.skillInventory.equipped.starter === "strike" && t.skillInventory.loadouts?.spear?.starter === "emberCut", JSON.stringify(t.skillInventory));
 

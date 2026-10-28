@@ -46,12 +46,12 @@ const bannerOk = R.RELIC_BANNERS.every((b) => {
   const rates = R.relicDrawRates({}, b).filter((x) => x.rate > 0);
   const sum = rates.reduce((a, x) => a + x.rate, 0);
   const tiers = Object.keys(R.RELIC_BANNER_RATES[b]);
-  const sameInTier = tiers.every((t) => { const rs = rates.filter((x) => tierOf(x.id) === t).map((x) => x.rate); return rs.length === 6 && rs.every((v) => Math.abs(v - rs[0]) < 1e-12); });
+  const sameInTier = tiers.every((t) => { const rs = rates.filter((x) => tierOf(x.id) === t).map((x) => x.rate); return rs.length === R.RELICS.filter((r) => r.tier === t).length && rs.every((v) => Math.abs(v - rs[0]) < 1e-12); });
   return Math.abs(sum - 1) < 1e-9 && rates.every((x) => tiers.includes(tierOf(x.id))) && sameInTier;
 });
 let leak = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gem"); if (d.got.some((id) => ["N", "R"].includes(tierOf(id)))) leak = true; st = d.state; } }
 let leakGold = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gold"); if (d.got.some((id) => ["SSR", "UR", "LR"].includes(tierOf(id)))) leakGold = true; st = d.state; } }
-ok("유물 뽑기 3종: 확률 합 1 · 공시한 등급만 · 등급 안 6종 균등 · 보석에서 일반 · 희귀 없음 · 골드에서 전설 이상 없음", bannerOk && !leak && !leakGold);
+ok("유물 뽑기 3종: 확률 합 1 · 공시한 등급만 · 등급 안 균등 · 보석에서 일반 · 희귀 없음 · 골드에서 전설 이상 없음", bannerOk && !leak && !leakGold);
 {
   // 초월(LR)을 다 모으면 보석 뽑기의 남은 등급끼리 비례
   const allLr = Object.fromEntries(R.RELICS.filter((r) => r.tier === "LR").map((r) => [r.id, 15]));

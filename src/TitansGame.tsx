@@ -72,7 +72,7 @@ import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { setHuntBgm, type HuntMood } from "./ui/bgm";
-import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxSkillTier, sfxSlotUnlock, sfxWeapon } from "./ui/sfx";
+import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxRelicReveal, sfxRelicSummon, sfxSkillTier, sfxSlotUnlock, sfxWeapon } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
@@ -86,6 +86,7 @@ import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questB
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
 import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, setActive, type RelicBanner, type RelicId } from "./titans/relics";
+import type { Tier as RelicTierRank } from "./titans/allyRoster";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
@@ -342,6 +343,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [showGachaRates, setShowGachaRates] = useState(false);
   /** 상점 유물 뽑기 결과 (titans/relics drawRelicShards, 2026-10-26) — 나온 조각 차례 */
   const [relicDrawResult, setRelicDrawResult] = useState<RelicId[] | null>(null);
+  /** 유물 뽑기 소환진 (2026-10-28, "상점 유물뽑기에 동료처럼 이펙트") — 1.2초 뒤 결과 */
+  const [relicSummoning, setRelicSummoning] = useState<{ tier: RelicTierRank; count: number } | null>(null);
   /** 파견 출정 팝업 (2026-10-27, 사용자: "파견 출정 시 간단한 애니 팝업") — 동료가 오른쪽으로 걸어 나간다 · 1.6초 뒤 저절로 닫힘 */
   const [expeditionSendPop, setExpeditionSendPop] = useState<{ allyId: TitanHeroId; hours: number; seq: number } | null>(null);
   useEffect(() => {
@@ -389,7 +392,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
   // 주인공 무기 (2026-10-15, 사용자: "캐릭터 아이템도 북 외에도 두 가지 더") — 북은 대장간 북(+0~15), 활·지팡이는 대장간 원정 무기(+0~20 → 15 눈금)
   // 주인공 무기 4종 (2026-10-27, titans/weapons.ts) — 검은 대장간 단계(예전 북 자리), 창 · 활 · 지팡이는 대장간 무기 강화(0~20 → 15 눈금)
-  const weaponKind: WeaponKind = character.equippedWeaponKind ?? "sword";
+  /** 고른 무기(저장) — 2026-10-28 (사용자: "아이템 탈부착은 다음 스테이지에 반영되게") 사냥터 모습 · 공격은 appliedLook(지금 스테이지에 들고 들어온 장비) */
+  const wantedWeaponKind: WeaponKind = character.equippedWeaponKind ?? "sword";
+  const [appliedLook, setAppliedLook] = useState<{ weaponKind: WeaponKind; weaponSkin: string; shoulder: ShoulderId | null } | null>(null);
+  const weaponKind: WeaponKind = appliedLook?.weaponKind ?? wantedWeaponKind;
   const forgedWeaponLevel = weaponHuntLevel(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
   /** 메인 루프(의존성 고정)가 읽는 지금 무기 단계 */
   /** DEV — 준 피해 합계(출처별). 무기 밸런스를 실제 게임에서 잰다(scripts/_probe-weapon-dps.mjs) */
@@ -766,6 +772,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }, approachMs);
     formationTimerRef.current = formationTimer;
     battleTimers.current.push(formationTimer);
+  }, []);
+  // 장비 탈부착은 다음 스테이지에 (2026-10-28) — 무기 · 무기 외형 · 견갑을 바꾸면 저장은 바로, 사냥터의 모습 · 공격은 스테이지가 바뀔 때(불러온 직후 한 번)
+  const lookWanted = { weaponKind: wantedWeaponKind, weaponSkin: character.equippedWeaponSkin ?? "", shoulder: equippedShoulder };
+  const lookWantedRef = useRef(lookWanted);
+  lookWantedRef.current = lookWanted;
+  useEffect(() => {
+    if (!ready) return;
+    setAppliedLook({ ...lookWantedRef.current });
+  }, [ready, save.stage]);
+  const lookPending = !!appliedLook && (appliedLook.weaponKind !== lookWanted.weaponKind || appliedLook.weaponSkin !== lookWanted.weaponSkin || appliedLook.shoulder !== lookWanted.shoulder);
+  // DEV 훅 — 검사가 스테이지를 넘기지 않고 고른 장비를 바로 들게(verify-weapons-play 등)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __huntApplyLook?: () => void }).__huntApplyLook = () => setAppliedLook({ ...lookWantedRef.current });
+    return () => { delete (window as unknown as { __huntApplyLook?: unknown }).__huntApplyLook; };
   }, []);
   // DEV 훅 (2026-10-27) — 대장의 반격 실검사(_probe-b-items)가 일반 몬스터 10마리를 기다리지 않고 지금 층의 대장전을 연다. 출시 번들엔 없다
   useEffect(() => {
@@ -2228,8 +2249,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (cur === "gold") setSave((prev) => ({ ...prev, gold: Math.max(0, prev.gold - cost) }));
     setCharacter(next);
     setRedGems(next.redGems);
-    sfxSlotUnlock();
-    setRelicDrawResult(got);
+    // 소환진 → 공개 (동료 소환과 같은 꼴 · 최고 등급 색 · 등급별 소리)
+    const best = got.map((id) => relicDef(id).tier).sort((x, y) => TIERS.indexOf(y) - TIERS.indexOf(x))[0] ?? "N";
+    setRelicSummoning({ tier: best, count: got.length });
+    sfxRelicSummon();
+    window.setTimeout(() => {
+      setRelicSummoning(null);
+      sfxRelicReveal(best);
+      setRelicDrawResult(got);
+    }, 1200);
   };
 
   const summonAlly = async (count: 1 | 10) => {
@@ -2634,9 +2662,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   /** 무기 바꾸기 (2026-10-27) — 장착만 바꾸고, 스킬 세트는 아래 효과가 맞바꾼다(대장간에서 바꿔도 같은 길) */
   const equipWeapon = (k: WeaponKind) => {
-    if (weaponKindRef.current === k) return;
+    if (wantedWeaponKind === k) return;
     weaponTechRef.current = 0;
-    void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${WEAPON_LABEL[k]} 장착 · ${weaponStatText(k)} · ${WEAPON_LABEL[k]} 스킬 세트`); });
+    // 다음 스테이지부터 든다(2026-10-28) — 같은 스테이지 안에서 무기가 바뀌지 않는다
+    void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${WEAPON_LABEL[k]} 장착 예약 · 다음 스테이지부터 · ${weaponStatText(k)}`, 2400); });
   };
   // 무기별 스킬 세트 — 지금 세트(loadoutKind)를 그 무기에 맡기고, 장착 무기에 맡겨 둔 세트를 꺼낸다(처음이면 지금 세트 그대로)
   useEffect(() => {
@@ -3351,7 +3380,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} />
               </div>
             )}
-            <EquippedCharacter mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <EquippedCharacter mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -3807,13 +3836,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   {WEAPON_KINDS.map((k) => {
                     const lv = weaponHuntLevel(k, drumLevel, character.expeditionWeaponForge ?? {});
                     return (
-                      <button key={k} type="button" className={`weapon-kind-chip ${weaponKind === k ? "on" : ""}`} aria-pressed={weaponKind === k} title={`${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`} onClick={() => equipWeapon(k)}>
+                      <button key={k} type="button" className={`weapon-kind-chip ${wantedWeaponKind === k ? "on" : ""} ${wantedWeaponKind === k && weaponKind !== k ? "pending" : ""}`} aria-pressed={wantedWeaponKind === k} title={`${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`} onClick={() => equipWeapon(k)}>
                         {WEAPON_LABEL[k]} +{lv}
                       </button>
                     );
                   })}
                 </span>
-                <small className="weapon-kind-stat">{weaponStatText(weaponKind)} · 기술 {WEAPON_TECH[weaponKind].name} — {WEAPON_TECH[weaponKind].desc}</small>
+                <small className="weapon-kind-stat">{lookPending ? <b className="look-pending">다음 스테이지부터 {WEAPON_LABEL[wantedWeaponKind]} · </b> : null}{weaponStatText(wantedWeaponKind)} · 기술 {WEAPON_TECH[wantedWeaponKind].name} — {WEAPON_TECH[wantedWeaponKind].desc}</small>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련<small className="btn-cost">{formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</small></button>
             </article>
@@ -4847,16 +4876,30 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </div>,
         document.body,
       )}
+      {/* 유물 소환진 (2026-10-28) — 동료 소환진 판을 그대로(등급색 · GachaFx) · 글만 유물 */}
+      {relicSummoning && (
+        <div className={`gacha-reveal gacha-summoning relic-summoning tier-${relicSummoning.tier.toLowerCase()}`} role="status" aria-label="유물 뽑는 중">
+          <GachaFx tier={relicSummoning.tier} phase="summon" />
+          <div className="gacha-summon-circle">
+            <i className="ring r1" /><i className="ring r2" /><i className="ring r3" />
+            <i className="sparks" aria-hidden="true" /><i className="sparks s2" aria-hidden="true" />
+            <svg viewBox="0 0 200 200" aria-hidden="true"><polygon className="sigil" points="100,18 128,72 186,80 143,120 156,180 100,150 44,180 57,120 14,80 72,72" /><circle className="sigil-ring" cx="100" cy="100" r="88" /></svg>
+            <b>{relicSummoning.count >= 10 ? "유물 10회" : "유물 뽑기"}</b>
+            <small>{TIER_RANK[relicSummoning.tier] >= TIER_RANK.UR ? "오래된 힘이 깨어납니다" : TIER_RANK[relicSummoning.tier] >= TIER_RANK.SSR ? "전설의 유물이 빛납니다" : "유물이 응답합니다"}</small>
+          </div>
+        </div>
+      )}
       {relicDrawResult && (
-        <div className="relic-draw-modal" role="dialog" aria-modal="true" aria-label="유물 뽑기 결과" onClick={() => setRelicDrawResult(null)}>
+        <div className={`relic-draw-modal relic-draw-reveal best-${(relicDrawResult.map((id) => relicDef(id).tier).sort((x, y) => TIERS.indexOf(y) - TIERS.indexOf(x))[0] ?? "N").toLowerCase()}`} role="dialog" aria-modal="true" aria-label="유물 뽑기 결과" onClick={() => setRelicDrawResult(null)}>
+          <GachaFx tier={relicDrawResult.map((id) => relicDef(id).tier).sort((x, y) => TIERS.indexOf(y) - TIERS.indexOf(x))[0] ?? "N"} phase="reveal" />
           <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
             <b>유물 조각 {relicDrawResult.length}개</b>
             <div className="relic-draw-grid">
-              {[...new Set(relicDrawResult)].map((id) => {
+              {[...new Set(relicDrawResult)].sort((x, y) => TIERS.indexOf(relicDef(y).tier) - TIERS.indexOf(relicDef(x).tier)).map((id, k) => {
                 const n = relicDrawResult.filter((x) => x === id).length;
                 const stars = relicStars(character.relics, id);
                 return (
-                  <div key={id} className="relic-draw-item" data-relic={id}>
+                  <div key={id} className={`relic-draw-item relic-outline rarity-${relicDef(id).tier.toLowerCase()}`} data-relic={id} data-tier={relicDef(id).tier} style={{ animationDelay: `${k * 90}ms` } as CSSProperties}>
                     <img src={assetUrl(relicIconUrl(id))} alt="" aria-hidden="true" />
                     <span>{relicDef(id).name}</span>
                     <small>조각 +{n} · {stars >= 1 ? "★".repeat(stars) : `★1까지 ${3 - ((character.relics[id] ?? 0) % 3)}개`}</small>

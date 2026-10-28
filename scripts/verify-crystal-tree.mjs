@@ -106,7 +106,7 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   r = R.grantRelicShards(r.state, 2, () => 0.99);
   ok("첫 조각을 받은 유물을 먼저 ★1 로 채운다", r.got.every((id) => id === first) && R.relicStars(r.state, first) === 1, `${first} ${JSON.stringify(r.state)}`);
   // 2026-10-28 유물 36종 6등급 · 6계열 — 108 조각이면 서른여섯 개 모두 ★1 (반쯤 모은 것부터라 흩어지지 않는다)
-  ok("유물 36종 · 계열 6 × 등급 6(계열마다 등급 하나씩) · id 겹침 없음", R.RELICS.length === 36 && new Set(R.RELICS.map((r) => r.id)).size === 36 && R.RELIC_FAMILIES.every((f) => ["N", "R", "SR", "SSR", "UR", "LR"].every((t) => R.RELICS.filter((r) => r.family === f && r.tier === t).length === 1)));
+  ok("유물 56종(2026-10-28 +20) · 계열 7 × 8(일반 2 · 희귀 2 · 영웅 · 전설 · 신화 · 초월) · id 겹침 없음", R.RELICS.length === 56 && new Set(R.RELICS.map((r) => r.id)).size === 56 && R.RELIC_FAMILIES.length === 7 && R.RELIC_FAMILIES.every((f) => Object.entries({ N: 2, R: 2, SR: 1, SSR: 1, UR: 1, LR: 1 }).every(([t, n]) => R.RELICS.filter((r) => r.family === f && r.tier === t).length === n)));
   ok("옛 9종은 효과 그대로(불씨 반지 탭 4% · 용암 심장 대장 5% · 서리 뿔피리 1.5초 · 황금 열매 골드 5%)", R.relicDef("ember-ring").perStar === 0.04 && R.relicDef("lava-heart").perStar === 0.05 && R.relicDef("frost-horn").perStar === 1.5 && R.relicDef("golden-acorn").perStar === 0.05);
   ok("새 유물은 등급이 높을수록 ★ 하나가 세다(같은 효과 · 일반 < 초월)", R.relicDef("ember-spark").perStar < R.relicDef("sun-core").perStar && R.relicDef("copper-coin").perStar < R.relicDef("treasure-chest").perStar);
   let all = {};
@@ -116,15 +116,19 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   const fire3 = { "ember-spark": 3, "ember-ring": 3, "flame-feather": 3 };
   const e3 = R.relicEffects(fire3);
   ok("세트: 같은 계열 ★1 셋이면 켜짐(불 → 화상 20%) · 6개 아니면 ×1.5 아님", e3.sets.join() === "fire" && e3.fullSets.length === 0 && e3.burnShare === 0.2);
-  all = R.grantRelicShards(all, 108, rng).state;
-  ok("조각 108 → 유물 36 개 모두 ★1", R.RELICS.every((x) => R.relicStars(all, x.id) === 1), JSON.stringify(Object.values(all).filter((v) => v !== 3)));
+  all = R.grantRelicShards(all, 168, rng).state;
+  ok("조각 168 → 유물 56 개 모두 ★1", R.RELICS.every((x) => R.relicStars(all, x.id) === 1), JSON.stringify(Object.values(all).filter((v) => v !== 3)));
   const e = R.relicEffects(all);
-  ok("세트 여섯 모두 켜짐 · 모두 6개라 ×1.5", e.sets.length === 6 && e.fullSets.length === 6);
+  ok("세트 일곱 모두 켜짐 · 모두 8개라 ×1.5", e.sets.length === 7 && e.fullSets.length === 7);
   ok("불 세트 ×1.5: 화상 30%", Math.abs(e.burnShare - 0.3) < 1e-9);
   const timeSum = R.RELICS.filter((r) => r.stat === "bossTimeSec").reduce((a, r) => a + r.perStar, 0);
-  ok("서리 · 대지 세트 ×1.5: 대장 시간 +9초 · +6초 + 유물 시간", Math.abs(e.bossTimeSec - (timeSum + 9 + 6)) < 1e-9, String(e.bossTimeSec));
+  ok("서리 · 대지 세트 ×1.5: 대장 시간 +6초 · +3초 + 유물 시간(★1 합)", Math.abs(e.bossTimeSec - (Math.min(timeSum, R.RELIC_STAT_CAP.bossTimeSec) + 6 + 3)) < 1e-9, String(e.bossTimeSec));
   const goldSum = R.RELICS.filter((r) => r.stat === "goldMul").reduce((a, r) => a + r.perStar, 0);
-  ok("황금 세트 ×1.5: 골드 ×1.375 · 조각 확률 +6%p", Math.abs(e.goldMul - (1 + goldSum) * 1.375) < 1e-9 && Math.abs(e.dropBonus - 0.06) < 1e-9);
+  ok("황금 · 물결 세트 ×1.5: 골드 ×1.375 × 1.15 · 조각 확률 +6%p", Math.abs(e.goldMul - (1 + Math.min(goldSum, 1)) * 1.375 * 1.15) < 1e-9 && Math.abs(e.dropBonus - 0.06) < 1e-9);
+  // 효과 종류별 합계 상한 (2026-10-28 — 36종 ★5 가 탭 ×3.06 · 대장 시간 +53초까지 올랐다)
+  const full5 = Object.fromEntries(R.RELICS.map((r) => [r.id, 15]));
+  const ef = R.relicEffects(full5);
+  ok("모두 ★5 여도 상한: 탭 ≤ (1+0.6)×1.225 · 대장 ≤ 1.6×1.15 · 대장 시간 ≤ 10 + 6 + 3초 · 방치 ≤ 0.4 + 0.15", ef.tapMul <= 1.6 * 1.225 + 1e-9 && ef.bossMul <= 1.6 * 1.15 + 1e-9 && ef.bossTimeSec <= 19 + 1e-9 && ef.idleMul <= 0.55 + 1e-9, JSON.stringify({ tap: ef.tapMul.toFixed(2), boss: ef.bossMul.toFixed(2), sec: ef.bossTimeSec, idle: ef.idleMul.toFixed(2) }));
   const pe = T.permanentEffects({ crystalTree: T.emptyCrystalTree(), relics: all });
   ok("조각 확률 12% + 6%p", Math.abs(pe.relicChance - 0.18) < 1e-9);
   let maxed = all;
@@ -145,7 +149,7 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   ok("비밀 대장은 3(★1 하나)", ST.BRANCHES.filter((b) => b.kind === "secret").every((b) => b.firstReward.relicShards === 3));
   const icons = [...R.RELICS.map((r) => `public/${R.relicIconUrl(r.id)}`), ...T.TREE_LINES.map((l) => `public/titans/relics/tree-${l.id}.png`), "public/titans/relics/shard.png"];
   const missing = icons.filter((f) => !existsSync(f));
-  ok("유물 · 트리 아이콘 44장(유물 36 · 트리 7 · 조각)", missing.length === 0, missing.join(" "));
+  ok("유물 · 트리 아이콘 64장(유물 56 · 트리 7 · 조각)", missing.length === 0, missing.join(" "));
 }
 
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");

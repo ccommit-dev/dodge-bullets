@@ -98,7 +98,7 @@ export function RelicPanel({ progress }: Pick<Props, "progress">) {
                   const stars = relicStars(progress.relics, r.id);
                   const into = stars >= RELIC_MAX_STAR ? RELIC_SHARDS_PER_STAR : shards % RELIC_SHARDS_PER_STAR;
                   return (
-                    <div key={r.id} className={`relic-tile ${stars >= 1 ? "owned" : "unowned"}`} data-relic={r.id}>
+                    <div key={r.id} className={`relic-tile relic-outline rarity-${r.tier.toLowerCase()} ${stars >= 1 ? "owned" : "unowned"}`} data-relic={r.id} data-tier={r.tier}>
                       <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
                       <b>{r.name}</b>
                       <i className="relic-stars" aria-label={`별 ${stars}`}>{stars >= 1 ? "★".repeat(stars) : "미보유"}</i>

@@ -14,17 +14,25 @@ import type { Tier } from "./allyRoster";
  * - 옛 9종은 id · 효과 수치 그대로 R · SR · SSR 자리에 둔다(옛 저장의 ★ 이 그대로 산다). 새 27종은 등급 배율(N ×0.5 … LR ×2)로.
  * - 세트: 같은 계열 ★1 이상 3개면 세트, 6개 모두면 세트 효과 ×1.5.
  * - 상점 뽑기는 재화별 3종(골드 · 강화석 · 보석) — 비쌀수록 높은 등급 확률이 크다(RELIC_BANNER_RATES · 확률 공시).
+ *
+ * 4판 (2026-10-28, 사용자: "유물 개수도 20개더 늘려줘") — 56종 = 계열 7(물결 추가) × 8(일반 2 · 희귀 2 · 영웅 · 전설 · 신화 · 초월).
+ * - 효과 종류별 합계 상한(RELIC_STAT_CAP) — 36종을 모두 ★5 로 모으면 탭 ×3.06 · 대장 시간 +53초(제한 30초)까지 올라 후반 대장 벽이 없어졌다.
+ *   상한은 옛 9종 ★5 합(탭 +20% · 대장 시간 +13.5초)의 2 ~ 3배 안 — 많이 모을수록 세지지만 끝이 있다. 세트 효과는 상한 밖(작게).
  */
 
-export type RelicFamily = "fire" | "frost" | "gold" | "wind" | "earth" | "star";
-export const RELIC_FAMILIES: readonly RelicFamily[] = ["fire", "frost", "gold", "wind", "earth", "star"];
+export type RelicFamily = "fire" | "frost" | "gold" | "wind" | "earth" | "star" | "water";
+export const RELIC_FAMILIES: readonly RelicFamily[] = ["fire", "frost", "gold", "wind", "earth", "star", "water"];
 export type RelicId =
   | "ember-spark" | "ember-ring" | "flame-feather" | "lava-heart" | "phoenix-plume" | "sun-core"
   | "frost-pebble" | "frost-horn" | "snow-crystal" | "ice-lantern" | "glacier-shield" | "winter-crown"
   | "copper-coin" | "lucky-coin" | "golden-acorn" | "beaver-crown" | "treasure-chest" | "king-scepter"
   | "wind-leaf" | "reed-flute" | "feather-fan" | "storm-bell" | "cloud-wing" | "tempest-eye"
   | "river-stone" | "oak-shield" | "mossy-totem" | "mountain-heart" | "ancient-root" | "world-seed"
-  | "star-sand" | "moon-shell" | "comet-shard" | "star-compass" | "galaxy-pearl" | "aurora-orb";
+  | "star-sand" | "moon-shell" | "comet-shard" | "star-compass" | "galaxy-pearl" | "aurora-orb"
+  // 4판 (2026-10-28) +20
+  | "cinder-chunk" | "flame-dagger" | "icicle" | "frost-cloak" | "silver-button" | "gold-map"
+  | "dandelion" | "pinwheel" | "clay-doll" | "bronze-shovel" | "firefly-jar" | "star-arrow"
+  | "clam-shell" | "water-drop" | "kingfisher-feather" | "reed-rod" | "coral-crown" | "tide-compass" | "mermaid-harp" | "sea-tear";
 
 /** 유물 하나의 효과 종류 — 수치는 ★ 하나당 */
 export type RelicStat = "tapMul" | "allyMul" | "bossMul" | "bossTimeSec" | "idleMul" | "goldMul" | "crystalMul";
@@ -83,17 +91,43 @@ export const RELICS: readonly RelicDef[] = [
   def("star-compass", "star", "SSR", "별 나침반", "crystalMul"),
   def("galaxy-pearl", "star", "UR", "은하 진주", "goldMul"),
   def("aurora-orb", "star", "LR", "오로라 구슬", "tapMul"),
+  // 4판 (2026-10-28) — 계열마다 일반 · 희귀 하나씩 더
+  def("cinder-chunk", "fire", "N", "숯 조각", "allyMul"),
+  def("flame-dagger", "fire", "R", "불꽃 단검", "bossMul"),
+  def("icicle", "frost", "N", "고드름", "bossTimeSec"),
+  def("frost-cloak", "frost", "R", "서리 망토", "idleMul"),
+  def("silver-button", "gold", "N", "은 단추", "goldMul"),
+  def("gold-map", "gold", "R", "금박 지도", "crystalMul"),
+  def("dandelion", "wind", "N", "민들레 씨앗", "tapMul"),
+  def("pinwheel", "wind", "R", "바람개비", "allyMul"),
+  def("clay-doll", "earth", "N", "점토 인형", "idleMul"),
+  def("bronze-shovel", "earth", "R", "청동 삽", "bossMul"),
+  def("firefly-jar", "star", "N", "반딧불 병", "crystalMul"),
+  def("star-arrow", "star", "R", "별똥 화살", "tapMul"),
+  // 물결 — 골드 · 방치 · 동료
+  def("clam-shell", "water", "N", "조개 껍데기", "goldMul"),
+  def("water-drop", "water", "N", "물방울 구슬", "idleMul"),
+  def("kingfisher-feather", "water", "R", "물총새 깃", "allyMul"),
+  def("reed-rod", "water", "R", "갈대 낚싯대", "goldMul"),
+  def("coral-crown", "water", "SR", "산호 왕관", "bossMul"),
+  def("tide-compass", "water", "SSR", "해류 나침반", "bossTimeSec"),
+  def("mermaid-harp", "water", "UR", "인어 하프", "allyMul"),
+  def("sea-tear", "water", "LR", "바다의 눈물", "idleMul"),
 ];
 
-export const RELIC_FAMILY_LABEL: Record<RelicFamily, string> = { fire: "불", frost: "서리", gold: "황금", wind: "바람", earth: "대지", star: "별빛" };
+/** 효과 종류별 유물 합계 상한(★ 효과만 · 세트는 따로) — 2026-10-28 */
+export const RELIC_STAT_CAP: Record<RelicStat, number> = { tapMul: 0.6, allyMul: 0.6, bossMul: 0.6, goldMul: 1, idleMul: 0.4, crystalMul: 0.5, bossTimeSec: 10 };
+
+export const RELIC_FAMILY_LABEL: Record<RelicFamily, string> = { fire: "불", frost: "서리", gold: "황금", wind: "바람", earth: "대지", star: "별빛", water: "물결" };
 /** 세트 효과 — 같은 계열 ★1 이상 3개 · 6개 모두면 ×1.5 */
 export const RELIC_SET: Record<RelicFamily, { name: string; blurb: string }> = {
   fire: { name: "화상", blurb: "피해 20% 화상 추가" },
-  frost: { name: "얼어붙은 대장", blurb: "대장 시간 +6초 · 피해 +10%" },
+  frost: { name: "얼어붙은 대장", blurb: "대장 시간 +4초 · 피해 +10%" },
   gold: { name: "황금 손길", blurb: "골드 +25% · 조각 확률 +4%p" },
   wind: { name: "순풍", blurb: "동료 피해 +15%" },
-  earth: { name: "대지의 품", blurb: "대장 시간 +4초 · 방치 +0.1" },
+  earth: { name: "대지의 품", blurb: "대장 시간 +2초 · 방치 +0.1" },
   star: { name: "별자리", blurb: "탭 피해 +15% · 환생 결정 +10%" },
+  water: { name: "물살", blurb: "동료 피해 +10% · 골드 +10%" },
 };
 export const RELIC_SET_NEED = 3;
 export const RELIC_SET_FULL_MUL = 1.5;
@@ -178,18 +212,19 @@ export type RelicEffects = {
 export function relicEffects(state: RelicState): RelicEffects {
   const add: Record<RelicStat, number> = { tapMul: 0, allyMul: 0, bossMul: 0, bossTimeSec: 0, idleMul: 0, goldMul: 0, crystalMul: 0 };
   for (const r of RELICS) add[r.stat] += relicStars(state, r.id) * r.perStar;
+  for (const k of Object.keys(add) as RelicStat[]) add[k] = Math.min(add[k], RELIC_STAT_CAP[k]);   // 종류별 합계 상한
   const sets = RELIC_FAMILIES.filter((f) => setActive(state, f));
   const fullSets = RELIC_FAMILIES.filter((f) => setFull(state, f));
   // 세트 세기: 켜지면 1 · 6개 모두면 ×1.5
   const k = (f: RelicFamily) => (fullSets.includes(f) ? RELIC_SET_FULL_MUL : sets.includes(f) ? 1 : 0);
   return {
     tapMul: (1 + add.tapMul) * (1 + 0.15 * k("star")),
-    allyMul: (1 + add.allyMul) * (1 + 0.15 * k("wind")),
+    allyMul: (1 + add.allyMul) * (1 + 0.15 * k("wind")) * (1 + 0.1 * k("water")),
     bossMul: (1 + add.bossMul) * (1 + 0.1 * k("frost")),
-    goldMul: (1 + add.goldMul) * (1 + 0.25 * k("gold")),
+    goldMul: (1 + add.goldMul) * (1 + 0.25 * k("gold")) * (1 + 0.1 * k("water")),
     idleMul: add.idleMul + 0.1 * k("earth"),
     crystalMul: (1 + add.crystalMul) * (1 + 0.1 * k("star")),
-    bossTimeSec: add.bossTimeSec + 6 * k("frost") + 4 * k("earth"),
+    bossTimeSec: add.bossTimeSec + 4 * k("frost") + 2 * k("earth"),
     burnShare: FIRE_SET_BURN_SHARE * k("fire"),
     dropBonus: 0.04 * k("gold"),
     sets,

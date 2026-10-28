@@ -5,6 +5,8 @@ import {
   RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, familyOwned, relicIconUrl, relicStars, relicStatText, setActive, setFull, type RelicState,
 } from "./relics";
 import { TIERS, TIER_LABEL } from "./summonLevel";
+/* 2026-10-28 (사용자: "사냥터 스킬탭, 유물탭에 등급별 이 내용은 삭제하고 … 윤곽선으로만 등급 참고") — 등급 글자 칩을 걷고 아이콘 윤곽선 색(동료 등급색)으로만.
+   등급 이름은 길게 누르거나 마우스를 올리면(title) 보인다 */
 
 /**
  * 사냥터 성장 서랍 · 유물 탭 (2026-10-27, 사용자: "유물 탭에 퀘스트 UI 처럼 수정").
@@ -58,12 +60,12 @@ export function RelicTabPanel({ relics, chance, onDraw }: Props) {
                 const into = max ? RELIC_SHARDS_PER_STAR : shards % RELIC_SHARDS_PER_STAR;
                 return (
                   <li key={r.id} className={`quest-row relic-row rarity-${r.tier.toLowerCase()}`} data-relic={r.id} data-tier={r.tier}>
-                    <span className="quest-icon">
+                    <span className={`quest-icon relic-outline rarity-${r.tier.toLowerCase()}`} title={`${TIER_LABEL[r.tier]} 유물`}>
                       <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
                       <b>★{stars}</b>
                     </span>
                     <span className="quest-main">
-                      <strong><em className={`relic-tier-chip rarity-${r.tier.toLowerCase()}`}>{TIER_LABEL[r.tier]}</em>{r.name}</strong>
+                      <strong>{r.name}</strong>
                       <span className="quest-bar" aria-label={`조각 ${into}/${RELIC_SHARDS_PER_STAR}`}>
                         <i style={{ width: `${(into / RELIC_SHARDS_PER_STAR) * 100}%` }} />
                         <span className="quest-pay">{relicStatText(r, stars)}</span>

@@ -222,3 +222,36 @@ export function sfxSkillTier(tier: "N" | "R" | "SR" | "SSR" | "UR" | "LR"): void
   play(notes);
   if (rank >= 3) noise(0.05, 0.3 + rank * 0.08, 0.02 + rank * 0.006, 6000, 4, "bandpass", 2400);   // 반짝이
 }
+
+/**
+ * 유물 뽑기 (2026-10-28, 사용자: "상점 유물뽑기에 동료처럼 이펙트 넣어주고 이펙트 음악도 각각 넣어줘").
+ * 소환진 1.2초 동안 낮은 울림이 차오르고 반짝이가 모인다 → 공개 때 등급마다 다른 짧은 곡(일반 종 한 번 … 초월 긴 화음 + 반짝이 비).
+ */
+export function sfxRelicSummon(): void {
+  const notes: Note[] = [];
+  for (let k = 0; k < 8; k += 1) notes.push({ freq: 196 * Math.pow(2, k / 12), at: k * 0.13, dur: 0.22, type: "triangle", gain: 0.018 + k * 0.003 });
+  notes.push({ freq: 65.4, at: 0, dur: 1.15, type: "sine", gain: 0.05 });
+  play(notes);
+  noise(0.1, 1.0, 0.012, 3200, 3, "bandpass", 7200);   // 모이는 반짝이
+}
+
+export function sfxRelicReveal(tier: "N" | "R" | "SR" | "SSR" | "UR" | "LR"): void {
+  const rank = ["N", "R", "SR", "SSR", "UR", "LR"].indexOf(tier);
+  // 등급마다 다른 음계 · 길이 — 일반 종 하나 · 희귀 두 음 · 영웅 화음 · 전설 팡파르 · 신화 팡파르+종 · 초월 긴 화음+반짝이 비
+  const SONGS: number[][] = [
+    [784],
+    [659.25, 987.77],
+    [523.25, 659.25, 783.99, 1046.5],
+    [392, 523.25, 659.25, 783.99, 1046.5, 1318.5],
+    [440, 554.37, 659.25, 880, 1108.7, 1318.5, 1760],
+    [349.23, 440, 523.25, 698.46, 880, 1046.5, 1396.9, 1760, 2093],
+  ];
+  const song = SONGS[Math.max(0, rank)];
+  const step = rank >= 4 ? 0.07 : 0.09;
+  const notes: Note[] = song.map((f, i) => ({ freq: f, at: i * step, dur: 0.22 + rank * 0.06, type: rank >= 2 ? "triangle" : "sine", gain: 0.035 + rank * 0.004 }));
+  if (rank >= 3) notes.push({ freq: 98, at: 0, dur: 0.6 + rank * 0.1, type: "sine", gain: 0.06 + rank * 0.01 });              // 낮은 울림
+  if (rank >= 4) for (const f of [song[0] * 2, song[2] * 2]) notes.push({ freq: f, at: song.length * step, dur: 0.9, type: "sine", gain: 0.02 });   // 종
+  if (rank === 5) for (const f of [349.23, 440, 523.25, 698.46]) notes.push({ freq: f, at: song.length * step + 0.1, dur: 1.4, type: "sine", gain: 0.02 });   // 긴 화음
+  play(notes);
+  if (rank >= 2) noise(0.05, 0.25 + rank * 0.12, 0.012 + rank * 0.005, 5200, 4, "bandpass", 9000);   // 반짝이
+}

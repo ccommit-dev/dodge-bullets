@@ -58,6 +58,7 @@ const n = Q.normalizeQuests({ levels: lv30, prog: pr30, bonusAt: 123.9, v: 2 });
 ok("정리: 첫 줄 최소 Lv.1 · 소수 버림 · 음수 0 · 상한 25 · 주기 넘는 진행 깎음 · bonusAt", n.levels[0] === 1 && n.levels[1] === 3 && n.levels[2] === 0 && n.levels[7] === 25 && n.levels[12] === 0 && n.prog[0] === 3 && n.prog[1] === 1.5 && n.prog[2] === 0 && n.prog[7] === Q.QUESTS[7].sec && n.bonusAt === 123, JSON.stringify(n.levels.slice(0, 13)));
 // 옛 8줄 저장(v 없음) — 같은 id 자리로 옮긴다
 const old = Q.normalizeQuests({ levels: [7, 3, 2, 5, 4, 1, 1, 1], prog: [1, 2, 3, 4, 5, 6, 7, 8], bonusAt: 5 });
+ok("옛 저장의 연 줄은 앞 새 줄이 잠겨도 계속 올린다(댐 틈 메우기 Lv.2 · 앞 '갈대 엮기' 잠김)", Q.questBlock(old, idx("dam-patch"), 1e15) === null && Q.questBlock(old, idx("reed-weave"), 1e15) === null && Q.questBlock(Q.emptyQuests(), 3, 1e15) === "prev");
 ok("옛 8줄 저장 → 30줄의 같은 id 자리 (댐 틈 · 강가 순찰 · 큰 댐 …) · 새 줄은 잠김", Q.OLD_QUEST_ORDER.every((id, k) => old.levels[idx(id)] === [7, 3, 2, 5, 4, 1, 1, 1][k]) && old.levels.filter((x) => x > 0).length === 8 && old.prog[idx("great-dam")] === 8 && old.v === 2, Q.OLD_QUEST_ORDER.map((id) => `${id}@${idx(id)}`).join(" "));
 ok("옛 저장(Lv 300 까지 오른 줄 · bonusAt 없음)도 25 · 0 으로", Q.normalizeQuests({ levels: [120, 40] }).levels.slice(0, 2).join() === "25,25" && Q.normalizeQuests({ levels: [1] }).bonusAt === 0);
 ok("옛 저장(quests 없음) → 첫 줄 Lv.1", JSON.stringify(M.normalizeTitansSave({ gold: 5 }).quests) === JSON.stringify(s0));

@@ -44,7 +44,7 @@ export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus }: Pro
         {QUESTS.map((q, i) => {
           const lv = state.levels[i];
           const locked = lv <= 0;
-          const prevLocked = i > 0 && state.levels[i - 1] <= 0;
+          const prevLocked = lv <= 0 && i > 0 && state.levels[i - 1] <= 0;   // 이미 연 줄은 숨기지 않는다(2026-10-28 옛 저장)
           const cost = questCost(i, lv);
           const block = questBlock(state, i, gold);
           const gain = questPay(i, lv + 1) - questPay(i, lv);
