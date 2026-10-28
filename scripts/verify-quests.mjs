@@ -19,7 +19,8 @@ const ok = (name, cond, detail = "") => { console.log(`${cond ? "PASS" : "FAIL"}
 
 // ── 1. 시작 · 지급 ──
 const s0 = Q.emptyQuests();
-ok("처음: 8줄 · 첫 줄만 Lv.1 · 보너스 받은 적 없음", Q.QUESTS.length === 8 && s0.levels.join(",") === "1,0,0,0,0,0,0,0" && s0.bonusAt === 0);
+ok("처음: 30줄(2026-10-28) · 첫 줄만 Lv.1 · 보너스 받은 적 없음 · 배치 판 2", Q.QUESTS.length === 30 && s0.levels[0] === 1 && s0.levels.slice(1).every((x) => x === 0) && s0.levels.length === 30 && s0.bonusAt === 0 && s0.v === 2);
+ok("줄 id 가 겹치지 않는다", new Set(Q.QUESTS.map((q) => q.id)).size === 30);
 let t = Q.tickQuests(s0, 2.9);
 ok("주기(3초) 전엔 0", t.gold === 0 && Math.abs(t.state.prog[0] - 2.9) < 1e-9);
 t = Q.tickQuests(t.state, 0.2);
@@ -41,7 +42,7 @@ ok("아래 줄일수록 여는 값 · 주기 · Lv.1 초당 보상이 커진다"
 
 // ── 3. 10분 보너스 ──
 const now = 1_800_000_000_000;
-const lv5 = { ...s0, levels: [5, 0, 0, 0, 0, 0, 0, 0] };
+const lv5 = { ...s0, levels: Q.QUESTS.map((_, i) => (i === 0 ? 5 : 0)) };
 const per = Q.questGoldPerSec(lv5);
 const b1 = Q.claimQuestBonus(lv5, now);
 ok("10분 보너스 = 초당 퀘스트 골드 × 100", b1 && b1.gold === Math.floor(per * 100) && b1.state.bonusAt === now, `${per}/s → ${b1?.gold}`);
@@ -49,8 +50,15 @@ ok("받은 뒤 10분 동안은 못 받는다", Q.claimQuestBonus(b1.state, now +
 ok("10분 지나면 다시 · 쌓이지 않는다(30분 뒤에도 한 번)", Q.claimQuestBonus(b1.state, now + 10 * 60_000)?.gold === b1.gold && Q.claimQuestBonus(Q.claimQuestBonus(b1.state, now + 30 * 60_000).state, now + 30 * 60_000) === null);
 
 // ── 4. 저장 정리 · 환생 ──
-const n = Q.normalizeQuests({ levels: [0, 3.7, -1, 999, "x"], prog: [5, 1.5, 9, 99], bonusAt: 123.9 });
-ok("정리: 첫 줄 최소 Lv.1 · 소수 버림 · 음수 0 · 상한 25 · 주기 넘는 진행 깎음 · bonusAt", n.levels[0] === 1 && n.levels[1] === 3 && n.levels[2] === 0 && n.levels[3] === 25 && n.levels[4] === 0 && n.prog[0] === 3 && n.prog[1] === 1.5 && n.prog[2] === 0 && n.prog[3] === 25 && n.bonusAt === 123, JSON.stringify(n));
+// 30줄 판(v 2) — 칸 그대로
+const idx = (id) => Q.QUESTS.findIndex((q) => q.id === id);
+const lv30 = Q.QUESTS.map(() => 0); lv30[0] = 0; lv30[1] = 3.7; lv30[2] = -1; lv30[7] = 999; lv30[12] = "x";
+const pr30 = Q.QUESTS.map(() => 0); pr30[0] = 5; pr30[1] = 1.5; pr30[2] = 9; pr30[7] = 99;
+const n = Q.normalizeQuests({ levels: lv30, prog: pr30, bonusAt: 123.9, v: 2 });
+ok("정리: 첫 줄 최소 Lv.1 · 소수 버림 · 음수 0 · 상한 25 · 주기 넘는 진행 깎음 · bonusAt", n.levels[0] === 1 && n.levels[1] === 3 && n.levels[2] === 0 && n.levels[7] === 25 && n.levels[12] === 0 && n.prog[0] === 3 && n.prog[1] === 1.5 && n.prog[2] === 0 && n.prog[7] === Q.QUESTS[7].sec && n.bonusAt === 123, JSON.stringify(n.levels.slice(0, 13)));
+// 옛 8줄 저장(v 없음) — 같은 id 자리로 옮긴다
+const old = Q.normalizeQuests({ levels: [7, 3, 2, 5, 4, 1, 1, 1], prog: [1, 2, 3, 4, 5, 6, 7, 8], bonusAt: 5 });
+ok("옛 8줄 저장 → 30줄의 같은 id 자리 (댐 틈 · 강가 순찰 · 큰 댐 …) · 새 줄은 잠김", Q.OLD_QUEST_ORDER.every((id, k) => old.levels[idx(id)] === [7, 3, 2, 5, 4, 1, 1, 1][k]) && old.levels.filter((x) => x > 0).length === 8 && old.prog[idx("great-dam")] === 8 && old.v === 2, Q.OLD_QUEST_ORDER.map((id) => `${id}@${idx(id)}`).join(" "));
 ok("옛 저장(Lv 300 까지 오른 줄 · bonusAt 없음)도 25 · 0 으로", Q.normalizeQuests({ levels: [120, 40] }).levels.slice(0, 2).join() === "25,25" && Q.normalizeQuests({ levels: [1] }).bonusAt === 0);
 ok("옛 저장(quests 없음) → 첫 줄 Lv.1", JSON.stringify(M.normalizeTitansSave({ gold: 5 }).quests) === JSON.stringify(s0));
 ok("환생(빈 사냥터 저장)이면 첫 줄 Lv.1 로", JSON.stringify(M.defaultTitansSave().quests) === JSON.stringify(Q.emptyQuests()));
@@ -86,7 +94,7 @@ ok("모두 Lv25 = 끝판(50층 무렵) 사냥 골드 정도", maxAll >= hunt(45)
 
 // ── 6. 아이콘 ──
 const missing = Q.QUESTS.map((q) => `public/titans/quests/${q.id}.png`).filter((f) => !existsSync(f));
-ok("퀘스트 아이콘 8장", missing.length === 0, missing.join(" "));
+ok("퀘스트 아이콘 30장", missing.length === 0, missing.join(" "));
 
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");
 process.exit(fails ? 1 : 0);

@@ -9,7 +9,7 @@ import {
   BASIC_LINES, SPECIAL_LINES, canUnlockKey, freeCrystals, lineDef, lineText, resetTree, treeSpent, unlockKey, upgradeLine, permanentEffects, type TreeLine,
 } from "../progression/crystalTree";
 import {
-  RELICS, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SHARDS_PER_STAR, relicIconUrl, relicStars, relicStatText, setActive, type RelicFamily,
+  RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, relicIconUrl, relicStars, relicStatText, setActive, type RelicFamily,
 } from "../titans/relics";
 
 type Props = {
@@ -77,7 +77,7 @@ export function CrystalTreePanel({ userHash, progress, onProgressChange, onMessa
   );
 }
 
-const FAMILIES: RelicFamily[] = ["fire", "frost", "gold"];
+const FAMILIES: readonly RelicFamily[] = RELIC_FAMILIES;   // 2026-10-28 6계열
 
 export function RelicPanel({ progress }: Pick<Props, "progress">) {
   const owned = RELICS.filter((r) => relicStars(progress.relics, r.id) >= 1).length;
@@ -91,7 +91,7 @@ export function RelicPanel({ progress }: Pick<Props, "progress">) {
           const on = setActive(progress.relics, f);
           return (
             <section key={f} className={`relic-family fam-${f} ${on ? "set-on" : ""}`} aria-label={`${RELIC_FAMILY_LABEL[f]} 계열`}>
-              <header><b>{RELIC_FAMILY_LABEL[f]}</b><span className="relic-set">{on ? "세트 ✔" : "3개 세트"} · {RELIC_SET[f].name}<small>{RELIC_SET[f].blurb}</small></span></header>
+              <header><b>{RELIC_FAMILY_LABEL[f]}</b><span className="relic-set">{on ? "세트 ✔" : `${RELIC_SET_NEED}개 세트`} · {RELIC_SET[f].name}<small>{RELIC_SET[f].blurb}</small></span></header>
               <div className="relic-row">
                 {RELICS.filter((r) => r.family === f).map((r) => {
                   const shards = progress.relics[r.id] ?? 0;

@@ -90,6 +90,10 @@ export type CharacterProgress = {
   towerTickets: number;
   /** 무료 등반권을 마지막으로 채운 날짜 (sv-SE) */
   towerTicketDate: string;
+  /** 비트 디펜스 시도권 (2026-10-28, beat/tickets.ts) — 무료분을 쓴 날 · 그날 쓴 무료 장수 · 상점에서 산 장수(날이 바뀌어도 남는다) */
+  beatTicketDay: string;
+  beatTicketsUsed: number;
+  beatTicketsBought: number;
   titanBestStage: number;
   beatSkills: BeatSkills;
   skillPoints: number;
@@ -281,6 +285,9 @@ export function emptyCharacterProgress(): CharacterProgress {
     towerBestFloor: 0,
     towerTickets: 3,
     towerTicketDate: "",
+    beatTicketDay: "",
+    beatTicketsUsed: 0,
+    beatTicketsBought: 0,
     titanBestStage: 1,
     beatSkills: emptySkills(),
     skillPoints: 0,
@@ -585,6 +592,9 @@ export function normalizeCharacterProgress(
     towerBestFloor: integer(raw.towerBestFloor, 0, 99999),
     towerTickets: integer(raw.towerTickets, base.towerTickets, 999),
     towerTicketDate: typeof raw.towerTicketDate === "string" ? raw.towerTicketDate : "",
+    beatTicketDay: typeof raw.beatTicketDay === "string" ? raw.beatTicketDay : "",
+    beatTicketsUsed: integer(raw.beatTicketsUsed, 0, 99),
+    beatTicketsBought: integer(raw.beatTicketsBought, 0, 999),
     titanBestStage: Math.max(1, integer(raw.titanBestStage, 1, 9999)),
     beatSkills,
     skillPoints: integer(raw.skillPoints, base.skillPoints),

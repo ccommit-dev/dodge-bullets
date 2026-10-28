@@ -2,8 +2,9 @@ import { assetUrl } from "../asset";
 import { CurrencyIcon } from "../ui/CurrencyIcon";
 import "./relicGacha.css";
 import {
-  RELICS, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SHARDS_PER_STAR, relicIconUrl, relicStars, relicStatText, setActive, type RelicFamily, type RelicState,
+  RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, familyOwned, relicIconUrl, relicStars, relicStatText, setActive, setFull, type RelicState,
 } from "./relics";
+import { TIERS, TIER_LABEL } from "./summonLevel";
 
 /**
  * 사냥터 성장 서랍 · 유물 탭 (2026-10-27, 사용자: "유물 탭에 퀘스트 UI 처럼 수정").
@@ -19,7 +20,6 @@ type Props = {
   onDraw: () => void;
 };
 
-const FAMILIES: RelicFamily[] = ["fire", "frost", "gold"];
 
 export function RelicTabPanel({ relics, chance, onDraw }: Props) {
   const owned = RELICS.filter((r) => relicStars(relics, r.id) >= 1).length;
@@ -41,26 +41,29 @@ export function RelicTabPanel({ relics, chance, onDraw }: Props) {
           <small>상점 → 유물에서 뽑거나, 대장을 다시 잡아 조각 {RELIC_SHARDS_PER_STAR}개를 모으면 여기에 보여요</small>
         </p>
       )}
-      {FAMILIES.filter((f) => RELICS.some((r) => r.family === f && relicStars(relics, r.id) >= 1)).map((f) => {
+      {RELIC_FAMILIES.filter((f) => RELICS.some((r) => r.family === f && relicStars(relics, r.id) >= 1)).map((f) => {
         const on = setActive(relics, f);
-        const have = RELICS.filter((r) => r.family === f && relicStars(relics, r.id) >= 1).length;
+        const full = setFull(relics, f);
+        const have = familyOwned(relics, f);
+        const size = RELICS.filter((r) => r.family === f).length;
         return (
           <section key={f} className={`relic-tab-family fam-${f} ${on ? "set-on" : ""}`} aria-label={`${RELIC_FAMILY_LABEL[f]} 계열`}>
-            <h4><b>{RELIC_FAMILY_LABEL[f]}</b><span>{on ? "세트 ✔" : `세트 ${have}/3`} · {RELIC_SET[f].name}</span><small>{RELIC_SET[f].blurb}</small></h4>
+            {/* 세트 (2026-10-28 6등급): 3개 = 세트 · 6개 모두 = 세트 ×1.5 */}
+            <h4><b>{RELIC_FAMILY_LABEL[f]}</b><span>{full ? "세트 ✔✔ ×1.5" : on ? `세트 ✔ · ${have}/${size}` : `세트 ${have}/${RELIC_SET_NEED}`} · {RELIC_SET[f].name}</span><small>{RELIC_SET[f].blurb}{on && !full ? ` · ${size}개 모두면 ×1.5` : ""}</small></h4>
             <ol className="quest-list">
-              {RELICS.filter((r) => r.family === f && relicStars(relics, r.id) >= 1).map((r) => {
+              {RELICS.filter((r) => r.family === f && relicStars(relics, r.id) >= 1).sort((a, b) => TIERS.indexOf(b.tier) - TIERS.indexOf(a.tier)).map((r) => {
                 const shards = relics[r.id] ?? 0;
                 const stars = relicStars(relics, r.id);
                 const max = stars >= RELIC_MAX_STAR;
                 const into = max ? RELIC_SHARDS_PER_STAR : shards % RELIC_SHARDS_PER_STAR;
                 return (
-                  <li key={r.id} className="quest-row relic-row" data-relic={r.id}>
+                  <li key={r.id} className={`quest-row relic-row rarity-${r.tier.toLowerCase()}`} data-relic={r.id} data-tier={r.tier}>
                     <span className="quest-icon">
                       <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
                       <b>★{stars}</b>
                     </span>
                     <span className="quest-main">
-                      <strong>{r.name}</strong>
+                      <strong><em className={`relic-tier-chip rarity-${r.tier.toLowerCase()}`}>{TIER_LABEL[r.tier]}</em>{r.name}</strong>
                       <span className="quest-bar" aria-label={`조각 ${into}/${RELIC_SHARDS_PER_STAR}`}>
                         <i style={{ width: `${(into / RELIC_SHARDS_PER_STAR) * 100}%` }} />
                         <span className="quest-pay">{relicStatText(r, stars)}</span>

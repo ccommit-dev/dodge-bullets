@@ -84,7 +84,7 @@ import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
-import { drawRelicShards, grantRelicShards, relicDef, relicDrawRates, relicIconUrl, relicStars, relicTierDrawCost, RELICS, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_TIER, RELIC_TIER_CURRENCY, RELIC_TIER_LABEL, RELIC_TIERS, setActive, type RelicId, type RelicTier } from "./titans/relics";
+import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, setActive, type RelicBanner, type RelicId } from "./titans/relics";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
@@ -111,6 +111,7 @@ import {
   starMultiplier,
   randomOwnedAlly,
 } from "./titans/allies";
+import { BEAT_TICKET_MAX_BOUGHT } from "./beat/tickets";
 import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
@@ -351,7 +352,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 동료 값 조정 다시 계산 안내 (2026-10-27) — normalizeTitansSave 가 남긴 rebalanceNotice */
   const [rebalanceInfo, setRebalanceInfo] = useState<NonNullable<TitansSave["rebalanceNotice"]> | null>(null);
   /** 상점 유물 뽑기 — 고른 등급 탭 */
-  const [relicShopTier, setRelicShopTier] = useState<RelicTier>("common");
+  const [relicShopBanner, setRelicShopBanner] = useState<RelicBanner>("gold");
   const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot | null>(null);   // 조합 칸을 누른 슬롯(카드 표시) — 처음엔 없음
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
   const [frameIdx, setFrameIdx] = useState(0);
@@ -2086,6 +2087,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const g = product.grant(current);
       // 등반권은 보유 상한이 있다 — 넘치게 사면 보석만 사라진다
       if (g.towerTickets && current.towerTickets + g.towerTickets > TOWER_TICKET_MAX) return current;
+      if (g.beatTickets && current.beatTicketsBought + g.beatTickets > BEAT_TICKET_MAX_BOUGHT) return current;   // 비트 시도권 보유 상한 (2026-10-28)
       grant = g;
       return {
         ...current,
@@ -2104,6 +2106,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         })(),
         forgeTicketsPending: current.forgeTicketsPending + (g.forgeTickets ?? 0),
         towerTickets: Math.min(TOWER_TICKET_MAX, current.towerTickets + (g.towerTickets ?? 0)),
+        beatTicketsBought: current.beatTicketsBought + (g.beatTickets ?? 0),
         idleBoostUntil: g.idleBoostHours ? Math.max(Date.now(), current.idleBoostUntil) + g.idleBoostHours * 3600 * 1000 : current.idleBoostUntil,
         weeklyEventBuys: { week, bought: { ...record.bought, [product.id]: bought + 1 } },
         lastContent: "titans",
@@ -2111,6 +2114,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     });
     if (!grant) {
       if (product.grant(character).towerTickets) flash(`등반권은 ${TOWER_TICKET_MAX}장까지 가질 수 있습니다`);
+      if (product.grant(character).beatTickets) flash(`산 비트 시도권은 ${BEAT_TICKET_MAX_BOUGHT}장까지 가질 수 있습니다`);
       return;
     }
     const g: EventGrant = grant;
@@ -2187,18 +2191,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
    * 동료 소환 (확률형 재설계) — titans/gacha.ts 엔진. 풀은 현재 진행도 기준(상점 동료 제외),
    * 천장 60·10연 SR 보장·픽업 2배. 새 동료는 빈 슬롯이 있으면 자동 편성 — "뽑았는데 안 싸우는" 상황을 막는다.
    */
-  /** 상점 유물 뽑기 — 등급마다 재화가 다르다(2026-10-27: 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석). 그 등급 안에서 균등 확률 */
-  const drawRelic = async (tier: RelicTier, count: 1 | 10) => {
-    const c = relicTierDrawCost(tier, saveRef.current.stage);
+  /** 상점 유물 뽑기 — 재화마다 등급 확률이 다르다(2026-10-28: 골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 등급 안에서 균등 */
+  const drawRelic = async (banner: RelicBanner, count: 1 | 10) => {
+    const c = relicBannerCost(banner, saveRef.current.stage);
     const cost = count === 10 ? c.ten : c.single;
-    const cur = RELIC_TIER_CURRENCY[tier];
-    if (relicDrawRates(characterRef.current.relics, tier).every((x) => x.rate === 0)) return;
+    const cur = banner;
+    if (relicDrawRates(characterRef.current.relics, banner).every((x) => x.rate === 0)) return;
     if (cur === "gold" && saveRef.current.gold < cost) { flash(`골드가 모자랍니다 — ${formatGold(cost)} 필요`); return; }
     let got: RelicId[] = [];
     const next = await updateCharacterProgress(userHash, (current) => {
       const have = cur === "stone" ? current.enhancementMaterials : cur === "gem" ? current.redGems : Infinity;
       if (have < cost) return current;
-      const d = drawRelicShards(current.relics, count, Math.random, tier);
+      const d = drawRelicShards(current.relics, count, Math.random, banner);
       if (d.got.length === 0) return current;
       got = d.got;
       return { ...current, relics: d.state, ...(cur === "stone" ? { enhancementMaterials: current.enhancementMaterials - cost } : cur === "gem" ? { redGems: current.redGems - cost } : {}) };
@@ -4312,66 +4316,76 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <nav className="premium-category-tabs" aria-label="상점 카테고리">
               {([['currency','재화'],['package','패키지'],['relic','유물'],['ally','동료'],['pet','펫'],['title','칭호'],['weapon','외형']] as const).map(([id,label])=><button key={id} type="button" className={premiumCategory===id?'on':''} onClick={()=>setPremiumCategory(id)}>{label}</button>)}
             </nav>
-            {/* 유물 뽑기 (2026-10-26 보석 → 조각 · 10-27 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석) · 다 모은 유물은 빠진다 */}
-            {/* 유물 뽑기 2판 (2026-10-27, 사용자: "유물이 상점탭에서 뽑기 ui로") — 동료 소환 화면과 같은 꼴: 등급 탭 · 진열대 · 보유 게이지 · 1회 / 10회 / 확률 */}
+            {/* 유물 뽑기 (2026-10-26 보석 → 조각 · 10-27 재화별 · 뽑기 화면) · 3판 2026-10-28 (사용자: "유물도 … 등급을 동료처럼") —
+                36종 6등급. 재화마다 등급 확률이 다른 뽑기 셋: 골드(일반 ~ 영웅) · 강화석(희귀 ~ 신화) · 보석(영웅 ~ 초월). 다 모은 유물은 빠진다 */}
             {premiumCategory === "relic" && (() => {
-              const tier = relicShopTier;
-              const rates = relicDrawRates(character.relics, tier);
+              const banner = relicShopBanner;
+              const rates = relicDrawRates(character.relics, banner);
               const open = rates.filter((x) => x.rate > 0).length;
-              const cost = relicTierDrawCost(tier, save.stage);
-              const curOf = (t: RelicTier) => RELIC_TIER_CURRENCY[t];
-              const curLabel = (t: RelicTier) => (curOf(t) === "gold" ? "골드" : curOf(t) === "stone" ? "강화석" : "보석");
-              const cur = curOf(tier);
-              const have = cur === "gold" ? save.gold : cur === "stone" ? character.enhancementMaterials : redGems;
-              const mark = cur === "gold" ? <CurrencyIcon kind="gold" /> : cur === "stone" ? <img className="relic-cost-stone" src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /> : <GemMark />;
-              const fmt = (n: number) => (cur === "gold" ? formatGold(n) : n.toLocaleString());
-              const mine = RELICS.filter((r) => RELIC_TIER[r.id] === tier);
-              const starsNow = mine.reduce((a, r) => a + relicStars(character.relics, r.id), 0);
-              const starsMax = mine.length * RELIC_MAX_STAR;
+              const tierRates = relicBannerTierRates(character.relics, banner);
+              const bannerTiers = TIERS.filter((t) => (RELIC_BANNER_RATES[banner][t] ?? 0) > 0);
+              const topTier = bannerTiers[bannerTiers.length - 1];
+              const cost = relicBannerCost(banner, save.stage);
+              const have = banner === "gold" ? save.gold : banner === "stone" ? character.enhancementMaterials : redGems;
+              const markOf = (b: RelicBanner) => (b === "gold" ? <CurrencyIcon kind="gold" /> : b === "stone" ? <img className="relic-cost-stone" src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /> : <GemMark />);
+              const fmt = (n: number) => (banner === "gold" ? formatGold(n) : n.toLocaleString());
+              const pool = RELICS.filter((r) => bannerTiers.includes(r.tier));
+              const ownedInPool = pool.filter((r) => relicStars(character.relics, r.id) >= 1).length;
+              const showcase = RELICS.filter((r) => r.tier === topTier);
               return (
-                <section className={`relic-draw-page relic-gacha-page tier-${tier}`} aria-label="유물 뽑기">
-                  <nav className="relic-gacha-tiers" role="tablist" aria-label="유물 등급">
-                    {RELIC_TIERS.map((t) => (
-                      <button key={t} type="button" role="tab" aria-selected={t === tier} className={`tier-${t} ${t === tier ? "on" : ""}`} data-tier={t} onClick={() => setRelicShopTier(t)}>
-                        <b>{RELIC_TIER_LABEL[t]}</b><small>{curLabel(t)}</small>
+                <section className={`relic-draw-page relic-gacha-page banner-${banner}`} aria-label="유물 뽑기">
+                  <nav className="relic-gacha-tiers" role="tablist" aria-label="유물 뽑기 재화">
+                    {RELIC_BANNERS.map((b) => (
+                      <button key={b} type="button" role="tab" aria-selected={b === banner} className={`banner-${b} ${b === banner ? "on" : ""}`} data-banner={b} onClick={() => setRelicShopBanner(b)}>
+                        <b>{RELIC_BANNER_LABEL[b]}</b><small>{TIER_LABEL[TIERS.filter((t) => (RELIC_BANNER_RATES[b][t] ?? 0) > 0)[0]]} ~ {TIER_LABEL[TIERS.filter((t) => (RELIC_BANNER_RATES[b][t] ?? 0) > 0).slice(-1)[0]]}</small>
                       </button>
                     ))}
                   </nav>
-                  <article className={`gacha-stage-hero relic-gacha-hero tier-${tier}`} data-tier={tier}>
-                    <span className="relic-gacha-badge">{RELIC_TIER_LABEL[tier]} 유물</span>
+                  <article className={`gacha-stage-hero relic-gacha-hero banner-${banner}`} data-banner={banner}>
+                    <span className={`relic-gacha-badge rarity-${topTier.toLowerCase()}`}>{TIER_LABEL[topTier]} 등장</span>
                     <div className="relic-gacha-showcase">
-                      {mine.map((r) => {
+                      {showcase.map((r) => {
                         const st = relicStars(character.relics, r.id);
                         return (
                           <figure key={r.id} className={st >= 1 ? "owned" : ""} data-relic={r.id}>
                             <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
-                            <figcaption><b>{r.name}</b><small>{st >= 1 ? `★${st}` : "미보유"}</small></figcaption>
+                            <figcaption><b>{r.name}</b><small>{st >= 1 ? `★${st}` : RELIC_FAMILY_LABEL[r.family]}</small></figcaption>
                           </figure>
                         );
                       })}
                     </div>
                     <div>
-                      <small>RELIC · {curLabel(tier)}</small>
-                      <h2>{RELIC_TIER_LABEL[tier]} 유물 뽑기</h2>
-                      <p>{open > 0 ? `3종 중 하나 · 각 ${(100 / open).toFixed(1)}%` : "모두 ★5 — 이 등급 완성"} · 조각 3개 = ★1 · 같은 계열 3개면 세트</p>
+                      <small>RELIC · {RELIC_BANNER_LABEL[banner]}</small>
+                      <h2>{RELIC_BANNER_LABEL[banner]} 유물 뽑기</h2>
+                      <p>{open > 0 ? `${bannerTiers.map((t) => TIER_LABEL[t]).join(" · ")} 유물 ${pool.length}종 중 하나` : "이 뽑기의 유물을 모두 ★5 로 모았어요"} · 조각 3개 = ★1 · 같은 계열 3개면 세트</p>
                     </div>
                   </article>
+                  <ul className="summon-tier-rates relic-tier-rates" aria-label="지금 등급 확률">
+                    {bannerTiers.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{(tierRates[t] ?? 0) > 0 ? `${((tierRates[t] ?? 0) * 100).toFixed(1)}%` : "완성"}</small></li>)}
+                  </ul>
                   <div className="gacha-level relic-gacha-level">
-                    <b>보유 ★{starsNow}/{starsMax}</b>
-                    <i><em style={{ width: `${Math.min(100, (starsNow / starsMax) * 100)}%` }} /></i>
-                    <span>{curLabel(tier)} {fmt(have)} 보유</span>
+                    <b>보유 {ownedInPool}/{pool.length}종</b>
+                    <i><em style={{ width: `${Math.min(100, (ownedInPool / Math.max(1, pool.length)) * 100)}%` }} /></i>
+                    <span>{RELIC_BANNER_LABEL[banner]} {fmt(have)} 보유</span>
                   </div>
                   <div className="gacha-page-actions relic-draw-actions relic-gacha-buy">
-                    <button type="button" disabled={have < cost.single || open === 0} onClick={() => void drawRelic(tier, 1)}><b>1회 뽑기</b><small>{mark}{fmt(cost.single)}</small></button>
-                    <button type="button" disabled={have < cost.ten || open === 0} onClick={() => void drawRelic(tier, 10)}><b>10회 뽑기</b><small>{mark}{fmt(cost.ten)}</small></button>
+                    <button type="button" disabled={have < cost.single || open === 0} onClick={() => void drawRelic(banner, 1)}><b>1회 뽑기</b><small>{markOf(banner)}{fmt(cost.single)}</small></button>
+                    <button type="button" disabled={have < cost.ten || open === 0} onClick={() => void drawRelic(banner, 10)}><b>10회 뽑기</b><small>{markOf(banner)}{fmt(cost.ten)}</small></button>
                     <button type="button" className="relic-gacha-rates" onClick={() => setShowRelicRates((v) => !v)}><b>확률 정보</b><small>{showRelicRates ? "접기" : "유물별 확률"}</small></button>
                   </div>
                   {showRelicRates && (
-                    <ul className="relic-rates" aria-label="유물 뽑기 확률">
-                      {RELIC_TIERS.flatMap((t) => relicDrawRates(character.relics, t).filter((x) => RELIC_TIER[x.id] === t).map((x) => (
-                        <li key={x.id}><img src={assetUrl(relicIconUrl(x.id))} alt="" aria-hidden="true" /><span>{RELIC_TIER_LABEL[t]}({curLabel(t)}) · {relicDef(x.id).name}</span><b>{x.rate > 0 ? `${(x.rate * 100).toFixed(1)}%` : "완성 · 제외"}</b></li>
-                      )))}
-                    </ul>
+                    <div className="relic-rates-groups" aria-label="유물 뽑기 확률">
+                      {bannerTiers.map((t) => (
+                        <section key={t} className={`relic-rates-group rarity-${t.toLowerCase()}`}>
+                          <h5><b>{TIER_LABEL[t]}</b><span>{((tierRates[t] ?? 0) * 100).toFixed(1)}%</span></h5>
+                          <ul className="relic-rates">
+                            {rates.filter((x) => relicDef(x.id).tier === t).map((x) => (
+                              <li key={x.id}><img src={assetUrl(relicIconUrl(x.id))} alt="" aria-hidden="true" /><span>{RELIC_FAMILY_LABEL[relicDef(x.id).family]} · {relicDef(x.id).name}</span><b>{x.rate > 0 ? `${(x.rate * 100).toFixed(2)}%` : "완성 · 제외"}</b></li>
+                            ))}
+                          </ul>
+                        </section>
+                      ))}
+                    </div>
                   )}
                 </section>
               );

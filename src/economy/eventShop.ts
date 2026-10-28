@@ -31,6 +31,8 @@ export type EventGrant = {
   idleBoostHours?: number;
   /** 끝없는 성벽 등반권 (game/towerTickets) */
   towerTickets?: number;
+  /** 비트 디펜스 시도권 (2026-10-28, beat/tickets.ts) — 산 시도권은 날이 바뀌어도 남는다 */
+  beatTickets?: number;
 };
 
 export type EventProduct = {
@@ -142,6 +144,16 @@ EVENT_PRODUCTS.push(
     id: "sp-lr-ally", tab: "event-shop2", name: "초월 동료 특가", desc: "이번 주 초월 동료 — 없으면 합류 · 있으면 조각 80", badge: "초월 -40%", icon: "hunt", gemCost: 6000, weeklyLimit: 1,
     grant: () => ({ allyUnlock: featuredAlly("LR") ?? undefined }),
     summary: () => `${allyName(featuredAlly("LR"))} (초월) · 초월 천장 200회의 약 1/3 값`,
+  },
+  {
+    id: "sp-beat-ticket-3", tab: "event-shop2", name: "비트 시도권", desc: "비트 디펜스 3판 더 — 날이 바뀌어도 남는다", badge: "BEAT", icon: "beat", gemCost: 30, weeklyLimit: 10,
+    grant: () => ({ beatTickets: 3 }),
+    summary: () => "비트 디펜스 시도권 3장",
+  },
+  {
+    id: "sp-beat-ticket-10", tab: "event-shop2", name: "비트 시도권 묶음", desc: "10장 — 3장씩보다 25% 싸다", badge: "BUNDLE", icon: "beat", gemCost: 75, weeklyLimit: 3,
+    grant: () => ({ beatTickets: 10 }),
+    summary: () => "비트 디펜스 시도권 10장",
   },
   {
     id: "sp-top-tier-box", tab: "event-shop2", name: "신화 · 초월 성장 상자", desc: "가진 신화 · 초월 동료 모두 조각 15 · 스킬 코어 5", badge: "HIGH TIER", icon: "forge", gemCost: 500, weeklyLimit: 2,
