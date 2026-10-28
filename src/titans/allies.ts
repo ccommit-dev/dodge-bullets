@@ -185,6 +185,7 @@ export function fieldedParty(partyIds: readonly TitanHeroId[], stageCeiling: num
 
 /** passes — 진행의 claimedRewards. "field-pass:<id>" 가 있으면 지역과 관계없이 출전(첫 10연 전설, 2026-10-22) */
 export function canFieldAlly(_id: TitanHeroId, _unlockStage: number, _stageCeiling: number, _passes?: readonly string[]): boolean {
+  void _id; void _unlockStage; void _stageCeiling; void _passes;   // 부르는 쪽과 맞추려 남긴 인자(2026-10-28 부터 안 쓴다)
   // 2026-10-28 (사용자: "동료 도감에 스테이지별 해금 삭제") — 가진 동료는 언제나 출전한다. 예전엔 개척 상한 밖 동료가 출전 허가(field-pass) 없이는 못 나갔다
   return true;
 }
