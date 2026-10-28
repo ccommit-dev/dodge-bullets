@@ -1,0 +1,21 @@
+// 비트 — 고른 곡이 실제로 나오는가 (2026-10-28, 사용자: "비트모드 선택한 음악으로 게임진행되게"). 사용자 동작 필요 자동재생 정책 + 진짜 터치
+import { launchBrowser } from "./launch-browser.mjs";
+const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
+const browser = await launchBrowser({ args: ["--no-sandbox", "--autoplay-policy=user-gesture-required"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+await page.goto(BASE, { waitUntil: "networkidle0" });
+const progress = { version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"] };
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1000, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }), "dodge-bullets:soundEnabled": "1", [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
+await page.reload({ waitUntil: "networkidle0" }); await sleep(1500);
+const tap = async (sel, text = "") => { const pt = await page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((e) => e.textContent.includes(text)); if (!el) return null; el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, { sel, text }); if (pt) await page.touchscreen.tap(pt.x, pt.y); return !!pt; };
+await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const b = [...document.querySelectorAll("button")].find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); b?.click(); } });
+await tap(".titans-bottom-nav button", "모험"); await sleep(500);
+await tap(".nav-popup-grid button", "비트 수련"); await sleep(1800);
+console.log("NAV", JSON.stringify(await page.evaluate(() => [...document.querySelectorAll(".nav-popup-grid button")].map((b) => b.textContent.trim()))), JSON.stringify(await page.evaluate(() => [...document.querySelectorAll(".beat-song-chip")].map((b) => b.dataset.track))));
+const want = process.argv[2] ?? "cherry-pop";
+const ok1 = await tap(`.beat-song-chip[data-track="${want}"]`);
+await sleep(3500);
+const st = await page.evaluate(() => { const s = window.__beatSession; return s ? { track: s.track.id, src: s.backingAudio?.src ?? null, paused: s.backingAudio?.paused ?? null, t: s.backingAudio?.currentTime ?? null, ctx: s.ctx?.state ?? null } : null; });
+console.log(JSON.stringify({ tapped: ok1, want, st, errors }));
+await browser.close();

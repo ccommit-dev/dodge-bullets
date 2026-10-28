@@ -265,6 +265,9 @@ export async function createBeatSession(
   skills: BeatSkills = emptySkills(),
   isSpar = false,
   difficultyProfile?: { bpmMultiplier: number; difficulty: "easy" | "medium" | "hard"; force16?: boolean },
+  /** 누른 순간 미리 만든 곡 · 오디오 (2026-10-28, 사용자: "비트모드 선택한 음악으로 게임진행되게") — 시도권 저장 등 await 뒤에 만들면
+   *  iOS(카카오톡 인앱)가 사용자 동작 밖으로 보고 곡을 막아, 고른 곡이 안 나왔다. BeatGame.startSlot 첫 줄에서 만들어 넘긴다 */
+  primed?: { audio: HTMLAudioElement | null; ctx: AudioContext | null },
 ): Promise<BeatSession> {
   const baseTrack = getTrack(trackId);
   const track = difficultyProfile ? {
@@ -306,8 +309,9 @@ export async function createBeatSession(
   let master: GainNode | null = null;
   let backingAudio: HTMLAudioElement | null = null;
   if (soundEnabled) {
-    backingAudio = new Audio(assetUrl(`audio/${track.audioFile}`));
-    backingAudio.preload = "metadata";
+    const url = assetUrl(`audio/${track.audioFile}`);
+    backingAudio = primed?.audio ?? new Audio(url);
+    if (!primed?.audio) backingAudio.preload = "metadata";
     backingAudio.volume = 0.72;
     backingAudio.setAttribute("playsinline", "true");
     // Called inside the stage CTA handler so iOS/Android treat this element as
@@ -317,7 +321,8 @@ export async function createBeatSession(
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     // Web Audio 가 없는 브라우저에서도 연주 화면은 뜨게(소리 없이) — 2026-10-16 WebKit 검사
-    try { ctx = AC ? new AC() : null; } catch { ctx = null; }
+    if (primed?.ctx) ctx = primed.ctx;
+    else { try { ctx = AC ? new AC() : null; } catch { ctx = null; } }
     if (ctx) {
       master = createAudioChain(ctx);
       if (ctx.state === "suspended") await ctx.resume().catch(() => {});
