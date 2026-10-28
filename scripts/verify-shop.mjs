@@ -75,13 +75,12 @@ await sleep(700);
 const p3 = await prog();
 r = await page.evaluate(() => [...document.querySelectorAll(".event-offer-card")].find((c) => /5일 출석/.test(c.textContent))?.querySelector("button")?.textContent);
 ok("출석 패키지: 보석 순 +20(40 지불·60 환급) · 방치 가속 24h · 주 1회 한도 소진 표기", p3.redGems - p2.redGems === 20 && p3.idleBoostUntil > Date.now() + 23 * 3600 * 1000 && /한도 소진/.test(r ?? ""), `${p2.redGems}→${p3.redGems} ${r}`);
-// 조각 선택 상품: 대상 동료 선택 후 구매 → 해당 동료 조각
-await page.evaluate(() => { const s = document.querySelector(".event-shard-target select"); if (s) { s.value = "leon"; s.dispatchEvent(new Event("change", { bubbles: true })); } });
-await sleep(200);
+// 조각 상품 (2026-10-28 — 동료 고르기 칸 없음): 가진 동료 모두에게 6씩
+ok("이벤트 · 특별: 동료 고르기 칸이 없다", await page.evaluate(() => !document.querySelector(".event-shard-target")));
 await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /그림자 원정대 러시/.test(c.textContent))?.querySelector("button")?.click(); });
 await sleep(700);
 const p4 = await prog();
-ok("러시 구매: 선택한 동료(레온) 조각 +30", (p4.allyShards.leon ?? 0) - (p3.allyShards.leon ?? 0) === 30, `leon ${p3.allyShards.leon ?? 0}→${p4.allyShards.leon ?? 0}`);
+ok("러시 구매: 가진 동료 모두(레온 포함) 조각 +6", (p4.allyShards.leon ?? 0) - (p3.allyShards.leon ?? 0) === 6, `leon ${p3.allyShards.leon ?? 0}→${p4.allyShards.leon ?? 0}`);
 
 // ── 대장간 진입 시 방지권 이관 ──
 await clickText(".hub-sheet-close", "×");

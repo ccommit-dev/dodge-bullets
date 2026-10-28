@@ -2,20 +2,20 @@
  * 동료 소환(확률형) 엔진 — 순수 함수. RNG를 주입받아 테스트 가능하다.
  *
  * 설계 (과금 점검 후 재설계):
- * - 풀 = 현재 스테이지 이하로 해금된 동료(기본) + 픽업 2명(개척 상한 안의 다음 동료).
+ * - 풀 = 상점 전용을 뺀 동료 전부 (2026-10-28, 사용자: "스테이지별 해금 삭제하고 등급별 뽑기 확률만") — 누가 나오나는 등급 확률만 정한다.
+ *   픽업 2명 = 전설 이상(전설 · 신화 · 초월) 중 2주마다 회전. 예전 풀은 지금 스테이지 이하 + 개척 상한 안의 다음 동료였다.
  *   상점 전용 동료(SHOP_ALLY_GEM_COST)는 풀에서 제외 — 확정 구매가 뽑기에 열위가 되지 않게.
  * - 등급 확률은 뽑기 레벨(누적 뽑기 수, titans/summonLevel.ts)이 정한다 — 2026-10-27 6등급(N · R · SR · SSR · UR · LR) ·
  *   Lv1 전설 2% 로 희박하게 시작해 Lv10 전설 13.5% · 신화 4.2% · 초월 0.8%. 풀에 없는 등급의 확률은 있는 등급에 비례 재분배.
  * - 픽업은 같은 등급 안에서 가중치 2배.
  * - 천장: 전설 이상 없이 60회 → 61회째 전설 이상 확정(픽업 우선). 전설 이상을 뽑으면 카운터 리셋.
- * - 초월 천장 (2026-10-27): 초월 없이 200회 → 200회째 초월 확정. 초반 지역(초월 없는 풀)에서 뽑은 것도 센다 —
- *   다 차면 199 에서 멈춰 기다리다가 초월이 있는 풀의 첫 소환에서 확정(초반에 많이 뽑아도 천장이 버려지지 않게).
+ * - 초월 천장 (2026-10-27): 초월 없이 200회 → 200회째 초월 확정. 2026-10-28 부터 풀에 늘 초월이 있어 바로 확정된다.
  * - 10연: 900보석(10% 할인) + 영웅(SR) 이상 1명 보장.
  * - 중복: 등급별 조각 N 5 / R 10 / SR 20 / SSR 40 / UR 60 / LR 80 — 성급 곡선(★1→2 = 20)과 맞춘다.
  * - 확률 공시: rateTable()이 동료별 확률을 %로 돌려준다 (게임산업법 공시 화면용).
  */
-import { HEROES, HUNTING_AREAS, type TitanHeroId } from "./model";
-import { ALLY_RARITY, ALLY_ROLE, SHOP_ALLY_GEM_COST, type AllyRarity } from "./allies";
+import { HEROES, type TitanHeroId } from "./model";
+import { ALLY_RARITY, SHOP_ALLY_GEM_COST, type AllyRarity } from "./allies";
 import { TIERS, TIER_RANK, tierRates } from "./summonLevel";
 
 /** 전설(SSR) 이상 — 천장 · 첫 10연 보장 */
@@ -53,40 +53,20 @@ export type PullResult = { id: TitanHeroId; rarity: AllyRarity; pickup: boolean;
 /** 첫 10연에 풀에 전설이 없을 때 줄 전설 — 스테이지로 가장 먼저 열리는 전설 (상점 전용 제외) */
 export const FIRST_TEN_SSR: TitanHeroId | null = [...HEROES].filter((h) => ALLY_RARITY[h.id] === "SSR" && h.unlockStage < 9999).sort((a, b) => a.unlockStage - b.unlockStage)[0]?.id ?? null;
 
-/** 개척한 지역까지의 최대 스테이지 — progression/idle.stageCeilingFor와 같은 규칙 (순환 import 회피) */
-function ceilingOf(pioneeredArea: number): number {
-  const index = Math.max(1, Math.min(HUNTING_AREAS.length, Math.floor(pioneeredArea))) - 1;
-  return HUNTING_AREAS[index].stageTo;
-}
 
 const RARITIES: readonly AllyRarity[] = TIERS;
 
-/** summonLv — 뽑기 레벨(1~10). 등급 확률을 정한다 · 풀(누가 나오나)은 여전히 지역 안 */
-export function gachaPool(stage: number, pioneeredArea: number, now: number = Date.now(), summonLv = 1): GachaPool {
-  const ceiling = ceilingOf(pioneeredArea);
+export function gachaPool(_stage: number, _pioneeredArea: number, now: number = Date.now(), summonLv = 1): GachaPool {
+  // 스테이지 · 지역 인자는 옛 부르는 쪽과 맞추려 남겼다 — 풀에 쓰지 않는다 (2026-10-28)
   const eligible = HEROES.filter((h) => SHOP_ALLY_GEM_COST[h.id] === undefined && h.unlockStage < 9999);
-  const base = eligible.filter((h) => h.unlockStage <= stage);
-  // 픽업 후보 = 아직 못 만난 개척 상한 안의 동료. 후보가 3명 이상이면 2주마다 창을 옮겨 2명씩 회전한다 (K)
-  const candidates = eligible.filter((h) => h.unlockStage > stage && h.unlockStage <= ceiling).sort((a, b) => a.unlockStage - b.unlockStage);
+  const members = eligible.map((h) => h.id);
+  // 픽업 — 전설 이상을 도감 순으로 두고 2주마다 창을 옮겨 2명씩
+  const candidates = members.filter((id) => isTop(ALLY_RARITY[id]));
   const offset = candidates.length > GACHA.pickupCount ? pickupRotationIndex(now) % candidates.length : 0;
-  const pickups = Array.from({ length: Math.min(GACHA.pickupCount, candidates.length) }, (_, i) => candidates[(offset + i) % candidates.length].id);
+  const pickups = Array.from({ length: Math.min(GACHA.pickupCount, candidates.length) }, (_, i) => candidates[(offset + i) % candidates.length]);
   const rotationDaysLeft = pickupRotationDaysLeft(now);
   const rotationPool = candidates.length;
-  const members = [...base.map((h) => h.id), ...pickups];
-  // 최소 풀 (2026-10-13, 사용자: "동료 뽑기에 하나의 클래스만 나오는 현상"): 1지역(스테이지 1~5)은 해금 동료가 미아·레온 둘뿐이라
-  // R 근접·원거리만 나오고 10연 SR 보장도 SR 이 없어 무효였다 → 개척 상한 밖이라도 다음 해금 순으로 채워 최소 5명(역할·등급이 섞이게)
-  for (const h of eligible.sort((a, b) => a.unlockStage - b.unlockStage)) {
-    if (members.length >= GACHA.minPool) break;
-    if (!members.includes(h.id)) members.push(h.id);
-  }
-  // 역할 3종 이상 (2026-10-27 동료 60명 — 1지역 동료가 늘어 최소 5명이 근접 · 원거리로만 찰 수 있다): 빠진 역할의 가장 이른 동료를 하나씩
-  for (const role of ["tank", "healer", "melee", "ranged"] as const) {
-    if (new Set(members.map((id) => ALLY_ROLE[id])).size >= 3) break;
-    if (members.some((id) => ALLY_ROLE[id] === role)) continue;
-    const add = eligible.find((h) => ALLY_ROLE[h.id] === role && !members.includes(h.id));
-    if (add) members.push(add.id);
-  }
-  // 등급별 확률 — 비어 있는 등급은 존재하는 등급에 비례 재분배
+  // 등급별 확률 = 뽑기 레벨 표 그대로(풀에 모든 등급이 있다). 비어 있는 등급이 생기면 있는 등급에 비례 재분배
   const present = RARITIES.filter((r) => members.some((id) => ALLY_RARITY[id] === r));
   const levelRate = tierRates(summonLv);
   const presentSum = present.reduce((s, r) => s + levelRate[r], 0);
