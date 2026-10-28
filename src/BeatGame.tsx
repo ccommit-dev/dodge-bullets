@@ -697,21 +697,42 @@ export function BeatGame({
   const freeRetryAvailable = (trackId: string) => { try { return !localStorage.getItem(freeRetryKey(trackId)); } catch { return false; } };
 
   const startSlot = async (slot: PracticeSlot, opts?: { freeRetry?: boolean }) => {
+    // 고른 곡 · 오디오를 누른 순간에 먼저 만든다(2026-10-28) — 아래 시도권 · 스태미나 저장(await) 뒤에 만들면 iOS 가 곡을 막았다
+    const primed = (() => {
+      if (!soundEnabled || !slot.track) return null;
+      let audio: HTMLAudioElement | null = null;
+      let ctx: AudioContext | null = null;
+      try {
+        audio = new Audio(assetUrl(`audio/${slot.track.audioFile}`));
+        audio.preload = "auto";
+        audio.setAttribute("playsinline", "true");
+        audio.volume = 0;
+        void audio.play().then(() => audio?.pause()).catch(() => {});
+      } catch { audio = null; }
+      try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        ctx = AC ? new AC() : null;
+        if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => {});
+      } catch { ctx = null; }
+      return { audio, ctx };
+    })();
+    const dropPrimed = () => { try { primed?.audio?.pause(); } catch { /* */ } void primed?.ctx?.close().catch(() => {}); };
     runStartedAtRef.current = Date.now();
     setResultRecord(null);
     trackEvent("beat_expedition_start", { track: slot.track.id, difficulty: variantOf(slot.track), stage: slot.stageIndex + 1 });
-    if (!slot.track || !rpgRef.current) return;
+    if (!slot.track || !rpgRef.current) { dropPrimed(); return; }
     const useFree = !!opts?.freeRetry && freeRetryAvailable(slot.track.id);
     // 시도권 (2026-10-28) — 한 판에 1장(무료분 먼저). 같은 곡 즉시 재도전(하루 1회)은 시도권 없이
     if (!useFree) {
       let ok = false;
       const after = await updateCharacterProgress(userHash, (current) => { const n = spendBeatTicket(current); ok = !!n; return n ?? current; });
       setCharProg(after);
-      if (!ok) { setHubMsg(`오늘 시도권을 다 썼어요 · 내일 ${BEAT_DAILY_TICKETS}장 다시 · 사냥터 상점 '특별'에서 살 수 있어요`); return; }
+      if (!ok) { dropPrimed(); setHubMsg(`오늘 시도권을 다 썼어요 · 내일 ${BEAT_DAILY_TICKETS}장 다시 · 사냥터 상점 '특별'에서 살 수 있어요`); return; }
     }
     if (useFree) { try { localStorage.setItem(freeRetryKey(slot.track.id), "1"); } catch { /* 저장 불가 */ } }
     const spent = useFree ? rpgRef.current : spendStamina(rpgRef.current, slot.staminaCost);
     if (!spent) {
+      dropPrimed();
       setHubMsg("스태미나 부족 · 내일 다시 충전됩니다");
       return;
     }
@@ -753,6 +774,7 @@ export function BeatGame({
       slot.kind === "spar",
       // 난이도 변형: 재생 BPM 고정, 노트 밀도·판정·HP만 바뀐다
       { bpmMultiplier: 1, difficulty: variantOf(track) },
+      primed ?? undefined,
     );
     applyBeatInsets(session.world, insets);
     if (beatModsRef.current.healBonus > 0) session.world.healGauge += beatModsRef.current.healBonus;
@@ -839,10 +861,10 @@ export function BeatGame({
                 <small>{t.free}/{BEAT_DAILY_TICKETS}{t.bought > 0 ? ` · 산 시도권 ${t.bought}` : ""} · 매일 다시 · 상점 '특별'에서 구매</small>
               </div>
             ); })()}
-            {/* 곡 전부 한눈에 (2026-10-28, 사용자: "시작 UI 에 곡 종류가 모두 나오고") — 누르면 그 곡 카드로. 난도 칸은 첫 클리어(✓) */}
+            {/* 곡 전부 한눈에 (2026-10-28, 사용자: "시작 UI 에 곡 종류가 모두 나오고") — 난도 칸은 첫 클리어(✓). 같은 날 "선택한 음악으로 게임진행" — 누르면 그 곡으로 바로 시작 */}
             <div className="beat-song-grid" aria-label={`곡 ${slots.length}개`}>
               {slots.map((slot) => (
-                <button key={slot.track.id} type="button" className="beat-song-chip" data-track={slot.track.id} onClick={() => document.querySelector(`.schedule-card[data-track="${slot.track.id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })}>
+                <button key={slot.track.id} type="button" className="beat-song-chip" data-track={slot.track.id} onClick={() => void startSlot(slot)} title={`${slot.title} 바로 시작 — 난도 · 출격 강화는 아래 곡 카드에서`}>
                   <img src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" aria-hidden="true" />
                   <b>{slot.title}</b>
                   <small>Lv.{slot.track.level} · {slot.track.bpm}BPM</small>
