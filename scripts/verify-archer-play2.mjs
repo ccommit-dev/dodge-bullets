@@ -96,14 +96,15 @@ await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
 const badge = await page.evaluate(() => document.querySelector(".gacha-page-actions .first-ten-badge")?.textContent ?? "");
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(2400);
-const first = await page.evaluate(() => ({ n: document.querySelectorAll(".gacha-card").length, ssr: [...document.querySelectorAll(".gacha-card.rarity-ssr")].map((c) => ({ name: c.querySelector(".gacha-card-front b")?.textContent, lock: !!c.querySelector(".gacha-lock") })) }));
+const first = await page.evaluate(() => ({ ssrIds: [...document.querySelectorAll(".gacha-card.rarity-ssr, .gacha-card.rarity-ur, .gacha-card.rarity-lr")].map((c) => c.getAttribute("data-ally")), n: document.querySelectorAll(".gacha-card").length, ssr: [...document.querySelectorAll(".gacha-card.rarity-ssr")].map((c) => ({ name: c.querySelector(".gacha-card-front b")?.textContent, lock: !!c.querySelector(".gacha-lock") })) }));
 ok("첫 10연: '첫 10연 전설 확정' · 결과에 전설 1명 이상(초반 지역 풀에 전설이 없어도) · 잠금 표시 없음", /첫 10연 전설 확정/.test(badge) && first.n === 10 && first.ssr.length >= 1 && first.ssr.every((c) => !c.lock), `${badge} · ${JSON.stringify(first.ssr)}`);
 await clickText(".gacha-close", "확인"); await sleep(300);
 const badgeAfter = await page.evaluate(() => !!document.querySelector(".gacha-page-actions .first-ten-badge"));
 ok("두 번째부터는 확정 표시 없음", !badgeAfter);
 p = await prog();
-const passId = (p.claimedRewards ?? []).find((k) => k.startsWith("field-pass:"))?.slice(11);
-ok("전설은 출전 허가 · 편성에 자동으로 들어간다", !!passId && (p.partyIds ?? []).includes(passId), `${passId} · 편성 ${JSON.stringify(p.partyIds)}`);
+// 2026-10-28 스테이지 해금 없음 — 출전 허가(field-pass)는 없어졌다. 뽑은 새 동료는 높은 등급부터 빈 편성 칸에 들어간다
+const passId = first.ssrIds.find((id) => (p.partyIds ?? []).includes(id));
+ok("첫 10연 전설(이상)이 편성에 자동으로 들어간다(높은 등급부터)", !!passId, `${first.ssrIds.join()} · 편성 ${JSON.stringify(p.partyIds)}`);
 await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(2500);
 ok("사냥터 전장에 그 전설이 같이 싸운다", await page.evaluate((id) => !!document.querySelector(`.titans-allies .ally-${id}`), passId), passId);
 

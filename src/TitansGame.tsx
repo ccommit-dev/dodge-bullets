@@ -2072,7 +2072,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const buyEventProduct = async (product: EventProduct) => {
     const week = currentWeekKey();
     if (redGems < product.gemCost || (product.coinCost ?? 0) > character.eventCoins || eventBuysThisWeek(character, product.id, week) >= product.weeklyLimit) return;
-    const target = shardPackTarget;
+    // 조각은 가진 동료 모두에게(2026-10-28 — 동료 고르기 없음) · 신화 · 초월 상자는 가진 신화 · 초월에게 · 특가 동료는 없으면 합류
+    const owned = HEROES.filter((h) => saveRef.current.heroes[h.id] > 0).map((h) => h.id);
+    const ownedTop = owned.filter((id) => ALLY_RARITY[id] === "UR" || ALLY_RARITY[id] === "LR");
+    const pre = product.grant(character);
+    const unlockNew = !!pre.allyUnlock && (saveRef.current.heroes[pre.allyUnlock] ?? 0) <= 0;
+    if (pre.topTierShards && !ownedTop.length) { flash("가진 신화 · 초월 동료가 없습니다 — 특가 동료나 뽑기로 먼저 만나세요"); return; }
     let grant: EventGrant | null = null;
     const next = await updateCharacterProgress(userHash, (current) => {
       const record = current.weeklyEventBuys.week === week ? current.weeklyEventBuys : { week, bought: {} };
@@ -2090,7 +2095,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         enhancementMaterials: current.enhancementMaterials + (g.materials ?? 0),
         expeditionSeals: current.expeditionSeals + (g.seals ?? 0),
         shoulderShards: current.shoulderShards + (g.shoulderShards ?? 0),
-        allyShards: g.allyShards ? { ...current.allyShards, [target]: (current.allyShards[target] ?? 0) + g.allyShards } : current.allyShards,
+        allyShards: (() => {
+          const out = { ...current.allyShards };
+          if (g.allyShards) for (const id of owned) out[id] = (out[id] ?? 0) + g.allyShards;
+          if (g.topTierShards) for (const id of ownedTop) out[id] = (out[id] ?? 0) + g.topTierShards;
+          if (g.allyUnlock && !unlockNew) out[g.allyUnlock] = (out[g.allyUnlock] ?? 0) + GACHA.dupeShards[ALLY_RARITY[g.allyUnlock]];
+          return out;
+        })(),
         forgeTicketsPending: current.forgeTicketsPending + (g.forgeTickets ?? 0),
         towerTickets: Math.min(TOWER_TICKET_MAX, current.towerTickets + (g.towerTickets ?? 0)),
         idleBoostUntil: g.idleBoostHours ? Math.max(Date.now(), current.idleBoostUntil) + g.idleBoostHours * 3600 * 1000 : current.idleBoostUntil,
@@ -2106,6 +2117,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setCharacter(next);
     setRedGems(next.redGems);
     if (g.cores) setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + (g.cores ?? 0) } }));
+    if (g.allyUnlock && unlockNew) {
+      const uid = g.allyUnlock;
+      setSave((prev) => ({ ...prev, heroes: { ...prev.heroes, [uid]: Math.max(1, prev.heroes[uid] ?? 0) } }));
+      discover("ally", uid, HEROES.find((h) => h.id === uid)?.name ?? uid);
+    }
     sfxSlotUnlock();
     flash(`${product.name} 구매 — ${product.summary(next)}`);
   };
@@ -2216,7 +2232,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         else stars[r.id] = Math.max(1, stars[r.id] ?? 0);
       }
       const party = [...current.partyIds];
-      for (const id of newIds) if (!party.includes(id) && party.length < slots) party.push(id);
+      // 빈 칸은 높은 등급부터 채운다(2026-10-28) — 풀에 동료가 다 들어가 10연에 새 동료가 많아져, 뽑은 순서대로면 첫 10연 전설이 칸이 없어 빠졌다
+      for (const id of [...newIds].sort((x, y) => TIER_RANK[ALLY_RARITY[y]] - TIER_RANK[ALLY_RARITY[x]])) if (!party.includes(id) && party.length < slots) party.push(id);
       // 10연이면 비버 상자 1개 (economy/chests, 2026-10-13 P2)
       const withChest = count === 10 ? grantChest(current) : current;
       // 첫 10연 전설이 아직 못 여는 지역 동료면 출전 허가를 같이 — 뽑고 바로 같이 싸워 봐야 "4성 경험"
@@ -2521,7 +2538,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const buyHero = (id: TitanHeroId) => {
     const def = HEROES.find((h) => h.id === id);
     if (!def) return;
-    if (save.stage < def.unlockStage) return;
+    // 2026-10-28 스테이지 해금 없음 — 골드 소환 값(baseCost, 후반 동료일수록 비싸다)이 곧 문이다
     const lv = save.heroes[id];
     // 소환(0→1)은 항상 1레벨 — 일괄 수량은 레벨업에만 적용된다
     const quote =
@@ -2966,19 +2983,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   // 다음 목표 3종 (점검표 #3): 동료 합류 · 스킬 학습 · 지역 개척 — 남은 거리를 항상 보여준다
   const nextGoals = useMemo(() => {
-    const nextAlly = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && h.unlockStage > 0)
-      .sort((a, b) => a.unlockStage - b.unlockStage)[0];
+    // 2026-10-28 스테이지 해금 없음 — 아직 없는 동료 중 골드로 가장 싸게 부를 수 있는 동료(뽑기로도 만난다)
+    const nextAlly = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && SHOP_ALLY_GEM_COST[h.id] === undefined)
+      .sort((a, b) => a.baseCost - b.baseCost)[0];
     const nextSkill = SKILLS.find((sk) => !save.skillInventory.learned.includes(sk.id));
     const ceiling = stageCeilingFor(character.pioneeredArea);
     const areaName = nextAreaName(character.pioneeredArea);
     const goals: { id: string; label: string; value: string; ratio: number; done: boolean; onClick: () => void }[] = [];
     if (nextAlly) {
-      const reachable = save.stage >= nextAlly.unlockStage;
+      const reachable = save.gold >= nextAlly.baseCost;
       goals.push({
         id: "ally",
         label: "다음 동료",
-        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · STAGE ${nextAlly.unlockStage}`,
-        ratio: reachable ? 1 : save.stage / nextAlly.unlockStage,
+        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · ${formatGold(nextAlly.baseCost)}G`,
+        ratio: reachable ? 1 : save.gold / Math.max(1, nextAlly.baseCost),
         done: reachable,
         onClick: () => setTab("heroes"),
       });
@@ -3993,7 +4011,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       <div key={id} className={`gacha-pickup rarity-${ALLY_RARITY[id].toLowerCase()}`}>
                         <AllyArt id={id} />
                         <b style={{ color: RARITY_COLOR[ALLY_RARITY[id]] }}>{ALLY_RARITY[id]} 픽업 ×2</b>
-                        <small>{h.name}{save.heroes[id] > 0 ? " · 보유" : ` · STAGE ${h.unlockStage}`}</small>
+                        <small>{h.name}{save.heroes[id] > 0 ? " · 보유" : ` · ${TIER_LABEL[ALLY_RARITY[id]]}`}</small>
                       </div>
                     );
                   })}
@@ -4041,7 +4059,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <div>
                 <small>{area.name.toUpperCase()} · PICK UP{gacha.rotationPool > 2 ? ` · 회전까지 ${gacha.rotationDaysLeft}일` : ""}</small>
                 <h2>{gacha.pickups.length ? gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") : "다음 지역 픽업 준비 중"}</h2>
-                <p>{gacha.pickups.length ? `픽업 확률 2배 · STAGE ${gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.unlockStage).join("·")} 동료를 먼저 만난다` : "성문 방어으로 다음 지역을 개척하면 픽업이 열립니다"} · 10회 소환 시 SR 이상 1명 보장</p>
+                <p>{gacha.pickups.length ? `픽업 확률 2배(같은 등급 안) · 전설 이상 ${gacha.pickups.length}명 · ${gacha.rotationDaysLeft}일마다 교대` : "픽업 준비 중"} · 10회 소환 시 SR 이상 1명 보장</p>
               </div>
             </div>
             {(() => {
@@ -4087,7 +4105,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </section>
         )}
         {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`} data-roster-count={HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
-          <header className="ally-roster-summary"><strong>동료 도감 {HEROES.length}명</strong><small>역할과 속성을 섞어 편성하세요.</small></header>
+          <header className="ally-roster-summary"><strong>동료 도감 {HEROES.length}명</strong><small>스테이지 해금 없음 — 뽑기(등급 확률) · 골드 소환으로 만난다</small>
+            <ul className="codex-tier-rates" aria-label="등급별 뽑기 확률">{TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{(gacha.bandRate[t] * 100).toFixed(t === "LR" || t === "UR" ? 2 : 1)}%</small></li>)}</ul>
+          </header>
           {/* 13장 세로 스크롤 → 6장씩 쪽 (2026-10-08 사용자: "동료 쪽 스크롤 남아 있는 거 리팩토링") */}
           {(() => { const roster = HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter); const pages = Math.max(1, Math.ceil(roster.length / ALLY_PAGE_SIZE)); const pg = Math.min(allyPage, pages - 1); return pages > 1 ? (
             <nav className="ally-pages" role="tablist" aria-label="동료 쪽">{Array.from({ length: pages }, (_, i) => <button key={i} type="button" role="tab" aria-selected={pg === i} className={pg === i ? "on" : ""} onClick={() => setAllyPage(i)}>{i * ALLY_PAGE_SIZE + 1}–{Math.min(roster.length, (i + 1) * ALLY_PAGE_SIZE)}</button>)}</nav>
@@ -4097,7 +4117,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const gemCost = SHOP_ALLY_GEM_COST[h.id];
             const shopOnly = gemCost !== undefined;
             // 출전 허가(첫 10연 전설)로 가진 동료는 잠금으로 보이지 않는다 — DPS · 체험 배율을 보여 준다 (2026-10-23)
-            const locked = shopOnly ? lv === 0 : save.stage < h.unlockStage && !(lv > 0 && character.claimedRewards.includes(`field-pass:${h.id}`));
+            // 2026-10-28 스테이지 해금 없음 — 잠금은 상점 전용 미보유만. 아직 없는 동료는 등급 · 이 동료의 뽑기 확률을 보인다
+            const locked = shopOnly && lv === 0;
+            const drawRate = gacha.entries.find((e) => e.id === h.id)?.rate ?? 0;
             const cost = heroUpgradeCost(h, lv);
             const rarity = ALLY_RARITY[h.id];
             const stars = effectiveStars(character.allyStars[h.id], lv);
@@ -4134,9 +4156,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     {shopOnly && lv === 0
                       ? `보석 상점 전용 동료 · ${h.attackType}`
                       : locked
-                        ? `STAGE ${h.unlockStage} 해금 · ${h.attackType}`
+                        ? `${TIER_LABEL[rarity]} · ${h.attackType}`
                         : `${h.attackType} · DPS ${formatGold(heroDps(h, lv || 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}${lv > 0 ? ` → ${formatGold(heroDps(h, lv + 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}` : ""}${(save.acorns.allyAmmo[h.id] ?? 0) > 0 ? ` · 도토리 Lv.${save.acorns.allyAmmo[h.id]}` : ""}${trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)) < 1 ? ` · 체험 ×${trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)).toFixed(2)}(STAGE ${h.unlockStage} 개척 시 제 힘)` : ""}`}
                   </p>
+                  {lv === 0 && !shopOnly && <small className="ally-draw-rate">뽑기 {(drawRate * 100).toFixed(drawRate < 0.001 ? 3 : 2)}% · 골드 소환 {formatGold(h.baseCost)}G</small>}
                   <small className="ally-feature">{h.feature}</small>
                   <AllySigInfo hero={h} />
                   {lv > 0 && (
@@ -4608,14 +4631,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {(tab === "event-shop" || tab === "event-shop2") && (
           <div className="event-offer-grid">
             {/* 실상품 (economy/eventShop.ts): 확정 구매 · 주간 한도 · 진행도 비례 수량 */}
-            {eventProductsFor(tab).some((p) => p.grant(character).allyShards) && (
-              <label className="event-shard-target">
-                조각 받을 동료
-                <select className="shard-pack-select" value={shardPackTarget} onChange={(e) => setShardPackTarget(e.target.value as TitanHeroId)} aria-label="조각 받을 동료">
-                  {HEROES.filter((h) => save.heroes[h.id] > 0).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-                </select>
-              </label>
-            )}
+            {/* 동료 고르기 칸은 걷었다(2026-10-28) — 조각 상품은 가진 동료 모두에게, 신화 · 초월 상품은 가진 신화 · 초월 모두에게 */}
             {eventProductsFor(tab).map((product, index) => {
               const bought = eventBuysThisWeek(character, product.id, currentWeekKey());
               const left = product.weeklyLimit - bought;
@@ -4628,7 +4644,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <p>{product.summary(character)}</p>
                     <span className="reward-row">{grantRewardKinds(product.grant(character)).map((k) => <RewardIcon key={k} kind={k} size={22} />)}</span>
                   </div>
-                  <button type="button" disabled={left <= 0 || redGems < product.gemCost || character.eventCoins < (product.coinCost ?? 0) || (!!product.grant(character).allyShards && save.heroes[shardPackTarget] <= 0)} onClick={() => void buyEventProduct(product)}>
+                  <button type="button" disabled={left <= 0 || redGems < product.gemCost || character.eventCoins < (product.coinCost ?? 0) || (!!product.grant(character).allyShards && !HEROES.some((h) => save.heroes[h.id] > 0))} onClick={() => void buyEventProduct(product)}>
                     {left <= 0 ? "이번 주 한도 소진" : product.coinCost ? <><i className="coin-mark" aria-hidden="true" />{product.coinCost}</> : <><GemMark />{product.gemCost}</>}
                   </button>
                 </article>
@@ -4683,7 +4699,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;
               return (
-                <div key={`${r.id}-${i}`} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${r.duplicate && (() => { const st = Math.max(1, character.allyStars[r.id] ?? 1); const need = shardCostToNext(r.id, st); return need !== null && (character.allyShards[r.id] ?? 0) >= need; })() ? "dup-ready-card" : ""} ${gachaFocus === i ? "is-focus" : ""}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
+                <div key={`${r.id}-${i}`} data-ally={r.id} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${r.duplicate && (() => { const st = Math.max(1, character.allyStars[r.id] ?? 1); const need = shardCostToNext(r.id, st); return need !== null && (character.allyShards[r.id] ?? 0) >= need; })() ? "dup-ready-card" : ""} ${gachaFocus === i ? "is-focus" : ""}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
                   role="button" tabIndex={0} aria-label={`${RARITY_LABEL[r.rarity]} ${h.name}`} title={`${RARITY_LABEL[r.rarity]}(${r.rarity}) · ${ROLE_LABEL[ALLY_ROLE[h.id]]} · ${h.feature}`}
                   onMouseEnter={() => setGachaFocus(i)} onClick={() => setGachaFocus((f) => (f === i ? null : i))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setGachaFocus(i); } }}>
                   <div className="gacha-card-inner">
@@ -4821,24 +4837,41 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <div className="gacha-reveal gacha-rates" role="dialog" aria-label="소환 확률 공시" onClick={() => setShowGachaRates(false)}>
           <div className="gacha-rates-sheet" onClick={(e) => e.stopPropagation()}>
             <strong>동료 소환 확률 공시</strong>
-            <p>
-              뽑기 Lv.{summonLv}(누적 {character.gachaPulls}회) 등급 확률 {TIERS.map((t) => `${TIER_LABEL[t]} ${(gacha.bandRate[t] * 100).toFixed(2)}%`).join(" · ")}
-              <br />풀 = STAGE {save.stage} 이하로 만난 동료 + 픽업 {gacha.pickups.length}명(같은 등급 내 2배) · 상점 전용 동료 제외
-              <br />천장: 전설 이상 없이 {GACHA.pityLimit}회째 소환은 전설 이상 확정 — 이 풀에 SSR 이 없으면 그 풀 최고 등급 확정 후 0으로 (현재 {Math.min(GACHA.pityLimit, character.gachaPity)}회 누적) · 초월 천장: 초월 없이 {GACHA.lrPityLimit}회째 소환은 초월 확정 — 초반 지역 소환도 세고, 확정은 STAGE {FIRST_LR_STAGE} 지역부터 (현재 {character.gachaLrPity}회) · 10연: SR 이상 1명 보장
-              <br />중복: 조각 {TIERS.map((t) => `${TIER_LABEL[t]} ${GACHA.dupeShards[t]}`).join(" / ")} · 누적 소환 {character.gachaPulls}회 · 뽑기 레벨은 누적 {SUMMON_LEVEL_PULLS.join(" · ")}회에 오른다
-            </p>
-            <table>
-              <thead><tr><th>동료</th><th>등급</th><th>확률</th></tr></thead>
-              <tbody>
-                {rateTable(gacha).map((row) => (
-                  <tr key={row.id}>
-                    <td>{HEROES.find((h) => h.id === row.id)?.name}{row.pickup ? " (픽업)" : ""}</td>
-                    <td style={{ color: RARITY_COLOR[row.rarity] }}>{TIER_LABEL[row.rarity]}</td>
-                    <td>{row.percent}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* 2026-10-28 (사용자: "확률공시 요약 및 가독성 좋게") — 한 문단에 다 적던 것을 ① 등급 요약 칸 ② 규칙 줄 ③ 등급별로 접은 동료 표로 */}
+            <small className="rates-sub">뽑기 Lv.{summonLv} · 누적 {character.gachaPulls}회 · 스테이지 해금 없음(상점 전용 동료만 제외)</small>
+            <ul className="rates-tier-grid" aria-label="등급별 확률 요약">
+              {TIERS.map((t) => {
+                const n = gacha.entries.filter((e) => e.rarity === t).length;
+                return <li key={t} className={`rarity-${t.toLowerCase()}`}><b style={{ color: RARITY_COLOR[t] }}>{TIER_LABEL[t]}</b><strong>{(gacha.bandRate[t] * 100).toFixed(2)}%</strong><small>{n}명{n ? ` · 각 ${((gacha.bandRate[t] / n) * 100).toFixed(t === "LR" || t === "UR" ? 3 : 2)}%` : ""}</small></li>;
+              })}
+            </ul>
+            <ul className="rates-rules">
+              <li><b>천장</b> 전설 이상 없이 {GACHA.pityLimit}회째는 전설 이상 확정 · 지금 {Math.min(GACHA.pityLimit, character.gachaPity)}회</li>
+              <li><b>초월 천장</b> 초월 없이 {GACHA.lrPityLimit}회째는 초월 확정 · 지금 {character.gachaLrPity}회</li>
+              <li><b>10회 소환</b> 영웅(SR) 이상 1명 보장 · 첫 10회는 전설 1명 확정</li>
+              <li><b>픽업</b> 전설 이상 {gacha.pickups.length}명 · 같은 등급 안에서 2배 · {gacha.rotationDaysLeft}일 뒤 교대</li>
+              <li><b>중복</b> 조각 {TIERS.map((t) => `${TIER_LABEL[t]} ${GACHA.dupeShards[t]}`).join(" · ")}</li>
+              <li><b>뽑기 레벨</b> 누적 {SUMMON_LEVEL_PULLS.join(" · ")}회에 오르고 높은 등급 확률이 오른다</li>
+            </ul>
+            {TIERS.slice().reverse().map((t) => {
+              const rows = rateTable(gacha).filter((r) => r.rarity === t);
+              if (!rows.length) return null;
+              return (
+                <details key={t} className={`rates-tier rarity-${t.toLowerCase()}`} open={t === "LR" || t === "UR"}>
+                  <summary><b style={{ color: RARITY_COLOR[t] }}>{TIER_LABEL[t]}</b> {rows.length}명 · 합 {(gacha.bandRate[t] * 100).toFixed(2)}%</summary>
+                  <table>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.id}>
+                          <td>{HEROES.find((h) => h.id === row.id)?.name}{row.pickup ? " (픽업)" : ""}</td>
+                          <td>{row.percent}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              );
+            })}
             <button type="button" className="cta" onClick={() => setShowGachaRates(false)}>닫기</button>
           </div>
         </div>

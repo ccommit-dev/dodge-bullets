@@ -78,7 +78,8 @@ ok("풀 확률 합 = 1", Math.abs(p1.entries.reduce((s, e) => s + e.rate, 0) - 1
   ok("픽업 가중 2배 (같은 등급 띠 안에서)", !!pk && Math.abs(p1.entries.find((e) => e.id === pk).rate - (p1.bandRate[band[0].rarity] * 2) / w) < 1e-9, pk); }
 const p12 = gacha.gachaPool(12, 3);
 ok("풀 stage12/지역3: 상점 동료 제외", p12.entries.every((e) => allies.SHOP_ALLY_GEM_COST[e.id] === undefined));
-ok("픽업 = 지역 상한(15) 안 · 아직 못 만난 동료 최대 2명", p12.pickups.length <= 2 && p12.pickups.every((id) => { const h = model.HEROES.find((x) => x.id === id); return h.unlockStage > 12 && h.unlockStage <= 15; }), p12.pickups.join());
+// 2026-10-28 (사용자: "스테이지별 해금 삭제하고 등급별 뽑기 확률만") — 풀은 상점 전용을 뺀 동료 전부, 픽업은 전설 이상 2명
+ok("풀 = 상점 전용을 뺀 동료 전부(스테이지와 무관) · 픽업 = 전설 이상 2명", p12.entries.length === model.HEROES.filter((h) => allies.SHOP_ALLY_GEM_COST[h.id] === undefined && h.unlockStage < 9999).length && gacha.gachaPool(1, 1).entries.length === p12.entries.length && p12.pickups.length === 2 && p12.pickups.every((id) => RANK[allies.ALLY_RARITY[id]] >= RANK.SSR), `${p12.entries.length}명 · ${p12.pickups.join()}`);
 const p30 = gacha.gachaPool(30, 5);
 { const lv1 = summon.tierRates(1); const present = summon.TIERS.filter((t) => p30.entries.some((e) => e.rarity === t)); const sum = present.reduce((t, r) => t + lv1[r], 0);
   ok("등급 확률 = 뽑기 Lv1 표를 풀에 있는 등급으로 정규화", present.every((t) => Math.abs(p30.bandRate[t] - lv1[t] / sum) < 1e-9), JSON.stringify(p30.bandRate)); }
@@ -89,8 +90,9 @@ ok("최고 등급 개별 확률 < 낮은 등급 개별 확률(공시 정합)", M
 const owned0 = allies.emptyAllyRecord();
 const pityPull = gacha.pullOnce(p30, owned0, 59, () => 0.0);
 ok("천장 60회째 전설 이상 확정 · 카운터 0", RANK[pityPull.result.rarity] >= RANK.SSR && pityPull.pity === 0, JSON.stringify(pityPull.result));
-{ const noSsr = gacha.gachaPool(1, 1); const best = Math.max(...noSsr.entries.map((e) => RANK[e.rarity])); const at = gacha.pullOnce(noSsr, owned0, 59, () => 0.0); const over = gacha.pullOnce(noSsr, owned0, 79, () => 0.99); const mid = gacha.pullOnce(noSsr, owned0, 58, () => 0.99);
-  ok("천장(전설 없는 풀): 60회째 그 풀 최고 등급 보장 · 카운터 0 · 옛 80 도 다음 뽑기에 0 · 평소 카운터 ≤ 59", best < RANK.SSR && RANK[at.result.rarity] === best && at.pity === 0 && over.pity === 0 && mid.pity === 59, `${at.result.rarity} ${at.pity} ${over.pity} ${mid.pity}`); }
+// 풀에 늘 전설 이상이 있다(2026-10-28) — 천장은 전설 이상 확정 · 0으로, 옛 80 카운터도 다음 뽑기에 0, 평소 카운터 ≤ 59
+{ const pool1 = gacha.gachaPool(1, 1); const at = gacha.pullOnce(pool1, owned0, 59, () => 0.0); const over = gacha.pullOnce(pool1, owned0, 79, () => 0.99); const mid = gacha.pullOnce(pool1, owned0, 58, () => 0.0);   // 첫 칸 = 일반
+  ok("천장: 60회째 전설 이상 확정 · 카운터 0 · 옛 80 도 다음 뽑기에 0 · 평소 카운터 ≤ 59 (풀에 늘 전설 이상)", pool1.entries.some((e) => RANK[e.rarity] >= RANK.SSR) && RANK[at.result.rarity] >= RANK.SSR && at.pity === 0 && over.pity === 0 && mid.pity === 59, `${at.result.rarity} ${at.pity} ${over.pity} ${mid.pity}`); }
 const noPity = gacha.pullOnce(p30, owned0, 10, () => 0.0);
 ok("천장 전엔 rng 0 → 가장 낮은 등급(정렬상 첫 항목)", noPity.result.rarity === p30.entries[0].rarity && RANK[noPity.result.rarity] === Math.min(...p30.entries.map((e) => RANK[e.rarity])) && noPity.pity === 11);
 const ten = gacha.pullTen(p30, owned0, 0, () => 0.0);
@@ -126,7 +128,8 @@ ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", summon.TIERS.ever
   const a = gacha.gachaPool(5, 5, t0);
   const b = gacha.gachaPool(5, 5, t0 + 14 * 86400000);
   ok("K 픽업 2주 회전: 후보 3명 이상이면 14일 뒤 픽업이 바뀐다", a.rotationPool >= 3 && a.pickups.join() !== b.pickups.join() && a.pickups.length === 2, `${a.pickups.join()} → ${b.pickups.join()} (${a.rotationDaysLeft}일 남음)`);
-  { const few = gacha.gachaPool(50, 5, t0); ok("K 후보 2명 이하면 회전 없음 (stage50 — 남은 동료 1~2명)", few.rotationPool <= 2 && few.pickups.join() === gacha.gachaPool(50, 5, t0 + 14 * 86400000).pickups.join(), `후보 ${few.rotationPool} · ${few.pickups.join()}`); }
+  // 2026-10-28: 회전 후보 = 전설 이상 전원(스테이지와 무관) — 층이 높아도 2주마다 바뀐다
+  { const hi = gacha.gachaPool(50, 5, t0); ok("K 회전 후보 = 전설 이상 전원 · 높은 층에서도 2주마다 바뀐다", hi.rotationPool >= 3 && hi.pickups.join() !== gacha.gachaPool(50, 5, t0 + 14 * 86400000).pickups.join(), `후보 ${hi.rotationPool}`); }
   ok("K 회전해도 풀 확률 합 1 · 픽업 가중 유지", Math.abs(b.entries.reduce((s, e) => s + e.rate, 0) - 1) < 1e-9 && b.entries.filter((e) => e.pickup).length === 2);
 }
 
@@ -140,7 +143,8 @@ ok("엠버 효율 > 미아 효율 ×2.5", eff(model.HEROES.find((h) => h.id === 
 ok("상점 동료(볼트 SR) 효율 > 무료 동시대(파이로) 효율", eff(model.HEROES.find((h) => h.id === "volt")) > eff(model.HEROES.find((h) => h.id === "pyro")));
 const role = allies.partyRoleEffects(["garen", "terra", "bronn", "luna"]);
 ok("역할 효과: 탱커 3 → 상한 2 → +10초 · 힐러 1 → 쿨 ×0.9", role.bossTimeBonus === 10 && Math.abs(role.cooldownMult - 0.9) < 1e-9, JSON.stringify(role));
-ok("편성 게이트: ember(48)는 지역4 상한(23)에서 불가, 상점 동료 luna는 가능", !allies.canFieldAlly("ember", 48, 23) && allies.canFieldAlly("luna", 9999, 5) && allies.canFieldAlly("ari", 16, 23));
+// 2026-10-28 스테이지 해금 없음 — 가진 동료는 언제나 출전
+ok("출전 제한 없음: ember(48)도 지역4 상한(23)에서 출전 · 상점 동료 luna 도", allies.canFieldAlly("ember", 48, 23) && allies.canFieldAlly("luna", 9999, 5) && allies.canFieldAlly("ari", 16, 23));
 {
   // 조각 드랍 대상: 출전 동료 70% — 1만 회 표본에서 편성 2명이 65~75%를 받는다
   const heroes = { ...allies.emptyAllyRecord(), mia: 5, leon: 3, sera: 2, garen: 1 };
@@ -416,7 +420,7 @@ const eventShop = await (async () => {
 })();
 // 2026-10-22: 이벤트 탭 끝에 코인 교환 3종(보석 0 · 이벤트 코인 가격)
 const gemProducts = eventShop.shop.EVENT_PRODUCTS.filter((p) => !p.coinCost);
-ok("이벤트 상점 보석 상품 9종 · 이벤트 탭 4종(인장 묶음 포함)+코인 교환 3종 · 특별 탭 5종(등반권 2 포함) · 전부 가격·주간 한도", gemProducts.length === 9 && eventShop.shop.eventProductsFor("event-shop").filter((p) => !p.coinCost).length === 4 && eventShop.shop.eventProductsFor("event-shop").filter((p) => p.coinCost).length === 3 && eventShop.shop.eventProductsFor("event-shop2").length === 5 && gemProducts.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1) && eventShop.shop.EVENT_PRODUCTS.every((p) => (p.gemCost > 0 || (p.coinCost ?? 0) > 0) && p.weeklyLimit >= 1));
+ok("이벤트 상점 보석 상품 12종 · 이벤트 탭 4종(인장 묶음 포함)+코인 교환 3종 · 특별 탭 8종(등반권 2 · 신화/초월 특가 동료 2 · 신화·초월 상자 1 포함, 2026-10-28) · 전부 가격·주간 한도", gemProducts.length === 12 && eventShop.shop.eventProductsFor("event-shop").filter((p) => !p.coinCost).length === 4 && eventShop.shop.eventProductsFor("event-shop").filter((p) => p.coinCost).length === 3 && eventShop.shop.eventProductsFor("event-shop2").length === 8 && gemProducts.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1) && eventShop.shop.EVENT_PRODUCTS.every((p) => (p.gemCost > 0 || (p.coinCost ?? 0) > 0) && p.weeklyLimit >= 1));
 ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 30 }).gold > eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 5 }).gold);
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");

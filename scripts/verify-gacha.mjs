@@ -65,16 +65,18 @@ r.roleChips = roleChips;
 ok("뽑기 시트 · 픽업 최대 2명", r.panel && r.pickups.length >= 1 && r.pickups.length <= 2, r.pickups.join("|"));
 ok("뽑기 레벨 줄 · 6등급 확률 칩", /뽑기 Lv\.\d/.test(r.summon ?? "") && r.tierChips === 6, `${r.summon} · 칩 ${r.tierChips}`);
 // 초월 천장 (2026-10-27 아쉬운 점) — 초월이 없는 초반 지역(상한 15)에서도 게이지가 보이고 쌓인다
-ok("초월 천장 게이지: 초반 지역에도 보인다 · 'STAGE 23 지역부터'", /초월 천장 0.200/.test(r.lrPity ?? "") && /쌓는 중 · 초월은 STAGE 23 지역부터/.test(r.lrPity ?? ""), r.lrPity);
+// 2026-10-28 스테이지 해금 없음 — 초반 지역 풀에도 초월이 있어 게이지가 바로 '확정까지 N회'
+ok("초월 천장 게이지: 초반 지역에도 보인다 · '초월 확정까지 200회'", /초월 천장 0.200/.test(r.lrPity ?? "") && /초월 확정까지 200회/.test(r.lrPity ?? ""), r.lrPity);
 ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
 // 확률 공시
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(3)")?.click());
 await sleep(400);
-r = await page.evaluate(() => ({ sheet: !!document.querySelector(".gacha-rates-sheet"), rows: [...document.querySelectorAll(".gacha-rates-sheet tbody tr")].map((tr) => tr.textContent), text: document.querySelector(".gacha-rates-sheet p")?.textContent }));
+// 2026-10-28 공시 정리 — 등급 요약 칸 · 규칙 줄(ul.rates-rules) · 등급별 접은 표(details). 접힌 표의 행도 DOM 에 있다
+r = await page.evaluate(() => ({ sheet: !!document.querySelector(".gacha-rates-sheet"), rows: [...document.querySelectorAll(".gacha-rates-sheet tbody tr")].map((tr) => tr.textContent), text: document.querySelector(".gacha-rates-sheet .rates-rules")?.textContent, tiers: document.querySelectorAll(".gacha-rates-sheet .rates-tier-grid li").length, groups: document.querySelectorAll(".gacha-rates-sheet details.rates-tier").length }));
 const pctSum = r.rows.reduce((s, t) => s + parseFloat((t.match(/(\d+\.\d+)%/) ?? [0, 0])[1]), 0);
-ok("확률 공시 시트: 동료별 % 합계 ≈ 100 · 천장/보장 문구", r.sheet && Math.abs(pctSum - 100) < 0.2 && /천장/.test(r.text ?? "") && /보장/.test(r.text ?? ""), `${r.rows.length}행 합 ${pctSum.toFixed(2)}`);
+ok("확률 공시 시트: 등급 요약 6칸 · 등급별 묶음 6 · 동료별 % 합계 ≈ 100 · 천장/보장 줄", r.sheet && r.tiers === 6 && r.groups === 6 && Math.abs(pctSum - 100) < 0.2 && /천장/.test(r.text ?? "") && /보장/.test(r.text ?? ""), `요약 ${r.tiers} · 묶음 ${r.groups} · ${r.rows.length}행 합 ${pctSum.toFixed(2)}`);
 ok("공시: 상점 전용 동료(루나·볼트) 제외", !r.rows.some((t) => /루나|볼트/.test(t)));
 await clickText(".gacha-rates-sheet button", "닫기");
 await sleep(300);
@@ -117,7 +119,8 @@ const gateClicked = await page.evaluate(() => { const card = [...document.queryS
 await sleep(500);
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
 p = await prog();
-ok("편성 게이트: 개척 상한 밖 엠버 출전 거부 + 안내", gateClicked && /개척/.test(r) && !p.partyIds.includes("ember"), r);
+// 2026-10-28 스테이지 해금 없음 — 개척 상한 밖 동료도 가지고 있으면 출전한다
+ok("출전 제한 없음: 개척 상한 밖 엠버도 편성된다", gateClicked && p.partyIds.includes("ember") && !/개척해야/.test(r), r || "(안내 없음)");
 
 // ── 2. 스킬 탭: 등급 묶음(슬롯 탭 없음, 2026-10-28) · 효과 수치 · 프리셋 · 시전 버프 칩 ──
 await clickText(".titans-tabs button", "스킬");

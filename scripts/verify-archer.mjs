@@ -99,9 +99,10 @@ for (let i = 0; i < 300; i += 1) {
 ok(`첫 10연은 늘 최고 등급(${top}) 1명 이상 · 보통 10연은 아닐 때가 있다`, firstOk === 300 && plainMiss > 0, `확정 ${firstOk}/300 · 보통 빗나감 ${plainMiss}`);
 const early = G.gachaPool(2, 1);
 let earlyOk = 0;
-for (let i = 0; i < 200; i += 1) { const r = G.pullTen(early, {}, 0, Math.random, true, G.FIRST_TEN_SSR).results; if (r.some((x) => x.rarity === "SSR" && x.fieldPass === true && x.id === G.FIRST_TEN_SSR)) earlyOk += 1; }
-ok("초반 풀(전설 없음)에서도 첫 10연은 전설(가장 먼저 열리는 전설) + 출전 허가", !early.entries.some((e) => isTop(e.rarity)) && earlyOk === 200 && !!G.FIRST_TEN_SSR, `${G.FIRST_TEN_SSR} · ${earlyOk}/200`);
-ok("출전 허가: field-pass 가 있으면 지역 잠금을 넘는다(없으면 잠김)", AL.canFieldAlly("ari", 16, 15, ["field-pass:ari"]) === true && AL.canFieldAlly("ari", 16, 15, []) === false && AL.canFieldAlly("ari", 16, 15) === false);
+for (let i = 0; i < 200; i += 1) { const r = G.pullTen(early, {}, 0, Math.random, true, G.FIRST_TEN_SSR).results; if (r.some((x) => isTop(x.rarity))) earlyOk += 1; }
+// 2026-10-28 (사용자: "스테이지별 해금 삭제") — 초반 풀에도 전설 이상이 있다. 첫 10연은 풀 안 전설 이상 확정(대신 주던 전설 · 출전 허가는 쓸 일이 없다)
+ok("초반 풀에도 전설 이상이 있다 · 첫 10연은 전설 이상 확정", early.entries.some((e) => isTop(e.rarity)) && earlyOk === 200, `${earlyOk}/200`);
+ok("출전 제한 없음: 허가 없이도 지역 상한 밖 동료가 출전한다", AL.canFieldAlly("ari", 16, 15, []) === true && AL.canFieldAlly("ari", 16, 15) === true);
 // ── 체험 출전 · 방치 (2026-10-23) ──
 const ari = M.HEROES.find((h) => h.id === "ari");
 // 2026-10-27 동료 60명 — "그 지역 최강"은 새 동료가 될 수 있어 고정 숫자(가렌 120) 대신 그 지역 최강(bestUnlockedBaseDps)으로
@@ -112,14 +113,14 @@ const idleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredAre
 const y1 = I.computeIdleYield(idleBase, 8, {}, 4 * 3600, 1e12);
 const y2 = I.computeIdleYield({ ...idleBase, partyIds: ["mia", "leon", "ari"], claimedRewards: ["field-pass:ari"] }, 8, {}, 4 * 3600, 1e12);
 ok("방치 보상은 동료 DPS 를 쓰지 않는다 — 아리가 편성에 있어도 골드 · 경험 · 강화석 같음(스테이지 · 배율로만)", y1.gold === y2.gold && y1.exp === y2.exp && y1.materials === y2.materials, `${y1.gold} / ${y2.gold}`);
-// ── 방치 보상과 지역 잠금 (2026-10-23) — 편성 시너지는 실제로 출전하는 동료만 센다(잠금 · 출전 허가를 그대로) ──
-ok("출전 편성: 지역3(상한 15)에서 잠긴 녹스(24) · 허가 없는 아리(16)는 빠지고, 허가 있는 아리는 들어간다", AL.fieldedParty(["mia", "leon", "ari", "nox"], 15, []).join() === "mia,leon" && AL.fieldedParty(["mia", "leon", "ari", "nox"], 15, ["field-pass:ari"]).join() === "mia,leon,ari");
+// ── 방치 보상 (2026-10-23 · 2026-10-28 지역 잠금 없음) — 편성 시너지는 편성한 동료 모두를 센다
+ok("출전 편성: 지역3(상한 15)에서도 녹스(24) · 아리(16) 모두 출전", AL.fieldedParty(["mia", "leon", "ari", "nox"], 15, []).join() === "mia,leon,ari,nox");
 const ssrBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["ari", "nox"], level: 10 });
 const lockedY = I.computeIdleYield(ssrBase, 8, {}, 16 * 3600, 1e12);
 const passY = I.computeIdleYield({ ...ssrBase, claimedRewards: ["field-pass:ari", "field-pass:nox"] }, 8, {}, 16 * 3600, 1e12);
-ok("방치 조각 드랍: 잠긴 전설 둘은 '전설의 공명'(조각 2배)을 켜지 않는다 · 둘 다 출전 허가면 켠다", lockedY.allyShardDrops * 2 === passY.allyShardDrops && lockedY.allyShardDrops > 0, `${lockedY.allyShardDrops} / ${passY.allyShardDrops}`);
+ok("방치 조각 드랍: 전설 둘이 허가 없이도 '전설의 공명'(조각 2배)을 켠다", lockedY.allyShardDrops === passY.allyShardDrops && lockedY.allyShardDrops > 0, `${lockedY.allyShardDrops} / ${passY.allyShardDrops}`);
 const roleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["mia", "leon", "garen"], level: 10 });
-ok("방치 효율: 3역할 '균형 편성' +1%p 는 출전하는 셋일 때만 — 가렌(10)은 지역3에서 출전 · 지역1(상한 5)이면 잠겨 빠진다", I.idleRate(roleBase, {}) > I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}), `${I.idleRate(roleBase, {}).toFixed(3)} / ${I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}).toFixed(3)}`);
+ok("방치 효율: 3역할 '균형 편성' +1%p — 지역과 관계없이(가렌이 지역1 에서도 출전)", I.idleRate(roleBase, {}) === I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}) && I.idleRate(roleBase, {}) > I.idleRate({ ...roleBase, partyIds: ["mia", "leon"] }, {}), `${I.idleRate(roleBase, {}).toFixed(3)} / ${I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}).toFixed(3)}`);
 ok("환영 1000 + 깜짝 500", M.WELCOME_GIFT_GEMS === 1000 && M.SURPRISE_GIFT_GEMS === 500);
 ok("캐릭터 진행에 자동 환생(기본 꺼짐)", P.emptyCharacterProgress().autoRebirth === false && P.normalizeCharacterProgress({ autoRebirth: true }).autoRebirth === true);
 
