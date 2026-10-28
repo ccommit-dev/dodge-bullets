@@ -128,3 +128,23 @@
 @keyframes skill-tier-rays { 0% { opacity: 0; transform: rotate(-8deg) scale(.9); } 30% { opacity: 1; } 100% { opacity: 0; transform: rotate(10deg) scale(1.15); } }
 @keyframes skill-tier-flash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .titans-field .skill-tier-fx { display: none; } .titans-skill-dock .titans-skill.tier-LR, .titans-card.skill-learn-card .skill-icon { animation: none !important; } }
+
+/* ── 펫 (2026-10-28, 사용자: "동료 근처에서 사냥을 도와주는 펫 애니메이션 · 상점에서도 팔게") ──
+   주인공 상자 안 뒤쪽 발치(주인공과 같이 걸어 들어오고 나간다). 몬스터 그림의 아기 버전이라 왼쪽을 보는 원화를 뒤집어 적 쪽(오른쪽)을 본다.
+   PET_ATTACK_SEC 마다 .pet-attack(번호 key 로 다시 붙음) — 몬스터 쪽으로 뛰어올라 들이받고 돌아온다 */
+.titans-hero .hero-pet { position: absolute; left: -30%; bottom: 0; width: 46%; aspect-ratio: 1; z-index: 6; pointer-events: none; --monster-size: 100%;
+  filter: saturate(1.2) brightness(1.15) drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.titans-hero .hero-pet .titan-monster-art { transform: scaleX(-1); filter: none; }
+.titans-hero .hero-pet .titan-monster-art.face-flip { transform: none; }
+.titans-hero .hero-pet:not(.pet-attack) { animation: hero-pet-bob 1.1s ease-in-out infinite alternate; }
+.titans-field.party-entering .titans-hero .hero-pet:not(.pet-attack) { animation: hero-pet-hop .32s ease-in-out infinite alternate; }   /* 걸을 땐 통통 */
+.titans-hero .hero-pet.pet-attack { animation: hero-pet-pounce .52s cubic-bezier(.3, .7, .3, 1) both; }
+@keyframes hero-pet-bob { from { translate: 0 0; } to { translate: 0 -4px; } }
+@keyframes hero-pet-hop { from { translate: 0 0; } to { translate: 0 -7px; } }
+@keyframes hero-pet-pounce { 0% { translate: 0 0; scale: 1; } 25% { translate: 70px -22px; scale: 1.1; } 46% { translate: 118px -4px; scale: 1.05 .92; } 60% { translate: 104px -8px; } 100% { translate: 0 0; scale: 1; } }
+.titans-field.hero-melee .titans-hero .hero-pet.pet-attack { animation-name: hero-pet-pounce-near; }   /* 근접 주인공은 몬스터에 붙어 있어 짧게 */
+@keyframes hero-pet-pounce-near { 0% { translate: 0 0; } 30% { translate: 46px -20px; } 48% { translate: 74px -2px; scale: 1.05 .92; } 100% { translate: 0 0; } }
+/* 상점 펫 칸 그림 */
+.pet-product .pet-thumb { flex: 0 0 52px; width: 52px; height: 52px; display: grid; place-items: center; --monster-size: 100%; }
+.pet-product .pet-thumb .titan-monster-art { transform: scaleX(-1); }
+@media (prefers-reduced-motion: reduce) { .titans-hero .hero-pet, .titans-hero .hero-pet.pet-attack { animation: none !important; } }

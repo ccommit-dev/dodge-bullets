@@ -75,6 +75,21 @@ await settled();
 ok("지팡이: 마법탄이 날아간다(.skill-shot.el-arcane)", await seen(".skill-shot.el-arcane"));
 await page.screenshot({ path: "art-gen/out/hunt-motion-staff.png" });
 
+// ── 6. 펫 — 주인공 곁에서 같이 걷고 덤빈다 · 상점 바로 부화 (2026-10-28) ──
+await seed("bow", ["mia"]);
+await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.pets = { slime: 0, goblin: 0, wolf: 2, ogre: 0, dragon: 0, boss: 0 }; p.activePet = "wolf"; localStorage.setItem(k, JSON.stringify(p)); }, H);
+await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
+await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const x = [...document.querySelectorAll("button")].filter((y) => !y.closest(".titans-bottom-nav")).find((y) => /^(닫기|확인|나중에)$/.test(y.textContent.trim())); if (x) x.click(); } });
+await settled();
+ok("펫: 주인공 상자 안 발치에 있다(.titans-hero .hero-pet) · 옛 떠 있는 펫 없음", await page.evaluate(() => !!document.querySelector(".titans-hero .hero-pet") && !document.querySelector(".titans-field > .titans-pet")));
+ok("펫: 몬스터에 덤빈다(.hero-pet.pet-attack, 2.6초마다)", await seen(".hero-pet.pet-attack", 7000));
+await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(700);
+await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "펫")?.click()); await sleep(500);
+const petShop = await page.evaluate(() => ({ n: document.querySelectorAll(".pet-product").length, wolf: document.querySelector(".pet-product[data-pet=wolf] button")?.textContent?.trim() }));
+await page.evaluate(() => document.querySelector(".pet-product[data-pet=slime] button")?.click()); await sleep(800);
+const pAfter = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
+ok("상점 펫: 6종 · 가진 펫은 장착/해제 · 산 펫은 바로 부화(Lv.1)", petShop.n === 6 && /해제|장착/.test(petShop.wolf ?? "") && pAfter.pets?.slime === 1, `${petShop.n}종 · 늑대 ${petShop.wolf} · 슬라임 Lv.${pAfter.pets?.slime}`);
+
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");
 await browser.close();
