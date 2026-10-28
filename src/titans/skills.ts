@@ -10,6 +10,7 @@
  *   탭 풀 = 탭·시동기·마무리 (computeTapHit 경유) · 동료 풀 = 동료 자동 공격 · 영웅 풀 = 영웅 자동 공격
  */
 import { SKILLS, type TitanSkillDef, type TitanSkillId, type TitanSkillSlot } from "./model";
+import type { Tier } from "./allyRoster";
 
 export type BuffKind = "crit" | "clone" | "war" | "haste" | "freeze" | "burn";
 
@@ -53,7 +54,22 @@ export const SKILL_EFFECTS: Record<TitanSkillId, SkillEffect> = {
 
 export const SLOT_LABEL: Record<TitanSkillSlot, string> = { starter: "시동기", linkA: "연계 A", linkB: "연계 B", finisher: "마무리", passive: "패시브" };
 export const SLOT_ORDER: TitanSkillSlot[] = ["starter", "linkA", "linkB", "finisher", "passive"];
-export const ELEMENT_LABEL_KR: Record<TitanSkillDef["element"], string> = { blade: "북", wind: "바람", fire: "불", earth: "땅", light: "빛" };
+export const ELEMENT_LABEL_KR: Record<TitanSkillDef["element"], string> = { blade: "무기", wind: "바람", fire: "불", earth: "땅", light: "빛" };   // blade 는 예전 "북" — 장착 무기로 (2026-10-28)
+
+/**
+ * 스킬 등급 (2026-10-28, 사용자: "스킬 탭에 복잡한 탭들 모두 삭제하고 전체 스킬 등급별 설계해서 애니메이션 이펙트") — 동료와 같은 6등급.
+ * 학습 비용(SP · 코어) 오름차순으로 등급마다 둘씩 — 탭 하나에 일반 → 초월 순으로 다 보이고, 등급이 높을수록 시전 연출(hunt-motion.css .skill-tier-fx)이 커진다.
+ * 효과 · 수치 · 슬롯은 그대로(등급은 보이는 묶음과 연출만). 은퇴 스킬도 표에 두어 옛 저장에서 보여도 등급이 있다
+ */
+export const SKILL_TIER: Record<TitanSkillId, Tier> = {
+  strike: "N", steel: "N",
+  emberCut: "R", crit: "R",
+  frostEdge: "SR", stoneGuard: "SR",
+  clone: "SSR", guardianSoul: "SSR",
+  thunderLink: "UR", meteor: "UR",
+  voidFinish: "LR", elementalMastery: "LR",
+  pierce: "R", waterStep: "R", focus: "SR", galeChain: "SR", bloodMoon: "SSR", warcry: "SSR", dragonBreath: "UR", tidalBurst: "UR",
+};
 export const BUFF_LABEL: Record<BuffKind, string> = { crit: "치명", clone: "분신", war: "고무", haste: "가속", freeze: "빙결", burn: "화상" };
 
 /** 레벨 배율 — 강화가 실효과를 산다 */
