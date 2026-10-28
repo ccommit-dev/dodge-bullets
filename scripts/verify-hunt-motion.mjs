@@ -36,7 +36,7 @@ for (let i = 0; i < 1500; i += 1) {
   if (death.phases.size && s.ph === "stage-enter") break;
   await sleep(12);
 }
-ok("쓰러짐: 쓰러짐 단계의 몬스터 애니메이션 = hunt-monster-fall (맞을 때 번쩍임이 덮지 않는다)", death.name === "hunt-monster-fall", death.name || "(쓰러짐 못 봄)");
+ok("쓰러짐: 쓰러짐 단계의 몬스터 애니메이션 = hunt-monster-ko (2판 · 앞으로 엎어짐 · 맞을 때 번쩍임이 덮지 않는다)", death.name === "hunt-monster-ko", death.name || "(쓰러짐 못 봄)");
 ok("쓰러짐: 다음 몬스터 전에 흐려져 사라진다(불투명도 < 0.5)", death.minOp < 0.5, `최소 ${death.minOp.toFixed(2)} · ${[...death.phases].join("/")}`);
 
 // ── 2. 검 주인공 — 몬스터 보이는 몸에 붙어 선다 · 근접 동료도 가까이 · 원거리는 앞으로 ──
