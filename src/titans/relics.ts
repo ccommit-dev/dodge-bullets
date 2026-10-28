@@ -1,4 +1,5 @@
 import { killGold } from "./model";
+import type { Tier } from "./allyRoster";
 /**
  * 유물 (2026-10-26, 사용자: "오늘도 환생 2" 차용 3번 — 대장 사다리를 반복형으로 넓힌다).
  *
@@ -6,40 +7,96 @@ import { killGold } from "./model";
  *   환생 뒤 다시 오르는 길 · 벽 앞 파밍이 모두 "다시 잡기"라 조각이 쌓인다.
  * - 유물은 환생해도 남는다(CharacterProgress.relics — 환생이 비우지 않는다).
  * - 조각 RELIC_SHARDS_PER_STAR 개로 ★1, 그다음부터 같은 수마다 ★ 하나(최대 ★5).
- * - 같은 계열 3개를 모두 가지면(★1 이상) 세트 효과 — 불: 화상 · 서리: 얼어붙은 대장 · 황금: 황금 손길.
  * - 원정 지도 갈림길 첫 보상에도 조각이 섞인다(game/stages.ts BranchReward.relicShards) — 성문 방어 ↔ 사냥터를 잇는다.
+ *
+ * 2판 (2026-10-28, 사용자: "유물도 개수를 늘려주고 등급을 동료처럼 메겨서 종류 30개이상 다시생성") — 36종.
+ * - 계열 6(불 · 서리 · 황금 · 바람 · 대지 · 별빛) × 등급 6(동료와 같은 N 일반 · R 희귀 · SR 영웅 · SSR 전설 · UR 신화 · LR 초월).
+ * - 옛 9종은 id · 효과 수치 그대로 R · SR · SSR 자리에 둔다(옛 저장의 ★ 이 그대로 산다). 새 27종은 등급 배율(N ×0.5 … LR ×2)로.
+ * - 세트: 같은 계열 ★1 이상 3개면 세트, 6개 모두면 세트 효과 ×1.5.
+ * - 상점 뽑기는 재화별 3종(골드 · 강화석 · 보석) — 비쌀수록 높은 등급 확률이 크다(RELIC_BANNER_RATES · 확률 공시).
  */
 
-export type RelicFamily = "fire" | "frost" | "gold";
+export type RelicFamily = "fire" | "frost" | "gold" | "wind" | "earth" | "star";
+export const RELIC_FAMILIES: readonly RelicFamily[] = ["fire", "frost", "gold", "wind", "earth", "star"];
 export type RelicId =
-  | "ember-ring" | "flame-feather" | "lava-heart"
-  | "frost-horn" | "snow-crystal" | "ice-lantern"
-  | "golden-acorn" | "lucky-coin" | "beaver-crown";
+  | "ember-spark" | "ember-ring" | "flame-feather" | "lava-heart" | "phoenix-plume" | "sun-core"
+  | "frost-pebble" | "frost-horn" | "snow-crystal" | "ice-lantern" | "glacier-shield" | "winter-crown"
+  | "copper-coin" | "lucky-coin" | "golden-acorn" | "beaver-crown" | "treasure-chest" | "king-scepter"
+  | "wind-leaf" | "reed-flute" | "feather-fan" | "storm-bell" | "cloud-wing" | "tempest-eye"
+  | "river-stone" | "oak-shield" | "mossy-totem" | "mountain-heart" | "ancient-root" | "world-seed"
+  | "star-sand" | "moon-shell" | "comet-shard" | "star-compass" | "galaxy-pearl" | "aurora-orb";
 
 /** 유물 하나의 효과 종류 — 수치는 ★ 하나당 */
 export type RelicStat = "tapMul" | "allyMul" | "bossMul" | "bossTimeSec" | "idleMul" | "goldMul" | "crystalMul";
 
-export type RelicDef = { id: RelicId; family: RelicFamily; name: string; stat: RelicStat; perStar: number; blurb: string };
+export type RelicDef = { id: RelicId; family: RelicFamily; tier: Tier; name: string; stat: RelicStat; perStar: number; blurb: string };
+
+/** 등급 배율 — SR(영웅)이 기준 */
+export const RELIC_TIER_POWER: Record<Tier, number> = { N: 0.5, R: 0.75, SR: 1, SSR: 1.25, UR: 1.6, LR: 2 };
+/** 효과 종류별 SR 기준 ★ 하나당 값 */
+const STAT_BASE: Record<RelicStat, number> = { tapMul: 0.04, allyMul: 0.04, bossMul: 0.045, goldMul: 0.045, idleMul: 0.04, crystalMul: 0.04, bossTimeSec: 1.5 };
+const BLURB: Record<RelicStat, string> = { tapMul: "탭 피해", allyMul: "동료 피해", bossMul: "대장 피해", goldMul: "처치 골드", idleMul: "방치 배율", crystalMul: "환생 결정", bossTimeSec: "대장 제한 시간" };
+const r3 = (v: number) => Math.round(v * 1000) / 1000;
+const def = (id: RelicId, family: RelicFamily, tier: Tier, name: string, stat: RelicStat, perStar?: number): RelicDef =>
+  ({ id, family, tier, name, stat, perStar: perStar ?? r3(STAT_BASE[stat] * RELIC_TIER_POWER[tier]), blurb: BLURB[stat] });
 
 export const RELICS: readonly RelicDef[] = [
-  { id: "ember-ring", family: "fire", name: "불씨 반지", stat: "tapMul", perStar: 0.04, blurb: "탭 피해" },
-  { id: "flame-feather", family: "fire", name: "화염 깃털", stat: "allyMul", perStar: 0.04, blurb: "동료 피해" },
-  { id: "lava-heart", family: "fire", name: "용암 심장", stat: "bossMul", perStar: 0.05, blurb: "대장 피해" },
-  { id: "frost-horn", family: "frost", name: "서리 뿔피리", stat: "bossTimeSec", perStar: 1.5, blurb: "대장 제한 시간" },
-  { id: "snow-crystal", family: "frost", name: "눈꽃 결정", stat: "idleMul", perStar: 0.04, blurb: "방치 배율" },
-  { id: "ice-lantern", family: "frost", name: "얼음 등불", stat: "bossMul", perStar: 0.04, blurb: "대장 피해" },
-  { id: "golden-acorn", family: "gold", name: "황금 열매", stat: "goldMul", perStar: 0.05, blurb: "처치 골드" },
-  { id: "lucky-coin", family: "gold", name: "행운 동전", stat: "goldMul", perStar: 0.04, blurb: "처치 골드" },
-  { id: "beaver-crown", family: "gold", name: "비버 왕관", stat: "crystalMul", perStar: 0.04, blurb: "환생 결정" },
+  // 불 — 탭 · 동료 · 대장
+  def("ember-spark", "fire", "N", "불씨 부싯돌", "tapMul"),
+  def("ember-ring", "fire", "R", "불씨 반지", "tapMul", 0.04),
+  def("flame-feather", "fire", "SR", "화염 깃털", "allyMul", 0.04),
+  def("lava-heart", "fire", "SSR", "용암 심장", "bossMul", 0.05),
+  def("phoenix-plume", "fire", "UR", "불사조 꽁지깃", "allyMul"),
+  def("sun-core", "fire", "LR", "태양의 핵", "tapMul"),
+  // 서리 — 대장 시간 · 방치 · 대장
+  def("frost-pebble", "frost", "N", "서리 조약돌", "idleMul"),
+  def("frost-horn", "frost", "R", "서리 뿔피리", "bossTimeSec", 1.5),
+  def("snow-crystal", "frost", "SR", "눈꽃 결정", "idleMul", 0.04),
+  def("ice-lantern", "frost", "SSR", "얼음 등불", "bossMul", 0.04),
+  def("glacier-shield", "frost", "UR", "빙하 방패", "bossTimeSec"),
+  def("winter-crown", "frost", "LR", "겨울 왕관", "bossMul"),
+  // 황금 — 골드 · 환생 결정
+  def("copper-coin", "gold", "N", "구리 동전", "goldMul"),
+  def("lucky-coin", "gold", "R", "행운 동전", "goldMul", 0.04),
+  def("golden-acorn", "gold", "SR", "황금 열매", "goldMul", 0.05),
+  def("beaver-crown", "gold", "SSR", "비버 왕관", "crystalMul", 0.04),
+  def("treasure-chest", "gold", "UR", "보물 상자", "goldMul"),
+  def("king-scepter", "gold", "LR", "왕의 홀", "crystalMul"),
+  // 바람 — 동료 · 탭 · 대장
+  def("wind-leaf", "wind", "N", "바람 잎사귀", "allyMul"),
+  def("reed-flute", "wind", "R", "갈대 피리", "allyMul"),
+  def("feather-fan", "wind", "SR", "깃털 부채", "tapMul"),
+  def("storm-bell", "wind", "SSR", "폭풍 종", "bossMul"),
+  def("cloud-wing", "wind", "UR", "구름 날개", "allyMul"),
+  def("tempest-eye", "wind", "LR", "폭풍의 눈", "bossTimeSec"),
+  // 대지 — 방치 · 대장 시간 · 결정
+  def("river-stone", "earth", "N", "강가 돌", "bossTimeSec"),
+  def("oak-shield", "earth", "R", "참나무 방패", "idleMul"),
+  def("mossy-totem", "earth", "SR", "이끼 토템", "idleMul"),
+  def("mountain-heart", "earth", "SSR", "산의 심장", "bossMul"),
+  def("ancient-root", "earth", "UR", "고대 뿌리", "idleMul"),
+  def("world-seed", "earth", "LR", "세계수 씨앗", "crystalMul"),
+  // 별빛 — 결정 · 골드 · 탭
+  def("star-sand", "star", "N", "별 모래", "crystalMul"),
+  def("moon-shell", "star", "R", "달 조개", "goldMul"),
+  def("comet-shard", "star", "SR", "혜성 조각", "tapMul"),
+  def("star-compass", "star", "SSR", "별 나침반", "crystalMul"),
+  def("galaxy-pearl", "star", "UR", "은하 진주", "goldMul"),
+  def("aurora-orb", "star", "LR", "오로라 구슬", "tapMul"),
 ];
 
-export const RELIC_FAMILY_LABEL: Record<RelicFamily, string> = { fire: "불", frost: "서리", gold: "황금" };
-/** 세트 효과 — 같은 계열 3개 모두 ★1 이상 */
+export const RELIC_FAMILY_LABEL: Record<RelicFamily, string> = { fire: "불", frost: "서리", gold: "황금", wind: "바람", earth: "대지", star: "별빛" };
+/** 세트 효과 — 같은 계열 ★1 이상 3개 · 6개 모두면 ×1.5 */
 export const RELIC_SET: Record<RelicFamily, { name: string; blurb: string }> = {
   fire: { name: "화상", blurb: "피해 20% 화상 추가" },
   frost: { name: "얼어붙은 대장", blurb: "대장 시간 +6초 · 피해 +10%" },
   gold: { name: "황금 손길", blurb: "골드 +25% · 조각 확률 +4%p" },
+  wind: { name: "순풍", blurb: "동료 피해 +15%" },
+  earth: { name: "대지의 품", blurb: "대장 시간 +4초 · 방치 +0.1" },
+  star: { name: "별자리", blurb: "탭 피해 +15% · 환생 결정 +10%" },
 };
+export const RELIC_SET_NEED = 3;
+export const RELIC_SET_FULL_MUL = 1.5;
 export const FIRE_SET_BURN_SHARE = 0.2;
 
 /** 다시 잡은 대장이 조각을 떨어뜨릴 확률 */
@@ -71,13 +128,25 @@ export function relicMaxed(state: RelicState, id: RelicId): boolean {
   return (state[id] ?? 0) >= RELIC_SHARDS_PER_STAR * RELIC_MAX_STAR;
 }
 
-export function setActive(state: RelicState, family: RelicFamily): boolean {
-  return RELICS.filter((r) => r.family === family).every((r) => relicStars(state, r.id) >= 1);
+/** 계열에서 ★1 이상인 유물 수 */
+export function familyOwned(state: RelicState, family: RelicFamily): number {
+  return RELICS.filter((r) => r.family === family && relicStars(state, r.id) >= 1).length;
 }
 
+export function setActive(state: RelicState, family: RelicFamily): boolean {
+  return familyOwned(state, family) >= RELIC_SET_NEED;
+}
+
+export function setFull(state: RelicState, family: RelicFamily): boolean {
+  return familyOwned(state, family) >= RELICS.filter((r) => r.family === family).length;
+}
+
+/** 대장 재처치 · 갈림길 조각이 고르는 무게 — 낮은 등급이 잘 나온다(뽑기와 따로, 공시 대상 아님) */
+export const RELIC_DROP_WEIGHT: Record<Tier, number> = { N: 4, R: 3, SR: 2, SSR: 1, UR: 0.4, LR: 0.15 };
+
 /**
- * 조각 n 개를 나눠 준다. 아직 ★ 가 없는 유물부터(같은 계열 세트를 먼저 맞추기 쉽게) — 다 가진 뒤에는 다 오르지 않은 것 중에서.
- * rng 는 시험에서 고정한다. 반환 got = 조각이 들어간 유물 차례.
+ * 조각 n 개를 나눠 준다. 반쯤 모은(조각 1~2) 유물이 있으면 그쪽부터(첫 ★ 까지 흩어지지 않게) — 없으면 아직 ★ 가 없는 유물 중
+ * 등급 무게(RELIC_DROP_WEIGHT)로, 다 가진 뒤에는 다 오르지 않은 것 중에서. rng 는 시험에서 고정한다. 반환 got = 조각이 들어간 유물 차례.
  */
 export function grantRelicShards(state: RelicState, n: number, rng: () => number = Math.random): { state: RelicState; got: RelicId[] } {
   const next: RelicState = { ...state };
@@ -86,10 +155,12 @@ export function grantRelicShards(state: RelicState, n: number, rng: () => number
     const open = RELICS.filter((r) => !relicMaxed(next, r.id));
     if (!open.length) break;
     const unowned = open.filter((r) => relicStars(next, r.id) < 1);
-    // 반쯤 모은(조각 1~2) 유물이 있으면 그쪽을 먼저 — 첫 ★ 까지 조각이 흩어지지 않게
     const started = unowned.filter((r) => (next[r.id] ?? 0) > 0);
     const pool = started.length ? started : unowned.length ? unowned : open;
-    const pick = pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+    const total = pool.reduce((a, r) => a + RELIC_DROP_WEIGHT[r.tier], 0);
+    let roll = rng() * total;
+    let pick = pool[pool.length - 1];
+    for (const r of pool) { roll -= RELIC_DROP_WEIGHT[r.tier]; if (roll < 0) { pick = r; break; } }
     next[pick.id] = (next[pick.id] ?? 0) + 1;
     got.push(pick.id);
   }
@@ -100,25 +171,29 @@ export type RelicEffects = {
   tapMul: number; allyMul: number; bossMul: number; goldMul: number; idleMul: number; crystalMul: number;
   bossTimeSec: number; burnShare: number; dropBonus: number;
   sets: RelicFamily[];
+  /** 6개 모두 모은 계열(세트 ×1.5) */
+  fullSets: RelicFamily[];
 };
 
 export function relicEffects(state: RelicState): RelicEffects {
   const add: Record<RelicStat, number> = { tapMul: 0, allyMul: 0, bossMul: 0, bossTimeSec: 0, idleMul: 0, goldMul: 0, crystalMul: 0 };
   for (const r of RELICS) add[r.stat] += relicStars(state, r.id) * r.perStar;
-  const sets = (["fire", "frost", "gold"] as const).filter((f) => setActive(state, f));
-  const frost = sets.includes("frost");
-  const gold = sets.includes("gold");
+  const sets = RELIC_FAMILIES.filter((f) => setActive(state, f));
+  const fullSets = RELIC_FAMILIES.filter((f) => setFull(state, f));
+  // 세트 세기: 켜지면 1 · 6개 모두면 ×1.5
+  const k = (f: RelicFamily) => (fullSets.includes(f) ? RELIC_SET_FULL_MUL : sets.includes(f) ? 1 : 0);
   return {
-    tapMul: 1 + add.tapMul,
-    allyMul: 1 + add.allyMul,
-    bossMul: (1 + add.bossMul) * (frost ? 1.1 : 1),
-    goldMul: (1 + add.goldMul) * (gold ? 1.25 : 1),
-    idleMul: add.idleMul,
-    crystalMul: 1 + add.crystalMul,
-    bossTimeSec: add.bossTimeSec + (frost ? 6 : 0),
-    burnShare: sets.includes("fire") ? FIRE_SET_BURN_SHARE : 0,
-    dropBonus: gold ? 0.04 : 0,
+    tapMul: (1 + add.tapMul) * (1 + 0.15 * k("star")),
+    allyMul: (1 + add.allyMul) * (1 + 0.15 * k("wind")),
+    bossMul: (1 + add.bossMul) * (1 + 0.1 * k("frost")),
+    goldMul: (1 + add.goldMul) * (1 + 0.25 * k("gold")),
+    idleMul: add.idleMul + 0.1 * k("earth"),
+    crystalMul: (1 + add.crystalMul) * (1 + 0.1 * k("star")),
+    bossTimeSec: add.bossTimeSec + 6 * k("frost") + 4 * k("earth"),
+    burnShare: FIRE_SET_BURN_SHARE * k("fire"),
+    dropBonus: 0.04 * k("gold"),
     sets,
+    fullSets,
   };
 }
 
@@ -127,11 +202,11 @@ export function relicDef(id: RelicId): RelicDef {
 }
 
 /** 한 줄 효과 문구 — "탭 피해 +8%" · "대장 제한 시간 +3초" */
-export function relicStatText(def: RelicDef, stars: number): string {
-  const v = def.perStar * Math.max(1, stars);
-  if (def.stat === "bossTimeSec") return `${def.blurb} +${v.toFixed(1).replace(/\.0$/, "")}초`;
-  if (def.stat === "idleMul") return `${def.blurb} +${v.toFixed(2)}`;
-  return `${def.blurb} +${Math.round(v * 100)}%`;
+export function relicStatText(d: RelicDef, stars: number): string {
+  const v = d.perStar * Math.max(1, stars);
+  if (d.stat === "bossTimeSec") return `${d.blurb} +${(Math.round(v * 100) / 100).toString()}초`;
+  if (d.stat === "idleMul") return `${d.blurb} +${v.toFixed(2)}`;
+  return `${d.blurb} +${(Math.round(v * 1000) / 10).toString()}%`;
 }
 
 export function relicIconUrl(id: RelicId): string {
@@ -139,56 +214,63 @@ export function relicIconUrl(id: RelicId): string {
 }
 
 /**
- * 상점 유물 뽑기 (2026-10-26, 사용자: "유물은 상점에서 뽑을 수 있게 UI 및 시스템 추가").
- * 한 번 = 조각 1개. 아직 다 모으지 않은 유물 중 **균등 확률**(확률 공시 그대로 — grantRelicShards 의 "모으던 것부터" 몰아주기와 다르다).
- * 10회는 10% 싸다. 모든 유물이 ★5 면 뽑을 수 없다.
- * 가격 기준은 게임 안 숫자(scripts/verify-relic-forge-econ.mjs): 유물 ★ 하나(조각 3 = 180 보석)는 무엇이 나올지 못 고르니 상점 조각팩으로
- * 고르는 동료 첫 승급(조각 20 = 240 보석)보다 싸고 그 절반 이상. 참고로 무과금(하루 약 38.6 보석) 첫 세트 약 24일 ·
- * 9종 ★1 약 46일 · 전부 ★5 약 115일(대장 재처치 드랍은 따로).
+ * 상점 유물 뽑기 (2026-10-26 · 10-27 재화별 · 10-28 등급 6) — 한 번 = 조각 1개. 10회는 10% 싸다.
+ * 재화마다 나오는 등급 확률이 다르다(RELIC_BANNER_RATES). 등급 안에서는 아직 다 모으지 않은 유물 중 균등.
+ * 다 모은 등급은 빠지고 남은 등급끼리 비례로 나눈다. 모든 유물이 ★5 면 뽑을 수 없다.
+ * 보석 값은 게임 안 숫자에 묶여 있다(scripts/verify-relic-forge-econ.mjs): ★ 하나(조각 3 = 180 보석)는 고르는 동료 첫 승급(240)보다 싸고 절반 이상.
  */
 /** 2026-10-27 사용자 확정: 1회 60 유지(40 · 80 안과 견준 뒤 "지금처럼") */
 export const RELIC_DRAW = { singleCost: 60, tenCost: 540 } as const;
-
-/**
- * 등급 뽑기 (2026-10-27, 사용자: "상점 유물 뽑기는 재화 UI 처럼 · 유물도 일반 레어 유니크 유물 뽑기를 재화별 분리").
- * 계열마다 일반 · 레어 · 유니크가 하나씩 — 어느 등급 뽑기로도 세 계열이 다 나와 세트를 맞출 수 있다.
- *   일반 = 사냥 골드(층이 오르면 값도 — 사냥 골드 5분치) · 레어 = 강화석 30 · 유니크 = 보석 60(위 RELIC_DRAW, 사용자 확정 그대로). 10회는 10% 싸다.
- */
-export type RelicTier = "common" | "rare" | "unique";
-export const RELIC_TIERS: readonly RelicTier[] = ["common", "rare", "unique"];
-export const RELIC_TIER: Record<RelicId, RelicTier> = {
-  "ember-ring": "common", "flame-feather": "rare", "lava-heart": "unique",
-  "frost-horn": "common", "snow-crystal": "rare", "ice-lantern": "unique",
-  "lucky-coin": "common", "golden-acorn": "rare", "beaver-crown": "unique",
-};
-export const RELIC_TIER_LABEL: Record<RelicTier, string> = { common: "일반", rare: "레어", unique: "유니크" };
-export type RelicDrawCurrency = "gold" | "stone" | "gem";
-export const RELIC_TIER_CURRENCY: Record<RelicTier, RelicDrawCurrency> = { common: "gold", rare: "stone", unique: "gem" };
 export const RELIC_STONE_DRAW = { singleCost: 30, tenCost: 270 } as const;
 
-/** 등급 뽑기 값 — 일반은 지금 층의 사냥 골드 5분치(처치 골드 × 초당 0.7 × 300초, 최소 100) */
-export function relicTierDrawCost(tier: RelicTier, stage: number): { single: number; ten: number } {
-  if (tier === "unique") return { single: RELIC_DRAW.singleCost, ten: RELIC_DRAW.tenCost };
-  if (tier === "rare") return { single: RELIC_STONE_DRAW.singleCost, ten: RELIC_STONE_DRAW.tenCost };
+export type RelicBanner = "gold" | "stone" | "gem";
+export const RELIC_BANNERS: readonly RelicBanner[] = ["gold", "stone", "gem"];
+export const RELIC_BANNER_LABEL: Record<RelicBanner, string> = { gold: "골드", stone: "강화석", gem: "보석" };
+/** 재화별 등급 확률 — 합 1 (확률 공시) */
+export const RELIC_BANNER_RATES: Record<RelicBanner, Partial<Record<Tier, number>>> = {
+  gold: { N: 0.62, R: 0.3, SR: 0.08 },
+  stone: { R: 0.45, SR: 0.35, SSR: 0.15, UR: 0.05 },
+  gem: { SR: 0.4, SSR: 0.34, UR: 0.19, LR: 0.07 },
+};
+
+/** 뽑기 값 — 골드는 지금 층의 사냥 골드 5분치(처치 골드 × 초당 0.7 × 300초, 최소 100) */
+export function relicBannerCost(banner: RelicBanner, stage: number): { single: number; ten: number } {
+  if (banner === "gem") return { single: RELIC_DRAW.singleCost, ten: RELIC_DRAW.tenCost };
+  if (banner === "stone") return { single: RELIC_STONE_DRAW.singleCost, ten: RELIC_STONE_DRAW.tenCost };
   const single = Math.max(100, Math.round(killGold(Math.max(1, stage), false, false) * 0.7 * 300));
   return { single, ten: single * 9 };
 }
 
-/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 · tier 를 주면 그 등급 뽑기(다른 등급은 0) */
-export function relicDrawRates(state: RelicState, tier?: RelicTier): { id: RelicId; rate: number }[] {
-  const open = RELICS.filter((r) => !relicMaxed(state, r.id) && (!tier || RELIC_TIER[r.id] === tier));
-  return RELICS.map((r) => ({ id: r.id, rate: open.some((o) => o.id === r.id) ? 1 / open.length : 0 }));
+/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 · 다 모은 등급은 남은 등급끼리 비례 */
+export function relicDrawRates(state: RelicState, banner: RelicBanner): { id: RelicId; rate: number }[] {
+  const tierRates = RELIC_BANNER_RATES[banner];
+  const openOf = (t: Tier) => RELICS.filter((r) => r.tier === t && !relicMaxed(state, r.id));
+  const live = (Object.keys(tierRates) as Tier[]).filter((t) => openOf(t).length > 0);
+  const sum = live.reduce((a, t) => a + (tierRates[t] ?? 0), 0);
+  return RELICS.map((r) => {
+    if (!live.includes(r.tier) || relicMaxed(state, r.id) || sum <= 0) return { id: r.id, rate: 0 };
+    return { id: r.id, rate: (tierRates[r.tier] ?? 0) / sum / openOf(r.tier).length };
+  });
 }
 
-export function drawRelicShards(state: RelicState, n: number, rng: () => number = Math.random, tier?: RelicTier): { state: RelicState; got: RelicId[] } {
-  const next: RelicState = { ...state };
+/** 등급별 지금 확률(공시 요약) */
+export function relicBannerTierRates(state: RelicState, banner: RelicBanner): Partial<Record<Tier, number>> {
+  const out: Partial<Record<Tier, number>> = {};
+  for (const x of relicDrawRates(state, banner)) if (x.rate > 0) { const t = relicDef(x.id).tier; out[t] = (out[t] ?? 0) + x.rate; }
+  return out;
+}
+
+export function drawRelicShards(state: RelicState, n: number, rng: () => number = Math.random, banner: RelicBanner = "gem"): { state: RelicState; got: RelicId[] } {
+  let next: RelicState = { ...state };
   const got: RelicId[] = [];
   for (let i = 0; i < n; i++) {
-    const open = RELICS.filter((r) => !relicMaxed(next, r.id) && (!tier || RELIC_TIER[r.id] === tier));
-    if (!open.length) break;
-    const pick = open[Math.min(open.length - 1, Math.floor(rng() * open.length))];
-    next[pick.id] = (next[pick.id] ?? 0) + 1;
-    got.push(pick.id);
+    const rates = relicDrawRates(next, banner).filter((x) => x.rate > 0);
+    if (!rates.length) break;
+    let roll = rng();
+    let pick = rates[rates.length - 1].id;
+    for (const x of rates) { roll -= x.rate; if (roll < 0) { pick = x.id; break; } }
+    next = { ...next, [pick]: (next[pick] ?? 0) + 1 };
+    got.push(pick);
   }
   return { state: next, got };
 }

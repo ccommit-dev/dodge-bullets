@@ -148,3 +148,50 @@
 .pet-product .pet-thumb { flex: 0 0 52px; width: 52px; height: 52px; display: grid; place-items: center; --monster-size: 100%; }
 .pet-product .pet-thumb .titan-monster-art { transform: scaleX(-1); }
 @media (prefers-reduced-motion: reduce) { .titans-hero .hero-pet, .titans-hero .hero-pet.pet-attack { animation: none !important; } }
+
+/* ── 비트 디펜스 시작 화면 (2026-10-28, 사용자: "곡 종류가 모두 나오고 · 난도별 클리어 아이템 · 일별 시도권 UI") ──
+   시도권 줄 · 곡 전부 그리드(한 화면에) · 카드의 난도별 첫 클리어 아이템 칩. BeatGame 메뉴는 어두운 판 위 */
+.beat-ticket-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 6px 0 8px; padding: 8px 12px; border-radius: 14px; background: rgba(255, 248, 230, .95); border: 2px solid #3b2415; color: #3b2415; }
+.beat-ticket-bar b { font-size: 14px; font-weight: 900; }
+.beat-ticket-bar small { font-size: 13px; font-weight: 700; color: #5e4229; }
+.beat-ticket-dots { display: inline-flex; gap: 4px; }
+.beat-ticket-dots i { width: 14px; height: 18px; border-radius: 4px; border: 2px solid #3b2415; background: #e8dcc4; }
+.beat-ticket-dots i.on { background: linear-gradient(180deg, #ffd34d, #f2a516); box-shadow: 0 0 6px rgba(242, 165, 22, .6); }
+.beat-song-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 10px; }
+.beat-song-chip { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; border: 2px solid #3b2415; background: #fff8e6; color: #3b2415; min-width: 0; cursor: pointer; }
+.beat-song-chip img { width: 100%; max-width: 72px; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.beat-song-chip b { font-size: 13px; font-weight: 900; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.beat-song-chip small { font-size: 13px; font-weight: 700; color: #5e4229; white-space: nowrap; }
+.beat-song-clears { display: inline-flex; gap: 3px; }
+.beat-song-clears em { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; font-size: 13px; font-style: normal; font-weight: 900; border: 2px solid #b9a27e; color: #8a7458; }
+.beat-song-clears em.done { border-color: #16a34a; background: #dcfce7; color: #166534; }
+.beat-first-rewards { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.beat-first-rewards em { padding: 1px 7px; border-radius: 999px; font-size: 13px; font-style: normal; font-weight: 800; background: #fff3d6; color: #3b2415; border: 1px solid #c9a86a; }
+.beat-first-rewards em.diff-medium { background: #e0f2fe; border-color: #7dd3fc; }
+.beat-first-rewards em.diff-hard { background: #ffe4e6; border-color: #fb7185; }
+.beat-first-rewards em.done { background: #dcfce7; border-color: #4ade80; color: #166534; }
+.beat-first-reward { margin: 4px 0; padding: 6px 10px; border-radius: 10px; background: #fff3d6; color: #3b2415; font-size: 14px; font-weight: 900; border: 2px solid #f2a516; }
+@media (max-width: 360px) { .beat-song-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 동료 도감 머리 — 지금 뽑기 레벨의 6등급 확률 (2026-10-28) · 아직 없는 동료의 뽑기 확률 칩 */
+.codex-tier-rates { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; margin: 6px 0 0; padding: 0; list-style: none; width: 100%; }
+.codex-tier-rates li { display: grid; justify-items: center; padding: 2px 1px; border-radius: 8px; border: 2px solid rgba(59, 36, 21, .25); background: #fff8e6; }
+.codex-tier-rates li b, .codex-tier-rates li small { font-size: 13px; font-weight: 900; color: #3b2415; white-space: nowrap; }
+.codex-tier-rates li small { font-weight: 700; color: #5e4229; }
+.codex-tier-rates li.rarity-ssr { border-color: #f59e0b; } .codex-tier-rates li.rarity-ur { border-color: #e11d48; } .codex-tier-rates li.rarity-lr { border-color: #0d9488; }
+.ally-draw-rate { display: inline-block; margin: 2px 0; padding: 0 6px; border-radius: 999px; background: #3b2415; color: #fff3d6 !important; font-size: 13px; font-weight: 800; }
+
+/* 확률 공시 — 요약 칸 · 규칙 줄 · 등급별 접은 표 (2026-10-28) */
+.gacha-rates-sheet .rates-sub { display: block; margin: 2px 0 8px; font-size: 13px; font-weight: 700; opacity: .85; }
+.gacha-rates-sheet .rates-tier-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+.gacha-rates-sheet .rates-tier-grid li { display: grid; justify-items: center; gap: 1px; padding: 6px 2px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .18); }
+.gacha-rates-sheet .rates-tier-grid li b { font-size: 13px; font-weight: 900; }
+.gacha-rates-sheet .rates-tier-grid li strong { font-size: 18px; font-weight: 900; }
+.gacha-rates-sheet .rates-tier-grid li small { font-size: 13px; opacity: .85; }
+.gacha-rates-sheet .rates-rules { margin: 0 0 8px; padding: 0 0 0 16px; font-size: 13px; line-height: 1.55; }
+.gacha-rates-sheet .rates-rules b { margin-right: 4px; }
+.gacha-rates-sheet details.rates-tier { margin: 4px 0; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); padding: 4px 8px; }
+.gacha-rates-sheet details.rates-tier summary { cursor: pointer; font-size: 14px; font-weight: 800; }
+.gacha-rates-sheet details.rates-tier table { width: 100%; margin-top: 4px; }
+.gacha-rates-sheet details.rates-tier td { font-size: 13px; padding: 2px 0; }
+.gacha-rates-sheet details.rates-tier td:last-child { text-align: right; }

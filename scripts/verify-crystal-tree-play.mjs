@@ -50,9 +50,9 @@ const rel = await page.evaluate(() => ({
   tiles: Object.fromEntries([...document.querySelectorAll(".relic-tile")].map((t) => [t.dataset.relic, { owned: t.classList.contains("owned"), stars: t.querySelector(".relic-stars")?.textContent, bar: t.querySelector(".relic-bar i")?.style.width }])),
   imgs: [...document.querySelectorAll(".mp-relics img, .mp-crystal-tree img")].map((i) => i.naturalWidth),
 }));
-ok("유물 세 계열 · 불 세트 켜짐(세트 ✔ 화상)", rel.fams.length === 3 && /set-on/.test(rel.fams[0].cls) && /세트 ✔/.test(rel.fams[0].text) && /화상/.test(rel.fams[0].text), rel.fams.map((f) => f.cls).join(" | "));
+ok("유물 여섯 계열(2026-10-28) · 불 세트 켜짐(세트 ✔ 화상)", rel.fams.length === 6 && /set-on/.test(rel.fams[0].cls) && /세트 ✔/.test(rel.fams[0].text) && /화상/.test(rel.fams[0].text), rel.fams.map((f) => f.cls).join(" | "));
 ok("용암 심장 ★★ · 서리 뿔피리 조각 2/3(미보유)", rel.tiles["lava-heart"].stars === "★★" && !rel.tiles["frost-horn"].owned && rel.tiles["frost-horn"].bar.startsWith("66"), JSON.stringify(rel.tiles["frost-horn"]));
-ok("아이콘 16장 모두 로드", rel.imgs.length === 16 && rel.imgs.every((w) => w > 0), rel.imgs.join(","));
+ok("아이콘 43장(유물 36 · 트리 7) 모두 로드", rel.imgs.length === 43 && rel.imgs.every((w) => w > 0), rel.imgs.join(","));
 const lay = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, over: [...document.querySelectorAll(".ct-row, .relic-tile, .relic-family header")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ":" + e.textContent.slice(0, 20)), small: [...document.querySelectorAll(".mp-crystal-tree *, .mp-relics *")].filter((e) => e.childElementCount === 0 && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).map((e) => e.textContent.slice(0, 12)) }));
 ok("계승 칸이 보인다(탭 열림)", await page.evaluate(() => (document.querySelector(".mp-crystal-tree")?.getBoundingClientRect().height ?? 0) > 100));
 ok("390px 가로 넘침 없음 · 칸 넘침 없음 · 13px 미만 글자 없음", lay.sw <= 390 && lay.over.length === 0 && lay.small.length === 0, JSON.stringify(lay));

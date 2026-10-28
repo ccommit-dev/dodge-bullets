@@ -105,21 +105,30 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   const first = r.got[0];
   r = R.grantRelicShards(r.state, 2, () => 0.99);
   ok("첫 조각을 받은 유물을 먼저 ★1 로 채운다", r.got.every((id) => id === first) && R.relicStars(r.state, first) === 1, `${first} ${JSON.stringify(r.state)}`);
-  // 27 조각이면 아홉 개 모두 ★1 (흩어지지 않는다)
+  // 2026-10-28 유물 36종 6등급 · 6계열 — 108 조각이면 서른여섯 개 모두 ★1 (반쯤 모은 것부터라 흩어지지 않는다)
+  ok("유물 36종 · 계열 6 × 등급 6(계열마다 등급 하나씩) · id 겹침 없음", R.RELICS.length === 36 && new Set(R.RELICS.map((r) => r.id)).size === 36 && R.RELIC_FAMILIES.every((f) => ["N", "R", "SR", "SSR", "UR", "LR"].every((t) => R.RELICS.filter((r) => r.family === f && r.tier === t).length === 1)));
+  ok("옛 9종은 효과 그대로(불씨 반지 탭 4% · 용암 심장 대장 5% · 서리 뿔피리 1.5초 · 황금 열매 골드 5%)", R.relicDef("ember-ring").perStar === 0.04 && R.relicDef("lava-heart").perStar === 0.05 && R.relicDef("frost-horn").perStar === 1.5 && R.relicDef("golden-acorn").perStar === 0.05);
+  ok("새 유물은 등급이 높을수록 ★ 하나가 세다(같은 효과 · 일반 < 초월)", R.relicDef("ember-spark").perStar < R.relicDef("sun-core").perStar && R.relicDef("copper-coin").perStar < R.relicDef("treasure-chest").perStar);
   let all = {};
   let seed = 7;
   const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  all = R.grantRelicShards(all, 27, rng).state;
-  ok("조각 27 → 유물 9 개 모두 ★1", R.RELICS.every((x) => R.relicStars(all, x.id) === 1), JSON.stringify(all));
+  // 세트 3개: 불 계열 셋만 ★1
+  const fire3 = { "ember-spark": 3, "ember-ring": 3, "flame-feather": 3 };
+  const e3 = R.relicEffects(fire3);
+  ok("세트: 같은 계열 ★1 셋이면 켜짐(불 → 화상 20%) · 6개 아니면 ×1.5 아님", e3.sets.join() === "fire" && e3.fullSets.length === 0 && e3.burnShare === 0.2);
+  all = R.grantRelicShards(all, 108, rng).state;
+  ok("조각 108 → 유물 36 개 모두 ★1", R.RELICS.every((x) => R.relicStars(all, x.id) === 1), JSON.stringify(Object.values(all).filter((v) => v !== 3)));
   const e = R.relicEffects(all);
-  ok("세트 셋 모두 켜짐", e.sets.length === 3);
-  ok("불 세트: 화상 20%", e.burnShare === 0.2);
-  ok("서리 세트: 대장 시간 +6초 + 뿔피리 1.5", Math.abs(e.bossTimeSec - 7.5) < 1e-9);
-  ok("황금 세트: 골드 ×1.25 · 조각 확률 +4%p", Math.abs(e.goldMul - (1 + 0.09) * 1.25) < 1e-9 && e.dropBonus === 0.04);
+  ok("세트 여섯 모두 켜짐 · 모두 6개라 ×1.5", e.sets.length === 6 && e.fullSets.length === 6);
+  ok("불 세트 ×1.5: 화상 30%", Math.abs(e.burnShare - 0.3) < 1e-9);
+  const timeSum = R.RELICS.filter((r) => r.stat === "bossTimeSec").reduce((a, r) => a + r.perStar, 0);
+  ok("서리 · 대지 세트 ×1.5: 대장 시간 +9초 · +6초 + 유물 시간", Math.abs(e.bossTimeSec - (timeSum + 9 + 6)) < 1e-9, String(e.bossTimeSec));
+  const goldSum = R.RELICS.filter((r) => r.stat === "goldMul").reduce((a, r) => a + r.perStar, 0);
+  ok("황금 세트 ×1.5: 골드 ×1.375 · 조각 확률 +6%p", Math.abs(e.goldMul - (1 + goldSum) * 1.375) < 1e-9 && Math.abs(e.dropBonus - 0.06) < 1e-9);
   const pe = T.permanentEffects({ crystalTree: T.emptyCrystalTree(), relics: all });
-  ok("조각 확률 12% + 4%p", Math.abs(pe.relicChance - 0.16) < 1e-9);
+  ok("조각 확률 12% + 6%p", Math.abs(pe.relicChance - 0.18) < 1e-9);
   let maxed = all;
-  maxed = R.grantRelicShards(maxed, 500, rng).state;
+  maxed = R.grantRelicShards(maxed, 1000, rng).state;
   ok("최대 ★5 · 더 주지 않는다", R.RELICS.every((x) => R.relicStars(maxed, x.id) === 5) && R.grantRelicShards(maxed, 3).got.length === 0);
   const norm = R.normalizeRelics({ "ember-ring": 7.8, bogus: 3, "lava-heart": -2, "lucky-coin": 999 });
   ok("정리: 모르는 id 버림 · 음수 버림 · 상한 15", norm["ember-ring"] === 7 && !("bogus" in norm) && !("lava-heart" in norm) && norm["lucky-coin"] === 15);
@@ -136,7 +145,7 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   ok("비밀 대장은 3(★1 하나)", ST.BRANCHES.filter((b) => b.kind === "secret").every((b) => b.firstReward.relicShards === 3));
   const icons = [...R.RELICS.map((r) => `public/${R.relicIconUrl(r.id)}`), ...T.TREE_LINES.map((l) => `public/titans/relics/tree-${l.id}.png`), "public/titans/relics/shard.png"];
   const missing = icons.filter((f) => !existsSync(f));
-  ok("유물 · 트리 아이콘 17장", missing.length === 0, missing.join(" "));
+  ok("유물 · 트리 아이콘 44장(유물 36 · 트리 7 · 조각)", missing.length === 0, missing.join(" "));
 }
 
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");

@@ -51,6 +51,8 @@ import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
+import { BEAT_DAILY_TICKETS, BEAT_DIFF_LABEL, BEAT_FIRST_CLEAR, beatFirstClaimed, beatRewardText, beatTicketsLeft, claimBeatFirstClear, spendBeatTicket, type BeatClearReward } from "./beat/tickets";
+import type { CharacterProgress } from "./progression/model";
 import type { ShoulderId } from "./progression/model";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { AllyArt } from "./titans/SpriteArt";
@@ -151,6 +153,10 @@ export function BeatGame({
   // 커스텀 상점은 비트 메뉴에서 뺐다 (2026-10-27 사용자) — 장착한 지휘 북 · 구호는 cosmeticsRef 로 연주에 그대로 입힌다(사기는 사냥터 상점 '외형')
   const [gems, setGems] = useState(0);
   const [hubMsg, setHubMsg] = useState("");
+  /** 시도권 · 첫 클리어 표시용 진행 (2026-10-28, beat/tickets.ts) — 메뉴에 돌아올 때마다 다시 읽는다 */
+  const [charProg, setCharProg] = useState<CharacterProgress | null>(null);
+  const [firstReward, setFirstReward] = useState<{ diff: string; reward: BeatClearReward } | null>(null);
+  useEffect(() => { let alive = true; void loadCharacterProgress(userHash).then((p) => { if (alive) setCharProg(p); }); return () => { alive = false; }; }, [userHash, ui]);
   // 곡의 오디오 시계를 판정 기준으로 직접 사용한다. 별도 수동 싱크 UI는 제공하지 않는다.
   const calibrationMs = 0;
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
@@ -610,6 +616,14 @@ export function BeatGame({
                     firstClearDates: { ...current.firstClearDates, beat: beatToday },
                   }));
                 }
+                // 난도별 첫 클리어 아이템 (2026-10-28, beat/tickets.ts BEAT_FIRST_CLEAR) — 곡 × 난도마다 처음 한 번
+                {
+                  let got: BeatClearReward | null = null;
+                  const diff = track.difficulty;
+                  const after = await updateCharacterProgress(userHash, (current) => { const r = claimBeatFirstClear(current, track.id, diff); got = r.reward; return r.next; });
+                  setCharProg(after);
+                  setFirstReward(got ? { diff: BEAT_DIFF_LABEL[diff], reward: got } : null);
+                }
                 const rewardId = `beat:${track.id}:${Date.now()}`;
                 await grantCharacterReward(userHash, rewardId, {
                   exp: PROGRESSION_BALANCE.beat.clearExp * (beatFirst ? 2 : 1),
@@ -688,6 +702,13 @@ export function BeatGame({
     trackEvent("beat_expedition_start", { track: slot.track.id, difficulty: variantOf(slot.track), stage: slot.stageIndex + 1 });
     if (!slot.track || !rpgRef.current) return;
     const useFree = !!opts?.freeRetry && freeRetryAvailable(slot.track.id);
+    // 시도권 (2026-10-28) — 한 판에 1장(무료분 먼저). 같은 곡 즉시 재도전(하루 1회)은 시도권 없이
+    if (!useFree) {
+      let ok = false;
+      const after = await updateCharacterProgress(userHash, (current) => { const n = spendBeatTicket(current); ok = !!n; return n ?? current; });
+      setCharProg(after);
+      if (!ok) { setHubMsg(`오늘 시도권을 다 썼어요 · 내일 ${BEAT_DAILY_TICKETS}장 다시 · 사냥터 상점 '특별'에서 살 수 있어요`); return; }
+    }
     if (useFree) { try { localStorage.setItem(freeRetryKey(slot.track.id), "1"); } catch { /* 저장 불가 */ } }
     const spent = useFree ? rpgRef.current : spendStamina(rpgRef.current, slot.staminaCost);
     if (!spent) {
@@ -810,6 +831,25 @@ export function BeatGame({
             {/* 지갑 줄 — 골드·보석·명성 (2026-10-06, 예전 "골드 n · 명성 n" 한 줄) */}
             <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gold", amount: coins }, { kind: "gem", amount: gems }, { kind: "fame", amount: rpg.fame }]} />
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
+            {/* 시도권 (2026-10-28) — 오늘 무료 n/5 + 산 시도권 */}
+            {charProg && (() => { const t = beatTicketsLeft(charProg); return (
+              <div className="beat-ticket-bar" aria-label={`시도권 ${t.total}장`}>
+                <b>오늘 시도권</b>
+                <span className="beat-ticket-dots">{Array.from({ length: BEAT_DAILY_TICKETS }, (_, i) => <i key={i} className={i < t.free ? "on" : ""} />)}</span>
+                <small>{t.free}/{BEAT_DAILY_TICKETS}{t.bought > 0 ? ` · 산 시도권 ${t.bought}` : ""} · 매일 다시 · 상점 '특별'에서 구매</small>
+              </div>
+            ); })()}
+            {/* 곡 전부 한눈에 (2026-10-28, 사용자: "시작 UI 에 곡 종류가 모두 나오고") — 누르면 그 곡 카드로. 난도 칸은 첫 클리어(✓) */}
+            <div className="beat-song-grid" aria-label={`곡 ${slots.length}개`}>
+              {slots.map((slot) => (
+                <button key={slot.track.id} type="button" className="beat-song-chip" data-track={slot.track.id} onClick={() => document.querySelector(`.schedule-card[data-track="${slot.track.id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })}>
+                  <img src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" aria-hidden="true" />
+                  <b>{slot.title}</b>
+                  <small>Lv.{slot.track.level} · {slot.track.bpm}BPM</small>
+                  <span className="beat-song-clears">{(["easy", "medium", "hard"] as const).map((d) => <em key={d} className={charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "done" : ""}>{d === "easy" ? "E" : d === "medium" ? "N" : "H"}</em>)}</span>
+                </button>
+              ))}
+            </div>
             <div className="schedule-list">
               {slots.map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
@@ -818,6 +858,7 @@ export function BeatGame({
                   <button
                     key={slot.track.id}
                     type="button"
+                    data-track={slot.track.id}
                     className={`schedule-card ${recommended ? "today" : ""} ${
                       done ? "done" : ""
                     }`}
@@ -849,6 +890,8 @@ export function BeatGame({
                       <span className="schedule-title">{slot.title}</span>
                       <span className="schedule-hint">{done ? "오늘 완료" : slot.track.desc}</span>
                       <span className="schedule-cost">견갑 조각 · +{slot.track.reward} 골드</span>
+                      {/* 난도별 첫 클리어 아이템 (2026-10-28) — 받은 것은 ✓ */}
+                      <span className="beat-first-rewards">{(["easy", "medium", "hard"] as const).map((d) => { const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); return <em key={d} className={`diff-${d} ${got ? "done" : ""}`}>{BEAT_DIFF_LABEL[d]} {got ? "✓" : beatRewardText(BEAT_FIRST_CLEAR[d])}</em>; })}</span>
                       {(() => { const b = bestRecord(rpg, slot.track.id, variantOf(slot.track)); return <span className="schedule-best">{b ? `최고 ${b.score.toLocaleString()}점 · 콤보 ${b.combo} · 정확도 ${Math.round(b.accuracy * 100)}%` : "아직 기록 없음 · 첫 도전"}</span>; })()}
                     </span>
                   </button>
@@ -974,6 +1017,7 @@ export function BeatGame({
             <p className="brand">CLEAR</p>
             <h1 className="title">{lessonTitle}</h1>
             <p className="score-line">+{coinGain} 코인{adDouble === "done" ? " (광고 ×2 적용)" : ""}</p>
+            {firstReward && <p className="beat-first-reward">{firstReward.diff} 첫 클리어 보상 — {beatRewardText(firstReward.reward)}</p>}
             {(adDouble === "ad" || adDouble === "free" || adDouble === "busy") && coinGain > 0 && (
               <button type="button" className="cta idle-claim-ad" disabled={adDouble === "busy"} onClick={() => void doubleBeatReward()}>
                 {adDouble === "busy" ? "광고 재생 중…" : adDouble === "free" ? "광고 제거 보유 · 코인 ×2" : "광고 보고 코인 ×2"}

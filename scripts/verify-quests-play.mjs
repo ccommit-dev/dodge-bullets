@@ -20,7 +20,7 @@ const openQuest = async () => { await page.evaluate(() => [...document.querySele
 await seed({ gold: 0, stage: 1, bestStage: 1, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now });
 await openQuest();
 const r0 = await page.evaluate(() => ({ rows: [...document.querySelectorAll(".quest-row")].map((r) => ({ cls: r.className, text: r.textContent })), head: document.querySelector(".quest-head")?.textContent }));
-ok("퀘스트 탭: 8줄 · 첫 줄 '1. 나뭇가지 줍기' Lv.1 · 나머지 잠김", r0.rows.length === 8 && /1. 나뭇가지 줍기/.test(r0.rows[0].text) && /Lv.1/.test(r0.rows[0].text) && r0.rows.slice(1).every((r) => /is-locked/.test(r.cls)), r0.rows[0]?.text);
+ok("퀘스트 탭: 30줄(2026-10-28) · 첫 줄 '1. 나뭇가지 줍기' Lv.1 · 나머지 잠김", r0.rows.length === 30 && /1. 나뭇가지 줍기/.test(r0.rows[0].text) && /Lv.1/.test(r0.rows[0].text) && r0.rows.slice(1).every((r) => /is-locked/.test(r.cls)), r0.rows[0]?.text);
 ok("층 잠금 없음 — 둘째 줄 단추는 '열기 · 값'(1층에서도)", /열기/.test(r0.rows[1].text) && !/도달 시 열림/.test(r0.rows[1].text), r0.rows[1].text);
 const w1 = await page.evaluate(() => document.querySelector(".quest-row .quest-bar > i")?.style.width);
 await sleep(900);
@@ -78,32 +78,35 @@ await page.evaluate(() => document.querySelector(".relic-tab-panel")?.scrollInto
 await page.screenshot({ path: "art-gen/out/relic-tab.png" });
 await page.evaluate(() => document.querySelector(".relic-tab-draw")?.click()); await sleep(600);
 ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!document.querySelector(".relic-draw-page")));
-// ── 4. 상점 유물 뽑기 — 등급 · 재화별 (2026-10-27: 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석) ──
+// ── 4. 상점 유물 뽑기 — 재화별 3종 (2026-10-28 6등급: 골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) ──
 {
-  // 2026-10-27 뽑기 화면 — 등급 탭 3개(일반 골드 · 레어 강화석 · 유니크 보석) · 고른 등급의 진열대(유물 3종) · 1회 / 10회 / 확률
-  const tabText = await page.evaluate(() => [...document.querySelectorAll(".relic-gacha-tiers button")].map((b) => b.dataset.tier + ":" + b.textContent));
+  const tabText = await page.evaluate(() => [...document.querySelectorAll(".relic-gacha-tiers button")].map((b) => b.dataset.banner + ":" + b.textContent));
   const cards = [];
-  for (const t of ["common", "rare", "unique"]) {
-    await page.evaluate((t) => document.querySelector(`.relic-gacha-tiers button[data-tier="${t}"]`)?.click(), t); await sleep(250);
-    cards.push(await page.evaluate(() => ({ tier: document.querySelector(".relic-gacha-hero")?.dataset.tier, text: (document.querySelector(".relic-gacha-hero")?.textContent ?? "") + (document.querySelector(".relic-gacha-buy")?.textContent ?? ""), figs: document.querySelectorAll(".relic-gacha-showcase figure").length, btns: document.querySelectorAll(".relic-gacha-buy button").length })));
+  for (const b of ["gold", "stone", "gem"]) {
+    await page.evaluate((b) => document.querySelector(`.relic-gacha-tiers button[data-banner="${b}"]`)?.click(), b); await sleep(250);
+    cards.push(await page.evaluate(() => ({ banner: document.querySelector(".relic-gacha-hero")?.dataset.banner, text: (document.querySelector(".relic-gacha-hero")?.textContent ?? "") + (document.querySelector(".relic-gacha-buy")?.textContent ?? ""), figs: document.querySelectorAll(".relic-gacha-showcase figure").length, btns: document.querySelectorAll(".relic-gacha-buy button").length, rates: [...document.querySelectorAll(".relic-tier-rates li")].map((li) => li.textContent) })));
   }
-  ok("유물 뽑기 화면: 등급 탭 3개(골드 · 강화석 · 보석) · 탭마다 진열 3종 · 단추 3개 · 유니크 60", tabText.length === 3 && /일반골드/.test(tabText[0]) && /레어강화석/.test(tabText[1]) && /유니크보석/.test(tabText[2]) && cards.every((c, i) => c.tier === ["common", "rare", "unique"][i] && c.figs === 3 && c.btns === 3) && /유니크 유물 뽑기/.test(cards[2].text) && /60/.test(cards[2].text), cards.map((c) => c.text.slice(0, 30)).join(" | "));
+  ok("유물 뽑기 화면: 재화 탭 3개(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 최고 등급 진열 6종 · 단추 3개 · 등급 확률 칩 · 보석 60",
+    tabText.length === 3 && /골드일반 ~ 영웅/.test(tabText[0]) && /강화석희귀 ~ 신화/.test(tabText[1]) && /보석영웅 ~ 초월/.test(tabText[2]) && cards.every((c, i) => c.banner === ["gold", "stone", "gem"][i] && c.figs === 6 && c.btns === 3) && cards[2].rates.length === 4 && /초월7.0%/.test(cards[2].rates.join("|")) && /60/.test(cards[2].text),
+    cards.map((c) => `${c.banner}:${c.figs}·${c.rates.join("/")}`).join(" | "));
   await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
   await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
   const g0 = (await tit()).gold;
   const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
-  const draw = async (tier, n) => { await page.evaluate(({ tier, n }) => { document.querySelector(`.relic-gacha-tiers button[data-tier="${tier}"]`)?.click(); }, { tier, n }); await sleep(250); await page.evaluate(({ n }) => document.querySelector(`.relic-gacha-buy button:nth-child(${n})`)?.click(), { tier, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
-  await draw("common", 1);
+  const draw = async (banner, n) => { await page.evaluate((banner) => { document.querySelector(`.relic-gacha-tiers button[data-banner="${banner}"]`)?.click(); }, banner); await sleep(250); await page.evaluate((n) => document.querySelector(`.relic-gacha-buy button:nth-child(${n})`)?.click(), n); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
+  const total = (pr) => Object.values(pr.relics ?? {}).reduce((a, v) => a + v, 0);
+  await draw("gold", 1);
   let pr = await prog(); const g1 = (await tit()).gold;
-  const common = ["ember-ring", "frost-horn", "lucky-coin"], rare = ["flame-feather", "snow-crystal", "golden-acorn"], unique = ["lava-heart", "ice-lantern", "beaver-crown"];
-  const sum = (ids) => ids.reduce((a, id) => a + (pr.relics[id] ?? 0), 0);
-  ok("일반 1회 → 골드가 줄고 일반 유물 조각 1", g1 < g0 && sum(common) === 1 && sum(rare) + sum(unique) === 0, `골드 ${g0} → ${g1} · ${JSON.stringify(pr.relics)}`);
-  await draw("rare", 1); pr = await prog();
-  ok("레어 1회 → 강화석 −30 · 레어 조각 1", pr.enhancementMaterials === 70 && sum(rare) === 1, `강화석 ${pr.enhancementMaterials} · ${JSON.stringify(pr.relics)}`);
-  await draw("unique", 1); pr = await prog();
-  ok("유니크 1회 → 보석 −60(QA 빌드는 보석 고정 999,999) · 유니크 조각 1", (pr.redGems === 140 || pr.redGems >= 999000) && sum(unique) === 1, `보석 ${pr.redGems} · ${JSON.stringify(pr.relics)}`);
+  ok("골드 1회 → 골드가 줄고 조각 1", g1 < g0 && total(pr) === 1, `골드 ${g0} → ${g1} · ${JSON.stringify(pr.relics)}`);
+  await draw("stone", 1); pr = await prog();
+  ok("강화석 1회 → 강화석 −30 · 조각 2", pr.enhancementMaterials === 70 && total(pr) === 2, `강화석 ${pr.enhancementMaterials} · ${JSON.stringify(pr.relics)}`);
+  await draw("gem", 1); pr = await prog();
+  ok("보석 1회 → 보석 −60(QA 빌드는 보석 고정 999,999) · 조각 3", (pr.redGems === 140 || pr.redGems >= 999000) && total(pr) === 3, `보석 ${pr.redGems} · ${JSON.stringify(pr.relics)}`);
+  await page.evaluate(() => document.querySelector(".relic-gacha-rates")?.click()); await sleep(300);
+  const rateGroups = await page.evaluate(() => [...document.querySelectorAll(".relic-rates-group")].map((g) => g.querySelectorAll("li").length));
+  ok("확률 정보: 등급별 묶음(보석 4등급 × 6종)", rateGroups.length === 4 && rateGroups.every((n) => n === 6), JSON.stringify(rateGroups));
   const lay2 = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, over: [...document.querySelectorAll(".relic-gacha-page, .relic-gacha-page *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== "visible").map((e) => e.className + ":" + e.textContent.slice(0, 16)), small: [...document.querySelectorAll(".relic-gacha-page *")].filter((e) => e.childElementCount === 0 && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).map((e) => e.textContent.slice(0, 12)) }));
   ok("유물 상점 390px 넘침 없음 · 13px 미만 없음", lay2.sw <= 390 && lay2.over.length === 0 && lay2.small.length === 0, JSON.stringify(lay2));
   await page.evaluate(() => document.querySelector(".relic-gacha-page")?.scrollIntoView({ block: "start" })); await sleep(300);
@@ -112,7 +115,7 @@ ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!doc
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(500);
   await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
   const empty = await page.evaluate(() => ({ rows: document.querySelectorAll(".relic-tab-panel .quest-row").length, empty: document.querySelector(".relic-tab-empty")?.textContent ?? "", head: document.querySelector(".relic-tab-head")?.textContent ?? "", small: [...document.querySelectorAll(".relic-tab-empty *")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 13).length }));
-  ok("★1 이 하나도 없으면 사냥터 유물 탭은 빈 칸 안내 · 모으는 중 3종", empty.rows === 0 && /아직 가진 유물이 없어요/.test(empty.empty) && /모으는 중 3종/.test(empty.head) && empty.small === 0, JSON.stringify(empty).slice(0, 160));
+  ok("★1 이 하나도 없으면 사냥터 유물 탭은 빈 칸 안내 · 모으는 중 1~3종(같은 유물에 겹칠 수 있다)", empty.rows === 0 && /아직 가진 유물이 없어요/.test(empty.empty) && /모으는 중 [123]종/.test(empty.head) && empty.small === 0, JSON.stringify(empty).slice(0, 160));
 }
 ok("성장 탭에 '퀘스트' 점(살 수 있음 표시) 동작", await page.evaluate(() => !!document.querySelector(".titans-growth-tabs button")));
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));

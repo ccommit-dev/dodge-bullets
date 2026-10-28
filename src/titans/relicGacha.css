@@ -71,3 +71,32 @@
 .rebalance-modal .rebalance-gold .currency-icon { width: 18px; height: 18px; }
 /* 첫 접속 출석 창(App · exit-modal)보다 위 — 한 번만 뜨는 안내가 출석 창 뒤에 깔리던 것 (2026-10-27 아쉬운 점) */
 .relic-draw-modal.rebalance-modal { z-index: 1000; }
+
+/* 유물 3판 (2026-10-28) — 6등급 표시 · 등급별 확률 묶음. 색은 동료 등급과 같다(summonLevel TIER_COLOR) */
+.relic-tier-chip { display: inline-block; margin-right: 5px; padding: 0 6px; border-radius: 999px; border: 1.5px solid #3b2415; font-style: normal; font-size: 13px; font-weight: 900; line-height: 18px; color: #2b1a0e; vertical-align: 1px; }
+.rarity-n.relic-tier-chip, .relic-rates-group.rarity-n h5 b { background: #cbd5e1; }
+.rarity-r.relic-tier-chip, .relic-rates-group.rarity-r h5 b { background: #7dd3fc; }
+.rarity-sr.relic-tier-chip, .relic-rates-group.rarity-sr h5 b { background: #c4b5fd; }
+.rarity-ssr.relic-tier-chip, .relic-rates-group.rarity-ssr h5 b { background: #fcd34d; }
+.rarity-ur.relic-tier-chip, .relic-rates-group.rarity-ur h5 b { background: #fb7185; }
+.rarity-lr.relic-tier-chip, .relic-rates-group.rarity-lr h5 b { background: #5eead4; }
+.relic-gacha-badge.rarity-ur { background: #fb7185; }
+.relic-gacha-badge.rarity-lr { background: #5eead4; }
+.relic-gacha-badge.rarity-sr { background: #c4b5fd; }
+.relic-gacha-showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 8px; }
+.relic-gacha-showcase img { width: clamp(52px, 15vw, 72px); height: clamp(52px, 15vw, 72px); }
+.relic-gacha-tiers button.banner-gold.on { background: #ffe9a8; }
+.relic-gacha-tiers button.banner-stone.on { background: #bfdbfe; }
+.relic-gacha-tiers button.banner-gem.on { background: #fecdd3; }
+.relic-gacha-page .relic-gacha-hero.banner-stone { background: linear-gradient(180deg, #cfe3ff, #fff8e6); }
+.relic-gacha-page .relic-gacha-hero.banner-gem { background: linear-gradient(180deg, #ffd6de, #fff8e6); box-shadow: 0 0 0 2px rgba(244, 63, 94, .3); }
+.relic-tier-rates { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.relic-tier-rates li { display: grid; justify-items: center; min-width: 58px; padding: 4px 8px; border-radius: 10px; border: 2px solid #3b2415; background: #fff8e6; }
+.relic-tier-rates li b { font-size: 13px; font-weight: 900; color: #3b2415 !important; }
+.relic-tier-rates li small { font-size: 13px; font-weight: 800; color: #6b4e33 !important; }
+.relic-tier-rates li.rarity-n { background: #eef2f7; } .relic-tier-rates li.rarity-r { background: #e0f2fe; } .relic-tier-rates li.rarity-sr { background: #ede9fe; }
+.relic-tier-rates li.rarity-ssr { background: #fef3c7; } .relic-tier-rates li.rarity-ur { background: #ffe4e6; } .relic-tier-rates li.rarity-lr { background: #ccfbf1; }
+.relic-rates-groups { display: grid; gap: 8px; }
+.relic-rates-group h5 { display: flex; justify-content: space-between; align-items: center; margin: 0 0 4px; font-size: 13px; color: #3b2415; }
+.relic-rates-group h5 b { padding: 0 8px; border-radius: 999px; border: 1.5px solid #3b2415; font-size: 13px; font-weight: 900; }
+.relic-rates-group h5 span { font-weight: 900; }

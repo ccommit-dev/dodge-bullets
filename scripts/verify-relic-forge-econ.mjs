@@ -40,23 +40,38 @@ const pct = (a, q) => { const s = [...a].sort((x, y) => x - y); return s[Math.mi
 const RUNS = 4000;
 const tenUnit = R.RELIC_DRAW.tenCost / 10;
 const days = (draws) => (draws * tenUnit) / GEMS_PER_DAY;
-// 등급 뽑기는 그 등급 3종만 · 균등(확률 공시 그대로)
-const tierOk = R.RELIC_TIERS.every((t) => { const rates = R.relicDrawRates({}, t).filter((x) => x.rate > 0); return rates.length === 3 && rates.every((x) => Math.abs(x.rate - 1 / 3) < 1e-9 && R.RELIC_TIER[x.id] === t); });
-let leak = false; { let st = {}; for (let i = 0; i < 200; i++) { const d = R.drawRelicShards(st, 1, rng, "unique"); if (d.got.some((id) => R.RELIC_TIER[id] !== "unique")) leak = true; st = d.state; } }
-ok("등급 뽑기: 그 등급 3종만 · 각 1/3 (보석 뽑기에서 일반 · 레어가 안 나온다)", tierOk && !leak);
+// 재화별 뽑기(2026-10-28 6등급) — 확률 합 1 · 공시한 등급만 · 등급 안 균등 · 다 모은 등급은 남은 등급끼리 비례
+const tierOf = (id) => R.RELICS.find((r) => r.id === id).tier;
+const bannerOk = R.RELIC_BANNERS.every((b) => {
+  const rates = R.relicDrawRates({}, b).filter((x) => x.rate > 0);
+  const sum = rates.reduce((a, x) => a + x.rate, 0);
+  const tiers = Object.keys(R.RELIC_BANNER_RATES[b]);
+  const sameInTier = tiers.every((t) => { const rs = rates.filter((x) => tierOf(x.id) === t).map((x) => x.rate); return rs.length === 6 && rs.every((v) => Math.abs(v - rs[0]) < 1e-12); });
+  return Math.abs(sum - 1) < 1e-9 && rates.every((x) => tiers.includes(tierOf(x.id))) && sameInTier;
+});
+let leak = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gem"); if (d.got.some((id) => ["N", "R"].includes(tierOf(id)))) leak = true; st = d.state; } }
+let leakGold = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gold"); if (d.got.some((id) => ["SSR", "UR", "LR"].includes(tierOf(id)))) leakGold = true; st = d.state; } }
+ok("유물 뽑기 3종: 확률 합 1 · 공시한 등급만 · 등급 안 6종 균등 · 보석에서 일반 · 희귀 없음 · 골드에서 전설 이상 없음", bannerOk && !leak && !leakGold);
+{
+  // 초월(LR)을 다 모으면 보석 뽑기의 남은 등급끼리 비례
+  const allLr = Object.fromEntries(R.RELICS.filter((r) => r.tier === "LR").map((r) => [r.id, 15]));
+  const t = R.relicBannerTierRates(allLr, "gem");
+  ok("다 모은 등급(초월)은 빠지고 남은 등급끼리 비례(영웅 40 · 전설 34 · 신화 19 → 합 1)", !t.LR && Math.abs((t.SR ?? 0) + (t.SSR ?? 0) + (t.UR ?? 0) - 1) < 1e-9 && Math.abs((t.SR ?? 0) / (t.SSR ?? 1) - 40 / 34) < 1e-9, JSON.stringify(t));
+}
 // 기준은 게임 안 숫자 — 상점 "성급 조각 선택팩"(원하는 동료 조각 10개 = 120 보석)으로 동료 첫 승급(★1→★2 조각 20) = 240 보석.
 // 유니크 ★ 하나(조각 3개)는 무엇이 나올지 못 고르니 이보다 싸야 하고, 같은 보석 소비처로서 너무 싸지 않게 그 절반 이상.
 const pack = CAT.GEM_PRODUCTS.find((x) => x.id === "shard-pack");
 const allyStarGems = (pack.gemCost / 10) * A.STAR_SHARD_COST[1];
-const relicStarGems = R.relicTierDrawCost("unique", 1).single * R.RELIC_SHARDS_PER_STAR;
+const relicStarGems = R.relicBannerCost("gem", 1).single * R.RELIC_SHARDS_PER_STAR;
 ok("유니크 ★ 하나(보석)는 고르는 동료 첫 승급(조각팩)보다 싸고 그 절반 이상", relicStarGems < allyStarGems && relicStarGems >= allyStarGems / 2, `유니크 ★ ${relicStarGems} · 동료 ★2 ${allyStarGems} 보석`);
 ok("유니크 한 번은 동료 1회보다 싸다 · 10회는 9회 값", R.RELIC_DRAW.singleCost < G.GACHA.singleCost && R.RELIC_DRAW.tenCost === R.RELIC_DRAW.singleCost * 9, `유니크 ${R.RELIC_DRAW.singleCost} · 10회 ${R.RELIC_DRAW.tenCost} · 동료 ${G.GACHA.singleCost}`);
 // 참고(단언 아님): 보석만으로 유니크 3종 ★1 · 유니크 3종 ★5 — 무과금 하루 약 38.6 보석
 const uniqueOne = [];
-for (let k = 0; k < RUNS; k++) { let st = {}, n = 0; while (n < 500 && !R.RELICS.filter((r) => R.RELIC_TIER[r.id] === "unique").every((r) => R.relicStars(st, r.id) >= 1)) { st = R.drawRelicShards(st, 1, rng, "unique").state; n += 1; } uniqueOne.push(n); }
-const unique5 = 3 * R.RELIC_SHARDS_PER_STAR * R.RELIC_MAX_STAR;
-const relicRow = { uniqueAllOneDraws: mean(uniqueOne).toFixed(1), uniqueAllOneDays: days(mean(uniqueOne)).toFixed(1), uniqueAll5Draws: unique5, uniqueAll5Days: days(unique5).toFixed(0), commonAtStage30: R.relicTierDrawCost("common", 30).single, rare: R.relicTierDrawCost("rare", 1).single };
-console.log("참고 — 보석 뽑기로 유니크 3종 ★1 약", relicRow.uniqueAllOneDays, "일 · 유니크 3종 ★5 약", relicRow.uniqueAll5Days, "일 (무과금 하루 약 38.6 보석)");
+// 참고(단언 아님, 2026-10-28 6등급): 보석 뽑기로 첫 초월 ★1 까지 · 전설 6종 ★1 까지
+for (let k = 0; k < RUNS; k++) { let st = {}, n = 0; while (n < 2000 && !R.RELICS.some((r) => r.tier === "LR" && R.relicStars(st, r.id) >= 1)) { st = R.drawRelicShards(st, 1, rng, "gem").state; n += 1; } uniqueOne.push(n); }
+const ssrAll = []; for (let k = 0; k < 400; k++) { let st = {}, n = 0; while (n < 3000 && !R.RELICS.filter((r) => r.tier === "SSR").every((r) => R.relicStars(st, r.id) >= 1)) { st = R.drawRelicShards(st, 1, rng, "gem").state; n += 1; } ssrAll.push(n); }
+const relicRow = { firstLrDraws: mean(uniqueOne).toFixed(1), firstLrDays: days(mean(uniqueOne)).toFixed(1), ssrAllOneDraws: mean(ssrAll).toFixed(0), ssrAllOneDays: days(mean(ssrAll)).toFixed(0), goldAtStage30: R.relicBannerCost("gold", 30).single, stone: R.relicBannerCost("stone", 1).single };
+console.log("참고 — 보석 뽑기로 첫 초월 ★1 약", relicRow.firstLrDays, "일 · 전설 6종 ★1 약", relicRow.ssrAllOneDays, "일 (무과금 하루 약 38.6 보석)");
 if (PRINT) console.log("relic", JSON.stringify(relicRow));
 
 // ── 강화 위험 ──
