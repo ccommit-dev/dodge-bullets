@@ -844,7 +844,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 번개 강화 삭제(2026-10-28) — 옛 단계에 쓴 골드를 돌려줬다는 걸 한 번 알린다
       if ((loaded.lightningRefund ?? 0) > 0) {
         const g = loaded.lightningRefund ?? 0;
-        window.setTimeout(() => flash(`번개 강화를 없앴어요 · 쓴 골드 ${formatGold(g)} 돌려받음`, 4000), 1200);   // 한 번뿐인 알림이라 4초
+        window.setTimeout(() => flash(`번개 강화를 없앴어요 · 쓴 골드 ${formatGold(g)} 돌려받음`, 4000, true), 1200);   // 한 번뿐인 알림이라 4초
         loaded.lightningRefund = 0;
         void saveTitansSave(userHash, loaded);
       }
@@ -1060,7 +1060,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
   const autoRebirthRef = useRef(autoRebirth);
   autoRebirthRef.current = autoRebirth;
-  const flash = (msg: string, ms = 1400) => {
+  // 한 번뿐인 안내(hold)는 떠 있는 동안 흔한 안내(황금 몬스터 등)가 덮지 못한다 — 번개 환급 안내가 1초 만에 지워졌다(2026-10-28)
+  const toastHoldUntil = useRef(0);
+  const flash = (msg: string, ms = 1400, hold = false) => {
+    if (!hold && Date.now() < toastHoldUntil.current) return;
+    if (hold) toastHoldUntil.current = Date.now() + ms;
     setToast(msg);
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(""), ms);
@@ -1090,8 +1094,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         setCharacter(next);
       })
       .catch(() => undefined)
-      .finally(() => { coresMovingRef.current = false; });
+      // 옮기는 동안 더 쌓였으면(시즌 패스 모두 받기) 다시 읽어 이어 옮긴다
+      .finally(() => { coresMovingRef.current = false; void loadCharacterProgress(userHash).then((p) => { if (p.pendingSkillCores > 0) setCharacter(p); }); });
   }, [ready, character.pendingSkillCores, userHash]);
+  // 다른 화면(이벤트 센터 시즌 패스)이 진행도에 코어를 쌓았다 — 다시 읽으면 위 효과가 사냥터 저장으로 옮긴다
+  useEffect(() => {
+    const onPending = () => void loadCharacterProgress(userHash).then((p) => { if (p.pendingSkillCores > 0) setCharacter(p); });
+    window.addEventListener("dodgebullets:pending-cores", onPending);
+    return () => window.removeEventListener("dodgebullets:pending-cores", onPending);
+  }, [userHash]);
 
   const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number, el?: string) => {
     const id = ++fxId.current;
