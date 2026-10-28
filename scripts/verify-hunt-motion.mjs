@@ -31,7 +31,8 @@ await settled();
 const death = { name: "", minOp: 1, phases: new Set() };
 for (let i = 0; i < 1500; i += 1) {
   const s = await page.evaluate(() => { const f = document.querySelector(".titans-field"); const m = document.querySelector(".titans-monster"); const ph = (f?.className.match(/phase-([\w-]+)/) ?? [])[1]; const cs = m ? getComputedStyle(m) : null; return { ph, name: cs?.animationName ?? "", op: cs ? +cs.opacity : 1 }; });
-  if (/monster-death|stage-clear/.test(s.ph)) { death.phases.add(s.ph); if (s.ph === "monster-death" && !death.name) death.name = s.name; death.minOp = Math.min(death.minOp, s.op); }
+  // 흐려짐은 퇴장 단계까지 이어진다(쓰러짐 0.25초 · STAGE CLEAR 0.28초 뒤)
+  if (/monster-death|stage-clear|stage-exit/.test(s.ph)) { death.phases.add(s.ph); if (s.ph === "monster-death" && !death.name) death.name = s.name; death.minOp = Math.min(death.minOp, s.op); }
   if (death.phases.size && s.ph === "stage-enter") break;
   await sleep(12);
 }
@@ -65,7 +66,7 @@ ok("창: 주인공 한 방 = 앞으로 찌르는 빛줄기(.titans-fx-thrust)", 
 await seed("bow", ["mia"]);
 await settled();
 b = await boxes();
-ok("활: 전장 hero-ranged · 주인공이 몬스터에서 40px 넘게 떨어져 선다", /hero-ranged/.test(b.cls) && !!b.hero && b.monEdge - b.hero.r > 40, `${(b.monEdge - (b.hero?.r ?? 0)).toFixed(0)}px`);
+ok("활: 전장 hero-ranged · 주인공이 몬스터에서 30px 넘게 떨어져 선다(근접은 ±24px)", /hero-ranged/.test(b.cls) && !!b.hero && b.monEdge - b.hero.r > 30, `${(b.monEdge - (b.hero?.r ?? 0)).toFixed(0)}px`);
 ok("활: 주인공 화살이 날아간다(.skill-shot.el-arrow)", await seen(".skill-shot.el-arrow"));
 await page.screenshot({ path: "art-gen/out/hunt-motion-bow.png" });
 

@@ -78,17 +78,18 @@ ok("⑤ 레벨마다 확률 합 100%", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((lv
 const owned = Object.fromEntries(M.HEROES.map((h) => [h.id, 0]));
 const lrPool = G.gachaPool(60, 99, Date.now(), 10);
 const noLrPool = G.gachaPool(1, 1, Date.now(), 1);
-ok("⑤ 시험 풀: 60층 풀엔 초월이 있고 1층 풀엔 없다", lrPool.entries.some((e) => e.rarity === "LR") && !noLrPool.entries.some((e) => e.rarity === "LR"));
+// 2026-10-28 (사용자: "스테이지별 해금 삭제") — 풀은 층과 무관하게 같은 동료(초월 포함). 초반 풀에도 초월이 있다
+ok("⑤ 시험 풀: 1층 · 60층 풀 모두 초월이 있다(같은 동료)", lrPool.entries.some((e) => e.rarity === "LR") && noLrPool.entries.some((e) => e.rarity === "LR") && lrPool.entries.length === noLrPool.entries.length);
 const atLr = G.pullOnce(lrPool, owned, 0, () => 0.999, null, G.GACHA.lrPityLimit - 1);
 ok("⑤ 초월 천장: 199회 누적이면 200회째 초월 확정 · 카운터 0", atLr.result.rarity === "LR" && atLr.lrPity === 0, JSON.stringify({ r: atLr.result.rarity, lp: atLr.lrPity }));
 const miss = G.pullOnce(lrPool, owned, 0, () => 0, null, 10);
 ok("⑤ 초월이 아니면 +1", miss.result.rarity !== "LR" && miss.lrPity === 11);
 const early = G.pullOnce(noLrPool, owned, 0, () => 0.5, null, 10);
-ok("⑤ 초반 지역(초월 없는 풀)도 센다 — 초반에 많이 뽑아도 천장이 버려지지 않는다", early.lrPity === 11);
+ok("⑤ 초반 지역(1층 풀)도 센다", early.result.rarity !== "LR" ? early.lrPity === 11 : early.lrPity === 0);
 const full = G.pullOnce(noLrPool, owned, 0, () => 0.5, null, G.GACHA.lrPityLimit - 1);
-ok("⑤ 초월 없는 풀에서 가득 차면 199 에서 기다린다(초월이 아닌 결과)", full.result.rarity !== "LR" && full.lrPity === G.GACHA.lrPityLimit - 1);
+ok("⑤ 1층 풀에서도 가득 차면(199) 바로 초월 확정 · 0 으로 — 예전엔 초월 있는 지역까지 기다렸다", full.result.rarity === "LR" && full.lrPity === 0);
 const carry = G.pullOnce(lrPool, owned, 0, () => 0, null, full.lrPity);
-ok("⑤ 그 뒤 초월 있는 풀의 첫 소환 = 초월 확정", carry.result.rarity === "LR" && carry.lrPity === 0);
+ok("⑤ 확정 뒤 카운터는 처음부터(다음 소환 +1)", carry.result.rarity !== "LR" && carry.lrPity === 1);
 ok("⑤ 초월 처음 열리는 층 = 23(셀레스)", G.FIRST_LR_STAGE === 23, String(G.FIRST_LR_STAGE));
 let lpSim = 0, got = 0;
 for (let i = 0; i < 20; i += 1) { const t = G.pullTen(lrPool, owned, 0, () => 0, false, null, lpSim); lpSim = t.lrPity; got += t.results.filter((r) => r.rarity === "LR").length; }
