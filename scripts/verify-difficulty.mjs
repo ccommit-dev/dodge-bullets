@@ -96,29 +96,50 @@ for (let i = 0; i < 20; i += 1) { const t = G.pullTen(lrPool, owned, 0, () => 0,
 ok("⑤ 운이 없어도(초월을 안 뽑는 난수) 10연 20번 = 200회째에 초월 정확히 1명", got === 1 && lpSim === 0, `200회 중 초월 ${got}번`);
 ok("⑤ 옛 저장(초월 천장 없음)은 0 으로", P.normalizeCharacterProgress({ ...base }).gachaLrPity === 0 && P.normalizeCharacterProgress({ ...base, gachaLrPity: 9999 }).gachaLrPity === 199);
 
-// ⑥ 아쉬운 점 — 값이 내려간 동료는 다시 레벨을 맞춘다(한 번만). 판 3: 예전 힘에 가장 가까운 레벨(±6%) · 판 1 환급 골드는 거둔다 · 판 2 는 그대로
+// ⑥ 아쉬운 점 — 값이 내려간 동료는 다시 레벨을 맞춘다(한 번만). 판 4 (2026-10-28 사용자 확정 "예전 힘 이상 + 골드 유지"):
+//   예전 힘 이상이 되는 가장 낮은 레벨(한 단계 ×1.125 안) · 판 1 환급 골드는 그대로 · 판 2 는 그대로 · 판 3(가장 가깝게 · 골드 회수) 저장은 올리고 돌려준다
 {
   const pw = (base, lv) => M.heroDps({ baseDps: base }, lv);
-  const cases = [["orion", 30], ["orion", 10], ["storm", 15], ["celes", 20], ["anvil", 25], ["leviathan", 12]].map(([id, L]) => {
-    const h = H(id); const r = M.relevelAlly(M.PRE_REBALANCE_BASE_COST[id], h.baseCost, L, M.PRE_REBALANCE_BASE_DPS[id], h.baseDps);
-    return { id, L, to: r.level, ratio: pw(h.baseDps, r.level) / pw(M.PRE_REBALANCE_BASE_DPS[id], L) };
-  });
-  ok("⑥ 다시 맞춘 레벨은 예전 힘에 가장 가깝다(×0.94~1.07 — 한 단계 ×1.125 의 절반 안)", cases.every((c) => c.ratio >= 0.94 && c.ratio <= 1.07), cases.map((c) => `${c.id} ${c.L}→${c.to} ×${c.ratio.toFixed(2)}`).join(" · "));
+  const NEW = M.HEROES.filter((h) => M.PRE_REBALANCE_BASE_DPS[h.id] !== undefined && M.PRE_REBALANCE_BASE_COST[h.id] > h.baseCost);
+  const ratios = (id) => [10, 20, 30, 40].map((L) => { const h = H(id); const r = M.relevelAlly(M.PRE_REBALANCE_BASE_COST[id], h.baseCost, L, M.PRE_REBALANCE_BASE_DPS[id], h.baseDps); return pw(h.baseDps, r.level) / pw(M.PRE_REBALANCE_BASE_DPS[id], L); });
+  // 힘 기준 레벨만(쓴 골드로 오를 레벨이 더 높으면 그쪽을 주므로 이득은 더 크다 — 같은 값으로 골드 길을 끈다)
+  const floor = (id) => [10, 20, 30, 40].map((L) => { const h = H(id); const r = M.relevelAlly(h.baseCost, h.baseCost, L, M.PRE_REBALANCE_BASE_DPS[id], h.baseDps); return pw(h.baseDps, r.level) / pw(M.PRE_REBALANCE_BASE_DPS[id], L); });
+  const all = NEW.flatMap((h) => ratios(h.id));
+  const floors = NEW.flatMap((h) => floor(h.id));
+  const others = NEW.filter((h) => h.id !== "orion").flatMap((h) => floor(h.id));
+  const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  ok("⑥ 다시 맞춘 레벨은 예전 힘 이상 — 아무도 약해지지 않는다(쓴 골드 길이 더 높으면 그쪽)", all.every((r) => r >= 1), `${NEW.length}명 × Lv.10·20·30·40 최소 ×${Math.min(...all).toFixed(3)} 최대 ×${Math.max(...all).toFixed(3)}`);
+  // 대표 저장(예전 판의 같은 6건) — 힘 기준 레벨의 이득. 마일스톤(Lv.25 ×2 · Lv.50 ×2.5)을 건너는 레벨은 한 단계 넘게 커질 수 있다(더 유리)
+  const CASES = [["orion", 30], ["orion", 10], ["storm", 15], ["celes", 20], ["anvil", 25], ["leviathan", 12]].map(([id, L]) => { const h = H(id); const r = M.relevelAlly(M.PRE_REBALANCE_BASE_COST[id], h.baseCost, L, M.PRE_REBALANCE_BASE_DPS[id], h.baseDps); return { id, L, to: r.level, ratio: pw(h.baseDps, r.level) / pw(M.PRE_REBALANCE_BASE_DPS[id], L) }; });
+  ok("⑥ 힘 기준 레벨은 예전 힘 이상(대표 6건)", CASES.every((c) => c.ratio >= 1) && floors.every((r) => r >= 1), CASES.map((c) => `${c.id} ${c.L}→${c.to} ×${c.ratio.toFixed(2)}`).join(" · "));
+  { const o = CASES.filter((c) => c.id === "orion"), nw = CASES.filter((c) => c.id !== "orion");
+    ok("⑥ 대표 저장의 이득: 오리온 ×1.03 · 새 동료 ×1.05~1.11 (조금 세진다 · 넓게 보면 마일스톤 건너는 레벨은 더 크다)", o.every((c) => Math.abs(c.ratio - 1.03) < 0.01) && nw.every((c) => c.ratio >= 1.05 && c.ratio < 1.115), `오리온 ${o.map((c) => c.ratio.toFixed(3)).join("·")} · 새 동료 ${nw.map((c) => c.ratio.toFixed(3)).join("·")} · Lv.10~40 평균 오리온 ×${avg(floor("orion")).toFixed(2)} 새 동료 ×${avg(others).toFixed(2)}`); }
   const raw = { heroes: { orion: 30, marina: 20, storm: 15, mia: 40 }, gold: 1000, stage: 30, bestStage: 30 };
   const once = M.normalizeTitansSave(raw);
-  ok("⑥ 옛 저장: 오리온 30 → 38 · 스톰 15 → 21 · 마리나 · 미아 그대로 · 골드 그대로(힘 쪽이 커서 환급 없음) · 안내",
-    once.heroes.orion === 38 && once.heroes.storm === 21 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.gold === 1000 && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
+  const geO = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.orion, H("orion").baseCost, 30, M.PRE_REBALANCE_BASE_DPS.orion, H("orion").baseDps).level;
+  const geS = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.storm, H("storm").baseCost, 15, M.PRE_REBALANCE_BASE_DPS.storm, H("storm").baseDps).level;
+  ok("⑥ 옛 저장: 오리온 · 스톰은 예전 힘 이상 레벨 · 마리나 · 미아 그대로 · 골드는 줄지 않는다 · 안내",
+    once.heroes.orion === geO && once.heroes.storm === geS && geO > 30 && geS > 15 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.gold >= 1000 && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
     JSON.stringify({ orion: once.heroes.orion, storm: once.heroes.storm, gold: once.gold }));
   const twice = M.normalizeTitansSave({ ...once, rebalanceNotice: null });
   ok("⑥ 한 번만 — 다시 불러와도 레벨 · 골드가 그대로", twice.heroes.orion === once.heroes.orion && twice.heroes.storm === once.heroes.storm && twice.gold === once.gold && twice.rebalanceNotice === null);
-  // 판 1 저장(골드 기준 · 남은 골드 환급) — 오리온 30 은 35 · 환급 약 4,649만 · 스톰 15 는 18
+  // 판 1 저장(골드 기준 · 남은 골드 환급) — 오리온 30 은 35 · 스톰 15 는 18
   const refundOrion = M.relevelAlly(1_150_000, H("orion").baseCost, 30, 0, 0, false).gold;
   const v1 = M.normalizeTitansSave({ heroes: { orion: 35, storm: 18 }, gold: refundOrion + 500, allyRebalance: 1 });
-  ok("⑥ 판 1 저장(오리온 35 · 스톰 18)은 힘 기준(38 · 21)까지 · 그때 받은 골드는 거둔다(가진 골드까지만)", v1.heroes.orion === 38 && v1.heroes.storm === 21 && v1.gold < 500 && v1.rebalanceNotice?.gold < 0 && v1.allyRebalance === 3, JSON.stringify({ o: v1.heroes.orion, s: v1.heroes.storm, g: v1.gold, n: v1.rebalanceNotice?.gold }));
+  ok("⑥ 판 1 저장(오리온 35 · 스톰 18)은 힘 기준까지 · 그때 받은 골드는 그대로 가진다", v1.heroes.orion === geO && v1.heroes.storm === geS && v1.gold === refundOrion + 500 && !(v1.rebalanceNotice?.gold < 0) && v1.allyRebalance === M.ALLY_REBALANCE_VERSION, JSON.stringify({ o: v1.heroes.orion, s: v1.heroes.storm, g: v1.gold, n: v1.rebalanceNotice?.gold }));
   const v1poor = M.normalizeTitansSave({ heroes: { orion: 35 }, gold: 10, allyRebalance: 1 });
-  ok("⑥ 골드를 이미 썼으면 0 까지만 거둔다(음수 없음)", v1poor.gold === 0 && v1poor.heroes.orion === 38 && v1poor.rebalanceNotice?.gold === -10, JSON.stringify({ g: v1poor.gold, n: v1poor.rebalanceNotice?.gold }));
-  const v2 = M.normalizeTitansSave({ heroes: { orion: 38, storm: 22 }, gold: 7, allyRebalance: 2 });
-  ok("⑥ 판 2 로 이미 올린 저장(스톰 22)은 레벨을 깎지 않는다", v2.heroes.storm === 22 && v2.heroes.orion === 38 && v2.gold === 7 && !v2.rebalanceNotice && v2.allyRebalance === 3);
+  ok("⑥ 골드를 이미 썼어도 거두지 않는다", v1poor.gold === 10 && v1poor.heroes.orion === geO, JSON.stringify({ g: v1poor.gold }));
+  const v2 = M.normalizeTitansSave({ heroes: { orion: geO, storm: 22 }, gold: 7, allyRebalance: 2 });
+  ok("⑥ 판 2 로 이미 올린 저장(스톰 22)은 레벨을 깎지 않는다", v2.heroes.storm === 22 && v2.heroes.orion === geO && v2.gold === 7 && !v2.rebalanceNotice && v2.allyRebalance === M.ALLY_REBALANCE_VERSION);
+  // 판 3 저장 — 예전 힘에 '가장 가까운' 레벨(약해진 동료가 있다) · 판 1 출신은 골드를 거뒀다 → 예전 힘 이상으로 올리고 그 골드를 돌려준다
+  const closeO = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.orion, H("orion").baseCost, 30, M.PRE_REBALANCE_BASE_DPS.orion, H("orion").baseDps, true, true).level;
+  const closeC = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.celes, H("celes").baseCost, 20, M.PRE_REBALANCE_BASE_DPS.celes, H("celes").baseDps, true, true).level;
+  const geC = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.celes, H("celes").baseCost, 20, M.PRE_REBALANCE_BASE_DPS.celes, H("celes").baseDps).level;
+  const v3 = M.normalizeTitansSave({ heroes: { orion: closeO, celes: closeC }, gold: 0, allyRebalance: 3 });
+  const v3o = pw(H("orion").baseDps, v3.heroes.orion) / pw(M.PRE_REBALANCE_BASE_DPS.orion, 30), v3c = pw(H("celes").baseDps, v3.heroes.celes) / pw(M.PRE_REBALANCE_BASE_DPS.celes, 20);
+  ok("⑥ 판 3 저장(셀레스 ×0.94 처럼 약해진 동료)은 예전 힘 이상으로 다시 올린다", closeC < geC && v3.heroes.celes >= geC && v3o >= 1 && v3c >= 1 && v3.allyRebalance === M.ALLY_REBALANCE_VERSION, JSON.stringify({ orion: `${closeO}→${v3.heroes.orion} ×${v3o.toFixed(2)}`, celes: `${closeC}→${v3.heroes.celes} ×${v3c.toFixed(2)}` }));
+  const v1to3 = M.normalizeTitansSave({ heroes: { orion: closeO }, gold: 0, allyRebalance: 3 });
+  ok("⑥ 판 3 이 거뒀을 수 있는 판 1 환급 골드는 돌려준다", v1to3.gold > 0 && v1to3.rebalanceNotice?.gold === v1to3.gold, JSON.stringify({ g: v1to3.gold, refundOrion }));
   ok("⑥ 새 계정 · 환생 저장은 다시 계산하지 않는다", M.defaultTitansSave().allyRebalance === M.ALLY_REBALANCE_VERSION && M.normalizeTitansSave({ ...M.defaultTitansSave(), heroes: { orion: 30 } }).heroes.orion === 30);
   const lv1 = M.normalizeTitansSave({ heroes: { orion: 1 }, gold: 0 });
   ok("⑥ Lv.1(뽑기로 받은 것)은 건드리지 않는다", lv1.heroes.orion === 1 && lv1.gold === 0 && !lv1.rebalanceNotice);

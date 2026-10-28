@@ -1339,6 +1339,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 타격 표현 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") —
       // 때린 쪽 속성: 동료 = ALLY_ELEMENT, 스킬 = 스킬 원소, 화상 = 불, 주인공 · 탭 = 칼날
       const hitEl = opts?.skill
+        // 스킬은 이름별 피해 · 횟수도 — 무기 간 스킬 배율을 한 방 단위로 잰다(운석 쿨 38초 > 측정 창이라 합계는 위상에 흔들린다)
+        if (k === "skill") { const sk = `${kk}:${opts?.label ?? "?"}`; devDmgRef.current[sk] = (devDmgRef.current[sk] ?? 0) + dealt; devDmgRef.current[`#${sk}`] = (devDmgRef.current[`#${sk}`] ?? 0) + 1; }
         ? (SKILLS.find((s) => s.id === opts.skill)?.element ?? "blade")
         : opts?.label === "화상"
           ? "fire"
@@ -4862,7 +4864,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <div className="relic-draw-modal rebalance-modal" role="dialog" aria-modal="true" aria-label="동료 밸런스 조정 안내" onClick={() => setRebalanceInfo(null)}>
           <div className="relic-draw-card" onClick={(e) => e.stopPropagation()}>
             <b>동료 밸런스 조정</b>
-            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 키워 둔 동료는 예전 힘과 같아지도록 레벨을 올려 드렸어요.</p>
+            <p className="rebalance-lead">오리온 · 새 동료의 힘과 강화 비용을 함께 낮췄어요. 키워 둔 동료는 예전 힘 이상이 되도록 레벨을 올려 드렸어요.</p>
             <ul className="rebalance-list">
               {rebalanceInfo.changes.slice(0, 6).map((c) => (
                 <li key={c.id}><span>{HEROES.find((h) => h.id === c.id)?.name ?? c.id}</span><b>Lv.{c.from} → Lv.{c.to}</b></li>
@@ -4870,7 +4872,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               {rebalanceInfo.changes.length > 6 && <li><span>외 {rebalanceInfo.changes.length - 6}명</span><b /></li>}
             </ul>
             {rebalanceInfo.gold > 0 && <p className="rebalance-gold"><CurrencyIcon kind="gold" /> 남은 골드 {formatGold(rebalanceInfo.gold)} 돌려받음</p>}
-            {rebalanceInfo.gold < 0 && <p className="rebalance-gold rebalance-gold-back"><CurrencyIcon kind="gold" /> 1차 조정 때 돌려받은 골드 {formatGold(-rebalanceInfo.gold)}는 이번 레벨에 포함했어요</p>}
             <button type="button" className="cta" onClick={() => setRebalanceInfo(null)}>확인</button>
           </div>
         </div>,
