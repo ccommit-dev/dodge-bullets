@@ -50,7 +50,7 @@ import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMar
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_LR_STAGE, FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
-import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
+import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SKILL_TIER, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinIcon, weaponSkinStyle } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -356,10 +356,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [rebalanceInfo, setRebalanceInfo] = useState<NonNullable<TitansSave["rebalanceNotice"]> | null>(null);
   /** 상점 유물 뽑기 — 고른 등급 탭 */
   const [relicShopTier, setRelicShopTier] = useState<RelicTier>("common");
-  const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot>("starter");
+  const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot | null>(null);   // 조합 칸을 누른 슬롯(카드 표시) — 처음엔 없음
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
   const [frameIdx, setFrameIdx] = useState(0);
   const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
+  /** 시전 등급 연출 (2026-10-28) — 스킬 등급(SKILL_TIER)이 높을수록 전장 전체 빛 · 고리가 커진다(hunt-motion.css .skill-tier-fx) */
+  const [tierFx, setTierFx] = useState<{ tier: AllyRarity; seq: number } | null>(null);
   const [allyPulse, setAllyPulse] = useState<Record<string, number>>({});
   // 몬스터 한 번 덤빔 = 동료 한 명 피격 (2026-10-19) — 예전엔 한 카운터를 전원이 받아 덤빌 때마다 파티가 같이 움찔하고 공격이 끊겼다
   const [allyHit, setAllyHit] = useState<Record<string, number>>({});
@@ -2434,7 +2436,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     );
     setCharacter(next);
     setRedGems(next.redGems);
-    flash(`${def.name} 장착 — 북이 물들었다`);
+    flash(`${def.name} 장착 — 무기가 물들었다`);
   };
 
   const toggleWeaponSkin = async (skinId: string) => {
@@ -2604,6 +2606,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const now = performance.now();
     setSkillVisual(id);
     window.setTimeout(() => setSkillVisual((active) => (active === id ? null : active)), 820);
+    { const seq = now; setTierFx({ tier: SKILL_TIER[id], seq }); window.setTimeout(() => setTierFx((cur) => (cur?.seq === seq ? null : cur)), 1100); }
     const visualKind: FxBurst["kind"] = def.slot === "starter" ? "strike" : def.slot === "finisher" ? "warcry" : def.element === "fire" ? "clone" : "crit";
     // 효과 숫자는 titans/skills.ts 한 곳에서 온다. 레벨 = ×(1+0.05/Lv), 힐러 축복 = 쿨 −10%/명
     const level = Math.max(1, save.skillInventory.levels[id] ?? 1);
@@ -3197,6 +3200,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         }}
       >
         <div className="titans-background" aria-hidden="true" />
+        {tierFx && !lowFxRef.current && <i key={tierFx.seq} className={`skill-tier-fx tier-${tierFx.tier}`} data-tier={tierFx.tier} aria-hidden="true"><b /></i>}
         {/* 땅 띠 (2026-10-12, 사용자: "땅을 걷는 듯한 맵"): 배경은 위 지평선 띠, 아래는 평평한 흙 — 캐릭터가 이 위에 선다 */}
         <div className="titans-ground" aria-hidden="true" />
         {/* 2026-10-07 사용자: "스테이지 줄·자동 사냥 문구를 작게 해 맵 HP바 아래로, 맵은 더 크게" — 위에 있던 스테이지 줄·방치 카드를 전장 안 한 줄로 */}
@@ -3499,7 +3503,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <button
                 key={sk.id}
                 type="button"
-                className={`titans-skill ${ready ? "ready" : ""} ${skillVisual === sk.id ? "casting" : ""}`}
+                className={`titans-skill tier-${SKILL_TIER[sk.id]} ${ready ? "ready" : ""} ${skillVisual === sk.id ? "casting" : ""}`}
                 disabled={!learned || !equipped || cd > 0 || sk.slot === "passive"}
                 onClick={() => castSkill(sk.id)}
                 title={`${sk.name} · ${sk.desc}`}
@@ -4206,7 +4210,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 const eq = save.skillInventory.equipped[slot];
                 const locked = !qaOpen && slotLevels(character)[slot] <= 0;
                 return (
-                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)} title={SLOT_LABEL[slot]}>
+                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""} ${skillSlotTab === slot ? "focus" : ""}`} onClick={() => { setSkillSlotTab(slot); window.requestAnimationFrame(() => document.querySelector(`.skill-learn-card[data-slot="${slot}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }} title={SLOT_LABEL[slot]}>
                     {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? "🔒" : "+"}</span>}
                     <small>{slot === "passive" ? "상시" : `${i + 1}`}</small>
                   </button>
@@ -4223,23 +4227,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
           </article>
         )}
-        {/* 스킬 정리: 슬롯 탭(5) × 4종. 카드에 실제 효과 수치·쿨·지속·다음 레벨 효과를 표기해 비교 가능하게 */}
-        {tab === "skills" && (
-          <nav className="skill-slot-tabs" aria-label="스킬 슬롯">
-            {SLOT_ORDER.map((slot) => {
-              const eq = save.skillInventory.equipped[slot];
-              const locked = !qaOpen && slotLevels(character)[slot] <= 0;
-              return (
-                <button key={slot} type="button" className={`${skillSlotTab === slot ? "on" : ""} ${locked ? "locked" : ""}`} onClick={() => setSkillSlotTab(slot)}>
-                  <b>{slot === "passive" ? "" : `${SLOT_ORDER.indexOf(slot) + 1} · `}{SLOT_LABEL[slot]}</b>
-                  <small>{locked ? "잠김" : eq ? SKILLS.find((s) => s.id === eq)?.name : "비어 있음"}</small>
-                </button>
-              );
-            })}
-          </nav>
-        )}
+        {/* 전체 스킬 — 등급 묶음(일반 → 초월, 2026-10-28 사용자: "복잡한 탭들 모두 삭제 · 전체 스킬 등급별"). 슬롯(시동기 · 연계 · 마무리 · 패시브)은 카드의 칩으로.
+            예전 슬롯 탭 5개는 한 번에 한 슬롯(3장)만 보여 줘서 무엇이 있는지 알려면 다섯 번 눌러야 했다. 조합 칸을 누르면 그 슬롯 카드로 내려가 표시(slot-focus) */}
         {tab === "skills" &&
-          SKILLS.filter((sk) => sk.slot === skillSlotTab).map((sk) => {
+          TIERS.flatMap((tierOf) => {
+            const inTier = SKILLS.filter((sk) => SKILL_TIER[sk.id] === tierOf).sort((x, y) => SLOT_ORDER.indexOf(x.slot) - SLOT_ORDER.indexOf(y.slot));
+            if (!inTier.length) return [];
+            return [
+              <h3 key={`tier-${tierOf}`} className={`skill-tier-head tier-${tierOf}`} data-tier={tierOf}><b>{TIER_LABEL[tierOf]}</b><small>{inTier.length}종</small></h3>,
+              ...inTier.map((sk) => {
             const learned = save.skillInventory.learned.includes(sk.id);
             const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
             const level = save.skillInventory.levels[sk.id];
@@ -4250,11 +4246,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const slotLevel = slotLevels(character)[sk.slot];
             const slotShut = slotLevel <= 0 && !qaOpen;
             const toNext = masteryToNextSlotLevel(mastery);
-            return <article key={sk.id} className={`titans-card skill-learn-card element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
+            const tier = SKILL_TIER[sk.id];
+            return <article key={sk.id} data-slot={sk.slot} data-tier={tier} className={`titans-card skill-learn-card tier-${tier} ${skillSlotTab === sk.slot ? "slot-focus" : ""} element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
               <SkillIcon id={sk.id} />
               <div>
                 <strong>
-                  {sk.name} <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em>
+                  {sk.name} <em className={`skill-tier-tag tier-${tier}`}>{TIER_LABEL[tier]}</em> <em className="skill-slot-tag">{SLOT_LABEL[sk.slot]}</em> <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em>
                   {learned && <em className="skill-level-tag">Lv.{level}/{sk.maxLevel}</em>}
                   {equipped && <em className="skill-equipped-tag">장착</em>}
                 </strong>
@@ -4274,6 +4271,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 {learned && <button type="button" className="skill-level-button" disabled={level >= sk.maxLevel || save.gold < upgradeCost} onClick={() => upgradeSkill(sk.id)}>{level >= sk.maxLevel ? "MAX" : `${formatGold(upgradeCost)}G 강화`}</button>}
               </div>
             </article>
+          }),
+            ];
           })}
         {tab === "premium" && (
           <>

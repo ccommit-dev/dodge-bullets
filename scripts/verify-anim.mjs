@@ -121,7 +121,7 @@ ok("C 시동기 컷인(검 궤적) + 화상 불꽃 레이어", /cutin-starter/.t
 await cast("꼬리 치기");
 const c2 = await page.evaluate(() => ({ cutin: document.querySelector(".skill-cutin")?.className ?? "", aura: !!document.querySelector(".titans-hero.hero-crit-aura") }));
 ok("C 연계 컷인(마법진) + 영웅 치명 오라", /cutin-linkA/.test(c2.cutin) && c2.aura, JSON.stringify(c2));
-await cast("번개 합주");
+await cast("번개 결속");   // 2026-10-28 이름 바뀜(옛 번개 합주)
 const c3 = await page.evaluate(() => ({ inspired: !!document.querySelector(".titans-allies.party-inspired"), ring: getComputedStyle(document.querySelector(".titans-allies.party-inspired .titan-ally-art") ?? document.body, "::after").content }));
 ok("C 고무 버프 → 동료 발밑 금색 링", c3.inspired && c3.ring !== "none", JSON.stringify(c3));
 await cast("도토리 유성우");

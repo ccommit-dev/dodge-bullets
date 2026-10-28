@@ -78,3 +78,53 @@
 .titans-fx-slash.el-hero { scale: 1.35; z-index: 12; }   /* 주인공 검 베기 — 몬스터 몸 위에 크게 */
 /* 원거리 동료가 앞으로 나온 만큼 탄 빛줄기를 짧게 — 그대로면 전장 오른쪽 밖으로 40~49px 나갔다(verify-anim-clip) */
 .titans-field .ally-attack-fx.ranged { width: calc(min(48vw, 360px) - var(--ranged-advance, 0px)); }
+
+/* ── 스킬 등급 (2026-10-28, 사용자: "스킬 탭 복잡한 탭 삭제 · 전체 스킬 등급별 설계 · 애니메이션 이펙트") ──
+   색은 동료 6등급과 같다: 일반 회색 · 희귀 하늘 · 영웅 보라 · 전설 금 · 신화 진홍 · 초월 청록(무지개). titans/skills.ts SKILL_TIER */
+.skill-tier-head { display: flex; align-items: baseline; gap: 8px; margin: 12px 2px 2px; padding: 4px 12px; border-radius: 999px; border: 2px solid #3b2415; background: #fff8e6; font-size: 15px; color: #3b2415; }
+.skill-tier-head b { font-weight: 900; }
+.skill-tier-head small { font-size: 13px; font-weight: 800; color: #5e4229; }
+.skill-tier-head.tier-N { border-color: #94a3b8; }
+.skill-tier-head.tier-R { border-color: #38bdf8; background: #eaf7ff; }
+.skill-tier-head.tier-SR { border-color: #a855f7; background: #f6eeff; }
+.skill-tier-head.tier-SSR { border-color: #f59e0b; background: #fff7d1; }
+.skill-tier-head.tier-UR { border-color: #e11d48; background: #fff1f2; }
+.skill-tier-head.tier-LR { border-color: #0d9488; background: linear-gradient(90deg, #ccfbf1, #ede9fe, #fef9c3, #dcfce7); }
+.skill-tier-tag, .skill-slot-tag { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 13px; font-style: normal; font-weight: 900; line-height: 1.5; vertical-align: 1px; }
+.skill-slot-tag { background: #3b2415; color: #fff3d6; }
+.skill-tier-tag.tier-N { background: #e2e8f0; color: #334155; }
+.skill-tier-tag.tier-R { background: #e0f2fe; color: #075985; }
+.skill-tier-tag.tier-SR { background: #f3e8ff; color: #6b21a8; }
+.skill-tier-tag.tier-SSR { background: #fef3c7; color: #92400e; }
+.skill-tier-tag.tier-UR { background: #ffe4e6; color: #9f1239; }
+.skill-tier-tag.tier-LR { background: linear-gradient(90deg, #ccfbf1, #ede9fe, #fef9c3); color: #115e59; }
+.titans-card.skill-learn-card.tier-SR { box-shadow: inset 0 0 0 2px #c084fc; }
+.titans-card.skill-learn-card.tier-SSR { box-shadow: inset 0 0 0 2px #f59e0b, 0 0 10px rgba(245, 158, 11, .35); }
+.titans-card.skill-learn-card.tier-UR { box-shadow: inset 0 0 0 2px #fb7185, 0 0 14px rgba(244, 63, 94, .45); }
+.titans-card.skill-learn-card.tier-LR { box-shadow: inset 0 0 0 2px #5eead4, 0 0 18px rgba(167, 139, 250, .55); }
+.titans-card.skill-learn-card.tier-LR .skill-icon, .titans-card.skill-learn-card.tier-UR .skill-icon { animation: skill-tier-icon-glow 1.6s ease-in-out infinite alternate; }
+@keyframes skill-tier-icon-glow { from { filter: drop-shadow(0 0 2px rgba(251, 113, 133, .5)); } to { filter: drop-shadow(0 0 8px rgba(251, 191, 36, .95)); } }
+.titans-card.skill-learn-card.slot-focus { outline: 3px dashed #3b2415; outline-offset: 2px; }
+.hero-skill-combo .combo-step.focus { outline: 3px solid #ffd34d; outline-offset: 1px; }
+/* 전투 아래 스킬 단추 — 등급 고리 */
+.titans-skill-dock .titans-skill.tier-SSR { box-shadow: 0 0 0 2px #f59e0b, 0 0 8px rgba(245, 158, 11, .6); }
+.titans-skill-dock .titans-skill.tier-UR { box-shadow: 0 0 0 2px #fb7185, 0 0 10px rgba(244, 63, 94, .7); }
+.titans-skill-dock .titans-skill.tier-LR { box-shadow: 0 0 0 2px #5eead4, 0 0 12px rgba(167, 139, 250, .8); animation: tier-lr-spin 3s linear infinite; }
+
+/* 시전 등급 연출 — 전장 위 한 번(.skill-tier-fx, TitansGame tierFx · 1.1초). 일반 작은 고리 → 초월 무지개 빛기둥 · 화면 번쩍 */
+.titans-field .skill-tier-fx { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+.titans-field .skill-tier-fx::before { content: ""; position: absolute; left: 50%; top: 55%; width: 40%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%) scale(.2); border: 3px solid rgba(226, 232, 240, .9); animation: skill-tier-ring .6s ease-out forwards; }
+.titans-field .skill-tier-fx.tier-R::before { border-color: rgba(56, 189, 248, .95); box-shadow: 0 0 14px rgba(56, 189, 248, .7); }
+.titans-field .skill-tier-fx.tier-SR::before { width: 55%; border: 4px double rgba(168, 85, 247, .95); box-shadow: 0 0 20px rgba(168, 85, 247, .75); }
+.titans-field .skill-tier-fx.tier-SSR::before { width: 70%; border: 5px solid rgba(251, 191, 36, .95); box-shadow: 0 0 26px rgba(251, 191, 36, .85), inset 0 0 22px rgba(251, 191, 36, .6); animation-duration: .75s; }
+.titans-field .skill-tier-fx.tier-UR::before { width: 90%; border: 6px solid rgba(244, 63, 94, .95); box-shadow: 0 0 34px rgba(244, 63, 94, .9), inset 0 0 30px rgba(251, 191, 36, .7); animation-duration: .85s; }
+.titans-field .skill-tier-fx.tier-LR::before { width: 110%; border: 7px solid transparent; background: conic-gradient(from 0deg, #5eead4, #a78bfa, #f0abfc, #fde047, #4ade80, #5eead4) border-box; -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 80%); mask: radial-gradient(closest-side, transparent 78%, #000 80%); animation: skill-tier-ring 1s ease-out forwards, tier-lr-spin 1s linear; }
+@keyframes skill-tier-ring { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.25); opacity: 0; } }
+/* 전설 이상 — 빛줄기 · 화면 번쩍 */
+.titans-field .skill-tier-fx > b { position: absolute; inset: 0; opacity: 0; }
+.titans-field .skill-tier-fx:is(.tier-SSR, .tier-UR, .tier-LR) > b { background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255, 236, 160, .38) 0 6deg, transparent 6deg 22deg); animation: skill-tier-rays .8s ease-out forwards; }
+.titans-field .skill-tier-fx.tier-UR > b { background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255, 170, 170, .42) 0 7deg, transparent 7deg 20deg); }
+.titans-field .skill-tier-fx.tier-LR > b { background: radial-gradient(circle at 50% 55%, rgba(255, 255, 255, .75), transparent 45%), conic-gradient(from 0deg at 50% 55%, rgba(94, 234, 212, .45), rgba(167, 139, 250, .45), rgba(240, 171, 252, .45), rgba(253, 224, 71, .45), rgba(74, 222, 128, .45), rgba(94, 234, 212, .45)); animation: skill-tier-flash 1s ease-out forwards; }
+@keyframes skill-tier-rays { 0% { opacity: 0; transform: rotate(-8deg) scale(.9); } 30% { opacity: 1; } 100% { opacity: 0; transform: rotate(10deg) scale(1.15); } }
+@keyframes skill-tier-flash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .titans-field .skill-tier-fx { display: none; } .titans-skill-dock .titans-skill.tier-LR, .titans-card.skill-learn-card .skill-icon { animation: none !important; } }

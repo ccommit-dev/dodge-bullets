@@ -16,7 +16,8 @@ const state = async () => {
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("모험"))?.click()); await sleep(700);
   const hub = await page.evaluate(() => ({ cards: document.querySelectorAll(".hub-card").length, locked: document.querySelectorAll(".hub-card.tab-locked").length }));
   await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click()); await sleep(700);
-  const slots = await page.evaluate(() => ({ tabs: document.querySelectorAll(".skill-slot-tabs button").length, locked: document.querySelectorAll(".skill-slot-tabs button.locked").length }));
+  // 2026-10-28 슬롯 탭을 걷었다 — 같은 잠금 표시는 스킬 조합 칸(.combo-step.locked)에 있다
+  const slots = await page.evaluate(() => ({ tabs: document.querySelectorAll(".hero-skill-combo .combo-step").length, locked: document.querySelectorAll(".hero-skill-combo .combo-step.locked").length }));
   const qa = await page.evaluate(() => localStorage.getItem("dodgebullets:qa-mode"));
   // 성문 방어 정비 — 원거리 무기(지팡이 S2) · 스킬(계정 Lv) 잠금. 성문 방어 자체는 온보딩 1단계라 늘 열려 있다
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("모험"))?.click()); await sleep(500);

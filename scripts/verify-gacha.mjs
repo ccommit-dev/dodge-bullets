@@ -119,34 +119,34 @@ r = await page.evaluate(() => document.querySelector(".titans-toast")?.textConte
 p = await prog();
 ok("편성 게이트: 개척 상한 밖 엠버 출전 거부 + 안내", gateClicked && /개척/.test(r) && !p.partyIds.includes("ember"), r);
 
-// ── 2. 스킬 탭: 슬롯 탭 · 효과 수치 · 프리셋 · 시전 버프 칩 ──
+// ── 2. 스킬 탭: 등급 묶음(슬롯 탭 없음, 2026-10-28) · 효과 수치 · 프리셋 · 시전 버프 칩 ──
 await clickText(".titans-tabs button", "스킬");
 await sleep(600);
 r = await page.evaluate(() => ({
-  slotTabs: [...document.querySelectorAll(".skill-slot-tabs button b")].map((b) => b.textContent),
+  slotTabs: document.querySelectorAll(".skill-slot-tabs button").length,
+  heads: [...document.querySelectorAll(".skill-tier-head b")].map((b) => b.textContent),
   cards: document.querySelectorAll(".skill-learn-card").length,
-  effects: [...document.querySelectorAll(".skill-effect")].map((e) => e.textContent),
+  starters: document.querySelectorAll(".skill-learn-card[data-slot=starter]").length,
+  effects: [...document.querySelectorAll(".skill-learn-card[data-slot=starter] .skill-effect")].map((e) => e.textContent),
   presets: [...document.querySelectorAll(".preset-row button b")].map((b) => b.textContent),
 }));
-ok("슬롯 탭 5개 · 시동기 탭에 카드 3장 (기본·화상·빙결)", r.slotTabs.length === 5 && r.cards === 3, `${r.slotTabs.join("/")} cards=${r.cards}`);
+ok("슬롯 탭 없음 · 등급 묶음 6개(일반 → 초월) · 전체 카드 12장 · 시동기 3장(기본·화상·빙결)", r.slotTabs === 0 && r.heads.join() === "일반,희귀,영웅,전설,신화,초월" && r.cards === 12 && r.starters === 3, `${r.heads.join("/")} cards=${r.cards} starters=${r.starters}`);
 ok("카드에 효과 수치(탭 ×N · 쿨)", r.effects.every((e) => /탭 ×\d+/.test(e) && /쿨 \d+초/.test(e)), r.effects.join(" | "));
 ok("프리셋 3종 (균형형·탭 폭발형·원정대형)", r.presets.join() === "균형형,탭 폭발형,원정대형", r.presets.join());
-await clickText(".skill-slot-tabs button", "패시브");
-await sleep(300);
-r = await page.evaluate(() => [...document.querySelectorAll(".skill-effect")].map((e) => e.textContent));
+r = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card[data-slot=passive] .skill-effect")].map((e) => e.textContent));
 ok("패시브 3종 효과 수치 표기", r.length === 3 && r.some((e) => /탭 피해 \+/.test(e)) && r.some((e) => /보스 제한시간 \+/.test(e)), r.join(" | "));
 // 패시브 학습(단단한 앞니) → 학습 후 장착 상태
 await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
 await sleep(500);
 t = await titans();
 ok("패시브 학습 → 장착 (SP·코어 차감)", t.skillInventory.learned.includes("steel") && t.skillInventory.equipped.passive === "steel");
-// 전투 화면에서 꼬리 치기 박자(crit) 시전 → 버프 칩 "치명 +45%"
+// 전투 화면에서 급소 노리기(crit, 옛 꼬리 치기 박자) 시전 → 버프 칩 "치명 +45%"
 await clickText(".titans-tabs button", "전장");
 await sleep(400);
-await page.evaluate(() => { [...document.querySelectorAll(".titans-skill-dock .titans-skill")].find((b) => b.querySelector(".skill-icon-crit") || /꼬리 치기/.test(b.textContent ?? "") || b.getAttribute("title")?.includes("꼬리 치기"))?.click(); });
+await page.evaluate(() => { [...document.querySelectorAll(".titans-skill-dock .titans-skill")].find((b) => b.querySelector(".skill-icon-crit") || /급소 노리기/.test(b.textContent ?? "") || b.getAttribute("title")?.includes("급소 노리기"))?.click(); });
 await sleep(500);
 r = await page.evaluate(() => [...document.querySelectorAll(".titans-buffs span")].map((s) => s.textContent));
-ok("꼬리 치기 박자 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명 \+45%/.test(x)), r.join("|"));
+ok("급소 노리기 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명 \+45%/.test(x)), r.join("|"));
 
 // ── 3. 과금 정합: 후원 일일 보석 · 무료 지급 게이트(DEV) ──
 await seed({ ...baseProgress, patronUntil: now + 86400000 * 10, patronClaimedDate: "" }, baseTitans);
