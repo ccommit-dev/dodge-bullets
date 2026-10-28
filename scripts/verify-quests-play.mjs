@@ -27,8 +27,9 @@ await sleep(900);
 const w2 = await page.evaluate(() => document.querySelector(".quest-row .quest-bar > i")?.style.width);
 ok("막대가 차 오른다", parseFloat(w2) > parseFloat(w1) || parseFloat(w1) > 60, `${w1} → ${w2}`);
 const g0 = (await tit()).gold ?? 0;
-for (let i = 0; i < 20 && ((await tit()).gold ?? 0) <= g0; i += 1) await sleep(250);
-const paid = await page.evaluate(() => !!document.querySelector(".quest-row.paid"));
+// 번쩍(.paid)은 잠깐 붙는 클래스라 기다리는 동안 한 번이라도 보이면 된다(2026-10-28 — 부하에서 끝난 뒤에 재서 놓쳤다)
+let paid = false;
+for (let i = 0; i < 40; i += 1) { if (await page.evaluate(() => !!document.querySelector(".quest-row.paid"))) paid = true; if (paid && ((await tit()).gold ?? 0) > g0) break; await sleep(100); }
 ok("3초 안에 보상 → 골드 증가 · 막대 번쩍(.paid)", paid && ((await tit()).gold ?? 0) > g0, `${g0} → ${(await tit()).gold}`);
 
 // ── 2. 3층 · 골드 넉넉 — 골드로만 열기 · Lv25 · 10분 보너스 ──
