@@ -122,8 +122,8 @@ export type TitansSave = {
   huntPicks: number;
   /** 도토리 탄약 합성 (2026-10-22, titans/acorns.ts) */
   acorns: AcornState;
-  /** 탭 번개 강화 단계 (2026-10-22) — 탭 피해 ×(1 + 0.12·단계) · 번개 연출 */
-  lightningLevel: number;
+  /** 번개 강화를 없애며 돌려준 골드 — TitansGame 부팅이 한 번 알리고 비운다 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") */
+  lightningRefund?: number;
   /** 퀘스트 — 시간마다 골드 (titans/quests.ts, 2026-10-26) · 환생하면 첫 줄 Lv.1 로 */
   quests: QuestState;
 };
@@ -334,7 +334,7 @@ export function defaultTitansSave(): TitansSave {
     huntMods: emptyHuntMods(),
     huntPicks: 0,
     acorns: emptyAcorns(),
-    lightningLevel: 0,
+    lightningRefund: 0,
     quests: emptyQuests(),
   };
 }
@@ -374,6 +374,9 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
       rebalanceGold += gold;
     }
   }
+  const oldLightning = n((value as { lightningLevel?: unknown }).lightningLevel, 0, 500);
+  let oldLightningRefund = 0;
+  for (let l = 0; l < oldLightning; l += 1) oldLightningRefund += Math.floor(150 * Math.pow(1.24, l));   // 옛 lightningCost
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
   // 은퇴 환불 — 보유하던 은퇴 동료는 등급별 보석(+상점가), 배운 은퇴 스킬은 SP·코어를 돌려준다. 한 번만: 이 함수가 지운 뒤에는 원본에 없다
   const refund = { gems: value.pendingRefund?.gems ?? 0, sp: value.pendingRefund?.sp ?? 0, cores: 0 };
@@ -402,7 +405,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   }
   const prevNotice = value.rebalanceNotice && Array.isArray(value.rebalanceNotice.changes) ? value.rebalanceNotice : null;
   return {
-    gold: Math.max(0, n(value.gold, 0) + rebalanceGold),
+    gold: Math.max(0, n(value.gold, 0) + rebalanceGold) + oldLightningRefund,
     stage: Math.max(1, n(value.stage, 1, 9999)),
     bestStage: Math.max(1, n(value.bestStage, 1, 9999)),
     swordLevel: legacySword,
@@ -436,7 +439,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     huntMods: emptyHuntMods(),
     huntPicks: 0,
     acorns: normalizeAcorns((value as { acorns?: unknown }).acorns),
-    lightningLevel: n((value as { lightningLevel?: unknown }).lightningLevel, 0, 500),
+    // 번개 강화 삭제 (2026-10-28) — 옛 저장의 단계는 이번 판에 쓴 골드로 돌려준다(환생하면 어차피 0 이던 런 강화)
+    lightningRefund: n((value as { lightningRefund?: unknown }).lightningRefund, 0) + oldLightningRefund,
     quests: normalizeQuests((value as { quests?: unknown }).quests),
   };
 }
@@ -502,13 +506,6 @@ export function rebirthCrystals(bestStage: number): number { return Math.max(3, 
 export const WELCOME_GIFT_GEMS = 1000;
 /** 깜짝 선물 — 환영 선물을 받은 새 계정의 첫 대장 처치 때 한 번 */
 export const SURPRISE_GIFT_GEMS = 500;
-/** 번개 (2026-10-22 아처 키우기 2번) — 무기 숙련과 따로 오르는 탭 강화 줄. 단계마다 탭 피해 +12% · LIGHTNING_EVERY 번째 탭마다 번개가 떨어진다 */
-export const LIGHTNING_EVERY = 10;
-export function lightningCost(level: number): number { return Math.floor(150 * Math.pow(1.24, level)); }
-/** 탭 피해 배율 */
-export function lightningTapMul(level: number): number { return 1 + 0.12 * Math.max(0, level); }
-/** 번개 한 번 = 탭 기본 피해 × (4 + 0.5·단계). 0단계는 번개 없음 */
-export function lightningBoltMul(level: number): number { return level > 0 ? 4 + 0.5 * level : 0; }
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
 
 /** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 · 3 = 예전 힘에 가장 가깝게 + 판 1 환급 골드 회수 */

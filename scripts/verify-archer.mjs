@@ -48,7 +48,7 @@ ok("배율이 단계마다 눈에 띄게 뛴다 (Lv1 ×1.10 · Lv5 ×1.90 · Lv1
 ok("끼운 것 없음 = ×1", A.acornMul(0) === 1 && A.acornMul(undefined) === 1);
 const norm = A.normalizeAcorns({ grid: [3, 99, -1, "x"], allyAmmo: { mia: 7, leon: 0 }, acc: 99 });
 ok("정규화: 단계 0~12 · 빈 동료 제거 · acc 상한 · 최고 단계 계산", norm.grid[0] === 3 && norm.grid[1] === 12 && norm.grid[2] === 0 && norm.allyAmmo.mia === 7 && !("leon" in norm.allyAmmo) && norm.acc === A.ACORN_MAKE_SEC && norm.best === 12);
-ok("사냥 저장에 도토리 · 번개 기본값", M.defaultTitansSave().acorns.grid.length === 12 && M.defaultTitansSave().lightningLevel === 0 && M.normalizeTitansSave({}).acorns.best === 0);
+ok("사냥 저장에 도토리 기본값 · 번개 강화 없음(2026-10-28 삭제)", M.defaultTitansSave().acorns.grid.length === 12 && !("lightningLevel" in M.defaultTitansSave()) && M.normalizeTitansSave({}).acorns.best === 0);
 
 // ── 3. 대장 사다리 ──
 let lad = L.emptyLadder();
@@ -67,8 +67,13 @@ ok("캐릭터 진행 기본값 · 정규화에 사다리 · 발견", P.emptyChar
 ok("발견 보상: 몬스터 20 · 동료 50 · 도토리 Lv1 0 · Lv5 50 · 상한 150", D.discoveryGems("monster", "goblin") === 20 && D.discoveryGems("ally", "mia") === 50 && D.discoveryGems("acorn", 1) === 0 && D.discoveryGems("acorn", 5) === 50 && D.discoveryGems("acorn", 99) === 150);
 ok("발견 키 · 정규화(중복 제거 · 문자열만)", D.discoveryKey("acorn", 3) === "acorn:3" && D.normalizeDiscovered(["a", "a", 3, "b"]).join() === "a,b");
 
-// ── 2. 번개 ──
-ok("번개: 0단계는 번개 없음 · 1단계 ×4.5 · 탭 +12%/단계 · 값은 단계마다 오른다", M.lightningBoltMul(0) === 0 && M.lightningBoltMul(1) === 4.5 && Math.abs(M.lightningTapMul(5) - 1.6) < 1e-9 && M.lightningCost(0) === 150 && M.lightningCost(10) > M.lightningCost(9) && M.LIGHTNING_EVERY === 10);
+// ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 옛 단계는 쓴 골드로 돌려준다 ──
+{
+  const old = M.normalizeTitansSave({ gold: 1000, lightningLevel: 3 });
+  const spent = 150 + Math.floor(150 * 1.24) + Math.floor(150 * 1.24 ** 2);
+  ok("번개 삭제: 함수 · 단계가 없다 · 옛 Lv.3 은 쓴 골드(150 · 186 · 230) 돌려받음 · 알림 남김", M.lightningCost === undefined && M.LIGHTNING_EVERY === undefined && !("lightningLevel" in old) && old.gold === 1000 + spent && old.lightningRefund === spent, JSON.stringify({ g: old.gold, r: old.lightningRefund }));
+  ok("번개 삭제: 다시 불러와도 두 번 주지 않는다", M.normalizeTitansSave({ ...old, lightningRefund: 0 }).gold === old.gold);
+}
 // ── 5. 환영 선물 ──
 ok("환영 선물 보석으로 동료 10연차(900)를 한 번 뽑을 수 있다", M.WELCOME_GIFT_GEMS >= 900);
 // ── 7. 환생 ──
