@@ -140,7 +140,8 @@ r = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card[d
 ok("패시브 3종 효과 수치 표기", r.length === 3 && r.some((e) => /탭 피해 \+/.test(e)) && r.some((e) => /보스 제한시간 \+/.test(e)), r.join(" | "));
 // 패시브 학습(단단한 앞니) → 학습 후 장착 상태
 await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
-await sleep(500);
+// 고정 0.5초 대신 저장에 학습 · 장착이 남을 때까지(최대 4초) — 전체 검사 부하에서 한 번 빠졌다(2026-10-28)
+for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.learned.includes("steel") && tt.skillInventory.equipped.passive === "steel") break; await sleep(100); }
 t = await titans();
 ok("패시브 학습 → 장착 (SP·코어 차감)", t.skillInventory.learned.includes("steel") && t.skillInventory.equipped.passive === "steel");
 // 전투 화면에서 급소 노리기(crit, 옛 꼬리 치기 박자) 시전 → 버프 칩 "치명 +45%"

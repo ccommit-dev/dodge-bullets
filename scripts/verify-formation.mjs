@@ -46,7 +46,7 @@ for (const [name, party] of Object.entries(PARTIES)) {
   await page.reload({ waitUntil: "networkidle0" }); await sleep(2200);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
   // 2026-10-20: 첫 시나리오가 불러온 직후 안내 창에 가려 동료 표본 0개로 가끔 끝났다 — 창을 다시 닫고 동료가 둘 이상 보일 때까지(최대 8초) 기다린다
-  for (let w = 0; w < 40; w += 1) {
+  for (let w = 0; w < 75; w += 1) {   // 8 → 15초(2026-10-28 — 전체 검사 부하에서 [variants] 동료가 8초 안에 안 떠 표본 0)
     const s0 = await rects(); if (s0.allies.length >= 2) break;
     await page.evaluate(() => { const c = document.querySelector(".idle-claim"); if (c) c.click(); const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); });
     await sleep(200);

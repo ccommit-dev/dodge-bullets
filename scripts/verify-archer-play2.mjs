@@ -36,7 +36,7 @@ ok("같은 날 다시 들어와도 한 번만", p.redGems - gemsAfterGift < 1000
 
 // ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 카드가 없고 옛 단계는 쓴 골드로 돌려받는다 ──
 await seed(baseProgress(), { gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 });
-const toastRefund = await (async () => { for (let i = 0; i < 20; i += 1) { const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
+const toastRefund = await (async () => { for (let i = 0; i < 40; i += 1) {   // 3 → 6초(2026-10-28 — 부하에서 안내를 놓쳤다) const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
 await closeModals(); await sleep(400);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비"))?.click()); await sleep(500);
 const lcard = await page.evaluate(() => !!document.querySelector(".lightning-card") || [...document.querySelectorAll(".equipment-training-card strong")].some((e) => /번개/.test(e.textContent)));
