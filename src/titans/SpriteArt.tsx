@@ -342,7 +342,8 @@ export function allyRangeOffset(stage: number, id: string): number {
   return Math.round((own * 0.4 + roll * 0.6) * 100) / 100;
 }
 /** 사거리 폭(px) — 근접은 몬스터에서 0~44px 물러서고, 원거리는 가운데에서 ±11px(사거리가 긴 동료일수록 뒤로) — 앞으로 22px 밀면 주인공을 덮었고(verify-formation 27~34%) 뒤로 24px 면 왼쪽 끝 동료가 전장 밖으로 나갔다(verify-play-art) */
-export const ALLY_RANGE_SPAN = { melee: 44, ranged: 22 } as const;
+// 근접 44 → 10 (2026-10-28, 사용자: "근거리면 가까이 가서 서로 공격") — 만남마다 0~44px 뒤로 물러서 몬스터와 허공을 사이에 두고 쳤다
+export const ALLY_RANGE_SPAN = { melee: 10, ranged: 22 } as const;
 
 export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1, walkRate = 1 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number; /** 이번 만남 걷는 시간 ÷ 기준(1250ms) — 걷기 칸 한 바퀴를 그만큼 늘이고 줄인다 (2026-10-20) */ walkRate?: number }) {
   const base = ALT_BASE[id] ?? id;
@@ -513,16 +514,18 @@ function formationRow(cell: "R" | "L", index: number): number {
   return cell === "R" ? Math.min(1, index) : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))][1];
 }
 function lineFormation(cell: "R" | "L", index: number, jx = 0): Record<string, string> {
-  const [col, row] = cell === "R" ? [index >= 1 ? 0.6 : 0, Math.min(1, index)]   /* 뒷줄 근접은 0.3칸 뒤 — 큰 돌진 동작(anim-plus)에서 앞줄과 세로로 겹치지 않게 */ : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
+  const [col, row] = cell === "R" ? [index >= 1 ? 0.45 : 0, Math.min(1, index)]   /* 뒷줄 근접 0.6 → 0.45칸(2026-10-28) — 뒷줄도 몬스터 가까이. 0.3 칸 · 반 줄 높이는 앞줄과 37~42% 겹쳤다(verify-formation) */   /* 뒷줄 근접은 0.3칸 뒤 — 큰 돌진 동작(anim-plus)에서 앞줄과 세로로 겹치지 않게 */ : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
   const step = "var(--ally-size, 78px) * 0.68";
-  const bottom = ROW_BOTTOM[row];
+  // 주인공이 근접(검 · 창)이면 근접 동료는 주인공 뒤 깊이로 한 칸 물러서고(--melee-lift) 앞줄은 조금 왼쪽(--melee-front-dx) — 셋이 같은 자리에 겹쳐 앞줄 동료가 주인공 뒤로 숨었다 (hunt-motion.css)
+  const bottom = cell === "R" && row === 0 ? `calc(${ROW_BOTTOM[0]} + var(--melee-lift, 0px))` : ROW_BOTTOM[row];   // 뒷줄은 그대로 — 올리면 발이 풀밭 선 위로 나갔다(verify-walk-y)
   if (cell === "R") {
     // 교전 x 는 CSS 의 근접 공식(몬스터 보이는 몸 가장자리) + --party-melee-dx — 칸만큼 왼쪽으로
-    const dx = `calc(${-col} * ${step} + ${jx}px)`;   // jx — 스테이지마다 다른 좌우 자리(allyStageJitter)
+    const dx = `calc(${-col} * ${step} + ${jx}px${row === 0 ? " + var(--melee-front-dx, 0px)" : ""})`;   // jx — 스테이지마다 다른 좌우 자리(allyStageJitter)
     const edge = `calc(100% - var(--allies-left, 0%) - var(--party-meet-right, var(--monster-meet-right, 30%)) - var(--monster-size, 112px) * (1 - var(--party-ml, var(--monster-ml, .22))) - 6px - var(--ally-size, 86px) * .88 + ${dx})`;
     return { "--party-melee-dx": dx, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${edge} - 18%)`, "--party-z": row === 0 ? "4" : "2" };
   }
-  const x = `calc(${col} * ${step} + ${jx}px)`;
+  // 원거리는 --ranged-advance 만큼 앞으로(2026-10-28, 사용자: "원거리여도 특정 거리까지 가까이") — 주인공이 근접이면 비운 자리까지, 원거리면 조금 (hunt-motion.css)
+  const x = `calc(${col} * ${step} + ${jx}px + var(--ranged-advance, 0px))`;
   return { "--party-combat-x": x, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${x} - 4%)`, "--party-z": row === 0 ? "4" : "2" };
 }
 

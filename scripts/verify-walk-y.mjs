@@ -47,7 +47,7 @@ for (const scr of SCREENS) {
       for (const u of ui) { const ox = Math.min(body.right, u.r.right) - Math.max(body.left, u.r.left), oy = Math.min(body.bottom, u.r.bottom) - Math.max(body.top, u.r.top); if (ox > 4 && oy > 4) hits.push(`${e.className.toString().match(/ally-\w+|titans-hero/)?.[0]}×${u.n} ${Math.round(ox)}x${Math.round(oy)}`); }
     }
     const qol = [...document.querySelectorAll(".titans-field .qol-btn")].map((e) => Math.round(f.bottom - R(e).top));
-    return {
+    return { heroMelee: fe.classList.contains("hero-melee"),
       key: fs.getPropertyValue("--lane-l") + "/" + fs.getPropertyValue("--lane-r") + "/" + fs.getPropertyValue("--encounter-duration"),
       l: parseFloat(fs.getPropertyValue("--lane-l")), r: parseFloat(fs.getPropertyValue("--lane-r")), dur: fs.getPropertyValue("--encounter-duration").trim(),
       fieldH: Math.round(f.height), ground: Math.round(f.height * (1 - parseFloat(fs.getPropertyValue("--ground-top") || "44") / 100)), uiTop: qol.length ? Math.max(...qol) : 0,
@@ -114,7 +114,9 @@ for (const scr of SCREENS) {
 
   // ── A ──
   ok(`[${scr.name}] 몬스터 만남이 4번 이상 잡혔다`, full.length >= 4, `${full.length}`);
-  ok(`[${scr.name}] 몬스터마다 주인공 높이가 달라진다 — ${scr.minHero}px 이상`, span(full.map((e) => e.hero)) >= scr.minHero, `${span(full.map((e) => e.hero))}px`);
+  // 2026-10-28: 근접 무기(검 · 창 — 기본 검) 주인공은 몬스터 무리 깊이(--lane-r)에 서서 몬스터에 붙어 친다(hunt-motion.css) — 같은 깊이 범위를 쓰는 몬스터 기준(minMon)으로 본다
+  const heroMin = rows.some((x) => x.heroMelee) ? scr.minMon : scr.minHero;
+  ok(`[${scr.name}] 몬스터마다 주인공 높이가 달라진다 — ${heroMin}px 이상`, span(full.map((e) => e.hero)) >= heroMin, `${span(full.map((e) => e.hero))}px`);
   ok(`[${scr.name}] 몬스터마다 몬스터 높이가 달라진다 — ${scr.minMon}px 이상`, span(full.map((e) => e.mon)) >= scr.minMon, `${span(full.map((e) => e.mon))}px`);
   ok(`[${scr.name}] 걷는 시간이 만남마다 다르다 — 3가지 이상`, new Set(full.map((e) => e.dur)).size >= 3, full.map((e) => e.dur).join(","));
   ok(`[${scr.name}] 깊이 범위 — 왼쪽 ${L.lMin}~${L.lMax}% · 오른쪽 ${L.rMin}~${L.rMax}% · 둘이 같이 아래쪽 45% 밖에 서지 않는다`, encs.every((e) => e.l >= L.lMin && e.l <= L.lMax && e.r >= L.rMin && e.r <= L.rMax && !(e.l > midL && e.r > midR)), encs.map((e) => `${e.l}/${e.r}`).join(" "));
