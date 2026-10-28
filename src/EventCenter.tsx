@@ -25,7 +25,6 @@ import { weeklyChallenges, weeklyRewardLabel } from "./events/weekly";
 import { SEASON, addSeasonXp, claimSeasonTier, claimableTiers, freeReward, normalizeSeason, paidGemTotal, paidReward, rewardLabel, seasonDaysLeft, seasonTier } from "./economy/seasonPass";
 import { buyWithStore, grantPurchase, paidStoreNote, paidStoreVisible, paymentsConfigured } from "./payments/store";
 import { onStorePricesChanged, priceLabel, productOnSale } from "./payments/prices";
-import { saveTitansSave } from "./titans/storage";
 
 /**
  * 해금된 슬롯을 전부 장착한 것으로 간주한 맵.
@@ -207,10 +206,12 @@ export function EventCenter({
 
   /** 시즌 패스 (G) — 단계 수령 · 유료 트랙 구매 */
   const claimSeason = async (track: "free" | "paid", tier: number) => {
+    // 스킬 코어는 진행도의 pendingSkillCores 로 — 사냥터 저장에 바로 쓰면 떠 있는 사냥터가 다음 저장에 덮어써 코어가 사라졌다
+    // (2026-10-28, 전체 검사 verify-shop 9→9). 사냥터가 떠 있으면 이벤트로 곧바로 옮기고, 아니면 다음에 열릴 때 옮긴다
     let cores = 0;
-    const next = await updateCharacterProgress(userHash, (current) => { const r = claimSeasonTier(current, track, tier); cores = r.cores; return r.progress; });
-    if (cores > 0) { const t = await loadTitansSave(userHash); await saveTitansSave(userHash, { ...t, skillInventory: { ...t.skillInventory, skillCores: t.skillInventory.skillCores + cores } }); }
+    const next = await updateCharacterProgress(userHash, (current) => { const r = claimSeasonTier(current, track, tier); cores = r.cores; return cores > 0 ? { ...r.progress, pendingSkillCores: r.progress.pendingSkillCores + cores } : r.progress; });
     onUpdated(next);
+    if (cores > 0) window.dispatchEvent(new Event("dodgebullets:pending-cores"));
   };
   const buySeasonPass = async () => {
     if (import.meta.env.DEV || testModeEnabled()) { onUpdated((await grantPurchase(userHash, SEASON.productId, `qa-${Date.now()}`)).progress); return; }

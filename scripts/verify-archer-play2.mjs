@@ -35,8 +35,10 @@ p = await prog();
 ok("같은 날 다시 들어와도 한 번만", p.redGems - gemsAfterGift < 1000 && !(await page.$(".attendance-modal")), `${gemsAfterGift} → ${p.redGems}`);
 
 // ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 카드가 없고 옛 단계는 쓴 골드로 돌려받는다 ──
-await seed(baseProgress(), { gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 });
-const toastRefund = await (async () => { for (let i = 0; i < 40; i += 1) {   // 3 → 6초(2026-10-28 — 부하에서 안내를 놓쳤다) const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
+// 안내는 켠 뒤 1.2초부터 4초만 뜬다 — seed() 의 networkidle0 + 1.2초를 기다리면 느린 부하에서 이미 지나갔다(2026-10-28). 다시 불러오자마자 9초 본다
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(baseProgress()), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.reload({ waitUntil: "domcontentloaded" });
+const toastRefund = await (async () => { for (let i = 0; i < 60; i += 1) { const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
 await closeModals(); await sleep(400);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비"))?.click()); await sleep(500);
 const lcard = await page.evaluate(() => !!document.querySelector(".lightning-card") || [...document.querySelectorAll(".equipment-training-card strong")].some((e) => /번개/.test(e.textContent)));
