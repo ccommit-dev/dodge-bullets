@@ -34,31 +34,14 @@ await page.reload({ waitUntil: "networkidle0" }); await sleep(1800);
 p = await prog();
 ok("같은 날 다시 들어와도 한 번만", p.redGems - gemsAfterGift < 1000 && !(await page.$(".attendance-modal")), `${gemsAfterGift} → ${p.redGems}`);
 
-// ── 2. 번개 강화 줄 ──
-await seed(baseProgress(), { gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 0 });
+// ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 카드가 없고 옛 단계는 쓴 골드로 돌려받는다 ──
+await seed(baseProgress(), { gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 });
+const toastRefund = await (async () => { for (let i = 0; i < 20; i += 1) { const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
 await closeModals(); await sleep(400);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비"))?.click()); await sleep(500);
-const lcard = await page.evaluate(() => document.querySelector(".lightning-card")?.textContent ?? "");
-ok("장비 탭에 번개 카드 · '탭 피해 +0% → +12%' · '번개 ×0 → ×4.5'", /번개 · Lv\.0/.test(lcard) && /\+0% → \+12%/.test(lcard) && /×0 → ×4\.5/.test(lcard), lcard);
-await page.evaluate(() => document.querySelector(".lightning-card button")?.click()); await sleep(500);
-const toast = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
+const lcard = await page.evaluate(() => !!document.querySelector(".lightning-card") || [...document.querySelectorAll(".equipment-training-card strong")].some((e) => /번개/.test(e.textContent)));
 const t1 = await tit();
-ok("강화 → Lv.1 저장 · 토스트에 전후", t1.lightningLevel === 1 && /번개 Lv\.1/.test(toast) && /\+0% → \+12%/.test(toast), `Lv ${t1.lightningLevel} · 골드 ${t1.gold} · ${toast}`);
-// 열 번째 탭마다 번개
-await page.evaluate(() => { window.__bolts = 0; new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".titans-fx-bolt")) window.__bolts += 1; }).observe(document.querySelector(".titans-field"), { childList: true, subtree: true }); });
-// 그로스 서랍을 닫아 전장을 비운다
-await page.evaluate(() => document.querySelector(".titans-growth-tabs button.on")?.click()); await sleep(300);
-// 전투 중 탭만 센다 — 저장의 totalTaps 로 실제로 들어간 탭을 센다(키보드 Space = 탭)
-const tapsBefore = (await tit()).totalTaps ?? 0;
-let taps = 0;
-for (let i = 0; i < 400 && taps < 25; i += 1) {
-  await page.keyboard.press("Space");
-  await sleep(90);
-  if (i % 5 === 4) taps = ((await tit()).totalTaps ?? 0) - tapsBefore;
-}
-await sleep(800);
-const bolts = await page.evaluate(() => window.__bolts);
-ok("전투 중 탭 25번 → 번개가 2번 떨어진다(10번째마다)", bolts >= 2, `탭 ${taps} · 번개 ${bolts}`);
+ok("장비 탭에 번개 카드 없음 · 옛 Lv.2 는 쓴 골드 336 돌려받음 · 알림", !lcard && t1.gold >= 100000 + 150 + 186 && !("lightningLevel" in t1) && /번개 강화를 없앴어요/.test(toastRefund), `카드 ${lcard} · 골드 ${t1.gold} · ${toastRefund}`);
 
 // ── 8. 이벤트 코인 — 드롭 · 지갑 · 교환 ──
 await seed(baseProgress({ eventCoins: 0, enhancementMaterials: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });

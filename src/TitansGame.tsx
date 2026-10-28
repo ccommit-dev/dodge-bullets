@@ -29,10 +29,6 @@ import {
   huntingArea,
   stageClearBonus,
   equipmentTrainingCost,
-  LIGHTNING_EVERY,
-  lightningBoltMul,
-  lightningCost,
-  lightningTapMul,
   SURPRISE_GIFT_GEMS,
   tapDamage,
   type TitanHeroId,
@@ -422,7 +418,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const questProgRef = useRef<number[]>([]);
   const [questProg, setQuestProg] = useState<number[]>([]);
   const [questDone, setQuestDone] = useState<{ rows: number[]; key: number } | null>(null);
-  const lightningTapRef = useRef(0);
   /** 전환이 끝나면 부를 spawn(스테이지, 처치 수) — 건너뛰기가 같은 걸 바로 부른다 */
   const pendingSpawnRef = useRef<[number, number] | null>(null);
   /** spawn 이 건 "대열 준비" 타이머 — 이게 돌아야 교전이 시작된다. 전환 스킵은 이것만 남기고 지운다 */
@@ -842,6 +837,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         void saveTitansSave(userHash, loaded);
       }
 
+      // 번개 강화 삭제(2026-10-28) — 옛 단계에 쓴 골드를 돌려줬다는 걸 한 번 알린다
+      if ((loaded.lightningRefund ?? 0) > 0) {
+        const g = loaded.lightningRefund ?? 0;
+        window.setTimeout(() => flash(`번개 강화를 없앴어요 · 쓴 골드 ${formatGold(g)} 돌려받음`, 4000), 1200);   // 한 번뿐인 알림이라 4초
+        loaded.lightningRefund = 0;
+        void saveTitansSave(userHash, loaded);
+      }
+
       // 개척하지 않은 지역으로는 진입할 수 없다 — 저장값이 앞서 있으면 경계로 되돌린다.
       const ceiling = qaUnlockOpen() ? Number.MAX_SAFE_INTEGER : stageCeilingFor(progress.pioneeredArea);   // 테스트 모드는 지역 문 없음(대장 처치 판정과 같이)
       const stage = Math.min(loaded.stage, ceiling);
@@ -1053,10 +1056,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
   const autoRebirthRef = useRef(autoRebirth);
   autoRebirthRef.current = autoRebirth;
-  const flash = (msg: string) => {
+  const flash = (msg: string, ms = 1400) => {
     setToast(msg);
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(""), 1400);
+    toastTimer.current = window.setTimeout(() => setToast(""), ms);
   };
 
   // 부팅 스토어 정산(App → payments/reconcile)이 지급·회수했으면 화면과 스킬 코어를 맞춘다
@@ -1631,8 +1634,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const inv = saveRef.current.skillInventory;
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
-    // × 대장 사다리 탭 피해 × 번개 강화(1 + 0.12·단계) — 2026-10-22 아처 키우기 2 · 3번
-    const base = WEAPON_EFFECTS[weaponKindRef.current].tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * lightningTapMul(saveRef.current.lightningLevel) * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
+    // × 대장 사다리 탭 피해 — 2026-10-22 아처 키우기 3번 (번개 강화는 2026-10-28 삭제)
+    const base = WEAPON_EFFECTS[weaponKindRef.current].tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
@@ -1655,17 +1658,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const fly = heroAttackFx(0.08);   // 무기마다 다른 한 방(2026-10-28)
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
       applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap", fxDelayMs: fly });
-      // 번개 (2026-10-22 아처 키우기 2번) — 단계가 있으면 LIGHTNING_EVERY 번째 탭마다 몬스터 머리 위로 번개
-      const lv = saveRef.current.lightningLevel;
-      if (lv > 0) {
-        lightningTapRef.current += 1;
-        if (lightningTapRef.current >= LIGHTNING_EVERY) {
-          lightningTapRef.current = 0;
-          pushFxAt("bolt", "monster", 0.5, 0.15, 62, 20, 205);
-          applyDamage(computeTapHit().base * lightningBoltMul(lv), true, { source: "skill", label: "번개", delayMs: 180 });
-        }
-      }
-      // 무기 기술 (2026-10-27, titans/weapons.ts) — 무기마다 N 번째 탭에 이름 있는 한 방(번개와 따로 센다)
+      // 무기 기술 (2026-10-27, titans/weapons.ts) — 무기마다 N 번째 탭에 이름 있는 한 방
       const tech = WEAPON_TECH[weaponKindRef.current];
       weaponTechRef.current += 1;
       if (weaponTechRef.current >= tech.every) {
@@ -2035,15 +2028,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (slot === "weapon") setAutoTrainHit((h) => ({ slot, seq: (h?.seq ?? 0) + 1, count: quote.count }));
     const fw = Math.floor(forgedWeaponLevel * 1.5);
     flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}${slot === "weapon" ? ` · 탭 피해 ${formatGold(tapDamage(level + fw))} → ${formatGold(tapDamage(level + quote.count + fw))}` : ""}`);
-  };
-
-  /** 번개 강화 줄 (2026-10-22 아처 키우기 2번) */
-  const trainLightning = () => {
-    const level = save.lightningLevel;
-    const quote = bulkUpgradeQuote(lightningCost, level, save.gold, buyAmount);
-    if (quote.count === 0) return;
-    setSave((prev) => ({ ...prev, gold: prev.gold - quote.cost, lightningLevel: prev.lightningLevel + quote.count }));
-    flash(`번개 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""} · 탭 피해 +${Math.round((lightningTapMul(level) - 1) * 100)}% → +${Math.round((lightningTapMul(level + quote.count) - 1) * 100)}% · 번개 ×${lightningBoltMul(level)} → ×${lightningBoltMul(level + quote.count)}`);
   };
 
   // 자동 강화 루프 — 저장은 함수형 setSave 안에서 다시 계산(같은 틱에 두 번 사지 않게), 표시는 마지막으로 산 칸만 반짝
@@ -3789,14 +3773,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <small className="weapon-kind-stat">{weaponStatText(weaponKind)} · 기술 {WEAPON_TECH[weaponKind].name} — {WEAPON_TECH[weaponKind].desc}</small>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련<small className="btn-cost">{formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</small></button>
-            </article>
-            <article className="titans-card equipment-training-card lightning-card">
-              <div className="training-item-icon lightning-icon" aria-hidden="true">⚡</div>
-              <div>
-                <strong>번개 · Lv.{save.lightningLevel}</strong>
-                <p>탭 +{Math.round((lightningTapMul(save.lightningLevel) - 1) * 100)}% → +{Math.round((lightningTapMul(save.lightningLevel + 1) - 1) * 100)}% · {LIGHTNING_EVERY}탭마다 번개 ×{lightningBoltMul(save.lightningLevel)} → ×{lightningBoltMul(save.lightningLevel + 1)}</p>
-              </div>
-              <button type="button" disabled={save.gold < lightningCost(save.lightningLevel)} onClick={trainLightning}>강화<small className="btn-cost">{formatGold(lightningCost(save.lightningLevel))}G</small></button>
             </article>
             <article className="titans-card equipment-training-card">
               {/* 다른 파츠와 같은 틀·크기 (2026-10-16) — 미장착이면 정찰 견갑을 흐리게 */}
