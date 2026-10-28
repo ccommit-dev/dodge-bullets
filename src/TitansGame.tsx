@@ -115,7 +115,7 @@ import {
   starMultiplier,
   randomOwnedAlly,
 } from "./titans/allies";
-import { PET_DEFS, activePetEffect, pendingHatches } from "./titans/pets";
+import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
 import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
@@ -210,7 +210,7 @@ const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: str
   "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
   "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
 };
-type PremiumCategory = "currency" | "package" | "relic" | "ally" | "title" | "weapon";
+type PremiumCategory = "currency" | "package" | "relic" | "ally" | "title" | "weapon" | "pet";
 /**
  * 상점 카드 화면 문구 (2026-10-26 사용자: "글이 너무 길다") — 상품 데이터(productCatalog)의 설명은 스토어 등록 CSV 에도 쓰여 그대로 두고,
  * 카드에선 한 줄 설명(blurb) + 짧은 효과 칩(lines)만 보인다. 없는 상품은 원래 설명 · 내용 그대로
@@ -362,6 +362,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
   /** 시전 등급 연출 (2026-10-28) — 스킬 등급(SKILL_TIER)이 높을수록 전장 전체 빛 · 고리가 커진다(hunt-motion.css .skill-tier-fx) */
   const [tierFx, setTierFx] = useState<{ tier: AllyRarity; seq: number } | null>(null);
+  /** 펫 덤빔(2026-10-28) — 번호가 바뀔 때마다 주인공 곁 펫이 몬스터 쪽으로 뛰었다 돌아온다(hunt-motion.css .hero-pet.pet-attack) */
+  const [petAtk, setPetAtk] = useState(0);
+  const petAccRef = useRef(0);
   const [allyPulse, setAllyPulse] = useState<Record<string, number>>({});
   // 몬스터 한 번 덤빔 = 동료 한 명 피격 (2026-10-19) — 예전엔 한 카운터를 전원이 받아 덤빌 때마다 파티가 같이 움찔하고 공격이 끊겼다
   const [allyHit, setAllyHit] = useState<Record<string, number>>({});
@@ -1748,6 +1751,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             applyDamage(pool, false, { source: "skill", label: "화상" });
           }
         }
+        // 펫 (2026-10-28) — 장착 · 부화한 펫이 PET_ATTACK_SEC 마다 덤빈다. 뛰어 닿는 순간(0.24초) 맞는 그림, 숫자 · 체력은 바로
+        const petId = characterRef.current.activePet as PetId;
+        const petLv = PET_IDS.includes(petId) ? characterRef.current.pets[petId] ?? 0 : 0;
+        if (petLv > 0) {
+          petAccRef.current += dt;
+          if (petAccRef.current >= PET_ATTACK_SEC) {
+            petAccRef.current %= PET_ATTACK_SEC;
+            setPetAtk((n) => n + 1);
+            applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * petAttackMul(petLv), false, { source: "ally", hue: 95, fxDelayMs: 240 });   // 주인공 자동 공격과 같은 바탕(ref 로 — 인터벌 안)
+          }
+        } else petAccRef.current = 0;
         autoAttackAcc.current += dt;
         if (autoAttackAcc.current >= autoInterval) {
           autoAttackAcc.current %= autoInterval;
@@ -2421,6 +2435,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
 
   /** 무기 외형 구매 — 확정 구매, 즉시 장착 */
+  /** 펫 바로 부화 (2026-10-28) — 붉은 보석. 장착 펫이 없으면 바로 장착 */
+  const buyPet = async (pid: PetId) => {
+    const price = PET_GEM_PRICE[pid];
+    if ((character.pets[pid] ?? 0) > 0 || redGems < price) return;
+    const next = await updateCharacterProgress(userHash, (current) =>
+      (current.pets[pid] ?? 0) > 0 || current.redGems < price
+        ? current
+        : { ...current, redGems: current.redGems - price, pets: { ...current.pets, [pid]: 1 }, activePet: current.activePet || pid },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`${PET_DEFS[pid].name} 부화! 주인공 곁에서 같이 사냥한다`);
+  };
+  const equipPetShop = async (pid: PetId) => {
+    if ((character.pets[pid] ?? 0) <= 0) return;
+    const next = await updateCharacterProgress(userHash, (current) => ({ ...current, activePet: current.activePet === pid ? "" : pid }));
+    setCharacter(next);
+    flash(next.activePet === pid ? `${PET_DEFS[pid].name} 장착` : `${PET_DEFS[pid].name} 해제`);
+  };
   const buyWeaponSkin = async (skinId: string) => {
     const def = WEAPON_SKINS[skinId];
     if (!def || character.ownedWeaponSkins.includes(skinId) || redGems < def.gemCost) return;
@@ -3285,6 +3318,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
+            {/* 펫 (2026-10-28) — 주인공 뒤 발치에서 같이 걷고(주인공 상자 안이라 들어오고 나갈 때 같이 움직인다) 덤빌 땐 몬스터 쪽으로 뛴다. 예전엔 전장 왼쪽 위에 떠 있기만 했다 */}
+            {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
+              <div key={`pet-${petAtk}`} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
+                <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} />
+              </div>
+            )}
             <EquippedCharacter mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
@@ -3315,11 +3354,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           {partyDmg && <b key={partyDmg.key} className={`party-dmg-float ${partyDmg.boss ? "boss" : ""}`} style={{ "--slot": Math.max(0, allies.findIndex((h) => h.id === partyDmg.id)) } as CSSProperties}>{partyDmg.text}</b>}
         </div>
 
-        {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
-          <div className="titans-pet" title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
-            <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} />
-          </div>
-        )}
 
         {/*
           피격 반동은 hit-a/hit-b를 번갈아 붙여 매 타격마다 CSS 애니메이션을 재시작한다.
@@ -4277,7 +4311,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {tab === "premium" && (
           <>
             <nav className="premium-category-tabs" aria-label="상점 카테고리">
-              {([['currency','재화'],['package','패키지'],['relic','유물'],['ally','동료'],['title','칭호'],['weapon','외형']] as const).map(([id,label])=><button key={id} type="button" className={premiumCategory===id?'on':''} onClick={()=>setPremiumCategory(id)}>{label}</button>)}
+              {([['currency','재화'],['package','패키지'],['relic','유물'],['ally','동료'],['pet','펫'],['title','칭호'],['weapon','외형']] as const).map(([id,label])=><button key={id} type="button" className={premiumCategory===id?'on':''} onClick={()=>setPremiumCategory(id)}>{label}</button>)}
             </nav>
             {/* 유물 뽑기 (2026-10-26 보석 → 조각 · 10-27 일반 = 골드 · 레어 = 강화석 · 유니크 = 보석) · 다 모은 유물은 빠진다 */}
             {/* 유물 뽑기 2판 (2026-10-27, 사용자: "유물이 상점탭에서 뽑기 ui로") — 동료 소환 화면과 같은 꼴: 등급 탭 · 진열대 · 보유 게이지 · 1회 / 10회 / 확률 */}
@@ -4371,6 +4405,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </button>
             </article>}
             {/* 무기 외형 3종(진홍·빙하·황금) — 지금 장착한 무기 그림의 색 바꾸기 · 오라 (2026-10-27, 북 그림 대신) */}
+            {/* 펫 (2026-10-28, 사용자: "상점에서도 팔게") — 도감 1,000 처치 대신 붉은 보석으로 바로 부화 · 장착. 부화한 펫은 장착 단추만 */}
+            {premiumCategory === "pet" && <p className="premium-subhead">펫 <small>주인공 곁에서 같이 사냥 · 장착 1마리 효과</small></p>}
+            {premiumCategory === "pet" && PET_IDS.map((pid) => {
+              const def = PET_DEFS[pid];
+              const lv = character.pets[pid] ?? 0;
+              const on = character.activePet === pid;
+              return (
+                <article key={`pet-${pid}`} className="titans-card premium-product-card gem-product pet-product" data-pet={pid}>
+                  <span className="pet-thumb" aria-hidden="true"><MonsterArt kind={pid} area={area} boss={false} golden={false} /></span>
+                  <div><strong>{def.name} <em>펫</em></strong><p>{def.desc} · 같이 사냥(주인공 한 방 ×{petAttackMul(Math.max(1, lv)).toFixed(2)} · {PET_ATTACK_SEC}초마다){lv > 0 ? ` · Lv.${lv}` : ""}</p></div>
+                  <button type="button" disabled={lv <= 0 && redGems < PET_GEM_PRICE[pid]} onClick={() => void (lv > 0 ? equipPetShop(pid) : buyPet(pid))}>
+                    {lv > 0 ? (on ? "해제" : "장착") : <><GemMark />{PET_GEM_PRICE[pid]}</>}
+                  </button>
+                </article>
+              );
+            })}
             {premiumCategory === "weapon" && <p className="premium-subhead">주인공 무기 외형 <small>장착한 검 · 창 · 활 · 지팡이 색</small></p>}
             {premiumCategory === "weapon" && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
               const owned = character.ownedWeaponSkins.includes(skinId);

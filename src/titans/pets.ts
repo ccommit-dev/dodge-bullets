@@ -40,6 +40,17 @@ export const PET_DEFS: Record<PetId, PetDef> = {
 
 export const PET_IDS: PetId[] = ["slime", "goblin", "wolf", "ogre", "dragon", "boss"];
 
+/**
+ * 사냥 돕기 (2026-10-28, 사용자: "동료 근처에서 사냥을 도와주는 펫 애니메이션") — 장착 펫이 주인공 곁에서 같이 걷고 PET_ATTACK_SEC 마다 몬스터에 덤빈다.
+ * 한 번 = 주인공 자동 공격 한 방(playerIdleDps) × petAttackMul(레벨). 레벨 1 0.8 → 10 1.52. 2.6초마다라 주인공 탭 피해의 약 0.3~0.6배/초 — 원정대(동료) 합에 비하면 작은 덤
+ */
+export const PET_ATTACK_SEC = 2.6;
+export function petAttackMul(level: number): number {
+  return level <= 0 ? 0 : 0.8 + 0.08 * (Math.min(PET_MAX_LEVEL, level) - 1);
+}
+/** 상점 바로 부화 값(붉은 보석, 2026-10-28) — 도감 1,000 처치 대신. 효과가 큰 펫일수록 비싸다. 이미 부화했으면 팔지 않는다 */
+export const PET_GEM_PRICE: Record<PetId, number> = { slime: 300, goblin: 300, wolf: 420, ogre: 420, dragon: 600, boss: 800 };
+
 /** 펫 효과값 — 레벨 0 = 미부화 (효과 없음) */
 export function petEffect(id: PetId, level: number): number {
   if (level <= 0) return 0;
