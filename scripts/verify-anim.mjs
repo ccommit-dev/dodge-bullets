@@ -182,12 +182,13 @@ await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 3000, sharedCoin
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 await clickText(".hub-sheet-switch button", "동료 뽑기");
-await sleep(500);
+// 고정 대기 대신 뽑기 단추가 나올 때까지 · 누른 뒤 소환진이 뜰 때까지(최대 2초) — 부하에서 단추가 늦게 그려져 클릭이 빠졌다(2026-10-28)
+await page.waitForSelector(".gacha-page-actions button:nth-child(2)", { timeout: 4000 }).catch(() => null);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
-await sleep(250);
+await page.waitForSelector(".gacha-summon-circle", { timeout: 2000 }).catch(() => null);
 const e1 = await page.evaluate(() => ({ circle: !!document.querySelector(".gacha-summon-circle"), tier: [...(document.querySelector(".gacha-summoning")?.classList ?? [])].find((c) => c.startsWith("tier-")), reveal: !!document.querySelector(".gacha-card") }));
 ok("E 소환 직후 소환진이 뜨고 카드는 아직 없다", e1.circle && !!e1.tier && !e1.reveal, JSON.stringify(e1));
-await sleep(1300);
+await page.waitForFunction(() => !document.querySelector(".gacha-summon-circle") && document.querySelectorAll(".gacha-card").length === 10, { timeout: 3500 }).catch(() => {});   // 1.2초 연출 뒤(부하 여유)
 const e2 = await page.evaluate(() => ({ circle: !!document.querySelector(".gacha-summon-circle"), cards: document.querySelectorAll(".gacha-card").length }));
 ok("E 1.2초 뒤 소환진이 사라지고 카드 10장 공개", !e2.circle && e2.cards === 10, JSON.stringify(e2));
 // 등급 예고 정합 (2026-10-27 6등급): 예고 색은 결과 최고 등급이거나 한 단계 위(상향 페이크)만 — 결과보다 낮게 예고하지 않는다

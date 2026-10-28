@@ -63,7 +63,8 @@ r = await page.evaluate(() => [...document.querySelectorAll(".event-offer-card")
 ok("구매 후 주간 잔여 2/3", /2\/3/.test(r ?? ""), r);
 // 비트 수련 지원팩(💎120): 견갑 조각 40 · 코어 4(사냥터 저장) · 보석 20 환급 → 순 −100
 await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /비트 수련 지원팩/.test(c.textContent))?.querySelector("button")?.click(); });
-await sleep(700);
+// 고정 0.7초 대신 사냥터 저장(코어)이 바뀔 때까지 4초까지 — 전체 검사 부하에서 저장이 늦어 코어 +2 로 잡힌 적이 있다(2026-10-28)
+for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.skillCores - beforeT.skillInventory.skillCores >= 4) break; await sleep(100); }
 const p2 = await prog();
 const t2 = await titans();
 ok("지원팩 구매: 보석 순 −100 · 견갑 조각 +40 · 스킬 코어 +4", p.redGems - p2.redGems === 100 && p2.shoulderShards - p.shoulderShards === 40 && t2.skillInventory.skillCores - beforeT.skillInventory.skillCores === 4, `${p.redGems}→${p2.redGems} shards ${p2.shoulderShards} cores ${t2.skillInventory.skillCores}`);
@@ -131,11 +132,13 @@ await closeModal();
 await clickText(".titans-bottom-nav button", "모험");
 await sleep(400);
 await clickText(".nav-popup-grid button", "시즌 패스");
-await sleep(800);
+// 고정 0.8초 대신 단 목록이 그려질 때까지(최대 4초 · 안 뜨면 한 번 더 누른다) — 전체 검사 부하에서 0단으로 잡혔다(2026-10-28)
+if (!(await page.waitForSelector(".season-tier", { timeout: 4000 }).catch(() => null))) { await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", "시즌 패스"); await page.waitForSelector(".season-tier", { timeout: 4000 }).catch(() => null); }
+await sleep(300);
 r = await page.evaluate(() => ({ head: document.querySelector(".season-head b")?.textContent, tiers: document.querySelectorAll(".season-tier").length, freeOpen: [...document.querySelectorAll(".season-cell.free:not(:disabled)")].length, buy: !!document.querySelector(".season-buy"), icons: document.querySelectorAll(".season-cell .reward-icon").length }));
 ok("G 시즌 탭: 5/30단 · 압축 목록(현재 단 주변만) · 무료 수령 5칸 · 유료 구매 버튼 · 셀마다 아이콘", /5\/30/.test(r.head ?? "") && r.tiers < 30 && r.tiers >= 6 && r.freeOpen === 5 && r.buy && r.icons === r.tiers * 2, JSON.stringify(r));
 await page.evaluate(() => document.querySelector(".season-expand")?.click());
-await sleep(300);
+await page.waitForFunction(() => document.querySelectorAll(".season-tier").length === 30, { timeout: 3000 }).catch(() => {});
 r = await page.evaluate(() => ({ tiers: document.querySelectorAll(".season-tier").length }));
 ok("G 전체 보기 → 30단", r.tiers === 30, JSON.stringify(r));
 const gBefore = await prog();
@@ -212,10 +215,14 @@ await clickText(".premium-category-tabs button", "외형");
 await sleep(400);
 r = await page.evaluate(() => ({ fx: document.querySelectorAll(".fx-product").length, theme: document.querySelectorAll(".theme-product").length, seasonHidden: ![...document.querySelectorAll(".fx-product")].some((c) => /시즌 잔영/.test(c.textContent)) }));
 ok("I 외형 탭에 무기 이펙트 3장 · 테마 3장 · 시즌 이펙트는 미보유 시 숨김", r.fx === 3 && r.theme === 3 && r.seasonHidden, JSON.stringify(r));
+// 구매마다 저장이 바뀔 때까지(최대 4초) 기다린 뒤 다음 구매 — 앞 구매 저장 중에 누르면 두 번째가 빠졌다(2026-10-28)
+const waitProg = async (f) => { for (let i = 0; i < 40; i += 1) { if (f(await prog())) return; await sleep(100); } };
 await page.evaluate(() => document.querySelector(".fx-product button")?.click());
-await sleep(700);
+await waitProg((x) => x.equippedWeaponFx === "fx-crimson");
+await sleep(200);
 await page.evaluate(() => document.querySelector(".theme-product button")?.click());
-await sleep(700);
+await waitProg((x) => x.equippedTheme === "theme-aurora");
+await page.waitForFunction(() => document.querySelector(".titans-field")?.dataset.theme === "theme-aurora", { timeout: 4000 }).catch(() => {});
 let ip = await prog();
 ok("I 진홍 잔영 300 + 오로라 밤 400 구매 → 즉시 장착 · 보석 1000→300", ip.equippedWeaponFx === "fx-crimson" && ip.equippedTheme === "theme-aurora" && ip.redGems === 300, `gems=${ip.redGems} fx=${ip.equippedWeaponFx} theme=${ip.equippedTheme}`);
 r = await page.evaluate(() => { const f = document.querySelector(".titans-field"); const cs = getComputedStyle(f); return { fx: f?.dataset.weaponFx, theme: f?.dataset.theme, sky: cs.getPropertyValue("--area-sky").trim(), trail: cs.getPropertyValue("--fx-trail").trim(), particles: !!document.querySelector(".theme-particles.theme-aurora"), btn: document.querySelector(".fx-product button")?.textContent }; });
