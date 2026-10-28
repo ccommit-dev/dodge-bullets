@@ -13,7 +13,8 @@ import "./gacha-fx.css";   // 2026-10-16 뽑기 빛·폭죽 (원래 연출 위�
 import "./anim-plus.css";   // 2026-10-15 동료·몬스터 애니메이션 보강
 import "./sprite-anim.css";   // 2026-10-19 애니메이션 2판 — 칸 시트가 동작을 갖고, 겹치던 CSS 흔들기는 끈다
 import "./fx-sprites.css";   // 2026-10-16 무기·스킬 이펙트 스프라이트(Blender)
-import "./ui-polish.css";   // 2026-10-21 단순화 · 상점 판 · 자동 강화 — 반드시 마지막
+import "./ui-polish.css";   // 2026-10-21 단순화 · 상점 판 · 자동 강화 — 반드시 마지막(아래 hunt-motion 은 사냥터 움직임만)
+import "./hunt-motion.css";   // 2026-10-28 몬스터 쓰러짐 · 무기별 공격 · 다가가 싸우기 — hit-a/b 의 !important 를 이겨야 해서 맨 뒤
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";

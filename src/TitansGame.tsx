@@ -256,7 +256,7 @@ type SkillShot = { id: number; kind: "shot" | "beam" | "impact" | "link" | "aura
 
 type FxBurst = {
   id: number;
-  kind: "slash" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | "spark" | "burst" | "debris" | "bolt" | "coin" | `sig-${SigFx}`;
+  kind: "slash" | "thrust" | "hit" | "ally" | "strike" | "crit" | "clone" | "warcry" | "spark" | "burst" | "debris" | "bolt" | "coin" | `sig-${SigFx}`;
   x: number;
   y: number;
   hue?: number;
@@ -1086,7 +1086,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setFx((prev) => [...prev.slice(lowFxRef.current ? -8 : -22), { id, kind, x, y, hue, el }]);
     window.setTimeout(() => {
       setFx((prev) => prev.filter((f) => f.id !== id));
-    }, kind === "slash" ? 320 : kind === "hit" || kind === "ally" || kind === "spark" ? 420 : kind === "burst" || kind === "debris" ? 620 : 850);
+    }, kind === "slash" || kind === "thrust" ? 360 : kind === "hit" || kind === "ally" || kind === "spark" ? 420 : kind === "burst" || kind === "debris" ? 620 : 850);
   };
   /**
    * 이펙트를 캐릭터 몸 위에 (2026-10-20, 사용자: "이펙트 위치가 이상해 — 캐릭터나 몬스터 근처로").
@@ -1149,6 +1149,46 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       window.setTimeout(() => setShots((prev) => prev.filter((s) => s.id !== sid)), fly + 40);
     }, release);
     return release + fly;
+  };
+
+  /**
+   * 주인공의 활 화살 · 지팡이 마법탄 (2026-10-28) — 주인공 무기 손에서 몬스터까지 날아간다(동료 탄과 같은 길 · hunt-motion.css el-arrow / el-arcane).
+   * 돌려준 ms 뒤에 맞는 그림(번쩍임 · 불꽃). 피해 숫자 · 체력은 바로(fxDelayMs) — 처치 속도 · 숫자 합산이 그대로다. 못 재면 0
+   */
+  const spawnHeroProj = (kind: "bow" | "staff"): number => {
+    const field = fieldRef.current;
+    const fr = field?.getBoundingClientRect();
+    const h = field?.querySelector(".titans-hero")?.getBoundingClientRect();
+    const m = field?.querySelector(".titans-monster .titan-monster-art")?.getBoundingClientRect();
+    if (!fr || !h || !m || fr.width === 0 || h.width === 0 || m.width === 0) return 0;
+    const x = h.left + h.width * 0.86 - fr.left, y = h.top + h.height * 0.6 - fr.top;
+    const tx = m.left + m.width * 0.42 - fr.left, ty = m.top + m.height * (0.4 + Math.random() * 0.16) - fr.top;
+    if (tx <= x) return 0;
+    const fly = Math.round(Math.min(320, Math.max(140, Math.hypot(tx - x, ty - y) / (kind === "bow" ? 1.4 : 1.0))));
+    const release = kind === "bow" ? 150 : 200;   // 활은 시위를 놓는 칸, 지팡이는 내뻗는 칸
+    const sid = ++shotIdRef.current;
+    const dx = tx - x, dy = ty - y;
+    const shot: SkillShot = { id: sid, kind: "proj", element: kind === "bow" ? "arrow" : "arcane", x, y, dx, dy, ang: (Math.atan2(dy, dx) * 180) / Math.PI, len: Math.hypot(dx, dy), big: false, fly };
+    window.setTimeout(() => {
+      setShots((prev) => [...prev.slice(lowFxRef.current ? -4 : -10), shot]);
+      window.setTimeout(() => setShots((prev) => prev.filter((q) => q.id !== sid)), fly + 40);
+    }, release);
+    return release + fly;
+  };
+  /** 주인공 한 방의 그림 — 검: 붙어서 베기 · 창: 앞으로 찌르기 · 활: 화살 · 지팡이: 마법탄. 돌려준 ms 뒤에 맞는 그림 */
+  const heroAttackFx = (jitter = 0): number => {
+    const k = weaponKindRef.current;
+    if (k === "bow" || k === "staff") {
+      const ms = spawnHeroProj(k);
+      if (ms > 0) {
+        window.setTimeout(() => pushFxAt(k === "bow" ? "hit" : "burst", "monster", 0.42, 0.48, 70, 45, k === "bow" ? 40 : 275, 0.06, k === "bow" ? undefined : "light"), ms);
+        return ms;
+      }
+    }
+    if (k === "spear") { pushFxAt("thrust", "hero", 0.8, 0.84, 34, 52, undefined, jitter); return 0; }   // 손(상자 가로 80% · 세로 84% — 상자 위 58% 는 빈칸)에서 몬스터 쪽으로
+    // 검: 몬스터에 붙어 몸 높이(상자 세로 78%)에서 크게 벤다(el-hero) — 예전 0.5 는 상자 위 빈칸이라 머리 위 허공을 벴다
+    pushFxAt("slash", "hero", 0.98, 0.78, 28 + Math.random() * 8, 50 + Math.random() * 8, undefined, jitter, "hero");
+    return 0;
   };
 
   const pushFloat = (
@@ -1220,7 +1260,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     (
       raw: number,
       crit: boolean,
-      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number; label?: string; skill?: TitanSkillId; delayMs?: number; chain?: boolean },
+      opts?: { clientX?: number; clientY?: number; fromAlly?: TitanHeroId | "tap"; source?: FloatSource; hue?: number; label?: string; skill?: TitanSkillId; delayMs?: number; chain?: boolean; /** 맞는 그림만 늦춘다(화살 · 마법탄이 꽂히는 순간) — 숫자 · 체력은 바로 */ fxDelayMs?: number },
     ) => {
       if (raw <= 0 || battlePhaseRef.current !== "combat") return;
       // 보스 약점 (2026-10-08): 약점 속성 스킬·같은 속성 동료는 ×1.6(+사냥 강화) · 오리온 성창은 보스 전체 ×1.15 · [약점 사냥]은 명중마다 +1초
@@ -1293,7 +1333,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (physical && !lowFxRef.current && Math.random() < 0.45) pushFxAt("debris", "monster", 0.42, 0.62, 72, 50, undefined, 0.1, hitEl);
         }
       };
-      if (opts?.delayMs) window.setTimeout(hitFx, opts.delayMs); else hitFx();
+      const fxDelay = opts?.delayMs || opts?.fxDelayMs;
+      if (fxDelay) window.setTimeout(hitFx, fxDelay); else hitFx();
 
       const next = hpRef.current - dealt;
       if (next > 0) {
@@ -1606,9 +1647,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (battlePhaseRef.current !== "combat" || !formationReadyRef.current) return;
       const { dmg, crit } = computeTapHit();
       playAttackAnim();
-      pushFxAt("slash", "hero", 0.95, 0.5, 28 + Math.random() * 8, 42 + Math.random() * 10, undefined, 0.08);
+      const fly = heroAttackFx(0.08);   // 무기마다 다른 한 방(2026-10-28)
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
-      applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap" });
+      applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap", fxDelayMs: fly });
       // 번개 (2026-10-22 아처 키우기 2번) — 단계가 있으면 LIGHTNING_EVERY 번째 탭마다 몬스터 머리 위로 번개
       const lv = saveRef.current.lightningLevel;
       if (lv > 0) {
@@ -1713,9 +1754,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           animResetRef.current = true;
           setAnimMode("attack");
           setFrameIdx(0);
-          pushFxAt("slash", "hero", 0.95, 0.5, 31, 45);
+          const fly = heroAttackFx();   // 무기마다 다른 한 방(2026-10-28) — 활 · 지팡이는 날아가 꽂히는 순간 맞는 그림
           // 자동 공격에도 대장간 단계 · 무기 탭 배율 (2026-10-27 감사: 예전엔 숙련만 봐서 방치하면 대장간 강화가 사냥 DPS 를 전혀 안 올렸다)
-          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * WEAPON_EFFECTS[weaponKindRef.current].tapMul, false, { fromAlly: "tap", source: "hero" });
+          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * WEAPON_EFFECTS[weaponKindRef.current].tapMul, false, { fromAlly: "tap", source: "hero", fxDelayMs: fly });
         }
       } else {
         autoAttackAcc.current = 0;
@@ -3123,7 +3164,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        className={`titans-field phase-${battlePhase} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         data-area={area.id}
