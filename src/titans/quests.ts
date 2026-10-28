@@ -135,7 +135,8 @@ export type QuestBlock = "max" | "prev" | "gold" | null;
 export function questBlock(state: QuestState, i: number, gold: number): QuestBlock {
   const lv = state.levels[i];
   if (lv >= QUEST_MAX_LEVEL) return "max";
-  if (i > 0 && state.levels[i - 1] <= 0) return "prev";
+  // 앞 줄 조건은 "여는" 때만 — 30줄로 늘며 옛 줄 사이에 새 줄이 끼었다. 이미 연 줄(옛 저장의 댐 틈 메우기 Lv.5 등)은 앞 새 줄이 잠겨도 계속 올린다(2026-10-28)
+  if (lv <= 0 && i > 0 && state.levels[i - 1] <= 0) return "prev";
   if (gold < questCost(i, lv)) return "gold";
   return null;
 }

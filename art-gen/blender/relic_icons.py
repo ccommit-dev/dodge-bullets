@@ -745,6 +745,175 @@ def r_aurora_orb(_):
         ob(f'band{k}', C.tube(pts, 0.035, seg=4), glow(c, 1.0), 0)
     ob('stand', C.cone(Vector((0, 0, -0.42)), 0.2, 0.32, 0.2, seg=8), metal_m('#e8b23a'))
 
+# ── 유물 4판 (2026-10-28, 사용자: "유물 개수도 20개더 늘려줘") — 새 20종 ──
+def r_cinder_chunk(_):
+    ob('coal', C.ellipsoid(Vector((0, 0, -0.15)), (0.45, 0.35, 0.32)), m('coal', '#2b2420', rough=0.9))
+    for k, (x, z) in enumerate(((-0.15, -0.05), (0.12, 0.05), (0.0, -0.25))):
+        ob(f'glow{k}', C.ellipsoid(Vector((x, -0.3, z)), (0.08, 0.03, 0.06)), glow('#ff7a1a', 1.2), 0)
+    flame(Vector((0.05, 0, 0.28)), 0.55)
+
+
+def r_flame_dagger(_):
+    ob('blade', C.cone(Vector((0, 0, 0.25)), 0.12, 0.0, 0.85, seg=4, rot=Euler((0, 0, math.radians(45)))), metal_m('#d4dde6'))
+    ob('edge', C.cone(Vector((0, -0.02, 0.2)), 0.07, 0.0, 0.7, seg=4, rot=Euler((0, 0, math.radians(45)))), glow('#ff7a1a', 0.9), O * 0.4)
+    ob('guard', C.box(Vector((0, 0, -0.2)), (0.44, 0.12, 0.08)), metal_m('#e8b23a'))
+    ob('grip', C.tube([Vector((0, 0, -0.22)), Vector((0, 0, -0.62))], 0.06, seg=8), m('grip', '#7a2a1a'))
+    ob('pommel', C.ellipsoid(Vector((0, 0, -0.66)), (0.08, 0.08, 0.08)), metal_m('#e8b23a'), O * 0.5)
+
+
+def r_icicle(_):
+    saved = C.FACET
+    C.FACET = 6
+    for k, (x, h, r) in enumerate(((0, 1.1, 0.16), (-0.3, 0.75, 0.11), (0.28, 0.85, 0.12))):
+        ob(f'ice{k}', C.cone(Vector((x, 0, 0.45 - h / 2)), r, 0.0, h, seg=6, rot=Euler((math.radians(180), 0, 0))), m('ice', '#b8f0ff', rough=0.15, emit='#e0faff', es=0.35))
+    C.FACET = saved
+    ob('ledge', C.box(Vector((0, 0, 0.5)), (0.9, 0.3, 0.1)), m('snow', '#f4f8ff'))
+
+
+def r_frost_cloak(_):
+    cloak = C.cone(Vector((0, 0, -0.1)), 0.6, 0.2, 1.0, seg=12)
+    ob('cloak', cloak, m('cloak', '#5a8ac4'))
+    ob('collar', C.torus(Vector((0, 0, 0.38)), 0.24, 0.07, seg=14, ring=6), m('fur', '#f4f8ff'))
+    ob('clasp', C.ellipsoid(Vector((0, -0.26, 0.36)), (0.08, 0.04, 0.08)), m('gem', '#b8f0ff', emit='#e0faff', es=0.6), O * 0.5)
+    for k in range(4):
+        ob(f'flake{k}', C.ellipsoid(Vector((-0.3 + 0.2 * k, -0.42, -0.1 - 0.12 * (k % 2))), (0.04, 0.02, 0.04)), glow('#f4f8ff', 1.0), 0)
+
+
+def r_silver_button(_):
+    ob('btn', C.tube([Vector((0, 0.05, 0)), Vector((0, -0.05, 0))], 0.45, seg=16), metal_m('#c8d0d8'))
+    ob('rim', C.torus(Vector((0, -0.055, 0)), 0.4, 0.04, seg=16, ring=6, rot=Euler((math.radians(90), 0, 0))), metal_m('#a3acb6'))
+    for k in range(4):
+        a = k * math.pi / 2 + math.pi / 4
+        ob(f'hole{k}', C.ellipsoid(Vector((0.12 * math.cos(a), -0.07, 0.12 * math.sin(a))), (0.045, 0.02, 0.045)), m('hole', '#3b4148'), 0)
+
+
+def r_gold_map(_):
+    scroll = C.box(Vector((0, 0, 0)), (1.0, 0.03, 0.7))
+    for v in scroll.verts:
+        v.co.y += 0.05 * math.sin(v.co.x * 5)
+    ob('map', scroll, m('paper', '#f2d68a'))
+    for sx in (-1, 1):
+        ob(f'roll{sx}', C.tube([Vector((sx * 0.52, 0, -0.38)), Vector((sx * 0.52, 0, 0.38))], 0.07, seg=8), m('roll', '#c99a3a'))
+    ob('path', C.tube([Vector((-0.3, -0.05, -0.2)), Vector((-0.05, -0.05, 0.05)), Vector((0.2, -0.05, -0.05)), Vector((0.3, -0.05, 0.18))], 0.02, seg=4), m('ink', '#8a3a1a'), 0)
+    ob('x', C.box(Vector((0.3, -0.06, 0.18)), (0.12, 0.01, 0.03), rot=Euler((0, math.radians(45), 0))), m('x', '#e0283c'), 0)
+    ob('x2', C.box(Vector((0.3, -0.06, 0.18)), (0.12, 0.01, 0.03), rot=Euler((0, math.radians(-45), 0))), m('x', '#e0283c'), 0)
+
+
+def r_dandelion(_):
+    ob('stem', C.tube([Vector((0, 0, -0.8)), Vector((0.05, 0, 0.1))], 0.03, seg=6), m('stem', '#6fbf4a'))
+    ob('head', C.ellipsoid(Vector((0.05, 0, 0.22)), (0.12, 0.12, 0.12)), m('seedhead', '#d8c89a'))
+    for k in range(14):
+        a = k * math.pi * 2 / 14
+        tip = Vector((0.05 + 0.4 * math.cos(a), 0, 0.22 + 0.4 * math.sin(a)))
+        ob(f'pap{k}', C.ellipsoid(tip, (0.06, 0.03, 0.06)), m('fluff', '#ffffff'), O * 0.4)
+    for k in range(3):
+        ob(f'fly{k}', C.ellipsoid(Vector((0.55 + 0.12 * k, -0.05, 0.55 + 0.1 * k)), (0.04, 0.02, 0.04)), m('fluff', '#ffffff'), O * 0.3)
+
+
+def r_pinwheel(_):
+    ob('stick', C.tube([Vector((0, 0.05, -0.85)), Vector((0, 0.05, 0.1))], 0.035, seg=6), m('stick', WOOD))
+    for k, c in enumerate(('#e8452c', '#f2c232', '#3fb6f0', '#6fbf4a')):
+        a = k * math.pi / 2
+        ob(f'blade{k}', C.cone(Vector((0.22 * math.cos(a), 0, 0.15 + 0.22 * math.sin(a))), 0.24, 0.0, 0.04, seg=3, rot=Euler((math.radians(90), a, 0))), m('paper', c))
+    ob('pin', C.ellipsoid(Vector((0, -0.04, 0.15)), (0.06, 0.04, 0.06)), metal_m('#f2c232'), O * 0.5)
+
+
+def r_clay_doll(_):
+    ob('body', C.ellipsoid(Vector((0, 0, -0.3)), (0.3, 0.25, 0.4)), m('clay', '#c97a4a'))
+    ob('head', C.ellipsoid(Vector((0, 0, 0.25)), (0.24, 0.22, 0.22)), m('clay', '#d98a5a'))
+    for sx in (-1, 1):
+        ob(f'eye{sx}', C.ellipsoid(Vector((sx * 0.08, -0.2, 0.28)), (0.035, 0.02, 0.035)), m('eye', '#3b2415'), 0)
+        ob(f'arm{sx}', C.ellipsoid(Vector((sx * 0.32, 0, -0.2)), (0.1, 0.08, 0.2), rot=Euler((0, math.radians(sx * 25), 0))), m('clay', '#c97a4a'))
+    ob('band', C.torus(Vector((0, 0, -0.1)), 0.28, 0.035, seg=14, ring=4), m('band', '#3f7fc4'), O * 0.5)
+
+
+def r_bronze_shovel(_):
+    ob('shaft', C.tube([Vector((0, 0, -0.2)), Vector((0, 0, 0.75))], 0.045, seg=8), m('shaft', WOOD))
+    ob('grip', C.torus(Vector((0, 0, 0.82)), 0.1, 0.035, seg=10, ring=4, rot=Euler((math.radians(90), 0, 0))), m('grip', WOOD_D))
+    ob('blade', C.ellipsoid(Vector((0, 0, -0.45)), (0.3, 0.06, 0.32), egg=0.3), metal_m('#c9893a'))
+    ob('rivet', C.ellipsoid(Vector((0, -0.07, -0.22)), (0.04, 0.02, 0.04)), metal_m('#e8b23a'), O * 0.4)
+
+
+def r_firefly_jar(_):
+    ob('jar', C.tube([Vector((0, 0, -0.55)), Vector((0, 0, 0.35))], 0.36, seg=12), m('glass', '#9fc8e8', rough=0.2))
+    ob('lid', C.tube([Vector((0, 0, 0.35)), Vector((0, 0, 0.47))], 0.38, seg=12), metal_m('#a3acb6'))
+    for k, (x, z) in enumerate(((-0.12, -0.25), (0.14, -0.05), (0.0, 0.18), (-0.15, 0.05), (0.12, -0.35))):
+        ob(f'fly{k}', C.ellipsoid(Vector((x, -0.3, z)), (0.05, 0.03, 0.05)), glow('#d4ff6a', 1.4), 0)
+
+
+def r_star_arrow(_):
+    ob('shaft', C.tube([Vector((-0.6, 0, -0.5)), Vector((0.4, 0, 0.4))], 0.035, seg=6), m('shaft', '#f4ead6'))
+    ob('tip', C.cone(Vector((0.48, 0, 0.47)), 0.16, 0.0, 0.08, seg=5, rot=Euler((0, math.radians(45), 0))), glow('#ffe066', 1.2))
+    for k in range(2):
+        ob(f'fl{k}', C.box(Vector((-0.55, 0, -0.45 + 0.06 * k)), (0.18, 0.02, 0.08), rot=Euler((0, math.radians(-45 + 30 * k), 0))), m('fletch', '#c9a0ff'), O * 0.5)
+    pts = [Vector((-0.6 - 0.08 * k, 0.02, -0.5 - 0.08 * k)) for k in range(4)]
+    ob('trail', C.tube(pts, interp([0.06, 0.01], len(pts)), seg=4), glow('#fff2b0', 0.9), 0)
+
+
+def r_clam_shell(_):
+    for k in range(9):
+        a = math.radians(-70 + 17.5 * k)
+        ob(f'rib{k}', C.ellipsoid(Vector((0.3 * math.sin(a), 0, -0.2 + 0.3 * math.cos(a))), (0.09, 0.07, 0.3), rot=Euler((0, a, 0))), m('shell', '#f4c8b0' if k % 2 else '#ffd8c0'))
+    ob('hinge', C.ellipsoid(Vector((0, 0, -0.42)), (0.16, 0.1, 0.08)), m('hinge', '#d89a7a'))
+
+
+def r_water_drop(_):
+    ob('drop', C.ellipsoid(Vector((0, 0, -0.08)), (0.4, 0.4, 0.5), egg=-0.45), m('water', '#4fa8e8', rough=0.15, emit='#7fd8ff', es=0.3))
+    ob('shine', C.ellipsoid(Vector((-0.14, -0.33, 0.08)), (0.07, 0.02, 0.14)), m('shine', '#ffffff', emit='#ffffff', es=0.5), 0)
+    ob('ripple', C.torus(Vector((0, 0, -0.6)), 0.5, 0.03, seg=18, ring=4), m('ripple', '#7fd8ff'), O * 0.4)
+
+
+def r_kingfisher_feather(_):
+    pts = spline([Vector((-0.25, 0, -0.75)), Vector((0.0, 0, -0.1)), Vector((0.15, 0, 0.45)), Vector((0.1, 0, 0.8))], 14)
+    ob('quill', C.tube(pts, interp([0.03, 0.025, 0.02, 0.01], len(pts)), seg=6), m('quill', '#fff0d0'))
+    ob('vane', C.ellipsoid(Vector((0.08, 0.01, 0.2)), (0.18, 0.03, 0.55), rot=Euler((0, math.radians(-12), 0))), m('vane', '#1fa3c4'))
+    ob('tip', C.ellipsoid(Vector((0.13, 0.0, 0.6)), (0.1, 0.035, 0.16), rot=Euler((0, math.radians(-12), 0))), m('tip', '#f28c28'))
+
+
+def r_reed_rod(_):
+    ob('rod', C.tube([Vector((-0.55, 0, -0.75)), Vector((0.45, 0, 0.7))], 0.035, seg=6), m('rod', '#c9b25a'))
+    pts = [Vector((0.45, -0.02, 0.7)), Vector((0.55, -0.02, 0.2)), Vector((0.55, -0.02, -0.3))]
+    ob('line', C.tube(pts, 0.01, seg=4), m('line', '#f4ead6'), 0)
+    ob('bob', C.ellipsoid(Vector((0.55, -0.02, -0.35)), (0.08, 0.08, 0.1)), m('bob', '#e8452c'))
+    ob('reel', C.tube([Vector((-0.35, 0.06, -0.45)), Vector((-0.35, -0.06, -0.45))], 0.1, seg=10), metal_m('#a3acb6'))
+    ob('fish', C.ellipsoid(Vector((0.3, 0, -0.62)), (0.22, 0.08, 0.1)), m('fish', '#5fa8d8'), O * 0.6)
+
+
+def r_coral_crown(_):
+    ob('band', C.tube([Vector((0, 0, -0.35)), Vector((0, 0, -0.12))], 0.42, seg=12), metal_m('#e8b23a'))
+    for k in range(6):
+        a = k * math.pi / 3
+        base = Vector((0.38 * math.cos(a), 0.38 * math.sin(a), -0.1))
+        ob(f'cor{k}', C.tube([base, base + Vector((0.05 * math.cos(a), 0.05 * math.sin(a), 0.35 + 0.1 * (k % 2)))], [0.06, 0.03], seg=6), m('coral', '#ff7a8a'))
+    ob('pearl', C.ellipsoid(Vector((0, -0.43, -0.24)), (0.08, 0.06, 0.08)), m('pearl', '#fff8ff', emit='#f0f0ff', es=0.3), O * 0.5)
+
+
+def r_tide_compass(_):
+    ob('case', C.tube([Vector((0, 0.06, 0)), Vector((0, -0.06, 0))], 0.55, seg=16), metal_m('#5fa8c4'))
+    ob('face', C.tube([Vector((0, -0.06, 0)), Vector((0, -0.08, 0))], 0.45, seg=16), m('face', '#e8f4ff'), O * 0.5)
+    pts = [Vector((-0.3 + 0.1 * k, -0.1, -0.05 + 0.06 * math.sin(k * 1.4))) for k in range(7)]
+    ob('wave', C.tube(pts, 0.025, seg=4), m('wave', '#3f88c4'), 0)
+    ob('needle', C.box(Vector((0, -0.11, 0.08)), (0.05, 0.02, 0.5), rot=Euler((0, math.radians(-35), 0))), m('needle', '#1f5a8a'), O * 0.4)
+    ob('ring', C.torus(Vector((0, 0, 0.62)), 0.1, 0.03, seg=10, ring=4, rot=Euler((math.radians(90), 0, 0))), metal_m('#e8b23a'))
+
+
+def r_mermaid_harp(_):
+    pts = spline([Vector((-0.4, 0, -0.6)), Vector((-0.45, 0, 0.2)), Vector((-0.1, 0, 0.65)), Vector((0.35, 0, 0.55))], 14)
+    ob('frame', C.tube(pts, 0.06, seg=8), metal_m('#e8b23a'))
+    ob('pillar', C.tube([Vector((-0.4, 0, -0.6)), Vector((0.35, 0, -0.6)), Vector((0.35, 0, 0.55))], 0.05, seg=8), metal_m('#e8b23a'))
+    for k in range(5):
+        x = -0.25 + 0.13 * k
+        ob(f'str{k}', C.tube([Vector((x, -0.02, -0.55)), Vector((x, -0.02, 0.45 - 0.05 * (k - 2) ** 2 * 0.3))], 0.012, seg=4), m('str', '#f4f8ff'), 0)
+    ob('shell', C.ellipsoid(Vector((-0.1, -0.05, 0.62)), (0.12, 0.05, 0.1)), m('shell', '#ffc8d8'), O * 0.5)
+
+
+def r_sea_tear(_):
+    ob('tear', C.ellipsoid(Vector((0, 0, -0.05)), (0.36, 0.3, 0.5), egg=-0.45), m('tear', '#5eead4', rough=0.15, emit='#9ff5dc', es=0.5))
+    ob('core', C.ellipsoid(Vector((0, -0.12, -0.15)), (0.14, 0.08, 0.18)), glow('#ffffff', 1.0), 0)
+    ob('wave', C.torus(Vector((0, 0, -0.5)), 0.5, 0.05, seg=18, ring=6), m('wave', '#3f88c4'))
+    for k, (x, z) in enumerate(((-0.4, 0.3), (0.38, 0.1), (0.3, 0.5))):
+        ob(f'sp{k}', C.ellipsoid(Vector((x, -0.1, z)), (0.035, 0.02, 0.035)), glow('#fff7c0', 1.2), 0)
+
 # ── 재화 아이콘 (2026-10-26 사용자: "붉은 보석, 강화석도 UI 가 너무 복잡해 조금 더 단순하게" · "성장은 도토리인데 골드로" — 골드가 도토리 그림이었다)
 # 장식 테두리 없이 물건 하나 — 금화 한 닢 · 루비 한 알 · 푸른 결정 하나. → public/ui/attendance/{gold,gem,enhance-stone}.png (128²)
 def cur_gold(_):
@@ -847,8 +1016,32 @@ JOBS = {
 }
 JOBS.update(QUEST_JOBS)
 JOBS.update(RELIC_JOBS_V3)
+# 2026-10-28 유물 4판 새 20종
+RELIC_JOBS_V4 = {
+    'cinder-chunk': (r_cinder_chunk, (-16, 12), 1.7),
+    'flame-dagger': (r_flame_dagger, (-16, 12), 1.7),
+    'icicle': (r_icicle, (-16, 12), 1.7),
+    'frost-cloak': (r_frost_cloak, (-16, 12), 1.7),
+    'silver-button': (r_silver_button, (-16, 12), 1.7),
+    'gold-map': (r_gold_map, (-16, 12), 1.7),
+    'dandelion': (r_dandelion, (-16, 12), 1.7),
+    'pinwheel': (r_pinwheel, (-16, 12), 1.7),
+    'clay-doll': (r_clay_doll, (-16, 12), 1.7),
+    'bronze-shovel': (r_bronze_shovel, (-16, 12), 1.7),
+    'firefly-jar': (r_firefly_jar, (-16, 12), 1.7),
+    'star-arrow': (r_star_arrow, (-16, 12), 1.7),
+    'clam-shell': (r_clam_shell, (-16, 12), 1.7),
+    'water-drop': (r_water_drop, (-16, 12), 1.7),
+    'kingfisher-feather': (r_kingfisher_feather, (-16, 12), 1.7),
+    'reed-rod': (r_reed_rod, (-16, 12), 1.7),
+    'coral-crown': (r_coral_crown, (-16, 12), 1.7),
+    'tide-compass': (r_tide_compass, (-16, 12), 1.7),
+    'mermaid-harp': (r_mermaid_harp, (-16, 12), 1.7),
+    'sea-tear': (r_sea_tear, (-16, 12), 1.7),
+}
+JOBS.update(RELIC_JOBS_V4)
 JOBS.update(CUR_JOBS)
-RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard'] + list(RELIC_JOBS_V3)
+RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard'] + list(RELIC_JOBS_V3) + list(RELIC_JOBS_V4)
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']
 names = []
@@ -859,6 +1052,8 @@ for a in argv:
         names += list(QUEST_JOBS)
     elif a == 'relics3':
         names += list(RELIC_JOBS_V3)
+    elif a == 'relics4':
+        names += list(RELIC_JOBS_V4)
     elif a == 'quests2':
         names += [k for k in QUEST_JOBS if k[len('quest-'):] in ('reed-weave', 'mud-haul', 'fish-catch', 'lily-garden', 'bark-strip', 'lantern-light', 'stone-stack', 'stepping-stones', 'mill-wheel', 'honey-gather', 'raft-build', 'watchtower', 'tool-forge', 'market-trade', 'canal-dig', 'storehouse', 'river-lighthouse', 'festival', 'royal-banner', 'crystal-mine', 'star-reservoir', 'beaver-kingdom')]
     elif a == 'tree':
