@@ -76,7 +76,8 @@ const KINDS = ["sword", "spear", "bow", "staff"];
 // ── 1. 무기 4종 — 대기 · 공격 모든 칸에서 손잡이가 손에 (상자 폭의 5% 안) · 공격 자세가 무기마다 다르다 ──
 const summary = {};
 for (let k = 0; k < 4; k += 1) {
-  await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), k); await sleep(700);
+  // 무기 바꾸기는 다음 스테이지부터(766bf1f) — DEV 훅으로 바로 적용한다
+  await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), k); await sleep(300); await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);
   const kind = await page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1]);
   const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0, sheets: new Set() };
   for (let i = 0; i < 120; i += 1) {
@@ -102,7 +103,7 @@ ok("지팡이는 치켜들었다 내뻗는다(−34~40°) · 내뻗는 칸에 �
 
 // ── 2. 탈착 — 떼는 무기는 손에서 시작해 아래로 떨어지고, 끼우는 무기는 아래에서 올라와 손에서 멈춘다 ──
 const swapAt = async (toIdx) => {
-  await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), toIdx);
+  await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), toIdx); await sleep(300); await page.evaluate(() => window.__huntApplyLook?.());
   await page.waitForSelector(".titans-hero .equipment-weapon-ghost", { timeout: 2000 }).catch(() => null);
   return page.evaluate(() => {
     const ghost = document.querySelector(".titans-hero .equipment-weapon-ghost"), alt = document.querySelector(".titans-hero .equipment-weapon-alt.gear-attach");
