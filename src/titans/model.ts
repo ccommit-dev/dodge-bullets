@@ -362,13 +362,17 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
       // 판 2 저장(예전 힘 '이상'으로 이미 올림)은 그대로 — 레벨을 깎지 않는다
       if (doneVersion === 2) continue;
       // 판 1 저장: 지금 레벨 = 골드 기준 레벨 → 그 레벨이 나오는 원래 레벨 중 가장 높은 것
+      // 판 3 저장: 지금 레벨 = 예전 힘에 '가장 가까운' 레벨 → 같은 방법으로 원래 레벨을 찾는다(가장 높은 쪽 — 플레이어에게 유리하게)
       let orig = from;
-      if (doneVersion === 1) { orig = 1; for (let l = 2; l <= from; l += 1) if (relevelAlly(old, h.baseCost, l, oldDps, h.baseDps, false).level <= from) orig = l; else break; }
+      if (doneVersion === 1 || doneVersion === 3) { orig = 1; for (let l = 2; l <= from; l += 1) if (relevelAlly(old, h.baseCost, l, oldDps, h.baseDps, doneVersion === 3, true).level <= from) orig = l; else break; }
       const r = relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps);
       const to = Math.max(from, r.level);
-      // 판 1 은 남는 골드를 이미 돌려줬다 — 이번에 힘으로 맞춰 준 레벨에 그 골드가 포함된다(두 번 받지 않게 거둔다 · 가진 골드까지만)
-      const gold = doneVersion === 1 ? (to > from ? -relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps, false).gold : 0) : r.gold;
-      if (to === from && gold === 0) continue;
+      // 판 1 은 남는 골드를 이미 돌려줬다 — 그 골드는 그대로 가진다(판 4, 2026-10-28 사용자: "예전 힘 이상 + 골드 유지").
+      // 판 3 은 판 1 저장의 환급 골드를 거뒀다 — 거뒀을 수 있는 경우(가까운 레벨 > 골드 레벨)엔 그 골드를 다시 돌려준다.
+      //   판 3 안내는 한 번 보여 주고 지워져 판 0 · 판 1 출신을 가를 수 없다 — 판 0 출신도 같은 액수를 받는다(유리한 쪽)
+      const goldOnly = relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps, false);
+      const gold = doneVersion === 0 ? r.gold : doneVersion === 3 && relevelAlly(old, h.baseCost, orig, oldDps, h.baseDps, true, true).level > goldOnly.level ? goldOnly.gold : 0;
+      if (to === from && gold <= 0) continue;
       rebalanceChanges.push({ id: h.id, from, to });
       heroes[h.id] = to;
       rebalanceGold += gold;
@@ -508,8 +512,9 @@ export const WELCOME_GIFT_GEMS = 1000;
 export const SURPRISE_GIFT_GEMS = 500;
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
 
-/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 · 3 = 예전 힘에 가장 가깝게 + 판 1 환급 골드 회수 */
-export const ALLY_REBALANCE_VERSION = 3;
+/** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 · 3 = 예전 힘에 가장 가깝게 + 판 1 환급 골드 회수 ·
+ * 4 = 다시 예전 힘 이상 + 판 1 골드 유지 (2026-10-28 사용자 확정 — 판 3 저장은 올리고 거둔 골드를 돌려준다) */
+export const ALLY_REBALANCE_VERSION = 4;
 /** 조정 전 값 — 값이 내려간 동료만(오리온 · 새 40명). 마리나는 값과 힘이 같이 올라 다시 계산하지 않는다 */
 export const PRE_REBALANCE_BASE_COST: Partial<Record<TitanHeroId, number>> = {
   orion: 1_150_000,
@@ -525,7 +530,7 @@ export const PRE_REBALANCE_BASE_DPS: Partial<Record<TitanHeroId, number>> = {
  * ② 새 힘(newDps)으로 예전 힘(oldDps · level) 이상이 되는 가장 낮은 레벨. 둘 중 큰 쪽 — ②가 크면 골드는 돌려주지 않는다(이미 더 받았다).
  * Lv.1 은 뽑기로 공짜일 수 있어 세지 않는다(값 1.19 배 곡선 · heroUpgradeCost 와 같은 계산). powerFloor=false 면 ①만(판 1 거꾸로 찾기)
  */
-export function relevelAlly(oldBase: number, newBase: number, level: number, oldDps = 0, newDps = 0, powerFloor = true): { level: number; gold: number } {
+export function relevelAlly(oldBase: number, newBase: number, level: number, oldDps = 0, newDps = 0, powerFloor = true, closest = false): { level: number; gold: number } {
   let spent = 0;
   for (let l = 1; l < level; l += 1) spent += Math.floor(oldBase * Math.pow(1.19, l));
   let lv = 1, used = 0;
@@ -536,11 +541,11 @@ export function relevelAlly(oldBase: number, newBase: number, level: number, old
   }
   const goldLevel = Math.max(level, lv);
   if (!powerFloor || oldDps <= 0 || newDps <= 0) return { level: goldLevel, gold: Math.max(0, spent - used) };
-  // 판 3 (같은 날 아쉬운 점 "예전 힘 이상이라 이득"): 예전 힘에 가장 가까운 레벨(±6%) — 한 단계가 ×1.125 라 '이상'은 최대 +12.5% 를 더 줬다
   const want = heroDps({ baseDps: oldDps } as TitanHeroDef, level);
   let pl = level;
   while (pl < 9999 && heroDps({ baseDps: newDps } as TitanHeroDef, pl) < want) pl += 1;
-  if (pl > level && Math.abs(heroDps({ baseDps: newDps } as TitanHeroDef, pl - 1) / want - 1) < Math.abs(heroDps({ baseDps: newDps } as TitanHeroDef, pl) / want - 1)) pl -= 1;
+  // closest — 판 3 이 쓰던 '예전 힘에 가장 가까운 레벨'. 지금은 판 3 저장의 원래 레벨을 거꾸로 찾을 때만 쓴다(판 4 는 다시 '이상')
+  if (closest && pl > level && Math.abs(heroDps({ baseDps: newDps } as TitanHeroDef, pl - 1) / want - 1) < Math.abs(heroDps({ baseDps: newDps } as TitanHeroDef, pl) / want - 1)) pl -= 1;
   return pl > goldLevel ? { level: pl, gold: 0 } : { level: goldLevel, gold: Math.max(0, spent - used) };
 }
 
