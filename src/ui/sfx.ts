@@ -182,3 +182,43 @@ export function sfxHuntBurst(el: string): void {
 export function sfxHuntShoot(el: string): void {
   noise(0, 0.12, 0.025, el === "earth" ? 500 : 1200, 2, "bandpass", el === "earth" ? 300 : 3200);
 }
+
+/* ── 무기 · 쓰러짐 · 펫 · 스킬 등급 (2026-10-28, 사용자: "스테이지별 콘텐츠별 알맞은 음악 효과음 다시 넣어줘") ──
+   주인공 한 방은 무기마다 다른 소리(검 쇳소리 · 창 찌르기 · 활 시위 · 지팡이 마법), 몬스터 쓰러짐 · 펫 덤빔 · 스킬 시전은 등급만큼 크게.
+   부르는 쪽(TitansGame)이 간격을 둔다 — 연타가 소리를 덮지 않게 */
+/** 주인공 무기 한 방 */
+export function sfxWeapon(kind: "sword" | "spear" | "bow" | "staff"): void {
+  if (kind === "sword") {   // 휙 베고 쨍 — 높은 잡음 내림 + 쇳소리 두 점
+    noise(0, 0.11, 0.05, 5200, 1.4, "bandpass", 1400);
+    play([{ freq: 2093, at: 0.05, dur: 0.12, type: "triangle", gain: 0.022 }, { freq: 2637, at: 0.055, dur: 0.1, type: "sine", gain: 0.014 }]);
+  } else if (kind === "spear") {   // 쉭 찌르고 퍽 — 짧은 바람 + 낮은 둔탁
+    noise(0, 0.08, 0.045, 2600, 2.2, "bandpass", 4200);
+    noise(0.07, 0.06, 0.06, 420, 1, "lowpass");
+    play([{ freq: 147, at: 0.07, dur: 0.09, type: "sine", gain: 0.05 }]);
+  } else if (kind === "bow") {   // 팅 시위 + 쉬익 날아감
+    play([{ freq: 392, at: 0, dur: 0.16, type: "triangle", gain: 0.05 }, { freq: 294, at: 0.02, dur: 0.12, type: "sine", gain: 0.02 }]);
+    noise(0.03, 0.18, 0.025, 1800, 3, "bandpass", 5200);
+  } else {   // 지팡이 — 반짝이는 세 음 + 윙
+    play([{ freq: 1175, at: 0, dur: 0.14, type: "sine", gain: 0.025 }, { freq: 1568, at: 0.05, dur: 0.14, type: "sine", gain: 0.022 }, { freq: 2093, at: 0.1, dur: 0.2, type: "sine", gain: 0.02 }]);
+    noise(0, 0.22, 0.018, 3000, 6, "bandpass", 900);
+  }
+}
+/** 몬스터 쓰러짐 — 쿵 + 펑(먼지) + 내려가는 두 음 */
+export function sfxMonsterDown(boss = false): void {
+  play([{ freq: boss ? 62 : 92, at: 0, dur: boss ? 0.42 : 0.26, type: "sine", gain: boss ? 0.16 : 0.1 }, { freq: 392, at: 0.04, dur: 0.12, gain: 0.03 }, { freq: 262, at: 0.12, dur: 0.16, gain: 0.03 }]);
+  noise(0.02, boss ? 0.5 : 0.3, boss ? 0.09 : 0.06, 900, 0.8, "lowpass", 160);
+}
+/** 펫 덤빔 — 깡총 두 음 */
+export function sfxPetPounce(): void {
+  play([{ freq: 988, at: 0, dur: 0.07, type: "square", gain: 0.014 }, { freq: 1319, at: 0.06, dur: 0.09, type: "square", gain: 0.012 }]);
+}
+/** 스킬 시전 — 등급(N · R · SR · SSR · UR · LR)이 높을수록 음이 늘고 저음 쿵 · 반짝이 붙는다 */
+export function sfxSkillTier(tier: "N" | "R" | "SR" | "SSR" | "UR" | "LR"): void {
+  const rank = ["N", "R", "SR", "SSR", "UR", "LR"].indexOf(tier);
+  const scale = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568];
+  const notes: Note[] = scale.slice(0, Math.max(1, rank + 1)).map((f, i) => ({ freq: f, at: i * 0.055, dur: 0.18 + rank * 0.02, type: "sine", gain: 0.03 + rank * 0.004 }));
+  if (rank >= 3) notes.push({ freq: 98, at: 0, dur: 0.4 + rank * 0.05, type: "sine", gain: 0.06 + rank * 0.012 });
+  if (rank >= 4) notes.push({ freq: 1568 * (rank === 5 ? 1.5 : 1.25), at: 0.32, dur: 0.4, type: "triangle", gain: 0.02 });
+  play(notes);
+  if (rank >= 3) noise(0.05, 0.3 + rank * 0.08, 0.02 + rank * 0.006, 6000, 4, "bandpass", 2400);   // 반짝이
+}
