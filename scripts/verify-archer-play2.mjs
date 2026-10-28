@@ -97,9 +97,11 @@ await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
 await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
 const badge = await page.evaluate(() => document.querySelector(".gacha-page-actions .first-ten-badge")?.textContent ?? "");
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
-await sleep(2400);
+// 고정 2.4초 대신 카드 10장이 깔릴 때까지(최대 10초) — 전체 검사 부하에서 빈 결과([])를 읽었다(2026-10-28)
+await page.waitForFunction(() => document.querySelectorAll(".gacha-card").length >= 10, { timeout: 10000 }).catch(() => {});
+await sleep(400);
 const first = await page.evaluate(() => ({ ssrIds: [...document.querySelectorAll(".gacha-card.rarity-ssr, .gacha-card.rarity-ur, .gacha-card.rarity-lr")].map((c) => c.getAttribute("data-ally")), n: document.querySelectorAll(".gacha-card").length, ssr: [...document.querySelectorAll(".gacha-card.rarity-ssr")].map((c) => ({ name: c.querySelector(".gacha-card-front b")?.textContent, lock: !!c.querySelector(".gacha-lock") })) }));
-ok("첫 10연: '첫 10연 전설 확정' · 결과에 전설 1명 이상(초반 지역 풀에 전설이 없어도) · 잠금 표시 없음", /첫 10연 전설 확정/.test(badge) && first.n === 10 && first.ssr.length >= 1 && first.ssr.every((c) => !c.lock), `${badge} · ${JSON.stringify(first.ssr)}`);
+ok("첫 10연: '첫 10연 전설 확정' · 결과에 전설 1명 이상(초반 지역 풀에 전설이 없어도) · 잠금 표시 없음", /첫 10연 전설 확정/.test(badge) && first.n === 10 && first.ssr.length >= 1 && first.ssr.every((c) => !c.lock), `${badge} · 카드 ${first.n} · ${JSON.stringify(first.ssr)}`);
 await clickText(".gacha-close", "확인"); await sleep(300);
 const badgeAfter = await page.evaluate(() => !!document.querySelector(".gacha-page-actions .first-ten-badge"));
 ok("두 번째부터는 확정 표시 없음", !badgeAfter);
