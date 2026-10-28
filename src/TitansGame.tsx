@@ -1334,13 +1334,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const kk = bossRef.current ? `${k}@boss` : k;   // 대장에게 준 피해는 따로 — 대장 실패 뒤 일반 몬스터 피해가 섞이지 않게
         devDmgRef.current[kk] = (devDmgRef.current[kk] ?? 0) + dealt;
         devDmgRef.current[bossRef.current ? "boss" : "mob"] = (devDmgRef.current[bossRef.current ? "boss" : "mob"] ?? 0) + dealt;
+        // 스킬은 이름별 피해 · 횟수도 — 무기 간 스킬 배율을 한 방 단위로 잰다(운석 쿨 38초 > 측정 창이라 합계는 위상에 흔들린다)
+        if (k === "skill") { const sk = `${kk}:${opts?.label ?? "?"}`; devDmgRef.current[sk] = (devDmgRef.current[sk] ?? 0) + dealt; devDmgRef.current[`#${sk}`] = (devDmgRef.current[`#${sk}`] ?? 0) + 1; }
       }
       if (permRef.current.burnShare > 0 && opts?.label !== "화상") relicBurnPoolRef.current += raw * permRef.current.burnShare;
       // 타격 표현 (2026-10-21, 사용자: "흰 조준선을 공격한 동료의 속성 색 타격 그림으로 · 평타는 작은 불꽃만, 치명타 · 스킬 · 특수기는 크게") —
       // 때린 쪽 속성: 동료 = ALLY_ELEMENT, 스킬 = 스킬 원소, 화상 = 불, 주인공 · 탭 = 칼날
       const hitEl = opts?.skill
-        // 스킬은 이름별 피해 · 횟수도 — 무기 간 스킬 배율을 한 방 단위로 잰다(운석 쿨 38초 > 측정 창이라 합계는 위상에 흔들린다)
-        if (k === "skill") { const sk = `${kk}:${opts?.label ?? "?"}`; devDmgRef.current[sk] = (devDmgRef.current[sk] ?? 0) + dealt; devDmgRef.current[`#${sk}`] = (devDmgRef.current[`#${sk}`] ?? 0) + 1; }
         ? (SKILLS.find((s) => s.id === opts.skill)?.element ?? "blade")
         : opts?.label === "화상"
           ? "fire"
