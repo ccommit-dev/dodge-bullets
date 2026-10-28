@@ -36,14 +36,14 @@
    활 · 지팡이는 예전 자리(26~28%)보다 8% 앞에서 쏜다. 원거리 동료도 --ranged-advance 만큼 앞으로(SpriteArt lineFormation) —
    주인공이 근접이면 비운 자리까지, 원거리면 조금. 몬스터가 나올 때마다(STAGE CLEAR → 퇴장 → 왼쪽에서 다시 등장) 처음부터 걸어 들어온다.
    걷는 시간은 그대로(--encounter-duration) — 처치 속도 · 골드에 닿지 않는다 */
-.titans-field.hero-melee { --ranged-advance: 58px; }
+.titans-field.hero-melee { --ranged-advance: 48px; }   /* 58px 은 앞줄 근접과 겹쳤다(verify-formation playart) */
 .titans-field.hero-ranged { --ranged-advance: 20px; }
 .titans-field.hero-melee .titans-hero.is-engaged { left: calc(100% - var(--party-meet-right, 8%) - var(--monster-size, 112px) * (1 - var(--party-ml, .22)) - var(--hero-size, 66px) * .88); }
 .titans-field.boss.hero-melee .titans-hero.is-engaged { left: calc(100% - var(--monster-meet-right, 8%) - var(--boss-size, 136px) * (1 - var(--monster-ml, .22)) - var(--hero-size, 66px) * .88); }
 .titans-field.hero-ranged .titans-hero.is-engaged { left: calc(var(--hero-meet-left, 27%) + 8%); }
-/* 근접 주인공은 근접 무리(오른쪽 무리 깊이 --lane-r)의 맨 앞(12% — 앞줄 동료보다 아래 = 앞) · 앞줄 동료는 26px 왼쪽에 서서 몸이 보인다.
+/* 근접 주인공은 근접 무리(오른쪽 무리 깊이 --lane-r)의 맨 앞(12% — 앞줄 동료보다 아래 = 앞) · 앞줄 동료는 32px 왼쪽에 서서 몸이 보인다.
    동료를 들어 올리면(--melee-lift) 뒷줄과 겹치거나(verify-formation) 뒷줄 발이 풀밭 선을 넘었다(verify-walk-y) — 주인공만 앞으로 */
-.titans-field.hero-melee { --melee-front-dx: -26px; }
+.titans-field.hero-melee { --melee-front-dx: -32px; }   /* −26px 은 주인공과 22~26%, −34px 은 원거리 동료와 19% 겹쳤다(verify-formation) — 사이 */
 .titans-field.hero-melee .titans-hero { bottom: calc(12% + var(--lane-r, 0%)); scale: min(1, 1 - var(--lane-rn, 0) / 60); }   /* 근접 동료(오른쪽 무리 앞줄)보다 앞 — 같은 깊이면 앞줄 동료가 주인공 뒤로 숨는다 */
 
 /* ── 주인공 무기별 한 방 (TitansGame heroAttackFx) ──
@@ -77,7 +77,7 @@
 @media (prefers-reduced-motion: reduce) { .titans-fx-thrust::before, .titans-fx-thrust::after { animation-duration: .01s; } }
 .titans-fx-slash.el-hero { scale: 1.35; z-index: 12; }   /* 주인공 검 베기 — 몬스터 몸 위에 크게 */
 /* 원거리 동료가 앞으로 나온 만큼 탄 빛줄기를 짧게 — 그대로면 전장 오른쪽 밖으로 40~49px 나갔다(verify-anim-clip) */
-.titans-field .ally-attack-fx.ranged { width: calc(min(48vw, 360px) - var(--ranged-advance, 0px)); }
+.titans-field .ally-attack-fx.ranged { width: calc(min(48vw, 360px) - var(--ranged-advance, 0px) - 32px); }   /* 뽑기 화면 편성(원거리 앞 칸)에서도 24px 나갔다 — 32px 더 짧게 */
 
 /* ── 스킬 등급 (2026-10-28, 사용자: "스킬 탭 복잡한 탭 삭제 · 전체 스킬 등급별 설계 · 애니메이션 이펙트") ──
    색은 동료 6등급과 같다: 일반 회색 · 희귀 하늘 · 영웅 보라 · 전설 금 · 신화 진홍 · 초월 청록(무지개). titans/skills.ts SKILL_TIER */
@@ -163,7 +163,7 @@
 .beat-song-chip b { font-size: 13px; font-weight: 900; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .beat-song-chip small { font-size: 13px; font-weight: 700; color: #5e4229; white-space: nowrap; }
 .beat-song-clears { display: inline-flex; gap: 3px; }
-.beat-song-clears em { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; font-size: 13px; font-style: normal; font-weight: 900; border: 2px solid #b9a27e; color: #8a7458; }
+.beat-song-clears em { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; font-size: 13px; font-style: normal; font-weight: 900; border: 2px solid #8a7458; color: #5e4229; }   /* 흐린 글자 대비 4.2 → 짙게(scan-readability) */
 .beat-song-clears em.done { border-color: #16a34a; background: #dcfce7; color: #166534; }
 .beat-first-rewards { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .beat-first-rewards em { padding: 1px 7px; border-radius: 999px; font-size: 13px; font-style: normal; font-weight: 800; background: #fff3d6; color: #3b2415; border: 1px solid #c9a86a; }
