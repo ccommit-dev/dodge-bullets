@@ -122,18 +122,22 @@ p = await prog();
 // 2026-10-28 스테이지 해금 없음 — 개척 상한 밖 동료도 가지고 있으면 출전한다
 ok("출전 제한 없음: 개척 상한 밖 엠버도 편성된다", gateClicked && p.partyIds.includes("ember") && !/개척해야/.test(r), r || "(안내 없음)");
 
-// ── 2. 스킬 탭: 등급 묶음(슬롯 탭 없음, 2026-10-28) · 효과 수치 · 프리셋 · 시전 버프 칩 ──
+// ── 2. 스킬 탭: 장착 칸 묶음 · 등급은 윤곽선만(2026-10-28 2판, "등급별 내용 삭제 · 윤곽선으로만 · 장착 가독성") · 효과 수치 · 프리셋 · 시전 버프 칩 ──
 await clickText(".titans-tabs button", "스킬");
 await sleep(600);
 r = await page.evaluate(() => ({
   slotTabs: document.querySelectorAll(".skill-slot-tabs button").length,
-  heads: [...document.querySelectorAll(".skill-tier-head b")].map((b) => b.textContent),
+  heads: [...document.querySelectorAll(".skill-slot-head > span")].map((b) => b.textContent),
+  tierHeads: document.querySelectorAll(".skill-tier-head, .skill-tier-tag").length,
+  outlines: document.querySelectorAll(".skill-learn-card.skill-outline[class*=rarity-]").length,
+  comboNames: [...document.querySelectorAll(".hero-skill-combo .combo-name")].map((b) => b.textContent),
   cards: document.querySelectorAll(".skill-learn-card").length,
   starters: document.querySelectorAll(".skill-learn-card[data-slot=starter]").length,
   effects: [...document.querySelectorAll(".skill-learn-card[data-slot=starter] .skill-effect")].map((e) => e.textContent),
   presets: [...document.querySelectorAll(".preset-row button b")].map((b) => b.textContent),
 }));
-ok("슬롯 탭 없음 · 등급 묶음 6개(일반 → 초월) · 전체 카드 12장 · 시동기 3장(기본·화상·빙결)", r.slotTabs === 0 && r.heads.join() === "일반,희귀,영웅,전설,신화,초월" && r.cards === 12 && r.starters === 3, `${r.heads.join("/")} cards=${r.cards} starters=${r.starters}`);
+ok("슬롯 탭 없음 · 장착 칸 묶음 5개(시동기 → 패시브) · 등급 글자 없음 · 카드 12장 모두 등급 윤곽선 · 시동기 3장", r.slotTabs === 0 && r.heads.join() === "시동기,연계 A,연계 B,마무리,패시브" && r.tierHeads === 0 && r.cards === 12 && r.outlines === 12 && r.starters === 3, `${r.heads.join("/")} cards=${r.cards} outlines=${r.outlines} tier=${r.tierHeads}`);
+ok("시전 순서 칸에 낀 스킬 이름(빈 칸은 '비어 있음')", r.comboNames.length === 5 && r.comboNames.every((n) => n.length > 0), r.comboNames.join(" · "));
 ok("카드에 효과 수치(탭 ×N · 쿨)", r.effects.every((e) => /탭 ×\d+/.test(e) && /쿨 \d+초/.test(e)), r.effects.join(" | "));
 ok("프리셋 3종 (균형형·탭 폭발형·원정대형)", r.presets.join() === "균형형,탭 폭발형,원정대형", r.presets.join());
 r = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card[data-slot=passive] .skill-effect")].map((e) => e.textContent));
@@ -141,9 +145,14 @@ ok("패시브 3종 효과 수치 표기", r.length === 3 && r.some((e) => /탭 �
 // 패시브 학습(단단한 앞니) → 학습 후 장착 상태
 await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
 // 고정 0.5초 대신 저장에 학습 · 장착이 남을 때까지(최대 4초) — 전체 검사 부하에서 한 번 빠졌다(2026-10-28)
-for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.learned.includes("steel") && tt.skillInventory.equipped.passive === "steel") break; await sleep(100); }
+// 장착 순간 연출 (2026-10-28, "실제 장착시 바로 스킬 이펙트 화려하게") — 배우면 그 칸에 바로 끼워지고 카드 · 시전 칸이 빛나며 전장에 시전 컷인.
+// 해제 → 다시 끼우기로는 못 잰다: 실제 경제(test-phase 0)에선 연계 A 칸이 비트 숙련 0 이라 잠겨 다시 끼울 수 없다
+const equipFxNow = () => page.evaluate(() => ({ pop: !!document.querySelector(".skill-learn-card.equip-pop .skill-icon-steel, .skill-learn-card.equip-pop"), slotPop: !!document.querySelector(".hero-skill-combo .combo-step.equip-pop"), cutin: !!document.querySelector(".skill-cutin"), btn: [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent))?.querySelector(".skill-equip-btn")?.textContent ?? "" }));
+let fx = null;
+for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.learned.includes("steel") && tt.skillInventory.equipped.passive === "steel") { fx = await equipFxNow(); break; } await sleep(100); }
 t = await titans();
 ok("패시브 학습 → 장착 (SP·코어 차감)", t.skillInventory.learned.includes("steel") && t.skillInventory.equipped.passive === "steel");
+ok("배우면 바로 장착 연출: 카드 · 시전 칸이 빛나고 전장에 컷인 · 버튼 '장착됨'", !!fx && fx.pop && fx.slotPop && fx.cutin && /장착됨/.test(fx.btn), JSON.stringify(fx));
 // 전투 화면에서 급소 노리기(crit, 옛 꼬리 치기 박자) 시전 → 버프 칩 "치명 +45%"
 await clickText(".titans-tabs button", "전장");
 await sleep(400);

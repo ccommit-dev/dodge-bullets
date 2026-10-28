@@ -87,6 +87,7 @@ import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDE
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
 import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, setActive, type RelicBanner, type RelicId } from "./titans/relics";
 import type { Tier as RelicTierRank } from "./titans/allyRoster";
+import "./titans/skillTab.css";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
 import {
   ALLY_IDS,
@@ -363,6 +364,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
   /** 시전 등급 연출 (2026-10-28) — 스킬 등급(SKILL_TIER)이 높을수록 전장 전체 빛 · 고리가 커진다(hunt-motion.css .skill-tier-fx) */
   const [tierFx, setTierFx] = useState<{ tier: AllyRarity; seq: number } | null>(null);
+  /** 장착 연출 (2026-10-28, 사용자: "실제 장착시 바로 스킬 이펙트 화려하게") — 카드 · 칸이 빛나고 전장에서 그 스킬 시전 연출을 한 번(피해 · 쿨타임 없음) */
+  const [equipFx, setEquipFx] = useState<{ id: TitanSkillId; seq: number } | null>(null);
   /** 펫 덤빔(2026-10-28) — 번호가 바뀔 때마다 주인공 곁 펫이 몬스터 쪽으로 뛰었다 돌아온다(hunt-motion.css .hero-pet.pet-attack) */
   const [petAtk, setPetAtk] = useState(0);
   const petAccRef = useRef(0);
@@ -373,6 +376,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const partyHpRef = useRef(1);
   const [partyHp, setPartyHp] = useState(1);
   const partyDownRef = useRef(false);
+  /** 원정대 쓰러짐 연출 (2026-10-28, 사용자: "죽는모션 피격 애니메이션 모두 수정") — 대장 반격에 체력 0 이면 1.3초 쓰러졌다 일어난다 */
+  const [partyKo, setPartyKo] = useState(0);
   const lastBossHitLeftRef = useRef(0);
   /** 동료 위 피해 숫자 — 몬스터 · 대장의 공격 */
   const [partyDmg, setPartyDmg] = useState<{ id: string; text: string; key: number; boss: boolean } | null>(null);
@@ -1868,6 +1873,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         setBossLeft(Math.max(0, left));
         if (left <= 0) {
           flash(partyDownRef.current ? "원정대가 쓰러졌다 · 동료를 키워 다시 도전!" : "보스 실패 · 다시 도전!");
+          if (partyDownRef.current) { const k = performance.now(); setPartyKo(k); window.setTimeout(() => setPartyKo((cur) => (cur === k ? 0 : cur)), 1300); }
           partyDownRef.current = false;
           // 벽 미터 (RETENTION D): 제한시간 동안 깎은 비율 — 추천 배너가 정량 게이지로 보여준다
           setWallInfo({ ratio: Math.max(0.02, Math.min(0.99, 1 - hpRef.current / Math.max(1, monsterHp(saveRef.current.stage, true)))), stage: saveRef.current.stage });
@@ -2815,6 +2821,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setSkillPoints(progress.skillPoints);
     setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, learned: [...prev.skillInventory.learned, id], levels: { ...prev.skillInventory.levels, [id]: 1 }, equipped: { ...prev.skillInventory.equipped, [def.slot]: id }, skillCores: prev.skillInventory.skillCores - def.learnCoreCost } }));
     flash(`${def.name} 학습 완료`);
+    previewSkillEquip(id);   // 배우면 바로 그 칸에 끼워진다 — 장착 연출도 같이
+  };
+
+  /** 장착 미리보기 — 시전 연출만(컷인 · 등급 빛 · 원소 오라 · 소리). 피해 · 쿨타임 · 버프는 없다 */
+  const previewSkillEquip = (id: TitanSkillId) => {
+    const def = SKILLS.find((s) => s.id === id);
+    if (!def) return;
+    const seq = performance.now();
+    setEquipFx({ id, seq });
+    window.setTimeout(() => setEquipFx((cur) => (cur?.seq === seq ? null : cur)), 1200);
+    setSkillVisual(id);
+    window.setTimeout(() => setSkillVisual((active) => (active === id ? null : active)), 820);
+    setTierFx({ tier: SKILL_TIER[id], seq });
+    window.setTimeout(() => setTierFx((cur) => (cur?.seq === seq ? null : cur)), 1100);
+    sfxSkillTier(SKILL_TIER[id]);
+    const geo = castGeometry();
+    if (geo) spawnShot("aura", id, def.element, geo.hx, geo.hy + 28);
+    else pushFx(def.slot === "starter" ? "strike" : def.slot === "finisher" ? "warcry" : def.element === "fire" ? "clone" : "crit", 56, 44, def.element === "fire" ? 18 : def.element === "wind" ? 185 : def.element === "earth" ? 75 : def.element === "light" ? 48 : 330);
   };
 
   const toggleSkill = (id: TitanSkillId) => {
@@ -2827,6 +2851,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       flash(`연습실에서 ${SKILL_LABEL[beatSkill]} 숙련 5를 먼저 올리세요`);
       return;
     }
+    if (!equippedNow) previewSkillEquip(id);
     setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, equipped: { ...prev.skillInventory.equipped, [def.slot]: prev.skillInventory.equipped[def.slot] === id ? undefined : id } } }));
   };
 
@@ -3258,7 +3283,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        className={`titans-field phase-${battlePhase} ${partyKo ? "party-ko" : ""} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         data-area={area.id}
@@ -4299,9 +4324,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 const eq = save.skillInventory.equipped[slot];
                 const locked = !qaOpen && slotLevels(character)[slot] <= 0;
                 return (
-                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""} ${skillSlotTab === slot ? "focus" : ""}`} onClick={() => { setSkillSlotTab(slot); window.requestAnimationFrame(() => document.querySelector(`.skill-learn-card[data-slot="${slot}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }} title={SLOT_LABEL[slot]}>
+                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""} ${skillSlotTab === slot ? "focus" : ""} ${equipFx && eq === equipFx.id ? "equip-pop" : ""}`} onClick={() => { setSkillSlotTab(slot); window.requestAnimationFrame(() => document.querySelector(`.skill-learn-card[data-slot="${slot}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }} title={SLOT_LABEL[slot]}>
                     {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? "🔒" : "+"}</span>}
-                    <small>{slot === "passive" ? "상시" : `${i + 1}`}</small>
+                    <small>{slot === "passive" ? "상시" : `${i + 1}`} {SLOT_LABEL[slot]}</small>
+                    <b className="combo-name">{eq ? SKILLS.find((x) => x.id === eq)?.name ?? "" : locked ? "잠김" : "비어 있음"}</b>
                   </button>
                 );
               })}
@@ -4318,13 +4344,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         )}
         {/* 전체 스킬 — 등급 묶음(일반 → 초월, 2026-10-28 사용자: "복잡한 탭들 모두 삭제 · 전체 스킬 등급별"). 슬롯(시동기 · 연계 · 마무리 · 패시브)은 카드의 칩으로.
             예전 슬롯 탭 5개는 한 번에 한 슬롯(3장)만 보여 줘서 무엇이 있는지 알려면 다섯 번 눌러야 했다. 조합 칸을 누르면 그 슬롯 카드로 내려가 표시(slot-focus) */}
+        {/* 2026-10-28 (사용자: "스킬탭 … 등급별 이 내용은 삭제하고 … 윤곽선으로만 등급 · 스킬 장착시스템이 너무 불편해 조금더 가독성좋게") —
+            등급 머리줄 · 등급 글자를 걷고 카드 윤곽선 색(동료 등급색)으로만. 목록은 장착 칸(시동기 → 연계 A → 연계 B → 마무리 → 패시브)마다 묶고,
+            머리줄에 그 칸에 지금 낀 스킬을 보여 준다 — 무엇을 어디에 끼우는지 한눈에 */}
         {tab === "skills" &&
-          TIERS.flatMap((tierOf) => {
-            const inTier = SKILLS.filter((sk) => SKILL_TIER[sk.id] === tierOf).sort((x, y) => SLOT_ORDER.indexOf(x.slot) - SLOT_ORDER.indexOf(y.slot));
-            if (!inTier.length) return [];
+          SLOT_ORDER.flatMap((slotOf, slotIdx) => {
+            const inSlot = SKILLS.filter((sk) => sk.slot === slotOf).sort((x, y) => TIERS.indexOf(SKILL_TIER[x.id]) - TIERS.indexOf(SKILL_TIER[y.id]));
+            if (!inSlot.length) return [];
+            const eqId = save.skillInventory.equipped[slotOf];
+            const eqDef = eqId ? SKILLS.find((x) => x.id === eqId) : undefined;
+            const shut = !qaOpen && slotLevels(character)[slotOf] <= 0;
             return [
-              <h3 key={`tier-${tierOf}`} className={`skill-tier-head tier-${tierOf}`} data-tier={tierOf}><b>{TIER_LABEL[tierOf]}</b><small>{inTier.length}종</small></h3>,
-              ...inTier.map((sk) => {
+              <h3 key={`slot-${slotOf}`} className={`skill-slot-head ${eqDef ? "has-eq" : ""} ${shut ? "locked" : ""}`} data-slot={slotOf}>
+                <b>{slotOf === "passive" ? "상시" : `${slotIdx + 1}`}</b><span>{SLOT_LABEL[slotOf]}</span>
+                <small>{shut ? "🔒 연습실에서 열기" : eqDef ? <>장착 · <em>{eqDef.name}</em></> : "비어 있음 — 아래에서 골라 장착"}</small>
+              </h3>,
+              ...inSlot.map((sk) => {
             const learned = save.skillInventory.learned.includes(sk.id);
             const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
             const level = save.skillInventory.levels[sk.id];
@@ -4336,11 +4371,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const slotShut = slotLevel <= 0 && !qaOpen;
             const toNext = masteryToNextSlotLevel(mastery);
             const tier = SKILL_TIER[sk.id];
-            return <article key={sk.id} data-slot={sk.slot} data-tier={tier} className={`titans-card skill-learn-card tier-${tier} ${skillSlotTab === sk.slot ? "slot-focus" : ""} element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
+            return <article key={sk.id} data-slot={sk.slot} data-tier={tier} title={`${TIER_LABEL[tier]} 스킬`} className={`titans-card skill-learn-card skill-outline rarity-${tier.toLowerCase()} tier-${tier} ${equipFx?.id === sk.id ? "equip-pop" : ""} ${skillSlotTab === sk.slot ? "slot-focus" : ""} element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
               <SkillIcon id={sk.id} />
               <div>
                 <strong>
-                  {sk.name} <em className={`skill-tier-tag tier-${tier}`}>{TIER_LABEL[tier]}</em> <em className="skill-slot-tag">{SLOT_LABEL[sk.slot]}</em> <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em>
+                  {sk.name} <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em>
                   {learned && <em className="skill-level-tag">Lv.{level}/{sk.maxLevel}</em>}
                   {equipped && <em className="skill-equipped-tag">장착</em>}
                 </strong>
@@ -4354,8 +4389,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 {!learned && <small>학습 비용 SP {sk.learnSpCost} · 코어 {sk.learnCoreCost} · {SLOT_LABEL[sk.slot]} {learnedInType}/{skillTypeCapacity}</small>}
               </div>
               <div className="skill-card-actions">
-                <button type="button" disabled={!learned && (learnedInType >= skillTypeCapacity || skillPoints < sk.learnSpCost || save.skillInventory.skillCores < sk.learnCoreCost)} onClick={() => learned ? toggleSkill(sk.id) : void learnSkill(sk.id)}>
-                  {learned ? equipped ? "해제" : "장착" : "학습"}
+                <button type="button" className={`skill-equip-btn ${equipped ? "is-equipped" : learned ? "is-ready" : "is-learn"}`} disabled={!learned && (learnedInType >= skillTypeCapacity || skillPoints < sk.learnSpCost || save.skillInventory.skillCores < sk.learnCoreCost)} onClick={() => learned ? toggleSkill(sk.id) : void learnSkill(sk.id)}>
+                  {learned ? equipped ? "장착됨 · 해제" : eqDef && eqDef.id !== sk.id ? `${eqDef.name} 대신 장착` : "장착" : "학습"}
                 </button>
                 {learned && <button type="button" className="skill-level-button" disabled={level >= sk.maxLevel || save.gold < upgradeCost} onClick={() => upgradeSkill(sk.id)}>{level >= sk.maxLevel ? "MAX" : `${formatGold(upgradeCost)}G 강화`}</button>}
               </div>
