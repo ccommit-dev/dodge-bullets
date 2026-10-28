@@ -79,9 +79,10 @@ ok("출석 패키지: 보석 순 +20(40 지불·60 환급) · 방치 가속 24h 
 // 조각 상품 (2026-10-28 — 동료 고르기 칸 없음): 가진 동료 모두에게 6씩
 ok("이벤트 · 특별: 동료 고르기 칸이 없다", await page.evaluate(() => !document.querySelector(".event-shard-target")));
 await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /그림자 원정대 러시/.test(c.textContent))?.querySelector("button")?.click(); });
-await sleep(700);
-const p4 = await prog();
-ok("러시 구매: 가진 동료 모두(레온 포함) 조각 +6", (p4.allyShards.leon ?? 0) - (p3.allyShards.leon ?? 0) === 6, `leon ${p3.allyShards.leon ?? 0}→${p4.allyShards.leon ?? 0}`);
+// 고정 0.7초 대신 저장이 바뀔 때까지(최대 6초) — 전체 검사 부하에서 0→0 을 읽었다(2026-10-28)
+let p4 = await prog();
+for (let i = 0; i < 30 && (p4.allyShards.leon ?? 0) === (p3.allyShards.leon ?? 0); i += 1) { await sleep(200); p4 = await prog(); }
+ok("러시 구매: 가진 동료 모두(레온 포함) 조각 +6", (p4.allyShards.leon ?? 0) - (p3.allyShards.leon ?? 0) === 6, `leon ${p3.allyShards.leon ?? 0}→${p4.allyShards.leon ?? 0} · 보석 ${p3.redGems}→${p4.redGems} · 주간 ${JSON.stringify(p4.weeklyEventBuys?.bought ?? {})}`);
 
 // ── 대장간 진입 시 방지권 이관 ──
 await clickText(".hub-sheet-close", "×");
