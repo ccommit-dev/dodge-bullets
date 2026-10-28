@@ -15,13 +15,22 @@ import { subscribeAppVisibility } from "./appLifecycle";
 
 export type BgmScene = "hunt" | "dodge" | "forge" | "menu" | "off";
 
-/** 화면 → 곡 */
+/** 화면 → 곡 — 2026-10-28 (사용자: "게임 bgm이 너무 산뜻하네 비버 키우기에 맞는 다른 노래 · 스테이지별 콘텐츠별 알맞은 음악") 새 곡 7개(public/audio/bgm, LICENSE.md).
+ *  사냥터 = 하프 · 플루트 숲(The Whispering Grove) · 성문 방어 = 북 · 호른 공성(Siege Engines) · 대장간 = 신비로운 공방(The Alchemist's Chamber) · 메뉴 = 오르골(Toy Box Tune) */
 export const BGM_TRACK: Record<Exclude<BgmScene, "off">, string> = {
-  hunt: "audio/happy-strum-day.mp3",
-  dodge: "audio/arcade-overdrive.mp3",
-  forge: "audio/playful-pixels.mp3",
-  menu: "audio/playful-pixels.mp3",
+  hunt: "audio/bgm/whispering-grove.mp3",
+  dodge: "audio/bgm/siege-engines.mp3",
+  forge: "audio/bgm/alchemists-chamber.mp3",
+  menu: "audio/bgm/toy-box-tune.mp3",
 };
+/** 사냥터 안 분위기 — 뒤 지역(축제 피리) · 대장전(오케스트라 전투) · 상점 · 뽑기(글로켄슈필). field = 사냥터 기본 */
+export type HuntMood = "field" | "late" | "boss" | "shop";
+export const HUNT_MOOD_TRACK: Record<Exclude<HuntMood, "field">, string> = {
+  late: "audio/bgm/market-day-revel.mp3",
+  boss: "audio/bgm/overture-final-battle.mp3",
+  shop: "audio/bgm/glockenspiel-garden.mp3",
+};
+let huntMood: HuntMood = "field";
 export const BGM_VOLUME = 0.32;
 
 let audio: HTMLAudioElement | null = null;
@@ -37,7 +46,7 @@ let level = 0;
 /** 앱이 백그라운드 — 안드로이드 앱은 visibilitychange 를 놓칠 수 있어 Capacitor pause/resume 도 함께 듣는다(ui/appLifecycle) */
 let appHidden = false;
 
-const want = (): string | null => (scene === "off" || !loadSoundEnabled() ? null : BGM_TRACK[scene]);
+const want = (): string | null => (scene === "off" || !loadSoundEnabled() ? null : scene === "hunt" && huntMood !== "field" ? HUNT_MOOD_TRACK[huntMood] : BGM_TRACK[scene]);
 
 function setLevel(v: number): void {
   level = Math.max(0, Math.min(1, v));
@@ -115,6 +124,13 @@ export function setBgmScene(next: BgmScene): void {
   scene = next;
   start();
   apply();
+}
+
+/** 사냥터 안 분위기 — TitansGame 이 대장전 · 상점 · 지역이 바뀔 때 부른다 (2026-10-28). 같은 곡이면 그대로 */
+export function setHuntBgm(mood: HuntMood): void {
+  if (huntMood === mood) return;
+  huntMood = mood;
+  if (started) apply();
 }
 
 /** 지금 재생 중인 곡(검사용) */

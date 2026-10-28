@@ -71,7 +71,8 @@ import {
 import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
-import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxSlotUnlock } from "./ui/sfx";
+import { setHuntBgm, type HuntMood } from "./ui/bgm";
+import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxSkillTier, sfxSlotUnlock, sfxWeapon } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
@@ -501,6 +502,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const hitStopAtRef = useRef({ big: 0, small: 0 });
   /** 타격음 간격 — 동료 넷 연타가 소리를 덮지 않게 평타 70ms · 탄 110ms (2026-10-21) */
   const sfxAtRef = useRef({ hit: 0, shoot: 0 });
+  /** 주인공 무기 소리 간격(2026-10-28) — 탭 연타가 소리를 덮지 않게 120ms */
+  const weaponSfxAtRef = useRef(0);
   const fieldRef = useRef<HTMLDivElement>(null);
   // 간단한 충돌 분리 (2026-10-08, 사용자: "캐릭터별 간단한 충돌 체크로 간격을 벌려줘") — 발 높이가 비슷한(같은 줄) 주인공·동료끼리
   const sepFrozenRef = useRef(false);
@@ -1187,6 +1190,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 주인공 한 방의 그림 — 검: 붙어서 베기 · 창: 앞으로 찌르기 · 활: 화살 · 지팡이: 마법탄. 돌려준 ms 뒤에 맞는 그림 */
   const heroAttackFx = (jitter = 0): number => {
     const k = weaponKindRef.current;
+    { const pn = performance.now(); if (pn - weaponSfxAtRef.current > 120) { weaponSfxAtRef.current = pn; sfxWeapon(k); } }   // 무기마다 다른 한 방 소리(2026-10-28)
     if (k === "bow" || k === "staff") {
       const ms = spawnHeroProj(k);
       if (ms > 0) {
@@ -1354,6 +1358,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       const s = saveRef.current;
       const wasBoss = bossRef.current;
+      sfxMonsterDown(wasBoss);   // 쓰러짐 소리(2026-10-28)
       battlePhaseRef.current = "monster-death";
       setBattlePhase("monster-death");
 
@@ -1753,6 +1758,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (petAccRef.current >= PET_ATTACK_SEC) {
             petAccRef.current %= PET_ATTACK_SEC;
             setPetAtk((n) => n + 1);
+            sfxPetPounce();
             applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * petAttackMul(petLv), false, { source: "ally", hue: 95, fxDelayMs: 240 });   // 주인공 자동 공격과 같은 바탕(ref 로 — 인터벌 안)
           }
         } else petAccRef.current = 0;
@@ -2644,7 +2650,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const now = performance.now();
     setSkillVisual(id);
     window.setTimeout(() => setSkillVisual((active) => (active === id ? null : active)), 820);
-    { const seq = now; setTierFx({ tier: SKILL_TIER[id], seq }); window.setTimeout(() => setTierFx((cur) => (cur?.seq === seq ? null : cur)), 1100); }
+    { const seq = now; setTierFx({ tier: SKILL_TIER[id], seq }); window.setTimeout(() => setTierFx((cur) => (cur?.seq === seq ? null : cur)), 1100); sfxSkillTier(SKILL_TIER[id]); }
     const visualKind: FxBurst["kind"] = def.slot === "starter" ? "strike" : def.slot === "finisher" ? "warcry" : def.element === "fire" ? "clone" : "crit";
     // 효과 숫자는 titans/skills.ts 한 곳에서 온다. 레벨 = ×(1+0.05/Lv), 힐러 축복 = 쿨 −10%/명
     const level = Math.max(1, save.skillInventory.levels[id] ?? 1);
@@ -2915,6 +2921,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   const kind: TitanMonsterKind = monsterKind(save.stage, boss, chesterson);
   const area = huntingArea(save.stage);
+  // 배경 음악 분위기 (2026-10-28, 사용자: "스테이지별 콘텐츠별 알맞은 음악") — 대장전 = 오케스트라 전투 · 상점 · 뽑기 = 글로켄슈필 · 폐허(11층)부터 = 축제 피리 · 그 앞 = 숲(ui/bgm)
+  const huntMood: HuntMood = boss ? "boss" : tab === "premium" || tab === "event-shop" || tab === "event-shop2" || tab === "gacha" ? "shop" : save.stage >= 11 ? "late" : "field";
+  useEffect(() => { setHuntBgm(huntMood); }, [huntMood]);
+  useEffect(() => () => setHuntBgm("field"), []);
   const monsterRanged = kind === "dragon" || (boss && (area.id === "volcano" || area.id === "abyss"));
   const label = monsterLabel(kind, chesterson, save.stage);
   // 편성(§2) — 출전 동료만 DPS·필드 렌더에 반영한다
