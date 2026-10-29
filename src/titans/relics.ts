@@ -276,15 +276,24 @@ export function relicBannerCost(banner: RelicBanner, stage: number): { single: n
   return { single, ten: single * 9 };
 }
 
-/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 · 다 모은 등급은 남은 등급끼리 비례 */
+/**
+ * 모으다 만 유물 가중 (2026-10-29, 아쉬운 점 "보석 유물 뽑기 ★ 가 약 3배 느리다 — 첫 초월 ★1 약 89일") — 같은 등급 안에서
+ * 조각이 ★ 칸을 채우다 만(조각 % 3 > 0) 유물이 그 등급의 다른 유물보다 이만큼 잘 나온다. 등급 확률 · 가격(60/540, 사용자 확정)은 그대로,
+ * 흩어진 조각이 한 유물로 모인다. 시뮬(보석 4000회): 첫 초월 ★1 114 → 84회 · 첫 신화 ★1 42 → 31회
+ */
+export const RELIC_IN_PROGRESS_WEIGHT = 3;
+
+/** 지금 한 번 뽑을 때 각 유물이 나올 확률 — 다 모은 유물은 0 · 다 모은 등급은 남은 등급끼리 비례 · 등급 안은 모으다 만 유물 가중 */
 export function relicDrawRates(state: RelicState, banner: RelicBanner): { id: RelicId; rate: number }[] {
   const tierRates = RELIC_BANNER_RATES[banner];
   const openOf = (t: Tier) => RELICS.filter((r) => r.tier === t && !relicMaxed(state, r.id));
+  const weightOf = (id: RelicId) => (((state[id] ?? 0) % RELIC_SHARDS_PER_STAR) > 0 ? RELIC_IN_PROGRESS_WEIGHT : 1);
   const live = (Object.keys(tierRates) as Tier[]).filter((t) => openOf(t).length > 0);
   const sum = live.reduce((a, t) => a + (tierRates[t] ?? 0), 0);
+  const tierWeight = new Map(live.map((t) => [t, openOf(t).reduce((a, r) => a + weightOf(r.id), 0)]));
   return RELICS.map((r) => {
     if (!live.includes(r.tier) || relicMaxed(state, r.id) || sum <= 0) return { id: r.id, rate: 0 };
-    return { id: r.id, rate: (tierRates[r.tier] ?? 0) / sum / openOf(r.tier).length };
+    return { id: r.id, rate: ((tierRates[r.tier] ?? 0) / sum) * (weightOf(r.id) / (tierWeight.get(r.tier) ?? 1)) };
   });
 }
 

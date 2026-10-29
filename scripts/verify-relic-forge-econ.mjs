@@ -40,7 +40,7 @@ const pct = (a, q) => { const s = [...a].sort((x, y) => x - y); return s[Math.mi
 const RUNS = 4000;
 const tenUnit = R.RELIC_DRAW.tenCost / 10;
 const days = (draws) => (draws * tenUnit) / GEMS_PER_DAY;
-// 재화별 뽑기(2026-10-28 6등급) — 확률 합 1 · 공시한 등급만 · 등급 안 균등 · 다 모은 등급은 남은 등급끼리 비례
+// 재화별 뽑기(2026-10-28 6등급) — 확률 합 1 · 공시한 등급만 · (빈 저장에서) 등급 안 균등 · 다 모은 등급은 남은 등급끼리 비례
 const tierOf = (id) => R.RELICS.find((r) => r.id === id).tier;
 const bannerOk = R.RELIC_BANNERS.every((b) => {
   const rates = R.relicDrawRates({}, b).filter((x) => x.rate > 0);
@@ -52,6 +52,16 @@ const bannerOk = R.RELIC_BANNERS.every((b) => {
 let leak = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gem"); if (d.got.some((id) => ["N", "R"].includes(tierOf(id)))) leak = true; st = d.state; } }
 let leakGold = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gold"); if (d.got.some((id) => ["SSR", "UR", "LR"].includes(tierOf(id)))) leakGold = true; st = d.state; } }
 ok("유물 뽑기 3종: 확률 합 1 · 공시한 등급만 · 등급 안 균등 · 보석에서 일반 · 희귀 없음 · 골드에서 전설 이상 없음", bannerOk && !leak && !leakGold);
+{
+  // 모으다 만 유물 가중(2026-10-29) — 같은 등급 안에서 조각 % 3 > 0 인 유물이 ×RELIC_IN_PROGRESS_WEIGHT, 등급 확률 합은 그대로
+  const lrIds = R.RELICS.filter((r) => r.tier === "LR").map((r) => r.id);
+  const st = { [lrIds[0]]: 1, [lrIds[1]]: 3 };   // 0번: 모으다 만 · 1번: ★1 딱 맞음(가중 없음)
+  const rs = R.relicDrawRates(st, "gem");
+  const rate = (id) => rs.find((x) => x.id === id).rate;
+  const lrSum = lrIds.reduce((a, id) => a + rate(id), 0);
+  const tierSame = Math.abs(lrSum - R.RELIC_BANNER_RATES.gem.LR) < 1e-12 && Math.abs(rs.reduce((a, x) => a + x.rate, 0) - 1) < 1e-9;
+  ok(`모으다 만 유물 가중 ×${R.RELIC_IN_PROGRESS_WEIGHT}: 같은 등급 다른 유물보다 그만큼 잘 나오고 ★ 딱 맞은 유물은 보통 · 등급 확률 합 그대로`, Math.abs(rate(lrIds[0]) / rate(lrIds[2]) - R.RELIC_IN_PROGRESS_WEIGHT) < 1e-9 && Math.abs(rate(lrIds[1]) - rate(lrIds[2])) < 1e-12 && tierSame, `${rate(lrIds[0]).toFixed(4)} / ${rate(lrIds[2]).toFixed(4)} · LR 합 ${lrSum.toFixed(4)}`);
+}
 {
   // 초월(LR)을 다 모으면 보석 뽑기의 남은 등급끼리 비례
   const allLr = Object.fromEntries(R.RELICS.filter((r) => r.tier === "LR").map((r) => [r.id, 15]));
