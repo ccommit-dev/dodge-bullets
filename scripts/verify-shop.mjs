@@ -71,9 +71,12 @@ ok("지원팩 구매: 보석 순 −100 · 견갑 조각 +40 · 스킬 코어 +4
 // 특별 상점: 5일 출석 패키지 주 1회 → 두 번째는 한도 소진
 await clickText(".hub-sheet-switch button", "특별");
 await sleep(500);
-await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /5일 출석/.test(c.textContent))?.querySelector("button")?.click(); });
-await sleep(700);
-const p3 = await prog();
+// 카드가 그려질 때까지 기다렸다 누르고, 저장이 바뀔 때까지 본다(최대 6초 · 3초에 안 바뀌면 한 번 더) — 전체 검사 부하에서 810→810(2026-10-28)
+await page.waitForFunction(() => [...document.querySelectorAll(".event-offer-card")].some((c) => /5일 출석/.test(c.textContent)), { timeout: 4000 }).catch(() => {});
+const clickAttend = () => page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /5일 출석/.test(c.textContent))?.querySelector("button:not(:disabled)")?.click(); });
+await clickAttend();
+let p3 = await prog();
+for (let i = 0; i < 30 && p3.redGems === p2.redGems; i += 1) { await sleep(200); if (i === 15) await clickAttend(); p3 = await prog(); }
 r = await page.evaluate(() => [...document.querySelectorAll(".event-offer-card")].find((c) => /5일 출석/.test(c.textContent))?.querySelector("button")?.textContent);
 ok("출석 패키지: 보석 순 +20(40 지불·60 환급) · 방치 가속 24h · 주 1회 한도 소진 표기", p3.redGems - p2.redGems === 20 && p3.idleBoostUntil > Date.now() + 23 * 3600 * 1000 && /한도 소진/.test(r ?? ""), `${p2.redGems}→${p3.redGems} ${r}`);
 // 조각 상품 (2026-10-28 — 동료 고르기 칸 없음): 가진 동료 모두에게 6씩
