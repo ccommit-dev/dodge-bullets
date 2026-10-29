@@ -455,6 +455,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 자동 환생 뒤 사냥터를 처음 불러올 때와 같은 길로 다시 세운다(편성 · 스테이지 · 저장) */
   const [reloadKey, setReloadKey] = useState(0);
   const autoRebirthBusyRef = useRef(false);
+  /** 환생 중 사냥터 저장 멈춤 (2026-10-28) — performRebirth 가 사냥터 저장을 1층으로 비우는 동안 돌던 사냥이 옛 층 · 골드로 덮어썼다(전체 검사 9층 · 1101). 다시 불러와 준비되면 푼다 */
+  const saveFrozenRef = useRef(false);
   const rewardQueueRef = useRef<{ kicker: string; title: string; detail: string; tone: "discovery" | "ladder" | "gift" | "relic"; icon?: string }[]>([]);
   /** 불 유물 세트 화상 — 준 피해의 일부를 모았다가 0.6초마다 화상 숫자로 (titans/relics.ts) */
   const relicBurnPoolRef = useRef(0);
@@ -934,6 +936,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
 
       spawn(resumeStage, 1, false);
+      saveFrozenRef.current = false;   // 다시 불러온 저장으로 준비됐다 — 환생 중 멈춘 저장을 푼다
       setReady(true);
       scheduleIdleCapNotify(progress);
       // 자동 환생을 켰는데 이미 조건을 채운 채 들어오면(마이페이지에서 켜고 돌아온 경우) 잠깐 뒤 환생
@@ -965,7 +968,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   }, [userHash, spawn, scheduleIdleCapNotify, reloadKey]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || saveFrozenRef.current) return;
     void saveTitansSave(userHash, { ...save, lastActiveAt: Date.now() });
   }, [ready, save, userHash]);
 
@@ -1096,8 +1099,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const cur = characterRef.current;
     if (autoRebirthBusyRef.current || !cur.autoRebirth || !canRebirthNow(cur)) return;
     autoRebirthBusyRef.current = true;
+    saveFrozenRef.current = true;
+    let reloaded = false;
     try {
       const r = await performRebirth(userHash, cur);
+      reloaded = true;
+      window.setTimeout(() => { saveFrozenRef.current = false; }, 10000);   // 안전망 — 다시 불러오기가 어떤 이유로 준비에 닿지 못해도 저장이 영영 멈추지 않게
       setCharacter(r.next);
       setRedGems(r.next.redGems);
       // 진행 중이던 전투 연출(STAGE CLEAR → 퇴장 → 입장)을 끊는다 — 다시 불러오기가 그 타이머를 지워 단계가 멈춰 있었다
@@ -1112,6 +1119,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       window.setTimeout(() => showRewardPop("ladder", `자동 환생 · ${r.next.rebirthCount}회`, `${r.startStage}층부터 다시`, `결정 +${r.crystals}(쓸 결정 ${freeCrystals(r.next)} — 마이페이지 결정 강화) · 출발 골드 ${formatGold(r.startGold)} · 24시간 방치 2배`), 600);
     } finally {
       autoRebirthBusyRef.current = false;
+      if (!reloaded) saveFrozenRef.current = false;   // 환생이 실패하면 저장을 다시 연다
     }
   };
   const autoRebirthRef = useRef(autoRebirth);

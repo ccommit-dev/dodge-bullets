@@ -18,7 +18,7 @@ const results = [];
 const ok = (name, cond, detail = "") => { results.push([cond ? "PASS" : "FAIL", name, detail]); };
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await page.goto(BASE, { waitUntil: "networkidle0" });
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.assign(location.origin + "/"); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, onboardingStep: 4, level: 30, exp: 1000, redGems: 100, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 1, pioneeredArea: 3 }),
   [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 12, bestStage: 12, gold: 500000, heroes: { mia: 12, leon: 8 },
     skillInventory: { learned: ["strike", "crit", "stoneGuard", "meteor"], levels: { strike: 3, crit: 1, stoneGuard: 1, meteor: 1 }, equipped: { starter: "strike", linkA: "stoneGuard", finisher: "meteor" }, skillCores: 10, autoCast: false }, lastActiveAt: now }),
