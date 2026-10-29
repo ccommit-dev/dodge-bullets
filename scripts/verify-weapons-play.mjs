@@ -36,11 +36,13 @@ ok("사냥터 무기 칩 넘침 없음", chipOver.length === 0, chipOver.join("|
 
 // ── 2. 무기별 스킬 세트 — 검 세트(강타) · 창으로 바꾸고 세트를 치명으로 · 검으로 돌아오면 강타 ──
 await page.evaluate(() => [...document.querySelectorAll(".weapon-kind-chip")][1].click()); await sleep(900);
-// 2026-10-28 장비 탈부착은 다음 스테이지에 — 고르면 저장 · 점선 칩 · '다음 스테이지부터', 사냥터 무기는 아직 검
-const pend = await page.evaluate(() => ({ pending: !!document.querySelector(".weapon-kind-chip.pending"), stat: document.querySelector(".weapon-kind-stat")?.textContent ?? "", hero: document.querySelector("[data-weapon-kind]")?.getAttribute("data-weapon-kind") ?? null }));
+// 2026-10-28 장비 탈부착은 다음 서브 스테이지(다음 몬스터)에 — 고르면 저장 · 점선 칩 · "다음 몬스터부터". 교전이 1초 안팎이라 이미 바뀌었을 수도 있다
+const pend = await page.evaluate(() => ({ pending: !!document.querySelector(".weapon-kind-chip.pending"), stat: document.querySelector(".weapon-kind-stat")?.textContent ?? "", hero: (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1] ?? null }));
 const tPend = await tit();
-ok("무기를 바꾸면 저장은 바로 · 사냥터는 다음 스테이지부터(점선 칩 · 안내 · 스킬 세트는 아직 그대로)", pend.pending && /다음 스테이지부터 창/.test(pend.stat) && tPend.skillInventory.loadoutKind !== "spear", JSON.stringify(pend));
-await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);   // 다음 스테이지로 넘어간 것처럼
+ok("무기를 바꾸면 저장은 바로 · 사냥터는 다음 몬스터부터(점선 칩 · 안내, 또는 이미 다음 몬스터에서 바뀜)", (pend.pending ? /다음 몬스터부터 창/.test(pend.stat) : pend.hero === "spear") && !/다음 스테이지부터/.test(pend.stat), JSON.stringify({ ...pend, loadout: tPend.skillInventory.loadoutKind }));
+// DEV 훅 없이 — 다음 몬스터가 나오면(스테이지는 그대로) 사냥터 무기가 창으로
+{ const st0 = (await tit()).stage; let hero = null, st = st0; for (let i = 0; i < 40; i += 1) { hero = await page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1] ?? null); if (hero === "spear") break; await sleep(250); } st = (await tit()).stage;
+  ok("다음 몬스터가 나오면 스테이지가 바뀌기 전에 창을 든다(서브 스테이지 적용)", hero === "spear" && st === st0, JSON.stringify({ hero, st0, st })); }
 p = await prog(); let t = await tit();
 ok("창 장착 → 저장 · 처음 무기라 지금 세트 그대로 · loadoutKind = spear", p.equippedWeaponKind === "spear" && t.skillInventory.equipped.starter === "strike" && t.skillInventory.loadoutKind === "spear", JSON.stringify(t.skillInventory.equipped));
 await page.evaluate((H) => { const k = `dodgebullets:titans:${H}`; const s = JSON.parse(localStorage.getItem(k)); s.skillInventory.equipped = { starter: "emberCut" }; localStorage.setItem(k, JSON.stringify(s)); }, H);
