@@ -749,7 +749,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const relocate = battlePhaseRef.current === "stage-exit" || !spawnedOnceRef.current;
     spawnedOnceRef.current = true;
     // 장비 탈부착은 다음 서브 스테이지에 (2026-10-28, 사용자: "메인 스테이지 예약이 아니라 1-1 처럼 서브스테이지 다음때") — 새 몬스터(대장 · 반복 사냥 포함)를 부를 때 고른 장비를 든다
-    if (lookWantedRef.current) setAppliedLook({ ...lookWantedRef.current });
+    // 같은 장비면 상태를 바꾸지 않는다 — 몬스터마다 새 객체로 다시 그리지 않게
+    const want = lookWantedRef.current;
+    if (want) setAppliedLook((prev) => (prev && prev.weaponKind === want.weaponKind && prev.weaponSkin === want.weaponSkin && prev.shoulder === want.shoulder ? prev : { ...want }));
     setMonsterIn(false);
     if (relocate) setFormationEngaged(false);
     const rolledKind = monsterKind(stage, asBoss, isChest);
