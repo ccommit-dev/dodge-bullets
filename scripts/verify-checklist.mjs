@@ -13,7 +13,7 @@ page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 100)));
 
 async function seed(progress, titans, extra = {}) {
   await page.goto(BASE, { waitUntil: "networkidle0" });
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.assign(location.origin + "/"); }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
     [`dodgebullets:titans:${H}`]: JSON.stringify(titans),
     "dodge-bullets:soundEnabled": "0",

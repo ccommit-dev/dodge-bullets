@@ -65,6 +65,8 @@ export function EventCenter({
   const [tab, setTab] = useState<EventTab>("daily");
   const [allTiers, setAllTiers] = useState(false);
   const [save, setSave] = useState<EventSave | null>(null);
+  /** 균열 진입 차례 줄 (아래 enterRift) — 훅은 조기 return 위에 */
+  const riftChainRef = useRef<Promise<void>>(Promise.resolve());
   const [riftMessage, setRiftMessage] = useState("");
   // 스토어 가격·결제 준비가 바뀌면 시즌 패스 버튼을 다시 그린다 (payments/prices)
   const [, setStoreTick] = useState(0);
@@ -144,7 +146,14 @@ export function EventCenter({
     await persist(completedToday ? { ...nextClaimed, weeklyMissionDays: nextClaimed.weeklyMissionDays + 1, lastMissionDay: dateKey() } : nextClaimed);
   };
 
-  const enterRift = async () => {
+  // 균열 진입은 한 줄로 (2026-10-28) — 연달아 누르면 앞 진입이 저장을 마치기 전에 다음 진입이 같은 옛 횟수(save)로 써서 한 번이 사라졌다
+  //   (전체 검사 verify-retention 3번 눌러 2/8). 누른 만큼 차례로 하고, 매번 저장된 최신 횟수로 한도를 본다
+  const enterRift = () => {
+    riftChainRef.current = riftChainRef.current.then(enterRiftOnce).catch(() => undefined);
+    return riftChainRef.current;
+  };
+  const enterRiftOnce = async () => {
+    const save = await loadEventSave(userHash);
     if (save.riftAttempts >= riftAttemptsFor(progress.patronUntil)) return;
     sfxRiftClaim();
     // 요일 균열(CRUMBLE_GAP §5) — 요일마다 다른 축의 보상이 증폭된다
