@@ -81,22 +81,19 @@ await page.evaluate(() => document.querySelector(".relic-tab-draw")?.click()); a
 ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!document.querySelector(".relic-draw-page")));
 // ── 4. 상점 유물 뽑기 — 재화별 3종 (2026-10-28 6등급: 골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) ──
 {
-  const tabText = await page.evaluate(() => [...document.querySelectorAll(".relic-gacha-tiers button")].map((b) => b.dataset.banner + ":" + b.textContent));
-  const cards = [];
-  for (const b of ["gold", "stone", "gem"]) {
-    await page.evaluate((b) => document.querySelector(`.relic-gacha-tiers button[data-banner="${b}"]`)?.click(), b); await sleep(250);
-    cards.push(await page.evaluate(() => ({ banner: document.querySelector(".relic-gacha-hero")?.dataset.banner, text: (document.querySelector(".relic-gacha-hero")?.textContent ?? "") + (document.querySelector(".relic-gacha-buy")?.textContent ?? ""), figs: document.querySelectorAll(".relic-gacha-showcase figure").length, btns: document.querySelectorAll(".relic-gacha-buy button").length, rates: [...document.querySelectorAll(".relic-tier-rates li")].map((li) => li.textContent) })));
-  }
-  ok("유물 뽑기 화면: 재화 탭 3개(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 최고 등급 진열 7종(2026-10-28 계열 7) · 단추 3개 · 등급 확률 칩 · 보석 60",
-    tabText.length === 3 && /골드일반 ~ 영웅/.test(tabText[0]) && /강화석희귀 ~ 신화/.test(tabText[1]) && /보석영웅 ~ 초월/.test(tabText[2]) && cards.every((c, i) => c.banner === ["gold", "stone", "gem"][i] && c.figs === 7 && c.btns === 3) && cards[2].rates.length === 4 && /초월7.0%/.test(cards[2].rates.join("|")) && /60/.test(cards[2].text),
-    cards.map((c) => `${c.banner}:${c.figs}·${c.rates.join("/")}`).join(" | "));
+  // 4판 (2026-10-28 "패키지 아이템 각각 ui처럼") — 재화별 머리줄 + 1회 · 10회 상품 칸
+  const heads = await page.evaluate(() => [...document.querySelectorAll(".relic-banner-head")].map((h) => h.dataset.banner + ":" + h.textContent));
+  const cards = await page.evaluate(() => ["gold", "stone", "gem"].map((b) => { const cs = [...document.querySelectorAll(`.relic-draw-product[data-banner="${b}"]`)]; return { banner: b, n: cs.length, thumbs: cs.filter((c) => c.querySelector(".relic-product-thumb img")).length, text: cs.map((c) => c.textContent).join("|") }; }));
+  ok("유물 뽑기 = 패키지 칸: 재화 머리줄 3개(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 재화마다 1회 · 10회 칸(그림 · 값) · 보석 60 · 초월 7.0%",
+    heads.length === 3 && /^gold:골드 유물 ?일반 ~ 영웅/.test(heads[0]) && /^stone:강화석 유물 ?희귀 ~ 신화/.test(heads[1]) && /^gem:보석 유물 ?영웅 ~ 초월/.test(heads[2]) && cards.every((c) => c.n === 2 && c.thumbs === 2) && /60/.test(cards[2].text) && /초월 7.0%/.test(cards[2].text) && /10회 뽑기/.test(cards[0].text),
+    heads.map((h) => h.slice(0, 30)).join(" | ") + " · " + cards.map((c) => `${c.banner}:${c.n}`).join("/"));
   await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
   await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
   const g0 = (await tit()).gold;
   const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
-  const draw = async (banner, n) => { await page.evaluate((banner) => { document.querySelector(`.relic-gacha-tiers button[data-banner="${banner}"]`)?.click(); }, banner); await sleep(250); await page.evaluate((n) => document.querySelector(`.relic-gacha-buy button:nth-child(${n})`)?.click(), n); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
+  const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"][data-count="${n === 1 ? 1 : 10}"] button`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
   const total = (pr) => Object.values(pr.relics ?? {}).reduce((a, v) => a + v, 0);
   await draw("gold", 1);
   let pr = await prog(); const g1 = (await tit()).gold;
@@ -105,7 +102,7 @@ ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!doc
   ok("강화석 1회 → 강화석 −30 · 조각 2", pr.enhancementMaterials === 70 && total(pr) === 2, `강화석 ${pr.enhancementMaterials} · ${JSON.stringify(pr.relics)}`);
   await draw("gem", 1); pr = await prog();
   ok("보석 1회 → 보석 −60(QA 빌드는 보석 고정 999,999) · 조각 3", (pr.redGems === 140 || pr.redGems >= 999000) && total(pr) === 3, `보석 ${pr.redGems} · ${JSON.stringify(pr.relics)}`);
-  await page.evaluate(() => document.querySelector(".relic-gacha-rates")?.click()); await sleep(300);
+  await page.evaluate(() => document.querySelector('.relic-banner-head[data-banner="gem"] .relic-gacha-rates')?.click()); await sleep(300);
   const rateGroups = await page.evaluate(() => [...document.querySelectorAll(".relic-rates-group")].map((g) => g.querySelectorAll("li").length));
   ok("확률 정보: 등급별 묶음(보석 4등급 × 7종)", rateGroups.length === 4 && rateGroups.every((n) => n === 7), JSON.stringify(rateGroups));
   const lay2 = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, over: [...document.querySelectorAll(".relic-gacha-page, .relic-gacha-page *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== "visible").map((e) => e.className + ":" + e.textContent.slice(0, 16)), small: [...document.querySelectorAll(".relic-gacha-page *")].filter((e) => e.childElementCount === 0 && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).map((e) => e.textContent.slice(0, 12)) }));
