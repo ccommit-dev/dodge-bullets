@@ -494,9 +494,13 @@ export function createBeatboxPlayer(
     },
     startLessonTransport(bpm, stepSeconds, chart, onStep) {
       stopLessonTransport();
-      if (!isLive()) return;
       const ctx = getCtx();
-      if (!ctx) return;
+      if (!isLive() || !ctx) {
+        // Web Audio 가 없는 엔진(일부 웹뷰 · Windows WebKit)에서도 고른 곡은 나오게 — 위 stop 이 멈춘 배경 곡을 처음부터 다시.
+        // 박자 시계는 화면 시계로 돈다(2026-10-29 WebKit 아이폰 검사: 곡 · 파일은 맞는데 멈춘 채였다)
+        if (backingAudio) { backingAudio.currentTime = 0; void backingAudio.play().catch(() => {}); }
+        return;
+      }
       transportBpm = Math.max(60, bpm);
       stepSec = Math.max(0.05, stepSeconds);
       chartRef = chart;

@@ -311,6 +311,7 @@ export async function createBeatSession(
   if (soundEnabled) {
     const url = assetUrl(`audio/${track.audioFile}`);
     backingAudio = primed?.audio ?? new Audio(url);
+    backingAudio.dataset.claimed = "1";   // 누른 순간 깨운 오디오의 늦은 '깨우고 멈추기'가 연주를 멈추지 않게(BeatGame startSlot)
     if (!primed?.audio) backingAudio.preload = "metadata";
     backingAudio.volume = 0.72;
     backingAudio.setAttribute("playsinline", "true");

@@ -74,9 +74,11 @@ ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도�
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(3)")?.click());
 await sleep(400);
 // 2026-10-28 공시 정리 — 등급 요약 칸 · 규칙 줄(ul.rates-rules) · 등급별 접은 표(details). 접힌 표의 행도 DOM 에 있다
-r = await page.evaluate(() => ({ sheet: !!document.querySelector(".gacha-rates-sheet"), rows: [...document.querySelectorAll(".gacha-rates-sheet tbody tr")].map((tr) => tr.textContent), text: document.querySelector(".gacha-rates-sheet .rates-rules")?.textContent, tiers: document.querySelectorAll(".gacha-rates-sheet .rates-tier-grid li").length, groups: document.querySelectorAll(".gacha-rates-sheet details.rates-tier").length }));
+// 2026-10-29 같은 창에 유물 · 스킬 뽑기 묶음(details.rates-other)이 붙었다 — 동료 묶음 · 행만 따로 세고, 다른 뽑기는 재화마다 % 합 ≈ 100
+r = await page.evaluate(() => ({ sheet: !!document.querySelector(".gacha-rates-sheet"), rows: [...document.querySelectorAll(".gacha-rates-sheet details.rates-tier:not(.rates-other) tbody tr")].map((tr) => tr.textContent), text: document.querySelector(".gacha-rates-sheet .rates-rules")?.textContent, tiers: document.querySelectorAll(".gacha-rates-sheet .rates-tier-grid li").length, groups: document.querySelectorAll(".gacha-rates-sheet details.rates-tier:not(.rates-other)").length, others: [...document.querySelectorAll(".gacha-rates-sheet details.rates-other")].map((d) => ({ key: d.dataset.rates, sum: [...d.querySelectorAll("tbody tr")].reduce((s, tr) => s + parseFloat((tr.textContent.match(/(\d+\.\d+)%/) ?? [0, 0])[1]), 0) })) }));
 const pctSum = r.rows.reduce((s, t) => s + parseFloat((t.match(/(\d+\.\d+)%/) ?? [0, 0])[1]), 0);
 ok("확률 공시 시트: 등급 요약 6칸 · 등급별 묶음 6 · 동료별 % 합계 ≈ 100 · 천장/보장 줄", r.sheet && r.tiers === 6 && r.groups === 6 && Math.abs(pctSum - 100) < 0.2 && /천장/.test(r.text ?? "") && /보장/.test(r.text ?? ""), `요약 ${r.tiers} · 묶음 ${r.groups} · ${r.rows.length}행 합 ${pctSum.toFixed(2)}`);
+ok("같은 창의 유물 · 스킬 뽑기 공시: 유물 3재화 · 스킬 재화마다 % 합 ≈ 100", r.others.filter((o) => /^relic-/.test(o.key)).length === 3 && r.others.some((o) => /^skill-/.test(o.key)) && r.others.every((o) => Math.abs(o.sum - 100) < 0.5), r.others.map((o) => `${o.key} ${o.sum.toFixed(2)}`).join(" · "));
 ok("공시: 상점 전용 동료(루나·볼트) 제외", !r.rows.some((t) => /루나|볼트/.test(t)));
 await clickText(".gacha-rates-sheet button", "닫기");
 await sleep(300);
@@ -103,9 +105,14 @@ await clickText(".gacha-close", "확인");
 await sleep(300);
 ok("연출 닫힘", await page.evaluate(() => !document.querySelector(".gacha-reveal")));
 // 편성 게이트: 상한 밖 동료를 강제로 heroes에 넣고 출전 시도 → 거부 토스트
-await page.evaluate((h) => { const k = `dodgebullets:titans:${h}`; const s = JSON.parse(localStorage.getItem(k)); s.heroes.ember = 1; localStorage.setItem(k, JSON.stringify(s)); const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.allyStars.ember = 1; q.partyIds = ["mia"]; localStorage.setItem(pk, JSON.stringify(q)); }, H);
-await page.goto(BASE, { waitUntil: "networkidle0" });
-await sleep(2200);
+// 심기와 reload 를 한 evaluate 안에서 · 심은 엠버가 reload 뒤에도 남았는지 확인하고 덮였으면 다시(최대 3번) — 떠 있던 사냥터가 떠나며
+// 옛 저장을 써서 엠버가 사라지면 도감에 엠버 카드가 없어 '(안내 없음)' 으로 가끔 실패했다(2026-10-29)
+for (let tryN = 0; tryN < 3; tryN += 1) {
+  await page.evaluate((h) => { const k = `dodgebullets:titans:${h}`; const s = JSON.parse(localStorage.getItem(k)); s.heroes.ember = 1; localStorage.setItem(k, JSON.stringify(s)); const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.allyStars.ember = 1; q.partyIds = ["mia"]; localStorage.setItem(pk, JSON.stringify(q)); location.reload(); }, H).catch(() => {});
+  await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
+  await sleep(2200);
+  if ((await titans())?.heroes?.ember >= 1 && (await prog())?.allyStars?.ember >= 1) break;
+}
 await closeModal();
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
@@ -116,7 +123,7 @@ for (let pg = 0; pg < 20; pg += 1) {
   if (!more) break;
 }
 const gateClicked = await page.evaluate(() => { const card = [...document.querySelectorAll(".ally-card")].find((c) => /엠버/.test(c.textContent)); const btn = card?.querySelector(".ally-party-toggle"); btn?.click(); return !!btn; });
-await sleep(500);
+for (let k = 0; k < 30 && !(await prog()).partyIds.includes("ember"); k += 1) await sleep(100);   // 고정 0.5초 대신 저장에 남을 때까지(최대 3초)
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
 p = await prog();
 // 2026-10-28 스테이지 해금 없음 — 개척 상한 밖 동료도 가지고 있으면 출전한다
