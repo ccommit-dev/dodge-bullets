@@ -59,6 +59,7 @@ import {
   BEAT_SKILL_BY_SLOT,
   IDLE,
   computeIdleYield,
+  rollIdleRareDrops,
   idleBottleneck,
   idleCapHours,
   masteryToNextSlotLevel,
@@ -425,6 +426,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     result: IdleYield;
     stage: number;
     bottleneck: IdleBottleneck;
+    /** 희귀 드랍 (2026-10-29) — 정산 화면을 열 때 정해 보여 주고, 받을 때 남은 조각(relicSpare) · 스킬 카드(copies)로 들어간다 */
+    drops: { relics: RelicId[]; skills: TitanSkillId[] };
   } | null>(null);
   const [gateNotice, setGateNotice] = useState(false);
   const [shardPackTarget, setShardPackTarget] = useState<TitanHeroId>("mia");
@@ -916,10 +919,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 오프라인 10분 이상일 때만 정산 화면과 보상을 만든다.
       // 짧은 새로고침·콘텐츠 이동은 보상 수령 시각도 변경하지 않는다.
       if (awaySeconds >= IDLE_REPORT_MIN_SECONDS && result.seconds >= IDLE_REPORT_MIN_SECONDS && result.gold > 0) {
+        // 희귀 드랍 — 쌓인 시간마다 낮은 확률로 유물 조각 · 스킬 카드(골드 뽑기 풀). DEV 검사는 __idleRareForce 로 개수를 고정한다
+        const force = import.meta.env.DEV ? (window as unknown as { __idleRareForce?: { relicShards: number; skillCards: number } }).__idleRareForce : undefined;
+        const rare = force ?? rollIdleRareDrops(result.seconds);
         setIdleReport({
           result,
           stage,
           bottleneck: idleBottleneck(progress, result, resumeStage, progress.pioneeredArea),
+          drops: {
+            relics: drawRelicShards(relicMerged(progress.relics, progress.relicSpare), rare.relicShards, Math.random, "gold").got,
+            skills: drawSkillCopies(loaded.skillInventory, rare.skillCards, "gold").got,
+          },
         });
       }
 
@@ -982,6 +992,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           exp: current.exp + report.result.exp,
           enhancementMaterials: current.enhancementMaterials + report.result.materials,
           allyShards: shards,
+          relicSpare: addRelicSpare(current.relicSpare, report.drops.relics),   // 희귀 드랍 유물 조각 → 남은 조각(유물 탭에서 소진)
           idleClaimedAt: Date.now(),
           // 온보딩 마지막 단계(§8) — 첫 방치 정산이 이벤트·상점을 연다
           onboardingStep: current.onboardingStep === 3 ? 4 : current.onboardingStep,
@@ -994,6 +1005,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           })(),
         };
       }).then((next) => {
+        if (report.drops.skills.length) {
+          // 희귀 드랍 스킬 카드 → 스킬 카드(상점 스킬 뽑기와 같은 곳 — 스킬 탭에서 배우거나 소진)
+          setSave((prev) => {
+            const copies = { ...(prev.skillInventory.copies ?? {}) };
+            for (const id of report.drops.skills) copies[id] = (copies[id] ?? 0) + 1;
+            return { ...prev, skillInventory: { ...prev.skillInventory, copies } };
+          });
+        }
         trackEvent("dungeon_reward_claim", { stage: report.stage, reward: report.result.gold, duration: Math.round(report.result.seconds) });
         const finishedOnboarding = characterRef.current.onboardingStep === 3 && next.onboardingStep === 4;
         setCharacter(next);
@@ -5235,6 +5254,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {idleReport && (
         <IdleReturnModal
           result={idleReport.result}
+          drops={idleReport.drops}
           stage={idleReport.stage}
           bottleneck={idleReport.bottleneck}
           onClaim={() => claimIdle()}

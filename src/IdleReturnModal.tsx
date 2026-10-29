@@ -3,10 +3,15 @@ import { assetUrl } from "./asset";
 import { formatGold } from "./titans/model";
 import { formatDuration, type IdleBottleneck, type IdleYield } from "./progression/idle";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
+import { SkillIcon } from "./ui/SkillIcon";
+import { relicDef, relicIconUrl, type RelicId } from "./titans/relics";
+import { SKILLS, type TitanSkillId } from "./titans/model";
 import { sfxIdleClaim } from "./ui/sfx";
 
 type Props = {
   result: IdleYield;
+  /** 희귀 드랍 (2026-10-29) — 유물 조각 · 스킬 카드. 같은 것은 한 칸에 ×n */
+  drops?: { relics: RelicId[]; skills: TitanSkillId[] };
   stage: number;
   bottleneck: IdleBottleneck;
   onClaim: () => void;
@@ -59,11 +64,14 @@ function useCountUp(target: number, durationMs = 900, delayMs = 0): number {
   return value;
 }
 
-export function IdleReturnModal({ result, stage, onClaim, adOption = null, adBusy = false, onClaimDouble, patronOption = null, onBuyPatron }: Props) {
+export function IdleReturnModal({ result, drops, stage, onClaim, adOption = null, adBusy = false, onClaimDouble, patronOption = null, onBuyPatron }: Props) {
   const gold = useCountUp(result.gold, 950);
   const exp = useCountUp(result.exp, 950, 120);
   const materials = useCountUp(result.materials, 950, 240);
   const [claiming, setClaiming] = useState(false);
+  const countOf = <T extends string>(ids: readonly T[]) => [...ids.reduce((m, id) => m.set(id, (m.get(id) ?? 0) + 1), new Map<T, number>())];
+  const relicRows = countOf(drops?.relics ?? []);
+  const skillRows = countOf(drops?.skills ?? []);
 
   useEffect(() => {
     sfxIdleClaim();
@@ -93,6 +101,8 @@ export function IdleReturnModal({ result, stage, onClaim, adOption = null, adBus
           <article><img src={assetUrl("ui/idle/exp-orb.png")} alt="" aria-hidden="true" /><b>{exp.toLocaleString()}</b><span>경험치</span></article>
           {materials > 0 && <article><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /><b>{materials.toLocaleString()}</b><span>강화석</span></article>}
           {result.allyShardDrops > 0 && <article><img className="idle-shard-orb" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><b>{result.allyShardDrops}</b><span>동료 조각</span></article>}
+          {relicRows.map(([id, n]) => <article key={`relic-${id}`} className="is-rare" data-drop={`relic-${id}`}><img src={assetUrl(relicIconUrl(id))} alt="" aria-hidden="true" /><b>×{n}</b><span>{relicDef(id).name} 조각</span></article>)}
+          {skillRows.map(([id, n]) => <article key={`skill-${id}`} className="is-rare" data-drop={`skill-${id}`}><SkillIcon id={id} size={36} /><b>×{n}</b><span>{SKILLS.find((s) => s.id === id)?.name ?? id} 카드</span></article>)}
         </div>
         <button type="button" className="cta idle-claim" onClick={claim}>받기</button>
         {adOption && (
