@@ -1507,6 +1507,47 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const adv = advice.purchaseAdvice({ ...prog.emptyCharacterProgress() }, { gold: 1e9, heroes: model.defaultTitansSave().heroes, equipmentTraining: ts.equipmentTraining });
   ok("구매 추천에 가장 싼 파츠 숙련이 하나 들어간다", adv.some((a) => /^train:(helmet|armor|gloves|boots)$/.test(a.id)), adv.map((a) => a.id).join());
 }
+// ── 스킬 뽑기 · 중복 소진 (2026-10-28, 사용자: "스킬도 상점에서 돈으로 … 동일한 유물이나 스킬이 있으면 소진하면서 레벨 높일 수 있게") ──
+{
+  const sg = await (async () => {
+    const d = mkdtempSync(join(tmpdir(), "sysskg-"));
+    const e = join(d, "entry.ts");
+    writeFileSync(e, `export * from "${root}/src/titans/skillGacha"; export { SKILL_TIER } from "${root}/src/titans/skills"; export { SKILLS } from "${root}/src/titans/model"; export * as R from "${root}/src/titans/relics";`);
+    const o = join(d, "bundle.mjs");
+    await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
+    const m = await import(pathToFileURL(o).href);
+    rmSync(d, { recursive: true, force: true });
+    return m;
+  })();
+  const sum = (o) => Object.values(o).reduce((a, v) => a + v, 0);
+  const inv0 = { learned: ["strike"], levels: Object.fromEntries(sg.SKILLS.map((x) => [x.id, x.id === "strike" ? 1 : 0])), copies: {} };
+  ok("스킬 뽑기: 재화별 등급 확률 합 1 · 골드 일반 ~ 영웅 · 보석 영웅 ~ 초월 · 지금 확률도 합 1",
+    sg.SKILL_BANNERS.every((b) => Math.abs(sum(sg.SKILL_BANNER_RATES[b]) - 1) < 1e-9) && Object.keys(sg.SKILL_BANNER_RATES.gold).join() === "N,R,SR" && Object.keys(sg.SKILL_BANNER_RATES.gem).join() === "SR,SSR,UR,LR"
+      && sg.SKILL_BANNERS.every((b) => Math.abs(sg.skillDrawRates(inv0, b).reduce((a, x) => a + x.rate, 0) - 1) < 1e-9));
+  ok("스킬 뽑기 값: 보석 80 · 10회 720 · 골드는 층에 따라 오르고 10회 = 1회 × 9", sg.skillBannerCost("gem", 30).single === 80 && sg.skillBannerCost("gem", 30).ten === 720 && sg.skillBannerCost("gold", 40).single > sg.skillBannerCost("gold", 5).single && sg.skillBannerCost("gold", 12).ten === sg.skillBannerCost("gold", 12).single * 9);
+  let k = 0; const rng = () => ((k = (k * 9301 + 49297) % 233280) / 233280);
+  const d10 = sg.drawSkillCopies(inv0, 10, "gem", rng);
+  ok("보석 10회 → 카드 10장 · 모두 영웅 이상", d10.got.length === 10 && sum(d10.copies) === 10 && d10.got.every((id) => ["SR", "SSR", "UR", "LR"].includes(sg.SKILL_TIER[id])), d10.got.join(","));
+  // 카드로 배우기 → 배운 스킬 카드 소진 = Lv +n (최대 레벨까지만, 넘는 카드는 남긴다)
+  const fresh = { ...inv0, copies: { meteor: 3 } };
+  const learnR = sg.consumeSkillCopies(fresh, "meteor");
+  ok("안 배운 스킬은 카드 1장으로 학습(Lv.1) · 카드 2장 남음", learnR.learnedNow && learnR.used === 1 && learnR.inv.learned.includes("meteor") && learnR.inv.levels.meteor === 1 && learnR.inv.copies.meteor === 2);
+  const lvR = sg.consumeSkillCopies(learnR.inv, "meteor");
+  ok("배운 스킬 카드 소진 → 2장 = Lv.1 → 3 · 카드 0", !lvR.learnedNow && lvR.used === 2 && lvR.inv.levels.meteor === 3 && !lvR.inv.copies.meteor);
+  const nearMax = { ...inv0, learned: ["strike"], levels: { ...inv0.levels, strike: 19 }, copies: { strike: 4 } };
+  const capR = sg.consumeSkillCopies(nearMax, "strike");
+  ok("최대 레벨(20)까지만 소진 — Lv.19 + 카드 4 → Lv.20 · 남은 카드 3", capR.used === 1 && capR.inv.levels.strike === 20 && capR.inv.copies.strike === 3);
+  ok("배운 레벨 + 카드로 최대를 채운 스킬은 뽑기에서 빠진다(확률 0)", sg.skillDrawRates({ ...inv0, levels: { ...inv0.levels, strike: 18 }, copies: { strike: 2 } }, "gold").find((x) => x.id === "strike").rate === 0 && sg.skillDrawRates(inv0, "gold").find((x) => x.id === "strike").rate > 0);
+  // 유물 — 뽑은 조각은 남은 조각으로, 소진하면 ★ 에
+  const R = sg.R;
+  const spare = R.addRelicSpare({}, ["lava-heart", "lava-heart", "lava-heart", "lava-heart"]);
+  const c1 = R.consumeRelicSpare({}, spare, "lava-heart");
+  ok("유물 남은 조각 4개 소진 → ★1(조각 4) · 남은 조각 0", c1.used === 4 && R.relicStars(c1.state, "lava-heart") === 1 && !c1.spare["lava-heart"]);
+  const c2 = R.consumeRelicSpare({ "lava-heart": 14 }, { "lava-heart": 3 }, "lava-heart");
+  ok("★5(조각 15) 까지만 소진 — 넘는 조각은 남긴다", c2.used === 1 && c2.state["lava-heart"] === 15 && c2.spare["lava-heart"] === 2);
+  ok("뽑기 확률은 들어간 조각 + 남은 조각 — 남은 조각으로 다 채운 유물은 0", R.relicDrawRates(R.relicMerged({ "lava-heart": 12 }, { "lava-heart": 3 }), "gem").find((x) => x.id === "lava-heart")?.rate === 0 && R.relicDrawRates(R.relicMerged({ "lava-heart": 12 }, {}), "gem").find((x) => x.id === "lava-heart")?.rate > 0);
+}
+
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
 const fails = results.filter((r) => r[0] === "FAIL").length;
 console.log(fails === 0 ? "\nALL PASS" : `\n${fails} FAIL`);

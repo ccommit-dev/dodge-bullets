@@ -94,7 +94,8 @@ ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!doc
   const g0 = (await tit()).gold;
   const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
   const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"][data-count="${n === 1 ? 1 : 10}"] button`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
-  const total = (pr) => Object.values(pr.relics ?? {}).reduce((a, v) => a + v, 0);
+  // 2026-10-28 중복 소진 — 뽑은 조각은 남은 조각(relicSpare)으로. ★ 에 들어간 조각(relics)은 그대로 0
+  const total = (pr) => Object.values(pr.relicSpare ?? {}).reduce((a, v) => a + v, 0) + Object.values(pr.relics ?? {}).reduce((a, v) => a + v, 0) * 1000;
   await draw("gold", 1);
   let pr = await prog(); const g1 = (await tit()).gold;
   ok("골드 1회 → 골드가 줄고 조각 1", g1 < g0 && total(pr) === 1, `골드 ${g0} → ${g1} · ${JSON.stringify(pr.relics)}`);
@@ -109,11 +110,16 @@ ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!doc
   ok("유물 상점 390px 넘침 없음 · 13px 미만 없음", lay2.sw <= 390 && lay2.over.length === 0 && lay2.small.length === 0, JSON.stringify(lay2));
   await page.evaluate(() => document.querySelector(".relic-gacha-page")?.scrollIntoView({ block: "start" })); await sleep(300);
   await page.screenshot({ path: "art-gen/out/relic-shop.png" });
-  // 조각만 1개씩(★1 없음) — 사냥터 유물 탭은 줄 없이 빈 칸 안내 · 모으는 중 3종
+  // 남은 조각만 있다(★1 없음) — 사냥터 유물 탭은 그 유물 줄에 '조각 n개 소진' 단추 (2026-10-28 중복 소진)
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(500);
   await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
-  const empty = await page.evaluate(() => ({ rows: document.querySelectorAll(".relic-tab-panel .quest-row").length, empty: document.querySelector(".relic-tab-empty")?.textContent ?? "", head: document.querySelector(".relic-tab-head")?.textContent ?? "", small: [...document.querySelectorAll(".relic-tab-empty *")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 13).length }));
-  ok("★1 이 하나도 없으면 사냥터 유물 탭은 빈 칸 안내 · 모으는 중 1~3종(같은 유물에 겹칠 수 있다)", empty.rows === 0 && /아직 가진 유물이 없어요/.test(empty.empty) && /모으는 중 [123]종/.test(empty.head) && empty.small === 0, JSON.stringify(empty).slice(0, 160));
+  const spareTab = await page.evaluate(() => ({ rows: [...document.querySelectorAll(".relic-tab-panel .quest-row")].map((r) => r.dataset.relic), btns: document.querySelectorAll(".relic-tab-panel .relic-consume").length, head: document.querySelector(".relic-tab-head")?.textContent ?? "", empty: !!document.querySelector(".relic-tab-empty"), small: [...document.querySelectorAll(".relic-tab-panel .relic-consume *")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 13).length }));
+  ok("남은 조각 3개 — 유물 탭: 그 유물 줄마다 '조각 n개 소진' 단추 · 머리줄 '남은 조각 3개' · 빈 칸 안내 없음", spareTab.rows.length >= 1 && spareTab.rows.length <= 3 && spareTab.btns === spareTab.rows.length && /남은 조각 3개/.test(spareTab.head) && !spareTab.empty && spareTab.small === 0, JSON.stringify(spareTab).slice(0, 200));
+  const before = await prog();
+  const target = spareTab.rows[0];
+  await page.evaluate((id) => document.querySelector(`.relic-tab-panel .relic-consume[data-relic="${id}"]`)?.click(), target);
+  let after = before; for (let i = 0; i < 20 && (after.relics?.[target] ?? 0) === 0; i += 1) { await sleep(150); after = await prog(); }
+  ok("소진 단추 → 그 유물의 남은 조각이 ★ 쪽(relics)으로 옮겨진다", (after.relics?.[target] ?? 0) === (before.relicSpare?.[target] ?? 0) && !(after.relicSpare?.[target]), `${target}: relics ${after.relics?.[target]} · spare ${JSON.stringify(after.relicSpare)}`);
 }
 ok("성장 탭에 '퀘스트' 점(살 수 있음 표시) 동작", await page.evaluate(() => !!document.querySelector(".titans-growth-tabs button")));
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));

@@ -309,3 +309,35 @@ export function drawRelicShards(state: RelicState, n: number, rng: () => number 
   }
   return { state: next, got };
 }
+
+/**
+ * 중복 소진 (2026-10-28, 사용자: "동일한 유물이나 스킬이 있으면 소진하면서 레벨 높일 수 있게") — 뽑기 · 대장 다시 잡기 · 갈림길 조각은
+ * 먼저 '남은 조각'(progression.relicSpare)에 쌓이고, 유물 탭에서 소진해야 ★ 에 들어간다. 옛 저장의 relics 는 이미 들어간 조각 그대로(★ 유지).
+ * 뽑기 · 조각 고르기는 들어간 조각 + 남은 조각을 함께 본다 — 남은 조각으로 다 채울 수 있는 유물은 더 나오지 않는다.
+ */
+export function relicMerged(state: RelicState, spare: RelicState): RelicState {
+  const out: RelicState = { ...state };
+  for (const [id, n] of Object.entries(spare) as [RelicId, number][]) if (n > 0) out[id] = (out[id] ?? 0) + n;
+  return out;
+}
+
+export function addRelicSpare(spare: RelicState, got: readonly RelicId[]): RelicState {
+  const out: RelicState = { ...spare };
+  for (const id of got) out[id] = (out[id] ?? 0) + 1;
+  return out;
+}
+
+/** 지금 소진할 수 있는 남은 조각 수(★5 까지 남은 칸만) */
+export function relicSpareUsable(state: RelicState, spare: RelicState, id: RelicId): number {
+  return Math.max(0, Math.min(spare[id] ?? 0, RELIC_SHARDS_PER_STAR * RELIC_MAX_STAR - (state[id] ?? 0)));
+}
+
+/** 남은 조각을 소진해 ★ 에 넣는다 — 넣을 수 있는 만큼 모두. ★5 를 넘는 조각은 남은 조각에 그대로 둔다(버리지 않는다) */
+export function consumeRelicSpare(state: RelicState, spare: RelicState, id: RelicId): { state: RelicState; spare: RelicState; used: number } {
+  const used = relicSpareUsable(state, spare, id);
+  if (used <= 0) return { state, spare, used: 0 };
+  const left = (spare[id] ?? 0) - used;
+  const nextSpare: RelicState = { ...spare };
+  if (left > 0) nextSpare[id] = left; else delete nextSpare[id];
+  return { state: { ...state, [id]: (state[id] ?? 0) + used }, spare: nextSpare, used };
+}
