@@ -71,7 +71,9 @@ p = await prog();
 ok("코인 20 → 강화석 25", p.eventCoins === 80 && p.enhancementMaterials === 25, `코인 ${p.eventCoins} · 강화석 ${p.enhancementMaterials}`);
 
 // ── 6. 뽑기 중복 → 다음 성급 조각 진행 ──
-const allHeroes = Object.fromEntries(["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember"].map((id) => [id, 10]));
+// 2026-10-28 뽑기 풀 = 전원(스테이지 해금 없음) — 15명만 가지면 10연에 중복이 0일 수 있다. 게임의 동료 목록 전부를 가져 모든 칸이 중복이 되게
+const heroIds = await page.evaluate(async () => (await import("/src/titans/model.ts")).HEROES.map((h) => h.id)).catch(() => ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember"]);
+const allHeroes = Object.fromEntries(heroIds.map((id) => [id, 10]));
 await seed(baseProgress({ redGems: 2000, allyShards: {}, allyStars: {} }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: allHeroes, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
