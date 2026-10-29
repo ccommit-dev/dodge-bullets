@@ -1397,7 +1397,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         }
       };
       const fxDelay = opts?.delayMs || opts?.fxDelayMs;
-      if (fxDelay) window.setTimeout(hitFx, fxDelay); else hitFx();
+      // 늦춘 맞는 그림은 쏠 때의 몬스터가 아직 있을 때만 — 날아가는 사이 다음 몬스터로 바뀌면 빈 자리에 번쩍였다(2026-10-28 verify-walk-y 이펙트 자리)
+      const fxTarget = `${saveRef.current.stage}:${waveRef.current}:${bossRef.current ? 1 : 0}`;
+      if (fxDelay) window.setTimeout(() => { if (`${saveRef.current.stage}:${waveRef.current}:${bossRef.current ? 1 : 0}` === fxTarget) hitFx(); }, fxDelay); else hitFx();
 
       const next = hpRef.current - dealt;
       if (next > 0) {
