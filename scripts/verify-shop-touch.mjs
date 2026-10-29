@@ -96,10 +96,12 @@ for (const [dev, w, h] of DEVICES) {
   // 유물 탭 — 조각 소진
   await tapEl(".titans-bottom-nav button", "사냥터"); await sleep(700);
   await tapEl(".titans-growth-tabs button", "유물"); await sleep(600);
+  // 귀환 정산 희귀 드랍(2026-10-28)이 남은 조각을 더할 수 있다 — 소진 전 남은 조각을 읽어 그만큼(★5 까지) 옮겨졌는지 본다
+  const spare0 = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)).relicSpare?.["ember-ring"] ?? 0, H);
   const r0 = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)).relics["ember-ring"] ?? 0, H);
   const hasBtn = await tapEl('.relic-consume[data-relic="ember-ring"]'); await sleep(700);
   const r1 = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)).relics["ember-ring"] ?? 0, H);
-  ok(`${dev} 유물 탭 '조각 3개 소진' 탭 → 불씨 반지 ★1 → ★2(조각 3 → 6)`, hasBtn && r0 === 3 && r1 === 6, `${r0} → ${r1}`);
+  ok(`${dev} 유물 탭 '조각 3개 소진' 탭 → 불씨 반지 ★1 → ★2(조각 3 → 6)`, hasBtn && r0 === 3 && spare0 >= 3 && r1 === Math.min(15, r0 + spare0), `${r0} → ${r1} (남은 조각 ${spare0})`);
   await page.evaluate(() => [...document.querySelectorAll(".reward-pop button, .reward-pop")].forEach((e) => e.click?.())); await sleep(300);
   await page.evaluate(() => document.querySelector(".relic-tab-panel")?.scrollIntoView({ block: "start" })); await sleep(200);
   await shot("relic-tab");
