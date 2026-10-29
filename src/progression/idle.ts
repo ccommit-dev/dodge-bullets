@@ -271,6 +271,23 @@ export function computeIdleYield(
   };
 }
 
+/**
+ * 방치 희귀 드랍 (2026-10-29, 사용자: "자동사냥시 … 낮은확률로 아이템이나 조각 유물도 얻게") — 쌓인 1시간마다 한 번씩 굴린다.
+ * 12.5시간(최대)이면 유물 조각 약 1.2개 · 스킬 카드 약 0.6장. 무엇이 나왔는지는 정산 화면을 열 때 골드 뽑기 풀에서 정해 보여 준다(TitansGame)
+ */
+export const IDLE_RARE_DROP_PER_HOUR = { relicShard: 0.1, skillCard: 0.05 } as const;
+
+export function rollIdleRareDrops(seconds: number, rng: () => number = Math.random): { relicShards: number; skillCards: number } {
+  const hours = Math.floor(Math.max(0, seconds) / 3600);
+  let relicShards = 0;
+  let skillCards = 0;
+  for (let h = 0; h < hours; h += 1) {
+    if (rng() < IDLE_RARE_DROP_PER_HOUR.relicShard) relicShards += 1;
+    if (rng() < IDLE_RARE_DROP_PER_HOUR.skillCard) skillCards += 1;
+  }
+  return { relicShards, skillCards };
+}
+
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
   const h = Math.floor(total / 3600);

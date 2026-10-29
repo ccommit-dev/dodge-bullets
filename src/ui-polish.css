@@ -1142,6 +1142,15 @@
 .idle-simple .idle-loot article > img, .idle-simple .idle-loot article > .currency-icon { grid-row: 1 / span 2; width: 36px; height: 36px; object-fit: contain; }
 .idle-simple .idle-loot article > b { font-size: 17px; font-weight: 900; color: #2b1a0d; line-height: 1.1; }
 .idle-simple .idle-loot article > span { font-size: 13px; font-weight: 500; color: #7f5f3f; }
+/* 2026-10-29 받은 것이 빈칸으로 보였다 — idle.css 의 칸이 opacity 0 에서 loot-rise 로 떠오르는데 위에서 animation: none 이라 0 에 멈췄다 */
+.idle-simple .idle-loot article { opacity: 1; transform: none; max-width: none; min-width: 0; }   /* idle.css 옛 칩 줄의 max-width 32% 가 칸을 1/3 로 줄여 글자가 "강.." 으로 잘렸다 */
+/* 후원 줄 — App.css 의 갈색 판(!important) 위에 갈색 글자라 안 읽혔다 */
+.idle-simple .idle-patron-preview { background: #fff1c2 !important; border: 2px solid rgba(59, 36, 21, .18) !important; color: #7c4a0a; }
+.idle-simple .idle-loot article > svg, .idle-simple .idle-loot article > .skill-icon { grid-row: 1 / span 2; width: 36px; height: 36px; }
+.idle-simple .idle-loot article > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 희귀 드랍(유물 조각 · 스킬 카드) — 보라 테두리로 일반 보상과 구분 */
+.idle-simple .idle-loot article.is-rare { border-color: #a78bfa; background: linear-gradient(180deg, #fbf7ff, #f1e9ff); box-shadow: 0 0 0 1px rgba(167, 139, 250, .35), 0 0 10px rgba(167, 139, 250, .35); }
+.idle-simple .idle-loot article.is-rare > b { color: #5b21b6; }
 .idle-simple .idle-claim { width: 100%; min-height: 50px; font-size: 18px; }
 .idle-simple .idle-claim-ad { width: 100%; min-height: 42px; font-size: 15px; }
 .idle-simple .idle-patron-preview { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #fff1c2; }
