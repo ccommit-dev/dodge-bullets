@@ -908,10 +908,16 @@ def r_mermaid_harp(_):
 
 
 def r_sea_tear(_):
-    ob('tear', C.ellipsoid(Vector((0, 0, -0.05)), (0.36, 0.3, 0.5), egg=-0.45), m('tear', '#5eead4', rough=0.15, emit='#9ff5dc', es=0.5))
-    ob('core', C.ellipsoid(Vector((0, -0.12, -0.15)), (0.14, 0.08, 0.18)), glow('#ffffff', 1.0), 0)
-    ob('wave', C.torus(Vector((0, 0, -0.5)), 0.5, 0.05, seg=18, ring=6), m('wave', '#3f88c4'))
-    for k, (x, z) in enumerate(((-0.4, 0.3), (0.38, 0.1), (0.3, 0.5))):
+    # 2판 (2026-10-29 "물방울과 비슷해 보인다") — 맨 물방울(파랑 · 물결 고리) 대신 보라 눈물 보석 펜던트:
+    # 금 갓 · 고리 · 사슬이 달린 실루엣으로 물방울과 색 · 모양을 갈라 놓는다
+    ob('tear', C.ellipsoid(Vector((0, 0, -0.18)), (0.32, 0.27, 0.44), egg=-0.45), m('tear', '#8b5cf6', rough=0.12, emit='#c4b5fd', es=0.55))
+    ob('core', C.ellipsoid(Vector((0, -0.11, -0.26)), (0.12, 0.07, 0.16)), glow('#f5f3ff', 1.0), 0)
+    ob('shine', C.ellipsoid(Vector((-0.12, -0.24, -0.02)), (0.05, 0.02, 0.11)), m('shine', '#ffffff', emit='#ffffff', es=0.6), 0)
+    ob('cap', C.ellipsoid(Vector((0, 0, 0.27)), (0.13, 0.13, 0.08)), metal_m('#f2c232'))
+    ob('bail', C.torus(Vector((0, 0, 0.42)), 0.09, 0.028, seg=14, ring=6, rot=Euler((math.radians(90), 0, 0))), metal_m('#e0a92a'))
+    chain = spline([Vector((-0.62, 0, 0.82)), Vector((-0.3, 0, 0.6)), Vector((0, 0, 0.5)), Vector((0.3, 0, 0.6)), Vector((0.62, 0, 0.82))], 16)
+    ob('chain', C.tube(chain, 0.022, seg=6), metal_m('#d9dde3'))
+    for k, (x, z) in enumerate(((-0.42, -0.2), (0.4, -0.38), (0.36, 0.05))):
         ob(f'sp{k}', C.ellipsoid(Vector((x, -0.1, z)), (0.035, 0.02, 0.035)), glow('#fff7c0', 1.2), 0)
 
 # ── 재화 아이콘 (2026-10-26 사용자: "붉은 보석, 강화석도 UI 가 너무 복잡해 조금 더 단순하게" · "성장은 도토리인데 골드로" — 골드가 도토리 그림이었다)
