@@ -42,8 +42,10 @@ for (const [name, party] of Object.entries(PARTIES)) {
   const now = Date.now();
   const progress = { version: 5, level: 40, sharedCoins: 9999, dodgeBestStage: 50, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: party, partyCap: 4, redGems: 50, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99 };
   const titans = { gold: 1e9, stage: 40, bestStage: 40, heroes: Object.fromEntries(party.map((id) => [id, 60])), lastActiveAt: now };   // 해금 스테이지(오리온 30 등) 위 · 교전이 몇 초는 이어지게
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-  await page.reload({ waitUntil: "networkidle0" }); await sleep(2200);
+  // 쓰기와 reload 를 한 evaluate 안에서 — 사이에 앞 시나리오의 사냥터가 옛 상태를 저장하면 동료가 안 떠 표본 0 이었다(2026-10-28 전체 검사). 편성이 다르면 다시
+  const seedOnce = async () => { await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" }); await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2200); };
+  await seedOnce();
+  for (let k = 0; k < 2 && JSON.stringify(JSON.parse(await page.evaluate((H) => localStorage.getItem(`dodgebullets:progression:v1:${H}`) ?? "{}", H)).partyIds) !== JSON.stringify(party); k += 1) await seedOnce();
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
   // 2026-10-20: 첫 시나리오가 불러온 직후 안내 창에 가려 동료 표본 0개로 가끔 끝났다 — 창을 다시 닫고 동료가 둘 이상 보일 때까지(최대 8초) 기다린다
   for (let w = 0; w < 75; w += 1) {   // 8 → 15초(2026-10-28 — 전체 검사 부하에서 [variants] 동료가 8초 안에 안 떠 표본 0)

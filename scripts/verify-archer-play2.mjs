@@ -65,10 +65,13 @@ await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "상점"); await sleep(500);
 await clickText(".hub-sheet-switch button", "이벤트"); await sleep(500);
 const shop = await page.evaluate(() => ({ wallet: document.querySelector('[data-wallet="coin"]')?.textContent ?? "", cards: [...document.querySelectorAll(".event-offer-card.coin-offer")].map((c) => c.textContent) }));
-ok("이벤트 탭: 지갑에 코인 100 · 코인 교환 카드 3장", /100/.test(shop.wallet) && shop.cards.length === 3, `${shop.wallet} · ${shop.cards.length}장`);
+// 사냥이 도는 동안 처치로 코인이 몇 개 더 들어올 수 있다(전체 검사 '103') — 지갑은 100 이상, 교환은 차이로 본다
+const coinsNow = Number((shop.wallet.match(/\d[\d,]*/) ?? ["0"])[0].replace(/,/g, ""));
+ok("이벤트 탭: 지갑에 코인 100(+ 사냥 중 번 몇 개) · 코인 교환 카드 3장", coinsNow >= 100 && coinsNow < 120 && shop.cards.length === 3, `${shop.wallet} · ${shop.cards.length}장`);
+const pCoin = await prog();
 await page.evaluate(() => [...document.querySelectorAll(".event-offer-card.coin-offer")].find((c) => c.textContent.includes("강화석"))?.querySelector("button")?.click()); await sleep(700);
 p = await prog();
-ok("코인 20 → 강화석 25", p.eventCoins === 80 && p.enhancementMaterials === 25, `코인 ${p.eventCoins} · 강화석 ${p.enhancementMaterials}`);
+ok("코인 20 → 강화석 25", p.eventCoins - pCoin.eventCoins >= -20 && p.eventCoins - pCoin.eventCoins <= -15 && p.enhancementMaterials - (pCoin.enhancementMaterials ?? 0) === 25, `코인 ${p.eventCoins} · 강화석 ${p.enhancementMaterials}`);
 
 // ── 6. 뽑기 중복 → 다음 성급 조각 진행 ──
 // 2026-10-28 뽑기 풀 = 전원(스테이지 해금 없음) — 15명만 가지면 10연에 중복이 0일 수 있다. 게임의 동료 목록 전부를 가져 모든 칸이 중복이 되게
