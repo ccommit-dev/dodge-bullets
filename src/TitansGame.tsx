@@ -85,7 +85,7 @@ import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
-import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_SHARDS_PER_STAR, addRelicSpare, consumeRelicSpare, relicMerged, setActive, type RelicBanner, type RelicId } from "./titans/relics";
+import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_SHARDS_PER_STAR, addRelicSpare, consumeRelicSpare, relicMerged, relicSpareUsable, setActive, type RelicBanner, type RelicId } from "./titans/relics";
 import type { Tier as RelicTierRank } from "./titans/allyRoster";
 import "./titans/skillTab.css";
 import { discoveryGems, discoveryKey, discoveryTitle, type DiscoveryKind } from "./titans/discovery";
@@ -140,12 +140,12 @@ import { monsterArtKey } from "./titans/bestiary";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
-import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
+import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
-import { SEASON, addSeasonXp, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
+import { SEASON, SEASON_CORE_REFUND_KEY, addSeasonXp, seasonCoreRefund, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
@@ -1134,6 +1134,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 옮기는 동안 더 쌓였으면(시즌 패스 모두 받기) 다시 읽어 이어 옮긴다
       .finally(() => { coresMovingRef.current = false; void loadCharacterProgress(userHash).then((p) => { if (p.pendingSkillCores > 0) setCharacter(p); }); });
   }, [ready, character.pendingSkillCores, userHash]);
+  // 불러온 뒤 한 번 (2026-10-28, 사용자 확정): ① 시즌 패스 코어 보상 — 예전엔 받은 코어가 사냥터 저장에 덮여 사라질 수 있었다(economy/seasonPass.seasonCoreRefund).
+  // ② 유물 조각이 이제 '남은 조각'으로 쌓인다는 안내 — 소진할 조각이 처음 생겼을 때 한 번(claimedRewards "relic-spare-notice-v1")
+  useEffect(() => {
+    if (!ready) return;
+    let refund = 0, notice = false;
+    void updateCharacterProgress(userHash, (cur) => {
+      refund = seasonCoreRefund(cur);
+      notice = !cur.claimedRewards.includes("relic-spare-notice-v1") && RELICS.some((r) => relicSpareUsable(cur.relics, cur.relicSpare, r.id) > 0);
+      const keys = [...(cur.claimedRewards.includes(SEASON_CORE_REFUND_KEY) ? [] : [SEASON_CORE_REFUND_KEY]), ...(notice ? ["relic-spare-notice-v1"] : [])];
+      if (keys.length === 0) return cur;
+      return { ...cur, pendingSkillCores: cur.pendingSkillCores + refund, claimedRewards: [...cur.claimedRewards, ...keys] };
+    }).then((next) => {
+      setCharacter(next);
+      if (refund > 0) flash(`시즌 패스 스킬 코어 ${refund}개를 다시 드렸어요 — 예전에 받은 코어가 사라질 수 있던 문제 보상`, 4000, true);
+      else if (notice) flash("유물 조각은 이제 '남은 조각'으로 쌓여요 — 사냥터 → 유물에서 소진해 ★ 를 올리세요", 4000, true);
+    }).catch(() => undefined);
+  }, [ready, userHash]);
   // 다른 화면(이벤트 센터 시즌 패스)이 진행도에 코어를 쌓았다 — 다시 읽으면 위 효과가 사냥터 저장으로 옮긴다
   useEffect(() => {
     const onPending = () => void loadCharacterProgress(userHash).then((p) => { if (p.pendingSkillCores > 0) setCharacter(p); });
@@ -2347,7 +2364,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       return { ...prev, skillInventory: { ...again.inv, equipped } };
     });
     previewSkillEquip(id);
-    flash(r.learnedNow ? `${def.name} 학습 · 카드 1장` : `${def.name} Lv.${(inv.levels[id] ?? 1) + r.used} · 카드 ${r.used}장 소진`, 1800);
+    flash(r.learnedNow ? `${def.name} 학습 · 카드 1장` : `${def.name} Lv.${r.inv.levels[id] ?? 1} · 카드 ${r.used}장 소진`, 1800);
   };
 
   const summonAlly = async (count: 1 | 10) => {
@@ -2609,7 +2626,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     );
     setCharacter(next);
     setRedGems(next.redGems);
-    flash(`${def.name} 장착 — 무기가 물들었다`);
+    flash(`${def.name} 장착 — 다음 몬스터부터 무기가 물든다`);   // 외형도 다음 몬스터(서브 스테이지)부터(2026-10-28)
   };
 
   const toggleWeaponSkin = async (skinId: string) => {
@@ -2619,6 +2636,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       equippedWeaponSkin: current.equippedWeaponSkin === skinId ? "" : skinId,
     }));
     setCharacter(next);
+    flash(next.equippedWeaponSkin ? `${WEAPON_SKINS[skinId]?.name ?? "외형"} 장착 · 다음 몬스터부터` : "무기 외형 해제 · 다음 몬스터부터");   // 장비 탈부착은 다음 몬스터(서브 스테이지)부터(2026-10-28)
   };
 
   /** 칭호 구매 — 표시 칭호가 없으면 자동 장착 */
@@ -3787,7 +3805,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           장비 성장
         </button>
         <button type="button" className={tab === "skills" ? "on" : ""} aria-expanded={growthOpen && tab === "skills"} onClick={() => { setGrowthOpen((o) => (tab === "skills" ? !o : true)); setTab("skills"); }}>
-          스킬
+          스킬{save.skillInventory.learned.length > 0 && SKILLS.some((x) => (save.skillInventory.copies?.[x.id] ?? 0) > 0 && (!save.skillInventory.learned.includes(x.id) || skillCardPlan(save.skillInventory, x.id).used > 0)) && <i className="tab-dot" aria-label="쓸 수 있는 스킬 카드" />}
         </button>
         {/* 퀘스트 (2026-10-26, "오늘도 환생 2" — 시간마다 골드) · 2×2 의 왼쪽 아래 — 지금 살 수 있는 줄이 있으면 점 */}
         <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
@@ -3795,7 +3813,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </button>
         {/* 유물 (2026-10-26, 사용자: "4번째에는 유물 추가") — 마이페이지에만 있던 유물 판을 성장 서랍으로 · 뽑기는 상점 */}
         <button type="button" className={tab === "relic" ? "on" : ""} aria-expanded={growthOpen && tab === "relic"} onClick={() => { setGrowthOpen((o) => (tab === "relic" ? !o : true)); setTab("relic"); }}>
-          유물
+          유물{RELICS.some((r) => relicSpareUsable(character.relics, character.relicSpare, r.id) > 0) && <i className="tab-dot" aria-label="소진할 유물 조각" />}
         </button>
         <button type="button" className="growth-drawer-close" aria-label="서랍 닫기" onClick={() => setGrowthOpen(false)}>▾</button>
       </div>
@@ -4454,6 +4472,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const toNext = masteryToNextSlotLevel(mastery);
             const tier = SKILL_TIER[sk.id];
             const cards = save.skillInventory.copies?.[sk.id] ?? 0;
+            // 카드 값은 Lv 따라 1 · 2 · 3 · 5장(2026-10-28 skillGacha.skillCardsPerLevel) — 지금 카드로 오를 Lv · 다음 Lv 에 드는 카드
+            const cardPlan = skillCardPlan(save.skillInventory, sk.id);
             return <article key={sk.id} data-slot={sk.slot} data-tier={tier} title={`${TIER_LABEL[tier]} 스킬`} className={`titans-card skill-learn-card skill-outline rarity-${tier.toLowerCase()} tier-${tier} ${equipFx?.id === sk.id ? "equip-pop" : ""} ${skillSlotTab === sk.slot ? "slot-focus" : ""} element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
               <SkillIcon id={sk.id} />
               <div>
@@ -4470,14 +4490,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   {slotLevel > 0 && ` · 방치 효율 +${(slotLevel * IDLE.ratePerSlotLevel * 100).toFixed(1)}%p`}
                 </small>
                 {!learned && <small>학습 비용 SP {sk.learnSpCost} · 코어 {sk.learnCoreCost}{cards > 0 ? " · 또는 카드 1장" : ""} · {SLOT_LABEL[sk.slot]} {learnedInType}/{skillTypeCapacity}</small>}
-                {cards > 0 && <small className="skill-card-count">스킬 카드 {cards}장{learned ? ` · 소진하면 Lv +${Math.min(cards, Math.max(0, sk.maxLevel - level))}` : ""}</small>}
+                {cards > 0 && <small className="skill-card-count">스킬 카드 {cards}장{learned ? (cardPlan.used > 0 ? ` · 소진하면 Lv.${cardPlan.toLevel}` : level < sk.maxLevel ? ` · 다음 Lv 에 ${cardPlan.nextNeed}장` : "") : ""}</small>}
               </div>
               <div className="skill-card-actions">
                 <button type="button" className={`skill-equip-btn ${equipped ? "is-equipped" : learned ? "is-ready" : "is-learn"}`} disabled={!learned && (learnedInType >= skillTypeCapacity || skillPoints < sk.learnSpCost || save.skillInventory.skillCores < sk.learnCoreCost)} onClick={() => learned ? toggleSkill(sk.id) : void learnSkill(sk.id)}>
                   {learned ? equipped ? "장착됨 · 해제" : eqDef && eqDef.id !== sk.id ? `${eqDef.name} 대신 장착` : "장착" : "학습"}
                 </button>
                 {learned && <button type="button" className="skill-level-button" disabled={level >= sk.maxLevel || save.gold < upgradeCost} onClick={() => upgradeSkill(sk.id)}>{level >= sk.maxLevel ? "MAX" : `${formatGold(upgradeCost)}G 강화`}</button>}
-                {cards > 0 && (learned ? level < sk.maxLevel : true) && <button type="button" className="skill-card-consume" data-skill={sk.id} disabled={!learned && learnedInType >= skillTypeCapacity} onClick={() => consumeSkillCard(sk.id)}>{learned ? `카드 ${Math.min(cards, sk.maxLevel - level)}장 소진 · Lv.${level + Math.min(cards, sk.maxLevel - level)}` : "카드로 학습"}</button>}
+                {cards > 0 && (learned ? cardPlan.used > 0 : true) && <button type="button" className="skill-card-consume" data-skill={sk.id} disabled={!learned && learnedInType >= skillTypeCapacity} onClick={() => consumeSkillCard(sk.id)}>{learned ? `카드 ${cardPlan.used}장 소진 · Lv.${cardPlan.toLevel}` : "카드로 학습"}</button>}
               </div>
             </article>
           }),
@@ -4516,7 +4536,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   return (
                     <Fragment key={banner}>
                       <h4 className={`paid-group-head relic-banner-head banner-${banner}`} data-banner={banner}>
-                        {RELIC_BANNER_LABEL[banner]} 유물 <small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 보유 {ownedInPool}/{pool.length}종 · {RELIC_BANNER_LABEL[banner]} {fmt(have)}</small>
+                        <span className="relic-banner-title">{RELIC_BANNER_LABEL[banner]} 유물 <small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 보유 {ownedInPool}/{pool.length}종 · {RELIC_BANNER_LABEL[banner]} {fmt(have)}</small></span>
                         <button type="button" className="relic-gacha-rates" aria-expanded={ratesOpen} onClick={() => { setRelicShopBanner(banner); setShowRelicRates(!ratesOpen); }}>{ratesOpen ? "확률 접기" : "확률 정보"}</button>
                       </h4>
                       {([1, 10] as const).map((n) => (
@@ -4576,7 +4596,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   return (
                     <Fragment key={banner}>
                       <h4 className={`paid-group-head relic-banner-head skill-banner-head banner-${banner}`} data-banner={banner}>
-                        {SKILL_BANNER_LABEL[banner]} 스킬 <small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 배움 {learnedInPool}/{pool.length}종 · {SKILL_BANNER_LABEL[banner]} {fmt(have)}</small>
+                        <span className="relic-banner-title">{SKILL_BANNER_LABEL[banner]} 스킬 <small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 배움 {learnedInPool}/{pool.length}종 · {SKILL_BANNER_LABEL[banner]} {fmt(have)}</small></span>
                         <button type="button" className="relic-gacha-rates" aria-expanded={ratesOpen} onClick={() => setSkillRatesOpen(ratesOpen ? null : banner)}>{ratesOpen ? "확률 접기" : "확률 정보"}</button>
                       </h4>
                       {([1, 10] as const).map((n) => (
@@ -5122,7 +5142,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {showGachaRates && (
         <div className="gacha-reveal gacha-rates" role="dialog" aria-label="소환 확률 공시" onClick={() => setShowGachaRates(false)}>
           <div className="gacha-rates-sheet" onClick={(e) => e.stopPropagation()}>
-            <strong>동료 소환 확률 공시</strong>
+            <strong>소환 · 뽑기 확률 공시</strong>
             {/* 2026-10-28 (사용자: "확률공시 요약 및 가독성 좋게") — 한 문단에 다 적던 것을 ① 등급 요약 칸 ② 규칙 줄 ③ 등급별로 접은 동료 표로 */}
             <small className="rates-sub">뽑기 Lv.{summonLv} · 누적 {character.gachaPulls}회 · 스테이지 해금 없음(상점 전용 동료만 제외)</small>
             <ul className="rates-tier-grid" aria-label="등급별 확률 요약">
@@ -5155,6 +5175,31 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       ))}
                     </tbody>
                   </table>
+                </details>
+              );
+            })}
+            {/* 유물 · 스킬 뽑기도 한 창에서 (2026-10-28, 사용자 아쉬운 점 "확률 공시 창") — 재화별 등급 합은 머리줄, 펼치면 하나하나. 지금 보유로 빠진 것은 '완성 · 제외' */}
+            <strong className="rates-more-head">유물 · 스킬 뽑기 확률</strong>
+            {RELIC_BANNERS.map((b) => {
+              const merged = relicMerged(character.relics, character.relicSpare);
+              const rates = relicDrawRates(merged, b);
+              const tr = relicBannerTierRates(merged, b);
+              const tiers = TIERS.filter((t) => (RELIC_BANNER_RATES[b][t] ?? 0) > 0);
+              return (
+                <details key={`relic-${b}`} className="rates-tier rates-other" data-rates={`relic-${b}`}>
+                  <summary><b>유물 · {RELIC_BANNER_LABEL[b]}</b> {tiers.map((t) => `${TIER_LABEL[t]} ${((tr[t] ?? 0) * 100).toFixed(1)}%`).join(" · ")}</summary>
+                  <table><tbody>{rates.filter((x) => tiers.includes(relicDef(x.id).tier)).map((x) => <tr key={x.id}><td>{TIER_LABEL[relicDef(x.id).tier]} · {relicDef(x.id).name}</td><td>{x.rate > 0 ? `${(x.rate * 100).toFixed(2)}%` : "완성 · 제외"}</td></tr>)}</tbody></table>
+                </details>
+              );
+            })}
+            {SKILL_BANNERS.map((b) => {
+              const rates = skillDrawRates(save.skillInventory, b);
+              const tr = skillBannerTierRates(save.skillInventory, b);
+              const tiers = TIERS.filter((t) => (SKILL_BANNER_RATES[b][t] ?? 0) > 0);
+              return (
+                <details key={`skill-${b}`} className="rates-tier rates-other" data-rates={`skill-${b}`}>
+                  <summary><b>스킬 · {SKILL_BANNER_LABEL[b]}</b> {tiers.map((t) => `${TIER_LABEL[t]} ${((tr[t] ?? 0) * 100).toFixed(1)}%`).join(" · ")}</summary>
+                  <table><tbody>{rates.filter((x) => tiers.includes(SKILL_TIER[x.id])).map((x) => <tr key={x.id}><td>{TIER_LABEL[SKILL_TIER[x.id]]} · {SKILLS.find((y) => y.id === x.id)?.name}</td><td>{x.rate > 0 ? `${(x.rate * 100).toFixed(2)}%` : "완성 · 제외"}</td></tr>)}</tbody></table>
                 </details>
               );
             })}

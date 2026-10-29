@@ -167,3 +167,13 @@
 .relic-rates li .skill-icon { flex: 0 0 28px; }
 .skill-draw-item .skill-icon { margin: 0 auto; }
 @media (prefers-reduced-motion: reduce) { .relic-consume { animation: none; } }
+/* 마이페이지 유물 칸 — 남은 조각(보여 주기만, 소진은 사냥터 유물 탭) */
+.relic-spare-note b { color: #15803d; }
+.relic-tile .relic-spare-badge { justify-self: center; padding: 0 6px; border-radius: 999px; border: 1.5px solid #14532d; background: #bbf7d0; color: #14532d; font: 900 13px/1.2 "Jua", sans-serif; font-style: normal; }
+/* 머리줄 2열 (2026-10-28 아쉬운 점 "확률 정보 줄바꿈") — 긴 설명은 왼쪽 칸 안에서 줄바꿈, 단추는 늘 오른쪽 */
+.relic-banner-head { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; align-items: center !important; gap: 8px !important; }
+.relic-banner-head .relic-banner-title { min-width: 0; }
+.relic-banner-head .relic-banner-title small { display: inline; }
+.relic-banner-head .relic-gacha-rates { margin-left: 0; white-space: nowrap; }
+.gacha-rates-sheet .rates-more-head { display: block; margin: 12px 0 4px; }
+.gacha-rates-sheet .rates-other summary b { margin-right: 4px; }

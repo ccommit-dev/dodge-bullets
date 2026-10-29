@@ -496,7 +496,8 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     if (id && !ownedShoulders.includes(id)) return;
     setEquippedShoulder(id);
     void updateCharacterProgress(userHash, (current) => ({ ...current, equippedShoulder: id, lastContent: "forge" }));
-    flashToast(id ? "견갑을 장착했습니다" : "견갑을 해제했습니다");
+    // 사냥터 모습은 다음 몬스터(서브 스테이지)부터 바뀐다(2026-10-28 TitansGame spawn — 무기 · 외형 · 견갑 같은 규칙)
+    flashToast(id ? "견갑을 장착했습니다 · 사냥터는 다음 몬스터부터" : "견갑을 해제했습니다 · 사냥터는 다음 몬스터부터");
   };
 
   const enhanceGear = async (part: GearPart) => {

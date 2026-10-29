@@ -1,4 +1,5 @@
 // 아처 키우기 차용 — 실제 화면 검사 (2026-10-22): 첫 발견 팝업 · 대장 사다리 · 강화 전후 수치. 도토리는 2026-10-26 퀘스트로 바뀜.
+// 2026-10-28 시드 쓰기와 reload 를 한 evaluate 안에서(떠 있던 사냥터가 시드를 덮던 경합)
 //   node scripts/verify-archer-play.mjs   (vite 5173)
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -9,8 +10,8 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 const grid = [2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const progress = { version: 5, level: 10, redGems: 100, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, discovered: [], bossLadder: { top: 0, ranks: { ally: 0, tap: 0, gold: 0, speed: 0 } } };
 const titans = { gold: 100000, stage: 1, bestStage: 1, heroes: { mia: 40, leon: 40 }, lastActiveAt: now, acorns: { grid, allyAmmo: {}, best: 2, acc: 0 } };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "networkidle0" }); await sleep(1500);
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1500);
 await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
 let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
 const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`) ?? "{}"), H);

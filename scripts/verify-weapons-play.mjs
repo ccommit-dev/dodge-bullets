@@ -1,4 +1,5 @@
 // 무기 4종 — 실제 화면 검사 (2026-10-27, "비버 무기가 북이라 어색 · 검 · 창 · 활 · 지팡이 · 대장간에서 장착 무기 강화 · 댐 방어전 공용 · 무기별 스킬").
+// 2026-10-28 시드 쓰기와 reload 를 한 evaluate 안에서(떠 있던 사냥터가 시드를 덮던 경합)
 //   node scripts/verify-weapons-play.mjs   (vite 5173) · 캡처 art-gen/out/weapons-*.png
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -12,8 +13,8 @@ const tit = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebul
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const base = { version: 5, level: 20, redGems: 100, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, discovered: [], equippedWeaponLevel: 6, sharedCoins: 9e7, enhancementMaterials: 999, expeditionWeaponForge: { bow: 4, staff: 2, spear: 8 }, dodgeBestStage: 5 };
 const seed = async (progress, titans) => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
-  await page.reload({ waitUntil: "networkidle0" }); await sleep(1300);
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
+  await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1300);
   await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
   await sleep(400);
 };
