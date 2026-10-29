@@ -14,6 +14,11 @@ const baseProgress = (extra = {}) => ({ version: 5, level: 10, redGems: 100, idl
 const seed = async (progress, titans, attendance = { lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) => {
   await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) if (v !== null) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: attendance ? JSON.stringify(attendance) : null, "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
+  // 쓰고 다시 불러오는 사이 떠 있던 사냥터가 옛 상태를 저장하면 심은 값이 덮인다(2026-10-28 전체 검사 '골드 25') — 층이 다르면 다시 심는다(쓰기와 reload 를 한 번에)
+  for (let k = 0; k < 2 && titans && JSON.parse(await page.evaluate((H) => localStorage.getItem(`dodgebullets:titans:${H}`) ?? "{}", H)).bestStage !== titans.bestStage; k += 1) {
+    await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) if (v !== null) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: attendance ? JSON.stringify(attendance) : null, "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+    await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1200);
+  }
 };
 const closeModals = () => page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
 // 팝업 관찰은 문서가 열릴 때부터(첫 몇 초 안의 팝업을 놓치지 않게)
@@ -36,8 +41,8 @@ ok("같은 날 다시 들어와도 한 번만", p.redGems - gemsAfterGift < 1000
 
 // ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 카드가 없고 옛 단계는 쓴 골드로 돌려받는다 ──
 // 안내는 켠 뒤 1.2초부터 4초만 뜬다 — seed() 의 networkidle0 + 1.2초를 기다리면 느린 부하에서 이미 지나갔다(2026-10-28). 다시 불러오자마자 9초 본다
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(baseProgress()), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "domcontentloaded" });
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(baseProgress()), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {});
 const toastRefund = await (async () => { for (let i = 0; i < 60; i += 1) { const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
 await closeModals(); await sleep(400);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비"))?.click()); await sleep(500);
@@ -100,7 +105,7 @@ await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth
 // 고정 2.4초 대신 카드 10장이 깔릴 때까지(최대 10초) — 전체 검사 부하에서 빈 결과([])를 읽었다(2026-10-28)
 await page.waitForFunction(() => document.querySelectorAll(".gacha-card").length >= 10, { timeout: 10000 }).catch(() => {});
 await sleep(400);
-const first = await page.evaluate(() => ({ ssrIds: [...document.querySelectorAll(".gacha-card.rarity-ssr, .gacha-card.rarity-ur, .gacha-card.rarity-lr")].map((c) => c.getAttribute("data-ally")), n: document.querySelectorAll(".gacha-card").length, ssr: [...document.querySelectorAll(".gacha-card.rarity-ssr")].map((c) => ({ name: c.querySelector(".gacha-card-front b")?.textContent, lock: !!c.querySelector(".gacha-lock") })) }));
+const first = await page.evaluate(() => ({ ssrIds: [...document.querySelectorAll(".gacha-card.rarity-ssr, .gacha-card.rarity-ur, .gacha-card.rarity-lr")].map((c) => c.getAttribute("data-ally")), n: document.querySelectorAll(".gacha-card").length, ssr: [...document.querySelectorAll(".gacha-card.rarity-ssr, .gacha-card.rarity-ur, .gacha-card.rarity-lr")].map((c) => ({ name: c.querySelector(".gacha-card-front b")?.textContent, lock: !!c.querySelector(".gacha-lock") })) }));   // 전설 '이상' — 확정 칸이 신화 · 초월로 나올 수 있다(2026-10-28)
 ok("첫 10연: '첫 10연 전설 확정' · 결과에 전설 1명 이상(초반 지역 풀에 전설이 없어도) · 잠금 표시 없음", /첫 10연 전설 확정/.test(badge) && first.n === 10 && first.ssr.length >= 1 && first.ssr.every((c) => !c.lock), `${badge} · 카드 ${first.n} · ${JSON.stringify(first.ssr)}`);
 await clickText(".gacha-close", "확인"); await sleep(300);
 const badgeAfter = await page.evaluate(() => !!document.querySelector(".gacha-page-actions .first-ten-badge"));
