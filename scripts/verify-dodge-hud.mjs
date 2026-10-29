@@ -49,12 +49,12 @@ const clickText = (sel, text) => page.evaluate(({ sel, text }) => {
 
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await page.goto(BASE, { waitUntil: "networkidle0" });
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
   [`dodgebullets:titans:${H}`]: JSON.stringify(titans),
   "dodge-bullets:soundEnabled": "0",
 });
-await page.goto(BASE, { waitUntil: "networkidle0" });
+await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
 await sleep(2600);
 await page.evaluate(() => {
   for (let k = 0; k < 4; k += 1) {

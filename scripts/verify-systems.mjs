@@ -253,6 +253,15 @@ const art = await (async () => {
   const rolled = sm.addSeasonXp(paidP, 10, t0 + 29 * 86400000);
   ok("G 시즌 전환 시 xp·수령·유료 초기화 (미수령 소멸)", rolled.seasonPass.season === 1 && rolled.seasonPass.xp === 10 && !rolled.seasonPass.paid && rolled.seasonPass.claimedFree.length === 0);
   ok("G 유료 15단 시즌 스킨 · 25단 무기 이펙트", sm.paidReward(15, 0).kind === "allySkin" && sm.paidReward(25, 0).kind === "weaponFx");
+  // 시즌 코어 보상 (2026-10-28) — 지금 시즌: 받은 코어 단만큼 · 지난 시즌: 산 시즌마다 유료 코어 단 전부(10) · 한 번만
+  const tNow = sm.SEASON_EPOCH + 2 * 28 * 86400000 + 86400000;   // 시즌 2
+  const buyS0 = `purchase:season-pass:qa-${sm.SEASON_EPOCH + 3 * 86400000}`, buyS2 = `purchase:season-pass:qa-${tNow - 3600000}`;
+  const pr = (keys, sp = { season: 2, xp: 0, paid: false, claimedFree: [], claimedPaid: [] }) => ({ ...base, claimedRewards: keys, seasonPass: sp });
+  ok("시즌 코어 보상: 시즌마다 유료 코어 단 8(3 · 6 · 9 · 12 · 18 · 21 · 24 · 27) · 지금 시즌 유료 3 · 6단 받았으면 2", sm.SEASON_PAID_CORES_PER_SEASON === 8 && sm.seasonCoreRefundCurrent(pr([], { season: 2, xp: 999, paid: true, claimedFree: [], claimedPaid: [3, 6, 7] })) === 2);
+  ok("지난 시즌 보상: 시즌 0 에 산 기록 → 8 · 지금 시즌(2)에 산 것은 빼고 · 시각 없는 거래는 지난 시즌 하나 · 받은 뒤엔 0",
+    sm.seasonCoreRefundPast(pr([buyS0]), tNow) === 8 && sm.seasonCoreRefundPast(pr([buyS2]), tNow) === 0 && sm.seasonCoreRefundPast(pr(["purchase:season-pass:GPA.3312-5521"]), tNow) === 8
+      && sm.seasonCoreRefundPast(pr([buyS0, sm.SEASON_CORE_REFUND_PAST_KEY]), tNow) === 0 && sm.seasonCoreRefund(pr([buyS0, sm.SEASON_CORE_REFUND_KEY]), tNow) === 8,
+    `${sm.seasonCoreRefundPast(pr([buyS0]), tNow)}/${sm.seasonCoreRefundPast(pr([buyS2]), tNow)}/${sm.seasonCoreRefundPast(pr(["purchase:season-pass:GPA.3312-5521"]), tNow)}`);
 }
 
 // ── 4d. L 보상형 광고 ──
@@ -1524,7 +1533,14 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("스킬 뽑기: 재화별 등급 확률 합 1 · 골드 일반 ~ 영웅 · 보석 영웅 ~ 초월 · 지금 확률도 합 1",
     sg.SKILL_BANNERS.every((b) => Math.abs(sum(sg.SKILL_BANNER_RATES[b]) - 1) < 1e-9) && Object.keys(sg.SKILL_BANNER_RATES.gold).join() === "N,R,SR" && Object.keys(sg.SKILL_BANNER_RATES.gem).join() === "SR,SSR,UR,LR"
       && sg.SKILL_BANNERS.every((b) => Math.abs(sg.skillDrawRates(inv0, b).reduce((a, x) => a + x.rate, 0) - 1) < 1e-9));
-  ok("스킬 뽑기 값: 보석 80 · 10회 720 · 골드는 층에 따라 오르고 10회 = 1회 × 9", sg.skillBannerCost("gem", 30).single === 80 && sg.skillBannerCost("gem", 30).ten === 720 && sg.skillBannerCost("gold", 40).single > sg.skillBannerCost("gold", 5).single && sg.skillBannerCost("gold", 12).ten === sg.skillBannerCost("gold", 12).single * 9);
+  // 골드 뽑기 값은 층이 아니라 스킬 레벨 기준(2026-10-28 아쉬운 점) — 배운 골드 풀 스킬 중 최고 Lv. 보통 스킬 카드로 Lv +1 기대 값 = 같은 Lv 골드 강화
+  const invAt = (L) => ({ ...inv0, learned: ["strike", "emberCut"], levels: { ...inv0.levels, strike: L, emberCut: 1 } });
+  const goldPool = sg.SKILLS.filter((x) => ["N", "R", "SR"].includes(sg.SKILL_TIER[x.id])).length;
+  const perLv = (L) => sg.skillCardsPerLevel(L) * sg.skillBannerCost("gold", 1, invAt(L)).single * goldPool;
+  ok("스킬 뽑기 값: 보석 80 · 10회 720 · 골드 10회 = 1회 × 9 · 골드는 층과 무관(5층 = 50층) · 최소 500",
+    sg.skillBannerCost("gem", 30).single === 80 && sg.skillBannerCost("gem", 30).ten === 720 && sg.skillBannerCost("gold", 5, invAt(12)).single === sg.skillBannerCost("gold", 50, invAt(12)).single && sg.skillBannerCost("gold", 12, invAt(12)).ten === sg.skillBannerCost("gold", 12, invAt(12)).single * 9 && sg.skillBannerCost("gold", 1, invAt(1)).single === 500);
+  ok("카드로 Lv +1 기대 값(보통 스킬) ≈ 같은 Lv 골드 강화 — Lv10 · 15 · 19 에서 0.95~1.05배(낮은 Lv 은 최소 500 이라 카드가 더 비싸다)", [10, 15, 19].every((L) => Math.abs(perLv(L) / sg.skillGoldUpgradeCost(L) - 1) < 0.05) && perLv(3) >= sg.skillGoldUpgradeCost(3), [3, 10, 15, 19].map((L) => `Lv${L} 카드 ${perLv(L).toLocaleString()} · 골드 ${sg.skillGoldUpgradeCost(L).toLocaleString()}`).join(" · "));
+  ok("기준은 최고 Lv — 다른 스킬을 낮게 둬도 값이 내려가지 않는다", sg.skillBannerCost("gold", 1, { ...invAt(15), levels: { ...invAt(15).levels, emberCut: 1 } }).single === sg.skillBannerCost("gold", 1, { ...invAt(15), levels: { ...invAt(15).levels, emberCut: 15 } }).single);
   let k = 0; const rng = () => ((k = (k * 9301 + 49297) % 233280) / 233280);
   const d10 = sg.drawSkillCopies(inv0, 10, "gem", rng);
   ok("보석 10회 → 카드 10장 · 모두 영웅 이상", d10.got.length === 10 && sum(d10.copies) === 10 && d10.got.every((id) => ["SR", "SSR", "UR", "LR"].includes(sg.SKILL_TIER[id])), d10.got.join(","));

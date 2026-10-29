@@ -13,13 +13,13 @@ page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 100)));
 
 async function seed(progress, titans, extra = {}) {
   await page.goto(BASE, { waitUntil: "networkidle0" });
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
     [`dodgebullets:titans:${H}`]: JSON.stringify(titans),
     "dodge-bullets:soundEnabled": "0",
     ...extra,
   });
-  await page.goto(BASE, { waitUntil: "networkidle0" });
+  await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
   await sleep(2400);
 }
 const closeModal = async () => { await page.evaluate(() => { [...document.querySelectorAll("button")].find((b) => /받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
