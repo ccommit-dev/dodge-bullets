@@ -1534,10 +1534,14 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("안 배운 스킬은 카드 1장으로 학습(Lv.1) · 카드 2장 남음", learnR.learnedNow && learnR.used === 1 && learnR.inv.learned.includes("meteor") && learnR.inv.levels.meteor === 1 && learnR.inv.copies.meteor === 2);
   const lvR = sg.consumeSkillCopies(learnR.inv, "meteor");
   ok("배운 스킬 카드 소진 → 2장 = Lv.1 → 3 · 카드 0", !lvR.learnedNow && lvR.used === 2 && lvR.inv.levels.meteor === 3 && !lvR.inv.copies.meteor);
-  const nearMax = { ...inv0, learned: ["strike"], levels: { ...inv0.levels, strike: 19 }, copies: { strike: 4 } };
+  // 카드 값 (2026-10-28 사용자: "카드 1장 = 레벨 따라 줄어드는 Lv") — Lv1~4 1장 · 5~9 2장 · 10~14 3장 · 15~19 5장
+  ok("Lv 하나에 드는 카드: Lv1~4 1 · 5~9 2 · 10~14 3 · 15~19 5 · 학습부터 Lv.20 까지 4+10+15+25 = 55장", [1, 4, 5, 9, 10, 14, 15, 19].map(sg.skillCardsPerLevel).join() === "1,1,2,2,3,3,5,5" && sg.skillCardsToMax({ ...inv0, learned: [] }, "meteor") === 1 + 4 + 10 + 15 + 25);
+  const nearMax = { ...inv0, learned: ["strike"], levels: { ...inv0.levels, strike: 19 }, copies: { strike: 7 } };
   const capR = sg.consumeSkillCopies(nearMax, "strike");
-  ok("최대 레벨(20)까지만 소진 — Lv.19 + 카드 4 → Lv.20 · 남은 카드 3", capR.used === 1 && capR.inv.levels.strike === 20 && capR.inv.copies.strike === 3);
-  ok("배운 레벨 + 카드로 최대를 채운 스킬은 뽑기에서 빠진다(확률 0)", sg.skillDrawRates({ ...inv0, levels: { ...inv0.levels, strike: 18 }, copies: { strike: 2 } }, "gold").find((x) => x.id === "strike").rate === 0 && sg.skillDrawRates(inv0, "gold").find((x) => x.id === "strike").rate > 0);
+  ok("최대 레벨(20)까지만 소진 — Lv.19 + 카드 7 → 5장 써서 Lv.20 · 남은 카드 2", capR.used === 5 && capR.inv.levels.strike === 20 && capR.inv.copies.strike === 2);
+  const short = sg.consumeSkillCopies({ ...inv0, levels: { ...inv0.levels, strike: 15 }, copies: { strike: 4 } }, "strike");
+  ok("다음 Lv 에 카드가 모자라면 쓰지 않는다 — Lv.15 + 카드 4(5장 필요) → 그대로", short.used === 0 && short.inv.levels.strike === 15);
+  ok("가진 카드로 최대를 채울 수 있는 스킬은 뽑기에서 빠진다 — Lv.18 은 10장이면 0 · 9장이면 남는다", sg.skillDrawRates({ ...inv0, levels: { ...inv0.levels, strike: 18 }, copies: { strike: 10 } }, "gold").find((x) => x.id === "strike").rate === 0 && sg.skillDrawRates({ ...inv0, levels: { ...inv0.levels, strike: 18 }, copies: { strike: 9 } }, "gold").find((x) => x.id === "strike").rate > 0);
   // 유물 — 뽑은 조각은 남은 조각으로, 소진하면 ★ 에
   const R = sg.R;
   const spare = R.addRelicSpare({}, ["lava-heart", "lava-heart", "lava-heart", "lava-heart"]);

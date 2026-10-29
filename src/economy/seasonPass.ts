@@ -128,3 +128,17 @@ export function claimSeasonTier(current: CharacterProgress, track: "free" | "pai
   };
   return { progress: next, cores: reward.kind === "cores" ? reward.amount : 0, applied: true, reward };
 }
+
+/**
+ * 시즌 패스 코어 보상 (2026-10-28, 사용자: "유료 3·6·9…단 받은 사람에게 다시 지급") — 4c08c41 전에는 받은 코어가 떠 있는 사냥터 저장에
+ * 덮여 사라질 수 있었다. 누가 잃었는지 기록이 없어 지금 시즌에 받은 유료 코어 단 수만큼 한 번 더 준다(잃지 않은 사람도 받는다 — 유리한 쪽).
+ * claimedRewards 의 SEASON_CORE_REFUND_KEY 로 한 번만.
+ */
+export const SEASON_CORE_REFUND_KEY = "season-core-refund-v1";
+export function seasonCoreRefund(current: CharacterProgress): number {
+  if (current.claimedRewards.includes(SEASON_CORE_REFUND_KEY)) return 0;
+  const sp = current.seasonPass;
+  if (!sp || sp.season < 0) return 0;
+  return sp.claimedPaid.reduce((a, t) => { const r = paidReward(t, sp.season); return a + (r.kind === "cores" ? r.amount : 0); }, 0)
+    + sp.claimedFree.reduce((a, t) => { const r = freeReward(t); return a + (r.kind === "cores" ? r.amount : 0); }, 0);
+}

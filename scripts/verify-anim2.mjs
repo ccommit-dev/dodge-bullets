@@ -22,8 +22,8 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 const party = ["mia", "leon", "garen", "ember"].filter((id) => allySet.includes(id)).concat(allySet.filter((id) => !["mia", "leon", "garen", "ember"].includes(id))).slice(0, 4);
 const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: party, partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99 };
 const titans = { gold: 40000, stage: 3, bestStage: 3, heroes: Object.fromEntries(party.map((p) => [p, 1])), lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "networkidle0" }); await sleep(1500);
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1500);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 
 const A = L.ally.actions, cols = L.ally.cols, rows = Object.keys(A).length;

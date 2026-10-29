@@ -1,4 +1,5 @@
 // 상점 스킬 뽑기 · 스킬 카드 소진 — 실제 화면 검사 (2026-10-28, 사용자: "스킬도 상점에서 돈으로 배울수 있게 동료, 유물처럼 이펙트 내용 모두 추가해주고
+// 2026-10-28 시드 쓰기와 reload 를 한 evaluate 안에서(떠 있던 사냥터가 시드를 덮던 경합)
 // 동일한 유물이나 스킬이 있으면 소진하면서 레벨 높일수 있게").  node scripts/verify-skill-shop.mjs   (vite 5173) · 캡처 art-gen/out/skill-shop*.png
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -12,8 +13,8 @@ const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebu
 const progress = { version: 5, level: 30, redGems: 2000, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime", "ally:mia", "ally:leon"] };
 const titans = { gold: 5e7, stage: 12, bestStage: 12, totalKills: 300, heroes: { mia: 10, leon: 10 }, lastActiveAt: now,
   skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0, copies: { strike: 3 } } };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodgebullets:test-phase": "0" });
+await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1200);
 await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
 await sleep(400);
 const sumCopies = (t) => Object.values(t.skillInventory?.copies ?? {}).reduce((a, v) => a + v, 0);
@@ -65,7 +66,10 @@ const tA = await tit();
 const strikeCards = tA.skillInventory.copies?.strike ?? 0;
 await page.evaluate(() => document.querySelector('.skill-card-consume[data-skill="strike"]')?.click());
 let tB = await tA; for (let i = 0; i < 20 && (tB.skillInventory.levels.strike ?? 1) === 1; i += 1) { await sleep(150); tB = await tit(); }
-ok("배운 스킬 카드 소진 → 도토리 일격 Lv.1 → 1 + 카드 수 · 카드 0", tB.skillInventory.levels.strike === 1 + strikeCards && !(tB.skillInventory.copies?.strike), `카드 ${strikeCards} · Lv.${tB.skillInventory.levels.strike}`);
+// 카드 값 Lv1~4 1장 · 5~9 2장 · 10~14 3장 · 15~19 5장 — 가진 카드로 오를 만큼 오르고 모자란 만큼 남는다
+const per = (l) => (l < 5 ? 1 : l < 10 ? 2 : l < 15 ? 3 : 5);
+let expLv = 1, left = strikeCards; while (expLv < 20 && left >= per(expLv)) { left -= per(expLv); expLv += 1; }
+ok("배운 스킬 카드 소진 → 도토리 일격 Lv 이 카드 값(1 · 2 · 3 · 5장)대로 오르고 모자란 카드는 남는다", tB.skillInventory.levels.strike === expLv && (tB.skillInventory.copies?.strike ?? 0) === left, `카드 ${strikeCards} → Lv.${tB.skillInventory.levels.strike}(기대 ${expLv}) · 남음 ${tB.skillInventory.copies?.strike ?? 0}(기대 ${left})`);
 const learnTarget = await page.evaluate(() => { const b = [...document.querySelectorAll(".skill-card-consume")].find((x) => /카드로 학습/.test(x.textContent) && !x.disabled); return b?.dataset.skill ?? null; });
 if (learnTarget) {
   await page.evaluate((id) => document.querySelector(`.skill-card-consume[data-skill="${id}"]`)?.click(), learnTarget);

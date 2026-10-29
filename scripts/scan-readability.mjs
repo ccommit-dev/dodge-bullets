@@ -21,8 +21,8 @@ await page.setViewport({ width: W, height: HH, deviceScaleFactor: 2, isMobile: t
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const progress = { version: 5, level: 40, sharedCoins: 1500000, redGems: 1000, enhancementMaterials: 2300, expeditionSeals: 92, dodgeBestStage: 12, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon", "sera", "garen"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, equippedWeaponLevel: 5, allyShards: { mia: 446, leon: 444 } };
 const titans = { gold: 5000000, stage: 18, bestStage: 18, heroes: { mia: 14, leon: 2, sera: 1, garen: 3 }, lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "networkidle0" }); await sleep(2200);
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2200);
 const closeModals = () => page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav, .hub-sheet")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
 const clickText = (sel, re) => page.evaluate((sel, src) => { const b = [...document.querySelectorAll(sel)].find((x) => new RegExp(src).test(x.textContent.trim())); b?.click(); return !!b; }, sel, re);
 await closeModals(); await sleep(500);

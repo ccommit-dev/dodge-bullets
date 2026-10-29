@@ -30,8 +30,8 @@ for (const scr of SCREENS) {
   const now = Date.now();
   const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "leon", "garen", "luna"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99, equippedWeaponLevel: 5 };   // 무기가 있어야 주인공이 자동 공격(베기 이펙트)
   const titans = { gold: 40000, stage: 12, bestStage: 12, heroes: { mia: 6, leon: 6, garen: 6, luna: 6 }, lastActiveAt: now };   // 동료가 너무 세면 1초 안에 쓰러뜨려 주인공 자동 공격(약 1.08초)이 안 나간다
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-  await page.reload({ waitUntil: "networkidle0" }); await sleep(1500);
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+  await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1500);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 
   const snap = () => page.evaluate(() => {

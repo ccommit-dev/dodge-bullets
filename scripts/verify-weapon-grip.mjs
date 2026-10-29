@@ -1,4 +1,5 @@
 // 무기 손잡이 · 공격 자세 · 탈착 · 무기 외형 — 실제 화면 검사 (2026-10-27, 사용자: "무기 탈착 애니메이션이 너무 어색해 실제 손으로 든 것처럼"
+// 2026-10-28 시드 쓰기와 reload 를 한 evaluate 안에서(떠 있던 사냥터가 시드를 덮던 경합)
 //   · /goal "창도 찌르지 않고 검처럼 휘둘러요 · 손잡이 위치 자동 검사 · 상점 칼날 외형 손잡이 기준").
 //   node scripts/verify-weapon-grip.mjs   (vite 5173) · 캡처 art-gen/out/weapon-grip-*.png
 // 기울기는 칸이 정한 목표(인라인 rotate)로 본다 — 공격 중엔 칸 사이 회전 전환(0.08초)이 늘 돌고 있어 계산된 값은 늘 두 칸 사이다
@@ -32,8 +33,8 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const seed = async (progress) => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1e6, stage: 8, bestStage: 8, totalKills: 100, heroes: { mia: 10, leon: 10 }, lastActiveAt: now }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
-  await page.reload({ waitUntil: "networkidle0" }); await sleep(1300);
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1e6, stage: 8, bestStage: 8, totalKills: 100, heroes: { mia: 10, leon: 10 }, lastActiveAt: now }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
+  await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1300);
   await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
   await sleep(500);
 };

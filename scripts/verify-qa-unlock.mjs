@@ -58,8 +58,8 @@ ok("다시 7탭 ON: 전부 열림", d.qa === "1" && d.hub.locked === 0 && d.slot
 // ── 풀린 콘텐츠가 실제로 열리는가 (잠금 모양만이 아니라) · 출석은 메뉴로만 ──
 const progress2 = { ...progress, towerTickets: 3 };
 const seed = async () => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress2), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0" });
-  await page.reload({ waitUntil: "networkidle0" }); await sleep(2500);
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress2), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0" });
+  await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2500);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
   await sleep(800);
 };
