@@ -1173,7 +1173,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (keys.length === 0) return cur;
       return { ...cur, pendingSkillCores: cur.pendingSkillCores + refund, claimedRewards: [...cur.claimedRewards, ...keys] };
     }).then((next) => {
-      setCharacter(next);
+      // 표시할 것이 있을 때만 상태를 바꾼다 — 키만 적은 저장 때문에 들어오는 순간 다시 그리면 대열 걷기가 흔들렸다(verify-formation 겹침)
+      if (refund > 0 || notice) setCharacter(next);
       if (refund > 0) flash(`시즌 패스 스킬 코어 ${refund}개를 다시 드렸어요 — 예전에 받은 코어가 사라질 수 있던 문제 보상`, 4000, true);
       else if (notice) flash("유물 조각은 이제 '남은 조각'으로 쌓여요 — 사냥터 → 유물에서 소진해 ★ 를 올리세요", 4000, true);
     }).catch(() => undefined);
