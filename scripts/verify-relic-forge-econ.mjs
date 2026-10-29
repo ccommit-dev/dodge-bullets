@@ -53,14 +53,14 @@ let leak = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.dra
 let leakGold = false; { let st = {}; for (let i = 0; i < 300; i++) { const d = R.drawRelicShards(st, 1, rng, "gold"); if (d.got.some((id) => ["SSR", "UR", "LR"].includes(tierOf(id)))) leakGold = true; st = d.state; } }
 ok("유물 뽑기 3종: 확률 합 1 · 공시한 등급만 · 등급 안 균등 · 보석에서 일반 · 희귀 없음 · 골드에서 전설 이상 없음", bannerOk && !leak && !leakGold);
 {
-  // 모으다 만 유물 가중(2026-10-29) — 같은 등급 안에서 조각 % 3 > 0 인 유물이 ×RELIC_IN_PROGRESS_WEIGHT, 등급 확률 합은 그대로
+  // ★1 전 유물 가중(2026-10-29) — 같은 등급 안에서 조각 1 ~ 2개인 유물만 ×RELIC_IN_PROGRESS_WEIGHT(★1 뒤 · 빈 유물은 보통), 등급 확률 합은 그대로
   const lrIds = R.RELICS.filter((r) => r.tier === "LR").map((r) => r.id);
-  const st = { [lrIds[0]]: 1, [lrIds[1]]: 3 };   // 0번: 모으다 만 · 1번: ★1 딱 맞음(가중 없음)
+  const st = { [lrIds[0]]: 1, [lrIds[1]]: 3, [lrIds[3]]: 4 };   // 0번: ★1 전 · 1번: ★1 딱 · 3번: ★1 뒤 모으는 중(가중 없음 — 고루 갖추기가 늦어지지 않게)
   const rs = R.relicDrawRates(st, "gem");
   const rate = (id) => rs.find((x) => x.id === id).rate;
   const lrSum = lrIds.reduce((a, id) => a + rate(id), 0);
   const tierSame = Math.abs(lrSum - R.RELIC_BANNER_RATES.gem.LR) < 1e-12 && Math.abs(rs.reduce((a, x) => a + x.rate, 0) - 1) < 1e-9;
-  ok(`모으다 만 유물 가중 ×${R.RELIC_IN_PROGRESS_WEIGHT}: 같은 등급 다른 유물보다 그만큼 잘 나오고 ★ 딱 맞은 유물은 보통 · 등급 확률 합 그대로`, Math.abs(rate(lrIds[0]) / rate(lrIds[2]) - R.RELIC_IN_PROGRESS_WEIGHT) < 1e-9 && Math.abs(rate(lrIds[1]) - rate(lrIds[2])) < 1e-12 && tierSame, `${rate(lrIds[0]).toFixed(4)} / ${rate(lrIds[2]).toFixed(4)} · LR 합 ${lrSum.toFixed(4)}`);
+  ok(`★1 전 유물 가중 ×${R.RELIC_IN_PROGRESS_WEIGHT}: 같은 등급 다른 유물보다 그만큼 잘 나오고 ★1 뒤 유물은 보통 · 등급 확률 합 그대로`, Math.abs(rate(lrIds[0]) / rate(lrIds[2]) - R.RELIC_IN_PROGRESS_WEIGHT) < 1e-9 && Math.abs(rate(lrIds[1]) - rate(lrIds[2])) < 1e-12 && Math.abs(rate(lrIds[3]) - rate(lrIds[2])) < 1e-12 && tierSame, `${rate(lrIds[0]).toFixed(4)} / ${rate(lrIds[2]).toFixed(4)} · LR 합 ${lrSum.toFixed(4)}`);
 }
 {
   // 초월(LR)을 다 모으면 보석 뽑기의 남은 등급끼리 비례

@@ -707,7 +707,9 @@ export function BeatGame({
         audio.preload = "auto";
         audio.setAttribute("playsinline", "true");
         audio.volume = 0;
-        void audio.play().then(() => audio?.pause()).catch(() => {});
+        // 깨우기만 하고 멈춘다 — 단, 첫 play() 는 불러오기가 끝나야 풀려서 연주가 이미 이 오디오로 시작한 뒤에 올 수 있다.
+        // 그때 멈추면 고른 곡이 안 나왔다(2026-10-29 WebKit 아이폰 검사: 곡 · 파일은 맞는데 paused). 연주가 가져간(claimed) 오디오는 두고 간다
+        void audio.play().then(() => { if (audio && audio.dataset.claimed !== "1") audio.pause(); }).catch(() => {});
       } catch { audio = null; }
       try {
         const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
