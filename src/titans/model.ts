@@ -101,6 +101,8 @@ export type TitansSave = {
     loadouts?: Partial<Record<"sword" | "spear" | "bow" | "staff", Partial<Record<TitanSkillSlot, TitanSkillId>>>>;
     /** 지금 equipped 가 어느 무기의 세트인가 — 장착 무기와 다르면 사냥터가 맞바꾼다(대장간에서 무기를 바꿔도 따라온다) */
     loadoutKind?: "sword" | "spear" | "bow" | "staff";
+    /** 스킬 카드 (2026-10-28 상점 스킬 뽑기 · titans/skillGacha.ts) — 안 배운 스킬은 1장으로 배우고, 배운 스킬은 소진해 Lv +1 */
+    copies?: Partial<Record<TitanSkillId, number>>;
   };
   heroes: Record<TitanHeroId, number>;
   /** 은퇴한 동료·스킬의 환불 — 진행도(보석·SP)에 아직 안 얹은 것. TitansGame 부팅이 얹고 비운다 */
@@ -428,6 +430,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
         .filter(([k]) => k === "sword" || k === "spear" || k === "bow" || k === "staff")
         .map(([k, eq]) => [k, Object.fromEntries(Object.entries(eq ?? {}).filter(([slot, id]) => learned.includes(id as TitanSkillId) && SKILLS.find((sk) => sk.id === id)?.slot === slot))])),
       loadoutKind: ((k) => (k === "spear" || k === "bow" || k === "staff" || k === "sword" ? k : undefined))((value.skillInventory as { loadoutKind?: unknown } | undefined)?.loadoutKind),
+      // 스킬 카드 — 있는 스킬 id · 양수만 (최대 레벨 수까지)
+      copies: Object.fromEntries(SKILLS.map((sk) => [sk.id, n((value.skillInventory as { copies?: Record<string, unknown> } | undefined)?.copies?.[sk.id], 0, sk.maxLevel)] as const).filter(([, c]) => c > 0)) as Partial<Record<TitanSkillId, number>>,
     },
     heroes,
     pendingRefund: refund.gems > 0 || refund.sp > 0 ? { gems: refund.gems, sp: refund.sp } : null,

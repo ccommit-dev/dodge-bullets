@@ -233,8 +233,10 @@ export type CharacterProgress = {
   autoRebirth: boolean;
   /** 결정 영구 강화 트리 (progression/crystalTree.ts, 2026-10-26) — 줄마다 단계 · 진화 포인트로 연 특수 줄 */
   crystalTree: CrystalTree;
-  /** 유물 조각 (titans/relics.ts, 2026-10-26) — 환생해도 남는다 */
+  /** 유물 조각 (titans/relics.ts, 2026-10-26) — 환생해도 남는다. ★ 에 들어간 조각 */
   relics: RelicState;
+  /** 소진하지 않은 유물 조각 (2026-10-28 중복 소진) — 뽑기 · 대장 · 갈림길 조각이 먼저 여기 쌓이고, 유물 탭에서 소진하면 relics 로 */
+  relicSpare: RelicState;
 };
 
 export function expForLevel(level: number): number {
@@ -363,6 +365,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     autoRebirth: false,
     crystalTree: emptyCrystalTree(),
     relics: {},
+    relicSpare: {},
     lastContent: null,
     updatedAt: Date.now(),
   };
@@ -778,6 +781,7 @@ export function normalizeCharacterProgress(
     autoRebirth: (raw as { autoRebirth?: unknown }).autoRebirth === true,
     crystalTree: normalizeCrystalTree((raw as { crystalTree?: unknown }).crystalTree, integer(raw.inheritanceCrystals, 0)),
     relics: normalizeRelics((raw as { relics?: unknown }).relics),
+    relicSpare: normalizeRelics((raw as { relicSpare?: unknown }).relicSpare),
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
 }

@@ -152,3 +152,18 @@
 .relic-product-thumb.rarity-lr { border-color: #0d9488; box-shadow: 0 0 8px rgba(13, 148, 136, .5); background: linear-gradient(135deg, #ccfbf1, #ede9fe, #fef9c3); }
 .titans-layer .relic-draw-product > div > p { -webkit-line-clamp: 2 !important; }
 .relic-draw-product > button .relic-cost-stone { width: 18px; height: 18px; vertical-align: -3px; margin-right: 2px; }
+
+/* 중복 소진 (2026-10-28) — 유물 줄의 '조각 n개 소진' · 스킬 카드의 '카드로 학습 / 카드 n장 소진'. 강화(파랑)와 구분되게 초록 */
+.relic-consume { cursor: pointer; border-color: #14532d !important; background: linear-gradient(180deg, #bbf7d0, #4ade80) !important; box-shadow: 0 3px 0 #15803d; animation: relic-consume-glow 1.6s ease-in-out infinite; }
+.relic-consume b { font: 900 13px/1.15 "Jua", sans-serif; color: #14532d; }
+.relic-consume small { color: #14532d !important; }
+.relic-consume:active { transform: translateY(2px); box-shadow: 0 1px 0 #15803d; }
+@keyframes relic-consume-glow { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 5px rgba(74, 222, 128, .9)); } }
+.relic-spare-total { color: #15803d; }
+.titans-card .skill-card-consume, .skill-card-consume { min-height: 36px; padding: 2px 10px; border: 2px solid #14532d !important; border-radius: 12px !important; background: linear-gradient(180deg, #86efac, #22c55e) !important; color: #052e16 !important; font: 900 14px/1.1 "Jua", sans-serif; box-shadow: 0 3px 0 #15803d; }
+.skill-card-consume:disabled { filter: grayscale(.8); opacity: .65; }
+.skill-card-count { color: #15803d !important; font-weight: 900; font-size: 13px !important; }
+.skill-product-thumb .skill-icon { width: 36px; height: 36px; }
+.relic-rates li .skill-icon { flex: 0 0 28px; }
+.skill-draw-item .skill-icon { margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) { .relic-consume { animation: none; } }
