@@ -12,11 +12,15 @@
 // 건드렸으면 같은 임시 폴더에서 QA 웹 빌드 → cap sync android → gradlew assembleDebug 까지 돈다(1 ~ 3분).
 // 작업 트리에서 sync 하지 않으니 sync 가 고쳐 쓰는 android/*.gradle · ios Package.swift 회귀(메모리)도 생기지 않는다.
 // JDK · Android SDK 가 없는 PC 에서는 건너뛴다고 알리고 웹 검사만으로 판단한다(CI 가 대신 잡는다).
+// 이어서 출시 번들(플래그 없는 웹 빌드 → sync → 서명 없이 bundleRelease)도 — 출시 빌드만 R8 축소를 돌린다.
+//
+// main 으로 푸시하면 사이트(docs/game)가 게임 소스보다 뒤처졌는지도 알린다(막지 않음) — node scripts/build-pages-head.mjs 로 맞춘다.
+// 훅은 package.json "prepare" 가 npm install · npm ci 때 깐다(CI · 이미 깔림이면 건너뜀) — 새로 클론한 PC 도 자동.
 //
 //   node scripts/ci-local.mjs [커밋|트리 ...]      기본 HEAD (Gradle 은 origin/main 대비 네이티브 변경이 있을 때)
 //   node scripts/ci-local.mjs --android [커밋]     Gradle 단계도 강제로
 //   node scripts/ci-local.mjs --pre-push          .git/hooks/pre-push 가 부른다(stdin 으로 푸시할 ref)
-//   node scripts/ci-local.mjs --install           .git/hooks/pre-push 설치
+//   node scripts/ci-local.mjs --install           .git/hooks/pre-push 설치 (--quiet: npm prepare 용, 실패해도 0)
 //
 // 한 번 통과한 트리는 기억해 두어 같은 커밋을 main · feat 로 두 번 밀어도 한 번만 돈다(Gradle 통과는 따로 기억).
 // 정말 급할 때만 git push --no-verify (CI 가 대신 잡는다).
@@ -46,13 +50,19 @@ const git = (args, opts = {}) => {
 };
 const gitOk = (args) => spawnSync("git", args, { cwd: ROOT, encoding: "utf8" }).status === 0;
 
-function install() {
+// --install: 훅을 깐다. --quiet 는 package.json "prepare"(npm install · npm ci 때마다)에서 부르는 모드 —
+// CI 러너 · git 저장소가 아닌 곳(패키지 압축본)은 조용히 건너뛰고, 어떤 경우에도 npm install 을 실패시키지 않는다.
+// 그래서 새로 클론한 PC 도 npm install 한 번이면 훅이 깔린다(2026-10-29)
+function install(quiet = false) {
+  if (quiet && (process.env.CI || !gitOk(["rev-parse", "--git-dir"]))) return;
   const hooksDir = git(["rev-parse", "--git-path", "hooks"]).trim();
   const hook = resolve(ROOT, hooksDir, "pre-push");
   if (existsSync(hook) && !readFileSync(hook, "utf8").includes("ci-local.mjs")) {
     console.error(`${hook} 가 이미 있어 덮지 않았어요 — 내용을 보고 직접 합쳐 주세요`);
+    if (quiet) return;
     process.exit(1);
   }
+  if (quiet && existsSync(hook)) return;   // 이미 깔림
   writeFileSync(hook, `#!/bin/sh\n# scripts/ci-local.mjs --install 이 만든 훅 — 푸시할 커밋 트리로 CI(check.yml · Android Gradle) 단계를 먼저 돌린다\nexec node "$(git rev-parse --show-toplevel)/scripts/ci-local.mjs" --pre-push "$@"\n`);
   try { chmodSync(hook, 0o755); } catch { /* Windows */ }
   console.log(`설치: ${hook}`);
@@ -89,6 +99,19 @@ function nativeChanges(rev, base) {
   return git(["diff", "--name-only", from, rev]).split(/\r?\n/).filter((f) => ANDROID_PATHS.test(f));
 }
 
+// 사이트 시차 — main 에 올라가는 커밋에서 마지막 docs/game 빌드 뒤에 게임 소스가 바뀌었으면 알린다(막지는 않는다:
+// 코드를 먼저 올려 CI 를 보고 사이트를 뒤에 올리는 순서도 쓰기 때문). 맞추는 법: node scripts/build-pages-head.mjs
+const SITE_SOURCES = ["src", "public", "index.html", "vite.config.ts", "package.json", "package-lock.json"];
+function warnSiteLag(rev) {
+  const lastBuild = git(["log", "-1", "--format=%H", rev, "--", "docs/game"]).trim();
+  if (!lastBuild) return;
+  const behind = git(["log", "--format=%h %s", `${lastBuild}..${rev}`, "--", ...SITE_SOURCES]).trim().split(/\r?\n/).filter(Boolean);
+  if (behind.length === 0) return;
+  console.log(`ci-local: ⚠ 사이트(docs/game)가 게임 소스보다 커밋 ${behind.length}개 뒤예요 — 배포된 게임엔 아직 안 보여요`);
+  for (const l of behind.slice(0, 3)) console.log(`          · ${l.slice(0, 90)}`);
+  console.log("          맞추기: node scripts/build-pages-head.mjs 후 다시 푸시");
+}
+
 const run = (cmd, cwd, extraEnv = {}) => new Promise((done) => {
   const t0 = Date.now();
   const p = spawn(cmd, { cwd, shell: true, env: { ...process.env, CI: "true", FORCE_COLOR: "0", ...extraEnv } });
@@ -108,6 +131,8 @@ function androidSdk() {
   return cands.find((d) => existsSync(join(d, "platforms"))) ?? null;
 }
 
+const gradlew = (dir) => (process.platform === "win32" ? `"${join(dir, "android", "gradlew.bat")}"` : "./gradlew");   // Windows cmd 는 cwd 의 gradlew.bat 을 못 찾는다
+
 // android.yml debug-apk 잡: native:sync:qa(QA 웹 빌드 + cap sync) → gradlew assembleDebug
 async function gradleSteps(dir) {
   const sdk = androidSdk();
@@ -119,14 +144,19 @@ async function gradleSteps(dir) {
   const steps = [
     { name: "Android: QA 웹 빌드", cmd: "node node_modules/vite/bin/vite.js build", cwd: dir, env: { VITE_QA_BUILD: "true" } },
     { name: "Android: cap sync android", cmd: "node node_modules/@capacitor/cli/bin/capacitor sync android", cwd: dir },
-    { name: "Android: gradlew assembleDebug", cmd: process.platform === "win32" ? `"${join(dir, "android", "gradlew.bat")}" assembleDebug --no-daemon -q` : "./gradlew assembleDebug --no-daemon -q", cwd: join(dir, "android") },
+    { name: "Android: gradlew assembleDebug", cmd: `${gradlew(dir)} assembleDebug --no-daemon -q`, cwd: join(dir, "android"), expect: "app/build/outputs/apk/debug/app-debug.apk" },
+    // release-aab 잡(키가 있을 때만 CI 에서 돈다): 플래그 없는 웹 빌드 → sync → bundleRelease.
+    // 출시 빌드만 R8(minifyEnabled · shrinkResources)을 돌려 디버그가 통과해도 깨질 수 있다 — 키 없이 서명 안 한 번들로 컴파일 · 축소까지 본다
+    { name: "Android: 출시 웹 빌드", cmd: "node node_modules/vite/bin/vite.js build", cwd: dir },
+    { name: "Android: cap sync android (출시)", cmd: "node node_modules/@capacitor/cli/bin/capacitor sync android", cwd: dir },
+    { name: "Android: gradlew bundleRelease (R8 · 서명 없이)", cmd: `${gradlew(dir)} bundleRelease --no-daemon -q`, cwd: join(dir, "android"), expect: "app/build/outputs/bundle/release/app-release.aab" },
   ];
   const results = [];
   for (const s of steps) {
     if (s.cwd.endsWith("android")) writeFileSync(join(s.cwd, "local.properties"), `sdk.dir=${sdk.replace(/\\/g, "/")}\n`);
     const r = await run(s.cmd, s.cwd, s.env);
-    if (r.code === 0 && s.cwd.endsWith("android") && !existsSync(join(s.cwd, "app/build/outputs/apk/debug/app-debug.apk"))) {
-      r.code = 1; r.out += "\napp-debug.apk 가 안 나왔어요";
+    if (r.code === 0 && s.expect && !existsSync(join(s.cwd, s.expect))) {
+      r.code = 1; r.out += `\n${s.expect} 가 안 나왔어요`;
     }
     results.push({ s, r });
     if (r.code !== 0) break;
@@ -215,14 +245,19 @@ async function checkTree(rev, { android = false } = {}) {
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.includes("--install")) return install();
+  if (args.includes("--install")) {
+    try { install(args.includes("--quiet")); } catch (e) { if (!args.includes("--quiet")) throw e; }
+    return;
+  }
   const force = args.includes("--android");
   // [rev, base] — base 는 원격에 이미 있는 커밋(Gradle 판단용)
   let pairs = args.filter((a) => !a.startsWith("--")).map((r) => [r, null]);
   if (args.includes("--pre-push")) {
     const input = readFileSync(0, "utf8");
-    pairs = input.split(/\r?\n/).map((l) => l.trim().split(/\s+/)).filter((p) => p.length >= 4 && !/^0+$/.test(p[1])).map((p) => [p[1], p[3]]);
+    const lines = input.split(/\r?\n/).map((l) => l.trim().split(/\s+/)).filter((p) => p.length >= 4 && !/^0+$/.test(p[1]));
+    pairs = lines.map((p) => [p[1], p[3]]);
     if (pairs.length === 0) return;
+    for (const p of lines) if (p[2] === "refs/heads/main") warnSiteLag(p[1]);
   }
   if (pairs.length === 0) pairs = [["HEAD", null]];
   const trees = new Map();

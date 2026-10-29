@@ -16,6 +16,9 @@
     "build": "ait build",
     "deploy": "ait deploy",
     "lint": "eslint .",
+    "prepare": "node scripts/ci-local.mjs --install --quiet",
+    "ci:local": "node scripts/ci-local.mjs HEAD",
+    "pages:head": "node scripts/build-pages-head.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

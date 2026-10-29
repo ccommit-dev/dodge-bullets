@@ -161,6 +161,26 @@ await sleep(500);
 r = await page.evaluate(() => [...document.querySelectorAll(".titans-buffs span")].map((s) => s.textContent));
 ok("급소 노리기 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명 \+45%/.test(x)), r.join("|"));
 
+// 해제 → 다시 끼우기 장착 연출 (2026-10-29) — 실제 경제에선 칸이 비트 숙련으로 열려 있어야 끼울 수 있다. 연계 A(hat)를 연 저장을 따로 심는다
+{
+  await seed({ ...baseProgress, beatSkills: { kick: 15, hat: 15, snare: 0, fire: 0, throat: 0 } }, baseTitans);
+  await closeModal();
+  await clickText(".titans-tabs button", "스킬");
+  await sleep(600);
+  const critBtn = () => page.evaluate(() => [...document.querySelectorAll(".skill-learn-card")].find((c) => c.querySelector(".skill-icon-crit"))?.querySelector(".skill-equip-btn")?.textContent ?? "");
+  const clickCrit = () => page.evaluate(() => { [...document.querySelectorAll(".skill-learn-card")].find((c) => c.querySelector(".skill-icon-crit"))?.querySelector(".skill-card-actions .skill-equip-btn")?.click(); });
+  const before = await critBtn();
+  await clickCrit();
+  for (let k = 0; k < 20 && (await titans()).skillInventory.equipped.linkA === "crit"; k += 1) await sleep(100);
+  const offBtn = await critBtn();
+  await sleep(1300);   // 앞 연출(1.2초)이 다 꺼진 뒤 다시 끼운다
+  await clickCrit();
+  let fx2 = null;
+  for (let k = 0; k < 20; k += 1) { if ((await titans()).skillInventory.equipped.linkA === "crit") { fx2 = await page.evaluate(() => ({ pop: !!document.querySelector(".skill-learn-card.equip-pop .skill-icon-crit"), slotPop: !!document.querySelector(".hero-skill-combo .combo-step.equip-pop"), cutin: !!document.querySelector(".skill-cutin") })); break; } await sleep(100); }
+  const onBtn = await critBtn();
+  ok("해제 → 다시 끼우기: 버튼 '장착됨 · 해제' → '장착' → '장착됨' · 다시 끼우는 순간 카드 · 칸 빛 · 컷인", /장착됨/.test(before) && /^장착$/.test(offBtn.trim()) && /장착됨/.test(onBtn) && !!fx2 && fx2.pop && fx2.slotPop && fx2.cutin, JSON.stringify({ before, offBtn, onBtn, fx2 }));
+}
+
 // ── 3. 과금 정합: 후원 일일 보석 · 무료 지급 게이트(DEV) ──
 await seed({ ...baseProgress, patronUntil: now + 86400000 * 10, patronClaimedDate: "" }, baseTitans);
 await closeModal();
