@@ -1,11 +1,9 @@
 name: Deploy Grow a Beaver to GitHub Pages
 
+# 2026-10-29: 사이트는 저장소 Pages 설정의 브랜치 배포(main /docs → "pages-build-deployment")가 올린다.
+# 이 워크플로까지 푸시마다 같은 docs/ 를 배포하면 두 배포가 잠금을 다퉈 "in progress deployment" 로 꾸준히 실패했다(#213).
+# 그래서 손으로만 — 브랜치 배포가 멈췄을 때 Actions 탭에서 Run workflow 로 같은 docs/ 를 다시 올리는 비상용
 on:
-  push:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
