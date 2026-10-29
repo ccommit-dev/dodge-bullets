@@ -76,7 +76,7 @@ const KINDS = ["sword", "spear", "bow", "staff"];
 // ── 1. 무기 4종 — 대기 · 공격 모든 칸에서 손잡이가 손에 (상자 폭의 5% 안) · 공격 자세가 무기마다 다르다 ──
 const summary = {};
 for (let k = 0; k < 4; k += 1) {
-  // 무기 바꾸기는 다음 스테이지부터(766bf1f) — DEV 훅으로 바로 적용한다
+  // 무기 바꾸기는 다음 몬스터부터(서브 스테이지) — DEV 훅으로 바로 적용한다
   await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), k); await sleep(300); await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);
   const kind = await page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1]);
   const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0, sheets: new Set() };

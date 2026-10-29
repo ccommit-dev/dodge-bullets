@@ -400,6 +400,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 고른 무기(저장) — 2026-10-28 (사용자: "아이템 탈부착은 다음 스테이지에 반영되게") 사냥터 모습 · 공격은 appliedLook(지금 스테이지에 들고 들어온 장비) */
   const wantedWeaponKind: WeaponKind = character.equippedWeaponKind ?? "sword";
   const [appliedLook, setAppliedLook] = useState<{ weaponKind: WeaponKind; weaponSkin: string; shoulder: ShoulderId | null } | null>(null);
+  /** 고른 장비(아래에서 매 렌더 채운다) — spawn 이 다음 몬스터를 부를 때 꺼내 든다 */
+  const lookWantedRef = useRef<{ weaponKind: WeaponKind; weaponSkin: string; shoulder: ShoulderId | null } | null>(null);
   const weaponKind: WeaponKind = appliedLook?.weaponKind ?? wantedWeaponKind;
   const forgedWeaponLevel = weaponHuntLevel(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
   /** 메인 루프(의존성 고정)가 읽는 지금 무기 단계 */
@@ -741,6 +743,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     // 두면 화면에서는 왼쪽에서 가로로 걸어 들어온다. 대장 바로 부르기처럼 대열이 화면에 있으면 자리를 그대로 두고 몬스터만 들어온다
     const relocate = battlePhaseRef.current === "stage-exit" || !spawnedOnceRef.current;
     spawnedOnceRef.current = true;
+    // 장비 탈부착은 다음 서브 스테이지에 (2026-10-28, 사용자: "메인 스테이지 예약이 아니라 1-1 처럼 서브스테이지 다음때") — 새 몬스터(대장 · 반복 사냥 포함)를 부를 때 고른 장비를 든다
+    if (lookWantedRef.current) setAppliedLook({ ...lookWantedRef.current });
     setMonsterIn(false);
     if (relocate) setFormationEngaged(false);
     const rolledKind = monsterKind(stage, asBoss, isChest);
@@ -778,19 +782,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     formationTimerRef.current = formationTimer;
     battleTimers.current.push(formationTimer);
   }, []);
-  // 장비 탈부착은 다음 스테이지에 (2026-10-28) — 무기 · 무기 외형 · 견갑을 바꾸면 저장은 바로, 사냥터의 모습 · 공격은 스테이지가 바뀔 때(불러온 직후 한 번)
+  // 장비 탈부착은 다음 서브 스테이지에 (2026-10-28) — 무기 · 무기 외형 · 견갑을 바꾸면 저장은 바로, 사냥터의 모습 · 공격은 다음 몬스터가 나올 때(spawn).
+  // 불러온 직후 · 스테이지가 바뀔 때도 한 번(대비)
   const lookWanted = { weaponKind: wantedWeaponKind, weaponSkin: character.equippedWeaponSkin ?? "", shoulder: equippedShoulder };
-  const lookWantedRef = useRef(lookWanted);
   lookWantedRef.current = lookWanted;
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !lookWantedRef.current) return;
     setAppliedLook({ ...lookWantedRef.current });
   }, [ready, save.stage]);
   const lookPending = !!appliedLook && (appliedLook.weaponKind !== lookWanted.weaponKind || appliedLook.weaponSkin !== lookWanted.weaponSkin || appliedLook.shoulder !== lookWanted.shoulder);
   // DEV 훅 — 검사가 스테이지를 넘기지 않고 고른 장비를 바로 들게(verify-weapons-play 등)
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    (window as unknown as { __huntApplyLook?: () => void }).__huntApplyLook = () => setAppliedLook({ ...lookWantedRef.current });
+    (window as unknown as { __huntApplyLook?: () => void }).__huntApplyLook = () => { if (lookWantedRef.current) setAppliedLook({ ...lookWantedRef.current }); };
     return () => { delete (window as unknown as { __huntApplyLook?: unknown }).__huntApplyLook; };
   }, []);
   // DEV 훅 (2026-10-27) — 대장의 반격 실검사(_probe-b-items)가 일반 몬스터 10마리를 기다리지 않고 지금 층의 대장전을 연다. 출시 번들엔 없다
@@ -2672,8 +2676,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const equipWeapon = (k: WeaponKind) => {
     if (wantedWeaponKind === k) return;
     weaponTechRef.current = 0;
-    // 다음 스테이지부터 든다(2026-10-28) — 같은 스테이지 안에서 무기가 바뀌지 않는다
-    void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${WEAPON_LABEL[k]} 장착 예약 · 다음 스테이지부터 · ${weaponStatText(k)}`, 2400); });
+    // 다음 몬스터(서브 스테이지)부터 든다(2026-10-28) — 지금 몬스터와 싸우는 동안엔 무기가 바뀌지 않는다
+    void updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k })).then((next) => { setCharacter(next); flash(`${WEAPON_LABEL[k]} 장착 예약 · 다음 몬스터부터 · ${weaponStatText(k)}`, 2400); });
   };
   // 무기별 스킬 세트 — 지금 세트(loadoutKind)를 그 무기에 맡기고, 장착 무기에 맡겨 둔 세트를 꺼낸다(처음이면 지금 세트 그대로)
   useEffect(() => {
@@ -3869,7 +3873,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     );
                   })}
                 </span>
-                <small className="weapon-kind-stat">{lookPending ? <b className="look-pending">다음 스테이지부터 {WEAPON_LABEL[wantedWeaponKind]} · </b> : null}{weaponStatText(wantedWeaponKind)} · 기술 {WEAPON_TECH[wantedWeaponKind].name} — {WEAPON_TECH[wantedWeaponKind].desc}</small>
+                <small className="weapon-kind-stat">{lookPending ? <b className="look-pending">다음 몬스터부터 {WEAPON_LABEL[wantedWeaponKind]} · </b> : null}{weaponStatText(wantedWeaponKind)} · 기술 {WEAPON_TECH[wantedWeaponKind].name} — {WEAPON_TECH[wantedWeaponKind].desc}</small>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련<small className="btn-cost">{formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</small></button>
             </article>
