@@ -37,7 +37,7 @@ const tap7 = async () => {
   await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);
   return { label0, label1 };
 };
-await page.reload({ waitUntil: "networkidle0" }); await sleep(2500); await closeAll(); await sleep(800);
+await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}), page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); setTimeout(() => location.reload(), 0); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0" })]);   // 시드를 다시 쓰고 바로 reload(2026-10-28 시드 경합) await sleep(2500); await closeAll(); await sleep(800);
 const a = await state();
 ok("기본(QA 빌드): 콘텐츠 카드 잠금 없음", a.hub.cards >= 5 && a.hub.locked === 0, JSON.stringify(a));
 ok("기본(QA 빌드): 스킬 칸 잠금 없음", a.slots.tabs >= 4 && a.slots.locked === 0, JSON.stringify(a.slots));

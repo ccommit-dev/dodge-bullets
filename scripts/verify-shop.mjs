@@ -21,12 +21,12 @@ const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebu
 const titans = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)), H);
 
 await page.goto(BASE, { waitUntil: "networkidle0" });
-await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("dodgebullets:test-phase", "0"); /* 실제 경제를 본다 — TEST_PHASE 끔 */ for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
+await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("dodgebullets:test-phase", "0"); /* 실제 경제를 본다 — TEST_PHASE 끔 */ for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, onboardingStep: 4, level: 30, exp: 90000, attendanceStreak: 5, redGems: 1000, sharedCoins: 100000, enhancementMaterials: 10, pioneeredArea: 3, titanBestStage: 12, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, gachaPity: 24 }),
   [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 12, bestStage: 12, gold: 50000, heroes: { mia: 12, leon: 8 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 2 }, lastActiveAt: now }),
   "dodge-bullets:soundEnabled": "0",
 });
-await page.goto(BASE, { waitUntil: "networkidle0" });
+await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
 await sleep(2400);
 await closeModal();
 

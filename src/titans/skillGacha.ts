@@ -9,7 +9,7 @@
  *   골드 강화는 Lv 마다 ×1.75 로 비싸지는데 카드 1장이 늘 Lv +1 이면 낮은 층에서 카드가 Lv19 기준 약 42배 쌌다.
  * - 실결제 상품 아님 — 골드 · 붉은 보석만.
  */
-import { killGold, SKILLS, type TitanSkillId, type TitansSave } from "./model";
+import { SKILLS, type TitanSkillId, type TitansSave } from "./model";
 import { SKILL_TIER } from "./skills";
 import type { Tier } from "./allyRoster";
 
@@ -23,14 +23,28 @@ export const SKILL_BANNER_RATES: Record<SkillBanner, Partial<Record<Tier, number
 };
 export const SKILL_GEM_DRAW = { single: 80, ten: 720 } as const;
 
-/** 뽑기 값 — 골드는 지금 층의 사냥 골드 7분 30초치(유물 골드 뽑기의 1.5배, 최소 150) */
-export function skillBannerCost(banner: SkillBanner, stage: number): { single: number; ten: number } {
+type Inv = Pick<TitansSave["skillInventory"], "learned" | "levels"> & { copies?: Partial<Record<TitanSkillId, number>> };
+
+/** 골드 강화 1Lv 값(TitansGame.upgradeSkill 과 같은 식) */
+export function skillGoldUpgradeCost(level: number): number {
+  return Math.floor(240 * Math.pow(1.75, Math.max(0, level - 1)));
+}
+export const SKILL_GOLD_DRAW_MIN = 500;
+/**
+ * 뽑기 값 (2026-10-28 아쉬운 점 "카드 값은 층마다 · 골드 강화는 레벨마다 올라 층에 따라 유불리") — 골드 뽑기는 층이 아니라 스킬 레벨 기준.
+ * 기준 Lv = 골드 뽑기 풀에서 배운 스킬 중 가장 높은 Lv(다른 스킬을 낮게 두어 값을 깎을 수 없게). 1회 값 = 골드 강화(기준 Lv) × 1/풀 크기 ÷ 그 Lv 의 카드 수 —
+ * 보통 등급 스킬 하나를 카드로 Lv +1 하는 기대 값이 같은 Lv 골드 강화와 같다(일반은 싸고 영웅은 비싸다). 최소 500 골드. 보석 뽑기는 그대로.
+ * stage 는 예전 호출과 맞추려 남긴다(값에 쓰지 않는다)
+ */
+export function skillBannerCost(banner: SkillBanner, stage: number, inv?: Inv): { single: number; ten: number } {
+  void stage;
   if (banner === "gem") return { single: SKILL_GEM_DRAW.single, ten: SKILL_GEM_DRAW.ten };
-  const single = Math.max(150, Math.round(killGold(Math.max(1, stage), false, false) * 0.7 * 450));
+  const poolTiers = Object.keys(SKILL_BANNER_RATES.gold);
+  const pool = SKILLS.filter((s) => poolTiers.includes(SKILL_TIER[s.id]));
+  const ref = Math.max(1, ...pool.filter((s) => inv?.learned.includes(s.id)).map((s) => inv?.levels[s.id] ?? 1));
+  const single = Math.max(SKILL_GOLD_DRAW_MIN, Math.round(skillGoldUpgradeCost(ref) / pool.length / skillCardsPerLevel(ref)));
   return { single, ten: single * 9 };
 }
-
-type Inv = Pick<TitansSave["skillInventory"], "learned" | "levels"> & { copies?: Partial<Record<TitanSkillId, number>> };
 
 /** 지금 Lv 에서 Lv +1 하는 데 드는 카드 수 */
 export function skillCardsPerLevel(level: number): number {

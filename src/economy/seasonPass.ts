@@ -130,15 +130,39 @@ export function claimSeasonTier(current: CharacterProgress, track: "free" | "pai
 }
 
 /**
- * 시즌 패스 코어 보상 (2026-10-28, 사용자: "유료 3·6·9…단 받은 사람에게 다시 지급") — 4c08c41 전에는 받은 코어가 떠 있는 사냥터 저장에
- * 덮여 사라질 수 있었다. 누가 잃었는지 기록이 없어 지금 시즌에 받은 유료 코어 단 수만큼 한 번 더 준다(잃지 않은 사람도 받는다 — 유리한 쪽).
- * claimedRewards 의 SEASON_CORE_REFUND_KEY 로 한 번만.
+ * 시즌 패스 코어 보상 (2026-10-28, 사용자: "유료 3·6·9…단 받은 사람에게 다시 지급" · 이어서 "지난 시즌에 잃은 코어도") — 4c08c41 전에는 받은 코어가
+ * 떠 있는 사냥터 저장에 덮여 사라질 수 있었다. 누가 잃었는지 기록이 없어 유리한 쪽으로 준다.
+ *  v1 · 지금 시즌: 받은 코어 단(무료 · 유료) 수만큼 한 번 더.
+ *  v2 · 지난 시즌: 수령 기록은 시즌이 바뀌며 지워지지만 구매 기록(claimedRewards "purchase:season-pass:<거래>")은 남는다 —
+ *       산 지난 시즌마다 유료 코어 단 전부(3 · 6 · 9 · 12 · 18 · 21 · 24 · 27단 = 8개). 거래 번호에 시각(qa-<ms> 등)이 있으면 그 시즌, 없으면 지난 시즌 하나로 센다.
  */
 export const SEASON_CORE_REFUND_KEY = "season-core-refund-v1";
-export function seasonCoreRefund(current: CharacterProgress): number {
+export const SEASON_CORE_REFUND_PAST_KEY = "season-core-refund-v2";
+export const SEASON_PAID_CORES_PER_SEASON = Array.from({ length: SEASON.tiers }, (_, i) => paidReward(i + 1, 0)).reduce((a, r) => a + (r.kind === "cores" ? r.amount : 0), 0);
+export function seasonCoreRefundCurrent(current: CharacterProgress): number {
   if (current.claimedRewards.includes(SEASON_CORE_REFUND_KEY)) return 0;
   const sp = current.seasonPass;
   if (!sp || sp.season < 0) return 0;
   return sp.claimedPaid.reduce((a, t) => { const r = paidReward(t, sp.season); return a + (r.kind === "cores" ? r.amount : 0); }, 0)
     + sp.claimedFree.reduce((a, t) => { const r = freeReward(t); return a + (r.kind === "cores" ? r.amount : 0); }, 0);
+}
+/** 패스를 산 지난 시즌 수 — 지금 시즌(now)은 빼고, 시각을 못 읽는 거래는 지난 시즌 하나로 */
+export function pastSeasonPassSeasons(current: CharacterProgress, now: number = Date.now()): number {
+  const nowSeason = seasonIndex(now);
+  const seasons = new Set<number>();
+  let unknown = 0;
+  for (const k of current.claimedRewards) {
+    if (!k.startsWith(`purchase:${SEASON.productId}:`)) continue;
+    const ms = Number((k.slice(`purchase:${SEASON.productId}:`.length).match(/(\d{12,14})/) ?? [])[1]);
+    if (Number.isFinite(ms) && ms > SEASON_EPOCH) { const sIdx = seasonIndex(ms); if (sIdx < nowSeason) seasons.add(sIdx); } else unknown += 1;
+  }
+  return seasons.size + (unknown > 0 ? Math.min(unknown, Math.max(0, nowSeason)) : 0);
+}
+export function seasonCoreRefundPast(current: CharacterProgress, now: number = Date.now()): number {
+  if (current.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY)) return 0;
+  return pastSeasonPassSeasons(current, now) * SEASON_PAID_CORES_PER_SEASON;
+}
+/** 둘을 합친 이번에 줄 코어(이미 받은 쪽은 0) */
+export function seasonCoreRefund(current: CharacterProgress, now: number = Date.now()): number {
+  return seasonCoreRefundCurrent(current) + seasonCoreRefundPast(current, now);
 }

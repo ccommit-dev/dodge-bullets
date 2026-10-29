@@ -146,7 +146,7 @@ import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
-import { SEASON, SEASON_CORE_REFUND_KEY, addSeasonXp, seasonCoreRefund, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
+import { SEASON, SEASON_CORE_REFUND_KEY, SEASON_CORE_REFUND_PAST_KEY, addSeasonXp, seasonCoreRefund, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
@@ -1161,7 +1161,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     void updateCharacterProgress(userHash, (cur) => {
       refund = seasonCoreRefund(cur);
       notice = !cur.claimedRewards.includes("relic-spare-notice-v1") && RELICS.some((r) => relicSpareUsable(cur.relics, cur.relicSpare, r.id) > 0);
-      const keys = [...(cur.claimedRewards.includes(SEASON_CORE_REFUND_KEY) ? [] : [SEASON_CORE_REFUND_KEY]), ...(notice ? ["relic-spare-notice-v1"] : [])];
+      const keys = [...(cur.claimedRewards.includes(SEASON_CORE_REFUND_KEY) ? [] : [SEASON_CORE_REFUND_KEY]), ...(cur.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY) ? [] : [SEASON_CORE_REFUND_PAST_KEY]), ...(notice ? ["relic-spare-notice-v1"] : [])];
       if (keys.length === 0) return cur;
       return { ...cur, pendingSkillCores: cur.pendingSkillCores + refund, claimedRewards: [...cur.claimedRewards, ...keys] };
     }).then((next) => {
@@ -2335,7 +2335,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 상점 스킬 뽑기 (2026-10-28, 사용자: "스킬도 상점에서 돈으로 배울수 있게 동료, 유물처럼 이펙트") — 골드는 사냥터 저장, 보석은 진행도.
    *  뽑은 스킬은 스킬 카드로(사냥터 저장 setSave 로만 — 밖에서 저장에 쓰면 사냥터가 덮어쓴다) */
   const drawSkill = async (banner: SkillBanner, count: 1 | 10) => {
-    const c = skillBannerCost(banner, saveRef.current.stage);
+    const c = skillBannerCost(banner, saveRef.current.stage, saveRef.current.skillInventory);
     const cost = count === 10 ? c.ten : c.single;
     const inv = saveRef.current.skillInventory;
     if (skillDrawRates(inv, banner).every((x) => x.rate === 0)) { flash("이 뽑기의 스킬을 모두 최대 레벨까지 모았어요"); return; }
@@ -4602,7 +4602,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   const tierRates = skillBannerTierRates(inv, banner);
                   const bannerTiers = TIERS.filter((t) => (SKILL_BANNER_RATES[banner][t] ?? 0) > 0);
                   const topTier = bannerTiers[bannerTiers.length - 1];
-                  const cost = skillBannerCost(banner, save.stage);
+                  const cost = skillBannerCost(banner, save.stage, save.skillInventory);
                   const have = banner === "gold" ? save.gold : redGems;
                   const mark = banner === "gold" ? <CurrencyIcon kind="gold" /> : <GemMark />;
                   const fmt = (n: number) => (banner === "gold" ? formatGold(n) : n.toLocaleString());
