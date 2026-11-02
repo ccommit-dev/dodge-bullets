@@ -29,11 +29,16 @@ function context(): AudioContext | null {
   return ctx;
 }
 
+function wake(audio: AudioContext): void {
+  // 아이폰은 전화 · 다른 앱 뒤 "interrupted" 로 멈춘다(타입에 없는 상태) — running 이 아니면 깨운다
+  if (audio.state !== "running") void audio.resume().catch(() => undefined);
+}
+
 function play(notes: Note[]): void {
   if (!loadSoundEnabled()) return;
   const audio = context();
   if (!audio || !master) return;
-  if (audio.state === "suspended") void audio.resume().catch(() => undefined);
+  wake(audio);
   const t0 = audio.currentTime;
   for (const note of notes) {
     const osc = audio.createOscillator();
@@ -137,7 +142,7 @@ function noise(at: number, dur: number, gain: number, freq: number, q = 1, kind:
   if (!loadSoundEnabled()) return;
   const audio = context();
   if (!audio || !master) return;
-  if (audio.state === "suspended") void audio.resume().catch(() => undefined);
+  wake(audio);
   if (!noiseBuf) {
     noiseBuf = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.5), audio.sampleRate);
     const d = noiseBuf.getChannelData(0);
@@ -162,11 +167,12 @@ const EL_PITCH: Record<string, { f: number; type: OscillatorType }> = {
   fire: { f: 196, type: "sawtooth" }, water: { f: 523, type: "sine" }, earth: { f: 110, type: "square" },
   wind: { f: 880, type: "triangle" }, blade: { f: 1318, type: "triangle" }, light: { f: 1046, type: "sine" },
 };
-/** 평타 — 짧은 "탁" + 속성 음 한 점 */
+/** 평타 — 짧은 "탁" + 속성 음 한 점. 음 높이를 ±6% 흔든다 — 연타가 같은 소리로 들리지 않게 (2026-11-02) */
 export function sfxHuntHit(el: string): void {
   const p = EL_PITCH[el] ?? EL_PITCH.blade;
-  noise(0, 0.05, 0.05, el === "earth" ? 600 : 2200, 1.2);
-  play([{ freq: p.f, at: 0, dur: 0.06, type: p.type, gain: 0.018 }]);
+  const v = 0.94 + Math.random() * 0.12;
+  noise(0, 0.05, 0.05, (el === "earth" ? 600 : 2200) * v, 1.2);
+  play([{ freq: p.f * v, at: 0, dur: 0.06, type: p.type, gain: 0.018 }]);
 }
 /** 치명타 · 스킬 · 특수기 — 저음 쿵 + 터지는 잡음 + 위로 반짝 */
 export function sfxHuntBurst(el: string): void {
@@ -174,6 +180,7 @@ export function sfxHuntBurst(el: string): void {
   noise(0, 0.28, 0.11, 1600, 0.7, "lowpass", 300);
   play([
     { freq: 82, at: 0, dur: 0.22, type: "sine", gain: 0.12 },
+    { freq: 196, at: 0, dur: 0.14, type: "triangle", gain: 0.07 },   // 폰 스피커는 100Hz 아래를 거의 못 낸다 — 무게를 중음에도 싣는다 (2026-11-02)
     { freq: p.f, at: 0.01, dur: 0.16, type: p.type, gain: 0.03 },
     { freq: p.f * 1.5, at: 0.06, dur: 0.2, type: "sine", gain: 0.02 },
   ]);
@@ -207,6 +214,7 @@ export function sfxWeapon(kind: "sword" | "spear" | "bow" | "staff"): void {
 export function sfxMonsterDown(boss = false): void {
   play([{ freq: boss ? 62 : 92, at: 0, dur: boss ? 0.42 : 0.26, type: "sine", gain: boss ? 0.16 : 0.1 }, { freq: 392, at: 0.04, dur: 0.12, gain: 0.03 }, { freq: 262, at: 0.12, dur: 0.16, gain: 0.03 }]);
   noise(0.02, boss ? 0.5 : 0.3, boss ? 0.09 : 0.06, 900, 0.8, "lowpass", 160);
+  play([{ freq: boss ? 165 : 220, at: 0, dur: boss ? 0.24 : 0.14, type: "triangle", gain: boss ? 0.08 : 0.05 }]);   // 폰 스피커용 중음 쿵 (2026-11-02)
 }
 /** 펫 덤빔 — 깡총 두 음 */
 export function sfxPetPounce(): void {
@@ -254,4 +262,70 @@ export function sfxRelicReveal(tier: "N" | "R" | "SR" | "SSR" | "UR" | "LR"): vo
   if (rank === 5) for (const f of [349.23, 440, 523.25, 698.46]) notes.push({ freq: f, at: song.length * step + 0.1, dur: 1.4, type: "sine", gain: 0.02 });   // 긴 화음
   play(notes);
   if (rank >= 2) noise(0.05, 0.25 + rank * 0.12, 0.012 + rank * 0.005, 5200, 4, "bandpass", 9000);   // 반짝이
+}
+
+/* ── 조용하던 순간들 (2026-11-02, 사용자: "콘텐츠 사운드 · 부드러운 조작감이 아직 많이 부족") ──
+   버튼 · 구매 · 강화 · 수령 · 환생 · 대장 입장 · 실패에 소리가 없었다. 폰 스피커가 내는 대역(200Hz 위)으로 만든다 */
+let lastTapAt = 0;
+/** 버튼 — 나무 톡. 아주 작게 (화면 전체에 깔린다) */
+export function sfxUiTap(): void {
+  const now = Date.now();
+  if (now - lastTapAt < 50) return;
+  lastTapAt = now;
+  play([{ freq: 740, at: 0, dur: 0.05, gain: 0.03 }]);
+  noise(0, 0.025, 0.018, 2400, 1.5);
+}
+/** 못 누르는 단추 — 낮은 두 번 */
+export function sfxUiDenied(): void {
+  const now = Date.now();
+  if (now - lastTapAt < 120) return;
+  lastTapAt = now;
+  play([{ freq: 247, at: 0, dur: 0.07, gain: 0.04 }, { freq: 220, at: 0.07, dur: 0.09, gain: 0.04 }]);
+}
+/** 구매 — 동전 두 번 짤랑 */
+export function sfxPurchase(): void {
+  play([{ freq: 1319, at: 0, dur: 0.1, gain: 0.045 }, { freq: 1976, at: 0.06, dur: 0.18, gain: 0.05 }, { freq: 2637, at: 0.12, dur: 0.14, type: "sine", gain: 0.02 }]);
+}
+let lastUpgradeAt = 0;
+/** 강화 · 레벨업 — 위로 톡톡. 자동 강화가 연달아 불러도 덮이지 않게 간격을 둔다 */
+export function sfxUpgrade(): void {
+  const now = Date.now();
+  if (now - lastUpgradeAt < 180) return;
+  lastUpgradeAt = now;
+  play([{ freq: 587, at: 0, dur: 0.08, gain: 0.05 }, { freq: 880, at: 0.05, dur: 0.12, gain: 0.05 }]);
+}
+/** 환생 — 천천히 오르는 큰 화음 */
+export function sfxRebirth(): void {
+  play([392, 523, 659, 784, 1047].map((freq, i) => ({ freq, at: i * 0.11, dur: 0.5, gain: 0.06 })));
+  noise(0, 0.9, 0.03, 700, 0.8, "bandpass", 3800);
+}
+/** 대장 입장 — 낮은 나팔 두 번 + 땅 울림 */
+export function sfxBossEntrance(): void {
+  play([{ freq: 196, at: 0, dur: 0.28, type: "sawtooth", gain: 0.05 }, { freq: 147, at: 0.24, dur: 0.42, type: "sawtooth", gain: 0.06 }, { freq: 294, at: 0.24, dur: 0.3, gain: 0.03 }]);
+  noise(0.2, 0.5, 0.05, 500, 0.8, "lowpass", 180);
+}
+/** 대장 실패 — 내려가는 세 음 */
+export function sfxBossFail(): void {
+  play([{ freq: 440, at: 0, dur: 0.18, gain: 0.05 }, { freq: 349, at: 0.15, dur: 0.2, gain: 0.05 }, { freq: 262, at: 0.32, dur: 0.36, gain: 0.06 }]);
+}
+let uiInstalled = false;
+/**
+ * 앱 전체 버튼 소리 · 소리 깨우기. 개별 핸들러에 넣지 않아도 같은 손맛 — 햅틱(ui/haptics.ts)과 짝.
+ * click 에서 낸다: 아이폰은 pointerdown 을 재생 제스처로 안 쳐 줄 때가 있고, 스크롤 시작에 소리가 나지 않게.
+ * 비활성 단추는 click 이 오지 않아 pointerup 으로 '못 누름' 소리. data-no-sfx 로 뺀다.
+ */
+export function installUiSfx(): void {
+  if (uiInstalled || typeof document === "undefined") return;
+  uiInstalled = true;
+  const unlock = () => { if (!loadSoundEnabled()) return; const a = context(); if (a) wake(a); };
+  for (const type of ["touchend", "click", "keydown"]) window.addEventListener(type, unlock, { capture: true, passive: true });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && ctx) wake(ctx); });
+  document.addEventListener("click", (e) => {
+    const b = (e.target as HTMLElement | null)?.closest?.("button");
+    if (b && !b.hasAttribute("data-no-sfx")) sfxUiTap();
+  }, { capture: true, passive: true });
+  document.addEventListener("pointerup", (e) => {
+    const b = (e.target as HTMLElement | null)?.closest?.("button");
+    if (b && b.hasAttribute("disabled") && !b.hasAttribute("data-no-sfx")) sfxUiDenied();
+  }, { capture: true, passive: true });
 }

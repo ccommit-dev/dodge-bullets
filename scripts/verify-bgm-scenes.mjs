@@ -13,6 +13,16 @@ const seed = async (stage) => { await page.evaluate((s) => { localStorage.clear(
 let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
 const src = () => page.evaluate(() => (window.__bgm?.() ?? {}).src ?? document.querySelector("audio")?.src ?? "none");
 await seed(3); { const s = await src(); ok("사냥터 앞 지역(3층) = The Whispering Grove", /whispering-grove/.test(s), s); }
+// 곡 이어 재생 (2026-11-02) — 상점을 다녀와도 사냥터 곡이 처음부터 다시 나오지 않는다
+{
+  const st = () => page.evaluate(() => window.__bgm?.() ?? {});
+  await sleep(3500); const a = await st();
+  await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(1800);
+  const shop = await st();
+  await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(1800);
+  const back = await st();
+  ok("상점(다른 곡)을 다녀와도 사냥터 곡이 듣던 자리에서 이어진다", a.pos > 1 && /glockenspiel/.test(shop.src ?? "") && /whispering-grove/.test(back.src ?? "") && back.pos >= a.pos, JSON.stringify({ a: +a.pos.toFixed(1), shop: (shop.src ?? "").split("/").pop(), back: +back.pos.toFixed(1) }));
+}
 await seed(12); { const s = await src(); ok("폐허(12층) = Market Day Revel", /market-day-revel/.test(s), s); }
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(1500); { const s = await src(); ok("상점 = Glockenspiel Garden", /glockenspiel-garden/.test(s), s); }
 // 사냥터로 돌아온 뒤 대장전을 연다(DEV 훅) — 대장이 나와 있는 동안 곡을 5초까지 지켜본다(일찍 쓰러지면 다음 대장 · 곡이 돌아간다)

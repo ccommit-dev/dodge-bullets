@@ -73,7 +73,7 @@ import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { setHuntBgm, type HuntMood } from "./ui/bgm";
-import { sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxRelicReveal, sfxRelicSummon, sfxSkillTier, sfxSlotUnlock, sfxWeapon } from "./ui/sfx";
+import { sfxBossEntrance, sfxBossFail, sfxIdleClaim, sfxPurchase, sfxRebirth, sfxUpgrade, sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxRelicReveal, sfxRelicSummon, sfxSkillTier, sfxSlotUnlock, sfxWeapon } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
@@ -350,6 +350,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [relicSummoning, setRelicSummoning] = useState<{ tier: RelicTierRank; count: number } | null>(null);
   /** 스킬 뽑기 (2026-10-28 titans/skillGacha.ts) — 소환진 · 공개 · 확률 정보를 펼친 재화 */
   const [skillSummoning, setSkillSummoning] = useState<{ tier: RelicTierRank; count: number } | null>(null);
+  /** 소환진을 눌러 바로 공개 (2026-11-02, 사용자: "부드러운 조작감") — 동료 · 유물 · 스킬 소환 공통 */
+  const summonSkipRef = useRef<(() => void) | null>(null);
+  const runSummon = (reveal: () => void, ms = 1200) => {
+    let done = false;
+    const go = () => { if (done) return; done = true; summonSkipRef.current = null; reveal(); };
+    summonSkipRef.current = go;
+    window.setTimeout(go, ms);
+  };
+  /** 결과 카드가 차례로 뜨는 중이면 첫 탭은 모두 공개, 그다음 탭이 닫기 */
+  const [gachaRevealAll, setGachaRevealAll] = useState(false);
+  const gachaRevealAtRef = useRef(0);
+  /** 서랍 닫기 — 짧게 내려간 뒤 사냥터로 (2026-11-02). 예전엔 바로 사라졌다 */
+  const [sheetClosing, setSheetClosing] = useState(false);
+  const sheetDragY = useRef<number | null>(null);
   const [skillDrawResult, setSkillDrawResult] = useState<TitanSkillId[] | null>(null);
   const [skillRatesOpen, setSkillRatesOpen] = useState<SkillBanner | null>(null);
   /** 파견 출정 팝업 (2026-10-27, 사용자: "파견 출정 시 간단한 애니 팝업") — 동료가 오른쪽으로 걸어 나간다 · 1.6초 뒤 저절로 닫힘 */
@@ -771,6 +785,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const mhp = monsterHp(stage, asBoss) * (isChest ? 1.6 : 1);
     setWave(nextWave);
     setBoss(asBoss);
+    if (asBoss) sfxBossEntrance();
     setChesterson(isChest);
     setHp(mhp);
     setMaxHp(mhp);
@@ -1147,6 +1162,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     try {
       const r = await performRebirth(userHash, cur);
       reloaded = true;
+      sfxRebirth();
       window.setTimeout(() => { saveFrozenRef.current = false; }, 10000);   // 안전망 — 다시 불러오기가 어떤 이유로 준비에 닿지 못해도 저장이 영영 멈추지 않게
       setCharacter(r.next);
       setRedGems(r.next.redGems);
@@ -2002,6 +2018,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           // 벽은 실패가 아니라 이정표다: 최초 도달 시 보석 보상 + 돌파 3택 배너,
           // 그리고 wallAreas 기록이 환생 조건(3지역)을 채운다.
           bossFailStreakRef.current += 1;
+          sfxBossFail();
           sessionBossFailsRef.current += 1;
           void scheduleLocalNotification(NOTIFY_ID.bossRetry, "보스 재도전 준비 완료", `Stage ${saveRef.current.stage} 보스가 기다립니다 — 동료 레벨업 후 다시 도전하세요.`, new Date(Date.now() + 30 * 60000));
           // 결제 타이밍 (retention-2): 실패 1회차 → 무료 +10초 카드(세션 1회), 2회차부터 → 초급 세트 순간 제안.
@@ -2148,6 +2165,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const plevel = save.equipmentTraining[pkey] ?? 0;
       const pq = bulkUpgradeQuote((l) => gearTrainingCost(slot, l), plevel, save.gold, buyAmount);
       if (pq.count === 0) return;
+      sfxUpgrade();
       setSave((prev) => ({ ...prev, gold: prev.gold - pq.cost, equipmentTraining: { ...prev.equipmentTraining, [pkey]: (prev.equipmentTraining[pkey] ?? 0) + pq.count } }));
       flash(`${GEAR_PART_DEF[slot].name} 숙련 Lv.${plevel + pq.count}${pq.count > 1 ? ` (+${pq.count})` : ""}`);
       setAutoTrainHit((h) => ({ slot, seq: (h?.seq ?? 0) + 1, count: pq.count }));   // 손으로 훈련해도 카드 아이콘이 튄다 (2026-10-23)
@@ -2296,6 +2314,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const buyShardPack = async () => {
     const id = shardPackTarget;
     if (redGems < 120 || save.heroes[id] <= 0) return;
+    sfxPurchase();
     const week = currentWeekKey();
     const next = await updateCharacterProgress(userHash, (current) => {
       const record = current.weeklyShardPacks.week === week ? current.weeklyShardPacks : { week, bought: {} };
@@ -2379,11 +2398,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const best = got.map((id) => relicDef(id).tier).sort((x, y) => TIERS.indexOf(y) - TIERS.indexOf(x))[0] ?? "N";
     setRelicSummoning({ tier: best, count: got.length });
     sfxRelicSummon();
-    window.setTimeout(() => {
+    runSummon(() => {
       setRelicSummoning(null);
       sfxRelicReveal(best);
       setRelicDrawResult(got);
-    }, 1200);
+    });
   };
 
   /** 유물 남은 조각 소진 (2026-10-28 중복 소진) — 넣을 수 있는 만큼 ★ 에. ★ 가 오르면 등급 소리 · 세트가 새로 켜지면 세트 안내 */
@@ -2428,11 +2447,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const best = got.map((id) => SKILL_TIER[id]).sort((x, y) => TIERS.indexOf(y) - TIERS.indexOf(x))[0] ?? "N";
     setSkillSummoning({ tier: best, count: got.length });
     sfxRelicSummon();
-    window.setTimeout(() => {
+    runSummon(() => {
       setSkillSummoning(null);
       sfxSkillTier(best);
       setSkillDrawResult(got);
-    }, 1200);
+    });
   };
 
   /** 스킬 카드 소진 — 안 배운 스킬은 1장으로 배우고(칸 한도는 그대로), 배운 스킬은 남은 카드를 모두 Lv 로. 장착 연출을 한 번 */
@@ -2505,11 +2524,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const fake = best !== "LR" && Math.random() < 0.3;
     const tease = fake ? order[Math.min(order.length - 1, TIER_RANK[best] + 1)] : best;
     setGachaSummoning({ tier: tease, count });
-    window.setTimeout(() => {
+    sfxRelicSummon();   // 동료 소환진만 1.2초 무음이었다 · 공개도 등급과 무관한 소리였다 (2026-11-02)
+    runSummon(() => {
       setGachaSummoning(null);
-      sfxSlotUnlock();
+      sfxRelicReveal(best);
+      setGachaRevealAll(false);
+      gachaRevealAtRef.current = Date.now();
       setGachaReveal(pulled.results);
-    }, 1200);
+    });
   };
 
   /** 성급 승급 — 조각 소비, 환생에도 보존되는 영구 성장 */
@@ -2594,6 +2616,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const claimExpeditions = async () => {
     const done = character.expeditions.filter((e) => e.endsAt <= Date.now());
     if (done.length === 0) return;
+    sfxIdleClaim();
     const next = await updateCharacterProgress(userHash, (current) => {
       const finished = current.expeditions.filter((e) => e.endsAt <= Date.now());
       if (finished.length === 0) return current;
@@ -2683,6 +2706,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 무기 외형 구매 — 확정 구매, 즉시 장착 */
   /** 펫 바로 부화 (2026-10-28) — 붉은 보석. 장착 펫이 없으면 바로 장착 */
   const buyPet = async (pid: PetId) => {
+    sfxPurchase();
     const price = PET_GEM_PRICE[pid];
     if ((character.pets[pid] ?? 0) > 0 || redGems < price) return;
     const next = await updateCharacterProgress(userHash, (current) =>
@@ -2715,6 +2739,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     );
     setCharacter(next);
     setRedGems(next.redGems);
+    sfxPurchase();
     flash(`${def.name} 장착 — 다음 몬스터부터 무기가 물든다`);   // 외형도 다음 몬스터(서브 스테이지)부터(2026-10-28)
   };
 
@@ -2732,6 +2757,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const buyTitle = async (titleId: string) => {
     const def = TITLES[titleId];
     if (!def || character.ownedTitles.includes(titleId) || redGems < def.gemCost) return;
+    sfxPurchase();
     const next = await updateCharacterProgress(userHash, (current) =>
       current.ownedTitles.includes(titleId) || current.redGems < def.gemCost
         ? current
@@ -2792,6 +2818,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         ? { count: save.gold >= def.baseCost ? 1 : 0, cost: def.baseCost }
         : bulkUpgradeQuote((l) => heroUpgradeCost(def, l), lv, save.gold, buyAmount);
     if (quote.count === 0) return;
+    sfxUpgrade();
     setSave((prev) => ({
       ...prev,
       gold: prev.gold - quote.cost,
@@ -3049,6 +3076,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const level = save.skillInventory.levels[id];
     const cost = Math.floor(240 * Math.pow(1.75, Math.max(0, level - 1)));
     if (!def || !save.skillInventory.learned.includes(id) || level >= def.maxLevel || save.gold < cost) return;
+    sfxUpgrade();
     setSave((prev) => ({
       ...prev,
       gold: prev.gold - cost,
@@ -3351,6 +3379,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
   const claimRoutine = async () => {
     if (!routineReward) return;
+    sfxIdleClaim();
     const today = new Date().toLocaleDateString("sv-SE");
     const next = await updateCharacterProgress(userHash, (current) =>
       current.routineClaimedDate === today ? current : addSeasonXp({ ...current, routineClaimedDate: today, redGems: current.redGems + ROUTINE_REWARD_GEMS }, SEASON.xp.routine),
@@ -3434,6 +3463,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   }
 
   /** 순간 제안 카드 (retention-2~5) — 전장 위와 뽑기 페이지 상단에 같은 카드 */
+  const closeSheet = () => {
+    if (sheetClosing) return;
+    setSheetClosing(true);
+    window.setTimeout(() => { setSheetClosing(false); setTab("sword"); }, 170);
+  };
   const momentOfferCard = (() => {
           const offer = activeMomentOffers(character, nowTick).find((o) => !dismissedOffers.includes(o.productId));
           if (!offer) return null;
@@ -3931,10 +3965,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </div>
       )}
       {/* 관리 페이지(동료·뽑기·상점)는 전장을 가리는 전체 페이지가 아니라 하단 바 위로 올라오는 시트다 (사용자 지시: 하단 UI) */}
-      {MANAGEMENT_PAGE_COPY[tab] && <div className="hub-sheet-backdrop" onClick={() => setTab("sword")} aria-hidden="true" />}
+      {MANAGEMENT_PAGE_COPY[tab] && <div className={`hub-sheet-backdrop ${sheetClosing ? "closing" : ""}`} onClick={closeSheet} aria-hidden="true" />}
       {/* 장비 성장·스킬은 전장 아래 인라인, 관리 페이지(동료·뽑기·상점)는 같은 섹션을 시트로 띄운다 */}
-      <div ref={hubSheetRef} className={MANAGEMENT_PAGE_COPY[tab] ? "hub-sheet" : "hub-inline"} role={MANAGEMENT_PAGE_COPY[tab] ? "dialog" : undefined} aria-label={MANAGEMENT_PAGE_COPY[tab]?.title}>
-        {MANAGEMENT_PAGE_COPY[tab] && <button type="button" className="hub-sheet-handle" onClick={() => setTab("sword")} aria-label="닫기"><i /></button>}
+      <div ref={hubSheetRef} className={MANAGEMENT_PAGE_COPY[tab] ? `hub-sheet ${sheetClosing ? "closing" : ""}` : "hub-inline"} role={MANAGEMENT_PAGE_COPY[tab] ? "dialog" : undefined} aria-label={MANAGEMENT_PAGE_COPY[tab]?.title}>
+        {MANAGEMENT_PAGE_COPY[tab] && <button type="button" className="hub-sheet-handle" onClick={closeSheet} aria-label="닫기 · 아래로 밀어도 닫힌다" onPointerDown={(e) => { sheetDragY.current = e.clientY; }} onPointerMove={(e) => { if (sheetDragY.current !== null && e.clientY - sheetDragY.current > 36) { sheetDragY.current = null; closeSheet(); } }} onPointerUp={() => { sheetDragY.current = null; }}><i /></button>}
         {MANAGEMENT_PAGE_COPY[tab] && (
         <header className="hub-sheet-head">
           {/* 제목이 바로 옆 전환 탭과 같은 말이라 빼고 전환 탭이 제목 역할을 한다 (동료 도감 / 상점 — 2026-09-18) */}
@@ -3957,7 +3991,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <button type="button" className={tab === "event-shop2" ? "on" : ""} onClick={() => setTab("event-shop2")}>특별</button>
             </nav>
           )}
-          <button type="button" className="hub-sheet-close" onClick={() => setTab("sword")} aria-label="닫기">×</button>
+          <button type="button" className="hub-sheet-close" onClick={closeSheet} aria-label="닫기">×</button>
         </header>
         )}
         {/* 보석·골드를 쓰는 시트에는 지갑 줄 — 시트가 머리의 보석 칩을 가렸다 (2026-10-06) */}
@@ -4110,6 +4144,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <small>포인트 {character.chestPoints}/{CHEST_POINTS_FOR_CHEST} · {CHEST_TABLE.map((d) => `${d.label.split(" (")[0]} ${d.percent}%`).join(" · ")}</small>
               </span>
               <button type="button" className="hub-chest-open" disabled={character.chests <= 0} onClick={() => {
+                sfxIdleClaim();
                 void updateCharacterProgress(userHash, (current) => openChest(current, Math.random, () => randomOwnedAlly(saveRef.current.heroes, Math.random, current.partyIds)).progress).then((next) => {
                   const opened = next.chestsOpened - character.chestsOpened;
                   if (opened > 0) {
@@ -5020,7 +5055,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       {/* 소환진 (계획안 E) — 등급 예고 색(파랑 R · 보라 SR · 금 SSR)으로 1.2초 기대감을 만든 뒤 카드 공개 */}
       {gachaSummoning && (
-        <div className={`gacha-reveal gacha-summoning tier-${gachaSummoning.tier.toLowerCase()}`} role="status" aria-label="소환 중">
+        <div className={`gacha-reveal gacha-summoning tier-${gachaSummoning.tier.toLowerCase()}`} role="status" aria-label="소환 중 · 누르면 바로 공개" onClick={() => summonSkipRef.current?.()}>
           {/* 2026-10-16 (사용자: "가챠 이펙트 원복하고 원래 내용에 조금 더 화려하게 — 폭죽·조명 연산 이펙트") — 원래 마법진 그대로 + 뒤에 GachaFx(빛·폭죽 캔버스) */}
           <GachaFx tier={gachaSummoning.tier} phase="summon" />
           <div className="gacha-summon-circle">
@@ -5034,12 +5069,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       )}
       {/* 소환 연출 — 카드가 순서대로 뒤집히고 등급색으로 빛난다. 새 동료/중복 조각을 구분해 보여준다 */}
       {gachaReveal && (
-        <div className={`gacha-reveal gacha-result ${gachaReveal.some((r) => r.rarity === "SSR") ? "has-ssr" : gachaReveal.some((r) => r.rarity === "SR") ? "has-sr" : ""}`} role="dialog" aria-label="소환 결과" onClick={() => setGachaReveal(null)}>
+        <div className={`gacha-reveal gacha-result ${gachaReveal.some((r) => TIER_RANK[r.rarity] >= TIER_RANK.SSR) ? "has-ssr" : gachaReveal.some((r) => r.rarity === "SR") ? "has-sr" : ""}`} role="dialog" aria-label="소환 결과" onClick={() => {
+          // 차례로 뜨는 중이면 첫 탭은 모두 공개(카드당 0.18초), 다 떴으면 닫기
+          if (!gachaRevealAll && Date.now() - gachaRevealAtRef.current < gachaReveal.length * 180 + 300) { setGachaRevealAll(true); return; }
+          setGachaReveal(null);
+        }}>
           <i className="gacha-burst" aria-hidden="true" />
           <i className="gacha-rays" aria-hidden="true" />
-          <GachaFx tier={gachaReveal.some((r) => r.rarity === "SSR") ? "SSR" : gachaReveal.some((r) => r.rarity === "SR") ? "SR" : "R"} phase="reveal" />
+          <GachaFx tier={gachaReveal.map((r) => r.rarity).sort((a, b) => TIER_RANK[b] - TIER_RANK[a])[0] ?? "R"} phase="reveal" />
           <i className="gacha-light-sweep" aria-hidden="true" />
-          <div className={`gacha-reveal-grid count-${gachaReveal.length}`} onClick={(e) => e.stopPropagation()}>
+          <div className={`gacha-reveal-grid count-${gachaReveal.length} ${gachaRevealAll ? "reveal-all" : ""}`} onClick={(e) => e.stopPropagation()}>
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;
               return (
@@ -5157,7 +5196,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       )}
       {/* 유물 소환진 (2026-10-28) — 동료 소환진 판을 그대로(등급색 · GachaFx) · 글만 유물 */}
       {relicSummoning && (
-        <div className={`gacha-reveal gacha-summoning relic-summoning tier-${relicSummoning.tier.toLowerCase()}`} role="status" aria-label="유물 뽑는 중">
+        <div className={`gacha-reveal gacha-summoning relic-summoning tier-${relicSummoning.tier.toLowerCase()}`} role="status" aria-label="유물 뽑는 중 · 누르면 바로 공개" onClick={() => summonSkipRef.current?.()}>
           <GachaFx tier={relicSummoning.tier} phase="summon" />
           <div className="gacha-summon-circle">
             <i className="ring r1" /><i className="ring r2" /><i className="ring r3" />
@@ -5192,7 +5231,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       )}
       {/* 스킬 소환진 · 공개 (2026-10-28) — 유물 · 동료 소환과 같은 판(등급색 · GachaFx) · 글만 스킬 */}
       {skillSummoning && (
-        <div className={`gacha-reveal gacha-summoning relic-summoning skill-summoning tier-${skillSummoning.tier.toLowerCase()}`} role="status" aria-label="스킬 뽑는 중">
+        <div className={`gacha-reveal gacha-summoning relic-summoning skill-summoning tier-${skillSummoning.tier.toLowerCase()}`} role="status" aria-label="스킬 뽑는 중 · 누르면 바로 공개" onClick={() => summonSkipRef.current?.()}>
           <GachaFx tier={skillSummoning.tier} phase="summon" />
           <div className="gacha-summon-circle">
             <i className="ring r1" /><i className="ring r2" /><i className="ring r3" />

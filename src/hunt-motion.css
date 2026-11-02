@@ -258,3 +258,12 @@
   .titans-field .titans-monster .monster-squash, .titan-ally-art.was-hit .ally-swing, .titans-field.party-ko .titans-hero .titans-hero-facing, .titans-field.party-ko.party-ko .titans-allies .titan-ally-art.titan-ally-art.titan-ally-art { animation: none !important; }
   .titans-field.party-ko .titans-hero::before { display: none; }
 }
+
+/* 서랍 닫힘 · 소환 결과 모두 공개 (2026-11-02, 사용자: "부드러운 조작감") */
+.hub-sheet.closing { animation: hub-sheet-down .17s ease-in both !important; }
+.hub-sheet-backdrop.closing { animation: hub-backdrop-out .17s ease-in both !important; }
+@keyframes hub-sheet-down { to { transform: translateY(100%); opacity: .4; } }
+@keyframes hub-backdrop-out { to { opacity: 0; } }
+.gacha-reveal-grid.reveal-all .gacha-card, .gacha-reveal-grid.reveal-all .gacha-card * { animation-delay: 0s !important; transition-delay: 0s !important; }
+.hub-sheet-handle { touch-action: none; }
+.gacha-summoning { cursor: pointer; }

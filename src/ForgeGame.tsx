@@ -251,6 +251,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     const kind = outcome === "fail" ? "fail" : shielded ? "shield" : "destroy";
     setRiskHit((h) => ({ key, kind, seq: (h?.seq ?? 0) + 1 }));
     haptic(kind === "destroy" ? "heavy" : "hit");
+    sfxReforge(false);   // 아이폰은 진동이 없어 실패가 조용했다 (2026-11-02)
     flashToast(kind === "fail" ? `${name} 강화 실패 · +${lv} 유지` : kind === "shield" ? `${name} 파괴 위기 · 방지권 1장으로 막음` : `${name} 파괴! +${lv} → +0 · 강화석 +${lv} 환급`);
   };
 
@@ -546,6 +547,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
       // 실패 = 견갑이 금 가며 조각이 튄다 (2026-10-26, 사용자: "깨지는 게 없음") — 방지권으로 막았으면 금만 가고, 없으면 깨지며 한 단계 내려간다
       if (!success) {
         setArmorFail((f) => ({ seq: (f?.seq ?? 0) + 1, protectedBy: save.tickets > 0, destroyed }));
+        sfxReforge(false);
         haptic(save.tickets > 0 ? "hit" : "heavy");   // 모바일 손맛 — 깨질 땐 묵직하게 (안드로이드만, iOS 는 조용히 무시)
       }
       flashToast(success ? `보호구 강화 성공 +${save.armorLevel+1}` : save.tickets>0 ? "보호구 강화 실패 · 방지권으로 단계 보호" : destroyed ? `보호구 파괴! +${save.armorLevel} → +0` : "보호구 강화 실패 · 1단계 하락");

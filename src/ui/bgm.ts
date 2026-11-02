@@ -95,6 +95,8 @@ function ensureGraph(el: HTMLAudioElement): void {
   }
 }
 
+const trackPos = new Map<string, number>();
+
 function apply(): void {
   if (typeof window === "undefined") return;
   const src = want();
@@ -110,7 +112,15 @@ function apply(): void {
     el.play().then(() => { primed = true; fadeTo(BGM_VOLUME, 600); }).catch(() => { if (!primed) unlocked = false; });
   };
   if (el.dataset.src !== url) {
-    const swap = () => { el.dataset.src = url; el.src = url; el.currentTime = 0; play(); };
+    // 곡마다 듣던 자리를 기억한다 (2026-11-02) — 대장전 · 상점을 다녀올 때마다 사냥터 곡이 처음부터 다시 나왔다
+    const swap = () => {
+      if (el.dataset.src && Number.isFinite(el.currentTime)) trackPos.set(el.dataset.src, el.currentTime);
+      el.dataset.src = url; el.src = url;
+      const pos = trackPos.get(url) ?? 0;
+      if (pos > 0) el.addEventListener("loadedmetadata", () => { if (el.dataset.src === url) el.currentTime = pos; }, { once: true });
+      else el.currentTime = 0;
+      play();
+    };
     if (!el.paused && level > 0.01) fadeTo(0, 600, swap); else swap();
   } else if (el.paused) {
     play();
@@ -134,8 +144,8 @@ export function setHuntBgm(mood: HuntMood): void {
 }
 
 /** 지금 재생 중인 곡(검사용) */
-export function bgmState(): { scene: BgmScene; src: string | null; playing: boolean; unlocked: boolean; level: number; output: "gain" | "element" | "none" } {
-  return { scene, src: audio?.dataset.src ?? null, playing: !!audio && !audio.paused, unlocked, level: Math.round(level * 100) / 100, output: gain ? "gain" : audio ? "element" : "none" };
+export function bgmState(): { scene: BgmScene; src: string | null; playing: boolean; pos: number; unlocked: boolean; level: number; output: "gain" | "element" | "none" } {
+  return { scene, src: audio?.dataset.src ?? null, playing: !!audio && !audio.paused, pos: audio?.currentTime ?? 0, unlocked, level: Math.round(level * 100) / 100, output: gain ? "gain" : audio ? "element" : "none" };
 }
 
 function start(): void {

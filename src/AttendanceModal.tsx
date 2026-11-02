@@ -1,3 +1,4 @@
+import { sfxIdleClaim } from "./ui/sfx";
 import { useEffect, useState } from "react";
 import { storageGet, storageSet } from "./game/toss";
 import { loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
@@ -105,6 +106,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
   const claim = async () => {
     // 게이트는 "오늘 이미 받았는가"와 "지금 저장 중인가" 둘뿐이다 (기기 시계 역행 가드는 피드백 없는 함정이라 없앴다)
     if (claimed || claiming || finished) return;
+    sfxIdleClaim();   // 출석 받기가 조용했다 (2026-11-02)
     setClaiming(true);
     try {
       let given: DayReward = ATTENDANCE_REWARDS[day];

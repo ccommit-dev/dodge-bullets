@@ -29,6 +29,7 @@ import {
 import { HUNTING_AREAS, huntingArea } from "./titans/model";
 import { formatWallet } from "./ui/WalletBar";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas } from "./progression/rebirth";
+import { sfxRebirth } from "./ui/sfx";
 import { freeCrystals, treeIdleMult } from "./progression/crystalTree";
 import { CrystalTreePanel, RelicPanel } from "./ui/LegacyPanels";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
@@ -215,6 +216,7 @@ export function CharacterStatus({
       return;
     }
     setRebirthConfirm(false);
+    sfxRebirth();
     const { next, crystals, startGold, startStage } = await performRebirth(userHash, progress);   // progression/rebirth.ts — 사냥터 자동 환생과 같은 길
     onProgressChange(next);
     setGrowthMessage(`계승 완료 · 결정 +${crystals} (결정 강화에 쓰세요) · 진화 포인트 +1 · ${startStage}층부터 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
