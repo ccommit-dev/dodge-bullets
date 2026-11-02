@@ -275,6 +275,12 @@ const art = await (async () => {
   const slow = pr([buyS0], { season: 2, xp: 300, paid: false, claimedFree: [], claimedPaid: [] });
   const busy = pr([buyS0], { season: 2, xp: 840, paid: false, claimedFree: [], claimedPaid: [] });
   ok("기록이 지워진 지난 시즌은 지금 시즌 속도로: 느린 사람 2 · 꾸준한 사람 4 (예전엔 모두 8)", sm.seasonCoreRefundPast(slow, tMid) === 2 && sm.seasonCoreRefundPast(busy, tMid) === 4, `${sm.seasonCoreRefundPast(slow, tMid)} / ${sm.seasonCoreRefundPast(busy, tMid)}`);
+  // 1판(시즌마다 8)으로 이미 받은 저장 — 새 기준과의 차이만 안 쓴 코어에서 되돌린다(사용자 확정 "남은 코어에서만 회수"). 1판이 센 시즌은 배포 순간(시즌 1) 기준
+  const v2 = sm.SEASON_CORE_REFUND_PAST_KEY, v3 = sm.SEASON_CORE_REFUND_FIX_KEY;
+  ok("넘친 코어: 1판으로 시즌 0 몫 8 받음 → 시즌 초(상한 5) 3 · 느린 속도(2) 6 · 정리했거나(v3) 1판을 안 받았으면 0 · 1판 뒤 시즌(1)에 산 것은 1판이 안 셌다 0",
+    sm.seasonCoreRefundExcess(pr([buyS0, v2]), tNow) === 3 && sm.seasonCoreRefundExcess({ ...slow, claimedRewards: [buyS0, v2] }, tMid) === 6
+      && sm.seasonCoreRefundExcess(pr([buyS0, v2, v3]), tNow) === 0 && sm.seasonCoreRefundExcess(pr([buyS0]), tNow) === 0 && sm.seasonCoreRefundExcess(pr([buyS1, v2]), tNow) === 0,
+    `${sm.seasonCoreRefundExcess(pr([buyS0, v2]), tNow)} / ${sm.seasonCoreRefundExcess({ ...slow, claimedRewards: [buyS0, v2] }, tMid)}`);
 }
 
 // ── 4d. L 보상형 광고 ──

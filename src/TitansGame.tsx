@@ -146,7 +146,7 @@ import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
-import { SEASON, SEASON_CORE_REFUND_KEY, SEASON_CORE_REFUND_PAST_KEY, addSeasonXp, seasonCoreRefund, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
+import { SEASON, SEASON_CORE_REFUND_FIX_KEY, SEASON_CORE_REFUND_KEY, SEASON_CORE_REFUND_PAST_KEY, addSeasonXp, seasonCoreRefund, seasonCoreRefundExcess, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
@@ -1208,17 +1208,35 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // ② 유물 조각이 이제 '남은 조각'으로 쌓인다는 안내 — 소진할 조각이 처음 생겼을 때 한 번(claimedRewards "relic-spare-notice-v1")
   useEffect(() => {
     if (!ready) return;
-    let refund = 0, notice = false;
+    let refund = 0, notice = false, excess = 0, fromPending = 0;
     void updateCharacterProgress(userHash, (cur) => {
       refund = seasonCoreRefund(cur);
+      // ③ 예전 지난 시즌 보상(1판 · 시즌마다 8)이 넘치게 준 코어 — 안 쓴 코어에서만 되돌린다(2026-11-02, 사용자 확정). 먼저 아직 옮기지 않은 코어에서
+      excess = seasonCoreRefundExcess(cur);
+      fromPending = Math.min(excess, cur.pendingSkillCores + refund);
       notice = !cur.claimedRewards.includes("relic-spare-notice-v1") && RELICS.some((r) => relicSpareUsable(cur.relics, cur.relicSpare, r.id) > 0);
-      const keys = [...(cur.claimedRewards.includes(SEASON_CORE_REFUND_KEY) ? [] : [SEASON_CORE_REFUND_KEY]), ...(cur.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY) ? [] : [SEASON_CORE_REFUND_PAST_KEY]), ...(notice ? ["relic-spare-notice-v1"] : [])];
+      const newPast = !cur.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY);
+      const keys = [
+        ...(cur.claimedRewards.includes(SEASON_CORE_REFUND_KEY) ? [] : [SEASON_CORE_REFUND_KEY]),
+        ...(newPast ? [SEASON_CORE_REFUND_PAST_KEY] : []),
+        // 새 기준으로 받는 저장 · 넘친 코어를 정리한 저장은 다시 보지 않는다
+        ...((newPast || excess > 0) && !cur.claimedRewards.includes(SEASON_CORE_REFUND_FIX_KEY) ? [SEASON_CORE_REFUND_FIX_KEY] : []),
+        ...(notice ? ["relic-spare-notice-v1"] : []),
+      ];
       if (keys.length === 0) return cur;
-      return { ...cur, pendingSkillCores: cur.pendingSkillCores + refund, claimedRewards: [...cur.claimedRewards, ...keys] };
+      return { ...cur, pendingSkillCores: cur.pendingSkillCores + refund - fromPending, claimedRewards: [...cur.claimedRewards, ...keys] };
     }).then((next) => {
+      // 남은 몫은 사냥터 저장의 안 쓴 코어에서 — 0 밑으로는 안 간다(쓴 코어는 그대로)
+      let taken = fromPending;
+      if (excess > fromPending) {
+        const rest = excess - fromPending;
+        taken += Math.min(rest, saveRef.current.skillInventory.skillCores);
+        setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, skillCores: Math.max(0, prev.skillInventory.skillCores - rest) } }));
+      }
       // 표시할 것이 있을 때만 상태를 바꾼다 — 키만 적은 저장 때문에 들어오는 순간 다시 그리면 대열 걷기가 흔들렸다(verify-formation 겹침)
-      if (refund > 0 || notice) setCharacter(next);
-      if (refund > 0) flash(`시즌 패스 스킬 코어 ${refund}개를 다시 드렸어요 — 예전에 받은 코어가 사라질 수 있던 문제 보상`, 4000, true);
+      if (refund > 0 || notice || excess > 0) setCharacter(next);
+      if (taken > 0) flash(`지난 시즌 보상을 실제로 닿을 수 있던 단 기준으로 다시 맞췄어요 — 넘치게 드린 스킬 코어 ${taken}개를 안 쓴 코어에서 돌려받았어요`, 4500, true);
+      else if (refund > 0) flash(`시즌 패스 스킬 코어 ${refund}개를 다시 드렸어요 — 예전에 받은 코어가 사라질 수 있던 문제 보상`, 4000, true);
       else if (notice) flash("유물 조각은 이제 '남은 조각'으로 쌓여요 — 사냥터 → 유물에서 소진해 ★ 를 올리세요", 4000, true);
     }).catch(() => undefined);
   }, [ready, userHash]);

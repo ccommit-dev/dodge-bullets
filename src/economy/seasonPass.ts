@@ -204,6 +204,21 @@ export function seasonCoreRefundPast(current: CharacterProgress, now: number = D
   const tier = pastSeasonTierEstimate(current, now);
   return seasons.reduce((a, s) => a + paidCoresUpToTier(tier, Math.max(0, s)), 0);
 }
+/**
+ * 예전 지난 시즌 보상(v2 1판 · 65637ec 2026-10-29 18:11 KST ~ 6e68263)이 준 넘친 코어 (2026-11-02, 사용자 확정 "남은 코어에서만 회수") —
+ * 1판은 산 지난 시즌마다 8개를 줬다. 새 기준(seasonCoreRefundPast 와 같은 추정 단)과의 차이만큼을 TitansGame 이 안 쓴 코어에서만 뺀다(0 밑으로 안 감).
+ * 1판이 언제 지급됐는지는 저장에 없어, 그때 센 시즌은 배포 순간(시즌 1) 기준 — 가장 적게 센 쪽이라 받은 것보다 많이 빼는 일은 없다.
+ * 새 기준으로 받은 저장(6e68263 뒤)은 지급과 함께 SEASON_CORE_REFUND_FIX_KEY 를 적어 여기서 0
+ */
+export const SEASON_CORE_REFUND_FIX_KEY = "season-core-refund-v3";
+export const SEASON_REFUND_V2_AT = Date.UTC(2026, 9, 29, 9, 11);
+export function seasonCoreRefundExcess(current: CharacterProgress, now: number = Date.now()): number {
+  if (!current.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY) || current.claimedRewards.includes(SEASON_CORE_REFUND_FIX_KEY)) return 0;
+  const seasons = pastPassSeasons(current, SEASON_REFUND_V2_AT);
+  const tier = pastSeasonTierEstimate(current, now);
+  const correct = seasons.reduce((a, s) => a + paidCoresUpToTier(tier, Math.max(0, s)), 0);
+  return Math.max(0, seasons.length * SEASON_PAID_CORES_PER_SEASON - correct);
+}
 /** 둘을 합친 이번에 줄 코어(이미 받은 쪽은 0) */
 export function seasonCoreRefund(current: CharacterProgress, now: number = Date.now()): number {
   return seasonCoreRefundCurrent(current) + seasonCoreRefundPast(current, now);
