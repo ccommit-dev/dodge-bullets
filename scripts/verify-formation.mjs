@@ -19,7 +19,11 @@ const PARTIES = {
   healers: ["luna", "marina", "sera", "volt"],
   variants: ["pyro", "bronn", "ember", "mia"],
   playart: ["luna", "bronn", "orion", "ember"],   // verify-play-art 와 같은 파티
+  // 근접 셋(셋째가 L0 로 넘침) · 큰 몬스터 층 — 40층은 우연히 괜찮은 층이라 드물게만 실패했다. 45 · 51 층은 고치기 전 22~39% (2026-11-02)
+  variants45: ["pyro", "bronn", "ember", "mia"],
+  variants51: ["pyro", "bronn", "ember", "mia"],
 };
+const STAGE_OF = { variants45: 45, variants51: 51 };
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
@@ -42,7 +46,8 @@ const median = (arr) => { const s = [...arr].sort((a, b) => a - b); return s[Mat
 for (const [name, party] of Object.entries(PARTIES)) {
   const now = Date.now();
   const progress = { version: 5, level: 40, sharedCoins: 9999, dodgeBestStage: 50, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: party, partyCap: 4, redGems: 50, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99 };
-  const titans = { gold: 1e9, stage: 40, bestStage: 40, heroes: Object.fromEntries(party.map((id) => [id, 60])), lastActiveAt: now };   // 해금 스테이지(오리온 30 등) 위 · 교전이 몇 초는 이어지게
+  const st = STAGE_OF[name] ?? 40;
+  const titans = { gold: 1e9, stage: st, bestStage: st, heroes: Object.fromEntries(party.map((id) => [id, 60])), lastActiveAt: now };   // 해금 스테이지(오리온 30 등) 위 · 교전이 몇 초는 이어지게
   // 쓰기와 reload 를 한 evaluate 안에서 — 사이에 앞 시나리오의 사냥터가 옛 상태를 저장하면 동료가 안 떠 표본 0 이었다(2026-10-28 전체 검사). 편성이 다르면 다시
   const seedOnce = async () => { await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" }); await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2200); };
   await seedOnce();

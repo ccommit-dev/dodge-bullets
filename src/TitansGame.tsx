@@ -543,47 +543,88 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const hero = field.querySelector<HTMLElement>(".titans-hero");
       const allies = [...field.querySelectorAll<HTMLElement>(".titan-ally-art[data-party-slot]")];
       // 칸 상자엔 투명 여백이 양옆 22% 씩 있다 — 그린 몸(가운데)만으로 잰다. 칸 전체로 재면 주인공과 닿지도 않은 동료를 밀어 옆 동료에 올렸다
-      const coreRect = (el: HTMLElement, trim: number) => { const r = el.getBoundingClientRect(); const t = r.width * trim; return { left: r.left + t, right: r.right - t, width: r.width - 2 * t, bottom: r.bottom }; };
+      // 동료는 그린 몸(.ally-body 가운데 45% 폭 · 위 12% 제외) — .ally-body 가 칸 상자보다 넓어(105 대 70px) 칸 상자 56% 로 재면
+      // 몸 폭을 39px 로 작게 봐 verify-formation(47~50px)이 22% 로 재는 겹침을 "겹침 없음"으로 넘겼다. 주인공은 예전대로 상자 70%
+      const coreRect = (el: HTMLElement, hero: boolean) => {
+        const r = el.getBoundingClientRect();
+        if (hero) { const t = r.width * 0.15; return { left: r.left + t, right: r.right - t, width: r.width - 2 * t, bottom: r.bottom, top: r.top + r.height * 0.12 }; }
+        const v = (el.querySelector<HTMLElement>(".ally-body") ?? el).getBoundingClientRect();
+        const w = v.width * 0.45, left = v.left + (v.width - w) / 2;
+        return { left, right: left + w, width: w, bottom: v.bottom, top: v.top + v.height * 0.12 };
+      };
       // 바탕 상자(지금 --sep-dx 를 뺀 것) + 계산 중 dx — 여러 번 돌릴 때 매번 다시 재지 않고 dx 만 옮긴다
       const items = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el, k) => {
         const cur = k === 0 ? 0 : Number.parseFloat(el.style.getPropertyValue("--sep-dx")) || 0;
-        const r = coreRect(el, k === 0 ? 0.15 : 0.22);
-        return { el, cur, dx: cur, base: { left: r.left - cur, right: r.right - cur, width: r.width, bottom: r.bottom } };
+        const r = coreRect(el, k === 0);
+        // 주인공과 잴 때는 예전 상자(칸 상자 가운데 56%) — 주인공 규칙의 35% · 20% 문턱이 이 폭에 맞춰져 있다
+        const box = el.getBoundingClientRect(), t = box.width * (k === 0 ? 0.15 : 0.22);
+        return { el, cur, dx: cur, base: { left: r.left - cur, right: r.right - cur, width: r.width, bottom: r.bottom, top: r.top }, art: { left: box.left + t - cur, right: box.right - t - cur, width: box.width - 2 * t, bottom: box.bottom } };
       });
-      const rectOf = (it: (typeof items)[number]) => ({ left: it.base.left + it.dx, right: it.base.right + it.dx, width: it.base.width, bottom: it.base.bottom });
+      const artOf = (it: (typeof items)[number]) => ({ left: it.art.left + it.dx, right: it.art.right + it.dx, width: it.art.width, bottom: it.art.bottom, top: 0 });
+      const rectOf = (it: (typeof items)[number]) => ({ left: it.base.left + it.dx, right: it.base.right + it.dx, width: it.base.width, bottom: it.base.bottom, top: it.base.top });
       const fr = field.getBoundingClientRect();
       // 원거리는 전장 왼쪽 28px(자세 애니메이션 폭) 안쪽까지만, 근접은 몬스터 왼쪽 가장자리(−6px)까지만 — 몬스터 오른쪽에서 치면 안 된다
       const mon = field.querySelector<HTMLElement>(".titans-monster")?.getBoundingClientRect();
+      // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
+      const clampDx = (it: (typeof items)[number], dx: number) => {
+        // 경계는 예전 상자(칸 상자 가운데 56%)로 — 좁은 몸 상자(.ally-body 45%)로 재면 그림이 전장 왼쪽 밖으로 14px 나갔다(verify-anim-clip)
+        const minDx = fr.left + 36 - it.art.left;   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다
+        const maxDx = mon ? mon.left - 6 - it.art.right : fr.right - 28 - it.art.right;
+        return Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), Math.max(-60, Math.min(60, dx))));
+      };
+      // 겹침 = 몸끼리 포개진 넓이 ÷ 작은 몸 넓이 (2026-11-02) — 예전엔 발 높이 26px 안쪽만 같은 줄로 보고 가로만 쟀다. 근접(R)과 원거리(L)는
+      // 무리 깊이(--lane-r / --lane-l)가 달라 발이 26px 넘게 벌어져도 몸(키 약 70px)은 크게 포개졌다 — verify-formation 도 넓이로 잰다
+      type Box = ReturnType<typeof rectOf>;
+      const xOverlap = (a: Box, b: Box) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      const yOverlap = (a: Box, b: Box) => Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      const minArea = (a: Box, b: Box) => Math.max(1, Math.min(a.width * (a.bottom - a.top), b.width * (b.bottom - b.top)));
+      const overlapRatio = (a: Box, b: Box) => (xOverlap(a, b) * yOverlap(a, b)) / minArea(a, b);
       for (let round = 0; round < (settled ? 10 : 1); round += 1) {
         for (let i = 1; i < items.length; i += 1) {
           const b = items[i], br = rectOf(b);
           let dx = b.dx;
           let pushed = false;
-          // 되돌림은 겹침이 20% 밑일 때만 — 35% 경계에서 밀고 되돌리기를 되풀이하지 않게. 밀린 뒤 20~35% 사이면 그 자리에 머문다
-          let relaxOk = true;
           // 주인공 + 앞서 놓인 동료 전부와 잰다 (2026-10-14, 사용자: "동료끼리 충돌체크가 안 돼서 어색") — 예전엔 주인공만 봐서,
           // 주인공을 피해 왼쪽으로 민 원거리 동료가 옆 동료 위로 14px 올라탔다(luna×orion 28%)
           for (let j = 0; j < i; j += 1) {
-            const ar = rectOf(items[j]);
-            if (Math.abs(ar.bottom - br.bottom) > 26) continue;   // 다른 줄은 앞뒤 깊이 (호흡·공격 바운스 ±6px 를 넘는 여유)
-            const overlap = Math.min(ar.right, br.right) - Math.max(ar.left, br.left);
-            const minW = Math.min(ar.width, br.width);
-            if (overlap > minW * 0.2) relaxOk = false;
-            if (overlap > minW * 0.35) {
-              const push = Math.min(18, overlap - minW * 0.35 + 2);
-              // 주인공에게서는 예전 규칙(원거리 왼쪽 · 근접 오른쪽), 동료끼리는 멀어지는 쪽으로
-              const away = j === 0 ? (b.el.classList.contains("combat-ranged") ? -1 : 1) : (br.left + br.width / 2 < ar.left + ar.width / 2 ? -1 : 1);
-              dx += away * push;
+            const a = items[j], ar = rectOf(a);
+            if (j === 0) {
+              // 주인공과는 예전 규칙 그대로 — 같은 줄(발 26px 안)에서 가로 35% 넘게 겹치면 원거리는 왼쪽 · 근접은 오른쪽(몬스터 쪽)으로.
+              // 넓이 · 가운데 기준으로 바꿔 보니 근접 동료를 몬스터에게서 70px 떼어 놓았다(verify-hunt-motion 60px)
+              const ha = artOf(a), hb = artOf(b);
+              if (Math.abs(ha.bottom - hb.bottom) > 26) continue;
+              const ov = xOverlap(ha, hb), minW = Math.min(ha.width, hb.width);
+              if (ov > minW * 0.35) { dx += (b.el.classList.contains("combat-ranged") ? -1 : 1) * Math.min(18, ov - minW * 0.35 + 2); pushed = true; }
+              continue;
+            }
+            // 동료끼리는 몸이 포개진 넓이로 · 10% 넘으면 둘이 반씩 비켜선다 (2026-11-02) — 근접이 셋인 파티(셋째가 L0 로 넘침)는 주인공이 근접일 때
+            // L0 가 --ranged-advance 로 앞으로 · R0 가 --melee-front-dx 로 뒤로 와 큰 몬스터 층(42 · 45 · 51 …)에서 22~39% 겹친 채 굳었다
+            // (verify-formation [variants] 기준 12%). 예전엔 같은 줄 · 가로 35% 만 봐 무리 깊이가 다른 R · L 칸 쌍을 그냥 넘겼고,
+            // 뒤에 놓인 쪽만 밀어 왼쪽 무리는 전장 가장자리에 막혀 옆 동료(L1)에 올라탔다
+            if (overlapRatio(ar, br) > 0.1) {
+              // 넓이 8% 까지 줄이는 데 필요한 가로 이동 — 세로로 덜 포갠 쌍은 조금만 민다. 호흡 · 공격 바운스(세로 ±6px)에도 12% 밑에 남게 여유
+              const targetX = (0.08 * minArea(ar, br)) / Math.max(1, yOverlap(ar, br));
+              const push = Math.min(18, xOverlap(ar, br) - targetX + 2);
+              const away = br.left + br.width / 2 < ar.left + ar.width / 2 ? -1 : 1;
+              // 앞 동료는 주인공 쪽으로는 비켜서지 않는다 — 세로로 겹치는 주인공 쪽이면 뒤 동료가 다 민다(variants45 에서 mia 가 +12px 주인공 쪽으로 가 mia × 주인공 32~36%)
+              let next = clampDx(a, a.dx - away * (push / 2));
+              const heroBox = items[0] && items[0].el === hero ? rectOf(items[0]) : null;
+              if (heroBox && yOverlap(heroBox, ar) > 0 && Math.sign(next - a.dx) === Math.sign((heroBox.left + heroBox.right) / 2 - (ar.left + ar.right) / 2)) next = a.dx;
+              dx += away * (push - Math.abs(next - a.dx));
+              a.dx = next;
               pushed = true;
             }
           }
-          // 겹침이 풀리면 제자리로 — 최소 2px 씩 줄인다(10% 만 줄이면 2px 미만 변화는 쓰지 않는 규칙에 걸려 14px 에서 영영 멈췄다)
+          // 겹침이 풀리면 제자리로 — 최소 2px 씩 줄인다(10% 만 줄이면 2px 미만 변화는 쓰지 않는 규칙에 걸려 14px 에서 영영 멈췄다).
+          // 되돌림은 누구와도(앞 · 뒤 모두) 거의 안 겹칠 때만 — 앞 동료만 보면 뒤 동료가 민 것을 바로 되돌려 다시 겹쳤다. 주인공과는 예전대로 가로 20%
+          const relaxOk = items.every((o, k) => {
+            if (k === i) return true;
+            const or = rectOf(o);
+            if (k === 0) { const ha = artOf(o), hb = artOf(b); return Math.abs(ha.bottom - hb.bottom) > 26 || xOverlap(ha, hb) <= Math.min(ha.width, hb.width) * 0.2; }
+            return overlapRatio(or, br) <= 0.04;
+          });
           if (!pushed && relaxOk) dx = Math.sign(dx) * Math.max(0, Math.abs(dx) - Math.max(2, Math.abs(dx) * 0.1));
-          dx = Math.max(-60, Math.min(60, dx));
-          // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
-          const minDx = fr.left + 28 - b.base.left;
-          const maxDx = mon ? mon.left - 6 - b.base.right : fr.right - 28 - b.base.right;
-          b.dx = Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), dx));
+          b.dx = clampDx(b, dx);
         }
       }
       for (const it of items.slice(1)) {
@@ -592,7 +633,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       }
       if (settled) sepFrozenRef.current = true;
     };
-    const id = window.setInterval(tick, 320);
+    // 320 → 110ms (2026-11-02) — 동료끼리 넓이로 재며 도착 순간 미는 일이 잦아져, 도착 뒤 첫 틱(최대 320ms) + 전환(0.32초)이 교전 시작 뒤까지 이어졌다(verify-walk-y 4~10px).
+    // 110ms 틱 + 0.2초 전환이면 도착 뒤 0.33초 안에 끝난다 · 굳힌 뒤엔 틱이 바로 돌아간다(측정 없음)
+    const id = window.setInterval(tick, 110);
     return () => window.clearInterval(id);
   }, []);
   const toastTimer = useRef<number | null>(null);

@@ -132,7 +132,7 @@
    예전 bottom .28s 는 높이가 걷기 전에 툭 바뀌었다(App.css 4493 의 같은 선택자를 덮는다) */
 /* 2026-10-20 사용자: "캐릭터도 자연스럽게 방향이 정해지면 걸어오게 — 지금은 어색하게 y로 각각 움직임" — 높이(bottom) · 크기(scale)는 전환 없이 바뀐다.
    높이는 대열이 화면 밖(STAGE CLEAR 뒤 뛰어 나간 사이)일 때만 바꾸므로(TitansGame relocate) 화면에선 왼쪽에서 가로로만 걸어 들어온다 */
-.titans-allies .titan-ally-art[data-party-slot] { transition: left calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) linear, translate .32s ease; }
+.titans-allies .titan-ally-art[data-party-slot] { transition: left calc(var(--encounter-duration, 1.15s) * var(--walk-k, 1)) linear, translate .2s ease; }   /* .32 → .2s (2026-11-02, App.css 와 같이) */
 /* 알림 칩(받을 보상 · 구매 추천)은 전장 오른쪽 위 — HUD 줄(사냥 상태 띠 끝 ≈99px) 바로 아래 배경 그림 칸 (2026-10-20, 사용자 "땅은 그대로 두고 더 넓게 분산").
    오른쪽 아래(스킬 줄 위)에 있을 땐 몬스터 무리가 그 위로만 서서 오른쪽 아래 땅이 비었다. 가장 깊은(9%) 뒷줄 머리 ≈170px · 대장 머리 ≈210px 라 겹치지 않는다(390px 실측).
    전장이 낮으면(< 440px, TitansGame WIDE_FIELD_MIN_H) 예전 자리(오른쪽 아래) 그대로 — 그때는 깊이 범위도 좁다 */

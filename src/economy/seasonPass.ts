@@ -148,6 +148,10 @@ export function seasonCoreRefundCurrent(current: CharacterProgress): number {
 }
 /** 패스를 산 지난 시즌 수 — 지금 시즌(now)은 빼고, 시각을 못 읽는 거래는 지난 시즌 하나로 */
 export function pastSeasonPassSeasons(current: CharacterProgress, now: number = Date.now()): number {
+  return pastPassSeasons(current, now).length;
+}
+/** 패스를 산 지난 시즌들(시각을 못 읽는 거래는 -1 = 어느 지난 시즌) */
+function pastPassSeasons(current: CharacterProgress, now: number): number[] {
   const nowSeason = seasonIndex(now);
   const seasons = new Set<number>();
   let unknown = 0;
@@ -156,11 +160,49 @@ export function pastSeasonPassSeasons(current: CharacterProgress, now: number = 
     const ms = Number((k.slice(`purchase:${SEASON.productId}:`.length).match(/(\d{12,14})/) ?? [])[1]);
     if (Number.isFinite(ms) && ms > SEASON_EPOCH) { const sIdx = seasonIndex(ms); if (sIdx < nowSeason) seasons.add(sIdx); } else unknown += 1;
   }
-  return seasons.size + (unknown > 0 ? Math.min(unknown, Math.max(0, nowSeason)) : 0);
+  return [...seasons, ...Array.from({ length: unknown > 0 ? Math.min(unknown, Math.max(0, nowSeason)) : 0 }, () => -1)];
 }
+
+/**
+ * 한 시즌에 실제로 모을 수 있던 경험치 상한 (2026-11-02) — 하루 일과 20 · 미션 전부 20 · 균열 5 × 4회(3 + 후원 1) · 주간 도전 50 × 4주.
+ * 28일 1880 → 18단이 끝이라, 유료 코어 단(3 · 6 · 9 · 12 · 18 · 21 · 24 · 27) 중 손에 닿는 건 5개뿐이었다(예전 보상은 8개 전부를 줬다)
+ */
+export const SEASON_MAX_XP = SEASON.days * (SEASON.xp.routine + SEASON.xp.missionsAll + SEASON.xp.rift * 4) + Math.floor(SEASON.days / 7) * SEASON.xp.weeklyChallenge;
+/** tier 단까지 유료 트랙에서 받는 코어 수 */
+export function paidCoresUpToTier(tier: number, season = 0): number {
+  let n = 0;
+  for (let t = 1; t <= Math.min(SEASON.tiers, tier); t += 1) { const r = paidReward(t, season); if (r.kind === "cores") n += r.amount; }
+  return n;
+}
+/**
+ * 지난 시즌에 닿았을 단(기록이 없을 때의 추정) — 지금 시즌 경험치 속도(3일 이상 지났을 때)를 28일로 늘린 값, 상한은 SEASON_MAX_XP.
+ * 속도를 모르면(시즌 초 · 기록 없음) 상한 단
+ */
+export function pastSeasonTierEstimate(current: CharacterProgress, now: number = Date.now()): number {
+  const maxTier = Math.floor(SEASON_MAX_XP / SEASON.xpPerTier);
+  const nowSeason = seasonIndex(now);
+  const sp = current.seasonPass;
+  const elapsedDays = (now - (SEASON_EPOCH + nowSeason * SEASON.days * 86400000)) / 86400000;
+  if (!sp || sp.season !== nowSeason || elapsedDays < 3) return maxTier;
+  return Math.min(maxTier, Math.floor(((sp.xp / elapsedDays) * SEASON.days) / SEASON.xpPerTier));
+}
+/**
+ * 지난 시즌 보상 (2판 2026-11-02, 아쉬운 점 "최대치 기준이라 덜 받았던 사람도 8개") —
+ *  ① 저장의 seasonPass 가 아직 지난 시즌 그대로면(시즌이 바뀐 뒤 아무것도 안 써서 기록이 남음) 그 시즌은 seasonCoreRefundCurrent 가 실제 받은 단으로 준다 → 여기선 뺀다
+ *  ② 기록이 지워진 지난 시즌은 닿았을 단을 추정(pastSeasonTierEstimate — 지금 시즌 속도 · 상한 18단)해 그 단까지의 유료 코어만
+ */
 export function seasonCoreRefundPast(current: CharacterProgress, now: number = Date.now()): number {
   if (current.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY)) return 0;
-  return pastSeasonPassSeasons(current, now) * SEASON_PAID_CORES_PER_SEASON;
+  const nowSeason = seasonIndex(now);
+  const recorded = current.seasonPass && current.seasonPass.season >= 0 && current.seasonPass.season < nowSeason && current.seasonPass.paid ? current.seasonPass.season : null;
+  let seasons = pastPassSeasons(current, now);
+  if (recorded !== null) {
+    // 기록이 남은 시즌의 구매(또는 시각 없는 거래 하나)는 ①이 이미 셌다
+    const i = seasons.indexOf(recorded) >= 0 ? seasons.indexOf(recorded) : seasons.indexOf(-1);
+    if (i >= 0) seasons = seasons.filter((_, k) => k !== i);
+  }
+  const tier = pastSeasonTierEstimate(current, now);
+  return seasons.reduce((a, s) => a + paidCoresUpToTier(tier, Math.max(0, s)), 0);
 }
 /** 둘을 합친 이번에 줄 코어(이미 받은 쪽은 0) */
 export function seasonCoreRefund(current: CharacterProgress, now: number = Date.now()): number {

@@ -253,15 +253,28 @@ const art = await (async () => {
   const rolled = sm.addSeasonXp(paidP, 10, t0 + 29 * 86400000);
   ok("G 시즌 전환 시 xp·수령·유료 초기화 (미수령 소멸)", rolled.seasonPass.season === 1 && rolled.seasonPass.xp === 10 && !rolled.seasonPass.paid && rolled.seasonPass.claimedFree.length === 0);
   ok("G 유료 15단 시즌 스킨 · 25단 무기 이펙트", sm.paidReward(15, 0).kind === "allySkin" && sm.paidReward(25, 0).kind === "weaponFx");
-  // 시즌 코어 보상 (2026-10-28) — 지금 시즌: 받은 코어 단만큼 · 지난 시즌: 산 시즌마다 유료 코어 단 전부(10) · 한 번만
+  // 시즌 코어 보상 (2026-10-28) — 지금 시즌: 받은 코어 단만큼 · 지난 시즌: 닿을 수 있던 단까지(2판 11-02) · 한 번만
   const tNow = sm.SEASON_EPOCH + 2 * 28 * 86400000 + 86400000;   // 시즌 2
   const buyS0 = `purchase:season-pass:qa-${sm.SEASON_EPOCH + 3 * 86400000}`, buyS2 = `purchase:season-pass:qa-${tNow - 3600000}`;
   const pr = (keys, sp = { season: 2, xp: 0, paid: false, claimedFree: [], claimedPaid: [] }) => ({ ...base, claimedRewards: keys, seasonPass: sp });
   ok("시즌 코어 보상: 시즌마다 유료 코어 단 8(3 · 6 · 9 · 12 · 18 · 21 · 24 · 27) · 지금 시즌 유료 3 · 6단 받았으면 2", sm.SEASON_PAID_CORES_PER_SEASON === 8 && sm.seasonCoreRefundCurrent(pr([], { season: 2, xp: 999, paid: true, claimedFree: [], claimedPaid: [3, 6, 7] })) === 2);
-  ok("지난 시즌 보상: 시즌 0 에 산 기록 → 8 · 지금 시즌(2)에 산 것은 빼고 · 시각 없는 거래는 지난 시즌 하나 · 받은 뒤엔 0",
-    sm.seasonCoreRefundPast(pr([buyS0]), tNow) === 8 && sm.seasonCoreRefundPast(pr([buyS2]), tNow) === 0 && sm.seasonCoreRefundPast(pr(["purchase:season-pass:GPA.3312-5521"]), tNow) === 8
-      && sm.seasonCoreRefundPast(pr([buyS0, sm.SEASON_CORE_REFUND_PAST_KEY]), tNow) === 0 && sm.seasonCoreRefund(pr([buyS0, sm.SEASON_CORE_REFUND_KEY]), tNow) === 8,
+  // 2판(2026-11-02) — 지난 시즌은 실제로 닿을 수 있던 단까지만: 경험치 상한 1880 → 18단 → 유료 코어 5(3 · 6 · 9 · 12 · 18).
+  // 시즌 2 첫날(속도 모름)은 상한 · 기록이 남은 지난 시즌은 실제 받은 단 · 지금 시즌 속도가 있으면 그 속도로 28일
+  const tMid = sm.SEASON_EPOCH + 2 * 28 * 86400000 + 14 * 86400000;   // 시즌 2 · 14일째
+  const buyS1 = `purchase:season-pass:qa-${sm.SEASON_EPOCH + 30 * 86400000}`;
+  const maxTier = Math.floor(sm.SEASON_MAX_XP / 100);
+  ok("지난 시즌 상한: 경험치 1880 → 18단 · 그 단까지 유료 코어 5", sm.SEASON_MAX_XP === 1880 && maxTier === 18 && sm.paidCoresUpToTier(maxTier) === 5, `${sm.SEASON_MAX_XP} · ${maxTier}단 · ${sm.paidCoresUpToTier(maxTier)}`);
+  ok("지난 시즌 보상: 산 기록(시즌 0) → 상한 5 · 지금 시즌에 산 것은 빼고 · 시각 없는 거래는 지난 시즌 하나 · 받은 뒤엔 0",
+    sm.seasonCoreRefundPast(pr([buyS0]), tNow) === 5 && sm.seasonCoreRefundPast(pr([buyS2]), tNow) === 0 && sm.seasonCoreRefundPast(pr(["purchase:season-pass:GPA.3312-5521"]), tNow) === 5
+      && sm.seasonCoreRefundPast(pr([buyS0, sm.SEASON_CORE_REFUND_PAST_KEY]), tNow) === 0 && sm.seasonCoreRefund(pr([buyS0, sm.SEASON_CORE_REFUND_KEY]), tNow) === 5,
     `${sm.seasonCoreRefundPast(pr([buyS0]), tNow)}/${sm.seasonCoreRefundPast(pr([buyS2]), tNow)}/${sm.seasonCoreRefundPast(pr(["purchase:season-pass:GPA.3312-5521"]), tNow)}`);
+  // 기록이 남은 지난 시즌(시즌 1 · 유료 3 · 6단만 받음) — 실제 받은 2만, 같은 시즌을 두 번 세지 않는다
+  const kept = pr([buyS1], { season: 1, xp: 650, paid: true, claimedFree: [], claimedPaid: [3, 6] });
+  ok("지난 시즌 기록이 남았으면 실제 받은 단만(유료 3 · 6단 → 2) · 상한으로 다시 주지 않음", sm.seasonCoreRefundCurrent(kept) === 2 && sm.seasonCoreRefundPast(kept, tNow) === 0 && sm.seasonCoreRefund(kept, tNow) === 2, `${sm.seasonCoreRefundCurrent(kept)} + ${sm.seasonCoreRefundPast(kept, tNow)}`);
+  // 기록이 지워진 지난 시즌 — 지금 시즌 14일 동안 300(28일이면 600 → 6단) → 유료 3 · 6단 2 / 매일 다 한 사람(14일 840 → 1680 → 16단) → 4
+  const slow = pr([buyS0], { season: 2, xp: 300, paid: false, claimedFree: [], claimedPaid: [] });
+  const busy = pr([buyS0], { season: 2, xp: 840, paid: false, claimedFree: [], claimedPaid: [] });
+  ok("기록이 지워진 지난 시즌은 지금 시즌 속도로: 느린 사람 2 · 꾸준한 사람 4 (예전엔 모두 8)", sm.seasonCoreRefundPast(slow, tMid) === 2 && sm.seasonCoreRefundPast(busy, tMid) === 4, `${sm.seasonCoreRefundPast(slow, tMid)} / ${sm.seasonCoreRefundPast(busy, tMid)}`);
 }
 
 // ── 4d. L 보상형 광고 ──
