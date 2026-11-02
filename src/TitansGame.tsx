@@ -3,7 +3,7 @@ import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhanc
 import { appWidth } from "./ui/webFrame";
 import { AllySigInfo } from "./titans/AllySigInfo";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
 import { heroPortrait } from "./titans/anim";
@@ -308,6 +308,7 @@ const FREE_STORE_ENABLED =
   (QA_BUILD && typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
 export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
+  if (import.meta.env.DEV) { const w = window as unknown as { __titansRenders?: number }; w.__titansRenders = (w.__titansRenders ?? 0) + 1; }   // scripts/_probe-render.mjs
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<ShopTab>(initialTab ?? "sword");
@@ -380,7 +381,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [relicShopBanner, setRelicShopBanner] = useState<RelicBanner>("gold");
   const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot | null>(null);   // 조합 칸을 누른 슬롯(카드 표시) — 처음엔 없음
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
-  const [frameIdx, setFrameIdx] = useState(0);
+  // 프레임은 전체 화면 상태가 아니다 (2026-11-02) — 초당 5~17번 넘어갈 때마다 5천 줄 화면 전체가 다시 그려졌다. 주인공(HeroFrameChar)만 구독한다
+  const frameStore = useRef(createFrameStore()).current;
+  const setFrameIdx = frameStore.set;
   const [skillVisual, setSkillVisual] = useState<TitanSkillId | null>(null);
   /** 시전 등급 연출 (2026-10-28) — 스킬 등급(SKILL_TIER)이 높을수록 전장 전체 빛 · 고리가 커진다(hunt-motion.css .skill-tier-fx) */
   const [tierFx, setTierFx] = useState<{ tier: AllyRarity; seq: number } | null>(null);
@@ -411,8 +414,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [, setPriceTick] = useState(0);
   useEffect(() => { const off = onStorePricesChanged(() => setPriceTick((t) => t + 1)); return () => { off(); }; }, []);
   // 지갑 숫자는 굴러간다 — 뚝 바뀌면 웹 같다 (2026-10-01)
-  const goldShown = useTween(save.gold);
-  const gemsShown = useTween(redGems);
   const [claimingProduct, setClaimingProduct] = useState<string | null>(null);
   const [character, setCharacter] = useState<CharacterProgress>(() => emptyCharacterProgress());
   // 주인공 무기 (2026-10-15, 사용자: "캐릭터 아이템도 북 외에도 두 가지 더") — 북은 대장간 북(+0~15), 활·지팡이는 대장간 원정 무기(+0~20 → 15 눈금)
@@ -3496,11 +3497,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
         </button>
         <div className="titans-wallet">
-          <span><CurrencyIcon kind="gold" /><strong>{formatGold(goldShown)}</strong></span>
+          <span><CurrencyIcon kind="gold" /><strong><TweenNumber value={save.gold} /></strong></span>
           {/* 강화석(파란 수정) — 상점 강화석 상자·대장간이 쓰는데 머리에 없어 '하늘색 보석'이 안 보인다고 읽혔다 (2026-10-06) */}
           <span className="titans-stone" title="강화석"><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="강화석" /><strong data-wallet="stone">{formatGold(character.enhancementMaterials)}</strong></span>
           {/* 붉은 보석 — 테스트 빌드에서도 숫자로(예전 ∞ 라 보유량이 안 보였다), 누르면 상점 (2026-10-06) */}
-          <span className="titans-gem" role="button" tabIndex={0} title={qaGemsEnabled() ? "테스트 단계 · 보석 자동 충전" : "붉은 보석 · 누르면 상점"} onClick={() => setTab("premium")} onKeyDown={(e) => { if (e.key === "Enter") setTab("premium"); }}><CurrencyIcon kind="gem" /><strong data-wallet="gem">{formatGold(gemsShown)}</strong></span>
+          <span className="titans-gem" role="button" tabIndex={0} title={qaGemsEnabled() ? "테스트 단계 · 보석 자동 충전" : "붉은 보석 · 누르면 상점"} onClick={() => setTab("premium")} onKeyDown={(e) => { if (e.key === "Enter") setTab("premium"); }}><CurrencyIcon kind="gem" /><strong data-wallet="gem"><TweenNumber value={redGems} /></strong></span>
         </div>
       </header>
 
@@ -3630,7 +3631,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} />
               </div>
             )}
-            <EquippedCharacter mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} frame={frameIdx} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <HeroFrameChar store={frameStore} mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -5421,4 +5422,31 @@ export function monsterTemper(stage: number, boss: boolean): { pace: number; com
     wanderY: Math.round(r() * 6),
     counter: 0.06 + r() * 0.12 + (boss ? 0.06 : 0),   // 맞을 때마다 되받아칠 확률 — 아군 타격이 초당 여러 번이라 작게
   };
+}
+
+/** 지갑 숫자 — 굴러가는 애니메이션(프레임마다 상태 변경)이 화면 전체를 다시 그리지 않게 자기 칸에 가둔다 (2026-11-02) */
+function TweenNumber({ value, plain }: { value: number; plain?: boolean }) {
+  const shown = useTween(value);
+  return <>{plain ? shown.toLocaleString() : formatGold(shown)}</>;
+}
+
+type FrameUpdate = number | ((i: number) => number);
+/** 주인공 프레임 번호 저장소 — useSyncExternalStore 로 HeroFrameChar 만 구독한다 */
+function createFrameStore() {
+  let frame = 0;
+  const subs = new Set<() => void>();
+  return {
+    get: () => frame,
+    set: (next: FrameUpdate) => {
+      const v = typeof next === "function" ? next(frame) : next;
+      if (v === frame) return;
+      frame = v;
+      subs.forEach((f) => f());
+    },
+    sub: (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; },
+  };
+}
+function HeroFrameChar({ store, ...props }: { store: ReturnType<typeof createFrameStore> } & Omit<ComponentProps<typeof EquippedCharacter>, "frame">) {
+  const frame = useSyncExternalStore(store.sub, store.get);
+  return <EquippedCharacter {...props} frame={frame} />;
 }
