@@ -30,6 +30,7 @@ import { HUNTING_AREAS, huntingArea } from "./titans/model";
 import { formatWallet } from "./ui/WalletBar";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas } from "./progression/rebirth";
 import { sfxRebirth } from "./ui/sfx";
+import { LockIcon } from "./ui/LockIcon";
 import { freeCrystals, treeIdleMult } from "./progression/crystalTree";
 import { CrystalTreePanel, RelicPanel } from "./ui/LegacyPanels";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
@@ -92,8 +93,8 @@ export function CharacterStatus({
   }, [growthMessage]);
   /** I 외형: 장착 중인 무기 이펙트·전장 테마 이름 — 마이페이지 칩 + 공유 카드 서브라인 */
   const cosmeticLabels = [
-    progress.equippedWeaponFx && WEAPON_FX[progress.equippedWeaponFx] ? `⚔ ${WEAPON_FX[progress.equippedWeaponFx].name}` : "",
-    progress.equippedTheme && THEMES[progress.equippedTheme] ? `🌌 ${THEMES[progress.equippedTheme].name}` : "",
+    progress.equippedWeaponFx && WEAPON_FX[progress.equippedWeaponFx] ? WEAPON_FX[progress.equippedWeaponFx].name : "",
+    progress.equippedTheme && THEMES[progress.equippedTheme] ? THEMES[progress.equippedTheme].name : "",
   ].filter(Boolean);
   const [rebirthConfirm, setRebirthConfirm] = useState(false);
 
@@ -500,7 +501,7 @@ export function CharacterStatus({
             const on = earnedBadges.includes(badge.id);
             return (
               <div key={badge.id} className={`badge-chip mp-badge ${on ? "earned" : "locked"}`} title={badge.condition}>
-                <b aria-hidden="true">{on ? badge.icon : "🔒"}</b>
+                <b aria-hidden="true">{on ? badge.icon : <LockIcon />}</b>
                 <span><strong>{badge.name}</strong><small>{badge.condition}</small></span>
               </div>
             );

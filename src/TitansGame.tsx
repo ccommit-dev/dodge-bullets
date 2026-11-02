@@ -141,6 +141,7 @@ import { monsterArtKey } from "./titans/bestiary";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
+import { LockIcon } from "./ui/LockIcon";
 import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
@@ -4175,7 +4176,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     {/* 잠금 조건 + 진행도 (2026-10-14, 사용자: "언제 해금되는지 불친절") — 누르지 않아도 카드 위에 보인다 */}
                     {card.locked && card.unlock && (
                       <span className="hub-unlock" aria-label={`잠금 해제 조건: ${card.unlock.label}`}>
-                        <b>🔒 {card.unlock.label}</b>
+                        <b><LockIcon /> {card.unlock.label}</b>
                         {card.unlock.goal > 1 && <i className="hub-unlock-bar"><i style={{ width: `${Math.round((card.unlock.now / card.unlock.goal) * 100)}%` }} /></i>}
                         {card.unlock.goal > 1 && <small>{card.unlock.unit === "S" ? `지금 S${card.unlock.now}` : `지금 ${card.unlock.now} / ${card.unlock.goal} ${card.unlock.unit}`}</small>}
                       </span>
@@ -4550,7 +4551,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 const locked = !qaOpen && slotLevels(character)[slot] <= 0;
                 return (
                   <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""} ${skillSlotTab === slot ? "focus" : ""} ${equipFx && eq === equipFx.id ? "equip-pop" : ""}`} onClick={() => { setSkillSlotTab(slot); window.requestAnimationFrame(() => document.querySelector(`.skill-learn-card[data-slot="${slot}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }} title={SLOT_LABEL[slot]}>
-                    {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? "🔒" : "+"}</span>}
+                    {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? <LockIcon /> : "+"}</span>}
                     <small>{slot === "passive" ? "상시" : `${i + 1}`} {SLOT_LABEL[slot]}</small>
                     <b className="combo-name">{eq ? SKILLS.find((x) => x.id === eq)?.name ?? "" : locked ? "잠김" : "비어 있음"}</b>
                   </button>
@@ -4582,7 +4583,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             return [
               <h3 key={`slot-${slotOf}`} className={`skill-slot-head ${eqDef ? "has-eq" : ""} ${shut ? "locked" : ""}`} data-slot={slotOf}>
                 <b>{slotOf === "passive" ? "상시" : `${slotIdx + 1}`}</b><span>{SLOT_LABEL[slotOf]}</span>
-                <small>{shut ? "🔒 연습실에서 열기" : eqDef ? <>장착 · <em>{eqDef.name}</em></> : "비어 있음 — 아래에서 골라 장착"}</small>
+                <small>{shut ? <><LockIcon /> 연습실에서 열기</> : eqDef ? <>장착 · <em>{eqDef.name}</em></> : "비어 있음 — 아래에서 골라 장착"}</small>
               </h3>,
               ...inSlot.map((sk) => {
             const learned = save.skillInventory.learned.includes(sk.id);
@@ -5092,7 +5093,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       {/* 카드 머리 한 줄: 등급 · (잠금) — 2026-10-23 아이폰 캡처: 잠금 "🔒 S10" 이 등급 표를 덮었고 ★ 가 잘렸다. 자세한 건 카드를 누르면 설명 패널 */}
                       <span className="gacha-card-head">
                         <em className="gacha-rarity-badge" style={{ "--rc": RARITY_COLOR[r.rarity] } as CSSProperties}>{r.rarity}{r.pickup && <i className="pickup">픽업</i>}</em>
-                        {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`} aria-label={`STAGE ${h.unlockStage} 개척 후 출전`}>🔒</i>}
+                        {!canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <i className="gacha-lock" title={`STAGE ${h.unlockStage} 지역을 개척해야 출전`} aria-label={`STAGE ${h.unlockStage} 개척 후 출전`}><LockIcon /></i>}
                       </span>
                       <span className="gacha-art"><AllyArt id={r.id} />{r.rarity !== "R" && <i className="gacha-sparkles" aria-hidden="true">{Array.from({ length: r.rarity === "SSR" ? 8 : 4 }, (_, k) => <i key={k} />)}</i>}
                       </span>

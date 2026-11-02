@@ -10,6 +10,7 @@ import { randomOwnedAlly } from "./titans/allies";
 import { riftEventFor, weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
 import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
+import { LockIcon } from "./ui/LockIcon";
 import { RewardChip, RewardIcon } from "./ui/RewardIcon";
 import { AllyArt, MonsterArt } from "./titans/SpriteArt";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
@@ -517,7 +518,7 @@ export function EventCenter({
                           <li key={t} data-tier={t} className={`season-tier ${reached ? "reached" : ""} ${t === tierNow + 1 ? "next" : ""} ${gap ? "after-gap" : ""}`}>
                             <b>{t}</b>
                             <button type="button" className={`season-cell free ${sp.claimedFree.includes(t) ? "claimed" : ""}`} disabled={!freeOpen.includes(t)} onClick={() => void claimSeason("free", t)}><RewardIcon kind={fr.kind} size={20} />{rewardLabel(fr)}{sp.claimedFree.includes(t) ? " ✓" : ""}</button>
-                            <button type="button" className={`season-cell paid ${sp.claimedPaid.includes(t) ? "claimed" : ""} ${sp.paid ? "" : "locked"}`} disabled={!paidOpen.includes(t)} onClick={() => void claimSeason("paid", t)}><RewardIcon kind={pr.kind} size={20} />{rewardLabel(pr)}{sp.claimedPaid.includes(t) ? " ✓" : sp.paid ? "" : " 🔒"}</button>
+                            <button type="button" className={`season-cell paid ${sp.claimedPaid.includes(t) ? "claimed" : ""} ${sp.paid ? "" : "locked"}`} disabled={!paidOpen.includes(t)} onClick={() => void claimSeason("paid", t)}><RewardIcon kind={pr.kind} size={20} />{rewardLabel(pr)}{sp.claimedPaid.includes(t) ? " ✓" : sp.paid ? "" : <> <LockIcon /></>}</button>
                           </li>
                         );
                       })}

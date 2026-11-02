@@ -108,6 +108,7 @@ import { applySkillLevels, collectionCooldownMul, LOADOUT_MAX, shardDrops, skill
 import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
+import { LockIcon } from "./ui/LockIcon";
 import {
   computeClearReward,
   loadCoins,
@@ -1913,7 +1914,7 @@ function App() {
                     setSpeedMul(next);
                   }}
                 >
-                  ×{speedMul}{!progress.dodgeSpeed3 && speedMul === 2 ? <i className="speed-lock" aria-hidden="true">🔒3</i> : null}
+                  ×{speedMul}{!progress.dodgeSpeed3 && speedMul === 2 ? <i className="speed-lock" aria-hidden="true"><LockIcon />3</i> : null}
                 </button>
               </>
             )}
@@ -2116,7 +2117,7 @@ function App() {
                                 const c = canSweep(progress, top, m);
                                 return (
                                   <button key={m} type="button" className={`sweep-x${m}`} disabled={!c.ok} title={c.ok ? `×${m} 소탕` : c.reason} onClick={() => void doSweep(top, m)}>
-                                    ×{m}{m === 10 && !progress.dodgeSpeed3 ? " 🔒" : ""}
+                                    ×{m}{m === 10 && !progress.dodgeSpeed3 ? <> <LockIcon /></> : null}
                                   </button>
                                 );
                               })}

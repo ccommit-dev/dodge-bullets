@@ -267,3 +267,7 @@
 .gacha-reveal-grid.reveal-all .gacha-card, .gacha-reveal-grid.reveal-all .gacha-card * { animation-delay: 0s !important; transition-delay: 0s !important; }
 .hub-sheet-handle { touch-action: none; }
 .gacha-summoning { cursor: pointer; }
+
+/* 자물쇠 아이콘 (2026-11-02 ui/LockIcon) — 글자 크기를 따른다 */
+.lock-ico { width: 1.05em; height: 1.05em; object-fit: contain; vertical-align: -0.15em; }
+.combo-empty .lock-ico { width: 18px; height: 18px; }

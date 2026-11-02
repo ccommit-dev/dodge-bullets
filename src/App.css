@@ -5369,7 +5369,7 @@ small, p, li, .nav-help, .hub-card-body small, .gacha-detail > p, .gacha-detail 
 @keyframes fx-sig-pop { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
 
 .titans-fx-sig-quake { border-radius: 50%; border: 5px solid hsl(var(--fx-hue) 85% 65%); background: radial-gradient(circle, hsl(var(--fx-hue) 90% 70% / .35), transparent 65%); transform: scaleY(.4); animation: fx-sig-quake .6s ease-out forwards; }
-.titans-fx-sig-quake::after { content: "🛡"; position: absolute; left: 50%; top: 50%; font-size: 34px; line-height: 1; transform: translate(-50%, -50%); animation: fx-sig-shield .6s ease-out forwards; }
+.titans-fx-sig-quake::after { content: ""; width: 34px; height: 34px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z' fill='%23dbeafe' stroke='%231e3a8a' stroke-width='1.6'/%3E%3C/svg%3E") center / contain no-repeat; position: absolute; left: 50%; top: 50%; font-size: 34px; line-height: 1; transform: translate(-50%, -50%); animation: fx-sig-shield .6s ease-out forwards; }
 @keyframes fx-sig-quake { 0% { transform: scaleY(.4) scale(.3); opacity: 1; } 100% { transform: scaleY(.4) scale(1.6); opacity: 0; } }
 @keyframes fx-sig-shield { 0% { transform: translate(-50%, -50%) scaleY(2.5) scale(.6); opacity: 0; } 25% { transform: translate(-50%, -50%) scaleY(2.5) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -80%) scaleY(2.5) scale(1); opacity: 0; } }
 
