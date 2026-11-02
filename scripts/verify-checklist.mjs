@@ -86,8 +86,8 @@ await sleep(300);
 const allCount = await rosterCount();
 ok("#4 필터가 카드 수를 줄임", rangedCount > 0 && rangedCount < allCount, `${rangedCount}/${allCount}`);
 await clickText(".recommend-party", "추천");
-await sleep(600);
-r = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)).partyIds, H);
+// 저장이 바뀔 때까지(최대 6초) — 전체 검사 부하에서 0.6초 안에 옛 편성(mia,leon)을 읽었다(2026-11-02)
+for (let i = 0; i < 30; i += 1) { await sleep(200); r = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)).partyIds, H); if (r.length >= 3) break; }
 ok("#4 추천 편성 → 원거리 2명 보장", r.length >= 3 && r.filter((id) => ["leon", "sera"].includes(id)).length >= 2, r.join(","));
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(400);
