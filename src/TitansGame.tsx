@@ -218,7 +218,7 @@ type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "ti
  * 카드에선 한 줄 설명(blurb) + 짧은 효과 칩(lines)만 보인다. 없는 상품은 원래 설명 · 내용 그대로
  */
 const SHOP_COPY: Record<string, { blurb?: string; lines?: string[] }> = {
-  "remove-ads": { blurb: "광고 없이 보상 자동 적용", lines: ["정산 2배 하루 3회", "가속 4h 하루 1회", "보스 +10초"] },
+  "remove-ads": { blurb: "보상 5곳을 광고 없이 바로", lines: ["정산 2배 하루 3회", "가속 4h 하루 1회", "대장 +10초 하루 3회", "성문 · 비트 2배 하루 3회씩"] },
   "dodge-x3": { blurb: "성문 방어를 3배 빠르게", lines: [] },
   "gate-fund": { blurb: "성문 방어를 깰 때마다 보석", lines: ["보석 총 1,700", "깬 단계는 바로 받음"] },
   "adventurer-starter": { blurb: "초반 성장 입문 세트" },
@@ -4944,7 +4944,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         )}
         {tab === "premium" && premiumCategory === "package" && paidStoreVisible() && (() => {
           // 2026-10-08 송사리 모델 — 상품을 5묶음(매일·주말 / 보석 / 패스·영구 / 1회 한정 / 외형)으로 보여 준다. 묶음 안 순서는 PAID_GROUPS
-          const paidList = STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems")).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id)));
+          const paidList = STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems") || (product.id === "remove-ads" && character.adsWatchedTotal > 0)).filter((product) => !(product.id === "remove-ads" && character.adFree)).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id)));
           return PAID_GROUPS.map((group) => {
           const items = group.ids.map((id) => paidList.find((p) => p.id === id)).filter((p): p is (typeof paidList)[number] => !!p);
           if (items.length === 0) return null;

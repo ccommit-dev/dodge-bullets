@@ -1,14 +1,16 @@
 /**
- * 보상형 광고 (계획안 L) — 자리 3곳: 방치 정산 2배(1일 3회) · 방치 가속 4h(1일 1회) · 보스 실패 후 +10초(보스당 1회).
+ * 보상형 광고 (계획안 L) — 자리 5곳: 방치 정산 2배(하루 3회) · 방치 가속 4h(하루 1회) · 대장 실패 후 +10초(하루 3회) · 성문 방어 · 비트 보상 2배(각 하루 3회).
+ * 강제 광고는 넣지 않는다(2026-11-02 사용자 확정 "보상형이 좋을 것 같아").
  *
  * - 플러그인은 런타임에 window.Capacitor.Plugins.AdMob(@capacitor-community/admob)을 찾는다. 패키지가 없어도 컴파일된다.
- * - 앱인토스 웹뷰·웹에는 SDK가 없으므로 adsConfigured()가 false → 자리 자체를 숨긴다 (빈 버튼 금지).
+ * - 앱인토스는 광고 그룹 ID(VITE_TOSS_AD_GROUP_ID)가 있을 때만, 웹은 늘 adsConfigured()가 false → 자리 자체를 숨긴다 (빈 버튼 금지).
  * - 광고 제거(remove-ads) 구매 = adFree: 같은 보상을 광고 없이 자동 적용한다.
  * - 개발 빌드에서는 localStorage `dodgebullets:qa-ads`=1 로 스텁을 켠다 (e2e).
  * - 광고 SDK 도입 시 광고 ID 수집이 추가되므로 개인정보 처리방침을 먼저 개정한다 (docs/ADS.md).
  */
 import type { CharacterProgress } from "../progression/model";
 import { isNativePlatform } from "../game/native";
+import { openMomentOffer } from "../economy/momentOffers";
 
 export type AdPlacement = "idleDouble" | "booster4h" | "bossRetry" | "dodgeDouble" | "beatDouble";
 /** 계획안 §35 — 성문 방어·비트 클리어 보상 ×2 자리 추가 (하루 3회). 강제 광고는 없다 */
@@ -143,8 +145,15 @@ export async function showRewarded(placement: AdPlacement): Promise<boolean> {
   }
 }
 
-/** 카운터 1 증가 (순수) */
+/** 광고를 이만큼 봤을 때 광고 제거를 제안한다 (2026-11-02) — 번거로움을 겪은 직후가 사고 싶은 순간이다 */
+export const AD_UPSELL_AT: readonly number[] = [3, 10];
+
+/** 카운터 1 증가 (순수). 광고를 실제로 본 경우(광고 제거 미보유) 누적을 세고 제안을 연다 — 같은 갱신에서 열어 lost update 방지 */
 export function consumeAdReward(current: CharacterProgress, placement: AdPlacement, today: string): CharacterProgress {
   const t = adRewardsToday(current, today);
-  return { ...current, adRewards: { ...t, [placement]: t[placement] + 1 } };
+  const next = { ...current, adRewards: { ...t, [placement]: t[placement] + 1 } };
+  if (current.adFree) return next;
+  const watched = (current.adsWatchedTotal ?? 0) + 1;
+  const counted = { ...next, adsWatchedTotal: watched };
+  return AD_UPSELL_AT.includes(watched) ? openMomentOffer(counted, "ad-free") : counted;
 }

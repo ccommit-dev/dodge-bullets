@@ -399,7 +399,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   ok("오늘의 보급 결제 2건: 둘 다 지급(보석 80·골드 6,000) · deal 키는 하루 1개", a.applied && b.applied && b.progress.redGems === p0.redGems + 80 && b.progress.sharedCoins === p0.sharedCoins + 6000 && dealKeys.length === 1, dealKeys.join(","));
   const w = store.applyPurchase(p0, "weekend-pack", "play:wk1", sat);
   ok("주말 보급 결제: 보석 300 · 강화석 60 · 가속 24h · 환불 장부(ledger) 기록", w.applied && w.progress.redGems === p0.redGems + 300 && w.progress.enhancementMaterials === p0.enhancementMaterials + 60 && w.progress.idleBoostUntil === sat + 24 * 3600000 && w.progress.claimedRewards.includes("ledger:weekend-pack:play:wk1:300"));
-  ok("카탈로그 묶음: 매일·주말 묶음이 첫 번째 · 중급/고급 모험가·개척 축하·성문 수비 보급 없음", catalog.PAID_GROUPS[0].ids.join(",") === "daily-deal,weekend-pack" && ["adventurer-mid", "adventurer-advanced", "pack-pioneer", "gate-supply"].every((id) => !store.PLAY_PRODUCT_IDS.includes(id)));
+  ok("카탈로그 묶음: 광고 제거 묶음이 첫 번째(2026-11-02) · 매일·주말이 그다음 · 중급/고급 모험가·개척 축하·성문 수비 보급 없음", catalog.PAID_GROUPS[0].ids.join(",") === "remove-ads" && catalog.PAID_GROUPS[1].ids.join(",") === "daily-deal,weekend-pack" && ["adventurer-mid", "adventurer-advanced", "pack-pioneer", "gate-supply"].every((id) => !store.PLAY_PRODUCT_IDS.includes(id)));
 }
 
 {

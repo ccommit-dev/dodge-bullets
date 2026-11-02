@@ -11,7 +11,7 @@ patron-30d,published,managed_by_android,false,ko_KR; 원정 후원 계약 30일;
 pack-wall,published,managed_by_android,false,ko_KR; 벽 돌파 세트; DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다,true,5900000000,
 pack-rebirth,published,managed_by_android,false,ko_KR; 환생 세트; 첫 환생 후 1회 — 재시작을 빠르게,true,12000000000,
 season-pass,published,managed_by_android,false,ko_KR; 시즌 패스; 4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트,true,7900000000,
-remove-ads,published,managed_by_android,false,ko_KR; 광고 제거; 보상형 광고 3곳을 광고 없이 자동 적용 (정산 2배 · 가속 4h · 보스 +10초),true,3900000000,
+remove-ads,published,managed_by_android,false,ko_KR; 광고 제거; 보상형 광고 5곳을 광고 없이 바로 받기 (정산 2배 · 가속 4h · 대장 +10초 · 성문 방어 2배 · 비트 2배),true,3900000000,
 char-ember,published,managed_by_android,false,ko_KR; 코스튬: 붉은 잔영; 잔불빛으로 물든 모험가 — 외형 전용,true,5900000000,
 char-frost,published,managed_by_android,false,ko_KR; 코스튬: 서리 무희; 서릿발이 서린 푸른 모험가 — 외형 전용,true,5900000000,
 gate-fund,published,managed_by_android,false,ko_KR; 성문 원정 기금; 한 번 사면 성문 방어를 깰 때마다 보석 — 이미 깬 단계는 바로 받는다,true,9900000000,

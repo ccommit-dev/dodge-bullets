@@ -8,6 +8,7 @@
  *   wall       지역 벽 최초 도달                     → 벽 돌파 세트 ₩5,900
  *   rebirth    환생 직후                             → 환생 세트 ₩12,000
  *   pickup     픽업 회전 D-2                         → 붉은 보석 1,200 ₩15,000 (천장 절반 = 30회분)
+ *   ad-free    보상형 광고를 3번 · 10번째 본 직후     → 광고 제거 ₩3,900 (2026-11-02, ads/rewarded.consumeAdReward)
  */
 import type { CharacterProgress } from "../progression/model";
 import { STORE_PRODUCTS } from "./productCatalog";
@@ -17,7 +18,7 @@ function packagePurchased(progress: CharacterProgress, productId: string): boole
   return progress.claimedRewards.some((k) => k.startsWith(`purchase:${productId}:`));
 }
 
-export type MomentOfferKind = "boss-fail" | "wall" | "rebirth" | "pickup";   // 개척·성문(gate-wall)은 BM 간결화로 뺐다 (2026-10-08)
+export type MomentOfferKind = "boss-fail" | "wall" | "rebirth" | "pickup" | "ad-free";   // 개척·성문(gate-wall)은 BM 간결화로 뺐다 (2026-10-08)
 export type MomentOfferDef = { productId: string; title: string; subtitle: string; bonusGems: number; windowMs: number };
 export type MomentOfferState = { kind: MomentOfferKind; until: number; bonusGems: number; openedAt: number };
 
@@ -26,6 +27,7 @@ export const MOMENT_OFFERS: Record<MomentOfferKind, MomentOfferDef> = {
   "boss-fail": { productId: "adventurer-starter", title: "보스가 벽처럼 느껴진다면", subtitle: "정찰 견갑 + 보석 80 + 골드 5,000 — 첫 보스는 견갑 하나로 넘어갑니다", bonusGems: 20, windowMs: 15 * MIN },
   wall: { productId: "pack-wall", title: "벽 도달 — 돌파 세트", subtitle: "편성 동료 조각 30 + 방치 2배 24시간 + 보석 100", bonusGems: 30, windowMs: 15 * MIN },
   rebirth: { productId: "pack-rebirth", title: "환생 축하", subtitle: "두 번째 생을 위한 보석 400 + 스킬 코어 10 + 조각 40", bonusGems: 60, windowMs: 30 * MIN },
+  "ad-free": { productId: "remove-ads", title: "광고 없이 바로 받기", subtitle: "정산 2배 · 가속 4h · 대장 +10초 · 성문 · 비트 2배를 광고 없이 — 영구", bonusGems: 40, windowMs: 24 * 60 * MIN },
   pickup: { productId: "gems-1200", title: "픽업 교체 D-2", subtitle: "보석 1,200이면 천장(60회)의 절반 — 첫 구매면 2배", bonusGems: 150, windowMs: 2 * 24 * 60 * MIN },
 };
 
@@ -44,7 +46,8 @@ export function paidOffersUnlocked(progress: Pick<CharacterProgress, "attendance
 
 /** 순간 제안을 연다 — 유료 게이트 전·이미 산 트리거 팩·이미 열린 창·미등록 상품이면 그대로 */
 export function openMomentOffer(progress: CharacterProgress, kind: MomentOfferKind, now: number = Date.now(), untilOverride?: number): CharacterProgress {
-  if (!paidOffersUnlocked(progress)) return progress;
+  // 광고를 직접 본 사람에게 하는 제안은 첫 며칠 게이트를 넘는다 — 광고가 번거롭다는 걸 이미 겪었다
+  if (kind !== "ad-free" && !paidOffersUnlocked(progress)) return progress;
   const def = MOMENT_OFFERS[kind];
   const product = STORE_PRODUCTS.find((p) => p.id === def.productId);
   if (!product) return progress;

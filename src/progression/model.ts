@@ -215,6 +215,8 @@ export type CharacterProgress = {
   chestsOpened: number;
   /** 보상형 광고 일일 카운터 (L) */
   adRewards: { date: string; idleDouble: number; booster4h: number; bossRetry: number; dodgeDouble: number; beatDouble: number };
+  /** 보상형 광고를 실제로 본 누적 횟수 (2026-11-02) — 광고 제거 제안 · 상점 노출에 쓴다 */
+  adsWatchedTotal: number;
   /** 결제로 받았지만 아직 사냥터 저장에 들어가지 않은 스킬 코어 — 사냥터가 준비되면 옮긴다 (2026-10-02 리뷰 #4) */
   pendingSkillCores: number;
   /** 성문 원정 기금 (economy/gateFund) — 샀는가 · 받은 단계 */
@@ -355,6 +357,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     chestPoints: 0,
     chestsOpened: 0,
     adRewards: { date: "", idleDouble: 0, booster4h: 0, bossRetry: 0, dodgeDouble: 0, beatDouble: 0 },
+    adsWatchedTotal: 0,
     momentOffers: {},
     gateFund: emptyGateFund(),
     pendingSkillCores: 0,
@@ -766,6 +769,7 @@ export function normalizeCharacterProgress(
       }
       return out;
     })(),
+    adsWatchedTotal: typeof raw.adsWatchedTotal === "number" && Number.isFinite(raw.adsWatchedTotal) ? Math.max(0, Math.floor(raw.adsWatchedTotal)) : 0,
     adRewards:
       raw.adRewards && typeof raw.adRewards.date === "string"
         ? { date: raw.adRewards.date, idleDouble: integer(raw.adRewards.idleDouble, 0, 99), booster4h: integer(raw.adRewards.booster4h, 0, 99), bossRetry: integer(raw.adRewards.bossRetry, 0, 99), dodgeDouble: integer(raw.adRewards.dodgeDouble, 0, 99), beatDouble: integer(raw.adRewards.beatDouble, 0, 99) }
