@@ -48,11 +48,14 @@ await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth
 await page.waitForSelector(".gacha-summoning", { timeout: 3000 }).catch(() => null);
 await sleep(150);
 const t0 = Date.now();   // 소환진이 뜬 뒤부터 잰다 — 뽑기 저장 시간은 빼고
+// 결과가 DOM 에 붙는 순간 바로 첫 탭 — 검사 왕복 · 폴링이 밀리면 공개가 다 끝난 뒤에 눌려(정상 동작인 닫기) 가끔 실패했다(CPU_THROTTLE=4 로 3/3 재현, 2026-11-03)
+await page.evaluate(() => { const mo = new MutationObserver(() => { const r = document.querySelector(".gacha-result"); if (r) { mo.disconnect(); r.click(); } }); mo.observe(document.body, { childList: true, subtree: true }); });
 await page.evaluate(() => document.querySelector(".gacha-summoning")?.click());
 await page.waitForSelector(".gacha-result", { timeout: 3000 }).catch(() => null);
 const elapsed = Date.now() - t0;
 ok("소환진을 누르면 1.2초를 기다리지 않고 바로 공개", elapsed < 1050 && !!(await page.$(".gacha-result")), `${elapsed}ms`);
-await page.evaluate(() => document.querySelector(".gacha-result")?.click()); await sleep(60);
+await page.waitForFunction(() => !document.querySelector(".gacha-result") || document.querySelector(".gacha-reveal-grid.reveal-all"), { polling: 50, timeout: 8000 }).catch(() => null);
+await sleep(60);
 const after1 = await page.evaluate(() => ({ open: !!document.querySelector(".gacha-result"), all: !!document.querySelector(".gacha-reveal-grid.reveal-all"), delay: getComputedStyle(document.querySelectorAll(".gacha-card")[9] ?? document.body).animationDelay }));
 ok("결과 첫 탭 = 모두 공개(닫히지 않는다 · 지연 0)", after1.open && after1.all && /^0s/.test(after1.delay), JSON.stringify(after1));
 await sleep(800);

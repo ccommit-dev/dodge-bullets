@@ -4339,7 +4339,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 /* ═══════════ 전장 경계·단순화 (2026-10-07, 사용자: "배경이랑 캐릭터 경계가 어색 · 애니메이션 어색한 포인트 · 더 단순하게") ═══════════
    · 배경은 살짝 흐리고 채도를 낮춰 뒤로 물러나게, 인물은 진갈색 1px 외곽선(스티커처럼 한 화풍으로) + 발밑 부드러운 그림자
    · 주인공 발밑 하늘색 고리 → 같은 그림자. 대기 흔들림(회전)·걷기 회전·피격 번쩍임은 뺀다 — 움직임은 호흡·바운스·반동만 */
-.titans-background { filter: saturate(.86) contrast(.94) blur(1px); transform: scale(1.02); }
+.titans-background { filter: saturate(.86) contrast(.94); transform: scale(1.02); }
 .titans-field .ally-body, .titans-field .titan-monster-art > img, .titans-field .equipped-character .equipment-base {
   filter: drop-shadow(0 0 1px rgba(43, 22, 8, .95)) drop-shadow(0 0 1px rgba(43, 22, 8, .7));
 }

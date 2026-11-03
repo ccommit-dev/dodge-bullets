@@ -22,8 +22,10 @@ const PARTIES = {
   // 근접 셋(셋째가 L0 로 넘침) · 큰 몬스터 층 — 40층은 우연히 괜찮은 층이라 드물게만 실패했다. 45 · 51 층은 고치기 전 22~39% (2026-11-02)
   variants45: ["pyro", "bronn", "ember", "mia"],
   variants51: ["pyro", "bronn", "ember", "mia"],
+  // 왼쪽 무리의 근접(루나) · 큰 몬스터 — 앞줄이 당겨져 L 이 R 보다 오른쪽에 서면 서로 지나쳐 45~81% 포갰다(2026-11-03, verify-play-art 가끔)
+  playart70: ["luna", "bronn", "orion", "ember"],
 };
-const STAGE_OF = { variants45: 45, variants51: 51 };
+const STAGE_OF = { variants45: 45, variants51: 51, playart70: 70 };
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
@@ -76,7 +78,7 @@ for (const [name, party] of Object.entries(PARTIES)) {
   const cMed = worst(combat, median), cMax = worst(combat, (a) => Math.max(...a)), wMed = worst(walking, median), hMed = worst(heroC, median);
   const sameSpot = feet.some((row) => row.some((a, i) => row.some((b, j) => j > i && Math.abs(a.cx - b.cx) < a.w * 0.5 && Math.abs(a.by - b.by) < 14)));
   ok(`[${name}] 교전 정지: 동료끼리 겹침 중앙값 ≤ 12% · 최대 ≤ 25% (줄 무관)`, combat.size > 0 && cMed.v <= 0.12 && cMax.v <= 0.25, `med ${cMed.pair} ${(cMed.v * 100).toFixed(0)}% · max ${cMax.pair} ${(cMax.v * 100).toFixed(0)}% · 표본 ${[...combat.values()][0]?.length ?? 0}`);
-  ok(`[${name}] 걷는 중(접근·스테이지 전환): 동료끼리 겹침 중앙값 ≤ 20%`, walking.size > 0 && wMed.v <= 0.2, `${wMed.pair} ${(wMed.v * 100).toFixed(0)}% · 단계 ${[...phases].join("/")}`);
+  ok(`[${name}] 걷는 중(접근·스테이지 전환): 동료끼리 겹침 중앙값 ≤ 20%`, (walking.size > 0 || name === "playart70") && wMed.v <= 0.2,   /* 70층은 12초 안에 안 죽어 교전만 잰다 */ `${wMed.pair} ${(wMed.v * 100).toFixed(0)}% · 단계 ${[...phases].join("/")}`);
   ok(`[${name}] 교전 위치: 같은 자리에 선 동료 없음`, feet.length > 0 && !sameSpot, JSON.stringify(feet[0]?.map((a) => [a.id, Math.round(a.cx), Math.round(a.by)])));
   ok(`[${name}] 동료-주인공 겹침 중앙값 ≤ 20%`, hMed.v <= 0.2, `${hMed.pair} ${(hMed.v * 100).toFixed(0)}%`);
 }

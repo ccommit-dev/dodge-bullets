@@ -21,6 +21,9 @@ export async function launchBrowser(options = {}) {
       delete Navigator.prototype.share;
       delete Navigator.prototype.canShare;
     });
+    // CPU_THROTTLE=6 — 페이지를 그만큼 느리게(2026-11-03). "부하 플레이크"를 짐작 대신 검사 하나로 재현한다
+    const rate = Number(process.env.CPU_THROTTLE);
+    if (rate > 1) { const cdp = await page.createCDPSession(); await cdp.send("Emulation.setCPUThrottlingRate", { rate }); page.setDefaultNavigationTimeout(240000); page.setDefaultTimeout(240000); }
     return page;
   };
   return browser;

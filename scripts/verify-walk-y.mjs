@@ -77,12 +77,15 @@ for (const scr of SCREENS) {
   const walk = await page.evaluate(() => new Promise((res) => {
     const fe = document.querySelector(".titans-field"); const out = { yJumps: [], monStarts: [] }; const prev = {}; let monPrevIn = true; const t0 = performance.now();
     const tick = () => {
+      const now = performance.now();
       const f = fe.getBoundingClientRect();
       const els = [["hero", document.querySelector(".titans-hero")], ...[...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => [a.className.match(/ ally-([a-z_]+)/)?.[1], a])];
       for (const [id, e] of els) {
         if (!e) continue; const r = e.getBoundingClientRect(); const visible = r.right > f.left + 4 && r.left < f.right - 4; const y = Math.round(f.bottom - r.bottom);
-        if (prev[id]?.visible && visible && Math.abs(prev[id].y - y) > 2) out.yJumps.push(`${id} ${prev[id].y}→${y}`);
-        prev[id] = { y, visible };
+        // 순간이동 = 짧은 프레임(50ms 미만)에 2px 초과. 깊이 전환(0.28초 10px ≈ 0.036px/ms)은 프레임이 56ms 를 넘으면 한 번에 2px 를 넘어 부하에서 잘못 잡혔다(2026-11-03)
+        const dtMs = prev[id] ? now - prev[id].at : 0;
+        if (prev[id]?.visible && visible && Math.abs(prev[id].y - y) > 2 && dtMs < 50) out.yJumps.push(`${id} ${prev[id].y}→${y}`);
+        prev[id] = { y, visible, at: now };
       }
       const m = document.querySelector(".titans-monster"); const engaged = !!m?.classList.contains("is-engaged");
       if (m && engaged && !monPrevIn) out.monStarts.push(Math.round(m.getBoundingClientRect().left - f.right));

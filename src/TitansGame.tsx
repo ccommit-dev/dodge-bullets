@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhance, gearTrainingCost, type GearPart } from "./equipment/parts";
 import { AllySigInfo } from "./titans/AllySigInfo";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
 import { heroPortrait } from "./titans/anim";
@@ -352,6 +352,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [buffs, setBuffs] = useState<BuffState>(EMPTY_BUFFS);
   /** 소환 결과 연출 (확률형 재설계) — 카드 뒤집기 모달. null이면 닫힘 */
   const [gachaReveal, setGachaReveal] = useState<PullResult[] | null>(null);
+  // 첫 탭 = 모두 공개 창(카드당 0.18초)은 결과가 실제로 그려진 다음 프레임부터 잰다(2026-11-03) — 결과 창을 처음 그릴 때 메인 스레드가 멈춰(CPU 4배 저하에서 수 초)
+  // 커밋 시각부터 재면 창이 그 사이 지나가, 멈춘 화면에서 누른 첫 탭이 카드를 못 본 채 닫았다. 그려지기 전 탭은 모두 공개로
+  useLayoutEffect(() => {
+    if (!gachaReveal) return;
+    gachaRevealAtRef.current = Number.POSITIVE_INFINITY;
+    let inner = 0;
+    const outer = window.requestAnimationFrame(() => { inner = window.requestAnimationFrame(() => { gachaRevealAtRef.current = Date.now(); }); });
+    return () => { window.cancelAnimationFrame(outer); window.cancelAnimationFrame(inner); };
+  }, [gachaReveal]);
   /** 연출 카드 설명 (2026-10-14): 탭/마우스 오버한 카드 — 등급 설명·역할·특성·능력치 */
   const [gachaFocus, setGachaFocus] = useState<number | null>(null);
   /** 소환진 사전 연출 (계획안 E) — 1.2초 뒤 gachaReveal로 넘어간다 */
@@ -590,7 +599,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const r = coreRect(el, k === 0);
         // 주인공과 잴 때는 예전 상자(칸 상자 가운데 56%) — 주인공 규칙의 35% · 20% 문턱이 이 폭에 맞춰져 있다
         const box = el.getBoundingClientRect(), t = box.width * (k === 0 ? 0.15 : 0.22);
-        return { el, cur, dx: cur, base: { left: r.left - cur, right: r.right - cur, width: r.width, bottom: r.bottom, top: r.top }, art: { left: box.left + t - cur, right: box.right - t - cur, width: box.width - 2 * t, bottom: box.bottom } };
+        return { el, cur, dx: cur, base: { left: r.left - cur, right: r.right - cur, width: r.width, bottom: r.bottom, top: r.top }, art: { left: box.left + t - cur, right: box.right - t - cur, width: box.width - 2 * t, bottom: box.bottom }, full: box.right - cur };
       });
       const artOf = (it: (typeof items)[number]) => ({ left: it.art.left + it.dx, right: it.art.right + it.dx, width: it.art.width, bottom: it.art.bottom, top: 0 });
       const rectOf = (it: (typeof items)[number]) => ({ left: it.base.left + it.dx, right: it.base.right + it.dx, width: it.base.width, bottom: it.base.bottom, top: it.base.top });
@@ -598,9 +607,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // 원거리는 전장 왼쪽 28px(자세 애니메이션 폭) 안쪽까지만, 근접은 몬스터 왼쪽 가장자리(−6px)까지만 — 몬스터 오른쪽에서 치면 안 된다
       const mon = field.querySelector<HTMLElement>(".titans-monster")?.getBoundingClientRect();
       // 전장 밖으로는 밀지 않는다 — 원거리 동료가 왼쪽 가장자리 밖(+24px)으로 나가 verify-anim-clip 이 잡았다
+      const monEdge = mon ? mon.left + mon.width * (Number(getComputedStyle(field).getPropertyValue("--monster-ml")) || 0.22) : 0;   // 몬스터 보이는 몸 왼쪽
       const clampDx = (it: (typeof items)[number], dx: number) => {
         // 경계는 예전 상자(칸 상자 가운데 56%)로 — 좁은 몸 상자(.ally-body 45%)로 재면 그림이 전장 왼쪽 밖으로 14px 나갔다(verify-anim-clip)
-        const minDx = fr.left + 36 - it.art.left;   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다
+        // 앞줄 근접(몬스터 곁)은 비켜서도 곁에 남는다 — 대신 상대가 더 민다(2026-11-03, verify-hunt-motion 60px 를 65px 로 넘긴 적이 있다)
+        const nearMon = mon && it.el.classList.contains("combat-melee") ? monEdge - it.full : null;
+        const meleeMin = nearMon !== null && nearMon <= 52 ? nearMon - 52 : -Infinity;
+        const minDx = Math.max(fr.left + 36 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다
         const maxDx = mon ? mon.left - 6 - it.art.right : fr.right - 28 - it.art.right;
         return Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), Math.max(-60, Math.min(60, dx))));
       };
@@ -626,7 +639,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const ha = artOf(a), hb = artOf(b);
               if (Math.abs(ha.bottom - hb.bottom) > 26) continue;
               const ov = xOverlap(ha, hb), minW = Math.min(ha.width, hb.width);
-              if (ov > minW * 0.35) { dx += (b.el.classList.contains("combat-ranged") ? -1 : 1) * Math.min(18, ov - minW * 0.35 + 2); pushed = true; }
+              // 방향은 서 있는 칸으로(2026-11-03) — 왼쪽 무리(L)는 왼쪽, 앞줄(R)은 몬스터 쪽. 예전엔 원거리/근접 종류로 정해, L 칸의 근접(루나 등)이 오른쪽으로 +54px 밀려 앞줄 동료를 지나쳐 포갰다(luna×bronn 45~76%, verify-play-art 가끔)
+              if (ov > minW * 0.35) { dx += (b.el.dataset.cell === "L" || b.el.classList.contains("combat-ranged") ? -1 : 1) * Math.min(18, ov - minW * 0.35 + 2); pushed = true; }
               continue;
             }
             // 동료끼리는 몸이 포개진 넓이로 · 10% 넘으면 둘이 반씩 비켜선다 (2026-11-02) — 근접이 셋인 파티(셋째가 L0 로 넘침)는 주인공이 근접일 때
@@ -637,7 +651,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               // 넓이 8% 까지 줄이는 데 필요한 가로 이동 — 세로로 덜 포갠 쌍은 조금만 민다. 호흡 · 공격 바운스(세로 ±6px)에도 12% 밑에 남게 여유
               const targetX = (0.08 * minArea(ar, br)) / Math.max(1, yOverlap(ar, br));
               const push = Math.min(18, xOverlap(ar, br) - targetX + 2);
-              const away = br.left + br.width / 2 < ar.left + ar.width / 2 ? -1 : 1;
+              // 칸이 다르면 지금 자리와 상관없이 왼쪽 무리(L)는 왼쪽, 앞줄(R)은 몬스터 쪽 — 큰 몬스터 앞에선 앞줄이 당겨져 L 이 R 보다 오른쪽에 서기도 해, 자리 기준으로 밀면 뒤바뀐 채 양쪽 경계까지 벌어져 포갰다(luna +54 · bronn −16, 45~81%)
+              const cellA = a.el.dataset.cell, cellB = b.el.dataset.cell;
+              const away = cellA && cellB && cellA !== cellB ? (cellB === "L" ? -1 : 1) : br.left + br.width / 2 < ar.left + ar.width / 2 ? -1 : 1;
               // 앞 동료는 주인공 쪽으로는 비켜서지 않는다 — 세로로 겹치는 주인공 쪽이면 뒤 동료가 다 민다(variants45 에서 mia 가 +12px 주인공 쪽으로 가 mia × 주인공 32~36%)
               let next = clampDx(a, a.dx - away * (push / 2));
               const heroBox = items[0] && items[0].el === hero ? rectOf(items[0]) : null;
@@ -2547,7 +2563,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setGachaSummoning(null);
       sfxRelicReveal(best);
       setGachaRevealAll(false);
-      gachaRevealAtRef.current = Date.now();
       setGachaReveal(pulled.results);
     });
   };

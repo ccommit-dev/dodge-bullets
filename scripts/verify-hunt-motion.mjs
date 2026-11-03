@@ -43,7 +43,9 @@ ok("쓰러짐: 다음 몬스터 전에 흐려져 사라진다(불투명도 < 0.5
 // ── 2. 검 주인공 — 몬스터 보이는 몸에 붙어 선다 · 근접 동료도 가까이 · 원거리는 앞으로 ──
 await seed("sword", ["mia", "garen", "leon", "sera"]);
 await settled(); await sleep(300);
+// 자리가 멈출 때까지(최대 4초) — 도착 겹침 정리(--sep-dx 0.2초) 중간에 재면 값이 흔들렸다(2026-11-03 부하 플레이크)
 let b = await boxes();
+for (let k = 0; k < 20; k += 1) { await sleep(200); const n = await boxes(); const same = n.melee.length === b.melee.length && n.melee.every((x, i) => Math.abs(x.r - b.melee[i].r) <= 1) && n.ranged.every((x, i) => Math.abs(x.l - b.ranged[i].l) <= 1); b = n; if (same) break; }
 await page.screenshot({ path: "art-gen/out/hunt-motion-sword.png" });
 ok("검: 전장 hero-melee", /hero-melee/.test(b.cls), b.cls.match(/hero-\w+/)?.[0]);
 ok("검: 주인공 상자 오른쪽이 몬스터 보이는 몸 가장자리에 닿는다(±24px)", !!b.hero && Math.abs(b.hero.r - b.monEdge) <= 24, `주인공 오른쪽 ${b.hero?.r.toFixed(0)} · 몬스터 가장자리 ${b.monEdge.toFixed(0)}`);
@@ -88,7 +90,8 @@ ok("펫: 몬스터에 덤빈다(.hero-pet.pet-attack, 2.6초마다)", await seen
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(700);
 await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "꾸미기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "펫")?.click()); await sleep(500);
 const petShop = await page.evaluate(() => ({ n: document.querySelectorAll(".pet-product").length, wolf: document.querySelector(".pet-product[data-pet=wolf] button")?.textContent?.trim() }));
-await page.evaluate(() => document.querySelector(".pet-product[data-pet=slime] button")?.click()); await sleep(800);
+await page.evaluate(() => document.querySelector(".pet-product[data-pet=slime] button")?.click());
+await page.waitForFunction((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`))?.pets?.slime === 1, { polling: 100, timeout: 6000 }, H).catch(() => null);   // 고정 0.8초는 부하에서 모자랐다
 const pAfter = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
 ok("상점 펫: 6종 · 가진 펫은 장착/해제 · 산 펫은 바로 부화(Lv.1)", petShop.n === 6 && /해제|장착/.test(petShop.wolf ?? "") && pAfter.pets?.slime === 1, `${petShop.n}종 · 늑대 ${petShop.wolf} · 슬라임 Lv.${pAfter.pets?.slime}`);
 

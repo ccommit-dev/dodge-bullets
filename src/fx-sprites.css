@@ -115,8 +115,9 @@
 
 /* ── 장면 대비 (2026-10-21, 사용자: "땅 띠 바깥 배경을 살짝 어둡게 · 캐릭터 윤곽과 발밑 그림자를 진하게 · 몬스터를 조금 크게") ──
    배경 그림(땅 위)은 어둡고 채도를 낮춰 뒤로, 땅 띠는 가장자리 · 아래만 살짝 그늘 — 가운데 전투 자리가 제일 밝다 */
-.titans-field .titans-background { filter: saturate(.8) contrast(.92) brightness(.72) blur(1px); }
-.titans-field.boss .titans-background { filter: saturate(.95) contrast(.95) brightness(.64) blur(1px); }
+/* blur(1px) 를 뺐다(2026-11-03) — 사용자 요청은 "살짝 어둡게"였고 흐림은 덤이었다. 2배로 다시 그린 배경(1440px)이 흐림에 묻혀 차이가 안 보였다. 뒤로 물리는 건 밝기 · 채도로 */
+.titans-field .titans-background { filter: saturate(.8) contrast(.92) brightness(.72); }
+.titans-field.boss .titans-background { filter: saturate(.95) contrast(.95) brightness(.64); }
 .titans-field .titans-ground::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, transparent 58%, rgba(28, 14, 6, .26)), radial-gradient(ellipse 70% 90% at 55% 30%, transparent 62%, rgba(28, 14, 6, .2)); }
 /* 진한 잉크 윤곽 — 동료 · 주인공 · 몬스터(2판 칸 그림 .monster-frames 는 예전 규칙에서 빠져 윤곽이 없었다) */

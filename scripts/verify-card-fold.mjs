@@ -31,7 +31,14 @@ await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); 
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("스킬"))?.click()); await sleep(600);
 const eqBtns = await page.evaluate(() => { const c = document.querySelector(".skill-learn-card.equipped"); return [...c.querySelectorAll(".skill-card-actions button")].filter((b) => getComputedStyle(b).display !== "none").map((b) => b.textContent.trim()); });
 ok("장착 스킬 카드(접힘)는 강화 버튼 하나", eqBtns.length === 1 && /강화|MAX/.test(eqBtns[0]), eqBtns.join(","));
-const sc = await page.$(".skill-learn-card.equipped strong"); const sb = await sc.boundingBox(); await page.mouse.click(sb.x + 5, sb.y + 5); await sleep(300);
+// 자리가 멈춘 뒤 누르고 펼쳐질 때까지 기다린다 — 고정 0.3초 · 탭을 연 직후의 좌표는 부하에서 어긋났다(CPU_THROTTLE=4 3/3)
+for (let k = 0; k < 3; k += 1) {
+  await page.evaluate(() => document.querySelector(".skill-learn-card.equipped")?.scrollIntoView({ block: "center" })); await sleep(500);
+  const sc = await page.$(".skill-learn-card.equipped strong"); const sb = await sc.boundingBox(); await page.mouse.click(sb.x + 5, sb.y + 5);
+  const opened = await page.waitForFunction(() => document.querySelector(".skill-learn-card.equipped")?.classList.contains("is-open"), { polling: 50, timeout: 3000 }).then(() => true).catch(() => false);
+  if (opened) break;
+}
+await sleep(100);
 const eqOpen = await page.evaluate(() => { const c = document.querySelector(".skill-learn-card.equipped"); return { open: c.classList.contains("is-open"), btns: [...c.querySelectorAll(".skill-card-actions button")].filter((b) => getComputedStyle(b).display !== "none").map((b) => b.textContent.trim()) }; });
 ok("누르면 펼쳐져 해제 · 강화 둘 다", eqOpen.open && eqOpen.btns.length === 2, JSON.stringify(eqOpen));
 console.log(fails ? `${fails} FAIL` : "ALL PASS");

@@ -1,3 +1,5 @@
+import { trackGainFor } from "./trackGain";
+import { loadVolume } from "../game/sound";
 import { createAudioChain, createBeatboxPlayer, type BeatboxPlayer } from "./audio";
 import { emptyBeatCosmetics } from "./shop";
 import {
@@ -313,7 +315,9 @@ export async function createBeatSession(
     backingAudio = primed?.audio ?? new Audio(url);
     backingAudio.dataset.claimed = "1";   // 누른 순간 깨운 오디오의 늦은 '깨우고 멈추기'가 연주를 멈추지 않게(BeatGame startSlot)
     if (!primed?.audio) backingAudio.preload = "metadata";
-    backingAudio.volume = 0.72;
+    // 곡마다 음량을 맞춘 배율 × 설정의 배경 음악(2026-11-03). Web Audio 가 있으면 아래에서 게인으로 옮긴다 — 아이폰은 audio.volume 을 무시한다
+    const musicLevel = trackGainFor(track.audioFile) * loadVolume("bgm");
+    backingAudio.volume = Math.min(1, musicLevel);
     backingAudio.setAttribute("playsinline", "true");
     // Called inside the stage CTA handler so iOS/Android treat this element as
     // user-initiated. The transport below resets it to the exact chart origin.
@@ -327,6 +331,17 @@ export async function createBeatSession(
     if (ctx) {
       master = createAudioChain(ctx);
       if (ctx.state === "suspended") await ctx.resume().catch(() => {});
+      // 곡은 게인으로 — 컨텍스트가 돌 때만(멈춘 컨텍스트에 물리면 소리가 끊긴다). 실패하면 위 audio.volume 그대로
+      if (ctx.state === "running") {
+        try {
+          const source = ctx.createMediaElementSource(backingAudio);
+          const gain = ctx.createGain();
+          gain.gain.value = musicLevel;
+          source.connect(gain);
+          gain.connect(ctx.destination);
+          backingAudio.volume = 1;
+        } catch { /* audio.volume 그대로 */ }
+      }
     }
   }
 
