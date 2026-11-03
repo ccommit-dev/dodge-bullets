@@ -72,8 +72,9 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        # 한 번 재시도 (2026-11-03) — 같은 커밋이 main 은 통과, feat 만 13초 만에 실패한 적이 있다(54cb25c). 코드 오류면 두 번째도 똑같이 실패한다
-        run: ./gradlew assembleDebug --no-daemon || { sleep 20; ./gradlew assembleDebug --no-daemon; }
+        # 저장소 응답 실패면 한 번 더 (2026-11-03, run 41561890255) — Maven Central 이 commons-codec · kotlin-reflect 같은 있는 라이브러리를 "Could not find" 로 돌려줘 13초 만에 실패했다.
+        # 그 "없음" 이 캐시될 수 있어 다시 받게 한다. 코드 오류면 두 번째도 똑같이 실패한다
+        run: ./gradlew assembleDebug --no-daemon || { sleep 30; ./gradlew assembleDebug --no-daemon --refresh-dependencies; }
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -157,7 +158,7 @@ jobs:
       - name: Build signed release bundle
         if: env.HAS_KEYSTORE == 'true'
         working-directory: android
-        run: ./gradlew bundleRelease --no-daemon
+        run: ./gradlew bundleRelease --no-daemon || { sleep 30; ./gradlew bundleRelease --no-daemon --refresh-dependencies; }   # 위 debug 단계와 같은 이유
 
       - name: Upload AAB artifact
         if: env.HAS_KEYSTORE == 'true'
