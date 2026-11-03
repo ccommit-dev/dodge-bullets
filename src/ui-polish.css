@@ -1336,3 +1336,5 @@
 @media (max-height: 700px) {
   .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 72px !important; }
 }
+/* 사냥터 토스트 12px — 황금 몬스터 안내가 기준(13px) 밑이었다(scan-readability 가 그 순간에 걸릴 때만 잡았다) */
+.titans-toast { font-size: 13px !important; }
