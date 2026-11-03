@@ -3350,7 +3350,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 동료 탭 목록 = 보유 + 골드로 부를 수 있는 다음 1명(첫 소환 안내도 여기). 나머지는 마이페이지 도감 (2026-11-03) */
   const rosterHeroes = useMemo(() => {
     const next = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && SHOP_ALLY_GEM_COST[h.id] === undefined).sort((a, b) => a.baseCost - b.baseCost)[0];
-    return HEROES.filter((h) => save.heroes[h.id] > 0 || h.id === next?.id);
+    // 미아는 첫 소환 안내(coach)가 가리키는 카드라 아직 없으면 늘 보인다
+    return HEROES.filter((h) => save.heroes[h.id] > 0 || h.id === next?.id || h.id === "mia");
   }, [save.heroes]);
   const openAllyDraw = () => { setPremiumCategory("ally"); setTab("premium"); };
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지

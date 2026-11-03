@@ -91,6 +91,20 @@ ok("펫이 도감 안에", await page.evaluate(() => { const g = document.queryS
 await clickText(".codex-tabs button", "몬스터"); await sleep(300);
 ok("몬스터 도감", await page.evaluate(() => { const g = document.querySelector(".bestiary-grid"); return !!g && !g.closest(".hidden"); }));
 await shot("codex-monster");
+// ── 새 저장: 첫 소환 안내가 가리키는 미아 카드가 동료 탭에 있다 ──
+await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
+  [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, level: 1, redGems: 0, attendanceStreak: 1, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 2, partyIds: [], partyCap: 4, claimedRewards: [], pioneeredArea: 1, discoverySeeded: true, discovered: [] }),
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5000, stage: 1, bestStage: 1, totalTaps: 5, heroes: {}, lastActiveAt: now }),
+  [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 1, consecutiveDays: 1 }),
+  "dodgebullets:test-phase": "0",
+});
+await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}), page.evaluate(() => { setTimeout(() => location.assign(location.origin + "/"), 0); })]);
+await sleep(1200);
+await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
+await sleep(300);
+await clickText(".titans-bottom-nav button", "동료"); await sleep(600);
+const fresh = await page.evaluate(() => { const c = document.querySelector('[data-ally="mia"]'); return { cards: [...document.querySelectorAll(".ally-card")].map((x) => x.dataset.ally), btn: c?.querySelector(".ally-card-actions button")?.textContent ?? null }; });
+ok("새 저장: 미아 카드 + 소환 단추(첫 소환 안내가 가리킨다)", /소환/.test(fresh.btn ?? ""), JSON.stringify(fresh));
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 await browser.close();
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");
