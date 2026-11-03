@@ -5,7 +5,8 @@
 FUR = dict(fur='#8f6243', light='#f2dcc2', dark='#6a4228')
 
 # 2026-10-19 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게" — 왕관·띠·망토도 뺀 맨 비버(무기는 게임이 손 앵커에 그린다)
-HERO = dict(FUR)
+# 2026-11-03 사용자: "캐릭터 특징이 없네 · 마저수정" — 옷 · 장식은 그대로 없고 털만 다르게: 호박빛 털 · 이마 흰 줄 · 머리 꼭대기 털 뭉치 · 꼬리 띠. 동료 어느 털색과도 안 겹친다
+HERO = dict(fur='#c47a2c', light='#fff0d0', dark='#7a4414', marks='hero', tail_fx='bands', tail_color='#f6d9a0')
 
 # 털색 (2026-11-03, 사용자: "캐릭터와 동료가 너무 특징이 없네") — 13명이 모두 같은 갈색이라 모자만 달랐다. 실루엣이 먼 칸에서도 갈리게 털부터 나눈다
 PALE = dict(fur='#b88a5c', light='#f8ead6', dark='#8a6440')
@@ -139,7 +140,7 @@ MONSTERS = {
     'mount-boar': dict(kind='quad', color='#8a5a3a', belly='#d8b890', dark='#4a2f1e', iris='#2a1a12', tusks=True, ears='wolf'),
     'mount-deer': dict(kind='quad', color='#c08a50', belly='#f5e0c0', dark='#6a4a2a', iris='#2a1a12', horns='curl', horn='#f1e4c8', ears='wolf'),
     'mount-wolf': dict(kind='quad', color='#8a93a6', belly='#e8ecf2', dark='#454c5e', iris='#2a1a12', mane='#c8d0dc', ears='wolf'),
-    'mount-drake': dict(kind='quad', color='#d8662a', belly='#f5d7a0', dark='#7a3414', iris='#2a1a12', horns='curl', horn='#f1e4c8', flames=True, ears='wolf'),
+    'mount-drake': dict(kind='quad', color='#c8481f', belly='#f5d7a0', dark='#6a2a10', accent='#ffb347', iris='#2a1a12', horns='curl', horn='#f1e4c8', flames=True, ears='none', wings=True, wing='#f09a3e', wing_size=1.08, wing_spread=38, spikes_quad=True, tail_tip=True),   # 불꽃 비룡 — 박쥐 날개 · 등 가시 · 꼬리 끝 불꽃
 }
 FLIP_MONSTERS = {'fire-demon', 'thorn-boar-king', 'flame-wyvern-clean', 'lava-drake'}
 

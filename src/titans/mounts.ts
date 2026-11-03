@@ -10,7 +10,7 @@ export const MOUNT_DEFS: Record<MountId, MountDef> = {
   boar: { id: "boar", name: "도토리 멧돼지", art: "mount-boar", gemPrice: 300, base: 0.02, perLevel: 0.004 },
   deer: { id: "deer", name: "숲 사슴", art: "mount-deer", gemPrice: 600, base: 0.03, perLevel: 0.005 },
   wolf: { id: "wolf", name: "은빛 늑대", art: "mount-wolf", gemPrice: 1000, base: 0.04, perLevel: 0.006 },
-  drake: { id: "drake", name: "불꽃 뿔여우", art: "mount-drake", gemPrice: 2000, base: 0.05, perLevel: 0.008 },
+  drake: { id: "drake", name: "불꽃 비룡", art: "mount-drake", gemPrice: 2000, base: 0.05, perLevel: 0.008 },
 };
 export const MOUNT_IDS: MountId[] = ["boar", "deer", "wolf", "drake"];
 export const isMountId = (v: unknown): v is MountId => typeof v === "string" && (MOUNT_IDS as string[]).includes(v);

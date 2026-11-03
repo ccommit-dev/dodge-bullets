@@ -569,15 +569,32 @@ def _build(name, cfg, coll=None):
             add(leg, C.mesh_obj(f'{leg}m', C.tube([h0, h0.lerp(h1, 0.5), h1 + Vector((0, 0, 0.04))], [0.075, 0.06, 0.055], seg=12), M['skin'], coll, outline=OUT))
             add(leg, C.mesh_obj(f'{leg}p', C.ellipsoid(h1 + Vector((0, -0.03, 0.025)), (0.065, 0.08, 0.035)), M['dark'], coll, outline=OUT))
         tp = spline([Vector((0, 0.3, 0.42)), Vector((0, 0.42, 0.5)), Vector((0, 0.5, 0.64)), Vector((0, 0.48, 0.74))], 14)
+        if cfg.get('tail_tip'):   # 비룡 — 꼬리를 뒤로 길게 뺀다(위로 세우면 날개 뒤에 숨는다)
+            tp = spline([Vector((0, 0.3, 0.42)), Vector((0, 0.46, 0.38)), Vector((0, 0.62, 0.36)), Vector((0, 0.74, 0.43))], 14)
         add('tail', C.mesh_obj('tail', C.tube(tp, interp([0.07, 0.09, 0.07, 0.02], len(tp)), seg=14), M['skin'], coll, outline=OUT))
         if cfg.get('flames'):
-            fm = _m('flame', '#ff8a3d', rough=0.3, emit='#ffb347', es=3.0)
+            fm = _m('flame', '#ff8a3d', rough=0.3, emit='#ff7a1a' if cfg.get('tail_tip') else '#ffb347', es=1.0 if cfg.get('tail_tip') else 3.0)   # 비룡 꼬리 불꽃 — 3.0 은 희게 날아갔다
             for k in range(3):
+                if cfg.get('tail_tip'):
+                    add('tail', C.mesh_obj(f'flame{k}', C.cone(tp[-1] + Vector(((k - 1) * 0.06, 0.0, 0.14 - abs(k - 1) * 0.03)), 0.05, 0.0, 0.2 - abs(k - 1) * 0.06, seg=8), fm, coll))
+                    continue
                 add('body', C.mesh_obj(f'flame{k}', C.cone(bc + Vector((0, -0.1 + k * 0.12, br[2] * 0.95)), 0.06, 0.0, 0.18, seg=10), fm, coll))
         if cfg.get('wings'):
             for side, sx in (('R', -1), ('L', 1)):
-                w0 = Vector(bones[f'wing.{side}'][0]); w1 = Vector(bones[f'wing.{side}'][1])
-                add(f'wing.{side}', C.mesh_obj(f'wing{side}', C.ellipsoid(w0.lerp(w1, 0.55), (0.2, 0.02, 0.14), rot=Euler((0, sx * math.radians(30), 0))), M['wing'], coll, outline=OUT * 0.7))
+                w0 = Vector(bones[f'wing.{side}'][0])
+                spread = Matrix.Rotation(sx * math.radians(cfg.get('wing_spread', 0)), 4, 'Y')   # 옆으로 눕힌다 — 위로 세우면 탄 주인공 몸에 가려 끝만 보였다
+                for o in bat_wing(f'wing{side}', w0, sx, cfg.get('wing_size', 1.0), M, coll):   # 비룡 탈것(2026-11-03) — 옛 타원 한 장은 옆선만 보였다
+                    for v in o.data.vertices:
+                        v.co = w0 + (spread @ (v.co - w0))
+                    add(f'wing.{side}', o)
+        if cfg.get('spikes_quad'):   # 머리 뒤부터 꼬리까지 등 가시 — 탄 사람 뒤로 줄이 이어져 보인다
+            for k in range(6):
+                t = k / 5
+                d = Vector((0, 0.35, 1)).normalized()
+                p = Vector((0, -0.2 + t * 0.5, 0.52 + 0.06 * math.sin(math.pi * t)))
+                add('body', C.mesh_obj(f'qspike{k}', C.cone(p + d * 0.05, 0.05 - t * 0.012, 0.0, 0.13 - t * 0.03, seg=8, rot=C.look_rot(d)), M['accent'], coll, outline=OUT * 0.5))
+        if cfg.get('tail_tip'):
+            add('tail', C.mesh_obj('tailtip', C.cone(tp[-1] + Vector((0, 0.0, 0.05)), 0.085, 0.0, 0.16, seg=4), M['accent'], coll, outline=OUT * 0.6))
     elif kind == 'blob':
         bc = Vector((0, 0, 0.33))
         br = cfg.get('body_r', (0.42, 0.38, 0.34))

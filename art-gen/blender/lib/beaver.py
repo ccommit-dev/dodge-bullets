@@ -458,7 +458,8 @@ def build(name, cfg, coll=None):
         k = int(len(tp) * 0.72)
         add('tail', C.mesh_obj('tailtip', C.tube(tp[k:], [r * 1.04 for r in tr[k:]], seg=22), M['light'], coll))
     # 의상
-    for o in hat(cfg.get('hat', 'none'), cfg, coll):
+    from lib import beaver_kit as KIT   # 새 동료 장식(2026-11-03) — cfg 에 키가 없으면 아무것도 짓지 않는다
+    for o in hat(cfg.get('hat', 'none'), cfg, coll) or KIT.hat_new(cfg.get('hat', 'none'), cfg, coll):
         add('head', o)
     if cfg.get('robe'):
         for o in robe(cfg['robe'], coll, cfg.get('trim', '#f2c232')):
@@ -472,6 +473,7 @@ def build(name, cfg, coll=None):
     if cfg.get('cape'):
         for o in cape(cfg['cape'], coll):
             add('body', _fit_body(o))
+    KIT.dress(add, cfg, coll)
     # 무기
     if cfg.get('weapon_r'):
         for o in weapon(cfg['weapon_r'], HAND_R, coll, cfg.get('weapon_color', '#cfd6df'), cfg.get('weapon_wood', '#8a5a2b')):

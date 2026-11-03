@@ -150,8 +150,9 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
   for (const id of MONSTERS) {
     if (!want(id)) continue;
     const c = await load(id); if (!c) continue;
+    // 탈것은 넷의 몸 크기를 같게 (2026-11-03) — 게임은 대기 줄만 쓰니 대기 칸으로만 재고 0.66(옛 세 탈것의 배율)에 맞춘다. 비룡 날개까지 다 재면 몸만 작아져 주인공과 안 맞았다
     const f0 = c.actions.idle[0], up0 = f0.pivot[1] - f0.box.y0;
-    const k = fitScale(allFrames(c), (MH * 0.76) / up0, MW, MH, MW / 2, MH * M.feet, 4, false);
+    const k = id.startsWith("mount-") ? fitScale(c.actions.idle, 0.66, MW, MH, MW / 2, MH * M.feet, 4, false) : fitScale(allFrames(c), (MH * 0.76) / up0, MW, MH, MW / 2, MH * M.feet, 4, false);
     await grid(c, M, k, `public/titans/anim/monsters/${id}.webp`);
     done.monsters.push(id);
     // 대장으로 나오는 종(성문 방어 장 대장·중간/비밀 대장)은 큰 칸(576²) 시트도 — 성문 방어 대장은 화면에 ~330px(실픽셀 ~1000) 로 그려 384 칸은 흐렸다.
@@ -175,7 +176,8 @@ if (want("hero")) {
     const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
     const PX = H.feet[0] * FW, PY = H.feet[1] * FH;
     const idle = c.actions.idle;
-    const up0 = idle[0].pivot[1] - idle[0].box.y0;
+    // 몸 높이는 값으로 고정 (2026-11-03) — 털 뭉치(roster.HERO marks)까지 재면 배율이 15% 깎여 게임 속 주인공이 작아진다. 머리 꼭대기까지 렌더 435.35px(1024²)
+    const up0 = 435.35;
     let k = (FH * 0.69) / up0;   // 대기 인물(왕관 꼭대기~발)이 칸 높이의 69% (FIG_IDLE · verify-systems)
     for (const [mode, s] of Object.entries(H.sheets)) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
     mkdirSync("public/titans/anim/hero", { recursive: true });
@@ -215,7 +217,7 @@ if (want("hero")) {
     }
     const fmt = (f) => "  { " + Object.entries(f).map(([n, a]) => `${n}: { x: ${a.x}, y: ${a.y}, rotation: ${a.rotation}, scale: ${a.scale}${a.behind ? ", behind: true" : ""} }`).join(", ") + " },";
     const b = idle[0].box;
-    const fig = { x0: r1(((PX + (b.x0 - idle[0].pivot[0]) * k) / FW) * 100), x1: r1(((PX + (b.x1 - idle[0].pivot[0]) * k) / FW) * 100), y0: r1(((PY + (b.y0 - idle[0].pivot[1]) * k) / FH) * 100), y1: 99.9 };
+    const fig = { x0: r1(((PX + (b.x0 - idle[0].pivot[0]) * k) / FW) * 100), x1: r1(((PX + (b.x1 - idle[0].pivot[0]) * k) / FW) * 100), y0: r1(((PY - up0 * k) / FH) * 100), y1: 99.9 };
     writeFileSync("src/equipment/heroAnchors.ts", `/** 주인공 손·몸 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것).
  * 2026-10-19 애니메이션 2판: Blender 3D 리그(art-gen/blender/anim2.py)의 뼈를 칸마다 카메라로 투영한 값(칸 %). 주인공은 무기만 들어(사용자 지시)
  * 실제로 쓰는 건 hand(무기)뿐이지만, 형식(EquipmentFrameAnchors)을 맞추려 다른 뼈도 적는다. 회전은 대기 0칸 대비 뼈가 돈 만큼 더한다 */

@@ -24,13 +24,14 @@ const SHEETS = ANIM2
 const outPath = (base, id) => (ANIM2 ? `public/titans/anim/hero/${base}-${id}.webp` : `public/titans/character/skins/${base}-${id}.png`);
 const save = (img, out) => (ANIM2 ? img.webp({ quality: 90, alphaQuality: 94, effort: 5 }) : img.png()).toFile(out);
 
+// 값은 주인공 털색에 묶인다 — 2026-11-03 호박빛 털(roster.HERO)로 바꾸며 옛 갈색 때 값 그대로면 새벽이 형광 청록이 되어 옛 스킨 색에 맞춰 낮췄다
 const SKINS = [
-  { id: "obsidian", hue: 220, saturation: 0.55, brightness: 0.82 },
-  { id: "dawn", hue: 130, saturation: 1.15, brightness: 1.08 },
+  { id: "obsidian", hue: 205, saturation: 0.42, brightness: 0.72 },
+  { id: "dawn", hue: 125, saturation: 0.82, brightness: 0.88 },
   // 코스튬 2종(₩5,900) — CSS 필터 대신 실제 시트 (아트 점검 5순위)
-  { id: "ember", hue: 342, saturation: 1.7, brightness: 0.96 },
+  { id: "ember", hue: 332, saturation: 1.3, brightness: 0.92 },
   // frost: hue 회전은 피부를 청록으로 왜곡한다(변형 동료에서 확인된 교훈) — 저채도·밝게 + 알파 마스크한 한랭 multiply 캐스트
-  { id: "frost", hue: 0, saturation: 0.5, brightness: 1.14, cast: [186, 220, 255], castMix: 0.55 },
+  { id: "frost", hue: 0, saturation: 0.36, brightness: 1.06, cast: [186, 220, 255], castMix: 0.55 },
 ];
 
 import { existsSync, readFileSync } from "node:fs";
