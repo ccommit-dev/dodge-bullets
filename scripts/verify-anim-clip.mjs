@@ -73,7 +73,8 @@ const PROBE = `(() => {
     const r0 = el.getBoundingClientRect();
     if (r0.width < 2 || r0.height < 2) continue;
     // 동료 칸 그림(.ally-body)은 폭 150% 에 투명 여백이 양옆 27.5% 씩 — 그린 몸(가운데 45%)만 잰다 (2026-10-15, 다른 겹침 검사와 같은 기준)
-    const trim = el.classList.contains("ally-body") ? 0.275 : (el.classList.contains("ally-swing") || el.classList.contains("ally-idle")) ? 0.16 : 0;   // 칸(78px) 안 그린 몸 ≈ 52px
+    // .ally-sprite 는 .ally-body 를 꽉 채운 시트 칸(같은 상자) — 안 깎으면 상자 왼쪽 −6px · 그린 몸 +25px 인 뒷줄 동료를 잘렸다고 봤다(2026-11-03)
+    const trim = el.classList.contains("ally-body") || el.classList.contains("ally-sprite") ? 0.275 : (el.classList.contains("ally-swing") || el.classList.contains("ally-idle")) ? 0.16 : 0;   // 칸(78px) 안 그린 몸 ≈ 52px
     const r = { left: r0.left + r0.width * trim, right: r0.right - r0.width * trim, top: r0.top, bottom: r0.bottom, width: r0.width * (1 - 2 * trim), height: r0.height };
     const clip = clipAncestor(el);
     if (!clip) continue;

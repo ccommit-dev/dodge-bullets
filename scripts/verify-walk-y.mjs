@@ -100,16 +100,27 @@ for (const scr of SCREENS) {
   // 히트스톱(치명 · 스킬 · 특수기) — 전장 data-hitstop 이 붙는 횟수 · 0.06초 뒤 떨어지는지 (2026-10-21)
   await page.evaluate(() => { const fe = document.querySelector(".titans-field"); window.__hs = { on: 0, maxMs: 0, t: 0 }; new MutationObserver(() => { const pn = performance.now(); if (fe.dataset.hitstop) { window.__hs.on += 1; window.__hs.t = pn; } else if (window.__hs.t) window.__hs.maxMs = Math.max(window.__hs.maxMs, Math.round(pn - window.__hs.t)); }).observe(fe, { attributes: true, attributeFilter: ["data-hitstop"] }); });
   const rows = [];
-  for (let i = 0; i < 200; i += 1) { const s = await snap(); if (s) rows.push(s); await sleep(110); }   // 약 22초 — 몬스터 여러 마리
-
-  const encs = [];
-  for (const s of rows) { const last = encs[encs.length - 1]; if (!last || last.key !== s.key) encs.push({ key: s.key, l: s.l, r: s.r, dur: s.dur, rows: [] }); encs[encs.length - 1].rows.push(s); }
   const settledOf = (e) => e.rows.filter((s) => s.combat && !s.boss && !s.heroApp && !s.monApp && !s.monDead && s.allies.every((a) => !a.app));
-  for (const e of encs) {
-    const st = settledOf(e), last = st[st.length - 1];
-    e.hero = last?.hero?.bottom ?? null; e.mon = last?.mon?.bottom ?? null;
-    e.lowest = last ? Math.min(last.hero?.bottom ?? 1e9, last.monFeet ?? 1e9, ...last.allies.map((a) => a.feet)) : null;
-  }
+  const encountersOf = () => {
+    const encs = [];
+    for (const s of rows) { const last = encs[encs.length - 1]; if (!last || last.key !== s.key) encs.push({ key: s.key, l: s.l, r: s.r, dur: s.dur, rows: [] }); encs[encs.length - 1].rows.push(s); }
+    for (const e of encs) {
+      const st = settledOf(e), last = st[st.length - 1];
+      e.hero = last?.hero?.bottom ?? null; e.mon = last?.mon?.bottom ?? null;
+      e.lowest = last ? Math.min(last.hero?.bottom ?? 1e9, last.monFeet ?? 1e9, ...last.allies.map((a) => a.feet)) : null;
+    }
+    return encs;
+  };
+  // 깊이는 스테이지 첫 몬스터 때만 다시 정한다(TitansGame relocate) — 22초로 끊으면 느린 실행에서 스테이지를 두세 번밖에 못 넘겨 높이 차가 6px 에 그쳤다(전체 실행, 2026-11-03).
+  // 차이가 잡힐 때까지 최대 약 70초 더 잰다. 문턱은 그대로라 깊이가 정말 안 바뀌면 끝까지 재고 실패한다
+  const spanOk = () => {
+    const f = encountersOf().filter((e) => settledOf(e).length >= 4);
+    const hm = rows.some((x) => x.heroMelee) ? scr.minMon : scr.minHero;
+    return f.length >= 4 && span(f.map((e) => e.hero)) >= hm && span(f.map((e) => e.mon)) >= scr.minMon && new Set(f.map((e) => e.dur)).size >= 3;
+  };
+  for (let i = 0; i < 640; i += 1) { const s = await snap(); if (s) rows.push(s); await sleep(110); if (i >= 200 && i % 20 === 0 && spanOk()) break; }   // 약 22초부터 — 몬스터 여러 마리
+
+  const encs = encountersOf();
   const full = encs.filter((e) => settledOf(e).length >= 4);
   const uiTop = rows.find((s) => s.uiTop)?.uiTop ?? 0, fieldH = rows[0]?.fieldH ?? 0;
   console.log(`전장 ${fieldH}px · AUTO 위끝 ${uiTop}px · 만남`, full.map((e) => `${e.l}/${e.r} ${e.dur} 주${e.hero} 몬${e.mon} 최저발${e.lowest}`).join(" | "));

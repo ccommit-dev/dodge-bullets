@@ -1334,7 +1334,7 @@
 .titans-hero .hero-pet { width: 60%; left: -38%; }
 /* 낮은 화면(360×640)은 커진 스킬 칸이 전장 알림과 12px 겹쳤다(inspect-mobile) — 알림을 스킬 칸 위로 올린다 */
 @media (max-height: 700px) {
-  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 72px !important; }
+  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 70px !important; }   /* 72 는 가장 낮은 깊이의 주인공 발과 4px 넘게 겹쳤다(verify-walk-y) */
 }
 /* 사냥터 토스트 12px — 황금 몬스터 안내가 기준(13px) 밑이었다(scan-readability 가 그 순간에 걸릴 때만 잡았다) */
 .titans-toast { font-size: 13px !important; }
