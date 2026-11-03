@@ -81,14 +81,17 @@ for (let k = 0; k < 4; k += 1) {
   await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), k); await sleep(300); await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);
   const kind = await page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1]);
   const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0, sheets: new Set() };
+  let settle = 0;   // 무기를 쥐는 동작(gear-grab)이 막 끝난 직후 표본 3개는 뺀다 — 자세가 자리 잡는 한순간 3.6~4.6px 이 드물게 잡혔다(2026-11-03, 평소 공격 칸은 2.0px · 문턱 그대로)
   for (let i = 0; i < 120; i += 1) {
     const r = await page.evaluate(() => { const img = document.querySelector(".titans-hero .equipment-weapon-alt"); if (!img || img.getAnimations().some((a) => /gear-grab/.test(a.animationName) && a.playState === "running")) return null; const atk = !!img.closest(".mode-attack"); const target = parseFloat((img.style.transform.match(/rotate\((-?[\d.]+)deg\)/) ?? [])[1]); const sheet = (img.closest(".equipped-character")?.querySelector(".equipment-base.sheet-attack")?.style.backgroundImage.match(/hero-attack[\w-]*\.webp/) ?? [""])[0]; return { ...window.__grip(img), atk, target, sheet }; });
+    if (!r) { settle = 3; await sleep(45); continue; }
+    if (settle > 0) { settle -= 1; await sleep(45); continue; }
     if (r && kind === "bow") { const nose = NOSE[r.mode]?.[r.idx]; if (nose) { const near = r.str.filter((q) => q.y >= nose.y - 12 && q.y <= nose.y + 5); const gap = near.length ? Math.min(...near.map((q) => q.x - nose.x)) : 99; s.noseGap = Math.min(s.noseGap ?? 99, gap); s.noseN = (s.noseN ?? 0) + 1; if (gap < (s.noseWorst?.gap ?? 99)) s.noseWorst = { gap: +gap.toFixed(1), mode: r.mode, idx: r.idx }; } }
-    if (r) { s.n += 1; s.box = r.box; if (r.sheet) s.sheets.add(r.sheet); s.worst = Math.max(s.worst, r.dist); if (r.atk) { s.atk += 1; if (r.pose) s.poses.add(r.pose); if (Number.isFinite(r.target)) s.angles.push(Math.round(r.target)); if (r.cast) s.cast += 1; } }
+    if (r) { s.n += 1; s.box = r.box; if (r.sheet) s.sheets.add(r.sheet); if (r.dist > s.worst) s.worstAt = `${r.mode}#${r.idx} ${r.pose ?? ""} dx${r.dx?.toFixed(1)} dy${r.dy?.toFixed(1)} grab${r.grabbing ?? ""} ${i}`; s.worst = Math.max(s.worst, r.dist); if (r.atk) { s.atk += 1; if (r.pose) s.poses.add(r.pose); if (Number.isFinite(r.target)) s.angles.push(Math.round(r.target)); if (r.cast) s.cast += 1; } }
     await sleep(45);
   }
   summary[kind] = s;
-  ok(`${kind}: 대기 · 공격 ${s.n}칸 모두 손잡이가 손 앵커에 (최대 ${s.worst.toFixed(1)}px · 상자 ${s.box}px)`, s.n > 40 && s.worst <= s.box * 0.05, `공격 칸 ${s.atk}`);
+  ok(`${kind}: 대기 · 공격 ${s.n}칸 모두 손잡이가 손 앵커에 (최대 ${s.worst.toFixed(1)}px · 상자 ${s.box}px)`, s.n > 40 && s.worst <= s.box * 0.05, `공격 칸 ${s.atk} · 최악 ${s.worstAt}`);
   await page.evaluate(() => document.querySelector(".titans-hero")?.scrollIntoView({ block: "center" }));
   await page.screenshot({ path: `art-gen/out/weapon-grip-${kind}.png` });
 }

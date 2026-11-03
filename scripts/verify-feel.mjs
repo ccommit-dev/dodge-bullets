@@ -31,7 +31,8 @@ const b1 = await osc();
 ok("버튼을 누르면 소리가 난다(오실레이터 +1 이상)", b1 > b0, `${b0} → ${b1}`);
 await sleep(500);
 // ── 2. 서랍 닫힘 ──
-const closing = await page.evaluate(async () => { document.querySelector(".hub-sheet-close")?.click(); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const s = document.querySelector(".hub-sheet"); return { has: !!s?.classList.contains("closing"), anim: s ? getComputedStyle(s).animationName : "" }; });
+// 닫힘 클래스(0.17초)가 붙는 순간을 잡는다 — 프레임 둘 뒤에 보면 부하에서 이미 끝나 있었다(verify-all · CPU_THROTTLE=4, 2026-11-03)
+const closing = await page.evaluate(async () => { const s = document.querySelector(".hub-sheet"); const seen = new Promise((res) => { const mo = new MutationObserver(() => { if (s?.classList.contains("closing")) { mo.disconnect(); res({ has: true, anim: getComputedStyle(s).animationName }); } }); if (s) mo.observe(s, { attributes: true, attributeFilter: ["class"] }); setTimeout(() => res({ has: false, anim: "" }), 3000); }); document.querySelector(".hub-sheet-close")?.click(); return seen; });
 ok("서랍 닫기 → 바로 사라지지 않고 내려가는 애니메이션", closing.has && /hub-sheet-down/.test(closing.anim), JSON.stringify(closing));
 await sleep(400);
 ok("0.17초 뒤 서랍이 닫히고 사냥터", await page.evaluate(() => !document.querySelector(".hub-sheet")));
