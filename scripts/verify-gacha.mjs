@@ -127,7 +127,7 @@ for (let k = 0; k < 30 && !(await prog()).partyIds.includes("ember"); k += 1) aw
 r = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
 p = await prog();
 // 2026-10-28 스테이지 해금 없음 — 개척 상한 밖 동료도 가지고 있으면 출전한다
-ok("출전 제한 없음: 개척 상한 밖 엠버도 편성된다", gateClicked && p.partyIds.includes("ember") && !/개척해야/.test(r), r || "(안내 없음)");
+ok("출전 제한 없음: 개척 상한 밖 엠버도 편성된다", gateClicked && p.partyIds.includes("ember") && !/개척해야/.test(r), `${r || "(안내 없음)"} · 눌림 ${gateClicked} · 편성 ${p.partyIds.join()} · 쪽 ${await page.evaluate(() => document.querySelector(".ally-pager")?.textContent ?? "없음")} · 카드 ${await page.evaluate(() => [...document.querySelectorAll(".ally-card")].map((c) => c.dataset.ally).join())}`);
 
 // ── 2. 스킬 탭: 장착 칸 묶음 · 등급은 윤곽선만(2026-10-28 2판, "등급별 내용 삭제 · 윤곽선으로만 · 장착 가독성") · 효과 수치 · 프리셋 · 시전 버프 칩 ──
 await clickText(".titans-tabs button", "스킬");

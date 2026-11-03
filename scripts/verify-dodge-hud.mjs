@@ -32,7 +32,7 @@ const progress = {
   expeditionChips: { focus: 3, barrage: 3, ember: 2, rime: 4, vitality: 2, edge: 1 },
   equippedChips: ["focus", "rime", null],
   expeditionSupplies: { draft: 1, primed: 0, insurance: 2 },
-  expeditionDaily: { day: new Date().toISOString().slice(0, 10), counts: { intercept: 44, epic: 0, clear: 1 }, claimed: [] },
+  expeditionDaily: { day: new Date().toLocaleDateString("sv-SE"),   /* 게임은 현지 날짜 — UTC 로 심으면 한국 자정~오전 9시에 실패했다 */ counts: { intercept: 44, epic: 0, clear: 1 }, claimed: [] },
   claimedRewards: ["dodge-tutorial"],
 };
 const titans = { gold: 40000, stage: 9, bestStage: 9, heroes: { mia: 8 }, lastActiveAt: now };
