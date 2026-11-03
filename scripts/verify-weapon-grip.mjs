@@ -136,7 +136,7 @@ ok("외형 장착: 손잡이가 손에", !!sk.grip && sk.grip.dist <= sk.grip.bo
 await page.evaluate(() => document.querySelector(".titans-hero")?.scrollIntoView({ block: "center" }));
 await page.screenshot({ path: "art-gen/out/weapon-grip-skin.png" });
 await clickText(".titans-bottom-nav button", "상점"); await sleep(700);
-await clickText(".titans-premium-tabs button, button", "외형"); await sleep(600);
+await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".premium-category-tabs button", "외형"); await sleep(600);
 const shop = await page.evaluate(() => ({ thumbs: [...document.querySelectorAll(".blade-product .weapon-skin-thumb")].map((i) => i.getAttribute("src")), names: [...document.querySelectorAll(".blade-product strong")].map((s) => s.textContent), drum: document.querySelectorAll(".blade-product .premium-weapon-thumb").length }));
 ok("상점 외형 3종: 썸네일 = 장착 무기(창) 그림 · 이름에 '북' 없음", shop.thumbs.length === 3 && shop.thumbs.every((s) => /skins\/blade-[a-z]+\/spear-\d\.png/.test(s ?? "")) && new Set(shop.thumbs).size === 3 && shop.drum === 0 && shop.names.every((n) => !/북/.test(n)), `${shop.thumbs.length}장 · ${shop.names.join(" / ")}`);
 // 비트 디펜스 판정 레일 상품 — 무기 외형과 소제목으로 갈리고, 이름 · 아이콘이 '북' 이 아니다 (2026-10-27 "황금 전진 북 · 공명의 전투 북 — 같은 이름 유의")
