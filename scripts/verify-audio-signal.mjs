@@ -70,7 +70,9 @@ ok("균형: 효과음 피크가 음악 RMS 의 1.5배 이상(묻히지 않음) �
   ok("음악을 꺼도 효과음은 그대로", sfxWithMusicOff.peak > 0.02, `피크 ${f(sfxWithMusicOff.peak)}`);
   await setVol("sfx", 0); await sleep(300); const s0 = pick(await measure(2500), false);
   ok("효과음 슬라이더 0: 실제 출력 무음", s0.peak < 0.002, `피크 ${f(s0.peak)}`);
-  await setVol("bgm", 1); await setVol("sfx", 1); await sleep(900); const back = await measure(2500);
+  await setVol("bgm", 1); await setVol("sfx", 1); await sleep(900); let back = await measure(2500);
+  // 재는 동안 타격이 없으면(스테이지 넘어가는 중) 효과음이 0 이다 — 전체 검사에서 한 번 이렇게 실패했다. 소리가 안 돌아온 것과 가르려고 두 번 더 잰다
+  for (let k = 0; k < 2 && pick(back, false).peak <= 0.02; k += 1) back = await measure(2500);
   ok("다시 올리면 둘 다 돌아온다", pick(back, true).rmsAvg > 0.005 && pick(back, false).peak > 0.02, `음악 ${f(pick(back, true).rmsAvg)} · 효과음 ${f(pick(back, false).peak)}`);
 }
 // ⑤ 비트 곡 — 파일이 -3.6 ~ -10 LUFS 로 크고 +5.9 dB 까지 넘었다. 재생 게인으로 맞춘 뒤 실제 출력이 깨지지 않고 곡끼리 비슷한지 · 음악 슬라이더가 먹는지

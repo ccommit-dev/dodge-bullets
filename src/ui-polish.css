@@ -1332,3 +1332,7 @@
 @media (prefers-reduced-motion: reduce) { .ally-star-aura.star-5 { animation: none; } }
 /* 아기 체형 펫 (2026-11-03) — 몬스터보다 그림이 작아 예전 크기로는 안 보였다 */
 .titans-hero .hero-pet { width: 60%; left: -38%; }
+/* 낮은 화면(360×640)은 커진 스킬 칸이 전장 알림과 12px 겹쳤다(inspect-mobile) — 알림을 스킬 칸 위로 올린다 */
+@media (max-height: 700px) {
+  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 72px !important; }
+}
