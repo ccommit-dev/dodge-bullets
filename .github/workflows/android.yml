@@ -72,7 +72,8 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        # 한 번 재시도 (2026-11-03) — 같은 커밋이 main 은 통과, feat 만 13초 만에 실패한 적이 있다(54cb25c). 코드 오류면 두 번째도 똑같이 실패한다
+        run: ./gradlew assembleDebug --no-daemon || { sleep 20; ./gradlew assembleDebug --no-daemon; }
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
