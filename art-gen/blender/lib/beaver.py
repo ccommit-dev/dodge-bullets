@@ -277,6 +277,10 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
                 if t > 0.8:
                     v.co.x = g.x + (v.co.x - g.x) * max(0.05, (1 - t) / 0.2)
             out.append(C.mesh_obj('blade', bm, steel, coll, outline=OUT * 0.6))
+    elif kind == 'hammer':   # 대장장이 · 거인 망치(2026-11-03) — 도끼보다 짧아 공격 칸 키가 덜 튄다
+        out.append(C.mesh_obj('grip', C.tube([g + Vector((0, 0, -0.06)), g + Vector((0, 0, 0.26))], 0.02, seg=10), wood, coll, outline=OUT * 0.6))
+        out.append(C.mesh_obj('hm_head', C.box(g + Vector((0, 0, 0.27)), (0.2, 0.1, 0.1), bevel=0.012), steel, coll, smooth=False, outline=OUT * 0.6))
+        out.append(C.mesh_obj('hm_band', C.box(g + Vector((0, 0, 0.27)), (0.045, 0.108, 0.108)), gold, coll, smooth=False, outline=OUT * 0.3))
     elif kind in ('spear', 'trident', 'shovel', 'lance'):
         out.append(C.mesh_obj('shaft', C.tube([g + Vector((0, 0, -0.2)), g + Vector((0, 0, 0.42))], 0.018, seg=12), wood, coll, outline=OUT * 0.6))
         tip = g + Vector((0, 0, 0.42))
@@ -327,7 +331,7 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
 
 # 2026-10-19 애니메이션 2판: 칼은 목록에 없어 기본 1.35 였다 — 왼손으로 적 쪽에 내려치면 칸 오른쪽을 넘거나(비버 전원 배율 0.394) 땅에 꽂혔다(+10~20px).
 # 칼 1.1 · 창 0.9 에 임팩트 112~120° 면 둘 다 안 넘는다(pose_lab 실측)
-WEAPON_SCALE = {'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 0.9, 'sword': 1.1, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
+WEAPON_SCALE = {'hammer': 1.2, 'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 0.9, 'sword': 1.1, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
 
 
 def _fit_body(o):

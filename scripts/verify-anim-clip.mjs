@@ -50,11 +50,13 @@ const PROBE = `(() => {
     return { left: x - (d.scrollLeft || 0), top: y - (d.scrollTop || 0), width: el.offsetWidth, height: el.offsetHeight };
   };
   /** 조상이 화면 밖으로 옮기는 연출(퇴장·등장) 중이면 자식의 잘림은 그 연출 탓이다 */
+  // 몬스터가 right 전환으로 걸어 들어오는 중도 등장 연출(monster-enter-right 와 같다) — 첫 타격 흔들림이 겹치면 전장 끝에서 15px 나간다(right -17~+1px, 2026-11-03 "동료 뽑기" 플레이크). 자리 잡은 뒤의 잘림은 그대로 잰다
   const movedByAncestor = (el, clip) => {
     let p = el.parentElement;
     while (p && p !== clip.parentElement) {
       const a = getComputedStyle(p).animationName;
       if (a !== "none" && IGNORE.some((x) => a.includes(x))) return true;
+      if (p.classList?.contains("titans-monster") && p.getAnimations().some((x) => x.transitionProperty === "right")) return true;
       p = p.parentElement;
     }
     return false;

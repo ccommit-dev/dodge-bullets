@@ -1,6 +1,6 @@
 """동료 장식 키트 (2026-11-03, 사용자: "캐릭터와 동료가 너무 특징이 없네 · 마저수정") — 새 동료 40명이 같은 모자 다섯 종에 색만 달라 먼 칸에서 갈리지 않았다.
 색이 아니라 실루엣으로 가른다: 머리(hat 새 종류 · over) · 얼굴(face) · 등(back) · 꼬리(tail_fx) · 허리(belt) · 몸 무늬(marks).
-칸을 넘으면 전원 배율이 깎이니(assemble-anim2 kB) 위는 z≈1.15, 옆은 |x|≈0.62 안에 둔다. 모두 뼈에 강체로 붙는다."""
+칸을 넘으면 전원 배율이 깎이니(assemble-anim2 kB) 위는 z≈1.15, 옆은 |x|≈0.62 안에 둔다. 탱커는 공격 3→4 칸 눌림이 커서 머리 위가 높으면 audit-anim2-motion 의 키 19% 를 넘는다(pom_z · horn_rise 로 낮춘다). 모두 뼈에 강체로 붙는다."""
 import math
 
 import bmesh
@@ -78,7 +78,7 @@ def hat_new(kind, cfg, coll):
     elif kind == 'beanie':   # 털실 모자 + 방울
         out.append(_shell(C.mesh_obj('beanie', _dome(HEAD_C + Vector((0, 0.01, 0.05)), (HEAD_R[0] * 1.05, HEAD_R[1] * 1.06, HEAD_R[2] * 1.02), cut_z=HEAD_C.z + 0.19), m1, coll, outline=OUT), 0.015))
         o('fold', C.torus(HEAD_C + Vector((0, 0.01, 0.2)), 0.277, 0.038, rot=Euler((math.radians(-4), 0, 0))), m2)
-        o('pom', C.ellipsoid(TOP + Vector((0, 0.01, 0.13)), (0.075, 0.075, 0.075), seg=12, rings=8), m2, OUT * 0.7)
+        o('pom', C.ellipsoid(TOP + Vector((0, 0.01, cfg.get('pom_z', 0.13))), (0.075, 0.075, 0.075), seg=12, rings=8), m2, OUT * 0.7)
     elif kind == 'headphones':
         pts = [Vector((math.cos(a) * 0.335, 0.0, HEAD_C.z + 0.05 + math.sin(a) * 0.325)) for a in [math.pi * k / 16 for k in range(17)]]
         o('hband', C.tube(pts, 0.03, seg=8))
@@ -221,7 +221,7 @@ def hat_new(kind, cfg, coll):
         o('hc_ring', C.tube([HEAD_C + Vector((0, 0.01, 0.195)), HEAD_C + Vector((0, 0.01, 0.285))], [0.25, 0.265], seg=14, caps=False), gold, OUT * 0.7)
         hm = _accent('hcm', col2, rough=0.4)
         for sx in (-1, 1):
-            out.append(_horn(f'hc_horn{sx}', HEAD_C + Vector((sx * 0.21, 0.01, 0.24)), sx, hm, coll, rise=0.28, out=0.2, r=0.062))
+            out.append(_horn(f'hc_horn{sx}', HEAD_C + Vector((sx * 0.21, 0.01, 0.24)), sx, hm, coll, rise=cfg.get('horn_rise', 0.28), out=0.2, r=0.062))
         o('hc_gem', C.ellipsoid(HEAD_C + Vector((0, -0.262, 0.255)), (0.04, 0.016, 0.042), seg=10, rings=6), _accent('hcg', col, rough=0.1, emit=col, es=1.4), OUT * 0.4)
     elif kind == 'sunburst':   # 머리 뒤 해살
         rm = _accent('ray', col, rough=0.3, emit=col, es=0.35)
