@@ -86,8 +86,8 @@ async function thumb(rowBuf, cell, id) {
 
 import { existsSync } from "node:fs";
 /** 생성 원화(scripts/place-art.mjs char)가 있으면 tint 대신 그 행을 쓴다 */
-// 동료 생성 원화 행은 public/…/authored, 스킨 3D 행(build-skin-frames.mjs)은 art-gen/skin-rows
-const authoredRow = (id) => [`public/titans/generated/allies/authored/${id}-row.png`, `art-gen/skin-rows/${id}-row.png`].find((p) => existsSync(p)) ?? null;
+// 동료 생성 원화 행은 art-gen/source/allies-authored (게임이 직접 읽지 않아 public 밖으로, 2026-11-03), 스킨 3D 행(build-skin-frames.mjs)은 art-gen/skin-rows
+const authoredRow = (id) => [`art-gen/source/allies-authored/${id}-row.png`, `art-gen/skin-rows/${id}-row.png`].find((p) => existsSync(p)) ?? null;
 
 async function buildAtlas(list, outFile) {
   const rows = [];

@@ -4835,7 +4835,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 
 /* ── 패키지 탭 묶음 머리글 (2026-10-08, 송사리 모델: 매일·주말 / 보석 / 패스·영구 / 1회 한정 / 외형) ── */
 .paid-group-head { margin: 10px 2px 4px; font: 700 13px/1.2 "Jua", sans-serif; color: var(--arc-ink, #3a2410); display: flex; align-items: baseline; gap: 6px; }
-.paid-group-head small { font-size: 11px; font-weight: 400; opacity: .7; }
+.paid-group-head small { font-size: 13px; font-weight: 400; opacity: .78; }
 .paid-group-head:first-child { margin-top: 2px; }
 .page-premium .titans-shop .paid-group-head { grid-column: 1 / -1; }
 

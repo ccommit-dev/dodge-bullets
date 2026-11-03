@@ -141,7 +141,7 @@ if (want("allies")) {
   // 기본 6명 아틀라스 — authored 행을 6줄로 (209 높이) → repack 이 239 로 늘린다
   const base = ["mia", "leon", "sera", "garen", "ari", "nox"];
   const rows = [];
-  for (const [i, id] of base.entries()) rows.push({ input: await sharp(`public/titans/generated/allies/authored/${id}-row.png`).resize(1254, 209, { fit: "fill" }).png().toBuffer(), left: 0, top: i * 209 });
+  for (const [i, id] of base.entries()) rows.push({ input: await sharp(`art-gen/source/allies-authored/${id}-row.png`).resize(1254, 209, { fit: "fill" }).png().toBuffer(), left: 0, top: i * 209 });
   await sharp({ create: { width: 1254, height: 209 * 6, channels: 4, background: alpha } }).composite(rows).png().toFile("public/titans/generated/allies/ally-animation-atlas-v1.png");
   console.log("base atlas 1254x1254");
   // 특수 아틀라스(정사각 셀 313.5, 4행: 0·1 미사용 · 2 mia_dark · 3 sera_light) — authored 행(가로 셀)을 정사각 셀에 아래 정렬로 옮긴다.
@@ -151,7 +151,7 @@ if (want("allies")) {
     const sm = await sharp(SP).metadata(); const cell = Math.floor(sm.height / 4), cw = Math.floor(sm.width / 4);
     const comps = [];
     for (const [row, id] of [[2, "mia_dark"], [3, "sera_light"]]) {
-      const rowFile = `public/titans/generated/allies/authored/${id}-row.png`;
+      const rowFile = `art-gen/source/allies-authored/${id}-row.png`;
       if (!existsSync(rowFile) || !ids.includes(id)) continue;
       const rm = await sharp(rowFile).metadata(); const fw = Math.floor(rm.width / 4);
       for (let c = 0; c < 4; c += 1) {

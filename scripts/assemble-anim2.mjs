@@ -117,7 +117,7 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     const cellOf = async (f) => sharp(blank(CW, CH)).composite(await cellOps(f, c.res, kB, 0, 0, CW, CH, CW / 2, CH * A.feet)).png().toBuffer();
     const idle0 = await cellOf(c.actions.idle[0]);
     const portrait = `public/titans/generated/allies/${id}.png`;
-    if (existsSync(portrait) || NEW_ALLY_KEYS.includes(id)) await sharp(idle0).trim().png().toFile(portrait);
+    if (existsSync(portrait)) await sharp(idle0).trim().png().toFile(portrait);
     const thumb = `public/titans/generated/allies/skins/${id}.png`;
     if (existsSync(thumb)) await sharp(idle0).resize(313, 239, { fit: "fill" }).png().toFile(thumb);
     const cells = [c.actions.idle[0], c.actions.attack[1], c.actions.attack[4], c.actions.hit[0]];
