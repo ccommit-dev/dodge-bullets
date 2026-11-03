@@ -129,8 +129,8 @@ for (const scr of SCREENS) {
   const moves = []; let atkSamples = 0;
   for (const e of full.filter((x) => settledOf(x).length >= 6)) {
     // 마지막 두 표본은 뺀다 — 쓰러지는 첫 칸(처치 모션)이 frame-defeat 클래스보다 한 박자 먼저 그려질 때가 있다
-    // 처음 세 표본(≈0.33초)도 뺀다 — 도착 순간 겹침 정리(--sep-dx, TitansGame)를 한 번 끝까지 풀어 0.32초 전환으로 옮긴 뒤 굳힌다
-    const st = settledOf(e).slice(3, -2); atkSamples += st.filter((s) => s.atkNow || s.hitNow).length;
+    // 처음 네 표본(≈0.44초)도 뺀다 — 도착 순간 겹침 정리(--sep-dx, TitansGame 110ms 틱 + 0.2초 전환)를 끝까지 풀어 옮긴 뒤 굳힌다. 세 표본이면 틱이 밀릴 때 끝자락 3px 이 잡혔다
+    const st = settledOf(e).slice(4, -2); atkSamples += st.filter((s) => s.atkNow || s.hitNow).length;
     const d = (get) => Math.max(span(st.map((s) => get(s)?.cx)), span(st.map((s) => get(s)?.cy)));
     // 몬스터 자리는 찌그러짐(.monster-squash, 발 붙인 scale) 바깥 상자로 — 맞을 때 키가 눌려 그림 가운데가 내려가는 건 자리 이동이 아니다 (2026-10-21)
     moves.push([d((s) => s.hero), d((s) => s.monPlace ?? s.mon), Math.max(...st[0].allies.map((a0) => d((s) => s.allies.find((x) => x.id === a0.id)?.body)))]);
@@ -144,7 +144,9 @@ for (const scr of SCREENS) {
   // ── E: 이펙트 자리 ── (교전 중 표본만 — 걷는 중 · 쓰러지는 중엔 몸이 움직인다)
   const fxAll = full.flatMap((e) => settledOf(e).flatMap((s) => s.fx));
   for (const k of ["hit", "slash", "ally", "float"]) {
-    const list = fxAll.filter((f) => f.kind === k), bad = list.filter((f) => !f.ok);
+    // 같은 이펙트가 연속 표본에 여러 번 찍힌다(175,231 · 175,228) — 8px 칸으로 묶어 한 번만 센다. 표본 60개 안팎에서 한 이펙트가 5% 를 넘겼다(2026-11-03)
+    const once = (arr) => [...new Map(arr.map((x) => [`${Math.round(x.at[0] / 8)},${Math.round(x.at[1] / 8)},${x.ok}`, x])).values()];
+    const list = once(fxAll.filter((f) => f.kind === k)), bad = list.filter((f) => !f.ok);
     const where = { hit: "몬스터 몸(±12px)", slash: "주인공 몸(±40px)", ally: "동료 몸(±30px)", float: "몬스터 위(±50px)" }[k];
     ok(`[${scr.name}] 이펙트 ${k} 가 ${where} 에 — 표본 3개 이상 · 벗어난 것 5% 이하`, list.length >= 3 && bad.length <= list.length * 0.05, `${list.length}개 중 ${bad.length}개 벗어남 ${bad.slice(0, 2).map((b) => b.at.join(",")).join(" ")}`);
   }

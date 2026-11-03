@@ -654,11 +654,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               // 칸이 다르면 지금 자리와 상관없이 왼쪽 무리(L)는 왼쪽, 앞줄(R)은 몬스터 쪽 — 큰 몬스터 앞에선 앞줄이 당겨져 L 이 R 보다 오른쪽에 서기도 해, 자리 기준으로 밀면 뒤바뀐 채 양쪽 경계까지 벌어져 포갰다(luna +54 · bronn −16, 45~81%)
               const cellA = a.el.dataset.cell, cellB = b.el.dataset.cell;
               const away = cellA && cellB && cellA !== cellB ? (cellB === "L" ? -1 : 1) : br.left + br.width / 2 < ar.left + ar.width / 2 ? -1 : 1;
-              // 앞 동료는 주인공 쪽으로는 비켜서지 않는다 — 세로로 겹치는 주인공 쪽이면 뒤 동료가 다 민다(variants45 에서 mia 가 +12px 주인공 쪽으로 가 mia × 주인공 32~36%)
-              let next = clampDx(a, a.dx - away * (push / 2));
+              // 쌍의 어느 쪽도 주인공 쪽으로는 비켜서지 않는다 — 세로로 겹치는 주인공 쪽이면 상대가 다 민다(mia +12px · bronn 이 주인공과 20~36%, 앞 동료만 막았을 땐 뒤 동료가 밀렸다)
               const heroBox = items[0] && items[0].el === hero ? rectOf(items[0]) : null;
-              if (heroBox && yOverlap(heroBox, ar) > 0 && Math.sign(next - a.dx) === Math.sign((heroBox.left + heroBox.right) / 2 - (ar.left + ar.right) / 2)) next = a.dx;
-              dx += away * (push - Math.abs(next - a.dx));
+              const towardHero = (box: Box, dir: number) => !!heroBox && yOverlap(heroBox, box) > 0 && dir === Math.sign((heroBox.left + heroBox.right) / 2 - (box.left + box.right) / 2);
+              const aStays = towardHero(ar, -away), bStays = towardHero(br, away);
+              const next = aStays ? a.dx : clampDx(a, a.dx - away * (bStays ? push : push / 2));
+              if (!bStays) dx += away * (push - Math.abs(next - a.dx));
               a.dx = next;
               pushed = true;
             }
