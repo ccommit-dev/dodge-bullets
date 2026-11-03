@@ -8,6 +8,24 @@ export function loadSoundEnabled(): boolean {
   }
 }
 
+/** 음량 (2026-11-03) — 배경 음악 · 효과음 따로, 0~1. 1 이 지금까지의 크기. 바꾸면 "dodge-volume-change" */
+export type VolumeKind = "bgm" | "sfx";
+const volumeKey = (kind: VolumeKind) => `dodge-bullets:volume:${kind}`;
+export function loadVolume(kind: VolumeKind): number {
+  try {
+    const raw = localStorage.getItem(volumeKey(kind));
+    if (raw === null) return 1;
+    const v = Number(raw);
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  } catch {
+    return 1;
+  }
+}
+export function saveVolume(kind: VolumeKind, value: number): void {
+  try { localStorage.setItem(volumeKey(kind), String(Math.max(0, Math.min(1, value)))); } catch { /* 저장소를 못 쓰는 환경 */ }
+  try { window.dispatchEvent(new Event("dodge-volume-change")); } catch { /* 창이 없는 환경(노드 검사) */ }
+}
+
 export function saveSoundEnabled(enabled: boolean): void {
   try {
     localStorage.setItem("dodge-bullets:soundEnabled", enabled ? "1" : "0");
@@ -101,8 +119,9 @@ export function createSoundController(initialEnabled = loadSoundEnabled()): Soun
       if (!AC) return;
       try { ctx = new AC(); } catch { ctx = null; return; }
       master = ctx.createGain();
-      master.gain.value = 1;
+      master.gain.value = loadVolume("sfx");
       master.connect(ctx.destination);
+      window.addEventListener("dodge-volume-change", () => { if (master && enabled) master.gain.value = loadVolume("sfx"); });
     }
     if (ctx.state === "suspended") {
       await ctx.resume().catch(() => {});
@@ -142,7 +161,7 @@ export function createSoundController(initialEnabled = loadSoundEnabled()): Soun
         stopBgmInternal();
         if (master) master.gain.value = 0;
       } else if (unlocked && !suspendedByBackground) {
-        if (master) master.gain.value = 1;
+        if (master) master.gain.value = loadVolume("sfx");
       }
     },
 

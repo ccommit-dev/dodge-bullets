@@ -4,12 +4,17 @@
  * `game/sound.ts`의 SoundController는 성문 방어 전용 인스턴스라 다른 화면에서 쓸 수 없다.
  * 여기서는 필요할 때만 AudioContext를 만들고, 토글 상태는 같은 localStorage 키를 공유한다.
  */
-import { loadSoundEnabled } from "../game/sound";
+import { loadSoundEnabled, loadVolume } from "../game/sound";
 
 type Note = { freq: number; at: number; dur: number; type?: OscillatorType; gain?: number };
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+const SFX_LEVEL = 0.9;
+if (typeof window !== "undefined") {
+  window.addEventListener("dodge-volume-change", () => { if (master) master.gain.value = SFX_LEVEL * loadVolume("sfx"); });
+  if (import.meta.env.DEV) (window as unknown as { __sfxLevel?: () => number | null }).__sfxLevel = () => master?.gain.value ?? null;
+}
 
 function context(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -21,7 +26,7 @@ function context(): AudioContext | null {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.9;
+    master.gain.value = SFX_LEVEL * loadVolume("sfx");
     master.connect(ctx.destination);
   } catch {
     return null;

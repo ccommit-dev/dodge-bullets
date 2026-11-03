@@ -10,7 +10,7 @@
  * 확실한 제스처) 다음 터치에서 다시 시도하고, 곡이 필요 없는 화면에서 첫 터치가 와도 무음으로 한 번 틀어 요소를 풀어 둔다.
  */
 import { assetUrl } from "../asset";
-import { loadSoundEnabled } from "../game/sound";
+import { loadSoundEnabled, loadVolume } from "../game/sound";
 import { subscribeAppVisibility } from "./appLifecycle";
 
 export type BgmScene = "hunt" | "dodge" | "forge" | "menu" | "off";
@@ -32,6 +32,8 @@ export const HUNT_MOOD_TRACK: Record<Exclude<HuntMood, "field">, string> = {
 };
 let huntMood: HuntMood = "field";
 export const BGM_VOLUME = 0.32;
+/** 설정 슬라이더(2026-11-03)까지 곱한 목표 크기 */
+const bgmTarget = () => BGM_VOLUME * loadVolume("bgm");
 
 let audio: HTMLAudioElement | null = null;
 let scene: BgmScene = "off";
@@ -109,7 +111,7 @@ function apply(): void {
   const el = ensureAudio();
   if (ctx && ctx.state !== "running") void ctx.resume().catch(() => undefined);
   const play = () => {
-    el.play().then(() => { primed = true; fadeTo(BGM_VOLUME, 600); }).catch(() => { if (!primed) unlocked = false; });
+    el.play().then(() => { primed = true; fadeTo(bgmTarget(), 600); }).catch(() => { if (!primed) unlocked = false; });
   };
   if (el.dataset.src !== url) {
     // 곡마다 듣던 자리를 기억한다 (2026-11-02) — 대장전 · 상점을 다녀올 때마다 사냥터 곡이 처음부터 다시 나왔다
@@ -124,8 +126,8 @@ function apply(): void {
     if (!el.paused && level > 0.01) fadeTo(0, 600, swap); else swap();
   } else if (el.paused) {
     play();
-  } else if (level < BGM_VOLUME - 0.01) {
-    fadeTo(BGM_VOLUME, 400);
+  } else if (Math.abs(level - bgmTarget()) > 0.01) {
+    fadeTo(bgmTarget(), 400);
   }
 }
 
@@ -165,6 +167,7 @@ function start(): void {
   // 아이폰은 pointerdown 을 재생 제스처로 안 쳐 줄 때가 있다 — touchend · click 도 받고, 성공할 때까지 매 터치 다시 시도한다
   for (const type of ["pointerdown", "touchend", "click", "keydown"]) window.addEventListener(type, gesture, true);
   window.addEventListener("dodge-sound-change", apply);
+  window.addEventListener("dodge-volume-change", () => { if (audio && !audio.paused) fadeTo(bgmTarget(), 100); });
   subscribeAppVisibility((hidden) => { appHidden = hidden; apply(); });
 }
 

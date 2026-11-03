@@ -1242,3 +1242,9 @@
 /* 상점 외형 탭 소제목 — 무기 외형 · 비트 디펜스 꾸미기 · 무기 이펙트를 가른다 (2026-10-27, "황금 전진 북 · 공명의 전투 북 — 같은 이름 유의") */
 .titans-shop .premium-subhead, .premium-subhead { grid-column: 1 / -1; margin: 10px 2px 2px; font-size: 14px; font-weight: 900; color: var(--flat-ink, #3b2415); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .premium-subhead small { font-size: 13px; font-weight: 700; color: #7a5a3a; }
+
+/* 음량 슬라이더 (2026-11-03 ui/VolumeSliders) — 손가락으로 잡기 쉽게 줄 높이 36px */
+.volume-sliders { display: grid; gap: 2px; padding: 2px 12px 8px; }
+.volume-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) 30px; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; font-weight: 800; color: #3a2410; }
+.volume-row input[type="range"] { width: 100%; height: 28px; margin: 0; accent-color: #b7791f; touch-action: none; }
+.volume-row b { color: #3a2410; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }

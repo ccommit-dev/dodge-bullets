@@ -109,6 +109,7 @@ import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import { LockIcon } from "./ui/LockIcon";
+import { VolumeSliders } from "./ui/VolumeSliders";
 import {
   computeClearReward,
   loadCoins,
@@ -1734,6 +1735,7 @@ function App() {
                   <span>사운드</span>
                   <b>{soundOn ? "ON" : "OFF"}</b>
                 </button>
+                {soundOn && <VolumeSliders />}
                 <button
                   type="button"
                   role="menuitem"
