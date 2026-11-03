@@ -181,7 +181,7 @@ await seed({ version: 5, onboardingStep: 4, level: 30, redGems: 3000, sharedCoin
   { stage: 12, bestStage: 12, gold: 100000, heroes: { mia: 9, leon: 6 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 }, lastActiveAt: now });
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
-await clickText(".hub-sheet-switch button", "동료 뽑기");
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료");
 // 고정 대기 대신 뽑기 단추가 나올 때까지 · 누른 뒤 소환진이 뜰 때까지(최대 2초) — 부하에서 단추가 늦게 그려져 클릭이 빠졌다(2026-10-28)
 await page.waitForSelector(".gacha-page-actions button:nth-child(2)", { timeout: 4000 }).catch(() => null);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());

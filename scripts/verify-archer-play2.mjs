@@ -80,7 +80,7 @@ const allHeroes = Object.fromEntries(heroIds.map((id) => [id, 10]));
 await seed(baseProgress({ redGems: 2000, allyShards: {}, allyStars: {} }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: allHeroes, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
-await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(500);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await sleep(2400);
 const dup = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, dups: document.querySelectorAll(".gacha-card.dup").length, prog: [...document.querySelectorAll(".gacha-card .dup-progress")].map((e) => e.getAttribute("title") ?? ""), art: [...document.querySelectorAll(".gacha-card.dup")].map((c) => { const a = c.querySelector(".gacha-art").getBoundingClientRect(), d = c.querySelector(".dup-progress").getBoundingClientRect(); return d.height / a.height; }), bars: [...document.querySelectorAll(".gacha-card .dup-bar > i")].map((e) => e.style.width) }));
@@ -104,7 +104,7 @@ ok("환생 미리 보기: 결정 +18 · 시작 스테이지 · 출발 골드", /
 await seed(baseProgress({ redGems: 2000, gachaPulls: 0, gachaPity: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 10, leon: 10 }, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
-await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(500);
 const badge = await page.evaluate(() => document.querySelector(".gacha-page-actions .first-ten-badge")?.textContent ?? "");
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 // 고정 2.4초 대신 카드 10장이 깔릴 때까지(최대 10초) — 전체 검사 부하에서 빈 결과([])를 읽었다(2026-10-28)

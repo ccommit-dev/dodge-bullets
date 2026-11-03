@@ -124,7 +124,7 @@ import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { hubCards } from "./titans/hubCards";
 import { lowFxOn } from "./ui/perfMode";
-import { CHEST_POINTS_FOR_CHEST, CHEST_TABLE, grantChest, openChest } from "./economy/chests";
+import { CHEST_POINTS_FOR_CHEST, CHEST_POINTS_PER_OPEN, CHEST_TABLE, grantChest, openChest } from "./economy/chests";
 import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
   LOCK_HINT,
@@ -174,7 +174,7 @@ type TitansGameProps = {
 
 /** 사냥 저장의 숙련 → 파츠 숙련표 (2026-10-14) */
 const gearMasteryOf = (t: TitansSave["equipmentTraining"]) => ({ helmet: t.helmetMastery ?? 0, armor: t.armorMastery ?? 0, gloves: t.glovesMastery ?? 0, boots: t.bootsMastery ?? 0 });
-type ShopTab = "sword" | "quest" | "relic" | "hub" | "expedition" | "heroes" | "skills" | "premium" | "gacha" | "event-shop" | "event-shop2";
+type ShopTab = "sword" | "quest" | "relic" | "hub" | "expedition" | "heroes" | "skills" | "premium" | "event-shop" | "event-shop2";
 /** 동료 도감 한 쪽 장 수 — 폰 세로에서 스크롤 없이 보이는 양 (2026-10-08) */
 /**
  * 두 무리 깊이(전장 높이 %) — 2026-10-20 "땅은 그대로 두고 더 넓게 분산".
@@ -207,13 +207,12 @@ const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: str
   // 모험 허브 (2026-10-13, docs/FOCUS_CAPYGO P0): 콘텐츠·모험 팝업 둘을 한 화면으로 — 카드 6장 + 루틴 줄
   hub: { kicker: "ADVENTURE", title: "모험", desc: "오늘 할 수 있는 콘텐츠와 남은 횟수 · 빨간 점은 지금 보상이 남은 것" },
   expedition: { kicker: "EXPEDITION", title: "파견", desc: "벤치 동료를 보내 두면 시간이 지난 뒤 조각·강화석을 들고 돌아옵니다." },
-  heroes: { kicker: "ALLY ARCHIVE", title: "동료 도감", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
-  gacha: { kicker: "ALLY RECRUIT", title: "동료 뽑기", desc: "지역 픽업 동료를 소환하고 천장 진행도를 확인하세요." },
+  heroes: { kicker: "ALLY ARCHIVE", title: "동료", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
   premium: { kicker: "PREMIUM SHOP", title: "상점", desc: "재화, 성장 패키지, 동료와 외형 상품을 확인하세요." },
   "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
   "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
 };
-type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "title" | "weapon" | "pet";
+type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet";
 /**
  * 상점 탭 합치기 (2026-11-03, 사용자: "유저 입장에서 난잡하지 않게 탭을 머지해서 가독성이 딱 좋게") — 예전엔 위 3칸(상점 · 이벤트 · 특별) 아래에 8칸(재화 ~ 외형)이
  * 두 줄로 있어 한 화면에 탭이 11개였다. 이제 시트 머리 5칸 하나로 고르고, 작은 아래 줄은 종류가 나뉘는 뽑기 · 꾸미기에만 둔다. 특별 상품은 패키지 칸 아래로
@@ -221,10 +220,10 @@ type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "ti
 type ShopGroup = "currency" | "package" | "draw" | "style" | "event";
 const SHOP_GROUPS: readonly { id: ShopGroup; label: string }[] = [{ id: "currency", label: "재화" }, { id: "package", label: "패키지" }, { id: "draw", label: "뽑기" }, { id: "style", label: "꾸미기" }, { id: "event", label: "이벤트" }];
 const SHOP_SUBTABS: Partial<Record<ShopGroup, readonly (readonly [PremiumCategory, string])[]>> = {
-  draw: [["relic", "유물"], ["skill", "스킬"], ["ally", "동료"]],
+  draw: [["relic", "유물"], ["skill", "스킬"], ["ally", "동료"], ["chest", "상자"]],   // 동료 뽑기 · 비버 상자도 여기 하나로 (2026-11-03, 사용자: "뽑기는 상점탭에만 일원화")
   style: [["pet", "펫"], ["title", "칭호"], ["weapon", "외형"]],
 };
-const shopGroupOf = (c: PremiumCategory): ShopGroup => (c === "currency" || c === "package" ? c : c === "relic" || c === "skill" || c === "ally" ? "draw" : "style");
+const shopGroupOf = (c: PremiumCategory): ShopGroup => (c === "currency" || c === "package" ? c : c === "relic" || c === "skill" || c === "ally" || c === "chest" ? "draw" : "style");
 /**
  * 상점 카드 화면 문구 (2026-10-26 사용자: "글이 너무 길다") — 상품 데이터(productCatalog)의 설명은 스토어 등록 CSV 에도 쓰여 그대로 두고,
  * 카드에선 한 줄 설명(blurb) + 짧은 효과 칩(lines)만 보인다. 없는 상품은 원래 설명 · 내용 그대로
@@ -3251,7 +3250,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       ))}
     </div>
   );
-  const huntMood: HuntMood = boss ? "boss" : tab === "premium" || tab === "event-shop" || tab === "event-shop2" || tab === "gacha" ? "shop" : save.stage >= 11 ? "late" : "field";
+  const huntMood: HuntMood = boss ? "boss" : tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "shop" : save.stage >= 11 ? "late" : "field";
   useEffect(() => { setHuntBgm(huntMood); }, [huntMood]);
   useEffect(() => () => setHuntBgm("field"), []);
   const monsterRanged = kind === "dragon" || (boss && (area.id === "volcano" || area.id === "abyss"));
@@ -3307,20 +3306,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 뽑기 레벨(누적 뽑기 수)이 등급 확률을 정한다 (2026-10-27 · titans/summonLevel.ts)
   const summonLv = summonLevel(character.gachaPulls);
   const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea, Date.now(), summonLv), [save.stage, character.pioneeredArea, summonLv]);
+  /** 동료 뽑기는 상점 뽑기 → 동료 칸 (2026-11-03) — 동료 탭의 뽑기 화면을 옮겼다 */
+  const allyDrawOpen = tab === "premium" && premiumCategory === "ally";
+  const openAllyDraw = () => { setPremiumCategory("ally"); setTab("premium"); };
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
   useEffect(() => {
-    if (tab !== "gacha" || gacha.rotationPool <= 2) return;
+    if (!allyDrawOpen || gacha.rotationPool <= 2) return;
     // retention-6: 픽업 교체 24시간 전 알림 — 뽑기 페이지를 본 유저에게만
     const rotationEndMs = Date.now() + gacha.rotationDaysLeft * 86400000;
     void scheduleLocalNotification(NOTIFY_ID.pickupRotation, "픽업 동료 교체 D-1", "내일 픽업이 바뀝니다. 지금 픽업 동료의 스킨은 20% 할인 중이에요.", new Date(rotationEndMs - 86400000));
-  }, [tab, gacha.rotationPool, gacha.rotationDaysLeft]);
+  }, [allyDrawOpen, gacha.rotationPool, gacha.rotationDaysLeft]);
   useEffect(() => {
-    if (tab !== "gacha" || gacha.rotationPool <= 2 || gacha.rotationDaysLeft > 2) return;
+    if (!allyDrawOpen || gacha.rotationPool <= 2 || gacha.rotationDaysLeft > 2) return;
     if (!paidOffersUnlocked(characterRef.current)) return;
     const rotationEnd = Date.now() + gacha.rotationDaysLeft * 86400000;
     void updateCharacterProgress(userHash, (current) => openMomentOffer(current, "pickup", Date.now(), rotationEnd)).then((next) => setCharacter(next));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, gacha.rotationPool, gacha.rotationDaysLeft, userHash]);
+  }, [allyDrawOpen, gacha.rotationPool, gacha.rotationDaysLeft, userHash]);
 
   const expeditionsDone = character.expeditions.filter((e) => e.endsAt <= Date.now()).length;
 
@@ -3390,6 +3392,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const runAdvice = (a: AdviceAction) => {
     setAdviceOpen(false);
     if (a.kind === "content") onOpenContent(a.content);
+    else if (a.tab === "gacha") openAllyDraw();
     else setTab(a.tab);
   };
   const adviceCost = (a: PurchaseAdvice) => a.cost.filter((c) => c.amount > 0).map((c) => `${CURRENCY_LABEL[c.currency]} ${formatWallet(c.amount)}`).join(" · ");
@@ -4047,12 +4050,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {MANAGEMENT_PAGE_COPY[tab] && (
         <header className="hub-sheet-head">
           {/* 제목이 바로 옆 전환 탭과 같은 말이라 빼고 전환 탭이 제목 역할을 한다 (동료 도감 / 상점 — 2026-09-18) */}
-          {(tab === "heroes" || tab === "gacha") && (
-            <nav className="hub-sheet-switch" aria-label="동료 메뉴">
-              <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => setTab("heroes")}>동료 도감</button>
-              <button type="button" className={tab === "gacha" ? "on" : ""} onClick={() => setTab("gacha")}>동료 뽑기</button>
-            </nav>
-          )}
+          {tab === "heroes" && <strong className="hub-sheet-title">동료</strong>}
           {tab === "expedition" && (
             <nav className="hub-sheet-switch" aria-label="파견 메뉴">
               <button type="button" onClick={() => setTab("hub")}>모험</button>
@@ -4080,7 +4078,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </header>
         )}
         {/* 보석·골드를 쓰는 시트에는 지갑 줄 — 시트가 머리의 보석 칩을 가렸다 (2026-10-06) */}
-        {(tab === "premium" || tab === "event-shop" || tab === "event-shop2" || tab === "gacha") && (
+        {(tab === "premium" || tab === "event-shop" || tab === "event-shop2") && (
           <WalletBar className="hub-sheet-wallet" testGems={qaGemsEnabled()} items={[
             { kind: "gem", amount: redGems },
             { kind: "gold", amount: save.gold, label: "사냥터 골드" },
@@ -4198,25 +4196,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </button>
               ))}
               <button type="button" className="season-nav" onClick={() => onOpenEvents?.("season")}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스 {seasonIndex(nowTick)}</b><small>티어 {seasonTier(character.seasonPass.xp)} · {seasonDaysLeft(nowTick)}일 남음</small></span></button>
-            </div>
-            {/* 비버 상자 줄 (economy/chests, P2): 성벽 10층 · 균열 3회 · 10연에서 오고, 열면 포인트 → 100점에 상자 1 */}
-            <div className="hub-chests" data-chests={character.chests}>
-              <img className="nav-icon-svg" src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
-              <span>
-                <b>비버 상자 {character.chests}개</b>
-                <small>포인트 {character.chestPoints}/{CHEST_POINTS_FOR_CHEST} · {CHEST_TABLE.map((d) => `${d.label.split(" (")[0]} ${d.percent}%`).join(" · ")}</small>
-              </span>
-              <button type="button" className="hub-chest-open" disabled={character.chests <= 0} onClick={() => {
-                sfxIdleClaim();
-                void updateCharacterProgress(userHash, (current) => openChest(current, Math.random, () => randomOwnedAlly(saveRef.current.heroes, Math.random, current.partyIds)).progress).then((next) => {
-                  const opened = next.chestsOpened - character.chestsOpened;
-                  if (opened > 0) {
-                    const gotMat = next.enhancementMaterials - character.enhancementMaterials, gotSeal = next.expeditionSeals - character.expeditionSeals;
-                    flash(gotMat > 0 ? `상자 · 강화석 +${gotMat}` : gotSeal > 0 ? `상자 · 인장 +${gotSeal}` : "상자 · 동료 조각 +3");
-                  }
-                  setCharacter(next);
-                });
-              }}>{character.chests > 0 ? "열기" : "없음"}</button>
             </div>
             {/* 카드 6장 (titans/hubCards): 남은 횟수 · 오늘 재화 · 빨간 점(최대 3) */}
             <div className="hub-cards nav-popup-grid">
@@ -4413,65 +4392,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </p>
             )}
           </article>
-        )}
-        {tab === "gacha" && (
-          <section className="gacha-stage-page" aria-label="동료 뽑기">
-            {/* 자리표시자 마감: 배지 = 픽업 최고 등급, 제목 = 지역·픽업 이름, 게이지 = 천장 진행도(gachaPity/60) */}
-            <div className="gacha-stage-hero">
-              {gacha.pickups.length > 0 && (() => {
-                const best = gacha.pickups.map((id) => ALLY_RARITY[id]).sort((a, b) => TIERS.indexOf(b) - TIERS.indexOf(a))[0];
-                return <span className="gacha-rarity-badge" style={{ background: `linear-gradient(135deg, ${RARITY_COLOR[best]}, #ec4899)` }}>{best} 픽업</span>;
-              })()}
-              <div className="gacha-pickup-showcase">
-                {gacha.pickups.slice(0, 2).map((id) => <AllyArt key={id} id={id} />)}
-              </div>
-              <div>
-                <small>{area.name.toUpperCase()} · PICK UP{gacha.rotationPool > 2 ? ` · 회전까지 ${gacha.rotationDaysLeft}일` : ""}</small>
-                <h2>{gacha.pickups.length ? gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") : "다음 지역 픽업 준비 중"}</h2>
-                <p>{gacha.pickups.length ? `픽업 확률 2배(같은 등급 안) · 전설 이상 ${gacha.pickups.length}명 · ${gacha.rotationDaysLeft}일마다 교대` : "픽업 준비 중"} · 10회 소환 시 SR 이상 1명 보장</p>
-              </div>
-            </div>
-            {(() => {
-              const sp = summonLevelProgress(character.gachaPulls);
-              // 다음 레벨 확률도 지금 풀(개척 지역)로 — 기본표(tierRates)를 그대로 보이면 지역에 전설이 없을 때 받을 수 없는 확률을 공시하게 된다
-              const nextBand = sp.to !== null ? gachaPool(save.stage, character.pioneeredArea, Date.now(), sp.level + 1).bandRate : null;
-              const topNow = gacha.bandRate.SSR + gacha.bandRate.UR + gacha.bandRate.LR;
-              const topNext = nextBand ? nextBand.SSR + nextBand.UR + nextBand.LR : topNow;
-              return (
-                <>
-                  <div className="gacha-level summon-level">
-                    <b>뽑기 Lv.{sp.level}</b>
-                    <i><em style={{ width: `${sp.to === null ? 100 : Math.min(100, ((character.gachaPulls - sp.from) / (sp.to - sp.from)) * 100)}%` }} /></i>
-                    <span>{sp.to === null ? "최고 레벨" : topNext <= 0 ? `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 이 지역엔 전설 없음` : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 이상 ${(topNow * 100).toFixed(1)}% → ${(topNext * 100).toFixed(1)}%`}</span>
-                  </div>
-                  <ul className="summon-tier-rates" aria-label="지금 등급 확률">
-                    {TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{gacha.bandRate[t] > 0 ? `${(gacha.bandRate[t] * 100).toFixed(gacha.bandRate[t] < 0.01 ? 2 : 1)}%` : "—"}</small></li>)}
-                  </ul>
-                </>
-              );
-            })()}
-            <div className="gacha-level">
-              <b>천장 {Math.min(GACHA.pityLimit, character.gachaPity)}/{GACHA.pityLimit}</b>
-              <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
-              <span>{gacha.entries.some((e) => TIER_RANK[e.rarity] >= TIER_RANK.SSR) ? "전설 이상" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
-            </div>
-            {/* 초월 천장 — 초반 지역에서도 쌓인다. 풀에 초월이 없으면 확정은 초월 지역(FIRST_LR_STAGE~)에서 */}
-            <div className="gacha-level gacha-lr-pity">
-              <b>초월 천장 {character.gachaLrPity}/{GACHA.lrPityLimit}</b>
-              <i><em style={{ width: `${Math.min(100, (character.gachaLrPity / GACHA.lrPityLimit) * 100)}%` }} /></i>
-              <span>{gacha.entries.some((e) => e.rarity === "LR")
-                ? `초월 확정까지 ${Math.max(1, GACHA.lrPityLimit - character.gachaLrPity)}회`
-                : character.gachaLrPity >= GACHA.lrPityLimit - 1
-                  ? `가득 참 · STAGE ${FIRST_LR_STAGE} 지역 첫 소환에 초월 확정`
-                  : `쌓는 중 · 초월은 STAGE ${FIRST_LR_STAGE} 지역부터`}</span>
-            </div>
-            {momentOfferCard}
-            <div className="gacha-page-actions">
-              <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
-              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small>{character.gachaPulls === 0 && <em className="first-ten-badge">첫 10연 전설 확정</em>}</button>
-              <button type="button" onClick={() => setShowGachaRates(true)}><b>확률 정보</b><small>등급별 확률 보기</small></button>
-            </div>
-          </section>
         )}
         {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`} data-roster-count={HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
           {/* 머리줄(도감 N명 · 등급별 확률 칩)을 걷었다(2026-11-03) — 칩이 단추처럼 보이는데 눌러도 아무 일이 없었다. 등급 확률은 동료 뽑기 칸 · 확률 공시에 그대로 */}
@@ -4705,6 +4625,89 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <nav className="premium-category-tabs shop-sub-tabs" aria-label="상점 카테고리">
                 {SHOP_SUBTABS[shopGroupOf(premiumCategory)]!.map(([id, label]) => <button key={id} type="button" className={premiumCategory === id ? "on" : ""} onClick={() => setPremiumCategory(id)}>{label}</button>)}
               </nav>
+            )}
+            {premiumCategory === "ally" && (
+          <section className="gacha-stage-page" aria-label="동료 뽑기">
+            {/* 자리표시자 마감: 배지 = 픽업 최고 등급, 제목 = 지역·픽업 이름, 게이지 = 천장 진행도(gachaPity/60) */}
+            <div className="gacha-stage-hero">
+              {gacha.pickups.length > 0 && (() => {
+                const best = gacha.pickups.map((id) => ALLY_RARITY[id]).sort((a, b) => TIERS.indexOf(b) - TIERS.indexOf(a))[0];
+                return <span className="gacha-rarity-badge" style={{ background: `linear-gradient(135deg, ${RARITY_COLOR[best]}, #ec4899)` }}>{best} 픽업</span>;
+              })()}
+              <div className="gacha-pickup-showcase">
+                {gacha.pickups.slice(0, 2).map((id) => <AllyArt key={id} id={id} />)}
+              </div>
+              <div>
+                <small>{area.name.toUpperCase()} · PICK UP{gacha.rotationPool > 2 ? ` · 회전까지 ${gacha.rotationDaysLeft}일` : ""}</small>
+                <h2>{gacha.pickups.length ? gacha.pickups.map((id) => HEROES.find((h) => h.id === id)?.name).join(" · ") : "다음 지역 픽업 준비 중"}</h2>
+                <p>{gacha.pickups.length ? `픽업 확률 2배(같은 등급 안) · 전설 이상 ${gacha.pickups.length}명 · ${gacha.rotationDaysLeft}일마다 교대` : "픽업 준비 중"} · 10회 소환 시 SR 이상 1명 보장</p>
+              </div>
+            </div>
+            {(() => {
+              const sp = summonLevelProgress(character.gachaPulls);
+              // 다음 레벨 확률도 지금 풀(개척 지역)로 — 기본표(tierRates)를 그대로 보이면 지역에 전설이 없을 때 받을 수 없는 확률을 공시하게 된다
+              const nextBand = sp.to !== null ? gachaPool(save.stage, character.pioneeredArea, Date.now(), sp.level + 1).bandRate : null;
+              const topNow = gacha.bandRate.SSR + gacha.bandRate.UR + gacha.bandRate.LR;
+              const topNext = nextBand ? nextBand.SSR + nextBand.UR + nextBand.LR : topNow;
+              return (
+                <>
+                  <div className="gacha-level summon-level">
+                    <b>뽑기 Lv.{sp.level}</b>
+                    <i><em style={{ width: `${sp.to === null ? 100 : Math.min(100, ((character.gachaPulls - sp.from) / (sp.to - sp.from)) * 100)}%` }} /></i>
+                    <span>{sp.to === null ? "최고 레벨" : topNext <= 0 ? `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 이 지역엔 전설 없음` : `Lv.${sp.level + 1} 까지 ${sp.to - character.gachaPulls}회 · 전설 이상 ${(topNow * 100).toFixed(1)}% → ${(topNext * 100).toFixed(1)}%`}</span>
+                  </div>
+                  <ul className="summon-tier-rates" aria-label="지금 등급 확률">
+                    {TIERS.map((t) => <li key={t} className={`rarity-${t.toLowerCase()}`}><b>{TIER_LABEL[t]}</b><small>{gacha.bandRate[t] > 0 ? `${(gacha.bandRate[t] * 100).toFixed(gacha.bandRate[t] < 0.01 ? 2 : 1)}%` : "—"}</small></li>)}
+                  </ul>
+                </>
+              );
+            })()}
+            <div className="gacha-level">
+              <b>천장 {Math.min(GACHA.pityLimit, character.gachaPity)}/{GACHA.pityLimit}</b>
+              <i><em style={{ width: `${Math.min(100, (character.gachaPity / GACHA.pityLimit) * 100)}%` }} /></i>
+              <span>{gacha.entries.some((e) => TIER_RANK[e.rarity] >= TIER_RANK.SSR) ? "전설 이상" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회</span>
+            </div>
+            {/* 초월 천장 — 초반 지역에서도 쌓인다. 풀에 초월이 없으면 확정은 초월 지역(FIRST_LR_STAGE~)에서 */}
+            <div className="gacha-level gacha-lr-pity">
+              <b>초월 천장 {character.gachaLrPity}/{GACHA.lrPityLimit}</b>
+              <i><em style={{ width: `${Math.min(100, (character.gachaLrPity / GACHA.lrPityLimit) * 100)}%` }} /></i>
+              <span>{gacha.entries.some((e) => e.rarity === "LR")
+                ? `초월 확정까지 ${Math.max(1, GACHA.lrPityLimit - character.gachaLrPity)}회`
+                : character.gachaLrPity >= GACHA.lrPityLimit - 1
+                  ? `가득 참 · STAGE ${FIRST_LR_STAGE} 지역 첫 소환에 초월 확정`
+                  : `쌓는 중 · 초월은 STAGE ${FIRST_LR_STAGE} 지역부터`}</span>
+            </div>
+            {momentOfferCard}
+            <div className="gacha-page-actions">
+              <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}><b>1회 소환</b><small><GemMark />{GACHA.singleCost}</small></button>
+              <button type="button" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}><b>10회 소환</b><small><GemMark />{GACHA.tenCost}</small>{character.gachaPulls === 0 && <em className="first-ten-badge">첫 10연 전설 확정</em>}</button>
+              <button type="button" onClick={() => setShowGachaRates(true)}><b>확률 정보</b><small>등급별 확률 보기</small></button>
+            </div>
+          </section>
+        )}
+            {premiumCategory === "chest" && (
+              <section className="shop-chest-page" aria-label="비버 상자">
+                {/* 비버 상자 줄 (economy/chests, P2): 성벽 10층 · 균열 3회 · 10연에서 오고, 열면 포인트 → 100점에 상자 1 */}
+                <div className="hub-chests" data-chests={character.chests}>
+                  <img className="nav-icon-svg" src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
+                  <span>
+                    <b>비버 상자 {character.chests}개</b>
+                    <small>포인트 {character.chestPoints}/{CHEST_POINTS_FOR_CHEST} · {CHEST_TABLE.map((d) => `${d.label.split(" (")[0]} ${d.percent}%`).join(" · ")}</small>
+                  </span>
+                  <button type="button" className="hub-chest-open" disabled={character.chests <= 0} onClick={() => {
+                    sfxIdleClaim();
+                    void updateCharacterProgress(userHash, (current) => openChest(current, Math.random, () => randomOwnedAlly(saveRef.current.heroes, Math.random, current.partyIds)).progress).then((next) => {
+                      const opened = next.chestsOpened - character.chestsOpened;
+                      if (opened > 0) {
+                        const gotMat = next.enhancementMaterials - character.enhancementMaterials, gotSeal = next.expeditionSeals - character.expeditionSeals;
+                        flash(gotMat > 0 ? `상자 · 강화석 +${gotMat}` : gotSeal > 0 ? `상자 · 인장 +${gotSeal}` : "상자 · 동료 조각 +3");
+                      }
+                      setCharacter(next);
+                    });
+                  }}>{character.chests > 0 ? "열기" : "없음"}</button>
+                </div>
+                <p className="shop-chest-note">상자는 성벽 10층 · 균열 3회 완료 · 동료 10연에서 얻어요. 열 때마다 포인트 {CHEST_POINTS_PER_OPEN}, {CHEST_POINTS_FOR_CHEST}점이면 상자 1개.</p>
+              </section>
             )}
             {/* 유물 뽑기 (2026-10-26 보석 → 조각 · 10-27 재화별 · 뽑기 화면) · 3판 2026-10-28 (사용자: "유물도 … 등급을 동료처럼") —
                 36종 6등급. 재화마다 등급 확률이 다른 뽑기 셋: 골드(일반 ~ 영웅) · 강화석(희귀 ~ 신화) · 보석(영웅 ~ 초월). 다 모은 유물은 빠진다 */}
@@ -5112,8 +5115,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       <nav className="titans-bottom-nav compact" aria-label="주요 메뉴">
         <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("sword"); }}><ContentIcon name="hunt" /><span>사냥터</span></button>
         <button type="button" className={tab === "hub" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("hub"); }}><ContentIcon name="event" /><span>모험</span></button>
-        <button type="button" className={tab === "heroes" || tab === "gacha" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("heroes"); }}><ContentIcon name="ally" /><span>동료</span></button>
-        <button type="button" className={tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("premium"); }}><ContentIcon name="shop" /><span>상점</span></button>
+        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("heroes"); }}><ContentIcon name="ally" /><span>동료</span></button>
+        <button type="button" className={tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("premium"); }}><ContentIcon name="shop" /><span>상점</span>{character.chests > 0 && <i className="tab-dot" aria-label="안 연 비버 상자" />}</button>
         {/* 설정 (2026-10-14 사용자: "설정 아이콘을 상점 탭 오른쪽으로") — 메뉴는 위로 연다 */}
         {settingsNode}
       </nav>

@@ -121,7 +121,7 @@ for (const [w, h] of VIEWPORTS) {
   await shot("01-hunt");
   await clickText(".titans-bottom-nav button", "상점"); await sleep(700); await shot("02-shop");
   await closeModals(); await clickText(".titans-bottom-nav button", "동료"); await sleep(700); await shot("03-allies");
-  await clickText("button", "동료 뽑기"); await sleep(600); await shot("04-gacha");
+  await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(600); await shot("04-gacha");
   await closeModals(); await clickText(".titans-bottom-nav button", "모험"); await sleep(700); await shot("05-adventure");
   await closeModals(); await clickText(".titans-bottom-nav button", "사냥터"); await sleep(500);
   await clickText("button", "스킬"); await sleep(600); await shot("06-skills");

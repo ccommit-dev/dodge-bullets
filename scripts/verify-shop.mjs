@@ -33,7 +33,7 @@ await closeModal();
 // ── 뽑기 페이지 실정보 ──
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
-await clickText(".hub-sheet-switch button", "동료 뽑기");
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료");
 await sleep(600);
 let r = await page.evaluate(() => ({ badge: document.querySelector(".gacha-rarity-badge")?.textContent, title: document.querySelector(".gacha-stage-hero h2")?.textContent, kicker: document.querySelector(".gacha-stage-hero small")?.textContent, level: document.querySelector(".gacha-level:not(.summon-level) b")?.textContent, bar: document.querySelector(".gacha-level:not(.summon-level) em")?.style.width }));
 // 2026-10-27 동료 60명 — 지역3(상한 15)에도 아직 못 만난 동료(조약돌 페블 · 서리검 프로스트 · 오로라)가 생겨 픽업이 다시 있다.
@@ -256,7 +256,7 @@ await sleep(1500);
 await closeModal();
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
-await clickText(".hub-sheet-switch button", "동료 뽑기");
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료");
 await sleep(600);
 await sleep(600);
 // 픽업은 14일마다 바뀐다(gacha.ts ROTATION) — 이름을 하드코딩하지 않고 소환 화면의 픽업 카드에서 읽는다

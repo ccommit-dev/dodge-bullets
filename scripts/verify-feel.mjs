@@ -44,16 +44,13 @@ await sleep(300);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비 성장"))?.click()); await sleep(400);
 // ── 5. 소환진 탭 건너뛰기 · 결과 첫 탭 모두 공개 · 초월도 큰 연출 ──
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
-await clickText(".hub-sheet-switch button", "동료 뽑기"); await sleep(500);
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(500);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
 await page.waitForSelector(".gacha-summoning", { timeout: 3000 }).catch(() => null);
 await sleep(150);
-const t0 = Date.now();   // 소환진이 뜬 뒤부터 잰다 — 뽑기 저장 시간은 빼고
-// 결과가 DOM 에 붙는 순간 바로 첫 탭 — 검사 왕복 · 폴링이 밀리면 공개가 다 끝난 뒤에 눌려(정상 동작인 닫기) 가끔 실패했다(CPU_THROTTLE=4 로 3/3 재현, 2026-11-03)
-await page.evaluate(() => { const mo = new MutationObserver(() => { const r = document.querySelector(".gacha-result"); if (r) { mo.disconnect(); r.click(); } }); mo.observe(document.body, { childList: true, subtree: true }); });
-await page.evaluate(() => document.querySelector(".gacha-summoning")?.click());
+// 페이지 안에서 잰다 (2026-11-03) — 상점 화면에서 검사 쪽 폴링이 1.4초까지 밀려 실제 0.13~0.18초인데 실패했다(_feel-probe). 결과가 붙는 순간 첫 탭까지 같이 누른다
+const elapsed = await page.evaluate(() => new Promise((res) => { const t = performance.now(); const mo = new MutationObserver(() => { const r = document.querySelector(".gacha-result"); if (r) { mo.disconnect(); const ms = Math.round(performance.now() - t); r.click(); res(ms); } }); mo.observe(document.body, { childList: true, subtree: true }); document.querySelector(".gacha-summoning")?.click(); setTimeout(() => { mo.disconnect(); res(9999); }, 3000); }));
 await page.waitForSelector(".gacha-result", { timeout: 3000 }).catch(() => null);
-const elapsed = Date.now() - t0;
 ok("소환진을 누르면 1.2초를 기다리지 않고 바로 공개", elapsed < 1050 && !!(await page.$(".gacha-result")), `${elapsed}ms`);
 await page.waitForFunction(() => !document.querySelector(".gacha-result") || document.querySelector(".gacha-reveal-grid.reveal-all"), { polling: 50, timeout: 8000 }).catch(() => null);
 await sleep(60);

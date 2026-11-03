@@ -1248,3 +1248,11 @@
 .volume-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) 30px; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; font-weight: 800; color: #3a2410; }
 .volume-row input[type="range"] { width: 100%; height: 28px; margin: 0; accent-color: #b7791f; touch-action: none; }
 .volume-row b { color: #3a2410; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 상점으로 옮긴 동료 뽑기 · 비버 상자 (2026-11-03) — 상점 격자 한 줄을 다 쓴다 */
+.page-premium .titans-shop .gacha-stage-page, .page-premium .titans-shop .shop-chest-page { grid-column: 1 / -1; }
+.shop-chest-page { display: grid; gap: 8px; }
+.shop-chest-note { margin: 0; padding: 0 4px; font-size: 13px; line-height: 1.4; color: #6b5338; }
+.hub-sheet-title { font-size: 18px; font-weight: 900; color: var(--flat-ink, #3a2410); padding: 2px 4px; }
+.titans-bottom-nav button { position: relative; }
+.titans-bottom-nav .tab-dot { position: absolute; top: 6px; right: 14px; }

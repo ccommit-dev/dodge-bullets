@@ -48,7 +48,7 @@ ok("칭호 이름표가 전투 화면 영웅 위에 표시", /타이탄 슬레�
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 const roleChips = await page.evaluate(() => [...document.querySelectorAll(".role-chip")].map((c) => c.textContent));
-await clickText(".hub-sheet-switch button", "동료 뽑기");
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료");
 await sleep(600);
 r = await page.evaluate(() => ({
   panel: !!document.querySelector(".hub-sheet .gacha-stage-page"),

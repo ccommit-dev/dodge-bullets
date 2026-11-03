@@ -54,7 +54,7 @@ await clickText(".titans-bottom-nav button", "상점"); await sleep(700); await 
 await clickText(".hub-sheet-switch button", "패키지"); await sleep(500); await shot("03-shop-package");
 await clickText(".hub-sheet-switch button", "뽑기"); await sleep(250); await clickText(".premium-category-tabs button", "동료"); await sleep(500); await shot("04-shop-ally");
 await closeModals(); await clickText(".titans-bottom-nav button", "동료"); await sleep(700); await shot("05-allies");
-await clickText("button", "동료 뽑기"); await sleep(600); await shot("06-gacha");
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(600); await shot("06-gacha");
 await closeModals(); await clickText(".titans-bottom-nav button", "모험"); await sleep(700); await shot("07-adventure");
 await page.evaluate(() => document.querySelector(".season-nav")?.click()); await sleep(700); await shot("08-events");
 await clickText(".event-tabs button", "주간 도전"); await sleep(400); await shot("09-events-weekly");

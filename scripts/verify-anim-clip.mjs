@@ -143,7 +143,7 @@ screens.push(["균열 연출", await probeOver(page, 4500)]);
 await sleep(3500);
 await seed(12);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(700);
-await clickText("button", "동료 뽑기"); await sleep(700);
+await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(700);
 await clickText("button", "10회"); await sleep(400);
 screens.push(["동료 뽑기", await probeOver(page, 3600)]);
 await seed(12);
