@@ -55,7 +55,7 @@ ok("E 세션 카운트 증가", p.sessionCount === 1, String(p.sessionCount));
 const routineChips = async () => {
   await clickText(".titans-bottom-nav button", "모험");
   await sleep(400);
-  const chips = await page.evaluate(() => [...document.querySelectorAll(".nav-popup-grid.adventure-grid > button")].slice(0, 4).map((c) => c.querySelector("b")?.textContent + (c.classList.contains("done") ? "✓" : "")));
+  const chips = await page.evaluate(() => [...document.querySelectorAll(".hub-card")].filter((c) => /완료/.test(c.textContent)).map((c) => c.dataset.card + "✓"));   // 위 줄의 균열 칸을 없앴다(2026-11-03) — 같은 내용의 허브 카드로 본다
   // 2026-10-13: 모험은 팝업이 아니라 허브 탭 — 사냥터로 돌아간다
   await clickText(".titans-bottom-nav button", "사냥터");
   await sleep(300);
@@ -67,7 +67,7 @@ r = await page.evaluate(() => ({
   title: document.querySelector(".battle-alert[class*='tone-'] b")?.textContent,
 }));
 r.chips = await routineChips();
-ok("A 루틴 4칸(모험 팝업) + 정산 완료라 정산 핀 없음", r.chips.length === 4 && !r.claimPin, r.chips.join(",") + ` claimPin=${r.claimPin}`);
+ok("A 정산 완료라 정산 핀 없음", !r.claimPin, r.chips.join(",") + ` claimPin=${r.claimPin}`);
 ok("B 추천 핀 1개(균열 남음 → 오늘 무료)", /tone-free/.test(r.banner ?? "") && /균열/.test(r.title ?? ""), r.title);
 // 추천 핀 클릭 → 이벤트 센터 균열 탭
 await page.evaluate(() => document.querySelector(".battle-alert[class*='tone-']")?.click());
@@ -84,7 +84,7 @@ await clickText("button", "닫기");
 await sleep(700);
 r = await page.evaluate(() => ({ title: document.querySelector(".battle-alert[class*='tone-'] b")?.textContent }));
 r.chips = await routineChips();
-ok("A 루틴 균열 칸 완료 반영(이벤트 변경 즉시 동기화)", r.chips.includes("균열✓"), r.chips.join(","));
+ok("A 루틴 균열 칸 완료 반영(이벤트 변경 즉시 동기화)", r.chips.includes("rift✓"), r.chips.join(","));
 ok("B 추천이 다음 항목(토벌령)으로 넘어감", /토벌령/.test(r.title ?? ""), r.title);
 
 // ── A 루틴 완료 보상 ──
@@ -96,7 +96,7 @@ await closeModal();
 const gemsBefore = (await prog()).redGems;
 r = await page.evaluate(() => ({ ready: !!document.querySelector(".battle-alert.reward"), text: document.querySelector(".battle-alert.reward b")?.textContent }));
 r.chips = (await routineChips()).filter((c) => c.endsWith("✓")).length;
-ok("A 5칸 완료 → 루틴 보상 핀 표시", r.ready === true && r.chips === 4, JSON.stringify(r));
+ok("A 5칸 완료 → 루틴 보상 핀 표시", r.ready === true, JSON.stringify(r));
 await page.evaluate(() => document.querySelector(".battle-alert.reward")?.click());
 await sleep(600);
 p = await prog();

@@ -117,6 +117,8 @@ import {
   randomOwnedAlly,
 } from "./titans/allies";
 import { BEAT_TICKET_MAX_BOUGHT } from "./beat/tickets";
+import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
+import { monsterAnimStyle } from "./titans/spriteAnim";
 import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
@@ -215,7 +217,7 @@ const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: str
   "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
   "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
 };
-type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet";
+type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet" | "mount";
 /**
  * 상점 탭 합치기 (2026-11-03, 사용자: "유저 입장에서 난잡하지 않게 탭을 머지해서 가독성이 딱 좋게") — 예전엔 위 3칸(상점 · 이벤트 · 특별) 아래에 8칸(재화 ~ 외형)이
  * 두 줄로 있어 한 화면에 탭이 11개였다. 이제 시트 머리 5칸 하나로 고르고, 작은 아래 줄은 종류가 나뉘는 뽑기 · 꾸미기에만 둔다. 특별 상품은 패키지 칸 아래로
@@ -224,7 +226,7 @@ type ShopGroup = "currency" | "package" | "draw" | "style" | "event";
 const SHOP_GROUPS: readonly { id: ShopGroup; label: string }[] = [{ id: "currency", label: "재화" }, { id: "package", label: "패키지" }, { id: "draw", label: "뽑기" }, { id: "style", label: "꾸미기" }, { id: "event", label: "이벤트" }];
 const SHOP_SUBTABS: Partial<Record<ShopGroup, readonly (readonly [PremiumCategory, string])[]>> = {
   draw: [["relic", "유물"], ["skill", "스킬"], ["ally", "동료"], ["chest", "상자"]],   // 동료 뽑기 · 비버 상자도 여기 하나로 (2026-11-03, 사용자: "뽑기는 상점탭에만 일원화")
-  style: [["pet", "펫"], ["title", "칭호"], ["weapon", "외형"]],
+  style: [["pet", "펫"], ["mount", "탈것"], ["title", "칭호"], ["weapon", "외형"]],
 };
 const shopGroupOf = (c: PremiumCategory): ShopGroup => (c === "currency" || c === "package" ? c : c === "relic" || c === "skill" || c === "ally" || c === "chest" ? "draw" : "style");
 /**
@@ -1604,7 +1606,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const firstClearToday = wasBoss && characterRef.current.firstClearDates.hunt !== today;
 
       // 아기 슬라임 펫(§1) — 사냥 골드 가산
-      const petGold = 1 + activePetEffect(characterRef.current.pets, characterRef.current.activePet, "gold");
+      const petGold = (1 + activePetEffect(characterRef.current.pets, characterRef.current.activePet, "gold")) * (1 + activeMountGold(characterRef.current.mounts, characterRef.current.activeMount));   // 탈것도 같이 곱한다 (2026-11-03)
       const warmupMult = characterRef.current.warmupUntil > Date.now() ? 2 : 1;
       const goldGain = Math.floor(
         (killGold(s.stage, wasBoss, chestRef.current) + (wasBoss ? stageClearBonus(s.stage) : 0)) *
@@ -2763,6 +2765,37 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setCharacter(next);
     flash(next.activePet === pid ? `${PET_DEFS[pid].name} 장착` : `${PET_DEFS[pid].name} 해제`);
   };
+  // 탈것 (2026-11-03, titans/mounts) — 펫과 같은 길
+  const buyMount = async (mid: MountId) => {
+    const price = MOUNT_DEFS[mid].gemPrice;
+    if ((character.mounts[mid] ?? 0) > 0 || redGems < price) return;
+    sfxPurchase();
+    const next = await updateCharacterProgress(userHash, (current) =>
+      (current.mounts[mid] ?? 0) > 0 || current.redGems < price
+        ? current
+        : { ...current, redGems: current.redGems - price, mounts: { ...current.mounts, [mid]: 1 }, activeMount: current.activeMount || mid },
+    );
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`${MOUNT_DEFS[mid].name} 구매! 주인공이 타고 다닌다`);
+  };
+  const equipMount = async (mid: MountId) => {
+    if ((character.mounts[mid] ?? 0) <= 0) return;
+    const next = await updateCharacterProgress(userHash, (current) => ({ ...current, activeMount: current.activeMount === mid ? "" : mid }));
+    setCharacter(next);
+    flash(next.activeMount === mid ? `${MOUNT_DEFS[mid].name} 장착` : `${MOUNT_DEFS[mid].name} 내림`);
+  };
+  const upgradeMount = async (mid: MountId) => {
+    const cost = mountUpgradeCost(character.mounts[mid] ?? 0);
+    if (cost === null || character.enhancementMaterials < cost) return;
+    sfxUpgrade();
+    const next = await updateCharacterProgress(userHash, (current) => {
+      const lv = current.mounts[mid] ?? 0, c = mountUpgradeCost(lv);
+      return c === null || current.enhancementMaterials < c ? current : { ...current, enhancementMaterials: current.enhancementMaterials - c, mounts: { ...current.mounts, [mid]: lv + 1 } };
+    });
+    setCharacter(next);
+    flash(`${MOUNT_DEFS[mid].name} Lv.${next.mounts[mid] ?? 0}`);
+  };
   const buyWeaponSkin = async (skinId: string) => {
     const def = WEAPON_SKINS[skinId];
     if (!def || character.ownedWeaponSkins.includes(skinId) || redGems < def.gemCost) return;
@@ -3653,7 +3686,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
           );
         })()}
-        <div className={`titans-hero ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
+        <div className={`titans-hero ${isMountId(character.activeMount) ? "has-mount" : ""} ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
           {/* 칭호 이름표 — 과금 점검: 칭호가 전투에서 전혀 보이지 않아 150~250보석 가치가 없었다 */}
           {character.activeTitle && TITLES[character.activeTitle] && (
             <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
@@ -3683,10 +3716,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ) : null;
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
+            {/* 탈것 (2026-11-03) — 주인공 아래에. 주인공만 위로 올린다(동료 대열은 그대로) */}
+            {isMountId(character.activeMount) && <div className="hero-mount" aria-hidden="true"><i style={monsterAnimStyle(MOUNT_DEFS[character.activeMount].art, "idle")} /></div>}
             {/* 펫 (2026-10-28) — 주인공 뒤 발치에서 같이 걷고(주인공 상자 안이라 들어오고 나갈 때 같이 움직인다) 덤빌 땐 몬스터 쪽으로 뛴다. 예전엔 전장 왼쪽 위에 떠 있기만 했다 */}
             {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
               <div key={`pet-${petAtk}`} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
-                <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} />
+                <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} pet />
               </div>
             )}
             <HeroFrameChar store={frameStore} mode={animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
@@ -3704,6 +3739,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               cell={allyCells[allySlot].cell}
               lineIndex={allyCells[allySlot].index}
               skin={character.equippedAllySkins[h.id]}
+              stars={effectiveStars(character.allyStars[h.id], save.heroes[h.id])}
               attacking
               pulse={allyPulse[h.id] ?? 0}
               hitPulse={allyHit[h.id] ?? 0}
@@ -4206,7 +4242,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <section className="hub-page" aria-label="모험 허브">
             {/* 루틴 줄 — 예전 '모험' 팝업의 항목(정산 제외)과 시즌. 같은 클래스라 캡처·검사 스크립트가 그대로 찾는다 */}
             <div className="nav-popup-grid adventure-grid hub-routine">
-              {routine.filter((item) => item.id !== "claim").map((item) => (
+              {/* 균열 · 강화 · 파견은 아래 카드와 같은 내용이라 뺐다 (2026-11-03, 사용자: "중복된 내용이 있다면 단순화 혹은 제거") */}
+              {routine.filter((item) => item.id === "mission").map((item) => (
                 <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => runRoutine(item)}>
                   {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.png" : item.id === "expedition" ? "ui/idle/expedition.png" : "ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />}
                   <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
@@ -4918,11 +4955,37 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const on = character.activePet === pid;
               return (
                 <article key={`pet-${pid}`} className="titans-card premium-product-card gem-product pet-product" data-pet={pid}>
-                  <span className="pet-thumb" aria-hidden="true"><MonsterArt kind={pid} area={area} boss={false} golden={false} /></span>
+                  <span className="pet-thumb" aria-hidden="true"><MonsterArt kind={pid} area={area} boss={false} golden={false} pet /></span>
                   <div><strong>{def.name} <em>펫</em></strong><p>{def.desc} · 같이 사냥(주인공 한 방 ×{petAttackMul(Math.max(1, lv)).toFixed(2)} · {PET_ATTACK_SEC}초마다){lv > 0 ? ` · Lv.${lv}` : ""}</p></div>
                   <button type="button" disabled={lv <= 0 && redGems < PET_GEM_PRICE[pid]} onClick={() => void (lv > 0 ? equipPetShop(pid) : buyPet(pid))}>
                     {lv > 0 ? (on ? "해제" : "장착") : <><GemMark />{PET_GEM_PRICE[pid]}</>}
                   </button>
+                </article>
+              );
+            })}
+            {premiumCategory === "mount" && <p className="premium-subhead">탈것 <small>주인공이 타고 사냥 · 장착 1마리 · 사냥 골드 증가 · 강화석으로 강화</small></p>}
+            {premiumCategory === "mount" && MOUNT_IDS.map((mid) => {
+              const def = MOUNT_DEFS[mid];
+              const lv = character.mounts[mid] ?? 0;
+              const on = character.activeMount === mid;
+              const cost = mountUpgradeCost(lv);
+              return (
+                <article key={mid} className={`titans-card premium-product-card gem-product mount-product ${on ? "on" : ""}`} data-mount={mid}>
+                  <span className="mount-thumb" aria-hidden="true"><i style={monsterAnimStyle(def.art, "idle")} /></span>
+                  <div>
+                    <strong>{def.name} <em>{lv > 0 ? `Lv.${lv}/${MOUNT_MAX_LEVEL}` : "탈것"}</em></strong>
+                    <p>사냥 골드 +{(mountGoldBonus(mid, Math.max(1, lv)) * 100).toFixed(1)}%{cost !== null ? ` · 다음 +${(mountGoldBonus(mid, lv + 1) * 100).toFixed(1)}%` : lv >= MOUNT_MAX_LEVEL ? " · 최대" : ""}</p>
+                  </div>
+                  <span className="mount-actions">
+                    {lv > 0 ? (
+                      <>
+                        <button type="button" className="mount-equip" onClick={() => void equipMount(mid)}>{on ? "내리기" : "타기"}</button>
+                        {cost !== null && <button type="button" className="mount-upgrade" disabled={character.enhancementMaterials < cost} onClick={() => void upgradeMount(mid)}>강화 {cost}</button>}
+                      </>
+                    ) : (
+                      <button type="button" className="mount-buy" disabled={redGems < def.gemPrice} onClick={() => void buyMount(mid)}><GemMark />{def.gemPrice}</button>
+                    )}
+                  </span>
                 </article>
               );
             })}

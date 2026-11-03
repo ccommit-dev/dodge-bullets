@@ -7,20 +7,26 @@ FUR = dict(fur='#8f6243', light='#f2dcc2', dark='#6a4228')
 # 2026-10-19 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게" — 왕관·띠·망토도 뺀 맨 비버(무기는 게임이 손 앵커에 그린다)
 HERO = dict(FUR)
 
+# 털색 (2026-11-03, 사용자: "캐릭터와 동료가 너무 특징이 없네") — 13명이 모두 같은 갈색이라 모자만 달랐다. 실루엣이 먼 칸에서도 갈리게 털부터 나눈다
+PALE = dict(fur='#b88a5c', light='#f8ead6', dark='#8a6440')
+DARKF = dict(fur='#6a4a36', light='#e8d2b8', dark='#4a3020')
+SNOW = dict(fur='#d8d2c8', light='#ffffff', dark='#a8a094')
+RUST = dict(fur='#a8562e', light='#f6dcc0', dark='#6e3218')
+
 ALLIES = {
-    'mia': dict(FUR, hat='cap', hat_color='#3a9a5a', hat_color2='#2a7a44', scarf='#2fb8a6', weapon_r='axe', weapon_l='dagger', role='melee'),
-    'leon': dict(FUR, hat='cap', hat_color='#5aa83a', hat_color2='#3d7a2a', scarf='#7ec8e8', weapon_l='bow', role='bow'),   # 활은 적 쪽(화면 오른쪽) 손 — 머리에 가리지 않게 손을 낮게·바깥으로 뻗는다
-    'sera': dict(FUR, hat='wizard', hat_color='#5a8ee0', robe='#b77ce0', trim='#f2c232', weapon_r='staff', weapon_color='#7fe3ff', role='mage'),
-    'garen': dict(FUR, hat='helmet', hat_color='#d8dde6', hat_color2='#d8403a', armor='#cfd6df', trim='#d8403a', weapon_r='sword', weapon_l='shield', weapon_l_color='#d8403a', role='tank'),
-    'ari': dict(FUR, hat='hood', hat_color='#d8403a', cape='#c8352e', weapon_r='lance', weapon_color='#f2c232', role='melee'),
-    'nox': dict(FUR, hat='hood', hat_color='#9a4ec8', robe='#b05ad8', trim='#2fb8a6', weapon_r='sword', weapon_color='#e0e6ee', role='melee'),
-    'luna': dict(FUR, light='#ffffff', hat='helmet', hat_color='#e8ecf2', hat_color2='#f2c232', armor='#eef2f6', trim='#2fb8a6', weapon_r='staff', weapon_color='#fff3a8', weapon_l='shield', weapon_l_color='#dfe6ee', role='healer'),
-    'volt': dict(FUR, hat='hood', hat_color='#f08a3a', scarf='#2fb8a6', weapon_r='wand', weapon_color='#ffd34d', role='mage'),
-    'bronn': dict(FUR, hat='helmet', hat_color='#f2c232', hat_color2='#2fb8a6', armor='#3fae9a', trim='#f2c232', weapon_r='sword', role='tank'),
-    'orion': dict(FUR, hat='wizard', hat_color='#2f8ad8', cape='#3aa0e0', weapon_r='glass', weapon_color='#9fe8ff', role='mage'),
-    'ember': dict(FUR, hat='tiara', hat_color='#ff6aa8', robe='#ff7ab0', trim='#ffd34d', weapon_r='guitar', weapon_color='#ffb3cf', role='bard'),
-    'pyro': dict(FUR, hat='hood', hat_color='#f0662a', scarf='#ffd34d', weapon_r='sword', weapon_color='#ffb070', role='melee'),
-    'marina': dict(FUR, hat='wizard', hat_color='#3ab0e0', robe='#5ac8f0', trim='#ffffff', weapon_r='staff', weapon_color='#a8f0ff', role='healer'),
+    'mia': dict(PALE, hat='hood', hat_color='#3a9a5a', scarf='#2fb8a6', weapon_r='axe', weapon_l='dagger', role='melee'),   # 희귀 바람 근접 — 밝은 털 · 초록 두건
+    'leon': dict(DARKF, hat='cap', hat_color='#c8862a', hat_color2='#8a5a1e', scarf='#f2e2b8', weapon_l='bow', role='bow'),   # 희귀 바람 활 — 짙은 털 · 사냥꾼 모자
+    'sera': dict(SNOW, hat='wizard', hat_color='#5a8ee0', robe='#b77ce0', trim='#f2c232', weapon_r='staff', weapon_color='#7fe3ff', role='mage'),   # 영웅 물 마법 — 흰 털
+    'garen': dict(FUR, hat='helmet', hat_color='#d8dde6', hat_color2='#d8403a', armor='#cfd6df', trim='#d8403a', cape='#b02a2a', weapon_r='sword', weapon_l='shield', weapon_l_color='#d8403a', role='tank'),   # 영웅 흙 탱커 — 갑옷 · 붉은 망토
+    'ari': dict(RUST, hat='helmet', hat_color='#d8403a', hat_color2='#f2c232', cape='#c8352e', trim='#f2c232', weapon_r='lance', weapon_color='#f2c232', role='melee'),   # 전설 불 창 — 붉은 털 · 용기사 투구
+    'nox': dict(DARKF, hat='hood', hat_color='#5a2e8a', robe='#6a3aa8', cape='#2e1a4e', trim='#2fb8a6', weapon_r='sword', weapon_color='#c8a8ff', role='melee'),   # 전설 암살 — 짙은 털 · 보라 망토
+    'luna': dict(SNOW, hat='crown', hat_color='#f2c232', armor='#eef2f6', trim='#f2c232', cape='#e8ecf2', weapon_r='staff', weapon_color='#fff3a8', role='healer'),   # 전설 성기사 — 흰 털 · 왕관
+    'volt': dict(PALE, hat='hood', hat_color='#f0b43a', scarf='#2fb8a6', trim='#ffffff', weapon_r='wand', weapon_color='#ffd34d', role='mage'),   # 영웅 번개 — 밝은 털 · 노란 두건
+    'bronn': dict(DARKF, hat='helmet', hat_color='#f2c232', hat_color2='#2fb8a6', armor='#3fae9a', trim='#f2c232', cape='#2a7a6a', weapon_r='sword', role='tank'),   # 전설 용암 기사 — 금 투구
+    'orion': dict(FUR, hat='wizard', hat_color='#2f8ad8', cape='#3aa0e0', trim='#ffffff', weapon_r='glass', weapon_color='#9fe8ff', role='mage'),   # 전설 성창
+    'ember': dict(RUST, hat='tiara', hat_color='#ff6aa8', robe='#ff7ab0', trim='#ffd34d', weapon_r='guitar', weapon_color='#ffb3cf', role='bard'),   # 전설 불사조
+    'pyro': dict(RUST, hat='cap', hat_color='#f0662a', hat_color2='#b03a12', scarf='#ffd34d', weapon_r='sword', weapon_color='#ffb070', role='melee'),   # 희귀 불 — 붉은 털
+    'marina': dict(PALE, hat='wizard', hat_color='#3ab0e0', robe='#5ac8f0', trim='#ffffff', weapon_r='staff', weapon_color='#a8f0ff', role='healer'),   # 영웅 물 힐러
 }
 
 # 스킨 — 같은 동료 몸·무기에 테마 색·재질만 바꾼다(용암·설원·화염·심연·월식·강철·신성·홍옥·자수정·황금)
@@ -122,6 +128,18 @@ MONSTERS = {
     'void-imp': dict(kind=B, color='#6a3a9a', belly='#ffd34d', accent='#c084fc', iris='#5be0ff', eye_size=0.1, horns='curl', wings=True, wing='#4a2a7a', head_r=(0.33, 0.29, 0.3), body_r=(0.21, 0.19, 0.23), head_z=0.67, shoulder=(0.18, 0.37)),
     'void-lich': dict(kind=B, fierce=True, color='#6a3a8a', belly='#c084fc', glow_belly=True, accent='#c084fc', iris='#ff6aff', horns='curl', horn='#3a2a4a', wings=True, wing='#4a2a6a', crest=True, weapon='staff', weapon_color='#c084fc', head_r=(0.28, 0.26, 0.27), body_r=(0.24, 0.21, 0.26), head_z=0.72, shoulder=(0.21, 0.42)),
     'wolf-king-clean': dict(kind=B, fierce=True, color='#7a3a5a', belly='#ffd34d', accent='#ff9a3d', iris='#5bffb0', ears='wolf', mane='#5a2a3a', crown=True, head_r=(0.3, 0.27, 0.28), body_r=(0.26, 0.22, 0.27), head_z=0.72, shoulder=(0.22, 0.44)),
+    # 펫 (2026-11-03, 사용자: "팻도 마찬가지") — 몬스터를 줄여 쓰던 것을 아기 체형으로: 큰 머리 · 작은 몸 · 뿔 작게 · 앞니
+    'pet-slime': dict(kind=B, color='#7cc84a', dark='#3f6a2a', accent='#e8452c', head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
+    'pet-goblin': dict(kind=B, color='#7d4a6c', accent='#ff8a3d', ears='bat', head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
+    'pet-wolf': dict(kind='quad', color='#d8cfe6', belly='#ffffff', dark='#7a6a9a', iris='#2a1a12', eye_size=0.09, mane='#c8b8e8', ears='wolf'),
+    'pet-ogre': dict(kind=B, color='#8a5a4a', accent='#9ad04a', horns='curl', horn='#f1e4c8', head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
+    'pet-dragon': dict(kind=B, color='#e0843a', accent='#ffd34d', wing='#d8662a', wings=True, wing_size=0.8, snout=True, horns='curl', horn='#f1e4c8', head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
+    'pet-boss': dict(kind=B, color='#7a3fa0', accent='#ff9a3d', horns='curl', horn='#3a2a5a', crown=True, head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
+    # 탈것 (2026-11-03, 사용자: "탈것도 아이템으로") — 오른쪽을 보게 CSS 로 뒤집어 주인공 아래에 놓는다
+    'mount-boar': dict(kind='quad', color='#8a5a3a', belly='#d8b890', dark='#4a2f1e', iris='#2a1a12', tusks=True, ears='wolf'),
+    'mount-deer': dict(kind='quad', color='#c08a50', belly='#f5e0c0', dark='#6a4a2a', iris='#2a1a12', horns='curl', horn='#f1e4c8', ears='wolf'),
+    'mount-wolf': dict(kind='quad', color='#8a93a6', belly='#e8ecf2', dark='#454c5e', iris='#2a1a12', mane='#c8d0dc', ears='wolf'),
+    'mount-drake': dict(kind='quad', color='#d8662a', belly='#f5d7a0', dark='#7a3414', iris='#2a1a12', horns='curl', horn='#f1e4c8', flames=True, ears='wolf'),
 }
 FLIP_MONSTERS = {'fire-demon', 'thorn-boar-king', 'flame-wyvern-clean', 'lava-drake'}
 

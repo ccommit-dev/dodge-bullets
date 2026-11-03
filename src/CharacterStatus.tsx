@@ -485,7 +485,7 @@ export function CharacterStatus({
                   onClick={() => (hatched ? void equipPet(id) : setGrowthMessage(`아직 알 — 이 몬스터를 ${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치하면 부화합니다`))}
                   title={hatched ? (active ? "장착 해제" : "장착") : `${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치`}
                 >
-                  <MonsterArt kind={id} area={HUNTING_AREAS[0]} boss={false} golden={false} />
+                  <MonsterArt kind={id} area={HUNTING_AREAS[0]} boss={false} golden={false} pet />
                 </button>
                 <b>{hatched ? def.name : "???"}</b>
                 {hatched ? (

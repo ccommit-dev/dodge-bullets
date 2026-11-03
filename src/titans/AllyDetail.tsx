@@ -35,7 +35,7 @@ export function AllyDetail({ hero, level, stars, skin, dpsText, shards, nextStar
   return (
     <article className={`ally-detail rarity-${rarity.toLowerCase()}`} data-ally-detail={hero.id}>
       <div className="ally-detail-stage" aria-label={`${hero.name} 공격 모션`}>
-        <span className="ally-detail-art"><AllyArt id={hero.id} skin={skin} attacking pulse={pulse} /></span>
+        <span className="ally-detail-art"><AllyArt id={hero.id} skin={skin} stars={stars} attacking pulse={pulse} /></span>
         <em>공격 모션 · {hero.attackType}</em>
       </div>
       <header className="ally-detail-head">

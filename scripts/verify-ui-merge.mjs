@@ -79,7 +79,7 @@ const heads = await shown(".hub-sheet-switch button");
 ok("상점 머리 5칸(재화 · 패키지 · 뽑기 · 꾸미기 · 이벤트) · 한 줄", heads.join() === "재화,패키지,뽑기,꾸미기,이벤트" && (await rowsOf(".hub-sheet-switch button")) === 1, heads.join());
 const subs = {};
 for (const g of heads) { await click(".hub-sheet-switch button", g); await sleep(350); subs[g] = (await shown(".premium-category-tabs button")).join(); }
-ok("아래 줄은 뽑기(유물 · 스킬 · 동료 · 상자) · 꾸미기(펫 · 칭호 · 외형)에만", subs["재화"] === "" && subs["패키지"] === "" && subs["이벤트"] === "" && subs["뽑기"] === "유물,스킬,동료,상자" && subs["꾸미기"] === "펫,칭호,외형", JSON.stringify(subs));
+ok("아래 줄은 뽑기(유물 · 스킬 · 동료 · 상자) · 꾸미기(펫 · 탈것 · 칭호 · 외형)에만", subs["재화"] === "" && subs["패키지"] === "" && subs["이벤트"] === "" && subs["뽑기"] === "유물,스킬,동료,상자" && subs["꾸미기"] === "펫,탈것,칭호,외형", JSON.stringify(subs));
 await click(".hub-sheet-switch button", "패키지"); await sleep(400);
 ok("특별 상품은 패키지 칸 안(칸이 따로 없다)", (await page.evaluate(() => document.querySelectorAll(".event-offer-card").length)) >= 3 && !heads.includes("특별"));
 await click(".hub-sheet-switch button", "재화"); await sleep(300);

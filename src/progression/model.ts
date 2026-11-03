@@ -17,6 +17,7 @@ import { normalizeRelics, type RelicState } from "../titans/relics";
 import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
+import { MOUNT_IDS, MOUNT_MAX_LEVEL, isMountId, type MountId } from "../titans/mounts";
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
 import { TALENTS, type TalentId } from "../forge/talents";
@@ -132,6 +133,10 @@ export type CharacterProgress = {
   pets: Record<TitanMonsterKind, number>;
   /** 장착 펫 ("" = 없음) — 1마리만 액티브 패시브 */
   activePet: string;
+  /** 탈것 레벨 (2026-11-03, titans/mounts) — 없음 = 미보유 */
+  mounts: Partial<Record<MountId, number>>;
+  /** 장착 탈것 ("" = 없음) */
+  activeMount: string;
   /** 원정대 편성 — 출전 동료만 전투·DPS에 반영 */
   partyIds: TitanHeroId[];
   /** 편성 슬롯 소급 하한 — 편성 도입 이전 유저는 보유 수만큼(최대 6) 보장 */
@@ -316,6 +321,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     firstClearDates: { hunt: "", dodge: "", forge: "", beat: "" },
     pets: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 },
     activePet: "",
+    mounts: {},
+    activeMount: "",
     partyIds: [],
     partyCap: 4,
     expeditions: [],
@@ -662,6 +669,8 @@ export function normalizeCharacterProgress(
       typeof raw.activePet === "string" && PET_IDS.includes(raw.activePet as TitanMonsterKind)
         ? raw.activePet
         : "",
+    mounts: Object.fromEntries(MOUNT_IDS.map((id) => [id, integer(raw.mounts?.[id], 0, MOUNT_MAX_LEVEL)]).filter(([, lv]) => (lv as number) > 0)),
+    activeMount: isMountId(raw.activeMount) && integer(raw.mounts?.[raw.activeMount], 0, MOUNT_MAX_LEVEL) > 0 ? raw.activeMount : "",
     partyIds: Array.isArray(raw.partyIds)
       ? [...new Set(raw.partyIds.filter((id): id is TitanHeroId => ALLY_IDS.includes(id as TitanHeroId)))].slice(0, 6)
       : [],

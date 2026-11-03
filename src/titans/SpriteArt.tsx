@@ -220,6 +220,7 @@ export function MonsterArt({
   stage,
   action,
   hitKey = 0,
+  pet = false,
 }: {
   kind: TitanMonsterKind;
   area: HuntingAreaDef;
@@ -232,12 +233,14 @@ export function MonsterArt({
   action?: "idle" | "prepare" | "attack";
   /** 맞은 횟수 — 피격 줄을 매번 처음부터 */
   hitKey?: number;
+  /** 펫 — 아기 체형 시트(pet-<kind>) (2026-11-03). 없으면 몬스터 그림 */
+  pet?: boolean;
 }) {
   const idle = monsterAssetFor(kind, area, boss, golden, "idle", stage);
   const asset = monsterAssetFor(kind, area, boss, golden, state, stage);
   // 생성 프레임 띠 (2026-10-15) — 있으면 대기 0·1 · 예비 · 덤빔 · 피격을 띠에서 고른다(전장의 .action-prepare/.action-attack 이 칸을 바꾼다).
   // 띠는 이미 왼쪽을 보게 만들어 두어 face-flip 을 쓰지 않는다. 쓰러짐은 예전 처치 그림
-  const art = idle.split("/").pop()?.replace(/.png$/, "") ?? "";
+  const art = pet && hasMonsterAnim(`pet-${kind}`) ? `pet-${kind}` : idle.split("/").pop()?.replace(/.png$/, "") ?? "";
   // 애니메이션 2판 (2026-10-19) — 대기 4 · 예비 2 · 덤빔 4 · 피격 2 칸 시트를 CSS steps 로. 오른쪽을 보게 렌더한 4종은 face-flip 이 뒤집는다
   if (!golden && hasMonsterAnim(art)) {
     // 쓰러짐 (2026-10-27 사용자: "몬스터 죽는 애니를 원래 리소스와 비슷하게") — 예전엔 쓰러지는 순간 2판 시트를 숨기고 옛 처치 그림(다른 그림체)으로 바꿨다.
@@ -345,7 +348,7 @@ export function allyRangeOffset(stage: number, id: string): number {
 // 근접 44 → 10 (2026-10-28, 사용자: "근거리면 가까이 가서 서로 공격") — 만남마다 0~44px 뒤로 물러서 몬스터와 허공을 사이에 두고 쳤다
 export const ALLY_RANGE_SPAN = { melee: 10, ranged: 22 } as const;
 
-export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1, walkRate = 1 }: { id: TitanHeroId; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number; /** 이번 만남 걷는 시간 ÷ 기준(1250ms) — 걷기 칸 한 바퀴를 그만큼 늘이고 줄인다 (2026-10-20) */ walkRate?: number }) {
+export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse = 0, engaged = false, approaching = false, skin, partySlot, line, cell, lineIndex, stage, encounter = 0, speed = 1, walkRate = 1 }: { id: TitanHeroId; /** 성급 — 2 이상이면 발밑 오라(2026-11-03 레벨별 차별화) */ stars?: number; attacking?: boolean; pulse?: number; hitPulse?: number; engaged?: boolean; approaching?: boolean; /** 몬스터가 자리를 잡고 살아 있다 — 이때만 오른쪽 측면 슬롯이 몬스터 오른쪽으로 돈다 */ flank?: boolean; skin?: string; partySlot?: number; /** 대형 (2026-10-14) — line: 근딜·탱커 front / 원딜·힐러 back · cell+lineIndex: formationCells 가 정한 칸 */ line?: "front" | "back"; cell?: "R" | "L"; lineIndex?: number; /** 사냥터 스테이지 — 주면 스테이지마다 자리·흔들림이 달라진다 */ stage?: number; /** 만남 번호(몬스터 등장마다 +1) — 걸어 들어갈 높이를 만남마다 새로 뽑는다 */ encounter?: number; /** 전투 배속 — 공격·피격 칸을 그만큼 빨리 */ speed?: number; /** 이번 만남 걷는 시간 ÷ 기준(1250ms) — 걷기 칸 한 바퀴를 그만큼 늘이고 줄인다 (2026-10-20) */ walkRate?: number }) {
   const base = ALT_BASE[id] ?? id;
   // pulse·hitPulse는 누적 카운터라 "지금 공격/피격 중"이 아니다 — 카운터가 바뀐 뒤 짧게만 해당 프레임을 보인다.
   // (이걸 안 하면 첫 공격 이후 영원히 공격 프레임에 박제된다.)
@@ -464,6 +467,7 @@ export function AllyArt({ id, attacking = false, pulse = 0, hitPulse = 0, engage
       */}
       <div className="ally-wander">
       <div className="ally-idle" style={{ animationDelay: `${(allyIndex[id] ?? 0) * -0.27}s` }}>
+        {stars >= 2 && <i className={`ally-star-aura star-${Math.min(5, stars)}`} aria-hidden="true" />}
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
           {anim2 ? (
             // 2판: 몸 상자는 그대로(WIDE_CELL), 안쪽 칸 그림만 동작 줄을 돈다 — 같은 동작이 다시 오면 key 로 처음부터

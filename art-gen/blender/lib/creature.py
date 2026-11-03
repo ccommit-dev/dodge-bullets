@@ -325,7 +325,38 @@ def _eyes_round(add, head_c, head_r, cfg, coll, M, bone, spread, up, size):
         add(bone, C.mesh_obj(f'ehi{sx}', C.ellipsoid(p + n * (r * 0.46) + Vector((-r * 0.25, 0, r * 0.3)), (r * 0.22, r * 0.22, r * 0.08), rot=rot), M['hi'], coll))
 
 
+# 비버 세계 그림결 (2026-11-03, 사용자: "몬스터는 비버키우기에 맞게 아트결을 맞춰서 다시수정") — 모두 같은 노란 배 · 쨍한 원색 · 색 홍채라 비버 옆에서 다른 게임처럼 보였다.
+# 털색을 차분하게, 배는 자기 색의 밝은 판, 눈은 비버처럼 흰자 + 검은 눈동자, 앞니 두 개. 빛나는 부위(glow)는 종의 특징이라 둔다
+BEAVER_WORLD = os.environ.get('MON_STYLE', 'beaver') == 'beaver'
+
+
+def _mix(hex_a, hex_b, t):
+    a = [int(hex_a[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(hex_b[i:i + 2], 16) for i in (1, 3, 5)]
+    return '#%02x%02x%02x' % tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+
+def _soften(hex_c, sat=0.72):
+    r, g, b = (int(hex_c[i:i + 2], 16) for i in (1, 3, 5))
+    gray = 0.3 * r + 0.59 * g + 0.11 * b
+    return '#%02x%02x%02x' % tuple(round(gray + (c - gray) * sat) for c in (r, g, b))
+
+
+def beaver_world(cfg):
+    if not BEAVER_WORLD or cfg.get('keep_style'):
+        return cfg
+    out = dict(cfg)
+    out['color'] = _soften(cfg.get('color', '#8a6a4a'))
+    if not cfg.get('glow_belly'):
+        out['belly'] = _mix(out['color'], '#fff4dc', 0.62)
+    out['iris'] = '#2a1a12'
+    out['eye_size'] = max(cfg.get('eye_size', 0.085), 0.085)
+    out['buck_teeth'] = not (cfg.get('tusks') or cfg.get('maw_open') or cfg.get('fierce'))
+    return out
+
+
 def build(name, cfg, coll=None):
+    cfg = beaver_world(cfg)
     if not LOWPOLY:
         return _build(name, cfg, coll)
     saved = C.FACET
@@ -406,6 +437,9 @@ def _build(name, cfg, coll=None):
         add('jaw', C.mesh_obj('jaw', C.ellipsoid(mz, (hr[0] * 0.45, hr[1] * 0.25, hr[2] * 0.16)), M['skin'], coll, outline=OUT))
         add('head', C.mesh_obj('mouth', C.ellipsoid(mz + Vector((0, -0.01, 0.02)), (hr[0] * 0.38, hr[1] * 0.18, hr[2] * 0.12)), M['mouth'], coll))
         for sx in (-1, 1):
+            if cfg.get('buck_teeth'):   # 비버 세계 — 송곳니 대신 앞니 두 개
+                add('head', C.mesh_obj(f'buck{sx}', C.ellipsoid(mz + Vector((sx * 0.03, -hr[1] * 0.2, -0.012)), (0.027, 0.012, 0.042)), M['tooth'], coll, outline=OUT * 0.4))
+                continue
             add('head', C.mesh_obj(f'fang{sx}', C.cone(mz + Vector((sx * hr[0] * 0.2, -hr[1] * 0.12, -0.0)), 0.022, 0.0, 0.06, seg=10, rot=Euler((math.pi, 0, 0))), M['tooth'], coll, outline=OUT * 0.4))
         # 귀 · 뿔 · 볏
         ears = cfg.get('ears')

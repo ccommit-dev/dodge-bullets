@@ -1311,3 +1311,24 @@
 .titans-field .titans-skill-dock .titans-skill { display: flex !important; flex-direction: column; align-items: center; justify-content: flex-start; width: 58px !important; height: 58px !important; min-height: 58px !important; padding: 3px 2px !important; gap: 0; overflow: visible; }
 .titans-field .titans-skill-dock .titans-skill .skill-icon { width: 34px; height: 34px; }
 .titans-field .titans-skill-dock .titans-skill small { position: relative; z-index: 2; margin-top: 1px; font-size: 11px; line-height: 1.1; }
+
+/* 탈것 (2026-11-03 titans/mounts) — 몬스터 시트라 왼쪽을 본다, 뒤집어 적 쪽(오른쪽)으로. 주인공은 translate 만 올린다(숨쉬기 transform 과 안 싸운다) */
+.titans-hero .hero-mount { position: absolute; left: 50%; bottom: -8%; width: 118%; aspect-ratio: 1; translate: -50% 0; z-index: 0; pointer-events: none; }
+.titans-hero .hero-mount i { position: absolute; inset: 0; display: block; transform: scaleX(-1); }
+.titans-hero.has-mount .titans-hero-facing .equipped-character { position: relative; z-index: 1; translate: 0 -23%; }
+.mount-product { grid-template-columns: 62px minmax(0, 1fr) auto; }
+.mount-thumb { position: relative; display: block; width: 62px; height: 62px; }
+.mount-thumb i { position: absolute; inset: 0; display: block; transform: scaleX(-1); }
+.mount-actions { display: grid; gap: 4px; }
+.mount-actions button { min-width: 64px; }
+.mount-product.on { outline: 3px solid #fbbf24; }
+
+/* 성급 발밑 오라 (2026-11-03, 사용자: "동료 특성 레벨별 리소스 차별화") — ★2 초록 · ★3 파랑 · ★4 보라 · ★5 금. 한 사람 그림을 성급마다 다시 그리지 않고 칸 하나로 */
+.ally-star-aura { position: absolute; left: 50%; bottom: 7%; width: 62%; height: 15%; translate: -50% 0; z-index: 0; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, var(--aura, #4ade80) 0%, var(--aura, #4ade80) 42%, transparent 100%); opacity: .62; }
+.ally-star-aura.star-3 { --aura: #60a5fa; opacity: .68; }
+.ally-star-aura.star-4 { --aura: #c084fc; opacity: .74; width: 70%; }
+.ally-star-aura.star-5 { --aura: #fbbf24; opacity: .85; width: 78%; animation: ally-aura-pulse 1.6s ease-in-out infinite alternate; }
+@keyframes ally-aura-pulse { to { scale: 1.12; opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .ally-star-aura.star-5 { animation: none; } }
+/* 아기 체형 펫 (2026-11-03) — 몬스터보다 그림이 작아 예전 크기로는 안 보였다 */
+.titans-hero .hero-pet { width: 60%; left: -38%; }
