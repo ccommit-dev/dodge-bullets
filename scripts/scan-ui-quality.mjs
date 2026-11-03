@@ -148,7 +148,7 @@ for (const [w, h] of VIEWPORTS) {
   // 2026-10-15 보완 — 상점 외형·동료 탭, 성문 방어 지도(스테이지 칸)·전투 HUD(단계·점수·위협도 알약)
   await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2400); await closeModals(); await sleep(300);
   await clickText(".titans-bottom-nav button", "상점"); await sleep(700);
-  for (const t of ["외형", "동료"]) { await clickText(".premium-category-tabs button", t); await sleep(600); await shot(`12-shop-${t}`); }
+  for (const t of ["외형", "동료"]) { await clickText(".hub-sheet-switch button", t === "외형" ? "꾸미기" : "뽑기"); await sleep(250); await clickText(".premium-category-tabs button", t); await sleep(600); await shot(`12-shop-${t}`); }
   await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2400); await closeModals(); await sleep(300);
   await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
   await page.evaluate(() => [...document.querySelectorAll(".hub-card")].find((b) => b.textContent.includes("성문 방어"))?.click()); await sleep(2200); await shot("13-dodge-map");

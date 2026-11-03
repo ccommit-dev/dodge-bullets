@@ -91,7 +91,7 @@ ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!doc
   await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
-  await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
+  await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
   const g0 = (await tit()).gold;
   const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
   const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"][data-count="${n === 1 ? 1 : 10}"] button`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };

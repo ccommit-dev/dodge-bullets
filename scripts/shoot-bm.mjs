@@ -33,14 +33,14 @@ await sleep(2600);
 if (await page.$(".attendance-modal")) { await shot("01-attendance-p1"); await clickText(".attendance-pages button", "DAY 16"); await sleep(300); await shot("02-attendance-p2"); }
 await closeModals(); await sleep(400); await closeModals(); await sleep(400);
 await clickText(".titans-bottom-nav button", "상점"); await sleep(700);
-await clickText(".premium-category-tabs button", "패키지"); await sleep(600);
+await clickText(".hub-sheet-switch button", "패키지"); await sleep(600);
 await shot("03-shop-package-top");
 await page.evaluate(() => { const s = document.querySelector(".page-premium") ?? document.scrollingElement; s.scrollTop = 600; }); await sleep(300);
 await shot("04-shop-package-mid");
 await page.evaluate(() => { const s = document.querySelector(".page-premium") ?? document.scrollingElement; s.scrollTop = 1400; }); await sleep(300);
 await shot("05-shop-package-bottom");
 const pkg = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".paid-group-head")].map((h) => h.textContent.trim()), cards: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent.trim()), buttons: [...document.querySelectorAll(".premium-product-card button")].map((b) => b.textContent.trim()) }));
-await clickText(".premium-category-tabs button", "재화"); await sleep(500);
+await clickText(".hub-sheet-switch button", "재화"); await sleep(500);
 await page.evaluate(() => { const s = document.querySelector(".page-premium") ?? document.scrollingElement; s.scrollTop = 0; });
 await shot("06-shop-currency");
 const cur = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent.trim()));

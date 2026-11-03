@@ -119,7 +119,7 @@ await sleep(600);
 // 도감이 쪽으로 나뉜다 — 동료 53명(2026-10-27)이라 엠버가 있는 쪽을 찾아 넘긴다
 for (let pg = 0; pg < 20; pg += 1) {
   if (await page.evaluate(() => [...document.querySelectorAll(".ally-card")].some((c) => /엠버/.test(c.textContent)))) break;
-  const more = await page.evaluate((pg) => { const tabs = [...document.querySelectorAll(".ally-pages button")]; tabs[pg + 1]?.click(); return !!tabs[pg + 1]; }, pg); await sleep(250);
+  const more = await page.evaluate((pg) => { const next = document.querySelector(".ally-page-next"); if (!next || next.disabled) return false; next.click(); return true; }, pg); await sleep(250);
   if (!more) break;
 }
 const gateClicked = await page.evaluate(() => { const card = [...document.querySelectorAll(".ally-card")].find((c) => /엠버/.test(c.textContent)); const btn = card?.querySelector(".ally-party-toggle"); btn?.click(); return !!btn; });
@@ -200,11 +200,11 @@ ok("같은 날 재부팅 → 중복 지급 없음", p.redGems === 2015, String(p
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(500);
-await clickText(".premium-category-tabs button", "패키지");
+await clickText(".hub-sheet-switch button", "패키지");
 await sleep(400);
 r = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card button")].map((b) => b.textContent.trim()));
 ok("DEV 빌드: 무료 지급 버튼이 QA 표기 · 캐릭터/월정액은 가격만", r.some((x) => /QA/.test(x)) && r.some((x) => /₩5,900|₩5,500/.test(x)), r.join("|"));
-await clickText(".premium-category-tabs button", "재화");
+await clickText(".hub-sheet-switch button", "재화");
 await sleep(300);
 r = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card p")].map((p) => p.textContent).find((x) => /사냥터 골드/.test(x)));
 ok("황금 보급 상자 수량 표기(×3000 반영)", /\+/.test(r ?? ""), r);

@@ -82,7 +82,7 @@ await clickText(".hub-sheet-switch button", "뽑기"); await sleep(500); await s
 await sheetClose(); await sleep(300);
 await nav("상점"); await sleep(600); await shot("06-shop");
 await clickText(".hub-sheet-switch button", "이벤트"); await shot("07-shop-event");
-await clickText(".hub-sheet-switch button", "특별"); await shot("08-shop-special");
+await clickText(".hub-sheet-switch button", "패키지"); await shot("08-shop-special");
 await sheetClose(); await sleep(300);
 await nav("모험"); await sleep(600); await shot("09-adventure");
 await clickText(".hub-cards > button, .nav-popup-grid button", "방어"); await sleep(1800); await closeModals(); await shot("10-dam-play");

@@ -86,7 +86,7 @@ await settled();
 ok("펫: 주인공 상자 안 발치에 있다(.titans-hero .hero-pet) · 옛 떠 있는 펫 없음", await page.evaluate(() => !!document.querySelector(".titans-hero .hero-pet") && !document.querySelector(".titans-field > .titans-pet")));
 ok("펫: 몬스터에 덤빈다(.hero-pet.pet-attack, 2.6초마다)", await seen(".hero-pet.pet-attack", 7000));
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(700);
-await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "펫")?.click()); await sleep(500);
+await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "꾸미기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "펫")?.click()); await sleep(500);
 const petShop = await page.evaluate(() => ({ n: document.querySelectorAll(".pet-product").length, wolf: document.querySelector(".pet-product[data-pet=wolf] button")?.textContent?.trim() }));
 await page.evaluate(() => document.querySelector(".pet-product[data-pet=slime] button")?.click()); await sleep(800);
 const pAfter = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);

@@ -70,7 +70,7 @@ ok("진행도에 제안 창 기록(momentOffers.pack-wall, 15분)", p.momentOffe
 const gemsBefore = p.redGems;
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "패키지");
+await clickText(".hub-sheet-switch button", "패키지");
 await sleep(500);
 r = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card")].filter((c) => /벽 돌파/.test(c.textContent)).map((c) => c.querySelector(".moment-bonus-badge")?.textContent ?? null));
 ok("상점 패키지 탭의 벽 돌파 세트에 '지금 +30 보석' 배지", r.length === 1 && /\+30/.test(r[0] ?? ""), JSON.stringify(r));

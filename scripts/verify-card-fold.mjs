@@ -18,10 +18,13 @@ const open = await page.evaluate(() => document.querySelectorAll(".ally-card.is-
 ok("동료 카드를 누르면 펼쳐지고 보조 버튼(출전 · 파견)이 보인다", open === 1 && (await vis(".ally-card.is-open .ally-party-toggle")) === 1 && (await vis(".ally-card.is-open .ally-expedition-send button")) === 3, `open ${open} · 접힌 상태 출전/벤치 버튼 ${benchBefore}`);
 ok("접힌 카드엔 출전/벤치 · 파견 버튼이 안 보인다", benchBefore === 0);
 // 펼친 카드의 버튼을 눌러도 접히지 않는다(버튼 클릭은 카드 토글이 아님)
+await sleep(200);   // 펼친 카드는 저절로 화면 안으로 스크롤된다(2026-11-03)
 const b2 = await page.$(".ally-card.is-open .ally-expedition-send button"); const bb = await b2.boundingBox();
+const navTop = await page.evaluate(() => document.querySelector(".titans-bottom-nav")?.getBoundingClientRect().top ?? innerHeight);
+ok("펼친 카드의 버튼이 아래 메뉴에 가려지지 않는다", bb.y + bb.height <= navTop, `${Math.round(bb.y + bb.height)} ≤ ${Math.round(navTop)}`);
 await page.evaluate(() => [...document.querySelectorAll(".ally-card.is-open .ally-card-actions button")].length); 
 const before = await page.evaluate(() => document.querySelector(".ally-card.is-open")?.getAttribute("data-ally"));
-await page.mouse.click(bb.x + 2, bb.y + 2); await sleep(500);
+await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2); await sleep(500);
 ok("펼친 카드 안 버튼 클릭은 카드를 접지 않는다(파견 실행)", await page.evaluate(() => !!document.querySelector(".ally-card.is-open") || !!document.querySelector(".ally-expedition-status")), before);
 // 스킬 — 장착 중 카드는 강화 하나만, 누르면 해제도
 await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(400);

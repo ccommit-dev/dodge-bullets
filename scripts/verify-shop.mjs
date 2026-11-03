@@ -69,7 +69,7 @@ const p2 = await prog();
 const t2 = await titans();
 ok("지원팩 구매: 보석 순 −100 · 견갑 조각 +40 · 스킬 코어 +4", p.redGems - p2.redGems === 100 && p2.shoulderShards - p.shoulderShards === 40 && t2.skillInventory.skillCores - beforeT.skillInventory.skillCores === 4, `${p.redGems}→${p2.redGems} shards ${p2.shoulderShards} cores ${t2.skillInventory.skillCores}`);
 // 특별 상점: 5일 출석 패키지 주 1회 → 두 번째는 한도 소진
-await clickText(".hub-sheet-switch button", "특별");
+await clickText(".hub-sheet-switch button", "패키지");
 await sleep(500);
 // 카드가 그려질 때까지 기다렸다 누르고, 저장이 바뀔 때까지 본다(최대 6초 · 3초에 안 바뀌면 한 번 더) — 전체 검사 부하에서 810→810(2026-10-28)
 await page.waitForFunction(() => [...document.querySelectorAll(".event-offer-card")].some((c) => /5일 출석/.test(c.textContent)), { timeout: 4000 }).catch(() => {});
@@ -104,7 +104,7 @@ await sleep(2200);
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "패키지");
+await clickText(".hub-sheet-switch button", "패키지");
 await sleep(400);
 await page.evaluate(() => { [...document.querySelectorAll(".premium-product-card")].find((c) => /캐릭터:/.test(c.textContent))?.querySelector("button")?.click(); });
 await sleep(400);
@@ -118,13 +118,13 @@ await sleep(2200);
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "패키지");
+await clickText(".hub-sheet-switch button", "패키지");
 await sleep(400);
 r = await page.evaluate(() => ({ names: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent), badges: document.querySelectorAll(".first-double-badge").length }));
 ok("H 트리거 패키지(벽 돌파·환생) 노출 · 개척 축하는 없다(2026-10-08 간결화) · 오늘의 보급·주말 보급 카드", r.names.some((n) => /벽 돌파/.test(n)) && r.names.some((n) => /환생 세트/.test(n)) && !r.names.some((n) => /개척 축하/.test(n)) && r.names.some((n) => /오늘의 보급/.test(n)) && r.names.some((n) => /주말 보급/.test(n)), r.names.join("|"));
 ok("H 보석팩 3종에 첫 구매 2배 배지", r.badges === 3, String(r.badges));
 r = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".paid-group-head")].map((h) => h.firstChild?.textContent?.trim()), names: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent) }));
-ok("패키지 탭 5묶음(매일·주말/보석/패스·영구/1회 한정/캐릭터·코스튬) · 중급·고급 모험가 세트 없음", r.heads.length === 5 && r.heads[0] === "매일·주말" && !r.names.some((n) => /중급 모험가|고급 모험가/.test(n)), r.heads.join("/"));
+ok("패키지 탭 6묶음(광고 제거/매일·주말/보석/패스·영구/1회 한정/캐릭터·코스튬) · 중급·고급 모험가 세트 없음", r.heads.length === 6 && r.heads[0] === "광고 제거" && r.heads[1] === "매일·주말" && !r.names.some((n) => /중급 모험가|고급 모험가/.test(n)), r.heads.join("/"));
 
 // ── G. 시즌 패스: 모험 팝업 진입 · 수령 · 유료 트랙 구매(QA) ──
 // 현재 시즌 번호 — 0 으로 고정하면 시즌이 넘어간 날(2026-10-05~) 저장이 새 시즌으로 초기화돼 0/30단이 된다
@@ -187,7 +187,7 @@ ok("L 광고 2배 수령 → 카운터 1 · 골드 증가", lp.adRewards.idleDou
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "재화");
+await clickText(".hub-sheet-switch button", "재화");
 await sleep(400);
 r = await page.evaluate(() => ({ card: !!document.querySelector(".ad-product"), btn: document.querySelector(".ad-product button")?.textContent }));
 ok("L 재화 탭에 광고 가속 4h 카드", r.card && /광고/.test(r.btn ?? ""), JSON.stringify(r));
@@ -204,7 +204,7 @@ await sleep(2200);
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "재화");
+await clickText(".hub-sheet-switch button", "재화");
 await sleep(400);
 ok("L 미연동이면 광고 카드 자체가 없다", await page.evaluate(() => !document.querySelector(".ad-product")));
 
@@ -215,7 +215,7 @@ await sleep(1500);
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "외형");
+await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".premium-category-tabs button", "외형");
 await sleep(400);
 r = await page.evaluate(() => ({ fx: document.querySelectorAll(".fx-product").length, theme: document.querySelectorAll(".theme-product").length, seasonHidden: ![...document.querySelectorAll(".fx-product")].some((c) => /시즌 잔영/.test(c.textContent)) }));
 ok("I 외형 탭에 무기 이펙트 3장 · 테마 3장 · 시즌 이펙트는 미보유 시 숨김", r.fx === 3 && r.theme === 3 && r.seasonHidden, JSON.stringify(r));
@@ -263,7 +263,7 @@ await sleep(600);
 const pickupNames = await page.evaluate(() => [...document.querySelectorAll(".gacha-pickup small")].map((b) => b.textContent.trim().split(" · ")[0]));
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".premium-category-tabs button", "동료");
+await clickText(".hub-sheet-switch button", "뽑기"); await sleep(250); await clickText(".premium-category-tabs button", "동료");
 await sleep(400);
 r = await page.evaluate(() => ({
   cards: document.querySelectorAll(".skin-product").length,

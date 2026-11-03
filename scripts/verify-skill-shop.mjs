@@ -21,7 +21,7 @@ const sumCopies = (t) => Object.values(t.skillInventory?.copies ?? {}).reduce((a
 
 // ── 1. 상점 '스킬' 칸 — 패키지 줄 칸(골드 · 보석 머리줄 + 1회 · 10회) ──
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
-await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click());
+await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click());
 await page.waitForSelector(".skill-shop-list", { timeout: 4000 }).catch(() => null);
 const shop = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".skill-banner-head")].map((h) => h.dataset.banner + ":" + h.textContent), cards: [...document.querySelectorAll(".skill-draw-product")].map((c) => c.dataset.banner + c.dataset.count + ":" + c.textContent), icons: document.querySelectorAll(".skill-draw-product .skill-icon").length }));
 ok("상점 '스킬' 칸: 골드(일반 ~ 영웅) · 보석(영웅 ~ 초월) 머리줄 · 재화마다 1회 · 10회 칸 · 칸 그림 = 스킬 아이콘 · 보석 80",

@@ -187,7 +187,7 @@ await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(600);
 for (let pg = 0; pg < 20; pg += 1) {   // 도감은 쪽으로 나뉜다 — 아리가 있는 쪽까지 넘긴다
   if (await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].some((c) => /아리/.test(c.textContent) && /DPS/.test(c.textContent)))) break;
-  const more = await page.evaluate((pg) => { const tabs = [...document.querySelectorAll(".ally-pages button")]; tabs[pg + 1]?.click(); return !!tabs[pg + 1]; }, pg); await sleep(250);
+  const more = await page.evaluate((pg) => { const next = document.querySelector(".ally-page-next"); if (!next || next.disabled) return false; next.click(); return true; }, pg); await sleep(250);
   if (!more) break;
 }
 const ariCard = await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].map((c) => c.textContent).find((t) => /아리/.test(t) && /DPS/.test(t)) ?? "");

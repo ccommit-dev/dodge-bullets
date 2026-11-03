@@ -51,7 +51,7 @@ await shot("04-party-chips");
 const party = await page.evaluate(() => [...document.querySelectorAll(".party-synergies .synergy-chip")].map((c) => c.textContent.trim()));
 // 4) 재화 탭 인장 묶음
 await clickText(".titans-bottom-nav button", "상점"); await sleep(600);
-await clickText(".premium-category-tabs button", "재화"); await sleep(500);
+await clickText(".hub-sheet-switch button", "재화"); await sleep(500);
 await shot("05-shop-currency-seal");
 const shop = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent.trim()));
 // 5) 비트 수련 허브 출격 강화 칩 → 2번 곡(장 대장) 약점 레인

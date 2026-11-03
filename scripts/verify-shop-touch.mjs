@@ -67,7 +67,7 @@ for (const [dev, w, h] of DEVICES) {
   await seed({ progress: { relics: { "ember-ring": 3 }, relicSpare: { "ember-ring": 3, "frost-horn": 2 }, enhancementMaterials: 100, redGems: 2000 },
     titans: { gold: 50_000_000, stage: 12, bestStage: 12, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0, copies: { strike: 2, emberCut: 1 } } } });
   await tapEl(".titans-bottom-nav button", "상점"); await sleep(600);
-  await tapEl(".premium-category-tabs button", "유물"); await sleep(600);
+  await tapEl(".hub-sheet-switch button", "뽑기"); await sleep(250); await tapEl(".premium-category-tabs button", "유물"); await sleep(600);
   ok(`${dev} 상점 유물 = 패키지 칸 6장(재화 3 × 1회 · 10회) · 가로 넘침 없음`, (await page.$$(".relic-draw-product")).length === 6 && await noHScroll());
   const before = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)).enhancementMaterials, H);
   await tapEl('.relic-draw-product[data-banner="stone"][data-count="1"] button');
@@ -82,7 +82,7 @@ for (const [dev, w, h] of DEVICES) {
   await page.evaluate(() => document.querySelector(".relic-shop-list")?.scrollIntoView({ block: "start" })); await sleep(200);
   await shot("relic-shop");
   // 스킬 칸
-  await tapEl(".premium-category-tabs button", "스킬"); await sleep(600);
+  await tapEl(".hub-sheet-switch button", "뽑기"); await sleep(250); await tapEl(".premium-category-tabs button", "스킬"); await sleep(600);
   ok(`${dev} 상점 스킬 = 패키지 칸 4장(골드 · 보석 × 1회 · 10회)`, (await page.$$(".skill-draw-product")).length === 4 && await noHScroll());
   const c0 = await page.evaluate((H) => Object.values(JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)).skillInventory.copies ?? {}).reduce((a, v) => a + v, 0), H);
   await tapEl('.skill-draw-product[data-banner="gold"][data-count="1"] button');
