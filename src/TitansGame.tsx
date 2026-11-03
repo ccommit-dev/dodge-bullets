@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhance, gearTrainingCost, type GearPart } from "./equipment/parts";
 import { AllySigInfo } from "./titans/AllySigInfo";
+import { AllyDetail } from "./titans/AllyDetail";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
@@ -164,6 +165,8 @@ type TitansGameProps = {
   /** 견갑 강화 단계 — 전장 견갑 외형 티어 */
   armorLevel?: number;
   onOpenContent: (content: "dodge" | "beat" | "forge" | "profile" | "tower") => void;
+  /** 마이페이지 도감의 그 쪽으로 (2026-11-03 도감 일원화) */
+  onOpenCodex?: (sub: "monster" | "ally" | "relic" | "pet") => void;
   /** 설정 버튼+메뉴 — 헤더의 마이페이지 왼쪽에 (App 이 만든다) */
   settingsNode?: ReactNode;
   /** 처음 열 탭 (2026-10-14) — 마이페이지의 콘텐츠 바로가기는 모드를 바로 켜지 않고 모험 허브(hub)로 보낸다 */
@@ -318,7 +321,7 @@ const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
   (QA_BUILD && typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
 
-export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0, armorLevel = 0, onOpenContent, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
+export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0, armorLevel = 0, onOpenContent, onOpenCodex, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
   if (import.meta.env.DEV) { const w = window as unknown as { __titansRenders?: number }; w.__titansRenders = (w.__titansRenders ?? 0) + 1; }   // scripts/_probe-render.mjs
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
@@ -513,7 +516,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [unlockBanner, setUnlockBanner] = useState<number | null>(null);
   /** 동료 탭 역할 필터 (점검표 #4) */
   const [allyFilter, setAllyFilter] = useState<"all" | "melee" | "ranged" | "tank" | "healer">("all");
-  const [allyPage, setAllyPage] = useState(0);   // 동료 도감 쪽(6장씩)
+  const [allyPage, setAllyPage] = useState(0);   // 보유 동료 쪽(6장씩)
+  /** 동료 탭 (2026-11-03) — 편성 줄 / 상세. 뽑기는 상점, 전체 목록은 마이페이지 도감으로 옮겼다 */
+  const [allyView, setAllyView] = useState<"party" | "detail">("party");
+  const [allyDetailId, setAllyDetailId] = useState<TitanHeroId | null>(null);
   /** 이벤트 저장(균열·토벌령·주간) — 루틴 보드·추천 엔진이 읽는다 */
   const [events, setEvents] = useState<EventSave>(() => emptyEventSave());
   const [navPopup, setNavPopup] = useState<"content" | "adventure" | null>(null);
@@ -3308,6 +3314,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const gacha = useMemo(() => gachaPool(save.stage, character.pioneeredArea, Date.now(), summonLv), [save.stage, character.pioneeredArea, summonLv]);
   /** 동료 뽑기는 상점 뽑기 → 동료 칸 (2026-11-03) — 동료 탭의 뽑기 화면을 옮겼다 */
   const allyDrawOpen = tab === "premium" && premiumCategory === "ally";
+  /** 동료 탭 목록 = 보유 + 골드로 부를 수 있는 다음 1명(첫 소환 안내도 여기). 나머지는 마이페이지 도감 (2026-11-03) */
+  const rosterHeroes = useMemo(() => {
+    const next = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && SHOP_ALLY_GEM_COST[h.id] === undefined).sort((a, b) => a.baseCost - b.baseCost)[0];
+    return HEROES.filter((h) => save.heroes[h.id] > 0 || h.id === next?.id);
+  }, [save.heroes]);
   const openAllyDraw = () => { setPremiumCategory("ally"); setTab("premium"); };
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
   useEffect(() => {
@@ -4050,7 +4061,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {MANAGEMENT_PAGE_COPY[tab] && (
         <header className="hub-sheet-head">
           {/* 제목이 바로 옆 전환 탭과 같은 말이라 빼고 전환 탭이 제목 역할을 한다 (동료 도감 / 상점 — 2026-09-18) */}
-          {tab === "heroes" && <strong className="hub-sheet-title">동료</strong>}
+          {tab === "heroes" && (
+            <nav className="hub-sheet-switch ally-view-switch" aria-label="동료 메뉴">
+              <button type="button" className={allyView === "party" ? "on" : ""} onClick={() => setAllyView("party")}>보유 · 편성</button>
+              <button type="button" className={allyView === "detail" ? "on" : ""} onClick={() => setAllyView("detail")}>상세 정보</button>
+              <button type="button" className="ally-codex-link" onClick={() => onOpenCodex?.("ally")}>도감</button>
+            </nav>
+          )}
           {tab === "expedition" && (
             <nav className="hub-sheet-switch" aria-label="파견 메뉴">
               <button type="button" onClick={() => setTab("hub")}>모험</button>
@@ -4087,7 +4104,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         )}
       <section className="titans-shop">
         {tab === "relic" && (
-          <RelicTabPanel relics={character.relics} spare={character.relicSpare} onConsume={(id) => void consumeRelic(id)} chance={perm.relicChance} onDraw={() => { setPremiumCategory("relic"); setTab("premium"); }} />
+          <RelicTabPanel relics={character.relics} spare={character.relicSpare} onConsume={(id) => void consumeRelic(id)} chance={perm.relicChance} onCodex={() => onOpenCodex?.("relic")} />
         )}
         {tab === "quest" && (
           <QuestPanel
@@ -4296,7 +4313,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </section>
           );
         })()}
-        {tab === "heroes" && (
+        {tab === "heroes" && allyView === "party" && (
           <article className="titans-card party-panel">
             <div className="party-panel-head">
               <strong>
@@ -4393,17 +4410,42 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             )}
           </article>
         )}
-        {tab === "heroes" && <div className="ally-roster-grid" aria-label={`동료 도감 ${HEROES.length}명`} data-roster-count={HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
+        {tab === "heroes" && allyView === "detail" && (() => {
+          const owned = HEROES.filter((h) => save.heroes[h.id] > 0);
+          const cur = owned.find((h) => h.id === allyDetailId) ?? owned.find((h) => character.partyIds.includes(h.id)) ?? owned[0];
+          if (!cur) return <p className="codex-empty">아직 보유한 동료가 없어요 — 상점 → 뽑기 → 동료에서 만나요</p>;
+          const lv = save.heroes[cur.id];
+          const stars = effectiveStars(character.allyStars[cur.id], lv);
+          return (
+            <section className="ally-detail-page" aria-label="동료 상세 정보">
+              <nav className="ally-detail-pick" aria-label="동료 고르기">
+                {owned.map((h) => <button key={h.id} type="button" className={`rarity-${ALLY_RARITY[h.id].toLowerCase()} ${h.id === cur.id ? "on" : ""}`} onClick={() => setAllyDetailId(h.id)}>{h.name}</button>)}
+              </nav>
+              <AllyDetail
+                key={cur.id}
+                hero={cur}
+                level={lv}
+                stars={stars}
+                skin={character.equippedAllySkins?.[cur.id]}
+                dpsText={formatGold(heroDps(cur, lv) * starMultiplier(Math.max(1, stars)))}
+                shards={character.allyShards[cur.id]}
+                nextStarCost={shardCostToNext(cur.id, Math.max(1, stars))}
+                inParty={character.partyIds.includes(cur.id)}
+              />
+            </section>
+          );
+        })()}
+        {tab === "heroes" && allyView === "party" && <div className="ally-roster-grid" aria-label={`보유 동료 ${rosterHeroes.length}명`} data-roster-count={rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
           {/* 머리줄(도감 N명 · 등급별 확률 칩)을 걷었다(2026-11-03) — 칩이 단추처럼 보이는데 눌러도 아무 일이 없었다. 등급 확률은 동료 뽑기 칸 · 확률 공시에 그대로 */}
           {/* 13장 세로 스크롤 → 6장씩 쪽 (2026-10-08 사용자: "동료 쪽 스크롤 남아 있는 거 리팩토링") */}
-          {(() => { const roster = HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter); const pages = Math.max(1, Math.ceil(roster.length / ALLY_PAGE_SIZE)); const pg = Math.min(allyPage, pages - 1); return pages > 1 ? (
+          {(() => { const roster = rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter); const pages = Math.max(1, Math.ceil(roster.length / ALLY_PAGE_SIZE)); const pg = Math.min(allyPage, pages - 1); return pages > 1 ? (
             <nav className="ally-pages ally-pager" aria-label="동료 쪽">
               <button type="button" className="ally-page-prev" disabled={pg === 0} aria-label="이전 쪽" onClick={() => setAllyPage(pg - 1)}>‹</button>
               <span>{pg * ALLY_PAGE_SIZE + 1}–{Math.min(roster.length, (pg + 1) * ALLY_PAGE_SIZE)} <small>/ {roster.length}명</small></span>
               <button type="button" className="ally-page-next" disabled={pg >= pages - 1} aria-label="다음 쪽" onClick={() => setAllyPage(pg + 1)}>›</button>
             </nav>
           ) : null; })()}
-          {HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).slice(Math.min(allyPage, Math.max(0, Math.ceil(HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length / ALLY_PAGE_SIZE) - 1)) * ALLY_PAGE_SIZE, Math.min(allyPage, Math.max(0, Math.ceil(HEROES.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length / ALLY_PAGE_SIZE) - 1)) * ALLY_PAGE_SIZE + ALLY_PAGE_SIZE).map((h) => {
+          {rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).slice(Math.min(allyPage, Math.max(0, Math.ceil(rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length / ALLY_PAGE_SIZE) - 1)) * ALLY_PAGE_SIZE, Math.min(allyPage, Math.max(0, Math.ceil(rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length / ALLY_PAGE_SIZE) - 1)) * ALLY_PAGE_SIZE + ALLY_PAGE_SIZE).map((h) => {
             const lv = save.heroes[h.id];
             const gemCost = SHOP_ALLY_GEM_COST[h.id];
             const shopOnly = gemCost !== undefined;
@@ -4471,6 +4513,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   )}
                 </div>
                 <div className="ally-card-actions">
+                  {lv > 0 && <button type="button" className="ally-detail-open" onClick={() => { setAllyDetailId(h.id); setAllyView("detail"); }}>상세</button>}
                   {shopOnly && lv === 0 ? (
                     <button type="button" disabled={redGems < (gemCost ?? 0)} onClick={() => void buyShopAlly(h.id)}>
                       <GemMark />{gemCost}
@@ -4833,6 +4876,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </section>
             )}
             {/* 보석 소비형 상품 (LIVEOPS §3.3) — 확정 구매, 확률 없음 */}
+            {premiumCategory === "ally" && HEROES.filter((h) => SHOP_ALLY_GEM_COST[h.id] !== undefined && save.heroes[h.id] === 0).map((h) => (
+              <article key={h.id} className="titans-card premium-product-card gem-product shop-ally-product" data-shop-ally={h.id}>
+                <CurrencyIcon kind="gem" />
+                <div><strong>{h.name} <em>보석 전용 동료</em></strong><p>{h.feature}</p></div>
+                <button type="button" disabled={redGems < (SHOP_ALLY_GEM_COST[h.id] ?? 0)} onClick={() => void buyShopAlly(h.id)}><GemMark />{SHOP_ALLY_GEM_COST[h.id]}</button>
+              </article>
+            ))}
             {premiumCategory === "ally" && <article className="titans-card premium-product-card gem-product">
               <CurrencyIcon kind="gem" />
               <div>

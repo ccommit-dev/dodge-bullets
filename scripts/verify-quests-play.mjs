@@ -67,19 +67,22 @@ const rel = await page.evaluate(() => ({
   head: document.querySelector(".relic-tab-head")?.textContent ?? "",
   families: [...document.querySelectorAll(".relic-tab-family")].length,
   imgMax: Math.max(...[...document.querySelectorAll(".relic-tab-panel img")].map((i) => Math.max(i.getBoundingClientRect().width, i.getBoundingClientRect().height))),
-  setOn: !!document.querySelector(".relic-tab-family.fam-fire.set-on"),
+  setOn: !!document.querySelector('.relic-set-chip.on[data-family="fire"]'),
   over: [...document.querySelectorAll(".relic-tab-panel .quest-row, .relic-tab-panel .quest-bar, .relic-tab-panel .quest-buy, .relic-tab-panel .quest-icon > b, .relic-tab-draw")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ":" + e.textContent.slice(0, 18)),
   small: [...document.querySelectorAll(".relic-tab-panel *")].filter((e) => e.childElementCount === 0 && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).map((e) => e.textContent.slice(0, 12)),
   sw: document.documentElement.scrollWidth,
 }));
 // 2026-10-27 "가지고 있는것만" — ★1 이상 3종(불꽃 반지 · 불꽃 깃털 · 용암 심장)만 줄로, 조각 1개 서리 뿔피리는 머리줄 "모으는 중 1종"
-ok("유물 탭: 가진 3줄만 · 불 계열 하나 · 아이콘이 칸 크기(60px 이하) · 불 세트 켜짐", rel.rows.length === 3 && rel.families === 1 && rel.imgMax <= 60 && rel.setOn, `${rel.ids.join(",")} · 계열 ${rel.families} · 아이콘 ${rel.imgMax}px`);
+ok("유물 탭: 가진 3줄만 · 세트 묶음 없음 · 아이콘이 칸 크기(60px 이하) · 불 세트 칩 켜짐", rel.rows.length === 3 && rel.families === 0 && rel.imgMax <= 60 && rel.setOn, `${rel.ids.join(",")} · 계열 ${rel.families} · 아이콘 ${rel.imgMax}px`);
 ok("용암 심장 ★5 MAX · 서리 뿔피리(조각 1)는 줄 없이 '모으는 중 1종'", rel.rows.some((t) => /용암 심장/.test(t) && /MAX/.test(t) && /완성/.test(t)) && !rel.ids.includes("frost-horn") && /모으는 중 1종/.test(rel.head) && !rel.rows.some((t) => /미보유/.test(t)), rel.head.slice(0, 80));
 ok("유물 탭 390px 넘침 없음 · 13px 미만 없음", rel.sw <= 390 && rel.over.length === 0 && rel.small.length === 0, JSON.stringify({ over: rel.over, small: rel.small }));
 await page.evaluate(() => document.querySelector(".relic-tab-panel")?.scrollIntoView({ block: "start" })); await sleep(300);
 await page.screenshot({ path: "art-gen/out/relic-tab.png" });
-await page.evaluate(() => document.querySelector(".relic-tab-draw")?.click()); await sleep(600);
-ok("유물 뽑기 단추 → 상점 유물 칸", await page.evaluate(() => !!document.querySelector(".relic-draw-page")));
+// 유물 탭의 뽑기 단추는 도감 단추로 바뀌었다(2026-11-03) — 뽑기는 상점 뽑기 → 유물
+await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(400);
+await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.includes("뽑기"))?.click()); await sleep(300);
+await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
+ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySelector(".relic-draw-page")));
 // ── 4. 상점 유물 뽑기 — 재화별 3종 (2026-10-28 6등급: 골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) ──
 {
   // 4판 (2026-10-28 "패키지 아이템 각각 ui처럼") — 재화별 머리줄 + 1회 · 10회 상품 칸

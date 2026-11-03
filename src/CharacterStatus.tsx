@@ -32,7 +32,8 @@ import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas } from ".
 import { sfxRebirth } from "./ui/sfx";
 import { LockIcon } from "./ui/LockIcon";
 import { freeCrystals, treeIdleMult } from "./progression/crystalTree";
-import { CrystalTreePanel, RelicPanel } from "./ui/LegacyPanels";
+import { CrystalTreePanel } from "./ui/LegacyPanels";
+import { AllyCodex, OWN_FILTERS, RelicCodex, type OwnFilter } from "./titans/CodexPanels";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
 import {
   PET_DEFS,
@@ -65,7 +66,12 @@ type CharacterStatusProps = {
   onOpenContent: (content: "dodge" | "beat" | "forge" | "titans") => void;
   onProgressChange: (progress: CharacterProgress) => void;
   onBack: () => void;
+  /** 다른 화면의 도감 단추에서 왔다 — 그 쪽을 열어 둔다 */
+  initialCodex?: "monster" | "ally" | "relic" | "pet" | null;
 };
+
+export type CodexSub = "monster" | "ally" | "relic" | "pet";
+const CODEX_SUBS: readonly (readonly [CodexSub, string])[] = [["monster", "몬스터"], ["ally", "동료"], ["relic", "유물"], ["pet", "펫"]];
 
 export function CharacterStatus({
   insets,
@@ -77,10 +83,14 @@ export function CharacterStatus({
   onOpenContent,
   onProgressChange,
   onBack,
+  initialCodex,
 }: CharacterStatusProps) {
   const [beat, setBeat] = useState<BeatRpgProgress | null>(null);
   const [forge, setForge] = useState<ForgeSave>(() => defaultForgeSave());
-  const [mypageTab, setMypageTab] = useState<"character" | "codex" | "pet" | "badge">("character");
+  const [mypageTab, setMypageTab] = useState<"character" | "codex" | "badge">(initialCodex ? "codex" : "character");
+  // 도감 일원화 (2026-11-03) — 몬스터 · 동료 · 유물 · 펫을 도감 안의 탭으로. 펫은 같은 내용의 위 칸을 없애고 여기로 옮겼다
+  const [codexSub, setCodexSub] = useState<CodexSub>(initialCodex ?? "monster");
+  const [ownFilter, setOwnFilter] = useState<OwnFilter>("all");
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
   const [growthMessage, setGrowthMessage] = useState("");
@@ -312,7 +322,7 @@ export function CharacterStatus({
       <section className="legacy-growth">
         {/* 긴 세로 스크롤 대신 묶음 탭 (2026-10-08 사용자: "스크롤 없이, 페이지를 추가하더라도") */}
         <nav className="mypage-tabs" role="tablist">
-          {([["character", "캐릭터·칭호"], ["codex", "도감"], ["pet", "펫"], ["badge", "배지·진화"]] as const).map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={mypageTab === k} className={mypageTab === k ? "on" : ""} onClick={() => setMypageTab(k)}>{label}</button>)}
+          {([["character", "캐릭터·칭호"], ["codex", "도감"], ["badge", "배지·진화"]] as const).map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={mypageTab === k} className={mypageTab === k ? "on" : ""} onClick={() => setMypageTab(k)}>{label}</button>)}
         </nav>
         <div className={`mypage-group ${mypageTab === "character" ? "" : "hidden"}`}>
         <div className="legacy-heading"><div><small>CHARACTER</small><strong>플레이어블 캐릭터</strong></div><span>{1 + progress.ownedCharacters.length}종 보유</span></div>
@@ -381,7 +391,21 @@ export function CharacterStatus({
         )}
 
         </div>
-        <div className={`mypage-group ${mypageTab === "codex" ? "" : "hidden"}`}>
+        {mypageTab === "codex" && (
+          <div className="codex-head">
+            <nav className="codex-tabs" role="tablist" aria-label="도감 종류">
+              {CODEX_SUBS.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={codexSub === k} className={codexSub === k ? "on" : ""} onClick={() => setCodexSub(k)}>{label}</button>)}
+            </nav>
+            {codexSub !== "pet" && (
+              <nav className="codex-own" aria-label="보유 구분">
+                {OWN_FILTERS.map(([k, label]) => <button key={k} type="button" className={ownFilter === k ? "on" : ""} onClick={() => setOwnFilter(k)}>{label}</button>)}
+              </nav>
+            )}
+          </div>
+        )}
+        {mypageTab === "codex" && codexSub === "ally" && <AllyCodex heroes={titans.heroes} filter={ownFilter} />}
+        {mypageTab === "codex" && codexSub === "relic" && <RelicCodex relics={progress.relics} filter={ownFilter} />}
+        <div className={`mypage-group ${mypageTab === "codex" && codexSub === "monster" ? "" : "hidden"}`}>
         <div className="legacy-heading"><div><small>CODEX</small><strong>몬스터 도감</strong></div><span>처치 마일스톤 → 골드 보너스</span></div>
         <div className="codex-grid">
           {(Object.keys(progress.monsterKills) as Array<keyof typeof progress.monsterKills>).map((kind) => {
@@ -410,7 +434,7 @@ export function CharacterStatus({
             <>
               <div className="legacy-heading"><div><small>BESTIARY</small><strong>몬스터 얼굴</strong></div><span>{seen.length}/{entries.length} 발견</span></div>
               <div className="bestiary-grid">
-                {entries.map((e) => {
+                {entries.filter((e) => ownFilter === "all" || (ownFilter === "own") === progress.seenMonsters.includes(e.art)).map((e) => {
                   const open = progress.seenMonsters.includes(e.art);
                   return (
                     <div key={e.art} className={`bestiary-chip ${e.boss ? "boss" : ""} ${open ? "seen" : "unseen"}`} data-art={e.art}>
@@ -426,7 +450,7 @@ export function CharacterStatus({
         })()}
 
         </div>
-        <div className={`mypage-group ${mypageTab === "pet" ? "" : "hidden"}`}>
+        <div className={`mypage-group ${mypageTab === "codex" && codexSub === "pet" ? "" : "hidden"}`}>
         <div className="legacy-heading">
           <div><small>PETS</small><strong>도감의 아이들</strong></div>
           <span>{PET_IDS.filter((id) => (progress.pets[id] ?? 0) > 0).length}/{PET_IDS.length} 부화</span>
@@ -527,7 +551,6 @@ export function CharacterStatus({
           </button>
         </div>
         <CrystalTreePanel userHash={userHash} progress={progress} onProgressChange={onProgressChange} onMessage={setGrowthMessage} />
-        <RelicPanel progress={progress} />
         <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `진화 포인트 ${progress.evolutionPoints}`}</span></div>
         <div className={`evolution-tree mp-evo ${progress.rebirthCount < 1 ? "is-locked" : ""}`}>
           <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타 · 방치 배율 +0.15</small></button>

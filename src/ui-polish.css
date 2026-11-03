@@ -1256,3 +1256,52 @@
 .hub-sheet-title { font-size: 18px; font-weight: 900; color: var(--flat-ink, #3a2410); padding: 2px 4px; }
 .titans-bottom-nav button { position: relative; }
 .titans-bottom-nav .tab-dot { position: absolute; top: 6px; right: 14px; }
+
+/* 유물 탭 세트 칩 · 도감 단추 (2026-11-03) */
+.relic-set-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
+.relic-set-chip { padding: 2px 8px; border: 2px solid #c9b48c; border-radius: 999px; font-size: 13px; font-weight: 800; color: #5b4326; background: #fff8e6; }
+.relic-set-chip.on { border-color: #b7791f; background: #fde68a; color: #3a2410; }
+.relic-set-chip.full { border-color: #92400e; background: #fbbf24; }
+.relic-tab-dex { display: grid; justify-items: center; padding: 3px 12px; border: 2px solid #3a2410; border-radius: 12px; background: #fde68a; color: #3a2410; }
+.relic-tab-dex b { font-size: 13px; } .relic-tab-dex small { font-size: 13px; font-weight: 600; }
+/* 도감 (2026-11-03 마이페이지 일원화) */
+.mypage-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.codex-head { display: grid; gap: 6px; margin: 0 0 10px; }
+.codex-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.codex-tabs button, .codex-own button { min-height: 36px; border: 2px solid #3a2410; border-radius: 10px; background: #fff8e6; color: #3a2410; font-size: 14px; font-weight: 800; }
+.codex-tabs button.on { background: #fbbf24; }
+.codex-own { display: flex; gap: 4px; justify-content: flex-end; }
+.codex-own button { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.codex-own button.on { background: #3a2410; color: #fff8e6; }
+.codex-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.codex-card { display: grid; justify-items: center; align-content: start; gap: 2px; min-width: 0; padding: 6px 4px; border: 2px solid #c9b48c; border-radius: 12px; background: #fff8e6; text-align: center; color: #3a2410; }
+.codex-card b { font-size: 13px; line-height: 1.2; } .codex-card small { font-size: 13px; line-height: 1.25; color: #5b4326; }
+.codex-card-art { position: relative; display: block; width: 72px; height: 72px; overflow: hidden; }
+.codex-card-art img { width: 100%; height: 100%; object-fit: contain; }
+.codex-card.unowned .codex-card-art { filter: grayscale(1) brightness(.72) opacity(.65); }
+.codex-card.unowned { background: #efe6d2; }
+.codex-card.rarity-sr, .codex-card.rarity-ssr { border-color: #b7791f; } .codex-card.rarity-ur, .codex-card.rarity-lr { border-color: #be185d; }
+.codex-empty { margin: 12px 0; text-align: center; font-size: 14px; color: #5b4326; }
+.codex-pager { margin-top: 8px; }
+/* 동료 탭 · 상세 (2026-11-03) */
+.ally-view-switch .ally-codex-link { flex: 0 0 auto; }
+.ally-detail-page { grid-column: 1 / -1; display: grid; gap: 8px; }
+.ally-detail-pick { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.ally-detail-pick button { flex: 0 0 auto; min-height: 34px; padding: 0 10px; border: 2px solid #c9b48c; border-radius: 999px; background: #fff8e6; color: #3a2410; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.ally-detail-pick button.on { border-color: #3a2410; background: #fbbf24; }
+.ally-detail { display: grid; gap: 8px; padding: 10px; border: 2px solid #3a2410; border-radius: 14px; background: #fff8e6; color: #3a2410; }
+.ally-detail-stage { position: relative; display: grid; justify-items: center; gap: 2px; padding-top: 6px; border-radius: 10px; background: linear-gradient(180deg, #dbeafe, #fef3c7 72%, #d9b77f 72%); }
+.ally-detail-art { position: relative; display: block; width: 180px; height: 150px; }
+.ally-detail-stage em { font-style: normal; font-size: 13px; font-weight: 700; padding-bottom: 4px; }
+.ally-detail-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ally-detail-head strong { font-size: 18px; } .ally-detail-head b, .ally-detail-head small { font-size: 13px; }
+.ally-detail-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; margin: 0; }
+.ally-detail-stats div { display: flex; justify-content: space-between; gap: 6px; border-bottom: 1px solid #e5d8ba; padding: 2px 0; }
+.ally-detail-stats dt { font-size: 13px; color: #6b5338; } .ally-detail-stats dd { margin: 0; font-size: 13px; font-weight: 800; text-align: right; }
+.ally-detail-skill h4 { margin: 0 0 2px; font-size: 14px; } .ally-detail-skill p { margin: 0 0 2px; font-size: 13px; line-height: 1.4; }
+
+.relic-tab-dex { padding: 2px 10px; }
+.ally-detail-stage em { position: relative; z-index: 3; margin-top: 4px; padding: 1px 10px 2px; border-radius: 999px; background: #fff8e6; }
+.ally-detail-art { height: 164px; }
+/* 접힌 동료 카드는 버튼 하나(uiMerge) — 상세는 펼쳤을 때만 */
+.ally-roster-grid .ally-card:not(.is-open) .ally-detail-open { display: none !important; }

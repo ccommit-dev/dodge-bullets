@@ -1,5 +1,4 @@
 import { assetUrl } from "../asset";
-import { CurrencyIcon } from "../ui/CurrencyIcon";
 import "./relicGacha.css";
 import {
   RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, familyOwned, relicIconUrl, relicSpareUsable, relicStars, relicStatText, setActive, setFull, type RelicId, type RelicState,
@@ -11,7 +10,7 @@ import { TIERS, TIER_LABEL } from "./summonLevel";
 /**
  * 사냥터 성장 서랍 · 유물 탭 (2026-10-27, 사용자: "유물 탭에 퀘스트 UI 처럼 수정").
  * 퀘스트 탭과 같은 줄 모양(.quest-row 판) — [아이콘 · ★] [이름 · 조각 막대 · 효과] [다음 ★ 까지]. 계열마다 세트 머리줄.
- * 마이페이지 계승 칸의 RelicPanel(.mp-relics)은 그대로 둔다(같은 데이터를 다른 자리에서 보여 줄 뿐).
+ * 2026-11-03: 전체 목록(보유 · 미보유)은 마이페이지 도감 → 유물. 마이페이지 계승 칸의 같은 표(RelicPanel)는 없앴다.
  * 2026-10-27 (사용자: "가지고 있는것만 사냥터 유물 탭에서 조회되게") — ★1 이상만 줄로 보인다. 하나도 없는 계열은 빠지고,
  * 아직 ★1 이 안 된 조각은 머리줄에 "모으는 중" 수로만 센다. 뽑기는 상점(유물 칸 · 뽑기 화면).
  */
@@ -22,11 +21,12 @@ type Props = {
   onConsume: (id: RelicId) => void;
   /** 다시 잡은 대장 조각 확률(0~1) */
   chance: number;
-  onDraw: () => void;
+  /** 도감(마이페이지 → 도감 → 유물) — 보유 · 미보유를 거기서 나눠 본다 */
+  onCodex: () => void;
 };
 
 
-export function RelicTabPanel({ relics, spare, onConsume, chance, onDraw }: Props) {
+export function RelicTabPanel({ relics, spare, onConsume, chance, onCodex }: Props) {
   const owned = RELICS.filter((r) => relicStars(relics, r.id) >= 1).length;
   /** 줄에 보이는 유물 — ★1 이상이거나, 소진할 남은 조각이 있다 */
   const shown = (id: RelicId) => relicStars(relics, id) >= 1 || relicSpareUsable(relics, spare, id) > 0;
@@ -37,29 +37,29 @@ export function RelicTabPanel({ relics, spare, onConsume, chance, onDraw }: Prop
       <header className="quest-head relic-tab-head">
         <b>유물</b>
         <span>보유 {owned}/{RELICS.length}</span>
-        <button type="button" className="relic-tab-draw" onClick={onDraw}>
-          <b>유물 뽑기</b>
-          <small><CurrencyIcon kind="gem" />상점</small>
+        <button type="button" className="relic-tab-dex" onClick={onCodex}>
+          <b>도감 ›</b>
         </button>
         <small>{spareTotal > 0 ? <b className="relic-spare-total">남은 조각 {spareTotal}개 · 소진해 ★ 올리기 · </b> : null}조각 {RELIC_SHARDS_PER_STAR}개 = ★1{collecting > 0 ? ` · 모으는 중 ${collecting}종` : ""} · 대장 다시 잡기 {Math.round(chance * 100)}% · 갈림길 · 환생해도 유지</small>
       </header>
       {owned === 0 && spareTotal === 0 && (
         <p className="relic-tab-empty">
           <b>아직 가진 유물이 없어요</b>
-          <small>상점 → 유물에서 뽑거나, 대장을 다시 잡아 조각 {RELIC_SHARDS_PER_STAR}개를 모으면 여기에 보여요</small>
+          <small>상점 → 뽑기 → 유물에서 뽑거나, 대장을 다시 잡아 조각 {RELIC_SHARDS_PER_STAR}개를 모으면 여기에 보여요</small>
         </p>
       )}
-      {RELIC_FAMILIES.filter((f) => RELICS.some((r) => r.family === f && shown(r.id))).map((f) => {
-        const on = setActive(relics, f);
-        const full = setFull(relics, f);
-        const have = familyOwned(relics, f);
-        const size = RELICS.filter((r) => r.family === f).length;
-        return (
-          <section key={f} className={`relic-tab-family fam-${f} ${on ? "set-on" : ""}`} aria-label={`${RELIC_FAMILY_LABEL[f]} 계열`}>
-            {/* 세트 (2026-10-28 6등급): 3개 = 세트 · 6개 모두 = 세트 ×1.5 */}
-            <h4><b>{RELIC_FAMILY_LABEL[f]}</b><span>{full ? "세트 ✔✔ ×1.5" : on ? `세트 ✔ · ${have}/${size}` : `세트 ${have}/${RELIC_SET_NEED}`} · {RELIC_SET[f].name}</span><small>{RELIC_SET[f].blurb}{on && !full ? ` · ${size}개 모두면 ×1.5` : ""}</small></h4>
-            <ol className="quest-list">
-              {RELICS.filter((r) => r.family === f && shown(r.id)).sort((a, b) => TIERS.indexOf(b.tier) - TIERS.indexOf(a.tier)).map((r) => {
+      {/* 세트별 묶음을 없앴다 (2026-11-03, 사용자: "세트별 정렬 없애고 보유한것만") — 높은 등급부터 한 줄로. 세트는 효과가 있어서 위 칩으로만 남긴다 */}
+      {RELIC_FAMILIES.some((f) => familyOwned(relics, f) > 0) && (
+        <p className="relic-set-chips">
+          {RELIC_FAMILIES.filter((f) => familyOwned(relics, f) > 0).map((f) => (
+            <span key={f} className={`relic-set-chip ${setActive(relics, f) ? "on" : ""} ${setFull(relics, f) ? "full" : ""}`} data-family={f} title={RELIC_SET[f].name}>
+              {RELIC_FAMILY_LABEL[f]} {familyOwned(relics, f)}/{RELIC_SET_NEED}{setFull(relics, f) ? " ✔✔" : setActive(relics, f) ? " ✔" : ""}
+            </span>
+          ))}
+        </p>
+      )}
+      <ol className="quest-list">
+        {RELICS.filter((r) => shown(r.id)).sort((x, y) => TIERS.indexOf(y.tier) - TIERS.indexOf(x.tier) || relicStars(relics, y.id) - relicStars(relics, x.id)).map((r) => {
                 const shards = relics[r.id] ?? 0;
                 const stars = relicStars(relics, r.id);
                 const max = stars >= RELIC_MAX_STAR;
@@ -95,10 +95,7 @@ export function RelicTabPanel({ relics, spare, onConsume, chance, onDraw }: Prop
                   </li>
                 );
               })}
-            </ol>
-          </section>
-        );
-      })}
+      </ol>
     </div>
   );
 }

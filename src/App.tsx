@@ -341,6 +341,8 @@ function App() {
   const [deathTip, setDeathTip] = useState("");
   const [stageRemainMs, setStageRemainMs] = useState(STAGES[0].durationMs);
   const [soundOn, setSoundOn] = useState(() => loadSoundEnabled());
+  /** 사냥터의 도감 단추로 마이페이지에 갈 때 열 쪽 (2026-11-03) */
+  const [profileCodex, setProfileCodex] = useState<"monster" | "ally" | "relic" | "pet" | null>(null);
   /** 이펙트 토글 (2026-10-14 보완): 저사양 모드(ui/perfMode)를 설정에서 직접 켜고 끈다 — 자동 감지(느린 기기)와 같은 키 */
   const [fxLow, setFxLow] = useState(() => lowFxOn());
   /** 화면 방향 — 자동 · 세로 · 가로 (2026-10-07). 부팅과 바뀔 때 기기에 건다 */
@@ -1955,10 +1957,12 @@ function App() {
           onOpenContent={(content) => {
             // 마이페이지에서 성문 방어·비트·대장간을 바로 켜던 버그 (2026-10-14, 사용자: "마이 페이지 쪽에서는 모험 플레이할 수 있는 버그") —
             // 잠금(온보딩 단계)도 거치지 않고 출격했다. 이제 사냥터 말고는 모험 허브로 보내 잠금·안내를 거친다
+            setProfileCodex(null);
             setTitansStartTab(content === "titans" ? "sword" : "hub");
             setMode("titans");
           }}
-          onBack={() => { setTitansStartTab("sword"); setMode("titans"); }}
+          onBack={() => { setProfileCodex(null); setTitansStartTab("sword"); setMode("titans"); }}
+          initialCodex={profileCodex}
         />
         </Suspense>
         </LazyBoundary>
@@ -1999,6 +2003,7 @@ function App() {
           forgedWeaponLevel={progress.equippedWeaponLevel}
           armorLevel={progress.armorLevel}
           onOpenEvents={(tab) => { setEventTab(tab); setEventOpen(true); }}
+          onOpenCodex={(sub) => { setProfileCodex(sub); setMode("profile"); }}
           onOpenContent={(content) => {
             // 허브 카드 "끝없는 성벽" (2026-10-13 P0): 성문 메뉴로 가서 등반권이 있으면 바로 오른다
             if (content === "tower") { syncState("ready"); setMode("dodge"); setTowerIntent(true); return; }

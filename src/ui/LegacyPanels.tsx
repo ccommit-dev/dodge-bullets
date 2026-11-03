@@ -6,11 +6,8 @@ import { assetUrl } from "../asset";
 import { updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress } from "../progression/model";
 import {
-  BASIC_LINES, SPECIAL_LINES, canUnlockKey, freeCrystals, lineDef, lineText, resetTree, treeSpent, unlockKey, upgradeLine, permanentEffects, type TreeLine,
+  BASIC_LINES, SPECIAL_LINES, canUnlockKey, freeCrystals, lineDef, lineText, resetTree, treeSpent, unlockKey, upgradeLine, type TreeLine,
 } from "../progression/crystalTree";
-import {
-  RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, relicIconUrl, relicSpareUsable, relicStars, relicStatText, setActive, type RelicFamily,
-} from "../titans/relics";
 
 type Props = {
   userHash: string;
@@ -77,46 +74,3 @@ export function CrystalTreePanel({ userHash, progress, onProgressChange, onMessa
   );
 }
 
-const FAMILIES: readonly RelicFamily[] = RELIC_FAMILIES;   // 2026-10-28 6계열
-
-export function RelicPanel({ progress }: Pick<Props, "progress">) {
-  const owned = RELICS.filter((r) => relicStars(progress.relics, r.id) >= 1).length;
-  const chance = Math.round(permanentEffects(progress).relicChance * 100);
-  // 소진하지 않은 조각 (2026-10-28 중복 소진) — 여기선 보여 주기만, 소진은 사냥터 → 유물 탭
-  const spareOf = (id: (typeof RELICS)[number]["id"]) => relicSpareUsable(progress.relics, progress.relicSpare ?? {}, id);
-  const spareTotal = RELICS.reduce((a, r) => a + spareOf(r.id), 0);
-  return (
-    <>
-      <div className="legacy-heading"><div><small>RELIC</small><strong>유물</strong></div><span>{owned}/{RELICS.length} · 조각 {chance}%</span></div>
-      <div className="mp-relics">
-        <p className="relic-how">조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 대장 재처치 · 갈림길에서 · 환생해도 유지</p>
-        {spareTotal > 0 && <p className="relic-how relic-spare-note"><b>남은 조각 {spareTotal}개</b> — 사냥터 → 유물 탭에서 소진하면 ★ 가 올라요</p>}
-        {FAMILIES.map((f) => {
-          const on = setActive(progress.relics, f);
-          return (
-            <section key={f} className={`relic-family fam-${f} ${on ? "set-on" : ""}`} aria-label={`${RELIC_FAMILY_LABEL[f]} 계열`}>
-              <header><b>{RELIC_FAMILY_LABEL[f]}</b><span className="relic-set">{on ? "세트 ✔" : `${RELIC_SET_NEED}개 세트`} · {RELIC_SET[f].name}<small>{RELIC_SET[f].blurb}</small></span></header>
-              <div className="relic-row">
-                {RELICS.filter((r) => r.family === f).map((r) => {
-                  const shards = progress.relics[r.id] ?? 0;
-                  const stars = relicStars(progress.relics, r.id);
-                  const into = stars >= RELIC_MAX_STAR ? RELIC_SHARDS_PER_STAR : shards % RELIC_SHARDS_PER_STAR;
-                  return (
-                    <div key={r.id} className={`relic-tile relic-outline rarity-${r.tier.toLowerCase()} ${stars >= 1 ? "owned" : "unowned"}`} data-relic={r.id} data-tier={r.tier}>
-                      <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
-                      <b>{r.name}</b>
-                      <i className="relic-stars" aria-label={`별 ${stars}`}>{stars >= 1 ? "★".repeat(stars) : "미보유"}</i>
-                      <small>{relicStatText(r, stars)}</small>
-                      <span className="relic-bar"><i style={{ width: `${(into / RELIC_SHARDS_PER_STAR) * 100}%` }} /></span>
-                      {spareOf(r.id) > 0 && <em className="relic-spare-badge">남은 {spareOf(r.id)}</em>}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-    </>
-  );
-}
