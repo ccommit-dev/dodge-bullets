@@ -359,7 +359,8 @@ export * as season from "${root}/src/economy/seasonPass";`);
   {
     const authoredDir = join(root, "art-gen/source/allies-authored");   // 2026-11-03 게임이 안 읽어 public 밖으로 — 변형 아틀라스를 다시 짜는 원본
     const authored = existsSync(authoredDir) ? (await import("node:fs")).readdirSync(authoredDir).filter((f) => f.endsWith("-row.png")) : [];
-    ok("아트gen 생성 원화 행(authored/*-row.png) 8명 이상 배치 · 개별 PNG 동반", authored.length >= 8 && authored.every((f) => existsSync(join(root, "public/titans/generated/allies", f.replace("-row.png", ".png")))), authored.map((f) => f.replace("-row.png", "")).join());
+    // 256KB 넘는 행은 ci-local 이 꺼내지 않아 개수는 보지 않는다 — 게임이 읽는 파일도 아니다
+    ok("아트gen 생성 원화 행(art-gen/source/allies-authored)마다 개별 PNG 동반", authored.every((f) => existsSync(join(root, "public/titans/generated/allies", f.replace("-row.png", ".png")))), authored.map((f) => f.replace("-row.png", "")).join());
     // 보스 피격·처치는 img2img 결과가 포즈로 읽히지 않아 절차적 파생을 유지 — authored 매니페스트가 없어야 make-monster-states 가 전부 파생한다
     ok("아트gen 보스는 절차적 파생 유지(monsters/authored.json 없음)", !existsSync(join(root, "public/titans/generated/monsters/authored.json")));
     const cAuth = join(root, "public/titans/character/skins/authored.json");
