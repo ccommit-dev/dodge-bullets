@@ -6,6 +6,7 @@
  * 오늘이 몇 시즌 며칠째냐에 따라 추정 단이 달라지므로 기대값은 같은 함수(seasonPass)를 esbuild 로 불러 계산한다
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import { build } from "esbuild";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -36,7 +37,7 @@ const read = () => page.evaluate((h) => ({ p: JSON.parse(localStorage.getItem(`d
 async function load(keys, cores, pending = 0) {
   const progress = { ...baseProg, claimedRewards: ["dodge-tutorial", "welcome-gift", ...keys], pendingSkillCores: pending };
   const titans = { stage: 6, bestStage: 6, gold: 1000, heroes: { mia: 5, leon: 5 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: cores }, lastActiveAt: now };
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0",
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   }).catch(() => {});

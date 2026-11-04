@@ -5,6 +5,7 @@
  * 스킬: 접힌 카드 버튼 하나 · 시전 칸 5개가 한 줄에 / 성장 탭 한 줄 · 전장 알림 한 줄
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
@@ -15,7 +16,7 @@ const errors = []; page.on("pageerror", (e) => errors.push(String(e.message).sli
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 5000, sharedCoins: 500000, enhancementMaterials: 2000, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon", "sera", "garen"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"], beatSkills: { kick: 15, hat: 15, snare: 15, fire: 15, throat: 15 } };
 const titans = { stage: 40, bestStage: 40, gold: 2000000, heroes: { mia: 26, leon: 13, sera: 4, garen: 9, toto: 1, kiki: 1, momo: 1, bobo: 1, dodo: 1, pipi: 1, gugu: 1, nana: 1, rara: 1 }, skillInventory: { learned: ["strike", "crit", "clone", "thunderLink", "meteor", "steel"], levels: { strike: 3, crit: 1, clone: 3, thunderLink: 1, meteor: 5, steel: 5 }, equipped: { starter: "strike", linkA: "crit", passive: "steel" }, skillCores: 30, copies: { thunderLink: 1, steel: 4, strike: 2 } }, lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0",
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
 }).catch(() => {});

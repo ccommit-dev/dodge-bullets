@@ -4,6 +4,7 @@
  *   node scripts/verify-wing-clip.mjs   (vite dev 서버 5173 필요)
  */
 import sharp from "sharp";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import { readFileSync } from "node:fs";
 import { launchBrowser } from "./launch-browser.mjs";
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
@@ -35,7 +36,7 @@ for (const [w, h] of [[390, 844], [360, 640]]) {
     await page.goto(BASE, { waitUntil: "networkidle0" });
     const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 500, idleClaimedAt: now, updatedAt: now, titanBestStage: 30, pioneeredArea: 5, partyIds: party, partyCap: 4, sessionCount: 9 };
     const titans = { stage: 12, bestStage: 30, gold: 500000, heroes: Object.fromEntries(party.map((id) => [id, 5])), party, lastActiveAt: now };
-    await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+    await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
       [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0",
       [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
     }).catch(() => {});

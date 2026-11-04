@@ -9,6 +9,7 @@
  * 음색 · 취향은 여전히 사람 귀 몫이다.
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
@@ -32,7 +33,7 @@ await page.evaluateOnNewDocument(() => {
 });
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const progress = { version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 3, titanBestStage: 12, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon", "sera", "garen"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"] };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1e6, stage: 12, bestStage: 12, heroes: { mia: 20, leon: 15, sera: 12, garen: 12 }, lastActiveAt: now }), "dodge-bullets:soundEnabled": "1",
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
 }).catch(() => {});

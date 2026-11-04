@@ -5,6 +5,7 @@
  * 드랍 개수는 DEV 훅 window.__idleRareForce 로 고정한다(무엇이 나올지는 실제 골드 뽑기 풀에서).
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173";
 const H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -26,7 +27,7 @@ const tit = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebul
 
 await page.goto(BASE, { waitUntil: "networkidle0" });
 // 심기와 reload 를 한 evaluate 로 — 떠 있던 사냥터가 떠나며 옛 저장으로 덮지 않게
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
   [`dodgebullets:titans:${H}`]: JSON.stringify(titans),
   "dodge-bullets:soundEnabled": "0",

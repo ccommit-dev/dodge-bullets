@@ -4,6 +4,7 @@
  * 아이폰 카카오톡(390×664 · 전장 ≈ 390px) · SE · 안드로이드 작은 폰 · 긴 폰. 스킬 네 칸 + 알림 + 워밍업. 깊이를 양 끝으로 고정해 머리 · 발이 UI 에 닿는지도 본다.
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const OUT = process.argv[2], BASE = "http://localhost:5173", H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
@@ -40,7 +41,7 @@ for (const [name, w, h] of SCREENS) for (const fixed of [0.001, 0.999]) {
   const now = Date.now();
   const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 5000, sharedCoins: 500000, enhancementMaterials: 2000, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon", "sera", "garen"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"], lastSessionAt: now - 3 * 86400000, lastPlayedAt: now - 3 * 86400000 };
   const titans = { stage: 22, bestStage: 40, gold: 2000000, heroes: { mia: 26, leon: 13, sera: 9, garen: 9 }, skillInventory: { learned: ["strike", "crit", "clone", "thunderLink", "meteor"], levels: { strike: 3, crit: 1, clone: 1, thunderLink: 1, meteor: 1 }, equipped: { starter: "strike", linkA: "crit", linkB: "thunderLink", finisher: "meteor" }, skillCores: 30 }, lastActiveAt: now };
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0",
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   }).catch(() => {});

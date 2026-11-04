@@ -4,6 +4,7 @@
  * 그림 20장 · 효과(같은 무기만) · 상점 구매(낱개 · 세트 할인 · 보석 부족) · 끌어다 끼기 · 다시 눌러 해제 · 다시 들어와도 남는다 · 옛 저장.
  */
 import { existsSync } from "node:fs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import { launchBrowser } from "./launch-browser.mjs";
 const OUT = process.argv[2], BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -19,7 +20,7 @@ const seed = async (extra = {}, w = 390, h = 844) => {
   await page.goto(BASE, { waitUntil: "networkidle0" });
   const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 2000, sharedCoins: 500000, enhancementMaterials: 2000, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"], equippedWeaponKind: "sword", ownedShoulders: ["scout"], equippedShoulder: "scout", ...extra };
   const titans = { stage: 12, bestStage: 40, gold: 2000000, heroes: { mia: 26 }, lastActiveAt: now };
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:qa-gems": "0", "dodgebullets:test-phase": "0",
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   }).catch(() => {});
@@ -29,7 +30,8 @@ const seed = async (extra = {}, w = 390, h = 844) => {
 };
 const clickText = (sel, t) => page.evaluate(({ sel, t }) => { const b = [...document.querySelectorAll(sel)].find((x) => x.textContent.trim().includes(t)); b?.click(); return !!b; }, { sel, t });
 const saved = async () => JSON.parse(await page.evaluate((h) => localStorage.getItem(`dodgebullets:progression:v1:${h}`), H));
-const openShop = async () => { await clickText(".titans-bottom-nav button", "상점"); await sleep(500); await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(300); await clickText(".premium-category-tabs button", "장비"); await sleep(500); };
+// 저장을 다 읽기 전엔 보석 0 으로 그려 단추가 꺼져 있다 — 전체 실행 부하에서 눌러도 안 사졌다. 켜질 때까지 기다린다
+const openShop = async () => { await clickText(".titans-bottom-nav button", "상점"); await sleep(500); await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(300); await clickText(".premium-category-tabs button", "장비"); await sleep(300); for (let i = 0; i < 60 && !(await page.evaluate(() => { const b = document.querySelector(".gear-set-buy"); return !!b && !b.disabled; })); i += 1) await sleep(200); };
 const openEquip = async () => { await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비 성장"))?.click()); await sleep(500); await page.evaluate(() => document.querySelector(".equip-window")?.scrollIntoView({ block: "start" })); await sleep(300); };
 const center = (sel) => page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
 const dragTo = async (fromSel, toSel) => { const a = await center(fromSel), to = await center(toSel); await page.touchscreen.touchStart(a.x, a.y); await sleep(40); for (let i = 1; i <= 8; i += 1) { await page.touchscreen.touchMove(a.x + ((to.x - a.x) * i) / 8, a.y + ((to.y - a.y) * i) / 8); await sleep(25); } await page.touchscreen.touchEnd(); await sleep(350); };

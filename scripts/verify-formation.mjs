@@ -8,6 +8,7 @@
  *   교전 위치: 동료끼리 발 위치(가운데 x, 바닥 y)가 본체 폭 절반 이상 떨어진다(같은 자리 0)
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import { mkdirSync } from "node:fs";
 
 const OUT = process.argv[2] ?? "shots-formation"; mkdirSync(OUT, { recursive: true });
@@ -51,7 +52,7 @@ for (const [name, party] of Object.entries(PARTIES)) {
   const st = STAGE_OF[name] ?? 40;
   const titans = { gold: 1e9, stage: st, bestStage: st, heroes: Object.fromEntries(party.map((id) => [id, 60])), lastActiveAt: now };   // 해금 스테이지(오리온 30 등) 위 · 교전이 몇 초는 이어지게
   // 쓰기와 reload 를 한 evaluate 안에서 — 사이에 앞 시나리오의 사냥터가 옛 상태를 저장하면 동료가 안 떠 표본 0 이었다(2026-10-28 전체 검사). 편성이 다르면 다시
-  const seedOnce = async () => { await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" }); await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2200); };
+  const seedOnce = async () => { await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" }); await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2200); };
   await seedOnce();
   for (let k = 0; k < 2 && JSON.stringify(JSON.parse(await page.evaluate((H) => localStorage.getItem(`dodgebullets:progression:v1:${H}`) ?? "{}", H)).partyIds) !== JSON.stringify(party); k += 1) await seedOnce();
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });

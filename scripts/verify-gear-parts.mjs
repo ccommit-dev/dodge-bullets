@@ -5,6 +5,7 @@
  * 대장간 "장비" 탭에 4줄이 있고, 투구 강화가 코인·강화석을 쓰고 +1 이 되며 저장(gearEnhance)에 남는다.
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import { mkdirSync } from "node:fs";
 const OUT = process.argv[2] ?? "shots-gear"; mkdirSync(OUT, { recursive: true });
 const BASE = "http://localhost:5173", H = "mock-local-dev";
@@ -17,8 +18,8 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 const now = Date.now();
 const progress = { version: 5, level: 40, sharedCoins: 50_000, dodgeBestStage: 12, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia"], partyCap: 4, redGems: 0, enhancementMaterials: 20, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3 };
 const titans = { gold: 100_000, stage: 9, bestStage: 9, heroes: { mia: 3 }, lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
-await page.reload({ waitUntil: "networkidle0" }); await sleep(2500);
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2500);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 await sleep(500);
 const cards = await page.evaluate(() => [...document.querySelectorAll(".equipment-training-card")].map((c) => c.querySelector("strong")?.textContent ?? ""));

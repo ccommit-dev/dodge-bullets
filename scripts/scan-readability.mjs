@@ -9,6 +9,7 @@
  * 2026-10-21 정리 전 기준: 작은 글 463 · 흐린 글 85 · 겹친 판 144 → 정리 후 0 · 0 · ~110(카드가 시트 안에 있는 정상 겹침 포함)
  */
 import { mkdirSync, writeFileSync } from "node:fs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { launchBrowser } from "./launch-browser.mjs";
@@ -21,7 +22,7 @@ await page.setViewport({ width: W, height: HH, deviceScaleFactor: 2, isMobile: t
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const progress = { version: 5, level: 40, sharedCoins: 1500000, redGems: 1000, enhancementMaterials: 2300, expeditionSeals: 92, dodgeBestStage: 12, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon", "sera", "garen"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, equippedWeaponLevel: 5, allyShards: { mia: 446, leon: 444 } };
 const titans = { gold: 5000000, stage: 18, bestStage: 18, heroes: { mia: 14, leon: 2, sera: 1, garen: 3 }, lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
 await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2200);
 const closeModals = () => page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav, .hub-sheet")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
 const clickText = (sel, re) => page.evaluate((sel, src) => { const b = [...document.querySelectorAll(sel)].find((x) => new RegExp(src).test(x.textContent.trim())); b?.click(); return !!b; }, sel, re);

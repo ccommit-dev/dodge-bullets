@@ -3,6 +3,7 @@
 //   "검 · 창은 몬스터 가까이서 때리고 활은 멀리서 화살 · 지팡이는 마법" · "근거리면 가까이 가서 서로 공격 · 원거리도 특정 거리까지 · 다음 스테이지면 다시 처음부터 다가가게")
 //   node scripts/verify-hunt-motion.mjs   (vite 5173) · 캡처 art-gen/out/hunt-motion-*.png
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -11,7 +12,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
 const seed = async (wk, party, stage = 12, lv = 1) => {
   const prog = { version: 5, level: 20, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: party, partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, equippedWeaponKind: wk, expeditionWeaponForge: { bow: 4, staff: 4, spear: 4 } };
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(prog), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 0, stage, bestStage: stage, heroes: Object.fromEntries(party.map((id) => [id, lv])), lastActiveAt: now }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(prog), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 0, stage, bestStage: stage, heroes: Object.fromEntries(party.map((id) => [id, lv])), lastActiveAt: now }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1200);
   await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const x = [...document.querySelectorAll("button")].filter((y) => !y.closest(".titans-bottom-nav")).find((y) => /^(닫기|확인|나중에)$/.test(y.textContent.trim())); if (x) x.click(); } });
 };

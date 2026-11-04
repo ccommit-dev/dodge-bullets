@@ -4,6 +4,7 @@
  * 폰(390 · 터치)은 클래스가 안 붙고 예전 폭 그대로.
  */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const results = [];
 const ok = (name, cond, detail = "") => { results.push([cond ? "PASS" : "FAIL", name, detail]); };
@@ -14,7 +15,7 @@ await page.setViewport({ width: 1440, height: 900 });
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const progress = { version: 5, level: 30, dodgeBestStage: 10, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "garen"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 5 };
 const titans = { gold: 900000, stage: 12, bestStage: 12, heroes: { mia: 10, garen: 8 }, lastActiveAt: now };
-await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0", "dodgebullets:inapp-fs-hint": "1" });
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0", "dodgebullets:inapp-fs-hint": "1" });
 const closeModal = () => page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 const box = (sel) => page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; }, sel);
 const inside = (b, col) => !!b && b.l >= col.l - 1 && b.r <= col.r + 1;

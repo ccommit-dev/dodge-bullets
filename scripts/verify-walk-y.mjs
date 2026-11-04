@@ -13,6 +13,7 @@
  * F. 걸어 들어오기(2026-10-20 "몬스터도 오른쪽 끝에서부터 · 캐릭터도 방향이 정해지면 자연스럽게 — 지금은 y로 각각 움직임"): 화면에 보이는 동안 발 높이가 안 바뀐다(가로로만) · 몬스터는 전장 오른쪽 밖에서 시작
  * E. 이펙트가 캐릭터 몸 근처(2026-10-20 사용자 "이펙트 위치가 이상해") — 타격 · 피해 숫자는 몬스터, 베기는 주인공, 동료 공격은 동료 */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev";
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -30,7 +31,7 @@ for (const scr of SCREENS) {
   const now = Date.now();
   const progress = { version: 5, level: 40, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia", "leon", "garen", "luna"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99, equippedWeaponLevel: 5 };   // 무기가 있어야 주인공이 자동 공격(베기 이펙트)
   const titans = { gold: 40000, stage: 12, bestStage: 12, heroes: { mia: 6, leon: 6, garen: 6, luna: 6 }, lastActiveAt: now };   // 동료가 너무 세면 1초 안에 쓰러뜨려 주인공 자동 공격(약 1.08초)이 안 나간다
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1500);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 

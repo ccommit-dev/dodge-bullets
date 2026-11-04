@@ -1,6 +1,7 @@
 /** 테스트 모드 해금 검사 (2026-10-16, 사용자: "콘텐츠 해금·스킬장착 해금은 테스트를 위해 모두 풀고, 테스트모드 해제 시엔 해금이 다시 동작") — node scripts/verify-qa-unlock.mjs (vite 5173)
  * QA 빌드 기본 켜짐 → 설정 빌드 라벨 7탭 OFF → 사냥터 카드·스킬 칸·성문 방어 무기/스킬이 새로고침 없이 다시 잠기고 새로고침 뒤에도 유지 → 다시 ON. progression/qaUnlock */
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -58,7 +59,7 @@ ok("다시 7탭 ON: 전부 열림", d.qa === "1" && d.hub.locked === 0 && d.slot
 // ── 풀린 콘텐츠가 실제로 열리는가 (잠금 모양만이 아니라) · 출석은 메뉴로만 ──
 const progress2 = { ...progress, towerTickets: 3 };
 const seed = async () => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress2), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0" });
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress2), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0" });
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(2500);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
   await sleep(800);
