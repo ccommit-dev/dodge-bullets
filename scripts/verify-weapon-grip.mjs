@@ -6,6 +6,7 @@
 // 손잡이 점은 화면 그림이 아니라 계산된 변환으로 잰다: transform-origin · translate · rotate · scale · transform 을 CSS 순서대로 곱해
 // 그림 안 손잡이(%)가 화면 어디에 오는지 구하고, 손 앵커(left/top %)와의 거리를 본다. 탈착은 Web Animations 를 멈춰 시점별로 잰다
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 import sharp from "sharp";
 // 활이 얼굴을 가리나 (2026-10-27, "활이 몇 칸에서 주둥이 앞에 겹친다") — 시트 칸마다 코(짙은 자줏빛 덩이) 위치를 재 두고, 활 시위가 코 높이에서 코보다 오른쪽(적 쪽)에 있는지 본다
 const rgb2hsl = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; if (!d) return [0, 0, l]; const s = d / (1 - Math.abs(2 * l - 1)); const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(h * 60 + 360) % 360, s, l]; };
@@ -33,7 +34,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const seed = async (progress) => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1e6, stage: 8, bestStage: 8, totalKills: 100, heroes: { mia: 10, leon: 10 }, lastActiveAt: now }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1e6, stage: 8, bestStage: 8, totalKills: 100, heroes: { mia: 10, leon: 10 }, lastActiveAt: now }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1300);
   await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
   await sleep(500);
@@ -143,8 +144,8 @@ await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); awai
 const shop = await page.evaluate(() => ({ thumbs: [...document.querySelectorAll(".blade-product .weapon-skin-thumb")].map((i) => i.getAttribute("src")), names: [...document.querySelectorAll(".blade-product strong")].map((s) => s.textContent), drum: document.querySelectorAll(".blade-product .premium-weapon-thumb").length }));
 ok("상점 외형 3종: 썸네일 = 장착 무기(창) 그림 · 이름에 '북' 없음", shop.thumbs.length === 3 && shop.thumbs.every((s) => /skins\/blade-[a-z]+\/spear-\d\.png/.test(s ?? "")) && new Set(shop.thumbs).size === 3 && shop.drum === 0 && shop.names.every((n) => !/북/.test(n)), `${shop.thumbs.length}장 · ${shop.names.join(" / ")}`);
 // 비트 디펜스 판정 레일 상품 — 무기 외형과 소제목으로 갈리고, 이름 · 아이콘이 '북' 이 아니다 (2026-10-27 "황금 전진 북 · 공명의 전투 북 — 같은 이름 유의")
-const beat = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".premium-subhead")].map((h) => h.childNodes[0]?.textContent?.trim()), names: [...document.querySelectorAll(".beat-custom-product strong")].map((s) => s.textContent), headBeforeBeat: (() => { const h = [...document.querySelectorAll(".premium-subhead")].find((x) => /비트/.test(x.textContent)); const b = document.querySelector(".beat-custom-product"); return !!h && !!b && !!(h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); })() }));
-ok("상점 외형 소제목 3개: 주인공 무기 외형 · 비트 디펜스 꾸미기 · 무기 이펙트", beat.heads.length === 3 && /무기 외형/.test(beat.heads[0]) && /비트/.test(beat.heads[1]) && /이펙트/.test(beat.heads[2]) && beat.headBeforeBeat, beat.heads.join(" / "));
+const beat = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".style-filter button")].slice(1).map((h) => h.textContent.trim()), names: [...document.querySelectorAll(".beat-custom-product strong")].map((s) => s.textContent), headBeforeBeat: (() => { const h = [...document.querySelectorAll(".premium-subhead")].find((x) => /비트/.test(x.textContent)); const b = document.querySelector(".beat-custom-product"); return !!h && !!b && !!(h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); })() }));
+ok("상점 외형 소제목 3개: 주인공 무기 외형 · 비트 디펜스 꾸미기 · 무기 이펙트", beat.heads.length === 3 && /무기 외형/.test(beat.heads[0]) && /비트/.test(beat.heads[1]) && /이펙트/.test(beat.heads[2]), beat.heads.join(" / "));
 ok("비트 판정 레일 상품 이름에 '북' 없음", beat.names.length >= 4 && beat.names.every((n) => !/북/.test(n)), beat.names.join(" / "));
 await page.evaluate(() => document.querySelector(".blade-product")?.scrollIntoView({ block: "center" })); await sleep(200);
 await page.screenshot({ path: "art-gen/out/weapon-grip-shop.png" });

@@ -38,7 +38,7 @@ const card = await page.evaluate(() => { const c = document.querySelector('.mome
 ok("상점에 제안 카드: 광고 없이 바로 받기 · 가격 · 지금 사면 보석 +40", card?.product === "remove-ads" && /광고 없이 바로 받기/.test(card.text) && /3,900/.test(card.text) && /보석 \+40/.test(card.text), JSON.stringify(card)?.slice(0, 160));
 // ── 2. 패키지 칸 — 게이트 전(출석 1 · Lv.8)에도 광고를 본 사람에겐 광고 제거가 맨 위 ──
 await openShop("패키지");
-const pkg = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".paid-group-head")].map((h) => h.textContent), cards: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent) }));
+const pkg = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".package-filter button")].slice(1).map((h) => h.textContent), cards: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent) }));
 ok("패키지 맨 위 묶음 = 광고 제거 · 설명은 5곳(대장 · 성문 · 비트 포함)", /^광고 제거/.test(pkg.heads[0] ?? "") && /광고 제거/.test(pkg.cards[0] ?? ""), JSON.stringify(pkg.heads.slice(0, 2)));
 const body = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card")].find((c) => /광고 제거/.test(c.textContent))?.textContent ?? "");
 ok("칸 문구가 실제 5곳과 맞다", /보상 5곳/.test(body) && /성문/.test(body) && /비트/.test(body) && !/3곳/.test(body), body.slice(0, 120));

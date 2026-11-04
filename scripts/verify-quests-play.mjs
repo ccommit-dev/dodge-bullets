@@ -1,6 +1,7 @@
 // 사냥터 퀘스트 탭 — 실제 화면 검사 (2026-10-26).  node scripts/verify-quests-play.mjs   (vite 5173) · 캡처 art-gen/out/quests-*.png
 // 2026-10-28 시드 쓰기와 reload 를 한 evaluate 안에서(떠 있던 사냥터가 시드를 덮던 경합)
 import { launchBrowser } from "./launch-browser.mjs";
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -10,7 +11,7 @@ let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"
 const tit = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`) ?? "{}"), H);
 const progress = { version: 5, level: 10, redGems: 100, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime", "monster:goblin", "monster:bat", "ally:mia", "ally:leon"] };
 const seed = async (titans) => {
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }) });
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1200);
   await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
   await sleep(400);
@@ -86,10 +87,10 @@ ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySel
 // ── 4. 상점 유물 뽑기 — 재화별 3종 (2026-10-28 6등급: 골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) ──
 {
   // 4판 (2026-10-28 "패키지 아이템 각각 ui처럼") — 재화별 머리줄 + 1회 · 10회 상품 칸
-  const heads = await page.evaluate(() => [...document.querySelectorAll(".relic-banner-head")].map((h) => h.dataset.banner + ":" + h.textContent));
+  const heads = await page.evaluate(() => [...document.querySelectorAll('.relic-draw-product[data-count="1"] .draw-row-foot')].map((h) => h.closest("[data-banner]").dataset.banner + ":" + h.textContent));
   const cards = await page.evaluate(() => ["gold", "stone", "gem"].map((b) => { const cs = [...document.querySelectorAll(`.relic-draw-product[data-banner="${b}"]`)]; return { banner: b, n: cs.length, thumbs: cs.filter((c) => c.querySelector(".relic-product-thumb img")).length, text: cs.map((c) => c.textContent).join("|") }; }));
   ok("유물 뽑기 = 패키지 칸: 재화 머리줄 3개(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 재화마다 1회 · 10회 칸(그림 · 값) · 보석 60 · 초월 7.0%",
-    heads.length === 3 && /^gold:골드 유물 ?일반 ~ 영웅/.test(heads[0]) && /^stone:강화석 유물 ?희귀 ~ 신화/.test(heads[1]) && /^gem:보석 유물 ?영웅 ~ 초월/.test(heads[2]) && cards.every((c) => c.n === 2 && c.thumbs === 2) && /60/.test(cards[2].text) && /초월 7.0%/.test(cards[2].text) && /10회 뽑기/.test(cards[0].text),
+    heads.length === 3 && /^gold:일반 ~ 영웅/.test(heads[0]) && /^stone:희귀 ~ 신화/.test(heads[1]) && /^gem:영웅 ~ 초월/.test(heads[2]) && cards.every((c) => c.n === 2 && c.thumbs === 2) && /60/.test(cards[2].text) && /초월 7.0%/.test(cards[2].text) && /10회 뽑기/.test(cards[0].text),
     heads.map((h) => h.slice(0, 30)).join(" | ") + " · " + cards.map((c) => `${c.banner}:${c.n}`).join("/"));
   await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
@@ -97,7 +98,7 @@ ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySel
   await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
   const g0 = (await tit()).gold;
   const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
-  const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"][data-count="${n === 1 ? 1 : 10}"] button`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
+  const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"][data-count="${n === 1 ? 1 : 10}"] > button`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
   // 2026-10-28 중복 소진 — 뽑은 조각은 남은 조각(relicSpare)으로. ★ 에 들어간 조각(relics)은 그대로 0
   const total = (pr) => Object.values(pr.relicSpare ?? {}).reduce((a, v) => a + v, 0) + Object.values(pr.relics ?? {}).reduce((a, v) => a + v, 0) * 1000;
   await draw("gold", 1);
@@ -107,7 +108,7 @@ ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySel
   ok("강화석 1회 → 강화석 −30 · 조각 2", pr.enhancementMaterials === 70 && total(pr) === 2, `강화석 ${pr.enhancementMaterials} · ${JSON.stringify(pr.relics)}`);
   await draw("gem", 1); pr = await prog();
   ok("보석 1회 → 보석 −60(QA 빌드는 보석 고정 999,999) · 조각 3", (pr.redGems === 140 || pr.redGems >= 999000) && total(pr) === 3, `보석 ${pr.redGems} · ${JSON.stringify(pr.relics)}`);
-  await page.evaluate(() => document.querySelector('.relic-banner-head[data-banner="gem"] .relic-gacha-rates')?.click()); await sleep(300);
+  await page.evaluate(() => document.querySelector('.relic-draw-product[data-banner="gem"] .relic-gacha-rates')?.click()); await sleep(300);
   const rateGroups = await page.evaluate(() => [...document.querySelectorAll(".relic-rates-group")].map((g) => g.querySelectorAll("li").length));
   ok("확률 정보: 등급별 묶음(보석 4등급 × 7종)", rateGroups.length === 4 && rateGroups.every((n) => n === 7), JSON.stringify(rateGroups));
   const lay2 = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, over: [...document.querySelectorAll(".relic-gacha-page, .relic-gacha-page *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== "visible").map((e) => e.className + ":" + e.textContent.slice(0, 16)), small: [...document.querySelectorAll(".relic-gacha-page *")].filter((e) => e.childElementCount === 0 && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 13).map((e) => e.textContent.slice(0, 12)) }));

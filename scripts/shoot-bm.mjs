@@ -39,7 +39,7 @@ await page.evaluate(() => { const s = document.querySelector(".page-premium") ??
 await shot("04-shop-package-mid");
 await page.evaluate(() => { const s = document.querySelector(".page-premium") ?? document.scrollingElement; s.scrollTop = 1400; }); await sleep(300);
 await shot("05-shop-package-bottom");
-const pkg = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".paid-group-head")].map((h) => h.textContent.trim()), cards: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent.trim()), buttons: [...document.querySelectorAll(".premium-product-card button")].map((b) => b.textContent.trim()) }));
+const pkg = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".package-filter button")].map((h) => h.textContent.trim()), cards: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent.trim()), buttons: [...document.querySelectorAll(".premium-product-card button")].map((b) => b.textContent.trim()) }));
 await clickText(".hub-sheet-switch button", "재화"); await sleep(500);
 await page.evaluate(() => { const s = document.querySelector(".page-premium") ?? document.scrollingElement; s.scrollTop = 0; });
 await shot("06-shop-currency");

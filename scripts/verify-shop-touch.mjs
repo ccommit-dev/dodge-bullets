@@ -70,14 +70,14 @@ for (const [dev, w, h] of DEVICES) {
   await tapEl(".hub-sheet-switch button", "뽑기"); await sleep(250); await tapEl(".premium-category-tabs button", "유물"); await sleep(600);
   ok(`${dev} 상점 유물 = 패키지 칸 6장(재화 3 × 1회 · 10회) · 가로 넘침 없음`, (await page.$$(".relic-draw-product")).length === 6 && await noHScroll());
   const before = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)).enhancementMaterials, H);
-  await tapEl('.relic-draw-product[data-banner="stone"][data-count="1"] button');
+  await tapEl('.relic-draw-product[data-banner="stone"][data-count="1"] > button');
   // 소환진(1.2초) 뒤 결과 창 — 고정 대기 대신 창이 뜰 때까지(최대 5초). 늦게 뜬 창이 다음 탭을 가렸다(2026-10-28 전체 검사)
   const modal = await page.waitForSelector(".relic-draw-modal", { timeout: 5000 }).then(() => true).catch(() => false); await sleep(300);
   await shot("relic-draw");
   if (modal) { await tapEl(".relic-draw-card button", "확인"); await sleep(400); }
   const after = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)).enhancementMaterials, H);
   ok(`${dev} 강화석 1회 칸 탭 → 결과 창 · 강화석 −30`, modal && after === before - 30, `${before} → ${after}`);
-  await tapEl('.relic-banner-head[data-banner="stone"] .relic-gacha-rates'); await sleep(300);
+  await tapEl('.relic-draw-product[data-banner="stone"] .relic-gacha-rates'); await sleep(300);
   ok(`${dev} 강화석 '확률 정보' 탭 → 등급 4묶음`, (await page.$$(".relic-rates-group")).length === 4);
   await page.evaluate(() => document.querySelector(".relic-shop-list")?.scrollIntoView({ block: "start" })); await sleep(200);
   await shot("relic-shop");
@@ -85,7 +85,7 @@ for (const [dev, w, h] of DEVICES) {
   await tapEl(".hub-sheet-switch button", "뽑기"); await sleep(250); await tapEl(".premium-category-tabs button", "스킬"); await sleep(600);
   ok(`${dev} 상점 스킬 = 패키지 칸 4장(골드 · 보석 × 1회 · 10회)`, (await page.$$(".skill-draw-product")).length === 4 && await noHScroll());
   const c0 = await page.evaluate((H) => Object.values(JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)).skillInventory.copies ?? {}).reduce((a, v) => a + v, 0), H);
-  await tapEl('.skill-draw-product[data-banner="gold"][data-count="1"] button');
+  await tapEl('.skill-draw-product[data-banner="gold"][data-count="1"] > button');
   const sModal = await page.waitForSelector(".skill-draw-reveal", { timeout: 5000 }).then(() => true).catch(() => false); await sleep(300);
   await shot("skill-draw");
   if (sModal) { await tapEl(".skill-draw-reveal .relic-draw-card button", "확인"); await sleep(500); }

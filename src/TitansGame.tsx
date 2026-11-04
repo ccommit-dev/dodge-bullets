@@ -80,7 +80,7 @@ import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
 import { SKILL_DOCK_EVENT, skillDockLeft } from "./ui/skillDockPref";
 import { EquipWindow, type EquipBagItem, type EquipSlotView } from "./titans/EquipWindow";
-import { GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, GEAR_SLOT_LABEL, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId } from "./equipment/gearSets";
+import { GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId } from "./equipment/gearSets";
 import { QuestPanel } from "./titans/QuestPanel";
 import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
@@ -148,6 +148,7 @@ import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBe
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
 import { LockIcon } from "./ui/LockIcon";
+import { FilterChips } from "./ui/FilterChips";
 import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
@@ -407,7 +408,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [rebalanceInfo, setRebalanceInfo] = useState<NonNullable<TitansSave["rebalanceNotice"]> | null>(null);
   /** 상점 유물 뽑기 — 고른 등급 탭 */
   const [relicShopBanner, setRelicShopBanner] = useState<RelicBanner>("gold");
-  const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot | null>(null);   // 조합 칸을 누른 슬롯(카드 표시) — 처음엔 없음
+  const [skillSlotTab, setSkillSlotTab] = useState<TitanSkillSlot | null>(null);   // 스킬 목록 필터 — null = 전체. 조합 칸을 눌러도 바뀐다
+  // 목록 필터 (2026-11-04, 사용자: "카테고리 그룹처럼 짓지말고 내용들을 나열 · 필터 버튼을 작게")
+  const [relicFilter, setRelicFilter] = useState<RelicBanner | "all">("all");
+  const [skillDrawFilter, setSkillDrawFilter] = useState<SkillBanner | "all">("all");
+  const [gearFilter, setGearFilter] = useState<(typeof GEAR_SET_KINDS)[number] | "all">("all");
+  const [packageFilter, setPackageFilter] = useState("all");
+  const [styleFilter, setStyleFilter] = useState<"all" | "skin" | "beat" | "fx">("all");
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
   // 프레임은 전체 화면 상태가 아니다 (2026-11-02) — 초당 5~17번 넘어갈 때마다 5천 줄 화면 전체가 다시 그려졌다. 주인공(HeroFrameChar)만 구독한다
   const frameStore = useRef(createFrameStore()).current;
@@ -4749,7 +4756,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 const eq = save.skillInventory.equipped[slot];
                 const locked = !qaOpen && slotLevels(character)[slot] <= 0;
                 return (
-                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""} ${skillSlotTab === slot ? "focus" : ""} ${equipFx && eq === equipFx.id ? "equip-pop" : ""}`} onClick={() => { setSkillSlotTab(slot); window.requestAnimationFrame(() => document.querySelector(`.skill-learn-card[data-slot="${slot}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }} title={SLOT_LABEL[slot]}>
+                  <button key={slot} type="button" className={`combo-step ${slot === "passive" ? "passive" : ""} ${eq ? "on" : ""} ${locked ? "locked" : ""} ${skillSlotTab === slot ? "focus" : ""} ${equipFx && eq === equipFx.id ? "equip-pop" : ""}`} onClick={() => { setSkillSlotTab(skillSlotTab === slot ? null : slot); }} title={SLOT_LABEL[slot]}>
                     {eq ? <SkillIcon id={eq} size={34} /> : <span className="combo-empty">{locked ? <LockIcon /> : "+"}</span>}
                     <small>{slot === "passive" ? "상시" : `${i + 1}`} {SLOT_LABEL[slot]}</small>
                     <b className="combo-name">{eq ? SKILLS.find((x) => x.id === eq)?.name ?? "" : locked ? "잠김" : "비어 있음"}</b>
@@ -4772,19 +4779,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {/* 2026-10-28 (사용자: "스킬탭 … 등급별 이 내용은 삭제하고 … 윤곽선으로만 등급 · 스킬 장착시스템이 너무 불편해 조금더 가독성좋게") —
             등급 머리줄 · 등급 글자를 걷고 카드 윤곽선 색(동료 등급색)으로만. 목록은 장착 칸(시동기 → 연계 A → 연계 B → 마무리 → 패시브)마다 묶고,
             머리줄에 그 칸에 지금 낀 스킬을 보여 준다 — 무엇을 어디에 끼우는지 한눈에 */}
+        {tab === "skills" && <FilterChips className="skill-filter" label="스킬 종류" value={skillSlotTab ?? "all"} items={[["all", "전체"] as const, ...SLOT_ORDER.map((sl) => [sl, SLOT_LABEL[sl]] as const)]} onChange={(v) => setSkillSlotTab(v === "all" ? null : v)} />}
         {tab === "skills" &&
-          SLOT_ORDER.flatMap((slotOf, slotIdx) => {
+          SLOT_ORDER.filter((sl) => !skillSlotTab || skillSlotTab === sl).flatMap((slotOf) => {
             const inSlot = SKILLS.filter((sk) => sk.slot === slotOf).sort((x, y) => TIERS.indexOf(SKILL_TIER[x.id]) - TIERS.indexOf(SKILL_TIER[y.id]));
             if (!inSlot.length) return [];
             const eqId = save.skillInventory.equipped[slotOf];
             const eqDef = eqId ? SKILLS.find((x) => x.id === eqId) : undefined;
-            const shut = !qaOpen && slotLevels(character)[slotOf] <= 0;
-            return [
-              <h3 key={`slot-${slotOf}`} className={`skill-slot-head ${eqDef ? "has-eq" : ""} ${shut ? "locked" : ""} ${skillSlotTab === slotOf ? "focus" : ""}`} data-slot={slotOf}>
-                <b>{slotOf === "passive" ? "상시" : `${slotIdx + 1}`}</b><span>{SLOT_LABEL[slotOf]}</span>
-                <small>{shut ? <><LockIcon /> 연습실에서 열기</> : eqDef ? <>장착 · <em>{eqDef.name}</em></> : "비어 있음 — 아래에서 골라 장착"}</small>
-              </h3>,
-              ...inSlot.map((sk) => {
+            return inSlot.map((sk) => {
             const learned = save.skillInventory.learned.includes(sk.id);
             const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
             const level = save.skillInventory.levels[sk.id];
@@ -4807,7 +4809,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <SkillIcon id={sk.id} />
               <div>
                 <strong>
-                  {sk.name} <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em>
+                  {sk.name} <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em><em className={`skill-slot-tag ${slotShut ? "locked" : ""}`} title={slotShut ? "연습실에서 열기" : undefined}>{slotShut && <LockIcon />}{SLOT_LABEL[sk.slot]}</em>
                   {learned && <em className="skill-level-tag">Lv.{level}/{sk.maxLevel}</em>}
                   {equipped && <em className="skill-equipped-tag">장착</em>}
                   {cards > 0 && <em className="skill-card-tag">카드 {cards}</em>}
@@ -4830,8 +4832,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 {cards > 0 && (learned ? cardPlan.used > 0 : true) && <button type="button" className={`skill-card-consume ${mainAction === "consume" ? "is-main" : ""}`} data-skill={sk.id} disabled={!learned && learnedInType >= skillTypeCapacity} onClick={() => consumeSkillCard(sk.id)}>{learned ? `카드 ${cardPlan.used}장 → Lv.${cardPlan.toLevel}` : "카드로 학습"}</button>}
               </div>
             </article>
-          }),
-            ];
+          });
           })}
         {tab === "premium" && (
           <>
@@ -4929,8 +4930,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 재화마다 머리줄 하나 + 1회 · 10회 상품 칸. 확률 정보는 머리줄의 단추로 그 재화 아래에 펼친다(유물별 확률 공시) */}
             {premiumCategory === "relic" && (
               <section className="relic-draw-page relic-gacha-page relic-shop-list" aria-label="유물 뽑기">
-                <p className="premium-subhead">유물 뽑기 <small>조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 같은 유물 조각은 유물 탭에서 소진해 ★ 올리기 · 같은 계열 3개면 세트</small></p>
-                {RELIC_BANNERS.map((banner) => {
+                <FilterChips className="relic-filter" label="유물 뽑기 재화" value={relicFilter} items={[["all", "전체"] as const, ...RELIC_BANNERS.map((b) => [b, RELIC_BANNER_LABEL[b]] as const)]} onChange={setRelicFilter} />
+                <p className="list-note">조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 같은 유물 조각은 유물 탭에서 소진해 ★ 올리기 · 같은 계열 3개면 세트</p>
+                {RELIC_BANNERS.filter((b) => relicFilter === "all" || relicFilter === b).map((banner) => {
                   // 들어간 조각 + 남은 조각(2026-10-28 중복 소진) — 남은 조각으로 채울 수 있는 유물은 나오지 않는다
                   const merged = relicMerged(character.relics, character.relicSpare);
                   const rates = relicDrawRates(merged, banner);
@@ -4950,10 +4952,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   const off = Math.round((1 - cost.ten / (cost.single * 10)) * 100);
                   return (
                     <Fragment key={banner}>
-                      <h4 className={`paid-group-head relic-banner-head banner-${banner}`} data-banner={banner}>
-                        <span className="relic-banner-title">{RELIC_BANNER_LABEL[banner]} 유물 <small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 보유 {ownedInPool}/{pool.length}종</small></span>
-                        <button type="button" className="relic-gacha-rates" aria-expanded={ratesOpen} onClick={() => { setRelicShopBanner(banner); setShowRelicRates(!ratesOpen); }}>{ratesOpen ? "확률 접기" : "확률 정보"}</button>
-                      </h4>
                       {([1, 10] as const).map((n) => (
                         <article key={n} className={`titans-card premium-product-card relic-draw-product banner-${banner}`} data-banner={banner} data-count={n}>
                           <span className={`relic-product-thumb rarity-${topTier.toLowerCase()}`} aria-hidden="true">
@@ -4963,6 +4961,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                           <div>
                             <strong>{RELIC_BANNER_LABEL[banner]} 유물 {n}회 뽑기 {n === 10 ? (off > 0 ? <em>{off}% 할인</em> : <em>10회</em>) : <em>{TIER_LABEL[topTier]} 등장</em>}</strong>
                             <p className={open > 0 ? "draw-detail" : ""}>{open > 0 ? `${bannerTiers.map((t) => TIER_LABEL[t]).join(" · ")} 유물 ${pool.length}종 중 ${n === 1 ? "하나" : "10번"}` : "이 뽑기의 유물을 모두 ★5 로 모았어요"} · {rateLine}</p>
+                            {n === 1 && <span className="draw-row-foot"><small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 보유 {ownedInPool}/{pool.length}종</small><button type="button" className="relic-gacha-rates" aria-expanded={ratesOpen} onClick={() => { setRelicShopBanner(banner); setShowRelicRates(!ratesOpen); }}>{ratesOpen ? "확률 접기" : "확률 정보"}</button></span>}
                           </div>
                           <button type="button" disabled={have < (n === 1 ? cost.single : cost.ten) || open === 0} onClick={() => void drawRelic(banner, n)}>{mark}{fmt(n === 1 ? cost.single : cost.ten)}</button>
                         </article>
@@ -4990,8 +4989,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 골드(일반 ~ 영웅) · 보석(영웅 ~ 초월). 뽑은 스킬은 카드 — 사냥터 스킬 탭에서 카드로 배우거나 소진해 Lv +1. 스킬별 확률 공시 */}
             {premiumCategory === "skill" && (
               <section className="relic-draw-page relic-gacha-page relic-shop-list skill-shop-list" aria-label="스킬 뽑기">
-                <p className="premium-subhead">스킬 뽑기 <small>뽑은 스킬은 카드 · 안 배운 스킬은 카드 1장으로 학습 · 같은 스킬 카드는 소진해 Lv +1 (사냥터 → 스킬)</small></p>
-                {SKILL_BANNERS.map((banner) => {
+                <FilterChips className="skill-draw-filter" label="스킬 뽑기 재화" value={skillDrawFilter} items={[["all", "전체"] as const, ...SKILL_BANNERS.map((b) => [b, SKILL_BANNER_LABEL[b]] as const)]} onChange={setSkillDrawFilter} />
+                <p className="list-note">뽑은 스킬은 카드 · 안 배운 스킬은 카드 1장으로 학습 · 같은 스킬 카드는 소진해 Lv +1 (사냥터 → 스킬)</p>
+                {SKILL_BANNERS.filter((b) => skillDrawFilter === "all" || skillDrawFilter === b).map((banner) => {
                   const inv = save.skillInventory;
                   const rates = skillDrawRates(inv, banner);
                   const open = rates.filter((x) => x.rate > 0).length;
@@ -5010,10 +5010,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   const off = Math.round((1 - cost.ten / (cost.single * 10)) * 100);
                   return (
                     <Fragment key={banner}>
-                      <h4 className={`paid-group-head relic-banner-head skill-banner-head banner-${banner}`} data-banner={banner}>
-                        <span className="relic-banner-title">{SKILL_BANNER_LABEL[banner]} 스킬 <small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 배움 {learnedInPool}/{pool.length}종</small></span>
-                        <button type="button" className="relic-gacha-rates" aria-expanded={ratesOpen} onClick={() => setSkillRatesOpen(ratesOpen ? null : banner)}>{ratesOpen ? "확률 접기" : "확률 정보"}</button>
-                      </h4>
                       {([1, 10] as const).map((n) => (
                         <article key={n} className={`titans-card premium-product-card relic-draw-product skill-draw-product banner-${banner}`} data-banner={banner} data-count={n}>
                           <span className={`relic-product-thumb skill-product-thumb rarity-${topTier.toLowerCase()}`} aria-hidden="true">
@@ -5023,6 +5019,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                           <div>
                             <strong>{SKILL_BANNER_LABEL[banner]} 스킬 {n}회 뽑기 {n === 10 ? (off > 0 ? <em>{off}% 할인</em> : <em>10회</em>) : <em>{TIER_LABEL[topTier]} 등장</em>}</strong>
                             <p className={open > 0 ? "draw-detail" : ""}>{open > 0 ? `${bannerTiers.map((t) => TIER_LABEL[t]).join(" · ")} 스킬 ${pool.length}종 중 ${n === 1 ? "하나" : "10번"}` : "이 뽑기의 스킬을 모두 최대 레벨까지 모았어요"} · {rateLine}</p>
+                            {n === 1 && <span className="draw-row-foot"><small>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 배움 {learnedInPool}/{pool.length}종</small><button type="button" className="relic-gacha-rates" aria-expanded={ratesOpen} onClick={() => setSkillRatesOpen(ratesOpen ? null : banner)}>{ratesOpen ? "확률 접기" : "확률 정보"}</button></span>}
                           </div>
                           <button type="button" disabled={have < (n === 1 ? cost.single : cost.ten) || open === 0} onClick={() => void drawSkill(banner, n)}>{mark}{fmt(n === 1 ? cost.single : cost.ten)}</button>
                         </article>
@@ -5082,7 +5079,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </article>}
             {/* 무기 외형 3종(진홍·빙하·황금) — 지금 장착한 무기 그림의 색 바꾸기 · 오라 (2026-10-27, 북 그림 대신) */}
             {/* 펫 (2026-10-28, 사용자: "상점에서도 팔게") — 도감 1,000 처치 대신 붉은 보석으로 바로 부화 · 장착. 부화한 펫은 장착 단추만 */}
-            {premiumCategory === "pet" && <p className="premium-subhead">펫 <small>주인공 곁에서 같이 사냥 · 장착 1마리 효과</small></p>}
+            {premiumCategory === "pet" && <p className="list-note">주인공 곁에서 같이 사냥 · 장착 1마리 효과</p>}
             {premiumCategory === "pet" && PET_IDS.map((pid) => {
               const def = PET_DEFS[pid];
               const lv = character.pets[pid] ?? 0;
@@ -5097,38 +5094,37 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </article>
               );
             })}
-            {premiumCategory === "gear" && <p className="premium-subhead">장비 <small>같은 무기를 들면 효과 · 장비 성장에서 끌어다 탈부착</small></p>}
-            {premiumCategory === "gear" && GEAR_SET_KINDS.map((kind) => {
+            {premiumCategory === "gear" && <FilterChips className="gear-filter" label="무기별 장비" value={gearFilter} items={[["all", "전체"] as const, ...GEAR_SET_KINDS.map((k) => [k, WEAPON_LABEL[k]] as const)]} onChange={setGearFilter} />}
+            {premiumCategory === "gear" && <p className="list-note">같은 무기를 들면 효과 · 장비 성장에서 끌어다 탈부착</p>}
+            {premiumCategory === "gear" && GEAR_SET_KINDS.filter((k) => gearFilter === "all" || gearFilter === k).flatMap((kind) => {
               const ids = GEAR_SET_SLOTS.map((slot) => gearItemId(kind, slot));
               const missing = ids.filter((id) => !character.ownedGear.includes(id));
               const setPrice = missing.length === ids.length ? GEAR_SET_PRICE : missing.length * GEAR_ITEM_PRICE;
-              return (
-                <article key={kind} className="titans-card gear-set-card" data-gear-set={kind}>
-                  <header>
-                    <img src={assetUrl(weaponIconPath(kind, 8))} alt="" aria-hidden="true" />
-                    <span><strong>{GEAR_SET_NAME[kind]} 세트 <em>{WEAPON_LABEL[kind]} 전용</em></strong><small>{gearFullSetText(kind)}</small></span>
-                  </header>
-                  <div className="gear-set-pieces">
-                    {ids.map((id) => {
-                      const owned = character.ownedGear.includes(id);
-                      return (
-                        <button key={id} type="button" className={`gear-piece ${owned ? "owned" : ""}`} data-gear-item={id} disabled={owned || redGems < GEAR_ITEM_PRICE} title={`${gearItemName(id)} · ${gearItemEffectText(id)}`} onClick={() => void buyGear([id], GEAR_ITEM_PRICE, gearItemName(id))}>
-                          <img src={assetUrl(gearItemIconPath(id))} alt="" aria-hidden="true" />
-                          <span>{GEAR_SLOT_LABEL[gearItemSlot(id)]}</span>
-                          <small>{owned ? "보유" : <><GemMark />{GEAR_ITEM_PRICE}</>}</small>
-                        </button>
-                      );
-                    })}
-                  </div>
+              return [
+                <article key={kind} className="titans-card gear-set-card gear-list-row" data-gear-set={kind}>
+                  <img src={assetUrl(weaponIconPath(kind, 8))} alt="" aria-hidden="true" />
+                  <div><strong>{GEAR_SET_NAME[kind]} 세트 <em>{WEAPON_LABEL[kind]} 전용</em></strong><p>{gearFullSetText(kind)}</p></div>
                   {missing.length > 0 ? (
                     <button type="button" className="gear-set-buy" disabled={redGems < setPrice} onClick={() => void buyGear(ids, setPrice, `${GEAR_SET_NAME[kind]} 세트`)}>
-                      {missing.length === ids.length ? "세트 구매 · 20% 할인" : `남은 ${missing.length}개 구매`} <GemMark />{setPrice}
+                      {missing.length === ids.length ? "20% 할인" : `남은 ${missing.length}개`} <GemMark />{setPrice}
                     </button>
                   ) : <p className="gear-set-done">모두 보유</p>}
-                </article>
-              );
+                </article>,
+                ...ids.map((id) => {
+                  const owned = character.ownedGear.includes(id);
+                  return (
+                    <article key={id} className="titans-card gear-list-row gear-item-row">
+                      <img src={assetUrl(gearItemIconPath(id))} alt="" aria-hidden="true" />
+                      <div><strong>{gearItemName(id)}</strong><p>{gearItemEffectText(id)}</p></div>
+                      <button type="button" className={`gear-piece ${owned ? "owned" : ""}`} data-gear-item={id} disabled={owned || redGems < GEAR_ITEM_PRICE} title={`${gearItemName(id)} · ${gearItemEffectText(id)}`} onClick={() => void buyGear([id], GEAR_ITEM_PRICE, gearItemName(id))}>
+                        {owned ? "보유" : <><GemMark />{GEAR_ITEM_PRICE}</>}
+                      </button>
+                    </article>
+                  );
+                }),
+              ];
             })}
-            {premiumCategory === "mount" && <p className="premium-subhead">탈것 <small>주인공이 타고 사냥 · 장착 1마리 · 사냥 골드 증가 · 강화석으로 강화</small></p>}
+            {premiumCategory === "mount" && <p className="list-note">주인공이 타고 사냥 · 장착 1마리 · 사냥 골드 증가 · 강화석으로 강화</p>}
             {premiumCategory === "mount" && MOUNT_IDS.map((mid) => {
               const def = MOUNT_DEFS[mid];
               const lv = character.mounts[mid] ?? 0;
@@ -5154,8 +5150,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </article>
               );
             })}
-            {premiumCategory === "weapon" && <p className="premium-subhead">주인공 무기 외형 <small>장착한 검 · 창 · 활 · 지팡이 색</small></p>}
-            {premiumCategory === "weapon" && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
+            {premiumCategory === "weapon" && <FilterChips className="style-filter" label="외형 종류" value={styleFilter} items={[["all", "전체"], ["skin", "무기 외형"], ["beat", "비트 꾸미기"], ["fx", "이펙트 · 테마"]] as const} onChange={setStyleFilter} />}
+            {premiumCategory === "weapon" && (styleFilter === "all" || styleFilter === "skin") && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
               const owned = character.ownedWeaponSkins.includes(skinId);
               const equipped = character.equippedWeaponSkin === skinId;
               return (
@@ -5179,8 +5175,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             })}
             {/* 비트 수련 커스텀 — 판정 레일 · 구호 (2026-10-06, "커스텀 아이템 리소스 및 상점 연동").
                 2026-10-27: 무기 외형과 섞여 '북' 이 주인공 무기처럼 읽혔다 → 소제목으로 갈라 비트 디펜스 꾸미기임을 밝힌다 */}
-            {premiumCategory === "weapon" && <p className="premium-subhead">비트 디펜스 꾸미기 <small>판정 레일 빛 · 노트 장식 — 주인공 무기와 무관</small></p>}
-            {premiumCategory === "weapon" && BEAT_SHOP_ITEMS.filter((item) => item.cost > 0).map((item) => {
+            {premiumCategory === "weapon" && (styleFilter === "all" || styleFilter === "beat") && BEAT_SHOP_ITEMS.filter((item) => item.cost > 0).map((item) => {
               const owned = ownsBeatItem(character.beatCosmetics, item);
               const on = equippedBeatItem(character.beatCosmetics, item);
               return (
@@ -5194,8 +5189,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               );
             })}
             {/* I 무기 이펙트 · 전장 테마 — 외형 탭 (소제목: 위 비트 꾸미기와 갈라 사냥터 것임을 밝힌다) */}
-            {premiumCategory === "weapon" && <p className="premium-subhead">무기 이펙트 · 전장 테마 <small>사냥터 타격 빛 · 배경</small></p>}
-            {premiumCategory === "weapon" && Object.entries(WEAPON_FX).filter(([, def]) => def.gemCost !== null || character.ownedWeaponFx.includes("fx-season")).map(([fxId, def]) => {
+            {premiumCategory === "weapon" && (styleFilter === "all" || styleFilter === "fx") && Object.entries(WEAPON_FX).filter(([, def]) => def.gemCost !== null || character.ownedWeaponFx.includes("fx-season")).map(([fxId, def]) => {
               const owned = character.ownedWeaponFx.includes(fxId);
               const equipped = character.equippedWeaponFx === fxId;
               return (
@@ -5208,7 +5202,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </article>
               );
             })}
-            {premiumCategory === "weapon" && Object.entries(THEMES).map(([themeId, def]) => {
+            {premiumCategory === "weapon" && (styleFilter === "all" || styleFilter === "fx") && Object.entries(THEMES).map(([themeId, def]) => {
               const owned = character.ownedThemes.includes(themeId);
               const equipped = character.equippedTheme === themeId;
               return (
@@ -5335,10 +5329,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {tab === "premium" && premiumCategory === "package" && paidStoreVisible() && (() => {
           // 2026-10-08 송사리 모델 — 상품을 5묶음(매일·주말 / 보석 / 패스·영구 / 1회 한정 / 외형)으로 보여 준다. 묶음 안 순서는 PAID_GROUPS
           const paidList = STORE_PRODUCTS.filter((product) => product.visible && productOnSale(product.id)).filter((product) => paidProductsUnlocked || product.id.startsWith("gems") || (product.id === "remove-ads" && character.adsWatchedTotal > 0)).filter((product) => !(product.id === "remove-ads" && character.adFree)).filter((product) => !product.trigger || (packageTriggered(product.trigger, character) && !packagePurchased(character, product.id)));
-          return PAID_GROUPS.map((group) => {
-          const items = group.ids.map((id) => paidList.find((p) => p.id === id)).filter((p): p is (typeof paidList)[number] => !!p);
-          if (items.length === 0) return null;
-          return <Fragment key={group.id}><h4 className="paid-group-head">{group.label} <small>{group.note}</small></h4>{items.map((product) => {
+          const groupItems = (group: (typeof PAID_GROUPS)[number]) => group.ids.map((id) => paidList.find((p) => p.id === id)).filter((p): p is (typeof paidList)[number] => !!p);
+          const shownGroups = PAID_GROUPS.filter((g) => groupItems(g).length > 0);
+          return [<FilterChips key="package-filter" className="package-filter" label="패키지 종류" value={packageFilter} items={[["all", "전체"], ...shownGroups.map((g) => [g.id, g.label] as const), ["special", "특별"]]} onChange={setPackageFilter} />,
+          ...shownGroups.filter((g) => packageFilter === "all" || packageFilter === g.id).map((group) => {
+          const items = groupItems(group);
+          return <Fragment key={group.id}>{packageFilter === group.id && <p className="list-note">{group.note}</p>}{items.map((product) => {
           const claimed = character.claimedRewards.includes(`free-store-v1:${product.id}`);
           const deal = dealState(character, product.id, nowTick);
           const dealLabel = deal === "bought" ? (product.id === "daily-deal" ? "오늘 구매 완료" : "이번 주 구매 완료") : deal === "weekday" ? "토·일 한정" : null;
@@ -5360,10 +5356,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <button type="button" disabled={claimed || claimingProduct !== null || dealLabel !== null} onClick={() => void claimFreeProduct(product.id)}>{claimed ? "수령 완료" : claimingProduct === product.id ? "지급 중…" : dealLabel ?? "무료 1회 (QA)"}</button>
           )}
         </article>;})}</Fragment>;
-          });
+          })];
         })()}
-        {tab === "premium" && premiumCategory === "package" && <p className="premium-subhead shop-special-head">이번 주 특별 상품 <small>주마다 횟수가 새로 채워져요</small></p>}
-        {(tab === "event-shop" || tab === "event-shop2" || (tab === "premium" && premiumCategory === "package")) && (
+        {tab === "premium" && premiumCategory === "package" && packageFilter === "special" && <p className="list-note shop-special-head">이번 주 특별 상품 · 주마다 횟수가 새로 채워져요</p>}
+        {(tab === "event-shop" || tab === "event-shop2" || (tab === "premium" && premiumCategory === "package" && (packageFilter === "all" || packageFilter === "special"))) && (
           <div className="event-offer-grid">
             {/* 실상품 (economy/eventShop.ts): 확정 구매 · 주간 한도 · 진행도 비례 수량 */}
             {/* 동료 고르기 칸은 걷었다(2026-10-28) — 조각 상품은 가진 동료 모두에게, 신화 · 초월 상품은 가진 신화 · 초월 모두에게 */}
@@ -5692,7 +5688,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </div>
       )}
 
-      {coach && (
+      {coach && (coach.target !== "field" || tab === "sword") && (
         <button
           type="button"
           className={`coach-bubble coach-${coach.target}`}
