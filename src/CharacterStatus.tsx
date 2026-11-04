@@ -28,7 +28,7 @@ import {
 } from "./progression/idle";
 import { HUNTING_AREAS, huntingArea } from "./titans/model";
 import { formatWallet } from "./ui/WalletBar";
-import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas } from "./progression/rebirth";
+import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas , rebirthWallStatus, WALL_BOSS_LOSSES } from "./progression/rebirth";
 import { sfxRebirth } from "./ui/sfx";
 import { LockIcon } from "./ui/LockIcon";
 import { freeCrystals, treeIdleMult } from "./progression/crystalTree";
@@ -166,10 +166,11 @@ export function CharacterStatus({
   const needAreas = rebirthNeedAreas(progress);
   const canRebirth = canRebirthNow(progress);
   const gains = rebirthGains(progress);
+  const wall = rebirthWallStatus(progress, titans.stage);
   const toggleAutoRebirth = async () => {
     const next = await updateCharacterProgress(userHash, (current) => ({ ...current, autoRebirth: !current.autoRebirth }));
     onProgressChange(next);
-    setGrowthMessage(next.autoRebirth ? `자동 환생 켜짐 — 사냥터에서 벽 조건을 채우면 바로 환생하고 ${rebirthGains(next).startStage}층부터 다시 오릅니다` : "자동 환생 꺼짐");
+    setGrowthMessage(next.autoRebirth ? `자동 환생 켜짐 — 대장 ${WALL_BOSS_LOSSES}연패 지역을 ${wall.need}곳 채우면 사냥터에서 바로 환생하고 ${rebirthGains(next).startStage}층부터 다시 오릅니다` : "자동 환생 꺼짐");
   };
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
@@ -217,7 +218,7 @@ export function CharacterStatus({
 
   const rebirth = async () => {
     if (!canRebirth) {
-      setGrowthMessage(`${needAreas}개 지역에서 한계(DPS 벽)에 도달하면 환생할 수 있습니다. (현재 ${progress.wallAreas.length})`);
+      setGrowthMessage(wall.next);
       return;
     }
     // 리셋이 생겼으므로 실수 방지 확인 단계
@@ -533,6 +534,15 @@ export function CharacterStatus({
         </div>
         <div className="legacy-heading"><div><small>REBIRTH</small><strong>계승</strong></div><span>결정 {freeCrystals(progress)} / {progress.inheritanceCrystals} · 방치 +{treeIdleMult(progress.crystalTree).toFixed(2)}</span></div>
         <div className="mp-rebirth">
+          {/* 벽 조건을 풀어 쓴다 (2026-11-03, 사용자: "벽조건은 뭔지 구체화") */}
+          <div className={`rebirth-wall-guide ${wall.ready ? "ready" : ""}`}>
+            <strong>환생 조건 · {wall.needText}의 벽 <em>{wall.have}/{wall.need}</em></strong>
+            <p>{wall.rule}</p>
+            <ul aria-label="지역별 벽 기록">
+              {wall.areas.map((a) => <li key={a.id} className={`${a.done ? "done" : ""} ${a.here ? "here" : ""}`}>{a.done ? "✓ " : ""}{a.name}{a.here ? " · 지금" : ""}</li>)}
+            </ul>
+            <p className="next">{wall.next}</p>
+          </div>
           {/* 환생하면 받는 것 — 한 줄씩 이름 · 값 */}
           <ul className="rebirth-preview mp-gain" aria-label="환생하면 받는 것">
             <li><span>결정</span> <b>+{gains.crystals}</b></li>
@@ -542,12 +552,12 @@ export function CharacterStatus({
             <li><span>출발 골드</span> <b>{formatWallet(gains.startGold)}</b></li>
             <li><span>사다리 · 유물</span> <b>유지</b></li>
           </ul>
-          <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} style={{ "--wall-p": `${Math.min(100, (progress.wallAreas.length / needAreas) * 100)}%` } as CSSProperties} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(`환생은 DPS 벽 ${needAreas}지역이 필요합니다 — 지금 ${progress.wallAreas.length}지역 (사냥터에서 막힌 지역)`))}>
-            {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : `환생 ${progress.rebirthCount + 1}회째 시작`) : `환생 ${progress.rebirthCount}회 · DPS 벽 ${progress.wallAreas.length}/${needAreas} 지역`}
+          <button type="button" className={`rebirth-button ${rebirthConfirm ? "confirming" : ""} ${canRebirth ? "" : "is-locked"}`} style={{ "--wall-p": `${Math.min(100, (progress.wallAreas.length / needAreas) * 100)}%` } as CSSProperties} aria-disabled={!canRebirth} onClick={() => (canRebirth ? void rebirth() : setGrowthMessage(wall.next))}>
+            {canRebirth ? (rebirthConfirm ? "정말 환생하기 (사냥터 초기화)" : `환생 ${progress.rebirthCount + 1}회째 시작`) : `환생 ${progress.rebirthCount}회 · 벽 ${progress.wallAreas.length}/${needAreas} 지역 (대장 ${WALL_BOSS_LOSSES}연패)`}
           </button>
           {/* 자동 환생 (2026-10-22 아처 키우기 7번 — "언제까지 환생하냐, 귀찮다") */}
           <button type="button" className={`auto-rebirth-toggle ${progress.autoRebirth ? "on" : ""}`} role="switch" aria-checked={progress.autoRebirth} onClick={() => void toggleAutoRebirth()}>
-            <i aria-hidden="true" /><span><b>자동 환생</b><small>벽 조건을 채우면 사냥터에서 바로 환생 · {gains.startStage}층부터</small></span>
+            <i aria-hidden="true" /><span><b>자동 환생</b><small>대장 {WALL_BOSS_LOSSES}연패 지역 {wall.need}곳을 채우면 사냥터에서 바로 환생 · {gains.startStage}층부터</small></span>
           </button>
         </div>
         <CrystalTreePanel userHash={userHash} progress={progress} onProgressChange={onProgressChange} onMessage={setGrowthMessage} />

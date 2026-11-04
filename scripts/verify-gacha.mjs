@@ -42,8 +42,8 @@ const baseTitans = { stage: 12, bestStage: 12, gold: 2000000, heroes: { mia: 12,
 // ── 1. 뽑기 패널 · 10연 · 연출 · 자동 편성 · 천장 ──
 await seed(baseProgress, baseTitans);
 await closeModal();
-let r = await page.evaluate(() => ({ nameplate: document.querySelector(".hero-title-plate")?.textContent, tabs: [...document.querySelectorAll(".titans-tabs button")].map((b) => b.textContent.trim()) }));
-ok("칭호 이름표가 전투 화면 영웅 위에 표시", /타이탄 슬레이어/.test(r.nameplate ?? ""), r.nameplate);
+let r = await page.evaluate(() => ({ nameplate: document.querySelector(".titans-hero .hero-marker.has-title b")?.textContent, plates: document.querySelectorAll(".hero-title-plate").length, tabs: [...document.querySelectorAll(".titans-tabs button")].map((b) => b.textContent.trim()) }));
+ok("칭호가 전투 화면 영웅 위에 한 번만 표시", /타이탄 슬레이어/.test(r.nameplate ?? "") && r.plates === 0, r.nameplate);
 // 하단 바: 동료 탭(편성·역할 칩) → 소환 탭(뽑기 패널)
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);

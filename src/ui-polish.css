@@ -1334,7 +1334,52 @@
 .titans-hero .hero-pet { width: 60%; left: -38%; }
 /* 낮은 화면(360×640)은 커진 스킬 칸이 전장 알림과 12px 겹쳤다(inspect-mobile) — 알림을 스킬 칸 위로 올린다 */
 @media (max-height: 700px) {
-  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 70px !important; }   /* 72 는 가장 낮은 깊이의 주인공 발과 4px 넘게 겹쳤다(verify-walk-y) */
+  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 70px !important; width: 150px !important; }   /* 가장 낮은 깊이(왼쪽 −9%)에서 몸과 22×23px 겹쳤다(_probe-alert-lanes) — 칩을 좁혀 몸이 서는 왼쪽 구간을 비운다. 글자는 줄임표, 눌러서 내용을 본다 */
 }
 /* 사냥터 토스트 12px — 황금 몬스터 안내가 기준(13px) 밑이었다(scan-readability 가 그 순간에 걸릴 때만 잡았다) */
 .titans-toast { font-size: 13px !important; }
+
+/* 사냥터 머리줄 환생 단추 (2026-11-03) — 마이페이지와 지갑 사이 여백. 올리면(터치는 누르면) 조건 요약 */
+.titans-header .titans-back { min-width: 0; flex: 0 1 auto; }
+.header-rebirth { position: relative; flex: 0 0 auto; z-index: 60; }
+.header-rebirth-btn { display: grid; grid-template-rows: 18px auto auto; justify-items: center; width: 40px; padding: 2px 0 3px; border: 2px solid #3b2415; border-radius: 12px; background: #fff7e6; color: #3b2415; line-height: 1.05; cursor: pointer; box-shadow: 0 2px 0 #3b2415; }
+.header-rebirth-btn img { width: 18px; height: 18px; object-fit: contain; }
+.header-rebirth-btn b { font-size: 11px; font-weight: 800; }
+.header-rebirth-btn small { font-size: 11px; font-weight: 800; color: #7a5a3a; }
+.header-rebirth.ready .header-rebirth-btn { background: #fcd34d; animation: header-rebirth-glow 1.6s ease-in-out infinite; }
+.header-rebirth.ready .header-rebirth-btn small { color: #3b2415; }
+@keyframes header-rebirth-glow { 50% { box-shadow: 0 2px 0 #3b2415, 0 0 10px rgba(251, 191, 36, .9); } }
+.header-rebirth-tip { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; width: min(270px, 74vw); padding: 10px 12px; border: 2px solid #3b2415; border-radius: 14px; background: #fff7e6; color: #3b2415; text-align: left; box-shadow: 0 4px 0 #3b2415; visibility: hidden; opacity: 0; transition: opacity .12s; }
+.header-rebirth.open .header-rebirth-tip, .header-rebirth:has(.header-rebirth-btn:focus-visible) .header-rebirth-tip { visibility: visible; opacity: 1; }   /* focus-within 은 터치 뒤 포커스가 남아 안 닫혔다 */
+@media (hover: hover) { .header-rebirth:hover .header-rebirth-tip { visibility: visible; opacity: 1; } }
+.header-rebirth-tip strong { display: block; font-size: 14px; font-weight: 800; }
+.header-rebirth-tip strong em { font-style: normal; color: #c2410c; }
+.header-rebirth-tip p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.35; color: #5a4230; }
+.header-rebirth-tip p.next { font-weight: 800; color: #166534; }
+.header-rebirth-go { display: block; width: 100%; min-height: 36px; margin-top: 8px; border: 2px solid #3b2415; border-radius: 10px; background: #fcd34d; color: #3b2415; font-size: 13px; font-weight: 800; cursor: pointer; }
+.header-rebirth-go.armed { background: #dc2626; color: #fff; }
+/* 마이페이지 벽 조건 풀이 */
+.rebirth-wall-guide { display: grid; gap: 6px; padding: 10px 12px; border: 2px solid #d8c8a8; border-radius: 14px; background: #fffaf0; color: #3b2415; }
+.rebirth-wall-guide strong { font-size: 14px; font-weight: 800; }
+.rebirth-wall-guide strong em { font-style: normal; color: #c2410c; }
+.rebirth-wall-guide.ready { border-color: #16a34a; }
+.rebirth-wall-guide p { margin: 0; font-size: 12.5px; line-height: 1.4; color: #5a4230; }
+.rebirth-wall-guide p.next { font-weight: 800; color: #166534; }
+.rebirth-wall-guide ul { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.rebirth-wall-guide li { padding: 2px 8px; border: 1px solid #d8c8a8; border-radius: 999px; background: #fff; font-size: 12px; color: #7a5a3a; }
+.rebirth-wall-guide li.here { border-color: #3b2415; color: #3b2415; font-weight: 800; }
+.rebirth-wall-guide li.done { border-color: #16a34a; background: #dcfce7; color: #166534; font-weight: 800; }
+/* 스킬 칸은 주인공 발밑으로 옮긴다(TitansGame skillDockRef) */
+.titans-field .titans-skill-dock { transition: padding-left .25s ease; }
+/* 칭호 명패 — 칭호가 있으면 칭호 색 · 읽히는 크기로 (이름표와 합침) */
+.hero-marker.has-title b { color: var(--title-color, #fde047); background: #1f2937; font-size: 11px; transform: none; padding: 2px 7px; }
+/* 탈것을 타면 주인공이 올라간 만큼 명패도 — 안 올리면 얼굴을 가렸다 */
+.titans-hero.has-mount .hero-marker { translate: 0 -46px; }
+/* 환생 단추에 자리를 내주며 "칭호 미설정"이 잘렸다 — 그림 · 간격을 조금씩 줄인다 */
+@media (max-width: 430px) {
+  .titans-header { gap: 3px !important; }
+  .titans-header .titans-back { gap: 3px; padding-inline: 5px !important; }
+  .titans-header .mypage-icon { width: 28px; height: 28px; flex-basis: 28px; }
+  .titans-wallet { gap: 3px !important; padding-inline: 5px !important; }
+  .header-rebirth-btn { width: 36px; }
+}

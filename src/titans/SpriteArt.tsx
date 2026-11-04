@@ -86,6 +86,7 @@ const STANDALONE_ALLY: Partial<Record<TitanHeroId, string>> = {
  * 폭 150%·좌측 −25%로 원본 비율을 지킨다(WIDE_CELL). 아틀라스에 행이 없는 동료만 개별 PNG(정지)로 떨어진다.
  */
 export type AllyFrameState = 0 | 1 | 2 | 3;
+const ALLY_LAYOUT_COLS = 8, ALLY_LAYOUT_ROWS = 4;   // art-gen/anim-layout.json ally
 const ALLY_ANIMATION_ATLAS = assetUrl("titans/generated/allies/ally-animation-atlas-v1.png");
 const VARIANT_ATLAS = assetUrl("titans/generated/allies/ally-variant-atlas-v1.png");
 const SKIN_ATLAS = assetUrl("titans/generated/allies/ally-skin-atlas-v1.png");
@@ -613,5 +614,7 @@ export function allyIdleCell(id: TitanHeroId, skin?: string): { src: string; col
   if (VARIANT_ROW[id] !== undefined) return { src: VARIANT_ATLAS, cols: 4, rows: VARIANT_ROWS, row: VARIANT_ROW[id]!, wide: true };
   if (SPECIAL_ROW[id] !== undefined) return { src: SPECIAL_ATLAS, cols: 4, rows: 4, row: SPECIAL_ROW[id]!, wide: false };
   if (BASE_ROW[id] !== undefined) return { src: ALLY_ANIMATION_ATLAS, cols: 4, rows: 6, row: BASE_ROW[id]!, wide: true };
+  // 새 동료 40명은 전투 시트 대기 첫 칸 — 낡은 로스터 시트(ally-roster-weaponless)로 빠져 공유 카드에 엉뚱한 그림이 나왔다 (2026-11-03)
+  if (!STANDALONE_ALLY[id] && hasAllyAnim(id)) return { src: assetUrl(`titans/anim/allies/${id}.webp`), cols: ALLY_LAYOUT_COLS, rows: ALLY_LAYOUT_ROWS, row: 0, wide: true };
   return { src: STANDALONE_ALLY[id] ?? ALLY_SHEET, cols: 1, rows: 1, row: 0, wide: false };
 }

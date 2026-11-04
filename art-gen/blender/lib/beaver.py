@@ -277,10 +277,14 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
                 if t > 0.8:
                     v.co.x = g.x + (v.co.x - g.x) * max(0.05, (1 - t) / 0.2)
             out.append(C.mesh_obj('blade', bm, steel, coll, outline=OUT * 0.6))
-    elif kind == 'hammer':   # 대장장이 · 거인 망치(2026-11-03) — 도끼보다 짧아 공격 칸 키가 덜 튄다
-        out.append(C.mesh_obj('grip', C.tube([g + Vector((0, 0, -0.06)), g + Vector((0, 0, 0.26))], 0.02, seg=10), wood, coll, outline=OUT * 0.6))
-        out.append(C.mesh_obj('hm_head', C.box(g + Vector((0, 0, 0.27)), (0.2, 0.1, 0.1), bevel=0.012), steel, coll, smooth=False, outline=OUT * 0.6))
-        out.append(C.mesh_obj('hm_band', C.box(g + Vector((0, 0, 0.27)), (0.045, 0.108, 0.108)), gold, coll, smooth=False, outline=OUT * 0.3))
+    elif kind == 'hammer':   # 대장장이 · 거인 망치(2026-11-03) — 무광 쇠 · 밝은 자루 · 넓적한 머리. 번들거리는 쇠는 작은 칸에서 하얀 네모로 보였다
+        iron = _accent('hammerhead', color, rough=0.55, metal=0.25)
+        handle = _accent('hammerwood', '#c8924a', rough=0.65)
+        out.append(C.mesh_obj('grip', C.tube([g + Vector((0, 0, -0.08)), g + Vector((0, 0, 0.32))], 0.027, seg=10), handle, coll, outline=OUT * 0.7))
+        out.append(C.mesh_obj('hm_head', C.box(g + Vector((0, 0, 0.35)), (0.12, 0.095, 0.1), bevel=0.012), iron, coll, smooth=False, outline=OUT * 0.7))
+        for sx in (-1, 1):   # 양쪽으로 넓어지는 때리는 면
+            out.append(C.mesh_obj(f'hm_face{sx}', C.box(g + Vector((sx * 0.085, 0, 0.35)), (0.05, 0.12, 0.125), bevel=0.01), iron, coll, smooth=False, outline=OUT * 0.7))
+        out.append(C.mesh_obj('hm_band', C.box(g + Vector((0, 0, 0.35)), (0.035, 0.104, 0.108)), gold, coll, smooth=False, outline=OUT * 0.3))
     elif kind in ('spear', 'trident', 'shovel', 'lance'):
         out.append(C.mesh_obj('shaft', C.tube([g + Vector((0, 0, -0.2)), g + Vector((0, 0, 0.42))], 0.018, seg=12), wood, coll, outline=OUT * 0.6))
         tip = g + Vector((0, 0, 0.42))

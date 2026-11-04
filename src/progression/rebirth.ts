@@ -9,7 +9,7 @@ import { updateCharacterProgress } from "./storage";
 import { earnedBadgeIds } from "./badges";
 import { openMomentOffer } from "../economy/momentOffers";
 import { rebirthResetTitans } from "../titans/storage";
-import { rebirthCrystals, rebirthStartGold, type TitansSave } from "../titans/model";
+import { HUNTING_AREAS, huntingArea, rebirthCrystals, rebirthStartGold, type TitansSave } from "../titans/model";
 import { boostedRebirthCrystals, rebirthStartStage, skippedStageGold } from "./crystalTree";
 import { stageCeilingFor } from "./idle";
 
@@ -23,6 +23,32 @@ export function rebirthNeedAreas(progress: Pick<CharacterProgress, "rebirthCount
 
 export function canRebirthNow(progress: Pick<CharacterProgress, "rebirthCount" | "wallAreas">): boolean {
   return progress.wallAreas.length >= rebirthNeedAreas(progress);
+}
+
+/** 한 지역의 벽 = 그 지역 스테이지 대장에게 이만큼 연속으로 진 것 (TitansGame 대장 실패 처리) */
+export const WALL_BOSS_LOSSES = 2;
+
+/**
+ * 벽 조건을 풀어 쓴 것 (2026-11-03, 사용자: "벽조건은 뭔지 구체화") — 마이페이지 · 사냥터 환생 단추가 같이 쓴다.
+ * areas: 지역마다 기록 여부 · 지금 있는 곳 / next: 지금 무엇을 하면 조건이 차는지 한 문장
+ */
+export function rebirthWallStatus(progress: Pick<CharacterProgress, "rebirthCount" | "wallAreas">, stage: number) {
+  const need = rebirthNeedAreas(progress), have = progress.wallAreas.length, ready = have >= need;
+  const here = huntingArea(Math.max(1, stage));
+  const areas = HUNTING_AREAS.map((a) => ({ id: a.id, name: a.name, done: progress.wallAreas.includes(a.id), here: a.id === here.id }));
+  const later = HUNTING_AREAS.find((a) => a.stageFrom > here.stageTo && !progress.wallAreas.includes(a.id));
+  const next = ready
+    ? "조건을 채웠어요 — 지금 환생할 수 있어요"
+    : !progress.wallAreas.includes(here.id)
+      ? `지금 ${here.name}(Stage ${Math.max(1, stage)})에서 대장에게 ${WALL_BOSS_LOSSES}번 연속 지면 벽 ${have + 1}/${need}`
+      : later
+        ? `${here.name}은 기록했어요 — ${later.name}(Stage ${later.stageFrom}~)까지 올라가 대장에게 ${WALL_BOSS_LOSSES}번 연속 지기`
+        : `${here.name}은 기록했어요 — 아직 기록 안 한 지역에서 대장에게 ${WALL_BOSS_LOSSES}번 연속 지기`;
+  return {
+    need, have, ready, areas, next,
+    rule: `한 지역에서 스테이지 대장에게 ${WALL_BOSS_LOSSES}번 연속 지면 그 지역이 벽으로 기록돼요(지역마다 처음 한 번 · 보석 +30).`,
+    needText: need > 1 ? `서로 다른 지역 ${need}곳` : "지역 1곳",
+  };
 }
 
 /**

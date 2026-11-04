@@ -548,11 +548,22 @@ def _build(name, cfg, coll=None):
         add('body', C.mesh_obj('body', C.ellipsoid(bc, br), M['skin'], coll, outline=OUT))
         add('body', C.mesh_obj('belly', C.ellipsoid(bc + Vector((0, 0, -0.07)), (br[0] * 0.75, br[1] * 0.8, br[2] * 0.6)), M['belly'], coll, outline=OUT * 0.5))
         add('head', C.mesh_obj('head', C.ellipsoid(hc, hr), M['skin'], coll, outline=OUT))
-        add('head', C.mesh_obj('snout', C.ellipsoid(hc + Vector((0, -hr[1] * 1.0, -hr[2] * 0.25)), (hr[0] * 0.5, hr[1] * 0.75, hr[2] * 0.4)), M['belly'], coll, outline=OUT))   # 늑대·사자 주둥이를 길게
-        add('head', C.mesh_obj('nose', C.ellipsoid(hc + Vector((0, -hr[1] * 1.72, -hr[2] * 0.08)), (0.045, 0.035, 0.035)), M['dark'], coll))
-        _eyes(add, hc, hr, cfg, coll, M, spread=0.42, up=0.18, size=0.8)
+        wy = cfg.get('wyvern')
+        if wy:   # 비룡 (2026-11-03, 사용자: "얼굴이 귀여운 편 · 사나운 용 느낌" 수정) — 여우 같은 흰 주둥이 · 큰 눈을 뺀다
+            sn0 = hc + Vector((0, -hr[1] * 0.7, -hr[2] * 0.22))
+            sp = spline([sn0, sn0 + Vector((0, -0.14, -0.015)), sn0 + Vector((0, -0.27, -0.03))], 10)
+            add('head', C.mesh_obj('snout', C.tube(sp, interp([hr[0] * 0.62, hr[0] * 0.5, hr[0] * 0.42], len(sp)), seg=12), M['skin'], coll, outline=OUT))
+            for sx in (-1, 1):
+                add('head', C.mesh_obj(f'nostril{sx}', C.ellipsoid(sp[-1] + Vector((sx * 0.035, -0.035, hr[0] * 0.26)), (0.022, 0.018, 0.016)), M['dark'], coll))
+                bp, bn = C.on_ellipsoid(hc, hr, Vector((sx * 0.42, -1.0, 0.62)))
+                add('head', C.mesh_obj(f'brow{sx}', C.ellipsoid(bp + bn * 0.018 + Vector((sx * 0.004, 0, 0.0)), (0.075, 0.03, 0.02), rot=Euler((0, sx * math.radians(-24), 0))), M['dark'], coll, outline=OUT * 0.4))
+            _eyes(add, hc, hr, dict(cfg, eye_size=0.05, slit=True), coll, M, spread=0.42, up=0.2, size=1.0)
+        else:
+            add('head', C.mesh_obj('snout', C.ellipsoid(hc + Vector((0, -hr[1] * 1.0, -hr[2] * 0.25)), (hr[0] * 0.5, hr[1] * 0.75, hr[2] * 0.4)), M['belly'], coll, outline=OUT))   # 늑대·사자 주둥이를 길게
+            add('head', C.mesh_obj('nose', C.ellipsoid(hc + Vector((0, -hr[1] * 1.72, -hr[2] * 0.08)), (0.045, 0.035, 0.035)), M['dark'], coll))
+            _eyes(add, hc, hr, cfg, coll, M, spread=0.42, up=0.18, size=0.8)
         mz = hc + Vector((0, -hr[1] * 1.35, -hr[2] * 0.6))   # 턱도 긴 주둥이 아래로
-        add('jaw', C.mesh_obj('jaw', C.ellipsoid(mz, (hr[0] * 0.42, hr[1] * 0.38, hr[2] * 0.14)), M['belly'], coll, outline=OUT))
+        add('jaw', C.mesh_obj('jaw', C.ellipsoid(mz, (hr[0] * 0.42, hr[1] * 0.38, hr[2] * 0.14)), M['skin'] if wy else M['belly'], coll, outline=OUT))
         add('head', C.mesh_obj('mouth', C.ellipsoid(mz + Vector((0, 0, 0.03)), (hr[0] * 0.36, hr[1] * 0.32, hr[2] * 0.1)), M['mouth'], coll))
         for sx in (-1, 1):
             add('head', C.mesh_obj(f'fang{sx}', C.cone(mz + Vector((sx * 0.05, -hr[1] * 0.3, 0.0)), 0.02, 0.0, 0.055, seg=10, rot=Euler((math.pi, 0, 0))), M['tooth'], coll, outline=OUT * 0.4))
@@ -560,7 +571,7 @@ def _build(name, cfg, coll=None):
             if cfg.get('ears', 'wolf') == 'wolf':
                 add('head', C.mesh_obj(f'ear{sx}', C.cone(base + Vector((0, 0, 0.08)), 0.07, 0.0, 0.18, seg=4, rot=Euler((0, sx * math.radians(-10), 0))), M['skin'], coll, outline=OUT))
             if cfg.get('horns'):
-                curve = spline([base, base + Vector((sx * 0.1, 0.03, 0.08)), base + Vector((sx * 0.2, 0.1, 0.14))], 10)
+                curve = spline([base, base + Vector((sx * 0.05, 0.1, 0.09)), base + Vector((sx * 0.08, 0.24, 0.13))], 10) if wy else spline([base, base + Vector((sx * 0.1, 0.03, 0.08)), base + Vector((sx * 0.2, 0.1, 0.14))], 10)
                 add('head', C.mesh_obj(f'horn{sx}', C.tube(curve, interp([0.045, 0.03, 0.005], len(curve)), seg=12), M['horn'], coll, outline=OUT * 0.8))
             if cfg.get('mane'):
                 add('head', C.mesh_obj(f'mane{sx}', C.ellipsoid(hc + Vector((sx * 0.08, 0.12, 0.0)), (hr[0] * 1.1, 0.15, hr[2] * 1.25)), _m('mane', cfg['mane'], rough=0.7), coll, outline=OUT))

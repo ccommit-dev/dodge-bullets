@@ -140,7 +140,7 @@ MONSTERS = {
     'mount-boar': dict(kind='quad', color='#8a5a3a', belly='#d8b890', dark='#4a2f1e', iris='#2a1a12', tusks=True, ears='wolf'),
     'mount-deer': dict(kind='quad', color='#c08a50', belly='#f5e0c0', dark='#6a4a2a', iris='#2a1a12', horns='curl', horn='#f1e4c8', ears='wolf'),
     'mount-wolf': dict(kind='quad', color='#8a93a6', belly='#e8ecf2', dark='#454c5e', iris='#2a1a12', mane='#c8d0dc', ears='wolf'),
-    'mount-drake': dict(kind='quad', color='#c8481f', belly='#f5d7a0', dark='#6a2a10', accent='#ffb347', iris='#2a1a12', horns='curl', horn='#f1e4c8', flames=True, ears='none', wings=True, wing='#f09a3e', wing_size=1.08, wing_spread=38, spikes_quad=True, tail_tip=True),   # 불꽃 비룡 — 박쥐 날개 · 등 가시 · 꼬리 끝 불꽃
+    'mount-drake': dict(kind='quad', wyvern=True, color='#b83a1c', belly='#e8b878', dark='#4e1c0c', accent='#ffb347', iris='#2a1a12', horns='curl', horn='#e8dcc0', flames=True, ears='none', wings=True, wing='#e8843a', wing_size=0.98, wing_spread=38, spikes_quad=True, tail_tip=True),   # 불꽃 비룡 — 박쥐 날개 · 등 가시 · 꼬리 끝 불꽃
 }
 FLIP_MONSTERS = {'fire-demon', 'thorn-boar-king', 'flame-wyvern-clean', 'lava-drake'}
 

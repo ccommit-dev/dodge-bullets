@@ -77,7 +77,7 @@ import { sfxBossEntrance, sfxBossFail, sfxIdleClaim, sfxPurchase, sfxRebirth, sf
 import { rollCoinDrop } from "./titans/eventCoins";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
-import { canRebirthNow, performRebirth } from "./progression/rebirth";
+import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
 import { QuestPanel } from "./titans/QuestPanel";
 import { WEAPON_EFFECTS, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
@@ -1195,9 +1195,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     showRewardPop("discovery", discoveryTitle(kind), name, gems > 0 ? `첫 발견 보상 · 보석 +${gems}` : "도감에 기록");
   };
   /** 자동 환생 — 마이페이지 단추와 같은 처리(progression/rebirth.ts) 뒤 사냥터를 다시 불러온다 */
-  const autoRebirth = async () => {
+  const autoRebirth = async (manual = false) => {
     const cur = characterRef.current;
-    if (autoRebirthBusyRef.current || !cur.autoRebirth || !canRebirthNow(cur)) return;
+    if (autoRebirthBusyRef.current || (!manual && !cur.autoRebirth) || !canRebirthNow(cur)) return;
     autoRebirthBusyRef.current = true;
     saveFrozenRef.current = true;
     let reloaded = false;
@@ -1217,7 +1217,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setReady(false);
       setReloadKey((k) => k + 1);
       // later() 는 다시 불러오기 정리에서 지워진다 — 그냥 타이머로
-      window.setTimeout(() => showRewardPop("ladder", `자동 환생 · ${r.next.rebirthCount}회`, `${r.startStage}층부터 다시`, `결정 +${r.crystals}(쓸 결정 ${freeCrystals(r.next)} — 마이페이지 결정 강화) · 출발 골드 ${formatGold(r.startGold)} · 24시간 방치 2배`), 600);
+      window.setTimeout(() => showRewardPop("ladder", `${manual ? "" : "자동 "}환생 · ${r.next.rebirthCount}회`, `${r.startStage}층부터 다시`, `결정 +${r.crystals}(쓸 결정 ${freeCrystals(r.next)} — 마이페이지 결정 강화) · 출발 골드 ${formatGold(r.startGold)} · 24시간 방치 2배`), 600);
     } finally {
       autoRebirthBusyRef.current = false;
       if (!reloaded) saveFrozenRef.current = false;   // 환생이 실패하면 저장을 다시 연다
@@ -1225,6 +1225,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
   const autoRebirthRef = useRef(autoRebirth);
   autoRebirthRef.current = autoRebirth;
+  const [rebirthTip, setRebirthTip] = useState(false);
+  const [rebirthArm, setRebirthArm] = useState(false);
+  const rebirthTipRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!rebirthTip) return;
+    const away = (e: PointerEvent) => { if (!rebirthTipRef.current?.contains(e.target as Node)) { setRebirthTip(false); setRebirthArm(false); } };
+    document.addEventListener("pointerdown", away, true);   // 전장 stopPropagation 앞에서 받는다
+    return () => document.removeEventListener("pointerdown", away, true);
+  }, [rebirthTip]);
+  // 스킬 칸을 주인공 발밑으로 (2026-11-03, 사용자: "사냥터 스킬아이콘 캐릭터 가까이") — 만남마다 자리 잡은 뒤 한 번 잰다. 교전 중엔 움직이지 않아 누르기 쉽다
+  const skillDockRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!formationReady) return;
+    const place = () => {
+      const dock = skillDockRef.current, hero = document.querySelector(".titans-field .titans-hero");
+      if (!dock || !hero) return;
+      const skills = [...dock.querySelectorAll<HTMLElement>(".titans-skill")];
+      if (!skills.length) return;
+      const d = dock.getBoundingClientRect(), h = hero.getBoundingClientRect();
+      const width = skills.reduce((n, b) => n + b.offsetWidth, 0) + 6 * (skills.length - 1);
+      dock.style.paddingLeft = `${Math.round(Math.max(58, Math.min(d.width - width - 4, h.left + h.width / 2 - d.left - width / 2)))}px`;
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [formationReady]);
   // 한 번뿐인 안내(hold)는 떠 있는 동안 흔한 안내(황금 몬스터 등)가 덮지 못한다 — 번개 환급 안내가 1초 만에 지워졌다(2026-10-28)
   const toastHoldUntil = useRef(0);
   const flash = (msg: string, ms = 1400, hold = false) => {
@@ -3588,6 +3614,31 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${heroPortrait()})`, backgroundSize:"cover", backgroundPosition:"center" }} />
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
         </button>
+        {/* 환생 단추 (2026-11-03, 사용자: "마이페이지 오른쪽 여백에 환생하기 버튼 · 오버시 조건 요약") — 올리면(터치는 누르면) 조건 요약. 첫 탭이 바로 환생하지 않게 요약 안 단추로 진행 */}
+        {(() => {
+          const wall = rebirthWallStatus(character, save.stage), gains = rebirthGains(character);
+          return (
+            <div ref={rebirthTipRef} className={`header-rebirth ${wall.ready ? "ready" : ""} ${rebirthTip ? "open" : ""}`}>
+              <button type="button" className="header-rebirth-btn" aria-expanded={rebirthTip} aria-label={`환생 ${wall.have}/${wall.need}`} onClick={() => { setRebirthTip((v) => !v); setRebirthArm(false); }}>
+                <img src={assetUrl("titans/relics/tree-crystal.png")} alt="" />
+                <b>환생</b><small>{wall.have}/{wall.need}</small>
+              </button>
+              <div className="header-rebirth-tip" role="tooltip">
+                <strong>환생 조건 · {wall.needText}의 벽 <em>{wall.have}/{wall.need}</em></strong>
+                <p>{wall.rule}</p>
+                <p className="next">{wall.next}</p>
+                <p className="gain">받는 것: 결정 +{gains.crystals} · 진화 포인트 +1 · 방치 24시간 2배 · {gains.startStage}층부터</p>
+                {wall.ready ? (
+                  <button type="button" className={`header-rebirth-go ${rebirthArm ? "armed" : ""}`} onClick={() => { if (!rebirthArm) { setRebirthArm(true); return; } setRebirthTip(false); setRebirthArm(false); void autoRebirthRef.current(true); }}>
+                    {rebirthArm ? "정말 환생하기 (사냥터 초기화)" : "환생하기"}
+                  </button>
+                ) : (
+                  <button type="button" className="header-rebirth-go" onClick={() => onOpenContent("profile")}>마이페이지에서 자세히</button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong><TweenNumber value={save.gold} /></strong></span>
           {/* 강화석(파란 수정) — 상점 강화석 상자·대장간이 쓰는데 머리에 없어 '하늘색 보석'이 안 보인다고 읽혔다 (2026-10-06) */}
@@ -3688,12 +3739,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           );
         })()}
         <div className={`titans-hero ${isMountId(character.activeMount) ? "has-mount" : ""} ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
-          {/* 칭호 이름표 — 과금 점검: 칭호가 전투에서 전혀 보이지 않아 150~250보석 가치가 없었다 */}
-          {character.activeTitle && TITLES[character.activeTitle] && (
-            <span className="hero-title-plate" style={{ color: TITLES[character.activeTitle].color }}>✦ {TITLES[character.activeTitle].name}</span>
-          )}
-          {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링 */}
-          <span className="hero-marker" aria-hidden="true"><b>{TITLES[character.activeTitle ?? ""]?.name ?? (character.activeCharacter && character.activeCharacter !== "default" ? CHARACTER_LABEL[character.activeCharacter as CharacterSkinId] ?? "모험가" : "모험가")}</b><i>▼</i></span>
+          {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링.
+              칭호가 있으면 명패가 칭호 색으로 커진다 — 이름표 · 명패에 같은 칭호가 두 번 나오던 것을 하나로 (2026-11-03, 사용자: "칭호 중복 2개 중 1개 제거") */}
+          <span className={`hero-marker ${TITLES[character.activeTitle ?? ""] ? "has-title" : ""}`} aria-hidden="true" style={TITLES[character.activeTitle ?? ""] ? { "--title-color": TITLES[character.activeTitle ?? ""].color } as CSSProperties : undefined}><b>{TITLES[character.activeTitle ?? ""] ? "✦ " : ""}{TITLES[character.activeTitle ?? ""]?.name ?? (character.activeCharacter && character.activeCharacter !== "default" ? CHARACTER_LABEL[character.activeCharacter as CharacterSkinId] ?? "모험가" : "모험가")}</b><i>▼</i></span>
           <span className="hero-ring" aria-hidden="true" />
           {/* 시전 이름표 — 영웅을 따라다닌다 (예전엔 화면 가운데 컷인) */}
           {skillVisual && (() => {
@@ -3910,7 +3958,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
         {/* 스킬 독 — 전장 안 좌하단. 스킬은 전투 중 누르는 것이라 전장 밖(하단 카드 열)에
             있으면 시선이 오간다. 힌트 텍스트는 우하단으로 비켜난다 (사용자 지시). */}
-        <div className="titans-skill-dock" onPointerDown={(e) => e.stopPropagation()}>
+        <div ref={skillDockRef} className="titans-skill-dock" onPointerDown={(e) => e.stopPropagation()}>
           <div className="battle-qol" role="group" aria-label="전투 편의">
             <button
               type="button"
