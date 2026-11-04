@@ -1374,7 +1374,7 @@
 /* 칭호 명패 — 칭호가 있으면 칭호 색 · 읽히는 크기로 (이름표와 합침) */
 .hero-marker.has-title b { color: var(--title-color, #fde047); background: #1f2937; font-size: 11px; transform: none; padding: 2px 7px; }
 /* 탈것을 타면 주인공이 올라간 만큼 명패도 — 안 올리면 얼굴을 가렸다 */
-.titans-hero.has-mount .hero-marker { translate: 0 -46px; }
+.titans-hero.has-mount .hero-marker { translate: 0 -30px; }
 /* 환생 단추에 자리를 내주며 "칭호 미설정"이 잘렸다 — 그림 · 간격을 조금씩 줄인다 */
 @media (max-width: 430px) {
   .titans-header { gap: 3px !important; }
