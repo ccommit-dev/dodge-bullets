@@ -1,7 +1,7 @@
-/* 릴스 · 댐 방어전 2 — 몰려오는 무리, 화살 한 줄로는 모자라다. 스킬 하나를 고르면 화살이 바뀌고, 궁극기 운석으로 한꺼번에 */
+/* 릴스 · 댐 방어전 2 — 몰려오는 무리, 화살 한 줄로는 모자라다. 원소 전환으로 화살을 바꾸고, 스킬 무기 운석으로 한꺼번에 */
 window.RF_SCENE = (() => {
   const { LANE_X, GATE_Y, depth } = KIT;
-  const CARDS = [{ k: 'fire', name: '불화살 부채', desc: '세 줄로 퍼진다 · 화상', col: '#f97316' }, { k: 'ice', name: '얼음 화살비', desc: '세 줄 · 느려진다', col: '#38bdf8' }];
+  const CARDS = [{ k: 'fire', name: '불화살', desc: '세 줄로 퍼진다 · 화상', col: '#f97316' }, { k: 'ice', name: '얼음화살', desc: '세 줄 · 느려진다', col: '#38bdf8' }];
   const ULT = { x: 244, y: 482, w: 92, h: 80 };
   let K;
   function spawnRow(G) {
@@ -10,21 +10,21 @@ window.RF_SCENE = (() => {
   }
   function pick(G, i) {
     if (K.card !== 'open') return;
-    K.card = 'done'; K.arrow = CARDS[i].k; G.sfx('merge'); G.flash(CARDS[i].col, 0.12); G.stamp(i === 0 ? '불화살!!' : '얼음비!!', CARDS[i].col, 220, 0.9); G.punch(0.05);
+    K.card = 'done'; K.arrow = CARDS[i].k; G.sfx('merge'); G.flash(CARDS[i].col, 0.12); G.stamp(i === 0 ? '불화살!!' : '얼음화살!!', CARDS[i].col, 220, 0.9); G.punch(0.05);
     G.emit('choice', { skill: CARDS[i].k }); G.caption(`${CARDS[i].name}! 세 줄을 한 번에`);
     K.ultT = 0;
   }
   function ult(G) {
     if (K.ultReady !== true) return;
-    K.ultReady = 'used'; K.meteor = 0; G.sfx('bolt'); G.caption('궁극기 · 운석 낙하!'); G.climax();
+    K.ultReady = 'used'; K.meteor = 0; G.sfx('bolt'); G.caption('스킬 무기 · 운석 낙하!'); G.climax();
   }
   return {
     id: 'dam-skill',
     introDur: 1.5,
     hook: ['화살 한 줄로는', '못 막는다'],
     climaxStamp: '운석 낙하!!', raysAt: [180, 200],
-    caption0: '화살은 자동 · 곧 스킬 고르기',
-    endLines: ['고를 때마다 바뀌는 화살', '스킬 무기 10종 · 궁극기 운석'],
+    caption0: '화살은 자동 · 곧 원소 전환',
+    endLines: ['출발 전에 고르는 스킬 무기', '스킬 무기 10종 · 불화살 · 얼음화살 · 운석'],
     init() {
       K = { mons: [], shots: [], rows: 0, rowT: 0, shootT: 0, gate: 100, card: 'wait', arrow: 'basic', ultReady: false, ultT: -1, meteor: -1, kills: 0, auto: 0,
         hero: { id: 'hero', x: 180, y: 452, s: 0.75, mode: 'idle', mt: 0 } };
@@ -40,7 +40,7 @@ window.RF_SCENE = (() => {
       const slow = K.card === 'open' ? 0.15 : 1;   // 고르는 동안은 거의 멈춤
       K.rowT += dt * slow;
       if (K.rowT > 1.1 && K.rows < 9) { K.rowT = 0; spawnRow(G); }
-      if (G.pt > 2.4 && K.card === 'wait') { K.card = 'open'; G.sfx('legend'); G.caption('스킬 하나를 골라요'); }
+      if (G.pt > 2.4 && K.card === 'wait') { K.card = 'open'; G.sfx('legend'); G.caption('화살 원소를 골라요'); }
       for (const m of K.mons) {
         KIT.tick(m, dt); m.y += m.sp * dt * slow * (K.arrow === 'ice' && m.chill ? 0.5 : 1); m.s = depth(m.y);
         if (m.y >= GATE_Y) { m.dead = true; K.gate = Math.max(25, K.gate - 6); G.shake(4, 0.2); }
@@ -58,8 +58,8 @@ window.RF_SCENE = (() => {
         if (t) { s.dead = true; t.hp -= K.arrow === 'fire' ? 2 : 1.5; t.chill = K.arrow === 'ice'; KIT.hit(t); G.sfx('hit'); if (t.hp <= 0) { t.dead = true; K.kills += 1; G.burst(t.x, t.y - 30, K.arrow === 'fire' ? '#fb923c' : '#7dd3fc', 10, 130); } }
         if (s.y < 60) s.dead = true;
       }
-      // 궁극기 준비 — 스킬 고른 뒤 3초
-      if (K.ultT >= 0 && K.ultReady === false) { K.ultT += dt; if (K.ultT > 3) { K.ultReady = true; G.caption('궁극기 준비 — 운석!'); G.sfx('coin'); } }
+      // 스킬 무기 준비 — 원소 고른 뒤 3초
+      if (K.ultT >= 0 && K.ultReady === false) { K.ultT += dt; if (K.ultT > 3) { K.ultReady = true; G.caption('스킬 무기 준비 — 운석!'); G.sfx('coin'); } }
       // 운석
       if (K.meteor >= 0) {
         K.meteor += dt;
@@ -90,19 +90,19 @@ window.RF_SCENE = (() => {
       }
       ctx.fillStyle = 'rgba(43,26,14,.94)'; ctx.fillRect(0, 470, 360, 170); ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, 468, 360, 3);
       KIT.unit(G, K.hero, G.t);
-      // 궁극기 단추
+      // 스킬 무기 단추
       const ready = K.ultReady === true, pulse = ready ? 1 + Math.sin(G.t * 8) * 0.05 : 1;
       ctx.save(); ctx.translate(ULT.x + ULT.w / 2, ULT.y + ULT.h / 2); ctx.scale(pulse, pulse);
       G.rr(-46, -40, 92, 80, 18, ready ? '#7c2d12' : 'rgba(255,255,255,.06)', ready ? '#ffd23f' : 'rgba(255,255,255,.2)', 3);
       G.sprite('skill:meteor', 0, 22, { s: 0.62, alpha: ready ? 1 : 0.35 });
-      G.text(ready ? '운석!' : K.ultT >= 0 ? `${Math.max(0, 3 - K.ultT).toFixed(1)}초` : '궁극기', 0, 32, { size: 12, color: '#fff' });
+      G.text(ready ? '운석!' : K.ultT >= 0 ? `${Math.max(0, 3 - K.ultT).toFixed(1)}초` : '스킬 무기', 0, 32, { size: 12, color: '#fff' });
       ctx.restore();
       G.sprite(`skill:${K.arrow === 'basic' ? 'bolt' : K.arrow}`, 60, 552, { s: 0.6, alpha: K.arrow === 'basic' ? 0.4 : 1 });
-      G.text(K.arrow === 'basic' ? '기본 화살' : K.arrow === 'fire' ? '불화살 부채' : '얼음 화살비', 60, 566, { size: 12, color: '#ffe08a' });
+      G.text(K.arrow === 'basic' ? '기본 화살' : K.arrow === 'fire' ? '불화살' : '얼음화살', 60, 566, { size: 12, color: '#ffe08a' });
       // 스킬 고르기 카드
       if (K.card === 'open') {
         ctx.fillStyle = 'rgba(10,6,3,.7)'; ctx.fillRect(0, 56, 360, 414);
-        G.text('레벨 업! 스킬 하나', 180, 130, { size: 24, color: '#ffd23f', stroke: '#2a1606', sw: 6 });
+        G.text('원소 전환! 하나 고르기', 180, 130, { size: 24, color: '#ffd23f', stroke: '#2a1606', sw: 6 });
         CARDS.forEach((c, i) => {
           const x = 24 + i * 166, y = 160;
           G.rr(x, y, 146, 250, 18, '#fff3d6', c.col, 5);

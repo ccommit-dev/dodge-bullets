@@ -1,4 +1,4 @@
-/* 릴스 · 환생 질주 — STAGE 30 대장에 꽉 막힘(DPS 벽) → 환생 → 출발 골드 · 결정으로 1층부터 질주해 예전 최고 기록을 뚫는다 */
+/* 릴스 · 환생 질주 — 대장에 꽉 막힘(DPS 벽) → 환생 → 출발 골드 · 결정으로 1층부터 질주해 예전 최고 기록을 뚫는다 */
 window.RF_SCENE = (() => {
   const BTN = { x: 70, y: 476, w: 220, h: 64 };
   let K;
@@ -10,10 +10,10 @@ window.RF_SCENE = (() => {
   return {
     id: 'rebirth-speed',
     introDur: 1.5,
-    hook: ['30층에서 꽉 막혔다?', '환생하면 질주'],
+    hook: ['대장에게 꽉 막혔다?', '환생하면 질주'],
     caption0: '대장이 꿈쩍도 안 한다…',
     climaxStamp: '신기록!!', raysAt: [180, 200],
-    endLines: ['막히면 환생 · 더 빠르게 다시', '결정 · 진화 · 대장 사다리는 그대로'],
+    endLines: ['막히면 환생 · 더 빠르게 다시', '결정 · 진화 · 사다리 · 유물 · 펫은 그대로'],
     init() {
       K = { mode: 'wall', wt: 0, hp: 1, stage: 30, run: 0, auto: 0, ft: 0, tapBoost: 0, passed: false,
         hero: { id: 'hero', x: 110, y: 420, s: 1, mode: 'idle', mt: 0 }, boss: { id: 'armored-ogre', x: 274, y: 420, s: 1, mode: 'idle', mt: 0 }, mons: [] };
@@ -44,7 +44,7 @@ window.RF_SCENE = (() => {
           const n = Math.floor(K.run); K.run -= n; K.stage += n;
           KIT.attack(K.hero, 0.18); G.burst(300, 340, '#ffd23f', 6, 160);
           if (K.stage % 5 === 0) { G.coins(300, 330, 4); G.float(`STAGE ${K.stage}`, 250, 260, '#fff', 20, 0.6); }
-          if (!K.passed && K.stage > 30) { K.passed = true; G.climax(); G.pop('환생 1회', '예전 최고 30층 돌파!', '같은 시간에 2배 더 높이', 'purple', 2.2); G.caption('벽을 뚫었다'); }
+          if (!K.passed && K.stage > 30) { K.passed = true; G.climax(); G.pop('환생 1회', '예전 최고 30층 돌파!', '환생 1회로 벽 통과', 'purple', 2.2); G.caption('벽을 뚫었다'); }
           if (K.stage >= 45) { K.stage = 45; K.mode = 'done'; G.finish(2); }
         }
       }
@@ -62,7 +62,7 @@ window.RF_SCENE = (() => {
       G.rr(90, 60, 180, 52, 16, 'rgba(27,18,11,.86)', big ? '#c084fc' : '#ef4444', 3);
       G.text(`STAGE ${K.stage}`, 180, 87, { size: big ? 30 : 26, color: big ? '#f0abfc' : '#fca5a5' });
       G.text('이전 최고 30층', 180, 126, { size: 13, color: '#fff3d0', stroke: '#2a1606', sw: 4 });
-      if (K.mode === 'wall' || K.mode === 'flash') { KIT.bossBar(G, '대장 · 30층 갑옷 오우거', K.hp, 140); KIT.unit(G, K.boss, G.t); }
+      if (K.mode === 'wall' || K.mode === 'flash') { KIT.bossBar(G, '대장 · 갑옷 오우거', K.hp, 140); KIT.unit(G, K.boss, G.t); }
       KIT.unit(G, { ...K.hero, mode: K.mode === 'run' ? 'walk' : K.hero.mode }, G.t);
       if (K.mode === 'wall') {
         const ready = K.wt > 2.2, p = ready ? 1 + Math.sin(G.t * 6) * 0.05 : 1;

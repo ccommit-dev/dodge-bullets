@@ -93,32 +93,20 @@
   // 아래 "지금 플레이" 줄은 광고가 끝(end)났을 때만 나온다. 그 전에는 오디오 줄이다. 특정 SNS 의 이름 · 상표는 쓰지 않는다.
   const LOGO = '__LOGO__';
   const SLIDES = [
-    { src: 'acorn-merge/index.html', likes: '2.9만', comments: '1,108', shares: '774',
-      cap: '도토리 두 개를 합치면 동료가 두 배로 🌰', tags: '#비버키우기 #도토리합성' },
-    { src: 'dam-hold/index.html', likes: '3.0만', comments: '1,486', shares: '912',
-      cap: '댐이 뚫리기 직전, 손가락 하나로 막았다 🏹', tags: '#비버키우기 #댐방어전' },
-    { src: 'beat-combo/index.html', likes: '4.6만', comments: '3,310', shares: '2,488',
-      cap: '박자 맞춰 누르면 원정대가 싸운다 🥁 FEVER 가면 2배', tags: '#비버키우기 #비트수련' },
-    { src: 'lightning-tap/index.html', likes: '3.4만', comments: '1,652', shares: '1,031',
-      cap: '탭 열 번에 한 번, 번개가 떨어진다 ⚡', tags: '#비버키우기 #번개탭' },
-    { src: 'boss-ladder/index.html', likes: '2.2만', comments: '904', shares: '688',
-      cap: '대장 잡을 때마다 영구 특성, 환생해도 그대로 🪜', tags: '#비버키우기 #대장사다리' },
-    { src: 'dam-skill/index.html', likes: '3.3만', comments: '1,902', shares: '1,264',
-      cap: '화살 한 줄로는 못 막아서 운석 떨굼 ☄️', tags: '#비버키우기 #댐방어전 #스킬무기' },
-    { src: 'first-ten/index.html', likes: '5.6만', comments: '4,219', shares: '3,377',
-      cap: '첫 10연차는 전설 확정이래서 해봄 ✨', tags: '#비버키우기 #첫10연' },
-    { src: 'beat-shoulder/index.html', likes: '2.8만', comments: '1,277', shares: '836',
-      cap: '16비트 챕터 S 랭크 → 상자에서 용린 견갑 🛡️', tags: '#비버키우기 #비트수련 #견갑' },
-    { src: 'drum-forge/index.html', likes: '3.8만', comments: '2,506', shares: '1,448',
-      cap: '나무북 +0 → 왕관북 +15, 실패는 방지권이 막아 줌 🥁', tags: '#비버키우기 #북강화' },
-    { src: 'party-assemble/index.html', likes: '4.1만', comments: '2,877', shares: '2,013',
-      cap: '혼자선 드래곤한테 간지럼, 넷이 모이니 녹는다 🐉', tags: '#비버키우기 #원정대' },
-    { src: 'golden-monster/index.html', likes: '6.2만', comments: '5,104', shares: '3,980',
-      cap: '황금 슬라임 연타했더니 잭팟 25만 골드 💰', tags: '#비버키우기 #황금몬스터' },
-    { src: 'rebirth-speed/index.html', likes: '3.7만', comments: '2,218', shares: '1,506',
-      cap: '30층 벽에 막혀서 환생했더니 45층까지 질주 🚀', tags: '#비버키우기 #환생' },
-    { src: 'idle-wake/index.html', likes: '5.4만', comments: '4,032', shares: '2,771',
-      cap: '자고 일어났더니 비버들이 124만 골드 벌어 옴 ☀️', tags: '#비버키우기 #방치보상' },
+    { src: 'first-ten/index.html', cap: '첫 10연차는 전설 확정 ✨', tags: '#비버키우기 #첫10연' },
+    { src: 'sword-forge/index.html', cap: '낡은 나무 검 +0 → 초월자의 검 +15, 파괴 위기는 방지권이 막아 줌 ⚔️', tags: '#비버키우기 #검강화' },
+    { src: 'golden-monster/index.html', cap: '황금 슬라임 잡으면 골드 10배 💰', tags: '#비버키우기 #황금몬스터' },
+    { src: 'dam-hold/index.html', cap: '댐이 뚫리기 직전, 손가락 하나로 막았다 🏹', tags: '#비버키우기 #댐방어전' },
+    { src: 'beat-combo/index.html', cap: '박자 맞춰 누르면 원정대가 싸운다 🥁 FEVER 가면 2배', tags: '#비버키우기 #비트수련' },
+    { src: 'mount-ride/index.html', cap: '탈것 타고 사냥하면 골드가 더 들어온다 🐗', tags: '#비버키우기 #탈것' },
+    { src: 'weapon-tech/index.html', cap: '6탭마다 연속 베기 ×2.5, 무기마다 기술이 다르다 ⚔️', tags: '#비버키우기 #무기기술' },
+    { src: 'boss-ladder/index.html', cap: '더 높은 대장 잡을 때마다 영구 특성, 환생해도 그대로 🪜', tags: '#비버키우기 #대장사다리' },
+    { src: 'dam-skill/index.html', cap: '화살 한 줄로는 못 막아서 운석 떨굼 ☄️', tags: '#비버키우기 #댐방어전 #스킬무기' },
+    { src: 'relic-set/index.html', cap: '유물 세 개 맞췄더니 세트 효과 발동 🔥', tags: '#비버키우기 #유물세트' },
+    { src: 'party-assemble/index.html', cap: '혼자선 드래곤한테 간지럼, 넷이 모이니 녹는다 🐉', tags: '#비버키우기 #원정대' },
+    { src: 'beat-shoulder/index.html', cap: '16비트 챕터 대장 첫 클리어 → 용린 견갑 🛡️', tags: '#비버키우기 #비트수련 #견갑' },
+    { src: 'rebirth-speed/index.html', cap: '대장에게 막혀서 환생했더니 예전 기록을 뚫고 질주 🚀', tags: '#비버키우기 #환생' },
+    { src: 'idle-wake/index.html', cap: '자고 일어났더니 비버들이 밤새 벌어 옴 ☀️', tags: '#비버키우기 #방치보상' },
   ];
   // 링크를 열 때마다 순서를 섞는다 — 매번 다른 릴스부터(2026-10-23 사용자: 링크로 들어오면 랜덤하게 쇼츠 이동)
   for (let i = SLIDES.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [SLIDES[i], SLIDES[j]] = [SLIDES[j], SLIDES[i]]; }
@@ -154,9 +142,9 @@
           </div>
         </div>
         <div class="rail">
-          <button class="like" type="button" aria-label="좋아요">${ICON.heart}<span>${s.likes}</span></button>
-          <button type="button" aria-label="댓글">${ICON.comment}<span>${s.comments}</span></button>
-          <button type="button" aria-label="공유">${ICON.share}<span>${s.shares}</span></button>
+          <button class="like" type="button" aria-label="좋아요">${ICON.heart}</button>
+          <button type="button" aria-label="댓글">${ICON.comment}</button>
+          <button type="button" aria-label="공유">${ICON.share}</button>
           <button class="save" type="button" aria-label="저장">${ICON.save}</button>
           <button class="more" type="button" aria-label="더 보기">${ICON.more}</button>
           <div class="disc" aria-hidden="true" style="background-image:url(${LOGO})"></div>

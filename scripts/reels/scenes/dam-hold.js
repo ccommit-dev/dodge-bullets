@@ -6,7 +6,7 @@ window.RF_SCENE = (() => {
   function startWave(G, w) {
     K.wave = w; K.queue = WAVES[w].map((id, i) => ({ id, at: i * 0.42, lane: id === 'armored-ogre' ? 1 : (i * 2 + w) % 3 }));
     K.wt = 0; if (w > 0) G.stamp(w === 2 ? 'BOSS!!' : `WAVE ${w + 1}`, w === 2 ? '#ff6b6b' : '#fff', 200, 0.9);
-    G.caption(w === 2 ? '대장 등장! 가운데를 지켜라' : `WAVE ${w + 1}/3 — 줄을 탭해 이동`);
+    G.caption(w === 2 ? '대장 등장! 가운데를 지켜라' : `WAVE ${w + 1}/3 — 누른 쪽으로 이동`);
     if (w === 2) G.pop('WAVE 3/3', '대장 · 갑옷 오우거', '성문을 지켜라', 'pink', 1.4);
   }
   function move(G, lane) {
@@ -19,7 +19,7 @@ window.RF_SCENE = (() => {
     introDur: 1.5,
     hook: ['댐이 뚫리기 직전', '막아라!'],
     climaxStamp: '성문 사수!!', raysAt: [180, 220],
-    caption0: '줄을 탭해 이동 · 활은 자동',
+    caption0: '누른 쪽으로 이동 · 활은 자동',
     endLines: ['손가락 하나로 지키는 성문', '웨이브를 막으면 원정 인장'],
     init(G) {
       K = { lane: 1, mons: [], shots: [], wave: 0, queue: [], wt: 0, shootT: 0, gate: 100, done: false, moved: false, auto: 0, cleared: 0,
@@ -60,7 +60,7 @@ window.RF_SCENE = (() => {
       // 웨이브 넘김 · 승리
       if (K.queue.every((q) => q.out) && K.mons.length === 0 && !K.done) {
         if (K.wave < 2) startWave(G, K.wave + 1);
-        else { K.done = true; G.climax(); G.sfx('win'); G.flash('#fff3a0', 0.2); G.pop('WAVE 3/3 클리어', '성문 방어 성공!', '원정 인장 +20 · 강화석 +12', 'gold', 2.4); G.caption(`성문 ${Math.round(K.gate)}% 로 지켜냄`); G.finish(2.4); }
+        else { K.done = true; G.climax(); G.sfx('win'); G.flash('#fff3a0', 0.2); G.pop('WAVE 3/3 클리어', '성문 방어 성공!', '원정 인장 +3', 'gold', 2.4); G.caption(`성문 ${Math.round(K.gate)}% 로 지켜냄`); G.finish(2.4); }
       }
       // 손대지 않으면: 성문에 가장 가까운 몬스터 줄로
       if (G.phase === 'play' && G.idle > 1.2 && K.mons.length) {

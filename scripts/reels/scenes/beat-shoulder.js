@@ -8,12 +8,12 @@ window.RF_SCENE = (() => {
   function done(G) {
     if (K.mode !== 'play') return;
     K.mode = 'result'; K.rt = 0;
-    G.caption(B.miss === 0 ? 'S 랭크 — 보상 상자!' : '클리어 — 보상 상자!');
+    G.caption(B.miss === 0 ? 'S 랭크 — 첫 클리어 보상!' : '클리어 — 첫 클리어 보상!');
   }
   return {
     id: 'beat-shoulder',
     introDur: 1.5,
-    hook: ['16비트 챕터를 넘기면', '견갑이 떨어진다'],
+    hook: ['챕터 대장을 넘기면', '견갑이 떨어진다'],
     climaxStamp: '획득!!', raysAt: [180, 430],
     caption0: '곡을 고르고 시작',
     endLines: ['비트 수련 보상 = 견갑', '정찰 · 그림자 · 오우거 · 용린 견갑'],
@@ -51,7 +51,7 @@ window.RF_SCENE = (() => {
         K.chest += dt;
         if (K.chest > 0.6 && !K.revealed) {
           K.revealed = true; G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.3); G.burst(180, 430, '#ffd23f', 60, 300); G.coins(180, 470, 24); G.impact(1.5);
-          G.pop('16비트 챕터 보상', '용린 견갑 획득!', `${B.miss === 0 ? 'S' : 'A'} 랭크 · 스킬 숙련 +1 · 견갑 조각 +40`, 'gold', 2.6);
+          G.pop('16비트 챕터 대장 첫 클리어', '용린 견갑 획득!', '다시 깨면 견갑 조각', 'gold', 2.6);
           G.finish(2.8);
         }
       }
@@ -60,7 +60,7 @@ window.RF_SCENE = (() => {
       ctx.fillStyle = '#120b1f'; ctx.fillRect(0, 0, 360, 640);
       if (K.mode === 'select') {
         const g = ctx.createLinearGradient(0, 0, 0, 640); g.addColorStop(0, '#2a1440'); g.addColorStop(1, '#120b1f'); ctx.fillStyle = g; ctx.fillRect(0, 0, 360, 640);
-        G.text('비트 수련 · 챕터 3', 180, 92, { size: 18, color: '#c4b5fd' });
+        G.text('비트 수련 · 챕터 대장', 180, 92, { size: 18, color: '#c4b5fd' });
         G.text('16비트', 180, 128, { size: 36, color: '#fff', stroke: '#2a1640', sw: 6 });
         const b = 1 + Math.sin(G.t * 3) * 0.03;
         ctx.save(); ctx.translate(180, 270); ctx.scale(b * 1.6, b * 1.6); G.sprite('cover:city', 0, 48); ctx.restore();

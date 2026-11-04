@@ -17,7 +17,7 @@ window.RF_SCENE = (() => {
     hook: ['폰 내려놓고 8시간', '일어나 보니?'],
     caption0: '밤새 원정대가 사냥 중…',
     climaxStamp: '대박!!', raysAt: [180, 280], stampY: 470,
-    endLines: ['꺼 둬도 원정대는 사냥 중', '최대 12시간 방치 보상'],
+    endLines: ['꺼 둬도 원정대는 사냥 중', '방치 보상 기본 8시간 · 키우면 14시간까지'],
     init() {
       K = { mode: 'night', clock: 23 * 60, mul: 1, ct: 0, shown: 0, auto: 0, zz: 0,
         hero: { id: 'hero', x: 120, y: 420, s: 1, mode: 'idle', mt: 0 }, mia: { id: 'mia', x: 240, y: 430, s: 0.9, mode: 'idle', mt: 0 }, leon: { id: 'leon', x: 300, y: 432, s: 0.85, mode: 'idle', mt: 0 } };

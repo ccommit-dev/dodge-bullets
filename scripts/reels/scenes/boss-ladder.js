@@ -1,4 +1,4 @@
-/* 릴스 3 · 대장 사다리 — 대장 셋을 차례로. 처음 잡을 때마다 사다리 한 칸 = 영구 특성(환생해도 유지) */
+/* 릴스 · 대장 사다리 — 대장 셋을 차례로. 최고 기록을 넘길 때마다 사다리 한 칸 = 영구 특성(환생해도 유지) */
 window.RF_SCENE = (() => {
   const BOSSES = [
     { id: 'slime', name: '대장 · 왕슬라임', hp: 320, s: 1.35 },
@@ -32,10 +32,10 @@ window.RF_SCENE = (() => {
   return {
     id: 'boss-ladder',
     introDur: 1.5,
-    hook: ['대장 잡을 때마다', '영구 강화'],
+    hook: ['더 높은 대장 잡으면', '영구 강화'],
     climaxStamp: '영구 강화!!', raysAt: [274, 330],
     caption0: '대장을 탭해서 공격!',
-    endLines: ['한 번 잡은 대장 = 영원한 특성', '동료 · 탭 · 골드 · 공속이 차례로'],
+    endLines: ['최고 기록을 넘기면 영원한 특성', '동료 · 탭 · 골드 · 공속이 차례로'],
     init(G) {
       K = { stage: 0, ladder: 0, auto: 0, party: 0, dying: 0,
         hero: { id: 'hero', x: 120, y: 420, s: 0.95, mode: 'idle', mt: 0 }, mia: { id: 'mia', x: 52, y: 430, s: 0.9, mode: 'idle', mt: 0, phase: 0.3 } };

@@ -30,7 +30,7 @@ window.RF_SCENE = (() => {
     popY: 150,
     hook: ['박자에 맞춰 누르면', '원정대가 싸운다'],
     caption0: '노트가 노란 선에 닿을 때 패드!',
-    endLines: ['네 방향 명령 · 박자 지휘', '16곡 · 4 · 8 · 16비트 챕터'],
+    endLines: ['네 방향 명령 · 박자 지휘', '16곡 · 4 · 8 · 16비트'],
     init(G) {
       K = { hp: HP, done: false, firstHit: false, shield: 0, dodge: 0,
         hero: { id: 'hero', x: 116, y: 236, s: 0.62, mode: 'idle', mt: 0 }, mia: { id: 'mia', x: 66, y: 242, s: 0.55, mode: 'idle', mt: 0, phase: 0.3 }, sera: { id: 'sera', x: 26, y: 240, s: 0.52, mode: 'idle', mt: 0, phase: 0.6 },

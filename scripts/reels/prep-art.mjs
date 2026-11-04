@@ -70,6 +70,9 @@ for (const k of ["fire", "ice", "meteor", "bolt", "holy"]) await flat(`skill:${k
 await flat("cover:city", "public/beat/covers/black-city-beat.png", 96, { trim: false });
 await flat("cover:arcade", "public/beat/covers/arcade-overdrive.png", 96, { trim: false });
 await flat("gear:shoulder-dragon", "public/titans/gear/shoulder-dragon.png", 110);
+// 탈것 · 유물 (2026-11-04) — 탈것은 몬스터 시트라 왼쪽을 본다, 오른쪽으로 뒤집는다
+for (const id of ["mount-boar", "mount-deer", "mount-wolf", "mount-drake"]) await character(id, { idle: H4 }, 120, true);
+for (const r of ["ember-ring", "flame-feather", "lava-heart"]) await flat(`relic:${r}`, `public/titans/relics/${r}.png`, 76);
 const json = JSON.stringify({ sprites });
 writeFileSync(`${OUT}/art.json`, json);
 console.log("sprites", Object.keys(sprites).length, "bytes", json.length);

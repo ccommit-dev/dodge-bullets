@@ -1,4 +1,4 @@
-/* 릴스 · 황금 몬스터 — 가끔 나오는 황금 슬라임. 도망가기 전에 연타하면 맞을 때마다 동전이 튀고, 잡으면 잭팟 상자 */
+/* 릴스 · 황금 몬스터 — 가끔 나오는 황금 슬라임. 연타하면 맞을 때마다 동전이 튀고, 잡으면 골드 ×10 */
 window.RF_SCENE = (() => {
   const HITS = 16, ESCAPE = 7;
   let K;
@@ -12,16 +12,16 @@ window.RF_SCENE = (() => {
     if (K.hits % 5 === 0 && K.hits < HITS) G.stamp(`${K.hits}연타!`, '#ffd23f', 220, 0.7);
     if (K.hits >= HITS) {
       K.dead = true; K.jack = 0; G.impact(2); G.burst(K.gold.x, 330, '#ffd23f', 70, 320);
-      G.caption('잭팟 상자!'); G.climax();
+      G.caption('골드 ×10!'); G.climax();
     }
   }
   return {
     id: 'golden-monster',
     introDur: 1.5,
-    hook: ['황금 몬스터 출현!', '도망가기 전에 연타!'],
+    hook: ['황금 몬스터 출현!', '잡으면 골드 ×10'],
     caption0: '황금 슬라임을 마구 탭!',
-    climaxStamp: '잭팟!!', raysAt: [270, 330],
-    endLines: ['가끔 나타나는 황금 몬스터', '잡으면 골드 폭탄 · 잭팟 상자'],
+    climaxStamp: '골드 ×10!!', raysAt: [270, 330],
+    endLines: ['가끔 나타나는 황금 몬스터', '잡으면 골드 10배'],
     init() {
       K = { hits: 0, dead: false, left: ESCAPE, enter: 0.6, gold0: 0, goal: 0, shown: 0, jack: -1, auto: 0,
         hero: { id: 'hero', x: 110, y: 420, s: 1, mode: 'idle', mt: 0 }, mia: { id: 'mia', x: 48, y: 430, s: 0.9, mode: 'idle', mt: 0, phase: 0.3 },
@@ -36,7 +36,7 @@ window.RF_SCENE = (() => {
       if (!K.dead && G.phase === 'play' && K.enter <= 0) K.left = Math.max(1.2, K.left - dt);
       if (K.dead && K.jack >= 0) {
         K.jack += dt;
-        if (K.jack > 0.9 && !K.opened) { K.opened = true; K.goal += 250000; G.coins(270, 360, 50); G.flash('#fff3a0', 0.25); G.sfx('legend'); G.pop('황금 몬스터 처치', '잭팟 +250,000G', '강화석 +30 · 보석 +20', 'gold', 2.4); G.finish(2.6); }
+        if (K.jack > 0.9 && !K.opened) { K.opened = true; K.goal += 250000; G.coins(270, 360, 50); G.flash('#fff3a0', 0.25); G.sfx('legend'); G.pop('황금 몬스터 처치', '골드 ×10', '일반 몬스터의 10배', 'gold', 2.4); G.finish(2.6); }
       }
       if (G.phase === 'play' && G.idle > 1.2 && !K.dead) { G.hint(K.gold.x, 330); K.auto += dt; if (K.auto > 0.15) { K.auto = 0; hit(G); } } else K.auto = 0;
     },
@@ -45,7 +45,6 @@ window.RF_SCENE = (() => {
       // 위: 골드 계기 · 도망 타이머
       G.rr(70, 60, 220, 40, 14, 'rgba(27,18,11,.86)', '#ffd23f', 3);
       G.text(`💰 ${KIT.fmt(K.shown)} G`, 180, 81, { size: 22, color: '#ffe066' });
-      if (!K.dead) { G.bar(80, 108, 200, 14, K.left / ESCAPE, K.left > 3 ? '#22c55e' : '#ef4444'); G.text(`도망까지 ${K.left.toFixed(1)}초`, 180, 134, { size: 13, color: '#fff3d0', stroke: '#2a1606', sw: 4 }); }
       KIT.unit(G, K.mia, G.t); KIT.unit(G, K.hero, G.t);
       if (!K.dead || K.jack < 0.25) {
         // 황금 슬라임 — 늘 금빛으로 빛나고 반짝이가 돈다
@@ -56,7 +55,7 @@ window.RF_SCENE = (() => {
       }
       if (K.dead && K.jack >= 0) {
         const k = Math.min(1, K.jack / 0.5), shake = K.opened ? 0 : Math.sin(G.t * 40) * 4;
-        G.sprite('chest', 270 + shake, 420, { s: 0.6 + 0.6 * k });
+        G.text('×10', 270 + shake, 400, { size: 30 + 26 * k, color: '#ffd23f', stroke: '#2a1606', sw: 7 });
       }
       // 아래 판
       G.text(`탭 ${K.hits}/${HITS}`, 180, 500, { size: 22, color: '#ffe066' });

@@ -1,8 +1,9 @@
-/* 릴스 5 · 북 강화 — 나무북 +0 에서 왕관북 +15 까지. 강화 한 번마다 북 그림이 바뀌고, 한 번은 실패하지만 방지권이 지켜 준다 */
+/* 릴스 · 검 강화 — 낡은 나무 검 +0 에서 초월자의 검 +15 까지(forge/model FORGE_TIERS). 강화 한 번마다 그림이 바뀌고, 한 번은 파괴 위기지만 방지권이 지켜 준다 */
 window.RF_SCENE = (() => {
-  const NAMES = ['나무북', '쇠테 북', '쇠테 북', '징 박은 북', '징 박은 북', '금테 북', '금테 북', '보석 북', '보석 북', '보석 북', '빛나는 북', '날개 북', '날개 북', '황금 날개 북', '황금 날개 북', '왕관 북'];
+  const NAMES = ['낡은 나무 검', '단단한 나무 검', '청동 검', '강철 검', '푸른 리본 검', '화염의 검', '번개의 검', '서리 군주의 검', '심연의 대검', '별빛 마법검', '용울음 검', '천공의 검', '차원 가르는 검', '신화의 검', '무한의 검', '초월자의 검'];
   const BTN = { x: 70, y: 478, w: 220, h: 64 };
-  const RATE = (l) => Math.max(15, 100 - l * 6);
+  const CHANCE = [100, 95, 88, 78, 67, 56, 46, 37, 29, 22, 16, 11, 7.5, 5, 3];
+  const RATE = (l) => CHANCE[Math.min(14, l)];
   let K;
   function forge(G) {
     if (K.busy > 0 || K.lv >= 15 || G.phase !== 'play') return;
@@ -11,27 +12,27 @@ window.RF_SCENE = (() => {
   }
   function resolve(G) {
     if (K.lv === 7 && !K.failed) {
-      K.failed = true; G.sfx('fail'); G.shake(10, 0.4); G.flash('#7f1d1d', 0.22); G.stamp('실패…', '#fca5a5', 240, 0.9);
-      G.float('실패…', 180, 230, '#fca5a5', 30, 1.1);
-      G.pop('강화 방지권 사용', '+7 그대로 지킴', '실패해도 단계가 내려가지 않아요', 'purple', 1.5);
+      K.failed = true; G.sfx('fail'); G.shake(10, 0.4); G.flash('#7f1d1d', 0.22); G.stamp('파괴 위기!', '#fca5a5', 240, 0.9);
+      G.float('파괴 위기!', 180, 230, '#fca5a5', 30, 1.1);
+      G.pop('방지권 1장 사용', '+7 그대로 지킴', '파괴를 막아 줘요', 'purple', 1.5);
       return;
     }
     const before = K.lv;
     K.lv += 1; K.flashT = 0.4; G.sfx('merge'); G.burst(180, 300, K.lv >= 11 ? '#ffd23f' : '#fff3a0', 30, 240); G.punch(0.04); G.hitstop(0.04);
     if ([5, 10].includes(K.lv)) { G.stamp(`+${K.lv}!!`, '#ffd23f', 236); G.coins(180, 300, 12); G.rays(180, 300, 1); }
     G.float(`+${K.lv}`, 180, 210, '#ffe066', 34, 0.9);
-    if ([5, 7, 11, 15].includes(K.lv)) G.pop('외형 변화!', NAMES[K.lv], `+${before} → +${K.lv} · 공격력 ×${(1 + K.lv * 0.18).toFixed(2)}`, 'gold', 1.6);
+    if ([5, 7, 11, 15].includes(K.lv)) G.pop('외형 변화!', NAMES[K.lv], `+${before} → +${K.lv}`, 'gold', 1.6);
     G.caption(`+${K.lv} ${NAMES[K.lv]}`);
-    if (K.lv >= 15) { G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.3); G.shake(8, 0.4); G.caption('+15 왕관 북 완성!'); G.finish(2.4); }
+    if (K.lv >= 15) { G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.3); G.shake(8, 0.4); G.caption('+15 초월자의 검 완성!'); G.finish(2.4); }
   }
   return {
-    id: 'drum-forge',
+    id: 'sword-forge',
     popY: 236,
     introDur: 1.5,
-    hook: ['나무북이', '왕관북이 되기까지'],
-    climaxStamp: '+15 왕관북!!', raysAt: [180, 300],
+    hook: ['낡은 나무 검이', '초월자의 검이 되기까지'],
+    climaxStamp: '+15 초월자의 검!!', raysAt: [180, 300],
     caption0: '강화 단추를 눌러요',
-    endLines: ['북 하나로 +15 까지', '단계마다 생김새가 바뀐다'],
+    endLines: ['검 하나로 +15 까지', '단계마다 생김새가 바뀐다'],
     init() { K = { lv: 0, busy: 0, hammer: 0, tries: 0, failed: false, flashT: 0, auto: 0 }; },
     onTap(G, x, y) { if (y > 440) { forge(G); G.hint(null); } return true; },
     onKey(G) { forge(G); },
@@ -47,7 +48,7 @@ window.RF_SCENE = (() => {
       G.rr(110, 380, 140, 30, 8, '#3a3a42', '#16161a', 3); G.rr(140, 410, 80, 40, 6, '#2a2a30', '#16161a', 3);
       const glow = 0.5 + Math.sin(G.t * 5) * 0.2;
       ctx.save(); ctx.globalAlpha = glow; const fg = ctx.createRadialGradient(180, 360, 10, 180, 360, 160); fg.addColorStop(0, 'rgba(255,170,60,.55)'); fg.addColorStop(1, 'rgba(255,120,30,0)'); ctx.fillStyle = fg; ctx.fillRect(0, 160, 360, 300); ctx.restore();
-      // 북
+      // 검
       const bounce = K.flashT > 0 ? 1 + Math.sin((K.flashT / 0.4) * Math.PI) * 0.12 : 1 + Math.sin(G.t * 2) * 0.015;
       if (K.lv >= 15) { ctx.save(); ctx.translate(180, 300); ctx.rotate(G.t * 0.4); for (let i = 0; i < 10; i++) { ctx.rotate(Math.PI / 5); ctx.fillStyle = 'rgba(255,210,63,.16)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-24, -260); ctx.lineTo(24, -260); ctx.fill(); } ctx.restore(); }
       G.sprite(`drum:${K.lv}`, 180, 382, { s: 1.25 * bounce, flashA: K.flashT > 0 ? K.flashT * 1.5 : 0, flashC: '#fff6c4' });
