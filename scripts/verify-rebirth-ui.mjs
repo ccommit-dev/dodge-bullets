@@ -82,6 +82,19 @@ for (let i = 0; i < 90 && near.length < 12; i += 1) {
 const settled = near.slice(-6);
 ok("스킬 칸이 주인공 발밑 — 가운데 차이 12px 이내 · AUTO 와 안 겹침", settled.length >= 3 && settled.every((s) => s.dx <= 12 && s.qolOk), JSON.stringify(settled));
 if (OUT) await page.screenshot({ path: `${OUT}/skill-near.png` });
+// 설정: 스킬 칸 왼쪽 / 주인공 곁 — 고르면 바로 옮겨지고 다시 들어와도 남는다
+const dockInfo = () => page.evaluate(() => { const d = document.querySelector(".titans-skill-dock"); return { pad: parseInt(d.style.paddingLeft || getComputedStyle(d).paddingLeft, 10), saved: localStorage.getItem("dodge-bullets:skillDockLeft") }; });
+const before = await dockInfo();
+const openMenu = async () => { await page.evaluate(() => { const b = document.querySelector(".settings-toggle"); if (b) b.click(); else [...document.querySelectorAll(".titans-bottom-nav button")].find((x) => x.textContent.includes("설정"))?.click(); }); await sleep(400); };
+await openMenu();
+const label1 = await page.evaluate(() => document.querySelector(".settings-skill-dock b")?.textContent);
+await page.evaluate(() => document.querySelector(".settings-skill-dock")?.click()); await sleep(450);
+const label2 = await page.evaluate(() => document.querySelector(".settings-skill-dock b")?.textContent);
+const left = await dockInfo();
+ok("설정에서 스킬 칸을 왼쪽으로 — 바로 옮겨진다 · 저장", label1 === "주인공 곁" && label2 === "왼쪽" && left.pad === 58 && left.saved === "1" && before.pad > 58, JSON.stringify({ label1, label2, before: before.pad, left }));
+await page.evaluate(() => document.querySelector(".settings-skill-dock")?.click()); await sleep(450);
+ok("다시 누르면 주인공 곁", (await dockInfo()).pad > 58, JSON.stringify(await dockInfo()));
+await page.evaluate(() => localStorage.removeItem("dodge-bullets:skillDockLeft"));
 // 새 동료 공유 카드 그림 — 낡은 로스터 시트로 빠지지 않는다
 const cell = await page.evaluate(async () => { const m = await import("/src/titans/SpriteArt.tsx"); const c = m.allyIdleCell("toto"); const r = await fetch(c.src); return { ...c, status: r.status }; });
 ok("새 동료 공유 카드 = 전투 시트 대기 칸", cell.src.includes("anim/allies/toto.webp") && cell.status === 200 && cell.cols === 8 && cell.rows === 4, JSON.stringify(cell));

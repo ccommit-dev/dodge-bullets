@@ -78,6 +78,7 @@ import { rollCoinDrop } from "./titans/eventCoins";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
+import { SKILL_DOCK_EVENT, skillDockLeft } from "./ui/skillDockPref";
 import { QuestPanel } from "./titans/QuestPanel";
 import { WEAPON_EFFECTS, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
@@ -619,7 +620,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         // 경계는 예전 상자(칸 상자 가운데 56%)로 — 좁은 몸 상자(.ally-body 45%)로 재면 그림이 전장 왼쪽 밖으로 14px 나갔다(verify-anim-clip)
         // 앞줄 근접(몬스터 곁)은 비켜서도 곁에 남는다 — 대신 상대가 더 민다(2026-11-03, verify-hunt-motion 60px 를 65px 로 넘긴 적이 있다)
         const nearMon = mon && it.el.classList.contains("combat-melee") ? monEdge - it.full : null;
-        const meleeMin = nearMon !== null && nearMon <= 52 ? nearMon - 52 : -Infinity;
+        const nearLimit = field.querySelector(".titans-hero.has-mount") ? 74 : 52;   // 탈것을 타면 올라간 몸을 비켜설 자리가 더 필요하다 — 52 면 22% 포갠 채 막혔다
+        const meleeMin = nearMon !== null && nearMon <= nearLimit ? nearMon - nearLimit : -Infinity;
         const minDx = Math.max(fr.left + 36 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다
         const maxDx = mon ? mon.left - 6 - it.art.right : fr.right - 28 - it.art.right;
         return Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), Math.max(-60, Math.min(60, dx))));
@@ -631,6 +633,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const yOverlap = (a: Box, b: Box) => Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
       const minArea = (a: Box, b: Box) => Math.max(1, Math.min(a.width * (a.bottom - a.top), b.width * (b.bottom - b.top)));
       const overlapRatio = (a: Box, b: Box) => (xOverlap(a, b) * yOverlap(a, b)) / minArea(a, b);
+      // 탈것을 타면 주인공 몸이 위로 올라가 칸 상자 규칙(발 26px)이 놓친다 — 올라간 몸 상자(대기 시트 인물 자리)와 동료 몸을 넓이로 잰다 (2026-11-04, 탄 때 최악 28% · 안 탄 때 11%, _probe-mount-overlap)
+      // 자리 잡은 뒤에만 — 걸어오는 주인공 기준으로 밀면 동료를 오른쪽으로 31~55px 보내 도리어 99% 포갰다
+      const eqBox = settled && hero?.classList.contains("has-mount") ? hero.querySelector<HTMLElement>(".equipped-character")?.getBoundingClientRect() : undefined;
+      const riderBox: Box | null = eqBox ? { left: eqBox.left + eqBox.width * 0.2, right: eqBox.left + eqBox.width * 0.72, width: eqBox.width * 0.52, top: eqBox.top + eqBox.height * 0.58, bottom: eqBox.bottom } : null;
       for (let round = 0; round < (settled ? 10 : 1); round += 1) {
         for (let i = 1; i < items.length; i += 1) {
           const b = items[i], br = rectOf(b);
@@ -640,6 +646,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           // 주인공을 피해 왼쪽으로 민 원거리 동료가 옆 동료 위로 14px 올라탔다(luna×orion 28%)
           for (let j = 0; j < i; j += 1) {
             const a = items[j], ar = rectOf(a);
+            if (j === 0 && riderBox) {
+              if (overlapRatio(riderBox, br) > 0.1) {
+                const targetX = (0.08 * minArea(riderBox, br)) / Math.max(1, yOverlap(riderBox, br));
+                dx += (br.left + br.width / 2 < riderBox.left + riderBox.width / 2 ? -1 : 1) * Math.min(18, xOverlap(riderBox, br) - targetX + 2);
+                pushed = true;
+              }
+              continue;
+            }
             if (j === 0) {
               // 주인공과는 예전 규칙 그대로 — 같은 줄(발 26px 안)에서 가로 35% 넘게 겹치면 원거리는 왼쪽 · 근접은 오른쪽(몬스터 쪽)으로.
               // 넓이 · 가운데 기준으로 바꿔 보니 근접 동료를 몬스터에게서 70px 떼어 놓았다(verify-hunt-motion 60px)
@@ -676,6 +690,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const relaxOk = items.every((o, k) => {
             if (k === i) return true;
             const or = rectOf(o);
+            if (k === 0 && riderBox) return overlapRatio(riderBox, br) <= 0.04;
             if (k === 0) { const ha = artOf(o), hb = artOf(b); return Math.abs(ha.bottom - hb.bottom) > 26 || xOverlap(ha, hb) <= Math.min(ha.width, hb.width) * 0.2; }
             return overlapRatio(or, br) <= 0.04;
           });
@@ -1241,6 +1256,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const place = () => {
       const dock = skillDockRef.current, hero = document.querySelector(".titans-field .titans-hero");
       if (!dock || !hero) return;
+      if (skillDockLeft()) { dock.style.paddingLeft = "58px"; return; }   // 설정 — 엄지 쪽(AUTO · ×2 옆)
       const skills = [...dock.querySelectorAll<HTMLElement>(".titans-skill")];
       if (!skills.length) return;
       const d = dock.getBoundingClientRect(), h = hero.getBoundingClientRect();
@@ -1249,7 +1265,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     };
     place();
     window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
+    window.addEventListener(SKILL_DOCK_EVENT, place);
+    return () => { window.removeEventListener("resize", place); window.removeEventListener(SKILL_DOCK_EVENT, place); };
   }, [formationReady]);
   // 한 번뿐인 안내(hold)는 떠 있는 동안 흔한 안내(황금 몬스터 등)가 덮지 못한다 — 번개 환급 안내가 1초 만에 지워졌다(2026-10-28)
   const toastHoldUntil = useRef(0);
@@ -3692,9 +3709,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <p className="titans-kicker">BEAVER DAM · IDLE DEFENSE</p>
             <h1>
               STAGE {save.stage}
-              {boss ? " BOSS" : bossReady ? " · 10/10 · 반복 사냥" : ` · ${wave}/${MOBS_PER_STAGE}`}
+              {boss ? " BOSS" : bossReady ? " · 보스 대기" : ` · ${wave}/${MOBS_PER_STAGE}`}
             </h1>
-            <small className="titans-area-name">{area.name} · STAGE {area.stageFrom}–{area.stageTo >= 9999 ? "∞" : area.stageTo}</small>
+            <small className="titans-area-name">{area.name} · 최고 {save.bestStage}층</small>
             {warmupLeft > 0 && (
               <span className="warmup-chip">워밍업 ×2 · {Math.floor(warmupLeft / 60000)}:{String(Math.floor((warmupLeft % 60000) / 1000)).padStart(2, "0")}</span>
             )}
@@ -3704,10 +3721,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </span>
             )}
           </div>
-          <div className="titans-best">
-            최고
-            <strong>{save.bestStage}</strong>
-          </div>
         </div>
         {/* 같은 말(닫아도 쌓인다)을 하는 "지금 닫아도 8시간 후" 칩(첫 3세션)이 떠 있으면 줄은 숨긴다 — WebKit 에서 둘이 겹쳤다 (2026-10-21 단순화) */}
         {ready && !(idlePreview && !idleReport) && (() => {
@@ -3716,8 +3729,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const boosted = character.idleBoostUntil > nowTick;
           return (
             <div className="idle-status-strip" role="status">
-              <i className="idle-status-dot" />자동 사냥 중{boosted ? " · 가속 ×2" : ""}
-              <small>{capHours}시간 쌓으면 +{formatGold(full.gold)}G · 강화석 {full.materials}</small>
+              <i className="idle-status-dot" />자동 사냥{boosted ? " ×2" : ""}
+              <small>{capHours}시간 +{formatGold(full.gold)}G · 강화석 {full.materials}</small>
             </div>
           );
         })()}
@@ -3945,8 +3958,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               }, 760);
             }}
           >
-            보스 도전하기
-            {perkForStage(character.bossLadder, save.stage) && <small className="boss-ladder-hint">처치 시 {LADDER_LABEL[perkForStage(character.bossLadder, save.stage)!]} 영구 +</small>}
+            보스 도전 ›
+            {perkForStage(character.bossLadder, save.stage) && <small className="boss-ladder-hint">{LADDER_LABEL[perkForStage(character.bossLadder, save.stage)!]} 영구 +</small>}
           </button>
         )}
         {/* L 보상형 광고: 보스 실패 후 +10초 — 미연동이면 자리 없음 */}

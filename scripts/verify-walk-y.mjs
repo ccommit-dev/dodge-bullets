@@ -118,7 +118,9 @@ for (const scr of SCREENS) {
     const hm = rows.some((x) => x.heroMelee) ? scr.minMon : scr.minHero;
     return f.length >= 4 && span(f.map((e) => e.hero)) >= hm && span(f.map((e) => e.mon)) >= scr.minMon && new Set(f.map((e) => e.dur)).size >= 3;
   };
-  for (let i = 0; i < 640; i += 1) { const s = await snap(); if (s) rows.push(s); await sleep(110); if (i >= 200 && i % 20 === 0 && spanOk()) break; }   // 약 22초부터 — 몬스터 여러 마리
+  // 히트스톱 시간은 처음 22초(예전과 같은 창)로 잰다 — 더 재면 이 검사의 잦은 강제 레이아웃이 타이머를 밀어 158~187ms 가 드물게 잡혔다(멈춤은 220ms 간격이라 연쇄가 아니다, 2026-11-04)
+  let hsWindow = null;
+  for (let i = 0; i < 640; i += 1) { const s = await snap(); if (s) rows.push(s); await sleep(110); if (i === 199) hsWindow = await page.evaluate(() => ({ ...window.__hs })); if (i >= 200 && i % 20 === 0 && spanOk()) break; }   // 약 22초부터 — 몬스터 여러 마리
 
   const encs = encountersOf();
   const full = encs.filter((e) => settledOf(e).length >= 4);
@@ -169,7 +171,7 @@ for (const scr of SCREENS) {
   // 번쩍임 끝 칸이 남은 brightness(1) saturate(1) 은 제 색과 같다 — 밝기 1.05 넘는 표본만 센다
   const lit = combatRows.filter((s) => Number(s.monFilter?.match(/brightness\(([\d.]+)\)/)?.[1] ?? 1) > 1.05).length;
   ok(`[${scr.name}] 몬스터가 대부분 제 색 — 밝기 필터가 걸린 표본 35% 이하`, combatRows.length > 0 && lit <= combatRows.length * 0.35, `${lit}/${combatRows.length}`);
-  const hs = await page.evaluate(() => window.__hs);
+  const hs = hsWindow;
   ok(`[${scr.name}] 히트스톱이 걸리고 0.15초 안에 풀린다`, hs.on >= 2 && hs.maxMs > 0 && hs.maxMs <= 150, JSON.stringify(hs));
   ok(`[${scr.name}] 평타 피해 숫자가 하나로 합쳐진다(합산 숫자에 더해진 표본)`, rows.some((s) => s.sumBumps.some((b) => b >= 1)) && rows.every((s) => s.sumBumps.length <= 2), `최대 동시 ${Math.max(0, ...rows.map((s) => s.sumBumps.length))}`);
   ok(`[${scr.name}] 교전 중 주인공 · 동료 몸이 AUTO · 배속 · 스킬 · 알림 칩과 겹치지 않는다(4px 넘게)`, uiHits.length === 0, uiHits.slice(0, 4).join(" · "));

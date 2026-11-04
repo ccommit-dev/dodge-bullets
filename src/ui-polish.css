@@ -1334,7 +1334,9 @@
 .titans-hero .hero-pet { width: 60%; left: -38%; }
 /* 낮은 화면(360×640)은 커진 스킬 칸이 전장 알림과 12px 겹쳤다(inspect-mobile) — 알림을 스킬 칸 위로 올린다 */
 @media (max-height: 700px) {
-  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 70px !important; width: 150px !important; }   /* 가장 낮은 깊이(왼쪽 −9%)에서 몸과 22×23px 겹쳤다(_probe-alert-lanes) — 칩을 좁혀 몸이 서는 왼쪽 구간을 비운다. 글자는 줄임표, 눌러서 내용을 본다 */
+  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 70px !important; width: 150px !important; }   /* 가장 낮은 깊이(왼쪽 −9%)에서 몸과 22×23px 겹쳤다(_probe-alert-lanes) — 칩을 좁혀 몸이 서는 왼쪽 구간을 비운다 */
+  /* 좁아진 대신 긴 문구는 천천히 흘려 끝까지 읽힌다 — 두 줄은 칩이 13px 높아져 주인공과 다시 겹쳤다(35×16px). 짧은 문구는 min(0px) 로 움직이지 않는다 */
+  .titans-field:not(.lanes-wide) .battle-alert b { flex: 0 0 auto; width: max-content; min-width: 0; overflow: visible; text-overflow: clip; animation: chip-marquee 8s ease-in-out infinite alternate; }
 }
 /* 사냥터 토스트 12px — 황금 몬스터 안내가 기준(13px) 밑이었다(scan-readability 가 그 순간에 걸릴 때만 잡았다) */
 .titans-toast { font-size: 13px !important; }
@@ -1383,3 +1385,31 @@
   .titans-wallet { gap: 3px !important; padding-inline: 5px !important; }
   .header-rebirth-btn { width: 37px; }
 }
+@keyframes chip-marquee { 0%, 18% { transform: translateX(0); } 82%, 100% { transform: translateX(min(0px, calc(116px - 100%))); } }
+@media (prefers-reduced-motion: reduce) { .titans-field:not(.lanes-wide) .battle-alert b { animation: none; width: auto; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } }
+/* 360px 폭 — 큰 금액에서 "칭호 미설정"이 잘렸다: 지갑 그림 · 칸 간격을 줄여 자리를 낸다 */
+@media (max-width: 380px) {
+  .titans-wallet .currency-icon, .titans-wallet .titans-stone img, .titans-wallet .titans-gem img { width: 14px !important; height: 14px !important; flex-basis: 14px !important; }
+  .titans-wallet span { gap: 2px !important; }
+  .titans-wallet span + span { padding-left: 4px !important; }
+  .header-rebirth-btn { width: 35px; }
+}
+/* 흐르는 문구가 › 밑으로 지나가지 않게 화살표 칸에 칩 색을 깐다 */
+@media (max-height: 700px) {
+  .titans-field:not(.lanes-wide) .battle-alert i { position: absolute; top: 0; right: 0; bottom: 0; z-index: 1; display: grid; place-items: center; width: 18px; margin: 0; background: var(--flat-cream, #fff7e6); }
+}
+
+/* 사냥터 위쪽 정리 (2026-11-04, 사용자: "여기 ui도 너무 난잡해 가독성 좋게 · 요약해도 돼") — 글자 네 줄이 배경 위에 떠 있고 보스 단추가 그 위를 덮었다.
+   한 판으로 묶는다: 체력 줄 / [스테이지 · 지역]…[보스 단추] / 자동 사냥 / 알림. 문구도 줄였다(10/10 · 반복 사냥 → 보스 대기, STAGE 1–5 삭제, 최고는 지역 줄로) */
+.titans-field .titans-hp { left: 10px !important; right: 10px !important; top: 8px !important; }
+.titans-field .titans-stagebar.in-field { top: 32px !important; left: 10px !important; right: 10px !important; min-height: 46px; padding: 5px 10px; box-sizing: border-box; border-radius: 12px; background: rgba(43, 27, 16, .78); }
+.titans-field .titans-stagebar.in-field .titans-kicker { display: none; }
+.titans-field .titans-stagebar.in-field h1 { font-size: 17px !important; line-height: 1.15; color: #fff7e6; text-shadow: none !important; }
+.titans-field .titans-stagebar.in-field .titans-area-name { display: block; margin-top: 1px; font-size: 13px !important; line-height: 1.2; color: #f6d7a0; text-shadow: none !important; }
+.titans-field .idle-status-strip { top: 81px !important; left: 10px !important; right: 10px !important; min-height: 24px; box-sizing: border-box; padding: 2px 10px; border-radius: 10px; background: rgba(43, 27, 16, .62); border: 0; font-size: 13px !important; color: #d1fae5; }
+.titans-field .idle-status-strip small { margin-left: auto; font-size: 13px !important; font-weight: 700; color: #fff0d0; overflow: hidden; text-overflow: ellipsis; }
+.titans-field .titans-boss-challenge { top: 37px !important; left: auto !important; right: 15px !important; max-width: 48%; min-height: 36px; padding: 3px 12px !important; transform: none !important; border: 2px solid #3b2415 !important; border-radius: 12px !important; background: #fcd34d !important; color: #3b2415 !important; box-shadow: 0 2px 0 #3b2415 !important; font-size: 14px !important; font-weight: 900; line-height: 1.15; text-align: center; animation: boss-ready-glow 1.4s ease-in-out infinite !important; }
+.titans-field .titans-boss-challenge .boss-ladder-hint { margin-top: 0; font-size: 13px !important; font-weight: 800; opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes boss-ready-glow { 50% { box-shadow: 0 2px 0 #3b2415, 0 0 12px rgba(252, 211, 77, .95); } }
+.titans-field.lanes-wide .battle-alert-stack { top: 109px !important; }
+.titans-field .idle-status-strip { align-items: center; line-height: 1.2; }

@@ -1,4 +1,5 @@
 import { gearTierOfEnhance } from "./equipment/parts";
+import { setSkillDockLeft, skillDockLeft } from "./ui/skillDockPref";
 import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen";
 import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } from "./equipment/anchors";
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
@@ -1702,6 +1703,7 @@ function App() {
     paddingRight: insets.right,
   } as const;
 
+  const [dockLeft, setDockLeft] = useState(skillDockLeft);
   // 설정 메뉴 — 사냥터에서는 TitansGame 헤더(마이페이지 옆)에, 마이페이지에서는 독에 그린다 (2026-10-08 사용자: "설정 버튼을 마이페이지 쪽으로")
   const settingsNode = (
           <div className="settings-wrap">
@@ -1738,6 +1740,16 @@ function App() {
                   <b>{soundOn ? "ON" : "OFF"}</b>
                 </button>
                 {soundOn && <VolumeSliders />}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="settings-skill-dock"
+                  aria-pressed={dockLeft}
+                  onClick={() => { setSkillDockLeft(!dockLeft); setDockLeft(!dockLeft); }}
+                >
+                  <span>스킬 칸 위치</span>
+                  <b>{dockLeft ? "왼쪽" : "주인공 곁"}</b>
+                </button>
                 <button
                   type="button"
                   role="menuitem"
