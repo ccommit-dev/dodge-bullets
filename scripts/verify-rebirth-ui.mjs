@@ -41,7 +41,7 @@ ok("요약은 처음엔 닫혀 있다", x.tipVisible === "hidden");
 await page.evaluate(() => document.querySelector(".header-rebirth-btn").click()); await sleep(250);
 x = await header();
 ok("누르면 조건 요약이 열린다 · 화면 안", x.tipVisible === "visible" && x.tip.l >= 0 && x.tip.r <= x.vw, JSON.stringify(x.tip));
-ok("요약: 대장 2번 연속 · 지금 지역 · 받는 것", /스테이지 대장에게 2번 연속/.test(x.tipText) && /붉은 폐허\(Stage 12\)/.test(x.tipText) && /받는 것: 결정 \+/.test(x.tipText) && /벽 0\/2/.test(x.tipText), x.tipText.slice(0, 180));
+ok("요약은 짧게: 대장 2연패 · 지금 지역 · 받는 것 · 70자 안", /대장 2연패한 지역 2곳/.test(x.tipText) && /붉은 폐허 대장 2연패 → 1\/2/.test(x.tipText) && /결정 \+\d+/.test(x.tipText) && /0\/2/.test(x.tipText) && x.tipText.length <= 70, `${x.tipText.length}자 ${x.tipText}`);
 if (OUT) await page.screenshot({ path: `${OUT}/rebirth-tip.png` });
 await page.touchscreen.tap(195, 500); await sleep(250);
 ok("바깥을 누르면 닫힌다", (await header()).tipVisible === "hidden");

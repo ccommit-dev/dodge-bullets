@@ -1332,12 +1332,6 @@
 @media (prefers-reduced-motion: reduce) { .ally-star-aura.star-5 { animation: none; } }
 /* 아기 체형 펫 (2026-11-03) — 몬스터보다 그림이 작아 예전 크기로는 안 보였다 */
 .titans-hero .hero-pet { width: 60%; left: -38%; }
-/* 낮은 화면(360×640)은 커진 스킬 칸이 전장 알림과 12px 겹쳤다(inspect-mobile) — 알림을 스킬 칸 위로 올린다 */
-@media (max-height: 700px) {
-  .titans-field:not(.lanes-wide) .battle-alert-stack { bottom: 70px !important; width: 150px !important; }   /* 가장 낮은 깊이(왼쪽 −9%)에서 몸과 22×23px 겹쳤다(_probe-alert-lanes) — 칩을 좁혀 몸이 서는 왼쪽 구간을 비운다 */
-  /* 좁아진 대신 긴 문구는 천천히 흘려 끝까지 읽힌다 — 두 줄은 칩이 13px 높아져 주인공과 다시 겹쳤다(35×16px). 짧은 문구는 min(0px) 로 움직이지 않는다 */
-  .titans-field:not(.lanes-wide) .battle-alert b { flex: 0 0 auto; width: max-content; min-width: 0; overflow: visible; text-overflow: clip; animation: chip-marquee 8s ease-in-out infinite alternate; }
-}
 /* 사냥터 토스트 12px — 황금 몬스터 안내가 기준(13px) 밑이었다(scan-readability 가 그 순간에 걸릴 때만 잡았다) */
 .titans-toast { font-size: 13px !important; }
 
@@ -1351,14 +1345,14 @@
 .header-rebirth.ready .header-rebirth-btn { background: #fcd34d; animation: header-rebirth-glow 1.6s ease-in-out infinite; }
 .header-rebirth.ready .header-rebirth-btn small { color: #3b2415; }
 @keyframes header-rebirth-glow { 50% { box-shadow: 0 2px 0 #3b2415, 0 0 10px rgba(251, 191, 36, .9); } }
-.header-rebirth-tip { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; width: min(270px, 74vw); padding: 10px 12px; border: 2px solid #3b2415; border-radius: 14px; background: #fff7e6; color: #3b2415; text-align: left; box-shadow: 0 4px 0 #3b2415; visibility: hidden; opacity: 0; transition: opacity .12s; }
+.header-rebirth-tip { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; width: min(216px, 62vw); padding: 8px 10px; border: 2px solid #3b2415; border-radius: 14px; background: #fff7e6; color: #3b2415; text-align: left; box-shadow: 0 4px 0 #3b2415; visibility: hidden; opacity: 0; transition: opacity .12s; }
 .header-rebirth.open .header-rebirth-tip, .header-rebirth:has(.header-rebirth-btn:focus-visible) .header-rebirth-tip { visibility: visible; opacity: 1; }   /* focus-within 은 터치 뒤 포커스가 남아 안 닫혔다 */
 @media (hover: hover) { .header-rebirth:hover .header-rebirth-tip { visibility: visible; opacity: 1; } }
 .header-rebirth-tip strong { display: block; font-size: 14px; font-weight: 800; }
 .header-rebirth-tip strong em { font-style: normal; color: #c2410c; }
-.header-rebirth-tip p { margin: 5px 0 0; font-size: 13px; line-height: 1.35; color: #5a4230; }
+.header-rebirth-tip p { margin: 3px 0 0; font-size: 13px; line-height: 1.35; color: #5a4230; }
 .header-rebirth-tip p.next { font-weight: 800; color: #166534; }
-.header-rebirth-go { display: block; width: 100%; min-height: 36px; margin-top: 8px; border: 2px solid #3b2415; border-radius: 10px; background: #fcd34d; color: #3b2415; font-size: 13px; font-weight: 800; cursor: pointer; }
+.header-rebirth-go { display: block; width: 100%; min-height: 34px; margin-top: 6px; border: 2px solid #3b2415; border-radius: 10px; background: #fcd34d; color: #3b2415; font-size: 13px; font-weight: 800; cursor: pointer; }
 .header-rebirth-go.armed { background: #dc2626; color: #fff; }
 /* 마이페이지 벽 조건 풀이 */
 .rebirth-wall-guide { display: grid; gap: 6px; padding: 10px 12px; border: 2px solid #d8c8a8; border-radius: 14px; background: #fffaf0; color: #3b2415; }
@@ -1385,18 +1379,12 @@
   .titans-wallet { gap: 3px !important; padding-inline: 5px !important; }
   .header-rebirth-btn { width: 37px; }
 }
-@keyframes chip-marquee { 0%, 18% { transform: translateX(0); } 82%, 100% { transform: translateX(min(0px, calc(116px - 100%))); } }
-@media (prefers-reduced-motion: reduce) { .titans-field:not(.lanes-wide) .battle-alert b { animation: none; width: auto; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } }
 /* 360px 폭 — 큰 금액에서 "칭호 미설정"이 잘렸다: 지갑 그림 · 칸 간격을 줄여 자리를 낸다 */
 @media (max-width: 380px) {
   .titans-wallet .currency-icon, .titans-wallet .titans-stone img, .titans-wallet .titans-gem img { width: 14px !important; height: 14px !important; flex-basis: 14px !important; }
   .titans-wallet span { gap: 2px !important; }
   .titans-wallet span + span { padding-left: 4px !important; }
   .header-rebirth-btn { width: 35px; }
-}
-/* 흐르는 문구가 › 밑으로 지나가지 않게 화살표 칸에 칩 색을 깐다 */
-@media (max-height: 700px) {
-  .titans-field:not(.lanes-wide) .battle-alert i { position: absolute; top: 0; right: 0; bottom: 0; z-index: 1; display: grid; place-items: center; width: 18px; margin: 0; background: var(--flat-cream, #fff7e6); }
 }
 
 /* 사냥터 위쪽 정리 (2026-11-04, 사용자: "여기 ui도 너무 난잡해 가독성 좋게 · 요약해도 돼") — 글자 네 줄이 배경 위에 떠 있고 보스 단추가 그 위를 덮었다.
@@ -1411,5 +1399,36 @@
 .titans-field .titans-boss-challenge { top: 37px !important; left: auto !important; right: 15px !important; max-width: 48%; min-height: 36px; padding: 3px 12px !important; transform: none !important; border: 2px solid #3b2415 !important; border-radius: 12px !important; background: #fcd34d !important; color: #3b2415 !important; box-shadow: 0 2px 0 #3b2415 !important; font-size: 14px !important; font-weight: 900; line-height: 1.15; text-align: center; animation: boss-ready-glow 1.4s ease-in-out infinite !important; }
 .titans-field .titans-boss-challenge .boss-ladder-hint { margin-top: 0; font-size: 13px !important; font-weight: 800; opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @keyframes boss-ready-glow { 50% { box-shadow: 0 2px 0 #3b2415, 0 0 12px rgba(252, 211, 77, .95); } }
-.titans-field.lanes-wide .battle-alert-stack { top: 109px !important; }
+/* 알림은 전장 높이와 상관없이 판 바로 아래 오른쪽 — 낮은 전장에서 아래에 두면 스킬 칸이 네 개일 때 덮었다(폰 2026-11-04). 그 높이엔 캐릭터 머리가 안 닿는다(verify-hud-layout) */
+.titans-field .battle-alert-stack { top: 109px !important; bottom: auto !important; right: 10px !important; width: min(276px, 78%) !important; justify-content: flex-start !important; }
+/* 워밍업 칩은 판 오른쪽 위 · 첫 세션 안내 칩은 자동 사냥 줄 자리 — 둘 다 판 안 흐름에서 빼야 줄이 안 포개진다 */
+.titans-field .titans-stagebar.in-field .warmup-chip { position: absolute; top: 8px; right: 8px; margin: 0; padding: 2px 8px; border-radius: 999px; font-size: 13px !important; font-weight: 800; color: #fde68a; white-space: nowrap; }
+.titans-field .titans-stagebar.in-field .idle-preview-chip { position: absolute; top: 49px; left: 0; right: 0; margin: 0; min-height: 24px; box-sizing: border-box; padding: 3px 10px; border: 0; border-radius: 10px; background: rgba(43, 27, 16, .62); font-size: 13px !important; font-weight: 700; color: #d1fae5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* STAGE CLEAR 는 위 줄들 아래 빈 자리 — top 25% 는 낮은 전장에서 자동 사냥 · 알림을 덮었다 */
+.titans-field .titans-clear-banner { top: 168px !important; translate: 0 0 !important; font-size: clamp(22px, 6.4vw, 32px) !important; }
+/* 스킵 단추는 판 안 오른쪽 */
+.titans-field .titans-transition-skip { top: 38px !important; right: 15px !important; }
+/* 버프 칩은 전장과 성장 탭 사이 틈 — 뜰 때마다 아래 탭이 밀리지 않게 자리를 차지하지 않는다 */
+.titans-layer > .titans-buffs { position: relative; z-index: 15; height: 0; margin: 0 !important; padding: 0 !important; overflow: visible; }
+.titans-layer > .titans-buffs span { translate: 0 5px; }
 .titans-field .idle-status-strip { align-items: center; line-height: 1.2; }
+/* 낮은 전장은 위쪽을 조인다 — 맨 위 동료 머리가 알림 칩에 7~12px 닿았다(verify-hud-layout) */
+.titans-field:not(.lanes-wide) .titans-hp { top: 6px !important; }
+.titans-field:not(.lanes-wide) .titans-stagebar.in-field { top: 28px !important; min-height: 40px; padding: 3px 10px; }
+.titans-field:not(.lanes-wide) .titans-stagebar.in-field h1 { font-size: 16px !important; line-height: 1.1; }
+.titans-field:not(.lanes-wide) .titans-stagebar.in-field .titans-area-name { margin-top: 0; }
+.titans-field:not(.lanes-wide) .titans-stagebar.in-field .warmup-chip { top: 6px; }
+.titans-field:not(.lanes-wide) .titans-stagebar.in-field .idle-preview-chip { top: 42px; min-height: 22px; padding-block: 2px; }
+.titans-field:not(.lanes-wide) .idle-status-strip { top: 70px !important; min-height: 22px; padding-block: 1px; }
+.titans-field:not(.lanes-wide) .battle-alert-stack { top: 94px !important; }
+.titans-field:not(.lanes-wide) .titans-boss-challenge { top: 30px !important; min-height: 36px; padding-block: 1px !important; }
+.titans-field:not(.lanes-wide) .titans-transition-skip { top: 32px !important; }
+/* 아주 낮은 화면(SE + 카카오톡 553px) — 성장 탭 아래가 하단 메뉴에 31px 가렸다: 틈과 메뉴 높이를 조인다. 버프 칩은 틈이 없어 AUTO 위로 */
+@media (max-height: 600px) {
+  .titans-layer > .titans-growth-tabs { margin-top: -16px !important; }
+  .titans-header { margin-top: -8px !important; margin-bottom: 2px !important; }
+  .titans-layer > .titans-growth-tabs button:not(.growth-drawer-close) { min-height: 38px !important; padding-block: 2px !important; }
+  .titans-bottom-nav button { min-height: 50px !important; padding-block: 2px !important; }
+  .titans-bottom-nav button img, .titans-bottom-nav .content-icon { width: 24px !important; height: 24px !important; }
+  .titans-layer > .titans-buffs span { translate: 0 -92px; }
+}

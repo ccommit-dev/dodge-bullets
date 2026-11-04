@@ -44,8 +44,17 @@ export function rebirthWallStatus(progress: Pick<CharacterProgress, "rebirthCoun
       : later
         ? `${here.name}은 기록했어요 — ${later.name}(Stage ${later.stageFrom}~)까지 올라가 대장에게 ${WALL_BOSS_LOSSES}번 연속 지기`
         : `${here.name}은 기록했어요 — 아직 기록 안 한 지역에서 대장에게 ${WALL_BOSS_LOSSES}번 연속 지기`;
+  // 사냥터 요약용 짧은 문구 (2026-11-04, 사용자: "환생 팝업 글자 축약 짧게")
+  const nextShort = ready
+    ? "조건 완료 — 환생할 수 있어요"
+    : !progress.wallAreas.includes(here.id)
+      ? `${here.name} 대장 ${WALL_BOSS_LOSSES}연패 → ${have + 1}/${need}`
+      : later
+        ? `다음: ${later.name}(${later.stageFrom}층~) 대장 ${WALL_BOSS_LOSSES}연패`
+        : `다른 지역 대장 ${WALL_BOSS_LOSSES}연패`;
   return {
-    need, have, ready, areas, next,
+    need, have, ready, areas, next, nextShort,
+    ruleShort: `대장 ${WALL_BOSS_LOSSES}연패한 지역 ${need}곳`,
     rule: `한 지역에서 스테이지 대장에게 ${WALL_BOSS_LOSSES}번 연속 지면 그 지역이 벽으로 기록돼요(지역마다 처음 한 번 · 보석 +30).`,
     needText: need > 1 ? `서로 다른 지역 ${need}곳` : "지역 1곳",
   };

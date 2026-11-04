@@ -3641,16 +3641,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <b>환생</b><small>{wall.have}/{wall.need}</small>
               </button>
               <div className="header-rebirth-tip" role="tooltip">
-                <strong>환생 조건 · {wall.needText}의 벽 <em>{wall.have}/{wall.need}</em></strong>
-                <p>{wall.rule}</p>
-                <p className="next">{wall.next}</p>
-                <p className="gain">받는 것: 결정 +{gains.crystals} · 진화 포인트 +1 · 방치 24시간 2배 · {gains.startStage}층부터</p>
+                <strong>환생 조건 <em>{wall.have}/{wall.need}</em></strong>
+                <p>{wall.ruleShort}</p>
+                <p className="next">{wall.nextShort}</p>
+                <p className="gain">결정 +{gains.crystals} · 진화 +1 · {gains.startStage}층부터</p>
                 {wall.ready ? (
                   <button type="button" className={`header-rebirth-go ${rebirthArm ? "armed" : ""}`} onClick={() => { if (!rebirthArm) { setRebirthArm(true); return; } setRebirthTip(false); setRebirthArm(false); void autoRebirthRef.current(true); }}>
                     {rebirthArm ? "정말 환생하기 (사냥터 초기화)" : "환생하기"}
                   </button>
                 ) : (
-                  <button type="button" className="header-rebirth-go" onClick={() => onOpenContent("profile")}>마이페이지에서 자세히</button>
+                  <button type="button" className="header-rebirth-go" onClick={() => onOpenContent("profile")}>자세히</button>
                 )}
               </div>
             </div>
@@ -3712,7 +3712,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               {boss ? " BOSS" : bossReady ? " · 보스 대기" : ` · ${wave}/${MOBS_PER_STAGE}`}
             </h1>
             <small className="titans-area-name">{area.name} · 최고 {save.bestStage}층</small>
-            {warmupLeft > 0 && (
+            {warmupLeft > 0 && !bossReady && battlePhase === "combat" && (
               <span className="warmup-chip">워밍업 ×2 · {Math.floor(warmupLeft / 60000)}:{String(Math.floor((warmupLeft % 60000) / 1000)).padStart(2, "0")}</span>
             )}
             {idlePreview && !idleReport && (
@@ -4111,6 +4111,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <div className="titans-tabs titans-growth-tabs">
         {/* 2×2 (2026-10-26, 사용자: "퀘스트를 왼쪽으로 · 4번째 유물") — 장비 성장 · 스킬 / 퀘스트 · 유물 */}
+        {/* 퀘스트가 맨 왼쪽 (2026-11-04, 사용자) */}
+        <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
+          퀘스트{(QUESTS.some((_, i) => questBlock(save.quests, i, save.gold) === null) || (questBonusLeftMs(save.quests, Date.now()) === 0 && questBonusAmount(save.quests) > 0)) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
+        </button>
+        {/* 유물 (2026-10-26, 사용자: "4번째에는 유물 추가") — 마이페이지에만 있던 유물 판을 성장 서랍으로 · 뽑기는 상점 */}
         <button type="button" className={tab === "sword" ? "on" : ""} aria-expanded={growthOpen && tab === "sword"} onClick={() => { setGrowthOpen((o) => (tab === "sword" ? !o : true)); setTab("sword"); }}>
           장비 성장
         </button>
@@ -4118,10 +4123,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           스킬{save.skillInventory.learned.length > 0 && SKILLS.some((x) => (save.skillInventory.copies?.[x.id] ?? 0) > 0 && (!save.skillInventory.learned.includes(x.id) || skillCardPlan(save.skillInventory, x.id).used > 0)) && <i className="tab-dot" aria-label="쓸 수 있는 스킬 카드" />}
         </button>
         {/* 퀘스트 (2026-10-26, "오늘도 환생 2" — 시간마다 골드) · 2×2 의 왼쪽 아래 — 지금 살 수 있는 줄이 있으면 점 */}
-        <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
-          퀘스트{(QUESTS.some((_, i) => questBlock(save.quests, i, save.gold) === null) || (questBonusLeftMs(save.quests, Date.now()) === 0 && questBonusAmount(save.quests) > 0)) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
-        </button>
-        {/* 유물 (2026-10-26, 사용자: "4번째에는 유물 추가") — 마이페이지에만 있던 유물 판을 성장 서랍으로 · 뽑기는 상점 */}
         <button type="button" className={tab === "relic" ? "on" : ""} aria-expanded={growthOpen && tab === "relic"} onClick={() => { setGrowthOpen((o) => (tab === "relic" ? !o : true)); setTab("relic"); }}>
           유물{RELICS.some((r) => relicSpareUsable(character.relics, character.relicSpare, r.id) > 0) && <i className="tab-dot" aria-label="소진할 유물 조각" />}
         </button>
