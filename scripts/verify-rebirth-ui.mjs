@@ -82,6 +82,11 @@ for (let i = 0; i < 90 && near.length < 12; i += 1) {
 const settled = near.slice(-6);
 ok("스킬 칸이 주인공 발밑 — 가운데 차이 12px 이내 · AUTO 와 안 겹침", settled.length >= 3 && settled.every((s) => s.dx <= 12 && s.qolOk), JSON.stringify(settled));
 if (OUT) await page.screenshot({ path: `${OUT}/skill-near.png` });
+// 시트가 열리면 환생 단추가 시트 위로 튀어나오지 않는다
+await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(700);
+const covered = await page.evaluate(() => { const b = document.querySelector(".header-rebirth-btn")?.getBoundingClientRect(); if (!b) return true; const top = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !top?.closest(".header-rebirth"); });
+ok("상점 시트가 열리면 환생 단추가 가려진다", covered);
+await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(700);
 // 설정: 스킬 칸 왼쪽 / 주인공 곁 — 고르면 바로 옮겨지고 다시 들어와도 남는다
 const dockInfo = () => page.evaluate(() => { const d = document.querySelector(".titans-skill-dock"); return { pad: parseInt(d.style.paddingLeft || getComputedStyle(d).paddingLeft, 10), saved: localStorage.getItem("dodge-bullets:skillDockLeft") }; });
 const before = await dockInfo();
@@ -93,7 +98,9 @@ const label2 = await page.evaluate(() => document.querySelector(".settings-skill
 const left = await dockInfo();
 ok("설정에서 스킬 칸을 왼쪽으로 — 바로 옮겨진다 · 저장", label1 === "주인공 곁" && label2 === "왼쪽" && left.pad === 58 && left.saved === "1" && before.pad > 58, JSON.stringify({ label1, label2, before: before.pad, left }));
 await page.evaluate(() => document.querySelector(".settings-skill-dock")?.click()); await sleep(450);
-ok("다시 누르면 주인공 곁", (await dockInfo()).pad > 58, JSON.stringify(await dockInfo()));
+// 주인공이 걷는 중이면 다음 만남 자리 잡을 때 다시 잰다 — 몇 초 안에 돌아오면 된다
+let backNear = false; for (let i = 0; i < 40 && !backNear; i += 1) { backNear = (await dockInfo()).pad > 58; if (!backNear) await sleep(200); }
+ok("다시 누르면 주인공 곁", backNear, JSON.stringify(await dockInfo()));
 await page.evaluate(() => localStorage.removeItem("dodge-bullets:skillDockLeft"));
 // 새 동료 공유 카드 그림 — 낡은 로스터 시트로 빠지지 않는다
 const cell = await page.evaluate(async () => { const m = await import("/src/titans/SpriteArt.tsx"); const c = m.allyIdleCell("toto"); const r = await fetch(c.src); return { ...c, status: r.status }; });

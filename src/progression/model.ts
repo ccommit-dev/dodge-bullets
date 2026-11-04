@@ -18,6 +18,7 @@ import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { MOUNT_IDS, MOUNT_MAX_LEVEL, isMountId, type MountId } from "../titans/mounts";
+import { normalizeEquippedGear, normalizeOwnedGear, type EquippedGear, type GearItemId } from "../equipment/gearSets";
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
 import { TALENTS, type TalentId } from "../forge/talents";
@@ -133,6 +134,9 @@ export type CharacterProgress = {
   pets: Record<TitanMonsterKind, number>;
   /** 장착 펫 ("" = 없음) — 1마리만 액티브 패시브 */
   activePet: string;
+  /** 무기 세트 파츠 (2026-11-04, equipment/gearSets) — 산 것 · 부위별로 낀 것 */
+  ownedGear: GearItemId[];
+  equippedGear: EquippedGear;
   /** 탈것 레벨 (2026-11-03, titans/mounts) — 없음 = 미보유 */
   mounts: Partial<Record<MountId, number>>;
   /** 장착 탈것 ("" = 없음) */
@@ -321,6 +325,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     firstClearDates: { hunt: "", dodge: "", forge: "", beat: "" },
     pets: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 },
     activePet: "",
+    ownedGear: [],
+    equippedGear: {},
     mounts: {},
     activeMount: "",
     partyIds: [],
@@ -539,7 +545,8 @@ export function normalizeCharacterProgress(
     bestForgeLevel: integer(raw.bestForgeLevel, base.bestForgeLevel, 15),
     armorLevel: integer(raw.armorLevel, base.armorLevel, 15),
     reforgeRank: integer(raw.reforgeRank, 0, 999),
-    equippedShoulder: equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : "scout",
+    // 벗은 것(null)은 그대로 — 예전엔 저장할 때 정찰 견갑으로 되돌아가 대장간 "해제"도 다시 불러오면 풀렸다 (2026-11-04). 필드가 없는 옛 저장만 기본값
+    equippedShoulder: raw.equippedShoulder === null ? null : equippedShoulder && ownedShoulders.includes(equippedShoulder) ? equippedShoulder : "scout",
     ownedShoulders: [...new Set(ownedShoulders)],
     shoulderShards: integer(raw.shoulderShards, 0),
     pioneeredArea: pioneeredAreaOf(raw),
@@ -669,6 +676,8 @@ export function normalizeCharacterProgress(
       typeof raw.activePet === "string" && PET_IDS.includes(raw.activePet as TitanMonsterKind)
         ? raw.activePet
         : "",
+    ownedGear: normalizeOwnedGear(raw.ownedGear),
+    equippedGear: normalizeEquippedGear(raw.equippedGear, normalizeOwnedGear(raw.ownedGear)),
     mounts: Object.fromEntries(MOUNT_IDS.map((id) => [id, integer(raw.mounts?.[id], 0, MOUNT_MAX_LEVEL)]).filter(([, lv]) => (lv as number) > 0)),
     activeMount: isMountId(raw.activeMount) && integer(raw.mounts?.[raw.activeMount], 0, MOUNT_MAX_LEVEL) > 0 ? raw.activeMount : "",
     partyIds: Array.isArray(raw.partyIds)

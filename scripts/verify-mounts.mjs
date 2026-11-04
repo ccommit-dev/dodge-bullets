@@ -9,7 +9,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 let fails = 0; const ok = (n, c, d = "") => { console.log(`${c ? "PASS" : "FAIL"} ${n}${d ? " — " + d : ""}`); if (!c) fails += 1; };
 const today = new Date().toLocaleDateString("sv-SE");
 // 옛 저장 — mounts 칸이 없다
-const progress = { version: 5, level: 25, redGems: 700, enhancementMaterials: 50, attendanceStreak: 5, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime"], gachaPulls: 30 };
+const progress = { /* 첫 발견 보석(+20)이 구매 단언에 끼지 않게 — 몬스터는 다 본 것으로 */ discoverySeeded: false, version: 5, level: 25, redGems: 700, enhancementMaterials: 50, attendanceStreak: 5, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime"], gachaPulls: 30 };
 await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
   [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e6, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),

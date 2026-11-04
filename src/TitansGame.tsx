@@ -73,14 +73,16 @@ import { SKILL_LABEL } from "./beat/rpg";
 import { IdleReturnModal } from "./IdleReturnModal";
 import { AreaGateModal } from "./AreaGateModal";
 import { setHuntBgm, type HuntMood } from "./ui/bgm";
-import { sfxBossEntrance, sfxBossFail, sfxIdleClaim, sfxPurchase, sfxRebirth, sfxUpgrade, sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxRelicReveal, sfxRelicSummon, sfxSkillTier, sfxSlotUnlock, sfxWeapon } from "./ui/sfx";
+import { sfxBossEntrance, sfxBossFail, sfxIdleClaim, sfxPurchase, sfxRebirth, sfxUpgrade, sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxRelicReveal, sfxRelicSummon, sfxSkillTier, sfxSlotUnlock, sfxWeapon , sfxUiTap, sfxUiDenied } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
 import { SKILL_DOCK_EVENT, skillDockLeft } from "./ui/skillDockPref";
+import { EquipWindow, type EquipBagItem, type EquipSlotView } from "./titans/EquipWindow";
+import { GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, GEAR_SLOT_LABEL, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId } from "./equipment/gearSets";
 import { QuestPanel } from "./titans/QuestPanel";
-import { WEAPON_EFFECTS, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
+import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
 import type { Tier as AllyRarity } from "./titans/allyRoster";
 import { RelicTabPanel } from "./titans/RelicTabPanel";
@@ -218,7 +220,7 @@ const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: str
   "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
   "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
 };
-type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet" | "mount";
+type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet" | "mount" | "gear";
 /**
  * 상점 탭 합치기 (2026-11-03, 사용자: "유저 입장에서 난잡하지 않게 탭을 머지해서 가독성이 딱 좋게") — 예전엔 위 3칸(상점 · 이벤트 · 특별) 아래에 8칸(재화 ~ 외형)이
  * 두 줄로 있어 한 화면에 탭이 11개였다. 이제 시트 머리 5칸 하나로 고르고, 작은 아래 줄은 종류가 나뉘는 뽑기 · 꾸미기에만 둔다. 특별 상품은 패키지 칸 아래로
@@ -227,7 +229,7 @@ type ShopGroup = "currency" | "package" | "draw" | "style" | "event";
 const SHOP_GROUPS: readonly { id: ShopGroup; label: string }[] = [{ id: "currency", label: "재화" }, { id: "package", label: "패키지" }, { id: "draw", label: "뽑기" }, { id: "style", label: "꾸미기" }, { id: "event", label: "이벤트" }];
 const SHOP_SUBTABS: Partial<Record<ShopGroup, readonly (readonly [PremiumCategory, string])[]>> = {
   draw: [["relic", "유물"], ["skill", "스킬"], ["ally", "동료"], ["chest", "상자"]],   // 동료 뽑기 · 비버 상자도 여기 하나로 (2026-11-03, 사용자: "뽑기는 상점탭에만 일원화")
-  style: [["pet", "펫"], ["mount", "탈것"], ["title", "칭호"], ["weapon", "외형"]],
+  style: [["gear", "장비"], ["pet", "펫"], ["mount", "탈것"], ["title", "칭호"], ["weapon", "외형"]],
 };
 const shopGroupOf = (c: PremiumCategory): ShopGroup => (c === "currency" || c === "package" ? c : c === "relic" || c === "skill" || c === "ally" || c === "chest" ? "draw" : "style");
 /**
@@ -1252,11 +1254,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 스킬 칸을 주인공 발밑으로 (2026-11-03, 사용자: "사냥터 스킬아이콘 캐릭터 가까이") — 만남마다 자리 잡은 뒤 한 번 잰다. 교전 중엔 움직이지 않아 누르기 쉽다
   const skillDockRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!formationReady) return;
     const place = () => {
       const dock = skillDockRef.current, hero = document.querySelector(".titans-field .titans-hero");
       if (!dock || !hero) return;
-      if (skillDockLeft()) { dock.style.paddingLeft = "58px"; return; }   // 설정 — 엄지 쪽(AUTO · ×2 옆)
+      if (skillDockLeft()) { dock.style.paddingLeft = "58px"; return; }   // 설정 — 엄지 쪽(AUTO · ×2 옆). 전환 중에 바꿔도 바로
+      if (!formationReady) return;   // 주인공이 걷는 동안엔 재지 않는다
       const skills = [...dock.querySelectorAll<HTMLElement>(".titans-skill")];
       if (!skills.length) return;
       const d = dock.getBoundingClientRect(), h = hero.getBoundingClientRect();
@@ -1547,9 +1549,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           label = "약점!";
           if (hm.weakHunt && opts?.skill) { bossLeftRef.current += 1; setBossLeft(bossLeftRef.current); }
         }
-        mul *= af.bossMul * permRef.current.bossMul * WEAPON_EFFECTS[weaponKindRef.current].bossMul;   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26) · 창 (2026-10-27)
+        mul *= af.bossMul * permRef.current.bossMul * WEAPON_EFFECTS[weaponKindRef.current].bossMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current).bossMul;   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26) · 창 (2026-10-27)
       }
-      if (opts?.skill) mul *= WEAPON_EFFECTS[weaponKindRef.current].skillDmgMul;   // 지팡이 — 스킬 피해 (2026-10-27)
+      if (opts?.skill) mul *= WEAPON_EFFECTS[weaponKindRef.current].skillDmgMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current).skillDmgMul;   // 지팡이 — 스킬 피해 (2026-10-27)
       const dealt = Math.floor(raw * mul);
       if (import.meta.env.DEV) {
         // 탭 · 자동(주인공 자동 공격) · 기술(무기 기술) · 동료 · 스킬(스킬 · 화상 · 번개)
@@ -1898,7 +1900,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     // × 대장 사다리 탭 피해 — 2026-10-22 아처 키우기 3번 (번개 강화는 2026-10-28 삭제)
-    const base = WEAPON_EFFECTS[weaponKindRef.current].tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
+    const base = WEAPON_EFFECTS[weaponKindRef.current].tapMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current).tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
@@ -2043,7 +2045,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         for (const h of HEROES) {
           const level = saveRef.current.heroes[h.id];
           if (level <= 0 || !characterRef.current.partyIds.includes(h.id)) continue;
-          allyAttackAcc.current[h.id] += dt * WEAPON_EFFECTS[weaponKindRef.current].autoSpeedMul;   // 활 — 동료 공격 속도도 (2026-10-27 감사)
+          allyAttackAcc.current[h.id] += dt * WEAPON_EFFECTS[weaponKindRef.current].autoSpeedMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current).autoSpeedMul;   // 활 — 동료 공격 속도도 (2026-10-27 감사)
           if (allyAttackAcc.current[h.id] < h.attackInterval) continue;
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
@@ -2807,6 +2809,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const next = await updateCharacterProgress(userHash, (current) => ({ ...current, activePet: current.activePet === pid ? "" : pid }));
     setCharacter(next);
     flash(next.activePet === pid ? `${PET_DEFS[pid].name} 장착` : `${PET_DEFS[pid].name} 해제`);
+  };
+  // 무기 세트 파츠 (2026-11-04, equipment/gearSets) — 빈 칸이면 산 것을 바로 낀다
+  const buyGear = async (ids: GearItemId[], price: number, label: string) => {
+    const missing = ids.filter((id) => !character.ownedGear.includes(id));
+    if (missing.length === 0 || redGems < price) return;
+    sfxPurchase();
+    const next = await updateCharacterProgress(userHash, (c) => {
+      if (c.redGems < price || ids.every((id) => c.ownedGear.includes(id))) return c;
+      const eq = { ...c.equippedGear };
+      for (const id of ids) if (!eq[gearItemSlot(id)]) eq[gearItemSlot(id)] = id;
+      return { ...c, redGems: c.redGems - price, ownedGear: [...new Set([...c.ownedGear, ...ids])], equippedGear: eq };
+    });
+    setCharacter(next);
+    setRedGems(next.redGems);
+    flash(`${label} 구매! 장비 성장에서 끌어다 낄 수 있어요`);
   };
   // 탈것 (2026-11-03, titans/mounts) — 펫과 같은 길
   const buyMount = async (mid: MountId) => {
@@ -4239,6 +4256,72 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             }}
           />
         )}
+        {tab === "sword" && (() => {
+          // 장비창 (titans/EquipWindow) — 무기 등급 테두리는 사냥터 단계로
+          const gradeOf = (lv: number) => (lv >= 15 ? "legendary" : lv >= 10 ? "epic" : lv >= 5 ? "rare" : "normal");
+          const lvOf = (k: WeaponKind) => weaponHuntLevel(k, drumLevel, character.expeditionWeaponForge ?? {});
+          const wantedLv = lvOf(wantedWeaponKind);
+          const slots: EquipSlotView[] = [
+            { id: "weapon", label: "무기", icon: assetUrl(weaponIconPath(wantedWeaponKind, wantedLv)), level: `+${wantedLv}`, grade: gradeOf(wantedLv) },
+            (() => {
+              const set = character.equippedGear.shoulder;
+              return set
+                ? { id: "shoulder" as const, label: "견갑", icon: assetUrl(gearItemIconPath(set)), active: gearItemKind(set) === wantedWeaponKind, grade: gearItemKind(set) === wantedWeaponKind ? "epic" : "normal" }
+                : { id: "shoulder" as const, label: "견갑", icon: equippedShoulder ? shoulderIconUrl(equippedShoulder) : null, grade: equippedShoulder ? SHOULDER_DEFINITIONS[equippedShoulder].grade : undefined };
+            })(),
+            ...GEAR_PARTS.map((part): EquipSlotView => {
+              const enh = character.gearEnhance?.[part] ?? 0, set = character.equippedGear[part];
+              // 세트 파츠를 끼면 그 그림 · 같은 무기면 등급 테두리. 숙련 · 강화 효과는 끼든 말든 그대로
+              return { id: part, label: GEAR_PART_DEF[part].name, icon: assetUrl(set ? gearItemIconPath(set) : `titans/gear/${part}-${Math.max(1, gearTierOfEnhance(enh))}.png`), level: enh > 0 ? `+${enh}` : undefined, active: !!set && gearItemKind(set) === wantedWeaponKind, grade: set ? (gearItemKind(set) === wantedWeaponKind ? "epic" : "normal") : undefined };
+            }),
+          ];
+          const bag: EquipBagItem[] = [
+            ...WEAPON_KINDS.map((k): EquipBagItem => ({ key: k, slot: "weapon", label: WEAPON_LABEL[k], level: `+${lvOf(k)}`, icon: assetUrl(weaponIconPath(k, lvOf(k))), on: wantedWeaponKind === k, pending: wantedWeaponKind === k && weaponKind !== k, title: `${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`, className: "weapon-kind-chip", grade: gradeOf(lvOf(k)) })),
+            ...(character.ownedShoulders ?? []).map((id): EquipBagItem => ({ key: id, slot: "shoulder", label: SHOULDER_DEFINITIONS[id].name.replace(" 견갑", ""), icon: shoulderIconUrl(id), on: equippedShoulder === id && !character.equippedGear.shoulder, title: `${SHOULDER_DEFINITIONS[id].name} · ${SHOULDER_DEFINITIONS[id].effect}`, grade: SHOULDER_DEFINITIONS[id].grade })),
+            ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: GEAR_SET_NAME[gearItemKind(id)], icon: assetUrl(gearItemIconPath(id)), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id)}`, grade: gearItemKind(id) === wantedWeaponKind ? "epic" : "normal" })),
+          ];
+          return (
+            <EquipWindow
+              slots={slots}
+              bag={bag}
+              hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} />}
+              footer={(slot) => (
+                <div className="equip-info">
+                  {slot === "weapon" ? (
+                    <>
+                      <b>{WEAPON_FORGE_NAME[wantedWeaponKind]} +{wantedLv}</b>
+                      <small className="weapon-kind-stat">{lookPending ? <b className="look-pending">다음 몬스터부터 {WEAPON_LABEL[wantedWeaponKind]} · </b> : null}{weaponStatText(wantedWeaponKind)} · 기술 {WEAPON_TECH[wantedWeaponKind].name} — {WEAPON_TECH[wantedWeaponKind].desc}</small>
+                    </>
+                  ) : (
+                    <>
+                      <b>{gearSetSummary(character.equippedGear, wantedWeaponKind)}</b>
+                      <small className="gear-set-stat">{gearFullSetText(wantedWeaponKind)}</small>
+                    </>
+                  )}
+                </div>
+              )}
+              onEquip={(item) => {
+                sfxUiTap();
+                if (item.slot === "weapon") { equipWeapon(item.key as WeaponKind); return; }
+                if (isGearItemId(item.key)) {
+                  const gid = item.key, gslot = gearItemSlot(gid), off = character.equippedGear[gslot] === gid;
+                  void updateCharacterProgress(userHash, (c) => {
+                    const eq = { ...c.equippedGear };
+                    if (c.equippedGear[gslot] === gid) delete eq[gslot]; else eq[gslot] = gid;
+                    return { ...c, equippedGear: eq };
+                  }).then((next) => { setCharacter(next); flash(`${gearItemName(gid)} ${off ? "해제" : "장착"} · ${gearSetSummary(next.equippedGear, wantedWeaponKind)}`); });
+                  return;
+                }
+                // 견갑은 탈부착 — 낀 것을 다시 누르면 벗는다. 모습은 다음 몬스터부터(lookWanted)
+                const id = equippedShoulder === item.key && !character.equippedGear.shoulder ? null : (item.key as ShoulderId);
+                setEquippedShoulder(id);
+                void updateCharacterProgress(userHash, (c) => { const eq = { ...c.equippedGear }; delete eq.shoulder; return { ...c, equippedShoulder: id, equippedGear: eq }; }).then((next) => { setCharacter(next); flash(id ? `${SHOULDER_DEFINITIONS[id].name} 장착 · 다음 몬스터부터` : "견갑 해제 · 다음 몬스터부터"); });
+              }}
+              onDenied={(item) => { sfxUiDenied(); const label = item.slot === "weapon" ? "무기" : item.slot === "shoulder" ? "견갑" : GEAR_PART_DEF[item.slot].name; flash(`${label}는 ${label} 칸에 놓으세요`); }}
+              onShop={() => { setTab("premium"); setPremiumCategory("gear"); }}
+            />
+          );
+        })()}
         {tab === "sword" && (
           <button
             type="button"
@@ -4258,18 +4341,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <div className="training-item-icon weapon"><img src={assetUrl(weaponIconPath(weaponKind, forgedWeaponLevel))} alt="" aria-hidden="true" /></div>
               <div>
                 <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>탭 피해 {formatGold(tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)))} → {formatGold(tapDamage(save.equipmentTraining.weaponMastery + 1 + Math.floor(forgedWeaponLevel * 1.5)))}</p>
-                {/* 무기 4종 (2026-10-27) — 검 · 창 · 활 · 지팡이. 강화는 대장간(장착 무기) · 바꾸면 그 무기의 스킬 세트로 */}
-                <span className="weapon-kind-chips four" role="group" aria-label="주인공 무기">
-                  {WEAPON_KINDS.map((k) => {
-                    const lv = weaponHuntLevel(k, drumLevel, character.expeditionWeaponForge ?? {});
-                    return (
-                      <button key={k} type="button" className={`weapon-kind-chip ${wantedWeaponKind === k ? "on" : ""} ${wantedWeaponKind === k && weaponKind !== k ? "pending" : ""}`} aria-pressed={wantedWeaponKind === k} title={`${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`} onClick={() => equipWeapon(k)}>
-                        {WEAPON_LABEL[k]} +{lv}
-                      </button>
-                    );
-                  })}
-                </span>
-                <small className="weapon-kind-stat">{lookPending ? <b className="look-pending">다음 몬스터부터 {WEAPON_LABEL[wantedWeaponKind]} · </b> : null}{weaponStatText(wantedWeaponKind)} · 기술 {WEAPON_TECH[wantedWeaponKind].name} — {WEAPON_TECH[wantedWeaponKind].desc}</small>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련<small className="btn-cost">{formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</small></button>
             </article>
@@ -5023,6 +5094,37 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   <button type="button" disabled={lv <= 0 && redGems < PET_GEM_PRICE[pid]} onClick={() => void (lv > 0 ? equipPetShop(pid) : buyPet(pid))}>
                     {lv > 0 ? (on ? "해제" : "장착") : <><GemMark />{PET_GEM_PRICE[pid]}</>}
                   </button>
+                </article>
+              );
+            })}
+            {premiumCategory === "gear" && <p className="premium-subhead">장비 <small>같은 무기를 들면 효과 · 장비 성장에서 끌어다 탈부착</small></p>}
+            {premiumCategory === "gear" && GEAR_SET_KINDS.map((kind) => {
+              const ids = GEAR_SET_SLOTS.map((slot) => gearItemId(kind, slot));
+              const missing = ids.filter((id) => !character.ownedGear.includes(id));
+              const setPrice = missing.length === ids.length ? GEAR_SET_PRICE : missing.length * GEAR_ITEM_PRICE;
+              return (
+                <article key={kind} className="titans-card gear-set-card" data-gear-set={kind}>
+                  <header>
+                    <img src={assetUrl(weaponIconPath(kind, 8))} alt="" aria-hidden="true" />
+                    <span><strong>{GEAR_SET_NAME[kind]} 세트 <em>{WEAPON_LABEL[kind]} 전용</em></strong><small>{gearFullSetText(kind)}</small></span>
+                  </header>
+                  <div className="gear-set-pieces">
+                    {ids.map((id) => {
+                      const owned = character.ownedGear.includes(id);
+                      return (
+                        <button key={id} type="button" className={`gear-piece ${owned ? "owned" : ""}`} data-gear-item={id} disabled={owned || redGems < GEAR_ITEM_PRICE} title={`${gearItemName(id)} · ${gearItemEffectText(id)}`} onClick={() => void buyGear([id], GEAR_ITEM_PRICE, gearItemName(id))}>
+                          <img src={assetUrl(gearItemIconPath(id))} alt="" aria-hidden="true" />
+                          <span>{GEAR_SLOT_LABEL[gearItemSlot(id)]}</span>
+                          <small>{owned ? "보유" : <><GemMark />{GEAR_ITEM_PRICE}</>}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {missing.length > 0 ? (
+                    <button type="button" className="gear-set-buy" disabled={redGems < setPrice} onClick={() => void buyGear(ids, setPrice, `${GEAR_SET_NAME[kind]} 세트`)}>
+                      {missing.length === ids.length ? "세트 구매 · 20% 할인" : `남은 ${missing.length}개 구매`} <GemMark />{setPrice}
+                    </button>
+                  ) : <p className="gear-set-done">모두 보유</p>}
                 </article>
               );
             })}

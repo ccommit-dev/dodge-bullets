@@ -287,6 +287,210 @@ def sword_lv(level):
 
 
 
+# ── 무기 세트 파츠 (2026-11-04, 사용자: "나머지 부위 파츠별도 · 무기 속성 4개 있는 것처럼 속성에 맞는 파츠 모두 생성") ──
+# 검 = 기사(판금 · 진홍) · 창 = 창기병(푸른 강철 · 꼬리털) · 활 = 숲 사수(가죽 · 초록) · 지팡이 = 현자(보라 천 · 금 · 보석). 색이 아니라 모양으로 갈린다 — 게임 칸은 62px
+SETS = {
+    'sword': dict(metal='#c8d2dc', main='#b8322c', trim='#e8b23a', dark='#5a1c18'),
+    'spear': dict(metal='#8fa6bf', main='#2a5fa8', trim='#dfe8f2', dark='#173a6a'),
+    'bow': dict(metal='#9a6a3a', main='#4f8a3f', trim='#d8b86a', dark='#2f5a2a'),
+    'staff': dict(metal='#e6d6a8', main='#6a3fb0', trim='#f2c232', dark='#3a2070', gem='#7fe3ff'),
+}
+
+
+def set_helmet(k):
+    S = SETS[k]
+    if k == 'sword':   # 통투구 — 눈 틈 · 숨구멍 · 금 십자 · 진홍 볏
+        dome = C.ellipsoid(Vector((0, 0, 0.02)), (0.46, 0.48, 0.62))
+        ob('dome', dome, metal_m(S['metal']))
+        ob('slit', C.box(Vector((0, -0.46, 0.1)), (0.62, 0.06, 0.09)), m('dark', '#1a1210', rough=0.9), 0)
+        ob('crossv', C.box(Vector((0, -0.47, -0.08)), (0.08, 0.05, 0.62)), metal_m(S['trim']))
+        ob('crossh', C.box(Vector((0, -0.47, 0.2)), (0.66, 0.05, 0.07)), metal_m(S['trim']))
+        pts = spline([Vector((0, -0.25, 0.52)), Vector((0, 0.05, 0.84)), Vector((0, 0.42, 0.7)), Vector((0, 0.62, 0.3))], 14)
+        ob('crest', C.tube(pts, interp([0.05, 0.13, 0.13, 0.03], len(pts)), seg=7), m('crest', S['main']))
+    elif k == 'spear':   # 뾰족 투구 — 원뿔 · 넓은 챙 · 푸른 꼬리털
+        dome = C.ellipsoid(Vector((0, 0, -0.02)), (0.48, 0.5, 0.44))
+        for v in [v for v in dome.verts if v.co.z < -0.14]:
+            dome.verts.remove(v)
+        ob('dome', dome, metal_m(S['metal']))
+        ob('spike', C.cone(Vector((0, 0, 0.62)), 0.2, 0.0, 0.62, seg=7), metal_m(S['trim']))
+        ob('inside', C.ellipsoid(Vector((0, -0.12, -0.2)), (0.36, 0.3, 0.26)), m('dark', '#1c2230', rough=0.9), 0)
+        ob('rim', C.torus(Vector((0, 0, -0.14)), 0.5, 0.06), m('rim', S['main']))
+        for sx in (-1, 1):
+            ob(f'cheek{sx}', C.ellipsoid(Vector((sx * 0.42, -0.1, -0.34)), (0.11, 0.22, 0.26), rot=Euler((0, sx * 0.2, 0))), metal_m(S['metal']))
+        pts = spline([Vector((0, 0.3, 0.26)), Vector((0, 0.62, 0.1)), Vector((0, 0.72, -0.34))], 12)
+        ob('tail', C.tube(pts, interp([0.07, 0.15, 0.03], len(pts)), seg=7), m('tail', S['main']))
+    elif k == 'bow':   # 두건 — 부드러운 천 · 뒤로 늘어진 끝 · 얼굴 구멍 · 깃털
+        hood = C.ellipsoid(Vector((0, 0.04, 0.02)), (0.52, 0.56, 0.58))
+        ob('hood', hood, m('hood', S['main'], rough=0.9))
+        ob('face', C.ellipsoid(Vector((0, -0.42, -0.08)), (0.32, 0.18, 0.34)), m('dark', '#1c2616', rough=0.95), 0)
+        fold = C.torus(Vector((0, -0.34, -0.08)), 0.34, 0.06, rot=Euler((math.radians(88), 0, 0)))
+        ob('fold', fold, m('fold', S['dark'], rough=0.9))
+        pts = spline([Vector((0, 0.4, 0.2)), Vector((0, 0.72, 0.02)), Vector((0, 0.9, -0.34))], 12)
+        ob('tip', C.tube(pts, interp([0.2, 0.13, 0.02], len(pts)), seg=7), m('hood', S['main'], rough=0.9))
+        fp = spline([Vector((0.38, -0.02, 0.26)), Vector((0.6, 0.02, 0.6)), Vector((0.62, 0.1, 0.92))], 10)
+        ob('feather', C.tube(fp, interp([0.03, 0.09, 0.01], len(fp)), seg=6), m('feather', '#f1e4c8'))
+    else:   # 마법사 모자 — 넓은 챙 · 꺾인 고깔 · 금 띠 · 빛나는 보석
+        ob('brim', C.ellipsoid(Vector((0, 0, -0.3)), (0.82, 0.78, 0.07)), m('brim', S['dark'], rough=0.85))
+        pts = spline([Vector((0, 0, -0.28)), Vector((0, 0.02, 0.14)), Vector((0.03, 0.12, 0.5)), Vector((0.2, 0.28, 0.76))], 16)
+        ob('cone', C.tube(pts, interp([0.46, 0.3, 0.15, 0.015], len(pts)), seg=10), m('cone', S['main'], rough=0.85))
+        ob('band', C.torus(Vector((0, 0, -0.17)), 0.42, 0.06), metal_m(S['trim']))
+        gem('g', S['gem'], Vector((0, -0.45, -0.12)), 0.09)
+
+
+def set_armor(k):
+    S = SETS[k]
+    ob('neck', C.ellipsoid(Vector((0, -0.04, 0.58)), (0.2, 0.15, 0.06)), m('dark', '#2a1a12', rough=0.9), 0)
+    if k == 'sword':   # 판금 흉갑 — 큰 어깨받이 · 금 십자
+        ob('chest', C.ellipsoid(Vector((0, 0, 0)), (0.5, 0.32, 0.62), egg=-0.22), metal_m(S['metal']))
+        for sx in (-1, 1):
+            ob(f'pad{sx}', C.ellipsoid(Vector((sx * 0.56, -0.02, 0.42)), (0.32, 0.32, 0.18), rot=Euler((0, sx * 0.5, 0))), m('pad', S['main']))
+        ob('cv', C.box(Vector((0, -0.3, 0.06)), (0.12, 0.05, 0.62)), metal_m(S['trim']))
+        ob('ch', C.box(Vector((0, -0.3, 0.14)), (0.42, 0.05, 0.11)), metal_m(S['trim']))
+        ob('belt', C.torus(Vector((0, -0.02, -0.4)), 0.4, 0.06), m('belt', S['main']))
+    elif k == 'spear':   # 미늘 갑옷 — 가로 띠 여러 줄 · 푸른 앞자락
+        ob('chest', C.ellipsoid(Vector((0, 0, 0.02)), (0.46, 0.3, 0.6), egg=-0.15), metal_m(S['metal']))
+        for j in range(5):
+            z = 0.36 - 0.17 * j
+            r = 0.47 - 0.015 * abs(j - 1)
+            # 몸에 붙은 앞쪽 호만 — 둥근 고리를 두르면 몸에서 떠 용수철처럼 보였다
+            arc = [Vector((math.cos(u) * r * 1.02, -math.sin(u) * 0.31, z)) for u in [math.radians(10 + 160 * q / 12) for q in range(13)]]
+            ob(f'lame{j}', C.tube(arc, 0.038, seg=6), m('lame', S['main']), O * 0.4)
+        ob('tabard', C.box(Vector((0, -0.31, -0.32)), (0.34, 0.05, 0.62)), m('tabard', S['main']))
+        ob('emblem', C.ellipsoid(Vector((0, -0.34, 0.2)), (0.14, 0.04, 0.17), egg=-0.4), metal_m(S['trim']))
+        for sx in (-1, 1):
+            ob(f'wing{sx}', C.cone(Vector((sx * 0.52, 0, 0.42)), 0.13, 0.0, 0.34, seg=5, rot=Euler((0, sx * 1.15, 0))), metal_m(S['trim']))
+    elif k == 'bow':   # 가죽 조끼 — 초록 망토 깃 · 화살통 끈 · 끈 매듭
+        ob('chest', C.ellipsoid(Vector((0, 0, 0)), (0.44, 0.28, 0.58), egg=-0.1), m('leather', S['metal'], rough=0.85))
+        ob('collar', C.ellipsoid(Vector((0, 0.02, 0.5)), (0.58, 0.42, 0.2)), m('cloak', S['main'], rough=0.9))
+        strap = [Vector((-0.34, -0.26, 0.42)), Vector((0, -0.31, 0.04)), Vector((0.34, -0.25, -0.34))]
+        ob('strap', C.tube(strap, 0.05, seg=6), m('strap', '#3b2415'))
+        for j in range(3):
+            ob(f'lace{j}', C.box(Vector((0.02, -0.29, 0.28 - 0.2 * j)), (0.2, 0.03, 0.03)), m('lacec', S['trim']), 0)
+        ob('belt', C.torus(Vector((0, -0.02, -0.38)), 0.36, 0.05), m('belt', '#3b2415'))
+        ob('leaf', C.ellipsoid(Vector((-0.22, -0.34, 0.46)), (0.11, 0.03, 0.07), rot=Euler((0, 0.5, 0))), m('leaf', S['trim']))
+    else:   # 긴 로브 — 아래로 넓게 퍼지고 금 띠 · 큰 보석
+        ob('robe', C.ellipsoid(Vector((0, 0, -0.04)), (0.48, 0.3, 0.72), egg=0.34), m('robe', S['main'], rough=0.85))
+        ob('hem', C.torus(Vector((0, 0, -0.58)), 0.5, 0.05), metal_m(S['trim']))
+        ob('center', C.box(Vector((0, -0.3, -0.12)), (0.12, 0.05, 0.9)), metal_m(S['trim']))
+        ob('collar', C.torus(Vector((0, -0.03, 0.5)), 0.24, 0.07), m('col', S['dark']))
+        gem('g', S['gem'], Vector((0, -0.34, 0.2)), 0.11)
+        for sx in (-1, 1):
+            ob(f'sleeve{sx}', C.ellipsoid(Vector((sx * 0.5, 0, 0.26)), (0.17, 0.2, 0.3), rot=Euler((0, sx * 0.4, 0))), m('sl', S['dark'], rough=0.85))
+
+
+def set_gloves(k):
+    S = SETS[k]
+    if k == 'sword':   # 건틀릿 — 판금 손가락 · 손등 판 · 마디 가시 · 넓은 손목
+        col = metal_m(S['metal'])
+        ob('palm', C.ellipsoid(Vector((0, 0, 0.1)), (0.32, 0.19, 0.3)), col)
+        for j in range(4):
+            x = -0.21 + 0.14 * j
+            ob(f'f{j}', C.tube([Vector((x, -0.02, 0.32)), Vector((x * 1.05, -0.06, 0.58 - abs(j - 1.5) * 0.05))], 0.075, seg=6), col)
+            ob(f'kn{j}', C.cone(Vector((x, -0.2, 0.3)), 0.05, 0.0, 0.13, seg=5, rot=Euler((math.radians(90), 0, 0))), metal_m(S['trim']), O * 0.5)
+        ob('thumb', C.tube([Vector((-0.3, -0.04, 0.12)), Vector((-0.47, -0.1, 0.34))], 0.08, seg=6), col)
+        ob('cuff', C.tube([Vector((0, 0.02, -0.46)), Vector((0, 0.02, -0.12))], [0.36, 0.24], seg=8), m('cuff', S['main']))
+        ob('rim', C.torus(Vector((0, 0.02, -0.45)), 0.36, 0.04), metal_m(S['trim']))
+    elif k == 'spear':   # 긴 팔덮개 — 지느러미 판 셋
+        col = m('glove', S['main'])
+        ob('palm', C.ellipsoid(Vector((0, 0, 0.16)), (0.28, 0.17, 0.26)), col)
+        for j in range(4):
+            x = -0.2 + 0.135 * j
+            ob(f'f{j}', C.tube([Vector((x, -0.02, 0.36)), Vector((x * 1.05, -0.06, 0.6 - abs(j - 1.5) * 0.05))], 0.06, seg=6), col)
+        ob('thumb', C.tube([Vector((-0.27, -0.04, 0.18)), Vector((-0.42, -0.1, 0.36))], 0.065, seg=6), col)
+        ob('cuff', C.tube([Vector((0, 0.02, -0.66)), Vector((0, 0.02, -0.04))], [0.25, 0.22], seg=8), metal_m(S['metal']))
+        for j in range(3):
+            ob(f'fin{j}', C.cone(Vector((0.26, 0.02, -0.5 + 0.2 * j)), 0.09, 0.0, 0.26, seg=4, rot=Euler((0, 1.25, 0))), metal_m(S['trim']), O * 0.6)
+        ob('rim', C.torus(Vector((0, 0.02, -0.04)), 0.23, 0.035), metal_m(S['trim']))
+    elif k == 'bow':   # 궁수 장갑 — 손가락 세 개만 · 맨 손끝 · 초록 팔찌 · 깃털
+        col = m('glove', S['metal'], rough=0.85)
+        ob('palm', C.ellipsoid(Vector((0, 0, 0.1)), (0.29, 0.16, 0.28)), col)
+        for j in range(3):
+            x = -0.14 + 0.135 * j
+            ob(f'f{j}', C.tube([Vector((x, -0.02, 0.3)), Vector((x, -0.04, 0.44))], 0.065, seg=6), col)
+            ob(f'tip{j}', C.ellipsoid(Vector((x, -0.04, 0.48)), (0.055, 0.055, 0.06)), m('skin', '#e8c49a'), O * 0.5)
+        ob('thumb', C.tube([Vector((-0.27, -0.04, 0.1)), Vector((-0.4, -0.1, 0.28))], 0.065, seg=6), col)
+        ob('bracer', C.tube([Vector((0, 0.02, -0.44)), Vector((0, 0.02, -0.12))], [0.25, 0.21], seg=8), m('bracer', S['main'], rough=0.85))
+        for j in range(2):
+            ob(f'strap{j}', C.torus(Vector((0, 0.02, -0.36 + 0.16 * j)), 0.235, 0.022), m('strap', '#3b2415'), O * 0.4)
+        fp = spline([Vector((0.2, -0.02, -0.24)), Vector((0.46, 0.0, -0.3)), Vector((0.66, 0.02, -0.5))], 9)
+        ob('feather', C.tube(fp, interp([0.03, 0.09, 0.01], len(fp)), seg=6), m('feather', S['trim']))
+    else:   # 비단 장갑 — 얇은 손가락 · 금 고리 · 손등 보석 · 나팔 소매
+        col = m('glove', S['main'], rough=0.8)
+        ob('palm', C.ellipsoid(Vector((0, 0, 0.1)), (0.26, 0.14, 0.27)), col)
+        for j in range(4):
+            x = -0.18 + 0.12 * j
+            ob(f'f{j}', C.tube([Vector((x, -0.02, 0.3)), Vector((x * 1.05, -0.05, 0.6 - abs(j - 1.5) * 0.06))], 0.045, seg=6), col)
+        ob('ring', C.torus(Vector((0.06, -0.04, 0.42)), 0.052, 0.018, rot=Euler((0, 0, 0))), metal_m(S['trim']), O * 0.4)
+        ob('thumb', C.tube([Vector((-0.24, -0.04, 0.1)), Vector((-0.38, -0.09, 0.3))], 0.05, seg=6), col)
+        ob('cuff', C.tube([Vector((0, 0.02, -0.5)), Vector((0, 0.02, -0.12))], [0.38, 0.2], seg=9), m('cuff', S['dark'], rough=0.85))
+        ob('rim', C.torus(Vector((0, 0.02, -0.5)), 0.38, 0.04), metal_m(S['trim']))
+        gem('g', S['gem'], Vector((0, -0.17, 0.12)), 0.08)
+
+
+def set_boots(k):
+    S = SETS[k]
+    ob('sole', C.box(Vector((0, -0.12, -0.47)), (0.4, 0.8, 0.07)), m('sole', '#3b2415'))
+    if k == 'sword':   # 판금 신 — 무릎 덮개 · 뾰족 발끝 · 진홍 띠
+        col = metal_m(S['metal'])
+        ob('leg', C.tube([Vector((0, 0.12, -0.2)), Vector((0, 0.1, 0.5))], [0.22, 0.2], seg=8), col)
+        ob('foot', C.ellipsoid(Vector((0, -0.15, -0.32)), (0.22, 0.4, 0.17), egg=0.1), col)
+        ob('toe', C.cone(Vector((0, -0.58, -0.36)), 0.11, 0.0, 0.26, seg=6, rot=Euler((math.radians(90), 0, 0))), metal_m(S['trim']))
+        ob('knee', C.ellipsoid(Vector((0, -0.08, 0.52)), (0.2, 0.14, 0.17)), metal_m(S['trim']))
+        ob('band', C.torus(Vector((0, 0.11, 0.1)), 0.215, 0.05), m('band', S['main']))
+    elif k == 'spear':   # 긴 정강이받이 — 푸른 천 · 앞 판 · 박차
+        col = m('boot', S['main'])
+        ob('leg', C.tube([Vector((0, 0.12, -0.2)), Vector((0, 0.1, 0.64))], [0.2, 0.2], seg=8), col)
+        ob('foot', C.ellipsoid(Vector((0, -0.15, -0.32)), (0.2, 0.38, 0.17), egg=0.1), col)
+        ob('greave', C.box(Vector((0, -0.09, 0.2)), (0.26, 0.06, 0.8)), metal_m(S['metal']))
+        ob('fin', C.cone(Vector((0.22, 0.1, 0.56)), 0.09, 0.0, 0.3, seg=4, rot=Euler((0, 1.1, 0))), metal_m(S['trim']), O * 0.6)
+        ob('spur', C.cone(Vector((0, 0.42, -0.32)), 0.05, 0.0, 0.26, seg=5, rot=Euler((math.radians(-90), 0, 0))), metal_m(S['trim']), O * 0.6)
+    elif k == 'bow':   # 부드러운 가죽 장화 — 접은 초록 끝 · 끈 셋
+        col = m('boot', S['metal'], rough=0.85)
+        ob('leg', C.tube([Vector((0, 0.12, -0.2)), Vector((0, 0.12, 0.42))], [0.19, 0.2], seg=8), col)
+        ob('foot', C.ellipsoid(Vector((0, -0.17, -0.33)), (0.19, 0.36, 0.15), egg=0.1), col)
+        ob('fold', C.tube([Vector((0, 0.12, 0.34)), Vector((0, 0.12, 0.58))], [0.26, 0.28], seg=8), m('fold', S['main'], rough=0.9))
+        for j in range(3):
+            ob(f'lace{j}', C.torus(Vector((0, 0.12, -0.14 + 0.15 * j)), 0.2, 0.02), m('lacec', '#3b2415'), O * 0.4)
+        ob('leaf', C.ellipsoid(Vector((0.14, -0.13, 0.48)), (0.03, 0.1, 0.07)), m('leaf', S['trim']))
+    else:   # 끝이 말린 신 — 보라 천 · 금 끝 · 작은 보석
+        col = m('boot', S['main'], rough=0.8)
+        ob('leg', C.tube([Vector((0, 0.14, -0.22)), Vector((0, 0.14, 0.22))], [0.2, 0.2], seg=8), col)
+        ob('foot', C.ellipsoid(Vector((0, -0.12, -0.33)), (0.2, 0.42, 0.15), egg=0.1), col)
+        pts = spline([Vector((0, -0.44, -0.32)), Vector((0, -0.66, -0.24)), Vector((0, -0.74, -0.04)), Vector((0, -0.62, 0.06))], 12)
+        ob('curl', C.tube(pts, interp([0.12, 0.08, 0.05, 0.02], len(pts)), seg=7), col)
+        ob('pom', C.ellipsoid(pts[-1], (0.06, 0.06, 0.06)), metal_m(S['trim']), O * 0.5)
+        ob('rim', C.torus(Vector((0, 0.14, 0.22)), 0.21, 0.05), metal_m(S['trim']))
+        gem('g', S['gem'], Vector((0, -0.28, -0.14)), 0.06)
+
+
+# 견갑 네 벌 — 기존 틀에 색 · 장식(모양 차이는 가시 수 · 보석 · 어깨 위 장식)
+SHOULDERS.update({
+    'set-sword': dict(main='#b8322c', trim='#e8b23a', spikes=0, gem=None, extra='plate'),
+    'set-spear': dict(main='#2a5fa8', trim='#dfe8f2', spikes=3, gem=None, extra='fins'),
+    'set-bow': dict(main='#4f8a3f', trim='#d8b86a', spikes=0, gem=None, extra='feathers'),
+    'set-staff': dict(main='#6a3fb0', trim='#f2c232', spikes=0, gem='#7fe3ff', extra='orb'),
+})
+
+
+def set_shoulder(k):
+    kind = f'set-{k}'
+    shoulder(kind)
+    S = SETS[k]
+    if k == 'sword':   # 금 십자 판
+        ob('plate', C.ellipsoid(Vector((0.1, -0.36, 0.3)), (0.18, 0.05, 0.22), egg=-0.3), metal_m(S['metal']))
+        ob('cv', C.box(Vector((0.1, -0.41, 0.3)), (0.06, 0.03, 0.3)), metal_m(S['trim']), O * 0.5)
+        ob('ch', C.box(Vector((0.1, -0.41, 0.34)), (0.22, 0.03, 0.06)), metal_m(S['trim']), O * 0.5)
+    elif k == 'bow':   # 깃털 셋
+        for j, a in enumerate((-0.45, 0.0, 0.45)):
+            base = Vector((0.08 + 0.2 * j - 0.12, 0.08, 0.52))
+            tip = base + Vector((math.sin(a) * 0.3 + 0.1, 0.1, 0.5))
+            pts = spline([base, base.lerp(tip, 0.5), tip], 8)
+            ob(f'fe{j}', C.tube(pts, interp([0.03, 0.09, 0.01], len(pts)), seg=6), m('feather', S['trim'] if j == 1 else '#f1e4c8'))
+    elif k == 'staff':   # 떠 있는 작은 구슬
+        for j, (x, z) in enumerate(((-0.1, 0.84), (0.34, 0.72))):
+            ob(f'orb{j}', C.ellipsoid(Vector((x, -0.02, z)), (0.08, 0.08, 0.08)), m('orb', S['gem'], rough=0.2, emit=S['gem'], es=0.7), O * 0.5)
+
+
 # 3/4 로 보일 파츠 — (옆으로 도는 각, 앞으로 숙이는 각)
 TURN = {'helmet': (-32, 8), 'armor': (-26, 4), 'gloves': (-30, 6), 'boots': (-62, 4), 'shoulder': (-58, 14)}
 
@@ -303,6 +507,12 @@ for t in (1, 2, 3):
     JOBS[f'boots-{t}'] = (boots, t, (-30, 18), 1.6)
 for k in SHOULDERS:
     JOBS[f'shoulder-{k}'] = (shoulder, k, (-35, 24), 1.9)
+for k in SETS:
+    JOBS[f'set-{k}-helmet'] = (set_helmet, k, (-30, 18), 1.95 if k in ('sword', 'spear') else 2.1)
+    JOBS[f'set-{k}-armor'] = (set_armor, k, (-28, 14), 1.8)
+    JOBS[f'set-{k}-gloves'] = (set_gloves, k, (-22, 20), 1.75)
+    JOBS[f'set-{k}-boots'] = (set_boots, k, (-30, 18), 1.75)
+    JOBS[f'set-{k}-shoulder'] = (set_shoulder, k, (-35, 24), 2.0)
 for lv in range(16):
     JOBS[f'drum-{lv:02d}'] = (drum, lv, (-24, 22), 2.3)
     JOBS[f'sword-{lv:02d}'] = (sword_lv, lv, (25, 15), 2.0)
@@ -311,13 +521,15 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['gear', 'dr
 names = []
 for a in argv:
     if a == 'gear':
-        names += [k for k in JOBS if not k.startswith('drum-') and not k.startswith('sword-')]
+        names += [k for k in JOBS if not k.startswith('drum-') and not k.startswith('sword-') and not k.startswith('set-')]
     elif a == 'drums':
         names += [k for k in JOBS if k.startswith('drum-')]
     elif a == 'swords':
         names += [k for k in JOBS if k.startswith('sword-')]
     else:
         names.append(a)
+if 'sets' in argv:   # 세트 파츠만: gear_icons.py -- sets
+    names = [k for k in JOBS if k.startswith('set-')]
 os.makedirs(OUTDIR, exist_ok=True)
 for name in names:
     fn, arg, (yaw, elev), scale = JOBS[name]
@@ -330,7 +542,7 @@ for name in names:
         fn(arg)
     finally:
         C.FACET = 0
-    turn = TURN.get(name.split('-')[0], 0)
+    turn = TURN.get(name.split('-')[-1] if name.startswith('set-') else name.split('-')[0], 0)
     if turn:
         piv = bpy.data.objects.new('pivot', None)
         bpy.context.scene.collection.objects.link(piv)

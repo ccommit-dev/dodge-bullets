@@ -1337,7 +1337,9 @@
 
 /* 사냥터 머리줄 환생 단추 (2026-11-03) — 마이페이지와 지갑 사이 여백. 올리면(터치는 누르면) 조건 요약 */
 .titans-header .titans-back { min-width: 0; flex: 0 1 auto; }
-.header-rebirth { position: relative; flex: 0 0 auto; z-index: 60; }
+.header-rebirth { position: relative; flex: 0 0 auto; }
+.header-rebirth.open, .header-rebirth:has(.header-rebirth-btn:focus-visible) { z-index: 60; }   /* 평소엔 올리지 않는다 — 상점 시트 위로 튀어나왔다 */
+@media (hover: hover) { .header-rebirth:hover { z-index: 60; } }
 .header-rebirth-btn { display: grid; grid-template-rows: 14px auto auto; justify-items: center; width: 40px; padding: 1px 0 2px; border: 2px solid #3b2415; border-radius: 12px; background: #fff7e6; color: #3b2415; line-height: 1.05; cursor: pointer; box-shadow: 0 2px 0 #3b2415; }
 .header-rebirth-btn img { width: 14px; height: 14px; object-fit: contain; }
 .header-rebirth-btn b { font-size: 13px; font-weight: 800; }
@@ -1432,3 +1434,63 @@
   .titans-bottom-nav button img, .titans-bottom-nav .content-icon { width: 24px !important; height: 24px !important; }
   .titans-layer > .titans-buffs span { translate: 0 -92px; }
 }
+
+/* 장비창 (2026-11-04, titans/EquipWindow) — 온라인 게임 인벤토리 느낌: 어두운 나무 판 · 눌린 칸 · 등급 테두리 */
+.equip-window { --eq-grade: #8a7355; position: relative; display: grid; gap: 8px; margin: 0 0 8px; padding: 10px; border: 2px solid #3b2415; border-radius: 16px; background: linear-gradient(180deg, #4a3020, #2e1c10); box-shadow: inset 0 1px 0 rgba(255, 233, 190, .22), 0 3px 0 rgba(59, 36, 21, .4); touch-action: pan-y; }
+.equip-doll { display: grid; grid-template-columns: 62px minmax(0, 1fr) 62px; gap: 6px; align-items: stretch; }
+.equip-col { display: grid; gap: 6px; }
+.equip-slot { position: relative; display: grid; place-items: center; width: 62px; height: 62px; padding: 0 0 8px; box-sizing: border-box; cursor: pointer; border: 2px solid var(--eq-grade); border-radius: 12px; background: radial-gradient(circle at 50% 42%, #3f2a1b, #1f130a); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .65), inset 0 -1px 0 rgba(255, 233, 190, .12); }
+.equip-slot img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .6)); pointer-events: none; }
+.equip-slot small { position: absolute; left: 0; right: 0; bottom: 1px; font-size: 13px; font-weight: 800; line-height: 1; text-align: center; color: #e7d3ae; text-shadow: 0 1px 1px #000; pointer-events: none; }
+.equip-slot em { position: absolute; top: 1px; right: 3px; font-size: 13px; font-style: normal; font-weight: 900; color: #fde68a; text-shadow: 0 1px 1px #000; pointer-events: none; }
+.equip-slot.is-empty small { bottom: auto; top: 50%; translate: 0 -50%; font-size: 13px; color: #a48a66; }
+.equip-slot.can-drop { border-color: #fde047; animation: equip-can-drop .8s ease-in-out infinite; }
+.equip-slot.drop-over { border-color: #4ade80; background: radial-gradient(circle at 50% 42%, #2e6a3e, #16331e); transform: scale(1.08); }
+.equip-slot.drop-denied { border-color: #ef4444; background: radial-gradient(circle at 50% 42%, #6a2e2e, #331616); }
+@keyframes equip-can-drop { 50% { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .65), 0 0 12px rgba(253, 224, 71, .9); } }
+.equip-hero { position: relative; overflow: hidden; min-height: 198px; border-radius: 12px; background: radial-gradient(ellipse at 50% 88%, rgba(255, 216, 130, .34), transparent 62%), linear-gradient(180deg, #5a3d28, #36220f); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .5); }
+.equip-hero .equipped-character { position: absolute !important; left: 50%; bottom: 6px; width: 152px; height: 304px; margin: 0; translate: -50% 0; transform: none; }
+.equip-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; padding: 6px; border-radius: 12px; background: rgba(0, 0, 0, .28); box-shadow: inset 0 1px 4px rgba(0, 0, 0, .6); }
+.titans-shop .equip-bag .equip-item, .equip-bag .equip-item { position: relative; display: grid; justify-items: center; align-content: center; gap: 0; min-width: 0; width: auto; height: 66px !important; padding: 3px 1px !important; border: 2px solid var(--eq-grade) !important; border-radius: 12px !important; background: radial-gradient(circle at 50% 38%, #4c3423, #24160c) !important; box-shadow: inset 0 1px 0 rgba(255, 233, 190, .18) !important; color: #fff3da !important; cursor: grab; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.equip-bag .equip-item img { width: 38px; height: 38px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .55)); }
+.equip-bag .equip-item span { font-size: 13px !important; font-weight: 800; line-height: 1.05; color: #fff3da; white-space: nowrap; pointer-events: none; }
+.equip-bag .equip-item span em { font-style: normal; color: #fde68a; }
+.equip-bag .equip-item.on { background: radial-gradient(circle at 50% 38%, #7a5a22, #3a2710) !important; box-shadow: 0 0 0 2px #fbbf24 !important; }
+.equip-bag .equip-item.is-lifted { opacity: .3; }
+.equip-item.on::before { content: "E"; position: absolute; top: 2px; left: 3px; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 5px; background: #fbbf24; color: #3b2415; font-size: 13px; font-weight: 900; line-height: 1; pointer-events: none; }
+.equip-slot.grade-normal, .equip-item.grade-normal { --eq-grade: #94a3b8; }
+.equip-slot.grade-rare, .equip-item.grade-rare { --eq-grade: #3b82f6; }
+.equip-slot.grade-epic, .equip-item.grade-epic { --eq-grade: #a855f7; }
+.equip-slot.grade-legendary, .equip-item.grade-legendary { --eq-grade: #f59e0b; }
+.equip-ghost { position: fixed; z-index: 9999; width: 64px; height: 64px; translate: -50% -70%; pointer-events: none; }
+.equip-ghost img { width: 100%; height: 100%; object-fit: contain; rotate: -8deg; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, .55)); }
+.equip-info { display: grid; gap: 2px; padding: 0 2px; }
+.equip-info > b { font-size: 14px; font-weight: 900; color: #fde68a; }
+.equip-window .weapon-kind-stat { display: block; margin: 0; font-size: 13px !important; line-height: 1.3; color: #f1e2c8 !important; font-weight: 600; }
+.equip-window .look-pending { color: #86efac; }
+/* 고른 칸 · 세트가 맞는 칸 */
+.equip-slot.selected { outline: 2px solid #fde68a; outline-offset: 1px; }
+.equip-slot.set-active::after { content: "✓"; position: absolute; top: 1px; left: 3px; font-size: 13px; font-weight: 900; color: #86efac; text-shadow: 0 1px 1px #000; pointer-events: none; }
+.equip-shop-link { display: grid; justify-items: center; align-content: center; min-width: 0; height: 66px; padding: 0; border: 2px dashed #a48a66; border-radius: 12px; background: transparent; color: #e7d3ae; cursor: pointer; }
+.equip-shop-link b { font-size: 22px; line-height: 1; }
+.equip-shop-link span { font-size: 13px; font-weight: 800; }
+.equip-window .gear-set-stat { display: block; font-size: 13px; line-height: 1.3; font-weight: 600; color: #f1e2c8; }
+/* 상점 — 세트 카드 */
+.gear-set-card { grid-column: 1 / -1; display: grid; gap: 8px; padding: 10px; }
+.gear-set-card > header { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: center; }
+.gear-set-card > header img { width: 40px; height: 40px; object-fit: contain; }
+.gear-set-card > header strong { display: block; font-size: 15px; font-weight: 900; }
+.gear-set-card > header strong em { margin-left: 4px; font-size: 13px; font-style: normal; font-weight: 800; color: #b45309; }
+.gear-set-card > header small { display: block; font-size: 13px; line-height: 1.25; color: #6b4a2f; }
+.gear-set-pieces { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.titans-shop .gear-set-pieces .gear-piece, .gear-set-pieces .gear-piece { display: grid; justify-items: center; align-content: start; gap: 0; min-width: 0; width: auto; height: auto; padding: 4px 1px !important; border: 2px solid #3b2415 !important; border-radius: 10px !important; background: radial-gradient(circle at 50% 35%, #4c3423, #24160c) !important; color: #fff3da !important; box-shadow: none !important; opacity: 1; }
+.gear-set-pieces .gear-piece img { width: 40px; height: 40px; object-fit: contain; }
+.gear-set-pieces .gear-piece span { font-size: 13px; font-weight: 800; line-height: 1.1; color: #fff3da; }
+.gear-set-pieces .gear-piece small { display: inline-flex; align-items: center; gap: 1px; font-size: 13px; font-weight: 800; line-height: 1.15; color: #fde68a; white-space: nowrap; }
+.gear-set-pieces .gear-piece small img { width: 13px; height: 13px; }
+.gear-set-pieces .gear-piece.owned { border-color: #16a34a !important; }
+.gear-set-pieces .gear-piece.owned small { color: #86efac; }
+.gear-set-pieces .gear-piece:disabled:not(.owned) { opacity: .55; }
+.titans-shop .gear-set-card .gear-set-buy, .gear-set-buy { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 40px; border: 2px solid #3b2415; border-radius: 12px; background: #fcd34d; color: #3b2415; font-size: 14px; font-weight: 900; }
+.gear-set-buy:disabled { opacity: .55; }
+.gear-set-done { margin: 0; font-size: 13px; font-weight: 800; text-align: center; color: #15803d; }
