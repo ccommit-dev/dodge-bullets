@@ -51,7 +51,8 @@ await page.screenshot({ path: "art-gen/out/hunt-motion-sword.png" });
 ok("검: 전장 hero-melee", /hero-melee/.test(b.cls), b.cls.match(/hero-\w+/)?.[0]);
 ok("검: 주인공 상자 오른쪽이 몬스터 보이는 몸 가장자리에 닿는다(±24px)", !!b.hero && Math.abs(b.hero.r - b.monEdge) <= 24, `주인공 오른쪽 ${b.hero?.r.toFixed(0)} · 몬스터 가장자리 ${b.monEdge.toFixed(0)}`);
 ok("검: 근접 동료 모두 몬스터 근처에 서 있다(거리를 두되 130px 안)", b.melee.length >= 1 && b.melee.every((x) => b.monEdge - x.r <= 130), b.melee.map((x) => (b.monEdge - x.r).toFixed(0)).join(","));
-ok("검: 원거리 동료가 전장 왼쪽 끝(20px)에 붙어 있지 않다 — 앞으로 나온다", b.ranged.length >= 1 && b.ranged.every((x) => x.l >= 20), b.ranged.map((x) => x.l.toFixed(0)).join(","));
+// 옛 버그는 원거리가 모두 왼쪽 끝에 붙는 것이었다. 맨 뒤 칸 자리는 몬스터 크기에 따라 19~53px 로 달라져(큰 몬스터면 앞으로 밀려) 20px 문턱에 드물게 걸렸다 — 맨 앞 원거리가 앞으로 나오고 모두 화면 안인지 본다
+ok("검: 원거리 동료가 전장 왼쪽 끝에 몰려 있지 않다 — 맨 앞이 앞으로 나오고 모두 화면 안", b.ranged.length >= 1 && Math.max(...b.ranged.map((x) => x.l)) >= 40 && b.ranged.every((x) => x.l >= 0), b.ranged.map((x) => x.l.toFixed(0)).join(","));
 ok("검: 주인공 한 방 = 붙어서 베기(.titans-fx-slash.el-hero)", await seen(".titans-fx-slash.el-hero"));
 // 다음 몬스터 — 다시 처음부터 걸어 들어온다
 let reEnter = false;
