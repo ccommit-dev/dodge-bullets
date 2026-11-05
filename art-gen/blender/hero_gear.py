@@ -83,11 +83,11 @@ def helmet(k, S):
         fp = spline([HEAD + Vector((0.26, 0.0, 0.2)), HEAD + Vector((0.38, 0.02, 0.38)), HEAD + Vector((0.4, 0.06, 0.56))], 10)
         put(g, b, 'feather', C.tube(fp, interp([0.018, 0.05, 0.008], len(fp)), seg=6), mat('feather', '#f1e4c8'))
     else:   # 마법사 모자 — 넓은 챙 · 꺾인 고깔 · 금 띠 · 빛나는 보석
-        put(g, b, 'brim', C.ellipsoid(HEAD + Vector((0, 0.0, 0.17)), (0.47, 0.45, 0.035)), mat('brim', S['dark'], rough=0.85))
-        pts = spline([HEAD + Vector((0, 0, 0.18)), HEAD + Vector((0, 0.01, 0.38)), HEAD + Vector((0.02, 0.07, 0.56)), HEAD + Vector((0.12, 0.17, 0.68))], 16)
+        put(g, b, 'brim', C.ellipsoid(HEAD + Vector((0, 0.0, 0.215)), (0.47, 0.45, 0.035)), mat('brim', S['dark'], rough=0.85))
+        pts = spline([HEAD + Vector((0, 0, 0.225)), HEAD + Vector((0, 0.01, 0.425)), HEAD + Vector((0.02, 0.07, 0.605)), HEAD + Vector((0.12, 0.17, 0.725))], 16)
         put(g, b, 'cone', C.tube(pts, interp([0.27, 0.17, 0.085, 0.01], len(pts)), seg=10), mat('cone', S['main'], rough=0.85))
-        put(g, b, 'band', C.torus(HEAD + Vector((0, 0, 0.23)), 0.245, 0.03), metal_m(S['trim']))
-        put(g, b, 'gem', C.ellipsoid(HEAD + Vector((0, -0.25, 0.23)), (0.05, 0.03, 0.06)), mat('gem', S['gem'], rough=0.25, emit=S['gem'], es=0.6), O * 0.6)
+        put(g, b, 'band', C.torus(HEAD + Vector((0, 0, 0.275)), 0.235, 0.03), metal_m(S['trim']))
+        put(g, b, 'gem', C.ellipsoid(HEAD + Vector((0, -0.24, 0.275)), (0.05, 0.03, 0.06)), mat('gem', S['gem'], rough=0.25, emit=S['gem'], es=0.6), O * 0.6)
 
 
 # ── 갑옷 ── 몸 앞을 덮는 껍데기. 머리 아래 턱선 위로는 올라가지 않는다
