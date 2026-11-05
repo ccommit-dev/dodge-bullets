@@ -661,7 +661,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const nearMon = mon && it.el.classList.contains("combat-melee") ? monEdge - it.full : null;
         const nearLimit = (field.querySelector(".titans-hero.has-mount") ? 74 : 52) + 24;   /* 평소 거리(--ally-stand 22px)만큼 더 비켜설 수 있어야 주인공에 포개지 않는다 */   // 탈것을 타면 올라간 몸을 비켜설 자리가 더 필요하다 — 52 면 22% 포갠 채 막혔다
         const meleeMin = nearMon !== null && nearMon <= nearLimit ? nearMon - nearLimit : -Infinity;
-        const minDx = Math.max(fr.left + 36 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다
+        const minDx = Math.max(fr.left + 38 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다 · 38px — 36 이면 큰 몬스터 앞에서 칸 왼쪽이 19.3px 로 전장 왼쪽 20px 약속을 넘었다
         const maxDx = mon ? mon.left - 6 - it.art.right : fr.right - 28 - it.art.right;
         return Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), Math.max(-60, Math.min(60, dx))));
       };
