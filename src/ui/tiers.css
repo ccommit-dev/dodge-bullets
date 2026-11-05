@@ -102,11 +102,13 @@
 .titans-field .skill-tier-fx > .tier-burst { position: absolute; left: var(--fx-x, 50%); top: var(--fx-y, 55%); width: var(--burst-w, 50%); aspect-ratio: 1; transform: translate(-50%, -50%); overflow: hidden; z-index: 2; }
 .titans-field .skill-tier-fx > .tier-burst::before { content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: 0 0 / 100% 100% no-repeat; animation: fx-strip6 var(--burst-t, .55s) steps(6, end) forwards; }
 .titans-field .skill-tier-fx.tier-N > .tier-burst { display: none; }
+/* 신화 · 초월은 전장을 거의 덮는다 — 비쳐 보여야 싸움이 안 끊긴다 */
+.titans-field .skill-tier-fx:is(.tier-UR, .tier-LR) > .tier-burst { opacity: .82; }
 .titans-field .skill-tier-fx.tier-R { --burst-w: 56%; --burst-t: .5s; }
 .titans-field .skill-tier-fx.tier-SR { --burst-w: 72%; --burst-t: .56s; }
 .titans-field .skill-tier-fx.tier-SSR { --burst-w: 92%; --burst-t: .64s; }
-.titans-field .skill-tier-fx.tier-UR { --burst-w: 110%; --burst-t: .76s; }
-.titans-field .skill-tier-fx.tier-LR { --burst-w: 128%; --burst-t: .92s; }
+.titans-field .skill-tier-fx.tier-UR { --burst-w: 100%; --burst-t: .76s; }
+.titans-field .skill-tier-fx.tier-LR { --burst-w: 116%; --burst-t: .92s; }
 .titans-field .skill-tier-fx.tier-R > .tier-burst::before { background-image: url("/titans/fx/tier-r.webp"); }
 .titans-field .skill-tier-fx.tier-SR > .tier-burst::before { background-image: url("/titans/fx/tier-sr.webp"); }
 .titans-field .skill-tier-fx.tier-SSR > .tier-burst::before { background-image: url("/titans/fx/tier-ssr.webp"); }
@@ -183,3 +185,8 @@
 .gear-item-row[data-tier] > img { box-sizing: border-box; padding: 3px; }
 .gear-item-row[data-tier="LR"] > img, .equipment-training-card[data-tier="LR"] .training-item-icon { border: 3px solid transparent !important; border-radius: 12px !important; background: radial-gradient(circle at 50% 40%, #fff, #c7d2fe 60%, #6366f1) padding-box, linear-gradient(100deg, #5eead4, #a78bfa, #f0abfc, #fde047, #4ade80) border-box !important; }
 .equipment-training-card[data-tier="LR"] .training-item-icon::before { display: none; }
+
+/* 스킬 카드 — 왼쪽 띠 · 바탕을 속성 대신 등급으로(속성은 펼치면 표로 본다) · 도감 그림 틀 */
+.skill-learn-card.skill-outline { --el: var(--t); --el-tint: var(--t-tint); }
+.codex-card.owned .codex-card-art { display: block; box-sizing: border-box; border-radius: 12px; background: var(--tf-plate); border: var(--tf-border); box-shadow: var(--tf-shadow); }
+.codex-card.owned.rarity-lr .codex-card-art { border: 3px solid transparent; background: radial-gradient(circle at 50% 40%, #fff, #c7d2fe 60%, #6366f1) padding-box, linear-gradient(100deg, #5eead4, #a78bfa, #f0abfc, #fde047, #4ade80) border-box; }

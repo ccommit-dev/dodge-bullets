@@ -280,7 +280,7 @@ export function CharacterStatus({
       <section className="character-hero-card">
         <div className="character-equipment-preview">
           <div className="character-equipment-facing">
-            <EquippedCharacter mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} gear={{ shield: shieldTierOf(progress.dodgeBestStage), gloves: glovesTierOf(titans.equipmentTraining.weaponMastery), boots: bootsTierOf(progress.towerBestFloor) }} />
+            <EquippedCharacter worn={progress.equippedGear} mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} gear={{ shield: shieldTierOf(progress.dodgeBestStage), gloves: glovesTierOf(titans.equipmentTraining.weaponMastery), boots: bootsTierOf(progress.towerBestFloor) }} />
           </div>
         </div>
         <div className="character-identity">

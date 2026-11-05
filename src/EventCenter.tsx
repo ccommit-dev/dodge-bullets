@@ -641,7 +641,7 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
         <div className="rift-run-party">
           {party.map((id, i) => <AllyArt key={id} id={id as never} attacking pulse={tl.strike >= 0 ? tl.strike * 3 + i : 0} hitPulse={tl.monsters.some((p) => p === "attack") || tl.boss === "attack" ? tick : 0} partySlot={i} engaged />)}
           <span className={`rift-hero ${tl.strike >= 0 ? "is-striking" : ""}`} aria-hidden="true">
-            <EquippedCharacter mode={tl.strike >= 0 ? "attack" : "idle"} frame={tick % heroFrames(tl.strike >= 0 ? "attack" : "idle")} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+            <EquippedCharacter worn={progress.equippedGear} mode={tl.strike >= 0 ? "attack" : "idle"} frame={tick % heroFrames(tl.strike >= 0 ? "attack" : "idle")} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
           </span>
         </div>
         <div className="rift-run-monsters">
@@ -716,7 +716,7 @@ function DuelOverlay({ duel, progress, onClose }: { duel: { name: string; title:
       {!done && <button type="button" className="duel-skip" onClick={(e) => { e.stopPropagation(); setStep(swings.length); }}>스킵 ›</button>}
       <div className="duel-stage">
         <div className={`duel-fighter me ${step >= 0 ? "engaged" : ""} ${meStrike ? "striking" : ""} ${foeStrike ? "hurt" : ""} ${done && !duel.win ? "down" : ""}`}>
-          <EquippedCharacter key={`me-${step}`} mode={meStrike ? "attack" : "idle"} frame={meStrike ? HERO_ATTACK_IMPACT : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
+          <EquippedCharacter worn={progress.equippedGear} key={`me-${step}`} mode={meStrike ? "attack" : "idle"} frame={meStrike ? HERO_ATTACK_IMPACT : 0} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} character={progress.activeCharacter} armorLevel={progress.armorLevel} />
           {foeStrike && sw && <b key={`fm-${step}`} className="duel-float foe-dmg">-{Math.round(sw.dmg).toLocaleString()}</b>}
         </div>
         <div className={`duel-fighter foe ${step >= 0 ? "engaged" : ""} ${foeStrike ? "striking" : ""} ${meStrike ? "hurt" : ""} ${done && duel.win ? "down" : ""}`}>

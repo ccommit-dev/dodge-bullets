@@ -170,6 +170,12 @@ const shopRow = await page.evaluate(() => [...document.querySelectorAll(".gear-i
 ok("상점: 파츠마다 등급 이름 · 안 키운 것은 영웅 · 넘침 없음", shopRow.length === 20 && shopRow.every(([t, c, o]) => c === T2[t] && o <= 0) && shopRow.filter(([t]) => t === "SR").length === 18, JSON.stringify(shopRow.slice(0, 3)));
 if (OUT) await page.screenshot({ path: `${OUT}/equip-shop.png` });
 
+await page.evaluate(() => document.querySelector(".hub-sheet-close, .hub-sheet-head button")?.click()); await sleep(300);
+await seed({ ownedGear: ["bow-helmet"], equippedGear: { helmet: "bow-helmet" } });
+await page.evaluate(() => document.querySelector(".mypage-label")?.closest("button")?.click()); await sleep(1200);
+const myWear = await page.evaluate(() => [...document.querySelectorAll(".character-page .equipment-wear, .equipment-wear")].map((w) => w.dataset.wear));
+ok("다른 화면 주인공도 입는다(1벌 이상 보인다)", myWear.includes("bow-helmet"), JSON.stringify(myWear));
+
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 ok("빠진 그림 없음", missing.length === 0, missing.slice(0, 4).join(" | "));
 await browser.close();

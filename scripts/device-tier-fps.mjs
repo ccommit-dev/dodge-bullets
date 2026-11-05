@@ -15,7 +15,7 @@ if (!process.argv.includes("--no-install")) console.log(adb("install", "-r", "-d
 let browser, page;
 async function launch() {
   adb("shell", "am", "force-stop", APP); adb("shell", "am", "start", "-n", `${APP}/.MainActivity`); await sleep(2500);
-  const pid = adb("shell", "pidof", APP); let sock = null;
+  let pid = ""; for (let i = 0; i < 40 && !pid; i += 1) { try { pid = adb("shell", "pidof", APP); } catch { await sleep(1000); } } let sock = null;
   for (let i = 0; i < 60 && !sock; i += 1) { sock = adb("shell", "cat", "/proc/net/unix").split("\n").map((l) => l.match(/@(webview_devtools_remote_\d+)/)?.[1]).find((s) => s && s.endsWith(`_${pid}`)) ?? null; if (!sock) await sleep(500); }
   spawnSync(ADB, ["forward", "--remove", "tcp:9335"]); adb("forward", "tcp:9335", `localabstract:${sock}`);
   if (browser) await browser.disconnect().catch(() => {});
@@ -26,7 +26,7 @@ await launch(); await sleep(6000);
 const H = await page.evaluate(async () => { const P = window.Capacitor?.Plugins?.Preferences; const { keys } = P ? await P.keys() : { keys: Object.keys(localStorage) }; return (keys.find((k) => k.startsWith("dodgebullets:progression:v1:")) ?? "x:x:x:mock-local-dev").split(":").pop(); });
 const now = Date.now();
 const seed = {
-  [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, level: 40, dodgeBestStage: 50, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, ownedGear: ["sword-helmet", "sword-armor", "sword-gloves", "sword-boots", "sword-shoulder"], equippedGear: { helmet: "sword-helmet", armor: "sword-armor", gloves: "sword-gloves", boots: "sword-boots", shoulder: "sword-shoulder" }, partyIds: ["celes", "gaia", "inferno", "leviathan"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99, equippedWeaponLevel: 5 }),
+  [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, level: 40, dodgeBestStage: 50, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, ownedGear: ["sword-helmet", "sword-armor", "sword-gloves", "sword-boots", "sword-shoulder"], equippedGear: { helmet: "sword-helmet", armor: "sword-armor", gloves: "sword-gloves", boots: "sword-boots", shoulder: "sword-shoulder" }, mounts: { drake: 3 }, activeMount: "drake", partyIds: ["celes", "gaia", "inferno", "leviathan"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 99, equippedWeaponLevel: 5 }),
   [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 40000, stage: 30, bestStage: 30, autoSkill: true, heroes: { celes: 8, gaia: 8, inferno: 8, leviathan: 8 }, lastActiveAt: now,
     skillInventory: { learned: ["strike", "thunderLink", "meteor", "voidFinish"], levels: { strike: 1, thunderLink: 1, meteor: 1, voidFinish: 1 }, equipped: { starter: "strike", linkA: "thunderLink", linkB: "meteor", finisher: "voidFinish" }, skillCores: 0 } }),
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
@@ -36,6 +36,11 @@ await page.evaluate(async (seed) => { const P = window.Capacitor?.Plugins?.Prefe
 adb("shell", "pm", "grant", APP, "android.permission.POST_NOTIFICATIONS");
 page = null; await launch(); await sleep(8000);
 await page.evaluate(() => { for (let k = 0; k < 6; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
+// 코어 4개 이하는 저사양으로 쳐 폭발을 끈다(lowFxRef) — 에뮬레이터가 4코어라 그대로 재면 이펙트 0개. 8코어 폰처럼 켜고 잰다(이 기기로는 더 불리한 조건)
+await page.evaluateOnNewDocument(() => { Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 8 }); Object.defineProperty(navigator, "deviceMemory", { get: () => 8 }); });
+await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {}); await sleep(9000);
+await page.evaluate(() => { for (let k = 0; k < 6; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
+console.log("저사양 판정", await page.evaluate(() => document.querySelector(".titans-layer")?.className.includes("perf-low")));
 await sleep(3000);
 const OFF_CSS = ".ally-tier-aura,.tier-burst,.tier-cutin,.equipment-wear,.titans-fx-tierhit-SR,.titans-fx-tierhit-SSR,.titans-fx-tierhit-UR,.titans-fx-tierhit-LR{display:none!important}.skill-tier-fx::after{content:none!important}.titans-background{animation:none!important}";
 const measure = (off) => page.evaluate(async (css) => {
