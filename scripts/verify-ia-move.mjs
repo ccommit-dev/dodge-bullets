@@ -45,18 +45,18 @@ await shot("shop-ally");
 await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(300);
 // ── 동료 탭 ──
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
-ok("동료 머리에서 뽑기가 빠졌다", !(await texts(".hub-sheet-switch button")).some((t) => /뽑기/.test(t)), (await texts(".hub-sheet-switch button")).join());
+ok("동료 머리 = 제목만(뽑기 · 도감 · 상세 칸 없음)", (await texts(".hub-sheet-switch button")).length === 0 && (await texts(".hub-sheet-title")).join() === "동료", (await texts(".hub-sheet-switch button")).join());
 const roster = await page.evaluate(() => [...document.querySelectorAll(".ally-card")].map((c) => c.dataset.ally));
 ok("동료 목록 = 보유 2명 + 다음 소환 1명", roster.length === 3 && roster.includes("mia") && roster.includes("leon"), roster.join());
 await shot("ally-party");
-await clickText(".ally-card .ally-detail-open", "상세"); await sleep(600);
+await page.evaluate(() => document.querySelector('.ally-card[data-ally="mia"]')?.click()); await sleep(600);
 const detail = await page.evaluate(() => { const d = document.querySelector(".ally-detail"); const sheet = d?.querySelector("[style*='titans/anim/allies'], .ally-detail-art *"); const anim = [...(d?.querySelectorAll(".ally-detail-art *") ?? [])].map((e) => getComputedStyle(e)).find((c) => /titans\/anim\/allies/.test(c.backgroundImage)); return { id: d?.dataset.allyDetail, stats: [...(d?.querySelectorAll(".ally-detail-stats dt") ?? [])].map((x) => x.textContent), sig: !!d?.querySelector(".ally-sig"), sheet: !!sheet, bg: anim?.backgroundImage.slice(0, 80), name: anim?.animationName }; });
-ok("카드 상세 → 그 동료의 상세(역할 · 속성 · DPS · 공격 간격 · 성급 · 승급 조각 · 스킬)", detail.stats.length === 6 && detail.sig && !!detail.id, JSON.stringify(detail));
+ok("카드를 누르면 그 동료의 상세(역할 · 속성 · DPS · 공격 간격 · 성급 · 승급 조각 · 스킬)", detail.stats.length === 6 && detail.sig && !!detail.id, JSON.stringify(detail));
 ok("상세 위 칸에 공격 시트가 돈다", /titans\/anim\/allies/.test(detail.bg ?? "") && detail.name !== "none", `${detail.bg} · ${detail.name}`);
-ok("상세 13px 미만 없음 · 넘침 없음", (await tiny(".ally-detail-page")).length === 0 && await overflow(), (await tiny(".ally-detail-page")).join());
+ok("상세 13px 미만 없음 · 넘침 없음", (await tiny(".ally-detail")).length === 0 && await overflow(), (await tiny(".ally-detail")).join());
 await sleep(1000); await shot("ally-detail");
-await page.evaluate(() => [...document.querySelectorAll(".ally-detail-pick button")].find((b) => !b.classList.contains("on"))?.click()); await sleep(400);
-ok("위 줄에서 다른 동료를 고른다", (await page.$eval(".ally-detail", (d) => d.dataset.allyDetail)) !== detail.id);
+await page.evaluate(() => document.querySelector('.ally-card[data-ally="leon"]')?.click()); await sleep(400);
+ok("다른 카드를 누르면 그 동료로 바뀐다 · 한 장만 펼쳐진다", (await page.$eval(".ally-detail", (d) => d.dataset.allyDetail)) !== detail.id && (await page.$$(".ally-detail")).length === 1);
 await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); await sleep(300);
 // ── 유물 탭 ──
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(300);

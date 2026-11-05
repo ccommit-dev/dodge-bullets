@@ -193,7 +193,7 @@ ok("B 구매 추천 시트가 열린다 (진짜 탭)", adv.length >= 1, adv.join
 await shot("b2-advice");
 await tap(".advice-sheet .hub-sheet-close"); await sleep(600);
 await tap(".titans-gem"); await sleep(1200);
-const shop = await page.evaluate(() => ({ sheet: !!document.querySelector(".hub-sheet"), wallet: document.querySelectorAll(".hub-sheet-wallet .wallet-item").length }));
+const shop = await page.evaluate(() => ({ sheet: !!document.querySelector(".hub-sheet"), wallet: document.querySelectorAll(".titans-wallet > span").length }));
 ok("B 보석 칩 탭 → 상점 시트 + 지갑 줄", shop.sheet && shop.wallet >= 3, JSON.stringify(shop));
 await shot("b3-shop");
 await tap(".hub-sheet-close"); await sleep(700);

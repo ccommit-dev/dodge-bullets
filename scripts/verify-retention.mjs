@@ -141,7 +141,8 @@ await sleep(800);
 r = await page.evaluate(() => !!document.querySelector(".share-card-btn"));
 ok("H 마이페이지 공유 버튼", r);
 await page.evaluate(() => document.querySelector(".share-card-btn")?.click());
-await sleep(1500);
+// 카드 그림을 다 그린 뒤에야 메시지가 뜬다 — 고정 1.5초 대신 뜰 때까지(최대 8초)
+await page.waitForSelector(".growth-message", { timeout: 8000 }).catch(() => {});
 r = await page.evaluate(() => document.querySelector(".growth-message")?.textContent ?? "");
 ok("H 공유 실행 결과 메시지(공유/새 탭/미지원 중 하나)", /공유|새 탭|지원/.test(r), r);
 

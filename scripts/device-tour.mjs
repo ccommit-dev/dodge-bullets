@@ -66,9 +66,11 @@ await clickText(".titans-bottom-nav button", "모험"); await sleep(1200); shot(
 await clickText(".titans-bottom-nav button", "사냥터"); await sleep(800);
 await clickText(".titans-back", "마이페이지"); await sleep(1200); shot("14-mypage");
 await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(600); shot("15-settings");
+await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
 await page.evaluate(() => { [...document.querySelectorAll(".settings-menu button")].find((b) => /출석/.test(b.textContent))?.click(); }); await sleep(1000); shot("16-attendance");
 await page.evaluate(() => { [...document.querySelectorAll("[role=dialog] button, .overlay-content button")].find((b) => /닫기|확인/.test(b.textContent))?.click(); }); await sleep(400);
 await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);
+await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
 await page.evaluate(() => { [...document.querySelectorAll(".settings-menu button")].find((b) => /이벤트/.test(b.textContent))?.click(); }); await sleep(1200); shot("17-event");
 writeFileSync(join(OUT, "tour.json"), JSON.stringify({ shots, errors, missing: [...new Set(missing)] }, null, 1));
 console.log("errors", errors.length, errors.slice(0, 3).join(" | ")); console.log("404", missing.length, [...new Set(missing)].slice(0, 8).join(" "));

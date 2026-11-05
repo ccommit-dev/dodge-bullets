@@ -42,7 +42,7 @@ await page.screenshot({ path: `${OUT}/02-advice.png` });
 await page.evaluate(() => document.querySelector(".advice-backdrop")?.click()); await sleep(300);
 // 보석 칩 → 상점
 facts.gemTap = await tap(".titans-gem"); await sleep(700);
-facts.shopWallet = await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-wallet .wallet-item")].map((e) => e.textContent.replace(/\s+/g, " ").trim()));
+facts.shopWallet = await page.evaluate(() => [...document.querySelectorAll(".titans-wallet > span")].map((e) => e.textContent.replace(/\s+/g, " ").trim()));
 await page.screenshot({ path: `${OUT}/03-shop.png` });
 await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".shop-sub-tabs button", "외형"); await sleep(400);
 facts.beatInShop = await page.evaluate(() => document.querySelectorAll(".beat-custom-product").length);

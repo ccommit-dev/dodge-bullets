@@ -91,7 +91,7 @@ await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav butt
 // 설정: 스킬 칸 왼쪽 / 주인공 곁 — 고르면 바로 옮겨지고 다시 들어와도 남는다
 const dockInfo = () => page.evaluate(() => { const d = document.querySelector(".titans-skill-dock"); return { pad: parseInt(d.style.paddingLeft || getComputedStyle(d).paddingLeft, 10), saved: localStorage.getItem("dodge-bullets:skillDockLeft") }; });
 const before = await dockInfo();
-const openMenu = async () => { await page.evaluate(() => { const b = document.querySelector(".settings-toggle"); if (b) b.click(); else [...document.querySelectorAll(".titans-bottom-nav button")].find((x) => x.textContent.includes("설정"))?.click(); }); await sleep(400); };
+const openMenu = async () => { await page.evaluate(() => { const b = document.querySelector(".settings-toggle"); if (b) b.click(); else [...document.querySelectorAll(".titans-bottom-nav button")].find((x) => x.textContent.includes("설정"))?.click(); }); await sleep(400); await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(150); };
 await openMenu();
 const label1 = await page.evaluate(() => document.querySelector(".settings-skill-dock b")?.textContent);
 await page.evaluate(() => document.querySelector(".settings-skill-dock")?.click()); await sleep(450);

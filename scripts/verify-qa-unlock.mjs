@@ -31,6 +31,7 @@ const state = async () => {
 };
 const tap7 = async () => {
   await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);
+  await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(150);
   const label0 = await page.evaluate(() => document.querySelector(".settings-build")?.textContent);
   for (let i = 0; i < 7; i += 1) { await page.evaluate(() => document.querySelector(".settings-build")?.click()); await sleep(60); }
   await sleep(300);
@@ -80,6 +81,7 @@ await seed();
 const autoOpened = await page.evaluate(() => !!document.querySelector(".attendance-modal"));
 ok("신규 부팅 때 출석 창이 저절로 뜨지 않는다", !autoOpened);
 await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);
+await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(150);
 await page.evaluate(() => [...document.querySelectorAll("[role=menuitem]")].find((b) => b.textContent.includes("출석 이벤트"))?.click()); await sleep(1200);
 ok("설정 → 출석 이벤트가 열린다", await page.evaluate(() => !!document.querySelector(".attendance-modal")));
 await page.evaluate(() => document.querySelector(".settings-toggle")?.click()); await sleep(400);

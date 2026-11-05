@@ -17,6 +17,7 @@ const r1 = await page.evaluate(() => { const h = document.querySelector(".inapp-
 await page.screenshot({ path: `${OUT}/inapp-hunt.png` });
 // 설정 메뉴 항목
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("설정"))?.click()); await sleep(500);
+await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
 const item = await page.evaluate(() => document.querySelector(".settings-fullscreen")?.textContent ?? null);
 await page.screenshot({ path: `${OUT}/inapp-menu.png` });
 // 닫기 → 다시 안 뜸

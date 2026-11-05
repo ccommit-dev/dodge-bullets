@@ -82,6 +82,7 @@ try {
   // 설정 메뉴 항목
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("설정"))?.click());
   await sleep(600);
+  await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
   const item = await page.evaluate(() => document.querySelector(".settings-fullscreen")?.textContent ?? null);
   writeFileSync(`${OUT}/2-menu.png`, cap());
   ok("설정의 전체 화면 항목이 '브라우저로 열기'", /브라우저로 열기/.test(item ?? ""), String(item));

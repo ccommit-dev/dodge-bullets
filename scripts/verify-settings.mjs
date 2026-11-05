@@ -48,7 +48,7 @@ const tap = async (sel, text) => {
 };
 const closeIdle = () => page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) c.click(); } });
 // 2026-10-14: 설정 버튼이 하단 바(상점 오른쪽)로 옮겨가 DOM 끝에 있다 — 글자 "설정"이 든 첫 버튼이 아니라 .settings-toggle 을 누른다
-const openMenu = async () => { if (!(await page.evaluate(() => !!document.querySelector(".settings-menu")))) { await tap(".settings-toggle", "설정"); await sleep(400); } };
+const openMenu = async () => { if (!(await page.evaluate(() => !!document.querySelector(".settings-menu")))) { await tap(".settings-toggle", "설정"); await sleep(400); } await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(150); };
 
 const gemsNow = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)).redGems, H);
 // 1) 출석: 첫날 자동으로 30일 판이 뜬다 (개발 서버의 '보석 무제한' 테스트 모드가 보석을 채워 두므로 지급 전후 차이로 잰다)
@@ -64,8 +64,13 @@ ok("DAY 1 수령 → 이미 진행한 계정은 예전 첫날 보석 +20(1000 �
 await closeIdle(); await sleep(300);
 
 // 2) 메뉴 항목 반응
+await tap(".settings-toggle", "설정"); await sleep(400);
+const topMenu = (await state()).menu;
+ok("설정 첫 화면 = 마이페이지 · 사운드 · 더 보기만(2026-11-05)", topMenu.some((m) => m.includes("마이페이지")) && topMenu.some((m) => m.includes("사운드")) && topMenu.some((m) => m.includes("더 보기")) && !topMenu.some((m) => /게임 종료|세이브 백업|화면 방향|이펙트|테스트/.test(m)), topMenu.join(" | "));
 await openMenu();
 s = await state();
+const menuBox = await page.evaluate(() => { const e = document.querySelector(".settings-menu"), r = e.getBoundingClientRect(); return { top: Math.round(r.top), scroll: e.scrollHeight > e.clientHeight, over: getComputedStyle(e).overflowY }; });
+ok("더 보기를 펼쳐도 메뉴 위가 화면 안에 있다(낮으면 메뉴 안에서 스크롤)", menuBox.top >= 0 && (!menuBox.scroll || menuBox.over === "auto"), JSON.stringify(menuBox));
 ok("메뉴에 비활성(고장처럼 보이는) 항목이 없다 · 카페 주소가 없으면 '카페 글 가기' 없음", !s.menu.some((m) => m.includes("[disabled]")) && !s.menu.some((m) => m.includes("카페")), s.menu.join(" | "));
 ok("출석 메뉴는 '30일' 판", s.menu.some((m) => m.startsWith("출석 이벤트30일")), s.menu.join(" | "));
 // 화면 방향 (2026-10-07 · 기본 자동 2026-10-14) — 자동 → 가로 → 세로 순환, 저장 · 다음 부팅에도 유지

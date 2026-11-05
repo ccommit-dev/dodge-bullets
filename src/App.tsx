@@ -360,6 +360,7 @@ function App() {
   };
   const [exitOpen, setExitOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsMore, setSettingsMore] = useState(false);
   // 테스트 모드 — 빌드 라벨을 3초 안에 7번 탭하면 토글 (안드로이드 개발자 옵션식 숨은 제스처)
   // 출시 빌드(QA_BUILD false)에서는 제스처도 플래그도 없다 — 테스터 기기에 남은 qa-mode=1 도 무시
   // 테스트 모드 = 콘텐츠·스킬 칸 전부 해금 (2026-10-16) — QA 빌드는 기본 켜짐, 끄면 qa-mode="0" 이 남는다 (storage.qaUnlockAll)
@@ -1742,6 +1743,11 @@ function App() {
                   <b>{soundOn ? "ON" : "OFF"}</b>
                 </button>
                 {soundOn && <VolumeSliders />}
+                {/* 마이페이지 · 소리만 위에, 나머지는 더 보기 안 (2026-11-05) */}
+                <button type="button" role="menuitem" className="settings-more" aria-expanded={settingsMore} onClick={() => setSettingsMore((v) => !v)}>
+                  <span>더 보기</span><b>{settingsMore ? "▴" : "▾"}</b>
+                </button>
+                {settingsMore && <>
                 <button
                   type="button"
                   role="menuitem"
@@ -1876,6 +1882,7 @@ function App() {
                   <span>게임 종료</span>
                   <b>›</b>
                 </button>
+                </>}
               </div>
             )}
           </div>

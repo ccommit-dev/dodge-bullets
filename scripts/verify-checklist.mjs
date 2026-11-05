@@ -98,6 +98,7 @@ r = await page.evaluate(() => ({ activeCat: [...document.querySelectorAll("butto
 ok("#14 출석 0일: 유료 패키지 숨김 + 안내", r.note && r.paid === 0, JSON.stringify(r) + " cats=" + catBtns.join("/"));
 await clickText(".settings-toggle", "설정");   // 2026-10-14: 설정 버튼이 하단 바로 옮겨가 DOM 끝에 있다
 await sleep(400);
+await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
 r = await page.evaluate(() => document.querySelector(".menu-badge-warn")?.textContent);
 ok("#13 세이브 백업 '권장' 배지", r === "권장", r);
 await clickText('[role="menuitem"]', "마이페이지");

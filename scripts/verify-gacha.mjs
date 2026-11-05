@@ -139,7 +139,7 @@ await clickText(".titans-tabs button", "스킬");
 await sleep(600);
 r = await page.evaluate(() => ({
   slotTabs: document.querySelectorAll(".skill-slot-tabs button").length,
-  heads: [...document.querySelectorAll(".skill-filter button")].slice(1).map((b) => b.textContent),
+  heads: [...document.querySelectorAll(".hero-skill-combo .combo-step small")].map((b) => b.textContent.replace(/^\S+\s+/, "")),
   tierHeads: document.querySelectorAll(".skill-tier-head, .skill-tier-tag").length,
   outlines: document.querySelectorAll(".skill-learn-card.skill-outline[class*=rarity-]").length,
   comboNames: [...document.querySelectorAll(".hero-skill-combo .combo-name")].map((b) => b.textContent),

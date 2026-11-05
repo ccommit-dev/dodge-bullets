@@ -50,6 +50,7 @@ const clickSettings = async () => {
   // 메뉴가 닫혀 있을 때만 토글(열린 채 토글하면 닫힌다)
   await page.evaluate(() => { if (!document.querySelector(".settings-orientation")) document.querySelector(".settings-toggle")?.click(); });
   await sleep(500);
+  await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
   return page.evaluate(() => { const b = document.querySelector(".settings-orientation"); if (!b) return null; const before = b.querySelector("b")?.textContent; b.click(); return before; });
 };
 

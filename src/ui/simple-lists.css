@@ -33,3 +33,35 @@
 .hub-sheet .pkg-row > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 6px; }
 .hub-sheet .pkg-row > div > strong, .hub-sheet .pkg-row > div > .shop-lines { grid-column: 1 / -1; }
 .hub-sheet .pkg-more { min-width: 30px; min-height: 26px !important; padding: 0 6px !important; border: 1.5px solid #c9b48c !important; border-radius: 999px !important; background: transparent !important; box-shadow: none !important; color: #5b4326 !important; font-size: 13px !important; line-height: 1; }
+/* 시트 공통 — 시트 안 지갑을 없애고 머리 지갑을 어둑한 막 위로 올린다. 나머지 머리는 막 아래(눌러도 시트가 닫힌다) */
+.titans-layer.is-management-page .titans-wallet { position: relative; z-index: 57; }
+.hub-sheet .hub-sheet-title { flex: 1 1 auto; margin: 0; padding-left: 6px; font-size: 18px; font-weight: 900; color: #3b2415 !important; }
+
+/* 동료 — 머리는 제목만 · 상세는 펼친 카드 안(그림 · 스킬 · 특성). 카드 글 묶음은 이름 · DPS 만 남긴다 */
+.hub-sheet .ally-roster-grid .ally-card.is-open:has(.ally-detail) { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; }
+.hub-sheet .ally-roster-grid .ally-card.is-open:has(.ally-detail) > * { grid-column: 1 / -1 !important; grid-row: auto !important; min-width: 0; }
+.hub-sheet .ally-roster-grid .ally-card.is-open:has(.ally-detail) > .titan-ally-art,
+.hub-sheet .ally-roster-grid .ally-card.is-open:has(.ally-detail) > div:not(.ally-card-actions) :is(.ally-sig, .ally-shards, .ally-attack-line, .ally-stars) { display: none !important; }
+.hub-sheet .ally-roster-grid .ally-card.is-open:has(.ally-detail) > .ally-card-actions { order: 1; }
+.hub-sheet .ally-roster-grid .ally-card.is-open:has(.ally-detail) > .ally-detail { order: 2; }
+.ally-card .ally-detail { padding: 0; border: 0; background: transparent; }
+.ally-card .ally-detail-head { display: none; }
+.ally-card .ally-detail-art { width: 136px; height: 124px; }
+.ally-card .ally-detail-art .titan-ally-art { width: 100% !important; height: 100% !important; }
+.ally-card .bulk-toggle { flex: 1 0 100%; }
+
+/* 모험 — 같은 크기 2열 · 그림 위에 이름 · 남은 횟수 · 빨간 점만 */
+.hub-page .hub-routine, .hub-page .hub-cards { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-rows: 100px; gap: 8px !important; }
+.hub-page .hub-routine > button, .hub-page .hub-cards .hub-card { position: relative; display: flex !important; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100px; min-height: 0 !important; padding: 0 !important; text-align: left; }
+.hub-page .hub-cards .hub-card::before { inset: 0 !important; width: auto !important; height: auto !important; opacity: 1 !important; border-radius: 12px; background-position: center !important; background-size: cover !important; }
+.hub-page .hub-cards .hub-card > :is(.content-icon, .nav-icon-svg) { display: none !important; }
+.hub-page .hub-routine > button > :is(.nav-icon-svg, .content-icon) { flex: 1 1 0; align-self: center; width: 44px !important; height: 44px !important; min-height: 0; margin-top: 4px; object-fit: contain; }
+.hub-page :is(.hub-routine > button > span, .hub-cards .hub-card-body) { position: relative; display: grid !important; gap: 0 !important; padding: 4px 9px 5px !important; border-radius: 0 0 12px 12px; background: rgba(255, 248, 230, .95); }
+.hub-page :is(.hub-routine > button, .hub-card) b { font-size: 15px !important; line-height: 1.2; }
+.hub-page :is(.hub-routine > button, .hub-card) small { font-size: 13px !important; line-height: 1.25; }
+.hub-page .hub-routine > button small + small { display: none !important; }
+.hub-card .hub-unlock-line { color: #8a3b52 !important; }
+.hub-page .hub-card.tab-locked .hub-card-body > small { opacity: 1 !important; }
+
+/* 설정 — 더 보기를 펼치면 낮은 화면에서 위가 화면 밖으로 나갔다(360×640 에서 135px) */
+.settings-menu { max-height: calc(100dvh - 88px); overflow-y: auto; overscroll-behavior: contain; }

@@ -549,8 +549,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [allyFilter, setAllyFilter] = useState<"all" | "melee" | "ranged" | "tank" | "healer">("all");
   const [allyPage, setAllyPage] = useState(0);   // 보유 동료 쪽(6장씩)
   /** 동료 탭 (2026-11-03) — 편성 줄 / 상세. 뽑기는 상점, 전체 목록은 마이페이지 도감으로 옮겼다 */
-  const [allyView, setAllyView] = useState<"party" | "detail">("party");
-  const [allyDetailId, setAllyDetailId] = useState<TitanHeroId | null>(null);
   /** 이벤트 저장(균열·토벌령·주간) — 루틴 보드·추천 엔진이 읽는다 */
   const [events, setEvents] = useState<EventSave>(() => emptyEventSave());
   const [navPopup, setNavPopup] = useState<"content" | "adventure" | null>(null);
@@ -3793,7 +3791,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong><TweenNumber value={save.gold} /></strong></span>
           {/* 강화석(파란 수정) — 상점 강화석 상자·대장간이 쓰는데 머리에 없어 '하늘색 보석'이 안 보인다고 읽혔다 (2026-10-06) */}
-          <span className="titans-stone" title="강화석"><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="강화석" /><strong data-wallet="stone">{formatGold(character.enhancementMaterials)}</strong></span>
+          {tab === "event-shop"
+            ? <span className="titans-coin" title="이벤트 코인"><i className="coin-mark" aria-hidden="true" /><strong data-wallet="coin">{formatGold(character.eventCoins)}</strong></span>
+            : <span className="titans-stone" title="강화석"><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="강화석" /><strong data-wallet="stone">{formatGold(character.enhancementMaterials)}</strong></span>}
           {/* 붉은 보석 — 테스트 빌드에서도 숫자로(예전 ∞ 라 보유량이 안 보였다), 누르면 상점 (2026-10-06) */}
           <span className="titans-gem" role="button" tabIndex={0} title={qaGemsEnabled() ? "테스트 단계 · 보석 자동 충전" : "붉은 보석 · 누르면 상점"} onClick={() => setTab("premium")} onKeyDown={(e) => { if (e.key === "Enter") setTab("premium"); }}><CurrencyIcon kind="gem" /><strong data-wallet="gem"><TweenNumber value={redGems} /></strong></span>
         </div>
@@ -4293,13 +4293,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {MANAGEMENT_PAGE_COPY[tab] && (
         <header className="hub-sheet-head">
           {/* 제목이 바로 옆 전환 탭과 같은 말이라 빼고 전환 탭이 제목 역할을 한다 (동료 도감 / 상점 — 2026-09-18) */}
-          {tab === "heroes" && (
-            <nav className="hub-sheet-switch ally-view-switch" aria-label="동료 메뉴">
-              <button type="button" className={allyView === "party" ? "on" : ""} onClick={() => setAllyView("party")}>보유 · 편성</button>
-              <button type="button" className={allyView === "detail" ? "on" : ""} onClick={() => setAllyView("detail")}>상세 정보</button>
-              <button type="button" className="ally-codex-link" onClick={() => onOpenCodex?.("ally")}>도감</button>
-            </nav>
-          )}
+          {(tab === "heroes" || tab === "hub") && <h2 className="hub-sheet-title">{tab === "hub" ? "모험" : "동료"}</h2>}
           {tab === "expedition" && (
             <nav className="hub-sheet-switch" aria-label="파견 메뉴">
               <button type="button" onClick={() => setTab("hub")}>모험</button>
@@ -4325,14 +4319,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           )}
           <button type="button" className="hub-sheet-close" onClick={closeSheet} aria-label="닫기">×</button>
         </header>
-        )}
-        {/* 보석·골드를 쓰는 시트에는 지갑 줄 — 시트가 머리의 보석 칩을 가렸다 (2026-10-06) */}
-        {(tab === "premium" || tab === "event-shop" || tab === "event-shop2") && (
-          <WalletBar className="hub-sheet-wallet" testGems={qaGemsEnabled()} items={[
-            { kind: "gem", amount: redGems },
-            { kind: "gold", amount: save.gold, label: "사냥터 골드" },
-            tab === "event-shop" ? { kind: "coin", amount: character.eventCoins } : { kind: "stone", amount: character.enhancementMaterials },
-          ]} />
         )}
       <section className="titans-shop">
         {tab === "relic" && (
@@ -4515,7 +4501,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {/* 카드 6장 (titans/hubCards): 남은 횟수 · 오늘 재화 · 빨간 점(최대 3) */}
             <div className="hub-cards nav-popup-grid">
               {hubCardList.map((card) => (
-                <button key={card.id} type="button" data-card={card.id} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
+                <button key={card.id} type="button" data-card={card.id} title={card.desc} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
                   onClick={() => {
                     if (card.locked) { flash(card.lockHint ?? "아직 잠겨 있습니다"); return; }
                     if (card.go.kind === "content") onOpenContent(card.go.content);
@@ -4525,17 +4511,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   {card.id === "dodge" || card.id === "beat" || card.id === "forge" ? <ContentIcon name={card.id} /> : <img className="nav-icon-svg" src={assetUrl(card.id === "tower" ? "ui/idle/tower.png" : card.id === "rift" ? "ui/idle/rift.png" : "ui/idle/expedition.png")} alt="" aria-hidden="true" />}
                   <span className="hub-card-body">
                     <b>{card.label}{card.dot && <i className="hub-dot" aria-label="지금 할 수 있음" />}</b>
-                    <small>{card.desc}</small>
-                    <small className="hub-remaining">{card.remaining}</small>
-                    <span className="hub-feeds" aria-label="오늘 얻는 것">{card.feeds.map((x) => <em key={x}>{x}</em>)}</span>
-                    {/* 잠금 조건 + 진행도 (2026-10-14, 사용자: "언제 해금되는지 불친절") — 누르지 않아도 카드 위에 보인다 */}
-                    {card.locked && card.unlock && (
-                      <span className="hub-unlock" aria-label={`잠금 해제 조건: ${card.unlock.label}`}>
-                        <b><LockIcon /> {card.unlock.label}</b>
-                        {card.unlock.goal > 1 && <i className="hub-unlock-bar"><i style={{ width: `${Math.round((card.unlock.now / card.unlock.goal) * 100)}%` }} /></i>}
-                        {card.unlock.goal > 1 && <small>{card.unlock.unit === "S" ? `지금 S${card.unlock.now}` : `지금 ${card.unlock.now} / ${card.unlock.goal} ${card.unlock.unit}`}</small>}
-                      </span>
-                    )}
+                    {/* 카드는 이름 · 남은 횟수 · 빨간 점만 (2026-11-05). 잠긴 카드는 남은 횟수 자리에 해금 조건(2026-10-14 "언제 해금되는지 불친절") · 설명은 title */}
+                    <small className={`hub-remaining ${card.locked && card.unlock ? "hub-unlock-line" : ""}`}>{card.locked && card.unlock ? card.unlock.label : card.remaining}</small>
                   </span>
                   {card.locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
                   {card.locked && card.lockHint && <span className="hub-unlock-tip" role="tooltip">{card.lockHint}</span>}
@@ -4611,7 +4588,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </section>
           );
         })()}
-        {tab === "heroes" && allyView === "party" && (
+        {tab === "heroes" && (
           <article className="titans-card party-panel">
             <div className="party-panel-head">
               <strong>
@@ -4658,41 +4635,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <button type="button" className="recommend-party" onClick={() => void recommendParty()}>
                 추천 편성
               </button>
-              {bulkToggle}
-            </div>
-            {/* 동료 소환 (확률형 재설계) — 픽업 2명 노출 · 1회/10연 · 천장 카운터 · 확률 공시 */}
-            <div className="gacha-panel" aria-label="동료 소환">
-              <div className="gacha-head">
-                <strong>동료 소환</strong>
-                <button type="button" className="gacha-rates-link" onClick={() => setShowGachaRates(true)}>확률 보기</button>
-              </div>
-              {gacha.pickups.length > 0 ? (
-                <div className="gacha-pickups">
-                  {gacha.pickups.map((id) => {
-                    const h = HEROES.find((x) => x.id === id)!;
-                    return (
-                      <div key={id} className={`gacha-pickup rarity-${ALLY_RARITY[id].toLowerCase()}`}>
-                        <AllyArt id={id} />
-                        <b style={{ color: RARITY_COLOR[ALLY_RARITY[id]] }}>{ALLY_RARITY[id]} 픽업 ×2</b>
-                        <small>{h.name}{save.heroes[id] > 0 ? " · 보유" : ` · ${TIER_LABEL[ALLY_RARITY[id]]}`}</small>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="gacha-empty">이 지역의 동료를 모두 만났습니다 — 성문 방어으로 다음 지역을 개척하면 새 픽업이 열립니다</p>
-              )}
-              <div className="gacha-actions">
-                <button type="button" disabled={redGems < GACHA.singleCost || gacha.entries.length === 0} onClick={() => void summonAlly(1)}>
-                  1회 <small><GemMark />{GACHA.singleCost}</small>
-                </button>
-                <button type="button" className="gacha-ten" disabled={redGems < GACHA.tenCost || gacha.entries.length === 0} onClick={() => void summonAlly(10)}>
-                  10연 <small><GemMark />{GACHA.tenCost} · SR 이상 1 보장</small>
-                </button>
-              </div>
-              <small className="gacha-pity">
-                {gacha.entries.some((e) => e.rarity === "SSR") ? "전설" : "최고 등급"} 확정까지 {Math.max(1, GACHA.pityLimit - Math.min(GACHA.pityLimit - 1, character.gachaPity))}회 · 중복 시 조각 R {GACHA.dupeShards.R} / SR {GACHA.dupeShards.SR} / SSR {GACHA.dupeShards.SSR} · 뽑은 동료는 빈 슬롯에 자동 출전
-              </small>
             </div>
             {expeditionsDone > 0 && (
               <button type="button" className="expedition-claim" onClick={() => void claimExpeditions()}>
@@ -4708,32 +4650,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             )}
           </article>
         )}
-        {tab === "heroes" && allyView === "detail" && (() => {
-          const owned = HEROES.filter((h) => save.heroes[h.id] > 0);
-          const cur = owned.find((h) => h.id === allyDetailId) ?? owned.find((h) => character.partyIds.includes(h.id)) ?? owned[0];
-          if (!cur) return <p className="codex-empty">아직 보유한 동료가 없어요 — 상점 → 뽑기 → 동료에서 만나요</p>;
-          const lv = save.heroes[cur.id];
-          const stars = effectiveStars(character.allyStars[cur.id], lv);
-          return (
-            <section className="ally-detail-page" aria-label="동료 상세 정보">
-              <nav className="ally-detail-pick" aria-label="동료 고르기">
-                {owned.map((h) => <button key={h.id} type="button" className={`rarity-${ALLY_RARITY[h.id].toLowerCase()} ${h.id === cur.id ? "on" : ""}`} onClick={() => setAllyDetailId(h.id)}>{h.name}</button>)}
-              </nav>
-              <AllyDetail
-                key={cur.id}
-                hero={cur}
-                level={lv}
-                stars={stars}
-                skin={character.equippedAllySkins?.[cur.id]}
-                dpsText={formatGold(heroDps(cur, lv) * starMultiplier(Math.max(1, stars)))}
-                shards={character.allyShards[cur.id]}
-                nextStarCost={shardCostToNext(cur.id, Math.max(1, stars))}
-                inParty={character.partyIds.includes(cur.id)}
-              />
-            </section>
-          );
-        })()}
-        {tab === "heroes" && allyView === "party" && <div className="ally-roster-grid" aria-label={`보유 동료 ${rosterHeroes.length}명`} data-roster-count={rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
+        {tab === "heroes" && <div className="ally-roster-grid" aria-label={`보유 동료 ${rosterHeroes.length}명`} data-roster-count={rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter).length}>
           {/* 머리줄(도감 N명 · 등급별 확률 칩)을 걷었다(2026-11-03) — 칩이 단추처럼 보이는데 눌러도 아무 일이 없었다. 등급 확률은 동료 뽑기 칸 · 확률 공시에 그대로 */}
           {/* 13장 세로 스크롤 → 6장씩 쪽 (2026-10-08 사용자: "동료 쪽 스크롤 남아 있는 거 리팩토링") */}
           {(() => { const roster = rosterHeroes.filter((h) => allyFilter === "all" || ALLY_ROLE[h.id] === allyFilter); const pages = Math.max(1, Math.ceil(roster.length / ALLY_PAGE_SIZE)); const pg = Math.min(allyPage, pages - 1); return pages > 1 ? (
@@ -4810,8 +4727,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     </button>
                   )}
                 </div>
+                {/* 상세는 카드를 눌러 연다 (2026-11-05) — 옛 '상세 정보' 칸과 동료 고르기 줄을 없앴다 */}
+                {openCard === `ally:${h.id}` && lv > 0 && (
+                  <AllyDetail hero={h} level={lv} stars={stars} skin={character.equippedAllySkins?.[h.id]} dpsText={formatGold(heroDps(h, lv) * starMultiplier(Math.max(1, stars)))} shards={shards} nextStarCost={nextCost} inParty={inParty} />
+                )}
                 <div className="ally-card-actions">
-                  {lv > 0 && <button type="button" className="ally-detail-open" onClick={() => { setAllyDetailId(h.id); setAllyView("detail"); }}>상세</button>}
+                  {openCard === `ally:${h.id}` && lv > 0 && bulkToggle}
                   {shopOnly && lv === 0 ? (
                     <button type="button" disabled={redGems < (gemCost ?? 0)} onClick={() => void buyShopAlly(h.id)}>
                       <GemMark />{gemCost}
@@ -4899,7 +4820,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {/* 2026-10-28 (사용자: "스킬탭 … 등급별 이 내용은 삭제하고 … 윤곽선으로만 등급 · 스킬 장착시스템이 너무 불편해 조금더 가독성좋게") —
             등급 머리줄 · 등급 글자를 걷고 카드 윤곽선 색(동료 등급색)으로만. 목록은 장착 칸(시동기 → 연계 A → 연계 B → 마무리 → 패시브)마다 묶고,
             머리줄에 그 칸에 지금 낀 스킬을 보여 준다 — 무엇을 어디에 끼우는지 한눈에 */}
-        {tab === "skills" && <FilterChips className="skill-filter" label="스킬 종류" value={skillSlotTab ?? "all"} items={[["all", "전체"] as const, ...SLOT_ORDER.map((sl) => [sl, SLOT_LABEL[sl]] as const)]} onChange={(v) => setSkillSlotTab(v === "all" ? null : v)} />}
         {tab === "skills" &&
           SLOT_ORDER.filter((sl) => !skillSlotTab || skillSlotTab === sl).flatMap((slotOf) => {
             const inSlot = SKILLS.filter((sk) => sk.slot === slotOf).sort((x, y) => TIERS.indexOf(SKILL_TIER[x.id]) - TIERS.indexOf(SKILL_TIER[y.id]));

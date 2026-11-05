@@ -54,6 +54,7 @@ try {
   ok("가로: 크롬이 가로(landscape)로 그린다 · 하단 바가 오른쪽 레일(fixed)", before.landscape && before.rail === "fixed", JSON.stringify(before));
   const item = await page.evaluate(() => { [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("설정"))?.click(); return true; });
   await sleep(600);
+  await page.evaluate(() => document.querySelector('.settings-more[aria-expanded="false"]')?.click()); await sleep(200);
   const label = await page.evaluate(() => document.querySelector(".settings-fullscreen")?.textContent ?? null);
   ok("설정 메뉴에 '전체 화면 켜기'가 있다(크롬은 Fullscreen API 지원)", !!item && /전체 화면.*켜기/.test(label ?? ""), String(label));
   await page.tap(".settings-fullscreen");   // CDP 터치 = 사용자 제스처

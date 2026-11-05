@@ -52,6 +52,23 @@ await page.evaluate(() => { const c = [...document.querySelectorAll(".skill-lear
 const openBtns = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card.is-open .skill-card-actions button")].filter((b) => b.getClientRects().length > 0).map((b) => b.textContent.trim()));
 ok("펼치면 해제 · 강화 · 소진이 다 보인다", openBtns.length === 3 && /해제/.test(openBtns[0]), openBtns.join(" / "));
 
+// 스킬 칸이 곧 필터 (2026-11-05) — 필터 줄 없음 · 칸을 누르면 그 칸 스킬만 · 다시 누르면 전체
+const slotBefore = await page.evaluate(() => ({ filter: document.querySelectorAll(".skill-filter").length, n: document.querySelectorAll(".skill-learn-card").length }));
+await page.evaluate(() => document.querySelector('.hero-skill-combo .combo-step')?.click()); await sleep(300);
+const slotOn = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card")].map((c) => c.dataset.slot));
+await page.evaluate(() => document.querySelector('.hero-skill-combo .combo-step')?.click()); await sleep(300);
+const slotOff = await page.evaluate(() => document.querySelectorAll(".skill-learn-card").length);
+ok("스킬: 필터 줄 없음 · 칸을 누르면 시동기만 · 다시 누르면 전체", slotBefore.filter === 0 && slotOn.length > 0 && slotOn.length < slotBefore.n && slotOn.every((x) => x === "starter") && slotOff === slotBefore.n, JSON.stringify({ ...slotBefore, on: slotOn.length, off: slotOff }));
+
+// ── 모험 ── 같은 크기 2열 · 이름 · 남은 횟수 · 빨간 점만 (2026-11-05)
+await click(".titans-bottom-nav button", "모험"); await sleep(600);
+const hub = await page.evaluate(() => {
+  const bs = [...document.querySelectorAll(".hub-routine > button, .hub-cards .hub-card")].filter((b) => b.getClientRects().length > 0);
+  const rects = bs.map((b) => b.getBoundingClientRect());
+  return { n: bs.length, sizes: new Set(rects.map((r) => `${Math.round(r.width)}x${Math.round(r.height)}`)).size, cols: new Set(rects.map((r) => Math.round(r.left))).size, chips: document.querySelectorAll(".hub-feeds").length, lines: [...document.querySelectorAll(".hub-cards .hub-card-body")].map((c) => [...c.children].filter((e) => e.getClientRects().length > 0).length), head: document.querySelector(".hub-sheet-title")?.textContent };
+});
+ok("모험: 같은 크기 2열 · 재화 칩 없음 · 카드 글은 이름 + 남은 횟수 두 줄", hub.n >= 8 && hub.sizes === 1 && hub.cols === 2 && hub.chips === 0 && hub.lines.every((l) => l === 2) && hub.head === "모험", JSON.stringify(hub));
+
 // ── 동료 ──
 await click(".titans-bottom-nav button", "동료"); await sleep(700);
 const ally = await page.evaluate(() => {
@@ -68,7 +85,7 @@ const ally = await page.evaluate(() => {
     clipped: cards.filter((c) => { const s = c.querySelector(":scope > div > strong"); return s && s.scrollWidth > s.clientWidth + 1 && c.classList.contains("in-party"); }).length,
   };
 });
-ok("편성 · 추천 · 수량이 한 줄 · 따로 된 수량 줄 없음 · 도감 머리줄 없음", ally.tools === 4 && ally.toolRows === 1 && !ally.bulkOutside && !ally.summary, JSON.stringify({ tools: ally.tools, rows: ally.toolRows }));
+ok("추천 단추 하나 · 수량 단추는 펼친 카드 안 · 도감 머리줄 없음", ally.tools === 1 && !ally.bulkOutside && !ally.summary, JSON.stringify({ tools: ally.tools, rows: ally.toolRows }));
 ok("쪽은 ‹ 1–6 / N명 › 하나 · 한 쪽 6장", ally.pagerBtns === 2 && /^1–6 \/ \d+명/.test(ally.pager) && ally.n === 6, ally.pager);
 ok("접힌 동료 카드는 버튼 하나(★ 승급 가능할 때 빼고) · 이름 · Lv 이 안 잘린다", ally.btns.every((b) => b === 1) && ally.clipped === 0, `${ally.btns.join("")} · 잘림 ${ally.clipped}`);
 await page.evaluate(() => document.querySelector(".ally-page-next")?.click()); await sleep(300);
@@ -85,7 +102,9 @@ await click(".hub-sheet-switch button", "패키지"); await sleep(400);
 ok("특별 상품은 패키지 칸 안(칸이 따로 없다)", (await page.evaluate(() => document.querySelectorAll(".event-offer-card").length)) >= 3 && !heads.includes("특별"));
 await click(".hub-sheet-switch button", "재화"); await sleep(300);
 ok("재화 칸 맨 위 '보석 추천' 줄 없음", !(await page.$(".advice-inline")));
-ok("지갑은 이름 없이 그림 + 숫자", (await shown(".hub-sheet-wallet .wallet-text small")).length === 0);
+// 시트 안 지갑은 없앴다(2026-11-05) — 머리 지갑이 시트 위로 보이고, 시트는 그 아래에서 시작한다
+const wallet = await page.evaluate(() => { const w = document.querySelector(".titans-wallet"), sh = document.querySelector(".hub-sheet"); const wr = w.getBoundingClientRect(), r = sh.getBoundingClientRect(); const hit = document.elementFromPoint(wr.left + wr.width / 2, wr.top + wr.height / 2); return { inner: !!document.querySelector(".hub-sheet-wallet"), bottom: Math.round(wr.bottom), top: Math.round(r.top), hit: !!hit?.closest(".titans-wallet") }; });
+ok("시트 안 지갑 없음 · 머리 지갑이 시트 위에 보이고 눌린다", !wallet.inner && wallet.bottom <= wallet.top && wallet.hit, JSON.stringify(wallet));
 ok("가로 넘침 없음 · 페이지 오류 없음", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0 && errors.length === 0, errors.join(" | "));
 
 await browser.close();
