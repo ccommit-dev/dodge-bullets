@@ -32,11 +32,34 @@ export function gearItemKind(id: GearItemId): WeaponKind { return id.split("-")[
 export function gearItemSlot(id: GearItemId): GearSetSlot { return id.split("-")[1] as GearSetSlot; }
 export function gearItemName(id: GearItemId): string { return `${GEAR_SET_NAME[gearItemKind(id)]} ${GEAR_SLOT_LABEL[gearItemSlot(id)]}`; }
 export function gearItemIconPath(id: GearItemId): string { return `titans/gear/set-${id}.png`; }
-export function gearItemEffectText(id: GearItemId): string { const k = gearItemKind(id); return `${WEAPON_NAME[k]}을 들면 ${STAT_LABEL[k]} +${pct(GEAR_PIECE_BONUS[k])}%`; }
+export function gearItemEffectText(id: GearItemId, level = 0): string { const k = gearItemKind(id); return `${WEAPON_NAME[k]}을 들면 ${STAT_LABEL[k]} +${pct(gearItemPieceBonus(id, level))}%`; }
 const WEAPON_NAME: Record<WeaponKind, string> = { sword: "검", spear: "창", bow: "활", staff: "지팡이" };
 const pct = (v: number) => (Math.round(v * 1000) / 10).toString();
 
 export type EquippedGear = Partial<Record<GearSetSlot, GearItemId>>;
+
+/** 세트 파츠 강화 (2026-11-04, 사용자 요청) — 대장간 파츠 강화(equipment/parts gearPartValue)와 같은 규칙: 단계마다 부위 효과 ×(1 + 0.1·단계), +10 이 끝. 다섯 부위 보너스는 그대로 */
+export const GEAR_SET_ENHANCE_MAX = 10;
+export type GearSetLevels = Partial<Record<GearItemId, number>>;
+const levelOf = (levels: GearSetLevels | undefined, id: GearItemId) => Math.max(0, Math.min(GEAR_SET_ENHANCE_MAX, levels?.[id] ?? 0));
+/** 강화 비용 — 대장간 파츠 강화와 같은 공용 코인 + 강화석 */
+export function gearSetEnhanceCost(level: number): { coins: number; materials: number } | null {
+  if (level >= GEAR_SET_ENHANCE_MAX) return null;
+  return { coins: Math.floor(800 * Math.pow(1.6, level)), materials: 1 + Math.floor(level / 3) };
+}
+export function gearItemPieceBonus(id: GearItemId, level: number): number { return GEAR_PIECE_BONUS[gearItemKind(id)] * (1 + 0.1 * Math.max(0, Math.min(GEAR_SET_ENHANCE_MAX, level))); }
+export function normalizeGearSetLevels(raw: unknown, owned: readonly GearItemId[]): GearSetLevels {
+  const out: GearSetLevels = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const id of owned) { const v = (raw as Record<string, unknown>)[id]; if (typeof v === "number" && v > 0) out[id] = Math.min(GEAR_SET_ENHANCE_MAX, Math.floor(v)); }
+  return out;
+}
+/** 지금 무기와 같은 세트 부위 효과 합 + 다섯 부위 보너스 */
+function setBonus(equipped: EquippedGear | undefined, kind: WeaponKind, levels: GearSetLevels | undefined): number {
+  let total = 0;
+  for (const s of GEAR_SET_SLOTS) { const id = equipped?.[s]; if (id && gearItemKind(id) === kind) total += gearItemPieceBonus(id, levelOf(levels, id)); }
+  return total + (matchedPieces(equipped, kind) >= GEAR_SET_SLOTS.length ? GEAR_FULL_SET_BONUS[kind] : 0);
+}
 
 /** 낀 부위 중 지금 무기와 같은 세트 수 */
 export function matchedPieces(equipped: EquippedGear | undefined, kind: WeaponKind): number {
@@ -44,16 +67,15 @@ export function matchedPieces(equipped: EquippedGear | undefined, kind: WeaponKi
 }
 
 export type GearSetEffects = { tapMul: number; bossMul: number; autoSpeedMul: number; skillDmgMul: number };
-export function gearSetEffects(equipped: EquippedGear | undefined, kind: WeaponKind): GearSetEffects {
-  const n = matchedPieces(equipped, kind);
-  const total = 1 + n * GEAR_PIECE_BONUS[kind] + (n >= GEAR_SET_SLOTS.length ? GEAR_FULL_SET_BONUS[kind] : 0);
+export function gearSetEffects(equipped: EquippedGear | undefined, kind: WeaponKind, levels?: GearSetLevels): GearSetEffects {
+  const total = 1 + setBonus(equipped, kind, levels);
   return { tapMul: kind === "sword" ? total : 1, bossMul: kind === "spear" ? total : 1, autoSpeedMul: kind === "bow" ? total : 1, skillDmgMul: kind === "staff" ? total : 1 };
 }
 
 /** 장비창 한 줄 — "기사 세트 3/5 · 탭 피해 +7.5%" */
-export function gearSetSummary(equipped: EquippedGear | undefined, kind: WeaponKind): string {
+export function gearSetSummary(equipped: EquippedGear | undefined, kind: WeaponKind, levels?: GearSetLevels): string {
   const n = matchedPieces(equipped, kind);
-  const v = n * GEAR_PIECE_BONUS[kind] + (n >= GEAR_SET_SLOTS.length ? GEAR_FULL_SET_BONUS[kind] : 0);
+  const v = setBonus(equipped, kind, levels);
   return `${GEAR_SET_NAME[kind]} 세트 ${n}/${GEAR_SET_SLOTS.length} · ${STAT_LABEL[kind]} +${pct(v)}%`;
 }
 export function gearFullSetText(kind: WeaponKind): string { return `부위마다 ${STAT_LABEL[kind]} +${pct(GEAR_PIECE_BONUS[kind])}% · 다섯 부위면 +${pct(GEAR_FULL_SET_BONUS[kind])}% 더`; }

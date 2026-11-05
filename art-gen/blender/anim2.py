@@ -263,6 +263,35 @@ def monster_actions(kind, mon_poses):
     return out
 
 
+def mount_actions(kind, mon_poses):
+    """탈것 (2026-11-05) — 몬스터 자세에 달리기 · 방어를 더한다. 공격은 예비 2칸 + 공격 4칸을 한 줄로(주인공 공격 480ms 와 같이 간다)"""
+    L = LAYOUT['mount']['actions']
+    ext = [full(dict(P, yaw=P.get('yaw', MON_YAW[i])), {}, FULL_MONSTER) for i, P in enumerate(mon_poses[kind])]
+    idle0, idle1, prep, atk, hit = ext
+    n = L['idle']['frames']
+    idle = [lerp(idle0, idle1, (1 - math.cos(TAU * i / n)) / 2) for i in range(n)]
+    for i, P in enumerate(idle):
+        P['tail'] += 6 * math.sin(TAU * i / n)
+        P['wing'] += 6 * math.sin(TAU * i / n + 1.0)
+    w = L['walk']['frames']
+    walk = []
+    for i in range(w):   # 질주 — 앞다리 둘 · 뒷다리 둘이 조금 어긋나게 모였다 뻗고, 뻗을 때 몸이 뜬다
+        t = TAU * i / w
+        walk.append(dict(idle0, arm_r=34 * math.sin(t), arm_l=34 * math.sin(t + 0.55), leg_r=-34 * math.sin(t + 0.25), leg_l=-34 * math.sin(t + 0.8),
+                         lean=6 * math.cos(t), head=-5 * math.cos(t), dz=0.035 * abs(math.sin(t)), tail=14 * math.sin(t), wing=22 * math.sin(t + 0.6), sq_all=1.0 + 0.025 * math.cos(2 * t)))
+    prepare = [dict(lerp(idle0, prep, 0.55), sq_all=0.97), dict(prep, sq_all=0.92)]
+    over = dict(atk)
+    over.update(jaw=atk['jaw'] + 4, lean=atk['lean'] + 2, dy=atk['dy'] + 0.02)
+    attack = prepare + [dict(lerp(prep, atk, 0.55), sq_all=1.07), dict(atk, sq_all=0.92), dict(over, sq_all=0.95), dict(lerp(atk, idle0, 0.5), sq_all=1.0)]
+    # 방어 — 뒤로 물러앉아 앞다리를 버티고 머리를 숙인다
+    brace = full(dict(lean=-11, head=12, jaw=0, arm_r=9, arm_l=9, leg_r=-7, leg_l=-7, dy=-0.03, tail=16, wing=30, sq_all=0.94), {}, FULL_MONSTER)
+    guard = [lerp(idle0, brace, 0.65), brace, dict(brace, sq_all=0.93, lean=-15), lerp(brace, idle0, 0.5)]
+    out = {'idle': idle, 'walk': walk, 'attack': attack, 'guard': guard}
+    for name, poses in out.items():
+        assert len(poses) == L[name]['frames'], (name, len(poses))
+    return out
+
+
 # ── 주인공 무기별 공격 (2026-10-27, 사용자: "활·지팡이 동작: 몸 동작은 검과 같은 시트 — 몸 전체가 활을 당기거나 지팡이를 드는 동작이 아니다") ──
 # 검은 위 'melee'(주인공 공격 시트 hero-attack). 창 · 활 · 지팡이는 몸 전체가 무기에 맞게 움직이는 시트를 따로 렌더한다(hero-attack-<무기>).
 # 무기 그림은 게임이 왼손(hand.L) 앵커에 덧그린다 — 왼손 = 무기 손, 오른손(카메라 쪽)은 활 시위를 당기는 손.

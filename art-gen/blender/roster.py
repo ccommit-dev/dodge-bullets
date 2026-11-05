@@ -137,10 +137,10 @@ MONSTERS = {
     'pet-dragon': dict(kind=B, color='#e0843a', accent='#ffd34d', wing='#d8662a', wings=True, wing_size=0.8, snout=True, horns='curl', horn='#f1e4c8', head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
     'pet-boss': dict(kind=B, color='#7a3fa0', accent='#ff9a3d', horns='curl', horn='#3a2a5a', crown=True, head_r=(0.36, 0.33, 0.33), body_r=(0.19, 0.17, 0.19), eye_size=0.115),
     # 탈것 (2026-11-03, 사용자: "탈것도 아이템으로") — 오른쪽을 보게 CSS 로 뒤집어 주인공 아래에 놓는다
-    'mount-boar': dict(kind='quad', color='#8a5a3a', belly='#d8b890', dark='#4a2f1e', iris='#2a1a12', tusks=True, ears='wolf'),
-    'mount-deer': dict(kind='quad', color='#c08a50', belly='#f5e0c0', dark='#6a4a2a', iris='#2a1a12', horns='curl', horn='#f1e4c8', ears='wolf'),
-    'mount-wolf': dict(kind='quad', color='#8a93a6', belly='#e8ecf2', dark='#454c5e', iris='#2a1a12', mane='#c8d0dc', ears='wolf'),
-    'mount-drake': dict(kind='quad', wyvern=True, color='#b83a1c', belly='#e8b878', dark='#4e1c0c', accent='#ffb347', iris='#2a1a12', horns='curl', horn='#e8dcc0', flames=True, ears='none', wings=True, wing='#e8843a', wing_size=0.98, wing_spread=38, spikes_quad=True, tail_tip=True),   # 불꽃 비룡 — 박쥐 날개 · 등 가시 · 꼬리 끝 불꽃
+    'mount-boar': dict(kind='quad', ride=True, body_r=(0.2, 0.42, 0.18), head_r=(0.155, 0.16, 0.15), color='#8a5a3a', belly='#d8b890', dark='#4a2f1e', iris='#2a1a12', tusks=True, ears='wolf'),
+    'mount-deer': dict(kind='quad', ride=True, body_r=(0.2, 0.42, 0.18), head_r=(0.155, 0.16, 0.15), color='#c08a50', belly='#f5e0c0', dark='#6a4a2a', iris='#2a1a12', horns='curl', horn='#f1e4c8', ears='wolf'),
+    'mount-wolf': dict(kind='quad', ride=True, body_r=(0.2, 0.42, 0.18), head_r=(0.155, 0.16, 0.15), color='#8a93a6', belly='#e8ecf2', dark='#454c5e', iris='#2a1a12', mane='#c8d0dc', ears='wolf'),
+    'mount-drake': dict(kind='quad', ride=True, body_r=(0.2, 0.42, 0.18), head_r=(0.155, 0.16, 0.15), wyvern=True, color='#b83a1c', belly='#e8b878', dark='#4e1c0c', accent='#ffb347', iris='#2a1a12', horns='curl', horn='#e8dcc0', flames=True, ears='none', wings=True, wing='#e8843a', wing_size=0.98, wing_spread=38, spikes_quad=True, tail_tip=True),   # 불꽃 비룡 — 박쥐 날개 · 등 가시 · 꼬리 끝 불꽃
 }
 FLIP_MONSTERS = {'fire-demon', 'thorn-boar-king', 'flame-wyvern-clean', 'lava-drake'}
 

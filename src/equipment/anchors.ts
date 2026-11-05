@@ -1,3 +1,4 @@
+import { HERO_RIDE_ANCHORS } from "./rideAnchors";
 import { HERO_ATTACK_ANCHORS, HERO_IDLE_ANCHORS, HERO_WALK_ANCHORS, HERO_WEAPON_ATTACK_ANCHORS } from "./heroAnchors";
 
 /** behind — 그 칸에서는 무기를 몸 뒤에 그린다(애니메이션 2판 주인공 예비 칸: 먼 손이 머리 뒤라 앞에 그리면 얼굴을 덮었다) */
@@ -14,6 +15,9 @@ export type EquipmentFrameAnchors = {
   offHand: EquipmentAnchor;
   /** 신발 — 발 사이 바닥 */
   feet: EquipmentAnchor;
+  /** 입는 신발 — 발마다 따로 (hero_gear.py) */
+  footL?: EquipmentAnchor;
+  footR?: EquipmentAnchor;
 };
 
 /** 파츠 티어 (1~3: 나무 · 철 · 금) — 그림은 public/titans/gear/<part>-<tier>.png (카피 5차 아이콘에서 오려 둠) */
@@ -53,3 +57,8 @@ export function attackAnchorsFor(kind: string | undefined): EquipmentFrameAnchor
 }
 /** 걷기 칸(애니메이션 2판, 2026-10-19) — 걸어 들어올 때 무기가 걷는 손을 따라간다 */
 export const WALK_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = HERO_WALK_ANCHORS;
+/** 탈것 위 칸 (2026-11-05) — 앉은 자세. 공격은 무기별 */
+export function rideAnchorsFor(mode: string, kind: string | undefined): EquipmentFrameAnchors[] {
+  const key = mode === "attack" && (kind === "spear" || kind === "bow" || kind === "staff") ? `attack-${kind}` : mode;
+  return HERO_RIDE_ANCHORS[key] ?? HERO_RIDE_ANCHORS.idle;
+}

@@ -3,12 +3,16 @@ import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
 import { WEAPON_SKINS, weaponSkinIcon, weaponSkinStyle } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
-import { sheetFor } from "../titans/anim";
+import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, rideAnchorsFor, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { rideSheetFor, sheetFor } from "../titans/anim";
 import { HERO_ANIM, heroFrames, type HeroAnimMode } from "../titans/spriteAnim";
+import { gearItemKind, type EquippedGear } from "../equipment/gearSets";
+import type { EquipmentAnchor, EquipmentFrameAnchors } from "../equipment/anchors";
 
 /** 2판 주인공 시트 — 셋 다 깔아 두고 지금 것만 보인다(아래 본문 주석) */
 const HERO_MODES: readonly HeroAnimMode[] = ["idle", "walk", "attack"];
+/** 탈것 위는 앉은 자세 시트 넷(방어 포함) — 안 타는 플레이어는 받지 않는다 */
+const RIDE_MODES: readonly HeroAnimMode[] = [...HERO_MODES, "guard"];
 
 type Props = {
   /** 대기 · 걷기(2판, 걸어 들어올 때) · 공격 */
@@ -30,7 +34,23 @@ type Props = {
   gear?: { shield?: number; gloves?: number; boots?: number; helmet?: number; armor?: number };
   /** 무기 종류 (2026-10-15) — 북(대장간 북 그림) · 활 · 지팡이(파츠 그림, 티어는 weaponLevel 눈금) */
   weaponKind?: "sword" | "spear" | "bow" | "staff";
+  /** 낀 세트 파츠 — 몸에 입혀 그린다(아래 WEAR_LAYERS). 없으면 맨몸 */
+  worn?: EquippedGear;
+  /** 탈것 위 — 앉은 자세 시트 · 앵커 (ride_seat.py) */
+  riding?: boolean;
 };
+
+/** 입는 파츠 그림 층 (art-gen/blender/hero_gear.py) — 그림 = 대기 0칸 자세의 칸 전체. 칸마다 뼈 앵커가 대기 0칸에서 움직인 만큼 옮긴다.
+ * [그림 이름, 세트 부위, 따라갈 앵커] · 아래부터 위로 그린다 */
+const WEAR_LAYERS: ReadonlyArray<[string, keyof EquippedGear, keyof EquipmentFrameAnchors]> = [
+  ["bootR", "boots", "footR"], ["bootL", "boots", "footL"], ["armor", "armor", "chest"], ["gloveR", "gloves", "offHand"],
+  ["shoulder", "shoulder", "chest"], ["helmet", "helmet", "head"], ["gloveL", "gloves", "hand"],
+];
+function wearStyle(cur: EquipmentAnchor, base: EquipmentAnchor, attack: boolean): CSSProperties {
+  // 공격 시트는 칸이 넓어 앵커 % 가 125% 상자 기준(sprite-anim.css) — 몸 상자 % 로 바꾼다
+  const x = attack ? cur.x * 1.25 - 12.5 : cur.x;
+  return { transformOrigin: `${base.x}% ${base.y}%`, transform: `translate(${x - base.x}%, ${cur.y - base.y}%) rotate(${cur.rotation - base.rotation}deg)` };
+}
 
 /** 견갑 강화 외형 티어: 0 없음 · 1 (+1~4) 광택 · 2 (+5~9) 푸른 테두리 빛 · 3 (+10~14) 금빛 + 보석 · 4 (+15) 프리즘 — 대장간 무대가 쓴다 */
 export function armorTierOf(level: number): 0 | 1 | 2 | 3 | 4 {
@@ -66,12 +86,12 @@ function gripStyle(g: [number, number, number], rotation: number, scale: number,
   return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale * sx}, ${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
 }
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword" }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, riding = false }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
   // 공격 칸은 무기별 시트의 손 앵커(창 · 활 · 지팡이 — 2026-10-27), 검은 기본
-  const anchors = mode === "attack" ? attackAnchorsFor(weaponKind) : mode === "walk" && HERO_ANIM ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
+  const anchors = riding ? rideAnchorsFor(mode, weaponKind) : mode === "attack" ? attackAnchorsFor(weaponKind) : mode === "walk" && HERO_ANIM ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
   const anchor = anchors[Math.min(index, anchors.length - 1)];
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
@@ -118,10 +138,17 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     <div className={`equipped-character mode-${mode} ${HERO_ANIM ? "anim2" : ""} evolution-${evolution} ${character ? `costume-${character}` : ""} armor-tier-${armorTier} ${className}`} data-armor-tier={armorTier}>
       {/* 2판(2026-10-19 에뮬레이터 녹화): 한 칸에서 background-image 를 대기 → 공격 시트로 갈아 끼우면 안드로이드 WebView 가 큰 시트를 다시 풀며
           몸이 1~3 칸(최대 100ms) 사라졌다(무기·그림자만 남음). 몬스터(SpriteArt)처럼 세 시트를 다 깔아 두고 지금 것만 보인다 — 대기 줄이 DOM 맨 앞(재는 검사들이 첫 것을 본다) */}
-      {HERO_ANIM ? HERO_MODES.map((m) => {
+      {HERO_ANIM ? (riding ? RIDE_MODES : HERO_MODES).map((m) => {
         const n = heroFrames(m), on = m === mode;
-        return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${sheetFor(character, m, weaponKind)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
+        return <div key={m} className={`equipment-base sheet-${m} ${on ? "is-on" : ""}`} style={{ backgroundImage: `url(${(riding ? rideSheetFor : sheetFor)(character, m, weaponKind)})`, backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${on && n > 1 ? (index / (n - 1)) * 100 : 0}% 0` }} />;
       }) : <div className="equipment-base" style={{ backgroundImage: `url(${sheet})`, backgroundSize: `${frames * 100}% 100%`, backgroundPosition: `${frames > 1 ? (index / (frames - 1)) * 100 : 0}% 0` }} />}
+      {worn && WEAR_LAYERS.map(([name, slot, part]) => {
+        // 앉으면 먼 다리가 없고 내린 다리는 몸 뼈를 따라간다
+        if (riding && name === "bootL") return null;
+        const follow = riding && name === "bootR" ? "chest" : part;
+        const id = worn[slot], cur = anchor[follow], base = (riding ? rideAnchorsFor("idle", weaponKind) : IDLE_EQUIPMENT_ANCHORS)[0][follow];
+        return id && cur && base ? <img key={name} className={`equipment-wear wear-${name}`} data-wear={id} src={assetUrl(`titans/anim/hero-gear/${gearItemKind(id)}-${riding ? "ride-" : ""}${name}.webp`)} style={wearStyle(cur, base, mode === "attack")} alt="" aria-hidden="true" /> : null;
+      })}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
       {swap.from && ghostSrc && ghostM && (() => { const g = WEAPON_GRIP[ghostM[2] as "sword" | "spear" | "bow" | "staff"]; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt ${ghostSkin ? "weapon-skin" : ""}`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale), ...(ghostSkin ? weaponSkinStyle(ghostSkin) : {}) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}
       {swap.seq > 0 && weaponKey !== "none" && <i key={`flash-${swap.seq}`} className="gear-swap-flash" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}

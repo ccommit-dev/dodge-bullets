@@ -21,6 +21,8 @@ const flag = (name, fallback) => {
 const DAYS = Number(flag("days", 30));
 const SEED = Number(flag("seed", 20260821));
 const AS_MD = args.includes("--md");
+// 세트 파츠 견주기 (2026-11-04) — --gear sword:10 = 검 세트 다섯 부위를 +10 까지 낀 플레이어. 없으면 맨몸(기본 판정은 그대로)
+const [GEAR_KIND, GEAR_LV] = flag("gear", ":").split(":");
 
 // ── 실제 소스 번들 ────────────────────────────────────────────────
 const outDir = mkdtempSync(join(tmpdir(), "dodge-sim-"));
@@ -96,26 +98,34 @@ const SHARD_MULT = Number(flag("shardmult", 1));
 /** 사냥터 편성 칸 — partySlotCount 기본(성벽 50 · 100층 전) */
 const PARTY_SIZE = 4;
 
+const gearSets = await import(await bundle("src/equipment/gearSets.ts", "gearSets.mjs"));
+const gearFx = (() => {
+  if (!GEAR_KIND) return { tapMul: 1, bossMul: 1, autoSpeedMul: 1, skillDmgMul: 1 };
+  const eq = Object.fromEntries(gearSets.GEAR_SET_SLOTS.map((slot) => [slot, gearSets.gearItemId(GEAR_KIND, slot)]));
+  const levels = Object.fromEntries(Object.values(eq).map((id) => [id, Number(GEAR_LV) || 0]));
+  return gearSets.gearSetEffects(eq, GEAR_KIND, levels);
+})();
+
 function playTitans(state, seconds, stageCeiling) {
   let t = seconds;
   let advanced = 0;
   let wall = false;
   while (t > 0) {
     // 편성은 상위 4명만 싸운다 (2026-10-27 난이도 감사: 예전엔 보유 동료 전부의 합이라 동료 60명 뒤 DPS 가 부풀었다)
-    const partyDps = titans.HEROES
+    const partyDps = gearFx.autoSpeedMul * titans.HEROES
       .map((h) => titans.heroDps(h, state.heroes[h.id] ?? 0) * allies.starMultiplier(allies.effectiveStars(state.stars?.[h.id], state.heroes[h.id] ?? 0)))
       .sort((a, b) => b - a).slice(0, PARTY_SIZE).reduce((a, b) => a + b, 0);
     const dps =
       partyDps +
       titans.playerIdleDps(state.weaponMastery) +
-      titans.tapDamage(state.weaponMastery) * ASSUMPTIONS.tapsPerSecond;
+      titans.tapDamage(state.weaponMastery) * gearFx.tapMul * ASSUMPTIONS.tapsPerSecond;
 
     // 일반 몬스터 10마리
     const mobHp = titans.monsterHp(state.stage, false);
     const mobTime = (mobHp / dps) * titans.MOBS_PER_STAGE;
     // 보스는 제한 시간 안에 못 잡으면 진행이 막힌다 — 이게 진짜 벽이다.
     const bossHp = titans.monsterHp(state.stage, true);
-    const bossTime = bossHp / dps;
+    const bossTime = bossHp / (dps * gearFx.bossMul);
     // 대장의 반격 (2026-10-27, titans/bossPressure): 원정대가 쓰러지기 전에 잡아야 한다 — 페이스² > 1/s ⇔ 걸리는 시간 ≤ 제한시간 × √s (역할 보정은 빼고 보수적으로)
     if (bossTime > titans.BOSS_TIME_SEC * Math.sqrt(bossPressure.bossPressureScale(state.stage))) {
       // 벽에 막힘 — 남은 시간은 현재 스테이지 반복 사냥으로 골드만 번다.

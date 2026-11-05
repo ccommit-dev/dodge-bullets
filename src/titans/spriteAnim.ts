@@ -57,6 +57,26 @@ export function monsterAnimStyle(art: string, action: MonsterAnimAction, delayMs
 }
 export const ALLY_ANIM_MS = { attack: ANIM_LAYOUT.ally.actions.attack.ms, hit: ANIM_LAYOUT.ally.actions.hit.ms } as const;
 
+/** 탈것 (2026-11-05) — 몬스터와 다른 배치(달리기 · 방어 줄). 상점 그림은 대기 줄을 CSS 로, 전장은 주인공 칸에 맞춰 칸을 직접 고른다 */
+export type MountAction = keyof typeof ANIM_LAYOUT.mount.actions;
+const mountUrl = (art: string) => assetUrl(`titans/anim/monsters/${art}.webp`);
+export function mountAnimStyle(art: string, action: MountAction): CSSProperties {
+  const L = ANIM_LAYOUT.mount, a = L.actions[action];
+  return sheetAnimStyle(mountUrl(art), L.cols, Object.keys(L.actions).length, a.row, a.frames, a.ms, a.loop);
+}
+export function mountCellStyle(art: string, action: MountAction, index: number): CSSProperties {
+  const L = ANIM_LAYOUT.mount, rows = Object.keys(L.actions).length;
+  return { backgroundImage: `url(${mountUrl(art)})`, backgroundSize: `${L.cols * 100}% ${rows * 100}%`, backgroundRepeat: "no-repeat", backgroundPosition: `${(index / (L.cols - 1)) * 100}% ${(L.actions[action].row / (rows - 1)) * 100}%` };
+}
+/** 주인공 칸 번호 → 탈것 칸 — 주인공과 같은 박자로 간다 */
+export function mountFrameIndex(action: MountAction, heroFrame: number): number {
+  const n = ANIM_LAYOUT.mount.actions[action].frames;
+  if (action === "attack") return Math.min(n - 1, Math.floor((heroFrame / 8) * n));
+  if (action === "guard") return Math.min(n - 1, heroFrame);
+  if (action === "walk") return heroFrame % n;
+  return Math.floor((heroFrame / 6) * n) % n;
+}
+
 /** 주인공 — 칸은 JS(rAF)가 넘긴다(무기 앵커가 칸마다 따라가야 해서). 2판 시트가 없으면 1판(4칸 PNG) */
 export const HERO_ANIM = HERO_ANIM_READY;
 export function heroFrames(mode: HeroAnimMode): number { return HERO_ANIM ? ANIM_LAYOUT.hero.sheets[mode].frames : 4; }

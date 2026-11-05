@@ -71,6 +71,40 @@ export const ANIM_LAYOUT = {
       }
     }
   },
+  "mount": {
+    "cell": [
+      480,
+      480
+    ],
+    "feet": 0.955,
+    "cols": 6,
+    "actions": {
+      "idle": {
+        "row": 0,
+        "frames": 4,
+        "ms": 1400,
+        "loop": true
+      },
+      "walk": {
+        "row": 1,
+        "frames": 6,
+        "ms": 600,
+        "loop": true
+      },
+      "attack": {
+        "row": 2,
+        "frames": 6,
+        "ms": 480,
+        "loop": false
+      },
+      "guard": {
+        "row": 3,
+        "frames": 4,
+        "ms": 480,
+        "loop": false
+      }
+    }
+  },
   "hero": {
     "cellHeight": 754,
     "feet": [
@@ -95,7 +129,16 @@ export const ANIM_LAYOUT = {
         "frames": 8,
         "ms": 480,
         "loop": false
+      },
+      "guard": {
+        "width": 377,
+        "frames": 4,
+        "ms": 480,
+        "loop": false
       }
+    },
+    "ride": {
+      "feetY": 0.87
     }
   }
 } as const;

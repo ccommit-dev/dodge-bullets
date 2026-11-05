@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
+import { ALLY_RARITY } from "./allies";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 import { ALLY_FRAME_SET, MONSTER_FRAME_SET } from "./frameSets";
@@ -455,7 +456,7 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
     "--ally-lane-n": cell === "R" ? "var(--lane-rn, 0)" : "var(--lane-ln, 0)",
   } as CSSProperties);
   return (
-    <div data-party-slot={slot} data-cell={cell} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
+    <div data-party-slot={slot} data-cell={cell} data-rarity={ALLY_RARITY[id]} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해
@@ -467,6 +468,8 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
           피벗과 공격 궤적이 다르므로 몸을 흔들지 않고 무기만 자연스럽게 움직인다.
       */}
       <div className="ally-wander">
+      {/* 등급 발밑 빛(ui/tiers.css) — 전장에서만. 호흡 상자 밖이라 몸과 같이 까딱이지 않는다 */}
+      {partySlot !== undefined && <i className="ally-tier-aura" aria-hidden="true" />}
       <div className="ally-idle" style={{ animationDelay: `${(allyIndex[id] ?? 0) * -0.27}s` }}>
         {stars >= 2 && <i className={`ally-star-aura star-${Math.min(5, stars)}`} aria-hidden="true" />}
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>

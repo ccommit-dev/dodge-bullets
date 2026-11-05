@@ -15,12 +15,16 @@ from lib import creature as CR
 import roster as R
 import anim2 as A2
 import render_roster as RR
+import ride_seat as RS
 
 OUT = os.path.join(RR.ROOT, 'art-gen', 'out', 'b3d2')
 # 주인공 무기 손 = 왼손(적 쪽) — 2판 공격은 왼손으로 휘두른다(anim2.MAIN_LEFT_ROLES 설명). 게임은 hand 앵커에 무기 그림을 얹는다
 HERO_PARTS2 = dict(RR.HERO_PARTS)
 HERO_PARTS2['hand'] = ('hand.L', tuple(BV.HAND_L), tuple(BV.HAND_L + Vector((0, 0, 0.2))))
 HERO_PARTS2['offHand'] = ('hand.R', tuple(BV.HAND_R), tuple(BV.HAND_R + Vector((0, 0, 0.2))))
+# 입는 파츠(hero_gear.py) — 신발은 발마다 따로 걷는다, 갑옷 · 투구는 chest · head
+HERO_PARTS2['footL'] = ('leg.L', (0.15, -0.08, 0.05), (0.15, -0.08, 0.25))
+HERO_PARTS2['footR'] = ('leg.R', (-0.15, -0.08, 0.05), (-0.15, -0.08, 0.25))
 
 
 def render_actions(rig, actions, pose_fn, outdir, cam, base_yaw, sign=1, parts=None, only=None):
@@ -68,6 +72,16 @@ def run(who, only=None):
         cfg = A2.swap_hands(cfg)   # 주 무기는 왼손(적 쪽)
         rig = BV.build(who, cfg)
         render_actions(rig, A2.beaver_actions(cfg.get('role', 'melee'), weapon=cfg.get('weapon_l')), BV.pose, outdir, cam, math.radians(RR.YAW), 1, None, only)
+    elif who.startswith('mount-'):   # 탈것 — 안장 자리를 칸마다 적어 주인공이 같이 움직인다
+        cfg = R.MONSTERS[who]
+        rig = CR.build(who, cfg)
+        RS.add_saddle(rig, cfg)
+        up = (RS.SADDLE_POINT[0], RS.SADDLE_POINT[1], RS.SADDLE_POINT[2] + 0.2)
+        render_actions(rig, A2.mount_actions(cfg.get('kind', 'quad'), R.MON_POSES), CR.pose, outdir, cam, math.radians(-RS.MOUNT_YAW), -1, {'saddle': ('body', RS.SADDLE_POINT, up)}, only)
+    elif who == 'hero-ride':   # 탈것 위 주인공 — 앉은 자세 · 먼 다리 없음
+        rig = BV.build('hero', R.HERO)
+        RS.seat_hero(rig)
+        render_actions(rig, RS.rider_actions(), BV.pose, outdir, cam, math.radians(RS.RIDER_YAW), 1, HERO_PARTS2, only)
     elif who in R.MONSTERS:
         cfg = R.MONSTERS[who]
         flip = who in R.FLIP_MONSTERS

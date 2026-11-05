@@ -16,6 +16,7 @@ import "./sprite-anim.css";   // 2026-10-19 애니메이션 2판 — 칸 시트�
 import "./fx-sprites.css";   // 2026-10-16 무기·스킬 이펙트 스프라이트(Blender)
 import "./ui-polish.css";   // 2026-10-21 단순화 · 상점 판 · 자동 강화 — 반드시 마지막(아래 hunt-motion 은 사냥터 움직임만)
 import "./hunt-motion.css";   // 2026-10-28 몬스터 쓰러짐 · 무기별 공격 · 다가가 싸우기 — hit-a/b 의 !important 를 이겨야 해서 맨 뒤
+import "./ui/tiers.css";   // 2026-11-04 등급이 한눈에 — 동료 · 스킬 · 유물 틀 · 이름표 · 시전 폭발
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";

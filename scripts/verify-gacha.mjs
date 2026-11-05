@@ -85,7 +85,9 @@ await sleep(300);
 const gemsBefore = (await prog()).redGems;
 const discoveredBeforeKeys = new Set((await prog()).discovered ?? []);
 await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(2)")?.click());
-await sleep(2000); // 소환진 1.2s 후 카드 공개
+// 소환진 1.2s 후 카드 공개 — 부하가 크면 더 걸려 고정 2초로는 카드 0장을 읽었다
+for (let i = 0; i < 40 && (await page.evaluate(() => document.querySelectorAll(".gacha-card").length)) < 10; i += 1) await sleep(200);
+await sleep(300);
 r = await page.evaluate(() => ({ cards: document.querySelectorAll(".gacha-card").length, fronts: [...document.querySelectorAll(".gacha-card-front b")].map((b) => b.textContent), labels: [...document.querySelectorAll(".gacha-card-front small")].map((s) => s.textContent) }));
 let p = await prog();
 let t = await titans();

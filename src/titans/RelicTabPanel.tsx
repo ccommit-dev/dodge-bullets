@@ -73,7 +73,7 @@ export function RelicTabPanel({ relics, spare, onConsume, chance, onCodex }: Pro
                       <b>★{stars}</b>
                     </span>
                     <span className="quest-main">
-                      <strong>{r.name}</strong>
+                      <strong><em className="tier-chip">{TIER_LABEL[r.tier]}</em>{r.name}</strong>
                       <span className="quest-bar" aria-label={`조각 ${into}/${RELIC_SHARDS_PER_STAR}`}>
                         <i style={{ width: `${(into / RELIC_SHARDS_PER_STAR) * 100}%` }} />
                         <span className="quest-pay">{relicStatText(r, stars)}</span>

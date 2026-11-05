@@ -45,6 +45,10 @@
 .equipped-character.anim2 .equipment-base.is-on { opacity: 1; }
 .equipped-character.anim2 .equipment-base.sheet-attack { inset: auto; top: 0; left: -12.5%; width: 125%; height: 100%; }
 .equipped-character.anim2.mode-attack .equipment-base:not(.sheet-attack) { inset: 0; width: auto; height: auto; }
+/* 탈것 위 주인공 — 안장을 따라 칸마다 옮긴다(TitansGame HeroFrameChar · titans/mountRide) */
+.titans-hero .ride-rider { position: relative; z-index: 1; width: 100%; transform-origin: 48% 87%; }
+/* 입는 세트 파츠 — 몸 바로 위 · 무기 아래. 그림은 대기 칸과 같은 크기 */
+.equipped-character .equipment-wear { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
 /* 주인공 — 2판 시트(대기·걷기·공격)가 숨·걷기를 갖는다 */
 .titans-hero .equipped-character.anim2,

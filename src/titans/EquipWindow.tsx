@@ -6,18 +6,22 @@
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import type { Tier } from "./allyRoster";
+import { TIER_LABEL } from "./summonLevel";
 
 export type EquipSlotId = "weapon" | "shoulder" | "helmet" | "armor" | "gloves" | "boots";
-export type EquipBagItem = { key: string; slot: EquipSlotId; label: string; level?: string; icon: string; on: boolean; pending?: boolean; title: string; className?: string; grade?: string };
-export type EquipSlotView = { id: EquipSlotId; label: string; icon: string | null; level?: string; grade?: string; active?: boolean };
+export type EquipBagItem = { key: string; slot: EquipSlotId; label: string; level?: string; icon: string; on: boolean; pending?: boolean; title: string; className?: string; tier?: Tier };
+export type EquipSlotView = { id: EquipSlotId; label: string; icon: string | null; level?: string; tier?: Tier; active?: boolean };
 
 const DRAG_START_PX = 6;
 
-export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onShop }: {
+export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onShop, onSlotChange }: {
   slots: EquipSlotView[];
   bag: EquipBagItem[];
   hero: ReactNode;
   footer: (slot: EquipSlotId) => ReactNode;
+  /** 슬롯을 고를 때 — 아래 훈련 카드가 그 슬롯 것만 보인다 */
+  onSlotChange?: (slot: EquipSlotId) => void;
   onEquip: (item: EquipBagItem) => void;
   onDenied?: (item: EquipBagItem, overSlot: EquipSlotId) => void;
   onShop?: () => void;
@@ -73,7 +77,7 @@ export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onSho
     const accepts = !!drag && drag.item.slot === s.id;
     const denied = !!drag && drag.over === s.id && drag.item.slot !== s.id;
     return (
-      <button key={s.id} type="button" data-equip-slot={s.id} aria-pressed={bagSlot === s.id} onClick={() => setBagSlot(s.id)} className={`equip-slot slot-${s.id} ${bagSlot === s.id ? "selected" : ""} ${s.active ? "set-active" : ""} ${s.icon ? "" : "is-empty"} ${accepts ? "can-drop" : ""} ${accepts && drag?.over === s.id ? "drop-over" : ""} ${denied ? "drop-denied" : ""} ${s.grade ? `grade-${s.grade}` : ""}`} aria-label={s.label}>
+      <button key={s.id} type="button" data-equip-slot={s.id} data-tier={s.icon ? s.tier : undefined} title={s.icon && s.tier ? `${TIER_LABEL[s.tier]} ${s.label}` : s.label} aria-pressed={bagSlot === s.id} onClick={() => { setBagSlot(s.id); onSlotChange?.(s.id); }} className={`equip-slot slot-${s.id} ${bagSlot === s.id ? "selected" : ""} ${s.active ? "set-active" : ""} ${s.icon ? "" : "is-empty"} ${accepts ? "can-drop" : ""} ${accepts && drag?.over === s.id ? "drop-over" : ""} ${denied ? "drop-denied" : ""}`} aria-label={s.label}>
         {s.icon ? <img src={s.icon} alt="" draggable={false} /> : null}
         {s.level ? <em>{s.level}</em> : null}
         <small>{s.label}</small>
@@ -93,10 +97,11 @@ export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onSho
           <button
             key={item.key}
             type="button"
-            className={`equip-item item-${item.slot} ${item.on ? "on" : ""} ${item.pending ? "pending" : ""} ${drag?.item.key === item.key ? "is-lifted" : ""} ${item.grade ? `grade-${item.grade}` : ""} ${item.className ?? ""}`}
+            className={`equip-item item-${item.slot} ${item.on ? "on" : ""} ${item.pending ? "pending" : ""} ${drag?.item.key === item.key ? "is-lifted" : ""} ${item.className ?? ""}`}
             aria-pressed={item.on}
-            title={item.title}
+            title={item.tier ? `${TIER_LABEL[item.tier]} · ${item.title}` : item.title}
             data-item={item.key}
+            data-tier={item.tier}
             onPointerDown={(e) => onDown(e, item)}
             onPointerMove={onMove}
             onPointerUp={(e) => finish(e, false)}

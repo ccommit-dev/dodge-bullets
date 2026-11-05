@@ -117,6 +117,20 @@ def _bones(kind, cfg):
             'leg.L': ((0.11, 0, 0.14), (0.12, -0.04, 0), 'root'),
             'tail': ((0, 0.15, 0.15), (0, 0.45, 0.1), 'body'),
         }
+    if kind == 'quad' and cfg.get('ride'):   # 탈것 — 몸통을 늘리고 목을 세워 앉을 자리를 만든다 (2026-11-05, ride_seat.py)
+        return {
+            'root': ((0, 0, 0), (0, 0, 0.08), None),
+            'body': ((0, 0.2, 0.38), (0, -0.2, 0.42), 'root'),
+            'head': ((0, -0.34, 0.56), (0, -0.62, 0.78), 'body'),
+            'jaw': ((0, -0.56, 0.64), (0, -0.72, 0.6), 'head'),
+            'arm.R': ((-0.13, -0.27, 0.32), (-0.14, -0.3, 0.0), 'body'),
+            'arm.L': ((0.13, -0.27, 0.32), (0.14, -0.3, 0.0), 'body'),
+            'leg.R': ((-0.13, 0.3, 0.32), (-0.14, 0.32, 0.0), 'root'),
+            'leg.L': ((0.13, 0.3, 0.32), (0.14, 0.32, 0.0), 'root'),
+            'wing.R': ((-0.1, 0.16, 0.5), (-0.4, 0.26, 0.75), 'body'),
+            'wing.L': ((0.1, 0.16, 0.5), (0.4, 0.26, 0.75), 'body'),
+            'tail': ((0, 0.42, 0.42), (0, 0.67, 0.62), 'body'),
+        }
     if kind == 'quad':
         return {
             'root': ((0, 0, 0), (0, 0, 0.08), None),
@@ -543,9 +557,11 @@ def _build(name, cfg, coll=None):
     elif kind == 'quad':
         bc = Vector((0, 0.02, 0.38))
         br = cfg.get('body_r', (0.2, 0.3, 0.18))
-        hc = Vector((0, -0.33, 0.58))
+        hc = Vector((0, -0.58, 0.74)) if cfg.get('ride') else Vector((0, -0.33, 0.58))
         hr = cfg.get('head_r', (0.2, 0.2, 0.19))
         add('body', C.mesh_obj('body', C.ellipsoid(bc, br), M['skin'], coll, outline=OUT))
+        if cfg.get('ride'):   # 목
+            add('body', C.mesh_obj('neck', C.tube([Vector((0, -0.3, 0.44)), Vector((0, -0.44, 0.58)), hc + Vector((0, 0.06, -0.04))], [0.135, 0.105, 0.09], seg=10), M['skin'], coll, outline=OUT))
         add('body', C.mesh_obj('belly', C.ellipsoid(bc + Vector((0, 0, -0.07)), (br[0] * 0.75, br[1] * 0.8, br[2] * 0.6)), M['belly'], coll, outline=OUT * 0.5))
         add('head', C.mesh_obj('head', C.ellipsoid(hc, hr), M['skin'], coll, outline=OUT))
         wy = cfg.get('wyvern')
@@ -582,6 +598,8 @@ def _build(name, cfg, coll=None):
         tp = spline([Vector((0, 0.3, 0.42)), Vector((0, 0.42, 0.5)), Vector((0, 0.5, 0.64)), Vector((0, 0.48, 0.74))], 14)
         if cfg.get('tail_tip'):   # 비룡 — 꼬리를 뒤로 길게 뺀다(위로 세우면 날개 뒤에 숨는다)
             tp = spline([Vector((0, 0.3, 0.42)), Vector((0, 0.46, 0.38)), Vector((0, 0.62, 0.36)), Vector((0, 0.74, 0.43))], 14)
+        if cfg.get('ride'):
+            tp = [p + Vector((0, 0.13, 0)) for p in tp]
         add('tail', C.mesh_obj('tail', C.tube(tp, interp([0.07, 0.09, 0.07, 0.02], len(tp)), seg=14), M['skin'], coll, outline=OUT))
         if cfg.get('flames'):
             fm = _m('flame', '#ff8a3d', rough=0.3, emit='#ff7a1a' if cfg.get('tail_tip') else '#ffb347', es=1.0 if cfg.get('tail_tip') else 3.0)   # 비룡 꼬리 불꽃 — 3.0 은 희게 날아갔다

@@ -29,6 +29,7 @@ await page.evaluate(() => document.querySelector('.gear-part-card[data-gear-part
 const helmetText = await page.evaluate(() => document.querySelector('.gear-part-card[data-gear-part="helmet"] strong')?.textContent ?? "");
 const t1 = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)), H);
 ok("투구 훈련 → 숙련 Lv.1 · 사냥 골드가 줄고 저장에 남는다", /Lv\.1/.test(helmetText) && t1.equipmentTraining.helmetMastery === 1 && t1.gold < gold0, `${helmetText} · gold ${gold0}→${t1.gold}`);
+await page.evaluate(() => document.querySelector('.equip-slot[data-equip-slot="helmet"]')?.click()); await sleep(300);   // 훈련 카드는 고른 슬롯 것만 보인다
 const row = await page.$('.gear-part-card[data-gear-part="helmet"]'); if (row) await row.screenshot({ path: `${OUT}/growth-helmet.png` });
 await page.evaluate(() => document.querySelector(".equipment-training-card")?.parentElement?.scrollIntoView()); await page.screenshot({ path: `${OUT}/growth.png` });
 // 대장간 — 모험 허브 대장간 카드

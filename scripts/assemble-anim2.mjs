@@ -11,7 +11,7 @@
  * 피격 칸은 meta 의 tint(0~1)만큼 흰·붉게 물들인다.
  */
 import sharp from "sharp";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { makeHeroPortrait } from "./make-hero-portrait.mjs";
 
 const SRC = "art-gen/out/b3d2";
@@ -147,9 +147,24 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
 {
   const M = LAYOUT.monster, [MW, MH] = M.cell;
   mkdirSync("public/titans/anim/monsters", { recursive: true });
+  const rideAnchors = {}, seatOf = {};
   for (const id of MONSTERS) {
     if (!want(id)) continue;
     const c = await load(id); if (!c) continue;
+    // 탈것은 자기 배치(달리기 · 방어 줄) + 안장 자리 — 칸 비율로, 대기 0칸 기준 움직인 값만 (titans/mountRide.ts)
+    if (id.startsWith("mount-")) {
+      // 배율 고정 — 넷의 몸 크기를 같게. 칸을 넘으면 알린다(비룡 날개)
+      const MM = LAYOUT.mount, [CW, CH] = MM.cell, k = 0.6, s0 = c.actions.idle[0].parts.saddle, p0 = c.actions.idle[0].pivot;
+      const fit = fitScale(Object.values(c.actions).flat(), k, CW, CH, CW / 2, CH * MM.feet, 3, false);
+      if (fit < k * 0.985) console.warn(`${id}: 칸을 넘는 칸 — 필요한 배율 ${fit.toFixed(3)}`);
+      seatOf[id] = [Math.round((1 - (CW / 2 + (s0.x - p0[0]) * k) / CW) * 1000) / 1000, Math.round(((CH * MM.feet + (s0.y - p0[1]) * k) / CH) * 1000) / 1000];
+      await grid(c, MM, k, `public/titans/anim/monsters/${id}.webp`);
+      const r3 = (v) => Math.round(v * 1000) / 1000;
+      rideAnchors[id] = Object.fromEntries(Object.entries(c.actions).map(([name, frames]) => [name, frames.map((f) => [r3(((f.parts.saddle.x - s0.x) * k) / CW), r3(((f.parts.saddle.y - s0.y) * k) / CH), Math.round((f.parts.saddle.rot - s0.rot) * 10) / 10])]));
+      done.monsters.push(id);
+      console.log("mount", id, "k", k.toFixed(3));
+      continue;
+    }
     // 탈것은 넷의 몸 크기를 같게 (2026-11-03) — 게임은 대기 줄만 쓰니 대기 칸으로만 재고 0.66(옛 세 탈것의 배율)에 맞춘다. 비룡 날개까지 다 재면 몸만 작아져 주인공과 안 맞았다
     const f0 = c.actions.idle[0], up0 = f0.pivot[1] - f0.box.y0;
     const k = id.startsWith("mount-") ? fitScale(c.actions.idle, 0.66, MW, MH, MW / 2, MH * M.feet, 4, false) : fitScale(allFrames(c), (MH * 0.76) / up0, MW, MH, MW / 2, MH * M.feet, 4, false);
@@ -167,9 +182,62 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     }
     console.log("monster", id, "k", k.toFixed(3));
   }
+  if (Object.keys(rideAnchors).length) writeFileSync("src/titans/mountRide.ts", `/** 탈것 안장 자리 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것). 동작별 칸마다 [가로, 세로, 기울기°] · 대기 0칸 기준 · 칸 비율(왼쪽 보는 원본) */
+export const MOUNT_RIDE: Record<string, Record<string, ReadonlyArray<readonly [number, number, number]>>> = ${JSON.stringify(rideAnchors)};
+/** 안장 자리 — 뒤집은 뒤 칸 비율 [가로, 세로] (참고값, CSS 가 쓴다) */
+export const MOUNT_SEAT: Record<string, readonly [number, number]> = ${JSON.stringify(seatOf)};
+`);
 }
 
 // ── 주인공 ── 시트 셋(대기·걷기·공격) + 손 뼈 앵커(무기만 든다 — 2026-10-19)
+/** 주인공 배율 — 서 있는 시트 기준(탈것 위 시트 · 입는 파츠도 같은 값) */
+function heroScale(c) {
+  const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, PX = H.feet[0] * FW, PY = H.feet[1] * FH;
+  let k = (FH * 0.69) / 435.35;
+  for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
+  return k;
+}
+// 탈것 위 주인공 — 앉은 자세 시트 · 앵커 (render_anim2 hero-ride). 내린 다리가 발바닥 밑으로 가서 발 기준선을 올린다(layout hero.ride.feetY)
+if (only.includes("hero-ride")) {
+  const hero = await load("hero"), c = await load("hero-ride"), H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
+  const k = heroScale(hero), PX = H.feet[0] * FW, PY = H.ride.feetY * FH, idle0 = c.actions.idle[0];
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5], footL: [0, 0.5], footR: [0, 0.5] };
+  const out = {};
+  for (const [name, frames] of Object.entries(c.actions)) {
+    const mode = name.split("-")[0], s = H.sheets[mode], px = PX + (s.width - FW) / 2;
+    if (frames.length !== s.frames) throw new Error(`hero-ride ${name}: ${frames.length} ≠ ${s.frames}`);
+    if (fitScale(frames, k, s.width, FH, px, PY, 2, false) < k * 0.985) console.warn(`hero-ride ${name}: 칸을 넘는다`);
+    const ops = [];
+    for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, px, PY)));
+    await sharp(await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer()).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero/hero-ride-${name}.webp`);
+    out[name] = frames.map((f) => Object.fromEntries(Object.entries(BASE).map(([part, [rot0, sc]]) => {
+      const p = f.parts[part], p0 = idle0.parts[part];
+      return [part, { x: r1(((px + (p.x - f.pivot[0]) * k) / s.width) * 100), y: r1(((PY + (p.y - f.pivot[1]) * k) / FH) * 100), rotation: r1(rot0 + (p.rot - p0.rot)), scale: sc, ...(part === "hand" && f.weaponBehind ? { behind: true } : {}) }];
+    })));
+  }
+  writeFileSync("src/equipment/rideAnchors.ts", `/** 탈것 위 주인공 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것) */
+import type { EquipmentFrameAnchors } from "./anchors";
+
+export const HERO_RIDE_ANCHORS: Record<string, EquipmentFrameAnchors[]> = ${JSON.stringify(out)};
+`);
+  console.log("hero-ride k", k.toFixed(4));
+}
+// 입는 파츠 (hero_gear.py) — 대기 0칸 그대로 칸 하나 크기. 칸마다 뼈 앵커만큼 옮긴다(EquippedCharacter)
+if (only.includes("hero-gear")) {
+  const c = await load("hero"), H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
+  const PX = H.feet[0] * FW, PY = H.feet[1] * FH;
+  const k = heroScale(c);
+  mkdirSync("public/titans/anim/hero-gear", { recursive: true });
+  const pivot = c.actions.idle[0].pivot, ride = await load("hero-ride");
+  for (const name of readdirSync("art-gen/out/b3d2-gear").filter((n) => n.endsWith(".png") && !n.includes("preview"))) {
+    const seated = name.includes("-ride-");
+    if (seated && !ride) continue;
+    const ops = await cellOps({ file: `art-gen/out/b3d2-gear/${name}`, pivot: seated ? ride.actions.idle[0].pivot : pivot, tint: 0 }, c.res, k, 0, 0, FW, FH, PX, seated ? H.ride.feetY * FH : PY);
+    await sharp(await sharp(blank(FW, FH)).composite(ops).png().toBuffer()).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero-gear/${name.replace(".png", ".webp")}`);
+  }
+  console.log("hero-gear k", k.toFixed(4));
+}
 if (want("hero")) {
   const c = await load("hero");
   if (c) {
@@ -179,11 +247,11 @@ if (want("hero")) {
     // 몸 높이는 값으로 고정 (2026-11-03) — 털 뭉치(roster.HERO marks)까지 재면 배율이 15% 깎여 게임 속 주인공이 작아진다. 머리 꼭대기까지 렌더 435.35px(1024²)
     const up0 = 435.35;
     let k = (FH * 0.69) / up0;   // 대기 인물(왕관 꼭대기~발)이 칸 높이의 69% (FIG_IDLE · verify-systems)
-    for (const [mode, s] of Object.entries(H.sheets)) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
+    for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
     mkdirSync("public/titans/anim/hero", { recursive: true });
     const r1 = (v) => Math.round(v * 10) / 10;
     // 앵커 기준값(대기 0칸의 회전·크기)은 1판(assemble-b3d)과 같다 — 칸마다 뼈가 돈 만큼만 더한다
-    const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5] };
+    const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5], footL: [0, 0.5], footR: [0, 0.5] };
     const anchorsOf = (frames, w) => frames.map((f) => Object.fromEntries(Object.entries(BASE).map(([name, [rot0, sc]]) => {
       const p = f.parts[name], p0 = idle[0].parts[name];
       const x = PX + (w - FW) / 2 + (p.x - f.pivot[0]) * k, y = PY + (p.y - f.pivot[1]) * k;
@@ -192,6 +260,7 @@ if (want("hero")) {
     const out = {};
     for (const [mode, s] of Object.entries(H.sheets)) {
       const frames = c.actions[mode];
+      if (!frames) continue;
       if (frames.length !== s.frames) throw new Error(`hero ${mode}: ${frames.length} ≠ ${s.frames}`);
       const ops = [];
       for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, PX + (s.width - FW) / 2, PY)));

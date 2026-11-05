@@ -18,7 +18,7 @@ import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { MOUNT_IDS, MOUNT_MAX_LEVEL, isMountId, type MountId } from "../titans/mounts";
-import { normalizeEquippedGear, normalizeOwnedGear, type EquippedGear, type GearItemId } from "../equipment/gearSets";
+import { normalizeEquippedGear, normalizeGearSetLevels, normalizeOwnedGear, type EquippedGear, type GearItemId, type GearSetLevels } from "../equipment/gearSets";
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
 import { TALENTS, type TalentId } from "../forge/talents";
@@ -137,6 +137,8 @@ export type CharacterProgress = {
   /** 무기 세트 파츠 (2026-11-04, equipment/gearSets) — 산 것 · 부위별로 낀 것 */
   ownedGear: GearItemId[];
   equippedGear: EquippedGear;
+  /** 세트 파츠 강화 단계 (+10 까지) */
+  gearSetLevels: GearSetLevels;
   /** 탈것 레벨 (2026-11-03, titans/mounts) — 없음 = 미보유 */
   mounts: Partial<Record<MountId, number>>;
   /** 장착 탈것 ("" = 없음) */
@@ -327,6 +329,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     activePet: "",
     ownedGear: [],
     equippedGear: {},
+    gearSetLevels: {},
     mounts: {},
     activeMount: "",
     partyIds: [],
@@ -678,6 +681,7 @@ export function normalizeCharacterProgress(
         : "",
     ownedGear: normalizeOwnedGear(raw.ownedGear),
     equippedGear: normalizeEquippedGear(raw.equippedGear, normalizeOwnedGear(raw.ownedGear)),
+    gearSetLevels: normalizeGearSetLevels(raw.gearSetLevels, normalizeOwnedGear(raw.ownedGear)),
     mounts: Object.fromEntries(MOUNT_IDS.map((id) => [id, integer(raw.mounts?.[id], 0, MOUNT_MAX_LEVEL)]).filter(([, lv]) => (lv as number) > 0)),
     activeMount: isMountId(raw.activeMount) && integer(raw.mounts?.[raw.activeMount], 0, MOUNT_MAX_LEVEL) > 0 ? raw.activeMount : "",
     partyIds: Array.isArray(raw.partyIds)

@@ -30,6 +30,10 @@ export function sheetFor(character: string, mode: HeroAnimMode, weaponKind?: str
   if (isSkin(character)) return assetUrl(`titans/character/skins/hero-${m}-${character}.png`);
   return m === "attack" ? ATTACK_SHEET : IDLE_SHEET;
 }
+/** 탈것 위 주인공 시트 — 앉은 자세. 스킨은 같은 팔레트 파생 */
+export function rideSheetFor(character: string, mode: HeroAnimMode, weaponKind?: string): string {
+  return assetUrl(`titans/anim/hero/hero-ride-${mode}${mode === "attack" && hasWeaponSheet(weaponKind) ? `-${weaponKind}` : ""}${isSkin(character) ? `-${character}` : ""}.webp`);
+}
 /** 주인공 초상(머리~가슴 정사각, scripts/make-hero-portrait.mjs) — 마이페이지 · 스킬 연계 · 순위 아이콘. 1:2 칸 시트를 정사각에 늘리면 납작했다 (2026-10-19) */
 export function heroPortrait(): string {
   return HERO_ANIM ? assetUrl("titans/anim/hero/hero-portrait.webp") : IDLE_SHEET;

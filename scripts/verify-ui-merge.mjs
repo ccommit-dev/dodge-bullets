@@ -39,7 +39,7 @@ const skill = await page.evaluate(() => {
   return {
     n: cards.length,
     btns: cards.map((c) => [...c.querySelectorAll(".skill-card-actions button")].filter((b) => b.getClientRects().length > 0).length),
-    label: Object.fromEntries(cards.map((c) => [c.dataset.slot + ":" + (c.querySelector("strong")?.firstChild?.textContent ?? "").trim(), [...c.querySelectorAll(".skill-card-actions button")].filter((b) => b.getClientRects().length > 0).map((b) => b.textContent.trim()).join()])),
+    label: Object.fromEntries(cards.map((c) => [c.dataset.slot + ":" + ([...(c.querySelector("strong")?.childNodes ?? [])].find((n) => n.nodeType === 3 && n.textContent.trim())?.textContent ?? "").trim(), [...c.querySelectorAll(".skill-card-actions button")].filter((b) => b.getClientRects().length > 0).map((b) => b.textContent.trim()).join()])),
     dashed: cards.some((c) => getComputedStyle(c).outlineStyle === "dashed"),
     badge: !!document.querySelector(".skill-card-tag"),
   };
