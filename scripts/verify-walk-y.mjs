@@ -100,7 +100,7 @@ for (const scr of SCREENS) {
   ok(`[${scr.name}] 몬스터는 전장 오른쪽 밖에서 걸어 들어온다(등장 순간 왼쪽 끝 > 전장 오른쪽)`, walk.monStarts.length >= 2 && walk.monStarts.every((d) => d >= 0), walk.monStarts.join(","));
 
   // 히트스톱(치명 · 스킬 · 특수기) — 전장 data-hitstop 이 붙는 횟수 · 0.06초 뒤 떨어지는지 (2026-10-21)
-  await page.evaluate(() => { const fe = document.querySelector(".titans-field"); window.__hs = { on: 0, maxMs: 0, t: 0 }; new MutationObserver(() => { const pn = performance.now(); if (fe.dataset.hitstop) { window.__hs.on += 1; window.__hs.t = pn; } else if (window.__hs.t) window.__hs.maxMs = Math.max(window.__hs.maxMs, Math.round(pn - window.__hs.t)); }).observe(fe, { attributes: true, attributeFilter: ["data-hitstop"] }); });
+  await page.evaluate(() => { const fe = document.querySelector(".titans-field"); window.__hs = { on: 0, maxMs: 0, rawMs: 0, t: 0 }; let gap = 0, last = performance.now(); const raf = (now) => { gap = Math.max(gap, now - last); last = now; requestAnimationFrame(raf); }; requestAnimationFrame(raf); /* 풀어 주는 타이머는 메인 스레드가 막히면 늦는다 — 개발 서버의 긴 프레임(100ms)만큼은 빼고 잰다. 2026-11-05 켬/끔 비교: 달려들기와 무관하게 120~190ms */ new MutationObserver(() => { const pn = performance.now(); if (fe.dataset.hitstop) { window.__hs.on += 1; window.__hs.t = pn; gap = 0; } else if (window.__hs.t) { const d = pn - window.__hs.t; window.__hs.rawMs = Math.max(window.__hs.rawMs, Math.round(d)); window.__hs.maxMs = Math.max(window.__hs.maxMs, Math.round(d - Math.max(0, gap - 20))); } }).observe(fe, { attributes: true, attributeFilter: ["data-hitstop"] }); });
   const rows = [];
   const settledOf = (e) => e.rows.filter((s) => s.combat && !s.boss && !s.heroApp && !s.monApp && !s.monDead && s.allies.every((a) => !a.app));
   const encountersOf = () => {

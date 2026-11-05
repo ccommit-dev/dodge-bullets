@@ -651,7 +651,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         // 경계는 예전 상자(칸 상자 가운데 56%)로 — 좁은 몸 상자(.ally-body 45%)로 재면 그림이 전장 왼쪽 밖으로 14px 나갔다(verify-anim-clip)
         // 앞줄 근접(몬스터 곁)은 비켜서도 곁에 남는다 — 대신 상대가 더 민다(2026-11-03, verify-hunt-motion 60px 를 65px 로 넘긴 적이 있다)
         const nearMon = mon && it.el.classList.contains("combat-melee") ? monEdge - it.full : null;
-        const nearLimit = field.querySelector(".titans-hero.has-mount") ? 74 : 52;   // 탈것을 타면 올라간 몸을 비켜설 자리가 더 필요하다 — 52 면 22% 포갠 채 막혔다
+        const nearLimit = (field.querySelector(".titans-hero.has-mount") ? 74 : 52) + 24;   /* 평소 거리(--ally-stand 22px)만큼 더 비켜설 수 있어야 주인공에 포개지 않는다 */   // 탈것을 타면 올라간 몸을 비켜설 자리가 더 필요하다 — 52 면 22% 포갠 채 막혔다
         const meleeMin = nearMon !== null && nearMon <= nearLimit ? nearMon - nearLimit : -Infinity;
         const minDx = Math.max(fr.left + 36 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다
         const maxDx = mon ? mon.left - 6 - it.art.right : fr.right - 28 - it.art.right;
@@ -2144,7 +2144,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const flight = role === "ranged" || role === "healer" ? spawnAllyProj(h.id, ALLY_ELEMENT[h.id], isSig) : 0;
           // 영웅 이상은 명중마다 등급 폭발(ui/tiers.css) — 그림만, 피해는 그대로
           const tierHit = !lowFxRef.current && TIER_RANK[ALLY_RARITY[h.id]] >= TIER_RANK.SR ? (`tierhit-${ALLY_RARITY[h.id]}` as FxBurst["kind"]) : null;
-          const land = () => { applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined, fxDelayMs: flight > 0 ? 0 : 190 / saveRef.current.battleSpeed }); if (tierHit) pushFxAt(tierHit, "monster", 0.42, 0.5, 72, 45, undefined, 0.14); };
+          const land = () => { applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined, fxDelayMs: flight > 0 ? 0 : 110 / saveRef.current.battleSpeed }); if (tierHit) pushFxAt(tierHit, "monster", 0.42, 0.5, 72, 45, undefined, 0.14); };
           // 원거리 · 힐러는 탄이 꽂히는 순간에 피해 — 눈으로 따라간다 (2026-10-21, 사용자: "공격이 몬스터까지 날아가는 탄과 궤적")
           if (flight > 0) window.setTimeout(land, flight); else land();
         }

@@ -98,7 +98,7 @@ ok("10연 → 카드 10장 연출", r.cards === 10, String(r.cards));
 // 새 발견 키를 모두 센다 — 첫 10연 전설이 바로 싸워 새 몬스터(+20)도 그 사이에 잡힌다
 const discoveryGems = [...new Set(p.discovered ?? [])].filter((k) => !discoveredBeforeKeys.has(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 50 : k.startsWith("monster:") ? 20 : Math.min(150, Number(k.split(":")[1]) >= 2 ? 10 * Number(k.split(":")[1]) : 0)), 0);
 ok("보석 −900(+ 새 동료 첫 발견 50씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 - discoveryGems && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
-ok("10연 SR 이상 1명 이상 (보장)", r.fronts.length === 10 && (await page.evaluate(() => [...document.querySelectorAll(".gacha-card")].some((c) => /rarity-sr|rarity-ssr/.test(c.className)))));
+{ const cls = await page.evaluate(() => [...document.querySelectorAll(".gacha-card")].map((c) => /rarity-(\w+)/.exec(c.className)?.[1])); ok("10연 SR 이상 1명 이상 (보장)", r.fronts.length === 10 && cls.some((c) => ["sr", "ssr", "ur", "lr"].includes(c)), JSON.stringify({ fronts: r.fronts.length, cls })); }
 const newNames = r.labels.filter((l) => /새 동료/.test(l)).length;
 const dupShards = r.labels.filter((l) => /조각 \+/.test(l)).length;
 ok("새 동료/중복 조각 라벨 구분", newNames + dupShards === 10, `new=${newNames} dup=${dupShards}`);

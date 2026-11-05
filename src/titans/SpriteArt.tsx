@@ -484,8 +484,8 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
     "--party-lane-y": `${laneY}%`,
     "--party-combat-x": `${combatX}%`,
     "--party-combat-y": `${combatY}%`,
-    // 평소 몬스터와 더 두는 거리 — 사람마다 · 만남마다 조금 다르다(18~26px). 대열이 원래 몬스터에서 40px 쯤 떨어져 있어 합치면 60px 남짓. 더 물리면 주인공 · 원거리 동료 자리와 포갠다(verify-formation)
-    "--ally-stand": ranged ? "0px" : `${18 + ((((allyIndex[id] ?? 0) * 3 + encounter * 5) % 9 + 9) % 9)}px`,
+    // 평소 몬스터와 더 두는 거리 22px — 대열이 원래 몬스터에서 40px 쯤 떨어져 있어 합치면 60px 남짓. 모두 같은 값이라 동료끼리 간격은 그대로(사람마다 다르면 bronn×ember 가 포갰다) · 무작위는 달려들기가 맡는다. 더 물리면 주인공 · 원거리 동료 자리와 포갠다(verify-formation)
+    "--ally-stand": ranged ? "0px" : "22px",
     // 접근 중인 오른쪽 측면 슬롯은 왼쪽 슬롯 뒤(−34px)에 선다 — 같은 줄에 겹쳐 서지 않게
     "--party-melee-dx": `${slot === undefined ? 0 : MELEE_DX[slot] + (rightFlank && !faceLeft ? 4 : 0)}px`,
     // 줄이 낮을수록(y 작을수록) 앞 — 동료끼리의 깊이는 유지하되 둘 다 주인공(z 5) 아래에 둔다.
