@@ -29,10 +29,10 @@ const measure = async (label, action) => {
 };
 await measure("사냥터");
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(1500);
-await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "패키지")?.click()); await sleep(800);
+await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.trim() === "패키지")?.click()); await sleep(800);
 await measure("상점 서랍");
 await measure("서랍 스크롤", async () => { page.evaluate(async () => { const el = document.querySelector(".hub-sheet"); const scr = [el, ...el.querySelectorAll("*")].find((e) => e.scrollHeight > e.clientHeight + 40 && /auto|scroll/.test(getComputedStyle(e).overflowY)); if (!scr) return; const t0 = performance.now(); while (!window.__m.stop) { scr.scrollTop = (Math.sin((performance.now() - t0) / 500) + 1) * 300; await new Promise((r) => requestAnimationFrame(r)); } }); });
-const lat = await page.evaluate(async () => { const o = []; for (const n of ["재화", "유물", "스킬", "동료", "패키지", "재화", "유물", "패키지"]) { const b = [...document.querySelectorAll(".premium-category-tabs button")].find((x) => x.textContent.trim() === n); if (!b) continue; const t = performance.now(); b.click(); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); o.push(Math.round(performance.now() - t)); await new Promise((r) => setTimeout(r, 300)); } return o; });
+const lat = await page.evaluate(async () => { const o = []; for (const n of ["재화", "유물", "스킬", "동료", "패키지", "재화", "유물", "패키지"]) { const b = [...document.querySelectorAll(".shop-sub-tabs button")].find((x) => x.textContent.trim() === n); if (!b) continue; const t = performance.now(); b.click(); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); o.push(Math.round(performance.now() - t)); await new Promise((r) => setTimeout(r, 300)); } return o; });
 console.log("탭 → 그림(ms)", lat.join(","), "· 중앙값", [...lat].sort((a, b) => a - b)[Math.floor(lat.length / 2)]);
 // CPU 프로파일 — 상점 서랍 6초
 await cdp.send("Profiler.start"); await sleep(6000); const { profile } = await cdp.send("Profiler.stop");

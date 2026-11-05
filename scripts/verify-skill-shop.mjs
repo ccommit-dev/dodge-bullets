@@ -20,18 +20,18 @@ await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.
 await sleep(400);
 const sumCopies = (t) => Object.values(t.skillInventory?.copies ?? {}).reduce((a, v) => a + v, 0);
 
-// ── 1. 상점 '스킬' 칸 — 패키지 줄 칸(골드 · 보석 머리줄 + 1회 · 10회) ──
+// ── 1. 상점 '스킬' 칸 — 재화 한 줄(골드 · 보석) + 1회 · 10회 단추 ──
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
-await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click());
+await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click());
 await page.waitForSelector(".skill-shop-list", { timeout: 4000 }).catch(() => null);
-const shop = await page.evaluate(() => ({ heads: [...document.querySelectorAll('.skill-draw-product[data-count="1"] .draw-row-foot')].map((h) => h.closest("[data-banner]").dataset.banner + ":" + h.textContent), cards: [...document.querySelectorAll(".skill-draw-product")].map((c) => c.dataset.banner + c.dataset.count + ":" + c.textContent), icons: document.querySelectorAll(".skill-draw-product .skill-icon").length }));
-ok("상점 '스킬' 칸: 골드(일반 ~ 영웅) · 보석(영웅 ~ 초월) 머리줄 · 재화마다 1회 · 10회 칸 · 칸 그림 = 스킬 아이콘 · 보석 80",
-  shop.heads.length === 2 && /^gold:일반 ~ 영웅/.test(shop.heads[0]) && /^gem:영웅 ~ 초월/.test(shop.heads[1]) && shop.cards.length === 4 && shop.icons === 4 && /80/.test(shop.cards[2]) && /10회 뽑기/.test(shop.cards[1]),
+const shop = await page.evaluate(() => ({ heads: [...document.querySelectorAll('.skill-draw-product .draw-row-sub')].map((h) => h.closest("[data-banner]").dataset.banner + ":" + h.textContent), cards: [...document.querySelectorAll(".skill-draw-product")].map((c) => c.dataset.banner + ":" + c.textContent), btns: document.querySelectorAll(".skill-draw-product button[data-count]").length, icons: document.querySelectorAll(".skill-draw-product .skill-icon").length }));
+ok("상점 '스킬' 칸: 골드(일반 ~ 영웅) · 보석(영웅 ~ 초월) 2줄 · 줄마다 1회 · 10회 단추 · 그림 = 스킬 아이콘 · 보석 80",
+  shop.heads.length === 2 && /^gold:일반 ~ 영웅/.test(shop.heads[0]) && /^gem:영웅 ~ 초월/.test(shop.heads[1]) && shop.cards.length === 2 && shop.icons === 2 && shop.btns === 4 && /80/.test(shop.cards[1]),
   shop.heads.map((h) => h.slice(0, 26)).join(" | "));
 
 // ── 2. 골드 10회 — 소환진 → 공개(카드 10장) · 골드가 줄고 카드 10장 ──
 const t0 = await tit();
-await page.evaluate(() => document.querySelector('.skill-draw-product[data-banner="gold"][data-count="10"] > button')?.click());
+await page.evaluate(() => document.querySelector('.skill-draw-product[data-banner="gold"] button[data-count="10"]')?.click());
 const summon = await page.waitForSelector(".skill-summoning", { timeout: 2000 }).then(() => true).catch(() => false);
 await page.waitForSelector(".skill-draw-reveal", { timeout: 4000 }).catch(() => null);
 const reveal = await page.evaluate(() => ({ title: document.querySelector(".skill-draw-reveal .relic-draw-card > b")?.textContent ?? "", items: [...document.querySelectorAll(".skill-draw-item")].map((x) => x.dataset.skill + ":" + x.dataset.tier), fx: !!document.querySelector(".skill-draw-reveal .gacha-fx, .skill-draw-reveal [class*=fx]") }));
@@ -43,7 +43,7 @@ ok("골드가 줄고 스킬 카드 +10(사냥터 저장)", t1.gold < t0.gold && 
 
 // ── 3. 보석 1회 — 보석이 줄고(QA 빌드는 고정) 카드 +1 · 영웅 이상 ──
 const p0 = await prog();
-await page.evaluate(() => document.querySelector('.skill-draw-product[data-banner="gem"][data-count="1"] > button')?.click());
+await page.evaluate(() => document.querySelector('.skill-draw-product[data-banner="gem"] button[data-count="1"]')?.click());
 await page.waitForSelector(".skill-draw-reveal", { timeout: 4000 }).catch(() => null);
 const gemItems = await page.evaluate(() => [...document.querySelectorAll(".skill-draw-item")].map((x) => x.dataset.tier));
 await page.evaluate(() => document.querySelector(".skill-draw-reveal .cta")?.click()); await sleep(400);

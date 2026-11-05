@@ -83,11 +83,11 @@ ok("카드에서 구매(QA) → 보석 +100 +30 보너스 · 제안 제거 · �
 ok("구매 후 카드 사라짐", await page.evaluate(() => !document.querySelector(".moment-offer")));
 
 // ── retention-3: 9시간 복귀 → 정산 모달에 후원 계약 미리보기 → QA 구매 → patronUntil 30일 ──
-await page.evaluate(({ h, now }) => {
+// 떠 있는 게임이 옛 저장을 다시 써 심은 시각이 덮였다 — 문서가 뜨기 전에 심는다
+await seedThenGoto(({ h, now }) => {
   const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.idleClaimedAt = now - 9 * 3600000; q.patronUntil = 0; localStorage.setItem(pk, JSON.stringify(q));
   const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.lastActiveAt = now - 9 * 3600000; localStorage.setItem(tk, JSON.stringify(t));
 }, { h: H, now: Date.now() });
-await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2500);
 r = await page.evaluate(() => { const m = document.querySelector(".idle-modal"); const pv = document.querySelector(".idle-patron-preview"); return { modal: !!m, preview: pv ? { gold: Number(pv.dataset.extraGold), text: pv.querySelector("b")?.textContent, btn: pv.querySelector(".patron-buy")?.textContent } : null }; });
 ok("9h 복귀 정산 모달에 후원 계약 미리보기(+골드·₩5,500)", r.modal && r.preview && r.preview.gold > 0 && /₩5,500/.test(r.preview.btn ?? ""), JSON.stringify(r));

@@ -35,6 +35,8 @@ await clickText(".titans-bottom-nav button", "동료");
 await sleep(600);
 await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료");
 await sleep(600);
+// 확률 · 천장은 눌러서 펼친다 (2026-11-05)
+await page.evaluate(() => document.querySelector(".gacha-detail-toggle")?.click()); await sleep(200);
 let r = await page.evaluate(() => ({ badge: document.querySelector(".gacha-rarity-badge")?.textContent, title: document.querySelector(".gacha-stage-hero h2")?.textContent, kicker: document.querySelector(".gacha-stage-hero small")?.textContent, level: document.querySelector(".gacha-level:not(.summon-level) b")?.textContent, bar: document.querySelector(".gacha-level:not(.summon-level) em")?.style.width }));
 // 2026-10-27 동료 60명 — 지역3(상한 15)에도 아직 못 만난 동료(조약돌 페블 · 서리검 프로스트 · 오로라)가 생겨 픽업이 다시 있다.
 // 배지 · 제목 · 키커가 서로 맞는지만 본다: 픽업이 있으면 제목이 그 이름 · 키커에 PICK UP · 배지는 픽업 등급, 없으면 "준비 중"
@@ -215,7 +217,7 @@ await sleep(1500);
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".premium-category-tabs button", "외형");
+await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".shop-sub-tabs button", "외형");
 await sleep(400);
 r = await page.evaluate(() => ({ fx: document.querySelectorAll(".fx-product").length, theme: document.querySelectorAll(".theme-product").length, seasonHidden: ![...document.querySelectorAll(".fx-product")].some((c) => /시즌 잔영/.test(c.textContent)) }));
 ok("I 외형 탭에 무기 이펙트 3장 · 테마 3장 · 시즌 이펙트는 미보유 시 숨김", r.fx === 3 && r.theme === 3 && r.seasonHidden, JSON.stringify(r));
@@ -238,7 +240,7 @@ ip = await prog();
 r = await page.evaluate(() => ({ theme: document.querySelector(".titans-field")?.dataset.theme ?? null, btn: document.querySelector(".theme-product button")?.textContent }));
 ok("I 테마 해제 → data-theme 제거 · 보유 유지 · 버튼 장착", ip.equippedTheme === "" && ip.ownedThemes.includes("theme-aurora") && r.theme === null && r.btn === "장착", JSON.stringify(r));
 await page.evaluate(() => document.querySelector(".theme-product button")?.click());
-await sleep(500);
+await waitProg((x) => x.equippedTheme === "theme-aurora");
 await clickText("button", "설정");
 await sleep(400);
 await clickText('[role="menuitem"]', "마이페이지");
@@ -263,7 +265,7 @@ await sleep(600);
 const pickupNames = await page.evaluate(() => [...document.querySelectorAll(".gacha-pickup small")].map((b) => b.textContent.trim().split(" · ")[0]));
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
-await clickText(".hub-sheet-switch button", "뽑기"); await sleep(250); await clickText(".premium-category-tabs button", "동료");
+await clickText(".hub-sheet-switch button", "뽑기"); await sleep(250); await clickText(".shop-sub-tabs button", "동료");
 await sleep(400);
 r = await page.evaluate(() => ({
   cards: document.querySelectorAll(".skin-product").length,

@@ -50,11 +50,13 @@ await sleep(600);
 const roleChips = await page.evaluate(() => [...document.querySelectorAll(".role-chip")].map((c) => c.textContent));
 await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료");
 await sleep(600);
+// 확률 · 천장은 눌러서 펼친다 (2026-11-05)
+await page.evaluate(() => { if (!document.querySelector(".gacha-details")) document.querySelector(".gacha-detail-toggle")?.click(); }); await sleep(200);
 r = await page.evaluate(() => ({
   panel: !!document.querySelector(".hub-sheet .gacha-stage-page"),
   pickups: [...document.querySelectorAll(".gacha-pickup-showcase .titan-ally-art")].map((el) => [...el.classList].find((c) => c.startsWith("ally-"))),
   ten: document.querySelector(".gacha-page-actions button:nth-child(2)")?.textContent,
-  guarantee: document.querySelector(".gacha-stage-hero p")?.textContent,
+  guarantee: document.querySelector(".gacha-details > p")?.textContent,
   pity: document.querySelector(".gacha-level:not(.summon-level) span")?.textContent,
   summon: document.querySelector(".gacha-level.summon-level")?.textContent,
   tierChips: document.querySelectorAll(".summon-tier-rates li").length,
@@ -71,7 +73,7 @@ ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
 // 확률 공시
-await page.evaluate(() => document.querySelector(".gacha-page-actions button:nth-child(3)")?.click());
+await page.evaluate(() => document.querySelector(".gacha-rates-open")?.click());
 await sleep(400);
 // 2026-10-28 공시 정리 — 등급 요약 칸 · 규칙 줄(ul.rates-rules) · 등급별 접은 표(details). 접힌 표의 행도 DOM 에 있다
 // 2026-10-29 같은 창에 유물 · 스킬 뽑기 묶음(details.rates-other)이 붙었다 — 동료 묶음 · 행만 따로 세고, 다른 뽑기는 재화마다 % 합 ≈ 100
@@ -110,7 +112,8 @@ ok("연출 닫힘", await page.evaluate(() => !document.querySelector(".gacha-re
 // 심기와 reload 를 한 evaluate 안에서 · 심은 엠버가 reload 뒤에도 남았는지 확인하고 덮였으면 다시(최대 3번) — 떠 있던 사냥터가 떠나며
 // 옛 저장을 써서 엠버가 사라지면 도감에 엠버 카드가 없어 '(안내 없음)' 으로 가끔 실패했다(2026-10-29)
 for (let tryN = 0; tryN < 3; tryN += 1) {
-  await page.evaluate((h) => { const k = `dodgebullets:titans:${h}`; const s = JSON.parse(localStorage.getItem(k)); s.heroes.ember = 1; localStorage.setItem(k, JSON.stringify(s)); const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.allyStars.ember = 1; q.partyIds = ["mia"]; localStorage.setItem(pk, JSON.stringify(q)); location.reload(); }, H).catch(() => {});
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });   // 저장 심기는 게임 없는 페이지에서 — 떠 있는 게임이 옛 편성을 다시 써 엠버가 못 들어갔다(편성 4명 가득)
+  await page.evaluate((h) => { const k = `dodgebullets:titans:${h}`; const s = JSON.parse(localStorage.getItem(k)); s.heroes.ember = 1; localStorage.setItem(k, JSON.stringify(s)); const pk = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(pk)); q.allyStars.ember = 1; q.partyIds = ["mia"]; localStorage.setItem(pk, JSON.stringify(q)); location.href = "/"; }, H).catch(() => {});
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
   await sleep(2200);
   if ((await titans())?.heroes?.ember >= 1 && (await prog())?.allyStars?.ember >= 1) break;

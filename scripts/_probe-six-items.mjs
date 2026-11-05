@@ -53,7 +53,7 @@ await clickText(".titans-growth-tabs button", "^유물"); await sleep(500);
 ok("유물 탭 → 유물 판 9칸", (await page.evaluate(() => document.querySelectorAll(".growth-relic-panel .relic-tile").length)) === 9);
 if (OUT) await page.screenshot({ path: `${OUT}/six-relic-tab.png` });
 await clickText(".relic-shop-link", "유물 뽑기"); await sleep(700);
-ok("상점에서 유물 뽑기 → 상점 유물 분류", !!(await page.$(".relic-draw-page")) && (await page.evaluate(() => document.querySelector(".premium-category-tabs button.on")?.textContent.trim())) === "유물");
+ok("상점에서 유물 뽑기 → 상점 유물 분류", !!(await page.$(".relic-draw-page")) && (await page.evaluate(() => document.querySelector(".shop-sub-tabs button.on")?.textContent.trim())) === "유물");
 const p0 = await prog();
 await clickText(".relic-draw-actions button", "^1회"); await sleep(700);
 const p1 = await prog();

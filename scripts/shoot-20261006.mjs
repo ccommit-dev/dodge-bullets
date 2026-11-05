@@ -44,7 +44,7 @@ await page.evaluate(() => document.querySelector(".advice-backdrop")?.click()); 
 facts.gemTap = await tap(".titans-gem"); await sleep(700);
 facts.shopWallet = await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-wallet .wallet-item")].map((e) => e.textContent.replace(/\s+/g, " ").trim()));
 await page.screenshot({ path: `${OUT}/03-shop.png` });
-await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".premium-category-tabs button", "외형"); await sleep(400);
+await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".shop-sub-tabs button", "외형"); await sleep(400);
 facts.beatInShop = await page.evaluate(() => document.querySelectorAll(".beat-custom-product").length);
 await page.evaluate(() => document.querySelector(".beat-custom-product")?.scrollIntoView({ block: "center" })); await sleep(200);
 await page.screenshot({ path: `${OUT}/04-shop-beat.png` });

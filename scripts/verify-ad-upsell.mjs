@@ -24,7 +24,7 @@ const seed = async (extra) => {
 };
 const openShop = async (cat) => {
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
-  await page.evaluate((cat) => [...document.querySelectorAll(".hub-sheet-switch button, .premium-category-tabs button")].find((b) => b.textContent.trim() === cat)?.click(), cat); await sleep(500);
+  await page.evaluate((cat) => [...document.querySelectorAll(".hub-sheet-switch button, .shop-sub-tabs button")].find((b) => b.textContent.trim() === cat)?.click(), cat); await sleep(500);
 };
 // ── 1. 광고를 2번 본 상태 — 3번째 시청(방치 가속 4h)에서 제안이 열린다 ──
 await seed({ adsWatchedTotal: 2 });

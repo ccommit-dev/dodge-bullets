@@ -32,7 +32,7 @@ await close(); await page.keyboard.press("Escape"); await sleep(400);
 await page.reload({ waitUntil: "networkidle0" }); await sleep(2500); await close();
 // 상점 외형·칭호
 await clickText(".titans-bottom-nav button", "상점"); await sleep(800);
-for (const t of ["외형", "칭호", "동료"]) { await clickText(".premium-category-tabs button", t); await shot(`d-shop-${t}`); }
+for (const t of ["외형", "칭호", "동료"]) { await clickText(".shop-sub-tabs button", t); await shot(`d-shop-${t}`); }
 await page.reload({ waitUntil: "networkidle0" }); await sleep(2500); await close();
 // 성문 방어 메뉴 → 전투
 await clickText(".titans-bottom-nav button", "모험"); await sleep(700);

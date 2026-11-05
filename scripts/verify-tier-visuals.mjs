@@ -165,7 +165,7 @@ ok("투구 가방: 세트 강화 단계대로(+10 초월 · +4 전설)", helmetB
 if (OUT) await page.screenshot({ path: `${OUT}/equip-bag.png` });
 const trainLook = await page.evaluate(() => { const c = [...document.querySelectorAll(".equipment-training-card")].find((x) => x.getBoundingClientRect().height > 0), ic = c.querySelector(".training-item-icon"); return { tier: c.dataset.tier, label: getComputedStyle(c.querySelector("strong"), "::before").content, border: getComputedStyle(ic).borderTopColor, text: c.querySelector("strong").textContent }; });
 ok("훈련 카드: 등급 이름 · 틀 (제목 글자는 그대로)", trainLook.tier === "N" && trainLook.label === '"일반"' && /^투구/.test(trainLook.text), JSON.stringify(trainLook));
-await clickText(".titans-bottom-nav button", "상점"); await sleep(500); await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(300); await clickText(".premium-category-tabs button", "장비"); await sleep(500);
+await clickText(".titans-bottom-nav button", "상점"); await sleep(500); await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(300); await clickText(".shop-sub-tabs button", "장비"); await sleep(500);
 const shopRow = await page.evaluate(() => [...document.querySelectorAll(".gear-item-row")].map((r) => [r.dataset.tier, r.querySelector(".tier-chip")?.textContent, r.scrollWidth - r.clientWidth]));
 ok("상점: 파츠마다 등급 이름 · 안 키운 것은 영웅 · 넘침 없음", shopRow.length === 20 && shopRow.every(([t, c, o]) => c === T2[t] && o <= 0) && shopRow.filter(([t]) => t === "SR").length === 18, JSON.stringify(shopRow.slice(0, 3)));
 if (OUT) await page.screenshot({ path: `${OUT}/equip-shop.png` });

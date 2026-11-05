@@ -45,7 +45,7 @@ await shot("quest");
 console.log("quest", JSON.stringify(await style(".quest-panel li, .quest-panel .quest-main", { title: "b, strong", desc: "small, .quest-next" })));
 // 3. 상점
 await clickText(".titans-bottom-nav button", "상점"); await sleep(900);
-await clickText(".premium-category-tabs button, button", "^패키지$"); await sleep(600);
+await clickText(".shop-sub-tabs button, button", "^패키지$"); await sleep(600);
 await page.evaluate(() => [...document.querySelectorAll(".premium-product-card")].find((c) => /광고 제거/.test(c.textContent))?.scrollIntoView({ block: "start" })); await sleep(300);
 await shot("shop");
 console.log("shop", JSON.stringify(await style(".premium-product-card", { title: "strong", desc: "p", lines: "small i, small" })));

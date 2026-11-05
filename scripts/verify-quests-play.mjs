@@ -86,19 +86,19 @@ await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")
 ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySelector(".relic-draw-page")));
 // ── 4. 상점 유물 뽑기 — 재화별 3종 (2026-10-28 6등급: 골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) ──
 {
-  // 4판 (2026-10-28 "패키지 아이템 각각 ui처럼") — 재화별 머리줄 + 1회 · 10회 상품 칸
-  const heads = await page.evaluate(() => [...document.querySelectorAll('.relic-draw-product[data-count="1"] .draw-row-foot')].map((h) => h.closest("[data-banner]").dataset.banner + ":" + h.textContent));
-  const cards = await page.evaluate(() => ["gold", "stone", "gem"].map((b) => { const cs = [...document.querySelectorAll(`.relic-draw-product[data-banner="${b}"]`)]; return { banner: b, n: cs.length, thumbs: cs.filter((c) => c.querySelector(".relic-product-thumb img")).length, text: cs.map((c) => c.textContent).join("|") }; }));
-  ok("유물 뽑기 = 패키지 칸: 재화 머리줄 3개(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 재화마다 1회 · 10회 칸(그림 · 값) · 보석 60 · 초월 7.0%",
-    heads.length === 3 && /^gold:일반 ~ 영웅/.test(heads[0]) && /^stone:희귀 ~ 신화/.test(heads[1]) && /^gem:영웅 ~ 초월/.test(heads[2]) && cards.every((c) => c.n === 2 && c.thumbs === 2) && /60/.test(cards[2].text) && /초월 7.0%/.test(cards[2].text) && /10회 뽑기/.test(cards[0].text),
+  // 5판 (2026-11-05 "재화당 한 줄에 1회 · 10회 단추") — 줄 하나 + 단추 둘 · 확률은 줄의 단추로 편다
+  const heads = await page.evaluate(() => [...document.querySelectorAll('.relic-draw-product .draw-row-sub')].map((h) => h.closest("[data-banner]").dataset.banner + ":" + h.textContent));
+  const cards = await page.evaluate(() => ["gold", "stone", "gem"].map((b) => { const cs = [...document.querySelectorAll(`.relic-draw-product[data-banner="${b}"]`)]; return { banner: b, n: cs.length, thumbs: cs.filter((c) => c.querySelector(".relic-product-thumb img")).length, btns: cs.flatMap((c) => [...c.querySelectorAll("button[data-count]")]).length, text: cs.map((c) => c.textContent).join("|") }; }));
+  ok("유물 뽑기: 재화 3줄(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 줄마다 그림 · 1회 · 10회 단추 · 보석 60",
+    heads.length === 3 && /^gold:일반 ~ 영웅/.test(heads[0]) && /^stone:희귀 ~ 신화/.test(heads[1]) && /^gem:영웅 ~ 초월/.test(heads[2]) && cards.every((c) => c.n === 1 && c.thumbs === 1 && c.btns === 2) && /60/.test(cards[2].text),
     heads.map((h) => h.slice(0, 30)).join(" | ") + " · " + cards.map((c) => `${c.banner}:${c.n}`).join("/"));
   await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
-  await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".premium-category-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
+  await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
   const g0 = (await tit()).gold;
   const prog = () => page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
-  const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"][data-count="${n === 1 ? 1 : 10}"] > button`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
+  const draw = async (banner, n) => { await page.evaluate(({ banner, n }) => document.querySelector(`.relic-draw-product[data-banner="${banner}"] button[data-count="${n === 1 ? 1 : 10}"]`)?.click(), { banner, n }); await sleep(700); await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^(확인|닫기)$/.test(b.textContent.trim()))?.click()); await sleep(300); };
   // 2026-10-28 중복 소진 — 뽑은 조각은 남은 조각(relicSpare)으로. ★ 에 들어간 조각(relics)은 그대로 0
   const total = (pr) => Object.values(pr.relicSpare ?? {}).reduce((a, v) => a + v, 0) + Object.values(pr.relics ?? {}).reduce((a, v) => a + v, 0) * 1000;
   await draw("gold", 1);

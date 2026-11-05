@@ -32,9 +32,11 @@ const clickText = (sel, t) => page.evaluate(({ sel, t }) => { const b = [...docu
 const saved = async () => JSON.parse(await page.evaluate((h) => localStorage.getItem(`dodgebullets:progression:v1:${h}`), H));
 // 구매는 저장 대기열을 거쳐 전체 실행 부하에서 0.5초를 넘길 때가 있다 — 보석이 줄 때까지 기다린다
 let buyMs = 0;
-const afterBuy = async (gems) => { const t0 = Date.now(); for (let i = 0; i < 40; i += 1) { const v = await saved(); if (v.redGems !== gems) { buyMs = Math.max(buyMs, Date.now() - t0); return; } await sleep(50); } };
+// 사냥이 도는 동안 몬스터 첫 처치마다 보석 +20(발견 보상) — 그만큼 뺀 값으로 본다. 안 빼면 구매 전에 '줄었다'로 끝나고 세트 값이 20 어긋났다
+const net = (v) => v.redGems - 20 * (v.discovered ?? []).filter((k) => k.startsWith("monster:")).length;
+const afterBuy = async (gems) => { const t0 = Date.now(); for (let i = 0; i < 40; i += 1) { const v = await saved(); if (net(v) !== gems) { buyMs = Math.max(buyMs, Date.now() - t0); return; } await sleep(50); } };
 // 저장을 다 읽기 전엔 보석 0 으로 그려 단추가 꺼져 있다 — 전체 실행 부하에서 눌러도 안 사졌다. 켜질 때까지 기다린다
-const openShop = async () => { await clickText(".titans-bottom-nav button", "상점"); await sleep(500); await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(300); await clickText(".premium-category-tabs button", "장비"); await sleep(300); for (let i = 0; i < 60 && !(await page.evaluate(() => { const b = document.querySelector(".gear-set-buy"); return !!b && !b.disabled; })); i += 1) await sleep(200); };
+const openShop = async () => { await clickText(".titans-bottom-nav button", "상점"); await sleep(500); await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(300); await clickText(".shop-sub-tabs button", "장비"); await sleep(300); await clickText(".gear-filter button", "전체"); await sleep(200); for (let i = 0; i < 60 && !(await page.evaluate(() => { const b = document.querySelector(".gear-set-buy"); return !!b && !b.disabled; })); i += 1) await sleep(200); };
 const openEquip = async () => { await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비 성장"))?.click()); await sleep(500); await page.evaluate(() => document.querySelector(".equip-window")?.scrollIntoView({ block: "start" })); await sleep(300); };
 const center = (sel) => page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
 const dragTo = async (fromSel, toSel) => { const a = await center(fromSel), to = await center(toSel); await page.touchscreen.touchStart(a.x, a.y); await sleep(40); for (let i = 1; i <= 8; i += 1) { await page.touchscreen.touchMove(a.x + ((to.x - a.x) * i) / 8, a.y + ((to.y - a.y) * i) / 8); await sleep(25); } await page.touchscreen.touchEnd(); await sleep(350); };
@@ -51,22 +53,22 @@ ok("저장 정규화: 다른 부위 · 안 가진 것은 못 낀다", Object.key
 
 // ── 상점 ──
 await openShop();
-const shop = await page.evaluate(() => ({ sets: [...document.querySelectorAll(".gear-set-card")].map((c) => c.dataset.gearSet), pieces: document.querySelectorAll(".gear-piece").length, buy: document.querySelector(".gear-set-buy")?.textContent, loaded: [...document.querySelectorAll(".gear-piece img")].filter((i) => !i.src.includes("gem")).every((i) => i.complete && i.naturalWidth > 0), over: document.documentElement.scrollWidth - innerWidth, tabs: [...document.querySelectorAll(".premium-category-tabs button")].map((b) => b.textContent.trim()).join(), clipped: [...document.querySelectorAll(".gear-piece span, .gear-piece small")].filter((e) => e.scrollWidth > e.parentElement.clientWidth + 1).length, tabRows: new Set([...document.querySelectorAll(".premium-category-tabs button")].map((b) => Math.round(b.getBoundingClientRect().top))).size }));
+const shop = await page.evaluate(() => ({ sets: [...document.querySelectorAll(".gear-set-card")].map((c) => c.dataset.gearSet), pieces: document.querySelectorAll(".gear-piece").length, buy: document.querySelector(".gear-set-buy")?.textContent, loaded: [...document.querySelectorAll(".gear-piece img")].filter((i) => !i.src.includes("gem")).every((i) => i.complete && i.naturalWidth > 0), over: document.documentElement.scrollWidth - innerWidth, tabs: [...document.querySelectorAll(".shop-sub-tabs button")].map((b) => b.textContent.trim()).join(), clipped: [...document.querySelectorAll(".gear-piece span, .gear-piece small")].filter((e) => e.scrollWidth > e.parentElement.clientWidth + 1).length, tabRows: new Set([...document.querySelectorAll(".shop-sub-tabs button")].map((b) => Math.round(b.getBoundingClientRect().top))).size }));
 ok("상점 꾸미기 → 장비: 세트 4 · 부위 20 · 그림 로드 · 넘침 없음", shop.sets.join() === KINDS.join() && shop.pieces === 20 && shop.loaded && shop.over <= 0 && shop.clipped === 0 && shop.tabRows === 1, JSON.stringify(shop));
 if (OUT) await page.screenshot({ path: `${OUT}/gear-shop.png` });
 await page.evaluate(() => document.querySelector('.gear-piece[data-gear-item="sword-helmet"]').click()); await afterBuy(2000);
 let p = await saved();
-ok("낱개 구매: 보석 -300 · 보유 · 빈 칸이면 바로 낀다", p.redGems === 1700 && p.ownedGear.includes("sword-helmet") && p.equippedGear.helmet === "sword-helmet", JSON.stringify({ g: p.redGems, o: p.ownedGear, e: p.equippedGear }));
+ok("낱개 구매: 보석 -300 · 보유 · 빈 칸이면 바로 낀다", net(p) === 1700 && p.ownedGear.includes("sword-helmet") && p.equippedGear.helmet === "sword-helmet", JSON.stringify({ g: p.redGems, o: p.ownedGear, e: p.equippedGear }));
 ok("산 부위는 다시 못 산다", await page.evaluate(() => document.querySelector('.gear-piece[data-gear-item="sword-helmet"]').disabled));
 await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="sword"] .gear-set-buy').click()); await afterBuy(1700);
 p = await saved();
-ok("남은 4개 구매 = 1200(낱개 값)", p.redGems === 500 && p.ownedGear.length === 5, JSON.stringify({ g: p.redGems, n: p.ownedGear.length }));
+ok("남은 4개 구매 = 1200(낱개 값)", net(p) === 500 && p.ownedGear.length === 5, JSON.stringify({ g: p.redGems, n: p.ownedGear.length }));
 ok("보석이 모자라면 못 산다(500 < 1200 세트)", await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="spear"] .gear-set-buy').disabled));
 await seed({ redGems: 1200 });
 await openShop();
 await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="bow"] .gear-set-buy').click()); await afterBuy(1200);
 p = await saved();
-ok("세트 통째 = 1200 · 다섯 부위 다 낀다", p.redGems === 0 && p.ownedGear.filter((x) => x.startsWith("bow-")).length === 5 && Object.keys(p.equippedGear).length === 5, JSON.stringify({ g: p.redGems, e: p.equippedGear }));
+ok("세트 통째 = 1200 · 다섯 부위 다 낀다", net(p) === 0 && p.ownedGear.filter((x) => x.startsWith("bow-")).length === 5 && Object.keys(p.equippedGear).length === 5, JSON.stringify({ g: p.redGems, e: p.equippedGear }));
 
 // ── 장비창 탈부착 ──
 await seed({ ownedGear: ["sword-helmet", "spear-helmet", "sword-boots"], equippedGear: {} });
@@ -99,7 +101,7 @@ await openEquip();
 await page.evaluate(() => document.querySelector('.equip-slot[data-equip-slot="boots"]').click()); await sleep(200);
 await page.evaluate(() => document.querySelector(".equip-shop-link")?.click()); await sleep(700);
 const toShop = await page.evaluate(() => ({ cards: document.querySelectorAll(".gear-set-card").length }));
-ok("가방의 상점 칸 → 상점 장비", toShop.cards === 4, JSON.stringify(toShop));
+ok("가방의 상점 칸 → 상점 장비(지금 무기 먼저)", toShop.cards >= 1, JSON.stringify(toShop));
 
 // ── 옛 저장 ──
 await seed({});
@@ -108,7 +110,7 @@ ok("옛 저장은 빈 장비로 시작", Array.isArray(old.ownedGear) ? old.owne
 for (const [w, h] of [[360, 640], [375, 553]]) {
   await seed({ redGems: 5000 }, w, h);
   await openShop();
-  const m = await page.evaluate(() => ({ over: document.documentElement.scrollWidth - innerWidth, clipped: [...document.querySelectorAll(".gear-piece")].filter((e) => e.scrollWidth > e.clientWidth + 1).length, tabRows: new Set([...document.querySelectorAll(".premium-category-tabs button")].map((b) => Math.round(b.getBoundingClientRect().top))).size }));
+  const m = await page.evaluate(() => ({ over: document.documentElement.scrollWidth - innerWidth, clipped: [...document.querySelectorAll(".gear-piece")].filter((e) => e.scrollWidth > e.clientWidth + 1).length, tabRows: new Set([...document.querySelectorAll(".shop-sub-tabs button")].map((b) => Math.round(b.getBoundingClientRect().top))).size }));
   ok(`[${w}×${h}] 상점 넘침 · 잘림 없음 · 탭 한 줄`, m.over <= 0 && m.clipped === 0 && m.tabRows === 1, JSON.stringify(m));
 }
 ok("그림 404 · 페이지 오류 없음", missing.length === 0 && errors.length === 0, [...missing, ...errors].slice(0, 3).join(" | "));

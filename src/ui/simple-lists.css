@@ -1,0 +1,35 @@
+/* 선택 화면 단순화 (2026-11-05, 사용자: "UI 선택창이 번잡 · 단순 명료하게") — 선택은 두 단계, 한 줄에는 단추 하나 */
+/* 종류 칩 — 옛 밑줄 탭 규칙을 이긴다 */
+.hub-sheet .filter-chips.shop-sub-tabs { display: flex !important; margin: 0 !important; border: 0 !important; }
+/* 뽑기 한 줄: 그림 · 이름 · 1회 · 10회 */
+.hub-sheet .relic-draw-product.draw-row { grid-template-columns: 44px minmax(0, 1fr) auto !important; gap: 8px !important; padding: 8px !important; align-items: center; }
+.draw-row strong { display: block; font-size: 15px; font-weight: 900; }
+.draw-row-sub { display: block; font-size: 13px; line-height: 1.25; color: #6b5338; }
+.draw-row .relic-gacha-rates { margin-top: 2px; min-height: 24px; padding: 0 8px; border: 1.5px solid #c9b48c; border-radius: 999px; background: transparent; box-shadow: none; color: #5b4326; font-size: 13px; font-weight: 700; }
+.draw-row-buy { display: flex; gap: 4px; }
+.draw-row-buy button { display: grid; justify-items: center; gap: 1px; min-width: 62px; min-height: 48px; padding: 4px 4px; border: 2px solid #3a2410; border-radius: 12px; background: #2563eb; color: #fff; box-shadow: 0 2px 0 #1e3a8a; }
+.draw-row-buy button b { font-size: 13px; line-height: 1.1; white-space: nowrap; }
+.draw-row-buy button small { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 800; line-height: 1.1; white-space: nowrap; color: inherit; }
+.draw-row-buy button small img, .draw-row-buy button small svg { width: 13px; height: 13px; }
+.draw-row-buy button:disabled { background: #c9bda8; color: #6b5a45; box-shadow: none; border-color: #a8987c; }
+/* 동료 뽑기 — 그림과 단추 먼저 */
+.hub-sheet .gacha-stage-page { gap: 8px !important; }
+.gacha-detail-toggle { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 2px solid #c9b48c; border-radius: 12px; background: #fff8e6; color: #3a2410; font-size: 14px; font-weight: 800; }
+.gacha-detail-toggle small { flex: 1; text-align: right; font-size: 13px; font-weight: 600; color: #6b5338; }
+.gacha-detail-toggle i { font-style: normal; }
+.gacha-details { display: grid; gap: 8px; }
+.gacha-details > p { margin: 0; font-size: 13px; line-height: 1.35; color: #6b5338; }
+.gacha-rates-open { min-height: 36px; border: 2px solid #c9b48c; border-radius: 10px; background: transparent; color: #3a2410; font-size: 13px; font-weight: 700; }
+.gacha-rates-open small { display: none; }
+/* 패키지 한 줄 */
+.hub-sheet .pkg-row { padding: 8px 10px !important; }
+.pkg-row:not(.is-open) > div > p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.pkg-row > div > strong { line-height: 1.25; }
+.pkg-more { justify-self: start; min-height: 24px; padding: 0 8px; border: 1.5px solid #c9b48c; border-radius: 999px; background: transparent; box-shadow: none; color: #5b4326; font-size: 13px; font-weight: 700; }
+/* 다듬기 */
+.hub-sheet .gacha-page-actions { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+.hub-sheet .gacha-page-actions button { grid-column: auto !important; width: 100% !important; min-height: 56px; }
+.draw-row > div { display: grid; justify-items: start; }
+.hub-sheet .pkg-row > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 6px; }
+.hub-sheet .pkg-row > div > strong, .hub-sheet .pkg-row > div > .shop-lines { grid-column: 1 / -1; }
+.hub-sheet .pkg-more { min-width: 30px; min-height: 26px !important; padding: 0 6px !important; border: 1.5px solid #c9b48c !important; border-radius: 999px !important; background: transparent !important; box-shadow: none !important; color: #5b4326 !important; font-size: 13px !important; line-height: 1; }

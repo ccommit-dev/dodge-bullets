@@ -140,12 +140,12 @@ ok("외형 장착: 손잡이가 손에", !!sk.grip && sk.grip.dist <= sk.grip.bo
 await page.evaluate(() => document.querySelector(".titans-hero")?.scrollIntoView({ block: "center" }));
 await page.screenshot({ path: "art-gen/out/weapon-grip-skin.png" });
 await clickText(".titans-bottom-nav button", "상점"); await sleep(700);
-await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".premium-category-tabs button", "외형"); await sleep(600);
+await clickText(".hub-sheet-switch button", "꾸미기"); await sleep(250); await clickText(".shop-sub-tabs button", "외형"); await sleep(600);
 const shop = await page.evaluate(() => ({ thumbs: [...document.querySelectorAll(".blade-product .weapon-skin-thumb")].map((i) => i.getAttribute("src")), names: [...document.querySelectorAll(".blade-product strong")].map((s) => s.textContent), drum: document.querySelectorAll(".blade-product .premium-weapon-thumb").length }));
 ok("상점 외형 3종: 썸네일 = 장착 무기(창) 그림 · 이름에 '북' 없음", shop.thumbs.length === 3 && shop.thumbs.every((s) => /skins\/blade-[a-z]+\/spear-\d\.png/.test(s ?? "")) && new Set(shop.thumbs).size === 3 && shop.drum === 0 && shop.names.every((n) => !/북/.test(n)), `${shop.thumbs.length}장 · ${shop.names.join(" / ")}`);
 // 비트 디펜스 판정 레일 상품 — 무기 외형과 소제목으로 갈리고, 이름 · 아이콘이 '북' 이 아니다 (2026-10-27 "황금 전진 북 · 공명의 전투 북 — 같은 이름 유의")
-const beat = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".style-filter button")].slice(1).map((h) => h.textContent.trim()), names: [...document.querySelectorAll(".beat-custom-product strong")].map((s) => s.textContent), headBeforeBeat: (() => { const h = [...document.querySelectorAll(".premium-subhead")].find((x) => /비트/.test(x.textContent)); const b = document.querySelector(".beat-custom-product"); return !!h && !!b && !!(h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); })() }));
-ok("상점 외형 소제목 3개: 주인공 무기 외형 · 비트 디펜스 꾸미기 · 무기 이펙트", beat.heads.length === 3 && /무기 외형/.test(beat.heads[0]) && /비트/.test(beat.heads[1]) && /이펙트/.test(beat.heads[2]), beat.heads.join(" / "));
+const beat = await page.evaluate(() => ({ heads: [".blade-product", ".beat-custom-product", ".fx-product"].map((c) => document.querySelectorAll(c).length), names: [...document.querySelectorAll(".beat-custom-product strong")].map((s) => s.textContent), headBeforeBeat: (() => { const h = [...document.querySelectorAll(".premium-subhead")].find((x) => /비트/.test(x.textContent)); const b = document.querySelector(".beat-custom-product"); return !!h && !!b && !!(h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); })() }));
+ok("상점 외형 한 목록: 무기 외형 · 비트 꾸미기 · 이펙트가 함께 있다", beat.heads.every((n) => n > 0), beat.heads.join());
 ok("비트 판정 레일 상품 이름에 '북' 없음", beat.names.length >= 4 && beat.names.every((n) => !/북/.test(n)), beat.names.join(" / "));
 await page.evaluate(() => document.querySelector(".blade-product")?.scrollIntoView({ block: "center" })); await sleep(200);
 await page.screenshot({ path: "art-gen/out/weapon-grip-shop.png" });
