@@ -20,10 +20,11 @@ const now = Date.now();
 const day = (offset) => new Date(Date.now() + offset * 86_400_000).toLocaleDateString("sv-SE");
 
 async function seed(attendance, extra = {}) {
-  await page.goto(BASE, { waitUntil: "networkidle0" });
+  // 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 옛 저장을 다시 써 심은 값을 덮었다(전체 실행에서 새 계정으로 보여 첫날 +1000)
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });
   await page.evaluate((h, now, attendance, extra) => {
     localStorage.clear();
-    localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ version: 5, onboardingStep: 4, level: 20, exp: 1000, attendanceStreak: 2, redGems: 100, sharedCoins: 50000, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, towerTickets: 0 }));
+    localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ version: 5, onboardingStep: 4, level: 20, titanBestStage: 6, exp: 1000, attendanceStreak: 2, titanBestStage: 6, redGems: 100, sharedCoins: 50000, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, towerTickets: 0 }));
     localStorage.setItem(`dodgebullets:titans:${h}`, JSON.stringify({ stage: 6, bestStage: 6, gold: 20000, heroes: { mia: 5 }, lastActiveAt: now }));
     localStorage.setItem("dodge-bullets:soundEnabled", "0");
     if (attendance) localStorage.setItem(`dodgebullets:attendance:v1:${h}`, JSON.stringify(attendance));
@@ -57,7 +58,10 @@ let s = await state();
 // 2026-10-08: 30칸 한 판 → 15일 두 쪽(스크롤 없이) — 한 쪽 15칸 + 쪽 버튼 2개
 ok("부팅 때 30일 출석 판이 자동으로 뜬다 (15칸 × 2쪽 · 제목)", s.tiles === 15 && s.attendance.includes("30일 출석") && s.attendance.includes("DAY 16"), `칸 ${s.tiles}`);
 let g0 = await gemsNow();
-await tap(".attendance-modal button", "DAY 1 보상 받기"); await sleep(900);
+await tap(".attendance-modal button", "DAY 1 보상 받기");
+// 고정 0.9초 대신 저장될 때까지 — 저하 때 아직 안 적혀 null 을 읽었다
+for (let i = 0; i < 60 && !(await page.evaluate((h) => !!localStorage.getItem(`dodgebullets:attendance:v1:${h}`), H)); i += 1) await sleep(150);
+await sleep(300);
 let p = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 const att = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:attendance:v1:${h}`)), H);
 ok("DAY 1 수령 → 이미 진행한 계정은 예전 첫날 보석 +20(1000 은 새 계정만, 2026-10-23) · 누적 1일", p.redGems - g0 === 20 && att.totalDays === 1, `gems +${p.redGems - g0} total ${att.totalDays}`);
