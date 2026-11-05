@@ -2,14 +2,14 @@
  * 사다리는 titans/bossLadder 계산 그대로: 처음 깬 대장 스테이지마다 한 칸, 칸의 특성은 LADDER_ORDER[top % 4], LADDER_STEP 만큼. 층마다 대장이 있으므로 Stage 5 · 10 · 15 대장을 잡으면 동료 · 탭 · 골드가 오르고, 그 사이 스테이지 칸(Stage 6~9 …)도 쌓인다. 쌓인 값이 ladderEffects 처럼 탭 · 동료 피해에 실제로 곱해진다. 자동 공격 속도는 게임에서 주인공 자동 공격에 걸리고(TitansGame autoInterval) 이 장면엔 주인공 자동 공격이 없어 판에 값만 보인다 */
 window.RF_SCENE = (() => {
   const BOSSES = [
-    { id: 'moss-golem-clean', name: '이끼 골렘', stage: 5, area: '새벽 초원', bg: 'bg:meadow', hp: 900, h: 200, spots: [[282, 424], [150, 402], [276, 386], [156, 432]] },
-    { id: 'moon-wolf-king-clean', name: '월광 늑대왕', stage: 10, area: '그림자 숲', bg: 'bg:forest', hp: 1050, h: 200, spots: [[282, 424], [150, 396], [276, 402], [156, 432]] },
-    { id: 'wolf-king-clean', name: '고대 오우거', stage: 15, area: '붉은 폐허', bg: 'bg:ruins', hp: 1280, h: 200, spots: [[276, 426], [150, 400], [282, 392], [156, 432]] },
+    { id: 'moss-golem-clean', name: '이끼 골렘', stage: 5, area: '새벽 초원', bg: 'bg:meadow', hp: 700, h: 200, spots: [[282, 424], [150, 402], [276, 386], [156, 432]] },
+    { id: 'moon-wolf-king-clean', name: '월광 늑대왕', stage: 10, area: '그림자 숲', bg: 'bg:forest', hp: 800, h: 200, spots: [[282, 424], [150, 396], [276, 402], [156, 432]] },
+    { id: 'wolf-king-clean', name: '고대 오우거', stage: 15, area: '붉은 폐허', bg: 'bg:ruins', hp: 980, h: 200, spots: [[276, 426], [150, 400], [282, 392], [156, 432]] },
   ];
   const ORDER = ['ally', 'tap', 'gold', 'speed'];   // LADDER_ORDER
   const STEP = { ally: 3, tap: 5, gold: 3, speed: 2 };   // LADDER_STEP (%)
   const LABEL = { ally: '동료 피해', tap: '탭 피해', gold: '처치 골드', speed: '자동 공격 속도' };   // LADDER_LABEL
-  const TIME = 7, TAP = 28, ALLY = 22, ALLY_SEC = 0.5, MOVE_EVERY = 8, CLIMB_SEC = 0.1;
+  const TIME = 7, TAP = 28, ALLY = 22, ALLY_SEC = 0.5, MOVE_EVERY = 8, CLIMB_SEC = 0.1, SHOW = 100;   // SHOW: 피해 숫자는 크게 보여 준다(체력은 그대로)
   let K;
   /** 깬 대장 스테이지 수(top)까지 특성마다 몇 칸인가 — perkForStage 를 처음부터 굴린 것과 같다 */
   const rank = (perk, top) => { let n = 0; for (let t = 0; t < top; t++) if (ORDER[t % 4] === perk) n += 1; return n; };
@@ -21,17 +21,45 @@ window.RF_SCENE = (() => {
     K.hp = b.hp; K.left = TIME; K.enter = 0.5; K.hits = 0; K.party = 0;
     K.climbTo = b.stage - 1; K.climbT = 0;   // 이 대장 앞 스테이지들을 깨며 쌓인 칸 — 등장하는 동안 차례로 오른다
   }
+  /** 대장이 조각나 날아간다 — 그림을 n×n 으로 잘라 흩뿌린다 */
+  function explode(G, u, power = 1) {
+    const key = `${u.id}:hit:0`, im = G.img(key); if (!im) return;
+    const n = 4, w = im.w * u.s, h = im.h * u.s;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const x = u.x - w / 2 + ((c + 0.5) * w) / n, y = u.y - h + ((r + 0.5) * h) / n, a = Math.atan2(y - (u.y - h / 2), x - u.x), v = (240 + Math.random() * 340) * power;
+      K.shards.push({ key, c, r, n, x, y, w: w / n, h: h / n, vx: Math.cos(a) * v + 110, vy: Math.sin(a) * v - 220, rot: 0, vr: (Math.random() - 0.5) * 16, t: 0 });
+    }
+  }
+  function tickShards(dt) { for (const p of K.shards) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 640 * dt; p.rot += p.vr * dt; } K.shards = K.shards.filter((p) => p.t < 1.3); }
+  function drawShards(G, ctx) {
+    for (const p of K.shards) {
+      const im = G.img(p.key); if (!im) continue;
+      const sw = im.img.naturalWidth / p.n, sh = im.img.naturalHeight / p.n;
+      ctx.save(); ctx.globalAlpha = Math.min(1, (1.3 - p.t) * 2.5); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.drawImage(im.img, p.c * sw, p.r * sh, sw, sh, -p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    }
+  }
+  const cardAt = (i) => ({ x: 10 + (i % 2) * 174, y: 492 + Math.floor(i / 2) * 46, w: 166, h: 42 });
+  /** 사다리 칸이 오를 때 — 그 칸에서 빛 */
+  function rungFx(G, perk) {
+    const r = cardAt(ORDER.indexOf(perk)), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    K.headT = 1; G.ring(cx, cy, '#ffe066', 84, 0.42); G.burst(cx, cy, '#ffe066', 7, 180);
+  }
   const near = (x, y) => { const b = BOSSES[K.stage]; return Math.abs(x - K.boss.x) < 66 && y > K.boss.y - b.h && y < K.boss.y + 24; };
   function damage(G, dmg, color, tag) {
     K.hp -= dmg; if (K.boss.mode === 'idle') KIT.hit(K.boss);
-    G.float(`${KIT.fmt(dmg)}${tag}`, K.boss.x + (Math.random() * 90 - 45), K.boss.y - 120 - Math.random() * 30, color, tag ? 19 : 20, 0.7);
+    G.float(`${KIT.fmt(dmg * SHOW)}${tag}`, K.boss.x + (Math.random() * 90 - 45), K.boss.y - 120 - Math.random() * 30, color, tag ? 19 : 20, 0.7);
     if (K.hp <= 0) {
       const b = BOSSES[K.stage], perk = ORDER[(b.stage - 1) % 4], before = pct(perk);
-      K.top = b.stage; K.climbTo = b.stage; K.raised = perk; K.raisedT = 1.2;
-      K.dying = 0.9; G.sfx('win'); G.burst(K.boss.x, K.boss.y - 90, '#ffd23f', 44, 260); G.impact(1.3); G.coins(K.boss.x, K.boss.y - 90, 14);
+      K.top = b.stage; K.climbTo = b.stage; K.raised = perk; K.raisedT = 1.2; rungFx(G, perk);
+      const bx = K.boss.x, by = K.boss.y - 90;
+      K.dying = 0.9; G.sfx('win'); G.burst(bx, by, '#ffd23f', 44, 340); G.burst(bx, by, '#fff', 22, 440); G.impact(1.3, bx, by); G.coins(bx, by, 14);
+      // 처치 — 슬로 · 줌 · 대장이 조각나 날아간다. 이 사이엔 누를 것이 없다
+      explode(G, K.boss, 1.2); K.boss.gone = true;
+      G.slow(0.55); G.zoom(1.16, bx, by, 0.3); G.flash('#fff', 0.12); G.vignette('#ffd23f', 0.45);
+      G.ring(bx, by, '#fff', 230, 0.5); G.after(0.1, () => G.ring(bx, by, '#ffd23f', 320, 0.55));
       if (K.stage < 2) G.stamp(`사다리 ${K.top}칸!`, '#ffd23f', 330, 0.9);
-      G.pop(`대장 사다리 ${K.top}칸`, `${LABEL[perk]} +${STEP[perk]}% 영구`, `${before}% → ${before + STEP[perk]}% · 환생해도 유지`, 'gold', 1.9);
-      if (K.stage === 2) { G.climax(); G.caption('영구 특성은 환생해도 그대로!'); G.finish(2.2); }
+      G.pop(`대장 사다리 ${K.top}칸`, `${LABEL[perk]} +${STEP[perk]}% 영구`, `${before}% → ${before + STEP[perk]}% · 환생해도 유지`, 'gold', K.stage === 2 ? 2.4 : 1.4);
+      if (K.stage === 2) { G.climax(); G.caption('영구 특성은 환생해도 그대로!'); G.finish(2.8); }
       else G.caption(`다음은 ${BOSSES[K.stage + 1].name}`);
     }
   }
@@ -55,11 +83,11 @@ window.RF_SCENE = (() => {
     popY: 200,
     introDur: 1.5,
     hook: ['더 높은 대장 잡으면', '영구 강화'],
-    climaxStamp: '영구 강화!!', raysAt: [240, 330],
+    climaxStamp: '영구 강화!!', raysAt: [200, 330],
     caption0: '대장을 직접 눌러 공격!',
     endLines: ['최고 기록을 넘기면 영원한 특성', '동료 · 탭 · 골드 · 공속이 차례로'],
     init() {
-      K = { stage: 0, top: BOSSES[0].stage - 1, party: 0, dying: 0, combo: 0, best: 0, misses: 0, hits: 0, spot: 0, tx: 0, ty: 0, enter: 0, left: TIME, chose: false, movedOnce: false, climbTo: 0, climbT: 0, stackT: 0, raised: null, raisedT: 0,
+      K = { stage: 0, top: BOSSES[0].stage - 1, party: 0, dying: 0, combo: 0, best: 0, misses: 0, hits: 0, spot: 0, tx: 0, ty: 0, enter: 0, left: TIME, chose: false, movedOnce: false, climbTo: 0, climbT: 0, stackT: 0, raised: null, raisedT: 0, headT: 0, shards: [],
         hero: { id: 'hero', x: 66, y: 432, s: 0.8, mode: 'idle', mt: 0 }, mia: { id: 'mia', x: 30, y: 408, s: 0.52, mode: 'idle', mt: 0, phase: 0.3 } };
       next();
     },
@@ -73,11 +101,12 @@ window.RF_SCENE = (() => {
     onKey(G) { if (!K.chose) { K.chose = true; G.emit('choice', { tap: 'first' }); } tap(G); },
     update(G, dt) {
       KIT.tick(K.hero, dt); KIT.tick(K.mia, dt); if (K.boss) KIT.tick(K.boss, dt);
-      K.raisedT = Math.max(0, K.raisedT - dt);
+      K.raisedT = Math.max(0, K.raisedT - dt); K.headT = Math.max(0, K.headT - dt * 3);
+      tickShards(dt);
       if (K.top < K.climbTo) {   // 스테이지 사이에 쌓인 칸
         K.climbT += dt;
         if (K.climbT >= CLIMB_SEC) {
-          K.climbT = 0; K.raised = ORDER[K.top % 4]; K.raisedT = 0.5; K.top += 1; G.sfx('coin');
+          K.climbT = 0; K.raised = ORDER[K.top % 4]; K.raisedT = 0.5; K.top += 1; G.sfx('coin'); rungFx(G, K.raised);
           if (K.top === K.climbTo) K.stackT = 1.1;   // 다 오르고 잠시 뒤 — 지금 곱해지는 값을 자막으로
         }
       }
@@ -122,12 +151,20 @@ window.RF_SCENE = (() => {
       const nextPerk = ORDER[K.top % 4];
       if (K.boss && !K.dying) G.text(`잡으면 ${LABEL[ORDER[(b.stage - 1) % 4]]} +${STEP[ORDER[(b.stage - 1) % 4]]}% 영구`, 180, 152, { size: 14, color: '#ffe066', stroke: '#2a1606', sw: 4 });
       KIT.unit(G, K.mia, G.t); KIT.unit(G, K.hero, G.t);
-      if (K.boss) KIT.unit(G, K.boss, G.t);
-      if (K.combo >= 2 && G.phase !== 'end') G.text(`${K.combo} 콤보`, 70, 286, { size: K.combo >= 10 ? 26 : 20, color: K.combo >= 10 ? '#ffd23f' : '#fff', stroke: '#2a1606', sw: 5 });
+      if (K.boss && !K.boss.gone) KIT.unit(G, K.boss, G.t);
+      drawShards(G, ctx);
+      if (K.combo >= 2 && !K.dying && G.phase === 'play') G.text(`${K.combo} 콤보`, 70, 286, { size: K.combo >= 10 ? 26 : 20, color: K.combo >= 10 ? '#ffd23f' : '#fff', stroke: '#2a1606', sw: 5 });
       // 아래: 사다리 — 지금까지 쌓인 영구 특성 넷
-      G.text(`대장 사다리 ${K.top}칸 · 환생해도 유지`, 180, 476, { size: 15, color: '#ffe066' });
+      ctx.save(); ctx.translate(180, 476); ctx.scale(1 + 0.22 * K.headT, 1 + 0.22 * K.headT);
+      G.text(`대장 사다리 ${K.top}칸 · 환생해도 유지`, 0, 0, { size: 15, color: K.headT > 0.3 ? '#fff' : '#ffe066' });
+      ctx.restore();
       ORDER.forEach((perk, i) => {
-        const x = 10 + (i % 2) * 174, y = 492 + Math.floor(i / 2) * 46, cur = perk === nextPerk && K.top < 15, up = K.raised === perk && K.raisedT > 0;
+        const { x, y } = cardAt(i), cur = perk === nextPerk && K.top < 15, up = K.raised === perk && K.raisedT > 0;
+        if (up) {   // 칸이 오를 때 — 그 칸에서 위로 빛기둥
+          const a = Math.min(1, K.raisedT * 2.2), cx = x + 83, g = ctx.createLinearGradient(cx - 70, 0, cx + 70, 0);
+          g.addColorStop(0, 'rgba(255,220,110,0)'); g.addColorStop(0.5, `rgba(255,226,130,${0.55 * a})`); g.addColorStop(1, 'rgba(255,220,110,0)');
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(cx - 70, y - 300, 140, 342); ctx.restore();
+        }
         G.rr(x, y, 166, 42, 10, up ? '#ffe7a3' : 'rgba(255,255,255,.08)', up ? '#f2c232' : cur ? '#ffd23f' : 'rgba(255,255,255,.2)', up || cur ? 3 : 2);
         G.text(LABEL[perk], x + 10, y + 21, { size: perk === 'speed' ? 13 : 14, color: up ? '#3b2415' : '#f5d9a8', align: 'left' });
         G.text(`+${pct(perk)}%`, x + 156, y + 21, { size: 18, color: up ? '#92400e' : '#fff', align: 'right' });

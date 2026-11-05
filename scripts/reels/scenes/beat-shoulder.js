@@ -14,6 +14,13 @@ window.RF_SCENE = (() => {
   const ENEMY = 1200, DMG = [14, 7, 6, 25], HP_MAX = 6, INVULN = 0.45, HEAL_MAX = 8, AUTO_START = 3;
   const START = { x: 70, y: 470, w: 220, h: 62 };
   let K, B;
+  /** 큰 폭발 빛 — { x, y, t, life, r } */
+  function drawBlast(ctx, b, c1 = '255,180,60', c2 = '255,90,20') {
+    if (!b || b.t >= b.life) return;
+    const k = b.t / b.life, r = b.r * (0.2 + k * 1.1), g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+    g.addColorStop(0, `rgba(255,255,255,${1 - k})`); g.addColorStop(0.35, `rgba(${c1},${0.9 * (1 - k)})`); g.addColorStop(1, `rgba(${c2},0)`);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(b.x - r, b.y - r, r * 2, r * 2); ctx.restore();
+  }
   const grade = () => { const a = K.hits / Math.max(1, K.hits + B.miss); return a >= 0.9 ? 'S' : a >= 0.75 ? 'A' : a >= 0.55 ? 'B' : 'C'; };   // 게임 등급(beat/tracks.ts gradeOf)
   function choose(G, data) { if (!K.chosen) { K.chosen = true; G.emit('choice', data); } }
   function begin(G, tapped) {
@@ -23,11 +30,15 @@ window.RF_SCENE = (() => {
   }
   function done(G) {
     if (K.mode !== 'play' || G.over) return;
-    K.mode = 'result'; K.rt = 0; K.enemy = 0; K.rank = grade(); B.judgeT = 0; KIT.hit(K.boss); G.impact(1); G.burst(K.boss.x, K.boss.y - 60, '#ffd23f', 40, 260);
+    const bx = K.boss.x, by = K.boss.y - 60;
+    K.mode = 'result'; K.rt = 0; K.enemy = 0; K.rank = grade(); B.judgeT = 0; KIT.hit(K.boss); K.dead = 0.01; K.blast = { x: bx, y: by, t: 0, life: 0.8, r: 440 };
+    G.impact(3, bx, by); G.vignette('#ff8a1f', 0.9); G.burst(bx, by, '#ffd23f', 70, 320); G.coins(bx, by, 24);
+    for (let i = 0; i < 6; i++) G.after(i * 0.1, () => { const x = bx + (Math.random() - 0.5) * 110, y = by + (Math.random() - 0.5) * 100; G.burst(x, y, i % 2 ? '#ffd23f' : '#ff8a1f', 24, 240); G.ring(x, y, '#fff', 90, 0.32); G.kick((Math.random() - 0.5) * 8, 5); G.sfx('hit'); });
     G.caption(`${K.rank} 랭크 — 첫 클리어 보상!`);
   }
   function reveal(G) {
-    K.revealed = true; G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.3); G.burst(180, 430, '#ffd23f', 60, 300); G.coins(180, 470, 24); G.impact(1.5);
+    K.revealed = true; G.climax(); G.sfx('legend'); G.flash('#fff', 0.34); G.burst(180, 430, '#ffd23f', 80, 340); G.coins(50, 540, 18); G.coins(310, 540, 18); G.impact(2.4, 180, 430); G.zoom(1.3, 180, 430, 1.1); G.coinRain(2.2);
+    for (let i = 0; i < 5; i++) G.after(i * 0.16, () => { G.ring(180, 440 - i * 40, i % 2 ? '#fff' : '#ffd23f', 150 + i * 40, 0.45); G.burst(180, 470, '#fff3a0', 18, 260); });
     G.pop('장 대장 최초 클리어', '용린 견갑 획득!', '다시 깨면 견갑 조각', 'gold', 2.6);
     G.finish(2.8);
   }
@@ -36,11 +47,11 @@ window.RF_SCENE = (() => {
     canLose: true,
     introDur: 1.5,
     hook: ['장 대장을 넘기면', '견갑이 떨어진다'],
-    climaxStamp: '획득!!', raysAt: [180, 430],
+    climaxStamp: '획득!!', raysAt: [180, 430], stampY: 306,
     caption0: '곡을 고르고 시작',
     endLines: ['비트 수련 보상 = 견갑', '정찰 · 그림자 · 오우거 · 용린 견갑'],
     init(G) {
-      K = { mode: 'select', selT: 0, rt: 0, chest: 0, hp: HP_MAX, inv: 0, heal: 0, hits: 0, enemy: ENEMY, rank: 'S', chosen: false, opened: false, revealed: false, lostHeart: 0,
+      K = { pulse: 0, dead: 0, blast: null, sparkT: 0, mode: 'select', selT: 0, rt: 0, chest: 0, hp: HP_MAX, inv: 0, heal: 0, hits: 0, enemy: ENEMY, rank: 'S', chosen: false, opened: false, revealed: false, lostHeart: 0,
         hero: { id: 'hero', x: 120, y: 236, s: 0.62, mode: 'idle', mt: 0 }, leon: { id: 'leon', x: 64, y: 242, s: 0.55, mode: 'idle', mt: 0, phase: 0.4 },
         boss: { id: 'flame-wyvern-clean', x: 280, y: 246, s: 0.54, mode: 'idle', mt: 0 } };
       B = KIT.beat({ chart: CHART, bpm: 160, speed: 360, feverAt: 99999,
@@ -48,7 +59,11 @@ window.RF_SCENE = (() => {
           KIT.attack(lane % 2 ? K.leon : K.hero, 0.3); KIT.hit(K.boss); K.hits += 1;
           const dmg = DMG[lane] + Math.floor(B.combo * 0.8);
           K.enemy = Math.max(0, K.enemy - dmg);
-          G.float(String(dmg), 270 + Math.random() * 30 - 15, 130, j === 'PERFECT' ? '#ffd23f' : '#fff', j === 'PERFECT' ? 22 : 17, 0.6);
+          const heat = Math.min(1, B.combo / 28);
+          K.pulse = 0.3 + heat * 0.7; if (heat > 0.25) G.vignette(heat > 0.6 ? '#f0abfc' : '#ffd23f', 0.12 + heat * 0.4);
+          // 패드가 어긋나지 않게 패드 줄을 중심으로 당긴다
+          if (B.combo % 7 === 0) { G.zoom(1.07 + heat * 0.08, 180, 530, 0.18); G.flash('#fff', 0.07); G.ring(180, 380, '#ffd23f', 130 + heat * 110, 0.4); G.speed(0.3); G.coins(270, 170, 5 + Math.floor(heat * 10)); }
+          G.float(String(dmg), 270 + Math.random() * 30 - 15, 130, j === 'PERFECT' ? '#ffd23f' : '#fff', (j === 'PERFECT' ? 22 : 17) + heat * 22, 0.7);
           G.sfx(j === 'PERFECT' ? 'coin' : 'tap');
           // kit 의 GOOD 은 게임의 GREAT · GOOD 을 합친 칸이라 +1(게임 GREAT 값)
           K.heal += j === 'PERFECT' ? 2 : 1;
@@ -76,7 +91,9 @@ window.RF_SCENE = (() => {
     },
     update(G, dt) {
       for (const u of [K.hero, K.leon, K.boss]) KIT.tick(u, dt);
-      K.inv = Math.max(0, K.inv - dt); K.lostHeart = Math.max(0, K.lostHeart - dt);
+      K.inv = Math.max(0, K.inv - dt); K.lostHeart = Math.max(0, K.lostHeart - dt); K.pulse = Math.max(0, K.pulse - dt * 3.2);
+      if (K.dead > 0) K.dead += dt;
+      if (K.blast) K.blast.t += dt;
       if (G.phase !== 'play' && G.phase !== 'climax') return;
       if (K.mode === 'select') {
         K.selT += dt;
@@ -97,6 +114,8 @@ window.RF_SCENE = (() => {
       if (!K.opened && K.rt > 1.6) K.opened = true;
       if (K.opened) {
         K.chest += dt;
+        K.sparkT -= dt;
+        if (K.sparkT <= 0) { K.sparkT = 0.09; G.burst(180 + (Math.random() - 0.5) * 60, 470 - Math.random() * 60, '#fff3a0', 3, 170); }
         if (K.chest > 0.6 && !K.revealed) reveal(G);
       }
     },
@@ -122,25 +141,41 @@ window.RF_SCENE = (() => {
       KIT.bossBar(G, `${ratio > 0.66 ? '접근' : ratio > 0.3 ? '교전' : 'DROP 결전'} · 장 대장`, ratio, 56);
       KIT.unit(G, K.leon, G.t); KIT.unit(G, K.hero, G.t);
       // 이 그림만 오른쪽을 보게 그려져 있다(game/draw.ts FLIP_RIGHT_FACING) — 뒤집어 왼쪽을 보게
-      ctx.save(); ctx.translate(K.boss.x, 0); ctx.scale(-1, 1); KIT.unit(G, { ...K.boss, x: 0 }, G.t); ctx.restore();
+      if (K.dead < 0.5) { const d = K.dead; ctx.save(); ctx.translate(K.boss.x, 0); ctx.scale(-1, 1); KIT.unit(G, d > 0 ? { ...K.boss, x: 0, s: K.boss.s * (1 + d * 0.9), alpha: 1 - d * 2, flash: 1, flashC: '#fff' } : { ...K.boss, x: 0 }, G.t); ctx.restore(); }
+      drawBlast(ctx, K.blast);
       if (K.mode === 'play') {
         // 체력 — hard 6칸
         G.rr(96, 86, 168, 26, 13, 'rgba(27,18,11,.8)', K.lostHeart > 0 ? '#fca5a5' : 'rgba(255,255,255,.2)', 2);
         for (let i = 0; i < HP_MAX; i++) G.text(i < K.hp ? '♥' : '♡', 118 + i * 25, 99, { size: 18, color: i < K.hp ? '#ff6b81' : 'rgba(255,255,255,.4)' });
-        B.draw(G, ctx); G.text('Plasma Gun · 160 BPM · 16비트', 12, 274, { size: 13, color: '#c4b5fd', align: 'left' });
+        // 판정 글자 · 콤보는 콤보가 쌓일수록 커진다 — kit 의 글자 대신 여기서 그린다
+        const jt = B.judgeT, combo = B.combo, heat = Math.min(1, combo / 28);
+        B.judgeT = 0; B.combo = 0; B.draw(G, ctx); B.judgeT = jt; B.combo = combo;
+        if (K.pulse > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,210,63,${K.pulse * 0.34})`; ctx.fillRect(0, 256, 360, 236); ctx.restore(); }
+        if (jt > 0) G.text(B.judge, 180, 326, { size: (30 + heat * 22) * (0.85 + jt * 0.55), color: B.judge === 'PERFECT' ? '#ffd23f' : B.judge === 'GOOD' ? '#86efac' : '#fca5a5', stroke: '#2a1606', sw: 6 + heat * 3, alpha: Math.min(1, jt * 3) });
+        if (combo >= 2) G.text(`${combo} COMBO`, 180, 380, { size: 22 + heat * 20, color: heat > 0.5 ? '#ffd23f' : '#fff', stroke: '#2a1606', sw: 5 + heat * 3 });
+        G.text('Plasma Gun · 160 BPM · 16비트', 12, 274, { size: 13, color: '#c4b5fd', align: 'left' });
         return;
       }
       // 결과 · 상자
       ctx.fillStyle = 'rgba(10,6,20,.82)'; ctx.fillRect(0, 256, 360, 330);
-      G.text(K.rank, 180, 300, { size: 54, color: '#ffd23f', stroke: '#2a1640', sw: 8 });
-      G.text(`MAX ${B.maxCombo} COMBO · PERFECT ${B.perfect}`, 180, 340, { size: 15, color: '#fff' });
+      // 빛기둥 — 상자가 열리면 땅에서 하늘까지 선다
+      const bk = K.opened ? Math.min(1, K.chest / 0.6) : 0;
+      if (bk > 0) {
+        const w = (K.revealed ? 130 : 24 + bk * 80) + Math.sin(G.t * 14) * 7, g = ctx.createLinearGradient(180 - w, 0, 180 + w, 0);
+        g.addColorStop(0, 'rgba(255,214,90,0)'); g.addColorStop(0.5, `rgba(255,240,170,${K.revealed ? 0.8 : 0.45 + bk * 0.4})`); g.addColorStop(1, 'rgba(255,214,90,0)');
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(180 - w, 0, w * 2, 510); ctx.fillStyle = `rgba(255,255,255,${0.35 + bk * 0.4})`; ctx.fillRect(180 - w * 0.12, 0, w * 0.24, 510); ctx.restore();
+      }
+      if (!K.revealed) {
+        G.text(K.rank, 180, 300, { size: 54, color: '#ffd23f', stroke: '#2a1640', sw: 8 });
+        G.text(`MAX ${B.maxCombo} COMBO · PERFECT ${B.perfect}`, 180, 340, { size: 15, color: '#fff', stroke: '#2a1640', sw: 4 });
+      }
       const shake = !K.opened ? Math.sin(G.t * 30) * 3 : 0;
       if (!K.revealed) G.sprite('chest', 180 + shake, 470, { s: 1 + Math.min(0.3, K.chest * 0.5) });
       else {
         ctx.save(); ctx.translate(180, 430); ctx.rotate(G.t * 0.5);
         for (let i = 0; i < 10; i++) { ctx.rotate(Math.PI / 5); ctx.fillStyle = 'rgba(255,210,63,.16)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-20, -200); ctx.lineTo(20, -200); ctx.fill(); }
         ctx.restore();
-        G.sprite('gear:shoulder-dragon', 180, 500, { s: 1.15 + Math.sin(G.t * 3) * 0.04 });
+        G.sprite('gear:shoulder-dragon', 180, 505, { s: 1.35 + Math.sin(G.t * 3) * 0.05 });
       }
     },
     debug: () => ({ mode: K.mode, combo: B.combo, hits: K.hits, miss: B.miss, hp: K.hp, enemy: K.enemy, revealed: K.revealed }),

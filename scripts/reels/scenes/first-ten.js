@@ -23,7 +23,8 @@ window.RF_SCENE = (() => {
     c.r = ORDER[K.opened]; c.open = true; c.ft = 0; K.opened += 1;
     const r = cardRect(i);
     G.sfx('flip');
-    if (c.r[1] === 'SR') { G.punch(0.03); G.float('SR!', r.x + r.w / 2, r.y + 20, '#c4b5fd', 26, 0.8); }
+    G.ring(r.x + r.w / 2, r.y + r.h / 2, RC[c.r[1]], 60, 0.26);
+    if (c.r[1] === 'SR') { G.punch(0.03); G.float('SR!', r.x + r.w / 2, r.y + 20, '#c4b5fd', 34, 0.8); G.burst(r.x + r.w / 2, r.y + r.h / 2, '#c4b5fd', 22, 220); G.zoom(1.07, r.x + r.w / 2, r.y + r.h / 2, 0.16); G.flash('#c4b5fd', 0.08); }
     if (K.opened < 9) G.caption(`${10 - K.opened}장 남음 — 전설은 어디에?`);
     else { K.last = K.cards.findIndex((x) => !x.open); K.q = []; G.sfx('legend'); G.flash('#fff3a0', 0.1); G.caption('마지막 한 장 — 문질러요!'); }
   }
@@ -33,14 +34,17 @@ window.RF_SCENE = (() => {
     c.r = ARI; c.open = true; c.ft = 0; K.opened = 10; K.rT = 0;
     G.sfx('legend'); G.caption('첫 10연은 전설 1명 확정!');
     if (quick) { G.pop('전설 SSR · 첫 10연 확정', '용기사 아리', '', 'gold', 1.3); G.finish(1.3); return; }
-    G.flash('#fff3a0', 0.3); G.shake(8, 0.4); G.burst(r.x + r.w / 2, r.y + r.h / 2, '#ffd23f', 60, 300); G.climax();
+    G.flash('#fff', 0.38); G.impact(3, 180, 400); G.burst(r.x + r.w / 2, r.y + r.h / 2, '#ffd23f', 80, 360); G.climax(); G.zoom(1.22, 180, 460, 1.2); G.coinRain(2.4); G.vignette('#ffd23f', 1); G.speed(1.6);
+    for (let i = 0; i < 6; i++) G.after(i * 0.13, () => { G.ring(180, 300 + i * 40, i % 2 ? '#fff' : '#ffd23f', 150 + i * 36, 0.45); G.burst(180, 420, '#fff3a0', 20, 280); G.kick((Math.random() - 0.5) * 8, 5); });
     G.pop('전설 SSR · 첫 10연 확정', '용기사 아리', '이번 판의 전설 · 새 동료 합류', 'gold', 3.8); G.finish(4);
   }
   function rub(G, amt) {
     if (K.charge > 0 || K.ssr >= 0) return;
     const before = K.rub; K.rub = Math.min(1, K.rub + amt);
-    if (Math.floor(before * 8) !== Math.floor(K.rub * 8)) { G.sfx('tap'); const r = cardRect(K.last); G.burst(r.x + r.w / 2, r.y + r.h / 2, '#ffd23f', 8, 120); G.punch(0.01); }
-    if (K.rub >= 1) { K.charge = CHARGE; G.sfx('bolt'); G.speed(CHARGE); G.caption('전설이 깨어난다…!'); }
+    const r = cardRect(K.last), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    // 카드를 중심으로 당겨 문지르는 자리가 어긋나지 않는다
+    if (Math.floor(before * 8) !== Math.floor(K.rub * 8)) { G.sfx('tap'); G.burst(cx, cy, '#ffd23f', 10 + K.rub * 16, 150 + K.rub * 120); G.punch(0.01); G.zoom(1.03 + K.rub * 0.1, cx, cy, 0.14); G.vignette('#ffd23f', 0.2 + K.rub * 0.6); G.ring(cx, cy, '#ffd23f', 70 + K.rub * 90, 0.28); }
+    if (K.rub >= 1) { K.charge = CHARGE; G.sfx('bolt'); G.speed(CHARGE); G.caption('전설이 깨어난다…!'); G.zoom(1.16, cx, cy, CHARGE); G.shake(9, CHARGE); }
   }
   /** 손가락이 지나간 칸 — 빠르게 쓸어도 사이 칸을 건너뛰지 않게 잘게 나눠 본다 */
   function sweep(G, x, y) {
@@ -60,7 +64,7 @@ window.RF_SCENE = (() => {
     id: 'first-ten',
     introDur: 1.5,
     hook: ['첫 10연차', '전설 확정'],
-    climaxStamp: '전설!!', raysAt: [180, 420], stampY: 270,
+    climaxStamp: '전설!!', raysAt: [180, 420], stampY: 268,
     caption0: '10회 소환 단추를 눌러요',
     endLines: ['첫 10연은 전설 확정', '첫 출석 보석 1,000 · 10연 900'],
     init() {
@@ -165,7 +169,9 @@ window.RF_SCENE = (() => {
           for (let n = 0; n < 8; n++) { ctx.rotate(Math.PI / 4); ctx.fillStyle = `rgba(255,210,63,${0.12 + K.rub * 0.3})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-13, -110 - K.rub * 50); ctx.lineTo(13, -110 - K.rub * 50); ctx.fill(); }
           ctx.restore();
         }
-        ctx.save(); ctx.globalAlpha = dk * (K.ssr >= 0 && i !== K.ssr ? 0.45 : 1); ctx.translate(r.x + r.w / 2 + wob, r.y + r.h / 2); ctx.scale(sx * (0.8 + 0.2 * dk) * grow, (0.8 + 0.2 * dk) * grow);
+        // 전설이 나오면 빛기둥에 밀려 카드가 양옆으로 갈라진다
+        const spread = K.ssr >= 0 && i !== K.ssr ? Math.min(1, K.rT / 0.3) * 62 * (r.x + r.w / 2 < 180 ? -1 : 1) : 0;
+        ctx.save(); ctx.globalAlpha = dk * (K.ssr >= 0 && i !== K.ssr ? 0.45 : 1); ctx.translate(r.x + r.w / 2 + wob + spread, r.y + r.h / 2); ctx.scale(sx * (0.8 + 0.2 * dk) * grow, (0.8 + 0.2 * dk) * grow);
         if (!front) {
           if (isLast) { ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 16 + K.rub * 26; }
           G.rr(-r.w / 2, -r.h / 2, r.w, r.h, 10, isLast ? '#4c1d95' : '#1e1b4b', isLast ? '#ffd23f' : '#a78bfa', isLast ? 4 : 3);
@@ -197,9 +203,14 @@ window.RF_SCENE = (() => {
       }
       // 전설 등장
       if (K.ssr >= 0) {
-        const k = Math.min(1, K.rT / 0.45);
+        const k = Math.min(1, K.rT / 0.35), e = 1 - (1 - k) * (1 - k), r0 = cardRect(K.ssr), bx = r0.x + r0.w / 2 + (180 - r0.x - r0.w / 2) * Math.min(1, K.rT / 0.4);
         ctx.fillStyle = `rgba(10,6,20,${0.55 * k})`; ctx.fillRect(0, 0, 360, 640);
-        KIT.unit(G, { id: 'ari', x: 180, y: 560, s: 0.6 + k * 0.85, mode: 'idle', mt: 0, flash: (1 - k) * 0.9, flashC: '#ffd23f' }, G.t);
+        // 빛기둥 — 전설 칸에서 터져 화면을 위아래로 가른다
+        const w = 20 + Math.min(1, K.rT / 0.22) * 140 + Math.sin(G.t * 16) * 9, beam = ctx.createLinearGradient(bx - w, 0, bx + w, 0);
+        beam.addColorStop(0, 'rgba(255,214,90,0)'); beam.addColorStop(0.5, 'rgba(255,240,170,.92)'); beam.addColorStop(1, 'rgba(255,214,90,0)');
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = beam; ctx.fillRect(bx - w, 0, w * 2, 640); ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(bx - w * 0.1, 0, w * 0.2, 640); ctx.restore();
+        // 아리 — 크게 쾅 내려앉는다
+        KIT.unit(G, { id: 'ari', x: 180, y: 576, s: 3.1 - e * 1.5 + (k >= 1 ? Math.sin(G.t * 3) * 0.02 : 0), alpha: Math.min(1, K.rT / 0.1), mode: 'idle', mt: 0, flash: (1 - k) * 0.9, flashC: '#ffd23f' }, G.t);
       }
     },
     debug: () => ({ summoned: K.summoned, opened: K.opened, last: K.last, rub: +K.rub.toFixed(2), ssr: K.ssr, quick: K.quick }),

@@ -72,7 +72,9 @@ let S, paused = !EMBEDDED ? false : true, lastInput = 0;
 function reset() {
   S = { phase: 'intro', t: 0, pt: 0, endT: 0, floats: [], parts: [], pops: [], shakeT: 0, shakeA: 0, flashT: 0, flashC: '#fff', hint: null, caption: SCENE.caption0 || '', started: false, data: {},
     // 손맛 (2026-10-23, 사용자: "빈약해 보인다 — 이펙트 · 재미 포인트를 과장해도 좋으니") — 멈칫 · 확대 펀치 · 슬로 · 도장 글씨 · 동전 분수 · 꽃가루 · 빛살 · 집중선
-    stop: 0, slowT: 0, punch: 0, stamps: [], coins: [], conf: [], raysT: 0, raysX: 180, raysY: 300, raysC: '#ffd23f', speedT: 0, lost: null };
+    stop: 0, slowT: 0, punch: 0, stamps: [], coins: [], conf: [], raysT: 0, raysX: 180, raysY: 300, raysC: '#ffd23f', speedT: 0, lost: null,
+    // 카메라 · 충격파 · 가장자리 빛 · 동전 비 (2026-11-05 사용자: "이펙트나 카메라 줌 및 콘텐츠는 조금 더 과장해도 괜찮아")
+    cam: { z: 1, x: 180, y: 300, tz: 1, tx: 180, ty: 300, hold: 0 }, kx: 0, ky: 0, rings: [], vig: 0, vigC: '#ef4444', rainT: 0, later: [] };
   lastInput = 0;
   if (SCENE.init) SCENE.init(G);
 }
@@ -117,8 +119,8 @@ const G = {
   },
   bar(x, y, w, h, r, fg, bg = 'rgba(0,0,0,.45)') { G.rr(x, y, w, h, h / 2, bg, '#2a1606', 2); if (r > 0) G.rr(x + 2, y + 2, Math.max(h - 4, (w - 4) * Math.min(1, r)), h - 4, (h - 4) / 2, fg); },
   float(s, x, y, color = '#fff', size = 22, life = 0.9) { S.floats.push({ s, x, y, color, size, t: 0, life }); },
-  burst(x, y, color = '#ffd23f', n = 14, sp = 160) { for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = sp * (0.4 + Math.random()); S.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, t: 0, life: 0.5 + Math.random() * 0.4, c: color, r: 2 + Math.random() * 3 }); } },
-  shake(a = 6, d = 0.25) { S.shakeA = a; S.shakeT = d; },
+  burst(x, y, color = '#ffd23f', n = 14, sp = 160) { const N = Math.min(120, Math.round(n * 1.7)), V = sp * 1.25; for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, v = V * (0.4 + Math.random()); S.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, t: 0, life: 0.55 + Math.random() * 0.5, c: i % 5 === 0 ? '#fff' : color, r: 2.5 + Math.random() * 4 }); } if (S.parts.length > 520) S.parts.splice(0, S.parts.length - 520); },
+  shake(a = 6, d = 0.25) { S.shakeA = Math.max(S.shakeT > 0 ? S.shakeA : 0, a * 1.4); S.shakeT = Math.max(S.shakeT, d); },
   flash(c = '#fff', d = 0.18) { S.flashC = c; S.flashT = d; },
   pop(kicker, title, detail = '', tone = 'gold', life = 2.2) { S.pops = [{ kicker, title, detail, tone, t: 0, life }]; },
   caption(s) { S.caption = s; },
@@ -131,7 +133,9 @@ const G = {
     if (S.phase !== 'play') return;
     S.phase = 'climax'; S.pt2 = 0; emit('climax');
     // 절정은 늘 크게: 슬로 · 펀치 · 빛살 · 꽃가루 · 장면이 준 도장 글씨
-    G.slow(0.7); G.punch(0.12); G.rays(SCENE.raysAt ? SCENE.raysAt[0] : 180, SCENE.raysAt ? SCENE.raysAt[1] : 300, 2.2); G.confetti(70);
+    const cx = SCENE.raysAt ? SCENE.raysAt[0] : 180, cy = SCENE.raysAt ? SCENE.raysAt[1] : 300;
+    G.slow(0.95); G.punch(0.16); G.rays(cx, cy, 2.6); G.confetti(130); G.zoom(1.34, cx, cy, 1.05); G.flash('#fff', 0.16); G.speed(1.3); G.vignette('#ffd23f', 0.6); G.coinRain(1.9); G.shake(12, 0.5);
+    [0, 0.16, 0.34].forEach((d, i) => G.after(d, () => G.ring(cx, cy, i === 1 ? '#ffd23f' : '#fff', 200 + i * 70, 0.55)));
     if (SCENE.climaxStamp) G.stamp(SCENE.climaxStamp, SCENE.climaxColor || '#ffd23f', SCENE.stampY || 340, 1.4);
   },
   /** 멈칫(히트스톱) — 장면 시간만 잠깐 멈춘다 */
@@ -141,9 +145,9 @@ const G = {
   /** 화면 확대 펀치 */
   punch(a = 0.06) { S.punch = Math.max(S.punch, a); },
   /** 큰 도장 글씨 — 기울어져 쾅 찍힌다 */
-  stamp(text, color = '#ffd23f', y = 250, life = 1.1) { S.stamps.push({ text, color, y, t: 0, life, rot: (Math.random() - 0.5) * 0.3 }); SND.play('stamp'); },
+  stamp(text, color = '#ffd23f', y = 250, life = 1.1) { S.stamps.push({ text, color, y, t: 0, life, rot: (Math.random() - 0.5) * 0.3 }); SND.play('stamp'); G.ring(180, y, color, 170); G.kick(0, 7); },
   /** 동전 분수 */
-  coins(x, y, n = 10) { for (let i = 0; i < n; i++) S.coins.push({ x, y, vx: (Math.random() - 0.5) * 260, vy: -220 - Math.random() * 260, t: 0, life: 1 + Math.random() * 0.4, spin: Math.random() * 6 }); if (n) SND.play('coin'); },
+  coins(x, y, n = 10) { const N = Math.round(n * 1.6); if (S.coins.length > 240) S.coins.splice(0, S.coins.length - 240); for (let i = 0; i < N; i++) S.coins.push({ x, y, vx: (Math.random() - 0.5) * 260, vy: -220 - Math.random() * 260, t: 0, life: 1 + Math.random() * 0.4, spin: Math.random() * 6 }); if (n) SND.play('coin'); },
   /** 꽃가루 */
   confetti(n = 50) { const C = ['#ffd23f', '#ff5d8f', '#4fb0ff', '#7ee081', '#c084fc', '#ff8a1f']; for (let i = 0; i < n; i++) S.conf.push({ x: Math.random() * 360, y: -20 - Math.random() * 200, vx: (Math.random() - 0.5) * 60, vy: 120 + Math.random() * 160, r: Math.random() * 6, vr: (Math.random() - 0.5) * 10, c: C[i % C.length], w: 5 + Math.random() * 5, h: 8 + Math.random() * 6, t: 0 }); },
   /** 빛살 — (x, y) 둘레를 돈다 */
@@ -151,10 +155,24 @@ const G = {
   /** 집중선 */
   speed(sec = 0.8) { S.speedT = Math.max(S.speedT, sec); },
   /** 큰 한 방 묶음 — 멈칫 + 펀치 + 흔들 + 번쩍 */
-  impact(power = 1) { G.hitstop(0.05 + 0.05 * power); G.punch(0.04 + 0.04 * power); G.shake(5 + 6 * power, 0.25 + 0.1 * power); },
+  impact(power = 1, x = 180, y = 260) { G.hitstop(0.06 + 0.06 * power); G.punch(0.05 + 0.05 * power); G.shake(6 + 7 * power, 0.28 + 0.12 * power); G.ring(x, y, '#fff', 90 + 70 * power); G.speed(0.2 + 0.2 * power); if (power >= 1.5) { G.flash('#fff', 0.1); G.zoom(1.14, x, y, 0.22); } },
+  /** 카메라 — z 배로 (x, y) 를 당겼다가 hold 초 뒤 돌아온다. 플레이 중엔 눌렀을 때 좌표가 어긋나지 않게 1.16 까지만 */
+  zoom(z = 1.2, x = 180, y = 300, hold = 0.5) { const c = S.cam; c.tz = S.phase === 'play' && !S.finishAt ? Math.min(1.16, z) : z; c.tx = x; c.ty = y; c.hold = hold; },
+  /** 충격파 고리 */
+  ring(x, y, color = '#fff', r = 120, life = 0.38) { S.rings.push({ x, y, color, r, life, t: 0 }); if (S.rings.length > 24) S.rings.shift(); },
+  /** 카메라 툭 밀기 */
+  kick(dx = 0, dy = 5) { S.kx += dx; S.ky += dy; },
+  /** 화면 가장자리 빛 — 위험 · 절정 */
+  vignette(color = '#ef4444', a = 0.5) { S.vigC = color; S.vig = Math.max(S.vig, a); },
+  /** 동전 비 */
+  coinRain(sec = 1.6) { S.rainT = Math.max(S.rainT, sec); },
+  /** sec 초 뒤 fn */
+  after(sec, fn) { S.later.push({ at: S.t + sec, fn }); },
+  /** 맞을 때 작은 불꽃 */
+  spark(x, y, color = '#fff') { for (let i = 0; i < 7; i++) { const a = Math.random() * Math.PI * 2, v = 180 * (0.5 + Math.random()); S.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, t: 0, life: 0.28 + Math.random() * 0.2, c: i % 2 ? color : '#ffd23f', r: 2 + Math.random() * 2.5 }); } G.ring(x, y, color, 52, 0.22); G.kick((Math.random() - 0.5) * 4, 2.5); },
   finish(delay = 1.6) { if (S.phase !== 'end' && !S.finishAt) S.finishAt = S.t + delay; },
   /** 패배 — 곧 끝 화면으로. 큰 단추가 '다시 도전' 이 된다 */
-  lose(title = '아깝다!', lines = [], delay = 1.1) { if (S.phase === 'end' || S.finishAt) return; S.lost = { title, lines }; S.finishAt = S.t + delay; S.hint = null; SND.play('fail'); G.shake(8, 0.3); G.flash('#7f1d1d', 0.18); emit('lose'); },
+  lose(title = '아깝다!', lines = [], delay = 1.1) { if (S.phase === 'end' || S.finishAt) return; S.lost = { title, lines }; S.finishAt = S.t + delay; S.hint = null; SND.play('fail'); G.shake(10, 0.4); G.flash('#7f1d1d', 0.22); G.zoom(1.18, 180, 300, 1.2); G.vignette('#b91c1c', 0.85); G.slow(0.5); emit('lose'); },
   /** 승패가 정해져 끝을 기다리는 중 — 장면은 더 진행하지 않는다 */
   get over() { return !!S.finishAt || S.phase === 'end'; },
   get lost() { return !!S.lost; },
@@ -178,6 +196,15 @@ function update(dt) {
   if (S.stop > 0) { S.stop -= dt; sdt = 0; } else if (S.slowT > 0) { S.slowT -= dt; sdt = dt * 0.35; }
   if (S.phase !== 'end' && SCENE.update && sdt > 0) SCENE.update(G, sdt);
   S.punch = Math.max(0, S.punch - dt * 0.6);
+  // 카메라: 인트로는 당겼다 빠지고(1.28 → 1), 이후엔 hold 뒤 제자리로
+  { const c = S.cam, introT = SCENE.introDur || 1.5;
+    if (S.phase === 'intro') { const k = Math.min(1, S.t / introT); c.z = 1 + 0.28 * (1 - k) * (1 - k); c.tz = 1; c.x = c.tx = 180; c.y = c.ty = 300; }
+    else { if (c.hold > 0) { c.hold -= dt; if (c.hold <= 0) c.tz = 1; } const e = Math.min(1, dt * (c.tz > c.z ? 13 : 5)); c.z += (c.tz - c.z) * e; c.x += (c.tx - c.x) * e; c.y += (c.ty - c.y) * e; } }
+  S.kx *= Math.pow(0.0015, dt); S.ky *= Math.pow(0.0015, dt);
+  for (const r of S.rings) r.t += dt; S.rings = S.rings.filter((r) => r.t < r.life);
+  S.vig = Math.max(0, S.vig - dt * 0.8);
+  if (S.rainT > 0) { S.rainT -= dt; if (S.coins.length < 240) for (let i = 0; i < 2; i++) S.coins.push({ x: Math.random() * 360, y: -14, vx: (Math.random() - 0.5) * 40, vy: 160 + Math.random() * 240, t: 0, life: 1.5, spin: Math.random() * 6 }); }
+  if (S.later.length) { const due = S.later.filter((l) => S.t >= l.at); S.later = S.later.filter((l) => S.t < l.at); for (const l of due) l.fn(); }
   for (const st of S.stamps) st.t += dt; S.stamps = S.stamps.filter((st) => st.t < st.life);
   for (const c of S.coins) { c.t += dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 640 * dt; c.spin += dt * 12; } S.coins = S.coins.filter((c) => c.t < c.life);
   for (const c of S.conf) { c.t += dt; c.x += c.vx * dt + Math.sin(c.t * 4 + c.r) * 0.6; c.y += c.vy * dt; c.r += c.vr * dt; } S.conf = S.conf.filter((c) => c.y < 680);
@@ -194,6 +221,7 @@ function render() {
   ctx.fillStyle = '#1b120b'; ctx.fillRect(0, 0, W, H);
   if (S.shakeT > 0) ctx.translate((Math.random() - 0.5) * S.shakeA * 2, (Math.random() - 0.5) * S.shakeA * 2);
   if (S.punch > 0) { const k = 1 + S.punch; ctx.translate(180, 300); ctx.scale(k, k); ctx.translate(-180, -300); }
+  { const c = S.cam, k = Math.max(c.z, 1 + (Math.abs(S.kx) + Math.abs(S.ky)) / 150); if (k > 1.001) { ctx.translate(c.x, c.y); ctx.scale(k, k); ctx.translate(-c.x, -c.y); } if (S.kx || S.ky) ctx.translate(S.kx, S.ky); }
   if (SCENE.draw) SCENE.draw(G, ctx);
   if (S.raysT > 0) {   // 빛살 — 더하기 합성으로 빛나게
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, S.raysT) * 0.32; ctx.translate(S.raysX, S.raysY); ctx.rotate(S.t * 0.8);
@@ -205,6 +233,10 @@ function render() {
     for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2 + S.t * 3, r0 = 150 + ((i * 37 + S.t * 900) % 120), r1 = r0 + 90; ctx.lineWidth = 2 + (i % 3); ctx.beginPath(); ctx.moveTo(180 + Math.cos(a) * r0, 300 + Math.sin(a) * r0 * 1.4); ctx.lineTo(180 + Math.cos(a) * r1, 300 + Math.sin(a) * r1 * 1.4); ctx.stroke(); }
     ctx.restore();
   }
+  for (const r of S.rings) {   // 충격파
+    const k = r.t / r.life, e = 1 - (1 - k) * (1 - k);
+    ctx.save(); ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = r.color; ctx.lineWidth = Math.max(1, 12 * (1 - k)); ctx.beginPath(); ctx.arc(r.x, r.y, 8 + r.r * e, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
   for (const c of S.coins) {   // 동전 — 돌며 반짝
     const sx = Math.abs(Math.cos(c.spin)) * 0.8 + 0.2, a = c.t > c.life - 0.25 ? (c.life - c.t) / 0.25 : 1;
     ctx.save(); ctx.globalAlpha = a; ctx.translate(c.x, c.y); ctx.scale(sx, 1);
@@ -214,9 +246,9 @@ function render() {
   for (const p of S.parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); }
   ctx.globalAlpha = 1;
   for (const f of S.floats) {
-    const k = f.t / f.life, big = f.size >= 26;
+    const k = f.t / f.life, big = f.size >= 24;
     // 큰 숫자(치명)는 1.7배로 튀어나왔다 줄고 살짝 기운다 · 작은 숫자는 옆으로 퍼진다
-    const pop = big ? (k < 0.12 ? 0.6 + k * 9 : k < 0.25 ? 1.68 - (k - 0.12) * 5.2 : 1) : (k < 0.15 ? 0.7 + k * 2 : 1);
+    const pop = 1.18 * (big ? (k < 0.12 ? 0.6 + k * 10 : k < 0.25 ? 1.8 - (k - 0.12) * 6 : 1) : (k < 0.15 ? 0.7 + k * 2 : 1));
     ctx.save(); ctx.translate(f.x + (big ? 0 : Math.sin(f.t * 9) * 2), f.y - k * (big ? 30 : 52)); if (big) ctx.rotate(-0.08);
     G.text(f.s, 0, 0, { size: f.size * pop, color: f.color, stroke: '#2a1606', sw: big ? 8 : 5, alpha: k > 0.7 ? (1 - k) / 0.3 : 1 });
     ctx.restore();
@@ -224,10 +256,15 @@ function render() {
   ctx.restore();
   for (const c of S.conf) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.fillStyle = c.c; ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h * Math.abs(Math.cos(c.r * 1.3))); ctx.restore(); }
   for (const st of S.stamps) {   // 도장 — 2.6배에서 쾅 · 흔들 · 사라짐
-    const k = st.t / st.life, sc = k < 0.12 ? 2.6 - (k / 0.12) * 1.6 : 1 + Math.sin(st.t * 20) * 0.015, a = k > 0.8 ? (1 - k) / 0.2 : Math.min(1, k * 10);
-    ctx.save(); ctx.globalAlpha = a; ctx.translate(180, st.y); ctx.rotate(st.rot); ctx.scale(sc, sc);
-    G.text(st.text, 0, 0, { size: 46, color: st.color, stroke: '#2a1606', sw: 11 });
+    const k = st.t / st.life, sc = k < 0.12 ? 3.2 - (k / 0.12) * 2.2 : 1 + Math.sin(st.t * 20) * 0.02, a = k > 0.8 ? (1 - k) / 0.2 : Math.min(1, k * 10);
+    ctx.save(); ctx.font = `900 58px ${FONT}`; const fit = Math.min(1, 336 / Math.max(1, ctx.measureText(st.text).width)); ctx.restore();   // 길면 화면에 맞춘다
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(180, st.y); ctx.rotate(st.rot); ctx.scale(sc * fit, sc * fit);
+    G.text(st.text, 0, 0, { size: 58, color: st.color, stroke: '#2a1606', sw: 13 });
     ctx.restore();
+  }
+  if (S.vig > 0.01) {   // 가장자리 빛
+    const g = ctx.createRadialGradient(180, 320, 170, 180, 320, 420); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, S.vigC);
+    ctx.save(); ctx.globalAlpha = Math.min(1, S.vig); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
   }
   drawHud();
   for (const p of S.pops) drawPop(p);
@@ -271,9 +308,15 @@ function drawHint(h) {
 function drawIntro() {
   const k = Math.min(1, S.t / 0.35), out = S.t > (SCENE.introDur || 1.5) - 0.3 ? Math.max(0, ((SCENE.introDur || 1.5) - S.t) / 0.3) : 1;
   ctx.save(); ctx.globalAlpha = 0.55 * out; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = out;
-  ctx.translate(180, 300); ctx.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k);
+  { const sl = k < 1 ? 2.1 - k * 1.1 : 1 + Math.sin(S.t * 9) * 0.012; ctx.translate(180, 300); ctx.scale(sl, sl); }
   const lines = SCENE.hook || [];
-  lines.forEach((l, i) => G.text(l, 0, (i - (lines.length - 1) / 2) * 46, { size: i === lines.length - 1 ? 38 : 30, color: i === lines.length - 1 ? '#ffd23f' : '#fff', stroke: '#2a1606', sw: 8 }));
+  lines.forEach((l, i) => {   // 길면 화면 폭에 맞춘다 — 끝 글자가 잘렸다
+    const size = i === lines.length - 1 ? 40 : 32;
+    ctx.save(); ctx.font = `900 ${size}px ${FONT}`; const fit = Math.min(1, 326 / Math.max(1, ctx.measureText(l).width)); ctx.restore();
+    ctx.save(); ctx.translate(0, (i - (lines.length - 1) / 2) * 48); ctx.scale(fit, fit);
+    G.text(l, 0, 0, { size, color: i === lines.length - 1 ? '#ffd23f' : '#fff', stroke: '#2a1606', sw: 9 });
+    ctx.restore();
+  });
   ctx.restore();
 }
 function drawEnd() {

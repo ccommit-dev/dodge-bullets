@@ -21,16 +21,21 @@ window.KIT = (() => {
       const c = G.ctx;
       c.save(); c.globalAlpha = 0.28; c.fillStyle = '#2a1606'; c.beginPath(); c.ellipse(u.x, u.y - 2, im.w * (u.s || 1) * 0.32, 7 * (u.s || 1), 0, 0, Math.PI * 2); c.fill(); c.restore();
     }
-    G.sprite(key, u.x, u.y, { s: u.s || 1, flashA: u.flash || 0, flashC: u.flashC || '#fff', alpha: u.alpha ?? 1 });
+    // 과장: 맞으면 찌그러지며 밀리고, 공격하면 앞으로 튀어 나간다
+    const sq = u.squash || 0, lunge = u.lunge ? Math.sin(Math.PI * (1 - u.lunge)) * 20 * (u.s || 1) : 0;
+    G.sprite(key, u.x + (u.kb || 0) + lunge, u.y, { s: u.s || 1, sx: 1 + 0.24 * sq, sy: 1 - 0.2 * sq, flashA: u.flash || 0, flashC: u.flashC || '#fff', alpha: u.alpha ?? 1 });
   }
   /** 공격 시작 */
-  function attack(u, dur = 0.45) { u.mode = 'attack'; u.mt = 0; u.dur = dur; }
-  function hit(u) { u.mode = 'hit'; u.mt = 0; u.dur = 0.24; u.flash = 0.7; }
+  function attack(u, dur = 0.45) { u.mode = 'attack'; u.mt = 0; u.dur = dur; u.lunge = 1; u.lungeD = dur; }
+  function hit(u) { u.mode = 'hit'; u.mt = 0; u.dur = 0.24; u.flash = 1; u.squash = 1; u.kb = 13; if (window.G) window.G.spark(u.x, u.y - 62 * (u.s || 1)); }
   /** 동작 시간 진행 — 공격 · 피격이 끝나면 대기로 */
   function tick(u, dt) {
     u.mt = (u.mt || 0) + dt;
     if ((u.mode === 'attack' || u.mode === 'hit') && u.mt > (u.dur || 0.45)) { u.mode = 'idle'; u.mt = 0; }
     if (u.flash) u.flash = Math.max(0, u.flash - dt * 4);
+    if (u.squash) u.squash = Math.max(0, u.squash - dt * 7);
+    if (u.kb) u.kb = Math.abs(u.kb) < 0.3 ? 0 : u.kb * Math.pow(0.0005, dt);
+    if (u.lunge) u.lunge = Math.max(0, u.lunge - dt / (u.lungeD || 0.45));
   }
   /** 무대: 배경 + 아래 땅 띠 + 아래 판 */
   function stage(G, ctx, bgKey, panel = '#2b1a0e') {
@@ -49,6 +54,7 @@ window.KIT = (() => {
   /** 남은 시간 막대 — 3초 아래면 빨갛게 깜빡인다. left · total 은 초 */
   function clock(G, left, total, y = 96, label = '') {
     const low = left < 3, a = low ? 0.75 + Math.sin(G.t * 14) * 0.25 : 1;
+    if (low && left > 0 && G.phase === 'play' && !G.over) G.vignette('#ef4444', 0.28 + Math.sin(G.t * 14) * 0.14);
     G.rr(60, y, 240, 22, 11, 'rgba(27,18,11,.85)', low ? '#fca5a5' : '#ffd23f', 2);
     G.bar(66, y + 4, 228, 14, Math.max(0, left / total), low ? `rgba(239,68,68,${a})` : '#22c55e', 'rgba(0,0,0,.3)');
     G.text(`${label}${Math.max(0, left).toFixed(1)}초`, 180, y + 11, { size: 13, color: '#fff', stroke: '#2a1606', sw: 4 });

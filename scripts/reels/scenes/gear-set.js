@@ -1,6 +1,7 @@
 /* 릴스 · 세트 파츠 — 지금 무기는 검. 가방의 파츠를 장비 칸으로 끌어다 낀다(titans/EquipWindow: 칸이 다르면 튕김, 맞는 칸이면 바꿔 끼우고 옛 것은 가방으로).
  * 다른 무기 세트는 끼워져도 세트 수가 오르지 않는다(equipment/gearSets matchedPieces). 칸마다 탭 피해 +2.5%, 다섯 부위면 +5% 더(GEAR_PIECE_BONUS · GEAR_FULL_SET_BONUS) = 17.5%.
- * 세트 효과는 피해 배율일 뿐이라 대장을 쓰러뜨렸다고 주장하지 않는다 — 같은 탭의 숫자(tapDamage(50) = 963)가 세트 전 963 → 세트 후 1,131(+17.5%)로 커지는 것을 앞뒤로 보여 주고 세트 완성 도장으로 끝낸다.
+ * 같은 탭의 숫자(tapDamage(50) = 963)가 파츠마다 커져 5/5 면 1,131(+17.5%) — 팝업이 실제 값을 말한다.
+ * 숏츠 과장(사용자 2026-11-05 허락): 세트 완성 순간 주인공이 빛나고 카메라가 당겨진 뒤, 일격에 대장이 터져 날아간다 · 큰 피해 숫자. 효과 종류(같은 무기 탭 피해)와 % 는 그대로.
  * 대장은 붉은 폐허(bg:ruins)의 고대 오우거 — titans/model HUNTING_AREAS · SpriteArt BOSS_ASSET(wolf-king-clean). 무대를 눌러도 같은 탭 숫자가 뜬다. 제한 시간 안에 5/5 를 못 맞추면 진다 */
 window.RF_SCENE = (() => {
   const T = 16, PIECE = 2.5, FULL = 5, TAP = 963, BOSS_HP = 120000;
@@ -48,11 +49,11 @@ window.RF_SCENE = (() => {
       G.caption(`${SET[it.kind]} 파츠는 세트가 안 올라요`);
       return;
     }
-    G.sfx('merge'); G.burst(r.x + r.w / 2, r.y + 30, '#7ee081', 14, 170); G.punch(0.02); K.line = 0.4;
+    G.sfx('merge'); G.burst(r.x + r.w / 2, r.y + 30, '#7ee081', 22, 210); G.punch(0.025); K.line = 0.4; G.ring(r.x + r.w / 2, r.y + 39, '#7ee081', 74, 0.3); G.zoom(1.08, 180, 430, 0.16); K.hero.flash = 0.5; K.hero.flashC = '#fff3a0';
     if (n < 5) { swing(G, KIT.fmt(tapNow(n)), '#ffe066', 22); G.float(`탭 피해 +${pct(PIECE)}%`, 150, 256, '#ffe066', 20, 0.8); }
     G.caption(summary(n));
     if (n >= SLOT.length) {
-      K.finale = 0; G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.18); G.caption('다섯 부위 보너스 +5% 더!'); G.finish(3.6);
+      K.finale = 0; G.climax(); G.sfx('legend'); G.flash('#fff3a0', 0.18); G.caption('다섯 부위 보너스 +5% 더!'); G.finish(4);
     }
   }
   return {
@@ -60,14 +61,14 @@ window.RF_SCENE = (() => {
     canLose: true,
     introDur: 1.5,
     hook: ['같은 무기끼리', '세트 효과'],
-    raysAt: [180, 190], popY: 345,
+    climaxStamp: '세트 완성!!', stampY: 112, raysAt: [HERO_X, 205], popY: 345,
     caption0: '검이니까 기사 파츠를 칸으로 끌어요',
     endLines: ['무기 4종 · 세트 파츠 20종', '같은 무기를 들어야 세트 효과가 켜져요'],
     init() {
       const others = shuffle(['spear', 'bow', 'staff', 'spear']);
       const wrong = shuffle(SLOT.map((s) => s[0])).slice(0, 4).map((slot, i) => ({ kind: others[i], slot }));
       const items = shuffle([...SLOT.map((s) => ({ kind: 'sword', slot: s[0] })), ...wrong]);
-      K = { left: T, items: items.map((it, cell) => ({ ...it, cell, art: `set-${it.kind}-${it.slot}`, where: 'bag' })), eq: [null, null, null, null, null], held: null, chose: false, hp: 1, finale: -1, f1: false, f2: false, f3: false, pop: [0, 0, 0, 0, 0], deny: [0, 0, 0, 0, 0], line: 0, bossT: 1.6, botWait: 2,
+      K = { left: T, items: items.map((it, cell) => ({ ...it, cell, art: `set-${it.kind}-${it.slot}`, where: 'bag' })), eq: [null, null, null, null, null], held: null, chose: false, hp: 1, finale: -1, f1: false, f2: false, dash: 0, fly: null, pop: [0, 0, 0, 0, 0], deny: [0, 0, 0, 0, 0], line: 0, bossT: 1.6, botWait: 2,
         hero: { id: 'hero', x: HERO_X, y: FOOT, s: 0.68, mode: 'idle', mt: 0 }, boss: { id: 'wolf-king-clean', x: BOSS_X, y: FOOT, s: 0.64, mode: 'idle', mt: 0 } };
     },
     onTap(G, x, y) {
@@ -97,14 +98,21 @@ window.RF_SCENE = (() => {
       K.line = Math.max(0, K.line - dt);
       if (K.finale >= 0) {
         K.finale += dt;
-        // 같은 탭을 앞뒤로 — 세트 전 숫자, 세트 후 숫자, 그리고 세트 완성 도장
-        if (K.finale > 0.1 && !K.f1) { K.f1 = true; KIT.attack(K.hero, 0.36); KIT.hit(K.boss); G.sfx('hit'); G.float(`세트 전 ${KIT.fmt(TAP)}`, 118, 250, '#fff', 22, 1.4); }
-        if (K.finale > 0.62 && !K.f2) {
-          K.f2 = true; KIT.attack(K.hero, 0.36); KIT.hit(K.boss); G.sfx('bolt'); G.impact(0.8); G.burst(BOSS_X - 12, FOOT - 70, '#ffd23f', 30, 240); K.line = 0.4;
-          G.float(`세트 후 ${KIT.fmt(tapNow(5))}`, 206, 180, '#ffd23f', 30, 1.05);
-          G.pop('기사 세트 5/5 · 탭 피해 +17.5%', `탭 피해 ${KIT.fmt(TAP)} → ${KIT.fmt(tapNow(5))}`, '부위마다 +2.5% · 다섯 부위 +5% 더', 'gold', 2.6);
+        // 빛나는 주인공 → 달려가 일격 → 대장이 터져 날아간다
+        const f = K.finale;
+        if (f < 0.3) { K.hero.flash = 0.75; K.hero.flashC = '#fff3a0'; }
+        if (f > 0.3 && !K.f1) { K.f1 = true; KIT.attack(K.hero, 0.3); G.speed(0.5); G.sfx('bolt'); }
+        if (K.f1 && !K.f2) K.dash = Math.min(1, (f - 0.3) / 0.08);
+        if (f > 0.38 && !K.f2) {
+          K.f2 = true; K.hp = 0; K.line = 0.4; G.impact(3.4, BOSS_X, FOOT - 70); G.flash('#fff', 0.28); G.sfx('win');
+          G.burst(BOSS_X, FOOT - 70, '#ffd23f', 80, 420); G.burst(BOSS_X, FOOT - 70, '#ff8a1f', 60, 340); G.burst(BOSS_X, FOOT - 70, '#fff', 40, 280); G.coins(BOSS_X, FOOT - 70, 34); G.coinRain(1.6); G.vignette('#ffd23f', 0.7);
+          [0, 0.1, 0.22].forEach((d, i) => G.after(d, () => G.ring(BOSS_X, FOOT - 70, i === 1 ? '#ffd23f' : '#fff', 190 + i * 80, 0.5)));
+          G.zoom(1.42, BOSS_X - 50, 200, 0.5);
+          G.stamp(`${KIT.fmt(tapNow(5) * 1000)}!`, '#ff8a1f', 196, 1.6);
+          G.pop('기사 세트 5/5 · 탭 피해 +17.5%', `탭 피해 ${KIT.fmt(TAP)} → ${KIT.fmt(tapNow(5))}`, '부위마다 +2.5% · 다섯 부위 +5% 더', 'gold', 2.7);
+          K.fly = { x: BOSS_X, y: FOOT - 62, vx: 520, vy: -620, rot: 0, t: 0 };
         }
-        if (K.finale > 1.5 && !K.f3) { K.f3 = true; G.stamp('세트 완성!!', '#ffd23f', 200, 1.5); G.sfx('win'); G.coins(180, 300, 16); }
+        if (K.fly) { const b = K.fly; b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 700 * dt; b.rot += dt * 9; K.dash = Math.max(0.55, K.dash - dt * 0.9); }
         return;
       }
       if (G.over || G.phase !== 'play') return;
@@ -133,8 +141,16 @@ window.RF_SCENE = (() => {
       const n = matched();
       G.rr(12, 116, 200, 24, 12, 'rgba(27,18,11,.85)', '#ffd23f', 2);
       G.text(`지금 무기: 검 · 탭 피해 ${KIT.fmt(tapNow(n))}`, 112, 128, { size: 13, color: '#ffe066' });
-      KIT.unit(G, K.boss, G.t);
-      KIT.unit(G, K.hero, G.t);
+      if (K.fly) G.sprite(`${K.boss.id}:hit:1`, K.fly.x, K.fly.y, { s: K.boss.s, rot: K.fly.rot, ay: 0.5, flashA: Math.max(0, 1 - K.fly.t * 2.4), flashC: '#fff' });
+      else KIT.unit(G, K.boss, G.t);
+      const hx = HERO_X + K.dash * 128;
+      // 세트 완성 — 주인공 둘레에 빛이 모인다
+      if (K.finale >= 0 && K.finale < 0.42) {
+        const a = Math.min(1, K.finale / 0.2), gr = ctx.createRadialGradient(hx, FOOT - 54, 6, hx, FOOT - 54, 104);
+        gr.addColorStop(0, `rgba(255,240,170,${0.95 * a})`); gr.addColorStop(0.5, `rgba(255,210,63,${0.5 * a})`); gr.addColorStop(1, 'rgba(255,210,63,0)');
+        ctx.fillStyle = gr; ctx.fillRect(hx - 110, FOOT - 164, 220, 208);
+      }
+      KIT.unit(G, { ...K.hero, x: hx }, G.t);
       // 아래 판
       ctx.fillStyle = '#2b1a0e'; ctx.fillRect(0, 272, 360, 368); ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, 270, 360, 3);
       // 세트 줄 — 게임의 장비창 한 줄과 같은 말

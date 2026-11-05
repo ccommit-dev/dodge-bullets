@@ -1,7 +1,8 @@
 /* 릴스 · 펫 — 같은 몬스터 1,000마리를 잡으면 그 몬스터의 아기가 부화한다(titans/pets PET_HATCH_KILLS · 도감 처치 수). 사냥터처럼 땅 위로 몬스터들이 오른쪽에서 걸어 들어온다(줄 셋 깊이).
  * 알을 고르고 그 종만 잡는다. 한 마리 = 100마리로 압축. 다른 종은 잡아도 고른 알의 수가 오르지 않을 뿐이라 시간 손해, 지나가면 사라진다. 제한 시간 안에 1,000 을 못 채우면 진다.
  * 알 카드 · 도장 값은 PET_DEFS 의 desc · Lv.1(슬라임 사냥 골드 증가 +5% · 고블린 방치 조각 드랍 가속 +25% · 늑대 보스 제한시간 연장 +3초) · Lv.10 은 petEffect 계산.
- * 부화한 아기는 주인공 곁에 서서 가끔 같이 공격한다(사냥 돕기 PET_ATTACK_SEC 2.6초 · petAttackMul Lv.1 ×0.80) — 끝나기 전에 그 모습을 잠깐 보여 준다 */
+ * 부화한 아기는 주인공 곁에 서서 가끔 같이 공격한다(사냥 돕기 PET_ATTACK_SEC 2.6초 · petAttackMul Lv.1 ×0.80) — 끝나기 전에 그 모습을 잠깐 보여 준다.
+ * 숏츠 과장(사용자 2026-11-05): 잡힌 몬스터가 날아가고, 금이 갈수록 카메라가 당겨지다 깨질 때 빛 폭발, 튀어나온 아기가 몬스터들을 날린다. 플레이 중 줌은 1.11 아래로 짧게 — 몬스터 누르는 자리가 크게 어긋나지 않는다 */
 window.RF_SCENE = (() => {
   const T = 16, NEED = 1000, STEP = 100, GAP = 0.34, HP = 4, SPEED = 110, ENTER_X = 410, EXIT_X = 118;
   const EGGS = [
@@ -26,25 +27,33 @@ window.RF_SCENE = (() => {
     G.emit('choice', { egg: EGGS[i].mole }); G.caption(`${EGGS[i].label}만 잡아요! 다른 종은 안 세어져요`);
   }
   function hatch(G) {
-    K.hatch = 0; G.climax(); G.sfx('legend'); G.caption('알이 깨진다!'); G.finish(4.2);
+    K.hatch = 0; G.climax(); G.sfx('legend'); G.caption('알이 깨진다!'); G.finish(4.6);
   }
   function monAt(x, y) {
-    return [...K.mons].sort((a, b) => b.y - a.y).find((m) => Math.abs(x - m.x) < (W[m.id] * m.s) / 2 + 8 && y > m.y - 130 * m.s - 8 && y < m.y + 14);
+    // 줄이 좁아 몬스터가 겹친다 — 맨 앞 줄이 아니라 손가락에서 가장 가까운 몸을 친다(고른 종은 비슷한 거리면 먼저)
+    const d = (m) => Math.hypot(x - m.x, y - (m.y - 65 * m.s)) * (m.e === K.egg ? 0.75 : 1);
+    return K.mons.filter((m) => !m.dead && Math.abs(x - m.x) < (W[m.id] * m.s) / 2 + 8 && y > m.y - 130 * m.s - 8 && y < m.y + 14).sort((a, b) => d(a) - d(b))[0];
   }
+  /** 처치된 몬스터는 돌며 날아간다 */
+  function fling(m, vx, vy) { K.ghosts.push({ id: m.id, s: m.s, x: m.x, y: m.y - (130 * m.s) / 2, vx, vy, rot: 0, t: 0 }); }
   function hit(G, m) {
     m.hp -= 1; KIT.hit(m); G.sfx('hit'); G.burst(m.x, m.y - 60 * m.s, '#fff3a0', 5, 110);
     const h = K.hero;
     if (h.mode !== 'attack' || h.mt > 0.18) KIT.attack(h, 0.34);
     if (m.hp > 0) return;
-    m.dead = true; K.ghosts.push({ ...m, t: 0 });
+    m.dead = true; fling(m, 380 + Math.random() * 180, -300 - Math.random() * 140);
     if (m.e === K.egg) {
       K.count = Math.min(NEED, K.count + STEP); K.hits += 1; K.eggPop = 0.25;
-      G.sfx('coin'); G.punch(0.015); G.burst(m.x, m.y - 60 * m.s, EGGS[K.egg].col, 14, 170); G.float('+100마리', m.x, m.y - 130 * m.s - 8, '#ffe066', 20, 0.7);
+      G.sfx('coin'); G.punch(0.015); G.burst(m.x, m.y - 60 * m.s, EGGS[K.egg].col, 14, 170); G.float('+100마리', Math.min(262, m.x), m.y - 130 * m.s - 8, '#ffe066', 22, 0.7);
+      // 금이 갈수록 카메라가 조금씩 더 당겨진다
+      const r = K.count / NEED;
+      G.zoom(1.03 + r * 0.08, 180, 380, 0.16); G.ring(m.x, m.y - 60 * m.s, EGGS[K.egg].col, 70, 0.26); G.ring(50, 522, EGGS[K.egg].col, 44 + r * 50, 0.32); G.kick(0, 2 + r * 3);
+      if (r >= 0.7) G.vignette(EGGS[K.egg].col, 0.2 + (r - 0.7) * 1.2);
       if (K.count === 500) G.caption('알이 들썩여요!');
       if (K.count === 900) G.caption('100마리만 더!');
       if (K.count >= NEED) hatch(G);
     } else {
-      K.wrong += 1; G.float('안 세어져요', m.x, m.y - 130 * m.s - 8, '#cbd5e1', 16, 0.7); G.caption(`${EGGS[m.e].label}은 ${EGGS[K.egg].label} 알에 안 세어져요`);
+      K.wrong += 1; G.float('안 세어져요', Math.min(310, m.x), m.y - 130 * m.s - 8, '#cbd5e1', 16, 0.7); G.caption(`${EGGS[m.e].label}은 ${EGGS[K.egg].label} 알에 안 세어져요`);
     }
   }
   /** 알 — (x, y) 가운데. crack 0~1 은 금 길이 */
@@ -78,11 +87,11 @@ window.RF_SCENE = (() => {
     canLose: true,
     introDur: 1.5,
     hook: ['1,000마리 잡으면', '아기가 태어난다'],
-    climaxStamp: '부화!!', raysAt: [180, 290], stampY: 410,
+    raysAt: [180, 290],
     caption0: '키울 알을 하나 골라요',
     endLines: ['같은 몬스터 1,000마리면 아기 부화', '장착한 펫 한 마리의 효과가 더해져요'],
     init() {
-      K = { uid: 0, left: T, egg: -1, count: 0, shown: 0, hits: 0, wrong: 0, missed: 0, mons: [], ghosts: [], bag: [], laneBag: [], spawnT: 0, eggPop: 0, hatch: -1, born: false, popped: false, demo: null, demoT: 0, heroHit1: false, heroHit2: false, pounce: -1, pounced: false,
+      K = { uid: 0, left: T, egg: -1, count: 0, shown: 0, hits: 0, wrong: 0, missed: 0, mons: [], ghosts: [], bag: [], laneBag: [], spawnT: 0, eggPop: 0, hatch: -1, born: false, popped: false, demo: null, demoT: 0, heroHit1: false, demoGone: false, pounce: -1, pounced: false,
         hero: { id: 'hero', x: 52, y: 396, s: 0.72, mode: 'idle', mt: 0 } };
     },
     onTap(G, x, y) {
@@ -106,24 +115,31 @@ window.RF_SCENE = (() => {
       KIT.tick(K.hero, dt);
       K.shown += (K.count - K.shown) * Math.min(1, dt * 12);
       K.eggPop = Math.max(0, K.eggPop - dt);
-      for (const g of K.ghosts) g.t += dt;
-      K.ghosts = K.ghosts.filter((g) => g.t < 0.22);
+      for (const g of K.ghosts) { g.t += dt; g.x += g.vx * dt; g.y += g.vy * dt; g.vy += 1000 * dt; g.rot += dt * 11; }
+      K.ghosts = K.ghosts.filter((g) => g.t < 0.85 && g.y < 500);
       if (K.hatch >= 0) {
         K.hatch += dt;
         const e = EGGS[K.egg], h = K.hatch;
-        if (h > 0.45 && !K.born) { K.born = true; K.mons = []; K.ghosts = []; G.flash('#fff3a0', 0.3); G.impact(2); G.burst(180, 290, e.col, 60, 320); G.coins(180, 290, 24); G.sfx('win'); G.caption(`${e.baby} 탄생!`); }
+        // 금이 가며 카메라가 점점 당겨지고 알이 떤다
+        if (h <= 0.45) { G.zoom(1.34 + h * 1.5, 180, 290, 0.2); G.shake(2 + h * 22, 0.1); G.vignette(e.col, 0.35 + h); if (Math.floor(h * 22) !== Math.floor((h - dt) * 22)) { G.ring(180, 290, e.col, 140 + h * 300, 0.25); G.sfx('tap'); } }
+        if (h > 0.45 && !K.born) {
+          // 빛 폭발 — 튀어나온 아기가 몬스터들을 사방으로 날린다
+          K.born = true; G.impact(3.2, 180, 290); G.flash('#fff', 0.42); G.rays(180, 290, 2.6, '#fff3a0'); G.confetti(70); G.burst(180, 290, e.col, 90, 420); G.burst(180, 290, '#fff3a0', 50, 340); G.coins(180, 290, 10); G.sfx('win'); G.caption(`${e.baby} 탄생!`);
+          [0, 0.1, 0.22].forEach((d, i) => G.after(d, () => G.ring(180, 290, i === 1 ? e.col : '#fff', 230 + i * 90, 0.55)));
+          for (const m of K.mons) { const dx = m.x - 180, dy = m.y - 60 - 290, d = Math.max(30, Math.hypot(dx, dy)); fling(m, (dx / d) * 900, (dy / d) * 500 - 520); }
+          K.mons = []; G.stamp('부화!!', '#ffd23f', 420, 1.1); G.zoom(1.14, 180, 320, 0.35);
+        }
         if (h > 1.15 && !K.popped) { K.popped = true; G.pop(`${e.baby} 부화`, e.title, `${e.full} · 장착 펫 효과`, 'gold', 2.6); G.stamp(e.stamp, '#ffd23f', 300, 1.1); G.caption('주인공 곁에서 같이 사냥해요'); }
         // 사냥 돕기 — 다음 몬스터가 걸어 들어오면 주인공이 치고, 곁의 아기도 덤빈다
         if (h > 1.4 && !K.demo) K.demo = { id: EGGS[(K.egg + 1) % 3].mole, x: 420, y: 452, s: 0.82, mode: 'idle', mt: 0, phase: 0 };
         if (K.demo) { KIT.tick(K.demo, dt); K.demo.x = Math.max(296, K.demo.x - 420 * dt); }
-        if (h > 2.0 && !K.heroHit1) { K.heroHit1 = true; KIT.attack(K.hero, 0.34); KIT.hit(K.demo); G.sfx('hit'); G.burst(K.demo.x - 10, 400, '#fff3a0', 8, 130); }
+        if (h > 2.0 && !K.heroHit1) { K.heroHit1 = true; KIT.attack(K.hero, 0.34); KIT.hit(K.demo); G.sfx('hit'); G.burst(K.demo.x - 10, 400, '#fff3a0', 10, 150); }
         if (h > 2.3 && K.pounce < 0 && !K.pounced) { K.pounce = 0; K.pounced = true; G.sfx('tap'); }
         if (K.pounce >= 0) {
           const was = K.pounce; K.pounce += dt;
-          if (was < 0.24 && K.pounce >= 0.24) { KIT.hit(K.demo); G.sfx('hit'); G.burst(K.demo.x - 16, 400, e.col, 12, 150); G.float('펫 공격!', K.demo.x - 8, 330, '#bef264', 22, 0.9); }
+          if (was < 0.24 && K.pounce >= 0.24) { G.sfx('bolt'); G.impact(1, K.demo.x - 10, 400); G.burst(K.demo.x - 16, 400, e.col, 30, 240); G.ring(K.demo.x - 10, 400, e.col, 130, 0.36); G.coins(K.demo.x, 390, 10); G.float('펫 공격!', 262, 330, '#bef264', 26, 1); fling(K.demo, 640, -560); K.demoGone = true; }
           if (K.pounce > 0.6) K.pounce = -1;
         }
-        if (h > 3.05 && !K.heroHit2) { K.heroHit2 = true; KIT.attack(K.hero, 0.34); KIT.hit(K.demo); G.sfx('hit'); G.burst(K.demo.x - 10, 400, '#fff3a0', 8, 130); }
         return;
       }
       if (G.over || G.phase !== 'play') return;
@@ -152,7 +168,6 @@ window.RF_SCENE = (() => {
       if (K.hatch < 0) KIT.clock(G, K.left, T, 60, '제한 시간 ');
       // 땅 위 — 뒷줄부터. 몬스터는 오른쪽에서 걸어온다
       if (!K.born) {
-        for (const g of K.ghosts) KIT.unit(G, { ...g, alpha: Math.max(0, 1 - g.t / 0.22), y: g.y + g.t * 14 }, G.t);
         const list = [...K.mons, K.hero].sort((a, b) => a.y - b.y);
         for (const u of list) {
           if (u === K.hero) { KIT.unit(G, K.hero, G.t); continue; }
@@ -161,6 +176,7 @@ window.RF_SCENE = (() => {
           if (u.hp < HP) G.bar(u.x - 22, u.y - 130 * u.s - 10, 44, 8, u.hp / HP, '#ef4444');
         }
       }
+      for (const g of K.ghosts) G.sprite(`${g.id}:hit:1`, g.x, g.y, { s: g.s, rot: g.rot, ay: 0.5, flashA: Math.max(0, 0.7 - g.t * 2.4), flashC: '#fff' });
       // 알 고르기
       if (K.egg < 0) {
         ctx.fillStyle = 'rgba(10,6,3,.55)'; ctx.fillRect(0, 84, 360, 224);
@@ -179,10 +195,10 @@ window.RF_SCENE = (() => {
       // 부화
       if (K.hatch >= 0) {
         const e = EGGS[K.egg], h = K.hatch;
-        if (!K.born) drawEgg(ctx, e, 180, 290, 1.9 + h * 0.5, 1, Math.sin(G.t * 46) * 0.14);
+        if (!K.born) drawEgg(ctx, e, 180, 290, 1.7 + h * 0.8, 1, Math.sin(G.t * 46) * (0.06 + h * 0.3));
         else {
           if (h < 1.05) drawShell(ctx, e, 180, 290, 2.1, (h - 0.45) / 0.6);
-          if (K.demo) KIT.unit(G, K.demo, G.t);
+          if (K.demo && !K.demoGone) KIT.unit(G, K.demo, G.t);
           const hp = Math.max(0, Math.min(1, (h - 0.9) / 0.5));
           KIT.unit(G, { ...K.hero, x: 52 + (156 - 52) * hp, y: 396 + (454 - 396) * hp, s: 0.72 + 0.08 * hp }, G.t);
           // 아기 — 왼쪽을 보는 그림이라 뒤집는다. 가운데에서 태어나 주인공 곁으로, 덤빌 때는 몬스터까지 뛰어갔다 온다
@@ -190,7 +206,7 @@ window.RF_SCENE = (() => {
           let x = 180 + (84 - 180) * go, y = 362 + (456 - 362) * go - Math.sin(go * Math.PI) * 60;
           if (K.pounce >= 0 && K.demo) { const p = Math.sin(Math.min(1, K.pounce / 0.6) * Math.PI); x = 84 + (K.demo.x - 48 - 84) * p; y = 456 - p * 58; }
           else if (go >= 1) y -= Math.abs(Math.sin(G.t * 6)) * 4;
-          G.sprite(petFrame(G, e), x, y, { s: (0.4 + 0.9 * k) * (1 - go) + 0.72 * go, flip: true });
+          G.sprite(petFrame(G, e), x, y, { s: (0.4 + 1.2 * k) * (1 - go) + 0.72 * go, flip: true });
         }
       }
       // 아래 판 — 알 · 처치 수 또는 규칙

@@ -10,30 +10,42 @@ window.RF_SCENE = (() => {
     [['goblin', L, 0], ['slime', R, 0], ['goblin', C, 0.9], ['slime', R, 0.9], ['goblin', L, 1.8], ['slime', C, 1.8]],
     [['slime', L, 0], ['goblin', C, 0], ['slime', R, 0], ['goblin', L, 0.9], ['slime', R, 0.9], ['goblin', C, 1.8], ['slime', R, 1.8]],
     [['moss-golem-clean', C, 0], ['goblin', L, 2.5]],
+    // 후반 떼 — 약한 작은 몬스터. 줄마다 뒤섞여 몰려오고, 새어도 조금만 깎인다 (SWARM[웨이브] = 마리)
   ];
+  const SWARM = [0, 3, 8, 0], BOSS_SWARM_EVERY = 1.3, SWARM_LEAK = 1;
   const SPEED = [70, 78, 84, 78], LEAK = 12, TOP = 80;
   const BOSS_HP = 16, BOSS_SP = 13, BOSS_TOP = 130, BOSS_HOVER = 178, BOSS_CUT = 4, BOSS_HOP = [R, L, C];   // 4번 맞을 때마다 옆 줄로 튄다
   const ORB_EVERY = 1.6, ORB_LEAK = 6, ORB_SP = 200;   // 마력탄 — 대장이 쏴서 성문에 맞는다(arrows.ts bossSalvoMs · bossOrbDmg)
   let K;
+  /** 큰 폭발 빛 — { x, y, t, life, r } */
+  function drawBlast(ctx, b, c1 = '255,180,60', c2 = '255,90,20') {
+    if (!b || b.t >= b.life) return;
+    const k = b.t / b.life, r = b.r * (0.2 + k * 1.1), g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+    g.addColorStop(0, `rgba(255,255,255,${1 - k})`); g.addColorStop(0.35, `rgba(${c1},${0.9 * (1 - k)})`); g.addColorStop(1, `rgba(${c2},0)`);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(b.x - r, b.y - r, r * 2, r * 2); ctx.restore();
+  }
   function startWave(G, w) {
     K.wave = w; K.wt = -0.3;
     K.queue = WAVES[w].map(([id, lane, at]) => ({ id, lane, at }));
+    for (let i = 0; i < SWARM[w]; i++) K.queue.push({ id: i % 2 ? 'slime' : 'goblin', lane: Math.floor(Math.random() * 3), at: 0.15 + i * 0.26, small: true });
     if (w === 0) return;
     G.stamp(w === 3 ? 'BOSS!!' : `WAVE ${w + 1}`, w === 3 ? '#ff6b6b' : '#fff', 200, 0.9);
     G.caption(w === 3 ? '대장 등장! 따라가며 맞혀요' : `WAVE ${w + 1}/3 — 끌어서 줄을 맞춰요`);
-    if (w === 3) G.pop('3웨이브를 막았다', '대장 · 이끼 골렘', '깎으면 옆으로 튄다', 'pink', 1.4);
+    if (w === 3) { G.pop('3웨이브를 막았다', '대장 · 이끼 골렘', '깎으면 옆으로 튄다', 'pink', 1.4); G.zoom(1.16, 180, 130, 0.5); G.shake(12, 0.5); G.vignette('#ef4444', 0.7); G.speed(0.6); }
   }
   function move(G, x) {
     K.hero.x = Math.max(44, Math.min(316, x));
     if (!K.moved) { K.moved = true; G.emit('choice', { x: Math.round(K.hero.x) }); G.sfx('tap'); }
   }
   function win(G, boss) {
-    K.done = true; K.chest = { x: boss.x, y: 70, t: 0 }; K.orbs = [];
+    const bx = boss.x, by = boss.y - 70;
+    K.done = true; K.chest = { x: boss.x, y: 70, t: 0 }; K.orbs = []; K.blast = { x: bx, y: by, t: 0, life: 0.85, r: 520 }; K.corpse = { ...boss, t: 0 };
     const seals = 3 + (K.gate >= 90 ? 2 : 0);
     for (const m of K.mons) { if (m !== boss) G.burst(m.x, m.y - 30, '#fde68a', 12, 160); m.dead = true; }
     K.cleared += 1; K.mons = []; K.shots = [];
-    G.climax(); G.sfx('win'); G.flash('#fff3a0', 0.2); G.impact(2); G.burst(boss.x, boss.y - 60, '#ffd23f', 60, 300); G.coins(boss.x, boss.y - 60, 24);
-    G.pop('대장 · 이끼 골렘 처치', '성문 방어 성공!', `원정 인장 +${seals}`, 'gold', 2.6);
+    G.climax(); G.sfx('win'); G.flash('#fff3a0', 0.3); G.impact(3, bx, by); G.zoom(1.42, bx, by, 1.15); G.rays(bx, by, 2.8); G.coinRain(2.8); G.vignette('#ff8a1f', 1); G.burst(bx, by, '#ffd23f', 70, 340); G.burst(bx, by, '#ff8a1f', 50, 260); G.coins(bx, by + 10, 30);
+    for (let i = 0; i < 9; i++) G.after(i * 0.1, () => { const x = bx + (Math.random() - 0.5) * 150, y = by + (Math.random() - 0.5) * 130; G.burst(x, y, i % 2 ? '#ffd23f' : '#ff8a1f', 26, 260); G.ring(x, y, i % 2 ? '#fff' : '#ffd23f', 110, 0.34); G.kick((Math.random() - 0.5) * 10, 6); G.sfx('hit'); });
+    G.after(0.6, () => G.pop('대장 · 이끼 골렘 처치', '성문 방어 성공!', `원정 인장 +${seals}`, 'gold', 2.2));   // 폭발을 먼저 보여 준다
     G.caption(`성문 ${Math.round(K.gate)}% 로 지켜냄`); G.finish(2.8);
   }
   return {
@@ -45,7 +57,7 @@ window.RF_SCENE = (() => {
     caption0: '끌어서 주인공을 옮겨요 · 활은 자동',
     endLines: ['손가락 하나로 지키는 성문', '대장을 깨면 원정 인장'],
     init(G) {
-      K = { mons: [], shots: [], orbs: [], orbT: 0, wave: 0, queue: [], wt: 0, shootT: 0, gate: 100, done: false, moved: false, cleared: 0, chest: null,
+      K = { mons: [], shots: [], orbs: [], orbT: 0, wave: 0, queue: [], wt: 0, shootT: 0, gate: 100, done: false, moved: false, cleared: 0, chest: null, blast: null, corpse: null, swarmT: 0,
         hero: { id: 'hero', x: 180, y: 452, s: 0.75, mode: 'idle', mt: 0 } };
       startWave(G, 0);
     },
@@ -55,13 +67,17 @@ window.RF_SCENE = (() => {
       const h = K.hero; KIT.tick(h, dt);
       for (const m of K.mons) KIT.tick(m, dt);
       if (K.chest) { K.chest.t += dt; K.chest.y += (300 - K.chest.y) * Math.min(1, dt * 7); }
+      if (K.blast) K.blast.t += dt;
+      if (K.corpse) K.corpse.t += dt;
       if (G.over || K.done) return;
       // 소환
       K.wt += dt;
       for (const q of K.queue) if (!q.out && K.wt >= q.at) {
         q.out = true; const boss = q.id === 'moss-golem-clean';
-        K.mons.push({ id: q.id, lane: q.lane, x: LANE_X[q.lane] + (boss ? 0 : Math.random() * 12 - 6), y: boss ? BOSS_TOP : TOP, hp: boss ? BOSS_HP : 3, max: boss ? BOSS_HP : 3, sp: boss ? BOSS_SP : SPEED[K.wave], boss, cut: 0, mode: 'idle', mt: 0, s: 1, phase: Math.random() });
+        K.mons.push({ id: q.id, lane: q.lane, x: LANE_X[q.lane] + (boss ? 0 : q.small ? Math.random() * 40 - 20 : Math.random() * 12 - 6), y: boss ? BOSS_TOP : TOP, hp: boss ? BOSS_HP : q.small ? 1 : 3, max: boss ? BOSS_HP : q.small ? 1 : 3, sp: boss ? BOSS_SP : SPEED[K.wave] + (q.small ? 8 : 0), boss, small: !!q.small, cut: 0, mode: 'idle', mt: 0, s: 1, phase: Math.random() });
       }
+      // 대장전에도 떼가 계속 온다
+      if (K.wave === 3) { K.swarmT += dt; if (K.swarmT >= BOSS_SWARM_EVERY) { K.swarmT = 0; for (let i = 0; i < 2; i++) { const lane = Math.floor(Math.random() * 3); K.mons.push({ id: i ? 'slime' : 'goblin', lane, x: LANE_X[lane] + Math.random() * 40 - 20, y: TOP, hp: 1, max: 1, sp: 86, boss: false, small: true, cut: 0, mode: 'idle', mt: 0, s: 1, phase: Math.random() }); } } }
       // 몬스터 이동 · 성문 충돌
       for (const m of K.mons) {
         if (m.boss) {
@@ -72,10 +88,10 @@ window.RF_SCENE = (() => {
           if (K.orbT >= ORB_EVERY) { K.orbT = 0; KIT.attack(m, 0.4); K.orbs.push({ x: m.x, y: m.y - 30, tx: h.x + (Math.random() - 0.5) * 40 }); G.sfx('tap'); }
           continue;
         }
-        m.y += m.sp * dt; m.s = depth(m.y);
+        m.y += m.sp * dt; m.s = depth(m.y) * (m.small ? 0.72 : 1);
         if (m.y >= GATE_Y) {
-          m.dead = true; K.gate = Math.max(0, K.gate - LEAK); G.shake(8, 0.3); G.flash('#ef4444', 0.14); G.sfx('fail');
-          G.float('성문 피격!', m.x, GATE_Y - 20, '#fca5a5', 18);
+          m.dead = true; K.gate = Math.max(0, K.gate - (m.small ? SWARM_LEAK : LEAK)); G.shake(m.small ? 3 : 8, 0.3); if (!m.small) { G.flash('#ef4444', 0.14); G.vignette('#ef4444', 0.5); } G.sfx('fail');
+          G.float('성문 피격!', m.x, GATE_Y - 20, '#fca5a5', m.small ? 14 : 18);
         }
       }
       // 마력탄
@@ -99,14 +115,16 @@ window.RF_SCENE = (() => {
         s.y -= 620 * dt;
         const t = K.mons.find((m) => !m.dead && Math.abs(m.x - s.x) < 34 && Math.abs(m.y - 30 - s.y) < 26);
         if (t) {
-          s.dead = true; t.hp -= 1; KIT.hit(t); G.sfx('hit');
+          if (!t.small) s.dead = true;   // 떼는 화살이 뚫고 지나간다 — 일반 몬스터 · 대장에게 갈 화살을 뺏지 않게
+          t.hp -= 1; KIT.hit(t); G.sfx('hit');
+          if (t.boss) G.float(KIT.fmt(900 + Math.random() * 700), t.x + (Math.random() * 60 - 30), t.y - 120 * t.s, '#fff', 20, 0.6);
           if (t.hp <= 0) {
             t.dead = true;
             if (t.boss) { win(G, t); return; }
             K.cleared += 1; G.burst(t.x, t.y - 40, '#fde68a', 16, 160); G.coins(t.x, t.y - 40, 3); G.punch(0.02); G.float('+처치', t.x, t.y - 50, '#ffe066', 15, 0.6);
           } else if (t.boss && (t.max - t.hp) % BOSS_CUT === 0) {
             // 깎이면 옆으로 튄다 — 쫓아가야 계속 맞는다
-            t.lane = BOSS_HOP[t.cut++ % 3]; G.sfx('bolt'); G.shake(4, 0.2); G.caption('대장이 옆 줄로 튀었다 — 따라가요!');
+            t.lane = BOSS_HOP[t.cut++ % 3]; G.sfx('bolt'); G.impact(1.2, t.x, t.y - 70); G.burst(t.x, t.y - 70, '#ffd23f', 24, 260); G.float(KIT.fmt(4000 + Math.random() * 3000), t.x, t.y - 150 * t.s, '#ffd23f', 34, 0.8); G.caption('대장이 옆 줄로 튀었다 — 따라가요!');
           }
         }
         if (s.y < 60) s.dead = true;
@@ -130,6 +148,9 @@ window.RF_SCENE = (() => {
         if (m.boss) { const by = Math.max(78, m.y - 206 * m.s); G.bar(m.x - 52, by, 104, 18, m.hp / m.max, '#ef4444'); G.text('이끼 골렘', m.x, by + 9, { size: 13, color: '#fff', stroke: '#2a1606', sw: 4 }); }
       }
       for (const o of K.orbs) { const g = ctx.createRadialGradient(o.x, o.y, 2, o.x, o.y, 16); g.addColorStop(0, '#f5d0fe'); g.addColorStop(0.5, 'rgba(192,132,252,.85)'); g.addColorStop(1, 'rgba(192,132,252,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(o.x, o.y, 16, 0, Math.PI * 2); ctx.fill(); }
+      // 쓰러지는 대장 — 하얗게 부풀다 터진다
+      if (K.corpse && K.corpse.t < 0.5) { const c = K.corpse; KIT.unit(G, { ...c, s: c.s * (1 + c.t * 0.9), alpha: 1 - c.t * 2, flash: 1, flashC: '#fff' }, G.t); }
+      drawBlast(ctx, K.blast);
       if (K.chest) G.sprite('chest', K.chest.x, K.chest.y, { s: 0.9 });
       for (const s of K.shots) G.sprite('arrow:basic', s.x, s.y, { s: 1, rot: -Math.PI / 2, ay: 0.5 });
       // 성문 체력 · 대장 체력
@@ -148,9 +169,9 @@ window.RF_SCENE = (() => {
     debug: () => ({ wave: K.wave, mons: K.mons.length, gate: Math.round(K.gate), cleared: K.cleared, heroX: Math.round(K.hero.x), bossHp: K.mons.find((m) => m.boss)?.hp ?? null }),
     bot(G) {
       if (G.phase !== 'play' || G.over || K.done) return null;
-      // 졸개는 성문에 가까운 것부터, 없으면 대장
-      const small = K.mons.filter((m) => !m.boss).sort((a, b) => b.y - a.y)[0];
-      const t = small || K.mons[0];
+      // 일반 몬스터가 먼저, 대장은 가까워진 떼보다 먼저, 그다음 떼
+      const by = (l) => l.sort((a, b) => b.y - a.y)[0];
+      const t = by(K.mons.filter((m) => !m.boss && !m.small)) || by(K.mons.filter((m) => m.boss)) || by(K.mons.filter((m) => m.small));
       if (!t) return null;
       const x = LANE_X[t.lane];
       return Math.abs(x - K.hero.x) > 6 ? { drag: [x, 420] } : null;

@@ -13,7 +13,9 @@ window.RF_SCENE = (() => {
     if (K.mode !== 'card' || K.ct < 0.5) return;
     K.mode = 'done'; K.mul = double ? 2 : 1;
     if (double) {
-      G.stamp('골드 ×2!!', '#ffd23f', 396, 1.3); G.impact(1.2); G.coins(180, 300, 50); G.sfx('legend'); G.climax(); G.finish(2.6);
+      K.fall = 0.01;
+      G.stamp('골드 ×2!!', '#ffd23f', 396, 1.5); G.impact(2.4, 180, 240); G.coins(50, 470, 24); G.coins(310, 470, 24); G.sfx('legend'); G.climax(); G.finish(3.6); G.zoom(1.14, 180, 240, 1.3); G.coinRain(3.5); G.flash('#ffd23f', 0.34); G.rays(180, 240, 3.2); G.vignette('#ffd23f', 1); G.speed(1.8);
+      for (let i = 0; i < 14; i++) G.after(i * 0.17, () => { G.coins(i % 2 ? 20 + Math.random() * 60 : 280 + Math.random() * 60, 120, 8); if (i % 3 === 0) G.ring(180, 240, '#ffd23f', 150 + i * 16, 0.42); });
       G.caption('광고 한 번에 골드 2배');
     } else { G.coins(180, 300, 18); G.sfx('coin'); G.finish(1.8); G.caption('골드 그대로 — 광고면 2배였어요'); }
   }
@@ -25,7 +27,11 @@ window.RF_SCENE = (() => {
     G.finish(1.3);
   }
   function hunt(G, step) {
-    KIT.attack(K.mia, 0.4); KIT.attack(K.leon, 0.4); KIT.hit(K.mob); G.coins(K.mob.x, K.mob.y - 40, 2);
+    const much = K.h / CAP_H, tip = handAt(K.h);
+    KIT.attack(K.mia, 0.4); KIT.attack(K.leon, 0.4); KIT.hit(K.mob); G.coins(K.mob.x, K.mob.y - 40, 2 + Math.floor(much * 8));
+    G.coins(CX + Math.cos(tip) * (R - 24), CY + Math.sin(tip) * (R - 24), 1 + Math.floor(much * 4));
+    // 한 시간마다 시계가 울린다 — 시계를 중심으로 당겨 돌리는 손이 어긋나지 않는다
+    if (step % 2 === 0) { G.ring(CX, CY, '#ffd23f', R + 30 + much * 50, 0.34); G.zoom(1.03 + much * 0.05, CX, CY, 0.12); G.vignette('#ffd23f', 0.1 + much * 0.35); }
     if (step % 4 === 0) { G.burst(K.mob.x, K.mob.y - 40, '#fde68a', 14, 160); K.mob.id = K.mob.id === 'slime' ? 'goblin' : 'slime'; K.mob.flash = 0.8; }
   }
   return {
@@ -36,7 +42,7 @@ window.RF_SCENE = (() => {
     climaxStamp: '대박!!', raysAt: [180, 280], stampY: 470,
     endLines: ['꺼 둬도 원정대는 사냥 중', '방치 보상 기본 8시간 · 키우면 14시간까지'],
     init() {
-      K = { mode: 'wind', cap: BASE_H, h: 0, target: 0, ang: null, mul: 1, ct: 0, mt: 0, zz: 0, step: 0, chosen: false, capped: false, quit: false, botA: 0, wob: 0,
+      K = { fall: 0, heap: 0, mode: 'wind', cap: BASE_H, h: 0, target: 0, ang: null, mul: 1, ct: 0, mt: 0, zz: 0, step: 0, chosen: false, capped: false, quit: false, botA: 0, wob: 0,
         hero: { id: 'hero', x: 52, y: 450, s: 0.72, mode: 'idle', mt: 0 }, mia: { id: 'mia', x: 136, y: 452, s: 0.66, mode: 'idle', mt: 0 }, leon: { id: 'leon', x: 206, y: 454, s: 0.62, mode: 'idle', mt: 0, phase: 0.4 },
         mob: { id: 'slime', x: 300, y: 452, s: 0.68, mode: 'idle', mt: 0 } };
     },
@@ -45,7 +51,7 @@ window.RF_SCENE = (() => {
       if (K.mode === 'wind') {
         K.ang = null;
         if (K.capped && K.cap === BASE_H && inR(EXT, x, y)) {
-          K.cap = CAP_H; K.capped = false; G.sfx('merge'); G.stamp('14시간까지!', '#ffd23f', 330, 0.9); G.punch(0.04); G.caption('14시간까지 더 돌려요'); G.hint(null);
+          K.cap = CAP_H; K.capped = false; G.sfx('merge'); G.stamp('14시간까지!', '#ffd23f', 330, 0.9); G.punch(0.05); G.flash('#fff3a0', 0.18); G.ring(CX, CY, '#ffd23f', 190, 0.42); G.zoom(1.1, CX, CY, 0.25); G.coins(CX, CY, 24); G.caption('14시간까지 더 돌려요'); G.hint(null);
           return true;
         }
         return Math.hypot(x - CX, y - CY) < R + 50;
@@ -80,16 +86,20 @@ window.RF_SCENE = (() => {
     update(G, dt) {
       for (const u of [K.hero, K.mia, K.leon, K.mob]) KIT.tick(u, dt);
       K.zz += dt; K.wob = Math.max(0, K.wob - dt);
+      if (K.fall > 0) { K.fall += dt; K.heap = Math.min(1, K.heap + dt * 0.55); }
       if (K.mode === 'done' || G.phase !== 'play' || G.over) return;
       if (G.idle > IDLE_END) { giveUp(G); return; }
       if (K.mode === 'wind') {
+        const was = K.h;
         K.h = Math.min(K.target, K.h + RATE * dt);
         if (K.h >= K.cap - 1e-6) K.h = K.cap;
+        // 바늘이 도는 동안 동전이 내린다 — 오래 돌릴수록 굵게
+        if (K.h > was && Math.random() < 0.12 + (K.h / CAP_H) * 0.5) G.coinRain(0.02);
         const step = Math.floor(K.h * 2);
         if (step !== K.step) { K.step = step; hunt(G, step); }
         if (K.h >= K.cap) {
-          if (K.cap === BASE_H && !K.capped) { K.capped = true; G.sfx('fail'); G.shake(4, 0.2); G.flash('#fff7d6', 0.25); G.stamp('8시간 멈춤!', '#ffd23f', 330, 1); G.caption('기본 8시간 끝 — 시간을 늘려요'); }
-          else if (K.cap === CAP_H) { K.mode = 'morning'; K.mt = 0; G.flash('#fff7d6', 0.5); G.sfx('win'); G.stamp('낮 1시!', '#ffd23f', 330, 0.9); G.caption('방치 보상이 도착했다'); }
+          if (K.cap === BASE_H && !K.capped) { K.capped = true; G.sfx('fail'); G.shake(4, 0.2); G.flash('#fff7d6', 0.25); G.stamp('8시간 멈춤!', '#ffd23f', 330, 1); G.ring(CX, CY, '#ef4444', 170, 0.4); G.vignette('#ef4444', 0.5); G.caption('기본 8시간 끝 — 시간을 늘려요'); }
+          else if (K.cap === CAP_H) { K.mode = 'morning'; K.mt = 0; G.flash('#fff7d6', 0.5); G.sfx('win'); G.stamp('낮 1시!', '#ffd23f', 330, 0.9); G.coins(180, 200, 40); G.coinRain(0.9); G.ring(CX, CY, '#fff', 210, 0.45); G.caption('방치 보상이 도착했다'); }
         }
         if (G.idle > 1) {
           if (K.capped) G.hint(EXT.x + EXT.w / 2, EXT.y + 40);
@@ -151,6 +161,16 @@ window.RF_SCENE = (() => {
           G.text('방치 시간 늘리기', 0, -9, { size: 21, color: '#1b1206' }); G.text('성문 방어 · 출석으로 14시간까지', 0, 17, { size: 13, color: '#3b2415' });
           ctx.restore();
         } else G.text('↻ 바늘을 시계 방향으로 끌어요', 180, 530, { size: 16, color: '#dbeafe', alpha: 0.75 + Math.sin(G.t * 5) * 0.25 });
+      }
+      // 금 폭포 — 2배를 고르면 위에서 쏟아져 아래에 쌓인다(카드 뒤로)
+      if (K.fall > 0) {
+        const k = Math.min(1, K.fall / 0.4), fade = K.fall > 3 ? Math.max(0, 1 - (K.fall - 3) / 0.6) : 1;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 10; i++) { const w = 14 + (i % 3) * 12, x = 18 + i * 36 + Math.sin(G.t * 5 + i) * 7, g = ctx.createLinearGradient(0, 0, 0, 640 * k); g.addColorStop(0, `rgba(255,226,120,${0.75 * fade})`); g.addColorStop(1, `rgba(255,170,30,${0.25 * fade})`); ctx.fillStyle = g; ctx.fillRect(x - w / 2, 0, w, 640 * k); }
+        ctx.restore();
+        const hh = 18 + K.heap * 84, heap = ctx.createLinearGradient(0, 462 - hh, 0, 470); heap.addColorStop(0, '#ffe680'); heap.addColorStop(1, '#d68b0a');
+        ctx.beginPath(); ctx.ellipse(180, 468, 250, hh, 0, Math.PI, 0); ctx.fillStyle = heap; ctx.fill();
+        for (let i = 0; i < 26; i++) { const x = 8 + ((i * 53) % 344), lim = 468 - hh * Math.sqrt(Math.max(0, 1 - ((x - 180) / 250) ** 2)), y = lim + 8 + ((i * 29) % 40) * K.heap; if (y < 466) { ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = i % 2 ? '#ffd23f' : '#fff0a8'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#a86b06'; ctx.stroke(); } }
       }
       // 보상 카드 — 금액은 스테이지마다 달라 시간으로만 말한다
       if (K.mode === 'card' || (K.mode === 'done' && !K.quit)) {

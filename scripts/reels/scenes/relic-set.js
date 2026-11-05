@@ -11,9 +11,25 @@ window.RF_SCENE = (() => {
     { k: 'relic:moon-shell', name: '달 조개', fam: '별빛', c: '#c4b5fd' },
     { k: 'relic:kingfisher-feather', name: '물총새 깃', fam: '물결', c: '#67e8f9' },
   ];
-  const LIMIT = 8, PENALTY = 2, SHOW = 1, DEAL = 0.07, BURN_EVERY = 0.6;
+  const LIMIT = 8, PENALTY = 2, SHOW = 1, DEAL = 0.07, BURN_EVERY = 0.6, HIT = 5000, BURN_SHARE = 0.2;
   const rect = (i) => ({ x: 22 + (i % 3) * 108, y: 236 + Math.floor(i / 3) * 112, w: 100, h: 108 });
   let K;
+  /** 큰 폭발 빛 — { x, y, t, life, r } */
+  function drawBlast(ctx, b, c1 = '255,180,60', c2 = '255,90,20') {
+    if (!b || b.t >= b.life) return;
+    const k = b.t / b.life, r = b.r * (0.2 + k * 1.1), g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+    g.addColorStop(0, `rgba(255,255,255,${1 - k})`); g.addColorStop(0.35, `rgba(${c1},${0.9 * (1 - k)})`); g.addColorStop(1, `rgba(${c2},0)`);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(b.x - r, b.y - r, r * 2, r * 2); ctx.restore();
+  }
+  /** 불꽃 한 줄기 — 더하기 합성 안에서 부른다 */
+  function flame(ctx, x, base, w, h, ph) {
+    const sway = Math.sin(ph) * w * 0.3, g = ctx.createLinearGradient(0, base, 0, base - h);
+    g.addColorStop(0, 'rgba(255,235,140,.95)'); g.addColorStop(0.4, 'rgba(255,140,30,.85)'); g.addColorStop(1, 'rgba(255,40,0,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - w / 2, base);
+    ctx.bezierCurveTo(x - w * 0.7, base - h * 0.4, x - w * 0.15 + sway, base - h * 0.6, x + sway * 1.6, base - h);
+    ctx.bezierCurveTo(x + w * 0.2 + sway, base - h * 0.6, x + w * 0.7, base - h * 0.35, x + w / 2, base);
+    ctx.closePath(); ctx.fill();
+  }
   function shuffled(a) { const o = [...a]; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; }
   const cardAt = (x, y) => { for (let i = 0; i < 9; i++) { const r = rect(i); if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i; } return -1; };
   function pick(G, i) {
@@ -23,18 +39,22 @@ window.RF_SCENE = (() => {
     if (!K.chosen) { K.chosen = true; G.emit('choice', { relic: c.fire ? 'fire' : 'other' }); }
     c.up = true;
     if (c.fire) {
-      c.found = true; K.got += 1; K.pop = 0.4; G.sfx('merge'); G.punch(0.03); G.burst(cx, cy, '#ffb347', 18, 200); KIT.attack(K.hero, 0.36);
+      c.found = true; K.got += 1; K.pop = 0.4; G.sfx('merge'); G.punch(0.03); G.burst(cx, cy, '#ffb347', 26, 240); KIT.attack(K.hero, 0.36); G.zoom(1.09, cx, cy, 0.18); G.ring(cx, cy, '#ffb347', 110, 0.34); G.vignette('#ff8a1f', 0.25 + K.got * 0.15);
       G.stamp(c.name, '#ffd23f', 180, 0.7);
       if (K.got < 3) G.caption(`${c.name} — 세트까지 ${3 - K.got}개`);
-      else { K.mode = 'set'; K.st = 0; G.sfx('legend'); G.caption('불 세트 완성!'); }
+      else {
+        K.mode = 'set'; K.st = 0; G.sfx('legend'); G.caption('불 세트 완성!'); G.zoom(1.12, 180, 400, 0.9); G.speed(1.3); G.vignette('#ff8a1f', 0.8);
+        K.cards.forEach((f, n) => { if (!f.fire) return; const q = rect(n); G.after(0.12 + K.lit * 0.34, () => { G.burst(q.x + q.w / 2, q.y + q.h / 2, '#ff8a1f', 40, 300); G.ring(q.x + q.w / 2, q.y + q.h / 2, '#ffd23f', 130, 0.4); G.shake(8, 0.2); G.kick(0, 6); G.sfx('hit'); }); K.lit += 1; });
+      }
     } else {
       c.wrong = K.mode === 'show' ? 0.01 : 0.7; K.left = Math.max(0, K.left - PENALTY); G.shake(5, 0.2); G.sfx('fail');
       G.float(`-${PENALTY}초`, cx, cy - 20, '#fca5a5', 26, 0.8); G.caption(`${c.name} — ${c.fam} 계열이에요`);
     }
   }
   function burnFloat(G) {
-    G.float('화상!', K.boss.x + (Math.random() * 24 - 12), 150, '#ff8a3d', 28, 0.8);
-    G.burst(K.boss.x, K.boss.y - 60, '#ff8a3d', 26, 240); G.punch(0.04); G.shake(6, 0.2); G.sfx('bolt');
+    K.burnN += 1;
+    G.float(`화상 ${KIT.fmt(K.pool)}`, K.boss.x - 74 + (Math.random() * 16 - 8), 138 + (K.burnN % 2) * 28, '#ff8a3d', 28 + Math.min(14, K.burnN * 3), 0.85);
+    G.burst(K.boss.x, K.boss.y - 60, '#ff8a3d', 40, 280); G.ring(K.boss.x, K.boss.y - 60, '#ff8a1f', 150, 0.36); G.punch(0.05); G.shake(9, 0.25); G.kick(4, 3); G.sfx('bolt');
   }
   return {
     id: 'relic-set',
@@ -46,7 +66,7 @@ window.RF_SCENE = (() => {
     endLines: ['유물 56종 · 7계열', '3개 모으면 세트 · 8개 모두 ×1.5'],
     init() {
       const list = shuffled([...FIRE.map((f) => ({ ...f, fire: true, fam: '불', c: '#ff8a1f' })), ...OTHER]);
-      K = { cards: list.map((c) => ({ ...c, up: false, f: 0, found: false, wrong: 0 })), mode: 'wait', st: 0, left: LIMIT, got: 0, pop: 0, chosen: false, setOn: false, dead: false, hp: 1, atk: 0, pool: 0, burnT: 0, botAt: 0,
+      K = { cards: list.map((c) => ({ ...c, up: false, f: 0, found: false, wrong: 0 })), mode: 'wait', st: 0, left: LIMIT, got: 0, pop: 0, chosen: false, setOn: false, dead: false, hp: 1, atk: 0, pool: 0, burnT: 0, botAt: 0, lit: 0, fire: 0, burnN: 0, blast: null,
         hero: { id: 'hero', x: 70, y: 226, s: 0.62, mode: 'idle', mt: 0 }, boss: { id: 'flame-wyvern-clean', x: 284, y: 228, s: 0.56, mode: 'idle', mt: 0 } };
     },
     onTap(G, x, y) {
@@ -58,6 +78,8 @@ window.RF_SCENE = (() => {
     update(G, dt) {
       KIT.tick(K.hero, dt); KIT.tick(K.boss, dt);
       K.pop = Math.max(0, K.pop - dt);
+      if (K.fire > 0) K.fire += dt;
+      if (K.blast) K.blast.t += dt;
       for (const c of K.cards) {
         c.f += ((c.up ? 1 : 0) - c.f) * Math.min(1, dt * 16);
         if (c.wrong > 0) { c.wrong -= dt; if (c.wrong <= 0) { c.wrong = 0; c.up = false; } }
@@ -70,14 +92,17 @@ window.RF_SCENE = (() => {
       const every = K.setOn ? 0.3 : 0.8;
       if (K.atk > every && !G.lost) {
         K.atk = 0; KIT.attack(K.hero, 0.3); KIT.hit(K.boss); G.sfx('hit');
+        // 피해 숫자는 과장하되 화상은 준 피해의 20% 그대로 모은다
+        const dmg = Math.round(HIT * (0.9 + Math.random() * 0.3) * (K.setOn ? 1.6 : 1));
+        G.float(KIT.fmt(dmg), K.boss.x + 12 + (Math.random() * 30 - 15), 182, '#fff', K.setOn ? 22 : 17, 0.6);
         K.hp = Math.max(0.02, K.hp - (K.setOn ? 0.045 : 0.008));
-        if (K.setOn) K.pool += 1;
+        if (K.setOn) K.pool += Math.round(dmg * BURN_SHARE);
       }
       if (K.mode === 'burn') {
         K.burnT += dt;
         if (K.burnT > BURN_EVERY && K.pool > 0) {
           K.burnT = 0; burnFloat(G); K.pool = 0; K.hp -= 0.16;
-          if (K.hp <= 0) { K.hp = 0; K.dead = true; G.impact(2); G.flash('#ffb347', 0.25); G.burst(K.boss.x, K.boss.y - 60, '#ffd23f', 70, 320); G.coins(K.boss.x, K.boss.y - 60, 30); G.sfx('legend'); G.caption('화상으로 대장 처치!'); }
+          if (K.hp <= 0) { K.hp = 0; K.dead = true; K.blast = { x: K.boss.x, y: K.boss.y - 60, t: 0, life: 0.8, r: 520 }; G.impact(3, K.boss.x, K.boss.y - 60); G.zoom(1.44, K.boss.x, K.boss.y - 60, 0.9); G.flash('#ffb347', 0.34); G.burst(K.boss.x, K.boss.y - 60, '#ffd23f', 80, 360); G.burst(K.boss.x, K.boss.y - 60, '#ff5a1f', 60, 280); G.coins(K.boss.x, K.boss.y - 60, 34); G.coinRain(1.6); G.sfx('legend'); G.caption('화상으로 대장 처치!'); }
         }
         return;
       }
@@ -92,10 +117,12 @@ window.RF_SCENE = (() => {
       if (K.mode === 'set') {
         K.st += dt;
         if (K.st > 1.4) {
-          K.mode = 'burn'; K.setOn = true; K.burnT = 0;
-          G.climax(); G.flash('#ffb347', 0.25); G.impact(1.2);
+          K.mode = 'burn'; K.setOn = true; K.burnT = 0; K.fire = 0.01;
+          // 화면 전체 화염 폭발 — 왼쪽 아래에서 대장 쪽으로 번진다
+          G.climax(); G.flash('#ff8a1f', 0.4); G.impact(3, K.boss.x, 170); G.zoom(1.34, K.boss.x, 175, 1.3); G.rays(K.boss.x, 170, 3, '#ff8a1f'); G.vignette('#ff5a1f', 1); G.speed(1.8);
+          for (let i = 0; i < 12; i++) G.after(i * 0.08, () => { const x = 18 + (i * 31) % 330, y = 560 - i * 34 + Math.random() * 40; G.burst(x, y, i % 2 ? '#ff8a1f' : '#ffd23f', 30, 300); G.ring(x, y, '#ff8a1f', 130, 0.38); G.kick((Math.random() - 0.5) * 10, 6); if (i % 3 === 0) G.sfx('bolt'); });
           G.pop('불 세트 · 화상', '피해 20% 화상 추가', '3개 = 세트 · 8개 모두 ×1.5', 'gold', 4);
-          G.caption('준 피해의 20% 가 화상으로 터진다!'); G.finish(4.6);
+          G.caption('준 피해의 20% 가 화상으로 터진다!'); G.finish(5);
         }
         return;
       }
@@ -111,7 +138,7 @@ window.RF_SCENE = (() => {
       if (!K.dead) {
         // 이 그림만 오른쪽을 보게 그려져 있다(game/draw.ts FLIP_RIGHT_FACING) — 뒤집어 왼쪽을 보게
         ctx.save(); ctx.translate(K.boss.x, 0); ctx.scale(-1, 1); KIT.unit(G, { ...K.boss, x: 0 }, G.t); ctx.restore();
-        if (K.setOn) { const a = 0.55 + Math.sin(G.t * 18) * 0.25; G.sprite('skill:fire', K.boss.x, K.boss.y - 8, { s: 1.15, alpha: a }); }
+        if (K.setOn) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) flame(ctx, K.boss.x - 44 + i * 22, K.boss.y + 4, 44, 70 + (i % 2) * 44 + Math.sin(G.t * 14 + i) * 16, G.t * 9 + i * 2); ctx.restore(); }
       }
       KIT.unit(G, K.hero, G.t);
       // 세트 칸 — 찾은 만큼 찬다
@@ -153,6 +180,17 @@ window.RF_SCENE = (() => {
         }
         ctx.restore();
       }
+      // 화면 전체 화염 — 아래에서 치솟아 번지다 잦아든다
+      if (K.fire > 0 && K.fire < 2) {
+        const k = K.fire < 0.35 ? K.fire / 0.35 : Math.max(0, 1 - (K.fire - 0.35) / 1.65);
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        const gr = ctx.createLinearGradient(0, 640, 0, 0); gr.addColorStop(0, `rgba(255,110,20,${0.85 * k})`); gr.addColorStop(0.6, `rgba(255,70,10,${0.42 * k})`); gr.addColorStop(1, 'rgba(255,40,0,0)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, 360, 640);
+        ctx.restore();
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 12; i++) flame(ctx, -6 + i * 33, 660, 86 + (i % 3) * 26, k * (290 + ((i * 7) % 5) * 80) + Math.sin(G.t * 10 + i) * 26, G.t * 8 + i * 1.7);
+        ctx.restore();
+      }
+      drawBlast(ctx, K.blast);
     },
     debug: () => ({ mode: K.mode, got: K.got, left: +K.left.toFixed(1), hp: +K.hp.toFixed(2) }),
     bot(G) {
