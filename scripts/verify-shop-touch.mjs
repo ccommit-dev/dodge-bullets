@@ -46,8 +46,9 @@ for (const [dev, w, h] of DEVICES) {
     const t = { gold: 1000, stage: 2, bestStage: 2, heroes: { mia: 20, leon: 20 }, lastActiveAt: now, ...titans };
     const s = { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(p), [`dodgebullets:titans:${H}`]: JSON.stringify(t), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": sound, "dodgebullets:inapp-fs-hint": "1", ...extra };
     if (forge) s[`dodgebullets:forge:${H}`] = JSON.stringify(forge);
-    // 쓰기와 reload 를 한 evaluate 안에서 — 사이에 떠 있던 사냥터가 시드를 덮지 않게
-    await Promise.all([page.waitForNavigation({ waitUntil: ENGINE === "webkit" ? "networkidle" : "networkidle0" }).catch(() => {}), page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); setTimeout(() => location.reload(), 0); }, s)]); await sleep(1500);
+    // 게임 없는 페이지에서 심는다 — WebKit 은 떠나는 게임이 옛 저장을 먼저 써서 심은 카드 · 스킬이 사라졌다(전체 실행에서 스킬 3건 실패, 2026-11-05)
+    await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });
+    await Promise.all([page.waitForNavigation({ waitUntil: ENGINE === "webkit" ? "networkidle" : "networkidle0" }).catch(() => {}), page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); setTimeout(() => location.href = "/", 0); }, s)]); await sleep(1500);
     await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });
     await sleep(400);
   };

@@ -6,6 +6,7 @@
 import { launchBrowser } from "./launch-browser.mjs";
 const OUT = process.argv[2], BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const waitClick = async () => { for (let i = 0; i < 200; i += 1) { if (await page.evaluate(() => { const f = document.querySelector(".titans-field"), b = document.querySelector(".titans-boss-challenge"); if (!b || !f?.className.includes("phase-combat")) return false; b.click(); return true; })) return; await sleep(30); } };
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
@@ -25,8 +26,8 @@ for (const mounted of [false, true]) {
   const tag = mounted ? "탈것" : "맨몸";
   let shown = false; for (let i = 0; i < 300 && !shown; i += 1) { shown = await page.evaluate(() => !!document.querySelector(".titans-boss-challenge") && document.querySelector(".titans-field")?.className.includes("phase-combat")); if (!shown) await sleep(200); }
   ok(`${tag}: 일반 라운드를 마치면 보스 도전 단추`, shown);
-  await sleep(1500);
-  await page.evaluate(() => document.querySelector(".titans-boss-challenge")?.click());
+  // 일반 몬스터가 쓰러지는 칸에는 단추가 잠깐 없다 — 전투 중일 때 바로 누른다
+  await waitClick();
   const look = () => page.evaluate(() => { const f = document.querySelector(".titans-field"), fr = f.getBoundingClientRect(), h = document.querySelector(".titans-hero .equipped-character")?.getBoundingClientRect(), a = document.querySelector(".titans-allies .ally-body")?.getBoundingClientRect(); return { phase: [...f.classList].find((c) => c.startsWith("phase-")), hero: h ? Math.round(h.left - fr.left) : null, ally: a ? Math.round(a.left - fr.left) : null, entering: f.classList.contains("party-entering"), boss: !!document.querySelector(".titans-boss-challenge"), timer: document.querySelector(".titans-boss-timer, .boss-timer")?.textContent ?? "", stage: !!document.querySelector(".titans-boss-timer") }; });
   const log = []; const t0 = Date.now();
   while (Date.now() - t0 < 5000) { log.push({ t: Date.now() - t0, ...(await look()) }); await sleep(60); }

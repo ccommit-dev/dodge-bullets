@@ -121,6 +121,7 @@ import {
   randomOwnedAlly,
 } from "./titans/allies";
 import { BEAT_TICKET_MAX_BOUGHT } from "./beat/tickets";
+import { GOLDEN_ESCAPE_SEC, GoldenRush, HuntStamp, TechGauge } from "./titans/huntMoments";
 import { MOUNT_RIDE } from "./titans/mountRide";
 import { mountAnimStyle, mountCellStyle, mountFrameIndex, type MountAction } from "./titans/spriteAnim";
 import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
@@ -419,6 +420,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [pkgOpen, setPkgOpen] = useState<string | null>(null);
   const [gachaDetailOpen, setGachaDetailOpen] = useState(false);
   const [animMode, setAnimMode] = useState<"idle" | "attack">("idle");
+  /** 릴스에서 가져온 순간들 (titans/huntMoments) — 황금 몬스터 시간 제한 · 무기 기술 칸 · 크게 찍히는 글자 */
+  const [goldenRush, setGoldenRush] = useState<{ hits: number } | null>(null);
+  const [techCount, setTechCount] = useState(0);
+  const [huntStamp, setHuntStamp] = useState<{ text: string; sub?: string; tone: "gold" | "record"; seq: number } | null>(null);
+  const recordShownRef = useRef(-1);
+  const showHuntStamp = (text: string, sub: string | undefined, tone: "gold" | "record") => {
+    const seq = performance.now();
+    setHuntStamp({ text, sub, tone, seq });
+    window.setTimeout(() => setHuntStamp((cur) => (cur?.seq === seq ? null : cur)), 1500);
+  };
   /** 탈것 위 방어 — 몬스터가 덤빌 때 480ms. 공격 칸보다 앞선다(뜸해서 안 그러면 거의 안 보인다) */
   const [rideGuard, setRideGuard] = useState(false);
   const rideGuardUntilRef = useRef(0);
@@ -857,7 +868,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   const spawn = useCallback((stage: number, nextWave: number, asBoss: boolean) => {
     relicBurnPoolRef.current = 0;   // 앞 대상에 모인 화상이 새 몬스터에 떨어지지 않게
-    const isChest = !asBoss && Math.random() < 0.04;
+    const isChest = !asBoss && (Math.random() < 0.04 || (import.meta.env.DEV && !!(window as unknown as { __huntForceGolden?: boolean }).__huntForceGolden));
     const mhp = monsterHp(stage, asBoss) * (isChest ? 1.6 : 1);
     setWave(nextWave);
     setBoss(asBoss);
@@ -1268,7 +1279,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     document.addEventListener("pointerdown", away, true);   // 전장 stopPropagation 앞에서 받는다
     return () => document.removeEventListener("pointerdown", away, true);
   }, [rebirthTip]);
-  // 탈것 코끝이 몬스터를 파고들지 않게 (2026-11-05) — 만남마다 자리 잡은 뒤 재서 그만큼 뒤로(--ride-back). 몸이 작은 몬스터는 더 가까이 서서 고정값으로는 겹쳤다. 꼬리가 전장 밖으로 나가지는 않게
+  // 황금 몬스터 시간 제한 (릴스 golden-monster) — 자리 잡은 뒤 7초 안에 못 잡으면 도망가고 같은 라운드의 일반 몬스터가 대신 나온다. 잡을 몫 수는 안 줄어든다
+  useEffect(() => {
+    if (!chesterson || !formationReady || battlePhase !== "combat") return;
+    setGoldenRush((r) => r ?? { hits: 0 });
+    const t = window.setTimeout(() => {
+      setGoldenRush(null);
+      flash("황금 몬스터가 도망쳤다!");
+      spawn(saveRef.current.stage, waveRef.current, false);
+    }, (GOLDEN_ESCAPE_SEC * 1000) / save.battleSpeed);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chesterson, formationReady, battlePhase, encounterMotion.seq, save.battleSpeed]);
+  useEffect(() => { if (!chesterson) setGoldenRush(null); }, [chesterson]);
+  // 탈것 코끝이 몬스터를 파고들지 않게 (2026-11-05) — 만남마다 자리 잡은 뒤 재서 그만큼 뒤로(--ride-back) · 공격 칸에 코끝이 조금 더 나가 12px 여유. 몸이 작은 몬스터는 더 가까이 서서 고정값으로는 겹쳤다. 꼬리가 전장 밖으로 나가지는 않게
   useEffect(() => {
     if (!formationReady) return;
     const field = document.querySelector(".titans-field"), hero = document.querySelector<HTMLElement>(".titans-hero.has-mount");
@@ -1277,7 +1301,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const cur = parseFloat(hero.style.getPropertyValue("--ride-back")) || 0;
     const nose = mount.left + mount.width * 0.95, monLeft = mon.left + mon.width * encounterMotion.partyMl;
     const room = Math.max(0, mount.left + mount.width * 0.13 - field.getBoundingClientRect().left - 4);
-    hero.style.setProperty("--ride-back", `${Math.round(Math.max(0, Math.min(cur + room, cur + nose - monLeft + 4)))}px`);
+    hero.style.setProperty("--ride-back", `${Math.round(Math.max(0, Math.min(cur + room, cur + nose - monLeft + 16)))}px`);
   }, [formationReady, encounterMotion.seq, encounterMotion.partyMl]);
   // 스킬 칸을 주인공 발밑으로 (2026-11-03, 사용자: "사냥터 스킬아이콘 캐릭터 가까이") — 만남마다 자리 잡은 뒤 한 번 잰다. 교전 중엔 움직이지 않아 누르기 쉽다
   const skillDockRef = useRef<HTMLDivElement | null>(null);
@@ -1766,6 +1790,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (wasBoss) {
         setBossReady(false);
         const clearedStage = s.stage;
+        // 신기록 (릴스 rebirth-speed) — 환생한 뒤 예전 최고 층을 처음 넘는 순간. 첫 판은 층마다 신기록이라 알리지 않는다
+        if (advancing && s.stage >= s.bestStage && characterRef.current.rebirthCount > 0 && recordShownRef.current !== characterRef.current.rebirthCount) {
+          recordShownRef.current = characterRef.current.rebirthCount;
+          later(() => showHuntStamp("신기록!", `최고 ${s.stage + 1}층 돌파`, "record"), 260);
+        }
         // 대장 사다리 (2026-10-22 아처 키우기 3번) — 처음 깬 대장 높이마다 영구 특성 한 칸
         // 깜짝 선물 (2026-10-22 아처 키우기 5번) — 환영 선물을 받은 새 계정이 처음 대장을 잡으면 +500 한 번
         if (characterRef.current.claimedRewards.includes("welcome-gift") && !characterRef.current.claimedRewards.includes("surprise-gift")) {
@@ -1859,7 +1888,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         return;
       }
 
-      if (chestRef.current) flash(`황금 몬스터! +${formatGold(goldGain)}G`);
+      if (chestRef.current) {
+        setGoldenRush(null);
+        showHuntStamp("골드 ×10!", `+${formatGold(goldGain)}G`, "gold");
+        if (!lowFxRef.current) for (let k = 0; k < 6; k += 1) pushFxAt("coin", "monster", 0.5, 0.4, 70, 40, undefined, 0.45);
+      }
       if (waveRef.current >= MOBS_PER_STAGE) {
         if (bossReady) {
           later(() => {
@@ -1951,6 +1984,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const fly = heroAttackFx(0.08);   // 무기마다 다른 한 방(2026-10-28)
       setSave((prev) => ({ ...prev, totalTaps: prev.totalTaps + 1 }));
       applyDamage(dmg, crit, { clientX, clientY, fromAlly: "tap", source: "tap", fxDelayMs: fly });
+      if (chestRef.current) { setGoldenRush((r) => (r ? { hits: r.hits + 1 } : r)); if (!lowFxRef.current) pushFxAt("coin", "monster", 0.5, 0.35, 70, 40, undefined, 0.2); }
       // 무기 기술 (2026-10-27, titans/weapons.ts) — 무기마다 N 번째 탭에 이름 있는 한 방
       const tech = WEAPON_TECH[weaponKindRef.current];
       weaponTechRef.current += 1;
@@ -1961,6 +1995,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         else pushFxAt("slash", "monster", 0.5, 0.45, 44, 50, undefined, 0.05);
         applyDamage(computeTapHit().base * mul, true, { source: "hero", label: tech.name, delayMs: 120 });
       }
+      setTechCount(weaponTechRef.current);
     },
     [applyDamage, computeTapHit],
   );
@@ -3806,6 +3841,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {TIER_RANK[tierFx.tier] >= TIER_RANK.SSR && <span className={`tier-cutin tier-${tierFx.tier}`}><SkillIcon id={tierFx.id} /><em className="tier-chip">{TIER_LABEL[tierFx.tier]}</em><strong>{SKILLS.find((sk) => sk.id === tierFx.id)?.name}</strong></span>}
           </i>
         )}
+        {goldenRush && <GoldenRush seq={encounterMotion.seq} hits={goldenRush.hits} sec={GOLDEN_ESCAPE_SEC / save.battleSpeed} />}
+        {huntStamp && <HuntStamp key={huntStamp.seq} text={huntStamp.text} sub={huntStamp.sub} tone={huntStamp.tone} />}
+        {techCount > 0 && <TechGauge name={WEAPON_TECH[weaponKind].name} every={WEAPON_TECH[weaponKind].every} count={Math.min(techCount, WEAPON_TECH[weaponKind].every - 1)} />}
         {/* 땅 띠 (2026-10-12, 사용자: "땅을 걷는 듯한 맵"): 배경은 위 지평선 띠, 아래는 평평한 흙 — 캐릭터가 이 위에 선다 */}
         <div className="titans-ground" aria-hidden="true" />
         {/* 2026-10-07 사용자: "스테이지 줄·자동 사냥 문구를 작게 해 맵 HP바 아래로, 맵은 더 크게" — 위에 있던 스테이지 줄·방치 카드를 전장 안 한 줄로 */}

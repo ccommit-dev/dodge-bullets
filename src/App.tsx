@@ -246,6 +246,7 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   // 테스트 모드에서 낀 잠긴 무기는 테스트 모드를 끄면 활로 쏜다 — 읽을 때만 바꾸고 저장은 그대로 (2026-10-16)
   const wdef = WEAPON_BY_ID[wk];
   world.rangedWeapon = wdef && !weaponUnlocked(wdef, p.dodgeBestStage) ? "sword" : wk;
+  world.wornGear = p.equippedGear;
   return stats;
 }
 
