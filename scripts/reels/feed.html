@@ -93,20 +93,22 @@
   // 아래 "지금 플레이" 줄은 광고가 끝(end)났을 때만 나온다. 그 전에는 오디오 줄이다. 특정 SNS 의 이름 · 상표는 쓰지 않는다.
   const LOGO = '__LOGO__';
   const SLIDES = [
-    { src: 'first-ten/index.html', cap: '첫 10연차는 전설 확정 ✨', tags: '#비버키우기 #첫10연' },
-    { src: 'sword-forge/index.html', cap: '낡은 나무 검 +0 → 초월자의 검 +15, 파괴 위기는 방지권이 막아 줌 ⚔️', tags: '#비버키우기 #검강화' },
-    { src: 'golden-monster/index.html', cap: '황금 슬라임 잡으면 골드 10배 💰', tags: '#비버키우기 #황금몬스터' },
-    { src: 'dam-hold/index.html', cap: '댐이 뚫리기 직전, 손가락 하나로 막았다 🏹', tags: '#비버키우기 #댐방어전' },
-    { src: 'beat-combo/index.html', cap: '박자 맞춰 누르면 원정대가 싸운다 🥁 FEVER 가면 2배', tags: '#비버키우기 #비트수련' },
-    { src: 'mount-ride/index.html', cap: '탈것 타고 사냥하면 골드가 더 들어온다 🐗', tags: '#비버키우기 #탈것' },
-    { src: 'weapon-tech/index.html', cap: '6탭마다 연속 베기 ×2.5, 무기마다 기술이 다르다 ⚔️', tags: '#비버키우기 #무기기술' },
-    { src: 'boss-ladder/index.html', cap: '더 높은 대장 잡을 때마다 영구 특성, 환생해도 그대로 🪜', tags: '#비버키우기 #대장사다리' },
-    { src: 'dam-skill/index.html', cap: '화살 한 줄로는 못 막아서 운석 떨굼 ☄️', tags: '#비버키우기 #댐방어전 #스킬무기' },
-    { src: 'relic-set/index.html', cap: '유물 세 개 맞췄더니 세트 효과 발동 🔥', tags: '#비버키우기 #유물세트' },
-    { src: 'party-assemble/index.html', cap: '혼자선 드래곤한테 간지럼, 넷이 모이니 녹는다 🐉', tags: '#비버키우기 #원정대' },
+    { src: 'golden-monster/index.html', cap: '7초 안에 못 잡으면 도망감, 잡으면 골드 10배 💰', tags: '#비버키우기 #황금몬스터' },
+    { src: 'mount-ride/index.html', cap: '멧돼지부터 불꽃 비룡까지 갈아타며 사냥 🐉', tags: '#비버키우기 #탈것' },
+    { src: 'first-ten/index.html', cap: '손으로 쓸어서 뒤집는 첫 10연, 전설 확정 ✨', tags: '#비버키우기 #첫10연' },
+    { src: 'pet-hatch/index.html', cap: '같은 몬스터를 잡아 모으면 아기가 태어난다 🥚', tags: '#비버키우기 #펫' },
+    { src: 'dam-skill/index.html', cap: '끌어서 줄 맞추다가 몰릴 때 운석 떨굼 ☄️', tags: '#비버키우기 #성문방어 #스킬무기' },
+    { src: 'gear-set/index.html', cap: '같은 무기 세트 파츠를 끌어다 끼우면 세트 효과 🛡️', tags: '#비버키우기 #세트파츠' },
+    { src: 'sword-forge/index.html', cap: '낡은 나무 검 → 초월자의 검, 깨질 땐 방지권으로 복구 ⚔️', tags: '#비버키우기 #검강화' },
+    { src: 'beat-combo/index.html', cap: '박자 맞춰 누르면 원정대가 싸운다 🥁', tags: '#비버키우기 #비트수련' },
+    { src: 'weapon-tech/index.html', cap: '6탭마다 연속 베기 ×2.5, 대장이 도망가기 전에 ⚔️', tags: '#비버키우기 #무기기술' },
+    { src: 'dam-hold/index.html', cap: '손가락 하나로 성문을 지켜라 🏹', tags: '#비버키우기 #성문방어' },
+    { src: 'party-assemble/index.html', cap: '대장 약점에 맞는 동료를 불러라 🐉', tags: '#비버키우기 #원정대' },
+    { src: 'boss-ladder/index.html', cap: '더 높은 대장 잡을 때마다 영구 특성 🪜', tags: '#비버키우기 #대장사다리' },
+    { src: 'relic-set/index.html', cap: '같은 세트 유물 세 개를 찾으면 효과 발동 🔥', tags: '#비버키우기 #유물세트' },
     { src: 'beat-shoulder/index.html', cap: '16비트 챕터 대장 첫 클리어 → 용린 견갑 🛡️', tags: '#비버키우기 #비트수련 #견갑' },
-    { src: 'rebirth-speed/index.html', cap: '대장에게 막혀서 환생했더니 예전 기록을 뚫고 질주 🚀', tags: '#비버키우기 #환생' },
-    { src: 'idle-wake/index.html', cap: '자고 일어났더니 비버들이 밤새 벌어 옴 ☀️', tags: '#비버키우기 #방치보상' },
+    { src: 'rebirth-speed/index.html', cap: '대장에게 막혀서 환생했더니 질주 🚀', tags: '#비버키우기 #환생' },
+    { src: 'idle-wake/index.html', cap: '시계를 돌려 보자, 비버들이 밤새 벌어 온 골드 ☀️', tags: '#비버키우기 #방치보상' },
   ];
   // 링크를 열 때마다 순서를 섞는다 — 매번 다른 릴스부터(2026-10-23 사용자: 링크로 들어오면 랜덤하게 쇼츠 이동)
   for (let i = SLIDES.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [SLIDES[i], SLIDES[j]] = [SLIDES[j], SLIDES[i]]; }

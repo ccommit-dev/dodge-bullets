@@ -5,8 +5,9 @@ window.KIT = (() => {
     ally: { idle: [0, 2, 4], attack: [0, 2, 4, 6], walk: [0, 2, 4] },
     ari: { idle: [0, 2, 4], attack: [0, 2, 4, 6] },
     mon: { idle: [0, 1, 2, 3], attack: [0, 1, 2, 3], hit: [0, 1] },
+    ride: { idle: [0, 1, 2, 3], walk: [0, 1, 2, 3, 4, 5], attack: [0, 1, 2, 3, 4, 5] },   // 주인공이 탄 탈것 — 게임과 같은 합성(prep-art)
   };
-  const kind = (id) => (id === 'hero' ? 'hero' : id === 'ari' ? 'ari' : /^(mia|leon|sera|garen)$/.test(id) ? 'ally' : 'mon');
+  const kind = (id) => (id === 'hero' ? 'hero' : id === 'ari' ? 'ari' : /^(mia|leon|sera|garen|toto|kiki|momo|bobo)$/.test(id) ? 'ally' : /^ride-/.test(id) ? 'ride' : 'mon');   // 펫 · 탈것은 몬스터처럼 idle 4칸
   /** u = { id, x, y, s, mode: 'idle'|'attack'|'walk'|'hit', mt(동작 시작 후 초), dur(공격 길이), flash } */
   function unit(G, u, t) {
     const f = FR[kind(u.id)];
@@ -45,10 +46,17 @@ window.KIT = (() => {
     G.bar(46, y + 4, 268, 18, ratio, ratio > 0.3 ? '#ef4444' : '#f59e0b', 'rgba(0,0,0,.3)');
     G.text(name, 180, y + 13, { size: 13, color: '#fff', stroke: '#2a1606', sw: 4 });
   }
+  /** 남은 시간 막대 — 3초 아래면 빨갛게 깜빡인다. left · total 은 초 */
+  function clock(G, left, total, y = 96, label = '') {
+    const low = left < 3, a = low ? 0.75 + Math.sin(G.t * 14) * 0.25 : 1;
+    G.rr(60, y, 240, 22, 11, 'rgba(27,18,11,.85)', low ? '#fca5a5' : '#ffd23f', 2);
+    G.bar(66, y + 4, 228, 14, Math.max(0, left / total), low ? `rgba(239,68,68,${a})` : '#22c55e', 'rgba(0,0,0,.3)');
+    G.text(`${label}${Math.max(0, left).toFixed(1)}초`, 180, y + 11, { size: 13, color: '#fff', stroke: '#2a1606', sw: 4 });
+  }
   const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
 
   /* 비트 수련 — 네 줄 노트가 판정선으로 떨어진다. 패드(← 공격 · ↓ 방어 · ↑ 회피 · → 스킬)를 박자에 맞춰 누른다.
-   * chart: [[박(0부터), 줄], …] · bpm · onHit(lane, judge) · onMiss(lane). 손대지 않으면 auto 가 정확히 누른다 */
+   * chart: [[박(0부터), 줄], …] · bpm · onHit(lane, judge) · onMiss(lane). 손대지 않으면 전부 놓친다(2026-11-05) */
   function beat(opts) {
     const LANES = 4, X = (i) => 45 + i * 90, TOP = 262, JL = 474, SPEED = opts.speed || 300;
     const lead = (JL - TOP) / SPEED;
@@ -72,14 +80,13 @@ window.KIT = (() => {
       return j;
     }
     B.press = (lane) => hit(lane, false);
-    B.update = (dt, idle) => {
+    B.update = (dt) => {
       B.t += dt;
       for (let i = 0; i < 4; i++) B.padT[i] = Math.max(0, B.padT[i] - dt);
       B.judgeT = Math.max(0, B.judgeT - dt);
       for (const n of notes) {
         if (n.done) continue;
-        if (idle && Math.abs(n.t - B.t) < 0.02) hit(n.lane, true);
-        else if (B.t - n.t > 0.18) { n.done = true; n.judge = 'MISS'; B.miss += 1; B.combo = 0; B.judge = 'MISS'; B.judgeT = 0.5; opts.onMiss && opts.onMiss(n.lane); }
+        if (B.t - n.t > 0.18) { n.done = true; n.judge = 'MISS'; B.miss += 1; B.combo = 0; B.judge = 'MISS'; B.judgeT = 0.5; opts.onMiss && opts.onMiss(n.lane); }
       }
       if (!B.over && B.t > B.end) { B.over = true; opts.onEnd && opts.onEnd(); }
     };
@@ -122,5 +129,5 @@ window.KIT = (() => {
   /* 댐 방어전 — 세 줄(왼 · 가운데 · 오른)로 몬스터가 위에서 성문(GATE_Y)으로 내려온다. 원근: 위는 작게 */
   const LANE_X = [80, 180, 280], GATE_Y = 312;
   const depth = (y) => 0.55 + Math.max(0, Math.min(1, (y - 70) / (GATE_Y - 70))) * 0.45;
-  return { unit, attack, hit, tick, stage, bossBar, fmt, beat, LANE_X, GATE_Y, depth };
+  return { unit, attack, hit, tick, stage, bossBar, clock, fmt, beat, LANE_X, GATE_Y, depth };
 })();

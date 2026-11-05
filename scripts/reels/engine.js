@@ -2,7 +2,9 @@
  * window.RF_ART(그림) · window.RF_SCENE(시나리오)을 읽는다. 논리 화면 360x640.
  * 피드 약속(메이플 키우기 replayform 과 같다): 부모 -> {replayform: 'pause'|'resume'|'restart'|'mute'|'key'}, 자식 -> {source: 'replayform', event, data}
  *   event: ready · start · choice · climax · end · cta · replay · swipe · wheel · key
- * 손대지 않으면(2초 남짓) 장면이 스스로 진행한다 — 피드에서 그냥 보고 넘겨도 끝 화면까지 간다. 손가락 힌트가 뜬다.
+ * 2026-11-05 (사용자: "플레이어블이 아닌 릴스들 수정") — 장면이 스스로 깨 주지 않는다. 가만히 있으면 힌트만 뜨고 지거나 기다린다. 조작이 결과를 바꾼다.
+ * 장면 약속: onTap(G,x,y) · onDrag(G,x,y)(누른 채 움직임) · onRelease(G,x,y) · canLose · bot(G) → { tap:[x,y] } | { drag:[x,y] } | { release:[x,y] } | null(검사용 플레이어).
+ * 지면 G.lose(제목, [줄…]) — 끝 화면 큰 단추가 '다시 도전'. 이기면 G.finish(초).
  */
 (() => {
 'use strict';
@@ -12,6 +14,7 @@ const W = 360, H = 640;
 const FONT = '"Jua","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 const EMBEDDED = window.parent !== window;
 const CTA_BTN = { x: 60, y: 470, w: 240, h: 58 };
+const KEEP_BTN = { x: 90, y: 540, w: 180, h: 40 };
 const REPLAY_BTN = { x: 125, y: 546, w: 110, h: 36 };
 const MUTE_BTN = { x: 316, y: 10, w: 34, h: 30 };
 const cv = document.createElement('canvas');
@@ -69,7 +72,7 @@ let S, paused = !EMBEDDED ? false : true, lastInput = 0;
 function reset() {
   S = { phase: 'intro', t: 0, pt: 0, endT: 0, floats: [], parts: [], pops: [], shakeT: 0, shakeA: 0, flashT: 0, flashC: '#fff', hint: null, caption: SCENE.caption0 || '', started: false, data: {},
     // 손맛 (2026-10-23, 사용자: "빈약해 보인다 — 이펙트 · 재미 포인트를 과장해도 좋으니") — 멈칫 · 확대 펀치 · 슬로 · 도장 글씨 · 동전 분수 · 꽃가루 · 빛살 · 집중선
-    stop: 0, slowT: 0, punch: 0, stamps: [], coins: [], conf: [], raysT: 0, raysX: 180, raysY: 300, raysC: '#ffd23f', speedT: 0 };
+    stop: 0, slowT: 0, punch: 0, stamps: [], coins: [], conf: [], raysT: 0, raysX: 180, raysY: 300, raysC: '#ffd23f', speedT: 0, lost: null };
   lastInput = 0;
   if (SCENE.init) SCENE.init(G);
 }
@@ -150,6 +153,11 @@ const G = {
   /** 큰 한 방 묶음 — 멈칫 + 펀치 + 흔들 + 번쩍 */
   impact(power = 1) { G.hitstop(0.05 + 0.05 * power); G.punch(0.04 + 0.04 * power); G.shake(5 + 6 * power, 0.25 + 0.1 * power); },
   finish(delay = 1.6) { if (S.phase !== 'end' && !S.finishAt) S.finishAt = S.t + delay; },
+  /** 패배 — 곧 끝 화면으로. 큰 단추가 '다시 도전' 이 된다 */
+  lose(title = '아깝다!', lines = [], delay = 1.1) { if (S.phase === 'end' || S.finishAt) return; S.lost = { title, lines }; S.finishAt = S.t + delay; S.hint = null; SND.play('fail'); G.shake(8, 0.3); G.flash('#7f1d1d', 0.18); emit('lose'); },
+  /** 승패가 정해져 끝을 기다리는 중 — 장면은 더 진행하지 않는다 */
+  get over() { return !!S.finishAt || S.phase === 'end'; },
+  get lost() { return !!S.lost; },
 };
 window.G = G;
 
@@ -164,7 +172,7 @@ function update(dt) {
   if (S.phase === 'intro') { if (S.t > (SCENE.introDur || 1.5)) { S.phase = 'play'; S.pt = 0; G.started(); } }
   else if (S.phase !== 'end') S.pt += dt;
   if (S.phase === 'end') S.endT += dt;
-  if (S.finishAt && S.t >= S.finishAt && S.phase !== 'end') { S.phase = 'end'; S.endT = 0; S.finishAt = 0; S.hint = null; emit('end'); SND.play('win'); G.confetti(60); }
+  if (S.finishAt && S.t >= S.finishAt && S.phase !== 'end') { S.phase = 'end'; S.endT = 0; S.finishAt = 0; S.hint = null; emit('end', { won: !S.lost }); if (!S.lost) { SND.play('win'); G.confetti(60); } }
   // 장면 시간: 멈칫이면 0 · 슬로면 0.35배
   let sdt = dt;
   if (S.stop > 0) { S.stop -= dt; sdt = 0; } else if (S.slowT > 0) { S.slowT -= dt; sdt = dt * 0.35; }
@@ -274,14 +282,16 @@ function drawEnd() {
   const b = (S.endT < 0.35 ? 0.4 + (S.endT / 0.35) * 0.75 : 1.15 - Math.min(0.15, (S.endT - 0.35) * 0.6)) + Math.sin(S.endT * 4) * 0.04;
   ctx.save(); ctx.translate(180, 180); ctx.scale(b, b); G.sprite('logo', 0, 64, { s: 1 }); ctx.restore();
   G.text('비버 키우기', 180, 286, { size: 34, color: '#ffd23f', stroke: '#2a1606', sw: 7 });
-  (SCENE.endLines || []).forEach((l, i) => G.text(l, 180, 334 + i * 30, { size: i === 0 ? 22 : 17, color: i === 0 ? '#fff' : '#f5d9a8' }));
+  if (S.lost) G.text(S.lost.title, 180, 322, { size: 28, color: '#fca5a5', stroke: '#2a1606', sw: 6 });
+  (S.lost ? S.lost.lines : SCENE.endLines || []).forEach((l, i) => G.text(l, 180, (S.lost ? 366 : 334) + i * 30, { size: i === 0 ? 20 : 17, color: i === 0 ? '#fff' : '#f5d9a8' }));
   const pulse = 1 + Math.sin(S.endT * 6) * 0.04;
   ctx.save(); ctx.translate(180, CTA_BTN.y + CTA_BTN.h / 2); ctx.scale(pulse, pulse);
   G.rr(-CTA_BTN.w / 2, -CTA_BTN.h / 2, CTA_BTN.w, CTA_BTN.h, 18, '#ff8a1f', '#3b2415', 4);
-  G.text('지금 플레이  ›', 0, 2, { size: 24, color: '#1b1206' });
+  G.text(S.lost ? '↻ 다시 도전' : '지금 플레이  ›', 0, 2, { size: 24, color: '#1b1206' });
   ctx.restore();
-  G.rr(REPLAY_BTN.x, REPLAY_BTN.y, REPLAY_BTN.w, REPLAY_BTN.h, 12, 'rgba(255,255,255,.12)', 'rgba(255,255,255,.4)', 2);
-  G.text('↻ 다시 보기', 180, REPLAY_BTN.y + 18, { size: 15, color: '#fff' });
+  const low = S.lost ? KEEP_BTN : REPLAY_BTN;
+  G.rr(low.x, low.y, low.w, low.h, 12, 'rgba(255,255,255,.12)', 'rgba(255,255,255,.4)', 2);
+  G.text(S.lost ? '게임에서 해 보기  ›' : '↻ 다시 하기', 180, low.y + low.h / 2, { size: 15, color: '#fff' });
   ctx.restore();
 }
 
@@ -297,6 +307,7 @@ cv.addEventListener('pointerdown', (e) => {
   if (S.phase === 'end') {
     gesture.handled = true;
     if (S.endT < 0.5) return;
+    if (S.lost) { if (inRect(p, CTA_BTN, 6)) { emit('replay'); reset(); return; } if (inRect(p, KEEP_BTN, 8)) openStore(); return; }
     if (inRect(p, CTA_BTN, 6)) { openStore(); return; }
     if (inRect(p, REPLAY_BTN, 8)) { emit('replay'); reset(); return; }
     return;
@@ -306,8 +317,13 @@ cv.addEventListener('pointerdown', (e) => {
   lastInput = S.pt; G.started();
   if (SCENE.onTap) { const used = SCENE.onTap(G, p.x, p.y); gesture.handled = used !== false; }
 });
+window.addEventListener('pointermove', (e) => {
+  if (!gesture || S.phase !== 'play' || !SCENE.onDrag) return;
+  const p = toLogical(e); lastInput = S.pt; if (SCENE.onDrag(G, p.x, p.y) !== false) gesture.handled = true;
+});
 window.addEventListener('pointerup', (e) => {
   const g = gesture; gesture = null;
+  if (g && S.phase === 'play' && SCENE.onRelease) { const p = toLogical(e); SCENE.onRelease(G, p.x, p.y); }
   if (!g || g.handled) return;
   const dy = e.clientY - g.y, dx = e.clientX - g.x;
   if (Math.abs(dy) > 70 && Math.abs(dy) > 2 * Math.abs(dx) && performance.now() - g.t < 600) emit('swipe', { dir: dy < 0 ? 'next' : 'prev' });
@@ -343,9 +359,11 @@ function openStore() {
 // ── 검사용 ──
 window.__rf = {
   scene: SCENE.id,
-  state: () => Object.assign({ paused, embedded: EMBEDDED, phase: S.phase, t: +S.t.toFixed(2), pt: +S.pt.toFixed(2), endT: +S.endT.toFixed(2), started: S.started, art: artReady }, SCENE.debug ? SCENE.debug(G) : {}),
+  state: () => Object.assign({ paused, embedded: EMBEDDED, phase: S.phase, t: +S.t.toFixed(2), pt: +S.pt.toFixed(2), endT: +S.endT.toFixed(2), started: S.started, art: artReady, lost: !!S.lost }, SCENE.debug ? SCENE.debug(G) : {}),
   step: (sec) => { for (let i = 0, n = Math.round(sec * 60); i < n; i++) update(1 / 60); render(); return window.__rf.state(); },
   tap: (x, y) => { if (S.phase === 'intro') { S.phase = 'play'; S.pt = 0; } lastInput = S.pt; G.started(); return SCENE.onTap ? SCENE.onTap(G, x, y) : null; },
+  drag: (x, y) => { lastInput = S.pt; return SCENE.onDrag ? SCENE.onDrag(G, x, y) : null; },
+  release: (x, y) => { lastInput = S.pt; return SCENE.onRelease ? SCENE.onRelease(G, x, y) : null; },
   restart: () => reset(),
 };
 

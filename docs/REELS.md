@@ -1,30 +1,55 @@
 # 플레이어블 숏폼 정리
 
-비버 키우기 유도 광고용 25초 안팎 플레이어블 14편. 2026-11-04 게임 소스와 문구를 대조해 정리했다.
+비버 키우기 유도 광고용 15~25초 플레이어블 16편. 2026-11-05 "플레이어블이 아닌 릴스 수정 · 최신 콘텐츠 반영 · 실제 콘텐츠와 다른 것 수정" 기준으로 다시 만들었다.
 
 - 소스: `scripts/reels/scenes/<id>.js`, 공용 `engine.js` · `kit.js`, 피드 `feed.html`
 - 만들기: `node scripts/reels/prep-art.mjs && node scripts/reels/build.mjs` (결과 `art-gen/out/reels/site/`)
-- 검사: `node scripts/reels/verify-reels.mjs`, `node scripts/reels/verify-feed.mjs`
-- 그림: `art-gen/out/b3d2` 렌더를 그대로 쓴다. 동료 · 몬스터를 다시 렌더하면 `prep-art` 부터 다시 돌린다
+- 검사: `node scripts/reels/verify-reels.mjs [폴더] [--only id,id]`, `node scripts/reels/verify-feed.mjs`
+- 그림: `art-gen/out/b3d2` 렌더 + `public/titans/anim` 시트. 동료 · 몬스터 · 탈것을 다시 렌더하면 `prep-art` 부터 다시 돌린다. `ride-<탈것>` 은 게임 CSS 와 같은 계산으로 합성한다(`ui-polish.css .has-mount` · `mountRide.ts`)
+
+## 플레이어블 기준
+
+- 장면이 대신 눌러 주지 않는다. 가만히 있으면 힌트만 뜨고, 질 수 있는 편은 진다. 끝 화면 큰 단추가 '다시 도전'이 된다(`G.lose`)
+- 조작이 결과를 바꾼다. 검사에서 봇(`RF_SCENE.bot`)으로 이기고, 가만히 두면 진다
+- 질 수 없는 편은 뽑기 · 방치 둘뿐이고, 6초 손을 안 대면 가장 약한 결과로 끝 화면에 간다
 
 ## 지금 편성
 
-| 순서 | id | 첫 문구 | 보여 주는 콘텐츠 | 문구 근거 |
-|---|---|---|---|---|
-| 1 | first-ten | 첫 10연차 전설 확정 | 동료 뽑기 | `titans/gacha.ts`, `titans/model.ts` |
-| 2 | sword-forge | 낡은 나무 검이 초월자의 검이 되기까지 | 대장간 검 +15 | `forge/model.ts` FORGE_TIERS |
-| 3 | golden-monster | 황금 몬스터 출현, 잡으면 골드 ×10 | 사냥터 황금 몬스터 | `TitansGame.tsx` spawn, `titans/model.ts` killGold |
-| 4 | dam-hold | 댐이 뚫리기 직전 막아라 | 성문 방어 | `game/arrows.ts`, `game/world.ts` |
-| 5 | beat-combo | 박자에 맞춰 누르면 원정대가 싸운다 | 비트 수련 | `beat/tracks.ts` 16곡 |
-| 6 | mount-ride | 걷지 말고 타고 사냥하자 | 탈것 (신규) | `titans/mounts.ts` |
-| 7 | weapon-tech | 6번째 탭마다 연속 베기 ×2.5 | 무기 기술 (신규) | `titans/weapons.ts` WEAPON_TECH |
-| 8 | boss-ladder | 더 높은 대장 잡으면 영구 강화 | 대장 사다리 | `titans/bossLadder.ts` |
-| 9 | dam-skill | 화살 한 줄로는 못 막는다 | 스킬 무기 · 원소 전환 | `game/skills.ts`, `game/perks.ts` |
-| 10 | relic-set | 유물 세 개를 모으면 세트 효과 | 유물 세트 (신규) | `titans/relics.ts` |
-| 11 | party-assemble | 혼자서는 못 이긴다, 원정대 모으기 | 동료 편성 | `titans/allies.ts` |
-| 12 | beat-shoulder | 챕터 대장을 넘기면 견갑이 떨어진다 | 비트 수련 보상 | `BeatGame.tsx` |
-| 13 | rebirth-speed | 대장에게 꽉 막혔다? 환생하면 질주 | 환생 | `progression/rebirth.ts` |
-| 14 | idle-wake | 폰 내려놓고 8시간, 일어나 보니? | 방치 보상 · 보상형 광고 2배 | `progression/idle.ts`, `ads/rewarded.ts` |
+| 순서 | id | 첫 문구 | 조작 | 승패 | 근거 |
+|---|---|---|---|---|---|
+| 1 | golden-monster | 7초 안에 잡아라! | 움직이는 황금 몬스터를 직접 연타 | 7초 안에 못 잡으면 도망 | `titans/huntMoments.tsx` GOLDEN_ESCAPE_SEC, `titans/model.ts` killGold |
+| 2 | mount-ride | 걷지 말고 타고 사냥하자 | 전장 탭 공격, 퀘스트 보석으로 탈것 구매 | 제한 시간 안에 불꽃 비룡을 못 타면 패배 | `titans/mounts.ts` 값 · 보너스 |
+| 3 | first-ten | 첫 10연차 전설 확정 | 쓸어서 뒤집기, 마지막 장 문지르기 | 질 수 없음 | `titans/gacha.ts` · `summonLevel.ts` |
+| 4 | pet-hatch | 1,000마리 잡으면 아기가 태어난다 | 알 고르기, 고른 종만 잡기 | 시간 안에 1,000 을 못 채우면 패배 | `titans/pets.ts` |
+| 5 | dam-skill | 화살 한 줄로는 못 막는다 | 끌어서 이동, 원소 고르기, 운석 타이밍 | 성문 0% 면 패배 | `game/arrows.ts` · `game/skills.ts` |
+| 6 | gear-set | 같은 무기끼리 세트 효과 | 파츠를 칸으로 끌어다 놓기 | 시간 안에 5/5 를 못 맞추면 패배 | `equipment/gearSets.ts` · `titans/EquipWindow.tsx` |
+| 7 | sword-forge | 낡은 나무 검이 초월자의 검이 되기까지 | 강화 연타, 실패 때 복구 고르기 | 포기하거나 시간 초과면 패배 | `forge/model.ts` · `ForgeGame.tsx` |
+| 8 | beat-combo | 박자에 맞춰 누르면 원정대가 싸운다 | 패드 박자 입력 | 체력 0칸이면 패배 | `beat/world.ts` · `beat/tracks.ts` |
+| 9 | weapon-tech | 12초 안에 대장을! | 연타 + 무기 칩 교체 | 시간 안에 대장을 못 잡으면 패배 | `titans/weapons.ts` WEAPON_TECH |
+| 10 | dam-hold | 성문이 뚫리기 직전 막아라! | 끌어서 이동 | 성문 0% 면 패배 | `game/stages.ts` · `game/world.ts` |
+| 11 | party-assemble | 혼자서는 못 이긴다 | 약점과 같은 속성 동료 부르기 | 시간 안에 화염 비룡을 못 잡으면 패배 | `titans/bossWeak.ts` · `titans/allies.ts` |
+| 12 | boss-ladder | 더 높은 대장 잡으면 영구 강화 | 움직이는 대장을 직접 연타 | 대장마다 시간 안에 못 잡으면 패배 | `titans/bossLadder.ts` |
+| 13 | relic-set | 유물 세 개를 모으면 세트 효과 | 3×3 카드에서 불 세트 찾기 | 시간이 다 되면 패배 | `titans/relics.ts` |
+| 14 | beat-shoulder | 장 대장을 넘기면 견갑이 떨어진다 | 곡 시작, 패드 입력 | 체력 0칸이면 패배 | `beat/world.ts` · `BeatGame.tsx` |
+| 15 | rebirth-speed | 대장에게 꽉 막혔다? 환생하면 질주 | 대장 연타, 환생, 연타로 층 달리기 | 예전 기록을 못 넘으면 패배 | `progression/rebirth.ts` |
+| 16 | idle-wake | 폰 내려놓고 8시간, 일어나 보니? | 시계 바늘 돌리기, 늘리기, 받기 고르기 | 질 수 없음 | `progression/idle.ts` · `ads/rewarded.ts` |
+
+## 게임과 일부러 다른 것 (광고 길이에 맞춘 압축)
+
+게임에 없는 규칙을 문구로 주장하지 않는다. 아래는 조작 시간만 줄인 것이다. 게임 쪽을 바꾸면 같이 본다.
+
+| 편 | 릴스 | 게임 |
+|---|---|---|
+| 대장전 전체 | 제한 3.5~12초 | 대장 제한 시간 30초(BOSS_TIME_SEC) |
+| mount-ride | 처치 3마리 = 일일 퀘스트, 보석 +300 | 일일 퀘스트는 보스 · 원정 · 강화 · 비트 1회씩, 4종 완주 보석 +10. 탈것 값 · 보너스는 실제 값 |
+| pet-hatch | 한 번 처치 = 100마리 | 같은 종 1,000마리 |
+| sword-forge | 실패 순번 고정(+6 · +9), 대장간 문 닫힘 17초 | 확률로 실패, 시간 제한 없음. 화면에 "릴스 결과는 정해져 있어요" 고지 |
+| weapon-tech | 무기 교체가 바로 적용 | 다음 몬스터부터 |
+| party-assemble | 약점 창 3.2초 | 8초 |
+| beat-combo · beat-shoulder | 몬스터 체력을 늘림 | 90 + 곡 순번 × 24 |
+| relic-set | 카드 찾기 8초, 틀리면 -2초 | 뽑기로 모은다. 세트 효과 값은 실제 값 |
+| idle-wake | 바늘 돌리기, 방치 시간 늘리기 단추 | 실제 시간, 성문 방어 클리어 · 출석으로 늘어남 |
+| first-ten | 마지막 장 문지르기 | 소환 연출 뒤 결과 |
 
 ## 2026-11-04 에 바꾼 것
 
@@ -52,7 +77,7 @@
 | rebirth-speed | 환생 뒤 예전 최고 층을 처음 넘으면 신기록 글자 | 위와 같음 |
 | sword-forge | 검 외형이 바뀌는 +5 · +10 · +15 에 외형 변화 글자 | `ForgeGame.tsx` |
 
-탈것 시트 배치가 바뀌어(anim-layout `mount`) `mount-ride` 편은 `prep-art` 부터 다시 만들어야 새 모습이 된다. 뽑기 편의 "마지막 한 장" 긴장 문구는 아직 게임에 없다.
+뽑기 편의 마지막 한 장 긴장 연출은 아직 게임에 없다.
 
 ## 문구를 쓸 때
 

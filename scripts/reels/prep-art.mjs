@@ -73,6 +73,56 @@ await flat("gear:shoulder-dragon", "public/titans/gear/shoulder-dragon.png", 110
 // 탈것 · 유물 (2026-11-04) — 탈것은 몬스터 시트라 왼쪽을 본다, 오른쪽으로 뒤집는다
 for (const id of ["mount-boar", "mount-deer", "mount-wolf", "mount-drake"]) await character(id, { idle: H4 }, 120, true);
 for (const r of ["ember-ring", "flame-feather", "lava-heart"]) await flat(`relic:${r}`, `public/titans/relics/${r}.png`, 76);
+// 펫 · 세트 파츠 · 탈것에 앉은 주인공 (2026-11-05)
+// 게임의 늑대(kind wolf)는 그림자 늑대 그림이다(SpriteArt MONSTER_ART) — 같은 그림을 wolf 키로
+await character("shadow-wolf-clean", { idle: H4, hit: [0, 1] }, 130);
+for (const k of Object.keys(sprites)) if (k.startsWith("shadow-wolf-clean:")) { sprites[k.replace("shadow-wolf-clean:", "wolf:")] = sprites[k]; delete sprites[k]; }
+for (const id of ["pet-slime", "pet-goblin", "pet-wolf", "pet-ogre", "pet-dragon"]) if (existsSync(`${B3D}/${id}/idle_0.png`)) await character(id, existsSync(`${B3D}/${id}/hit_0.png`) ? { idle: H4, hit: [0, 1] } : { idle: H4 }, 120);
+for (const k of ["sword", "spear", "bow", "staff"]) for (const p of ["helmet", "armor", "gloves", "boots", "shoulder"]) await flat(`gear:set-${k}-${p}`, `public/titans/gear/set-${k}-${p}.png`, 72);
+// 대장 — 게임의 지역별 대장 그림(SpriteArt BOSS_ASSET) · 심연의 성 배경
+for (const id of ["moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan"]) await character(id, { idle: H4, attack: H4, hit: [0, 1] }, 200);
+{ const buf = await sharp("public/titans/backgrounds/abyss-sm.webp").resize({ width: 720, height: 400, fit: "cover", position: "top" }).png().toBuffer(); sprites["bg:abyss"] = { src: "data:image/webp;base64," + (await sharp(buf).webp({ quality: 70 }).toBuffer()).toString("base64"), w: 720, h: 400 }; }
+for (const id of ["toto", "kiki", "momo", "bobo"]) await character(id, { idle: [0, 2, 4] }, 120);   // 첫 10연에 나오는 N 등급 동료
+for (const r of ["frost-horn", "lucky-coin", "reed-flute", "oak-shield", "moon-shell", "kingfisher-feather"]) if (existsSync(`public/titans/relics/${r}.png`)) await flat(`relic:${r}`, `public/titans/relics/${r}.png`, 76);
+if (existsSync("public/beat/covers/plasma-gun.png")) await flat("cover:plasma-gun", "public/beat/covers/plasma-gun.png", 96, { trim: false });
+await flat("gear:spear-3", existsSync("public/titans/gear/spear-3.png") ? "public/titans/gear/spear-3.png" : "public/titans/gear/spear-1.png", 90);
+// 탈것에 앉은 주인공 — 게임과 같은 시트 · 같은 계산으로 합성한다 (ui-polish.css .has-mount · sprite-anim.css .ride-rider · titans/mountRide 안장 자리)
+{
+  const { MOUNT_RIDE } = await import(`data:text/javascript,${encodeURIComponent((await import("node:fs")).readFileSync("src/titans/mountRide.ts", "utf8").replace(/:\s*Record<[^=]*=/g, " =").replace(/:\s*Readonly[^=]*=/g, " ="))}`);
+  const CELL = 480, W = CELL / 2, TOP = 80, ROW = { idle: 0, walk: 1, attack: 2 };
+  const H = Math.round(2 * W * 0.857), HW = Math.round(W * 0.857);
+  // 대기 칸 기준 왼쪽 위 — 탈것 상자 왼쪽 위가 (0,0)
+  const baseX = 0.44 * W + 0.4795 * W * (1 - 0.857) - 0.009 * W, baseY = -0.11 * W + 0.87 * 2 * W * (1 - 0.857) - 0.169 * 2 * W;
+  const pivot = [0.92 * W, 1.63 * W];
+  const HERO = { idle: { sheet: "public/titans/anim/hero/hero-ride-idle.webp", cell: 377, frames: 6 }, walk: { sheet: "public/titans/anim/hero/hero-ride-walk.webp", cell: 377, frames: 6 }, attack: { sheet: "public/titans/anim/hero/hero-ride-attack.webp", cell: 470, frames: 8 } };
+  const plan = { idle: [0, 1, 2, 3].map((i) => [Math.round((i * 6) / 4), i]), walk: [0, 1, 2, 3, 4, 5].map((i) => [i, i]), attack: [0, 1, 2, 3, 4, 5].map((i) => { const f = Math.ceil((i * 8) / 6); return [f, Math.min(5, Math.floor((f / 8) * 6))]; }) };
+  for (const m of ["boar", "deer", "wolf", "drake"]) {
+    const art = `mount-${m}`, mountSheet = `public/titans/anim/monsters/${art}.webp`;
+    for (const action of ["idle", "walk", "attack"]) {
+      const h = HERO[action];
+      for (let n = 0; n < plan[action].length; n += 1) {
+        const [hf, mf] = plan[action][n];
+        const mount = await sharp(await sharp(mountSheet).extract({ left: mf * CELL, top: ROW[action] * CELL, width: CELL, height: CELL }).png().toBuffer()).flop().png().toBuffer();
+        const wide = action === "attack" ? 1.25 : 1;
+        const hw = Math.round(HW * wide);
+        const heroImg = await sharp(await sharp(h.sheet).extract({ left: hf * h.cell, top: 0, width: h.cell, height: 754 }).png().toBuffer()).resize(hw, H).png().toBuffer();
+        const [sx, sy, sr] = MOUNT_RIDE[art][action][mf] ?? [0, 0, 0];
+        const deg = -sr, rad = (deg * Math.PI) / 180;
+        const rotated = deg ? await sharp(heroImg).rotate(deg, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer() : heroImg;
+        const rm = await sharp(rotated).metadata();
+        const lx = baseX - (wide > 1 ? 0.125 * HW : 0), cx = lx + hw / 2, cy = baseY + H / 2;
+        const px = cx - pivot[0], py = cy - pivot[1];
+        const nx = pivot[0] + px * Math.cos(rad) - py * Math.sin(rad), ny = pivot[1] + px * Math.sin(rad) + py * Math.cos(rad);
+        const left = Math.round(nx - rm.width / 2 - sx * 2 * W), top = Math.round(ny - rm.height / 2 + sy * 2 * W + TOP);
+        const canvasH = TOP + Math.round(CELL * 0.955);
+        const buf = await sharp({ create: { width: CELL, height: TOP + CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: mount, left: 0, top: TOP }, { input: rotated, left: Math.max(0, left), top: Math.max(0, top) }]).png().toBuffer();
+        const out = await sharp(await sharp(buf).extract({ left: 0, top: 0, width: CELL, height: canvasH }).png().toBuffer()).resize({ height: 190 }).png().toBuffer();
+        const meta = await sharp(out).metadata();
+        sprites[`ride-${m}:${action}:${n}`] = { src: await uri(out), w: meta.width, h: meta.height };
+      }
+    }
+  }
+}
 const json = JSON.stringify({ sprites });
 writeFileSync(`${OUT}/art.json`, json);
 console.log("sprites", Object.keys(sprites).length, "bytes", json.length);
