@@ -16,16 +16,16 @@ for (const want of wants) {
   const page = await ctx.newPage();
   const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 160)));
   const now = Date.now();
-  await page.goto(BASE, { waitUntil: "networkidle" });
+  // 저장은 게임 없는 페이지에서 — 떠 있는 게임이 덮지 않고, 옛 페이지 단추를 새 페이지 것으로 착각하지 않는다
+  await page.goto(`${BASE}/favicon.png`);
   const progress = { version: 5, onboardingStep: 4, level: 30, redGems: 500, sharedCoins: 100000, pioneeredArea: 2, titanBestStage: 6, dodgeBestStage: 2, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"] };
-  // 심기와 reload 를 한 evaluate 로 — 떠 있던 사냥터가 떠나며 옛 저장으로 덮지 않게
-  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.reload(); }, {
+  await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
     [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1000, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
     "dodge-bullets:soundEnabled": "1",
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   }).catch(() => {});
-  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.goto(BASE, { waitUntil: "networkidle" });
   // WebKit 개발 서버는 모듈을 하나씩 받아 첫 그림까지 수 초 걸린다 — 고정 대기로는 하단 단추가 아직 없었다
   await page.waitForSelector(".titans-bottom-nav button", { timeout: 30000 }).catch(() => {});
   await sleep(1800);
@@ -36,7 +36,10 @@ for (const want of wants) {
     await loc.scrollIntoViewIfNeeded(); await loc.tap(); return true;
   };
   await tap(".titans-bottom-nav button", "모험"); await sleep(500);
-  await tap(".nav-popup-grid button", "비트 수련"); await sleep(1800);
+  await tap(".nav-popup-grid button", "비트 수련");
+  // 비트 화면은 따로 받는 묶음이라 첫 곡에서는 몇 초 걸린다
+  await page.waitForSelector(".beat-song-chip", { timeout: 30000 }).catch(() => {});
+  await sleep(600);
   const chips = await page.evaluate(() => [...document.querySelectorAll(".beat-song-chip")].map((b) => b.dataset.track));
   const tapped = await tap(`.beat-song-chip[data-track="${want}"]`);
   await sleep(3500);
