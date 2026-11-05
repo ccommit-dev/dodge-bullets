@@ -26,6 +26,8 @@ for (const want of wants) {
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   }).catch(() => {});
   await page.waitForLoadState("networkidle").catch(() => {});
+  // WebKit 개발 서버는 모듈을 하나씩 받아 첫 그림까지 수 초 걸린다 — 고정 대기로는 하단 단추가 아직 없었다
+  await page.waitForSelector(".titans-bottom-nav button", { timeout: 30000 }).catch(() => {});
   await sleep(1800);
   await page.evaluate(() => { for (let k = 0; k < 4; k += 1) [...document.querySelectorAll("button")].find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))?.click(); });
   const tap = async (sel, text = "") => {

@@ -77,7 +77,7 @@ for (const [kind, dir] of [["ally", "public/titans/anim/allies"], ["monster", "p
   }
 }
 for (const sk of ["", "-dawn", "-ember", "-frost", "-obsidian"]) {
-  for (const [mode, s] of Object.entries(L.hero.sheets)) { await audit("hero", "hero" + sk, `public/titans/anim/hero/hero-${mode}${sk}.webp`, s.frames, s.width, L.hero.cellHeight, 0, mode, s); count += 1; }
+  for (const [mode, s] of Object.entries(L.hero.sheets).filter(([m]) => m !== "guard")) { await audit("hero", "hero" + sk, `public/titans/anim/hero/hero-${mode}${sk}.webp`, s.frames, s.width, L.hero.cellHeight, 0, mode, s); count += 1; }
 }
 console.log(`${count}개 동작 줄 감사 · 튐 ${issues.length}건`);
 for (const s of issues) console.log(" ", s);

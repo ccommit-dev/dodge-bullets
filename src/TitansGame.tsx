@@ -1267,6 +1267,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     document.addEventListener("pointerdown", away, true);   // 전장 stopPropagation 앞에서 받는다
     return () => document.removeEventListener("pointerdown", away, true);
   }, [rebirthTip]);
+  // 탈것 코끝이 몬스터를 파고들지 않게 (2026-11-05) — 만남마다 자리 잡은 뒤 재서 그만큼 뒤로(--ride-back). 몸이 작은 몬스터는 더 가까이 서서 고정값으로는 겹쳤다. 꼬리가 전장 밖으로 나가지는 않게
+  useEffect(() => {
+    if (!formationReady) return;
+    const field = document.querySelector(".titans-field"), hero = document.querySelector<HTMLElement>(".titans-hero.has-mount");
+    const mount = hero?.querySelector(".hero-mount")?.getBoundingClientRect(), mon = field?.querySelector(".titans-monster .titan-monster-art")?.getBoundingClientRect();
+    if (!field || !hero || !mount || !mon || mon.width === 0) return;
+    const cur = parseFloat(hero.style.getPropertyValue("--ride-back")) || 0;
+    const nose = mount.left + mount.width * 0.95, monLeft = mon.left + mon.width * encounterMotion.partyMl;
+    const room = Math.max(0, mount.left + mount.width * 0.13 - field.getBoundingClientRect().left - 4);
+    hero.style.setProperty("--ride-back", `${Math.round(Math.max(0, Math.min(cur + room, cur + nose - monLeft + 4)))}px`);
+  }, [formationReady, encounterMotion.seq, encounterMotion.partyMl]);
   // 스킬 칸을 주인공 발밑으로 (2026-11-03, 사용자: "사냥터 스킬아이콘 캐릭터 가까이") — 만남마다 자리 잡은 뒤 한 번 잰다. 교전 중엔 움직이지 않아 누르기 쉽다
   const skillDockRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -3364,6 +3375,31 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   // 전환 건너뛰기 (2026-10-26 사용자: "스킵하면 다음 스테이지로 안 넘어간다") — 예전엔 일반 몬스터 사이 전환에서도 spawn(스테이지, 1)을 불러
   // 처치 수가 매번 1로 되돌아갔다(10마리를 못 채워 대장 · 다음 스테이지가 영영 안 왔다). 이제 전환이 하려던 spawn 을 그대로 한다 — 이미 나왔으면 다시 부르지 않는다
+  /** 보스 도전 (2026-11-05, 사용자: "해당 라운드만 종료되고 다시 시작되게 · 동료나 캐릭터도 맨 왼쪽에서 다시 오게") — 지금 몬스터와 라운드를 끝내고,
+   * 대열이 스테이지 넘어갈 때처럼 뛰어나갔다가 왼쪽 끝에서 걸어 들어온다. 뛰어나가는 동안은 전투가 멈춰 대장 제한 시간도 안 흐른다 */
+  const startBossRound = () => {
+    battleTimers.current.forEach(window.clearTimeout);
+    battleTimers.current = [];
+    pendingStageRef.current = null;
+    pendingSpawnRef.current = null;
+    formationReadyRef.current = false;
+    setFormationReady(false);
+    setBossReady(false);
+    setMonsterIn(false);
+    setMonsterAction("idle");
+    battlePhaseRef.current = "stage-exit";
+    setBattlePhase("stage-exit");
+    later(() => {
+      spawn(saveRef.current.stage, MOBS_PER_STAGE, true);   // stage-exit 에서 부르면 자리를 다시 잡는다(spawn relocate)
+      battlePhaseRef.current = "stage-enter";
+      setBattlePhase("stage-enter");
+    }, 680);
+    later(() => {
+      battlePhaseRef.current = "combat";
+      setBattlePhase("combat");
+    }, 1160);
+  };
+
   const skipStageTransition = () => {
     if (pendingStageRef.current === null && pendingSpawnRef.current === null) return;
     // 대열 준비 타이머는 남긴다 — 새 몬스터가 이미 나온 뒤(입장 연출 중)에 누르면 그 타이머까지 지워 교전이 영영 시작되지 않았다.
@@ -4013,17 +4049,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
-              setBossReady(false);
-              setFormationEngaged(false);
-              setFormationReady(false);
-              spawn(save.stage, MOBS_PER_STAGE, true);
-              battlePhaseRef.current = "stage-enter";
-              setBattlePhase("stage-enter");
-              later(() => {
-                setFormationEngaged(true);
-                battlePhaseRef.current = "combat";
-                setBattlePhase("combat");
-              }, 760);
+              startBossRound();
             }}
           >
             보스 도전 ›
