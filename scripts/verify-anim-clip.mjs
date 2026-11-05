@@ -27,6 +27,8 @@ const IGNORE_ANIM = [
   "cute-spin", "confetti-fall", "cute-pop", "walk-dust", "card-drop", "ring-pop",
   // 2026-10-21: 대열 다시 들어오기(걷는 시간 동안 왼쪽 화면 밖에서) — party-run-in 과 같은 등장 연출
   "party-walk-in",
+  // 2026-11-05: 동료 탄 — 등급이 높으면 상자가 커진다(초월 144px). 그림은 머리(69%)까지고 오른쪽은 빈칸이라 몬스터가 오른쪽 끝이면 빈칸만 밖으로 나간다
+  "proj-fly",
 ];
 
 /** 애니메이션 중인 요소마다 (레이아웃 박스, 변환 박스, 클리핑 조상) 을 잰다 */

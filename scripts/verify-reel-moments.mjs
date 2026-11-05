@@ -11,6 +11,7 @@ const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] })
 const page = await browser.newPage();
 const errors = []; page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 200)));
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+let hooked = false;
 const seed = async ({ progress = {}, titans = {}, golden = false } = {}) => {
   await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });
   await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
@@ -18,7 +19,9 @@ const seed = async ({ progress = {}, titans = {}, golden = false } = {}) => {
     [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 3, bestStage: 40, gold: 1000, heroes: { mia: 1 }, party: ["mia"], lastActiveAt: now, ...titans }), "dodge-bullets:soundEnabled": "0",
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }),
   });
-  if (golden) await page.evaluateOnNewDocument(() => { window.__huntForceGolden = true; });
+  // 새 문서마다 도는 스크립트라 다음 판까지 남는다 — 저장 값으로 그 판만 켠다
+  if (golden) await page.evaluate(() => localStorage.setItem("__reel-golden", "1"));
+  if (!hooked) { hooked = true; await page.evaluateOnNewDocument(() => { try { window.__huntForceGolden = localStorage.getItem("__reel-golden") === "1"; } catch { /* favicon */ } }); }
   await page.goto(BASE, { waitUntil: "networkidle0" });
   await sleep(800);
   for (let i = 0; i < 3; i += 1) { await page.evaluate(() => { document.querySelector(".rebalance-modal")?.click(); document.querySelector(".idle-claim")?.click(); }); await sleep(200); }
@@ -62,15 +65,17 @@ const gaugeBox = await page.evaluate(() => { const r = () => [...document.queryS
 void gaugeBox;
 
 // 신기록
-await seed({ progress: { rebirthCount: 1, titanBestStage: 5 }, titans: { stage: 5, bestStage: 5, heroes: { mia: 80 } } });
-await waitFor(() => !!window.__huntStartBoss);
+await seed({ progress: { rebirthCount: 1, titanBestStage: 5 }, titans: { stage: 5, bestStage: 5, heroes: { mia: 300 } } });
+await waitFor(() => !!window.__huntStartBoss && document.querySelector(".titans-field")?.className.includes("phase-combat"));
+await sleep(1500);
 await page.evaluate(() => window.__huntStartBoss());
 const rec = await waitFor(() => document.querySelector(".hunt-stamp.tone-record")?.textContent ?? null, 25000);
 if (!rec) console.log("상태", await page.evaluate(() => ({ stage: document.querySelector(".titans-field")?.textContent.slice(0, 60), timer: document.querySelector(".titans-boss-timer")?.textContent })));
 ok("환생 뒤 예전 기록을 넘으면 신기록!", !!rec && /신기록!/.test(rec) && /6층/.test(rec), String(rec));
 if (OUT) await page.screenshot({ path: `${OUT}/record.png` });
-await seed({ progress: { rebirthCount: 0, titanBestStage: 5 }, titans: { stage: 5, bestStage: 5, heroes: { mia: 80 } } });
-await waitFor(() => !!window.__huntStartBoss);
+await seed({ progress: { rebirthCount: 0, titanBestStage: 5 }, titans: { stage: 5, bestStage: 5, heroes: { mia: 300 } } });
+await waitFor(() => !!window.__huntStartBoss && document.querySelector(".titans-field")?.className.includes("phase-combat"));
+await sleep(1500);
 await page.evaluate(() => { window.__sawRecord = false; new MutationObserver(() => { if (document.querySelector(".hunt-stamp.tone-record")) window.__sawRecord = true; }).observe(document.body, { childList: true, subtree: true }); window.__huntStartBoss(); });
 await sleep(4000);
 ok("첫 판은 층마다 알리지 않는다", await page.evaluate(() => !window.__sawRecord));
