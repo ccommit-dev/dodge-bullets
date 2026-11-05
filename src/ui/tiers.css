@@ -197,6 +197,7 @@
 .gear-forge-row[data-tier="LR"] > img, .forge-weapon-kinds button[data-tier="LR"] img { border: 3px solid transparent; background: radial-gradient(circle at 50% 40%, #fff, #c7d2fe 60%, #6366f1) padding-box, linear-gradient(100deg, #5eead4, #a78bfa, #f0abfc, #fde047, #4ade80) border-box; }
 :is(.forge-weapon-kinds button, .gear-forge-row)[data-tier] { position: relative; }
 :is(.forge-weapon-kinds button, .gear-forge-row)[data-tier]::after { content: var(--chip-label); position: absolute; top: -6px; right: 0; padding: 0 4px; border-radius: 999px; background: var(--chip-bg); color: var(--chip-ink); box-shadow: 0 0 0 1px rgba(40, 20, 8, .75); font-size: 13px; font-weight: 900; line-height: 16px; white-space: nowrap; pointer-events: none; z-index: 2; }
+.forge-weapon-kinds button[data-tier]::after { top: -10px; line-height: 15px; }   /* 칸이 좁아 "지팡이" 끝 글자를 가렸다 */
 .forge-sword-name[data-tier]::after { content: var(--chip-label); display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--chip-bg); color: var(--chip-ink); font-size: 13px; font-weight: 900; line-height: 1.35; vertical-align: 2px; }
 
 /* 마이페이지 — 탄 모습. 작은 그림 칸 안에서 사냥터와 같은 비율 */

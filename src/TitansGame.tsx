@@ -639,11 +639,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       };
       // 바탕 상자(지금 --sep-dx 를 뺀 것) + 계산 중 dx — 여러 번 돌릴 때 매번 다시 재지 않고 dx 만 옮긴다
       const items = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el, k) => {
+        // 바탕은 지금 그려진 값으로 뺀다 — --sep-dx 는 0.2초 전환의 목표값이라, 전환 중에 빼면 프레임이 느릴수록 바탕이 어긋났다
         const cur = k === 0 ? 0 : Number.parseFloat(el.style.getPropertyValue("--sep-dx")) || 0;
+        const applied = k === 0 ? 0 : Number.parseFloat(getComputedStyle(el).translate) || 0;
         const r = coreRect(el, k === 0);
         // 주인공과 잴 때는 예전 상자(칸 상자 가운데 56%) — 주인공 규칙의 35% · 20% 문턱이 이 폭에 맞춰져 있다
         const box = el.getBoundingClientRect(), t = box.width * (k === 0 ? 0.15 : 0.22);
-        return { el, cur, dx: cur, base: { left: r.left - cur, right: r.right - cur, width: r.width, bottom: r.bottom, top: r.top }, art: { left: box.left + t - cur, right: box.right - t - cur, width: box.width - 2 * t, bottom: box.bottom }, full: box.right - cur };
+        // 도착하면 걷는 동안 쌓인 값을 버리고 0 에서 푼다 — 쌓인 값은 프레임 속도마다 달라, 상한까지 밀린 동료가 벽에 막힌 옆 동료와 포갠 채 굳었다(bronn −60 · ember 벽, 겹침 5~50%)
+        return { el, cur, dx: settled ? 0 : cur, base: { left: r.left - applied, right: r.right - applied, width: r.width, bottom: r.bottom, top: r.top }, art: { left: box.left + t - applied, right: box.right - t - applied, width: box.width - 2 * t, bottom: box.bottom }, full: box.right - applied };
       });
       const artOf = (it: (typeof items)[number]) => ({ left: it.art.left + it.dx, right: it.art.right + it.dx, width: it.art.width, bottom: it.art.bottom, top: 0 });
       const rectOf = (it: (typeof items)[number]) => ({ left: it.base.left + it.dx, right: it.base.right + it.dx, width: it.base.width, bottom: it.base.bottom, top: it.base.top });
@@ -1325,12 +1328,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (!skills.length) return;
       const d = dock.getBoundingClientRect(), h = hero.getBoundingClientRect();
       const width = skills.reduce((n, b) => n + b.offsetWidth, 0) + 6 * (skills.length - 1);
-      dock.style.paddingLeft = `${Math.round(Math.max(58, Math.min(d.width - width - 4, h.left + h.width / 2 - d.left - width / 2)))}px`;
+      // 칸이 지금 그려진 자리에서 옮길 만큼만 — 왼쪽 AUTO 묶음 때문에 칸은 padding 만으로 계산한 자리보다 15px 오른쪽에 있다
+      const a = skills[0].getBoundingClientRect(), z = skills[skills.length - 1].getBoundingClientRect();
+      const shift = h.left + h.width / 2 - (a.left + z.right) / 2;
+      dock.style.paddingLeft = `${Math.round(Math.max(58, Math.min(d.width - width - 4, (Number.parseFloat(getComputedStyle(dock).paddingLeft) || 0) + shift)))}px`;
     };
     place();
+    // 준비 순간엔 주인공이 아직 걸어오는 중이다(29px 왼쪽) — 멈춘 뒤 한 번 더
+    const settle = window.setTimeout(place, 1300);
     window.addEventListener("resize", place);
     window.addEventListener(SKILL_DOCK_EVENT, place);
-    return () => { window.removeEventListener("resize", place); window.removeEventListener(SKILL_DOCK_EVENT, place); };
+    return () => { window.clearTimeout(settle); window.removeEventListener("resize", place); window.removeEventListener(SKILL_DOCK_EVENT, place); };
   }, [formationReady]);
   // 한 번뿐인 안내(hold)는 떠 있는 동안 흔한 안내(황금 몬스터 등)가 덮지 못한다 — 번개 환급 안내가 1초 만에 지워졌다(2026-10-28)
   const toastHoldUntil = useRef(0);

@@ -37,7 +37,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 const rects = () => page.evaluate(() => {
   const core = (el, frac, topCut = 0.12) => { const b = el.getBoundingClientRect(); const w = b.width * frac; return { x: b.x + (b.width - w) / 2, y: b.y + b.height * topCut, w, h: b.height * (1 - topCut) }; };
   const field = document.querySelector(".titans-field");
-  const allies = [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((e) => { const body = e.querySelector(".ally-body") ?? e; return { id: (e.className.match(/ ally-([a-z_]+)/) || [])[1], approaching: e.classList.contains("is-approaching"), engaged: e.classList.contains("is-engaged"), ...(() => { const c0 = core(body, 0.45), w = e.querySelector(".ally-wander"); return { ...c0, x: c0.x - (w ? Number.parseFloat(getComputedStyle(w).translate) || 0 : 0) }; })() }; });   // 달려드는 칸은 빼고 제자리끼리 잰다(2026-11-05)
+  const allies = [...document.querySelectorAll(".titans-allies .titan-ally-art")].map((e) => { const body = e.querySelector(".ally-body") ?? e; return { id: (e.className.match(/ ally-([a-z_]+)/) || [])[1], approaching: e.classList.contains("is-approaching"), sliding: e.getAnimations().some((x) => x.transitionProperty === "translate"), engaged: e.classList.contains("is-engaged"), ...(() => { const c0 = core(body, 0.45), w = e.querySelector(".ally-wander"); return { ...c0, x: c0.x - (w ? Number.parseFloat(getComputedStyle(w).translate) || 0 : 0) }; })() }; });   // 달려드는 칸은 빼고 제자리끼리 잰다(2026-11-05)
   const hero = document.querySelector(".titans-hero .equipment-base") ?? document.querySelector(".titans-hero");
   const phase = (field?.className.match(/phase-([a-z-]+)/) || [])[1] || "";
   // 원정대 쓰러짐 연출(.party-ko, 2026-10-28 · 1.3초) 동안엔 몸이 넘어지며 겹친다 — 교전 정지 표본에서 뺀다
@@ -67,7 +67,7 @@ for (const [name, party] of Object.entries(PARTIES)) {
   let shots = 0, phases = new Set();
   for (let t = 0; t < 80; t += 1) {
     const s = await rects(); phases.add(s.phase);
-    const moving = s.heroApproaching || s.allies.some((a) => a.approaching) || /stage-/.test(s.phase) || s.ko;
+    const moving = s.heroApproaching || s.allies.some((a) => a.approaching || a.sliding) || /stage-/.test(s.phase) || s.ko;
     const settled = s.phase === "combat" && !moving;
     for (let i = 0; i < s.allies.length; i += 1) for (let j = i + 1; j < s.allies.length; j += 1) push(settled ? combat : walking, `${s.allies[i].id}×${s.allies[j].id}`, inter(s.allies[i], s.allies[j]));
     if (settled && s.hero) for (const a of s.allies) push(heroC, `${a.id}×hero`, inter(a, s.hero));
