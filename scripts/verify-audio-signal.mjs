@@ -67,7 +67,9 @@ ok("균형: 효과음 피크가 음악 RMS 의 1.5배 이상(묻히지 않음) �
   await setVol("bgm", 0.5); await sleep(700); const m50 = pick(await measure(2500), true);
   await setVol("bgm", 0); await sleep(700); const m0 = pick(await measure(1500), true);
   ok("음악 슬라이더: 100 > 50 > 0 · 실제 출력이 줄고 0 이면 무음", m100.rmsAvg > m50.rmsAvg && m50.rmsAvg > m0.rmsAvg && m0.peak < 0.002, `RMS ${f(m100.rmsAvg)} → ${f(m50.rmsAvg)} → ${f(m0.rmsAvg)} · 0 피크 ${f(m0.peak)}`);
-  const sfxWithMusicOff = pick(await measure(2500), false);
+  // 2.5초 창이 만남 사이(때리는 소리가 없는 구간)에 걸리면 피크 0 이다 — 전체 실행에서 드물게 났다. 효과음이 정말 꺼졌다면 몇 번을 재도 0 이다
+  let sfxWithMusicOff = pick(await measure(2500), false);
+  for (let i = 0; i < 3 && sfxWithMusicOff.peak <= 0.02; i += 1) sfxWithMusicOff = pick(await measure(2500), false);
   ok("음악을 꺼도 효과음은 그대로", sfxWithMusicOff.peak > 0.02, `피크 ${f(sfxWithMusicOff.peak)}`);
   await setVol("sfx", 0); await sleep(300); const s0 = pick(await measure(2500), false);
   ok("효과음 슬라이더 0: 실제 출력 무음", s0.peak < 0.002, `피크 ${f(s0.peak)}`);
