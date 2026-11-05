@@ -56,7 +56,8 @@ for (const scr of SCREENS) {
       hero: c(document.querySelector(".titans-hero")), heroApp: !!document.querySelector(".titans-hero.is-approaching"),
       mon: c(document.querySelector(".titans-monster .titan-monster-art")), monPlace: c(document.querySelector(".titans-monster .monster-temper")), monFeet: m ? Math.round(f.bottom - R(m).bottom) : null, monApp: !!m?.classList.contains("is-approaching"), monDead: !!document.querySelector(".titan-monster-art.frame-defeat"),
       hitNow: !!m?.className.match(/\bhit-[ab]\b/), monFilter: m ? getComputedStyle(m).filter : "none", sumBumps: [...document.querySelectorAll(".titans-float.sum")].map((e) => Number(e.dataset.bump ?? 0)), atkNow: !!m?.className.match(/action-(attack|prepare)/) || !!document.querySelector(".ally-swing.is-attacking"),
-      allies: [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => ({ id: a.className.match(/ ally-(\w+)/)?.[1], app: a.classList.contains("is-approaching"), body: c(a.querySelector(".ally-swing") ?? a), feet: Math.round(f.bottom - a.getBoundingClientRect().bottom) })),
+      allies: [...document.querySelectorAll(".titans-allies .titan-ally-art[data-party-slot]")].map((a) => ({ id: a.className.match(/ ally-(\w+)/)?.[1], app: a.classList.contains("is-approaching"), body: (() => { const b = c(a.querySelector(".ally-swing") ?? a), w = a.querySelector(".ally-wander"); return b && w ? { ...b, cx: b.cx - Math.round(parseFloat(getComputedStyle(w).translate) || 0) } : b; })(),   // 달려드는 칸은 뺀다(2026-11-05 동료는 공격 때 다가간다) · 제자리는 그대로 잰다
+      feet: Math.round(f.bottom - a.getBoundingClientRect().bottom) })),
       hits,
       fx: (() => {
         const box = (e) => { if (!e) return null; const r = R(e); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
@@ -150,7 +151,7 @@ for (const scr of SCREENS) {
     moves.push([d((s) => s.hero), d((s) => s.monPlace ?? s.mon), Math.max(...st[0].allies.map((a0) => d((s) => s.allies.find((x) => x.id === a0.id)?.body)))]);
   }
   ok(`[${scr.name}] 교전 중 공격 · 피격 표본이 있다`, atkSamples >= 5, `${atkSamples}`);
-  ok(`[${scr.name}] 교전 중 주인공 · 동료(보이는 몸) · 몬스터가 제자리 — 가운데 2px 이내`, moves.every((m) => m.every((v) => v <= 2)), moves.map((m) => `주${m[0]}·몬${m[1]}·동${m[2]}`).join(" "));
+  ok(`[${scr.name}] 교전 중 주인공 · 몬스터 제자리 2px · 동료 제자리 14px(달려드는 칸은 뺌, 물러난 뒤 비켜서기가 조금 움직인다)`, moves.every((m) => m[0] <= 2 && m[1] <= 2 && m[2] <= 14), moves.map((m) => `주${m[0]}·몬${m[1]}·동${m[2]}`).join(" "));
   // ── D ──
   const topFeet = Math.max(...rows.flatMap((s) => s.allies.map((a) => a.feet)));
   ok(`[${scr.name}] 동료 발이 풀밭 선 아래 — 가장 높은 발 ≤ 땅 높이 − 4px`, topFeet <= (rows[0]?.ground ?? 0) - 4, `발 ${topFeet} · 땅 ${rows[0]?.ground}`);

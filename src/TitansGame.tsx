@@ -445,6 +445,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [equipFx, setEquipFx] = useState<{ id: TitanSkillId; seq: number } | null>(null);
   /** 펫 덤빔(2026-10-28) — 번호가 바뀔 때마다 주인공 곁 펫이 몬스터 쪽으로 뛰었다 돌아온다(hunt-motion.css .hero-pet.pet-attack) */
   const [petAtk, setPetAtk] = useState(0);
+  /** 펫이 뛰어드는 길 — 뛰는 순간 몬스터까지 재서 정한다(titans/partyMotion.css) */
+  const [petMove, setPetMove] = useState<CSSProperties>({});
+  const petRestRef = useRef(0);
   const petAccRef = useRef(0);
   const [allyPulse, setAllyPulse] = useState<Record<string, number>>({});
   // 몬스터 한 번 덤빔 = 동료 한 명 피격 (2026-10-19) — 예전엔 한 카운터를 전원이 받아 덤빌 때마다 파티가 같이 움찔하고 공격이 끊겼다
@@ -624,7 +627,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const r = el.getBoundingClientRect();
         if (hero) { const t = r.width * 0.15; return { left: r.left + t, right: r.right - t, width: r.width - 2 * t, bottom: r.bottom, top: r.top + r.height * 0.12 }; }
         const v = (el.querySelector<HTMLElement>(".ally-body") ?? el).getBoundingClientRect();
-        const w = v.width * 0.45, left = v.left + (v.width - w) / 2;
+        // 달려든 동안(.ally-wander)은 제자리로 친다 — 안 그러면 공격할 때마다 비켜서기 값이 흔들린다
+        const wander = el.querySelector<HTMLElement>(".ally-wander"), sortie = wander ? Number.parseFloat(getComputedStyle(wander).translate) || 0 : 0;   // 물러나는 중에도 translate 가 남아 있다
+        const w = v.width * 0.45, left = v.left - sortie + (v.width - w) / 2;
         return { left, right: left + w, width: w, bottom: v.bottom, top: v.top + v.height * 0.12 };
       };
       // 바탕 상자(지금 --sep-dx 를 뺀 것) + 계산 중 dx — 여러 번 돌릴 때 매번 다시 재지 않고 dx 만 옮긴다
@@ -2077,6 +2082,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           petAccRef.current += dt;
           if (petAccRef.current >= PET_ATTACK_SEC) {
             petAccRef.current %= PET_ATTACK_SEC;
+            {
+              const petEl = fieldRef.current?.querySelector(".hero-pet")?.getBoundingClientRect(), monEl = fieldRef.current?.querySelector(".titans-monster .titan-monster-art")?.getBoundingClientRect();
+              const ml = fieldRef.current ? Number.parseFloat(getComputedStyle(fieldRef.current).getPropertyValue("--monster-ml")) || 0.22 : 0.22;
+              const from = petRestRef.current, rest = -16 + Math.random() * 26;
+              const dx = petEl && monEl && monEl.width > 0 ? Math.max(24, Math.min(240, monEl.left + monEl.width * ml - (petEl.left + petEl.width * 0.62) + from + Math.random() * 10)) : 90;
+              petRestRef.current = rest;
+              setPetMove({ "--pet-from": `${from.toFixed(1)}px`, "--pet-rest": `${rest.toFixed(1)}px`, "--pet-dx": `${dx.toFixed(1)}px`, "--pet-arc": `${(-12 - Math.random() * 24).toFixed(1)}px`, "--pet-dur": `${(0.54 + Math.random() * 0.2).toFixed(2)}s` } as CSSProperties);
+            }
             setPetAtk((n) => n + 1);
             sfxPetPounce();
             applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * petAttackMul(petLv), false, { source: "ally", hue: 95, fxDelayMs: 240 });   // 주인공 자동 공격과 같은 바탕(ref 로 — 인터벌 안)
@@ -2127,12 +2140,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, trialCeiling(stageCeilingFor(characterRef.current.pioneeredArea), saveRef.current.bestStage)) * permRef.current.allyMul;   // × 결정 트리 공격력 · 화염 깃털 (2026-10-26)   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
           const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
           if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
-          // 영웅 이상은 명중마다 등급 폭발(ui/tiers.css) — 그림만, 피해는 그대로
-          const tierHit = !lowFxRef.current && TIER_RANK[ALLY_RARITY[h.id]] >= TIER_RANK.SR ? (`tierhit-${ALLY_RARITY[h.id]}` as FxBurst["kind"]) : null;
-          const land = () => { applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined }); if (tierHit) pushFxAt(tierHit, "monster", 0.42, 0.5, 72, 45, undefined, 0.14); };
-          // 원거리 · 힐러는 탄이 꽂히는 순간에 피해 — 눈으로 따라간다 (2026-10-21, 사용자: "공격이 몬스터까지 날아가는 탄과 궤적")
           const role = ALLY_ROLE[h.id];
           const flight = role === "ranged" || role === "healer" ? spawnAllyProj(h.id, ALLY_ELEMENT[h.id], isSig) : 0;
+          // 영웅 이상은 명중마다 등급 폭발(ui/tiers.css) — 그림만, 피해는 그대로
+          const tierHit = !lowFxRef.current && TIER_RANK[ALLY_RARITY[h.id]] >= TIER_RANK.SR ? (`tierhit-${ALLY_RARITY[h.id]}` as FxBurst["kind"]) : null;
+          const land = () => { applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined, fxDelayMs: flight > 0 ? 0 : 190 / saveRef.current.battleSpeed }); if (tierHit) pushFxAt(tierHit, "monster", 0.42, 0.5, 72, 45, undefined, 0.14); };
+          // 원거리 · 힐러는 탄이 꽂히는 순간에 피해 — 눈으로 따라간다 (2026-10-21, 사용자: "공격이 몬스터까지 날아가는 탄과 궤적")
           if (flight > 0) window.setTimeout(land, flight); else land();
         }
       }
@@ -3925,7 +3938,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {isMountId(character.activeMount) && <HeroMountLayer store={frameStore} art={MOUNT_DEFS[character.activeMount].art} action={rideAction} />}
             {/* 펫 (2026-10-28) — 주인공 뒤 발치에서 같이 걷고(주인공 상자 안이라 들어오고 나갈 때 같이 움직인다) 덤빌 땐 몬스터 쪽으로 뛴다. 예전엔 전장 왼쪽 위에 떠 있기만 했다 */}
             {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
-              <div key={`pet-${petAtk}`} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
+              <div key={`pet-${petAtk}`} style={petMove} data-pet-dx={String(petMove["--pet-dx" as keyof CSSProperties] ?? "")} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
                 <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} pet />
               </div>
             )}

@@ -66,18 +66,16 @@ void gaugeBox;
 
 // 신기록
 await seed({ progress: { rebirthCount: 1, titanBestStage: 5 }, titans: { stage: 5, bestStage: 5, heroes: { mia: 300 } } });
-await waitFor(() => !!window.__huntStartBoss && document.querySelector(".titans-field")?.className.includes("phase-combat"));
-await sleep(1500);
-await page.evaluate(() => window.__huntStartBoss());
+// 실제 단추로 — 개발 훅은 걸어 둔 전환 타이머가 대장을 일반 몬스터로 덮을 때가 있었다
+await waitFor(() => { const f = document.querySelector(".titans-field"), b = document.querySelector(".titans-boss-challenge"); if (!b || !f?.className.includes("phase-combat")) return false; b.click(); return true; }, 50000);
 const rec = await waitFor(() => document.querySelector(".hunt-stamp.tone-record")?.textContent ?? null, 25000);
 if (!rec) console.log("상태", await page.evaluate(() => ({ stage: document.querySelector(".titans-field")?.textContent.slice(0, 60), timer: document.querySelector(".titans-boss-timer")?.textContent })));
 ok("환생 뒤 예전 기록을 넘으면 신기록!", !!rec && /신기록!/.test(rec) && /6층/.test(rec), String(rec));
 if (OUT) await page.screenshot({ path: `${OUT}/record.png` });
 await seed({ progress: { rebirthCount: 0, titanBestStage: 5 }, titans: { stage: 5, bestStage: 5, heroes: { mia: 300 } } });
-await waitFor(() => !!window.__huntStartBoss && document.querySelector(".titans-field")?.className.includes("phase-combat"));
-await sleep(1500);
-await page.evaluate(() => { window.__sawRecord = false; new MutationObserver(() => { if (document.querySelector(".hunt-stamp.tone-record")) window.__sawRecord = true; }).observe(document.body, { childList: true, subtree: true }); window.__huntStartBoss(); });
-await sleep(4000);
+await page.evaluate(() => { window.__sawRecord = false; new MutationObserver(() => { if (document.querySelector(".hunt-stamp.tone-record")) window.__sawRecord = true; }).observe(document.body, { childList: true, subtree: true }); });
+await waitFor(() => { const f = document.querySelector(".titans-field"), b = document.querySelector(".titans-boss-challenge"); if (!b || !f?.className.includes("phase-combat")) return false; b.click(); return true; }, 50000);
+await sleep(7000);
 ok("첫 판은 층마다 알리지 않는다", await page.evaluate(() => !window.__sawRecord));
 
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
