@@ -1,4 +1,5 @@
 import type { ChipMods } from "./chips";
+import type { EquippedGear } from "../equipment/gearSets";
 import type { SkillFx, SkillShot, Spark } from "./skillShots";
 import type { Element } from "./skills";
 import type { ExpeditionSkillId, ExpeditionSkillLevels, RangedWeaponId, SkillWeaponId, WeaponForgeLevels } from "./skills";
@@ -406,6 +407,8 @@ export type GameWorld = {
   skillTimers: Record<ExpeditionSkillId, number>;
   /** 장착한 원거리 무기 — 계열이 맞는 스킬의 쿨타임을 줄인다 */
   rangedWeapon: RangedWeaponId;
+  /** 낀 세트 파츠 — 그림만(효과는 사냥터 값) */
+  wornGear?: EquippedGear;
   /** 이번 판에 장착한 스킬 무기 (최대 4) — 런 시작부터 쏜다. 정령 자리 순서이기도 하다 (2026-10-02) */
   loadout: SkillWeaponId[];
   /** 대장간 활·지팡이 강화 단계 — 활: 기본 사격·물리 무기, 지팡이: 마법 무기 (2026-10-02) */

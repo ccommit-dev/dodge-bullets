@@ -22,7 +22,7 @@ const SHEETS = ANIM2
     ["public/titans/character/base/hero-attack.png", "hero-attack"],
   ];
 const outPath = (base, id) => (ANIM2 ? `public/titans/anim/hero/${base}-${id}.webp` : `public/titans/character/skins/${base}-${id}.png`);
-const save = (img, out) => (ANIM2 ? img.webp({ quality: 90, alphaQuality: 94, effort: 5 }) : img.png()).toFile(out);
+const save = (img, out) => (ANIM2 ? img.webp(out.includes("hero-ride") ? { quality: 74, alphaQuality: 85, effort: 6 } : { quality: 90, alphaQuality: 94, effort: 5 }) : img.png()).toFile(out);
 
 // 값은 주인공 털색에 묶인다 — 2026-11-03 호박빛 털(roster.HERO)로 바꾸며 옛 갈색 때 값 그대로면 새벽이 형광 청록이 되어 옛 스킨 색에 맞춰 낮췄다
 const SKINS = [

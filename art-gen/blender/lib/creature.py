@@ -557,7 +557,8 @@ def _build(name, cfg, coll=None):
     elif kind == 'quad':
         bc = Vector((0, 0.02, 0.38))
         br = cfg.get('body_r', (0.2, 0.3, 0.18))
-        hc = Vector((0, -0.58, 0.74)) if cfg.get('ride') else Vector((0, -0.33, 0.58))
+        # 탈것 머리 — 비룡은 주둥이가 길어 조금 뒤로(칸을 안 넘게)
+        hc = Vector((0, -0.48 if cfg.get('wyvern') else -0.58, 0.74)) if cfg.get('ride') else Vector((0, -0.33, 0.58))
         hr = cfg.get('head_r', (0.2, 0.2, 0.19))
         add('body', C.mesh_obj('body', C.ellipsoid(bc, br), M['skin'], coll, outline=OUT))
         if cfg.get('ride'):   # 목
@@ -598,8 +599,8 @@ def _build(name, cfg, coll=None):
         tp = spline([Vector((0, 0.3, 0.42)), Vector((0, 0.42, 0.5)), Vector((0, 0.5, 0.64)), Vector((0, 0.48, 0.74))], 14)
         if cfg.get('tail_tip'):   # 비룡 — 꼬리를 뒤로 길게 뺀다(위로 세우면 날개 뒤에 숨는다)
             tp = spline([Vector((0, 0.3, 0.42)), Vector((0, 0.46, 0.38)), Vector((0, 0.62, 0.36)), Vector((0, 0.74, 0.43))], 14)
-        if cfg.get('ride'):
-            tp = [p + Vector((0, 0.13, 0)) for p in tp]
+        if cfg.get('ride'):   # 몸이 길어진 만큼 뒤로 · 비룡 꼬리는 줄인다
+            tp = [Vector((0, 0.42 + (p.y - 0.3) * 0.45, p.z)) for p in tp] if cfg.get('tail_tip') else [p + Vector((0, 0.13, 0)) for p in tp]
         add('tail', C.mesh_obj('tail', C.tube(tp, interp([0.07, 0.09, 0.07, 0.02], len(tp)), seg=14), M['skin'], coll, outline=OUT))
         if cfg.get('flames'):
             fm = _m('flame', '#ff8a3d', rough=0.3, emit='#ff7a1a' if cfg.get('tail_tip') else '#ffb347', es=1.0 if cfg.get('tail_tip') else 3.0)   # 비룡 꼬리 불꽃 — 3.0 은 희게 날아갔다

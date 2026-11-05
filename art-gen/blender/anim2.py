@@ -283,6 +283,8 @@ def mount_actions(kind, mon_poses):
     over = dict(atk)
     over.update(jaw=atk['jaw'] + 4, lean=atk['lean'] + 2, dy=atk['dy'] + 0.02)
     attack = prepare + [dict(lerp(prep, atk, 0.55), sq_all=1.07), dict(atk, sq_all=0.92), dict(over, sq_all=0.95), dict(lerp(atk, idle0, 0.5), sq_all=1.0)]
+    for P in attack:   # 사람을 태우고 있어 몬스터처럼 몸째 튀어 나가지 않는다 — 칸(480)도 안 넘는다
+        P['dy'] = P.get('dy', 0.0) * 0.3
     # 방어 — 뒤로 물러앉아 앞다리를 버티고 머리를 숙인다
     brace = full(dict(lean=-11, head=12, jaw=0, arm_r=9, arm_l=9, leg_r=-7, leg_l=-7, dy=-0.03, tail=16, wing=30, sq_all=0.94), {}, FULL_MONSTER)
     guard = [lerp(idle0, brace, 0.65), brace, dict(brace, sq_all=0.93, lean=-15), lerp(brace, idle0, 0.5)]

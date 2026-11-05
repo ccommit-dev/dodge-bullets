@@ -1,0 +1,34 @@
+/* 사냥터 순간 연출 (titans/huntMoments.tsx) — 눌리지 않고, 움직임은 transform · opacity 만 */
+.golden-rush { position: absolute; left: 50%; top: 96px; z-index: 19; width: min(74%, 290px); translate: -50% 0; display: grid; justify-items: center; gap: 3px; padding: 5px 10px 6px; border-radius: 12px; background: #4a2c05; box-shadow: 0 0 0 2px #fbbf24, 0 0 16px rgba(251, 191, 36, .7); pointer-events: none; }
+.golden-rush > b { color: #fff3c4; font-size: 14px; font-weight: 900; line-height: 1.2; white-space: nowrap; }
+.golden-rush-bar { display: block; width: 100%; height: 8px; overflow: hidden; border-radius: 999px; background: #2b1b10; }
+.golden-rush-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #fde047); transform-origin: 0 50%; animation: golden-rush-left 7s linear forwards; }
+@keyframes golden-rush-left { to { transform: scaleX(0); } }
+.golden-rush > em { position: absolute; right: -8px; top: -12px; padding: 0 7px; border-radius: 999px; background: #fde047; color: #4a2c05; box-shadow: 0 0 0 1.5px #92400e; font-size: 14px; font-style: normal; font-weight: 900; line-height: 20px; animation: golden-hit .22s ease-out; }
+.golden-rush > em.is-big { font-size: 18px; line-height: 24px; animation: golden-hit-big .4s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes golden-hit { from { transform: scale(1.35); } to { transform: scale(1); } }
+@keyframes golden-hit-big { from { transform: scale(2); } to { transform: scale(1); } }
+
+/* 무기 기술까지 남은 탭 — AUTO 단추 위 */
+.titans-field .tech-gauge { position: absolute; left: 12px; bottom: 112px; z-index: 12; display: grid; gap: 2px; padding: 3px 7px 4px; border-radius: 10px; background: #2b1b10; color: #fff3da; pointer-events: none; }
+.tech-gauge > small { font-size: 13px; font-weight: 800; line-height: 1.15; white-space: nowrap; }
+.tech-gauge > span { display: flex; gap: 2px; }
+.tech-gauge > span > i { flex: 1 0 auto; width: 9px; height: 6px; border-radius: 2px; background: #6b5240; }
+.tech-gauge > span > i.on { background: #fbbf24; }
+.tech-gauge.is-ready { box-shadow: 0 0 0 2px #fde047, 0 0 10px rgba(253, 224, 71, .8); animation: tech-ready .5s ease-in-out infinite alternate; }
+.tech-gauge.is-ready > small { color: #fde047; }
+@keyframes tech-ready { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+/* 크게 찍히는 글자 */
+.titans-field .hunt-stamp { position: absolute; left: 50%; top: 34%; z-index: 21; translate: -50% 0; display: grid; justify-items: center; gap: 2px; pointer-events: none; text-align: center; white-space: nowrap; animation: hunt-stamp 1.5s cubic-bezier(.2, 1.3, .4, 1) forwards; }
+.hunt-stamp > b { font-size: 34px; font-weight: 900; line-height: 1.1; color: #fff; -webkit-text-stroke: 1.5px #3b2415; paint-order: stroke fill; }
+.hunt-stamp > small { padding: 1px 10px; border-radius: 999px; background: #2b1b10; color: #fff3da; font-size: 14px; font-weight: 800; }
+.hunt-stamp.tone-gold > b { color: #fde047; }
+.hunt-stamp.tone-record > b { color: #5eead4; }
+@keyframes hunt-stamp { 0% { transform: scale(2.2); opacity: 0; } 16% { transform: scale(1); opacity: 1; } 78% { transform: scale(1); opacity: 1; } 100% { transform: scale(1) translateY(-14px); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .golden-rush > em, .tech-gauge.is-ready { animation: none; }
+  .titans-field .hunt-stamp { animation-timing-function: linear; animation-name: hunt-stamp-still; }
+  @keyframes hunt-stamp-still { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+}

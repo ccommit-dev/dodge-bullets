@@ -23,6 +23,8 @@ const SEED = Number(flag("seed", 20260821));
 const AS_MD = args.includes("--md");
 // 세트 파츠 견주기 (2026-11-04) — --gear sword:10 = 검 세트 다섯 부위를 +10 까지 낀 플레이어. 없으면 맨몸(기본 판정은 그대로)
 const [GEAR_KIND, GEAR_LV] = flag("gear", ":").split(":");
+// 시뮬은 스킬을 따로 굴리지 않는다 — 지팡이 세트(스킬 피해)는 스킬이 전체 피해의 이만큼이라 가정해 파티 DPS 에 얹는다(기기 로그 없음 · 넉넉한 가정)
+const SKILL_SHARE = Number(flag("skill-share", 0.3));
 
 // ── 실제 소스 번들 ────────────────────────────────────────────────
 const outDir = mkdtempSync(join(tmpdir(), "dodge-sim-"));
@@ -112,7 +114,7 @@ function playTitans(state, seconds, stageCeiling) {
   let wall = false;
   while (t > 0) {
     // 편성은 상위 4명만 싸운다 (2026-10-27 난이도 감사: 예전엔 보유 동료 전부의 합이라 동료 60명 뒤 DPS 가 부풀었다)
-    const partyDps = gearFx.autoSpeedMul * titans.HEROES
+    const partyDps = gearFx.autoSpeedMul * (1 + SKILL_SHARE * (gearFx.skillDmgMul - 1)) * titans.HEROES
       .map((h) => titans.heroDps(h, state.heroes[h.id] ?? 0) * allies.starMultiplier(allies.effectiveStars(state.stars?.[h.id], state.heroes[h.id] ?? 0)))
       .sort((a, b) => b - a).slice(0, PARTY_SIZE).reduce((a, b) => a + b, 0);
     const dps =

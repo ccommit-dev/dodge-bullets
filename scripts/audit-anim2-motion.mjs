@@ -71,7 +71,7 @@ async function auditSeams(kind, id, src, spec) {
 let count = 0;
 for (const [kind, dir] of [["ally", "public/titans/anim/allies"], ["monster", "public/titans/anim/monsters"]]) {
   const spec = L[kind], [CW, CH] = spec.cell;
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".webp")).sort()) {
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".webp") && !f.startsWith("mount-")).sort()) {   // 탈것은 칸 배치가 달라(layout mount) 아래에서 따로
     for (const [act, a] of Object.entries(spec.actions)) { await audit(kind, file.replace(".webp", ""), `${dir}/${file}`, a.frames, CW, CH, a.row * CH, act, a); count += 1; }
     await auditSeams(kind, file.replace(".webp", ""), `${dir}/${file}`, spec);
   }
@@ -79,6 +79,7 @@ for (const [kind, dir] of [["ally", "public/titans/anim/allies"], ["monster", "p
 for (const sk of ["", "-dawn", "-ember", "-frost", "-obsidian"]) {
   for (const [mode, s] of Object.entries(L.hero.sheets).filter(([m]) => m !== "guard")) { await audit("hero", "hero" + sk, `public/titans/anim/hero/hero-${mode}${sk}.webp`, s.frames, s.width, L.hero.cellHeight, 0, mode, s); count += 1; }
 }
+{ const [CW, CH] = L.mount.cell; for (const file of readdirSync("public/titans/anim/monsters").filter((f) => f.startsWith("mount-") && f.endsWith(".webp")).sort()) for (const [act, a] of Object.entries(L.mount.actions)) { if (act === "idle") { await audit("monster", file.replace(".webp", ""), `public/titans/anim/monsters/${file}`, a.frames, CW, CH, a.row * CH, act, a); count += 1; } } }
 console.log(`${count}개 동작 줄 감사 · 튐 ${issues.length}건`);
 for (const s of issues) console.log(" ", s);
 console.log(issues.length ? "FAIL" : "PASS 칸 사이 · 반복 이음매 · 동작 이음매에 튐 없음");

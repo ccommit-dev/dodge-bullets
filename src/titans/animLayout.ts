@@ -76,7 +76,8 @@ export const ANIM_LAYOUT = {
       480,
       480
     ],
-    "feet": 0.955,
+    "feet": 0.945,
+    "pivotX": 0.53,
     "cols": 6,
     "actions": {
       "idle": {

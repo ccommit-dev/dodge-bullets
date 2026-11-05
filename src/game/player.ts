@@ -3,7 +3,9 @@ import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
 import { drawRecurveBow } from "./arrowArt";
 import { HERO_FIG } from "../equipment/heroAnchors";
-import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { gearItemKind } from "../equipment/gearSets";
+import { WEAR_LAYERS } from "../equipment/wearLayers";
 import { HERO_ANIM, heroFrameMs, heroFrames } from "../titans/spriteAnim";
 import { ANIM_LAYOUT } from "../titans/animLayout";
 
@@ -32,6 +34,12 @@ export const SHOOT_MS = 300;
 // 대기 시트가 오른쪽을 보는 원화로 교체됐다(2026-09-08) — 예전 정면/왼쪽 시트는 -1 이었다
 const EXPEDITION_NATIVE_FACING = 1;
 const expeditionHero: Partial<Record<"idle" | "walk", HTMLImageElement>> = {};
+const wearImages = new Map<string, HTMLImageElement>();
+function wearImage(key: string): HTMLImageElement {
+  let img = wearImages.get(key);
+  if (!img) { img = new Image(); img.src = assetUrl(`titans/anim/hero-gear/${key}.webp`); wearImages.set(key, img); }
+  return img;
+}
 
 /** 성문 방어 주인공 시트 — 애니메이션 2판(2026-10-19)이면 대기 6칸 · 걷기 6칸 webp, 아니면 1판 대기 4칸 PNG. 둘 다 처음에 같이 받는다 */
 function getExpeditionHero(mode: "idle" | "walk"): HTMLImageElement | null {
@@ -326,6 +334,24 @@ export function drawStickman(
       drawWidth,
       drawHeight,
     );
+    // 낀 세트 파츠 (2026-11-05, 사냥터와 같은 그림) — 대기 0칸 자세 그림을 뼈 앵커만큼 옮겨 몸을 따라간다
+    if (world.wornGear) {
+      const anchors = attackSheet ? attackAnchorsFor(world.rangedWeapon) : usedMode === "walk" ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
+      const cur = anchors[Math.min(frame, anchors.length - 1)], base = IDLE_EQUIPMENT_ANCHORS[0];
+      const boxW = drawHeight * heroFrameAspect("idle");
+      for (const [name, slot, part] of WEAR_LAYERS) {
+        const id = world.wornGear[slot], c = cur[part], b = base[part];
+        if (!id || !c || !b) continue;
+        const img = wearImage(`${gearItemKind(id)}-${name}`);
+        if (!img.complete || img.naturalWidth === 0) continue;
+        const bx = (b.x / 100 - 0.5) * boxW, by = (b.y / 100 - 1) * drawHeight;
+        ctx.save();
+        ctx.translate((c.x / 100 - 0.5) * drawWidth, (c.y / 100 - 1) * drawHeight);
+        ctx.rotate(((c.rotation - b.rotation) * Math.PI) / 180);
+        ctx.drawImage(img, -boxW / 2 - bx, -drawHeight - by, boxW, drawHeight);
+        ctx.restore();
+      }
+    }
     // 파츠 오버레이는 걷었다 (2026-10-19, 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게") — 무기(활·지팡이)만 아래에서 그린다
         ctx.restore();
     if (p.anim !== "dead") {

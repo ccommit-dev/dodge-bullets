@@ -1,3 +1,4 @@
+import { partEquipTier, weaponEquipTier } from "./equipment/equipTier";
 import { GEAR_ENHANCE_MAX, GEAR_PARTS, GEAR_PART_DEF, emptyGearLevels, gearEnhanceCost, gearTierOfEnhance, type GearLevels, type GearPart } from "./equipment/parts";
 import { WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -672,7 +673,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           {view === "forge" && (
             <div className="forge-weapon-kinds" role="group" aria-label="장착 무기">
               {WEAPON_KINDS.map((k) => (
-                <button key={k} type="button" className={equippedKind === k ? "on" : ""} aria-pressed={equippedKind === k} onClick={() => void equipKind(k)}>
+                <button key={k} type="button" data-tier={weaponEquipTier(k === "sword" ? save.level : Math.round((expForge[k] * 15) / 20))} className={equippedKind === k ? "on" : ""} aria-pressed={equippedKind === k} onClick={() => void equipKind(k)}>
                   <img src={assetUrl(weaponIconPath(k, k === "sword" ? save.level : Math.round((expForge[k] * 15) / 20)))} alt="" aria-hidden="true" />
                   <b>{WEAPON_LABEL[k]}</b><small>+{k === "sword" ? save.level : expForge[k]}</small>
                 </button>
@@ -697,12 +698,12 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </div>
                 <div className="sword-aura" />
                 <SwordArt level={save.level} hue={tier.hue} name={tier.name} />
-                <div className="forge-sword-name">
+                <div className="forge-sword-name" data-tier={weaponEquipTier(save.level)}>
                   <span>+{save.level}</span>
                   <strong>{tier.name}</strong>
                 </div>
                 {phase === "forging" && <div className="forge-impact">강화 중…</div>}
-                {phase === "success" && <div className="forge-impact success">SUCCESS!</div>}
+                {phase === "success" && <div className="forge-impact success">{save.level === 5 || save.level === 10 || save.level === 15 ? "외형 변화!" : "SUCCESS!"}</div>}
                 {phase === "sold" && <div className="forge-impact sold">SOLD</div>}
               </section>
 
@@ -818,7 +819,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 const cost = gearEnhanceCost(lv);
                 const can = !!cost && coins >= cost.coins && materials >= cost.materials && phase === "idle";
                 return (
-                  <article key={riskHit?.key === `gear-${part}` ? `${part}-${riskHit.seq}` : part} className={`gear-forge-row gear-${part} ${selGear === part ? "on" : ""} ${riskHit?.key === `gear-${part}` ? `risk-${riskHit.kind}` : ""}`} data-gear-part={part} onClick={() => setSelGear(part)}>
+                  <article key={riskHit?.key === `gear-${part}` ? `${part}-${riskHit.seq}` : part} data-tier={partEquipTier(lv)} className={`gear-forge-row gear-${part} ${selGear === part ? "on" : ""} ${riskHit?.key === `gear-${part}` ? `risk-${riskHit.kind}` : ""}`} data-gear-part={part} onClick={() => setSelGear(part)}>
                     <img src={assetUrl(`titans/gear/${part}-${Math.max(1, gearTierOfEnhance(lv))}.png`)} alt="" aria-hidden="true" />
                     <div>
                       <strong>{def.name} +{lv}</strong>

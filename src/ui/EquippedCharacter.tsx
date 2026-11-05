@@ -7,7 +7,8 @@ import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, rideAnchorsFor, WALK_EQUIPMEN
 import { rideSheetFor, sheetFor } from "../titans/anim";
 import { HERO_ANIM, heroFrames, type HeroAnimMode } from "../titans/spriteAnim";
 import { gearItemKind, type EquippedGear } from "../equipment/gearSets";
-import type { EquipmentAnchor, EquipmentFrameAnchors } from "../equipment/anchors";
+import type { EquipmentAnchor } from "../equipment/anchors";
+import { WEAR_LAYERS } from "../equipment/wearLayers";
 
 /** 2판 주인공 시트 — 셋 다 깔아 두고 지금 것만 보인다(아래 본문 주석) */
 const HERO_MODES: readonly HeroAnimMode[] = ["idle", "walk", "attack"];
@@ -40,12 +41,6 @@ type Props = {
   riding?: boolean;
 };
 
-/** 입는 파츠 그림 층 (art-gen/blender/hero_gear.py) — 그림 = 대기 0칸 자세의 칸 전체. 칸마다 뼈 앵커가 대기 0칸에서 움직인 만큼 옮긴다.
- * [그림 이름, 세트 부위, 따라갈 앵커] · 아래부터 위로 그린다 */
-const WEAR_LAYERS: ReadonlyArray<[string, keyof EquippedGear, keyof EquipmentFrameAnchors]> = [
-  ["bootR", "boots", "footR"], ["bootL", "boots", "footL"], ["armor", "armor", "chest"], ["gloveR", "gloves", "offHand"],
-  ["shoulder", "shoulder", "chest"], ["helmet", "helmet", "head"], ["gloveL", "gloves", "hand"],
-];
 function wearStyle(cur: EquipmentAnchor, base: EquipmentAnchor, attack: boolean): CSSProperties {
   // 공격 시트는 칸이 넓어 앵커 % 가 125% 상자 기준(sprite-anim.css) — 몸 상자 % 로 바꾼다
   const x = attack ? cur.x * 1.25 - 12.5 : cur.x;

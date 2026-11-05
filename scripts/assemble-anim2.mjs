@@ -76,7 +76,7 @@ function fitScale(frames, k, cw, ch, px, py, m, floor = true) {
 /** 줄 = 동작 · 칸 = 프레임 격자 */
 async function grid(c, spec, k, dest) {
   const [cw, ch] = spec.cell, rows = Object.keys(spec.actions).length;
-  const px = cw / 2, py = ch * spec.feet, ops = [];
+  const px = cw * (spec.pivotX ?? 0.5), py = ch * spec.feet, ops = [];
   for (const [name, a] of Object.entries(spec.actions)) {
     const frames = c.actions[name];
     if (!frames || frames.length !== a.frames) throw new Error(`${c.id} ${name}: 칸 ${frames?.length} ≠ ${a.frames}`);
@@ -155,9 +155,9 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     if (id.startsWith("mount-")) {
       // 배율 고정 — 넷의 몸 크기를 같게. 칸을 넘으면 알린다(비룡 날개)
       const MM = LAYOUT.mount, [CW, CH] = MM.cell, k = 0.6, s0 = c.actions.idle[0].parts.saddle, p0 = c.actions.idle[0].pivot;
-      const fit = fitScale(Object.values(c.actions).flat(), k, CW, CH, CW / 2, CH * MM.feet, 3, false);
+      const fit = fitScale(Object.values(c.actions).flat(), k, CW, CH, CW * MM.pivotX, CH * MM.feet, 2, false);
       if (fit < k * 0.985) console.warn(`${id}: 칸을 넘는 칸 — 필요한 배율 ${fit.toFixed(3)}`);
-      seatOf[id] = [Math.round((1 - (CW / 2 + (s0.x - p0[0]) * k) / CW) * 1000) / 1000, Math.round(((CH * MM.feet + (s0.y - p0[1]) * k) / CH) * 1000) / 1000];
+      seatOf[id] = [Math.round((1 - (CW * MM.pivotX + (s0.x - p0[0]) * k) / CW) * 1000) / 1000, Math.round(((CH * MM.feet + (s0.y - p0[1]) * k) / CH) * 1000) / 1000];
       await grid(c, MM, k, `public/titans/anim/monsters/${id}.webp`);
       const r3 = (v) => Math.round(v * 1000) / 1000;
       rideAnchors[id] = Object.fromEntries(Object.entries(c.actions).map(([name, frames]) => [name, frames.map((f) => [r3(((f.parts.saddle.x - s0.x) * k) / CW), r3(((f.parts.saddle.y - s0.y) * k) / CH), Math.round((f.parts.saddle.rot - s0.rot) * 10) / 10])]));
@@ -210,7 +210,7 @@ if (only.includes("hero-ride")) {
     if (fitScale(frames, k, s.width, FH, px, PY, 2, false) < k * 0.985) console.warn(`hero-ride ${name}: 칸을 넘는다`);
     const ops = [];
     for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, px, PY)));
-    await sharp(await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer()).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero/hero-ride-${name}.webp`);
+    await sharp(await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer()).webp({ quality: 74, alphaQuality: 85, effort: 6 }).toFile(`public/titans/anim/hero/hero-ride-${name}.webp`);
     out[name] = frames.map((f) => Object.fromEntries(Object.entries(BASE).map(([part, [rot0, sc]]) => {
       const p = f.parts[part], p0 = idle0.parts[part];
       return [part, { x: r1(((px + (p.x - f.pivot[0]) * k) / s.width) * 100), y: r1(((PY + (p.y - f.pivot[1]) * k) / FH) * 100), rotation: r1(rot0 + (p.rot - p0.rot)), scale: sc, ...(part === "hand" && f.weaponBehind ? { behind: true } : {}) }];
