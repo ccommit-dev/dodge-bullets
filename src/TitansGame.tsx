@@ -215,6 +215,8 @@ function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean 
   }
   return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10, wide };
 }
+// 10연 마지막 한 장 — 가장 좋은 카드를 맨 뒤로 돌리고 뒤집기 전에 멈춘다(릴스 first-ten 에서 가져옴, 확률 · 결과는 그대로)
+const GACHA_LAST_COUNT = 10, GACHA_LAST_PAUSE_MS = 950;
 const ALLY_PAGE_SIZE = 6;   // 접힌 카드가 한 줄씩이 되어 폰 세로 시트에도 6장이 들어간다(2026-11-03, 예전 폰 4장)
 const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: string; desc: string }>> = {
   // 모험 허브 (2026-10-13, docs/FOCUS_CAPYGO P0): 콘텐츠·모험 팝업 둘을 한 화면으로 — 카드 6장 + 루틴 줄
@@ -395,6 +397,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 결과 카드가 차례로 뜨는 중이면 첫 탭은 모두 공개, 그다음 탭이 닫기 */
   const [gachaRevealAll, setGachaRevealAll] = useState(false);
   const gachaRevealAtRef = useRef(0);
+  const gachaBestSfxRef = useRef(0);
+  const gachaOpenRef = useRef(false);
+  useEffect(() => { gachaOpenRef.current = !!gachaSummoning || !!gachaReveal; }, [gachaSummoning, gachaReveal]);
   /** 서랍 닫기 — 짧게 내려간 뒤 사냥터로 (2026-11-02). 예전엔 바로 사라졌다 */
   const [sheetClosing, setSheetClosing] = useState(false);
   const sheetDragY = useRef<number | null>(null);
@@ -1219,6 +1224,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   // 보상 팝업은 줄을 세운다 — 환영 선물 위로 첫 처치 발견이 바로 덮어 쓰던 것(2026-10-22). 밀리면 오래된 발견부터 버린다
   const pumpRewardPop = () => {
+    // 10연 결과 윗줄 카드 3장을 가렸다 — 뽑기 연출이 닫힌 뒤에 차례로 띄운다
+    if (gachaOpenRef.current) { rewardBusyRef.current = true; setRewardPop(null); window.setTimeout(pumpRewardPop, 300); return; }
     const next = rewardQueueRef.current.shift();
     if (!next) { rewardBusyRef.current = false; setRewardPop(null); return; }
     rewardBusyRef.current = true;
@@ -2679,6 +2686,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (!paid) return;
     setCharacter(next);
     setRedGems(next.redGems);
+    gachaOpenRef.current = true;
     for (const id of newIds) discover("ally", id, HEROES.find((h) => h.id === id)?.name ?? id);
     if (newIds.length > 0) {
       setSave((cur) => {
@@ -2698,9 +2706,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     sfxRelicSummon();   // 동료 소환진만 1.2초 무음이었다 · 공개도 등급과 무관한 소리였다 (2026-11-02)
     runSummon(() => {
       setGachaSummoning(null);
-      sfxRelicReveal(best);
       setGachaRevealAll(false);
-      setGachaReveal(pulled.results);
+      if (count < GACHA_LAST_COUNT) {
+        sfxRelicReveal(best);
+        setGachaReveal(pulled.results);
+        return;
+      }
+      // 10연은 가장 좋은 카드를 맨 뒤로 — 결과는 그대로, 보여 주는 순서만 바꾼다. 최고 등급 소리는 그 카드가 뒤집힐 때
+      const at = pulled.results.findIndex((r) => r.rarity === best);
+      sfxRelicReveal("R");
+      gachaBestSfxRef.current = window.setTimeout(() => { gachaBestSfxRef.current = 0; sfxRelicReveal(best); }, (count - 1) * 180 + GACHA_LAST_PAUSE_MS + 350);
+      setGachaReveal([...pulled.results.slice(0, at), ...pulled.results.slice(at + 1), pulled.results[at]]);
     });
   };
 
@@ -5447,7 +5463,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       </nav>
 
       {toast && <div className="titans-toast">{toast}</div>}
-      {rewardPop && (
+      {rewardPop && !gachaSummoning && !gachaReveal && (
         <div key={rewardPop.key} className={`reward-pop tone-${rewardPop.tone}`} role="status">
           {rewardPop.icon && <img className="reward-pop-icon" src={assetUrl(rewardPop.icon)} alt="" aria-hidden="true" />}
           <small>{rewardPop.kicker}</small>
@@ -5474,18 +5490,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       {gachaReveal && (
         <div className={`gacha-reveal gacha-result ${gachaReveal.some((r) => TIER_RANK[r.rarity] >= TIER_RANK.SSR) ? "has-ssr" : gachaReveal.some((r) => r.rarity === "SR") ? "has-sr" : ""}`} role="dialog" aria-label="소환 결과" onClick={() => {
           // 차례로 뜨는 중이면 첫 탭은 모두 공개(카드당 0.18초), 다 떴으면 닫기
-          if (!gachaRevealAll && Date.now() - gachaRevealAtRef.current < gachaReveal.length * 180 + 300) { setGachaRevealAll(true); return; }
+          if (!gachaRevealAll && Date.now() - gachaRevealAtRef.current < gachaReveal.length * 180 + 300 + (gachaReveal.length >= GACHA_LAST_COUNT ? GACHA_LAST_PAUSE_MS : 0)) {
+            if (gachaBestSfxRef.current) { window.clearTimeout(gachaBestSfxRef.current); gachaBestSfxRef.current = 0; sfxRelicReveal(gachaReveal[gachaReveal.length - 1].rarity); }
+            setGachaRevealAll(true);
+            return;
+          }
+          window.clearTimeout(gachaBestSfxRef.current); gachaBestSfxRef.current = 0;
           setGachaReveal(null);
         }}>
           <i className="gacha-burst" aria-hidden="true" />
           <i className="gacha-rays" aria-hidden="true" />
           <GachaFx tier={gachaReveal.map((r) => r.rarity).sort((a, b) => TIER_RANK[b] - TIER_RANK[a])[0] ?? "R"} phase="reveal" />
           <i className="gacha-light-sweep" aria-hidden="true" />
+          {gachaReveal.length >= GACHA_LAST_COUNT && !gachaRevealAll && <b className="gacha-last-tease" style={{ animationDelay: `${(gachaReveal.length - 1) * 0.18}s` }} aria-hidden="true">마지막 한 장…!</b>}
           <div className={`gacha-reveal-grid count-${gachaReveal.length} ${gachaRevealAll ? "reveal-all" : ""}`} onClick={(e) => e.stopPropagation()}>
             {gachaReveal.map((r, i) => {
               const h = HEROES.find((x) => x.id === r.id)!;
+              const lastCard = gachaReveal.length >= GACHA_LAST_COUNT && i === gachaReveal.length - 1;
               return (
-                <div key={`${r.id}-${i}`} data-ally={r.id} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${r.duplicate && (() => { const st = Math.max(1, character.allyStars[r.id] ?? 1); const need = shardCostToNext(r.id, st); return need !== null && (character.allyShards[r.id] ?? 0) >= need; })() ? "dup-ready-card" : ""} ${gachaFocus === i ? "is-focus" : ""}`} style={{ "--flip-delay": `${i * 0.18}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
+                <div key={`${r.id}-${i}`} data-ally={r.id} className={`gacha-card rarity-${r.rarity.toLowerCase()} ${r.duplicate ? "dup" : "new"} ${r.duplicate && (() => { const st = Math.max(1, character.allyStars[r.id] ?? 1); const need = shardCostToNext(r.id, st); return need !== null && (character.allyShards[r.id] ?? 0) >= need; })() ? "dup-ready-card" : ""} ${gachaFocus === i ? "is-focus" : ""} ${lastCard ? "is-last" : ""}`} style={{ "--flip-delay": `${i * 0.18 + (lastCard ? GACHA_LAST_PAUSE_MS / 1000 : 0)}s`, animationDelay: `${i * 0.18}s` } as CSSProperties}
                   role="button" tabIndex={0} aria-label={`${RARITY_LABEL[r.rarity]} ${h.name}`} title={`${RARITY_LABEL[r.rarity]}(${r.rarity}) · ${ROLE_LABEL[ALLY_ROLE[h.id]]} · ${h.feature}`}
                   onMouseEnter={() => setGachaFocus(i)} onClick={() => setGachaFocus((f) => (f === i ? null : i))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setGachaFocus(i); } }}>
                   <div className="gacha-card-inner">
@@ -5561,7 +5584,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </div>
               );
             })()}
-            <button type="button" className="cta gacha-close" onClick={() => { setGachaReveal(null); setGachaFocus(null); }}>확인</button>
+            <button type="button" className="cta gacha-close" onClick={() => { window.clearTimeout(gachaBestSfxRef.current); gachaBestSfxRef.current = 0; setGachaReveal(null); setGachaFocus(null); }}>확인</button>
           </div>
         </div>
       )}

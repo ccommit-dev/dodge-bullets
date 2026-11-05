@@ -99,6 +99,8 @@ ok("10연 → 카드 10장 연출", r.cards === 10, String(r.cards));
 const discoveryGems = [...new Set(p.discovered ?? [])].filter((k) => !discoveredBeforeKeys.has(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 50 : k.startsWith("monster:") ? 20 : Math.min(150, Number(k.split(":")[1]) >= 2 ? 10 * Number(k.split(":")[1]) : 0)), 0);
 ok("보석 −900(+ 새 동료 첫 발견 50씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 - discoveryGems && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
 { const cls = await page.evaluate(() => [...document.querySelectorAll(".gacha-card")].map((c) => /rarity-(\w+)/.exec(c.className)?.[1])); ok("10연 SR 이상 1명 이상 (보장)", r.fronts.length === 10 && cls.some((c) => ["sr", "ssr", "ur", "lr"].includes(c)), JSON.stringify({ fronts: r.fronts.length, cls })); }
+{ const last = await page.evaluate(() => { const rank = (c) => ({ n: 0, r: 1, sr: 2, ssr: 3, ur: 4, lr: 5 })[/rarity-(w+)/.exec(c.className)?.[1]] ?? -1; const cards = [...document.querySelectorAll(".gacha-card")], l = cards[cards.length - 1]; return { isLast: l?.classList.contains("is-last"), others: document.querySelectorAll(".gacha-card.is-last").length, best: l ? rank(l) >= Math.max(...cards.map(rank)) : false, flip: l ? getComputedStyle(l.querySelector(".gacha-card-inner")).animationDelay : "", prev: cards[8] ? getComputedStyle(cards[8].querySelector(".gacha-card-inner")).animationDelay : "", tease: document.querySelector(".gacha-last-tease")?.textContent ?? "" }; }); ok("10연 마지막 칸 = 가장 좋은 카드 · 뒤집기만 늦다 · 문구", last.isLast && last.others === 1 && last.best && parseFloat(last.flip) - parseFloat(last.prev) > 1 && last.tease === "마지막 한 장…!", JSON.stringify(last)); }
+ok("뽑기 결과 위에 발견 토스트가 뜨지 않는다", await page.evaluate(() => !document.querySelector(".reward-pop")));
 const newNames = r.labels.filter((l) => /새 동료/.test(l)).length;
 const dupShards = r.labels.filter((l) => /조각 \+/.test(l)).length;
 ok("새 동료/중복 조각 라벨 구분", newNames + dupShards === 10, `new=${newNames} dup=${dupShards}`);
@@ -108,6 +110,7 @@ ok("뽑은 동료가 heroes에 Lv.1로 기록", Object.entries(t.heroes).filter(
 await clickText(".gacha-close", "확인");
 await sleep(300);
 ok("연출 닫힘", await page.evaluate(() => !document.querySelector(".gacha-reveal")));
+if (newNames > 0) { await page.waitForSelector(".reward-pop", { timeout: 2000 }).catch(() => null); ok("닫은 뒤 발견 토스트가 차례로 뜬다", await page.evaluate(() => /새 동료 합류/.test(document.querySelector(".reward-pop")?.textContent ?? ""))); }
 // 편성 게이트: 상한 밖 동료를 강제로 heroes에 넣고 출전 시도 → 거부 토스트
 // 심기와 reload 를 한 evaluate 안에서 · 심은 엠버가 reload 뒤에도 남았는지 확인하고 덮였으면 다시(최대 3번) — 떠 있던 사냥터가 떠나며
 // 옛 저장을 써서 엠버가 사라지면 도감에 엠버 카드가 없어 '(안내 없음)' 으로 가끔 실패했다(2026-10-29)

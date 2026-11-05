@@ -30,3 +30,13 @@
 /* 이름이 두 줄이 되면서 중복 줄("중복 · 조각 +10")이 카드 아래로 잘렸다 — 그림을 조금 줄이고 한 줄로 */
 .gacha-reveal .gacha-card-front .titan-ally-art { --ally-size: 46px !important; width: 46px !important; }
 .gacha-reveal .gacha-card-front > small { font-size: 8.5px !important; white-space: nowrap; letter-spacing: -.02em; }
+/* 10연 마지막 한 장 — 카드는 제때 나오고 뒤집기만 늦춘다. 뒷면 빛과 떨림이 등급을 미리 흘린다 */
+.gacha-reveal .gacha-card.is-last { animation: gacha-pop .5s cubic-bezier(.2, .9, .3, 1.2) both, gacha-last-wobble 1.3s ease-in both; }
+.gacha-reveal-grid.reveal-all .gacha-card.is-last { animation: gacha-pop .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes gacha-last-wobble { 0%, 30%, 100% { rotate: 0deg; } 40% { rotate: -2deg; } 50% { rotate: 2deg; } 60% { rotate: -3deg; } 70% { rotate: 3deg; } 80% { rotate: -4deg; } 90% { rotate: 4deg; } }
+.gacha-card.is-last.rarity-ur .gacha-back-glow, .gacha-card.is-last.rarity-lr .gacha-back-glow { opacity: 1; box-shadow: 0 0 0 3px var(--t, #fcd34d), 0 0 28px var(--t, #fcd34d); }
+.gacha-last-tease { position: absolute; left: 50%; top: max(7%, 44px); z-index: 3; translate: -50% 0; padding: 4px 16px; border-radius: 999px; background: #2b1b10; color: #fde047; box-shadow: 0 0 0 2px #fbbf24; font-size: 18px; font-weight: 900; line-height: 1.25; white-space: nowrap; pointer-events: none; animation: gacha-last-tease 1.3s ease-out both; }
+@keyframes gacha-last-tease { 0% { opacity: 0; transform: scale(1.5); } 14% { opacity: 1; transform: scale(1); } 86% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .gacha-reveal .gacha-card.is-last { animation: gacha-pop .5s both; }
+}
