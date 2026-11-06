@@ -409,6 +409,8 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
   // 공격 차례에 몬스터 몸 가장자리까지 달려들어 치고, 무작위 시간 뒤 제자리로. 가끔은 붙은 채 한 번 더 친다. 원거리는 제자리에서 가끔 한 발 내딛는다.
   // 그림만 옮긴다(.ally-wander) — 피해 · 공격 주기 · 대열 자리는 그대로
   const [sortie, setSortie] = useState(0);
+  /** 달려들 때 위로 비켜 가는 칸(px, 음수) — 같은 줄의 주인공이 길을 막을 때만 */
+  const [sortieDy, setSortieDy] = useState(0);
   const sortieRef = useRef(0);
   const wanderRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -417,7 +419,7 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
     if (performance.now() < sortieRestUntilRef.current) return;
     const el = wanderRef.current, field = el?.closest(".titans-field");
     if (!el || !field) return;
-    let dx = 0;
+    let dx = 0, dy = 0;
     if (ranged) {
       if (Math.random() < 0.35) dx = 7 + Math.random() * 9;
     } else {
@@ -426,15 +428,25 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
       const ml = Number.parseFloat(getComputedStyle(field).getPropertyValue("--monster-ml")) || 0.22;
       // 몸 오른쪽(칸의 72%)이 몬스터 보이는 몸에 살짝 파고들 만큼 · 매번 조금씩 다르게
       dx = Math.max(0, Math.min(170, mon.left + mon.width * ml - (body.left + body.width * 0.72 - sortieRef.current) + 2 + Math.random() * 12));
+      // 같은 줄의 주인공이 길 위에 서 있으면 뒤 줄(위)로 돌아서 달려든다 (2026-11-06) — 근접 동료가 주인공 몸을 뚫고 지나가 겹침 68~73%(verify-play-art)
+      const hero = field.querySelector<HTMLElement>(".titans-hero")?.getBoundingClientRect(), fh = field.getBoundingClientRect().height;
+      if (hero && hero.width > 0) {
+        const hw = hero.width * 0.55, hx = hero.left + (hero.width - hw) / 2;
+        const bw = body.width * 0.45, bx = body.left + (body.width - bw) / 2 - sortieRef.current;
+        const sameRow = Math.abs(body.bottom - hero.bottom) <= fh * 0.06;
+        if (sameRow && bx + bw + dx > hx && bx < hx + hw) dy = -Math.round(fh * 0.06 + 8);
+      }
     }
     sortieRef.current = dx;
     setSortie(dx);
+    setSortieDy(dx > 0 ? dy : 0);
     if (dx === 0) return;
     // 때리고 바로 빠진다(타격 칸 뒤) — 공격 주기가 짧은 동료는 그래야 물러나는 게 보인다. 네 번에 한 번은 붙은 채 다음 공격까지 머문다
     const wait = ranged ? 520 : Math.random() < 0.3 ? 2400 : 340 + Math.random() * 200;
     const t = window.setTimeout(() => {
       sortieRef.current = 0;
       setSortie(0);
+      setSortieDy(0);
       // 물러나면 잠깐 쉰다 — 공격 주기가 짧은 동료가 쉼 없이 왕복하면 산만하다
       if (!ranged) sortieRestUntilRef.current = performance.now() + (800 + Math.random() * 1000) / Math.max(1, speed);
     }, wait / Math.max(1, speed));
@@ -511,7 +523,7 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
         - .ally-weapon은 무기 없는 베이스와 분리된 장착 파츠다. 근거리/원거리별
           피벗과 공격 궤적이 다르므로 몸을 흔들지 않고 무기만 자연스럽게 움직인다.
       */}
-      <div ref={wanderRef} className={`ally-wander ${sortie > 0 ? "is-sortie" : ""}`} style={sortie > 0 ? { translate: `${Math.round(sortie)}px 0` } : undefined}>
+      <div ref={wanderRef} className={`ally-wander ${sortie > 0 ? "is-sortie" : ""}`} style={sortie > 0 ? { translate: `${Math.round(sortie)}px ${sortieDy}px` } : undefined}>
       {/* 등급 발밑 빛(ui/tiers.css) — 전장에서만. 호흡 상자 밖이라 몸과 같이 까딱이지 않는다 */}
       {partySlot !== undefined && <i className="ally-tier-aura" aria-hidden="true" />}
       <div className="ally-idle" style={{ animationDelay: `${(allyIndex[id] ?? 0) * -0.27}s` }}>

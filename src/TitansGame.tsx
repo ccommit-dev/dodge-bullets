@@ -634,9 +634,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         if (hero) { const t = r.width * 0.15; return { left: r.left + t, right: r.right - t, width: r.width - 2 * t, bottom: r.bottom, top: r.top + r.height * 0.12 }; }
         const v = (el.querySelector<HTMLElement>(".ally-body") ?? el).getBoundingClientRect();
         // 달려든 동안(.ally-wander)은 제자리로 친다 — 안 그러면 공격할 때마다 비켜서기 값이 흔들린다
-        const wander = el.querySelector<HTMLElement>(".ally-wander"), sortie = wander ? Number.parseFloat(getComputedStyle(wander).translate) || 0 : 0;   // 물러나는 중에도 translate 가 남아 있다
-        const w = v.width * 0.45, left = v.left - sortie + (v.width - w) / 2;
-        return { left, right: left + w, width: w, bottom: v.bottom, top: v.top + v.height * 0.12 };
+        const wander = el.querySelector<HTMLElement>(".ally-wander");   // 물러나는 중에도 translate 가 남아 있다 · 주인공을 피해 위로 돌아가는 칸(세로)도 뺀다
+        const [sortie, sortieY] = wander ? (getComputedStyle(wander).translate || "0px").split(" ").map((t) => Number.parseFloat(t) || 0) : [0, 0];
+        const w = v.width * 0.45, left = v.left - sortie + (v.width - w) / 2, dy = sortieY ?? 0;
+        return { left, right: left + w, width: w, bottom: v.bottom - dy, top: v.top - dy + v.height * 0.12 };
       };
       // 바탕 상자(지금 --sep-dx 를 뺀 것) + 계산 중 dx — 여러 번 돌릴 때 매번 다시 재지 않고 dx 만 옮긴다
       const items = [hero, ...allies].filter((el): el is HTMLElement => !!el).map((el, k) => {
@@ -662,7 +663,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const nearMon = mon && it.el.classList.contains("combat-melee") ? monEdge - it.full : null;
         const nearLimit = (field.querySelector(".titans-hero.has-mount") ? 74 : 52) + 24;   /* 평소 거리(--ally-stand 22px)만큼 더 비켜설 수 있어야 주인공에 포개지 않는다 */   // 탈것을 타면 올라간 몸을 비켜설 자리가 더 필요하다 — 52 면 22% 포갠 채 막혔다
         const meleeMin = nearMon !== null && nearMon <= nearLimit ? nearMon - nearLimit : -Infinity;
-        const minDx = Math.max(fr.left + 38 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다 · 38px — 36 이면 큰 몬스터 앞에서 칸 왼쪽이 19.3px 로 전장 왼쪽 20px 약속을 넘었다
+        const minDx = Math.max(fr.left + 36 - it.art.left, meleeMin);   // 28 → 36px — 동료끼리 미는 일이 잦아져 왼쪽 끝까지 밀린 동료의 공격 칸(a2x)이 6px 나갔다 · 38 로 옮겼다가(20px 기준) 되돌렸다(2026-11-06): 2px 줄어든 자리만큼 큰 몬스터 앞 원거리 둘이 겹쳐(중앙값 9 → 11~13%) verify-formation 이 흔들렸다. verify-hunt-motion 은 이제 "맨 앞 원거리 ≥ 40 · 모두 화면 안"
         const maxDx = mon ? mon.left - 6 - it.art.right : fr.right - 28 - it.art.right;
         return Math.max(Math.min(minDx, 0), Math.min(Math.max(maxDx, 0), Math.max(-60, Math.min(60, dx))));
       };
