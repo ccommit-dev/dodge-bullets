@@ -15,7 +15,8 @@ const ok = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", na
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
-await page.goto(BASE, { waitUntil: "networkidle0" });
+// 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 떠나며 옛 저장을 써 편성이 덮였다(2026-11-06 혼자 8번 중 1번: 동료 렌더 0 · 표본 2)
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });
 await page.evaluate((h) => {
   localStorage.clear();
   const pk = `dodgebullets:progression:v1:${h}`;

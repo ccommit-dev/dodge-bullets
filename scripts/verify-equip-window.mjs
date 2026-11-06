@@ -62,7 +62,10 @@ await page.touchscreen.tap(staff.x, staff.y); await sleep(350);
 for (let i = 0; i < 20 && (await saved()).weapon === "spear"; i += 1) await sleep(200);
 ok("짧게 누르면 바로 장착", (await saved()).weapon === "staff", JSON.stringify(await saved()));
 await pickSlot("shoulder");
+// 칸을 고른 뒤 가방이 견갑으로 바뀔 때까지 · 놓은 뒤 저장이 바뀔 때까지(최대 4초) — 고정 0.2 · 0.35초는 단독 순서에서도 저장 전(scout)을 읽었다(2026-11-06)
+await page.waitForSelector('.equip-item[data-item="dragon"]', { timeout: 4000 }).catch(() => {});
 d = await dragTo('.equip-item[data-item="dragon"]', await center('.equip-slot[data-equip-slot="shoulder"]'));
+for (let i = 0; i < 20 && (await saved()).shoulder === "scout"; i += 1) await sleep(200);
 ok("견갑도 끌어다 낀다", (await saved()).shoulder === "dragon" && d.canDrop.join() === "shoulder", JSON.stringify(await saved()));
 const dr = await center('.equip-item[data-item="dragon"]');
 await page.touchscreen.tap(dr.x, dr.y); await sleep(350);
