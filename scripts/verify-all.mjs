@@ -28,10 +28,11 @@ const WEBKIT_SUITES = [
  *  묶음에서 빠진 것(2026-11-06 첫 시도): skill-shop(잠깐 뜨는 장착 연출) · season-refund(토스트) · volume(음악 게인 오르는 중에 읽음)이 실패, ui-merge 는 27→49초
  *  두 번째 시도: gacha(다시 끼우는 순간 컷인을 놓침 · 85→149초) · gear-sets(끌어다 낀 것이 안 먹음)도 묶음에서만 실패 → 단독. 묶음에서만 깨지면 검사를 고치지 말고 단독으로 옮긴다
  *  세 번째(묶음만 3개씩): shop(구매 반영 전에 읽음 · 102→157초) · shop-touch:webkit · equip-window(짧게 눌러 장착)도 실패 → 단독, 묶음은 2개씩.
- *  다른 세션의 브라우저 · 에뮬레이터가 같은 CPU 를 쓰는 날이 많아 3개씩은 수렴하지 않았다 */
+ *  다른 세션의 브라우저 · 에뮬레이터가 같은 CPU 를 쓰는 날이 많아 3개씩은 수렴하지 않았다
+ *  네 번째(전체 실행 2개씩): settings(오류 로그 복사 토스트를 0.3초 안에 못 봄)도 → 단독 */
 const POOLED = [
   "verify-retention", "verify-qa-unlock", "scan-readability", "verify-checklist", "verify-crystal-tree-play",
-  "verify-shop-touch", "verify-no-missing-art", "verify-settings", "inspect-mobile", "verify-content", "verify-web-frame",
+  "verify-shop-touch", "verify-no-missing-art", "inspect-mobile", "verify-content", "verify-web-frame",
   "verify-ia-move", "verify-ad-upsell", "verify-payments", "verify-mounts",
   "verify-idle-return", "probe-native-boot", "audit-anim2-motion", ...NODE_SUITES,
 ];

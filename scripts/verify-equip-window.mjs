@@ -58,6 +58,8 @@ d = await dragTo('.equip-item[data-item="bow"]', await center('.equip-slot[data-
 ok("틀린 칸은 빨갛게 · 거절", d.denied.join() === "helmet" && (await saved()).weapon === "spear", JSON.stringify(d));
 const staff = await center('.equip-item[data-item="staff"]');
 await page.touchscreen.tap(staff.x, staff.y); await sleep(350);
+// 고정 0.35초는 저장 직전을 읽었다(2026-11-06 전체 검사 — 단언은 spear, 바로 뒤 상세는 staff). 무기가 바뀔 때까지(최대 4초)
+for (let i = 0; i < 20 && (await saved()).weapon === "spear"; i += 1) await sleep(200);
 ok("짧게 누르면 바로 장착", (await saved()).weapon === "staff", JSON.stringify(await saved()));
 await pickSlot("shoulder");
 d = await dragTo('.equip-item[data-item="dragon"]', await center('.equip-slot[data-equip-slot="shoulder"]'));
