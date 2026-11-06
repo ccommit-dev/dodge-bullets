@@ -69,6 +69,8 @@ await page.evaluate(() => {
     for (const m of ms) for (const n of m.addedNodes) {
       if (!(n instanceof Element)) continue;
       const fr = f();
+      // 오라는 짧다 — 붙는 순간 자리와 그때 주인공 자리를 같이 적는다(2026-11-06: 기다렸다 재면 부하가 있을 때 이미 사라져 ["shot-impact"] 만 남았다)
+      if (n.matches(".skill-shot.shot-aura")) { const h = (document.querySelector(".titans-hero .titans-hero-facing") ?? document.querySelector(".titans-hero")).getBoundingClientRect(); window.__castLog.push({ type: "aura", x: parseFloat(n.style.left), y: parseFloat(n.style.top), hero: { x: h.left + h.width / 2 - fr.left, y: h.top + h.height / 2 - fr.top, w: h.width, h: h.height } }); }
       if (n.matches(".skill-shot.shot-impact")) window.__castLog.push({ type: "impact", x: parseFloat(n.style.left), y: parseFloat(n.style.top), t: performance.now() });
       if (n.matches(".titans-float.src-skill")) { const r = n.getBoundingClientRect(); window.__castLog.push({ type: "float", text: n.textContent, x: r.left + r.width / 2 - fr.left, y: r.top + r.height / 2 - fr.top, t: performance.now() }); }
       if (n.matches(".skill-shot.shot-shot")) { const cs = getComputedStyle(n); window.__castLog.push({ type: "shot", x: parseFloat(n.style.left), y: parseFloat(n.style.top), dx: parseFloat(cs.getPropertyValue("--dx")), dy: parseFloat(cs.getPropertyValue("--dy")), t: performance.now() }); }
@@ -92,7 +94,8 @@ const shot = (await page.evaluate(() => window.__castLog)).find((e) => e.type ==
 const near = (a, b, d) => Math.hypot(a.x - b.x, a.y - b.y) <= d;
 ok("투사체가 영웅 가까이(몸 반경 + 40px)에서 출발한다", !!shot && near(shot, g0.hero, Math.max(g0.hero.w, g0.hero.h) / 2 + 40), JSON.stringify({ shot, hero: g0.hero }));
 ok("투사체 끝이 몬스터 몸 안", !!shot && near({ x: shot.x + shot.dx, y: shot.y + shot.dy }, g0.mon, Math.max(g0.mon.w, g0.mon.h) / 2), JSON.stringify({ end: shot && { x: shot.x + shot.dx, y: shot.y + shot.dy }, mon: g0.mon }));
-ok("영웅 발밑 원소 오라", g0.shots.some((s) => s.kind === "shot-aura" && near(s, g0.hero, g0.hero.h)), JSON.stringify(g0.shots.map((s) => s.kind)));
+const aura = (await page.evaluate(() => window.__castLog)).find((e) => e.type === "aura");
+ok("영웅 발밑 원소 오라", !!aura && near(aura, aura.hero, aura.hero.h), JSON.stringify(aura ?? g0.shots.map((s) => s.kind)));
 ok("영웅 머리 위 시전 이름표(도토리 일격) · 화면 가운데 이름 컷인은 없다", /도토리 일격/.test(g0.tag) && !g0.cutinName, g0.tag);
 const log = await page.evaluate(() => window.__castLog);
 const shotT = log.find((e) => e.type === "shot")?.t ?? 0;
