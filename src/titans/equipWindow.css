@@ -1,0 +1,32 @@
+/* 장비창 2판 (2026-11-06, 사용자 참고 장비창) — 발판 빛 · 능력치 칩 · 등급순 정렬 · 대장간 단추 · 빈 가방 안내.
+   바탕 판 · 슬롯 · 가방 칸은 ui-polish.css 그대로 두고 더하기만 한다 */
+.equip-window .equip-hero { min-height: 226px; }
+.equip-window .equip-hero:has(.equip-stats) .equipped-character { bottom: 34px !important; }
+/* 발밑 빛 원판 — 주인공이 위에 선다(같은 칸의 뒤 형제라 위에 그려진다) */
+.equip-window .equip-pad {
+  position: absolute; left: 50%; bottom: 26px; width: 72%; height: 30px; translate: -50% 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(253, 224, 71, .55), rgba(251, 191, 36, .18) 55%, transparent 72%);
+  box-shadow: 0 0 0 2px rgba(253, 224, 71, .35), 0 0 18px rgba(251, 191, 36, .35);
+  animation: equip-pad-glow 2.4s ease-in-out infinite alternate;
+}
+@keyframes equip-pad-glow { from { opacity: .7; } to { opacity: 1; } }
+.equip-window .equip-stats { position: absolute; left: 6px; right: 6px; bottom: 6px; z-index: 2; display: flex; justify-content: center; gap: 6px; pointer-events: auto; }
+.equip-window .equip-stat {
+  display: inline-flex; align-items: baseline; gap: 5px; min-width: 0; padding: 3px 10px; border-radius: 999px;
+  background: rgba(22, 13, 7, .78); box-shadow: inset 0 0 0 1.5px rgba(255, 243, 214, .35); color: #fff3d6; white-space: nowrap;
+}
+.equip-window .equip-stat small { font-size: 11px !important; font-weight: 800; color: #e7cfa4 !important; }
+.equip-window .equip-stat b { font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.equip-window .equip-stat.stat-tap b { color: #fde68a; }
+.equip-window .equip-stat.stat-power b { color: #fff; }
+
+/* 가방 위 단추 줄 */
+.equip-window .equip-bag-bar { display: flex; justify-content: space-between; gap: 6px; }
+.equip-window .equip-bag-bar button {
+  min-height: 32px; padding: 0 12px; border-radius: 9px; border: 2px solid #160d07; font-size: 13px; font-weight: 900; white-space: nowrap;
+  background: linear-gradient(180deg, #fbbf24, #d97706); color: #2b1b10; box-shadow: 0 2px 0 #7c4a03;
+}
+.equip-window .equip-bag-bar .equip-sort:not(.on) { background: linear-gradient(180deg, #fff3d6, #e7cfa4); box-shadow: 0 2px 0 #8a7355; }
+.equip-window .equip-bag-bar button:active { translate: 0 1px; box-shadow: none; }
+.equip-window .equip-empty { grid-column: 1 / -1; margin: 0; padding: 14px 4px; text-align: center; color: #e7cfa4; font-size: 13px; font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .equip-window .equip-pad { animation: none; } }

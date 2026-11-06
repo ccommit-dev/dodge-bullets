@@ -1,0 +1,110 @@
+/* 원정 전투 화면 2판 (2026-11-06, 사용자: 참고 슈팅 게임 "이런 느낌으로 · 부드러운 조작감이 제일 중요")
+   ① 한 줄 상단바 — 왼쪽 일시정지 · 배속, 가운데 웨이브 · 레벨 막대(▲ 스테이지 진행), 오른쪽 귀환 코인 · 처치
+   ② 레벨업 = "무기 업그레이드" 머리띠 + 가로 세로 카드(이름 · 큰 아이콘 · 등급 점 · 설명 · 속성 표)
+   App.css · unify.css · weight.css 의 옛 알약 규칙을 덮으므로 App.tsx 에서 맨 뒤에 불러온다 */
+
+/* ── ① 상단바 ── */
+.sound-dock.in-battle { flex-direction: column; align-items: flex-start; gap: 6px; }
+.sound-dock.in-battle .battle-toggle:not(.speed-toggle) {
+  width: 44px; height: 44px; padding: 0; display: grid; place-items: center;
+  border-radius: 12px; border: 2px solid #fff3d6; background: linear-gradient(180deg, #4b2e1c, #2b1b10);
+  box-shadow: 0 3px 0 #160d07, 0 0 0 2px rgba(22, 13, 7, .55);
+}
+.sound-dock.in-battle .battle-toggle[aria-pressed="true"] { background: linear-gradient(180deg, #f2c232, #b98a16); }
+.pause-glyph { position: relative; width: 16px; height: 18px; }
+.pause-glyph::before, .pause-glyph::after { content: ""; position: absolute; top: 0; width: 5px; height: 18px; border-radius: 2px; background: #fff3d6; }
+.pause-glyph::before { left: 1px; }
+.pause-glyph::after { right: 1px; }
+.battle-toggle[aria-pressed="true"] .pause-glyph::before { left: 3px; width: 0; height: 0; border-radius: 0; background: none; border-left: 13px solid #2b1b10; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+.battle-toggle[aria-pressed="true"] .pause-glyph::after { display: none; }
+.sound-dock.in-battle .speed-toggle { min-width: 44px; height: 24px; padding: 0 6px; font-size: 12px; border-radius: 999px; }
+
+.hud .hud-left.hud-v2 {
+  flex: 1; max-width: none; margin: 10px 10px 0 64px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "wave cnt1" "lv cnt2" "extra extra";
+  column-gap: 8px; row-gap: 4px; align-items: center;
+}
+.hud .hud-left.hud-v2 > * { margin: 0; }
+.hud .hud-left.hud-v2 .hud-score {
+  grid-area: wave; justify-self: stretch; text-align: center;
+  padding: 5px 14px 6px; color: #fff3d6 !important; background: linear-gradient(180deg, #3b2415, #24160c) !important;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); border: 0 !important; box-shadow: none !important;
+  font-size: 15px; font-weight: 900; line-height: 1.2; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hud .hud-left.hud-v2 .hud-score em { font-style: normal; color: #fbbf24; }
+.hud .hud-left.hud-v2 .run-level { grid-area: lv; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; color: #fff3d6; background: none; }
+.hud .hud-left.hud-v2 .run-lv { font-size: 14px; font-weight: 900; color: #fff3d6; text-shadow: 0 1px 0 #160d07, 0 0 3px #160d07; }
+.hud .hud-left.hud-v2 .run-bars { position: relative; display: grid; gap: 2px; min-width: 0; }
+.hud .hud-left.hud-v2 .run-xp { width: 100%; height: 10px; border-radius: 3px; background: rgba(22, 13, 7, .72); box-shadow: inset 0 0 0 1.5px #160d07; }
+.hud .hud-left.hud-v2 .run-xp b { background: linear-gradient(180deg, #5eead4, #14b8a6); border-radius: 2px; }
+/* 스테이지 진행은 막대 아래 ▲ 표식 — 참고 화면의 웨이브 진행 화살표 */
+.hud .hud-left.hud-v2 .expedition-progress { position: relative; width: 100%; height: 7px; overflow: visible; background: none; border-radius: 0; }
+.hud .hud-left.hud-v2 .expedition-progress b { position: relative; height: 100%; background: none; }
+.hud .hud-left.hud-v2 .expedition-progress b::after { content: ""; position: absolute; right: -6px; top: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 7px solid #fff3d6; filter: drop-shadow(0 1px 0 #160d07); }
+.hud .hud-left.hud-v2 :is(.hud-coins, .hud-hint) {
+  display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 74px; height: 24px; padding: 0 9px 0 5px;
+  border-radius: 999px; background: rgba(22, 13, 7, .72) !important; color: #fff3d6 !important; border: 0 !important; box-shadow: none !important;
+  font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; text-shadow: none;
+}
+.hud .hud-left.hud-v2 .hud-coins { grid-area: cnt1; }
+.hud .hud-left.hud-v2 .hud-hint { grid-area: cnt2; }
+.hud .hud-left.hud-v2 .hud-coins b, .hud .hud-left.hud-v2 .hud-hint b { margin-left: auto; }
+.kill-glyph { width: 16px; height: 16px; flex: none; background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff3d6' d='M8 1C4.4 1 2 3.4 2 6.5c0 1.8.8 3.1 2 3.9V13h2v-1.5h1V13h2v-1.5h1V13h2v-2.6c1.2-.8 2-2.1 2-3.9C14 3.4 11.6 1 8 1z'/%3E%3Ccircle cx='5.6' cy='6.8' r='1.6' fill='%23160d07'/%3E%3Ccircle cx='10.4' cy='6.8' r='1.6' fill='%23160d07'/%3E%3C/svg%3E"); }
+.hud .hud-left.hud-v2 .hud-tower { grid-area: extra; justify-self: start; font-size: 12px; padding: 2px 8px; }
+.hud .hud-left.hud-v2 .hud-combo { grid-area: extra; justify-self: end; font-size: 13px; font-weight: 900; color: #fde047; text-shadow: 0 1px 0 #160d07, 0 0 4px #160d07; }
+
+/* 일시정지 창 — 사운드 · 사냥터로 */
+.pause-actions { display: flex; gap: 8px; justify-content: center; width: 100%; }
+.pause-actions .cta { flex: 1; min-width: 0; }
+
+/* ── ② 무기 업그레이드 ── */
+.perk-overlay { background: rgba(10, 6, 3, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.perk-overlay .overlay-content { background: none !important; border: 0 !important; box-shadow: none !important; max-width: 460px; width: 100%; padding: 0 12px; gap: 10px; }
+.perk-overlay .overlay-content::before, .perk-overlay .overlay-content::after { display: none !important; }
+.perk-overlay .brand { color: #fde047; letter-spacing: .14em; font-size: 12px; margin: 0; }
+.perk-overlay .perk-banner {
+  margin: 0; padding: 10px 26px 12px; font-size: 26px; font-weight: 900; color: #fff;
+  background: #160d07; border: 3px solid #fff3d6; border-radius: 6px;
+  box-shadow: -4px 0 0 #22d3ee, 4px 0 0 #f472b6, 0 0 0 6px rgba(22, 13, 7, .4), 0 0 26px rgba(251, 191, 36, .55);
+  animation: perk-banner-in .32s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+@keyframes perk-banner-in { from { transform: scale(1.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.perk-cards { display: grid; gap: 8px; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.perk-cards.n-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.perk-cards.n-1 { grid-template-columns: minmax(0, 220px); justify-content: center; }
+.perk-overlay .perk-choice {
+  display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; min-height: 0; text-align: center;
+  border-radius: 14px; border: 3px solid #fff3d6; overflow: hidden; color: #fff3d6;
+  background: #1c120a !important; box-shadow: 0 4px 0 #0c0704, 0 0 0 2px rgba(12, 7, 4, .6);
+  animation: perk-card-in .36s cubic-bezier(.2, 1.2, .4, 1) both; animation-delay: calc(var(--i, 0) * 70ms);
+}
+@keyframes perk-card-in { from { transform: translateY(26px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+.perk-overlay .perk-choice:active { transform: scale(.97); }
+.perk-overlay .perk-name { order: 0; display: block; padding: 7px 4px 6px; margin: 6px 6px 0; border-radius: 8px; background: #160d07; color: #fff; font-size: 13px; font-weight: 900; line-height: 1.2; word-break: keep-all; }
+.perk-overlay .perk-icon {
+  order: 1; width: auto; height: auto; margin: 0; padding: 12px 0 8px; display: grid; place-items: center; border-radius: 0;
+  background: radial-gradient(circle at 50% 55%, rgba(255, 255, 255, .55), transparent 62%), var(--card-tone, #64748b); box-shadow: none; border: 0;
+}
+.perk-overlay .perk-icon img, .perk-overlay .perk-icon svg { width: 56px; height: 56px; filter: drop-shadow(0 3px 0 rgba(22, 13, 7, .45)); }
+.perk-overlay .perk-pips { order: 2; display: flex; justify-content: center; gap: 5px; padding: 6px 0; background: #3b2415; }
+.perk-overlay .perk-pips i { width: 11px; height: 11px; transform: rotate(45deg); border-radius: 2px; background: #6b4e33; box-shadow: 0 0 0 1.5px #160d07; }
+.perk-overlay .perk-pips i.on { background: #fde047; }
+.perk-overlay .perk-copy { order: 3; flex: 1; display: grid; align-content: start; gap: 4px; padding: 8px 7px 6px; text-align: left; }
+.perk-overlay .perk-copy > b { display: flex; flex-wrap: wrap; gap: 3px; font-size: 11px; }
+.perk-overlay .perk-copy small { color: #fff3d6 !important; font-size: 12px; font-weight: 700; line-height: 1.35; word-break: keep-all; }
+.perk-overlay .perk-element { order: 4; align-self: center; margin: 0 0 9px; padding: 2px 10px; border-radius: 999px; background: #fff3d6; color: #160d07; font-size: 12px; font-weight: 900; box-shadow: inset 0 0 0 2px var(--el, #cbd5e1); }
+.perk-overlay .perk-choice.rarity-common { --card-tone: #64748b; }
+.perk-overlay .perk-choice.rarity-rare { --card-tone: #2f79c4; border-color: #93c5fd; }
+.perk-overlay .perk-choice.rarity-epic { --card-tone: #e3a008; border-color: #fde047; box-shadow: 0 4px 0 #0c0704, 0 0 18px rgba(253, 224, 71, .6); }
+.perk-overlay .perk-caption { margin: 2px 0 0; color: #fff; font-size: 14px; font-weight: 800; text-shadow: 0 1px 0 #160d07, 0 0 4px #160d07; }
+.perk-overlay .perk-caption b { color: #fbbf24; }
+.perk-overlay .perk-odds { margin: 0; opacity: .9; }
+@media (prefers-reduced-motion: reduce) {
+  .perk-overlay .perk-banner, .perk-overlay .perk-choice { animation: none; }
+}
+
+/* 카드 화면은 바닥 시트(App.css 좁은 화면 .game-overlay align-items: flex-end) 대신 가운데 — 참고 화면처럼 */
+.game-overlay.perk-overlay { align-items: center !important; padding: max(16px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom)) !important; }
+
+/* 화면에는 안 보이는 글자 — 아이콘 단추의 이름(화면 읽기 · 글자로 단추를 찾는 검사) */
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }

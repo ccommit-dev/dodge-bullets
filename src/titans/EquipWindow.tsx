@@ -3,22 +3,29 @@
  * 가운데 주인공 · 양옆 슬롯 6칸 · 아래 가방. 가방 아이템을 맞는 슬롯으로 끌어다 놓으면 끼워지고, 짧게 누르면 바로 낀다(한 손 · 접근성).
  * 슬롯을 누르면 가방이 그 부위 아이템만 보여 준다 — 세트 파츠까지 스무 개가 넘어 한 판에 다 깔면 길었다(equipment/gearSets).
  * 터치 스크롤과 안 싸우게 6px 움직여야 끌기로 친다. 고스트는 시트의 transform 에 갇히지 않게 body 포털.
+ * 2026-11-06 (사용자 참고 장비창): 주인공 아래 능력치 칩 · 발판 빛과 슬롯 연결선 · 등급순 정렬 · 대장간(강화) 단추 · 빈 가방 안내.
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Tier } from "./allyRoster";
-import { TIER_LABEL } from "./summonLevel";
+import { TIER_LABEL, TIER_RANK } from "./summonLevel";
+import "./equipWindow.css";
 
 export type EquipSlotId = "weapon" | "shoulder" | "helmet" | "armor" | "gloves" | "boots";
 export type EquipBagItem = { key: string; slot: EquipSlotId; label: string; level?: string; icon: string; on: boolean; pending?: boolean; title: string; className?: string; tier?: Tier };
 export type EquipSlotView = { id: EquipSlotId; label: string; icon: string | null; level?: string; tier?: Tier; active?: boolean };
+export type EquipStat = { key: string; label: string; value: string; title?: string };
 
 const DRAG_START_PX = 6;
 
-export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onShop, onSlotChange }: {
+export function EquipWindow({ slots, bag, hero, stats, footer, onEquip, onDenied, onShop, onForge, onSlotChange }: {
   slots: EquipSlotView[];
   bag: EquipBagItem[];
   hero: ReactNode;
+  /** 주인공 아래 능력치 칩 — 지금 실제로 쓰이는 값만 */
+  stats?: EquipStat[];
+  /** 강화하러 대장간으로 */
+  onForge?: () => void;
   footer: (slot: EquipSlotId) => ReactNode;
   /** 슬롯을 고를 때 — 아래 훈련 카드가 그 슬롯 것만 보인다 */
   onSlotChange?: (slot: EquipSlotId) => void;
@@ -27,7 +34,9 @@ export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onSho
   onShop?: () => void;
 }) {
   const [bagSlot, setBagSlot] = useState<EquipSlotId>("weapon");
-  const shown = bag.filter((b) => b.slot === bagSlot);
+  const [byTier, setByTier] = useState(false);
+  // 등급순 — 높은 등급 먼저, 같으면 원래 순서(낀 것 표시는 그대로)
+  const shown = bag.filter((b) => b.slot === bagSlot).map((b, i) => ({ b, i })).sort((x, y) => (byTier ? (TIER_RANK[y.b.tier ?? "N"] - TIER_RANK[x.b.tier ?? "N"]) : 0) || x.i - y.i).map((x) => x.b);
   const rootRef = useRef<HTMLElement | null>(null);
   const [drag, setDrag] = useState<{ item: EquipBagItem; x: number; y: number; over: EquipSlotId | null } | null>(null);
   const pressRef = useRef<{ item: EquipBagItem; id: number; x0: number; y0: number; dragging: boolean } | null>(null);
@@ -89,8 +98,16 @@ export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onSho
     <section ref={rootRef} className={`equip-window ${drag ? "is-dragging" : ""}`} aria-label="장비창">
       <div className="equip-doll">
         <div className="equip-col">{left.map(slotEl)}</div>
-        <div className="equip-hero">{hero}</div>
+        <div className="equip-hero"><i className="equip-pad" aria-hidden="true" />{hero}
+          {stats && stats.length > 0 && (
+            <div className="equip-stats">{stats.map((st) => <span key={st.key} className={`equip-stat stat-${st.key}`} title={st.title}><small>{st.label}</small><b>{st.value}</b></span>)}</div>
+          )}
+        </div>
         <div className="equip-col">{right.map(slotEl)}</div>
+      </div>
+      <div className="equip-bag-bar">
+        <button type="button" className={`equip-sort ${byTier ? "on" : ""}`} aria-pressed={byTier} onClick={() => setByTier((v) => !v)}>등급순 정렬</button>
+        {onForge && <button type="button" className="equip-forge-link" onClick={onForge}>대장간 강화</button>}
       </div>
       <div className="equip-bag" role="group" aria-label="가방 — 끌어다 슬롯에 놓거나 눌러서 장착">
         {shown.map((item) => (
@@ -112,6 +129,7 @@ export function EquipWindow({ slots, bag, hero, footer, onEquip, onDenied, onSho
             <span>{item.label}{item.level ? " " : ""}{item.level ? <em>{item.level}</em> : null}</span>
           </button>
         ))}
+        {shown.length === 0 && <p className="equip-empty">낄 수 있는 장비가 없어요</p>}
         {onShop && bagSlot !== "weapon" && (
           <button type="button" className="equip-shop-link" onClick={onShop}><b>＋</b><span>상점</span></button>
         )}

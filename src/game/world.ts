@@ -172,6 +172,17 @@ export function resizeWorld(world: GameWorld, width: number, height: number, dpr
   clampX(world);
 }
 
+/** 끌어서 이동 — 따라붙는 빠르기(/s)와 속도 상한 배수 (2026-11-06) */
+export const DRAG_FOLLOW = 26;
+export const DRAG_SPEED_MUL = 2.2;
+
+/** 주인공이 설 수 있는 가로 범위 — 끌기 기준점이 벽에 막힌 만큼 다시 잡을 때 App 도 쓴다 */
+export function playerXRange(world: GameWorld): { min: number; max: number } {
+  const { player, width, safeLeft, safeRight } = world;
+  const min = safeLeft + player.radius;
+  return { min, max: Math.max(min, width - safeRight - player.radius) };
+}
+
 function clampX(world: GameWorld): void {
   const { player, width, safeLeft, safeRight } = world;
   const minX = safeLeft + player.radius;
@@ -377,8 +388,11 @@ export function updateWorld(
     if (p.dashActiveMs > 0) {
       p.vx = p.facing * stats.dashSpeed;
     } else if (input.pointerActive) {
+      // 끈 만큼 따라붙는다 (2026-11-06, 사용자: "부드러운 조작감이 제일 중요") — pointerX 는 App 이 끈 거리로 잡은 목표 자리.
+      // 약 40ms 로 붙고(26/s · 60px 를 3px 안까지 115ms), 상한은 이동 속도 강화 ×2.2 — 예전 ×1 · 14/s 는 손가락보다 늦어 끌려 다녔다
       const dx = input.pointerX - p.x;
-      p.vx = Math.max(-stats.moveSpeed, Math.min(stats.moveSpeed, dx * 14));
+      const cap = stats.moveSpeed * DRAG_SPEED_MUL;
+      p.vx = Math.max(-cap, Math.min(cap, dx * DRAG_FOLLOW));
       if (Math.abs(dx) > 4) p.facing = dx > 0 ? 1 : -1;
     } else {
       let dx = 0;

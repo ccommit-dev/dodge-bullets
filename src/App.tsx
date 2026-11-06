@@ -17,6 +17,7 @@ import "./fx-sprites.css";   // 2026-10-16 무기·스킬 이펙트 스프라이
 import "./ui-polish.css";   // 2026-10-21 단순화 · 상점 판 · 자동 강화 — 반드시 마지막(아래 hunt-motion 은 사냥터 움직임만)
 import "./hunt-motion.css";   // 2026-10-28 몬스터 쓰러짐 · 무기별 공격 · 다가가 싸우기 — hit-a/b 의 !important 를 이겨야 해서 맨 뒤
 import "./ui/tiers.css";   // 2026-11-04 등급이 한눈에 — 동료 · 스킬 · 유물 틀 · 이름표 · 시전 폭발
+import "./game/expeditionHud.css";   // 2026-11-06 원정 전투 2판 — 한 줄 상단바 · 무기 업그레이드 카드 (옛 알약 규칙을 덮어 맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
@@ -107,7 +108,7 @@ import {
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
 import { applySkillLevels, collectionCooldownMul, LOADOUT_MAX, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillWeaponId } from "./game/skills";
-import { EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked } from "./game/skills";
+import { ELEMENT_COLOR, ELEMENT_LABEL, EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked, type Element as SkillElement } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import { LockIcon } from "./ui/LockIcon";
@@ -135,6 +136,7 @@ import {
   applyStats,
   beginStage,
   createWorld,
+  playerXRange,
   resetRun,
   resizeWorld,
   updateWorld,
@@ -157,6 +159,14 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
     x: ((clientX - rect.left) / rect.width) * canvas.clientWidth,
     y: ((clientY - rect.top) / rect.height) * canvas.clientHeight,
   };
+}
+
+/** 지금 귀환하면 받는 코인 — 귀환 보상과 전투 HUD 코인 칸이 같은 식을 쓴다 (2026-11-06) */
+function extractCoinValue(world: GameWorld, talents: CharacterProgress["talents"]): number {
+  const stage = getStage(world.stageIndex);
+  const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
+  return Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2
+    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24) * world.coinBonusMul * (hasTalent(talents, "gold-digger") ? TALENT_EFFECT.goldDiggerCoinMul : 1));   // coinBonusMul: 2택 사건 "통과" · 골드 디거 특성 (2026-10-13)
 }
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
@@ -272,6 +282,8 @@ function App() {
   const lastTsRef = useRef<number>(0);
   const insetsRef = useRef<SafeInsets>(normalizeInsets(null));
   const lastJumpAtRef = useRef(0);
+  /** 끌기 기준점 — 누른 순간의 손가락 x 와 주인공 x */
+  const dragAnchorRef = useRef({ finger: 0, hero: 0 });
   const lastSpaceAtRef = useRef(0);
   const dodgeRunIdRef = useRef(`boot-${Date.now()}`);
   /** 죽는 동작이 재생되는 0.65초 — 이 동안은 계속 '플레이 중'으로 그리되 입력·3택·재사망을 막는다 */
@@ -300,7 +312,7 @@ function App() {
   const shotSfxTsRef = useRef(0);
   /** 방어막 붕괴 햅틱 — 마지막으로 본 붕괴 수 */
   const breachSeenRef = useRef(0);
-  const [score, setScore] = useState(0);
+  const [, setScore] = useState(0);   // 전투 HUD 점수 알약은 뺐다(2026-11-06) — 결과 화면은 lastScore
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [coins, setCoins] = useState(0);
@@ -310,6 +322,9 @@ function App() {
   const hudLevelRef = useRef(1);
   const hudXpRef = useRef(0);
   const [runHud, setRunHud] = useState({ level: 1, pct: 0, tempo: 1 });
+  /** 전투 HUD 오른쪽 숫자 — 처치 수 · 지금 귀환하면 받는 코인 */
+  const [runTally, setRunTally] = useState({ kills: 0, coins: 0 });
+  const runTallyRef = useRef({ kills: 0, coins: 0 });
   const qaGodmodeRef = useRef(false);
   useEffect(() => { try { qaGodmodeRef.current = import.meta.env.DEV && localStorage.getItem("dodgebullets:qa-godmode") === "1"; } catch { qaGodmodeRef.current = false; } }, []);
   const [perkOptions, setPerkOptions] = useState<PerkDef[]>([]);
@@ -775,9 +790,12 @@ function App() {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       canvas.setPointerCapture(e.pointerId);
       const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY);
-      // 더블탭 점프는 없다 (2026-10-01) — 누른 자리로 이동만
+      // 더블탭 점프는 없다 (2026-10-01). 누른 자리로 가지 않고 끈 만큼 움직인다 (2026-11-06, 사용자: "부드러운 조작감이 제일 중요") —
+      // 예전엔 손가락 밑으로 달려가 손가락이 주인공을 가렸고, 화면 아무 데나 짚으면 순간 이동하듯 끌려갔다
       lastJumpAtRef.current = performance.now();
-      setPointer(inputRef.current, true, x, y);
+      const heroX = worldRef.current?.player.x ?? x;
+      dragAnchorRef.current = { finger: x, hero: heroX };
+      setPointer(inputRef.current, true, heroX, y);
       e.preventDefault();
     };
     const onPointerMove = (e: PointerEvent) => {
@@ -785,7 +803,15 @@ function App() {
       if (stateRef.current !== "playing") return;
       if (!inputRef.current.pointerActive) return;
       const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY);
-      setPointer(inputRef.current, true, x, y);
+      const a = dragAnchorRef.current, w = worldRef.current;
+      let target = a.hero + (x - a.finger);
+      if (w) {
+        // 벽에 막히면 기준점을 옮긴다 — 손가락을 되돌리는 즉시 반대로 움직이게
+        const { min, max } = playerXRange(w);
+        const clamped = Math.min(max, Math.max(min, target));
+        if (clamped !== target) { a.hero += clamped - target; target = clamped; }
+      }
+      setPointer(inputRef.current, true, target, y);
       e.preventDefault();
     };
     const onPointerUp = (e: PointerEvent) => {
@@ -898,6 +924,10 @@ function App() {
             hudLevelRef.current = world.runLevel;
             hudXpRef.current = world.runXp;
             setRunHud({ level: world.runLevel, pct: Math.min(100, Math.round((world.runXp / runXpToNext(world.runLevel)) * 100)), tempo: world.tempo });
+          }
+          {
+            const t = { kills: world.enemyKills, coins: extractCoinValue(world, progressRef.current.talents) };
+            if (t.kills !== runTallyRef.current.kills || t.coins !== runTallyRef.current.coins) { runTallyRef.current = t; setRunTally(t); }
           }
           const stage = getStage(world.stageIndex);
           const remain = Math.max(0, stage.durationMs - world.stageElapsedMs);
@@ -1610,8 +1640,7 @@ function App() {
     if (!world || stateRef.current !== "playing" || world.stageElapsedMs < 15_000) return;
     const stage = getStage(world.stageIndex);
     const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
-  const reward = Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2
-    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24) * world.coinBonusMul * (hasTalent(progress.talents, "gold-digger") ? TALENT_EFFECT.goldDiggerCoinMul : 1));   // coinBonusMul: 2택 사건 "통과" · 골드 디거 특성 (2026-10-13)
+    const reward = extractCoinValue(world, progress.talents);
     const growth = dodgeClearReward(world.stageIndex, world.maxCombo);
     soundRef.current.stopBgm();
     soundRef.current.playCoin();
@@ -1698,7 +1727,6 @@ function App() {
   const towerFloor = towerFloorOf(stageIndex);
   const expeditionElapsed = Math.max(0, stage.durationMs - stageRemainMs);
   const expeditionRatio = Math.min(1, expeditionElapsed / stage.durationMs);
-  const threatLevel = expeditionRatio < 0.25 ? 1 : expeditionRatio < 0.5 ? 2 : expeditionRatio < 0.78 ? 3 : 4;
 
   const dockStyle = {
     paddingTop: insets.top,
@@ -1897,11 +1925,12 @@ function App() {
         aria-hidden={appMode !== "dodge"}
       />
 
-      <div className="sound-dock" style={dockStyle}>
+      <div className={`sound-dock ${appMode === "dodge" && (gameState === "playing" || gameState === "paused") ? "in-battle" : ""}`} style={dockStyle}>
         {appMode === "profile" && settingsNode}
         {appMode === "dodge" && (
           <>
-            <button
+            {/* 전투 중엔 일시정지 · 배속만 왼쪽 위에 (2026-11-06, 참고 슈팅 화면) — 사운드 · 사냥터로는 일시정지 창 안으로 */}
+            {!(gameState === "playing" || gameState === "paused" || gameState === "perk") && <button
               type="button"
               className="sound-toggle"
               onClick={() => void toggleSound()}
@@ -1909,7 +1938,7 @@ function App() {
               aria-label={soundOn ? "사운드 끄기" : "사운드 켜기"}
             >
               {soundOn ? "사운드 On" : "사운드 Off"}
-            </button>
+            </button>}
             {(gameState === "playing" || gameState === "paused") && (
               <>
                 <button
@@ -1924,7 +1953,8 @@ function App() {
                     setGameState(next);
                   }}
                 >
-                  {gameState === "paused" ? "계속" : "일시정지"}
+                  <i className="pause-glyph" aria-hidden="true" />
+                  <span className="vh">{gameState === "paused" ? "계속" : "일시정지"}</span>
                 </button>
                 <button
                   type="button"
@@ -1943,14 +1973,14 @@ function App() {
                 </button>
               </>
             )}
-            <button
+            {!(gameState === "playing" || gameState === "paused" || gameState === "perk") && <button
               type="button"
               className="exit-toggle"
               onClick={handleBackToHub}
               aria-label="사냥터로 돌아가기"
             >
               사냥터로
-            </button>
+            </button>}
           </>
         )}
       </div>
@@ -2277,23 +2307,25 @@ function App() {
               paddingRight: insets.right,
             }}
           >
-            <div className="hud-left">
+            <div className="hud-left hud-v2">
+              {/* 한 줄 상단바 (2026-11-06, 사용자 참고 슈팅 화면) — 가운데 웨이브 · 레벨 막대, 오른쪽 코인 · 처치. 점수 · 위험도 알약은 뺐다 */}
+              <span className="hud-score">
+                {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return <>제 <em>{wv.index}</em>/{wv.count} 웨이브</>; })()}
+              </span>
+              <span className="run-level" title={`런 레벨 ${runHud.level}${runHud.tempo > 1 ? ` · 몬스터 속도 ×${runHud.tempo.toFixed(2)}` : ""}`}>
+                <b className="run-lv">Lv.{runHud.level}</b>
+                <span className="run-bars"><i className="run-xp"><b style={{ width: `${runHud.pct}%` }} /></i>
+                <i className="expedition-progress" aria-label={`스테이지 진행 ${Math.round(expeditionRatio * 100)}%`}><b style={{ width: `${expeditionRatio * 100}%` }} /></i></span>
+              </span>
+              <span className="hud-coins" title="지금 귀환하면 받는 코인" aria-label={`귀환 코인 ${runTally.coins}`}><RewardIcon kind="gold" size={18} /><b>{runTally.coins.toLocaleString()}</b></span>
+              <span className="hud-hint" title="처치" aria-label={`처치 ${runTally.kills}`}><i className="kill-glyph" aria-hidden="true" /><b>{runTally.kills}</b></span>
               {towerFloor > 0 && (
                 <span className="hud-tower">
                   성벽 {towerFloor}층
                   {towerFloor > progress.towerBestFloor && <em> NEW</em>}
                 </span>
               )}
-              <span className="hud-score">
-                {stageTag(stageIndex)} · {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return `WAVE ${wv.index}/${wv.count}`; })()}
-                {combo >= 2 ? ` · x${combo}` : ""}
-              </span>
-              <span className="hud-hint">
-                점수 {score}
-              </span>
-              <span className="threat-label">위험도 {"◆".repeat(threatLevel)}{"◇".repeat(4 - threatLevel)}</span>
-              <span className="run-level">Lv.{runHud.level}{runHud.tempo > 1 ? ` · 속도 ×${runHud.tempo.toFixed(2)}` : ""}<i className="run-xp"><b style={{ width: `${runHud.pct}%` }} /></i></span>
-              <i className="expedition-progress"><b style={{ width: `${expeditionRatio * 100}%` }} /></i>
+              {combo >= 2 && <span className="hud-combo">x{combo}</span>}
             </div>
             {combo >= 3 && <div className="combo-flash">NEAR x{combo}</div>}
             {pactOffer && (
@@ -2343,7 +2375,7 @@ function App() {
             }}
           >
             {/* 점프·대시·일제 사격은 없다 (2026-10-01, 아웃로 디펜스) — 이동은 화면을 누르거나 ←→, 활은 자동 */}
-            <span className="action-note">화면을 눌러 이동 · 활은 자동 · 방어막을 지키세요</span>
+            <span className="action-note">어디서든 끌어서 이동 · 활은 자동 · 방어막을 지키세요</span>
             <button
               type="button"
               className="action-btn extract-btn"
@@ -2381,6 +2413,10 @@ function App() {
             <p className="brand">PAUSED</p>
             <h1 className="title">일시정지</h1>
             <p className="subtitle">몬스터는 멈춰 있습니다. 장착 스킬은 계속 자동으로 나갑니다 — 재개하면 쿨타임이 이어집니다.</p>
+            <div className="pause-actions">
+              <button type="button" className="cta cta-ghost sound-toggle" onClick={() => void toggleSound()} aria-pressed={soundOn}>{soundOn ? "사운드 On" : "사운드 Off"}</button>
+              <button type="button" className="cta cta-ghost exit-toggle" onClick={handleBackToHub} aria-label="사냥터로 돌아가기">사냥터로</button>
+            </div>
             <button type="button" className="cta" onClick={() => { lastTsRef.current = 0; stateRef.current = "playing"; setGameState("playing"); }}>계속하기</button>
           </div>
         </div>
@@ -2389,9 +2425,52 @@ function App() {
       {appMode === "dodge" && gameState === "perk" && (
         <div className="game-overlay perk-overlay">
           <div className="overlay-content">
-            <p className="brand">LEVEL UP</p>
-            <h1 className="title">성장 선택</h1>
-            <p className="subtitle">런 레벨 {worldRef.current?.runLevel ?? runHud.level} 달성 — 이번 런에만 듣는 카드를 하나 고르세요. <b>장착</b>한 스킬 무기의 강화·<b>콤보</b>·<b>진화</b>가 함께 나옵니다. 레벨이 오를수록 몬스터가 빨라집니다 (×{(worldRef.current?.tempo ?? 1).toFixed(2)})</p>
+            <p className="brand">LEVEL UP · Lv.{worldRef.current?.runLevel ?? runHud.level}</p>
+            {/* 무기 업그레이드 (2026-11-06, 사용자 참고 슈팅 화면) — 가로 세로 카드 · 머리띠 · 아래 안내. 등급 점(일반 1 · 레어 2 · 에픽 3)과 속성 표는 카드 값 그대로 */}
+            <h1 className="title perk-banner">무기 업그레이드</h1>
+            <div className={`perk-cards n-${perkOptions.length}`}>
+            {perkOptions.map((perk, i) => {
+              const need = perk.needs?.[0];
+              const el: SkillElement | null = !need ? null : need === "basic" ? "basic" : (SKILL_BY_ID as Partial<Record<string, { element: SkillElement }>>)[need]?.element ?? null;
+              const pips = perk.rarity === "epic" ? 3 : perk.rarity === "rare" ? 2 : 1;
+              return (
+              <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id} rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => {
+                const world = worldRef.current;
+                if (world) {
+                  applyPerk(world, perk.id as PerkId);
+                  if (perk.rarity === "epic") world.epicPicks += 1;
+                  world.draftBoost = false;   // [선발 보급]은 한 번만 듣는다
+                }
+                trackEvent("upgrade", { content: "dodge", result: `${perk.rarity}:${perk.id}`, stage: (world?.stageIndex ?? 0) + 1 });
+                lastTsRef.current = 0;
+                stateRef.current = "playing";
+                setGameState("playing");
+                showBanner(`[${RARITY_LABEL[perk.rarity]}] ${perk.label}`, "이번 런 동안 적용", perk.rarity === "epic");
+              }}>
+                <b className="perk-name">{perk.label}</b>
+                  <span className="perk-icon">
+                    {PERK_SKILL_ICON[perk.id as PerkId]
+                      ? <img src={assetUrl(PERK_SKILL_ICON[perk.id as PerkId] === "basic" ? `dodge/weapons/icon-${progress.equippedWeaponKind}.png` : `dodge/skills/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={56} height={56} />
+                      : PERK_ICON[perk.id as PerkId] === "exp"
+                        ? <img src={assetUrl("ui/idle/exp-orb.png")} alt="" width={56} height={56} />
+                        : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={56} />}
+                  </span>
+                <span className="perk-pips" aria-label={`${RARITY_LABEL[perk.rarity]} 등급`}>{[0, 1, 2].map((k) => <i key={k} className={k < pips ? "on" : ""} />)}</span>
+                <span className="perk-copy">
+                  <b>
+                    <i className={`perk-rarity r-${perk.rarity}`}>{RARITY_LABEL[perk.rarity]}</i>
+                    {perk.combo && <i className="perk-combo">콤보</i>}
+                    {perk.evolution && <i className="perk-evo">진화</i>}
+                    {perk.learns && <i className="perk-learn">습득</i>}
+                  </b>
+                  <small>{perk.desc}</small>
+                </span>
+                <span className="perk-element" style={{ "--el": el ? ELEMENT_COLOR[el] : "#cbd5e1" } as CSSProperties}>{el ? ELEMENT_LABEL[el] : "공용"}</span>
+              </button>
+              );
+            })}
+            </div>
+            <p className="subtitle perk-caption">위에서 카드 하나를 골라 이번 원정에 <b>습득</b>하세요{(worldRef.current?.tempo ?? 1) > 1 ? ` · 몬스터 속도 ×${(worldRef.current?.tempo ?? 1).toFixed(2)}` : ""}</p>
             {(() => {
               // 스테이지가 깊을수록 상위 등급이 잘 나온다 — 지금 확률을 밝혀 둔다
               const odds = rarityOdds(worldRef.current?.stageIndex ?? 0);
@@ -2409,39 +2488,6 @@ function App() {
                 융통 · 카드 다시 뽑기 (이번 판 1회)
               </button>
             )}
-            {perkOptions.map((perk, i) => (
-              <button key={perk.id} type="button" className={`cta perk-choice perk-${perk.id} rarity-${perk.rarity}`} style={{ "--i": i } as CSSProperties} onClick={() => {
-                const world = worldRef.current;
-                if (world) {
-                  applyPerk(world, perk.id as PerkId);
-                  if (perk.rarity === "epic") world.epicPicks += 1;
-                  world.draftBoost = false;   // [선발 보급]은 한 번만 듣는다
-                }
-                trackEvent("upgrade", { content: "dodge", result: `${perk.rarity}:${perk.id}`, stage: (world?.stageIndex ?? 0) + 1 });
-                lastTsRef.current = 0;
-                stateRef.current = "playing";
-                setGameState("playing");
-                showBanner(`[${RARITY_LABEL[perk.rarity]}] ${perk.label}`, "이번 런 동안 적용", perk.rarity === "epic");
-              }}>
-                <span className="perk-icon">
-                  {PERK_SKILL_ICON[perk.id as PerkId]
-                    ? <img src={assetUrl(`dodge/skills/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={30} height={30} />
-                    : PERK_ICON[perk.id as PerkId] === "exp"
-                      ? <img src={assetUrl("ui/idle/exp-orb.png")} alt="" width={30} height={30} />
-                      : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={30} />}
-                </span>
-                <span className="perk-copy">
-                  <b>
-                    <i className={`perk-rarity r-${perk.rarity}`}>{RARITY_LABEL[perk.rarity]}</i>
-                    {perk.label}
-                    {perk.combo && <i className="perk-combo">콤보</i>}
-                    {perk.evolution && <i className="perk-evo">진화</i>}
-                    {perk.learns && <i className="perk-learn">습득</i>}
-                  </b>
-                  <small>{perk.desc}</small>
-                </span>
-              </button>
-            ))}
           </div>
         </div>
       )}

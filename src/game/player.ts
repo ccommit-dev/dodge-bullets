@@ -254,6 +254,8 @@ export function drawStickman(
     ctx.save();
     ctx.imageSmoothingQuality = "high";   // 780px 칸을 ~150 실픽셀로 줄인다 — 기본(low)은 거칠고 흐릿했다
     ctx.translate(p.x, p.y + p.radius);
+    // 가는 쪽으로 몸이 살짝 기운다 (2026-11-06, 끌어서 이동) — 발을 축으로 최대 5도. 멈추면 바로 선다
+    if (p.anim !== "dead") ctx.rotate(Math.max(-1, Math.min(1, p.vx / 900)) * 0.09);
     // 시트마다 기준 방향이 다르다: idle 시트는 왼쪽(-1), 검격 시트는 4프레임 모두
     // 오른쪽(+1)을 본다. 일괄 -1을 곱하면 검격이 바라보는 방향과 반대로 베어진다.
     const nativeFacing = EXPEDITION_NATIVE_FACING;   // 무기 시트도 대기처럼 오른쪽을 본다 (prompt: facing right)

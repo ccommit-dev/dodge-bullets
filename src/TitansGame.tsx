@@ -54,7 +54,7 @@ import { grantCharacterReward, loadCharacterProgress, QA_BUILD, qaGemsEnabled, t
 import { track as trackEvent } from "./analytics/events";
 import { loadBeatRpg } from "./game/storage";
 import { bestScoreOverall } from "./beat/rpg";
-import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
+import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import {
   BEAT_SKILL_BY_SLOT,
   IDLE,
@@ -1973,13 +1973,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     applyDamageRef.current = applyDamage;
   }, [applyDamage]);
 
-  const computeTapHit = useCallback(() => {
-    const now = performance.now();
+  /** 탭 기본 피해(버프 · 치명 전) — 타격과 장비창 능력치 칩이 같은 식을 쓴다 (2026-11-06) */
+  const tapBaseNow = useCallback(() => {
     const inv = saveRef.current.skillInventory;
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     // × 대장 사다리 탭 피해 — 2026-10-22 아처 키우기 3번 (번개 강화는 2026-10-28 삭제)
-    const base = WEAPON_EFFECTS[weaponKindRef.current].tapMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
+    return WEAPON_EFFECTS[weaponKindRef.current].tapMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul;   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
+  }, [forgedWeaponLevel]);
+
+  const computeTapHit = useCallback(() => {
+    const now = performance.now();
+    const inv = saveRef.current.skillInventory;
+    const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
+    const base = tapBaseNow();
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
@@ -1992,7 +1999,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }
     const crit = Math.random() < critChance;
     return { dmg: base * hm.tapMul * clone * (crit ? 3.2 * hm.critDmgMul : 1), crit, base: base * hm.tapMul };
-  }, [forgedWeaponLevel]);
+  }, [tapBaseNow]);
 
   const doTap = useCallback(
     (clientX?: number, clientY?: number) => {
@@ -4422,6 +4429,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <EquipWindow
               slots={slots}
               bag={bag}
+              stats={[
+                { key: "tap", label: "탭 피해", value: formatGold(Math.round(tapBaseNow())), title: "버프 · 치명 전 탭 한 번의 피해 — 무기 · 숙련 · 세트 · 패시브 · 사다리 · 결정 트리를 모두 곱한 값" },
+                { key: "power", label: "전투력", value: combatPower(character).toLocaleString(), title: "마이페이지 통합 전투력" },
+              ]}
+              onForge={() => onOpenContent("forge")}
               hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} />}
               footer={(slot) => (
                 <div className="equip-info">
