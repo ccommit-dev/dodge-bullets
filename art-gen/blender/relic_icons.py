@@ -14,11 +14,31 @@ from lib import bcommon as C
 from lib.beaver import spline, interp
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTDIR = os.path.join(ROOT, 'art-gen', 'out', 'b3d-relics')
+OUTDIR = os.environ.get('RELIC_OUT') or os.path.join(ROOT, 'art-gen', 'out', 'b3d-relics')   # 시험 렌더는 RELIC_OUT 으로 따로
 O = 0.022
+
+# 선명 모드 (2026-11-06, 사용자: "유물 아이콘을 더 강렬하고 갖고 싶게 · 특징에 맞게") — 유물을 그릴 때만 켠다(퀘스트 · 결정 트리 그림은 그대로).
+# 모양은 그대로 두고 색 채도 · 유광 코팅 · 금속 반짝임 · 발광 세기와 계열 림 라이트만 올린다. 세기는 등급(VIVID_K)
+VIVID = False
+VIVID_K = 1.0
+
+
+def _vivid_hex(c):
+    """채도를 올린 색 — HSV 채도 ×1.38 · 명도 ×1.05 (흰색 · 회색은 그대로)"""
+    import colorsys
+    h = c.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    hh, ss, vv = colorsys.rgb_to_hsv(r, g, b)
+    r, g, b = colorsys.hsv_to_rgb(hh, min(1.0, ss * 1.38), min(1.0, vv * 1.05))
+    return '#%02x%02x%02x' % (round(r * 255), round(g * 255), round(b * 255))
 
 
 def m(name, color, rough=0.75, metal=0.0, emit=None, es=0.0):
+    if VIVID and isinstance(color, str):
+        color = _vivid_hex(color)
+        emit = _vivid_hex(emit) if isinstance(emit, str) else emit
+        es = es * (2.0 + 0.6 * (VIVID_K - 1))
+        return C.principled(f'relicV_{name}_{color}_{metal}_{es}', color, rough=rough * 0.78, metal=metal, coat=0.35, emit=emit, emit_strength=es)
     return C.principled(f'relic_{name}_{color}_{metal}_{es}', color, rough=rough, metal=metal, coat=0.0, emit=emit, emit_strength=es)
 
 
@@ -27,6 +47,8 @@ def ob(name, bm, mat, outline=O):
 
 
 def metal_m(c):
+    if VIVID:
+        return m('metal', c, rough=0.24, metal=0.6)   # 0.82 는 반사할 환경이 없어 금이 갈색으로 어두워졌다
     return m('metal', c, rough=0.45, metal=0.55)
 
 
@@ -37,7 +59,7 @@ def glow(c, es=0.9):
 def gem(name, c, at, r=0.07):
     saved = C.FACET
     C.FACET = 6
-    ob(name, C.ellipsoid(at, (r, r * 0.6, r * 1.2)), m('gem', c, rough=0.25, emit=c, es=0.6), O * 0.5)
+    ob(name, C.ellipsoid(at, (r, r * 0.6, r * 1.2)), m('gem', c, rough=0.12 if VIVID else 0.25, emit=c, es=0.85 if VIVID else 0.6), O * 0.5)
     C.FACET = saved
 
 
@@ -1066,12 +1088,52 @@ for a in argv:
         names += [k for k in JOBS if k.startswith('tree-')]
     else:
         names.append(a)
+# 유물 계열 · 등급은 게임 표(src/titans/relics.ts)에서 읽는다 — 그림과 효과 수치가 한 곳을 본다
+import re as _re
+_REL = {}
+try:
+    with open(os.path.join(ROOT, 'src', 'titans', 'relics.ts'), encoding='utf-8') as _f:
+        for _id, _fam, _tier in _re.findall(r'def\("([a-z-]+)", "([a-z]+)", "([A-Z]+)"', _f.read()):
+            _REL[_id] = (_fam, _tier)
+except OSError:
+    pass
+FAMILY_RIM = {'fire': '#ff6a1a', 'frost': '#6cd2ff', 'gold': '#ffc23a', 'wind': '#3ff0c4', 'earth': '#8fdc4a', 'star': '#c08bff', 'water': '#3aa8ff'}
+TIER_K = {'N': 0.85, 'R': 1.0, 'SR': 1.15, 'SSR': 1.3, 'UR': 1.45, 'LR': 1.6}
+NO_VIVID = os.environ.get('RELIC_VIVID', '1') == '0'
+
+
+def vivid_lights(fam, k):
+    """계열색 림 둘(오른쪽 뒤 · 왼쪽 뒤) + 위에서 내리는 반짝임 — 등급이 높을수록 세다"""
+    col = FAMILY_RIM.get(fam, '#fff6e8')
+    for nm, loc, rot, e, sz in (('vrim_r', (2.4, 3.0, 2.0), (-62, 0, 145), 1700, 1.4), ('vrim_l', (-2.6, 2.8, 1.2), (-70, 0, -150), 1150, 1.2), ('vtop', (0.0, -1.2, 4.6), (12, 0, 0), 480, 1.2)):
+        L = bpy.data.lights.new(nm, 'AREA')
+        L.energy = e * k
+        L.size = sz
+        L.color = C.srgb(col if nm != 'vtop' else '#ffffff')[:3]
+        o = bpy.data.objects.new(nm, L)
+        bpy.context.scene.collection.objects.link(o)
+        o.location = loc
+        o.rotation_euler = Euler([math.radians(a) for a in rot])
+
+
 os.makedirs(OUTDIR, exist_ok=True)
 for name in names:
     fn, (yaw, elev), scale = JOBS[name]
     C.reset()
     C.setup_render(res=(512, 512), samples=40)
     C.lights()
+    fam, tier = _REL.get(name, (None, 'SR'))
+    VIVID = (name in _REL) and not NO_VIVID
+    VIVID_K = TIER_K.get(tier, 1.0)
+    if VIVID:
+        vivid_lights(fam, VIVID_K)
+        # 환경광을 낮추고 키를 올려 명암을 세게 — 장난감 조명의 평평함을 줄인다
+        _bg = bpy.context.scene.world.node_tree.nodes.get('Background')
+        if _bg:
+            _bg.inputs['Strength'].default_value = 0.4
+        _key = bpy.data.objects.get('key')
+        if _key:
+            _key.data.energy *= 1.25
     C.ortho_camera((0.0, 0.0), scale, yaw_deg=0, elev_deg=elev)
     C.FACET = 10
     try:
