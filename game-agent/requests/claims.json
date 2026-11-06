@@ -1,0 +1,102 @@
+[
+  {
+    "id": "attend-old-20",
+    "text": "이미 진행한 계정이 출석 첫날 보상을 받으면 보석이 20개 늘어난다",
+    "preset": "mid",
+    "click": "^DAY \\d+ 보상 받기",
+    "expect": { "path": "progression.redGems", "delta": 20 },
+    "answer": true,
+    "source": "src/AttendanceModal.tsx:52-59 · scripts/verify-settings.mjs"
+  },
+  {
+    "id": "attend-old-1000",
+    "text": "이미 진행한 계정이 출석 첫날 보상을 받으면 보석이 1000개 늘어난다",
+    "preset": "mid",
+    "click": "^DAY \\d+ 보상 받기",
+    "expect": { "path": "progression.redGems", "delta": 1000 },
+    "answer": false,
+    "source": "1000 은 새 계정만 (src/AttendanceModal.tsx:53)"
+  },
+  {
+    "id": "sound-on",
+    "text": "소리를 끈 사람이 설정에서 사운드를 누르면 소리가 켜진다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }],
+    "click": "^사운드",
+    "hint": "^설정$",
+    "expect": { "path": "settings.sound", "equals": "1" },
+    "answer": true,
+    "source": "src/App.tsx 사운드 토글(aria-pressed=soundOn) · dodge-bullets:soundEnabled"
+  },
+  {
+    "id": "sound-stays-off",
+    "text": "소리를 끈 사람이 설정에서 사운드를 눌러도 소리는 꺼진 채다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }],
+    "click": "^사운드",
+    "hint": "^설정$",
+    "expect": { "path": "settings.sound", "equals": "0" },
+    "answer": false,
+    "source": "위와 같음"
+  },
+  {
+    "id": "mypage-power",
+    "text": "마이페이지를 열면 통합 전투력이 보인다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }],
+    "click": "^마이페이지",
+    "expect": { "text": "통합 전투력" },
+    "answer": true,
+    "source": "src/CharacterStatus.tsx"
+  },
+  {
+    "id": "mypage-guild",
+    "text": "마이페이지를 열면 길드 정보가 보인다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }],
+    "click": "^마이페이지",
+    "expect": { "text": "길드" },
+    "answer": false,
+    "source": "길드는 없다(파견이 대체, src/titans/allies.ts:193)"
+  },
+  {
+    "id": "settings-more-orientation",
+    "text": "설정의 더 보기를 펼치면 화면 방향 항목이 있다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }, { "click": "^설정$" }],
+    "click": "^더 보기",
+    "expect": { "text": "화면 방향" },
+    "answer": true,
+    "source": "src/App.tsx · scripts/verify-settings.mjs(첫 화면엔 없고 더 보기에 있다)"
+  },
+  {
+    "id": "settings-more-delete",
+    "text": "설정의 더 보기를 펼치면 계정 삭제 항목이 있다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }, { "click": "^설정$" }],
+    "click": "^더 보기",
+    "expect": { "text": "계정 삭제" },
+    "answer": false,
+    "source": "src 에 '계정 삭제' 없음"
+  },
+  {
+    "id": "shop-package",
+    "text": "상점을 열면 패키지 탭이 있다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }],
+    "click": "^상점$",
+    "expect": { "text": "패키지" },
+    "answer": true,
+    "source": "src/TitansGame.tsx 상점 머리 탭"
+  },
+  {
+    "id": "shop-auction",
+    "text": "상점을 열면 경매장이 있다",
+    "preset": "mid",
+    "before": [{ "click": "^닫기$" }],
+    "click": "^상점$",
+    "expect": { "text": "경매장" },
+    "answer": false,
+    "source": "src 에 '경매장' 없음"
+  }
+]
