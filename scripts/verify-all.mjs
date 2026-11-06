@@ -53,7 +53,7 @@ const runSuite = ({ name, script, env }) => new Promise((resolve) => {
   const done = (status) => {
     const ok = status === 0 && !/\bFAIL\b|\d+ FAIL/.test(out) && !/Error:/.test(out.split("\n").slice(-6).join("\n"));
     const fails = out.split("\n").filter((l) => /^FAIL/.test(l));
-    if (!ok && !fails.length) fails.push(...[...out.split("\n").filter((l) => /Error/.test(l)).slice(0, 2), ...out.trim().split("\n").slice(-2)].map((l) => l.trim().slice(0, 200)));   // FAIL 줄 없이 죽으면(종료 코드 · Error:) 오류 줄 · 끝 줄
+    if (!ok && !fails.length) fails.push(...[...out.split("\n").filter((l) => /Error/.test(l)).slice(0, 2), ...out.split("\n").filter((l) => /file:.*scripts[\\/][^\\/]+\.mjs:\d+/.test(l)).slice(0, 1), ...out.trim().split("\n").slice(-2)].map((l) => l.trim().slice(0, 200)));   // FAIL 줄 없이 죽으면(종료 코드 · Error:) 오류 줄 · 끝 줄
     console.log(`${ok ? "PASS" : "FAIL"} ${name} (${((Date.now() - t0) / 1000).toFixed(0)}s)${fails.length ? "\n  " + fails.join("\n  ") : ""}`);
     if (!ok) failed.push(name);
     resolve();
