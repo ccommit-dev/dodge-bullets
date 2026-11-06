@@ -34,12 +34,13 @@ def _vivid_hex(c):
     return '#%02x%02x%02x' % (round(r * 255), round(g * 255), round(b * 255))
 
 
-def m(name, color, rough=0.75, metal=0.0, emit=None, es=0.0):
+def m(name, color, rough=0.75, metal=0.0, emit=None, es=0.0, matte=False):
+    """matte — 선명 모드에서도 유광 코팅을 입히지 않는다. 각진 평면 바위는 면 전체가 면광원을 통째로 반사해 짙은 갈색이 크림색으로 떴다(산의 심장)"""
     if VIVID and isinstance(color, str):
         color = _vivid_hex(color)
         emit = _vivid_hex(emit) if isinstance(emit, str) else emit
         es = es * (2.0 + 0.6 * (VIVID_K - 1))
-        return C.principled(f'relicV_{name}_{color}_{metal}_{es}', color, rough=rough * 0.78, metal=metal, coat=0.35, emit=emit, emit_strength=es)
+        return C.principled(f'relicV_{name}_{color}_{metal}_{es}{"_m" if matte else ""}', color, rough=rough if matte else rough * 0.78, metal=metal, coat=0.0 if matte else 0.35, emit=emit, emit_strength=es)
     return C.principled(f'relic_{name}_{color}_{metal}_{es}', color, rough=rough, metal=metal, coat=0.0, emit=emit, emit_strength=es)
 
 
@@ -1025,35 +1026,36 @@ def r_tempest_eye(_):
 
 # ── 대지 ──
 def r_mossy_totem(_):
-    ob('pole', C.tube([Vector((0, 0, -0.75)), Vector((0, 0, 0.5))], 0.22, seg=8), m('wood', '#9a7a52'))
+    ob('pole', C.tube([Vector((0, 0, -0.75)), Vector((0, 0, 0.5))], 0.3, seg=8), m('wood', '#9a7a52'))
     for z in (-0.35, 0.15):
-        ob(f'face{z}', C.box(Vector((0, -0.2, z)), (0.3, 0.06, 0.22)), m('face', WOOD_D), O * 0.6)
+        ob(f'face{z}', C.box(Vector((0, -0.28, z)), (0.42, 0.06, 0.26)), m('face', WOOD_D), O * 0.6)
         for sx in (-1, 1):
-            ob(f'eye{z}{sx}', C.ellipsoid(Vector((sx * 0.08, -0.24, z + 0.04)), (0.035, 0.02, 0.035)), glow('#7cd06a', 0.8), 0)
-    ob('moss', C.ellipsoid(Vector((0, 0, 0.52)), (0.28, 0.28, 0.12)), m('moss', LEAF))
+            ob(f'eye{z}{sx}', C.ellipsoid(Vector((sx * 0.11, -0.32, z + 0.04)), (0.045, 0.02, 0.045)), glow('#7cd06a', 0.8), 0)
+    ob('moss', C.ellipsoid(Vector((0, 0, 0.52)), (0.36, 0.36, 0.13)), m('moss', LEAF))
     # 5판 — 잎 머리장식 다섯 장, 이마 에메랄드, 금 띠 둘
     for k in range(5):
-        plume(f'lf{k}', Vector((0, 0.06, 0.55)), -56 + 28 * k, 0.26 if k != 2 else 0.3, 0.075, ('#4f9a30', '#7cd06a', '#9be86a', '#7cd06a', '#4f9a30')[k], y=0.0)
-    jewel('brow', '#5fe08a', Vector((0, -0.25, 0.33)), 0.06)
+        plume(f'lf{k}', Vector((0, 0.06, 0.55)), -60 + 30 * k, 0.28 if k != 2 else 0.32, 0.09, ('#4f9a30', '#7cd06a', '#9be86a', '#7cd06a', '#4f9a30')[k], y=0.0)
+    jewel('brow', '#5fe08a', Vector((0, -0.33, 0.34)), 0.07)
     for z in (-0.6, -0.1):
-        ob(f'band{z}', C.torus(Vector((0, 0, z)), 0.23, 0.03, seg=12, ring=5), metal_m(GOLD))
-        stud(f'bs{z}', Vector((0, -0.25, z)), 0.035)
+        ob(f'band{z}', C.torus(Vector((0, 0, z)), 0.31, 0.035, seg=12, ring=5), metal_m(GOLD))
+        stud(f'bs{z}', Vector((0, -0.33, z)), 0.04)
 
 
 def r_mountain_heart(_):
-    # 베이지 한 면이던 산을 톤이 다른 바위 덩어리(어두운 뒤 봉우리 · 밝은 앞 능선)로 쌓고, 심장은 금 테 큰 루비 · 거기서 뻗는 금맥 · 밑동 초록 결정
+    # 베이지 한 면이던 산을 톤이 다른 바위 덩어리(어두운 뒤 봉우리 · 밝은 앞 능선)로 쌓고(선명 조명이 거친 중간색을 두 배 가까이 밝혀 바탕을 짙은 갈색으로 둔다), 심장은 금 테 큰 루비 · 거기서 뻗는 금맥 · 밑동 초록 결정
     saved = C.FACET
     C.FACET = 6
-    ob('mtnR', C.cone(Vector((0.36, 0.14, -0.3)), 0.4, 0.0, 0.62, seg=5), m('rockD', '#64574f', rough=0.9))
-    ob('mtnL', C.cone(Vector((-0.38, 0.12, -0.34)), 0.36, 0.0, 0.5, seg=5), m('rockD', '#64574f', rough=0.9))
-    ob('mtn', C.cone(Vector((0, 0, -0.1)), 0.6, 0.0, 0.95, seg=5), m('rock', '#94806e', rough=0.9))
-    ob('ridge', C.cone(Vector((0.1, -0.1, 0.0)), 0.3, 0.0, 0.62, seg=4, rot=Euler((0, 0, math.radians(20)))), m('rockL', '#bba78f', rough=0.85), O * 0.6)
+    ob('mtnR', C.cone(Vector((0.36, 0.14, -0.3)), 0.4, 0.0, 0.62, seg=5), m('rockD', '#2f2622', rough=0.9, matte=True))
+    ob('mtnL', C.cone(Vector((-0.38, 0.12, -0.34)), 0.36, 0.0, 0.5, seg=5), m('rockD', '#2f2622', rough=0.9, matte=True))
+    ob('mtn', C.cone(Vector((0, 0, -0.1)), 0.6, 0.0, 0.95, seg=5), m('rock', '#4a3d34', rough=0.9, matte=True))
+    ob('ridge', C.cone(Vector((0.1, -0.1, 0.0)), 0.3, 0.0, 0.62, seg=4, rot=Euler((0, 0, math.radians(20)))), m('rockL', '#66564a', rough=0.85, matte=True), O * 0.6)
     for k, (x, z, h, ang) in enumerate(((-0.4, -0.47, 0.28, -28), (-0.27, -0.5, 0.2, -10), (0.42, -0.48, 0.24, 26))):
         ob(f'cry{k}', C.cone(Vector((x, -0.38, z + h / 2)), 0.065, 0.0, h, seg=5, rot=Euler((0, math.radians(ang), 0))), m('cry', '#5fe08a', rough=0.2, emit='#8fffb0', es=0.6), O * 0.5)
     C.FACET = saved
     ob('snow', C.cone(Vector((0, 0, 0.29)), 0.22, 0.0, 0.2, seg=5), m('snow', '#f4f8ff'), O * 0.5)
     for k, (dx, dz) in enumerate(((-0.24, 0.24), (0.2, 0.3), (-0.3, -0.12), (0.28, -0.16))):
-        ob(f'vein{k}', C.tube([Vector((0, -0.42, -0.2)), Vector((dx * 0.55, -0.4, -0.2 + dz * 0.55)), Vector((dx, -0.36, -0.2 + dz))], [0.022, 0.016, 0.006], seg=4), glow('#ffcf5a', 1.1), 0)
+        v = ob(f'vein{k}', C.tube([Vector((0, -0.42, -0.2)), Vector((dx * 0.55, -0.4, -0.2 + dz * 0.55)), Vector((dx, -0.36, -0.2 + dz))], [0.022, 0.016, 0.006], seg=4), glow('#ffcf5a', 1.1), 0)
+        v.visible_diffuse = v.visible_glossy = False   # 바위에 붙은 발광 줄이 면을 비춰 짙은 바위를 베이지로 밝혔다 — 빛나기만 하고 비추지는 않게
     jewel('heart', '#e0283c', Vector((0, -0.44, -0.2)), 0.15)
 
 
@@ -1144,10 +1146,10 @@ def r_galaxy_pearl(_):
 
 
 def r_aurora_orb(_):
-    ob('orb', C.ellipsoid(Vector((0, 0, 0.12)), (0.42, 0.42, 0.42)), m('glass', '#c8fff0', rough=0.15, emit='#9ff5dc', es=0.35))
+    ob('orb', C.ellipsoid(Vector((0, 0, 0.12)), (0.42, 0.42, 0.42)), m('glass', '#9fe8d8', rough=0.15, emit='#7fe0c8', es=0.25))
     # 5판 — 앞 줄 셋 대신 구슬을 감는 기운 고리 셋, 금 발톱 받침 + 보석
-    for k, (c, rx, rz) in enumerate((('#5eead4', 70, -20), ('#c9a0ff', 60, 25), ('#7fd8ff', 80, 5))):
-        ob(f'band{k}', C.torus(Vector((0, 0, 0.12)), 0.46 + 0.04 * k, 0.045, seg=24, ring=5, rot=Euler((math.radians(rx), math.radians(rz), 0))), glow(c, 1.2), O * 0.4)
+    for k, (c, rx, rz) in enumerate((('#2ee6c0', 70, -20), ('#b07cff', 60, 25), ('#4fc0ff', 80, 5))):
+        ob(f'band{k}', C.torus(Vector((0, 0, 0.12)), 0.46 + 0.04 * k, 0.062, seg=24, ring=5, rot=Euler((math.radians(rx), math.radians(rz), 0))), glow(c, 1.3), O * 0.4)
     ob('stand', C.cone(Vector((0, 0, -0.44)), 0.2, 0.34, 0.2, seg=10), metal_m('#e8b23a'))
     ob('foot', C.cone(Vector((0, 0, -0.6)), 0.36, 0.26, 0.12, seg=10), metal_m(GOLD_D))
     for k in range(4):
