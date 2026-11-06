@@ -45,6 +45,8 @@ ok("정산 모달", await page.evaluate(() => !!document.querySelector(".idle-mo
 await closeModal();
 let p = await prog();
 ok("C 워밍업 시작(warmupUntil 미래·일일 카운트 1)", p.warmupUntil > Date.now() && p.warmupDay.count === 1 && p.warmupDay.date === today, `until=${p.warmupUntil - Date.now()}ms count=${p.warmupDay?.count}`);
+// 저장(warmupUntil)이 끝나도 칩은 다음 렌더에 붙는다 — 고정 0.9초 뒤 바로 읽으면 전체 검사 부하에서 칩 전을 읽었다(2026-11-06). 칩이 붙을 때까지(최대 5초)
+await page.waitForSelector(".warmup-chip", { timeout: 5000 }).catch(() => {});
 let r = await page.evaluate(() => ({ chip: document.querySelector(".warmup-chip")?.textContent, preview: document.querySelector(".idle-preview-chip")?.textContent, bar: document.querySelector(".titans-stagebar")?.textContent?.slice(0, 160) }));
 ok("C 워밍업 칩 표시", /워밍업 ×2/.test(r.chip ?? ""), r.chip ?? `stagebar=${r.bar}`);
 ok("E 종료 예고 칩(첫 3세션)", /8시간 후 \+/.test(r.preview ?? ""), r.preview ?? `stagebar=${r.bar}`);
@@ -78,6 +80,8 @@ ok("B 추천 클릭 → 이벤트 센터 균열 탭으로", r.modal && r.riftTab
 for (let i = 0; i < 3; i += 1) { await clickText(".rift-event button", "균열 진입"); await sleep(500); }
 await clickText(".event-tabs button", "주간 도전");
 await sleep(400);
+// 진입은 게임이 차례 줄로 하나씩 저장한다 — 0.4초 뒤에 읽으면 다른 브라우저 부하가 있을 때 아직 2회째였다(2026-11-06). 균열 칸이 3이 될 때까지(최대 5초)
+await page.waitForFunction(() => [...document.querySelectorAll(".weekly-challenge article")].some((a) => /균열/.test(a.textContent) && /3 \//.test(a.querySelector("span")?.textContent ?? "")), { timeout: 5000 }).catch(() => {});
 r = await page.evaluate(() => ({ items: [...document.querySelectorAll(".weekly-challenge article")].map((a) => a.querySelector("b")?.textContent + " " + a.querySelector("span")?.textContent) }));
 ok("F 주간 도전 3종 + 균열 카운트 반영", r.items.length === 3 && r.items.some((t) => /균열/.test(t) && /3 \//.test(t)), r.items.join(" | "));
 await clickText("button", "닫기");
