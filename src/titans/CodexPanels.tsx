@@ -3,10 +3,10 @@
  * 그림이 큰 시트라 동료는 12장씩 쪽으로 나눠 한 번에 다 불러오지 않는다.
  */
 import { useState } from "react";
-import { assetUrl } from "../asset";
 import { ALLY_RARITY, ROLE_LABEL, ALLY_ROLE, RARITY_LABEL } from "./allies";
 import { HEROES } from "./model";
-import { RELICS, RELIC_MAX_STAR, relicIconUrl, relicStars, relicStatText, type RelicState } from "./relics";
+import { RELICS, RELIC_MAX_STAR, relicStars, relicStatText, type RelicState } from "./relics";
+import { RelicIcon } from "./RelicIcon";
 import { AllyArt } from "./SpriteArt";
 import { TIER_LABEL } from "./summonLevel";
 
@@ -59,7 +59,7 @@ export function RelicCodex({ relics, filter }: { relics: RelicState; filter: Own
           const stars = relicStars(relics, r.id);
           return (
             <div key={r.id} className={`codex-card rarity-${r.tier.toLowerCase()} ${stars >= 1 ? "owned" : "unowned"}`} data-relic={r.id}>
-              <span className="codex-card-art"><img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" loading="lazy" /></span>
+              <span className="codex-card-art"><RelicIcon id={r.id} lazy /></span>
               <b>{r.name}</b>
               <small>{TIER_LABEL[r.tier]}{stars >= 1 ? ` · ★${stars}/${RELIC_MAX_STAR}` : ""}</small>
               <small className="codex-card-stat">{relicStatText(r, Math.max(1, stars))}</small>

@@ -32,3 +32,7 @@
   .titans-field .hunt-stamp { animation-timing-function: linear; animation-name: hunt-stamp-still; }
   @keyframes hunt-stamp-still { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 }
+
+/* 황금사자 (2026-11-06) — 왼쪽을 보는 2판 시트에 금빛을 입힌다. 바깥 상자 필터는 시트 준비 동작 키프레임(a2-mon-prep)이 덮어 안 먹었다 — 시트 그림에 직접 */
+.titans-field.chest .titans-monster .titan-monster-art.anim2 { filter: none; }
+.titans-field.chest .titans-monster .titan-monster-art.anim2 > .monster-frames { filter: sepia(.85) saturate(2.1) brightness(.98) contrast(1.08) drop-shadow(0 0 1.2px rgba(30, 14, 4, 1)) drop-shadow(0 0 1px rgba(30, 14, 4, .85)) drop-shadow(0 0 10px rgba(251, 191, 36, .7)); }

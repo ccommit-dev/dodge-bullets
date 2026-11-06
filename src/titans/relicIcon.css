@@ -1,0 +1,88 @@
+/* 유물 아이콘 연출 (titans/RelicIcon.tsx, 2026-11-06) — 계열 색 --fc · 등급 단계
+   N 은은한 후광 · R 후광 + 계열 효과 · SR 짙은 후광 · SSR 회전 광선 · UR 빠른 광선 + 빛 쓸기 · LR 무지개 광선
+   움직임은 transform · opacity 만. 목록에 50개 넘게 깔려도 가볍게 — 효과 입자는 배경 그라디언트 한 장 */
+.relic-gem { --fc: #e2e8f0; --fc2: #fff; position: relative; display: inline-grid; place-items: center; isolation: isolate; line-height: 0;
+  /* 감싸는 칸이 grid · flex 로 늘려도 그림 크기에 붙어 있게 — 늘어나면 광선 · 후광이 카드 전체로 번졌다 */
+  width: max-content; height: max-content; flex: none; justify-self: center; align-self: center; }
+.relic-gem.fam-fire { --fc: #ff6a1a; --fc2: #ffd34d; }
+.relic-gem.fam-frost { --fc: #60c8ff; --fc2: #e0f7ff; }
+.relic-gem.fam-gold { --fc: #f5b81c; --fc2: #fff3b0; }
+.relic-gem.fam-wind { --fc: #2fd8b5; --fc2: #d5fff4; }
+.relic-gem.fam-earth { --fc: #7cc243; --fc2: #e9ffd0; }
+.relic-gem.fam-star { --fc: #b57cff; --fc2: #fff0ff; }
+.relic-gem.fam-water { --fc: #2f9bff; --fc2: #d8efff; }
+
+/* 그림 — 채도 · 대비를 올리고 진한 외곽선 + 계열 빛 */
+.relic-gem > img { position: relative; z-index: 2; filter: saturate(1.35) contrast(1.08) drop-shadow(0 0 1.2px rgba(30, 14, 4, .95)) drop-shadow(0 2px 0 rgba(30, 14, 4, .35)); }
+.relic-gem:is(.rg-sr, .rg-ssr, .rg-ur, .rg-lr) > img { filter: saturate(1.45) contrast(1.1) brightness(1.04) drop-shadow(0 0 1.2px rgba(30, 14, 4, .95)) drop-shadow(0 0 7px var(--fc)); }
+
+/* 후광 — 계열 색 원 */
+.relic-gem > .rg-aura { position: absolute; inset: -14%; z-index: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 50% 52%, var(--fc2) 0%, color-mix(in srgb, var(--fc) 70%, transparent) 30%, transparent 66%); opacity: .55; }
+.relic-gem.rg-n > .rg-aura { opacity: .32; }
+.relic-gem:is(.rg-sr, .rg-ssr) > .rg-aura { opacity: .78; }
+.relic-gem:is(.rg-ur, .rg-lr) > .rg-aura { opacity: .95; animation: rg-pulse 1.8s ease-in-out infinite alternate; }
+
+/* 회전 광선 — SSR 부터 */
+.relic-gem > .rg-rays { display: none; position: absolute; inset: -30%; z-index: 1; border-radius: 50%; pointer-events: none; opacity: .55;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--fc2) 85%, transparent) 0deg 7deg, transparent 7deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%); }
+.relic-gem:is(.rg-ssr, .rg-ur, .rg-lr) > .rg-rays { display: block; animation: rg-spin 9s linear infinite; }
+.relic-gem.rg-ur > .rg-rays { opacity: .7; animation-duration: 6s; }
+.relic-gem.rg-lr > .rg-rays { opacity: .8; animation-duration: 5s;
+  background: repeating-conic-gradient(from 0deg, #ff7aa8 0deg 6deg, transparent 6deg 20deg, #ffe066 20deg 26deg, transparent 26deg 40deg, #6ee7b7 40deg 46deg, transparent 46deg 60deg, #7cc4ff 60deg 66deg, transparent 66deg 80deg, #c4a1ff 80deg 86deg, transparent 86deg 100deg); }
+
+/* 계열 효과 — R 부터. 입자 몇 개를 그라디언트로 그려 한 칸으로 움직인다 */
+.relic-gem > .rg-fx { display: none; position: absolute; inset: -6%; z-index: 3; pointer-events: none; }
+.relic-gem:not(.rg-n) > .rg-fx { display: block; }
+/* 불 — 떠오르는 불씨 */
+.relic-gem.fam-fire > .rg-fx { background:
+  radial-gradient(circle, #ffe08a 0 2px, transparent 3px) 22% 78% / 100% 100% no-repeat,
+  radial-gradient(circle, #ff8a3a 0 2.5px, transparent 3.5px) 74% 70% / 100% 100% no-repeat,
+  radial-gradient(circle, #ffd34d 0 1.8px, transparent 2.8px) 58% 88% / 100% 100% no-repeat;
+  animation: rg-rise 1.6s ease-in infinite; }
+/* 서리 · 별 — 반짝이는 점 */
+.relic-gem:is(.fam-frost, .fam-star, .fam-gold) > .rg-fx { background:
+  radial-gradient(circle, #fff 0 1.6px, transparent 2.6px) 16% 24% / 100% 100% no-repeat,
+  radial-gradient(circle, var(--fc2) 0 2.2px, transparent 3.2px) 82% 30% / 100% 100% no-repeat,
+  radial-gradient(circle, #fff 0 1.4px, transparent 2.4px) 70% 84% / 100% 100% no-repeat,
+  radial-gradient(circle, var(--fc2) 0 1.8px, transparent 2.8px) 26% 80% / 100% 100% no-repeat;
+  animation: rg-twinkle 1.4s ease-in-out infinite alternate; }
+/* 바람 · 대지 — 도는 결 */
+.relic-gem:is(.fam-wind, .fam-earth) > .rg-fx { border-radius: 50%; inset: -10%;
+  background: conic-gradient(from 0deg, transparent 0deg 300deg, color-mix(in srgb, var(--fc2) 90%, transparent) 330deg, transparent 360deg);
+  -webkit-mask: radial-gradient(circle, transparent 54%, #000 56% 62%, transparent 64%); mask: radial-gradient(circle, transparent 54%, #000 56% 62%, transparent 64%);
+  animation: rg-spin 2.6s linear infinite; }
+/* 물 — 떠오르는 물방울 */
+.relic-gem.fam-water > .rg-fx { background:
+  radial-gradient(circle, transparent 0 1.6px, #d8efff 1.8px 2.6px, transparent 3px) 24% 82% / 100% 100% no-repeat,
+  radial-gradient(circle, transparent 0 2px, #9fd4ff 2.2px 3px, transparent 3.4px) 76% 76% / 100% 100% no-repeat;
+  animation: rg-rise 2.2s ease-in infinite; }
+
+/* 빛 쓸기 — UR · LR */
+.relic-gem > .rg-shine { display: none; position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; border-radius: 18%;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .55) 50%, transparent 62%) no-repeat; background-size: 260% 100%; background-position: 160% 0; }
+.relic-gem:is(.rg-ur, .rg-lr) > .rg-shine { display: block; animation: rg-shine 2.8s ease-in-out infinite; }
+
+@keyframes rg-spin { to { transform: rotate(360deg); } }
+@keyframes rg-pulse { from { transform: scale(.94); } to { transform: scale(1.06); } }
+@keyframes rg-rise { 0% { transform: translateY(6%); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-30%); opacity: 0; } }
+@keyframes rg-twinkle { from { opacity: .25; transform: scale(.92); } to { opacity: 1; transform: scale(1.04); } }
+@keyframes rg-shine { 0%, 55% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
+
+/* 목록에선 일반 · 희귀는 멈춘 채(가볍게) — 움직임은 영웅 이상 */
+.relic-row .relic-gem:is(.rg-n, .rg-r) > .rg-fx { animation: none; opacity: .7; }
+@media (prefers-reduced-motion: reduce) {
+  .relic-gem > :is(.rg-aura, .rg-rays, .rg-fx, .rg-shine) { animation: none !important; }
+}
+
+/* 뽑기 결과 — 아이콘을 크게 */
+.relic-draw-item .relic-gem > img { width: 64px !important; height: 64px !important; }
+/* 뽑기 결과 카드는 세로로 길다 — 둥근 칸용 초월 고리(tiers.css ::before, 회전)가 타원으로 돌며 카드 밖으로 큰 원을 그렸다. 광선은 아이콘이 맡는다 */
+.relic-draw-item.relic-outline.rarity-lr::before { display: none !important; }
+/* 초월 등급 토큰은 둥근 판(--tf-radius 50% · closest-side 원)이라 세로 카드에선 타원이 됐다 — 뽑기 카드만 무지개 테두리 사각 카드로 */
+.relic-draw-reveal .relic-draw-item.relic-outline.rarity-lr {
+  border-radius: 14px !important; border: 3px solid transparent !important;
+  background: linear-gradient(180deg, #f5f3ff, #ddd6fe 55%, #c4b5fd) padding-box, linear-gradient(110deg, #5eead4, #a78bfa, #f0abfc, #fde047, #4ade80) border-box !important;
+  box-shadow: 0 0 14px rgba(167, 139, 250, .85), 0 0 0 1px rgba(59, 36, 21, .45) !important;
+}

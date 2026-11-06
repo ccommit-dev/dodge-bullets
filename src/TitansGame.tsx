@@ -91,6 +91,7 @@ import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questB
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
 import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_SHARDS_PER_STAR, addRelicSpare, consumeRelicSpare, relicMerged, relicSpareUsable, setActive, type RelicBanner, type RelicId } from "./titans/relics";
+import { RelicIcon } from "./titans/RelicIcon";
 import type { Tier as RelicTierRank } from "./titans/allyRoster";
 import "./titans/skillTab.css";
 import "./titans/uiMerge.css";
@@ -5043,7 +5044,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   return (
                     <Fragment key={banner}>
                       <article className={`titans-card premium-product-card relic-draw-product  draw-row banner-${banner}`} data-banner={banner}>
-                        <span className={`relic-product-thumb rarity-${topTier.toLowerCase()}`} aria-hidden="true"><img src={assetUrl(relicIconUrl(face.id))} alt="" /></span>
+                        <span className={`relic-product-thumb rarity-${topTier.toLowerCase()}`} aria-hidden="true"><RelicIcon id={face.id} /></span>
                         <div>
                           <strong>{RELIC_BANNER_LABEL[banner]} 유물</strong>
                           <span className="draw-row-sub">{open > 0 ? <>{TIER_LABEL[bannerTiers[0]]} ~ {TIER_LABEL[topTier]} · 보유 {ownedInPool}/{pool.length}</> : "모두 ★5 로 모았어요"}</span>
@@ -5062,7 +5063,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                               <h5><b>{TIER_LABEL[t]}</b><span>{((tierRates[t] ?? 0) * 100).toFixed(1)}%</span></h5>
                               <ul className="relic-rates">
                                 {rates.filter((x) => relicDef(x.id).tier === t).map((x) => (
-                                  <li key={x.id}><img src={assetUrl(relicIconUrl(x.id))} alt="" aria-hidden="true" /><span>{RELIC_FAMILY_LABEL[relicDef(x.id).family]} · {relicDef(x.id).name}</span><b>{x.rate > 0 ? `${(x.rate * 100).toFixed(2)}%` : "완성 · 제외"}</b></li>
+                                  <li key={x.id}><RelicIcon id={x.id} /><span>{RELIC_FAMILY_LABEL[relicDef(x.id).family]} · {relicDef(x.id).name}</span><b>{x.rate > 0 ? `${(x.rate * 100).toFixed(2)}%` : "완성 · 제외"}</b></li>
                                 ))}
                               </ul>
                             </section>
@@ -5664,7 +5665,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 const stars = relicStars(character.relics, id);
                 return (
                   <div key={id} className={`relic-draw-item relic-outline rarity-${relicDef(id).tier.toLowerCase()}`} data-relic={id} data-tier={relicDef(id).tier} style={{ animationDelay: `${k * 90}ms` } as CSSProperties}>
-                    <img src={assetUrl(relicIconUrl(id))} alt="" aria-hidden="true" />
+                    <RelicIcon id={id} />
                     <span>{relicDef(id).name}</span>
                     <small>조각 +{n} · {stars >= 1 ? "★".repeat(stars) : "★ 없음"} · 남은 {character.relicSpare[id] ?? 0}</small>
                   </div>

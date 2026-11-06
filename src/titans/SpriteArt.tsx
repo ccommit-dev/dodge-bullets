@@ -245,7 +245,9 @@ export function MonsterArt({
   // 띠는 이미 왼쪽을 보게 만들어 두어 face-flip 을 쓰지 않는다. 쓰러짐은 예전 처치 그림
   const art = pet && hasMonsterAnim(`pet-${kind}`) ? `pet-${kind}` : idle.split("/").pop()?.replace(/.png$/, "") ?? "";
   // 애니메이션 2판 (2026-10-19) — 대기 4 · 예비 2 · 덤빔 4 · 피격 2 칸 시트를 CSS steps 로. 오른쪽을 보게 렌더한 4종은 face-flip 이 뒤집는다
-  if (!golden && hasMonsterAnim(art)) {
+  // 황금사자도 같은 시트로 (2026-11-06, 사용자: "황금사자 몬스터가 왼쪽을 바라보는 것처럼") — 예전엔 황금이면 시트를 건너뛰어
+  // 옛 정면 원화(golden-lion-clean.png, 다른 그림체)에 금빛 필터만 씌웠다. 금빛은 그대로 .titans-field.chest 필터가 입힌다
+  if (hasMonsterAnim(art)) {
     // 쓰러짐 (2026-10-27 사용자: "몬스터 죽는 애니를 원래 리소스와 비슷하게") — 예전엔 쓰러지는 순간 2판 시트를 숨기고 옛 처치 그림(다른 그림체)으로 바꿨다.
     // 이제 같은 시트의 피격 줄을 한 번 보여 주고(전장 .phase-monster-death 의 튕겨 쓰러짐 · 흐려짐이 움직임을 맡는다) 그림은 바꾸지 않는다
     const a: MonsterAnimAction = state === "defeat" ? "hit" : action === "prepare" ? "prepare" : state === "attack" || action === "attack" ? "attack" : state === "hit" ? "hit" : "idle";   // 덤비는 중엔 맞아도 덤빔 줄을 끝까지

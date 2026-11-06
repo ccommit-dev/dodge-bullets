@@ -4,7 +4,8 @@ import { formatGold } from "./titans/model";
 import { formatDuration, type IdleBottleneck, type IdleYield } from "./progression/idle";
 import { CurrencyIcon } from "./ui/CurrencyIcon";
 import { SkillIcon } from "./ui/SkillIcon";
-import { relicDef, relicIconUrl, type RelicId } from "./titans/relics";
+import { relicDef, type RelicId } from "./titans/relics";
+import { RelicIcon } from "./titans/RelicIcon";
 import { SKILLS, type TitanSkillId } from "./titans/model";
 import { sfxIdleClaim } from "./ui/sfx";
 
@@ -101,7 +102,7 @@ export function IdleReturnModal({ result, drops, stage, onClaim, adOption = null
           <article><img src={assetUrl("ui/idle/exp-orb.png")} alt="" aria-hidden="true" /><b>{exp.toLocaleString()}</b><span>경험치</span></article>
           {materials > 0 && <article><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /><b>{materials.toLocaleString()}</b><span>강화석</span></article>}
           {result.allyShardDrops > 0 && <article><img className="idle-shard-orb" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><b>{result.allyShardDrops}</b><span>동료 조각</span></article>}
-          {relicRows.map(([id, n]) => <article key={`relic-${id}`} className="is-rare" data-drop={`relic-${id}`}><img src={assetUrl(relicIconUrl(id))} alt="" aria-hidden="true" /><b>×{n}</b><span>{relicDef(id).name} 조각</span></article>)}
+          {relicRows.map(([id, n]) => <article key={`relic-${id}`} className="is-rare" data-drop={`relic-${id}`}><RelicIcon id={id} /><b>×{n}</b><span>{relicDef(id).name} 조각</span></article>)}
           {skillRows.map(([id, n]) => <article key={`skill-${id}`} className="is-rare" data-drop={`skill-${id}`}><SkillIcon id={id} size={36} /><b>×{n}</b><span>{SKILLS.find((s) => s.id === id)?.name ?? id} 카드</span></article>)}
         </div>
         <button type="button" className="cta idle-claim" onClick={claim}>받기</button>

@@ -1,7 +1,7 @@
-import { assetUrl } from "../asset";
+import { RelicIcon } from "./RelicIcon";
 import "./relicGacha.css";
 import {
-  RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, familyOwned, relicIconUrl, relicSpareUsable, relicStars, relicStatText, setActive, setFull, type RelicId, type RelicState,
+  RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, familyOwned, relicSpareUsable, relicStars, relicStatText, setActive, setFull, type RelicId, type RelicState,
 } from "./relics";
 import { TIERS, TIER_LABEL } from "./summonLevel";
 /* 2026-10-28 (사용자: "사냥터 스킬탭, 유물탭에 등급별 이 내용은 삭제하고 … 윤곽선으로만 등급 참고") — 등급 글자 칩을 걷고 아이콘 윤곽선 색(동료 등급색)으로만.
@@ -69,7 +69,7 @@ export function RelicTabPanel({ relics, spare, onConsume, chance, onCodex }: Pro
                 return (
                   <li key={r.id} className={`quest-row relic-row rarity-${r.tier.toLowerCase()}`} data-relic={r.id} data-tier={r.tier}>
                     <span className={`quest-icon relic-outline rarity-${r.tier.toLowerCase()}`} title={`${TIER_LABEL[r.tier]} 유물`}>
-                      <img src={assetUrl(relicIconUrl(r.id))} alt="" aria-hidden="true" />
+                      <RelicIcon id={r.id} />
                       <b>★{stars}</b>
                     </span>
                     <span className="quest-main">
