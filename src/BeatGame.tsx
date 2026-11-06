@@ -878,15 +878,23 @@ export function BeatGame({
               {slots.map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
                 const recommended = slot.stageIndex === Math.min(unlocked, totalStages - 1);
+                // 곡 카드는 button 이 아니라 div(role=button) — 안에 난도 · 출격 강화 칩 button 이 있어 button 안 button(HTML 규칙 위반,
+                // React 경고)이었다(2026-11-06 탐색 에이전트가 찾음). 카드 아무 데나 누르면 시작 · Enter/Space 도 그대로
                 return (
-                  <button
+                  <div
                     key={slot.track.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     data-track={slot.track.id}
                     className={`schedule-card ${recommended ? "today" : ""} ${
                       done ? "done" : ""
                     }`}
                     onClick={() => void startSlot(slot)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                      e.preventDefault();
+                      void startSlot(slot);
+                    }}
                   >
                     {/* 곡 커버 — 곡명 모티프로 생성한 이미지 (scripts/make-beat-covers.mjs) */}
                     <span className={`beat-track-cover cover-${slot.stageIndex % 6} has-image`} aria-hidden="true"><img className="schedule-cover" src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" /></span>
@@ -918,7 +926,7 @@ export function BeatGame({
                       <span className="beat-first-rewards">{(["easy", "medium", "hard"] as const).map((d) => { const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); return <em key={d} className={`diff-${d} ${got ? "done" : ""}`}>{BEAT_DIFF_LABEL[d]} {got ? "✓" : beatRewardText(BEAT_FIRST_CLEAR[d])}</em>; })}</span>
                       {(() => { const b = bestRecord(rpg, slot.track.id, variantOf(slot.track)); return <span className="schedule-best">{b ? `최고 ${b.score.toLocaleString()}점 · 콤보 ${b.combo} · 정확도 ${Math.round(b.accuracy * 100)}%` : "아직 기록 없음 · 첫 도전"}</span>; })()}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>

@@ -39,12 +39,14 @@ export function WalletBar({ items, onGemTap, testGems = false, className = "" }:
             </span>
           </>
         );
+        // key 는 종류 + 이름표 — 사냥터 골드 · 공용 골드처럼 같은 종류가 두 번 오면 종류만으론 겹친다(React 중복 key, 2026-11-06)
+        const key = `${it.kind}:${it.label ?? ""}`;
         return it.kind === "gem" && onGemTap ? (
-          <button key={it.kind} type="button" className={`wallet-item wallet-${it.kind}`} onClick={onGemTap} aria-label={`붉은 보석 ${it.amount.toLocaleString()}개 · 보석 상점 열기`}>
+          <button key={key} type="button" className={`wallet-item wallet-${it.kind}`} onClick={onGemTap} aria-label={`붉은 보석 ${it.amount.toLocaleString()}개 · 보석 상점 열기`}>
             {body}<i className="wallet-plus" aria-hidden="true">+</i>
           </button>
         ) : (
-          <span key={it.kind} className={`wallet-item wallet-${it.kind}`} aria-label={`${it.label ?? LABEL[it.kind]} ${it.amount.toLocaleString()}`}>{body}</span>
+          <span key={key} className={`wallet-item wallet-${it.kind}`} aria-label={`${it.label ?? LABEL[it.kind]} ${it.amount.toLocaleString()}`}>{body}</span>
         );
       })}
     </div>
