@@ -67,7 +67,7 @@ r = await page.evaluate(() => { const c = document.querySelector(".moment-offer[
 ok("실패 2회(벽 최초 도달) → 벽 돌파 세트 제안 카드 · 타이머 · 보너스 +30", r && r.product === "pack-wall" && /\d+:\d\d/.test(r.timer ?? "") && /\+30/.test(r.sub ?? ""), JSON.stringify(r));
 let p = await prog();
 ok("진행도에 제안 창 기록(momentOffers.pack-wall, 15분)", p.momentOffers?.["pack-wall"]?.kind === "wall" && p.momentOffers["pack-wall"].until - Date.now() > 13 * 60000 && p.wallAreas.includes("forest"), JSON.stringify(p.momentOffers));
-const gemsBefore = p.redGems;
+const gemsBefore = p.redGems, pWall = p;
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(600);
 await clickText(".hub-sheet-switch button", "패키지");
@@ -79,7 +79,9 @@ await sleep(600);
 await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
 await sleep(1200);
 p = await prog();
-ok("카드에서 구매(QA) → 보석 +100 +30 보너스 · 제안 제거 · 구매 기록", p.redGems === gemsBefore + 130 && !p.momentOffers?.["pack-wall"] && p.claimedRewards.some((k) => k.startsWith("purchase:pack-wall:")), `gems ${gemsBefore}→${p.redGems}`);
+// 사냥터로 돌아가 있는 동안 새 몬스터를 처음 잡으면 첫 발견 보석 +20 이 같이 들어온다(2026-11-06 전체 검사 150→300) — 아래 픽업 구매처럼 그 몫을 뺀다
+const wallDiscovery = discoveryGemsSince(pWall, p);
+ok("카드에서 구매(QA) → 보석 +100 +30 보너스 · 제안 제거 · 구매 기록", p.redGems - wallDiscovery === gemsBefore + 130 && !p.momentOffers?.["pack-wall"] && p.claimedRewards.some((k) => k.startsWith("purchase:pack-wall:")), `gems ${gemsBefore}→${p.redGems} · 첫 발견 ${wallDiscovery}`);
 ok("구매 후 카드 사라짐", await page.evaluate(() => !document.querySelector(".moment-offer")));
 
 // ── retention-3: 9시간 복귀 → 정산 모달에 후원 계약 미리보기 → QA 구매 → patronUntil 30일 ──
