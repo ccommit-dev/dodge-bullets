@@ -49,16 +49,18 @@ const measure = (off) => page.evaluate(async (css) => {
   let made = 0; const mo = new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".skill-tier-fx, .titans-fx-tierhit-UR, .titans-fx-tierhit-LR")) made += 1; });
   mo.observe(document.querySelector(".titans-field"), { childList: true, subtree: true });
   await new Promise((r) => setTimeout(r, 500));
-  const r = await new Promise((res) => { const ts = []; const t0 = performance.now(); const f = (t) => { ts.push(t); if (t - t0 < 5000) requestAnimationFrame(f); else { const d = ts.slice(1).map((v, i) => v - ts[i]).sort((a, b) => a - b); res({ fps: Math.round(((ts.length - 1) / ((ts[ts.length - 1] - ts[0]) / 1000)) * 10) / 10, p95: Math.round(d[Math.floor(d.length * 0.95)]) }); } }; requestAnimationFrame(f); });
+  // 프레임마다 전투 · 층 전환으로 나눠 담는다 (2026-11-06) — 5초 창이 만남 주기와 맞물려 켠 쪽에 층 전환이 몰려 72~92% 로 "회귀"처럼 보였다. 나눠 재면 96~98%
+  const r = await new Promise((res) => { const fld = document.querySelector(".titans-field"); const acc = { c: [0, 0], t: [0, 0] }; const ds = []; let prev = null; const t0 = performance.now(); const f = (t) => { if (prev !== null) { const k = fld.className.includes("phase-combat") && !fld.querySelector(".is-approaching") ? "c" : "t"; acc[k][0] += 1; acc[k][1] += t - prev; ds.push(t - prev); } prev = t; if (t - t0 < 7000) requestAnimationFrame(f); else { const fps = (a) => (a[1] > 300 ? Math.round((a[0] / (a[1] / 1000)) * 10) / 10 : null); ds.sort((a, b) => a - b); res({ fps: fps([acc.c[0] + acc.t[0], acc.c[1] + acc.t[1]]), p95: Math.round(ds[Math.floor(ds.length * 0.95)] ?? 0), combat: fps(acc.c), trans: fps(acc.t), cMs: Math.round(acc.c[1]), tMs: Math.round(acc.t[1]) }); } }; requestAnimationFrame(f); });
   mo.disconnect();
   return { ...r, fx: made, phase: [...document.querySelector(".titans-field").classList].find((c) => c.startsWith("phase-")) };
 }, off ? OFF_CSS : "");
 const rows = [];
-for (let i = 0; i < 3; i += 1) { rows.push(["켬", await measure(false)]); rows.push(["끔", await measure(true)]); }
+for (let i = 0; i < 5; i += 1) { rows.push(["켬", await measure(false)]); rows.push(["끔", await measure(true)]); }
 await page.evaluate(() => document.getElementById("__tier_off")?.remove());
 for (const [k, r] of rows) console.log(k, JSON.stringify(r));
-const avg = (k) => rows.filter((r) => r[0] === k).reduce((a, r) => a + r[1].fps, 0) / 3;
-const on = avg("켬"), off = avg("끔");
-console.log(`평균 켬 ${on.toFixed(1)} · 끔 ${off.toFixed(1)} · 비율 ${((on / off) * 100).toFixed(0)}% · 새 이펙트 ${rows.filter((r) => r[0] === "켬").reduce((a, r) => a + r[1].fx, 0)}개(켬 구간)`);
-console.log(on >= off * 0.9 ? "PASS 새 이펙트를 켜도 FPS 90% 이상" : "FAIL 새 이펙트가 FPS 를 10% 넘게 깎는다");
+// 단계별 가중 평균 — 판정은 전투 구간(층 전환은 표본이 적고 배경 · 대열 이동이 섞여 흔들린다)
+const wavg = (k, key, ms) => { const rs = rows.filter((r) => r[0] === k && r[1][key] !== null); const w = rs.reduce((a, r) => a + r[1][ms], 0); return w ? rs.reduce((a, r) => a + r[1][key] * r[1][ms], 0) / w : NaN; };
+const on = wavg("켬", "combat", "cMs"), off = wavg("끔", "combat", "cMs"), tOn = wavg("켬", "trans", "tMs"), tOff = wavg("끔", "trans", "tMs");
+console.log(`전투 켬 ${on.toFixed(1)} · 끔 ${off.toFixed(1)} · 비율 ${((on / off) * 100).toFixed(0)}% / 층 전환 비율 ${((tOn / tOff) * 100).toFixed(0)}% · 새 이펙트 ${rows.filter((r) => r[0] === "켬").reduce((a, r) => a + r[1].fx, 0)}개(켬 구간)`);
+console.log(on >= off * 0.9 ? "PASS 새 이펙트를 켜도 전투 FPS 90% 이상" : "FAIL 새 이펙트가 전투 FPS 를 10% 넘게 깎는다 — 한 번 값은 ±10% 흔들리니 세 번 돌려 본다");
 await browser.disconnect(); spawnSync(ADB, ["forward", "--remove", "tcp:9335"]);
