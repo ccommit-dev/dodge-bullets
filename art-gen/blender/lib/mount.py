@@ -242,6 +242,7 @@ def _body_common(add, spec, M, coll, chest=None, rump=None):
         add('body', C.mesh_obj('chest', C.ellipsoid(Vector(chest[0]), chest[1]), M['skin'], coll, outline=OUT))
     if rump:
         add('body', C.mesh_obj('rump', C.ellipsoid(Vector(rump[0]), rump[1]), M['skin'], coll, outline=OUT))
+    spec['_chest'], spec['_rump'] = chest, rump   # 등급 메달 자리(_tier_badges)
     n0, n1 = Vector(spec['neck'][0]), Vector(spec['neck'][1])
     return bc, br, n0, n1
 
@@ -523,6 +524,51 @@ def _build_drake(add, spec, M, coll):
         add(f'wing.{s}', o)
 
 
+# 등급 메달 (2026-11-09, 사용자 목록 "안장 꾸밈은 주인공에 가려 등급 차이가 머리 · 꼬리 · 날개로만 보임") — 탄 사람에 가리지 않는
+# 가슴 앞 · 엉덩이(카메라 쪽)에 테 + 보석 메달과 술 두 가닥. 등급색: 영웅 놋쇠 · 홍옥 / 전설 은 · 비취 / 신화 금 · 청옥(빛) / 초월 금 · 홍옥(빛) + 가시 테
+BADGE = {
+    'SR': dict(rim='brass', gem='#d23a2a', glow=0.0, tassel='#b8322c'),
+    'SSR': dict(rim='silver', gem='#22c55e', glow=0.7, tassel='#1f8a5e'),
+    'UR': dict(rim='gold', gem='#3b82f6', glow=1.1, tassel='#2a4fb8'),
+    'LR': dict(rim='gold', gem='#ff3b30', glow=1.2, tassel='#8e1b2b'),
+}
+
+
+def _badge(add, bone, p, n, spec, M, coll, name, r=0.045, tassel=True):
+    b = BADGE[spec['tier']]
+    rot = C.look_rot(n)
+    add(bone, C.mesh_obj(f'{name}_back', C.ellipsoid(p + n * 0.004, (r * 1.05, r * 1.05, r * 0.25), rot=rot), _m('m_badgeback', '#3b2415', rough=0.8), coll))
+    add(bone, C.mesh_obj(f'{name}_rim', C.torus(p + n * 0.012, r * 0.92, r * 0.2, seg=16, ring=5, rot=rot), M[b['rim']], coll, smooth=False, outline=OUT * 0.35))
+    gm = _m('m_badgegem_' + spec['tier'], b['gem'], rough=0.12, emit=b['gem'] if b['glow'] else None, es=b['glow'])
+    add(bone, C.mesh_obj(f'{name}_gem', C.ellipsoid(p + n * 0.022, (r * 0.55, r * 0.55, r * 0.35), rot=rot), gm, coll, outline=OUT * 0.25))
+    if spec['tier'] == 'LR':   # 초월 — 테 둘레 금 가시 여섯
+        for k in range(6):
+            a = math.tau * k / 6
+            t1 = rot.to_matrix() @ Vector((math.cos(a), math.sin(a), 0))
+            add(bone, C.mesh_obj(f'{name}_spk{k}', C.cone(p + n * 0.012 + t1 * r * 1.15, r * 0.18, 0.0, r * 0.45, seg=4, rot=C.look_rot(t1)), M['gold'], coll, smooth=False))
+    if tassel:
+        tm = _m('m_tassel_' + spec['tier'], b['tassel'], rough=0.8)
+        for sx in (-1, 1):
+            top = p + n * 0.01 + Vector((sx * r * 0.45, 0, -r * 0.8))
+            add(bone, C.mesh_obj(f'{name}_cord{sx}', C.tube([top, top + Vector((0, 0, -0.05))], 0.008, seg=5), tm, coll, smooth=False))
+            add(bone, C.mesh_obj(f'{name}_tas{sx}', C.cone(top + Vector((0, 0, -0.08)), 0.022, 0.005, 0.07, seg=6), tm, coll, smooth=False, outline=OUT * 0.3))
+
+
+def _tier_badges(add, spec, M, coll, who):
+    """가슴 앞(비룡은 금 갑주가 이미 있어 뺀다) · 엉덩이 옆(늑대는 서리 룬 위쪽). 양옆 모두 — 게임은 +x 옆을, 미리보기(mount_lab)는 거울상이라 -x 옆을 본다"""
+    chest, rump = spec.get('_chest'), spec.get('_rump')
+    for sx in (1, -1):
+        if chest and who != 'mount-drake':
+            c, r = Vector(chest[0]), chest[1]
+            p, n = C.on_ellipsoid(c, r, Vector((sx * 0.6, -1.0, 0.1)))
+            _badge(add, 'body', p, n, spec, M, coll, f'chestbadge{sx}', r=0.068)
+        if rump:
+            c, r = Vector(rump[0]), rump[1]
+            d = Vector((sx * 1.0, 0.45, 0.85)) if who == 'mount-wolf' else Vector((sx * 1.0, 0.35, 0.25))
+            p, n = C.on_ellipsoid(c, r, d)
+            _badge(add, 'body', p, n, spec, M, coll, f'rumpbadge{sx}', r=0.058 if who == 'mount-wolf' else 0.068)
+
+
 BUILDERS = {'mount-boar': _build_boar, 'mount-deer': _build_deer, 'mount-wolf': _build_wolf, 'mount-drake': _build_drake}
 
 
@@ -545,6 +591,7 @@ def build(who, coll=None):
             _limb(add, leg, hip, knee, ankle, rr, M['skin'], coll)
             _foot(add, leg, ankle, spec['foot'], rr[2], M, coll)
         BUILDERS[who](add, spec, M, coll)
+        _tier_badges(add, spec, M, coll, who)
         _saddle(add, spec, M, coll)
     finally:
         C.FACET = saved
