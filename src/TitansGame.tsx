@@ -1320,6 +1320,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const room = Math.max(0, mount.left + mount.width * 0.13 - field.getBoundingClientRect().left - 4);
     hero.style.setProperty("--ride-back", `${Math.round(Math.max(0, Math.min(cur + room, cur + nose - monLeft + 16)))}px`);
   }, [formationReady, encounterMotion.seq, encounterMotion.partyMl]);
+  // 낮은 세로 폰(높이 700 이하, 390×664 · SE 553 · 360×640) — 성장 탭을 누르면 판이 아래 내비 뒤에서 시작해 안 보였다(2026-11-09, 사용자 목록).
+  // 사냥터 높이를 줄이면 대열이 알림 칩과 겹쳐(verify-hud-layout) 화면째 판 첫 줄이 보일 만큼만 내린다. 보통 폰(844)은 그대로
+  const revealGrowthPanel = () => {
+    if (typeof window === "undefined" || !window.matchMedia?.("(orientation: portrait) and (max-height: 700px)").matches) return;
+    window.setTimeout(() => {
+      const layer = document.querySelector<HTMLElement>(".titans-layer"), tabs = document.querySelector(".titans-growth-tabs"), nav = document.querySelector(".titans-bottom-nav");
+      if (!layer || !tabs || !nav) return;
+      const need = tabs.getBoundingClientRect().bottom + 150 - nav.getBoundingClientRect().top;
+      if (need > 4) layer.scrollBy({ top: need, behavior: "smooth" });
+    }, 80);
+  };
   // 탈것 앞뒤 그리기 (2026-11-09, 사용자 목록 "탈것을 탄 주인공과 동료가 겹침") — 탈것(주인공 z 5)이 옆으로 길어 한 줄에 다 설 자리가 없다(전장 366px 에
   // 탈것 120 · 동료 넷). 자리는 그대로 두고 그리는 순서만 깊이대로: 자리 잡은 뒤 발이 탈것 발보다 앞(아래)인 동료만 위에(data-front · ui/mount-show.css).
   // 예전엔 동료 무리(z 3) 전체가 주인공 밑이라 카메라 쪽에 선 원거리 동료도 탈것 꼬리에 가렸다
@@ -4331,7 +4342,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       </div>
 
 
-      <div className="titans-tabs titans-growth-tabs">
+      <div className="titans-tabs titans-growth-tabs" onClickCapture={(e) => { if ((e.target as HTMLElement).closest("button:not(.growth-drawer-close)")) revealGrowthPanel(); }}>
         {/* 2×2 (2026-10-26, 사용자: "퀘스트를 왼쪽으로 · 4번째 유물") — 장비 성장 · 스킬 / 퀘스트 · 유물 */}
         {/* 퀘스트가 맨 왼쪽 (2026-11-04, 사용자) */}
         <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>

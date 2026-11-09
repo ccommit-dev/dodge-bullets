@@ -177,3 +177,8 @@
 .exp-weapon-card em { -webkit-line-clamp: 4 !important; font-size: 13px !important; line-height: 1.3; white-space: normal; word-break: keep-all; }   /* 설명이 40자 안팎 — 두 줄로도 잘려 전부 보인다 */
 .exp-loadout-slot em { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal !important; text-overflow: clip !important;
   word-break: keep-all; text-align: center; line-height: 1.2; font-size: 13px !important; }
+
+/* ⑥ 연계 표시를 칸 안으로 (2026-11-09) — 칸 위로 11px 올라온 "연계" 리본이 바닥선 위라 그 칸 위에 선 주인공 발을 가렸다(바닥에 안 붙어 보임).
+   전투 독에서는 리본을 빼고 청록 고리 + 청록 Lv 리본(칸 아래)으로 연계를 보인다. 정비 카드의 "연계" 글자는 그대로 */
+.skill-dock .skill-link-mark { display: none !important; }
+.skill-dock .skill-slot.is-linked b { background: linear-gradient(180deg, #99f6e4, #14b8a6) !important; border-color: #0f766e !important; color: #042f2e !important; }
