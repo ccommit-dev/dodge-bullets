@@ -42,6 +42,34 @@ function wearImage(key: string): HTMLImageElement {
 }
 
 /** 성문 방어 주인공 시트 — 애니메이션 2판(2026-10-19)이면 대기 6칸 · 걷기 6칸 webp, 아니면 1판 대기 4칸 PNG. 둘 다 처음에 같이 받는다 */
+/**
+ * 칸마다 발 가로 자리(칸 폭 비율) — 시트를 받은 뒤 한 번 잰다(맨 아래 5% 띠의 알파 가로 중심) (2026-11-09).
+ * 3D 대기 · 공격 칸은 몸이 앞뒤로 쏠리며 발까지 3~7px 미끄러져(창 공격 45~53%), 자동 사격마다 주인공이 바닥에서 미끄러져 보였다.
+ * 대기 · 공격 칸은 발을 대기 0칸 자리에 맞춰 그린다. 걷기 칸은 발이 번갈아 디뎌 맞추지 않는다. 읽을 수 없으면(캔버스 없음 · 교차 출처) 보정 없이
+ */
+const footCache = new WeakMap<HTMLImageElement, number[] | null>();
+function footXs(img: HTMLImageElement | null, frames: number): number[] | null {
+  if (!img || !img.complete || img.naturalWidth === 0) return null;
+  if (footCache.has(img)) return footCache.get(img) ?? null;
+  let out: number[] | null = null;
+  try {
+    const H = 192, W = Math.max(frames, Math.round((img.naturalWidth * H) / img.naturalHeight));
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | null;
+    if (g) {
+      g.drawImage(img, 0, 0, W, H);
+      const y0 = Math.floor(H * 0.95), d = g.getImageData(0, y0, W, H - y0).data, cw = W / frames;
+      out = Array.from({ length: frames }, (_, k) => {
+        let sx = 0, n = 0;
+        for (let y = 0; y < H - y0; y += 1) for (let x = Math.floor(k * cw); x < Math.floor((k + 1) * cw); x += 1) if (d[(y * W + x) * 4 + 3] > 60) { sx += x - k * cw; n += 1; }
+        return n > 0 ? sx / n / cw : 0.5;
+      });
+    }
+  } catch { out = null; }
+  footCache.set(img, out);
+  return out;
+}
+
 function getExpeditionHero(mode: "idle" | "walk"): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   if (!expeditionHero.idle) {
@@ -217,9 +245,10 @@ export function drawStickman(
   const floorY = world.floorY;
   const air = Math.max(0, floorY - (p.y + p.radius));
   const shadowScale = Math.max(0.35, 1 - air / 220);
-  ctx.fillStyle = `rgba(0,0,0,${0.28 * shadowScale})`;
+  // 접지 그림자 — 예전 반지름 1.15배(≈34px)는 발(≈40px)에 가려 안 보여 몸이 떠 보였다 (2026-11-09)
+  ctx.fillStyle = `rgba(0,0,0,${0.34 * shadowScale})`;
   ctx.beginPath();
-  ctx.ellipse(p.x, floorY - 2, p.radius * 1.15 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.ellipse(p.x, floorY - 2, p.radius * 1.9 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const sheetMode: "idle" | "walk" = HERO_ANIM && p.anim === "run" ? "walk" : "idle";
@@ -250,6 +279,14 @@ export function drawStickman(
       const idleW = drawHeight * (heroFrameAspect("idle"));
       if (a && i0) handShift = { x: p.facing * ((a.x / 100 - 0.5) * drawWidth - (i0.x / 100 - 0.5) * idleW), y: ((a.y - i0.y) / 100) * drawHeight };
     }
+    // 발을 대기 0칸 자리에 — 대기 · 공격 칸만(걷기는 발이 번갈아 디딘다). 무기 그림(handShift)도 같이 옮긴다
+    let footShift = 0;
+    if (usedMode !== "walk" && p.anim !== "dead") {
+      const fx = footXs(hero, frameCount)?.[frame], fx0 = footXs(expeditionHero.idle ?? null, heroFrames("idle"))?.[0];
+      if (fx !== undefined && fx0 !== undefined) footShift = (fx0 - 0.5) * drawHeight * heroFrameAspect("idle") - (fx - 0.5) * drawWidth;
+      handShift = { x: handShift.x + p.facing * EXPEDITION_NATIVE_FACING * footShift, y: handShift.y };
+    }
+    if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dodgeHeroSheet?: string; __dodgeFootShift?: number }).__dodgeFootShift = footShift;
     if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dodgeHeroSheet?: string }).__dodgeHeroSheet = attackSheet ? `attack-${world.rangedWeapon}:${frame}` : usedMode;
     ctx.save();
     ctx.imageSmoothingQuality = "high";   // 780px 칸을 ~150 실픽셀로 줄인다 — 기본(low)은 거칠고 흐릿했다
@@ -266,8 +303,7 @@ export function drawStickman(
     if (p.anim !== "dead" && p.anim !== "hit") {
       const aimUp = Math.max(0, -Math.sin(world.aimAngle));
       const aimFwd = Math.cos(world.aimAngle) * p.facing;   // 바라보는 쪽이면 +, 등 뒤면 −
-      ctx.rotate(-0.2 * aimUp * (aimFwd >= 0 ? 1 : -1) - 0.08 * aimUp);
-      ctx.translate(0, -3 * aimUp);
+      ctx.rotate(-0.2 * aimUp * (aimFwd >= 0 ? 1 : -1) - 0.08 * aimUp);   // 발을 축으로 젖힌다 — 예전 translate(0, −3px) 는 발이 바닥에서 떴다(2026-11-09)
     }
     if (shooting && !attackSheet) {
       // 쏘는 순간 — 당겼다 놓는 반동: 300ms 안에서 뒤로 2px → 앞으로 5px, 살짝 늘어난다
@@ -318,6 +354,7 @@ export function drawStickman(
       ctx.globalAlpha = 1 - 0.35 * e;
       ctx.filter = "saturate(" + (1 - 0.6 * e) + ")";
     }
+    ctx.translate(footShift, 0);   // 발 보정(대기 · 공격 칸) — 몸 · 입는 파츠가 같이 옮겨진다
     if (p.dashActiveMs > 0) {
       for (let trail = 3; trail >= 1; trail--) {
         ctx.globalAlpha = 0.1 * (4 - trail);

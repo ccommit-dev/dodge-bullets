@@ -372,7 +372,8 @@ export function updateWorld(
 
   const p = world.player;
   const stats = world.stats;
-  p.animTime += dtSec;
+  // 달리기 칸은 움직인 만큼 넘긴다(2026-11-09) — 끌어서 1:1 로 움직이는데 칸은 600ms 고정이라 빨리 끌면 발이 미끄러졌다. 그림만 바뀐다(판정 · 밸런스 무관)
+  p.animTime += p.anim === "run" ? dtSec * Math.max(0.6, Math.min(2.2, Math.abs(p.vx) / 110)) : dtSec;
   if (p.invulnMs > 0) p.invulnMs = Math.max(0, p.invulnMs - dtSec * 1000);
   if (p.dashCdMs > 0) p.dashCdMs = Math.max(0, p.dashCdMs - dtSec * 1000);
   if (p.dashActiveMs > 0) p.dashActiveMs = Math.max(0, p.dashActiveMs - dtSec * 1000);
