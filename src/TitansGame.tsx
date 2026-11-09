@@ -5047,7 +5047,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 재화마다 머리줄 하나 + 1회 · 10회 상품 칸. 확률 정보는 머리줄의 단추로 그 재화 아래에 펼친다(유물별 확률 공시) */}
             {premiumCategory === "relic" && (
               <section className="relic-draw-page relic-gacha-page relic-shop-list" aria-label="유물 뽑기">
-                <p className="list-note">조각 {RELIC_SHARDS_PER_STAR}개 = ★1 · 같은 계열 3개면 세트</p>
+                <p className="list-note">조각은 강화 재료 · {RELIC_SHARDS_PER_STAR}개면 유물 탭에서 ★+1 · 같은 계열 3개면 세트</p>
                 {RELIC_BANNERS.map((banner) => {
                   // 들어간 조각 + 남은 조각(2026-10-28 중복 소진) — 남은 조각으로 채울 수 있는 유물은 나오지 않는다
                   const merged = relicMerged(character.relics, character.relicSpare);
@@ -5697,7 +5697,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   <div key={id} className={`relic-draw-item relic-outline rarity-${relicDef(id).tier.toLowerCase()}`} data-relic={id} data-tier={relicDef(id).tier} style={{ animationDelay: `${k * 90}ms` } as CSSProperties}>
                     <RelicIcon id={id} />
                     <span>{relicDef(id).name}</span>
-                    <small>조각 +{n} · {stars >= 1 ? "★".repeat(stars) : "★ 없음"} · 남은 {character.relicSpare[id] ?? 0}</small>
+                    <small>조각 +{n} · {stars >= 1 ? "★".repeat(stars) : "★ 없음"} · {relicUpgradable(character.relics, character.relicSpare, id) ? "강화 가능" : stars >= RELIC_MAX_STAR ? "최대 ★5" : `재료 ${Math.min(character.relicSpare[id] ?? 0, RELIC_SHARDS_PER_STAR)}/${RELIC_SHARDS_PER_STAR}`}</small>
                   </div>
                 );
               })}

@@ -72,39 +72,39 @@ const fmt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `
 export const EVENT_PRODUCTS: EventProduct[] = [
   // ── 이벤트 상점: 원정 시즌 보급 ──
   {
-    id: "ev-pioneer-pack", tab: "event-shop", name: "원정 개척 패키지", desc: "성문 방어 강화석 · 골드 · 가진 동료 모두 조각", badge: "HOT", icon: "dodge", gemCost: 150, weeklyLimit: 2,
+    id: "ev-pioneer-pack", tab: "event-shop", name: "원정 개척 패키지", desc: "성문 방어 강화석 · 골드 · 가진 동료 모두 조각", badge: "인기", icon: "dodge", gemCost: 150, weeklyLimit: 2,
     grant: (p) => ({ materials: 60, gold: bossGold(p, 1500), allyShards: 3 }),
     summary: (p) => `강화석 60 · 골드 ${fmt(bossGold(p, 1500))} · 동료 조각 15(선택)`,
   },
   {
-    id: "ev-beat-support", tab: "event-shop", name: "비트 수련 지원팩", desc: "견갑 조각 · 스킬 코어 · 붉은 보석 환급", badge: "7 DAYS", icon: "beat", gemCost: 120, weeklyLimit: 2,
+    id: "ev-beat-support", tab: "event-shop", name: "비트 수련 지원팩", desc: "견갑 조각 · 스킬 코어 · 붉은 보석 환급", badge: "7일", icon: "beat", gemCost: 120, weeklyLimit: 2,
     grant: () => ({ shoulderShards: 40, cores: 4, gems: 20 }),
     summary: () => "견갑 조각 40 · 스킬 코어 4 · 보석 20 환급",
   },
   {
-    id: "ev-boss-supply", tab: "event-shop", name: "보스 토벌 보급품", desc: "강화 방지권 · 강화석 · 골드", badge: "LIMITED", icon: "forge", gemCost: 90, weeklyLimit: 3,
+    id: "ev-boss-supply", tab: "event-shop", name: "보스 토벌 보급품", desc: "강화 방지권 · 강화석 · 골드", badge: "한정", icon: "forge", gemCost: 90, weeklyLimit: 3,
     grant: (p) => ({ forgeTickets: 2, materials: 30, gold: bossGold(p, 600) }),
     summary: (p) => `방지권 2 · 강화석 30 · 골드 ${fmt(bossGold(p, 600))}`,
   },
   // ── 루프 ⑤ 메타 상품 (2026-10-08, docs/LOOP_2026-10-08.md): 빌드를 바꾸는 유일한 보석 상품 — 재화 탭에도 같이 보인다 ──
   {
-    id: "gem-seal-pack", tab: "event-shop", name: "원정 인장 묶음", desc: "성문 방어 칩·스킬 무기를 올리는 인장", badge: "META", icon: "dodge", gemCost: 90, weeklyLimit: 3,
+    id: "gem-seal-pack", tab: "event-shop", name: "원정 인장 묶음", desc: "성문 방어 칩·스킬 무기를 올리는 인장", badge: "원정", icon: "dodge", gemCost: 90, weeklyLimit: 3,
     grant: () => ({ seals: 20 }),
     summary: () => "원정 인장 20 (주 3회)",
   },
   // ── 코인 교환 (2026-10-22 아처 키우기 8번) — 사냥 중 몬스터가 떨어뜨린 이벤트 코인으로 산다 ──
   {
-    id: "coin-stone", tab: "event-shop", name: "코인 교환 · 강화석", desc: "이벤트 코인으로 강화석", badge: "COIN", icon: "forge", gemCost: 0, coinCost: 20, weeklyLimit: 5,
+    id: "coin-stone", tab: "event-shop", name: "코인 교환 · 강화석", desc: "이벤트 코인으로 강화석", badge: "코인", icon: "forge", gemCost: 0, coinCost: 20, weeklyLimit: 5,
     grant: () => ({ materials: 25 }),
     summary: () => "강화석 25",
   },
   {
-    id: "coin-shards", tab: "event-shop", name: "코인 교환 · 동료 조각", desc: "가진 동료 모두 조각", badge: "COIN", icon: "hunt", gemCost: 0, coinCost: 40, weeklyLimit: 3,
+    id: "coin-shards", tab: "event-shop", name: "코인 교환 · 동료 조각", desc: "가진 동료 모두 조각", badge: "코인", icon: "hunt", gemCost: 0, coinCost: 40, weeklyLimit: 3,
     grant: () => ({ allyShards: 2 }),
     summary: () => "동료 조각 10(선택)",
   },
   {
-    id: "coin-gems", tab: "event-shop", name: "코인 교환 · 보석", desc: "붉은 보석", badge: "COIN", icon: "beat", gemCost: 0, coinCost: 60, weeklyLimit: 2,
+    id: "coin-gems", tab: "event-shop", name: "코인 교환 · 보석", desc: "붉은 보석", badge: "코인", icon: "beat", gemCost: 0, coinCost: 60, weeklyLimit: 2,
     grant: () => ({ gems: 40 }),
     summary: () => "보석 40",
   },
