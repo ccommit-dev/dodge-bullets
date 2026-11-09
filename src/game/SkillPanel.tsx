@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TIER_LABEL } from "../titans/summonLevel";
 import { assetUrl } from "../asset";
 import { TOWER_DAILY_TICKETS, TOWER_TICKET_MAX, TOWER_TICKET_SEALS } from "./towerTickets";
 import { perksUnlockedBy, RARITY_LABEL } from "./perks";
@@ -11,6 +12,7 @@ import {
 import {
   EXPEDITION_SKILLS,
   RANGED_WEAPONS,
+  SKILL_LINK_WEAPON, SKILL_TIER, linkedSkillsOf, skillLinked,
   WEAPON_BY_ID,
   SKILL_BY_ID,
   SKILL_MAX_LEVEL,
@@ -116,6 +118,7 @@ export function SkillPanel({
   const open = openId ? SKILL_BY_ID[openId] : null;
 
   const iconOf = (def: ExpeditionSkillDef) => assetUrl(`dodge/skills/${def.icon}.png`);
+  const WEAPON_SHORT: Record<string, string> = { sword: "검", spear: "창", bow: "활", staff: "지팡이" };
 
   return (
     <div className="exp-skill-panel">
@@ -329,11 +332,16 @@ export function SkillPanel({
                 aria-pressed={on}
                 onClick={() => onEquipWeapon(w.id)}
               >
-                {/* 카드는 아이콘판 — 부착용 원화(${w.id}.png)는 가는 선이라 34px 에서 뭉개진다 (2026-09-28) */}
-                <img src={assetUrl(`dodge/weapons/icon-${w.id}.png`)} alt="" aria-hidden="true" />
+                {/* 카드는 무기 메달(dodge/skills/basic-<무기>.png, 2026-11-09 스킬 무기와 같은 그림체). 예전 선 그림은 34px 에서 뭉개졌다 */}
+                <img src={assetUrl(`dodge/skills/basic-${w.id}.png`)} alt="" aria-hidden="true" />
                 <span>
                   <b>{w.name}</b>
                   <em>{unlocked ? w.desc : `${w.unlockStage}스테이지 클리어 시 해금`}</em>
+                  {/* 무기 연계 (2026-11-09, 사용자: "무기별 스킬이 연계되고") — 이 무기를 들면 재사용 −15% 인 짝 스킬 */}
+                  <small className="exp-weapon-links" aria-label="연계 스킬">
+                    <b>연계</b>
+                    {linkedSkillsOf(w.id).map((id) => <img key={id} src={iconOf(SKILL_BY_ID[id])} alt={SKILL_BY_ID[id].weapon} title={SKILL_BY_ID[id].weapon} />)}
+                  </small>
                 </span>
                 <i>{on ? "장착 중" : unlocked ? "장착" : "잠김"}</i>
               </button>
@@ -347,7 +355,7 @@ export function SkillPanel({
       {weapon !== "none" && (
         <div className="exp-basic-row">
           {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
-          <img src={assetUrl(`dodge/weapons/icon-${weapon}.png`)} alt="" aria-hidden="true" />
+          <img src={assetUrl(`dodge/skills/basic-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
             <b>{weapon === "staff" ? "마력탄" : weapon === "sword" ? "검기" : weapon === "spear" ? "찌르기" : "기본 사격"} · {WEAPON_BY_ID[weapon]?.name ?? "무기"} +{basicLevel}</b>
             <em>피해 ×{basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 강화는 대장간</em>
@@ -362,7 +370,7 @@ export function SkillPanel({
           const id = loadout[i];
           const def = id ? SKILL_BY_ID[id] : null;
           return (
-            <button key={i} type="button" className={`exp-loadout-slot ${def ? "on" : ""}`} disabled={!def || !onToggleLoadout}
+            <button key={i} type="button" className={`exp-loadout-slot ${def ? "on" : ""} ${def && skillLinked(weapon, def.id) ? "is-linked" : ""}`} data-tier={def ? SKILL_TIER[def.id] : undefined} disabled={!def || !onToggleLoadout}
               onClick={() => id && onToggleLoadout?.(id)} aria-label={def ? `${def.weapon} 해제` : "빈 칸"}>
               {def ? <img src={iconOf(def)} alt="" aria-hidden="true" /> : <span>{i + 1}</span>}
               <em>{def ? `${def.weapon} Lv.${levels[def.id] ?? 0}` : "빈 칸"}</em>
@@ -386,13 +394,18 @@ export function SkillPanel({
             <button
               key={def.id}
               type="button"
-              className={`exp-skill-card fam-${def.family} ${unlocked ? "" : "locked"} ${ready ? "ready" : ""} ${equipped ? "equipped" : ""} ${(weapon === "bow" && def.family === "physical") || (weapon === "staff" && def.family === "magic") ? "affine" : ""}`}
+              className={`exp-skill-card fam-${def.family} ${unlocked ? "" : "locked"} ${ready ? "ready" : ""} ${equipped ? "equipped" : ""} ${weapon !== "none" && WEAPON_BY_ID[weapon]?.affinity === def.family ? "affine" : ""} ${skillLinked(weapon, def.id) ? "linked" : ""}`}
+              data-tier={SKILL_TIER[def.id]}
               disabled={!unlocked}
               onClick={() => setOpenId(def.id)}
             >
               <img className="exp-skill-icon" src={iconOf(def)} alt="" aria-hidden="true" />
               <span className="exp-skill-body">
                 <b>{def.weapon}</b>
+                <small className="exp-skill-tags">
+                  <em className="tier-chip">{TIER_LABEL[SKILL_TIER[def.id]]}</em>
+                  {def.id !== "ultimate" && <em className={`exp-skill-link ${skillLinked(weapon, def.id) ? "on" : ""}`}>{WEAPON_SHORT[SKILL_LINK_WEAPON[def.id]]} 연계</em>}
+                </small>
                 {unlocked ? (
                   <>
                     <em>{maxed ? "MAX" : `Level ${lv}`}</em>

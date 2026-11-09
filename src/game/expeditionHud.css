@@ -108,3 +108,67 @@
 
 /* 화면에는 안 보이는 글자 — 아이콘 단추의 이름(화면 읽기 · 글자로 단추를 찾는 검사) */
 .vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+/* ── ③ 스킬 독 2판 (2026-11-09, 사용자: "댐 방어전 스킬 ui 조금 더 고급지고 스킬에 연관된 거로 퀄 좋게 · 무기별 스킬이 연계 · 등급 골고루") ──
+   칸 = 스킬 무기 메달(dodge/skills/<id>.png — 석궁 · 작살 · 투석기 …) + 등급 판 · 테두리(ui/tiers.css 토큰, data-tier) + 원소색 준비 빛(data-el).
+   재사용은 덮개(i)가 위에서 내려오고 아랫선이 금빛으로 차오른다. Lv 은 아래 리본, 짝 무기를 들면 위에 '연계' 리본. unify.css 의 크림 칸(!important)을 덮는다 */
+.skill-dock { gap: 8px; padding-top: 8px; padding-bottom: 6px; background: linear-gradient(180deg, rgba(22, 13, 7, 0), rgba(22, 13, 7, .58) 28%, rgba(22, 13, 7, .58) 78%, rgba(22, 13, 7, 0)); }
+.skill-dock .skill-slot[data-el="basic"] { --el: #f2c232; }
+.skill-dock .skill-slot[data-el="fire"], .skill-dock .skill-slot[data-el="meteor"] { --el: #ff7a2a; }
+.skill-dock .skill-slot[data-el="water"] { --el: #3aa8ff; }
+.skill-dock .skill-slot[data-el="ice"] { --el: #7fe0ff; }
+.skill-dock .skill-slot[data-el="earth"] { --el: #d8a24a; }
+.skill-dock .skill-slot[data-el="bolt"] { --el: #ffe14a; }
+.skill-dock .skill-slot[data-el="wind"] { --el: #3ff0c4; }
+.skill-dock .skill-slot[data-el="poison"] { --el: #9ad04a; }
+.skill-dock .skill-slot[data-el="holy"] { --el: #fff2a8; }
+.skill-dock .skill-slot[data-el="shadow"] { --el: #b07aff; }
+.skill-dock .skill-slot {
+  width: 42px; height: 38px; overflow: visible; isolation: isolate;   /* 높이 38 — 더 높으면 칸 위가 바닥선을 넘어 주인공 발을 가린다(verify-dodge-hud) */
+  border-radius: var(--tf-radius, 12px) !important; border: var(--tf-border, 2.5px solid #e0a10a) !important;
+  background: var(--tf-plate, linear-gradient(180deg, #4b2e1c, #2b1b10)) !important;
+  box-shadow: var(--tf-shadow, 0 0 0 1px #fde68a inset), 0 3px 0 #160d07 !important;
+}
+.skill-dock .skill-slot img { position: relative; z-index: 1; width: 100%; height: 100%; padding: 1px; border-radius: inherit; opacity: .55; filter: saturate(.55); transition: opacity .15s, filter .15s; }
+.skill-dock .skill-slot.on img { opacity: 1; filter: none; }
+.skill-dock .skill-slot.on { box-shadow: var(--tf-shadow, 0 0 0 1px #fde68a inset), 0 3px 0 #160d07, 0 0 0 2px var(--el, #f2c232), 0 0 14px var(--el, #f2c232) !important; animation: dock-ready 1.6s ease-in-out infinite; }
+@keyframes dock-ready { 50% { filter: brightness(1.12); } }
+/* 재사용 덮개 — 위에서 내려오고, 아랫선(금빛)이 차오르는 자리 */
+.skill-dock .skill-slot i { z-index: 2; left: 2px; right: 2px; top: 2px; border-radius: 9px 9px 2px 2px; background: linear-gradient(180deg, rgba(12, 7, 4, .8), rgba(12, 7, 4, .6)); border-bottom: 2px solid rgba(253, 224, 71, .9); }
+.skill-dock .skill-slot.on i { opacity: 0; }
+/* Lv 리본 (아래 가운데) */
+.skill-dock .skill-slot b { z-index: 3; left: 50%; right: auto; bottom: -9px; transform: translateX(-50%); padding: 0 5px; border-radius: 999px; border: 1.5px solid #7c2d12; background: linear-gradient(180deg, #fde68a, #f59e0b); color: #431407 !important; text-shadow: none !important; font: 900 12px/1.25 "Jua", sans-serif; font-size: 12px !important; white-space: nowrap; }
+.skill-dock .skill-slot b::before { content: "Lv"; font-size: .8em; margin-right: 1px; }
+/* 무기 연계 — 짝 무기를 들면 위에 청록 리본 + 바깥 고리 */
+.skill-dock .skill-slot.is-linked { outline: 2px solid rgba(94, 234, 212, .95); outline-offset: 2px; }
+.skill-dock .skill-link-mark { position: absolute; z-index: 3; top: -10px; left: 50%; transform: translateX(-50%); padding: 0 5px; border-radius: 999px; border: 1.5px solid #f0fdfa; background: linear-gradient(180deg, #5eead4, #0d9488); color: #022c22; font: 900 11px/1.3 "Jua", sans-serif; font-style: normal; white-space: nowrap; box-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+/* 신화 맥박 · 초월 무지개 고리 · 전설 이상 반짝임 — 사냥터 아이콘 틀과 같은 토큰 */
+.skill-dock .skill-slot[data-tier]::before { content: ""; position: absolute; inset: -6px; z-index: -1; border-radius: 50%; pointer-events: none; opacity: var(--tf-halo, 0); background: var(--tf-halo-bg, none); animation: var(--tf-halo-a, none); -webkit-mask: var(--tf-halo-mask, none); mask: var(--tf-halo-mask, none); }
+.skill-dock .skill-slot[data-tier]::after { content: ""; position: absolute; top: -5px; right: -5px; width: 13px; height: 13px; z-index: 4; pointer-events: none; opacity: var(--tf-spark, 0); background: var(--tf-spark-c, #fff); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); animation: tier-spark 1.7s ease-in-out infinite; }
+/* 자동 조준 — 조준점 그림이 있는 짙은 알약 */
+.skill-dock .skill-dock-auto { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px !important; border: 2px solid #e0a10a !important; border-radius: 999px; background: linear-gradient(180deg, #4b2e1c, #2b1b10) !important; color: #fde68a !important; box-shadow: 0 2px 0 #160d07; letter-spacing: 0; }
+.skill-dock .aim-mark { position: relative; flex: none; width: 12px; height: 12px; border: 2px solid currentColor; border-radius: 50%; }
+.skill-dock .aim-mark::before, .skill-dock .aim-mark::after { content: ""; position: absolute; background: currentColor; }
+.skill-dock .aim-mark::before { left: 50%; top: -4px; bottom: -4px; width: 2px; transform: translateX(-50%); }
+.skill-dock .aim-mark::after { top: 50%; left: -4px; right: -4px; height: 2px; transform: translateY(-50%); }
+@media (prefers-reduced-motion: reduce) { .skill-dock .skill-slot.on, .skill-dock .skill-slot[data-tier]::before, .skill-dock .skill-slot[data-tier]::after { animation: none; } }
+/* 귀환 칸 — 독과 같은 짙은 나무 · 금 테. 열리면(15초 뒤) 금 단추 */
+.action-dock .extract-btn { border: 2px solid #e0a10a !important; background: linear-gradient(180deg, #4b2e1c, #2b1b10) !important; color: #fde68a !important; box-shadow: 0 3px 0 #160d07 !important; }
+.action-dock .extract-btn:disabled { opacity: .9; color: rgba(253, 230, 138, .75) !important; }
+.action-dock .extract-btn:not(:disabled) { background: linear-gradient(180deg, #fde68a, #f59e0b) !important; color: #431407 !important; border-color: #7c2d12 !important; box-shadow: 0 3px 0 #b45309, 0 0 12px rgba(251, 191, 36, .6) !important; }
+
+/* ── ④ 정비 · 스킬 — 무기 연계 · 등급 (2026-11-09) ──
+   무기 카드: 메달 아이콘 + "연계" 짝 스킬 아이콘 줄. 스킬 카드: 아이콘에 등급 판 · 테두리(data-tier), 이름 아래 등급 칩 · "활 연계" 칩(지금 무기와 짝이면 청록으로 켜짐) */
+.exp-weapon-card img { width: 38px !important; height: 38px !important; }
+.exp-weapon-links { display: flex !important; align-items: center; gap: 3px; margin-top: 2px; font-style: normal; }
+.exp-weapon-links > b { padding: 0 5px; border-radius: 999px; background: #0d9488; color: #f0fdfa !important; font: 900 11px/1.35 "Jua", sans-serif !important; }
+.exp-weapon-card .exp-weapon-links img { grid-area: auto; width: 22px !important; height: 22px !important; }
+.exp-weapon-card.on .exp-weapon-links > b { background: linear-gradient(180deg, #5eead4, #0d9488); color: #022c22 !important; }
+.exp-skill-card[data-tier] .exp-skill-icon { border-radius: var(--tf-radius, 12px); border: var(--tf-border, 2px solid #e0a10a); background: var(--tf-plate, #2b1b10); box-shadow: var(--tf-shadow, none); padding: 1px; }
+.exp-skill-tags { display: flex; flex-wrap: wrap; gap: 3px; margin: 1px 0 2px; font-style: normal; }
+.exp-skill-tags .tier-chip { font-size: 11px !important; padding: 0 6px !important; }
+.exp-skill-link { padding: 0 6px; border-radius: 999px; border: 1.5px solid rgba(94, 234, 212, .55); color: #5eead4; font: 900 11px/1.3 "Jua", sans-serif; font-style: normal; white-space: nowrap; }
+.exp-skill-link.on { border-color: #f0fdfa; background: linear-gradient(180deg, #5eead4, #0d9488); color: #022c22; }
+.exp-skill-card.linked { outline: 2px solid rgba(94, 234, 212, .9); outline-offset: -1px; }
+.exp-loadout-slot.is-linked { outline: 2px solid rgba(94, 234, 212, .95); outline-offset: 1px; }
+.exp-loadout-slot[data-tier] img { border-radius: var(--tf-radius, 12px); border: var(--tf-border, 2px solid #e0a10a); background: var(--tf-plate, #2b1b10); box-shadow: var(--tf-shadow, none); }

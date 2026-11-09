@@ -18,7 +18,7 @@ import {
   shadowCooldown, shadowCount, shadowDamage, shadowPower,
   meteorCooldown, meteorDamage, meteorPower, meteorRadius,
   forgeFamilyLevel, weaponForgeCooldownMul, weaponForgeDamageMul,
-  weaponCooldownMul,
+  skillWeaponCooldownMul,
   SKILL_BY_ID,
   type Element,
   type ExpeditionSkillId,
@@ -357,7 +357,8 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
                     : id === "shadow" ? shadowCooldown(level)
                       : id === "meteor" ? meteorCooldown(level)
                         : 0;
-  return base * weaponCooldownMul(weapon, family);
+  // 무기 연계(짝 무기 ×0.85) · 아니면 계열 상성(×0.88) — 2026-11-09
+  return base * skillWeaponCooldownMul(weapon, id, family);
 }
 
 /**

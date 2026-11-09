@@ -1,4 +1,5 @@
 import type { PlayerStats } from "./types";
+import type { Tier } from "../titans/allyRoster";
 import { STAGES, getStage } from "./stages";
 import { qaUnlockOpen } from "../progression/qaUnlock";
 
@@ -54,6 +55,39 @@ export function weaponCooldownMul(weapon: RangedWeaponId, family: SkillFamily): 
   if (weapon === "none" || family === "none") return 1;
   return WEAPON_BY_ID[weapon]?.affinity === family ? 0.88 : 1;
 }
+
+/**
+ * 무기 연계 (2026-11-09, 사용자: "무기별 스킬이 연계되고") — 스킬 무기마다 짝 무기가 있다(이름의 무기 모양대로).
+ * 검 = 바위 투석기 · 질풍 부메랑 · 그림자 표창 / 창 = 물살 작살 · 번개 창 / 활 = 화염 석궁 · 독침 단궁 / 지팡이 = 서리 지팡이 · 성광 홀 · 운석 낙하포.
+ * 짝 무기를 들면 '연계' — 재사용 ×0.85. 계열 상성(×0.88) 대신이라 겹치지 않는다(연계가 늘 조금 더 좋다). 화살비는 짝이 없다.
+ */
+export const SKILL_LINK_WEAPON: Record<Exclude<ExpeditionSkillId, "ultimate">, Exclude<RangedWeaponId, "none">> = {
+  earth: "sword", wind: "sword", shadow: "sword",
+  water: "spear", bolt: "spear",
+  fire: "bow", poison: "bow",
+  ice: "staff", holy: "staff", meteor: "staff",
+};
+export const LINK_COOLDOWN_MUL = 0.85;
+export function skillLinked(weapon: RangedWeaponId, id: ExpeditionSkillId): boolean {
+  return id !== "ultimate" && weapon !== "none" && SKILL_LINK_WEAPON[id] === weapon;
+}
+/** 스킬의 무기 배수 — 연계면 0.85, 아니면 계열 상성 */
+export function skillWeaponCooldownMul(weapon: RangedWeaponId, id: ExpeditionSkillId, family: SkillFamily): number {
+  return skillLinked(weapon, id) ? LINK_COOLDOWN_MUL : weaponCooldownMul(weapon, family);
+}
+/** 짝 무기를 쓰는 스킬 — 무기 고르는 칸 · 정비 화면의 "연계 스킬" */
+export function linkedSkillsOf(weapon: RangedWeaponId): ExpeditionSkillId[] {
+  return (Object.entries(SKILL_LINK_WEAPON) as [ExpeditionSkillId, RangedWeaponId][]).filter(([, w]) => w === weapon).map(([id]) => id);
+}
+
+/**
+ * 스킬 무기 등급 (2026-11-09, 사용자: "장비 등급들도 골고루 설정되게") — 사냥터 동료 · 스킬 · 유물과 같은 6등급.
+ * 해금 순서대로 둘씩 고르게(일반 2 · 희귀 2 · 영웅 2 · 전설 2 · 신화 2 · 초월 1 = 화살비). 그림 · 테두리에만 쓰고 값은 그대로(늦게 여는 무기가 이미 세다).
+ */
+export const SKILL_TIER: Record<ExpeditionSkillId, Tier> = {
+  fire: "N", water: "N", ice: "R", earth: "R", bolt: "SR", wind: "SR",
+  poison: "SSR", holy: "SSR", shadow: "UR", meteor: "UR", ultimate: "LR",
+};
 
 /* ────────────────── 기본 사격 ────────────────── */
 

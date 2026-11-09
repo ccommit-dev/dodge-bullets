@@ -118,7 +118,7 @@ ok("스킬 화면: 무기 4종(검 · 창 · 활 · 지팡이) + 스킬 무기 1
 // 기본 사격 행 — 장착 무기(픽스처: 지팡이)의 아이콘과 이름. 활 문장 basic.png 가 지팡이에도 떴다 (2026-10-01)
 {
   const basic = await page.evaluate(() => { const row = document.querySelector(".exp-basic-row"); return { img: row?.querySelector("img")?.getAttribute("src") ?? "", name: row?.querySelector("b")?.textContent ?? "" }; });
-  ok("기본 사격 행이 장착 무기(지팡이)의 아이콘과 이름을 쓴다", basic.img.includes("weapons/icon-staff.png") && basic.name.startsWith("마력탄"), JSON.stringify(basic));
+  ok("기본 사격 행이 장착 무기(지팡이)의 아이콘과 이름을 쓴다", basic.img.includes("skills/basic-staff.png") && basic.name.startsWith("마력탄"), JSON.stringify(basic));
 }
 ok("스킬 화면이 390px 폭을 넘지 않는다", skillUi.over.length === 0, skillUi.over.slice(0, 2).join(", "));
 
@@ -235,7 +235,7 @@ ok("전투 HUD 글자에 전체 지갑 코인을 띄우지 않는다", !!hud.hin
 // 전투 슬롯의 기본 사격 칸도 장착 무기 아이콘
 {
   const first = await page.evaluate(() => document.querySelector(".skill-slot img")?.getAttribute("src") ?? "");
-  ok("전투 슬롯 첫 칸(기본 사격)이 장착 무기(지팡이) 아이콘이다", first.includes("weapons/icon-staff.png"), first);
+  ok("전투 슬롯 첫 칸(기본 사격)이 장착 무기(지팡이) 메달이다", first.includes("skills/basic-staff.png"), first);   // 2026-11-09 스킬 무기와 같은 그림체 메달
 }
 
 // 1-a) 스킬 슬롯 — 바닥선 아래에 있어야 주인공 발을 가리지 않고, 조작 버튼 위에 있어야 눌림을 막지 않는다

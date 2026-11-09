@@ -108,7 +108,7 @@ import {
   type DailyId, type SupplyId,
 } from "./game/expeditionOps";
 import { applySkillLevels, collectionCooldownMul, LOADOUT_MAX, shardDrops, skillCost, SKILL_BY_ID, SKILL_MAX_LEVEL, skillUnlocked, type ExpeditionSkillId, type ExpeditionSkillLevels, type RangedWeaponId, type SkillWeaponId } from "./game/skills";
-import { ELEMENT_COLOR, ELEMENT_LABEL, EXPEDITION_SKILLS, WEAPON_BY_ID, weaponUnlocked, type Element as SkillElement } from "./game/skills";
+import { ELEMENT_COLOR, ELEMENT_LABEL, EXPEDITION_SKILLS, SKILL_TIER, skillLinked, WEAPON_BY_ID, weaponUnlocked, type Element as SkillElement } from "./game/skills";
 import { SkillPanel } from "./game/SkillPanel";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import { LockIcon } from "./ui/LockIcon";
@@ -305,7 +305,7 @@ function App() {
   const [speedMul, setSpeedMul] = useState(1);
   const speedRef = useRef(1);
   /** 스킬 슬롯 — 자동 발사라 쿨타임이 안 보이면 내 스킬이 도는지 알 수 없다 */
-  const [skillHud, setSkillHud] = useState<{ id: ExpeditionSkillId | "basic"; lv: number; ready: number }[]>([]);
+  const [skillHud, setSkillHud] = useState<{ id: ExpeditionSkillId | "basic"; lv: number; ready: number; linked?: boolean }[]>([]);
   const skillHudTsRef = useRef(0);
   /** 효과음 — 로직이 센 값(world.sfx)과 마지막으로 본 값을 비교해 여기서 낸다 */
   const sfxSeenRef = useRef({ shot: 0, hit: 0, boom: 0, freeze: 0, zap: 0, thud: 0, learn: 0 });
@@ -911,13 +911,16 @@ function App() {
             const basic = world.rangedWeapon !== "none"
               ? [{ id: "basic" as const, lv: 0, ready: 1 - Math.max(0, world.basicTimer) / Math.max(0.01, basicCooldown(world)) }]
               : [];
+            // 장착한 순서대로(정비에서 고른 칸 순서) — 예전엔 스킬 정의 순서라 칸 자리가 고른 것과 달랐다 (2026-11-09)
+            const order = (id: string) => { const k = ((world.loadout ?? []) as string[]).indexOf(id); return k < 0 ? 99 : k; };
             setSkillHud([...basic, ...EXPEDITION_SKILLS
               .filter((d) => d.id !== "ultimate" && !!world.runSkills[d.id] && (world.skillLevels[d.id] ?? 0) > 0)
+              .sort((a, b) => order(a.id) - order(b.id))
               .map((d) => {
                 // 쏘는 쪽과 같은 값 — 칩·수집 보너스·화살통을 빼고 재면 게이지가 실제보다 늦게 찬다
                 const full = skillCooldown(world, d.id as Exclude<typeof d.id, "ultimate">);
                 const left = Math.max(0, world.skillTimers[d.id] ?? 0);
-                return { id: d.id, lv: world.skillLevels[d.id], ready: full > 0 ? 1 - left / full : 1 };
+                return { id: d.id, lv: world.skillLevels[d.id], ready: full > 0 ? 1 - left / full : 1, linked: skillLinked(world.rangedWeapon, d.id) };
               })]);
           }
           if (world.runLevel !== hudLevelRef.current || Math.abs(world.runXp - hudXpRef.current) >= 1) {
@@ -2356,14 +2359,16 @@ function App() {
           {skillHud.length > 0 && (
             <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
               {skillHud.map((s) => (
-                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""}`} title={s.id === "basic" ? "기본 사격" : SKILL_BY_ID[s.id].name}>
-                  <img src={assetUrl(s.id === "basic" ? `dodge/weapons/icon-${progress.equippedWeaponKind}.png` : `dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
+                // 2026-11-09 (사용자: "댐 방어전 스킬 ui 조금 더 고급지고 스킬에 연관된 거로") — 스킬 무기 그림 메달 · 등급 테두리(data-tier) · 짝 무기면 '연계'
+                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""} ${s.linked ? "is-linked" : ""}`} data-tier={s.id === "basic" ? "basic" : SKILL_TIER[s.id]} data-el={s.id === "basic" ? "basic" : SKILL_BY_ID[s.id].element} title={s.id === "basic" ? "기본 사격" : `${SKILL_BY_ID[s.id].weapon}${s.linked ? " · 무기 연계(재사용 −15%)" : ""}`}>
+                  <img src={assetUrl(s.id === "basic" ? `dodge/skills/basic-${progress.equippedWeaponKind}.png` : `dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
                   {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
                   <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />
                   {s.id !== "basic" && <b>{s.lv}</b>}
+                  {s.linked && <em className="skill-link-mark" aria-label="무기 연계">연계</em>}
                 </span>
               ))}
-              <span className="skill-dock-auto">자동 조준</span>
+              <span className="skill-dock-auto"><i className="aim-mark" aria-hidden="true" />자동 조준</span>
             </div>
           )}
           <div

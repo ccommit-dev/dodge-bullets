@@ -178,6 +178,199 @@ def arrow_obj(c, s=1.0, rot=-45, tip='#cfd6df', shaft='#8a5a2b', fletch='#ef5a5a
         ob(f'fl{sx}', C.ellipsoid(c - d * 0.34 * s + n * sx * 0.05 * s, (0.05 * s, 0.01, 0.11 * s), rot=R), mat('fl', fletch, 0.5), O * 0.5)
 
 
+# ── 성문(댐) 방어 스킬 무기 (2026-11-09, 사용자: "댐 방어전 스킬 ui 조금 더 고급지고 스킬에 연관된 거로 퀄 좋게") ──
+# 예전 상징은 화살 · 공 · 별이라 화염 · 물살 · 독침 · 기본이 모두 '화살'로 보였다 → 스킬 이름의 무기를 그대로(석궁 · 작살 · 지팡이 · 투석기 · 창 · 부메랑 · 단궁 · 홀 · 표창 · 낙하포)
+def _dir(deg):
+    """화면 안 방향 — 0° 위, 양수는 시계 방향(오른쪽으로). (회전, 진행 방향 d, 그 옆 n)"""
+    R = Euler((0, math.radians(deg), 0))
+    return R, R.to_matrix() @ Vector((0, 0, 1)), R.to_matrix() @ Vector((1, 0, 0))
+
+
+def _steel(glow=None, es=0.0, c='#dfe6ee'):
+    return mat('steel', c, 0.22, 0.85, emit=glow, es=es)
+
+
+def _gold():
+    return mat('gold', '#e8b23a', 0.3, 0.8)
+
+
+def crossbow(c, deg=40):
+    """화염 석궁 — 각목 개머리 · 앞의 휜 활 몸 · 당긴 시위 · 불붙은 볼트"""
+    R, d, n = _dir(deg)
+    ob('cb_stock', C.box(c - d * 0.06, (0.11, 0.08, 0.6), bevel=0.025, rot=R), mat('cbw', '#7a4a26', 0.55))
+    f = c + d * 0.18
+    pts = spline([f - n * 0.36 - d * 0.12, f - n * 0.18 + d * 0.01, f + d * 0.04, f + n * 0.18 + d * 0.01, f + n * 0.36 - d * 0.12], 16)
+    ob('cb_prod', C.tube(pts, interp([0.034, 0.05, 0.058, 0.05, 0.034], len(pts)), seg=12), mat('cbp', '#3a2a22', 0.35, 0.45))
+    for sx in (-1, 1):
+        ob(f'cb_str{sx}', C.tube([f + n * sx * 0.35 - d * 0.12, c - d * 0.05], 0.008, seg=6), mat('str', '#f6ecd2', 0.6), O * 0.4)
+        ob(f'cb_cap{sx}', C.ellipsoid(f + n * sx * 0.36 - d * 0.12, (0.03, 0.03, 0.03)), _gold(), O * 0.4)
+    ob('cb_bolt', C.tube([c - d * 0.06, c + d * 0.3], 0.026, seg=8), mat('cbb', '#5a2a12', 0.6), O * 0.5)
+    ob('cb_tip', C.cone(c + d * 0.36, 0.06, 0.0, 0.14, seg=4, rot=R), _steel('#ff7a2a', 2.2, '#ff9a4a'), O * 0.6)
+    ob('cb_trig', C.box(c - d * 0.2 - n * 0.06, (0.05, 0.03, 0.09), rot=R), _gold(), O * 0.4)
+    flames(c + d * 0.36 + Vector((0.0, -0.06, 0.02)), 0.36, color='#ff6a1f')
+
+
+def harpoon(c, deg=40):
+    """물살 작살 — 긴 자루 · 미늘 둘 · 감긴 밧줄 · 물방울"""
+    R, d, n = _dir(deg)
+    ob('hp_shaft', C.tube([c - d * 0.48, c + d * 0.2], 0.038, seg=12), mat('hpw', '#5a4a3a', 0.6))
+    ob('hp_head', C.cone(c + d * 0.3, 0.095, 0.0, 0.26, seg=4, rot=R), _steel('#4ab0ff', 0.6))
+    for sx in (-1, 1):
+        ob(f'hp_barb{sx}', C.cone(c + d * 0.2 + n * sx * 0.07, 0.03, 0.0, 0.13, seg=4, rot=Euler((0, math.radians(deg + sx * 155), 0))), _steel(), O * 0.6)
+    ob('hp_band', C.torus(c + d * 0.17, 0.038, 0.012, seg=24, rot=R), _gold(), O * 0.4)
+    ob('hp_coil', C.torus(c - d * 0.3 + n * 0.12, 0.1, 0.022, seg=32, rot=Euler((math.radians(90), 0, 0))), mat('rope', '#d8b47a', 0.7), O * 0.5)
+    droplet(c + d * 0.42 + n * 0.12, 0.3)
+    droplet(c + d * 0.24 - n * 0.2, 0.24, '#8ad8ff')
+
+
+def frost_staff(c, deg=-12):
+    """서리 지팡이 — 짙은 자루 · 위로 벌어진 은 갈래 · 얼음 결정"""
+    R, d, n = _dir(deg)
+    ob('fs_shaft', C.tube([c - d * 0.5, c + d * 0.17], 0.042, seg=12), mat('fsw', '#3e3456', 0.5))
+    ob('fs_band', C.torus(c + d * 0.15, 0.045, 0.014, seg=24, rot=R), _gold(), O * 0.4)
+    for sx in (-1, 1):
+        pts = spline([c + d * 0.16, c + d * 0.24 + n * sx * 0.14, c + d * 0.36 + n * sx * 0.13], 10)
+        ob(f'fs_prong{sx}', C.tube(pts, interp([0.03, 0.026, 0.01], len(pts)), seg=8), _steel(c='#e6eef8'), O * 0.5)
+    crystal(c + d * 0.24, 0.86, '#2aa8f0', math.radians(deg))
+    crystal(c - n * 0.24 - d * 0.02, 0.24, '#e0faff', math.radians(30))
+    crystal(c + n * 0.22 - d * 0.18, 0.2, '#e0faff', math.radians(-25))
+
+
+def catapult(c):
+    """바위 투석기 — 바퀴 달린 받침 · 기둥 · 젖혀진 팔 끝 바위"""
+    wood, dark = mat('ctw', '#8a5a2b', 0.6), mat('ctd', '#5a3418', 0.7)
+    b = c + Vector((0.0, 0.0, -0.28))
+    ob('ct_base', C.box(b, (0.64, 0.1, 0.07), bevel=0.015), wood)
+    for sx in (-1, 1):
+        ob(f'ct_wheel{sx}', C.torus(b + Vector((sx * 0.23, -0.08, -0.05)), 0.085, 0.026, seg=24, rot=Euler((math.radians(90), 0, 0))), dark, O * 0.5)
+        ob(f'ct_hub{sx}', C.ellipsoid(b + Vector((sx * 0.23, -0.1, -0.05)), (0.03, 0.02, 0.03)), _gold(), O * 0.3)
+    ob('ct_post', C.box(b + Vector((0.1, 0.0, 0.15)), (0.06, 0.06, 0.3), bevel=0.01), wood)
+    piv = b + Vector((0.1, -0.04, 0.29))
+    R, d, n = _dir(-56)
+    ob('ct_arm', C.box(piv + d * 0.17, (0.05, 0.05, 0.52), bevel=0.01, rot=R), wood)
+    cup = piv + d * 0.4
+    ob('ct_cup', C.ellipsoid(cup, (0.1, 0.07, 0.05), rot=R), dark)
+    ob('ct_rock', C.ellipsoid(cup + Vector((0.0, -0.05, 0.09)), (0.13, 0.11, 0.12)), mat('rock', '#8a7a62', 0.85))
+    ob('ct_rope', C.torus(piv, 0.045, 0.013, seg=20, rot=Euler((math.radians(90), 0, 0))), mat('rope', '#d8b47a', 0.7), O * 0.4)
+    for k, (dx, dz, r) in enumerate(((0.12, 0.34, 0.04), (0.24, 0.26, 0.03))):
+        ob(f'ct_peb{k}', C.ellipsoid(c + Vector((dx, -0.08, dz)), (r, r * 0.9, r)), mat('rock', '#8a7a62', 0.85), O * 0.4)
+
+
+def bolt_spear(c, deg=40):
+    """번개 창 — 짙은 자루 · 금 띠 · 노란 빛 나는 잎날 · 옆을 가르는 번개"""
+    R, d, n = _dir(deg)
+    ob('bs_shaft', C.tube([c - d * 0.5, c + d * 0.18], 0.038, seg=12), mat('bsw', '#3a2a5a', 0.5))
+    for t in (0.17, -0.12):
+        ob(f'bs_band{t}', C.torus(c + d * t, 0.036, 0.012, seg=24, rot=R), _gold(), O * 0.4)
+    ob('bs_blade', C.ellipsoid(c + d * 0.3, (0.09, 0.03, 0.17), rot=R), _steel('#ffe14a', 0.9, '#fff7c0'))
+    ob('bs_tip', C.cone(c + d * 0.44, 0.045, 0.0, 0.11, seg=4, rot=R), _steel('#ffe14a', 1.2, '#fff7c0'), O * 0.5)
+    bolt_shape(c + n * 0.18 + d * 0.04 + Vector((0, -0.06, 0)), 0.72)
+
+
+def boomerang(c):
+    """질풍 부메랑 — 꺾인 나무 날개 둘(청록 줄) · 뒤의 바람 소용돌이"""
+    wood = mat('bmw', '#c8873a', 0.5)
+    stripe = mat('bms', '#1fa89a', 0.4, emit='#3ff0c4', es=0.6)
+    apex = c + Vector((0.02, 0.0, 0.2))
+    swirl(c + Vector((0.0, 0.12, -0.06)), 0.85)
+    for sx, deg in ((-1, -118), (1, 118)):
+        R, d, n = _dir(deg)
+        ob(f'bm_arm{sx}', C.box(apex + d * 0.22, (0.12, 0.05, 0.46), bevel=0.04, rot=R), wood)
+        ob(f'bm_str{sx}', C.box(apex + d * 0.22 + Vector((0, -0.03, 0)), (0.035, 0.01, 0.32), rot=R), stripe, 0)
+    ob('bm_apex', C.ellipsoid(apex, (0.075, 0.05, 0.075)), wood)
+
+
+def short_bow(c, wood='#4a2a5a', tip='#9ad04a', glow='#9ad04a', poison=True):
+    """독침 단궁(또는 기본 활) — 오른쪽으로 불룩한 짧은 활 · 당긴 시위 · 걸린 화살 · 독 방울"""
+    V = Vector
+    pts = spline([c + V((-0.06, 0, -0.38)), c + V((0.12, 0, -0.2)), c + V((0.17, 0, 0)), c + V((0.12, 0, 0.2)), c + V((-0.06, 0, 0.38))], 18)
+    ob('sb_bow', C.tube(pts, interp([0.028, 0.045, 0.055, 0.045, 0.028], len(pts)), seg=10), mat('sbw', wood, 0.5))
+    for sz in (-1, 1):
+        ob(f'sb_tip{sz}', C.ellipsoid(c + V((-0.06, 0, sz * 0.38)), (0.03, 0.03, 0.03)), _gold(), O * 0.4)
+        ob(f'sb_str{sz}', C.tube([c + V((-0.06, 0, sz * 0.37)), c + V((-0.22, 0, 0))], 0.008, seg=6), mat('str', '#f6ecd2', 0.6), O * 0.4)
+    R = Euler((0, math.radians(90), 0))
+    ob('sb_arrow', C.tube([c + V((-0.24, 0, 0)), c + V((0.32, 0, 0))], 0.024, seg=8), mat('sba', '#6a4a2a', 0.6), O * 0.5)
+    ob('sb_head', C.cone(c + V((0.37, 0, 0)), 0.055, 0.0, 0.13, seg=4, rot=R), _steel(glow, 1.8 if poison else 0.0, tip), O * 0.5)
+    for sz in (-1, 1):
+        ob(f'sb_fl{sz}', C.ellipsoid(c + V((-0.2, 0, sz * 0.04)), (0.07, 0.01, 0.03)), mat('fl', '#7a3ac8' if poison else '#ef5a5a', 0.5), O * 0.4)
+    if poison:
+        droplet(c + V((0.34, -0.06, -0.16)), 0.26, '#9ad04a')
+        ob('sb_bub', C.ellipsoid(c + V((0.22, -0.08, -0.26)), (0.05, 0.05, 0.05)), mat('bub', '#b8f05a', 0.1, emit='#b8f05a', es=1.2), O * 0.4)
+
+
+def holy_scepter(c):
+    """성광 홀 — 금 자루 · 빛나는 구슬 · 흰 날개 둘 · 뒤의 광륜"""
+    V = Vector
+    ob('hs_halo', C.torus(c + V((0, 0.08, 0.22)), 0.27, 0.022, seg=48, rot=Euler((math.radians(90), 0, 0))), mat('halo', '#ffe08a', 0.3, emit='#ffe08a', es=1.4), O * 0.4)
+    ob('hs_shaft', C.tube([c + V((0, 0, -0.48)), c + V((0, 0, 0.1))], 0.038, seg=12), _gold())
+    ob('hs_grip', C.tube([c + V((0, 0, -0.3)), c + V((0, 0, -0.14))], 0.034, seg=12), mat('grip', '#f6ecd2', 0.6), O * 0.4)
+    ob('hs_gem', C.ellipsoid(c + V((0, -0.02, -0.5)), (0.045, 0.04, 0.045)), mat('gem', '#ff6a8a', 0.15, emit='#ff6a8a', es=0.6), O * 0.4)
+    for sx in (-1, 1):
+        ob(f'hs_wing{sx}', C.ellipsoid(c + V((sx * 0.19, 0.02, 0.2)), (0.14, 0.03, 0.065), rot=Euler((0, math.radians(sx * -28), 0))), mat('wing', '#fffaf0', 0.5))
+        ob(f'hs_wing2{sx}', C.ellipsoid(c + V((sx * 0.16, 0.01, 0.12)), (0.11, 0.025, 0.05), rot=Euler((0, math.radians(sx * -12), 0))), mat('wing', '#fffaf0', 0.5), O * 0.6)
+    ob('hs_cradle', C.torus(c + V((0, -0.01, 0.24)), 0.13, 0.02, seg=32, rot=Euler((math.radians(90), 0, 0))), _gold(), O * 0.4)
+    ob('hs_orb', C.ellipsoid(c + V((0, -0.03, 0.24)), (0.115, 0.115, 0.115)), mat('orb', '#fff6b8', 0.15, emit='#fff6b8', es=1.5))
+
+
+def shuriken(c):
+    """그림자 표창 — 네 날 쇠 별(보라 빛 날) · 금 가운데 고리 · 도는 보라 잔상"""
+    for k in range(4):
+        R, d, n = _dir(45 + 90 * k)
+        ob(f'sk_blade{k}', C.cone(c + d * 0.17, 0.12, 0.0, 0.34, seg=4, rot=R), mat('skb', '#4a4a62', 0.25, 0.75, emit='#b07aff', es=0.35))
+    ob('sk_ring', C.torus(c + Vector((0, -0.04, 0)), 0.075, 0.022, seg=28, rot=Euler((math.radians(90), 0, 0))), _gold(), O * 0.4)
+    ob('sk_hole', C.ellipsoid(c + Vector((0, -0.05, 0)), (0.04, 0.01, 0.04)), mat('hole', '#1a1428', 0.8), 0)
+    for k, (a0, a1, r) in enumerate(((200, 290, 0.43), (20, 110, 0.43))):
+        pts = [c + Vector((r * math.sin(math.radians(a)), 0.06, r * math.cos(math.radians(a)))) for a in range(a0, a1 + 1, 6)]
+        ob(f'sk_trail{k}', C.tube(pts, interp([0.0, 0.022, 0.0], len(pts)), seg=8), mat('trail', '#a06aff', 0.3, emit='#a06aff', es=1.6), 0)
+
+
+def meteor_cannon(c, deg=48):
+    """운석 낙하포 — 쇠 포신 · 금 고리 · 나무 받침 바퀴 · 불붙은 운석"""
+    R, d, n = _dir(deg)
+    iron = mat('iron', '#3a3a48', 0.35, 0.6)
+    ob('mc_barrel', C.cone(c - d * 0.08, 0.13, 0.1, 0.46, seg=28, rot=R), iron)
+    for t, r in ((0.14, 0.108), (-0.28, 0.135)):
+        ob(f'mc_ring{t}', C.torus(c + d * t, r, 0.022, seg=28, rot=R), _gold(), O * 0.4)
+    ob('mc_cart', C.box(c + Vector((-0.06, 0.03, -0.26)), (0.34, 0.08, 0.08), bevel=0.012), mat('mcw', '#7a4a26', 0.6))
+    ob('mc_wheel', C.torus(c + Vector((-0.08, -0.08, -0.31)), 0.09, 0.026, seg=24, rot=Euler((math.radians(90), 0, 0))), mat('mcd', '#5a3418', 0.7), O * 0.5)
+    met = c + d * 0.36 + Vector((0.0, -0.06, 0.0))
+    ob('mc_met', C.ellipsoid(met, (0.11, 0.1, 0.1)), mat('met', '#6a4a3a', 0.8, emit='#ff7a2a', es=0.5))
+    flames(met + Vector((-0.02, -0.02, -0.1)), 0.45, color='#ff5a1f')
+
+
+def sword_obj(c, deg=35):
+    """기본 사격 · 검 — 곧은 날 · 금 코등이 · 가죽 손잡이 · 보석 끝"""
+    R, d, n = _dir(deg)
+    ob('sw_blade', C.box(c + d * 0.08, (0.085, 0.022, 0.46), bevel=0.006, rot=R), _steel())
+    ob('sw_tip', C.cone(c + d * 0.36, 0.062, 0.0, 0.14, seg=4, rot=R), _steel(), O * 0.6)
+    ob('sw_fuller', C.box(c + d * 0.06 + Vector((0, -0.012, 0)), (0.016, 0.004, 0.34), rot=R), mat('fuller', '#9fb0c4', 0.3, 0.8), 0)
+    ob('sw_guard', C.box(c - d * 0.17, (0.28, 0.05, 0.05), bevel=0.012, rot=R), _gold())
+    ob('sw_grip', C.tube([c - d * 0.19, c - d * 0.34], 0.03, seg=10), mat('grip', '#6a3a1a', 0.6), O * 0.5)
+    ob('sw_pommel', C.ellipsoid(c - d * 0.38, (0.045, 0.045, 0.045)), _gold(), O * 0.5)
+    ob('sw_gem', C.ellipsoid(c - d * 0.17 + Vector((0, -0.03, 0)), (0.03, 0.015, 0.03)), mat('gem', '#e8443a', 0.15, emit='#e8443a', es=0.5), O * 0.3)
+
+
+def plain_spear(c, deg=40):
+    """기본 사격 · 창 — 나무 자루 · 잎날 · 금 띠 · 붉은 술"""
+    R, d, n = _dir(deg)
+    ob('ps_shaft', C.tube([c - d * 0.5, c + d * 0.18], 0.038, seg=12), mat('psw', '#8a5a2b', 0.6))
+    ob('ps_band', C.torus(c + d * 0.17, 0.036, 0.012, seg=24, rot=R), _gold(), O * 0.4)
+    ob('ps_blade', C.ellipsoid(c + d * 0.3, (0.09, 0.03, 0.17), rot=R), _steel())
+    ob('ps_tip', C.cone(c + d * 0.44, 0.045, 0.0, 0.11, seg=4, rot=R), _steel(), O * 0.5)
+    ob('ps_tassel', C.ellipsoid(c + d * 0.12 + n * 0.05, (0.05, 0.03, 0.08), rot=R), mat('tassel', '#e8443a', 0.6), O * 0.4)
+
+
+def magic_staff(c, deg=-12):
+    """기본 사격 · 지팡이 — 나무 자루 · 감싼 가지 · 보라 마력 구슬"""
+    R, d, n = _dir(deg)
+    ob('ms_shaft', C.tube([c - d * 0.5, c + d * 0.16], 0.042, seg=12), mat('msw', '#7a4a26', 0.6))
+    for sx in (-1, 1):
+        pts = spline([c + d * 0.12, c + d * 0.24 + n * sx * 0.12, c + d * 0.38 + n * sx * 0.02], 10)
+        ob(f'ms_twig{sx}', C.tube(pts, interp([0.024, 0.02, 0.008], len(pts)), seg=8), mat('msw', '#7a4a26', 0.6), O * 0.5)
+    ob('ms_orb', C.ellipsoid(c + d * 0.27, (0.14, 0.14, 0.14)), mat('orb', '#b07aff', 0.15, emit='#b07aff', es=1.2))
+    ob('ms_band', C.torus(c + d * 0.1, 0.045, 0.014, seg=24, rot=R), _gold(), O * 0.4)
+
+
 EMBLEM = {
     # 사냥터 스킬 20 — (원소, 그리기)
     'strike': ('blade', lambda: (drum(Vector((0.04, -0.2, -0.12)), 1.0), acorn(Vector((-0.22, -0.32, 0.3)), 0.7))),
@@ -200,19 +393,23 @@ EMBLEM = {
     'focus': ('blade', lambda: (C.mesh_obj('target', C.torus(Vector((0, -0.12, 0)), 0.42, 0.05, seg=48, rot=Euler((math.radians(90), 0, 0))), mat('tg', '#ef5a5a', 0.4), outline=O), acorn(Vector((0.02, -0.3, 0.0)), 0.75))),
     'guardianSoul': ('earth', lambda: (log(Vector((0, -0.2, -0.3)), 0.75), flames(Vector((0, -0.3, -0.1)), 0.9, color='#7fe8ff'))),
     'elementalMastery': ('light', lambda: (leaf(Vector((0, -0.2, 0)), 1.25), star(Vector((0.3, -0.36, 0.3)), 0.35, '#fff6b8'))),
-    # 성문 방어 스킬 12
-    'd-basic': ('basic', lambda: arrow_obj(Vector((0, -0.2, 0)), 1.25)),
-    'd-fire': ('fire', lambda: (arrow_obj(Vector((0, -0.2, 0)), 1.15, tip='#ff7a2a', glow='#ff7a2a'), flames(Vector((0.18, -0.36, 0.16)), 0.5))),
-    'd-water': ('water', lambda: (arrow_obj(Vector((0, -0.2, 0)), 1.15, tip='#4ab0ff', glow='#4ab0ff', fletch='#4ab0ff'), droplet(Vector((-0.24, -0.34, -0.22)), 0.55))),
-    'd-ice': ('ice', lambda: crystal(Vector((0, -0.2, 0)), 1.3, '#a8f0ff', math.radians(-35))),
-    'd-earth': ('earth', lambda: C.mesh_obj('boulder', C.ellipsoid(Vector((0, -0.2, 0)), (0.36, 0.3, 0.32)), mat('rock', '#8a7a62', 0.85), outline=O)),
-    'd-bolt': ('bolt', lambda: bolt_shape(Vector((0, -0.2, 0)), 1.2)),
-    'd-wind': ('wind', lambda: (swirl(Vector((0, -0.2, 0)), 1.1), C.mesh_obj('boomer', C.tube(spline([Vector((-0.3, -0.35, 0.25)), Vector((0, -0.35, 0.05)), Vector((0.3, -0.35, 0.25))], 10), 0.05, seg=10), mat('bm', '#d8a24a', 0.5), outline=O))),
-    'd-poison': ('poison', lambda: (arrow_obj(Vector((0, -0.2, 0)), 1.0, tip='#9ad04a', glow='#9ad04a', fletch='#7a3ac8'), C.mesh_obj('bub', C.ellipsoid(Vector((-0.22, -0.34, -0.22)), (0.12, 0.12, 0.12)), mat('bub', '#b8f05a', 0.1, emit='#b8f05a', es=1.2), outline=O))),
-    'd-holy': ('holy', lambda: (star(Vector((0, -0.2, 0.0)), 1.1, '#fff6b8'), C.mesh_obj('halo', C.torus(Vector((0, -0.12, 0)), 0.5, 0.03, seg=48, rot=Euler((math.radians(90), 0, 0))), mat('halo', '#ffe08a', 0.3, emit='#ffe08a', es=1.5), outline=O * 0.6))),
-    'd-shadow': ('shadow', lambda: star(Vector((0, -0.2, 0)), 1.15, '#4a3a6a', 4)),
-    'd-meteor': ('meteor', lambda: (flames(Vector((0.16, -0.2, 0.1)), 0.9), C.mesh_obj('met', C.ellipsoid(Vector((-0.12, -0.34, -0.14)), (0.24, 0.22, 0.22)), mat('met', '#6a4a3a', 0.8, emit='#ff7a2a', es=0.4), outline=O))),
-    'd-ultimate': ('basic', lambda: (arrow_obj(Vector((-0.22, -0.2, 0.05)), 0.85, -30), arrow_obj(Vector((0.0, -0.24, 0.1)), 0.85, -45), arrow_obj(Vector((0.22, -0.28, 0.15)), 0.85, -60))),
+    # 성문(댐) 방어 스킬 무기 12 + 기본 사격 무기 4 (2026-11-09) — 스킬 이름의 무기 그대로
+    "d-basic": ("basic", lambda: arrow_obj(Vector((0, -0.2, 0)), 1.25)),
+    "d-basic-sword": ("blade", lambda: sword_obj(Vector((0, -0.24, 0)))),
+    "d-basic-spear": ("blade", lambda: plain_spear(Vector((0, -0.24, 0)))),
+    "d-basic-bow": ("basic", lambda: short_bow(Vector((-0.04, -0.24, 0)), wood="#8a5a2b", tip="#cfd6df", glow=None, poison=False)),
+    "d-basic-staff": ("shadow", lambda: magic_staff(Vector((0, -0.24, 0)))),
+    "d-fire": ("fire", lambda: crossbow(Vector((0, -0.24, 0)))),
+    "d-water": ("water", lambda: harpoon(Vector((0, -0.24, 0)))),
+    "d-ice": ("ice", lambda: frost_staff(Vector((0, -0.24, 0)))),
+    "d-earth": ("earth", lambda: catapult(Vector((0, -0.24, 0)))),
+    "d-bolt": ("bolt", lambda: bolt_spear(Vector((0, -0.24, 0)))),
+    "d-wind": ("wind", lambda: boomerang(Vector((0, -0.24, 0)))),
+    "d-poison": ("poison", lambda: short_bow(Vector((-0.04, -0.24, 0)))),
+    "d-holy": ("holy", lambda: holy_scepter(Vector((0, -0.24, 0)))),
+    "d-shadow": ("shadow", lambda: shuriken(Vector((0, -0.24, 0)))),
+    "d-meteor": ("meteor", lambda: meteor_cannon(Vector((0, -0.24, 0)))),
+    "d-ultimate": ("light", lambda: (arrow_obj(Vector((-0.2, -0.22, 0.06)), 0.85, 205, tip="#ffd34d", glow="#ffd34d", fletch="#ffe08a"), arrow_obj(Vector((0.02, -0.26, 0.0)), 0.85, 215, tip="#ffd34d", glow="#ffd34d", fletch="#ffe08a"), arrow_obj(Vector((0.24, -0.3, -0.06)), 0.85, 225, tip="#ffd34d", glow="#ffd34d", fletch="#ffe08a"))),
 }
 
 
