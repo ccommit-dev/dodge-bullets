@@ -5,7 +5,9 @@
  */
 import type { Tier } from "../titans/allyRoster";
 
-export function weaponEquipTier(level: number): Tier { return level >= 15 ? "LR" : level >= 13 ? "UR" : level >= 10 ? "SSR" : level >= 5 ? "SR" : level >= 1 ? "R" : "N"; }
-export function partEquipTier(enhance: number): Tier { return enhance >= 10 ? "LR" : enhance >= 9 ? "UR" : enhance >= 7 ? "SSR" : enhance >= 4 ? "SR" : enhance >= 1 ? "R" : "N"; }
-export function setEquipTier(level: number): Tier { return level >= 10 ? "LR" : level >= 7 ? "UR" : level >= 4 ? "SSR" : "SR"; }
+// 2026-11-09 (사용자: "장비 등급들도 골고루 설정되게") — 구간을 고르게. 예전 무기 구간은 일반 1 · 희귀 4 · 영웅 5 · 전설 3 · 신화 2 · 초월 1칸이라 오래 영웅에 머물렀다
+//   무기 0~15: 3 · 3 · 3 · 3 · 2 · 2 칸 / 부위 0~10: 2 · 2 · 2 · 2 · 2 · 1 칸 / 세트 0~10(영웅부터): 3 · 3 · 3 · 2 칸
+export function weaponEquipTier(level: number): Tier { return level >= 14 ? "LR" : level >= 12 ? "UR" : level >= 9 ? "SSR" : level >= 6 ? "SR" : level >= 3 ? "R" : "N"; }
+export function partEquipTier(enhance: number): Tier { return enhance >= 10 ? "LR" : enhance >= 8 ? "UR" : enhance >= 6 ? "SSR" : enhance >= 4 ? "SR" : enhance >= 2 ? "R" : "N"; }
+export function setEquipTier(level: number): Tier { return level >= 9 ? "LR" : level >= 6 ? "UR" : level >= 3 ? "SSR" : "SR"; }
 export function shoulderEquipTier(grade: "normal" | "rare" | "epic" | "legendary"): Tier { return grade === "legendary" ? "SSR" : grade === "epic" ? "SR" : grade === "rare" ? "R" : "N"; }
