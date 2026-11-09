@@ -154,6 +154,12 @@ export function normalizeRelics(raw: unknown): RelicState {
   return out;
 }
 
+/** 저장 읽기 — 넣은 조각 · 남은 조각을 함께 읽고, 넣은 조각을 ★ 단위로 맞춘다(settleRelicShards) */
+export function normalizeRelicPair(rawRelics: unknown, rawSpare: unknown): { relics: RelicState; relicSpare: RelicState } {
+  const s = settleRelicShards(normalizeRelics(rawRelics), normalizeRelics(rawSpare));
+  return { relics: s.state, relicSpare: s.spare };
+}
+
 export function relicStars(state: RelicState, id: RelicId): number {
   return Math.min(RELIC_MAX_STAR, Math.floor((state[id] ?? 0) / RELIC_SHARDS_PER_STAR));
 }
@@ -343,12 +349,33 @@ export function relicSpareUsable(state: RelicState, spare: RelicState, id: Relic
   return Math.max(0, Math.min(spare[id] ?? 0, RELIC_SHARDS_PER_STAR * RELIC_MAX_STAR - (state[id] ?? 0)));
 }
 
-/** 남은 조각을 소진해 ★ 에 넣는다 — 넣을 수 있는 만큼 모두. ★5 를 넘는 조각은 남은 조각에 그대로 둔다(버리지 않는다) */
-export function consumeRelicSpare(state: RelicState, spare: RelicState, id: RelicId): { state: RelicState; spare: RelicState; used: number } {
-  const used = relicSpareUsable(state, spare, id);
-  if (used <= 0) return { state, spare, used: 0 };
-  const left = (spare[id] ?? 0) - used;
+/**
+ * 강화 (2026-11-09, 사용자: "유물 조각제가 너무 이상함 — 단순하게 갖으면 업그레이드 가능하게, 업그레이드 재료로") —
+ * 조각은 강화 재료다. 남은 조각이 ★ 한 단계 값(3개)만큼 있으면 강화할 수 있고, 누르면 정확히 3개를 써서 ★+1(★0 이면 획득).
+ * 예전 '소진'은 ★ 가 안 올라도 남은 조각을 모두 밀어 넣어, 넣은 조각 · 남은 조각 두 칸에 조각이 흩어졌다(카드의 "2/3" · "조각 5" 가 둘 다 넣은 조각).
+ */
+export function relicUpgradable(state: RelicState, spare: RelicState, id: RelicId): boolean {
+  return relicStars(state, id) < RELIC_MAX_STAR && (spare[id] ?? 0) >= RELIC_SHARDS_PER_STAR;
+}
+
+export function upgradeRelic(state: RelicState, spare: RelicState, id: RelicId): { state: RelicState; spare: RelicState; ok: boolean } {
+  if (!relicUpgradable(state, spare, id)) return { state, spare, ok: false };
+  const left = (spare[id] ?? 0) - RELIC_SHARDS_PER_STAR;
   const nextSpare: RelicState = { ...spare };
   if (left > 0) nextSpare[id] = left; else delete nextSpare[id];
-  return { state: { ...state, [id]: (state[id] ?? 0) + used }, spare: nextSpare, used };
+  return { state: { ...state, [id]: relicStars(state, id) * RELIC_SHARDS_PER_STAR + RELIC_SHARDS_PER_STAR }, spare: nextSpare, ok: true };
+}
+
+/** 넣은 조각은 늘 ★ 단위 — 옛 '소진'이 남긴 1~2개(★ 를 못 채운 조각)는 남은 조각으로 돌려준다. ★ · 효과는 그대로(★ = 넣은 조각 ÷ 3 버림) */
+export function settleRelicShards(state: RelicState, spare: RelicState): { state: RelicState; spare: RelicState } {
+  let nextState: RelicState | null = null, nextSpare: RelicState | null = null;
+  for (const [id, n] of Object.entries(state) as [RelicId, number][]) {
+    const rem = n % RELIC_SHARDS_PER_STAR;
+    if (rem === 0) continue;
+    nextState ??= { ...state };
+    nextSpare ??= { ...spare };
+    if (n - rem > 0) nextState[id] = n - rem; else delete nextState[id];
+    nextSpare[id] = (nextSpare[id] ?? 0) + rem;
+  }
+  return { state: nextState ?? state, spare: nextSpare ?? spare };
 }

@@ -1578,13 +1578,16 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const short = sg.consumeSkillCopies({ ...inv0, levels: { ...inv0.levels, strike: 15 }, copies: { strike: 4 } }, "strike");
   ok("다음 Lv 에 카드가 모자라면 쓰지 않는다 — Lv.15 + 카드 4(5장 필요) → 그대로", short.used === 0 && short.inv.levels.strike === 15);
   ok("가진 카드로 최대를 채울 수 있는 스킬은 뽑기에서 빠진다 — Lv.18 은 10장이면 0 · 9장이면 남는다", sg.skillDrawRates({ ...inv0, levels: { ...inv0.levels, strike: 18 }, copies: { strike: 10 } }, "gold").find((x) => x.id === "strike").rate === 0 && sg.skillDrawRates({ ...inv0, levels: { ...inv0.levels, strike: 18 }, copies: { strike: 9 } }, "gold").find((x) => x.id === "strike").rate > 0);
-  // 유물 — 뽑은 조각은 남은 조각으로, 소진하면 ★ 에
+  // 유물 — 뽑은 조각은 남은 조각(강화 재료)으로, 강화 한 번 = 조각 3개로 ★+1 (2026-11-09 소진 → 강화)
   const R = sg.R;
   const spare = R.addRelicSpare({}, ["lava-heart", "lava-heart", "lava-heart", "lava-heart"]);
-  const c1 = R.consumeRelicSpare({}, spare, "lava-heart");
-  ok("유물 남은 조각 4개 소진 → ★1(조각 4) · 남은 조각 0", c1.used === 4 && R.relicStars(c1.state, "lava-heart") === 1 && !c1.spare["lava-heart"]);
-  const c2 = R.consumeRelicSpare({ "lava-heart": 14 }, { "lava-heart": 3 }, "lava-heart");
-  ok("★5(조각 15) 까지만 소진 — 넘는 조각은 남긴다", c2.used === 1 && c2.state["lava-heart"] === 15 && c2.spare["lava-heart"] === 2);
+  const c1 = R.upgradeRelic({}, spare, "lava-heart");
+  ok("유물 남은 조각 4개 → 강화 한 번: ★1(넣은 조각 3) · 남은 조각 1", c1.ok && R.relicStars(c1.state, "lava-heart") === 1 && c1.state["lava-heart"] === 3 && c1.spare["lava-heart"] === 1);
+  ok("조각 2개면 강화할 수 없다(아무것도 안 바뀐다)", !R.relicUpgradable({}, { "lava-heart": 2 }, "lava-heart") && R.upgradeRelic({}, { "lava-heart": 2 }, "lava-heart").ok === false);
+  const c2 = R.upgradeRelic({ "lava-heart": 15 }, { "lava-heart": 3 }, "lava-heart");
+  ok("★5 면 더 강화하지 않는다 — 조각은 그대로 남는다", !c2.ok && c2.spare["lava-heart"] === 3);
+  const st = R.settleRelicShards({ "lava-heart": 4, "frost-horn": 1, "ember-ring": 6 }, { "lava-heart": 1 });
+  ok("옛 저장의 넣다 만 조각(★ 를 못 채운 1~2개)은 남은 조각으로 — ★ 그대로", st.state["lava-heart"] === 3 && st.spare["lava-heart"] === 2 && !st.state["frost-horn"] && st.spare["frost-horn"] === 1 && st.state["ember-ring"] === 6 && R.relicStars(st.state, "lava-heart") === 1, JSON.stringify(st));
   ok("뽑기 확률은 들어간 조각 + 남은 조각 — 남은 조각으로 다 채운 유물은 0", R.relicDrawRates(R.relicMerged({ "lava-heart": 12 }, { "lava-heart": 3 }), "gem").find((x) => x.id === "lava-heart")?.rate === 0 && R.relicDrawRates(R.relicMerged({ "lava-heart": 12 }, {}), "gem").find((x) => x.id === "lava-heart")?.rate > 0);
 }
 

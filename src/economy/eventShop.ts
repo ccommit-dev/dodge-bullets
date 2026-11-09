@@ -51,6 +51,10 @@ export type EventProduct = {
   grant: (progress: CharacterProgress) => EventGrant;
   /** 지급 요약(카드 표시용) */
   summary: (progress: CharacterProgress) => string;
+  /** 카드 그림 (2026-11-09 특별 탭 정리) — 상품 그림(public 경로). 없으면 콘텐츠 아이콘 */
+  art?: string;
+  /** 이번 주 특가 동료 — 카드 그림을 그 동료로 */
+  ally?: () => string | null;
 };
 
 /** 이번 주 특가 동료 — 그 등급(상점 전용 제외)에서 주마다 한 명씩 돈다 (2026-10-28) */
@@ -106,28 +110,28 @@ export const EVENT_PRODUCTS: EventProduct[] = [
   },
   // ── 특별 상점: 성장 가속 ──
   {
-    id: "sp-welcome-5", tab: "event-shop2", name: "5일 출석 패키지", desc: "구매 즉시 보석 60 + 방치 가속 24h", badge: "WELCOME", icon: "hunt", gemCost: 40, weeklyLimit: 1,
+    id: "sp-welcome-5", tab: "event-shop2", name: "5일 출석 패키지", desc: "구매 즉시 보석 60 + 방치 가속 24h", badge: "첫 주 특가", icon: "hunt", art: "ui/attendance/event-chest.png", gemCost: 40, weeklyLimit: 1,
     grant: () => ({ gems: 60, idleBoostHours: 24 }),
     summary: () => "보석 60 환급 · 방치 가속 24h (주 1회)",
   },
   {
-    id: "sp-shadow-rush", tab: "event-shop2", name: "그림자 원정대 러시", desc: "가진 동료 모두 조각 6 · 스킬 코어", badge: "PICK UP", icon: "hunt", gemCost: 200, weeklyLimit: 2,
+    id: "sp-shadow-rush", tab: "event-shop2", name: "그림자 원정대 러시", desc: "가진 동료 모두 조각 6 · 스킬 코어", badge: "픽업", icon: "hunt", art: "ui/rewards/ally-shard.png", gemCost: 200, weeklyLimit: 2,
     grant: () => ({ allyShards: 6, cores: 3 }),
     summary: () => "동료 조각 30(선택) · 스킬 코어 3",
   },
   {
-    id: "sp-abyss-gear", tab: "event-shop2", name: "심연 장비 완성팩", desc: "무기·견갑 강화 재료를 한 번에", badge: "SPECIAL", icon: "forge", gemCost: 180, weeklyLimit: 1,
+    id: "sp-abyss-gear", tab: "event-shop2", name: "심연 장비 완성팩", desc: "무기·견갑 강화 재료를 한 번에", badge: "완성팩", icon: "forge", art: "ui/idle/anvil.png", gemCost: 180, weeklyLimit: 1,
     grant: (p) => ({ materials: 120, shoulderShards: 60, forgeTickets: 3, gold: bossGold(p, 2000) }),
     summary: (p) => `강화석 120 · 견갑 조각 60 · 방지권 3 · 골드 ${fmt(bossGold(p, 2000))}`,
   },
   // ── 끝없는 성벽 등반권 (2026-10-02) — 하루 무료 3장 위로 더 오르고 싶을 때. 인장으로도 산다(원정 보급창) ──
   {
-    id: "ev-tower-ticket", tab: "event-shop2", name: "성벽 등반권", desc: "끝없는 성벽을 한 번 더 오른다", badge: "TOWER", icon: "dodge", gemCost: 30, weeklyLimit: 10,
+    id: "ev-tower-ticket", tab: "event-shop2", name: "성벽 등반권", desc: "끝없는 성벽을 한 번 더 오른다", badge: "등반", icon: "dodge", art: "ui/idle/tower.png", gemCost: 30, weeklyLimit: 10,
     grant: () => ({ towerTickets: 1 }),
     summary: () => "성벽 등반권 1장",
   },
   {
-    id: "ev-tower-ticket-5", tab: "event-shop2", name: "등반권 묶음", desc: "등반권 5장 — 1장씩보다 20% 싸다", badge: "BUNDLE", icon: "dodge", gemCost: 120, weeklyLimit: 2,
+    id: "ev-tower-ticket-5", tab: "event-shop2", name: "등반권 묶음", desc: "등반권 5장 — 1장씩보다 20% 싸다", badge: "묶음 −20%", icon: "dodge", art: "ui/idle/tower.png", gemCost: 120, weeklyLimit: 2,
     grant: () => ({ towerTickets: 5 }),
     summary: () => "성벽 등반권 5장",
   },
@@ -136,27 +140,27 @@ export const EVENT_PRODUCTS: EventProduct[] = [
 // ── 특별: 신화 · 초월 (2026-10-28) — 특가 동료(주마다 교대) · 높은 등급 성장 상자. 전부 붉은 보석(실결제 상품 아님) ──
 EVENT_PRODUCTS.push(
   {
-    id: "sp-ur-ally", tab: "event-shop2", name: "신화 동료 특가", desc: "이번 주 신화 동료 — 없으면 합류 · 있으면 조각 60", badge: "신화 -40%", icon: "hunt", gemCost: 2400, weeklyLimit: 1,
+    id: "sp-ur-ally", tab: "event-shop2", name: "신화 동료 특가", desc: "이번 주 신화 동료 — 없으면 합류 · 있으면 조각 60", badge: "신화 −40%", icon: "hunt", gemCost: 2400, weeklyLimit: 1, ally: () => featuredAlly("UR"),
     grant: () => ({ allyUnlock: featuredAlly("UR") ?? undefined }),
     summary: () => `${allyName(featuredAlly("UR"))} (신화) · 뽑기 기대 비용의 약 60%`,
   },
   {
-    id: "sp-lr-ally", tab: "event-shop2", name: "초월 동료 특가", desc: "이번 주 초월 동료 — 없으면 합류 · 있으면 조각 80", badge: "초월 -40%", icon: "hunt", gemCost: 6000, weeklyLimit: 1,
+    id: "sp-lr-ally", tab: "event-shop2", name: "초월 동료 특가", desc: "이번 주 초월 동료 — 없으면 합류 · 있으면 조각 80", badge: "초월 −40%", icon: "hunt", gemCost: 6000, weeklyLimit: 1, ally: () => featuredAlly("LR"),
     grant: () => ({ allyUnlock: featuredAlly("LR") ?? undefined }),
     summary: () => `${allyName(featuredAlly("LR"))} (초월) · 초월 천장 200회의 약 1/3 값`,
   },
   {
-    id: "sp-beat-ticket-3", tab: "event-shop2", name: "비트 시도권", desc: "비트 디펜스 3판 더 — 날이 바뀌어도 남는다", badge: "BEAT", icon: "beat", gemCost: 30, weeklyLimit: 10,
+    id: "sp-beat-ticket-3", tab: "event-shop2", name: "비트 시도권", desc: "비트 디펜스 3판 더 — 날이 바뀌어도 남는다", badge: "비트", icon: "beat", gemCost: 30, weeklyLimit: 10,
     grant: () => ({ beatTickets: 3 }),
     summary: () => "비트 디펜스 시도권 3장",
   },
   {
-    id: "sp-beat-ticket-10", tab: "event-shop2", name: "비트 시도권 묶음", desc: "10장 — 3장씩보다 25% 싸다", badge: "BUNDLE", icon: "beat", gemCost: 75, weeklyLimit: 3,
+    id: "sp-beat-ticket-10", tab: "event-shop2", name: "비트 시도권 묶음", desc: "10장 — 3장씩보다 25% 싸다", badge: "묶음 −25%", icon: "beat", gemCost: 75, weeklyLimit: 3,
     grant: () => ({ beatTickets: 10 }),
     summary: () => "비트 디펜스 시도권 10장",
   },
   {
-    id: "sp-top-tier-box", tab: "event-shop2", name: "신화 · 초월 성장 상자", desc: "가진 신화 · 초월 동료 모두 조각 15 · 스킬 코어 5", badge: "HIGH TIER", icon: "forge", gemCost: 500, weeklyLimit: 2,
+    id: "sp-top-tier-box", tab: "event-shop2", name: "신화 · 초월 성장 상자", desc: "가진 신화 · 초월 동료 모두 조각 15 · 스킬 코어 5", badge: "상위 등급", icon: "forge", art: "ui/attendance/event-chest.png", gemCost: 500, weeklyLimit: 2,
     grant: () => ({ topTierShards: 15, cores: 5 }),
     summary: () => "신화 · 초월 동료 모두 조각 15 · 코어 5",
   },

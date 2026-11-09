@@ -177,3 +177,20 @@
 .relic-banner-head .relic-gacha-rates { margin-left: 0; white-space: nowrap; }
 .gacha-rates-sheet .rates-more-head { display: block; margin: 12px 0 4px; }
 .gacha-rates-sheet .rates-other summary b { margin-right: 4px; }
+
+/* 유물 강화 (2026-11-09, 사용자: "유물 조각제가 너무 이상함 — 단순하게 갖으면 업그레이드 가능하게, 업그레이드 재료로") —
+   조각 3개가 모이면 켜지는 '강화'(★0 이면 '획득') 한 단추. 모자라면 꺼진 단추에 "조각 n개 더". 막대는 강화 재료(가진 조각 / 3) */
+.relic-upgrade { border-color: #7c2d12 !important; background: linear-gradient(180deg, #fde68a, #f59e0b) !important; box-shadow: 0 3px 0 #b45309; animation: relic-upgrade-glow 1.6s ease-in-out infinite; }
+.relic-upgrade b { color: #431407; font-size: 15px; }
+.relic-upgrade small { color: #7c2d12 !important; }
+.relic-upgrade:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #b45309; }
+.relic-upgrade:disabled, .relic-upgrade.is-short { cursor: default; animation: none; border-color: rgba(59, 36, 21, .35) !important; background: #f3e6c9 !important; box-shadow: none; }
+.relic-upgrade:disabled b { color: rgba(59, 36, 21, .55); }
+.relic-upgrade:disabled small { color: #8a5a2b !important; }
+@keyframes relic-upgrade-glow { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 6px rgba(251, 191, 36, .95)); } }
+.relic-row.is-ready { box-shadow: inset 0 0 0 2px rgba(251, 191, 36, .85); }
+.relic-row .relic-material > i { background: linear-gradient(180deg, #c4b5fd, #8b5cf6); }
+.relic-row.is-ready .relic-material > i { background: linear-gradient(180deg, #fde68a, #f59e0b); }
+.relic-upgrade-all { display: inline-flex; align-items: center; justify-content: center; margin-top: 6px; min-height: 32px; padding: 0 14px; border: 2px solid #7c2d12; border-radius: 999px; background: linear-gradient(180deg, #fde68a, #f59e0b); color: #431407; font: 900 14px/1 "Jua", sans-serif; box-shadow: 0 3px 0 #b45309; cursor: pointer; }
+.relic-upgrade-all:active { transform: translateY(2px); box-shadow: 0 1px 0 #b45309; }
+@media (prefers-reduced-motion: reduce) { .relic-upgrade { animation: none; } }

@@ -92,7 +92,7 @@ ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySel
   ok("유물 뽑기: 재화 3줄(골드 일반 ~ 영웅 · 강화석 희귀 ~ 신화 · 보석 영웅 ~ 초월) · 줄마다 그림 · 1회 · 10회 단추 · 보석 60",
     heads.length === 3 && /^gold:일반 ~ 영웅/.test(heads[0]) && /^stone:희귀 ~ 신화/.test(heads[1]) && /^gem:영웅 ~ 초월/.test(heads[2]) && cards.every((c) => c.n === 1 && c.thumbs === 1 && c.btns === 2) && /60/.test(cards[2].text),
     heads.map((h) => h.slice(0, 30)).join(" | ") + " · " + cards.map((c) => `${c.banner}:${c.n}`).join("/"));
-  await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
+  await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.relicSpare = {}; p.enhancementMaterials = 100; p.redGems = 200; localStorage.setItem(k, JSON.stringify(p)); }, H);
   await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(500);
   await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
@@ -115,16 +115,18 @@ ok("상점 뽑기 → 유물 칸", await page.evaluate(() => !!document.querySel
   ok("유물 상점 390px 넘침 없음 · 13px 미만 없음", lay2.sw <= 390 && lay2.over.length === 0 && lay2.small.length === 0, JSON.stringify(lay2));
   await page.evaluate(() => document.querySelector(".relic-gacha-page")?.scrollIntoView({ block: "start" })); await sleep(300);
   await page.screenshot({ path: "art-gen/out/relic-shop.png" });
-  // 남은 조각만 있다(★1 없음) — 사냥터 유물 탭은 그 유물 줄에 '조각 n개 소진' 단추 (2026-10-28 중복 소진)
-  await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(500);
+  // 강화 (2026-11-09, 사용자: "유물 조각제가 너무 이상함 — 단순하게 갖으면 업그레이드 가능하게, 업그레이드 재료로") —
+  // 뽑은 조각은 남은 조각(재료). 같은 유물 3개면 그 줄에 켜진 강화(★0 이면 '획득') 단추, 누르면 정확히 3개로 ★+1. 1~2개는 줄 없이 "모으는 중"
+  await page.evaluate((H) => { const k = `dodgebullets:progression:v1:${H}`; const p = JSON.parse(localStorage.getItem(k)); p.relics = {}; p.relicSpare = { "storm-bell": 4, "wind-leaf": 1 }; localStorage.setItem(k, JSON.stringify(p)); }, H);
+  await page.reload({ waitUntil: "networkidle0" }); await sleep(1200);
   await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("유물"))?.click()); await sleep(500);
-  const spareTab = await page.evaluate(() => ({ rows: [...document.querySelectorAll(".relic-tab-panel .quest-row")].map((r) => r.dataset.relic), btns: document.querySelectorAll(".relic-tab-panel .relic-consume").length, head: document.querySelector(".relic-tab-head")?.textContent ?? "", empty: !!document.querySelector(".relic-tab-empty"), small: [...document.querySelectorAll(".relic-tab-panel .relic-consume *")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 13).length }));
-  ok("남은 조각 3개 — 유물 탭: 그 유물 줄마다 '조각 n개 소진' 단추 · 머리줄 '남은 조각 3개' · 빈 칸 안내 없음", spareTab.rows.length >= 1 && spareTab.rows.length <= 3 && spareTab.btns === spareTab.rows.length && /남은 조각 3개/.test(spareTab.head) && !spareTab.empty && spareTab.small === 0, JSON.stringify(spareTab).slice(0, 200));
-  const before = await prog();
-  const target = spareTab.rows[0];
-  await page.evaluate((id) => document.querySelector(`.relic-tab-panel .relic-consume[data-relic="${id}"]`)?.click(), target);
-  let after = before; for (let i = 0; i < 20 && (after.relics?.[target] ?? 0) === 0; i += 1) { await sleep(150); after = await prog(); }
-  ok("소진 단추 → 그 유물의 남은 조각이 ★ 쪽(relics)으로 옮겨진다", (after.relics?.[target] ?? 0) === (before.relicSpare?.[target] ?? 0) && !(after.relicSpare?.[target]), `${target}: relics ${after.relics?.[target]} · spare ${JSON.stringify(after.relicSpare)}`);
+  const spareTab = await page.evaluate(() => ({ rows: [...document.querySelectorAll(".relic-tab-panel .quest-row")].map((r) => r.dataset.relic), on: [...document.querySelectorAll(".relic-tab-panel .relic-upgrade:not(:disabled)")].map((b) => b.dataset.relic + ":" + b.textContent.trim()), head: document.querySelector(".relic-tab-head")?.textContent ?? "", empty: !!document.querySelector(".relic-tab-empty"), small: [...document.querySelectorAll(".relic-tab-panel .relic-upgrade *")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 13).length }));
+  ok("조각 4개 폭풍 종만 줄 · 켜진 획득 단추 · 조각 1개 바람 잎은 줄 없이 모으는 중 1종 · 머리줄 강화 가능 1개", spareTab.rows.join() === "storm-bell" && spareTab.on.length === 1 && /^storm-bell:획득/.test(spareTab.on[0]) && /강화 가능 1개/.test(spareTab.head) && /모으는 중 1종/.test(spareTab.head) && !spareTab.empty && spareTab.small === 0, JSON.stringify(spareTab).slice(0, 240));
+  await page.evaluate(() => document.querySelector('.relic-tab-panel .relic-upgrade[data-relic="storm-bell"]')?.click());
+  let after = await prog(); for (let i = 0; i < 20 && (after.relics?.["storm-bell"] ?? 0) === 0; i += 1) { await sleep(150); after = await prog(); }
+  ok("획득 단추 → 조각 정확히 3개로 ★1 · 남은 조각 1 은 그대로", after.relics?.["storm-bell"] === 3 && after.relicSpare?.["storm-bell"] === 1 && after.relicSpare?.["wind-leaf"] === 1, `relics ${JSON.stringify(after.relics)} · spare ${JSON.stringify(after.relicSpare)}`);
+  const btn2 = await page.evaluate(() => { const b = document.querySelector('.relic-tab-panel .relic-upgrade[data-relic="storm-bell"]'); return b ? { disabled: b.disabled, text: b.textContent.trim() } : null; });
+  ok("★1 이 된 뒤 조각 1개 — 강화 단추가 꺼지고 조각 2개 더", !!btn2 && btn2.disabled && /조각 2개 더/.test(btn2.text), JSON.stringify(btn2));
 }
 ok("성장 탭에 '퀘스트' 점(살 수 있음 표시) 동작", await page.evaluate(() => !!document.querySelector(".titans-growth-tabs button")));
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));

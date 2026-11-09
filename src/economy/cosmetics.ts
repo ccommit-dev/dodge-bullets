@@ -26,3 +26,11 @@ export const COSTUMES: Record<string, { name: string; desc: string }> = {
   ember: { name: "붉은 잔영", desc: "잔불빛으로 물든 모험가" },
   frost: { name: "서리 무희", desc: "서릿발이 서린 푸른 모험가" },
 };
+
+/**
+ * 꾸미기 등급 (2026-11-09, 사용자: "상점 꾸미기 쪽에 너무 차별성이 없이 양산형") — 보석 값으로 6등급. 그림 테두리 · 등급 칩에만 쓴다(성능 무관).
+ * 펫 · 탈것 · 무기 외형 · 비트 꾸미기 · 이펙트 · 테마 · 칭호가 같은 자로 잰다 — 80 일반 … 2000 초월.
+ */
+export function cosmeticTier(gems: number): "N" | "R" | "SR" | "SSR" | "UR" | "LR" {
+  return gems >= 1500 ? "LR" : gems >= 900 ? "UR" : gems >= 550 ? "SSR" : gems >= 280 ? "SR" : gems >= 120 ? "R" : "N";
+}

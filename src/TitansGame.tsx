@@ -42,7 +42,7 @@ import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
 import { GachaFx } from "./ui/GachaFx";
 import { BOSS_ATTACK_GAP_MS, MOB_ATTACK_GAP_MS, bossHitFraction, bossPace, partyMaxHpLabel } from "./titans/bossPressure";
-import { AllyArt, MonsterArt, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
+import { AllyArt, MonsterArt, allyIdleCell, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_LR_STAGE, FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
@@ -90,7 +90,7 @@ import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
 import { freeCrystals, permanentEffects } from "./progression/crystalTree";
-import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_SHARDS_PER_STAR, addRelicSpare, consumeRelicSpare, relicMerged, relicSpareUsable, setActive, type RelicBanner, type RelicId } from "./titans/relics";
+import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_SHARDS_PER_STAR, RELIC_MAX_STAR, addRelicSpare, relicMerged, relicStatText, relicUpgradable, setActive, upgradeRelic, type RelicBanner, type RelicId } from "./titans/relics";
 import { RelicIcon } from "./titans/RelicIcon";
 import type { Tier as RelicTierRank } from "./titans/allyRoster";
 import "./titans/skillTab.css";
@@ -154,6 +154,7 @@ import { SkillIcon } from "./ui/SkillIcon";
 import { LockIcon } from "./ui/LockIcon";
 import { FilterChips } from "./ui/FilterChips";
 import "./ui/simple-lists.css";
+import "./ui/shop-style.css";   // 2026-11-09 꾸미기 진열 · 특별 탭 — 맨 뒤(ui-polish · simple-lists 의 상점 규칙을 덮는다)
 import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
@@ -161,7 +162,7 @@ import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
 import { SEASON, SEASON_CORE_REFUND_FIX_KEY, SEASON_CORE_REFUND_KEY, SEASON_CORE_REFUND_PAST_KEY, addSeasonXp, seasonCoreRefund, seasonCoreRefundExcess, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
-import { THEMES, WEAPON_FX } from "./economy/cosmetics";
+import { THEMES, WEAPON_FX, cosmeticTier } from "./economy/cosmetics";
 import { MOMENT_OFFERS, activeMomentOffers, momentBonusGems, momentTimeLeft, openMomentOffer, paidOffersUnlocked, patronPreview, type MomentOfferKind } from "./economy/momentOffers";
 import { firstDoubleAvailable, packagePurchased, paidStoreNote, paidStoreVisible, paymentsConfigured, purchaseGrant, purchaseProduct } from "./payments/store";
 import { gemPackBonusPercent } from "./economy/gateFund";
@@ -1153,7 +1154,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           exp: current.exp + report.result.exp,
           enhancementMaterials: current.enhancementMaterials + report.result.materials,
           allyShards: shards,
-          relicSpare: addRelicSpare(current.relicSpare, report.drops.relics),   // 희귀 드랍 유물 조각 → 남은 조각(유물 탭에서 소진)
+          relicSpare: addRelicSpare(current.relicSpare, report.drops.relics),   // 희귀 드랍 유물 조각 → 남은 조각(강화 재료, 유물 탭에서 강화)
           idleClaimedAt: Date.now(),
           // 온보딩 마지막 단계(§8) — 첫 방치 정산이 이벤트·상점을 연다
           onboardingStep: current.onboardingStep === 3 ? 4 : current.onboardingStep,
@@ -1380,7 +1381,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       .finally(() => { coresMovingRef.current = false; void loadCharacterProgress(userHash).then((p) => { if (p.pendingSkillCores > 0) setCharacter(p); }); });
   }, [ready, character.pendingSkillCores, userHash]);
   // 불러온 뒤 한 번 (2026-10-28, 사용자 확정): ① 시즌 패스 코어 보상 — 예전엔 받은 코어가 사냥터 저장에 덮여 사라질 수 있었다(economy/seasonPass.seasonCoreRefund).
-  // ② 유물 조각이 이제 '남은 조각'으로 쌓인다는 안내 — 소진할 조각이 처음 생겼을 때 한 번(claimedRewards "relic-spare-notice-v1")
+  // ② 유물 강화 안내 — 강화할 수 있는 유물이 처음 생겼을 때 한 번(claimedRewards "relic-upgrade-notice-v2", 2026-11-09 소진 → 강화)
   useEffect(() => {
     if (!ready) return;
     let refund = 0, notice = false, excess = 0, fromPending = 0;
@@ -1389,14 +1390,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       // ③ 예전 지난 시즌 보상(1판 · 시즌마다 8)이 넘치게 준 코어 — 안 쓴 코어에서만 되돌린다(2026-11-02, 사용자 확정). 먼저 아직 옮기지 않은 코어에서
       excess = seasonCoreRefundExcess(cur);
       fromPending = Math.min(excess, cur.pendingSkillCores + refund);
-      notice = !cur.claimedRewards.includes("relic-spare-notice-v1") && RELICS.some((r) => relicSpareUsable(cur.relics, cur.relicSpare, r.id) > 0);
+      notice = !cur.claimedRewards.includes("relic-upgrade-notice-v2") && RELICS.some((r) => relicUpgradable(cur.relics, cur.relicSpare, r.id));
       const newPast = !cur.claimedRewards.includes(SEASON_CORE_REFUND_PAST_KEY);
       const keys = [
         ...(cur.claimedRewards.includes(SEASON_CORE_REFUND_KEY) ? [] : [SEASON_CORE_REFUND_KEY]),
         ...(newPast ? [SEASON_CORE_REFUND_PAST_KEY] : []),
         // 새 기준으로 받는 저장 · 넘친 코어를 정리한 저장은 다시 보지 않는다
         ...((newPast || excess > 0) && !cur.claimedRewards.includes(SEASON_CORE_REFUND_FIX_KEY) ? [SEASON_CORE_REFUND_FIX_KEY] : []),
-        ...(notice ? ["relic-spare-notice-v1"] : []),
+        ...(notice ? ["relic-upgrade-notice-v2"] : []),
       ];
       if (keys.length === 0) return cur;
       return { ...cur, pendingSkillCores: cur.pendingSkillCores + refund - fromPending, claimedRewards: [...cur.claimedRewards, ...keys] };
@@ -1412,7 +1413,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       if (refund > 0 || notice || excess > 0) setCharacter(next);
       if (taken > 0) flash(`지난 시즌 보상을 실제로 닿을 수 있던 단 기준으로 다시 맞췄어요 — 넘치게 드린 스킬 코어 ${taken}개를 안 쓴 코어에서 돌려받았어요`, 4500, true);
       else if (refund > 0) flash(`시즌 패스 스킬 코어 ${refund}개를 다시 드렸어요 — 예전에 받은 코어가 사라질 수 있던 문제 보상`, 4000, true);
-      else if (notice) flash("유물 조각은 이제 '남은 조각'으로 쌓여요 — 사냥터 → 유물에서 소진해 ★ 를 올리세요", 4000, true);
+      else if (notice) flash("유물 조각 3개가 모이면 사냥터 → 유물에서 '강화' 한 번으로 ★ 가 올라요", 4000, true);
     }).catch(() => undefined);
   }, [ready, userHash]);
   // 다른 화면(이벤트 센터 시즌 패스)이 진행도에 코어를 쌓았다 — 다시 읽으면 위 효과가 사냥터 저장으로 옮긴다
@@ -1831,7 +1832,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         } else if (Math.random() < permRef.current.relicChance) {
           // 유물 (2026-10-26, "오늘도 환생 2" 차용) — 이미 잡아 본 높이의 대장을 다시 잡으면 확률로 조각 1개. 환생해도 남는다
           const roll = Math.random();
-          // 조각은 남은 조각으로(2026-10-28 중복 소진) — 유물 탭에서 소진해 ★ 에 넣는다
+          // 조각은 남은 조각으로 — 강화 재료(3개 = ★ 한 단계, 유물 탭에서 강화)
           const before = relicMerged(characterRef.current.relics, characterRef.current.relicSpare);
           const { got } = grantRelicShards(before, 1, () => roll);
           if (got.length) {
@@ -1844,7 +1845,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 "relic",
                 "유물 조각",
                 def.name,
-                `남은 조각 ${spare}개 · 유물 탭에서 소진해 ★ 올리기 · 다시 잡은 대장`,
+                `조각 ${spare}개 · ${spare >= RELIC_SHARDS_PER_STAR && relicStars(next.relics, id) < RELIC_MAX_STAR ? "유물 탭에서 강화할 수 있어요" : `강화까지 ${Math.max(0, RELIC_SHARDS_PER_STAR - spare)}개`} · 다시 잡은 대장`,
                 relicIconUrl(id),
               ), 500);
             });
@@ -2579,7 +2580,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const next = await updateCharacterProgress(userHash, (current) => {
       const have = cur === "stone" ? current.enhancementMaterials : cur === "gem" ? current.redGems : Infinity;
       if (have < cost) return current;
-      // 뽑은 조각은 남은 조각으로(2026-10-28 중복 소진) — 유물 탭에서 소진해 ★ 에 넣는다
+      // 뽑은 조각은 남은 조각으로 — 강화 재료(3개 = ★ 한 단계, 유물 탭에서 강화)
       const d = drawRelicShards(relicMerged(current.relics, current.relicSpare), count, Math.random, banner);
       if (d.got.length === 0) return current;
       got = d.got;
@@ -2600,20 +2601,42 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     });
   };
 
-  /** 유물 남은 조각 소진 (2026-10-28 중복 소진) — 넣을 수 있는 만큼 ★ 에. ★ 가 오르면 등급 소리 · 세트가 새로 켜지면 세트 안내 */
-  const consumeRelic = async (id: RelicId) => {
+  /**
+   * 유물 강화 (2026-11-09, 사용자: "유물 조각제가 너무 이상함 — 단순하게 갖으면 업그레이드 가능하게, 업그레이드 재료로") —
+   * 남은 조각 3개로 ★+1(★0 이면 획득). "all" 이면 강화할 수 있는 만큼 모두. ★ 가 오르면 등급 소리 · 세트가 새로 켜지면 세트 안내
+   */
+  const upgradeRelics = async (target: RelicId | "all") => {
     const before = characterRef.current.relics;
-    let used = 0;
-    const next = await updateCharacterProgress(userHash, (cur) => { const r = consumeRelicSpare(cur.relics, cur.relicSpare, id); used = r.used; return r.used > 0 ? { ...cur, relics: r.state, relicSpare: r.spare } : cur; });
-    if (used <= 0) return;
+    const ups: RelicId[] = [];
+    const next = await updateCharacterProgress(userHash, (cur) => {
+      let relics = cur.relics, spare = cur.relicSpare;
+      ups.length = 0;
+      for (const id of target === "all" ? RELICS.map((r) => r.id) : [target]) {
+        for (let k = 0; k < (target === "all" ? RELIC_MAX_STAR : 1); k += 1) {
+          const r = upgradeRelic(relics, spare, id);
+          if (!r.ok) break;
+          relics = r.state; spare = r.spare; ups.push(id);
+        }
+      }
+      return ups.length > 0 ? { ...cur, relics, relicSpare: spare } : cur;
+    });
+    if (ups.length === 0) return;
     setCharacter(next);
-    const def = relicDef(id);
-    const stars = relicStars(next.relics, id);
-    const up = stars > relicStars(before, id);
-    const setNow = setActive(next.relics, def.family) && !setActive(before, def.family);
-    if (up) sfxRelicReveal(def.tier); else sfxSlotUnlock();
-    showRewardPop("relic", setNow ? `${RELIC_FAMILY_LABEL[def.family]} 세트 완성!` : up ? `유물 ${"★".repeat(stars)}` : "조각 소진", def.name,
-      setNow ? `${RELIC_SET[def.family].name} — ${RELIC_SET[def.family].blurb}` : `조각 ${used}개 소진 · ★${stars}${stars < 5 ? ` · 다음 ★ 까지 ${(stars + 1) * RELIC_SHARDS_PER_STAR - (next.relics[id] ?? 0)}개` : " · 최대"}`, relicIconUrl(id));
+    const kinds = [...new Set(ups)];
+    const top = kinds.map(relicDef).sort((x, y) => TIERS.indexOf(y.tier) - TIERS.indexOf(x.tier))[0];
+    const setNow = [...new Set(kinds.map((x) => relicDef(x).family))].find((fam) => setActive(next.relics, fam) && !setActive(before, fam));
+    sfxRelicReveal(top.tier);
+    if (setNow) {
+      showRewardPop("relic", `${RELIC_FAMILY_LABEL[setNow]} 세트 완성!`, top.name, `${RELIC_SET[setNow].name} — ${RELIC_SET[setNow].blurb}`, relicIconUrl(top.id));
+    } else if (kinds.length === 1) {
+      const stars = relicStars(next.relics, top.id);
+      const gained = relicStars(before, top.id) === 0;
+      showRewardPop("relic", gained ? "유물 획득!" : `유물 ${"★".repeat(stars)}`, top.name,
+        `${relicStatText(top, stars)}${stars < RELIC_MAX_STAR ? ` · 다음 강화 조각 ${RELIC_SHARDS_PER_STAR}개` : " · 최대 ★5"}`, relicIconUrl(top.id));
+    } else {
+      showRewardPop("relic", `유물 ${ups.length}단계 강화`, `${top.name} 외 ${kinds.length - 1}종`,
+        kinds.slice(0, 4).map((x) => `${relicDef(x).name} ★${relicStars(next.relics, x)}`).join(" · ") + (kinds.length > 4 ? " …" : ""), relicIconUrl(top.id));
+    }
   };
 
   /** 상점 스킬 뽑기 (2026-10-28, 사용자: "스킬도 상점에서 돈으로 배울수 있게 동료, 유물처럼 이펙트") — 골드는 사냥터 저장, 보석은 진행도.
@@ -4303,7 +4326,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </button>
         {/* 퀘스트 (2026-10-26, "오늘도 환생 2" — 시간마다 골드) · 2×2 의 왼쪽 아래 — 지금 살 수 있는 줄이 있으면 점 */}
         <button type="button" className={tab === "relic" ? "on" : ""} aria-expanded={growthOpen && tab === "relic"} onClick={() => { setGrowthOpen((o) => (tab === "relic" ? !o : true)); setTab("relic"); }}>
-          유물{RELICS.some((r) => relicSpareUsable(character.relics, character.relicSpare, r.id) > 0) && <i className="tab-dot" aria-label="소진할 유물 조각" />}
+          유물{RELICS.some((r) => relicUpgradable(character.relics, character.relicSpare, r.id)) && <i className="tab-dot" aria-label="강화할 수 있는 유물" />}
         </button>
         <button type="button" className="growth-drawer-close" aria-label="서랍 닫기" onClick={() => setGrowthOpen(false)}>▾</button>
       </div>
@@ -4368,7 +4391,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         )}
       <section className="titans-shop">
         {tab === "relic" && (
-          <RelicTabPanel relics={character.relics} spare={character.relicSpare} onConsume={(id) => void consumeRelic(id)} chance={perm.relicChance} onCodex={() => onOpenCodex?.("relic")} />
+          <RelicTabPanel relics={character.relics} spare={character.relicSpare} onUpgrade={(id) => void upgradeRelics(id)} onUpgradeAll={() => void upgradeRelics("all")} chance={perm.relicChance} onCodex={() => onOpenCodex?.("relic")} />
         )}
         {tab === "quest" && (
           <QuestPanel
@@ -5173,9 +5196,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const lv = character.pets[pid] ?? 0;
               const on = character.activePet === pid;
               return (
-                <article key={`pet-${pid}`} className="titans-card premium-product-card gem-product pet-product" data-pet={pid}>
+                <article key={`pet-${pid}`} className="titans-card premium-product-card gem-product pet-product style-tile" data-pet={pid} data-tier={cosmeticTier(PET_GEM_PRICE[pid])}>
                   <span className="pet-thumb" aria-hidden="true"><MonsterArt kind={pid} area={area} boss={false} golden={false} pet /></span>
-                  <div><strong>{def.name} <em>펫</em></strong><p>{def.desc} · 같이 사냥(주인공 한 방 ×{petAttackMul(Math.max(1, lv)).toFixed(2)} · {PET_ATTACK_SEC}초마다){lv > 0 ? ` · Lv.${lv}` : ""}</p></div>
+                  <div><strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(PET_GEM_PRICE[pid])]}</em>{def.name}</strong><p>{def.desc} · 같이 사냥(주인공 한 방 ×{petAttackMul(Math.max(1, lv)).toFixed(2)} · {PET_ATTACK_SEC}초마다){lv > 0 ? ` · Lv.${lv}` : ""}</p></div>
                   <button type="button" disabled={lv <= 0 && redGems < PET_GEM_PRICE[pid]} onClick={() => void (lv > 0 ? equipPetShop(pid) : buyPet(pid))}>
                     {lv > 0 ? (on ? "해제" : "장착") : <><GemMark />{PET_GEM_PRICE[pid]}</>}
                   </button>
@@ -5201,7 +5224,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 ...ids.map((id) => {
                   const owned = character.ownedGear.includes(id);
                   return (
-                    <article key={id} data-tier={setEquipTier(character.gearSetLevels[id] ?? 0)} className="titans-card gear-list-row gear-item-row">
+                    <article key={id} data-tier={setEquipTier(character.gearSetLevels[id] ?? 0)} data-gear-kind={kind} className="titans-card gear-list-row gear-item-row">
                       <img src={assetUrl(gearItemIconPath(id))} alt="" aria-hidden="true" />
                       <div><strong><em className="tier-chip">{TIER_LABEL[setEquipTier(character.gearSetLevels[id] ?? 0)]}</em> {gearItemName(id)}</strong><p>{gearItemEffectText(id, character.gearSetLevels[id] ?? 0)}</p></div>
                       <button type="button" className={`gear-piece ${owned ? "owned" : ""}`} data-gear-item={id} disabled={owned || redGems < GEAR_ITEM_PRICE} title={`${gearItemName(id)} · ${gearItemEffectText(id)}`} onClick={() => void buyGear([id], GEAR_ITEM_PRICE, gearItemName(id))}>
@@ -5219,10 +5242,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const on = character.activeMount === mid;
               const cost = mountUpgradeCost(lv);
               return (
-                <article key={mid} className={`titans-card premium-product-card gem-product mount-product ${on ? "on" : ""}`} data-mount={mid}>
+                <article key={mid} className={`titans-card premium-product-card gem-product mount-product style-show ${on ? "on" : ""}`} data-mount={mid} data-tier={cosmeticTier(def.gemPrice)}>
                   <span className="mount-thumb" aria-hidden="true"><i style={mountAnimStyle(def.art, "idle")} /></span>
                   <div>
-                    <strong>{def.name} <em>{lv > 0 ? `Lv.${lv}/${MOUNT_MAX_LEVEL}` : "탈것"}</em></strong>
+                    <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemPrice)]}</em>{def.name} <em>{lv > 0 ? `Lv.${lv}/${MOUNT_MAX_LEVEL}` : "탈것"}</em></strong>
                     <p>사냥 골드 +{(mountGoldBonus(mid, Math.max(1, lv)) * 100).toFixed(1)}%{cost !== null ? ` · 다음 +${(mountGoldBonus(mid, lv + 1) * 100).toFixed(1)}%` : lv >= MOUNT_MAX_LEVEL ? " · 최대" : ""}</p>
                   </div>
                   <span className="mount-actions">
@@ -5238,16 +5261,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </article>
               );
             })}
+            {premiumCategory === "weapon" && <p className="premium-subhead style-subhead"><b>무기 외형</b><small>검 · 창 · 활 · 지팡이 모두 · 보이는 모습만</small></p>}
             {premiumCategory === "weapon" && Object.entries(WEAPON_SKINS).map(([skinId, def]) => {
               const owned = character.ownedWeaponSkins.includes(skinId);
               const equipped = character.equippedWeaponSkin === skinId;
               return (
-                <article key={skinId} className="titans-card premium-product-card gem-product blade-product">
+                <article key={skinId} className="titans-card premium-product-card gem-product blade-product style-show" data-tier={cosmeticTier(def.gemCost)}>
                   <span className="blade-thumb" style={weaponSkinStyle(def) as CSSProperties} aria-hidden="true">
                     <img className="weapon-skin-thumb weapon-skin" src={assetUrl(weaponSkinIcon(skinId, weaponKind, forgedWeaponLevel))} alt="" />
                   </span>
                   <div>
-                    <strong>{def.name} <em>무기 외형</em></strong>
+                    <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemCost)]}</em>{def.name}</strong>
                     <p>{def.desc}</p>
                   </div>
                   <button
@@ -5262,13 +5286,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             })}
             {/* 비트 수련 커스텀 — 판정 레일 · 구호 (2026-10-06, "커스텀 아이템 리소스 및 상점 연동").
                 2026-10-27: 무기 외형과 섞여 '북' 이 주인공 무기처럼 읽혔다 → 소제목으로 갈라 비트 디펜스 꾸미기임을 밝힌다 */}
+            {premiumCategory === "weapon" && <p className="premium-subhead style-subhead"><b>비트 디펜스 꾸미기</b><small>판정 레일 · 구호 — 비트 수련에서만 보여요</small></p>}
             {premiumCategory === "weapon" && BEAT_SHOP_ITEMS.filter((item) => item.cost > 0).map((item) => {
               const owned = ownsBeatItem(character.beatCosmetics, item);
               const on = equippedBeatItem(character.beatCosmetics, item);
               return (
-                <article key={`beat-${item.kind}-${item.id}`} className="titans-card premium-product-card gem-product beat-custom-product" data-beat-item={`${item.kind}-${item.id}`}>
+                <article key={`beat-${item.kind}-${item.id}`} className="titans-card premium-product-card gem-product beat-custom-product style-tile" data-beat-item={`${item.kind}-${item.id}`} data-tier={cosmeticTier(item.cost)}>
                   <img className="beat-custom-thumb" src={beatItemIcon(item)} alt="" aria-hidden="true" />
-                  <div><strong>{item.name} <em>{item.kind === "ring" ? "비트 · 판정 레일" : "비트 · 구호"}</em></strong><p>{item.desc}</p></div>
+                  <div><strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(item.cost)]}</em>{item.name} <em>{item.kind === "ring" ? "판정 레일" : "구호"}</em></strong><p>{item.desc}</p></div>
                   <button type="button" disabled={on || (!owned && redGems < item.cost)} onClick={() => void buyBeatCustom(item)}>
                     {on ? "장착 중" : owned ? "장착" : <><GemMark />{item.cost}</>}
                   </button>
@@ -5276,26 +5301,28 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               );
             })}
             {/* I 무기 이펙트 · 전장 테마 — 외형 탭 (소제목: 위 비트 꾸미기와 갈라 사냥터 것임을 밝힌다) */}
+            {premiumCategory === "weapon" && <p className="premium-subhead style-subhead"><b>무기 이펙트</b><small>휘두를 때 남는 빛 · 사냥터</small></p>}
             {premiumCategory === "weapon" && Object.entries(WEAPON_FX).filter(([, def]) => def.gemCost !== null || character.ownedWeaponFx.includes("fx-season")).map(([fxId, def]) => {
               const owned = character.ownedWeaponFx.includes(fxId);
               const equipped = character.equippedWeaponFx === fxId;
               return (
-                <article key={fxId} className="titans-card premium-product-card gem-product fx-product">
-                  <span className="fx-thumb" style={{ "--fx-trail": def.trail } as CSSProperties} aria-hidden="true"><i /></span>
-                  <div><strong>{def.name} <em>무기 이펙트</em></strong><p>{def.desc}</p></div>
+                <article key={fxId} className="titans-card premium-product-card gem-product fx-product style-tile" data-fx={fxId} data-tier={cosmeticTier(def.gemCost ?? 900)}>
+                  <span className="fx-thumb" style={{ "--fx-trail": def.trail } as CSSProperties} aria-hidden="true"><i /><i /><i /></span>
+                  <div><strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemCost ?? 900)]}</em>{def.name}</strong><p>{def.desc}</p></div>
                   <button type="button" disabled={!owned && (def.gemCost === null || redGems < def.gemCost)} onClick={() => void (owned ? toggleCosmetic("fx", fxId) : buyCosmetic("fx", fxId))}>
                     {owned ? (equipped ? "해제" : "장착") : def.gemCost === null ? "시즌 한정" : <><GemMark />{def.gemCost}</>}
                   </button>
                 </article>
               );
             })}
+            {premiumCategory === "weapon" && <p className="premium-subhead style-subhead"><b>전장 테마</b><small>사냥터 하늘 · 땅 색</small></p>}
             {premiumCategory === "weapon" && Object.entries(THEMES).map(([themeId, def]) => {
               const owned = character.ownedThemes.includes(themeId);
               const equipped = character.equippedTheme === themeId;
               return (
-                <article key={themeId} className="titans-card premium-product-card gem-product theme-product">
-                  <span className="theme-thumb" style={{ "--t-sky": def.sky, "--t-ground": def.ground, "--t-accent": def.accent } as CSSProperties} aria-hidden="true" />
-                  <div><strong>{def.name} <em>전장 테마</em></strong><p>{def.desc}</p></div>
+                <article key={themeId} className="titans-card premium-product-card gem-product theme-product style-tile" data-tier={cosmeticTier(def.gemCost)}>
+                  <span className="theme-thumb" style={{ "--t-sky": def.sky, "--t-ground": def.ground, "--t-accent": def.accent } as CSSProperties} aria-hidden="true"><i /><i /></span>
+                  <div><strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemCost)]}</em>{def.name}</strong><p>{def.desc}</p></div>
                   <button type="button" disabled={!owned && redGems < def.gemCost} onClick={() => void (owned ? toggleCosmetic("theme", themeId) : buyCosmetic("theme", themeId))}>
                     {owned ? (equipped ? "해제" : "장착") : <><GemMark />{def.gemCost}</>}
                   </button>
@@ -5306,10 +5333,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {premiumCategory === "title" && Object.entries(TITLES).map(([titleId, def]) => {
               const owned = character.ownedTitles.includes(titleId);
               return (
-                <article key={titleId} className="titans-card premium-product-card gem-product title-product">
-                  <span className="title-thumb" style={{ color: def.color }} aria-hidden="true">✦</span>
+                <article key={titleId} className="titans-card premium-product-card gem-product title-product style-show" data-tier={cosmeticTier(def.gemCost)} style={{ "--title-c": def.color } as CSSProperties}>
+                  {/* 칭호는 글자가 곧 상품 — 머리 위에 뜨는 모습 그대로 명판에 (예전: 색 바꾼 ✦ 하나, 이름 색은 ui-polish 의 !important 잉크에 덮였다) */}
+                  <span className="title-plate" aria-hidden="true"><i /><b>{def.name}</b><i /></span>
                   <div>
-                    <strong style={{ color: def.color }}>{def.name} <em>칭호</em></strong>
+                    <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemCost)]}</em>{def.name}</strong>
                     <p>{def.desc}</p>
                   </div>
                   <button type="button" disabled={owned || redGems < def.gemCost} onClick={() => void buyTitle(titleId)}>
@@ -5457,7 +5485,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const left = product.weeklyLimit - bought;
               return (
                 <article key={product.id} className={`event-offer-card offer-${index + 1}${product.coinCost ? " coin-offer" : ""}`}>
-                  <div className="event-offer-art"><ContentIcon name={product.icon as ContentIconName} /><span>{product.badge}</span></div>
+                  {/* 그림 (2026-11-09) — 동료 특가는 그 주 동료, 나머지는 상품 그림(상자 · 조각 · 모루 · 성벽). 예전엔 열 개가 그림 네 장을 돌려 썼다 */}
+                  <div className="event-offer-art">{product.ally?.() ? (() => { const c = allyIdleCell(product.ally()! as TitanHeroId); return <i className="event-offer-ally" style={{ backgroundImage: "url(" + c.src + ")", backgroundSize: c.cols * 100 + "% " + c.rows * 100 + "%", backgroundPosition: "0 " + (c.rows > 1 ? (c.row / (c.rows - 1)) * 100 : 0) + "%" }} aria-hidden="true" />; })() : product.art ? <img className="event-offer-img" src={assetUrl(product.art)} alt="" aria-hidden="true" /> : <ContentIcon name={product.icon as ContentIconName} />}<span>{product.badge}</span></div>
                   <div>
                     <small>이번 주 {left}/{product.weeklyLimit}회 남음</small>
                     <h2>{product.name}</h2>

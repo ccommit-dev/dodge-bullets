@@ -13,7 +13,7 @@ import { emptyShards, emptySkillLevels, emptyWeaponForge, migrateSkillLevels, no
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { emptyLadder, normalizeLadder, type BossLadder } from "../titans/bossLadder";
 import { emptyCrystalTree, normalizeCrystalTree, type CrystalTree } from "./crystalTree";
-import { normalizeRelics, type RelicState } from "../titans/relics";
+import { normalizeRelicPair, type RelicState } from "../titans/relics";
 import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
@@ -806,8 +806,8 @@ export function normalizeCharacterProgress(
     eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),
     autoRebirth: (raw as { autoRebirth?: unknown }).autoRebirth === true,
     crystalTree: normalizeCrystalTree((raw as { crystalTree?: unknown }).crystalTree, integer(raw.inheritanceCrystals, 0)),
-    relics: normalizeRelics((raw as { relics?: unknown }).relics),
-    relicSpare: normalizeRelics((raw as { relicSpare?: unknown }).relicSpare),
+    // 넣은 조각은 ★ 단위로 — 옛 '소진'이 남긴 1~2개는 남은 조각(강화 재료)으로 돌린다 (2026-11-09 강화 단순화)
+    ...normalizeRelicPair((raw as { relics?: unknown }).relics, (raw as { relicSpare?: unknown }).relicSpare),
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
 }
