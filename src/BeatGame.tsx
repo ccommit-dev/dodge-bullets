@@ -51,6 +51,7 @@ import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
+import "./ui/beat-menu.css";   // 2026-11-09 곡 카드 단순화
 import { BEAT_DAILY_TICKETS, BEAT_DIFF_LABEL, BEAT_FIRST_CLEAR, beatFirstClaimed, beatRewardText, beatTicketsLeft, claimBeatFirstClear, spendBeatTicket, type BeatClearReward } from "./beat/tickets";
 import type { CharacterProgress } from "./progression/model";
 import type { ShoulderId } from "./progression/model";
@@ -870,7 +871,7 @@ export function BeatGame({
                   <img src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" aria-hidden="true" />
                   <b>{slot.title}</b>
                   <small>Lv.{slot.track.level} · {slot.track.bpm}BPM</small>
-                  <span className="beat-song-clears">{(["easy", "medium", "hard"] as const).map((d) => <em key={d} className={charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "done" : ""}>{d === "easy" ? "E" : d === "medium" ? "N" : "H"}</em>)}</span>
+                  <span className="beat-song-clears">{(["easy", "medium", "hard"] as const).map((d) => <em key={d} className={charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "done" : ""} title={`${BEAT_DIFF_LABEL[d]} 첫 클리어`}>{charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "✓" : ""}</em>)}</span>
                 </button>
               ))}
             </div>
@@ -898,33 +899,40 @@ export function BeatGame({
                   >
                     {/* 곡 커버 — 곡명 모티프로 생성한 이미지 (scripts/make-beat-covers.mjs) */}
                     <span className={`beat-track-cover cover-${slot.stageIndex % 6} has-image`} aria-hidden="true"><img className="schedule-cover" src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" /></span>
-                    <span className="schedule-copy">
-<span className="schedule-day">Lv.{slot.track.level} · {slot.track.bpm} BPM{recommended ? " · 추천" : ""}</span>
-                      <span className="schedule-variants" onClick={(e) => e.stopPropagation()}>
+                    {/* 카드 단순화 (2026-11-09, 사용자: "ui 너무 난해함 간단 명료 정리") — 8줄(Lv · 난도 3 · 강화 3 · 곡명 · 설명 · 보상 · 난도별 보상 3 · 기록) → 5줄:
+                        곡명 · 정보 한 줄 · 난도 선택판 · 고른 난도의 보상 한 줄 · 출격 강화(눌러서 바꿈) + 시작. 곡 설명은 title 로 */}
+                    <span className="schedule-copy" title={slot.track.desc}>
+                      <span className="schedule-head">
+                        <span className="schedule-title">{slot.title}</span>
+                        {done ? <em className="schedule-tag is-done">오늘 완료</em> : recommended ? <em className="schedule-tag">추천</em> : null}
+                      </span>
+                      {(() => { const b = bestRecord(rpg, slot.track.id, variantOf(slot.track)); return <span className="schedule-day">Lv.{slot.track.level} · {slot.track.bpm} BPM{b ? ` · 최고 ${b.score.toLocaleString()}점` : ""}</span>; })()}
+                      <span className="schedule-variants" role="group" aria-label="난도" onClick={(e) => e.stopPropagation()}>
                         {(["easy", "medium", "hard"] as const).map((d) => {
                           const g = gradesFor(rpg, slot.track.id)[d];
                           const locked = d === "hard" && !hardUnlocked(rpg, slot.track);
                           const on = variantOf(slot.track) === d;
                           return (
-                            <button key={d} type="button" className={`variant-chip ${on ? "on" : ""} ${locked ? "locked" : ""}`} disabled={locked} title={locked ? "NORMAL A 이상이면 열립니다" : undefined}
+                            <button key={d} type="button" className={`variant-chip ${on ? "on" : ""} ${locked ? "locked" : ""}`} disabled={locked} aria-pressed={on} title={locked ? "보통 A 이상이면 열립니다" : undefined}
                               onClick={(e) => { e.stopPropagation(); setVariants((v) => ({ ...v, [slot.track.id]: d })); }}>
-                              {d === "easy" ? "EASY" : d === "medium" ? "NORMAL" : "HARD"}{g ? <em className={`grade grade-${g}`}>{g}</em> : null}
+                              {locked ? "🔒 " : ""}{BEAT_DIFF_LABEL[d]}{g ? <em className={`grade grade-${g}`}>{g}</em> : null}
                             </button>
                           );
                         })}
                       </span>
-                      {/* 출격 강화 1택 (2026-10-08) — 곡·날짜로 정해진 3장, 하나가 이 곡에만 듣는다 */}
-                      <span className="schedule-perks" onClick={(e) => e.stopPropagation()}>
-                        {(() => { const offer = beatPerkOffer(slot.track.id, new Date().toLocaleDateString("sv-SE")); const chosen = beatPerkChoice[slot.track.id] ?? offer[0]; return offer.map((id) => { const def = BEAT_PERK_BY_ID[id]; return (
-                          <button key={id} type="button" className={`perk-chip icon-${def.icon} ${chosen === id ? "on" : ""}`} title={def.desc} onClick={(e) => { e.stopPropagation(); setBeatPerkChoice((v) => ({ ...v, [slot.track.id]: id })); }}>{def.label}</button>
-                        ); }); })()}
+                      {(() => { const d = variantOf(slot.track); const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); return (
+                        <span className="schedule-foot">{got ? <>보상 <b>+{slot.track.reward} 골드</b> · 견갑 조각</> : <>첫 클리어 <b>{beatRewardText(BEAT_FIRST_CLEAR[d])}</b></>}</span>
+                      ); })()}
+                      <span className="schedule-actions">
+                        {/* 출격 강화 1택 (2026-10-08) — 곡 · 날짜로 정해진 3장. 칩 셋 대신 하나를 보이고 누르면 다음 것으로 바뀐다 */}
+                        <span className="schedule-perks" onClick={(e) => e.stopPropagation()}>
+                          {(() => { const offer = beatPerkOffer(slot.track.id, new Date().toLocaleDateString("sv-SE")); const chosen = beatPerkChoice[slot.track.id] ?? offer[0]; const def = BEAT_PERK_BY_ID[chosen]; return (
+                            <button type="button" className={`perk-chip on icon-${def.icon}`} title={`${def.desc} — 누르면 다른 강화(${offer.length}개 중)`} aria-label={`출격 강화 ${def.label} · 바꾸기`}
+                              onClick={(e) => { e.stopPropagation(); setBeatPerkChoice((v) => ({ ...v, [slot.track.id]: offer[(offer.indexOf(chosen) + 1) % offer.length] })); }}>{def.label}<i aria-hidden="true">↻</i></button>
+                          ); })()}
+                        </span>
+                        <span className="schedule-play" aria-hidden="true">▶ 시작</span>
                       </span>
-                      <span className="schedule-title">{slot.title}</span>
-                      <span className="schedule-hint">{done ? "오늘 완료" : slot.track.desc}</span>
-                      <span className="schedule-cost">견갑 조각 · +{slot.track.reward} 골드</span>
-                      {/* 난도별 첫 클리어 아이템 (2026-10-28) — 받은 것은 ✓ */}
-                      <span className="beat-first-rewards">{(["easy", "medium", "hard"] as const).map((d) => { const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); return <em key={d} className={`diff-${d} ${got ? "done" : ""}`}>{BEAT_DIFF_LABEL[d]} {got ? "✓" : beatRewardText(BEAT_FIRST_CLEAR[d])}</em>; })}</span>
-                      {(() => { const b = bestRecord(rpg, slot.track.id, variantOf(slot.track)); return <span className="schedule-best">{b ? `최고 ${b.score.toLocaleString()}점 · 콤보 ${b.combo} · 정확도 ${Math.round(b.accuracy * 100)}%` : "아직 기록 없음 · 첫 도전"}</span>; })()}
                     </span>
                   </div>
                 );

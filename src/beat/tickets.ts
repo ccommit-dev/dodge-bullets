@@ -41,7 +41,7 @@ export const BEAT_FIRST_CLEAR: Record<BeatDifficulty, BeatClearReward> = {
   medium: { gems: 30, shoulderShards: 3 },
   hard: { gems: 80, shoulderShards: 8, materials: 40 },
 };
-export const BEAT_DIFF_LABEL: Record<BeatDifficulty, string> = { easy: "EASY", medium: "NORMAL", hard: "HARD" };
+export const BEAT_DIFF_LABEL: Record<BeatDifficulty, string> = { easy: "쉬움", medium: "보통", hard: "어려움" };   // 2026-11-09 한글로(곡 카드 · 첫 클리어 안내 같은 말)
 
 export function beatRewardText(r: BeatClearReward): string {
   return [r.gems ? `보석 ${r.gems}` : "", r.shoulderShards ? `견갑 조각 ${r.shoulderShards}` : "", r.materials ? `강화석 ${r.materials}` : ""].filter(Boolean).join(" · ");
