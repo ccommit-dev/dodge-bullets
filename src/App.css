@@ -885,9 +885,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   width: min(100%, 620px);
-  max-height: min(48vh, 430px);
-  overflow-y: auto;
   margin: 10px auto;
+  flex-shrink: 0;   /* 2026-11-09 — 곡 칩 격자 아래 flex 열에서 높이 0 으로 눌려 곡 카드가 안 보였다. 안쪽 스크롤도 없앤다(가로 화면 187px 상자에 445px 카드) — 메뉴째 내린다 */
 }
 
 .schedule-card {
@@ -1075,7 +1074,6 @@
 
   .schedule-list {
     grid-template-columns: 1fr;
-    max-height: min(36vh, 300px);
   }
 }
 

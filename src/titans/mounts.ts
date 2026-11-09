@@ -13,6 +13,13 @@ export const MOUNT_DEFS: Record<MountId, MountDef> = {
   drake: { id: "drake", name: "불꽃 비룡", art: "mount-drake", gemPrice: 2000, base: 0.05, perLevel: 0.008 },
 };
 export const MOUNT_IDS: MountId[] = ["boar", "deer", "wolf", "drake"];
+/** 종 특징 (2026-11-09, 사용자: "탈것이 볼품없다 — 특징과 과금 느낌") — 상점 카드 칩. 그림(art-gen/blender/lib/mount.py)의 꾸밈과 같은 말 */
+export const MOUNT_TRAITS: Record<MountId, readonly string[]> = {
+  boar: ["엄니 돌진", "도토리 장식"],
+  deer: ["빛나는 가지뿔", "꽃 목걸이"],
+  wolf: ["서리 룬", "강철 투구"],
+  drake: ["불꽃 날개", "루비 왕관"],
+};
 export const isMountId = (v: unknown): v is MountId => typeof v === "string" && (MOUNT_IDS as string[]).includes(v);
 
 /** 사냥 골드 증가(0.02 = +2%) — 레벨 0 = 미보유 */

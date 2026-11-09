@@ -23,14 +23,15 @@ frame = int(argv[3]) if len(argv) > 3 else 0
 bpy.context.scene.render.resolution_percentage = 100
 cam = RR.setup()
 bpy.context.scene.cycles.samples = 24
-mount = CR.build(who, R.MONSTERS[who])
-RS.add_saddle(mount, R.MONSTERS[who])
+from lib import mount as MT   # 2026-11-09 탈것 전용 모델 · 걸음
+mount = MT.build(who)
 hero = BV.build('hero', R.HERO)
 RS.seat_hero(hero)
-ma = A2.mount_actions('quad', R.MON_POSES)[action][frame]
-hp = RS.rider_actions()[action][frame]
+ma = MT.actions(who)[action][frame]
+ra = RS.rider_actions()[action]
+hp = ra[min(len(ra) - 1, round(frame * len(ra) / len(MT.actions(who)[action])))]
 mount.arm.rotation_euler.z = math.radians(RS.MOUNT_YAW)
-CR.pose(mount, ma)
+MT.pose(mount, ma)
 BV.pose(hero, hp)
 bpy.context.view_layer.update()
 hero.arm.scale = (RS.RIDER_SCALE,) * 3

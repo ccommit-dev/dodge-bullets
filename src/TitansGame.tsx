@@ -125,7 +125,7 @@ import { BEAT_TICKET_MAX_BOUGHT } from "./beat/tickets";
 import { GOLDEN_ESCAPE_SEC, GoldenRush, HuntStamp, TechGauge } from "./titans/huntMoments";
 import { MOUNT_RIDE } from "./titans/mountRide";
 import { mountAnimStyle, mountCellStyle, mountFrameIndex, type MountAction } from "./titans/spriteAnim";
-import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
+import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
 import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
@@ -155,6 +155,7 @@ import { LockIcon } from "./ui/LockIcon";
 import { FilterChips } from "./ui/FilterChips";
 import "./ui/simple-lists.css";
 import "./ui/shop-style.css";   // 2026-11-09 꾸미기 진열 · 특별 탭 — 맨 뒤(ui-polish · simple-lists 의 상점 규칙을 덮는다)
+import "./ui/mount-show.css";   // 2026-11-09 탈것 진열(달리는 모습 · 종 배경) · 전장 등급 빛
 import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
@@ -3991,7 +3992,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
             {/* 탈것 (2026-11-03) — 주인공 아래에. 주인공만 위로 올린다(동료 대열은 그대로) */}
-            {isMountId(character.activeMount) && <HeroMountLayer store={frameStore} art={MOUNT_DEFS[character.activeMount].art} action={rideAction} />}
+            {isMountId(character.activeMount) && <HeroMountLayer store={frameStore} art={MOUNT_DEFS[character.activeMount].art} action={rideAction} tier={cosmeticTier(MOUNT_DEFS[character.activeMount].gemPrice)} />}
             {/* 펫 (2026-10-28) — 주인공 뒤 발치에서 같이 걷고(주인공 상자 안이라 들어오고 나갈 때 같이 움직인다) 덤빌 땐 몬스터 쪽으로 뛴다. 예전엔 전장 왼쪽 위에 떠 있기만 했다 */}
             {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
               <div key={`pet-${petAtk}`} style={petMove} data-pet-dx={String(petMove["--pet-dx" as keyof CSSProperties] ?? "")} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
@@ -4210,7 +4211,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               >
                 <SkillIcon id={sk.id} />
                 <small>
-                  {!learned ? "미학습" : !equipped ? "미장착" : sk.slot === "passive" ? "PASSIVE" : cd > 0 ? `${cd.toFixed(1)}s` : "READY"}
+                  {!learned ? "미학습" : !equipped ? "미장착" : sk.slot === "passive" ? "패시브" : cd > 0 ? `${cd.toFixed(1)}s` : "준비"}
                 </small>
                 {learned && equipped && cd > 0 && sk.slot !== "passive" && (
                   <i className="skill-cd-ring" style={{ "--cd": cd / sk.cooldownSec } as CSSProperties} aria-hidden="true" />
@@ -5243,9 +5244,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const cost = mountUpgradeCost(lv);
               return (
                 <article key={mid} className={`titans-card premium-product-card gem-product mount-product style-show ${on ? "on" : ""}`} data-mount={mid} data-tier={cosmeticTier(def.gemPrice)}>
-                  <span className="mount-thumb" aria-hidden="true"><i style={mountAnimStyle(def.art, "idle")} /></span>
+                  <span className="mount-thumb" aria-hidden="true"><i style={mountAnimStyle(def.art, "walk")} /></span>
                   <div>
-                    <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemPrice)]}</em>{def.name} <em>{lv > 0 ? `Lv.${lv}/${MOUNT_MAX_LEVEL}` : "탈것"}</em></strong>
+                    <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemPrice)]}</em>{def.name}{lv > 0 && <> <em>{`Lv.${lv}/${MOUNT_MAX_LEVEL}`}</em></>}</strong>
+                    <span className="mount-traits">{MOUNT_TRAITS[mid].map((t) => <em key={t}>{t}</em>)}</span>
                     <p>사냥 골드 +{(mountGoldBonus(mid, Math.max(1, lv)) * 100).toFixed(1)}%{cost !== null ? ` · 다음 +${(mountGoldBonus(mid, lv + 1) * 100).toFixed(1)}%` : lv >= MOUNT_MAX_LEVEL ? " · 최대" : ""}</p>
                   </div>
                   <span className="mount-actions">
@@ -5930,7 +5932,8 @@ function HeroFrameChar({ store, ride, ...props }: { store: ReturnType<typeof cre
   return <div className="ride-rider" style={{ transform: `translate(${-s[0] * 200}%, ${s[1] * 100}%) rotate(${-s[2]}deg)` }}><EquippedCharacter {...props} frame={frame} /></div>;
 }
 /** 탈것 — 주인공과 같은 칸 번호로 달리고 · 덤비고 · 버틴다 (2026-11-05, 사용자: "탈것을 탈 때 탄 애니메이션도 같이 공격 방어 이동 자세") */
-function HeroMountLayer({ store, art, action }: { store: ReturnType<typeof createFrameStore>; art: string; action: MountAction }) {
+function HeroMountLayer({ store, art, action, tier }: { store: ReturnType<typeof createFrameStore>; art: string; action: MountAction; tier?: string }) {
   const frame = useSyncExternalStore(store.sub, store.get);
-  return <div className="hero-mount" data-action={action} aria-hidden="true"><i style={mountCellStyle(art, action, mountFrameIndex(action, frame))} /></div>;
+  // 종 · 등급(2026-11-09) — 발밑 빛 · 불씨/눈/잎 입자(ui/mount-show.css). 영웅은 빛 없이
+  return <div className="hero-mount" data-action={action} data-mount={art.replace("mount-", "")} data-tier={tier} aria-hidden="true"><i style={mountCellStyle(art, action, mountFrameIndex(action, frame))} /></div>;
 }
