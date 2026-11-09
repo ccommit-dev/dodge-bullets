@@ -60,7 +60,7 @@ const MATERIAL_GUIDE = [
   ["공명 가루", "견갑", "비트 원정 · 곡 클리어", "70%"],
   ["박자 결정", "견갑", "비트 원정 · PERFECT", "16%/노트"],
   ["콤보 코어", "견갑", "비트 원정 · 30 COMBO", "35%"],
-  ["피버 프리즘", "견갑", "비트 원정 · FEVER ×3 이상", "45%"],
+  ["피버 프리즘", "견갑", "비트 원정 · 피버 ×3 이상", "45%"],
   ["DROP 심장", "견갑", "비트 원정 · 보스곡 클리어", "100%"],
   ["별빛 현", "공용", "비트 원정 · FULL COMBO", "12%"],
   ["원정 인장", "공용", "성문 방어 · 노히트 탈출", "100%"],
@@ -922,7 +922,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 <span>보유 {materials}</span>
               </article>
               <article className="forge-shop-card">
-                <div><strong>공명 견갑 조각</strong><p>비트 원정의 곡 클리어·콤보·FEVER 보상으로 획득합니다. 보호구 +5부터 필수입니다.</p></div>
+                <div><strong>공명 견갑 조각</strong><p>비트 원정의 곡 클리어·콤보·피버 보상으로 획득합니다. 보호구 +5부터 필수입니다.</p></div>
                 <span>보유 {shoulderShards}</span>
               </article>
               <section className="forge-material-guide">

@@ -2070,7 +2070,7 @@ function App() {
       {bootReady && appMode === "dodge" && gameState === "ready" && preloadStageBackgrounds() && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide exp-menu-content">
-            <p className="brand">DAM DEFENSE</p>
+            <p className="brand">원정 모드</p>
             <h1 className="title">댐 방어전</h1>
             <p className="subtitle">몬스터가 성문 <b>방어막</b>으로 걸어 내려온다 — <b>활</b>이 알아서 쏘고, 방어막이 깨지면 진다. 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
@@ -2415,7 +2415,7 @@ function App() {
       {appMode === "dodge" && gameState === "paused" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">PAUSED</p>
+            <p className="brand">일시 정지</p>
             <h1 className="title">일시정지</h1>
             <p className="subtitle">몬스터는 멈춰 있습니다. 장착 스킬은 계속 자동으로 나갑니다 — 재개하면 쿨타임이 이어집니다.</p>
             <div className="pause-actions">
@@ -2430,7 +2430,7 @@ function App() {
       {appMode === "dodge" && gameState === "perk" && (
         <div className="game-overlay perk-overlay">
           <div className="overlay-content">
-            <p className="brand">LEVEL UP · Lv.{worldRef.current?.runLevel ?? runHud.level}</p>
+            <p className="brand">레벨 업 · Lv.{worldRef.current?.runLevel ?? runHud.level}</p>
             {/* 무기 업그레이드 (2026-11-06, 사용자 참고 슈팅 화면) — 가로 세로 카드 · 머리띠 · 아래 안내. 등급 점(일반 1 · 레어 2 · 에픽 3)과 속성 표는 카드 값 그대로 */}
             <h1 className="title perk-banner">무기 업그레이드</h1>
             <div className={`perk-cards n-${perkOptions.length}`}>
@@ -2672,7 +2672,7 @@ function App() {
       {gameClosed && (
         <div className="exit-modal game-closed" role="dialog" aria-modal="true">
           <div className="exit-card">
-            <p className="brand">GROW A BEAVER</p>
+            <p className="brand">비버 키우기</p>
             <h2 className="exit-title">게임을 종료했습니다</h2>
             <p className="exit-desc">진행 상황은 저장됐어요. 이 탭(창)을 닫아도 됩니다.</p>
             <button type="button" className="cta" onClick={() => window.location.reload()}>다시 시작</button>

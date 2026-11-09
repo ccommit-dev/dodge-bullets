@@ -28,7 +28,7 @@ export function AreaGateModal({ pioneeredArea, onGoDodge, onDismiss }: Props) {
             {pioneeredArea}/{HUNTING_AREAS.length}
           </span>
         </div>
-        <p className="brand">AREA LOCKED</p>
+        <p className="brand">잠긴 지역</p>
         <h2 className="exit-title">{nextAreaName(pioneeredArea) ?? "미지의 영역"}</h2>
         <p className="gate-desc">
           정찰병이 길을 뚫어야 사냥터가 열립니다.

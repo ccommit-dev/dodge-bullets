@@ -58,7 +58,7 @@ export function SaveBackupModal({ userHash, onClose }: Props) {
   return (
     <div className="exit-modal backup-modal" role="dialog" aria-modal="true">
       <div className="exit-card backup-card">
-        <p className="brand">SAVE BACKUP</p>
+        <p className="brand">저장 백업</p>
         <h2 className="exit-title">세이브 백업</h2>
         <p className="backup-note">
           저장은 이 기기에만 남습니다. 기기를 바꾸거나 앱을 지우기 전에 내보내기로 보관하고,

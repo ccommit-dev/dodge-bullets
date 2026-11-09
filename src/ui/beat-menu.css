@@ -35,3 +35,21 @@
 
 /* 곡 칩 — 난도 첫 클리어는 글자(E · N · H) 대신 점 셋(받으면 ✓) */
 .beat-song-clears em { width: 14px; height: 14px; font-size: 13px; line-height: 1; }
+
+/* 고른 곡 카드 하나 + 곡 칩 (2026-11-09, 사용자: "칩을 누르면 카드 하나만") — 같은 곡 16장이 두 번 나오던 것 */
+.schedule-list.is-picked { grid-template-columns: 1fr !important; margin: 4px auto 10px !important; scroll-margin: 12px; }
+.beat-song-chip.on { border-color: #b45309 !important; background: #fff1b8 !important; box-shadow: 0 0 0 3px #fbbf24, 0 2px 0 rgba(59, 36, 21, .3); }
+button.schedule-play { cursor: pointer; min-height: 34px; }
+button.schedule-play:active { transform: translateY(1px); box-shadow: 0 1px 0 #b45309; }
+
+/* 비트 메뉴 판 — 짙은 갈색 → 크림 (2026-11-09, 사용자 승인 "크림 판 · 한글"). 판 위 밝은 글자(제목 · 부제 · 안내)는 진갈색으로 같이 바꾼다.
+   클래스는 비트 메뉴에만(.beat-menu-panel) — 댐 방어전 메뉴와 공유하는 .game-overlay .overlay-content 는 그대로 */
+.game-overlay .overlay-content.beat-menu-panel { color: #3b2415; background: linear-gradient(180deg, #fff8e8, #f6e6c4) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .6), 0 6px 0 #b98a4a, 0 12px 28px rgba(0, 0, 0, .35) !important; }
+.beat-menu-panel .beat-kicker { color: #b45309 !important; text-shadow: none !important; letter-spacing: .04em !important; }
+.beat-menu-panel .beat-title { background: none !important; color: #3b2415 !important; -webkit-text-fill-color: #3b2415 !important; text-shadow: 0 3px 0 #f2c94c !important; }
+.beat-menu-panel .subtitle { color: #6b4a2b !important; }
+.beat-menu-panel .wallet-item { background: rgba(59, 36, 21, .08) !important; }
+.beat-menu-panel .beat-note-legend { color: #6b4a2b !important; font-size: 13px !important; }
+.beat-menu-panel .beat-note-legend b { color: #3b2415 !important; }
+.beat-menu-panel .beat-rank-panel small { color: #6b4a2b !important; }

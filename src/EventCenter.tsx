@@ -307,7 +307,7 @@ export function EventCenter({
   return (
     <div className="exit-modal event-modal" role="dialog" aria-modal="true">
       <div className="exit-card event-card">
-        <p className="brand">ADVENTURE EVENT</p>
+        <p className="brand">모험 이벤트</p>
         <h2 className="exit-title">모험가 이벤트</h2>
         <div className="event-tabs">
           {(["daily", "rift", "weekly", "season", "journal"] as EventTab[]).map((id) => (

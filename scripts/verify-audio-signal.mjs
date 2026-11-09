@@ -86,7 +86,9 @@ const beatRow = async (id) => {
   const tap = async (sel, text = "") => { const pt = await page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((e) => e.textContent.includes(text)); if (!el) return null; el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, { sel, text }); if (pt) await page.touchscreen.tap(pt.x, pt.y); return !!pt; };
   await tap(".titans-bottom-nav button", "모험"); await sleep(500);
   await tap(".nav-popup-grid button", "비트 수련"); await sleep(1800);
-  await tap(`.beat-song-chip[data-track="${id}"]`); await sleep(2500);
+  // 곡 칩은 고르기(2026-11-09) — 고른 곡 카드의 ▶ 시작이 곡을 튼다
+  await tap(`.beat-song-chip[data-track="${id}"]`); await sleep(500);
+  await tap(`.schedule-card[data-track="${id}"] .schedule-play`); await sleep(2500);
   const rows = await measure(5000);
   return { ...pick(rows, true), session: await page.evaluate(() => { const s = window.__beatSession; return s ? { track: s.track?.id, vol: s.backingAudio?.volume, paused: s.backingAudio?.paused } : null; }) };
 };

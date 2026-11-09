@@ -41,7 +41,8 @@ for (const want of wants) {
   await page.waitForSelector(".beat-song-chip", { timeout: 30000 }).catch(() => {});
   await sleep(600);
   const chips = await page.evaluate(() => [...document.querySelectorAll(".beat-song-chip")].map((b) => b.dataset.track));
-  const tapped = await tap(`.beat-song-chip[data-track="${want}"]`);
+  // 곡 칩은 고르기(2026-11-09) — ▶ 시작 탭이 사용자 동작으로 곡을 튼다(WebKit 자동 재생 규칙)
+  const tapped = (await tap(`.beat-song-chip[data-track="${want}"]`)) && (await sleep(500), await tap(`.schedule-card[data-track="${want}"] .schedule-play`));
   await sleep(3500);
   const st = await page.evaluate(() => { const s = window.__beatSession; return s ? { track: s.track?.id ?? null, src: s.backingAudio?.src ?? null, paused: s.backingAudio?.paused ?? null, t: s.backingAudio?.currentTime ?? null, ctx: s.ctx?.state ?? null } : null; });
   const ok = !!st && st.track === want && (st.src ?? "").includes(want) && st.paused === false && (st.t ?? 0) > 0.5;

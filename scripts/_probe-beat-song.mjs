@@ -14,7 +14,7 @@ await tap(".titans-bottom-nav button", "모험"); await sleep(500);
 await tap(".nav-popup-grid button", "비트 수련"); await sleep(1800);
 console.log("NAV", JSON.stringify(await page.evaluate(() => [...document.querySelectorAll(".nav-popup-grid button")].map((b) => b.textContent.trim()))), JSON.stringify(await page.evaluate(() => [...document.querySelectorAll(".beat-song-chip")].map((b) => b.dataset.track))));
 const want = process.argv[2] ?? "cherry-pop";
-const ok1 = await tap(`.beat-song-chip[data-track="${want}"]`);
+const ok1 = await tap(`.beat-song-chip[data-track="${want}"]`) && (await new Promise((r) => setTimeout(r, 500)), await tap(`.schedule-card[data-track="${want}"] .schedule-play`));   // 칩은 고르기 · ▶ 시작이 곡을 튼다(2026-11-09)
 await sleep(3500);
 const st = await page.evaluate(() => { const s = window.__beatSession; return s ? { track: s.track.id, src: s.backingAudio?.src ?? null, paused: s.backingAudio?.paused ?? null, t: s.backingAudio?.currentTime ?? null, ctx: s.ctx?.state ?? null } : null; });
 console.log(JSON.stringify({ tapped: ok1, want, st, errors }));

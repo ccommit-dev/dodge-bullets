@@ -38,7 +38,7 @@ export function AreaUnlockBanner({ area, onDone }: Props) {
       <span className="area-gate-half right" aria-hidden="true" />
       <div className="area-unlock-copy">
         <img className="area-unlock-crest" src={assetUrl("ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />
-        <p className="brand">AREA PIONEERED</p>
+        <p className="brand">지역 개척</p>
         <h2 style={{ color: area.accent }}>{area.name}</h2>
         <p className="area-unlock-range">
           STAGE {area.stageFrom} – {area.stageTo >= 9999 ? "∞" : area.stageTo}

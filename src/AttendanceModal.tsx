@@ -144,7 +144,7 @@ export function AttendanceModal({ userHash, open, onClose, onUpdated, onDone }: 
   };
   return <div className="exit-modal attendance-modal" role="dialog" aria-modal="true">
     <div className="exit-card attendance-card attendance-30">
-      <p className="brand">DAILY CHECK</p><h2 className="exit-title">30일 출석 보상</h2>
+      <p className="brand">매일 출석</p><h2 className="exit-title">30일 출석 보상</h2>
       <p className="attendance-progress">{Math.min(day, ATTENDANCE_DAYS)} / {ATTENDANCE_DAYS}일 · 7·14·21·28일 큰 보상 · 30일째 용린 견갑</p>
       {/* 30칸을 한 판에 깔면 스크롤이 생겼다 — 15일씩 두 쪽, 오늘이 있는 쪽을 먼저 (2026-10-08 사용자: "스크롤 없이, 페이지를 추가하더라도 가독성") */}
       <div className="attendance-pages" role="tablist">

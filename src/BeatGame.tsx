@@ -230,6 +230,9 @@ export function BeatGame({
   const raidBuffRef = useRef({ kick: 0, allies: 0, drop: 0 });
   // 출격 강화 · 약점 레인 · 피해 숫자 (2026-10-08, beat/beatPerks.ts) — 곡 사이 1택, 장 대장 약점 레인, 노트마다 숫자
   const [beatPerkChoice, setBeatPerkChoice] = useState<Record<string, BeatPerkId>>({});
+  // 고른 곡 (2026-11-09, 사용자: 곡 칩 16 + 곡 카드 16 이 같은 곡을 두 번 보였다 → "칩을 누르면 카드 하나만") — 없으면 추천 곡
+  const [pickedTrack, setPickedTrack] = useState<string | null>(null);
+  const pickedCardRef = useRef<HTMLDivElement | null>(null);
   const [activePerk, setActivePerk] = useState<BeatPerkId | null>(null);
   const beatModsRef = useRef(emptyBeatMods());
   const weakLaneRef = useRef<NoteLane | null>(null);
@@ -832,6 +835,7 @@ export function BeatGame({
   } as const;
 
   const totalStages = stageCount();
+  const pickedId = pickedTrack ?? (slots.find((x) => x.stageIndex === Math.min(unlocked, totalStages - 1)) ?? slots[0])?.track.id;
   return (
     <div className="beat-layer">
       <canvas ref={canvasRef} className={`game-canvas ${ui === "playing" ? "beat-battle-canvas" : ""}`} />
@@ -849,8 +853,8 @@ export function BeatGame({
 
       {ui === "menu" && rpg && (
         <div className="game-overlay">
-          <div className="overlay-content overlay-wide">
-            <p className="brand beat-kicker">IDLE BEAT DEFENSE</p>
+          <div className="overlay-content overlay-wide beat-menu-panel">
+            <p className="brand beat-kicker">리듬 수련</p>
             <h1 className="title beat-title">비버 비트 디펜스</h1>
             <p className="subtitle beat-sub-short">곡을 골라 방향 노트로 보스를 격파 · 30초~2분</p>
             {/* 지갑 줄 — 골드·보석·명성 (2026-10-06, 예전 "골드 n · 명성 n" 한 줄) */}
@@ -864,19 +868,9 @@ export function BeatGame({
                 <small>{t.free}/{BEAT_DAILY_TICKETS}{t.bought > 0 ? ` · 산 시도권 ${t.bought}` : ""} · 매일 다시 · 상점 '특별'에서 구매</small>
               </div>
             ); })()}
-            {/* 곡 전부 한눈에 (2026-10-28, 사용자: "시작 UI 에 곡 종류가 모두 나오고") — 난도 칸은 첫 클리어(✓). 같은 날 "선택한 음악으로 게임진행" — 누르면 그 곡으로 바로 시작 */}
-            <div className="beat-song-grid" aria-label={`곡 ${slots.length}개`}>
-              {slots.map((slot) => (
-                <button key={slot.track.id} type="button" className="beat-song-chip" data-track={slot.track.id} onClick={() => void startSlot(slot)} title={`${slot.title} 바로 시작 — 난도 · 출격 강화는 아래 곡 카드에서`}>
-                  <img src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" aria-hidden="true" />
-                  <b>{slot.title}</b>
-                  <small>Lv.{slot.track.level} · {slot.track.bpm}BPM</small>
-                  <span className="beat-song-clears">{(["easy", "medium", "hard"] as const).map((d) => <em key={d} className={charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "done" : ""} title={`${BEAT_DIFF_LABEL[d]} 첫 클리어`}>{charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "✓" : ""}</em>)}</span>
-                </button>
-              ))}
-            </div>
-            <div className="schedule-list">
-              {slots.map((slot) => {
+            {/* 고른 곡 카드 하나 (2026-11-09) — 칩 격자 위. 칩을 누르면 이 카드가 그 곡으로 바뀌고 화면에 들어온다 */}
+            <div className="schedule-list is-picked" ref={pickedCardRef}>
+              {slots.filter((slot) => slot.track.id === pickedId).map((slot) => {
                 const done = rpg.clearedToday.includes(slot.track.id);
                 const recommended = slot.stageIndex === Math.min(unlocked, totalStages - 1);
                 // 곡 카드는 button 이 아니라 div(role=button) — 안에 난도 · 출격 강화 칩 button 이 있어 button 안 button(HTML 규칙 위반,
@@ -931,12 +925,23 @@ export function BeatGame({
                               onClick={(e) => { e.stopPropagation(); setBeatPerkChoice((v) => ({ ...v, [slot.track.id]: offer[(offer.indexOf(chosen) + 1) % offer.length] })); }}>{def.label}<i aria-hidden="true">↻</i></button>
                           ); })()}
                         </span>
-                        <span className="schedule-play" aria-hidden="true">▶ 시작</span>
+                        <button type="button" className="schedule-play" onClick={(e) => { e.stopPropagation(); void startSlot(slot); }}>▶ 시작</button>
                       </span>
                     </span>
                   </div>
                 );
               })}
+            </div>
+            {/* 곡 전부 한눈에 (2026-10-28, 사용자: "시작 UI 에 곡 종류가 모두 나오고") — 난도 칸은 첫 클리어(✓). 같은 날 "선택한 음악으로 게임진행" — 누르면 그 곡으로 바로 시작 → 2026-11-09 누르면 위 카드에서 고르고 ▶ 시작 */}
+            <div className="beat-song-grid" aria-label={`곡 ${slots.length}개`}>
+              {slots.map((slot) => (
+                <button key={slot.track.id} type="button" className={`beat-song-chip ${slot.track.id === pickedId ? "on" : ""}`} data-track={slot.track.id} aria-pressed={slot.track.id === pickedId} onClick={() => { setPickedTrack(slot.track.id); requestAnimationFrame(() => pickedCardRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })); }} title={`${slot.title} — 위 카드에서 난도 · 출격 강화를 고르고 시작`}>
+                  <img src={assetUrl(`beat/covers/${slot.track.id}.png`)} alt="" aria-hidden="true" />
+                  <b>{slot.title}</b>
+                  <small>Lv.{slot.track.level} · {slot.track.bpm}BPM</small>
+                  <span className="beat-song-clears">{(["easy", "medium", "hard"] as const).map((d) => <em key={d} className={charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "done" : ""} title={`${BEAT_DIFF_LABEL[d]} 첫 클리어`}>{charProg && beatFirstClaimed(charProg, slot.track.id, d) ? "✓" : ""}</em>)}</span>
+                </button>
+              ))}
             </div>
             <div className="menu-actions">
               <button
@@ -996,7 +1001,7 @@ export function BeatGame({
               onClick={activateFever}
               style={{ "--fever-fill": `${feverMultiplier > 1 ? Math.min(100, feverRemainSec / (feverMultiplier === 5 ? 6 : feverMultiplier === 3 ? 7 : 8) * 100) : dropCharge}%` } as CSSProperties}
             >
-              <b>{feverMultiplier > 1 ? `FEVER ×${feverMultiplier}` : dropCharge >= 100 ? "FEVER ×5" : dropCharge >= 65 ? "FEVER ×3" : dropCharge >= 35 ? "FEVER ×2" : "FEVER"}</b>
+              <b>{feverMultiplier > 1 ? `피버 ×${feverMultiplier}` : dropCharge >= 100 ? "피버 ×5" : dropCharge >= 65 ? "피버 ×3" : dropCharge >= 35 ? "피버 ×2" : "피버"}</b>
               <small>{feverMultiplier > 1 ? `${feverRemainSec}s` : dropCharge >= 35 ? `${dropCharge}% · 누르세요` : `${dropCharge}% · 정확한 노트로 충전`}</small>
             </button>
             {/* 악기 이름만 — 역할(공격·방어·회피·스킬)은 아래 패드가 말한다. 전에는 양쪽이 같은 말을 했다 */}
@@ -1054,7 +1059,7 @@ export function BeatGame({
       {ui === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">CLEAR</p>
+            <p className="brand">클리어</p>
             <h1 className="title">{lessonTitle}</h1>
             <p className="score-line">+{coinGain} 코인{adDouble === "done" ? " (광고 ×2 적용)" : ""}</p>
             {firstReward && <p className="beat-first-reward">{firstReward.diff} 첫 클리어 보상 — {beatRewardText(firstReward.reward)}</p>}

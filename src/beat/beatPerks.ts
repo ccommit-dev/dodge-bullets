@@ -15,7 +15,7 @@ export const BEAT_PERKS: BeatPerkDef[] = [
   { id: "kick", label: "킥 강타", desc: "킥 레인 피해 +40%", icon: "kick" },
   { id: "ensemble", label: "합주", desc: "햇·스네어 레인 피해 +40%", icon: "allies" },
   { id: "dropBurst", label: "드롭 폭발", desc: "드롭 레인 피해 +50%", icon: "drop" },
-  { id: "feverLong", label: "긴 FEVER", desc: "FEVER 지속 +2초", icon: "fever" },
+  { id: "feverLong", label: "긴 피버", desc: "피버 지속 +2초", icon: "fever" },
   { id: "healPlus", label: "숨 고르기", desc: "시작 회복 게이지 +3 (8이면 HP 회복)", icon: "heal" },
   { id: "comboResonance", label: "콤보 공명", desc: "콤보 피해 보정 ×1.5", icon: "combo" },
   { id: "weakTracker", label: "약점 추적", desc: "약점 레인 피해 ×2.5 → ×3.5", icon: "weak" },

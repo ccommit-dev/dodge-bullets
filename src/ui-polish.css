@@ -1497,3 +1497,7 @@
 @media (orientation: landscape) and (max-height: 560px) {
   .titans-field .titans-skill-dock { bottom: 24px; }
 }
+
+/* 머리 글자(.brand) 한글화 (2026-11-09) — 영어 대문자용 넓은 자간(.1~.14em)과 11~12px 는 한글에서 성기고 작다 */
+.game-overlay .brand, .exp-menu-content .brand, .perk-overlay .brand, .idle-card .brand { letter-spacing: .04em !important; }
+.perk-overlay .brand, .idle-card .brand { font-size: 13px !important; }

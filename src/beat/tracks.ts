@@ -243,7 +243,7 @@ const TRACK_DEFS: BeatTrackDef[] = [
     bars: 24,
     desc: "기타 스트럼과 박수 악센트를 교차하는 리듬 원정",
     lessonTitle: "HAPPY STRUM DAY",
-    lessonHint: "백비트 노트를 정확하게 이어 FEVER를 채우세요",
+    lessonHint: "백비트 노트를 정확하게 이어 피버를 채우세요",
     reward: 105,
     ringCount: 2,
   },
