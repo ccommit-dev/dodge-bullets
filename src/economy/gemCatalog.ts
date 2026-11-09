@@ -26,7 +26,7 @@ export type WeaponSkinDef = {
 export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
   "blade-crimson": {
     name: "진홍 루비",
-    desc: "장착한 무기가 붉은 루비 빛으로 물든다 — 검 · 창 · 활 · 지팡이 모두 · 외형 전용",
+    desc: "장착한 무기가 붉은 루비 빛으로 물든다",   // 2026-11-09 뒤 "— 검 · 창 · 활 · 지팡이 모두 · 외형 전용" 은 소제목과 같아 뺐다(카드에서 잘렸다)
     hue: 350,
     aura: "#f87171",
     gemCost: 450,
@@ -34,7 +34,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
   },
   "blade-glacier": {
     name: "빙하 서리",
-    desc: "장착한 무기에 얼음 결정 빛이 맺힌다 — 검 · 창 · 활 · 지팡이 모두 · 외형 전용",
+    desc: "장착한 무기에 얼음 결정 빛이 맺힌다",   // 2026-11-09 뒤 "— 검 · 창 · 활 · 지팡이 모두 · 외형 전용" 은 소제목과 같아 뺐다(카드에서 잘렸다)
     hue: 195,
     aura: "#7dd3fc",
     gemCost: 450,
@@ -42,7 +42,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
   },
   "blade-solar": {
     name: "황금 태양",
-    desc: "장착한 무기가 황금 햇빛으로 반짝인다 — 검 · 창 · 활 · 지팡이 모두 · 외형 전용",
+    desc: "장착한 무기가 황금 햇빛으로 반짝인다",   // 2026-11-09 뒤 "— 검 · 창 · 활 · 지팡이 모두 · 외형 전용" 은 소제목과 같아 뺐다(카드에서 잘렸다)
     hue: 46,
     aura: "#fcd34d",
     gemCost: 600,

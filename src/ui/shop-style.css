@@ -109,3 +109,6 @@
 .gear-item-row[data-gear-kind="bow"] { border-left-color: #16a34a !important; }
 .gear-item-row[data-gear-kind="staff"] { border-left-color: #7c3aed !important; }
 @media (prefers-reduced-motion: reduce) { .style-tile > .fx-thumb > i:nth-child(3) { animation: none; display: none; } }
+
+/* 전시 카드 설명 두 줄까지 (2026-11-09) — 외형 "장착한 무기가 붉은 루…" 가 한 줄에서 잘렸다(낮은 화면 1줄 규칙보다 높은 특이도) */
+.titans-layer .titans-shop > .style-show > div > p, .titans-shop > .style-show p { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2 !important; overflow: hidden; white-space: normal !important; }

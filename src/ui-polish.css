@@ -1501,3 +1501,14 @@
 /* 머리 글자(.brand) 한글화 (2026-11-09) — 영어 대문자용 넓은 자간(.1~.14em)과 11~12px 는 한글에서 성기고 작다 */
 .game-overlay .brand, .exp-menu-content .brand, .perk-overlay .brand, .idle-card .brand { letter-spacing: .04em !important; }
 .perk-overlay .brand, .idle-card .brand { font-size: 13px !important; }
+
+/* 이벤트 탭 상단 재화 줄 — 강화석 자리에 들어오는 코인(.coin-mark 22px)이 골드 · 보석(15px · 360 폭 14px)보다 컸다 (2026-11-09) */
+.titans-wallet .coin-mark { width: 18px; height: 18px; flex: 0 0 18px; margin: 0; vertical-align: middle; }
+@media (max-width: 420px) { .titans-wallet .coin-mark { width: 15px; height: 15px; flex-basis: 15px; } }
+@media (max-width: 380px) { .titans-wallet .coin-mark { width: 14px !important; height: 14px !important; flex-basis: 14px !important; } }
+
+/* 사냥터 화면 아래 여백 = 내비 높이 이상 (2026-11-09) — 낮은 폰(390×664 · SE 553)에서 성장 판(유물 · 퀘스트 …)은 화면째 스크롤로 내려 보는데,
+   여백 44px 이 내비(64px)보다 작아 끝까지 내려도 마지막 줄이 내비 뒤에 남았다. 사냥터 높이는 그대로(줄이면 대열이 알림 칩과 겹친다) */
+@media (max-width: 600px) {
+  .titans-layer:not(.is-management-page) { padding-bottom: max(80px, calc(env(safe-area-inset-bottom) + 72px)) !important; }
+}
