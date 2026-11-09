@@ -37,7 +37,7 @@ export const FIRST_DOUBLE_IDS = ["gems-80", "gems-450", "gems-1200"] as const;
  */
 export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "gems-80", kind: "consumable", name: "붉은 보석 80", description: "성장 선택권과 외형 구매에 사용", displayPrice: "₩1,500", contents: ["붉은 보석 ×80"], visible: true },
-  { id: "gems-450", kind: "consumable", name: "붉은 보석 450", description: "보너스 50개 포함", displayPrice: "₩7,500", badge: "POPULAR", contents: ["붉은 보석 ×450"], visible: true },
+  { id: "gems-450", kind: "consumable", name: "붉은 보석 450", description: "보너스 50개 포함", displayPrice: "₩7,500", badge: "인기", contents: ["붉은 보석 ×450"], visible: true },
   { id: "gems-1200", kind: "consumable", name: "붉은 보석 1,200", description: "보너스 200개 포함", displayPrice: "₩15,000", contents: ["붉은 보석 ×1,200"], visible: true },
   // ── 송사리 모델 (2026-10-08): 하루 ₩1,000 · 주말 ₩5,000 — 커피 한 잔 값의 습관 결제. 한도는 dealState 가 센다 ──
   { id: "daily-deal", kind: "bundle", name: "오늘의 보급", description: "하루 1회 · 커피 한 잔 값", displayPrice: "₩1,000", badge: "매일", contents: ["붉은 보석 ×40", "강화석 ×15", "골드 ×3,000"], visible: true },
