@@ -67,3 +67,8 @@
 
 /* 마이페이지 — 탈것을 타면 주인공 · 탈것을 함께 0.9배(비룡 꼬리 · 사슴 머리가 미리보기 판 가장자리에 닿아 잘렸다). 탈것만 줄이면 안장 자리가 어긋난다 */
 .character-equipment-preview .character-equipment-facing.is-riding { scale: .9; transform-origin: 50% 85%; }
+
+/* ③ 탈것 탄 대열 앞뒤 (2026-11-09) — 동료 무리(.titans-allies z 3)가 쌓임 맥락이라 동료는 늘 주인공(z 5) 밑이었다. 탈것을 탈 때만 무리 맥락을 풀어
+   동료 z(앞줄 4 · 뒷줄 2)가 주인공과 바로 견주고, 탈것보다 앞에 선 동료(data-front, TitansGame 이 자리 잡은 뒤 발 높이로 단다)만 위로 */
+.titans-field:has(.titans-hero.has-mount) .titans-allies { z-index: auto; }
+.titans-field:has(.titans-hero.has-mount) .titans-allies .titan-ally-art[data-party-slot][data-front="1"] { z-index: 6; }

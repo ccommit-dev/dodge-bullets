@@ -1320,6 +1320,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const room = Math.max(0, mount.left + mount.width * 0.13 - field.getBoundingClientRect().left - 4);
     hero.style.setProperty("--ride-back", `${Math.round(Math.max(0, Math.min(cur + room, cur + nose - monLeft + 16)))}px`);
   }, [formationReady, encounterMotion.seq, encounterMotion.partyMl]);
+  // 탈것 앞뒤 그리기 (2026-11-09, 사용자 목록 "탈것을 탄 주인공과 동료가 겹침") — 탈것(주인공 z 5)이 옆으로 길어 한 줄에 다 설 자리가 없다(전장 366px 에
+  // 탈것 120 · 동료 넷). 자리는 그대로 두고 그리는 순서만 깊이대로: 자리 잡은 뒤 발이 탈것 발보다 앞(아래)인 동료만 위에(data-front · ui/mount-show.css).
+  // 예전엔 동료 무리(z 3) 전체가 주인공 밑이라 카메라 쪽에 선 원거리 동료도 탈것 꼬리에 가렸다
+  useEffect(() => {
+    const field = document.querySelector(".titans-field");
+    const allies = field ? [...field.querySelectorAll<HTMLElement>(".titan-ally-art[data-party-slot]")] : [];
+    const hero = field?.querySelector<HTMLElement>(".titans-hero.has-mount");
+    if (!formationReady || !hero) { allies.forEach((el) => el.removeAttribute("data-front")); return; }
+    const t = window.setTimeout(() => {
+      const footY = hero.getBoundingClientRect().bottom;
+      for (const el of allies) {
+        const v = (el.querySelector<HTMLElement>(".ally-body") ?? el).getBoundingClientRect();
+        const wander = el.querySelector<HTMLElement>(".ally-wander");   // 달려든 칸의 세로 이동은 뺀다
+        const dy = wander ? Number.parseFloat((getComputedStyle(wander).translate || "0px").split(" ")[1] ?? "0") || 0 : 0;
+        el.setAttribute("data-front", v.bottom - dy > footY + 2 ? "1" : "0");
+      }
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [formationReady, encounterMotion.seq, character.activeMount]);
   // 스킬 칸을 주인공 발밑으로 (2026-11-03, 사용자: "사냥터 스킬아이콘 캐릭터 가까이") — 만남마다 자리 잡은 뒤 한 번 잰다. 교전 중엔 움직이지 않아 누르기 쉽다
   const skillDockRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
