@@ -64,3 +64,6 @@
 /* 초월 테두리 — 등급 토큰의 무지개 테는 배경으로 그려서 위 하늘 배경이 덮었다. 안쪽(padding-box) 하늘 + 바깥(border-box) 무지개 두 겹으로 */
 .mount-product[data-tier="LR"] > .mount-thumb { border: 3px solid transparent !important;
   background: linear-gradient(180deg, var(--mt-sky1) 0%, var(--mt-sky2) 66%, var(--mt-ground1) 66.5%, var(--mt-ground2) 100%) padding-box, linear-gradient(90deg, #5eead4, #a5b4fc 35%, #f0abfc 65%, #fde68a) border-box !important; }
+
+/* 마이페이지 — 탈것을 타면 주인공 · 탈것을 함께 0.9배(비룡 꼬리 · 사슴 머리가 미리보기 판 가장자리에 닿아 잘렸다). 탈것만 줄이면 안장 자리가 어긋난다 */
+.character-equipment-preview .character-equipment-facing.is-riding { scale: .9; transform-origin: 50% 85%; }

@@ -882,7 +882,7 @@
 
 .schedule-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));   /* 판 폭에 맞춰 — 가로 폰은 판이 435px 라 2열이면 카드 210px 에 난도 칩이 잘렸다 */
   gap: 8px;
   width: min(100%, 620px);
   margin: 10px auto;
