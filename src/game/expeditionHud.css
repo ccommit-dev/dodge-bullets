@@ -182,3 +182,9 @@
    전투 독에서는 리본을 빼고 청록 고리 + 청록 Lv 리본(칸 아래)으로 연계를 보인다. 정비 카드의 "연계" 글자는 그대로 */
 .skill-dock .skill-link-mark { display: none !important; }
 .skill-dock .skill-slot.is-linked b { background: linear-gradient(180deg, #99f6e4, #14b8a6) !important; border-color: #0f766e !important; color: #042f2e !important; }
+
+/* ⑦ 칸 윗변을 바닥선에서 띄운다 (2026-11-09, 사용자 목록 R5) — 칸 위 = 바닥선(742)이라 주인공이 칸 위를 지날 때 발과 칸 테두리가 맞닿았다.
+   조작 단추 위(782)까지 여유가 2px 뿐이라 칸을 내리는 대신 높이 38 → 34 · 아래 정렬(아래변 그대로) · 아이콘은 비율 유지 */
+.skill-dock { align-items: flex-end !important; }
+.skill-dock .skill-slot { height: 34px !important; }
+.skill-dock .skill-slot img { object-fit: contain; }
