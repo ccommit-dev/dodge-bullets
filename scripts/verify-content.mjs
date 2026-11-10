@@ -386,6 +386,13 @@ ok("대장 크기 2/3 — 5배(480+)에서 줄였다 · 화면 폭(390)보다 �
   // 튀는 칸 (2026-10-27 · stages.SPAWN_EASE) — 23층(2장 혼성) · 48 · 49층(4장 포위전 · 정예 혼성)만 앞뒤 칸보다 훨씬 어려웠다(23층 12시드 8/12 · 방어막 최저 29%)
   const spikes = [22, 47, 48].map((i) => ({ i, g: stageGate(i, profileFor(i), 5) }));
   ok("튀는 칸 누그러뜨림: 23 · 48 · 49층 기대 성장 계정 5/5 · 방어막 최저 평균 40% 이상", spikes.every((x) => x.g.clear === 5 && x.g.minPct >= 40), spikes.map((x) => `${x.i + 1}:${x.g.clear}/${x.g.minPct}%`).join(" "));
+  // 후반 벽 칸 (2026-11-10 · stages.WALL_HP) — 위 정식 벽(지팡이 · 늦게 열린 스킬 먼저)은 가장 센 장착을 못 본다.
+  // 양끝으로 잰다: 덜 자란 계정은 가장 센 창 + 물 · 번개(짝 스킬), 다 자란 계정은 가장 약한 지팡이 + 서리 · 성광 · 운석(짝 스킬)
+  const kit = (s, lag, weapon, first) => { const p = profileFor(s, lag); const has = (id) => (p.skills[id] ?? 0) > 0; return { ...p, weapon, loadout: [...first, ...p.loadout.filter((id) => !first.includes(id))].filter(has).slice(0, skills.LOADOUT_MAX) }; };
+  const walls = [34, 39, 44].map((i) => ({ i, u: stageGate(i, kit(i, 8, "spear", ["water", "bolt"]), 5).clear }));
+  const wallExp = stageGate(39, kit(39, 0, "staff", ["ice", "holy", "meteor"]), 5);
+  ok("4 · 5장 벽 칸 — 덜 자란 계정 창 + 물 · 번개가 35 · 40 · 45 에서 0~1회, 다 자란 지팡이 + 연계는 40 에서 4회 이상",
+    walls.every((x) => x.u <= 1) && wallExp.clear >= 4, walls.map((x) => `${x.i + 1}:${x.u}`).join(" ") + ` · 지팡이 40:${wallExp.clear}/${wallExp.minPct}%`);
   ok("몬스터 풀이 차지 않는다 (생성이 조용히 빠지면 쉬워 보인다)", rows.every((r) => !r.pool), rows.filter((r) => r.pool).map((r) => r.stage + 1).join(","));
   ok("진행 속도 — 체크포인트 한 판이 실제 75초 이상 (예전 30~60초의 약 2~3배)", rows.every((r) => r.realSec >= 75), rows.map((r) => r.realSec).join(" "));
   const p20 = profileFor(19);

@@ -170,6 +170,17 @@ export function stageType(index: number): StageType {
  */
 const SPAWN_EASE: Partial<Record<number, number>> = { 14: 1.1, 22: 1.15, 29: 1.12, 47: 1.16, 48: 1.14 };   // 14 · 29(15 · 30스테이지) 2026-11-09 — 기대 성장 지팡이 6/12 · 8/12 로 앞뒤 칸(12/12)보다 튀었다
 
+/**
+ * 후반 벽 칸 (2026-11-10, 사용자 "마저 수정" — 밸런스 B1 남은 것) — 4 · 5장의 중간 보스 · 장 대장 칸(35 · 40 · 45 · 50)만 몬스터 체력을 올린다.
+ * 1~3장은 이 칸이 8 스테이지 덜 자란 계정을 막는데(15: 1~3/12 · 20 · 25 · 30: 0), 4 · 5장은 무기와 상관없이 3~8/8 을 깼다.
+ * 여유 실측(8시드): 다 자란 계정은 35 · 40 · 45 에서 체력 ×1.35 도 8/8(가장 약한 지팡이 + 연계 장착), 덜 자란 계정은 ×1.25~1.35 에서 0~1/8(가장 센 물 + 번개 장착도).
+ * 4 · 5장 전체를 +30% 하면 이미 빠듯한 33 · 48 · 49 를 다 자란 계정도 0~3/8 만 깬다 — 그래서 벽 칸만.
+ * 깨는 데 드는 성장(같은 계정 12시드, 연계 장착): 40 · 45 는 36~41(앞 벽 15 · 20 처럼 3~4 스테이지 여유). 35 는 ×1.3 이면 활 · 지팡이 · 검이 34~35 —
+ * 운석(레벨 40 = 35스테이지 성장)이 있어야 해 여유가 없어 ×1.2(활 34 · 검 33 · 창 30, 덜 자란 창 + 물 · 번개 0/12).
+ * 50 은 성장이 다 차서(스킬 Lv 10 · 칩 5) 두 계정 차이가 작다 — ×1.1 에서 다 자란 지팡이 + 연계 13/16, ×1.2 면 2/8. ×1 이면 정식 성장 벽(지팡이)의 덜 자란 계정이 8/16 을 깼다
+ */
+const WALL_HP: Partial<Record<number, number>> = { 34: 1.2, 39: 1.3, 44: 1.3, 49: 1.1 };
+
 /** stageIndex(0~49) → 스테이지. 결정적 */
 export function buildStage(index: number): StageDef {
   const i = Math.max(0, Math.min(CHAPTER_COUNT * STAGES_PER_CHAPTER - 1, index));
@@ -187,7 +198,7 @@ export function buildStage(index: number): StageDef {
     speedMul: round2(c.speedBase * Math.pow(c.speedGrowth, i) * slot.speed),
     spawnMul: round2(Math.pow(c.densityGrowth, i)),
     spawnScale: SPAWN_EASE[i] ?? 1,
-    monsterHp: round2(c.hpBase * Math.pow(c.hpGrowth, i) * CHAPTER_HP[chapter] * slot.hp),
+    monsterHp: round2(c.hpBase * Math.pow(c.hpGrowth, i) * CHAPTER_HP[chapter] * slot.hp * (WALL_HP[i] ?? 1)),
     barrierDmgMul: round2(1 + c.barrierDmgPerStage * i),
     bossCuts: Math.round((c.bossCutsBase + c.bossCutsPerStage * i) * slot.bossCuts),
     bossTier: chapter,
