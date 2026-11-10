@@ -145,7 +145,7 @@ await clickText("button", "사냥터로"); await sleep(1200);
 for (let i = 0; i < 40 && !pops.some((t) => /자동 환생/.test(t)); i += 1) await sleep(250);
 await sleep(1500);
 p = await prog(); const tr = await tit();
-ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +16 · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 16 && tr.stage <= 2 && tr.gold >= 5000 && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
+ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +16 · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 16 && tr.stage <= 2 && tr.gold >= 1700 /* 골드 단위 낮추기(2026-11-10) 뒤 30층 출발 골드 1,726 (옛 단위 5,992) */ && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
 const killsBefore = (await tit()).totalKills ?? 0;
 for (let i = 0; i < 60; i += 1) { await page.keyboard.press("Space"); await sleep(120); }
 ok("자동 환생 뒤 사냥이 다시 돈다(1층 몬스터를 다시 잡는다)", ((await tit()).totalKills ?? 0) > killsBefore, `${killsBefore} → ${(await tit()).totalKills}`);

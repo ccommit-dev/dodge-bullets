@@ -5,7 +5,7 @@
  * 기간 한정의 실체는 "주간 구매 한도" — 주가 바뀌면 한도가 리셋된다 (weeklyEventBuys).
  * 수량은 진행도 비례(killGold·최고 스테이지)라 후반에도 의미가 있다.
  */
-import { HEROES, killGold, type TitanHeroId } from "../titans/model";
+import { HEROES, killGoldOldUnit, type TitanHeroId } from "../titans/model";
 import { ALLY_RARITY, SHOP_ALLY_GEM_COST } from "../titans/allies";
 import type { CharacterProgress } from "../progression/model";
 
@@ -66,7 +66,7 @@ export function featuredAlly(tier: "UR" | "LR", now: number = Date.now()): Titan
 }
 const allyName = (id: TitanHeroId | null) => HEROES.find((h) => h.id === id)?.name ?? "";
 
-const bossGold = (p: CharacterProgress, mult: number) => Math.floor(killGold(Math.max(1, p.titanBestStage), true, false) * mult);
+const bossGold = (p: CharacterProgress, mult: number) => Math.floor(killGoldOldUnit(Math.max(1, p.titanBestStage), true, false) * mult);   // 대장간 지갑 — 아직 예전 단위
 const fmt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `${(n / 1e3).toFixed(1)}K` : n.toLocaleString());
 
 export const EVENT_PRODUCTS: EventProduct[] = [

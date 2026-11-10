@@ -18,6 +18,8 @@ type Props = {
   onBuy: (i: number) => void;
   /** 10분 보너스 받기 */
   onBonus: () => void;
+  /** 골드 단위 배수 — 지금 층의 model.goldDeflator (quests.questPay 주석) */
+  unit?: number;
 };
 
 const clock = (sec: number) => {
@@ -25,10 +27,10 @@ const clock = (sec: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus }: Props) {
-  const perSec = questGoldPerSec(state);
+export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus, unit = 1 }: Props) {
+  const perSec = questGoldPerSec(state, unit);
   const bonusLeft = questBonusLeftMs(state, Date.now());
-  const bonus = questBonusAmount(state);
+  const bonus = questBonusAmount(state, unit);
   return (
     <div className="quest-panel">
       <header className="quest-head">
@@ -45,9 +47,9 @@ export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus }: Pro
           const lv = state.levels[i];
           const locked = lv <= 0;
           const prevLocked = lv <= 0 && i > 0 && state.levels[i - 1] <= 0;   // 이미 연 줄은 숨기지 않는다(2026-10-28 옛 저장)
-          const cost = questCost(i, lv);
-          const block = questBlock(state, i, gold);
-          const gain = questPay(i, lv + 1) - questPay(i, lv);
+          const cost = questCost(i, lv, unit);
+          const block = questBlock(state, i, gold, unit);
+          const gain = questPay(i, lv + 1, unit) - questPay(i, lv, unit);
           const can = block === null;
           const label = block === "max" ? "MAX" : block === "prev" ? "앞 줄 먼저" : locked ? "열기" : `+${formatGold(gain)}`;
           const sub = block === "max" || block === "prev" ? null : <><CurrencyIcon kind="gold" />{formatGold(cost)}</>;
@@ -64,7 +66,7 @@ export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus }: Pro
                 <strong>{i + 1}. {q.name}{milestoneMul(lv) > 1 && <i className="quest-mul">×{milestoneMul(lv)}</i>}</strong>
                 <span className="quest-bar" aria-label={locked ? "잠김" : `${Math.round(t * 100)}%`}>
                   <i style={{ width: `${t * 100}%` }} />
-                  <span className="quest-pay"><CurrencyIcon kind="gold" />{formatGold(locked ? questPay(i, 1) : questPay(i, lv))}</span>
+                  <span className="quest-pay"><CurrencyIcon kind="gold" />{formatGold(locked ? questPay(i, 1, unit) : questPay(i, lv, unit))}</span>
                   <em>{clock(locked ? q.sec : q.sec - (prog[i] ?? 0))}</em>
                 </span>
                 {!locked && <small className="quest-next">{ms ? `Lv.${ms} 에 보상 ×2` : "최대 레벨 · 보상 ×4"}</small>}

@@ -9,7 +9,7 @@
  *   골드 강화는 Lv 마다 ×1.75 로 비싸지는데 카드 1장이 늘 Lv +1 이면 낮은 층에서 카드가 Lv19 기준 약 42배 쌌다.
  * - 실결제 상품 아님 — 골드 · 붉은 보석만.
  */
-import { SKILLS, type TitanSkillId, type TitansSave } from "./model";
+import { SKILLS, deflateCost, type TitanSkillId, type TitansSave } from "./model";
 import { SKILL_TIER } from "./skills";
 import type { Tier } from "./allyRoster";
 
@@ -27,9 +27,9 @@ type Inv = Pick<TitansSave["skillInventory"], "learned" | "levels"> & { copies?:
 
 /** 골드 강화 1Lv 값(TitansGame.upgradeSkill 과 같은 식) */
 export function skillGoldUpgradeCost(level: number): number {
-  return Math.floor(240 * Math.pow(1.75, Math.max(0, level - 1)));
+  return Math.floor(deflateCost(240 * Math.pow(1.75, Math.max(0, level - 1))));   // 골드 단위 낮추기(model GOLD_CURVE)
 }
-export const SKILL_GOLD_DRAW_MIN = 500;
+export const SKILL_GOLD_DRAW_MIN = 25;   // 예전 500 — 골드 단위 낮추기(2026-11-10) 뒤에도 같은 Lv(1~6)에서만 걸리게: 새 1회 값 Lv6 24 · Lv7 30 (예전 328 · 574)
 /**
  * 뽑기 값 (2026-10-28 아쉬운 점 "카드 값은 층마다 · 골드 강화는 레벨마다 올라 층에 따라 유불리") — 골드 뽑기는 층이 아니라 스킬 레벨 기준.
  * 기준 Lv = 골드 뽑기 풀에서 배운 스킬 중 가장 높은 Lv(다른 스킬을 낮게 두어 값을 깎을 수 없게). 1회 값 = 골드 강화(기준 Lv) × 1/풀 크기 ÷ 그 Lv 의 카드 수 —

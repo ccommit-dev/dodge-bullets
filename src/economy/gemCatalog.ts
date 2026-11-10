@@ -104,11 +104,13 @@ export const GEM_PACK = {
 } as const;
 
 /**
- * 황금 보급 상자 수량 — 현재 최고 스테이지 보스 킬골드 × 3,000.
+ * 황금 보급 상자 수량 — 현재 최고 스테이지 보스 킬골드 × 600 (골드 단위 낮추기 전 × 3,000).
  * 과금 점검: ×900은 방치 가속권(80보석, 최대 킬골드×37,800)에 5배 열위였다. ×3,000은
  * 기본 스탯 가속권(×5,040)의 4배·상한 스탯의 60% — 즉시 골드가 필요한 벽에서 고를 이유가 생긴다.
+ * 골드 단위 낮추기(2026-11-10, titans/model GOLD_CURVE) 뒤 × 600: 강화비가 단계마다 ×1.19 → ×1.07 로 느리게 올라 같은 처치 수의 목돈이 레벨을 훨씬 많이 산다
+ * (× 3,000 그대로면 힘 ×60~900). 벽에 선 일곱 계정(바깥 배수 1~1000 · 20분~10시간)에서 사는 레벨 · 오르는 층이 예전 × 3,000 과 같은 배수가 500~700 이었다
  */
 export function goldPackAmount(progress: CharacterProgress): number {
   const stage = Math.max(1, progress.titanBestStage);
-  return Math.floor(killGold(stage, true, false) * 3000);
+  return Math.floor(killGold(stage, true, false) * 600);
 }

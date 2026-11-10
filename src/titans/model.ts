@@ -109,6 +109,8 @@ export type TitansSave = {
   pendingRefund: { gems: number; sp: number } | null;
   /** 동료 값 조정 다시 계산 표시 (2026-10-27) — 1 이면 끝. 없으면(옛 저장) normalizeTitansSave 가 한 번 다시 계산한다 */
   allyRebalance?: number;
+  /** 골드 단위 판 (2026-11-10, GOLD_UNIT_VERSION) — 없거나 낮으면 옛 단위 골드 */
+  goldUnit?: number;
   /** 다시 계산 결과 안내 — TitansGame 부팅이 알리고 비운다 */
   rebalanceNotice?: { gold: number; changes: { id: TitanHeroId; from: number; to: number }[] } | null;
   totalKills: number;
@@ -327,6 +329,7 @@ export function defaultTitansSave(): TitansSave {
     heroes: emptyHeroLevels(),
     pendingRefund: null,
     allyRebalance: ALLY_REBALANCE_VERSION,
+    goldUnit: GOLD_UNIT_VERSION,
     rebalanceNotice: null,
     totalKills: 0,
     totalTaps: 0,
@@ -380,9 +383,15 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
       rebalanceGold += gold;
     }
   }
+  // 골드 단위 낮추기 (GOLD_UNIT_VERSION) — 옛 단위 저장의 가진 골드는 지금 층의 낮춤 배수로 한 번 바꾼다(같은 시간 사냥 몫). 새 단위 저장(goldUnit ≥ 판)은 그대로.
+  // 동료 값 조정 환급(relevelAlly) · 번개 환급은 옛 곡선으로 센 옛 단위라 늘 지금 층 배수를 곱한다
+  const stageMul = goldDeflator(Math.max(1, n(value.stage, 1, 99999)));
+  const heldGold = n(value.gold, 0) * ((value.goldUnit ?? 0) >= GOLD_UNIT_VERSION ? 1 : stageMul);
+  const goldAfterRebalance = Math.max(0, heldGold + rebalanceGold * stageMul);
   const oldLightning = n((value as { lightningLevel?: unknown }).lightningLevel, 0, 500);
   let oldLightningRefund = 0;
-  for (let l = 0; l < oldLightning; l += 1) oldLightningRefund += Math.floor(150 * Math.pow(1.24, l));   // 옛 lightningCost
+  for (let l = 0; l < oldLightning; l += 1) oldLightningRefund += Math.floor(150 * Math.pow(1.24, l));   // 옛 lightningCost (옛 단위)
+  const lightningGold = Math.floor(oldLightningRefund * stageMul);
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
   // 은퇴 환불 — 보유하던 은퇴 동료는 등급별 보석(+상점가), 배운 은퇴 스킬은 SP·코어를 돌려준다. 한 번만: 이 함수가 지운 뒤에는 원본에 없다
   const refund = { gems: value.pendingRefund?.gems ?? 0, sp: value.pendingRefund?.sp ?? 0, cores: 0 };
@@ -411,7 +420,8 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   }
   const prevNotice = value.rebalanceNotice && Array.isArray(value.rebalanceNotice.changes) ? value.rebalanceNotice : null;
   return {
-    gold: Math.max(0, n(value.gold, 0) + rebalanceGold) + oldLightningRefund,
+    gold: Math.floor(goldAfterRebalance) + lightningGold,
+    goldUnit: GOLD_UNIT_VERSION,
     stage: Math.max(1, n(value.stage, 1, 9999)),
     bestStage: Math.max(1, n(value.bestStage, 1, 9999)),
     swordLevel: legacySword,
@@ -437,7 +447,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     pendingRefund: refund.gems > 0 || refund.sp > 0 ? { gems: refund.gems, sp: refund.sp } : null,
     allyRebalance: ALLY_REBALANCE_VERSION,
     // 안내의 골드 = 실제로 오간 골드(거둘 때는 가진 골드까지만)
-    rebalanceNotice: rebalanceChanges.length > 0 ? { gold: Math.max(0, n(value.gold, 0) + rebalanceGold) - n(value.gold, 0), changes: rebalanceChanges } : prevNotice,
+    rebalanceNotice: rebalanceChanges.length > 0 ? { gold: Math.floor(goldAfterRebalance - heldGold), changes: rebalanceChanges } : prevNotice,
     totalKills: n(value.totalKills, 0),
     totalTaps: n(value.totalTaps, 0),
     autoSkill: value.autoSkill === true,
@@ -448,7 +458,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     huntPicks: 0,
     acorns: normalizeAcorns((value as { acorns?: unknown }).acorns),
     // 번개 강화 삭제 (2026-10-28) — 옛 저장의 단계는 이번 판에 쓴 골드로 돌려준다(환생하면 어차피 0 이던 런 강화)
-    lightningRefund: n((value as { lightningRefund?: unknown }).lightningRefund, 0) + oldLightningRefund,
+    lightningRefund: n((value as { lightningRefund?: unknown }).lightningRefund, 0) + lightningGold,
     quests: normalizeQuests((value as { quests?: unknown }).quests),
   };
 }
@@ -474,12 +484,52 @@ export function monsterHp(stage: number, boss: boolean): number {
   return Math.max(8, Math.floor(base * earlyRelief * (boss ? 11 : 1)));
 }
 
-export function killGold(stage: number, boss: boolean, chesterson: boolean): number {
-  const base = 5 * Math.pow(1.26, stage - 1);
-  let gold = base * (boss ? 7.5 : 1);
+/**
+ * 골드 단위 낮추기 (2026-11-10, 사용자: "골드 · 강화석 · 경험치 단위가 너무 커서 집중도가 떨어져 — 탕탕에이스처럼 확 낮춰").
+ * 처치 골드가 층마다 ×1.26(+ 지역 배율 1 → 5), 강화비가 단계마다 ×1.17~1.19 로 불어 처치 한 마리가 30층 2.4만 · 60층 6,052만 · 100층 2조 골드였다(지금 372 · 8,513 · 55만).
+ * - 들어오는 골드: 그 층의 낮춤 배수(goldDeflator)를 곱한다 — anchorStage 까지 1, 그 뒤로는 원래 처치 골드 곡선이 늘어난 만큼을 (incomeK − 1) 제곱.
+ *   같은 층 안의 비(처치 : 대장 : 클리어 보너스 : 황금 ×10)는 그대로다.
+ * - 나가는 골드(강화비): costAnchor 위의 값만 (값 / 기준)^costK 로 누른다 — 같은 옛 값은 같은 새 값이라 무엇이 더 싼지는 그대로.
+ * 두 지수는 같게 둔다. 값이 층과 무관하게 고정이면 예전 속도를 그대로 지키는 곡선은 없다(전체를 같은 배로 줄이는 것뿐 — 숫자가 안 줄어든다).
+ * costK 를 incomeK 보다 크게 잡아 균형 시뮬(바깥 성장 배수 1 인 새 계정)에만 맞추면, 별 · 유물 · 결정 트리로 힘이 X 배인 계정은 같은 강화에 드는 사냥 시간이
+ * X 가 클수록 늘어난다(0.3 / 0.5 로는 X 10~10000 에서 2~35배 느렸다). 같은 지수면 강화 하나에 드는 처치 수 r 이 r^k × N0^(1−k) 로만 바뀐다 —
+ * N0 = costAnchor ÷ anchorStage 층 처치 골드 ≈ 2.2마리, X 와 무관. 2.2마리보다 비싼 강화(벽)는 싸지고 그보다 싼 강화(환생 직후 달리기)는 비싸진다.
+ * 실측(scripts/gold-pace.mjs — 처치 사이 1.5초 포함, X 1~10000 × 20분~10시간): 새 계정은 20분 같고 2시간 +3 · 10시간 +9층,
+ * X ≥ 100 계정은 환생 뒤 20분~2시간에 4~19층 늦고 5시간에 5층쯤 늦다가 10시간에 따라잡는다. k 를 올리면(0.5) 어긋남이 줄고 숫자가 커진다(60층 처치 3.7만),
+ * 내리면(0.3) 숫자가 더 줄고 어긋남이 커진다. costAnchor 는 50 근처가 어느 k 에서나 가장 덜 어긋난다
+ */
+export const GOLD_CURVE = { anchorStage: 6, incomeK: 0.4, costAnchor: 50, costK: 0.4 };
+/** 사냥터 골드 단위 판 — 이보다 낮은 저장은 가진 골드를 그 층의 낮춤 배수로 한 번 바꾼다(같은 시간 사냥 몫이 그대로) */
+export const GOLD_UNIT_VERSION = 1;
+/** 원래 처치 골드 곡선(낮추기 전, 대장 · 황금 배율 없이) — 낮춤 배수의 기준 */
+function rawKillBase(stage: number): number {
+  const s = Math.max(1, stage);
+  return 5 * Math.pow(1.26, s - 1) * huntingArea(s).rewardMultiplier * abyssGoldBoost(s);
+}
+export function goldDeflator(stage: number): number {
+  const c = GOLD_CURVE;
+  if (stage <= c.anchorStage || c.incomeK >= 1) return 1;
+  return Math.pow(rawKillBase(stage) / rawKillBase(c.anchorStage), c.incomeK - 1);
+}
+export function deflateCost(value: number): number {
+  const c = GOLD_CURVE;
+  if (value <= c.costAnchor || c.costK >= 1) return value;
+  return c.costAnchor * Math.pow(value / c.costAnchor, c.costK);
+}
+
+/**
+ * 낮추기 전(옛 단위) 처치 골드 — ① 대장간 지갑(sharedCoins)으로 가는 방치 정산 · 균열 · 이벤트 상점: 대장간 값(FORGE_TIERS · 재련 · 무기 강화)이
+ * 아직 옛 단위라 그쪽 수입도 옛 단위로 둔다(2026-11-10 1단계 — 사냥터 지갑만). ② 퀘스트 견줌(scripts/verify-quests): 퀘스트 규칙은 옛 단위로 돈다
+ */
+export function killGoldOldUnit(stage: number, boss: boolean, chesterson: boolean): number {
+  let gold = rawKillBase(stage) * (boss ? 7.5 : 1);
   if (chesterson) gold *= 10;
-  gold *= huntingArea(stage).rewardMultiplier;
-  gold *= abyssGoldBoost(stage);
+  return Math.max(1, Math.floor(gold));
+}
+
+export function killGold(stage: number, boss: boolean, chesterson: boolean): number {
+  let gold = rawKillBase(stage) * goldDeflator(stage) * (boss ? 7.5 : 1);
+  if (chesterson) gold *= 10;
   return Math.max(1, Math.floor(gold));
 }
 
@@ -493,7 +543,7 @@ export function abyssGoldBoost(stage: number): number {
 }
 
 export function stageClearBonus(stage: number): number {
-  return Math.floor(28 * Math.pow(1.3, stage - 1) * abyssGoldBoost(stage));
+  return Math.floor(28 * Math.pow(1.3, stage - 1) * abyssGoldBoost(stage) * goldDeflator(stage));
 }
 
 export function tapDamage(swordLevel: number): number {
@@ -504,17 +554,30 @@ export function tapDamage(swordLevel: number): number {
 }
 
 export function swordUpgradeCost(level: number): number {
-  return Math.floor(20 * Math.pow(1.17, level - 1));
+  return Math.floor(deflateCost(20 * Math.pow(1.17, level - 1)));
 }
-/** 환생 출발 골드 (2026-10-22 아처 키우기 7번 "환생 직후 체감 이득") — 환생 전 최고 스테이지에 비례. 30 → 약 6K · 60 → 약 18만 */
-export function rebirthStartGold(bestStage: number): number { return Math.floor(200 * Math.pow(1.12, Math.min(90, Math.max(1, bestStage)))); }
+/**
+ * 옛 단위 골드 묶음을 "그 골드로 사던 강화를 새 값으로 다시 산 값"으로 (2026-11-10 골드 단위 낮추기) — 환생 직후처럼 싼 초반 강화(첫 동료 곡선 50 × 1.19^lv)를
+ * 여럿 사는 묶음은 층 배수(goldDeflator)를 곱하면 거의 0 이 되고(60층 환생 18만 → 6), 값 하나로 deflateCost 하면 여러 개를 살 때보다 모자란다
+ */
+export function rebuyBudget(oldGold: number): number {
+  let left = Math.max(0, oldGold), out = 0;
+  for (let l = 1; l < 2000 && left > 0; l += 1) {
+    const c = 50 * Math.pow(1.19, l);
+    if (c > left) { out += deflateCost(c) * (left / c); break; }
+    left -= c; out += deflateCost(c);
+  }
+  return out;
+}
+/** 환생 출발 골드 (2026-10-22 아처 키우기 7번 "환생 직후 체감 이득") — 환생 전 최고 스테이지에 비례. 옛 단위 30 → 약 6K · 60 → 약 18만, 새 단위(rebuyBudget) 1,726 · 8,691 */
+export function rebirthStartGold(bestStage: number): number { const s = Math.min(90, Math.max(1, bestStage)); return Math.floor(rebuyBudget(200 * Math.pow(1.12, s))); }
 /** 환생 결정 — CharacterStatus 와 미리 보기가 같은 식을 쓴다 */
 export function rebirthCrystals(bestStage: number): number { return Math.max(3, Math.floor(Math.sqrt(Math.max(0, bestStage)) * 3)); }
 /** 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 동료 10연차(보석 900) 한 번 + 여유 */
 export const WELCOME_GIFT_GEMS = 1000;
 /** 깜짝 선물 — 환영 선물을 받은 새 계정의 첫 대장 처치 때 한 번 */
 export const SURPRISE_GIFT_GEMS = 500;
-export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level)); }
+export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor(deflateCost((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level))); }
 
 /** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 · 3 = 예전 힘에 가장 가깝게 + 판 1 환급 골드 회수 ·
  * 4 = 다시 예전 힘 이상 + 판 1 골드 유지 (2026-10-28 사용자 확정 — 판 3 저장은 올리고 거둔 골드를 돌려준다) */
@@ -554,8 +617,8 @@ export function relevelAlly(oldBase: number, newBase: number, level: number, old
 }
 
 export function heroUpgradeCost(def: TitanHeroDef, level: number): number {
-  if (level <= 0) return def.baseCost;
-  return Math.floor(def.baseCost * Math.pow(1.19, level));
+  if (level <= 0) return Math.floor(deflateCost(def.baseCost));
+  return Math.floor(deflateCost(def.baseCost * Math.pow(1.19, level)));
 }
 
 /**

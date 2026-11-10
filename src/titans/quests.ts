@@ -93,24 +93,29 @@ export function nextMilestone(level: number): number | null {
 }
 
 /** 한 주기 보상 */
-export function questPay(i: number, level: number): number {
+/**
+ * unit — 골드 단위 배수 (2026-11-10, 사용자 "퀘스트는 현재 층 비례로"). 퀘스트 표 · 복리 규칙은 옛 단위 그대로 두고, 지급 · 구매 · 화면 값에만
+ * 지금 층의 낮춤 배수(model.goldDeflator(stage))를 곱한다 — 퀘스트끼리의 비(30줄 사다리 · 복리 속도)와 같은 층 사냥 골드 대비 비가 예전과 같다.
+ * 층이 오르면 퀘스트 보상 · 값이 함께 조금씩 줄어든다(사냥 골드 대비로는 예전처럼 층마다 ×1/1.26). 1 이면 옛 값 그대로(시험)
+ */
+export function questPay(i: number, level: number, unit = 1): number {
   if (!(level > 0)) return 0;   // 칸이 모자란 배열(undefined)도 0
-  return Math.floor(QUESTS[i].pay * level * milestoneMul(level));
+  return Math.max(1, Math.floor(QUESTS[i].pay * level * milestoneMul(level) * unit));
 }
 
 /** Lv → Lv+1 값. Lv 0 이면 여는 값 */
-export function questCost(i: number, level: number): number {
+export function questCost(i: number, level: number, unit = 1): number {
   const q = QUESTS[i];
-  return Math.ceil(q.unlock * Math.pow(q.growth, Math.max(0, level)));
+  return Math.max(1, Math.ceil(q.unlock * Math.pow(q.growth, Math.max(0, level)) * unit));
 }
 
 /** 초당 골드 (화면 표시 · 시험) */
-export function questGoldPerSec(state: Pick<QuestState, "levels">): number {
-  return QUESTS.reduce((a, q, i) => a + questPay(i, state.levels[i]) / q.sec, 0);
+export function questGoldPerSec(state: Pick<QuestState, "levels">, unit = 1): number {
+  return QUESTS.reduce((a, q, i) => a + questPay(i, state.levels[i], unit) / q.sec, 0);
 }
 
 /** dt 초 흘리기 — 다 찬 주기만큼 골드. 한 번에 여러 주기도(창을 잠깐 가렸다 와도) */
-export function tickQuests(state: QuestState, dt: number): { state: QuestState; gold: number; done: number[] } {
+export function tickQuests(state: QuestState, dt: number, unit = 1): { state: QuestState; gold: number; done: number[] } {
   let gold = 0;
   const done: number[] = [];
   const prog = state.prog.map((p, i) => {
@@ -120,7 +125,7 @@ export function tickQuests(state: QuestState, dt: number): { state: QuestState; 
     let t = p + Math.max(0, dt);
     if (t >= sec) {
       const n = Math.floor(t / sec);
-      gold += questPay(i, lv) * n;
+      gold += questPay(i, lv, unit) * n;
       t -= n * sec;
       done.push(i);
     }
@@ -132,20 +137,20 @@ export function tickQuests(state: QuestState, dt: number): { state: QuestState; 
 export type QuestBlock = "max" | "prev" | "gold" | null;
 
 /** 지금 못 올리는 까닭 — null 이면 올릴 수 있다 */
-export function questBlock(state: QuestState, i: number, gold: number): QuestBlock {
+export function questBlock(state: QuestState, i: number, gold: number, unit = 1): QuestBlock {
   const lv = state.levels[i];
   if (lv >= QUEST_MAX_LEVEL) return "max";
   // 앞 줄 조건은 "여는" 때만 — 30줄로 늘며 옛 줄 사이에 새 줄이 끼었다. 이미 연 줄(옛 저장의 댐 틈 메우기 Lv.5 등)은 앞 새 줄이 잠겨도 계속 올린다(2026-10-28)
   if (lv <= 0 && i > 0 && state.levels[i - 1] <= 0) return "prev";
-  if (gold < questCost(i, lv)) return "gold";
+  if (gold < questCost(i, lv, unit)) return "gold";
   return null;
 }
 
 /** 한 단계 올리기(잠긴 줄은 열기) — 못 올리면 null (까닭은 questBlock) */
-export function buyQuest(state: QuestState, i: number, gold: number): { state: QuestState; cost: number } | null {
+export function buyQuest(state: QuestState, i: number, gold: number, unit = 1): { state: QuestState; cost: number } | null {
   const lv = state.levels[i];
-  if (questBlock(state, i, gold)) return null;
-  const cost = questCost(i, lv);
+  if (questBlock(state, i, gold, unit)) return null;
+  const cost = questCost(i, lv, unit);
   const levels = state.levels.slice();
   levels[i] = lv + 1;
   return { state: { ...state, levels, prog: state.prog.slice() }, cost };
@@ -156,13 +161,13 @@ export function questBonusLeftMs(state: QuestState, now: number): number {
   return Math.max(0, state.bonusAt + QUEST_BONUS_COOLDOWN_MS - now);
 }
 
-export function questBonusAmount(state: Pick<QuestState, "levels">): number {
-  return Math.floor(questGoldPerSec(state) * QUEST_BONUS_MUL);
+export function questBonusAmount(state: Pick<QuestState, "levels">, unit = 1): number {
+  return Math.floor(questGoldPerSec(state, unit) * QUEST_BONUS_MUL);
 }
 
-export function claimQuestBonus(state: QuestState, now: number): { state: QuestState; gold: number } | null {
+export function claimQuestBonus(state: QuestState, now: number, unit = 1): { state: QuestState; gold: number } | null {
   if (questBonusLeftMs(state, now) > 0) return null;
-  const gold = questBonusAmount(state);
+  const gold = questBonusAmount(state, unit);
   if (gold <= 0) return null;
   return { state: { ...state, bonusAt: now }, gold };
 }

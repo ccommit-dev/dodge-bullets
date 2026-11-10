@@ -22,6 +22,7 @@ import {
   heroDps,
   heroUpgradeCost,
   killGold,
+  goldDeflator,
   monsterHp,
   monsterKind,
   monsterLabel,
@@ -156,7 +157,7 @@ import { FilterChips } from "./ui/FilterChips";
 import "./ui/simple-lists.css";
 import "./ui/shop-style.css";   // 2026-11-09 꾸미기 진열 · 특별 탭 — 맨 뒤(ui-polish · simple-lists 의 상점 규칙을 덮는다)
 import "./ui/mount-show.css";   // 2026-11-09 탈것 진열(달리는 모습 · 종 배경) · 전장 등급 빛
-import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
+import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillGoldUpgradeCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
 import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
@@ -2107,7 +2108,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const add = questAccRef.current;
           questAccRef.current = 0;
           if (questProgRef.current.length !== QUESTS.length) questProgRef.current = saveRef.current.quests.prog.slice();
-          const r = tickQuests({ ...saveRef.current.quests, prog: questProgRef.current }, add);
+          const r = tickQuests({ ...saveRef.current.quests, prog: questProgRef.current }, add, goldDeflator(saveRef.current.stage));   // 골드 단위 — 지금 층 배수(quests.questPay)
           questProgRef.current = r.state.prog;
           if (r.gold > 0) {
             const prog = r.state.prog.slice();
@@ -3402,7 +3403,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const upgradeSkill = (id: TitanSkillId) => {
     const def = SKILLS.find((skill) => skill.id === id);
     const level = save.skillInventory.levels[id];
-    const cost = Math.floor(240 * Math.pow(1.75, Math.max(0, level - 1)));
+    const cost = skillGoldUpgradeCost(level);
     if (!def || !save.skillInventory.learned.includes(id) || level >= def.maxLevel || save.gold < cost) return;
     sfxUpgrade();
     setSave((prev) => ({
@@ -4353,7 +4354,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {/* 2×2 (2026-10-26, 사용자: "퀘스트를 왼쪽으로 · 4번째 유물") — 장비 성장 · 스킬 / 퀘스트 · 유물 */}
         {/* 퀘스트가 맨 왼쪽 (2026-11-04, 사용자) */}
         <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
-          퀘스트{(QUESTS.some((_, i) => questBlock(save.quests, i, save.gold) === null) || (questBonusLeftMs(save.quests, Date.now()) === 0 && questBonusAmount(save.quests) > 0)) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
+          퀘스트{(QUESTS.some((_, i) => questBlock(save.quests, i, save.gold, goldDeflator(save.stage)) === null) || (questBonusLeftMs(save.quests, Date.now()) === 0 && questBonusAmount(save.quests, goldDeflator(save.stage)) > 0)) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
         </button>
         {/* 유물 (2026-10-26, 사용자: "4번째에는 유물 추가") — 마이페이지에만 있던 유물 판을 성장 서랍으로 · 뽑기는 상점 */}
         <button type="button" className={tab === "sword" ? "on" : ""} aria-expanded={growthOpen && tab === "sword"} onClick={() => { setGrowthOpen((o) => (tab === "sword" ? !o : true)); setTab("sword"); }}>
@@ -4436,32 +4437,34 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             key={questDone?.key ?? 0}
             state={save.quests}
             gold={save.gold}
+            unit={goldDeflator(save.stage)}
             prog={questProg.length ? questProg : save.quests.prog}
             done={questDone?.rows ?? []}
             onBonus={() => {
               // 10분 보너스 (2026-10-27, 사용자: "10분당 돈을 현재 초당 금액의 100배 더 주는 버튼")
-              const r = claimQuestBonus(saveRef.current.quests, Date.now());
+              const r = claimQuestBonus(saveRef.current.quests, Date.now(), goldDeflator(saveRef.current.stage));
               if (!r) {
                 const left = questBonusLeftMs(saveRef.current.quests, Date.now());
                 flash(left > 0 ? `10분 보너스 · ${Math.ceil(left / 60000)}분 뒤에 다시` : "퀘스트를 먼저 돌려 보세요");
                 return;
               }
-              setSave((prev) => { const rr = claimQuestBonus(prev.quests, Date.now()); return rr ? { ...prev, gold: prev.gold + rr.gold, quests: { ...rr.state, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
+              setSave((prev) => { const rr = claimQuestBonus(prev.quests, Date.now(), goldDeflator(prev.stage)); return rr ? { ...prev, gold: prev.gold + rr.gold, quests: { ...rr.state, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
               flash(`10분 보너스 · 골드 +${formatGold(r.gold)}`);
               showRewardPop("gift", "퀘스트 10분 보너스", `골드 +${formatGold(r.gold)}`, "초당 퀘스트 골드 × 100 · 10분 뒤 다시");
             }}
             onBuy={(i) => {
               const cur = saveRef.current;
-              const r = buyQuest(cur.quests, i, cur.gold);
+              const unit = goldDeflator(cur.stage);
+              const r = buyQuest(cur.quests, i, cur.gold, unit);
               if (!r) {
                 const lv = cur.quests.levels[i];
-                const why = questBlock(cur.quests, i, cur.gold);
-                flash(why === "prev" ? "앞 퀘스트를 먼저 여세요" : why === "max" ? "최대 레벨입니다" : `골드가 모자랍니다 — ${formatGold(questCost(i, lv))} 필요`);
+                const why = questBlock(cur.quests, i, cur.gold, unit);
+                flash(why === "prev" ? "앞 퀘스트를 먼저 여세요" : why === "max" ? "최대 레벨입니다" : `골드가 모자랍니다 — ${formatGold(questCost(i, lv, unit))} 필요`);
                 return;
               }
               const lv = saveRef.current.quests.levels[i];
-              setSave((prev) => { const rr = buyQuest(prev.quests, i, prev.gold); return rr ? { ...prev, gold: prev.gold - rr.cost, quests: { ...rr.state, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
-              flash(lv === 0 ? `퀘스트 열림 · ${QUESTS[i].name}` : `${QUESTS[i].name} Lv.${lv + 1} · 한 번에 ${formatGold(questPay(i, lv))} → ${formatGold(questPay(i, lv + 1))}`);
+              setSave((prev) => { const rr = buyQuest(prev.quests, i, prev.gold, goldDeflator(prev.stage)); return rr ? { ...prev, gold: prev.gold - rr.cost, quests: { ...rr.state, prog: questProgRef.current.length ? questProgRef.current.slice() : rr.state.prog } } : prev; });
+              flash(lv === 0 ? `퀘스트 열림 · ${QUESTS[i].name}` : `${QUESTS[i].name} Lv.${lv + 1} · 한 번에 ${formatGold(questPay(i, lv, unit))} → ${formatGold(questPay(i, lv + 1, unit))}`);
             }}
           />
         )}
@@ -4943,7 +4946,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const equipped = save.skillInventory.equipped[sk.slot] === sk.id;
             const level = save.skillInventory.levels[sk.id];
             const learnedInType = SKILLS.filter((skill) => skill.slot === sk.slot && save.skillInventory.learned.includes(skill.id)).length;
-            const upgradeCost = Math.floor(240 * Math.pow(1.75, Math.max(0, level - 1)));
+            const upgradeCost = skillGoldUpgradeCost(level);   // 골드 단위 낮추기 — upgradeSkill 과 같은 값
             const beatSkill = BEAT_SKILL_BY_SLOT[sk.slot];
             const mastery = character.beatSkills[beatSkill];
             const slotLevel = slotLevels(character)[sk.slot];

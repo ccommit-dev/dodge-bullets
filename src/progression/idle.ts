@@ -14,7 +14,7 @@ import { activeMountIdle } from "../titans/mounts";
 import type { SkillId } from "../beat/rpg";
 import {
   HUNTING_AREAS,
-  killGold,
+  killGoldOldUnit,
   type TitanSkillId,
   type TitanSkillSlot,
   huntingArea,
@@ -241,7 +241,7 @@ export function computeIdleYield(
   let remaining = seconds;
   while (remaining > 0) {
     const slice = Math.min(3600, remaining);
-    gold += killGold(current, false, false) * rate * multiplier * slice;
+    gold += killGoldOldUnit(current, false, false) * rate * multiplier * slice;   // 대장간 지갑(sharedCoins)으로 간다 — 아직 예전 단위
     remaining -= slice;
     if (current < catchupCeiling) current += 1;
   }

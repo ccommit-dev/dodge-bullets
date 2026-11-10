@@ -66,7 +66,8 @@ ok("환생(빈 사냥터 저장)이면 첫 줄 Lv.1 로", JSON.stringify(M.defau
 
 // ── 5. 폭주 막기 — 퀘스트 골드만으로 복리(10분 보너스 포함 · 탐욕 구매) ──
 // 층 잠금이 없으니 여는 값 · 증가율로 막는다. 사냥 골드(초당 처치 골드 × 0.7)와 견준 목표: 1시간 · 하루 · 일주일 뒤에도 그 무렵 사냥터 층의 사냥 골드를 크게 넘지 않는다
-const hunt = (stage) => M.killGold(stage, false, false) * 0.7;
+// 골드 단위 낮추기(2026-11-10) — 퀘스트 규칙은 옛 단위(unit 1)로 돌고 지급 · 구매 때 지금 층 배수를 곱한다. 견주는 사냥 골드도 옛 단위
+const hunt = (stage) => M.killGoldOldUnit(stage, false, false) * 0.7;
 const simQuestOnly = (minutes) => {
   let s = Q.emptyQuests(), gold = 0;
   for (let m = 1; m <= minutes; m += 1) {
@@ -92,6 +93,25 @@ for (const [label, minutes, stage] of [["1시간", 60, 10], ["하루", 1440, 25]
 ok("그래도 첫 10분 안에 초당 수입이 눈에 띄게 오른다(첫 줄 Lv.10 이상)", (() => { let s = Q.emptyQuests(), g = 0; for (let k = 0; k < 600; k += 1) { const r = Q.tickQuests(s, 1); s = r.state; g += r.gold + hunt(3); const b = Q.buyQuest(s, 0, g); if (b) { s = b.state; g -= b.cost; } } return s.levels[0] >= 10; })());
 const maxAll = Q.questGoldPerSec({ levels: Q.QUESTS.map(() => 25) });
 ok("모두 Lv25 = 끝판(50층 무렵) 사냥 골드 정도", maxAll >= hunt(45) && maxAll <= hunt(55), `${Math.round(maxAll)}/s · 45층 ${Math.round(hunt(45))} · 55층 ${Math.round(hunt(55))}`);
+
+// 골드 단위 (2026-11-10 · quests.questPay unit) — 지금 층 배수를 곱해도 같은 층 사냥 골드 대비 비는 옛 단위와 같다(반올림 차이만)
+{
+  const lv = { levels: Q.QUESTS.map((_, i) => (i < 20 ? 12 : 0)) };
+  const rows = [10, 25, 40].map((st) => { const u = M.goldDeflator(st); const a = Q.questGoldPerSec(lv) / hunt(st), b = Q.questGoldPerSec(lv, u) / (M.killGold(st, false, false) * 0.7); return { st, u, a, b }; });
+  ok("지금 층 배수(goldDeflator)로 바꿔도 사냥 골드 대비 비가 같다 · 6층까지는 배수 1", rows.every((r) => Math.abs(r.b / r.a - 1) < 0.02) && M.goldDeflator(6) === 1 && rows[0].u < 1,
+    rows.map((r) => `${r.st}층 ×${r.u.toFixed(4)} ${(r.a * 100).toFixed(1)}% → ${(r.b * 100).toFixed(1)}%`).join(" · "));
+  ok("값 · 보상은 단위를 곱한 뒤 최소 1", Q.questPay(0, 1, 1e-9) === 1 && Q.questCost(1, 0, 1e-9) === 1);
+}
+
+// 옛 저장의 골드 (2026-11-10 · model.GOLD_UNIT_VERSION) — 한 번만 그 층의 배수로 바꾼다. 6층까지는 그대로 · 다시 정리해도 그대로
+{
+  const old = M.normalizeTitansSave({ gold: 1_000_000_000, stage: 40, bestStage: 40 });
+  const again = M.normalizeTitansSave(old);
+  const low = M.normalizeTitansSave({ gold: 5000, stage: 3 });
+  ok("옛 저장 골드 → 지금 층 배수로 한 번 · 다시 정리해도 그대로 · 6층까지는 그대로",
+    old.goldUnit === M.GOLD_UNIT_VERSION && old.gold === Math.floor(1e9 * M.goldDeflator(40)) && again.gold === old.gold && low.gold === 5000 && M.defaultTitansSave().goldUnit === M.GOLD_UNIT_VERSION,
+    `10억 @40층 → ${old.gold} · 다시 ${again.gold} · 3층 5000 → ${low.gold}`);
+}
 
 // ── 6. 아이콘 ──
 const missing = Q.QUESTS.map((q) => `public/titans/quests/${q.id}.png`).filter((f) => !existsSync(f));

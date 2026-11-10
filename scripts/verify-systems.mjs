@@ -194,7 +194,7 @@ ok("흑요석 검사 → 방치 효율 +1%p", Math.abs(idle.idleRate({ ...base, 
 ok("새벽의 무희 → 캡 +0.5h · 후원 계약 → +2h", Math.abs(idle.idleCapHours({ ...base, ownedCharacters: ["dawn"] }) - idle.idleCapHours(base) - 0.5) < 1e-9 && Math.abs(idle.idleCapHours({ ...base, patronUntil: Date.now() + 1e6 }) - idle.idleCapHours(base) - 2) < 1e-9);
 ok("후원 계약 → 균열 4회", events.riftAttemptsFor(Date.now() + 1e6) === 4 && events.riftAttemptsFor(0) === 3);
 ok("후원 15/일 = ₩12.2/보석 (1,200팩 ₩12.5와 근접)", product.PATRON.dailyGems === 15 && 5500 / (15 * 30) > 12);
-ok("황금 보급 상자 ×3000 (가속권 대비 열위 해소)", gem.goldPackAmount({ ...base, titanBestStage: 10 }) === Math.floor(model.killGold(10, true, false) * 3000));
+ok("황금 보급 상자 ×600 (골드 단위 낮추기 전 ×3000 — 사는 레벨이 같게)", gem.goldPackAmount({ ...base, titanBestStage: 10 }) === Math.floor(model.killGold(10, true, false) * 600));
 ok("진행도 정규화: gachaPity·patronUntil·beatSpMigrated 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, gachaPity: 12, patronUntil: 5, beatSpMigrated: 7 }); return n.gachaPity === 12 && n.patronUntil === 5 && n.beatSpMigrated === 7; })());
 
 // ── 4b. 동료 4상태 아틀라스 (계획안 A) ──
@@ -1557,9 +1557,9 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const invAt = (L) => ({ ...inv0, learned: ["strike", "emberCut"], levels: { ...inv0.levels, strike: L, emberCut: 1 } });
   const goldPool = sg.SKILLS.filter((x) => ["N", "R", "SR"].includes(sg.SKILL_TIER[x.id])).length;
   const perLv = (L) => sg.skillCardsPerLevel(L) * sg.skillBannerCost("gold", 1, invAt(L)).single * goldPool;
-  ok("스킬 뽑기 값: 보석 80 · 10회 720 · 골드 10회 = 1회 × 9 · 골드는 층과 무관(5층 = 50층) · 최소 500",
-    sg.skillBannerCost("gem", 30).single === 80 && sg.skillBannerCost("gem", 30).ten === 720 && sg.skillBannerCost("gold", 5, invAt(12)).single === sg.skillBannerCost("gold", 50, invAt(12)).single && sg.skillBannerCost("gold", 12, invAt(12)).ten === sg.skillBannerCost("gold", 12, invAt(12)).single * 9 && sg.skillBannerCost("gold", 1, invAt(1)).single === 500);
-  ok("카드로 Lv +1 기대 값(보통 스킬) ≈ 같은 Lv 골드 강화 — Lv10 · 15 · 19 에서 0.95~1.05배(낮은 Lv 은 최소 500 이라 카드가 더 비싸다)", [10, 15, 19].every((L) => Math.abs(perLv(L) / sg.skillGoldUpgradeCost(L) - 1) < 0.05) && perLv(3) >= sg.skillGoldUpgradeCost(3), [3, 10, 15, 19].map((L) => `Lv${L} 카드 ${perLv(L).toLocaleString()} · 골드 ${sg.skillGoldUpgradeCost(L).toLocaleString()}`).join(" · "));
+  ok("스킬 뽑기 값: 보석 80 · 10회 720 · 골드 10회 = 1회 × 9 · 골드는 층과 무관(5층 = 50층) · 최소값(SKILL_GOLD_DRAW_MIN)",
+    sg.skillBannerCost("gem", 30).single === 80 && sg.skillBannerCost("gem", 30).ten === 720 && sg.skillBannerCost("gold", 5, invAt(12)).single === sg.skillBannerCost("gold", 50, invAt(12)).single && sg.skillBannerCost("gold", 12, invAt(12)).ten === sg.skillBannerCost("gold", 12, invAt(12)).single * 9 && sg.skillBannerCost("gold", 1, invAt(1)).single === sg.SKILL_GOLD_DRAW_MIN);   // 최소값 — 골드 단위 낮추기(2026-11-10) 뒤 45
+  ok("카드로 Lv +1 기대 값(보통 스킬) ≈ 같은 Lv 골드 강화 — Lv10 · 15 · 19 에서 0.95~1.05배(낮은 Lv 은 최소값이라 카드가 더 비싸다)", [10, 15, 19].every((L) => Math.abs(perLv(L) / sg.skillGoldUpgradeCost(L) - 1) < 0.05) && perLv(3) >= sg.skillGoldUpgradeCost(3), [3, 10, 15, 19].map((L) => `Lv${L} 카드 ${perLv(L).toLocaleString()} · 골드 ${sg.skillGoldUpgradeCost(L).toLocaleString()}`).join(" · "));
   ok("기준은 최고 Lv — 다른 스킬을 낮게 둬도 값이 내려가지 않는다", sg.skillBannerCost("gold", 1, { ...invAt(15), levels: { ...invAt(15).levels, emberCut: 1 } }).single === sg.skillBannerCost("gold", 1, { ...invAt(15), levels: { ...invAt(15).levels, emberCut: 15 } }).single);
   let k = 0; const rng = () => ((k = (k * 9301 + 49297) % 233280) / 233280);
   const d10 = sg.drawSkillCopies(inv0, 10, "gem", rng);

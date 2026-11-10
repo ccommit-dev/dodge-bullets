@@ -71,7 +71,8 @@ await toMyPage();
 for (let k = 0; k < 2; k += 1) { await page.evaluate(() => document.querySelector(".rebirth-button")?.click()); await sleep(700); }
 p = await prog(); const tr = await tit();
 ok("환생 → 5층부터 · 결정 +16 · 유물 · 트리 유지", p.rebirthCount === 2 && tr.stage === 5 && p.inheritanceCrystals === 56 && p.relics["ember-ring"] === 3 && p.crystalTree.start === 4, `stage ${tr.stage} · 결정 ${p.inheritanceCrystals} · gold ${tr.gold}`);
-ok("출발 골드에 건너뛴 1~4층 골드가 얹힌다", tr.gold > 200 * Math.pow(1.12, 30), `${tr.gold}`);
+// 출발 골드(model.rebirthStartGold 30) — 골드 단위 낮추기(2026-11-10) 뒤 옛 5,991 → 2,091(그 골드로 사던 초반 강화를 새 값으로 다시 산 값)
+ok("출발 골드에 건너뛴 1~4층 골드가 얹힌다", tr.gold > 2091, `${tr.gold}`);
 ok("환생 메시지에 '5층부터'", /5층부터/.test(await page.evaluate(() => document.querySelector(".mypage-toast")?.textContent ?? "")));
 
 // ── 3. 다시 잡은 대장 → 유물 조각 · 불 세트 화상 ──

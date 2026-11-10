@@ -77,7 +77,7 @@ ok("발견 키 · 정규화(중복 제거 · 문자열만)", D.discoveryKey("aco
 // ── 5. 환영 선물 ──
 ok("환영 선물 보석으로 동료 10연차(900)를 한 번 뽑을 수 있다", M.WELCOME_GIFT_GEMS >= 900);
 // ── 7. 환생 ──
-ok("환생 출발 골드: 최고 스테이지에 비례(30 → 수천 · 60 → 십만대) · 결정 식", M.rebirthStartGold(30) > 5000 && M.rebirthStartGold(30) < 7000 && M.rebirthStartGold(60) > M.rebirthStartGold(30) * 20 && M.rebirthCrystals(36) === 18 && M.rebirthCrystals(0) === 3, `${M.rebirthStartGold(30)} · ${M.rebirthStartGold(60)}`);
+ok("환생 출발 골드: 최고 스테이지에 비례(골드 단위 낮추기 뒤 30 → 1,726 · 60 → 8,691 — 옛 단위 5,992 · 18만) · 결정 식", M.rebirthStartGold(30) > 1200 && M.rebirthStartGold(30) < 3000 && M.rebirthStartGold(60) > M.rebirthStartGold(30) * 4 && M.rebirthCrystals(36) === 18 && M.rebirthCrystals(0) === 3, `${M.rebirthStartGold(30)} · ${M.rebirthStartGold(60)}`);
 // ── 8. 이벤트 코인 ──
 ok("코인 드롭: 일반 3% 1~3개 · 대장 35% 3~5개", C.rollCoinDrop(0.029, 0, false) === 1 && C.rollCoinDrop(0.029, 0.99, false) === 3 && C.rollCoinDrop(0.031, 0, false) === 0 && C.rollCoinDrop(0.34, 0.5, true) === 4 && C.rollCoinDrop(0.36, 0, true) === 0);
 let n = 0, got = 0; for (let i = 0; i < 20000; i += 1) { const c = C.rollCoinDrop(Math.random(), Math.random(), false); if (c > 0) { n += 1; got += c; } }

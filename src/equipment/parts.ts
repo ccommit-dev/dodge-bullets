@@ -9,6 +9,7 @@
  * 모두 상한이 있어 무한 성장이 밸런스를 깨지 않는다.
  */
 import type { GearTier } from "./anchors";
+import { deflateCost } from "../titans/model";
 
 export type GearPart = "helmet" | "armor" | "gloves" | "boots";
 export const GEAR_PARTS: GearPart[] = ["helmet", "armor", "gloves", "boots"];
@@ -28,7 +29,7 @@ export const GEAR_PART_DEF: Record<GearPart, PartDef> = {
 /** 숙련 1레벨 비용(사냥 골드) — 무기(20·1.17)·견갑(34·1.19)과 같은 결 */
 export function gearTrainingCost(part: GearPart, level: number): number {
   const d = GEAR_PART_DEF[part];
-  return Math.floor(d.costBase * Math.pow(d.costGrowth, level));
+  return Math.floor(deflateCost(d.costBase * Math.pow(d.costGrowth, level)));   // 골드 단위 낮추기(titans/model GOLD_CURVE)
 }
 
 /** 대장간 강화 비용 — 공용 코인 + 강화석 (+10 이 끝) */

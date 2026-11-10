@@ -55,9 +55,10 @@ ok("③ 지역 안 · 아직 못 닿은 층의 동료는 최고 층 최강의 1.
 
 // ④ 심연 골드 곡선 — 24층 뒤 층당 골드가 체력(×1.38)을 예전(×1.26)보다 가까이 따라간다
 ok("④ 심연 보정: 24층까지 1 · 25층 ×1.03 · 40층 ×1.03^16", M.abyssGoldBoost(24) === 1 && Math.abs(M.abyssGoldBoost(25) - 1.03) < 1e-9 && Math.abs(M.abyssGoldBoost(40) - Math.pow(1.03, 16)) < 1e-9);
-const step = M.killGold(41, false, false) / M.killGold(40, false, false);
+// 골드 단위 낮추기(2026-11-10) 전 곡선(옛 단위)의 설계 — 화면 값은 model.goldDeflator 가 그 층 배수로 누른다
+const step = M.killGoldOldUnit(41, false, false) / M.killGoldOldUnit(40, false, false);
 ok("④ 심연 층당 처치 골드 ≈ ×1.30 (예전 ×1.26)", step > 1.28 && step < 1.32, step.toFixed(3));
-ok("④ 24층 전 골드는 그대로", M.killGold(20, false, false) === Math.max(1, Math.floor(5 * Math.pow(1.26, 19) * M.huntingArea(20).rewardMultiplier)));
+ok("④ 24층 전 골드는 그대로", M.killGoldOldUnit(20, false, false) === Math.max(1, Math.floor(5 * Math.pow(1.26, 19) * M.huntingArea(20).rewardMultiplier)));
 
 // ⑤ 무기 — 창은 대장 특화 · 활은 탭 1.0 + 자동 공격 속도
 ok("⑤ 무기: 창 탭 ×1.12 · 대장 ×1.25 · 활 탭 ×1.15 · 활 자동 ×1.25 · 활 기술 4탭 ×2.2", W.WEAPON_EFFECTS.spear.tapMul === 1.12 && W.WEAPON_EFFECTS.spear.bossMul === 1.25 && W.WEAPON_EFFECTS.bow.tapMul === 1.15 && W.WEAPON_EFFECTS.bow.autoSpeedMul === 1.25 && W.WEAPON_TECH.bow.every === 4 && W.WEAPON_TECH.bow.mul === 2.2);
@@ -114,12 +115,13 @@ ok("⑤ 옛 저장(초월 천장 없음)은 0 으로", P.normalizeCharacterProgr
   ok("⑥ 힘 기준 레벨은 예전 힘 이상(대표 6건)", CASES.every((c) => c.ratio >= 1) && floors.every((r) => r >= 1), CASES.map((c) => `${c.id} ${c.L}→${c.to} ×${c.ratio.toFixed(2)}`).join(" · "));
   { const o = CASES.filter((c) => c.id === "orion"), nw = CASES.filter((c) => c.id !== "orion");
     ok("⑥ 대표 저장의 이득: 오리온 ×1.03 · 새 동료 ×1.05~1.11 (조금 세진다 · 넓게 보면 마일스톤 건너는 레벨은 더 크다)", o.every((c) => Math.abs(c.ratio - 1.03) < 0.01) && nw.every((c) => c.ratio >= 1.05 && c.ratio < 1.115), `오리온 ${o.map((c) => c.ratio.toFixed(3)).join("·")} · 새 동료 ${nw.map((c) => c.ratio.toFixed(3)).join("·")} · Lv.10~40 평균 오리온 ×${avg(floor("orion")).toFixed(2)} 새 동료 ×${avg(others).toFixed(2)}`); }
+  // 골드 단위 낮추기(2026-11-10) 뒤: 옛 단위 저장은 가진 골드 + 환급을 30층 낮춤 배수로 한 번 바꾼다 — 줄지 않는다 = 바꾼 값 이상
   const raw = { heroes: { orion: 30, marina: 20, storm: 15, mia: 40 }, gold: 1000, stage: 30, bestStage: 30 };
   const once = M.normalizeTitansSave(raw);
   const geO = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.orion, H("orion").baseCost, 30, M.PRE_REBALANCE_BASE_DPS.orion, H("orion").baseDps).level;
   const geS = M.relevelAlly(M.PRE_REBALANCE_BASE_COST.storm, H("storm").baseCost, 15, M.PRE_REBALANCE_BASE_DPS.storm, H("storm").baseDps).level;
   ok("⑥ 옛 저장: 오리온 · 스톰은 예전 힘 이상 레벨 · 마리나 · 미아 그대로 · 골드는 줄지 않는다 · 안내",
-    once.heroes.orion === geO && once.heroes.storm === geS && geO > 30 && geS > 15 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.gold >= 1000 && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
+    once.heroes.orion === geO && once.heroes.storm === geS && geO > 30 && geS > 15 && once.heroes.marina === 20 && once.heroes.mia === 40 && once.gold >= Math.floor(1000 * M.goldDeflator(30)) && once.rebalanceNotice?.changes.length === 2 && once.allyRebalance === M.ALLY_REBALANCE_VERSION,
     JSON.stringify({ orion: once.heroes.orion, storm: once.heroes.storm, gold: once.gold }));
   const twice = M.normalizeTitansSave({ ...once, rebalanceNotice: null });
   ok("⑥ 한 번만 — 다시 불러와도 레벨 · 골드가 그대로", twice.heroes.orion === once.heroes.orion && twice.heroes.storm === once.heroes.storm && twice.gold === once.gold && twice.rebalanceNotice === null);
