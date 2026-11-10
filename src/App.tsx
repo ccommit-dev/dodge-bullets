@@ -85,6 +85,7 @@ import {
   clearKeys,
   consumeActionEdges,
   createInputState,
+  FOCUS_SLOW,
   setPointer,
   type InputState,
 } from "./game/input";
@@ -285,6 +286,8 @@ function App() {
   const lastJumpAtRef = useRef(0);
   /** 끌기 기준점 — 누른 순간의 손가락 x 와 주인공 x */
   const dragAnchorRef = useRef({ finger: 0, hero: 0 });
+  /** 이번 판에 "손을 떼면 느려져요" 안내를 띄웠는지 — 처음 3판만 띄운다 */
+  const focusHintRef = useRef(false);
   const lastSpaceAtRef = useRef(0);
   const dodgeRunIdRef = useRef(`boot-${Date.now()}`);
   /** 죽는 동작이 재생되는 0.65초 — 이 동안은 계속 '플레이 중'으로 그리되 입력·3택·재사망을 막는다 */
@@ -806,6 +809,7 @@ function App() {
       const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY);
       const a = dragAnchorRef.current, w = worldRef.current;
       let target = a.hero + (x - a.finger);
+      if (w && !w.focusArmed && Math.abs(x - a.finger) >= FOCUS_SLOW.armPx) w.focusArmed = true;
       if (w) {
         // 벽에 막히면 기준점을 옮긴다 — 손가락을 되돌리는 즉시 반대로 움직이게
         const { min, max } = playerXRange(w);
@@ -864,6 +868,21 @@ function App() {
         lastTsRef.current = ts;
         // 히트스톱 — 보스 격추·방어막 붕괴·화살비 순간 세계가 한 박자 멈춘다 (실시간 기준이라 시뮬엔 없다, 2026-10-01)
         if (world.hitStopMs > 0) { world.hitStopMs = Math.max(0, world.hitStopMs - rawMs); dtSec *= 0.1; }
+        // 손 떼면 느려짐 (input.FOCUS_SLOW) — 키보드로 좌우를 누르고 있으면 끈 것과 같다. 3택 · 일시 정지 · 쓰러지는 동안은 보통 속도
+        {
+          const inp = inputRef.current;
+          const want = stateRef.current === "playing" && !dyingRef.current && world.focusArmed && !inp.pointerActive && !inp.left && !inp.right && !tutorialSlow;
+          const k = rawMs / (want ? FOCUS_SLOW.inMs : FOCUS_SLOW.outMs);
+          world.focusSlow = want ? Math.min(1, world.focusSlow + k) : Math.max(0, world.focusSlow - k);
+          dtSec *= 1 - (1 - FOCUS_SLOW.scale) * world.focusSlow;
+          if (!world.focusArmed) focusHintRef.current = false;
+          else if (world.focusSlow >= 1 && !focusHintRef.current) {
+            focusHintRef.current = true;
+            let seen = 3;
+            try { seen = Number(localStorage.getItem("dodgebullets:focus-hint") ?? "0") || 0; localStorage.setItem("dodgebullets:focus-hint", String(seen + 1)); } catch { /* 저장 못 하면 안내 없이 */ }
+            if (seen < 3) showBanner("손을 떼면 느려져요", "다시 끌면 원래 속도 — 피할 틈을 보세요", false);
+          }
+        }
         if (world.barrierBreaks !== breachSeenRef.current) { breachSeenRef.current = world.barrierBreaks; if (world.barrierBreaks > 0) haptic("heavy"); }
 
         // QA(개발 빌드 전용): localStorage dodgebullets:qa-godmode=1 이면 피격해도 죽지 않는다 — 클리어·성장 선택·보스 화면을 브라우저 검증이 볼 수 있게
@@ -2381,7 +2400,7 @@ function App() {
             }}
           >
             {/* 점프·대시·일제 사격은 없다 (2026-10-01, 아웃로 디펜스) — 이동은 화면을 누르거나 ←→, 활은 자동 */}
-            <span className="action-note">어디서든 끌어서 이동 · 활은 자동 · 방어막을 지키세요</span>
+            <span className="action-note">끌어서 이동 · 손을 떼면 느려짐 · 방어막을 지키세요</span>
             <button
               type="button"
               className="action-btn extract-btn"

@@ -1,3 +1,10 @@
+/**
+ * 손 떼면 느려짐 (2026-11-10, 사용자 "탕탕에이스와 비교해 집중도" 1순위) — 끌어 움직이다 손을 떼면 세계 전체가 scale 배로 흐른다.
+ * 무기도 같이 느려져 화력 이득은 없고, 다음에 어디로 피할지 볼 시간만 생긴다. armPx 이상 끌어야 켜진다(탭은 아님).
+ * inMs · outMs = 느려지기 · 돌아오기에 걸리는 실제 시간
+ */
+export const FOCUS_SLOW = { scale: 0.3, inMs: 140, outMs: 70, armPx: 6 };
+
 export type InputState = {
   left: boolean;
   right: boolean;

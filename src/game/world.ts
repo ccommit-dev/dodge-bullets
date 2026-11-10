@@ -96,6 +96,8 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     barrierHits: 0,
     barrierBreachDamage: 0,
     hitStopMs: 0,
+    focusSlow: 0,
+    focusArmed: false,
     runSkills: {},
     collectionMul: 1,
     affinityPop: null,
@@ -222,6 +224,8 @@ export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.animClock = 0;
   world.combo = 0;
   world.slashGauge = 0;
+  world.focusSlow = 0;
+  world.focusArmed = false;
   world.ultFlashMs = 0;
   world.reflectKills = 0;
   world.ultCount = 0;

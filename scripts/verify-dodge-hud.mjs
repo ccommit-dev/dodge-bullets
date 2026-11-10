@@ -398,6 +398,24 @@ const pace = await page.evaluate(() => 1 / 3);
 const rate = (a1 - a0) / 1000 / pace;
 ok("배속 ×2 면 게임 시간이 2배 가까이 흐른다 (월드 1/3 페이스 기준)", rate > 1.6 && rate < 2.4, rate.toFixed(2) + "배");
 
+// 손 떼면 느려짐 (2026-11-10 · input.FOCUS_SLOW 0.3) — 탭(누르고 떼기)만으론 그대로, 끌다 놓으면 0.3배, 다시 짚으면 돌아온다. 끝에 다시 짚어 둬 아래 검사는 보통 속도
+{
+  const ptr = (type, dx) => page.evaluate(({ type, dx }) => { const c = document.querySelector("canvas"); const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.x + r.width / 2 + dx, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); }, { type, dx });
+  const flow = async (ms) => { const a = await page.evaluate(() => [window.__dodgeWorld.stageElapsedMs, performance.now()]); await sleep(ms); const b = await page.evaluate(() => [window.__dodgeWorld.stageElapsedMs, performance.now(), window.__dodgeWorld.focusSlow]); return { r: (b[0] - a[0]) / (b[1] - a[1]), f: b[2] }; };
+  await ptr("pointerup", 0); await sleep(150);
+  const tap = await flow(800);
+  await ptr("pointerdown", 0); await ptr("pointermove", 30); await sleep(150);
+  const held = await flow(800);
+  await ptr("pointerup", 30); await sleep(250);
+  const rel = await flow(800);
+  await ptr("pointerdown", 30); await ptr("pointermove", 10); await sleep(200);
+  const back = await flow(800);
+  const k = (x) => (x.r / held.r).toFixed(2);
+  ok("손 떼면 느려짐 — 탭만으론 그대로 · 끌다 놓으면 0.22~0.4배 · 다시 짚으면 돌아온다",
+    tap.r / held.r > 0.85 && rel.f === 1 && rel.r / held.r > 0.22 && rel.r / held.r < 0.4 && back.r / held.r > 0.85 && back.f === 0,
+    `탭 ${k(tap)} · 놓음 ${k(rel)}(focus ${rel.f}) · 다시 ${k(back)}`);
+}
+
 // 스테이지를 깨고 자동으로 넘어가도 영구 스킬·칩·무기가 그대로 실려 있다 (오래된 클로저가 초기값을 싣던 것)
 {
   await page.evaluate(() => { const w = window.__dodgeWorld; if (w) { w.stageElapsedMs = 9e6; w.bossSpawned = true; w.bossDefeated = true; } });

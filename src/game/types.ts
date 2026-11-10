@@ -398,6 +398,12 @@ export type GameWorld = {
   barrierBreachDamage: number;
   /** 히트스톱 남은 시간(ms) — App 루프가 실시간으로 줄이며 그동안 게임 시간을 1/10 로 흘린다. 시뮬은 무시한다 (2026-10-01) */
   hitStopMs: number;
+  /**
+   * 손 떼면 느려짐 (2026-11-10, 탕탕에이스 비교) — 0 = 보통, 1 = 가장 느림. App 루프가 실시간으로 다가가게 하고 그만큼 게임 시간을 늦춘다. 시뮬은 무시한다
+   * focusArmed 는 이번 판에 한 번이라도 끌어 움직였는지 — 탭(누르고 떼기)만으로는 켜지지 않는다
+   */
+  focusSlow: number;
+  focusArmed: boolean;
   boltFrom: { x: number; y: number; ms: number; targets: Array<{ x: number; y: number }> } | null;
   /** 스킬 레벨 — 런 시작 때 진행도에서 복사한다. 0 이면 그 스킬은 아무것도 하지 않는다 */
   skillLevels: ExpeditionSkillLevels;

@@ -751,6 +751,32 @@ export function drawFrame(ctx: CanvasRenderingContext2D, world: GameWorld): void
   if (shaking) ctx.restore();
 }
 
+/**
+ * 손 떼면 느려짐 (2026-11-10, input.FOCUS_SLOW) — 가장자리를 하늘과 같은 남색으로 가라앉히고, 주인공 발밑에 다시 짚을 자리 고리를 띄운다.
+ * 새 그림 없이 화면에 이미 있는 남색 · 크림색만 쓴다. 고리는 실제 시간으로 숨 쉰다 — 느려진 세계와 따로 뛰어야 "잠깐 멈춤" 으로 읽힌다
+ */
+function drawFocusSlow(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  const f = world.focusSlow;
+  if (f <= 0.01) return;
+  const { width, height, player: p, floorY } = world;
+  ctx.save();
+  const cx = width * 0.5, cy = height * 0.55;
+  const g = ctx.createRadialGradient(cx, cy, Math.min(width, height) * 0.3, cx, cy, Math.hypot(width, height) * 0.62);
+  g.addColorStop(0, "rgba(11,18,32,0)");
+  g.addColorStop(1, `rgba(11,18,32,${(0.62 * f).toFixed(3)})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, width, height);
+  const t = (typeof performance !== "undefined" ? performance.now() : 0) / 1000;
+  // 주인공 몸(약 60px)보다 넓게 — 좁으면 몸에 가려 안 보였다
+  const rx = 38 + 3 * Math.sin(t * 4.2);
+  ctx.strokeStyle = `rgba(255,244,214,${(0.85 * f).toFixed(3)})`;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(p.x, floorY - 2, rx, rx * 0.32, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** 보스 막대의 세로 위치(safeTop 기준) — verify-dodge-hud 가 DOM HUD 와 겹치지 않는지 잰다 */
 export const BOSS_BAR_TOP = 270;   // 270 → 350 → 270: 궁수 대장 원화가 사라지고 보스 몬스터(106~136px)가 412 띠에 떠서, 겹치지 않게 안내 배너 바로 아래로
 
@@ -1030,6 +1056,8 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     }
     ctx.restore();
   }
+
+  drawFocusSlow(ctx, world);
 
   if (world.bossSpawned && !world.bossDefeated) {
     const barW = Math.min(280, width - world.safeLeft - world.safeRight - 36);
