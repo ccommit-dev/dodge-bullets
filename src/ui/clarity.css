@@ -1,0 +1,42 @@
+/* 단순 명료 층 (2026-11-10, 사용자: "ui 가 아직도 살짝 조잡해 — 색감이나 복잡한 거 단순 명료하게").
+   색은 셋으로 줄인다: 크림 판(--flat-cream) · 진갈색 글자/테두리(--flat-ink) · 강조 하나(금). 단추는 게임 공통 초록 하나.
+   여러 파일(idle.css · App.css · ui-polish.css)에 겹겹이 쌓인 규칙을 덮으므로 App.tsx 에서 맨 뒤에 불러온다. 위치 · 크기는 건드리지 않고 모양만 */
+
+/* ── 모달이 떠 있으면 첫 60초 안내 말풍선을 숨긴다 — 귀환 정산 창의 유물 칸을 가렸다 ── */
+body:has(.exit-modal, .idle-modal, .attendance-modal, .relic-draw-modal, .gacha-reveal, .rebalance-modal) .coach-bubble { display: none !important; }
+
+/* ── 귀환 정산 ── */
+/* 모든 칸 같은 모양 — 흰 칸 · 연한 갈색 테두리. 희귀(유물 조각 · 스킬 카드)는 보라 판 대신 금 테두리 한 줄만 */
+.idle-simple .idle-loot article { background: #fff !important; border: 2px solid rgba(59, 36, 21, .16) !important; box-shadow: none !important; }
+.idle-simple .idle-loot article.is-rare { border-color: #e2b13c !important; background: #fffaf0 !important; }
+.idle-simple .idle-loot article.is-rare > b { color: #2b1a0d !important; }
+/* 유물 아이콘(RelicIcon, span)도 그림 칸에 — 예전 규칙은 > img 만 잡아 아이콘이 첫 줄 좁은 칸으로 밀리고 이름이 "깃털 ..." 로 잘렸다 */
+.idle-simple .idle-loot article > .relic-gem { grid-row: 1 / span 2; justify-self: center; }
+.idle-simple .idle-loot article > .relic-gem > img { width: 34px !important; height: 34px !important; }
+.idle-simple .idle-loot article > .relic-gem > :is(.rg-rays, .rg-fx, .rg-shine) { display: none; }   /* 작은 칸에선 광선 · 입자가 숫자를 흐린다 — 후광만 */
+/* 긴 이름(○○ 조각)은 두 줄까지 */
+.idle-simple .idle-loot article > span { white-space: normal !important; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.2; word-break: keep-all; }
+/* 받기 = 게임 공통 확인 단추(초록) — 청록 그라디언트만 따로 놀았다 */
+.idle-modal .idle-card .cta.idle-claim { background: var(--flat-green) !important; color: #fff !important; border: 3px solid var(--flat-ink) !important; box-shadow: 0 5px 0 var(--flat-green-2) !important; text-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+
+/* ── 사냥터 상단 — 스테이지 판과 "자동 사냥" 줄을 한 장의 판으로 ── */
+.titans-field .titans-stagebar.in-field { background: rgba(36, 22, 12, .78) !important; border: 0 !important; box-shadow: none !important; border-radius: 12px 12px 0 0 !important; backdrop-filter: none !important; }   /* 높이는 그대로 — 판을 늘려 붙이면 작은 폰에서 자동 사냥 줄과 겹쳤다(verify-hud-layout) */
+.titans-field .idle-status-strip { background: rgba(36, 22, 12, .78) !important; border: 0 !important; box-shadow: none !important; border-radius: 0 0 12px 12px !important; border-top: 1px solid rgba(255, 243, 214, .14) !important; backdrop-filter: none !important; }
+.titans-field .idle-status-strip .idle-status-dot { background: #7bd88f; box-shadow: none; }
+.titans-field .titans-stagebar.in-field h1 { color: #fff7e6 !important; }
+.titans-field .titans-stagebar.in-field .titans-area-name { color: #e8d3ae !important; }
+.titans-field .titans-stagebar.in-field .warmup-chip { background: #f2c232 !important; color: #2b1a0d !important; border: 0 !important; box-shadow: none !important; }
+
+/* ── 전장 알림 알약 — 종류마다 다른 그라디언트(빨강 · 남색 · 초록) 대신 크림 판 하나, 종류는 앞 글자 색으로만 ── */
+.titans-field .battle-alert { background: rgba(255, 243, 214, .95) !important; border: 2px solid var(--flat-ink) !important; color: var(--flat-ink) !important; box-shadow: 0 2px 0 rgba(43, 26, 13, .35) !important; backdrop-filter: none !important; }
+.titans-field .battle-alert::after { display: none !important; }
+.titans-field .battle-alert b { color: var(--flat-ink) !important; text-shadow: none !important; }
+.titans-field .battle-alert small { color: #8a5a00 !important; text-shadow: none !important; }
+.titans-field .battle-alert.tone-buy small { color: #c2410c !important; }
+.titans-field .battle-alert:is(.claim, .reward, .done) small { color: #15803d !important; }
+
+/* ── 몬스터 체력 막대 — 무지개(빨강 → 노랑 → 초록) 대신 한 색. 진갈색 테두리 · 어두운 바탕 ── */
+.titans-field .titans-hp { background: rgba(36, 22, 12, .7) !important; border: 2px solid var(--flat-ink) !important; }
+.titans-field .titans-hp-fill { background: #e5484d !important; }
+.titans-field .titans-hp::after { background: linear-gradient(180deg, rgba(255, 255, 255, .18), transparent 50%) !important; }
+.titans-field.boss .titans-hp-fill { background: #b42318 !important; }

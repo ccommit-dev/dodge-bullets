@@ -18,6 +18,7 @@ import "./ui-polish.css";   // 2026-10-21 단순화 · 상점 판 · 자동 강�
 import "./hunt-motion.css";   // 2026-10-28 몬스터 쓰러짐 · 무기별 공격 · 다가가 싸우기 — hit-a/b 의 !important 를 이겨야 해서 맨 뒤
 import "./ui/tiers.css";   // 2026-11-04 등급이 한눈에 — 동료 · 스킬 · 유물 틀 · 이름표 · 시전 폭발
 import "./game/expeditionHud.css";   // 2026-11-06 원정 전투 2판 — 한 줄 상단바 · 무기 업그레이드 카드 (옛 알약 규칙을 덮어 맨 뒤)
+import "./ui/clarity.css";   // 2026-11-10 단순 명료 층 — 색 셋 · 단추 하나 · 겹친 판 정리 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
