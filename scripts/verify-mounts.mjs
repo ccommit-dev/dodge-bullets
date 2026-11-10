@@ -62,7 +62,7 @@ const { build } = await import("esbuild");
 const out = await build({ entryPoints: ["src/titans/mounts.ts"], bundle: true, write: false, format: "esm", platform: "node" });
 const url = "data:text/javascript;base64," + Buffer.from(out.outputFiles[0].text).toString("base64");
 const M = await import(url);
-ok("미보유 효과 0 · 최대 레벨에서 멈춤 · 뿔여우 Lv.10 = +12.2%", M.mountGoldBonus("boar", 0) === 0 && M.mountUpgradeCost(10) === null && M.mountUpgradeCost(0) === null && Math.abs(M.mountGoldBonus("drake", 99) - 0.122) < 1e-9);
+ok("미보유 효과 0 · 최대 레벨에서 멈춤 · 비룡 Lv.10 = 골드 +14.2% · 방치 +13.4% · 강화비 등급별(멧돼지 30 · 비룡 70, 2026-11-09)", M.mountGoldBonus("boar", 0) === 0 && M.mountUpgradeCost(10) === null && M.mountUpgradeCost(0) === null && Math.abs(M.mountGoldBonus("drake", 99) - 0.142) < 1e-9 && Math.abs(M.mountIdleBonus("drake", 10) - 0.134) < 1e-9 && M.mountIdleBonus("boar", 5) === 0 && M.mountUpgradeCost(3) === 90 && M.mountUpgradeCost(3, "drake") === 210);
 ok("장착 안 했으면 효과 0", M.activeMountGold({ boar: 5 }, "") === 0 && M.activeMountGold({ boar: 5 }, "boar") > 0 && M.activeMountGold({}, "boar") === 0);
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");
 process.exit(fails ? 1 : 0);

@@ -125,7 +125,7 @@ import { BEAT_TICKET_MAX_BOUGHT } from "./beat/tickets";
 import { GOLDEN_ESCAPE_SEC, GoldenRush, HuntStamp, TechGauge } from "./titans/huntMoments";
 import { MOUNT_RIDE } from "./titans/mountRide";
 import { mountAnimStyle, mountCellStyle, mountFrameIndex, type MountAction } from "./titans/spriteAnim";
-import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, mountSeatShift, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
+import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, mountSeatShift, activeMountGold, isMountId, mountGoldBonus, mountIdleBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
 import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
@@ -3024,11 +3024,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     flash(next.activeMount === mid ? `${MOUNT_DEFS[mid].name} 장착` : `${MOUNT_DEFS[mid].name} 내림`);
   };
   const upgradeMount = async (mid: MountId) => {
-    const cost = mountUpgradeCost(character.mounts[mid] ?? 0);
+    const cost = mountUpgradeCost(character.mounts[mid] ?? 0, mid);
     if (cost === null || character.enhancementMaterials < cost) return;
     sfxUpgrade();
     const next = await updateCharacterProgress(userHash, (current) => {
-      const lv = current.mounts[mid] ?? 0, c = mountUpgradeCost(lv);
+      const lv = current.mounts[mid] ?? 0, c = mountUpgradeCost(lv, mid);
       return c === null || current.enhancementMaterials < c ? current : { ...current, enhancementMaterials: current.enhancementMaterials - c, mounts: { ...current.mounts, [mid]: lv + 1 } };
     });
     setCharacter(next);
@@ -5278,7 +5278,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const def = MOUNT_DEFS[mid];
               const lv = character.mounts[mid] ?? 0;
               const on = character.activeMount === mid;
-              const cost = mountUpgradeCost(lv);
+              const cost = mountUpgradeCost(lv, mid);
               return (
                 <article key={mid} className={`titans-card premium-product-card gem-product mount-product style-show ${on ? "on" : ""}`} data-mount={mid} data-tier={cosmeticTier(def.gemPrice)}>
                   <span className="mount-thumb" aria-hidden="true"><i style={mountAnimStyle(def.art, "walk")} /></span>
@@ -5286,6 +5286,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemPrice)]}</em>{def.name}{lv > 0 && <> <em>{`Lv.${lv}/${MOUNT_MAX_LEVEL}`}</em></>}</strong>
                     <span className="mount-traits">{MOUNT_TRAITS[mid].map((t) => <em key={t}>{t}</em>)}</span>
                     <p>사냥 골드 +{(mountGoldBonus(mid, Math.max(1, lv)) * 100).toFixed(1)}%{cost !== null ? ` · 다음 +${(mountGoldBonus(mid, lv + 1) * 100).toFixed(1)}%` : lv >= MOUNT_MAX_LEVEL ? " · 최대" : ""}</p>
+                    {MOUNT_DEFS[mid].idleBase > 0 && <p className="mount-idle">방치 보상 +{(mountIdleBonus(mid, Math.max(1, lv)) * 100).toFixed(1)}%{lv > 0 && lv < MOUNT_MAX_LEVEL ? ` · 다음 +${(mountIdleBonus(mid, lv + 1) * 100).toFixed(1)}%` : ""}</p>}
                   </div>
                   <span className="mount-actions">
                     {lv > 0 ? (

@@ -7,12 +7,14 @@ import { MOUNT_SEAT } from "./mountRide";
  */
 export type MountId = "boar" | "deer" | "wolf" | "drake";
 export const MOUNT_MAX_LEVEL = 10;
-export type MountDef = { id: MountId; name: string; art: string; gemPrice: number; base: number; perLevel: number };
+/** base · perLevel = 사냥 골드, idleBase · idlePerLevel = 방치 보상 배율(전설 이상), upCost = Lv 당 강화석 (2026-11-09, 사용자 목록 B3 · B4 —
+ *  "값은 6.7배인데 효과는 2.5배 · 사냥 골드뿐" · "등급과 상관없이 강화비가 같다") */
+export type MountDef = { id: MountId; name: string; art: string; gemPrice: number; base: number; perLevel: number; idleBase: number; idlePerLevel: number; upCost: number };
 export const MOUNT_DEFS: Record<MountId, MountDef> = {
-  boar: { id: "boar", name: "도토리 멧돼지", art: "mount-boar", gemPrice: 300, base: 0.02, perLevel: 0.004 },
-  deer: { id: "deer", name: "숲 사슴", art: "mount-deer", gemPrice: 600, base: 0.03, perLevel: 0.005 },
-  wolf: { id: "wolf", name: "은빛 늑대", art: "mount-wolf", gemPrice: 1000, base: 0.04, perLevel: 0.006 },
-  drake: { id: "drake", name: "불꽃 비룡", art: "mount-drake", gemPrice: 2000, base: 0.05, perLevel: 0.008 },
+  boar: { id: "boar", name: "도토리 멧돼지", art: "mount-boar", gemPrice: 300, base: 0.02, perLevel: 0.004, idleBase: 0, idlePerLevel: 0, upCost: 30 },
+  deer: { id: "deer", name: "숲 사슴", art: "mount-deer", gemPrice: 600, base: 0.035, perLevel: 0.005, idleBase: 0.03, idlePerLevel: 0.003, upCost: 40 },
+  wolf: { id: "wolf", name: "은빛 늑대", art: "mount-wolf", gemPrice: 1000, base: 0.05, perLevel: 0.006, idleBase: 0.05, idlePerLevel: 0.004, upCost: 50 },
+  drake: { id: "drake", name: "불꽃 비룡", art: "mount-drake", gemPrice: 2000, base: 0.07, perLevel: 0.008, idleBase: 0.08, idlePerLevel: 0.006, upCost: 70 },
 };
 export const MOUNT_IDS: MountId[] = ["boar", "deer", "wolf", "drake"];
 /** 앉는 자리 차이 (2026-11-09, 사용자 목록 R3 "다리 긴 사슴 · 짧은 멧돼지에 같은 높이로 앉는다") — 탈것 시트의 안장 자리(MOUNT_SEAT, 조립이 적는다)가
@@ -41,7 +43,17 @@ export function mountGoldBonus(id: MountId, level: number): number {
 export function activeMountGold(mounts: Partial<Record<MountId, number>>, active: string): number {
   return isMountId(active) ? mountGoldBonus(active, mounts[active] ?? 0) : 0;
 }
-/** 다음 레벨 강화석 — 최대면 null */
-export function mountUpgradeCost(level: number): number | null {
-  return level <= 0 || level >= MOUNT_MAX_LEVEL ? null : level * 30;
+/** 다음 레벨 강화석 — 최대면 null. 등급마다 Lv 당 값(upCost, 멧돼지 30 · 사슴 40 · 늑대 50 · 비룡 70) */
+export function mountUpgradeCost(level: number, id: MountId = "boar"): number | null {
+  return level <= 0 || level >= MOUNT_MAX_LEVEL ? null : level * MOUNT_DEFS[id].upCost;
+}
+/** 방치 보상 배율 증가(0.03 = +3%) — 전설 이상만, 레벨 0 = 미보유 */
+export function mountIdleBonus(id: MountId, level: number): number {
+  const def = MOUNT_DEFS[id];
+  if (level <= 0 || def.idleBase <= 0) return 0;
+  return def.idleBase + def.idlePerLevel * (Math.min(MOUNT_MAX_LEVEL, level) - 1);
+}
+/** 장착한 탈것의 방치 보상 증가 — progression/idle.ts 가 펫처럼 상한 안에서 더한다 */
+export function activeMountIdle(mounts: Partial<Record<MountId, number>>, active: string): number {
+  return isMountId(active) ? mountIdleBonus(active, mounts[active] ?? 0) : 0;
 }

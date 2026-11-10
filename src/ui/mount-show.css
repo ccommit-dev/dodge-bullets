@@ -72,3 +72,6 @@
    동료 z(앞줄 4 · 뒷줄 2)가 주인공과 바로 견주고, 탈것보다 앞에 선 동료(data-front, TitansGame 이 자리 잡은 뒤 발 높이로 단다)만 위로 */
 .titans-field:has(.titans-hero.has-mount) .titans-allies { z-index: auto; }
 .titans-field:has(.titans-hero.has-mount) .titans-allies .titan-ally-art[data-party-slot][data-front="1"] { z-index: 6; }
+
+/* 방치 보상 줄 (2026-11-09, B3) — 전설 이상 탈것 두 번째 효과 */
+.titans-shop .mount-product p.mount-idle { margin-top: 0 !important; color: #0f766e !important; font-weight: 800; }

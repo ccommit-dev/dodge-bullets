@@ -10,6 +10,7 @@
  *
  * 4개 콘텐츠가 서로 다른 변수 하나씩을 담당한다. 자세한 근거는 IDLE_REDESIGN.md.
  */
+import { activeMountIdle } from "../titans/mounts";
 import type { SkillId } from "../beat/rpg";
 import {
   HUNTING_AREAS,
@@ -143,7 +144,8 @@ export function idleMultiplier(progress: CharacterProgress): number {
   // 성급 도감 마일스톤(§7)·타이탄의 그림자 펫(§1)은 캡 안에서 가산 — M 상한은 유지한다
   const collection = starMilestoneMultiplier(progress);
   const pet = activePetEffect(progress.pets, progress.activePet, "multiplier");
-  return Math.min(IDLE.multCap, 1 + forge + crystals + tower + reforge + evolution + collection + pet);
+  const mount = activeMountIdle(progress.mounts ?? {}, progress.activeMount ?? "");   // 전설 이상 탈것(2026-11-09) — 펫처럼 상한 안
+  return Math.min(IDLE.multCap, 1 + forge + crystals + tower + reforge + evolution + collection + pet + mount);
 }
 
 /**
