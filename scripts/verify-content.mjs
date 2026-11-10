@@ -368,6 +368,16 @@ const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w,
   ok("갈림길 20개 · 기준 깊이의 기대 성장 계정이 5시드 중 3회 이상 깬다 (죽은 콘텐츠가 없다) · 풀 포화 없음", rows.every((r) => r.g.clear >= 3 && !r.g.pool), rows.map((r) => `${r.b.id}:${r.g.clear}`).join(" "));
 }
 
+// ── 몬스터 약점 표시 (2026-11-10 · skillShots.weakSkillFor) — 이번 판에 나가는 스킬 중 상성(strongVs)인 것만, 대장 · 대장 탄 · 조각은 표시 없음 ──
+{
+  const W = { loadout: ["water", "fire"], runSkills: { fire: true, water: true }, skillLevels: { fire: 3, water: 2 } };
+  const m = (kind, extra = {}) => ({ kind, boss: false, fromBoss: false, splitLevel: 0, ...extra });
+  const off = { ...W, runSkills: { water: true } };
+  ok("몬스터 약점 표시 — 불(부채꼴 상성)이 나가면 부채꼴 몬스터에 불 메달, 폭발형엔 물 · 대장 · 아직 안 나간 스킬은 표시 없음",
+    skillShots.weakSkillFor(W, m("fan")) === "fire" && skillShots.weakSkillFor(W, m("explosive")) === "water" && skillShots.weakSkillFor(W, m("normal")) === null
+    && skillShots.weakSkillFor(W, m("fan", { boss: true })) === null && skillShots.weakSkillFor(W, m("fan", { fromBoss: true })) === null && skillShots.weakSkillFor(off, m("fan")) === null);
+}
+
 // ── 진행 속도 · 대장 크기 (2026-10-02) ──
 ok("진행 속도 3배 느리게 — 월드(몬스터·대장·스테이지 시계)는 실제의 1/3 · 무기가 실제 시간으로 쏘는 만큼 몬스터 체력 ×4 · 대장 처치 수 ×3",
   Math.abs(arrows.TUNING.pace - 1 / 3) < 1e-9 && skills.TUNING_HP.mul === 4 && arrows.TUNING.bossCutMul === 3);

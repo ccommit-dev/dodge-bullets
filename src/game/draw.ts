@@ -1,6 +1,7 @@
 import { drawStickman } from "./player";
 import { getStage } from "./stages";
-import { ELEMENT_COLOR, ELEMENT_LABEL, type Element } from "./skills";
+import { ELEMENT_COLOR, ELEMENT_LABEL, SKILL_BY_ID, type Element } from "./skills";
+import { weakSkillFor } from "./skillShots";
 import { drawWoodArrow } from "./arrowArt";
 import { BARRIER_BREACH_MS, barrierRx, barrierY, barrierYAt, bossSize } from "./arrows";
 import type { Arrow, GameWorld } from "./types";
@@ -426,6 +427,36 @@ function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" 
 function monsterSize(a: Pick<Arrow, "kind" | "boss" | "bossTier">): number {
   if (a.boss) return bossSize(a.bossTier);   // 5배 (2026-10-02)
   return a.kind === "ricochet" ? 88 : a.kind === "explosive" ? 84 : a.kind === "homing" ? 76 : a.kind === "aimed" ? 68 : a.kind === "fan" ? 60 : 56;
+}
+
+/**
+ * 몬스터 약점 표시 (2026-11-10, 사용자 "탕탕에이스와 비교 — 집중도" 2순위: 적 위 초록 화살표로 약점 속성) — 판정은 skillShots.weakSkillFor.
+ * 머리 오른쪽 위에 그 스킬의 메달(아래 스킬 칸과 같은 그림)을 초록 테 · 꺾쇠로 띄워 칸의 메달과 몬스터를 바로 잇는다
+ */
+function drawWeakMarks(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  const t = (typeof performance !== "undefined" ? performance.now() : 0) * 0.001;
+  for (const a of world.arrows) {
+    if (!a.active || a.reflected) continue;
+    const id = weakSkillFor(world, a);
+    if (!id) continue;
+    const icon = sprite(`dodge/skills/${SKILL_BY_ID[id].icon}.png`);
+    if (!icon) continue;
+    const size = monsterSize(a), r = 11;
+    const x = a.x + size * 0.36, y = a.y - size * 0.5 + Math.sin(t * 3 + a.x * 0.05) * 1.5;
+    ctx.save();
+    ctx.fillStyle = "rgba(11,18,32,.72)";
+    ctx.beginPath(); ctx.arc(x, y, r + 2, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(icon, x - r - 2, y - r - 2, (r + 2) * 2, (r + 2) * 2);
+    ctx.restore();
+    ctx.strokeStyle = "#4ade80"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r + 1, 0, Math.PI * 2); ctx.stroke();
+    // 아래로 몬스터를 가리키는 작은 초록 꺾쇠 — "이 몬스터" 를 짚는다
+    ctx.fillStyle = "#4ade80";
+    ctx.beginPath(); ctx.moveTo(x - 4, y + r + 2); ctx.lineTo(x + 4, y + r + 2); ctx.lineTo(x, y + r + 7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
@@ -954,6 +985,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   for (let i = 0; i < arrows.length; i++) {
     if (arrows[i].active) drawArrow(ctx, arrows[i]);
   }
+  drawWeakMarks(ctx, world);
 
   // 베기 파편 — 두 토막·불꽃·검광. 화살 뒤, 드롭 앞
   for (const d of world.slashDebris) {

@@ -248,6 +248,21 @@ function nearest(world: GameWorld, n: number, fromX: number, fromY: number): Arr
     .map((p) => p.a);
 }
 
+/**
+ * 몬스터 약점 표시 (2026-11-10, 사용자 "탕탕에이스와 비교 — 집중도" 2순위: 적 위 초록 화살표로 약점 속성).
+ * 이번 판에 나가는 스킬(runSkills) 중 그 몬스터 종류에 상성인(strongVs — 피해 ×1.5 · 위력 +1) 것이 있으면
+ * 머리 오른쪽 위에 그 스킬의 메달(아래 스킬 칸과 같은 그림)을 초록 테로 띄운다 — 칸의 메달과 몬스터를 바로 잇게. 대장은 보스 막대가 약점을 따로 보여 준다
+ */
+export function weakSkillFor(world: Pick<GameWorld, "loadout" | "runSkills" | "skillLevels">, a: Pick<Arrow, "kind" | "boss" | "fromBoss" | "splitLevel">): ExpeditionSkillId | null {
+  if (a.boss || a.fromBoss || a.splitLevel > 0) return null;
+  for (const id of world.loadout) {
+    const sid = id as ExpeditionSkillId;
+    if (!world.runSkills[sid] || !((world.skillLevels[sid] ?? 0) > 0)) continue;
+    if (SKILL_BY_ID[sid]?.strongVs === a.kind) return sid;
+  }
+  return null;
+}
+
 /** 상성 — 그 종류면 위력 +1 · 효과 ×1.5 */
 function affinity(element: Element, a: Arrow): { power: number; mul: number } {
   const def = element === "basic" ? null : SKILL_BY_ID[element as ExpeditionSkillId];
