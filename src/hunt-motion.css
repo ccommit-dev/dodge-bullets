@@ -271,3 +271,9 @@
 /* 자물쇠 아이콘 (2026-11-02 ui/LockIcon) — 글자 크기를 따른다 */
 .lock-ico { width: 1.05em; height: 1.05em; object-fit: contain; vertical-align: -0.15em; }
 .combo-empty .lock-ico { width: 18px; height: 18px; }
+
+/* 사냥터 밖 글자 (2026-11-09, 사용자 목록 R4) — 오른쪽 밖에서 걸어 들어오는 몬스터 이름표 · 스테이지가 바뀌며 왼쪽 밖에서 달려 들어오는 주인공 표식이
+   사냥터 가장자리에서 반쯤 잘렸다. 들어오는 동안만 숨긴다(만남마다 깜빡이지 않게 몬스터는 교전 전 · 주인공은 스테이지 전환만) */
+.titans-monster:not(.is-engaged) > strong, .titans-monster.is-approaching > strong, .titans-monster:has(.titan-monster-art.frame-defeat) > strong { visibility: hidden; }   /* 쓰러져 빠져나갈 때도 */
+.titans-field:is(.phase-stage-enter, .phase-stage-exit) .titans-hero .hero-marker { visibility: hidden; }
+.titans-field:not(.phase-combat) .party-dmg-float { visibility: hidden; }   /* 동료 피해 숫자 — 교전이 아닐 때(무리가 화면 밖으로 달려 나가고 들어올 때) 같이 나갔다 */

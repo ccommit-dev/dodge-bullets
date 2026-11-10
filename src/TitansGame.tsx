@@ -1565,6 +1565,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return 0;
   };
 
+  /** 숫자가 사냥터 밖으로 안 나가게 반폭만큼 안쪽으로 (2026-11-09, 사용자 목록 R4) — 이펙트(pushFxAt)와 같은 방식. 반폭은 글자 폭 대략(px) */
+  const clampFloatX = (x: number, halfPx: number) => {
+    const fw = fieldRef.current?.getBoundingClientRect().width ?? 0;
+    const half = fw > 0 ? (halfPx / fw) * 100 : 0;
+    return Math.max(half, Math.min(100 - half, x));
+  };
   const pushFloat = (
     dmg: number,
     crit: boolean,
@@ -1600,15 +1606,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         setFloats((prev) => prev.filter((f) => f.id !== id));
         if (sumFloatRef.current?.id === id) sumFloatRef.current = null;
       }, 780);
-      sumFloatRef.current = { id, total: dmg, at: pn, bump: 0, timer, x: spot.x, y: spot.y };
-      setFloats((prev) => [...prev.slice(lowFxRef.current ? -8 : -18), { id, x: spot.x, y: spot.y, text: formatGold(dmg), crit: false, source, sum: true, bump: 0 }]);
+      const sx = clampFloatX(spot.x, 46);   // 합산 숫자는 커진다
+      sumFloatRef.current = { id, total: dmg, at: pn, bump: 0, timer, x: sx, y: spot.y };
+      setFloats((prev) => [...prev.slice(lowFxRef.current ? -8 : -18), { id, x: sx, y: spot.y, text: formatGold(dmg), crit: false, source, sum: true, bump: 0 }]);
       return;
     }
     const rect = fieldRef.current?.getBoundingClientRect();
     // 좌표가 없으면 몬스터 머리 위(지금 상자에서) — 예전 고정 58~74% · 30~46% 는 깊이가 바뀐 몬스터와 떨어져 떴다 (2026-10-20)
     // 치명타는 몬스터 머리 위로 — 손가락 · 명중 자리(몬스터 몸 38%)에 두면 큰 글자 · 이름이 아래 몬스터 이름표와 겹쳤다 (2026-10-21)
     const spot = clientX && clientY && rect && !crit ? null : fxSpot("monster", 0.5, crit ? -0.06 : 0.12, 58 + Math.random() * 16, crit ? 24 : 30 + Math.random() * 16, crit ? 0.06 : 0.18);
-    const x = spot ? spot.x : ((clientX! - rect!.left) / rect!.width) * 100;
+    const x = clampFloatX(spot ? spot.x : ((clientX! - rect!.left) / rect!.width) * 100, label ? 62 : crit ? 48 : 34);
     const y = spot ? spot.y : ((clientY! - rect!.top) / rect!.height) * 100;
     const id = ++floatId.current;
     // 저사양 모드는 동시 숫자를 절반으로 — 숫자 폭주가 프레임을 먹는다
