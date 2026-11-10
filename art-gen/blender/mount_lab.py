@@ -42,7 +42,7 @@ for action, f in shots:
         bpy.context.view_layer.update()
         hero.arm.scale = (RS.RIDER_SCALE,) * 3
         hero.arm.rotation_euler.z = math.radians(RS.RIDER_YAW)
-        hero.arm.location = RR.bone_point(mount, 'body', RS.SADDLE_POINT) - Vector((0, 0, RS.RIDER_SINK))
+        hero.arm.location = RR.bone_point(mount, 'body', MT.seat_of(who)) - Vector((0, 0, RS.RIDER_SINK))
     bpy.context.view_layer.update()
     scene.render.filepath = os.path.join(outdir, f'{action}_{i}.png')
     bpy.ops.render.render(write_still=True)

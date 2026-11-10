@@ -204,4 +204,4 @@
 .character-equipment-facing.is-riding { position: relative; }
 .character-equipment-facing .status-mount { position: absolute; left: 50%; bottom: calc(-0.0275 * 200%); width: 200%; aspect-ratio: 1; translate: -47% 0; z-index: 0; pointer-events: none; }
 .character-equipment-facing .status-mount i { position: absolute; inset: 0; display: block; transform: scaleX(-1); }
-.character-equipment-facing.is-riding .equipped-character { position: relative; z-index: 1; translate: -.9% -16.9%; scale: .857; transform-origin: 47.95% 87%; }
+.character-equipment-facing.is-riding .equipped-character { position: relative; z-index: 1; translate: calc(-.9% + var(--seat-dx, 0%)) calc(-16.9% + var(--seat-dy, 0%)); scale: .857; transform-origin: 47.95% 87%; }   /* 탈것마다 앉는 높이(2026-11-09, mountSeatShift) */

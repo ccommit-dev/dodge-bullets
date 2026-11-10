@@ -1,4 +1,4 @@
-import { MOUNT_DEFS, isMountId } from "./titans/mounts";
+import { MOUNT_DEFS, isMountId, mountSeatShift } from "./titans/mounts";
 import { mountAnimStyle } from "./titans/spriteAnim";
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
@@ -281,7 +281,7 @@ export function CharacterStatus({
 
       <section className="character-hero-card">
         <div className="character-equipment-preview">
-          <div className={`character-equipment-facing ${isMountId(progress.activeMount) ? "is-riding" : ""}`}>
+          <div className={`character-equipment-facing ${isMountId(progress.activeMount) ? "is-riding" : ""}`} style={isMountId(progress.activeMount) ? (() => { const [dx, dy] = mountSeatShift(MOUNT_DEFS[progress.activeMount].art); return { "--seat-dx": `${dx}%`, "--seat-dy": `${dy}%` } as CSSProperties; })() : undefined}>
             {isMountId(progress.activeMount) && <div className="hero-mount status-mount" aria-hidden="true"><i style={mountAnimStyle(MOUNT_DEFS[progress.activeMount].art, "idle")} /></div>}
             <EquippedCharacter riding={isMountId(progress.activeMount)} worn={progress.equippedGear} mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} gear={{ shield: shieldTierOf(progress.dodgeBestStage), gloves: glovesTierOf(titans.equipmentTraining.weaponMastery), boots: bootsTierOf(progress.towerBestFloor) }} />
           </div>

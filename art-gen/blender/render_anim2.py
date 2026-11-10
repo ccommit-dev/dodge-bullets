@@ -74,10 +74,10 @@ def run(who, only=None):
         render_actions(rig, A2.beaver_actions(cfg.get('role', 'melee'), weapon=cfg.get('weapon_l')), BV.pose, outdir, cam, math.radians(RR.YAW), 1, None, only)
     elif who.startswith('mount-'):   # 탈것 — 안장 자리를 칸마다 적어 주인공이 같이 움직인다. 2026-11-09 부터 탈것 전용 모델 · 걸음(lib/mount.py)
         from lib import mount as MT
-        assert tuple(MT.SEAT) == tuple(RS.SADDLE_POINT), (MT.SEAT, RS.SADDLE_POINT)
         rig = MT.build(who)
-        up = (RS.SADDLE_POINT[0], RS.SADDLE_POINT[1], RS.SADDLE_POINT[2] + 0.2)
-        render_actions(rig, MT.actions(who), MT.pose, outdir, cam, math.radians(-RS.MOUNT_YAW), -1, {'saddle': ('body', RS.SADDLE_POINT, up)}, only)
+        seat = MT.seat_of(who)   # 종마다 앉는 높이(2026-11-09) — 조립이 MOUNT_SEAT 로 적고 게임이 그 차이만큼 주인공을 옮긴다
+        up = (seat[0], seat[1], seat[2] + 0.2)
+        render_actions(rig, MT.actions(who), MT.pose, outdir, cam, math.radians(-RS.MOUNT_YAW), -1, {'saddle': ('body', seat, up)}, only)
     elif who == 'hero-ride':   # 탈것 위 주인공 — 앉은 자세 · 먼 다리 없음
         rig = BV.build('hero', R.HERO)
         RS.seat_hero(rig)

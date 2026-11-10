@@ -36,7 +36,7 @@ BV.pose(hero, hp)
 bpy.context.view_layer.update()
 hero.arm.scale = (RS.RIDER_SCALE,) * 3
 hero.arm.rotation_euler.z = math.radians(RS.RIDER_YAW + hp.get('yaw', 0))
-hero.arm.location = RR.bone_point(mount, 'body', RS.SADDLE_POINT) - Vector((0, 0, RS.RIDER_SINK))
+hero.arm.location = RR.bone_point(mount, 'body', MT.seat_of(who)) - Vector((0, 0, RS.RIDER_SINK))
 bpy.context.view_layer.update()
 bpy.context.scene.render.filepath = out
 bpy.ops.render.render(write_still=True)

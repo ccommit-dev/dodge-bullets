@@ -7,7 +7,7 @@
   디딘 발은 땅에 붙어 있고 몸만 오르내린다. 걸음은 종마다: 멧돼지 종종 속보 · 사슴 껑충 구보 · 늑대 습보 · 비룡 묵직한 걸음 + 날갯짓.
 - 꾸밈은 상점 등급(economy/cosmetics cosmeticTier: 멧돼지 SR · 사슴 SSR · 늑대 UR · 비룡 LR)대로 화려해진다 —
   가죽 안장 · 도토리 장식 → 은 장식 · 꽃 목걸이 · 빛나는 잎 → 강철 갑주 · 룬 · 얼음 결정 → 금 갑주 · 보석 · 불꽃.
-게임과 맞물린 약속: 'body' 뼈 · 안장 가운데 = SEAT(= ride_seat.SADDLE_POINT, 쉬는 자세) · 동작 칸 수(anim-layout mount) · 앞 -Y · 발 z=0 · 왼쪽 보게 렌더(yaw −64).
+게임과 맞물린 약속: 'body' 뼈 · 안장 가운데 = seat_of(종) (SEAT + 종별 LIFT, 2026-11-09) · 동작 칸 수(anim-layout mount) · 앞 -Y · 발 z=0 · 왼쪽 보게 렌더(yaw −64).
 칸(480², 배율 0.6 고정): 발에서 위로 1.7 · 머리 쪽 1.0 · 꼬리 쪽 0.9 (캐릭터 단위, 옆모습 투영) 안에 들어야 한다.
 """
 import bpy
@@ -21,7 +21,13 @@ from lib import bcommon as C
 from lib.beaver import _attach, spline, interp, _rot_local
 from lib.creature import _m, _skin, _eyes, OUT
 
-SEAT = (0.0, 0.03, 0.56)   # 안장 가운데(쉬는 자세) — ride_seat.SADDLE_POINT 와 같아야 한다(게임 CSS 의 주인공 자리가 넷 다 한 값)
+SEAT = (0.0, 0.03, 0.56)   # 안장 가운데 기준(쉬는 자세) — 종마다 lift 만큼 오르내린다(seat_of). 게임은 MOUNT_SEAT 차이만큼 주인공을 옮긴다(TitansGame HeroFrameChar)
+# 앉는 높이 (2026-11-09, 사용자 목록 R3 "다리 긴 사슴 · 짧은 멧돼지에 같은 높이로 앉는다") — 멧돼지 낮게(다리 짧게) · 사슴 높게(다리 길게)
+LIFT = {'mount-boar': -0.08, 'mount-deer': 0.1, 'mount-wolf': 0.0, 'mount-drake': 0.02}
+
+
+def seat_of(who):
+    return (SEAT[0], SEAT[1], SEAT[2] + LIFT.get(who, 0.0))
 TAU = math.tau
 _LAYOUT = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'anim-layout.json'), encoding='utf-8'))['mount']['actions']
 
@@ -72,8 +78,9 @@ class MRig:
 def _leg_pts(spec, leg):
     s = spec['front'] if leg[0] == 'f' else spec['hind']
     x = s['x'] * (1 if leg[1] == 'l' else -1)
-    hip = Vector((x, s['hip'][0], s['hip'][1]))
-    knee = Vector((x, s['knee'][0], s['knee'][1]))
+    lift = spec.get('lift', 0.0)
+    hip = Vector((x, s['hip'][0], s['hip'][1] + lift))
+    knee = Vector((x, s['knee'][0] + (0.012 if leg[0] == 'b' else -0.008) * (lift / 0.1), s['knee'][1] + lift * 0.5))
     ankle = Vector((x, s['ankle'][0], s['ankle'][1]))
     return hip, knee, ankle, s['r']
 
@@ -96,6 +103,11 @@ def _bones(spec, who):
         for sx, s in ((1, 'L'), (-1, 'R')):
             B[f'wing.{s}'] = ((sx * 0.1, -0.1, 0.52), (sx * 0.34, -0.04, 0.76), 'body')
             B[f'wing2.{s}'] = ((sx * 0.34, -0.04, 0.76), (sx * 0.6, 0.14, 0.9), f'wing.{s}')
+    lift = spec.get('lift', 0.0)
+    if lift:
+        for k in list(B):
+            h, t, p = B[k]
+            B[k] = ((h[0], h[1], h[2] + lift), (t[0], t[1], t[2] + lift), p)
     for leg in LEGS:
         hip, knee, ankle, _ = _leg_pts(spec, leg)
         B[f'{leg}.u'] = (tuple(hip), tuple(knee), 'body')
@@ -573,7 +585,7 @@ BUILDERS = {'mount-boar': _build_boar, 'mount-deer': _build_deer, 'mount-wolf': 
 
 
 def build(who, coll=None):
-    spec = SPECIES[who]
+    spec = dict(SPECIES[who], lift=LIFT.get(who, 0.0))
     coll = coll or C.collection(who)
     bones = _bones(spec, who)
     arm = _armature(who, bones, coll)
@@ -595,6 +607,12 @@ def build(who, coll=None):
         _saddle(add, spec, M, coll)
     finally:
         C.FACET = saved
+    if spec['lift']:   # 몸 · 머리 · 안장 · 꼬리 · 날개는 쉬는 자리에서 지었으니 lift 만큼 옮긴다(다리 · 발은 _leg_pts 가 이미 반영)
+        for bone, objs in parts.items():
+            if bone[:2] in ('fl', 'fr', 'bl', 'br') and '.' in bone:
+                continue
+            for o in objs:
+                o.location.z += spec['lift']
     bpy.context.view_layer.update()
     for bone, objs in parts.items():
         for o in objs:

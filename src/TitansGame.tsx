@@ -125,7 +125,7 @@ import { BEAT_TICKET_MAX_BOUGHT } from "./beat/tickets";
 import { GOLDEN_ESCAPE_SEC, GoldenRush, HuntStamp, TechGauge } from "./titans/huntMoments";
 import { MOUNT_RIDE } from "./titans/mountRide";
 import { mountAnimStyle, mountCellStyle, mountFrameIndex, type MountAction } from "./titans/spriteAnim";
-import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
+import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, mountSeatShift, activeMountGold, isMountId, mountGoldBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
 import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
@@ -5959,7 +5959,8 @@ function HeroFrameChar({ store, ride, ...props }: { store: ReturnType<typeof cre
   if (!ride) return <EquippedCharacter {...props} frame={frame} />;
   // 안장 자리를 따라간다 — 값은 왼쪽 보는 원본의 칸 비율이라 뒤집고, 탈것 상자(200% 정사각, ui-polish.css) → 주인공 상자(가로 100% · 세로 200%)로 바꾼다
   const s = MOUNT_RIDE[ride.art]?.[ride.action]?.[mountFrameIndex(ride.action, frame)] ?? [0, 0, 0];
-  return <div className="ride-rider" style={{ transform: `translate(${-s[0] * 200}%, ${s[1] * 100}%) rotate(${-s[2]}deg)` }}><EquippedCharacter {...props} frame={frame} /></div>;
+  const [sdx, sdy] = mountSeatShift(ride.art);   // 탈것마다 앉는 높이(2026-11-09)
+  return <div className="ride-rider" style={{ transform: `translate(${-s[0] * 200 + sdx}%, ${s[1] * 100 + sdy}%) rotate(${-s[2]}deg)` }}><EquippedCharacter {...props} frame={frame} /></div>;
 }
 /** 탈것 — 주인공과 같은 칸 번호로 달리고 · 덤비고 · 버틴다 (2026-11-05, 사용자: "탈것을 탈 때 탄 애니메이션도 같이 공격 방어 이동 자세") */
 function HeroMountLayer({ store, art, action, tier }: { store: ReturnType<typeof createFrameStore>; art: string; action: MountAction; tier?: string }) {
