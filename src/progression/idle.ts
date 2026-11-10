@@ -144,8 +144,9 @@ export function idleMultiplier(progress: CharacterProgress): number {
   // 성급 도감 마일스톤(§7)·타이탄의 그림자 펫(§1)은 캡 안에서 가산 — M 상한은 유지한다
   const collection = starMilestoneMultiplier(progress);
   const pet = activePetEffect(progress.pets, progress.activePet, "multiplier");
-  const mount = activeMountIdle(progress.mounts ?? {}, progress.activeMount ?? "");   // 전설 이상 탈것(2026-11-09) — 펫처럼 상한 안
-  return Math.min(IDLE.multCap, 1 + forge + crystals + tower + reforge + evolution + collection + pet + mount);
+  // 전설 이상 탈것(2026-11-09) — 보석으로 사는 효과라 상한 밖에서 더한다(새벽의 무희 · 후원 계약처럼). 상한 안이면 후반(배율 3.0)엔 비룡 +13.4% 가 0 이었다
+  const mount = activeMountIdle(progress.mounts ?? {}, progress.activeMount ?? "");
+  return Math.min(IDLE.multCap, 1 + forge + crystals + tower + reforge + evolution + collection + pet) + mount;
 }
 
 /**
