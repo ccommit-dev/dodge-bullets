@@ -59,7 +59,8 @@ export function weaponCooldownMul(weapon: RangedWeaponId, family: SkillFamily): 
 /**
  * 무기 연계 (2026-11-09, 사용자: "무기별 스킬이 연계되고") — 스킬 무기마다 짝 무기가 있다(이름의 무기 모양대로).
  * 검 = 바위 투석기 · 질풍 부메랑 · 그림자 표창 / 창 = 물살 작살 · 번개 창 / 활 = 화염 석궁 · 독침 단궁 / 지팡이 = 서리 지팡이 · 성광 홀 · 운석 낙하포.
- * 짝 무기를 들면 '연계' — 재사용 ×0.85. 계열 상성(×0.88) 대신이라 겹치지 않는다(연계가 늘 조금 더 좋다). 화살비는 짝이 없다.
+ * 짝 무기를 들면 '연계' — 계열 상성(×0.88) 위에 재사용 ×0.965 를 더 곱한다(2026-11-09, 사용자 목록 B5). 예전엔 연계가 상성을 대신해 ×0.85 라
+ * 상성이 맞는 짝은 +3.5%, 안 맞는 짝(활 + 화염 · 창 + 번개)은 +18% 로 얻는 몫이 달랐다. 이제 모든 짝이 같은 3.5% 를 얻는다(상성 짝은 예전과 같은 ×0.85, 안 맞는 짝만 줄었다). 화살비는 짝이 없다.
  */
 export const SKILL_LINK_WEAPON: Record<Exclude<ExpeditionSkillId, "ultimate">, Exclude<RangedWeaponId, "none">> = {
   earth: "sword", wind: "sword", shadow: "sword",
@@ -67,13 +68,13 @@ export const SKILL_LINK_WEAPON: Record<Exclude<ExpeditionSkillId, "ultimate">, E
   fire: "bow", poison: "bow",
   ice: "staff", holy: "staff", meteor: "staff",
 };
-export const LINK_COOLDOWN_MUL = 0.85;
+export const LINK_COOLDOWN_MUL = 0.965;   // 상성 짝 0.88 × 0.965 ≈ 0.85(예전 연계와 같다) — 0.94 는 지팡이 짝이 세져 성장 벽(verify-content 50 대장 3/5 · 33%)이 깨졌다
 export function skillLinked(weapon: RangedWeaponId, id: ExpeditionSkillId): boolean {
   return id !== "ultimate" && weapon !== "none" && SKILL_LINK_WEAPON[id] === weapon;
 }
-/** 스킬의 무기 배수 — 연계면 0.85, 아니면 계열 상성 */
+/** 스킬의 무기 배수 — 계열 상성(0.88 / 1) × 연계(0.965 / 1) */
 export function skillWeaponCooldownMul(weapon: RangedWeaponId, id: ExpeditionSkillId, family: SkillFamily): number {
-  return skillLinked(weapon, id) ? LINK_COOLDOWN_MUL : weaponCooldownMul(weapon, family);
+  return weaponCooldownMul(weapon, family) * (skillLinked(weapon, id) ? LINK_COOLDOWN_MUL : 1);
 }
 /** 짝 무기를 쓰는 스킬 — 무기 고르는 칸 · 정비 화면의 "연계 스킬" */
 export function linkedSkillsOf(weapon: RangedWeaponId): ExpeditionSkillId[] {

@@ -2361,7 +2361,7 @@ function App() {
             <div className="skill-dock" style={{ paddingBottom: insets.bottom, paddingRight: insets.right, paddingLeft: insets.left }} aria-label="장착 스킬">
               {skillHud.map((s) => (
                 // 2026-11-09 (사용자: "댐 방어전 스킬 ui 조금 더 고급지고 스킬에 연관된 거로") — 스킬 무기 그림 메달 · 등급 테두리(data-tier) · 짝 무기면 '연계'
-                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""} ${s.linked ? "is-linked" : ""}`} data-tier={s.id === "basic" ? "basic" : SKILL_TIER[s.id]} data-el={s.id === "basic" ? "basic" : SKILL_BY_ID[s.id].element} title={s.id === "basic" ? "기본 사격" : `${SKILL_BY_ID[s.id].weapon}${s.linked ? " · 무기 연계(재사용 −15%)" : ""}`}>
+                <span key={s.id} className={`skill-slot ${s.ready >= 1 ? "on" : ""} ${s.ready < 0.12 ? "fired" : ""} ${s.linked ? "is-linked" : ""}`} data-tier={s.id === "basic" ? "basic" : SKILL_TIER[s.id]} data-el={s.id === "basic" ? "basic" : SKILL_BY_ID[s.id].element} title={s.id === "basic" ? "기본 사격" : `${SKILL_BY_ID[s.id].weapon}${s.linked ? " · 무기 연계(재사용 −3.5%)" : ""}`}>
                   <img src={assetUrl(s.id === "basic" ? `dodge/skills/basic-${progress.equippedWeaponKind}.png` : `dodge/skills/${SKILL_BY_ID[s.id].icon}.png`)} alt="" aria-hidden="true" />
                   {/* 아직 안 찬 만큼 위에서 덮는다 — 자동 발사라도 언제 나가는지는 보여야 한다 */}
                   <i style={{ height: `${Math.round((1 - Math.min(1, s.ready)) * 100)}%` }} />

@@ -168,7 +168,7 @@ export function stageType(index: number): StageType {
  * 48 · 49층(4장 포위전 · 정예 혼성)이 11/12 · 41~42%. 다른 장의 같은 칸(13 · 33 · 43 · 18 · 28 · 38)은 모두 12/12 · 96% 이상.
  * 생성 간격만 늘린다(spawnScale) — 체력 · 대장 · 체크포인트(1 · 5 · 10 · … · 50) 칸은 그대로라 성장 벽 검사가 바뀌지 않는다
  */
-const SPAWN_EASE: Partial<Record<number, number>> = { 22: 1.15, 47: 1.16, 48: 1.14 };
+const SPAWN_EASE: Partial<Record<number, number>> = { 14: 1.1, 22: 1.15, 29: 1.12, 47: 1.16, 48: 1.14 };   // 14 · 29(15 · 30스테이지) 2026-11-09 — 기대 성장 지팡이 6/12 · 8/12 로 앞뒤 칸(12/12)보다 튀었다
 
 /** stageIndex(0~49) → 스테이지. 결정적 */
 export function buildStage(index: number): StageDef {

@@ -337,7 +337,7 @@ export function SkillPanel({
                 <span>
                   <b>{w.name}</b>
                   <em>{unlocked ? w.desc : `${w.unlockStage}스테이지 클리어 시 해금`}</em>
-                  {/* 무기 연계 (2026-11-09, 사용자: "무기별 스킬이 연계되고") — 이 무기를 들면 재사용 −15% 인 짝 스킬 */}
+                  {/* 무기 연계 (2026-11-09, 사용자: "무기별 스킬이 연계되고") — 이 무기를 들면 재사용 −3.5%(상성 위에 더) 인 짝 스킬 */}
                   <small className="exp-weapon-links" aria-label="연계 스킬">
                     <b>연계</b>
                     {linkedSkillsOf(w.id).map((id) => <img key={id} src={iconOf(SKILL_BY_ID[id])} alt={SKILL_BY_ID[id].weapon} title={SKILL_BY_ID[id].weapon} />)}

@@ -39,6 +39,8 @@ import {
  * 스킬을 올린 만큼, 칩을 끼운 만큼만 쉬워진다 — 성장의 보상이 난이도 완화로 나타나는 구조다.
  */
 
+/** 기본 사격 무기 배율 (2026-10-27 감사값 · 2026-11-09 설정값으로 꺼냄 — 시뮬이 같은 번들에서 바꿔 잰다). 활 · 지팡이는 1.1 넘기면 성장 벽이 깨진다(verify-content) */
+export const BASIC_WEAPON_MUL = { sword: 1.1, spear: 1.1, bow: 1.1, staff: 1.1 };   // 검 · 창 1.2 → 1.1 (2026-11-09, 사용자 목록 B1) — 같은 장착에서 덜 자란 계정이 검 43% · 창 39% 로 활 31% · 지팡이 32% 보다 너그러웠다
 export type SkillShot = {
   active: boolean;
   element: Element;
@@ -357,7 +359,7 @@ export function effectiveCooldown(id: ExpeditionSkillId, level: number, weapon: 
                     : id === "shadow" ? shadowCooldown(level)
                       : id === "meteor" ? meteorCooldown(level)
                         : 0;
-  // 무기 연계(짝 무기 ×0.85) · 아니면 계열 상성(×0.88) — 2026-11-09
+  // 계열 상성(×0.88) × 무기 연계(짝 무기 ×0.965) — 2026-11-09
   return base * skillWeaponCooldownMul(weapon, id, family);
 }
 
@@ -447,7 +449,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
           const conv = world.runMods.convert;
           // 2026-10-27 감사(시뮬 50스테이지 × 4시드): 검 ×1.5 · 창 꿰뚫기 +1 이 방어막을 거의 안 깎여 난이도를 무력화했다 → 검 · 창 ×1.2(창 꿰뚫기 없음) · 활 · 지팡이 ×1.1.
           // 활 · 지팡이를 1.15 · 1.2 로 올리면 8스테이지 덜 자란 계정이 40 · 50 장 대장을 3/5 깨 벽이 사라진다(verify-content) — 같은 성장 계정은 198/200(23 · 48층 한 시드씩)
-          const wMul = wpn === "sword" || wpn === "spear" ? 1.2 : 1.1;
+          const wMul = BASIC_WEAPON_MUL[wpn as keyof typeof BASIC_WEAPON_MUL] ?? 1.1;
           const shot = spawn(world, {
             element: conv ?? "basic", basic: true, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
             radius: evo === "beam" ? 12 : wpn === "sword" ? 16 : 9, lifeMs: wpn === "sword" && evo !== "beam" ? 750 : wpn === "spear" ? 1000 : 1400, power: 1, damage: BASIC_DAMAGE * basicDamageMul(world.basicLevel) * (conv ? 1.2 : 1) * wMul,
