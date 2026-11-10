@@ -103,3 +103,6 @@
    오른쪽 몬스터에서 전장 밖 30px(verify-anim-clip). 몸 1.6배 · 고리 −16px 로 몬스터 둘레에서 터지게 */
 @keyframes fx-sig-bolt { 0% { transform: translate(-80px, -30px) scale(.5); opacity: 0; } 15% { opacity: 1; } 55% { transform: translate(0, 0) scale(1); } 75% { transform: scale(1.4); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
 .titans-fx-sig-bolt::after { inset: -16px; }
+
+/* 사냥터 주인공 발 보정 (2026-11-09) — EquippedCharacter footFix 가 칸마다 --foot-dx(상자 폭 %)를 단다. translate 속성이라 숨쉬기 · 공격 transform 과 겹치지 않는다 */
+.equipped-character.foot-fix { translate: var(--foot-dx, 0%) 0; }

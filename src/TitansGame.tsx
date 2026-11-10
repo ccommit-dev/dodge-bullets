@@ -4029,7 +4029,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} pet />
               </div>
             )}
-            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} footFix={!isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 

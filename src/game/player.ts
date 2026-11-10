@@ -1,4 +1,5 @@
 import type { GameWorld, Player } from "./types";
+import { footFractions } from "../ui/heroFoot";
 import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
 import { drawRecurveBow } from "./arrowArt";
@@ -51,21 +52,7 @@ const footCache = new WeakMap<HTMLImageElement, number[] | null>();
 function footXs(img: HTMLImageElement | null, frames: number): number[] | null {
   if (!img || !img.complete || img.naturalWidth === 0) return null;
   if (footCache.has(img)) return footCache.get(img) ?? null;
-  let out: number[] | null = null;
-  try {
-    const H = 192, W = Math.max(frames, Math.round((img.naturalWidth * H) / img.naturalHeight));
-    const c = document.createElement("canvas"); c.width = W; c.height = H;
-    const g = c.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | null;
-    if (g) {
-      g.drawImage(img, 0, 0, W, H);
-      const y0 = Math.floor(H * 0.95), d = g.getImageData(0, y0, W, H - y0).data, cw = W / frames;
-      out = Array.from({ length: frames }, (_, k) => {
-        let sx = 0, n = 0;
-        for (let y = 0; y < H - y0; y += 1) for (let x = Math.floor(k * cw); x < Math.floor((k + 1) * cw); x += 1) if (d[(y * W + x) * 4 + 3] > 60) { sx += x - k * cw; n += 1; }
-        return n > 0 ? sx / n / cw : 0.5;
-      });
-    }
-  } catch { out = null; }
+  const out = footFractions(img, frames);   // ui/heroFoot.ts — 사냥터(DOM)와 같은 측정
   footCache.set(img, out);
   return out;
 }

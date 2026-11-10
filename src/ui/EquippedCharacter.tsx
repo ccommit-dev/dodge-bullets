@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { footTable, loadFootTable } from "./heroFoot";
 import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
 import { WEAPON_SKINS, weaponSkinIcon, weaponSkinStyle } from "../economy/gemCatalog";
@@ -20,6 +21,8 @@ type Props = {
   mode: HeroAnimMode;
   /** 칸 번호 — 동작의 칸 수로 나눈 나머지를 쓴다(부르는 쪽은 그냥 늘어나는 수를 줘도 된다) */
   frame: number;
+  /** 사냥터 주인공만 — 칸마다 발 가로 자리를 대기 0칸에 맞춘다(ui/heroFoot.ts) */
+  footFix?: boolean;
   weaponLevel?: number;
   /** 장착 견갑 — 그리지 않는다(아래 참고). 효과·강화 화면은 그대로 */
   shoulder?: ShoulderId | null;
@@ -81,7 +84,7 @@ function gripStyle(g: [number, number, number], rotation: number, scale: number,
   return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale * sx}, ${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
 }
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, riding = false }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, riding = false, footFix = false }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
@@ -91,6 +94,21 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
   const sheet = sheetFor(character, mode, weaponKind);
+  // 발 보정 (2026-11-09, 사냥터 주인공만 — footFix) — 대기 · 공격 칸마다 발을 대기 0칸 자리에. 걷기(발이 번갈아 디딘다) · 탄 모습은 그대로.
+  // 공격 시트 층은 상자 폭 125% · 왼쪽 −12.5%(sprite-anim.css)라 칸 비율을 상자 비율로 바꾼다. 몸 · 무기 · 입는 파츠가 같은 상자라 같이 옮겨진다
+  const idleUrl = sheetFor(character, "idle", weaponKind);
+  const [, footReady] = useState(0);
+  useEffect(() => {
+    if (!footFix || riding) return;
+    let live = true;
+    void Promise.all([loadFootTable(idleUrl, heroFrames("idle")), loadFootTable(sheet, frames)]).then(() => { if (live) footReady((n) => n + 1); });
+    return () => { live = false; };
+  }, [footFix, riding, idleUrl, sheet, frames]);
+  let footDx = 0;
+  if (footFix && !riding && mode !== "walk") {
+    const t0 = footTable(idleUrl, heroFrames("idle"))?.[0], t = footTable(sheet, frames)?.[index];
+    if (t0 !== undefined && t !== undefined) footDx = (t0 - (mode === "attack" && HERO_ANIM ? -0.125 + 1.25 * t : t)) * 100;
+  }
   // 무기 외형(상점) — 티어 색을 덮어쓰고 오라를 두른다. 실루엣(티어)은 유지 =
   // 강화 단계는 형태로, 커스텀은 색으로 읽힌다.
   const blade = weaponSkin ? WEAPON_SKINS[weaponSkin] : undefined;
@@ -130,7 +148,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     ...(anchor.hand.behind ? { zIndex: 1 } : {}),
   };
   return (
-    <div className={`equipped-character mode-${mode} ${HERO_ANIM ? "anim2" : ""} evolution-${evolution} ${character ? `costume-${character}` : ""} armor-tier-${armorTier} ${className}`} data-armor-tier={armorTier}>
+    <div className={`equipped-character mode-${mode} ${HERO_ANIM ? "anim2" : ""} evolution-${evolution} ${character ? `costume-${character}` : ""} armor-tier-${armorTier} ${footFix ? "foot-fix" : ""} ${className}`} data-armor-tier={armorTier} style={footFix ? ({ "--foot-dx": `${footDx.toFixed(2)}%` } as CSSProperties) : undefined}>
       {/* 2판(2026-10-19 에뮬레이터 녹화): 한 칸에서 background-image 를 대기 → 공격 시트로 갈아 끼우면 안드로이드 WebView 가 큰 시트를 다시 풀며
           몸이 1~3 칸(최대 100ms) 사라졌다(무기·그림자만 남음). 몬스터(SpriteArt)처럼 세 시트를 다 깔아 두고 지금 것만 보인다 — 대기 줄이 DOM 맨 앞(재는 검사들이 첫 것을 본다) */}
       {HERO_ANIM ? (riding ? RIDE_MODES : HERO_MODES).map((m) => {
