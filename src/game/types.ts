@@ -92,6 +92,10 @@ export type Arrow = {
   bossTier: number;
   /** 대장 몬스터가 쏜 마력탄 — 몬스터 그림 대신 구슬로 그리고, 잡아도 쓰러짐 프레임이 없다 (2026-10-01) */
   fromBoss: boolean;
+  /** 정예 몬스터가 쏜 작은 탄 (fromBoss 와 함께 켠다, 2026-11-11) — 방어막 피해가 작고 한 방에 부서진다 */
+  smallOrb: boolean;
+  /** 정예 사격 주기(ms) — 쌓여서 TUNING.monsterShotMs 가 되면 한 발 */
+  shotMs: number;
   /** 방어막에 붙어 두드리는 중 — 멈춰 서서 barrierHitMs 마다 방어막 HP 를 깎는다. 깨지면 barrierVy 로 다시 내려온다 (2026-10-01) */
   atBarrier: boolean;
   barrierHitMs: number;

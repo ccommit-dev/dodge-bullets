@@ -58,6 +58,8 @@ export function createArrowPool(size = POOL_SIZE): Arrow[] {
       bossMaxCuts: 0,
       bossEntering: false,
       fromBoss: false,
+      smallOrb: false,
+      shotMs: 0,
       atBarrier: false,
       barrierHitMs: 0,
       barrierVy: 0,
@@ -94,6 +96,11 @@ export const TUNING = {
   barrierRegen: 0,           // 방어막이 유일한 생명이 된 뒤(2026-10-02)에는 저절로 차지 않는다 — 스테이지마다 가득 찬다
   barrierPerLife: 0.15,      // 예전 "최대 HP +1" 하나가 방어막 +15% (성장 · 견갑 · 활력 칩 · 수호 부적 · 성장 카드)
   bossOrbDmg: 8,            // 대장 마력탄이 돔에 맞는 피해
+  // 정예 사격 (2026-11-11) — 정예(homing) 몬스터가 화면 가운데에서 쏘는 작은 탄. 쏘아 맞히면 한 방에 부서진다
+  monsterShotMs: 2600,      // 한 마리가 쏘는 주기 — 정예가 드물어(장당 3~7%) 판당 2발 안팎. 2초면 48스테이지 기대 성장 계정이 한 판 진다(verify-content)
+  monsterShotSpeed: 150,    // 탄 속도(px/s) — 대장 마력탄(170+)보다 느려 보고 쏠 틈이 있다
+  monsterOrbDmg: 3,         // 방어막에 맞으면
+  monsterShotFromStage: 10, // 0부터 센 스테이지 — 11스테이지(2장)부터. 정예가 2장부터 나온다(stages.ts homingChance)
   /** @deprecated 스테이지 표(stages.ts spawnScale)로 옮겼다 — 시뮬 스윕이 덮어쓰는 이름만 남긴다 */
   stageSpawnScale: [1, 1, 1, 1] as number[],   // 스테이지별 생성 간격 배수 — 1 보다 크면 드물게. S1·S2 는 촘촘히(방어막이 실제로 깎이게), S3 은 비룡·폭발이 세서 드물게 (스윕 2026-10-02)
   basicCooldown: BASIC_SHOT_COOLDOWN,
@@ -144,7 +151,7 @@ export function resetBarrier(world: GameWorld): void {
 }
 function hitBarrier(world: GameWorld, a: Arrow, damage = barrierDamageOf(a)): void {
   world.barrierHp = Math.max(0, world.barrierHp - damage * TUNING.barrierDmgMul * (world.barrierTakenMul ?? 1) * getStage(world.stageIndex).barrierDmgMul);
-  world.lastHitCause = a.fromBoss ? "boss" : a.splitLevel > 0 ? "fragment" : a.kind;
+  world.lastHitCause = a.fromBoss ? (a.smallOrb ? "homing" : "boss") : a.splitLevel > 0 ? "fragment" : a.kind;
   world.barrierFlashMs = 220;
   world.barrierHitX = a.x;
   world.barrierHits += 1;
@@ -244,6 +251,8 @@ function activate(
   arrow.boss = false;
   arrow.bossTier = 0;
   arrow.fromBoss = false;
+  arrow.smallOrb = false;
+  arrow.shotMs = Math.random() * 1200;
   arrow.atBarrier = false;
   arrow.barrierHitMs = 0;
   arrow.barrierVy = 0;
@@ -409,6 +418,8 @@ function configureSplitFragment(
   arrow.boss = false;
   arrow.bossTier = 0;
   arrow.fromBoss = false;
+  arrow.smallOrb = false;
+  arrow.shotMs = Math.random() * 1200;
   arrow.atBarrier = false;
   arrow.barrierHitMs = 0;
   arrow.barrierVy = 0;
@@ -870,6 +881,27 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
         }
       }
     }
+    // 정예 사격 (2026-11-11, 탕탕에이스 비교표 2번) — 정예(homing) 몬스터가 화면 가운데쯤에서 주기마다 작은 탄을 방어막에 쏜다.
+    // 쏘아 맞히면 한 방에 부서진다(보급 · 런 XP). 웨이브 중에도 "피할지 쏠지" 고를 거리 — 자동 사격은 조준 탄을 먼저 노려 몬스터에 쏠 화살을 나눠 쓴다
+    if (!a.boss && !a.fromBoss && a.splitLevel === 0 && a.kind === "homing" && a.warningMs <= 0 && !a.atBarrier && (world.stageIndex ?? 0) >= TUNING.monsterShotFromStage) {
+      const by = barrierYAt(world, a.x);
+      if (a.y > world.safeTop + 30 && a.y < by - 140) {
+        a.shotMs += dtSec * 1000;
+        if (a.shotMs >= TUNING.monsterShotMs) {
+          a.shotMs = 0;
+          const shot = acquire(world);
+          if (shot) {
+            const tx = player.x + (Math.random() - 0.5) * 60, ty = barrierYAt(world, tx);
+            const dx = tx - a.x, dy = ty - (a.y + 10), len = Math.max(1, Math.hypot(dx, dy));
+            activate(shot, a.x, a.y + 10, dx / len * TUNING.monsterShotSpeed, dy / len * TUNING.monsterShotSpeed, "aimed", 380);
+            shot.fromBoss = true;
+            shot.smallOrb = true;
+            shot.hp = 0.01;
+            shot.maxHp = 0.01;
+          }
+        }
+      }
+    }
     if (a.kind === "homing" && a.homingMs > 0) {
       a.homingMs = Math.max(0, a.homingMs - dtSec * 1000);
       const desired = Math.atan2(player.y - a.y, player.x - a.x);
@@ -895,7 +927,7 @@ export function updateArrows(world: GameWorld, dtSec: number): number {
 
     // ── 대장 마력탄 · 조각 — 돔 표면에 맞아 방어막을 깎고 사라진다 (플레이어는 맞지 않는다, 2026-10-02) ──
     if ((a.fromBoss || a.splitLevel > 0) && !a.reflected && a.vy > 0 && a.y >= barrierYAt(world, a.x) - 4) {
-      hitBarrier(world, a, a.fromBoss ? TUNING.bossOrbDmg : barrierDamageOf(a));
+      hitBarrier(world, a, a.fromBoss ? (a.smallOrb ? TUNING.monsterOrbDmg : TUNING.bossOrbDmg) : barrierDamageOf(a));
       world.barrierFlashMs = 300;
       a.active = false;
       continue;

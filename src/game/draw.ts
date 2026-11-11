@@ -509,7 +509,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.setLineDash([]);
     ctx.fillStyle = warningColor;
     ctx.font = "700 11px Sunflower, sans-serif";
-    const warningText = a.fromBoss ? "대장 사격" : a.telegraph === "homing" ? "정예" : a.telegraph === "sniper" ? "돌진" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "낙하" : a.telegraph === "dash" ? "돌파" : "떼";
+    const warningText = a.fromBoss ? (a.smallOrb ? "정예 사격" : "대장 사격") : a.telegraph === "homing" ? "정예" : a.telegraph === "sniper" ? "돌진" : a.telegraph === "blast" ? "폭발" : a.telegraph === "charge" ? "측면 돌진" : a.telegraph === "aerial" ? "낙하" : a.telegraph === "dash" ? "돌파" : "떼";
     // 위는 상단 버튼·HUD 글자(왼쪽 열이 더 길다)·일섬 게이지, 아래는 스킬 슬롯·조작 버튼이 덮는다 — 그 사이에만 쓴다
     const lx = Math.max(8, Math.min(ctx.canvas.clientWidth - 76, a.x));
     const top = labelBounds.top + (lx < labelBounds.leftColumn ? labelBounds.leftExtra : 0);
@@ -522,13 +522,15 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     // 대장 몬스터의 마력탄 — 보스색 구슬에 꼬리. 몬스터가 몬스터를 던지는 그림을 피한다
     ctx.save();
     const tailAng = Math.atan2(a.vy, a.vx);
-    ctx.strokeStyle = bossColor; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.globalAlpha = 0.45;
-    ctx.beginPath(); ctx.moveTo(a.x - Math.cos(tailAng) * 30, a.y - Math.sin(tailAng) * 30); ctx.lineTo(a.x, a.y); ctx.stroke();
+    // 정예 사격(smallOrb)은 작은 주황 구슬 — 대장 마력탄과 한눈에 갈린다
+    const orbR = a.smallOrb ? 9 : 13, orbCol = a.smallOrb ? "#fb923c" : bossColor, tail = a.smallOrb ? 20 : 30;
+    ctx.strokeStyle = orbCol; ctx.lineWidth = a.smallOrb ? 3 : 4; ctx.lineCap = "round"; ctx.globalAlpha = 0.45;
+    ctx.beginPath(); ctx.moveTo(a.x - Math.cos(tailAng) * tail, a.y - Math.sin(tailAng) * tail); ctx.lineTo(a.x, a.y); ctx.stroke();
     ctx.globalAlpha = 1;
-    const g = ctx.createRadialGradient(a.x, a.y, 2, a.x, a.y, 13);
-    g.addColorStop(0, "#fff7ed"); g.addColorStop(0.45, bossColor); g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.shadowColor = bossColor; ctx.shadowBlur = 14;
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(a.x, a.y, 13, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(a.x, a.y, 2, a.x, a.y, orbR);
+    g.addColorStop(0, "#fff7ed"); g.addColorStop(0.45, orbCol); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.shadowColor = orbCol; ctx.shadowBlur = a.smallOrb ? 10 : 14;
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(a.x, a.y, orbR, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }

@@ -146,6 +146,8 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   const totalFrames = Math.ceil((stage.durationMs / 1000) * 60 / AR.TUNING.pace * 3);
   let frames = 0, clear = false, dead = false, perkSeed = seed * 0.11, minRatio = 1, maxActive = 0, bossAt = -1, killedAt = -1;
   const p = w.player;
+  // 정예 사격 집계 (2026-11-11) — 쏜 탄 · 방어막에 맞은 탄(사라질 때 방어막 띠 근처였으면)
+  const orbs = new Set(); let eliteShots = 0, eliteHits = 0;
   while (frames < totalFrames) {
     frames += 1;
     botInput(w, p, inp, opts);
@@ -153,6 +155,8 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     if (w.levelUps > 0) { w.levelUps = 0; const card = pickCard(P.pickPerks(w, () => ((perkSeed += 0.37) % 1))); if (card) P.applyPerk(w, card.id); }
     if (w.barrierMaxHp > 0) minRatio = Math.min(minRatio, w.barrierHp / w.barrierMaxHp);
     maxActive = Math.max(maxActive, w.arrows.reduce((n, a) => n + (a.active ? 1 : 0), 0));
+    for (const a of w.arrows) if (a.active && a.smallOrb && !orbs.has(a)) { orbs.add(a); eliteShots += 1; }
+    for (const a of orbs) if (!a.active || !a.smallOrb) { if (a.y >= AR.barrierYAt(w, a.x) - 12) eliteHits += 1; orbs.delete(a); }
     if (bossAt < 0 && w.bossSpawned) bossAt = frames;
     if (ev.type === "dead") { dead = true; break; }
     if (ev.type === "clear") { clear = true; killedAt = frames; break; }
@@ -165,7 +169,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     bossFightSec: bossAt >= 0 && killedAt > 0 ? Math.round((killedAt - bossAt) / 60) : -1,
     realSec: Math.round(frames / 60),
     skillKills: w.skillKills, ultCount: w.ultCount, picks: w.runLevel - 1, runSkills: Object.keys(w.runSkills).filter((k) => w.runSkills[k]),
-    hits: 0, barrierBreaks: w.barrierBreaks,
+    hits: 0, barrierBreaks: w.barrierBreaks, eliteShots, eliteHits,
   };
 }
 
