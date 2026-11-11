@@ -29,11 +29,13 @@ type Props = {
   stars: Record<string, number>;
   branchStars: Record<string, number>;
   claimed: string[];
+  /** 보물 동굴 반복 보너스 오늘 남은 횟수 (game/treasureRuns) */
+  treasureLeft?: number;
   next: number;
   onStart: (index: number) => void;
 };
 
-export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onStart }: Props) {
+export function RouteMap({ chapter, best, stars, branchStars, claimed, treasureLeft, next, onStart }: Props) {
   const branches = BRANCHES.filter((b) => b.chapter === chapter);
   const chainParent = (b: BranchDef) => ("branch" in b.requires ? branches.find((x) => x.id === (b.requires as { branch: string }).branch) : undefined);
   // 한 줄 목록 (2026-10-23, 사용자: "UI 조잡한 부분 마저 단순화") — 두 줄 격자 + 옆 칸 갈림길은 이름이 두 줄로 꺾이고 별 · 자물쇠 · 체력이 칸마다 겹쳐 조잡했다.
@@ -87,7 +89,8 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, next, onS
                   >
                     <small>{KIND_SHORT[node.kind]}{node.kind === "elite" ? (node.id.endsWith("E1") ? "①" : "②") : ""}</small>
                     {/* 칩 한 줄 — 열렸으면 별 또는 첫 보상 한 가지, 잠겼으면 종류만(흐리게) */}
-                    {open && (bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft ? <i className="route-reward" title={branchRewardLabel(node.firstReward)}>{branchRewardLabel(node.firstReward).split(" · ")[0].split(" ")[0]}</i> : null)}
+                    {/* 보물 동굴은 깬 뒤에도 하루 3번 골드 보너스 — 별 자리에 남은 횟수 (2026-11-11) */}
+                    {open && (node.kind === "treasure" && bs > 0 && treasureLeft !== undefined ? <i className={`route-reward route-treasure-left ${treasureLeft > 0 ? "" : "spent"}`}>골드 {treasureLeft}/3</i> : bs > 0 ? <i className="route-stars">{"★".repeat(bs)}</i> : firstLeft ? <i className="route-reward" title={branchRewardLabel(node.firstReward)}>{branchRewardLabel(node.firstReward).split(" · ")[0].split(" ")[0]}</i> : null)}
                   </button>
                 );
               })()}

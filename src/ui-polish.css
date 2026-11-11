@@ -1516,3 +1516,6 @@
 }
 /* 토벌령 · 핫타임 카드 제목은 단어 단위로 접는다 (2026-11-11) — 360px 에서 "오늘 보스 처 / 치" 처럼 글자 중간에서 끊겼다 */
 .event-list .mission-card b { word-break: keep-all; }
+/* 보물 동굴 반복 보너스 칩 (2026-11-11, game/treasureRuns.ts) — 남았으면 진한 금색, 다 쓰면 회갈색 (크림 칸 위) */
+.route-node .route-treasure-left { color: #8a5a00 !important; }
+.route-node .route-treasure-left.spent { color: #8a7a66 !important; }

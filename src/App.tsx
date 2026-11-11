@@ -49,7 +49,8 @@ import { applyLowFx, frameMonitor, lowFxOn, setLowFx } from "./ui/perfMode";
 import { TITLES } from "./economy/gemCatalog";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
-import { HUNTING_AREAS } from "./titans/model";
+import { HUNTING_AREAS, formatGold } from "./titans/model";
+import { TREASURE_DAILY, spendTreasureRun, treasureBonusGold, treasureRunsToday } from "./game/treasureRuns";
 import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
@@ -1060,9 +1061,22 @@ function App() {
           const starFloor = towerFloorOf(world.stageIndex);
           const starsGained = starFloor > 0 ? 0 : starsForClear(world);
           void (async () => {
+            // 보물 동굴 반복 보너스 (game/treasureRuns, 2026-11-11) — 하루 3번까지 그 칸 기본 보상 1.5배를 골드로 더 (별 · 첫 보상과 별개)
+            let treasureBonus = 0, treasureLeft = -1;
+            if (branchOf(world.stageIndex)?.kind === "treasure") {
+              const day = new Date().toLocaleDateString("sv-SE");
+              let granted = false;
+              const after = await updateCharacterProgress(userHashRef.current, (current) => {
+                const t = spendTreasureRun(current.treasureRuns, day);
+                granted = t !== current.treasureRuns;
+                return granted ? { ...current, treasureRuns: t } : current;
+              });
+              treasureLeft = TREASURE_DAILY - treasureRunsToday(after.treasureRuns, day);
+              if (granted) { treasureBonus = treasureBonusGold(stage.baseReward); setCoinGain(reward + treasureBonus); }
+            }
             const nextCoins = await saveCoins(
               userHashRef.current,
-              coinsRef.current + reward,
+              coinsRef.current + reward + treasureBonus,
             );
             coinsRef.current = nextCoins;
             setCoins(nextCoins);
@@ -1169,7 +1183,8 @@ function App() {
                   }),
                 };
               });
-              setBranchNote(first ? `갈림길 첫 클리어 · ${branchRewardLabel(r)}` : `갈림길 ${branch.name} · 별 ${starsGained}`);
+              const treasureNote = treasureBonus > 0 ? ` · 보물 보너스 +${formatGold(treasureBonus)}골드 (오늘 남은 ${treasureLeft}/${TREASURE_DAILY})` : treasureLeft === 0 ? " · 오늘 보물 보너스는 다 받았어요" : "";
+              setBranchNote((first ? `갈림길 첫 클리어 · ${branchRewardLabel(r)}` : `갈림길 ${branch.name} · 별 ${starsGained}`) + treasureNote);
             }
             // 별점 기록 — 스테이지별 최고 기록만 남긴다. 12개 마일스톤은 1회 보상.
             if (starsGained > 0 && !branch) {
@@ -2160,6 +2175,7 @@ function App() {
                           stars={stars}
                           branchStars={progress.dodgeBranches}
                           claimed={progress.claimedRewards}
+                          treasureLeft={TREASURE_DAILY - treasureRunsToday(progress.treasureRuns, new Date().toLocaleDateString("sv-SE"))}
                           next={next}
                           onStart={(index) => void handleStart(index)}
                         />
