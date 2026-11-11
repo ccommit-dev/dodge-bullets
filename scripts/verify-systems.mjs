@@ -803,7 +803,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
 
     // ── 진화 — 스킬의 작동 방식을 바꾸고, 한 스킬당 하나만
     const evoIds = perks.PERKS.filter((p) => p.evolution).map((p) => p.id);
-    ok("진화 카드 6종이 전부 에픽", evoIds.length === 6 && perks.PERKS.filter((p) => p.evolution).every((p) => p.rarity === "epic"), evoIds.join());
+    ok("진화 카드 22종(기본 · 불 · 얼음 6 + 8종 × 2, 2026-11-11)이 전부 에픽", evoIds.length === 22 && perks.PERKS.filter((p) => p.evolution).every((p) => p.rarity === "epic"), evoIds.join());
 
     const ev = w({ fire: 1, ice: 1 });
     ok("진화 전에는 세 스킬의 분기가 모두 열려 있다",

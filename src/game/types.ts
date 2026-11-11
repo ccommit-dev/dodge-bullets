@@ -254,7 +254,12 @@ export type RunMods = {
    * 진화 — 스킬마다 **하나만** 고를 수 있는 분기. 작동 방식 자체가 바뀐다.
    * basic 은 기본 사격(무기의 것)이다 (2026-09-29)
    */
-  evolutions: { basic?: "beam" | "seeker"; fire?: "cluster" | "pyre"; ice?: "shatter" | "lingering" };
+  evolutions: {
+    basic?: "beam" | "seeker"; fire?: "cluster" | "pyre"; ice?: "shatter" | "lingering";
+    // 2026-11-11 — 나머지 8종도 두 갈래씩 (game/evolutions.ts)
+    water?: "tide" | "split"; earth?: "quake" | "barrage"; bolt?: "chain" | "smite"; wind?: "cyclone" | "gale";
+    poison?: "cloud" | "venom"; holy?: "sanctum" | "judgment"; shadow?: "swarm" | "assassin"; meteor?: "shower" | "titan";
+  };
   /**
    * 스탯을 건드리는 카드도 여기 남긴다 — 스테이지가 넘어갈 때 applyStats 가 상점 값으로
    * 덮어쓰므로, 다시 얹지 않으면 "이번 런 동안"이 거짓말이 된다 (2026-09-28)

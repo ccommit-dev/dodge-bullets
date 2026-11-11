@@ -183,6 +183,10 @@ const PERK_SKILL_ICON: Partial<Record<PerkId, string>> = {
   evoBeam: "basic", evoSeeker: "basic",
   boltExtra: "bolt", waterMore: "water", fireWide: "fire", iceDeep: "ice", earthHeavy: "earth",
   chillHunt: "ice", chillBurst: "fire", evoCluster: "fire", evoPyre: "fire", evoShatter: "ice", evoLingering: "ice",
+  // 새 스킬 무기 5종 카드 · 진화 8종 (2026-11-11) — 빠져 있으면 RewardIcon 이 빈 종류로 터져 레벨업 화면이 멈췄다
+  windTwin: "wind", poisonDeep: "poison", holyMend: "holy", shadowMore: "shadow", meteorWide: "meteor",
+  evoTide: "water", evoSplit: "water", evoQuake: "earth", evoBarrage: "earth", evoChain: "bolt", evoSmite: "bolt", evoCyclone: "wind", evoGale: "wind",
+  evoCloud: "poison", evoVenom: "poison", evoSanctum: "holy", evoJudgment: "holy", evoSwarm: "shadow", evoAssassin: "shadow", evoShower: "meteor", evoTitan: "meteor",
 };
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL?.trim() ?? "";
@@ -2478,7 +2482,9 @@ function App() {
                       ? <img src={assetUrl(PERK_SKILL_ICON[perk.id as PerkId] === "basic" ? `dodge/weapons/icon-${progress.equippedWeaponKind}.png` : `dodge/skills/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={56} height={56} />
                       : PERK_ICON[perk.id as PerkId] === "exp"
                         ? <img src={assetUrl("ui/idle/exp-orb.png")} alt="" width={56} height={56} />
-                        : <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={56} />}
+                        : PERK_ICON[perk.id as PerkId]
+                          ? <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={56} />
+                          : <img src={assetUrl("dodge/skills/basic.png")} alt="" width={56} height={56} />}
                   </span>
                 <span className="perk-pips" aria-label={`${RARITY_LABEL[perk.rarity]} 등급`}>{[0, 1, 2].map((k) => <i key={k} className={k < pips ? "on" : ""} />)}</span>
                 <span className="perk-copy">

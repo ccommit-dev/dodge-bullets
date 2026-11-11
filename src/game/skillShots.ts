@@ -1,4 +1,5 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
+import { EVO, evoCooldownMul } from "./evolutions";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
 import { cutArrow, pushSlashFx, TUNING } from "./arrows";
 import { gainRunXp } from "./world";
@@ -387,7 +388,8 @@ export function skillCooldown(world: GameWorld, id: Exclude<ExpeditionSkillId, "
     * weaponForgeCooldownMul(forgeFamilyLevel(world.weaponForge ?? { bow: 0, staff: 0 }, SKILL_BY_ID[id].family))
     * world.runMods.cooldownMul * world.chips.cooldownMul * world.collectionMul
     * (world.primedMs > 0 ? PRIMED_COOLDOWN_MUL : 1)
-    * (id === "fire" && world.runMods.evolutions.fire === "pyre" ? 1.25 : 1);
+    * (id === "fire" && world.runMods.evolutions.fire === "pyre" ? 1.25 : 1)
+    * evoCooldownMul(world, id);
 }
 
 /** 기본 사격 재사용(초) — 카드·칩·화살통이 줄인다 */
@@ -520,9 +522,13 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 700);
-    spawn(world, {
-      x: sp0.x, y: sp0.y, element: "water", vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700, radius: 11, lifeMs: 1700,
-      power: waterPower(lv.water), damage: waterDamage(lv.water) * forgeDmg(world, "water"), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1,
+    // 진화 — 해일(크고 느리게 · 더 꿴다) · 물 분열(세 갈래 · 절반)
+    const evo = world.runMods.evolutions.water;
+    const speed = evo === "tide" ? 700 * EVO.water.tideSpeed : 700;
+    const angs = evo === "split" ? [ang - EVO.water.splitSpread, ang, ang + EVO.water.splitSpread] : [ang];
+    for (const a2 of angs) spawn(world, {
+      x: sp0.x, y: sp0.y, element: "water", vx: Math.cos(a2) * speed, vy: Math.sin(a2) * speed, radius: evo === "tide" ? 11 * EVO.water.tideRadius : evo === "split" ? 9 : 11, lifeMs: evo === "tide" ? 2300 : 1700,
+      power: waterPower(lv.water), damage: waterDamage(lv.water) * forgeDmg(world, "water") * (evo === "split" ? EVO.water.splitDamage : 1), hits: waterPierce(lv.water) + world.runMods.waterPierceExtra - 1 + (evo === "tide" ? EVO.water.tidePierce : 0),
     });
     world.sfx.shot += 1;
     return true;
@@ -543,10 +549,14 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 460);
-    spawn(world, {
-      x: sp0.x, y: sp0.y, element: "earth", vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460,
-      radius: earthRadius(lv.earth), lifeMs: 2000, power: earthPower(lv.earth) + world.runMods.earthPowerBonus,
-      damage: (earthDamage(lv.earth) + world.runMods.earthPowerBonus) * forgeDmg(world, "earth"),
+    // 진화 — 지진(맞은 자리 주변도) · 연발 바위(둘, 작게)
+    const evo = world.runMods.evolutions.earth;
+    const angs = evo === "barrage" ? [ang - EVO.earth.barrageSpread, ang + EVO.earth.barrageSpread] : [ang];
+    const dmgMul = evo === "barrage" ? EVO.earth.barrageDamage : evo === "quake" ? EVO.earth.quakeDirect : 1;
+    for (const a2 of angs) spawn(world, {
+      x: sp0.x, y: sp0.y, element: "earth", vx: Math.cos(a2) * 460, vy: Math.sin(a2) * 460,
+      radius: earthRadius(lv.earth) * (evo === "barrage" ? EVO.earth.barrageRadius : 1), lifeMs: 2000, power: earthPower(lv.earth) + world.runMods.earthPowerBonus,
+      damage: (earthDamage(lv.earth) + world.runMods.earthPowerBonus) * forgeDmg(world, "earth") * dmgMul,
     });
     world.sfx.shot += 1;
     return true;
@@ -555,14 +565,17 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   tick("bolt", () => {
     sp0 = spiritOf("bolt");
     // 즉발 연쇄 — 조준 화살(상성)을 먼저 끊는다
-    const n = boltTargets(lv.bolt) + world.runMods.boltExtra;
+    // 진화 — 연쇄 번개(두 마리 더 · 약하게) · 낙뢰(대장 · 조준 화살 · 가장 가까운 한 마리에 크게)
+    const evo = world.runMods.evolutions.bolt;
+    const n = evo === "smite" ? EVO.bolt.smiteTargets : boltTargets(lv.bolt) + world.runMods.boltExtra + (evo === "chain" ? EVO.bolt.chainExtra : 0);
     const pool = world.arrows.filter(targetable)
-      .map((a) => ({ a, d: (a.x - px) ** 2 + (a.y - py) ** 2 - (a.kind === "aimed" ? 1e9 : 0) }))
+      .map((a) => ({ a, d: (a.x - px) ** 2 + (a.y - py) ** 2 - (a.kind === "aimed" ? 1e9 : 0) - (evo === "smite" && a.boss ? 1e12 : 0) }))
       .sort((p, q) => p.d - q.d).slice(0, n).map((p) => p.a);
     if (!pool.length) return false;
+    const boltMul = evo === "chain" ? EVO.bolt.chainDamage : evo === "smite" ? EVO.bolt.smiteDamage : 1;
     for (const t of pool) {
-      spawnFx(world, "bolt", t.x, t.y, 22, 260);
-      hit(world, t, "bolt", boltPower(lv.bolt), boltDamage(lv.bolt) * forgeDmg(world, "bolt"));
+      spawnFx(world, "bolt", t.x, t.y, evo === "smite" ? 34 : 22, evo === "smite" ? 360 : 260);
+      hit(world, t, "bolt", boltPower(lv.bolt), boltDamage(lv.bolt) * forgeDmg(world, "bolt") * boltMul);
     }
     world.sfx.zap += 1;
     world.boltFrom = { x: sp0.x, y: sp0.y, ms: 220, targets: pool.map((t) => ({ x: t.x, y: t.y })) };
@@ -575,9 +588,12 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 520);
+    // 진화 — 회오리(크고 오래 · 느리게) · 돌풍(빠르고 멀리 · 좁게)
+    const evo = world.runMods.evolutions.wind;
+    const speed = 520 * (evo === "cyclone" ? EVO.wind.cycloneSpeed : evo === "gale" ? EVO.wind.galeSpeed : 1);
     spawn(world, {
-      x: sp0.x, y: sp0.y, element: "wind", vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, radius: 13, lifeMs: 2600,
-      power: windPower(lv.wind), damage: windDamage(lv.wind) * forgeDmg(world, "wind") * world.runMods.windDamageMul, hits: 99, turnAt: windRange(lv.wind),
+      x: sp0.x, y: sp0.y, element: "wind", vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, radius: 13 * (evo === "cyclone" ? EVO.wind.cycloneRadius : evo === "gale" ? EVO.wind.galeRadius : 1), lifeMs: evo === "cyclone" ? 2600 * EVO.wind.cycloneLife : 2600,
+      power: windPower(lv.wind), damage: windDamage(lv.wind) * forgeDmg(world, "wind") * world.runMods.windDamageMul, hits: 99, turnAt: windRange(lv.wind) * (evo === "gale" ? EVO.wind.galeRange : 1),
     });
     world.sfx.shot += 1;
     return true;
@@ -588,7 +604,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 680);
-    spawn(world, { x: sp0.x, y: sp0.y, element: "poison", vx: Math.cos(ang) * 680, vy: Math.sin(ang) * 680, radius: 9, lifeMs: 1600, power: poisonPower(lv.poison), damage: poisonDamage(lv.poison) * forgeDmg(world, "poison") });
+    spawn(world, { x: sp0.x, y: sp0.y, element: "poison", vx: Math.cos(ang) * 680, vy: Math.sin(ang) * 680, radius: 9, lifeMs: 1600, power: poisonPower(lv.poison), damage: poisonDamage(lv.poison) * forgeDmg(world, "poison") * (world.runMods.evolutions.poison === "cloud" ? EVO.poison.cloudDirect : 1) });
     world.sfx.shot += 1;
     return true;
   });
@@ -600,11 +616,17 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     if (!pool.length) return false;
     const boss = pool.find((a) => a.boss);
     const t = boss ?? pool.reduce((m, a) => (a.y > m.y ? a : m), pool[0]);
-    spawnFx(world, "holy", t.x, t.y, 34, 380);
-    burst(world, "holy", t.x, t.y, 14, 180);
-    hit(world, t, "holy", holyPower(lv.holy), holyDamage(lv.holy) * forgeDmg(world, "holy"));
+    // 진화 — 성역(가장 아래 셋을 함께 · 약하게 · 수리 더) · 심판(한 마리에 크게 · 수리 절반)
+    const evo = world.runMods.evolutions.holy;
+    const targets = evo === "sanctum" ? [t, ...pool.filter((a) => a !== t).sort((a, b) => b.y - a.y).slice(0, EVO.holy.sanctumTargets - 1)] : [t];
+    const holyMul = evo === "sanctum" ? EVO.holy.sanctumDamage : evo === "judgment" ? EVO.holy.judgmentDamage : 1;
+    for (const h of targets) {
+      spawnFx(world, "holy", h.x, h.y, evo === "judgment" ? 46 : 34, 380);
+      burst(world, "holy", h.x, h.y, 14, 180);
+      hit(world, h, "holy", holyPower(lv.holy), holyDamage(lv.holy) * forgeDmg(world, "holy") * holyMul);
+    }
     // 방어막 수리 — 맞힐 때마다 조금 (최대치를 넘지 않는다)
-    world.barrierHp = Math.min(world.barrierMaxHp, world.barrierHp + holyRepair(lv.holy) * world.runMods.holyRepairMul);
+    world.barrierHp = Math.min(world.barrierMaxHp, world.barrierHp + holyRepair(lv.holy) * world.runMods.holyRepairMul * (evo === "sanctum" ? EVO.holy.sanctumRepair : evo === "judgment" ? EVO.holy.judgmentRepair : 1));
     world.holyBeam = { x: sp0.x, y: sp0.y, tx: t.x, ty: t.y, ms: 260 };
     world.sfx.zap += 1;
     return true;
@@ -615,10 +637,14 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     const t = skillTarget();
     if (!t) return false;
     const ang = fromSpirit(t, 600);
-    const n = shadowCount(lv.shadow) + world.runMods.shadowExtra;
+    // 진화 — 그림자 분신(둘 더 · 약하게) · 암살(하나로 모아 크게 · 한 마리 더 꿴다)
+    const evo = world.runMods.evolutions.shadow;
+    const base = shadowCount(lv.shadow) + world.runMods.shadowExtra;
+    const n = evo === "assassin" ? 1 : base + (evo === "swarm" ? EVO.shadow.swarmExtra : 0);
+    const shadowMul = evo === "swarm" ? EVO.shadow.swarmDamage : evo === "assassin" ? base * EVO.shadow.assassinPerBlade : 1;
     for (let k = 0; k < n; k += 1) {
       const a2 = ang + (k - (n - 1) / 2) * 0.13;
-      spawn(world, { x: sp0.x, y: sp0.y, element: "shadow", vx: Math.cos(a2) * 600, vy: Math.sin(a2) * 600, radius: 9, lifeMs: 1500, power: shadowPower(lv.shadow), damage: shadowDamage(lv.shadow) * forgeDmg(world, "shadow") });
+      spawn(world, { x: sp0.x, y: sp0.y, element: "shadow", vx: Math.cos(a2) * 600, vy: Math.sin(a2) * 600, radius: evo === "assassin" ? 13 : 9, lifeMs: 1500, power: shadowPower(lv.shadow), damage: shadowDamage(lv.shadow) * forgeDmg(world, "shadow") * shadowMul, hits: evo === "assassin" ? EVO.shadow.assassinPierce : 0 });
     }
     world.sfx.shot += 1;
     return true;
@@ -629,16 +655,27 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
     // 가장 많이 모인 곳 — 대장이 있으면 대장
     const pool = world.arrows.filter(targetable);
     if (!pool.length) return false;
-    const r = meteorRadius(lv.meteor) * world.runMods.meteorRadiusMul;
-    let best = pool.find((a) => a.boss) ?? pool[0], bestN = -1;
-    if (!best.boss) for (const a of pool) {
-      let n = 0;
-      for (const b of pool) if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 <= r * r) n += 1;
-      if (n > bestN) { bestN = n; best = a; }
+    // 진화 — 유성우(작은 셋이 서로 다른 무리에) · 거대 운석(크고 세게 · 재사용 더)
+    const evo = world.runMods.evolutions.meteor;
+    const r = meteorRadius(lv.meteor) * world.runMods.meteorRadiusMul * (evo === "shower" ? EVO.meteor.showerRadius : evo === "titan" ? EVO.meteor.titanRadius : 1);
+    const picks: typeof pool = [];
+    for (let m = 0; m < (evo === "shower" ? EVO.meteor.showerCount : 1); m += 1) {
+      const left = pool.filter((a) => picks.every((p) => (a.x - p.x) ** 2 + (a.y - p.y) ** 2 > r * r));
+      if (!left.length) break;
+      let best = left.find((a) => a.boss) ?? left[0], bestN = -1;
+      if (!best.boss) for (const a of left) {
+        let n = 0;
+        for (const b of left) if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 <= r * r) n += 1;
+        if (n > bestN) { bestN = n; best = a; }
+      }
+      picks.push(best);
     }
-    // 화면 위에서 곧장 떨어진다 — 몬스터가 내려오는 만큼 조금 아래를 노린다
-    const ty = Math.min(world.floorY - 40, best.y + best.vy * 0.5);
-    spawn(world, { x: best.x, y: world.safeTop - 40, element: "meteor", vx: 0, vy: 760, radius: 16, lifeMs: 2400, power: meteorPower(lv.meteor), damage: meteorDamage(lv.meteor) * forgeDmg(world, "meteor"), targetY: ty, hits: 99 });
+    const meteorMul = evo === "shower" ? EVO.meteor.showerDamage : evo === "titan" ? EVO.meteor.titanDamage : 1;
+    for (const best of picks) {
+      // 화면 위에서 곧장 떨어진다 — 몬스터가 내려오는 만큼 조금 아래를 노린다
+      const ty = Math.min(world.floorY - 40, best.y + best.vy * 0.5);
+      spawn(world, { x: best.x, y: world.safeTop - 40, element: "meteor", vx: 0, vy: 760, radius: evo === "shower" ? 12 : evo === "titan" ? 22 : 16, lifeMs: 2400, power: meteorPower(lv.meteor), damage: meteorDamage(lv.meteor) * forgeDmg(world, "meteor") * meteorMul, targetY: ty, hits: 99 });
+    }
     world.sfx.shot += 1;
     return true;
   });
@@ -744,6 +781,12 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         shake(world, 120, 2.4);
         world.sfx.thud += 1;
         hit(world, a, "earth", s.power, s.damage);
+        if (world.runMods.evolutions.earth === "quake") {
+          // [지진] 진화 — 떨어진 자리 주변도 흔든다
+          const qr = (s.radius + 14) * EVO.earth.quakeRadius;
+          spawnFx(world, "earth", s.x, s.y, qr, 360);
+          for (const b of world.arrows) if (b !== a && targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= qr * qr) hit(world, b, "earth", s.power, s.damage * EVO.earth.quakeSplash);
+        }
         s.active = false; break;
       }
       if (s.element === "wind" && !s.basic) {
@@ -758,9 +801,17 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
         // 독침 — 맞으면 중독(지속 피해). 상성(오우거)이면 독도 1.5배
         spawnFx(world, "poison", s.x, s.y, 14, 260);
         const alive = !hit(world, a, "poison", s.power, s.damage);
+        const pevo = world.runMods.evolutions.poison;
+        const pMs = poisonSeconds(lv.poison) * 1000 * (pevo === "venom" ? EVO.poison.venomTime : 1);
+        const pDps = s.damage * poisonDpsMul(lv.poison) * aff.mul * world.runMods.poisonMul * (pevo === "venom" ? EVO.poison.venomDps : 1) / (pevo === "cloud" ? EVO.poison.cloudDirect : 1);
         if (alive && a.active && !a.boss) {
-          a.poisonMs = poisonSeconds(lv.poison) * 1000;
-          a.poisonDps = Math.max(a.poisonDps, s.damage * poisonDpsMul(lv.poison) * aff.mul * world.runMods.poisonMul);
+          a.poisonMs = pMs;
+          a.poisonDps = Math.max(a.poisonDps, pDps);
+        }
+        if (pevo === "cloud") {
+          // [독 안개] 진화 — 맞은 자리 주변까지 중독 (직격 피해를 줄인 만큼 독은 그대로)
+          spawnFx(world, "poison", s.x, s.y, EVO.poison.cloudRadius, 420);
+          for (const b of world.arrows) if (b !== a && b.active && !b.boss && targetable(b) && (b.x - s.x) ** 2 + (b.y - s.y) ** 2 <= EVO.poison.cloudRadius ** 2) { b.poisonMs = pMs; b.poisonDps = Math.max(b.poisonDps, pDps); }
         }
         s.active = false; break;
       }

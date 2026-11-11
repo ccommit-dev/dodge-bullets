@@ -31,7 +31,9 @@ export type PerkId =
   | "convertFire" | "convertWater" | "convertIce" | "convertEarth" | "convertBolt"
   | "shotPierce" | "waterMore" | "fireWide" | "iceDeep" | "earthHeavy"
   | "arrowStorm" | "overdrive" | "chillHunt" | "chillBurst"
-  | "evoBeam" | "evoSeeker" | "evoCluster" | "evoPyre" | "evoShatter" | "evoLingering";
+  | "evoBeam" | "evoSeeker" | "evoCluster" | "evoPyre" | "evoShatter" | "evoLingering"
+  | "evoTide" | "evoSplit" | "evoQuake" | "evoBarrage" | "evoChain" | "evoSmite" | "evoCyclone" | "evoGale"
+  | "evoCloud" | "evoVenom" | "evoSanctum" | "evoJudgment" | "evoSwarm" | "evoAssassin" | "evoShower" | "evoTitan";
 
 export type PerkDef = {
   id: PerkId;
@@ -162,6 +164,87 @@ export const PERKS: PerkDef[] = [
     id: "evoLingering", rarity: "epic", needs: ["ice"], label: "진화 · 지속 서리", desc: "빙결 반경이 넓어지고 3배 오래간다 (콤보가 잘 물린다)", evolution: true,
     available: (w) => has(w, "ice") && !w.runMods.evolutions.ice,
     apply: (w) => { w.runMods.evolutions.ice = "lingering"; },
+  },
+  // 2026-11-11 — 나머지 8종 (game/evolutions.ts 가 수치를 쥔다). 장점마다 대가가 있다
+  {
+    id: "evoTide", rarity: "epic", needs: ["water"], label: "진화 · 해일", desc: "물살이 크고 한 마리 더 꿴다 · 대신 느리고 재사용 +25%", evolution: true,
+    available: (w) => has(w, "water") && !w.runMods.evolutions.water,
+    apply: (w) => { w.runMods.evolutions.water = "tide"; },
+  },
+  {
+    id: "evoSplit", rarity: "epic", needs: ["water"], label: "진화 · 물 분열", desc: "물살이 세 갈래로 퍼진다 · 한 줄기 피해 70%", evolution: true,
+    available: (w) => has(w, "water") && !w.runMods.evolutions.water,
+    apply: (w) => { w.runMods.evolutions.water = "split"; },
+  },
+  {
+    id: "evoQuake", rarity: "epic", needs: ["earth"], label: "진화 · 지진", desc: "바위가 떨어진 자리 주변도 흔든다(35%) · 직격 피해 −15%", evolution: true,
+    available: (w) => has(w, "earth") && !w.runMods.evolutions.earth,
+    apply: (w) => { w.runMods.evolutions.earth = "quake"; },
+  },
+  {
+    id: "evoBarrage", rarity: "epic", needs: ["earth"], label: "진화 · 연발 바위", desc: "바위 두 개를 함께 던진다 · 하나는 조금 작고 피해 90%", evolution: true,
+    available: (w) => has(w, "earth") && !w.runMods.evolutions.earth,
+    apply: (w) => { w.runMods.evolutions.earth = "barrage"; },
+  },
+  {
+    id: "evoChain", rarity: "epic", needs: ["bolt"], label: "진화 · 연쇄 번개", desc: "번개가 두 마리 더 튄다 · 한 번 피해 −38%", evolution: true,
+    available: (w) => has(w, "bolt") && !w.runMods.evolutions.bolt,
+    apply: (w) => { w.runMods.evolutions.bolt = "chain"; },
+  },
+  {
+    id: "evoSmite", rarity: "epic", needs: ["bolt"], label: "진화 · 낙뢰", desc: "대장 · 조준 화살부터 두 마리에 2.2배 · 재사용 +15%", evolution: true,
+    available: (w) => has(w, "bolt") && !w.runMods.evolutions.bolt,
+    apply: (w) => { w.runMods.evolutions.bolt = "smite"; },
+  },
+  {
+    id: "evoCyclone", rarity: "epic", needs: ["wind"], label: "진화 · 회오리", desc: "바람이 크고 오래 머문다 · 대신 느리다", evolution: true,
+    available: (w) => has(w, "wind") && !w.runMods.evolutions.wind,
+    apply: (w) => { w.runMods.evolutions.wind = "cyclone"; },
+  },
+  {
+    id: "evoGale", rarity: "epic", needs: ["wind"], label: "진화 · 돌풍", desc: "바람이 빠르고 멀리 간다 · 폭은 좁다", evolution: true,
+    available: (w) => has(w, "wind") && !w.runMods.evolutions.wind,
+    apply: (w) => { w.runMods.evolutions.wind = "gale"; },
+  },
+  {
+    id: "evoCloud", rarity: "epic", needs: ["poison"], label: "진화 · 독 안개", desc: "맞은 자리 주변까지 중독시킨다 · 직격 피해 −40%", evolution: true,
+    available: (w) => has(w, "poison") && !w.runMods.evolutions.poison,
+    apply: (w) => { w.runMods.evolutions.poison = "cloud"; },
+  },
+  {
+    id: "evoVenom", rarity: "epic", needs: ["poison"], label: "진화 · 맹독", desc: "독이 1.55배 세게 · 대신 짧게(75%) 남는다", evolution: true,
+    available: (w) => has(w, "poison") && !w.runMods.evolutions.poison,
+    apply: (w) => { w.runMods.evolutions.poison = "venom"; },
+  },
+  {
+    id: "evoSanctum", rarity: "epic", needs: ["holy"], label: "진화 · 성역", desc: "빛이 셋을 함께 내리친다(48%) · 방어막 수리 1.25배", evolution: true,
+    available: (w) => has(w, "holy") && !w.runMods.evolutions.holy,
+    apply: (w) => { w.runMods.evolutions.holy = "sanctum"; },
+  },
+  {
+    id: "evoJudgment", rarity: "epic", needs: ["holy"], label: "진화 · 심판", desc: "한 마리에 1.7배 · 재사용 +20% · 수리 절반", evolution: true,
+    available: (w) => has(w, "holy") && !w.runMods.evolutions.holy,
+    apply: (w) => { w.runMods.evolutions.holy = "judgment"; },
+  },
+  {
+    id: "evoSwarm", rarity: "epic", needs: ["shadow"], label: "진화 · 그림자 분신", desc: "그림자 칼 두 개 더 · 하나의 피해 −15%", evolution: true,
+    available: (w) => has(w, "shadow") && !w.runMods.evolutions.shadow,
+    apply: (w) => { w.runMods.evolutions.shadow = "swarm"; },
+  },
+  {
+    id: "evoAssassin", rarity: "epic", needs: ["shadow"], label: "진화 · 암살", desc: "칼을 하나로 모아 단단한 한 마리를 끊는다 · 재사용 +20%", evolution: true,
+    available: (w) => has(w, "shadow") && !w.runMods.evolutions.shadow,
+    apply: (w) => { w.runMods.evolutions.shadow = "assassin"; },
+  },
+  {
+    id: "evoShower", rarity: "epic", needs: ["meteor"], label: "진화 · 유성우", desc: "작은 운석 셋이 따로 떨어진다 · 하나는 50%", evolution: true,
+    available: (w) => has(w, "meteor") && !w.runMods.evolutions.meteor,
+    apply: (w) => { w.runMods.evolutions.meteor = "shower"; },
+  },
+  {
+    id: "evoTitan", rarity: "epic", needs: ["meteor"], label: "진화 · 거대 운석", desc: "폭발 반경 1.4배 · 피해 1.15배 · 재사용 +40%", evolution: true,
+    available: (w) => has(w, "meteor") && !w.runMods.evolutions.meteor,
+    apply: (w) => { w.runMods.evolutions.meteor = "titan"; },
   },
 ];
 
