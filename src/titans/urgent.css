@@ -4,7 +4,7 @@
 .titans-field .urgent-badge { position: absolute; left: 6px; top: 109px; z-index: 12; display: flex; align-items: center; gap: 3px; box-sizing: border-box; height: 28px; margin: 0; padding: 0 5px 0 2px; border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 2px 0 rgba(43, 26, 13, .35); font: inherit; line-height: 1; cursor: pointer; animation: urgent-badge-glow 1.8s ease-in-out infinite; }
 .titans-field:not(.lanes-wide) .urgent-badge { top: 94px; }
 .titans-field .urgent-badge img { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--flat-cream-2); object-fit: contain; }
-.titans-field .urgent-badge small { font-size: 12px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--flat-ink); }
+.titans-field .urgent-badge small { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--flat-ink); }
 .titans-field .urgent-badge.is-last small { color: #b42318; }
 /* 눈길은 테두리 빛으로만 — 크기 · 자리를 흔들면 옆 알림 · 동료 머리와 닿는다 */
 @keyframes urgent-badge-glow { 50% { box-shadow: 0 2px 0 rgba(43, 26, 13, .35), 0 0 0 3px rgba(242, 194, 50, .75); } }
