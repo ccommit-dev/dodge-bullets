@@ -230,7 +230,8 @@ export function BeatGame({
       if (!ok) { setAdDouble(free ? "free" : "ad"); return; }
       trackEvent("ad_complete", { placement: "beatDouble" });
       const today = new Date().toLocaleDateString("sv-SE");
-      await updateCharacterProgress(userHash, (current) => consumeAdReward(current, "beatDouble", today));
+      // 진행 저장의 지갑에 더한다 — 미러 키에만 쓰면 다음 불러오기의 max 합치기에서 사라졌다(2026-11-11)
+      await updateCharacterProgress(userHash, (current) => ({ ...consumeAdReward(current, "beatDouble", today), sharedCoins: current.sharedCoins + coinGain }));
       const nextCoins = await saveCoins(userHash, coinsRef.current + coinGain);
       coinsRef.current = nextCoins;
       onCoinsRef.current(nextCoins);
@@ -722,7 +723,10 @@ export function BeatGame({
                   return {
                     ...current,
                     beatSkills: { ...grown.skills },
-                    skillPoints: Math.max(current.skillPoints, grown.sp),
+                    // 비트 sp 는 "지금까지 번 총량" · skillPoints 는 "쓰고 남은 잔액" — max 로 합치면 사냥터에서 쓴 SP 가 클리어마다 되살아났다(2026-11-11).
+                    // 레거시 이전(progression/storage)과 같은 규칙: 아직 안 더한 증가분만 더하고 더한 양을 적는다
+                    skillPoints: current.skillPoints + Math.max(0, grown.sp - current.beatSpMigrated),
+                    beatSpMigrated: Math.max(current.beatSpMigrated, grown.sp),
                     shoulderShards: current.shoulderShards + (firstBossClear && !alreadyOwned ? 0 : fragmentGain),
                     enhancementMaterials: current.enhancementMaterials + materialGainRef.current,
                     ownedShoulders: craftedNow ? [...current.ownedShoulders, chapterShoulder] : current.ownedShoulders,

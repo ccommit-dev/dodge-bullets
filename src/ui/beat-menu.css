@@ -93,3 +93,13 @@ button.schedule-play:active { transform: translateY(1px); box-shadow: 0 1px 0 #b
 /* 비트 수련 단계 알약은 한 줄 (2026-11-11) — 체력을 넣으면서 360px 에서 두 줄로 접혔다. 오른쪽 일섬 게이지는 댐 방어전 것이라 비트 화면엔 없어 폭 상한을 풀어 준다 */
 .hud-left:has(> .beat-track-name) { max-width: calc(100% - 110px); }
 .beat-track-name { white-space: nowrap; }
+
+/* 비트 결과 — 낮은 화면(높이 700px 이하)에선 간격을 줄여 단추 셋이 스크롤 없이 들어오게 (2026-11-11, 360×640 에서 아래 둘이 밀려났다) */
+@media (max-height: 700px) {
+  .beat-layer .game-overlay .overlay-content { gap: 6px; padding-top: 10px; padding-bottom: 10px; }
+  .beat-layer .game-overlay .overlay-content > * { margin-top: 0; margin-bottom: 0; }
+  .beat-layer .game-overlay .title { font-size: 26px; line-height: 1.15; }
+  .beat-layer .game-overlay .beat-judge-summary { margin: 2px auto 4px; padding: 6px 10px; }
+  .beat-layer .game-overlay .beat-hunt-bridge { margin: 2px auto; padding: 5px 9px; }
+  .beat-layer .game-overlay .cta, .beat-layer .game-overlay button.cta-ghost { min-height: 46px; margin-top: 4px; }
+}

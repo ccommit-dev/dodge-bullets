@@ -4445,12 +4445,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <UrgentBadge face={urgentFace(save.stage)} leftMs={urgentNow.deadline - nowTick} onOpen={() => setUrgentOpen(true)} />
         )}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
-          {/* 승급전 (2026-11-11) — 문턱에 닿으면. '나중에' 를 누르면 이번 접속 동안 숨긴다 */}
-          {promoNext && !boss && !specialFight && !dismissedAlerts.includes(`promo:${promoNext.rank}`) && (
-            <button type="button" className="battle-alert reward promo-alert" onClick={() => setPromoOpen(true)}>
-              <small>승급전</small><b>{promoNext.title} 도전</b><i>›</i>
-            </button>
-          )}
           {routine.filter((item) => item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)).map((item) => (
             <button key={item.id} type="button" className="battle-alert claim" onClick={() => { setDismissedAlerts((items) => [...items, `routine:${item.id}:${item.detail}`]); runRoutine(item); }}>
               <small>귀환 정산</small><b>{item.detail}</b><i>›</i>
@@ -4459,6 +4453,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           {routineReward && !dismissedAlerts.includes(`routine-reward:${character.routineClaimedDate}`) && (
             <button type="button" className="battle-alert reward" onClick={() => { setDismissedAlerts((items) => [...items, `routine-reward:${character.routineClaimedDate}`]); void claimRoutine(); }}>
               <small>일일 루틴</small><b>보상 받기 · 보석 {ROUTINE_REWARD_GEMS}</b><i>›</i>
+            </button>
+          )}
+          {/* 승급전 (2026-11-11) — 문턱에 닿으면 · 귀환 정산 · 루틴 보상 뒤(알림 줄은 첫 칸만 보인다 — 맨 위에 두면 그 둘을 가렸다). '나중에' 면 이번 접속 동안 숨긴다 */}
+          {promoNext && !boss && !specialFight && !dismissedAlerts.includes(`promo:${promoNext.rank}`) && (
+            <button type="button" className="battle-alert reward promo-alert" onClick={() => setPromoOpen(true)}>
+              <small>승급전</small><b>{promoNext.title} 도전</b><i>›</i>
             </button>
           )}
           {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (

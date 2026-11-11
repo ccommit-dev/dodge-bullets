@@ -44,7 +44,11 @@ const clickGo = () => waitFor(() => page.evaluate(() => { const b = document.que
 // ── 1. 문턱 → 알림 → 전단 ──
 await boot({ stage: 8 });
 const l1 = await waitFor(async () => { const v = await look(); return v.alert ? v : null; }, 5000);
-ok("최고 8층 · 0등급이면 승급전 알림(맨 위)", !!l1 && /승급전/.test(l1.alert) && /청동 파수꾼/.test(l1.alert) && /promo-alert/.test(l1.firstAlert ?? ""), JSON.stringify(l1));
+ok("최고 8층 · 0등급이면 승급전 알림(정산 · 루틴 보상이 없으면 첫 칸)", !!l1 && /승급전/.test(l1.alert) && /청동 파수꾼/.test(l1.alert) && /promo-alert/.test(l1.firstAlert ?? ""), JSON.stringify(l1));
+// 귀환 정산 · 루틴 보상이 있으면 그 뒤 — 알림 줄은 첫 칸만 보여 맨 위에 두면 그 둘을 가린다(2026-11-11)
+const order = await page.evaluate(() => [...document.querySelectorAll(".battle-alert-stack > .battle-alert")].map((b) => b.className));
+const pi = order.findIndex((c) => c.includes("promo-alert")), ci = order.findIndex((c) => / claim|reward(?! promo)/.test(c) && !c.includes("promo") && !c.includes("hottime"));
+ok("승급전 알림은 정산 · 루틴 보상 뒤", ci < 0 || pi > ci, JSON.stringify(order));
 await page.evaluate(() => document.querySelector(".promo-alert")?.click()); await sleep(300);
 const poster = await page.evaluate(() => {
   const p = document.querySelector('[data-promo="poster"]'); if (!p) return null;
