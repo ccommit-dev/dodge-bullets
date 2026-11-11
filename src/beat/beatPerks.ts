@@ -12,13 +12,13 @@ export type BeatPerkId = "kick" | "ensemble" | "dropBurst" | "feverLong" | "heal
 export type BeatPerkDef = { id: BeatPerkId; label: string; desc: string; icon: "kick" | "allies" | "drop" | "fever" | "heal" | "combo" | "weak" };
 
 export const BEAT_PERKS: BeatPerkDef[] = [
-  { id: "kick", label: "킥 강타", desc: "킥 레인 피해 +40%", icon: "kick" },
-  { id: "ensemble", label: "합주", desc: "햇·스네어 레인 피해 +40%", icon: "allies" },
-  { id: "dropBurst", label: "드롭 폭발", desc: "드롭 레인 피해 +50%", icon: "drop" },
-  { id: "feverLong", label: "긴 피버", desc: "피버 지속 +2초", icon: "fever" },
-  { id: "healPlus", label: "숨 고르기", desc: "시작 회복 게이지 +3 (8이면 HP 회복)", icon: "heal" },
-  { id: "comboResonance", label: "콤보 공명", desc: "콤보 피해 보정 ×1.5", icon: "combo" },
-  { id: "weakTracker", label: "약점 추적", desc: "약점 레인 피해 ×2.5 → ×3.5", icon: "weak" },
+  { id: "kick", label: "킥 강타", desc: "킥 피해 +40% · 점수 +10% · 클리어 골드 +15%", icon: "kick" },
+  { id: "ensemble", label: "합주", desc: "스네어·햇 피해 +40% · 판정 창 +18ms · 점수 +12%", icon: "allies" },
+  { id: "dropBurst", label: "드롭 폭발", desc: "스킬 피해 +50% · 피버 충전 +35% · 골드 +15%", icon: "drop" },
+  { id: "feverLong", label: "긴 피버", desc: "피버 지속 +2초 · 피버 중 점수 +15%", icon: "fever" },
+  { id: "healPlus", label: "숨 고르기", desc: "최대 HP +2", icon: "heal" },
+  { id: "comboResonance", label: "콤보 공명", desc: "콤보 피해 ×1.5 · 첫 MISS 한 번은 콤보 · HP 유지 · 점수 +15%", icon: "combo" },
+  { id: "weakTracker", label: "약점 추적", desc: "약점 피해 ×3.5 · 약점 적중 +60점 · 골드 +15% (장 대장 곡)", icon: "weak" },
 ];
 
 export const BEAT_PERK_BY_ID: Record<BeatPerkId, BeatPerkDef> = Object.fromEntries(BEAT_PERKS.map((p) => [p.id, p])) as Record<BeatPerkId, BeatPerkDef>;
@@ -29,24 +29,46 @@ export type BeatMods = {
   healBonus: number;
   comboMul: number;
   weakMul: number;
+  scoreMul: number;
+  feverScoreMul: number;
+  coinMul: number;
+  comboShield: number;
+  judgeWindowBonusSec: number;
+  dropChargeMul: number;
+  extraHp: number;
+  weakScoreBonus: number;
 };
 
 export const WEAK_LANE_MUL = 2.5;
 
 export function emptyBeatMods(): BeatMods {
-  return { laneMul: [1, 1, 1, 1], feverExtraMs: 0, healBonus: 0, comboMul: 1, weakMul: WEAK_LANE_MUL };
+  return {
+    laneMul: [1, 1, 1, 1],
+    feverExtraMs: 0,
+    healBonus: 0,
+    comboMul: 1,
+    weakMul: WEAK_LANE_MUL,
+    scoreMul: 1,
+    feverScoreMul: 1,
+    coinMul: 1,
+    comboShield: 0,
+    judgeWindowBonusSec: 0,
+    dropChargeMul: 1,
+    extraHp: 0,
+    weakScoreBonus: 0,
+  };
 }
 
 export function beatModsOf(id: BeatPerkId | null | undefined): BeatMods {
   const m = emptyBeatMods();
   switch (id) {
-    case "kick": m.laneMul[0] = 1.4; break;
-    case "ensemble": m.laneMul[1] = 1.4; m.laneMul[2] = 1.4; break;
-    case "dropBurst": m.laneMul[3] = 1.5; break;
-    case "feverLong": m.feverExtraMs = 2000; break;
-    case "healPlus": m.healBonus = 3; break;
-    case "comboResonance": m.comboMul = 1.5; break;
-    case "weakTracker": m.weakMul = 3.5; break;
+    case "kick": m.laneMul[0] = 1.4; m.scoreMul = 1.1; m.coinMul = 1.15; break;
+    case "ensemble": m.laneMul[1] = 1.4; m.laneMul[2] = 1.4; m.judgeWindowBonusSec = 0.018; m.scoreMul = 1.12; break;
+    case "dropBurst": m.laneMul[3] = 1.5; m.dropChargeMul = 1.35; m.coinMul = 1.15; break;
+    case "feverLong": m.feverExtraMs = 2000; m.feverScoreMul = 1.15; break;
+    case "healPlus": m.extraHp = 2; break;
+    case "comboResonance": m.comboMul = 1.5; m.comboShield = 1; m.scoreMul = 1.15; break;
+    case "weakTracker": m.weakMul = 3.5; m.weakScoreBonus = 60; m.coinMul = 1.15; break;
     default: break;
   }
   return m;
@@ -59,9 +81,9 @@ function hash32(s: string): number {
   return h >>> 0;
 }
 
-/** 곡·날짜별 3장 — 서로 다른 카드 */
-export function beatPerkOffer(trackId: string, dayKey: string): BeatPerkId[] {
-  const ids = BEAT_PERKS.map((p) => p.id);
+/** 곡·날짜별 3장 — 서로 다른 카드. 약점 추적은 약점 레인이 열리는 장 대장 곡(beatBossStage)에만 */
+export function beatPerkOffer(trackId: string, dayKey: string, bossTrack = true): BeatPerkId[] {
+  const ids = BEAT_PERKS.map((p) => p.id).filter((id) => bossTrack || id !== "weakTracker");
   let h = hash32(`${trackId}:${dayKey}`);
   const out: BeatPerkId[] = [];
   while (out.length < 3 && ids.length > 0) {

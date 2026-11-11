@@ -167,7 +167,7 @@ for (let i = 0; i < 14; i += 1) {
   judges.push(res.judge);
   for (let k = 0; k < 4; k += 1) {
     await sleep(30);
-    const s = await page.evaluate(() => ({ beat: document.querySelector(".beat-monster-wrap")?.getAttribute("data-beat"), action: [...(document.querySelector(".beat-command-party")?.classList ?? [])].find((c) => c.startsWith("enemy-")), hit: (() => { const el = document.querySelector(".beat-monster-hit"); return !!el && getComputedStyle(el).opacity === "1"; })() }));
+    const s = await page.evaluate(() => ({ beat: document.querySelector(".beat-monster-wrap")?.getAttribute("data-beat"), action: [...(document.querySelector(".beat-command-party")?.classList ?? [])].find((c) => c.startsWith("enemy-")), hit: (() => { const el = document.querySelector(".beat-monster-hit"); return (!!el && getComputedStyle(el).opacity === "1") || !!document.querySelector('.beat-monster-sheet[data-act="hit"]'); })() }));
     if (s.beat) beatsSeen.add(s.beat);
     if (s.action) actionsSeen.add(s.action);
     if (s.hit) hitFrameSeen = true;

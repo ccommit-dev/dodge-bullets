@@ -1,6 +1,8 @@
 import type { BeatDifficulty } from "./types";
 import type { BeatPatternId, BeatTrackDef } from "./tracks";
 import { BEAT_TRACKS, GRADE_ORDER, gradeOf, type BeatGrade } from "./tracks";
+import { killGoldOldUnit } from "../titans/model";
+import { COIN_UNIT } from "../economy/units";
 
 /** Solo raising stats (Roadmap A). */
 export type SkillId = "kick" | "hat" | "snare" | "fire" | "throat";
@@ -267,4 +269,20 @@ export function hardUnlocked(progress: Pick<BeatRpgProgress, "grades">, track: P
 /** 곡의 등급 요약 — 카드 배지용 */
 export function gradesFor(progress: Pick<BeatRpgProgress, "grades">, trackId: string): Partial<Record<BeatDifficulty, BeatGrade>> {
   return { easy: progress.grades[`${trackId}:easy`], medium: progress.grades[`${trackId}:medium`], hard: progress.grades[`${trackId}:hard`] };
+}
+
+
+/** 사냥터 연동 골드가 따라가는 방치 시간(초) · 효율 — 기본 방치(IDLE.baseRate 0.1, 배율 1) 10분치 */
+export const BEAT_LINK_IDLE_SEC = 600;
+const BEAT_LINK_RATE = 0.1;
+
+/**
+ * 사냥터 진행도 비례 비트 수련 보너스 골드 (모드 간 보상 단절 해소, 2026-11-11).
+ * 한 판(1~3분 손으로)이 지금 층 기본 방치 10분치 × 난도(1 / 1.25 / 1.6) — 초반(10층 아래)은 곡 기본 보상(55~195)이 주축이고,
+ * 그 위는 이 몫이 커져 대장간 값 성장을 따라간다. 대장간 지갑이라 옛 곡선 ÷ COIN_UNIT (방치 정산과 같은 단위)
+ */
+export function beatStageBonusGold(titanBestStage: number, difficulty: BeatDifficulty): number {
+  const stage = Math.max(1, Math.floor(titanBestStage || 1));
+  const diffMult = difficulty === "hard" ? 1.6 : difficulty === "medium" ? 1.25 : 1;
+  return Math.floor((killGoldOldUnit(stage, false, false) * BEAT_LINK_RATE * BEAT_LINK_IDLE_SEC * diffMult) / COIN_UNIT);
 }

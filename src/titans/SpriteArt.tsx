@@ -193,6 +193,8 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */
 // 2026-10-13 재검(접촉 시트 육안): spider-queen 은 원본이 왼쪽이라 반전이 오히려 오른쪽을 보게 했다 → 제거 · void-lich 는 정면 → 제거 · flame-wyvern·lava-drake 는 원본이 오른쪽(머리가 오른쪽) → 추가
 const FLIP_MONSTERS = new Set<string>(["fire-demon", "fire-demon-hit", "fire-demon-defeat", "thorn-boar-king", "thorn-boar-king-hit", "thorn-boar-king-defeat", "flame-wyvern-clean", "flame-wyvern-clean-hit", "flame-wyvern-clean-defeat", "lava-drake", "lava-drake-hit", "lava-drake-defeat"]);
+/** 오른쪽을 보게 렌더된 그림인가 — 적은 왼쪽을 본다(뒤집어 그린다). 비트 수련 상대도 같은 규칙 */
+export function monsterFacesRight(art: string): boolean { return FLIP_MONSTERS.has(art); }
 export function monsterVisibleMargin(assetPath: string): [number, number] {
   const base = assetPath.split("/").pop()?.replace(/(-hit|-defeat)?\.png$/, "") ?? "";
   return MONSTER_VISIBLE_MARGIN[base] ?? [0.15, 0.15];

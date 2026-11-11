@@ -154,8 +154,6 @@ function accentSpike(
   const isBackBeat = inBar === Math.floor(subdivision / 2);
   const quarter = inBar % Math.max(1, subdivision / 4) === 0;
   const eighth = inBar % Math.max(1, subdivision / 8) === 0;
-  // Keep every chart deterministic and readable: 2 / 4 / 8 required notes per
-  // bar. Difficulty changes density without changing the licensed song tempo.
   if (diff === "easy") return isDown || isBackBeat;
   if (diff === "medium") return quarter;
   return eighth;
@@ -181,7 +179,7 @@ const TRACK_DEFS: BeatTrackDef[] = [
     subdivision: 4,
     difficulty: "easy",
     bars: 28,
-    desc: "하드 트랜스의 강한 킥을 따라가는 입문 원정",
+    desc: "하드 트랜스의 강한 킥을 따라가는 입문 수련",
     lessonTitle: "CYBERNETIC OVERLOAD",
     lessonHint: "강박의 방향 노트부터 천천히 맞추세요",
     reward: 55,
@@ -196,7 +194,7 @@ const TRACK_DEFS: BeatTrackDef[] = [
     subdivision: 4,
     difficulty: "easy",
     bars: 24,
-    desc: "신스웨이브 리듬을 읽는 레트로 아케이드 원정",
+    desc: "신스웨이브 리듬을 읽는 레트로 아케이드 수련",
     lessonTitle: "ARCADE OVERDRIVE",
     lessonHint: "킥과 스네어의 교차 박자를 확인하세요",
     reward: 65,
@@ -226,7 +224,7 @@ const TRACK_DEFS: BeatTrackDef[] = [
     subdivision: 8,
     difficulty: "medium",
     bars: 24,
-    desc: "경쾌한 멜로디의 엇박을 익히는 변칙 원정",
+    desc: "경쾌한 멜로디의 엇박을 익히는 변칙 수련",
     lessonTitle: "PLAYFUL PIXELS",
     lessonHint: "색보다 방향을 먼저 읽고 입력하세요",
     reward: 90,
@@ -241,7 +239,7 @@ const TRACK_DEFS: BeatTrackDef[] = [
     subdivision: 8,
     difficulty: "medium",
     bars: 24,
-    desc: "기타 스트럼과 박수 악센트를 교차하는 리듬 원정",
+    desc: "기타 스트럼과 박수 악센트를 교차하는 리듬 수련",
     lessonTitle: "HAPPY STRUM DAY",
     lessonHint: "백비트 노트를 정확하게 이어 피버를 채우세요",
     reward: 105,
@@ -256,7 +254,7 @@ const TRACK_DEFS: BeatTrackDef[] = [
     subdivision: 16,
     difficulty: "hard",
     bars: 28,
-    desc: "스윙과 디스코 싱코페이션을 섞은 최종 원정",
+    desc: "스윙과 디스코 싱코페이션을 섞은 최종 수련",
     lessonTitle: "STARLIGHT STRUT",
     lessonHint: "16비트 구간에서도 필수 악센트만 정확히 노리세요",
     reward: 135,
@@ -301,10 +299,6 @@ function seededRng(seed: string): () => number {
   };
 }
 
-/**
- * 곡 구간 — 트랜스/신스웨이브 구조를 마디 비율로 근사한다.
- * 인트로(0~18%) → 빌드업(~40%) → 드롭(~62%) → 브레이크(~72%) → 드롭2(~100%)
- */
 /** 구간 밀도표 — intro/break: 4분음 확률, build: 램프 시작→끝, drop: 기본 강박 유지 확률, fill: 프레이즈 끝 채움 스텝 수 */
 export const SECTION_DENSITY: Record<BeatDifficulty, { intro: number; buildFrom: number; buildTo: number; drop: number; break: number; fill: number }> = {
   easy: { intro: 0.2, buildFrom: 0.35, buildTo: 0.6, drop: 0.75, break: 0.15, fill: 0 },
@@ -312,38 +306,64 @@ export const SECTION_DENSITY: Record<BeatDifficulty, { intro: number; buildFrom:
   hard: { intro: 0.45, buildFrom: 0.55, buildTo: 1.0, drop: 1.0, break: 0.45, fill: 4 },
 };
 
-function sectionAt(bar: number, bars: number): NonNullable<BeatChartStep["section"]> {
+/**
+ * 곡별 실제 전개 비율 [인트로 끝, 빌드업 끝, 1차 하이라이트(드롭) 끝, 브레이크 끝]
+ * 예전의 전 곡 일괄 0.18/0.40/0.62/0.72 고정 비율 대신 곡 장르·마디 구조에 맞춰 하이라이트 진입 시점을 조정한다.
+ */
+export const TRACK_SECTION_PROFILES: Record<string, [number, number, number, number]> = {
+  "black-city-beat": [0.16, 0.37, 0.63, 0.74],
+  "cybernetic-overload": [0.14, 0.32, 0.64, 0.75],
+  "arcade-overdrive": [0.14, 0.34, 0.66, 0.76],
+  "cherry-pop": [0.15, 0.35, 0.65, 0.75],
+  "playful-pixels": [0.14, 0.34, 0.64, 0.75],
+  "pixel-rush": [0.12, 0.32, 0.66, 0.76],
+  "happy-strum-day": [0.16, 0.36, 0.65, 0.76],
+  "azure-sky": [0.18, 0.40, 0.62, 0.72],
+  "one-more-time": [0.18, 0.42, 0.66, 0.76],
+  "turkish-march": [0.12, 0.32, 0.60, 0.72],
+  "starlight-strut": [0.14, 0.35, 0.64, 0.75],
+  "andromeda": [0.17, 0.39, 0.65, 0.76],
+  "duel": [0.13, 0.34, 0.62, 0.73],
+  "plasma-gun": [0.10, 0.28, 0.66, 0.76],
+  "dual-racing": [0.12, 0.32, 0.60, 0.72],
+  "strawberry-lemonade": [0.14, 0.34, 0.64, 0.75],
+};
+
+/**
+ * 대표곡 전용 수제 하이라이트 레인 모티프 — 드롭(클라이맥스) 구간에서 곡의 주제 선율·교차 감각을 손끝에 전달한다.
+ */
+export const TRACK_DROP_MOTIFS: Record<string, Array<0 | 1 | 2 | 3>> = {
+  "black-city-beat": [0, 1, 0, 2, 0, 1, 3, 2],
+  "cherry-pop": [0, 1, 2, 1, 0, 3, 2, 1],
+  "azure-sky": [0, 2, 1, 3, 2, 0, 1, 3],
+  "turkish-march": [0, 1, 2, 3, 2, 1, 0, 3],
+  "plasma-gun": [0, 2, 3, 0, 1, 2, 3, 1],
+  "dual-racing": [0, 3, 0, 3, 1, 2, 1, 2],
+  "duel": [1, 3, 0, 2, 1, 3, 2, 0],
+  "andromeda": [0, 2, 1, 2, 3, 2, 1, 0],
+  "starlight-strut": [0, 2, 1, 3, 0, 1, 2, 3],
+  "strawberry-lemonade": [2, 1, 0, 3, 1, 2, 3, 0],
+};
+
+export function sectionAtForTrack(trackId: string, bar: number, bars: number): NonNullable<BeatChartStep["section"]> {
+  const [introEnd, buildEnd, dropEnd, breakEnd] = TRACK_SECTION_PROFILES[trackId] ?? [0.18, 0.4, 0.62, 0.72];
   const t = bar / Math.max(1, bars);
-  if (t < 0.18) return "intro";
-  if (t < 0.4) return "build";
-  if (t < 0.62) return "drop";
-  if (t < 0.72) return "break";
+  if (t < introEnd) return "intro";
+  if (t < buildEnd) return "build";
+  if (t < dropEnd) return "drop";
+  if (t < breakEnd) return "break";
   return "drop";
 }
 
-/**
- * 채보 생성 — 곡마다 다르다 (사용자 지시: 노래마다 노트가 똑같던 문제).
- *
- * 세 가지 축이 채보를 가른다:
- *  1. BPM: 빠른 곡(150+)은 16비트를 성기게, 느린 곡(≤120)은 8비트 엇박을 촘촘하게 —
- *     "손이 따라갈 수 있는 초당 노트 수"를 BPM에 맞춘다
- *  2. 구간: 인트로는 강박만, 빌드업은 점점 조밀, 드롭은 최대 밀도 + 레인 교차,
- *     브레이크는 롱노트(HOLD) 위주 — 곡의 에너지 곡선을 그대로 손에 옮긴다
- *  3. 패턴 루프(악기 배치)와 곡 id 시드: 같은 밀도라도 어떤 스텝이 노트가 되는지가 곡마다 다르다
- * 롱노트는 지속음(트럼펫·목청)이 놓인 스텝에서 2~4스텝으로 뻗는다.
- */
 export function buildChart(track: BeatTrackDef): BeatChartStep[] {
   const loop = expandLoop(PATTERN_LOOPS[track.patternId], track.subdivision);
   const stepsPerBar = track.subdivision;
   const total = track.bars * stepsPerBar;
   const chart: BeatChartStep[] = new Array(total);
   const rng = seededRng(track.id);
-  // BPM 보정: 초당 노트 상한 ≈ 4.2. 16비트 150BPM은 스텝당 0.1초라 절반만 노트로
   const stepSec = (60 / track.bpm) * 4 / stepsPerBar;
   const bpmKeep = Math.min(1, (stepSec * 4.2));
-  // 펌프식 레벨 특징: 초당 노트 상한과 소리 크기 하한이 레벨을 따른다 (docs/CONTENT_BEAT_DODGE_PLAN.md §4)
   const feat = levelFeatureFor(track);
-  // bpmKeep(4.2/s)이 이미 걸러낸 뒤이므로, 레벨 상한이 그보다 낮을 때만 그 비율만큼 더 덜어낸다 (이중 감산 방지)
   const levelKeep = Math.min(1, (stepSec * feat.notesPerSec) / Math.max(0.05, bpmKeep));
   let accentOrdinal = 0;
   const offsetSteps = Math.max(0, Math.round((track.audioOffsetMs ?? 0) / (stepDurationSec(track) * 1000)));
@@ -357,55 +377,55 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     : track.difficulty === "medium"
       ? [0, 2, 1, 2, 3, 1, 0, 2, 1, 3, 2, 0]
       : [0, 2, 1, 3, 2, 0, 1, 2, 3, 1, 0, 2, 1, 3, 0, 2];
+  const dropMotif = TRACK_DROP_MOTIFS[track.id];
+  const [introEnd, buildEnd] = TRACK_SECTION_PROFILES[track.id] ?? [0.18, 0.4, 0.62, 0.72];
 
   for (let i = 0; i < total; i++) {
     let sound = loop[i % loop.length];
     const inBar = i % stepsPerBar;
     const bar = Math.floor(i / stepsPerBar);
-    const section = sectionAt(bar, track.bars);
+    const section = sectionAtForTrack(track.id, bar, track.bars);
     const base = accentSpike(sound, inBar, track.subdivision, track.difficulty);
     const isDown = inBar === 0;
     const quarter = inBar % Math.max(1, stepsPerBar / 4) === 0;
-    // 구간·BPM이 "얼마나 조밀한가"를 정한다 (인트로 강박 → 빌드업 점증 → 드롭 최대 → 브레이크 성김)
-    // 난이도별 구간 밀도 (docs/CONTENT_BEAT_DODGE_PLAN.md §1 보강): 같은 곡이라도 EASY 는 드롭이 성기고 HARD 는 브레이크마저 빽빽하다
     const dens = SECTION_DENSITY[track.difficulty];
     const t = bar / Math.max(1, track.bars);
     let spike = false;
     if (section === "intro") spike = isDown || (quarter && rng() < dens.intro);
     else if (section === "build") {
-      const ramp = dens.buildFrom + Math.max(0, Math.min(1, (t - 0.18) / 0.22)) * (dens.buildTo - dens.buildFrom);
+      const span = Math.max(0.08, buildEnd - introEnd);
+      const ramp = dens.buildFrom + Math.max(0, Math.min(1, (t - introEnd) / span)) * (dens.buildTo - dens.buildFrom);
       spike = base && rng() < ramp * bpmKeep;
     } else if (section === "drop") {
-      // 클라이맥스(마지막 10%)는 확률 없이 기본 강박 전부 — 곡의 끝을 손이 알게
-      spike = base && (t >= 0.9 ? bpmKeep >= 0.5 || rng() < bpmKeep : rng() < bpmKeep * dens.drop);
+      // 클라이맥스 구간: 첫 마디 진입 악센트와 마지막 10% 피날레를 확실하게 살린다
+      const dropEntry = (bar > 0 && sectionAtForTrack(track.id, bar - 1, track.bars) !== "drop") && isDown;
+      spike = dropEntry || (base && (t >= 0.9 ? bpmKeep >= 0.5 || rng() < bpmKeep : rng() < bpmKeep * dens.drop));
     } else spike = isDown || (quarter && rng() < dens.break);
-    // 곡의 소리: 작은 소리(숨·클릭)는 레벨 하한 아래면 노트가 아니고, 큰 소리일수록 남는다 — 같은 밀도라도 "무엇이 들리는가"를 따른다
+
     if (spike && !isDown) {
       const loud = SOUND_LOUDNESS[sound] / SOUND_LOUDNESS.boots;
       if (loud < feat.minLoud) spike = false;
       else if (rng() > 0.6 + 0.4 * loud) spike = false;
     }
     if (spike && !isDown && levelKeep < 1 && rng() > levelKeep) spike = false;
-    // 레벨 1~2: 빌드업·드롭의 4분음(강박)은 전부 노트 — 소리 필터로 성겨져 지루해지지 않게 (NPS ≈ BPM/60)
     if (feat.notesPerSec <= 2.4 && quarter && (section === "drop" || section === "build")) spike = true;
-    // 프레이즈 필: 4마디 프레이즈의 마지막 마디 끝을 채워 "구절이 끝난다"를 예고 (스텝이 100ms 이상일 때만 — 손이 따라간다)
     const fillSteps = dens.fill;
     if (fillSteps > 0 && (section === "build" || section === "drop") && bar % 4 === 3 && inBar >= stepsPerBar - fillSteps && stepSec >= 0.1) spike = true;
     if (i < Math.max(2, offsetSteps) || i >= total - 1) spike = false;
     if (spike) {
-      // 곡마다 시작 레인을 다르게 하고, 같은 레인이 연속 낙하하지 않도록
-      // 킥·스네어·하이햇·베이스를 구절 단위로 순환한다 — "어느 레인인가"는 곡 프레이즈가 정한다
-      // 레인 계단(레벨 5+): 드롭 후반 마디는 0→1→2→3 오르내림 — 펌프의 계단 패턴
       const stairs = feat.stairs && section === "drop" && bar % 4 >= 2;
-      const noteLane = (stairs ? ((bar % 8 >= 4 ? 3 - (accentOrdinal % 4) : accentOrdinal % 4)) : lanePhrase[(accentOrdinal + trackOffset) % lanePhrase.length]) as 0 | 1 | 2 | 3;
-      // 레인 소리 풀에서도 레벨 하한보다 작은 소리(숨·클릭)는 뺀다 — 저레벨 노트는 언제나 또렷한 소리
+      const motifLane = section === "drop" && dropMotif ? dropMotif[accentOrdinal % dropMotif.length] : null;
+      const noteLane = (stairs
+        ? ((bar % 8 >= 4 ? 3 - (accentOrdinal % 4) : accentOrdinal % 4))
+        : motifLane !== null
+          ? motifLane
+          : lanePhrase[(accentOrdinal + trackOffset) % lanePhrase.length]) as 0 | 1 | 2 | 3;
       const poolAll = laneSounds[noteLane];
       const poolLoud = poolAll.filter((snd) => SOUND_LOUDNESS[snd] / SOUND_LOUDNESS.boots >= feat.minLoud);
       const pool = poolLoud.length ? poolLoud : poolAll;
       sound = pool[(Math.floor(accentOrdinal / lanePhrase.length) + accentOrdinal) % pool.length];
       accentOrdinal += 1;
     }
-    // 링 레인: 드롭에서만 교차(2링 곡), 빌드업은 마디 단위 교차로 예고
     let lane: 0 | 1 = 0;
     if (track.ringCount === 2 && spike) {
       if (section === "drop") lane = (Math.floor(i / Math.max(1, stepsPerBar / 4)) % 2) as 0 | 1;
@@ -420,8 +440,6 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     noteOrdinal += 1;
     if (track.difficulty === "hard") step.trick = noteOrdinal % 11 === 0 ? "late" : noteOrdinal % 7 === 0 ? "ghost" : undefined;
     else if (track.difficulty === "medium" && noteOrdinal % 13 === 0) step.trick = "flash";
-    // 드릴(레벨 7+): 드롭에서 8노트마다 같은 레인 3연타 — 다음 두 스텝을 같은 소리로 채운다
-    // 드릴은 스텝이 90ms 이상일 때만 — 170BPM 16분(88ms)에서 3연타는 손이 못 따라간다
     if (feat.drill && stepSec >= 0.09 && step.section === "drop" && noteOrdinal % 8 === 0) {
       for (let d = 1; d <= 2 && i + d < chart.length; d += 1) {
         if (chart[i + d].holdTail || chart[i + d].hold) break;
@@ -441,10 +459,8 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
     }
     i += holdSteps - 1;
   }
-  // ── 노트 종류 후처리: 점프(5+) · 롤(6+) · 홀드 점프(8+) ──
   const laneOf = (snd: BeatSound): 0 | 1 | 2 | 3 => (snd === "boots" || snd === "firebeat" ? 0 : snd === "rim" || snd === "trumpet" ? 1 : snd === "throat" ? 3 : 2);
   const otherLaneSound = (snd: BeatSound, k: number): BeatSound => { const target = ((laneOf(snd) + 2 + (k % 2)) % 4) as 0 | 1 | 2 | 3; const pool = laneSounds[target]; return pool[k % pool.length]; };
-  // 점프 간격은 레벨에 비례 — 저레벨은 16노트마다(초보 손이 두 레인을 맞추기 어렵다), 중간 12, 상위 10
   const jumpEvery = effectiveLevel(track) <= 3 ? 16 : effectiveLevel(track) <= 6 ? 12 : 10;
   if (feat.jump || feat.roll || feat.holdJump) {
     let n = 0, holdN = 0;
@@ -453,11 +469,8 @@ export function buildChart(track: BeatTrackDef): BeatChartStep[] {
       if (!step.spike || step.holdTail) continue;
       n += 1;
       const sec = step.section;
-      // 점프: 빌드업·드롭에서 10노트마다 두 번째 레인 (단타 위에) — 손 두 개를 동시에
       if (feat.jump && !step.hold && (sec === "drop" || sec === "build") && n % jumpEvery === 0) step.jumpSound = otherLaneSound(step.sound, n);
-      // 홀드 점프: 3번째 롱노트마다 두 레인 홀드
       if (step.hold) { holdN += 1; if (feat.holdJump && holdN % 3 === 0) step.jumpSound = otherLaneSound(step.sound, holdN); }
-      // 롤: 드롭에서 14노트마다 4스텝 두 레인 교대 연타 (스텝 90ms 이상 곡만)
       if (feat.roll && sec === "drop" && n % 14 === 0 && stepSec >= 0.09 && !step.hold) {
         const other = otherLaneSound(step.sound, n);
         for (let d = 0; d < 4 && i + d < chart.length; d += 1) {
@@ -488,11 +501,10 @@ export function angularSpeedFor(track: BeatTrackDef): number {
   return (Math.PI * 2 * orbitsPerBar) / barSec;
 }
 
+/** 난이도 변형별 판정 임계(락 값): [PERFECT, GREAT] — 고난도 ±18ms 극단 판정을 완화해 손맛과 정확도 변별력을 함께 살린다 */
+export const JUDGE_THRESHOLDS: Record<BeatDifficulty, [number, number]> = { easy: [0.62, 0.35], medium: [0.68, 0.4], hard: [0.74, 0.45] };
 
-/** 난이도 변형별 판정 임계(락 값): [PERFECT, GREAT] */
-export const JUDGE_THRESHOLDS: Record<BeatDifficulty, [number, number]> = { easy: [0.7, 0.4], medium: [0.78, 0.45], hard: [0.84, 0.5] };
-
-/** 등급 — 정확도(락 히트 / 탭) */
+/** 등급 — 총 노트 대비 가중 정확도 */
 export type BeatGrade = "S" | "A" | "B" | "C";
 export function gradeOf(accuracy: number): BeatGrade {
   return accuracy >= 0.9 ? "S" : accuracy >= 0.75 ? "A" : accuracy >= 0.55 ? "B" : "C";

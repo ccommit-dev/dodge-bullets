@@ -1,6 +1,65 @@
 import { type BeatSound, type BeatWorld, type NoteLane, type RingSkinId } from "./types";
 import { drawDropShape, drawLeafShape } from "../ui/shapes";
 import { laneOfSound, laneXAt, PAD_FLASH_MS, railGeometry } from "./world";
+import { sectionAtForTrack } from "./tracks";
+
+const STAGE_MOODS: ReadonlyArray<{ top: string; mid: string; beam: string }> = [
+  { top: "rgba(30, 64, 175, 0.30)", mid: "rgba(14, 165, 233, 0.14)", beam: "rgba(56, 189, 248, 0.22)" },
+  { top: "rgba(124, 45, 18, 0.30)", mid: "rgba(245, 158, 11, 0.14)", beam: "rgba(251, 191, 36, 0.22)" },
+  { top: "rgba(88, 28, 135, 0.32)", mid: "rgba(217, 70, 239, 0.14)", beam: "rgba(232, 121, 249, 0.22)" },
+  { top: "rgba(6, 78, 59, 0.32)", mid: "rgba(16, 185, 129, 0.14)", beam: "rgba(52, 211, 153, 0.22)" },
+  { top: "rgba(136, 19, 55, 0.30)", mid: "rgba(244, 63, 94, 0.14)", beam: "rgba(251, 113, 133, 0.22)" },
+  { top: "rgba(30, 58, 138, 0.32)", mid: "rgba(99, 102, 241, 0.15)", beam: "rgba(129, 140, 248, 0.22)" },
+];
+
+function moodIndexForTrack(trackId: string, stageIndex: number): number {
+  let h = stageIndex * 7;
+  for (let i = 0; i < trackId.length; i++) h = (h * 31 + trackId.charCodeAt(i)) | 0;
+  return Math.abs(h) % STAGE_MOODS.length;
+}
+
+function drawTrackAtmosphere(
+  ctx: CanvasRenderingContext2D,
+  world: BeatWorld,
+  width: number,
+  height: number,
+  beatEnv: number,
+): void {
+  const mood = STAGE_MOODS[moodIndexForTrack(world.trackId, world.stageIndex)];
+  const progress = world.durationMs > 0 ? Math.min(1, world.elapsedMs / world.durationMs) : 0;
+  const sec = sectionAtForTrack(world.trackId, progress, 1);
+  const tint = ctx.createLinearGradient(0, 0, 0, height);
+  tint.addColorStop(0, mood.top);
+  tint.addColorStop(0.55, sec === "drop" ? mood.beam : mood.mid);
+  tint.addColorStop(1, "rgba(2, 6, 23, 0.25)");
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, width, height);
+  if (sec === "drop" || sec === "build") {
+    const intensity = sec === "drop" ? 0.45 + beatEnv * 0.35 : 0.18 + beatEnv * 0.16;
+    ctx.save();
+    ctx.globalAlpha = intensity;
+    // 빛줄기는 위에서 아래로 흐려진다 — 단색 다각형은 노트 길 위에 경계가 딱딱한 V 자로 보였다 (2026-11-11)
+    const beam = ctx.createLinearGradient(0, 0, 0, height * 0.68);
+    beam.addColorStop(0, mood.beam);
+    beam.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.12, 0);
+    ctx.lineTo(width * 0.28, 0);
+    ctx.lineTo(width * 0.54, height * 0.68);
+    ctx.lineTo(width * 0.34, height * 0.68);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(width * 0.88, 0);
+    ctx.lineTo(width * 0.72, 0);
+    ctx.lineTo(width * 0.46, height * 0.68);
+    ctx.lineTo(width * 0.66, height * 0.68);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
 
 const RING_PALETTE: Record<
   RingSkinId,
@@ -228,6 +287,7 @@ function drawStage3D(
     dim.addColorStop(1, "rgba(2, 6, 23, .6)");
     ctx.fillStyle = dim;
     ctx.fillRect(0, 0, width, height);
+    drawTrackAtmosphere(ctx, world, width, height, music.beatEnv);
     ctx.fillStyle = `rgba(125, 211, 252, ${(music.beatEnv * 0.06).toFixed(3)})`;
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
@@ -604,7 +664,7 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
         ? `rgba(94, 234, 212, ${alpha})`
         : world.judgeText.endsWith("♥")
         ? `rgba(74, 222, 128, ${alpha})`
-        : world.judgeText === "PERFECT" || world.judgeText === "CLUTCH" || world.judgeText === "HOLD"
+        : world.judgeText === "PERFECT" || world.judgeText === "CLUTCH" || world.judgeText === "HOLD" || world.judgeText === "SHIELD"
         ? `rgba(34, 211, 238, ${alpha})`
         : world.judgeText === "GREAT" || world.judgeText === "GOOD"
           ? `rgba(251, 191, 36, ${alpha})`
@@ -612,6 +672,16 @@ export function drawBeatFrame(ctx: CanvasRenderingContext2D, world: BeatWorld): 
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 22;
     ctx.fillText(world.judgeText, 0, 0);
+    // 이르고 늦음은 친 노트에만 — 안 누른 노트(MISS) · 홀드 유지 · 점프 진행에 붙으면 뜻이 없다
+    if (world.judgeSub && /^(PERFECT|GREAT|GOOD|CLUTCH)/.test(world.judgeText)) {
+      ctx.shadowBlur = 10;
+      ctx.font = "700 13px Sunflower, sans-serif";
+      ctx.fillStyle = world.judgeSub === "EARLY" ? `rgba(56, 189, 248, ${alpha * 0.95})` : `rgba(251, 146, 60, ${alpha * 0.95})`;
+      const msTxt = world.lastOffsetMs !== 0 && world.judgeText !== "MISS" && world.judgeText !== "HOLD 끊김"
+        ? ` ${world.lastOffsetMs > 0 ? "+" : ""}${world.lastOffsetMs}ms`
+        : "";
+      ctx.fillText(`${world.judgeSub}${msTxt}`, 0, 20);
+    }
     ctx.restore();
   }
 

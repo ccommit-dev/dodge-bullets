@@ -164,6 +164,7 @@ export function createBeatWorld(
     cleared: false,
     beatPulse: 0,
     shakeMs: 0,
+    trackId: track.id,
     trackName: track.name,
     lessonTitle: track.lessonTitle,
     lessonHint: track.lessonHint,
@@ -171,7 +172,10 @@ export function createBeatWorld(
     nextSound: firstSound,
     timingHint: 0,
     judgeText: "",
+    judgeSub: "",
     judgeMs: 0,
+    judgeCounts: { perfect: 0, great: 0, good: 0, miss: 0 },
+    totalNotes: 0,
     stageIndex,
     stageBannerMs: 1600,
     stageBannerText: track.lessonTitle,
@@ -249,12 +253,65 @@ export type BeatSession = {
   evaluatedStep: number;
   /** 기기 싱크 보정(초) — 양수면 유저가 늦게 누르는 기기. 판정 위치에서 뺀다 */
   calibrationSec: number;
+  /** 출격 강화 판정 창 보너스(초) */
+  judgeWindowBonusSec?: number;
+  /** 출격 강화 점수 배율 */
+  scoreMul?: number;
+  /** 출격 강화 피버 중 점수 배율 */
+  feverScoreMul?: number;
+  /** 남은 콤보 보호 횟수(MISS 1회 방어) */
+  comboShieldLeft?: number;
   /** 누르고 있는 롱노트 — 레인과 꼬리 스텝. -1이면 없음 */
   holdLane: number;
   holdEndStep: number;
   holdLane2: number;
   holdEndStep2: number;
 };
+
+export const BEAT_CALIBRATION_KEY = "dodgebullets:beat:calibrationMs";
+/** 시작 체력 상한 — 숙련(hpBonusFromSkills) · 출격 강화(extraHp)는 이 위에 더한다 */
+export const BEAT_BASE_HP = 5;
+/** 박자 보정 범위(ms) */
+export const BEAT_CALIBRATION_MAX_MS = 150;
+
+export function loadBeatCalibrationMs(): number {
+  if (typeof localStorage === "undefined") return 0;
+  try {
+    const raw = localStorage.getItem(BEAT_CALIBRATION_KEY);
+    if (raw === null) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.max(-BEAT_CALIBRATION_MAX_MS, Math.min(BEAT_CALIBRATION_MAX_MS, Math.round(n))) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveBeatCalibrationMs(ms: number): number {
+  const clamped = Number.isFinite(ms) ? Math.max(-BEAT_CALIBRATION_MAX_MS, Math.min(BEAT_CALIBRATION_MAX_MS, Math.round(ms))) : 0;
+  if (typeof localStorage !== "undefined") {
+    try { localStorage.setItem(BEAT_CALIBRATION_KEY, String(clamped)); } catch { /* ignore */ }
+  }
+  return clamped;
+}
+
+export function countChartNotes(chart: BeatChartStep[]): number {
+  let n = 0;
+  for (const st of chart) {
+    if (!st || !st.spike) continue;
+    n += st.jumpSound ? 2 : 1;
+  }
+  return n;
+}
+
+/** 가중 정확도 (빈 탭 무관 · 놓친 노트 반영) — 끝까지 간 판은 곡 전체 노트, 쓰러진 판은 지나간 노트로 나눈다(초반에 쓰러지면 7% 로 나오던 것) */
+export function beatRunAccuracy(world: BeatWorld, cleared = true): number {
+  const c = world.judgeCounts;
+  const judged = c.perfect + c.great + c.good + c.miss;
+  const total = cleared ? Math.max(world.totalNotes, judged) : judged;
+  if (total <= 0) return 0;
+  const weighted = c.perfect + c.great * 0.78 + c.good * 0.45;
+  return Math.max(0, Math.min(1, weighted / total));
+}
 
 export async function createBeatSession(
   width: number,
@@ -298,9 +355,11 @@ export async function createBeatSession(
     cosmetics,
   );
   world.chart = chart;
+  world.totalNotes = countChartNotes(chart);
 
   const bonusHp = hpBonusFromSkills(skills);
-  world.hp = Math.min(5, world.hp + bonusHp);
+  // 기본 체력은 예전처럼 5 (난도별 8/7/6 은 예전부터 5 로 잘렸다) — 숙련 보너스만 그 위에 얹는다. 예전엔 보너스까지 5 에 잘려 무효였다
+  world.hp = Math.min(BEAT_BASE_HP, world.hp) + bonusHp;
   world.maxHp = world.hp;
   if (isSpar) {
     world.stageBannerText = `SPAR · ${track.lessonTitle}`;
@@ -448,9 +507,10 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
   // 판정 창: 기본 190ms(스킬 보너스 +), 스텝의 62% 까지 좁히되 110ms 아래로는 안 내려간다.
   // 예전엔 170BPM 16분(88ms)에서 55ms 가 되어 지터 80ms 인 사람은 거의 못 맞혔다(봇 시뮬 novice 전멸).
   // 이웃 가로채기는 창 폭이 아니라 선택 규칙으로 막는다: 창 안의 "가장 이른 미타 노트"를 잡는다 (리듬게임 관례).
+  const bonusWin = session.judgeWindowBonusSec ?? 0;
   const windowSec = Math.min(
-    0.19 + timingBonusFromSkills(session.skills) * 0.2,
-    Math.max(stepSec * 0.62, JUDGE_WINDOW_FLOOR_SEC),
+    0.19 + timingBonusFromSkills(session.skills) * 0.2 + bonusWin,
+    Math.max(stepSec * 0.62, JUDGE_WINDOW_FLOOR_SEC) + bonusWin,
   );
 
   let bestIndex = -1;
@@ -477,7 +537,8 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
 
   if (onTime) {
     const offsetSec = (position - bestIndex) * stepSec;
-    world.lastOffsetMs = Math.round(offsetSec * 1000);
+    const offsetMs = Math.round(offsetSec * 1000);
+    world.lastOffsetMs = offsetMs;
     (bestSlot === 2 ? world.hitSteps2 : world.hitSteps).add(bestIndex);
     session.hitSteps.add(bestIndex);
     // 점프: 두 레인을 모두 쳤으면 보너스 — "JUMP" 문구는 두 번째 타격에 붙는다
@@ -495,10 +556,16 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
     session.box.playLead(sound, gridWhen, lock);
 
     bumpCombo(world, 1);
-    world.score += (18 + Math.floor(lock * 16)) * world.scoreMultiplier;
+    const perkMul = (session.scoreMul ?? 1) * (world.feverMs > 0 ? (session.feverScoreMul ?? 1) : 1);
+    world.score += Math.round((18 + Math.floor(lock * 16)) * world.scoreMultiplier * perkMul);
     const [perfectAt, greatAt] = JUDGE_THRESHOLDS[world.difficulty];
-    world.judgeText = lock > perfectAt ? "PERFECT" : lock > greatAt ? "GREAT" : "GOOD";
-    if (gainHeal(world, world.judgeText === "PERFECT" ? 2 : world.judgeText === "GREAT" ? 1 : 0)) world.judgeText += " ♥";
+    const tier = lock > perfectAt ? "PERFECT" : lock > greatAt ? "GREAT" : "GOOD";
+    if (tier === "PERFECT") world.judgeCounts.perfect += 1;
+    else if (tier === "GREAT") world.judgeCounts.great += 1;
+    else world.judgeCounts.good += 1;
+    world.judgeText = tier;
+    world.judgeSub = tier === "PERFECT" && Math.abs(offsetMs) <= 22 ? "" : offsetMs < 0 ? "EARLY" : "LATE";
+    if (gainHeal(world, tier === "PERFECT" ? 2 : tier === "GREAT" ? 1 : 0)) world.judgeText += " ♥";
     // 롱노트 머리: 꼬리 스텝까지 누르고 있어야 한다 (performBeatRelease가 판정)
     const holdLen = session.chart[bestIndex].hold ?? 0;
     if (holdLen > 0) {
@@ -510,7 +577,7 @@ export function performBeatLane(session: BeatSession, lane: NoteLane): BeatTapRe
         world.holdLane = lane; world.holdEndStep = session.holdEndStep; world.holdStartStep = bestIndex;
       }
     }
-    if (jumpDone) { world.score += 12 * world.scoreMultiplier; world.judgeText = ("JUMP " + world.judgeText) as `JUMP ${string}`; }
+    if (jumpDone) { world.score += Math.round(12 * world.scoreMultiplier * perkMul); world.judgeText = ("JUMP " + world.judgeText) as `JUMP ${string}`; }
     // 노트 종류별 완성 — 롱노트 머리·점프 한쪽은 아직 성공이 아니다 (보상은 completedNotes 에 쌓일 때만)
     const isJump = !!session.chart[bestIndex].jumpSound;
     if (holdLen > 0) {
@@ -575,17 +642,28 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
   else { session.holdLane = -1; session.holdEndStep = -1; world.holdLane = -1; world.holdEndStep = -1; world.holdStartStep = -1; }
   if (distSec <= windowSec) {
     bumpCombo(world, 1);
-    world.score += 24 * world.scoreMultiplier;
+    const perkMul = (session.scoreMul ?? 1) * (world.feverMs > 0 ? (session.feverScoreMul ?? 1) : 1);
+    world.score += Math.round(24 * world.scoreMultiplier * perkMul);
     world.judgeText = "HOLD 완료!";
+    world.judgeSub = "";
     world.judgeMs = 520;
     world.holdFx.push({ lane, kind: "done", ms: 650, progress: 1 });
     spawnMoveParticles(world, 18, LANE_HUE[lane], lane);
     world.completedNotes.push({ lane, judge: "PERFECT" });
     return "release-good";
   }
+  if ((session.comboShieldLeft ?? 0) > 0) {
+    session.comboShieldLeft = (session.comboShieldLeft ?? 1) - 1;
+    world.judgeText = "SHIELD";
+    world.judgeSub = "";
+    world.judgeMs = 520;
+    world.holdFx.push({ lane, kind: "done", ms: 480, progress: heldProgress });
+    return "release-early";
+  }
   world.combo = 0;
   world.comboTimerMs = 0;
   world.judgeText = "HOLD 끊김";
+  world.judgeSub = "EARLY";
   world.judgeMs = 620;
   world.holdFx.push({ lane, kind: "break", ms: 750, progress: heldProgress });
   // 일찍 뗀 롱노트는 놓친 노트와 같다 — 유지해야 유효하다. 단 저레벨(유효 레벨 ≤ 3)은 콤보만 끊고 체력은 지킨다 (입문 채보에 롱노트를 섞으면서 초보 보호, 2026-09-14)
@@ -598,11 +676,13 @@ export function performBeatRelease(session: BeatSession, lane: NoteLane): "relea
 export function settleHoldIfPassed(session: BeatSession): void {
   const world = session.world;
   const position = world.beatPosition - session.calibrationSec / world.stepSec;
+  const perkMul = (session.scoreMul ?? 1) * (world.feverMs > 0 ? (session.feverScoreMul ?? 1) : 1);
   // 홀드 점프의 두 번째 슬롯도 같은 규칙
   if (session.holdEndStep2 >= 0 && position > session.holdEndStep2 + 0.9) {
     const lane2 = session.holdLane2 as NoteLane;
     session.holdLane2 = -1; session.holdEndStep2 = -1; world.holdLane2 = -1; world.holdEndStep2 = -1; world.holdStartStep2 = -1;
-    bumpCombo(world, 1); world.score += 16 * world.scoreMultiplier;
+    bumpCombo(world, 1); world.score += Math.round(16 * world.scoreMultiplier * perkMul);
+    world.judgeSub = "";
     world.holdFx.push({ lane: lane2, kind: "done", ms: 650, progress: 1 });
     world.completedNotes.push({ lane: lane2, judge: "HOLD" });
   }
@@ -615,8 +695,9 @@ export function settleHoldIfPassed(session: BeatSession): void {
     world.holdEndStep = -1;
     world.holdStartStep = -1;
     bumpCombo(world, 1);
-    world.score += 16 * world.scoreMultiplier;
+    world.score += Math.round(16 * world.scoreMultiplier * perkMul);
     world.judgeText = gainHeal(world, 2) ? "HOLD 완료 ♥" : "HOLD 완료!";
+    world.judgeSub = "";
     world.judgeMs = 520;
     world.holdFx.push({ lane: lane1, kind: "done", ms: 650, progress: 1 });
     world.completedNotes.push({ lane: lane1, judge: "HOLD" });
@@ -713,8 +794,8 @@ export function updateBeatWorld(
   }
   if (world.shakeMs > 0) world.shakeMs = Math.max(0, world.shakeMs - dtSec * 1000);
   if (world.comboTimerMs > 0) {
+    // 노트 공백이 길어도 미스를 내지 않은 이상 콤보는 끊기지 않는다
     world.comboTimerMs = Math.max(0, world.comboTimerMs - dtSec * 1000);
-    if (world.comboTimerMs <= 0) world.combo = 0;
   }
   for (let lane = 0; lane < world.laneFlashMs.length; lane++) {
     if (world.laneFlashMs[lane] > 0) {
@@ -724,7 +805,10 @@ export function updateBeatWorld(
   world.beatPulse = Math.max(0, world.beatPulse - dtSec * 2.8);
   world.timingHint = Math.max(0, world.timingHint - dtSec * 2.2);
   world.judgeMs = Math.max(0, world.judgeMs - dtSec * 1000);
-  if (world.judgeMs <= 0) world.judgeText = "";
+  if (world.judgeMs <= 0) {
+    world.judgeText = "";
+    world.judgeSub = "";
+  }
   if (world.holdFx.length) {
     for (const fx of world.holdFx) fx.ms -= dtSec * 1000;
     world.holdFx = world.holdFx.filter((fx) => fx.ms > 0);
@@ -773,11 +857,16 @@ export function updateBeatWorld(
   // Notes are judged only after the late half of their window closes,
   // so a slightly late pad hit still counts.
   const lateGrace = 0.62;
-  let missed = false;
-  while (session.evaluatedStep < position - lateGrace) {
+  // 박자 보정은 놓침 판정에도 — 탭 판정은 보정한 위치를 쓰는데 여기만 그대로 두면, 늦게 들리는 기기(+보정)에서 제때 친 노트가 MISS 로 먼저 닫혔다
+  const judgePos = position - session.calibrationSec / world.stepSec;
+  let missedCount = 0;
+  while (session.evaluatedStep < judgePos - lateGrace) {
     const index = session.evaluatedStep;
     const step = session.chart[index];
-    if (step?.spike && (!world.hitSteps.has(index) || (step.jumpSound && !world.hitSteps2.has(index)))) missed = true;
+    if (step?.spike) {
+      if (!world.hitSteps.has(index)) missedCount += 1;
+      if (step.jumpSound && !world.hitSteps2.has(index)) missedCount += 1;
+    }
     session.evaluatedStep += 1;
   }
 
@@ -795,21 +884,32 @@ export function updateBeatWorld(
     session.box.stopLessonTransport();
     return { type: "dead" };
   }
-  if (missed && world.invulnMs <= 0) {
-    world.hp -= 1;
-    world.invulnMs = 450;
-    world.shakeMs = 140;
-    world.judgeText = "MISS";
-    world.judgeMs = 520;
-    spawnMoveParticles(world, 32, 345);
-    world.combo = 0;
-    world.comboTimerMs = 0;
-    if (world.hp <= 0) {
-      world.dead = true;
-      session.box.stopLessonTransport();
-      return { type: "dead" };
+  if (missedCount > 0) {
+    if ((session.comboShieldLeft ?? 0) > 0) {
+      session.comboShieldLeft = (session.comboShieldLeft ?? 1) - 1;
+      world.judgeText = "SHIELD";
+      world.judgeSub = "";
+      world.judgeMs = 520;
+    } else {
+      world.judgeCounts.miss += missedCount;
+      world.combo = 0;
+      world.comboTimerMs = 0;
+      world.judgeText = "MISS";
+      world.judgeSub = "LATE";
+      world.judgeMs = 520;
+      if (world.invulnMs <= 0) {
+        world.hp -= 1;
+        world.invulnMs = 450;
+        world.shakeMs = 140;
+        spawnMoveParticles(world, 32, 345);
+        if (world.hp <= 0) {
+          world.dead = true;
+          session.box.stopLessonTransport();
+          return { type: "dead" };
+        }
+        return { type: "hit", hp: world.hp };
+      }
     }
-    return { type: "hit", hp: world.hp };
   }
 
   return event;
@@ -821,6 +921,7 @@ function beginClear(session: BeatSession): BeatEvent {
   world.cleared = true;
   world.clearFxMs = CLEAR_FX_MS;
   world.judgeText = "PERFECT";
+  world.judgeSub = "";
   world.judgeMs = CLEAR_FX_MS;
   world.stageBannerText = "STAGE CLEAR";
   world.stageBannerMs = CLEAR_FX_MS;

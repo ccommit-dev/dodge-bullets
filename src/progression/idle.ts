@@ -345,7 +345,7 @@ export function idleBottleneck(
     return {
       variable: "R",
       title: `방치 효율 ${(result.rate * 100).toFixed(0)}% · 최대 ${IDLE.rateCap * 100}%`,
-      hint: "연습실에서 비트 숙련을 올려 스킬 슬롯을 해금하세요",
+      hint: "비트 수련에서 숙련을 올려 스킬 슬롯을 해금하세요",
       content: "beat",
     };
   }

@@ -140,7 +140,7 @@ export function recommendNext(
     return { id: "forge", tone: "grow", title: `대장간 강화 +${progress.bestForgeLevel}`, desc: `방치 배율 ×${mult.toFixed(2)} — 강화 1단계당 +0.06`, cta: "대장간", action: { kind: "content", content: "forge" } };
   }
   if (rate < IDLE.rateCap) {
-    return { id: "beat", tone: "grow", title: `방치 효율 ${(rate * 100).toFixed(0)}%`, desc: "비트 수련으로 스킬 슬롯을 해금하세요", cta: "연습실", action: { kind: "content", content: "beat" } };
+    return { id: "beat", tone: "grow", title: `방치 효율 ${(rate * 100).toFixed(0)}%`, desc: "비트 수련으로 스킬 슬롯을 해금하세요", cta: "비트 수련", action: { kind: "content", content: "beat" } };
   }
   if (cap < IDLE.hoursCap) {
     return { id: "dodge-cap", tone: "grow", title: `방치 시간 ${cap}h / ${IDLE.hoursCap}h`, desc: "성문 방어 스테이지를 클리어하면 +1시간", cta: "원정", action: { kind: "content", content: "dodge" } };

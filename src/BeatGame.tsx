@@ -1,6 +1,9 @@
 import { heroPortrait } from "./titans/anim";
 import { appWidth } from "./ui/webFrame";
-import { heroFrames } from "./titans/spriteAnim";
+import { hasMonsterAnim, heroFrames, monsterAnimStyle } from "./titans/spriteAnim";
+import { HUNT_BOSSES, bestiaryThumb } from "./titans/bestiary";
+import { HUNTING_AREAS, formatGold } from "./titans/model";
+import { SLOT_LABEL } from "./titans/skills";
 import type { BeatTrackDef } from "./beat/tracks";
 import type { BeatDifficulty } from "./beat/types";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
@@ -10,23 +13,29 @@ import { drawBeatFrame, setBeatStageImage } from "./beat/draw";
 setBeatStageImage(assetUrl("beat/bg/stage.webp"));
 import {
   applyLessonClear,
+  beatStageBonusGold,
   buildStageSlots,
+  PATTERN_SKILLS,
+  SKILL_LABEL,
   spendStamina,
   type BeatRpgProgress,
   type PracticeSlot,
   gradesFor,
   hardUnlocked, applyBeatRecord, bestRecord, emptyBeatRpg } from "./beat/rpg";
-import { getCampaignStage, isLastCampaignStage, stageCount } from "./beat/tracks";
+import { getCampaignStage, gradeOf, isLastCampaignStage, stageCount, type BeatGrade } from "./beat/tracks";
 import type { BeatCosmetics, NoteLane } from "./beat/types";
 import { BEAT_PERK_BY_ID, beatModsOf, beatPerkOffer, emptyBeatMods, weakLaneAt, type BeatPerkId } from "./beat/beatPerks";
 import {
   applyBeatInsets,
+  beatRunAccuracy,
   createBeatSession,
   disposeBeatSession,
   laneOfSound,
+  loadBeatCalibrationMs,
   performBeatLane,
   performBeatRelease,
   resizeBeatWorld,
+  saveBeatCalibrationMs,
   settleHoldIfPassed,
   updateBeatWorld,
   type BeatSession,
@@ -41,7 +50,10 @@ import {
   saveCoins,
 } from "./game/storage";
 import { track as trackEvent } from "./analytics/events";
-import { weeklyRanking } from "./beat/ranking";
+import { beatMasteryMedals, weeklyRanking } from "./beat/ranking";
+import { IDLE, masteryToNextSlotLevel, SLOT_BY_BEAT_SKILL, slotLevelFromMastery } from "./progression/idle";
+import { beatBossStage } from "./beat/beatPerks";
+import { haptic } from "./ui/haptics";
 import { shadowPortrait } from "./events/shadowArena";
 import { consumeAdReward, rewardedAvailability, showRewarded } from "./ads/rewarded";
 import { loadCharacterProgress, qaGemsEnabled } from "./progression/storage";
@@ -56,7 +68,7 @@ import { BEAT_DAILY_TICKETS, BEAT_DIFF_LABEL, BEAT_FIRST_CLEAR, beatFirstClaimed
 import type { CharacterProgress } from "./progression/model";
 import type { ShoulderId } from "./progression/model";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
-import { AllyArt } from "./titans/SpriteArt";
+import { AllyArt, monsterFacesRight } from "./titans/SpriteArt";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 
 type BeatUi = "menu" | "playing" | "clear" | "gameover";
@@ -100,6 +112,20 @@ const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }>
   { id: "dragon", name: "용린 견갑", desc: "16비트 · 스킬 특화" },
 ];
 const CHAPTER_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
+/** 비트 수련의 상대 — 사냥터 대장 15종(지역 순)을 사냥터와 같은 그림(애니메이션 2판 시트, 왼쪽 보기)으로. 예전엔 옛 원화(다른 그림체)를 썼다 */
+const BEAT_MONSTERS: readonly string[] = HUNTING_AREAS.flatMap((area) => (HUNT_BOSSES[area.id] ?? []).map((m) => m.art));
+const beatMonsterAt = (stageNo: number, wave: number) => BEAT_MONSTERS[(Math.max(0, stageNo - 1) + wave) % BEAT_MONSTERS.length];
+
+type BeatRunStats = {
+  grade: BeatGrade;
+  accuracyPct: number;
+  perfect: number;
+  great: number;
+  good: number;
+  miss: number;
+  wavesCleared: number;
+  stageBonusGold: number;
+};
 
 function shoulderForTrack(stageIndex: number, totalStages = stageCount()): ShoulderId {
   const tier = Math.floor((stageIndex * CHAPTER_SHOULDERS.length) / Math.max(1, totalStages));
@@ -156,10 +182,27 @@ export function BeatGame({
   const [hubMsg, setHubMsg] = useState("");
   /** 시도권 · 첫 클리어 표시용 진행 (2026-10-28, beat/tickets.ts) — 메뉴에 돌아올 때마다 다시 읽는다 */
   const [charProg, setCharProg] = useState<CharacterProgress | null>(null);
+  const charProgRef = useRef<CharacterProgress | null>(null);
+  charProgRef.current = charProg;
   const [firstReward, setFirstReward] = useState<{ diff: string; reward: BeatClearReward } | null>(null);
   useEffect(() => { let alive = true; void loadCharacterProgress(userHash).then((p) => { if (alive) setCharProg(p); }); return () => { alive = false; }; }, [userHash, ui]);
-  // 곡의 오디오 시계를 판정 기준으로 직접 사용한다. 별도 수동 싱크 UI는 제공하지 않는다.
-  const calibrationMs = 0;
+  const [calibrationMs, setCalibrationMs] = useState<number>(() => loadBeatCalibrationMs());
+  const adjustCalibration = (next: number) => {
+    const clamped = saveBeatCalibrationMs(next);
+    setCalibrationMs(clamped);
+    if (sessionRef.current) sessionRef.current.calibrationSec = clamped / 1000;
+  };
+  const [guideDismissed, setGuideDismissed] = useState(false);
+  const [lastRunStats, setLastRunStats] = useState<BeatRunStats | null>(null);
+  const [waveCount, setWaveCount] = useState(0);
+  const waveCountRef = useRef(0);
+  useEffect(() => {
+    const next = beatMonsterAt(stageNo, waveCount + 1);
+    if (!hasMonsterAnim(next)) return;
+    const img = new Image();
+    img.src = assetUrl(`titans/anim/monsters/${next}.webp`);
+  }, [stageNo, waveCount]);
+  const beatEnemyMaxHpRef = useRef(100);
   const [shoulderBlueprint, setShoulderBlueprint] = useState<ShoulderId>("scout");
   const onCoinsRef = useRef(onCoins);
   useEffect(() => { onCoinsRef.current = onCoins; }, [onCoins]);
@@ -198,7 +241,18 @@ export function BeatGame({
   };
   const commitRecord = (session: BeatSession, cleared: boolean) => {
     const w = session.world;
-    const accuracy = session.taps > 0 ? session.lockHits / session.taps : 0;
+    const accuracy = beatRunAccuracy(w, cleared);
+    const stageBonusGold = beatStageBonusGold(charProgRef.current?.titanBestStage ?? 1, session.track.difficulty);
+    setLastRunStats({
+      grade: gradeOf(accuracy),
+      accuracyPct: Math.round(accuracy * 1000) / 10,
+      perfect: w.judgeCounts.perfect,
+      great: w.judgeCounts.great,
+      good: w.judgeCounts.good,
+      miss: w.judgeCounts.miss,
+      wavesCleared: waveCountRef.current,
+      stageBonusGold,
+    });
     const base = rpgRef.current ?? emptyBeatRpg();
     const rec = applyBeatRecord(base, session.track.id, session.track.difficulty, { score: w.score, maxCombo: w.maxCombo, accuracy, cleared });
     rpgRef.current = rec.progress;
@@ -233,7 +287,6 @@ export function BeatGame({
   // 고른 곡 (2026-11-09, 사용자: 곡 칩 16 + 곡 카드 16 이 같은 곡을 두 번 보였다 → "칩을 누르면 카드 하나만") — 없으면 추천 곡
   const [pickedTrack, setPickedTrack] = useState<string | null>(null);
   const pickedCardRef = useRef<HTMLDivElement | null>(null);
-  const [activePerk, setActivePerk] = useState<BeatPerkId | null>(null);
   const beatModsRef = useRef(emptyBeatMods());
   const weakLaneRef = useRef<NoteLane | null>(null);
   const [weakLane, setWeakLane] = useState<NoteLane | null>(null);
@@ -274,14 +327,19 @@ export function BeatGame({
       next[lane] = Math.min(4, next[lane] + 1);
       return next;
     });
-    const gain = perfect ? 5 : judge.includes("GREAT") ? 3 : 2;
+    const bm = beatModsRef.current;
+    const gain = Math.max(1, Math.round((perfect ? 5 : judge.includes("GREAT") ? 3 : 2) * bm.dropChargeMul));
     dropChargeRef.current = Math.min(100, dropChargeRef.current + gain);
     const buff = lane === 0 ? raidBuffRef.current.kick : lane === 3 ? raidBuffRef.current.drop : raidBuffRef.current.allies;
     // 출격 강화(레인·콤보 배수) · 약점 레인 ×2.5 (2026-10-08)
-    const bm = beatModsRef.current;
     const weakHit = weakLaneRef.current !== null && weakLaneRef.current === lane;
     let damage = Math.round(([14, 7, 6, 25][lane] + buff * 7 + Math.floor(world.combo * .8 * bm.comboMul)) * bm.laneMul[lane] * (weakHit ? bm.weakMul : 1));
-    if (weakHit) { world.zoomPulse = Math.max(world.zoomPulse, .5); world.shakeMs = Math.max(world.shakeMs, 120); }
+    if (weakHit) {
+      world.zoomPulse = Math.max(world.zoomPulse, .5);
+      world.shakeMs = Math.max(world.shakeMs, 120);
+      if (bm.weakScoreBonus > 0) world.score += bm.weakScoreBonus * world.scoreMultiplier;
+    }
+    haptic("tap");
     const now = performance.now();
     if (lastRaidTapRef.current.lane >= 0 && lastRaidTapRef.current.lane !== lane && now - lastRaidTapRef.current.at <= 120) {
       damage += 24;
@@ -298,7 +356,19 @@ export function BeatGame({
     beatEnemyHpRef.current = Math.max(0, beatEnemyHpRef.current - damage);
     setBeatEnemyHp(beatEnemyHpRef.current);
     pushBeatFloat(damage, lane, weakHit);
-    if (beatEnemyHpRef.current === 0) world.elapsedMs = world.durationMs;
+    // 몬스터 토벌 성공 시 곡을 조기 종료하지 않고 다음 웨이브 몬스터를 소환해 곡 끝까지 연주를 이어 간다
+    if (beatEnemyHpRef.current === 0) {
+      waveCountRef.current += 1;
+      setWaveCount(waveCountRef.current);
+      world.score += 180 * world.scoreMultiplier;
+      materialGainRef.current += 1;
+      setMaterialGain(materialGainRef.current);
+      const nextMax = Math.round(beatEnemyMaxHpRef.current * 1.35);
+      beatEnemyMaxHpRef.current = nextMax;
+      beatEnemyHpRef.current = nextMax;
+      setBeatEnemyMaxHp(nextMax);
+      setBeatEnemyHp(nextMax);
+    }
   }, [pushBeatFloat]);
 
   /** 쌓인 완성 노트를 모두 보상한다 — 탭 직후 · 롱노트 릴리즈 직후 · 매 프레임(꼬리를 지나 자동 성공한 롱노트) */
@@ -570,7 +640,11 @@ export function BeatGame({
             const kind = (["kick", "allies", "drop"] as const)[upgradeRound - 1];
             if (kind) raidBuffRef.current = { ...raidBuffRef.current, [kind]: raidBuffRef.current[kind] + 1 };
           }
+          if (event.type === "hit") {
+            haptic("hit");
+          }
           if (event.type === "dead") {
+            haptic("hit");
             setLastScore(w.score);
             commitRecord(session, false);
             syncUi("gameover");
@@ -582,18 +656,20 @@ export function BeatGame({
             setBeatEnemyHp(0);
             const track = session.track;
             const slot = activeSlotRef.current;
-            const reward = Math.round(
+            const baseClearGold = Math.round(
               computeClearReward(
                 track.reward + (session.isSpar ? 20 : 0),
                 w.hp,
                 w.maxHp,
                 w.elapsedMs,
                 w.durationMs,
-              ) * trackRewardMult(track) + Math.min(60, w.maxCombo * 2) + dropCountRef.current * 12);
+              ) * trackRewardMult(track) + Math.min(60, w.maxCombo * 2) + dropCountRef.current * 12,
+            );
+            const stageBonus = beatStageBonusGold(charProgRef.current?.titanBestStage ?? 1, track.difficulty);
+            const reward = Math.max(1, Math.round((baseClearGold + stageBonus) * beatModsRef.current.coinMul));
             setCoinGain(reward);
             setLastScore(w.score);
-            const perfectRatio =
-              session.taps > 0 ? session.lockHits / session.taps : 0;
+            const perfectRatio = beatRunAccuracy(w);
             void (async () => {
               const nextCoins = await saveCoins(userHash, coinsRef.current + reward);
               coinsRef.current = nextCoins;
@@ -656,10 +732,13 @@ export function BeatGame({
                 });
                 const shoulderName = SHOULDER_BLUEPRINTS.find((item) => item.id === chapterShoulder)?.name;
                 setShoulderReward(craftedNow ? `${shoulderName} 최초 클리어 확정 획득!` : isChapterBoss && updated.ownedShoulders.includes(chapterShoulder) ? `${shoulderName} 보유 · 견갑 조각 +${fragmentGain}` : `공명 견갑 조각 +${fragmentGain} · 보유 ${updated.shoulderShards}`);
+                const primarySkill = PATTERN_SKILLS[track.patternId][0] ?? "kick";
+                const slotId = SLOT_BY_BEAT_SKILL[primarySkill];
+                const masteryLv = grown.skills[primarySkill];
+                const slotLv = slotLevelFromMastery(masteryLv);
+                const toNextSlot = masteryToNextSlotLevel(masteryLv);
                 setRpgGain(
-                  `숙련↑ · SP+${session.isSpar ? 3 : 2} · 명성+${
-                    (session.isSpar ? 12 : 6) + Math.round(perfectRatio * (session.isSpar ? 20 : 10))
-                  }`,
+                  `${SKILL_LABEL[primarySkill]} 숙련 Lv.${masteryLv} → 사냥터 [${SLOT_LABEL[slotId] ?? slotId}] 슬롯 Lv.${slotLv}${toNextSlot !== null ? ` (다음 숙련 +${toNextSlot})` : " (MAX)"} · 장착하면 방치 효율 +${(IDLE.ratePerSlotLevel * 100).toFixed(1)}%p/Lv · SP +${session.isSpar ? 3 : 2} (남은 ${updated.skillPoints})`,
                 );
               }
             })();
@@ -694,7 +773,7 @@ export function BeatGame({
     };
   // onCoins 는 App 이 렌더마다 새로 만드는 함수다 — 의존성에 두면 App 이 한 번 다시 그려질 때(토스트 등) 이 effect 가 정리되며
   // 연주 중인 곡 세션을 버렸다(화면은 연주 중인데 노트가 사라짐, 2026-10-06 에뮬레이터 실기). ref 로 읽는다. shoulderBlueprint 는 쓰지 않는 의존성이었다
-  }, [calibrationMs, playRaidLane, startLaneHold, stopLaneHold, syncUi, userHash]);
+  }, [playRaidLane, startLaneHold, stopLaneHold, syncUi, userHash]);
 
   /** 실패 완화 (RETENTION G): 같은 곡 즉시 재도전은 곡당 하루 1회 스태미나 무료 */
   const freeRetryKey = (trackId: string) => `dodgebullets:beat:freeRetry:${new Date().toLocaleDateString("sv-SE")}:${trackId}`;
@@ -754,9 +833,8 @@ export function BeatGame({
     pendingClearRef.current = false;
     activeSlotRef.current = slot;
     // 출격 강화 — 고른 카드(없으면 오늘 첫 장)가 이 곡에만 듣는다
-    const perkId = beatPerkChoice[slot.track.id] ?? beatPerkOffer(slot.track.id, new Date().toLocaleDateString("sv-SE"))[0];
+    const perkId = beatPerkChoice[slot.track.id] ?? beatPerkOffer(slot.track.id, new Date().toLocaleDateString("sv-SE"), beatBossStage(slot.stageIndex))[0];
     beatModsRef.current = beatModsOf(perkId);
-    setActivePerk(perkId);
     weakLaneRef.current = null;
     setWeakLane(null);
     setBeatFloats([]);
@@ -783,9 +861,20 @@ export function BeatGame({
       primed ?? undefined,
     );
     applyBeatInsets(session.world, insets);
-    if (beatModsRef.current.healBonus > 0) session.world.healGauge += beatModsRef.current.healBonus;
-    // 기기 싱크 보정 적용 — 판정 위치를 평균 오프셋만큼 되돌린다
-    session.calibrationSec = (Number.isFinite(calibrationMs) ? calibrationMs : 0) / 1000;
+    const bm = beatModsRef.current;
+    if (bm.extraHp > 0) {
+      session.world.hp += bm.extraHp;
+      session.world.maxHp += bm.extraHp;
+    }
+    if (bm.healBonus > 0) session.world.healGauge += bm.healBonus;
+    session.judgeWindowBonusSec = bm.judgeWindowBonusSec;
+    session.scoreMul = bm.scoreMul;
+    session.feverScoreMul = bm.feverScoreMul;
+    session.comboShieldLeft = bm.comboShield;
+    // 기기 싱크 보정 적용 — 판정 위치를 설정한 오프셋만큼 되돌린다
+    const syncMs = loadBeatCalibrationMs();
+    setCalibrationMs(syncMs);
+    session.calibrationSec = (Number.isFinite(syncMs) ? syncMs : 0) / 1000;
     sessionRef.current = session;
     // 개발 훅 — e2e(scripts/verify-anim.mjs)가 채보 타이밍에 맞춰 키를 누르기 위해 세션을 노출한다. 배포 빌드에는 없다.
     if (import.meta.env.DEV) { const w = window as unknown as { __beatSession?: BeatSession; __beatLaneOf?: typeof laneOfSound }; w.__beatSession = session; w.__beatLaneOf = laneOfSound; }
@@ -799,7 +888,11 @@ export function BeatGame({
     setCoinGain(0);
     setRpgGain("");
     setShoulderReward("");
-    const enemyMax = 90 + slot.stageIndex * 24;
+    setLastRunStats(null);
+    setWaveCount(0);
+    waveCountRef.current = 0;
+    const enemyMax = 110 + slot.stageIndex * 28;
+    beatEnemyMaxHpRef.current = enemyMax;
     beatEnemyHpRef.current = enemyMax;
     setBeatEnemyHp(enemyMax);
     setBeatEnemyMaxHp(enemyMax);
@@ -854,12 +947,20 @@ export function BeatGame({
       {ui === "menu" && rpg && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide beat-menu-panel">
-            <p className="brand beat-kicker">리듬 수련</p>
-            <h1 className="title beat-title">비버 비트 디펜스</h1>
-            <p className="subtitle beat-sub-short">곡을 골라 방향 노트로 보스를 격파 · 30초~2분</p>
-            {/* 지갑 줄 — 골드·보석·명성 (2026-10-06, 예전 "골드 n · 명성 n" 한 줄) */}
-            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gold", amount: coins }, { kind: "gem", amount: gems }, { kind: "fame", amount: rpg.fame }]} />
+            <p className="brand beat-kicker">사냥터 수련장</p>
+            <h1 className="title beat-title">비트 수련</h1>
+            <p className="subtitle beat-sub-short">곡을 골라 방향 노트로 몬스터를 토벌 · 30초~3분</p>
+            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gold", amount: coins }, { kind: "gem", amount: gems }]} />
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
+            {Object.keys(rpg.records).length === 0 && !guideDismissed && (
+              <div className="beat-first-guide" role="note">
+                <div>
+                  <b>첫 수련 안내</b>
+                  <p>노트가 아래 판정선에 닿을 때 4방향 패드를 누르세요. 클리어하면 숙련도와 SP가 올라 사냥터 스킬 슬롯이 열리고, 장착하면 방치 효율이 오릅니다.</p>
+                </div>
+                <button type="button" onClick={() => setGuideDismissed(true)} aria-label="안내 닫기">확인</button>
+              </div>
+            )}
             {/* 시도권 (2026-10-28) — 오늘 무료 n/5 + 산 시도권 */}
             {charProg && (() => { const t = beatTicketsLeft(charProg); return (
               <div className="beat-ticket-bar" aria-label={`시도권 ${t.total}장`}>
@@ -914,13 +1015,13 @@ export function BeatGame({
                           );
                         })}
                       </span>
-                      {(() => { const d = variantOf(slot.track); const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); return (
-                        <span className="schedule-foot">{got ? <>보상 <b>+{slot.track.reward} 골드</b> · 견갑 조각</> : <>첫 클리어 <b>{beatRewardText(BEAT_FIRST_CLEAR[d])}</b></>}</span>
+                      {(() => { const d = variantOf(slot.track); const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); const stBonus = beatStageBonusGold(charProg?.titanBestStage ?? 1, d); const estGold = Math.round(slot.track.reward * trackRewardMult({ difficulty: d })) + stBonus; return (
+                        <span className="schedule-foot">{got ? <>보상 <b>+{formatGold(estGold)} 골드</b>{stBonus > 0 ? <small> (사냥터 연동)</small> : null} · 견갑 조각</> : <>첫 클리어 <b>{beatRewardText(BEAT_FIRST_CLEAR[d])}</b> · +{formatGold(estGold)} 골드</>}</span>
                       ); })()}
                       <span className="schedule-actions">
                         {/* 출격 강화 1택 (2026-10-08) — 곡 · 날짜로 정해진 3장. 칩 셋 대신 하나를 보이고 누르면 다음 것으로 바뀐다 */}
                         <span className="schedule-perks" onClick={(e) => e.stopPropagation()}>
-                          {(() => { const offer = beatPerkOffer(slot.track.id, new Date().toLocaleDateString("sv-SE")); const chosen = beatPerkChoice[slot.track.id] ?? offer[0]; const def = BEAT_PERK_BY_ID[chosen]; return (
+                          {(() => { const offer = beatPerkOffer(slot.track.id, new Date().toLocaleDateString("sv-SE"), beatBossStage(slot.stageIndex)); const chosen = beatPerkChoice[slot.track.id] ?? offer[0]; const def = BEAT_PERK_BY_ID[chosen]; return (
                             <button type="button" className={`perk-chip on icon-${def.icon}`} title={`${def.desc} — 누르면 다른 강화(${offer.length}개 중)`} aria-label={`출격 강화 ${def.label} · 바꾸기`}
                               onClick={(e) => { e.stopPropagation(); setBeatPerkChoice((v) => ({ ...v, [slot.track.id]: offer[(offer.indexOf(chosen) + 1) % offer.length] })); }}>{def.label}<i aria-hidden="true">↻</i></button>
                           ); })()}
@@ -953,19 +1054,20 @@ export function BeatGame({
                   void startSlot(next);
                 }}
               >
-                이어서 연습하기
+                이어서 수련하기
               </button>
               <button type="button" className="cta cta-ghost" onClick={onBack}>
                 사냥터로 돌아가기
               </button>
             </div>
             {/* 곡 목록을 위로 (2026-10-27, 사용자: "비트 디펜스 커스텀 삭제 · 곡 목록 잘 보이게") — 커스텀 상점은 뺐고(사냥터 상점 '외형'에 같은 상품) 랭킹 · 노트 안내는 아래로 */}
-            {/* 주간 랭킹 (계획안 §7 · P1) — 로컬 기록 + 시드 Mock, 서버 랭킹은 P3 */}
+            {/* 주간 랭킹 (계획안 §7 · P1) — 고정 목표 점수 라이벌 + 숙련 메달 */}
             {(() => {
               const rk = weeklyRanking(rpg, userHash);
+              const medals = beatMasteryMedals(rpg);
               return (
                 <div className="beat-rank-panel">
-                  <b>이번 주 랭킹 <small>로컬 기록 · 서버 랭킹은 추후</small></b>
+                  <b>수련 목표 점수 <small>S등급 {medals.s} · A등급 {medals.a} · 등급 받은 곡 {medals.total}</small></b>
                   {rk.rows.slice(0, 5).map((row) => (
                     <span key={row.rank} className={`rank-${row.rank} ${row.me ? "me" : ""}`}>
                       <em>{row.rank}위</em>
@@ -974,12 +1076,21 @@ export function BeatGame({
                     </span>
                   ))}
                   {rk.myRank > 5 && <span className="me"><em>{rk.myRank}위</em><i className="rank-avatar is-me" style={{ backgroundImage: `url(${heroPortrait()})`, backgroundSize: "cover", backgroundPosition: "center" }} aria-hidden="true" />나<strong>{rk.myScore.toLocaleString()}</strong></span>}
-                  <small className="beat-rank-next">{rk.myScore === 0 ? "한 곡을 클리어하면 내 기록이 랭킹에 오릅니다" : rk.nextTarget ? `다음 순위까지 ${(rk.nextTarget - rk.myScore).toLocaleString()}점` : "이번 주 1위 — 기록을 지키세요"}</small>
+                  <small className="beat-rank-next">{rk.myScore === 0 ? "한 곡을 수련하면 내 최고 기록이 오릅니다 · 이 기기 기록 기준" : rk.nextTarget ? `다음 목표까지 ${(rk.nextTarget - rk.myScore).toLocaleString()}점 · 이 기기 기록 기준` : "모든 목표를 넘었어요 · 라이벌은 매주 바뀝니다"}</small>
                 </div>
               );
             })()}
             {/* 노트 종류 안내 — 손 게임 기준 (펌프의 발판 노트를 4레인 손 입력으로) */}
             <p className="beat-note-legend"><b>탭</b> 한 번 · <b>홀드</b> 꼬리까지 누르기 · <b>점프</b> 두 레인 동시 · <b>홀드 점프</b> 두 레인 동시 홀드 · <b>롤</b> 두 레인 교대 연타</p>
+            {/* 박자 보정 (2026-11-11) — 기기마다 소리가 늦게 들리는 만큼. 설정 성격이라 메뉴 맨 아래에 */}
+            <div className="beat-sync-bar" role="group" aria-label="박자 보정">
+              <span>박자 보정 <b>{calibrationMs > 0 ? `+${calibrationMs}` : calibrationMs}ms</b> <small>{calibrationMs === 0 ? "늦으면 + · 이르면 −" : calibrationMs > 0 ? "늦게 들리는 기기" : "일찍 들리는 기기"}</small></span>
+              <span className="beat-sync-btns">
+                <button type="button" onClick={() => adjustCalibration(calibrationMs - 10)} aria-label="10ms 당기기">−10</button>
+                <button type="button" onClick={() => adjustCalibration(0)}>0</button>
+                <button type="button" onClick={() => adjustCalibration(calibrationMs + 10)} aria-label="10ms 늦추기">+10</button>
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -987,10 +1098,10 @@ export function BeatGame({
       {ui === "playing" && (
         <>
           <div key={dropFlash} className={`beat-command-party action-${partyAction} enemy-${enemyAction} ${dropFlash > 0 ? "drop-burst" : ""} ${feverMultiplier > 1 ? `fever-x${feverMultiplier}` : ""}`} aria-live="polite">
-            <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
+            <div className="beat-enemy-hp"><i style={{width:`${beatEnemyHp / beatEnemyMaxHp * 100}%`}}/><strong>{waveCount > 0 ? `토벌 ×${waveCount} · ` : ""}{beatEnemyHp / beatEnemyMaxHp > .66 ? "접근" : beatEnemyHp / beatEnemyMaxHp > .3 ? "교전" : "DROP 결전"} · 몬스터 {beatEnemyHp}/{beatEnemyMaxHp}</strong></div>
             {/* 피해 숫자 (2026-10-08) — 노트마다 몬스터 위로. 약점 레인은 크게 */}
             <span className="beat-floats" aria-hidden="true">{beatFloats.map((fl) => <em key={fl.id} className={`beat-float lane-${fl.lane} ${fl.weak ? "weak" : ""}`}>{fl.weak ? "약점 " : ""}-{fl.text}</em>)}</span>
-            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"}`}><EquippedCharacter worn={charProg?.equippedGear} mode={partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"} frame={combo % heroFrames(partyAction === "attack" || partyAction === "skill" ? "attack" : "idle")} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash + 1 : 0}/></span>{(() => { const base = stageNo >= 7 ? "titans/generated/monsters/flame-wyvern-clean" : stageNo >= 5 ? "titans/generated/monsters/wolf-king-clean" : stageNo >= 3 ? "titans/generated/monsters/moon-wolf-king-clean" : "titans/generated/monsters/moss-golem-clean"; return <span key={beatTick} className="beat-monster-wrap beat-pulse" data-beat={beatTick}><img className="beat-training-monster" src={assetUrl(base + ".png")} alt="레이드 몬스터" /><img className="beat-monster-hit" src={assetUrl(base + "-hit.png")} alt="" aria-hidden="true" /></span>; })()}{materialGain > 0 && <b className="beat-material-drop">강화석 +{materialGain}</b>}</div>
+            <div className="beat-command-track"><span className={`beat-party-character facing-${partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"}`}><EquippedCharacter worn={charProg?.equippedGear} mode={partyAction === "attack" || partyAction === "skill" ? "attack" : "idle"} frame={combo % heroFrames(partyAction === "attack" || partyAction === "skill" ? "attack" : "idle")} shoulder={shoulderBlueprint} /></span><span className="beat-party-allies"><AllyArt id="mia" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash : 0}/><AllyArt id="leon" attacking pulse={partyAction === "attack" || partyAction === "skill" || feverMultiplier > 1 ? score + dropFlash + 1 : 0}/></span>{(() => { const mKey = beatMonsterAt(stageNo, waveCount); const act = enemyAction === "hit" || enemyAction === "stagger" ? "hit" : enemyAction === "skill" ? "attack" : "idle"; return <span key={beatTick} className="beat-monster-wrap beat-pulse" data-beat={beatTick}>{hasMonsterAnim(mKey) ? <i key={act} className={`beat-monster-sheet ${monsterFacesRight(mKey) ? "face-flip" : ""}`} style={monsterAnimStyle(mKey, act)} role="img" aria-label="레이드 몬스터" data-art={mKey} data-act={act} /> : <img className="beat-monster-thumb" src={assetUrl(bestiaryThumb(mKey))} alt="레이드 몬스터" data-art={mKey} />}</span>; })()}{materialGain > 0 && <b className="beat-material-drop">강화석 +{materialGain}</b>}</div>
             {/* FEVER 가 바(패널 안)와 버튼(화면 오른쪽) 두 곳에서 같은 값을 보여 줬다 — 버튼 하나로 합치고
                 충전량은 버튼 배경이 채운다. 자리도 패널 안으로 올렸다: 판정선과 패드 사이,
                 손이 오가는 띠에 떠 있었다 (2026-09-21 실측 캡처) */}
@@ -1010,13 +1121,9 @@ export function BeatGame({
           <div className="hud beat-hud" style={dockStyle}>
             <button type="button" className="beat-quit-btn" onClick={pauseForQuit} aria-label="연주 멈추고 돌아가기">❚❚</button>
             <div className="hud-left">
+              {/* 체력은 단계 알약에 (2026-11-11) — 두 번째 알약(곡 이름 · 강화 · 체력)은 파티 판에 반쯤 가려 체력이 안 보였다. 곡 · 강화는 메뉴 카드가 말한다 */}
               <span className="hud-score beat-track-name">
-                {activeSlotRef.current?.kind === "spar" ? "SPAR" : "MARCH"} {stageNo}/
-                {totalStages} · {remainSec}s
-              </span>
-              <span className="hud-hint">
-                {lessonTitle}{activePerk ? ` · ${BEAT_PERK_BY_ID[activePerk].label}` : ""} · HP {"♥".repeat(hp)}
-                {"♡".repeat(Math.max(0, maxHp - hp))}
+                {stageNo}/{totalStages} · {remainSec}s · <b className="beat-hud-hp" aria-label={`체력 ${hp}/${maxHp}`}>♥{hp}/{maxHp}</b>
               </span>
               {/* '공명 제련 · <견갑>' 줄은 파티 패널에 가려 반쯤 잘렸다. 시작할 때 정해지는 값이고
                   받는 양은 클리어 화면(shoulderReward)이 말하므로 플레이 중에는 뺀다 (2026-09-21) */}
@@ -1059,14 +1166,30 @@ export function BeatGame({
       {ui === "clear" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">클리어</p>
+            <p className="brand">비트 수련 완료</p>
             <h1 className="title">{lessonTitle}</h1>
-            <p className="score-line">+{coinGain} 코인{adDouble === "done" ? " (광고 ×2 적용)" : ""}</p>
+            <p className="score-line">
+              +{formatGold(coinGain)} 골드
+              {lastRunStats && lastRunStats.stageBonusGold > 0 ? ` (사냥터 연동 +${formatGold(lastRunStats.stageBonusGold)})` : ""}
+              {adDouble === "done" ? " · 광고 ×2 적용" : ""}
+            </p>
+            {lastRunStats && (
+              <div className="beat-judge-summary" aria-label="판정 요약">
+                <span className={`beat-grade-pill grade-${lastRunStats.grade}`}>{lastRunStats.grade}</span>
+                <span className="beat-acc-text">정확도 <b>{lastRunStats.accuracyPct.toFixed(1)}%</b>{lastRunStats.wavesCleared > 0 ? ` · 토벌 ${lastRunStats.wavesCleared}` : ""}</span>
+                <span className="beat-judge-counts">
+                  <em>PERFECT {lastRunStats.perfect}</em>
+                  <em>GREAT {lastRunStats.great}</em>
+                  <em>GOOD {lastRunStats.good}</em>
+                  <em className="is-miss">MISS {lastRunStats.miss}</em>
+                </span>
+              </div>
+            )}
             {firstReward && <p className="beat-first-reward">{firstReward.diff} 첫 클리어 보상 — {beatRewardText(firstReward.reward)}</p>}
             {(adDouble === "ad" || adDouble === "free" || adDouble === "busy") && coinGain > 0 && (
               <button type="button" className="cta idle-claim-ad" disabled={adDouble === "busy"} onClick={() => void doubleBeatReward()}>
-                {adDouble === "busy" ? "광고 재생 중…" : adDouble === "free" ? "광고 제거 보유 · 코인 ×2" : "광고 보고 코인 ×2"}
-                <small>+{coinGain} 코인 추가 · 오늘 남은 횟수 포함</small>
+                {adDouble === "busy" ? "광고 재생 중…" : adDouble === "free" ? "광고 제거 보유 · 골드 ×2" : "광고 보고 골드 ×2"}
+                <small>+{formatGold(coinGain)} 골드 추가 · 오늘 남은 횟수 포함</small>
               </button>
             )}
             {resultRecord && (
@@ -1074,10 +1197,9 @@ export function BeatGame({
                 {resultRecord.newScore ? "신기록! " : ""}점수 {lastScore.toLocaleString()} / 최고 {resultRecord.bestScore.toLocaleString()} · 콤보 {resultRecord.combo}{resultRecord.newCombo ? " (최고 갱신)" : ` / 최고 ${resultRecord.bestCombo}`}
               </p>
             )}
-            {rpgGain && <p className="subtitle">{rpgGain}</p>}
+            {rpgGain && <p className="beat-hunt-bridge">{rpgGain}</p>}
             {shoulderReward && <p className="shoulder-reward">{shoulderReward}</p>}
-            <p className="subtitle">점수 {lastScore} · 보유 {coins}</p>
-            <p className="controls-hint">완성한 음악 레이어·정확도·DROP 횟수가 높을수록 견갑 조각 보상이 증가합니다.</p>
+            <p className="subtitle">보유 {formatGold(coins)} 골드</p>
             {!isLastCampaignStage(stageNo - 1) && (
               <button
                 type="button"
@@ -1088,11 +1210,11 @@ export function BeatGame({
                   else syncUi("menu");
                 }}
               >
-                다음 스테이지
+                다음 곡 수련하기
               </button>
             )}
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
-              연습실
+              비트 수련 목록
             </button>
             <button type="button" className="cta cta-ghost" onClick={onBack}>
               사냥터로 돌아가기
@@ -1104,9 +1226,21 @@ export function BeatGame({
       {ui === "gameover" && (
         <div className="game-overlay">
           <div className="overlay-content">
-            <p className="brand">게임 오버</p>
+            <p className="brand">수련 중단</p>
             <h1 className="title">비트 아웃</h1>
-            <p className="score-line">점수 {lastScore}</p>
+            <p className="score-line">점수 {lastScore.toLocaleString()}</p>
+            {lastRunStats && (
+              <div className="beat-judge-summary" aria-label="판정 요약">
+                <span className={`beat-grade-pill grade-${lastRunStats.grade}`}>{lastRunStats.grade}</span>
+                <span className="beat-acc-text">정확도 <b>{lastRunStats.accuracyPct.toFixed(1)}%</b></span>
+                <span className="beat-judge-counts">
+                  <em>PERFECT {lastRunStats.perfect}</em>
+                  <em>GREAT {lastRunStats.great}</em>
+                  <em>GOOD {lastRunStats.good}</em>
+                  <em className="is-miss">MISS {lastRunStats.miss}</em>
+                </span>
+              </div>
+            )}
             {resultRecord && (
               <p className={`beat-record-line ${resultRecord.newScore ? "is-new" : ""}`}>
                 {resultRecord.newScore ? "신기록! " : ""}최고 {resultRecord.bestScore.toLocaleString()}점 · 콤보 {resultRecord.combo}{resultRecord.newCombo ? " (최고 갱신)" : ` / 최고 ${resultRecord.bestCombo}`}
@@ -1121,10 +1255,10 @@ export function BeatGame({
                 void startSlot(slot, { freeRetry: true });
               }}
             >
-              {activeSlotRef.current?.track && freeRetryAvailable(activeSlotRef.current.track.id) ? "무료 재도전 (스태미나 0)" : "다시 도전"}
+              {activeSlotRef.current?.track && freeRetryAvailable(activeSlotRef.current.track.id) ? "무료 재도전 (시도권 0)" : "다시 도전"}
             </button>
             <button type="button" className="cta cta-ghost" onClick={() => syncUi("menu")}>
-              연습실
+              비트 수련 목록
             </button>
             <button type="button" className="cta cta-ghost" onClick={onBack}>
               사냥터로 돌아가기

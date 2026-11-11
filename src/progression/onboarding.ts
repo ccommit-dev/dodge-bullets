@@ -28,7 +28,7 @@ export function contentUnlocked(step: number, content: OnboardContent): boolean 
 export const LOCK_HINT: Record<OnboardContent, string> = {
   dodge: "사냥터 Stage 5에 도달하면 개척로가 열립니다",
   forge: "성문 방어로 첫 지역을 개척하면 대장간이 열립니다",
-  beat: "사냥터 Stage 10에 도달하면 연습실이 열립니다",
+  beat: "사냥터 Stage 10에 도달하면 비트 수련이 열립니다",
   events: "첫 방치 보상을 정산하면 이벤트와 보석 상점이 열립니다",
 };
 
@@ -61,7 +61,7 @@ export function unlockInfo(content: OnboardContent | "tower", p: Pick<CharacterP
 export const UNLOCK_BANNER: Record<number, { title: string; desc: string }> = {
   1: { title: "성문 방어 개방", desc: "개척로가 열렸습니다 — 원정을 클리어하면 새 사냥터가 열립니다" },
   2: { title: "대장간 개방", desc: "쌓인 골드로 북을 벼리세요 — 강화가 방치 배율(M)을 올립니다" },
-  3: { title: "연습실 개방", desc: "비트 수련이 방치 효율(R)을 올립니다" },
+  3: { title: "비트 수련 개방", desc: "비트 수련이 방치 효율(R)을 올립니다" },
   4: { title: "모든 콘텐츠 개방", desc: "이벤트와 보석 상점이 열렸습니다 — 모험가의 하루가 완성됐습니다" },
 };
 

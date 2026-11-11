@@ -57,7 +57,7 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
       dot: !dodgeToday, locked: !contentUnlocked(step, "dodge"), lockHint: unlockInfo("dodge", progress).hint, unlock: unlockInfo("dodge", progress), go: { kind: "content", content: "dodge" },
     },
     {
-      id: "beat", label: "비트 수련", desc: "30초~2분 기록 도전", feeds: ["견갑 조각"],
+      id: "beat", label: "비트 수련", desc: "30초~3분 기록 도전 · 스킬 슬롯 해금", feeds: ["골드", "견갑 조각", "SP"],
       remaining: (opts.beatBest ?? 0) > 0 ? `최고 ${(opts.beatBest ?? 0).toLocaleString()}점` : "첫 연주",
       dot: !beatToday, locked: !contentUnlocked(step, "beat"), lockHint: unlockInfo("beat", progress).hint, unlock: unlockInfo("beat", progress), go: { kind: "content", content: "beat" },
     },

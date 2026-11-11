@@ -151,14 +151,14 @@ EVENT_PRODUCTS.push(
     summary: () => `${allyName(featuredAlly("LR"))} (초월) · 초월 천장 200회의 약 1/3 값`,
   },
   {
-    id: "sp-beat-ticket-3", tab: "event-shop2", name: "비트 시도권", desc: "비트 디펜스 3판 더 — 날이 바뀌어도 남는다", badge: "비트", icon: "beat", gemCost: 30, weeklyLimit: 10,
+    id: "sp-beat-ticket-3", tab: "event-shop2", name: "비트 시도권", desc: "비트 수련 3판 더 — 날이 바뀌어도 남는다", badge: "비트", icon: "beat", gemCost: 30, weeklyLimit: 10,
     grant: () => ({ beatTickets: 3 }),
-    summary: () => "비트 디펜스 시도권 3장",
+    summary: () => "비트 수련 시도권 3장",
   },
   {
     id: "sp-beat-ticket-10", tab: "event-shop2", name: "비트 시도권 묶음", desc: "10장 — 3장씩보다 25% 싸다", badge: "묶음 −25%", icon: "beat", gemCost: 75, weeklyLimit: 3,
     grant: () => ({ beatTickets: 10 }),
-    summary: () => "비트 디펜스 시도권 10장",
+    summary: () => "비트 수련 시도권 10장",
   },
   {
     id: "sp-top-tier-box", tab: "event-shop2", name: "신화 · 초월 성장 상자", desc: "가진 신화 · 초월 동료 모두 조각 15 · 스킬 코어 5", badge: "상위 등급", icon: "forge", art: "ui/attendance/event-chest.png", gemCost: 500, weeklyLimit: 2,
