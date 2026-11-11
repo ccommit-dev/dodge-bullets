@@ -2,6 +2,7 @@ import { emptyHuntMods, type HuntMods } from "./huntPerks";
 import { NEW_ALLIES, newAllyBaseCost, newAllyBaseDps, preRebalanceBaseCost, preRebalanceBaseDps, type NewAllyId } from "./allyRoster";
 import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
 import { emptyQuests, normalizeQuests, type QuestState } from "./quests";
+import { emptyUrgent, normalizeUrgent, type UrgentState } from "./urgent";
 import { assetUrl } from "../asset";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
@@ -130,6 +131,8 @@ export type TitansSave = {
   lightningRefund?: number;
   /** 퀘스트 — 시간마다 골드 (titans/quests.ts, 2026-10-26) · 환생하면 첫 줄 Lv.1 로 */
   quests: QuestState;
+  /** 마감형 긴급 의뢰 (titans/urgent.ts) — 하루 최대 3회(접속 · 방치 정산 · 대장 3회), 15분 마감 */
+  urgent: UrgentState;
 };
 
 export const MOBS_PER_STAGE = 10;
@@ -341,6 +344,7 @@ export function defaultTitansSave(): TitansSave {
     acorns: emptyAcorns(),
     lightningRefund: 0,
     quests: emptyQuests(),
+    urgent: emptyUrgent(),
   };
 }
 
@@ -460,6 +464,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     // 번개 강화 삭제 (2026-10-28) — 옛 저장의 단계는 이번 판에 쓴 골드로 돌려준다(환생하면 어차피 0 이던 런 강화)
     lightningRefund: n((value as { lightningRefund?: unknown }).lightningRefund, 0) + lightningGold,
     quests: normalizeQuests((value as { quests?: unknown }).quests),
+    urgent: normalizeUrgent((value as { urgent?: unknown }).urgent),
   };
 }
 

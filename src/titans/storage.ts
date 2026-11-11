@@ -40,5 +40,6 @@ export async function rebirthResetTitans(userHash: string, startGold = 0, startS
     skillInventory: current.skillInventory,
     totalKills: current.totalKills,
     totalTaps: current.totalTaps,
+    urgent: current.urgent,
   });
 }

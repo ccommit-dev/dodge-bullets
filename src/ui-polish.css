@@ -1194,6 +1194,8 @@
 .titans-party-hp > i > em { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #86efac); transition: width .25s ease-out; }
 .titans-party-hp.low > i > em { background: linear-gradient(90deg, #dc2626, #f87171); animation: party-hp-low .6s ease-in-out infinite alternate; }
 .titans-party-hp > small { font-size: 13px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+/* 대장전엔 지역 이름 줄 자리에 원정대 체력이 온다 — 두 글자가 겹쳐 읽히던 것을 숨긴다(2026-11-11, 자리는 그대로 둬 줄 높이가 안 변한다) */
+.titans-field.boss .titans-stagebar.in-field .titans-area-name { visibility: hidden; }
 @keyframes party-hp-low { from { filter: none; } to { filter: brightness(1.4); } }
 .party-dmg-float { position: absolute; left: calc(8% + var(--slot, 0) * 11%); bottom: 58%; z-index: 14; font-size: 15px; font-weight: 1000; color: #fde68a; text-shadow: 0 2px 3px #000, 0 0 6px #000; pointer-events: none; animation: party-dmg-up .7s ease-out both; white-space: nowrap; }
 .party-dmg-float.boss { color: #fca5a5; font-size: 19px; }

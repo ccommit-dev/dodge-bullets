@@ -1,0 +1,40 @@
+/* 긴급 의뢰 (2026-11-11) — 수배 딱지(전장 왼쪽) · 수배 전단. 색은 단순 명료 층(ui/clarity.css)과 같다: 크림 판 · 진갈색 테두리 · 금 강조 하나 · 초록 단추 */
+
+/* ── 딱지 — 알림 알약 줄과 같은 높이의 왼쪽 빈자리. 그 높이엔 캐릭터 머리가 안 닿는다(verify-hud-layout). 얼굴 + 남은 시간만 ── */
+.titans-field .urgent-badge { position: absolute; left: 6px; top: 109px; z-index: 12; display: flex; align-items: center; gap: 3px; box-sizing: border-box; height: 28px; margin: 0; padding: 0 5px 0 2px; border: 2px solid var(--flat-ink); border-radius: 999px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 2px 0 rgba(43, 26, 13, .35); font: inherit; line-height: 1; cursor: pointer; animation: urgent-badge-glow 1.8s ease-in-out infinite; }
+.titans-field:not(.lanes-wide) .urgent-badge { top: 94px; }
+.titans-field .urgent-badge img { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--flat-cream-2); object-fit: contain; }
+.titans-field .urgent-badge small { font-size: 12px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--flat-ink); }
+.titans-field .urgent-badge.is-last small { color: #b42318; }
+/* 눈길은 테두리 빛으로만 — 크기 · 자리를 흔들면 옆 알림 · 동료 머리와 닿는다 */
+@keyframes urgent-badge-glow { 50% { box-shadow: 0 2px 0 rgba(43, 26, 13, .35), 0 0 0 3px rgba(242, 194, 50, .75); } }
+@media (prefers-reduced-motion: reduce) { .titans-field .urgent-badge { animation: none; } }
+
+/* ── 전단 ── */
+.urgent-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: rgba(10, 6, 2, .66); }
+.urgent-poster { box-sizing: border-box; display: grid; justify-items: center; gap: 6px; width: min(100%, 300px); max-height: 100%; overflow: auto; padding: 14px 16px 16px; border: 3px solid var(--flat-ink); border-radius: 14px; background: var(--flat-cream); color: var(--flat-ink); box-shadow: 0 6px 0 rgba(43, 26, 13, .5); text-align: center; }
+.urgent-poster .urgent-kicker { font-size: 12px; font-weight: 800; letter-spacing: .04em; color: #8a5a00; }
+.urgent-poster h2 { margin: 0; font-size: 26px; font-weight: 950; letter-spacing: .32em; text-indent: .32em; line-height: 1.1; color: var(--flat-ink); }
+.urgent-poster .urgent-portrait { display: grid; place-items: center; width: 132px; height: 132px; border: 3px solid var(--flat-ink); border-radius: 10px; background: var(--flat-cream-2); }
+.urgent-poster .urgent-portrait img { width: 118px; height: 118px; object-fit: contain; }
+.urgent-poster .urgent-name { font-size: 18px; font-weight: 900; line-height: 1.2; }
+.urgent-poster .urgent-rule { margin: 0; font-size: 13px; font-weight: 700; color: #5c3d24; }
+.urgent-poster .urgent-rule b { color: var(--flat-ink); font-weight: 900; }
+.urgent-poster .urgent-reward { display: flex; justify-content: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 7px 8px; border: 2px solid #e2b13c; border-radius: 10px; background: #fffaf0; }
+.urgent-poster .urgent-reward span { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 900; }
+.urgent-poster .urgent-reward img,
+.urgent-poster .urgent-reward .coin-mark { flex: none; width: 20px; height: 20px; margin: 0; filter: none; object-fit: contain; vertical-align: middle; }
+.urgent-poster .urgent-deadline { margin: 0; font-size: 12px; font-weight: 700; color: #5c3d24; }
+.urgent-poster .urgent-deadline b { font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; color: #b42318; }
+.urgent-poster .urgent-today { display: grid; gap: 3px; width: 100%; margin: 2px 0 0; padding: 0; list-style: none; }
+.urgent-poster .urgent-today li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 9px; border-radius: 8px; background: rgba(59, 36, 21, .07); font-size: 12px; font-weight: 700; color: #5c3d24; }
+.urgent-poster .urgent-today em { font-style: normal; font-weight: 900; font-variant-numeric: tabular-nums; color: #5c3d24; }
+.urgent-poster .urgent-today li.is-open { background: #fff; outline: 2px solid #e2b13c; color: var(--flat-ink); }
+.urgent-poster .urgent-today li.is-open em { color: #8a5a00; }
+.urgent-poster .urgent-today li.is-done em { color: #2f6b12; }
+.urgent-poster .urgent-today li.is-missed { text-decoration: line-through; text-decoration-color: rgba(59, 36, 21, .45); }
+.urgent-poster .urgent-actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; width: 100%; margin-top: 6px; }
+.urgent-poster .urgent-actions button { min-height: 44px; border: 3px solid var(--flat-ink); border-radius: 12px; font: inherit; font-size: 16px; font-weight: 900; cursor: pointer; }
+.urgent-poster .urgent-later { background: #fff; color: var(--flat-ink); box-shadow: 0 4px 0 rgba(59, 36, 21, .3); }
+.urgent-poster .urgent-go { background: var(--flat-green); color: #fff; box-shadow: 0 4px 0 var(--flat-green-2); text-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+.urgent-poster .urgent-go:disabled { background: #b9ad97; box-shadow: 0 4px 0 #8f8573; cursor: default; }

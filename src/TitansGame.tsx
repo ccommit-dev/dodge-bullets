@@ -76,6 +76,8 @@ import { AreaGateModal } from "./AreaGateModal";
 import { setHuntBgm, type HuntMood } from "./ui/bgm";
 import { sfxBossEntrance, sfxBossFail, sfxIdleClaim, sfxPurchase, sfxRebirth, sfxUpgrade, sfxGateBlocked, sfxHuntBurst, sfxHuntHit, sfxHuntShoot, sfxMonsterDown, sfxPetPounce, sfxRelicReveal, sfxRelicSummon, sfxSkillTier, sfxSlotUnlock, sfxWeapon , sfxUiTap, sfxUiDenied } from "./ui/sfx";
 import { rollCoinDrop } from "./titans/eventCoins";
+import { URGENT_OPEN_STAGE, activeUrgent, completeUrgent, countUrgentBoss, issueUrgent, urgentFace, urgentFaceStage, urgentHp, urgentReward, urgentTimeSec, type UrgentKind } from "./titans/urgent";
+import { UrgentBadge, UrgentPoster } from "./titans/UrgentPoster";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
@@ -130,7 +132,7 @@ import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, mountSeatShift, a
 import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
-import { emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
+import { dateKey, emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
 import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { hubCards } from "./titans/hubCards";
@@ -148,7 +150,7 @@ import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { RewardIcon, grantRewardKinds } from "./ui/RewardIcon";
 import { CurrencyIcon, GemMark } from "./ui/CurrencyIcon";
 import { WalletBar, formatWallet } from "./ui/WalletBar";
-import { monsterArtKey } from "./titans/bestiary";
+import { bestiaryThumb, monsterArtKey } from "./titans/bestiary";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
@@ -327,6 +329,12 @@ function shoulderTrainingMaterials(level: number): { expedition: number; beat: n
   if (level < 5) return { expedition: 0, beat: 0 };
   if (level < 15) return { expedition: 1 + Math.floor((level - 5) / 3), beat: 0 };
   return { expedition: 4 + Math.floor((level - 15) / 4), beat: 1 + Math.floor((level - 15) / 5) };
+}
+
+/** 긴급 의뢰 골드에 곱하는 영구 배수 — 펫 · 탈것 · 갑옷 · 대장 사다리 · 결정/유물. 도감 · 워밍업 · 첫 클리어 2배는 처치 골드에만 붙는다 */
+function urgentGoldMul(character: CharacterProgress, save: TitansSave, permGoldMul: number): number {
+  return (1 + activePetEffect(character.pets, character.activePet, "gold")) * (1 + activeMountGold(character.mounts, character.activeMount))
+    * gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).goldMul * ladderEffects(character.bossLadder).goldMul * permGoldMul;
 }
 
 /**
@@ -577,6 +585,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     void updateCharacterProgress(userHash, (current) => openMomentOffer(current, kind)).then((next) => { setCharacter(next); });
   };
   const [nowTick, setNowTick] = useState(() => Date.now());
+  /** 긴급 의뢰 (2026-11-11, titans/urgent.ts) — 지금 싸우는 현상범(없으면 null: 평소 사냥). ref 는 종류 + 도전을 누른 날(자정을 넘겨 끝나도 그날 의뢰로 친다) */
+  const [urgentFight, setUrgentFight] = useState<UrgentKind | null>(null);
+  const urgentRef = useRef<{ kind: UrgentKind; day: string } | null>(null);
+  const [urgentOpen, setUrgentOpen] = useState(false);
+  /** 전환 띠 글자 — 현상범이 나올 때 · 잡았을 때 "STAGE CLEAR" 대신 */
+  const [urgentBanner, setUrgentBanner] = useState<string | null>(null);
   /** 콘텐츠 선택 카드 "최고점수" — 비트 기록은 비트 저장소에 있어 팝업을 열 때 읽는다 */
   const [beatBestScore, setBeatBestScore] = useState(0);
   const onboardHintShownRef = useRef(false);
@@ -759,7 +773,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // DEV 훅 (2026-10-14) — 시그니처 부가 효과 실검사(shoot-all-allies)가 대장 제한 시간·정지 시각을 읽는다. 출시 번들엔 없다
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
+    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, urgent: urgentRef.current?.kind ?? null, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
     (window as unknown as { __huntDmgReset?: () => void }).__huntDmgReset = () => { devDmgRef.current = {}; };
     return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; delete (window as unknown as { __huntDmgReset?: unknown }).__huntDmgReset; };
   }, []);
@@ -882,27 +896,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     bossTimeRef.current = bossTimeSec;
   }, [bossTimeSec]);
 
-  const spawn = useCallback((stage: number, nextWave: number, asBoss: boolean) => {
+  const spawn = useCallback((stage: number, nextWave: number, asBoss: boolean, urgent: { kind: UrgentKind; day: string } | null = null) => {
     relicBurnPoolRef.current = 0;   // 앞 대상에 모인 화상이 새 몬스터에 떨어지지 않게
     const isChest = !asBoss && (Math.random() < 0.04 || (import.meta.env.DEV && !!(window as unknown as { __huntForceGolden?: boolean }).__huntForceGolden));
-    const mhp = monsterHp(stage, asBoss) * (isChest ? 1.6 : 1);
+    // 긴급 의뢰의 현상범 — 체력은 아래 층 대장의 55% · 시간은 대장 시간의 2/3 (titans/urgent.ts)
+    const mhp = urgent ? urgentHp(stage) : monsterHp(stage, asBoss) * (isChest ? 1.6 : 1);
+    const fightSec = urgent ? urgentTimeSec(bossTimeRef.current) : bossTimeRef.current;
     setWave(nextWave);
     setBoss(asBoss);
     if (asBoss) sfxBossEntrance();
     setChesterson(isChest);
     setHp(mhp);
     setMaxHp(mhp);
-    setBossLeft(bossTimeRef.current);
+    setBossLeft(fightSec);
     waveRef.current = nextWave;
     bossRef.current = asBoss;
+    urgentRef.current = urgent;
+    setUrgentFight(urgent ? urgent.kind : null);
+    if (!urgent) setUrgentBanner(null);
     chestRef.current = isChest;
     hpRef.current = mhp;
-    bossLeftRef.current = bossTimeRef.current;
+    bossLeftRef.current = fightSec;
     // 원정대 체력은 대장전마다 가득 (일반 몬스터의 공격은 숫자만)
     partyHpRef.current = 1;
     setPartyHp(1);
     partyDownRef.current = false;
-    lastBossHitLeftRef.current = bossTimeRef.current;
+    lastBossHitLeftRef.current = fightSec;
     // 보스 약점 — 보스전 시작과 함께 첫 창. 일반 몬스터는 약점 없음
     const weak = asBoss ? rollBossWeak(performance.now(), null, Math.random, WEAK_WINDOW_MS + saveRef.current.huntMods.weakWindowMs + allyFeatureEffects(characterRef.current.partyIds).weakWindowMs) : null;
     bossWeakRef.current = weak;
@@ -937,7 +956,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       monsterRight: (rolledKind === "dragon" ? 2 : 8) + monsterJit,
       monsterJit,
       partyMeetRight: (rolledKind === "dragon" ? 2 : 8) + monsterJit,
-      partyMl: monsterVisibleMargin(monsterAssetFor(rolledKind, huntingArea(stage), asBoss, isChest, "idle", stage))[0],
+      partyMl: monsterVisibleMargin(monsterAssetFor(rolledKind, huntingArea(stage), asBoss, isChest, "idle", urgent ? urgentFaceStage(stage) : stage))[0],
       durationMs,
       seq: prev.seq + 1,
       // 무리마다 깊이 — lanePair 주석
@@ -1176,6 +1195,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             for (const id of report.drops.skills) copies[id] = (copies[id] ?? 0) + 1;
             return { ...prev, skillInventory: { ...prev.skillInventory, copies } };
           });
+        }
+        // 긴급 의뢰 — 방치 보상을 받으면 현상범 하나 (하루 한 번, titans/urgent.ts)
+        if (Math.max(saveRef.current.bestStage, next.titanBestStage) >= URGENT_OPEN_STAGE) {
+          setSave((prev) => { const urgent = issueUrgent(prev.urgent, "idle", Date.now(), dateKey()); return urgent === prev.urgent ? prev : { ...prev, urgent }; });
         }
         trackEvent("dungeon_reward_claim", { stage: report.stage, reward: report.result.gold, duration: Math.round(report.result.seconds) });
         const finishedOnboarding = characterRef.current.onboardingStep === 3 && next.onboardingStep === 4;
@@ -1735,6 +1758,50 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       battlePhaseRef.current = "monster-death";
       setBattlePhase("monster-death");
 
+      // 긴급 의뢰 (2026-11-11, titans/urgent.ts) — 현상범은 스테이지 흐름 밖이다. 처치 수 · 도감 · 사다리 · 다음 층은 건드리지 않고 보상만 주고 싸우던 자리로 돌아간다
+      const urgentWon = urgentRef.current;
+      if (urgentWon) {
+        const reward = urgentReward(s.stage);
+        const face = urgentFace(s.stage);
+        const gold = Math.floor(reward.gold * urgentGoldMul(characterRef.current, s, permRef.current.goldMul));
+        // 이미 잡은 의뢰면(같은 객체가 돌아온다) 보상 없이 돌아간다 — 두 번 받는 길을 막는다
+        const paid = completeUrgent(s.urgent, urgentWon.kind, urgentWon.day) !== s.urgent;
+        bossWeakRef.current = null;
+        setBossWeak(null);
+        setBossBreak(1);
+        later(() => setBossBreak(2), 300);
+        later(() => setBossBreak(3), 650);
+        later(() => setBossBreak(0), 1450);
+        if (paid) {
+          setSave((prev) => ({ ...prev, gold: prev.gold + gold, urgent: completeUrgent(prev.urgent, urgentWon.kind, urgentWon.day) }));
+          void updateCharacterProgress(userHash, (cur) => ({ ...cur, enhancementMaterials: cur.enhancementMaterials + reward.stones, eventCoins: cur.eventCoins + reward.coins })).then(setCharacter);
+          later(() => showRewardPop("ladder", "긴급 의뢰 완료", `${face.name} 처치`, `골드 +${formatGold(gold)} · 강화석 +${reward.stones} · 이벤트 코인 +${reward.coins}`, bestiaryThumb(face.art)), 500);
+        }
+        setUrgentBanner("현상범 처치!");
+        pendingStageRef.current = s.stage;
+        pendingSpawnRef.current = [s.stage, waveRef.current];
+        later(() => {
+          battlePhaseRef.current = "stage-clear";
+          setBattlePhase("stage-clear");
+        }, 360);
+        later(() => {
+          battlePhaseRef.current = "stage-exit";
+          setBattlePhase("stage-exit");
+        }, 820);
+        later(() => {
+          pendingSpawnRef.current = null;
+          spawn(s.stage, waveRef.current, false);
+          battlePhaseRef.current = "stage-enter";
+          setBattlePhase("stage-enter");
+        }, 1500);
+        later(() => {
+          battlePhaseRef.current = "combat";
+          setBattlePhase("combat");
+          pendingStageRef.current = null;
+        }, 1980);
+        return;
+      }
+
       // 몬스터 도감 (LIVEOPS §2.3) — 종별 카운트는 배치로 모아 보스 클리어 때 플러시.
       // 킬마다 storage 쓰기를 하면 저장 부하가 크다.
       const killedKind = monsterKind(s.stage, wasBoss, chestRef.current);
@@ -1838,6 +1905,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       setSave((prev) => ({
         ...prev,
         gold: prev.gold + goldGain,
+        // 긴급 의뢰 — 오늘 대장 세 번째에 현상범이 붙는다 (titans/urgent.ts)
+        urgent: wasBoss && Math.max(prev.bestStage, characterRef.current.titanBestStage) >= URGENT_OPEN_STAGE ? countUrgentBoss(prev.urgent, Date.now(), today) : prev.urgent,
         skillInventory: wasBoss ? { ...prev.skillInventory, skillCores: prev.skillInventory.skillCores + 1 } : prev.skillInventory,
         // 사냥 강화 (2026-10-08): 보스마다 선택권 +1(최대 3) · 새 지역으로 넘어가면 지역 효과는 비운다 (지역 = 런)
         huntPicks: 0,   // 사냥 강화 3택 제거 (2026-10-21)
@@ -2090,7 +2159,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (cdsRef.current[id] > 0) continue;
           if (!saveRef.current.skillInventory.learned.includes(id)) continue;
           if (saveRef.current.skillInventory.equipped[sk.slot] !== id) continue;
-          if (id === "voidFinish" && bossRef.current && hpRef.current >= monsterHp(saveRef.current.stage, true) * 0.3 && bossLeftRef.current > 6) continue;
+          if (id === "voidFinish" && bossRef.current && hpRef.current >= (urgentRef.current ? urgentHp(saveRef.current.stage) : monsterHp(saveRef.current.stage, true)) * 0.3 && bossLeftRef.current > 6) continue;
           castSkillRef.current(id);
         }
       }
@@ -2231,7 +2300,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const left = bossLeftRef.current - (now < buffsRef.current.freezeUntil || !formationReadyRef.current ? 0 : dt);
         bossLeftRef.current = left;
         setBossLeft(Math.max(0, left));
-        if (left <= 0) {
+        // 긴급 의뢰 실패 — 잃는 것은 없다. 싸우던 자리로 돌아가고 마감 전이면 다시 도전할 수 있다(실패 연속 · 벽 · 제안 · 알림은 세지 않는다)
+        const urgentLost = left <= 0 && urgentRef.current !== null;
+        if (urgentLost) {
+          flash(partyDownRef.current ? "원정대가 쓰러졌다 · 현상범이 달아났다" : "현상범이 달아났다 · 마감 전이면 다시 도전!");
+          if (partyDownRef.current) { const k = performance.now(); setPartyKo(k); window.setTimeout(() => setPartyKo((cur) => (cur === k ? 0 : cur)), 1300); }
+          partyDownRef.current = false;
+          sfxBossFail();
+          spawn(saveRef.current.stage, waveRef.current, false);
+          battlePhaseRef.current = "combat";
+          setBattlePhase("combat");
+        }
+        if (left <= 0 && !urgentLost) {
           flash(partyDownRef.current ? "원정대가 쓰러졌다 · 동료를 키워 다시 도전!" : "보스 실패 · 다시 도전!");
           if (partyDownRef.current) { const k = performance.now(); setPartyKo(k); window.setTimeout(() => setPartyKo((cur) => (cur === k ? 0 : cur)), 1300); }
           partyDownRef.current = false;
@@ -2327,11 +2407,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const stageNow = saveRef.current.stage;
         const label = partyMaxHpLabel(stageNow);
         if (bossRef.current && !partyDownRef.current) {
-          const T = Math.max(1, bossTimeRef.current);
+          const T = Math.max(1, urgentRef.current ? urgentTimeSec(bossTimeRef.current) : bossTimeRef.current);
           const left = bossLeftRef.current;
           const gap = Math.max(0.3, Math.min(4, lastBossHitLeftRef.current - left));
           lastBossHitLeftRef.current = left;
-          const hpMax = Math.max(1, monsterHp(stageNow, true));
+          const hpMax = Math.max(1, urgentRef.current ? urgentHp(stageNow) : monsterHp(stageNow, true));
           const role = partyRoleEffects(characterRef.current.partyIds);
           const frac = bossHitFraction(stageNow, role.tanks, role.healers, bossPace(hpRef.current / hpMax, 1 - left / T), T, gap);
           partyHpRef.current = Math.max(0, partyHpRef.current - frac);
@@ -3297,7 +3377,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         else pushFxAt("warcry", "monster", 0.45, 0.5, 58, 42, def.element === "fire" ? 18 : 210);
       }
       const { dmg, base } = computeTapHit();
-      const low = effect.kind === "execute" && hpRef.current < monsterHp(saveRef.current.stage, bossRef.current) * 0.3;
+      const low = effect.kind === "execute" && hpRef.current < (urgentRef.current ? urgentHp(saveRef.current.stage) : monsterHp(saveRef.current.stage, bossRef.current)) * 0.3;
       const hitMult = effect.kind === "execute" ? (low ? effect.lowMult : effect.mult) : effect.mult;
       applyDamage(dmg * hitMult * mult, true, { source: "skill", clientX: geo?.clientMx, clientY: geo?.clientMy, label: def.name, skill: id, delayMs: geo ? SHOT_TRAVEL_MS : 0 });
       if (effect.kind === "hit" && effect.buff) {
@@ -3323,6 +3403,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     castSkillRef.current = castSkill;
   });
 
+
+  // 긴급 의뢰 (2026-11-11, titans/urgent.ts) — 오늘 첫 사냥이면 현상범 하나. 열리는 층에 닿은 뒤부터 · 대결 중엔 붙이지 않는다(자정을 넘겨도 싸우던 의뢰가 지워지지 않게)
+  const urgentUnlocked = Math.max(save.bestStage, character.titanBestStage) >= URGENT_OPEN_STAGE;
+  const urgentDay = dateKey();
+  const urgentLoginIssued = save.urgent.day === urgentDay && save.urgent.issued.login !== undefined;
+  useEffect(() => {
+    if (!ready || !urgentUnlocked || urgentLoginIssued || urgentFight) return;
+    setSave((prev) => { const urgent = issueUrgent(prev.urgent, "login", Date.now(), urgentDay); return urgent === prev.urgent ? prev : { ...prev, urgent }; });
+  }, [ready, urgentUnlocked, urgentLoginIssued, urgentFight, urgentDay]);
+  const urgentNow = ready ? activeUrgent(save.urgent, nowTick, urgentDay) : null;
+  const urgentNone = urgentNow === null;
+  // 마감이 지나면 전단도 닫는다 — 열린 채 두면 다음 의뢰가 붙는 순간 전단이 저절로 뜬다
+  useEffect(() => { if (urgentNone) setUrgentOpen(false); }, [urgentNone]);
 
   // 이벤트 센터가 저장을 바꾸면 루틴 보드·추천이 즉시 따라온다 · 1초 틱은 워밍업 타이머용
   useEffect(() => {
@@ -3542,6 +3635,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }, 1160);
   };
 
+  /** 긴급 의뢰 도전 (2026-11-11) — 대장 도전처럼 지금 몬스터를 물리고 현상범을 부른다. 처치 수(wave) · 대장 대기는 그대로 두고, 끝나면 그 자리로 돌아온다 */
+  const startUrgent = (kind: UrgentKind) => {
+    battleTimers.current.forEach(window.clearTimeout);
+    battleTimers.current = [];
+    pendingStageRef.current = null;
+    pendingSpawnRef.current = null;
+    formationReadyRef.current = false;
+    setFormationReady(false);
+    setMonsterIn(false);
+    setMonsterAction("idle");
+    setUrgentOpen(false);
+    setUrgentBanner("현상범 출현!");
+    const day = dateKey();
+    battlePhaseRef.current = "stage-exit";
+    setBattlePhase("stage-exit");
+    later(() => {
+      spawn(saveRef.current.stage, waveRef.current, true, { kind, day });   // stage-exit 에서 부르면 자리를 다시 잡는다(spawn relocate)
+      battlePhaseRef.current = "stage-enter";
+      setBattlePhase("stage-enter");
+    }, 680);
+    later(() => {
+      battlePhaseRef.current = "combat";
+      setBattlePhase("combat");
+    }, 1160);
+  };
+
   const skipStageTransition = () => {
     if (pendingStageRef.current === null && pendingSpawnRef.current === null) return;
     // 대열 준비 타이머는 남긴다 — 새 몬스터가 이미 나온 뒤(입장 연출 중)에 누르면 그 타이머까지 지워 교전이 영영 시작되지 않았다.
@@ -3559,6 +3678,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   const kind: TitanMonsterKind = monsterKind(save.stage, boss, chesterson);
   const area = huntingArea(save.stage);
+  // 긴급 의뢰 — 현상범은 같은 지역의 다른 대장 얼굴(이름 · 그림만. 체력 · 시간은 spawn 이 정한다)
+  const faceStage = urgentFight ? urgentFaceStage(save.stage) : save.stage;
   // 배경 음악 분위기 (2026-10-28, 사용자: "스테이지별 콘텐츠별 알맞은 음악") — 대장전 = 오케스트라 전투 · 상점 · 뽑기 = 글로켄슈필 · 폐허(11층)부터 = 축제 피리 · 그 앞 = 숲(ui/bgm)
   // 일괄 레벨업 수량 — 장비 성장은 제 줄, 동료 시트는 편성 줄 안으로(2026-11-03 줄 합치기)
   const bulkToggle = (
@@ -3575,7 +3696,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   useEffect(() => { setHuntBgm(huntMood); }, [huntMood]);
   useEffect(() => () => setHuntBgm("field"), []);
   const monsterRanged = kind === "dragon" || (boss && (area.id === "volcano" || area.id === "abyss"));
-  const label = monsterLabel(kind, chesterson, save.stage);
+  const label = monsterLabel(kind, chesterson, faceStage);
   // 편성(§2) — 출전 동료만 DPS·필드 렌더에 반영한다
   const partySlots = partySlotCount(character.towerBestFloor, character.partyCap);
   const synergy = useMemo(() => partySynergies(fieldedParty(character.partyIds, stageCeilingFor(character.pioneeredArea), character.claimedRewards)), [character.partyIds, character.pioneeredArea, character.claimedRewards]);
@@ -3724,7 +3845,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
   const adviceCost = (a: PurchaseAdvice) => a.cost.filter((c) => c.amount > 0).map((c) => `${CURRENCY_LABEL[c.currency]} ${formatWallet(c.amount)}`).join(" · ");
   // 도감 발견 — 사냥터에 처음 나온 몬스터 그림을 기록한다 (2026-10-06, 미발견은 도감에서 실루엣)
-  const fieldArtKey = monsterArtKey(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage));
+  const fieldArtKey = monsterArtKey(monsterAssetFor(kind, area, boss, chesterson, "idle", faceStage));
   useEffect(() => {
     if (!fieldArtKey || character.seenMonsters.includes(fieldArtKey) || fieldArtKey === "golden-lion-clean") return;
     void updateCharacterProgress(userHash, (current) => (current.seenMonsters.includes(fieldArtKey) ? current : { ...current, seenMonsters: [...current.seenMonsters, fieldArtKey] })).then(setCharacter).catch(() => {});
@@ -3909,7 +4030,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} ${partyKo ? "party-ko" : ""} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        className={`titans-field phase-${battlePhase} ${partyKo ? "party-ko" : ""} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${urgentFight ? "is-urgent" : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         data-area={area.id}
@@ -3925,10 +4046,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           "--party-ml": String(encounterMotion.partyMl),
           // 일반 몬스터: 보이는 몸 왼쪽 가장자리가 스테이지 첫 몬스터와 같은 자리에 오도록 — 근접 동료가 몬스터마다 옮겨 서지 않는다.
           // 대장은 몸(--boss-size)이 달라 예전처럼 제 자리에 서고 근접 동료가 한 번 옮겨 선다
-          "--monster-meet-right": boss ? `${encounterMotion.monsterRight}%` : `calc(${encounterMotion.partyMeetRight}% + var(--monster-size, 112px) * (${monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]} - ${encounterMotion.partyMl}))`,
+          "--monster-meet-right": boss ? `${encounterMotion.monsterRight}%` : `calc(${encounterMotion.partyMeetRight}% + var(--monster-size, 112px) * (${monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", faceStage))[0]} - ${encounterMotion.partyMl}))`,
           // 근접 슬롯이 몬스터 박스가 아니라 '보이는' 몸 가장자리에 붙도록 — (옛 새끼 용처럼) 좌우 여백이 큰 원화에서 동료가 허공에 서던 문제
-          "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[0]),
-          "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", save.stage))[1]),
+          "--monster-ml": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", faceStage))[0]),
+          "--monster-mr": String(monsterVisibleMargin(monsterAssetFor(kind, area, boss, chesterson, "idle", faceStage))[1]),
           "--encounter-duration": `${encounterMotion.durationMs}ms`,
           "--lane-l": `${encounterMotion.laneL}%`,
           "--lane-ln": String(encounterMotion.laneL),   // 원근(대열 세로 간격 · 몸 크기)용 숫자 — anim-plus.css
@@ -3959,8 +4080,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <div>
             <p className="titans-kicker">BEAVER DAM · IDLE DEFENSE</p>
             <h1>
-              STAGE {save.stage}
-              {boss ? " BOSS" : bossReady ? " · 보스 대기" : ` · ${wave}/${MOBS_PER_STAGE}`}
+              {urgentFight ? "긴급 의뢰" : `STAGE ${save.stage}`}
+              {urgentFight ? "" : boss ? " BOSS" : bossReady ? " · 보스 대기" : ` · ${wave}/${MOBS_PER_STAGE}`}
             </h1>
             <small className="titans-area-name">{area.name} · 최고 {save.bestStage}층</small>
             {warmupLeft > 0 && !bossReady && battlePhase === "combat" && (
@@ -4084,7 +4205,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             area={area}
             boss={boss}
             golden={chesterson}
-            stage={save.stage}
+            stage={faceStage}
             action={monsterAction}
             hitKey={monsterHit}
             state={
@@ -4124,7 +4245,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </div>
 
         {(battlePhase === "stage-clear" || battlePhase === "stage-exit") && (
-          <div className="titans-clear-banner">STAGE CLEAR</div>
+          <div className="titans-clear-banner">{urgentBanner ?? "STAGE CLEAR"}</div>
         )}
         {(battlePhase === "stage-clear" || battlePhase === "stage-exit" || battlePhase === "stage-enter") && (
           <button type="button" className="titans-transition-skip" onPointerDown={(event) => event.stopPropagation()} onClick={skipStageTransition}>
@@ -4184,8 +4305,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <small>원정대 {Math.round(partyHp * partyMaxHpLabel(save.stage)).toLocaleString()}</small>
           </div>
           <div className="titans-boss-timer">
-            BOSS {bossLeft.toFixed(1)}s
-            <i style={{ width: `${(bossLeft / bossTimeSec) * 100}%` }} />
+            {urgentFight ? "현상범" : "BOSS"} {bossLeft.toFixed(1)}s
+            <i style={{ width: `${(bossLeft / (urgentFight ? urgentTimeSec(bossTimeSec) : bossTimeSec)) * 100}%` }} />
           </div>
         </>)}
 
@@ -4270,6 +4391,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </div>
         )}
         {!freeRetryCard && momentOfferCard}
+        {/* 긴급 의뢰 딱지 (2026-11-11) — 알림 줄 왼쪽 빈자리. 현상범 · 대장과 싸우는 중엔 숨긴다 */}
+        {urgentNow && !boss && (
+          <UrgentBadge face={urgentFace(save.stage)} leftMs={urgentNow.deadline - nowTick} onOpen={() => setUrgentOpen(true)} />
+        )}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
           {routine.filter((item) => item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)).map((item) => (
             <button key={item.id} type="button" className="battle-alert claim" onClick={() => { setDismissedAlerts((items) => [...items, `routine:${item.id}:${item.detail}`]); runRoutine(item); }}>
@@ -5556,6 +5681,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {settingsNode}
       </nav>
 
+      {urgentOpen && urgentNow && !boss && (
+        <UrgentPoster
+          kind={urgentNow.kind}
+          face={urgentFace(save.stage)}
+          stage={save.stage}
+          timeSec={urgentTimeSec(bossTimeSec)}
+          reward={{ ...urgentReward(save.stage), gold: Math.floor(urgentReward(save.stage).gold * urgentGoldMul(character, save, perm.goldMul)) }}
+          leftMs={urgentNow.deadline - nowTick}
+          state={save.urgent}
+          now={nowTick}
+          day={urgentDay}
+          canStart={battlePhase === "combat" && !chesterson}
+          onStart={() => startUrgent(urgentNow.kind)}
+          onClose={() => setUrgentOpen(false)}
+        />
+      )}
       {toast && <div className="titans-toast">{toast}</div>}
       {rewardPop && !gachaSummoning && !gachaReveal && (
         <div key={rewardPop.key} className={`reward-pop tone-${rewardPop.tone}`} role="status">

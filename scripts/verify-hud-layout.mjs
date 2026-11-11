@@ -10,7 +10,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const SCREENS = [["iPhone 카톡", 390, 664], ["iPhone SE", 375, 553], ["안드로이드 작은", 360, 640], ["iPhone 긴", 390, 844], ["Max", 430, 932]];
-const PANELS = { hp: ".titans-hp", 판: ".titans-stagebar.in-field", 자동사냥: ".idle-status-strip", 알림: ".battle-alert-stack > .battle-alert", 보스: ".titans-boss-challenge", AUTO: ".battle-qol", 스킵: ".titans-transition-skip", 클리어: ".titans-clear-banner" };
+const PANELS = { hp: ".titans-hp", 판: ".titans-stagebar.in-field", 자동사냥: ".idle-status-strip", 알림: ".battle-alert-stack > .battle-alert", 수배: ".urgent-badge", 보스: ".titans-boss-challenge", AUTO: ".battle-qol", 스킵: ".titans-transition-skip", 클리어: ".titans-clear-banner" };
 const ALLOWED = new Set(["hp×", "판×보스", "판×스킵", "판×워밍업"]);   // 판 안에 두는 단추
 const probe = (panels) => {
   const field = document.querySelector(".titans-field"); if (!field) return null;
