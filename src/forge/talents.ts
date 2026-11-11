@@ -22,7 +22,7 @@ export const MASTERY_STEP = 10;
 export const MASTERY_GOLD_AT = 4;
 export const MASTERY_PICK_AT = 7;
 /** 골드 이정표 보상 — 등급이 오를수록 커진다 */
-export function masteryGoldReward(rank: number): number { return 2000 * (rank + 1); }
+export function masteryGoldReward(rank: number): number { return 20 * (rank + 1); }   // 예전 단위 2,000 — 대장간 값과 같은 배로 (economy/units)
 
 export type MasteryInput = { bestLevel: number; bestArmorLevel: number; bow: number; staff: number };
 export function masteryPoints(x: MasteryInput): number {

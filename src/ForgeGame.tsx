@@ -25,6 +25,7 @@ import { requestReviewOnce } from "./game/native";
 import { loadForgeSave, saveForgeSave } from "./forge/storage";
 import { SwordArt } from "./forge/swords";
 import { PROGRESSION_BALANCE } from "./progression/balance";
+import { COIN_UNIT } from "./economy/units";
 import { grantCharacterReward, loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
 import { armorTierOf } from "./ui/EquippedCharacter";
 import { ShoulderIcon, shoulderIconUrl } from "./ui/ShoulderIcon";
@@ -108,9 +109,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
       // v4 → v5 지갑 통합. 구 대장간 골드를 공유 지갑으로 한 번만 옮긴다.
       // 한 번도 강화하지 않은 세이브는 구 기본값(1,000,000)을 들고 있을 뿐이므로
-      // 이관 대신 개업 자금만 지급해 초반 인플레를 막는다.
+      // 이관 대신 개업 자금만 지급해 초반 인플레를 막는다. 구 대장간 골드는 예전 단위라 지금 단위로 바꿔 옮긴다 (economy/units)
       if (!forge.goldMigrated) {
-        const carried = forge.totalAttempts > 0 ? forge.gold : FORGE_STARTER_COINS;
+        const carried = forge.totalAttempts > 0 ? Math.floor(forge.gold / COIN_UNIT) : FORGE_STARTER_COINS;
         progress = await updateCharacterProgress(userHash, (current) => ({
           ...current,
           sharedCoins: current.sharedCoins + carried,
@@ -174,9 +175,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const ticketNeed = protectionCost(save.level);
   const maxed = save.level >= 15;
   const canEnhance = !maxed && coins >= tier.cost && phase === "idle";
-  const ticketPrice = 25_000 + save.tickets * 10_000;
+  const ticketPrice = 250 + save.tickets * 100;   // 예전 단위 25,000 + 10,000
   const swordCraftCost = shardSwordCost(3);
-  const armorCost = Math.floor(500 * Math.pow(1.72, save.armorLevel));
+  const armorCost = Math.floor(5 * Math.pow(1.72, save.armorLevel));   // 예전 단위 500
   const armorMaterialNeed = save.armorLevel < 5 ? 1 : 2 + Math.floor((save.armorLevel - 5) / 4);
   const armorBeatNeed = save.armorLevel < 5 ? 0 : 1 + Math.floor((save.armorLevel - 5) / 5);
   const armorChance = Math.max(.38, .94 - save.armorLevel * .045);
@@ -307,7 +308,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             }));
           }
           void grantCharacterReward(userHash, `forge:${prev.totalAttempts}:${Date.now()}`, {
-            exp: (PROGRESSION_BALANCE.forge.successExp + nextLevel * 2) * (firstToday ? 2 : 1),
+            exp: Math.max(1, Math.round(PROGRESSION_BALANCE.forge.successExp + nextLevel * PROGRESSION_BALANCE.forge.successExpPerLevel)) * (firstToday ? 2 : 1),
             lastContent: "forge",
           }).then(() =>
             updateCharacterProgress(userHash, (current) => ({
@@ -458,7 +459,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
 
   const resetSave = () => {
     if (!window.confirm("대장간 세이브를 초기화할까요?")) return;
-    // goldMigrated를 유지한다 — 초기화할 때마다 개업 자금 50,000이 다시 지급되면
+    // goldMigrated를 유지한다 — 초기화할 때마다 개업 자금(FORGE_STARTER_COINS)이 다시 지급되면
     // 리셋 버튼이 무한 골드 수도꼭지가 된다.
     const next = { ...defaultForgeSave(), goldMigrated: save.goldMigrated };
     setSave(next);

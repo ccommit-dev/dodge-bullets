@@ -8,6 +8,7 @@
 import { HEROES, killGoldOldUnit, type TitanHeroId } from "../titans/model";
 import { ALLY_RARITY, SHOP_ALLY_GEM_COST } from "../titans/allies";
 import type { CharacterProgress } from "../progression/model";
+import { COIN_UNIT } from "./units";
 
 export type EventShopTab = "event-shop" | "event-shop2";
 
@@ -66,7 +67,7 @@ export function featuredAlly(tier: "UR" | "LR", now: number = Date.now()): Titan
 }
 const allyName = (id: TitanHeroId | null) => HEROES.find((h) => h.id === id)?.name ?? "";
 
-const bossGold = (p: CharacterProgress, mult: number) => Math.floor(killGoldOldUnit(Math.max(1, p.titanBestStage), true, false) * mult);   // 대장간 지갑 — 아직 예전 단위
+const bossGold = (p: CharacterProgress, mult: number) => Math.floor((killGoldOldUnit(Math.max(1, p.titanBestStage), true, false) * mult) / COIN_UNIT);   // 대장간 지갑 — 옛 곡선 ÷ 100 (방치 정산과 같은 단위)
 const fmt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `${(n / 1e3).toFixed(1)}K` : n.toLocaleString());
 
 export const EVENT_PRODUCTS: EventProduct[] = [

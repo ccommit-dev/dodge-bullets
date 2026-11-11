@@ -518,8 +518,9 @@ export function deflateCost(value: number): number {
 }
 
 /**
- * 낮추기 전(옛 단위) 처치 골드 — ① 대장간 지갑(sharedCoins)으로 가는 방치 정산 · 균열 · 이벤트 상점: 대장간 값(FORGE_TIERS · 재련 · 무기 강화)이
- * 아직 옛 단위라 그쪽 수입도 옛 단위로 둔다(2026-11-10 1단계 — 사냥터 지갑만). ② 퀘스트 견줌(scripts/verify-quests): 퀘스트 규칙은 옛 단위로 돈다
+ * 낮추기 전(옛 곡선) 처치 골드 — ① 대장간 지갑(sharedCoins)으로 가는 방치 정산 · 균열 · 이벤트 상점: 이 값 ÷ 100 (economy/units COIN_UNIT).
+ * 대장간 값(FORGE_TIERS · 재련 · 무기 강화)을 같은 배로 줄였으므로 그쪽 수입도 곡선은 그대로 두고 같은 배로만 줄인다 — 사냥터처럼 지수로 누르면
+ * 방치 몇 시간~며칠에 사는 값이 크게 빨라진다. ② 퀘스트 견줌(scripts/verify-quests): 퀘스트 규칙은 옛 단위로 돈다
  */
 export function killGoldOldUnit(stage: number, boss: boolean, chesterson: boolean): number {
   let gold = rawKillBase(stage) * (boss ? 7.5 : 1);

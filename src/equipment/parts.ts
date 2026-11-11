@@ -35,7 +35,7 @@ export function gearTrainingCost(part: GearPart, level: number): number {
 /** 대장간 강화 비용 — 공용 코인 + 강화석 (+10 이 끝) */
 export function gearEnhanceCost(level: number): { coins: number; materials: number } | null {
   if (level >= GEAR_ENHANCE_MAX) return null;
-  return { coins: Math.floor(800 * Math.pow(1.6, level)), materials: 1 + Math.floor(level / 3) };
+  return { coins: Math.floor(8 * Math.pow(1.6, level)), materials: 1 + Math.floor(level / 3) };   // 예전 단위 800 (economy/units)
 }
 
 /** 한 파츠의 효과 값 — 숙련 × 강화 배율, 상한 */

@@ -24,7 +24,7 @@ const TIERS = ["N", "R", "SR", "SSR", "UR", "LR"];
 const seed = async (extra = {}, titansExtra = {}) => {
   const party = ["SR", "SSR", "UR", "LR"].map(pick).filter(Boolean);
   const heroes = Object.fromEntries(TIERS.map(pick).filter(Boolean).map((id) => [id, 12]));
-  const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 500, sharedCoins: 500000, enhancementMaterials: 50, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: party, partyCap: 4, sessionCount: 9, allyBalanceVersion: 99, ...extra };
+  const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 500, sharedCoins: 500000, unitRev: 1, enhancementMaterials: 50, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: party, partyCap: 4, sessionCount: 9, allyBalanceVersion: 99, ...extra };
   const titans = { stage: 12, bestStage: 40, gold: 500000, heroes, party, lastActiveAt: now, ...titansExtra };
   await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });
   await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
@@ -140,7 +140,7 @@ ok("낀 파츠 강화 줄이 보인다 · 44px 단추 · 넘침 없음", row && 
 if (OUT) { await page.evaluate(() => document.querySelector(".equip-window")?.scrollIntoView({ block: "start" })); await sleep(250); await page.screenshot({ path: `${OUT}/enhance.png` }); }
 await page.evaluate(() => document.querySelector(".gear-set-enhance button").click()); await sleep(500);
 let afterEnh = await saved();
-ok("강화: +1 · 코인 800 · 강화석 1", afterEnh.gearSetLevels?.["sword-helmet"] === 1 && beforeEnh.sharedCoins - afterEnh.sharedCoins === 800 && beforeEnh.enhancementMaterials - afterEnh.enhancementMaterials === 1, JSON.stringify({ lv: afterEnh.gearSetLevels, c: beforeEnh.sharedCoins - afterEnh.sharedCoins, m: beforeEnh.enhancementMaterials - afterEnh.enhancementMaterials }));
+ok("강화: +1 · 코인 8 · 강화석 1", afterEnh.gearSetLevels?.["sword-helmet"] === 1 && beforeEnh.sharedCoins - afterEnh.sharedCoins === 8 && beforeEnh.enhancementMaterials - afterEnh.enhancementMaterials === 1, JSON.stringify({ lv: afterEnh.gearSetLevels, c: beforeEnh.sharedCoins - afterEnh.sharedCoins, m: beforeEnh.enhancementMaterials - afterEnh.enhancementMaterials }));
 await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(800);
 afterEnh = await saved();
 ok("다시 들어와도 +1", afterEnh.gearSetLevels?.["sword-helmet"] === 1);

@@ -21,7 +21,7 @@ const WEAPON_IDS = SK.SKILL_WEAPON_IDS;
 /** 하루 성장 — 계정 레벨(사냥터)·검 */
 const growth = (day) => ({ level: 8 + day * 4, sword: 3 + Math.floor(day * 1.2) });
 /** 사냥터 방치·처치 골드 하루치 근사 */
-const HUNT_GOLD = 20000;
+const HUNT_GOLD = 200;   // 2026-11-10 단위 낮추기 2차 — 대장간 지갑 ÷100 (예전 20,000)
 
 function freshAccount() {
   return {

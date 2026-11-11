@@ -26,6 +26,7 @@ import { starMilestoneMultiplier } from "./collection";
 import type { CharacterProgress } from "./model";
 import { treeIdleMult } from "./crystalTree";
 import { relicEffects } from "../titans/relics";
+import { COIN_UNIT } from "../economy/units";
 
 /** 일반 성문 방어 스테이지 수 — T 보너스의 상한 근거. */
 /** 방치 시간 보너스를 주는 원정 스테이지 수 — 50 스테이지가 된 뒤에도(2026-10-02) 예전처럼 앞 4 스테이지까지만 (방치 경제를 그대로 둔다) */
@@ -53,7 +54,7 @@ export const IDLE = {
   hoursCap: 14,
   /** 시간당 강화석 상한 */
   materialsPerHourCap: 20,
-  expPerStageSecond: 0.015,
+  expPerStageSecond: 0.0015,   // 예전 0.015 — 경험치 단위 1/10 (economy/units)
 } as const;
 
 /** 비트 스킬 → 타이탄 스킬 슬롯. 5:5로 정확히 대응한다. */
@@ -241,11 +242,11 @@ export function computeIdleYield(
   let remaining = seconds;
   while (remaining > 0) {
     const slice = Math.min(3600, remaining);
-    gold += killGoldOldUnit(current, false, false) * rate * multiplier * slice;   // 대장간 지갑(sharedCoins)으로 간다 — 아직 예전 단위
+    gold += killGoldOldUnit(current, false, false) * rate * multiplier * slice;   // 대장간 지갑(sharedCoins)으로 간다 — 옛 곡선으로 세고 아래에서 한 번 줄인다
     remaining -= slice;
     if (current < catchupCeiling) current += 1;
   }
-  gold = Math.floor(gold * boost);
+  gold = Math.floor((gold * boost) / COIN_UNIT);
   const endStage = current;
 
   const avgStage = (safeStage + endStage) / 2;

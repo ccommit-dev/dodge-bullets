@@ -2,6 +2,7 @@ import type { PlayerStats } from "./types";
 import type { Tier } from "../titans/allyRoster";
 import { STAGES, getStage } from "./stages";
 import { qaUnlockOpen } from "../progression/qaUnlock";
+import { COIN_UNIT } from "../economy/units";
 
 /**
  * 성문 방어 영구 스킬 — **속성 화살** (2026-09-29).
@@ -177,12 +178,14 @@ export type ExpeditionSkillDef = {
  */
 export function skillCost(def: ExpeditionSkillDef, level: number): { gold: number; shards: number; seals: number } {
   const n = Math.max(1, level);
+  // goldBase 는 예전 단위 그대로 두고 여기서 한 번 줄인다 (2026-11-10 단위 낮추기 2차) — Lv1 3~7 · Lv10 134~361
+  const gold = (old: number) => Math.max(1, Math.round(old / COIN_UNIT));
   // **학습(Lv1)은 인장으로** — 조각은 그 스킬을 쓴 판에서만 나오고 습득 카드는 Lv1 이상이어야 뜨므로,
   // Lv1 에 조각을 요구하면 새 계정은 두 번째 스킬을 영원히 못 배운다 (주간 시뮬 실측, 2026-10-01).
   // 인장은 스테이지를 깰 때마다 나오니 "다음 스테이지를 깨면 다음 스킬을 배운다"는 리듬이 된다
-  if (n === 1) return { gold: def.goldBase, shards: 0, seals: LEARN_SEALS[def.id] };
+  if (n === 1) return { gold: gold(def.goldBase), shards: 0, seals: LEARN_SEALS[def.id] };
   return {
-    gold: Math.round(def.goldBase * Math.pow(1.55, n - 1)),
+    gold: gold(def.goldBase * Math.pow(1.55, n - 1)),
     shards: Math.round(def.sealBase * Math.pow(1.4, n - 1)),
     seals: 0,
   };
@@ -269,7 +272,8 @@ export function emptyWeaponForge(): WeaponForgeLevels { return { bow: 0, staff: 
 export function weaponForgeCost(level: number): { gold: number; stones: number } {
   const n = Math.max(1, level);
   // 골드 증가 1.32 → 1.45 (2026-10-27 감사: +20 까지 258만으로 검(+15 약 1.6억)의 1/60 이라 같은 골드면 지팡이 · 창이 검의 2배 넘게 셌다)
-  return { gold: Math.round(1_500 * Math.pow(1.45, n - 1)), stones: 2 + n * 2 };
+  // 2026-11-10 단위 낮추기 2차: 시작값 1,500 → 15 (위 258만 · 1.6억은 예전 단위)
+  return { gold: Math.round(15 * Math.pow(1.45, n - 1)), stones: 2 + n * 2 };
 }
 /** 피해 배수 — 단계마다 +8% (20단계 ×2.6) */
 export function weaponForgeDamageMul(level: number): number { return 1 + 0.08 * Math.max(0, Math.min(WEAPON_FORGE_MAX, level)); }

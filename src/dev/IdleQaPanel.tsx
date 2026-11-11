@@ -133,7 +133,7 @@ export function IdleQaPanel({ userHash }: { userHash: string }) {
               </button>
             </div>
             <div className="qa-row">
-              <button type="button" onClick={() => seed(userHash, { reforgeRank: 12, bestForgeLevel: 15, sharedCoins: 5_000_000_000 }, {}, { level: 15, bestLevel: 15, totalAttempts: 200, goldMigrated: true })}>
+              <button type="button" onClick={() => seed(userHash, { reforgeRank: 12, bestForgeLevel: 15, sharedCoins: 50_000_000 }, {}, { level: 15, bestLevel: 15, totalAttempts: 200, goldMigrated: true })}>
                 무한 재련
               </button>
               <button type="button" onClick={() => seed(userHash, { idleClaimedAt: Date.now() - 20 * 3600 * 1000 }, { lastActiveAt: Date.now() - 20 * 3600 * 1000 })}>

@@ -1892,7 +1892,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         }
         // 보스 처치 보상은 막혀도 그대로 준다 — 잡은 건 잡은 것이다.
         void grantCharacterReward(userHash, `titans:${clearedStage}:${Date.now()}`, {
-          exp: PROGRESSION_BALANCE.titans.bossExpBase + clearedStage * 8,
+          exp: Math.round(PROGRESSION_BALANCE.titans.bossExpBase + clearedStage * PROGRESSION_BALANCE.titans.bossExpPerStage),
           lastContent: "titans",
         }).then(() =>
           updateCharacterProgress(userHash, (current) => ({

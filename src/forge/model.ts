@@ -31,29 +31,30 @@ export type ForgeSave = {
 export const FORGE_TIERS: SwordTier[] = [
   // 2026-10-07 비버 키우기: 주인공 무기가 북이라 단계 이름도 북으로 (id·수치 불변)
   // 2026-10-27 무기 4종: 북 → 검 (사용자: "비버의 무기가 북이라 너무 어색해") — 이름만, 수치 · 단계는 그대로
-  { level: 0, name: "낡은 나무 검", cost: 300, sell: 0, chance: 1, shards: 1, hue: 205 },
-  { level: 1, name: "단단한 나무 검", cost: 600, sell: 500, chance: 0.95, shards: 1, hue: 195 },
-  { level: 2, name: "청동 검", cost: 1_200, sell: 1_400, chance: 0.88, shards: 2, hue: 180 },
-  { level: 3, name: "강철 검", cost: 2_400, sell: 3_400, chance: 0.78, shards: 3, hue: 165 },
-  { level: 4, name: "푸른 리본 검", cost: 5_000, sell: 8_000, chance: 0.67, shards: 5, hue: 200 },
-  { level: 5, name: "화염의 검", cost: 11_000, sell: 19_000, chance: 0.56, shards: 8, hue: 18 },
-  { level: 6, name: "번개의 검", cost: 24_000, sell: 45_000, chance: 0.46, shards: 12, hue: 52 },
-  { level: 7, name: "서리 군주의 검", cost: 52_000, sell: 105_000, chance: 0.37, shards: 18, hue: 190 },
-  { level: 8, name: "심연의 대검", cost: 115_000, sell: 250_000, chance: 0.29, shards: 26, hue: 268 },
-  { level: 9, name: "별빛 마법검", cost: 250_000, sell: 590_000, chance: 0.22, shards: 38, hue: 310 },
-  { level: 10, name: "용울음 검", cost: 540_000, sell: 1_350_000, chance: 0.16, shards: 55, hue: 2 },
-  { level: 11, name: "천공의 검", cost: 1_150_000, sell: 3_100_000, chance: 0.11, shards: 80, hue: 215 },
-  { level: 12, name: "차원 가르는 검", cost: 2_400_000, sell: 7_200_000, chance: 0.075, shards: 120, hue: 285 },
-  { level: 13, name: "신화의 검", cost: 5_000_000, sell: 16_500_000, chance: 0.05, shards: 180, hue: 42 },
-  { level: 14, name: "무한의 검", cost: 10_000_000, sell: 38_000_000, chance: 0.03, shards: 280, hue: 330 },
-  { level: 15, name: "초월자의 검", cost: 0, sell: 100_000_000, chance: 0, shards: 500, hue: 155 },
+  // 2026-11-10 단위 낮추기 2차 (economy/units): 값 · 판매가 모두 예전의 1/100 — 같은 배라 "키워서 팔기" 손익 · 단계 사이 비는 그대로 (예전 300 … 1,000만 / 500 … 1억)
+  { level: 0, name: "낡은 나무 검", cost: 3, sell: 0, chance: 1, shards: 1, hue: 205 },
+  { level: 1, name: "단단한 나무 검", cost: 6, sell: 5, chance: 0.95, shards: 1, hue: 195 },
+  { level: 2, name: "청동 검", cost: 12, sell: 14, chance: 0.88, shards: 2, hue: 180 },
+  { level: 3, name: "강철 검", cost: 24, sell: 34, chance: 0.78, shards: 3, hue: 165 },
+  { level: 4, name: "푸른 리본 검", cost: 50, sell: 80, chance: 0.67, shards: 5, hue: 200 },
+  { level: 5, name: "화염의 검", cost: 110, sell: 190, chance: 0.56, shards: 8, hue: 18 },
+  { level: 6, name: "번개의 검", cost: 240, sell: 450, chance: 0.46, shards: 12, hue: 52 },
+  { level: 7, name: "서리 군주의 검", cost: 520, sell: 1_050, chance: 0.37, shards: 18, hue: 190 },
+  { level: 8, name: "심연의 대검", cost: 1_150, sell: 2_500, chance: 0.29, shards: 26, hue: 268 },
+  { level: 9, name: "별빛 마법검", cost: 2_500, sell: 5_900, chance: 0.22, shards: 38, hue: 310 },
+  { level: 10, name: "용울음 검", cost: 5_400, sell: 13_500, chance: 0.16, shards: 55, hue: 2 },
+  { level: 11, name: "천공의 검", cost: 11_500, sell: 31_000, chance: 0.11, shards: 80, hue: 215 },
+  { level: 12, name: "차원 가르는 검", cost: 24_000, sell: 72_000, chance: 0.075, shards: 120, hue: 285 },
+  { level: 13, name: "신화의 검", cost: 50_000, sell: 165_000, chance: 0.05, shards: 180, hue: 42 },
+  { level: 14, name: "무한의 검", cost: 100_000, sell: 380_000, chance: 0.03, shards: 280, hue: 330 },
+  { level: 15, name: "초월자의 검", cost: 0, sell: 1_000_000, chance: 0, shards: 500, hue: 155 },
 ];
 
 /**
- * 신규 유저의 대장간 개업 자금. 공유 골드가 0이면 첫 강화(300G)조차 못 하므로
+ * 신규 유저의 대장간 개업 자금. 공유 골드가 0이면 첫 강화(3G)조차 못 하므로
  * 최초 1회만 지급한다. 구 기본값 1,000,000은 공유 지갑에 그대로 넣으면 초반 인플레가 난다.
  */
-export const FORGE_STARTER_COINS = 50_000;
+export const FORGE_STARTER_COINS = 500;   // 예전 단위 50,000
 
 export function defaultForgeSave(): ForgeSave {
   return {
@@ -129,7 +130,7 @@ export function shardSwordCost(level: number): number {
  * 등급이 오를수록 비용은 지수로, 성공률은 완만하게 떨어져 파밍이 끝나지 않는다.
  */
 export function reforgeCost(rank: number): number {
-  return Math.floor(2_000_000 * Math.pow(1.26, Math.max(0, rank)));
+  return Math.floor(20_000 * Math.pow(1.26, Math.max(0, rank)));   // 예전 단위 200만
 }
 
 export function reforgeChance(rank: number): number {

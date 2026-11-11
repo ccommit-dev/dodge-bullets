@@ -96,13 +96,47 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const w0 = writes;
   await P(); await P(); await P();
   ok("변화가 없으면 읽기는 저장하지 않는다", writes === w0, `읽기 3번에 쓰기 ${writes - w0}번`);
-  slow.set("dodgebullets:coins:" + H, "777");   // 레거시 코인 키가 더 크면 읽을 때 합칠 것이 생긴다
+  slow.set("dodgebullets:coins:u2:" + H, "777");   // 미러 코인 키가 더 크면 읽을 때 합칠 것이 생긴다 (지금 단위 키 — 예전 키는 단위 이전 때 한 번만 읽는다)
   const jobs = [];
   for (let i = 0; i < 6; i += 1) { jobs.push(P()); jobs.push(prog.updateCharacterProgress(H, (c) => ({ ...c, redGems: c.redGems + 100 }))); }
   await Promise.all(jobs);
   const after = await P();
   ok("읽기와 지급이 겹쳐도 지급 6번(+600)과 레거시 합치기(코인 777)가 모두 남는다", after.redGems === 600 && after.sharedCoins >= 777, `보석 ${after.redGems} 코인 ${after.sharedCoins}`);
   globalThis.__toss.Storage = undefined;
+}
+
+// ── 단위 낮추기 2차 (economy/units · 2026-11-10): 예전 단위 저장은 읽을 때 한 번만 바뀐다 ──
+{
+  fresh();
+  const key = "dodgebullets:progression:v1:" + H, oldCoins = "dodgebullets:coins:" + H;
+  const blank = await P();
+  ok("단위: 새 계정은 지금 단위(판 번호 1)로 시작한다", blank.unitRev === 1 && blank.sharedCoins === 0 && blank.exp === 0);
+  // 예전 단위 저장 — 판 번호 없음. 예전 필요 경험치(90L + 35L²)로 Lv 58 = 122,960 · Lv 59 = 127,145
+  const old = { ...blank, exp: 123_456, level: 58, sharedCoins: 9_876_543 };
+  delete old.unitRev;
+  mem.set(key, JSON.stringify(old));
+  mem.set(oldCoins, "9876543");   // 예전 미러 키에는 옛 금액이 그대로 남아 있다
+  const a = await P();
+  ok("단위: 예전 저장은 지갑 ÷100 · 경험치 ÷10 · 레벨 그대로 · 판 번호 1", a.sharedCoins === 98_765 && a.exp === 12_345 && a.level === 58 && a.unitRev === 1, `코인 ${a.sharedCoins} 경험치 ${a.exp} Lv ${a.level} 판 ${a.unitRev}`);
+  const stored = JSON.parse(mem.get(key));
+  const b = await P(), c = await P();
+  ok("단위: 바꾼 값이 저장되고 다시 읽어도 또 나누지 않는다 (예전 미러 키도 다시 보지 않는다)", stored.unitRev === 1 && stored.sharedCoins === 98_765 && stored.exp === 12_345 && b.sharedCoins === 98_765 && c.exp === 12_345 && c.level === 58, `저장 ${stored.sharedCoins}/${stored.exp} 다시 ${c.sharedCoins}/${c.exp}`);
+  // 예전 미러 키가 진행도보다 컸던 계정 — 예전에도 큰 쪽이 지갑이었다
+  fresh();
+  const low = { ...blank, sharedCoins: 1_000 }; delete low.unitRev;
+  mem.set(key, JSON.stringify(low)); mem.set(oldCoins, "250000");
+  const d = await P();
+  ok("단위: 예전 미러 키가 더 컸으면 그 금액 ÷100 이 지갑", d.sharedCoins === 2_500 && d.unitRev === 1, String(d.sharedCoins));
+  // 진행도 저장 없이 예전 코인 키만 있던 계정
+  fresh();
+  mem.set(oldCoins, "50000");
+  const e = await P();
+  mem.set(oldCoins, "99999999");
+  const f = await P();
+  ok("단위: 진행도 없이 예전 코인 키만 있어도 ÷100 · 판 번호가 붙은 뒤엔 예전 키를 무시한다", e.sharedCoins === 500 && e.unitRev === 1 && f.sharedCoins === 500, `${e.sharedCoins} → ${f.sharedCoins}`);
+  // 지금 단위 미러 키는 계속 하한이다 (App 이 지갑이 바뀔 때마다 쓴다)
+  mem.set("dodgebullets:coins:u2:" + H, "800");
+  ok("단위: 지금 단위 미러 키(coins:u2)는 그대로 하한", (await P()).sharedCoins === 800);
 }
 
 // ── 웹: 판매 없음 ──

@@ -22,6 +22,7 @@ import { normalizeEquippedGear, normalizeGearSetLevels, normalizeOwnedGear, type
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
 import { TALENTS, type TalentId } from "../forge/talents";
+import { EXP_UNIT, UNIT_REV } from "../economy/units";
 
 export const PROGRESSION_VERSION = 5;
 
@@ -250,11 +251,14 @@ export type CharacterProgress = {
   relics: RelicState;
   /** 소진하지 않은 유물 조각 (2026-10-28 중복 소진) — 뽑기 · 대장 · 갈림길 조각이 먼저 여기 쌓이고, 유물 탭에서 소진하면 relics 로 */
   relicSpare: RelicState;
+  /** 단위 판 번호 (economy/units UNIT_REV, 2026-11-10) — 없으면 예전 단위 저장: 읽을 때 지갑 ÷100 · 경험치 ÷10 을 한 번 한다 */
+  unitRev: number;
 };
 
 export function expForLevel(level: number): number {
   const safe = Math.max(1, Math.floor(level));
-  return Math.floor(90 * safe + 35 * safe * safe);
+  // 2026-11-10 단위 낮추기 — 예전의 1/10 (지급도 같이 1/10 이라 레벨 속도는 같다). Lv 2 320 → 32 · Lv 100 35.9만 → 3.59만
+  return Math.floor((90 * safe + 35 * safe * safe) / EXP_UNIT);
 }
 
 export function levelFromExp(exp: number): number {
@@ -270,6 +274,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     level: 1,
     exp: 0,
     sharedCoins: 0,
+    unitRev: UNIT_REV,
     redGems: 0,
     enhancementMaterials: 0,
     equippedWeaponLevel: 0,
@@ -542,6 +547,8 @@ export function normalizeCharacterProgress(
     level: Math.max(levelFromExp(exp), integer(raw.level, base.level, 999)),
     exp,
     sharedCoins: integer(raw.sharedCoins, base.sharedCoins),
+    // 없으면 0(예전 단위) — base(새 계정 = 지금 단위)를 기본으로 쓰면 예전 저장이 바꾸지도 않고 지금 단위로 찍힌다
+    unitRev: integer(raw.unitRev, 0, UNIT_REV),
     redGems: integer(raw.redGems, base.redGems),
     enhancementMaterials: integer(raw.enhancementMaterials, base.enhancementMaterials),
     equippedWeaponLevel: integer(raw.equippedWeaponLevel, base.equippedWeaponLevel, 9999),

@@ -1460,7 +1460,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
 {
   const pts = talents.masteryPoints({ bestLevel: 8, bestArmorLevel: 5, bow: 2, staff: 2 });   // 17점 = 2등급 7점
   const m = talents.masteryState(pts, 0, []);
-  ok("장인 점수 17 → 1등급(0-based) · 등급 안 7점 · 골드 이정표 2개(4·14) · 특성 선택 2개(7·17) · 다음은 승급까지 3점", m.rank === 1 && m.within === 7 && m.goldPending === 2 && m.goldPendingAmount === 2000 + 4000 && m.picksPending === 2 && m.next.kind === "rank" && m.next.left === 3);
+  ok("장인 점수 17 → 1등급(0-based) · 등급 안 7점 · 골드 이정표 2개(4·14) · 특성 선택 2개(7·17) · 다음은 승급까지 3점", m.rank === 1 && m.within === 7 && m.goldPending === 2 && m.goldPendingAmount === 20 + 40 && m.picksPending === 2 && m.next.kind === "rank" && m.next.left === 3);
   const m2 = talents.masteryState(pts, 2, ["flex"]);
   ok("받은 뒤: 골드 0 · 선택 1 남음 · 특성은 5개 상한", m2.goldPending === 0 && m2.picksPending === 1 && talents.pickMilestonesEarned(999) === 5);
   const base = { ...prog.emptyCharacterProgress(), dodgeBestStage: 6, talents: [] };
@@ -1527,7 +1527,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const big = parts.gearEffects({ helmet: 9999, armor: 9999, gloves: 9999, boots: 9999 }, { helmet: 10, armor: 10, gloves: 10, boots: 10 });
   ok("효과 상한: 대장 시간 +8초 · 골드 ×2.5 · 치명 +15%p · 자동 공격 +30%", big.bossTimeSec === 8 && Math.abs(big.goldMul - 2.5) < 1e-9 && Math.abs(big.critChance - 0.15) < 1e-9 && Math.abs(big.autoSpeed - 0.3) < 1e-9, JSON.stringify(big));
   ok("대장간 강화는 숙련 효과를 +10%/단계 키운다 (투구 Lv10 · +5 → 1.5초)", Math.abs(parts.gearPartValue("helmet", 10, 5) - 1.5) < 1e-9 && Math.abs(parts.gearPartValue("helmet", 10, 0) - 1.0) < 1e-9);
-  ok("강화 비용: +0→+1 은 800G·강화석 1 · +10 이 끝(null) · 그림 티어 +1 나무 · +5 철 · +10 금", parts.gearEnhanceCost(0).coins === 800 && parts.gearEnhanceCost(0).materials === 1 && parts.gearEnhanceCost(10) === null && parts.gearTierOfEnhance(1) === 1 && parts.gearTierOfEnhance(5) === 2 && parts.gearTierOfEnhance(10) === 3 && parts.gearTierOfEnhance(0) === 0);
+  ok("강화 비용: +0→+1 은 8G·강화석 1 · +10 이 끝(null) · 그림 티어 +1 나무 · +5 철 · +10 금", parts.gearEnhanceCost(0).coins === 8 && parts.gearEnhanceCost(0).materials === 1 && parts.gearEnhanceCost(10) === null && parts.gearTierOfEnhance(1) === 1 && parts.gearTierOfEnhance(5) === 2 && parts.gearTierOfEnhance(10) === 3 && parts.gearTierOfEnhance(0) === 0);
   const old = prog.normalizeCharacterProgress({ ...prog.emptyCharacterProgress(), gearEnhance: undefined });
   const odd = prog.normalizeCharacterProgress({ ...prog.emptyCharacterProgress(), gearEnhance: { helmet: 99, armor: -3, nope: 4 } });
   ok("저장 정규화: 옛 저장은 강화 0 · 범위 밖은 0~10 으로", JSON.stringify(old.gearEnhance) === JSON.stringify({ helmet: 0, armor: 0, gloves: 0, boots: 0 }) && odd.gearEnhance.helmet === 10 && odd.gearEnhance.armor === 0 && !("nope" in odd.gearEnhance));

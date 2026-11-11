@@ -11,7 +11,16 @@ function highScoreKey(userHash: string): string {
   return `dodgebullets:highScore:${userHash}`;
 }
 
+/**
+ * 지갑 미러 키 (진행도 sharedCoins 의 하한 — progression/storage mergeLegacyProgress).
+ * 2026-11-10 단위 낮추기 2차(economy/units)에 새로 팠다 — 예전 키에는 옛 단위 금액이 남아 있어, 하한으로 계속 읽으면 ÷100 한 지갑을 옛 금액으로 되돌린다.
+ * 예전 키는 진행도를 바꾸는 그 한 번만 읽는다 (loadCoinsOldUnit)
+ */
 function coinsKey(userHash: string): string {
+  return `dodgebullets:coins:u2:${userHash}`;
+}
+
+function oldUnitCoinsKey(userHash: string): string {
   return `dodgebullets:coins:${userHash}`;
 }
 
@@ -70,6 +79,14 @@ export async function saveHighScore(userHash: string, score: number): Promise<nu
 
 export async function loadCoins(userHash: string): Promise<number> {
   const raw = await storageGet(coinsKey(userHash));
+  if (!raw) return 0;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/** 예전 단위 금액 — 진행도 단위 이전 때만 */
+export async function loadCoinsOldUnit(userHash: string): Promise<number> {
+  const raw = await storageGet(oldUnitCoinsKey(userHash));
   if (!raw) return 0;
   const value = Number.parseInt(raw, 10);
   return Number.isFinite(value) && value > 0 ? value : 0;

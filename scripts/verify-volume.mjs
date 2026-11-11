@@ -23,13 +23,16 @@ await page.mouse.click(200, 300); await sleep(300); await settle(); await sleep(
 const openMenu = async () => { await page.evaluate(() => { if (!document.querySelector(".settings-menu")) document.querySelector(".settings-toggle")?.click(); }); await sleep(250); };
 const setRange = (sel, value) => page.evaluate(({ sel, value }) => { const el = document.querySelector(sel); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(el, String(value)); el.dispatchEvent(new Event("input", { bubbles: true })); }, { sel, value });
 const near = (a, b) => typeof a === "number" && Math.abs(a - b) < 0.015;
+// 음악은 서서히 켜지고 꺼진다(페이드) — 정해진 시간 뒤 한 번 읽으면 부하가 걸린 날 페이드 중간 값을 읽는다(2026-11-10 전체 실행에서 0.16 대신 0.14).
+// 목표에 닿을 때까지 지켜보되, 닿기 전에 목표를 넘은 적이 있으면(줄인 음량인데 크게 튼 순간) 그 최댓값을 돌려줘 실패하게 한다
+const settleLevel = async (target, ms = 4000) => { let peak = -1, last; const t0 = Date.now(); while (Date.now() - t0 < ms) { last = await page.evaluate(() => window.__bgm?.().level); if (typeof last === "number") peak = Math.max(peak, last); if (near(last, target)) break; await sleep(100); } return peak > target + 0.015 && target > 0 ? peak : last; };
 await openMenu();
 ok("설정 메뉴에 슬라이더 2개", await page.$$eval(".volume-row input[type=range]", (l) => l.length) === 2);
 const box = await page.evaluate(() => { const r = document.querySelector(".volume-bgm input").getBoundingClientRect(); const row = getComputedStyle(document.querySelector(".volume-row")); const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { x: r.x, y: r.y, w: r.width, h: r.height, font: parseFloat(row.fontSize), onTop: hit?.tagName, right: r.right, vw: innerWidth }; });
 ok("글자 13px 이상 · 화면 안 · 잡기 쉬운 높이", box.font >= 13 && box.right <= box.vw && box.h >= 24 && box.w >= 90, JSON.stringify(box));
 ok("슬라이더가 덮여 있지 않다", box.onTop === "INPUT", String(box.onTop));
 // 기본값 = 지금까지의 크기
-const bgm0 = await page.evaluate(() => window.__bgm?.().level);
+const bgm0 = await settleLevel(0.32);
 ok("처음엔 100 — 음악 크기가 예전 그대로(0.32)", near(bgm0, 0.32), String(bgm0));
 // 음악만 줄인다
 await setRange(".volume-bgm input", 50); await sleep(400);
@@ -49,12 +52,13 @@ await page.touchscreen.tap(b.x + b.w * 0.8, b.y); await sleep(350);
 const tapped = await page.$eval(".volume-bgm input", (el) => Number(el.value));
 ok("손가락으로 눌러도 움직인다", tapped >= 65 && tapped <= 95, String(tapped));
 await setRange(".volume-bgm input", 0); await sleep(350);
-const bgm3 = await page.evaluate(() => ({ level: window.__bgm?.().level, playing: window.__bgm?.().playing }));
+const bgm3 = { level: await settleLevel(0), playing: await page.evaluate(() => window.__bgm?.().playing) };
 ok("음악 0 → 소리 0", near(bgm3.level, 0), JSON.stringify(bgm3));
 await setRange(".volume-bgm input", 50); await sleep(350);
 // 다시 켜도 남는다
 await reload(); await sleep(1000); await page.mouse.click(200, 300); await sleep(500); await settle(); await sleep(300); await openMenu();
-const kept = await page.evaluate(() => ({ bgm: document.querySelector(".volume-bgm input")?.value, sfx: document.querySelector(".volume-sfx input")?.value, level: window.__bgm?.().level, sfxLevel: window.__sfxLevel?.() }));
+const keptLevel = await settleLevel(0.16);
+const kept = await page.evaluate((level) => ({ bgm: document.querySelector(".volume-bgm input")?.value, sfx: document.querySelector(".volume-sfx input")?.value, level, sfxLevel: window.__sfxLevel?.() }), keptLevel);
 ok("새로 고침 뒤에도 값이 남는다", kept.bgm === "50" && kept.sfx === "25", JSON.stringify(kept));
 ok("새로 고침 뒤 음악도 줄인 크기로 시작", near(kept.level, 0.16), String(kept.level));
 // 사운드 끄면 숨긴다
