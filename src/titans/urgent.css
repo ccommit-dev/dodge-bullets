@@ -38,3 +38,9 @@
 .urgent-poster .urgent-later { background: #fff; color: var(--flat-ink); box-shadow: 0 4px 0 rgba(59, 36, 21, .3); }
 .urgent-poster .urgent-go { background: var(--flat-green); color: #fff; box-shadow: 0 4px 0 var(--flat-green-2); text-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
 .urgent-poster .urgent-go:disabled { background: #b9ad97; box-shadow: 0 4px 0 #8f8573; cursor: default; }
+
+/* 승급전 전단 (2026-11-11, PromotionPoster.tsx) — 같은 판, 제목은 등급 이름 · 등급 색 */
+.urgent-poster.promo-poster .promo-title { font-size: 24px; letter-spacing: .04em; text-indent: 0; text-shadow: 0 2px 0 rgba(59, 36, 21, .18); }
+.urgent-poster .promo-reward b { font-size: 15px; }
+.urgent-poster .urgent-deadline .promo-now { font-size: 13px; }
+
