@@ -36,6 +36,25 @@ export type Player = {
   shootAngle: number;
 };
 
+/** 동료 출격 — 주인공 뒤에서 속성 화살로 돕는 사냥터 동료 (game/supportAlly.ts) */
+export type SupportAlly = {
+  id: string;
+  name: string;
+  /** 그림 시트 id — 입힌 스킨이 있으면 스킨 */
+  sheetId: string;
+  element: "fire" | "water" | "earth" | "wind";
+  /** 기본 사격 한 발 대비 피해 배수 */
+  damageMul: number;
+  /** 다음 발까지(초) */
+  timer: number;
+  /** 그려지는 x — 주인공 뒤를 따라간다(-1 이면 아직 자리 안 잡음) */
+  x: number;
+  /** 쏘는 동작 남은 시간(ms) */
+  attackMs: number;
+  /** 이번 판에 쏜 수 — 검사 · 시뮬이 센다 */
+  shots: number;
+};
+
 export type Arrow = {
   active: boolean;
   x: number;
@@ -356,6 +375,8 @@ export type GameWorld = {
   collectionMul: number;
   /** 기본 사격 남은 재사용(초) — 무기만 있으면 항상 돈다 */
   basicTimer: number;
+  /** 동료 출격 (game/supportAlly.ts, 2026-11-11) — 고른 사냥터 동료. 없으면 null */
+  supportAlly: SupportAlly | null;
   /** 활 반동 연출 남은 시간(ms) · 쏜 방향 — player.ts 가 무기를 기울이고 시위를 그린다 */
   shotFlashMs: number;
   shotAngle: number;

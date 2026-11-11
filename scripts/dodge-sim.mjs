@@ -27,14 +27,15 @@ writeFileSync(entry, [
   `export * as skills from "${root}/src/game/skills";`,
   `export * as chips from "${root}/src/game/chips";`,
   `export * as arrows from "${root}/src/game/arrows";`,
-  `export * as shots from "${root}/src/game/skillShots";`,   // 기본 사격 무기 배율(BASIC_WEAPON_MUL)을 같은 번들에서 바꿔 잰다(2026-11-09)
+  `export * as shots from "${root}/src/game/skillShots";`,
+  `export * as supportAlly from "${root}/src/game/supportAlly";`,   // 동료 출격 (2026-11-11)   // 기본 사격 무기 배율(BASIC_WEAPON_MUL)을 같은 번들에서 바꿔 잰다(2026-11-09)
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
 globalThis.window ??= { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
 globalThis.document ??= { createElement: () => ({ getContext: () => null, style: {} }) };
 globalThis.Image ??= class { set src(_v) {} };
-const { world: W, shop, input: I, stages, perks: P, skills: SK, chips: CH, arrows: AR, shots: SS } = await import(pathToFileURL(out).href);
+const { world: W, shop, input: I, stages, perks: P, skills: SK, chips: CH, arrows: AR, shots: SS, supportAlly: SA } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 /** 결정적 난수 (mulberry32) — Math.random 을 시드별로 바꿔 끼운다 */
@@ -129,6 +130,7 @@ function loadProfile(w, prof) {
  * opts.profile 이 없으면 그 스테이지의 기대 성장. 예전 인자(opts.skills · weapon · basic · mods)도 받는다
  */
 export function simulateStage(stageIndex, seed, opts = {}) {
+  // 동료 출격 (2026-11-11) — opts.supportAlly = { rarity, stars, element } 이면 그 동료를 데려간다
   const rng = seeded(seed);
   const realRandom = Math.random;
   Math.random = rng;
@@ -136,6 +138,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
   let prof = opts.profile ?? profileFor(stageIndex);
   if (opts.skills) prof = { ...prof, skills: { ...opts.skills }, loadout: opts.loadout ?? Object.keys(opts.skills).filter((k) => k !== "ultimate"), weapon: opts.weapon ?? "bow", forge: { bow: opts.basic ?? 0, staff: 0 }, chipLevels: {}, equipped: [null, null, null] };
   loadProfile(w, prof);
+  if (opts.supportAlly) w.supportAlly = SA.makeSupportAlly({ id: "sim", name: "sim", sheetId: "mia", element: opts.supportAlly.element ?? "fire", rarity: opts.supportAlly.rarity ?? "SR", stars: opts.supportAlly.stars ?? 2 });
   W.resetRun(w, stageIndex);
   if (opts.mods) w.runMods = { ...w.runMods, ...opts.mods, evolutions: { ...w.runMods.evolutions, ...(opts.mods.evolutions ?? {}) } };
   const inp = I.createInputState();
@@ -169,7 +172,7 @@ export function simulateStage(stageIndex, seed, opts = {}) {
     bossFightSec: bossAt >= 0 && killedAt > 0 ? Math.round((killedAt - bossAt) / 60) : -1,
     realSec: Math.round(frames / 60),
     skillKills: w.skillKills, ultCount: w.ultCount, picks: w.runLevel - 1, runSkills: Object.keys(w.runSkills).filter((k) => w.runSkills[k]),
-    hits: 0, barrierBreaks: w.barrierBreaks, eliteShots, eliteHits,
+    hits: 0, barrierBreaks: w.barrierBreaks, eliteShots, eliteHits, supportShots: w.supportAlly?.shots ?? 0,
   };
 }
 
@@ -198,7 +201,7 @@ export function checkpointCurve(seeds = 5, lag = 8) {
 }
 
 /** 주간 시뮬(dodge-week-sim)이 쓰는 모듈 묶음 — 번들에서 꺼낸 실제 소스 */
-export const api = { SK, CH, W, shop, P, stages, AR, I, SS };
+export const api = { SK, CH, W, shop, P, stages, AR, I, SS, SA };
 
 const isMain = !!process.argv[1] && process.argv[1].endsWith("dodge-sim.mjs");
 if (isMain) {

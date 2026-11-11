@@ -1,4 +1,5 @@
 import { drawStickman } from "./player";
+import { drawSupportAlly } from "./supportAlly";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, ELEMENT_LABEL, SKILL_BY_ID, type Element } from "./skills";
 import { weakSkillFor } from "./skillShots";
@@ -1117,6 +1118,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   }
 
   drawSkillShots(ctx, world);
+  drawSupportAlly(ctx, world);   // 동료 출격 — 주인공 뒤(주인공이 위에 겹친다)
   drawStickman(ctx, world);
   drawJuice(ctx, world);
   drawSlashGauge(ctx, world);

@@ -1,5 +1,6 @@
 import type { Arrow, GameWorld, RunMods } from "./types";
 import { EVO, evoCooldownMul } from "./evolutions";
+import { SUPPORT_BEHIND, SUPPORT_COOLDOWN_SEC } from "./supportAlly";
 import { PRIMED_COOLDOWN_MUL } from "./expeditionOps";
 import { cutArrow, pushSlashFx, TUNING } from "./arrows";
 import { gainRunXp } from "./world";
@@ -479,6 +480,26 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
       } else {
         world.basicTimer = 0.1;   // 표적이 없으면 곧 다시 본다
       }
+    }
+  }
+
+  // ── 동료 출격 (game/supportAlly.ts, 2026-11-11) — 주인공 뒤를 따라가며 1.5초마다 속성 화살 한 발. 기본 사격 방식(basic + 속성) · 위력 0(대장은 못 깎는다)
+  const sa = world.supportAlly;
+  if (sa) {
+    const wantX = px - world.player.facing * SUPPORT_BEHIND;
+    sa.x = sa.x < 0 ? wantX : sa.x + (wantX - sa.x) * Math.min(1, dtSec * 6);
+    if (sa.attackMs > 0) sa.attackMs = Math.max(0, sa.attackMs - dtSec * 1000);
+    sa.timer -= dtSec;
+    if (sa.timer <= 0) {
+      const t = nearest(world, 3, sa.x, py).find((a) => !a.boss);
+      if (t) {
+        const sx = sa.x, sy = py - 28;
+        const ang = lead(sx, sy, t, BASIC_SHOT_SPEED);
+        spawn(world, { x: sx, y: sy, element: sa.element, basic: true, vx: Math.cos(ang) * BASIC_SHOT_SPEED, vy: Math.sin(ang) * BASIC_SHOT_SPEED, radius: 8, lifeMs: 1400, power: 0, damage: BASIC_DAMAGE * basicDamageMul(world.basicLevel) * sa.damageMul });
+        sa.timer = SUPPORT_COOLDOWN_SEC;
+        sa.attackMs = 560;
+        sa.shots += 1;
+      } else sa.timer = 0.2;
     }
   }
 

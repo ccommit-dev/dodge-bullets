@@ -88,7 +88,8 @@ const menu = await page.evaluate(() => {
 });
 await sleep(600);
 const skillUi = await page.evaluate(() => {
-  const cards = [...document.querySelectorAll(".exp-weapon-card")];
+  // 동료 출격 카드(2026-11-11)도 같은 판(.exp-weapon-card)이라 무기 줄만 센다
+  const cards = [...document.querySelectorAll(".exp-weapon-row:not(.exp-support-row) .exp-weapon-card")];
   const over = [...document.querySelectorAll(".exp-skill-panel *")]
     .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1); })
     .map((e) => e.className);

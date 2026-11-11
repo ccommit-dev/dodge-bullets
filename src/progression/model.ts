@@ -262,6 +262,8 @@ export type CharacterProgress = {
   climb: ClimbState;
   /** 보물 동굴 반복 보너스 (game/treasureRuns.ts, 2026-11-11) — 오늘 쓴 횟수 */
   treasureRuns: TreasureRuns;
+  /** 댐 방어전 동료 출격 (game/supportAlly.ts, 2026-11-11) — 편성 동료 중 하나. 없으면 null */
+  supportAlly: TitanHeroId | null;
 };
 
 export function expForLevel(level: number): number {
@@ -395,6 +397,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     heroRank: 0,
     climb: emptyClimb(),
     treasureRuns: emptyTreasureRuns(),
+    supportAlly: null,
     discovered: [],
     discoverySeeded: false,
     eventCoins: 0,
@@ -823,6 +826,7 @@ export function normalizeCharacterProgress(
     heroRank: normalizeHeroRank((raw as { heroRank?: unknown }).heroRank),
     climb: normalizeClimb((raw as { climb?: unknown }).climb),
     treasureRuns: normalizeTreasureRuns((raw as { treasureRuns?: unknown }).treasureRuns),
+    supportAlly: typeof (raw as { supportAlly?: unknown }).supportAlly === "string" && ALLY_IDS.includes((raw as { supportAlly: string }).supportAlly as TitanHeroId) ? (raw as { supportAlly: TitanHeroId }).supportAlly : null,
     discovered: normalizeDiscovered((raw as { discovered?: unknown }).discovered),
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
     eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),

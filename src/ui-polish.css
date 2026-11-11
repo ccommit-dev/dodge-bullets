@@ -1519,3 +1519,6 @@
 /* 보물 동굴 반복 보너스 칩 (2026-11-11, game/treasureRuns.ts) — 남았으면 진한 금색, 다 쓰면 회갈색 (크림 칸 위) */
 .route-node .route-treasure-left { color: #8a5a00 !important; }
 .route-node .route-treasure-left.spent { color: #8a7a66 !important; }
+/* 동료 출격 카드 (2026-11-11, game/SkillPanel.tsx) — 무기 카드와 같은 판, 그림 칸에 동료 시트(대기 줄) */
+.exp-weapon-card span.exp-support-face { grid-area: icon; display: block; width: 58px; height: 44px; margin: -6px 0 -6px -12px; }
+.exp-support-row .exp-weapon-card { grid-template-columns: 40px minmax(0, 1fr); }

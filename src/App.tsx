@@ -52,7 +52,11 @@ import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS, formatGold } from "./titans/model";
 import { TREASURE_DAILY, spendTreasureRun, treasureBonusGold, treasureRunsToday } from "./game/treasureRuns";
 import { loadTitansSave } from "./titans/storage";
-import { randomOwnedAlly } from "./titans/allies";
+import { ALLY_ELEMENT, ALLY_RARITY, effectiveStars, randomOwnedAlly } from "./titans/allies";
+import { HEROES } from "./titans/model";
+import { ALLY_SKINS } from "./titans/skins";
+import { hasAllyAnim } from "./titans/spriteAnim";
+import { makeSupportAlly } from "./game/supportAlly";
 import { sfxAreaUnlock, sfxTowerFloor, sfxTowerMilestone } from "./ui/sfx";
 import { AreaUnlockBanner } from "./AreaUnlockBanner";
 import { IdleQaPanel } from "./dev/IdleQaPanel";
@@ -264,7 +268,23 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   const wdef = WEAPON_BY_ID[wk];
   world.rangedWeapon = wdef && !weaponUnlocked(wdef, p.dodgeBestStage) ? "sword" : wk;
   world.wornGear = p.equippedGear;
+  // 동료 출격 (game/supportAlly.ts, 2026-11-11) — 편성에 있는 동료만. 같은 동료면 판 중 타이머 · 자리를 그대로 둔다
+  const sid = p.supportAlly && p.partyIds.includes(p.supportAlly) ? p.supportAlly : null;
+  if (!sid) world.supportAlly = null;
+  else {
+    const fresh = makeSupportAlly(supportAllyDef(sid, p));
+    const prev = world.supportAlly;
+    world.supportAlly = prev && prev.id === sid ? { ...fresh, timer: prev.timer, x: prev.x, attackMs: prev.attackMs, shots: prev.shots } : fresh;
+  }
   return stats;
+}
+
+/** 동료 출격에 쓸 동료 정보 — 이름 · 그림 시트(입힌 스킨) · 속성 · 등급 · 별 */
+function supportAllyDef(id: string, p: CharacterProgress) {
+  const skin = p.equippedAllySkins[id as keyof typeof p.equippedAllySkins];
+  const sheet = skin && ALLY_SKINS[skin]?.ally === id && hasAllyAnim(skin) ? skin : id;
+  const hid = id as keyof typeof ALLY_RARITY;
+  return { id, name: HEROES.find((h) => h.id === id)?.name ?? id, sheetId: sheet, element: ALLY_ELEMENT[hid], rarity: ALLY_RARITY[hid], stars: effectiveStars(p.allyStars[hid], 1) };
 }
 
 function statsWithShoulder(levels: ShopLevels, shoulder: ShoulderId | null, skills?: ExpeditionSkillLevels) {
@@ -1522,6 +1542,16 @@ function App() {
     })();
   }, []);
 
+  /** 동료 출격 고르기 (2026-11-11) — 편성 동료 중 하나 · 같은 동료를 다시 누르면 뺀다 */
+  const handlePickSupportAlly = useCallback((id: string | null) => {
+    void (async () => {
+      const next = await updateCharacterProgress(userHashRef.current, (p) => ({ ...p, supportAlly: id && p.partyIds.includes(id as (typeof p.partyIds)[number]) ? (id as (typeof p.partyIds)[number]) : null }));
+      setProgress(next);
+      const merged = mergeShopLevels(shopLevelsRef.current, derivedShopLevels(next));
+      if (worldRef.current) loadLoadout(worldRef.current, merged, next);
+    })();
+  }, []);
+
   /** 칩 강화 — 원정 인장을 쓴다. 보급창과 같은 재화라 "칩이냐 보급이냐"가 선택이 된다 */
   const handleUpgradeChip = useCallback((id: ChipId) => {
     const lv = progress.expeditionChips[id] ?? 0;
@@ -2298,6 +2328,9 @@ function App() {
                 onEquipChip={handleEquipChip}
                 weapon={progress.equippedWeaponKind}
                 onEquipWeapon={handleEquipWeapon}
+                supportParty={progress.partyIds.map((id) => supportAllyDef(id, progress))}
+                supportAlly={progress.supportAlly}
+                onPickSupportAlly={handlePickSupportAlly}
                 onUpgrade={handleUpgradeSkill}
                 basicLevel={progress.equippedWeaponKind === "sword" ? Math.round((Math.min(15, progress.equippedWeaponLevel) * 20) / 15) : progress.expeditionWeaponForge[progress.equippedWeaponKind]}
                 accountLevel={progress.level}

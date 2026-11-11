@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { TIER_LABEL } from "../titans/summonLevel";
+import { allyAnimStyle } from "../titans/spriteAnim";
+import { SUPPORT_COOLDOWN_SEC } from "./supportAlly";
 import { assetUrl } from "../asset";
 import { TOWER_DAILY_TICKETS, TOWER_TICKET_MAX, TOWER_TICKET_SEALS } from "./towerTickets";
 import { perksUnlockedBy, RARITY_LABEL } from "./perks";
@@ -64,6 +66,10 @@ type Props = {
   onBuyTowerTicket?: () => void;
   onClaimDaily: (id: DailyId) => void;
   onEquipWeapon: (id: RangedWeaponId) => void;
+  /** 동료 출격 (game/supportAlly.ts) — 사냥터 편성 동료 · 고른 동료 · 고르기 */
+  supportParty?: Array<{ id: string; name: string; sheetId: string; element: string; rarity: string; stars: number }>;
+  supportAlly?: string | null;
+  onPickSupportAlly?: (id: string | null) => void;
   onUpgrade: (id: ExpeditionSkillId) => void;
   /**
    * 성문 보급소 (2026-10-02) — 결제 상품(원정 기금 · 수비 보급). 결제가 안 되는 환경이면 note 만 보인다.
@@ -104,8 +110,10 @@ function canAfford(gold: number, have: number, seals: number, cost: { gold: numb
   return gold >= cost.gold && have >= cost.shards && seals >= cost.seals;
 }
 
+const SUPPORT_ELEMENT_KO: Record<string, string> = { fire: "불", water: "물", earth: "흙", wind: "바람" };
+
 export function SkillPanel({
-  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, onUpgrade, basicLevel, shop, accountLevel = 1, loadout = [], onToggleLoadout,
+  levels, gold, seals, dodgeBestStage, weapon, onEquipWeapon, supportParty, supportAlly, onPickSupportAlly, onUpgrade, basicLevel, shop, accountLevel = 1, loadout = [], onToggleLoadout,
   chipLevels, equippedChips, chipSlots, onUpgradeChip, onEquipChip,
   supplies, daily, onBuySupply, onClaimDaily, shards, towerTickets = 0, towerUnlocked = false, onBuyTowerTicket,
 }: Props) {
@@ -350,6 +358,28 @@ export function SkillPanel({
         </div>
       </div>
 
+
+      {/* 동료 출격 (2026-11-11, game/supportAlly.ts) — 사냥터 편성 동료 하나가 주인공 뒤에서 속성 화살로 돕는다. 같은 동료를 다시 누르면 뺀다 */}
+      {supportParty && supportParty.length > 0 && onPickSupportAlly && (
+        <div className="exp-weapon-row exp-support-row">
+          <b>동료 출격 · 사냥터 편성에서 한 명</b>
+          <div>
+            {supportParty.map((a) => {
+              const on = supportAlly === a.id;
+              return (
+                <button key={a.id} type="button" className={`exp-weapon-card exp-support-card ${on ? "on" : ""}`} aria-pressed={on} data-support={a.id} onClick={() => onPickSupportAlly(on ? null : a.id)}>
+                  <span className="exp-support-face" style={allyAnimStyle(a.sheetId, "idle")} aria-hidden="true" />
+                  <span>
+                    <b>{a.name}</b>
+                    <em>{SUPPORT_ELEMENT_KO[a.element] ?? a.element} 화살 · {SUPPORT_COOLDOWN_SEC}초마다 · 대장은 못 깎는다</em>
+                  </span>
+                  <i>{on ? "출격 중" : "출격"}</i>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 기본 사격 — 무기만 있으면 항상 나간다. 스킬이 없어도 런 중 카드가 열린다는 것을 알려 준다 (2026-09-29) */}
       {weapon !== "none" && (

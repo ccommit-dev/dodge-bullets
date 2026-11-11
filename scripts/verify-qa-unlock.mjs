@@ -24,7 +24,7 @@ const state = async () => {
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("모험"))?.click()); await sleep(500);
   await page.evaluate(() => document.querySelector(".hub-card[data-card=dodge]")?.click()); await sleep(1600);
   await page.evaluate(() => [...document.querySelectorAll(".exp-menu-tabs button")].find((b) => b.textContent.includes("정비"))?.click()); await sleep(700);
-  const dodge = await page.evaluate(() => ({ weapons: document.querySelectorAll(".exp-weapon-card").length, weaponLocked: document.querySelectorAll(".exp-weapon-card.locked").length, skillLocks: document.querySelectorAll(".exp-skill-lock").length }));
+  const dodge = await page.evaluate(() => ({ weapons: document.querySelectorAll(".exp-weapon-row:not(.exp-support-row) .exp-weapon-card").length, weaponLocked: document.querySelectorAll(".exp-weapon-row:not(.exp-support-row) .exp-weapon-card.locked").length, skillLocks: document.querySelectorAll(".exp-skill-lock").length }));
   await page.evaluate(() => [...document.querySelectorAll(".exp-menu-tabs button")].find((b) => b.textContent.includes("원정"))?.click()); await sleep(400);
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("사냥터로 돌아가기"))?.click()); await sleep(1500);
   return { hub, slots, qa, dodge };

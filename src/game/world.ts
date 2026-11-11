@@ -4,6 +4,7 @@ import { emptyChipMods } from "./chips";
 import { emptyRunMods, emptySfx, makeSkillFx, makeSkillShots, makeSparks, updateSkillShots, resetSkillShots } from "./skillShots";
 import { emptySkillLevels } from "./skills";
 import type { InputState } from "./input";
+import { resetSupportAlly } from "./supportAlly";
 import { createPlayer, GRAVITY, resetPlayer } from "./player";
 import { emptyShopLevels, statsFromLevels } from "./shop";
 import { getStage, rewardDepth } from "./stages";
@@ -80,6 +81,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     skillShots: makeSkillShots(),
     skillFx: makeSkillFx(),
     basicTimer: 0,
+    supportAlly: null,
     shotFlashMs: 0,
     shotAngle: -Math.PI / 2,
     boltFrom: null,
@@ -215,6 +217,7 @@ export function gainRunXp(world: GameWorld, amount: number): void {
 
 export function resetRun(world: GameWorld, stageIndex = 0): void {
   world.stageIndex = stageIndex;
+  resetSupportAlly(world);
   world.elapsedMs = 0;
   world.stageElapsedMs = 0;
   world.spawnAccMs = 0;
