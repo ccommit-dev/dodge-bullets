@@ -112,9 +112,24 @@ const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }>
   { id: "dragon", name: "용린 견갑", desc: "16비트 · 스킬 특화" },
 ];
 const CHAPTER_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
-/** 비트 수련의 상대 — 사냥터 대장 15종(지역 순)을 사냥터와 같은 그림(애니메이션 2판 시트, 왼쪽 보기)으로. 예전엔 옛 원화(다른 그림체)를 썼다 */
-const BEAT_MONSTERS: readonly string[] = HUNTING_AREAS.flatMap((area) => (HUNT_BOSSES[area.id] ?? []).map((m) => m.art));
-const beatMonsterAt = (stageNo: number, wave: number) => BEAT_MONSTERS[(Math.max(0, stageNo - 1) + wave) % BEAT_MONSTERS.length];
+/**
+ * 비트 수련 무대 = 사냥터 지역 (2026-11-11, 비트 아쉬운 점 6번 "배경 1장") — 곡마다 지역 하나(곡 순서대로 다섯 지역을 돈다).
+ * 배경은 그 지역 사냥터 그림(같은 비율의 지평선 띠), 바닥 · 풀 띠는 사냥터와 같은 색, 분위기 색도 지역에 맞춘다.
+ * 상대는 그 지역 대장 셋이 번갈아(사냥터와 같은 2판 시트, 왼쪽 보기) — 배경 · 상대 · 색이 한 지역으로 맞는다
+ */
+const BEAT_AREA_FLOOR: Record<string, { flat: string; line: string; mood: number }> = {
+  meadow: { flat: "#d4ac6a", line: "#7fc24c", mood: 3 },
+  forest: { flat: "#b99a66", line: "#5fae4a", mood: 0 },
+  ruins: { flat: "#d9b48a", line: "#c2a35a", mood: 4 },
+  volcano: { flat: "#8f6a54", line: "#b7643a", mood: 1 },
+  abyss: { flat: "#7d6f9a", line: "#8f7fc4", mood: 2 },
+};
+const beatAreaOf = (stageNo: number) => HUNTING_AREAS[Math.max(0, stageNo - 1) % HUNTING_AREAS.length];
+const beatMonsterAt = (stageNo: number, wave: number) => { const list = HUNT_BOSSES[beatAreaOf(stageNo).id] ?? []; return list[Math.max(0, wave) % Math.max(1, list.length)]?.art ?? "moss-golem-clean"; };
+function setBeatAreaStage(stageNo: number) {
+  const area = beatAreaOf(stageNo), f = BEAT_AREA_FLOOR[area.id];
+  setBeatStageImage(area.background, f ? { flat: f.flat, line: f.line } : undefined, f?.mood);
+}
 
 type BeatRunStats = {
   grade: BeatGrade;
@@ -884,6 +899,7 @@ export function BeatGame({
     if (import.meta.env.DEV) { const w = window as unknown as { __beatSession?: BeatSession; __beatLaneOf?: typeof laneOfSound }; w.__beatSession = session; w.__beatLaneOf = laneOfSound; }
     setLessonTitle(slot.title);
     setStageNo(slot.stageIndex + 1);
+    setBeatAreaStage(slot.stageIndex + 1);   // 무대 = 이 곡의 사냥터 지역
     setScore(0);
     setCombo(0);
     setHp(session.world.hp);

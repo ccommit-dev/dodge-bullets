@@ -25,7 +25,7 @@ function drawTrackAtmosphere(
   height: number,
   beatEnv: number,
 ): void {
-  const mood = STAGE_MOODS[moodIndexForTrack(world.trackId, world.stageIndex)];
+  const mood = STAGE_MOODS[stageMood ?? moodIndexForTrack(world.trackId, world.stageIndex)];
   const progress = world.durationMs > 0 ? Math.min(1, world.elapsedMs / world.durationMs) : 0;
   const sec = sectionAtForTrack(world.trackId, progress, 1);
   const tint = ctx.createLinearGradient(0, 0, 0, height);
@@ -161,8 +161,14 @@ function musicClock(world: BeatWorld): MusicClock {
  *  다 받으면 네온 터널 대신 이 그림을 cover 로 깔고 어둡게 눌러 레일이 읽히게 한다. 없으면 예전 터널 그대로(조용한 폴백이 아니라 그림이 아직 없는 상태) */
 let stageImage: HTMLImageElement | null = null;
 let stageCache: HTMLCanvasElement | null = null;
-export function setBeatStageImage(url: string): void {
+/** 무대 바닥 · 풀 띠 색과 분위기 색 번호 — 곡마다 사냥터 지역(2026-11-11). 없으면 예전 갈색 무대 · 곡 해시 분위기 */
+let stageFloor: { flat: string; line: string } | null = null;
+let stageMood: number | null = null;
+export function setBeatStageImage(url: string, floor?: { flat: string; line: string }, mood?: number): void {
   if (typeof Image === "undefined") return;
+  stageFloor = floor ?? null;
+  stageMood = mood ?? null;
+  if (stageImage && stageImage.src.endsWith(url)) { stageCache = null; return; }
   const img = new Image();
   img.decoding = "async";
   img.src = url;
@@ -271,8 +277,9 @@ function drawStage3D(
           const sc = width / stage.naturalWidth;
           const dh = stage.naturalHeight * sc;
           cc.drawImage(stage, 0, 0, width, dh);
-          cc.fillStyle = "#8a5a2b"; cc.fillRect(0, dh, width, height - dh);
-          cc.fillStyle = "#a9733a"; cc.fillRect(0, dh - 3, width, 6);
+          // 바닥은 사냥터 그 지역과 같은 색(App.css .titans-field[data-area]) — 없으면 예전 갈색
+          cc.fillStyle = stageFloor?.flat ?? "#8a5a2b"; cc.fillRect(0, dh, width, height - dh);
+          cc.fillStyle = stageFloor?.line ?? "#a9733a"; cc.fillRect(0, dh - 3, width, 6);
         } else {
           const sc = Math.max(width / stage.naturalWidth, height / stage.naturalHeight);
           const dw = stage.naturalWidth * sc, dh = stage.naturalHeight * sc;
