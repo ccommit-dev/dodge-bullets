@@ -307,26 +307,28 @@ export const SECTION_DENSITY: Record<BeatDifficulty, { intro: number; buildFrom:
 };
 
 /**
- * 곡별 실제 전개 비율 [인트로 끝, 빌드업 끝, 1차 하이라이트(드롭) 끝, 브레이크 끝]
- * 예전의 전 곡 일괄 0.18/0.40/0.62/0.72 고정 비율 대신 곡 장르·마디 구조에 맞춰 하이라이트 진입 시점을 조정한다.
+ * 곡별 실제 전개 비율 [인트로 끝, 빌드업 끝, 1차 하이라이트(드롭) 끝, 브레이크 끝] — 그 뒤는 마지막 하이라이트.
+ * 2026-11-11 오디오 실측(scripts/beat-sections.mjs, ffmpeg 마디별 음량): 1차 하이라이트를 곡에서 가장 큰 28% 창에 둔다.
+ * 하이라이트 양(1차 + 마지막 ≈ 50%)은 예전 설계 그대로 — 자리만 곡을 따른다. 예전 표는 곡과 무관한 손 비율이었다.
+ * 곡을 바꾸면 `node scripts/beat-sections.mjs --json` 결과로 다시 채운다(`--check` 가 0.06 넘게 어긋나면 알린다).
  */
 export const TRACK_SECTION_PROFILES: Record<string, [number, number, number, number]> = {
-  "black-city-beat": [0.16, 0.37, 0.63, 0.74],
-  "cybernetic-overload": [0.14, 0.32, 0.64, 0.75],
-  "arcade-overdrive": [0.14, 0.34, 0.66, 0.76],
-  "cherry-pop": [0.15, 0.35, 0.65, 0.75],
-  "playful-pixels": [0.14, 0.34, 0.64, 0.75],
-  "pixel-rush": [0.12, 0.32, 0.66, 0.76],
-  "happy-strum-day": [0.16, 0.36, 0.65, 0.76],
-  "azure-sky": [0.18, 0.40, 0.62, 0.72],
-  "one-more-time": [0.18, 0.42, 0.66, 0.76],
-  "turkish-march": [0.12, 0.32, 0.60, 0.72],
-  "starlight-strut": [0.14, 0.35, 0.64, 0.75],
-  "andromeda": [0.17, 0.39, 0.65, 0.76],
-  "duel": [0.13, 0.34, 0.62, 0.73],
-  "plasma-gun": [0.10, 0.28, 0.66, 0.76],
-  "dual-racing": [0.12, 0.32, 0.60, 0.72],
-  "strawberry-lemonade": [0.14, 0.34, 0.64, 0.75],
+  "black-city-beat": [0.12, 0.44, 0.72, 0.78],
+  "cybernetic-overload": [0.11, 0.39, 0.68, 0.79],
+  "arcade-overdrive": [0.08, 0.71, 1.00, 1.00],
+  "cherry-pop": [0.10, 0.60, 0.88, 0.94],
+  "playful-pixels": [0.13, 0.71, 1.00, 1.00],
+  "pixel-rush": [0.08, 0.33, 0.63, 0.79],
+  "happy-strum-day": [0.08, 0.25, 0.54, 0.79],
+  "azure-sky": [0.10, 0.35, 0.63, 0.78],
+  "one-more-time": [0.10, 0.58, 0.87, 0.93],
+  "turkish-march": [0.10, 0.35, 0.63, 0.78],
+  "starlight-strut": [0.11, 0.15, 0.39, 0.79],
+  "andromeda": [0.11, 0.65, 0.93, 0.99],
+  "duel": [0.10, 0.47, 0.75, 0.81],
+  "plasma-gun": [0.10, 0.14, 0.41, 0.78],
+  "dual-racing": [0.10, 0.66, 0.94, 1.00],
+  "strawberry-lemonade": [0.10, 0.21, 0.49, 0.78],
 };
 
 /**
