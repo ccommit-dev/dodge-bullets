@@ -1,0 +1,4 @@
+/* 핫타임 보급 (2026-11-11, events/hotTime.ts) — 토벌령 카드 모양 그대로, 열려 있을 때만 금색 줄 */
+.event-card .mission-card.hottime-card.is-live { box-shadow: inset 5px 0 0 #f2c232 !important; }
+.mission-card.hottime-card .reward-chip .coin-mark { flex: none; width: 20px; height: 20px; margin: 0; }
+.event-list .hottime-note { margin: -2px 2px 4px; font-size: 13px; font-weight: 700; color: #6b4a2b; }

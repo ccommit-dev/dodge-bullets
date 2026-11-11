@@ -133,6 +133,7 @@ import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pend
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
 import { dateKey, emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
+import { claimableHotTime, nextHotTime } from "./events/hotTime";
 import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { hubCards } from "./titans/hubCards";
@@ -1119,6 +1120,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       saveFrozenRef.current = false;   // 다시 불러온 저장으로 준비됐다 — 환생 중 멈춘 저장을 푼다
       setReady(true);
       scheduleIdleCapNotify(progress);
+      // 핫타임 보급 (events/hotTime) — 다음 창이 열릴 때 알림. 같은 id 라 들어올 때마다 다시 잡힌다
+      { const nh = nextHotTime(); void scheduleLocalNotification(NOTIFY_ID.hotTime, "핫타임 보급", `${nh.window.label}이 열렸어요 — 이벤트 센터 토벌령에서 보석 · 강화석을 받으세요`, nh.at); }
       // 자동 환생을 켰는데 이미 조건을 채운 채 들어오면(마이페이지에서 켜고 돌아온 경우) 잠깐 뒤 환생
       if (progress.autoRebirth && canRebirthNow(progress)) window.setTimeout(() => void autoRebirthRef.current(), 2500);
       // 세션 카운트(종료 예고 카드는 첫 3세션) + 이벤트 저장 로드
@@ -3828,6 +3831,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   }, [tab, userHash]);
   const hubCardList = useMemo(() => hubCards(character, events, { beatBest: beatBestScore, now: nowTick }), [character, events, beatBestScore, nowTick, qaOpen]);
   const routineReward = routineRewardAvailable(character, routine);
+  // 핫타임 보급 — 받을 수 있으면 알림 줄 맨 끝(다른 알림이 없을 때만 보인다)
+  const hotClaim = claimableHotTime(events.claimed, dateKey(), new Date(nowTick));
   const recommendation = useMemo(
     () => recommendNext(character, save, events, { wall: wallInfo, equipped: save.skillInventory.equipped, now: nowTick }),
     [character, save, events, wallInfo, nowTick],
@@ -4454,6 +4459,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           {routineReward && !dismissedAlerts.includes(`routine-reward:${character.routineClaimedDate}`) && (
             <button type="button" className="battle-alert reward" onClick={() => { setDismissedAlerts((items) => [...items, `routine-reward:${character.routineClaimedDate}`]); void claimRoutine(); }}>
               <small>일일 루틴</small><b>보상 받기 · 보석 {ROUTINE_REWARD_GEMS}</b><i>›</i>
+            </button>
+          )}
+          {/* 핫타임 보급 (2026-11-11) — 보상 · 정산 · 추천 뒤, 목표 앞 */}
+          {hotClaim && !dismissedAlerts.includes(`hottime:${hotClaim.id}:${dateKey()}`) && (
+            <button type="button" className="battle-alert reward hottime-alert" onClick={() => { setDismissedAlerts((items) => [...items, `hottime:${hotClaim.id}:${dateKey()}`]); onOpenEvents?.("daily"); }}>
+              <small>핫타임</small><b>{hotClaim.label} · 보석 {hotClaim.gems}</b><i>›</i>
             </button>
           )}
           {/* 알림이 최대 5줄까지 쌓여 전장을 덮었다 — 급한 것(보상·정산) 뒤에 목표는 1줄만 (2026-09-18) */}

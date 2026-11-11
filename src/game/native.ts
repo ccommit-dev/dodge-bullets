@@ -48,6 +48,8 @@ export const NOTIFY_ID = {
   pickupRotation: 3,
   /** retention-6: 주간 도전 마감(일요일 20시) 미수령 알림 */
   weeklyDeadline: 4,
+  /** 핫타임 보급 시작 (events/hotTime, 2026-11-11) */
+  hotTime: 5,
 } as const;
 
 /** 이번 주 일요일 20:00(로컬) — 주간 도전 마감 알림 시각. 이미 지났으면 null */

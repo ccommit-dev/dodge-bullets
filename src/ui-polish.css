@@ -1514,3 +1514,5 @@
 @media (max-width: 600px) {
   .titans-layer:not(.is-management-page) { padding-bottom: max(80px, calc(env(safe-area-inset-bottom) + 72px)) !important; }
 }
+/* 토벌령 · 핫타임 카드 제목은 단어 단위로 접는다 (2026-11-11) — 360px 에서 "오늘 보스 처 / 치" 처럼 글자 중간에서 끊겼다 */
+.event-list .mission-card b { word-break: keep-all; }

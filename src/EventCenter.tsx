@@ -8,6 +8,8 @@ import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/mod
 import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
 import { riftEventFor, weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
+import "./events/hotTime.css";
+import { HOT_TIME_WINDOWS, activeHotTime, claimableHotTime, hotTimeClaimKey, hotTimeHours, isHotTimeClaimed, nextHotTime } from "./events/hotTime";
 import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
 import { LockIcon } from "./ui/LockIcon";
@@ -69,6 +71,15 @@ export function EventCenter({
   /** 균열 진입 차례 줄 (아래 enterRift) — 훅은 조기 return 위에 */
   const riftChainRef = useRef<Promise<void>>(Promise.resolve());
   const [riftMessage, setRiftMessage] = useState("");
+  /** 핫타임 보급 받은 알림 (events/hotTime) — 토벌령 탭에 */
+  const [hotMsg, setHotMsg] = useState("");
+  // 열려 있는 동안 30초마다 다시 그린다 — 17:59 에 열어 둔 화면이 19시가 돼도 '19시 개방' 으로 멈춰 있지 않게
+  const [, setClock] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setInterval(() => setClock((c) => c + 1), 30_000);
+    return () => window.clearInterval(t);
+  }, [open]);
   // 스토어 가격·결제 준비가 바뀌면 시즌 패스 버튼을 다시 그린다 (payments/prices)
   const [, setStoreTick] = useState(0);
   useEffect(() => { const off = onStorePricesChanged(() => setStoreTick((t) => t + 1)); return () => { off(); }; }, []);
@@ -127,10 +138,15 @@ export function EventCenter({
     window.dispatchEvent(new Event("dodgebullets:events-changed"));
   };
 
-  const claimMission = async (id: string) => {
+  const claimMission = (id: string) => {
+    riftChainRef.current = riftChainRef.current.then(() => claimMissionOnce(id)).catch(() => undefined);
+    return riftChainRef.current;
+  };
+  const claimMissionOnce = async (id: string) => {
     const key = `daily:${dateKey()}:${id}`;
-    if (save.claimed.includes(key)) return;
-    const nextClaimed = { ...save, claimed: [...save.claimed, key] };
+    const latest = await loadEventSave(userHash);
+    if (latest.claimed.includes(key)) { setSave(latest); return; }
+    const nextClaimed = { ...latest, claimed: [...latest.claimed, key] };
     // 주간 도전: 오늘 토벌령 4종을 모두 받은 날은 하루로 집계 (중복 방지)
     const completedToday = dailyMissionsDone(nextClaimed) && nextClaimed.lastMissionDay !== dateKey();
     const nextProgress = await updateCharacterProgress(userHash, (current) => ({
@@ -145,6 +161,30 @@ export function EventCenter({
     onUpdated(nextProgress);
     if (completedToday) setRiftMessage(`오늘의 토벌령 완주 · 보석 +${MISSION_ALL_DONE_GEMS}`);
     await persist(completedToday ? { ...nextClaimed, weeklyMissionDays: nextClaimed.weeklyMissionDays + 1, lastMissionDay: dateKey() } : nextClaimed);
+  };
+
+  /**
+   * 핫타임 보급 (2026-11-11, events/hotTime) — 균열 진입과 같은 줄에서 최신 저장으로: 연타 · 자정 넘김 · 다른 수령이 옛 저장을 덮어 두 번 받는 길을 막는다.
+   * 받은 표시를 먼저 쓰고 지급한다 — 사이에 앱이 꺼지면 한 번 못 받을 뿐 두 번 받지는 않는다. 누르는 순간 창도 다시 본다
+   */
+  const claimHotTime = () => {
+    riftChainRef.current = riftChainRef.current.then(claimHotTimeOnce).catch(() => undefined);
+    return riftChainRef.current;
+  };
+  const claimHotTimeOnce = async () => {
+    const day = dateKey();
+    const latest = await loadEventSave(userHash);
+    const win = claimableHotTime(latest.claimed, day);
+    if (!win) { setSave(latest); return; }
+    await persist({ ...latest, claimed: [...latest.claimed, hotTimeClaimKey(win.id, day)] });
+    sfxRiftClaim();
+    onUpdated(await updateCharacterProgress(userHash, (current) => ({
+      ...current,
+      redGems: current.redGems + win.gems,
+      enhancementMaterials: current.enhancementMaterials + win.stones,
+      eventCoins: current.eventCoins + win.eventCoins,
+    })));
+    setHotMsg(`${win.label} 받음 · 보석 +${win.gems} · 강화석 +${win.stones} · 이벤트 코인 +${win.eventCoins}`);
   };
 
   // 균열 진입은 한 줄로 (2026-10-28) — 연달아 누르면 앞 진입이 저장을 마치기 전에 다음 진입이 같은 옛 횟수(save)로 써서 한 번이 사라졌다
@@ -327,6 +367,38 @@ export function EventCenter({
 
         {tab === "daily" && (
           <div className="event-list">
+            {/* 핫타임 보급 (2026-11-11) — 하루 두 번 정해진 시각에 들어오면 한 번. 토벌령 맨 위 */}
+            {(() => {
+              const now = new Date();
+              const day = dateKey();
+              const live = activeHotTime(now);
+              const claimed = live ? isHotTimeClaimed(save.claimed, live.id, day) : false;
+              const next = nextHotTime(now);
+              const shown = live ?? next.window;
+              const leftMin = live ? Math.max(0, (live.endHour - now.getHours()) * 60 - now.getMinutes()) : 0;
+              return (
+                <article className={`mission-card hottime-card ${live && !claimed ? "is-live" : ""}`} data-hottime={live ? (claimed ? "done" : "live") : "wait"}>
+                  <ContentIcon name="event" className="mission-icon" />
+                  <div>
+                    <b>핫타임 · {shown.label}</b>
+                    <span>{live ? (claimed ? `${hotTimeHours(live)} · 받음` : `${hotTimeHours(live)} · ${leftMin}분 남음`) : `${next.tomorrow ? "내일 " : ""}${next.window.startHour}시에 열림`}</span>
+                    <i>
+                      <em style={{ width: `${live && !claimed ? Math.min(100, (leftMin / ((live.endHour - live.startHour) * 60)) * 100) : 0}%` }} />
+                    </i>
+                    <small className="journal-reward reward-row">
+                      <RewardChip kind="gems" label={`보석 ${shown.gems}`} />
+                      <RewardChip kind="materials" label={`강화석 ${shown.stones}`} />
+                      <span className="reward-chip"><i className="coin-mark" aria-hidden="true" />코인 {shown.eventCoins}</span>
+                    </small>
+                  </div>
+                  <button disabled={!live || claimed} onClick={() => void claimHotTime()}>
+                    {live ? (claimed ? "완료" : "받기") : `${next.window.startHour}시`}
+                  </button>
+                </article>
+              );
+            })()}
+            {hotMsg && <p className="shop-toast">{hotMsg}</p>}
+            <p className="hottime-note">핫타임 {HOT_TIME_WINDOWS.map((w) => `${w.label} ${hotTimeHours(w)}`).join(" · ")}</p>
             {daily.map((m) => {
               const key = `daily:${dateKey()}:${m.id}`;
               const done = m.value >= m.goal;
