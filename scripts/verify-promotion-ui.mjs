@@ -44,11 +44,16 @@ const clickGo = () => waitFor(() => page.evaluate(() => { const b = document.que
 // ── 1. 문턱 → 알림 → 전단 ──
 await boot({ stage: 8 });
 const l1 = await waitFor(async () => { const v = await look(); return v.alert ? v : null; }, 5000);
-ok("최고 8층 · 0등급이면 승급전 알림(정산 · 루틴 보상이 없으면 첫 칸)", !!l1 && /승급전/.test(l1.alert) && /청동 파수꾼/.test(l1.alert) && /promo-alert/.test(l1.firstAlert ?? ""), JSON.stringify(l1));
+ok("최고 8층 · 0등급이면 승급전 알림", !!l1 && /승급전/.test(l1.alert) && /청동 파수꾼/.test(l1.alert), JSON.stringify(l1));
 // 귀환 정산 · 루틴 보상이 있으면 그 뒤 — 알림 줄은 첫 칸만 보여 맨 위에 두면 그 둘을 가린다(2026-11-11)
 const order = await page.evaluate(() => [...document.querySelectorAll(".battle-alert-stack > .battle-alert")].map((b) => b.className));
-const pi = order.findIndex((c) => c.includes("promo-alert")), ci = order.findIndex((c) => / claim|reward(?! promo)/.test(c) && !c.includes("promo") && !c.includes("hottime"));
-ok("승급전 알림은 정산 · 루틴 보상 뒤", ci < 0 || pi > ci, JSON.stringify(order));
+// 승급전 앞에 와야 하는 것: 귀환 정산(claim) · 루틴 보상(reward) · 받을 보상 추천(tone-claim). 성장 알림(tone-grow 등)보다는 앞
+const pi = order.findIndex((c) => c.includes("promo-alert"));
+// 알림 줄은 같은 블록을 두 번 그린다(기존 코드, 첫 칸만 보인다) — 종류마다 첫 위치로 비교
+const firstOf = (re) => order.findIndex((c) => !c.includes("promo") && !c.includes("hottime") && re.test(c));
+const lastBefore = Math.max(firstOf(/(^| )claim( |$)/), firstOf(/(^| )reward( |$)/), firstOf(/tone-claim/));
+const firstGrow = order.findIndex((c) => /tone-(?!claim)/.test(c) && !c.includes("tone-buy"));
+ok("승급전 알림은 정산 · 루틴 보상 · 받을 보상 뒤, 성장 알림 앞", pi > lastBefore && (firstGrow < 0 || pi < firstGrow), JSON.stringify(order));
 await page.evaluate(() => document.querySelector(".promo-alert")?.click()); await sleep(300);
 const poster = await page.evaluate(() => {
   const p = document.querySelector('[data-promo="poster"]'); if (!p) return null;

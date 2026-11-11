@@ -23,11 +23,13 @@ await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
 await sleep(2000);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 await sleep(500);
+// 사냥터에서 편성을 바꾼 것처럼 저장소만 고친다 — 성문 방어에 들어가면 App 이 진행도를 다시 읽어 셋이 보여야 한다(2026-11-12, 옛 편성 남던 문제)
+await page.evaluate((k) => { const v = JSON.parse(localStorage.getItem(k)); v.partyIds = ["mia", "pyro", "leon"]; localStorage.setItem(k, JSON.stringify(v)); }, `dodgebullets:progression:v1:${H}`);
 await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1500);
 await clickText(".exp-menu-tabs button", "정비"); await sleep(700);
 const row = await page.evaluate(() => { const r = document.querySelector(".exp-support-row"); if (!r) return null; const cards = [...r.querySelectorAll(".exp-support-card")]; const face = cards[0]?.querySelector(".exp-support-face"); const fb = face?.getBoundingClientRect(); const fonts = [...r.querySelectorAll("*")].filter((el) => el.children.length === 0 && el.textContent.trim()).map((el) => parseFloat(getComputedStyle(el).fontSize)); return { title: r.querySelector(":scope > b")?.textContent, cards: cards.map((c) => c.textContent.replace(/\s+/g, " ").trim()), face: fb ? [Math.round(fb.width), Math.round(fb.height)] : null, bg: face ? getComputedStyle(face).backgroundImage.slice(0, 80) : "", inView: r.getBoundingClientRect().right <= innerWidth, minFont: Math.min(...fonts) }; });
-ok("정비 탭에 동료 출격 줄 — 편성 둘", !!row && row.cards.length === 2 && /동료 출격/.test(row.title ?? "") && row.cards.every((c) => /화살 · 1\.5초마다/.test(c) && /출격$/.test(c)), JSON.stringify(row));
+ok("정비 탭에 동료 출격 줄 — 사냥터에서 바꾼 편성 셋", !!row && row.cards.length === 3 && /레온|leon/i.test(row.cards[2] ?? "") && /동료 출격/.test(row.title ?? "") && row.cards.every((c) => /화살 · 1\.5초마다/.test(c) && /출격$/.test(c)), JSON.stringify(row));
 ok("카드 얼굴은 동료 시트 · 화면 안", !!row && /titans\/anim\/allies\/mia\.webp/.test(row.bg) && row.face?.[0] >= 30 && row.inView, JSON.stringify(row && { face: row.face, bg: row.bg }));
 if (OUT) { await page.evaluate(() => document.querySelector(".exp-support-row")?.scrollIntoView({ block: "center" })); await sleep(200); await page.screenshot({ path: `${OUT}/support-row.png` }); }
 await page.evaluate(() => document.querySelector('[data-support="mia"]')?.click()); await sleep(600);

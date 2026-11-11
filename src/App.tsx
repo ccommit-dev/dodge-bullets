@@ -434,9 +434,10 @@ function App() {
   const [extracted, setExtracted] = useState(false);
   const [appMode, setAppMode] = useState<AppMode>("titans");
   // 마이페이지 진입 시 저장소에서 진행도를 다시 읽는다 — 사냥터 상점에서 산 외형(이펙트·테마)·보석이
-  // App의 progress 상태에 반영되지 않은 채 프로필이 열리는 문제(계획안 I) 방지
+  // App의 progress 상태에 반영되지 않은 채 프로필이 열리는 문제(계획안 I) 방지.
+  // 성문 방어도 같다 — 사냥터에서 바꾼 편성이 정비 탭 '동료 출격' 줄에 옛 편성으로 남았다(2026-11-12)
   useEffect(() => {
-    if (appMode !== "profile" || !userHashRef.current) return;
+    if ((appMode !== "profile" && appMode !== "dodge") || !userHashRef.current) return;
     let cancelled = false;
     void loadCharacterProgress(userHashRef.current).then((next) => { if (!cancelled) setProgress(next); });
     return () => { cancelled = true; };

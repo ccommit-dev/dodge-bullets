@@ -3450,6 +3450,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const urgentNow = ready ? activeUrgent(save.urgent, nowTick, urgentDay) : null;
   // 승급전 — 다음 등급 문턱에 닿았으면 (titans/promotion.ts)
   const promoNext = ready && canChallengeRank(character.heroRank, Math.max(save.bestStage, character.titanBestStage)) ? nextHeroRank(character.heroRank) : null;
+  // 승급전 알림 칸 — 알림 줄 두 자리 중 하나에 놓인다(아래 battle-alert-stack)
+  const promoAlert = promoNext && !boss && !specialFight && !dismissedAlerts.includes(`promo:${promoNext.rank}`) ? (
+      <button type="button" className="battle-alert reward promo-alert" onClick={() => setPromoOpen(true)}>
+        <small>승급전</small><b>{promoNext.title} 도전</b><i>›</i>
+      </button>
+  ) : null;
   const urgentNone = urgentNow === null;
   // 마감이 지나면 전단도 닫는다 — 열린 채 두면 다음 의뢰가 붙는 순간 전단이 저절로 뜬다
   useEffect(() => { if (urgentNone) setUrgentOpen(false); }, [urgentNone]);
@@ -4455,12 +4461,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <small>일일 루틴</small><b>보상 받기 · 보석 {ROUTINE_REWARD_GEMS}</b><i>›</i>
             </button>
           )}
-          {/* 승급전 (2026-11-11) — 문턱에 닿으면 · 귀환 정산 · 루틴 보상 뒤(알림 줄은 첫 칸만 보인다 — 맨 위에 두면 그 둘을 가렸다). '나중에' 면 이번 접속 동안 숨긴다 */}
-          {promoNext && !boss && !specialFight && !dismissedAlerts.includes(`promo:${promoNext.rank}`) && (
-            <button type="button" className="battle-alert reward promo-alert" onClick={() => setPromoOpen(true)}>
-              <small>승급전</small><b>{promoNext.title} 도전</b><i>›</i>
-            </button>
-          )}
+          {/* 승급전 (2026-11-11) — 귀환 정산 · 루틴 보상 뒤. 추천이 '받을 보상'(수령)이면 그 뒤, '성장 알림'이면 그 앞 — 알림 줄은 첫 칸만 보여 받을 보상을 가리면 안 된다 */}
+          {recommendation?.tone !== "claim" && promoAlert}
           {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
             <button
               type="button"
@@ -4474,6 +4476,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <b>{recommendation.title}</b><i>›</i>
             </button>
           )}
+          {recommendation?.tone === "claim" && promoAlert}
           {/* 구매 추천은 성장 추천 다음 자리 (2026-10-06) */}
           {adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`) && (
             <button type="button" className="battle-alert tone-buy advice-alert" data-advice={adviceTop[0].id} onClick={() => setAdviceOpen(true)}>
