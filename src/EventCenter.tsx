@@ -1,7 +1,7 @@
 import { HERO_ATTACK_IMPACT, heroFrames } from "./titans/spriteAnim";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { combatPower, type CharacterProgress } from "./progression/model";
-import { testModeEnabled, updateCharacterProgress } from "./progression/storage";
+import { loadCharacterProgress, testModeEnabled, updateCharacterProgress } from "./progression/storage";
 import { computeIdleYield, formatDuration, slotLevels, stageCeilingFor } from "./progression/idle";
 import { resolveShadow, shadowOpponents, shadowPortrait, weekKey, type ShadowOpponent } from "./events/shadowArena";
 import { formatGold, type TitanSkillId, type TitanSkillSlot } from "./titans/model";
@@ -9,6 +9,9 @@ import { loadTitansSave } from "./titans/storage";
 import { randomOwnedAlly } from "./titans/allies";
 import { riftEventFor, weekdayRift, weekdayRiftSchedule } from "./events/weekdayRift";
 import "./events/hotTime.css";
+import "./events/riftClimb.css";
+import { CLIMB_DAILY_CLEARS, CLIMB_OPEN_EVENT, climbClearsToday, climbFace, climbReward, climbRiftMult, climbStage, type ClimbState } from "./titans/riftClimb";
+import { bestiaryThumb } from "./titans/bestiary";
 import { HOT_TIME_WINDOWS, activeHotTime, claimableHotTime, hotTimeClaimKey, hotTimeHours, isHotTimeClaimed, nextHotTime } from "./events/hotTime";
 import { JOURNAL_ENTRIES, journalRewardLabel } from "./progression/journal";
 import { assetUrl } from "./asset";
@@ -73,6 +76,14 @@ export function EventCenter({
   const [riftMessage, setRiftMessage] = useState("");
   /** 핫타임 보급 받은 알림 (events/hotTime) — 토벌령 탭에 */
   const [hotMsg, setHotMsg] = useState("");
+  /** 균열 계단 (titans/riftClimb.ts) — 사냥터가 올리는 값이라 열 때마다 저장에서 다시 읽는다(App 의 progress 는 사냥터 갱신을 늦게 받는다) */
+  const [climb, setClimb] = useState<ClimbState>(() => progress.climb);
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    void loadCharacterProgress(userHash).then((p) => { if (alive) setClimb(p.climb); });
+    return () => { alive = false; };
+  }, [open, userHash]);
   // 열려 있는 동안 30초마다 다시 그린다 — 17:59 에 열어 둔 화면이 19시가 돼도 '19시 개방' 으로 멈춰 있지 않게
   const [, setClock] = useState(0);
   useEffect(() => {
@@ -202,8 +213,10 @@ export function EventCenter({
     const rift = weekdayRift();
     const event = riftEventFor();
     const eventMult = event?.mult ?? 1;
-    const gold = Math.floor(riftYield.gold * rift.goldMult * eventMult);
-    const materials = Math.floor(riftYield.materials * rift.matMult * eventMult);
+    // 균열 계단에서 오른 단마다 +2%(최대 +30%) — titans/riftClimb
+    const climbMult = climbRiftMult(climb);
+    const gold = Math.floor(riftYield.gold * rift.goldMult * eventMult * climbMult);
+    const materials = Math.floor(riftYield.materials * rift.matMult * eventMult * climbMult);
     const shardCount = Math.round(rift.shards * eventMult);
     const titans = await loadTitansSave(userHash);
     const nextProgress = await updateCharacterProgress(userHash, (current) => {
@@ -458,7 +471,7 @@ export function EventCenter({
             <div className="rift-preview">
               <div>
                 <span>공유 골드</span>
-                <strong>{formatGold(Math.floor(riftYield.gold * weekdayRift().goldMult * (riftEventFor()?.mult ?? 1)))}</strong>
+                <strong>{formatGold(Math.floor(riftYield.gold * weekdayRift().goldMult * (riftEventFor()?.mult ?? 1) * climbRiftMult(climb)))}</strong>
               </div>
               <div>
                 <span>경험치</span>
@@ -466,7 +479,7 @@ export function EventCenter({
               </div>
               <div>
                 <span>강화석</span>
-                <strong>{Math.floor(riftYield.materials * weekdayRift().matMult * (riftEventFor()?.mult ?? 1))}</strong>
+                <strong>{Math.floor(riftYield.materials * weekdayRift().matMult * (riftEventFor()?.mult ?? 1) * climbRiftMult(climb))}</strong>
               </div>
               <div>
                 <span>동료 조각</span>
@@ -481,6 +494,28 @@ export function EventCenter({
             >
               균열 진입 {save.riftAttempts}/{riftAttemptsFor(progress.patronUntil)}
             </button>
+            {/* 균열 계단 (2026-11-11, titans/riftClimb.ts) — 싸움은 사냥터에서. 주 단추(균열 진입) 아래 */}
+            {(() => {
+              const today = climbClearsToday(climb, dateKey()), face = climbFace(climb.floor), rw = climbReward(climb.floor), bonus = Math.round((climbRiftMult(climb) - 1) * 100);
+              const done = today >= CLIMB_DAILY_CLEARS;
+              return (
+                <div className="rift-climb" data-climb="box">
+                  <img src={assetUrl(bestiaryThumb(face.art))} alt="" aria-hidden="true" />
+                  <div>
+                    <b>균열 계단 · 제 {climb.floor}단</b>
+                    <small>오늘 {today}/{CLIMB_DAILY_CLEARS}단 · 정산 +{bonus}% · {climbStage(climb.floor)}층 대장</small>
+                    <small className="journal-reward reward-row">
+                      <RewardChip kind="materials" label={`강화석 ${rw.stones}`} />
+                      {rw.gems > 0 && <RewardChip kind="gems" label={`보석 ${rw.gems}`} />}
+                      {rw.shards > 0 && <RewardChip kind="shards" label={`조각 ${rw.shards}`} />}
+                    </small>
+                  </div>
+                  <button type="button" className="rift-climb-go" disabled={done} onClick={() => { window.dispatchEvent(new Event(CLIMB_OPEN_EVENT)); onClose(); }}>
+                    {done ? "내일" : "도전"}
+                  </button>
+                </div>
+              );
+            })()}
           </section>
         )}
 

@@ -80,6 +80,8 @@ import { URGENT_OPEN_STAGE, activeUrgent, completeUrgent, countUrgentBoss, issue
 import { SPECIAL_FOE, SPECIAL_TITLE, specialFace, specialHp, specialTimeSec, type SpecialFight } from "./titans/specialFight";
 import { canChallengeRank, guardianFace, guardianHp, heroRankAtkMul, heroRankDef, nextHeroRank } from "./titans/promotion";
 import { PromotionPoster } from "./titans/PromotionPoster";
+import { ClimbPoster } from "./titans/ClimbPoster";
+import { CLIMB_OPEN_EVENT, afterClimb, canClimbToday, climbClearsToday, climbFace, climbHp, climbReward, climbStage } from "./titans/riftClimb";
 import { UrgentBadge, UrgentPoster } from "./titans/UrgentPoster";
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
@@ -594,6 +596,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const specialRef = useRef<SpecialFight | null>(null);
   const [urgentOpen, setUrgentOpen] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
+  const [climbOpen, setClimbOpen] = useState(false);
   /** 전환 띠 글자 — 특수 대결이 시작될 때 · 끝날 때 "STAGE CLEAR" 대신 */
   const [specialBanner, setSpecialBanner] = useState<string | null>(null);
   /** 콘텐츠 선택 카드 "최고점수" — 비트 기록은 비트 저장소에 있어 팝업을 열 때 읽는다 */
@@ -1773,7 +1776,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const face = urgentFace(s.stage);
         const gold = Math.floor(reward.gold * urgentGoldMul(characterRef.current, s, permRef.current.goldMul));
         // 이미 받은 보상이면 없이 돌아간다 — 의뢰는 같은 객체가 돌아오면, 승급은 이미 그 등급이면
-        const paid = specialWon.kind === "urgent" ? completeUrgent(s.urgent, specialWon.urgent, specialWon.day) !== s.urgent : characterRef.current.heroRank < specialWon.rank;
+        const paid = specialWon.kind === "urgent" ? completeUrgent(s.urgent, specialWon.urgent, specialWon.day) !== s.urgent
+          : specialWon.kind === "promotion" ? characterRef.current.heroRank < specialWon.rank
+          : characterRef.current.climb.floor === specialWon.floor && canClimbToday(characterRef.current.climb, dateKey());
         bossWeakRef.current = null;
         setBossWeak(null);
         setBossBreak(1);
@@ -1793,7 +1798,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             .then((next) => { setCharacter(next); setRedGems(next.redGems); });
           later(() => showRewardPop("ladder", "승급 돌파", def.title, `주인공 공격 +${Math.round(def.atkBonus * 100)}% · 붉은 보석 +${def.gems}`, bestiaryThumb(guardianFace(specialWon.rank).art)), 500);
         }
-        setSpecialBanner(urgentWon ? "현상범 처치!" : "승급 성공!");
+        if (paid && specialWon.kind === "climb") {
+          // 균열 계단 — 다음 단 · 오늘 수 · 강화석 · 보석 · 조각을 한 갱신에서(이미 오른 단이면 그대로)
+          const floor = specialWon.floor, rw = climbReward(floor), day = dateKey();
+          void updateCharacterProgress(userHash, (cur) => {
+            const climb = afterClimb(cur.climb, floor, day);
+            if (climb === cur.climb) return cur;
+            const shards = { ...cur.allyShards };
+            for (let i = 0; i < rw.shards; i += 1) { const t = randomOwnedAlly(saveRef.current.heroes, Math.random, cur.partyIds); shards[t] = (shards[t] ?? 0) + 1; }
+            return { ...cur, climb, enhancementMaterials: cur.enhancementMaterials + rw.stones, redGems: cur.redGems + rw.gems, allyShards: shards };
+          }).then((next) => { setCharacter(next); setRedGems(next.redGems); });
+          later(() => showRewardPop("ladder", "균열 계단", `제 ${floor}단 돌파`, [`강화석 +${rw.stones}`, rw.gems ? `보석 +${rw.gems}` : "", rw.shards ? `동료 조각 +${rw.shards}` : "", floor <= 15 ? "균열 정산 +2%" : ""].filter(Boolean).join(" · "), bestiaryThumb(climbFace(floor).art)), 500);
+        }
+        setSpecialBanner(specialWon.kind === "urgent" ? "현상범 처치!" : specialWon.kind === "promotion" ? "승급 성공!" : `제 ${specialWon.floor}단 돌파!`);
         pendingStageRef.current = s.stage;
         pendingSpawnRef.current = [s.stage, waveRef.current];
         later(() => {
@@ -2320,7 +2337,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         const specialLost = left <= 0 ? specialRef.current : null;
         if (specialLost) {
           if (specialLost.kind === "urgent") flash(partyDownRef.current ? "원정대가 쓰러졌다 · 현상범이 달아났다" : "현상범이 달아났다 · 마감 전이면 다시 도전!");
-          else flash(partyDownRef.current ? "원정대가 쓰러졌다 · 수호자를 넘지 못했다" : "수호자를 넘지 못했다 · 언제든 다시 도전!");
+          else if (specialLost.kind === "promotion") flash(partyDownRef.current ? "원정대가 쓰러졌다 · 수호자를 넘지 못했다" : "수호자를 넘지 못했다 · 언제든 다시 도전!");
+          else flash(partyDownRef.current ? "원정대가 쓰러졌다 · 계단 대장을 넘지 못했다" : "계단 대장을 넘지 못했다 · 오늘 횟수는 그대로");
           if (partyDownRef.current) { const k = performance.now(); setPartyKo(k); window.setTimeout(() => setPartyKo((cur) => (cur === k ? 0 : cur)), 1300); }
           partyDownRef.current = false;
           sfxBossFail();
@@ -3435,6 +3453,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const urgentNone = urgentNow === null;
   // 마감이 지나면 전단도 닫는다 — 열린 채 두면 다음 의뢰가 붙는 순간 전단이 저절로 뜬다
   useEffect(() => { if (urgentNone) setUrgentOpen(false); }, [urgentNone]);
+  // 균열 계단 (titans/riftClimb.ts) — 이벤트 센터 균열 탭의 '도전' 이 사냥터로 데려와 전단을 연다
+  useEffect(() => {
+    const openClimb = () => { setNavPopup(null); setTab("sword"); setClimbOpen(true); };
+    window.addEventListener(CLIMB_OPEN_EVENT, openClimb);
+    return () => window.removeEventListener(CLIMB_OPEN_EVENT, openClimb);
+  }, []);
 
   // 이벤트 센터가 저장을 바꾸면 루틴 보드·추천이 즉시 따라온다 · 1초 틱은 워밍업 타이머용
   useEffect(() => {
@@ -3667,7 +3691,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setMonsterAction("idle");
     setUrgentOpen(false);
     setPromoOpen(false);
-    setSpecialBanner(special.kind === "urgent" ? "현상범 출현!" : "승급전!");
+    setClimbOpen(false);
+    setSpecialBanner(special.kind === "urgent" ? "현상범 출현!" : special.kind === "promotion" ? "승급전!" : `균열 계단 제 ${special.floor}단`);
     battlePhaseRef.current = "stage-exit";
     setBattlePhase("stage-exit");
     later(() => {
@@ -5729,6 +5754,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           onClose={() => { setPromoOpen(false); setDismissedAlerts((items) => [...items, `promo:${promoNext.rank}`]); }}
         />
       )}
+      {climbOpen && !boss && !specialFight && (() => {
+        const f = character.climb.floor, face = climbFace(f), day = dateKey();
+        return (
+          <ClimbPoster
+            state={character.climb}
+            clearsToday={climbClearsToday(character.climb, day)}
+            floorArt={face.art}
+            floorName={face.name}
+            stageEq={climbStage(f)}
+            hp={climbHp(f)}
+            timeSec={specialTimeSec({ kind: "climb", floor: f }, bossTimeSec)}
+            reward={climbReward(f)}
+            canStart={battlePhase === "combat" && !chesterson && canClimbToday(character.climb, day)}
+            onStart={() => startSpecial({ kind: "climb", floor: f })}
+            onClose={() => setClimbOpen(false)}
+          />
+        );
+      })()}
       {urgentOpen && urgentNow && !boss && (
         <UrgentPoster
           kind={urgentNow.kind}

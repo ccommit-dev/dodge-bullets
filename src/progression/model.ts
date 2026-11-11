@@ -13,6 +13,7 @@ import { emptyShards, emptySkillLevels, emptyWeaponForge, migrateSkillLevels, no
 import { HUNTING_AREAS, huntingArea, type TitanHeroId, type TitanMonsterKind } from "../titans/model";
 import { emptyLadder, normalizeLadder, type BossLadder } from "../titans/bossLadder";
 import { normalizeHeroRank } from "../titans/promotion";
+import { emptyClimb, normalizeClimb, type ClimbState } from "../titans/riftClimb";
 import { emptyCrystalTree, normalizeCrystalTree, type CrystalTree } from "./crystalTree";
 import { normalizeRelicPair, type RelicState } from "../titans/relics";
 import { normalizeDiscovered } from "../titans/discovery";
@@ -256,6 +257,8 @@ export type CharacterProgress = {
   unitRev: number;
   /** 주인공 승급 등급 (titans/promotion.ts, 0~6, 2026-11-11) — 승급전으로 오르고 환생해도 남는다 */
   heroRank: number;
+  /** 균열 계단 (titans/riftClimb.ts, 2026-11-11) — 다음 단 · 오늘 오른 단 수 */
+  climb: ClimbState;
 };
 
 export function expForLevel(level: number): number {
@@ -387,6 +390,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     pendingSkillCores: 0,
     bossLadder: emptyLadder(),
     heroRank: 0,
+    climb: emptyClimb(),
     discovered: [],
     discoverySeeded: false,
     eventCoins: 0,
@@ -813,6 +817,7 @@ export function normalizeCharacterProgress(
         : null,
     bossLadder: normalizeLadder((raw as { bossLadder?: unknown }).bossLadder),
     heroRank: normalizeHeroRank((raw as { heroRank?: unknown }).heroRank),
+    climb: normalizeClimb((raw as { climb?: unknown }).climb),
     discovered: normalizeDiscovered((raw as { discovered?: unknown }).discovered),
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
     eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),

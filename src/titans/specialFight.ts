@@ -1,27 +1,30 @@
 /**
  * 사냥터 특수 대결 (2026-11-11) — 스테이지 흐름 밖의 한 판. 처치 수 · 도감 · 사다리 · 다음 층은 건드리지 않고, 끝나면 싸우던 자리로 돌아온다.
- * 긴급 의뢰의 현상범(titans/urgent.ts)과 승급전의 수호자(titans/promotion.ts)가 같은 길(spawn 네 번째 인자 · 처치 · 시간 초과 · 대장의 반격)을 쓴다.
+ * 긴급 의뢰의 현상범(titans/urgent.ts) · 승급전의 수호자(titans/promotion.ts) · 균열 계단의 대장(titans/riftClimb.ts)이 같은 길(spawn 네 번째 인자 · 처치 · 시간 초과 · 대장의 반격)을 쓴다.
  */
 import { huntingArea, type HuntingAreaDef } from "./model";
 import { huntBossVariant } from "./bestiary";
 import { urgentFaceStage, urgentHp, urgentTimeSec, type UrgentKind } from "./urgent";
 import { guardianFace, guardianHp } from "./promotion";
+import { climbFace, climbHp } from "./riftClimb";
 
 export type SpecialFight =
   /** day — 도전을 누른 날. 자정을 넘겨 끝나도 그날 의뢰로 친다 */
   | { kind: "urgent"; urgent: UrgentKind; day: string }
   /** rank — 이기면 오를 등급 */
-  | { kind: "promotion"; rank: number };
+  | { kind: "promotion"; rank: number }
+  /** floor — 오를 단 (titans/riftClimb.ts) */
+  | { kind: "climb"; floor: number };
 
 export type SpecialKind = SpecialFight["kind"];
 
 /** 판 머리 제목 */
-export const SPECIAL_TITLE: Record<SpecialKind, string> = { urgent: "긴급 의뢰", promotion: "승급전" };
+export const SPECIAL_TITLE: Record<SpecialKind, string> = { urgent: "긴급 의뢰", promotion: "승급전", climb: "균열 계단" };
 /** 제한 시간 줄 이름 */
-export const SPECIAL_FOE: Record<SpecialKind, string> = { urgent: "현상범", promotion: "수호자" };
+export const SPECIAL_FOE: Record<SpecialKind, string> = { urgent: "현상범", promotion: "수호자", climb: "계단" };
 
 export function specialHp(f: SpecialFight, stage: number): number {
-  return f.kind === "urgent" ? urgentHp(stage) : guardianHp(f.rank);
+  return f.kind === "urgent" ? urgentHp(stage) : f.kind === "promotion" ? guardianHp(f.rank) : climbHp(f.floor);
 }
 
 export function specialTimeSec(f: SpecialFight, bossTimeSec: number): number {
@@ -35,6 +38,6 @@ export function specialFace(f: SpecialFight, stage: number): { area: HuntingArea
     const faceStage = urgentFaceStage(stage);
     return { area, stage: faceStage, name: huntBossVariant(area, faceStage).name };
   }
-  const g = guardianFace(f.rank);
+  const g = f.kind === "promotion" ? guardianFace(f.rank) : climbFace(f.floor);
   return { area: g.area, stage: g.stage, name: g.name };
 }
