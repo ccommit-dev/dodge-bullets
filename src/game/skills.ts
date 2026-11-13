@@ -314,8 +314,10 @@ const step = (lv: number, at: number) => (lv >= at ? 1 : 0);
 export function fireCooldown(lv: number): number { return 5.5 - 0.6 * step(lv, 4) - 0.7 * step(lv, 10); }
 export function fireRadius(lv: number): number { return 48 + 10 * step(lv, 2) + 12 * step(lv, 6) + 14 * step(lv, 8); }
 export function firePower(lv: number): number { return 1 + step(lv, 8); }
-/** 물화살 — 재사용 · 관통 수 · 위력 */
-export function waterCooldown(lv: number): number { return 4.5 - 0.5 * step(lv, 4) - 0.6 * step(lv, 8); }
+/** 물화살 — 재사용 · 관통 수 · 위력.
+ *  2026-11-13 재사용 4.5 → 5.2 · 피해 1.4 → 1.25 (사용자 "마저 수정" — 창 + 물이 35스테이지를 4스테이지 덜 자라고 깼다 → 2.
+ *  관통 수는 물의 정체성이라 그대로 — 1개로 줄이면 Lv1 이 꿰뚫지 못하고 15스테이지 창이 다른 무기보다 2스테이지 늦었다) */
+export function waterCooldown(lv: number): number { return 5.2 - 0.5 * step(lv, 4) - 0.6 * step(lv, 8); }
 export function waterPierce(lv: number): number { return 2 + step(lv, 2) + step(lv, 6) + step(lv, 10); }
 export function waterPower(lv: number): number { void lv; return 1; }
 /** 얼음화살 — 재사용 · 빙결 반경 · 감속 배수 · 위력 */
@@ -363,7 +365,7 @@ const scaled = (base: number, lv: number) => Math.round(base * (1 + DAMAGE_PER_L
 /** 기본 사격 피해 — 무기의 것, 스킬 레벨과 무관 */
 export const BASIC_DAMAGE = 1;
 export function fireDamage(lv: number): number { return scaled(1.6, lv); }
-export function waterDamage(lv: number): number { return scaled(1.4, lv); }
+export function waterDamage(lv: number): number { return scaled(1.25, lv); }
 export function iceDamage(lv: number): number { return scaled(1.2, lv); }
 export function earthDamage(lv: number): number { return scaled(2.6, lv); }
 export function boltDamage(lv: number): number { return scaled(1.3, lv); }

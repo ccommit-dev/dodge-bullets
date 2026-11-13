@@ -1469,7 +1469,7 @@ function App() {
   const handleClaimFund = (tierId: string) => {
     let gems = 0;
     void updateCharacterProgress(userHashRef.current, (current) => { const r = claimGateFundTier(current, tierId); gems = r.gems; return r.progress; })
-      .then((next) => { setProgress(next); if (gems > 0) showToast(`성문 원정 기금 보석 +${gems}`); });
+      .then((next) => { setProgress(next); if (gems > 0) showToast(`성문 기금 보석 +${gems}`); });
   };
   /** 구매 복원 — 스토어 내역으로 지급 전에 죽은 구매·재설치 영구 상품을 되살리고 환불을 거둔다 */
   const handleRestorePurchases = async () => {
@@ -1701,6 +1701,8 @@ function App() {
     if (allClear || extracted) {
       syncState("ready");
       setMenuTab("play");
+      // 본선 50 을 다 깨면 그다음은 끝없는 성벽 — 출발 카드(등반권 · 최고 층 · 보상)를 바로 띄운다 (2026-11-13 사용자: "성벽으로 잇기")
+      if (allClear && !extracted) { setStarResult(null); setTowerIntent(true); }
       return;
     }
     // 한 판 = 한 스테이지 — 다음 스테이지는 새 판으로 (카드·런 레벨은 새로) (2026-10-02)
@@ -2506,7 +2508,7 @@ function App() {
             ))}
           </div>
           <p>
-            {starResult.improved && <b>신기록! </b>}성문 별 {starResult.total}/12
+            {starResult.improved && <b>신기록! </b>}성문 별 {starResult.total}/{STAGES.length * 3}
           </p>
         </div>
       )}
@@ -2650,8 +2652,9 @@ function App() {
             })()}
             {shoulderDrop && <p className="shop-toast">{shoulderDrop}</p>}
             {branchNote && <p className="shop-toast branch-note">{branchNote}</p>}
+            {allClear && !extracted && <p className="shop-toast tower-next-note">본선 {STAGES.length}스테이지 완료 · 이제 끝없는 성벽이 이어져요 (최고 {progress.towerBestFloor}층)</p>}
             <button type="button" className="cta" onClick={handleNextStage}>
-              {isBranchIndex(stageIndex) ? (nextBranchIndex !== null ? `갈림길 계속 · ${getStage(nextBranchIndex).name}` : "성문 지도로") : allClear || extracted ? "출전 준비" : "다음 스테이지"}
+              {isBranchIndex(stageIndex) ? (nextBranchIndex !== null ? `갈림길 계속 · ${getStage(nextBranchIndex).name}` : "성문 지도로") : allClear && !extracted ? "끝없는 성벽 오르기" : extracted ? "출전 준비" : "다음 스테이지"}
             </button>
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               상점 / 메뉴
