@@ -115,7 +115,8 @@ export type ArrowKind = "normal" | "aimed" | "fan" | "ricochet" | "explosive" | 
 
 /** 몬스터 종류 이름 — 내려오는 것은 화살이 아니라 몬스터다 (2026-10-01). 종류(kind)는 그대로, 겉모습·이름만 몬스터 */
 export const ARROW_KIND_LABEL: Record<ArrowKind, string> = {
-  normal: "슬라임", aimed: "그림자 늑대", fan: "고블린 떼", ricochet: "오우거", explosive: "폭염 비룡", homing: "달빛 늑대",
+  // 2026-11-13 — 일반 다섯 종류는 낙석(rockArt.ts). 정예만 괴물(바위를 던지는 쪽)
+  normal: "돌멩이", aimed: "뾰족 바위", fan: "자갈 떼", ricochet: "큰 바위", explosive: "불씨 바위", homing: "달빛 늑대",
 };
 
 export const ELEMENT_LABEL: Record<Element, string> = {
@@ -450,7 +451,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "water",
     icon: "water",
-    desc: "[물살 작살] 학습. 물화살이 멈추지 않고 흘러가며 여러 몬스터를 꿰뚫는다. 폭염 비룡의 불을 끈다.",
+    desc: "[물살 작살] 학습. 물화살이 멈추지 않고 흘러가며 여러 바위를 꿰뚫는다. 불씨 바위의 불을 끈다.",
     effect: "관통",
     strongVs: "explosive",
     unlockStage: 1,
@@ -511,7 +512,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "earth",
     icon: "earth",
-    desc: "[바위 투석기] 학습. 무거운 돌촉 화살. 느리지만 대장 몬스터를 크게 깎고 튕기는 오우거를 땅에 박는다.",
+    desc: "[바위 투석기] 학습. 무거운 돌촉 화살. 느리지만 대장 몬스터를 크게 깎고 튕기는 큰 바위를 땅에 박는다.",
     effect: "고피해 · 튕김 봉쇄",
     strongVs: "ricochet",
     unlockStage: 2,
@@ -571,7 +572,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "wind",
     icon: "wind",
-    desc: "[질풍 부메랑] 학습. 앞으로 날아가며 꿰뚫고, 끝까지 가면 되돌아오며 한 번 더 벤다. 슬라임 떼를 쓸어 낸다.",
+    desc: "[질풍 부메랑] 학습. 앞으로 날아가며 꿰뚫고, 끝까지 가면 되돌아오며 한 번 더 벤다. 돌멩이 떼를 쓸어 낸다.",
     effect: "꿰뚫고 되돌아옴",
     strongVs: "normal",
     unlockStage: 0,
@@ -601,7 +602,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "poison",
     icon: "poison",
-    desc: "[독침 단궁] 학습. 맞은 몬스터가 몇 초 동안 독에 타들어 간다. 단단한 오우거를 녹인다.",
+    desc: "[독침 단궁] 학습. 맞은 적이 몇 초 동안 독에 타들어 간다. 바위 틈으로 스며 단단한 큰 바위를 삭인다.",
     effect: "명중 시 중독(지속 피해)",
     strongVs: "ricochet",
     unlockStage: 0,
@@ -660,7 +661,7 @@ export const EXPEDITION_SKILLS: ExpeditionSkillDef[] = [
     family: "physical",
     element: "shadow",
     icon: "shadow",
-    desc: "[그림자 표창] 학습. 표창 여러 개를 부채꼴로 흩뿌린다. 나란히 오는 고블린 떼에 강하다.",
+    desc: "[그림자 표창] 학습. 표창 여러 개를 부채꼴로 흩뿌린다. 나란히 오는 자갈 떼에 강하다.",
     effect: "부채꼴 다발",
     strongVs: "fan",
     unlockStage: 0,

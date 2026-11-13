@@ -397,6 +397,8 @@ export type GameWorld = {
   /** 번개화살 연쇄 선 — 쏜 자리에서 표적들로. ms 가 0 이 되면 사라진다 */
   /** 쓰러지는 몬스터 — 쓰러짐 프레임이 커지며 사라진다 (2026-10-01) */
   fades: Array<{ kind: Arrow["kind"]; boss: boolean; bossTier: number; x: number; y: number; size: number; ms: number; facing: number }>;
+  /** 처치 코인 — 깨진 자리에서 '+n 코인'이 떠오른다(그림 전용, 2026-11-13). n = 그 처치가 귀환 코인에 더한 양(보급 × 2 × 배수) */
+  coinPops: Array<{ x: number; y: number; n: number; ms: number }>;
   /** 활을 겨누는 각(라디안) — 가장 가까운 화살 쪽. 표적이 없으면 위(−π/2). 주인공 그리기가 활을 이 각으로 든다 (2026-10-01) */
   aimAngle: number;
   /** 보스 화살이 아래로 조준 화살을 쏘는 주기 누적(ms) — 위에서 떠다니며 쏜다 (2026-10-01) */

@@ -188,3 +188,15 @@
 .skill-dock { align-items: flex-end !important; }
 .skill-dock .skill-slot { height: 34px !important; }
 .skill-dock .skill-slot img { object-fit: contain; }
+
+/* ── 웨이브 진행 점 (2026-11-13, 사용자 참고 화면 "이런 느낌") — 웨이브 n/m · 점(지나옴 금 · 지금 크림 빛 · 남음 빈칸) · 끝에 대장 얼굴 ── */
+.hud .hud-left.hud-v2 .hud-score .wave-track { display: inline-flex; align-items: center; justify-content: center; gap: 8px; max-width: 100%; }
+.hud .hud-left.hud-v2 .hud-score .wave-num { font-size: 14px; }
+.hud .hud-left.hud-v2 .hud-score .wave-dots { display: inline-flex; align-items: center; gap: 5px; position: relative; }
+.hud .hud-left.hud-v2 .hud-score .wave-dots::before { content: ""; position: absolute; left: 4px; right: 18px; top: 50%; height: 2px; margin-top: -1px; background: rgba(255, 243, 214, .35); }
+.hud .hud-left.hud-v2 .hud-score .wave-dots i { position: relative; width: 9px; height: 9px; border-radius: 50%; box-sizing: border-box; border: 2px solid rgba(255, 243, 214, .75); background: #24160c; }
+.hud .hud-left.hud-v2 .hud-score .wave-dots i.done { border-color: #fbbf24; background: #fbbf24; }
+.hud .hud-left.hud-v2 .hud-score .wave-dots i.cur { width: 11px; height: 11px; border-color: #fff3d6; background: #fff3d6; box-shadow: 0 0 6px 1px rgba(253, 224, 71, .85); animation: wave-cur 1.1s ease-in-out infinite; }
+.hud .hud-left.hud-v2 .hud-score .wave-boss { position: relative; width: 20px; height: 20px; margin: -3px 0 -3px 2px; border-radius: 50%; object-fit: cover; background: #3b2415; box-shadow: 0 0 0 2px #fb7185; }
+@keyframes wave-cur { 50% { box-shadow: 0 0 10px 3px rgba(253, 224, 71, .95); } }
+@media (prefers-reduced-motion: reduce) { .hud .hud-left.hud-v2 .hud-score .wave-dots i.cur { animation: none; } }

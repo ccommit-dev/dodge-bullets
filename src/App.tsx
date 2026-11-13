@@ -2,7 +2,8 @@ import { gearTierOfEnhance } from "./equipment/parts";
 import { setSkillDockLeft, skillDockLeft } from "./ui/skillDockPref";
 import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen";
 import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } from "./equipment/anchors";
-import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, takeDrawnMonsters } from "./game/draw";
+import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, stageBossArt, takeDrawnMonsters } from "./game/draw";
+import { bestiaryThumb } from "./titans/bestiary";
 import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled, qaUnlockAll } from "./progression/storage";
 import { qaUnlockOpen, setQaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
@@ -201,13 +202,13 @@ const BUILD_LABEL = "2026.10";
 /** 패배 팁 — 방어막을 마지막으로 깎은 쪽 기준 (방어막이 유일한 생명, 2026-10-02) */
 const DEATH_TIPS: Record<string, string> = {
   homing: "달빛 늑대왕은 단단하고 방어막을 세게 두드립니다 — 보이면 먼저 떨구세요",
-  explosive: "폭염 비룡은 돔에 닿으면 터져 한 번에 크게 깎습니다 — 물살 작살(물화살)이 불을 끕니다",
-  ricochet: "오우거는 느리지만 단단합니다 — 바위 투석기·독침 단궁이 오우거에 강합니다",
-  fan: "고블린은 셋이 나란히 옵니다 — 화염 석궁 폭발·그림자 표창으로 한꺼번에 정리하세요",
-  aimed: "그림자 늑대가 돔에 붙기 전에 떨구세요 — 번개 창이 먼저 끊습니다",
+  explosive: "불씨 바위는 돔에 닿으면 터져 한 번에 크게 깎습니다 — 물살 작살(물화살)이 불을 끕니다",
+  ricochet: "큰 바위는 느리지만 단단합니다 — 바위 투석기·독침 단궁이 큰 바위에 강합니다",
+  fan: "자갈은 셋이 나란히 쏟아집니다 — 화염 석궁 폭발·그림자 표창으로 한꺼번에 부수세요",
+  aimed: "뾰족 바위는 곧장 내리꽂힙니다 — 돔에 박히기 전에 떨구세요, 번개 창이 먼저 끊습니다",
   fragment: "대장을 깎으면 조각이 흩어져 돔을 두드립니다 — 화살비로 한 번에 지우세요",
   boss: "대장의 마력탄이 돔을 깎습니다 — 대장을 빨리 쓰러뜨릴수록 덜 맞습니다. 대장간에서 활·지팡이를 강화하거나 운석 낙하포·바위 투석기를 장착해 보세요",
-  normal: "슬라임 떼가 돔에 붙으면 조금씩 깎습니다 — 정비에서 스킬 무기를 올리고 4칸을 다 채워 보세요",
+  normal: "돌멩이가 돔에 쌓이면 조금씩 깎습니다 — 정비에서 스킬 무기를 올리고 4칸을 다 채워 보세요",
   barrier: "방어막이 깨지면 집니다 — 붙은 몬스터부터 떨구고, 성장 카드의 방어막 수리를 챙기세요",
 };
 const EXPEDITION_SHOULDERS: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
@@ -2387,7 +2388,16 @@ function App() {
             <div className="hud-left hud-v2">
               {/* 한 줄 상단바 (2026-11-06, 사용자 참고 슈팅 화면) — 가운데 웨이브 · 레벨 막대, 오른쪽 코인 · 처치. 점수 · 위험도 알약은 뺐다 */}
               <span className="hud-score">
-                {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return <>제 <em>{wv.index}</em>/{wv.count} 웨이브</>; })()}
+                {worldRef.current?.bossDefeated ? "CLEAR" : worldRef.current?.bossSpawned ? `BOSS ${worldRef.current.bossCutsLeft} · ${bossPatternFor(worldRef.current.stageIndex + 1).name}` : (() => { const wv = waveAt(stage, worldRef.current?.stageElapsedMs ?? 0); return (
+                  // 웨이브 진행 점 + 끝의 대장 얼굴 (2026-11-13, 사용자 참고 화면 "이런 느낌") — 지나온 칸 · 지금 칸 · 남은 칸이 한눈에
+                  <span className="wave-track" aria-label={`제 ${wv.index}/${wv.count} 웨이브`}>
+                    <span className="wave-num">웨이브 <em>{wv.index}</em>/{wv.count}</span>
+                    <span className="wave-dots" aria-hidden="true">
+                      {Array.from({ length: wv.count }, (_, i) => <i key={i} className={i < wv.index - 1 ? "done" : i === wv.index - 1 ? "cur" : ""} />)}
+                      <img className="wave-boss" src={assetUrl(bestiaryThumb(stageBossArt(worldRef.current?.stageIndex ?? 0)))} alt="" />
+                    </span>
+                  </span>
+                ); })()}
               </span>
               <span className="run-level" title={`런 레벨 ${runHud.level}${runHud.tempo > 1 ? ` · 몬스터 속도 ×${runHud.tempo.toFixed(2)}` : ""}`}>
                 <b className="run-lv">Lv.{runHud.level}</b>

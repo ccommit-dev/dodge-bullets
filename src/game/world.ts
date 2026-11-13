@@ -87,6 +87,7 @@ export function createWorld(width: number, height: number, dpr: number): GameWor
     boltFrom: null,
     aimAngle: -Math.PI / 2,
     fades: [],
+    coinPops: [],
     bossSalvoMs: 0,
     bossFocus: 0,
     barrierHp: TUNING.barrierHp,

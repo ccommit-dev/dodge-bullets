@@ -317,6 +317,8 @@ function hit(world: GameWorld, a: Arrow, element: Element, power: number, damage
   a.active = false;
   world.skillKills += 1;
   world.supplies += 1;
+  // 처치 코인 (2026-11-13, 그림 전용) — 보급 1(상성이면 2) × 귀환 코인 2 × 배수. 귀환 코인 식(App.extractCoinValue)과 같은 몫
+  if (!a.fromBoss && world.coinPops.length < 16) world.coinPops.push({ x: a.x, y: a.y - 14, n: Math.max(1, Math.round((aff.power > 0 ? 4 : 2) * world.coinBonusMul)), ms: 900 });
   // 루프 ① (2026-10-08): 스킬 처치도 런 XP — 카드가 보스 구간에만 몰리지 않고 30~60초마다 온다 · ③ 피해 숫자가 뜬다
   gainRunXp(world, 1);
   pushSlashFx(world, a.x, a.y, Math.round(damage * aff.mul * world.runMods.damageMul * 100), false, aff.power > 0, 0.3, ((Math.floor(a.x) % 13) - 6));
@@ -863,6 +865,7 @@ export function updateSkillShots(world: GameWorld, dtSec: number): void {
   if (world.streakMs > 0) { world.streakMs -= dtSec * 1000; if (world.streakMs <= 0) { world.streakMs = 0; world.streak = 0; } }
   if (world.heroAura) { world.heroAura.ms -= dtSec * 1000; if (world.heroAura.ms <= 0) world.heroAura = null; }
   for (let i = world.fades.length - 1; i >= 0; i -= 1) { world.fades[i].ms -= dtSec * 1000; if (world.fades[i].ms <= 0) world.fades.splice(i, 1); }
+  for (let i = world.coinPops.length - 1; i >= 0; i -= 1) { world.coinPops[i].ms -= dtSec * 1000; if (world.coinPops[i].ms <= 0) world.coinPops.splice(i, 1); }
 
   for (const f of world.skillFx) {
     if (!f.active) continue;
@@ -886,6 +889,7 @@ export function resetSkillShots(world: GameWorld): void {
   world.streak = 0; world.streakMs = 0;
   world.heroAura = null;
   world.fades.length = 0;
+  world.coinPops.length = 0;
   world.skillKills = 0;
   world.epicPicks = 0;   // 클리어마다 일일 임무에 더하므로 skillKills 처럼 스테이지 단위
 }

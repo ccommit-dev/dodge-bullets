@@ -9,6 +9,7 @@ import type { Arrow, GameWorld } from "./types";
 import { assetUrl } from "../asset";
 import { ANIM_LAYOUT, MONSTER_ANIM_SET, MONSTER_HD } from "../titans/animLayout";
 import { drawDropShape, drawLeafShape } from "../ui/shapes";
+import { drawRock, drawRockCrumble, isRock, preloadRocks, rocksOffForDev } from "./rockArt";
 
 /**
  * 스테이지 배경 — 성문 방어 **전용** 배경 4종 (art-gen/batch-dodge-bg.sh).
@@ -67,7 +68,10 @@ export function preloadStageSprites(stageIndex: number): void {
   if (typeof Image === "undefined") return;
   const st = getStage(stageIndex);
   const names = new Set<string>();
-  for (const list of Object.values(MONSTER_VARIANTS)) names.add(list[Math.max(0, Math.min(list.length - 1, st.chapter))]);
+  // 일반 다섯 종류는 바위(rockArt.ts, 2026-11-13) — 괴물 그림은 정예(homing)만
+  names.add(MONSTER_VARIANTS.homing[Math.max(0, Math.min(MONSTER_VARIANTS.homing.length - 1, st.chapter))]);
+  preloadRocks(st.chapter, sprite);
+  for (const s of ["pebble", "chunk", "shard", "boulder", "blast", "bit0", "bit1", "bit2", "bit3"]) spriteCache.get(`dodge/rocks/${Math.max(0, Math.min(4, st.chapter))}-${s}.webp`)?.decode?.().catch(() => {});
   names.add(st.bossArt ?? BOSS_SPRITE[Math.max(0, Math.min(BOSS_SPRITE.length - 1, st.bossTier))]);
   chapterBackground(st.chapter);
   for (const n of names) if (MONSTER_ANIM_SET.includes(n)) sprite(`titans/anim/monsters/${n}.webp`);   // 애니메이션 2판 시트(일반 몬스터)
@@ -398,6 +402,11 @@ function monsterSpriteFor(kind: Arrow["kind"], chapter: number): string {
 const BOSS_SPRITE = ["moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan"];
 /** 보스 바에 쓰는 대장 이름 — 사냥터 지역 보스와 같은 그림이라 이름도 같다 */
 export const BOSS_NAME = ["이끼 골렘", "달빛 늑대왕", "늑대 왕", "화염 비룡", "심연의 타이탄"];
+/** 그 스테이지 대장 그림 — HUD 웨이브 점 끝의 대장 얼굴(2026-11-13). 중간 보스 · 비밀 대장은 stages.bossArt */
+export function stageBossArt(stageIndex: number): string {
+  const st = getStage(stageIndex);
+  return st.bossArt ?? BOSS_SPRITE[Math.max(0, Math.min(BOSS_SPRITE.length - 1, st.bossTier))];
+}
 /** 이번 프레임 스테이지의 대장 그림 덮어쓰기(중간 보스·비밀 대장)와 장 — drawWorld 첫머리에서 맞춘다 (2026-10-06) */
 let frameBossArt: string | undefined;
 let frameChapter = 0;
@@ -535,6 +544,11 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.restore();
     return;
   }
+  // ── 낙석 (rockArt.ts, 2026-11-13) — 일반 다섯 종류는 그 장 재질 바위. 판정 · 체력은 그대로, 그림만
+  if (isRock(a) && drawRock(ctx, a, monsterSize(a), frameChapter, sprite, performance.now() * 0.001)) {
+    if (a.kind === "explosive") drawBlastRing(ctx, a, monsterSize(a), performance.now() * 0.001);
+    return;
+  }
   // ── 몬스터 몸 ──
   const img = monsterImg(a, a.hitFlashMs > 0 ? "hit" : "idle");
   const size = monsterSize(a);
@@ -582,15 +596,17 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: Arrow): void {
     ctx.beginPath(); ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
-  if (a.kind === "explosive") {
-    // 터지기 직전의 불씨 — 폭발 반경 예고
-    ctx.save();
-    ctx.globalAlpha = 0.35 + Math.sin(t * 10) * 0.15;
-    ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2; ctx.setLineDash([4, 6]);
-    ctx.beginPath(); ctx.arc(a.x, a.y, size * 0.75, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
-  }
+  if (a.kind === "explosive") drawBlastRing(ctx, a, size, t);
   void tx; void ty;
+}
+
+/** 터지기 직전의 불씨 — 폭발 반경 예고 (불씨 바위 · 괴물 그림 둘 다) */
+function drawBlastRing(ctx: CanvasRenderingContext2D, a: Arrow, size: number, t: number): void {
+  ctx.save();
+  ctx.globalAlpha = 0.35 + Math.sin(t * 10) * 0.15;
+  ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2; ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.arc(a.x, a.y, size * 0.75, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
 }
 
 /** 성문 방어막 — 주인공 머리 위 띠. 색은 남은 HP(청록 → 호박 → 붉음), 맞으면 하얗게 번쩍이며 파문. 붕괴 중엔 점선과 복구 시계 */
@@ -671,6 +687,8 @@ function drawBarrier(ctx: CanvasRenderingContext2D, world: GameWorld): void {
 /** 쓰러지는 몬스터 — 쓰러짐 프레임이 0.42초 동안 커지며 흐려진다 */
 function drawFades(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   for (const f of world.fades) {
+    // 바위는 와르르 부서진다 — 조각 · 먼지 (rockArt.ts). 대장 · 정예는 괴물 쓰러짐 프레임
+    if (!f.boss && drawRockCrumble(ctx, f, monsterSize(f), frameChapter, sprite)) continue;
     const img = monsterImg(f, "defeat");
     const k = 1 - f.ms / 420;
     const size = monsterSize(f) * (1 + k * 0.35);
@@ -770,6 +788,30 @@ function drawJuice(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.fillText(`처치 ×${world.streak}`, world.player.x, y);
     ctx.restore();
   }
+}
+
+/** 처치 코인 — 깨진 자리에서 '+n' 과 동전이 튀어 올라 0.9초에 사라진다(2026-11-13). 숫자는 작게(단위 낮추기 방침) */
+function drawCoinPops(ctx: CanvasRenderingContext2D, world: GameWorld): void {
+  if (!world.coinPops.length || rocksOffForDev()) return;
+  ctx.save();
+  ctx.font = "900 15px Sunflower, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  for (const p of world.coinPops) {
+    const k = Math.max(0, Math.min(1, 1 - p.ms / 900));
+    const rise = 34 * (1 - (1 - k) ** 3);
+    const pop = k < 0.12 ? 1 + ((0.12 - k) / 0.12) * 0.45 : 1;
+    ctx.globalAlpha = k < 0.7 ? 1 : (1 - k) / 0.3;
+    const x = p.x + 6, y = p.y - rise, r = 7 * pop;
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, 1, x, y, r);
+    g.addColorStop(0, "#fff6c2"); g.addColorStop(0.55, "#fbbf24"); g.addColorStop(1, "#d18a06");
+    ctx.fillStyle = g; ctx.strokeStyle = "#5a3405"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(122,74,6,.6)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.58, 0, Math.PI * 2); ctx.stroke();
+    const txt = `+${p.n}`;
+    ctx.lineWidth = 4; ctx.strokeStyle = "#3b2415"; ctx.strokeText(txt, x + r + 3, y + 1);
+    ctx.fillStyle = "#fde047"; ctx.fillText(txt, x + r + 3, y + 1);
+  }
+  ctx.restore();
 }
 
 /** 화면 흔들림을 씌워 한 프레임을 그린다 — 폭발·강타가 묵직하게 읽히게 */
@@ -1121,6 +1163,7 @@ function drawFrameInner(ctx: CanvasRenderingContext2D, world: GameWorld): void {
   drawSupportAlly(ctx, world);   // 동료 출격 — 주인공 뒤(주인공이 위에 겹친다)
   drawStickman(ctx, world);
   drawJuice(ctx, world);
+  drawCoinPops(ctx, world);
   drawSlashGauge(ctx, world);
 
   // 일제 사격·되쏘기는 없다 (2026-10-01) — 수동 동작의 연출 블록을 뺐다
