@@ -56,3 +56,7 @@
 /* 우편함 단추의 긴급 의뢰 남은 시간(예전 딱지) — 1분 전엔 붉게 */
 .titans-field .inbox-btn .inbox-urgent { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--flat-ink, #3b2415); }
 .titans-field .inbox-btn .inbox-urgent.is-last { color: #d64545; }
+/* 중심 루프 한 줄 (정리 결정 1) — 모험 화면 맨 위 */
+.hub-page .hub-core-line { margin: 0 0 8px; padding: 7px 10px; border-radius: 10px; background: #fffaf0; box-shadow: inset 0 0 0 1.5px #3b2415; color: #3b2415; font-size: 13px; font-weight: 700; text-align: center; }
+.hub-page .hub-core-line b { color: #2b8235; }
+.hub-page .hub-core-line em { font-style: normal; color: #2b8235; }

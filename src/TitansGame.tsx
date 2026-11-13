@@ -4800,6 +4800,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
         {tab === "hub" && (
           <section className="hub-page" aria-label="모험 허브">
+            {/* 중심 루프 (2026-11-13 정리 결정 1, docs/FOCUS_2026-11-13.md) — 모든 콘텐츠는 사냥터를 강하게 해 주는 곳. 카드마다 얻는 것 */}
+            <p className="hub-core-line">모든 콘텐츠는 <b>사냥터</b>를 강하게 해 줍니다 · 카드의 <em>얻는 것</em>을 보세요</p>
             {/* 루틴 줄 — 예전 '모험' 팝업의 항목(정산 제외)과 시즌. 같은 클래스라 캡처·검사 스크립트가 그대로 찾는다 */}
             <div className="nav-popup-grid adventure-grid hub-routine">
               {/* 균열 · 강화 · 파견은 아래 카드와 같은 내용이라 뺐다 (2026-11-03, 사용자: "중복된 내용이 있다면 단순화 혹은 제거") */}
