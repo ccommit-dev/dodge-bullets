@@ -526,7 +526,7 @@ export function SkillPanel({
               <div className="exp-skill-cost">
                 <span className={gold >= cost.gold ? "" : "short"}>
                   {/* 재화는 코인·그 스킬의 조각 — 코인은 전용 아이콘이 없어 글자로 쓴다 */}
-                  <em>코인</em>
+                  <em>은화</em>
                   {maxed ? "—" : `${gold.toLocaleString()}/${cost.gold.toLocaleString()}`}
                 </span>
                 {lv === 0 ? (

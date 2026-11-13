@@ -970,7 +970,7 @@ export function BeatGame({
             <p className="brand beat-kicker">사냥터 수련장</p>
             <h1 className="title beat-title">비트 수련</h1>
             <p className="subtitle beat-sub-short">곡을 골라 방향 노트로 몬스터를 토벌 · 30초~3분</p>
-            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gold", amount: coins }, { kind: "gem", amount: gems }]} />
+            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "silver", amount: coins }, { kind: "gem", amount: gems }]} />
             {hubMsg && <p className="shop-toast">{hubMsg}</p>}
             {Object.keys(rpg.records).length === 0 && !guideDismissed && (
               <div className="beat-first-guide" role="note">
@@ -1036,7 +1036,7 @@ export function BeatGame({
                         })}
                       </span>
                       {(() => { const d = variantOf(slot.track); const got = !!charProg && beatFirstClaimed(charProg, slot.track.id, d); const stBonus = beatStageBonusGold(charProg?.titanBestStage ?? 1, d); const estGold = Math.round(slot.track.reward * trackRewardMult({ difficulty: d })) + stBonus; return (
-                        <span className="schedule-foot">{got ? <>보상 <b>+{formatGold(estGold)} 골드</b>{stBonus > 0 ? <small> (사냥터 연동)</small> : null} · 견갑 조각</> : <>첫 클리어 <b>{beatRewardText(BEAT_FIRST_CLEAR[d])}</b> · +{formatGold(estGold)} 골드</>}</span>
+                        <span className="schedule-foot">{got ? <>보상 <b>+{formatGold(estGold)} 은화</b>{stBonus > 0 ? <small> (사냥터 연동)</small> : null} · 견갑 조각</> : <>첫 클리어 <b>{beatRewardText(BEAT_FIRST_CLEAR[d])}</b> · +{formatGold(estGold)} 골드</>}</span>
                       ); })()}
                       <span className="schedule-actions">
                         {/* 출격 강화 1택 (2026-10-08) — 곡 · 날짜로 정해진 3장. 칩 셋 대신 하나를 보이고 누르면 다음 것으로 바뀐다 */}
@@ -1189,7 +1189,7 @@ export function BeatGame({
             <p className="brand">비트 수련 완료</p>
             <h1 className="title">{lessonTitle}</h1>
             <p className="score-line">
-              +{formatGold(coinGain)} 골드
+              +{formatGold(coinGain)} 은화
               {lastRunStats && lastRunStats.stageBonusGold > 0 ? ` (사냥터 연동 +${formatGold(lastRunStats.stageBonusGold)})` : ""}
               {adDouble === "done" ? " · 광고 ×2 적용" : ""}
             </p>
@@ -1208,8 +1208,8 @@ export function BeatGame({
             {firstReward && <p className="beat-first-reward">{firstReward.diff} 첫 클리어 보상 — {beatRewardText(firstReward.reward)}</p>}
             {(adDouble === "ad" || adDouble === "free" || adDouble === "busy") && coinGain > 0 && (
               <button type="button" className="cta idle-claim-ad" disabled={adDouble === "busy"} onClick={() => void doubleBeatReward()}>
-                {adDouble === "busy" ? "광고 재생 중…" : adDouble === "free" ? "광고 제거 보유 · 골드 ×2" : "광고 보고 골드 ×2"}
-                <small>+{formatGold(coinGain)} 골드 추가 · 오늘 남은 횟수 포함</small>
+                {adDouble === "busy" ? "광고 재생 중…" : adDouble === "free" ? "광고 제거 보유 · 은화 ×2" : "광고 보고 은화 ×2"}
+                <small>+{formatGold(coinGain)} 은화 추가 · 오늘 남은 횟수 포함</small>
               </button>
             )}
             {resultRecord && (
@@ -1219,7 +1219,7 @@ export function BeatGame({
             )}
             {rpgGain && <p className="beat-hunt-bridge">{rpgGain}</p>}
             {shoulderReward && <p className="shoulder-reward">{shoulderReward}</p>}
-            <p className="subtitle">보유 {formatGold(coins)} 골드</p>
+            <p className="subtitle">보유 {formatGold(coins)} 은화</p>
             {!isLastCampaignStage(stageNo - 1) && (
               <button
                 type="button"

@@ -61,7 +61,7 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
       dot: !dodgeToday, locked: !contentUnlocked(step, "dodge"), lockHint: unlockInfo("dodge", progress).hint, unlock: unlockInfo("dodge", progress), go: { kind: "content", content: "dodge" },
     },
     {
-      id: "beat", label: NAMES.beat, desc: "30초~3분 기록 도전 · 스킬 슬롯 해금", feeds: ["골드", "견갑 조각", "SP"],
+      id: "beat", label: NAMES.beat, desc: "30초~3분 기록 도전 · 스킬 슬롯 해금", feeds: ["은화", "견갑 조각", "SP"],
       remaining: (opts.beatBest ?? 0) > 0 ? `최고 ${(opts.beatBest ?? 0).toLocaleString()}점` : "첫 연주",
       dot: !beatToday, locked: !contentUnlocked(step, "beat"), lockHint: unlockInfo("beat", progress).hint, unlock: unlockInfo("beat", progress), go: { kind: "content", content: "beat" },
     },
@@ -71,12 +71,12 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
       dot: towerOpen && progress.towerTickets > 0, locked: !towerOpen, lockHint: unlockInfo("tower", progress).hint, unlock: unlockInfo("tower", progress), go: { kind: "content", content: "tower" },
     },
     {
-      id: "rift", label: NAMES.rift, desc: "방치 2시간치를 즉시 정산 · 요일마다 보상 축", feeds: ["골드", "강화석", "조각"],
+      id: "rift", label: NAMES.rift, desc: "방치 2시간치를 즉시 정산 · 요일마다 보상 축", feeds: ["은화", "강화석", "조각"],
       remaining: riftLeft > 0 ? `오늘 ${riftMax - riftLeft}/${riftMax}` : `${riftMax}/${riftMax} 완료`,
       dot: riftLeft > 0, locked: !contentUnlocked(step, "events"), lockHint: unlockInfo("events", progress).hint, unlock: unlockInfo("events", progress), go: { kind: "events", tab: "rift" },
     },
     {
-      id: "forge", label: NAMES.forge, desc: "쌓인 골드·강화석으로 장비 제작·강화", feeds: ["장비 +1"],
+      id: "forge", label: NAMES.forge, desc: "쌓인 은화·강화석으로 장비 제작·강화", feeds: ["장비 +1"],
       remaining: forgeToday ? "오늘 강화 성공" : `강화석 ${progress.enhancementMaterials.toLocaleString()}`,
       dot: !forgeToday && progress.enhancementMaterials > 0, locked: !contentUnlocked(step, "forge"), lockHint: unlockInfo("forge", progress).hint, unlock: unlockInfo("forge", progress), go: { kind: "content", content: "forge" },
     },

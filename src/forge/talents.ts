@@ -9,7 +9,7 @@ export type TalentId = "gold-digger" | "flex" | "sturdy" | "scholar" | "survivor
 export type TalentDef = { id: TalentId; name: string; desc: string };
 
 export const TALENTS: TalentDef[] = [
-  { id: "gold-digger", name: "골드 디거", desc: "성문 방어 결과 코인 +50%" },
+  { id: "gold-digger", name: "골드 디거", desc: "성문 방어 결과 은화 +50%" },
   { id: "flex", name: "융통", desc: "한 판에 한 번 레벨업 카드를 다시 뽑는다" },
   { id: "sturdy", name: "건장", desc: "하루 소탕 횟수 +1" },
   { id: "scholar", name: "지식욕", desc: "성문 방어 런 XP +10% (카드가 더 자주 온다)" },

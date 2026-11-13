@@ -1263,7 +1263,7 @@ function App() {
                 sharedCoins: current.sharedCoins + reward, // 기본 보상만큼 추가 = 2배
                 firstClearDates: { ...current.firstClearDates, dodge: dodgeToday },
               }));
-              setShoulderDrop("오늘의 첫 성문 방어 클리어 · 코인 2배!");
+              setShoulderDrop("오늘의 첫 성문 방어 클리어 · 은화 2배!");
             }
 
             const chapterIndex = towerFloorOf(world.stageIndex) > 0 ? 3 : getStage(world.stageIndex).chapter;
@@ -1617,7 +1617,7 @@ function App() {
     const next = await updateCharacterProgress(userHashRef.current, (p) => { const r = applySweep(p, stageIndex, mult); box.reward = r.reward; return r.progress; });
     setProgress(next);
     const got = box.reward;
-    if (got) setShoulderDrop(`소탕 ×${mult} · S${stageIndex + 1} · 코인 +${got.coins.toLocaleString()} · 견갑 조각 +${got.shoulderShards}`);
+    if (got) setShoulderDrop(`소탕 ×${mult} · S${stageIndex + 1} · 은화 +${got.coins.toLocaleString()} · 견갑 조각 +${got.shoulderShards}`);
   };
 
   /** 원정 보급창에서 인장으로 등반권 1장 */
@@ -2162,7 +2162,7 @@ function App() {
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             {/* 지갑 줄 — 골드·보석·강화석·인장 (2026-10-06, 예전 한 줄 글자 "코인 · 인장 · 최고") */}
             <WalletBar testGems={qaGemsEnabled()} items={[
-              { kind: "gold", amount: coins },
+              { kind: "silver", amount: coins },
               { kind: "gem", amount: progress.redGems },
               { kind: "stone", amount: progress.enhancementMaterials },
               { kind: "seal", amount: progress.expeditionSeals },
@@ -2419,7 +2419,7 @@ function App() {
                 <span className="run-bars"><i className="run-xp"><b style={{ width: `${runHud.pct}%` }} /></i>
                 <i className="expedition-progress" aria-label={`스테이지 진행 ${Math.round(expeditionRatio * 100)}%`}><b style={{ width: `${expeditionRatio * 100}%` }} /></i></span>
               </span>
-              <span className="hud-coins" title="지금 귀환하면 받는 코인" aria-label={`귀환 코인 ${runTally.coins}`}><RewardIcon kind="gold" size={18} /><b>{runTally.coins.toLocaleString()}</b></span>
+              <span className="hud-coins" title="지금 귀환하면 받는 은화" aria-label={`귀환 은화 ${runTally.coins}`}><RewardIcon kind="silver" size={18} /><b>{runTally.coins.toLocaleString()}</b></span>
               <span className="hud-hint" title="처치" aria-label={`처치 ${runTally.kills}`}><i className="kill-glyph" aria-hidden="true" /><b>{runTally.kills}</b></span>
               {towerFloor > 0 && (
                 <span className="hud-tower">
@@ -2604,8 +2604,8 @@ function App() {
             <p className="brand">{extracted ? "SAFE RETURN" : allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
             <button type="button" className="share-card-btn" onClick={() => void shareDodgeCard()}>기록 카드 공유</button>
             <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
-            <p className="score-line">+{coinGain} 코인{adDoubled ? " (광고 ×2 적용)" : ""}</p>
-            <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
+            <p className="score-line">+{coinGain} 은화{adDoubled ? " (광고 ×2 적용)" : ""}</p>
+            <p className="subtitle">보유 은화 {coins} · 점수 {lastScore}</p>
             {/* 계획안 §25 — 선택형 광고: 클리어 보상 ×2 (미연동·한도 소진이면 자리 없음) */}
             {!adDoubled && coinGain > 0 && (() => {
               const avail = rewardedAvailability(progress, "dodgeDouble", new Date().toLocaleDateString("sv-SE"));
@@ -2630,8 +2630,8 @@ function App() {
                     setAdBusy(false);
                   }
                 })()}>
-                  {adBusy ? "광고 재생 중…" : avail === "free" ? "광고 제거 보유 · 코인 ×2" : "광고 보고 코인 ×2"}
-                  <small>+{coinGain} 코인 추가 · 오늘 남은 횟수 포함</small>
+                  {adBusy ? "광고 재생 중…" : avail === "free" ? "광고 제거 보유 · 은화 ×2" : "광고 보고 은화 ×2"}
+                  <small>+{coinGain} 은화 추가 · 오늘 남은 횟수 포함</small>
                 </button>
               );
             })()}
@@ -2670,7 +2670,7 @@ function App() {
             <h1 className="title">{isNewRecord ? "신기록!" : "다시 도전?"}</h1>
             <p className="score-line">점수 {lastScore}</p>
             <p className="subtitle">
-              {stageTag(stageIndex)} · 최고 {highScore} · 코인 {coins}
+              {stageTag(stageIndex)} · 최고 {highScore} · 은화 {coins}
             </p>
             {deathTip && <p className="death-tip"><b>다음엔 이렇게</b> {deathTip}</p>}
             {(() => {
@@ -2711,7 +2711,7 @@ function App() {
             <h2 id="exit-title" className="exit-title">
               게임을 종료할까요?
             </h2>
-            <p className="exit-desc">진행 중인 판은 저장되지 않아요. 코인·강화는 유지됩니다.</p>
+            <p className="exit-desc">진행 중인 판은 저장되지 않아요. 은화·강화는 유지됩니다.</p>
             <button type="button" className="cta" onClick={() => void confirmExit()}>
               종료하기
             </button>

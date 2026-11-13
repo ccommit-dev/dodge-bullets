@@ -98,7 +98,7 @@ export function IdleReturnModal({ result, drops, stage, onClaim, adOption = null
           {result.cappedOut && <em className="idle-cap-tag"> · 최대 {result.capHours}시간</em>}
         </p>
         <div className="idle-loot">
-          <article><CurrencyIcon kind="gold" /><b>{formatGold(gold)}</b><span>골드</span></article>
+          <article><CurrencyIcon kind="silver" /><b>{formatGold(gold)}</b><span>은화</span></article>
           <article><img src={assetUrl("ui/idle/exp-orb.png")} alt="" aria-hidden="true" /><b>{exp.toLocaleString()}</b><span>경험치</span></article>
           {materials > 0 && <article><img src={assetUrl("ui/attendance/enhance-stone.png")} alt="" aria-hidden="true" /><b>{materials.toLocaleString()}</b><span>강화석</span></article>}
           {result.allyShardDrops > 0 && <article><img className="idle-shard-orb" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><b>{result.allyShardDrops}</b><span>동료 조각</span></article>}
@@ -113,7 +113,7 @@ export function IdleReturnModal({ result, drops, stage, onClaim, adOption = null
         )}
         {patronOption && (
           <div className="idle-patron-preview" data-extra-gold={patronOption.extraGold}>
-            <b>후원 계약이면 +{patronOption.extraGold.toLocaleString()} 골드</b>
+            <b>후원 계약이면 +{patronOption.extraGold.toLocaleString()} 은화</b>
             <button type="button" className="patron-buy" disabled={patronOption.busy} onClick={() => void onBuyPatron?.()}>30일 <em>{patronOption.price}</em></button>
           </div>
         )}

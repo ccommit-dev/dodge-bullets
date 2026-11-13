@@ -36,6 +36,7 @@ import { haptic } from "./ui/haptics";
 import { TALENTS, TALENT_BY_ID, masteryPoints, masteryState, type TalentId } from "./forge/talents";
 import { EXPEDITION_SKILLS, WEAPON_FORGE_MAX, weaponForgeCooldownMul, weaponForgeCost, weaponForgeDamageMul, type WeaponForgeLevels } from "./game/skills";
 import { NAMES } from "./ui/names";
+import { CurrencyIcon } from "./ui/CurrencyIcon";
 
 /** Original delays were ~650/720ms; 3× faster ≈ 217/240. */
 const FORGE_MS = 220;
@@ -118,7 +119,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           sharedCoins: current.sharedCoins + carried,
         }));
         forge = await saveForgeSave(userHash, { ...forge, gold: 0, goldMigrated: true });
-        if (carried > 0) flashToast(`대장간 지갑 통합 · 공유 골드 +${formatGold(carried)}`);
+        if (carried > 0) flashToast(`대장간 지갑 통합 · 은화 +${formatGold(carried)}`);
       }
 
       // 이벤트 상점에서 산 방지권은 진행도에 적립돼 있다 — 대장간 진입 시 1회 이관
@@ -267,7 +268,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     setCoins((v) => v + refund);
     setMaterials((v) => v + 1);
     await updateCharacterProgress(userHash, (current) => ({ ...current, sharedCoins: current.sharedCoins + refund, enhancementMaterials: current.enhancementMaterials + 1, equippedWeaponLevel: nextLevel, lastContent: "forge" }));
-    flashToast(`되돌리기 · +${nextLevel} · 골드 ${formatGold(refund)} · 강화석 +1 환급`);
+    flashToast(`되돌리기 · +${nextLevel} · 은화 ${formatGold(refund)} · 강화석 +1 환급`);
   };
   const enhance = () => {
     if (!canEnhance) return;
@@ -368,7 +369,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     changeCoins(sell);
     setSave((prev) => ({ ...prev, level: 0 }));
     setPhase("sold");
-    flashToast(`판매 완료 +${formatGold(sell)}G`);
+    flashToast(`판매 완료 +${formatGold(sell)} 은화`);
     timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
   };
 
@@ -563,7 +564,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     changeCoins(armorSell);
     setSave((current) => ({ ...current, armorLevel: 0 }));
     setPhase("sold");
-    flashToast(`보호구 판매 완료 +${formatGold(armorSell)}G`);
+    flashToast(`보호구 판매 완료 +${formatGold(armorSell)} 은화`);
     timerRef.current = window.setTimeout(() => setPhase("idle"), RESULT_MS);
   };
 
@@ -582,13 +583,13 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
           <img className="ui-back-icon" src={assetUrl("ui/content-icons/ui-back.png")} alt="" aria-hidden="true" /> 사냥터
         </button>
         <div className="forge-wallet">
-          <span>공유 GOLD</span>
+          <span>은화</span>
           <strong>{formatGold(coins)}</strong>
         </div>
       </header>
       {/* 강화 재료까지 한 줄에 — 골드만 보여 강화석·보석 잔량을 몰랐다 (2026-10-06) */}
       <WalletBar className="forge-wallet-bar" testGems={qaGemsEnabled()} items={[
-        { kind: "gold", amount: coins },
+        { kind: "silver", amount: coins },
         { kind: "gem", amount: gems },
         { kind: "stone", amount: materials },
       ]} />
@@ -606,7 +607,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 return { ...p, sharedCoins: p.sharedCoins + st.goldPendingAmount, masteryGoldClaimed: p.masteryGoldClaimed + st.goldPending };
               });
               setCoins(next.sharedCoins); setGoldClaimed(next.masteryGoldClaimed);
-              setToast(`장인 이정표 · 골드 +${m.goldPendingAmount.toLocaleString()}`);
+              setToast(`장인 이정표 · 은화 +${m.goldPendingAmount.toLocaleString()}`);
             };
             const pickTalent = async (id: TalentId) => {
               const next = await updateCharacterProgress(userHash, (p) => {
@@ -621,14 +622,14 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
               <section className="forge-mastery" data-mastery-rank={m.rank} data-mastery-points={m.points}>
                 <div className="forge-mastery-head">
                   <b>장인 {m.rank + 1}등급</b>
-                  <small>{m.points}점 · 다음 {m.next.kind === "gold" ? "골드" : m.next.kind === "pick" ? "특성 선택" : "승급"}까지 {m.next.left}점</small>
+                  <small>{m.points}점 · 다음 {m.next.kind === "gold" ? "은화" : m.next.kind === "pick" ? "특성 선택" : "승급"}까지 {m.next.left}점</small>
                 </div>
                 <i className="forge-mastery-bar" aria-hidden="true"><b style={{ width: `${m.within * 10}%` }} /><em className="m-gold" /><em className="m-pick" /></i>
                 <div className="forge-mastery-actions">
-                  {m.goldPending > 0 && <button type="button" className="mastery-claim-gold" onClick={() => void claimGold()}>골드 +{m.goldPendingAmount.toLocaleString()} 받기</button>}
+                  {m.goldPending > 0 && <button type="button" className="mastery-claim-gold" onClick={() => void claimGold()}>은화 +{m.goldPendingAmount.toLocaleString()} 받기</button>}
                   {m.picksPending > 0 && <button type="button" className="mastery-pick" onClick={() => setPickOpen(true)}>영구 특성 고르기 ({m.picksPending})</button>}
                   {talents.length > 0 && <span className="forge-talents">{talents.map((t) => <em key={t} title={TALENT_BY_ID[t].desc}>{TALENT_BY_ID[t].name}</em>)}</span>}
-                  {m.goldPending === 0 && m.picksPending === 0 && talents.length === 0 && <small>북·보호구·성문 무기 강화 점수를 모으면 골드와 영구 특성</small>}
+                  {m.goldPending === 0 && m.picksPending === 0 && talents.length === 0 && <small>북·보호구·성문 무기 강화 점수를 모으면 은화와 영구 특성</small>}
                 </div>
                 {pickOpen && (
                   <div className="forge-pick" role="dialog" aria-label="영구 특성 선택">
@@ -713,7 +714,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 <div className="forge-stats forge-stats-4">
                   <div>
                     <span>강화 비용</span>
-                    <strong>{maxed ? "MAX" : `${formatGold(tier.cost)}G`}</strong>
+                    <strong>{maxed ? "MAX" : <><CurrencyIcon kind="silver" />{formatGold(tier.cost)}</>}</strong>
                   </div>
                   <div>
                     <span>성공 확률</span>
@@ -722,7 +723,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   </div>
                   <div>
                     <span>판매 가격</span>
-                    <strong>{formatGold(sell)}G</strong>
+                    <strong><CurrencyIcon kind="silver" />{formatGold(sell)}</strong>
                   </div>
                   <div>
                     <span>방지권</span>
@@ -746,7 +747,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 {/* 되돌리기 (2026-10-13 P2 — 카피바라 Go! 강등 100% 환급): 한 단계 내리고 그 단계에 쓴 골드·강화석을 전액 돌려준다. 실수 비용 0 */}
                 {save.level > 0 && phase === "idle" && (
                   <button type="button" className="forge-revert" onClick={() => void revertOne()}>
-                    되돌리기 · +{save.level} → +{save.level - 1} · 골드 {formatGold(tierAt(save.level - 1).cost)} 환급
+                    되돌리기 · +{save.level} → +{save.level - 1} · 은화 {formatGold(tierAt(save.level - 1).cost)} 환급
                   </button>
                 )}
 

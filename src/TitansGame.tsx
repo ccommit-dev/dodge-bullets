@@ -4206,7 +4206,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             )}
             {idlePreview && !idleReport && (
               <span className="idle-preview-chip" title="지금 닫아도 원정대가 8시간 동안 사냥합니다">
-                지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)}G
+                지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)} 은화
               </span>
             )}
           </div>
@@ -4219,7 +4219,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           return (
             <div className="idle-status-strip" role="status">
               <i className="idle-status-dot" />자동 사냥{boosted ? " ×2" : ""}
-              <small>{capHours}시간 +{formatGold(full.gold)}G · 강화석 {full.materials}</small>
+              <small>{capHours}시간 +{formatGold(full.gold)} 은화 · 강화석 {full.materials}</small>
             </div>
           );
         })()}
@@ -4572,7 +4572,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <div className="advice-backdrop" role="presentation" onClick={() => setAdviceOpen(false)}>
           <div className="advice-sheet" role="dialog" aria-label="구매 추천" onClick={(e) => e.stopPropagation()}>
             <header><b>구매 추천</b><small>지금 가진 재화로 살 수 있는 것 · 효과 순</small><button type="button" className="hub-sheet-close" onClick={() => setAdviceOpen(false)} aria-label="닫기">×</button></header>
-            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gem", amount: redGems }, { kind: "gold", amount: save.gold, label: "사냥터 골드" }, { kind: "gold", amount: character.sharedCoins, label: "공용 골드" }, { kind: "stone", amount: character.enhancementMaterials }, { kind: "seal", amount: character.expeditionSeals }]} />
+            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gem", amount: redGems }, { kind: "gold", amount: save.gold, label: "골드" }, { kind: "silver", amount: character.sharedCoins, label: "은화" }, { kind: "stone", amount: character.enhancementMaterials }, { kind: "seal", amount: character.expeditionSeals }]} />
             <ol className="advice-list">
               {adviceTop.map((a, i) => (
                 <li key={a.id} className={`advice-row cur-${a.currency}`}>

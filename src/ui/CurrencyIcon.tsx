@@ -4,7 +4,9 @@ import { assetUrl } from "../asset";
  * 재화 아이콘 (2026-10-08, 사용자: "보석·재화·UI 통일감이 없다") — 예전엔 인라인 SVG(납작한 노란 원 · 붉은 육각)라
  * 상단 지갑·상점·출석의 생성 아이콘(황금 도토리 · 루비 하트)과 다른 그림이었다. 같은 생성 아이콘 파일을 쓴다.
  */
-export function CurrencyIcon({ kind, className = "" }: { kind: "gold" | "gem"; className?: string }) {
+export function CurrencyIcon({ kind, className = "" }: { kind: "gold" | "silver" | "gem"; className?: string }) {
+  // 은화 = 공유 코인(sharedCoins) — 사냥터 골드와 다른 재화라 은색(2026-11-13, 골드는 하나)
+  if (kind === "silver") return <img className={`currency-icon ${className}`} src={assetUrl("ui/attendance/silver.png")} alt="은화" />;
   return kind === "gold" ? (
     <img className={`currency-icon ${className}`} src={assetUrl("ui/attendance/gold.png")} alt="골드" />
   ) : (

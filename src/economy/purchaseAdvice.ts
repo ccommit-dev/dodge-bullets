@@ -44,7 +44,7 @@ export type AdviceWallet = {
   seals: number;
 };
 
-export const CURRENCY_LABEL: Record<AdviceCurrency, string> = { huntGold: "사냥터 골드", gold: "골드", gems: "보석", stones: "강화석", seals: "인장", shards: "조각" };
+export const CURRENCY_LABEL: Record<AdviceCurrency, string> = { huntGold: "골드", gold: "은화", gems: "보석", stones: "강화석", seals: "인장", shards: "조각" };
 
 function walletOf(progress: CharacterProgress, save: Pick<TitansSave, "gold">): AdviceWallet {
   return { huntGold: save.gold, gold: progress.sharedCoins, gems: progress.redGems, stones: progress.enhancementMaterials, seals: progress.expeditionSeals };

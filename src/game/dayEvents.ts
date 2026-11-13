@@ -53,7 +53,7 @@ export function dayEventFor(stageIndex: number, phase: DayEventPhase): DayEvent 
     id: "merchant", phase, title: "짧은 돌격 — 길가의 상인",
     choices: [
       // 첫 번째가 기본값(시작을 그냥 누르면 이것) — 카드가 열리는 쪽은 두 번째에 둔다
-      { id: "pass", label: "통과", desc: `이번 판 코인 +${Math.round(DAY_EVENT.passCoinBonus * 100)}%` },
+      { id: "pass", label: "통과", desc: `이번 판 은화 +${Math.round(DAY_EVENT.passCoinBonus * 100)}%` },
       { id: "merchant", label: `인장 ${MERCHANT_SEALS}`, desc: "레벨업 카드 1장을 바로 고른다", seals: MERCHANT_SEALS },
     ],
   };
