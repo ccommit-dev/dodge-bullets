@@ -106,7 +106,7 @@ const DIRECTIONS: Array<{ id: BeatDirection; symbol: string; key: string; lane: 
   { id: "right", symbol: "→", key: "→ / D", lane: 3 },
 ];
 const SHOULDER_BLUEPRINTS: Array<{ id: ShoulderId; name: string; desc: string }> = [
-  { id: "scout", name: "정찰 견갑", desc: "4비트 · 원정 특화" },
+  { id: "scout", name: "정찰 견갑", desc: "4비트 · 성문 방어 특화" },
   { id: "shadow", name: "그림자 견갑", desc: "8비트 · 치명 특화" },
   { id: "ogre", name: "오우거 견갑", desc: "복합 비트 · 보스 특화" },
   { id: "dragon", name: "용린 견갑", desc: "16비트 · 스킬 특화" },

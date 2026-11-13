@@ -14,7 +14,7 @@ export const WEAPON_KINDS: readonly WeaponKind[] = ["sword", "spear", "bow", "st
 
 export const WEAPON_LABEL: Record<WeaponKind, string> = { sword: "검", spear: "창", bow: "활", staff: "지팡이" };
 /** 대장간 · 강화 화면 이름 */
-export const WEAPON_FORGE_NAME: Record<WeaponKind, string> = { sword: "비버 대검", spear: "강철 장창", bow: "원정 장궁", staff: "수정 지팡이" };
+export const WEAPON_FORGE_NAME: Record<WeaponKind, string> = { sword: "비버 대검", spear: "강철 장창", bow: "참나무 장궁", staff: "수정 지팡이" };
 
 export type WeaponEffects = {
   tapMul: number; critAdd: number; bossMul: number; autoSpeedMul: number; skillCdMul: number; skillDmgMul: number;

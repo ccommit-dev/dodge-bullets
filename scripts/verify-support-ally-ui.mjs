@@ -37,7 +37,7 @@ const p1 = await prog(), on = await page.evaluate(() => document.querySelector('
 ok("누르면 출격 중 · 저장", p1.supportAlly === "mia" && /출격 중/.test(on), `${p1.supportAlly} · ${on}`);
 
 // 판 — 주인공 뒤에 서서 쏜다
-await clickText(".exp-menu-tabs button", "원정"); await sleep(500);
+await clickText(".exp-menu-tabs button", "출전"); await sleep(500);
 await clickText("button", "스테이지"); await sleep(1800);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1 })); });
 // 첫 몬스터가 내려올 때까지(최대 25초) — 쏘는 순간을 찍는다

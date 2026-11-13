@@ -73,7 +73,7 @@ const fmt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `
 export const EVENT_PRODUCTS: EventProduct[] = [
   // ── 이벤트 상점: 원정 시즌 보급 ──
   {
-    id: "ev-pioneer-pack", tab: "event-shop", name: "원정 개척 패키지", desc: "성문 방어 강화석 · 골드 · 가진 동료 모두 조각", badge: "인기", icon: "dodge", gemCost: 150, weeklyLimit: 2,
+    id: "ev-pioneer-pack", tab: "event-shop", name: "성문 개척 패키지", desc: "성문 방어 강화석 · 골드 · 가진 동료 모두 조각", badge: "인기", icon: "dodge", gemCost: 150, weeklyLimit: 2,
     grant: (p) => ({ materials: 60, gold: bossGold(p, 1500), allyShards: 3 }),
     summary: (p) => `강화석 60 · 골드 ${fmt(bossGold(p, 1500))} · 동료 조각 15(선택)`,
   },
@@ -89,9 +89,9 @@ export const EVENT_PRODUCTS: EventProduct[] = [
   },
   // ── 루프 ⑤ 메타 상품 (2026-10-08, docs/LOOP_2026-10-08.md): 빌드를 바꾸는 유일한 보석 상품 — 재화 탭에도 같이 보인다 ──
   {
-    id: "gem-seal-pack", tab: "event-shop", name: "원정 인장 묶음", desc: "성문 방어 칩·스킬 무기를 올리는 인장", badge: "원정", icon: "dodge", gemCost: 90, weeklyLimit: 3,
+    id: "gem-seal-pack", tab: "event-shop", name: "성문 인장 묶음", desc: "성문 방어 칩·스킬 무기를 올리는 인장", badge: "성문", icon: "dodge", gemCost: 90, weeklyLimit: 3,
     grant: () => ({ seals: 20 }),
-    summary: () => "원정 인장 20 (주 3회)",
+    summary: () => "성문 인장 20 (주 3회)",
   },
   // ── 코인 교환 (2026-10-22 아처 키우기 8번) — 사냥 중 몬스터가 떨어뜨린 이벤트 코인으로 산다 ──
   {

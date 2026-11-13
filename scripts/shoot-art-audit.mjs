@@ -27,7 +27,7 @@ await page.evaluate(() => document.querySelector(".character-back")?.click()); a
 // 이벤트 — 주간 도전·원정 일지
 await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
 await page.evaluate(() => document.querySelector(".season-nav")?.click()); await sleep(1000);
-for (const t of ["주간 도전", "원정 일지", "토벌령", "차원 균열"]) { await clickText(".event-tabs button", t); await shot(`c-events-${t}`); }
+for (const t of ["주간 도전", "모험 일지", "토벌령", "차원 균열"]) { await clickText(".event-tabs button", t); await shot(`c-events-${t}`); }
 await close(); await page.keyboard.press("Escape"); await sleep(400);
 await page.reload({ waitUntil: "networkidle0" }); await sleep(2500); await close();
 // 상점 외형·칭호

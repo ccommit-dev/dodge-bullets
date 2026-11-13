@@ -15,7 +15,7 @@ export const SHOP_META: Record<
   moveSpeed: {
     name: "경량 장화",
     category: "이동 훈련",
-    desc: "원정지에서 좌우 이동 속도가 증가해요",
+    desc: "성문 방어에서 좌우 이동 속도가 증가해요",
     baseCost: 40,
     costStep: 35,
   },

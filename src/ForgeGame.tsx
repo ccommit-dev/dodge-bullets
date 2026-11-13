@@ -35,6 +35,7 @@ import type { ShoulderId } from "./progression/model";
 import { haptic } from "./ui/haptics";
 import { TALENTS, TALENT_BY_ID, masteryPoints, masteryState, type TalentId } from "./forge/talents";
 import { EXPEDITION_SKILLS, WEAPON_FORGE_MAX, weaponForgeCooldownMul, weaponForgeCost, weaponForgeDamageMul, type WeaponForgeLevels } from "./game/skills";
+import { NAMES } from "./ui/names";
 
 /** Original delays were ~650/720ms; 3× faster ≈ 217/240. */
 const FORGE_MS = 220;
@@ -64,7 +65,7 @@ const MATERIAL_GUIDE = [
   ["피버 프리즘", "견갑", "비트 수련 · 피버 ×3 이상", "45%"],
   ["DROP 심장", "견갑", "비트 수련 · 보스곡 클리어", "100%"],
   ["별빛 현", "공용", "비트 수련 · FULL COMBO", "12%"],
-  ["원정 인장", "공용", "성문 방어 · 노히트 탈출", "100%"],
+  ["성문 인장", "공용", "성문 방어 · 노히트 탈출", "100%"],
 ] as const;
 
 export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
@@ -167,7 +168,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
     const next = await updateCharacterProgress(userHash, (c) => ({ ...c, equippedWeaponKind: k }));
     setEquippedKind(next.equippedWeaponKind);
     if (k !== "sword") setSelWeapon(k);
-    flashToast(`${WEAPON_LABEL[k]} 장착 — 사냥터 · 댐 방어전 공용 · ${weaponStatText(k)}`);
+    flashToast(`${WEAPON_LABEL[k]} 장착 — ${NAMES.hunt} · ${NAMES.dodge} 공용 · ${weaponStatText(k)}`);
   };
   const chance = effectiveChance(tier);
   const boostedChance = Math.min(1, chance + (materials > 0 ? 0.08 : 0));
@@ -627,7 +628,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                   {m.goldPending > 0 && <button type="button" className="mastery-claim-gold" onClick={() => void claimGold()}>골드 +{m.goldPendingAmount.toLocaleString()} 받기</button>}
                   {m.picksPending > 0 && <button type="button" className="mastery-pick" onClick={() => setPickOpen(true)}>영구 특성 고르기 ({m.picksPending})</button>}
                   {talents.length > 0 && <span className="forge-talents">{talents.map((t) => <em key={t} title={TALENT_BY_ID[t].desc}>{TALENT_BY_ID[t].name}</em>)}</span>}
-                  {m.goldPending === 0 && m.picksPending === 0 && talents.length === 0 && <small>북·보호구·원정 무기 강화 점수를 모으면 골드와 영구 특성</small>}
+                  {m.goldPending === 0 && m.picksPending === 0 && talents.length === 0 && <small>북·보호구·성문 무기 강화 점수를 모으면 골드와 영구 특성</small>}
                 </div>
                 {pickOpen && (
                   <div className="forge-pick" role="dialog" aria-label="영구 특성 선택">
@@ -919,7 +920,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 </button>
               </article>
               <article className="forge-shop-card">
-                <div><strong>원정 강화석</strong><p>성문 방어의 검격 처치·재료 상자·노히트 탈출에서 획득합니다. 무기와 보호구 강화에 사용합니다.</p></div>
+                <div><strong>성문 방어 강화석</strong><p>성문 방어의 검격 처치·재료 상자·노히트 탈출에서 획득합니다. 무기와 보호구 강화에 사용합니다.</p></div>
                 <span>보유 {materials}</span>
               </article>
               <article className="forge-shop-card">

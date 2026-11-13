@@ -742,7 +742,7 @@
 .gacha-reveal .gacha-reveal-grid.count-10 .gacha-card { aspect-ratio: auto !important; height: 138px !important; }
 .gacha-reveal .gacha-card-front .gacha-art { min-height: 56px; }
 /* 댐 방어전 정비 탭 정리 (2026-10-23, 사용자: "UI 조잡한 부분 마저") — 수집 보너스는 판이 아니라 얇은 한 줄 · 미보유 칩은 흐리게(꼬리 글 대신) ·
-   성문 원정 기금 단계표 6줄은 접는다 · 칩 · 보급 설명은 한 줄로 */
+   성문 기금 단계표 6줄은 접는다 · 칩 · 보급 설명은 한 줄로 */
 .exp-skill-panel .exp-skill-banner.compact { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 4px 6px !important; justify-content: center; gap: 6px; min-height: 0 !important; }
 .exp-skill-panel .exp-skill-banner.compact b { font-size: 13px !important; color: #e6d3b0 !important; font-weight: 800; }
 .exp-skill-panel .exp-skill-banner.compact strong { font-size: 14px !important; }

@@ -116,7 +116,7 @@ export function EventCenter({
     const did = (k: keyof CharacterProgress["firstClearDates"]) => (progress.firstClearDates[k] === today ? 1 : 0);
     return [
       { id: "hunt", title: "오늘 보스 처치", desc: "사냥터 보스 1마리", axis: "S", icon: "hunt" as ContentIconName, value: did("hunt"), goal: 1 },
-      { id: "pioneer", title: "오늘 성문 방어", desc: "원정 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
+      { id: "pioneer", title: "오늘 성문 방어", desc: "성문 방어 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
       { id: "forge", title: "오늘 장비 강화", desc: "대장간 강화 1회 성공", axis: "M", icon: "forge" as ContentIconName, value: did("forge"), goal: 1 },
       { id: "beat", title: "오늘 비트 수련", desc: "1곡 클리어", axis: "R", icon: "beat" as ContentIconName, value: did("beat"), goal: 1 },
     ];
@@ -373,7 +373,7 @@ export function EventCenter({
                     ? "주간 도전"
                     : id === "season"
                       ? "시즌 패스"
-                      : "원정 일지"}
+                      : "모험 일지"}
             </button>
           ))}
         </div>
@@ -640,7 +640,7 @@ export function EventCenter({
         {tab === "journal" && (
           <section className="journal-event">
             <img className="journal-crest" src={assetUrl("ui/idle/journal.png")} alt="" aria-hidden="true" />
-            <h3>원정 일지</h3>
+            <h3>모험 일지</h3>
             <p className="journal-note">
               시즌도 리셋도 없는 누적 기록입니다. 목표를 달성하면 언제든 받을 수 있습니다.
             </p>

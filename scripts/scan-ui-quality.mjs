@@ -137,7 +137,7 @@ for (const [w, h] of VIEWPORTS) {
   await clickText(".titans-bottom-nav button", "모험"); await sleep(700);
   await page.evaluate(() => document.querySelector(".season-nav")?.click()); await sleep(900); await shot("10-events");
   // 2026-10-15 보완 (사용자: "이 탭들은 검사 범위에서 빠져 있었다") — 이벤트 탭 전부(주간 도전 아래 주간 랭크 시험까지 스크롤)
-  for (const t of ["주간 도전", "원정 일지", "토벌령", "차원 균열"]) {
+  for (const t of ["주간 도전", "모험 일지", "토벌령", "차원 균열"]) {
     await page.evaluate((t) => [...document.querySelectorAll(".event-tabs button")].find((b) => b.textContent.includes(t))?.click(), t); await sleep(500); await shot(`10-events-${t}`);
     if (t === "주간 도전") { await page.evaluate(() => [...document.querySelectorAll("h3")].find((h) => h.textContent.includes("주간 랭크 시험"))?.scrollIntoView({ block: "center" })); await sleep(400); await shot("10-events-랭크시험"); }
   }

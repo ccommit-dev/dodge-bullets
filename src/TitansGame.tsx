@@ -236,7 +236,7 @@ const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: str
   expedition: { kicker: "EXPEDITION", title: "파견", desc: "벤치 동료를 보내 두면 시간이 지난 뒤 조각·강화석을 들고 돌아옵니다." },
   heroes: { kicker: "ALLY ARCHIVE", title: "동료", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
   premium: { kicker: "PREMIUM SHOP", title: "상점", desc: "재화, 성장 패키지, 동료와 외형 상품을 확인하세요." },
-  "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
+  "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "성문 시즌 한정 보급품과 성장 재료를 교환하세요." },
   "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
 };
 type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet" | "mount" | "gear";
@@ -5608,8 +5608,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <article className="titans-card premium-product-card gem-product seal-product">
                   <img className="pack-icon" src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
                   <div>
-                    <strong>원정 인장 묶음 <em>주 {sp.weeklyLimit}회</em></strong>
-                    <p>원정 인장 +20 · 이번 주 {Math.max(0, left)}회 남음 <i className="feeds">→ 성문 방어 칩 · 스킬 무기</i></p>
+                    <strong>성문 인장 묶음 <em>주 {sp.weeklyLimit}회</em></strong>
+                    <p>성문 인장 +20 · 이번 주 {Math.max(0, left)}회 남음 <i className="feeds">→ 성문 방어 칩 · 스킬 무기</i></p>
                   </div>
                   <button type="button" disabled={redGems < sp.gemCost || left <= 0} onClick={() => void buyEventProduct(sp)}>
                     {left <= 0 ? "이번 주 한도" : <><GemMark />{sp.gemCost}</>}

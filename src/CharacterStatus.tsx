@@ -600,11 +600,11 @@ export function CharacterStatus({
         <button type="button" className="status-card status-wealth" onClick={() => onOpenContent("dodge")}>
           <ContentIcon name="dodge" className="status-icon" />
           <span className="status-copy">
-            <small>재화 원정</small>
+            <small>성문 방어</small>
             <strong>코인 {Math.max(coins, progress.sharedCoins).toLocaleString()}</strong>
             <em>재료 {progress.enhancementMaterials} · 최고 점수 {Math.max(highScore, progress.dodgeBestScore).toLocaleString()}</em>
           </span>
-          <span className="status-enter">원정하기 ›</span>
+          <span className="status-enter">출전하기 ›</span>
         </button>
 
         <button type="button" className="status-card status-hunt" onClick={() => onOpenContent("titans")}>
