@@ -4090,6 +4090,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {/* 환생 단추 (2026-11-03, 사용자: "마이페이지 오른쪽 여백에 환생하기 버튼 · 오버시 조건 요약") — 올리면(터치는 누르면) 조건 요약. 첫 탭이 바로 환생하지 않게 요약 안 단추로 진행 */}
         {(() => {
           const wall = rebirthWallStatus(character, save.stage), gains = rebirthGains(character);
+          // 환생 단추는 의미가 생길 때만(2026-11-13 정리 목표 7) — 벽에 막혀 본 적이 있거나 · 환생해 봤거나 · 사냥터 26층 이상. 초반엔 늘 0/2 였다
+          if (!(wall.have > 0 || character.rebirthCount > 0 || huntBest >= 26 || qaOpen)) return null;
           return (
             <div ref={rebirthTipRef} className={`header-rebirth ${wall.ready ? "ready" : ""} ${rebirthTip ? "open" : ""}`}>
               <button type="button" className="header-rebirth-btn" aria-expanded={rebirthTip} aria-label={`환생 ${wall.have}/${wall.need}`} onClick={() => { setRebirthTip((v) => !v); setRebirthArm(false); }}>
@@ -4780,12 +4782,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <div className="nav-popup-grid adventure-grid hub-routine">
               {/* 균열 · 강화 · 파견은 아래 카드와 같은 내용이라 뺐다 (2026-11-03, 사용자: "중복된 내용이 있다면 단순화 혹은 제거") */}
               {routine.filter((item) => item.id === "mission").map((item) => (
-                <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => runRoutine(item)}>
+                <button key={item.id} type="button" className={`${item.done ? "done" : ""}${ladderOpen("events", huntBest) ? "" : " tab-locked"}`} onClick={() => { if (!ladderOpen("events", huntBest)) { flash(ladderLockHint("events"), 2600); return; } runRoutine(item); }}>
                   {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.png" : item.id === "expedition" ? "ui/idle/expedition.png" : "ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />}
                   <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
                 </button>
               ))}
-              <button type="button" className="season-nav" onClick={() => openEvents("season")}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스 {seasonIndex(nowTick)}</b><small>티어 {seasonTier(character.seasonPass.xp)} · {seasonDaysLeft(nowTick)}일 남음</small></span></button>
+              <button type="button" className={`season-nav${ladderOpen("events", huntBest) ? "" : " tab-locked"}`} onClick={() => openEvents("season")}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스 {seasonIndex(nowTick)}</b><small>티어 {seasonTier(character.seasonPass.xp)} · {seasonDaysLeft(nowTick)}일 남음</small></span></button>
             </div>
             {/* 카드 6장 (titans/hubCards): 남은 횟수 · 오늘 재화 · 빨간 점(최대 3) */}
             <div className="hub-cards nav-popup-grid">

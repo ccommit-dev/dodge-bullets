@@ -5,6 +5,7 @@ import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } fr
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, stageBossArt, takeDrawnMonsters } from "./game/draw";
 import { bestiaryThumb } from "./titans/bestiary";
 import { NAMES } from "./ui/names";
+import { ladderOpen } from "./progression/ladder";
 import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, QA_PROFILE_KEY, TEST_PHASE_KEY, freshProfileActive, profileHash, qaGemsEnabled, qaUnlockAll } from "./progression/storage";
 import { qaUnlockOpen, setQaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
@@ -1905,19 +1906,19 @@ function App() {
                   <button
                     type="button"
                     role="menuitem"
-                    disabled={(progress.onboardingStep < 4 && !qaOpen)}
+                    disabled={((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen)}
                     onClick={() => { setSettingsOpen(false); setAttendanceByMenu(true); setAttendanceOpen(true); }}
                   >
-                    <span>출석 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "30일"}</b>
+                    <span>출석 이벤트</span><b>{((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen) ? "잠김" : "30일"}</b>
                   </button>
                 )}
                 <button
                   type="button"
                   role="menuitem"
-                  disabled={(progress.onboardingStep < 4 && !qaOpen)}
+                  disabled={((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen)}
                   onClick={() => { setSettingsOpen(false); setEventOpen(true); }}
                 >
-                  <span>모험가 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "NEW"}</b>
+                  <span>모험가 이벤트</span><b>{((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen) ? "잠김" : "NEW"}</b>
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
@@ -2723,7 +2724,7 @@ function App() {
       {/* 첫 접속 가이드 — 출석 창보다 위 (가이드를 닫은 뒤에 출석이 보인다) */}
       {bootReady && guideOpen && <GameGuide onClose={() => setGuideOpen(false)} />}
       {/* 온보딩 첫 5분 대본(§8) — 신규(step<4)에게는 출석 모달을 띄우지 않는다 */}
-      {bootReady && appMode === "titans" && (progress.onboardingStep >= 4 || (qaOpen && attendanceByMenu)) && (
+      {bootReady && appMode === "titans" && ((progress.onboardingStep >= 4 && ladderOpen("events", progress.titanBestStage)) || (qaOpen && attendanceByMenu)) && (
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => { setAttendanceOpen(false); setAttendanceByMenu(false); }} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
       )}
       {bootReady && appMode === "titans" && eventOpen && (
