@@ -60,9 +60,9 @@ await seed(
 r = await page.evaluate(() => ({ modal: !!document.querySelector(".idle-modal.idle-simple"), stone: [...document.querySelectorAll(".idle-loot article span")].some((x) => /강화석/.test(x.textContent)), claim: document.querySelector(".idle-claim")?.textContent, clutter: document.querySelectorAll(".idle-factors, .idle-bottleneck, .idle-forge-cta, .idle-rays").length }));
 ok("#10 정산 팝업 단순(받은 것에 강화석 · 받기 · 막대/병목/바로가기 없음)", r.modal && r.stone && /받기/.test(r.claim ?? "") && r.clutter === 0, JSON.stringify(r));
 await closeModal();
-// 목표는 전장 우하단 알림 핀(추천 1 + 목표 2)으로 표시된다
-r = await page.evaluate(() => ({ goals: [...document.querySelectorAll(".battle-alert b")].map((b) => b.textContent) }));
-ok("#3 목표 알림 핀 2개 이상", r.goals.length >= 2, r.goals.join(" / "));
+// 목표는 전장 알림 줄의 '다음 목표' 한 줄 + 우편함(2026-11-13 정리 — 예전엔 추천 1 + 목표 2 핀이 다퉜다)
+r = await page.evaluate(() => ({ goals: [...document.querySelectorAll(".battle-alert-stack > .battle-alert b")].map((b) => b.textContent), inbox: (window.__huntState?.()?.inbox ?? []).length }));
+ok("#3 다음 목표 한 줄 (+ 우편함)", r.goals.length === 1 && r.goals[0].length > 2, `${r.goals.join(" / ")} · 우편함 ${r.inbox}`);
 await clickText(".titans-tabs button", "스킬");
 await sleep(400);
 const before = await page.evaluate(() => document.querySelector(".skill-preset-card small")?.textContent);

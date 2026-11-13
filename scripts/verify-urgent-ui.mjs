@@ -30,12 +30,17 @@ async function boot({ w = 390, h = 844, stage = 8, heroLv = 60, urgent, gold = 1
 const titans = () => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "{}"), `dodgebullets:titans:${H}`);
 const progress = () => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "{}"), `dodgebullets:progression:v1:${H}`);
 const hunt = () => page.evaluate(() => window.__huntState?.());
+// 우편함 (2026-11-13) — 전장 알림 줄은 '다음 목표' 한 줄, 나머지 알림은 우편함. 읽기는 개발 훅, 누르기는 단추 → 그 줄
+const inboxOf = (p = page) => p.evaluate(() => window.__huntState?.()?.inbox ?? []);
+const inboxText = async (key, p = page) => { const it = (await inboxOf(p)).find((i) => i.key === key); return it ? `${it.small} ${it.title}` : null; };
+const clickInbox = async (key, p = page) => { await p.evaluate(() => document.querySelector(".inbox-btn")?.click()); await new Promise((r) => setTimeout(r, 250)); const hit = await p.evaluate((k) => { const b = document.querySelector(`.inbox-sheet [data-key="${k}"]`); b?.click(); if (!b) document.querySelector(".inbox-sheet .inbox-close")?.click(); return !!b; }, key); await new Promise((r) => setTimeout(r, 200)); return hit; };
 const look = () => page.evaluate(() => {
   const q = (s) => document.querySelector(s);
-  const badge = q(".urgent-badge"), field = q(".titans-field");
+  // 예전 딱지 → 우편함 단추의 남은 시간(.inbox-urgent). 자리 · 넓이는 우편함 단추로 잰다 (2026-11-13)
+  const timer = q(".inbox-btn .inbox-urgent"), badge = timer ? q(".inbox-btn") : null, field = q(".titans-field");
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height), r: Math.round(b.right), b: Math.round(b.bottom) }; };
   return {
-    badge: r(badge), badgeText: badge?.textContent.trim() ?? null, badgeLast: !!badge?.classList.contains("is-last"),
+    badge: r(badge), badgeText: timer?.textContent.trim() ?? null, badgeLast: !!timer?.classList.contains("is-last"),
     field: r(field), alert: r(q(".battle-alert-stack > .battle-alert")), stagebar: r(q(".titans-stagebar.in-field")), strip: r(q(".idle-status-strip")),
     poster: !!q(".urgent-poster"), h1: q(".titans-stagebar.in-field h1")?.textContent.replace(/\s+/g, " ").trim() ?? "",
     timer: q(".titans-boss-timer")?.textContent.trim() ?? null, banner: q(".titans-clear-banner")?.textContent.trim() ?? null,
@@ -45,7 +50,7 @@ const look = () => page.evaluate(() => {
 });
 const waitFor = async (fn, ms = 8000, step = 100) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await sleep(step); } return null; };
 const shot = async (name) => { if (OUT) await page.screenshot({ path: `${OUT}/${name}.png` }); };
-const clickBadge = () => page.evaluate(() => document.querySelector(".urgent-badge")?.click());
+const clickBadge = () => clickInbox("urgent");
 /** 전투 중일 때만 도전이 눌린다 — 몬스터가 쓰러지는 칸을 피해 기다렸다 누른다 */
 const clickGo = () => waitFor(() => page.evaluate(() => { const b = document.querySelector(".urgent-go"); if (!b || b.disabled) return false; b.click(); return true; }), 6000, 40);
 

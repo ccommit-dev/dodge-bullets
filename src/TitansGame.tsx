@@ -83,7 +83,7 @@ import { PromotionPoster } from "./titans/PromotionPoster";
 import { ClimbPoster } from "./titans/ClimbPoster";
 import { CLIMB_OPEN_EVENT, afterClimb, canClimbToday, climbClearsToday, climbFace, climbHp, climbReward, climbStage } from "./titans/riftClimb";
 import { UrgentPoster } from "./titans/UrgentPoster";
-import { LADDER, ladderCount, ladderLockHint, ladderOpen, nextLadder } from "./progression/ladder";
+import { LADDER, ladderCount, ladderLockHint, ladderOpen, nextLadder, type LadderId } from "./progression/ladder";
 import "./ui/focus.css";   // 2026-11-13 정리 — 다음 목표 한 줄 · 우편함 · 잠긴 탭
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
@@ -357,7 +357,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   if (import.meta.env.DEV) { const w = window as unknown as { __titansRenders?: number }; w.__titansRenders = (w.__titansRenders ?? 0) + 1; }   // scripts/_probe-render.mjs
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<ShopTab>(initialTab ?? "sword");
+  const [tab, setTabRaw] = useState<ShopTab>(initialTab ?? "sword");
   /** 가로 화면의 장비 성장·스킬 서랍 (2026-10-15, 사용자: "가로모드에 장비성장 스킬 ui 가 하단으로 빠지고 맵이 잘 보이게") — 세로에선 쓰지 않는다 */
   const [growthOpen, setGrowthOpen] = useState(false);
   const [premiumCategory, setPremiumCategory] = useState<PremiumCategory>("currency");
@@ -619,7 +619,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0, wide: false, partyMeetRight: 8, partyMl: 0.22 });
 
   const saveRef = useRef(save);
+  /** 우편함 목록 — 개발 훅(__huntState.inbox)이 읽는다 */
+  const inboxRef = useRef<Array<{ key: string; small: string; title: string; cls: string }>>([]);
   const characterRef = useRef(character);
+  // ── 해금 계단 관문 (2026-11-13) — 탭 이동 · 콘텐츠 열기는 모두 여기를 지난다. 다음 목표 · 추천 · 구매 추천 · 루틴이 잠긴 탭을 열던 길을 막는다 ──
+  const ladderBest = () => Math.max(characterRef.current.titanBestStage, saveRef.current.bestStage);
+  const TAB_LADDER: Partial<Record<ShopTab, LadderId>> = { quest: "quest", heroes: "allies", skills: "skills", relic: "relic", hub: "dodge", expedition: "expedition", premium: "events", "event-shop": "events", "event-shop2": "events" };
+  const setTab = (t: ShopTab) => {
+    const id = TAB_LADDER[t];
+    if (id && !ladderOpen(id, ladderBest())) { flash(ladderLockHint(id), 2600); return; }
+    setTabRaw(t);
+  };
+  const CONTENT_LADDER: Record<string, LadderId | undefined> = { dodge: "dodge", beat: "beat", forge: "forge", tower: "tower" };
+  const openContent: typeof onOpenContent = (c) => {
+    const id = CONTENT_LADDER[c as string];
+    if (id && !ladderOpen(id, ladderBest())) { flash(ladderLockHint(id), 2600); return; }
+    onOpenContent(c);
+  };
   const waveRef = useRef(wave);
   const bossRef = useRef(boss);
   const chestRef = useRef(chesterson);
@@ -783,7 +799,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // DEV 훅 (2026-10-14) — 시그니처 부가 효과 실검사(shoot-all-allies)가 대장 제한 시간·정지 시각을 읽는다. 출시 번들엔 없다
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, urgent: specialRef.current?.kind === "urgent" ? specialRef.current.urgent : null, special: specialRef.current?.kind ?? null, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
+    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ inbox: inboxRef.current.map(({ key, small, title, cls }) => ({ key, small, title, cls })), now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, urgent: specialRef.current?.kind === "urgent" ? specialRef.current.urgent : null, special: specialRef.current?.kind ?? null, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
     (window as unknown as { __huntDmgReset?: () => void }).__huntDmgReset = () => { devDmgRef.current = {}; };
     return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; delete (window as unknown as { __huntDmgReset?: unknown }).__huntDmgReset; };
   }, []);
@@ -3243,7 +3259,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     // 소환(0→1)은 항상 1레벨 — 일괄 수량은 레벨업에만 적용된다
     const quote =
       lv === 0
-        ? { count: save.gold >= def.baseCost ? 1 : 0, cost: def.baseCost }
+        ? { count: save.gold >= heroUpgradeCost(def, 0) ? 1 : 0, cost: heroUpgradeCost(def, 0) }   // 카드에 보이는 값과 같게(2026-11-13 — 예전엔 원가 baseCost 를 받았다)
         : bulkUpgradeQuote((l) => heroUpgradeCost(def, l), lv, save.gold, buyAmount);
     if (quote.count === 0) return;
     sfxUpgrade();
@@ -3853,16 +3869,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const nextSkill = SKILLS.find((sk) => !save.skillInventory.learned.includes(sk.id));
     const ceiling = stageCeilingFor(character.pioneeredArea);
     const areaName = nextAreaName(character.pioneeredArea);
-    const goals: { id: string; label: string; value: string; ratio: number; done: boolean; onClick: () => void }[] = [];
+    const goals: { id: string; label: string; value: string; ratio: number; done: boolean; onClick: () => void; lock?: LadderId }[] = [];
     if (nextAlly) {
-      const reachable = save.gold >= nextAlly.baseCost;
+      const reachable = save.gold >= heroUpgradeCost(nextAlly, 0);
       goals.push({
         id: "ally",
         label: "다음 동료",
-        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · ${formatGold(nextAlly.baseCost)}G`,
-        ratio: reachable ? 1 : save.gold / Math.max(1, nextAlly.baseCost),
+        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · ${formatGold(heroUpgradeCost(nextAlly, 0))}G`,
+        ratio: reachable ? 1 : save.gold / Math.max(1, heroUpgradeCost(nextAlly, 0)),
         done: reachable,
         onClick: () => setTab("heroes"),
+        lock: "allies",
       });
     }
     if (nextSkill) {
@@ -3874,6 +3891,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         ratio: ok ? 1 : Math.min(skillPoints / nextSkill.learnSpCost, save.skillInventory.skillCores / Math.max(1, nextSkill.learnCoreCost)),
         done: ok,
         onClick: () => setTab("skills"),
+        lock: "skills",
       });
     }
     if (areaName) {
@@ -3883,7 +3901,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         value: save.stage >= ceiling ? `${areaName} · 성문 방어 필요` : `${areaName} · STAGE ${ceiling}까지 ${ceiling - save.stage}`,
         ratio: Math.min(1, save.stage / ceiling),
         done: save.stage >= ceiling,
-        onClick: () => (contentUnlocked(character.onboardingStep, "dodge") ? onOpenContent("dodge") : flash(LOCK_HINT.dodge)),
+        onClick: () => (contentUnlocked(character.onboardingStep, "dodge") ? openContent("dodge") : flash(LOCK_HINT.dodge)),
+        lock: "dodge",
       });
     }
     return goals;
@@ -3922,9 +3941,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   if (urgentNow && !boss && ladderOpen("urgent", huntBest)) { const left = Math.max(0, urgentNow.deadline - nowTick); inboxItems.push({ key: "urgent", small: "긴급 의뢰", title: `현상범 · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} 남음`, cls: "battle-alert reward urgent-alert", run: () => setUrgentOpen(true) }); }
   if (adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`)) inboxItems.push({ key: "advice", small: `구매 추천${adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}`, title: adviceTop[0].title, cls: "battle-alert tone-buy advice-alert", run: () => setAdviceOpen(true) });
   if (hotClaim && ladderOpen("events", huntBest) && !dismissedAlerts.includes(`hottime:${hotClaim.id}:${dateKey()}`)) inboxItems.push({ key: "hottime", small: "핫타임", title: `${hotClaim.label} · 보석 ${hotClaim.gems}`, cls: "battle-alert reward hottime-alert", run: () => { dismiss(`hottime:${hotClaim.id}:${dateKey()}`); openEvents("daily"); } });
+  inboxRef.current = inboxItems;
   // 다음 목표 — ① 지금 바로 되는 목표(소환 · 학습) ② 다음 해금 계단(사냥터 층) ③ 남은 목표(다음 지역 등)
   const nextLine = (() => {
-    const open = nextGoals.filter((g) => !dismissedAlerts.includes(`goal:${g.id}:${g.value}`));
+    const open = nextGoals.filter((g) => !dismissedAlerts.includes(`goal:${g.id}:${g.value}`) && (!g.lock || ladderOpen(g.lock, huntBest)));
     const now = open.find((g) => g.done);
     if (now) return { small: now.label, text: now.value, cls: "battle-alert goal done", run: () => { dismiss(`goal:${now.id}:${now.value}`); now.onClick(); } };
     const step = nextLadder(huntBest);
@@ -3934,7 +3954,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   })();
   const runAdvice = (a: AdviceAction) => {
     setAdviceOpen(false);
-    if (a.kind === "content") onOpenContent(a.content);
+    if (a.kind === "content") openContent(a.content);
     else if (a.tab === "gacha") openAllyDraw();
     else setTab(a.tab);
   };
@@ -3951,7 +3971,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     [character, save.stage, save.skillInventory.equipped],
   );
   const runAction = (action: RecommendAction) => {
-    if (action.kind === "content") onOpenContent(action.content);
+    if (action.kind === "content") openContent(action.content);
     else if (action.kind === "tab") setTab(action.tab);
     else if (action.kind === "events") {
       if (onOpenEvents) onOpenEvents(action.tab);
@@ -4083,7 +4103,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   return (
     <div className={`titans-layer ${lowFxRef.current || lowFxOn() ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""} ${growthOpen ? "growth-open" : ""}`} style={pad}>
       <header className="titans-header">
-        <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
+        <button type="button" className="titans-back" onClick={() => openContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${heroPortrait()})`, backgroundSize:"cover", backgroundPosition:"center" }} />
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
         </button>
@@ -4108,7 +4128,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     {rebirthArm ? "정말 환생하기 (사냥터 초기화)" : "환생하기"}
                   </button>
                 ) : (
-                  <button type="button" className="header-rebirth-go" onClick={() => onOpenContent("profile")}>자세히</button>
+                  <button type="button" className="header-rebirth-go" onClick={() => openContent("profile")}>자세히</button>
                 )}
               </div>
             </div>
@@ -4492,6 +4512,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {inboxItems.length > 0 && !boss && (
           <button type="button" className="inbox-btn" aria-label={`우편함 ${inboxItems.length}개`} onPointerDown={(event) => event.stopPropagation()} onClick={() => setInboxOpen(true)}>
             <i className="inbox-glyph" aria-hidden="true" /><b>{inboxItems.length}</b>
+            {/* 긴급 의뢰가 있으면 남은 시간(예전 딱지) — 1분 전엔 붉게 */}
+            {urgentNow && ladderOpen("urgent", huntBest) && (() => { const left = Math.max(0, urgentNow.deadline - nowTick); return <small className={`inbox-urgent ${left < 60_000 ? "is-last" : ""}`}>{Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}</small>; })()}
           </button>
         )}
         {/* 다음 목표 한 줄 — 알림 줄 자리에 하나만 */}
@@ -4539,7 +4561,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <section className="inbox-sheet" role="dialog" aria-label="우편함" onClick={(event) => event.stopPropagation()}>
             <header><b>우편함</b><button type="button" className="inbox-close" aria-label="닫기" onClick={() => setInboxOpen(false)}>닫기</button></header>
             {inboxItems.length === 0 ? <p className="inbox-empty">새 소식이 없습니다</p> : inboxItems.map((it) => (
-              <button key={it.key} type="button" className={`${it.cls} inbox-row`} onClick={() => { setInboxOpen(false); it.run(); }}>
+              <button key={it.key} type="button" data-key={it.key} className={`${it.cls} inbox-row`} onClick={() => { setInboxOpen(false); it.run(); }}>
                 <small>{it.small}</small><b>{it.title}</b><i>›</i>
               </button>
             ))}
@@ -4675,7 +4697,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 { key: "tap", label: "탭 피해", value: formatGold(Math.round(tapBaseNow())), title: "버프 · 치명 전 탭 한 번의 피해 — 무기 · 숙련 · 세트 · 패시브 · 사다리 · 결정 트리를 모두 곱한 값" },
                 { key: "power", label: "전투력", value: combatPower(character).toLocaleString(), title: "마이페이지 통합 전투력" },
               ]}
-              onForge={() => onOpenContent("forge")}
+              onForge={() => openContent("forge")}
               hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} />}
               footer={(slot) => (
                 <div className="equip-info">
@@ -4795,7 +4817,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <button key={card.id} type="button" data-card={card.id} title={card.desc} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
                   onClick={() => {
                     if (card.locked) { flash(card.lockHint ?? "아직 잠겨 있습니다"); return; }
-                    if (card.go.kind === "content") onOpenContent(card.go.content);
+                    if (card.go.kind === "content") openContent(card.go.content);
                     else if (card.go.kind === "events") openEvents(card.go.tab);
                     else setTab(card.go.tab);
                   }}>
@@ -6110,7 +6132,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           stage={idleReport.stage}
           bottleneck={idleReport.bottleneck}
           onClaim={() => claimIdle()}
-          onGoContent={(content) => claimIdle(() => onOpenContent(content))}
+          onGoContent={(content) => claimIdle(() => openContent(content))}
           adOption={(() => { const a = rewardedAvailability(character, "idleDouble", new Date().toLocaleDateString("sv-SE")); return a === "none" ? null : a; })()}
           adBusy={adBusy}
           onClaimDouble={() => void watchAd("idleDouble", () => claimIdle(undefined, 2))}
@@ -6136,7 +6158,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           pioneeredArea={character.pioneeredArea}
           onGoDodge={() => {
             setGateNotice(false);
-            onOpenContent("dodge");
+            openContent("dodge");
           }}
           onDismiss={() => setGateNotice(false)}
         />

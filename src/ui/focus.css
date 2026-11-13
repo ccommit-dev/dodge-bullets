@@ -53,3 +53,6 @@
 }
 /* 모험 카드 '얻는 것' 한 줄 (목표 1 — 모든 콘텐츠가 사냥터를 강하게 해 주는 곳) */
 .hub-card .hub-gives { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 700; color: #2b8235; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 우편함 단추의 긴급 의뢰 남은 시간(예전 딱지) — 1분 전엔 붉게 */
+.titans-field .inbox-btn .inbox-urgent { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--flat-ink, #3b2415); }
+.titans-field .inbox-btn .inbox-urgent.is-last { color: #d64545; }
