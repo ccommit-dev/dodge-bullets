@@ -8,11 +8,12 @@ import { launchBrowser } from "../../scripts/launch-browser.mjs";
 import { FAULTS } from "./faults.mjs";
 import { presetEntries } from "./presets.mjs";
 import { hash } from "./protocol.mjs";
+import { visualProbe } from "./visual-probe.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** 페이지 안에서 도는 관찰 — 누를 것 목록에 ref 를 달고, 판정에 쓸 화면 신호를 같이 모은다 */
-function observeInPage(scopePrint) {
+function observeInPage(scopePrint, visualProbe) {
   const vw = innerWidth, vh = innerHeight;
   const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().replace(/[0-9][0-9,.]*/g, "#").slice(0, 40);
   const SEM = "button,[role=button],a[href],input:not([type=hidden]),select,textarea,summary";
@@ -25,10 +26,12 @@ function observeInPage(scopePrint) {
       if (getComputedStyle(el).cursor === "pointer" && !(el.parentElement && getComputedStyle(el.parentElement).cursor === "pointer")) cand.add(el);
     }
   }
-  const items = [], seen = {}, offside = [];
+  const items = [], seen = {}, offside = [], coveredList = [];
   let n = 0, covered = 0;
   // 지난 관찰의 손잡이를 지운다 — 남겨 두면 같은 r7 이 두 요소에 붙어, 누를 때 예전(덮인) 요소를 집는다
   for (const old of document.querySelectorAll("[data-agent-ref]")) old.removeAttribute("data-agent-ref");
+  for (const old of document.querySelectorAll("[data-agent-flag]")) old.removeAttribute("data-agent-flag");
+  const flagEl = (el, id) => el && el.setAttribute && el.setAttribute("data-agent-flag", `${el.getAttribute("data-agent-flag") || ""} ${id}`.trim());
   // 모달이 떠 있으면 화면 밖(스크롤해야 보이는) 후보는 그 모달 안의 것만 — 뒤에 깔린 판은 눌러 봐야 덮여 있다
   const mid = document.elementFromPoint(vw / 2, vh / 2);
   const modal = mid && mid.closest("[role=dialog],[aria-modal=true],[class*=modal],[class*=overlay],[class*=backdrop],[class*=sheet]");
@@ -41,8 +44,21 @@ function observeInPage(scopePrint) {
     if (inView) {
       const cx = Math.min(vw - 1, Math.max(0, r.left + r.width / 2)), cy = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
       const hit = document.elementFromPoint(cx, cy);
-      if (!(hit && (hit === el || el.contains(hit)))) { covered += 1; continue; }
-      if (r.right > vw + 2 || r.left < -2) offside.push(`${(el.innerText || el.getAttribute("aria-label") || el.tagName).trim().slice(0, 20)} (${Math.round(r.left)}~${Math.round(r.right)}px / 화면 ${vw}px)`);
+      // 화면 밖 — 덮임보다 먼저 본다(시트 안 단추가 밖으로 밀리면 잘린 끝이 어둠막 위라 덮임으로만 잡혔다, 11-13)
+      // 가로 스크롤 줄(칩 · 탭)의 끝 칸은 화면 안 상자를 밀어서 본다 — 밖으로 나간 게 아니다(11-13 측정 뒤 고침: 상점 필터 칩).
+      // auto · scroll 만. hidden · clip 이 자른 단추는 밀어도 못 본다 — 그게 버그다(처음엔 둘 다 뺐다가 아래 메뉴 밖 '설정'을 놓쳤다)
+      let scrolled = false;
+      // 세로 스크롤 판도 계산값 overflow-x 가 auto 가 된다(한 축이 스크롤이면 다른 축 visible → auto) — 가로로 늘어선 줄(flex row nowrap · 열 흐름 grid)만 스크롤 줄로 친다
+      for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
+        const qs = getComputedStyle(q), ox = qs.overflowX;
+        if (ox === "visible") continue;
+        const row = (/flex/.test(qs.display) && qs.flexDirection.startsWith("row") && qs.flexWrap === "nowrap") || (/grid/.test(qs.display) && qs.gridAutoFlow.includes("column"));
+        const qr = q.getBoundingClientRect();
+        scrolled = (ox === "auto" || ox === "scroll") && row && qr.right <= vw + 2 && qr.left >= -2;
+        break;
+      }
+      if (!scrolled && (r.right > vw + 2 || r.left < -2)) { const id = `o${offside.length + 1}`; flagEl(el, id); offside.push({ id, text: `${(el.innerText || el.getAttribute("aria-label") || el.tagName).trim().slice(0, 20)} (${Math.round(r.left)}~${Math.round(r.right)}px / 화면 ${vw}px)` }); }
+      if (!(hit && (hit === el || el.contains(hit)))) { covered += 1; if (hit) coveredList.push([el, hit]); continue; }
     } else if (modal ? !modal.contains(el) : r.top > vh * 3) continue;
     const raw = el.getAttribute("aria-label") || el.getAttribute("title") || (el.innerText || "").trim() || el.value || el.querySelector("img[alt]")?.alt || "";
     let label = String(raw).replace(/\s+/g, " ").trim().slice(0, 40);
@@ -54,6 +70,36 @@ function observeInPage(scopePrint) {
     el.dataset.agentRef = `r${n}`;
     items.push({ ref: `r${n}`, key, label, role: sem.has(el) ? el.tagName.toLowerCase() : "pointer", x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: Math.round(r.width), h: Math.round(r.height), disabled: !!el.disabled || el.getAttribute("aria-disabled") === "true", inView });
   }
+  // 덮인 단추 — 덮은 쪽 갈래(단추와 공통 조상 바로 아래)에 누를 수 있는 것이 하나도 없으면 "누를 것 없는 층이 단추를 막음".
+  // 모달 · 시트는 자기 단추가 보이므로 빠지고, 남은 어둠막 · 떠다니는 그림 · 알림이 걸린다(a8141a9 · 3e47bf4 같은 "알림이 가림" 버그 모양). 토스트는 잠깐 뜨는 안내라 뺀다.
+  const pressable = [...document.querySelectorAll("[data-agent-ref]")].filter((e) => { const r = e.getBoundingClientRect(); return r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw; });
+  const coverGroups = new Map();
+  for (const [el, hit] of coveredList) {
+    if (hit.closest(SEM) || getComputedStyle(hit).cursor === "pointer") continue; // 다른 단추 · 누르는 판에 덮임 — 쌓인 층
+    let root = hit;
+    while (root.parentElement && root.parentElement !== document.body && !root.parentElement.contains(el)) root = root.parentElement;
+    if (root.contains(el)) continue;
+    if (root.matches("[class*=toast],[class*=snack],[class*=growth-message],[role=status],[role=alert]") || root.querySelector("[class*=toast],[role=status],[role=alert]") === hit) continue;
+    if (pressable.some((p) => root.contains(p))) continue;
+    // 모달 어둠막은 시트와 형제라 자기 안에 단추가 없다 — 덮은 층 넓이 안에 안 덮인 단추가 그려져 있으면(시트 단추가 그 위에 있음) 정상 층(11-13 첫 실행 오탐: hub-sheet-backdrop)
+    const rr0 = root.getBoundingClientRect();
+    if (pressable.some((p) => { const pr = p.getBoundingClientRect(), x = pr.left + pr.width / 2, y = pr.top + pr.height / 2; return x >= rr0.left && x <= rr0.right && y >= rr0.top && y <= rr0.bottom; })) continue;
+    // 화면을 통째로 덮고 내용(글자 · 그림)이 있는 층은 일부러 띄운 장면(자동 전투 · 연출 · 불러오기)이다. 빈 어둠막 · 작은 그림 · 알림만 남긴다
+    // (11-13 탐색 판 seed 1 에서 본 오탐으로 고침: 조각 균열 자동 전투 판)
+    if (rr0.width * rr0.height >= vw * vh * 0.9 && ((root.innerText || "").replace(/\s+/g, "").length >= 10 || root.querySelector("img,canvas,svg,video"))) continue;
+    const g = coverGroups.get(root) || { hit, els: [] };
+    g.els.push(el);
+    coverGroups.set(root, g);
+  }
+  const covers = [];
+  for (const [root, g] of coverGroups) {
+    const id = `c${covers.length + 1}`;
+    flagEl(root, id); flagEl(g.hit, id); for (const e of g.els) flagEl(e, id);
+    const d = (e) => `${e.tagName.toLowerCase()}${typeof e.className === "string" && e.className.trim() ? "." + e.className.trim().split(/\s+/)[0] : ""} "${(e.innerText || e.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim().slice(0, 14)}"`;
+    const rr = root.getBoundingClientRect();
+    covers.push({ id, text: `${d(g.hit)}(${Math.round(rr.width)}×${Math.round(rr.height)}) → 단추 ${g.els.length}개: ${g.els.slice(0, 3).map(d).join(", ")}`, n: g.els.length, area: Math.round((rr.width * rr.height * 100) / (vw * vh)), pressableLeft: pressable.length });
+  }
+  const visual = visualProbe ? visualProbe() : null;
   const titleEl = [...document.querySelectorAll("[role=dialog] h2,[class*=modal] h2,[class*=modal] h3,h1,h2")].find((e) => e.getBoundingClientRect().width > 0);
   const text = document.body ? document.body.innerText || "" : "";
   const bad = [...new Set((text.match(/[^\n]{0,12}(?:\bNaN\b|\bundefined\b|\bInfinity\b|\[object Object\])[^\n]{0,12}/g) || []).map((s) => s.trim()))].slice(0, 5);
@@ -67,7 +113,7 @@ function observeInPage(scopePrint) {
   // 같은 안내가 다시 떠도 새로 붙은 요소면 반응 — 누르기 직전에 있던 토스트에는 표시를 달아 둔다(boxInPage)
   const toast = toasts.map((e) => (e.hasAttribute("data-agent-seen") ? "" : "new:") + (e.innerText || "").trim()).join("|").slice(0, 200);
   return {
-    items, covered, offside, bad, ls, canvas, toast,
+    items, covered, offside, covers, visual, bad, ls, canvas, toast,
     scope: scopeEl ? scopePrint(scopeEl) : "gone",
     title: titleEl ? titleEl.innerText.trim().slice(0, 40) : "",
     text: text.slice(0, 4000),
@@ -203,7 +249,7 @@ export async function openWebGame(opt = {}) {
       await sleep(2500);
     },
     async observe() {
-      const o = await page.evaluate(`(${observeInPage})(${scopePrint})`);
+      const o = await page.evaluate(`(${observeInPage})(${scopePrint}, ${opt.visual === false ? "null" : visualProbe})`);
       lastRefs = new Map(o.items.map((c) => [c.ref, c]));
       const semKeys = [...new Set(o.items.filter((c) => c.role !== "pointer" && c.inView).map((c) => c.key.replace(/~\d+$/, "")))].sort();
       return {
@@ -213,7 +259,7 @@ export async function openWebGame(opt = {}) {
         state: parseState(o.ls),
         text: o.text,
         url: o.url,
-        signals: { covered: o.covered, offside: o.offside, bad: o.bad, overflowX: o.overflowX, blank: o.blank, canvas: o.canvas, scope: o.scope, toast: o.toast },
+        signals: { covered: o.covered, offside: o.offside, covers: o.covers, visual: o.visual, bad: o.bad, overflowX: o.overflowX, blank: o.blank, canvas: o.canvas, scope: o.scope, toast: o.toast },
         at: Date.now(),
       };
     },

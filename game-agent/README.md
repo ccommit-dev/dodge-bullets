@@ -14,6 +14,7 @@ node game-agent/run.mjs explore --steps 150 --minutes 10 --seed 1
 node game-agent/run.mjs faults --steps 40
 node game-agent/run.mjs verify
 node game-agent/run.mjs repro game-agent/runs/<판 폴더>
+node game-agent/run.mjs screens --set all
 node game-agent/run.mjs stats
 ```
 
@@ -23,6 +24,7 @@ node game-agent/run.mjs stats
 | faults | 일부러 넣은 버그 4종(예외 · 무반응 단추 · 재화 음수 · NaN 표시) + 대조군 — 판정기가 잡는지 |
 | verify | `requests/claims.json` 의 주장마다 목표 단추를 스스로 찾아가 누르고 전후 상태로 참 · 거짓 판정. 정답(answer)과 견줘 정답률 |
 | repro | 판의 이슈마다 리셋 → 같은 행동으로 다시 돌려 재현 여부를 재고, 재현 스크립트(`repro-I#.mjs`) · 이슈 초안(`issue-I#.md`)을 쓴다 |
+| screens | 화면 벤치 — 정해진 화면 20곳에 화면 버그 10종(같은 색 글자 · 밀려난 단추 · 깨진 그림 · 기울어진 판 · 잘린 글자 · 떠다니는 그림 · NaN · 높이 0 목록 · 남은 어둠막 · 줄 높이 붕괴)을 넣고 규칙이 **대상을 맞는 종류로** 짚는지 잰다. `design`(11-10 과 같은 짝 20장) · `holdout`(다른 화면 · 시드 20장) |
 
 결과는 `game-agent/runs/<시각>-<종류>/` 에 남고 저장소에는 올리지 않습니다(`report.md` · `issues.json` · `trace.jsonl` · `shots/`).
 
@@ -35,11 +37,13 @@ node game-agent/run.mjs stats
 | bridge | protocol.mjs | 연결 규격 — 관찰 · 행동 · 리셋 · 시간 · 사건 |
 | | web-cdp.mjs | 웹 어댑터(헤드리스 Chrome). 상태는 저장(localStorage), 누를 것은 DOM, 터치는 좌표 |
 | | presets.mjs | 리셋용 저장 상태(fresh · mid · qa) |
-| | faults.mjs | 판정기 시험용 주입 버그 |
+| | faults.mjs | 판정기 시험용 주입 버그 — 탐색 판에 심는 4종 + 지금 화면에 넣는 화면 버그 10종(`applyScreenFault`) |
+| | visual-probe.mjs | 화면 구조 검사(페이지 안) — 깨진 그림 · 대비 2 미만 글자 · 숨김 상자에 잘린 글자 · 글자 겹침 · 높이 0 으로 접힌 상자. 문턱 · 측정 뒤 고친 것은 머리말 |
+| bench | screens.mjs | 화면 벤치 — 화면 가는 길 · 세트 · 대상 맞춤 채점 |
 | planner | plan.mjs | 요청 → 계획(탐색 · 검증) |
 | executor | loop.mjs | 관찰 → 규칙 판정 → 판단 → 행동, 걸음 · 시간 상한 |
 | | policy.mjs | 새로움 우선 탐색 · 목표 단추 찾기 · 아는 길(하네스) |
-| oracles | rules.mjs | 규칙 판정 — 예외 · 콘솔 오류 · 요청 실패 · NaN 표시 · 재화 불변식 · 빈 화면 · 가로 넘침 · 무반응 단추 |
+| oracles | rules.mjs | 규칙 판정 — 예외 · 콘솔 오류 · 요청 실패 · NaN 표시 · 재화 불변식 · 빈 화면 · 가로 넘침 · 무반응 단추 · (11-13) 누를 것 없는 층이 단추를 덮음 · 화면 구조 검사 5종 |
 | | judge.mjs | 검증 질문 판정(상태 · 화면 글자 비교) |
 | memory | store.mjs | 화면 지도(화면 → 단추 → 다음 화면) · 눌러 본 횟수 · 막힌 길 |
 | model | gateway.mjs | 자체 모델 게이트웨이(OpenAI 호환). `AGENT_MODEL_URL` 이 없으면 꺼짐 |
@@ -62,3 +66,5 @@ node game-agent/run.mjs stats
 - 모델이 없어(자체 게이트웨이 미확인) 검증 질문은 구조화된 JSON 으로 받는다. 자연어 → JSON 은 게이트웨이가 생기면 모델이 맡는다
 - 캔버스 화면(비트 · 원정 전투)은 DOM 으로 결과가 안 보여 무반응 판정을 쉰다. 그 안의 전투 판정은 `window.__dodgeWorld` 같은 게임 쪽 노출이 필요하다(설계 5.2 game-hooks, 2단계)
 - 같은 dev 서버를 다른 검사와 같이 쓴다. 서버가 다시 뜨면 판이 끊긴다
+- 화면 구조 검사(11-13)가 못 보는 것 — 기울어진 판 · 넘쳐 흐르는 상자 · 그림/캔버스 바탕 위 글자 · pointer-events:none 덮개. 이것은 큰 모델 확인 몫이다. 알려진 오탐: 접혀 안 보이는 글자를 겹침으로 셈(성문 방어 보급 화면)
+- 화면이 늘어 탐색 40걸음으로는 상점에 못 갈 때가 있다 — `faults` 의 crash 는 `--steps 80` 에서 잡았다(11-13)

@@ -15,7 +15,16 @@ export function uiFingerprint(o) {
   return hash(`${o.title.replace(/[0-9]/g, "#")}|${keys.join("|")}`);
 }
 
-const issue = (type, severity, title, detail) => ({ type, severity, title, detail: String(detail ?? "").slice(0, 400) });
+const issue = (type, severity, title, detail, ref) => ({ type, severity, title, detail: String(detail ?? "").slice(0, 400), ...(ref ? { ref } : {}) });
+
+/** 화면 구조 검사(visual-probe.mjs · 덮인 단추) — 종류 → [이슈 종류, 심각도, 제목]. 11-13 추가, 문턱은 visual-probe.mjs 머리말 */
+const VISUAL = {
+  broken: ["broken-image", "medium", "깨진 그림(불러오기 실패)"],
+  faint: ["faint-text", "medium", "거의 안 보이는 글자(대비 2 미만)"],
+  clipped: ["clipped-text", "low", "잘린 글자(숨김 상자 밖으로 · 말줄임 없음)"],
+  overlap: ["text-overlap", "medium", "글자끼리 겹침"],
+  collapsed: ["collapsed", "medium", "내용이 있는데 높이 0 으로 접힌 상자"],
+};
 
 /**
  * @param {{ prev?: any, action?: any, result?: any, cur: any, events: any[] }} s
@@ -36,7 +45,9 @@ export function checkRules({ prev, action, result, cur, events }) {
   if (sig.blank) out.push(issue("blank", "high", "빈 화면", cur.url));
   for (const b of sig.bad) out.push(issue("bad-number", "high", "숫자 자리에 NaN · undefined 표시", b));
   if (sig.overflowX) out.push(issue("overflow", "low", "화면이 가로로 넘침", cur.title || cur.url));
-  for (const o of sig.offside) out.push(issue("overflow", "low", "단추가 화면 밖으로 나감", o));
+  for (const o of sig.offside) out.push(typeof o === "string" ? issue("overflow", "low", "단추가 화면 밖으로 나감", o) : issue("overflow", "low", "단추가 화면 밖으로 나감", o.text, o.id));
+  for (const c of sig.covers || []) out.push(issue("covered", "medium", "누를 것 없는 층이 단추를 덮음", c.text, c.id));
+  for (const [k, [type, sev, title]] of Object.entries(VISUAL)) for (const v of sig.visual?.[k] || []) out.push(issue(type, sev, title, v.text, v.id));
   for (const [group, obj] of Object.entries({ progression: cur.state.progression, titans: cur.state.titans })) {
     for (const [k, v] of Object.entries(obj || {})) {
       if (MONEY.test(k) && typeof v === "number" && (!Number.isFinite(v) || v < 0)) out.push(issue("invariant", "high", "상태 불변식 위반(재화 · 진행 수치가 음수 · NaN)", `${group}.${k} = ${v}`));

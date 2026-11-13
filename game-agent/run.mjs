@@ -6,6 +6,7 @@
  *   node game-agent/run.mjs faults  [--steps 40]        주입 버그 4종 + 대조군 — 규칙 판정이 잡는지
  *   node game-agent/run.mjs verify  [game-agent/requests/claims.json] [--only id,id]
  *   node game-agent/run.mjs repro   <runs/판 폴더>        이슈마다 재현 · 재현 스크립트 · 이슈 초안
+ *   node game-agent/run.mjs screens [--set design|holdout|all] [--only b05,h03]   화면 벤치 — 화면 버그 10종을 넣고 규칙이 대상을 짚는지
  *   node game-agent/run.mjs stats                        기억(화면 지도) 크기
  *
  * 결과는 game-agent/runs/ (저장소에 올리지 않는다). 모델은 AGENT_MODEL_URL(자체 게이트웨이)이 있을 때만 쓴다.
@@ -23,6 +24,7 @@ import { SEVERITY } from "./oracles/rules.mjs";
 import { Recorder } from "./report/record.mjs";
 import { replay, writeRepro } from "./report/repro.mjs";
 import { writeIssueDraft } from "./report/issue.mjs";
+import { runScreens } from "./bench/screens.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS = join(HERE, "runs");
@@ -133,6 +135,12 @@ if (cmd === "explore") await explore(args);
 else if (cmd === "faults") await faults(args);
 else if (cmd === "verify") await verify(args);
 else if (cmd === "repro") await repro(args);
+else if (cmd === "screens") {
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+  const dir = join(RUNS, `${stamp}-screens`);
+  await runScreens({ set: args.set ?? "all", only: args.only, dir, log });
+  log(`결과: ${dir}`);
+}
 else if (cmd === "stats") log(new Memory(MEMORY).stats());
 else { log(readFileSync(fileURLToPath(import.meta.url), "utf8").split("*/")[0]); process.exit(1); }
 log(`(전체 ${Math.round((Date.now() - t0) / 1000)}초)`);
