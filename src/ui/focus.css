@@ -51,8 +51,6 @@
   content: ""; position: absolute; top: 3px; right: 5px; width: 14px; height: 14px;
   background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Crect x='2.5' y='6' width='9' height='7' rx='1.5' fill='%233b2415'/%3E%3Cpath d='M4.5 6V4.5a2.5 2.5 0 015 0V6' fill='none' stroke='%233b2415' stroke-width='1.6'/%3E%3C/svg%3E");
 }
-/* 모험 카드 '얻는 것' 한 줄 (목표 1 — 모든 콘텐츠가 사냥터를 강하게 해 주는 곳) */
-.hub-card .hub-gives { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 700; color: #2b8235; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 우편함 단추의 긴급 의뢰 남은 시간(예전 딱지) — 1분 전엔 붉게 */
 .titans-field .inbox-btn .inbox-urgent { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--flat-ink, #3b2415); }
 .titans-field .inbox-btn .inbox-urgent.is-last { color: #d64545; }
@@ -60,3 +58,9 @@
 .hub-page .hub-core-line { margin: 0 0 8px; padding: 7px 10px; border-radius: 10px; background: #fffaf0; box-shadow: inset 0 0 0 1.5px #3b2415; color: #3b2415; font-size: 13px; font-weight: 700; text-align: center; }
 .hub-page .hub-core-line b { color: #2b8235; }
 .hub-page .hub-core-line em { font-style: normal; color: #2b8235; }
+/* 모험 화면 위 루틴 줄(일일 퀘스트 · 시즌 패스)도 계단 잠금이면 흐리게 + 자물쇠 (이벤트 칸 16층) */
+.hub-routine > button.tab-locked { position: relative; opacity: .5; }
+.hub-routine > button.tab-locked::after {
+  content: ""; position: absolute; top: 6px; right: 8px; width: 16px; height: 16px;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Crect x='2.5' y='6' width='9' height='7' rx='1.5' fill='%233b2415'/%3E%3Cpath d='M4.5 6V4.5a2.5 2.5 0 015 0V6' fill='none' stroke='%233b2415' stroke-width='1.6'/%3E%3C/svg%3E");
+}

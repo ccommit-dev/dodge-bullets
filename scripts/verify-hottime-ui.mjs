@@ -5,6 +5,7 @@
 import { launchBrowser } from "./launch-browser.mjs";
 const OUT = process.argv[2], BASE = "http://localhost:5173", H = "mock-local-dev";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 2026-11-13 해금 계단 — 핫타임은 이벤트 칸(사냥터 16층), 닫혔을 때 들어가는 균열 카드는 18층 — 실제 해금 규칙(test-phase=0)이라 18층으로 심는다
 const results = []; const ok = (n, c, d = "") => results.push([c ? "PASS" : "FAIL", n, d]);
 const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-gpu"] });
 const errors = [];
@@ -25,8 +26,8 @@ async function open(hour, minute, { w = 390, h = 844 } = {}) {
   const now = await page.evaluate(() => Date.now());
   const party = ["mia", "leon"];
   await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
-    [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, unitRev: 1, onboardingStep: 4, level: 40, redGems: 100, enhancementMaterials: 10, eventCoins: 0, titanBestStage: 3, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: party, partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], discoverySeeded: true, routineClaimedDate: today }),
-    [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 3, bestStage: 3, gold: 1000, heroes: { mia: 30, leon: 30 }, party, lastActiveAt: now }),
+    [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, unitRev: 1, onboardingStep: 4, level: 40, redGems: 100, enhancementMaterials: 10, eventCoins: 0, titanBestStage: 18, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: party, partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], discoverySeeded: true, routineClaimedDate: today }),
+    [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 18, bestStage: 18, gold: 1000, heroes: { mia: 30, leon: 30 }, party, lastActiveAt: now }),
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }),
     "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0",
   }).catch(() => {});

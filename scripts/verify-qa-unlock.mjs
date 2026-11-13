@@ -15,7 +15,8 @@ await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.e
 const closeAll = () => page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
 const state = async () => {
   await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("모험"))?.click()); await sleep(700);
-  const hub = await page.evaluate(() => ({ cards: document.querySelectorAll(".hub-card").length, locked: document.querySelectorAll(".hub-card.tab-locked").length }));
+  // 2026-11-13 해금 계단 — 4층 저장은 테스트 모드를 끄면 모험 메뉴(5층) 자체가 잠긴다. 그 바깥 잠금도 "다시 잠김" 으로 센다
+  const hub = await page.evaluate(() => ({ cards: document.querySelectorAll(".hub-card").length, locked: document.querySelectorAll(".hub-card.tab-locked").length, navLocked: !![...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("모험"))?.classList.contains("tab-locked") }));
   await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click()); await sleep(700);
   // 2026-10-28 슬롯 탭을 걷었다 — 같은 잠금 표시는 스킬 조합 칸(.combo-step.locked)에 있다
   const slots = await page.evaluate(() => ({ tabs: document.querySelectorAll(".hero-skill-combo .combo-step").length, locked: document.querySelectorAll(".hero-skill-combo .combo-step.locked").length }));
@@ -48,9 +49,9 @@ const t1 = await tap7();
 ok("설정 표기가 테스트 모드 → 빌드 번호로", /테스트 모드/.test(t1.label0 ?? "") && !/테스트 모드/.test(t1.label1 ?? ""), JSON.stringify(t1));
 const b = await state();
 ok("7탭 OFF: qa-mode=\"0\" 저장", b.qa === "0", String(b.qa));
-ok("7탭 OFF: 새로고침 없이 콘텐츠 카드가 다시 잠긴다", b.hub.locked >= 3, JSON.stringify(b.hub));
+ok("7탭 OFF: 새로고침 없이 콘텐츠가 다시 잠긴다(카드 셋 이상 · 또는 모험 메뉴째 계단 잠금)", b.hub.locked >= 3 || b.hub.navLocked, JSON.stringify(b.hub));
 ok("7탭 OFF: 스킬 칸이 다시 잠긴다", b.slots.locked >= 1, JSON.stringify(b.slots));
-ok("7탭 OFF: 성문 방어 무기·스킬이 다시 잠긴다", b.dodge.weaponLocked >= 1 && b.dodge.skillLocks >= 1, JSON.stringify(b.dodge));
+ok("7탭 OFF: 성문 방어 무기·스킬이 다시 잠긴다(또는 모험 메뉴째 계단 잠금으로 못 들어간다)", (b.dodge.weaponLocked >= 1 && b.dodge.skillLocks >= 1) || (b.hub.navLocked && b.dodge.weapons === 0), JSON.stringify(b.dodge));
 await page.reload({ waitUntil: "networkidle0" }); await sleep(2500); await closeAll(); await sleep(800);
 const c = await state();
 ok("새로고침 뒤에도 잠금 유지", c.hub.locked === b.hub.locked && c.slots.locked === b.slots.locked, JSON.stringify(c));

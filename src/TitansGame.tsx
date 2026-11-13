@@ -4800,8 +4800,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
         {tab === "hub" && (
           <section className="hub-page" aria-label="모험 허브">
-            {/* 중심 루프 (2026-11-13 정리 결정 1, docs/FOCUS_2026-11-13.md) — 모든 콘텐츠는 사냥터를 강하게 해 주는 곳. 카드마다 얻는 것 */}
-            <p className="hub-core-line">모든 콘텐츠는 <b>사냥터</b>를 강하게 해 줍니다 · 카드의 <em>얻는 것</em>을 보세요</p>
+            {/* 중심 루프 (2026-11-13 정리 결정 1, docs/FOCUS_2026-11-13.md) — 모든 콘텐츠는 사냥터를 강하게 해 주는 곳. 카드 글은 11-05 사용자 결정대로 이름 · 남은 횟수 두 줄 — 얻는 것은 잠금 안내 · 다음 목표 · 새로 열림 안내와 data-gives/title 에 */}
+            <p className="hub-core-line">모든 콘텐츠는 <b>사냥터</b>를 강하게 해 줍니다</p>
             {/* 루틴 줄 — 예전 '모험' 팝업의 항목(정산 제외)과 시즌. 같은 클래스라 캡처·검사 스크립트가 그대로 찾는다 */}
             <div className="nav-popup-grid adventure-grid hub-routine">
               {/* 균열 · 강화 · 파견은 아래 카드와 같은 내용이라 뺐다 (2026-11-03, 사용자: "중복된 내용이 있다면 단순화 혹은 제거") */}
@@ -4816,7 +4816,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {/* 카드 6장 (titans/hubCards): 남은 횟수 · 오늘 재화 · 빨간 점(최대 3) */}
             <div className="hub-cards nav-popup-grid">
               {hubCardList.map((card) => (
-                <button key={card.id} type="button" data-card={card.id} title={card.desc} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
+                <button key={card.id} type="button" data-card={card.id} data-gives={card.gives} title={card.gives ? `${card.desc} · 얻는 것: ${card.gives}` : card.desc} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
                   onClick={() => {
                     if (card.locked) { flash(card.lockHint ?? "아직 잠겨 있습니다"); return; }
                     if (card.go.kind === "content") openContent(card.go.content);
@@ -4828,7 +4828,6 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <b>{card.label}{card.dot && <i className="hub-dot" aria-label="지금 할 수 있음" />}</b>
                     {/* 카드는 이름 · 남은 횟수 · 빨간 점만 (2026-11-05). 잠긴 카드는 남은 횟수 자리에 해금 조건(2026-10-14 "언제 해금되는지 불친절") · 설명은 title */}
                     <small className={`hub-remaining ${card.locked && card.unlock ? "hub-unlock-line" : ""}`}>{card.locked && card.unlock ? card.unlock.label : card.remaining}</small>
-                    {card.gives && <small className="hub-gives">얻는 것 · {card.gives}</small>}
                   </span>
                   {card.locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
                   {card.locked && card.lockHint && <span className="hub-unlock-tip" role="tooltip">{card.lockHint}</span>}

@@ -42,7 +42,7 @@ await clickNav("동료"); await sleep(300);
 const leak = await page.evaluate(() => ({ toast: document.querySelector(".titans-toast")?.textContent ?? "", heroesOn: [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("동료"))?.classList.contains("on") }));
 ok("2층: 동료를 눌러도 안 간다 · 'STAGE 3' 안내", !leak.heroesOn && /STAGE 3/.test(leak.toast), JSON.stringify(leak));
 await clickNav("상점"); await sleep(300);
-const leak2 = await page.evaluate(() => ({ toast: document.querySelector(".titans-toast")?.textContent ?? "", shop: !!document.querySelector(".titans-shop, .premium-page, .shop-sub-tabs") }));
+const leak2 = await page.evaluate(() => ({ toast: document.querySelector(".titans-toast")?.textContent ?? "", shop: !![...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.classList.contains("on") }));   // 상점 단추가 켜졌는가(.titans-shop 은 사냥터 탭에도 있는 공통 판)
 ok("2층: 상점도 안 열린다 · 'STAGE 16' 안내", !leak2.shop && /STAGE 16/.test(leak2.toast), JSON.stringify(leak2));
 const g2 = await page.evaluate(() => ({ goal: [...document.querySelectorAll(".battle-alert-stack > .battle-alert")].map((b) => b.textContent.replace(/\s+/g, " ").trim()), rebirth: !!document.querySelector(".header-rebirth"), inbox: (window.__huntState?.()?.inbox ?? []).map((i) => i.key) }));
 ok("2층: 다음 목표 한 줄 = 다음 계단(STAGE 3 · 동료)", g2.goal.length === 1 && /STAGE 3/.test(g2.goal[0]) && /동료/.test(g2.goal[0]), JSON.stringify(g2.goal));
@@ -54,11 +54,13 @@ await boot(5);
 const n5 = await nav();
 ok("5층: 모험 열림 · 동료 열림 · 상점 잠김", !n5["모험"] && !n5["동료"] && n5["상점"], JSON.stringify(n5));
 await clickNav("모험"); await sleep(700);
-const hub = await page.evaluate(() => ({ core: document.querySelector(".hub-core-line")?.textContent ?? "", cards: [...document.querySelectorAll(".hub-card")].map((c) => ({ id: c.dataset.card, locked: c.classList.contains("tab-locked"), gives: c.querySelector(".hub-gives")?.textContent ?? "", line: c.querySelector(".hub-remaining")?.textContent ?? "" })) }));
+const hub = await page.evaluate(() => ({ core: document.querySelector(".hub-core-line")?.textContent ?? "", cards: [...document.querySelectorAll(".hub-card")].map((c) => ({ id: c.dataset.card, locked: c.classList.contains("tab-locked"), gives: c.dataset.gives ?? "", line: c.querySelector(".hub-remaining")?.textContent ?? "" })) }));
 const card = (id) => hub.cards.find((c) => c.id === id);
 ok("5층 모험: 맨 위 중심 루프 한 줄", /사냥터/.test(hub.core), hub.core);
+const routine = await page.evaluate(() => [...document.querySelectorAll(".hub-routine > button")].map((b) => ({ t: b.textContent.trim().slice(0, 8), locked: b.classList.contains("tab-locked"), op: getComputedStyle(b).opacity })));
+ok("5층 모험: 일일 퀘스트 · 시즌 패스는 이벤트 계단(16층) 전이라 흐리게 잠김", routine.length >= 2 && routine.every((r) => r.locked && Number(r.op) < 0.8), JSON.stringify(routine));
 ok("5층 모험: 성문 방어 열림 · 비트는 STAGE 10 잠금", card("dodge") && !card("dodge").locked && card("beat")?.locked && /STAGE 10/.test(card("beat").line), JSON.stringify(hub.cards));
-ok("5층 모험: 카드마다 '얻는 것'", hub.cards.length === 6 && hub.cards.every((c) => /얻는 것/.test(c.gives)), JSON.stringify(hub.cards.map((c) => c.gives)));
+ok("5층 모험: 카드마다 얻는 것(data-gives — 글은 11-05 결정대로 두 줄)", hub.cards.length === 6 && hub.cards.every((c) => c.gives.length > 2), JSON.stringify(hub.cards.map((c) => c.gives)));
 if (OUT) await page.screenshot({ path: `${OUT}/ladder-s5-hub.png` });
 
 // ── 16층 ──
