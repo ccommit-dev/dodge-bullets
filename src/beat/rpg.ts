@@ -272,13 +272,14 @@ export function gradesFor(progress: Pick<BeatRpgProgress, "grades">, trackId: st
 }
 
 
-/** 사냥터 연동 골드가 따라가는 방치 시간(초) · 효율 — 기본 방치(IDLE.baseRate 0.1, 배율 1) 10분치 */
-export const BEAT_LINK_IDLE_SEC = 600;
+/** 사냥터 연동 골드가 따라가는 방치 시간(초) · 효율 — 기본 방치(IDLE.baseRate 0.1, 배율 1) 2분치.
+ *  2026-11-13 10분 → 2분: 40층 어려움 한 판이 +197.8K 로 대장간 +15 비용과 맞먹었다(사용자 "마저 수정" — 방치 2분치 권고 채택) */
+export const BEAT_LINK_IDLE_SEC = 120;
 const BEAT_LINK_RATE = 0.1;
 
 /**
  * 사냥터 진행도 비례 비트 수련 보너스 골드 (모드 간 보상 단절 해소, 2026-11-11).
- * 한 판(1~3분 손으로)이 지금 층 기본 방치 10분치 × 난도(1 / 1.25 / 1.6) — 초반(10층 아래)은 곡 기본 보상(55~195)이 주축이고,
+ * 한 판(1~3분 손으로)이 지금 층 기본 방치 2분치 × 난도(1 / 1.25 / 1.6) — 초반(10층 아래)은 곡 기본 보상(55~195)이 주축이고,
  * 그 위는 이 몫이 커져 대장간 값 성장을 따라간다. 대장간 지갑이라 옛 곡선 ÷ COIN_UNIT (방치 정산과 같은 단위)
  */
 export function beatStageBonusGold(titanBestStage: number, difficulty: BeatDifficulty): number {
