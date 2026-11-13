@@ -58,8 +58,11 @@ const before = await prog();
 const beforeT = await titans();
 // 보스 토벌 보급품(💎90, 주 3회): 방지권 2 → forgeTicketsPending, 강화석 30, 골드
 await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /보스 토벌 보급품/.test(c.textContent))?.querySelector("button")?.click(); });
-await sleep(700);
+// 고정 0.7초는 다른 브라우저 부하가 있을 때 저장 전(1000→1000)을 읽었다(2026-11-06) — 방지권 적립이 보일 때까지(최대 6초). 지원팩은 아래에서 이 값을 기준으로 잰다
 let p = await prog();
+for (let i = 0; i < 30 && p.forgeTicketsPending !== 2; i += 1) { await sleep(200); p = await prog(); }
+await sleep(200); p = await prog();
+await page.waitForFunction(() => /2\/3/.test([...document.querySelectorAll(".event-offer-card")].find((c) => /보스 토벌 보급품/.test(c.textContent))?.querySelector("small")?.textContent ?? ""), { timeout: 4000 }).catch(() => {});
 ok("보급품 구매: 보석 −90 · 강화석 +30 · 방지권 적립 2 · 골드 증가", before.redGems - p.redGems === 90 && p.enhancementMaterials - before.enhancementMaterials === 30 && p.forgeTicketsPending === 2 && p.sharedCoins > before.sharedCoins, `${before.redGems}→${p.redGems} mats ${p.enhancementMaterials} tickets ${p.forgeTicketsPending}`);
 r = await page.evaluate(() => [...document.querySelectorAll(".event-offer-card")].find((c) => /보스 토벌 보급품/.test(c.textContent))?.querySelector("small")?.textContent);
 ok("구매 후 주간 잔여 2/3", /2\/3/.test(r ?? ""), r);
@@ -277,15 +280,15 @@ r = await page.evaluate(() => ({
 ok("J 동료 탭 스킨 카드 9장(판매 8 + 보유한 시즌 1 — 은퇴 동료 스킨 4장 제외) · 미보유 시즌 2는 숨김", r.cards === 9 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
 // 2026-10-27 동료 60명 — 픽업이 스킨 없는 새 동료일 수 있어 할인 카드 수는 0~2. 할인은 늘 240, 할인 아닌 카드엔 240 없음
 ok("J 픽업 스킨에만 -20% 배지 · 240 표시 (0~2장 · 로테이션 무관)", r.deals.length <= 2 && r.deals.every((d) => /240/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
+// 고정 0.8초는 전체 검사 부하에서 저장 전(보석 1000)을 읽었다(2026-11-06) — 보석이 바뀔 때까지(최대 6초)
+const skinSaved = async () => { let jp = await prog(); for (let i = 0; i < 30 && jp.redGems === 1000; i += 1) { await sleep(200); jp = await prog(); } await sleep(200); return prog(); };
 if (r.deals.length > 0) {
   await page.evaluate(() => document.querySelector(".skin-product.pickup-deal button")?.click());
-  await sleep(800);
-  const jp = await prog();
+  const jp = await skinSaved();
   ok("J 할인 스킨 구매 → 보석 1000→760 · 보유·장착", jp.redGems === 760 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
 } else {
   await page.evaluate(() => [...document.querySelectorAll(".skin-product button")].find((b) => /300/.test(b.textContent))?.click());
-  await sleep(800);
-  const jp = await prog();
+  const jp = await skinSaved();
   ok("J 정가 스킨 구매 → 보석 1000→700 · 보유·장착 (이번 회전에 스킨 픽업 없음)", jp.redGems === 700 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
 }
 

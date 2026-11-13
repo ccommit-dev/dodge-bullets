@@ -44,7 +44,9 @@ async function load(keys, cores, pending = 0) {
   await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {});
   return progress;
 }
-const toast = () => page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? "");
+// 안내는 부팅 직후 4.5초만 뜬다 — networkidle0 를 기다리고 나서 보면 느린 날엔 이미 사라졌다(2026-11-06 전체 검사 41초 실행). 문서가 열릴 때부터 뜬 토스트 글을 모아 둔다
+await page.evaluateOnNewDocument(() => { window.__toastLog = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(() => { const t = document.querySelector(".titans-toast")?.textContent ?? ""; if (t && !window.__toastLog.includes(t)) window.__toastLog.push(t); }).observe(document.body, { childList: true, subtree: true, characterData: true })); });
+const toast = () => page.evaluate(() => [...(window.__toastLog ?? []), document.querySelector(".titans-toast")?.textContent ?? ""].join(" | "));
 
 // ① 1판으로 받은 저장 · 코어 10 — 차이만큼 빠지고 v3 가 적힌다
 {

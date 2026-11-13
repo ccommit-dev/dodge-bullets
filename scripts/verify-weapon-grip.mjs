@@ -80,7 +80,10 @@ const summary = {};
 for (let k = 0; k < 4; k += 1) {
   // 무기 바꾸기는 다음 몬스터부터(서브 스테이지) — DEV 훅으로 바로 적용한다
   await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), k); await sleep(300); await page.evaluate(() => window.__huntApplyLook?.()); await sleep(700);
-  const kind = await page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1]);
+  const readKind = () => page.evaluate(() => (document.querySelector(".titans-hero .equipment-weapon-alt")?.className.match(/weapon-(sword|spear|bow|staff)/) ?? [])[1]);
+  // 고정 1초 안에 외형이 안 바뀌면 앞 무기를 두 번 읽어 한 무기가 summary 에서 빠졌다(2026-11-06 전체 검사 · 101줄 TypeError) — 새 무기가 보일 때까지(최대 5초)
+  let kind = await readKind();
+  for (let i = 0; i < 25 && (!kind || kind in summary); i += 1) { await sleep(200); await page.evaluate(() => window.__huntApplyLook?.()); kind = await readKind(); }
   const s = { kind, n: 0, atk: 0, worst: 0, box: 0, poses: new Set(), angles: [], cast: 0, sheets: new Set() };
   let settle = 0;   // 무기를 쥐는 동작(gear-grab)이 막 끝난 직후 표본 3개는 뺀다 — 자세가 자리 잡는 한순간 3.6~4.6px 이 드물게 잡혔다(2026-11-03, 평소 공격 칸은 2.0px · 문턱 그대로)
   for (let i = 0; i < 120; i += 1) {
@@ -97,6 +100,7 @@ for (let k = 0; k < 4; k += 1) {
   await page.screenshot({ path: `art-gen/out/weapon-grip-${kind}.png` });
 }
 const sw = summary.sword, sp = summary.spear, bw = summary.bow, st = summary.staff;
+if (!(sw && sp && bw && st)) { ok("무기 네 종류를 모두 쟀다", false, Object.keys(summary).join()); await browser.close(); process.exit(1); }
 // 몸 동작도 무기별 (2026-10-27 "활·지팡이 동작: 몸 동작은 검과 같은 시트") — 공격 시트가 무기마다 다르다(검 = 기본 hero-attack)
 ok("공격 몸 동작 시트: 검 hero-attack · 창/활/지팡이 hero-attack-<무기>", [...sw.sheets].join() === "hero-attack.webp" && [...sp.sheets].join() === "hero-attack-spear.webp" && [...bw.sheets].join() === "hero-attack-bow.webp" && [...st.sheets].join() === "hero-attack-staff.webp", [sw, sp, bw, st].map((s) => [...s.sheets].join("+")).join(" · "));
 ok("공격 칸을 잡았다(무기마다 3칸 이상)", [sw, sp, bw, st].every((s) => s.atk >= 3), [sw, sp, bw, st].map((s) => `${s.kind}:${s.atk}`).join(" "));
@@ -109,7 +113,8 @@ ok("지팡이는 치켜들었다 내뻗는다(−34~40°) · 내뻗는 칸에 �
 // ── 2. 탈착 — 떼는 무기는 손에서 시작해 아래로 떨어지고, 끼우는 무기는 아래에서 올라와 손에서 멈춘다 ──
 const swapAt = async (toIdx) => {
   await page.evaluate((k) => [...document.querySelectorAll(".weapon-kind-chip")][k].click(), toIdx); await sleep(300); await page.evaluate(() => window.__huntApplyLook?.());
-  await page.waitForSelector(".titans-hero .equipment-weapon-ghost", { timeout: 2000 }).catch(() => null);
+  // 훅은 렌더 때 갱신되는 lookWantedRef 를 든다 — 300ms 안에 다시 그려지지 않으면 옛 외형을 다시 들어 탈착이 안 일어났다(2026-11-06 전체 검사 · 네 칸 모두 null). 떼는 무기가 보일 때까지 훅을 다시 부른다(최대 5초)
+  for (let i = 0; i < 25 && !(await page.$(".titans-hero .equipment-weapon-ghost")); i += 1) { await sleep(200); await page.evaluate(() => window.__huntApplyLook?.()); }
   return page.evaluate(() => {
     const ghost = document.querySelector(".titans-hero .equipment-weapon-ghost"), alt = document.querySelector(".titans-hero .equipment-weapon-alt.gear-attach");
     if (!ghost || !alt) return null;

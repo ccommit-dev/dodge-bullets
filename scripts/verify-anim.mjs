@@ -60,13 +60,19 @@ const hitSeen = await (async () => {
 })();
 ok("B 피격 프레임(-hit.png 또는 띠의 피격 칸)이 타격 시 표시된다", hitSeen);
 // 2026-10-19: 2판 몬스터는 덤빔 중에 맞아도 덤빔 줄을 끝까지 그린다 — 대신 맞은 동안(frame-hit) 하얗게 번쩍여 맞은 티를 낸다
-const flash = await (async () => {
-  for (let i = 0; i < 160; i += 1) {
-    await sleep(50);
+// 2026-11-06: 50ms 마다 CDP 로 묻던 표본은 부하가 있으면 왕복이 길어져 짧은 번쩍임을 놓쳤다(단독 순서 null) — 같은 조건을 페이지 안에서 매 프레임 본다(최대 8초)
+await page.evaluate(() => {
+  window.__flashSeen = null; const t0 = performance.now();
+  const tick = () => {
     // 2026-10-21: 번쩍임은 겉 상자(.titans-monster) 한 번 짧게 — 칸 그림 필터를 겹치면 몬스터가 하얗게 바랬다(fx-sprites.css)
-    const f = await page.evaluate(() => [...document.querySelectorAll(".titans-monster")].filter((m) => m.querySelector(".titan-monster-art.anim2.frame-hit")).map((m) => getComputedStyle(m).filter).filter((x) => /brightness/.test(x)));
-    if (f.length) return f[0];
-  }
+    const f = [...document.querySelectorAll(".titans-monster")].filter((m) => m.querySelector(".titan-monster-art.anim2.frame-hit")).map((m) => getComputedStyle(m).filter).filter((x) => /brightness/.test(x));
+    if (f.length) { window.__flashSeen = f[0]; return; }
+    if (performance.now() - t0 < 8000) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+});
+const flash = await (async () => {
+  for (let i = 0; i < 170; i += 1) { await sleep(50); const f = await page.evaluate(() => window.__flashSeen); if (f) return f; }
   return null;
 })();
 if (flash !== null || (await page.$(".titan-monster-art.anim2"))) ok("B 2판 몬스터 맞은 순간 하얗게 번쩍인다(덤빔 중에 맞아도)", !!flash && /brightness/.test(flash), String(flash));
