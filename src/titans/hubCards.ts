@@ -11,6 +11,7 @@ import { TOWER_DAILY_TICKETS } from "../game/towerTickets";
 import { EXPEDITION_MAX } from "./allies";
 import { qaUnlockOpen } from "../progression/qaUnlock";
 import { NAMES } from "../ui/names";
+import { ladderLockHint, ladderOpen, ladderStep, type LadderId } from "../progression/ladder";
 
 export type HubCardId = "dodge" | "beat" | "tower" | "rift" | "forge" | "expedition";
 export type HubGo =
@@ -35,12 +36,14 @@ export type HubCard = {
   /** 잠겼을 때 이유 */
   lockHint?: string;
   go: HubGo;
+  /** 사냥터에 더해 주는 것 — 해금 계단 표(progression/ladder.ts)의 gives (2026-11-13, 목표 1 "모두 사냥터를 강하게 해 주는 곳으로") */
+  gives?: string;
 };
 
 /** 빨간 점 상한 — 알림 폭탄 금지(카피바라 Go! 비판) */
 export const HUB_DOT_MAX = 3;
 
-export function hubCards(progress: CharacterProgress, events: EventSave, opts: { beatBest?: number; now?: number } = {}): HubCard[] {
+export function hubCards(progress: CharacterProgress, events: EventSave, opts: { beatBest?: number; now?: number; huntBest?: number } = {}): HubCard[] {
   const now = opts.now ?? Date.now();
   const today = dateKey();
   const riftMax = riftAttemptsFor(progress.patronUntil, now);
@@ -83,6 +86,18 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
       dot: activeExpeditions < EXPEDITION_MAX, locked: false, go: { kind: "tab", tab: "expedition" },
     },
   ];
+  // 해금 계단 (2026-11-13) — 사냥터 층이 모자라면 잠근다(예전 온보딩 잠금과 둘 다). 카드마다 '얻는 것'
+  const huntBest = opts.huntBest ?? progress.titanBestStage;
+  const LADDER_OF: Record<HubCardId, LadderId> = { dodge: "dodge", beat: "beat", tower: "tower", rift: "rift", forge: "forge", expedition: "expedition" };
+  for (const c of cards) {
+    const id = LADDER_OF[c.id], step = ladderStep(id);
+    c.gives = step.gives;
+    if (!ladderOpen(id, huntBest)) {
+      c.locked = true;
+      c.lockHint = ladderLockHint(id);
+      c.unlock = { done: false, label: `사냥터 STAGE ${step.stage}`, now: Math.min(step.stage, huntBest), goal: step.stage, unit: "S", hint: ladderLockHint(id) };
+    }
+  }
   // 잠긴 카드엔 점이 없다. 점은 위에서부터 최대 3개
   let dots = 0;
   for (const c of cards) {
