@@ -79,7 +79,7 @@ ok("창 강화 → 단계가 바뀐다(성공 +1 · 실패 그대로 · 파괴 0
 // ── 4. 댐 방어전 — 장착 무기(검)로 싸운다 ──
 await seed({ ...base, equippedWeaponKind: "sword" }, titansBase);
 await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
-await clickText(".exp-menu-tabs button", "원정"); await sleep(500); await clickText("button", "스테이지"); await sleep(1800);
+await clickText(".exp-menu-tabs button", "출전"); await sleep(500); await clickText("button", "스테이지"); await sleep(1800);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 for (let i = 0; i < 20 && !(await page.evaluate(() => !!window.__dodgeWorld)); i += 1) await sleep(250);
 // 실제로 쏘고 떨어뜨리는가 — 진행이 1/3 속도라 실제 40초(게임 약 13초). 처음 검기(0.38초)는 위쪽 몬스터에 닿지 못해 처치 0 이었다(2026-10-27)
@@ -96,7 +96,7 @@ ok("댐 방어전 검: 쏠 때 검 공격 시트(hero-attack)의 여러 칸을 �
 // ── 5. 댐 방어전 — 활로 싸울 때 몸이 활 공격 시트(당겼다 놓기)를 돈다 ──
 await seed({ ...base, equippedWeaponKind: "bow" }, titansBase);
 await clickText(".titans-bottom-nav button", "모험"); await sleep(400); await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1600);
-await clickText(".exp-menu-tabs button", "원정"); await sleep(500); await clickText("button", "스테이지"); await sleep(1800);
+await clickText(".exp-menu-tabs button", "출전"); await sleep(500); await clickText("button", "스테이지"); await sleep(1800);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 for (let i = 0; i < 20 && !(await page.evaluate(() => !!window.__dodgeWorld)); i += 1) await sleep(250);
 const bowSheets = new Set(); let bowShot = false;

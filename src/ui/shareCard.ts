@@ -325,7 +325,7 @@ export async function shareCard(blob: Blob, fileName = "grow-a-beaver-record.png
   try {
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.share && (!nav.canShare || nav.canShare({ files: [file] }))) {
-      await nav.share({ files: [file], title: "비버 키우기 원정 기록" });
+      await nav.share({ files: [file], title: "비버 키우기 성문 방어 기록" });
       return "shared";
     }
   } catch {

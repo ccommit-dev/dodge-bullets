@@ -44,7 +44,7 @@ export type AdviceWallet = {
   seals: number;
 };
 
-export const CURRENCY_LABEL: Record<AdviceCurrency, string> = { huntGold: "사냥터 골드", gold: "골드", gems: "보석", stones: "강화석", seals: "인장", shards: "조각" };
+export const CURRENCY_LABEL: Record<AdviceCurrency, string> = { huntGold: "골드", gold: "은화", gems: "보석", stones: "강화석", seals: "인장", shards: "조각" };
 
 function walletOf(progress: CharacterProgress, save: Pick<TitansSave, "gold">): AdviceWallet {
   return { huntGold: save.gold, gold: progress.sharedCoins, gems: progress.redGems, stones: progress.enhancementMaterials, seals: progress.expeditionSeals };
@@ -87,7 +87,7 @@ export function purchaseAdvice(progress: CharacterProgress, save: Pick<TitansSav
     if (lv >= WEAPON_FORGE_MAX) continue;
     const c = weaponForgeCost(lv);
     const lower = forge[fam] <= forge[fam === "bow" ? "staff" : "bow"];
-    push({ id: `forge:${fam}`, title: `${fam === "bow" ? "원정 장궁" : "수정 지팡이"} +${lv} → +${lv + 1}`, reason: fam === "bow" ? "기본 사격 + 물리 무기 다섯 — 피해 +8% · 재사용 −1.5%" : "마법 무기 다섯 — 피해 +8% · 재사용 −1.5%",
+    push({ id: `forge:${fam}`, title: `${fam === "bow" ? "참나무 장궁" : "수정 지팡이"} +${lv} → +${lv + 1}`, reason: fam === "bow" ? "기본 사격 + 물리 무기 다섯 — 피해 +8% · 재사용 −1.5%" : "마법 무기 다섯 — 피해 +8% · 재사용 −1.5%",
       currency: "gold", priority: 80 + (lower ? 2 : 0) - lv * 0.5, cost: [{ currency: "gold", amount: c.gold }, { currency: "stones", amount: c.stones }], action: { kind: "content", content: "forge" } });
   }
   // ── 사냥터: 편성 동료 레벨업 · 무기 숙련 (사냥터 골드) ──

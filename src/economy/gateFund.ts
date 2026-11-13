@@ -21,8 +21,8 @@ export const GATE_FUND_TIERS: GateFundTier[] = [
   { id: "s2", label: "2스테이지 돌파", gems: 150, done: (p) => cleared(p, 1) },
   { id: "s3", label: "3스테이지 돌파", gems: 250, done: (p) => cleared(p, 2) },
   { id: "s4", label: "4스테이지 돌파", gems: 400, done: (p) => cleared(p, 3) },
-  { id: "star6", label: "원정 별 6개", gems: 300, done: (p) => totalStars(p) >= 6 },
-  { id: "star12", label: "원정 별 12개", gems: 500, done: (p) => totalStars(p) >= 12 },
+  { id: "star6", label: "성문 별 6개", gems: 300, done: (p) => totalStars(p) >= 6 },
+  { id: "star12", label: "성문 별 12개", gems: 500, done: (p) => totalStars(p) >= 12 },
 ];
 
 export const GATE_FUND_TOTAL_GEMS = GATE_FUND_TIERS.reduce((s, t) => s + t.gems, 0);

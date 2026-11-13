@@ -10,6 +10,8 @@ import { dateKey, riftAttemptsFor, type EventSave } from "../events/eventSave";
 import { TOWER_DAILY_TICKETS } from "../game/towerTickets";
 import { EXPEDITION_MAX } from "./allies";
 import { qaUnlockOpen } from "../progression/qaUnlock";
+import { NAMES } from "../ui/names";
+import { ladderLockHint, ladderOpen, ladderStep, type LadderId } from "../progression/ladder";
 
 export type HubCardId = "dodge" | "beat" | "tower" | "rift" | "forge" | "expedition";
 export type HubGo =
@@ -34,12 +36,14 @@ export type HubCard = {
   /** 잠겼을 때 이유 */
   lockHint?: string;
   go: HubGo;
+  /** 사냥터에 더해 주는 것 — 해금 계단 표(progression/ladder.ts)의 gives (2026-11-13, 목표 1 "모두 사냥터를 강하게 해 주는 곳으로") */
+  gives?: string;
 };
 
 /** 빨간 점 상한 — 알림 폭탄 금지(카피바라 Go! 비판) */
 export const HUB_DOT_MAX = 3;
 
-export function hubCards(progress: CharacterProgress, events: EventSave, opts: { beatBest?: number; now?: number } = {}): HubCard[] {
+export function hubCards(progress: CharacterProgress, events: EventSave, opts: { beatBest?: number; now?: number; huntBest?: number } = {}): HubCard[] {
   const now = opts.now ?? Date.now();
   const today = dateKey();
   const riftMax = riftAttemptsFor(progress.patronUntil, now);
@@ -52,36 +56,48 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
   const forgeToday = progress.firstClearDates.forge === today;
   const cards: HubCard[] = [
     {
-      id: "dodge", label: "성문 방어", desc: "직접 플레이 · 50 스테이지 · 스킬 무기", feeds: ["강화석", "견갑 조각", "인장"],
+      id: "dodge", label: NAMES.dodge, desc: "직접 플레이 · 50 스테이지 · 스킬 무기", feeds: ["강화석", "견갑 조각", "인장"],
       remaining: progress.dodgeBestStage > 0 ? `최고 S${progress.dodgeBestStage} · 다음 S${progress.dodgeBestStage + 1}` : "첫 출격",
       dot: !dodgeToday, locked: !contentUnlocked(step, "dodge"), lockHint: unlockInfo("dodge", progress).hint, unlock: unlockInfo("dodge", progress), go: { kind: "content", content: "dodge" },
     },
     {
-      id: "beat", label: "비트 수련", desc: "30초~3분 기록 도전 · 스킬 슬롯 해금", feeds: ["골드", "견갑 조각", "SP"],
+      id: "beat", label: NAMES.beat, desc: "30초~3분 기록 도전 · 스킬 슬롯 해금", feeds: ["은화", "견갑 조각", "SP"],
       remaining: (opts.beatBest ?? 0) > 0 ? `최고 ${(opts.beatBest ?? 0).toLocaleString()}점` : "첫 연주",
       dot: !beatToday, locked: !contentUnlocked(step, "beat"), lockHint: unlockInfo("beat", progress).hint, unlock: unlockInfo("beat", progress), go: { kind: "content", content: "beat" },
     },
     {
-      id: "tower", label: "끝없는 성벽", desc: "죽을 때까지 층을 잇는 한 판 · 실패해도 등반권은 그대로", feeds: ["동료 조각", "방치 배율"],
+      id: "tower", label: NAMES.tower, desc: "죽을 때까지 층을 잇는 한 판 · 실패해도 등반권은 그대로", feeds: ["동료 조각", "방치 배율"],
       remaining: towerOpen ? `등반권 ${progress.towerTickets}/${TOWER_DAILY_TICKETS} · 최고 ${progress.towerBestFloor}층` : "1장 대장을 깨면 열림",
       dot: towerOpen && progress.towerTickets > 0, locked: !towerOpen, lockHint: unlockInfo("tower", progress).hint, unlock: unlockInfo("tower", progress), go: { kind: "content", content: "tower" },
     },
     {
-      id: "rift", label: "균열", desc: "방치 2시간치를 즉시 정산 · 요일마다 보상 축", feeds: ["골드", "강화석", "조각"],
+      id: "rift", label: NAMES.rift, desc: "방치 2시간치를 즉시 정산 · 요일마다 보상 축", feeds: ["은화", "강화석", "조각"],
       remaining: riftLeft > 0 ? `오늘 ${riftMax - riftLeft}/${riftMax}` : `${riftMax}/${riftMax} 완료`,
       dot: riftLeft > 0, locked: !contentUnlocked(step, "events"), lockHint: unlockInfo("events", progress).hint, unlock: unlockInfo("events", progress), go: { kind: "events", tab: "rift" },
     },
     {
-      id: "forge", label: "대장간", desc: "쌓인 골드·강화석으로 장비 제작·강화", feeds: ["장비 +1"],
+      id: "forge", label: NAMES.forge, desc: "쌓인 은화·강화석으로 장비 제작·강화", feeds: ["장비 +1"],
       remaining: forgeToday ? "오늘 강화 성공" : `강화석 ${progress.enhancementMaterials.toLocaleString()}`,
       dot: !forgeToday && progress.enhancementMaterials > 0, locked: !contentUnlocked(step, "forge"), lockHint: unlockInfo("forge", progress).hint, unlock: unlockInfo("forge", progress), go: { kind: "content", content: "forge" },
     },
     {
-      id: "expedition", label: "파견", desc: "동료를 보내 두면 시간이 지난 뒤 들고 돌아온다", feeds: ["강화석", "조각"],
+      id: "expedition", label: NAMES.dispatch, desc: "동료를 보내 두면 시간이 지난 뒤 들고 돌아온다", feeds: ["강화석", "조각"],
       remaining: activeExpeditions > 0 ? `${activeExpeditions}/${EXPEDITION_MAX} 진행 중` : `빈 자리 ${EXPEDITION_MAX}`,
       dot: activeExpeditions < EXPEDITION_MAX, locked: false, go: { kind: "tab", tab: "expedition" },
     },
   ];
+  // 해금 계단 (2026-11-13) — 사냥터 층이 모자라면 잠근다(예전 온보딩 잠금과 둘 다). 카드마다 '얻는 것'
+  const huntBest = opts.huntBest ?? progress.titanBestStage;
+  const LADDER_OF: Record<HubCardId, LadderId> = { dodge: "dodge", beat: "beat", tower: "tower", rift: "rift", forge: "forge", expedition: "expedition" };
+  for (const c of cards) {
+    const id = LADDER_OF[c.id], step = ladderStep(id);
+    c.gives = step.gives;
+    if (!ladderOpen(id, huntBest)) {
+      c.locked = true;
+      c.lockHint = ladderLockHint(id);
+      c.unlock = { done: false, label: `사냥터 STAGE ${step.stage}`, now: Math.min(step.stage, huntBest), goal: step.stage, unit: "S", hint: ladderLockHint(id) };
+    }
+  }
   // 잠긴 카드엔 점이 없다. 점은 위에서부터 최대 3개
   let dots = 0;
   for (const c of cards) {

@@ -39,7 +39,7 @@ await page.evaluate(() => document.querySelector(".exp-loadout")?.scrollIntoView
 await page.screenshot({ path: `${OUT}/04-loadout.png` });
 await page.evaluate(() => document.querySelector(".exp-skill-grid")?.scrollIntoView({ block: "start" })); await sleep(300);
 await page.screenshot({ path: `${OUT}/05-weapons.png` });
-await clickText("button", "원정"); await sleep(400);
+await clickText("button", "출전"); await sleep(400);
 // 판 시작 — 13 스테이지(2장 3칸)
 await page.evaluate(() => { const b = [...document.querySelectorAll(".cta")].find((x) => x.textContent.includes("시작")); b?.click(); }); await sleep(1500);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })); c.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })); });

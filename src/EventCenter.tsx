@@ -116,7 +116,7 @@ export function EventCenter({
     const did = (k: keyof CharacterProgress["firstClearDates"]) => (progress.firstClearDates[k] === today ? 1 : 0);
     return [
       { id: "hunt", title: "오늘 보스 처치", desc: "사냥터 보스 1마리", axis: "S", icon: "hunt" as ContentIconName, value: did("hunt"), goal: 1 },
-      { id: "pioneer", title: "오늘 성문 방어", desc: "원정 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
+      { id: "pioneer", title: "오늘 성문 방어", desc: "성문 방어 1회 완주", axis: "T", icon: "dodge" as ContentIconName, value: did("dodge"), goal: 1 },
       { id: "forge", title: "오늘 장비 강화", desc: "대장간 강화 1회 성공", axis: "M", icon: "forge" as ContentIconName, value: did("forge"), goal: 1 },
       { id: "beat", title: "오늘 비트 수련", desc: "1곡 클리어", axis: "R", icon: "beat" as ContentIconName, value: did("beat"), goal: 1 },
     ];
@@ -237,7 +237,7 @@ export function EventCenter({
     void nextProgress;
     setRiftRun({ name: rift.name, gold, exp: riftYield.exp, materials, shards: shardCount, mult: eventMult });
     setRiftMessage(
-      `공유 골드 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
+      `은화 +${formatGold(gold)} · EXP +${riftYield.exp.toLocaleString()} · 강화석 +${materials} · 동료 조각 +${shardCount}${event ? ` · ${event.name} ×${event.mult}` : ""}`,
     );
     await persist({ ...save, riftAttempts: save.riftAttempts + 1, weeklyRiftRuns: save.weeklyRiftRuns + 1 });
     // 비버 상자 (economy/chests, 2026-10-13 P2): 오늘 균열을 다 쓰면 상자 1개
@@ -373,7 +373,7 @@ export function EventCenter({
                     ? "주간 도전"
                     : id === "season"
                       ? "시즌 패스"
-                      : "원정 일지"}
+                      : "모험 일지"}
             </button>
           ))}
         </div>
@@ -429,7 +429,7 @@ export function EventCenter({
                     <i>
                       <em style={{ width: `${Math.min(100, (m.value / m.goal) * 100)}%` }} />
                     </i>
-                    <small className="journal-reward reward-row"><RewardChip kind="gold" label="골드 250" /><RewardChip kind="materials" label="강화석 2" /></small>
+                    <small className="journal-reward reward-row"><RewardChip kind="silver" label="은화 250" /><RewardChip kind="materials" label="강화석 2" /></small>
                   </div>
                   <button disabled={!done || save.claimed.includes(key)} onClick={() => void claimMission(m.id)}>
                     {save.claimed.includes(key) ? "완료" : "받기"}
@@ -470,7 +470,7 @@ export function EventCenter({
             </div>
             <div className="rift-preview">
               <div>
-                <span>공유 골드</span>
+                <span>은화</span>
                 <strong>{formatGold(Math.floor(riftYield.gold * weekdayRift().goldMult * (riftEventFor()?.mult ?? 1) * climbRiftMult(climb)))}</strong>
               </div>
               <div>
@@ -640,7 +640,7 @@ export function EventCenter({
         {tab === "journal" && (
           <section className="journal-event">
             <img className="journal-crest" src={assetUrl("ui/idle/journal.png")} alt="" aria-hidden="true" />
-            <h3>원정 일지</h3>
+            <h3>모험 일지</h3>
             <p className="journal-note">
               시즌도 리셋도 없는 누적 기록입니다. 목표를 달성하면 언제든 받을 수 있습니다.
             </p>
@@ -773,7 +773,7 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
         <i className="rift-run-bar"><em style={{ width: `${progressPct}%` }} /></i>
       </div>
       <div className={`rift-run-loot ${tl.loot ? "show" : ""}`}>
-        <RewardChip kind="gold" label={`골드 +${formatGold(run.gold)}`} />
+        <RewardChip kind="silver" label={`은화 +${formatGold(run.gold)}`} />
         <RewardChip kind="seasonXp" label={`EXP +${run.exp.toLocaleString()}`} />
         <RewardChip kind="materials" label={`강화석 +${run.materials}`} />
         <RewardChip kind="shards" label={`조각 +${run.shards}`} />
@@ -836,7 +836,7 @@ function DuelOverlay({ duel, progress, onClose }: { duel: { name: string; title:
         <b className="duel-vs">{done ? (duel.win ? "승리" : "패배") : "VS"}</b>
         <div className="duel-side foe"><b>{duel.name}</b><i className="duel-bar foe"><em style={{ width: `${(foeHp / foeMax) * 100}%` }} /></i><span>{Math.floor(duel.opponentRoll).toLocaleString()}</span></div>
       </div>
-      {done && <small className="duel-result">{duel.win ? `주간 보너스 +${duel.bonus.toFixed(2)} · 공유 코인·견갑 조각·동료 조각 획득` : "전투력을 올려 다시 도전하세요 — 장비 강화·동료 성급이 전투력을 올립니다"}</small>}
+      {done && <small className="duel-result">{duel.win ? `주간 보너스 +${duel.bonus.toFixed(2)} · 은화·견갑 조각·동료 조각 획득` : "전투력을 올려 다시 도전하세요 — 장비 강화·동료 성급이 전투력을 올립니다"}</small>}
     </div>
   );
 }

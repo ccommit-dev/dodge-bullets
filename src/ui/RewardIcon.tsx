@@ -7,7 +7,7 @@ import type { EventGrant } from "../economy/eventShop";
  */
 export type RewardIconKind =
   | "gems" | "materials" | "shards" | "cores" | "boost" | "allySkin" | "weaponFx"
-  | "gold" | "shoulderShards" | "forgeTickets" | "seasonXp";
+  | "gold" | "silver" | "shoulderShards" | "forgeTickets" | "seasonXp";
 
 const ICON_PATH: Record<RewardIconKind, string> = {
   gems: "ui/rewards/gem.png",
@@ -18,6 +18,8 @@ const ICON_PATH: Record<RewardIconKind, string> = {
   allySkin: "ui/rewards/ally-skin.png",
   weaponFx: "ui/rewards/weapon-fx.png",
   gold: "ui/attendance/gold.png",
+  /** 은화 = 공유 코인(sharedCoins) — 사냥터 골드와 다른 재화라 다른 그림(2026-11-13, 골드는 하나) */
+  silver: "ui/attendance/silver.png",
   shoulderShards: "ui/attendance/shoulder-shards.png",
   forgeTickets: "ui/rewards/forge-ticket.png",
   seasonXp: "ui/rewards/season-xp.png",

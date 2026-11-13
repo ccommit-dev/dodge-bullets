@@ -8,6 +8,7 @@
  *
  * 상태는 사냥터 저장(TitansSave.urgent)에 둔다 — 붙이고 잡는 일이 모두 사냥터 화면 안에서 일어난다. 환생해도 남는다(titans/storage rebirthResetTitans).
  */
+import { ladderStep } from "../progression/ladder";
 import { MOBS_PER_STAGE, huntingArea, killGold, monsterHp, stageClearBonus } from "./model";
 import { huntBossVariant, type MonsterArtDef } from "./bestiary";
 
@@ -24,7 +25,8 @@ export type UrgentState = {
 
 export const URGENT_KINDS: UrgentKind[] = ["login", "idle", "boss"];
 /** 사냥터 최고 층이 여기 닿아야 열린다 — 첫 5분(1~4층)은 배우는 구간이라 팝업을 더 얹지 않는다 */
-export const URGENT_OPEN_STAGE = 5;
+/** 의뢰가 붙기 시작하는 층 — 해금 계단(progression/ladder.ts) '긴급 의뢰' 칸과 같다(2026-11-13, 예전 5층은 계단보다 일러 안 보이는 의뢰가 돌았다) */
+export const URGENT_OPEN_STAGE = ladderStep("urgent").stage;
 export const URGENT_ACCEPT_MS = 15 * 60 * 1000;
 export const URGENT_BOSS_KILLS = 3;
 export const URGENT_HP_RATE = 0.55;

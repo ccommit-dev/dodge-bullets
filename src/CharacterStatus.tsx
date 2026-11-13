@@ -301,8 +301,8 @@ export function CharacterStatus({
           <i className="character-exp"><b style={{ width: `${levelProgress.ratio * 100}%` }} /></i>
         </div>
         <div className="character-quick-stats">
-          <span><b>{Math.max(coins, progress.sharedCoins).toLocaleString()}</b> 공용 코인</span>
-          <span><b>{titans.gold.toLocaleString()}</b> 사냥 골드</span>
+          <span><b>{Math.max(coins, progress.sharedCoins).toLocaleString()}</b> 은화</span>
+          <span><b>{titans.gold.toLocaleString()}</b> 골드</span>
           <span><b>{Math.max(beat?.sp ?? 0, progress.skillPoints)}</b> 스킬 포인트</span>
         </div>
         {/* 방치 수급 — 전에는 허브 전장 위 카드에 있었다. 전투 화면이 아니라 성장 수치를 보는 곳에 둔다 (2026-09-21) */}
@@ -313,7 +313,7 @@ export function CharacterStatus({
             <div className="character-idle-yield">
               <span className="character-idle-head">자동 사냥 <em>시간당</em></span>
               <span className="character-idle-chips">
-                <span><b>+{perHour.gold.toLocaleString()}</b>골드</span>
+                <span><b>+{perHour.gold.toLocaleString()}</b>은화</span>
                 <span><b>+{perHour.exp.toLocaleString()}</b>EXP</span>
                 <span><b>+{perHour.materials.toLocaleString()}</b>강화석</span>
               </span>
@@ -600,11 +600,11 @@ export function CharacterStatus({
         <button type="button" className="status-card status-wealth" onClick={() => onOpenContent("dodge")}>
           <ContentIcon name="dodge" className="status-icon" />
           <span className="status-copy">
-            <small>재화 원정</small>
-            <strong>코인 {Math.max(coins, progress.sharedCoins).toLocaleString()}</strong>
+            <small>성문 방어</small>
+            <strong>은화 {Math.max(coins, progress.sharedCoins).toLocaleString()}</strong>
             <em>재료 {progress.enhancementMaterials} · 최고 점수 {Math.max(highScore, progress.dodgeBestScore).toLocaleString()}</em>
           </span>
-          <span className="status-enter">원정하기 ›</span>
+          <span className="status-enter">출전하기 ›</span>
         </button>
 
         <button type="button" className="status-card status-hunt" onClick={() => onOpenContent("titans")}>

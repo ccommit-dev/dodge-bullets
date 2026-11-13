@@ -30,10 +30,15 @@ async function boot({ w = 390, h = 844, stage = 8, heroLv = 60, rank = 0 } = {})
 const prog = () => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "{}"), `dodgebullets:progression:v1:${H}`);
 const hunt = () => page.evaluate(() => window.__huntState?.());
 const waitFor = async (fn, ms = 8000, step = 100) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await sleep(step); } return null; };
-const look = () => page.evaluate(() => {
+// 우편함 (2026-11-13) — 전장 알림 줄은 '다음 목표' 한 줄, 나머지 알림은 우편함. 읽기는 개발 훅, 누르기는 단추 → 그 줄
+const inboxOf = (p = page) => p.evaluate(() => window.__huntState?.()?.inbox ?? []);
+const inboxText = async (key, p = page) => { const it = (await inboxOf(p)).find((i) => i.key === key); return it ? `${it.small} ${it.title}` : null; };
+const clickInbox = async (key, p = page) => { await p.evaluate(() => document.querySelector(".inbox-btn")?.click()); await new Promise((r) => setTimeout(r, 250)); const hit = await p.evaluate((k) => { const b = document.querySelector(`.inbox-sheet [data-key="${k}"]`); b?.click(); if (!b) document.querySelector(".inbox-sheet .inbox-close")?.click(); return !!b; }, key); await new Promise((r) => setTimeout(r, 200)); return hit; };
+const look = async () => ({ ...(await lookDom()), alert: await inboxText("promo") });
+const lookDom = () => page.evaluate(() => {
   const q = (s) => document.querySelector(s);
   return {
-    alert: q(".promo-alert")?.textContent ?? null, firstAlert: q(".battle-alert-stack > .battle-alert")?.className ?? null,
+    firstAlert: q(".battle-alert-stack > .battle-alert")?.className ?? null,
     h1: q(".titans-stagebar.in-field h1")?.textContent.replace(/\s+/g, " ").trim() ?? "", timer: q(".titans-boss-timer")?.textContent.trim() ?? null,
     art: q(".titans-monster .monster-asset-current")?.dataset.src ?? "", name: q(".titans-monster strong, .titans-monster .monster-name")?.textContent ?? null,
     marker: q(".titans-hero .hero-marker b")?.textContent ?? null, fieldClass: q(".titans-field")?.className ?? "", toast: q(".titans-toast")?.textContent ?? null,
@@ -45,16 +50,10 @@ const clickGo = () => waitFor(() => page.evaluate(() => { const b = document.que
 await boot({ stage: 8 });
 const l1 = await waitFor(async () => { const v = await look(); return v.alert ? v : null; }, 5000);
 ok("최고 8층 · 0등급이면 승급전 알림", !!l1 && /승급전/.test(l1.alert) && /청동 파수꾼/.test(l1.alert), JSON.stringify(l1));
-// 귀환 정산 · 루틴 보상이 있으면 그 뒤 — 알림 줄은 첫 칸만 보여 맨 위에 두면 그 둘을 가린다(2026-11-11)
-const order = await page.evaluate(() => [...document.querySelectorAll(".battle-alert-stack > .battle-alert")].map((b) => b.className));
-// 승급전 앞에 와야 하는 것: 귀환 정산(claim) · 루틴 보상(reward) · 받을 보상 추천(tone-claim). 성장 알림(tone-grow 등)보다는 앞
-const pi = order.findIndex((c) => c.includes("promo-alert"));
-// 알림 줄은 같은 블록을 두 번 그린다(기존 코드, 첫 칸만 보인다) — 종류마다 첫 위치로 비교
-const firstOf = (re) => order.findIndex((c) => !c.includes("promo") && !c.includes("hottime") && re.test(c));
-const lastBefore = Math.max(firstOf(/(^| )claim( |$)/), firstOf(/(^| )reward( |$)/), firstOf(/tone-claim/));
-const firstGrow = order.findIndex((c) => /tone-(?!claim)/.test(c) && !c.includes("tone-buy"));
-ok("승급전 알림은 정산 · 루틴 보상 · 받을 보상 뒤, 성장 알림 앞", pi > lastBefore && (firstGrow < 0 || pi < firstGrow), JSON.stringify(order));
-await page.evaluate(() => document.querySelector(".promo-alert")?.click()); await sleep(300);
+// 전장 알림 줄은 '다음 목표' 한 줄뿐 — 승급전은 우편함(정산 · 루틴 · 받을 보상이 가려지던 문제가 사라졌다, 2026-11-13)
+const stack = await page.evaluate(() => [...document.querySelectorAll(".battle-alert-stack > .battle-alert")].map((b) => b.className));
+ok("전장 알림 줄은 한 줄(다음 목표) · 승급전은 우편함", stack.length <= 1 && !stack.some((c) => c.includes("promo")) && !!(await inboxText("promo")), JSON.stringify(stack));
+await clickInbox("promo"); await sleep(100);
 const poster = await page.evaluate(() => {
   const p = document.querySelector('[data-promo="poster"]'); if (!p) return null;
   const b = p.getBoundingClientRect(), img = p.querySelector(".urgent-portrait img");
@@ -91,7 +90,7 @@ if (OUT) await page.screenshot({ path: `${OUT}/promo-won.png` });
 // ── 3. 약하면 진다 — 잃는 것 없음 ──
 await boot({ stage: 40, heroLv: 1, rank: 3 });
 await waitFor(async () => (await look()).alert, 5000);
-await page.evaluate(() => document.querySelector(".promo-alert")?.click()); await sleep(300);
+await clickInbox("promo"); await sleep(100);
 const before3 = await prog();
 await clickGo();
 await waitFor(async () => (await hunt())?.special === "promotion", 6000, 40);
@@ -103,14 +102,14 @@ const after3 = await prog(), l3 = await look();
 ok("등급 · 보석 그대로 · 알림이 다시 뜬다", after3.heroRank === 3 && after3.redGems === before3.redGems && /미스릴 집행관/.test(l3.alert ?? ""), `${after3.heroRank} · ${l3.alert}`);
 
 // ── 4. 나중에 → 이번 접속 동안 숨김 ──
-await page.evaluate(() => document.querySelector(".promo-alert")?.click()); await sleep(300);
+await clickInbox("promo"); await sleep(100);
 await page.evaluate(() => document.querySelector(".promo-poster .urgent-later")?.click()); await sleep(300);
 ok("'나중에' 면 알림을 숨긴다", !(await look()).alert);
 
 // ── 5. 작은 화면 ──
 await boot({ w: 375, h: 553, stage: 8 });
 await waitFor(async () => (await look()).alert, 5000);
-await page.evaluate(() => document.querySelector(".promo-alert")?.click()); await sleep(300);
+await clickInbox("promo"); await sleep(100);
 const fit = await page.evaluate(() => { const p = document.querySelector('[data-promo="poster"]'); if (!p) return null; const b = p.getBoundingClientRect(), go = p.querySelector(".urgent-go").getBoundingClientRect(); return { inView: b.top >= 0 && b.bottom <= innerHeight, goIn: go.bottom <= innerHeight, scroll: p.scrollHeight > p.clientHeight + 1 }; });
 ok("375×553: 전단 · 도전 단추가 화면 안(스크롤 없이)", !!fit?.inView && !!fit?.goIn && !fit?.scroll, JSON.stringify(fit));
 if (OUT) await page.screenshot({ path: `${OUT}/promo-poster-se.png` });

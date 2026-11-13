@@ -29,7 +29,7 @@ async function boot(treasureRuns) {
   await sleep(500);
   await clickText(".titans-bottom-nav button", "모험"); await sleep(400);
   await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1500);
-  await clickText(".exp-menu-tabs button", "원정"); await sleep(600);
+  await clickText(".exp-menu-tabs button", "출전"); await sleep(600);
 }
 const chip = () => page.evaluate(() => { const n = document.querySelector('[data-branch="1-T"]'); return n ? { text: n.querySelector(".route-treasure-left")?.textContent ?? null, spent: !!n.querySelector(".route-treasure-left.spent"), fs: n.querySelector(".route-treasure-left") ? parseFloat(getComputedStyle(n.querySelector(".route-treasure-left")).fontSize) : 0 } : null; });
 const prog = () => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "{}"), `dodgebullets:progression:v1:${H}`);

@@ -165,7 +165,7 @@ export function SkillPanel({
                         <header>
                           <img src={assetUrl("ui/idle/gate-fund.png")} alt="" aria-hidden="true" />
                           <span>
-                            <b>성문 원정 기금 <i>영구</i></b>
+                            <b>성문 기금 <i>영구</i></b>
                             <em>모두 달성 시 보석 {GATE_FUND_TOTAL_GEMS.toLocaleString()}{shop.fundRatio ? ` · 같은 금액 보석팩의 ×${shop.fundRatio.toFixed(1)}` : ""}</em>
                           </span>
                         </header>
@@ -202,7 +202,7 @@ export function SkillPanel({
           {/* 보급창 — 가이드: "영구 강화는 구매해야 효과가 있다. 완벽한 해금을 기다리며
               자원을 쌓아 두기만 하면 성장만 늦어진다." 인장을 지금 쓰는 자리 */}
           <section>
-            <b>원정 보급창 <small>다음 출격에 자동으로 쓰입니다</small></b>
+            <b>성문 보급창 <small>다음 출격에 자동으로 쓰입니다</small></b>
             <ul className="exp-supply-list">
               {SUPPLIES.map((sp) => {
                 const have = supplies[sp.id] ?? 0;
@@ -265,10 +265,10 @@ export function SkillPanel({
       ) : (<>
 
       {tab === "chips" && (<>
-      {/* 원정 칩 — 가이드의 영구 성장 2순위. 랜덤에 좌우되지 않는 고정 패시브이고,
+      {/* 성문 칩 — 가이드의 영구 성장 2순위. 랜덤에 좌우되지 않는 고정 패시브이고,
           스킬과 **같은 인장**을 쓰므로 "지금 무엇에 먼저 쓸까"라는 선택이 생긴다 (2026-09-28) */}
       <div className="exp-chip-row">
-        <b>원정 칩 <small>슬롯 {chipSlots}/3</small></b>
+        <b>성문 칩 <small>슬롯 {chipSlots}/3</small></b>
         <div className="exp-chip-slots">
           {[0, 1, 2].map((i) => {
             const open = i < chipSlots;
@@ -526,13 +526,13 @@ export function SkillPanel({
               <div className="exp-skill-cost">
                 <span className={gold >= cost.gold ? "" : "short"}>
                   {/* 재화는 코인·그 스킬의 조각 — 코인은 전용 아이콘이 없어 글자로 쓴다 */}
-                  <em>코인</em>
+                  <em>은화</em>
                   {maxed ? "—" : `${gold.toLocaleString()}/${cost.gold.toLocaleString()}`}
                 </span>
                 {lv === 0 ? (
                   // 학습 — 조각이 아니라 원정 인장. 조각은 이 스킬을 쓴 판에서 나오므로 배우기 전엔 없다
                   <span className={seals >= cost.seals ? "" : "short"}>
-                    <em>원정 인장</em>
+                    <em>성문 인장</em>
                     {`${seals}/${cost.seals}`}
                   </span>
                 ) : (

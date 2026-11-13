@@ -38,8 +38,8 @@ export async function shareCardExtras(userHash: string, progress: CharacterProgr
   const routes = BRANCHES.filter((b) => (progress.dodgeBranches[b.id] ?? 0) >= 1).length;
   const stats = [
     { label: "모험가", value: `Lv.${progress.level}` },
-    { label: "원정 진척", value: `${cleared}/${STAGES.length} · 갈림길 ${routes}` },
-    { label: "원정 별", value: `★ ${stars}/${STAGES.length * 3}` },
+    { label: "성문 진척", value: `${cleared}/${STAGES.length} · 갈림길 ${routes}` },
+    { label: "성문 별", value: `★ ${stars}/${STAGES.length * 3}` },
     progress.towerBestFloor > 0 ? { label: "끝없는 성벽", value: `${progress.towerBestFloor}층` } : { label: "사냥터 최고", value: `Stage ${progress.titanBestStage}` },
   ];
   return { allies, items, stats };

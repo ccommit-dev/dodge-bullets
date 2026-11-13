@@ -62,7 +62,7 @@ export type DailyDef = {
 export const DAILIES: DailyDef[] = [
   { id: "intercept", name: "스킬로 몬스터 40마리 처치", goal: 40, seals: 6 },
   { id: "epic", name: "에픽 강화 카드 1장 획득", goal: 1, seals: 8 },
-  { id: "clear", name: "원정 스테이지 2회 클리어", goal: 2, seals: 5 },
+  { id: "clear", name: "성문 방어 스테이지 2회 클리어", goal: 2, seals: 5 },
 ];
 
 export const DAILY_BY_ID: Record<DailyId, DailyDef> =

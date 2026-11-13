@@ -59,7 +59,7 @@ await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(1500); await c
 // 성문 방어 전투
 await clickText(".titans-bottom-nav button", "모험"); await sleep(500);
 await clickText(".nav-popup-grid button", "성문 방어"); await sleep(1800);
-await clickText(".exp-menu-tabs button", "원정"); await sleep(500);
+await clickText(".exp-menu-tabs button", "출전"); await sleep(500);
 await clickText("button", "스테이지"); await sleep(2000);
 await page.evaluate(() => { const c = document.querySelector("canvas"); if (!c) return; const r = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height * 0.8, pointerId: 1, pointerType: "touch" })); });
 await sleep(5000);

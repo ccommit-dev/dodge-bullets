@@ -264,6 +264,8 @@ export type CharacterProgress = {
   treasureRuns: TreasureRuns;
   /** 댐 방어전 동료 출격 (game/supportAlly.ts, 2026-11-11) — 편성 동료 중 하나. 없으면 null */
   supportAlly: TitanHeroId | null;
+  /** 해금 계단(progression/ladder.ts)에서 이미 알린 칸 수 — −1 은 아직 안 맞춘 옛 저장(조용히 맞춘다) */
+  ladderSeen: number;
 };
 
 export function expForLevel(level: number): number {
@@ -398,6 +400,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     climb: emptyClimb(),
     treasureRuns: emptyTreasureRuns(),
     supportAlly: null,
+    ladderSeen: -1,
     discovered: [],
     discoverySeeded: false,
     eventCoins: 0,
@@ -826,6 +829,7 @@ export function normalizeCharacterProgress(
     heroRank: normalizeHeroRank((raw as { heroRank?: unknown }).heroRank),
     climb: normalizeClimb((raw as { climb?: unknown }).climb),
     treasureRuns: normalizeTreasureRuns((raw as { treasureRuns?: unknown }).treasureRuns),
+    ladderSeen: typeof (raw as { ladderSeen?: unknown }).ladderSeen === "number" && Number.isFinite((raw as { ladderSeen: number }).ladderSeen) ? Math.max(-1, Math.floor((raw as { ladderSeen: number }).ladderSeen)) : -1,
     supportAlly: typeof (raw as { supportAlly?: unknown }).supportAlly === "string" && ALLY_IDS.includes((raw as { supportAlly: string }).supportAlly as TitanHeroId) ? (raw as { supportAlly: TitanHeroId }).supportAlly : null,
     discovered: normalizeDiscovered((raw as { discovered?: unknown }).discovered),
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,

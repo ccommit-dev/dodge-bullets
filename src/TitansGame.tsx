@@ -82,7 +82,9 @@ import { canChallengeRank, guardianFace, guardianHp, heroRankAtkMul, heroRankDef
 import { PromotionPoster } from "./titans/PromotionPoster";
 import { ClimbPoster } from "./titans/ClimbPoster";
 import { CLIMB_OPEN_EVENT, afterClimb, canClimbToday, climbClearsToday, climbFace, climbHp, climbReward, climbStage } from "./titans/riftClimb";
-import { UrgentBadge, UrgentPoster } from "./titans/UrgentPoster";
+import { UrgentPoster } from "./titans/UrgentPoster";
+import { LADDER, ladderCount, ladderLockHint, ladderOpen, nextLadder, type LadderId } from "./progression/ladder";
+import "./ui/focus.css";   // 2026-11-13 정리 — 다음 목표 한 줄 · 우편함 · 잠긴 탭
 import { trialCeiling, trialDpsMul } from "./titans/trialAlly";
 import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
@@ -236,7 +238,7 @@ const MANAGEMENT_PAGE_COPY: Partial<Record<ShopTab, { kicker: string; title: str
   expedition: { kicker: "EXPEDITION", title: "파견", desc: "벤치 동료를 보내 두면 시간이 지난 뒤 조각·강화석을 들고 돌아옵니다." },
   heroes: { kicker: "ALLY ARCHIVE", title: "동료", desc: "보유 동료를 편성하고 역할·속성·성급을 관리하세요." },
   premium: { kicker: "PREMIUM SHOP", title: "상점", desc: "재화, 성장 패키지, 동료와 외형 상품을 확인하세요." },
-  "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "원정 시즌 한정 보급품과 성장 재료를 교환하세요." },
+  "event-shop": { kicker: "LIMITED EVENT", title: "이벤트 상점", desc: "성문 시즌 한정 보급품과 성장 재료를 교환하세요." },
   "event-shop2": { kicker: "SPECIAL SUPPLY", title: "특별 상점", desc: "주간 도전과 출석을 위한 기간 한정 패키지입니다." },
 };
 type PremiumCategory = "currency" | "package" | "relic" | "skill" | "ally" | "chest" | "title" | "weapon" | "pet" | "mount" | "gear";
@@ -355,7 +357,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   if (import.meta.env.DEV) { const w = window as unknown as { __titansRenders?: number }; w.__titansRenders = (w.__titansRenders ?? 0) + 1; }   // scripts/_probe-render.mjs
   const [save, setSave] = useState<TitansSave>(() => defaultTitansSave());
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<ShopTab>(initialTab ?? "sword");
+  const [tab, setTabRaw] = useState<ShopTab>(initialTab ?? "sword");
   /** 가로 화면의 장비 성장·스킬 서랍 (2026-10-15, 사용자: "가로모드에 장비성장 스킬 ui 가 하단으로 빠지고 맵이 잘 보이게") — 세로에선 쓰지 않는다 */
   const [growthOpen, setGrowthOpen] = useState(false);
   const [premiumCategory, setPremiumCategory] = useState<PremiumCategory>("currency");
@@ -617,7 +619,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [encounterMotion, setEncounterMotion] = useState({ heroLeft: 27, monsterRight: 8, monsterJit: 0, durationMs: 1250, seq: 0, laneL: 0, laneR: 0, wide: false, partyMeetRight: 8, partyMl: 0.22 });
 
   const saveRef = useRef(save);
+  /** 우편함 목록 — 개발 훅(__huntState.inbox)이 읽는다 */
+  const inboxRef = useRef<Array<{ key: string; small: string; title: string; cls: string }>>([]);
   const characterRef = useRef(character);
+  // ── 해금 계단 관문 (2026-11-13) — 탭 이동 · 콘텐츠 열기는 모두 여기를 지난다. 다음 목표 · 추천 · 구매 추천 · 루틴이 잠긴 탭을 열던 길을 막는다 ──
+  const ladderBest = () => Math.max(characterRef.current.titanBestStage, saveRef.current.bestStage);
+  const TAB_LADDER: Partial<Record<ShopTab, LadderId>> = { quest: "quest", heroes: "allies", skills: "skills", relic: "relic", hub: "dodge", expedition: "expedition", premium: "events", "event-shop": "events", "event-shop2": "events" };
+  const setTab = (t: ShopTab) => {
+    const id = TAB_LADDER[t];
+    if (id && !ladderOpen(id, ladderBest())) { flash(ladderLockHint(id), 2600); return; }
+    setTabRaw(t);
+  };
+  const CONTENT_LADDER: Record<string, LadderId | undefined> = { dodge: "dodge", beat: "beat", forge: "forge", tower: "tower" };
+  const openContent: typeof onOpenContent = (c) => {
+    const id = CONTENT_LADDER[c as string];
+    if (id && !ladderOpen(id, ladderBest())) { flash(ladderLockHint(id), 2600); return; }
+    onOpenContent(c);
+  };
   const waveRef = useRef(wave);
   const bossRef = useRef(boss);
   const chestRef = useRef(chesterson);
@@ -781,7 +799,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // DEV 훅 (2026-10-14) — 시그니처 부가 효과 실검사(shoot-all-allies)가 대장 제한 시간·정지 시각을 읽는다. 출시 번들엔 없다
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, urgent: specialRef.current?.kind === "urgent" ? specialRef.current.urgent : null, special: specialRef.current?.kind ?? null, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
+    (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ inbox: inboxRef.current.map(({ key, small, title, cls }) => ({ key, small, title, cls })), now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, urgent: specialRef.current?.kind === "urgent" ? specialRef.current.urgent : null, special: specialRef.current?.kind ?? null, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
     (window as unknown as { __huntDmgReset?: () => void }).__huntDmgReset = () => { devDmgRef.current = {}; };
     return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; delete (window as unknown as { __huntDmgReset?: unknown }).__huntDmgReset; };
   }, []);
@@ -3241,7 +3259,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     // 소환(0→1)은 항상 1레벨 — 일괄 수량은 레벨업에만 적용된다
     const quote =
       lv === 0
-        ? { count: save.gold >= def.baseCost ? 1 : 0, cost: def.baseCost }
+        ? { count: save.gold >= heroUpgradeCost(def, 0) ? 1 : 0, cost: heroUpgradeCost(def, 0) }   // 카드에 보이는 값과 같게(2026-11-13 — 예전엔 원가 baseCost 를 받았다)
         : bulkUpgradeQuote((l) => heroUpgradeCost(def, l), lv, save.gold, buyAmount);
     if (quote.count === 0) return;
     sfxUpgrade();
@@ -3451,7 +3469,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   // 승급전 — 다음 등급 문턱에 닿았으면 (titans/promotion.ts)
   const promoNext = ready && canChallengeRank(character.heroRank, Math.max(save.bestStage, character.titanBestStage)) ? nextHeroRank(character.heroRank) : null;
   // 승급전 알림 칸 — 알림 줄 두 자리 중 하나에 놓인다(아래 battle-alert-stack)
-  const promoAlert = promoNext && !boss && !specialFight && !dismissedAlerts.includes(`promo:${promoNext.rank}`) ? (
+  const promoAlert = promoNext && !boss && !specialFight && !dismissedAlerts.includes(`promo:${promoNext.rank}`) && ladderOpen("promotion", Math.max(character.titanBestStage, save.bestStage)) ? (
       <button type="button" className="battle-alert reward promo-alert" onClick={() => setPromoOpen(true)}>
         <small>승급전</small><b>{promoNext.title} 도전</b><i>›</i>
       </button>
@@ -3828,6 +3846,22 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const expeditionsDone = character.expeditions.filter((e) => e.endsAt <= Date.now()).length;
 
   // 다음 목표 3종 (점검표 #3): 동료 합류 · 스킬 학습 · 지역 개척 — 남은 거리를 항상 보여준다
+  // 해금 계단 (progression/ladder.ts, 2026-11-13) — 사냥터 최고 층(환생해도 줄지 않는다)이 시스템을 하나씩 연다
+  const huntBest = Math.max(character.titanBestStage, save.bestStage);
+  // 새 칸이 열리면 한 번 알린다. 처음 보는 저장(ladderSeen −1)은 조용히 맞춘다 — 이미 지난 저장에 안내가 줄줄이 뜨지 않게
+  useEffect(() => {
+    if (!ready) return;
+    const count = ladderCount(huntBest);
+    if (character.ladderSeen === count) return;
+    const opened = character.ladderSeen >= 0 && count > character.ladderSeen ? LADDER.slice(character.ladderSeen, count) : [];
+    void updateCharacterProgress(userHash, (c) => ({ ...c, ladderSeen: ladderCount(Math.max(c.titanBestStage, huntBest)) })).then(setCharacter);
+    if (opened.length) flash(`새로 열림 · ${opened.map((s) => s.name).join(" · ")} — 얻는 것: ${opened[opened.length - 1].gives}`, 3600, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, huntBest, character.ladderSeen]);
+  const openEvents = (t: Parameters<NonNullable<typeof onOpenEvents>>[0]) => {
+    if (!ladderOpen("events", huntBest)) { flash(ladderLockHint("events"), 2600); return; }
+    onOpenEvents?.(t);
+  };
   const nextGoals = useMemo(() => {
     // 2026-10-28 스테이지 해금 없음 — 아직 없는 동료 중 골드로 가장 싸게 부를 수 있는 동료(뽑기로도 만난다)
     const nextAlly = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && SHOP_ALLY_GEM_COST[h.id] === undefined)
@@ -3835,16 +3869,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const nextSkill = SKILLS.find((sk) => !save.skillInventory.learned.includes(sk.id));
     const ceiling = stageCeilingFor(character.pioneeredArea);
     const areaName = nextAreaName(character.pioneeredArea);
-    const goals: { id: string; label: string; value: string; ratio: number; done: boolean; onClick: () => void }[] = [];
+    const goals: { id: string; label: string; value: string; ratio: number; done: boolean; onClick: () => void; lock?: LadderId }[] = [];
     if (nextAlly) {
-      const reachable = save.gold >= nextAlly.baseCost;
+      const reachable = save.gold >= heroUpgradeCost(nextAlly, 0);
       goals.push({
         id: "ally",
         label: "다음 동료",
-        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · ${formatGold(nextAlly.baseCost)}G`,
-        ratio: reachable ? 1 : save.gold / Math.max(1, nextAlly.baseCost),
+        value: reachable ? `${nextAlly.name} 소환 가능` : `${nextAlly.name} · ${formatGold(heroUpgradeCost(nextAlly, 0))}G`,
+        ratio: reachable ? 1 : save.gold / Math.max(1, heroUpgradeCost(nextAlly, 0)),
         done: reachable,
         onClick: () => setTab("heroes"),
+        lock: "allies",
       });
     }
     if (nextSkill) {
@@ -3856,6 +3891,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         ratio: ok ? 1 : Math.min(skillPoints / nextSkill.learnSpCost, save.skillInventory.skillCores / Math.max(1, nextSkill.learnCoreCost)),
         done: ok,
         onClick: () => setTab("skills"),
+        lock: "skills",
       });
     }
     if (areaName) {
@@ -3865,7 +3901,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         value: save.stage >= ceiling ? `${areaName} · 성문 방어 필요` : `${areaName} · STAGE ${ceiling}까지 ${ceiling - save.stage}`,
         ratio: Math.min(1, save.stage / ceiling),
         done: save.stage >= ceiling,
-        onClick: () => (contentUnlocked(character.onboardingStep, "dodge") ? onOpenContent("dodge") : flash(LOCK_HINT.dodge)),
+        onClick: () => (contentUnlocked(character.onboardingStep, "dodge") ? openContent("dodge") : flash(LOCK_HINT.dodge)),
+        lock: "dodge",
       });
     }
     return goals;
@@ -3879,7 +3916,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     void loadBeatRpg(userHash).then((r) => { if (alive) setBeatBestScore(bestScoreOverall(r)); });
     return () => { alive = false; };
   }, [tab, userHash]);
-  const hubCardList = useMemo(() => hubCards(character, events, { beatBest: beatBestScore, now: nowTick }), [character, events, beatBestScore, nowTick, qaOpen]);
+  const hubCardList = useMemo(() => hubCards(character, events, { beatBest: beatBestScore, now: nowTick, huntBest: Math.max(character.titanBestStage, save.bestStage) }), [character, events, beatBestScore, nowTick, qaOpen]);
   const routineReward = routineRewardAvailable(character, routine);
   // 핫타임 보급 — 받을 수 있으면 알림 줄 맨 끝(다른 알림이 없을 때만 보인다)
   const hotClaim = claimableHotTime(events.claimed, dateKey(), new Date(nowTick));
@@ -3892,9 +3929,32 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const adviceTop = useMemo(() => topAffordable(advice, 3), [advice]);
   const adviceGoal = useMemo(() => (adviceTop.length ? null : closestGoal(advice)), [advice, adviceTop]);
   const [adviceOpen, setAdviceOpen] = useState(false);
+  // ── 다음 목표 한 줄 · 우편함 (2026-11-13, 사용자 목표 4 "화면에 다음 목표 한 줄만, 나머지 알림은 우편함 하나로") ──
+  // 예전 알림 줄은 일곱 종류가 한 칸을 두고 다퉜다(같은 블록이 두 번씩 그려지기도). 이제 전장엔 다음 목표 한 줄, 나머지는 우편함 목록
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const dismiss = (key: string) => setDismissedAlerts((items) => [...items, key]);
+  const inboxItems: Array<{ key: string; small: string; title: string; cls: string; run: () => void }> = [];
+  for (const item of routine) if (item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)) inboxItems.push({ key: `claim:${item.detail}`, small: "귀환 정산", title: item.detail, cls: "battle-alert claim", run: () => { dismiss(`routine:${item.id}:${item.detail}`); runRoutine(item); } });
+  if (routineReward && !dismissedAlerts.includes(`routine-reward:${character.routineClaimedDate}`)) inboxItems.push({ key: "routine-reward", small: "일일 루틴", title: `보상 받기 · 보석 ${ROUTINE_REWARD_GEMS}`, cls: "battle-alert reward", run: () => { dismiss(`routine-reward:${character.routineClaimedDate}`); void claimRoutine(); } });
+  if (recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`)) inboxItems.push({ key: "recommend", small: recommendation.tone === "claim" ? "받을 보상" : "성장 알림", title: recommendation.title, cls: `battle-alert tone-${recommendation.tone}`, run: () => { dismiss(`recommend:${recommendation.title}`); runAction(recommendation.action); } });
+  if (promoAlert && promoNext) inboxItems.push({ key: "promo", small: "승급전", title: `${promoNext.title} 도전`, cls: "battle-alert reward promo-alert", run: () => setPromoOpen(true) });
+  if (urgentNow && !boss && ladderOpen("urgent", huntBest)) { const left = Math.max(0, urgentNow.deadline - nowTick); inboxItems.push({ key: "urgent", small: "긴급 의뢰", title: `현상범 · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} 남음`, cls: "battle-alert reward urgent-alert", run: () => setUrgentOpen(true) }); }
+  if (adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`)) inboxItems.push({ key: "advice", small: `구매 추천${adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}`, title: adviceTop[0].title, cls: "battle-alert tone-buy advice-alert", run: () => setAdviceOpen(true) });
+  if (hotClaim && ladderOpen("events", huntBest) && !dismissedAlerts.includes(`hottime:${hotClaim.id}:${dateKey()}`)) inboxItems.push({ key: "hottime", small: "핫타임", title: `${hotClaim.label} · 보석 ${hotClaim.gems}`, cls: "battle-alert reward hottime-alert", run: () => { dismiss(`hottime:${hotClaim.id}:${dateKey()}`); openEvents("daily"); } });
+  inboxRef.current = inboxItems;
+  // 다음 목표 — ① 지금 바로 되는 목표(소환 · 학습) ② 다음 해금 계단(사냥터 층) ③ 남은 목표(다음 지역 등)
+  const nextLine = (() => {
+    const open = nextGoals.filter((g) => !dismissedAlerts.includes(`goal:${g.id}:${g.value}`) && (!g.lock || ladderOpen(g.lock, huntBest)));
+    const now = open.find((g) => g.done);
+    if (now) return { small: now.label, text: now.value, cls: "battle-alert goal done", run: () => { dismiss(`goal:${now.id}:${now.value}`); now.onClick(); } };
+    const step = nextLadder(huntBest);
+    if (step) return { small: "다음 열림", text: `STAGE ${step.stage} · ${step.name} — ${step.gives}`, cls: "battle-alert goal ladder-goal", run: () => flash(ladderLockHint(step.id), 2600) };
+    const g = open[0];
+    return g ? { small: g.label, text: g.value, cls: "battle-alert goal", run: () => { dismiss(`goal:${g.id}:${g.value}`); g.onClick(); } } : null;
+  })();
   const runAdvice = (a: AdviceAction) => {
     setAdviceOpen(false);
-    if (a.kind === "content") onOpenContent(a.content);
+    if (a.kind === "content") openContent(a.content);
     else if (a.tab === "gacha") openAllyDraw();
     else setTab(a.tab);
   };
@@ -3911,7 +3971,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     [character, save.stage, save.skillInventory.equipped],
   );
   const runAction = (action: RecommendAction) => {
-    if (action.kind === "content") onOpenContent(action.content);
+    if (action.kind === "content") openContent(action.content);
     else if (action.kind === "tab") setTab(action.tab);
     else if (action.kind === "events") {
       if (onOpenEvents) onOpenEvents(action.tab);
@@ -4043,13 +4103,15 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   return (
     <div className={`titans-layer ${lowFxRef.current || lowFxOn() ? "perf-low" : ""} ${recommendation ? "has-recommend" : ""} ${MANAGEMENT_PAGE_COPY[tab] ? "is-management-page" : ""} page-${tab} ${navPopup ? "has-popup" : ""} ${growthOpen ? "growth-open" : ""}`} style={pad}>
       <header className="titans-header">
-        <button type="button" className="titans-back" onClick={() => onOpenContent("profile")}>
+        <button type="button" className="titans-back" onClick={() => openContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${heroPortrait()})`, backgroundSize:"cover", backgroundPosition:"center" }} />
           <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
         </button>
         {/* 환생 단추 (2026-11-03, 사용자: "마이페이지 오른쪽 여백에 환생하기 버튼 · 오버시 조건 요약") — 올리면(터치는 누르면) 조건 요약. 첫 탭이 바로 환생하지 않게 요약 안 단추로 진행 */}
         {(() => {
           const wall = rebirthWallStatus(character, save.stage), gains = rebirthGains(character);
+          // 환생 단추는 의미가 생길 때만(2026-11-13 정리 목표 7) — 벽에 막혀 본 적이 있거나 · 환생해 봤거나 · 사냥터 26층 이상. 초반엔 늘 0/2 였다
+          if (!(wall.have > 0 || character.rebirthCount > 0 || huntBest >= 26 || qaOpen)) return null;
           return (
             <div ref={rebirthTipRef} className={`header-rebirth ${wall.ready ? "ready" : ""} ${rebirthTip ? "open" : ""}`}>
               <button type="button" className="header-rebirth-btn" aria-expanded={rebirthTip} aria-label={`환생 ${wall.have}/${wall.need}`} onClick={() => { setRebirthTip((v) => !v); setRebirthArm(false); }}>
@@ -4066,7 +4128,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     {rebirthArm ? "정말 환생하기 (사냥터 초기화)" : "환생하기"}
                   </button>
                 ) : (
-                  <button type="button" className="header-rebirth-go" onClick={() => onOpenContent("profile")}>자세히</button>
+                  <button type="button" className="header-rebirth-go" onClick={() => openContent("profile")}>자세히</button>
                 )}
               </div>
             </div>
@@ -4144,7 +4206,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             )}
             {idlePreview && !idleReport && (
               <span className="idle-preview-chip" title="지금 닫아도 원정대가 8시간 동안 사냥합니다">
-                지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)}G
+                지금 닫아도 8시간 후 +{formatGold(idlePreview.gold)} 은화
               </span>
             )}
           </div>
@@ -4157,7 +4219,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           return (
             <div className="idle-status-strip" role="status">
               <i className="idle-status-dot" />자동 사냥{boosted ? " ×2" : ""}
-              <small>{capHours}시간 +{formatGold(full.gold)}G · 강화석 {full.materials}</small>
+              <small>{capHours}시간 +{formatGold(full.gold)} 은화 · 강화석 {full.materials}</small>
             </div>
           );
         })()}
@@ -4446,86 +4508,21 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           </div>
         )}
         {!freeRetryCard && momentOfferCard}
-        {/* 긴급 의뢰 딱지 (2026-11-11) — 알림 줄 왼쪽 빈자리. 현상범 · 대장과 싸우는 중엔 숨긴다 */}
-        {urgentNow && !boss && (
-          <UrgentBadge face={urgentFace(save.stage)} leftMs={urgentNow.deadline - nowTick} onOpen={() => setUrgentOpen(true)} />
+        {/* 우편함 단추 (2026-11-13) — 긴급 의뢰 딱지 자리. 받을 것 · 알림이 있을 때만, 개수와 함께 */}
+        {inboxItems.length > 0 && !boss && (
+          <button type="button" className="inbox-btn" aria-label={`우편함 ${inboxItems.length}개`} onPointerDown={(event) => event.stopPropagation()} onClick={() => setInboxOpen(true)}>
+            <i className="inbox-glyph" aria-hidden="true" /><b>{inboxItems.length}</b>
+            {/* 긴급 의뢰가 있으면 남은 시간(예전 딱지) — 1분 전엔 붉게 */}
+            {urgentNow && ladderOpen("urgent", huntBest) && (() => { const left = Math.max(0, urgentNow.deadline - nowTick); return <small className={`inbox-urgent ${left < 60_000 ? "is-last" : ""}`}>{Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}</small>; })()}
+          </button>
         )}
+        {/* 다음 목표 한 줄 — 알림 줄 자리에 하나만 */}
         <div className="battle-alert-stack" onPointerDown={(event) => event.stopPropagation()}>
-          {routine.filter((item) => item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)).map((item) => (
-            <button key={item.id} type="button" className="battle-alert claim" onClick={() => { setDismissedAlerts((items) => [...items, `routine:${item.id}:${item.detail}`]); runRoutine(item); }}>
-              <small>귀환 정산</small><b>{item.detail}</b><i>›</i>
-            </button>
-          ))}
-          {routineReward && !dismissedAlerts.includes(`routine-reward:${character.routineClaimedDate}`) && (
-            <button type="button" className="battle-alert reward" onClick={() => { setDismissedAlerts((items) => [...items, `routine-reward:${character.routineClaimedDate}`]); void claimRoutine(); }}>
-              <small>일일 루틴</small><b>보상 받기 · 보석 {ROUTINE_REWARD_GEMS}</b><i>›</i>
+          {nextLine && !specialFight && (
+            <button type="button" className={nextLine.cls} onClick={nextLine.run}>
+              <small>{nextLine.small}</small><b>{nextLine.text}</b><i>›</i>
             </button>
           )}
-          {/* 승급전 (2026-11-11) — 귀환 정산 · 루틴 보상 뒤. 추천이 '받을 보상'(수령)이면 그 뒤, '성장 알림'이면 그 앞 — 알림 줄은 첫 칸만 보여 받을 보상을 가리면 안 된다 */}
-          {recommendation?.tone !== "claim" && promoAlert}
-          {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
-            <button
-              type="button"
-              className={`battle-alert tone-${recommendation.tone}`}
-              onClick={() => {
-                setDismissedAlerts((items) => [...items, `recommend:${recommendation.title}`]);
-                runAction(recommendation.action);
-              }}
-            >
-              <small>{recommendation.tone === "claim" ? "받을 보상" : "성장 알림"}</small>
-              <b>{recommendation.title}</b><i>›</i>
-            </button>
-          )}
-          {recommendation?.tone === "claim" && promoAlert}
-          {/* 구매 추천은 성장 추천 다음 자리 (2026-10-06) */}
-          {adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`) && (
-            <button type="button" className="battle-alert tone-buy advice-alert" data-advice={adviceTop[0].id} onClick={() => setAdviceOpen(true)}>
-              <small>구매 추천{adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}</small>
-              <b>{adviceTop[0].title}</b><i>›</i>
-            </button>
-          )}
-          {recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`) && (
-            <button
-              type="button"
-              className={`battle-alert tone-${recommendation.tone}`}
-              onClick={() => {
-                setDismissedAlerts((items) => [...items, `recommend:${recommendation.title}`]);
-                runAction(recommendation.action);
-              }}
-            >
-              <small>{recommendation.tone === "claim" ? "받을 보상" : "성장 알림"}</small>
-              <b>{recommendation.title}</b><i>›</i>
-            </button>
-          )}
-          {/* 구매 추천은 성장 추천 다음 자리 (2026-10-06) */}
-          {adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`) && (
-            <button type="button" className="battle-alert tone-buy advice-alert" data-advice={adviceTop[0].id} onClick={() => setAdviceOpen(true)}>
-              <small>구매 추천{adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}</small>
-              <b>{adviceTop[0].title}</b><i>›</i>
-            </button>
-          )}
-          {routine.filter((item) => item.id === "claim" && !item.done && !dismissedAlerts.includes(`routine:${item.id}:${item.detail}`)).map((item) => (
-            <button key={item.id} type="button" className="battle-alert claim" onClick={() => { setDismissedAlerts((items) => [...items, `routine:${item.id}:${item.detail}`]); runRoutine(item); }}>
-              <small>귀환 정산</small><b>{item.detail}</b><i>›</i>
-            </button>
-          ))}
-          {routineReward && !dismissedAlerts.includes(`routine-reward:${character.routineClaimedDate}`) && (
-            <button type="button" className="battle-alert reward" onClick={() => { setDismissedAlerts((items) => [...items, `routine-reward:${character.routineClaimedDate}`]); void claimRoutine(); }}>
-              <small>일일 루틴</small><b>보상 받기 · 보석 {ROUTINE_REWARD_GEMS}</b><i>›</i>
-            </button>
-          )}
-          {/* 핫타임 보급 (2026-11-11) — 보상 · 정산 · 추천 뒤, 목표 앞 */}
-          {hotClaim && !dismissedAlerts.includes(`hottime:${hotClaim.id}:${dateKey()}`) && (
-            <button type="button" className="battle-alert reward hottime-alert" onClick={() => { setDismissedAlerts((items) => [...items, `hottime:${hotClaim.id}:${dateKey()}`]); onOpenEvents?.("daily"); }}>
-              <small>핫타임</small><b>{hotClaim.label} · 보석 {hotClaim.gems}</b><i>›</i>
-            </button>
-          )}
-          {/* 알림이 최대 5줄까지 쌓여 전장을 덮었다 — 급한 것(보상·정산) 뒤에 목표는 1줄만 (2026-09-18) */}
-          {nextGoals.filter((g) => !dismissedAlerts.includes(`goal:${g.id}:${g.value}`)).slice(0, 1).map((g) => (
-            <button key={g.id} type="button" className={`battle-alert goal ${g.done ? "done" : ""}`} onClick={() => { setDismissedAlerts((items) => [...items, `goal:${g.id}:${g.value}`]); g.onClick(); }}>
-              <small>{g.label}</small><b>{g.value}</b><i>›</i>
-            </button>
-          ))}
         </div>
       </section>
 
@@ -4542,28 +4539,40 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       <div className="titans-tabs titans-growth-tabs" onClickCapture={(e) => { if ((e.target as HTMLElement).closest("button:not(.growth-drawer-close)")) revealGrowthPanel(); }}>
         {/* 2×2 (2026-10-26, 사용자: "퀘스트를 왼쪽으로 · 4번째 유물") — 장비 성장 · 스킬 / 퀘스트 · 유물 */}
         {/* 퀘스트가 맨 왼쪽 (2026-11-04, 사용자) */}
-        <button type="button" className={tab === "quest" ? "on" : ""} aria-expanded={growthOpen && tab === "quest"} onClick={() => { setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
+        <button type="button" className={`${tab === "quest" ? "on" : ""}${ladderOpen("quest", huntBest) ? "" : " tab-locked"}`} aria-expanded={growthOpen && tab === "quest"} onClick={() => { if (!ladderOpen("quest", huntBest)) { flash(ladderLockHint("quest"), 2600); return; } setGrowthOpen((o) => (tab === "quest" ? !o : true)); setTab("quest"); setQuestProg(questProgRef.current.slice()); }}>
           퀘스트{(QUESTS.some((_, i) => questBlock(save.quests, i, save.gold, goldDeflator(save.stage)) === null) || (questBonusLeftMs(save.quests, Date.now()) === 0 && questBonusAmount(save.quests, goldDeflator(save.stage)) > 0)) && <i className="tab-dot" aria-label="올릴 수 있는 퀘스트" />}
         </button>
         {/* 유물 (2026-10-26, 사용자: "4번째에는 유물 추가") — 마이페이지에만 있던 유물 판을 성장 서랍으로 · 뽑기는 상점 */}
         <button type="button" className={tab === "sword" ? "on" : ""} aria-expanded={growthOpen && tab === "sword"} onClick={() => { setGrowthOpen((o) => (tab === "sword" ? !o : true)); setTab("sword"); }}>
           장비 성장
         </button>
-        <button type="button" className={tab === "skills" ? "on" : ""} aria-expanded={growthOpen && tab === "skills"} onClick={() => { setGrowthOpen((o) => (tab === "skills" ? !o : true)); setTab("skills"); }}>
+        <button type="button" className={`${tab === "skills" ? "on" : ""}${ladderOpen("skills", huntBest) ? "" : " tab-locked"}`} aria-expanded={growthOpen && tab === "skills"} onClick={() => { if (!ladderOpen("skills", huntBest)) { flash(ladderLockHint("skills"), 2600); return; } setGrowthOpen((o) => (tab === "skills" ? !o : true)); setTab("skills"); }}>
           스킬{save.skillInventory.learned.length > 0 && SKILLS.some((x) => (save.skillInventory.copies?.[x.id] ?? 0) > 0 && (!save.skillInventory.learned.includes(x.id) || skillCardPlan(save.skillInventory, x.id).used > 0)) && <i className="tab-dot" aria-label="쓸 수 있는 스킬 카드" />}
         </button>
         {/* 퀘스트 (2026-10-26, "오늘도 환생 2" — 시간마다 골드) · 2×2 의 왼쪽 아래 — 지금 살 수 있는 줄이 있으면 점 */}
-        <button type="button" className={tab === "relic" ? "on" : ""} aria-expanded={growthOpen && tab === "relic"} onClick={() => { setGrowthOpen((o) => (tab === "relic" ? !o : true)); setTab("relic"); }}>
+        <button type="button" className={`${tab === "relic" ? "on" : ""}${ladderOpen("relic", huntBest) ? "" : " tab-locked"}`} aria-expanded={growthOpen && tab === "relic"} onClick={() => { if (!ladderOpen("relic", huntBest)) { flash(ladderLockHint("relic"), 2600); return; } setGrowthOpen((o) => (tab === "relic" ? !o : true)); setTab("relic"); }}>
           유물{RELICS.some((r) => relicUpgradable(character.relics, character.relicSpare, r.id)) && <i className="tab-dot" aria-label="강화할 수 있는 유물" />}
         </button>
         <button type="button" className="growth-drawer-close" aria-label="서랍 닫기" onClick={() => setGrowthOpen(false)}>▾</button>
       </div>
 
+      {inboxOpen && (
+        <div className="inbox-backdrop" role="presentation" onClick={() => setInboxOpen(false)}>
+          <section className="inbox-sheet" role="dialog" aria-label="우편함" onClick={(event) => event.stopPropagation()}>
+            <header><b>우편함</b><button type="button" className="inbox-close" aria-label="닫기" onClick={() => setInboxOpen(false)}>닫기</button></header>
+            {inboxItems.length === 0 ? <p className="inbox-empty">새 소식이 없습니다</p> : inboxItems.map((it) => (
+              <button key={it.key} type="button" data-key={it.key} className={`${it.cls} inbox-row`} onClick={() => { setInboxOpen(false); it.run(); }}>
+                <small>{it.small}</small><b>{it.title}</b><i>›</i>
+              </button>
+            ))}
+          </section>
+        </div>
+      )}
       {adviceOpen && (
         <div className="advice-backdrop" role="presentation" onClick={() => setAdviceOpen(false)}>
           <div className="advice-sheet" role="dialog" aria-label="구매 추천" onClick={(e) => e.stopPropagation()}>
             <header><b>구매 추천</b><small>지금 가진 재화로 살 수 있는 것 · 효과 순</small><button type="button" className="hub-sheet-close" onClick={() => setAdviceOpen(false)} aria-label="닫기">×</button></header>
-            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gem", amount: redGems }, { kind: "gold", amount: save.gold, label: "사냥터 골드" }, { kind: "gold", amount: character.sharedCoins, label: "공용 골드" }, { kind: "stone", amount: character.enhancementMaterials }, { kind: "seal", amount: character.expeditionSeals }]} />
+            <WalletBar testGems={qaGemsEnabled()} items={[{ kind: "gem", amount: redGems }, { kind: "gold", amount: save.gold, label: "골드" }, { kind: "silver", amount: character.sharedCoins, label: "은화" }, { kind: "stone", amount: character.enhancementMaterials }, { kind: "seal", amount: character.expeditionSeals }]} />
             <ol className="advice-list">
               {adviceTop.map((a, i) => (
                 <li key={a.id} className={`advice-row cur-${a.currency}`}>
@@ -4688,7 +4697,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 { key: "tap", label: "탭 피해", value: formatGold(Math.round(tapBaseNow())), title: "버프 · 치명 전 탭 한 번의 피해 — 무기 · 숙련 · 세트 · 패시브 · 사다리 · 결정 트리를 모두 곱한 값" },
                 { key: "power", label: "전투력", value: combatPower(character).toLocaleString(), title: "마이페이지 통합 전투력" },
               ]}
-              onForge={() => onOpenContent("forge")}
+              onForge={() => openContent("forge")}
               hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} />}
               footer={(slot) => (
                 <div className="equip-info">
@@ -4791,16 +4800,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
         {tab === "hub" && (
           <section className="hub-page" aria-label="모험 허브">
+            {/* 중심 루프 (2026-11-13 정리 결정 1, docs/FOCUS_2026-11-13.md) — 모든 콘텐츠는 사냥터를 강하게 해 주는 곳. 카드마다 얻는 것 */}
+            <p className="hub-core-line">모든 콘텐츠는 <b>사냥터</b>를 강하게 해 줍니다 · 카드의 <em>얻는 것</em>을 보세요</p>
             {/* 루틴 줄 — 예전 '모험' 팝업의 항목(정산 제외)과 시즌. 같은 클래스라 캡처·검사 스크립트가 그대로 찾는다 */}
             <div className="nav-popup-grid adventure-grid hub-routine">
               {/* 균열 · 강화 · 파견은 아래 카드와 같은 내용이라 뺐다 (2026-11-03, 사용자: "중복된 내용이 있다면 단순화 혹은 제거") */}
               {routine.filter((item) => item.id === "mission").map((item) => (
-                <button key={item.id} type="button" className={item.done ? "done" : ""} onClick={() => runRoutine(item)}>
+                <button key={item.id} type="button" className={`${item.done ? "done" : ""}${ladderOpen("events", huntBest) ? "" : " tab-locked"}`} onClick={() => { if (!ladderOpen("events", huntBest)) { flash(ladderLockHint("events"), 2600); return; } runRoutine(item); }}>
                   {item.id === "forge" ? <ContentIcon name="forge" /> : <img className="nav-icon-svg" src={assetUrl(item.id === "rift" ? "ui/idle/rift.png" : item.id === "expedition" ? "ui/idle/expedition.png" : "ui/idle/pioneer-flag.png")} alt="" aria-hidden="true" />}
                   <span><b>{item.label}</b><small>{item.detail}</small><small className="nav-help">{ROUTINE_HELP[item.id]}</small></span>
                 </button>
               ))}
-              <button type="button" className="season-nav" onClick={() => onOpenEvents?.("season")}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스 {seasonIndex(nowTick)}</b><small>티어 {seasonTier(character.seasonPass.xp)} · {seasonDaysLeft(nowTick)}일 남음</small></span></button>
+              <button type="button" className={`season-nav${ladderOpen("events", huntBest) ? "" : " tab-locked"}`} onClick={() => openEvents("season")}><img className="nav-icon-svg" src={assetUrl("ui/idle/star.png")} alt="" aria-hidden="true" /><span><b>시즌 패스 {seasonIndex(nowTick)}</b><small>티어 {seasonTier(character.seasonPass.xp)} · {seasonDaysLeft(nowTick)}일 남음</small></span></button>
             </div>
             {/* 카드 6장 (titans/hubCards): 남은 횟수 · 오늘 재화 · 빨간 점(최대 3) */}
             <div className="hub-cards nav-popup-grid">
@@ -4808,8 +4819,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <button key={card.id} type="button" data-card={card.id} title={card.desc} className={`hub-card ${card.locked ? "tab-locked" : ""} ${card.dot ? "has-dot" : ""}`} style={{ "--card-art": `url(${assetUrl(`ui/content-cards/${card.id}.webp`)})` } as CSSProperties}
                   onClick={() => {
                     if (card.locked) { flash(card.lockHint ?? "아직 잠겨 있습니다"); return; }
-                    if (card.go.kind === "content") onOpenContent(card.go.content);
-                    else if (card.go.kind === "events") { if (onOpenEvents) onOpenEvents(card.go.tab); else flash("설정 → 모험가 이벤트에서 열 수 있습니다"); }
+                    if (card.go.kind === "content") openContent(card.go.content);
+                    else if (card.go.kind === "events") openEvents(card.go.tab);
                     else setTab(card.go.tab);
                   }}>
                   {card.id === "dodge" || card.id === "beat" || card.id === "forge" ? <ContentIcon name={card.id} /> : <img className="nav-icon-svg" src={assetUrl(card.id === "tower" ? "ui/idle/tower.png" : card.id === "rift" ? "ui/idle/rift.png" : "ui/idle/expedition.png")} alt="" aria-hidden="true" />}
@@ -4817,6 +4828,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <b>{card.label}{card.dot && <i className="hub-dot" aria-label="지금 할 수 있음" />}</b>
                     {/* 카드는 이름 · 남은 횟수 · 빨간 점만 (2026-11-05). 잠긴 카드는 남은 횟수 자리에 해금 조건(2026-10-14 "언제 해금되는지 불친절") · 설명은 title */}
                     <small className={`hub-remaining ${card.locked && card.unlock ? "hub-unlock-line" : ""}`}>{card.locked && card.unlock ? card.unlock.label : card.remaining}</small>
+                    {card.gives && <small className="hub-gives">얻는 것 · {card.gives}</small>}
                   </span>
                   {card.locked && <img className="tab-lock" src={assetUrl("ui/idle/lock.png")} alt="" />}
                   {card.locked && card.lockHint && <span className="hub-unlock-tip" role="tooltip">{card.lockHint}</span>}
@@ -5608,8 +5620,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <article className="titans-card premium-product-card gem-product seal-product">
                   <img className="pack-icon" src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
                   <div>
-                    <strong>원정 인장 묶음 <em>주 {sp.weeklyLimit}회</em></strong>
-                    <p>원정 인장 +20 · 이번 주 {Math.max(0, left)}회 남음 <i className="feeds">→ 성문 방어 칩 · 스킬 무기</i></p>
+                    <strong>성문 인장 묶음 <em>주 {sp.weeklyLimit}회</em></strong>
+                    <p>성문 인장 +20 · 이번 주 {Math.max(0, left)}회 남음 <i className="feeds">→ 성문 방어 칩 · 스킬 무기</i></p>
                   </div>
                   <button type="button" disabled={redGems < sp.gemCost || left <= 0} onClick={() => void buyEventProduct(sp)}>
                     {left <= 0 ? "이번 주 한도" : <><GemMark />{sp.gemCost}</>}
@@ -5738,9 +5750,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <nav className="titans-bottom-nav compact" aria-label="주요 메뉴">
         <button type="button" className={tab === "sword" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("sword"); }}><ContentIcon name="hunt" /><span>사냥터</span></button>
-        <button type="button" className={tab === "hub" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("hub"); }}><ContentIcon name="event" /><span>모험</span></button>
-        <button type="button" className={tab === "heroes" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("heroes"); }}><ContentIcon name="ally" /><span>동료</span></button>
-        <button type="button" className={tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""} onClick={() => { setNavPopup(null); setTab("premium"); }}><ContentIcon name="shop" /><span>상점</span>{character.chests > 0 && <i className="tab-dot" aria-label="안 연 비버 상자" />}</button>
+        <button type="button" className={`${tab === "hub" ? "on" : ""}${ladderOpen("dodge", huntBest) ? "" : " tab-locked"}`} onClick={() => { setNavPopup(null); if (!ladderOpen("dodge", huntBest)) { flash(ladderLockHint("dodge"), 2600); return; } setTab("hub"); }}><ContentIcon name="event" /><span>모험</span></button>
+        <button type="button" className={`${tab === "heroes" ? "on" : ""}${ladderOpen("allies", huntBest) ? "" : " tab-locked"}`} onClick={() => { setNavPopup(null); if (!ladderOpen("allies", huntBest)) { flash(ladderLockHint("allies"), 2600); return; } setTab("heroes"); }}><ContentIcon name="ally" /><span>동료</span></button>
+        <button type="button" className={`${tab === "premium" || tab === "event-shop" || tab === "event-shop2" ? "on" : ""}${ladderOpen("events", huntBest) ? "" : " tab-locked"}`} onClick={() => { setNavPopup(null); if (!ladderOpen("events", huntBest)) { flash(ladderLockHint("events"), 2600); return; } setTab("premium"); }}><ContentIcon name="shop" /><span>상점</span>{character.chests > 0 && <i className="tab-dot" aria-label="안 연 비버 상자" />}</button>
         {/* 설정 (2026-10-14 사용자: "설정 아이콘을 상점 탭 오른쪽으로") — 메뉴는 위로 연다 */}
         {settingsNode}
       </nav>
@@ -6122,7 +6134,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           stage={idleReport.stage}
           bottleneck={idleReport.bottleneck}
           onClaim={() => claimIdle()}
-          onGoContent={(content) => claimIdle(() => onOpenContent(content))}
+          onGoContent={(content) => claimIdle(() => openContent(content))}
           adOption={(() => { const a = rewardedAvailability(character, "idleDouble", new Date().toLocaleDateString("sv-SE")); return a === "none" ? null : a; })()}
           adBusy={adBusy}
           onClaimDouble={() => void watchAd("idleDouble", () => claimIdle(undefined, 2))}
@@ -6148,7 +6160,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           pioneeredArea={character.pioneeredArea}
           onGoDodge={() => {
             setGateNotice(false);
-            onOpenContent("dodge");
+            openContent("dodge");
           }}
           onDismiss={() => setGateNotice(false)}
         />

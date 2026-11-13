@@ -4,7 +4,9 @@ import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen"
 import { bootsTierOf, chestTierOf, helmetTierOf, shieldTierOf, weaponTierOf } from "./equipment/anchors";
 import { preloadStageBackgrounds, preloadStageSprites, STAGE_BACKGROUNDS, stageBossArt, takeDrawnMonsters } from "./game/draw";
 import { bestiaryThumb } from "./titans/bestiary";
-import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, qaGemsEnabled, qaUnlockAll } from "./progression/storage";
+import { NAMES } from "./ui/names";
+import { ladderOpen } from "./progression/ladder";
+import { QA_BUILD, QA_GEMS_AMOUNT, QA_GEMS_KEY, QA_MODE_KEY, QA_PROFILE_KEY, TEST_PHASE_KEY, freshProfileActive, profileHash, qaGemsEnabled, qaUnlockAll } from "./progression/storage";
 import { qaUnlockOpen, setQaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import "./App.css";
@@ -674,7 +676,7 @@ function App() {
       ]);
       if (cancelled) return;
 
-      userHashRef.current = key.hash;
+      userHashRef.current = profileHash(key.hash);   // 신규 유저로 보기면 따로 둔 빈 저장 (QA 빌드)
       setUserKeySource(key.source);
       applyInsets(safe);
       const [best, savedCoins, levels, character] = await Promise.all([
@@ -1231,7 +1233,7 @@ function App() {
                 nextProgress = await updateCharacterProgress(userHashRef.current, (current) => (current.claimedRewards.includes(id) ? current : {
                   ...current, redGems: current.redGems + gems, claimedRewards: [...current.claimedRewards, id],
                 }));
-                setShoulderDrop(`원정 별 ${need}개 달성 · 보석 +${gems}`);
+                setShoulderDrop(`성문 별 ${need}개 달성 · 보석 +${gems}`);
               }
               if (totalStars >= 12 && !nextProgress.claimedRewards.includes("dodge-stars-12")) {
                 const titansForStars = await loadTitansSave(userHashRef.current);
@@ -1249,7 +1251,7 @@ function App() {
                     claimedRewards: [...current.claimedRewards, "dodge-stars-12"],
                   };
                 });
-                setShoulderDrop("원정 전 별 12개 달성 · 보석 +60 · 동료 조각 +10");
+                setShoulderDrop("성문 전 별 12개 달성 · 보석 +60 · 동료 조각 +10");
               }
             }
 
@@ -1261,7 +1263,7 @@ function App() {
                 sharedCoins: current.sharedCoins + reward, // 기본 보상만큼 추가 = 2배
                 firstClearDates: { ...current.firstClearDates, dodge: dodgeToday },
               }));
-              setShoulderDrop("오늘의 첫 원정 클리어 · 코인 2배!");
+              setShoulderDrop("오늘의 첫 성문 방어 클리어 · 은화 2배!");
             }
 
             const chapterIndex = towerFloorOf(world.stageIndex) > 0 ? 3 : getStage(world.stageIndex).chapter;
@@ -1433,7 +1435,7 @@ function App() {
     const blob = await renderShareCard({
       headline: extracted ? "보급품 확보" : allClear ? "전 스테이지 클리어" : `${stageLabel} 클리어`,
       // 예전 "원정 별 n/12" 는 4 스테이지 시절 숫자였다 — 50 스테이지 × 3 (2026-10-06)
-      subline: `${CHAPTERS[st.chapter]?.name ?? ""} · 점수 ${lastScore.toLocaleString()} · 원정 별 ${stars}/${STAGES.length * 3}`,
+      subline: `${CHAPTERS[st.chapter]?.name ?? ""} · 점수 ${lastScore.toLocaleString()} · 성문 별 ${stars}/${STAGES.length * 3}`,
       backdrop: STAGE_BACKGROUNDS[Math.max(0, Math.min(STAGE_BACKGROUNDS.length - 1, st.chapter))],
       ...(await shareCardExtras(userHashRef.current, progress)),
       stars: (branchOf(stageIndex) ? progress.dodgeBranches[branchOf(stageIndex)!.id] : progress.dodgeStars[String(stageIndex)]) ?? 0,
@@ -1467,7 +1469,7 @@ function App() {
   const handleClaimFund = (tierId: string) => {
     let gems = 0;
     void updateCharacterProgress(userHashRef.current, (current) => { const r = claimGateFundTier(current, tierId); gems = r.gems; return r.progress; })
-      .then((next) => { setProgress(next); if (gems > 0) showToast(`원정 기금 보석 +${gems}`); });
+      .then((next) => { setProgress(next); if (gems > 0) showToast(`성문 기금 보석 +${gems}`); });
   };
   /** 구매 복원 — 스토어 내역으로 지급 전에 죽은 구매·재설치 영구 상품을 되살리고 환불을 거둔다 */
   const handleRestorePurchases = async () => {
@@ -1615,7 +1617,7 @@ function App() {
     const next = await updateCharacterProgress(userHashRef.current, (p) => { const r = applySweep(p, stageIndex, mult); box.reward = r.reward; return r.progress; });
     setProgress(next);
     const got = box.reward;
-    if (got) setShoulderDrop(`소탕 ×${mult} · S${stageIndex + 1} · 코인 +${got.coins.toLocaleString()} · 견갑 조각 +${got.shoulderShards}`);
+    if (got) setShoulderDrop(`소탕 ×${mult} · S${stageIndex + 1} · 은화 +${got.coins.toLocaleString()} · 견갑 조각 +${got.shoulderShards}`);
   };
 
   /** 원정 보급창에서 인장으로 등반권 1장 */
@@ -1906,19 +1908,19 @@ function App() {
                   <button
                     type="button"
                     role="menuitem"
-                    disabled={(progress.onboardingStep < 4 && !qaOpen)}
+                    disabled={((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen)}
                     onClick={() => { setSettingsOpen(false); setAttendanceByMenu(true); setAttendanceOpen(true); }}
                   >
-                    <span>출석 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "30일"}</b>
+                    <span>출석 이벤트</span><b>{((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen) ? "잠김" : "30일"}</b>
                   </button>
                 )}
                 <button
                   type="button"
                   role="menuitem"
-                  disabled={(progress.onboardingStep < 4 && !qaOpen)}
+                  disabled={((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen)}
                   onClick={() => { setSettingsOpen(false); setEventOpen(true); }}
                 >
-                  <span>모험가 이벤트</span><b>{(progress.onboardingStep < 4 && !qaOpen) ? "잠김" : "NEW"}</b>
+                  <span>모험가 이벤트</span><b>{((progress.onboardingStep < 4 || !ladderOpen("events", progress.titanBestStage)) && !qaOpen) ? "잠김" : "NEW"}</b>
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); setBackupOpen(true); }}>
                   <span>세이브 백업</span><b className="menu-badge-warn">권장</b>
@@ -1942,6 +1944,19 @@ function App() {
                 >
                   <span>테스트 · 보석 무제한</span><b>{qaGemsEnabled() ? "ON" : "OFF"}</b>
                 </button>}
+                {/* QA 빌드 전용 (2026-11-13, 사용자 목표 "신규 유저 시점으로 보기") — 숨은 7탭 대신 보이는 두 줄. 바꾸면 다시 불러온다 */}
+                {QA_BUILD && (
+                  <button type="button" role="menuitem" className="settings-qa-test" disabled={freshProfileActive()} aria-pressed={testMode}
+                    onClick={() => { try { const on = !testMode; localStorage.setItem(TEST_PHASE_KEY, on ? "1" : "0"); localStorage.setItem(QA_MODE_KEY, on ? "1" : "0"); if (!on) localStorage.removeItem(QA_GEMS_KEY); } catch { /* 저장 불가 */ } location.reload(); }}>
+                    <span>테스트 모드 · 전부 해금 · 보석 ∞</span><b>{freshProfileActive() ? "신규 보기 중" : testMode ? "ON" : "OFF"}</b>
+                  </button>
+                )}
+                {QA_BUILD && (
+                  <button type="button" role="menuitem" className="settings-qa-fresh" aria-pressed={freshProfileActive()}
+                    onClick={() => { try { if (freshProfileActive()) localStorage.removeItem(QA_PROFILE_KEY); else localStorage.setItem(QA_PROFILE_KEY, "fresh"); } catch { /* 저장 불가 */ } location.reload(); }}>
+                    <span>신규 유저로 보기 · 빈 저장</span><b>{freshProfileActive() ? "ON" : "OFF"}</b>
+                  </button>
+                )}
                 <button type="button" role="menuitem" className="settings-build" onClick={tapBuildLabel}>
                   <span>비버 키우기</span><b>{testMode ? "테스트 모드" : `빌드 ${BUILD_LABEL}`}</b>
                 </button>
@@ -2143,13 +2158,13 @@ function App() {
       {bootReady && appMode === "dodge" && gameState === "ready" && preloadStageBackgrounds() && (
         <div className="game-overlay">
           <div className="overlay-content overlay-wide exp-menu-content">
-            <p className="brand">원정 모드</p>
-            <h1 className="title">댐 방어전</h1>
+            <p className="brand">성문 방어</p>
+            <h1 className="title">{NAMES.dodge}</h1>
             <p className="subtitle">몬스터가 성문 <b>방어막</b>으로 걸어 내려온다 — <b>활</b>이 알아서 쏘고, 방어막이 깨지면 진다. 곁의 <b>무기 정령</b>이 속성 화살을 보태고, 게이지가 차면 <b>화살비</b>가 하늘을 덮는다</p>
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             {/* 지갑 줄 — 골드·보석·강화석·인장 (2026-10-06, 예전 한 줄 글자 "코인 · 인장 · 최고") */}
             <WalletBar testGems={qaGemsEnabled()} items={[
-              { kind: "gold", amount: coins },
+              { kind: "silver", amount: coins },
               { kind: "gem", amount: progress.redGems },
               { kind: "stone", amount: progress.enhancementMaterials },
               { kind: "seal", amount: progress.expeditionSeals },
@@ -2159,7 +2174,7 @@ function App() {
             {/* 원정대 보급소는 삭제됐다 (사용자 지시: 용도 불명). 기동·검격 스탯은
                 캐릭터 성장(레벨·강화)에서 자동 파생된다 — derivedShopLevels 참조 */}
             <div className="exp-menu-tabs" role="tablist">
-              <button type="button" role="tab" aria-selected={menuTab === "play"} className={menuTab === "play" ? "on" : ""} onClick={() => setMenuTab("play")}>원정</button>
+              <button type="button" role="tab" aria-selected={menuTab === "play"} className={menuTab === "play" ? "on" : ""} onClick={() => setMenuTab("play")}>{NAMES.sortie}</button>
               <button type="button" role="tab" aria-selected={menuTab === "skill"} className={menuTab === "skill" ? "on" : ""} onClick={() => setMenuTab("skill")} aria-label="정비 — 스킬 · 무기 · 칩 · 보급 · 임무">
                 정비
                 {/* 하나라도 지금 강화할 수 있으면 배지 — 참고 게임의 "!" */}
@@ -2185,7 +2200,7 @@ function App() {
                     <>
                       <div className="pioneer-board">
                         <p className="pioneer-heading">
-                          <b>원정 진척</b>
+                          <b>성문 진척</b>
                           <span>{clearedCount} / {STAGES.length} 스테이지 · ★{totalStars}/{STAGES.length * 3} · 갈림길 {BRANCHES.filter((x) => (progress.dodgeBranches[x.id] ?? 0) >= 1).length}/{BRANCHES.length} · 지역 {progress.pioneeredArea}/{HUNTING_AREAS.length}</span>
                         </p>
                         <div className="chapter-tabs" role="tablist">
@@ -2406,7 +2421,7 @@ function App() {
                 <span className="run-bars"><i className="run-xp"><b style={{ width: `${runHud.pct}%` }} /></i>
                 <i className="expedition-progress" aria-label={`스테이지 진행 ${Math.round(expeditionRatio * 100)}%`}><b style={{ width: `${expeditionRatio * 100}%` }} /></i></span>
               </span>
-              <span className="hud-coins" title="지금 귀환하면 받는 코인" aria-label={`귀환 코인 ${runTally.coins}`}><RewardIcon kind="gold" size={18} /><b>{runTally.coins.toLocaleString()}</b></span>
+              <span className="hud-coins" title="지금 귀환하면 받는 은화" aria-label={`귀환 은화 ${runTally.coins}`}><RewardIcon kind="silver" size={18} /><b>{runTally.coins.toLocaleString()}</b></span>
               <span className="hud-hint" title="처치" aria-label={`처치 ${runTally.kills}`}><i className="kill-glyph" aria-hidden="true" /><b>{runTally.kills}</b></span>
               {towerFloor > 0 && (
                 <span className="hud-tower">
@@ -2493,7 +2508,7 @@ function App() {
             ))}
           </div>
           <p>
-            {starResult.improved && <b>신기록! </b>}원정 별 {starResult.total}/{STAGES.length * 3}
+            {starResult.improved && <b>신기록! </b>}성문 별 {starResult.total}/{STAGES.length * 3}
           </p>
         </div>
       )}
@@ -2563,7 +2578,7 @@ function App() {
               );
             })}
             </div>
-            <p className="subtitle perk-caption">위에서 카드 하나를 골라 이번 원정에 <b>습득</b>하세요{(worldRef.current?.tempo ?? 1) > 1 ? ` · 몬스터 속도 ×${(worldRef.current?.tempo ?? 1).toFixed(2)}` : ""}</p>
+            <p className="subtitle perk-caption">위에서 카드 하나를 골라 이번 판에 <b>습득</b>하세요{(worldRef.current?.tempo ?? 1) > 1 ? ` · 몬스터 속도 ×${(worldRef.current?.tempo ?? 1).toFixed(2)}` : ""}</p>
             {(() => {
               // 스테이지가 깊을수록 상위 등급이 잘 나온다 — 지금 확률을 밝혀 둔다
               const odds = rarityOdds(worldRef.current?.stageIndex ?? 0);
@@ -2591,8 +2606,8 @@ function App() {
             <p className="brand">{extracted ? "SAFE RETURN" : allClear ? "ALL CLEAR" : "STAGE CLEAR"}</p>
             <button type="button" className="share-card-btn" onClick={() => void shareDodgeCard()}>기록 카드 공유</button>
             <h1 className="title">{extracted ? "보급품 확보!" : allClear ? "전 스테이지 클리어!" : stageLabel}</h1>
-            <p className="score-line">+{coinGain} 코인{adDoubled ? " (광고 ×2 적용)" : ""}</p>
-            <p className="subtitle">보유 코인 {coins} · 점수 {lastScore}</p>
+            <p className="score-line">+{coinGain} 은화{adDoubled ? " (광고 ×2 적용)" : ""}</p>
+            <p className="subtitle">보유 은화 {coins} · 점수 {lastScore}</p>
             {/* 계획안 §25 — 선택형 광고: 클리어 보상 ×2 (미연동·한도 소진이면 자리 없음) */}
             {!adDoubled && coinGain > 0 && (() => {
               const avail = rewardedAvailability(progress, "dodgeDouble", new Date().toLocaleDateString("sv-SE"));
@@ -2617,14 +2632,14 @@ function App() {
                     setAdBusy(false);
                   }
                 })()}>
-                  {adBusy ? "광고 재생 중…" : avail === "free" ? "광고 제거 보유 · 코인 ×2" : "광고 보고 코인 ×2"}
-                  <small>+{coinGain} 코인 추가 · 오늘 남은 횟수 포함</small>
+                  {adBusy ? "광고 재생 중…" : avail === "free" ? "광고 제거 보유 · 은화 ×2" : "광고 보고 은화 ×2"}
+                  <small>+{coinGain} 은화 추가 · 오늘 남은 횟수 포함</small>
                 </button>
               );
             })()}
             {!extracted && worldRef.current && (
               <p className="controls-hint">
-                철광석 ×{worldRef.current.enemyKills} · 속성 결정 ×{worldRef.current.perfectDodges} · 정제 강철 ×{worldRef.current.chests * 4} · 원정 인장 ×{worldRef.current.expeditionSeals} · 보급 ×{worldRef.current.supplies}
+                철광석 ×{worldRef.current.enemyKills} · 속성 결정 ×{worldRef.current.perfectDodges} · 정제 강철 ×{worldRef.current.chests * 4} · 성문 인장 ×{worldRef.current.expeditionSeals} · 보급 ×{worldRef.current.supplies}
                 {worldRef.current.player.hp === worldRef.current.player.maxHp ? " · 노히트 설계도 판정" : ""}
               </p>
             )}
@@ -2639,7 +2654,7 @@ function App() {
             {branchNote && <p className="shop-toast branch-note">{branchNote}</p>}
             {allClear && !extracted && <p className="shop-toast tower-next-note">본선 {STAGES.length}스테이지 완료 · 이제 끝없는 성벽이 이어져요 (최고 {progress.towerBestFloor}층)</p>}
             <button type="button" className="cta" onClick={handleNextStage}>
-              {isBranchIndex(stageIndex) ? (nextBranchIndex !== null ? `갈림길 계속 · ${getStage(nextBranchIndex).name}` : "원정 지도로") : allClear && !extracted ? "끝없는 성벽 오르기" : extracted ? "원정 준비" : "다음 스테이지"}
+              {isBranchIndex(stageIndex) ? (nextBranchIndex !== null ? `갈림길 계속 · ${getStage(nextBranchIndex).name}` : "성문 지도로") : allClear && !extracted ? "끝없는 성벽 오르기" : extracted ? "출전 준비" : "다음 스테이지"}
             </button>
             <button type="button" className="cta cta-ghost" onClick={handleBackToReady}>
               상점 / 메뉴
@@ -2658,7 +2673,7 @@ function App() {
             <h1 className="title">{isNewRecord ? "신기록!" : "다시 도전?"}</h1>
             <p className="score-line">점수 {lastScore}</p>
             <p className="subtitle">
-              {stageTag(stageIndex)} · 최고 {highScore} · 코인 {coins}
+              {stageTag(stageIndex)} · 최고 {highScore} · 은화 {coins}
             </p>
             {deathTip && <p className="death-tip"><b>다음엔 이렇게</b> {deathTip}</p>}
             {(() => {
@@ -2699,7 +2714,7 @@ function App() {
             <h2 id="exit-title" className="exit-title">
               게임을 종료할까요?
             </h2>
-            <p className="exit-desc">진행 중인 판은 저장되지 않아요. 코인·강화는 유지됩니다.</p>
+            <p className="exit-desc">진행 중인 판은 저장되지 않아요. 은화·강화는 유지됩니다.</p>
             <button type="button" className="cta" onClick={() => void confirmExit()}>
               종료하기
             </button>
@@ -2712,7 +2727,7 @@ function App() {
       {/* 첫 접속 가이드 — 출석 창보다 위 (가이드를 닫은 뒤에 출석이 보인다) */}
       {bootReady && guideOpen && <GameGuide onClose={() => setGuideOpen(false)} />}
       {/* 온보딩 첫 5분 대본(§8) — 신규(step<4)에게는 출석 모달을 띄우지 않는다 */}
-      {bootReady && appMode === "titans" && (progress.onboardingStep >= 4 || (qaOpen && attendanceByMenu)) && (
+      {bootReady && appMode === "titans" && ((progress.onboardingStep >= 4 && ladderOpen("events", progress.titanBestStage)) || (qaOpen && attendanceByMenu)) && (
         <AttendanceModal userHash={userHashRef.current} open={attendanceOpen && !attendanceDone} onClose={() => { setAttendanceOpen(false); setAttendanceByMenu(false); }} onUpdated={setProgress} onDone={() => setAttendanceDone(true)} />
       )}
       {bootReady && appMode === "titans" && eventOpen && (

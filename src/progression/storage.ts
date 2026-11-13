@@ -169,9 +169,33 @@ export const QA_BUILD: boolean = import.meta.env.DEV || import.meta.env.VITE_QA_
 export const TEST_PHASE = QA_BUILD;
 /** localStorage `dodgebullets:test-phase` = "0" 이면 테스트 단계를 끈다 — 검증 하니스가 실제 경제(보석 차감·구매 게이트)를 볼 때 쓴다 */
 export const TEST_PHASE_KEY = "dodgebullets:test-phase";
+/**
+ * 신규 유저로 보기 (2026-11-13, 사용자 목표 "설계한 흐름을 직접 볼 길이 없다") — QA 빌드에서 "fresh" 면 빈 저장(`<hash>:fresh`)으로
+ * 들어가고 테스트 모드(전부 해금 · 보석 ∞)를 끈다. 원래 QA 저장은 그대로 남아 끄면 돌아간다. 출시 빌드에는 없다
+ */
+export const QA_PROFILE_KEY = "dodgebullets:qa-profile";
+export function freshProfileActive(): boolean {
+  if (!QA_BUILD) return false;
+  try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_PROFILE_KEY) === "fresh"; } catch { return false; }
+}
+/** 저장 식별값 — 신규 유저로 보기면 따로 둔 빈 저장 */
+export function profileHash(hash: string): string {
+  return freshProfileActive() ? `${hash}:fresh` : hash;
+}
+/**
+ * 테스트 단계 켜짐? — "1" 켬 · "0" 끔 · 없으면 **개발 서버만 켜짐**(2026-11-13). 공개 사이트 · 디버그 APK 는 기본 꺼짐 —
+ * 예전엔 QA 빌드면 기본 켜짐이라 사이트에서 늘 전부 해금 · 보석 999,999 로 보여 설계한 해금 흐름을 볼 수 없었다.
+ * 브라우저 검사 하니스는 개발 서버(5173)라 그대로 켜짐을 본다
+ */
 export function testPhaseActive(): boolean {
-  if (!TEST_PHASE) return false;
-  try { return typeof localStorage === "undefined" || localStorage.getItem(TEST_PHASE_KEY) !== "0"; } catch { return true; }
+  if (!TEST_PHASE || freshProfileActive()) return false;
+  try {
+    if (typeof localStorage === "undefined") return true;
+    const v = localStorage.getItem(TEST_PHASE_KEY);
+    if (v === "0") return false;
+    if (v === "1") return true;
+    return import.meta.env.DEV;
+  } catch { return true; }
 }
 export function testModeEnabled(): boolean {
   if (!QA_BUILD) return false;
@@ -179,7 +203,7 @@ export function testModeEnabled(): boolean {
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_MODE_KEY) === "1"; } catch { return false; }
 }
 export function qaGemsEnabled(): boolean {
-  if (!QA_BUILD) return false;
+  if (!QA_BUILD || freshProfileActive()) return false;
   if (testPhaseActive()) return true;
   try { return typeof localStorage !== "undefined" && localStorage.getItem(QA_GEMS_KEY) === "1" && (import.meta.env.DEV || localStorage.getItem(QA_MODE_KEY) === "1"); } catch { return false; }
 }
@@ -189,7 +213,7 @@ export function qaGemsEnabled(): boolean {
  * 검증 하니스(test-phase=0)는 기본 꺼짐. 출시 빌드는 늘 false (키 문자열도 번들에서 빠진다).
  */
 export function qaUnlockAll(): boolean {
-  if (!QA_BUILD) return false;
+  if (!QA_BUILD || freshProfileActive()) return false;
   try {
     const v = typeof localStorage === "undefined" ? null : localStorage.getItem(QA_MODE_KEY);
     if (v === "1") return true;

@@ -186,7 +186,7 @@ await page.evaluate(() => document.querySelector(".exp-skill-close")?.click());
 await sleep(300);
 
 // ── 전투 진입 ──
-await clickText(".exp-menu-tabs button", "원정"); await sleep(500);
+await clickText(".exp-menu-tabs button", "출전"); await sleep(500);
 await clickText("button", "스테이지"); await sleep(1800);
 await page.evaluate(() => {
   const c = document.querySelector("canvas"); if (!c) return;

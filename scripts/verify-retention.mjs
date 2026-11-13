@@ -29,6 +29,10 @@ async function seed(progress, titans, extra = {}) {
   await sleep(2400);
 }
 // 정산 모달의 '보상 수령'(.idle-claim)을 우선 — 루틴 보드의 비활성 '💎' 버튼 등 다른 버튼을 잡지 않도록
+// 우편함 (2026-11-13) — 전장 알림 줄은 '다음 목표' 한 줄, 나머지 알림은 우편함. 읽기는 개발 훅, 누르기는 단추 → 그 줄
+const inboxOf = (p = page) => p.evaluate(() => window.__huntState?.()?.inbox ?? []);
+const inboxText = async (key, p = page) => { const it = (await inboxOf(p)).find((i) => i.key === key); return it ? `${it.small} ${it.title}` : null; };
+const clickInbox = async (key, p = page) => { await p.evaluate(() => document.querySelector(".inbox-btn")?.click()); await new Promise((r) => setTimeout(r, 250)); const hit = await p.evaluate((k) => { const b = document.querySelector(`.inbox-sheet [data-key="${k}"]`); b?.click(); if (!b) document.querySelector(".inbox-sheet .inbox-close")?.click(); return !!b; }, key); await new Promise((r) => setTimeout(r, 200)); return hit; };
 const closeModal = async () => { await page.evaluate(() => { const claim = document.querySelector(".idle-claim"); if (claim) { claim.click(); return; } [...document.querySelectorAll("button")].filter((b) => !b.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid")).find((b) => /수령|받기|확인|닫기/.test(b.textContent))?.click(); }); await sleep(900); };
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 /** 콘텐츠(성문 방어·비트 수련·대장간)는 하단 바 콘텐츠 팝업에서 연다 */
@@ -64,15 +68,15 @@ const routineChips = async () => {
   return chips;
 };
 r = await page.evaluate(() => ({
-  claimPin: !!document.querySelector(".battle-alert.claim"),
-  banner: document.querySelector(".battle-alert[class*='tone-']")?.className,
-  title: document.querySelector(".battle-alert[class*='tone-'] b")?.textContent,
+  claimPin: (window.__huntState?.()?.inbox ?? []).some((i) => i.key.startsWith("claim:")),
+  banner: (window.__huntState?.()?.inbox ?? []).find((i) => i.key === "recommend")?.cls,
+  title: (window.__huntState?.()?.inbox ?? []).find((i) => i.key === "recommend")?.title,
 }));
 r.chips = await routineChips();
 ok("A 정산 완료라 정산 핀 없음", !r.claimPin, r.chips.join(",") + ` claimPin=${r.claimPin}`);
 ok("B 추천 핀 1개(균열 남음 → 오늘 무료)", /tone-free/.test(r.banner ?? "") && /균열/.test(r.title ?? ""), r.title);
 // 추천 핀 클릭 → 이벤트 센터 균열 탭
-await page.evaluate(() => document.querySelector(".battle-alert[class*='tone-']")?.click());
+await clickInbox("recommend");
 await sleep(700);
 r = await page.evaluate(() => ({ modal: !!document.querySelector(".event-modal"), riftTab: !!document.querySelector(".rift-event") }));
 ok("B 추천 클릭 → 이벤트 센터 균열 탭으로", r.modal && r.riftTab, JSON.stringify(r));
@@ -86,7 +90,7 @@ r = await page.evaluate(() => ({ items: [...document.querySelectorAll(".weekly-c
 ok("F 주간 도전 3종 + 균열 카운트 반영", r.items.length === 3 && r.items.some((t) => /균열/.test(t) && /3 \//.test(t)), r.items.join(" | "));
 await clickText("button", "닫기");
 await sleep(700);
-r = await page.evaluate(() => ({ title: document.querySelector(".battle-alert[class*='tone-'] b")?.textContent }));
+r = { title: (await inboxOf()).find((i) => i.key === "recommend")?.title };
 r.chips = await routineChips();
 ok("A 루틴 균열 칸 완료 반영(이벤트 변경 즉시 동기화)", r.chips.includes("rift✓"), r.chips.join(","));
 ok("B 추천이 다음 항목(토벌령)으로 넘어감", /토벌령/.test(r.title ?? ""), r.title);
@@ -98,10 +102,10 @@ await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 await closeModal();
 const gemsBefore = (await prog()).redGems;
-r = await page.evaluate(() => ({ ready: !!document.querySelector(".battle-alert.reward"), text: document.querySelector(".battle-alert.reward b")?.textContent }));
+r = await (async () => { const it = (await inboxOf()).find((i) => i.key === "routine-reward"); return { ready: !!it, text: it ? `${it.small} ${it.title}` : undefined }; })();
 r.chips = (await routineChips()).filter((c) => c.endsWith("✓")).length;
 ok("A 5칸 완료 → 루틴 보상 핀 표시", r.ready === true, JSON.stringify(r));
-await page.evaluate(() => document.querySelector(".battle-alert.reward")?.click());
+await clickInbox("routine-reward");
 await sleep(600);
 p = await prog();
 ok("A 루틴 보상 보석 +15 · 날짜 기록", p.redGems === gemsBefore + 15 && p.routineClaimedDate === today, `${gemsBefore}→${p.redGems}`);
@@ -122,7 +126,7 @@ ok("D 일반 10마리 처치 → 보스 도전 버튼", bossBtn);
 let wallSeen = null;
 for (let i = 0; i < 60 && !wallSeen; i += 1) {
   await sleep(1000);
-  wallSeen = await page.evaluate(() => { const b = document.querySelector(".battle-alert.tone-wall"); return b ? { title: b.querySelector("b")?.textContent, meter: true } : null; });
+  wallSeen = await (async () => { const it = (await inboxOf()).find((i) => i.cls.includes("tone-wall")); return it ? { title: it.title, meter: true } : null; })();   // 우편함 (2026-11-13)
 }
 ok("D 보스 실패 → 벽 미터 배너(비율 + 해법 1개)", !!wallSeen && wallSeen.meter && /\d+%/.test(wallSeen.title ?? ""), JSON.stringify(wallSeen));
 
