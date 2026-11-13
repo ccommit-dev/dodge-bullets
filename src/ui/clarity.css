@@ -40,3 +40,46 @@ body:has(.exit-modal, .idle-modal, .attendance-modal, .relic-draw-modal, .gacha-
 .titans-field .titans-hp-fill { background: #e5484d !important; }
 .titans-field .titans-hp::after { background: linear-gradient(180deg, rgba(255, 255, 255, .18), transparent 50%) !important; }
 .titans-field.boss .titans-hp-fill { background: #b42318 !important; }
+
+/* ══ 2차 (2026-11-13, 사용자: "아쉬운 점들 수정" — 상점 · 동료 · 스킬 · 마이페이지 · 대장간에도 같은 기준) ══ */
+
+/* ── 행동 단추는 한 색(초록) — 상점 · 동료 · 스킬 · 뽑기의 파랑 단추가 받기(초록) · 10회(금)와 섞여 색이 셋이었다.
+   App.css 의 파랑 단추 규칙은 모두 var(--flat-blue) 를 쓰니 값만 바꾼다. 흰 13px 글자 대비 4.5 이상이 되게 진한 초록 */
+:root { --flat-blue: #2b8235; --flat-blue-2: #1d5e25; --flat-green: #2b8235; --flat-green-2: #1d5e25; }   /* 큰 확인 단추(.cta) · 받기도 같은 초록 */
+.draw-row-buy button:not(:disabled), .hub-sheet .recommend-party:not(:disabled), .titans-layer .recommend-party:not(:disabled) { background: var(--flat-blue) !important; color: #fff !important; border-color: var(--flat-ink) !important; box-shadow: 0 3px 0 var(--flat-blue-2) !important; }
+
+/* ── 목록 카드는 한 모양 — 흰 판 · 진갈색 테두리. 왼쪽 색 띠 · 색 바탕(등급 · 속성 · 상점 주황)은 뺀다.
+   등급은 그림 틀 · 이름표(tiers.css)로 이미 보이고, 전설 이상은 테두리 빛을 남긴다 */
+.hub-sheet .titans-shop > .premium-product-card { background: #fffaf0 !important; box-shadow: 0 3px 0 rgba(59, 36, 21, .2) !important; }
+.ally-roster-grid .titans-card.ally-card:is(.rarity-n, .rarity-r, .rarity-sr) { background: #fffaf0 !important; box-shadow: 0 3px 0 rgba(59, 36, 21, .2) !important; }
+.ally-roster-grid .titans-card.ally-card:is(.rarity-ssr, .rarity-ur) { background: #fffaf0 !important; }
+.ally-roster-grid .titans-card.ally-card.rarity-ssr { box-shadow: 0 0 9px rgba(245, 158, 11, .45), 0 3px 0 rgba(59, 36, 21, .2) !important; }
+.ally-roster-grid .titans-card.ally-card.rarity-ur { box-shadow: 0 0 12px rgba(225, 29, 72, .5), 0 3px 0 rgba(59, 36, 21, .2) !important; }
+.skill-learn-card:not(.equipped):not(.rarity-lr) { background: #fffaf0 !important; }
+.skill-learn-card:is(.rarity-n, .rarity-r, .rarity-sr, :not([class*="rarity-"])) { box-shadow: 0 3px 0 rgba(59, 36, 21, .2) !important; }
+.skill-learn-card.rarity-ssr { box-shadow: 0 0 8px rgba(245, 184, 28, .45), 0 3px 0 rgba(59, 36, 21, .2) !important; }
+.skill-learn-card.rarity-ur { box-shadow: 0 0 10px rgba(244, 63, 94, .45), 0 3px 0 rgba(59, 36, 21, .2) !important; }
+
+/* ── "일반" 이름표는 숨긴다 — 대장간 무기 칸 · 장비 칸마다 회색 "일반" 딱지가 테두리 위에 얹혀 칸 머리를 가렸다. 희귀부터만 단다 */
+:is(.forge-weapon-kinds button, .gear-forge-row, .equip-slot, .equip-item)[data-tier="N"]::after { display: none !important; }
+
+/* ── 마이페이지 캐릭터 칸 — 좁은 3열에 그림을 왼쪽에 붙여 글자가 한두 자씩 세로로 떨어졌다. 그림 위 · 글자 아래로 */
+.character-skin-row .character-skin-chip { display: grid !important; justify-items: center; align-content: start; gap: 2px; min-height: 0 !important; padding: 6px 4px 8px !important; text-align: center; }
+.character-skin-row .character-skin-chip .skin-thumb { position: static !important; transform: none !important; width: 34px; height: 46px; }
+.character-skin-row .character-skin-chip :is(b, small) { word-break: keep-all; line-height: 1.25; }
+.character-skin-row .character-skin-chip.active { border-color: var(--flat-ink) !important; }
+/* 머리 단추 — 갈색 그라디언트 · 금 그라디언트 두 개 대신 크림(보조) · 금(주) 평면 */
+.share-card-btn { background: var(--flat-cream) !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink) !important; box-shadow: 0 3px 0 var(--flat-cream-2) !important; text-shadow: none !important; }
+.character-back { background: #f2c232 !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink) !important; box-shadow: 0 3px 0 #b98a16 !important; }
+.forge-back { background: var(--flat-cream) !important; color: var(--flat-ink) !important; border: 2px solid var(--flat-ink) !important; box-shadow: 0 3px 0 var(--flat-cream-2) !important; }
+.character-skin-row .character-skin-chip.active { box-shadow: 0 3px 0 var(--flat-yellow-2) !important; }
+/* 출석 칸 이름 — "견갑+보석 ×50" 이 60px 칸을 7px 넘었다(scan-overflow). 두 줄로 */
+.attendance-grid div > span:last-child { white-space: normal !important; overflow-wrap: anywhere; line-height: 1.2; }
+/* 출석 칸 — 크림 시트 위 남색(#0f172a) 칸 · 하늘색 진행 글자만 옛 어두운 테마로 남았다. 흰 칸 · 받은 칸은 바랜 크림 · 큰 보상은 금 테두리 */
+.attendance-30 .attendance-grid div:not(.today) { background: #fffaf0 !important; color: var(--flat-ink) !important; border: 2px solid rgba(59, 36, 21, .22) !important; box-shadow: 0 2px 0 rgba(59, 36, 21, .15) !important; }
+.attendance-30 .attendance-grid div:is(.rarity-epic, .rarity-legend):not(.today) { border-color: #e2b13c !important; }
+.attendance-30 .attendance-grid div.done { opacity: 1 !important; background: #efe3c8 !important; color: #8a7760 !important; }
+.attendance-30 .attendance-grid div.done > .attendance-reward-art { opacity: .5; }
+.attendance-30 .attendance-grid div.done::after { color: #15803d !important; }
+.attendance-30 .attendance-grid div :is(b, span) { color: inherit !important; }
+.attendance-30 .attendance-progress { color: #8a5a00 !important; }
