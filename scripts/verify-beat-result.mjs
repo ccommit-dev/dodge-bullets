@@ -43,6 +43,8 @@ async function run(w, h, tag) {
     const last = btns[btns.length - 1]?.getBoundingClientRect();
     return { grade: document.querySelector(".beat-grade-pill")?.textContent, acc: document.querySelector(".beat-acc-text")?.textContent, counts: document.querySelector(".beat-judge-counts")?.textContent, bridge: document.querySelector(".beat-hunt-bridge")?.textContent ?? "", gold: [...document.querySelectorAll("p, div, span, strong, b")].map((e) => e.textContent ?? "").find((t) => /골드/.test(t) && /\+/.test(t)) ?? "", btnBottom: last ? Math.round(last.bottom) : null, vh: innerHeight, scrollH: document.scrollingElement.scrollHeight };
   }), 12000, 200);
+  // 연결 문구는 클리어 뒤 저장(await 여러 번)이 끝나야 뜬다 — 결과 판이 보인 순간엔 아직 비어 있을 수 있다
+  if (res && !res.bridge) res.bridge = (await waitFor(() => page.evaluate(() => document.querySelector(".beat-hunt-bridge")?.textContent ?? ""), 6000, 150)) ?? "";
   await sleep(1500);
   if (OUT) await page.screenshot({ path: `${OUT}/beat-result-${tag}.png`, fullPage: false });
   const prog = await page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? "{}"), `dodgebullets:progression:v1:${H}`);
