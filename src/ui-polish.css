@@ -217,6 +217,8 @@
 .gacha-page-actions button:first-child :is(b, small, span) { color: #fff !important; }
 .exp-menu-content .cta:not(:disabled) { background-color: #2f7d1c !important; }
 .character-page .mypage-group .legacy-heading > span, .character-page .legacy-heading > span { color: #5e4229 !important; }
+/* 동료 · 유물 도감 머리는 크림 판(.mypage-group) 밖 어두운 바탕에 바로 놓인다 — 진갈색 "보유 0/56" 이 묻혔다(대비 1.76, 2026-11-13) */
+.character-page .legacy-heading:has(+ .codex-card-grid) > span { color: #e8d3ae !important; }
 
 /* ── 상점 — 분류 탭은 같은 폭 · 넉넉한 높이, 상품 카드는 제목 · 한 줄 설명 · 값 버튼만 ── */
 .premium-category-tabs { display: grid !important; grid-template-columns: repeat(5, 1fr); gap: 6px !important; margin: 8px 0 !important; }

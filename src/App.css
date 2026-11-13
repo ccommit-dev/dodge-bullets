@@ -4097,7 +4097,7 @@ img.forge-sword.painted { width: auto; max-width: 78%; object-fit: contain; }
 .wallet-gem .wallet-text small { color: #fecaca; }
 button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .wallet-plus { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; display: grid; place-items: center; border-radius: 50%; background: #ef4444; color: #fff; font-style: normal; font-size: 12px; font-weight: 900; line-height: 1; }
-.wallet-test { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: rgba(148, 163, 184, .25); color: #cbd5e1; font-style: normal; font-size: 8px; font-weight: 900; vertical-align: middle; }
+.wallet-test { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: rgba(59, 36, 21, .12); color: #5e4229; font-style: normal; font-size: 8px; font-weight: 900; vertical-align: middle; }
 .wallet-stone .wallet-text strong { color: #93c5fd; }
 .wallet-seal .wallet-text strong { color: #c4b5fd; }
 /* 사냥터 머리 보석 칩 — 붉게, 크게 */
@@ -4113,8 +4113,9 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .advice-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; background: rgba(2, 6, 23, .6); }
 .advice-sheet { width: min(100%, 560px); max-height: 82vh; overflow: auto; padding: 14px 14px calc(16px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; border: 1px solid rgba(248, 113, 113, .45); background: linear-gradient(180deg, #1c1020, #0b1220); color: #e2e8f0; }
 .advice-sheet header { position: relative; display: grid; gap: 2px; padding-right: 40px; }
-.advice-sheet header b { font-size: 17px; font-weight: 950; color: #fff7ed; }
-.advice-sheet header small { font-size: 11px; color: #94a3b8; font-weight: 700; }
+/* 시트는 아래 납작 테마에서 크림 판이 된다 — 제목 · 부제도 크림 위 글자색으로(옛 #fff7ed 는 대비 1.04, 2026-11-13) */
+.advice-sheet header b { font-size: 17px; font-weight: 950; color: var(--flat-ink); }
+.advice-sheet header small { font-size: 11px; color: #7a5a3a; font-weight: 700; }
 .advice-sheet header .hub-sheet-close { position: absolute; right: 0; top: 0; }
 .advice-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
 .advice-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, .25); background: rgba(15, 23, 42, .75); }
@@ -4511,6 +4512,9 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .titans-header .titans-back:active { transform: translateY(2px); box-shadow: 0 1px 0 #1f1109; }
 .titans-header .mypage-icon { width: 30px; height: 30px; flex-basis: 30px; border: 2px solid var(--arc-ink); border-radius: 50%; background-color: #3b2212; }
 .titans-header .mypage-label small { color: #e2cfae; }
+/* 칭호 색(TITLES.color)은 어두운 판용 — 크림 알약 위에선 대비 1.67 이라, 상점 칭호 이름판처럼 진갈색 판 위에 (2026-11-13).
+   판이 꺾쇠 「」 를 대신한다 — 꺾쇠 + 판 여백이면 105px 칸에서 "성벽의 정복자" 도 말줄임이 됐다 */
+.titans-header .mypage-label small.mypage-title { justify-self: start; padding: 0 4px; border-radius: 5px; background: var(--flat-ink); }
 @media (max-width: 600px) { .titans-header { padding-left: 0; gap: 6px; } .titans-header .titans-back { padding: 4px 10px 4px 5px; } }
 
 /* ═══════════ 상점·재화 통일 (2026-10-08 사용자: "보석·재화·UI 통일감이 없다") — 재화 아이콘은 생성 그림(황금 도토리·루비) 하나로, 상점 카드·탭·알림·구매 버튼은 나무 판 + 아케이드 노랑 ═══════════ */
@@ -4529,7 +4533,7 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 .battle-alert.tone-buy::after { box-shadow: inset 0 0 8px 1px rgba(248, 113, 113, .35); }
 .battle-alert.tone-buy small { color: #fca5a5; }
 .advice-sheet { color: #f5e9d6; }
-.advice-row, .advice-rank, .advice-body { color: #f5e9d6; }
+.advice-row, .advice-body { color: #f5e9d6; }   /* 순위 동그라미는 금 바탕 · 진한 글자 그대로 — 여기 넣으면 크림 글자가 금 위에 묻혔다(대비 1.39, 2026-11-13) */
 /* 뽑기 버튼(초록·주황) → 아케이드 노랑 + 나무 */
 .gacha-actions button { border: 2px solid var(--arc-ink); border-radius: 14px; color: var(--arc-ink); background: linear-gradient(180deg, #fde68a 0%, var(--arc-sun) 55%, #f59e0b 100%); box-shadow: 0 4px 0 #92400e, inset 0 2px 0 rgba(255, 255, 255, .55); font-family: var(--font-ui); font-weight: 400; }
 .gacha-actions button.gacha-ten { color: #fde68a; background: linear-gradient(180deg, #8a5527, #5a3517); box-shadow: 0 4px 0 #1f1109, inset 0 2px 0 rgba(255, 255, 255, .18); }

@@ -35,7 +35,8 @@
   border: 0; border-radius: 12px; background: #fffaf0; color: #3b2415; box-shadow: inset 0 0 0 1.5px #3b2415;
   animation: none;
 }
-.inbox-sheet .battle-alert.inbox-row small { flex: none; padding: 2px 7px; border-radius: 999px; background: #3b2415; color: #fff3d6; font-size: 12px; font-weight: 900; }
+/* 글자색은 !important — unify.css 의 .titans-layer .battle-alert small(진갈색 !important)이 이겨 진갈색 판 위 진갈색(대비 1.91)이었다 (2026-11-13) */
+.inbox-sheet .battle-alert.inbox-row small { flex: none; padding: 2px 7px; border-radius: 999px; background: #3b2415; color: #fff3d6 !important; font-size: 12px; font-weight: 900; }
 .inbox-sheet .battle-alert.inbox-row.claim small, .inbox-sheet .battle-alert.inbox-row.reward small { background: #2b8235; }
 .inbox-sheet .battle-alert.inbox-row b { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; white-space: normal; color: #3b2415; }
 .inbox-sheet .battle-alert.inbox-row i { position: absolute; right: 12px; font-style: normal; font-size: 18px; color: #3b2415; }

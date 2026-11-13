@@ -4105,7 +4105,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => openContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${heroPortrait()})`, backgroundSize:"cover", backgroundPosition:"center" }} />
-          <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small style={{ color:TITLES[character.activeTitle].color }}>「{TITLES[character.activeTitle].name}」</small> : <small>칭호 미설정</small>}</span>
+          <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small className="mypage-title" style={{ color:TITLES[character.activeTitle].color }}>{TITLES[character.activeTitle].name}</small> : <small>칭호 미설정</small>}</span>
         </button>
         {/* 환생 단추 (2026-11-03, 사용자: "마이페이지 오른쪽 여백에 환생하기 버튼 · 오버시 조건 요약") — 올리면(터치는 누르면) 조건 요약. 첫 탭이 바로 환생하지 않게 요약 안 단추로 진행 */}
         {(() => {

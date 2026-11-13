@@ -989,16 +989,14 @@
 
 /* 3열에서는 썸네일을 빼면 글자 칸이 46px 뿐이라 "1,500마리"·"250 / 1,000" 이 두세 줄로 접혔다 — 2열로 (2026-09-18) */
 .codex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin: 8px 0 14px; }
-.codex-chip {
-  padding: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 10px;
-  background: rgba(10, 18, 33, 0.6);
-}
-.codex-chip.tiered { border-color: rgba(251, 191, 36, 0.35); }
-.codex-chip b { display: block; color: #e2e8f0; font-size: 11px; word-break: keep-all; }
-.codex-chip span { display: block; color: #94a3b8; font-size: 10px; word-break: keep-all; }
-.codex-chip small { display: block; margin-top: 2px; color: #fbbf24; font-size: 8.5px; }
+/* 판 · 테두리는 App.css 납작 테마(크림 · 진갈색 테두리)가 맡는다. 여기 남아 있던 옛 남색 판 · 밝은 글자가
+   App.css 보다 뒤에 불러와 이겨서, 미발견 이름이 크림 위 흰 글자(대비 1.07)였다 (2026-11-13 game-agent 화면 규칙) */
+.codex-chip { padding: 8px; border-radius: 10px; }
+.codex-chip.tiered { border-color: #e2b13c; }
+.codex-chip b { display: block; color: var(--flat-ink); font-size: 11px; word-break: keep-all; }
+.codex-chip span { display: block; color: #7a5a3a; font-size: 10px; word-break: keep-all; }
+.codex-chip small { display: block; margin-top: 2px; color: #8a5a00; font-size: 8.5px; }
+.codex-chip.unseen b { color: #7a5a3a; }
 
 .shard-pack-select {
   margin-top: 5px;
@@ -1595,19 +1593,19 @@
 }
 .pack-icon { width: 34px; height: 34px; }
 .title-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+/* 칭호 글자색(TITLES.color)은 어두운 판용 — 크림 판 위 반투명 남색 · 흐림(opacity .65)이면 대비 1.3~3 이었다.
+   머리 이름표 · 상점 명판처럼 진갈색 판 위에, 고른 것은 테두리 · 빛으로만 가른다 (2026-11-13) */
 .title-chip {
   padding: 5px 12px;
-  border: 1px solid currentColor;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: rgba(10, 18, 33, 0.6);
+  background: var(--flat-ink);
   font-size: 10.5px;
   font-weight: 800;
-  opacity: 0.65;
 }
 .title-chip.active {
-  opacity: 1;
-  background: rgba(30, 30, 60, 0.5);
-  box-shadow: 0 0 10px color-mix(in srgb, currentColor 35%, transparent);
+  border-color: currentColor;
+  box-shadow: 0 0 0 1px currentColor, 0 0 10px color-mix(in srgb, currentColor 35%, transparent);
 }
 .character-title {
   display: block;
