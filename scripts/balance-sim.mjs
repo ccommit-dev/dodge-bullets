@@ -85,6 +85,21 @@ const ASSUMPTIONS = {
   weeklyGemsChallenges: 120,
   weeklyGemsAttendance: 150, // 1일 20 + 3일 30 + 7일 100 (2026-10-01: 1일차 골드 300 → 보석 20)
 };
+/**
+ * 지갑 실험 (2026-11-16, 사용자 목표 5 "골드는 하나로" · "환생해도 골드 유지") —
+ *  --wallet split   지금 그대로: 방치 정산 = 은화(sharedCoins) → 대장간, 사냥 처치 = 사냥터 골드 → 동료 · 무기 숙련, 환생은 사냥터 골드만 비운다
+ *  --wallet merged  지갑 하나: 방치 은화를 그날 최고 층 환산률(처치 골드와 같은 값)로 골드에 넣고, 대장간 값도 같은 환산률로 골드에서 낸다.
+ *                   환생해도 골드는 남는다(출발 골드 대신)
+ *  --policy forge|hunt  하나가 된 지갑을 어디부터 쓰나 — 둘 다 속도 고정(--check)을 지켜야 한다
+ *  --idlek K        방치 정산을 골드로 바꿀 때 곱하는 값(1 = 같은 가치)
+ */
+const WALLET = flag("wallet", "split");
+const POLICY = flag("policy", "forge");
+const IDLE_K = Number(flag("idlek", 1));
+const CHECK = args.includes("--check");
+const REBIRTH_KEEP = flag("rebirth", "keep") !== "reset";   // --rebirth reset — 지갑 하나여도 환생 때 출발 골드로(비교용)
+/** 은화 1 = 사냥터 골드 몇 — 그 층의 처치 골드 비(killGold / killGoldOldUnit × COIN_UNIT) */
+const coinToGold = (stage) => titans.killGold(Math.max(1, stage), false, false) / (titans.killGoldOldUnit(Math.max(1, stage), false, false) / 100);
 /** 조각이 편성 최강 동료에게 가는 비율 — --focus 0 (전부 무작위, 현행) ~ 1 (전부 집중) */
 const SHARD_FOCUS = Number(flag("focus", 0.7)); // allies.ts SHARD_PARTY_FOCUS와 같은 값
 /** 조각 수급 배율 실험용 — --shardmult 2 등 */
@@ -209,6 +224,11 @@ function simulate(kind) {
   let cumulativeGold = 0;
   let wallDays = 0;
   let gateDays = 0;
+  // 지갑 (--wallet) — merged 면 은화 값을 그날 최고 층 환산률로 사냥터 골드에서 받고 낸다
+  const merged = WALLET === "merged";
+  const rate = () => coinToGold(Math.max(p.titanBestStage, titansState.stage));
+  const walletHas = (coins) => (merged ? titansState.gold >= coins * rate() : p.sharedCoins >= coins);
+  const walletPay = (coins) => { if (merged) titansState.gold -= coins * rate(); else p.sharedCoins -= coins; };
 
   for (let day = 1; day <= DAYS; day += 1) {
     // ── 방치 정산 (세션 수만큼) — P1 따라잡기·조각 드랍 포함 ──
@@ -223,7 +243,7 @@ function simulate(kind) {
       lastEndStage = Math.max(lastEndStage, y.endStage);
       if (y.cappedOut) cappedToday = true;
     }
-    p.sharedCoins += dayGold;
+    if (merged) titansState.gold += dayGold * rate() * IDLE_K; else p.sharedCoins += dayGold;
     p.exp += dayExp;
     p.enhancementMaterials += dayMats;
     cumulativeGold += dayGold;
@@ -264,17 +284,19 @@ function simulate(kind) {
     // 무한 재련: +15 이후 골드가 비용의 3배 이상이면 시도
     if (p.bestForgeLevel >= 15) {
       let guard = 0;
-      while (guard++ < 20 && p.sharedCoins >= forge.reforgeCost(p.reforgeRank) * 3) {
-        p.sharedCoins -= forge.reforgeCost(p.reforgeRank);
+      while (guard++ < 20 && walletHas(forge.reforgeCost(p.reforgeRank) * 3)) {
+        walletPay(forge.reforgeCost(p.reforgeRank));
         if (rng() < forge.reforgeChance(p.reforgeRank)) p.reforgeRank += 1;
       }
     }
 
+    // 지갑 하나 · 사냥 먼저 — 방치로 들어온 골드를 동료 · 숙련에 먼저 쓴다(대장간은 남은 것)
+    if (merged && POLICY === "hunt") spendTitansGold(titansState);
     // ── 대장간 강화 (두 archetype 공통) ──
     for (let i = 0; i < ASSUMPTIONS.forgeAttemptsPerDay; i += 1) {
       const tier = forge.tierAt(forgeLevelRef.level);
-      if (forgeLevelRef.level >= 15 || p.sharedCoins < tier.cost) break;
-      p.sharedCoins -= tier.cost;
+      if (forgeLevelRef.level >= 15 || !walletHas(tier.cost)) break;
+      walletPay(tier.cost);
       const chance = forge.effectiveChance(tier) + (p.enhancementMaterials > 0 ? 0.08 : 0);
       if (p.enhancementMaterials > 0) p.enhancementMaterials -= 1;
       if (rng() < Math.min(1, chance)) {
@@ -318,7 +340,7 @@ function simulate(kind) {
         p.rebirthCount += 1;
         rebirths += 1;
         titansState.stage = 1;
-        titansState.gold = titans.rebirthStartGold(p.titanBestStage);   // 게임과 같은 출발 골드 (2026-10-27)
+        if (!merged || !REBIRTH_KEEP) titansState.gold = titans.rebirthStartGold(p.titanBestStage);   // 게임과 같은 출발 골드 (2026-10-27) · 지갑 하나면 골드가 남는다(사용자 결정 2026-11-16)
         for (const id of Object.keys(titansState.heroes)) titansState.heroes[id] = 0;
         titansState.weaponMastery = 1;
         boostNextDay = true; // 다음날 정산에만 2배 적용
@@ -335,7 +357,7 @@ function simulate(kind) {
       T: idle.idleCapHours(p),
       forge: p.bestForgeLevel,
       dayGold, capped: cappedToday,
-      wallet: p.sharedCoins,
+      wallet: merged ? titansState.gold : p.sharedCoins,
     });
   }
   const starsTotal = Object.values(titansState.stars).reduce((a, b) => a + (b || 0), 0);
@@ -404,6 +426,11 @@ lines.push(`- 방치형 ${DAYS}일차 일일 골드 ${fmt(idleRun.rows[DAYS - 1]
 lines.push(`- 방치형 최종 Stage ${idleRun.stage} (1에서 ${idleRun.stage === 1 ? "변화 없음" : "상승"})`);
 
 const out = AS_MD ? lines.join("\n") : lines.join("\n");
-console.log(out);
+if (!CHECK) console.log(out);
+// 속도 고정 (2026-11-06 사용자 "지금처럼" — 균형형 30일차 24~25층 · 벽 27~28일) — --check 면 벗어날 때 실패
+const lastBal = balRun.rows[DAYS - 1];
+const lockOk = DAYS !== 30 || (lastBal.stage >= 24 && lastBal.stage <= 25 && balRun.wallDays >= 27 && balRun.wallDays <= 28);
+console.log(`속도 고정 [wallet=${WALLET} policy=${POLICY} idlek=${IDLE_K} rebirth=${REBIRTH_KEEP ? "keep" : "reset"}] 균형형 ${DAYS}일차 Stage ${lastBal.stage} · 벽 ${balRun.wallDays}일 · 환생 ${balRun.rebirths}회 · 대장간 +${balRun.final.bestForgeLevel} → ${lockOk ? "PASS" : "FAIL"}`);
+if (CHECK && !lockOk) { rmSync(outDir, { recursive: true, force: true }); process.exit(1); }
 
 rmSync(outDir, { recursive: true, force: true });
