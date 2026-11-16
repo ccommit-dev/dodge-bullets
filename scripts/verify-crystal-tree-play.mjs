@@ -62,10 +62,15 @@ ok("계승 칸이 보인다(탭 열림)", await page.evaluate(() => (document.qu
 ok("390px 가로 넘침 없음 · 칸 넘침 없음 · 13px 미만 글자 없음", lay.sw <= 390 && lay.over.length === 0 && lay.small.length === 0, JSON.stringify(lay));
 await page.evaluate(() => document.querySelector(".mp-crystal-tree")?.scrollIntoView({ block: "start" })); await sleep(300);
 await page.screenshot({ path: "art-gen/out/ctree-tree.png" });
-// 되돌리기
+// 되돌리기 — 단추 금액은 줄에 쓴 결정만(공격력 3 + 시작 4 + 6 = 13, 열쇠 10 은 안 돌아온다)
+const resetLabel = await page.evaluate(() => document.querySelector(".ct-reset")?.textContent ?? "");
+ok("되돌리기 단추 '결정 13 반환'(열쇠 값 빼고)", /결정 13 반환/.test(resetLabel), resetLabel);
 await page.evaluate(() => document.querySelector(".ct-reset")?.click()); await sleep(600);
 p = await prog();
 ok("되돌리기 → 결정 60(70 − 열쇠 10) · 열쇠 유지", (await page.evaluate(() => document.querySelector(".ct-free")?.textContent)) === "60" && p.crystalTree.atk === 0 && p.crystalTree.keys.includes("boss"));
+await page.evaluate(() => document.querySelector(".ct-reset")?.click()); await sleep(500);
+const reset2 = await page.evaluate(() => document.querySelector(".mypage-toast")?.textContent ?? "");
+ok("한 번 더 되돌리기 → '되돌릴 결정이 없습니다'(열쇠만 남았을 때) · 결정 60 그대로", /되돌릴 결정이 없습니다/.test(reset2) && (await page.evaluate(() => document.querySelector(".ct-free")?.textContent)) === "60", reset2);
 
 // ── 2. 환생 → 시작 스테이지 ──
 await seed(baseProgress({ titanBestStage: 30, rebirthCount: 1, wallAreas: ["meadow"], inheritanceCrystals: 40, crystalTree: { atk: 0, gold: 0, idle: 0, start: 4, crystal: 0, boss: 0, relic: 0, keys: [] }, relics: { "ember-ring": 3 } }),

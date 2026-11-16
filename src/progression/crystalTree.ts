@@ -59,9 +59,14 @@ export function lineSpent(id: TreeLine, lv: number): number {
  */
 export const KEY_CRYSTALS = 10;
 
+/** 줄 단계에 쓴 결정 — 되돌리기로 돌려받는 몫(열쇠 값은 빼고) */
+export function linesSpent(tree: CrystalTree): number {
+  return TREE_LINES.reduce((a, l) => a + lineSpent(l.id, tree[l.id]), 0);
+}
+
 export function treeSpent(tree: CrystalTree): number {
   // 연 열쇠도 쓴 결정이다(되돌리기로 돌려받지 않는다 — 열쇠는 남는다)
-  return TREE_LINES.reduce((a, l) => a + lineSpent(l.id, tree[l.id]), 0) + tree.keys.reduce((a, k) => a + (lineDef(k).key ?? 0) * KEY_CRYSTALS, 0);
+  return linesSpent(tree) + tree.keys.reduce((a, k) => a + (lineDef(k).key ?? 0) * KEY_CRYSTALS, 0);
 }
 
 export function freeCrystals(progress: Pick<CharacterProgress, "inheritanceCrystals" | "crystalTree"> & { evolutionChoices?: number }): number {

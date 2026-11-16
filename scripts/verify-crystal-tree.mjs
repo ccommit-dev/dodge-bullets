@@ -69,6 +69,7 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   const poor = { ...p, inheritanceCrystals: T.treeSpent(p.crystalTree) };
   ok("결정이 모자라면 실패 · 이유 문구", !T.upgradeLine(poor, "gold").ok && /결정/.test(T.upgradeLine(poor, "gold").reason));
   const reset = T.resetTree(p);
+  ok("되돌릴 몫(linesSpent) = 줄 단계만 · 쓴 결정(treeSpent) = 줄 + 열쇠 10", T.linesSpent(p.crystalTree) + 10 === T.treeSpent(p.crystalTree) && T.linesSpent(reset.crystalTree) === 0 && T.treeSpent(reset.crystalTree) === 10);
   ok("되돌리기: 줄 결정 반환 · 열쇠(결정 10)는 그대로", T.freeCrystals(reset) === 30 && reset.crystalTree.keys.includes("boss") && reset.crystalTree.boss === 0);
   const cheat = P.normalizeCharacterProgress({ ...p, inheritanceCrystals: 15 });
   ok("결정보다 많이 쓴 저장은 깎인다(열쇠 값 포함)", T.treeSpent(cheat.crystalTree) <= cheat.inheritanceCrystals);

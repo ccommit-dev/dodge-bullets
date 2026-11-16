@@ -6,7 +6,7 @@ import { assetUrl } from "../asset";
 import { updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress } from "../progression/model";
 import {
-  BASIC_LINES, SPECIAL_LINES, canUnlockKey, freeCrystals, lineDef, lineText, resetTree, treeSpent, unlockKey, upgradeLine, type TreeLine,
+  BASIC_LINES, SPECIAL_LINES, canUnlockKey, freeCrystals, lineDef, lineText, linesSpent, resetTree, unlockKey, upgradeLine, type TreeLine,
   KEY_CRYSTALS,
 } from "../progression/crystalTree";
 
@@ -19,7 +19,8 @@ type Props = {
 
 export function CrystalTreePanel({ userHash, progress, onProgressChange, onMessage }: Props) {
   const free = freeCrystals(progress);
-  const spent = treeSpent(progress.crystalTree);
+  // 되돌리기로 돌려받는 몫 — 줄 단계만(열쇠 값은 열쇠와 함께 남는다)
+  const spent = linesSpent(progress.crystalTree);
   const buy = async (id: TreeLine) => {
     const check = upgradeLine(progress, id);
     if (!check.ok) { onMessage(check.reason); return; }
