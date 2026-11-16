@@ -40,7 +40,8 @@ export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus, unit 
           <b>{bonusLeft > 0 ? clock(bonusLeft / 1000) : "10분 보너스"}</b>
           <small><CurrencyIcon kind="gold" />+{formatGold(bonus)}</small>
         </button>
-        <small>사냥 중 저절로 골드 · 골드로 열기 · Lv {nextMilestone(1)} · {QUEST_MAX_LEVEL} 에 보상 ×2 · 최대 Lv {QUEST_MAX_LEVEL}</small>
+        {/* 규칙 한 줄 (2026-11-16 정리) — 네 규칙을 한 줄에 쓰던 것을 첫 규칙만. 나머지(Lv 마디 ×2 · 최대 Lv)는 title 과 줄마다의 마디 표시로 */}
+        <small title={`골드로 열기 · Lv ${nextMilestone(1)} · ${QUEST_MAX_LEVEL} 에 보상 ×2 · 최대 Lv ${QUEST_MAX_LEVEL}`}>사냥 중 저절로 골드가 쌓여요</small>
       </header>
       <ol className="quest-list">
         {QUESTS.map((q, i) => {

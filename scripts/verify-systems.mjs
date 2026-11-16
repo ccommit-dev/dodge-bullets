@@ -1427,7 +1427,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const ev = events.emptyEventSave();
   const cards = hub.hubCards(p0, ev, { beatBest: 0, now: Date.now() });
   ok("허브 카드 6장 · 순서 성문→비트→성벽→균열→대장간→파견", cards.map((c) => c.id).join() === "dodge,beat,tower,rift,forge,expedition");
-  ok("빨간 점은 최대 3개 · 잠긴 카드(성벽 미개방)엔 없다", cards.filter((c) => c.dot).length <= hub.HUB_DOT_MAX && cards.find((c) => c.id === "tower").locked && !cards.find((c) => c.id === "tower").dot);
+  ok("빨간 점은 최대 HUB_DOT_MAX(1)개 · 잠긴 카드(성벽 미개방)엔 없다", cards.filter((c) => c.dot).length <= hub.HUB_DOT_MAX && cards.find((c) => c.id === "tower").locked && !cards.find((c) => c.id === "tower").dot);
   ok("카드마다 남은 횟수와 오늘 재화가 있다", cards.every((c) => c.remaining.length > 0 && c.feeds.length > 0));
   const open = hub.hubCards({ ...p0, towerOpen: true, towerTickets: 0 }, ev, {});
   ok("성벽: 등반권 0이면 점 없음 · 남은 칸에 0/3", !open.find((c) => c.id === "tower").dot && /0\/3/.test(open.find((c) => c.id === "tower").remaining));
@@ -1497,9 +1497,9 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("능력치 막대: 1~5 · 공속·한방 모두 값이 갈린다", bars.every((b) => b.speed >= 1 && b.speed <= 5 && b.burst >= 1 && b.burst <= 5) && new Set(bars.map((b) => b.speed)).size >= 3 && new Set(bars.map((b) => b.burst)).size >= 3);
   const fresh = { ...prog.emptyCharacterProgress(), onboardingStep: 0, titanBestStage: 3, dodgeBestStage: 0, pioneeredArea: 1, towerOpen: false };
   const u = (c, p = fresh) => onboarding.unlockInfo(c, p);
-  ok("잠금 안내: 새 계정은 성문 방어 = 사냥터 Stage 5 · 진행 3/5", u("dodge").label === "사냥터 Stage 5" && u("dodge").now === 3 && u("dodge").goal === 5 && !u("dodge").done);
-  ok("잠금 안내: 앞 단계가 막힌 대장간·비트는 '먼저 …' 로 자기 최종 조건을 함께 말한다", u("forge").label.startsWith("먼저 ") && u("forge").label.includes("첫 지역 개척") && u("beat").label.includes("사냥터 Stage 10") && u("forge").hint !== u("beat").hint);
-  ok("잠금 안내: 열린 콘텐츠는 done · 성벽은 S10 대장", u("dodge", { ...fresh, onboardingStep: 4 }).done && u("tower").label.includes("S10"));
+  ok("잠금 안내: 새 계정은 성문 방어 = 사냥터 STAGE 5 · 진행 3/5", u("dodge").label === "사냥터 STAGE 5" && u("dodge").now === 3 && u("dodge").goal === 5 && !u("dodge").done);
+  ok("잠금 안내: 앞 단계가 막힌 대장간·비트는 '먼저 …' 로 자기 최종 조건을 함께 말한다", u("forge").label.startsWith("먼저 ") && u("forge").label.includes("첫 지역 개척") && u("beat").label.includes("사냥터 STAGE 10") && u("forge").hint !== u("beat").hint);
+  ok("잠금 안내: 열린 콘텐츠는 done · 성벽은 1-10 대장(로비와 같은 장-칸 표기)", u("dodge", { ...fresh, onboardingStep: 4 }).done && u("tower").label.includes("1-10"));
   const cards = hub.hubCards(fresh, events.emptyEventSave ? events.emptyEventSave() : { riftAttempts: 0 }, {});
   ok("허브 카드: 잠긴 카드마다 진행도·안내 문구가 붙는다", cards.filter((c) => c.locked).every((c) => c.unlock && !c.unlock.done && c.lockHint && c.lockHint.length > 8));
 }

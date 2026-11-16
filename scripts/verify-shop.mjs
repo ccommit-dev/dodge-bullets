@@ -22,7 +22,7 @@ const titans = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodge
 
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("dodgebullets:test-phase", "0"); /* 실제 경제를 본다 — TEST_PHASE 끔 */ for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.assign(location.origin + "/"); }, {
-  [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, onboardingStep: 4, level: 30, exp: 90000, attendanceStreak: 5, redGems: 1000, sharedCoins: 100000, enhancementMaterials: 10, pioneeredArea: 3, titanBestStage: 12, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, gachaPity: 24 }),
+  [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, onboardingStep: 4, level: 30, exp: 90000, attendanceStreak: 5, redGems: 1000, sharedCoins: 100000, enhancementMaterials: 10, pioneeredArea: 3, titanBestStage: 14, dodgeBestStage: 3, idleClaimedAt: now, updatedAt: now, partyIds: ["mia", "leon"], partyCap: 4, sessionCount: 9, gachaPity: 24 }),
   [`dodgebullets:titans:${H}`]: JSON.stringify({ stage: 12, bestStage: 12, gold: 50000, heroes: { mia: 12, leon: 8 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 2 }, lastActiveAt: now }),
   "dodge-bullets:soundEnabled": "0",
 });
@@ -92,7 +92,7 @@ let p4 = await prog();
 for (let i = 0; i < 30 && (p4.allyShards.leon ?? 0) === (p3.allyShards.leon ?? 0); i += 1) { await sleep(200); p4 = await prog(); }
 ok("러시 구매: 가진 동료 모두(레온 포함) 조각 +6", (p4.allyShards.leon ?? 0) - (p3.allyShards.leon ?? 0) === 6, `leon ${p3.allyShards.leon ?? 0}→${p4.allyShards.leon ?? 0} · 보석 ${p3.redGems}→${p4.redGems} · 주간 ${JSON.stringify(p4.weeklyEventBuys?.bought ?? {})}`);
 
-// ── 대장간 진입 시 방지권 이관 ──
+// ── 대장간 진입 시 방지권 이관 ── (대장간은 사냥터 STAGE 14 에서 열린다 — 2026-11-16 계단 간격, 시드 14)
 await clickText(".hub-sheet-close", "×");
 await sleep(300);
 await clickText(".titans-bottom-nav button", "모험");

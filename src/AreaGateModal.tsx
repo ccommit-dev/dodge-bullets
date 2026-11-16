@@ -1,4 +1,5 @@
 import { assetUrl } from "./asset";
+import { chapterStageLabel } from "./game/stageLabel";
 import { nextAreaName, requiredDodgeStage, stageCeilingFor } from "./progression/idle";
 import { HUNTING_AREAS, huntingArea } from "./titans/model";
 
@@ -33,7 +34,7 @@ export function AreaGateModal({ pioneeredArea, onGoDodge, onDismiss }: Props) {
         <p className="gate-desc">
           정찰병이 길을 뚫어야 사냥터가 열립니다.
           <br />
-          <b>성문 방어 Stage {requiredDodgeStage(pioneeredArea) ?? 4}</b> 클리어가 필요합니다.
+          <b>성문 방어 {chapterStageLabel(requiredDodgeStage(pioneeredArea) ?? 4)}</b> 클리어가 필요합니다.
         </p>
         <p className="gate-reward">개방 시 획득 배율 ×{nextArea.rewardMultiplier}</p>
         <button type="button" className="cta" onClick={onGoDodge}>

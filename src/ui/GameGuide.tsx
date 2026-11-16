@@ -21,10 +21,11 @@ export function markGuideSeen(): void {
 }
 
 const STEPS: { icon: string; title: string; text: string }[] = [
-  { icon: "ui/content-icons/ui-pointer.png", title: "자동 사냥", text: "원정대가 알아서 싸워요 · 화면을 누르면 추가 피해" },
-  { icon: "ui/attendance/gold.png", title: "골드로 성장", text: "장비 성장 · 퀘스트 · 스킬 · 유물을 올려요" },
-  { icon: "ui/idle/tower.png", title: "대장 잡고 다음 층", text: "10마리 뒤 대장 도전 · 막히면 성장하고 다시" },
-  { icon: "ui/idle/expedition.png", title: "모험 · 방치", text: "성문 방어 · 비트 · 대장간 · 꺼 둬도 보상이 쌓여요" },
+  // 2026-11-16 정리(탕탕에이스 기준 "몇 번 해 보면 아는 것만"): 4칸 · 명사 12개 → 3칸 · 첫 5분에 쓰는 것만.
+  // 모험 · 성문 방어 · 비트 · 대장간은 해금 계단이 열릴 때 하나씩 안내한다(progression/ladder.ts)
+  { icon: "ui/content-icons/ui-pointer.png", title: "자동 사냥", text: "알아서 싸워요 · 화면을 누르면 더 세게" },
+  { icon: "ui/attendance/gold.png", title: "골드로 성장", text: "모은 골드로 장비를 올려요" },
+  { icon: "ui/idle/tower.png", title: "대장 잡고 다음 STAGE", text: "막히면 성장하고 다시 · 꺼 둬도 보상이 쌓여요" },
 ];
 
 export function GameGuide({ onClose }: { onClose: () => void }) {

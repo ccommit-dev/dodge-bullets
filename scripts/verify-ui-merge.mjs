@@ -63,11 +63,12 @@ ok("스킬: 필터 줄 없음 · 칸을 누르면 시동기만 · 다시 누르�
 // ── 모험 ── 같은 크기 2열 · 이름 · 남은 횟수 · 빨간 점만 (2026-11-05)
 await click(".titans-bottom-nav button", "모험"); await sleep(600);
 const hub = await page.evaluate(() => {
-  const bs = [...document.querySelectorAll(".hub-routine > button, .hub-cards .hub-card")].filter((b) => b.getClientRects().length > 0);
+  // 성문 방어(손으로 하는 한 판)는 맨 위 넓은 카드 하나(2026-11-16 정리 2판) — 나머지가 같은 크기 2열이다
+  const bs = [...document.querySelectorAll(".hub-routine > button, .hub-cards .hub-card:not([data-card=\"dodge\"])")].filter((b) => b.getClientRects().length > 0);
   const rects = bs.map((b) => b.getBoundingClientRect());
   return { n: bs.length, sizes: new Set(rects.map((r) => `${Math.round(r.width)}x${Math.round(r.height)}`)).size, cols: new Set(rects.map((r) => Math.round(r.left))).size, chips: document.querySelectorAll(".hub-feeds").length, lines: [...document.querySelectorAll(".hub-cards .hub-card-body")].map((c) => [...c.children].filter((e) => e.getClientRects().length > 0).length), head: document.querySelector(".hub-sheet-title")?.textContent };
 });
-ok("모험: 같은 크기 2열 · 재화 칩 없음 · 카드 글은 이름 + 남은 횟수 두 줄", hub.n >= 8 && hub.sizes === 1 && hub.cols === 2 && hub.chips === 0 && hub.lines.every((l) => l === 2) && hub.head === "모험", JSON.stringify(hub));
+ok("모험: 성문 방어 빼고 같은 크기 2열 · 재화 칩 없음 · 카드 글은 이름 + 남은 횟수 두 줄", hub.n >= 7 && hub.sizes === 1 && hub.cols === 2 && hub.chips === 0 && hub.lines.every((l) => l === 2) && hub.head === "모험", JSON.stringify(hub));
 
 // ── 동료 ──
 await click(".titans-bottom-nav button", "동료"); await sleep(700);

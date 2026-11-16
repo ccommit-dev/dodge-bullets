@@ -22,6 +22,7 @@ import "./hunt-motion.css";   // 2026-10-28 몬스터 쓰러짐 · 무기별 공
 import "./ui/tiers.css";   // 2026-11-04 등급이 한눈에 — 동료 · 스킬 · 유물 틀 · 이름표 · 시전 폭발
 import "./game/expeditionHud.css";   // 2026-11-06 원정 전투 2판 — 한 줄 상단바 · 무기 업그레이드 카드 (옛 알약 규칙을 덮어 맨 뒤)
 import "./ui/clarity.css";   // 2026-11-10 단순 명료 층 — 색 셋 · 단추 하나 · 겹친 판 정리 (맨 뒤)
+import "./ui/focus2.css";   // 2026-11-16 집중 정리 2판 — 성문 방어 위로 · 설정 톱니 · 지갑 은화 · 상점 구매 추천 (clarity 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
@@ -2164,9 +2165,10 @@ function App() {
             {/* 정비 화면의 칩·보급은 인장으로 산다 — 잔액이 안 보이면 살 수 있는지 알 수 없다 (2026-09-29) */}
             {/* 지갑 줄 — 골드·보석·강화석·인장 (2026-10-06, 예전 한 줄 글자 "코인 · 인장 · 최고") */}
             <WalletBar testGems={qaGemsEnabled()} items={[
+              // 사냥터 지갑과 같은 순서(2026-11-16 정리): 은화 · 강화석 · 보석, 이 모드에만 쓰는 인장은 끝
               { kind: "silver", amount: coins },
-              { kind: "gem", amount: progress.redGems },
               { kind: "stone", amount: progress.enhancementMaterials },
+              { kind: "gem", amount: progress.redGems },
               { kind: "seal", amount: progress.expeditionSeals },
             ]} />
             <p className="score-line exp-best-line">최고 점수 {highScore.toLocaleString()} · 인장 <b data-testid="exp-seals">{progress.expeditionSeals.toLocaleString()}</b></p>

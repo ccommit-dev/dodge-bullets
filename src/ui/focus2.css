@@ -1,0 +1,63 @@
+/*
+ * 집중 정리 2판 (2026-11-16, 사용자 "집중도 낮고 난잡함 — 탕탕에이스 기준으로 다시 검토" → "제안 기준으로 모두 수정").
+ * 견주는 기준은 기능 수가 아니라 다음 셋이다(memory: benchmark-tangtang-ace).
+ *   ① 손으로 하는 한 판이 눈에 띄는가 ② 같은 것을 같은 이름 · 순서로 부르는가 ③ 지금 안 쓰는 것이 한 화면에서 다투지 않는가
+ * clarity.css 뒤에 import 한다. 모양 · 순서만 바꾸고, 높이는 바꾸지 않는다(clarity-layer: 상단 판 높이를 늘리면 작은 폰에서 겹친다).
+ */
+
+/* ── 모험: 손으로 하는 한 판(성문 방어)이 맨 위 · 넓게. 카드 글은 두 줄 그대로(11-05 결정) ── */
+.hub-page { display: flex !important; flex-direction: column; }
+.hub-page .hub-core-line { order: 0; }
+.hub-page .hub-cards { order: 1; }
+.hub-page .hub-routine { order: 2; margin-top: 8px; }
+.hub-page .hub-cards .hub-card[data-card="dodge"] { grid-column: 1 / -1; }
+.hub-page .hub-cards .hub-card[data-card="dodge"]:not(.tab-locked) { box-shadow: 0 0 0 3px #f2c232, 0 3px 0 rgba(59, 36, 21, .3) !important; }
+/* '직접 플레이' 딱지는 글자 줄이 아니라 그림 위 표시(카드 글 두 줄 검사는 innerText 를 센다) */
+.hub-page .hub-cards .hub-card[data-card="dodge"]:not(.tab-locked)::after {
+  content: "직접 플레이";
+  position: absolute; top: 8px; left: 8px; z-index: 2;
+  padding: 3px 9px; border-radius: 999px;
+  background: #2b8235; color: #fff; font-size: 12px; font-weight: 800; line-height: 1.2;
+  box-shadow: 0 2px 0 #1d5e25;
+  pointer-events: none;
+}
+
+/* ── 아래 메뉴: 설정은 상점 오른쪽 그대로(10-14 사용자 결정), 다만 탭 한 칸이 아니라 작은 톱니 ── */
+.titans-bottom-nav.compact { grid-template-columns: repeat(4, minmax(0, 1fr)) 46px !important; }
+.titans-bottom-nav .settings-wrap .settings-toggle { min-width: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }
+.titans-bottom-nav .settings-wrap .settings-toggle .settings-label {
+  position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap;
+}
+.titans-bottom-nav .settings-wrap .settings-toggle .settings-gear { width: 28px !important; height: 28px !important; }
+
+/* ── 사냥터 지갑: 은화 한 칸이 늘었다 — 칸 사이만 좁혀 같은 높이에 넣는다 ── */
+.titans-wallet .titans-silver { display: inline-flex; align-items: center; gap: 3px; }
+.titans-wallet .titans-silver .currency-icon { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; }
+@media (max-width: 420px) {
+  .titans-wallet .titans-silver .currency-icon { width: 14px !important; height: 14px !important; flex-basis: 14px !important; }
+  .titans-wallet span + span { padding-left: 4px !important; }
+}
+
+/* ── 상점: 구매 추천 한 줄(우편함에서 옮겨 옴) ── */
+.titans-shop .shop-advice-line {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 8px; padding: 8px 12px;
+  border: 2px solid #3b2415; border-radius: 12px; background: #fffaf0; color: #3b2415; text-align: left;
+  box-shadow: 0 3px 0 rgba(59, 36, 21, .2);
+}
+.titans-shop .shop-advice-line small { flex: 0 0 auto; padding: 2px 7px; border-radius: 999px; background: #3b2415; color: #fffaf0; font-size: 13px; font-weight: 800; }
+.titans-shop .shop-advice-line b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.titans-shop .shop-advice-line i { font-style: normal; font-weight: 800; }
+
+/* 머리줄 폭 (2026-11-16 실측: 360폭에서 지갑 칸이 188px뿐이라 네 칸 숫자가 칸 밖으로 14px씩 넘쳤다).
+   마이페이지는 얼굴 그림만 남기고 글자는 보조기술용으로 — 지갑이 그 자리를 쓴다(높이는 그대로) */
+@media (max-width: 480px) {
+  .titans-header .titans-back .mypage-label {
+    position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap;
+  }
+  .titans-header .titans-back { padding-right: 4px !important; min-width: 0 !important; gap: 0 !important; }
+  .titans-header .titans-wallet { max-width: none !important; flex: 1 1 auto !important; justify-content: space-between !important; }
+  .titans-header .titans-wallet > span { flex: 0 1 auto; min-width: 0; gap: 2px !important; }
+  .titans-header .titans-wallet strong { font-size: 13px !important; }   /* scan-readability 문턱 13px */
+  /* 환생 단추가 왼쪽으로 옮겨 와 가운데 맞춤 요약이 화면 왼쪽 밖(−33px)으로 나갔다 — 단추 왼쪽 끝에 맞춘다 */
+  .header-rebirth-tip { left: 0 !important; translate: 0 0 !important; }
+}

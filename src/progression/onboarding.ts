@@ -8,6 +8,7 @@
  * 기존 유저는 마이그레이션(model.ts)에서 4로 소급 — 신규에게만 적용된다.
  * step은 단조 증가라 조건을 다시 잃어도 잠기지 않는다.
  */
+import { chapterStageLabel } from "../game/stageLabel";
 import type { CharacterProgress } from "./model";
 import { qaUnlockOpen } from "./qaUnlock";
 
@@ -26,9 +27,9 @@ export function contentUnlocked(step: number, content: OnboardContent): boolean 
 
 /** 잠긴 탭을 눌렀을 때의 안내 — "무엇을 하면 열리는지"가 핵심 */
 export const LOCK_HINT: Record<OnboardContent, string> = {
-  dodge: "사냥터 Stage 5에 도달하면 개척로가 열립니다",
+  dodge: "사냥터 STAGE 5에 도달하면 개척로가 열립니다",
   forge: "성문 방어로 첫 지역을 개척하면 대장간이 열립니다",
-  beat: "사냥터 Stage 10에 도달하면 비트 수련이 열립니다",
+  beat: "사냥터 STAGE 10에 도달하면 비트 수련이 열립니다",
   events: "첫 방치 보상을 정산하면 이벤트와 보석 상점이 열립니다",
 };
 
@@ -40,20 +41,20 @@ export type UnlockInfo = { done: boolean; label: string; now: number; goal: numb
 export function unlockInfo(content: OnboardContent | "tower", p: Pick<CharacterProgress, "onboardingStep" | "titanBestStage" | "pioneeredArea" | "towerOpen" | "dodgeBestStage">): UnlockInfo {
   if (content === "tower") {
     const goal = 10;
-    return { done: p.towerOpen || qaUnlockOpen(), label: `성문 방어 S${goal} 클리어`, now: Math.min(goal, p.dodgeBestStage), goal, unit: "S", hint: `성문 방어 1장 대장(S${goal})을 깨면 끝없는 성벽이 열립니다 · 지금 S${p.dodgeBestStage}` };
+    return { done: p.towerOpen || qaUnlockOpen(), label: `성문 방어 ${chapterStageLabel(goal)} 클리어`, now: Math.min(goal, p.dodgeBestStage), goal, unit: "S", hint: `성문 방어 1장 대장(${chapterStageLabel(goal)})을 깨면 끝없는 성벽이 열립니다 · 지금 ${chapterStageLabel(p.dodgeBestStage)}` };
   }
   const step = p.onboardingStep;
   if (contentUnlocked(step, content)) return { done: true, label: "열림", now: 1, goal: 1, unit: "", hint: "" };
   // 이 콘텐츠의 최종 조건 — 앞 단계가 막혀 있으면 "먼저 …" 를 덧붙인다
   const NAME: Record<OnboardContent, string> = { dodge: "성문 방어", forge: "대장간", beat: "비트 수련", events: "균열·이벤트" };
-  const FINAL: Record<OnboardContent, string> = { dodge: "사냥터 Stage 5", forge: "성문 방어로 첫 지역 개척", beat: "사냥터 Stage 10", events: "첫 방치 보상 정산" };
+  const FINAL: Record<OnboardContent, string> = { dodge: "사냥터 STAGE 5", forge: "성문 방어로 첫 지역 개척", beat: "사냥터 STAGE 10", events: "첫 방치 보상 정산" };
   const need = CONTENT_UNLOCK_STEP[content];
   const first = (lbl: string) => (step + 1 < need ? `먼저 ${lbl} → ${FINAL[content]}` : lbl);
   const tail = ` — ${NAME[content]}은(는) ${FINAL[content]} 때 열립니다`;
   // 막힌 첫 단계부터 안내
-  if (step < 1) return { done: false, label: first("사냥터 Stage 5"), now: Math.min(5, p.titanBestStage), goal: 5, unit: "Stage", hint: `지금 사냥터 Stage ${p.titanBestStage} / 5${tail}` };
+  if (step < 1) return { done: false, label: first("사냥터 STAGE 5"), now: Math.min(5, p.titanBestStage), goal: 5, unit: "Stage", hint: `지금 사냥터 STAGE ${p.titanBestStage} / 5${tail}` };
   if (step < 2) return { done: false, label: first("첫 지역 개척"), now: Math.min(10, p.dodgeBestStage), goal: 10, unit: "S", hint: `성문 방어 1장 대장(S10)을 깨면 첫 지역이 개척됩니다 · 지금 S${p.dodgeBestStage}${tail}` };
-  if (step < 3) return { done: false, label: first("사냥터 Stage 10"), now: Math.min(10, p.titanBestStage), goal: 10, unit: "Stage", hint: `지금 사냥터 Stage ${p.titanBestStage} / 10${tail}` };
+  if (step < 3) return { done: false, label: first("사냥터 STAGE 10"), now: Math.min(10, p.titanBestStage), goal: 10, unit: "Stage", hint: `지금 사냥터 STAGE ${p.titanBestStage} / 10${tail}` };
   return { done: false, label: "첫 방치 보상 정산", now: 0, goal: 1, unit: "", hint: `사냥터 방치 보상을 한 번 받으면 열립니다${tail}` };
 }
 

@@ -3939,7 +3939,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   if (recommendation && !dismissedAlerts.includes(`recommend:${recommendation.title}`)) inboxItems.push({ key: "recommend", small: recommendation.tone === "claim" ? "받을 보상" : "성장 알림", title: recommendation.title, cls: `battle-alert tone-${recommendation.tone}`, run: () => { dismiss(`recommend:${recommendation.title}`); runAction(recommendation.action); } });
   if (promoAlert && promoNext) inboxItems.push({ key: "promo", small: "승급전", title: `${promoNext.title} 도전`, cls: "battle-alert reward promo-alert", run: () => setPromoOpen(true) });
   if (urgentNow && !boss && ladderOpen("urgent", huntBest)) { const left = Math.max(0, urgentNow.deadline - nowTick); inboxItems.push({ key: "urgent", small: "긴급 의뢰", title: `현상범 · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} 남음`, cls: "battle-alert reward urgent-alert", run: () => setUrgentOpen(true) }); }
-  if (adviceTop[0] && !dismissedAlerts.includes(`advice:${adviceTop[0].id}`)) inboxItems.push({ key: "advice", small: `구매 추천${adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}`, title: adviceTop[0].title, cls: "battle-alert tone-buy advice-alert", run: () => setAdviceOpen(true) });
+  // 구매 추천은 우편함에서 뺐다(2026-11-16 정리 — 받을 것 사이에 판매 권유가 같은 모양으로 섞였다). 상점 시트가 같은 추천을 보여 준다
   if (hotClaim && ladderOpen("events", huntBest) && !dismissedAlerts.includes(`hottime:${hotClaim.id}:${dateKey()}`)) inboxItems.push({ key: "hottime", small: "핫타임", title: `${hotClaim.label} · 보석 ${hotClaim.gems}`, cls: "battle-alert reward hottime-alert", run: () => { dismiss(`hottime:${hotClaim.id}:${dateKey()}`); openEvents("daily"); } });
   inboxRef.current = inboxItems;
   // 다음 목표 — ① 지금 바로 되는 목표(소환 · 학습) ② 다음 해금 계단(사냥터 층) ③ 남은 목표(다음 지역 등)
@@ -4106,7 +4106,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       <header className="titans-header">
         <button type="button" className="titans-back" onClick={() => openContent("profile")}>
           <span className="mypage-icon" aria-hidden="true" style={{ backgroundImage:`url(${heroPortrait()})`, backgroundSize:"cover", backgroundPosition:"center" }} />
-          <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small className="mypage-title" style={{ color:TITLES[character.activeTitle].color }}>{TITLES[character.activeTitle].name}</small> : <small>칭호 미설정</small>}</span>
+          <span className="mypage-label">마이페이지{character.activeTitle && TITLES[character.activeTitle] ? <small className="mypage-title" style={{ color:TITLES[character.activeTitle].color }}>{TITLES[character.activeTitle].name}</small> : null /* '칭호 미설정' 글자는 뺐다(2026-11-16 정리 — 늘 보이는 빈 값) */}</span>
         </button>
         {/* 환생 단추 (2026-11-03, 사용자: "마이페이지 오른쪽 여백에 환생하기 버튼 · 오버시 조건 요약") — 올리면(터치는 누르면) 조건 요약. 첫 탭이 바로 환생하지 않게 요약 안 단추로 진행 */}
         {(() => {
@@ -4137,6 +4137,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         })()}
         <div className="titans-wallet">
           <span><CurrencyIcon kind="gold" /><strong><TweenNumber value={save.gold} /></strong></span>
+          {/* 은화 (2026-11-16 정리) — 자동 사냥 줄 · 귀환 정산이 은화를 주는데 지갑엔 없었다. 성문 방어 지갑과 같은 순서: 은화 · 강화석 · 보석 */}
+          <span className="titans-silver" title="은화"><CurrencyIcon kind="silver" /><strong data-wallet="silver">{formatGold(character.sharedCoins)}</strong></span>
           {/* 강화석(파란 수정) — 상점 강화석 상자·대장간이 쓰는데 머리에 없어 '하늘색 보석'이 안 보인다고 읽혔다 (2026-10-06) */}
           {tab === "event-shop"
             ? <span className="titans-coin" title="이벤트 코인"><i className="coin-mark" aria-hidden="true" /><strong data-wallet="coin">{formatGold(character.eventCoins)}</strong></span>
@@ -4201,7 +4203,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               {specialFight ? SPECIAL_TITLE[specialFight.kind] : `STAGE ${save.stage}`}
               {specialFight ? "" : boss ? " BOSS" : bossReady ? " · 보스 대기" : ` · ${wave}/${MOBS_PER_STAGE}`}
             </h1>
-            <small className="titans-area-name">{area.name} · 최고 {save.bestStage}층</small>
+            <small className="titans-area-name">{area.name} · 최고 STAGE {save.bestStage}</small>
             {warmupLeft > 0 && !bossReady && battlePhase === "combat" && (
               <span className="warmup-chip">워밍업 ×2 · {Math.floor(warmupLeft / 60000)}:{String(Math.floor((warmupLeft % 60000) / 1000)).padStart(2, "0")}</span>
             )}
@@ -4628,6 +4630,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </header>
         )}
       <section className="titans-shop">
+        {/* 구매 추천 한 줄 (2026-11-16 정리) — 우편함에서 상점으로 옮겼다. 사러 온 곳에서만 권한다 */}
+        {tab === "premium" && adviceTop[0] && (
+          <button type="button" className="shop-advice-line advice-alert" onClick={() => setAdviceOpen(true)}><small>구매 추천{adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}</small><b>{adviceTop[0].title}</b><i aria-hidden="true">›</i></button>
+        )}
         {tab === "relic" && (
           <RelicTabPanel relics={character.relics} spare={character.relicSpare} onUpgrade={(id) => void upgradeRelics(id)} onUpgradeAll={() => void upgradeRelics("all")} chance={perm.relicChance} onCodex={() => onOpenCodex?.("relic")} />
         )}

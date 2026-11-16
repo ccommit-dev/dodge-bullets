@@ -4,6 +4,7 @@
  * 전부 기존 저장 상태에서 파생한다. 카드마다 ① 남은 횟수/티켓 ② 오늘 얻는 재화 ③ 빨간 점(지금 할 수 있고 오늘 안 한 것만, 최대 3개).
  * 탭하면 그 콘텐츠로 간다 — 안내가 곧 내비게이션이다(routine 과 같은 원칙).
  */
+import { chapterStageLabel } from "../game/stageLabel";
 import type { CharacterProgress } from "../progression/model";
 import { contentUnlocked, unlockInfo, type UnlockInfo } from "../progression/onboarding";
 import { dateKey, riftAttemptsFor, type EventSave } from "../events/eventSave";
@@ -41,7 +42,8 @@ export type HubCard = {
 };
 
 /** 빨간 점 상한 — 알림 폭탄 금지(카피바라 Go! 비판) */
-export const HUB_DOT_MAX = 3;
+// 2026-11-16 정리: 3 → 1 — 점 셋이면 어디부터 갈지 알 수 없다. 위에서 첫 번째(성문 방어가 맨 위) 하나만
+export const HUB_DOT_MAX = 1;
 
 export function hubCards(progress: CharacterProgress, events: EventSave, opts: { beatBest?: number; now?: number; huntBest?: number } = {}): HubCard[] {
   const now = opts.now ?? Date.now();
@@ -57,7 +59,8 @@ export function hubCards(progress: CharacterProgress, events: EventSave, opts: {
   const cards: HubCard[] = [
     {
       id: "dodge", label: NAMES.dodge, desc: "직접 플레이 · 50 스테이지 · 스킬 무기", feeds: ["강화석", "견갑 조각", "인장"],
-      remaining: progress.dodgeBestStage > 0 ? `최고 S${progress.dodgeBestStage} · 다음 S${progress.dodgeBestStage + 1}` : "첫 출격",
+      // 성문 방어 로비 목록과 같은 '장-칸' 표기(2026-11-16 정리: 같은 진행을 S4 · 1-4 두 가지로 부르던 것)
+      remaining: progress.dodgeBestStage > 0 ? (progress.dodgeBestStage >= 50 ? `본선 ${chapterStageLabel(50)} 완료` : `최고 ${chapterStageLabel(progress.dodgeBestStage)} · 다음 ${chapterStageLabel(progress.dodgeBestStage + 1)}`) : "첫 출격",
       dot: !dodgeToday, locked: !contentUnlocked(step, "dodge"), lockHint: unlockInfo("dodge", progress).hint, unlock: unlockInfo("dodge", progress), go: { kind: "content", content: "dodge" },
     },
     {

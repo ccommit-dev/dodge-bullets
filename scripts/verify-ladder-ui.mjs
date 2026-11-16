@@ -3,7 +3,7 @@
  * (vite dev 서버 필요 · BASE 로 바꿀 수 있다)
  *  2층: 동료 · 모험 · 상점 · 스킬 · 유물이 잠겨 흐리다 · 눌러도 그 탭으로 안 가고 "STAGE n 에서 열림" · 퀘스트는 열림 ·
  *       다음 목표 한 줄 = 다음 계단(STAGE 3 · 동료) · 환생 단추 없음 · 우편함에 승급전 · 핫타임 · 긴급 의뢰 없음
- *  5층: 모험이 열리고 성문 방어 카드는 열림 · 비트는 'STAGE 10' 잠금 · 카드마다 '얻는 것' · 맨 위 중심 루프 한 줄
+ *  5층: 모험이 열리고 성문 방어 카드는 열림 · 비트는 'STAGE 11' 잠금(2026-11-16 계단 간격) · 카드마다 '얻는 것' · 맨 위 중심 루프 한 줄
  *  16층: 상점이 열린다
  */
 import { launchBrowser } from "./launch-browser.mjs";
@@ -59,7 +59,7 @@ const card = (id) => hub.cards.find((c) => c.id === id);
 ok("5층 모험: 맨 위 중심 루프 한 줄", /사냥터/.test(hub.core), hub.core);
 const routine = await page.evaluate(() => [...document.querySelectorAll(".hub-routine > button")].map((b) => ({ t: b.textContent.trim().slice(0, 8), locked: b.classList.contains("tab-locked"), op: getComputedStyle(b).opacity })));
 ok("5층 모험: 일일 퀘스트 · 시즌 패스는 이벤트 계단(6층) 전이라 흐리게 잠김", routine.length >= 2 && routine.every((r) => r.locked && Number(r.op) < 0.8), JSON.stringify(routine));
-ok("5층 모험: 성문 방어 열림 · 비트는 STAGE 10 잠금", card("dodge") && !card("dodge").locked && card("beat")?.locked && /STAGE 10/.test(card("beat").line), JSON.stringify(hub.cards));
+ok("5층 모험: 성문 방어 열림 · 비트는 STAGE 11 잠금", card("dodge") && !card("dodge").locked && card("beat")?.locked && /STAGE 11/.test(card("beat").line), JSON.stringify(hub.cards));
 ok("5층 모험: 카드마다 얻는 것(data-gives — 글은 11-05 결정대로 두 줄)", hub.cards.length === 6 && hub.cards.every((c) => c.gives.length > 2), JSON.stringify(hub.cards.map((c) => c.gives)));
 if (OUT) await page.screenshot({ path: `${OUT}/ladder-s5-hub.png` });
 

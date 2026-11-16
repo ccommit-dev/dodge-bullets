@@ -56,12 +56,13 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, treasureL
               disabled={!unlocked}
               className={`pioneer-row stage-${stage.slotKind} ${st > 0 ? "opened" : ""} ${unlocked ? "" : "far"} ${index === next ? "next" : ""}`}
               onClick={() => onStart(index)}
-              aria-label={`${chapter + 1}-${k + 1} ${stage.name}${unlocked ? ` · 별 ${st}/3` : " · 잠김"}`}
+              aria-label={`${chapter + 1}-${k + 1} ${stage.name}${stage.slotKind === "midboss" ? " · 중보스" : ""}${unlocked ? ` · 별 ${st}/3` : " · 잠김"}`}
             >
               <span className="pioneer-stage">{chapter + 1}-{k + 1}</span>
               <span className="pioneer-name">{stage.name}</span>
               <span className="pioneer-meta">
-                {(stage.slotKind === "boss" || stage.slotKind === "midboss") && <span className="pioneer-area">{stage.slotKind === "boss" ? "대장" : "중보스"}</span>}
+                {/* 딱지는 대장 하나만(2026-11-16 정리: 한 목록에 중보스 · 도전 · 보물 · 정예①② · 비밀 · 대장 여섯 종류). 중보스는 aria-label 에 */}
+                {stage.slotKind === "boss" && <span className="pioneer-area">대장</span>}
                 {st > 0 && (
                   <span className="pioneer-stars" aria-hidden="true">
                     {[1, 2, 3].map((n) => (
@@ -75,6 +76,8 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, treasureL
             <div className="route-side">
               {node && (() => {
                 const open = branchUnlocked(node, best, stars, branchStars);
+                // 잠긴 갈림길 칩은 그리지 않는다(2026-11-16 정리) — 흐린 '정예①② · 비밀'이 늘 같이 떠 목록 딱지가 여섯 종류였다. 열리면 나타난다
+                if (!open) return null;
                 const bs = branchStars[node.id] ?? 0;
                 const firstLeft = !claimed.includes(`dodge-branch:${node.id}`);
                 return (

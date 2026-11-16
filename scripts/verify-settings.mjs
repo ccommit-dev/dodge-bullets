@@ -24,7 +24,7 @@ async function seed(attendance, extra = {}) {
   await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" });
   await page.evaluate((h, now, attendance, extra) => {
     localStorage.clear();
-    localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ version: 5, onboardingStep: 4, level: 20, titanBestStage: 6, exp: 1000, attendanceStreak: 2, titanBestStage: 6, redGems: 100, sharedCoins: 50000, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, towerTickets: 0 }));
+    localStorage.setItem(`dodgebullets:progression:v1:${h}`, JSON.stringify({ version: 5, onboardingStep: 4, level: 20, titanBestStage: 12, exp: 1000, attendanceStreak: 2, redGems: 100, sharedCoins: 50000, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, towerTickets: 0 }));
     localStorage.setItem(`dodgebullets:titans:${h}`, JSON.stringify({ stage: 6, bestStage: 6, gold: 20000, heroes: { mia: 5 }, lastActiveAt: now }));
     localStorage.setItem("dodge-bullets:soundEnabled", "0");
     if (attendance) localStorage.setItem(`dodgebullets:attendance:v1:${h}`, JSON.stringify(attendance));
@@ -64,6 +64,7 @@ for (let i = 0; i < 60 && !(await page.evaluate((h) => !!localStorage.getItem(`d
 await sleep(300);
 let p = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 const att = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:attendance:v1:${h}`)), H);
+// 이미 진행한 계정 = 환영 보석 문턱(이벤트 칸 6 + 3 = 9층) 위 — 시드 12층(2026-11-16, 03dae08 뒤 6층 시드가 새 계정으로 읽혔다)
 ok("DAY 1 수령 → 이미 진행한 계정은 예전 첫날 보석 +20(1000 은 새 계정만, 2026-10-23) · 누적 1일", p.redGems - g0 === 20 && att.totalDays === 1, `gems +${p.redGems - g0} total ${att.totalDays}`);
 await closeIdle(); await sleep(300);
 

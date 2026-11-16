@@ -32,12 +32,15 @@ export const LADDER: readonly LadderStep[] = [
   { id: "events", stage: 6, name: "이벤트 · 상점", gives: "일일 보상 · 보석" },
   { id: "urgent", stage: 7, name: "긴급 의뢰", gives: "현상범 처치 골드 · 강화석" },
   { id: "promotion", stage: 8, name: "승급전", gives: "주인공 공격력 영구 상승" },
-  { id: "beat", stage: 10, name: "비트 수련", gives: "SP(스킬 포인트) · 은화" },
-  { id: "forge", stage: 12, name: "대장간", gives: "은화로 무기 강화(사냥터 공격력)" },
-  { id: "relic", stage: 14, name: "유물", gives: "사냥터 능력치 영구 상승" },
-  { id: "rift", stage: 16, name: "균열", gives: "방치 보상 즉시 정산" },
-  { id: "tower", stage: 22, name: "끝없는 성벽", gives: "동료 조각 · 방치 배율" },
-  { id: "expedition", stage: 25, name: "파견", gives: "자는 동안 강화석 · 조각" },
+  // 따로 들어가는 화면(비트 · 대장간 · 유물 · 균열 · 성벽 · 파견)은 하루 하나꼴로(2026-11-16 정리, 탕탕에이스 기준 "곁가지는 늦게"):
+  // balance-sim 균형형 1일 5층 · 2일 10 · 3일 11 · 4일 15 · 5일 16 · 6일 19 · 7일 21 · 10일 24 — 예전엔 2일차에 넷(이벤트 · 의뢰 · 승급전 · 비트)이 한꺼번에 열렸다.
+  // 긴급 의뢰 · 승급전은 사냥터 전장 안의 싸움이라 그대로 둔다
+  { id: "beat", stage: 11, name: "비트 수련", gives: "SP(스킬 포인트) · 은화" },
+  { id: "forge", stage: 14, name: "대장간", gives: "은화로 무기 강화(사냥터 공격력)" },
+  { id: "relic", stage: 16, name: "유물", gives: "사냥터 능력치 영구 상승" },
+  { id: "rift", stage: 18, name: "균열", gives: "방치 보상 즉시 정산" },
+  { id: "tower", stage: 21, name: "끝없는 성벽", gives: "동료 조각 · 방치 배율" },
+  { id: "expedition", stage: 24, name: "파견", gives: "자는 동안 강화석 · 조각" },
 ];
 
 const BY_ID = new Map(LADDER.map((s) => [s.id, s]));
