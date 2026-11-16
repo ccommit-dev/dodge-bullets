@@ -262,6 +262,8 @@
 /* ── 가독성 3차 — 이벤트 센터 · 비트 수련 · 대장간 조합소 · 성문 방어 전투 HUD · 댐 방어전 빈 칸 (검사 범위를 넓혀 찾은 것) ── */
 .event-card .event-tabs button { font-size: 13px !important; }
 .event-card .reward-chip { font-size: 13px !important; color: var(--rd-ink2) !important; }
+/* 균열 진입 연출(.rift-run-loot)은 이벤트 카드 안에 뜨는 어두운 남색 판 — 위 갈색이 먹어 보상 글자가 대비 1.9 였다. 판의 금색 글자로 (2026-11-16) */
+.event-card .rift-run-loot .reward-chip { color: #fde68a !important; }
 .event-card .season-cell { font-size: 13px !important; color: var(--rd-ink2) !important; }
 .event-card .season-cell :is(span, small, b, i) { color: inherit; }
 .event-card .season-head :is(span, small) { font-size: 13.5px !important; }

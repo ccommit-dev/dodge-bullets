@@ -708,9 +708,11 @@ function RiftRunOverlay({ run, area, party, progress, onClose }: { run: { name: 
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), RIFT_TICK_MS);
-    const done = window.setTimeout(onClose, RIFT_TICK_MS * RIFT_END_TICK);
-    return () => { window.clearInterval(id); window.clearTimeout(done); };
-  }, [onClose]);
+    return () => window.clearInterval(id);
+  }, []);
+  // 닫기는 칸 수에 묶는다 (2026-11-16) — 예전엔 따로 7.7초 타이머로 닫아, 칸이 조금만 밀려도(350 → 410ms) 보상 칸(19)에
+  // 닿기 전에 닫혀 보상 연출이 건너뛰어졌다(2판 중 1판). onClose 는 부모가 그릴 때마다 새 함수라 칸 시계를 다시 걸지 않게 따로 둔다
+  useEffect(() => { if (tick >= RIFT_END_TICK) onClose(); }, [tick, onClose]);
   // 대열이 필드보다 넓으면 통째로 줄인다 — 파티 3명 + 몬스터 3마리는 390px 화면에서 527px 이라
   // 예전엔 뒤쪽 두 마리가 화면 밖에 서서 "몬스터가 한 마리뿐"으로 보였다 (2026-09-15 실측).
   const lineRef = useRef<HTMLDivElement>(null);
