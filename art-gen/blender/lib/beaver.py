@@ -62,19 +62,20 @@ class Rig:
         self.arm, self.objs, self.cfg = arm, objs, cfg
 
 
-def _armature(name, coll):
+def _armature(name, coll, bones=None):
+    bones = bones or BONES
     a = bpy.data.armatures.new(name + '_arm')
     o = bpy.data.objects.new(name + '_rig', a)
     coll.objects.link(o)
     bpy.context.view_layer.objects.active = o
     bpy.ops.object.mode_set(mode='EDIT')
     eb = {}
-    for bn, (h, t, p) in BONES.items():
+    for bn, (h, t, p) in bones.items():
         b = a.edit_bones.new(bn)
         b.head, b.tail = Vector(h), Vector(t)
         b.roll = 0
         eb[bn] = b
-    for bn, (h, t, p) in BONES.items():
+    for bn, (h, t, p) in bones.items():
         if p:
             eb[bn].parent = eb[p]
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -366,10 +367,11 @@ def _lowpoly_body(add, M, coll, cfg):
         pc = p + n * 0.036 + Vector((-sx * 0.016, 0, -0.01))   # 흰자 겉면 위에 — 안에 묻혀 초승달처럼 잘리던 것
         add('head', C.mesh_obj(f'pupil{sx}', C.ellipsoid(pc, (0.05, 0.058, 0.008), rot=rot, seg=16, rings=10), M['pupil'], coll))
         add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(pc + n * 0.012 + Vector((-0.014, 0, 0.022)), (0.016, 0.016, 0.004), rot=rot, seg=10, rings=6), M['white'], coll))
-        # 귀 — 작고 둥근(어두운 안쪽)
-        ep = HEAD_C + Vector((sx * 0.22, 0.04, 0.25))
-        add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.075, 0.045, 0.07), seg=8, rings=6), M['fur'], coll))
-        add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, -0.005)), (0.045, 0.02, 0.042), seg=8, rings=6), M['dark'], coll, 0))
+        # 귀 — 작고 둥근(어두운 안쪽). 체형(form ears)이 있으면 그 귀로
+        if (cfg.get('form') or {}).get('ears', 'round') == 'round':
+            ep = HEAD_C + Vector((sx * 0.22, 0.04, 0.25))
+            add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.075, 0.045, 0.07), seg=8, rings=6), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, -0.005)), (0.045, 0.02, 0.042), seg=8, rings=6), M['dark'], coll, 0))
         # 볼 두 덩이(주둥이) — 코 아래 양쪽
         add('head', _lp(f'cheek{sx}', C.ellipsoid(HEAD_C + Vector((sx * 0.085, -0.25, -0.07)), (0.1, 0.075, 0.075), seg=9, rings=6), M['light'], coll))
         # 앞니 — 크고 하얗게(볼 아래로 길게)
@@ -389,15 +391,168 @@ def _lowpoly_body(add, M, coll, cfg):
     for sx, side in ((-1, 'R'), (1, 'L')):
         add(f'leg.{side}', _lp(f'leg{side}', C.ellipsoid(Vector((sx * 0.14, -0.03, 0.07)), (0.085, 0.085, 0.08), seg=8, rings=6), M['fur'], coll))
         add(f'leg.{side}', _lp(f'foot{side}', C.ellipsoid(Vector((sx * 0.15, -0.08, 0.022)), (0.085, 0.1, 0.03), seg=8, rings=5), M['dark'], coll))
-    # 꼬리 — 납작한 노(비버 꼬리) · 엉덩이 뒤에서 살짝 들린다
-    tail = C.ellipsoid(Vector((0, 0.42, 0.06)), (0.13, 0.2, 0.028), seg=10, rings=6, rot=Euler((math.radians(-14), 0, 0)))
-    add('tail', _lp('tail', tail, M['paddle'], coll))
+    # 꼬리 — 납작한 노(비버 꼬리) · 엉덩이 뒤에서 살짝 들린다. 체형(form tail)이 있으면 그 꼬리로
+    form = cfg.get('form') or {}
+    if form.get('tail', 'paddle') == 'paddle':
+        tail = C.ellipsoid(Vector((0, 0.42, 0.06)), (0.13, 0.2, 0.028), seg=10, rings=6, rot=Euler((math.radians(-14), 0, 0)))
+        add('tail', _lp('tail', tail, M['paddle'], coll))
+    else:
+        _form_tail(add, M, coll, form['tail'])
+    if form.get('ears', 'round') != 'round':
+        _form_ears(add, M, coll, form['ears'])
+    if form.get('eyes') or form.get('brows'):
+        _form_face(add, M, coll, form.get('eyes'), form.get('brows'))
+
+
+# ── 체형 (2026-11-16, 사용자: "원형 비버가 너무 똑같네 — 아예 변형해서 수정") ──
+# cfg['form'] = dict(body=(가로, 세로), head=머리 배율, ears=, tail=, eyes=, brows=). 없으면 예전 그대로.
+# 몸은 발(뿌리) 위 PIVOT 을 기준으로 늘리고 줄인다. 머리 · 팔 · 꼬리는 크기는 두고 자리만 따라간다(목 · 어깨 · 엉덩이).
+# 날개 · 등짐 · 후광처럼 등에 붙은 단단한 장식은 늘리지 않고 옮기기만 한다 — 늘리면 칸 위로 넘쳐 전원 배율(beaver k)이 깎인다.
+# 팔은 가로로 조금만 벌린다(ARM_SPREAD) — 칸 오른쪽은 무기 끝 때문에 여유가 3~9px 뿐이다(ally-bbox).
+PIVOT = Vector((0.0, 0.0, 0.04))
+NECK = Vector((0.0, 0.0, 0.4))
+ARM_SPREAD = 0.35
+RIGID_BACK = ('wf', 'pk', 'qv', 'qa', 'orbk', 'gr', 'fin', 'bn_', 'lcf', 'st', 'shell', 'scute')
+
+
+def _form_vals(form):
+    bx, by = form.get('body', (1.0, 1.0))
+    return bx, by, form.get('head', 1.0)
+
+
+def _scaled(pt, bx, by):
+    """몸 배율로 옮긴 점 — 가로(x) · 앞뒤(y) = bx, 세로(z) = by, PIVOT 기준"""
+    d = Vector(pt) - PIVOT
+    return PIVOT + Vector((d.x * bx, d.y * bx, d.z * by))
+
+
+def _arm_shift(sh, bx, by):
+    sc = _scaled(sh, bx, by)
+    return Vector(((sc.x - sh.x) * ARM_SPREAD, sc.y - sh.y, sc.z - sh.z))
+
+
+def _form_bones(form):
+    bx, by, hs = _form_vals(form)
+    out = dict(BONES)
+    head_d = _scaled(NECK, bx, by) - NECK
+    h, t, p = BONES['body']
+    out['body'] = (h, tuple(_scaled(t, bx, by)), p)
+    h, t, p = BONES['head']
+    out['head'] = (tuple(Vector(h) + head_d), tuple(Vector(t) + head_d), p)
+    for side in ('R', 'L'):
+        d = _arm_shift(Vector(BONES[f'arm.{side}'][0]), bx, by)
+        for bn in (f'arm.{side}', f'hand.{side}'):
+            h, t, p = BONES[bn]
+            out[bn] = (tuple(Vector(h) + d), tuple(Vector(t) + d), p)
+    h, t, p = BONES['tail']
+    d = _scaled(h, bx, by) - Vector(h)
+    out['tail'] = (tuple(Vector(h) + d), tuple(Vector(t) + d), p)
+    return out
+
+
+def _xform(o, T, seen):
+    """메시 데이터에 월드 변환 T 를 굽는다(물체 변환은 그대로) — 같은 데이터를 두 번 굽지 않게"""
+    if o.type != 'MESH' or o.data in seen:
+        return
+    seen.add(o.data)
+    mw = o.matrix_world.copy()
+    o.data.transform(mw.inverted() @ T @ mw)
+
+
+def _apply_form(parts, form):
+    bx, by, hs = _form_vals(form)
+    seen = set()
+    move = lambda d: Matrix.Translation(d)
+    about = lambda c, sx, sy, sz: Matrix.Translation(c) @ Matrix.Diagonal((sx, sy, sz, 1.0)) @ Matrix.Translation(-c)
+    neck1 = _scaled(NECK, bx, by)
+    head_d = neck1 - NECK
+    back_d = _scaled(Vector((0, 0.27, 0.42)), bx, by) - Vector((0, 0.27, 0.42))
+    for bone, objs in parts.items():
+        for o in objs:
+            nm = o.name
+            if bone == 'body':
+                if nm.startswith('aura'):
+                    T = move(head_d)   # 후광은 머리를 따라간다(늘리면 타원 · 칸 위로 넘친다)
+                elif nm.startswith(RIGID_BACK):
+                    T = move(back_d)
+                else:
+                    T = about(PIVOT, bx, bx, by)
+            elif bone == 'head':
+                T = about(neck1, hs, hs, hs) @ move(head_d)
+            elif bone.startswith(('arm.', 'hand.')):
+                side = bone[-1]
+                T = move(_arm_shift(Vector(BONES[f'arm.{side}'][0]), bx, by))
+            elif bone == 'tail':
+                h = Vector(BONES['tail'][0])
+                T = move(_scaled(h, bx, by) - h)
+            else:
+                continue
+            _xform(o, T, seen)
+
+
+def _form_ears(add, M, coll, kind):
+    """귀 — round(기본) 말고: pointed 뾰족 · tufted 뾰족 + 끝 털 · big 큰 둥근 귀 · droop 늘어진 귀"""
+    for sx in (-1, 1):
+        if kind in ('pointed', 'tufted'):
+            base = HEAD_C + Vector((sx * 0.19, 0.05, 0.22))
+            d = Vector((sx * 0.38, 0.12, 1.0)).normalized()
+            add('head', _lp(f'ear{sx}', C.cone(base + d * 0.1, 0.085, 0.0, 0.22, seg=6, rot=C.look_rot(d)), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', C.cone(base + d * 0.09 + Vector((0, -0.035, 0)), 0.05, 0.0, 0.15, seg=5, rot=C.look_rot(d)), M['dark'], coll, 0))
+            if kind == 'tufted':
+                add('head', _lp(f'eartuft{sx}', C.cone(base + d * 0.25, 0.028, 0.0, 0.1, seg=4, rot=C.look_rot(d)), M['dark'], coll, OUT * 0.5))
+        elif kind == 'big':
+            ep = HEAD_C + Vector((sx * 0.25, 0.05, 0.25))
+            add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.12, 0.05, 0.115), seg=9, rings=6), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.035, -0.008)), (0.075, 0.022, 0.07), seg=8, rings=6), M['dark'], coll, 0))
+        elif kind == 'droop':
+            ep = HEAD_C + Vector((sx * 0.29, 0.03, 0.1))
+            add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.06, 0.05, 0.13), seg=8, rings=6, rot=Euler((0, math.radians(sx * 22), 0))), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, 0)), (0.035, 0.02, 0.09), seg=8, rings=6, rot=Euler((0, math.radians(sx * 22), 0))), M['dark'], coll, 0))
+
+
+def _form_tail(add, M, coll, kind):
+    """꼬리 — paddle(기본 노 꼬리) 말고: plume 크게 말린 털 꼬리 · long 긴 채찍 꼬리 + 끝 털 · fan 세 갈래 노"""
+    if kind == 'plume':
+        tp = spline([Vector((0, 0.24, 0.1)), Vector((0, 0.42, 0.2)), Vector((0, 0.5, 0.42)), Vector((0, 0.44, 0.62)), Vector((0, 0.32, 0.68))], 20)
+        tr = interp([0.07, 0.13, 0.16, 0.13, 0.05], len(tp))
+        add('tail', _lp('tail', C.tube(tp, tr, seg=9), M['fur'], coll))
+        k = int(len(tp) * 0.7)
+        add('tail', _lp('tailtip', C.tube(tp[k:], [r * 1.05 for r in tr[k:]], seg=9), M['light'], coll, 0))
+    elif kind == 'long':
+        tp = spline([Vector((0, 0.24, 0.08)), Vector((0, 0.5, 0.1)), Vector((0, 0.68, 0.22)), Vector((0, 0.74, 0.42))], 18)
+        add('tail', _lp('tail', C.tube(tp, interp([0.05, 0.035, 0.028, 0.022], len(tp)), seg=7), M['fur'], coll))
+        add('tail', _lp('tailtuft', C.ellipsoid(tp[-1] + Vector((0, 0.01, 0.04)), (0.06, 0.06, 0.09), seg=8, rings=6), M['dark'], coll))
+    elif kind == 'fan':
+        for k, deg in enumerate((-28, 0, 28)):
+            t = C.ellipsoid(Vector((0, 0.4, 0.07)), (0.085, 0.17, 0.024), seg=9, rings=6, rot=Euler((math.radians(-16), 0, math.radians(deg))))
+            add('tail', _lp(f'tail{k}', t, M['paddle'], coll))
+
+
+def _form_face(add, M, coll, eyes, brows):
+    """눈꺼풀 · 눈썹 — sharp 매서운(안쪽으로 내려온 윗꺼풀) · sleepy 졸린(반쯤 덮은 꺼풀) · brows fierce 굵은 八 눈썹"""
+    for sx in (-1, 1):
+        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.36, -1.0, 0.42)), egg=0.12)
+        rot = C.look_rot(n)
+        if eyes in ('sharp', 'sleepy'):
+            tilt = Euler((0, 0, math.radians(-sx * (18 if eyes == 'sharp' else 0)))).to_matrix().to_4x4()
+            lid = C.ellipsoid(Vector((0, 0, 0)), (0.098, 0.062 if eyes == 'sharp' else 0.075, 0.03), seg=12, rings=8)
+            for v in [v for v in lid.verts if v.co.y < -0.004]:
+                lid.verts.remove(v)
+            o = _lp(f'lid{sx}', lid, M['fur'], coll, OUT * 0.5)
+            o.data.transform(Matrix.Translation(p + n * 0.045 + Vector((0, 0, 0.034 if eyes == 'sharp' else 0.02))) @ rot.to_matrix().to_4x4() @ tilt)
+            add('head', o)
+        if brows == 'fierce':
+            b = C.box(Vector((0, 0, 0)), (0.11, 0.03, 0.026), bevel=0.008)
+            o = C.mesh_obj(f'brow{sx}', b, M['dark'], coll, smooth=False, outline=OUT * 0.5)
+            o.data.transform(Matrix.Translation(p + n * 0.05 + Vector((sx * -0.01, 0, 0.1))) @ Euler((0, math.radians(-sx * 24), 0)).to_matrix().to_4x4())
+            add('head', o)
 
 
 def build(name, cfg, coll=None):
     coll = coll or C.collection(name)
     M = _mats(cfg)
-    arm = _armature(name, coll)
+    form = cfg.get('form')
+    arm = _armature(name, coll, _form_bones(form) if form else None)
     parts = {k: [] for k in BONES}
 
     def add(bone, o):
@@ -489,6 +644,8 @@ def build(name, cfg, coll=None):
     if cfg.get('weapon_l'):
         for o in weapon(cfg['weapon_l'], HAND_L, coll, cfg.get('weapon_l_color', cfg.get('weapon_color', '#cfd6df')), cfg.get('weapon_wood', '#8a5a2b')):
             add('hand.L', o)
+    if form:   # 체형 — 붙이기 전에 월드 좌표에서 굽는다(뼈 자리는 _form_bones 가 같은 식으로 옮겼다)
+        _apply_form(parts, form)
     bpy.context.view_layer.update()
     for bone, objs in parts.items():
         for o in objs:

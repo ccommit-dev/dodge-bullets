@@ -17,17 +17,17 @@ RUST = dict(fur='#a8562e', light='#f6dcc0', dark='#6e3218')
 ALLIES = {
     'mia': dict(PALE, hat='hood', hat_color='#3a9a5a', scarf='#2fb8a6', weapon_r='axe', weapon_l='dagger', role='melee'),   # 희귀 바람 근접 — 밝은 털 · 초록 두건
     'leon': dict(DARKF, hat='cap', hat_color='#c8862a', hat_color2='#8a5a1e', scarf='#f2e2b8', weapon_l='bow', role='bow'),   # 희귀 바람 활 — 짙은 털 · 사냥꾼 모자
-    'sera': dict(SNOW, hat='wizard', hat_color='#5a8ee0', robe='#b77ce0', trim='#f2c232', weapon_r='staff', weapon_color='#7fe3ff', role='mage'),   # 영웅 물 마법 — 흰 털
-    'garen': dict(FUR, hat='helmet', hat_color='#d8dde6', hat_color2='#d8403a', armor='#cfd6df', trim='#d8403a', cape='#b02a2a', weapon_r='sword', weapon_l='shield', weapon_l_color='#d8403a', role='tank'),   # 영웅 흙 탱커 — 갑옷 · 붉은 망토
-    'ari': dict(RUST, hat='helmet', hat_color='#d8403a', hat_color2='#f2c232', cape='#c8352e', trim='#f2c232', weapon_r='lance', weapon_color='#f2c232', role='melee'),   # 전설 불 창 — 붉은 털 · 용기사 투구
-    'nox': dict(DARKF, hat='hood', hat_color='#5a2e8a', robe='#6a3aa8', cape='#2e1a4e', trim='#2fb8a6', weapon_r='sword', weapon_color='#c8a8ff', role='melee'),   # 전설 암살 — 짙은 털 · 보라 망토
-    'luna': dict(SNOW, hat='crown', hat_color='#f2c232', armor='#eef2f6', trim='#f2c232', cape='#e8ecf2', weapon_r='staff', weapon_color='#fff3a8', role='healer'),   # 전설 성기사 — 흰 털 · 왕관
-    'volt': dict(PALE, hat='hood', hat_color='#f0b43a', scarf='#2fb8a6', trim='#ffffff', weapon_r='wand', weapon_color='#ffd34d', role='mage'),   # 영웅 번개 — 밝은 털 · 노란 두건
-    'bronn': dict(DARKF, hat='helmet', hat_color='#f2c232', hat_color2='#2fb8a6', armor='#3fae9a', trim='#f2c232', cape='#2a7a6a', weapon_r='sword', role='tank'),   # 전설 용암 기사 — 금 투구
-    'orion': dict(FUR, hat='wizard', hat_color='#2f8ad8', cape='#3aa0e0', trim='#ffffff', weapon_r='glass', weapon_color='#9fe8ff', role='mage'),   # 전설 성창
-    'ember': dict(RUST, hat='tiara', hat_color='#ff6aa8', robe='#ff7ab0', trim='#ffd34d', weapon_r='guitar', weapon_color='#ffb3cf', role='bard'),   # 전설 불사조
+    'sera': dict(SNOW, form=dict(body=(0.9, 1.14), ears='big', tail='plume'), hat='wizard', hat_color='#5a8ee0', robe='#b77ce0', trim='#f2c232', cape='#3f6fc8', weapon_r='staff', weapon_color='#7fe3ff', role='mage'),   # 영웅 물 마법 — 흰 털
+    'garen': dict(FUR, form=dict(body=(1.14, 0.92), head=0.95, eyes='sharp', brows='fierce'), hat='helmet', hat_color='#d8dde6', hat_color2='#d8403a', armor='#cfd6df', trim='#f2c232', cape='#b02a2a', weapon_r='sword', weapon_l='shield', weapon_l_color='#d8403a', role='tank'),   # 영웅 흙 탱커 — 갑옷 · 붉은 망토
+    'ari': dict(RUST, form=dict(body=(0.92, 1.2), ears='pointed', brows='fierce'), hat='helmet', hat_color='#d8403a', hat_color2='#f2c232', cape='#c8352e', trim='#f2c232', back='wings', back_color='#d8402a', back_color2='#f2c232', wing_len=0.46, wing_glow=0.35, tail_fx='ember', weapon_r='lance', weapon_color='#f2c232', role='melee'),   # 전설 불 창 — 붉은 털 · 용기사 투구
+    'nox': dict(DARKF, form=dict(body=(0.86, 1.18), head=0.95, ears='tufted', eyes='sharp', tail='long'), hat='hood', hat_color='#5a2e8a', robe='#6a3aa8', cape='#2e1a4e', trim='#2fb8a6', back='wings', back_color='#3a1e5e', back_color2='#c084fc', wing_len=0.46, wing_glow=0.35, weapon_r='sword', weapon_color='#c8a8ff', role='melee'),   # 전설 암살 — 짙은 털 · 보라 망토
+    'luna': dict(SNOW, form=dict(body=(0.96, 1.14), ears='big', tail='plume'), hat='crown', hat_color='#f2c232', armor='#eef2f6', trim='#f2c232', cape='#e8ecf2', back='wings', back_color='#ffe680', back_color2='#f2b632', wing_len=0.46, wing_glow=0.45, weapon_r='staff', weapon_color='#fff3a8', role='healer'),   # 전설 성기사 — 흰 털 · 왕관
+    'volt': dict(PALE, form=dict(body=(0.86, 0.86), head=1.12, ears='pointed', tail='long'), hat='hood', hat_color='#f0b43a', scarf='#2fb8a6', trim='#f2c232', cape='#2a8a9a', weapon_r='wand', weapon_color='#ffd34d', role='mage'),   # 영웅 번개 — 밝은 털 · 노란 두건
+    'bronn': dict(DARKF, form=dict(body=(1.18, 1.1), eyes='sharp', brows='fierce', tail='fan'), hat='helmet', hat_color='#f2c232', hat_color2='#2fb8a6', armor='#3fae9a', trim='#f2c232', cape='#2a7a6a', back='firewings', wing_len=0.44, weapon_r='sword', role='tank'),   # 전설 용암 기사 — 금 투구
+    'orion': dict(FUR, form=dict(body=(0.9, 1.16), head=1.04, ears='pointed', tail='plume'), hat='wizard', hat_color='#2f8ad8', cape='#3aa0e0', trim='#f2c232', back='wings', back_color='#9fe8ff', back_color2='#ffffff', wing_len=0.46, wing_glow=0.45, weapon_r='glass', weapon_color='#9fe8ff', role='mage'),   # 전설 성창
+    'ember': dict(RUST, form=dict(body=(0.9, 0.92), head=1.1, ears='big'), hat='tiara', hat_color='#ff6aa8', robe='#ff7ab0', trim='#ffd34d', back='firewings', wing_len=0.44, tail_fx='ember', weapon_r='guitar', weapon_color='#ffb3cf', role='bard'),   # 전설 불사조
     'pyro': dict(RUST, hat='cap', hat_color='#f0662a', hat_color2='#b03a12', scarf='#ffd34d', weapon_r='sword', weapon_color='#ffb070', role='melee'),   # 희귀 불 — 붉은 털
-    'marina': dict(PALE, hat='wizard', hat_color='#3ab0e0', robe='#5ac8f0', trim='#ffffff', weapon_r='staff', weapon_color='#a8f0ff', role='healer'),   # 영웅 물 힐러
+    'marina': dict(PALE, form=dict(body=(0.94, 1.06), head=1.02, ears='droop', eyes='sleepy'), hat='wizard', hat_color='#3ab0e0', robe='#5ac8f0', trim='#f2c232', cape='#2a7ac0', weapon_r='staff', weapon_color='#a8f0ff', role='healer'),   # 영웅 물 힐러
 }
 
 # 스킨 — 같은 동료 몸·무기에 테마 색·재질만 바꾼다(용암·설원·화염·심연·월식·강철·신성·홍옥·자수정·황금)
@@ -36,12 +36,12 @@ SKINS = {
     'leon-frost': ('leon', dict(hat_color='#e8f4ff', hat_color2='#7ec8e8', scarf='#bfe8ff')),
     'ari-blaze': ('ari', dict(hat_color='#f2a23a', cape='#e0841a', weapon_color='#fff0a0')),
     'nox-abyss': ('nox', dict(hat_color='#4a2a8a', robe='#5a3aa8', trim='#c084fc', weapon_color='#c084fc')),
-    'luna-eclipse': ('luna', dict(hat_color='#4a4a8a', hat_color2='#e0e6ff', armor='#3a3a6a', trim='#e0e6ff', weapon_color='#c8c0ff', weapon_l_color='#3a3a6a')),
-    'bronn-iron': ('bronn', dict(hat_color='#6a7480', hat_color2='#9aa4b0', armor='#4a525c', trim='#9aa4b0')),
+    'luna-eclipse': ('luna', dict(hat_color='#4a4a8a', hat_color2='#e0e6ff', armor='#3a3a6a', trim='#e0e6ff', weapon_color='#c8c0ff', weapon_l_color='#3a3a6a', back_color='#3a3a6a', back_color2='#e0e6ff')),
+    'bronn-iron': ('bronn', dict(hat_color='#6a7480', hat_color2='#9aa4b0', armor='#4a525c', trim='#9aa4b0', back='wings', back_color='#9aa4b0', back_color2='#dfe6ee')),
     'orion-nova': ('orion', dict(hat_color='#f4fbff', cape='#7fe8ff', weapon_color='#ffffff')),
     'ember-ruby': ('ember', dict(hat_color='#d81a4a', robe='#c81a40', trim='#ffd34d', weapon_color='#ff4a6a')),
-    'season-1': ('ari', dict(hat_color='#9a5ad8', cape='#7a3ac8', weapon_color='#d8b0ff')),
-    'season-2': ('nox', dict(hat_color='#f2c232', robe='#d8a62a', trim='#3b2415', weapon_color='#fff0a0')),
+    'season-1': ('ari', dict(hat_color='#9a5ad8', cape='#7a3ac8', weapon_color='#d8b0ff', back='wings', back_color='#7a3ac8', back_color2='#d8b0ff', wing_glow=0.3)),
+    'season-2': ('nox', dict(hat_color='#f2c232', robe='#d8a62a', trim='#3b2415', weapon_color='#fff0a0', back_color='#d8a62a', back_color2='#fff0a0')),
 }
 
 # 동료 9칸 [대기0, 대기1, 걷기0, 걷기1, 예비, 휘두름, 타격, 따라가기, 피격] — 역할별 공격

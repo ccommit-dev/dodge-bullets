@@ -9,6 +9,7 @@ import { HEROES, killGoldOldUnit, type TitanHeroId } from "../titans/model";
 import { ALLY_RARITY, SHOP_ALLY_GEM_COST } from "../titans/allies";
 import type { CharacterProgress } from "../progression/model";
 import { COIN_UNIT } from "./units";
+import { activeLimited, type LimitedGearId } from "../titans/limitedAllies";
 
 export type EventShopTab = "event-shop" | "event-shop2";
 
@@ -34,6 +35,8 @@ export type EventGrant = {
   towerTickets?: number;
   /** 비트 디펜스 시도권 (2026-10-28, beat/tickets.ts) — 산 시도권은 날이 바뀌어도 남는다 */
   beatTickets?: number;
+  /** 월간 한정 전용 장비 (2026-11-16, titans/limitedAllies · equipment/gearSets LIMITED_GEAR) — 가방에 넣는다 */
+  gearItem?: LimitedGearId;
 };
 
 export type EventProduct = {
@@ -56,6 +59,8 @@ export type EventProduct = {
   art?: string;
   /** 이번 주 특가 동료 — 카드 그림을 그 동료로 */
   ally?: () => string | null;
+  /** 보일 때만 진열 (2026-11-16 월간 한정 — 창 밖 · 이미 가졌으면 숨긴다). 없으면 늘 */
+  visible?: (progress: CharacterProgress, now: number) => boolean;
 };
 
 /** 이번 주 특가 동료 — 그 등급(상점 전용 제외)에서 주마다 한 명씩 돈다 (2026-10-28) */
@@ -108,6 +113,13 @@ export const EVENT_PRODUCTS: EventProduct[] = [
     id: "coin-gems", tab: "event-shop", name: "코인 교환 · 보석", desc: "붉은 보석", badge: "코인", icon: "beat", gemCost: 0, coinCost: 60, weeklyLimit: 2,
     grant: () => ({ gems: 40 }),
     summary: () => "보석 40",
+  },
+  // ── 월간 한정 전용 장비 (2026-11-16, titans/limitedAllies) — 창이 열린 동안 이벤트 코인으로 한 번. 창 밖 · 이미 가졌으면 안 보인다 ──
+  {
+    id: "coin-limited-gear", tab: "event-shop", name: "이번 달 한정 · 단풍 사냥꾼 장갑", desc: "오텀 전용 장갑", badge: "한정", icon: "hunt", art: "titans/gear/set-autumn-gloves.png", gemCost: 0, coinCost: 100, weeklyLimit: 1,
+    grant: () => ({ gearItem: activeLimited()?.gear ?? "autumn-gloves" }),
+    summary: () => "오텀 출전 중이면 대장 피해 +4% (장갑 칸)",
+    visible: (p, now) => { const w = activeLimited(now); return !!w && !p.ownedGear.includes(w.gear); },
   },
   // ── 특별 상점: 성장 가속 ──
   {
@@ -167,8 +179,8 @@ EVENT_PRODUCTS.push(
   },
 );
 
-export function eventProductsFor(tab: EventShopTab): EventProduct[] {
-  return EVENT_PRODUCTS.filter((p) => p.tab === tab);
+export function eventProductsFor(tab: EventShopTab, progress?: CharacterProgress, now: number = Date.now()): EventProduct[] {
+  return EVENT_PRODUCTS.filter((p) => p.tab === tab && (!progress || !p.visible || p.visible(progress, now)));
 }
 
 /** 이번 주 구매 횟수 — 주가 바뀌면 0 */

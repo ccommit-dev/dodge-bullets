@@ -107,9 +107,20 @@ ok("새 동료/중복 조각 라벨 구분", newNames + dupShards === 10, `new=$
 ok("새 동료는 빈 슬롯에 자동 편성 (파티 2 → 최대 4)", p.partyIds.length >= Math.min(4, 2 + newNames) || newNames === 0, p.partyIds.join());
 ok("중복은 등급별 조각 (mia R → +10 단위)", newNames === 10 || Object.values(p.allyShards).some((v) => v > 0));
 ok("뽑은 동료가 heroes에 Lv.1로 기록", Object.entries(t.heroes).filter(([, v]) => v > 0).length >= 2 + newNames);
+// 새 동료 소개 (2026-11-16) — 처음 얻은 영웅(SR) 이상이 있으면 결과 창을 닫은 뒤 한 명씩 크게 소개 · 그동안 발견 토스트는 기다린다
+const freshTop = await page.evaluate(() => [...new Set([...document.querySelectorAll(".gacha-card.new")].filter((c) => /rarity-(sr|ssr|ur|lr)\b/.test(c.className)).map((c) => c.dataset.ally))]);
 await clickText(".gacha-close", "확인");
 await sleep(300);
 ok("연출 닫힘", await page.evaluate(() => !document.querySelector(".gacha-reveal")));
+if (freshTop.length > 0) {
+  const sc = await page.evaluate(() => ({ on: !!document.querySelector(".ally-showcase"), ally: document.querySelector(".ally-showcase")?.dataset.ally, name: document.querySelector(".ally-showcase-name")?.textContent, move: document.querySelector(".ally-showcase-move b")?.textContent, pop: !!document.querySelector(".reward-pop") }));
+  ok(`새 영웅 이상 ${freshTop.length}명 → 소개 화면(이름 · 기술) · 그동안 발견 토스트 없음`, sc.on && freshTop.includes(sc.ally) && !!sc.name && !!sc.move && !sc.pop, JSON.stringify(sc));
+  // 누르면 다음 — 마지막이면 닫힌다. 여럿이면 '모두 넘기기' 한 번
+  if (freshTop.length > 1) { await page.evaluate(() => document.querySelector(".ally-showcase-skip")?.click()); }
+  else { await page.evaluate(() => document.querySelector(".ally-showcase")?.click()); }
+  await sleep(300);
+  ok("소개 화면 닫힘(한 번 누르기 / 모두 넘기기)", await page.evaluate(() => !document.querySelector(".ally-showcase")));
+} else ok("새 영웅 이상이 없으면 소개 화면 없음", await page.evaluate(() => !document.querySelector(".ally-showcase")));
 if (newNames > 0) { await page.waitForSelector(".reward-pop", { timeout: 2000 }).catch(() => null); ok("닫은 뒤 발견 토스트가 차례로 뜬다", await page.evaluate(() => /새 동료 합류/.test(document.querySelector(".reward-pop")?.textContent ?? ""))); }
 // 편성 게이트: 상한 밖 동료를 강제로 heroes에 넣고 출전 시도 → 거부 토스트
 // 심기와 reload 를 한 evaluate 안에서 · 심은 엠버가 reload 뒤에도 남았는지 확인하고 덮였으면 다시(최대 3번) — 떠 있던 사냥터가 떠나며

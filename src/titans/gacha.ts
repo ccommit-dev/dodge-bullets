@@ -17,6 +17,7 @@
 import { HEROES, type TitanHeroId } from "./model";
 import { ALLY_RARITY, SHOP_ALLY_GEM_COST, type AllyRarity } from "./allies";
 import { TIERS, TIER_RANK, tierRates } from "./summonLevel";
+import { activeLimited, isLimitedAlly, limitedInPool } from "./limitedAllies";
 
 /** 전설(SSR) 이상 — 천장 · 첫 10연 보장 */
 const isTop = (r: AllyRarity) => TIER_RANK[r] >= TIER_RANK.SSR;
@@ -35,7 +36,7 @@ export const GACHA = {
 } as const;
 
 export type GachaEntry = { id: TitanHeroId; rarity: AllyRarity; rate: number; pickup: boolean };
-export type GachaPool = { entries: GachaEntry[]; pickups: TitanHeroId[]; bandRate: Record<AllyRarity, number>; /** 픽업 회전까지 남은 일수 (K: 2주 회전) */ rotationDaysLeft: number; /** 회전 대상 후보 수 — 2 이하면 회전 없음 */ rotationPool: number };
+export type GachaPool = { entries: GachaEntry[]; pickups: TitanHeroId[]; bandRate: Record<AllyRarity, number>; /** 픽업 회전까지 남은 일수 (K: 2주 회전) */ rotationDaysLeft: number; /** 월간 한정 동료(창이 열린 동안만 · 픽업 가중) — 없으면 null (2026-11-16) */ limited: TitanHeroId | null; /** 회전 대상 후보 수 — 2 이하면 회전 없음 */ rotationPool: number };
 
 /** 픽업 회전 주기 (K) — 진행도가 멈춰도 2주마다 다른 동료가 픽업된다 */
 export const PICKUP_ROTATION_DAYS = 14;
@@ -58,10 +59,14 @@ const RARITIES: readonly AllyRarity[] = TIERS;
 
 export function gachaPool(_stage: number, _pioneeredArea: number, now: number = Date.now(), summonLv = 1): GachaPool {
   // 스테이지 · 지역 인자는 옛 부르는 쪽과 맞추려 남겼다 — 풀에 쓰지 않는다 (2026-10-28)
-  const eligible = HEROES.filter((h) => SHOP_ALLY_GEM_COST[h.id] === undefined && h.unlockStage < 9999);
+  // 월간 한정(titans/limitedAllies)은 창이 열린 동안만 풀에 있다
+  const eligible = HEROES.filter((h) => SHOP_ALLY_GEM_COST[h.id] === undefined && h.unlockStage < 9999 && limitedInPool(h.id, now));
   const members = eligible.map((h) => h.id);
   // 픽업 — 전설 이상을 도감 순으로 두고 2주마다 창을 옮겨 2명씩
-  const candidates = members.filter((id) => isTop(ALLY_RARITY[id]));
+  // 한정은 회전 후보에서 뺀다 — 넣으면 회전 위치가 바뀌어 지금 픽업이 모두에게 바뀐다. 대신 창 안에서 따로 픽업 가중
+  const candidates = members.filter((id) => isTop(ALLY_RARITY[id]) && !isLimitedAlly(id));
+  const lim = activeLimited(now)?.id ?? null;
+  const limited = lim && members.includes(lim) ? lim : null;
   const offset = candidates.length > GACHA.pickupCount ? pickupRotationIndex(now) % candidates.length : 0;
   const pickups = Array.from({ length: Math.min(GACHA.pickupCount, candidates.length) }, (_, i) => candidates[(offset + i) % candidates.length]);
   const rotationDaysLeft = pickupRotationDaysLeft(now);
@@ -75,11 +80,11 @@ export function gachaPool(_stage: number, _pioneeredArea: number, now: number = 
   const entries: GachaEntry[] = [];
   for (const r of present) {
     const ids = members.filter((id) => ALLY_RARITY[id] === r);
-    const weightOf = (id: TitanHeroId) => (pickups.includes(id) ? GACHA.pickupWeight : 1);
+    const weightOf = (id: TitanHeroId) => (pickups.includes(id) || id === limited ? GACHA.pickupWeight : 1);
     const total = ids.reduce((s, id) => s + weightOf(id), 0);
-    for (const id of ids) entries.push({ id, rarity: r, rate: (bandRate[r] * weightOf(id)) / total, pickup: pickups.includes(id) });
+    for (const id of ids) entries.push({ id, rarity: r, rate: (bandRate[r] * weightOf(id)) / total, pickup: pickups.includes(id) || id === limited });
   }
-  return { entries, pickups, bandRate, rotationDaysLeft, rotationPool };
+  return { entries, pickups, bandRate, rotationDaysLeft, rotationPool, limited };
 }
 
 function weightedPick(entries: GachaEntry[], rng: () => number): GachaEntry {

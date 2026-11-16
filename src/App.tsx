@@ -23,6 +23,7 @@ import "./ui/tiers.css";   // 2026-11-04 등급이 한눈에 — 동료 · 스�
 import "./game/expeditionHud.css";   // 2026-11-06 원정 전투 2판 — 한 줄 상단바 · 무기 업그레이드 카드 (옛 알약 규칙을 덮어 맨 뒤)
 import "./ui/clarity.css";   // 2026-11-10 단순 명료 층 — 색 셋 · 단추 하나 · 겹친 판 정리 (맨 뒤)
 import "./ui/focus2.css";   // 2026-11-16 집중 정리 2판 — 성문 방어 위로 · 설정 톱니 · 지갑 은화 · 상점 구매 추천 (clarity 뒤)
+import "./ui/allyShowcase.css";   // 2026-11-16 상위 동료 갖고 싶게 — 전장 몸집 · 시그니처 큰 폭발 · 전설 이상 컷인 · 뽑기 새 동료 소개 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";

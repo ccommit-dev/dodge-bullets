@@ -74,7 +74,7 @@ const p1 = gacha.gachaPool(1, 1);
 ok("풀 stage1: 최소 5명 · 역할 3종 이상 · 한 등급만 나오지 않게", p1.entries.length >= 5 && new Set(p1.entries.map((e) => allies.ALLY_ROLE[e.id])).size >= 3 && new Set(p1.entries.map((e) => e.rarity)).size >= 2, JSON.stringify(p1.entries.map((e) => e.id + ":" + e.rarity)));
 ok("풀 stage1: 1층 동료(미아 등)는 늘 들어 있다", ["mia", "toto"].every((id) => p1.entries.some((e) => e.id === id)));
 ok("풀 확률 합 = 1", Math.abs(p1.entries.reduce((s, e) => s + e.rate, 0) - 1) < 1e-9);
-{ const pk = p1.pickups[0]; const band = p1.entries.filter((e) => e.rarity === p1.entries.find((x) => x.id === pk)?.rarity); const w = band.reduce((t, e) => t + (p1.pickups.includes(e.id) ? 2 : 1), 0);
+{ const pk = p1.pickups[0]; const band = p1.entries.filter((e) => e.rarity === p1.entries.find((x) => x.id === pk)?.rarity); const w = band.reduce((t, e) => t + (e.pickup ? 2 : 1), 0);   // 픽업 표시(2주 회전 + 월간 한정, 2026-11-16) 마다 2배
   ok("픽업 가중 2배 (같은 등급 띠 안에서)", !!pk && Math.abs(p1.entries.find((e) => e.id === pk).rate - (p1.bandRate[band[0].rarity] * 2) / w) < 1e-9, pk); }
 const p12 = gacha.gachaPool(12, 3);
 ok("풀 stage12/지역3: 상점 동료 제외", p12.entries.every((e) => allies.SHOP_ALLY_GEM_COST[e.id] === undefined));
@@ -163,10 +163,10 @@ const slotSets = ["starter", "linkA", "linkB", "finisher"].map((slot) => model.S
 ok("슬롯 내 효과 중복 없음 (clone=dragonBreath 해소)", slotSets.every((set) => new Set(set).size === set.length));
 ok("meteor = 가장 강한 단발 마무리, voidFinish = 처형 (마무리 둘의 역할이 다르다)", skills.SKILL_EFFECTS.meteor.kind === "hit" && skills.SKILL_EFFECTS.voidFinish.kind === "execute");
 // ── 정리 (2026-10-01): 역할이 겹치는 동료 7·스킬 8 은퇴. 로스터에서 빠지고, 보유분은 환불로 바뀐다
-// 2026-10-27 동료 3배 — 기존 13명 + 새 40명 = 53명(은퇴 제외). 역할마다 8명 이상 · 속성 넷 · 6등급 모두
-ok("로스터 53명 — 역할마다 8명 이상, 속성 넷 · 6등급 전부", (() => {
+// 2026-10-27 동료 3배 — 기존 13명 + 새 40명 = 53명(은퇴 제외) · 2026-11-16 월간 한정 오텀 +1 = 54명(titans/limitedAllies — 창 밖엔 뽑기에서 빠지지만 얻은 동료는 로스터에 남는다). 역할마다 8명 이상 · 속성 넷 · 6등급 모두
+ok("로스터 54명(월간 한정 1 포함) — 역할마다 8명 이상, 속성 넷 · 6등급 전부", (() => {
   const roles = allies.ALLY_IDS.map((id) => allies.ALLY_ROLE[id]); const el = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_ELEMENT[id])); const tiers = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_RARITY[id]));
-  return allies.ALLY_IDS.length === 53 && ["melee", "ranged", "tank", "healer"].every((r) => roles.filter((x) => x === r).length >= 8) && el.size === 4 && tiers.size === 6;
+  return allies.ALLY_IDS.length === 54 && ["melee", "ranged", "tank", "healer"].every((r) => roles.filter((x) => x === r).length >= 8) && el.size === 4 && tiers.size === 6;
 })(), allies.ALLY_IDS.join());
 ok("은퇴 동료는 로스터·뽑기·상점·스킨에 없다", model.RETIRED_ALLY_IDS.every((id) => !allies.ALLY_IDS.includes(id) && !model.HEROES.some((h) => h.id === id) && allies.SHOP_ALLY_GEM_COST[id] === undefined && gacha.gachaPool(60, 5).entries.every((e) => e.id !== id)));
 ok("은퇴 동료의 등급·상점가 표가 allies 와 같다 (환불 근거)", model.RETIRED_ALLY_IDS.every((id) => model.RETIRED_ALLY_RARITY[id] === allies.ALLY_RARITY[id]) && model.RETIRED_ALLY_SHOP_GEMS.mia_dark === 600 && model.RETIRED_ALLY_SHOP_GEMS.sera_light === 1100);
@@ -447,9 +447,9 @@ const eventShop = await (async () => {
   rmSync(d2, { recursive: true, force: true });
   return mod;
 })();
-// 2026-10-22: 이벤트 탭 끝에 코인 교환 3종(보석 0 · 이벤트 코인 가격)
+// 2026-10-22: 이벤트 탭 끝에 코인 교환 3종(보석 0 · 이벤트 코인 가격) · 2026-11-16 월간 한정 전용 장비 1(창 안에서만 진열 — visible)
 const gemProducts = eventShop.shop.EVENT_PRODUCTS.filter((p) => !p.coinCost);
-ok("이벤트 상점 보석 상품 14종 · 이벤트 탭 4종(인장 묶음 포함)+코인 교환 3종 · 특별 탭 10종(등반권 2 · 신화/초월 특가 동료 2 · 비트 시도권 2 · 신화·초월 상자 1 포함, 2026-10-28) · 전부 가격·주간 한도", gemProducts.length === 14 && eventShop.shop.eventProductsFor("event-shop").filter((p) => !p.coinCost).length === 4 && eventShop.shop.eventProductsFor("event-shop").filter((p) => p.coinCost).length === 3 && eventShop.shop.eventProductsFor("event-shop2").length === 10 && gemProducts.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1) && eventShop.shop.EVENT_PRODUCTS.every((p) => (p.gemCost > 0 || (p.coinCost ?? 0) > 0) && p.weeklyLimit >= 1));
+ok("이벤트 상점 보석 상품 14종 · 이벤트 탭 4종(인장 묶음 포함)+코인 교환 3종 · 특별 탭 10종(등반권 2 · 신화/초월 특가 동료 2 · 비트 시도권 2 · 신화·초월 상자 1 포함, 2026-10-28) · 전부 가격·주간 한도", gemProducts.length === 14 && eventShop.shop.eventProductsFor("event-shop").filter((p) => !p.coinCost).length === 4 && eventShop.shop.eventProductsFor("event-shop").filter((p) => p.coinCost && !p.visible).length === 3 && eventShop.shop.EVENT_PRODUCTS.some((p) => p.id === "coin-limited-gear" && p.coinCost > 0 && !!p.visible) && eventShop.shop.eventProductsFor("event-shop2").length === 10 && gemProducts.every((p) => p.gemCost > 0 && p.weeklyLimit >= 1) && eventShop.shop.EVENT_PRODUCTS.every((p) => (p.gemCost > 0 || (p.coinCost ?? 0) > 0) && p.weeklyLimit >= 1));
 ok("이벤트 상점 수량이 진행도 비례 (Stage 30 골드 > Stage 5)", eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 30 }).gold > eventShop.shop.EVENT_PRODUCTS[0].grant({ ...base, titanBestStage: 5 }).gold);
 ok("주간 구매 카운트: 같은 주만 집계", eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-36", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 2 && eventShop.shop.eventBuysThisWeek({ ...base, weeklyEventBuys: { week: "2026-35", bought: { "ev-boss-supply": 2 } } }, "ev-boss-supply", "2026-36") === 0);
 ok("결제 지급표: 카탈로그 9종 전부 정의 · 후원 30일 · 캐릭터 소유", eventShop.pay.PLAY_PRODUCT_IDS.every((id) => eventShop.pay.purchaseGrant(id) !== null) && eventShop.pay.purchaseGrant("patron-30d").patronDays === 30 && eventShop.pay.purchaseGrant("char-dawn").character === "dawn");

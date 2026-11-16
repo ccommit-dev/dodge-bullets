@@ -15,6 +15,8 @@ export const NEW_ALLY_IDS = [
   "storm", "frost", "blaze", "sage", "hawk", "tide", "anvil",
   "aurora", "titan", "solar", "tempest", "abyss", "phoenix",
   "celes", "gaia", "inferno", "leviathan",
+  // 월간 한정 (2026-11-16, titans/limitedAllies.ts) — 창이 열린 동안만 뽑기에 나온다
+  "autumn",
 ] as const;
 export type NewAllyId = (typeof NEW_ALLY_IDS)[number];
 
@@ -75,6 +77,8 @@ export const NEW_ALLIES: readonly NewAllyDef[] = [
   { id: "gaia", name: "대지모 가이아", tier: "LR", role: "healer", element: "earth", stage: 32, hue: 110, attackType: "생명의 지팡이", attackInterval: 1.2, feature: "생명의 숲이 기술을 다시 채운다", move: "생명의 숲", desc: "숲이 피어나 파티를 감싼다" },
   { id: "inferno", name: "지옥불 인페르노", tier: "LR", role: "melee", element: "fire", stage: 44, hue: 0, attackType: "지옥불 도끼", attackInterval: 1.05, feature: "모든 것을 태우는 도끼", move: "지옥불 폭풍", desc: "불길이 소용돌이친다" },
   { id: "leviathan", name: "해룡왕 리바이어선", tier: "LR", role: "melee", element: "water", stage: 52, hue: 190, attackType: "해룡 삼지창", attackInterval: 1.0, feature: "바다를 가르는 삼지창", move: "해룡 강림", desc: "거대한 해룡이 덮친다" },
+  // ── 월간 한정 (2026-11-16, titans/limitedAllies.ts) — 대장 전용: 대장 ×1.2 · 일반 몬스터 ×0.82 (힘은 같은 층 신화 곡선 그대로) ──
+  { id: "autumn", name: "단풍 사냥꾼 오텀", tier: "UR", role: "ranged", element: "earth", stage: 16, hue: 22, attackType: "단풍 화살", attackInterval: 1.0, feature: "대장 사냥 — 대장에게 ×1.2 · 일반 몬스터 ×0.82", move: "낙엽 화살비", desc: "붉은 낙엽이 화살이 되어 대장에게 쏟아진다", fx: "arrow" },
 ];
 
 /** 등급 배율 — 같은 층 기준 힘 · 값 (기존 동료 곡선이 SR 쯤) */

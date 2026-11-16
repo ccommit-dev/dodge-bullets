@@ -294,7 +294,10 @@ SETS = {
     'spear': dict(metal='#8fa6bf', main='#2a5fa8', trim='#dfe8f2', dark='#173a6a'),
     'bow': dict(metal='#9a6a3a', main='#4f8a3f', trim='#d8b86a', dark='#2f5a2a'),
     'staff': dict(metal='#e6d6a8', main='#6a3fb0', trim='#f2c232', dark='#3a2070', gem='#7fe3ff'),
+    'autumn': dict(metal='#7a3e1c', main='#d8502a', trim='#f2b632', dark='#5a2410'),   # 월간 한정 전용 장갑(2026-11-16) — 단풍 사냥꾼
 }
+# 한정 장비는 한 부위만 — 세트 다섯 칸 일감에서 뺀다
+LIMITED_SETS = {'autumn': 'gloves'}
 
 
 def set_helmet(k):
@@ -401,6 +404,22 @@ def set_gloves(k):
         for j in range(3):
             ob(f'fin{j}', C.cone(Vector((0.26, 0.02, -0.5 + 0.2 * j)), 0.09, 0.0, 0.26, seg=4, rot=Euler((0, 1.25, 0))), metal_m(S['trim']), O * 0.6)
         ob('rim', C.torus(Vector((0, 0.02, -0.04)), 0.23, 0.035), metal_m(S['trim']))
+    elif k == 'autumn':   # 단풍 사냥꾼 장갑 — 붉은 가죽 · 손등에 금빛 단풍잎 · 긴 팔찌
+        col = m('glove', S['main'], rough=0.8)
+        ob('palm', C.ellipsoid(Vector((0, 0, 0.1)), (0.29, 0.16, 0.28)), col)
+        for j in range(4):
+            x = -0.2 + 0.135 * j
+            ob(f'f{j}', C.tube([Vector((x, -0.02, 0.3)), Vector((x * 1.04, -0.05, 0.52 - abs(j - 1.5) * 0.05))], 0.06, seg=6), col)
+        ob('thumb', C.tube([Vector((-0.27, -0.04, 0.1)), Vector((-0.4, -0.1, 0.28))], 0.065, seg=6), col)
+        ob('bracer', C.tube([Vector((0, 0.02, -0.5)), Vector((0, 0.02, -0.1))], [0.27, 0.22], seg=8), m('bracer', S['metal'], rough=0.85))
+        ob('rim', C.torus(Vector((0, 0.02, -0.1)), 0.22, 0.035), metal_m(S['trim']))
+        leaf = m('leaf', S['trim'], rough=0.35)
+        c0 = Vector((0, -0.2, 0.14))
+        for j, deg in enumerate((90, 45, 135, 10, 170)):
+            d = Vector((math.cos(math.radians(deg)), 0, math.sin(math.radians(deg))))
+            L = 0.26 if j == 0 else (0.2 if j < 3 else 0.14)
+            ob(f'leaf{j}', C.cone(c0 + d * L * 0.5, 0.075, 0.0, L, seg=4, rot=C.look_rot(d)), leaf, O * 0.45)
+        ob('stem', C.tube([c0, c0 + Vector((0.02, 0, -0.16))], 0.018, seg=5), m('stem', S['dark']), O * 0.3)
     elif k == 'bow':   # 궁수 장갑 — 손가락 세 개만 · 맨 손끝 · 초록 팔찌 · 깃털
         col = m('glove', S['metal'], rough=0.85)
         ob('palm', C.ellipsoid(Vector((0, 0, 0.1)), (0.29, 0.16, 0.28)), col)
@@ -508,6 +527,9 @@ for t in (1, 2, 3):
 for k in SHOULDERS:
     JOBS[f'shoulder-{k}'] = (shoulder, k, (-35, 24), 1.9)
 for k in SETS:
+    if k in LIMITED_SETS:
+        JOBS[f'set-{k}-{LIMITED_SETS[k]}'] = (set_gloves, k, (-22, 20), 1.75)
+        continue
     JOBS[f'set-{k}-helmet'] = (set_helmet, k, (-30, 18), 1.95 if k in ('sword', 'spear') else 2.1)
     JOBS[f'set-{k}-armor'] = (set_armor, k, (-28, 14), 1.8)
     JOBS[f'set-{k}-gloves'] = (set_gloves, k, (-22, 20), 1.75)

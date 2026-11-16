@@ -69,7 +69,9 @@ await clickText(".hub-sheet-switch button", "이벤트"); await sleep(500);
 const shop = await page.evaluate(() => ({ wallet: document.querySelector('[data-wallet="coin"]')?.textContent ?? "", cards: [...document.querySelectorAll(".event-offer-card.coin-offer")].map((c) => c.textContent) }));
 // 사냥이 도는 동안 처치로 코인이 몇 개 더 들어올 수 있다(전체 검사 '103') — 지갑은 100 이상, 교환은 차이로 본다
 const coinsNow = Number((shop.wallet.match(/\d[\d,]*/) ?? ["0"])[0].replace(/,/g, ""));
-ok("이벤트 탭: 지갑에 코인 100(+ 사냥 중 번 몇 개) · 코인 교환 카드 3장", coinsNow >= 100 && coinsNow < 120 && shop.cards.length === 3, `${shop.wallet} · ${shop.cards.length}장`);
+// 2026-11-16 월간 한정 전용 장갑(코인)이 창 안에선 한 장 더 붙는다 — 상시 교환 3장만 센다
+const steady = shop.cards.filter((t) => !/한정/.test(t));
+ok("이벤트 탭: 지갑에 코인 100(+ 사냥 중 번 몇 개) · 상시 코인 교환 카드 3장", coinsNow >= 100 && coinsNow < 120 && steady.length === 3, `${shop.wallet} · ${steady.length}장(+한정 ${shop.cards.length - steady.length})`);
 const pCoin = await prog();
 await page.evaluate(() => [...document.querySelectorAll(".event-offer-card.coin-offer")].find((c) => c.textContent.includes("강화석"))?.querySelector("button")?.click()); await sleep(700);
 p = await prog();

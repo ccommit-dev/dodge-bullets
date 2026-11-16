@@ -461,6 +461,36 @@ def marks(cfg, coll):
     return out
 
 
+def aura_new(kind, cfg, coll):
+    """등급 후광 (2026-11-16) — 신화(UR) 'ring': 속성색 고리 한 겹 + 짧은 빛살 넷 · 초월(LR) 'double': 금 바깥 고리 + 속성색 안 고리 + 긴 금 빛살 여덟.
+    몸 뒤에 세운 빛 고리라 날개 · 몸이 앞에 온다. 모델이 YAW(32°) 돌아 있어 고리 면을 그만큼 되돌려 카메라 정면 원으로 보이게 한다.
+    칸 오른쪽은 무기 때문에 여유가 없어(ally-bbox) 반지름은 몸 폭 안팎 · 위로만 머리 위를 조금 넘는다"""
+    out = []
+    col = cfg.get('aura_color', '#ffe08a')
+    gold = cfg.get('aura_gold', '#ffd34d')
+    lr = kind == 'double'
+    glow = cfg.get('aura_glow', 1.3 if lr else 0.9)
+    yaw = math.radians(cfg.get('aura_yaw', 32))
+    back = Vector((math.sin(yaw), math.cos(yaw), 0))   # 화면 뒤쪽(+Y 월드)을 모델 좌표로
+    c0 = back * 0.4 + Vector((0, 0, cfg.get('aura_z', 0.62)))
+    face = C.look_rot(back)
+    side = Vector((math.cos(yaw), -math.sin(yaw), 0))   # 화면 가로(+X 월드)를 모델 좌표로
+    up = Vector((0, 0, 1))
+    m_col = _accent('aura', col, rough=0.15, emit=col, es=glow)
+    m_gold = _accent('auragold', gold, rough=0.12, metal=0.3, emit=gold, es=glow)
+    R = cfg.get('aura_r', 0.56 if lr else 0.5)
+    ring_m = m_gold if lr else m_col
+    out.append(C.mesh_obj('aura0', C.torus(c0, R, 0.034 if lr else 0.03, seg=48, ring=8, rot=face), ring_m, coll, smooth=False, outline=OUT * 0.3))
+    if lr:
+        out.append(C.mesh_obj('aura1', C.torus(c0 + back * 0.02, R * 0.78, 0.022, seg=40, ring=6, rot=face), m_col, coll, smooth=False, outline=OUT * 0.2))
+    n_ray = 8 if lr else 4
+    for k in range(n_ray):
+        a = math.pi / 4 + 2 * math.pi * k / n_ray if not lr else math.pi / 2 + 2 * math.pi * k / n_ray
+        d = side * math.cos(a) + up * math.sin(a)
+        L = (0.22 if k % 2 == 0 else 0.13) if lr else 0.11
+        out.append(C.mesh_obj(f'auray{k}', C.cone(c0 + d * (R + L * 0.5), 0.034 if lr else 0.03, 0.0, L, seg=4, rot=C.look_rot(d)), ring_m, coll, smooth=False, outline=OUT * 0.25))
+    return out
+
 def dress(add, cfg, coll):
     """build() 끝에서 부른다 — cfg 에 없는 키는 아무것도 짓지 않아 옛 동료 · 몬스터 그림은 그대로"""
     for b, o in marks(cfg, coll):
@@ -479,4 +509,7 @@ def dress(add, cfg, coll):
             add('tail', o)
     if cfg.get('belt'):
         for o in belt(cfg['belt'], coll):
+            add('body', o)
+    if cfg.get('aura'):
+        for o in aura_new(cfg['aura'], cfg, coll):
             add('body', o)

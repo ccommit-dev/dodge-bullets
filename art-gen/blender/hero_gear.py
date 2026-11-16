@@ -28,6 +28,7 @@ SETS = {
     'spear': dict(metal='#8fa6bf', main='#2a5fa8', trim='#dfe8f2', dark='#173a6a'),
     'bow': dict(metal='#9a6a3a', main='#4f8a3f', trim='#d8b86a', dark='#2f5a2a'),
     'staff': dict(metal='#e6d6a8', main='#6a3fb0', trim='#f2c232', dark='#3a2070', gem='#7fe3ff'),
+    'autumn': dict(metal='#7a3e1c', main='#d8502a', trim='#f2b632', dark='#5a2410'),   # 월간 한정 전용 장갑(2026-11-16) — 단풍 사냥꾼
 }
 HEAD = BV.HEAD_C
 GROUPS = {}
@@ -169,7 +170,7 @@ def ride_boot(k, S):
     put('bootR', 'body', 'cuff', C.torus(knee.lerp(foot, 0.35), 0.092, 0.018, rot=Euler((0, 0, 0))), metal_m(S['trim']), O * 0.7)
 
 
-def run(kind, preview, ride=False):
+def run(kind, preview, ride=False, only=None):
     os.makedirs(OUT, exist_ok=True)
     cam = RR.setup()
     C.FACET = 14
@@ -180,6 +181,8 @@ def run(kind, preview, ride=False):
     hero_objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     S = SETS[kind]
     for fn in (helmet, armor, shoulder, gloves, ride_boot if ride else boots):
+        if only and fn.__name__ not in only:   # 한정 장비는 한 부위만 (--only=gloves)
+            continue
         fn(kind, S)
     C.FACET = 0
     bpy.context.view_layer.update()
@@ -208,4 +211,5 @@ def run(kind, preview, ride=False):
 
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-run(next(a for a in argv if not a.startswith('--')), '--preview' in argv, '--ride' in argv)
+_only = next((a.split('=', 1)[1].split(',') for a in argv if a.startswith('--only=')), None)
+run(next(a for a in argv if not a.startswith('--')), '--preview' in argv, '--ride' in argv, _only)

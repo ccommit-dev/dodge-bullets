@@ -52,6 +52,8 @@ const titans = await import(await bundle("src/titans/model.ts", "titans.mjs"));
 const progression = await import(await bundle("src/progression/model.ts", "progression.mjs"));
 const allies = await import(await bundle("src/titans/allies.ts", "allies.mjs"));
 const bossPressure = await import(await bundle("src/titans/bossPressure.ts", "bossPressure.mjs"));
+// 월간 한정 동료(대장 전용 — 대장 ×bossMul · 일반 ×mobMul, 2026-11-16). 창과 상관없이 늘 뽑을 수 있다고 본다(속도 상한 쪽)
+const limited = await import(await bundle("src/titans/limitedAllies.ts", "limitedAllies.mjs"));
 
 // ── 재현 가능한 난수 ──────────────────────────────────────────────
 function mulberry32(a) {
@@ -131,20 +133,23 @@ function playTitans(state, seconds, stageCeiling) {
   let wall = false;
   while (t > 0) {
     // 편성은 상위 4명만 싸운다 (2026-10-27 난이도 감사: 예전엔 보유 동료 전부의 합이라 동료 60명 뒤 DPS 가 부풀었다)
-    const partyDps = gearFx.autoSpeedMul * (1 + SKILL_SHARE * (gearFx.skillDmgMul - 1)) * titans.HEROES
-      .map((h) => titans.heroDps(h, state.heroes[h.id] ?? 0) * allies.starMultiplier(allies.effectiveStars(state.stars?.[h.id], state.heroes[h.id] ?? 0)))
-      .sort((a, b) => b - a).slice(0, PARTY_SIZE).reduce((a, b) => a + b, 0);
-    const dps =
-      partyDps +
-      titans.playerIdleDps(state.weaponMastery) +
-      titans.tapDamage(state.weaponMastery) * gearFx.tapMul * ASSUMPTIONS.tapsPerSecond;
+    const partyMul = gearFx.autoSpeedMul * (1 + SKILL_SHARE * (gearFx.skillDmgMul - 1));
+    const party = titans.HEROES
+      .map((h) => ({ id: h.id, d: titans.heroDps(h, state.heroes[h.id] ?? 0) * allies.starMultiplier(allies.effectiveStars(state.stars?.[h.id], state.heroes[h.id] ?? 0)) }))
+      .sort((a, b) => b.d - a.d).slice(0, PARTY_SIZE);
+    // 한정 동료는 일반 몬스터엔 약하고(×mobMul) 대장엔 세다(×bossMul) — 벽(대장)이 속도를 정하므로 대장 쪽을 따로 센다
+    const partyDps = partyMul * party.reduce((a, x) => a + x.d * limited.limitedAllyHitMul(x.id, false), 0);
+    const partyBossDps = partyMul * party.reduce((a, x) => a + x.d * limited.limitedAllyHitMul(x.id, true), 0);
+    const soloDps = titans.playerIdleDps(state.weaponMastery) + titans.tapDamage(state.weaponMastery) * gearFx.tapMul * ASSUMPTIONS.tapsPerSecond;
+    const dps = partyDps + soloDps;
+    const bossDps = partyBossDps + soloDps;
 
     // 일반 몬스터 10마리
     const mobHp = titans.monsterHp(state.stage, false);
     const mobTime = (mobHp / dps) * titans.MOBS_PER_STAGE;
     // 보스는 제한 시간 안에 못 잡으면 진행이 막힌다 — 이게 진짜 벽이다.
     const bossHp = titans.monsterHp(state.stage, true);
-    const bossTime = bossHp / (dps * gearFx.bossMul);
+    const bossTime = bossHp / (bossDps * gearFx.bossMul);
     // 대장의 반격 (2026-10-27, titans/bossPressure): 원정대가 쓰러지기 전에 잡아야 한다 — 페이스² > 1/s ⇔ 걸리는 시간 ≤ 제한시간 × √s (역할 보정은 빼고 보수적으로)
     if (bossTime > titans.BOSS_TIME_SEC * Math.sqrt(bossPressure.bossPressureScale(state.stage))) {
       // 벽에 막힘 — 남은 시간은 현재 스테이지 반복 사냥으로 골드만 번다.

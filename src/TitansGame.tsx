@@ -3,6 +3,7 @@ import { GEAR_PARTS, GEAR_PART_DEF, gearEffects, gearPartValue, gearTierOfEnhanc
 import { AllySigInfo } from "./titans/AllySigInfo";
 import { AllyDetail } from "./titans/AllyDetail";
 import { allySignature, isSignatureHit, signatureBaseMul, SIG_HALO_CD_SEC, SIG_QUAKE_FREEZE_MS, type SigFx } from "./titans/allySignature";
+import { activeLimited, limitedAllyHitMul, limitedDaysLeft, limitedGearBossMul } from "./titans/limitedAllies";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
@@ -91,7 +92,7 @@ import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "
 import { SKILL_DOCK_EVENT, skillDockLeft } from "./ui/skillDockPref";
 import { type EquipSlotId, EquipWindow, type EquipBagItem, type EquipSlotView } from "./titans/EquipWindow";
 import { partEquipTier, setEquipTier, shoulderEquipTier, weaponEquipTier } from "./equipment/equipTier";
-import { gearSetEnhanceCost, GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId } from "./equipment/gearSets";
+import { gearSetEnhanceCost, GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId, gearItemSetLabel, isLimitedGear } from "./equipment/gearSets";
 import { QuestPanel } from "./titans/QuestPanel";
 import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
@@ -304,6 +305,8 @@ type FxBurst = {
   hue?: number;
   /** 때린 쪽 속성(fire·water·earth·wind·blade·light) — 타격 그림 색 (2026-10-21) */
   el?: string;
+  /** 덧붙는 클래스 — 상위 동료 시그니처 큰 폭발 'sig-ult t-UR' (2026-11-16) */
+  mod?: string;
 };
 
 /** 버프 상태 — 만료 시각(performance.now 기준)과 그때의 수치. 값은 titans/skills.ts가 정한다 */
@@ -386,6 +389,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const [buffs, setBuffs] = useState<BuffState>(EMPTY_BUFFS);
   /** 소환 결과 연출 (확률형 재설계) — 카드 뒤집기 모달. null이면 닫힘 */
   const [gachaReveal, setGachaReveal] = useState<PullResult[] | null>(null);
+  /** 새 동료 소개 (2026-11-16) — 결과 창을 닫은 뒤 처음 얻은 영웅 이상을 한 명씩. at = 지금 보이는 차례 */
+  const [allyShowcase, setAllyShowcase] = useState<{ ids: TitanHeroId[]; at: number } | null>(null);
   // 첫 탭 = 모두 공개 창(카드당 0.18초)은 결과가 실제로 그려진 다음 프레임부터 잰다(2026-11-03) — 결과 창을 처음 그릴 때 메인 스레드가 멈춰(CPU 4배 저하에서 수 초)
   // 커밋 시각부터 재면 창이 그 사이 지나가, 멈춘 화면에서 누른 첫 탭이 카드를 못 본 채 닫았다. 그려지기 전 탭은 모두 공개로
   useLayoutEffect(() => {
@@ -419,7 +424,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const gachaRevealAtRef = useRef(0);
   const gachaBestSfxRef = useRef(0);
   const gachaOpenRef = useRef(false);
-  useEffect(() => { gachaOpenRef.current = !!gachaSummoning || !!gachaReveal; }, [gachaSummoning, gachaReveal]);
+  useEffect(() => { gachaOpenRef.current = !!gachaSummoning || !!gachaReveal || !!allyShowcase; }, [gachaSummoning, gachaReveal, allyShowcase]);
   /** 서랍 닫기 — 짧게 내려간 뒤 사냥터로 (2026-11-02). 예전엔 바로 사라졌다 */
   const [sheetClosing, setSheetClosing] = useState(false);
   const sheetDragY = useRef<number | null>(null);
@@ -466,6 +471,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 장비창에서 고른 슬롯 — 훈련 카드는 그 슬롯 것만 보인다 (2026-11-04, 화면 길이) */
   const [equipFocus, setEquipFocus] = useState<EquipSlotId>("weapon");
   const [tierFx, setTierFx] = useState<{ id: TitanSkillId; tier: AllyRarity; seq: number; x: number; y: number } | null>(null);
+  /** 상위 동료 시그니처 컷인 (2026-11-16, 사용자: "전장에서 쓰는 고유 기술을 크게") — 전설(SSR) 이상. 스킬 시전 연출과 겹치지 않게 그 뒤 1.5초는 쉰다 */
+  const [allyCut, setAllyCut] = useState<{ id: TitanHeroId; tier: AllyRarity; move: string; seq: number } | null>(null);
+  const allyCutAtRef = useRef<{ global: number; skill: number; by: Partial<Record<TitanHeroId, number>> }>({ global: 0, skill: 0, by: {} });
   /** 장착 연출 (2026-10-28, 사용자: "실제 장착시 바로 스킬 이펙트 화려하게") — 카드 · 칸이 빛나고 전장에서 그 스킬 시전 연출을 한 번(피해 · 쿨타임 없음) */
   const [equipFx, setEquipFx] = useState<{ id: TitanSkillId; seq: number } | null>(null);
   /** 펫 덤빔(2026-10-28) — 번호가 바뀔 때마다 주인공 곁 펫이 몬스터 쪽으로 뛰었다 돌아온다(hunt-motion.css .hero-pet.pet-attack) */
@@ -801,7 +809,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (!import.meta.env.DEV) return;
     (window as unknown as { __huntState?: () => unknown }).__huntState = () => ({ inbox: inboxRef.current.map(({ key, small, title, cls }) => ({ key, small, title, cls })), now: performance.now(), bossLeft: bossLeftRef.current, freezeUntil: buffsRef.current.freezeUntil, boss: !!bossRef.current, urgent: specialRef.current?.kind === "urgent" ? specialRef.current.urgent : null, special: specialRef.current?.kind ?? null, dmg: { ...devDmgRef.current }, kills: saveRef.current.totalKills, stage: saveRef.current.stage, phase: battlePhaseRef.current, formation: formationReadyRef.current });
     (window as unknown as { __huntDmgReset?: () => void }).__huntDmgReset = () => { devDmgRef.current = {}; };
-    return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; delete (window as unknown as { __huntDmgReset?: unknown }).__huntDmgReset; };
+    // 새 동료 소개 화면을 바로 띄운다(2026-11-16 verify-ally-desire 캡처) — 뽑기 확률에 기대지 않고
+    (window as unknown as { __allyShowcase?: (ids: TitanHeroId[]) => void }).__allyShowcase = (ids) => setAllyShowcase({ ids, at: 0 });
+    return () => { delete (window as unknown as { __huntState?: unknown }).__huntState; delete (window as unknown as { __huntDmgReset?: unknown }).__huntDmgReset; delete (window as unknown as { __allyShowcase?: unknown }).__allyShowcase; };
   }, []);
   const allyAttackAcc = useRef<Record<TitanHeroId, number>>(Object.fromEntries(ALLY_IDS.map((id, index) => [id, (index * .17) % 1])) as Record<TitanHeroId, number>);
   const autoAttackAcc = useRef(0);
@@ -1506,12 +1516,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     return () => window.removeEventListener("dodgebullets:pending-cores", onPending);
   }, [userHash]);
 
-  const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number, el?: string) => {
+  const pushFx = (kind: FxBurst["kind"], x: number, y: number, hue?: number, el?: string, mod?: string) => {
     const id = ++fxId.current;
-    setFx((prev) => [...prev.slice(lowFxRef.current ? -8 : -22), { id, kind, x, y, hue, el }]);
+    setFx((prev) => [...prev.slice(lowFxRef.current ? -8 : -22), { id, kind, x, y, hue, el, mod }]);
     window.setTimeout(() => {
       setFx((prev) => prev.filter((f) => f.id !== id));
-    }, kind === "slash" || kind === "thrust" ? 360 : kind === "hit" || kind === "ally" || kind === "spark" || kind.startsWith("tierhit-") ? 420 : kind === "burst" || kind === "debris" ? 620 : 850);
+    }, kind === "slash" || kind === "thrust" ? 360 : kind === "hit" || kind === "ally" || kind === "spark" || kind.startsWith("tierhit-") ? 420 : mod?.startsWith("sig-ult") ? 760 : kind === "burst" || kind === "debris" ? 620 : 850);
   };
   /**
    * 이펙트를 캐릭터 몸 위에 (2026-10-20, 사용자: "이펙트 위치가 이상해 — 캐릭터나 몬스터 근처로").
@@ -1527,12 +1537,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const j = () => (Math.random() - 0.5) * 2 * jitter;
     return { x: ((r.left + r.width * (fx + j()) - fr.left) / fr.width) * 100, y: ((r.top + r.height * (fy + j()) - fr.top) / fr.height) * 100 };
   };
-  const pushFxAt = (kind: FxBurst["kind"], target: Parameters<typeof fxSpot>[0], fx: number, fy: number, fallbackX: number, fallbackY: number, hue?: number, jitter = 0, el?: string) => {
+  const pushFxAt = (kind: FxBurst["kind"], target: Parameters<typeof fxSpot>[0], fx: number, fy: number, fallbackX: number, fallbackY: number, hue?: number, jitter = 0, el?: string, mod?: string) => {
     const { x, y } = fxSpot(target, fx, fy, fallbackX, fallbackY, jitter);
     // 가장자리 캐릭터에 붙인 이펙트가 전장 밖으로 나가지 않게 반폭만큼 안쪽으로 — 시그니처(120px · 회전 · 고리)가 왼쪽 끝 원거리 동료 · 오른쪽 몬스터에서 삐져나갔다(verify-anim-clip)
     const fw = fieldRef.current?.getBoundingClientRect().width ?? 0;
     const half = fw > 0 ? ((kind.startsWith("sig-") ? 100 : kind === "burst" ? 68 : kind === "debris" || kind === "spark" ? 46 : 30) / fw) * 100 : 0;   // 시그니처는 120px 사각이 돌며 대각선 ≈170px · 큰 폭발 136px · 불꽃 · 파편 92px
-    pushFx(kind, Math.max(half, Math.min(100 - half, x)), y, hue, el);
+    pushFx(kind, Math.max(half, Math.min(100 - half, x)), y, hue, el, mod);
   };
   /** 치명타 · 스킬 · 특수기 순간 캐릭터를 0.06초 멈춘다(히트스톱) — 이펙트는 계속 돈다. 자리는 안 움직인다 (2026-10-21). 평타는 짧게(0.035초, 0.4초에 한 번) */
   const hitStop = (ms = 60, gap = 220) => {
@@ -1712,7 +1722,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           label = "약점!";
           if (hm.weakHunt && opts?.skill) { bossLeftRef.current += 1; setBossLeft(bossLeftRef.current); }
         }
-        mul *= af.bossMul * permRef.current.bossMul * WEAPON_EFFECTS[weaponKindRef.current].bossMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).bossMul;   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26) · 창 (2026-10-27)
+        mul *= af.bossMul * permRef.current.bossMul * WEAPON_EFFECTS[weaponKindRef.current].bossMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).bossMul * limitedGearBossMul(characterRef.current.equippedGear?.gloves, characterRef.current.partyIds);   // × 결정 트리 대장 사냥꾼 · 유물 (2026-10-26) · 창 (2026-10-27) · 한정 전용 장갑(그 동료 출전 중, 2026-11-16)
       }
       if (opts?.skill) mul *= WEAPON_EFFECTS[weaponKindRef.current].skillDmgMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).skillDmgMul;   // 지팡이 — 스킬 피해 (2026-10-27)
       const dealt = Math.floor(raw * mul);
@@ -2321,14 +2331,23 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           if (isSig && sig.fx === "halo") setCds((prev) => { const next = { ...prev }; for (const k of Object.keys(next) as TitanSkillId[]) next[k] = Math.max(0, next[k] - SIG_HALO_CD_SEC); return next; });
           if (import.meta.env.DEV && isSig && (sig.fx === "halo" || sig.fx === "quake")) ((window as unknown as { __huntSigLog?: unknown[] }).__huntSigLog ??= []).push({ t: performance.now(), id: h.id, fx: sig.fx, boss: !!bossRef.current, bossLeft: bossLeftRef.current });
           if (isSig && sig.fx === "quake" && bossRef.current) { const until = performance.now() + SIG_QUAKE_FREEZE_MS; buffsRef.current = { ...buffsRef.current, freezeUntil: Math.max(buffsRef.current.freezeUntil, until) }; setBuffs((b) => ({ ...b, freezeUntil: Math.max(b.freezeUntil, until) })); }
-          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, trialCeiling(stageCeilingFor(characterRef.current.pioneeredArea), saveRef.current.bestStage)) * permRef.current.allyMul;   // × 결정 트리 공격력 · 화염 깃털 (2026-10-26)   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
+          const hitBase = heroDps(h, level) * starMultiplier(effectiveStars(characterRef.current.allyStars[h.id], level)) * h.attackInterval * war * shoulderBoost * synergyDps * saveRef.current.huntMods.allyMul * ladderEffects(characterRef.current.bossLadder).allyMul * trialDpsMul(h, trialCeiling(stageCeilingFor(characterRef.current.pioneeredArea), saveRef.current.bestStage)) * permRef.current.allyMul * limitedAllyHitMul(h.id, !!bossRef.current);   // × 결정 트리 공격력 · 화염 깃털 (2026-10-26) · 월간 한정 대장 전용(대장 ×1.2 · 일반 ×0.82, 2026-11-16)   // × 도토리 · 대장 사다리 (2026-10-22) · 체험 출전(titans/trialAlly, 2026-10-23)
           const hitMul = isSig ? sig.mul : signatureBaseMul(sig);
           if (import.meta.env.DEV) { const log = ((window as unknown as { __huntHitLog?: unknown[] }).__huntHitLog ??= []); if (log.length < 4000) log.push({ id: h.id, no, sig: isSig, base: hitBase, dmg: hitBase * hitMul, fx: sig.fx, move: sig.move }); }
           const role = ALLY_ROLE[h.id];
           const flight = role === "ranged" || role === "healer" ? spawnAllyProj(h.id, ALLY_ELEMENT[h.id], isSig) : 0;
           // 영웅 이상은 명중마다 등급 폭발(ui/tiers.css) — 그림만, 피해는 그대로
           const tierHit = !lowFxRef.current && TIER_RANK[ALLY_RARITY[h.id]] >= TIER_RANK.SR ? (`tierhit-${ALLY_RARITY[h.id]}` as FxBurst["kind"]) : null;
-          const land = () => { applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined, fxDelayMs: flight > 0 ? 0 : 110 / saveRef.current.battleSpeed }); if (tierHit) pushFxAt(tierHit, "monster", 0.42, 0.5, 72, 45, undefined, 0.14); };
+          const land = () => {
+            applyDamage(hitBase * hitMul, false, { fromAlly: h.id, source: "ally", hue: h.hue, label: isSig ? sig.move : undefined, fxDelayMs: flight > 0 ? 0 : 110 / saveRef.current.battleSpeed });
+            if (tierHit) pushFxAt(tierHit, "monster", 0.42, 0.5, 72, 45, undefined, 0.14);
+            // 상위 동료 시그니처는 크게 (2026-11-16) — 속성 폭발 × 등급 배율(ui/allyShowcase.css), 전설 이상은 컷인. 그림만
+            const rk = TIER_RANK[ALLY_RARITY[h.id]];
+            if (isSig && rk >= TIER_RANK.SR && !lowFxRef.current) {
+              pushFxAt("burst", "monster", 0.42, 0.5, 72, 45, h.hue, 0.06, ALLY_ELEMENT[h.id], `sig-ult t-${ALLY_RARITY[h.id]}`);
+              if (rk >= TIER_RANK.SSR) showAllyCut(h.id, sig.move);
+            }
+          };
           // 원거리 · 힐러는 탄이 꽂히는 순간에 피해 — 눈으로 따라간다 (2026-10-21, 사용자: "공격이 몬스터까지 날아가는 탄과 궤적")
           if (flight > 0) window.setTimeout(land, flight); else land();
         }
@@ -2634,6 +2653,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const bought = record.bought[product.id] ?? 0;
       if (bought >= product.weeklyLimit || current.redGems < product.gemCost || current.eventCoins < (product.coinCost ?? 0)) return current;
       const g = product.grant(current);
+      if (g.gearItem && current.ownedGear.includes(g.gearItem)) return current;   // 한정 장비는 한 번만
       // 등반권은 보유 상한이 있다 — 넘치게 사면 보석만 사라진다
       if (g.towerTickets && current.towerTickets + g.towerTickets > TOWER_TICKET_MAX) return current;
       if (g.beatTickets && current.beatTicketsBought + g.beatTickets > BEAT_TICKET_MAX_BOUGHT) return current;   // 비트 시도권 보유 상한 (2026-10-28)
@@ -2658,6 +2678,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         beatTicketsBought: current.beatTicketsBought + (g.beatTickets ?? 0),
         idleBoostUntil: g.idleBoostHours ? Math.max(Date.now(), current.idleBoostUntil) + g.idleBoostHours * 3600 * 1000 : current.idleBoostUntil,
         weeklyEventBuys: { week, bought: { ...record.bought, [product.id]: bought + 1 } },
+        ownedGear: g.gearItem ? [...new Set([...current.ownedGear, g.gearItem])] : current.ownedGear,
         lastContent: "titans",
       };
     });
@@ -2932,6 +2953,17 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     });
   };
 
+  /** 뽑기 결과 창 닫기 — 처음 얻은 영웅(SR) 이상이 있으면 높은 등급부터 한 명씩 소개(새 동료 소개) */
+  const closeGachaReveal = () => {
+    const fresh = [...new Set((gachaReveal ?? []).filter((r) => !r.duplicate && TIER_RANK[r.rarity] >= TIER_RANK.SR).sort((a, b) => TIER_RANK[b.rarity] - TIER_RANK[a.rarity]).map((r) => r.id))];
+    setGachaReveal(null);
+    if (fresh.length > 0) { setAllyShowcase({ ids: fresh, at: 0 }); sfxRelicReveal(ALLY_RARITY[fresh[0]]); }
+  };
+  const nextAllyShowcase = () => setAllyShowcase((cur) => {
+    if (!cur || cur.at + 1 >= cur.ids.length) return null;
+    sfxRelicReveal(ALLY_RARITY[cur.ids[cur.at + 1]]);
+    return { ...cur, at: cur.at + 1 };
+  });
   /** 성급 승급 — 조각 소비, 환생에도 보존되는 영구 성장 */
   const starUpAlly = async (id: TitanHeroId) => {
     const lv = save.heroes[id];
@@ -3358,6 +3390,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       return { ...c, sharedCoins: c.sharedCoins - cost.coins, enhancementMaterials: c.enhancementMaterials - cost.materials, gearSetLevels: { ...c.gearSetLevels, [id]: lv + 1 } };
     }).then((next) => { setCharacter(next); sfxUiTap(); flash(`${gearItemName(id)} +${next.gearSetLevels[id] ?? 0} · ${gearSetSummary(next.equippedGear, weaponKindRef.current, next.gearSetLevels)}`); });
   };
+  /** 상위 동료 시그니처 컷인 — 동료마다 9초 · 아무 동료든 3초 · 스킬 시전 연출 뒤 1.5초는 쉰다(네 명 · ×2 배속에서 도배되지 않게) */
+  const showAllyCut = (id: TitanHeroId, move: string) => {
+    const now = performance.now(), at = allyCutAtRef.current;
+    if (now - at.global < 3000 || now - at.skill < 1500 || now - (at.by[id] ?? -1e9) < 9000) return;
+    at.global = now; at.by[id] = now;
+    const seq = now;
+    setAllyCut({ id, tier: ALLY_RARITY[id], move, seq });
+    if (import.meta.env.DEV) ((window as unknown as { __allyCutLog?: unknown[] }).__allyCutLog ??= []).push({ t: now, id, tier: ALLY_RARITY[id], move });
+    window.setTimeout(() => setAllyCut((cur) => (cur?.seq === seq ? null : cur)), ALLY_RARITY[id] === "LR" ? 1500 : 1300);
+  };
   /** 시전 등급 연출 (ui/tiers.css) — 폭발은 몬스터 가운데서, 신화 · 초월은 길게. 못 재면 전장 가운데 */
   const fireTierFx = (id: TitanSkillId, seq: number) => {
     const fr = fieldRef.current?.getBoundingClientRect();
@@ -3366,6 +3408,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const x = hasM ? ((m.left + m.width / 2 - fr.left) / fr.width) * 100 : 50, y = hasM ? ((m.top + m.height / 2 - fr.top) / fr.height) * 100 : 55;
     const tier = SKILL_TIER[id];
     setTierFx({ id, tier, seq, x, y });
+    allyCutAtRef.current.skill = performance.now();
     window.setTimeout(() => setTierFx((cur) => (cur?.seq === seq ? null : cur)), tier === "LR" ? 1400 : tier === "UR" ? 1250 : 1100);
     sfxSkillTier(tier);
   };
@@ -4190,6 +4233,18 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {TIER_RANK[tierFx.tier] >= TIER_RANK.SSR && <span className={`tier-cutin tier-${tierFx.tier}`}><SkillIcon id={tierFx.id} /><em className="tier-chip">{TIER_LABEL[tierFx.tier]}</em><strong>{SKILLS.find((sk) => sk.id === tierFx.id)?.name}</strong></span>}
           </i>
         )}
+        {allyCut && !lowFxRef.current && (() => {
+          const h = HEROES.find((x) => x.id === allyCut.id);
+          return (
+            <div key={allyCut.seq} className={`ally-cutin tier-${allyCut.tier} el-${ALLY_ELEMENT[allyCut.id]}`} data-ally={allyCut.id} aria-hidden="true">
+              {TIER_RANK[allyCut.tier] >= TIER_RANK.UR && <i className="ally-cutin-flash" />}
+              <span className="ally-cutin-band">
+                <span className="ally-cutin-art"><AllyArt id={allyCut.id} /></span>
+                <span className="ally-cutin-copy"><em className="tier-chip">{TIER_LABEL[allyCut.tier]}</em><strong>{allyCut.move}</strong><small>{h?.name}</small></span>
+              </span>
+            </div>
+          );
+        })()}
         {goldenRush && <GoldenRush seq={encounterMotion.seq} hits={goldenRush.hits} sec={GOLDEN_ESCAPE_SEC / save.battleSpeed} />}
         {huntStamp && <HuntStamp key={huntStamp.seq} text={huntStamp.text} sub={huntStamp.sub} tone={huntStamp.tone} />}
         {techCount > 0 && <TechGauge name={WEAPON_TECH[weaponKind].name} every={WEAPON_TECH[weaponKind].every} count={Math.min(techCount, WEAPON_TECH[weaponKind].every - 1)} />}
@@ -4390,7 +4445,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {fx.map((f) => (
           <span
             key={f.id}
-            className={`titans-fx titans-fx-${f.kind}${f.el ? ` el-${f.el}` : ""}`}
+            className={`titans-fx titans-fx-${f.kind}${f.el ? ` el-${f.el}` : ""}${f.mod ? ` ${f.mod}` : ""}`}
             style={{
               left: `${f.x}%`,
               top: `${f.y}%`,
@@ -4694,7 +4749,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const bag: EquipBagItem[] = [
             ...WEAPON_KINDS.map((k): EquipBagItem => ({ key: k, slot: "weapon", label: WEAPON_LABEL[k], level: `+${lvOf(k)}`, icon: assetUrl(weaponIconPath(k, lvOf(k))), on: wantedWeaponKind === k, pending: wantedWeaponKind === k && weaponKind !== k, title: `${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`, className: "weapon-kind-chip", tier: weaponEquipTier(lvOf(k)) })),
             ...(character.ownedShoulders ?? []).map((id): EquipBagItem => ({ key: id, slot: "shoulder", label: SHOULDER_DEFINITIONS[id].name.replace(" 견갑", ""), icon: shoulderIconUrl(id), on: equippedShoulder === id && !character.equippedGear.shoulder, title: `${SHOULDER_DEFINITIONS[id].name} · ${SHOULDER_DEFINITIONS[id].effect}`, tier: shoulderEquipTier(SHOULDER_DEFINITIONS[id].grade) })),
-            ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: GEAR_SET_NAME[gearItemKind(id)], icon: assetUrl(gearItemIconPath(id)), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id, character.gearSetLevels[id] ?? 0)}`, tier: setEquipTier(character.gearSetLevels[id] ?? 0) })),
+            ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: gearItemSetLabel(id), icon: assetUrl(gearItemIconPath(id)), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id, character.gearSetLevels[id] ?? 0)}`, tier: setEquipTier(character.gearSetLevels[id] ?? 0) })),
           ];
           return (
             <EquipWindow
@@ -4720,6 +4775,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       {(() => {
                         const gid = character.equippedGear[slot];
                         if (!gid) return null;
+                        if (isLimitedGear(gid)) return <div className="gear-set-enhance is-limited" data-gear-enhance={gid}><span><b><em className="tier-chip tier-UR">한정</em> {gearItemName(gid)}</b><small>{gearItemEffectText(gid)}</small></span></div>;
                         const lv = character.gearSetLevels[gid] ?? 0, cost = gearSetEnhanceCost(lv);
                         return (
                           <div className="gear-set-enhance" data-gear-enhance={gid}>
@@ -5204,6 +5260,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {premiumCategory === "ally" && (
           <section className="gacha-stage-page" aria-label="동료 뽑기">
             {/* 자리표시자 마감: 배지 = 픽업 최고 등급, 제목 = 지역·픽업 이름, 게이지 = 천장 진행도(gachaPity/60) */}
+            {/* 월간 한정 (2026-11-16, titans/limitedAllies) — 창이 열린 동안만. 확률은 아래 공시 표에도 같은 값 */}
+            {gacha.limited && (() => {
+              const w = activeLimited();
+              const h = HEROES.find((x) => x.id === gacha.limited);
+              if (!w || !h) return null;
+              const rate = gacha.entries.find((e) => e.id === h.id)?.rate ?? 0;
+              return (
+                <div className="limited-banner" data-limited={h.id} data-tier={ALLY_RARITY[h.id]}>
+                  <span className="limited-banner-art"><AllyArt id={h.id} /></span>
+                  <span className="limited-banner-copy">
+                    <em className="limited-tag">이번 달 한정 · {limitedDaysLeft(w)}일 남음</em>
+                    <strong><em className="tier-chip" data-tier={ALLY_RARITY[h.id]}>{TIER_LABEL[ALLY_RARITY[h.id]]}</em> {h.name}</strong>
+                    <small>대장 전용 — 대장에게 ×{w.bossMul} · 일반 몬스터 ×{w.mobMul} · 확률 {(rate * 100).toFixed(2)}%</small>
+                    <small>전용 장갑은 이벤트 상점(이벤트 코인)</small>
+                  </span>
+                </div>
+              );
+            })()}
             <div className="gacha-stage-hero">
               {gacha.pickups.length > 0 && (() => {
                 const best = gacha.pickups.map((id) => ALLY_RARITY[id]).sort((a, b) => TIERS.indexOf(b) - TIERS.indexOf(a))[0];
@@ -5730,7 +5804,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <div className="event-offer-grid">
             {/* 실상품 (economy/eventShop.ts): 확정 구매 · 주간 한도 · 진행도 비례 수량 */}
             {/* 동료 고르기 칸은 걷었다(2026-10-28) — 조각 상품은 가진 동료 모두에게, 신화 · 초월 상품은 가진 신화 · 초월 모두에게 */}
-            {eventProductsFor(tab === "event-shop" ? "event-shop" : "event-shop2").map((product, index) => {
+            {eventProductsFor(tab === "event-shop" ? "event-shop" : "event-shop2", character).map((product, index) => {
               const bought = eventBuysThisWeek(character, product.id, currentWeekKey());
               const left = product.weeklyLimit - bought;
               return (
@@ -5819,6 +5893,31 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         </div>
       )}
 
+      {/* 새 동료 소개 (2026-11-16) — 처음 얻은 영웅 이상. 누르면 다음 · '모두 넘기기' 한 번이면 끝 */}
+      {allyShowcase && (() => {
+        const id = allyShowcase.ids[allyShowcase.at];
+        const h = HEROES.find((x) => x.id === id);
+        if (!h) return null;
+        const tier = ALLY_RARITY[id];
+        const sig = allySignature(id);
+        const left = allyShowcase.ids.length - allyShowcase.at - 1;
+        return (
+          <div key={id} className={`ally-showcase tier-${tier}`} data-tier={tier} data-ally={id} role="dialog" aria-label={`새 동료 ${TIER_LABEL[tier]} ${h.name}`} onClick={nextAllyShowcase}>
+            <i className="ally-showcase-rays" aria-hidden="true" />
+            <GachaFx tier={tier} phase="reveal" />
+            <div className="ally-showcase-stage">
+              <span className="ally-showcase-new">새 동료</span>
+              <span className="ally-showcase-art"><i className="ally-showcase-floor" aria-hidden="true" /><AllyArt id={id} /></span>
+              <em className="tier-chip" data-tier={tier}>{TIER_LABEL[tier]}</em>
+              <strong className="ally-showcase-name">{h.name}</strong>
+              <span className="ally-showcase-role">{ROLE_LABEL[ALLY_ROLE[id]]} · {ELEMENT_LABEL[ALLY_ELEMENT[id]] ?? ALLY_ELEMENT[id]}</span>
+              <span className="ally-showcase-move"><b>{sig.move}</b><small>{sig.desc}</small></span>
+              <span className="ally-showcase-next">{left > 0 ? `눌러서 다음 · ${left}명 더` : "눌러서 닫기"}</span>
+            </div>
+            {left > 0 && <button type="button" className="ally-showcase-skip" onClick={(e) => { e.stopPropagation(); setAllyShowcase(null); }}>모두 넘기기</button>}
+          </div>
+        );
+      })()}
       {/* 소환진 (계획안 E) — 등급 예고 색(파랑 R · 보라 SR · 금 SSR)으로 1.2초 기대감을 만든 뒤 카드 공개 */}
       {gachaSummoning && (
         <div className={`gacha-reveal gacha-summoning tier-${gachaSummoning.tier.toLowerCase()}`} role="status" aria-label="소환 중 · 누르면 바로 공개" onClick={() => summonSkipRef.current?.()}>
@@ -5843,7 +5942,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             return;
           }
           window.clearTimeout(gachaBestSfxRef.current); gachaBestSfxRef.current = 0;
-          setGachaReveal(null);
+          closeGachaReveal();
         }}>
           <i className="gacha-burst" aria-hidden="true" />
           <i className="gacha-rays" aria-hidden="true" />
@@ -5931,7 +6030,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </div>
               );
             })()}
-            <button type="button" className="cta gacha-close" onClick={() => { window.clearTimeout(gachaBestSfxRef.current); gachaBestSfxRef.current = 0; setGachaReveal(null); setGachaFocus(null); }}>확인</button>
+            <button type="button" className="cta gacha-close" onClick={() => { window.clearTimeout(gachaBestSfxRef.current); gachaBestSfxRef.current = 0; closeGachaReveal(); setGachaFocus(null); }}>확인</button>
           </div>
         </div>
       )}
