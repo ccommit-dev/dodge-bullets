@@ -564,7 +564,7 @@ export function CharacterStatus({
           </button>
         </div>
         <CrystalTreePanel userHash={userHash} progress={progress} onProgressChange={onProgressChange} onMessage={setGrowthMessage} />
-        <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `결정 ${KEY_CRYSTALS}개로 선택 · 남은 결정 ${freeCrystals(progress)}`}</span></div>
+        <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `결정 ${KEY_CRYSTALS}개로 선택`}</span></div>
         <div className={`evolution-tree mp-evo ${progress.rebirthCount < 1 ? "is-locked" : ""}`}>
           <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타 · 방치 배율 +0.15</small></button>
           <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존 · 방치 시간 +2h</small></button>
