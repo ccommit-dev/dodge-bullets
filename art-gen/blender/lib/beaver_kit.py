@@ -478,7 +478,7 @@ def aura_new(kind, cfg, coll):
     up = Vector((0, 0, 1))
     m_col = _accent('aura', col, rough=0.15, emit=col, es=glow)
     m_gold = _accent('auragold', gold, rough=0.12, metal=0.3, emit=gold, es=glow)
-    R = cfg.get('aura_r', 0.56 if lr else 0.5)
+    R = cfg.get('aura_r', 0.52 if lr else 0.5)
     ring_m = m_gold if lr else m_col
     out.append(C.mesh_obj('aura0', C.torus(c0, R, 0.034 if lr else 0.03, seg=48, ring=8, rot=face), ring_m, coll, smooth=False, outline=OUT * 0.3))
     if lr:
@@ -487,7 +487,8 @@ def aura_new(kind, cfg, coll):
     for k in range(n_ray):
         a = math.pi / 4 + 2 * math.pi * k / n_ray if not lr else math.pi / 2 + 2 * math.pi * k / n_ray
         d = side * math.cos(a) + up * math.sin(a)
-        L = (0.22 if k % 2 == 0 else 0.13) if lr else 0.11
+        # 초월 빛살 — 위아래는 짧게, 옆은 길게(위로 곧게 선 긴 빛살이 공격 늘림과 함께 칸 위로 넘쳐 전원 배율을 0.346 → 0.312 로 깎았다, 2026-11-16)
+        L = ((0.22 if k % 2 == 0 else 0.13) * (1 - 0.65 * abs(math.sin(a)))) if lr else 0.11
         out.append(C.mesh_obj(f'auray{k}', C.cone(c0 + d * (R + L * 0.5), 0.034 if lr else 0.03, 0.0, L, seg=4, rot=C.look_rot(d)), ring_m, coll, smooth=False, outline=OUT * 0.25))
     return out
 

@@ -676,6 +676,9 @@ def pose(rig, P):
     X, Y, Z = (1, 0, 0), (0, 1, 0), (0, 0, 1)
     pb['body'].rotation_quaternion = _rot_local(arm, 'body', X, P.get('lean', 0)) @ _rot_local(arm, 'body', Y, P.get('side', 0))
     sq = P.get('squash', 1.0)
+    # 체형(form)으로 몸이 길어지면 같은 눌림 배율이 더 크게 움직인다 — 실제 움직임이 예전 비버와 같게 세로 배율로 나눈다(audit-anim2-motion 키 튐, 2026-11-16)
+    _by = ((rig.cfg or {}).get('form') or {}).get('body', (1.0, 1.0))[1]
+    sq = 1 + (sq - 1) / _by
     pb['body'].scale = (1 / math.sqrt(sq), sq, 1 / math.sqrt(sq))   # 뼈 로컬 Y 가 세로
     pb['head'].rotation_quaternion = _rot_local(arm, 'head', X, P.get('head', 0)) @ _rot_local(arm, 'head', Z, P.get('head_turn', 0))
     pb['head'].scale = (math.sqrt(sq), 1 / sq, math.sqrt(sq))   # 머리는 몸 눌림을 되돌려 찌그러지지 않게
@@ -696,6 +699,6 @@ def pose(rig, P):
     pb['tail'].rotation_quaternion = _rot_local(arm, 'tail', X, P.get('tail', 0))
     pb['root'].location = (P.get('dx', 0), P.get('dz', 0), P.get('dy', 0))   # 뼈 로컬: X 옆 · Y 위 · Z 앞(-Y 월드)
     # 전신 눌림·늘림(머리까지 — 만화식 squash & stretch, 2026-10-19 anim2). 뿌리 뼈 머리(발밑)를 기준으로 줄어 발은 바닥에 붙어 있다
-    sa = P.get('sq_all', 1.0)
+    sa = 1 + (P.get('sq_all', 1.0) - 1) / _by
     pb['root'].scale = (1 / math.sqrt(sa), sa, 1 / math.sqrt(sa))
     bpy.context.view_layer.update()

@@ -83,7 +83,9 @@ ok("코인 드롭: 일반 3% 1~3개 · 대장 35% 3~5개", C.rollCoinDrop(0.029,
 let n = 0, got = 0; for (let i = 0; i < 20000; i += 1) { const c = C.rollCoinDrop(Math.random(), Math.random(), false); if (c > 0) { n += 1; got += c; } }
 ok("코인 드롭 빈도: 2만 마리에 약 600번(±150) · 평균 2개", n > 450 && n < 750 && Math.abs(got / n - 2) < 0.2, `${n}번 · 평균 ${(got / n).toFixed(2)}`);
 const coinProducts = S.eventProductsFor("event-shop").filter((p) => p.coinCost);
-ok("이벤트 상점에 코인 교환 칸 3개 · 보석 값 0", coinProducts.length === 3 && coinProducts.every((p) => p.gemCost === 0 && p.weeklyLimit > 0));
+// 2026-11-16 월간 한정 전용 장비(코인 · 기간 안에서만 진열 — visible)는 따로 센다
+const steadyCoin = coinProducts.filter((p) => !p.visible);
+ok("이벤트 상점에 상시 코인 교환 칸 3개(+ 월간 한정 1) · 보석 값 0", steadyCoin.length === 3 && coinProducts.length - steadyCoin.length <= 1 && coinProducts.every((p) => p.gemCost === 0 && p.weeklyLimit > 0));
 ok("캐릭터 진행에 이벤트 코인(기본 0 · 정규화)", P.emptyCharacterProgress().eventCoins === 0 && P.normalizeCharacterProgress({ eventCoins: 42 }).eventCoins === 42 && P.normalizeCharacterProgress({ eventCoins: -5 }).eventCoins === 0);
 
 // ── 5'. 첫 10연 최고 등급 확정 · 깜짝 선물 ──
