@@ -47,7 +47,7 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
 
 // ── 2. 강화 · 열쇠 · 되돌리기 ──
 {
-  let p = { ...base(), inheritanceCrystals: 40, evolutionPoints: 1, rebirthCount: 1 };
+  let p = { ...base(), inheritanceCrystals: 40, rebirthCount: 1 };
   let r = T.upgradeLine(p, "atk");
   ok("공격력 1단계 = 결정 3", r.ok && r.next.crystalTree.atk === 1 && T.freeCrystals(r.next) === 37);
   p = r.next;
@@ -56,9 +56,11 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   p = r.next;
   ok("특수 줄은 열쇠 없이 못 올린다", !T.upgradeLine(p, "boss").ok);
   r = T.unlockKey(p, "boss");
-  ok("진화 포인트 1 로 대장 사냥꾼을 연다", r.ok && r.next.evolutionPoints === 0 && r.next.crystalTree.keys.includes("boss"));
+  // 2026-11-16 진화 포인트를 결정으로 합쳤다 — 열쇠 하나 = 결정 KEY_CRYSTALS(10)
+  ok("결정 10 으로 대장 사냥꾼을 연다(예전 진화 포인트 1)", T.KEY_CRYSTALS === 10 && r.ok && T.freeCrystals(r.next) === 23 && r.next.crystalTree.keys.includes("boss"));
   p = r.next;
-  ok("포인트 없으면 두 번째 열쇠 실패", !T.unlockKey(p, "relic").ok);
+  const poorKey = { ...p, inheritanceCrystals: T.treeSpent(p.crystalTree) + 5 };
+  ok("결정이 10 보다 적으면 두 번째 열쇠 실패 · 이유 문구", !T.unlockKey(poorKey, "relic").ok && /결정 10/.test(T.unlockKey(poorKey, "relic").reason));
   r = T.upgradeLine(p, "boss");
   ok("대장 사냥꾼 1단계", r.ok && r.next.crystalTree.boss === 1);
   p = r.next;
@@ -67,9 +69,14 @@ const base = () => P.normalizeCharacterProgress(P.emptyCharacterProgress());
   const poor = { ...p, inheritanceCrystals: T.treeSpent(p.crystalTree) };
   ok("결정이 모자라면 실패 · 이유 문구", !T.upgradeLine(poor, "gold").ok && /결정/.test(T.upgradeLine(poor, "gold").reason));
   const reset = T.resetTree(p);
-  ok("되돌리기: 결정 전부 반환 · 열쇠 유지", T.freeCrystals(reset) === 40 && reset.crystalTree.keys.includes("boss") && reset.crystalTree.boss === 0);
-  const cheat = P.normalizeCharacterProgress({ ...p, inheritanceCrystals: 5 });
-  ok("결정보다 많이 쓴 저장은 깎인다", T.treeSpent(cheat.crystalTree) <= 5);
+  ok("되돌리기: 줄 결정 반환 · 열쇠(결정 10)는 그대로", T.freeCrystals(reset) === 30 && reset.crystalTree.keys.includes("boss") && reset.crystalTree.boss === 0);
+  const cheat = P.normalizeCharacterProgress({ ...p, inheritanceCrystals: 15 });
+  ok("결정보다 많이 쓴 저장은 깎인다(열쇠 값 포함)", T.treeSpent(cheat.crystalTree) <= cheat.inheritanceCrystals);
+  // 옛 저장(진화 포인트 시절) — 남은 포인트 1 · 연 열쇠 1 · 고른 계통 1 → 결정 +30. 쓸 수 있는 결정 + 포인트 가치가 그대로, 줄 단계는 안 깎인다
+  const oldSave = P.normalizeCharacterProgress({ inheritanceCrystals: 40, evolutionPoints: 1, evolutionPath: "arcane", rebirthCount: 2, crystalTree: { atk: 2, gold: 0, idle: 0, start: 0, crystal: 0, boss: 1, relic: 0, keys: ["boss"] } });
+  ok("옛 저장 이전: 결정 40 + 30 · 줄 단계 그대로 · 쓸 수 있는 결정 38(= 예전 28 + 포인트 1개 값 10)", oldSave.inheritanceCrystals === 70 && oldSave.crystalTree.atk === 2 && oldSave.crystalTree.boss === 1 && T.freeCrystals(oldSave) === 38 && oldSave.evolutionPoints === 0 && oldSave.evoMerged === true && oldSave.evolutionChoices === 1, JSON.stringify({ c: oldSave.inheritanceCrystals, atk: oldSave.crystalTree.atk, boss: oldSave.crystalTree.boss, free: T.freeCrystals(oldSave), ch: oldSave.evolutionChoices }));
+  const again = P.normalizeCharacterProgress(oldSave);
+  ok("옛 저장 이전은 한 번만(다시 정리해도 결정이 늘지 않는다)", again.inheritanceCrystals === 70 && T.freeCrystals(again) === 38);
   const nokey = P.normalizeCharacterProgress({ ...p, crystalTree: { ...p.crystalTree, keys: [], boss: 3 } });
   ok("열쇠 없는 특수 줄 단계는 버린다", nokey.crystalTree.boss === 0);
   let maxP = { ...base(), inheritanceCrystals: 100000 };

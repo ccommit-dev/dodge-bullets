@@ -2,7 +2,7 @@
  * 결정 영구 강화 트리 (2026-10-26, 사용자: "오늘도 환생 2" 차용 1번 — 훈장 트리).
  *
  * 새 재화를 만들지 않는다 — 환생 결정(inheritanceCrystals, 누적 획득량)을 쓴다. 쓸 수 있는 결정 = 누적 − 트리에 쓴 합.
- * 마이페이지 계승 칸 다섯 줄 + 진화 포인트로 여는 특수 두 줄.
+ * 마이페이지 계승 칸 다섯 줄 + 결정(KEY_CRYSTALS)으로 여는 특수 두 줄 — 예전 진화 포인트는 2026-11-16 결정으로 합쳤다.
  *
  * - 방치 효율: 예전엔 결정 1개마다 방치 배율 +0.02 가 저절로 붙었다(IDLE.multPerCrystal). 그 배율을 이 줄로 옮겼다 —
  *   한 단계 = 결정 2개 = +0.04 로 같은 값. 옛 저장은 결정 전부를 이 줄에 넣은 상태로 옮긴다(normalizeCrystalTree, 배율 그대로).
@@ -25,7 +25,7 @@ export const TREE_LINES: readonly LineDef[] = [
   { id: "idle", name: "방치 효율", max: 60, cost: () => 2, label: "방치 배율", short: (lv) => `+${(lv * 0.04).toFixed(2)}` },
   { id: "start", name: "시작 스테이지", max: 30, cost: (lv) => 4 + lv * 2, label: "환생 뒤 시작", short: (lv) => `${1 + lv}층` },
   { id: "crystal", name: "환생 결정", max: 10, cost: (lv) => 6 + lv * 3, label: "환생 결정", short: (lv) => `+${lv * 10}%` },
-  // 특수 줄 — 진화 포인트 하나로 연다(소모)
+  // 특수 줄 — 결정 key × KEY_CRYSTALS 로 연다(소모 · 되돌리기로 안 돌아온다)
   { id: "boss", name: "대장 사냥꾼", max: 20, cost: (lv) => 5 + lv * 2, label: "대장 피해", short: (lv) => `+${lv * 8}%`, key: 1 },
   { id: "relic", name: "유물 탐지", max: 10, cost: (lv) => 6 + lv * 3, label: "유물 조각 확률", short: (lv) => `+${lv * 2}%p`, key: 1 },
 ];
@@ -53,12 +53,20 @@ export function lineSpent(id: TreeLine, lv: number): number {
   return sum;
 }
 
+/**
+ * 열쇠 값 (2026-11-16 재화 합치기) — 예전 '진화 포인트' 1개 = 결정 KEY_CRYSTALS 개. 환생마다 진화 포인트 대신 이만큼 결정을 더 준다(rebirth.ts).
+ * 열쇠 줄 · 진화 계통 선택이 결정으로 낸다. 값은 첫 환생 결정(√15층 × 3 ≈ 15)의 2/3 쯤 — 상한 검사: balance-sim --evo-crystals 10 · 20 도 속도 고정 PASS
+ */
+export const KEY_CRYSTALS = 10;
+
 export function treeSpent(tree: CrystalTree): number {
-  return TREE_LINES.reduce((a, l) => a + lineSpent(l.id, tree[l.id]), 0);
+  // 연 열쇠도 쓴 결정이다(되돌리기로 돌려받지 않는다 — 열쇠는 남는다)
+  return TREE_LINES.reduce((a, l) => a + lineSpent(l.id, tree[l.id]), 0) + tree.keys.reduce((a, k) => a + (lineDef(k).key ?? 0) * KEY_CRYSTALS, 0);
 }
 
-export function freeCrystals(progress: Pick<CharacterProgress, "inheritanceCrystals" | "crystalTree">): number {
-  return Math.max(0, progress.inheritanceCrystals - treeSpent(progress.crystalTree));
+export function freeCrystals(progress: Pick<CharacterProgress, "inheritanceCrystals" | "crystalTree"> & { evolutionChoices?: number }): number {
+  // 진화 계통을 고른 횟수만큼도 쓴 결정(한 번에 KEY_CRYSTALS)
+  return Math.max(0, progress.inheritanceCrystals - treeSpent(progress.crystalTree) - (progress.evolutionChoices ?? 0) * KEY_CRYSTALS);
 }
 
 /** 저장 정리. raw 가 없으면(트리 이전 저장) 결정 전부를 방치 효율 줄에 넣어 예전 배율을 그대로 옮긴다 */
@@ -84,22 +92,22 @@ export type TreeAction = { ok: true; next: CharacterProgress } | { ok: false; re
 
 export function canUnlockKey(progress: CharacterProgress, id: TreeLine): boolean {
   const def = lineDef(id);
-  return !!def.key && !progress.crystalTree.keys.includes(id) && progress.evolutionPoints >= def.key;
+  return !!def.key && !progress.crystalTree.keys.includes(id) && freeCrystals(progress) >= def.key * KEY_CRYSTALS;
 }
 
-/** 특수 줄 열기 — 진화 포인트를 쓴다 */
+/** 특수 줄 열기 — 결정 key × KEY_CRYSTALS 를 쓴다(예전 진화 포인트) */
 export function unlockKey(progress: CharacterProgress, id: TreeLine): TreeAction {
   const def = lineDef(id);
   if (!def.key) return { ok: false, reason: "열쇠가 필요 없는 줄입니다" };
   if (progress.crystalTree.keys.includes(id)) return { ok: false, reason: "이미 연 줄입니다" };
-  if (progress.evolutionPoints < def.key) return { ok: false, reason: `진화 포인트 ${def.key}개가 필요합니다 — 환생하면 1개` };
-  return { ok: true, next: { ...progress, evolutionPoints: progress.evolutionPoints - def.key, crystalTree: { ...progress.crystalTree, keys: [...progress.crystalTree.keys, id] } } };
+  if (freeCrystals(progress) < def.key * KEY_CRYSTALS) return { ok: false, reason: `결정 ${def.key * KEY_CRYSTALS}개가 필요합니다 — 환생하면 결정이 쌓입니다` };
+  return { ok: true, next: { ...progress, crystalTree: { ...progress.crystalTree, keys: [...progress.crystalTree.keys, id] } } };
 }
 
 export function upgradeLine(progress: CharacterProgress, id: TreeLine): TreeAction {
   const def = lineDef(id);
   const lv = progress.crystalTree[id];
-  if (def.key && !progress.crystalTree.keys.includes(id)) return { ok: false, reason: "진화 포인트로 먼저 여세요" };
+  if (def.key && !progress.crystalTree.keys.includes(id)) return { ok: false, reason: `결정 ${def.key * KEY_CRYSTALS}개로 먼저 여세요` };
   if (lv >= def.max) return { ok: false, reason: "최대 단계입니다" };
   const cost = def.cost(lv);
   const free = freeCrystals(progress);

@@ -24,18 +24,19 @@ const pops = []; await page.exposeFunction("__pop", (t) => pops.push(t));
 await page.evaluateOnNewDocument(() => { document.addEventListener("DOMContentLoaded", () => new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".reward-pop")) window.__pop(n.textContent + (n.querySelector(".reward-pop-icon") ? "[icon]" : "")); }).observe(document.body, { childList: true, subtree: true })); });
 
 // ── 1. 마이페이지 결정 강화 트리 ──
+// 2026-11-16 진화 포인트를 결정으로 합쳤다 — 옛 저장(진화 포인트 1 · 결정 60)은 처음 읽을 때 결정 70 으로 옮겨진다. 열쇠 하나 = 결정 10
 await seed(baseProgress({ titanBestStage: 30, rebirthCount: 1, evolutionPoints: 1, inheritanceCrystals: 60, crystalTree: { atk: 0, gold: 0, idle: 0, start: 0, crystal: 0, boss: 0, relic: 0, keys: [] },
   relics: { "ember-ring": 3, "flame-feather": 4, "lava-heart": 6, "frost-horn": 2 } }), { gold: 1000, stage: 5, bestStage: 30, totalKills: 300, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
 await toMyPage();
 const t0 = await page.evaluate(() => ({ rows: [...document.querySelectorAll(".mp-crystal-tree .ct-row")].map((r) => r.textContent), free: document.querySelector(".ct-free")?.textContent, heading: [...document.querySelectorAll(".legacy-heading")].map((h) => h.textContent) }));
-ok("결정 강화 7줄(기본 5 · 특수 2) · 쓸 수 있는 결정 60", t0.rows.length === 7 && t0.free === "60", `${t0.rows.length}줄 · ${t0.free}`);
+ok("결정 강화 7줄(기본 5 · 특수 2) · 쓸 수 있는 결정 70(옛 진화 포인트 1 → 결정 10)", t0.rows.length === 7 && t0.free === "70", `${t0.rows.length}줄 · ${t0.free}`);
 ok("다섯 줄 이름: 공격력 · 처치 골드 · 방치 효율 · 시작 스테이지 · 환생 결정", ["공격력", "처치 골드", "방치 효율", "시작 스테이지", "환생 결정"].every((n, i) => t0.rows[i].startsWith(n)), t0.rows.slice(0, 5).map((r) => r.slice(0, 8)).join(" | "));
-ok("특수 줄은 잠김 · '열기 진화 1'", /열기\s*진화 1/.test(t0.rows[5]) && /열기/.test(t0.rows[6]), t0.rows[5]);
+ok("특수 줄은 잠김 · '열기 결정 10' · 진화 포인트 글자 없음", /열기\s*결정 10/.test(t0.rows[5]) && !/진화/.test(t0.rows[5]) && /열기/.test(t0.rows[6]), t0.rows[5]);
 ok("줄 문구: 공격력 '+0% → +5%' · 시작 '1층 → 2층'", /\+0% → \+5%/.test(t0.rows[0]) && /1층 → 2층/.test(t0.rows[3]), `${t0.rows[0]} | ${t0.rows[3]}`);
 // 공격력 강화
 await page.evaluate(() => document.querySelectorAll(".mp-crystal-tree .ct-row")[0].querySelector(".ct-buy").click()); await sleep(600);
 let p = await prog();
-ok("공격력 강화 → 저장 1단계 · 결정 57", p.crystalTree.atk === 1 && (await page.evaluate(() => document.querySelector(".ct-free")?.textContent)) === "57", JSON.stringify(p.crystalTree));
+ok("공격력 강화 → 저장 1단계 · 결정 67", p.crystalTree.atk === 1 && (await page.evaluate(() => document.querySelector(".ct-free")?.textContent)) === "67", JSON.stringify(p.crystalTree));
 // 시작 스테이지 두 번
 for (let k = 0; k < 2; k += 1) { await page.evaluate(() => document.querySelectorAll(".mp-crystal-tree .ct-row")[3].querySelector(".ct-buy").click()); await sleep(500); }
 p = await prog();
@@ -43,9 +44,11 @@ const pre = await page.evaluate(() => document.querySelector(".rebirth-preview")
 ok("시작 스테이지 2단계 → 환생 미리 보기 '3층부터 · 건너뛴 층 골드'", p.crystalTree.start === 2 && /시작 스테이지\s*3층부터/.test(pre) && /건너뛴 층 골드/.test(pre), pre);
 ok("자동 환생 스위치에도 '3층부터'", /3층부터/.test(await page.evaluate(() => document.querySelector(".auto-rebirth-toggle")?.textContent ?? "")));
 // 특수 줄 열기
+const freeBeforeKey = Number(await page.evaluate(() => document.querySelector(".ct-free")?.textContent));
 await page.evaluate(() => document.querySelectorAll(".mp-crystal-tree .ct-row")[5].querySelector(".ct-buy").click()); await sleep(600);
 p = await prog();
-ok("대장 사냥꾼 열기 → 진화 포인트 0 · 열쇠 저장 · 강화 단추로 바뀜", p.evolutionPoints === 0 && p.crystalTree.keys.includes("boss") && /강화/.test(await page.evaluate(() => document.querySelectorAll(".mp-crystal-tree .ct-row")[5].querySelector(".ct-buy").textContent)));
+const freeAfterKey = Number(await page.evaluate(() => document.querySelector(".ct-free")?.textContent));
+ok("대장 사냥꾼 열기 → 결정 −10 · 열쇠 저장 · 옮김 표시 · 강화 단추로 바뀜", freeBeforeKey - freeAfterKey === 10 && p.evolutionPoints === 0 && p.evoMerged === true && p.crystalTree.keys.includes("boss") && /강화/.test(await page.evaluate(() => document.querySelectorAll(".mp-crystal-tree .ct-row")[5].querySelector(".ct-buy").textContent)), `${freeBeforeKey} → ${freeAfterKey}`);
 // 유물 칸
 const rel = await page.evaluate(() => ({
   fams: [...document.querySelectorAll(".relic-family")].map((f) => ({ cls: f.className, text: f.textContent })),
@@ -62,7 +65,7 @@ await page.screenshot({ path: "art-gen/out/ctree-tree.png" });
 // 되돌리기
 await page.evaluate(() => document.querySelector(".ct-reset")?.click()); await sleep(600);
 p = await prog();
-ok("되돌리기 → 결정 60 · 열쇠 유지", (await page.evaluate(() => document.querySelector(".ct-free")?.textContent)) === "60" && p.crystalTree.atk === 0 && p.crystalTree.keys.includes("boss"));
+ok("되돌리기 → 결정 60(70 − 열쇠 10) · 열쇠 유지", (await page.evaluate(() => document.querySelector(".ct-free")?.textContent)) === "60" && p.crystalTree.atk === 0 && p.crystalTree.keys.includes("boss"));
 
 // ── 2. 환생 → 시작 스테이지 ──
 await seed(baseProgress({ titanBestStage: 30, rebirthCount: 1, wallAreas: ["meadow"], inheritanceCrystals: 40, crystalTree: { atk: 0, gold: 0, idle: 0, start: 4, crystal: 0, boss: 0, relic: 0, keys: [] }, relics: { "ember-ring": 3 } }),
@@ -70,10 +73,11 @@ await seed(baseProgress({ titanBestStage: 30, rebirthCount: 1, wallAreas: ["mead
 await toMyPage();
 for (let k = 0; k < 2; k += 1) { await page.evaluate(() => document.querySelector(".rebirth-button")?.click()); await sleep(700); }
 p = await prog(); const tr = await tit();
-ok("환생 → 5층부터 · 결정 +16 · 유물 · 트리 유지", p.rebirthCount === 2 && tr.stage === 5 && p.inheritanceCrystals === 56 && p.relics["ember-ring"] === 3 && p.crystalTree.start === 4, `stage ${tr.stage} · 결정 ${p.inheritanceCrystals} · gold ${tr.gold}`);
+ok("환생 → 5층부터 · 결정 +16 +10(열쇠 값) · 유물 · 트리 유지", p.rebirthCount === 2 && tr.stage === 5 && p.inheritanceCrystals === 66 && p.relics["ember-ring"] === 3 && p.crystalTree.start === 4, `stage ${tr.stage} · 결정 ${p.inheritanceCrystals} · gold ${tr.gold}`);
 // 출발 골드(model.rebirthStartGold 30) — 골드 단위 낮추기(2026-11-10) 뒤 옛 5,991 → 2,091(그 골드로 사던 초반 강화를 새 값으로 다시 산 값)
 ok("출발 골드에 건너뛴 1~4층 골드가 얹힌다", tr.gold > 2091, `${tr.gold}`);
-ok("환생 메시지에 '5층부터'", /5층부터/.test(await page.evaluate(() => document.querySelector(".mypage-toast")?.textContent ?? "")));
+const toast = await page.evaluate(() => document.querySelector(".mypage-toast")?.textContent ?? "");
+ok("환생 메시지에 '5층부터' · 결정 +26 · 진화 포인트 글자 없음", /5층부터/.test(toast) && /결정 \+26/.test(toast) && !/진화 포인트/.test(toast), toast);
 
 // ── 3. 다시 잡은 대장 → 유물 조각 · 불 세트 화상 ──
 await seed(baseProgress({ titanBestStage: 30, bossLadder: { top: 30, ranks: { ally: 2, tap: 2, gold: 2, speed: 2 } }, relics: { "ember-ring": 3, "flame-feather": 3, "lava-heart": 3 } }),

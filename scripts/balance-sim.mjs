@@ -97,6 +97,8 @@ const WALLET = flag("wallet", "split");
 const POLICY = flag("policy", "forge");
 const IDLE_K = Number(flag("idlek", 1));
 const CHECK = args.includes("--check");
+/** --evo-crystals N — 환생마다 더 주는 결정(열쇠 값 = crystalTree.KEY_CRYSTALS, 예전 진화 포인트). 2026-11-16 합친 뒤 기본 10 = 게임과 같음 · 0 은 합치기 전. 상한 쪽으로 전부 방치 효율 줄에 넣는다 */
+const EVO_CRYSTALS = Number(flag("evo-crystals", 10));
 const REBIRTH_KEEP = flag("rebirth", "keep") !== "reset";   // --rebirth reset — 지갑 하나여도 환생 때 출발 골드로(비교용)
 /** 은화 1 = 사냥터 골드 몇 — 그 층의 처치 골드 비(killGold / killGoldOldUnit × COIN_UNIT) */
 const coinToGold = (stage) => titans.killGold(Math.max(1, stage), false, false) / (titans.killGoldOldUnit(Math.max(1, stage), false, false) / 100);
@@ -335,6 +337,7 @@ function simulate(kind) {
         wallStreak = 0;
         wallSet.clear();
         p.inheritanceCrystals += Math.max(3, Math.floor(Math.sqrt(p.titanBestStage) * 3));
+        p.inheritanceCrystals += EVO_CRYSTALS;   // 진화 포인트 → 결정 (rebirth.ts 의 + KEY_CRYSTALS)
         // 2026-10-26 결정 강화 트리 — 결정은 써야 효과가 난다. 시뮬은 예전과 같게 방치 효율 줄(결정 2 = +0.04)에 넣는다 (공격력 · 시작 스테이지 줄은 playTitans 밖이라 미반영)
         p.crystalTree = { ...p.crystalTree, idle: Math.min(60, Math.floor(p.inheritanceCrystals / 2)) };
         p.rebirthCount += 1;

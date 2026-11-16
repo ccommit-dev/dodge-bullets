@@ -99,7 +99,7 @@ import type { Tier as AllyRarity } from "./titans/allyRoster";
 import { RelicTabPanel } from "./titans/RelicTabPanel";
 import { buyQuest, claimQuestBonus, QUESTS, questBlock, questBonusAmount, questBonusLeftMs, questCost, questPay, tickQuests } from "./titans/quests";
 import { climbLadder, ladderEffects, ladderLevel, perkForStage, perkLabel, LADDER_LABEL } from "./titans/bossLadder";
-import { freeCrystals, permanentEffects } from "./progression/crystalTree";
+import { KEY_CRYSTALS, freeCrystals, permanentEffects } from "./progression/crystalTree";
 import { drawRelicShards, grantRelicShards, relicBannerCost, relicBannerTierRates, relicDef, relicDrawRates, relicIconUrl, relicStars, RELICS, RELIC_BANNERS, RELIC_BANNER_LABEL, RELIC_BANNER_RATES, RELIC_FAMILY_LABEL, RELIC_SET, RELIC_SHARDS_PER_STAR, RELIC_MAX_STAR, addRelicSpare, relicMerged, relicStatText, relicUpgradable, setActive, upgradeRelic, type RelicBanner, type RelicId } from "./titans/relics";
 import { RelicIcon } from "./titans/RelicIcon";
 import type { Tier as RelicTierRank } from "./titans/allyRoster";
@@ -4123,7 +4123,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <strong>환생 조건 <em>{wall.have}/{wall.need}</em></strong>
                 <p>{wall.ruleShort}</p>
                 <p className="next">{wall.nextShort}</p>
-                <p className="gain">결정 +{gains.crystals} · 진화 +1 · {gains.startStage}층부터</p>
+                <p className="gain">결정 +{gains.crystals + KEY_CRYSTALS} · {gains.startStage}층부터</p>
                 {wall.ready ? (
                   <button type="button" className={`header-rebirth-go ${rebirthArm ? "armed" : ""}`} onClick={() => { if (!rebirthArm) { setRebirthArm(true); return; } setRebirthTip(false); setRebirthArm(false); void autoRebirthRef.current(true); }}>
                     {rebirthArm ? "정말 환생하기 (사냥터 초기화)" : "환생하기"}

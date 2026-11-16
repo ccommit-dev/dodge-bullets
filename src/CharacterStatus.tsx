@@ -33,7 +33,7 @@ import { formatWallet } from "./ui/WalletBar";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthNeedAreas , rebirthWallStatus, WALL_BOSS_LOSSES } from "./progression/rebirth";
 import { sfxRebirth } from "./ui/sfx";
 import { LockIcon } from "./ui/LockIcon";
-import { freeCrystals, treeIdleMult } from "./progression/crystalTree";
+import { KEY_CRYSTALS, freeCrystals, treeIdleMult } from "./progression/crystalTree";
 import { CrystalTreePanel } from "./ui/LegacyPanels";
 import { AllyCodex, OWN_FILTERS, RelicCodex, type OwnFilter } from "./titans/CodexPanels";
 import { BADGES, earnedBadgeIds } from "./progression/badges";
@@ -176,14 +176,15 @@ export function CharacterStatus({
   };
 
   const chooseEvolution = async (path: Exclude<EvolutionPath, "novice">) => {
-    if (progress.rebirthCount < 1 || progress.evolutionPoints < 1) {
-      setGrowthMessage("환생 후 얻은 진화 포인트가 필요합니다.");
+    // 진화 포인트는 결정으로 합쳤다(2026-11-16) — 고를 때마다 결정 KEY_CRYSTALS 개
+    if (progress.rebirthCount < 1 || freeCrystals(progress) < KEY_CRYSTALS) {
+      setGrowthMessage(`환생 뒤 결정 ${KEY_CRYSTALS}개로 고를 수 있습니다.`);
       return;
     }
     const next = await updateCharacterProgress(userHash, (current) => ({
       ...current,
       evolutionPath: path,
-      evolutionPoints: Math.max(0, current.evolutionPoints - 1),
+      evolutionChoices: current.evolutionChoices + 1,
     }));
     onProgressChange(next);
     setGrowthMessage("진화 계통이 적용되었습니다.");
@@ -233,7 +234,7 @@ export function CharacterStatus({
     sfxRebirth();
     const { next, crystals, startGold, startStage } = await performRebirth(userHash, progress);   // progression/rebirth.ts — 사냥터 자동 환생과 같은 길
     onProgressChange(next);
-    setGrowthMessage(`계승 완료 · 결정 +${crystals} (결정 강화에 쓰세요) · 진화 포인트 +1 · ${startStage}층부터 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
+    setGrowthMessage(`계승 완료 · 결정 +${crystals} (결정 강화에 쓰세요) · ${startStage}층부터 · 24시간 방치 2배 · 출발 골드 ${formatWallet(startGold)}`);
   };
 
   return (
@@ -548,9 +549,8 @@ export function CharacterStatus({
           </div>
           {/* 환생하면 받는 것 — 한 줄씩 이름 · 값 */}
           <ul className="rebirth-preview mp-gain" aria-label="환생하면 받는 것">
-            <li><span>결정</span> <b>+{gains.crystals}</b></li>
+            <li><span>결정</span> <b>+{gains.crystals + KEY_CRYSTALS}</b></li>
             <li className="wide"><span>시작 스테이지</span> <b>{gains.startStage}층부터{gains.startStage > 1 ? " · 건너뛴 층 골드 포함" : ""}</b></li>
-            <li><span>진화 포인트</span> <b>+1</b></li>
             <li><span>방치 산출</span> <b>24시간 2배</b></li>
             <li><span>출발 골드</span> <b>{formatWallet(gains.startGold)}</b></li>
             <li><span>사다리 · 유물</span> <b>유지</b></li>
@@ -564,7 +564,7 @@ export function CharacterStatus({
           </button>
         </div>
         <CrystalTreePanel userHash={userHash} progress={progress} onProgressChange={onProgressChange} onMessage={setGrowthMessage} />
-        <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `진화 포인트 ${progress.evolutionPoints}`}</span></div>
+        <div className="legacy-heading"><div><small>EVOLUTION</small><strong>진화 계통</strong></div><span>{progress.rebirthCount < 1 ? "첫 환생 뒤 선택" : `결정 ${KEY_CRYSTALS}개로 선택 · 남은 결정 ${freeCrystals(progress)}`}</span></div>
         <div className={`evolution-tree mp-evo ${progress.rebirthCount < 1 ? "is-locked" : ""}`}>
           <button type="button" className={progress.evolutionPath === "swordmaster" ? "selected" : ""} onClick={() => void chooseEvolution("swordmaster")}><b>검성</b><small>치명타 · 방치 배율 +0.15</small></button>
           <button type="button" className={progress.evolutionPath === "guardian" ? "selected" : ""} onClick={() => void chooseEvolution("guardian")}><b>수호자</b><small>생존 · 방치 시간 +2h</small></button>

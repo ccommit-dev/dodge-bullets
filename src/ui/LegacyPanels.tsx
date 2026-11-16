@@ -7,6 +7,7 @@ import { updateCharacterProgress } from "../progression/storage";
 import type { CharacterProgress } from "../progression/model";
 import {
   BASIC_LINES, SPECIAL_LINES, canUnlockKey, freeCrystals, lineDef, lineText, resetTree, treeSpent, unlockKey, upgradeLine, type TreeLine,
+  KEY_CRYSTALS,
 } from "../progression/crystalTree";
 
 type Props = {
@@ -31,7 +32,7 @@ export function CrystalTreePanel({ userHash, progress, onProgressChange, onMessa
     if (!check.ok) { onMessage(check.reason); return; }
     const next = await updateCharacterProgress(userHash, (cur) => { const r = unlockKey(cur, id); return r.ok ? r.next : cur; });
     onProgressChange(next);
-    onMessage(`${lineDef(id).name} 줄을 열었습니다 — 진화 포인트 −1`);
+    onMessage(`${lineDef(id).name} 줄을 열었습니다 — 결정 −${(lineDef(id).key ?? 0) * KEY_CRYSTALS}`);
   };
   const reset = async () => {
     if (spent <= 0) { onMessage("되돌릴 결정이 없습니다"); return; }
@@ -51,10 +52,10 @@ export function CrystalTreePanel({ userHash, progress, onProgressChange, onMessa
         <img src={assetUrl(`titans/relics/tree-${id}.png`)} alt="" aria-hidden="true" />
         <span className="ct-copy">
           <b>{def.name} <small>{lv}/{def.max}</small></b>
-          <em>{locked ? `${def.label} · 진화 포인트로 연다` : max ? lineText(id, lv) : <>{def.label} {def.short(lv)} → <b>{def.short(lv + 1)}</b></>}</em>
+          <em>{locked ? `${def.label} · 결정으로 연다` : max ? lineText(id, lv) : <>{def.label} {def.short(lv)} → <b>{def.short(lv + 1)}</b></>}</em>
         </span>
         {locked ? (
-          <button type="button" className={`ct-buy key ${canUnlockKey(progress, id) ? "" : "is-off"}`} onClick={() => void unlock(id)}>열기<small>진화 {def.key}</small></button>
+          <button type="button" className={`ct-buy key ${canUnlockKey(progress, id) ? "" : "is-off"}`} onClick={() => void unlock(id)}>열기<small>결정 {(def.key ?? 0) * KEY_CRYSTALS}</small></button>
         ) : (
           <button type="button" className={`ct-buy ${can ? "" : "is-off"}`} aria-disabled={!can} onClick={() => void buy(id)}>{max ? "MAX" : <>강화<small>결정 {cost}</small></>}</button>
         )}
@@ -66,7 +67,7 @@ export function CrystalTreePanel({ userHash, progress, onProgressChange, onMessa
       <div className="legacy-heading"><div><small>CRYSTAL</small><strong>결정 강화</strong></div><span>쓸 수 있는 결정 <b className="ct-free">{free}</b></span></div>
       <div className="mp-crystal-tree">
         <ul aria-label="결정 강화 다섯 줄">{BASIC_LINES.map(row)}</ul>
-        <p className="ct-special-label">특수 줄 · 진화 포인트 {progress.evolutionPoints}</p>
+        <p className="ct-special-label">특수 줄 · 열쇠 결정 {KEY_CRYSTALS}개</p>
         <ul aria-label="특수 줄">{SPECIAL_LINES.map(row)}</ul>
         <button type="button" className="ct-reset" onClick={() => void reset()}>되돌리기 (결정 {spent} 반환 · 무료)</button>
       </div>

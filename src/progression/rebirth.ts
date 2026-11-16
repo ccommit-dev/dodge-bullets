@@ -10,7 +10,7 @@ import { earnedBadgeIds } from "./badges";
 import { openMomentOffer } from "../economy/momentOffers";
 import { rebirthResetTitans } from "../titans/storage";
 import { HUNTING_AREAS, huntingArea, rebirthCrystals, rebirthStartGold, type TitansSave } from "../titans/model";
-import { boostedRebirthCrystals, rebirthStartStage, skippedStageGold } from "./crystalTree";
+import { KEY_CRYSTALS, boostedRebirthCrystals, rebirthStartStage, skippedStageGold } from "./crystalTree";
 import { stageCeilingFor } from "./idle";
 
 // 3 → 2: 밸런스 시뮬에서 15~30일이 Stage 29 정체였고 환생이 30일에야 1회 — 2개 지역이면 개척 완료(9일) 직후 열린다
@@ -79,8 +79,8 @@ export async function performRebirth(userHash: string, progress: CharacterProgre
   const next = await updateCharacterProgress(userHash, (current) => openMomentOffer({
     ...current,
     rebirthCount: current.rebirthCount + 1,
-    inheritanceCrystals: current.inheritanceCrystals + crystals,
-    evolutionPoints: current.evolutionPoints + 1,
+    // 진화 포인트 대신 결정 KEY_CRYSTALS 개를 더 준다(2026-11-16 합침) — 열쇠 줄 · 진화 계통을 결정으로 연다
+    inheritanceCrystals: current.inheritanceCrystals + crystals + KEY_CRYSTALS,
     // 벽 기록은 소모 — 다음 환생도 다시 벽을 봐야 한다
     wallAreas: [],
     // 동료 레벨이 리셋되므로 편성·파견도 비운다 (partyCap 하한과 펫은 보존)
@@ -90,5 +90,6 @@ export async function performRebirth(userHash: string, progress: CharacterProgre
     idleBoostUntil: Date.now() + 24 * 3600 * 1000,
     claimedBadges: [...new Set([...current.claimedBadges, ...earnedBadgeIds(current), "rebirth-one"])],
   }, "rebirth"));
-  return { next, titans, crystals, startGold, startStage };
+  // 받은 결정 = 최고 층 결정 + 열쇠 값(예전 진화 포인트) — 메시지는 이 합을 보여 준다
+  return { next, titans, crystals: crystals + KEY_CRYSTALS, startGold, startStage };
 }

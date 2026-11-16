@@ -15,7 +15,7 @@ import { emptyLadder, normalizeLadder, type BossLadder } from "../titans/bossLad
 import { normalizeHeroRank } from "../titans/promotion";
 import { emptyClimb, normalizeClimb, type ClimbState } from "../titans/riftClimb";
 import { emptyTreasureRuns, normalizeTreasureRuns, type TreasureRuns } from "../game/treasureRuns";
-import { emptyCrystalTree, normalizeCrystalTree, type CrystalTree } from "./crystalTree";
+import { KEY_CRYSTALS, emptyCrystalTree, normalizeCrystalTree, type CrystalTree } from "./crystalTree";
 import { normalizeRelicPair, type RelicState } from "../titans/relics";
 import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
@@ -108,7 +108,12 @@ export type CharacterProgress = {
   equippedBadges: string[];
   rebirthCount: number;
   inheritanceCrystals: number;
+  /** 예전 진화 포인트 — 2026-11-16 결정으로 합쳤다(옛 저장 호환으로 남긴 칸, 늘 0) */
   evolutionPoints: number;
+  /** 진화 계통을 고른 횟수 — 한 번에 결정 KEY_CRYSTALS 개를 쓴 것으로 센다(crystalTree.freeCrystals) */
+  evolutionChoices: number;
+  /** 진화 포인트 → 결정 옮김을 마쳤다(한 번만) */
+  evoMerged: boolean;
   evolutionPath: EvolutionPath;
   /** 출석 연속일 — 방치 시간 캡(T) 보너스에 쓰인다. */
   attendanceStreak: number;
@@ -330,6 +335,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     rebirthCount: 0,
     inheritanceCrystals: 0,
     evolutionPoints: 0,
+    evolutionChoices: 0,
+    evoMerged: true,
     evolutionPath: "novice",
     attendanceStreak: 0,
     idleClaimedAt: Date.now(),
@@ -552,6 +559,13 @@ export function normalizeCharacterProgress(
   const exp = integer(raw.exp, base.exp);
   const content = raw.lastContent;
   const evolutionPaths: EvolutionPath[] = ["novice", "swordmaster", "guardian", "arcane"];
+  // 진화 포인트 → 결정 (2026-11-16) — 한 번만. 남은 포인트 + 이미 쓴 포인트(연 열쇠 · 고른 계통)를 결정으로 돌려준다.
+  // 트리 정리(normalizeCrystalTree)보다 먼저 더해야 열쇠 비용 때문에 옛 저장의 줄 단계가 깎이지 않는다
+  const evoMergedRaw = (raw as { evoMerged?: unknown }).evoMerged === true;
+  const rawKeys = (raw as { crystalTree?: { keys?: unknown } }).crystalTree?.keys;
+  const rawKeyPts = Array.isArray(rawKeys) ? new Set(rawKeys.filter((k) => k === "boss" || k === "relic")).size : 0;
+  const rawChose = evolutionPaths.includes(raw.evolutionPath as EvolutionPath) && raw.evolutionPath !== "novice" ? 1 : 0;
+  const evoCredit = evoMergedRaw ? 0 : (integer(raw.evolutionPoints, 0, 999) + rawKeyPts + rawChose) * KEY_CRYSTALS;
   const shoulderIds: ShoulderId[] = ["scout", "shadow", "ogre", "dragon"];
   const storedShoulders = Array.isArray(raw.ownedShoulders)
     ? raw.ownedShoulders.filter((id): id is ShoulderId => shoulderIds.includes(id as ShoulderId))
@@ -560,7 +574,7 @@ export function normalizeCharacterProgress(
   const equippedShoulder = shoulderIds.includes(raw.equippedShoulder as ShoulderId)
     ? (raw.equippedShoulder as ShoulderId)
     : null;
-  return {
+  const out: CharacterProgress = {
     version: PROGRESSION_VERSION,
     level: Math.max(levelFromExp(exp), integer(raw.level, base.level, 999)),
     exp,
@@ -654,8 +668,10 @@ export function normalizeCharacterProgress(
       ? [...new Set(raw.equippedBadges.filter((id): id is string => typeof id === "string"))].slice(0, 3)
       : [],
     rebirthCount: integer(raw.rebirthCount, 0, 999),
-    inheritanceCrystals: integer(raw.inheritanceCrystals, 0),
+    inheritanceCrystals: integer(raw.inheritanceCrystals, 0) + evoCredit,
     evolutionPoints: integer(raw.evolutionPoints, 0, 999),
+    evolutionChoices: integer((raw as { evolutionChoices?: unknown }).evolutionChoices, 0, 9999),
+    evoMerged: (raw as { evoMerged?: unknown }).evoMerged === true,
     evolutionPath: evolutionPaths.includes(raw.evolutionPath as EvolutionPath)
       ? (raw.evolutionPath as EvolutionPath)
       : "novice",
@@ -835,11 +851,18 @@ export function normalizeCharacterProgress(
     discoverySeeded: (raw as { discoverySeeded?: unknown }).discoverySeeded === true,
     eventCoins: integer((raw as { eventCoins?: unknown }).eventCoins, 0, 9999999),
     autoRebirth: (raw as { autoRebirth?: unknown }).autoRebirth === true,
-    crystalTree: normalizeCrystalTree((raw as { crystalTree?: unknown }).crystalTree, integer(raw.inheritanceCrystals, 0)),
+    crystalTree: normalizeCrystalTree((raw as { crystalTree?: unknown }).crystalTree, integer(raw.inheritanceCrystals, 0) + evoCredit),
     // 넣은 조각은 ★ 단위로 — 옛 '소진'이 남긴 1~2개는 남은 조각(강화 재료)으로 돌린다 (2026-11-09 강화 단순화)
     ...normalizeRelicPair((raw as { relics?: unknown }).relics, (raw as { relicSpare?: unknown }).relicSpare),
     updatedAt: integer(raw.updatedAt, Date.now()),
   };
+  // 진화 포인트 → 결정 (2026-11-16) — 한 번만. 남은 포인트 · 연 열쇠 · 고른 계통을 결정으로(쓴 것은 그대로 '쓴 결정'이 되므로 남는 결정이 줄지 않는다)
+  if (!out.evoMerged) {
+    out.evolutionChoices = Math.max(out.evolutionChoices, rawChose);
+    out.evolutionPoints = 0;
+    out.evoMerged = true;
+  }
+  return out;
 }
 
 export function totalSkillMastery(progress: CharacterProgress): number {
