@@ -100,7 +100,8 @@ await page.evaluate(() => document.querySelector(".titans-back")?.click()); awai
 const rb = await page.evaluate(() => ({ btn: document.querySelector(".rebirth-button")?.textContent ?? "", pre: document.querySelector(".rebirth-preview")?.textContent ?? "" }));
 ok("환생 단추: 첫 환생 뒤엔 '벽 0/1 지역 (대장 2연패)'(예전엔 /3 고정)", /벽 0\/1 지역 \(대장 2연패\)/.test(rb.btn), rb.btn);
 // 2026-10-26 — 방치 배율 전후는 결정 강화 트리(방치 효율 줄)로 옮겼다 · 대신 시작 스테이지
-ok("환생 미리 보기: 결정 +18 · 시작 스테이지 · 출발 골드", /결정 \+18/.test(rb.pre) && /시작 스테이지\s*1층부터/.test(rb.pre) && /출발 골드/.test(rb.pre), rb.pre);
+// 2026-11-16 진화 포인트를 결정으로 합쳤다 — 36층 결정 18 + 열쇠 값 10
+ok("환생 미리 보기: 결정 +28(층 18 + 열쇠 10) · 진화 포인트 줄 없음 · 시작 스테이지 · 출발 골드", /결정 \+28/.test(rb.pre) && !/진화/.test(rb.pre) && /시작 스테이지\s*1층부터/.test(rb.pre) && /출발 골드/.test(rb.pre), rb.pre);
 
 // ── 5'. 첫 10연 최고 등급 확정 ──
 await seed(baseProgress({ redGems: 2000, gachaPulls: 0, gachaPity: 0 }), { gold: 1000, stage: 2, bestStage: 6, totalKills: 30, heroes: { mia: 10, leon: 10 }, lastActiveAt: now });
@@ -146,7 +147,7 @@ await clickText("button", "사냥터로"); await sleep(1200);
 for (let i = 0; i < 40 && !pops.some((t) => /자동 환생/.test(t)); i += 1) await sleep(250);
 await sleep(1500);
 p = await prog(); const tr = await tit();
-ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +16 · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 16 && tr.stage <= 2 && tr.gold >= 1700 /* 골드 단위 낮추기(2026-11-10) 뒤 30층 출발 골드 1,726 (옛 단위 5,992) */ && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
+ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +26(층 16 + 열쇠 10) · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 26 && tr.stage <= 2 && tr.gold >= 1700 /* 골드 단위 낮추기(2026-11-10) 뒤 30층 출발 골드 1,726 (옛 단위 5,992) */ && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
 const killsBefore = (await tit()).totalKills ?? 0;
 for (let i = 0; i < 60; i += 1) { await page.keyboard.press("Space"); await sleep(120); }
 ok("자동 환생 뒤 사냥이 다시 돈다(1층 몬스터를 다시 잡는다)", ((await tit()).totalKills ?? 0) > killsBefore, `${killsBefore} → ${(await tit()).totalKills}`);
