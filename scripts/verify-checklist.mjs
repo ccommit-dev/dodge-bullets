@@ -41,11 +41,12 @@ for (let i = 0; i < 30; i++) {
   // 피해 숫자는 짧게 떠 있으므로 탭 직후에 채집한다
   (await page.evaluate(() => [...document.querySelectorAll(".titans-float")].map((f) => f.className))).forEach((c) => tapFloats.add(c));
   await sleep(200);
-  if (i >= 6 && /소환/.test(await page.evaluate(() => document.querySelector(".coach-bubble")?.textContent ?? ""))) break;
+  if (i >= 6 && /훈련/.test(await page.evaluate(() => document.querySelector(".coach-bubble")?.textContent ?? ""))) break;
 }
 await sleep(600);
 r = await page.evaluate(() => ({ coach: document.querySelector(".coach-bubble")?.textContent?.trim() }));
-ok("#1 신규 코치 2단계(미아 소환 유도)", /소환/.test(r.coach ?? ""), r.coach);
+// 2026-11-16 해금 계단 순서 — 동료 탭은 사냥터 3층 칸이라 탭 다음은 늘 열린 무기 훈련, 미아 소환은 동료가 열린 뒤
+ok("#1 신규 코치 2단계(무기 훈련 유도 — 동료는 3층 칸)", /훈련/.test(r.coach ?? ""), r.coach);
 ok("#2 탭 피해 숫자 src-tap", [...tapFloats].some((c) => c.includes("src-tap")), [...tapFloats].slice(0, 2).join(" | "));
 
 // ── B. 기존 유저(step4, 출석 0, Lv 5) + 방치 3h ──

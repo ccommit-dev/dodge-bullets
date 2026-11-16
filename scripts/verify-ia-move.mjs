@@ -2,6 +2,7 @@
 // 뽑기가 상점 한 곳 · 모험에 상자 없음 · 동료 탭 = 보유 + 다음 1명 · 상세에서 공격 시트가 돈다 · 유물 탭 평평 · 도감 단추 → 마이페이지 유물 쪽 · 도감 4탭 보유 구분.
 //   node scripts/verify-ia-move.mjs [캡처폴더]  (vite 5173)
 import { launchBrowser } from "./launch-browser.mjs";
+// 2026-11-16 해금 계단 — 상점 · 이벤트는 사냥터 6층 칸. 실제 해금 규칙(test-phase=0)이라 최고 층만 6(지금 층은 그대로)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now(), OUT = process.argv[2];
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -13,7 +14,7 @@ const today = new Date().toLocaleDateString("sv-SE");
 const progress = { version: 5, level: 25, redGems: 5000, attendanceStreak: 5, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime", "ally:mia", "ally:leon"], gachaPulls: 30, chests: 2, chestPoints: 30, allyStars: { mia: 2, leon: 1 }, relics: { "ember-ring": 3, "flame-feather": 4, "lava-heart": 15, "frost-horn": 1 }, seenMonsters: ["slime"] };
 await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
-  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e7, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e7, stage: 3, bestStage: 14, heroes: { mia: 5, leon: 5 }, lastActiveAt: now })   /* 유물 탭은 14층 칸 */,
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }),
   "dodgebullets:test-phase": "0",
 });
@@ -94,7 +95,7 @@ await shot("codex-monster");
 // ── 새 저장: 첫 소환 안내가 가리키는 미아 카드가 동료 탭에 있다 ──
 await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ version: 5, level: 1, redGems: 0, attendanceStreak: 1, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 2, partyIds: [], partyCap: 4, claimedRewards: [], pioneeredArea: 1, discoverySeeded: true, discovered: [] }),
-  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5000, stage: 1, bestStage: 1, totalTaps: 5, heroes: {}, lastActiveAt: now }),
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5000, stage: 1, bestStage: 6, totalTaps: 5, heroes: {}, lastActiveAt: now }),
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 1, consecutiveDays: 1 }),
   "dodgebullets:test-phase": "0",
 });

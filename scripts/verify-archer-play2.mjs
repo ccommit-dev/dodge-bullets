@@ -27,8 +27,9 @@ const pops = []; await page.exposeFunction("__pop", (t) => pops.push(t));
 await page.evaluateOnNewDocument(() => { document.addEventListener("DOMContentLoaded", () => new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".reward-pop")) window.__pop(n.textContent); }).observe(document.body, { childList: true, subtree: true })); });
 const watchPops = async () => {};
 
+// 2026-11-16 해금 계단 — 출석 · 이벤트 · 상점(뽑기)은 사냥터 6층 칸(첫 판 2분쯤). 실제 해금 규칙이라 최고 층만 6(지금 층 1 · 2 그대로)
 // ── 5. 출석 첫날 보석 1000 — 출석을 한 번도 안 받은 계정은 부팅 때 출석 판이 뜬다 ──
-await seed(baseProgress({ sessionCount: 0, redGems: 0, discovered: [] }), { gold: 0, stage: 1, bestStage: 1, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now }, null);
+await seed(baseProgress({ sessionCount: 0, redGems: 0, discovered: [] }), { gold: 0, stage: 1, bestStage: 6, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now }, null);
 for (let i = 0; i < 20 && !(await page.$(".attendance-modal")); i += 1) await sleep(250);
 const day1 = await page.evaluate(() => document.querySelector(".attendance-modal .attendance-grid > div")?.textContent ?? "");
 ok("출석 판 DAY 1 칸 = 보석 1000", /1000/.test(day1), day1);
@@ -52,7 +53,7 @@ const t1 = await tit();
 ok("장비 탭에 번개 카드 없음 · 옛 Lv.2 는 쓴 골드 336 돌려받음 · 알림", !lcard && t1.gold >= 100000 + 150 + 186 && !("lightningLevel" in t1) && /번개 강화를 없앴어요/.test(toastRefund), `카드 ${lcard} · 골드 ${t1.gold} · ${toastRefund}`);
 
 // ── 8. 이벤트 코인 — 드롭 · 지갑 · 교환 ──
-await seed(baseProgress({ eventCoins: 0, enhancementMaterials: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
+await seed(baseProgress({ eventCoins: 0, enhancementMaterials: 0 }), { gold: 1000, stage: 2, bestStage: 6, totalKills: 30, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await page.evaluate(() => { window.__coins = 0; new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n instanceof Element && n.matches(".titans-fx-coin")) window.__coins += 1; }).observe(document.querySelector(".titans-field"), { childList: true, subtree: true }); window.__rand = Math.random; Math.random = () => 0.01; });
 for (let i = 0; i < 40 && (await page.evaluate(() => window.__coins)) === 0; i += 1) await sleep(250);
@@ -61,7 +62,7 @@ await sleep(800);
 p = await prog();
 ok("몬스터가 코인을 떨어뜨린다 → 튀어 오르는 코인 + 저장", (await page.evaluate(() => window.__coins)) >= 1 && p.eventCoins >= 1, `코인 연출 ${await page.evaluate(() => window.__coins)} · 저장 ${p.eventCoins}`);
 // 교환 — 코인을 넉넉히 넣고 이벤트 탭
-await seed(baseProgress({ eventCoins: 100, enhancementMaterials: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
+await seed(baseProgress({ eventCoins: 100, enhancementMaterials: 0 }), { gold: 1000, stage: 2, bestStage: 6, totalKills: 30, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "상점"); await sleep(500);
 await clickText(".hub-sheet-switch button", "이벤트"); await sleep(500);
@@ -78,7 +79,7 @@ ok("코인 20 → 강화석 25", p.eventCoins - pCoin.eventCoins >= -20 && p.eve
 // 2026-10-28 뽑기 풀 = 전원(스테이지 해금 없음) — 15명만 가지면 10연에 중복이 0일 수 있다. 게임의 동료 목록 전부를 가져 모든 칸이 중복이 되게
 const heroIds = await page.evaluate(async () => (await import("/src/titans/model.ts")).HEROES.map((h) => h.id)).catch(() => ["mia", "leon", "sera", "garen", "ari", "nox", "pyro", "marina", "zephyr", "bronn", "iris", "cain", "sylph", "orion", "ember"]);
 const allHeroes = Object.fromEntries(heroIds.map((id) => [id, 10]));
-await seed(baseProgress({ redGems: 2000, allyShards: {}, allyStars: {} }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: allHeroes, lastActiveAt: now });
+await seed(baseProgress({ redGems: 2000, allyShards: {}, allyStars: {} }), { gold: 1000, stage: 2, bestStage: 6, totalKills: 30, heroes: allHeroes, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
 await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(500);
@@ -102,7 +103,7 @@ ok("환생 단추: 첫 환생 뒤엔 '벽 0/1 지역 (대장 2연패)'(예전엔
 ok("환생 미리 보기: 결정 +18 · 시작 스테이지 · 출발 골드", /결정 \+18/.test(rb.pre) && /시작 스테이지\s*1층부터/.test(rb.pre) && /출발 골드/.test(rb.pre), rb.pre);
 
 // ── 5'. 첫 10연 최고 등급 확정 ──
-await seed(baseProgress({ redGems: 2000, gachaPulls: 0, gachaPity: 0 }), { gold: 1000, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 10, leon: 10 }, lastActiveAt: now });
+await seed(baseProgress({ redGems: 2000, gachaPulls: 0, gachaPity: 0 }), { gold: 1000, stage: 2, bestStage: 6, totalKills: 30, heroes: { mia: 10, leon: 10 }, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
 await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(500);
@@ -181,9 +182,10 @@ await page.evaluate(() => document.querySelector(".attendance-modal .cta:not(.ct
 p = await prog();
 ok("옛 계정 첫 출석: 판도 지급도 보석 20 · welcome-gift 없음", /×20/.test(oldDay1) && !/1000/.test(oldDay1) && p.redGems >= 20 && p.redGems < 1000 && !(p.claimedRewards ?? []).includes("welcome-gift"), `${oldDay1} · 보석 ${p.redGems}`);
 
+// (2026-11-16 동료 탭은 사냥터 3층 칸 — 최고 층만 3, 개척 지역 2 그대로)
 // ── 체험 출전 — 첫 10연 전설(아리)은 지역이 열리기 전엔 "열린 가장 센 동료의 2배"까지만 ──
 // 2026-10-27 동료 60명 — 지역3(상한 15)엔 신화 오로라(15층)가 있어 "열린 최강의 2배"가 아리보다 커진다(체험 ×1). 체험이 걸리는 지역2(상한 10)로 본다
-await seed(baseProgress({ redGems: 0, claimedRewards: ["dodge-tutorial", "field-pass:ari"], partyIds: ["mia", "ari"], pioneeredArea: 2 }), { gold: 0, stage: 2, bestStage: 2, totalKills: 30, heroes: { mia: 5, ari: 1 }, lastActiveAt: now });
+await seed(baseProgress({ redGems: 0, claimedRewards: ["dodge-tutorial", "field-pass:ari"], partyIds: ["mia", "ari"], pioneeredArea: 2 }), { gold: 0, stage: 2, bestStage: 3, totalKills: 30, heroes: { mia: 5, ari: 1 }, lastActiveAt: now });
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(600);
 for (let pg = 0; pg < 20; pg += 1) {   // 도감은 쪽으로 나뉜다 — 아리가 있는 쪽까지 넘긴다

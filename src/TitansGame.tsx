@@ -4053,10 +4053,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const coach = useMemo(() => {
     if (character.onboardingStep > 0) return null;
     if (save.totalTaps < 3) return { id: "tap", text: "몬스터를 탭해서 공격해 보세요", target: "field" as const };
-    if (save.heroes.mia <= 0) return { id: "summon", text: "동료 탭에서 스카우트 미아를 소환하세요", target: "heroes" as const };
+    // 해금 계단과 같은 순서(2026-11-16) — 동료 탭은 사냥터 3층 칸이라 1층 새 계정에 "동료 탭에서 소환" 을 먼저 띄우면 잠긴 탭을 가리켰다. 늘 열린 무기 훈련 먼저
     if (save.equipmentTraining.weaponMastery < 2) return { id: "train", text: "장비 성장에서 무기를 훈련하면 탭 공격력이 오릅니다", target: "sword" as const };
+    if (save.heroes.mia <= 0 && ladderOpen("allies", huntBest)) return { id: "summon", text: "동료 탭에서 스카우트 미아를 소환하세요", target: "heroes" as const };
     return null;
-  }, [character.onboardingStep, save.totalTaps, save.heroes.mia, save.equipmentTraining.weaponMastery]);
+  }, [character.onboardingStep, save.totalTaps, save.heroes.mia, save.equipmentTraining.weaponMastery, huntBest]);
 
   const pad = {
     paddingTop: Math.max(12, insets.top),

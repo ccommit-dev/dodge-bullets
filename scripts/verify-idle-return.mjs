@@ -45,10 +45,11 @@ const m = await page.evaluate(() => {
   };
 });
 const visible = m.rows.filter((r) => Number(r.opacity) > 0.9 && r.h > 20);
-const goldRow = m.rows.find((r) => /골드/.test(r.text));
+// 방치 보상은 은화(공유 코인) — 2026-11-13 골드는 사냥터 골드 하나로 이름을 갈랐다
+const goldRow = m.rows.find((r) => /은화/.test(r.text));
 ok("정산 화면이 뜬다", m.modal);
 ok("받은 것 칸이 모두 보인다(opacity 1 · 높이) — 사용자 캡처의 빈칸", m.rows.length >= 3 && visible.length === m.rows.length, m.rows.map((r) => `${r.text.replace(/\s+/g, " ")}@${r.opacity}`).join(" | "));
-ok("골드 · 경험치 · 강화석 칸에 숫자", !!goldRow && /\d/.test(goldRow.text) && m.rows.some((r) => /경험치/.test(r.text)) && m.rows.some((r) => /강화석/.test(r.text)), goldRow?.text);
+ok("은화 · 경험치 · 강화석 칸에 숫자", !!goldRow && /\d/.test(goldRow.text) && m.rows.some((r) => /경험치/.test(r.text)) && m.rows.some((r) => /강화석/.test(r.text)), goldRow?.text);
 const relicRows = m.rows.filter((r) => r.drop.startsWith("relic-"));
 const skillRows = m.rows.filter((r) => r.drop.startsWith("skill-"));
 const relicCount = relicRows.reduce((a, r) => a + Number((r.text.match(/×(\d+)/) ?? [0, 0])[1]), 0);

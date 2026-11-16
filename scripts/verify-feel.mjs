@@ -2,6 +2,7 @@
 // 소환진 탭으로 바로 공개 · 결과 첫 탭 모두 공개 · 서랍 닫힘 애니메이션 · 버튼 · 못 누름 · 구매 · 강화 소리가 실제로 울린다(오실레이터 수로 센다) · 곡 이어 재생.
 //   node scripts/verify-feel.mjs   (vite 5173)
 import { launchBrowser } from "./launch-browser.mjs";
+// 2026-11-16 해금 계단 — 상점 · 이벤트는 사냥터 6층 칸. 실제 해금 규칙(test-phase=0)이라 최고 층만 6(지금 층은 그대로)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const browser = await launchBrowser({ args: ["--no-sandbox", "--autoplay-policy=no-user-gesture-required"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -14,7 +15,7 @@ const today = new Date().toLocaleDateString("sv-SE");
 const progress = { version: 5, level: 25, redGems: 5000, attendanceStreak: 5, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime", "ally:mia", "ally:leon"], gachaPulls: 30 };
 await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}), page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); setTimeout(() => location.reload(), 0); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
-  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e7, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e7, stage: 3, bestStage: 6, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }),
   "dodge-bullets:soundEnabled": "1", "dodgebullets:test-phase": "0",
 })]);

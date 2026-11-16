@@ -2,6 +2,7 @@
 // 광고를 3번째 보면 제안 카드 · 패키지 맨 위 칸 · 게이트 전이어도 광고를 본 사람에겐 보임 · 산 뒤엔 칸이 사라지고 광고 없이 바로.
 //   node scripts/verify-ad-upsell.mjs   (vite 5173 · DEV 스텁 dodgebullets:qa-ads=1)
 import { launchBrowser } from "./launch-browser.mjs";
+// 2026-11-16 해금 계단 — 상점 · 이벤트는 사냥터 6층 칸. 실제 해금 규칙(test-phase=0)이라 최고 층만 6(지금 층은 그대로)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now();
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -14,7 +15,7 @@ const base = { version: 5, level: 8, redGems: 100, attendanceStreak: 1, idleClai
 const seed = async (extra) => {
   await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}), page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); setTimeout(() => location.reload(), 0); }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify({ ...base, ...extra }),
-    [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1000, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
+    [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 1000, stage: 3, bestStage: 6, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
     [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }),
     "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0", "dodgebullets:qa-ads": "1",
   })]);

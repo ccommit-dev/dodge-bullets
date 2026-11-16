@@ -1,4 +1,5 @@
 import { sfxIdleClaim } from "./ui/sfx";
+import { ladderStep } from "./progression/ladder";
 import { useEffect, useState } from "react";
 import { storageGet, storageSet } from "./game/toss";
 import { loadCharacterProgress, updateCharacterProgress } from "./progression/storage";
@@ -54,7 +55,8 @@ export const ATTENDANCE_REWARDS: DayReward[] = [
  */
 export const WELCOME_DAY1: DayReward = d("보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS });
 export function isNewAccount(p: Pick<CharacterProgress, "titanBestStage" | "gachaPulls" | "rebirthCount">): boolean {
-  return p.titanBestStage <= 3 && p.gachaPulls === 0 && p.rebirthCount === 0;
+  // 출석은 해금 계단 이벤트 칸(사냥터 6층)에서 열린다 — 예전 문턱 3층이면 진짜 새 계정도 출석을 처음 볼 때 이미 넘어 환영 보석을 잃었다(2026-11-16)
+  return p.titanBestStage <= ladderStep("events").stage + 3 && p.gachaPulls === 0 && p.rebirthCount === 0;
 }
 /** 이 계정이 받을 하루치 — 첫날만 새 계정이면 1000 */
 export function rewardFor(day: number, newAccount: boolean): DayReward {

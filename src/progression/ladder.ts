@@ -28,13 +28,14 @@ export const LADDER: readonly LadderStep[] = [
   { id: "allies", stage: 3, name: "동료", gives: "함께 싸우는 동료 · 사냥 속도" },
   { id: "skills", stage: 4, name: "스킬", gives: "사냥터 스킬 · 대장 처치" },
   { id: "dodge", stage: 5, name: "성문 방어", gives: "강화석 · 새 지역(사냥터 층 상한)" },
+  // 이벤트 · 상점은 첫 몇 분(6층) — 출석 · 일일 임무 · 상점이 5일차(16층)에야 열리면 다시 들어올 이유가 늦게 생긴다(2026-11-16, balance-sim 균형형 1일 5층 · 5일 16층)
+  { id: "events", stage: 6, name: "이벤트 · 상점", gives: "일일 보상 · 보석" },
   { id: "urgent", stage: 7, name: "긴급 의뢰", gives: "현상범 처치 골드 · 강화석" },
   { id: "promotion", stage: 8, name: "승급전", gives: "주인공 공격력 영구 상승" },
   { id: "beat", stage: 10, name: "비트 수련", gives: "SP(스킬 포인트) · 은화" },
   { id: "forge", stage: 12, name: "대장간", gives: "은화로 무기 강화(사냥터 공격력)" },
   { id: "relic", stage: 14, name: "유물", gives: "사냥터 능력치 영구 상승" },
-  { id: "events", stage: 16, name: "이벤트 · 상점", gives: "일일 보상 · 보석" },
-  { id: "rift", stage: 18, name: "균열", gives: "방치 보상 즉시 정산" },
+  { id: "rift", stage: 16, name: "균열", gives: "방치 보상 즉시 정산" },
   { id: "tower", stage: 22, name: "끝없는 성벽", gives: "동료 조각 · 방치 배율" },
   { id: "expedition", stage: 25, name: "파견", gives: "자는 동안 강화석 · 조각" },
 ];

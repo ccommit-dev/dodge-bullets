@@ -10,7 +10,8 @@ await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const grid = [2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const progress = { version: 5, level: 10, redGems: 100, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3, discoverySeeded: true, discovered: [], bossLadder: { top: 0, ranks: { ally: 0, tap: 0, gold: 0, speed: 0 } } };
-const titans = { gold: 100000, stage: 1, bestStage: 1, heroes: { mia: 40, leon: 40 }, lastActiveAt: now, acorns: { grid, allyAmmo: {}, best: 2, acc: 0 } };
+// 2026-11-16 해금 계단 — 퀘스트는 사냥터 2층 칸. 실제 해금 규칙(test-phase=0)이라 최고 층만 2(지금 층은 1 그대로)
+const titans = { gold: 100000, stage: 1, bestStage: 2, heroes: { mia: 40, leon: 40 }, lastActiveAt: now, acorns: { grid, allyAmmo: {}, best: 2, acc: 0 } };
 await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
 await page.waitForNavigation({ waitUntil: "networkidle0" }).catch(() => {}); await sleep(1500);
 await page.evaluate(() => { for (let k = 0; k < 5; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".titans-bottom-nav")).find((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim())); if (b) b.click(); } });

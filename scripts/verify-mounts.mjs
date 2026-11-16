@@ -1,6 +1,7 @@
 // 탈것 (2026-11-03, 사용자: "탈것도 아이템으로 · 상점에서 팔고 · 강화 가능하게") — 상점에서 산다 · 보석이 준다 · 자동 장착 · 강화석으로 강화 · 효과 값 · 새로 고침 유지 · 전장에 보인다 · 옛 저장은 탈것 없음.
 //   node scripts/verify-mounts.mjs [캡처폴더]  (vite 5173)
 import { launchBrowser } from "./launch-browser.mjs";
+// 2026-11-16 해금 계단 — 상점 · 이벤트는 사냥터 6층 칸. 실제 해금 규칙(test-phase=0)이라 최고 층만 6(지금 층은 그대로)
 const BASE = "http://localhost:5173", H = "mock-local-dev", now = Date.now(), OUT = process.argv[2];
 const browser = await launchBrowser({ args: ["--no-sandbox"] }); const page = await browser.newPage(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -12,7 +13,7 @@ const today = new Date().toLocaleDateString("sv-SE");
 const progress = { /* 첫 발견 보석(+20)이 구매 단언에 끼지 않게 — 몬스터는 다 본 것으로 */ discoverySeeded: false, version: 5, level: 25, redGems: 700, enhancementMaterials: 50, attendanceStreak: 5, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime"], gachaPulls: 30 };
 await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
-  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e6, stage: 3, bestStage: 3, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e6, stage: 3, bestStage: 6, heroes: { mia: 5, leon: 5 }, lastActiveAt: now }),
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }),
   "dodgebullets:test-phase": "0", "dodgebullets:qa-gems": "0",
 });
