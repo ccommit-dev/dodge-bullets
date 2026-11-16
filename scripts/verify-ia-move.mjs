@@ -14,7 +14,7 @@ const today = new Date().toLocaleDateString("sv-SE");
 const progress = { version: 5, level: 25, redGems: 5000, attendanceStreak: 5, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, sessionCount: 9, partyIds: ["mia", "leon"], partyCap: 4, claimedRewards: ["dodge-tutorial", "welcome-gift", "surprise-gift"], pioneeredArea: 3, discoverySeeded: true, discovered: ["monster:slime", "ally:mia", "ally:leon"], gachaPulls: 30, chests: 2, chestPoints: 30, allyStars: { mia: 2, leon: 1 }, relics: { "ember-ring": 3, "flame-feather": 4, "lava-heart": 15, "frost-horn": 1 }, seenMonsters: ["slime"] };
 await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, {
   [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress),
-  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e7, stage: 3, bestStage: 14, heroes: { mia: 5, leon: 5 }, lastActiveAt: now })   /* 유물 탭은 14층 칸 */,
+  [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 5e7, stage: 3, bestStage: 16, heroes: { mia: 5, leon: 5 }, lastActiveAt: now })   /* 유물 탭은 16층 칸 (11-16 계단 간격, ladder.ts) */,
   [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: today, totalDays: 3, consecutiveDays: 3 }),
   "dodgebullets:test-phase": "0",
 });
