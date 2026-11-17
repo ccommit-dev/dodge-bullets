@@ -348,60 +348,82 @@ def _fit_body(o):
     return o
 
 
+_LOOK = None   # 지금 짓는 동료의 얼굴(cfg['look']) — build() 가 넣고 뺀다. 주인공 · 몬스터는 늘 None
+
+
 def _lp(name, bm, mat, coll, outline=OUT):
-    """로우 폴리 조각 — 평면 셰이딩(각진 면)"""
+    """로우 폴리 조각 — 평면 셰이딩(각진 면). 동료 얼굴(look.smooth)이면 매끈하게 · 외곽선 굵게(look.ink)"""
+    if _LOOK:
+        return C.mesh_obj(name, bm, mat, coll, smooth=bool(_LOOK.get('smooth')), outline=outline * _LOOK.get('ink', 1.0))
     return C.mesh_obj(name, bm, mat, coll, smooth=False, outline=outline)
+
+
+def _E(center, radii, egg=0.0, seg=8, rings=6, rot=None):
+    """몸 조각 타원체 — 매끈한 동료(look.smooth)는 면을 세 배로 나눠 둥글게"""
+    k = 3 if (_LOOK and _LOOK.get('smooth')) else 1
+    return C.ellipsoid(center, radii, egg=egg, seg=seg * k, rings=rings * k, rot=rot)
 
 
 def _lowpoly_body(add, M, coll, cfg):
     """달걀형 한 덩어리 비버 — 머리(위 덩이)는 head 뼈에 붙어 끄덕이고, 몸(아래 덩이)이 더 넓어 이음매 없이 이어진다"""
-    add('head', _lp('head', C.ellipsoid(HEAD_C, HEAD_R, egg=0.12, seg=11, rings=8), M['fur'], coll))
-    add('body', _lp('body', C.ellipsoid(BODY_C, BODY_R, egg=0.16, seg=11, rings=8), M['fur'], coll))
+    add('head', _lp('head', _E(HEAD_C, HEAD_R, egg=0.12, seg=11, rings=8), M['fur'], coll))
+    add('body', _lp('body', _E(BODY_C, BODY_R, egg=0.16, seg=11, rings=8), M['fur'], coll))
+    look = cfg.get('look')
     if not (cfg.get('robe') or cfg.get('armor')):   # 로브 · 갑옷이 있으면 배 무늬가 옷을 뚫고 나왔다
-        add('body', _lp('belly', C.ellipsoid(BODY_C + Vector((0, -0.2, -0.04)), (0.19, 0.1, 0.19), egg=0.1, seg=9, rings=6), M['light'], coll, OUT * 0.6))
+        if look:   # 동료 얼굴 — 배 무늬를 낮춰 주둥이와 배 사이에 갈색 턱이 보이게(이어지면 긴 흰 띠 · 앞니가 배에 묻힌다)
+            add('body', _lp('belly', _E(BODY_C + Vector((0, -0.2, -0.085)), (0.17, 0.1, 0.15), egg=0.1, seg=9, rings=6), M['light'], coll, OUT * 0.6))
+        else:
+            add('body', _lp('belly', _E(BODY_C + Vector((0, -0.2, -0.04)), (0.19, 0.1, 0.19), egg=0.1, seg=9, rings=6), M['light'], coll, OUT * 0.6))
+    if look:   # 동료 얼굴(2026-11-17) — 큰 크림 주둥이 · 작은 눈 · 동료마다 다른 눈 · 코 · 이 · 무늬
+        _look_face(add, M, coll, look, cfg)
     # 눈 — 큰 흰자 · 가운데로 모인 검은 눈동자 · 작은 반사광 (위쪽 · 가깝게)
     for sx in (-1, 1):
         p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.36, -1.0, 0.42)), egg=0.12)
         rot = C.look_rot(n)
-        add('head', C.mesh_obj(f'eye{sx}', C.ellipsoid(p - n * 0.02, (0.085, 0.095, 0.05), rot=rot, seg=20, rings=12), M['sclera'], coll, outline=OUT * 0.8))
-        pc = p + n * 0.036 + Vector((-sx * 0.016, 0, -0.01))   # 흰자 겉면 위에 — 안에 묻혀 초승달처럼 잘리던 것
-        add('head', C.mesh_obj(f'pupil{sx}', C.ellipsoid(pc, (0.05, 0.058, 0.008), rot=rot, seg=16, rings=10), M['pupil'], coll))
-        add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(pc + n * 0.012 + Vector((-0.014, 0, 0.022)), (0.016, 0.016, 0.004), rot=rot, seg=10, rings=6), M['white'], coll))
+        if not look:
+            add('head', C.mesh_obj(f'eye{sx}', _E(p - n * 0.02, (0.085, 0.095, 0.05), rot=rot, seg=20, rings=12), M['sclera'], coll, outline=OUT * 0.8))
+            pc = p + n * 0.036 + Vector((-sx * 0.016, 0, -0.01))   # 흰자 겉면 위에 — 안에 묻혀 초승달처럼 잘리던 것
+            add('head', C.mesh_obj(f'pupil{sx}', _E(pc, (0.05, 0.058, 0.008), rot=rot, seg=16, rings=10), M['pupil'], coll))
+            add('head', C.mesh_obj(f'eyehi{sx}', _E(pc + n * 0.012 + Vector((-0.014, 0, 0.022)), (0.016, 0.016, 0.004), rot=rot, seg=10, rings=6), M['white'], coll))
         # 귀 — 작고 둥근(어두운 안쪽). 체형(form ears)이 있으면 그 귀로
         if (cfg.get('form') or {}).get('ears', 'round') == 'round':
             ep = HEAD_C + Vector((sx * 0.22, 0.04, 0.25))
-            add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.075, 0.045, 0.07), seg=8, rings=6), M['fur'], coll))
-            add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, -0.005)), (0.045, 0.02, 0.042), seg=8, rings=6), M['dark'], coll, 0))
+            add('head', _lp(f'ear{sx}', _E(ep, (0.075, 0.045, 0.07), seg=8, rings=6), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', _E(ep + Vector((0, -0.03, -0.005)), (0.045, 0.02, 0.042), seg=8, rings=6), M['dark'], coll, 0))
+        if look:
+            continue
         # 볼 두 덩이(주둥이) — 코 아래 양쪽
-        add('head', _lp(f'cheek{sx}', C.ellipsoid(HEAD_C + Vector((sx * 0.085, -0.25, -0.07)), (0.1, 0.075, 0.075), seg=9, rings=6), M['light'], coll))
+        add('head', _lp(f'cheek{sx}', _E(HEAD_C + Vector((sx * 0.085, -0.25, -0.07)), (0.1, 0.075, 0.075), seg=9, rings=6), M['light'], coll))
         # 앞니 — 크고 하얗게(볼 아래로 길게)
         add('head', C.mesh_obj(f'tooth{sx}', C.box(HEAD_C + Vector((sx * 0.03, -0.3, -0.2)), (0.052, 0.022, 0.11), bevel=0.008), M['tooth'], coll, smooth=False, outline=OUT * 0.6))
-    add('head', _lp('mouth', C.ellipsoid(HEAD_C + Vector((0, -0.25, -0.15)), (0.09, 0.05, 0.05), seg=8, rings=5), M['mouth'], coll, 0))
-    # 코 — 자두색 세모(위가 넓다)
-    nose = C.ellipsoid(HEAD_C + Vector((0, -0.3, 0.0)), (0.07, 0.04, 0.045), seg=6, rings=4)
-    for v in nose.verts:
-        dz = v.co.z - HEAD_C.z
-        v.co.x = v.co.x * (1.0 + dz * 7)   # 아래로 갈수록 좁아지는 세모
-    add('head', _lp('nose', nose, M['plum'], coll, OUT * 0.6))
+    if not look:
+        add('head', _lp('mouth', _E(HEAD_C + Vector((0, -0.25, -0.15)), (0.09, 0.05, 0.05), seg=8, rings=5), M['mouth'], coll, 0))
+        # 코 — 자두색 세모(위가 넓다)
+        nose = _E(HEAD_C + Vector((0, -0.3, 0.0)), (0.07, 0.04, 0.045), seg=6, rings=4)
+        for v in nose.verts:
+            dz = v.co.z - HEAD_C.z
+            v.co.x = v.co.x * (1.0 + dz * 7)   # 아래로 갈수록 좁아지는 세모
+        add('head', _lp('nose', nose, M['plum'], coll, OUT * 0.6))
     # 팔 — 짧고 굵게 · 발톱 끝(어두운 손)
+    tseg = 24 if (look and look.get('smooth')) else 8
     for side, sh, hd in (('R', SHOULDER_R, HAND_R), ('L', SHOULDER_L, HAND_L)):
-        add(f'arm.{side}', _lp(f'arm{side}', C.tube([sh, sh.lerp(hd, 0.5), hd], [0.075, 0.068, 0.06], seg=8), M['fur'], coll))
-        add(f'hand.{side}', _lp(f'paw{side}', C.ellipsoid(hd, (0.062, 0.058, 0.06), seg=8, rings=6), M['dark'], coll))
+        add(f'arm.{side}', _lp(f'arm{side}', C.tube([sh, sh.lerp(hd, 0.5), hd], [0.075, 0.068, 0.06], seg=tseg), M['fur'], coll))
+        add(f'hand.{side}', _lp(f'paw{side}', _E(hd, (0.062, 0.058, 0.06), seg=8, rings=6), M['dark'], coll))
     # 다리 · 발
     for sx, side in ((-1, 'R'), (1, 'L')):
-        add(f'leg.{side}', _lp(f'leg{side}', C.ellipsoid(Vector((sx * 0.14, -0.03, 0.07)), (0.085, 0.085, 0.08), seg=8, rings=6), M['fur'], coll))
-        add(f'leg.{side}', _lp(f'foot{side}', C.ellipsoid(Vector((sx * 0.15, -0.08, 0.022)), (0.085, 0.1, 0.03), seg=8, rings=5), M['dark'], coll))
+        add(f'leg.{side}', _lp(f'leg{side}', _E(Vector((sx * 0.14, -0.03, 0.07)), (0.085, 0.085, 0.08), seg=8, rings=6), M['fur'], coll))
+        add(f'leg.{side}', _lp(f'foot{side}', _E(Vector((sx * 0.15, -0.08, 0.022)), (0.085, 0.1, 0.03), seg=8, rings=5), M['dark'], coll))
     # 꼬리 — 납작한 노(비버 꼬리) · 엉덩이 뒤에서 살짝 들린다. 체형(form tail)이 있으면 그 꼬리로
     form = cfg.get('form') or {}
     if form.get('tail', 'paddle') == 'paddle':
-        tail = C.ellipsoid(Vector((0, 0.42, 0.06)), (0.13, 0.2, 0.028), seg=10, rings=6, rot=Euler((math.radians(-14), 0, 0)))
+        tail = _E(Vector((0, 0.42, 0.06)), (0.13, 0.2, 0.028), seg=10, rings=6, rot=Euler((math.radians(-14), 0, 0)))
         add('tail', _lp('tail', tail, M['paddle'], coll))
     else:
         _form_tail(add, M, coll, form['tail'])
     if form.get('ears', 'round') != 'round':
         _form_ears(add, M, coll, form['ears'])
-    if form.get('eyes') or form.get('brows'):
-        _form_face(add, M, coll, form.get('eyes'), form.get('brows'))
+    if (form.get('eyes') and not look) or form.get('brows'):   # 동료 얼굴(look)은 눈꺼풀 대신 눈 모양 자체가 다르다
+        _form_face(add, M, coll, None if look else form.get('eyes'), form.get('brows'))
 
 
 # ── 체형 (2026-11-16, 사용자: "원형 비버가 너무 똑같네 — 아예 변형해서 수정") ──
@@ -502,12 +524,12 @@ def _form_ears(add, M, coll, kind):
                 add('head', _lp(f'eartuft{sx}', C.cone(base + d * 0.25, 0.028, 0.0, 0.1, seg=4, rot=C.look_rot(d)), M['dark'], coll, OUT * 0.5))
         elif kind == 'big':
             ep = HEAD_C + Vector((sx * 0.25, 0.05, 0.25))
-            add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.12, 0.05, 0.115), seg=9, rings=6), M['fur'], coll))
-            add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.035, -0.008)), (0.075, 0.022, 0.07), seg=8, rings=6), M['dark'], coll, 0))
+            add('head', _lp(f'ear{sx}', _E(ep, (0.12, 0.05, 0.115), seg=9, rings=6), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', _E(ep + Vector((0, -0.035, -0.008)), (0.075, 0.022, 0.07), seg=8, rings=6), M['dark'], coll, 0))
         elif kind == 'droop':
             ep = HEAD_C + Vector((sx * 0.29, 0.03, 0.1))
-            add('head', _lp(f'ear{sx}', C.ellipsoid(ep, (0.06, 0.05, 0.13), seg=8, rings=6, rot=Euler((0, math.radians(sx * 22), 0))), M['fur'], coll))
-            add('head', _lp(f'earin{sx}', C.ellipsoid(ep + Vector((0, -0.03, 0)), (0.035, 0.02, 0.09), seg=8, rings=6, rot=Euler((0, math.radians(sx * 22), 0))), M['dark'], coll, 0))
+            add('head', _lp(f'ear{sx}', _E(ep, (0.06, 0.05, 0.13), seg=8, rings=6, rot=Euler((0, math.radians(sx * 22), 0))), M['fur'], coll))
+            add('head', _lp(f'earin{sx}', _E(ep + Vector((0, -0.03, 0)), (0.035, 0.02, 0.09), seg=8, rings=6, rot=Euler((0, math.radians(sx * 22), 0))), M['dark'], coll, 0))
 
 
 def _form_tail(add, M, coll, kind):
@@ -521,10 +543,10 @@ def _form_tail(add, M, coll, kind):
     elif kind == 'long':
         tp = spline([Vector((0, 0.24, 0.08)), Vector((0, 0.5, 0.1)), Vector((0, 0.68, 0.22)), Vector((0, 0.74, 0.42))], 18)
         add('tail', _lp('tail', C.tube(tp, interp([0.05, 0.035, 0.028, 0.022], len(tp)), seg=7), M['fur'], coll))
-        add('tail', _lp('tailtuft', C.ellipsoid(tp[-1] + Vector((0, 0.01, 0.04)), (0.06, 0.06, 0.09), seg=8, rings=6), M['dark'], coll))
+        add('tail', _lp('tailtuft', _E(tp[-1] + Vector((0, 0.01, 0.04)), (0.06, 0.06, 0.09), seg=8, rings=6), M['dark'], coll))
     elif kind == 'fan':
         for k, deg in enumerate((-28, 0, 28)):
-            t = C.ellipsoid(Vector((0, 0.4, 0.07)), (0.085, 0.17, 0.024), seg=9, rings=6, rot=Euler((math.radians(-16), 0, math.radians(deg))))
+            t = _E(Vector((0, 0.4, 0.07)), (0.085, 0.17, 0.024), seg=9, rings=6, rot=Euler((math.radians(-16), 0, math.radians(deg))))
             add('tail', _lp(f'tail{k}', t, M['paddle'], coll))
 
 
@@ -535,7 +557,7 @@ def _form_face(add, M, coll, eyes, brows):
         rot = C.look_rot(n)
         if eyes in ('sharp', 'sleepy'):
             tilt = Euler((0, 0, math.radians(-sx * (18 if eyes == 'sharp' else 0)))).to_matrix().to_4x4()
-            lid = C.ellipsoid(Vector((0, 0, 0)), (0.098, 0.062 if eyes == 'sharp' else 0.075, 0.03), seg=12, rings=8)
+            lid = _E(Vector((0, 0, 0)), (0.098, 0.062 if eyes == 'sharp' else 0.075, 0.03), seg=12, rings=8)
             for v in [v for v in lid.verts if v.co.y < -0.004]:
                 lid.verts.remove(v)
             o = _lp(f'lid{sx}', lid, M['fur'], coll, OUT * 0.5)
@@ -548,7 +570,143 @@ def _form_face(add, M, coll, eyes, brows):
             add('head', o)
 
 
+# ── 동료 얼굴 (2026-11-17, 사용자: 와르르비버 영상 · 그림을 "참고해서 동료는 다르게") ──
+# 참고는 느낌만 — 크고 둥근 크림 주둥이 · 그 위 까만 코 · 작고 까만 눈 · 굵은 외곽선 · 매끈한 몸. 그 게임 비버를 베끼지 않는다.
+# 동료마다 눈 · 주둥이 · 코 · 이 · 볼 · 무늬 조합을 달리해 같은 얼굴이 없게 한다(roster_looks.py). 주인공은 look 이 없어 예전 얼굴 그대로.
+# cfg['look'] = dict(eyes=dot|bead|button|sharp|smile|line|wink|wide, muzzle=big|round|wide|small, nose=oval|button|big|pink|plum,
+#                    teeth=buck|one|gap|small|fang, cheek=blush|freckle|none, mark=mask|patch|spot|stripes|none, mark_color=, muzzle_color=,
+#                    eye_color=, eye_glow=, smooth=True, ink=1.35)
+EYE_AT = (0.36, -1.0, 0.42)   # beaver_kit.EYE_DIR 와 같다 — 안경 · 안대 · 가면이 눈 자리에 맞는다
+
+
+def _basis(n):
+    """얼굴 표면 점의 (오른쪽, 위, 바깥) — 눈 · 무늬를 표면에 눕혀 짓는다"""
+    r = Vector((0, 0, 1)).cross(n).normalized()
+    u = n.cross(r).normalized()
+    return Matrix((r, u, n)).transposed()
+
+
+def _on_face(name, bm, mat, coll, p, n, tilt=0.0, outline=0.0):
+    o = C.mesh_obj(name, bm, mat, coll, smooth=True, outline=outline)
+    o.data.transform(Matrix.Translation(p) @ _basis(n).to_4x4() @ Matrix.Rotation(math.radians(tilt), 4, 'Z'))
+    return o
+
+
+def _lum(hexstr):
+    h = hexstr.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _look_face(add, M, coll, look, cfg):
+    form = cfg.get('form') or {}
+    eyes = look.get('eyes') or {'sharp': 'sharp', 'sleepy': 'line'}.get(form.get('eyes'), 'dot')
+    muz, nose, teeth = look.get('muzzle', 'big'), look.get('nose', 'oval'), look.get('teeth', 'buck')
+    cheek, mark = look.get('cheek', 'none'), look.get('mark', 'none')
+    O = Vector((0, 0, 0))
+    ec = look.get('eye_color', '#120a06')
+    eye_m = C.principled(f'lk_eye_{ec}_{bool(look.get("eye_glow"))}', ec, rough=0.3, coat=0.4, emit=ec if look.get('eye_glow') else None, emit_strength=1.6 if look.get('eye_glow') else 0.0)
+    # 짙은 털 · 눈가 무늬 위의 까만 눈은 묻힌다 — 흰 테를 두른다
+    rim = look.get('rim', _lum(cfg.get('fur', '#9a6640')) < 0.16 or mark == 'mask' or cfg.get('face') == 'mask')
+    mz_m = C.principled(f"lk_muz_{look['muzzle_color']}", look['muzzle_color'], rough=0.9, coat=0.0) if look.get('muzzle_color') else M['light']
+    ink = OUT * look.get('ink', 1.0)
+
+    # 무늬 — 눈보다 먼저(눈 뒤에 깔린다)
+    mk_col = look.get('mark_color')
+    mk_m = C.principled(f'lk_mark_{mk_col}', mk_col, rough=0.9, coat=0.0) if mk_col else M['dark']
+    for sx in (-1, 1):
+        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * EYE_AT[0], EYE_AT[1], EYE_AT[2])), egg=0.12)
+        if mark == 'mask':
+            add('head', _on_face(f'lk_mask{sx}', C.ellipsoid(O, (0.112, 0.088, 0.02), seg=24, rings=12), mk_m, coll, p - n * 0.008, n, tilt=-sx * 12))
+        elif mark == 'patch' and sx == -1:   # 카메라 쪽 눈(-X)
+            add('head', _on_face('lk_patch', C.ellipsoid(O, (0.12, 0.105, 0.02), seg=24, rings=12), mk_m, coll, p - n * 0.008 + Vector((0, 0, 0.01)), n))
+    if mark == 'spot':
+        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((0, -0.72, 0.95)), egg=0.12)
+        add('head', _on_face('lk_spot', C.ellipsoid(O, (0.075, 0.06, 0.018), seg=20, rings=10), mk_m, coll, p - n * 0.006, n))
+    elif mark == 'stripes':
+        for k, x in enumerate((-0.16, 0.0, 0.16)):
+            p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((x, -0.62, 1.05 - abs(x) * 0.6)), egg=0.12)
+            add('head', _on_face(f'lk_str{k}', C.ellipsoid(O, (0.02, 0.07, 0.016), seg=12, rings=8), mk_m, coll, p - n * 0.005, n, tilt=x * 90))
+
+    # 눈
+    for sx in (-1, 1):
+        kind = {'wink': ('smile' if sx < 0 else 'dot')}.get(eyes, eyes)
+        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * EYE_AT[0], EYE_AT[1], EYE_AT[2])), egg=0.12)
+        if kind == 'wide':   # 예전 큰 흰자 눈(놀란 얼굴 한두 명만)
+            rot = C.look_rot(n)
+            add('head', C.mesh_obj(f'eye{sx}', C.ellipsoid(p - n * 0.02, (0.08, 0.09, 0.05), rot=rot, seg=20, rings=12), M['sclera'], coll, outline=ink * 0.8))
+            pc = p + n * 0.034 + Vector((-sx * 0.012, 0, -0.008))
+            add('head', C.mesh_obj(f'pupil{sx}', C.ellipsoid(pc, (0.04, 0.048, 0.008), rot=rot, seg=16, rings=10), eye_m, coll))
+            add('head', C.mesh_obj(f'eyehi{sx}', C.ellipsoid(pc + n * 0.012 + Vector((-0.012, 0, 0.018)), (0.014, 0.014, 0.004), rot=rot, seg=10, rings=6), M['white'], coll))
+            continue
+        if kind in ('smile', 'line'):   # 감은 눈 — 웃는 ∩ · 졸린 ─
+            pts = []
+            for k in range(9):
+                t = -1 + k / 4
+                y = (1 - t * t) * 0.03 - 0.012 if kind == 'smile' else -(1 - t * t) * 0.008
+                pts.append(Vector((t * 0.055, y, 0.0)))
+            o = C.mesh_obj(f'eye{sx}', C.tube(pts, 0.013, seg=8), eye_m, coll)
+            o.data.transform(Matrix.Translation(p + n * 0.012) @ _basis(n).to_4x4())
+            add('head', o)
+            continue
+        r = {'dot': (0.044, 0.058), 'bead': (0.06, 0.068), 'button': (0.032, 0.036), 'sharp': (0.062, 0.034)}.get(kind, (0.044, 0.058))
+        tilt = -sx * 16 if kind == 'sharp' else 0.0
+        if rim:
+            add('head', _on_face(f'eyerim{sx}', C.ellipsoid(O, (r[0] + 0.016, r[1] + 0.016, 0.012), seg=24, rings=12), M['sclera'], coll, p + n * 0.002, n, tilt))
+        add('head', _on_face(f'eye{sx}', C.ellipsoid(O, (r[0], r[1], 0.02), seg=24, rings=12), eye_m, coll, p + n * 0.008, n, tilt))
+        hi = 0.022 if kind == 'bead' else 0.014 if kind != 'button' else 0.009
+        add('head', _on_face(f'eyehi{sx}', C.ellipsoid(O, (hi, hi, 0.005), seg=12, rings=8), M['white'], coll, p + n * 0.026 + _basis(n) @ Vector((-r[0] * 0.35, r[1] * 0.38, 0)), n))
+        if kind == 'bead':
+            add('head', _on_face(f'eyehi2{sx}', C.ellipsoid(O, (0.01, 0.01, 0.004), seg=10, rings=6), M['white'], coll, p + n * 0.026 + _basis(n) @ Vector((r[0] * 0.4, -r[1] * 0.42, 0)), n))
+
+    # 볼
+    for sx in (-1, 1):
+        p, n = C.on_ellipsoid(HEAD_C, HEAD_R, Vector((sx * 0.66, -0.78, 0.1)), egg=0.12)
+        if cheek == 'blush':
+            add('head', _on_face(f'blush{sx}', C.ellipsoid(O, (0.058, 0.034, 0.012), seg=16, rings=8), M['blush'], coll, p, n))
+        elif cheek == 'freckle':
+            for k, (dx, dy) in enumerate(((-0.03, 0.012), (0.0, -0.014), (0.03, 0.01))):
+                add('head', _on_face(f'frk{sx}{k}', C.ellipsoid(O, (0.011, 0.011, 0.006), seg=8, rings=6), M['dark'], coll, p + _basis(n) @ Vector((dx, dy, 0)), n))
+
+    # 주둥이 — 크림 두 덩이가 한 덩어리로(위 가운데가 살짝 파인 콩 모양)
+    if muz in ('big', 'wide'):
+        w = 0.095 if muz == 'wide' else 0.078
+        R = (0.135, 0.09, 0.095) if muz == 'wide' else (0.128, 0.095, 0.105)
+        for sx in (-1, 1):
+            add('head', _lp(f'muz{sx}', _E(HEAD_C + Vector((sx * w, -0.215, -0.095)), R, seg=10, rings=7), mz_m, coll, OUT))
+        add('head', _lp('muzc', _E(HEAD_C + Vector((0, -0.225, -0.085)), (0.1, 0.09, 0.09), seg=10, rings=7), mz_m, coll, OUT))
+    elif muz == 'round':
+        add('head', _lp('muzc', _E(HEAD_C + Vector((0, -0.22, -0.1)), (0.14, 0.1, 0.105), seg=10, rings=7), mz_m, coll, OUT))
+    else:   # small — 예전 볼 두 덩이
+        for sx in (-1, 1):
+            add('head', _lp(f'muz{sx}', _E(HEAD_C + Vector((sx * 0.085, -0.25, -0.07)), (0.1, 0.075, 0.075), seg=9, rings=6), mz_m, coll, OUT))
+    # 코 — 주둥이 위 가운데
+    nz = {'button': (0.04, 0.03, 0.034), 'big': (0.078, 0.046, 0.056), 'pink': (0.06, 0.036, 0.042)}.get(nose, (0.06, 0.038, 0.044))
+    if nose == 'plum':
+        nb = C.ellipsoid(HEAD_C + Vector((0, -0.31, -0.02)), (0.07, 0.04, 0.045), seg=12, rings=8)
+        for v in nb.verts:
+            v.co.x = v.co.x * (1.0 + (v.co.z - HEAD_C.z + 0.02) * 7)
+        add('head', _lp('nose', nb, M['plum'], coll, OUT * 0.6))
+    else:
+        nm = C.principled('lk_nose_pink', '#e9788c', rough=0.45, coat=0.4) if nose == 'pink' else M['nose']
+        add('head', _lp('nose', C.ellipsoid(HEAD_C + Vector((0, -0.312, -0.025)), nz, seg=20, rings=12), nm, coll, OUT * 0.6))
+    # 앞니 — 주둥이 아래로
+    tw = {'buck': [(-0.026, 0.046, 0.085), (0.026, 0.046, 0.085)], 'one': [(0.0, 0.07, 0.09)], 'gap': [(-0.04, 0.042, 0.08), (0.04, 0.042, 0.08)],
+          'small': [(-0.022, 0.036, 0.058), (0.022, 0.036, 0.058)], 'fang': [(-0.03, 0.044, 0.085), (0.028, 0.03, 0.05)]}.get(teeth, [])
+    for k, (x, wd, ht) in enumerate(tw):
+        add('head', C.mesh_obj(f'tooth{k}', C.box(HEAD_C + Vector((x, -0.24, -0.172 - ht / 2)), (wd, 0.06, ht), bevel=0.01), M['tooth'], coll, smooth=False, outline=ink * 0.6))
+
+
 def build(name, cfg, coll=None):
+    global _LOOK
+    _LOOK = cfg.get('look')
+    try:
+        return _build(name, cfg, coll)
+    finally:
+        _LOOK = None
+
+
+def _build(name, cfg, coll=None):
     coll = coll or C.collection(name)
     M = _mats(cfg)
     form = cfg.get('form')

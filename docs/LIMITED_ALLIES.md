@@ -22,6 +22,7 @@
 1. `src/titans/limitedAllies.ts` `LIMITED_ALLIES` 에 한 줄을 넣는다. id · gear · start · end · title · bossMul · mobMul.
 2. `src/titans/allyRoster.ts` 의 `NEW_ALLY_IDS` 와 `NEW_ALLIES` 에 한 줄씩 넣는다. 등급 · 역할 · 속성 · 층 · 기술 이름.
 3. `art-gen/blender/roster_ext.py` 에 한 줄을 넣는다. 체형(form) · 등급 장식(aura · 날개)까지 적는다.
+   - 얼굴은 `art-gen/blender/roster_looks.py` 의 `LOOKS` 에 한 줄을 넣는다(눈 · 주둥이 · 코 · 이 · 볼 · 무늬). 다른 동료와 같은 조합이 없게 고른다.
    - 렌더: `blender -b -P art-gen/blender/render_anim2.py -- <id>`
    - 조립: `node scripts/assemble-anim2.mjs <id>`. 공유 배율 `beaver k` 가 그대로 0.346 인지 본다.
 4. 전용 장비를 넣는다. `LimitedGearId` 와 `LIMITED_GEAR` 에 한 줄을 넣고, `gear_icons.py` · `hero_gear.py` 의 `SETS` 에 색을 넣는다.
