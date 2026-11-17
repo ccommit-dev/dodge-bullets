@@ -166,3 +166,7 @@ ALLIES.update(NEW_ALLIES)
 # 동료 얼굴 · 일반 · 희귀 체형 (2026-11-17) — roster_looks.py. 주인공(HERO)은 건드리지 않는다
 import roster_looks
 roster_looks.apply(ALLIES)
+
+# 몬스터 · 대장 그림결 2판 (2026-11-17) — roster_monsters.py. 펫 · 탈것은 건드리지 않는다
+import roster_monsters
+roster_monsters.apply(MONSTERS)

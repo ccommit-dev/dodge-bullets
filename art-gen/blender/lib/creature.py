@@ -9,6 +9,7 @@ from mathutils import Vector, Matrix, Euler, Quaternion
 
 from lib import bcommon as C
 from lib.beaver import _armature, _attach, spline, interp, _shell, _rot_local
+from lib import monster_style as MS
 
 OUT = 0.016
 # 로우 폴리 (2026-10-23, 사용자: "동료 · 몬스터 · 보스도 각각" — 비버와 같은 BEAVER RAMPAGE 풍) — 각진 면 · 무광 단색 피부 · 큰 흰자 눈
@@ -310,6 +311,9 @@ class CRig:
 
 
 def _eyes(add, head_c, head_r, cfg, coll, M, bone='head', spread=0.38, up=0.12, size=1.0):
+    if cfg.get('mstyle'):   # 몬스터 그림결 2판(2026-11-17) — 흰자 없는 괴물 눈
+        MS.eyes(add, head_c, head_r, cfg, coll, M, bone, spread, up, size)
+        return
     saved = C.FACET
     C.FACET = 0
     try:
@@ -370,8 +374,8 @@ def beaver_world(cfg):
 
 
 def build(name, cfg, coll=None):
-    cfg = beaver_world(cfg)
-    if not LOWPOLY:
+    cfg = MS.style(cfg) if cfg.get('mstyle') else beaver_world(cfg)
+    if not LOWPOLY or cfg.get('mstyle'):   # 몬스터 2판은 참고 모델처럼 매끈한 조각 면(각 없음)
         return _build(name, cfg, coll)
     saved = C.FACET
     C.FACET = FACETS
@@ -414,6 +418,8 @@ def _build(name, cfg, coll=None):
         'wing': _m('wing', cfg.get('wing', cfg.get('dark', '#3b2a3b')), rough=0.55),
         'metal': _m('metal', cfg.get('metal', '#9aa4b0'), rough=0.3, metal=0.8),
     }
+    if cfg.get('mstyle'):
+        MS.materials(M, cfg)
     H = cfg.get('height', 1.0)
     if kind == 'biped':
         hz = cfg.get('head_z', 0.68) * H
@@ -442,15 +448,17 @@ def _build(name, cfg, coll=None):
             for sx in (-1, 1):
                 add('head', C.mesh_obj(f'nostril{sx}', C.ellipsoid(sp[-1] + Vector((sx * 0.04, -0.01, hr[0] * 0.3)), (0.02, 0.015, 0.012)), M['dark'], coll))
         _eyes(add, hcf, hr_, cfg, coll, M, spread=cfg.get('eye_spread', 0.38), up=cfg.get('eye_up', 0.1))
-        if cfg.get('fierce') or cfg.get('arm_thick', 1.0) > 1.2:
+        if not cfg.get('mstyle') and (cfg.get('fierce') or cfg.get('arm_thick', 1.0) > 1.2):
             fierce_face(add, hcf, hr_, cfg, coll, M)
         # 입(턱 뼈) — 벌리면 이빨
         mz = hcf + Vector((0, -hr_[1] * 0.9, -hr[2] * 0.5))
-        if cfg.get('fierce'):
+        if cfg.get('mstyle'):
+            MS.mouth(add, mz, hr, cfg, coll, M)
+        elif cfg.get('fierce'):
             grimace(add, mz, hr, cfg, coll, M)
         add('jaw', C.mesh_obj('jaw', C.ellipsoid(mz, (hr[0] * 0.45, hr[1] * 0.25, hr[2] * 0.16)), M['skin'], coll, outline=OUT))
         add('head', C.mesh_obj('mouth', C.ellipsoid(mz + Vector((0, -0.01, 0.02)), (hr[0] * 0.38, hr[1] * 0.18, hr[2] * 0.12)), M['mouth'], coll))
-        for sx in (-1, 1):
+        for sx in (() if cfg.get('mstyle') else (-1, 1)):
             if cfg.get('buck_teeth'):   # 비버 세계 — 송곳니 대신 앞니 두 개
                 add('head', C.mesh_obj(f'buck{sx}', C.ellipsoid(mz + Vector((sx * 0.03, -hr[1] * 0.2, -0.012)), (0.027, 0.012, 0.042)), M['tooth'], coll, outline=OUT * 0.4))
                 continue
@@ -517,7 +525,7 @@ def _build(name, cfg, coll=None):
         import random
         rnd = random.Random(sum(map(ord, name)))
         gm = _m('spotglow', cfg.get('accent', '#ff8a3d'), rough=0.35, emit=cfg.get('accent', '#ff8a3d'), es=2.2)
-        for k in range(cfg.get('spots', 14) + 6):
+        for k in range(cfg.get('spots', 14) if cfg.get('mstyle') else cfg.get('spots', 14) + 6):   # 몬스터 2판은 적은 수만(0 이면 없음)
             on_head = k % 3 == 0
             d = Vector((rnd.uniform(-1, 1), rnd.uniform(-0.3, 1), rnd.uniform(-0.6, 1))).normalized()
             p, n = C.on_ellipsoid(hc, hr, d) if on_head else C.on_ellipsoid(bc, br, d)
@@ -554,6 +562,8 @@ def _build(name, cfg, coll=None):
                 add('body', C.mesh_obj(f'bmoss{k}', C.ellipsoid(p, (0.09, 0.09, 0.05), rot=C.look_rot(n)), mm, coll, outline=OUT * 0.6))
         if cfg.get('armor'):
             add('body', C.mesh_obj('armorplate', C.ellipsoid(bc + Vector((0, -0.02, 0.05)), (br[0] * 1.06, br[1] * 1.06, br[2] * 0.7)), M['metal'], coll, outline=OUT))
+        if cfg.get('mstyle'):
+            MS.biped_features(add, cfg, bones, M, coll, hc, hr, hcf, hr_, bc, br)
     elif kind == 'quad':
         bc = Vector((0, 0.02, 0.38))
         br = cfg.get('body_r', (0.2, 0.3, 0.18))
@@ -632,8 +642,11 @@ def _build(name, cfg, coll=None):
         add('body', C.mesh_obj('shine', C.ellipsoid(bc + Vector((-0.15, -0.25, 0.18)), (0.08, 0.04, 0.05)), M['hi'], coll))
         _eyes(add, bc, br, cfg, coll, M, bone='head', spread=0.3, up=0.2, size=1.1)
         mz = bc + Vector((0, -br[1] * 0.95, -0.03))
-        add('jaw', C.mesh_obj('mouth', C.ellipsoid(mz, (0.1, 0.03, 0.05)), M['mouth'], coll))
-        if cfg.get('drip'):
+        if cfg.get('mstyle'):   # 몬스터 2판 — 벌린 입 · 녹아 흐르는 자락 · 바닥 웅덩이
+            MS.blob_extras(add, cfg, M, coll, bc, br, mz, col)
+        else:
+            add('jaw', C.mesh_obj('mouth', C.ellipsoid(mz, (0.1, 0.03, 0.05)), M['mouth'], coll))
+        if cfg.get('drip') and not cfg.get('mstyle'):
             for k in range(3):
                 add('body', C.mesh_obj(f'drip{k}', C.ellipsoid(bc + Vector((-0.25 + k * 0.25, -0.15, -0.3)), (0.06, 0.06, 0.05)), _m('slime', col, rough=0.15, coat=0.8), coll, outline=OUT * 0.6))
     else:   # spider
@@ -659,7 +672,7 @@ def _build(name, cfg, coll=None):
         hz = (cfg.get('head_z', 0.68) * H) if kind == 'biped' else (0.37 if kind == 'spider' else 0.75)
         hr = cfg.get('head_r', (0.3, 0.27, 0.27))
         add('head', C.mesh_obj('mcrown', C.tube([Vector((0, -0.02, hz + hr[2] * 0.8)), Vector((0, -0.02, hz + hr[2] * 0.8 + 0.1))], [0.16, 0.19], seg=32, caps=False), gold, coll, outline=OUT * 0.7))
-    if cfg.get('weapon'):
+    if cfg.get('weapon') and cfg['weapon'] not in MS.CUSTOM_WEAPONS:
         from lib.beaver import weapon as bweapon
         hd = Vector(bones['arm.R'][1])
         for o in bweapon(cfg['weapon'], hd, coll, cfg.get('weapon_color', '#cfd6df'), cfg.get('weapon_wood', '#6b4a2b')):

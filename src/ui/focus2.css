@@ -22,6 +22,14 @@
   pointer-events: none;
 }
 
+/* ── 사냥터 대장 크기 ×1.2 (2026-11-17, 사용자: 몬스터 · 대장 그림 2판 + "대장 크기도 키우기") ──
+   App.css 의 --boss-size(154 · 600px 이하 136 · 스킬 탭 띠 80)를 같은 선택자로 덮는다. 근접 자리 계산은 이 변수를 그대로 읽는다 */
+.titans-field { --boss-size: 185px; }
+@media (max-width: 600px) {
+  .titans-field { --boss-size: 163px; }
+  .titans-layer.page-skills .titans-field { --boss-size: 96px; }
+}
+
 /* ── 아래 메뉴: 설정은 상점 오른쪽 그대로(10-14 사용자 결정), 다만 탭 한 칸이 아니라 작은 톱니 ── */
 .titans-bottom-nav.compact { grid-template-columns: repeat(4, minmax(0, 1fr)) 46px !important; }
 .titans-bottom-nav .settings-wrap .settings-toggle { min-width: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }

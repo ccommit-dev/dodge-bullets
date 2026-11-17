@@ -434,8 +434,11 @@ function monsterImg(a: Pick<Arrow, "kind" | "boss" | "bossTier">, state: "idle" 
   return sprite(`titans/generated/monsters/${base}${state === "idle" ? "" : "-" + state}.png`);
 }
 /** 종류별 몸 크기(그림 높이 px) — 판정 반지름보다 크게, 사냥터 몬스터와 비슷한 체감 (34~52 → 56~88, 2026-10-01) */
+/** 대장 그림만 키우는 배율 (2026-11-17, 사용자: 몬스터 · 대장 그림 2판 + "대장 크기도 키우기").
+ *  bossSize 는 내려오는 자리 · 마력탄 위치 · 등장 시점과 묶인 밸런스 값이라 그대로 두고(memory boss-hover-y-balance-coupled), 그리는 크기만 키운다 */
+export const BOSS_DRAW_GROW = 1.15;
 function monsterSize(a: Pick<Arrow, "kind" | "boss" | "bossTier">): number {
-  if (a.boss) return bossSize(a.bossTier);   // 5배 (2026-10-02)
+  if (a.boss) return bossSize(a.bossTier) * BOSS_DRAW_GROW;   // 5배 (2026-10-02) → 2/3 → 그림만 ×1.15 (11-17)
   return a.kind === "ricochet" ? 88 : a.kind === "explosive" ? 84 : a.kind === "homing" ? 76 : a.kind === "aimed" ? 68 : a.kind === "fan" ? 60 : 56;
 }
 

@@ -180,14 +180,16 @@ export function weaponAnchorStyle(id: TitanHeroId, state: AllyFrameState): CSSPr
 /** 몬스터 프레임 (계획안 B) — idle 원본 · hit/defeat는 scripts/make-monster-states.mjs가 파생한 <name>-hit/-defeat.png */
 export type MonsterFrameState = "idle" | "hit" | "attack" | "defeat";   // attack: 2026-10-13 돌진 프레임(make-monster-states)
 /** 몬스터 원화의 좌/우 투명 여백 비율 — 근접 동료를 '보이는' 몸 가장자리에 붙일 때 쓴다.
- *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json) */
+ *  2026-10-07 비버 테마 31종 전부 다시 그림 — scripts/place-beaver.mjs monsters 실측(art-gen/out/beaver-monster-margins.json)
+ *  2026-11-17 몬스터 · 대장 그림결 2판 — scripts/monster-margins-from-png.mjs 가 전투 시트 대기 첫 칸으로 다시 잼.
+ *  오른쪽을 보게 렌더한 4종(FLIP_MONSTERS)은 화면에서 뒤집히므로 좌우를 바꿔 넣었다 */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
-  slime: [0.16, 0.15], goblin: [0.09, 0.09], "shadow-wolf-clean": [0.09, 0.09], ogre: [0.09, 0.09], dragon: [0.09, 0.09], "magma-imp": [0.18, 0.18],
-  "void-imp": [0.14, 0.14], "goblin-shaman": [0.06, 0.06], "skeleton-goblin": [0.08, 0.08], "frost-wolf": [0.14, 0.14], hellhound: [0.06, 0.06], "stone-troll": [0.19, 0.19],
-  "armored-ogre": [0.10, 0.10], "lava-drake": [0.03, 0.03], "storm-drake": [0.07, 0.07], "moss-golem-clean": [0.15, 0.15], "moon-wolf-king-clean": [0.14, 0.14], "wolf-king-clean": [0.23, 0.23],
-  "flame-wyvern-clean": [0.14, 0.14], "abyss-titan": [0.19, 0.19], "thorn-boar-king": [0.05, 0.05], "ancient-treant": [0.09, 0.09], "ruin-sentinel": [0.16, 0.16], "magma-golem": [0.16, 0.15],
-  "void-lich": [0.08, 0.08], "goblin-warlord": [0.06, 0.06], "spider-queen": [0.08, 0.07], minotaur: [0.06, 0.06], "fire-demon": [0.06, 0.06], "bone-dragon": [0.06, 0.06],
-  "golden-lion-clean": [0.11, 0.11],
+  slime: [0.09, 0.09], goblin: [0.10, 0.13], "shadow-wolf-clean": [0.18, 0.23], ogre: [0.16, 0.24], dragon: [0.19, 0.04], "magma-imp": [0.12, 0.14],
+  "void-imp": [0.25, 0.23], "goblin-shaman": [0.10, 0.13], "skeleton-goblin": [0.15, 0.16], "frost-wolf": [0.18, 0.23], hellhound: [0.18, 0.23], "stone-troll": [0.17, 0.21],
+  "armored-ogre": [0.16, 0.24], "lava-drake": [0.20, 0.04], "storm-drake": [0.19, 0.04], "moss-golem-clean": [0.15, 0.18], "moon-wolf-king-clean": [0.18, 0.23], "wolf-king-clean": [0.18, 0.22],
+  "flame-wyvern-clean": [0.18, 0.03], "abyss-titan": [0.17, 0.23], "thorn-boar-king": [0.19, 0.25], "ancient-treant": [0.23, 0.25], "ruin-sentinel": [0.17, 0.23], "magma-golem": [0.16, 0.21],
+  "void-lich": [0.12, 0.23], "goblin-warlord": [0.11, 0.13], "spider-queen": [0.05, 0.08], minotaur: [0.16, 0.19], "fire-demon": [0.20, 0.04], "bone-dragon": [0.19, 0.04],
+  "golden-lion-clean": [0.18, 0.23],
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */
