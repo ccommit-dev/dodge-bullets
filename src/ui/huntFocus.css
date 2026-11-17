@@ -16,8 +16,9 @@
     height: calc(100dvh - var(--hf-chrome) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     min-height: 380px; max-height: none !important;
     /* 캐릭터 크게 — 주인공 · 몬스터 1.5배, 동료 1.3배. 동료 대열은 "동료 크기 × 0.68" 칸 격자라 전장 폭(366px)에 넷이 1.5배로 서면
-       동료끼리 70% 겹쳤다(verify-formation 문턱 25%). 좁은 폰은 폭에 맞춰 줄인다 */
-    --ally-size: min(82px, 21vw) !important;
+       동료끼리 70% 겹쳤다(verify-formation 문턱 25%). 좁은 폰은 폭에 맞춰 줄인다.
+       2026-11-17 사용자: "동료가 작고 비슷함 — 크게 · 특징 있게" → 82 → 100px(그림 약 60 → 75px, 주인공 약 90px 보다는 작게). 세 줄 대열 + L0 −0.2칸에서 verify-formation 통과 */
+    --ally-size: min(100px, 25.6vw, max(82px, calc((100dvh - var(--hf-chrome, 212px)) * .215))) !important;   /* 낮은 폰(375×553)은 뒷줄 머리가 알림 줄에 닿았다(verify-hud-layout) — 전장 높이 × 0.215 까지, 최소 예전 82px */
     --monster-size: min(115px, 29.5vw) !important;
     --boss-size: min(160px, 41vw) !important;
     --hero-size: clamp(99px, 27%, 120px) !important;
@@ -29,6 +30,11 @@
     --fl-l2-col: -0.3; --fl-l2-y: calc(var(--ally-size, 78px) * 1.9);
     --fl-l3-col: 0.6; --fl-l3-y: calc(var(--ally-size, 78px) * 1.9);
   }
+  /* 역할 몸집 (2026-11-17) — 같은 크기 갈색 비버 넷이 비슷해 보였다. 탱커는 크게 · 치유사는 작게, 등급 몸집(--rar-s, ui/allyShowcase.css)과 곱한다. 발(87%) 기준 */
+  .titans-layer:not(.is-management-page) > .titans-field .titan-ally-art[data-role="tank"] { --role-s: 1.03; }   /* 1.1 은 전설 브론(×1.05)과 곱해져 엠버와 19~23%, 1.05 는 걷는 중 미아와 20% 겹쳤다(verify-formation variants · variants45) — 키우기보다 나머지를 줄여 차이를 낸다 */
+  .titans-layer:not(.is-management-page) > .titans-field .titan-ally-art[data-role="melee"] { --role-s: 0.98; }
+  .titans-layer:not(.is-management-page) > .titans-field .titan-ally-art[data-role="ranged"] { --role-s: 0.95; }
+  .titans-layer:not(.is-management-page) > .titans-field .titan-ally-art[data-role="healer"] { --role-s: 0.9; }
 
   /* 원거리(활 · 지팡이) 주인공은 몬스터와 30px 넘게 떨어져 선다(hunt-motion.css · verify-hunt-motion) — 주인공 +33px · 몬스터 +15px 커진 만큼 뒤로 */
   .titans-layer:not(.is-management-page) > .titans-field.hero-ranged .titans-hero.is-engaged { left: calc(var(--hero-meet-left, 27%) + 8% - 34px); }

@@ -5,9 +5,10 @@
  */
 
 /* ── 전장 몸집 — 등급이 높을수록 크게. anim2 몸은 transform:none !important 라 별도 scale 속성을 쓴다 · 발(87%) 기준이라 땅에서 뜨지 않는다 ── */
-.titans-allies .titan-ally-art[data-rarity="SSR"] .ally-body { scale: 1.05; transform-origin: 50% 87%; }
-.titans-allies .titan-ally-art[data-rarity="UR"] .ally-body { scale: 1.12; transform-origin: 50% 87%; }
-.titans-allies .titan-ally-art[data-rarity="LR"] .ally-body { scale: 1.2; transform-origin: 50% 87%; }
+.titans-allies .titan-ally-art .ally-body { scale: calc(var(--rar-s, 1) * var(--role-s, 1)); transform-origin: 50% 87%; }   /* 등급 몸집 × 역할 몸집(ui/huntFocus.css) */
+.titans-allies .titan-ally-art[data-rarity="SSR"] { --rar-s: 1.05; }
+.titans-allies .titan-ally-art[data-rarity="UR"] { --rar-s: 1.12; }
+.titans-allies .titan-ally-art[data-rarity="LR"] { --rar-s: 1.2; }
 
 /* ── 시그니처 큰 폭발 — 속성 폭발 그림(fx-sprites burst-*.webp)을 등급만큼 키우고 속성색 충격 고리를 한 번 ── */
 .titans-fx.titans-fx-burst.sig-ult { z-index: 8; }

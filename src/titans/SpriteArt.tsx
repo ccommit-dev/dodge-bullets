@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
-import { ALLY_ELEMENT, ALLY_RARITY } from "./allies";
+import { ALLY_ELEMENT, ALLY_RARITY, ALLY_ROLE } from "./allies";
 import "./partyMotion.css";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
@@ -516,7 +516,7 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
     "--ally-lane-n": cell === "R" ? "var(--lane-rn, 0)" : "var(--lane-ln, 0)",
   } as CSSProperties);
   return (
-    <div data-party-slot={slot} data-cell={cell} data-rarity={ALLY_RARITY[id]} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
+    <div data-party-slot={slot} data-cell={cell} data-rarity={ALLY_RARITY[id]} data-role={ALLY_ROLE[id]} style={anim2 && speed > 1 ? { ...partyStyle, "--a2-atk": `${Math.round(ALLY_ANIM_MS.attack / speed)}ms` } as CSSProperties : partyStyle} className={`titan-ally-art ally-${id} ${anim2 ? "anim2" : ""} ${anim2 && a2.action === "attack" ? "a2-atk" : ""} ${allyCellSquare(id, skin) ? "cell-square" : ""} combat-${ranged ? "ranged" : "melee"} ${engaged ? "is-engaged" : ""} ${faceLeft ? "face-left" : ""} ${approaching ? "is-approaching" : ""} ${hitPulse > 0 ? `was-hit hit-${hitPulse % 2}` : ""}`}>
       {/*
         구조가 3겹인 이유:
         - .ally-idle   대기 호흡(무한 루프). 인덱스별 음수 delay로 위상을 어긋나게 해
