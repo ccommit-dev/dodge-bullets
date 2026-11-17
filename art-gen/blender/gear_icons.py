@@ -10,10 +10,14 @@ from mathutils import Vector, Euler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import bcommon as C
+from lib import toon as TOON
 from lib.beaver import spline, interp
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTDIR = os.path.join(ROOT, 'art-gen', 'out', 'b3d-gear')
+# 도트 그림체(2026-11-17, ART_STYLE=pixel) — 48² 로 픽셀마다 한 점 렌더 → assemble-gear --pixel 이 최근접으로 키워 public/titans/gear-px 에
+PIXEL = os.environ.get('ART_STYLE', '') == 'pixel'
+ICON_RES = int(os.environ.get('PIXEL_ICON_RES', '48')) if PIXEL else 512
+OUTDIR = os.path.join(ROOT, 'art-gen', 'out', 'b3d-gear-px' if PIXEL else 'b3d-gear')
 O = 0.022
 
 # 단계 색 — 1 나무 · 쇠, 2 푸른 강철 · 금, 3 진홍 · 황금 · 보석
@@ -556,7 +560,9 @@ os.makedirs(OUTDIR, exist_ok=True)
 for name in names:
     fn, arg, (yaw, elev), scale = JOBS[name]
     C.reset()
-    C.setup_render(res=(512, 512), samples=40)
+    C.setup_render(res=(ICON_RES, ICON_RES), samples=40)
+    if PIXEL:
+        bpy.context.scene.cycles.filter_width = 0.01
     C.lights()
     C.ortho_camera((0.0, 0.0), scale, yaw_deg=yaw, elev_deg=elev)
     C.FACET = 10
@@ -572,6 +578,8 @@ for name in names:
             o.parent = piv
         piv.rotation_euler = Euler((math.radians(turn[1]), 0, math.radians(turn[0])))
         bpy.context.view_layer.update()
+    if TOON.enabled():   # 셀 그림결(ART_STYLE=toon, 2026-11-17) — 사냥터에서 주인공 손에 드는 무기 그림도 같은 결로
+        TOON.apply(bpy.context.scene)
     bpy.context.scene.render.filepath = os.path.join(OUTDIR, f'{name}.png')
     bpy.ops.render.render(write_still=True)
     print('wrote', name, flush=True)

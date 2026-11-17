@@ -19,8 +19,13 @@ import roster as R
 import anim2 as A2
 import render_roster as RR
 import ride_seat as RS
+from lib import toon as TOON   # 셀 그림결(ART_STYLE=toon, 2026-11-17)
 
-OUT = os.path.join(RR.ROOT, 'art-gen', 'out', 'b3d2-gear')
+# 도트 그림체(2026-11-17, ART_STYLE=pixel) — 주인공과 같은 낮은 해상도(PIXEL_RES) · 픽셀마다 한 점 → b3d2-gear-px (assemble-anim2 --pixel hero-gear)
+PIXEL = os.environ.get('ART_STYLE', '') == 'pixel'
+if PIXEL:
+    RR.RES = int(os.environ.get('PIXEL_RES', '89'))
+OUT = os.path.join(RR.ROOT, 'art-gen', 'out', 'b3d2-gear-px' if PIXEL else 'b3d2-gear')
 O = BV.OUT
 # gear_icons.SETS 와 같은 값 — 슬롯 아이콘과 입은 모습이 같은 색이어야 한다
 SETS = {
@@ -194,6 +199,10 @@ def run(kind, preview, ride=False, only=None):
     BV.pose(rig, P)
     bpy.context.view_layer.update()
     scene = bpy.context.scene
+    if PIXEL:
+        scene.cycles.filter_width = 0.01
+    if TOON.enabled():
+        TOON.apply(scene)
     if preview:
         scene.render.filepath = os.path.join(OUT, f'{kind}-preview.png')
         bpy.ops.render.render(write_still=True)

@@ -2,6 +2,7 @@
 색이 아니라 실루엣으로 가른다: 머리(hat 새 종류 · over) · 얼굴(face) · 등(back) · 꼬리(tail_fx) · 허리(belt) · 몸 무늬(marks).
 칸을 넘으면 전원 배율이 깎이니(assemble-anim2 kB) 위는 z≈1.15, 옆은 |x|≈0.62 안에 둔다. 탱커는 공격 3→4 칸 눌림이 커서 머리 위가 높으면 audit-anim2-motion 의 키 19% 를 넘는다(pom_z · horn_rise 로 낮춘다). 모두 뼈에 강체로 붙는다."""
 import math
+import os
 
 import bmesh
 from mathutils import Vector, Euler
@@ -511,6 +512,7 @@ def dress(add, cfg, coll):
     if cfg.get('belt'):
         for o in belt(cfg['belt'], coll):
             add('body', o)
-    if cfg.get('aura'):
+    # 후광은 셀 그림결(ART_STYLE=toon · pixel)에선 그림에서 뺀다 — 게임이 CSS 후광(ally-halo)으로 대장전 · 컷인 때만 켠다(2026-11-17 ① · ②)
+    if cfg.get('aura') and os.environ.get('ART_STYLE', '') not in ('toon', 'pixel'):
         for o in aura_new(cfg['aura'], cfg, coll):
             add('body', o)

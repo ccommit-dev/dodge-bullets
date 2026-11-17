@@ -16,8 +16,15 @@ import roster as R
 import anim2 as A2
 import render_roster as RR
 import ride_seat as RS
+from lib import toon as TOON   # 셀 그림결(ART_STYLE=toon, 2026-11-17)
 
-OUT = os.path.join(RR.ROOT, 'art-gen', 'out', 'b3d2')
+# 도트 그림체 (2026-11-17, /goal ③) — ART_STYLE=pixel: 같은 리그를 낮은 해상도(PIXEL_RES, 기본 89 = 1024 × beaver k 0.346 ÷ 4)로
+# 안티에일리어싱 없이(필터 폭 0.01 — 픽셀마다 한 점) 셀 재질로 렌더해 art-gen/out/b3d2-px 에 쓴다. 큰 그림을 줄이면 뭉개지지만 처음부터 작게 그리면 또렷하다.
+# 조립은 assemble-anim2.mjs --pixel(칸 ¼ · 최근접 · 팔레트 줄이기)
+PIXEL = os.environ.get('ART_STYLE', '') == 'pixel'
+if PIXEL:
+    RR.RES = int(os.environ.get('PIXEL_RES', '89'))
+OUT = os.environ.get('B3D2_OUT') or os.path.join(RR.ROOT, 'art-gen', 'out', 'b3d2-px' if PIXEL else 'b3d2')
 # 주인공 무기 손 = 왼손(적 쪽) — 2판 공격은 왼손으로 휘두른다(anim2.MAIN_LEFT_ROLES 설명). 게임은 hand 앵커에 무기 그림을 얹는다
 HERO_PARTS2 = dict(RR.HERO_PARTS)
 HERO_PARTS2['hand'] = ('hand.L', tuple(BV.HAND_L), tuple(BV.HAND_L + Vector((0, 0, 0.2))))
@@ -29,6 +36,10 @@ HERO_PARTS2['footR'] = ('leg.R', (-0.15, -0.08, 0.05), (-0.15, -0.08, 0.25))
 
 def render_actions(rig, actions, pose_fn, outdir, cam, base_yaw, sign=1, parts=None, only=None):
     scene = bpy.context.scene
+    if PIXEL:
+        scene.cycles.filter_width = 0.01   # 픽셀마다 한 점 — 가장자리 반투명 섞임이 없게
+    if TOON.enabled():   # 장면을 다 지은 뒤 재질을 셀로(lib/toon) — 주인공 · 동료 · 몬스터 · 탈것 모두 이 함수를 지난다
+        TOON.apply(scene)
     meta = {'res': RR.RES, 'actions': {}}
     for action, poses in actions.items():
         frames = []
