@@ -42,6 +42,8 @@ type Props = {
   worn?: EquippedGear;
   /** 낀 세트 파츠의 강화 단계(gearSetLevels, 0~10) — 단계만큼 파츠가 빛난다(2026-11-17) */
   wornLevels?: Partial<Record<string, number>>;
+  /** 룬 공명한 파츠 → 그 룬(equipment/gearRunes) — 입은 파츠가 룬 색으로 빛난다(2026-11-17) */
+  wornRunes?: Partial<Record<string, string>>;
   /** 탈것 위 — 앉은 자세 시트 · 앵커 (ride_seat.py) */
   riding?: boolean;
 };
@@ -86,7 +88,7 @@ function gripStyle(g: [number, number, number], rotation: number, scale: number,
   return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale * sx}, ${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
 }
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, wornLevels, riding = false, footFix = false }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, wornLevels, wornRunes, riding = false, footFix = false }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   // 강화가 눈에 보이게 (2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영") — 그림은 3장뿐이라 단계 사이를 빛 · 크기로 잇는다.
   // 0~15 를 여섯 칸(+3 흰 빛 · +6 하늘 · +9 보라 · +12 주황 + 반짝임 · +15 금 + 반짝임), 칸마다 무기 2.5% 크게. 빛은 ui/upgradeGlow.css
@@ -174,7 +176,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
         const follow = riding && name === "bootR" ? "chest" : part;
         const id = worn[slot], cur = anchor[follow], base = (riding ? rideAnchorsFor("idle", weaponKind) : IDLE_EQUIPMENT_ANCHORS)[0][follow];
         const lv = (id && wornLevels?.[id]) || 0;
-        return id && cur && base ? <img key={name} className={`equipment-wear wear-${name}`} data-wear={id} data-enh={lv >= 9 ? 3 : lv >= 6 ? 2 : lv >= 3 ? 1 : 0} src={assetUrl(`titans/anim/hero-gear/${gearItemKind(id)}-${riding ? "ride-" : ""}${name}.webp`)} style={wearStyle(cur, base, mode === "attack")} alt="" aria-hidden="true" /> : null;
+        return id && cur && base ? <img key={name} className={`equipment-wear wear-${name}`} data-wear={id} data-enh={lv >= 9 ? 3 : lv >= 6 ? 2 : lv >= 3 ? 1 : 0} data-res={(id && wornRunes?.[id]) || undefined} src={assetUrl(`titans/anim/hero-gear/${gearItemKind(id)}-${riding ? "ride-" : ""}${name}.webp`)} style={wearStyle(cur, base, mode === "attack")} alt="" aria-hidden="true" /> : null;
       })}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
       {swap.from && ghostSrc && ghostM && (() => { const g = WEAPON_GRIP[ghostM[2] as "sword" | "spear" | "bow" | "staff"]; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt ${ghostSkin ? "weapon-skin" : ""}`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale), ...(ghostSkin ? weaponSkinStyle(ghostSkin) : {}) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}

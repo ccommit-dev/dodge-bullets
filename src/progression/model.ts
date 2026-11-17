@@ -22,6 +22,7 @@ import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../t
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { MOUNT_IDS, MOUNT_MAX_LEVEL, isMountId, type MountId } from "../titans/mounts";
 import { normalizeEquippedGear, normalizeGearSetLevels, normalizeOwnedGear, type EquippedGear, type GearItemId, type GearSetLevels } from "../equipment/gearSets";
+import { normalizeGearRunes, normalizeRuneOffer, type GearRunes, type RuneOffer } from "../equipment/gearRunes";
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
 import { TALENTS, type TalentId } from "../forge/talents";
@@ -148,6 +149,12 @@ export type CharacterProgress = {
   equippedGear: EquippedGear;
   /** 세트 파츠 강화 단계 (+10 까지) */
   gearSetLevels: GearSetLevels;
+  /** 세트 파츠 룬 홈 (2026-11-17, equipment/gearRunes) — 파츠마다 세 칸 · +3/+6/+9 에서 열린다 */
+  gearRunes: GearRunes;
+  /** 열어 둔 룬 후보 세 장 — 고르기 전까지 남는다(껐다 켜도 같은 후보) */
+  runeOffer: RuneOffer | null;
+  /** 룬 후보를 뽑은 횟수 — 후보 씨앗(같은 후보가 다시 안 나온다) */
+  runeRolls: number;
   /** 탈것 레벨 (2026-11-03, titans/mounts) — 없음 = 미보유 */
   mounts: Partial<Record<MountId, number>>;
   /** 장착 탈것 ("" = 없음) */
@@ -355,6 +362,9 @@ export function emptyCharacterProgress(): CharacterProgress {
     ownedGear: [],
     equippedGear: {},
     gearSetLevels: {},
+    gearRunes: {},
+    runeOffer: null,
+    runeRolls: 0,
     mounts: {},
     activeMount: "",
     partyIds: [],
@@ -723,6 +733,9 @@ export function normalizeCharacterProgress(
     ownedGear: normalizeOwnedGear(raw.ownedGear),
     equippedGear: normalizeEquippedGear(raw.equippedGear, normalizeOwnedGear(raw.ownedGear)),
     gearSetLevels: normalizeGearSetLevels(raw.gearSetLevels, normalizeOwnedGear(raw.ownedGear)),
+    gearRunes: normalizeGearRunes(raw.gearRunes, normalizeOwnedGear(raw.ownedGear)),
+    runeOffer: normalizeRuneOffer(raw.runeOffer, normalizeOwnedGear(raw.ownedGear)),
+    runeRolls: integer(raw.runeRolls, 0, 1e9),
     mounts: Object.fromEntries(MOUNT_IDS.map((id) => [id, integer(raw.mounts?.[id], 0, MOUNT_MAX_LEVEL)]).filter(([, lv]) => (lv as number) > 0)),
     activeMount: isMountId(raw.activeMount) && integer(raw.mounts?.[raw.activeMount], 0, MOUNT_MAX_LEVEL) > 0 ? raw.activeMount : "",
     partyIds: Array.isArray(raw.partyIds)

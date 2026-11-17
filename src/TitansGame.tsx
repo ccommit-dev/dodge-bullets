@@ -91,6 +91,7 @@ import { HERO_FIG } from "./equipment/heroAnchors";
 import { canRebirthNow, performRebirth, rebirthGains, rebirthWallStatus } from "./progression/rebirth";
 import { SKILL_DOCK_EVENT, skillDockLeft } from "./ui/skillDockPref";
 import { type EquipSlotId, EquipWindow, type EquipBagItem, type EquipSlotView } from "./titans/EquipWindow";
+import { canHoldRunes, engraveRune, gearRuneEffects, nextRuneSocketAt, rollRuneOffer, RUNE_DEF, RUNE_GRADE_LABEL, RUNE_OPEN_COST, RUNE_REROLL_COST, RUNE_SOCKETS_MAX, runeCutText, runeCutValue, runeEffectsText, runeResonance, runeSocketCount, type RuneId } from "./equipment/gearRunes";
 import { partEquipTier, setEquipTier, shoulderEquipTier, weaponEquipTier } from "./equipment/equipTier";
 import { gearSetEnhanceCost, GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId, gearItemSetLabel, isLimitedGear } from "./equipment/gearSets";
 import { QuestPanel } from "./titans/QuestPanel";
@@ -345,7 +346,8 @@ function shoulderTrainingMaterials(level: number): { expedition: number; beat: n
 /** 긴급 의뢰 골드에 곱하는 영구 배수 — 펫 · 탈것 · 갑옷 · 대장 사다리 · 결정/유물. 도감 · 워밍업 · 첫 클리어 2배는 처치 골드에만 붙는다 */
 function urgentGoldMul(character: CharacterProgress, save: TitansSave, permGoldMul: number): number {
   return (1 + activePetEffect(character.pets, character.activePet, "gold")) * (1 + activeMountGold(character.mounts, character.activeMount))
-    * gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).goldMul * ladderEffects(character.bossLadder).goldMul * permGoldMul;
+    * gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).goldMul * ladderEffects(character.bossLadder).goldMul * permGoldMul
+    * gearRuneEffects(character.gearRunes, character.equippedGear, character.gearSetLevels).goldMul;   // 황금 룬 (equipment/gearRunes, 2026-11-17)
 }
 
 /**
@@ -355,6 +357,9 @@ function urgentGoldMul(character: CharacterProgress, save: TitansSave, permGoldM
 const FREE_STORE_ENABLED =
   import.meta.env.DEV ||
   (QA_BUILD && typeof localStorage !== "undefined" && (() => { try { return localStorage.getItem("dodgebullets:qa-free-store") === "1"; } catch { return false; } })());
+
+/** 룬 표지 글자 — 불꽃 · 바람 · 대지 · 황금 */
+const RUNE_GLYPH: Record<RuneId, string> = { flame: "불", gale: "풍", earth: "땅", gold: "금" };
 
 export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0, armorLevel = 0, onOpenContent, onOpenCodex, onOpenEvents, settingsNode, initialTab }: TitansGameProps) {
   if (import.meta.env.DEV) { const w = window as unknown as { __titansRenders?: number }; w.__titansRenders = (w.__titansRenders ?? 0) + 1; }   // scripts/_probe-render.mjs
@@ -520,6 +525,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const devDmgRef = useRef<Record<string, number>>({});
   // 피해에 더하는 대장간 눈금 — 창 · 활 · 지팡이는 20단계 모두 오른다(titans/weapons weaponForgeBonus). 그림 · 표시는 forgedWeaponLevel(0~15)
   const forgeBonus = weaponForgeBonus(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
+  // 세트 파츠 룬 (equipment/gearRunes, 2026-11-17) — 불꽃 치명 · 바람 동료 속도 · 대지 대장 시간 · 황금 골드. 낀 파츠의 열린 홈만 · 룬마다 상한
+  const runeFx = useMemo(() => gearRuneEffects(character.gearRunes, character.equippedGear, character.gearSetLevels), [character.gearRunes, character.equippedGear, character.gearSetLevels]);
+  // 공명한 파츠 → 입은 모습이 룬 색으로 빛난다(EquippedCharacter data-res)
+  const resonantRunes = useMemo(() => Object.fromEntries(Object.values(character.equippedGear).filter((id): id is GearItemId => !!id && runeSocketCount(character.gearSetLevels[id] ?? 0) >= RUNE_SOCKETS_MAX).map((id) => [id, runeResonance(character.gearRunes[id])]).filter(([, r]) => !!r)) as Record<string, RuneId>, [character.equippedGear, character.gearSetLevels, character.gearRunes]);
+  const runeFxRef = useRef(runeFx);
+  runeFxRef.current = runeFx;
   const forgeBonusRef = useRef(forgeBonus);
   forgeBonusRef.current = forgeBonus;
   // 대장간 견갑 강화(0~15) — 동료 지원 배율. 예전엔 아무도 안 쓰는 shoulderEnhance 를 읽어 늘 0 이었다(2026-11-17)
@@ -927,8 +938,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       activePetEffect(character.pets, character.activePet, "bossTime") +
       save.huntMods.bossTimeBonus +
       gearEffects(gearMasteryOf(save.equipmentTraining), character.gearEnhance).bossTimeSec +   // 투구 (equipment/parts)
-      permanentEffects(character).bossTimeSec,   // 서리 유물 (titans/relics.ts)
-    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods, save.equipmentTraining, character.gearEnhance, character.relics],
+      permanentEffects(character).bossTimeSec +   // 서리 유물 (titans/relics.ts)
+      runeFx.bossTimeAdd,   // 대지 룬 (equipment/gearRunes)
+    [character.partyIds, character.pets, character.activePet, save.skillInventory, save.huntMods, save.equipmentTraining, character.gearEnhance, character.relics, runeFx],
   );
   /** 결정 강화 트리 × 유물 (progression/crystalTree.ts, 2026-10-26) — 탭 · 동료 · 대장 · 골드 배율 */
   const perm = useMemo(() => permanentEffects(character), [character.crystalTree, character.relics]);
@@ -1928,6 +1940,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).goldMul *   // 갑옷 (equipment/parts)
           ladderEffects(characterRef.current.bossLadder).goldMul *   // 대장 사다리 (2026-10-22)
           permRef.current.goldMul *   // 결정 트리 처치 골드 · 황금 유물 (2026-10-26)
+          runeFxRef.current.goldMul *   // 황금 룬 (2026-11-17)
           (firstClearToday ? 2 : 1),
       );
       if (firstClearToday) {
@@ -2189,7 +2202,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const b = buffsRef.current;
     const clone = now < b.cloneUntil ? b.cloneMult : 1;
     // 북채 집중(패시브) + 치명 버프
-    const critChance = Math.min(0.95, 0.08 + WEAPON_EFFECTS[weaponKindRef.current].critAdd + passive.critChance + (now < b.critUntil ? b.critBonus : 0) + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).critChance);   // + 장갑
+    const critChance = Math.min(0.95, 0.08 + WEAPON_EFFECTS[weaponKindRef.current].critAdd + passive.critChance + (now < b.critUntil ? b.critBonus : 0) + gearEffects(gearMasteryOf(saveRef.current.equipmentTraining), characterRef.current.gearEnhance).critChance + runeFxRef.current.tapCritAdd);   // + 불꽃 룬   // + 장갑
     // 사냥 강화 — 탭·스킬 배수와 치명 피해 배수 (지역 런 효과)
     const hm = saveRef.current.huntMods;
     // DEV 측정 모드 (scripts/_probe-weapon-dps2.mjs) — 치명을 굴리지 않고 기댓값으로. 운석 같은 큰 한 방 몇 번의 치명이 측정을 ±15% 흔들었다
@@ -2340,7 +2353,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         for (const h of HEROES) {
           const level = saveRef.current.heroes[h.id];
           if (level <= 0 || !characterRef.current.partyIds.includes(h.id)) continue;
-          allyAttackAcc.current[h.id] += dt * WEAPON_EFFECTS[weaponKindRef.current].autoSpeedMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).autoSpeedMul;   // 활 — 동료 공격 속도도 (2026-10-27 감사)
+          allyAttackAcc.current[h.id] += dt * WEAPON_EFFECTS[weaponKindRef.current].autoSpeedMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).autoSpeedMul * runeFxRef.current.allySpeedMul;   // 활 — 동료 공격 속도도 (2026-10-27 감사) · 바람 룬(2026-11-17)
           if (allyAttackAcc.current[h.id] < h.attackInterval) continue;
           allyAttackAcc.current[h.id] %= h.attackInterval;
           setAllyPulse((prev) => ({ ...prev, [h.id]: (prev[h.id] ?? 0) + 1 }));
@@ -3415,8 +3428,45 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       const lv = c.gearSetLevels[id] ?? 0, cost = gearSetEnhanceCost(lv);
       if (!cost || c.sharedCoins < cost.coins || c.enhancementMaterials < cost.materials || !c.ownedGear.includes(id)) return c;
       return { ...c, sharedCoins: c.sharedCoins - cost.coins, enhancementMaterials: c.enhancementMaterials - cost.materials, gearSetLevels: { ...c.gearSetLevels, [id]: lv + 1 } };
-    }).then((next) => { setCharacter(next); sfxUiTap(); flash(`${gearItemName(id)} +${next.gearSetLevels[id] ?? 0} · ${gearSetSummary(next.equippedGear, weaponKindRef.current, next.gearSetLevels)}`); });
+    }).then((next) => {
+      setCharacter(next); sfxUiTap();
+      const lv = next.gearSetLevels[id] ?? 0;
+      // +3 · +6 · +9 — 룬 홈이 열린다(equipment/gearRunes). 강화 한 번이 '숫자 +1' 로 끝나지 않게
+      if (canHoldRunes(id) && lv % 3 === 0 && runeSocketCount(lv) > runeSocketCount(lv - 1)) { flash(`${gearItemName(id)} +${lv} · 룬 홈 ${runeSocketCount(lv)}칸이 열렸어요! 눌러서 룬을 새겨요`, 2400, true); setRunePop((n) => n + 1); return; }
+      flash(`${gearItemName(id)} +${lv} · ${gearSetSummary(next.equippedGear, weaponKindRef.current, next.gearSetLevels)}`);
+    });
   };
+  // 룬 새기기 (2026-11-17) — 홈을 열면(강화석) 후보 셋 · 하나 고른다 · 다시 뽑기(강화석). 후보는 저장에 남고 뽑을 때마다 runeRolls 가 늘어 같은 후보가 다시 안 나온다
+  const [runePop, setRunePop] = useState(0);
+  const openRuneOffer = (id: GearItemId, socket: number) => {
+    void updateCharacterProgress(userHash, (c) => {
+      if (!c.ownedGear.includes(id) || !canHoldRunes(id) || socket >= runeSocketCount(c.gearSetLevels[id] ?? 0) || c.runeOffer) return c;
+      if (c.enhancementMaterials < RUNE_OPEN_COST.materials || c.sharedCoins < RUNE_OPEN_COST.coins) return c;
+      const rolls = (c.runeRolls ?? 0) + 1;
+      return { ...c, enhancementMaterials: c.enhancementMaterials - RUNE_OPEN_COST.materials, sharedCoins: c.sharedCoins - RUNE_OPEN_COST.coins, runeRolls: rolls, runeOffer: rollRuneOffer(id, socket, rolls, userHash) };
+    }).then((next) => { setCharacter(next); sfxUiTap(); });
+  };
+  const rerollRuneOffer = () => {
+    void updateCharacterProgress(userHash, (c) => {
+      if (!c.runeOffer || c.enhancementMaterials < RUNE_REROLL_COST.materials || c.sharedCoins < RUNE_REROLL_COST.coins) return c;
+      const rolls = (c.runeRolls ?? 0) + 1;
+      return { ...c, enhancementMaterials: c.enhancementMaterials - RUNE_REROLL_COST.materials, sharedCoins: c.sharedCoins - RUNE_REROLL_COST.coins, runeRolls: rolls, runeOffer: rollRuneOffer(c.runeOffer.id, c.runeOffer.socket, rolls, userHash) };
+    }).then((next) => { setCharacter(next); sfxUiTap(); });
+  };
+  const pickRune = (i: number) => {
+    void updateCharacterProgress(userHash, (c) => {
+      if (!c.runeOffer || !c.runeOffer.cands[i]) return c;
+      return { ...c, gearRunes: engraveRune(c.gearRunes, c.runeOffer, i), runeOffer: null };
+    }).then((next) => {
+      setCharacter(next); sfxUiTap();
+      const off = character.runeOffer, cut = off?.cands[i];
+      if (!off || !cut) return;
+      const res = runeResonance(next.gearRunes[off.id]);
+      if (res) { flash(`공명! ${gearItemName(off.id)} — ${RUNE_DEF[res].name} 셋 · 이 파츠 룬 효과 ×1.5`, 2600, true); setRunePop((n) => n + 1); return; }
+      flash(`${RUNE_GRADE_LABEL[cut.grade]} ${RUNE_DEF[cut.rune].name}을 새겼어요 · ${runeEffectsText(gearRuneEffects(next.gearRunes, next.equippedGear, next.gearSetLevels))}`, 2200);
+    });
+  };
+  const closeRuneOffer = () => { void updateCharacterProgress(userHash, (c) => ({ ...c, runeOffer: null })).then((next) => setCharacter(next)); };
   /** 상위 동료 시그니처 컷인 — 동료마다 9초 · 아무 동료든 3초 · 스킬 시전 연출 뒤 1.5초는 쉰다(네 명 · ×2 배속에서 도배되지 않게) */
   const showAllyCut = (id: TitanHeroId, move: string) => {
     const now = performance.now(), at = allyCutAtRef.current;
@@ -4361,7 +4411,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </div>
             )}
             {powerUp > 0 && <i key={`pu-${powerUp}`} className="hero-powerup-burst" aria-hidden="true" />}
-            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} footFix={!isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} wornLevels={character.gearSetLevels} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} footFix={!isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} wornLevels={character.gearSetLevels} wornRunes={resonantRunes} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -4788,7 +4838,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 { key: "power", label: "전투력", value: combatPower(character).toLocaleString(), title: "마이페이지 통합 전투력" },
               ]}
               onForge={() => openContent("forge")}
-              hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} wornLevels={character.gearSetLevels} />}
+              hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} wornLevels={character.gearSetLevels} wornRunes={resonantRunes} />}
               footer={(slot) => (
                 <div className="equip-info">
                   {slot === "weapon" ? (
@@ -4800,6 +4850,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <>
                       <b>{gearSetSummary(character.equippedGear, wantedWeaponKind, character.gearSetLevels)}</b>
                       <small className="gear-set-stat">{gearFullSetText(wantedWeaponKind)}</small>
+                      {runeEffectsText(runeFx) ? <small className="gear-rune-total">룬 · {runeEffectsText(runeFx)}</small> : null}
                       {(() => {
                         const gid = character.equippedGear[slot];
                         if (!gid) return null;
@@ -4809,6 +4860,48 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                           <div className="gear-set-enhance" data-gear-enhance={gid}>
                             <span><b><em className={`tier-chip tier-${setEquipTier(lv)}`}>{TIER_LABEL[setEquipTier(lv)]}</em> {gearItemName(gid)} +{lv}</b><small>{gearItemEffectText(gid, lv)}{cost ? ` → +${gearItemEffectText(gid, lv + 1).split("+").pop()}` : " (최대)"}</small></span>
                             <button type="button" disabled={!cost || character.sharedCoins < cost.coins || character.enhancementMaterials < cost.materials} onClick={() => enhanceGearItem(gid)}>{cost ? <>강화<small className="btn-cost">{formatGold(cost.coins)} · 강화석 {cost.materials}</small></> : "최대"}</button>
+                            {(() => {
+                              // 룬 홈 (equipment/gearRunes) — +3 · +6 · +9 에서 열림 · 빈 홈 · 새긴 홈을 누르면 후보 세 장
+                              const open = runeSocketCount(lv), cuts = character.gearRunes[gid] ?? [], res = open >= RUNE_SOCKETS_MAX ? runeResonance(cuts) : null;
+                              const offer = character.runeOffer, mine = offer && offer.id === gid ? offer : null, nextAt = nextRuneSocketAt(lv);
+                              const canOpen = character.enhancementMaterials >= RUNE_OPEN_COST.materials && character.sharedCoins >= RUNE_OPEN_COST.coins;
+                              return (
+                                <div className={`gear-runes ${res ? `is-resonant res-${res}` : ""}`} data-gear-runes={gid} key={`runes-${runePop}`}>
+                                  <div className="rune-sockets">
+                                    {Array.from({ length: RUNE_SOCKETS_MAX }, (_, k) => {
+                                      const cut = k < open ? cuts[k] ?? null : null, picking = !!mine && mine.socket === k;
+                                      return (
+                                        <button key={k} type="button" data-socket={k} className={`rune-socket ${k < open ? "" : "is-locked"} ${cut ? `has-rune rune-${cut.rune} g${cut.grade}` : ""} ${picking ? "is-picking" : ""}`} disabled={k >= open || !!offer || !canOpen} title={k >= open ? `+${(k + 1) * 3} 에 열려요` : cut ? `${runeCutText(cut, !!res)} — 누르면 다시 새기기` : "누르면 룬 후보 세 장"} onClick={() => openRuneOffer(gid, k)}>
+                                          {cut ? <i className="rune-gem" style={{ "--rune": RUNE_DEF[cut.rune].color } as CSSProperties}>{RUNE_GLYPH[cut.rune]}</i> : k < open ? <i className="rune-empty">＋</i> : <small>+{(k + 1) * 3}</small>}
+                                        </button>
+                                      );
+                                    })}
+                                    <span className="rune-sum">
+                                      {res ? <b className="rune-res">공명 · {RUNE_DEF[res].name} ×1.5</b> : null}
+                                      <small>{open === 0 ? `+3 강화하면 룬 홈이 열려요` : mine ? "후보 하나를 골라요" : `${cuts.some(Boolean) ? "새긴 홈을 누르면 다시 새기기" : "빈 홈을 누르면 후보 세 장"} · 강화석 ${RUNE_OPEN_COST.materials}${nextAt ? ` · 다음 홈 +${nextAt}` : ""}`}</small>
+                                    </span>
+                                  </div>
+                                  {mine && (
+                                    <div className="rune-offer" role="group" aria-label="룬 고르기">
+                                      <div className="rune-cands">
+                                        {mine.cands.map((c, i) => (
+                                          <button key={`${mine.rolls}-${i}`} type="button" className={`rune-cand rune-${c.rune} g${c.grade}`} style={{ "--rune": RUNE_DEF[c.rune].color, "--i": i } as CSSProperties} onClick={() => pickRune(i)}>
+                                            <i className="rune-gem">{RUNE_GLYPH[c.rune]}</i>
+                                            <em className={`rune-grade g${c.grade}`}>{RUNE_GRADE_LABEL[c.grade]}</em>
+                                            <b>{RUNE_DEF[c.rune].name}</b>
+                                            <small>{RUNE_DEF[c.rune].stat} {RUNE_DEF[c.rune].fmt(runeCutValue(c))}</small>
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <div className="rune-offer-bar">
+                                        <button type="button" className="rune-reroll" disabled={character.enhancementMaterials < RUNE_REROLL_COST.materials} onClick={rerollRuneOffer}>다시 뽑기<small className="btn-cost">강화석 {RUNE_REROLL_COST.materials}</small></button>
+                                        <button type="button" className="rune-keep" onClick={closeRuneOffer}>그대로 두기</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })()}
