@@ -880,7 +880,8 @@ export function combatPower(progress: CharacterProgress): number {
       // 도감 영구 전투력 (CRUMBLE_GAP §7) — 동료·펫 최초 획득만으로 붙는다
       allyCollectionPower(progress) +
       petCollectionPower(progress) +
-      progress.shoulderEnhance * 20,
+      // 대장간 견갑 강화(armorLevel 0~15) — 예전엔 아무도 안 쓰는 shoulderEnhance 를 세어 늘 0 이었다(2026-11-17)
+      (progress.armorLevel ?? 0) * 20,
   );
 }
 

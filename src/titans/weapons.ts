@@ -66,6 +66,17 @@ export function weaponHuntLevel(kind: WeaponKind, swordLevel: number, forge: Par
   return Math.round(((forge[kind] ?? 0) * 15) / 20);
 }
 
+/** 사냥터 피해에 더하는 대장간 눈금 — tapDamage(숙련 + 이 값).
+ * 검은 단계 × 1.5(예전 그대로). 창 · 활 · 지팡이(0~20)는 예전 눈금 floor(round(n·¾)·1.5) 를 바닥으로 두고 한 단계마다 적어도 +1 —
+ * 반올림 눈금만 쓰면 20단계 중 5단계(3 · 7 · 11 · 15 · 19)가 사냥터 피해를 하나도 안 올렸다(2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영"). 예전보다 낮아지는 단계는 없다 */
+export function weaponForgeBonus(kind: WeaponKind, swordLevel: number, forge: Partial<Record<"spear" | "bow" | "staff", number>>): number {
+  if (kind === "sword") return Math.floor(weaponHuntLevel("sword", swordLevel, forge) * 1.5);
+  const n = Math.max(0, Math.min(20, Math.floor(forge[kind] ?? 0)));
+  let v = 0;
+  for (let i = 1; i <= n; i += 1) v = Math.max(Math.floor(Math.round((i * 15) / 20) * 1.5), v + 1);
+  return v;
+}
+
 /** 아이콘 단계(1~3) */
 export function weaponTier(level15: number): 1 | 2 | 3 {
   return level15 >= 10 ? 3 : level15 >= 5 ? 2 : 1;

@@ -94,7 +94,7 @@ import { type EquipSlotId, EquipWindow, type EquipBagItem, type EquipSlotView } 
 import { partEquipTier, setEquipTier, shoulderEquipTier, weaponEquipTier } from "./equipment/equipTier";
 import { gearSetEnhanceCost, GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId, gearItemSetLabel, isLimitedGear } from "./equipment/gearSets";
 import { QuestPanel } from "./titans/QuestPanel";
-import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
+import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponForgeBonus, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
 import type { Tier as AllyRarity } from "./titans/allyRoster";
 import { RelicTabPanel } from "./titans/RelicTabPanel";
@@ -518,6 +518,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 메인 루프(의존성 고정)가 읽는 지금 무기 단계 */
   /** DEV — 준 피해 합계(출처별). 무기 밸런스를 실제 게임에서 잰다(scripts/_probe-weapon-dps.mjs) */
   const devDmgRef = useRef<Record<string, number>>({});
+  // 피해에 더하는 대장간 눈금 — 창 · 활 · 지팡이는 20단계 모두 오른다(titans/weapons weaponForgeBonus). 그림 · 표시는 forgedWeaponLevel(0~15)
+  const forgeBonus = weaponForgeBonus(weaponKind, drumLevel, character.expeditionWeaponForge ?? {});
+  const forgeBonusRef = useRef(forgeBonus);
+  forgeBonusRef.current = forgeBonus;
+  // 대장간 견갑 강화(0~15) — 동료 지원 배율. 예전엔 아무도 안 쓰는 shoulderEnhance 를 읽어 늘 0 이었다(2026-11-17)
+  const armorLevelRef = useRef(armorLevel);
+  armorLevelRef.current = armorLevel;
   const forgedWeaponLevelRef = useRef(forgedWeaponLevel);
   forgedWeaponLevelRef.current = forgedWeaponLevel;
   const weaponKindRef = useRef<WeaponKind>(weaponKind);
@@ -1445,6 +1452,26 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(""), ms);
   };
+  // 강화가 사냥터에 반영됐다고 알린다 (2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영") — 대장간은 다른 화면이라
+  // 돌아오면 이 화면이 새로 그려진다. 지난번 본 무기 눈금 · 견갑 단계보다 오르면 오른 수치를 한 번 띄우고 주인공을 반짝인다.
+  // 검 단계는 돌아온 뒤 조금 늦게 들어오기도 해서(App 의 옛 저장 이전) 값이 바뀔 때마다 다시 본다
+  const [powerUp, setPowerUp] = useState(0);
+  useEffect(() => {
+    if (!ready) return;
+    const key = `dodgebullets:upgrade-seen:${userHash}`;
+    const now = { kind: weaponKind, bonus: forgeBonus, armor: armorLevel };
+    let seen: typeof now | null = null;
+    try { seen = JSON.parse(localStorage.getItem(key) ?? "null") as typeof now | null; } catch { seen = null; }
+    try { localStorage.setItem(key, JSON.stringify(now)); } catch { /* 저장 못 해도 알림만 한 번 더 뜬다 */ }
+    if (!seen) return;
+    const m = saveRef.current.equipmentTraining.weaponMastery;
+    const msgs: string[] = [];
+    if (seen.kind === now.kind && now.bonus > seen.bonus) msgs.push(`${WEAPON_LABEL[now.kind]} 강화 반영 · 탭 피해 ${formatGold(tapDamage(m + seen.bonus))} → ${formatGold(tapDamage(m + now.bonus))}`);
+    if (now.armor > (seen.armor ?? 0)) msgs.push(`견갑 +${now.armor} 반영 · 동료 피해 +${(seen.armor ?? 0) * 2}% → +${now.armor * 2}%`);
+    if (!msgs.length) return;
+    flash(msgs.join(" · "), 2800, true);
+    setPowerUp((n) => n + 1);
+  }, [ready, userHash, weaponKind, forgeBonus, armorLevel]);
 
   // 부팅 스토어 정산(App → payments/reconcile)이 지급·회수했으면 화면과 스킬 코어를 맞춘다
   useEffect(() => {
@@ -2151,8 +2178,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const passive = passiveTotals(inv.learned, inv.equipped, inv.levels);
     // 단단한 앞니(패시브) — 탭 기본 피해 상시 증가
     // × 대장 사다리 탭 피해 — 2026-10-22 아처 키우기 3번 (번개 강화는 2026-10-28 삭제)
-    return WEAPON_EFFECTS[weaponKindRef.current].tapMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul * heroRankAtkMul(characterRef.current.heroRank);   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
-  }, [forgedWeaponLevel]);
+    return WEAPON_EFFECTS[weaponKindRef.current].tapMul * gearSetEffects(characterRef.current.equippedGear, weaponKindRef.current, characterRef.current.gearSetLevels).tapMul * tapDamage(saveRef.current.equipmentTraining.weaponMastery + forgeBonus) * (1 + passive.tapDmg) * ladderEffects(characterRef.current.bossLadder).tapMul * permRef.current.tapMul * heroRankAtkMul(characterRef.current.heroRank);   // × 결정 트리 공격력 · 불씨 반지 (2026-10-26)
+  }, [forgeBonus]);
 
   const computeTapHit = useCallback(() => {
     const now = performance.now();
@@ -2286,7 +2313,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             }
             setPetAtk((n) => n + 1);
             sfxPetPounce();
-            applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * petAttackMul(petLv), false, { source: "ally", hue: 95, fxDelayMs: 240 });   // 주인공 자동 공격과 같은 바탕(ref 로 — 인터벌 안)
+            applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + forgeBonusRef.current) * petAttackMul(petLv), false, { source: "ally", hue: 95, fxDelayMs: 240 });   // 주인공 자동 공격과 같은 바탕(ref 로 — 인터벌 안)
           }
         } else petAccRef.current = 0;
         autoAttackAcc.current += dt;
@@ -2299,7 +2326,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           setFrameIdx(0);
           const fly = heroAttackFx();   // 무기마다 다른 한 방(2026-10-28) — 활 · 지팡이는 날아가 꽂히는 순간 맞는 그림
           // 자동 공격에도 대장간 단계 · 무기 탭 배율 (2026-10-27 감사: 예전엔 숙련만 봐서 방치하면 대장간 강화가 사냥 DPS 를 전혀 안 올렸다)
-          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevelRef.current * 1.5)) * WEAPON_EFFECTS[weaponKindRef.current].tapMul * heroRankAtkMul(characterRef.current.heroRank), false, { fromAlly: "tap", source: "hero", fxDelayMs: fly });
+          applyDamage(playerIdleDps(saveRef.current.equipmentTraining.weaponMastery + forgeBonusRef.current) * WEAPON_EFFECTS[weaponKindRef.current].tapMul * heroRankAtkMul(characterRef.current.heroRank), false, { fromAlly: "tap", source: "hero", fxDelayMs: fly });
         }
       } else {
         autoAttackAcc.current = 0;
@@ -2307,7 +2334,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       if (battlePhaseRef.current === "combat" && formationReadyRef.current && document.visibilityState !== "hidden") {
         // 보호구 강화(대장간)는 동료 지원 배율로 붙는다 — 견갑 훈련(사냥터 골드)과 별개 축
-        const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025 + (characterRef.current.shoulderEnhance ?? 0) * 0.02;
+        const shoulderBoost = 1 + saveRef.current.equipmentTraining.shoulderMastery * .025 + armorLevelRef.current * 0.02;
         // 편성(§2): 출전 슬롯에 오른 동료만 싸운다 · 엄호 사격 시너지가 DPS를 증폭한다
         const synergyDps = partySynergies(fieldedParty(characterRef.current.partyIds, stageCeilingFor(characterRef.current.pioneeredArea), characterRef.current.claimedRewards)).effects.dpsMult;
         for (const h of HEROES) {
@@ -2595,7 +2622,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       equipmentTraining: { ...prev.equipmentTraining, [key]: prev.equipmentTraining[key] + quote.count },
     }));
     if (slot === "weapon") setAutoTrainHit((h) => ({ slot, seq: (h?.seq ?? 0) + 1, count: quote.count }));
-    const fw = Math.floor(forgedWeaponLevel * 1.5);
+    const fw = forgeBonus;
     flash(`${slot === "weapon" ? "무기" : "견갑"} 숙련 Lv.${level + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""}${slot === "weapon" ? ` · 탭 피해 ${formatGold(tapDamage(level + fw))} → ${formatGold(tapDamage(level + quote.count + fw))}` : ""}`);
   };
 
@@ -4333,7 +4360,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} pet />
               </div>
             )}
-            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} footFix={!isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            {powerUp > 0 && <i key={`pu-${powerUp}`} className="hero-powerup-burst" aria-hidden="true" />}
+            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} footFix={!isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} wornLevels={character.gearSetLevels} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 
@@ -4760,7 +4788,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 { key: "power", label: "전투력", value: combatPower(character).toLocaleString(), title: "마이페이지 통합 전투력" },
               ]}
               onForge={() => openContent("forge")}
-              hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} />}
+              hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} wornLevels={character.gearSetLevels} />}
               footer={(slot) => (
                 <div className="equip-info">
                   {slot === "weapon" ? (
@@ -4829,7 +4857,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             <article key={autoTrainHit?.slot === "weapon" ? `w${autoTrainHit.seq}` : "w"} data-tier={weaponEquipTier(forgedWeaponLevel)} className={`titans-card equipment-training-card ${equipFocus === "weapon" ? "" : "is-other-slot"} ${autoTrainHit?.slot === "weapon" ? "auto-hit" : ""}`}>
               <div className="training-item-icon weapon"><img src={assetUrl(weaponIconPath(weaponKind, forgedWeaponLevel))} alt="" aria-hidden="true" /></div>
               <div>
-                <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>탭 피해 {formatGold(tapDamage(save.equipmentTraining.weaponMastery + Math.floor(forgedWeaponLevel * 1.5)))} → {formatGold(tapDamage(save.equipmentTraining.weaponMastery + 1 + Math.floor(forgedWeaponLevel * 1.5)))}</p>
+                <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>탭 피해 {formatGold(tapDamage(save.equipmentTraining.weaponMastery + forgeBonus))} → {formatGold(tapDamage(save.equipmentTraining.weaponMastery + 1 + forgeBonus))}</p>
               </div>
               <button type="button" disabled={save.gold < equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery)} onClick={() => trainEquipment("weapon")}>훈련<small className="btn-cost">{formatGold(equipmentTrainingCost("weapon", save.equipmentTraining.weaponMastery))}G</small></button>
             </article>

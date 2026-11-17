@@ -24,6 +24,7 @@ import "./game/expeditionHud.css";   // 2026-11-06 원정 전투 2판 — 한 �
 import "./ui/clarity.css";   // 2026-11-10 단순 명료 층 — 색 셋 · 단추 하나 · 겹친 판 정리 (맨 뒤)
 import "./ui/focus2.css";   // 2026-11-16 집중 정리 2판 — 성문 방어 위로 · 설정 톱니 · 지갑 은화 · 상점 구매 추천 (clarity 뒤)
 import "./ui/allyShowcase.css";   // 2026-11-16 상위 동료 갖고 싶게 — 전장 몸집 · 시그니처 큰 폭발 · 전설 이상 컷인 · 뽑기 새 동료 소개 (맨 뒤)
+import "./ui/upgradeGlow.css";   // 2026-11-17 강화가 눈에 보이게 — 무기 단계 빛 · 세트 파츠 강화 빛 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
@@ -261,7 +262,7 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   // 파츠 그림 티어 = 예전 규칙과 대장간 장비 강화(equipment/parts) 중 높은 쪽 (2026-10-14)
   const ge = p.gearEnhance ?? { helmet: 0, armor: 0, gloves: 0, boots: 0 };
   const hi = (a: number, b: number) => Math.max(a, b) as 0 | 1 | 2 | 3;
-  world.player.gear = { helmet: hi(helmetTierOf(p.shoulderEnhance ?? 0), gearTierOfEnhance(ge.helmet)), armor: hi(chestTierOf(p.equippedShoulder), gearTierOfEnhance(ge.armor)), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: gearTierOfEnhance(ge.gloves), boots: hi(bootsTierOf(p.towerBestFloor), gearTierOfEnhance(ge.boots)) };
+  world.player.gear = { helmet: hi(helmetTierOf(p.armorLevel ?? 0), gearTierOfEnhance(ge.helmet)), armor: hi(chestTierOf(p.equippedShoulder), gearTierOfEnhance(ge.armor)), weapon: weaponTierOf(p.equippedWeaponLevel), shield: shieldTierOf(p.dodgeBestStage), gloves: gearTierOfEnhance(ge.gloves), boots: hi(bootsTierOf(p.towerBestFloor), gearTierOfEnhance(ge.boots)) };
   // 무기 4종 (2026-10-27) — 댐 방어전 무기 = 사냥터 장착 무기. 기본 사격 단계 = 그 무기의 단계(검은 대장간 0~15 → 0~20), 물리 스킬 배수도 장착 물리 무기의 단계
   const wk = p.equippedWeaponKind;
   const swordLv20 = Math.round((Math.min(15, p.equippedWeaponLevel) * 20) / 15);

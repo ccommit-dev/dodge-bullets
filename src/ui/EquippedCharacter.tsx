@@ -40,6 +40,8 @@ type Props = {
   weaponKind?: "sword" | "spear" | "bow" | "staff";
   /** 낀 세트 파츠 — 몸에 입혀 그린다(아래 WEAR_LAYERS). 없으면 맨몸 */
   worn?: EquippedGear;
+  /** 낀 세트 파츠의 강화 단계(gearSetLevels, 0~10) — 단계만큼 파츠가 빛난다(2026-11-17) */
+  wornLevels?: Partial<Record<string, number>>;
   /** 탈것 위 — 앉은 자세 시트 · 앵커 (ride_seat.py) */
   riding?: boolean;
 };
@@ -84,8 +86,11 @@ function gripStyle(g: [number, number, number], rotation: number, scale: number,
   return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale * sx}, ${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
 }
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, riding = false, footFix = false }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, wornLevels, riding = false, footFix = false }: Props) {
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
+  // 강화가 눈에 보이게 (2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영") — 그림은 3장뿐이라 단계 사이를 빛 · 크기로 잇는다.
+  // 0~15 를 여섯 칸(+3 흰 빛 · +6 하늘 · +9 보라 · +12 주황 + 반짝임 · +15 금 + 반짝임), 칸마다 무기 2.5% 크게. 빛은 ui/upgradeGlow.css
+  const wGrade = weaponLevel >= 15 ? 5 : weaponLevel >= 12 ? 4 : weaponLevel >= 9 ? 3 : weaponLevel >= 6 ? 2 : weaponLevel >= 3 ? 1 : 0;
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
   // 공격 칸은 무기별 시트의 손 앵커(창 · 활 · 지팡이 — 2026-10-27), 검은 기본
@@ -127,6 +132,14 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     const t = window.setTimeout(() => setSwap((cur) => (cur.from === from ? { ...cur, from: "" } : cur)), 560);
     return () => window.clearTimeout(t);
   }, [weaponKey]);
+  // 같은 그림 안에서 단계만 올라도(예: +6 → +7) 반짝 고리 — 예전엔 그림 3장이 바뀔 때만(+5 · +10) 떴다
+  const prevLv = useRef(weaponLevel);
+  const [lvUp, setLvUp] = useState(0);
+  useEffect(() => {
+    const up = weaponLevel > prevLv.current;
+    prevLv.current = weaponLevel;
+    if (up) setLvUp((n) => n + 1);
+  }, [weaponLevel]);
   const ghostM = /(?:^skin-([\w-]+?)-)?(sword|spear|bow|staff)-(\d)$/.exec(swap.from);
   const ghostSrc = ghostM ? assetUrl(`titans/gear/${ghostM[1] ? `skins/${ghostM[1]}/` : ""}${ghostM[2] === "sword" ? "weapon" : ghostM[2]}-${ghostM[3]}.png`) : "";
   const ghostSkin = ghostM?.[1] ? WEAPON_SKINS[ghostM[1]] : undefined;
@@ -143,7 +156,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
     // 2판: 무기 그림을 손 오른쪽(바깥)으로 — 손 한가운데 두면 반이 얼굴(주둥이)을 덮었다(2026-10-19 칸별 캡처) · 무기 4종은 손잡이 점 기준
     // 손잡이 맞춤은 transform 이 아니라 translate 속성으로 — 탈착 키프레임의 rotate · scale 은 transform 보다 먼저 적용돼, translate 가 transform 안에 있으면
     // 회전축이 손잡이가 아니라 손 오른쪽 아래(상자 크기만큼)로 밀려 끼우는 순간 무기가 손 밖에서 돌았다(2026-10-27 캡처). --grip-x/y 는 키프레임이 이어 쓴다
-    ...gripStyle(grip, anchor.hand.rotation, anchor.hand.scale, pose?.[2] ?? 1),
+    ...gripStyle(grip, anchor.hand.rotation, anchor.hand.scale * (1 + wGrade * 0.025), pose?.[2] ?? 1),
     // 예비 칸(먼 손이 큰 머리 뒤)은 몸 뒤에 — 몸·머리에 가린 부분은 숨고 실루엣 밖으로 나온 부분만 보인다(3D 동료처럼)
     ...(anchor.hand.behind ? { zIndex: 1 } : {}),
   };
@@ -160,14 +173,17 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
         if (riding && name === "bootL") return null;
         const follow = riding && name === "bootR" ? "chest" : part;
         const id = worn[slot], cur = anchor[follow], base = (riding ? rideAnchorsFor("idle", weaponKind) : IDLE_EQUIPMENT_ANCHORS)[0][follow];
-        return id && cur && base ? <img key={name} className={`equipment-wear wear-${name}`} data-wear={id} src={assetUrl(`titans/anim/hero-gear/${gearItemKind(id)}-${riding ? "ride-" : ""}${name}.webp`)} style={wearStyle(cur, base, mode === "attack")} alt="" aria-hidden="true" /> : null;
+        const lv = (id && wornLevels?.[id]) || 0;
+        return id && cur && base ? <img key={name} className={`equipment-wear wear-${name}`} data-wear={id} data-enh={lv >= 9 ? 3 : lv >= 6 ? 2 : lv >= 3 ? 1 : 0} src={assetUrl(`titans/anim/hero-gear/${gearItemKind(id)}-${riding ? "ride-" : ""}${name}.webp`)} style={wearStyle(cur, base, mode === "attack")} alt="" aria-hidden="true" /> : null;
       })}
       {/* 떼어 낸 무기 — 잠깐 손에서 떨어져 나간다 */}
       {swap.from && ghostSrc && ghostM && (() => { const g = WEAPON_GRIP[ghostM[2] as "sword" | "spear" | "bow" | "staff"]; return <img key={`ghost-${swap.seq}`} className={`equipment-weapon-ghost gear-detach ghost-alt ${ghostSkin ? "weapon-skin" : ""}`} style={{ ...weaponPart, ...gripStyle(g, anchor.hand.rotation, anchor.hand.scale), ...(ghostSkin ? weaponSkinStyle(ghostSkin) : {}) }} src={ghostSrc} alt="" aria-hidden="true" />; })()}
+      {lvUp > 0 && <i key={`lvup-${lvUp}`} className="gear-swap-flash gear-level-up" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
+      {wGrade >= 4 && !blade && <i className={`weapon-sparkle g${wGrade}`} style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
       {swap.seq > 0 && weaponKey !== "none" && <i key={`flash-${swap.seq}`} className="gear-swap-flash" style={{ left: `${anchor.hand.x}%`, top: `${anchor.hand.y}%` }} aria-hidden="true" />}
       {/* 무기 4종 (2026-10-27) — 손 앵커에 장비 그림, 손잡이 점으로 쥔다. 공격 칸은 무기마다 자세(WEAPON_ATTACK_POSE)
           상점 무기 외형은 같은 그림의 색 바꾸기 + 오라(weapon-skin) — 예전 북 그림(premium-weapon-sheet)은 무기가 검 · 창 · 활 · 지팡이로 바뀐 뒤 손에 북을 들게 했다 */}
-      <img key={`${weaponKey}-${swap.seq}`} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${blade ? "weapon-skin" : ""} ${swap.seq > 0 ? "gear-attach" : ""} ${casting ? "weapon-cast" : ""}`} data-pose={pose ? `${weaponKind}-${Math.min(7, Math.floor(attackT * 8))}` : undefined} style={{ ...weaponPart, ...(blade ? weaponSkinStyle(blade) : {}) }} src={assetUrl(blade && weaponSkin ? weaponSkinIcon(weaponSkin, weaponKind, weaponLevel) : weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
+      <img key={`${weaponKey}-${swap.seq}`} data-wgrade={wGrade} className={`equipment-weapon-alt weapon-${weaponKind} gear-tier-${weaponTier} ${blade ? "weapon-skin" : ""} ${swap.seq > 0 ? "gear-attach" : ""} ${casting ? "weapon-cast" : ""}`} data-pose={pose ? `${weaponKind}-${Math.min(7, Math.floor(attackT * 8))}` : undefined} style={{ ...weaponPart, ...(blade ? weaponSkinStyle(blade) : {}) }} src={assetUrl(blade && weaponSkin ? weaponSkinIcon(weaponSkin, weaponKind, weaponLevel) : weaponIconPath(weaponKind, weaponLevel))} alt="" aria-hidden="true" />
     </div>
   );
 }

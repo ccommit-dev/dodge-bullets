@@ -1,0 +1,39 @@
+/* 강화가 눈에 보이게 (2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영되었으면")
+ * 무기 그림은 3장(+0 · +5 · +10)뿐이라 단계 사이를 빛으로 잇는다 — EquippedCharacter 의 data-wgrade(0~5) · 세트 파츠 data-enh(0~3).
+ * 무기 바탕 그림자(unify.css)는 남기고 빛을 덧댄다. 상점 외형(weapon-skin) · 지팡이 시전(weapon-cast)은 자기 빛이 있어 건드리지 않는다.
+ * 무기 그림에는 애니메이션을 걸지 않는다 — 끼우기(gear-attach) 애니메이션과 한 속성이라 덮어쓴다. 반짝임은 따로 둔 <i class="weapon-sparkle">. */
+.equipped-character .equipment-weapon-alt:not(.weapon-skin):not(.weapon-cast)[data-wgrade="1"] { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)) drop-shadow(0 0 2px rgba(255, 255, 255, .95)); }
+.equipped-character .equipment-weapon-alt:not(.weapon-skin):not(.weapon-cast)[data-wgrade="2"] { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)) drop-shadow(0 0 2px #bff0ff) drop-shadow(0 0 5px rgba(80, 196, 255, .75)); }
+.equipped-character .equipment-weapon-alt:not(.weapon-skin):not(.weapon-cast)[data-wgrade="3"] { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)) drop-shadow(0 0 2px #ecd4ff) drop-shadow(0 0 6px rgba(176, 102, 255, .85)); }
+.equipped-character .equipment-weapon-alt:not(.weapon-skin):not(.weapon-cast)[data-wgrade="4"] { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)) drop-shadow(0 0 2px #ffe7a8) drop-shadow(0 0 7px rgba(255, 140, 30, .9)) brightness(1.06); }
+.equipped-character .equipment-weapon-alt:not(.weapon-skin):not(.weapon-cast)[data-wgrade="5"] { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)) drop-shadow(0 0 3px #fff6c8) drop-shadow(0 0 8px rgba(255, 200, 40, .95)) drop-shadow(0 0 14px rgba(255, 90, 40, .55)) brightness(1.1); }
+
+/* +12 · +15 — 손 둘레 반짝임(별 둘 · 빛 고리) */
+.equipped-character .weapon-sparkle { position: absolute; z-index: 6; width: 54px; height: 54px; margin: -46px 0 0 -10px; pointer-events: none; }
+.equipped-character .weapon-sparkle::before, .equipped-character .weapon-sparkle::after {
+  content: ""; position: absolute; width: 12px; height: 12px;
+  background: radial-gradient(circle, #fff 0 18%, transparent 20%), conic-gradient(from 45deg, transparent 0 10%, #fff3b0 10% 15%, transparent 15% 35%, #fff3b0 35% 40%, transparent 40% 60%, #fff3b0 60% 65%, transparent 65% 85%, #fff3b0 85% 90%, transparent 90%);
+  border-radius: 50%; filter: drop-shadow(0 0 3px #ffb02e); animation: weapon-twinkle 1.5s ease-in-out infinite;
+}
+.equipped-character .weapon-sparkle::before { left: 8px; top: 4px; }
+.equipped-character .weapon-sparkle::after { left: 34px; top: 22px; width: 9px; height: 9px; animation-delay: .75s; }
+.equipped-character .weapon-sparkle.g5::before, .equipped-character .weapon-sparkle.g5::after { filter: drop-shadow(0 0 4px #ff6a2a) drop-shadow(0 0 2px #fff); animation-duration: 1.1s; }
+@keyframes weapon-twinkle { 0%, 100% { transform: scale(.35) rotate(0deg); opacity: .2; } 50% { transform: scale(1.1) rotate(45deg); opacity: 1; } }
+
+/* 같은 그림 안에서 단계가 올랐을 때 — 바꿔 끼울 때와 같은 고리를 금빛으로 한 번 더 크게 */
+.equipped-character .gear-swap-flash.gear-level-up { width: 86px; height: 86px; margin: -43px 0 0 -43px; border-color: #ffe27a; box-shadow: 0 0 18px #ffb02e, inset 0 0 12px #ffd23f; }
+
+/* 세트 파츠 강화 +3 · +6 · +9 — 입은 파츠 테두리가 빛난다(흰 → 하늘 → 금) */
+.equipped-character .equipment-wear[data-enh="1"] { filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, .95)); }
+.equipped-character .equipment-wear[data-enh="2"] { filter: drop-shadow(0 0 1.5px #d8f6ff) drop-shadow(0 0 4px rgba(80, 196, 255, .8)); }
+.equipped-character .equipment-wear[data-enh="3"] { filter: drop-shadow(0 0 2px #fff4c0) drop-shadow(0 0 5px rgba(255, 176, 46, .95)) brightness(1.06); }
+
+@media (prefers-reduced-motion: reduce) { .equipped-character .weapon-sparkle::before, .equipped-character .weapon-sparkle::after { animation: none; opacity: .9; } }
+
+/* 대장간 강화가 사냥터에 반영된 순간 — 주인공 둘레 금빛 터짐 한 번(TitansGame powerUp) */
+.titans-hero-facing .hero-powerup-burst { position: absolute; left: 50%; top: 52%; width: 150px; height: 150px; margin: -75px 0 0 -75px; z-index: 7; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 246, 190, .9) 0 14%, rgba(255, 196, 70, .5) 28%, transparent 60%); animation: hero-powerup 1.2s ease-out forwards; }
+.titans-hero-facing .hero-powerup-burst::after { content: ""; position: absolute; inset: 18%; border-radius: 50%; border: 4px solid #ffe27a; box-shadow: 0 0 16px #ffb02e; animation: hero-powerup-ring 1.2s ease-out forwards; }
+@keyframes hero-powerup { 0% { transform: scale(.3); opacity: 0; } 18% { opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+@keyframes hero-powerup-ring { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .titans-hero-facing .hero-powerup-burst, .titans-hero-facing .hero-powerup-burst::after { animation-duration: .01s; } }
