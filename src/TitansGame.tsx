@@ -4270,7 +4270,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
       <section
         ref={fieldRef}
-        className={`titans-field phase-${battlePhase} ${partyKo ? "party-ko" : ""} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${specialFight ? `is-special is-${specialFight.kind}` : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""}`}
+        className={`titans-field phase-${battlePhase} ${partyKo ? "party-ko" : ""} hero-${weaponKind === "sword" || weaponKind === "spear" ? "melee" : "ranged"} ${partyApproach ? "party-entering" : ""} ${encounterMotion.wide ? "lanes-wide" : ""} ${boss ? "boss" : ""} ${specialFight ? `is-special is-${specialFight.kind}` : ""} ${chesterson ? "chest" : ""} ${impact ? `impact-${impact}` : ""} ${bossBreak ? `boss-break-${bossBreak}` : ""} ${bossBreak === 1 || bossBreak === 2 ? "boss-breaking" : ""} ${skillVisual || allyCut ? "has-cutin" : ""}`}
         data-weapon-fx={equippedFxDef ? character.equippedWeaponFx : undefined}
         data-theme={equippedThemeDef ? character.equippedTheme : undefined}
         data-area={area.id}

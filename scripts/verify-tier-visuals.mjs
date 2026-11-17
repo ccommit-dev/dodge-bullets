@@ -66,8 +66,13 @@ const learned = data.skills.filter(([, slot]) => slot !== "passive");
 const byTier = (t) => learned.find(([id]) => data.skill[id] === t);
 await seed();
 await waitCombat(); await sleep(1500);
-const aura = await page.evaluate(() => [...document.querySelectorAll(".titans-allies .titan-ally-art[data-rarity]")].map((a) => { const i = a.querySelector(".ally-tier-aura"); return { t: a.dataset.rarity, shown: !!i && getComputedStyle(i).display !== "none" && i.getBoundingClientRect().width > 0, anim: i ? getComputedStyle(i, "::before").animationName : "" }; }));
-ok("전장: 영웅 이상 발밑 빛 · 초월은 도는 고리", aura.length >= 3 && aura.every((a) => a.shown) && aura.some((a) => a.t === "LR" && a.anim === "tier-aura-spin"), JSON.stringify(aura));
+// 발판 고리는 대장전 · 컷인 때만 (2026-11-17 /goal ① "발판 고리와 후광은 대장전 · 컷인 때만 켭니다", ui/huntFocus.css) — 일반 전투엔 숨고, 대장(.boss)이면 켜진다
+const auraNow = () => page.evaluate(() => [...document.querySelectorAll(".titans-allies .titan-ally-art[data-rarity]")].map((a) => { const i = a.querySelector(".ally-tier-aura"); return { t: a.dataset.rarity, shown: !!i && getComputedStyle(i).display !== "none" && i.getBoundingClientRect().width > 0, anim: i ? getComputedStyle(i, "::before").animationName : "" }; }));
+const auraMob = await auraNow();
+ok("전장: 일반 전투엔 발판 고리가 숨는다", auraMob.length >= 3 && auraMob.every((a) => !a.shown), JSON.stringify(auraMob));
+// 같은 evaluate 안에서 붙이고 재고 뗀다 — 사이에 React 가 다시 그리면 직접 붙인 .boss 가 지워졌다(verify-all 부하에서 shown false)
+const aura = await page.evaluate(() => { const f = document.querySelector(".titans-field"); f?.classList.add("boss"); const out = [...document.querySelectorAll(".titans-allies .titan-ally-art[data-rarity]")].map((a) => { const i = a.querySelector(".ally-tier-aura"); return { t: a.dataset.rarity, shown: !!i && getComputedStyle(i).display !== "none" && i.getBoundingClientRect().width > 0, anim: i ? getComputedStyle(i, "::before").animationName : "" }; }); f?.classList.remove("boss"); return out; });
+ok("전장 대장전: 영웅 이상 발밑 빛 · 초월은 도는 고리", aura.length >= 3 && aura.every((a) => a.shown) && aura.some((a) => a.t === "LR" && a.anim === "tier-aura-spin"), JSON.stringify(aura));
 if (OUT) await page.screenshot({ path: `${OUT}/field.png` });
 const widths = {};
 for (const t of ["R", "SR", "SSR", "UR", "LR"]) {

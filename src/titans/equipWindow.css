@@ -15,7 +15,7 @@
   display: inline-flex; align-items: baseline; gap: 5px; min-width: 0; padding: 3px 10px; border-radius: 999px;
   background: rgba(22, 13, 7, .78); box-shadow: inset 0 0 0 1.5px rgba(255, 243, 214, .35); color: #fff3d6; white-space: nowrap;
 }
-.equip-window .equip-stat small { font-size: 11px !important; font-weight: 800; color: #e7cfa4 !important; }
+.equip-window .equip-stat small { font-size: 13px !important; font-weight: 800; color: #e7cfa4 !important; }
 .equip-window .equip-stat b { font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .equip-window .equip-stat.stat-tap b { color: #fde68a; }
 .equip-window .equip-stat.stat-power b { color: #fff; }

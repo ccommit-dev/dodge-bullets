@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "../asset";
 import { ALLY_SKINS } from "./skins";
-import { ALLY_RARITY } from "./allies";
+import { ALLY_ELEMENT, ALLY_RARITY } from "./allies";
 import "./partyMotion.css";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
@@ -185,10 +185,10 @@ export type MonsterFrameState = "idle" | "hit" | "attack" | "defeat";   // attac
  *  오른쪽을 보게 렌더한 4종(FLIP_MONSTERS)은 화면에서 뒤집히므로 좌우를 바꿔 넣었다 */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   slime: [0.09, 0.09], goblin: [0.10, 0.13], "shadow-wolf-clean": [0.18, 0.23], ogre: [0.16, 0.24], dragon: [0.19, 0.04], "magma-imp": [0.12, 0.14],
-  "void-imp": [0.25, 0.23], "goblin-shaman": [0.10, 0.13], "skeleton-goblin": [0.15, 0.16], "frost-wolf": [0.18, 0.23], hellhound: [0.18, 0.23], "stone-troll": [0.17, 0.21],
-  "armored-ogre": [0.16, 0.24], "lava-drake": [0.20, 0.04], "storm-drake": [0.19, 0.04], "moss-golem-clean": [0.15, 0.18], "moon-wolf-king-clean": [0.18, 0.23], "wolf-king-clean": [0.18, 0.22],
-  "flame-wyvern-clean": [0.18, 0.03], "abyss-titan": [0.17, 0.23], "thorn-boar-king": [0.19, 0.25], "ancient-treant": [0.23, 0.25], "ruin-sentinel": [0.17, 0.23], "magma-golem": [0.16, 0.21],
-  "void-lich": [0.12, 0.23], "goblin-warlord": [0.11, 0.13], "spider-queen": [0.05, 0.08], minotaur: [0.16, 0.19], "fire-demon": [0.20, 0.04], "bone-dragon": [0.19, 0.04],
+  "void-imp": [0.24, 0.22], "goblin-shaman": [0.10, 0.12], "skeleton-goblin": [0.15, 0.16], "frost-wolf": [0.18, 0.23], hellhound: [0.18, 0.23], "stone-troll": [0.17, 0.21],
+  "armored-ogre": [0.16, 0.24], "lava-drake": [0.19, 0.04], "storm-drake": [0.19, 0.04], "moss-golem-clean": [0.16, 0.18], "moon-wolf-king-clean": [0.18, 0.23], "wolf-king-clean": [0.18, 0.22],
+  "flame-wyvern-clean": [0.19, 0.03], "abyss-titan": [0.17, 0.23], "thorn-boar-king": [0.19, 0.24], "ancient-treant": [0.22, 0.25], "ruin-sentinel": [0.17, 0.23], "magma-golem": [0.16, 0.21],
+  "void-lich": [0.12, 0.24], "goblin-warlord": [0.10, 0.13], "spider-queen": [0.05, 0.08], minotaur: [0.15, 0.19], "fire-demon": [0.19, 0.04], "bone-dragon": [0.19, 0.04],
   "golden-lion-clean": [0.18, 0.23],
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
@@ -532,6 +532,8 @@ export function AllyArt({ id, stars = 0, attacking = false, pulse = 0, hitPulse 
       {partySlot !== undefined && <i className="ally-tier-aura" aria-hidden="true" />}
       <div className="ally-idle" style={{ animationDelay: `${(allyIndex[id] ?? 0) * -0.27}s` }}>
         {stars >= 2 && <i className={`ally-star-aura star-${Math.min(5, stars)}`} aria-hidden="true" />}
+        {/* 후광 (2026-11-17 /goal ① · ②) — 신화 · 초월은 그림(셀 · 도트)에서 후광을 빼고 여기서 그린다. 대장전 · 컷인 · 뽑기 소개 때만 보인다(ui/huntFocus.css) */}
+        {(ALLY_RARITY[id] === "UR" || ALLY_RARITY[id] === "LR") && <i className="ally-halo" data-el={ALLY_ELEMENT[id]} aria-hidden="true" />}
         <div key={`swing-${pulse}`} className={`ally-swing ${attacking && pulse > 0 ? "is-attacking" : ""} phase-${attackPhase}`}>
           {anim2 ? (
             // 2판: 몸 상자는 그대로(WIDE_CELL), 안쪽 칸 그림만 동작 줄을 돈다 — 같은 동작이 다시 오면 key 로 처음부터
@@ -585,15 +587,17 @@ function lineFormation(cell: "R" | "L", index: number, jx = 0): Record<string, s
   const [col, row] = cell === "R" ? [index >= 1 ? 0.45 : 0, Math.min(1, index)]   /* 뒷줄 근접 0.6 → 0.45칸(2026-10-28) — 뒷줄도 몬스터 가까이. 0.3 칸 · 반 줄 높이는 앞줄과 37~42% 겹쳤다(verify-formation) */   /* 뒷줄 근접은 0.3칸 뒤 — 큰 돌진 동작(anim-plus)에서 앞줄과 세로로 겹치지 않게 */ : LEFT_CELLS[Math.min(LEFT_CELLS.length - 1, Math.max(0, index))];
   const step = "var(--ally-size, 78px) * 0.68";
   // 주인공이 근접(검 · 창)이면 근접 동료는 주인공 뒤 깊이로 한 칸 물러서고(--melee-lift) 앞줄은 조금 왼쪽(--melee-front-dx) — 셋이 같은 자리에 겹쳐 앞줄 동료가 주인공 뒤로 숨었다 (hunt-motion.css)
-  const bottom = cell === "R" && row === 0 ? `calc(${ROW_BOTTOM[0]} + var(--melee-lift, 0px))` : ROW_BOTTOM[row];   // 뒷줄은 그대로 — 올리면 발이 풀밭 선 위로 나갔다(verify-walk-y)
+  // 왼쪽 칸은 CSS 로 덮을 수 있다(--fl-l<칸>-col · --fl-l<칸>-y, 2026-11-17 ui/huntFocus.css) — 키 큰 세로 전장에서 동료를 세 줄로 펼쳐 큰 몸이 가로로 몰려 겹치지 않게. 없으면 예전 값
+  const li = Math.min(LEFT_CELLS.length - 1, Math.max(0, index));
+  const bottom = cell === "R" && row === 0 ? `calc(${ROW_BOTTOM[0]} + var(--melee-lift, 0px))` : cell === "L" ? `var(--fl-l${li}-y, ${ROW_BOTTOM[row]})` : `var(--fl-r1-y, ${ROW_BOTTOM[row]})`;   // 근접 뒷줄(R1)도 덮을 수 있다 — 주인공이 근접이면 앞줄이 들려(--melee-lift) 두 줄이 붙었다   // 뒷줄은 그대로 — 올리면 발이 풀밭 선 위로 나갔다(verify-walk-y)
   if (cell === "R") {
     // 교전 x 는 CSS 의 근접 공식(몬스터 보이는 몸 가장자리) + --party-melee-dx — 칸만큼 왼쪽으로
-    const dx = `calc(${-col} * ${step} + ${jx}px${row === 0 ? " + var(--melee-front-dx, 0px)" : ""})`;   // jx — 스테이지마다 다른 좌우 자리(allyStageJitter)
+    const dx = `calc(${row === 1 ? `-1 * var(--fl-r1-col, ${col})` : -col} * ${step} + ${jx}px${row === 0 ? " + var(--melee-front-dx, 0px)" : ""})`;   // jx — 스테이지마다 다른 좌우 자리(allyStageJitter)
     const edge = `calc(100% - var(--allies-left, 0%) - var(--party-meet-right, var(--monster-meet-right, 30%)) - var(--monster-size, 112px) * (1 - var(--party-ml, var(--monster-ml, .22))) - 6px - var(--ally-size, 86px) * .88 + ${dx})`;
     return { "--party-melee-dx": dx, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${edge} - 18%)`, "--party-z": row === 0 ? "4" : "2" };
   }
   // 원거리는 --ranged-advance 만큼 앞으로(2026-10-28, 사용자: "원거리여도 특정 거리까지 가까이") — 주인공이 근접이면 비운 자리까지, 원거리면 조금 (hunt-motion.css)
-  const x = `calc(${col} * ${step} + ${jx}px + var(--ranged-advance, 0px))`;
+  const x = `calc(var(--fl-l${li}-col, ${col}) * ${step} + ${jx}px + var(--ranged-advance, 0px))`;
   return { "--party-combat-x": x, "--party-combat-y": bottom, "--party-lane-y": bottom, "--party-home-x": `calc(${x} - 4%)`, "--party-z": row === 0 ? "4" : "2" };
 }
 

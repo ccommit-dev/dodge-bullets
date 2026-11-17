@@ -26,9 +26,12 @@ import "./ui/focus2.css";   // 2026-11-16 집중 정리 2판 — 성문 방어 �
 import "./ui/allyShowcase.css";   // 2026-11-16 상위 동료 갖고 싶게 — 전장 몸집 · 시그니처 큰 폭발 · 전설 이상 컷인 · 뽑기 새 동료 소개 (맨 뒤)
 import "./ui/upgradeGlow.css";   // 2026-11-17 강화가 눈에 보이게 — 무기 단계 빛 · 세트 파츠 강화 빛 (맨 뒤)
 import "./ui/gearRunes.css";   // 2026-11-17 세트 파츠 룬 홈 — 홈 세 칸 · 후보 세 장 · 공명 빛 (맨 뒤)
+import "./ui/huntFocus.css";   // 2026-11-17 사냥 화면 집중 — 큰 무대 · 얇은 HUD 띠 · 성장 판 서랍 · 캐릭터 1.5배 (맨 뒤)
+import "./ui/pixelMode.css";   // 2026-11-17 도트 그림체 — html.art-pixel 일 때 시트 · 배경을 번지지 않게 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
+import { getArtStyle, isPixelArt, setArtStyle } from "./ui/artStyle";
 // 번들 분할: 비트·대장간·마이페이지·이벤트 센터는 첫 화면(사냥터)에 필요 없다 — 동적 import로 분리
 import { installChunkReload, withChunkReload } from "./ui/chunkReload";
 import { setBgmScene } from "./ui/bgm";
@@ -888,6 +891,7 @@ function App() {
         // 저사양 모드 (ui/perfMode) — 전투 첫 3초가 느리면 캔버스 흐림 그림자를 끈다. 비트에서 켜졌어도 같이 적용
         if (stateRef.current === "playing" && watchDodgeFrames(ts - lastTsRef.current)) setLowFx(true);
         applyLowFx(ctx);
+        if (isPixelArt()) ctx.imageSmoothingEnabled = false;   // 도트 그림체 — 시트를 키울 때 번지지 않게(ui/artStyle)
         // 첫 스테이지 슬로모션 튜토리얼 (점검표 #6): 첫 원정의 처음 7초만 45% 속도로,
         // 분열 화살 규칙을 안전하게 한 번 본 뒤 정상 속도로 복귀한다
         // 실시간 기준 7초 — 감속된 게임 시간(stageElapsedMs)으로 재면 실제로는 15초가 걸린다
@@ -1867,6 +1871,18 @@ function App() {
                 >
                   <span>스킬 칸 위치</span>
                   <b>{dockLeft ? "왼쪽" : "주인공 곁"}</b>
+                </button>
+                {/* 그림체 (2026-11-17, /goal ③) — 셀(기본) · 도트. 바꾸면 다시 불러온다(ui/artStyle) */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="settings-art-style"
+                  aria-pressed={getArtStyle() === "pixel"}
+                  onClick={() => { setSettingsOpen(false); showToast(getArtStyle() === "pixel" ? "셀 그림체로 바꿔요" : "도트 그림체로 바꿔요", 1200); window.setTimeout(() => setArtStyle(getArtStyle() === "pixel" ? "cel" : "pixel"), 250); }}
+                  title="셀: 평면 색 · 굵은 외곽선(기본) / 도트: 같은 캐릭터를 낮은 해상도 도트로"
+                >
+                  <span>그림체</span>
+                  <b>{getArtStyle() === "pixel" ? "도트" : "셀"}</b>
                 </button>
                 <button
                   type="button"

@@ -1,0 +1,115 @@
+/* 사냥 화면 집중 (2026-11-17, 사용자: "리소스가 이게 최선일까 — 메이플이나 바람의나라처럼 집중이 안 돼" → /goal ① 화면 구성)
+ * 원칙만 따른다(특정 게임 모습을 베끼지 않는다): 무대가 화면 대부분 · UI 는 가장자리 얇게 · 캐릭터가 크게 · 배경은 한 발 뒤로.
+ * - 전장: 머리(지갑) · 탭 줄 · 아래 내비를 뺀 세로 전부(390×844 에서 약 75%, 위 HUD 띠를 빼면 무대 약 70%).
+ * - 위 HUD: HP 막대가 띠(30px)가 되고 그 위에 'STAGE 18 · 6/10' · HP 숫자. 하늘 자리에 작은 칩 두 줄 — [우편 딱지 · ● 자동 사냥] · 오른쪽 다음 목표
+ *   (예전 HP · 스테이지 판 · 자동 사냥 줄 · 우편/다음 목표 = 131px).
+ * - 성장 판: 가로 화면(unify.css)처럼 탭을 누르면 아래에서 올라오는 서랍. 처음엔 닫혀 있다.
+ * - 캐릭터: 주인공 1.5배 · 대장 1.18 · 몬스터 1.15 · 동료 1.1 + 대열 세 줄(폭 366px 에 1.5배 넷은 70% 겹쳤다, docs/ART_STYLE.md).
+ * - 배경 채도 · 대비 낮춤 · 동료 발판 고리 · 신화/초월 후광은 대장전 · 컷인 때만.
+ * 가로 낮은 화면(max-height 560)은 unify.css 의 가로 서랍 그대로 둔다. */
+@media not all and (orientation: landscape) and (max-height: 560px) {
+  .titans-layer:not(.is-management-page) {
+    --hf-chrome: 212px;   /* 머리 66 + 버프 줄 18 + 탭 줄 50 + 내비 64 + 사이 14 */
+    overflow-y: hidden;
+  }
+  .titans-layer:not(.is-management-page) > .titans-field {
+    height: calc(100dvh - var(--hf-chrome) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    min-height: 380px; max-height: none !important;
+    /* 캐릭터 크게 — 주인공 · 몬스터 1.5배, 동료 1.3배. 동료 대열은 "동료 크기 × 0.68" 칸 격자라 전장 폭(366px)에 넷이 1.5배로 서면
+       동료끼리 70% 겹쳤다(verify-formation 문턱 25%). 좁은 폰은 폭에 맞춰 줄인다 */
+    --ally-size: min(82px, 21vw) !important;
+    --monster-size: min(115px, 29.5vw) !important;
+    --boss-size: min(160px, 41vw) !important;
+    --hero-size: clamp(99px, 27%, 120px) !important;
+    /* 동료 대열을 세 줄로(SpriteArt lineFormation 의 칸 변수) — 큰 몸이 가로 한두 줄에 몰리면 겹쳤다. 전장이 위아래로 길어 뒷줄이 들어간다.
+       앞줄: 주인공 · 근접 앞(R0) · L0(주인공 뒤, 그대로) / 가운데: L1(왼쪽) / 맨 뒷줄: L2 · L3. 근접 뒷줄(R1)은 앞줄과 가운데 사이보다 조금 더 뒤 —
+       주인공이 근접이면 앞줄이 들려(--melee-lift) R0 · R1 이 붙어 31% 겹쳤다(variants45 mia×bronn) */
+    --fl-l0-col: -0.2;   /* 앞줄 L0 를 주인공 뒤로 조금 더 — 세 번째 근접(L0)이 근접 뒷줄과 붙어 51층에서 26% (verify-all), 옆 세션 실측 */
+    --fl-l1-col: -0.66; --fl-l1-y: calc(var(--ally-size, 78px) * 0.98);
+    --fl-l2-col: -0.3; --fl-l2-y: calc(var(--ally-size, 78px) * 1.9);
+    --fl-l3-col: 0.6; --fl-l3-y: calc(var(--ally-size, 78px) * 1.9);
+  }
+
+  /* 원거리(활 · 지팡이) 주인공은 몬스터와 30px 넘게 떨어져 선다(hunt-motion.css · verify-hunt-motion) — 주인공 +33px · 몬스터 +15px 커진 만큼 뒤로 */
+  .titans-layer:not(.is-management-page) > .titans-field.hero-ranged .titans-hero.is-engaged { left: calc(var(--hero-meet-left, 27%) + 8% - 34px); }
+
+  /* ── 위 HUD ── 띠 하나(HP 막대 위에 STAGE 글자 · HP 숫자, 30px) + 하늘 자리의 작은 칩 두 줄. 예전 HP · 판 · 자동 사냥 줄 · 우편/알림 = 131px
+     칩 순서는 예전과 같다(verify-urgent-ui): 띠 → [우편 딱지(남은 시간 글자까지) · ● 자동 사냥] → 오른쪽 다음 목표. 딱지는 손가락 폭 44px 이상 · 글자는 13px 이상(scan-readability) */
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-hp {
+    position: absolute !important; top: 8px !important; left: 10px !important; right: 10px !important; height: 30px !important; margin: 0 !important;
+    border-radius: 15px !important; z-index: 20; border: 2px solid rgba(59, 36, 21, .85) !important; background: rgba(30, 18, 10, .55) !important; overflow: hidden;
+  }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-hp .titans-hp-fill { height: 100%; border-radius: 0; }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-hp > span { position: absolute !important; inset: 0 12px 0 auto !important; display: flex !important; align-items: center; font-size: 13px !important; line-height: 1 !important; transform: none !important; }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-stagebar.in-field {
+    position: absolute !important; top: 8px !important; left: 22px !important; right: auto !important; z-index: 21;
+    margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; pointer-events: none;
+    display: flex; align-items: center; height: 30px !important; min-height: 0 !important; overflow: hidden;
+  }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-stagebar.in-field > div { display: flex; align-items: center; gap: 6px; height: 30px; margin: 0 !important; padding: 0 !important; }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-stagebar.in-field :is(.titans-kicker, .titans-area-name, .idle-preview-chip) { display: none !important; }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-stagebar.in-field h1 {
+    margin: 0 !important; padding: 0 !important; display: block; font-size: 14px !important; line-height: 30px !important; color: #fff8e6 !important; text-shadow: 0 1px 0 #2a1408, 0 0 4px rgba(0, 0, 0, .6) !important; white-space: nowrap;
+  }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-stagebar.in-field .warmup-chip { font-size: 13px !important; padding: 1px 6px !important; }
+  /* 둘째 줄 왼쪽: 우편 딱지(아이콘 · 개수 · 남은 시간) — 폭 96 을 넘지 않는다고 보고 자동 사냥 칩을 그 옆(112px)에 둔다 */
+  .titans-layer:not(.is-management-page) > .titans-field > .inbox-btn {
+    position: absolute !important; top: 44px !important; left: 10px !important; min-width: 44px !important; max-width: 96px; height: 28px !important; z-index: 22; overflow: hidden;
+  }
+  /* 자동 사냥 — "● 자동 사냥" 칩(시간 · 수입 글자는 뺀다). 숨기면 안 된다(2026-11-04 사용자: 자동 사냥이 보이게 · verify-hud-layout) */
+  .titans-layer:not(.is-management-page) > .titans-field > .idle-status-strip {
+    position: absolute !important; top: 46px !important; left: 112px !important; right: auto !important; width: auto !important; height: 24px !important; margin: 0 !important;
+    padding: 0 9px !important; border-radius: 12px !important; font-size: 13px !important; line-height: 24px !important; z-index: 19; white-space: nowrap;
+  }
+  .titans-layer:not(.is-management-page) > .titans-field > .idle-status-strip small { display: none !important; }
+  /* 셋째 줄 오른쪽: 다음 목표(하늘 자리 · 캐릭터를 안 가린다) */
+  .titans-layer:not(.is-management-page) > .titans-field > .battle-alert-stack {
+    position: absolute !important; top: 78px !important; bottom: auto !important; left: auto !important; right: 10px !important; max-width: calc(100% - 20px); z-index: 19; transform: none !important;
+  }
+  .titans-layer:not(.is-management-page) > .titans-field > .battle-alert-stack > * { font-size: 13px !important; min-height: 26px !important; padding-block: 2px !important; }
+
+  /* ── 무대 ── 배경은 한 발 뒤로(채도 · 대비 낮춤), 땅을 넓게 */
+  /* 배경은 무대 뒤 그림 — 채도 · 대비를 낮추고 살짝 흐려(초점이 앞의 캐릭터로) 땅 쪽으로 옅게 녹인다 */
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-background { filter: saturate(.5) contrast(.78) brightness(1.06) blur(.6px); }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-background::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 246, 228, .18), rgba(255, 246, 228, 0) 45%, rgba(40, 24, 12, .18)); pointer-events: none; }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-ground { filter: saturate(.75) contrast(.9); }
+
+  /* ── 성장 판 = 아래 서랍 ── 탭을 누르면 올라온다(TitansGame growthOpen), ▾ · 같은 탭으로 닫는다 */
+  .titans-layer:not(.is-management-page) > .titans-growth-tabs { position: relative; z-index: 41; }
+  .titans-layer:not(.is-management-page) > .titans-growth-tabs > .growth-drawer-close { display: none; flex: 0 0 44px; }
+  .titans-layer.growth-open:not(.is-management-page) > .titans-growth-tabs > .growth-drawer-close { display: block; }
+  .titans-layer:not(.is-management-page) > .hub-inline > .titans-shop {
+    position: fixed; z-index: 40; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right));
+    bottom: calc(64px + 50px + 6px + env(safe-area-inset-bottom)); max-height: 62dvh; overflow-y: auto; margin: 0; padding: 8px;
+    border: 3px solid var(--flat-ink, #3b2415); border-radius: 16px 16px 0 0; background: var(--flat-cream-2, #fff3dc);
+    box-shadow: 0 -6px 0 rgba(59, 36, 21, .2); transform: translateY(calc(100% + 140px)); transition: transform .26s cubic-bezier(.2, .8, .3, 1); visibility: hidden;
+  }
+  .titans-layer.growth-open:not(.is-management-page) > .hub-inline > .titans-shop { transform: none; visibility: visible; }
+}
+
+/* ── 동료 발판 고리는 대장전 · 컷인 때만 (화면 방향과 상관없이) ── */
+.titans-field:not(.boss):not(.has-cutin) .titans-allies .ally-tier-aura { display: none; }
+
+/* ── 신화 · 초월 후광 (SpriteArt .ally-halo) ── 셀 · 도트 그림에서 뺀 후광을 CSS 로. 평소엔 숨고 대장전 · 컷인 · 뽑기 소개 · 컷인 띠에서만 */
+.titan-ally-art .ally-halo {
+  display: none; position: absolute; left: 50%; top: 2%; width: 74%; aspect-ratio: 1; margin-left: -37%; z-index: -1; pointer-events: none; border-radius: 50%;
+  --halo: #f2c232;
+  background: radial-gradient(circle, transparent 0 50%, color-mix(in srgb, var(--halo) 90%, #fff) 52%, var(--halo) 56%, transparent 61%);
+  filter: drop-shadow(0 0 4px var(--halo));
+}
+.titan-ally-art .ally-halo[data-el="fire"] { --halo: #ff8a2a; }
+.titan-ally-art .ally-halo[data-el="water"] { --halo: #3ae0ff; }
+.titan-ally-art .ally-halo[data-el="earth"] { --halo: #9af05a; }
+.titan-ally-art .ally-halo[data-el="wind"] { --halo: #c8a8ff; }
+/* 초월 — 금빛 바깥 고리 한 겹 더 · 천천히 돈다 */
+.titan-ally-art[data-rarity="LR"] .ally-halo {
+  background: radial-gradient(circle, transparent 0 44%, var(--halo) 47%, transparent 52%, transparent 58%, #ffe27a 60%, #f2c232 63%, transparent 67%);
+  animation: ally-halo-spin 6s linear infinite;
+}
+@keyframes ally-halo-spin { to { rotate: 360deg; } }
+.titans-field:is(.boss, .has-cutin) .titan-ally-art .ally-halo, .ally-showcase .ally-halo, .ally-cutin .ally-halo { display: block; }
+@media (prefers-reduced-motion: reduce) { .titan-ally-art .ally-halo { animation: none !important; } }
+
+/* 스테이지를 떠날 때 배경 흐림 연출(App.css stage-parallax-out)이 filter 를 통째로 바꿔, 전환마다 배경 채도가 원래보다 높게(1.2) 번쩍였다 —
+   같은 이름으로 다시 정의해 '한 발 뒤로' 규칙(채도 · 대비 낮춤)을 지킨 채 어둡게만 */
+@keyframes stage-parallax-out { to { background-position: 20% 68%; filter: saturate(.5) contrast(.78) brightness(.8) blur(.6px); } }

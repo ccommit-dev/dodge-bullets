@@ -1,0 +1,15 @@
+/* 도트 그림체 (2026-11-17, /goal ③, ui/artStyle) — html.art-pixel 일 때 도트 시트 · 무기 · 입는 파츠 · 배경을 키우거나 줄일 때 번지지 않게.
+ * 시트는 assetUrl 이 anim-px · gear-px · backgrounds-px 로 바꿔 준다. 여기서는 그리는 방식만 — 화면 UI 아이콘(셀 그림)은 그대로 둔다. */
+html.art-pixel :is(.titans-field, .titan-ally-art, .equipped-character, .monster-art, .ally-showcase, .ally-cutin, .hero-pet, .ride-mount, .titans-background),
+html.art-pixel :is(.titans-field, .titan-ally-art, .equipped-character, .monster-art, .ally-showcase, .ally-cutin) *,
+html.art-pixel [style*="anim-px"], html.art-pixel [style*="backgrounds-px"],
+html.art-pixel img[src*="/anim-px/"], html.art-pixel img[src*="/gear-px/"],
+html.art-pixel canvas {
+  image-rendering: pixelated;
+}
+/* 도트는 그림 자체가 계단 색이라 무기 단계 빛(upgradeGlow)의 흐린 그림자 대신 또렷한 테두리 한 줄 */
+html.art-pixel .equipped-character .equipment-weapon-alt:not(.weapon-skin):not(.weapon-cast)[data-wgrade]:not([data-wgrade="0"]) { filter: drop-shadow(1px 0 0 var(--wg-px, #fff7c0)) drop-shadow(-1px 0 0 var(--wg-px, #fff7c0)) drop-shadow(0 1px 0 var(--wg-px, #fff7c0)) drop-shadow(0 -1px 0 var(--wg-px, #fff7c0)); }
+html.art-pixel .equipped-character .equipment-weapon-alt[data-wgrade="2"] { --wg-px: #8fe3ff; }
+html.art-pixel .equipped-character .equipment-weapon-alt[data-wgrade="3"] { --wg-px: #d9a8ff; }
+html.art-pixel .equipped-character .equipment-weapon-alt[data-wgrade="4"] { --wg-px: #ffb347; }
+html.art-pixel .equipped-character .equipment-weapon-alt[data-wgrade="5"] { --wg-px: #ffd34d; }
