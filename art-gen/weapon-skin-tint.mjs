@@ -5,6 +5,8 @@
 //   node art-gen/weapon-skin-tint.mjs  → public/titans/gear/skins/<skinId>/<weapon|spear|bow|staff>-<1..3>.png
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
+// 도트 그림체(2026-11-17, --pixel) — gear-px 그림에서 같은 규칙으로
+const GEAR = process.argv.includes("--pixel") ? "public/titans/gear-px" : "public/titans/gear";
 // target: 옮길 색상(°) · sat: 채도 배율(낮은 채도 나무 결은 minSat 까지 올린다) · lit: 밝기 더하기(0~1) — 몸통 색과의 차이는 절반만 남겨 결을 살린다
 const SKINS = {
   "blade-crimson": { target: 352, sat: 1.1, lit: 0, minSat: 0.6 },
@@ -16,9 +18,9 @@ const GOLD = [33, 65];
 const rgb2hsl = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; if (!d) return [0, 0, l]; const s = d / (1 - Math.abs(2 * l - 1)); let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(h * 60 + 360) % 360, s, l]; };
 const hsl2rgb = (h, s, l) => { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2; const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]; return [r + m, g + m, b + m]; };
 for (const [skin, t] of Object.entries(SKINS)) {
-  mkdirSync(`public/titans/gear/skins/${skin}`, { recursive: true });
+  mkdirSync(`${GEAR}/skins/${skin}`, { recursive: true });
   for (const kind of ["weapon", "spear", "bow", "staff"]) for (const tier of [1, 2, 3]) {
-    const src = `public/titans/gear/${kind}-${tier}.png`;
+    const src = `${GEAR}/${kind}-${tier}.png`;
     const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     // 몸통 색 찾기 — 2° 칸 히스토그램(채도 가중)
     const hist = new Float64Array(180);
@@ -35,7 +37,7 @@ for (const [skin, t] of Object.entries(SKINS)) {
       const [r, g, b] = hsl2rgb(nh, Math.min(1, Math.max(t.minSat ?? 0, s * t.sat)), Math.min(0.97, l + t.lit * (1 - l)));
       data[i] = Math.round(r * 255); data[i + 1] = Math.round(g * 255); data[i + 2] = Math.round(b * 255); moved += 1;
     }
-    await sharp(data, { raw: info }).png().toFile(`public/titans/gear/skins/${skin}/${kind}-${tier}.png`);
+    await sharp(data, { raw: info }).png().toFile(`${GEAR}/skins/${skin}/${kind}-${tier}.png`);
     if (!moved) console.warn("색을 옮긴 픽셀이 없다:", skin, kind, tier);
     if (skin === "blade-crimson") console.log(`  ${kind}-${tier} 몸통 ${body}° · ${moved}px`);
   }

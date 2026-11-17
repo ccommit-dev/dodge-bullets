@@ -14,7 +14,16 @@ import sharp from "sharp";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { makeHeroPortrait } from "./make-hero-portrait.mjs";
 
-const SRC = "art-gen/out/b3d2";
+// 도트 그림체 (2026-11-17, /goal ③) — --pixel: render_anim2 ART_STYLE=pixel 이 쓴 낮은 해상도 원본(b3d2-px, PIXEL_RES 기본 89)을
+// 같은 칸 · 같은 배율 규칙으로 최근접 확대해 public/titans/anim-px 에 쓴다(무손실 webp). 앵커 · 배치 TS · 초상 · 아틀라스는 셀 그림(기본) 것을 그대로 쓴다
+const PX = process.argv.includes("--pixel");
+const PX_RES = Number(process.env.PIXEL_RES ?? 89);
+/** 1024 렌더 기준 상수(몸 단위 · 주인공 키 · 탈것 배율)를 도트 해상도로 — 1024 / PX_RES */
+const RS = PX ? 1024 / PX_RES : 1;
+const SRC = PX ? "art-gen/out/b3d2-px" : "art-gen/out/b3d2";
+const PUB = PX ? "public/titans/anim-px" : "public/titans/anim";
+const KERNEL = PX ? "nearest" : "lanczos3";
+const WEBP = (q) => (PX ? { lossless: true, effort: 4 } : q);
 const LAYOUT = JSON.parse(readFileSync("art-gen/anim-layout.json", "utf8"));
 const roster = readFileSync("art-gen/blender/roster.py", "utf8");
 const keysOf = (name) => { const a = roster.indexOf(`${name} = {`); let d = 0, i = roster.indexOf("{", a); const st = i; for (; i < roster.length; i += 1) { if (roster[i] === "{") d += 1; else if (roster[i] === "}") { d -= 1; if (!d) break; } } return [...roster.slice(st, i).matchAll(/^    '([a-z0-9_-]+)':/gm)].map((m) => m[1]); };
@@ -55,7 +64,7 @@ async function tint(buf, t) {
 /** 칸 하나 — 렌더를 k 배로 줄여 발(pivot)을 칸 안 (px, py) 에. 칸 밖은 잘라낸다 */
 async function cellOps(f, res, k, cellX, cellY, cw, ch, px, py) {
   const R = Math.round, w = R(res * k);
-  let buf = await sharp(f.file).resize(w, w, { kernel: "lanczos3" }).png().toBuffer();
+  let buf = await sharp(f.file).resize(w, w, { kernel: KERNEL }).png().toBuffer();
   if (f.tint > 0) buf = await tint(buf, f.tint);
   const ox = R(px - f.pivot[0] * k), oy = R(py - f.pivot[1] * k);
   const left = Math.max(0, -ox), top = Math.max(0, -oy), right = Math.min(w, cw - ox), bottom = Math.min(w, ch - oy);
@@ -83,16 +92,16 @@ async function grid(c, spec, k, dest) {
     for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * cw, a.row * ch, cw, ch, px, py)));
   }
   const buf = await sharp(blank(cw * spec.cols, ch * rows)).composite(ops).png().toBuffer();
-  await sharp(buf).webp({ quality: 88, alphaQuality: 92, effort: 5 }).toFile(dest);
+  await sharp(buf).webp(WEBP({ quality: 88, alphaQuality: 92, effort: 5 })).toFile(dest);
   return buf;
 }
 
-const only = process.argv.slice(2);
+const only = process.argv.slice(2).filter((a) => a !== "--pixel");
 const want = (id) => !only.length || only.includes(id);
 const done = { allies: [], monsters: [], hero: false, hd: {} };
 /** 대장으로 나오는 종 — 성문 방어 장 대장(draw.ts BOSS_SPRITE) + 중간·비밀 대장(stages.ts art) */
 const BOSS_ARTS = ["moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan", "ancient-treant", "bone-dragon", "fire-demon", "goblin-warlord", "magma-golem", "minotaur", "ruin-sentinel", "spider-queen", "thorn-boar-king", "void-lich"];
-const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
+const UNIT = 1024 / RS / 2.3;   // 렌더 해상도에서 캐릭터 1단위(도트는 PX_RES)   // 렌더 1024px 에서 캐릭터 1단위
 
 // ── 비버(동료·스킨) ── 몸(머리 꼭대기 z≈0.95)이 칸 높이의 65.5% — 1판과 같은 비율. 전원 같은 배율
 {
@@ -108,14 +117,15 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
   if (Object.keys(beavers).length) console.log("beaver k", kB.toFixed(3), "(목표", K.toFixed(3) + ")");
   // 새 동료가 공유 배율을 깎으면 기존 동료까지 작아진다 — 기존만으로 잰 값과 견준다
   { let kOld = K; for (const [id, c] of Object.entries(beavers)) if (!NEW_ALLY_KEYS.includes(id)) kOld = Math.min(kOld, fitScale(allFrames(c), K, CW, CH, CW / 2, CH * A.feet, 3)); console.log("beaver k (기존만)", kOld.toFixed(3)); }
-  mkdirSync("public/titans/anim/allies", { recursive: true });
+  mkdirSync(`${PUB}/allies`, { recursive: true });
   for (const [id, c] of Object.entries(beavers)) {
     if (!want(id)) continue;
-    await grid(c, A, kB, `public/titans/anim/allies/${id}.webp`);
+    await grid(c, A, kB, `${PUB}/allies/${id}.webp`);
     done.allies.push(id);
     // 초상·스킨 썸네일·아틀라스 행도 새 렌더로 — 2판은 주 무기를 왼손(적 쪽)에 쥐어 1판 그림과 손이 다르다(파티 목록과 전투가 같은 그림이게)
     const cellOf = async (f) => sharp(blank(CW, CH)).composite(await cellOps(f, c.res, kB, 0, 0, CW, CH, CW / 2, CH * A.feet)).png().toBuffer();
     const idle0 = await cellOf(c.actions.idle[0]);
+    if (PX) { console.log("ally", id); continue; }
     const portrait = `public/titans/generated/allies/${id}.png`;
     if (existsSync(portrait)) await sharp(idle0).trim().png().toFile(portrait);
     const thumb = `public/titans/generated/allies/skins/${id}.png`;
@@ -131,7 +141,7 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
   // 동료 아틀라스(기본 6 · 변형 12) 행 덮기 — 1판(assemble-b3d)과 같은 자리
   const BASE_ROW = { mia: 0, leon: 1, sera: 2, garen: 3, ari: 4, nox: 5 };
   const VARIANT_ROW = { pyro: 0, marina: 1, terra: 2, zephyr: 3, bronn: 4, iris: 5, cain: 6, sylph: 7, orion: 8, ember: 9, luna: 10, volt: 11 };
-  for (const [file, rowsOf] of [["ally-animation-atlas-v1.png", BASE_ROW], ["ally-variant-atlas-v1.png", VARIANT_ROW]]) {
+  for (const [file, rowsOf] of PX ? [] : [["ally-animation-atlas-v1.png", BASE_ROW], ["ally-variant-atlas-v1.png", VARIANT_ROW]]) {
     const path = `public/titans/generated/allies/${file}`, ops = [];
     for (const id of done.allies) if (rowsOf[id] !== undefined && existsSync(`${SRC}/${id}/row.png`)) ops.push({ input: readFileSync(`${SRC}/${id}/row.png`), left: 0, top: rowsOf[id] * 239 });
     if (!ops.length || !existsSync(path)) continue;
@@ -146,7 +156,7 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
 // ── 몬스터 ── 대기 높이(발~머리)가 칸의 76%
 {
   const M = LAYOUT.monster, [MW, MH] = M.cell;
-  mkdirSync("public/titans/anim/monsters", { recursive: true });
+  mkdirSync(`${PUB}/monsters`, { recursive: true });
   const rideAnchors = {}, seatOf = {};
   for (const id of MONSTERS) {
     if (!want(id)) continue;
@@ -154,11 +164,11 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     // 탈것은 자기 배치(달리기 · 방어 줄) + 안장 자리 — 칸 비율로, 대기 0칸 기준 움직인 값만 (titans/mountRide.ts)
     if (id.startsWith("mount-")) {
       // 배율 고정 — 넷의 몸 크기를 같게. 칸을 넘으면 알린다(비룡 날개)
-      const MM = LAYOUT.mount, [CW, CH] = MM.cell, k = 0.6, s0 = c.actions.idle[0].parts.saddle, p0 = c.actions.idle[0].pivot;
+      const MM = LAYOUT.mount, [CW, CH] = MM.cell, k = 0.6 * RS, s0 = c.actions.idle[0].parts.saddle, p0 = c.actions.idle[0].pivot;
       const fit = fitScale(Object.values(c.actions).flat(), k, CW, CH, CW * MM.pivotX, CH * MM.feet, 2, false);
       if (fit < k * 0.985) console.warn(`${id}: 칸을 넘는 칸 — 필요한 배율 ${fit.toFixed(3)}`);
       seatOf[id] = [Math.round((1 - (CW * MM.pivotX + (s0.x - p0[0]) * k) / CW) * 1000) / 1000, Math.round(((CH * MM.feet + (s0.y - p0[1]) * k) / CH) * 1000) / 1000];
-      await grid(c, MM, k, `public/titans/anim/monsters/${id}.webp`);
+      await grid(c, MM, k, `${PUB}/monsters/${id}.webp`);
       const r3 = (v) => Math.round(v * 1000) / 1000;
       rideAnchors[id] = Object.fromEntries(Object.entries(c.actions).map(([name, frames]) => [name, frames.map((f) => [r3(((f.parts.saddle.x - s0.x) * k) / CW), r3(((f.parts.saddle.y - s0.y) * k) / CH), Math.round((f.parts.saddle.rot - s0.rot) * 10) / 10])]));
       done.monsters.push(id);
@@ -167,22 +177,22 @@ const UNIT = 1024 / 2.3;   // 렌더 1024px 에서 캐릭터 1단위
     }
     // 탈것은 넷의 몸 크기를 같게 (2026-11-03) — 게임은 대기 줄만 쓰니 대기 칸으로만 재고 0.66(옛 세 탈것의 배율)에 맞춘다. 비룡 날개까지 다 재면 몸만 작아져 주인공과 안 맞았다
     const f0 = c.actions.idle[0], up0 = f0.pivot[1] - f0.box.y0;
-    const k = id.startsWith("mount-") ? fitScale(c.actions.idle, 0.66, MW, MH, MW / 2, MH * M.feet, 4, false) : fitScale(allFrames(c), (MH * 0.76) / up0, MW, MH, MW / 2, MH * M.feet, 4, false);
-    await grid(c, M, k, `public/titans/anim/monsters/${id}.webp`);
+    const k = id.startsWith("mount-") ? fitScale(c.actions.idle, 0.66 * RS, MW, MH, MW / 2, MH * M.feet, 4, false) : fitScale(allFrames(c), (MH * 0.76) / up0, MW, MH, MW / 2, MH * M.feet, 4, false);
+    await grid(c, M, k, `${PUB}/monsters/${id}.webp`);
     done.monsters.push(id);
     // 대장으로 나오는 종(성문 방어 장 대장·중간/비밀 대장)은 큰 칸(576²) 시트도 — 성문 방어 대장은 화면에 ~330px(실픽셀 ~1000) 로 그려 384 칸은 흐렸다.
     // 같은 렌더(1024)에서 배율만 키운다. 원래 원화(PNG)의 몸 높이 비율도 재 두어 게임이 화면 크기(밸런스 값)를 그대로 맞춘다
     if (BOSS_ARTS.includes(id)) {
       const HD = { ...M, cell: [576, 576] };
-      mkdirSync("public/titans/anim/monsters-hd", { recursive: true });
-      await grid(c, HD, k * (576 / MW), `public/titans/anim/monsters-hd/${id}.webp`);
+      mkdirSync(`${PUB}/monsters-hd`, { recursive: true });
+      await grid(c, HD, k * (576 / MW), `${PUB}/monsters-hd/${id}.webp`);
       const png = `public/titans/generated/monsters/${id}.png`;
       if (existsSync(png)) { const b = await bbox(png); const m = await sharp(png).metadata(); done.hd[id] = Math.round(((b.y1 - b.y0) / m.height) * 1000) / 1000; }
       else done.hd[id] = 0.85;
     }
     console.log("monster", id, "k", k.toFixed(3));
   }
-  if (Object.keys(rideAnchors).length) writeFileSync("src/titans/mountRide.ts", `/** 탈것 안장 자리 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것). 동작별 칸마다 [가로, 세로, 기울기°] · 대기 0칸 기준 · 칸 비율(왼쪽 보는 원본) */
+  if (!PX && Object.keys(rideAnchors).length) writeFileSync("src/titans/mountRide.ts", `/** 탈것 안장 자리 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것). 동작별 칸마다 [가로, 세로, 기울기°] · 대기 0칸 기준 · 칸 비율(왼쪽 보는 원본) */
 export const MOUNT_RIDE: Record<string, Record<string, ReadonlyArray<readonly [number, number, number]>>> = ${JSON.stringify(rideAnchors)};
 /** 안장 자리 — 뒤집은 뒤 칸 비율 [가로, 세로] (참고값, CSS 가 쓴다) */
 export const MOUNT_SEAT: Record<string, readonly [number, number]> = ${JSON.stringify(seatOf)};
@@ -193,7 +203,7 @@ export const MOUNT_SEAT: Record<string, readonly [number, number]> = ${JSON.stri
 /** 주인공 배율 — 서 있는 시트 기준(탈것 위 시트 · 입는 파츠도 같은 값) */
 function heroScale(c) {
   const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, PX = H.feet[0] * FW, PY = H.feet[1] * FH;
-  let k = (FH * 0.69) / 435.35;
+  let k = (FH * 0.69) / (435.35 / RS);
   for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
   return k;
 }
@@ -210,13 +220,13 @@ if (only.includes("hero-ride")) {
     if (fitScale(frames, k, s.width, FH, px, PY, 2, false) < k * 0.985) console.warn(`hero-ride ${name}: 칸을 넘는다`);
     const ops = [];
     for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, px, PY)));
-    await sharp(await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer()).webp({ quality: 74, alphaQuality: 85, effort: 6 }).toFile(`public/titans/anim/hero/hero-ride-${name}.webp`);
+    await sharp(await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer()).webp(WEBP({ quality: 74, alphaQuality: 85, effort: 6 })).toFile(`${PUB}/hero/hero-ride-${name}.webp`);
     out[name] = frames.map((f) => Object.fromEntries(Object.entries(BASE).map(([part, [rot0, sc]]) => {
       const p = f.parts[part], p0 = idle0.parts[part];
       return [part, { x: r1(((px + (p.x - f.pivot[0]) * k) / s.width) * 100), y: r1(((PY + (p.y - f.pivot[1]) * k) / FH) * 100), rotation: r1(rot0 + (p.rot - p0.rot)), scale: sc, ...(part === "hand" && f.weaponBehind ? { behind: true } : {}) }];
     })));
   }
-  writeFileSync("src/equipment/rideAnchors.ts", `/** 탈것 위 주인공 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것) */
+  if (!PX) writeFileSync("src/equipment/rideAnchors.ts", `/** 탈것 위 주인공 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것) */
 import type { EquipmentFrameAnchors } from "./anchors";
 
 export const HERO_RIDE_ANCHORS: Record<string, EquipmentFrameAnchors[]> = ${JSON.stringify(out)};
@@ -228,13 +238,13 @@ if (only.includes("hero-gear")) {
   const c = await load("hero"), H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
   const PX = H.feet[0] * FW, PY = H.feet[1] * FH;
   const k = heroScale(c);
-  mkdirSync("public/titans/anim/hero-gear", { recursive: true });
+  mkdirSync(`${PUB}/hero-gear`, { recursive: true });
   const pivot = c.actions.idle[0].pivot, ride = await load("hero-ride");
-  for (const name of readdirSync("art-gen/out/b3d2-gear").filter((n) => n.endsWith(".png") && !n.includes("preview"))) {
+  for (const name of readdirSync(PX ? "art-gen/out/b3d2-gear-px" : "art-gen/out/b3d2-gear").filter((n) => n.endsWith(".png") && !n.includes("preview"))) {
     const seated = name.includes("-ride-");
     if (seated && !ride) continue;
-    const ops = await cellOps({ file: `art-gen/out/b3d2-gear/${name}`, pivot: seated ? ride.actions.idle[0].pivot : pivot, tint: 0 }, c.res, k, 0, 0, FW, FH, PX, seated ? H.ride.feetY * FH : PY);
-    await sharp(await sharp(blank(FW, FH)).composite(ops).png().toBuffer()).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero-gear/${name.replace(".png", ".webp")}`);
+    const ops = await cellOps({ file: `${PX ? "art-gen/out/b3d2-gear-px" : "art-gen/out/b3d2-gear"}/${name}`, pivot: seated ? ride.actions.idle[0].pivot : pivot, tint: 0 }, c.res, k, 0, 0, FW, FH, PX, seated ? H.ride.feetY * FH : PY);
+    await sharp(await sharp(blank(FW, FH)).composite(ops).png().toBuffer()).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(`${PUB}/hero-gear/${name.replace(".png", ".webp")}`);
   }
   console.log("hero-gear k", k.toFixed(4));
 }
@@ -245,10 +255,10 @@ if (want("hero")) {
     const PX = H.feet[0] * FW, PY = H.feet[1] * FH;
     const idle = c.actions.idle;
     // 몸 높이는 값으로 고정 (2026-11-03) — 털 뭉치(roster.HERO marks)까지 재면 배율이 15% 깎여 게임 속 주인공이 작아진다. 머리 꼭대기까지 렌더 435.35px(1024²)
-    const up0 = 435.35;
+    const up0 = 435.35 / RS;
     let k = (FH * 0.69) / up0;   // 대기 인물(왕관 꼭대기~발)이 칸 높이의 69% (FIG_IDLE · verify-systems)
     for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
-    mkdirSync("public/titans/anim/hero", { recursive: true });
+    mkdirSync(`${PUB}/hero`, { recursive: true });
     const r1 = (v) => Math.round(v * 10) / 10;
     // 앵커 기준값(대기 0칸의 회전·크기)은 1판(assemble-b3d)과 같다 — 칸마다 뼈가 돈 만큼만 더한다
     const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5], footL: [0, 0.5], footR: [0, 0.5] };
@@ -265,7 +275,7 @@ if (want("hero")) {
       const ops = [];
       for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, PX + (s.width - FW) / 2, PY)));
       const buf = await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer();
-      await sharp(buf).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero/hero-${mode}.webp`);
+      await sharp(buf).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(`${PUB}/hero/hero-${mode}.webp`);
       out[mode] = anchorsOf(frames, s.width);
     }
     // 무기별 공격 시트 — 배율 k 는 주인공 기본 시트에서 정한 값 그대로(무기를 바꿔도 몸 크기가 같다). 칸을 넘으면 잘리니 경고만
@@ -280,14 +290,14 @@ if (want("hero")) {
       const ops = [];
       for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, w.res, k, i * s.width, 0, s.width, FH, PX + (s.width - FW) / 2, PY)));
       const buf = await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer();
-      await sharp(buf).webp({ quality: 90, alphaQuality: 94, effort: 5 }).toFile(`public/titans/anim/hero/hero-attack-${kind}.webp`);
+      await sharp(buf).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(`${PUB}/hero/hero-attack-${kind}.webp`);
       weaponOut[kind] = anchorsOf(frames, s.width);
       console.log("hero weapon sheet", kind);
     }
     const fmt = (f) => "  { " + Object.entries(f).map(([n, a]) => `${n}: { x: ${a.x}, y: ${a.y}, rotation: ${a.rotation}, scale: ${a.scale}${a.behind ? ", behind: true" : ""} }`).join(", ") + " },";
     const b = idle[0].box;
     const fig = { x0: r1(((PX + (b.x0 - idle[0].pivot[0]) * k) / FW) * 100), x1: r1(((PX + (b.x1 - idle[0].pivot[0]) * k) / FW) * 100), y0: r1(((PY - up0 * k) / FH) * 100), y1: 99.9 };
-    writeFileSync("src/equipment/heroAnchors.ts", `/** 주인공 손·몸 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것).
+    if (!PX) writeFileSync("src/equipment/heroAnchors.ts", `/** 주인공 손·몸 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것).
  * 2026-10-19 애니메이션 2판: Blender 3D 리그(art-gen/blender/anim2.py)의 뼈를 칸마다 카메라로 투영한 값(칸 %). 주인공은 무기만 들어(사용자 지시)
  * 실제로 쓰는 건 hand(무기)뿐이지만, 형식(EquipmentFrameAnchors)을 맞추려 다른 뼈도 적는다. 회전은 대기 0칸 대비 뼈가 돈 만큼 더한다 */
 import type { EquipmentFrameAnchors } from "./anchors";
@@ -308,14 +318,14 @@ ${Object.entries(weaponOut).map(([kind, fr]) => `  ${kind}: [\n${fr.map((f) => "
 /** 성문 방어 — 대기 시트 인물 상자(칸 %) */
 export const HERO_FIG = ${JSON.stringify(fig)};
 `);
-    await makeHeroPortrait("public/titans/anim/hero/hero-idle.webp", H.sheets.idle.frames);   // 아이콘용 초상
+    if (!PX) await makeHeroPortrait("public/titans/anim/hero/hero-idle.webp", H.sheets.idle.frames);   // 아이콘용 초상
     done.hero = true;
     console.log("hero k", k.toFixed(3), "fig", JSON.stringify(fig));
   }
 }
 
-// ── 게임이 읽는 배치 + 시트가 있는 id ──
-{
+// ── 게임이 읽는 배치 + 시트가 있는 id ── (도트는 셀과 같은 배치 · 같은 id 라 쓰지 않는다)
+if (!PX) {
   const path = "src/titans/animLayout.ts";
   const cur = existsSync(path) ? readFileSync(path, "utf8") : "";
   const keep = (name) => JSON.parse((cur.match(new RegExp(`${name}[^=]*=\\s*(\\[[^\\]]*\\])`)) ?? [, "[]"])[1]);

@@ -13,16 +13,19 @@
 import sharp from "sharp";
 
 const ANIM2 = process.argv.includes("--anim2");
+// 도트 그림체(2026-11-17, --pixel) — anim-px/hero 시트에서 같은 팔레트로, 무손실 webp(색 경계가 뭉개지지 않게)
+const PX = process.argv.includes("--pixel");
+const HERO_DIR = PX ? "public/titans/anim-px/hero" : "public/titans/anim/hero";
 const SHEETS = ANIM2
-  ? (process.argv.includes("--weapons") ? [] : ["idle", "walk", "attack", "ride-idle", "ride-walk", "ride-guard", "ride-attack", "ride-attack-spear", "ride-attack-bow", "ride-attack-staff"].map((m) => [`public/titans/anim/hero/hero-${m}.webp`, `hero-${m}`]))
+  ? (process.argv.includes("--weapons") ? [] : ["idle", "walk", "attack", "ride-idle", "ride-walk", "ride-guard", "ride-attack", "ride-attack-spear", "ride-attack-bow", "ride-attack-staff"].map((m) => [`${HERO_DIR}/hero-${m}.webp`, `hero-${m}`]))
     // 무기별 공격 시트(2026-10-27) — --weapons 면 이것만 파생
-    .concat(["spear", "bow", "staff"].filter((k) => existsSync(`public/titans/anim/hero/hero-attack-${k}.webp`)).map((k) => [`public/titans/anim/hero/hero-attack-${k}.webp`, `hero-attack-${k}`]))
+    .concat(["spear", "bow", "staff"].filter((k) => existsSync(`${HERO_DIR}/hero-attack-${k}.webp`)).map((k) => [`${HERO_DIR}/hero-attack-${k}.webp`, `hero-attack-${k}`]))
   : [
     ["public/titans/character/base/hero-idle.png", "hero-idle"],
     ["public/titans/character/base/hero-attack.png", "hero-attack"],
   ];
-const outPath = (base, id) => (ANIM2 ? `public/titans/anim/hero/${base}-${id}.webp` : `public/titans/character/skins/${base}-${id}.png`);
-const save = (img, out) => (ANIM2 ? img.webp(out.includes("hero-ride") ? { quality: 74, alphaQuality: 85, effort: 6 } : { quality: 90, alphaQuality: 94, effort: 5 }) : img.png()).toFile(out);
+const outPath = (base, id) => (ANIM2 ? `${HERO_DIR}/${base}-${id}.webp` : `public/titans/character/skins/${base}-${id}.png`);
+const save = (img, out) => (ANIM2 ? img.webp(PX ? { lossless: true, effort: 4 } : out.includes("hero-ride") ? { quality: 74, alphaQuality: 85, effort: 6 } : { quality: 90, alphaQuality: 94, effort: 5 }) : img.png()).toFile(out);
 
 // 값은 주인공 털색에 묶인다 — 2026-11-03 호박빛 털(roster.HERO)로 바꾸며 옛 갈색 때 값 그대로면 새벽이 형광 청록이 되어 옛 스킨 색에 맞춰 낮췄다
 const SKINS = [
