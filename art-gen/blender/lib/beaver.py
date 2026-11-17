@@ -369,7 +369,10 @@ def _lowpoly_body(add, M, coll, cfg):
     add('head', _lp('head', _E(HEAD_C, HEAD_R, egg=0.12, seg=11, rings=8), M['fur'], coll))
     add('body', _lp('body', _E(BODY_C, BODY_R, egg=0.16, seg=11, rings=8), M['fur'], coll))
     look = cfg.get('look')
-    if not (cfg.get('robe') or cfg.get('armor')):   # 로브 · 갑옷이 있으면 배 무늬가 옷을 뚫고 나왔다
+    clothed = bool(cfg.get('robe') or cfg.get('armor'))
+    if look and look.get('element'):   # 속성 몸통 — 배 무늬 모양 · 어깨 장식
+        _element_body(add, M, coll, look['element'], not clothed)
+    elif not clothed:   # 로브 · 갑옷이 있으면 배 무늬가 옷을 뚫고 나왔다
         if look:   # 동료 얼굴 — 배 무늬를 낮춰 주둥이와 배 사이에 갈색 턱이 보이게(이어지면 긴 흰 띠 · 앞니가 배에 묻힌다)
             add('body', _lp('belly', _E(BODY_C + Vector((0, -0.2, -0.085)), (0.17, 0.1, 0.15), egg=0.1, seg=9, rings=6), M['light'], coll, OUT * 0.6))
         else:
@@ -510,6 +513,107 @@ def _apply_form(parts, form):
             else:
                 continue
             _xform(o, T, seen)
+
+
+# ── 역할 몸매 · 속성 몸통 (2026-11-17, 사용자: "몸통도 너무 똑같네 — 특징 · 성능에 따라 조금 더 특색 있게") ──
+# look.build: 몸통을 높이(z)에 따라 가로 · 앞뒤로 휘게 한다. 옷(로브 · 갑옷 · 망토)도 몸 뼈에 붙어 있어 같이 휜다.
+#   bulky 탱커 — 통 크고 깊게 · athletic 근접 — 넓은 가슴 · 좁은 엉덩이 · lean 원거리 · 마법 — 가늘고 허리 잘록 · pear 치유 — 아래가 넓다
+# 팔은 옮기지 않는다 — 칸 오른쪽은 무기 끝 때문에 여유가 3~9px 뿐이다(beaver k).
+BUILDS = {
+    'bulky': lambda u: (1.15 + 0.05 * u, 1.12),
+    'athletic': lambda u: (1.0 + 0.14 * u, 1.0),
+    'lean': lambda u: (0.87 - 0.08 * (1 - u * u), 0.92),
+    'pear': lambda u: (1.05 - 0.16 * u, 1.05),
+}
+
+
+def _build_s(build, z):
+    u = max(-1.0, min(1.0, (z - BODY_C.z) / BODY_R[2]))
+    s, d = BUILDS[build](u)
+    return s, s * d
+
+
+def _apply_build(parts, build):
+    """몸 뼈 메시를 정점마다 휜다(후광 · 등 장식은 등 표면만큼 옮긴다). 꼬리는 엉덩이 뒤 표면을 따라간다"""
+    seen = set()
+    for bone, objs in parts.items():
+        for o in objs:
+            if o.type != 'MESH' or o.data in seen:
+                continue
+            if bone == 'body' and not o.name.startswith('aura'):
+                seen.add(o.data)
+                mw = o.matrix_world.copy()
+                if o.name.startswith(RIGID_BACK):
+                    o.data.transform(mw.inverted() @ Matrix.Translation(Vector((0, 0.27 * (_build_s(build, 0.42)[1] - 1), 0))) @ mw)
+                    continue
+                inv = mw.inverted()
+                for v in o.data.vertices:
+                    p = mw @ v.co
+                    sx, sy = _build_s(build, p.z)
+                    v.co = inv @ Vector((p.x * sx, p.y * sy, p.z))
+            elif bone == 'tail':
+                _xform(o, Matrix.Translation(Vector((0, 0.25 * (_build_s(build, 0.1)[1] - 1), 0))), seen)
+
+
+EL_COLOR = {'fire': '#ff8a2a', 'water': '#62c8f0', 'earth': '#9a8c76', 'wind': '#bff2dc'}   # 바람 깃털은 옅은 민트 — 흰색은 밝은 털에 묻혔다
+
+
+def _element_body(add, M, coll, element, belly):
+    """속성 몸통 — 배 무늬 모양(불꽃 · 물방울 · 잎 · 구름)과 어깨 장식(불꽃 · 지느러미 · 돌 어깨 · 깃털). belly=False 면 옷이 배를 덮는다"""
+    B = BODY_C
+    L = M['light']
+    if belly:
+        if element == 'fire':   # 불꽃 — 아래 덩이 + 가운데 혀 + 양옆 작은 혀
+            add('body', _lp('belly', _E(B + Vector((0, -0.2, -0.13)), (0.15, 0.1, 0.09), seg=9, rings=6), L, coll, OUT * 0.6))
+            add('body', _lp('belly1', _E(B + Vector((0, -0.215, -0.05)), (0.075, 0.09, 0.085), seg=9, rings=6), L, coll, OUT * 0.6))
+            add('body', _lp('belly2', _E(B + Vector((0, -0.22, 0.02)), (0.035, 0.085, 0.05), seg=8, rings=6), L, coll, OUT * 0.6))
+            for sx in (-1, 1):
+                add('body', _lp(f'bellyf{sx}', _E(B + Vector((sx * 0.1, -0.19, -0.06)), (0.04, 0.085, 0.065), seg=8, rings=6, rot=Euler((0, math.radians(sx * 24), 0))), L, coll, OUT * 0.6))
+        elif element == 'water':   # 물방울 — 둥근 아래 · 뾰족한 위
+            add('body', _lp('belly', _E(B + Vector((0, -0.2, -0.12)), (0.15, 0.1, 0.1), seg=9, rings=6), L, coll, OUT * 0.6))
+            add('body', _lp('belly1', _E(B + Vector((0, -0.21, -0.035)), (0.085, 0.095, 0.075), seg=9, rings=6), L, coll, OUT * 0.6))
+            add('body', _lp('belly2', _E(B + Vector((0, -0.22, 0.025)), (0.035, 0.09, 0.05), seg=8, rings=6), L, coll, OUT * 0.6))
+        elif element == 'earth':   # 잎 — 위아래 뾰족한 렌즈 + 가운데 잎맥
+            leaf = _E(B + Vector((0, -0.205, -0.075)), (0.115, 0.1, 0.15), seg=10, rings=8)
+            zc = B.z - 0.075
+            for v in leaf.verts:
+                t = min(0.999, abs(v.co.z - zc) / 0.15)
+                v.co.x *= (1 - t) / math.sqrt(1 - t * t)
+            add('body', _lp('belly', leaf, L, coll, OUT * 0.6))
+            vein = spline([B + Vector((0, -0.302, -0.2)), B + Vector((0, -0.31, -0.08)), B + Vector((0, -0.29, 0.04))], 8)
+            add('body', C.mesh_obj('bellyvein', C.tube(vein, 0.009, seg=6), M['dark'], coll))
+        else:   # wind — 구름: 납작한 아래 + 위에 둥근 봉우리 셋
+            add('body', _lp('belly', _E(B + Vector((0, -0.2, -0.13)), (0.15, 0.1, 0.085), seg=9, rings=6), L, coll, OUT * 0.6))
+            for k, (x, z, r) in enumerate(((-0.09, -0.085, 0.07), (0.0, -0.045, 0.085), (0.09, -0.085, 0.07))):   # 봉우리를 겹쳐야 구름 — 떨어지면 발자국처럼 보였다
+                add('body', _lp(f'belly{k}', _E(B + Vector((x, -0.205, z)), (r, 0.09, r * 0.9), seg=9, rings=6), L, coll, OUT * 0.6))
+    col = EL_COLOR[element]
+    for side, sh in (('R', SHOULDER_R), ('L', SHOULDER_L)):
+        sx = -1 if side == 'R' else 1
+        if element == 'fire':   # 어깨 불꽃
+            m = _accent('el_fire', col, rough=0.5, emit=col, es=0.6)
+            m2 = _accent('el_fire2', '#ffd34d', rough=0.5, emit='#ffd34d', es=0.6)
+            for k, (d, L_, r) in enumerate(((Vector((sx * 0.45, 0.25, 1.0)), 0.13, 0.042), (Vector((sx * 0.9, 0.35, 0.6)), 0.09, 0.03))):
+                d = d.normalized()
+                base = sh + Vector((sx * 0.02, 0.03, 0.05))
+                add(f'arm.{side}', _lp(f'el_fl{side}{k}', C.cone(base + d * L_ * 0.5, r, 0.0, L_, seg=6, rot=C.look_rot(d)), m, coll, OUT * 0.5))
+                add(f'arm.{side}', _lp(f'el_fi{side}{k}', C.cone(base + d * L_ * 0.38, r * 0.55, 0.0, L_ * 0.6, seg=5, rot=C.look_rot(d)), m2, coll, 0))
+        elif element == 'water':   # 팔 뒤 지느러미 둘
+            m = _accent('el_fin', col, rough=0.35)
+            hd = HAND_R if side == 'R' else HAND_L
+            for k, (t, sz) in enumerate(((0.3, (0.016, 0.105, 0.085)), (0.66, (0.014, 0.07, 0.06)))):   # 팔 바깥 뒤로 — 몸 뒤에 숨으면 안 보였다
+                p = sh.lerp(hd, t) + Vector((sx * 0.07, 0.07, 0.035))
+                add(f'arm.{side}', _lp(f'el_fin{side}{k}', _E(p, sz, seg=8, rings=6, rot=Euler((math.radians(-25), 0, 0))), m, coll, OUT * 0.5))
+        elif element == 'earth':   # 돌 어깨 + 이끼
+            m = _accent('el_rock', col, rough=0.9)
+            mo = _accent('el_moss', '#7aa04a', rough=0.9)
+            add(f'arm.{side}', C.mesh_obj(f'el_rk{side}', C.ellipsoid(sh + Vector((sx * 0.025, 0.0, 0.055)), (0.095, 0.085, 0.06), seg=6, rings=4), m, coll, smooth=False, outline=OUT * _LOOK.get('ink', 1.0) if _LOOK else OUT))
+            add(f'arm.{side}', C.mesh_obj(f'el_ms{side}', C.ellipsoid(sh + Vector((sx * 0.01, 0.01, 0.105)), (0.05, 0.045, 0.02), seg=8, rings=5), mo, coll, smooth=False))
+        else:   # wind — 어깨 깃털 셋(바깥 · 뒤로)
+            m = _accent('el_fth', col, rough=0.8)
+            for k, d in enumerate((Vector((sx * 1.0, 0.1, 0.75)), Vector((sx * 1.0, 0.35, 0.25)), Vector((sx * 0.45, 0.3, 1.0)))):   # 바깥 · 위로 — 뒤로 누우면 몸에 가렸다
+                d = d.normalized()
+                base = sh + Vector((sx * 0.04, 0.0, 0.04))
+                add(f'arm.{side}', _lp(f'el_ft{side}{k}', C.cone(base + d * 0.08, 0.036, 0.0, 0.16, seg=5, rot=C.look_rot(d)), m, coll, OUT * 0.5))
 
 
 def _form_ears(add, M, coll, kind):
@@ -802,6 +906,8 @@ def _build(name, cfg, coll=None):
     if cfg.get('weapon_l'):
         for o in weapon(cfg['weapon_l'], HAND_L, coll, cfg.get('weapon_l_color', cfg.get('weapon_color', '#cfd6df')), cfg.get('weapon_wood', '#8a5a2b')):
             add('hand.L', o)
+    if _LOOK and _LOOK.get('build'):   # 역할 몸매 — 체형 배율보다 먼저(몸 원래 좌표 기준)
+        _apply_build(parts, _LOOK['build'])
     if form:   # 체형 — 붙이기 전에 월드 좌표에서 굽는다(뼈 자리는 _form_bones 가 같은 식으로 옮겼다)
         _apply_form(parts, form)
     bpy.context.view_layer.update()

@@ -98,9 +98,25 @@ FORMS = {
     'birch': dict(body=(1.12, 1.06), ears='big', tail='fan'),
 }
 
+# 속성(게임 src/titans/allyRoster.ts · allies.ts ALLY_ELEMENT) — 배 무늬 모양과 어깨 장식
+ELEMENT = {
+    'mia': 'wind', 'leon': 'wind', 'sera': 'water', 'garen': 'earth', 'ari': 'fire', 'nox': 'wind', 'luna': 'earth', 'volt': 'fire',
+    'bronn': 'fire', 'orion': 'earth', 'ember': 'fire', 'pyro': 'fire', 'marina': 'water',
+    'toto': 'wind', 'kiki': 'wind', 'momo': 'earth', 'bobo': 'earth', 'dodo': 'water', 'pipi': 'fire', 'gugu': 'earth', 'nana': 'water',
+    'rara': 'earth', 'sisi': 'fire', 'lulu': 'wind', 'haha': 'water',
+    'reed': 'wind', 'brook': 'water', 'flint': 'fire', 'moss': 'earth', 'cinder': 'fire', 'pebble': 'earth', 'willow': 'wind', 'gale': 'wind',
+    'coral': 'water', 'ash': 'fire', 'birch': 'earth',
+    'storm': 'wind', 'frost': 'water', 'blaze': 'fire', 'sage': 'earth', 'hawk': 'wind', 'tide': 'water', 'anvil': 'fire',
+    'aurora': 'water', 'titan': 'earth', 'solar': 'fire', 'tempest': 'wind', 'abyss': 'water', 'phoenix': 'fire', 'autumn': 'earth',
+    'celes': 'wind', 'gaia': 'earth', 'inferno': 'fire', 'leviathan': 'water',
+}
+
+# 역할 → 몸매(lib/beaver.py BUILDS). 탱커 통 크게 · 근접 역삼각 · 원거리 · 마법 · 연주 가늘게 · 치유 서양배
+BUILD_BY_ROLE = {'tank': 'bulky', 'melee': 'athletic', 'bow': 'lean', 'mage': 'lean', 'bard': 'lean', 'healer': 'pear'}
+
 
 def apply(allies):
     for k, f in FORMS.items():
         allies[k].setdefault('form', f)
     for k, lk in LOOKS.items():
-        allies[k]['look'] = dict(BASE, **lk)
+        allies[k]['look'] = dict(BASE, element=ELEMENT[k], build=BUILD_BY_ROLE[allies[k].get('role', 'melee')], **lk)
