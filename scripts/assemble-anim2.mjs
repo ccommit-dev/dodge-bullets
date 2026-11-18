@@ -202,20 +202,20 @@ export const MOUNT_SEAT: Record<string, readonly [number, number]> = ${JSON.stri
 // ── 주인공 ── 시트 셋(대기·걷기·공격) + 손 뼈 앵커(무기만 든다 — 2026-10-19)
 /** 주인공 배율 — 서 있는 시트 기준(탈것 위 시트 · 입는 파츠도 같은 값) */
 function heroScale(c) {
-  const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, PX = H.feet[0] * FW, PY = H.feet[1] * FH;
+  const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, FX = H.feet[0] * FW, PY = H.feet[1] * FH;
   let k = (FH * 0.69) / (435.35 / RS);
-  for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
+  for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, FX + (s.width - FW) / 2, PY, 3));
   return k;
 }
 // 탈것 위 주인공 — 앉은 자세 시트 · 앵커 (render_anim2 hero-ride). 내린 다리가 발바닥 밑으로 가서 발 기준선을 올린다(layout hero.ride.feetY)
 if (only.includes("hero-ride")) {
   const hero = await load("hero"), c = await load("hero-ride"), H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
-  const k = heroScale(hero), PX = H.feet[0] * FW, PY = H.ride.feetY * FH, idle0 = c.actions.idle[0];
+  const k = heroScale(hero), FX = H.feet[0] * FW, PY = H.ride.feetY * FH, idle0 = c.actions.idle[0];
   const r1 = (v) => Math.round(v * 10) / 10;
   const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5], footL: [0, 0.5], footR: [0, 0.5] };
   const out = {};
   for (const [name, frames] of Object.entries(c.actions)) {
-    const mode = name.split("-")[0], s = H.sheets[mode], px = PX + (s.width - FW) / 2;
+    const mode = name.split("-")[0], s = H.sheets[mode], px = FX + (s.width - FW) / 2;
     if (frames.length !== s.frames) throw new Error(`hero-ride ${name}: ${frames.length} ≠ ${s.frames}`);
     if (fitScale(frames, k, s.width, FH, px, PY, 2, false) < k * 0.985) console.warn(`hero-ride ${name}: 칸을 넘는다`);
     const ops = [];
@@ -236,14 +236,15 @@ export const HERO_RIDE_ANCHORS: Record<string, EquipmentFrameAnchors[]> = ${JSON
 // 입는 파츠 (hero_gear.py) — 대기 0칸 그대로 칸 하나 크기. 칸마다 뼈 앵커만큼 옮긴다(EquippedCharacter)
 if (only.includes("hero-gear")) {
   const c = await load("hero"), H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
-  const PX = H.feet[0] * FW, PY = H.feet[1] * FH;
+  // 2026-11-18: 발 x좌표 이름이 PX 여서 전역 PX(--pixel)를 가렸다 — 셀 조립도 도트 폴더(b3d2-gear-px)를 읽어 입는 파츠가 계단처럼 깨졌다(사용자: "캐릭터 리소스 퀄이 너무 후진데")
+  const FX = H.feet[0] * FW, PY = H.feet[1] * FH;
   const k = heroScale(c);
   mkdirSync(`${PUB}/hero-gear`, { recursive: true });
   const pivot = c.actions.idle[0].pivot, ride = await load("hero-ride");
   for (const name of readdirSync(PX ? "art-gen/out/b3d2-gear-px" : "art-gen/out/b3d2-gear").filter((n) => n.endsWith(".png") && !n.includes("preview"))) {
     const seated = name.includes("-ride-");
     if (seated && !ride) continue;
-    const ops = await cellOps({ file: `${PX ? "art-gen/out/b3d2-gear-px" : "art-gen/out/b3d2-gear"}/${name}`, pivot: seated ? ride.actions.idle[0].pivot : pivot, tint: 0 }, c.res, k, 0, 0, FW, FH, PX, seated ? H.ride.feetY * FH : PY);
+    const ops = await cellOps({ file: `${PX ? "art-gen/out/b3d2-gear-px" : "art-gen/out/b3d2-gear"}/${name}`, pivot: seated ? ride.actions.idle[0].pivot : pivot, tint: 0 }, c.res, k, 0, 0, FW, FH, FX, seated ? H.ride.feetY * FH : PY);
     await sharp(await sharp(blank(FW, FH)).composite(ops).png().toBuffer()).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(`${PUB}/hero-gear/${name.replace(".png", ".webp")}`);
   }
   console.log("hero-gear k", k.toFixed(4));
@@ -252,19 +253,19 @@ if (want("hero")) {
   const c = await load("hero");
   if (c) {
     const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width;
-    const PX = H.feet[0] * FW, PY = H.feet[1] * FH;
+    const FX = H.feet[0] * FW, PY = H.feet[1] * FH;
     const idle = c.actions.idle;
     // 몸 높이는 값으로 고정 (2026-11-03) — 털 뭉치(roster.HERO marks)까지 재면 배율이 15% 깎여 게임 속 주인공이 작아진다. 머리 꼭대기까지 렌더 435.35px(1024²)
     const up0 = 435.35 / RS;
     let k = (FH * 0.69) / up0;   // 대기 인물(왕관 꼭대기~발)이 칸 높이의 69% (FIG_IDLE · verify-systems)
-    for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, PX + (s.width - FW) / 2, PY, 3));
+    for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, FX + (s.width - FW) / 2, PY, 3));
     mkdirSync(`${PUB}/hero`, { recursive: true });
     const r1 = (v) => Math.round(v * 10) / 10;
     // 앵커 기준값(대기 0칸의 회전·크기)은 1판(assemble-b3d)과 같다 — 칸마다 뼈가 돈 만큼만 더한다
     const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5], footL: [0, 0.5], footR: [0, 0.5] };
     const anchorsOf = (frames, w) => frames.map((f) => Object.fromEntries(Object.entries(BASE).map(([name, [rot0, sc]]) => {
       const p = f.parts[name], p0 = idle[0].parts[name];
-      const x = PX + (w - FW) / 2 + (p.x - f.pivot[0]) * k, y = PY + (p.y - f.pivot[1]) * k;
+      const x = FX + (w - FW) / 2 + (p.x - f.pivot[0]) * k, y = PY + (p.y - f.pivot[1]) * k;
       return [name, { x: r1((x / w) * 100), y: r1((y / FH) * 100), rotation: r1(rot0 + (p.rot - p0.rot)), scale: sc, ...(name === "hand" && f.weaponBehind ? { behind: true } : {}) }];
     })));
     const out = {};
