@@ -16,13 +16,13 @@ export type RoutineItem = {
   go: { kind: "content"; content: "forge" } | { kind: "events"; tab: "rift" | "daily" } | { kind: "tab"; tab: "heroes" | "expedition" } | { kind: "claim" };
 };
 
-export const ROUTINE_REWARD_GEMS = 15;
+export const ROUTINE_REWARD_GEMS = 2;   // 보석 ÷10 (2026-11-18) — 예전 15 반올림
 
 /** 모험 메뉴 카드 한 줄 설명 — "균열·토벌·파견이 뭘 하는지 모르겠다"에 대한 답 */
 export const ROUTINE_HELP: Record<RoutineItem["id"], string> = {
   claim: "방치로 쌓인 골드·경험치를 받는다",
   rift: "방치 2시간치 골드·EXP·강화석·조각을 즉시 정산 (하루 3회, 요일마다 보상 축이 다름)",
-  mission: "오늘 보스·성문·강화·비트를 1회씩 → 골드·강화석, 4종 완주 시 보석 +10",
+  mission: "오늘 보스·성문·강화·비트를 1회씩 → 골드·강화석, 4종 완주 시 보석 +1",
   forge: "대장간에서 북 강화 1회 성공 — 첫 성공은 경험치 2배",
   expedition: "동료를 보내 두면 시간이 지난 뒤 강화석·조각을 들고 돌아온다",
 }; // K: 무과금 주 300 보석 경로 (10→15)

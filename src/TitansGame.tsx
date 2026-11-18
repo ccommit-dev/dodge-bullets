@@ -173,7 +173,7 @@ import "./ui/mount-show.css";   // 2026-11-09 탈것 진열(달리는 모습 · 
 import { SKILL_BANNERS, SKILL_BANNER_LABEL, SKILL_BANNER_RATES, consumeSkillCopies, drawSkillCopies, skillBannerCost, skillGoldUpgradeCost, skillCardPlan, skillBannerTierRates, skillDrawRates, type SkillBanner } from "./titans/skillGacha";
 import { shoulderIconUrl } from "./ui/ShoulderIcon";
 import { SHOULDER_DEFINITIONS } from "./equipment/shoulders";
-import { PAID_GROUPS, PATRON, SHARD_PACK_AMOUNT, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered } from "./economy/productCatalog";
+import { IDLE_BOOST_GEMS, PAID_GROUPS, SHARD_PACK_AMOUNT, SHARD_PACK_GEMS, SHARD_PACK_WEEKLY_LIMIT, STORE_PRODUCTS, dealState, packageTriggered, patronDailyGems } from "./economy/productCatalog";
 import { eventBuysThisWeek, eventProductsFor, type EventGrant, type EventProduct } from "./economy/eventShop";
 import { SEASON, SEASON_CORE_REFUND_FIX_KEY, SEASON_CORE_REFUND_KEY, SEASON_CORE_REFUND_PAST_KEY, addSeasonXp, seasonCoreRefund, seasonCoreRefundExcess, seasonDaysLeft, seasonIndex, seasonTier } from "./economy/seasonPass";
 import { BOOSTER_AD_HOURS, BOSS_RETRY_BONUS_SEC, consumeAdReward, rewardedAvailability, showRewarded, type AdPlacement } from "./ads/rewarded";
@@ -267,7 +267,7 @@ const SHOP_COPY: Record<string, { blurb?: string; lines?: string[] }> = {
   "adventurer-starter": { blurb: "초반 성장 입문 세트" },
   "pack-wall": { blurb: "벽에 막혔을 때 1회" },
   "pack-rebirth": { blurb: "첫 환생 뒤 1회" },
-  "patron-30d": { blurb: "30일 동안 매일", lines: ["보석 15/일", "방치 캡 +2h", "균열 +1회/일"] },
+  "patron-30d": { blurb: "30일 동안 매일", lines: ["보석 1~2/일", "방치 캡 +2h", "균열 +1회/일"] },
   "char-obsidian": { blurb: "전용 외형 + 방치 효율 +1%p", lines: [] },
   "char-dawn": { blurb: "전용 외형 + 방치 시간 +30분", lines: [] },
   "char-ember": { blurb: "외형 전용 코스튬", lines: [] },
@@ -1188,13 +1188,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         return {
           ...current,
           sessionCount: current.sessionCount + (reloadKey > 0 ? 0 : 1),   // 자동 환생으로 다시 불러온 것은 새 세션이 아니다
-          redGems: current.redGems + (patronDue ? PATRON.dailyGems : 0),
+          redGems: current.redGems + (patronDue ? patronDailyGems(Date.now()) : 0),
           patronClaimedDate: patronDue ? today : current.patronClaimedDate,
         };
       }).then((next) => {
         setCharacter(next);
         setRedGems(next.redGems);
-        if (next.patronUntil > Date.now() && next.patronClaimedDate === new Date().toLocaleDateString("sv-SE") && next.redGems > progress.redGems) flash(`후원 계약 · 오늘의 보석 +${PATRON.dailyGems}`);
+        if (next.patronUntil > Date.now() && next.patronClaimedDate === new Date().toLocaleDateString("sv-SE") && next.redGems > progress.redGems) flash(`후원 계약 · 오늘의 보석 +${patronDailyGems(Date.now())}`);
       });
       void loadEventSave(userHash).then(setEvents);
     });
@@ -2460,12 +2460,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   : openMomentOffer({
                       ...current,
                       wallAreas: [...current.wallAreas, areaId],
-                      redGems: current.redGems + 30,
+                      redGems: current.redGems + 3,
                     }, "wall"),
               ).then((next) => {
                 setCharacter(next);
                 setRedGems(next.redGems);
-                flash(`${huntingArea(saveRef.current.stage).name}의 벽 도달 · 보석 +30`);
+                flash(`${huntingArea(saveRef.current.stage).name}의 벽 도달 · 보석 +3`);
                 // 자동 환생 (2026-10-22 아처 키우기 7번) — 조건을 채우면 잠깐 알린 뒤 바로 환생
                 if (next.autoRebirth && canRebirthNow(next)) window.setTimeout(() => void autoRebirthRef.current(), 1600);
               });
@@ -2744,16 +2744,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
 
   const buyShardPack = async () => {
     const id = shardPackTarget;
-    if (redGems < 120 || save.heroes[id] <= 0) return;
+    if (redGems < SHARD_PACK_GEMS || save.heroes[id] <= 0) return;
     sfxPurchase();
     const week = currentWeekKey();
     const next = await updateCharacterProgress(userHash, (current) => {
       const record = current.weeklyShardPacks.week === week ? current.weeklyShardPacks : { week, bought: {} };
       const bought = record.bought[id] ?? 0;
-      if (bought >= SHARD_PACK_WEEKLY_LIMIT || current.redGems < 120) return current;
+      if (bought >= SHARD_PACK_WEEKLY_LIMIT || current.redGems < SHARD_PACK_GEMS) return current;
       return {
         ...current,
-        redGems: current.redGems - 120,
+        redGems: current.redGems - SHARD_PACK_GEMS,
         allyShards: { ...current.allyShards, [id]: (current.allyShards[id] ?? 0) + SHARD_PACK_AMOUNT },
         weeklyShardPacks: { week, bought: { ...record.bought, [id]: bought + 1 } },
       };
@@ -2764,11 +2764,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   };
 
   const buyIdleBooster = async () => {
-    if (redGems < 80 || character.idleBoostUntil > Date.now()) return;
+    if (redGems < IDLE_BOOST_GEMS || character.idleBoostUntil > Date.now()) return;
     const next = await updateCharacterProgress(userHash, (current) =>
-      current.redGems < 80 || current.idleBoostUntil > Date.now()
+      current.redGems < IDLE_BOOST_GEMS || current.idleBoostUntil > Date.now()
         ? current
-        : { ...current, redGems: current.redGems - 80, idleBoostUntil: Date.now() + 24 * 3600 * 1000 },
+        : { ...current, redGems: current.redGems - IDLE_BOOST_GEMS, idleBoostUntil: Date.now() + 24 * 3600 * 1000 },
     );
     setCharacter(next);
     setRedGems(next.redGems);
@@ -3747,10 +3747,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     if (claimingProduct || characterRef.current.claimedRewards.includes(claimKey)) return;
     setClaimingProduct(productId);
     const grants: Record<string, { gems: number; gold: number; materials: number; cores: number; shoulder?: ShoulderId }> = {
-      "gems-80": { gems: 80, gold: 0, materials: 0, cores: 0 },
-      "gems-450": { gems: 450, gold: 0, materials: 0, cores: 0 },
-      "gems-1200": { gems: 1200, gold: 0, materials: 0, cores: 0 },
-      "adventurer-starter": { gems: 80, gold: 5000, materials: 10, cores: 0, shoulder: "scout" },
+      "gems-80": { gems: 8, gold: 0, materials: 0, cores: 0 },
+      "gems-450": { gems: 45, gold: 0, materials: 0, cores: 0 },
+      "gems-1200": { gems: 120, gold: 0, materials: 0, cores: 0 },
+      "adventurer-starter": { gems: 8, gold: 5000, materials: 10, cores: 0, shoulder: "scout" },
       // 송사리 모델 (2026-10-08) — QA 무료 경로. 실결제 지급·한도 기록은 payments/store.ts applyPurchase 가 담당
       "daily-deal": { gems: 40, gold: 3000, materials: 15, cores: 0 },
       "weekend-pack": { gems: 300, gold: 0, materials: 60, cores: 0 },
@@ -5653,10 +5653,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </div>
               <button
                 type="button"
-                disabled={redGems < 120 || shardPackBoughtThisWeek(shardPackTarget) >= SHARD_PACK_WEEKLY_LIMIT || save.heroes[shardPackTarget] <= 0}
+                disabled={redGems < SHARD_PACK_GEMS || shardPackBoughtThisWeek(shardPackTarget) >= SHARD_PACK_WEEKLY_LIMIT || save.heroes[shardPackTarget] <= 0}
                 onClick={() => void buyShardPack()}
               >
-                <GemMark />120
+                <GemMark />{SHARD_PACK_GEMS}
               </button>
             </article>}
             {/* 무기 외형 3종(진홍·빙하·황금) — 지금 장착한 무기 그림의 색 바꾸기 · 오라 (2026-10-27, 북 그림 대신) */}
@@ -5899,10 +5899,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </div>
               <button
                 type="button"
-                disabled={redGems < 80 || character.idleBoostUntil > Date.now()}
+                disabled={redGems < IDLE_BOOST_GEMS || character.idleBoostUntil > Date.now()}
                 onClick={() => void buyIdleBooster()}
               >
-                <GemMark />80
+                <GemMark />{IDLE_BOOST_GEMS}
               </button>
             </article>}
           </>
@@ -5937,7 +5937,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             // 보석팩 보너스 — 기준 팩(80개) 가격 대비, 화면 가격으로 계산한 값만 (근거 없는 % 를 쓰지 않는다)
             const gems = purchaseGrant(product.id)?.gems ?? 0;
             const base = STORE_PRODUCTS.find((p) => p.id === "gems-80");
-            const pct = product.id.startsWith("gems-") && product.id !== "gems-80" && base ? gemPackBonusPercent(gems, priceLabel(product), priceLabel(base), 80) : null;
+            const pct = product.id.startsWith("gems-") && product.id !== "gems-80" && base ? gemPackBonusPercent(gems, priceLabel(product), priceLabel(base), 8) : null;
             return pct ? <em className="gem-bonus-badge">+{pct}% 보너스</em> : null;
           })()}{product.id === "gate-fund" && <em className="gem-bonus-badge">수령: 보급·임무</em>}{doubleReady && <em className="first-double-badge">첫 구매 2배</em>}{momentBonusGems(character, product.id, nowTick) > 0 && <em className="moment-bonus-badge">지금 +{momentBonusGems(character, product.id, nowTick)} 보석</em>}</strong><p>{SHOP_COPY[product.id]?.blurb ?? product.description}</p>{lines.length > 0 && pkgIsOpen && <small className="shop-lines">{lines.map((line) => <i key={line}>{line}</i>)}</small>}{lines.length > 0 && product.id !== "remove-ads" && <button type="button" className="pkg-more" aria-label={pkgIsOpen ? "접기" : "자세히"} aria-expanded={pkgIsOpen} onClick={() => setPkgOpen(pkgOpen === product.id ? null : product.id)}>{pkgIsOpen ? "▴" : "▾"}</button>}</div>
           {paidOnly || !FREE_STORE_ENABLED ? (

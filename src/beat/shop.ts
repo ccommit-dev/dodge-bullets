@@ -17,15 +17,15 @@ export type BeatShopItem =
 
 export const BEAT_SHOP_ITEMS: BeatShopItem[] = [
   { kind: "ring", id: "neon", name: "훈련 네온 레일", desc: "판정 레일을 청록 네온으로 — 기본", cost: 0 },
-  { kind: "ring", id: "gold", name: "황금 전진 레일", desc: "레일·패드·판정 고리가 황금빛으로", cost: 80 },
-  { kind: "ring", id: "magenta", name: "공명 자홍 레일", desc: "선명한 자홍빛 공명 레일", cost: 100 },
-  { kind: "ring", id: "ice", name: "빙결 수호 레일", desc: "서리 낀 하늘색 레일과 차가운 고리", cost: 120 },
-  { kind: "ring", id: "ember", name: "용화염 레일", desc: "불꽃처럼 타오르는 주황 레일", cost: 140 },
+  { kind: "ring", id: "gold", name: "황금 전진 레일", desc: "레일·패드·판정 고리가 황금빛으로", cost: 8 },
+  { kind: "ring", id: "magenta", name: "공명 자홍 레일", desc: "선명한 자홍빛 공명 레일", cost: 10 },
+  { kind: "ring", id: "ice", name: "빙결 수호 레일", desc: "서리 낀 하늘색 레일과 차가운 고리", cost: 12 },
+  { kind: "ring", id: "ember", name: "용화염 레일", desc: "불꽃처럼 타오르는 주황 레일", cost: 14 },
   { kind: "spike", id: "triangle", name: "기본 구호", desc: "장식 없는 훈련용 노트 — 기본", cost: 0 },
-  { kind: "spike", id: "arrow", name: "돌격 구호", desc: "노트 뒤로 붉은 돌격 꼬리가 달린다", cost: 90 },
-  { kind: "spike", id: "diamond", name: "수호 구호", desc: "노트를 푸른 마름모 방패가 감싼다", cost: 110 },
-  { kind: "spike", id: "star", name: "공명 구호", desc: "보랏빛 별 문장과 반짝임", cost: 130 },
-  { kind: "spike", id: "bolt", name: "필살 구호", desc: "노란 번개 문장과 전기 테두리", cost: 150 },
+  { kind: "spike", id: "arrow", name: "돌격 구호", desc: "노트 뒤로 붉은 돌격 꼬리가 달린다", cost: 9 },
+  { kind: "spike", id: "diamond", name: "수호 구호", desc: "노트를 푸른 마름모 방패가 감싼다", cost: 11 },
+  { kind: "spike", id: "star", name: "공명 구호", desc: "보랏빛 별 문장과 반짝임", cost: 13 },
+  { kind: "spike", id: "bolt", name: "필살 구호", desc: "노란 번개 문장과 전기 테두리", cost: 15 },
 ];
 
 export function emptyBeatCosmetics(): BeatCosmetics {

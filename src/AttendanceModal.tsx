@@ -6,6 +6,7 @@ import { loadCharacterProgress, updateCharacterProgress } from "./progression/st
 import type { CharacterProgress, ShoulderId } from "./progression/model";
 import { assetUrl } from "./asset";
 import { WELCOME_GIFT_GEMS } from "./titans/model";
+import { gemsFromOld } from "./economy/units";
 
 /**
  * 30일 출석 (2026-10-02, 사용자: "출석체크 이벤트는 30일 버전으로 수정하고 완료되면 설정칸에서 안보이게").
@@ -29,28 +30,28 @@ type DayReward = { name: string; amount: string; icon: string; rarity: "normal" 
 const d = (name: string, amount: string, icon: string, rarity: DayReward["rarity"], grant: Grant): DayReward => ({ name, amount, icon, rarity, grant });
 /**
  * 30칸 = 7일 리듬 ×4 + 마무리 2칸 (2026-10-08 간결화). 평일 6칸은 보석·강화석·견갑 조각·원정 인장 네 가지만 돌고,
- * 7·14·21·28일째가 큰 보상(견갑 → 보석 100 → 보석 100+인장 → 보석 150), 30일째 용린 견갑. 주차가 오를수록 양이 는다.
+ * 7·14·21·28일째가 큰 보상(견갑 → 보석 10 → 보석 10+인장 → 보석 15), 30일째 용린 견갑. 주차가 오를수록 양이 는다. 보석은 2026-11-18 ÷10(economy/units).
  * 등반권·스킬 포인트는 뺐다 — 출석은 "오늘도 보석" 한 줄로 읽혀야 한다. 합계: 보석 780 · 강화석 128 · 조각 130 · 인장 90 (옛 판 600·70·—·9장 등반권보다 보석은 늘고 종류는 줄었다)
  */
 const week = (w: number): DayReward[] => [
-  d("보석", String(20 + w * 5), "gem", "normal", { gems: 20 + w * 5 }),
+  d("보석", String(gemsFromOld(20 + w * 5)), "gem", "normal", { gems: gemsFromOld(20 + w * 5) }),
   d("강화석", String(8 + w * 4), "enhance-stone", "normal", { stones: 8 + w * 4 }),
   d("조각", String(15 + w * 5), "shoulder-shards", "normal", { shards: 15 + w * 5 }),
-  d("보석", String(20 + w * 5), "gem", "normal", { gems: 20 + w * 5 }),
+  d("보석", String(gemsFromOld(20 + w * 5)), "gem", "normal", { gems: gemsFromOld(20 + w * 5) }),
   d("인장", String(10 + w * 5), "expedition-seal", "rare", { seals: 10 + w * 5 }),
   d("강화석", String(12 + w * 4), "enhance-stone", "normal", { stones: 12 + w * 4 }),
 ];
 export const ATTENDANCE_REWARDS: DayReward[] = [
-  ...week(0), d("견갑+보석", "50", "scout-pauldron", "epic", { shoulder: "scout", gems: 50 }),
-  ...week(1), d("보석", "100", "gem", "epic", { gems: 100 }),
-  ...week(2), d("보석+인장", "100", "gem", "epic", { gems: 100, seals: 20 }),
-  ...week(3), d("보석", "150", "gem", "epic", { gems: 150 }),
+  ...week(0), d("견갑+보석", "5", "scout-pauldron", "epic", { shoulder: "scout", gems: 5 }),
+  ...week(1), d("보석", "10", "gem", "epic", { gems: 10 }),
+  ...week(2), d("보석+인장", "10", "gem", "epic", { gems: 10, seals: 20 }),
+  ...week(3), d("보석", "15", "gem", "epic", { gems: 15 }),
   d("조각", "40", "shoulder-shards", "rare", { shards: 40 }),
-  d("용린견갑+보석", "160", "dragon-pauldron", "legend", { shoulder: "dragon", gems: 160 }),
+  d("용린견갑+보석", "16", "dragon-pauldron", "legend", { shoulder: "dragon", gems: 16 }),
 ];
 
 /**
- * 새 계정의 첫날 칸 = 보석 1000 (2026-10-22 아처 키우기 5번 "출석 다이아 1,000 → 바로 10연차") — 깜짝 선물 500(첫 대장)과 함께 첫 10연(900)을 바로.
+ * 새 계정의 첫날 칸 = 보석 100(예전 1000, 2026-11-18 ÷10) (2026-10-22 아처 키우기 5번 "출석 다이아 1,000 → 바로 10연차") — 깜짝 선물 500(첫 대장)과 함께 첫 10연(900)을 바로.
  * 새 계정만(2026-10-23): 출석을 한 번도 안 받았을 뿐 이미 한참 논 옛 계정이 업데이트 뒤 1000 을 받지 않게 — 그런 계정은 예전 첫날 칸(보석 20)
  */
 export const WELCOME_DAY1: DayReward = d("보석", String(WELCOME_GIFT_GEMS), "gem", "legend", { gems: WELCOME_GIFT_GEMS });

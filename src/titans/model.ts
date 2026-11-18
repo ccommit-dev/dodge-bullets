@@ -4,6 +4,7 @@ import { emptyAcorns, normalizeAcorns, type AcornState } from "./acorns";
 import { emptyQuests, normalizeQuests, type QuestState } from "./quests";
 import { emptyUrgent, normalizeUrgent, type UrgentState } from "./urgent";
 import { assetUrl } from "../asset";
+import { GEM_UNIT } from "../economy/units";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
 
 export type TitanHeroId =
@@ -112,6 +113,8 @@ export type TitansSave = {
   allyRebalance?: number;
   /** 골드 단위 판 (2026-11-10, GOLD_UNIT_VERSION) — 없거나 낮으면 옛 단위 골드 */
   goldUnit?: number;
+  /** 보석 단위 판(economy/units GEM_UNIT) — 없으면 예전 단위: 남은 은퇴 환불(pendingRefund.gems)을 한 번 ÷10 */
+  gemUnit?: number;
   /** 다시 계산 결과 안내 — TitansGame 부팅이 알리고 비운다 */
   rebalanceNotice?: { gold: number; changes: { id: TitanHeroId; from: number; to: number }[] } | null;
   totalKills: number;
@@ -147,10 +150,10 @@ export const BOSS_TIME_SEC = 30;
 export const RETIRED_ALLY_IDS: readonly TitanHeroId[] = ["cain", "mia_dark", "zephyr", "iris", "terra", "sylph", "sera_light"];
 export const RETIRED_SKILL_IDS: readonly TitanSkillId[] = ["pierce", "waterStep", "galeChain", "bloodMoon", "dragonBreath", "warcry", "tidalBurst", "focus"];
 /** 은퇴 동료 보유분 환불(보석) — 등급별 + 상점 동료는 산 값 */
-export const RETIRED_ALLY_REFUND_GEMS: Record<"R" | "SR" | "SSR", number> = { R: 100, SR: 200, SSR: 400 };
+export const RETIRED_ALLY_REFUND_GEMS: Record<"R" | "SR" | "SSR", number> = { R: 10, SR: 20, SSR: 40 };   // 보석 ÷10 (2026-11-18, economy/units)
 /** 은퇴 동료의 등급·상점가 — allies.ts 의 표와 같아야 한다 (verify-systems 대조). allies 가 이 파일을 타입으로만 쓰므로 순환을 피해 여기 둔다 */
 export const RETIRED_ALLY_RARITY: Partial<Record<TitanHeroId, "R" | "SR" | "SSR">> = { cain: "SSR", mia_dark: "SR", zephyr: "SR", iris: "SSR", terra: "SR", sylph: "SSR", sera_light: "SSR" };
-export const RETIRED_ALLY_SHOP_GEMS: Partial<Record<TitanHeroId, number>> = { mia_dark: 600, sera_light: 1100 };
+export const RETIRED_ALLY_SHOP_GEMS: Partial<Record<TitanHeroId, number>> = { mia_dark: 60, sera_light: 110 };
 
 /** 전체 정의(은퇴 포함) — 저장 이관·환불이 읽는다 */
 export const ALL_HEROES: TitanHeroDef[] = [
@@ -333,6 +336,7 @@ export function defaultTitansSave(): TitansSave {
     pendingRefund: null,
     allyRebalance: ALLY_REBALANCE_VERSION,
     goldUnit: GOLD_UNIT_VERSION,
+    gemUnit: 1,
     rebalanceNotice: null,
     totalKills: 0,
     totalTaps: 0,
@@ -398,7 +402,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   const lightningGold = Math.floor(oldLightningRefund * stageMul);
   const legacySword = Math.max(1, n(value.swordLevel, 1, 9999));
   // 은퇴 환불 — 보유하던 은퇴 동료는 등급별 보석(+상점가), 배운 은퇴 스킬은 SP·코어를 돌려준다. 한 번만: 이 함수가 지운 뒤에는 원본에 없다
-  const refund = { gems: value.pendingRefund?.gems ?? 0, sp: value.pendingRefund?.sp ?? 0, cores: 0 };
+  const refund = { gems: Math.ceil((value.pendingRefund?.gems ?? 0) / ((value.gemUnit ?? 0) >= 1 ? 1 : GEM_UNIT)), sp: value.pendingRefund?.sp ?? 0, cores: 0 };
   for (const h of ALL_HEROES) {
     if (!RETIRED_ALLY_IDS.includes(h.id) || n(value.heroes?.[h.id], 0, 9999) <= 0) continue;
     refund.gems += RETIRED_ALLY_REFUND_GEMS[RETIRED_ALLY_RARITY[h.id] ?? "R"] + (RETIRED_ALLY_SHOP_GEMS[h.id] ?? 0);
@@ -426,6 +430,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   return {
     gold: Math.floor(goldAfterRebalance) + lightningGold,
     goldUnit: GOLD_UNIT_VERSION,
+    gemUnit: 1,
     stage: Math.max(1, n(value.stage, 1, 9999)),
     bestStage: Math.max(1, n(value.bestStage, 1, 9999)),
     swordLevel: legacySword,
@@ -579,10 +584,10 @@ export function rebuyBudget(oldGold: number): number {
 export function rebirthStartGold(bestStage: number): number { const s = Math.min(90, Math.max(1, bestStage)); return Math.floor(rebuyBudget(200 * Math.pow(1.12, s))); }
 /** 환생 결정 — CharacterStatus 와 미리 보기가 같은 식을 쓴다 */
 export function rebirthCrystals(bestStage: number): number { return Math.max(3, Math.floor(Math.sqrt(Math.max(0, bestStage)) * 3)); }
-/** 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 동료 10연차(보석 900) 한 번 + 여유 */
-export const WELCOME_GIFT_GEMS = 1000;
+/** 첫 접속 환영 선물 (2026-10-22 아처 키우기 5번) — 동료 10연차(보석 90, 예전 900) 한 번 + 여유 */
+export const WELCOME_GIFT_GEMS = 100;   // 보석 ÷10 (2026-11-18) — 첫 10연(90)을 바로
 /** 깜짝 선물 — 환영 선물을 받은 새 계정의 첫 대장 처치 때 한 번 */
-export const SURPRISE_GIFT_GEMS = 500;
+export const SURPRISE_GIFT_GEMS = 50;
 export function equipmentTrainingCost(slot: "weapon" | "shoulder", level: number): number { return Math.floor(deflateCost((slot === "weapon" ? 20 : 34) * Math.pow(slot === "weapon" ? 1.17 : 1.19, level))); }
 
 /** 동료 값 조정 판 (2026-10-27) — 올리면 옛 저장이 한 번 다시 계산된다. 2 = 예전 힘 이상 보장 · 3 = 예전 힘에 가장 가깝게 + 판 1 환급 골드 회수 ·

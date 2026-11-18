@@ -298,7 +298,7 @@ function buildBranch(k: number): { def: BranchDef; stage: StageDef } {
   };
   // 유물 조각 — 비밀 대장 3(★1 하나) · 정예 ② 2 · 정예 ① · 보물 1
   const firstReward: BranchReward = lay.kind === "treasure" ? { coins: Math.round(base.baseReward * 10), materials: 20 + chapter * 10, relicShards: 1 }
-    : lay.kind === "secret" ? { gems: 30 + chapter * 10, seals: 20 + chapter * 10, shoulderShards: 20 + chapter * 10, relicShards: 3 }
+    : lay.kind === "secret" ? { gems: 3 + chapter, seals: 20 + chapter * 10, shoulderShards: 20 + chapter * 10, relicShards: 3 }
     : lay.key === "E1" ? { seals: 12 + chapter * 6, materials: 15 + chapter * 8, relicShards: 1 } : { forgeTickets: 1, materials: 25 + chapter * 10, relicShards: 2 };
   const def: BranchDef = { id, index, chapter, kind: lay.kind, anchor, row: lay.row, name, firstReward,
     requires: lay.requires === "main" ? { main: anchor } : { branch: `${chapter + 1}-${lay.requires}` } };

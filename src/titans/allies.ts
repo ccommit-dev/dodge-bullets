@@ -45,8 +45,8 @@ export const STAR_SHARD_COST = [0, 20, 50, 120, 300] as const;
 
 /** 상점 전용 동료 — 스테이지가 아니라 보석으로 해금된다 */
 export const SHOP_ALLY_GEM_COST: Partial<Record<TitanHeroId, number>> = {
-  luna: 900,
-  volt: 450,
+  luna: 90,   // 보석 ÷10 (2026-11-18)
+  volt: 45,
   // 얼터너티브 동료(흑화 미아·성광 세라)는 은퇴 — 원본과 겹쳤다 (2026-10-01). 환불가는 model.RETIRED_ALLY_SHOP_GEMS
 };
 
@@ -208,7 +208,7 @@ export function expeditionReward(
   return {
     shards: Math.max(1, Math.round((hours / 4) * rarityMult * starMult)),
     materials: Math.max(1, Math.round((hours / 2) * starMult)),
-    gems: (ALLY_RARITY[allyId] === "SSR" || ALLY_RARITY[allyId] === "UR" || ALLY_RARITY[allyId] === "LR") && hours >= 12 ? 5 : 0,
+    gems: (ALLY_RARITY[allyId] === "SSR" || ALLY_RARITY[allyId] === "UR" || ALLY_RARITY[allyId] === "LR") && hours >= 12 ? 1 : 0,
   };
 }
 

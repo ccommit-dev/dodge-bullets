@@ -42,24 +42,24 @@ export type SeasonReward =
   | { kind: "weaponFx"; id: string };
 
 /**
- * 무료 트랙 30단 — 보석 150 + 재료 + 방치 가속. 5단마다 보석 25.
+ * 무료 트랙 30단 — 보석 15 + 재료 + 방치 가속. 5단마다 보석 3 · 10단마다 2 (보석 ÷10, 2026-11-18 — 예전 25 × 6 = 150)
  * 빈 칸("—")이 12칸이던 목데이터를 없앴다: 2단 = 방치 가속 1h, 4단 = 강화석 20. 매 단이 무언가를 준다.
  */
 export function freeReward(tier: number): SeasonReward {
-  if (tier % 5 === 0) return { kind: "gems", amount: 25 };
+  if (tier % 5 === 0) return { kind: "gems", amount: tier % 10 === 0 ? 2 : 3 };
   if (tier % 5 === 3) return { kind: "shards", amount: 4 };
   if (tier % 5 === 1) return { kind: "materials", amount: 12 };
   if (tier % 5 === 2) return { kind: "boost", hours: 1 };
   return { kind: "materials", amount: 20 };
 }
-/** 유료 트랙 — 보석 600 · 조각 선택권 3(10단·20단·30단 = 조각 10씩) · 시즌 한정 스킨(15단) · 무기 이펙트(25단) */
+/** 유료 트랙 — 보석 60 · 조각 선택권 3(10단·20단·30단 = 조각 10씩) · 시즌 한정 스킨(15단) · 무기 이펙트(25단) */
 export function paidReward(tier: number, season: number): SeasonReward {
   if (tier === 15) return { kind: "allySkin", id: `season-${season + 1}` };
   if (tier === 25) return { kind: "weaponFx", id: "fx-season" };
   if (tier === 10 || tier === 20 || tier === 30) return { kind: "shards", amount: 10 };
   if (tier % 3 === 0) return { kind: "cores", amount: 1 };
-  // 보석 단 17개 × 35 + 1단 40 = 600
-  return { kind: "gems", amount: tier === 1 ? 40 : 35 };
+  // 보석 단 17개 — 1단 4 + 짝수 단 8개 × 4 + 홀수 단 8개 × 3 = 60 (보석 ÷10, 예전 40 + 16 × 35 = 600)
+  return { kind: "gems", amount: tier === 1 || tier % 2 === 0 ? 4 : 3 };
 }
 export function rewardLabel(r: SeasonReward): string {
   switch (r.kind) {

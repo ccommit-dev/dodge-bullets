@@ -27,12 +27,12 @@ export type HeroRankDef = {
 
 export const HERO_RANKS: readonly HeroRankDef[] = [
   { rank: 0, title: "수습 모험가", unlockStage: 1, atkBonus: 0, gems: 0, color: "#8a7a66", markColor: "#e7dccb", guardianArt: "", guardianName: "" },
-  { rank: 1, title: "청동 파수꾼", unlockStage: 8, atkBonus: 0.06, gems: 30, color: "#b45309", markColor: "#fdba74", guardianArt: "thorn-boar-king", guardianName: "청동 수문장" },
-  { rank: 2, title: "백은 기사", unlockStage: 16, atkBonus: 0.12, gems: 40, color: "#64748b", markColor: "#e2e8f0", guardianArt: "ancient-treant", guardianName: "백은 수호목" },
-  { rank: 3, title: "황금 선봉장", unlockStage: 26, atkBonus: 0.2, gems: 50, color: "#b8860b", markColor: "#fde047", guardianArt: "ruin-sentinel", guardianName: "황금 파수 기사" },
-  { rank: 4, title: "미스릴 집행관", unlockStage: 40, atkBonus: 0.28, gems: 60, color: "#0369a1", markColor: "#7dd3fc", guardianArt: "magma-golem", guardianName: "미스릴 거신" },
-  { rank: 5, title: "오리할콘 용사", unlockStage: 60, atkBonus: 0.38, gems: 80, color: "#c2410c", markColor: "#fb923c", guardianArt: "fire-demon", guardianName: "오리할콘 마신" },
-  { rank: 6, title: "오로라이트 전설", unlockStage: 85, atkBonus: 0.5, gems: 100, color: "#7e22ce", markColor: "#d8b4fe", guardianArt: "bone-dragon", guardianName: "오로라이트 고룡" },
+  { rank: 1, title: "청동 파수꾼", unlockStage: 8, atkBonus: 0.06, gems: 3, color: "#b45309", markColor: "#fdba74", guardianArt: "thorn-boar-king", guardianName: "청동 수문장" },
+  { rank: 2, title: "백은 기사", unlockStage: 16, atkBonus: 0.12, gems: 4, color: "#64748b", markColor: "#e2e8f0", guardianArt: "ancient-treant", guardianName: "백은 수호목" },
+  { rank: 3, title: "황금 선봉장", unlockStage: 26, atkBonus: 0.2, gems: 5, color: "#b8860b", markColor: "#fde047", guardianArt: "ruin-sentinel", guardianName: "황금 파수 기사" },
+  { rank: 4, title: "미스릴 집행관", unlockStage: 40, atkBonus: 0.28, gems: 6, color: "#0369a1", markColor: "#7dd3fc", guardianArt: "magma-golem", guardianName: "미스릴 거신" },
+  { rank: 5, title: "오리할콘 용사", unlockStage: 60, atkBonus: 0.38, gems: 8, color: "#c2410c", markColor: "#fb923c", guardianArt: "fire-demon", guardianName: "오리할콘 마신" },
+  { rank: 6, title: "오로라이트 전설", unlockStage: 85, atkBonus: 0.5, gems: 10, color: "#7e22ce", markColor: "#d8b4fe", guardianArt: "bone-dragon", guardianName: "오로라이트 고룡" },
 ];
 
 export const HERO_RANK_MAX = HERO_RANKS.length - 1;

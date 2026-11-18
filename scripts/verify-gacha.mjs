@@ -69,7 +69,7 @@ ok("뽑기 레벨 줄 · 6등급 확률 칩", /뽑기 Lv\.\d/.test(r.summon ?? "
 // 초월 천장 (2026-10-27 아쉬운 점) — 초월이 없는 초반 지역(상한 15)에서도 게이지가 보이고 쌓인다
 // 2026-10-28 스테이지 해금 없음 — 초반 지역 풀에도 초월이 있어 게이지가 바로 '확정까지 N회'
 ok("초월 천장 게이지: 초반 지역에도 보인다 · '초월 확정까지 200회'", /초월 천장 0.200/.test(r.lrPity ?? "") && /초월 확정까지 200회/.test(r.lrPity ?? ""), r.lrPity);
-ok("10회 소환 900 · SR 보장 표기", /900/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
+ok("10회 소환 90 · SR 보장 표기", /(^|\D)90(\D|$)/.test(r.ten ?? "") && /SR 이상/.test(r.guarantee ?? ""), `${r.ten} / ${r.guarantee}`);
 ok("천장 카운터 60회 표기", /60회/.test(r.pity ?? ""), r.pity);
 ok("역할 효과 칩(도발·축복) 표시", r.roleChips.length === 2 && /도발/.test(r.roleChips[0]), r.roleChips.join("|"));
 // 확률 공시
@@ -96,8 +96,8 @@ let t = await titans();
 ok("10연 → 카드 10장 연출", r.cards === 10, String(r.cards));
 // 2026-10-22: 처음 합류한 동료마다 첫 발견 보상 +50 보석(titans/discovery) — 그만큼 덜 줄어든다
 // 새 발견 키를 모두 센다 — 첫 10연 전설이 바로 싸워 새 몬스터(+20)도 그 사이에 잡힌다
-const discoveryGems = [...new Set(p.discovered ?? [])].filter((k) => !discoveredBeforeKeys.has(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 50 : k.startsWith("monster:") ? 20 : Math.min(150, Number(k.split(":")[1]) >= 2 ? 10 * Number(k.split(":")[1]) : 0)), 0);
-ok("보석 −900(+ 새 동료 첫 발견 50씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 900 - discoveryGems && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
+const discoveryGems = [...new Set(p.discovered ?? [])].filter((k) => !discoveredBeforeKeys.has(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 5 : k.startsWith("monster:") ? 2 : Math.min(15, Number(k.split(":")[1]) >= 2 ? Number(k.split(":")[1]) : 0)), 0);
+ok("보석 −90(+ 새 동료 첫 발견 5씩) · 누적 소환 10 · 천장 카운터 갱신", gemsBefore - p.redGems === 90 - discoveryGems && p.gachaPulls === 10 && p.gachaPity <= 10, `${gemsBefore}→${p.redGems} 발견 ${discoveryGems} pulls=${p.gachaPulls} pity=${p.gachaPity}`);
 { const cls = await page.evaluate(() => [...document.querySelectorAll(".gacha-card")].map((c) => /rarity-(\w+)/.exec(c.className)?.[1])); ok("10연 SR 이상 1명 이상 (보장)", r.fronts.length === 10 && cls.some((c) => ["sr", "ssr", "ur", "lr"].includes(c)), JSON.stringify({ fronts: r.fronts.length, cls })); }
 { const last = await page.evaluate(() => { const rank = (c) => ({ n: 0, r: 1, sr: 2, ssr: 3, ur: 4, lr: 5 })[/rarity-(w+)/.exec(c.className)?.[1]] ?? -1; const cards = [...document.querySelectorAll(".gacha-card")], l = cards[cards.length - 1]; return { isLast: l?.classList.contains("is-last"), others: document.querySelectorAll(".gacha-card.is-last").length, best: l ? rank(l) >= Math.max(...cards.map(rank)) : false, flip: l ? getComputedStyle(l.querySelector(".gacha-card-inner")).animationDelay : "", prev: cards[8] ? getComputedStyle(cards[8].querySelector(".gacha-card-inner")).animationDelay : "", tease: document.querySelector(".gacha-last-tease")?.textContent ?? "" }; }); ok("10연 마지막 칸 = 가장 좋은 카드 · 뒤집기만 늦다 · 문구", last.isLast && last.others === 1 && last.best && parseFloat(last.flip) - parseFloat(last.prev) > 1 && last.tease === "마지막 한 장…!", JSON.stringify(last)); }
 ok("뽑기 결과 위에 발견 토스트가 뜨지 않는다", await page.evaluate(() => !document.querySelector(".reward-pop")));
@@ -211,11 +211,12 @@ ok("급소 노리기 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명
 await seed({ ...baseProgress, patronUntil: now + 86400000 * 10, patronClaimedDate: "" }, baseTitans);
 await closeModal();
 p = await prog();
-ok("후원 계약 중 부팅 → 오늘 보석 +15 · 날짜 기록", p.redGems === 2015 && p.patronClaimedDate === new Date().toLocaleDateString("sv-SE"), `${p.redGems} ${p.patronClaimedDate}`);
+const patronToday = Math.floor(Date.now() / 86_400_000) % 2 === 0 ? 2 : 1;   // 후원 하루 보석 1 · 2 번갈아(productCatalog patronDailyGems)
+ok("후원 계약 중 부팅 → 오늘 보석 +1~2 · 날짜 기록", p.redGems === 200 + patronToday && p.patronClaimedDate === new Date().toLocaleDateString("sv-SE"), `${p.redGems} ${p.patronClaimedDate}`);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(2200);
 p = await prog();
-ok("같은 날 재부팅 → 중복 지급 없음", p.redGems === 2015, String(p.redGems));
+ok("같은 날 재부팅 → 중복 지급 없음", p.redGems === 200 + patronToday, String(p.redGems));
 await closeModal();
 await clickText(".titans-bottom-nav button", "상점");
 await sleep(500);

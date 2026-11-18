@@ -27,13 +27,13 @@ const openShop = async () => { await clickText(".titans-bottom-nav button", "상
 await openShop();
 ok("상점 꾸미기 → 탈것에 4종", (await page.$$(".mount-product")).length === 4);
 const card = (id) => `.mount-product[data-mount="${id}"]`;
-ok("비싼 탈것은 보석이 모자라면 못 산다(보석 700)", await page.$eval(`${card("wolf")} .mount-buy`, (b) => b.disabled));
+ok("비싼 탈것은 보석이 모자라면 못 산다(보석 70)", await page.$eval(`${card("wolf")} .mount-buy`, (b) => b.disabled));
 if (OUT) await page.screenshot({ path: `${OUT}/mount-shop.png` });
 const gems0 = (await prog()).redGems;
 await page.evaluate((s) => document.querySelector(s)?.click(), `${card("boar")} .mount-buy`);
 for (let k = 0; k < 30 && !((await prog()).mounts?.boar > 0); k += 1) await sleep(100);
 let p = await prog();
-ok("멧돼지 구매: 보석 -300 · Lv.1 · 자동 장착", p.redGems === gems0 - 300 && p.mounts.boar === 1 && p.activeMount === "boar", JSON.stringify({ gems: p.redGems, mounts: p.mounts, a: p.activeMount }));
+ok("멧돼지 구매: 보석 -30 · Lv.1 · 자동 장착", p.redGems === gems0 - 30 && p.mounts.boar === 1 && p.activeMount === "boar", JSON.stringify({ gems: p.redGems, mounts: p.mounts, a: p.activeMount }));
 await sleep(200);
 ok("카드에 Lv · 타기/내리기 · 강화", /Lv\.1\/10/.test(await page.$eval(card("boar"), (c) => c.textContent)) && !!(await page.$(`${card("boar")} .mount-upgrade`)));
 const stone0 = p.enhancementMaterials;

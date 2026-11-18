@@ -11,10 +11,10 @@ export const MOUNT_MAX_LEVEL = 10;
  *  "값은 6.7배인데 효과는 2.5배 · 사냥 골드뿐" · "등급과 상관없이 강화비가 같다") */
 export type MountDef = { id: MountId; name: string; art: string; gemPrice: number; base: number; perLevel: number; idleBase: number; idlePerLevel: number; upCost: number };
 export const MOUNT_DEFS: Record<MountId, MountDef> = {
-  boar: { id: "boar", name: "도토리 멧돼지", art: "mount-boar", gemPrice: 300, base: 0.02, perLevel: 0.004, idleBase: 0, idlePerLevel: 0, upCost: 30 },
-  deer: { id: "deer", name: "숲 사슴", art: "mount-deer", gemPrice: 600, base: 0.035, perLevel: 0.005, idleBase: 0.03, idlePerLevel: 0.003, upCost: 40 },
-  wolf: { id: "wolf", name: "은빛 늑대", art: "mount-wolf", gemPrice: 1000, base: 0.05, perLevel: 0.006, idleBase: 0.05, idlePerLevel: 0.004, upCost: 50 },
-  drake: { id: "drake", name: "불꽃 비룡", art: "mount-drake", gemPrice: 2000, base: 0.07, perLevel: 0.008, idleBase: 0.08, idlePerLevel: 0.006, upCost: 70 },
+  boar: { id: "boar", name: "도토리 멧돼지", art: "mount-boar", gemPrice: 30, base: 0.02, perLevel: 0.004, idleBase: 0, idlePerLevel: 0, upCost: 30 },
+  deer: { id: "deer", name: "숲 사슴", art: "mount-deer", gemPrice: 60, base: 0.035, perLevel: 0.005, idleBase: 0.03, idlePerLevel: 0.003, upCost: 40 },
+  wolf: { id: "wolf", name: "은빛 늑대", art: "mount-wolf", gemPrice: 100, base: 0.05, perLevel: 0.006, idleBase: 0.05, idlePerLevel: 0.004, upCost: 50 },
+  drake: { id: "drake", name: "불꽃 비룡", art: "mount-drake", gemPrice: 200, base: 0.07, perLevel: 0.008, idleBase: 0.08, idlePerLevel: 0.006, upCost: 70 },
 };
 export const MOUNT_IDS: MountId[] = ["boar", "deer", "wolf", "drake"];
 /** 앉는 자리 차이 (2026-11-09, 사용자 목록 R3 "다리 긴 사슴 · 짧은 멧돼지에 같은 높이로 앉는다") — 탈것 시트의 안장 자리(MOUNT_SEAT, 조립이 적는다)가

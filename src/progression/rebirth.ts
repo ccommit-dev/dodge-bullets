@@ -55,7 +55,7 @@ export function rebirthWallStatus(progress: Pick<CharacterProgress, "rebirthCoun
   return {
     need, have, ready, areas, next, nextShort,
     ruleShort: `대장 ${WALL_BOSS_LOSSES}연패한 지역 ${need}곳`,
-    rule: `한 지역에서 스테이지 대장에게 ${WALL_BOSS_LOSSES}번 연속 지면 그 지역이 벽으로 기록돼요(지역마다 처음 한 번 · 보석 +30).`,
+    rule: `한 지역에서 스테이지 대장에게 ${WALL_BOSS_LOSSES}번 연속 지면 그 지역이 벽으로 기록돼요(지역마다 처음 한 번 · 보석 +3).`,
     needText: need > 1 ? `서로 다른 지역 ${need}곳` : "지역 1곳",
   };
 }

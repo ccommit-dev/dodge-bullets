@@ -61,7 +61,7 @@ const poster = await page.evaluate(() => {
   return { title: p.querySelector(".promo-title")?.textContent, name: p.querySelector(".urgent-name")?.textContent, atk: p.querySelector('[data-promo="atk"]')?.textContent, gems: p.querySelector('[data-promo="gems"]')?.textContent,
     rows: [...p.querySelectorAll(".urgent-today li")].map((li) => `${li.className}:${li.textContent}`), inView: b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth, minFont: Math.min(...fonts), imgOk: !!img && img.complete && img.naturalWidth > 0, img: img?.getAttribute("src") };
 });
-ok("전단: 다음 등급 · 수호자 · 보상", poster?.title === "청동 파수꾼" && poster.name === "청동 수문장" && /공격 \+6%/.test(poster.atk ?? "") && poster.gems === "30", JSON.stringify(poster));
+ok("전단: 다음 등급 · 수호자 · 보상", poster?.title === "청동 파수꾼" && poster.name === "청동 수문장" && /공격 \+6%/.test(poster.atk ?? "") && poster.gems === "3", JSON.stringify(poster));
 ok("전단: 수호자 초상(가시 멧돼지 왕 그림)", !!poster?.imgOk && /thorn-boar-king/.test(poster?.img ?? ""), poster?.img);
 ok("전단: 등급 줄 — 1등급 도전 가능 · 2등급 16층", poster?.rows?.length === 2 && /is-open/.test(poster.rows[0]) && /16층/.test(poster.rows[1]), JSON.stringify(poster?.rows));
 ok("전단이 화면 안 · 글자 11px 이상", !!poster?.inView && poster.minFont >= 11, JSON.stringify(poster));
@@ -81,7 +81,7 @@ const won = await waitFor(async () => { const h = await hunt(); return h && h.sp
 ok("잡고 평소 사냥으로 돌아온다", !!won);
 await sleep(700);
 const after = await prog(), l2 = await look();
-ok("1등급 · 보석 +30", after.heroRank === 1 && after.redGems - before.redGems === 30, `${after.heroRank} · ${after.redGems - before.redGems}`);
+ok("1등급 · 보석 +3", after.heroRank === 1 && after.redGems - before.redGems === 3, `${after.heroRank} · ${after.redGems - before.redGems}`);
 ok("이름표가 '★ 청동 파수꾼'", (l2.marker ?? "").includes("청동 파수꾼"), String(l2.marker));
 ok("다음 등급(16층)은 아직 — 알림이 사라진다", !l2.alert);
 ok("층은 그대로", /^STAGE 8/.test(l2.h1), l2.h1);

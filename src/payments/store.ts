@@ -68,21 +68,22 @@ export function paidStoreVisible(): boolean {
 export type PurchaseGrantSpec = Partial<{ seals: number; skillShards: number; gateFund: boolean; dodgeSpeed3: boolean; gems: number; gold: number; materials: number; cores: number; shoulder: ShoulderId; character: string; patronDays: number; allyShards: number; idleBoostHours: number; seasonPaid: boolean; adFree: boolean }>;
 export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
   switch (productId) {
-    case "gems-80": return { gems: 80 };
-    case "gems-450": return { gems: 450 };
-    case "gems-1200": return { gems: 1200 };
+    // 보석 ÷10 (2026-11-18, economy/units) — 상품 id(스토어 SKU)는 그대로, 지급만 줄인다. 스토어 콘솔의 상품 이름 · 설명도 같이 고쳐야 한다
+    case "gems-80": return { gems: 8 };
+    case "gems-450": return { gems: 45 };
+    case "gems-1200": return { gems: 120 };
     // 송사리 모델 (2026-10-08) — 하루 ₩1,000 · 주말 ₩5,000. 한도는 dealState, 기록은 deal: 키
-    case "daily-deal": return { gems: 40, materials: 15, gold: 3000 };
-    case "weekend-pack": return { gems: 300, materials: 60, idleBoostHours: 24 };
-    case "adventurer-starter": return { gems: 80, gold: 5000, materials: 10, shoulder: "scout" };
+    case "daily-deal": return { gems: 4, materials: 15, gold: 3000 };
+    case "weekend-pack": return { gems: 30, materials: 60, idleBoostHours: 24 };
+    case "adventurer-starter": return { gems: 8, gold: 5000, materials: 10, shoulder: "scout" };
     case "char-obsidian": return { character: "obsidian" };
     case "char-dawn": return { character: "dawn" };
     case "char-ember": return { character: "ember" };
     case "char-frost": return { character: "frost" };
     case "patron-30d": return { patronDays: PATRON.days };
     // H 트리거 패키지
-    case "pack-wall": return { allyShards: 30, idleBoostHours: 24, gems: 100 };
-    case "pack-rebirth": return { gems: 400, cores: 10, allyShards: 40 };
+    case "pack-wall": return { allyShards: 30, idleBoostHours: 24, gems: 10 };
+    case "pack-rebirth": return { gems: 40, cores: 10, allyShards: 40 };
     case "season-pass": return { seasonPaid: true };
     case "remove-ads": return { adFree: true };
     // 성문 방어 (2026-10-02)

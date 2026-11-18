@@ -18,7 +18,7 @@ const prog = () => page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebu
 // 저장 심기는 다음 문서가 열릴 때(앱 스크립트보다 먼저) — 살아 있는 페이지에 쓰면 돌던 게임의 저장이 곧바로 덮었다(2026-10-23, 코인 · 발견 저장이 잦아져 드러났다)
 const seedThenGoto = async (fn, arg) => { const id = await page.evaluateOnNewDocument(fn, arg); await page.goto(BASE, { waitUntil: "networkidle0" }); await page.removeScriptToEvaluateOnNewDocument(id.identifier); };
 // 그 사이 첫 발견 보상(몬스터 +20 · 동료 +50) — 보석 증감 단언에서 뺀다
-const discoveryGemsSince = (before, after) => [...new Set(after.discovered ?? [])].filter((k) => !(before.discovered ?? []).includes(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 50 : k.startsWith("monster:") ? 20 : Math.min(150, Number(k.split(":")[1]) >= 2 ? 10 * Number(k.split(":")[1]) : 0)), 0);
+const discoveryGemsSince = (before, after) => [...new Set(after.discovered ?? [])].filter((k) => !(before.discovered ?? []).includes(k)).reduce((a, k) => a + (k.startsWith("ally:") ? 5 : k.startsWith("monster:") ? 2 : Math.min(15, Number(k.split(":")[1]) >= 2 ? Number(k.split(":")[1]) : 0)), 0);
 const clickText = (sel, text) => page.evaluate(({ sel, text }) => { const el = [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().includes(text)); el?.click(); return !!el; }, { sel, text });
 const closeModal = async () => { await page.evaluate(() => { for (let k = 0; k < 3; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => !x.closest(".battle-alert-stack, .titans-bottom-nav, .hub-sheet, .nav-popup-grid, .moment-offer")).find((x) => /출석|수령|확인|닫기/.test(x.textContent)); if (!b) break; b.click(); } }); await sleep(800); };
 
@@ -64,7 +64,7 @@ ok("보스 실패 → 30분 뒤 재도전 알림 예약 호출(id 2)", await pag
 await failBossOnce();
 await sleep(1200);
 r = await page.evaluate(() => { const c = document.querySelector(".moment-offer[data-product]"); return c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent, timer: c.querySelector(".moment-timer")?.textContent, sub: c.querySelector(".moment-sub")?.textContent } : null; });
-ok("실패 2회(벽 최초 도달) → 벽 돌파 세트 제안 카드 · 타이머 · 보너스 +30", r && r.product === "pack-wall" && /\d+:\d\d/.test(r.timer ?? "") && /\+30/.test(r.sub ?? ""), JSON.stringify(r));
+ok("실패 2회(벽 최초 도달) → 벽 돌파 세트 제안 카드 · 타이머 · 보너스 +3", r && r.product === "pack-wall" && /\d+:\d\d/.test(r.timer ?? "") && /\+3(?!\d)/.test(r.sub ?? ""), JSON.stringify(r));
 let p = await prog();
 ok("진행도에 제안 창 기록(momentOffers.pack-wall, 15분)", p.momentOffers?.["pack-wall"]?.kind === "wall" && p.momentOffers["pack-wall"].until - Date.now() > 13 * 60000 && p.wallAreas.includes("forest"), JSON.stringify(p.momentOffers));
 const gemsBefore = p.redGems, pWall = p;
@@ -73,7 +73,7 @@ await sleep(600);
 await clickText(".hub-sheet-switch button", "패키지");
 await sleep(500);
 r = await page.evaluate(() => [...document.querySelectorAll(".premium-product-card")].filter((c) => /벽 돌파/.test(c.textContent)).map((c) => c.querySelector(".moment-bonus-badge")?.textContent ?? null));
-ok("상점 패키지 탭의 벽 돌파 세트에 '지금 +30 보석' 배지", r.length === 1 && /\+30/.test(r[0] ?? ""), JSON.stringify(r));
+ok("상점 패키지 탭의 벽 돌파 세트에 '지금 +3 보석' 배지", r.length === 1 && /\+3(?!\d)/.test(r[0] ?? ""), JSON.stringify(r));
 await clickText(".titans-bottom-nav button", "사냥터");
 await sleep(600);
 await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
@@ -81,7 +81,7 @@ await sleep(1200);
 p = await prog();
 // 사냥터로 돌아가 있는 동안 새 몬스터를 처음 잡으면 첫 발견 보석 +20 이 같이 들어온다(2026-11-06 전체 검사 150→300) — 아래 픽업 구매처럼 그 몫을 뺀다
 const wallDiscovery = discoveryGemsSince(pWall, p);
-ok("카드에서 구매(QA) → 보석 +100 +30 보너스 · 제안 제거 · 구매 기록", p.redGems - wallDiscovery === gemsBefore + 130 && !p.momentOffers?.["pack-wall"] && p.claimedRewards.some((k) => k.startsWith("purchase:pack-wall:")), `gems ${gemsBefore}→${p.redGems} · 첫 발견 ${wallDiscovery}`);
+ok("카드에서 구매(QA) → 보석 +10 +3 보너스 · 제안 제거 · 구매 기록", p.redGems - wallDiscovery === gemsBefore + 13 && !p.momentOffers?.["pack-wall"] && p.claimedRewards.some((k) => k.startsWith("purchase:pack-wall:")), `gems ${gemsBefore}→${p.redGems} · 첫 발견 ${wallDiscovery}`);
 ok("구매 후 카드 사라짐", await page.evaluate(() => !document.querySelector(".moment-offer")));
 
 // ── retention-3: 9시간 복귀 → 정산 모달에 후원 계약 미리보기 → QA 구매 → patronUntil 30일 ──
@@ -117,7 +117,7 @@ await closeModal();
 r = await page.evaluate(() => { const c = document.querySelector(".moment-offer[data-product]"); return c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent } : null; });
 ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.product === "pack-rebirth" && /환생 축하/.test(r.head ?? ""), JSON.stringify(r));
 
-// ── retention-5: 픽업 회전 D-2 → 뽑기 페이지에 보석 1,200 제안(첫 구매 2배) → QA 구매 → 2400 + 150 ──
+// ── retention-5: 픽업 회전 D-2 → 뽑기 페이지에 보석 120 제안(첫 구매 2배) → QA 구매 → 240 + 15 (보석 ÷10) ──
 // 회전 주기 14일·기준 2026-01-05 UTC — 다음 회전 종료 2일 전(+1h)으로 Date.now 를 고정한다 (new Date() 는 실시간이라 출석 문자열엔 영향 없음)
 {
   const EPOCH = Date.UTC(2026, 0, 5), PERIOD = 14 * 86400000;
@@ -131,12 +131,12 @@ ok("사냥터 복귀 시 환생 축하 카드(pack-rebirth ₩12,000)", r?.produ
   await clickText(".titans-bottom-nav button", "상점"); await sleep(300); await clickText(".hub-sheet-switch button", "뽑기"); await sleep(300); await clickText(".shop-sub-tabs button", "동료"); await sleep(1500);
   r = await page.evaluate(() => { const days = [...document.querySelectorAll("small")].map((x) => x.textContent).find((t) => /회전까지/.test(t ?? "")) ?? ""; const c = document.querySelector(".moment-offer[data-product]"); return { days, card: c ? { product: c.dataset.product, head: c.querySelector(".moment-head")?.textContent, sub: c.querySelector(".moment-sub")?.textContent } : null }; });
   ok("뽑기 페이지 → 픽업 교체 D-1 알림 예약 호출(id 3)", await page.evaluate(() => (window.__notifyLog || []).some((n) => n.id === 3)));
-  ok("픽업 회전 D-2 · 뽑기 페이지에 보석 1,200 제안 카드(첫 구매 2배 · +150)", /회전까지 [12]일/.test(r.days ?? "") && r.card?.product === "gems-1200" && /첫 구매 2배/.test(r.card.head ?? "") && /\+150/.test(r.card.sub ?? ""), JSON.stringify(r));
+  ok("픽업 회전 D-2 · 뽑기 페이지에 보석 120 제안 카드(첫 구매 2배 · +15)", /회전까지 [12]일/.test(r.days ?? "") && r.card?.product === "gems-1200" && /첫 구매 2배/.test(r.card.head ?? "") && /\+15(?!\d)/.test(r.card.sub ?? ""), JSON.stringify(r));
   const pBuy = await prog();
   await page.evaluate(() => document.querySelector(".moment-offer[data-product] .moment-buy")?.click());
   await sleep(1200);
   p = await prog();
-  ok("픽업 제안 구매(QA, 첫 구매) → 보석 2,400 + 150 = 2,550 · 제안 제거", p.redGems - pBuy.redGems - discoveryGemsSince(pBuy, p) === 2550 && !p.momentOffers?.["gems-1200"], `gems=${p.redGems}`);
+  ok("픽업 제안 구매(QA, 첫 구매) → 보석 240 + 15 = 255 · 제안 제거", p.redGems - pBuy.redGems - discoveryGemsSince(pBuy, p) === 255 && !p.momentOffers?.["gems-1200"], `gems=${p.redGems}`);
   await page.evaluateOnNewDocument(() => {});
 }
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));

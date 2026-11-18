@@ -33,10 +33,10 @@ await openShop("재화");
 ok("광고 미연동이 아니면 '광고 보고 가속' 칸이 보인다(스텁)", await page.evaluate(() => !!document.querySelector(".ad-product button")));
 await page.evaluate(() => document.querySelector(".ad-product button")?.click());
 let p = await prog(); for (let i = 0; i < 30 && (p.adsWatchedTotal ?? 0) < 3; i += 1) { await sleep(200); p = await prog(); }
-ok("광고 시청 → 누적 3 · 제안 창이 열린다(광고 제거 · 24시간 · 보석 +40) · 첫 며칠 게이트와 무관", p.adsWatchedTotal === 3 && p.momentOffers?.["remove-ads"]?.kind === "ad-free" && p.momentOffers["remove-ads"].bonusGems === 40 && p.momentOffers["remove-ads"].until > Date.now() + 23 * 3600 * 1000, JSON.stringify({ n: p.adsWatchedTotal, o: p.momentOffers?.["remove-ads"] }));
+ok("광고 시청 → 누적 3 · 제안 창이 열린다(광고 제거 · 24시간 · 보석 +4) · 첫 며칠 게이트와 무관", p.adsWatchedTotal === 3 && p.momentOffers?.["remove-ads"]?.kind === "ad-free" && p.momentOffers["remove-ads"].bonusGems === 4 && p.momentOffers["remove-ads"].until > Date.now() + 23 * 3600 * 1000, JSON.stringify({ n: p.adsWatchedTotal, o: p.momentOffers?.["remove-ads"] }));
 await sleep(500);
 const card = await page.evaluate(() => { const c = document.querySelector('.moment-offer.kind-ad-free'); return c ? { text: c.textContent, product: c.dataset.product } : null; });
-ok("상점에 제안 카드: 광고 없이 바로 받기 · 가격 · 지금 사면 보석 +40", card?.product === "remove-ads" && /광고 없이 바로 받기/.test(card.text) && /3,900/.test(card.text) && /보석 \+40/.test(card.text), JSON.stringify(card)?.slice(0, 160));
+ok("상점에 제안 카드: 광고 없이 바로 받기 · 가격 · 지금 사면 보석 +4", card?.product === "remove-ads" && /광고 없이 바로 받기/.test(card.text) && /3,900/.test(card.text) && /보석 \+4(?!\d)/.test(card.text), JSON.stringify(card)?.slice(0, 160));
 // ── 2. 패키지 칸 — 게이트 전(출석 1 · Lv.8)에도 광고를 본 사람에겐 광고 제거가 맨 위 ──
 await openShop("패키지");
 const pkg = await page.evaluate(() => ({ heads: [...document.querySelectorAll(".package-filter button")].slice(1).map((h) => h.textContent), cards: [...document.querySelectorAll(".premium-product-card strong")].map((s) => s.textContent) }));

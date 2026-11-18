@@ -101,7 +101,7 @@ ok("10연 같은 동료 2회 → 두 번째는 중복 조각", ten.results.filte
 { const ownAll = Object.fromEntries(Object.keys(owned0).map((k) => [k, 5])); const dup = gacha.pullOnce(gacha.gachaPool(1, 1), ownAll, 0, () => 0.0);
   ok("보유 동료 중복 → 등급별 조각 (N 5 · R 10 · SR 20 · SSR 40 · UR 60 · LR 80)", dup.result.duplicate && dup.result.shards === gacha.GACHA.dupeShards[dup.result.rarity] && gacha.GACHA.dupeShards.N === 5 && gacha.GACHA.dupeShards.LR === 80, JSON.stringify(dup.result)); }
 ok("확률 공시 표: 항목 수 = 풀 크기 · % 문자열", gacha.rateTable(p30).length === p30.entries.length && /^\d+\.\d{2}$/.test(gacha.rateTable(p30)[0].percent));
-ok("10연 900 = 1회 100 × 10 × 0.9", gacha.GACHA.tenCost === 900 && gacha.GACHA.singleCost === 100);
+ok("10연 90 = 1회 10 × 10 × 0.9 (보석 ÷10)", gacha.GACHA.tenCost === 90 && gacha.GACHA.singleCost === 10);
 // 몬테카를로: 10만 회 등급 분포가 공시와 ±1%p
 const cnt = Object.fromEntries(summon.TIERS.map((t) => [t, 0]));
 for (let i = 0; i < 100000; i += 1) cnt[gacha.pullOnce(p30, owned0, 0).result.rarity] += 1;
@@ -120,7 +120,7 @@ ok("몬테카를로 10만회 등급 분포 ≈ 공시(±1%p)", summon.TIERS.ever
     return m;
   })();
   const weekGems = weeklyMod.routine.ROUTINE_REWARD_GEMS * 7 + events.MISSION_ALL_DONE_GEMS * 7 + Math.min(weeklyMod.weekly.weeklyGemTotal("2026-36"), weeklyMod.weekly.weeklyGemTotal("2026-37"));
-  ok("K 무과금 주간 보석 ≥ 290 (루틴 15×7 + 토벌 완주 10×7 + 주간 도전 120)", weekGems >= 290, `${weekGems}`);
+  ok("K 무과금 주간 보석 ≥ 29 (루틴 2×7 + 토벌 완주 1×7 + 주간 도전 12 — 보석 ÷10)", weekGems >= 29, `${weekGems}`);
   ok("K 주간 도전 3종 전부 보석", ["2026-36", "2026-37"].every((w) => weeklyMod.weekly.weeklyChallenges(w).every((c) => c.reward.kind === "gems")));
   ok("K 원정 일지 전 항목 보석화", weeklyMod.journal.JOURNAL_ENTRIES.every((e) => e.reward.kind === "gems"), weeklyMod.journal.JOURNAL_ENTRIES.map((e) => e.reward.kind).join());
   // 회전: stage 5 · 지역 5 → 후보 15명(6~48) → 14일 뒤 픽업이 바뀐다
@@ -169,12 +169,12 @@ ok("로스터 54명(월간 한정 1 포함) — 역할마다 8명 이상, 속성
   return allies.ALLY_IDS.length === 54 && ["melee", "ranged", "tank", "healer"].every((r) => roles.filter((x) => x === r).length >= 8) && el.size === 4 && tiers.size === 6;
 })(), allies.ALLY_IDS.join());
 ok("은퇴 동료는 로스터·뽑기·상점·스킨에 없다", model.RETIRED_ALLY_IDS.every((id) => !allies.ALLY_IDS.includes(id) && !model.HEROES.some((h) => h.id === id) && allies.SHOP_ALLY_GEM_COST[id] === undefined && gacha.gachaPool(60, 5).entries.every((e) => e.id !== id)));
-ok("은퇴 동료의 등급·상점가 표가 allies 와 같다 (환불 근거)", model.RETIRED_ALLY_IDS.every((id) => model.RETIRED_ALLY_RARITY[id] === allies.ALLY_RARITY[id]) && model.RETIRED_ALLY_SHOP_GEMS.mia_dark === 600 && model.RETIRED_ALLY_SHOP_GEMS.sera_light === 1100);
+ok("은퇴 동료의 등급·상점가 표가 allies 와 같다 (환불 근거)", model.RETIRED_ALLY_IDS.every((id) => model.RETIRED_ALLY_RARITY[id] === allies.ALLY_RARITY[id]) && model.RETIRED_ALLY_SHOP_GEMS.mia_dark === 60 && model.RETIRED_ALLY_SHOP_GEMS.sera_light === 110);
 ok("스킬 12종 — 슬롯마다 2~3개, 은퇴 스킬은 프리셋에 없다", model.SKILLS.length === 12 && ["starter", "linkA", "linkB", "finisher", "passive"].every((slot) => { const n = model.SKILLS.filter((s) => s.slot === slot).length; return n >= 2 && n <= 3; }) && skills.SKILL_PRESETS.every((p) => Object.values(p.picks).flat().every((id) => model.SKILLS.some((s) => s.id === id))));
 {
   // 예전 저장: 은퇴 동료 보유(카인 SSR Lv3 · 흑화 미아 SR 상점) + 은퇴 스킬 학습(pierce 3SP/1코어 · warcry 9SP/3코어)
   const old = model.normalizeTitansSave({ heroes: { mia: 5, cain: 3, mia_dark: 2 }, skillInventory: { learned: ["strike", "pierce", "warcry"], levels: { strike: 1, pierce: 2, warcry: 1 }, equipped: { starter: "pierce", finisher: "warcry" }, skillCores: 4 } });
-  ok("은퇴 동료 보유 저장 → 보석 환불 대기 (SSR 400 + SR 200 + 상점가 600 = 1200), 로스터엔 없음", old.pendingRefund?.gems === 1200 && old.heroes.cain === undefined && old.heroes.mia === 5, JSON.stringify(old.pendingRefund));
+  ok("은퇴 동료 보유 저장 → 보석 환불 대기 (SSR 40 + SR 20 + 상점가 60 = 120), 로스터엔 없음", old.pendingRefund?.gems === 120 && old.heroes.cain === undefined && old.heroes.mia === 5, JSON.stringify(old.pendingRefund));
   ok("은퇴 스킬 학습 저장 → SP 12 대기 · 코어 4+4 즉시 · 장착에서 빠짐", old.pendingRefund?.sp === 12 && old.skillInventory.skillCores === 8 && !old.skillInventory.learned.includes("pierce") && old.skillInventory.equipped.starter === undefined, JSON.stringify(old.skillInventory.equipped));
   const fresh = model.normalizeTitansSave({ heroes: { mia: 5 }, skillInventory: { learned: ["strike"], levels: { strike: 1 }, equipped: { starter: "strike" }, skillCores: 0 } });
   ok("은퇴 항목이 없는 저장은 환불이 없다", fresh.pendingRefund === null);
@@ -193,7 +193,7 @@ const base = prog.emptyCharacterProgress();
 ok("흑요석 검사 → 방치 효율 +1%p", Math.abs(idle.idleRate({ ...base, ownedCharacters: ["obsidian"] }, {}) - idle.idleRate(base, {}) - 0.01) < 1e-9);
 ok("새벽의 무희 → 캡 +0.5h · 후원 계약 → +2h", Math.abs(idle.idleCapHours({ ...base, ownedCharacters: ["dawn"] }) - idle.idleCapHours(base) - 0.5) < 1e-9 && Math.abs(idle.idleCapHours({ ...base, patronUntil: Date.now() + 1e6 }) - idle.idleCapHours(base) - 2) < 1e-9);
 ok("후원 계약 → 균열 4회", events.riftAttemptsFor(Date.now() + 1e6) === 4 && events.riftAttemptsFor(0) === 3);
-ok("후원 15/일 = ₩12.2/보석 (1,200팩 ₩12.5와 근접)", product.PATRON.dailyGems === 15 && 5500 / (15 * 30) > 12);
+ok("후원 평균 1.5/일(1 · 2 번갈아, 30일 45) = ₩122/보석 (120팩 ₩125와 근접)", product.PATRON.dailyGems === 1.5 && Array.from({ length: 30 }, (_, d) => product.patronDailyGems(d * 86_400_000)).reduce((a, b) => a + b, 0) === 45 && 5500 / 45 > 120);
 ok("황금 보급 상자 ×600 (골드 단위 낮추기 전 ×3000 — 사는 레벨이 같게)", gem.goldPackAmount({ ...base, titanBestStage: 10 }) === Math.floor(model.killGold(10, true, false) * 600));
 ok("진행도 정규화: gachaPity·patronUntil·beatSpMigrated 보존", (() => { const n = prog.normalizeCharacterProgress({ ...base, gachaPity: 12, patronUntil: 5, beatSpMigrated: 7 }); return n.gachaPity === 12 && n.patronUntil === 5 && n.beatSpMigrated === 7; })());
 
@@ -239,7 +239,7 @@ const art = await (async () => {
     return m;
   })();
   const t0 = sm.SEASON_EPOCH + 3 * 86400000;
-  ok("G 시즌 28일 · 30단 · 유료 보석 600 · 무료 보석 150", sm.SEASON.days === 28 && sm.SEASON.tiers === 30 && sm.paidGemTotal(0) === 600 && sm.freeGemTotal() === 150, `paid=${sm.paidGemTotal(0)} free=${sm.freeGemTotal()}`);
+  ok("G 시즌 28일 · 30단 · 유료 보석 60 · 무료 보석 15", sm.SEASON.days === 28 && sm.SEASON.tiers === 30 && sm.paidGemTotal(0) === 60 && sm.freeGemTotal() === 15, `paid=${sm.paidGemTotal(0)} free=${sm.freeGemTotal()}`);
   ok("G 시즌 번호·잔여일: 에폭+3일 → 시즌0, D-25", sm.seasonIndex(t0) === 0 && sm.seasonDaysLeft(t0) === 25 && sm.seasonIndex(t0 + 28 * 86400000) === 1);
   let p = { ...base, partyIds: ["mia"] };
   p = sm.addSeasonXp(p, sm.SEASON.xp.routine * 26, t0); // 520 XP → 5단
@@ -247,7 +247,7 @@ const art = await (async () => {
   ok("G 무료 수령 가능 단계 1~5 전부 (빈 칸 없음: 2=가속 1h · 4=강화석 20)", sm.claimableTiers(p, "free", t0).join() === "1,2,3,4,5" && sm.claimableTiers(p, "paid", t0).length === 0 && sm.freeReward(2).kind === "boost" && sm.freeReward(4).kind === "materials");
   ok("G 무료 트랙 30단 모두 실보상 (\"—\" 없음)", Array.from({ length: 30 }, (_, i) => sm.rewardLabel(sm.freeReward(i + 1))).every((l) => l !== "—"));
   const c5 = sm.claimSeasonTier(p, "free", 5, t0);
-  ok("G 5단 무료 수령 → 보석 +25 · 재수령 불가", c5.applied && c5.progress.redGems === base.redGems + 25 && !sm.claimSeasonTier(c5.progress, "free", 5, t0).applied);
+  ok("G 5단 무료 수령 → 보석 +3 · 재수령 불가", c5.applied && c5.progress.redGems === base.redGems + 3 && !sm.claimSeasonTier(c5.progress, "free", 5, t0).applied);
   const paidP = { ...c5.progress, seasonPass: { ...c5.progress.seasonPass, paid: true } };
   ok("G 유료 트랙 활성 시 1~5단 유료 보상 수령 가능 (3단 코어 반환)", sm.claimableTiers(paidP, "paid", t0).length === 5 && sm.claimSeasonTier(paidP, "paid", 3, t0).cores === 1);
   const rolled = sm.addSeasonXp(paidP, 10, t0 + 29 * 86400000);
@@ -316,7 +316,7 @@ const art = await (async () => {
     rmSync(d, { recursive: true, force: true });
     return m;
   })();
-  ok("I 무기 이펙트 3종 판매(300) + 시즌 1종 비매품 · 테마 3종(400) · 코스튬 2종", Object.values(cos.WEAPON_FX).filter((f) => f.gemCost === 300).length === 3 && cos.WEAPON_FX["fx-season"].gemCost === null && Object.values(cos.THEMES).every((t) => t.gemCost === 400) && Object.keys(cos.COSTUMES).length === 2);
+  ok("I 무기 이펙트 3종 판매(30) + 시즌 1종 비매품 · 테마 3종(40) · 코스튬 2종", Object.values(cos.WEAPON_FX).filter((f) => f.gemCost === 30).length === 3 && cos.WEAPON_FX["fx-season"].gemCost === null && Object.values(cos.THEMES).every((t) => t.gemCost === 40) && Object.keys(cos.COSTUMES).length === 2);
   ok("I 코스튬이 캐릭터 목록·라벨에 등록", cos.anim.CHARACTER_SKINS.includes("ember") && cos.anim.CHARACTER_SKINS.includes("frost") && !!cos.anim.CHARACTER_LABEL.frost);
   // 2026-10-19 애니메이션 2판: 주인공 시트가 anim/hero/hero-<동작>-<스킨>.webp(make-character-skins --anim2) — 1판 PNG(skins/)도 받는다
   ok("아트5 코스튬 2종이 CSS 필터가 아닌 실제 시트로 해석되고 파일이 존재(2판 webp · 1판 PNG)", ["ember", "frost"].every((id) => {
@@ -345,9 +345,9 @@ export * as season from "${root}/src/economy/seasonPass";`);
   })();
   const ssr = sk.allies.ALLY_IDS.filter((id) => sk.allies.ALLY_RARITY[id] === "SSR");
   const sale = Object.entries(sk.ALLY_SKINS).filter(([, d]) => d.gemCost !== null);
-  ok("J SSR 6명(은퇴 4명 제외) 전원에게 판매 스킨(300) 1종 이상", ssr.length === 6 && ssr.every((id) => sale.some(([, d]) => d.ally === id && d.gemCost === 300)), `ssr=${ssr.length} sale=${sale.length}`);
+  ok("J SSR 6명(은퇴 4명 제외) 전원에게 판매 스킨(30) 1종 이상", ssr.length === 6 && ssr.every((id) => sale.some(([, d]) => d.ally === id && d.gemCost === 30)), `ssr=${ssr.length} sale=${sale.length}`);
   ok("J 시즌 한정 스킨 season-1/2 비매품 · 패스 15단 id와 일치", sk.ALLY_SKINS["season-1"]?.gemCost === null && sk.ALLY_SKINS["season-2"]?.gemCost === null && sk.season.paidReward(15, 0)?.id === "season-1");
-  ok("J 픽업 할인: 픽업이면 240, 아니면 300, 비매품 null", sk.skinPrice("ari-blaze", ["ari"]) === 240 && sk.skinPrice("ari-blaze", ["nox"]) === 300 && sk.skinPrice("season-1", ["ari"]) === null);
+  ok("J 픽업 할인: 픽업이면 24, 아니면 30, 비매품 null", sk.skinPrice("ari-blaze", ["ari"]) === 24 && sk.skinPrice("ari-blaze", ["nox"]) === 30 && sk.skinPrice("season-1", ["ari"]) === null);
   // 성광 세라는 은퇴(2026-10-01) — 그 스킨은 카탈로그에 없다. 특수 정사각 아틀라스 경로는 아리 스킨 대조로만 본다
   ok("J 은퇴 동료의 스킨은 카탈로그에 없다 (성광 세라 후광)", sk.ALLY_SKINS["sera_light-halo"] === undefined && Object.values(sk.ALLY_SKINS).every((d) => !model.RETIRED_ALLY_IDS.includes(d.ally)));
   const ari = sk.art.allyFrameStyle("ari", 2, "ari-blaze");
@@ -400,13 +400,13 @@ export * as pay from "${root}/src/payments/store";`);
   const t0 = 1_800_000_000_000;
   const p0 = prog.normalizeCharacterProgress({ ...base, redGems: 0, attendanceStreak: 3 }); // 유료 게이트 통과
   const p1 = mo.openMomentOffer(p0, "wall", t0);
-  ok("순간 제안 열기: pack-wall 15분 창 · 보너스 30", p1.momentOffers["pack-wall"]?.kind === "wall" && p1.momentOffers["pack-wall"].until === t0 + 15 * 60000 && mo.momentBonusGems(p1, "pack-wall", t0 + 1000) === 30);
+  ok("순간 제안 열기: pack-wall 15분 창 · 보너스 3", p1.momentOffers["pack-wall"]?.kind === "wall" && p1.momentOffers["pack-wall"].until === t0 + 15 * 60000 && mo.momentBonusGems(p1, "pack-wall", t0 + 1000) === 3);
   ok("순간 제안 중복 열기 무시 · 만료 후 0", mo.openMomentOffer(p1, "wall", t0 + 1000) === p1 && mo.momentBonusGems(p1, "pack-wall", t0 + 16 * 60000) === 0 && mo.activeMomentOffers(p1, t0 + 16 * 60000).length === 0);
   const bought = mo.pay.applyPurchase(p1, "pack-wall", "tx-1", t0 + 5000);
-  ok("창 안 구매 → 보석 100 + 보너스 30 · 제안 제거", bought.applied && bought.bonus === 30 && bought.progress.redGems === 130 && !bought.progress.momentOffers["pack-wall"]);
+  ok("창 안 구매 → 보석 10 + 보너스 3 · 제안 제거", bought.applied && bought.bonus === 3 && bought.progress.redGems === 13 && !bought.progress.momentOffers["pack-wall"]);
   ok("구매한 트리거 팩은 다시 열리지 않음", mo.openMomentOffer(bought.progress, "wall", t0 + 6000) === bought.progress);
   const late = mo.pay.applyPurchase(p1, "pack-wall", "tx-2", t0 + 20 * 60000);
-  ok("창 밖 구매 → 보너스 0 (정가 구성)", late.applied && late.bonus === 0 && late.progress.redGems === 100);
+  ok("창 밖 구매 → 보너스 0 (정가 구성)", late.applied && late.bonus === 0 && late.progress.redGems === 10);
   ok("유료 게이트 전(출석<3·Lv<20)엔 제안이 열리지 않음", mo.openMomentOffer(prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }), "wall", t0) === prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }) || Object.keys(mo.openMomentOffer(prog.normalizeCharacterProgress({ ...base, attendanceStreak: 1, level: 5 }), "wall", t0).momentOffers).length === 0);
   // retention-3 정산 모달 후원 미리보기: 9h 복귀·캡 8h(버림 1h) → 추가 1h 골드, 후원 중이거나 8h 미만이면 null
   const pv = mo.patronPreview({ patronUntil: 0, attendanceStreak: 3, level: 5 }, 9 * 3600, 3600, 80000, 8 * 3600, t0);
@@ -417,15 +417,15 @@ export * as pay from "${root}/src/payments/store";`);
   // 송사리 모델: 오늘의 보급 하루 1회 · 주말 보급 토·일 주 1회 (QA 지급만 막고 결제된 주문은 지급)
   const mon = Date.UTC(2026, 9, 5, 3);   // 2026-10-05 월 (KST 낮)
   const sat = Date.UTC(2026, 9, 10, 3);  // 2026-10-10 토
-  ok("오늘의 보급: 처음 available → 산 뒤 bought · 다음날 다시 available", product.dealState(p0, "daily-deal", mon) === "available" && (() => { const b = mo.pay.applyPurchase(p0, "daily-deal", "qa-d1", mon); return b.applied && b.progress.redGems === 40 && b.progress.enhancementMaterials === p0.enhancementMaterials + 15 && product.dealState(b.progress, "daily-deal", mon) === "bought" && !mo.pay.applyPurchase(b.progress, "daily-deal", "qa-d2", mon + 60000).applied && mo.pay.applyPurchase(b.progress, "daily-deal", "play:d3", mon + 60000).applied && product.dealState(b.progress, "daily-deal", mon + 86400000) === "available"; })());
-  ok("주말 보급: 평일 weekday · 토요일 available → 산 뒤 그 주 bought · 다음 주 available · 가속 24h", product.dealState(p0, "weekend-pack", mon) === "weekday" && product.dealState(p0, "weekend-pack", sat) === "available" && (() => { const b = mo.pay.applyPurchase(p0, "weekend-pack", "qa-w1", sat); return b.applied && b.progress.redGems === 300 && b.progress.idleBoostUntil === sat + 24 * 3600000 && product.dealState(b.progress, "weekend-pack", sat + 86400000) === "bought" && product.dealState(b.progress, "weekend-pack", sat + 7 * 86400000) === "available"; })());
+  ok("오늘의 보급: 처음 available → 산 뒤 bought · 다음날 다시 available", product.dealState(p0, "daily-deal", mon) === "available" && (() => { const b = mo.pay.applyPurchase(p0, "daily-deal", "qa-d1", mon); return b.applied && b.progress.redGems === 4 && b.progress.enhancementMaterials === p0.enhancementMaterials + 15 && product.dealState(b.progress, "daily-deal", mon) === "bought" && !mo.pay.applyPurchase(b.progress, "daily-deal", "qa-d2", mon + 60000).applied && mo.pay.applyPurchase(b.progress, "daily-deal", "play:d3", mon + 60000).applied && product.dealState(b.progress, "daily-deal", mon + 86400000) === "available"; })());
+  ok("주말 보급: 평일 weekday · 토요일 available → 산 뒤 그 주 bought · 다음 주 available · 가속 24h", product.dealState(p0, "weekend-pack", mon) === "weekday" && product.dealState(p0, "weekend-pack", sat) === "available" && (() => { const b = mo.pay.applyPurchase(p0, "weekend-pack", "qa-w1", sat); return b.applied && b.progress.redGems === 30 && b.progress.idleBoostUntil === sat + 24 * 3600000 && product.dealState(b.progress, "weekend-pack", sat + 86400000) === "bought" && product.dealState(b.progress, "weekend-pack", sat + 7 * 86400000) === "available"; })());
   ok("패키지 묶음 6개(광고 제거가 맨 위) · 묶음 id 는 모두 카탈로그에 있다", product.PAID_GROUPS.length === 6 && product.PAID_GROUPS[0].id === "adfree" && product.PAID_GROUPS.every((g) => g.ids.every((id) => product.STORE_PRODUCTS.some((p) => p.id === id))));
   const reb = mo.openMomentOffer(p0, "rebirth", t0);
-  ok("환생 축하 제안: pack-rebirth 30분 창 · 보너스 60 · 구매 시 보석 400+60·코어 10", reb.momentOffers["pack-rebirth"]?.bonusGems === 60 && (() => { const r = mo.pay.applyPurchase(reb, "pack-rebirth", "tx-r", t0 + 1000); return r.applied && r.bonus === 60 && r.progress.redGems === 460 && r.cores === 10; })());
+  ok("환생 축하 제안: pack-rebirth 30분 창 · 보너스 6 · 구매 시 보석 40+6·코어 10", reb.momentOffers["pack-rebirth"]?.bonusGems === 6 && (() => { const r = mo.pay.applyPurchase(reb, "pack-rebirth", "tx-r", t0 + 1000); return r.applied && r.bonus === 6 && r.progress.redGems === 46 && r.cores === 10; })());
   // retention-5: 픽업 D-2 제안 — 창은 회전 종료 시각과 정의 창(2일) 중 이른 쪽, 첫 구매 2배 + 보너스 150
   const pk = mo.openMomentOffer(p0, "pickup", t0, t0 + 36 * 3600000);
-  ok("픽업 제안: gems-1200 창 = 회전 종료(36h) · 보너스 150", pk.momentOffers["gems-1200"]?.kind === "pickup" && pk.momentOffers["gems-1200"].until === t0 + 36 * 3600000 && pk.momentOffers["gems-1200"].bonusGems === 150);
-  ok("픽업 제안 구매(첫 구매) → 1200×2 + 150 = 2550", (() => { const r = mo.pay.applyPurchase(pk, "gems-1200", "tx-p", t0 + 1000); return r.applied && r.doubled && r.bonus === 150 && r.progress.redGems === 2550; })());
+  ok("픽업 제안: gems-1200 창 = 회전 종료(36h) · 보너스 15", pk.momentOffers["gems-1200"]?.kind === "pickup" && pk.momentOffers["gems-1200"].until === t0 + 36 * 3600000 && pk.momentOffers["gems-1200"].bonusGems === 15);
+  ok("픽업 제안 구매(첫 구매) → 120×2 + 15 = 255", (() => { const r = mo.pay.applyPurchase(pk, "gems-1200", "tx-p", t0 + 1000); return r.applied && r.doubled && r.bonus === 15 && r.progress.redGems === 255; })());
   // retention-6: 주간 마감 알림 시각 — 일요일 20:00 로컬, 지났으면 null
   const nat = await (async () => { const d = mkdtempSync(join(tmpdir(), "sysnat-")); const e = join(d, "entry.ts"); writeFileSync(e, `export * from "${root}/src/game/native";`); const o = join(d, "bundle.mjs"); await build({ entryPoints: [e], bundle: true, format: "esm", outfile: o, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } }); const m = await import(pathToFileURL(o).href); rmSync(d, { recursive: true, force: true }); return m; })();
   const wed = new Date(2026, 8, 2, 10, 0, 0); // 수요일 10시
@@ -461,9 +461,9 @@ ok("L 광고 제거 구매 → adFree", eventShop.pay.applyPurchase(base, "remov
   const p0 = { ...base, partyIds: ["mia"], rebirthCount: 1, wallAreas: ["forest"], pioneeredArea: 2 };
   const r1 = eventShop.pay.applyPurchase(p0, "gems-450", "tx1", 0);
   const r2 = eventShop.pay.applyPurchase(r1.progress, "gems-450", "tx2", 0);
-  ok("H 보석팩 첫 구매 2배(450→900) · 두 번째는 정가", r1.doubled && r1.progress.redGems === 900 && !r2.doubled && r2.progress.redGems === 1350, `${r1.progress.redGems}/${r2.progress.redGems}`);
+  ok("H 보석팩 첫 구매 2배(45→90) · 두 번째는 정가", r1.doubled && r1.progress.redGems === 90 && !r2.doubled && r2.progress.redGems === 135, `${r1.progress.redGems}/${r2.progress.redGems}`);
   const dup = eventShop.pay.applyPurchase(r2.progress, "gems-450", "tx2", 0);
-  ok("H 같은 transactionId 재적용 안 됨", !dup.applied && dup.progress.redGems === 1350);
+  ok("H 같은 transactionId 재적용 안 됨", !dup.applied && dup.progress.redGems === 135);
   const w1 = eventShop.pay.applyPurchase(r2.progress, "pack-wall", "tx3", 0);
   const w2 = eventShop.pay.applyPurchase(w1.progress, "pack-wall", "qa-4", 0);
   const w3 = eventShop.pay.applyPurchase(w1.progress, "pack-wall", "tx5", 0);
@@ -533,7 +533,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   const bought = towerTickets.buyTowerTicketWithSeals(p0);
   ok("인장 8 로 1장 · 상한 30 · 인장 부족이면 불가", bought?.towerTickets === 1 && bought.expeditionSeals === 12 && towerTickets.buyTowerTicketWithSeals({ ...p0, towerTickets: 30 }) === null && towerTickets.buyTowerTicketWithSeals({ ...p0, expeditionSeals: 7 }) === null);
   const tk = eventShop.shop.EVENT_PRODUCTS.filter((x) => x.grant({}).towerTickets);
-  ok("사냥터 특별 상점에 보석 등반권(1장 30 · 5장 120)", tk.length === 2 && tk.every((x) => x.tab === "event-shop2") && tk.some((x) => x.gemCost === 30 && x.grant({}).towerTickets === 1) && tk.some((x) => x.gemCost === 120 && x.grant({}).towerTickets === 5), tk.map((x) => x.name + x.gemCost).join(","));
+  ok("사냥터 특별 상점에 보석 등반권(1장 3 · 5장 12)", tk.length === 2 && tk.every((x) => x.tab === "event-shop2") && tk.some((x) => x.gemCost === 3 && x.grant({}).towerTickets === 1) && tk.some((x) => x.gemCost === 12 && x.grant({}).towerTickets === 5), tk.map((x) => x.name + x.gemCost).join(","));
   const normalized = prog.normalizeCharacterProgress ? prog.normalizeCharacterProgress({}) : null;
   ok("새 계정 기본 등반권 3장", !normalized || normalized.towerTickets === 3, String(normalized?.towerTickets));
   // 검 강화 — 이지/하드 모드가 없다: 성공률·판매가는 표 값 그대로, 예전 저장의 mode 는 무시
@@ -1558,8 +1558,8 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const invAt = (L) => ({ ...inv0, learned: ["strike", "emberCut"], levels: { ...inv0.levels, strike: L, emberCut: 1 } });
   const goldPool = sg.SKILLS.filter((x) => ["N", "R", "SR"].includes(sg.SKILL_TIER[x.id])).length;
   const perLv = (L) => sg.skillCardsPerLevel(L) * sg.skillBannerCost("gold", 1, invAt(L)).single * goldPool;
-  ok("스킬 뽑기 값: 보석 80 · 10회 720 · 골드 10회 = 1회 × 9 · 골드는 층과 무관(5층 = 50층) · 최소값(SKILL_GOLD_DRAW_MIN)",
-    sg.skillBannerCost("gem", 30).single === 80 && sg.skillBannerCost("gem", 30).ten === 720 && sg.skillBannerCost("gold", 5, invAt(12)).single === sg.skillBannerCost("gold", 50, invAt(12)).single && sg.skillBannerCost("gold", 12, invAt(12)).ten === sg.skillBannerCost("gold", 12, invAt(12)).single * 9 && sg.skillBannerCost("gold", 1, invAt(1)).single === sg.SKILL_GOLD_DRAW_MIN);   // 최소값 — 골드 단위 낮추기(2026-11-10) 뒤 45
+  ok("스킬 뽑기 값: 보석 8 · 10회 72 · 골드 10회 = 1회 × 9 · 골드는 층과 무관(5층 = 50층) · 최소값(SKILL_GOLD_DRAW_MIN)",
+    sg.skillBannerCost("gem", 30).single === 8 && sg.skillBannerCost("gem", 30).ten === 72 && sg.skillBannerCost("gold", 5, invAt(12)).single === sg.skillBannerCost("gold", 50, invAt(12)).single && sg.skillBannerCost("gold", 12, invAt(12)).ten === sg.skillBannerCost("gold", 12, invAt(12)).single * 9 && sg.skillBannerCost("gold", 1, invAt(1)).single === sg.SKILL_GOLD_DRAW_MIN);   // 최소값 — 골드 단위 낮추기(2026-11-10) 뒤 45
   ok("카드로 Lv +1 기대 값(보통 스킬) ≈ 같은 Lv 골드 강화 — Lv10 · 15 · 19 에서 0.95~1.05배(낮은 Lv 은 최소값이라 카드가 더 비싸다)", [10, 15, 19].every((L) => Math.abs(perLv(L) / sg.skillGoldUpgradeCost(L) - 1) < 0.05) && perLv(3) >= sg.skillGoldUpgradeCost(3), [3, 10, 15, 19].map((L) => `Lv${L} 카드 ${perLv(L).toLocaleString()} · 골드 ${sg.skillGoldUpgradeCost(L).toLocaleString()}`).join(" · "));
   ok("기준은 최고 Lv — 다른 스킬을 낮게 둬도 값이 내려가지 않는다", sg.skillBannerCost("gold", 1, { ...invAt(15), levels: { ...invAt(15).levels, emberCut: 1 } }).single === sg.skillBannerCost("gold", 1, { ...invAt(15), levels: { ...invAt(15).levels, emberCut: 15 } }).single);
   let k = 0; const rng = () => ((k = (k * 9301 + 49297) % 233280) / 233280);

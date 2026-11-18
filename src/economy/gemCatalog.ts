@@ -29,7 +29,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
     desc: "장착한 무기가 붉은 루비 빛으로 물든다",   // 2026-11-09 뒤 "— 검 · 창 · 활 · 지팡이 모두 · 외형 전용" 은 소제목과 같아 뺐다(카드에서 잘렸다)
     hue: 350,
     aura: "#f87171",
-    gemCost: 450,
+    gemCost: 45,
     spriteIndex: 0,
   },
   "blade-glacier": {
@@ -37,7 +37,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
     desc: "장착한 무기에 얼음 결정 빛이 맺힌다",   // 2026-11-09 뒤 "— 검 · 창 · 활 · 지팡이 모두 · 외형 전용" 은 소제목과 같아 뺐다(카드에서 잘렸다)
     hue: 195,
     aura: "#7dd3fc",
-    gemCost: 450,
+    gemCost: 45,
     spriteIndex: 1,
   },
   "blade-solar": {
@@ -45,7 +45,7 @@ export const WEAPON_SKINS: Record<string, WeaponSkinDef> = {
     desc: "장착한 무기가 황금 햇빛으로 반짝인다",   // 2026-11-09 뒤 "— 검 · 창 · 활 · 지팡이 모두 · 외형 전용" 은 소제목과 같아 뺐다(카드에서 잘렸다)
     hue: 46,
     aura: "#fcd34d",
-    gemCost: 600,
+    gemCost: 60,
     spriteIndex: 2,
   },
 };
@@ -73,39 +73,39 @@ export const TITLES: Record<string, TitleDef> = {
     name: "심연의 개척자",
     desc: "미지의 사냥터를 열어젖힌 자",
     color: "#7dd3fc",
-    gemCost: 150,
+    gemCost: 15,
   },
   "title-wall": {
     name: "성벽의 정복자",
     desc: "끝없는 성벽을 오르는 자",
     color: "#c4b5fd",
-    gemCost: 150,
+    gemCost: 15,
   },
   "title-titan": {
     name: "타이탄 슬레이어",
     desc: "타이탄의 그림자를 사냥하는 자",
     color: "#fcd34d",
-    gemCost: 250,
+    gemCost: 25,
   },
 };
 
 /* ── 재화·아이템 팩 ── */
 export const GEM_PACK = {
   /** 황금 보급 상자 — 사냥터 골드. 수량은 아래 goldPackAmount */
-  goldPackCost: 100,
+  goldPackCost: 10,   // 보석 ÷10 (2026-11-18)
   /** 강화석 상자 */
-  materialPackCost: 60,
+  materialPackCost: 6,
   materialPackAmount: 80,
   /** 스킬 코어 상자 */
-  corePackCost: 90,
+  corePackCost: 9,
   corePackAmount: 5,
   /** 파견 즉시 완료권 — 진행 중 파견 1건을 바로 귀환시킨다 */
-  expeditionFinishCost: 30,
+  expeditionFinishCost: 3,
 } as const;
 
 /**
  * 황금 보급 상자 수량 — 현재 최고 스테이지 보스 킬골드 × 600 (골드 단위 낮추기 전 × 3,000).
- * 과금 점검: ×900은 방치 가속권(80보석, 최대 킬골드×37,800)에 5배 열위였다. ×3,000은
+ * 과금 점검: ×900은 방치 가속권(예전 80보석, 최대 킬골드×37,800)에 5배 열위였다. ×3,000은
  * 기본 스탯 가속권(×5,040)의 4배·상한 스탯의 60% — 즉시 골드가 필요한 벽에서 고를 이유가 생긴다.
  * 골드 단위 낮추기(2026-11-10, titans/model GOLD_CURVE) 뒤 × 600: 강화비가 단계마다 ×1.19 → ×1.07 로 느리게 올라 같은 처치 수의 목돈이 레벨을 훨씬 많이 산다
  * (× 3,000 그대로면 힘 ×60~900). 벽에 선 일곱 계정(바깥 배수 1~1000 · 20분~10시간)에서 사는 레벨 · 오르는 층이 예전 × 3,000 과 같은 배수가 500~700 이었다

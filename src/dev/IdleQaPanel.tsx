@@ -141,7 +141,7 @@ export function IdleQaPanel({ userHash }: { userHash: string }) {
               </button>
             </div>
             <div className="qa-row">
-              <button type="button" onClick={() => seed(userHash, { redGems: 5000, ownedCharacters: ["obsidian", "dawn"] })}>
+              <button type="button" onClick={() => seed(userHash, { redGems: 500, ownedCharacters: ["obsidian", "dawn"] })}>
                 보석+캐릭터 지급
               </button>
               <button

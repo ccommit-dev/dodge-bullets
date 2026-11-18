@@ -46,8 +46,8 @@ ok("얼굴 = 그 지역 대장 교대 그림 · 시트 · 썸네일 있음", fac
 
 // ── 3. 보상 · 균열 정산 ──
 ok("강화석 2 + 4단마다 1", C.climbReward(1).stones === 2 && C.climbReward(4).stones === 3 && C.climbReward(20).stones === 7);
-ok("보석은 5단마다 10 · 조각은 3단마다 1", C.climbReward(5).gems === 10 && C.climbReward(4).gems === 0 && C.climbReward(3).shards === 1 && C.climbReward(4).shards === 0);
-ok("하루 최대 보석 10 (5단에 한 번)", [1, 6, 11, 16].every((start) => Array.from({ length: 5 }, (_, i) => C.climbReward(start + i).gems).reduce((a, b) => a + b, 0) === 10));
+ok("보석은 5단마다 1(보석 ÷10) · 조각은 3단마다 1", C.climbReward(5).gems === 1 && C.climbReward(4).gems === 0 && C.climbReward(3).shards === 1 && C.climbReward(4).shards === 0);
+ok("하루 최대 보석 1 (5단에 한 번)", [1, 6, 11, 16].every((start) => Array.from({ length: 5 }, (_, i) => C.climbReward(start + i).gems).reduce((a, b) => a + b, 0) === 1));
 ok("균열 정산 단마다 +2% · 15단 넘으면 +30% 에서 멈춘다", C.climbRiftMult({ floor: 1, day: "", clears: 0 }) === 1 && Math.abs(C.climbRiftMult({ floor: 6, day: "", clears: 0 }) - 1.1) < 1e-9 && C.climbRiftMult({ floor: 16, day: "", clears: 0 }) === 1.3 && C.climbRiftMult({ floor: 999, day: "", clears: 0 }) === 1.3);
 
 // ── 4. 특수 대결 ──

@@ -839,7 +839,7 @@ export function normalizeCharacterProgress(
         for (const [id, v] of Object.entries(raw.momentOffers as Record<string, unknown>)) {
           const o = v as { kind?: unknown; until?: unknown; bonusGems?: unknown; openedAt?: unknown };
           if (typeof o?.kind === "string" && typeof o.until === "number" && Number.isFinite(o.until)) {
-            out[id] = { kind: o.kind, until: o.until, bonusGems: integer(o.bonusGems, 0, 1000), openedAt: typeof o.openedAt === "number" ? o.openedAt : 0 };
+            out[id] = { kind: o.kind, until: o.until, bonusGems: integer(o.bonusGems, 0, 100), openedAt: typeof o.openedAt === "number" ? o.openedAt : 0 };
           }
         }
       }

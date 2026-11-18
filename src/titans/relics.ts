@@ -258,10 +258,10 @@ export function relicIconUrl(id: RelicId): string {
  * 상점 유물 뽑기 (2026-10-26 · 10-27 재화별 · 10-28 등급 6) — 한 번 = 조각 1개. 10회는 10% 싸다.
  * 재화마다 나오는 등급 확률이 다르다(RELIC_BANNER_RATES). 등급 안에서는 아직 다 모으지 않은 유물 중 균등.
  * 다 모은 등급은 빠지고 남은 등급끼리 비례로 나눈다. 모든 유물이 ★5 면 뽑을 수 없다.
- * 보석 값은 게임 안 숫자에 묶여 있다(scripts/verify-relic-forge-econ.mjs): ★ 하나(조각 3 = 180 보석)는 고르는 동료 첫 승급(240)보다 싸고 절반 이상.
+ * 보석 값은 게임 안 숫자에 묶여 있다(scripts/verify-relic-forge-econ.mjs): ★ 하나(조각 3 = 18 보석)는 고르는 동료 첫 승급(24)보다 싸고 절반 이상(2026-11-18 보석 ÷10 — 예전 180 · 240).
  */
 /** 2026-10-27 사용자 확정: 1회 60 유지(40 · 80 안과 견준 뒤 "지금처럼") */
-export const RELIC_DRAW = { singleCost: 60, tenCost: 540 } as const;
+export const RELIC_DRAW = { singleCost: 6, tenCost: 54 } as const;   // 보석 ÷10 (2026-11-18)
 export const RELIC_STONE_DRAW = { singleCost: 30, tenCost: 270 } as const;
 
 export type RelicBanner = "gold" | "stone" | "gem";

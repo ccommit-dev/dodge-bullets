@@ -1236,7 +1236,7 @@ function App() {
               setStarResult({ stars: starsGained, improved: starsGained > prevStars, total: totalStars });
               window.setTimeout(() => setStarResult(null), 2400);
               // 별 단계 보상 — 12(예전 하나) 위로 30 · 60 · 100 · 150 (50 스테이지 × 3 = 150, 2026-10-02)
-              for (const [need, gems] of [[30, 100], [60, 150], [100, 200], [150, 300]] as const) {
+              for (const [need, gems] of [[30, 10], [60, 15], [100, 20], [150, 30]] as const) {   // 보석 ÷10 (2026-11-18)
                 const id = `dodge-stars-${need}`;
                 if (totalStars < need || nextProgress.claimedRewards.includes(id)) continue;
                 nextProgress = await updateCharacterProgress(userHashRef.current, (current) => (current.claimedRewards.includes(id) ? current : {
@@ -1255,12 +1255,12 @@ function App() {
                   }
                   return {
                     ...current,
-                    redGems: current.redGems + 60,
+                    redGems: current.redGems + 6,
                     allyShards: shards,
                     claimedRewards: [...current.claimedRewards, "dodge-stars-12"],
                   };
                 });
-                setShoulderDrop("성문 전 별 12개 달성 · 보석 +60 · 동료 조각 +10");
+                setShoulderDrop("성문 전 별 12개 달성 · 보석 +6 · 동료 조각 +10");
               }
             }
 

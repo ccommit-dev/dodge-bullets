@@ -10,7 +10,7 @@
  * - 픽업은 같은 등급 안에서 가중치 2배.
  * - 천장: 전설 이상 없이 60회 → 61회째 전설 이상 확정(픽업 우선). 전설 이상을 뽑으면 카운터 리셋.
  * - 초월 천장 (2026-10-27): 초월 없이 200회 → 200회째 초월 확정. 2026-10-28 부터 풀에 늘 초월이 있어 바로 확정된다.
- * - 10연: 900보석(10% 할인) + 영웅(SR) 이상 1명 보장.
+ * - 10연: 90보석(10% 할인, 2026-11-18 보석 ÷10 — 예전 900) + 영웅(SR) 이상 1명 보장.
  * - 중복: 등급별 조각 N 5 / R 10 / SR 20 / SSR 40 / UR 60 / LR 80 — 성급 곡선(★1→2 = 20)과 맞춘다.
  * - 확률 공시: rateTable()이 동료별 확률을 %로 돌려준다 (게임산업법 공시 화면용).
  */
@@ -23,8 +23,8 @@ import { activeLimited, isLimitedAlly, limitedInPool } from "./limitedAllies";
 const isTop = (r: AllyRarity) => TIER_RANK[r] >= TIER_RANK.SSR;
 
 export const GACHA = {
-  singleCost: 100,
-  tenCost: 900,
+  singleCost: 10,   // 보석 ÷10 (2026-11-18, economy/units)
+  tenCost: 90,
   pityLimit: 60,
   /** 초월(LR) 천장 — 초반 지역에서도 세고, 확정은 초월이 있는 풀에서 */
   lrPityLimit: 200,

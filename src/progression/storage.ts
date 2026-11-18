@@ -1,6 +1,6 @@
 import { addDailyProgress, rolledDaily } from "../game/expeditionOps";
 import { loadBeatRpg, loadCoins, loadCoinsOldUnit, loadHighScore, saveCoins } from "../game/storage";
-import { COIN_UNIT, EXP_UNIT, UNIT_REV } from "../economy/units";
+import { COIN_UNIT, EXP_UNIT, UNIT_REV, unitDivisors } from "../economy/units";
 import { storageRead, storageSet } from "../game/toss";
 import { loadForgeSave } from "../forge/storage";
 import { loadTitansSave } from "../titans/storage";
@@ -37,27 +37,50 @@ async function readProgress(userHash: string): Promise<{ value: CharacterProgres
   let base: CharacterProgress;
   // 단위 낮추기 2차(economy/units) — 판 번호가 없는 저장은 예전 단위다. 저장이 없어도(예전 코인 키만 있는 계정) 예전 단위로 본다
   let oldUnit = true;
+  let fromRev = 0;
   let preV5 = true;
   try {
     const parsed = raw ? (JSON.parse(raw) as Partial<CharacterProgress>) : null;
     // v5 이전 레코드에만 사냥터 기록으로 개척도를 소급 부여한다.
     // 매 로드마다 부여하면 titans가 개척도를 계속 밀어 올려 게이트가 영영 걸리지 않는다.
     preV5 = !parsed || typeof parsed.pioneeredArea !== "number";
-    oldUnit = !parsed || !(typeof parsed.unitRev === "number" && parsed.unitRev >= UNIT_REV);
+    fromRev = parsed && typeof parsed.unitRev === "number" ? parsed.unitRev : 0;
+    oldUnit = !parsed || fromRev < UNIT_REV;
     // 정규화 **전에** 바꾼다 — 정규화는 경험치로 레벨을 다시 세는데, 1/10 이 된 필요 경험치에 예전 경험치를 넣으면 레벨이 부풀어 오른다.
-    // 지갑 · 경험치 · 판 번호를 한 기록에 같이 써서 두 번 나누는 일이 없다
-    const record = parsed && oldUnit
-      ? { ...parsed, sharedCoins: Math.floor(num(parsed.sharedCoins) / COIN_UNIT), exp: Math.floor(num(parsed.exp) / EXP_UNIT), unitRev: UNIT_REV }
-      : parsed;
+    // 지갑 · 경험치 · 보석 · 판 번호를 한 기록에 같이 써서 두 번 나누는 일이 없다. 판마다 배수가 달라 판 번호에서 지금까지의 배수를 곱한다(unitDivisors)
+    const record = parsed && oldUnit ? migrateUnits(parsed, fromRev) : parsed;
     base = record ? normalizeCharacterProgress(record) : emptyCharacterProgress();
   } catch {
     base = emptyCharacterProgress();
   }
-  const value = await mergeLegacyProgress(userHash, base, preV5, oldUnit);
+  // 예전 코인 키(옛 단위 금액)는 판 0 저장에서만 하한으로 본다 — 판 1 저장에서 다시 읽으면 그 뒤에 쓴 지갑이 되살아난다
+  const value = await mergeLegacyProgress(userHash, base, preV5, !raw || fromRev === 0);
   const same = (a: CharacterProgress, b: CharacterProgress) => JSON.stringify({ ...a, updatedAt: 0 }) === JSON.stringify({ ...b, updatedAt: 0 });
   return { value, changed: !raw || oldUnit || !same(base, value), reliable };
 }
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0);
+
+/**
+ * 단위 이전 한 번 (economy/units) — 판 번호 fromRev 에서 UNIT_REV 까지.
+ * 보석 ÷10(판 2): 가진 보석은 올림. 결제 장부(ledger:<상품>:<거래>:<보석>)도 같이 줄인다 — 환불(revokeConsumable)이 이 수만큼 거둬 가서,
+ * 그대로 두면 예전 단위 10배를 거뒀다. 열린 순간 제안의 보너스 보석도 같은 배로
+ */
+function migrateUnits(parsed: Partial<CharacterProgress>, fromRev: number): Partial<CharacterProgress> {
+  const div = unitDivisors(fromRev);
+  const gems = (v: unknown) => Math.ceil(num(v) / div.gems);
+  const out: Partial<CharacterProgress> = { ...parsed, sharedCoins: Math.floor(num(parsed.sharedCoins) / div.coins), exp: Math.floor(num(parsed.exp) / div.exp), redGems: gems(parsed.redGems), unitRev: UNIT_REV };
+  if (div.gems > 1 && Array.isArray(parsed.claimedRewards)) {
+    out.claimedRewards = parsed.claimedRewards.map((k) => {
+      if (typeof k !== "string" || !k.startsWith("ledger:")) return k;
+      const cut = k.lastIndexOf(":");
+      return `${k.slice(0, cut + 1)}${gems(Number(k.slice(cut + 1)))}`;
+    });
+  }
+  if (div.gems > 1 && parsed.momentOffers && typeof parsed.momentOffers === "object") {
+    out.momentOffers = Object.fromEntries(Object.entries(parsed.momentOffers).map(([id, o]) => [id, o && typeof o === "object" ? { ...o, bonusGems: gems((o as { bonusGems?: unknown }).bonusGems) } : o])) as CharacterProgress["momentOffers"];
+  }
+  return out;
+}
 
 /** 진행도를 믿을 수 있게 읽지 못했다 — 덮어쓰지 않으려고 갱신을 멈춘다 (토스 Storage 응답 없음) */
 export class ProgressUnreadableError extends Error {

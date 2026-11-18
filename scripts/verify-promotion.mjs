@@ -29,7 +29,7 @@ const R = P.HERO_RANKS;
 ok("등급 0~6", R.length === 7 && R.every((d, i) => d.rank === i));
 ok("문턱 층 · 보너스 · 보석은 등급마다 오른다", R.slice(1).every((d, i) => d.unlockStage > R[i].unlockStage && d.atkBonus > R[i].atkBonus && d.gems >= R[i].gems), R.map((d) => `${d.unlockStage}층 +${Math.round(d.atkBonus * 100)}%`).join(" · "));
 ok("주인공 공격 보너스 상한 +50%", P.heroRankAtkMul(6) === 1.5 && P.heroRankAtkMul(0) === 1 && P.heroRankAtkMul(99) === 1.5);
-ok("첫 돌파 보석 합 360", R.reduce((s, d) => s + d.gems, 0) === 360);
+ok("첫 돌파 보석 합 36 (보석 ÷10)", R.reduce((s, d) => s + d.gems, 0) === 36);
 ok("이름 · 색이 다 있다", R.every((d) => d.title && d.color && d.markColor) && R.slice(1).every((d) => d.guardianName && d.guardianArt));
 
 // ── 2. 문턱 ──

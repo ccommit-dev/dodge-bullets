@@ -38,8 +38,8 @@ export type BeatClearReward = { gems?: number; materials?: number; shoulderShard
 /** 난도별 첫 클리어 보상 — EASY 강화석 · NORMAL 보석 + 견갑 조각 · HARD 보석 많이 + 견갑 조각 + 강화석 */
 export const BEAT_FIRST_CLEAR: Record<BeatDifficulty, BeatClearReward> = {
   easy: { materials: 20 },
-  medium: { gems: 30, shoulderShards: 3 },
-  hard: { gems: 80, shoulderShards: 8, materials: 40 },
+  medium: { gems: 3, shoulderShards: 3 },   // 보석 ÷10 (2026-11-18)
+  hard: { gems: 8, shoulderShards: 8, materials: 40 },
 };
 export const BEAT_DIFF_LABEL: Record<BeatDifficulty, string> = { easy: "쉬움", medium: "보통", hard: "어려움" };   // 2026-11-09 한글로(곡 카드 · 첫 클리어 안내 같은 말)
 

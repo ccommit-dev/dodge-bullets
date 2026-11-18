@@ -36,13 +36,13 @@ export const FIRST_DOUBLE_IDS = ["gems-80", "gems-450", "gems-1200"] as const;
  * 뺀 것: 중급·고급 모험가 세트(보석팩과 겹침) · 개척 축하 세트(오늘의 보급과 겹침) · 성문 수비 보급(보석+인장 조합이라 가치가 안 보였다)
  */
 export const STORE_PRODUCTS: StoreProduct[] = [
-  { id: "gems-80", kind: "consumable", name: "붉은 보석 80", description: "성장 선택권과 외형 구매에 사용", displayPrice: "₩1,500", contents: ["붉은 보석 ×80"], visible: true },
-  { id: "gems-450", kind: "consumable", name: "붉은 보석 450", description: "보너스 50개 포함", displayPrice: "₩7,500", badge: "인기", contents: ["붉은 보석 ×450"], visible: true },
-  { id: "gems-1200", kind: "consumable", name: "붉은 보석 1,200", description: "보너스 200개 포함", displayPrice: "₩15,000", contents: ["붉은 보석 ×1,200"], visible: true },
+  { id: "gems-80", kind: "consumable", name: "붉은 보석 8", description: "성장 선택권과 외형 구매에 사용", displayPrice: "₩1,500", contents: ["붉은 보석 ×8"], visible: true },
+  { id: "gems-450", kind: "consumable", name: "붉은 보석 45", description: "보너스 5개 포함", displayPrice: "₩7,500", badge: "인기", contents: ["붉은 보석 ×45"], visible: true },
+  { id: "gems-1200", kind: "consumable", name: "붉은 보석 120", description: "보너스 20개 포함", displayPrice: "₩15,000", contents: ["붉은 보석 ×120"], visible: true },
   // ── 송사리 모델 (2026-10-08): 하루 ₩1,000 · 주말 ₩5,000 — 커피 한 잔 값의 습관 결제. 한도는 dealState 가 센다 ──
-  { id: "daily-deal", kind: "bundle", name: "오늘의 보급", description: "하루 1회 · 커피 한 잔 값", displayPrice: "₩1,000", badge: "매일", contents: ["붉은 보석 ×40", "강화석 ×15", "골드 ×3,000"], visible: true },
-  { id: "weekend-pack", kind: "bundle", name: "주말 보급 상자", description: "토·일 한정 · 주 1회", displayPrice: "₩5,000", badge: "주말", contents: ["붉은 보석 ×300", "강화석 ×60", "방치 가속 24h"], visible: true },
-  { id: "adventurer-starter", kind: "bundle", name: "초급 모험가 세트", description: "초반 성장 시간을 줄이는 입문 패키지", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×80", "강화석 ×10", "정찰 견갑", "골드 ×5,000"], visible: true },
+  { id: "daily-deal", kind: "bundle", name: "오늘의 보급", description: "하루 1회 · 커피 한 잔 값", displayPrice: "₩1,000", badge: "매일", contents: ["붉은 보석 ×4", "강화석 ×15", "골드 ×3,000"], visible: true },
+  { id: "weekend-pack", kind: "bundle", name: "주말 보급 상자", description: "토·일 한정 · 주 1회", displayPrice: "₩5,000", badge: "주말", contents: ["붉은 보석 ×30", "강화석 ×60", "방치 가속 24h"], visible: true },
+  { id: "adventurer-starter", kind: "bundle", name: "초급 모험가 세트", description: "초반 성장 시간을 줄이는 입문 패키지", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×8", "강화석 ×10", "정찰 견갑", "골드 ×5,000"], visible: true },
   // L 광고 제거 — 보상형 자리 3곳(정산 2배·가속 4h·보스 +10초)을 광고 없이 자동 적용하는 상품
   { id: "remove-ads", kind: "entitlement", name: "광고 제거", description: "보상형 광고 5곳을 광고 없이 바로 받기 (정산 2배 · 가속 4h · 대장 +10초 · 성문 방어 2배 · 비트 2배)", displayPrice: "₩3,900", badge: "영구", contents: ["방치 정산 2배 하루 3회", "방치 가속 4h 하루 1회", "대장 실패 후 +10초 하루 3회", "성문 방어 보상 2배 하루 3회", "비트 디펜스 보상 2배 하루 3회"], visible: true },
   // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──
@@ -52,22 +52,23 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "char-ember", kind: "entitlement", name: "코스튬: 붉은 잔영", description: "잔불빛으로 물든 모험가 — 외형 전용", displayPrice: "₩5,900", contents: ["코스튬"], visible: true },
   { id: "char-frost", kind: "entitlement", name: "코스튬: 서리 무희", description: "서릿발이 서린 푸른 모험가 — 외형 전용", displayPrice: "₩5,900", contents: ["코스튬"], visible: true },
   // 과금 점검: 20/일(600)은 ₩9.17/보석으로 1,200팩(₩12.50)을 무의미하게 만들었다 → 15/일(450, ₩12.2/보석) + 편의 효과
-  { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 15 · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 15", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
+  { id: "patron-30d", kind: "bundle", name: "원정 후원 계약 30일", description: "매일 보석 1~2(30일 45) · 방치 캡 +2h · 균열 +1회", displayPrice: "₩5,500", badge: "월정액", contents: ["일일 보석 1~2", "방치 캡 +2h", "차원 균열 +1회/일"], visible: true },
   // ── 순간 제안 패키지 (벽·환생) — 감정 고점에서 1회. 개척 축하는 뺐다 (오늘의 보급과 겹침, 2026-10-08) ──
-  { id: "pack-wall", kind: "bundle", name: "벽 돌파 세트", description: "DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다", displayPrice: "₩5,900", badge: "1회", contents: ["출전 동료 조각 ×30", "방치 가속 24h", "보석 ×100"], visible: true, trigger: "wall" },
-  { id: "pack-rebirth", kind: "bundle", name: "환생 세트", description: "첫 환생 후 1회 — 재시작을 빠르게", displayPrice: "₩12,000", badge: "1회", contents: ["보석 ×400", "스킬 코어 ×10", "출전 동료 조각 ×40"], visible: true, trigger: "rebirth" },
+  { id: "pack-wall", kind: "bundle", name: "벽 돌파 세트", description: "DPS 벽을 만났을 때 1회 — 조각과 가속으로 넘는다", displayPrice: "₩5,900", badge: "1회", contents: ["출전 동료 조각 ×30", "방치 가속 24h", "보석 ×10"], visible: true, trigger: "wall" },
+  { id: "pack-rebirth", kind: "bundle", name: "환생 세트", description: "첫 환생 후 1회 — 재시작을 빠르게", displayPrice: "₩12,000", badge: "1회", contents: ["보석 ×40", "스킬 코어 ×10", "출전 동료 조각 ×40"], visible: true, trigger: "rebirth" },
   // 성문 원정 기금 (2026-10-02) — 한 번 사면 성문을 깰 때마다 보석. 수비 보급(소모성)은 BM 간결화로 뺐다 (2026-10-08)
   // 성문 방어 ×3 배속 (2026-10-12, 사용자: "댐원정 X3 유료 결제 아이템") — 영구. 시간 절약형(가이드 3.6 플레이 효율), 밸런스는 그대로
   { id: "dodge-x3", kind: "entitlement", name: "성문 방어 ×3 배속", description: "성문 방어 전투 속도 ×3 — 한 판이 1/3 시간", displayPrice: "₩2,900", badge: "영구", contents: ["성문 방어 ×3 배속 버튼"], visible: true },
-  { id: "gate-fund", kind: "entitlement", name: "성문 원정 기금", description: "한 번 사면 성문 방어를 깰 때마다 보석 — 이미 깬 단계는 바로 받는다", displayPrice: "₩9,900", badge: "영구", contents: ["스테이지 1~4 돌파 보석 100 · 150 · 250 · 400", "원정 별 6개 · 12개 보석 300 · 500", "모두 달성 시 보석 ×1,700 (달성한 단계만큼 받는다)"], visible: true },
+  { id: "gate-fund", kind: "entitlement", name: "성문 원정 기금", description: "한 번 사면 성문 방어를 깰 때마다 보석 — 이미 깬 단계는 바로 받는다", displayPrice: "₩9,900", badge: "영구", contents: ["스테이지 1~4 돌파 보석 10 · 15 · 25 · 40", "원정 별 6개 · 12개 보석 30 · 50", "모두 달성 시 보석 ×170 (달성한 단계만큼 받는다)"], visible: true },
   // G 시즌 패스 유료 트랙 — 이벤트 센터 시즌 탭에서 판매 (패키지 탭에는 숨김)
-  { id: "season-pass", kind: "entitlement", name: "시즌 패스", description: "4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트", displayPrice: "₩7,900", badge: "시즌", contents: ["유료 트랙 30단"], visible: false },
+  { id: "season-pass", kind: "entitlement", name: "시즌 패스", description: "4주 시즌 유료 트랙 — 보석 60 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트", displayPrice: "₩7,900", badge: "시즌", contents: ["유료 트랙 30단"], visible: false },
 ];
 
 /** 원정 후원 계약(월정액) 효과 — 실결제 연동 시 patronUntil을 30일 뒤로 세팅한다 */
 export const PATRON = {
   days: 30,
-  dailyGems: 15,
+  /** 평균 하루 1.5 — 날마다 1 · 2 를 번갈아(patronDailyGems), 30일 45 (보석 ÷10 전 15/일 450 과 값어치 같다) */
+  dailyGems: 1.5,
   capHours: 2,
   riftBonus: 1,
 } as const;
@@ -92,13 +93,21 @@ export type GemProduct = {
 };
 
 export const GEM_PRODUCTS: GemProduct[] = [
-  { id: "shard-pack", name: "성급 조각 선택팩", gemCost: 120, description: "원하는 동료의 조각 ×10 · 주당 동료별 3회" },
-  { id: "idle-booster", name: "방치 가속권 24h", gemCost: 80, description: "24시간 동안 방치 산출 2배 (중첩 불가)" },
+  { id: "shard-pack", name: "성급 조각 선택팩", gemCost: 12, description: "원하는 동료의 조각 ×10 · 주당 동료별 3회" },
+  { id: "idle-booster", name: "방치 가속권 24h", gemCost: 8, description: "24시간 동안 방치 산출 2배 (중첩 불가)" },
 ];
 
 /** 조각팩 주간 구매 제한 — 과금 상한 설계 (동료당/주) */
 export const SHARD_PACK_WEEKLY_LIMIT = 3;
 export const SHARD_PACK_AMOUNT = 10;
+/** 보석 값 — 화면 · 구매가 같은 값을 읽는다(예전엔 TitansGame 에 120 · 80 이 따로 박혀 있었다) */
+export const SHARD_PACK_GEMS = GEM_PRODUCTS.find((p) => p.id === "shard-pack")!.gemCost;
+export const IDLE_BOOST_GEMS = GEM_PRODUCTS.find((p) => p.id === "idle-booster")!.gemCost;
+
+/** 후원 계약 하루 보석 — 날(UTC 일수)마다 2 · 1 을 번갈아 평균 1.5(PATRON.dailyGems), 30일 45 */
+export function patronDailyGems(now: number): number {
+  return Math.floor(now / 86_400_000) % 2 === 0 ? 2 : 1;
+}
 
 /** 패키지 탭 묶음 — 화면 순서. 카탈로그에 없는 id 는 무시된다 (시즌 패스는 이벤트 센터에서 판다) */
 export const PAID_GROUPS: ReadonlyArray<{ id: string; label: string; note: string; ids: readonly string[] }> = [

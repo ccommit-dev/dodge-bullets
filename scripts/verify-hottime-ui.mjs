@@ -76,7 +76,7 @@ const openDaily = async (page) => {
   await page.evaluate(() => { const b = document.querySelector(".hottime-card button"); b?.click(); b?.click(); b?.click(); });   // 연타
   await sleep(1200);
   const after = await prog(page), c2 = await card(page);
-  ok("받기 — 보석 +5 · 강화석 +4 · 이벤트 코인 +3 (연타해도 한 번)", after.redGems - before.redGems === 5 && after.enhancementMaterials - before.enhancementMaterials === 4 && after.eventCoins - before.eventCoins === 3, `${after.redGems - before.redGems} · ${after.enhancementMaterials - before.enhancementMaterials} · ${after.eventCoins - before.eventCoins}`);
+  ok("받기 — 보석 +1 · 강화석 +4 · 이벤트 코인 +3 (연타해도 한 번)", after.redGems - before.redGems === 1 && after.enhancementMaterials - before.enhancementMaterials === 4 && after.eventCoins - before.eventCoins === 3, `${after.redGems - before.redGems} · ${after.enhancementMaterials - before.enhancementMaterials} · ${after.eventCoins - before.eventCoins}`);
   ok("받은 뒤 완료 · 비활성", c2?.state === "done" && c2.btn === "완료" && c2.disabled, JSON.stringify(c2));
   ok("받은 알림 문구", await page.evaluate(() => /점심 보급 받음/.test(document.querySelector(".event-list .shop-toast")?.textContent ?? "")));
   if (OUT) await page.screenshot({ path: `${OUT}/hottime-done.png` });

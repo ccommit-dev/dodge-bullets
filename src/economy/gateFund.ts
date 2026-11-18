@@ -17,12 +17,12 @@ const cleared = (p: Pick<CharacterProgress, "dodgeStars">, stageIndex: number) =
 export const totalStars = (p: Pick<CharacterProgress, "dodgeStars">) => Object.values(p.dodgeStars).reduce((a, b) => a + b, 0);
 
 export const GATE_FUND_TIERS: GateFundTier[] = [
-  { id: "s1", label: "1스테이지 돌파", gems: 100, done: (p) => cleared(p, 0) },
-  { id: "s2", label: "2스테이지 돌파", gems: 150, done: (p) => cleared(p, 1) },
-  { id: "s3", label: "3스테이지 돌파", gems: 250, done: (p) => cleared(p, 2) },
-  { id: "s4", label: "4스테이지 돌파", gems: 400, done: (p) => cleared(p, 3) },
-  { id: "star6", label: "성문 별 6개", gems: 300, done: (p) => totalStars(p) >= 6 },
-  { id: "star12", label: "성문 별 12개", gems: 500, done: (p) => totalStars(p) >= 12 },
+  { id: "s1", label: "1스테이지 돌파", gems: 10, done: (p) => cleared(p, 0) },
+  { id: "s2", label: "2스테이지 돌파", gems: 15, done: (p) => cleared(p, 1) },
+  { id: "s3", label: "3스테이지 돌파", gems: 25, done: (p) => cleared(p, 2) },
+  { id: "s4", label: "4스테이지 돌파", gems: 40, done: (p) => cleared(p, 3) },
+  { id: "star6", label: "성문 별 6개", gems: 30, done: (p) => totalStars(p) >= 6 },
+  { id: "star12", label: "성문 별 12개", gems: 50, done: (p) => totalStars(p) >= 12 },
 ];
 
 export const GATE_FUND_TOTAL_GEMS = GATE_FUND_TIERS.reduce((s, t) => s + t.gems, 0);

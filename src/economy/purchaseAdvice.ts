@@ -110,8 +110,8 @@ export function purchaseAdvice(progress: CharacterProgress, save: Pick<TitansSav
 
   // ── 붉은 보석 — 능력치로 바로 바뀌는 것만 ──
   if (progress.towerOpen && progress.towerTickets <= 0) {
-    push({ id: "gems:tower", title: "끝없는 성벽 등반권 1장", reason: `오늘 등반권을 다 썼다 — 보석 30 또는 인장 ${TOWER_TICKET_SEALS}`, currency: "gems", priority: 64,
-      cost: [{ currency: "gems", amount: 30 }], action: { kind: "tab", tab: "event-shop2" } });
+    push({ id: "gems:tower", title: "끝없는 성벽 등반권 1장", reason: `오늘 등반권을 다 썼다 — 보석 3 또는 인장 ${TOWER_TICKET_SEALS}`, currency: "gems", priority: 64,
+      cost: [{ currency: "gems", amount: 3 }], action: { kind: "tab", tab: "event-shop2" } });
   }
   const nextForgeStones = weaponForgeCost(Math.min(forge.bow, forge.staff)).stones;
   if (progress.enhancementMaterials < nextForgeStones) {
@@ -120,7 +120,7 @@ export function purchaseAdvice(progress: CharacterProgress, save: Pick<TitansSav
   }
   if (progress.idleBoostUntil <= now) {
     push({ id: "gems:idle", title: "방치 가속권 24h", reason: "자는 동안 방치 산출 2배 — 오래 비울 때 가장 이득", currency: "gems", priority: 54,
-      cost: [{ currency: "gems", amount: 80 }], action: { kind: "tab", tab: "premium" } });
+      cost: [{ currency: "gems", amount: 8 }], action: { kind: "tab", tab: "premium" } });
   }
   push({ id: "gems:gacha10", title: "동료 10연 뽑기", reason: "SR 이상 1명 보장 · 중복은 승급 조각", currency: "gems", priority: 48,
     cost: [{ currency: "gems", amount: GACHA.tenCost }], action: { kind: "tab", tab: "gacha" } });

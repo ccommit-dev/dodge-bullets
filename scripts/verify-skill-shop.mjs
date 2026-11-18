@@ -25,8 +25,8 @@ await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav butt
 await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "뽑기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.trim() === "스킬")?.click());
 await page.waitForSelector(".skill-shop-list", { timeout: 4000 }).catch(() => null);
 const shop = await page.evaluate(() => ({ heads: [...document.querySelectorAll('.skill-draw-product .draw-row-sub')].map((h) => h.closest("[data-banner]").dataset.banner + ":" + h.textContent), cards: [...document.querySelectorAll(".skill-draw-product")].map((c) => c.dataset.banner + ":" + c.textContent), btns: document.querySelectorAll(".skill-draw-product button[data-count]").length, icons: document.querySelectorAll(".skill-draw-product .skill-icon").length }));
-ok("상점 '스킬' 칸: 골드(일반 ~ 영웅) · 보석(영웅 ~ 초월) 2줄 · 줄마다 1회 · 10회 단추 · 그림 = 스킬 아이콘 · 보석 80",
-  shop.heads.length === 2 && /^gold:일반 ~ 영웅/.test(shop.heads[0]) && /^gem:영웅 ~ 초월/.test(shop.heads[1]) && shop.cards.length === 2 && shop.icons === 2 && shop.btns === 4 && /80/.test(shop.cards[1]),
+ok("상점 '스킬' 칸: 골드(일반 ~ 영웅) · 보석(영웅 ~ 초월) 2줄 · 줄마다 1회 · 10회 단추 · 그림 = 스킬 아이콘 · 보석 8",
+  shop.heads.length === 2 && /^gold:일반 ~ 영웅/.test(shop.heads[0]) && /^gem:영웅 ~ 초월/.test(shop.heads[1]) && shop.cards.length === 2 && shop.icons === 2 && shop.btns === 4 && /(^|\D)8(\D|$)/.test(shop.cards[1]),
   shop.heads.map((h) => h.slice(0, 26)).join(" | "));
 
 // ── 2. 골드 10회 — 소환진 → 공개(카드 10장) · 골드가 줄고 카드 10장 ──
@@ -49,7 +49,7 @@ const gemItems = await page.evaluate(() => [...document.querySelectorAll(".skill
 await page.evaluate(() => document.querySelector(".skill-draw-reveal .cta")?.click()); await sleep(400);
 let t2 = await tit(); for (let i = 0; i < 20 && sumCopies(t2) === sumCopies(t1); i += 1) { await sleep(150); t2 = await tit(); }
 const p1 = await prog();
-ok("보석 1회 → 보석 −80(QA 빌드는 999,999 고정) · 카드 +1 · 영웅 이상", (p0.redGems - p1.redGems === 80 || p1.redGems >= 999000) && sumCopies(t2) - sumCopies(t1) === 1 && gemItems.length === 1 && /^(SR|SSR|UR|LR)$/.test(gemItems[0]), `보석 ${p0.redGems} → ${p1.redGems} · ${gemItems}`);
+ok("보석 1회 → 보석 −8(QA 빌드는 999,999 고정) · 카드 +1 · 영웅 이상", (p0.redGems - p1.redGems === 8 || p1.redGems >= 999000) && sumCopies(t2) - sumCopies(t1) === 1 && gemItems.length === 1 && /^(SR|SSR|UR|LR)$/.test(gemItems[0]), `보석 ${p0.redGems} → ${p1.redGems} · ${gemItems}`);
 
 // ── 4. 확률 공시 — 보석 머리줄 '확률 정보' → 등급 4묶음 · 스킬별 % ──
 await page.evaluate(() => document.querySelector('.skill-draw-product[data-banner="gem"] .relic-gacha-rates')?.click()); await sleep(300);

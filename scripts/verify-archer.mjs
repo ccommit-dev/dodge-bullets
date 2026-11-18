@@ -64,7 +64,7 @@ ok("보상 문구에 전후가 있다", /0% → 3%/.test(L.perkLabel(L.emptyLadd
 ok("캐릭터 진행 기본값 · 정규화에 사다리 · 발견", P.emptyCharacterProgress().bossLadder.top === 0 && Array.isArray(P.emptyCharacterProgress().discovered) && P.normalizeCharacterProgress({ bossLadder: { top: 9, ranks: { ally: 3 } } }).bossLadder.ranks.ally === 3);
 
 // ── 4. 첫 발견 ──
-ok("발견 보상: 몬스터 20 · 동료 50 · 도토리 Lv1 0 · Lv5 50 · 상한 150", D.discoveryGems("monster", "goblin") === 20 && D.discoveryGems("ally", "mia") === 50 && D.discoveryGems("acorn", 1) === 0 && D.discoveryGems("acorn", 5) === 50 && D.discoveryGems("acorn", 99) === 150);
+ok("발견 보상: 몬스터 2 · 동료 5 · 도토리 Lv1 0 · Lv5 5 · 상한 15 (보석 ÷10)", D.discoveryGems("monster", "goblin") === 2 && D.discoveryGems("ally", "mia") === 5 && D.discoveryGems("acorn", 1) === 0 && D.discoveryGems("acorn", 5) === 5 && D.discoveryGems("acorn", 99) === 15);
 ok("발견 키 · 정규화(중복 제거 · 문자열만)", D.discoveryKey("acorn", 3) === "acorn:3" && D.normalizeDiscovered(["a", "a", 3, "b"]).join() === "a,b");
 
 // ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 옛 단계는 쓴 골드로 돌려준다 ──
@@ -75,7 +75,7 @@ ok("발견 키 · 정규화(중복 제거 · 문자열만)", D.discoveryKey("aco
   ok("번개 삭제: 다시 불러와도 두 번 주지 않는다", M.normalizeTitansSave({ ...old, lightningRefund: 0 }).gold === old.gold);
 }
 // ── 5. 환영 선물 ──
-ok("환영 선물 보석으로 동료 10연차(900)를 한 번 뽑을 수 있다", M.WELCOME_GIFT_GEMS >= 900);
+ok("환영 선물 보석으로 동료 10연차(90)를 한 번 뽑을 수 있다", M.WELCOME_GIFT_GEMS >= 90);
 // ── 7. 환생 ──
 ok("환생 출발 골드: 최고 스테이지에 비례(골드 단위 낮추기 뒤 30 → 1,726 · 60 → 8,691 — 옛 단위 5,992 · 18만) · 결정 식", M.rebirthStartGold(30) > 1200 && M.rebirthStartGold(30) < 3000 && M.rebirthStartGold(60) > M.rebirthStartGold(30) * 4 && M.rebirthCrystals(36) === 18 && M.rebirthCrystals(0) === 3, `${M.rebirthStartGold(30)} · ${M.rebirthStartGold(60)}`);
 // ── 8. 이벤트 코인 ──
@@ -123,7 +123,7 @@ const passY = I.computeIdleYield({ ...ssrBase, claimedRewards: ["field-pass:ari"
 ok("방치 조각 드랍: 전설 둘이 허가 없이도 '전설의 공명'(조각 2배)을 켠다", lockedY.allyShardDrops === passY.allyShardDrops && lockedY.allyShardDrops > 0, `${lockedY.allyShardDrops} / ${passY.allyShardDrops}`);
 const roleBase = P.normalizeCharacterProgress({ titanBestStage: 10, pioneeredArea: 3, partyIds: ["mia", "leon", "garen"], level: 10 });
 ok("방치 효율: 3역할 '균형 편성' +1%p — 지역과 관계없이(가렌이 지역1 에서도 출전)", I.idleRate(roleBase, {}) === I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}) && I.idleRate(roleBase, {}) > I.idleRate({ ...roleBase, partyIds: ["mia", "leon"] }, {}), `${I.idleRate(roleBase, {}).toFixed(3)} / ${I.idleRate({ ...roleBase, pioneeredArea: 1 }, {}).toFixed(3)}`);
-ok("환영 1000 + 깜짝 500", M.WELCOME_GIFT_GEMS === 1000 && M.SURPRISE_GIFT_GEMS === 500);
+ok("환영 100 + 깜짝 50 (보석 ÷10)", M.WELCOME_GIFT_GEMS === 100 && M.SURPRISE_GIFT_GEMS === 50);
 ok("캐릭터 진행에 자동 환생(기본 꺼짐)", P.emptyCharacterProgress().autoRebirth === false && P.normalizeCharacterProgress({ autoRebirth: true }).autoRebirth === true);
 
 console.log(fails ? `${fails} FAIL` : "ALL PASS");

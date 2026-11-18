@@ -7,18 +7,18 @@
  */
 export type WeaponFxDef = { name: string; desc: string; hue: number; trail: string; gemCost: number | null };
 export const WEAPON_FX: Record<string, WeaponFxDef> = {
-  "fx-crimson": { name: "진홍 잔영", desc: "핏빛 검격 궤적과 붉은 잔상", hue: 350, trail: "#f87171", gemCost: 300 },
-  "fx-glacier": { name: "빙하 잔영", desc: "서리가 남는 푸른 궤적", hue: 200, trail: "#7dd3fc", gemCost: 300 },
-  "fx-solar": { name: "태양 잔영", desc: "황금빛 궤적과 불꽃 잔상", hue: 45, trail: "#fde047", gemCost: 300 },
+  "fx-crimson": { name: "진홍 잔영", desc: "핏빛 검격 궤적과 붉은 잔상", hue: 350, trail: "#f87171", gemCost: 30 },
+  "fx-glacier": { name: "빙하 잔영", desc: "서리가 남는 푸른 궤적", hue: 200, trail: "#7dd3fc", gemCost: 30 },
+  "fx-solar": { name: "태양 잔영", desc: "황금빛 궤적과 불꽃 잔상", hue: 45, trail: "#fde047", gemCost: 30 },
   /** 시즌 패스 유료 25단 보상 — 판매하지 않는다 */
   "fx-season": { name: "시즌 잔영", desc: "시즌 한정 — 보라 번개 궤적", hue: 280, trail: "#c4b5fd", gemCost: null },
 };
 
 export type ThemeDef = { name: string; desc: string; sky: string; ground: string; accent: string; particles: "aurora" | "petal" | "void"; gemCost: number };
 export const THEMES: Record<string, ThemeDef> = {
-  "theme-aurora": { name: "오로라 밤", desc: "북극광이 흐르는 밤하늘", sky: "#0f172a", ground: "#0b3b3f", accent: "#5eead4", particles: "aurora", gemCost: 400 },
-  "theme-sakura": { name: "벚꽃 길", desc: "꽃잎이 흩날리는 봄 전장", sky: "#3b1d3a", ground: "#4a2a2a", accent: "#f9a8d4", particles: "petal", gemCost: 400 },
-  "theme-void": { name: "공허", desc: "별이 스러지는 심연의 정적", sky: "#020617", ground: "#0f0a1f", accent: "#a78bfa", particles: "void", gemCost: 400 },
+  "theme-aurora": { name: "오로라 밤", desc: "북극광이 흐르는 밤하늘", sky: "#0f172a", ground: "#0b3b3f", accent: "#5eead4", particles: "aurora", gemCost: 40 },
+  "theme-sakura": { name: "벚꽃 길", desc: "꽃잎이 흩날리는 봄 전장", sky: "#3b1d3a", ground: "#4a2a2a", accent: "#f9a8d4", particles: "petal", gemCost: 40 },
+  "theme-void": { name: "공허", desc: "별이 스러지는 심연의 정적", sky: "#020617", ground: "#0f0a1f", accent: "#a78bfa", particles: "void", gemCost: 40 },
 };
 
 /** 코스튬 (₩5,900) — 실제 시트는 scripts/make-character-skins.mjs가 파생(titans/character/skins/hero-*-<id>.png). char-<id> 상품으로 판매 */
@@ -29,8 +29,8 @@ export const COSTUMES: Record<string, { name: string; desc: string }> = {
 
 /**
  * 꾸미기 등급 (2026-11-09, 사용자: "상점 꾸미기 쪽에 너무 차별성이 없이 양산형") — 보석 값으로 6등급. 그림 테두리 · 등급 칩에만 쓴다(성능 무관).
- * 펫 · 탈것 · 무기 외형 · 비트 꾸미기 · 이펙트 · 테마 · 칭호가 같은 자로 잰다 — 80 일반 … 2000 초월.
+ * 펫 · 탈것 · 무기 외형 · 비트 꾸미기 · 이펙트 · 테마 · 칭호가 같은 자로 잰다 — 8 일반 … 200 초월 (보석 ÷10).
  */
 export function cosmeticTier(gems: number): "N" | "R" | "SR" | "SSR" | "UR" | "LR" {
-  return gems >= 1500 ? "LR" : gems >= 900 ? "UR" : gems >= 550 ? "SSR" : gems >= 280 ? "SR" : gems >= 120 ? "R" : "N";
+  return gems >= 150 ? "LR" : gems >= 90 ? "UR" : gems >= 55 ? "SSR" : gems >= 28 ? "SR" : gems >= 12 ? "R" : "N";   // 보석 ÷10 (2026-11-18)
 }

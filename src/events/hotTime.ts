@@ -17,8 +17,8 @@ export type HotTimeWindow = {
 };
 
 export const HOT_TIME_WINDOWS: readonly HotTimeWindow[] = [
-  { id: "lunch", label: "점심 보급", startHour: 12, endHour: 14, gems: 5, stones: 4, eventCoins: 3 },
-  { id: "evening", label: "저녁 보급", startHour: 19, endHour: 22, gems: 10, stones: 6, eventCoins: 5 },
+  { id: "lunch", label: "점심 보급", startHour: 12, endHour: 14, gems: 1, stones: 4, eventCoins: 3 },
+  { id: "evening", label: "저녁 보급", startHour: 19, endHour: 22, gems: 1, stones: 6, eventCoins: 5 },
 ];
 
 export function activeHotTime(now: Date = new Date()): HotTimeWindow | null {

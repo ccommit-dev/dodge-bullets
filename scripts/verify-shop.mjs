@@ -63,7 +63,7 @@ let p = await prog();
 for (let i = 0; i < 30 && p.forgeTicketsPending !== 2; i += 1) { await sleep(200); p = await prog(); }
 await sleep(200); p = await prog();
 await page.waitForFunction(() => /2\/3/.test([...document.querySelectorAll(".event-offer-card")].find((c) => /보스 토벌 보급품/.test(c.textContent))?.querySelector("small")?.textContent ?? ""), { timeout: 4000 }).catch(() => {});
-ok("보급품 구매: 보석 −90 · 강화석 +30 · 방지권 적립 2 · 골드 증가", before.redGems - p.redGems === 90 && p.enhancementMaterials - before.enhancementMaterials === 30 && p.forgeTicketsPending === 2 && p.sharedCoins > before.sharedCoins, `${before.redGems}→${p.redGems} mats ${p.enhancementMaterials} tickets ${p.forgeTicketsPending}`);
+ok("보급품 구매: 보석 −9 · 강화석 +30 · 방지권 적립 2 · 골드 증가", before.redGems - p.redGems === 9 && p.enhancementMaterials - before.enhancementMaterials === 30 && p.forgeTicketsPending === 2 && p.sharedCoins > before.sharedCoins, `${before.redGems}→${p.redGems} mats ${p.enhancementMaterials} tickets ${p.forgeTicketsPending}`);
 r = await page.evaluate(() => [...document.querySelectorAll(".event-offer-card")].find((c) => /보스 토벌 보급품/.test(c.textContent))?.querySelector("small")?.textContent);
 ok("구매 후 주간 잔여 2/3", /2\/3/.test(r ?? ""), r);
 // 비트 수련 지원팩(💎120): 견갑 조각 40 · 코어 4(사냥터 저장) · 보석 20 환급 → 순 −100
@@ -72,7 +72,7 @@ await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].
 for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.skillCores - beforeT.skillInventory.skillCores >= 4) break; await sleep(100); }
 const p2 = await prog();
 const t2 = await titans();
-ok("지원팩 구매: 보석 순 −100 · 견갑 조각 +40 · 스킬 코어 +4", p.redGems - p2.redGems === 100 && p2.shoulderShards - p.shoulderShards === 40 && t2.skillInventory.skillCores - beforeT.skillInventory.skillCores === 4, `${p.redGems}→${p2.redGems} shards ${p2.shoulderShards} cores ${t2.skillInventory.skillCores}`);
+ok("지원팩 구매: 보석 순 −10 · 견갑 조각 +40 · 스킬 코어 +4", p.redGems - p2.redGems === 10 && p2.shoulderShards - p.shoulderShards === 40 && t2.skillInventory.skillCores - beforeT.skillInventory.skillCores === 4, `${p.redGems}→${p2.redGems} shards ${p2.shoulderShards} cores ${t2.skillInventory.skillCores}`);
 // 특별 상점: 5일 출석 패키지 주 1회 → 두 번째는 한도 소진
 await clickText(".hub-sheet-switch button", "패키지");
 await sleep(500);
@@ -83,7 +83,7 @@ await clickAttend();
 let p3 = await prog();
 for (let i = 0; i < 30 && p3.redGems === p2.redGems; i += 1) { await sleep(200); if (i === 15) await clickAttend(); p3 = await prog(); }
 r = await page.evaluate(() => [...document.querySelectorAll(".event-offer-card")].find((c) => /5일 출석/.test(c.textContent))?.querySelector("button")?.textContent);
-ok("출석 패키지: 보석 순 +20(40 지불·60 환급) · 방치 가속 24h · 주 1회 한도 소진 표기", p3.redGems - p2.redGems === 20 && p3.idleBoostUntil > Date.now() + 23 * 3600 * 1000 && /한도 소진/.test(r ?? ""), `${p2.redGems}→${p3.redGems} ${r}`);
+ok("출석 패키지: 보석 순 +2(4 지불·6 환급) · 방치 가속 24h · 주 1회 한도 소진 표기", p3.redGems - p2.redGems === 2 && p3.idleBoostUntil > Date.now() + 23 * 3600 * 1000 && /한도 소진/.test(r ?? ""), `${p2.redGems}→${p3.redGems} ${r}`);
 // 조각 상품 (2026-10-28 — 동료 고르기 칸 없음): 가진 동료 모두에게 6씩
 ok("이벤트 · 특별: 동료 고르기 칸이 없다", await page.evaluate(() => !document.querySelector(".event-shard-target")));
 await page.evaluate(() => { [...document.querySelectorAll(".event-offer-card")].find((c) => /그림자 원정대 러시/.test(c.textContent))?.querySelector("button")?.click(); });
@@ -154,7 +154,7 @@ const gBefore = await prog();
 await page.evaluate(() => document.querySelector('.season-tier[data-tier="5"] .season-cell.free')?.click());
 await sleep(600);
 let gp = await prog();
-ok("G 5단 무료 수령 → 보석 +25 · 수령 기록", gp.redGems - gBefore.redGems === 25 && gp.seasonPass.claimedFree.includes(5), `${gBefore.redGems}→${gp.redGems}`);
+ok("G 5단 무료 수령 → 보석 +3 · 수령 기록", gp.redGems - gBefore.redGems === 3 && gp.seasonPass.claimedFree.includes(5), `${gBefore.redGems}→${gp.redGems}`);
 const coresBefore = (await titans()).skillInventory.skillCores;
 await page.evaluate(() => document.querySelector(".season-buy")?.click());
 await sleep(800);
@@ -214,7 +214,7 @@ await sleep(400);
 ok("L 미연동이면 광고 카드 자체가 없다", await page.evaluate(() => !document.querySelector(".ad-product")));
 
 // ── I. 영웅 외형: 무기 이펙트 · 전장 테마 (외형 탭, 보석) · 마이페이지 칩 ──
-await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.redGems = 1000; q.ownedWeaponFx = []; q.equippedWeaponFx = ""; q.ownedThemes = []; q.equippedTheme = ""; localStorage.setItem(k, JSON.stringify(q)); }, H);
+await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.redGems = 100; q.ownedWeaponFx = []; q.equippedWeaponFx = ""; q.ownedThemes = []; q.equippedTheme = ""; localStorage.setItem(k, JSON.stringify(q)); }, H);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(1500);
 await closeModal();
@@ -233,7 +233,7 @@ await page.evaluate(() => document.querySelector(".theme-product button")?.click
 await waitProg((x) => x.equippedTheme === "theme-aurora");
 await page.waitForFunction(() => document.querySelector(".titans-field")?.dataset.theme === "theme-aurora", { timeout: 4000 }).catch(() => {});
 let ip = await prog();
-ok("I 진홍 잔영 300 + 오로라 밤 400 구매 → 즉시 장착 · 보석 1000→300", ip.equippedWeaponFx === "fx-crimson" && ip.equippedTheme === "theme-aurora" && ip.redGems === 300, `gems=${ip.redGems} fx=${ip.equippedWeaponFx} theme=${ip.equippedTheme}`);
+ok("I 진홍 잔영 30 + 오로라 밤 40 구매 → 즉시 장착 · 보석 100→30", ip.equippedWeaponFx === "fx-crimson" && ip.equippedTheme === "theme-aurora" && ip.redGems === 30, `gems=${ip.redGems} fx=${ip.equippedWeaponFx} theme=${ip.equippedTheme}`);
 r = await page.evaluate(() => { const f = document.querySelector(".titans-field"); const cs = getComputedStyle(f); return { fx: f?.dataset.weaponFx, theme: f?.dataset.theme, sky: cs.getPropertyValue("--area-sky").trim(), trail: cs.getPropertyValue("--fx-trail").trim(), particles: !!document.querySelector(".theme-particles.theme-aurora"), btn: document.querySelector(".fx-product button")?.textContent }; });
 ok("I 전장에 data-weapon-fx/theme · 하늘색 테마 오버라이드 · 오로라 파티클 · 버튼 해제", r.fx === "fx-crimson" && r.theme === "theme-aurora" && r.sky === "#0f172a" && r.trail === "#f87171" && r.particles && r.btn === "해제", JSON.stringify(r));
 await page.evaluate(() => document.querySelector(".theme-product button")?.click());
@@ -255,7 +255,7 @@ ok("I 코스튬 2종이 플레이어블 캐릭터 목록에 노출", r >= 2, `co
 
 // ── J. SSR 스킨 10종 · 픽업 할인 20% · 시즌 스킨 비매품 ──
 // 픽업을 결정적으로: 스테이지 16 · 개척 5지역 → 미획득 후보 2명(녹스·브론) → 회전 없음, 둘 다 SSR 스킨 보유 대상
-await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.redGems = 1000; q.ownedAllySkins = ["season-1"]; q.equippedAllySkins = {}; q.pioneeredArea = Math.max(q.pioneeredArea ?? 1, 5); localStorage.setItem(k, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.stage = 16; t.heroes = { ...t.heroes, zephyr: 0, bronn: 0 }; localStorage.setItem(tk, JSON.stringify(t)); }, H);
+await page.evaluate((h) => { const k = `dodgebullets:progression:v1:${h}`; const q = JSON.parse(localStorage.getItem(k)); q.redGems = 100; q.ownedAllySkins = ["season-1"]; q.equippedAllySkins = {}; q.pioneeredArea = Math.max(q.pioneeredArea ?? 1, 5); localStorage.setItem(k, JSON.stringify(q)); const tk = `dodgebullets:titans:${h}`; const t = JSON.parse(localStorage.getItem(tk)); t.stage = 16; t.heroes = { ...t.heroes, zephyr: 0, bronn: 0 }; localStorage.setItem(tk, JSON.stringify(t)); }, H);
 await page.goto(BASE, { waitUntil: "networkidle0" });
 await sleep(1500);
 await closeModal();
@@ -273,23 +273,23 @@ await sleep(400);
 r = await page.evaluate(() => ({
   cards: document.querySelectorAll(".skin-product").length,
   deals: [...document.querySelectorAll(".skin-product.pickup-deal")].map((c) => ({ name: c.querySelector("strong").childNodes[0].textContent.trim(), btn: c.querySelector("button").textContent })),
-  nonDeal240: [...document.querySelectorAll(".skin-product:not(.pickup-deal)")].filter((c) => /240/.test(c.querySelector("button")?.textContent ?? "")).length,
+  nonDeal240: [...document.querySelectorAll(".skin-product:not(.pickup-deal)")].filter((c) => /(^|\D)24(\D|$)/.test(c.querySelector("button")?.textContent ?? "")).length,
   season: [...document.querySelectorAll(".skin-product")].filter((c) => /시즌 1/.test(c.textContent)).map((c) => c.querySelector("button").textContent),
   seasonTwoHidden: ![...document.querySelectorAll(".skin-product")].some((c) => /시즌 2/.test(c.textContent)),
 }));
 ok("J 동료 탭 스킨 카드 9장(판매 8 + 보유한 시즌 1 — 은퇴 동료 스킨 4장 제외) · 미보유 시즌 2는 숨김", r.cards === 9 && r.season.length === 1 && r.season[0] === "보유 중" && r.seasonTwoHidden, JSON.stringify({ cards: r.cards, season: r.season, s2: r.seasonTwoHidden }));
-// 2026-10-27 동료 60명 — 픽업이 스킨 없는 새 동료일 수 있어 할인 카드 수는 0~2. 할인은 늘 240, 할인 아닌 카드엔 240 없음
-ok("J 픽업 스킨에만 -20% 배지 · 240 표시 (0~2장 · 로테이션 무관)", r.deals.length <= 2 && r.deals.every((d) => /240/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
-// 고정 0.8초는 전체 검사 부하에서 저장 전(보석 1000)을 읽었다(2026-11-06) — 보석이 바뀔 때까지(최대 6초)
-const skinSaved = async () => { let jp = await prog(); for (let i = 0; i < 30 && jp.redGems === 1000; i += 1) { await sleep(200); jp = await prog(); } await sleep(200); return prog(); };
+// 2026-10-27 동료 60명 — 픽업이 스킨 없는 새 동료일 수 있어 할인 카드 수는 0~2. 할인은 늘 24(예전 240), 할인 아닌 카드엔 24 없음
+ok("J 픽업 스킨에만 -20% 배지 · 24 표시 (0~2장 · 로테이션 무관)", r.deals.length <= 2 && r.deals.every((d) => /(^|\D)24(\D|$)/.test(d.btn)) && r.nonDeal240 === 0, `deals=${JSON.stringify(r.deals)} nonDeal240=${r.nonDeal240}`);
+// 고정 0.8초는 전체 검사 부하에서 저장 전(보석 100, 예전 1000)을 읽었다(2026-11-06) — 보석이 바뀔 때까지(최대 6초)
+const skinSaved = async () => { let jp = await prog(); for (let i = 0; i < 30 && jp.redGems === 100; i += 1) { await sleep(200); jp = await prog(); } await sleep(200); return prog(); };
 if (r.deals.length > 0) {
   await page.evaluate(() => document.querySelector(".skin-product.pickup-deal button")?.click());
   const jp = await skinSaved();
-  ok("J 할인 스킨 구매 → 보석 1000→760 · 보유·장착", jp.redGems === 760 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
+  ok("J 할인 스킨 구매 → 보석 100→76 · 보유·장착", jp.redGems === 76 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
 } else {
-  await page.evaluate(() => [...document.querySelectorAll(".skin-product button")].find((b) => /300/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".skin-product button")].find((b) => /(^|\D)30(\D|$)/.test(b.textContent))?.click());
   const jp = await skinSaved();
-  ok("J 정가 스킨 구매 → 보석 1000→700 · 보유·장착 (이번 회전에 스킨 픽업 없음)", jp.redGems === 700 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
+  ok("J 정가 스킨 구매 → 보석 100→70 · 보유·장착 (이번 회전에 스킨 픽업 없음)", jp.redGems === 70 && jp.ownedAllySkins.length === 2, `gems=${jp.redGems} owned=${jp.ownedAllySkins.join()}`);
 }
 
 ok("런타임 에러 0건", errors.length === 0, errors.join(" | "));

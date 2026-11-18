@@ -9,10 +9,11 @@ export const discoveryKey = (kind: DiscoveryKind, id: string | number): string =
 
 /** 보상 보석 — 도토리는 단계가 높을수록 더 */
 export function discoveryGems(kind: DiscoveryKind, id: string | number): number {
-  if (kind === "monster") return 20;
-  if (kind === "ally") return 50;
+  // 보석 ÷10 (2026-11-18, economy/units)
+  if (kind === "monster") return 2;
+  if (kind === "ally") return 5;
   const l = Math.max(1, Math.floor(Number(id)) || 1);
-  return l <= 1 ? 0 : Math.min(150, 10 * l);
+  return l <= 1 ? 0 : Math.min(15, l);
 }
 
 export function discoveryTitle(kind: DiscoveryKind): string {

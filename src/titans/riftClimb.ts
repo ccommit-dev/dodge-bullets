@@ -23,7 +23,7 @@ export const CLIMB_DAILY_CLEARS = 5;
 export const CLIMB_RIFT_BONUS_PER_FLOOR = 0.02;
 export const CLIMB_RIFT_BONUS_MAX = 0.3;
 export const CLIMB_GEMS_EVERY = 5;
-export const CLIMB_GEMS = 10;
+export const CLIMB_GEMS = 1;   // 보석 ÷10 (2026-11-18)
 
 export function emptyClimb(): ClimbState {
   return { floor: 1, day: "", clears: 0 };

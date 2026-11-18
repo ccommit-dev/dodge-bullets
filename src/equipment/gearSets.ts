@@ -28,9 +28,9 @@ const STAT_LABEL: Record<WeaponKind, string> = { sword: "탭 피해", spear: "�
 export const GEAR_PIECE_BONUS: Record<WeaponKind, number> = { sword: 0.025, spear: 0.04, bow: 0.03, staff: 0.04 };
 export const GEAR_FULL_SET_BONUS: Record<WeaponKind, number> = { sword: 0.05, spear: 0.08, bow: 0.06, staff: 0.08 };
 
-/** 보석 값 — 탈것(300~2000 · 골드 +2~5%)과 견줘 낱개 300, 세트로 사면 20% 싸다 */
-export const GEAR_ITEM_PRICE = 300;
-export const GEAR_SET_PRICE = 1200;
+/** 보석 값 — 탈것(30~200 · 골드 +2~5%)과 견줘 낱개 30, 세트로 사면 20% 싸다 (보석 ÷10, 2026-11-18) */
+export const GEAR_ITEM_PRICE = 30;
+export const GEAR_SET_PRICE = 120;
 
 export const gearItemId = (kind: WeaponKind, slot: GearSetSlot): GearItemId => `${kind}-${slot}`;
 export const GEAR_ITEM_IDS: readonly GearItemId[] = GEAR_SET_KINDS.flatMap((k) => GEAR_SET_SLOTS.map((s) => gearItemId(k, s)));

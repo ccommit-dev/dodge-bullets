@@ -49,7 +49,7 @@ export function petAttackMul(level: number): number {
   return level <= 0 ? 0 : 0.8 + 0.08 * (Math.min(PET_MAX_LEVEL, level) - 1);
 }
 /** 상점 바로 부화 값(붉은 보석, 2026-10-28) — 도감 1,000 처치 대신. 효과가 큰 펫일수록 비싸다. 이미 부화했으면 팔지 않는다 */
-export const PET_GEM_PRICE: Record<PetId, number> = { slime: 300, goblin: 300, wolf: 420, ogre: 420, dragon: 600, boss: 800 };
+export const PET_GEM_PRICE: Record<PetId, number> = { slime: 30, goblin: 30, wolf: 42, ogre: 42, dragon: 60, boss: 80 };   // 보석 ÷10 (2026-11-18)
 
 /** 펫 효과값 — 레벨 0 = 미부화 (효과 없음) */
 export function petEffect(id: PetId, level: number): number {

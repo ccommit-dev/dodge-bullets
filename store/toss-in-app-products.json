@@ -4,7 +4,7 @@
     {
       "sku": "gems-80",
       "type": "소모성",
-      "name": "붉은 보석 80",
+      "name": "붉은 보석 8",
       "description": "성장 선택권과 외형 구매에 사용",
       "price": 1500,
       "currency": "KRW"
@@ -12,16 +12,16 @@
     {
       "sku": "gems-450",
       "type": "소모성",
-      "name": "붉은 보석 450",
-      "description": "보너스 50개 포함",
+      "name": "붉은 보석 45",
+      "description": "보너스 5개 포함",
       "price": 7500,
       "currency": "KRW"
     },
     {
       "sku": "gems-1200",
       "type": "소모성",
-      "name": "붉은 보석 1,200",
-      "description": "보너스 200개 포함",
+      "name": "붉은 보석 120",
+      "description": "보너스 20개 포함",
       "price": 15000,
       "currency": "KRW"
     },
@@ -69,7 +69,7 @@
       "sku": "patron-30d",
       "type": "소모성",
       "name": "원정 후원 계약 30일",
-      "description": "매일 보석 15 · 방치 캡 +2h · 균열 +1회",
+      "description": "매일 보석 1~2(30일 45) · 방치 캡 +2h · 균열 +1회",
       "price": 5500,
       "currency": "KRW"
     },
@@ -93,7 +93,7 @@
       "sku": "season-pass",
       "type": "소모성",
       "name": "시즌 패스",
-      "description": "4주 시즌 유료 트랙 — 보석 600 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트",
+      "description": "4주 시즌 유료 트랙 — 보석 60 · 조각 선택권 3 · 시즌 스킨 · 무기 이펙트",
       "price": 7900,
       "currency": "KRW"
     },

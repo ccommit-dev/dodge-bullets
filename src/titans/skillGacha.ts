@@ -21,7 +21,7 @@ export const SKILL_BANNER_RATES: Record<SkillBanner, Partial<Record<Tier, number
   gold: { N: 0.55, R: 0.33, SR: 0.12 },
   gem: { SR: 0.42, SSR: 0.33, UR: 0.18, LR: 0.07 },
 };
-export const SKILL_GEM_DRAW = { single: 80, ten: 720 } as const;
+export const SKILL_GEM_DRAW = { single: 8, ten: 72 } as const;   // 보석 ÷10 (2026-11-18)
 
 type Inv = Pick<TitansSave["skillInventory"], "learned" | "levels"> & { copies?: Partial<Record<TitanSkillId, number>> };
 
