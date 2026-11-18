@@ -221,6 +221,8 @@ type ShopTab = "sword" | "quest" | "relic" | "hub" | "expedition" | "heroes" | "
  */
 const LANES_WIDE = { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, LANES_COMPACT = { lMin: -9, lMax: 3, rMin: 0, rMax: 7 };
 const WIDE_FIELD_MIN_H = 440;
+/** 오른쪽 무리 깊이 − 왼쪽 무리 깊이 상한(전장 높이 %) — lanePair */
+const LANE_GAP_MAX = 14;
 function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean } {
   const { lMin, lMax, rMin, rMax } = wide ? LANES_WIDE : LANES_COMPACT;
   let l = lMin + Math.random() * (lMax - lMin);
@@ -231,6 +233,10 @@ function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean 
     // 가운데 기준 뒤집기는 45% 선을 넘겨 그대로 위쪽에 남기도 해서 비율로 아래쪽 45% 안에 옮긴다
     if (Math.random() < 0.5) l = lMin + ((l - tl) / (lMax - tl)) * (tl - lMin); else r = rMin + ((r - tr) / (rMax - tr)) * (tr - rMin);
   }
+  // 오른쪽 무리가 왼쪽보다 14 넘게 높으면 오른쪽을 내린다 (2026-11-18) — 차이 16 이상에서 근접 앞줄(R0)이 왼쪽 가운데 줄(L1)과 같은 높이에 서,
+  // 벽에 붙은 원거리가 비켜설 자리가 없어 17~33% 겹쳤다(verify-formation variants45 · 51 미아×엠버, 차이 15 이하는 15% 이하 — 만남 60개 실측).
+  // 왼쪽을 올리면 둘이 같이 아래쪽 45% 밖에 설 수 있어(verify-walk-y) 오른쪽만 내린다
+  if (r - l > LANE_GAP_MAX) r = l + LANE_GAP_MAX;
   return { laneL: Math.round(l * 10) / 10, laneR: Math.round(r * 10) / 10, wide };
 }
 // 10연 마지막 한 장 — 가장 좋은 카드를 맨 뒤로 돌리고 뒤집기 전에 멈춘다(릴스 first-ten 에서 가져옴, 확률 · 결과는 그대로)
