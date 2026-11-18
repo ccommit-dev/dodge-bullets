@@ -1,0 +1,64 @@
+/*
+ * 스킬 탭 단순화 1판 (2026-11-18, 사용자: "스킬도 너무복잡함 단순화시작") — 줄 카드(등급 · 이름 · 칸 종류 · Lv · 카드 · 효과 글 · 단추가 한 줄에)를
+ * 동료 카드 격자처럼 3열 아이콘 판으로. 접힌 판에 남는 것: 아이콘(등급색 틀) · 이름 · Lv · 장착 띠 · 카드 꼬리표 · 지금 할 일 단추 하나.
+ * 칸 종류 · 속성 · 효과 수치 · 숙련 · 학습 값은 판을 누르면(펼친 판 = 한 줄 전체) 보인다. 칸은 위 시전 칸 다섯이 알려 준다.
+ * 지킨 검사: 접힌 판 단추 하나 · 이름 글자 · 카드 꼬리표 보임 · 시전 칸 한 줄(verify-ui-merge) · 장착 판 강화 단추 하나(card-fold)
+ * App.tsx 에서 card-grid.css 다음에 불러온다.
+ */
+
+/* 격자 — 스킬 판이 든 목록만 */
+.titans-shop:has(> .skill-learn-card) { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; align-content: start; }
+.titans-shop:has(> .skill-learn-card) > :not(.skill-learn-card) { grid-column: 1 / -1; }
+
+/* 접힌 판 */
+.titans-shop > .titans-card.skill-learn-card:not(.is-open) {
+  position: relative; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important;
+  grid-column: auto !important; width: auto !important;   /* 앞 층 @media 규칙이 1 / -1 을 줬다 */
+  min-width: 0; min-height: 0; margin: 0; padding: 8px 6px 7px !important; text-align: center;
+  border: 3px solid var(--t, #c9a46a) !important; border-radius: 14px !important;
+  background: linear-gradient(180deg, var(--t-tint, #fff8e6) 0, #fffaf0 60%) !important;
+  box-shadow: 0 4px 0 rgba(59, 36, 21, .28) !important; outline: 0 !important;
+}
+.titans-shop > .titans-card.skill-learn-card:not(.is-open)::after { content: none !important; }
+.titans-shop > .skill-learn-card:not(.is-open) > .skill-icon { flex: 0 0 auto !important; width: 54px !important; height: 54px !important; margin: 0 !important; }
+.titans-shop > .skill-learn-card:not(.is-open) > div:not(.skill-card-actions) { display: flex !important; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-width: 0; }
+.titans-shop > .skill-learn-card:not(.is-open) > div > strong {
+  display: flex !important; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-width: 0;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+  font-size: 13px !important; line-height: 1.2 !important; font-weight: 900; color: #3b2415; word-break: keep-all; overflow-wrap: anywhere;
+}
+/* 이름 말고 꼬리표는 숨김 — 등급은 틀 색, 칸은 위 시전 칸이 말한다 */
+.titans-shop > .skill-learn-card:not(.is-open) > div > strong > :is(.tier-chip, .skill-element-tag, .skill-slot-tag, .skill-equipped-tag) { display: none !important; }
+/* Lv · 카드 — 이름 아래 작은 알약 */
+.titans-shop > .skill-learn-card:not(.is-open) > div > strong > .skill-level-tag {
+  order: 2; display: inline-block !important; margin: 0 !important; padding: 0 7px !important; border-radius: 999px; background: #4a3020 !important; color: #fff8e6 !important;   /* 불투명 — 가독성 검사는 반투명 바탕을 건너뛰고 카드 크림색과 견줬다 */
+  font-size: 13px !important; font-style: normal; line-height: 18px;
+}
+.titans-shop > .skill-learn-card:not(.is-open) > div > strong > .skill-card-tag {
+  position: absolute; right: 4px; top: 4px; margin: 0 !important; padding: 0 6px !important; border-radius: 999px; background: #16a34a !important; color: #fff !important;
+  font-size: 13px !important; font-style: normal; line-height: 18px; box-shadow: 0 2px 0 rgba(20, 83, 45, .5);
+}
+.titans-shop > .skill-learn-card:not(.is-open) > div > :is(p, small) { display: none !important; }
+/* 장착 중 — 왼쪽 위 초록 띠 */
+.titans-shop > .skill-learn-card.equipped:not(.is-open) { border-color: #22a35a !important; }
+.titans-shop > .skill-learn-card.equipped:not(.is-open)::before {
+  content: "장착"; position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 999px; background: #22a35a; color: #fff; font-size: 13px; font-weight: 900; line-height: 18px; z-index: 1;
+}
+/* 아직 안 배운 스킬 — 흐리게 */
+.titans-shop > .skill-learn-card:not(.is-open):not(:has(.skill-level-tag)) > .skill-icon { filter: grayscale(.85) opacity(.7); }
+/* 단추 하나 — 판 바닥에 꽉 */
+.titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions { display: flex !important; flex-direction: row !important; width: 100%; margin-top: auto !important; }
+.titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { flex: 1 1 0; min-width: 0 !important; min-height: 32px !important; padding: 2px 4px !important; border-radius: 10px !important; font-size: 13px !important; }
+.titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main small { display: none; }
+
+/* 펼친 판 = 한 줄 전체 */
+.titans-shop > .skill-learn-card.is-open { grid-column: 1 / -1; }
+
+/* 시전 칸 — 화살표 없이 큼직하게, 잠긴 칸은 자물쇠만 */
+.hero-skill-combo .combo-step { border-width: 3px !important; border-radius: 14px !important; }
+.hero-skill-combo .combo-step + .combo-step::before { display: none !important; }
+.hero-skill-combo .combo-step.locked { opacity: .7; }
+/* 프리셋은 칩 한 줄로 작게 */
+.skill-preset-card .preset-row button small { display: none !important; }
+.skill-preset-card .preset-row button { min-height: 32px !important; padding: 2px 10px !important; }
+.skill-preset-card > .party-panel-head small { display: none !important; }
