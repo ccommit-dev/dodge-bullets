@@ -6,7 +6,7 @@
  */
 import { launchBrowser } from "../../scripts/launch-browser.mjs";
 import { FAULTS } from "./faults.mjs";
-import { presetEntries } from "./presets.mjs";
+import { applyPatch, presetEntries } from "./presets.mjs";
 import { hash } from "./protocol.mjs";
 import { visualProbe } from "./visual-probe.mjs";
 
@@ -164,6 +164,7 @@ export function parseState(ls) {
   const get = (prefix) => { const k = Object.keys(ls).find((x) => x.startsWith(prefix)); try { return k ? JSON.parse(ls[k]) : null; } catch { return { _broken: ls[k].slice(0, 80) }; } };
   const p = get("dodgebullets:progression:v1:") || {};
   const t = get("dodgebullets:titans:") || {};
+  const ev = get("dodgebullets:events:v2:") || {};
   const errlog = get("dodgebullets:errorlog:v1");
   const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
   return {
@@ -171,12 +172,13 @@ export function parseState(ls) {
     titans: pick(t, ["stage", "bestStage", "gold", "rebirths"]),
     settings: { sound: ls["dodge-bullets:soundEnabled"] ?? null },
     errorLog: Array.isArray(errlog) ? errlog.length : Array.isArray(errlog?.items) ? errlog.items.length : 0,
-    _raw: { progression: p, titans: t },
+    _raw: { progression: p, titans: t, events: ev },
   };
 }
 
 /**
- * @param {{ base?: string, faults?: string[], clock?: boolean, width?: number, height?: number }} opt
+ * @param {{ base?: string, faults?: string[], clock?: boolean, width?: number, height?: number, css?: string[], visual?: boolean }} opt
+ *   css — 페이지마다 끼워 넣는 스타일(시나리오 판정 확인용 회귀 주입). 게임 소스는 그대로
  * @returns {Promise<import("./protocol.mjs").GameBridge & { page: any }>}
  */
 export async function openWebGame(opt = {}) {
@@ -232,13 +234,21 @@ export async function openWebGame(opt = {}) {
     if (!FAULTS[f]) throw new Error(`없는 주입 버그: ${f}`);
     if (FAULTS[f].init) await page.evaluateOnNewDocument(FAULTS[f].init);
   }
+  for (const css of opt.css ?? []) {
+    await page.evaluateOnNewDocument((css) => {
+      const add = () => { const s = document.createElement("style"); s.setAttribute("data-agent-css", ""); s.textContent = css; (document.head || document.documentElement).appendChild(s); };
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add); else add();
+    }, css);
+  }
 
   let lastRefs = new Map();
   const game = {
     page,
     base,
-    async reset(preset = "mid") {
+    /** @param {string} preset @param {object} [patch] 프리셋 위에 겹칠 저장 조각(presets.mjs applyPatch) */
+    async reset(preset = "mid", patch) {
       let entries = presetEntries(preset);
+      if (patch) entries = applyPatch(entries, patch);
       for (const f of faults) if (FAULTS[f].preset) entries = FAULTS[f].preset(entries);
       // 저장 심기는 게임 없는 페이지에서 — 떠 있는 게임이 옛 저장을 다시 써 심은 값을 덮는다(verify-settings 와 같은 이유)
       await page.goto(`${base}/favicon.png`, { waitUntil: "domcontentloaded" });
@@ -289,6 +299,26 @@ export async function openWebGame(opt = {}) {
       return { ok: true, x: Math.round(box.x), y: Math.round(box.y), scopeBefore: box.scope, active: box.active };
     },
     async advance(ms) { await page.evaluate((ms) => window.__agentAdvance?.(ms), ms); },
+    /**
+     * 선택자마다 — 그려진 개수 · 글자 · 화면 규칙 표식(data-agent-flag 의 v#). 표식은 바로 앞 observe() 가 단 것이다.
+     * @param {string[]} sels @returns {Promise<Record<string, { count: number, visible: number, text: string, flags: string[] }>>}
+     */
+    async query(sels) {
+      return page.evaluate((sels) => {
+        const shown = (e) => { const r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false; for (let n = e; n && n.nodeType === 1; n = n.parentElement) { const cs = getComputedStyle(n); if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity < 0.05) return false; } return true; };
+        return Object.fromEntries(sels.map((s) => {
+          let els = [];
+          try { els = [...document.querySelectorAll(s)]; } catch { return [s, { count: -1, visible: 0, text: "잘못된 선택자", flags: [] }]; }
+          const vis = els.filter(shown);
+          const flags = [...new Set(vis.flatMap((e) => [e, ...e.querySelectorAll("[data-agent-flag]")].flatMap((x) => (x.getAttribute("data-agent-flag") || "").split(/\s+/)).filter((f) => /^v\d+$/.test(f))))];
+          return [s, { count: els.length, visible: vis.length, text: vis.map((e) => (e.innerText || "").replace(/\s+/g, " ").trim()).join(" | ").slice(0, 240), flags }];
+        }));
+      }, sels);
+    },
+    /** 선택자의 첫 그려진 요소를 화면 가운데로 — 화면 규칙은 보이는 것만 잰다 */
+    async reveal(sel) {
+      return page.evaluate((s) => { const e = [...document.querySelectorAll(s)].find((x) => x.getBoundingClientRect().height > 0); if (!e) return false; e.scrollIntoView({ block: "center" }); return true; }, sel).catch(() => false);
+    },
     drainEvents() { return events.splice(0, events.length); },
     async screenshot(file) { await page.screenshot({ path: file, type: "jpeg", quality: 60 }); return file; },
     async close() { await browser.close().catch(() => {}); },

@@ -177,3 +177,16 @@ export const FAULTS = {
     },
   },
 };
+
+/**
+ * 시나리오 판정 확인용 회귀 주입(2026-11-18) — 이미 고친 화면 버그를 CSS 로 되살려, 시나리오가 그 마일스톤을 실패로 잡는지 본다.
+ * expect = 깨져야 할 "시나리오/마일스톤". 대조군(주입 없음)은 모두 통과해야 한다.
+ */
+export const SCENARIO_REGRESSIONS = {
+  "rift-chip": { css: "html body .event-card .rift-run-loot .reward-chip { color: #5e4229 !important; }", expect: "rift-run/enter-rift", fix: "0872538" },
+  "exped-clip": { css: "html body p.expedition-progress { height: 5px !important; overflow: hidden !important; }", expect: "ally-expedition/progress-line", fix: "2df5979" },
+  "exped-status": { css: "html body .ally-expedition-status { color: #fbbf24 !important; }", expect: "ally-expedition/dispatch", fix: "2df5979" },
+  "duel-color": { css: "html body .shadow-info em.win, html body .shadow-info em.lose { color: #5eead4 !important; }", expect: "weekly-duel/duel", fix: "2df5979" },
+  "codex-color": { css: "html body .codex-chip b { color: #e2e8f0 !important; } html body .codex-chip span { color: #94a3b8 !important; }", expect: "codex-browse/monsters", fix: "24d3867" },
+  "pet-color": { css: "html body .pet-chip b { color: #e2e8f0 !important; } html body .pet-chip span { color: #94a3b8 !important; }", expect: "codex-browse/pets", fix: "2df5979" },
+};

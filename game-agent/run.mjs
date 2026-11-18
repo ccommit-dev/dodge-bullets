@@ -7,6 +7,8 @@
  *   node game-agent/run.mjs verify  [game-agent/requests/claims.json] [--only id,id]
  *   node game-agent/run.mjs repro   <runs/판 폴더>        이슈마다 재현 · 재현 스크립트 · 이슈 초안
  *   node game-agent/run.mjs screens [--set design|holdout|all] [--only b05,h03]   화면 벤치 — 화면 버그 10종을 넣고 규칙이 대상을 짚는지
+ *   node game-agent/run.mjs scenario [requests/scenarios.json] [--only id,id] [--runs 3] [--regress rift-chip,...]
+ *                                                        시나리오 — 긴 흐름을 마일스톤마다 상태 · 화면으로 판정. --regress 는 고친 버그를 되살려 잡는지 확인
  *   node game-agent/run.mjs stats                        기억(화면 지도) 크기
  *
  * 결과는 game-agent/runs/ (저장소에 올리지 않는다). 모델은 AGENT_MODEL_URL(자체 게이트웨이)이 있을 때만 쓴다.
@@ -15,8 +17,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openWebGame } from "./bridge/web-cdp.mjs";
-import { FAULTS } from "./bridge/faults.mjs";
+import { FAULTS, SCENARIO_REGRESSIONS } from "./bridge/faults.mjs";
 import { runClaim, runExplore } from "./executor/loop.mjs";
+import { runScenario, summarize } from "./executor/scenario.mjs";
 import { Memory } from "./memory/store.mjs";
 import { modelFromEnv } from "./model/gateway.mjs";
 import { planClaims, planExplore } from "./planner/plan.mjs";
@@ -107,6 +110,47 @@ async function verify(args) {
   log(`결과: ${dir}`);
 }
 
+const pct = (a, b) => (b ? `${a}/${b} (${Math.round((a / b) * 100)}%)` : "-");
+const KIND = { nav: "이동", ui: "UI", combat: "전투", reward: "보상" };
+
+/** 시나리오 — 시나리오마다 runs 판. 판마다 브라우저를 새로 연다(앞 판의 상태가 새지 않게) */
+async function scenario(args) {
+  const file = resolve(args._[1] ?? join(HERE, "requests", "scenarios.json"));
+  let list = JSON.parse(readFileSync(file, "utf8"));
+  if (args.only) list = list.filter((s) => String(args.only).split(",").includes(s.id));
+  if (!list.length) throw new Error(`시나리오 없음: ${args.only ?? file}`);
+  const runsN = Number(args.runs ?? 1);
+  const regress = args.regress ? String(args.regress).split(",").filter(Boolean) : [];
+  for (const r of regress) if (!SCENARIO_REGRESSIONS[r]) throw new Error(`없는 회귀 주입: ${r} (있는 것: ${Object.keys(SCENARIO_REGRESSIONS).join(", ")})`);
+  const css = regress.map((r) => SCENARIO_REGRESSIONS[r].css);
+  const memory = new Memory(MEMORY);
+  const rec = new Recorder(RUNS, regress.length ? `scenario-${regress.join("+")}` : "scenario", { file, scenarios: list.map((s) => s.id), runs: runsN, regress, memoryBefore: memory.stats() });
+  log(`시나리오 ${list.length}개 × ${runsN}판${regress.length ? ` · 회귀 주입 ${regress}` : ""}`);
+  const all = [];
+  for (const sc of list) {
+    for (let r = 1; r <= runsN; r += 1) {
+      const game = await openWebGame({ css });
+      try { all.push(await runScenario(game, sc, { memory, rec, seed: r, log, run: r })); } finally { await game.close(); }
+    }
+  }
+  memory.save();
+  const sum = summarize(all);
+  const { dir, issues } = rec.finish({ summary: sum });
+  writeFileSync(join(dir, "results.json"), JSON.stringify(all, null, 2));
+  const kinds = Object.entries(sum.kinds).map(([k, v]) => `${KIND[k] ?? k} ${pct(v.pass, v.n)}`).join(" · ");
+  const rows = sum.milestones.map((m) => `| ${m.scenario} | ${m.id} — ${m.name} | ${KIND[m.kind] ?? m.kind} | ${m.pass} | ${m.fail} | ${m.skip} | ${m.details.join(" ; ").replace(/\|/g, "\\|").slice(0, 400) || "-"} |`).join("\n");
+  let reg = "";
+  if (regress.length) {
+    const failedIds = new Set(sum.milestones.filter((m) => m.fail > 0).map((m) => `${m.scenario}/${m.id}`));
+    reg = `\n## 회귀 주입 — 깨져야 할 마일스톤을 잡았나\n\n| 주입 | 되살린 버그(고친 커밋) | 깨져야 할 마일스톤 | 결과 |\n|---|---|---|---|\n${regress.map((r) => `| ${r} | ${SCENARIO_REGRESSIONS[r].fix} | ${SCENARIO_REGRESSIONS[r].expect} | ${failedIds.has(SCENARIO_REGRESSIONS[r].expect) ? "잡음(실패로 판정)" : "못 잡음"} |`).join("\n")}\n\n대상이 아닌데 실패한 마일스톤: ${[...failedIds].filter((id) => !regress.some((r) => SCENARIO_REGRESSIONS[r].expect === id)).join(", ") || "없음"}\n`;
+  }
+  const md = `# 시나리오 판정 ${dir.split(/[\\/]/).pop()}\n\n| 항목 | 값 |\n|---|---|\n| 마일스톤 정확도(통과 / 잰 실행) | ${pct(sum.pass, sum.measured)} |\n| 끝까지 완료한 판 | ${pct(sum.complete, sum.runs)} |\n| 종류별 | ${kinds || "-"} |\n| 걸음 · 초(합) | ${all.reduce((a, r) => a + r.steps, 0)} · ${all.reduce((a, r) => a + r.seconds, 0)} |\n\n| 시나리오 | 마일스톤 | 종류 | 통과 | 실패 | 건너뜀 | 실패 근거 |\n|---|---|---|---|---|---|---|\n${rows}\n${reg}\n## 오는 길에 본 이슈 후보\n${issueTable(issues.filter((i) => i.severity !== "info"))}`;
+  writeFileSync(join(dir, "report.md"), md);
+  log(md);
+  log(`결과: ${dir}`);
+  return { dir, sum };
+}
+
 async function repro(args) {
   const dir = resolve(args._[1]);
   const issues = JSON.parse(readFileSync(join(dir, "issues.json"), "utf8"));
@@ -135,6 +179,7 @@ if (cmd === "explore") await explore(args);
 else if (cmd === "faults") await faults(args);
 else if (cmd === "verify") await verify(args);
 else if (cmd === "repro") await repro(args);
+else if (cmd === "scenario") await scenario(args);
 else if (cmd === "screens") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
   const dir = join(RUNS, `${stamp}-screens`);

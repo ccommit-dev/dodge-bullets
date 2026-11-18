@@ -30,7 +30,7 @@ export async function stepOnce(game, pre, action, settle) {
   return { res, cur, events, found };
 }
 
-function makeIssueSink(game, rec) {
+export function makeIssueSink(game, rec) {
   return async (found, step, obs) => {
     let shot = null;
     for (const i of found) {

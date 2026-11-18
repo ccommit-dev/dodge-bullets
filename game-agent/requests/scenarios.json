@@ -1,0 +1,169 @@
+[
+  {
+    "id": "rift-run",
+    "name": "차원 균열 한 판 — 들어가서 보상을 받고 횟수가 준다",
+    "init": { "preset": "qa" },
+    "timeBudgetSec": 180,
+    "source": "src/EventCenter.tsx RiftRunOverlay · 0872538(보상 칩 글자색 · 보상 연출 건너뜀)",
+    "milestones": [
+      {
+        "id": "open-rift",
+        "name": "우편함에서 차원 균열을 연다",
+        "kind": "nav",
+        "steps": [{ "click": "^닫기$", "optional": true }, { "click": "^우편함" }, { "click": "차원 균열 \\d+회 남음" }],
+        "expect": [{ "text": "균열 진입 0/\\d" }]
+      },
+      {
+        "id": "enter-rift",
+        "name": "균열에 들어가 보상 연출을 본다",
+        "kind": "ui",
+        "steps": [{ "click": "^균열 진입" }],
+        "waitMs": 15000,
+        "expect": [
+          { "path": "_raw.events.riftAttempts", "delta": 1 },
+          { "path": "progression.sharedCoins", "change": "+" },
+          { "sel": ".rift-run-loot.show", "readable": true, "once": true }
+        ]
+      },
+      {
+        "id": "rift-count",
+        "name": "연출이 끝나면 진입 횟수가 화면에 반영된다",
+        "kind": "ui",
+        "steps": [],
+        "waitMs": 8000,
+        "expect": [{ "sel": ".rift-run", "visible": false }, { "text": "균열 진입 1/\\d" }]
+      }
+    ]
+  },
+  {
+    "id": "weekly-duel",
+    "name": "주간 랭크 시험 한 판 — 결과 줄이 읽힌다",
+    "init": { "preset": "qa" },
+    "timeBudgetSec": 180,
+    "source": "src/EventCenter.tsx 그림자 대결 · 2df5979(승패 글자색)",
+    "milestones": [
+      {
+        "id": "open-weekly",
+        "name": "이벤트 센터의 주간 도전을 연다",
+        "kind": "nav",
+        "steps": [{ "click": "^닫기$", "optional": true }, { "click": "^우편함" }, { "click": "차원 균열 \\d+회 남음" }, { "click": "^주간 도전$" }],
+        "expect": [{ "text": "주간 랭크 시험" }]
+      },
+      {
+        "id": "duel",
+        "name": "첫 상대에게 도전하고 결과를 본다",
+        "kind": "combat",
+        "steps": [{ "click": "^도전$", "waitMs": 1500 }, { "click": "^스킵", "optional": true, "waitMs": 2500 }],
+        "waitMs": 8000,
+        "expect": [{ "sel": ".shadow-info em", "visible": true }, { "sel": ".shadow-info em", "readable": true }]
+      }
+    ]
+  },
+  {
+    "id": "ally-expedition",
+    "name": "동료 파견 — 벤치로 옮겨 8시간 보내고 진행 줄을 본다",
+    "init": { "preset": "qa" },
+    "timeBudgetSec": 180,
+    "source": "src/TitansGame.tsx 파견 · 2df5979(파견 진행 줄 5px 잘림 · 파견 중 글자색)",
+    "milestones": [
+      {
+        "id": "open-card",
+        "name": "동료 시트에서 미아 카드를 펼친다",
+        "kind": "nav",
+        "steps": [{ "click": "^닫기$", "optional": true }, { "click": "^동료$" }, { "click": "^스카우트 미아 보기$" }],
+        "expect": [{ "sel": ".ally-card.is-open", "visible": true }]
+      },
+      {
+        "id": "dispatch",
+        "name": "벤치로 옮겨 8시간 파견한다",
+        "kind": "ui",
+        "steps": [{ "click": "^벤치로$" }, { "click": "^8h$" }],
+        "waitMs": 6000,
+        "expect": [
+          { "path": "_raw.progression.expeditions.#size", "delta": 1 },
+          { "sel": ".expedition-send-pop", "visible": false },
+          { "sel": ".ally-card.is-open .ally-expedition-status", "text": "파견 중" },
+          { "sel": ".ally-card.is-open .ally-expedition-status", "readable": true }
+        ]
+      },
+      {
+        "id": "progress-line",
+        "name": "파견이 걸린 채 동료 시트를 열면 진행 줄이 다 보인다(카드를 펼치면 편성 판은 일부러 숨는다 — dd53c90)",
+        "kind": "ui",
+        "init": { "preset": "qa", "patch": { "progression": { "expeditions": [{ "allyId": "mia", "endsAt": "$now+8h", "hours": 8 }] } } },
+        "steps": [{ "click": "^닫기$", "optional": true }, { "click": "^동료$" }],
+        "expect": [{ "sel": "p.expedition-progress", "text": "파견 1팀 진행 중" }, { "sel": "p.expedition-progress", "readable": true }]
+      }
+    ]
+  },
+  {
+    "id": "codex-browse",
+    "name": "마이페이지 둘러보기 — 몬스터 · 펫 · 유물 도감 · 칭호 고르기",
+    "init": {
+      "preset": "qa",
+      "patch": { "progression": { "monsterKills": { "slime": 1500, "goblin": 120, "wolf": 12, "ogre": 3 }, "activeTitle": "title-wall", "ownedTitles": ["title-pioneer", "title-wall", "title-titan"] } }
+    },
+    "timeBudgetSec": 240,
+    "source": "24d3867 · 2df5979(도감 칩 · 펫 칸 · 도감 머리 · 칭호 글자색)",
+    "milestones": [
+      {
+        "id": "monsters",
+        "name": "몬스터 도감 칩이 읽힌다",
+        "kind": "nav",
+        "steps": [{ "click": "^닫기$", "optional": true }, { "click": "^마이페이지" }, { "click": "^도감$" }, { "click": "^몬스터$" }],
+        "expect": [{ "sel": ".codex-chip", "visible": true }, { "sel": ".codex-grid", "readable": true }]
+      },
+      {
+        "id": "pets",
+        "name": "펫 도감 칸이 읽힌다",
+        "kind": "nav",
+        "steps": [{ "click": "^펫$" }],
+        "expect": [{ "sel": ".pet-chip", "visible": true }, { "sel": ".pet-grid", "readable": true }]
+      },
+      {
+        "id": "relics",
+        "name": "유물 도감 머리가 읽힌다",
+        "kind": "nav",
+        "steps": [{ "click": "^유물$" }],
+        "expect": [{ "sel": ".legacy-heading", "text": "보유 \\d+/\\d+" }, { "sel": ".legacy-heading", "readable": true }]
+      },
+      {
+        "id": "titles",
+        "name": "칭호 고르기 칸이 읽힌다",
+        "kind": "nav",
+        "steps": [{ "click": "^캐릭터" }],
+        "expect": [{ "sel": ".title-chip", "visible": true }, { "sel": ".title-row", "readable": true }]
+      }
+    ]
+  },
+  {
+    "id": "first-growth",
+    "name": "첫 성장 — 출석 보상 · 동료 레벨업 · 새 동료 소환(실제 경제)",
+    "init": { "preset": "mid" },
+    "timeBudgetSec": 180,
+    "source": "src/AttendanceModal.tsx · TitansGame 동료 레벨업 · 골드 소환",
+    "milestones": [
+      {
+        "id": "attendance",
+        "name": "출석 보상을 받으면 보석이 는다(양은 경제 조정마다 바뀌어 방향만 본다)",
+        "kind": "reward",
+        "steps": [{ "click": "^DAY \\d+ 보상 받기" }],
+        "expect": [{ "path": "progression.redGems", "change": "+" }]
+      },
+      {
+        "id": "level-up",
+        "name": "동료 시트에서 미아를 레벨업하면 골드가 줄고 레벨이 1 오른다",
+        "kind": "ui",
+        "steps": [{ "click": "^닫기$", "optional": true }, { "click": "^동료$" }, { "click": "^레벨업$" }],
+        "expect": [{ "path": "_raw.titans.heroes.mia", "delta": 1 }, { "path": "titans.gold", "change": "-" }]
+      },
+      {
+        "id": "summon",
+        "name": "골드로 약초꾼 모모를 소환한다",
+        "kind": "ui",
+        "steps": [{ "click": "^소환$" }],
+        "expect": [{ "path": "_raw.titans.heroes.momo", "min": 1 }, { "path": "titans.gold", "change": "-" }]
+      }
+    ]
+  }
+]
