@@ -408,7 +408,7 @@ export function CharacterStatus({
             )}
           </div>
         )}
-        {mypageTab === "codex" && codexSub === "ally" && <AllyCodex heroes={titans.heroes} filter={ownFilter} />}
+        {mypageTab === "codex" && codexSub === "ally" && <AllyCodex heroes={titans.heroes} filter={ownFilter} stars={progress.allyStars} />}
         {mypageTab === "codex" && codexSub === "relic" && <RelicCodex relics={progress.relics} filter={ownFilter} />}
         <div className={`mypage-group ${mypageTab === "codex" && codexSub === "monster" ? "" : "hidden"}`}>
         <div className="legacy-heading"><div><small>CODEX</small><strong>몬스터 도감</strong></div><span>처치 마일스톤 → 골드 보너스</span></div>

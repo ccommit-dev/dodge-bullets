@@ -28,6 +28,7 @@ import "./ui/upgradeGlow.css";   // 2026-11-17 강화가 눈에 보이게 — �
 import "./ui/gearRunes.css";   // 2026-11-17 세트 파츠 룬 홈 — 홈 세 칸 · 후보 세 장 · 공명 빛 (맨 뒤)
 import "./ui/huntFocus.css";   // 2026-11-17 사냥 화면 집중 — 큰 무대 · 얇은 HUD 띠 · 성장 판 서랍 · 캐릭터 1.5배 (맨 뒤)
 import "./ui/pixelMode.css";   // 2026-11-17 도트 그림체 — html.art-pixel 일 때 시트 · 배경을 번지지 않게 (맨 뒤)
+import "./ui/card-grid.css";   // 2026-11-18 카드 격자 · 출전 무대 — 등급색 정사각 카드 · 받침대 위 동료 · 오두막 무대 배경 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";

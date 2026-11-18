@@ -1,0 +1,204 @@
+/*
+ * 카드 격자 · 출전 무대 (2026-11-18, 사용자 /goal: "이런 느낌의 ui랑 배경 리소스를 변경 — 간단 명료")
+ * 참고 그림의 구조만 따른다: 받침대 위에 크게 선 캐릭터 · 등급색 정사각 카드 격자 · 굵은 테두리. 세계는 비버 오두막(배경 ui/stage/*.webp, art-gen/blender/ui_stage.py).
+ * App.tsx 에서 맨 뒤에 불러온다 — 앞 층(ui-polish · uiMerge · simple-lists · clarity · tiers)의 줄 카드 규칙을 덮는다.
+ * 지키는 검사: 한 쪽 6장 · 접힌 카드 버튼 하나 · 등급 이름 13px 보임(verify-ui-merge · tier-visuals) · 펼친 카드 출전/파견 단추(verify-card-fold)
+ */
+
+/* ── 출전 무대 ── 오두막 바탕 위 그루터기 받침대에 편성 동료 */
+.hub-sheet .party-panel { position: relative; display: grid !important; gap: 8px !important; padding: 6px !important; }
+/* 머리(편성 n/m) · 추천 단추는 무대 위에 얹는다 — 줄 하나(52px)를 아껴 카드 두 줄이 한 화면에 들어간다 */
+.hub-sheet .party-panel:has(.party-stage) > .party-panel-head {
+  position: absolute; left: 14px; top: 13px; z-index: 3; display: inline-flex !important; width: auto !important; margin: 0 !important; padding: 2px 10px !important;
+  border: 2px solid #3b2415; border-radius: 999px; background: rgba(255, 248, 230, .94); box-shadow: 0 2px 0 rgba(59, 36, 21, .3);
+}
+.hub-sheet .party-panel:has(.party-stage) > .party-panel-head::before { display: none !important; }
+.hub-sheet .party-panel:has(.party-stage) > .party-panel-head strong { font-size: 14px !important; line-height: 20px; color: #3b2415; }
+.hub-sheet .party-panel:has(.party-stage) > .party-panel-head small { display: none !important; }
+.hub-sheet .party-panel:has(.party-stage) > .party-tools { position: absolute; right: 14px; top: 11px; z-index: 3; margin: 0 !important; }
+.hub-sheet .party-panel:has(.party-stage) > .party-tools .recommend-party { min-height: 30px !important; padding: 2px 10px !important; font-size: 13px !important; }
+.hub-sheet .party-panel:has(.party-stage) > .party-stage { padding-top: 0; }
+.party-stage {
+  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end;
+  height: 132px; padding: 0 4px 4px; border: 3px solid #3b2415; border-radius: 14px; overflow: hidden;
+  background-color: #8a5530; background-size: cover; background-position: center 78%;
+  box-shadow: inset 0 -26px 26px -18px rgba(59, 36, 21, .45), 0 3px 0 rgba(59, 36, 21, .25);
+}
+.party-stage-slot {
+  position: relative; display: flex; align-items: flex-end; justify-content: center; height: 98px; min-width: 0;
+  margin: 0; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; cursor: pointer;
+}
+.party-stage-slot:disabled { cursor: default; }
+.party-stage-pedestal { position: absolute; left: 50%; bottom: 0; width: min(80px, 92%); transform: translateX(-50%); pointer-events: none; filter: drop-shadow(0 3px 0 rgba(59, 36, 21, .35)); }
+.party-stage-slot .titan-ally-art { --ally-size: 70px; position: relative; width: 70px; margin-bottom: 24px; filter: drop-shadow(0 4px 3px rgba(0, 0, 0, .35)); transition: transform .15s; }
+.party-stage-slot:active .titan-ally-art { transform: translateY(2px) scale(.97); }
+.party-stage-slot.empty .party-stage-pedestal { opacity: .55; filter: grayscale(.5); }
+.party-stage-empty {
+  position: relative; display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 34px; border: 3px dashed rgba(255, 248, 230, .85);
+  border-radius: 50%; color: #fff8e6; font-size: 22px; font-weight: 900; line-height: 1;
+}
+/* 등급 빛 — 받침대 아래 바닥에 등급색 원 하나(초월 · 신화만 진하게) */
+.party-stage-slot::before { content: ""; position: absolute; left: 50%; bottom: 8px; width: 70%; height: 20px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--t, transparent), transparent); opacity: .55; pointer-events: none; }
+.party-stage-slot.empty::before { display: none; }
+/* 동료 카드를 펼치면 무대는 접는다 — 펼친 카드가 큰 무대가 된다 */
+.hub-sheet .titans-shop:has(.ally-card.is-open) > .party-panel { display: none !important; }
+
+/* ── 동료 격자 ── 3열 정사각 카드(한 쪽 6장 = 2줄) */
+.hub-sheet .titans-shop .ally-roster-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; align-items: stretch; }
+.hub-sheet .titans-shop .ally-roster-grid > .ally-pager { grid-column: 1 / -1; }
+.hub-sheet .titans-shop .ally-roster-grid .titans-card.ally-card:not(.is-open) {
+  position: relative; display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 5px !important;
+  min-width: 0; min-height: 0; margin: 0; padding: 6px 6px 7px !important;
+  border: 3px solid var(--rar, #c9a46a) !important; border-radius: 14px !important;
+  background: linear-gradient(180deg, var(--rar-tint, #fff8e6) 0, #fffaf0 62%) !important;
+  box-shadow: 0 4px 0 rgba(59, 36, 21, .28) !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .titans-card.ally-card.rarity-lr:not(.is-open) {
+  border: 3px solid transparent !important;
+  background: linear-gradient(180deg, #ecfbf8, #fffaf0 62%) padding-box, linear-gradient(100deg, #5eead4, #a78bfa, #f0abfc, #fde047, #4ade80) border-box !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .titans-card.ally-card:not(.is-open)::after { content: none !important; }
+/* 그림 판 — 등급 틀(tiers.css)이 판 테두리 · 바탕을 칠한다. 카드 폭을 꽉 채운다 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .titan-ally-art {
+  --ally-size: 100%; flex: 0 0 auto !important; width: 100% !important; height: 76px !important; aspect-ratio: auto; margin: 0 !important; grid-row: auto !important;
+}
+/* 그림은 판 안에서 자른다 — 넓은 시트(창 · 날개)와 신화 · 초월 맥박 후광(::before 1.08배)이 카드 밖으로 1~2px 넘쳤다(verify-tier-visuals '넘침 없음') */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .titan-ally-art { overflow: hidden !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .titan-ally-art .ally-wander { position: absolute; inset: 6px 10px 2px; width: auto !important; height: auto !important; }
+/* 배지 — 판 위(접힌 카드만). 판 높이 84 · 카드 안쪽 여백 6 기준 */
+.ally-roster-grid .ally-card-badges { display: none; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .ally-card-badges { display: block; position: absolute; left: 6px; right: 6px; top: 6px; height: 76px; pointer-events: none; z-index: 8; }
+.ally-card-badges .ally-lv-badge {
+  position: absolute; left: 4px; bottom: 4px; padding: 0 6px; border-radius: 999px; background: rgba(59, 36, 21, .82); color: #fff8e6;
+  font-size: 13px; font-weight: 900; line-height: 20px;
+}
+.ally-card-badges .ally-el-badge {
+  position: absolute; right: 3px; top: 3px; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #fff8e6; border-radius: 50%;
+  color: #fff; font-size: 13px; font-style: normal; font-weight: 900; line-height: 1; box-shadow: 0 2px 0 rgba(59, 36, 21, .35);
+}
+.ally-el-badge .el-glyph { display: block; width: 14px; height: 14px; }
+.ally-el-badge.el-fire { background: #e2563b; }
+.ally-el-badge.el-water { background: #3b82f6; }
+.ally-el-badge.el-earth { background: #a16207; }
+.ally-el-badge.el-wind { background: #16a34a; }
+.ally-el-badge.el-light { background: #eab308; color: #3b2415; }
+.ally-el-badge.el-dark { background: #6d28d9; }
+.ally-card-badges .ally-lock-badge { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 30px; height: 30px; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(59, 36, 21, .78); color: #fff8e6; }
+.ally-card-badges .ally-lock-badge svg { width: 16px; height: 16px; }
+/* 없는 동료 — 회색 그림자(참고 그림의 '아직 없음' 실루엣) */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.not-owned:not(.is-open) > .titan-ally-art .ally-body { filter: brightness(0) opacity(.32) !important; }
+/* 글 묶음 — 등급 이름 · 이름(두 줄까지) · 별. 나머지(DPS · 특성 · 서명 · 조각 …)는 펼친 카드에서 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div:not(.ally-card-actions):not(.titan-ally-art) {
+  display: flex !important; flex-direction: column !important; flex-wrap: nowrap !important; align-items: center; gap: 3px !important; min-width: 0; text-align: center;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div > strong {
+  display: flex !important; flex: 0 0 auto !important; flex-direction: column; align-items: center; gap: 3px; width: 100%; min-width: 0;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; font-size: 13px !important; line-height: 1.2 !important; color: #3b2415;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div > strong > .rarity-tag {
+  display: inline-block !important; order: -1; margin: 0 !important; font-size: 13px !important; line-height: 18px; padding: 0 8px !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div > strong > .role-tag { display: none !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-name {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 100%; overflow: hidden; word-break: keep-all; overflow-wrap: anywhere; font-weight: 900;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-lv-inline { display: none; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-stars { display: flex !important; justify-content: center; gap: 0; margin: 0 !important; font-size: 13px !important; line-height: 1.1; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-stars b { display: none; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div > :is(p, small, .ally-sig, .ally-skin-chip, .ceiling-tag) { display: none !important; }
+/* 단추 하나 — 카드 바닥에 꽉 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions {
+  display: flex !important; flex-direction: row !important; margin-top: auto !important; gap: 4px; grid-column: auto !important; grid-row: auto !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions > button { flex: 1 1 0; min-width: 0 !important; min-height: 32px !important; padding: 2px 4px !important; border-radius: 10px !important; font-size: 13px !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions > .ally-star-up:not(:disabled) { flex: 0 0 auto; padding: 2px 6px !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-expedition-status { display: none !important; }
+/* 출전 중 — 판 위 초록 띠 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.in-party:not(.is-open) { border-color: #22a35a !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.in-party:not(.is-open) > .ally-card-badges::after {
+  content: "출전"; position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 999px; background: #22a35a; color: #fff; font-size: 13px; font-weight: 900; line-height: 20px;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.on-expedition:not(.is-open) > .ally-card-badges::after {
+  content: "파견"; position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 999px; background: #0e7490; color: #fff; font-size: 13px; font-weight: 900; line-height: 20px;
+}
+
+/* ── 펼친 카드 = 큰 무대 ── 격자 맨 위 한 줄 전체, 오두막 무대 위 받침대에 크게 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open { grid-column: 1 / -1; order: -1; border-width: 3px !important; border-radius: 16px !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open > .ally-detail { display: contents !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open { scroll-margin-top: 60px; }   /* 시트 머리(동료 ×)가 위에 붙어 있어 start 로 맞추면 무대 머리가 가려졌다 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage { order: -3 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open > div:not(.ally-card-actions):not(.titan-ally-art) { order: -2 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open > .ally-card-actions { order: -1 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open :is(.ally-detail-stats, .ally-detail-skill) { order: 0 !important; grid-column: 1 / -1 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage {
+  position: relative; display: grid; place-items: end center; height: 168px; margin: -2px -2px 0; border: 3px solid #3b2415; border-radius: 14px; overflow: hidden;
+  background: #8a5530 url("/ui/stage/lodge.webp") center 78% / cover no-repeat;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage::before {
+  content: ""; position: absolute; left: 50%; bottom: 0; width: 132px; height: 85px; transform: translateX(-50%);
+  background: url("/ui/stage/pedestal.webp") center bottom / contain no-repeat; pointer-events: none;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-art { position: relative; width: 132px !important; height: 124px !important; margin-bottom: 40px; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage > em {
+  position: absolute; left: 8px; top: 8px; padding: 1px 8px; border-radius: 999px; background: rgba(59, 36, 21, .78); color: #fff8e6; font-size: 13px; font-style: normal; font-weight: 800;
+}
+/* 큰 초록 출전 단추 · 레벨업 — 무대 바로 아래 한 줄 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions { display: flex !important; flex-wrap: wrap; gap: 6px !important; justify-content: stretch !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > button { flex: 1 1 0; min-height: 44px !important; border-radius: 12px !important; font-size: 15px !important; font-weight: 900; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > .ally-party-toggle:not(.benched-action) {
+  flex: 1.4 1 0; border: 3px solid #14532d !important; background: linear-gradient(180deg, #4ade80, #16a34a) !important; color: #fff !important; text-shadow: 0 1px 0 #14532d; box-shadow: 0 4px 0 #14532d !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > .ally-party-toggle.benched-action {
+  flex: 1.4 1 0; border: 3px solid #3b2415 !important; background: #e9dcc3 !important; color: #3b2415 !important; box-shadow: 0 4px 0 #3b2415 !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > .ally-expedition-send { display: flex; flex: 1 0 100%; gap: 6px; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > .ally-expedition-send > button { flex: 1 1 0; min-height: 36px !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-badges { display: none !important; }
+
+/* 작은 폰(높이 700 이하) — 무대 · 판을 줄여 6장이 한 화면에 더 가깝게 */
+@media (max-height: 700px) {
+  .party-stage { height: 112px; }
+  .party-stage-slot { height: 84px; }
+  .party-stage-slot .titan-ally-art { --ally-size: 62px; width: 62px; margin-bottom: 22px; }
+  .party-stage-pedestal { width: min(68px, 92%); }
+  .hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .titan-ally-art { height: 64px !important; }
+  .hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .ally-card-badges { height: 64px; }
+}
+
+/* ── 도감 = 수집품 ── 등급 묶음(높은 등급부터) · 머리 "(보유/전체)" · 등급색 정사각 판 · 회색 그림자 · 진행 막대 (CodexPanels.tsx) */
+.character-page .codex-card-grid.codex-sections {
+  display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; padding: 10px; border: 3px solid #3b2415; border-radius: 16px;
+  background: #6e4426 url("/ui/stage/vault.webp") center top / cover no-repeat;
+  box-shadow: inset 0 0 0 999px rgba(59, 36, 21, .35), 0 3px 0 rgba(59, 36, 21, .25);
+}
+.codex-tier { display: grid; gap: 6px; padding: 8px; border: 3px solid var(--t, #c9a46a); border-radius: 14px; background: #fff8e6; box-shadow: 0 3px 0 rgba(59, 36, 21, .3); }
+.codex-tier.rarity-lr { border-color: #6366f1; background: linear-gradient(180deg, #eef2ff, #fff8e6 40%); }
+.codex-tier-head { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 900; color: #3b2415; }
+.codex-tier-head .tier-chip { padding: 1px 10px; border-radius: 999px; font-size: 14px; font-style: normal; font-weight: 900; }
+.codex-tier-head > span { font-size: 13px; color: #6b5a45; }
+.codex-tier-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.codex-sections .codex-card {
+  display: flex !important; flex-direction: column; align-items: stretch; gap: 3px !important; min-width: 0; padding: 0 0 5px !important;
+  border: 0 !important; border-radius: 12px !important; background: transparent !important; box-shadow: none !important; text-align: center;
+}
+.codex-sections .codex-card .codex-card-art {
+  position: relative; display: grid !important; place-items: center; width: 100% !important; height: auto !important; aspect-ratio: 1; overflow: hidden;
+  border: 3px solid var(--t, #c9a46a) !important; border-radius: 12px !important; background: linear-gradient(180deg, var(--t-tint, #fff8e6), #fffaf0) !important;
+  box-shadow: 0 3px 0 rgba(59, 36, 21, .3) !important;
+}
+.codex-sections .codex-card .codex-card-art :is(img, .titan-ally-art) { width: 82% !important; height: 82% !important; }
+.codex-sections .codex-card .codex-card-art .titan-ally-art { --ally-size: 82%; }
+.codex-sections .codex-card.unowned .codex-card-art { filter: none !important; border-color: #b8ab95 !important; background: #e7decd !important; }
+.codex-sections .codex-card.unowned .codex-card-art :is(img, .ally-body) { filter: brightness(0) opacity(.28) !important; }
+.codex-sections .codex-card > b { font-size: 13px !important; line-height: 1.2; word-break: keep-all; overflow-wrap: anywhere; color: #3b2415; }
+.codex-sections .codex-card .codex-card-role { font-size: 13px !important; color: #6b5a45; }
+.codex-sections .codex-card .codex-lv { position: absolute; left: 3px; bottom: 3px; padding: 0 5px; border-radius: 999px; background: rgba(59, 36, 21, .82); color: #fff8e6; font-size: 13px; line-height: 18px; }
+.codex-bar { position: relative; display: block; height: 18px; margin: 0 2px; border: 2px solid #3b2415; border-radius: 999px; background: #e9dcc3; overflow: hidden; }
+.codex-bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, #86efac, #22a35a); }
+.codex-bar > small { position: relative; display: block; font-size: 13px !important; font-weight: 900; line-height: 14px; color: #3b2415 !important; }
+.codex-card.unowned .codex-bar > i { width: 0 !important; }
+/* 없는 유물 — 빛 · 광선 · 쓸기는 끄고 그림만 그림자로 */
+.codex-sections .codex-card.unowned .relic-gem > :is(.rg-aura, .rg-rays, .rg-fx, .rg-shine) { display: none !important; }
+.codex-sections .codex-card .relic-gem { display: grid; place-items: center; width: 100%; height: 100%; }
+.codex-sections .codex-card .relic-gem > img { width: 82% !important; height: 82% !important; }
+.codex-sections .codex-card .codex-lv { z-index: 3; }

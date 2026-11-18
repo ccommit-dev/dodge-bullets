@@ -165,6 +165,7 @@ import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBe
 import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAffordable, type AdviceAction, type PurchaseAdvice } from "./economy/purchaseAdvice";
 import { SkillIcon } from "./ui/SkillIcon";
 import { LockIcon } from "./ui/LockIcon";
+import { ElementGlyph } from "./ui/ElementGlyph";
 import { FilterChips } from "./ui/FilterChips";
 import "./ui/simple-lists.css";
 import "./ui/shop-style.css";   // 2026-11-09 꾸미기 진열 · 특별 탭 — 맨 뒤(ui-polish · simple-lists 의 상점 규칙을 덮는다)
@@ -588,7 +589,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const toggleCard = (id: string) => (e: { target: EventTarget | null; currentTarget?: EventTarget | null }) => {
     if ((e.target as Element | null)?.closest?.("button, select, a, input, .ally-card-actions, .skill-card-actions")) return;   // 버튼 사이 틈을 빗나가 눌러도 접히지 않게
     const card = e.currentTarget as HTMLElement | null | undefined;
-    if (openCard !== id && card) window.requestAnimationFrame(() => card.scrollIntoView({ block: "nearest" }));   // 펼친 카드가 아래 메뉴에 가려지지 않게(2026-11-03, 동료 쪽 6장) — 여유는 uiMerge.css scroll-margin
+    // 동료 카드는 펼치면 격자 맨 위 큰 무대가 된다(card-grid.css order -1) — 무대 머리부터 보이게 start (2026-11-18)
+    if (openCard !== id && card) window.requestAnimationFrame(() => card.scrollIntoView({ block: card.classList.contains("ally-card") ? "start" : "nearest" }));   // 펼친 카드가 아래 메뉴에 가려지지 않게(2026-11-03, 동료 쪽 6장) — 여유는 uiMerge.css scroll-margin
     setOpenCard((cur) => (cur === id ? null : id));
   };
   /**
@@ -5089,6 +5091,26 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         })()}
         {tab === "heroes" && (
           <article className="titans-card party-panel">
+            {/* 출전 무대 (2026-11-18) — 오두막 무대 위 그루터기 받침대에 편성 동료가 선다. 누르면 그 동료 카드를 연다 */}
+            <div className="party-stage" style={{ backgroundImage: `url(${assetUrl("ui/stage/lodge.webp")})` }}>
+              {Array.from({ length: partySlots }, (_, i) => {
+                const id = character.partyIds[i] as TitanHeroId | undefined;
+                return (
+                  <button key={i} type="button" className={`party-stage-slot ${id ? `rarity-${ALLY_RARITY[id].toLowerCase()}` : "empty"}`} aria-label={id ? `${HEROES.find((x) => x.id === id)?.name ?? id} 보기` : "빈 자리"} disabled={!id}
+                    onClick={() => {
+                      if (!id) return;
+                      const roster = rosterHeroes.filter((x) => allyFilter === "all" || ALLY_ROLE[x.id] === allyFilter);
+                      let idx = roster.findIndex((x) => x.id === id);
+                      if (idx < 0) { setAllyFilter("all"); idx = rosterHeroes.findIndex((x) => x.id === id); }
+                      if (idx >= 0) setAllyPage(Math.floor(idx / ALLY_PAGE_SIZE));
+                      setOpenCard(`ally:${id}`);
+                    }}>
+                    <img className="party-stage-pedestal" src={assetUrl("ui/stage/pedestal.webp")} alt="" aria-hidden="true" />
+                    {id ? <AllyArt id={id} skin={character.equippedAllySkins[id]} stars={effectiveStars(character.allyStars[id], save.heroes[id] ?? 0)} /> : <span className="party-stage-empty">+</span>}
+                  </button>
+                );
+              })}
+            </div>
             <div className="party-panel-head">
               <strong>
                 편성 {character.partyIds.length}/{partySlots}
@@ -5181,14 +5203,20 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               ([skinId, def]) => def.ally === h.id && character.ownedAllySkins.includes(skinId),
             );
             return (
-              <article key={h.id} data-ally={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""} ${openCard === `ally:${h.id}` ? "is-open" : ""}`} onClick={toggleCard(`ally:${h.id}`)}>
+              <article key={h.id} data-ally={h.id} className={`titans-card ally-card rarity-${rarity.toLowerCase()} ${inParty ? "in-party" : ""} ${expedition ? "on-expedition" : ""} ${lv === 0 ? "not-owned" : ""} ${openCard === `ally:${h.id}` ? "is-open" : ""}`} onClick={toggleCard(`ally:${h.id}`)}>
                 <AllyArt id={h.id} skin={character.equippedAllySkins[h.id]} />
+                {/* 카드 격자 배지 (2026-11-18 /goal "이런 느낌의 ui") — 판 위 왼쪽 위 Lv · 오른쪽 위 속성 · 없는 동료는 잠금. 글자는 card-grid.css 가 놓는다 */}
+                <span className="ally-card-badges" aria-hidden="true">
+                  {lv > 0 && <b className="ally-lv-badge">Lv.{lv}</b>}
+                  <i className={`ally-el-badge el-${ALLY_ELEMENT[h.id]}`}><ElementGlyph el={ALLY_ELEMENT[h.id]} /></i>
+                  {lv === 0 && <i className="ally-lock-badge"><LockIcon /></i>}
+                </span>
                 <div>
                   <strong>
                     <em className="rarity-tag">{TIER_LABEL[rarity]}</em>
                     <em className="role-tag">{ROLE_LABEL[ALLY_ROLE[h.id]]}</em>
                     <em className={`role-tag element-${ALLY_ELEMENT[h.id]}`}>{ELEMENT_LABEL[ALLY_ELEMENT[h.id]]}</em>
-                    {h.name} {lv > 0 ? `· Lv.${lv}` : ""}
+                    <span className="ally-name">{h.name}</span>{lv > 0 && <span className="ally-lv-inline"> · Lv.{lv}</span>}
                   </strong>
                   {lv > 0 && !canFieldAlly(h.id, h.unlockStage, fieldCeiling, character.claimedRewards) && <small className="ceiling-tag" title="성문 방어로 지역을 개척하면 출전합니다">STAGE {h.unlockStage} 개척 후 출전</small>}
                   {lv > 0 && (
