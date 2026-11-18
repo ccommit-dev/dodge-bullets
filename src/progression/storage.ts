@@ -1,6 +1,6 @@
 import { addDailyProgress, rolledDaily } from "../game/expeditionOps";
-import { loadBeatRpg, loadCoins, loadCoinsOldUnit, loadHighScore, saveCoins } from "../game/storage";
-import { COIN_UNIT, EXP_UNIT, UNIT_REV, unitDivisors } from "../economy/units";
+import { loadBeatRpg, loadCoins, loadCoinsOldUnit, loadCoinsPrevUnit, loadHighScore, saveCoins } from "../game/storage";
+import { COIN_UNIT, EXP_UNIT, SILVER_STEP, UNIT_REV, unitDivisors } from "../economy/units";
 import { storageRead, storageSet } from "../game/toss";
 import { loadForgeSave } from "../forge/storage";
 import { loadTitansSave } from "../titans/storage";
@@ -54,7 +54,7 @@ async function readProgress(userHash: string): Promise<{ value: CharacterProgres
     base = emptyCharacterProgress();
   }
   // 예전 코인 키(옛 단위 금액)는 판 0 저장에서만 하한으로 본다 — 판 1 저장에서 다시 읽으면 그 뒤에 쓴 지갑이 되살아난다
-  const value = await mergeLegacyProgress(userHash, base, preV5, !raw || fromRev === 0);
+  const value = await mergeLegacyProgress(userHash, base, preV5, !raw || fromRev === 0, !!raw && (fromRev === 1 || fromRev === 2));
   const same = (a: CharacterProgress, b: CharacterProgress) => JSON.stringify({ ...a, updatedAt: 0 }) === JSON.stringify({ ...b, updatedAt: 0 });
   return { value, changed: !raw || oldUnit || !same(base, value), reliable };
 }
@@ -110,9 +110,12 @@ async function mergeLegacyProgress(
   grantPioneerFromTitans = false,
   /** 예전 단위 저장을 막 바꾼 참이다 — 예전 코인 키(옛 단위 금액)를 이번 한 번만 하한으로 본다 */
   oldUnit = false,
+  /** 판 1 · 2 저장을 막 바꾼 참이다 — u2 미러 키(÷10 전 금액)를 이번 한 번만 ÷10 하한으로 본다 */
+  prevUnit = false,
 ): Promise<CharacterProgress> {
-  const [coins, oldCoins, highScore, beat, forge, titans] = await Promise.all([
+  const [coins, prevCoins, oldCoins, highScore, beat, forge, titans] = await Promise.all([
     loadCoins(userHash),
+    prevUnit ? loadCoinsPrevUnit(userHash) : Promise.resolve(0),
     oldUnit ? loadCoinsOldUnit(userHash) : Promise.resolve(0),
     loadHighScore(userHash),
     loadBeatRpg(userHash),
@@ -127,7 +130,7 @@ async function mergeLegacyProgress(
     // 레거시 코인 키는 **하한**이지 권위가 아니다.
     // 그대로 덮어쓰면 방치 정산·대장간 이관처럼 sharedCoins에만 들어온 금액이
     // 다음 로드에서 통째로 사라진다. 단일 진실 소스는 sharedCoins다.
-    sharedCoins: Math.max(current.sharedCoins, coins, Math.floor(oldCoins / COIN_UNIT)),
+    sharedCoins: Math.max(current.sharedCoins, coins, Math.floor(prevCoins / SILVER_STEP), Math.floor(oldCoins / COIN_UNIT)),
     enhancementMaterials: Math.max(current.enhancementMaterials, forge.shards),
     equippedWeaponLevel: Math.max(current.equippedWeaponLevel, forge.level),
     bestForgeLevel: Math.max(current.bestForgeLevel, forge.bestLevel),

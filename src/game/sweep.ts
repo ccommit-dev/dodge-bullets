@@ -1,3 +1,4 @@
+import { silverFromOld } from "../economy/units";
 /**
  * 성문 방어 소탕 (2026-10-13, docs/FOCUS_CAPYGO P0 — 카피바라 Go! "탐방 배율"):
  * 이미 깬 스테이지(최고 −1 이하)는 전투 없이 그 스테이지 보상을 배율만큼 받는다. 지켜보지 않아도 되는 출구.
@@ -48,7 +49,7 @@ export type SweepReward = { coins: number; shoulderShards: number; clears: numbe
 export function sweepReward(stageIndex: number, mult: SweepMultiplier): SweepReward {
   const stage = getStage(stageIndex);
   const ch = Math.min(3, stage.chapter);
-  const coins = Math.floor(stage.baseReward * SWEEP_SURVIVAL) * mult;
+  const coins = silverFromOld(stage.baseReward * SWEEP_SURVIVAL) * mult;   // 은화 ÷10 (2026-11-18) — baseReward 는 옛 단위
   // 중복 견갑 드랍 기대값: 확률 .18 × (15 + 장×10)
   const shoulderShards = Math.round((15 + ch * 10) * 0.18 * mult);
   return { coins, shoulderShards, clears: mult };

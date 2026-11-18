@@ -17,6 +17,10 @@ function highScoreKey(userHash: string): string {
  * 예전 키는 진행도를 바꾸는 그 한 번만 읽는다 (loadCoinsOldUnit)
  */
 function coinsKey(userHash: string): string {
+  return `dodgebullets:coins:u3:${userHash}`;   // 2026-11-18 은화 ÷10(판 3) — u2 에는 ÷10 전 금액이 남아 있다
+}
+
+function prevUnitCoinsKey(userHash: string): string {
   return `dodgebullets:coins:u2:${userHash}`;
 }
 
@@ -79,6 +83,14 @@ export async function saveHighScore(userHash: string, score: number): Promise<nu
 
 export async function loadCoins(userHash: string): Promise<number> {
   const raw = await storageGet(coinsKey(userHash));
+  if (!raw) return 0;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/** 판 1 · 2 단위(÷10 전) 미러 금액 — 진행도 단위 이전 때만 */
+export async function loadCoinsPrevUnit(userHash: string): Promise<number> {
+  const raw = await storageGet(prevUnitCoinsKey(userHash));
   if (!raw) return 0;
   const value = Number.parseInt(raw, 10);
   return Number.isFinite(value) && value > 0 ? value : 0;

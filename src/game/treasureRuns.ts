@@ -1,3 +1,4 @@
+import { silverFromOld } from "../economy/units";
 /**
  * 보물 동굴 반복 보너스 (2026-11-11, 탕탕에이스 비교표 댐 방어전 4번 "반복 골드 던전") — 보물 동굴은 첫 클리어 보상뿐이라
  * 깬 뒤엔 다시 갈 이유가 없었다. 이제 하루 3번까지 클리어마다 그 칸 기본 보상의 1.5배를 골드로 더 준다(별 · 첫 보상과 별개).
@@ -32,5 +33,5 @@ export function spendTreasureRun(state: TreasureRuns, day: string): TreasureRuns
 }
 
 export function treasureBonusGold(baseReward: number): number {
-  return Math.max(1, Math.round(baseReward * TREASURE_BONUS_MUL));
+  return silverFromOld(baseReward * TREASURE_BONUS_MUL);   // 은화 ÷10 (2026-11-18) — baseReward 는 옛 단위
 }

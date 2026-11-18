@@ -58,14 +58,14 @@ await openEquip("helmet");
 const hr = await runes();
 ok("투구 +9: 홈 세 칸 열림 · 빈 홈(＋)", !!hr && hr.id === "sword-helmet" && hr.sockets.every((s) => !s.locked && !s.dis && s.text === "＋"), JSON.stringify(hr?.sockets));
 
-// ── 2) 빈 홈 → 후보 세 장 · 강화석 −3 · 은화 −20 ──
+// ── 2) 빈 홈 → 후보 세 장 · 강화석 −3 · 은화 −2 (은화 ÷10) ──
 const before = await saved();
 await page.evaluate(() => document.querySelector('.gear-runes .rune-socket[data-socket="0"]')?.click());
 const afterOpen = await until((v) => !!v.runeOffer);
 await sleep(300);
 const op = await runes();
 ok("빈 홈 → 후보 세 장(서로 다른 룬 · 등급 · 효과)", op.cands.length === 3 && new Set(afterOpen.runeOffer.cands.map((c) => c.rune)).size === 3 && op.cands.every((t) => /(일반|희귀|영웅)/.test(t) && /(치명|속도|제한시간|골드)/.test(t)), JSON.stringify(op.cands));
-ok("여는 값: 강화석 −3 · 은화 −20", before.enhancementMaterials - afterOpen.enhancementMaterials === 3 && before.sharedCoins - afterOpen.sharedCoins === 20, `${before.enhancementMaterials}→${afterOpen.enhancementMaterials} · ${before.sharedCoins}→${afterOpen.sharedCoins}`);
+ok("여는 값: 강화석 −3 · 은화 −2", before.enhancementMaterials - afterOpen.enhancementMaterials === 3 && before.sharedCoins - afterOpen.sharedCoins === 2, `${before.enhancementMaterials}→${afterOpen.enhancementMaterials} · ${before.sharedCoins}→${afterOpen.sharedCoins}`);
 ok("후보가 열린 동안 다른 홈은 잠김", op.sockets.every((s) => s.dis));
 await page.screenshot({ path: "art-gen/out/gear-runes.png" });
 

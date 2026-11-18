@@ -31,7 +31,7 @@ const GRADE_WEIGHTS = [70, 25, 5];
 export const RUNE_RESONANCE_MUL = 1.5;
 export const RUNE_SOCKETS_MAX = 3;
 /** 홈을 열어 후보 세 장을 보는 값 · 후보 다시 뽑기 값 — 강화석(세트 강화 한 번이 1~4개) */
-export const RUNE_OPEN_COST = { materials: 3, coins: 20 };
+export const RUNE_OPEN_COST = { materials: 3, coins: 2 };   // 은화 ÷10 (2026-11-18)
 export const RUNE_REROLL_COST = { materials: 2, coins: 0 };
 
 /** 강화 단계로 열린 홈 수 — +3 · +6 · +9 */

@@ -1,3 +1,4 @@
+import { silverFromOld } from "./economy/units";
 import { heroPortrait } from "./titans/anim";
 import { appWidth } from "./ui/webFrame";
 import { hasMonsterAnim, heroFrames, monsterAnimStyle } from "./titans/spriteAnim";
@@ -682,7 +683,8 @@ export function BeatGame({
               ) * trackRewardMult(track) + Math.min(60, w.maxCombo * 2) + dropCountRef.current * 12,
             );
             const stageBonus = beatStageBonusGold(charProgRef.current?.titanBestStage ?? 1, track.difficulty);
-            const reward = Math.max(1, Math.round((baseClearGold + stageBonus) * beatModsRef.current.coinMul));
+            // 은화 ÷10 (2026-11-18) — 판 식(baseClearGold)은 옛 단위, 층 몫(stageBonus)은 이미 COIN_UNIT 로 나눈 지금 단위
+            const reward = Math.max(1, Math.round((silverFromOld(baseClearGold) + stageBonus) * beatModsRef.current.coinMul));
             setCoinGain(reward);
             setLastScore(w.score);
             const perfectRatio = beatRunAccuracy(w);

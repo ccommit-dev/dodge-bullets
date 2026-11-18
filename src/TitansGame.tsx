@@ -3750,13 +3750,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       "gems-80": { gems: 8, gold: 0, materials: 0, cores: 0 },
       "gems-450": { gems: 45, gold: 0, materials: 0, cores: 0 },
       "gems-1200": { gems: 120, gold: 0, materials: 0, cores: 0 },
-      "adventurer-starter": { gems: 8, gold: 5000, materials: 10, cores: 0, shoulder: "scout" },
+      "adventurer-starter": { gems: 8, gold: 500, materials: 10, cores: 0, shoulder: "scout" },
       // 송사리 모델 (2026-10-08) — QA 무료 경로. 실결제 지급·한도 기록은 payments/store.ts applyPurchase 가 담당
-      "daily-deal": { gems: 40, gold: 3000, materials: 15, cores: 0 },
-      "weekend-pack": { gems: 300, gold: 0, materials: 60, cores: 0 },
+      "daily-deal": { gems: 4, gold: 300, materials: 15, cores: 0 },
+      "weekend-pack": { gems: 30, gold: 0, materials: 60, cores: 0 },
       // 순간 제안 패키지 (QA 무료 경로)
-      "pack-wall": { gems: 100, gold: 0, materials: 0, cores: 0 },
-      "pack-rebirth": { gems: 400, gold: 0, materials: 0, cores: 10 },
+      "pack-wall": { gems: 10, gold: 0, materials: 0, cores: 0 },
+      "pack-rebirth": { gems: 40, gold: 0, materials: 0, cores: 10 },
     };
     const grant = grants[productId];
     if (!grant) {

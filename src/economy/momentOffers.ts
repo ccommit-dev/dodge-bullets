@@ -24,7 +24,7 @@ export type MomentOfferState = { kind: MomentOfferKind; until: number; bonusGems
 
 const MIN = 60_000;
 export const MOMENT_OFFERS: Record<MomentOfferKind, MomentOfferDef> = {
-  "boss-fail": { productId: "adventurer-starter", title: "보스가 벽처럼 느껴진다면", subtitle: "정찰 견갑 + 보석 8 + 골드 5,000 — 첫 보스는 견갑 하나로 넘어갑니다", bonusGems: 2, windowMs: 15 * MIN },
+  "boss-fail": { productId: "adventurer-starter", title: "보스가 벽처럼 느껴진다면", subtitle: "정찰 견갑 + 보석 8 + 은화 500 — 첫 보스는 견갑 하나로 넘어갑니다", bonusGems: 2, windowMs: 15 * MIN },
   wall: { productId: "pack-wall", title: "벽 도달 — 돌파 세트", subtitle: "편성 동료 조각 30 + 방치 2배 24시간 + 보석 10", bonusGems: 3, windowMs: 15 * MIN },
   rebirth: { productId: "pack-rebirth", title: "환생 축하", subtitle: "두 번째 생을 위한 보석 40 + 스킬 코어 10 + 조각 40", bonusGems: 6, windowMs: 30 * MIN },
   "ad-free": { productId: "remove-ads", title: "광고 없이 바로 받기", subtitle: "정산 2배 · 가속 4h · 대장 +10초 · 성문 · 비트 2배를 광고 없이 — 영구", bonusGems: 4, windowMs: 24 * 60 * MIN },

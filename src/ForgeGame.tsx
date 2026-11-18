@@ -177,9 +177,9 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
   const ticketNeed = protectionCost(save.level);
   const maxed = save.level >= 15;
   const canEnhance = !maxed && coins >= tier.cost && phase === "idle";
-  const ticketPrice = 250 + save.tickets * 100;   // 예전 단위 25,000 + 10,000
+  const ticketPrice = 25 + save.tickets * 10;   // 예전 단위 25,000 + 10,000 (은화 ÷1000)
   const swordCraftCost = shardSwordCost(3);
-  const armorCost = Math.floor(5 * Math.pow(1.72, save.armorLevel));   // 예전 단위 500
+  const armorCost = Math.max(1, Math.round(0.5 * Math.pow(1.72, save.armorLevel)));   // 예전 단위 500 (은화 ÷1000 — 1 아래는 1)
   const armorMaterialNeed = save.armorLevel < 5 ? 1 : 2 + Math.floor((save.armorLevel - 5) / 4);
   const armorBeatNeed = save.armorLevel < 5 ? 0 : 1 + Math.floor((save.armorLevel - 5) / 5);
   const armorChance = Math.max(.38, .94 - save.armorLevel * .045);

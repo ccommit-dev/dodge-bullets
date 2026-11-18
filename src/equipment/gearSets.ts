@@ -55,7 +55,7 @@ const levelOf = (levels: GearSetLevels | undefined, id: GearItemId) => Math.max(
 /** 강화 비용 — 대장간 파츠 강화와 같은 공용 코인 + 강화석 */
 export function gearSetEnhanceCost(level: number): { coins: number; materials: number } | null {
   if (level >= GEAR_SET_ENHANCE_MAX) return null;
-  return { coins: Math.floor(8 * Math.pow(1.6, level)), materials: 1 + Math.floor(level / 3) };   // 예전 단위 800 (economy/units)
+  return { coins: Math.max(1, Math.round(0.8 * Math.pow(1.6, level))), materials: 1 + Math.floor(level / 3) };   // 예전 단위 800 (economy/units — 은화 ÷1000, 1 아래는 1)
 }
 export function gearItemPieceBonus(id: GearItemId, level: number): number { if (isLimitedGear(id)) return 0; return GEAR_PIECE_BONUS[gearItemKind(id)] * (1 + 0.1 * Math.max(0, Math.min(GEAR_SET_ENHANCE_MAX, level))); }
 export function normalizeGearSetLevels(raw: unknown, owned: readonly GearItemId[]): GearSetLevels {

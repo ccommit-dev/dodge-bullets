@@ -11,9 +11,13 @@
  * 경험치 ÷10 — 필요 경험치와 지급을 같이 줄여 레벨 속도는 같다. 100으로 나누면 한 판 0.4라 반올림이 속도를 바꾼다.
  * 강화석은 그대로 — 한 판 17~134개 · 한 번에 1~42개 쓰는 단위라 나누면 1개짜리 값이 0이 된다.
  */
-/** 저장 단위 판 번호 — 0(없음) = 예전 단위, 1 = 지갑 ÷100 · 경험치 ÷10, 2 = 보석 ÷10. 읽을 때 한 번 바꾼다 (progression/storage readProgress) */
-export const UNIT_REV = 2;
-export const COIN_UNIT = 100;
+/** 저장 단위 판 번호 — 0(없음) = 예전 단위, 1 = 지갑 ÷100 · 경험치 ÷10, 2 = 보석 ÷10, 3 = 지갑(은화) ÷10. 읽을 때 한 번 바꾼다 (progression/storage readProgress) */
+export const UNIT_REV = 3;
+/** 은화 3차 ÷10 (2026-11-18 /goal "수치는 낮은게 핵심") — 2차(÷100)와 같은 원칙: 대장간 값과 층에 따라 불어나는 수입을 같은 배로.
+ *  이번엔 판 보상(성문 방어 · 비트 · 소탕 · 보물 · 토벌령 · 그림자 결투 · 상품 은화)도 같이 줄인다 — 2차 때 남겨 둔 100배 값어치를 더 키우지 않게 */
+export const SILVER_STEP = 10;
+/** 옛 단위(판 0) 은화 ÷ 이 값 = 지금 단위 — 방치 정산 · 균열 · 이벤트 상점 · 비트 연동 · 스킬 값이 이 값으로 나눈다 */
+export const COIN_UNIT = 100 * SILVER_STEP;
 export const EXP_UNIT = 10;
 /**
  * 보석 ÷10 (2026-11-18, 사용자 /goal: "간단 명료 — 수치는 낮은게 핵심이야 (금전, 보석 등등)") — 가진 보석 · 값 · 지급을 모두 같은 배로 줄인다.
@@ -23,8 +27,9 @@ export const EXP_UNIT = 10;
 export const GEM_UNIT = 10;
 /** 판마다 나눌 배수 — 판 번호 r 인 저장은 r+1 … UNIT_REV 단계를 모두 곱한 만큼 나눈다 */
 const UNIT_STEPS: Record<number, { coins: number; exp: number; gems: number }> = {
-  1: { coins: COIN_UNIT, exp: EXP_UNIT, gems: 1 },
+  1: { coins: 100, exp: EXP_UNIT, gems: 1 },
   2: { coins: 1, exp: 1, gems: GEM_UNIT },
+  3: { coins: SILVER_STEP, exp: 1, gems: 1 },
 };
 export function unitDivisors(fromRev: number): { coins: number; exp: number; gems: number } {
   const out = { coins: 1, exp: 1, gems: 1 };
@@ -34,6 +39,10 @@ export function unitDivisors(fromRev: number): { coins: number; exp: number; gem
     out.coins *= st.coins; out.exp *= st.exp; out.gems *= st.gems;
   }
   return out;
+}
+/** 판 보상 은화(옛 식 그대로 계산한 값) → 지금 단위. 0 보다 크면 1 이상 */
+export function silverFromOld(old: number): number {
+  return old <= 0 ? 0 : Math.max(1, Math.round(old / SILVER_STEP));
 }
 /** 예전 단위 보석 값 → 지금 단위(반올림, 0 보다 크면 1 이상) — 10의 배수가 아니던 표에만 쓴다 */
 export function gemsFromOld(old: number): number {

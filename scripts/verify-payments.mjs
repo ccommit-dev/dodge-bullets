@@ -96,7 +96,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const w0 = writes;
   await P(); await P(); await P();
   ok("변화가 없으면 읽기는 저장하지 않는다", writes === w0, `읽기 3번에 쓰기 ${writes - w0}번`);
-  slow.set("dodgebullets:coins:u2:" + H, "777");   // 미러 코인 키가 더 크면 읽을 때 합칠 것이 생긴다 (지금 단위 키 — 예전 키는 단위 이전 때 한 번만 읽는다)
+  slow.set("dodgebullets:coins:u3:" + H, "777");   // 미러 코인 키가 더 크면 읽을 때 합칠 것이 생긴다 (지금 단위 키 u3 — 예전 키는 단위 이전 때 한 번만 읽는다)
   const jobs = [];
   for (let i = 0; i < 6; i += 1) { jobs.push(P()); jobs.push(prog.updateCharacterProgress(H, (c) => ({ ...c, redGems: c.redGems + 100 }))); }
   await Promise.all(jobs);
@@ -105,45 +105,53 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   globalThis.__toss.Storage = undefined;
 }
 
-// ── 단위 낮추기 2차 (economy/units · 2026-11-10) · 3차 보석 ÷10 (판 2, 2026-11-18): 예전 단위 저장은 읽을 때 한 번만 바뀐다 ──
+// ── 단위 낮추기 2차 (economy/units · 2026-11-10) · 보석 ÷10 (판 2) · 은화 ÷10 (판 3, 2026-11-18): 예전 단위 저장은 읽을 때 한 번만 바뀐다 ──
 {
   fresh();
   const key = "dodgebullets:progression:v1:" + H, oldCoins = "dodgebullets:coins:" + H;
   const blank = await P();
-  ok("단위: 새 계정은 지금 단위(판 번호 2)로 시작한다", blank.unitRev === 2 && blank.sharedCoins === 0 && blank.exp === 0);
+  ok("단위: 새 계정은 지금 단위(판 번호 3)로 시작한다", blank.unitRev === 3 && blank.sharedCoins === 0 && blank.exp === 0);
   // 예전 단위 저장 — 판 번호 없음. 예전 필요 경험치(90L + 35L²)로 Lv 58 = 122,960 · Lv 59 = 127,145
   const old = { ...blank, exp: 123_456, level: 58, sharedCoins: 9_876_543, redGems: 1_234 };
   delete old.unitRev;
   mem.set(key, JSON.stringify(old));
   mem.set(oldCoins, "9876543");   // 예전 미러 키에는 옛 금액이 그대로 남아 있다
   const a = await P();
-  ok("단위: 예전 저장은 지갑 ÷100 · 경험치 ÷10 · 보석 ÷10(올림) · 레벨 그대로 · 판 번호 2", a.sharedCoins === 98_765 && a.exp === 12_345 && a.redGems === 124 && a.level === 58 && a.unitRev === 2, `코인 ${a.sharedCoins} 경험치 ${a.exp} 보석 ${a.redGems} Lv ${a.level} 판 ${a.unitRev}`);
+  ok("단위: 예전 저장은 지갑 ÷1000 · 경험치 ÷10 · 보석 ÷10(올림) · 레벨 그대로 · 판 번호 3", a.sharedCoins === 9_876 && a.exp === 12_345 && a.redGems === 124 && a.level === 58 && a.unitRev === 3, `코인 ${a.sharedCoins} 경험치 ${a.exp} 보석 ${a.redGems} Lv ${a.level} 판 ${a.unitRev}`);
   const stored = JSON.parse(mem.get(key));
   const b = await P(), c = await P();
-  ok("단위: 바꾼 값이 저장되고 다시 읽어도 또 나누지 않는다 (예전 미러 키도 다시 보지 않는다)", stored.unitRev === 2 && stored.sharedCoins === 98_765 && stored.exp === 12_345 && stored.redGems === 124 && b.sharedCoins === 98_765 && c.exp === 12_345 && c.redGems === 124 && c.level === 58, `저장 ${stored.sharedCoins}/${stored.exp} 다시 ${c.sharedCoins}/${c.exp}`);
+  ok("단위: 바꾼 값이 저장되고 다시 읽어도 또 나누지 않는다 (예전 미러 키도 다시 보지 않는다)", stored.unitRev === 3 && stored.sharedCoins === 9_876 && stored.exp === 12_345 && stored.redGems === 124 && b.sharedCoins === 9_876 && c.exp === 12_345 && c.redGems === 124 && c.level === 58, `저장 ${stored.sharedCoins}/${stored.exp} 다시 ${c.sharedCoins}/${c.exp}`);
   // 예전 미러 키가 진행도보다 컸던 계정 — 예전에도 큰 쪽이 지갑이었다
   fresh();
   const low = { ...blank, sharedCoins: 1_000 }; delete low.unitRev;
   mem.set(key, JSON.stringify(low)); mem.set(oldCoins, "250000");
   const d = await P();
-  ok("단위: 예전 미러 키가 더 컸으면 그 금액 ÷100 이 지갑", d.sharedCoins === 2_500 && d.unitRev === 2, String(d.sharedCoins));
+  ok("단위: 예전 미러 키가 더 컸으면 그 금액 ÷1000 이 지갑", d.sharedCoins === 250 && d.unitRev === 3, String(d.sharedCoins));
   // 진행도 저장 없이 예전 코인 키만 있던 계정
   fresh();
   mem.set(oldCoins, "50000");
   const e = await P();
   mem.set(oldCoins, "99999999");
   const f = await P();
-  ok("단위: 진행도 없이 예전 코인 키만 있어도 ÷100 · 판 번호가 붙은 뒤엔 예전 키를 무시한다", e.sharedCoins === 500 && e.unitRev === 2 && f.sharedCoins === 500, `${e.sharedCoins} → ${f.sharedCoins}`);
-  // 판 1 저장(지갑 ÷100 · 경험치 ÷10 은 이미) — 보석만 ÷10(올림). 예전 코인 키를 다시 하한으로 보면 그 뒤에 쓴 지갑이 되살아난다. 결제 장부 · 열린 제안 보너스도 ÷10
+  ok("단위: 진행도 없이 예전 코인 키만 있어도 ÷1000 · 판 번호가 붙은 뒤엔 예전 키를 무시한다", e.sharedCoins === 50 && e.unitRev === 3 && f.sharedCoins === 50, `${e.sharedCoins} → ${f.sharedCoins}`);
+  // 판 1 저장(지갑 ÷100 · 경험치 ÷10 은 이미) — 보석 ÷10(올림) · 지갑 ÷10. 예전 코인 키를 다시 하한으로 보면 그 뒤에 쓴 지갑이 되살아난다. 결제 장부 · 열린 제안 보너스도 ÷10
   fresh();
   const rev1 = { ...blank, unitRev: 1, sharedCoins: 777, exp: 4_321, redGems: 2_045, claimedRewards: ["purchase:gems-450:T-9", "ledger:gems-450:T-9:900"], momentOffers: { "pack-wall": { kind: "wall", until: 9e12, bonusGems: 30, openedAt: 1 } } };
   mem.set(key, JSON.stringify(rev1)); mem.set(oldCoins, "99999999");
   const g = await P();
-  ok("단위: 판 1 저장은 보석만 ÷10(2045 → 205) · 지갑 · 경험치 그대로 · 예전 코인 키 무시 · 장부 900 → 90 · 제안 보너스 30 → 3", g.redGems === 205 && g.sharedCoins === 777 && g.exp === 4_321 && g.unitRev === 2 && g.claimedRewards.includes("ledger:gems-450:T-9:90") && g.momentOffers["pack-wall"]?.bonusGems === 3, `보석 ${g.redGems} 지갑 ${g.sharedCoins} 경험치 ${g.exp} 장부 ${g.claimedRewards.filter((k) => k.startsWith("ledger:")).join()}`);
-  ok("단위: 판 2 저장은 다시 나누지 않는다", (await P()).redGems === 205);
+  ok("단위: 판 1 저장은 보석 ÷10(2045 → 205) · 지갑 ÷10(777 → 77) · 경험치 그대로 · 예전 코인 키 무시 · 장부 900 → 90 · 제안 보너스 30 → 3", g.redGems === 205 && g.sharedCoins === 77 && g.exp === 4_321 && g.unitRev === 3 && g.claimedRewards.includes("ledger:gems-450:T-9:90") && g.momentOffers["pack-wall"]?.bonusGems === 3, `보석 ${g.redGems} 지갑 ${g.sharedCoins} 경험치 ${g.exp} 장부 ${g.claimedRewards.filter((k) => k.startsWith("ledger:")).join()}`);
+  ok("단위: 판 3 저장은 다시 나누지 않는다", (await P()).redGems === 205 && (await P()).sharedCoins === 77);
+  // 판 2 저장(보석은 이미 ÷10) — 지갑만 ÷10. 판 2 단위 미러 키(u2)는 이번 한 번만 ÷10 하한(앱이 지갑을 바꿀 때마다 썼다)
+  fresh();
+  mem.set(key, JSON.stringify({ ...blank, unitRev: 2, sharedCoins: 5_000, redGems: 204 }));
+  mem.set("dodgebullets:coins:u2:" + H, "8000");
+  const h2 = await P();
+  ok("단위: 판 2 저장은 지갑만 ÷10(5000 → 500, u2 미러 8000 → 800 하한) · 보석 그대로", h2.sharedCoins === 800 && h2.redGems === 204 && h2.unitRev === 3, `지갑 ${h2.sharedCoins} 보석 ${h2.redGems} 판 ${h2.unitRev}`);
+  mem.set("dodgebullets:coins:u2:" + H, "99999");
+  ok("단위: 판 3 이 된 뒤엔 u2 미러 키를 다시 보지 않는다", (await P()).sharedCoins === 800);
   // 지금 단위 미러 키는 계속 하한이다 (App 이 지갑이 바뀔 때마다 쓴다)
-  mem.set("dodgebullets:coins:u2:" + H, "800");
-  ok("단위: 지금 단위 미러 키(coins:u2)는 그대로 하한", (await P()).sharedCoins === 800);
+  mem.set("dodgebullets:coins:u3:" + H, "900");
+  ok("단위: 지금 단위 미러 키(coins:u3)는 그대로 하한", (await P()).sharedCoins === 900);
 }
 
 // ── 웹: 판매 없음 ──
@@ -437,7 +445,7 @@ const fresh = () => { mem.clear(); storageThrows = false; globalThis.__toss = { 
   const a = store.applyPurchase(p0, "daily-deal", "play:dd1", sat);
   const b = store.applyPurchase(a.progress, "daily-deal", "play:dd2", sat + 1000);
   const dealKeys = b.progress.claimedRewards.filter((k) => k.startsWith("deal:daily-deal:"));
-  ok("오늘의 보급 결제 2건: 둘 다 지급(보석 8·골드 6,000) · deal 키는 하루 1개", a.applied && b.applied && b.progress.redGems === p0.redGems + 8 && b.progress.sharedCoins === p0.sharedCoins + 6000 && dealKeys.length === 1, dealKeys.join(","));
+  ok("오늘의 보급 결제 2건: 둘 다 지급(보석 8·은화 600) · deal 키는 하루 1개", a.applied && b.applied && b.progress.redGems === p0.redGems + 8 && b.progress.sharedCoins === p0.sharedCoins + 600 && dealKeys.length === 1, dealKeys.join(","));
   const w = store.applyPurchase(p0, "weekend-pack", "play:wk1", sat);
   ok("주말 보급 결제: 보석 30 · 강화석 60 · 가속 24h · 환불 장부(ledger) 기록", w.applied && w.progress.redGems === p0.redGems + 30 && w.progress.enhancementMaterials === p0.enhancementMaterials + 60 && w.progress.idleBoostUntil === sat + 24 * 3600000 && w.progress.claimedRewards.includes("ledger:weekend-pack:play:wk1:30"));
   ok("카탈로그 묶음: 광고 제거 묶음이 첫 번째(2026-11-02) · 매일·주말이 그다음 · 중급/고급 모험가·개척 축하·성문 수비 보급 없음", catalog.PAID_GROUPS[0].ids.join(",") === "remove-ads" && catalog.PAID_GROUPS[1].ids.join(",") === "daily-deal,weekend-pack" && ["adventurer-mid", "adventurer-advanced", "pack-pioneer", "gate-supply"].every((id) => !store.PLAY_PRODUCT_IDS.includes(id)));

@@ -162,7 +162,7 @@ export function EventCenter({
     const completedToday = dailyMissionsDone(nextClaimed) && nextClaimed.lastMissionDay !== dateKey();
     const nextProgress = await updateCharacterProgress(userHash, (current) => ({
       ...current,
-      sharedCoins: current.sharedCoins + 250,
+      sharedCoins: current.sharedCoins + 25,   // 은화 ÷10 (2026-11-18)
       enhancementMaterials: current.enhancementMaterials + 2,
       // K: 4종 모두 수령한 날 보석 +10 — 무과금 보석 경로
       redGems: current.redGems + (completedToday ? MISSION_ALL_DONE_GEMS : 0),
@@ -337,7 +337,7 @@ export function EventCenter({
       }
       return {
         ...current,
-        sharedCoins: current.sharedCoins + 2_000 * (1 + opponents.indexOf(opponent)),
+        sharedCoins: current.sharedCoins + 200 * (1 + opponents.indexOf(opponent)),   // 은화 ÷10 (2026-11-18)
         shoulderShards: current.shoulderShards + 10,
         allyShards: shards,
       };
@@ -429,7 +429,7 @@ export function EventCenter({
                     <i>
                       <em style={{ width: `${Math.min(100, (m.value / m.goal) * 100)}%` }} />
                     </i>
-                    <small className="journal-reward reward-row"><RewardChip kind="silver" label="은화 250" /><RewardChip kind="materials" label="강화석 2" /></small>
+                    <small className="journal-reward reward-row"><RewardChip kind="silver" label="은화 25" /><RewardChip kind="materials" label="강화석 2" /></small>
                   </div>
                   <button disabled={!done || save.claimed.includes(key)} onClick={() => void claimMission(m.id)}>
                     {save.claimed.includes(key) ? "완료" : "받기"}

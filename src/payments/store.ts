@@ -73,9 +73,9 @@ export function purchaseGrant(productId: string): PurchaseGrantSpec | null {
     case "gems-450": return { gems: 45 };
     case "gems-1200": return { gems: 120 };
     // 송사리 모델 (2026-10-08) — 하루 ₩1,000 · 주말 ₩5,000. 한도는 dealState, 기록은 deal: 키
-    case "daily-deal": return { gems: 4, materials: 15, gold: 3000 };
+    case "daily-deal": return { gems: 4, materials: 15, gold: 300 };   // 은화 ÷10 (2026-11-18)
     case "weekend-pack": return { gems: 30, materials: 60, idleBoostHours: 24 };
-    case "adventurer-starter": return { gems: 8, gold: 5000, materials: 10, shoulder: "scout" };
+    case "adventurer-starter": return { gems: 8, gold: 500, materials: 10, shoulder: "scout" };
     case "char-obsidian": return { character: "obsidian" };
     case "char-dawn": return { character: "dawn" };
     case "char-ember": return { character: "ember" };

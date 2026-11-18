@@ -40,9 +40,9 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   { id: "gems-450", kind: "consumable", name: "붉은 보석 45", description: "보너스 5개 포함", displayPrice: "₩7,500", badge: "인기", contents: ["붉은 보석 ×45"], visible: true },
   { id: "gems-1200", kind: "consumable", name: "붉은 보석 120", description: "보너스 20개 포함", displayPrice: "₩15,000", contents: ["붉은 보석 ×120"], visible: true },
   // ── 송사리 모델 (2026-10-08): 하루 ₩1,000 · 주말 ₩5,000 — 커피 한 잔 값의 습관 결제. 한도는 dealState 가 센다 ──
-  { id: "daily-deal", kind: "bundle", name: "오늘의 보급", description: "하루 1회 · 커피 한 잔 값", displayPrice: "₩1,000", badge: "매일", contents: ["붉은 보석 ×4", "강화석 ×15", "골드 ×3,000"], visible: true },
+  { id: "daily-deal", kind: "bundle", name: "오늘의 보급", description: "하루 1회 · 커피 한 잔 값", displayPrice: "₩1,000", badge: "매일", contents: ["붉은 보석 ×4", "강화석 ×15", "은화 ×300"], visible: true },
   { id: "weekend-pack", kind: "bundle", name: "주말 보급 상자", description: "토·일 한정 · 주 1회", displayPrice: "₩5,000", badge: "주말", contents: ["붉은 보석 ×30", "강화석 ×60", "방치 가속 24h"], visible: true },
-  { id: "adventurer-starter", kind: "bundle", name: "초급 모험가 세트", description: "초반 성장 시간을 줄이는 입문 패키지", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×8", "강화석 ×10", "정찰 견갑", "골드 ×5,000"], visible: true },
+  { id: "adventurer-starter", kind: "bundle", name: "초급 모험가 세트", description: "초반 성장 시간을 줄이는 입문 패키지", displayPrice: "₩3,900", badge: "1회", contents: ["보석 ×8", "강화석 ×10", "정찰 견갑", "은화 ×500"], visible: true },
   // L 광고 제거 — 보상형 자리 3곳(정산 2배·가속 4h·보스 +10초)을 광고 없이 자동 적용하는 상품
   { id: "remove-ads", kind: "entitlement", name: "광고 제거", description: "보상형 광고 5곳을 광고 없이 바로 받기 (정산 2배 · 가속 4h · 대장 +10초 · 성문 방어 2배 · 비트 2배)", displayPrice: "₩3,900", badge: "영구", contents: ["방치 정산 2배 하루 3회", "방치 가속 4h 하루 1회", "대장 실패 후 +10초 하루 3회", "성문 방어 보상 2배 하루 3회", "비트 디펜스 보상 2배 하루 3회"], visible: true },
   // ── LIVEOPS §3.3 — 실결제(₩) 상품. Play Billing 연동 전까지 not-configured 경로 ──

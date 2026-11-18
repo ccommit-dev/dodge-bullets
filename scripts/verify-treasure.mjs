@@ -26,7 +26,7 @@ ok("읽기: 깨진 값 · 범위 밖", T.normalizeTreasureRuns({ day: 3, count: 
 const caves = S.BRANCHES.filter((b) => b.kind === "treasure");
 const bonus = caves.map((b) => T.treasureBonusGold(S.getStage(b.index).baseReward));
 ok("보물 동굴 다섯(장마다 하나)", caves.length === 5, String(caves.length));
-ok("보너스 = 그 칸 기본 보상 1.5배 · 깊은 장일수록 많다", caves.every((b, i) => bonus[i] === Math.round(S.getStage(b.index).baseReward * 1.5)) && bonus.every((g, i) => i === 0 || g > bonus[i - 1]), bonus.join(" · "));
+ok("보너스 = 그 칸 기본 보상 1.5배 · 깊은 장일수록 많다", caves.every((b, i) => bonus[i] === Math.max(1, Math.round(S.getStage(b.index).baseReward * 1.5 / 10)))   /* 은화 3차 ÷10 — baseReward 는 옛 단위 */ && bonus.every((g, i) => i === 0 || g > bonus[i - 1]), bonus.join(" · "));
 ok("새 계정 0번 · 저장 읽기", PM.emptyCharacterProgress().treasureRuns.count === 0 && PM.normalizeCharacterProgress({ treasureRuns: { day: D1, count: 2 } }).treasureRuns.count === 2);
 console.log(fails ? `\n${fails}건 실패` : "\n모두 통과");
 process.exit(fails ? 1 : 0);

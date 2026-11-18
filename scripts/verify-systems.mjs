@@ -677,8 +677,8 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("일섬 Lv4 에서 게이지 획득 +12%", Math.abs(S.gaugeGainMul({ ...lv0, ultimate: 4 }) - 1.12) < 1e-9);
 
   // 6) 비용·해금
-  const c1 = S.skillCost(S.SKILL_BY_ID.fire, 1), c5 = S.skillCost(S.SKILL_BY_ID.fire, 5);
-  ok("스킬 비용이 레벨마다 오른다", c5.gold > c1.gold * 4 && c5.shards > c1.shards * 2, `lv1 ${c1.gold}G/${c1.shards}조각 → lv5 ${c5.gold}G/${c5.shards}조각`);
+  const c1 = S.skillCost(S.SKILL_BY_ID.fire, 1), c5 = S.skillCost(S.SKILL_BY_ID.fire, 5), c10 = S.skillCost(S.SKILL_BY_ID.fire, 10);
+  ok("스킬 비용이 레벨마다 오른다 (은화 ÷1000 이라 낮은 Lv 은 1 로 묶인다 — Lv5 → 10 으로 잰다)", c5.gold >= c1.gold && c10.gold > c5.gold * 4 && c5.shards > c1.shards * 2, `lv1 ${c1.gold}G/${c1.shards}조각 → lv5 ${c5.gold}G/${c5.shards}조각 → lv10 ${c10.gold}G`);
   // 2026-10-02: 스킬 무기 10종은 계정 레벨로 해금 (예전: 원정 스테이지). 이미 배운 무기는 레벨이 모자라도 쓴다(옛 저장 보호)
   ok("해금은 계정 레벨 — 화염 석궁·화살비는 처음부터, 번개 창 Lv16, 운석 낙하포 Lv40 · 이미 배운 무기는 그대로",
     S.skillUnlocked(S.SKILL_BY_ID.fire, 1) && S.skillUnlocked(S.SKILL_BY_ID.ultimate, 1)
@@ -1441,7 +1441,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   ok("소탕 예산: 기본 5 · ×3 배속 보유 10 · 소탕 가능 최고 = 최고 스테이지 −1(S5 = index 4)", sweep.sweepBudget(p0) === 5 && sweep.sweepBudget({ ...p0, dodgeSpeed3: true }) === 10 && sweep.sweepStageIndex(p0) === 4 && sweep.sweepStageIndex({ ...p0, dodgeBestStage: 1 }) === null);
   ok("최고 스테이지 자체(index 5)·갈림길·성벽·×10(미보유)은 거부, index 4 ×5 는 허용", !sweep.canSweep(p0, 5, 1).ok && !sweep.canSweep(p0, stages.TOWER_START_INDEX, 1).ok && !sweep.canSweep(p0, 4, 10).ok && sweep.canSweep(p0, 4, 5).ok && sweep.canSweep({ ...p0, dodgeSpeed3: true }, 4, 10).ok);
   const r1 = sweep.sweepReward(4, 1), r3 = sweep.sweepReward(4, 3);
-  ok("보상 = 한 판 기대값 × 배율 (코인 baseReward×0.72, 견갑 조각 기대값) · 런 XP 없음", r1.coins === Math.floor(stages.getStage(4).baseReward * 0.72) && r3.coins === r1.coins * 3 && r3.clears === 3 && r1.shoulderShards >= 2);
+  ok("보상 = 한 판 기대값 × 배율 (코인 baseReward×0.72 ÷10 — 은화 3차, 견갑 조각 기대값) · 런 XP 없음", r1.coins === Math.max(1, Math.round(stages.getStage(4).baseReward * 0.72 / 10)) && r3.coins === r1.coins * 3 && r3.clears === 3 && r1.shoulderShards >= 2);
   const a = sweep.applySweep(p0, 4, 3);
   const b = sweep.applySweep(a.progress, 4, 3);
   ok("적용: 코인·조각 증가 · 일일 클리어 +3 · 예산 5 에서 3 쓰면 다음 ×3 거부(2 남음)", a.reward && a.progress.sharedCoins === r3.coins && a.progress.expeditionDaily.sweeps === 3 && a.progress.expeditionDaily.counts.clear === 3 && !b.reward && /2회 남음/.test(b.reason ?? ""));
@@ -1461,7 +1461,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
 {
   const pts = talents.masteryPoints({ bestLevel: 8, bestArmorLevel: 5, bow: 2, staff: 2 });   // 17점 = 2등급 7점
   const m = talents.masteryState(pts, 0, []);
-  ok("장인 점수 17 → 1등급(0-based) · 등급 안 7점 · 골드 이정표 2개(4·14) · 특성 선택 2개(7·17) · 다음은 승급까지 3점", m.rank === 1 && m.within === 7 && m.goldPending === 2 && m.goldPendingAmount === 20 + 40 && m.picksPending === 2 && m.next.kind === "rank" && m.next.left === 3);
+  ok("장인 점수 17 → 1등급(0-based) · 등급 안 7점 · 골드 이정표 2개(4·14) · 특성 선택 2개(7·17) · 다음은 승급까지 3점", m.rank === 1 && m.within === 7 && m.goldPending === 2 && m.goldPendingAmount === 2 + 4 && m.picksPending === 2 && m.next.kind === "rank" && m.next.left === 3);
   const m2 = talents.masteryState(pts, 2, ["flex"]);
   ok("받은 뒤: 골드 0 · 선택 1 남음 · 특성은 5개 상한", m2.goldPending === 0 && m2.picksPending === 1 && talents.pickMilestonesEarned(999) === 5);
   const base = { ...prog.emptyCharacterProgress(), dodgeBestStage: 6, talents: [] };
@@ -1528,7 +1528,7 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const big = parts.gearEffects({ helmet: 9999, armor: 9999, gloves: 9999, boots: 9999 }, { helmet: 10, armor: 10, gloves: 10, boots: 10 });
   ok("효과 상한: 대장 시간 +8초 · 골드 ×2.5 · 치명 +15%p · 자동 공격 +30%", big.bossTimeSec === 8 && Math.abs(big.goldMul - 2.5) < 1e-9 && Math.abs(big.critChance - 0.15) < 1e-9 && Math.abs(big.autoSpeed - 0.3) < 1e-9, JSON.stringify(big));
   ok("대장간 강화는 숙련 효과를 +10%/단계 키운다 (투구 Lv10 · +5 → 1.5초)", Math.abs(parts.gearPartValue("helmet", 10, 5) - 1.5) < 1e-9 && Math.abs(parts.gearPartValue("helmet", 10, 0) - 1.0) < 1e-9);
-  ok("강화 비용: +0→+1 은 8G·강화석 1 · +10 이 끝(null) · 그림 티어 +1 나무 · +5 철 · +10 금", parts.gearEnhanceCost(0).coins === 8 && parts.gearEnhanceCost(0).materials === 1 && parts.gearEnhanceCost(10) === null && parts.gearTierOfEnhance(1) === 1 && parts.gearTierOfEnhance(5) === 2 && parts.gearTierOfEnhance(10) === 3 && parts.gearTierOfEnhance(0) === 0);
+  ok("강화 비용: +0→+1 은 1G(은화 ÷1000 — 예전 800)·강화석 1 · +10 이 끝(null) · 그림 티어 +1 나무 · +5 철 · +10 금", parts.gearEnhanceCost(0).coins === 1 && parts.gearEnhanceCost(0).materials === 1 && parts.gearEnhanceCost(10) === null && parts.gearTierOfEnhance(1) === 1 && parts.gearTierOfEnhance(5) === 2 && parts.gearTierOfEnhance(10) === 3 && parts.gearTierOfEnhance(0) === 0);
   const old = prog.normalizeCharacterProgress({ ...prog.emptyCharacterProgress(), gearEnhance: undefined });
   const odd = prog.normalizeCharacterProgress({ ...prog.emptyCharacterProgress(), gearEnhance: { helmet: 99, armor: -3, nope: 4 } });
   ok("저장 정규화: 옛 저장은 강화 0 · 범위 밖은 0~10 으로", JSON.stringify(old.gearEnhance) === JSON.stringify({ helmet: 0, armor: 0, gloves: 0, boots: 0 }) && odd.gearEnhance.helmet === 10 && odd.gearEnhance.armor === 0 && !("nope" in odd.gearEnhance));

@@ -49,6 +49,7 @@ async function bundle(entry, name) {
 const idle = await import(await bundle("src/progression/idle.ts", "idle.mjs"));
 const forge = await import(await bundle("src/forge/model.ts", "forge.mjs"));
 const titans = await import(await bundle("src/titans/model.ts", "titans.mjs"));
+const units = await import(await bundle("src/economy/units.ts", "units.mjs"));
 const progression = await import(await bundle("src/progression/model.ts", "progression.mjs"));
 const allies = await import(await bundle("src/titans/allies.ts", "allies.mjs"));
 const bossPressure = await import(await bundle("src/titans/bossPressure.ts", "bossPressure.mjs"));
@@ -82,10 +83,11 @@ const ASSUMPTIONS = {
   riftShardsPerRun: 3.5,
   /** 주간 도전 조각 합 (events/weekly.ts: 10 + 12) */
   weeklyShards: 0, // K 이후 주간 도전은 전부 보석
-  dailyGemsRoutine: 15,
-  dailyGemsMissions: 10,
-  weeklyGemsChallenges: 120,
-  weeklyGemsAttendance: 150, // 1일 20 + 3일 30 + 7일 100 (2026-10-01: 1일차 골드 300 → 보석 20)
+  // 보석 ÷10 (2026-11-18, economy/units 판 2) — 루틴 15→2 · 토벌 10→1 · 주간 120→12 · 출석 150→15
+  dailyGemsRoutine: 2,
+  dailyGemsMissions: 1,
+  weeklyGemsChallenges: 12,
+  weeklyGemsAttendance: 15, // 1일 2 + 3일 3 + 7일 10 (예전 20 · 30 · 100)
 };
 /**
  * 지갑 실험 (2026-11-16, 사용자 목표 5 "골드는 하나로" · "환생해도 골드 유지") —
@@ -103,7 +105,7 @@ const CHECK = args.includes("--check");
 const EVO_CRYSTALS = Number(flag("evo-crystals", 10));
 const REBIRTH_KEEP = flag("rebirth", "keep") !== "reset";   // --rebirth reset — 지갑 하나여도 환생 때 출발 골드로(비교용)
 /** 은화 1 = 사냥터 골드 몇 — 그 층의 처치 골드 비(killGold / killGoldOldUnit × COIN_UNIT) */
-const coinToGold = (stage) => titans.killGold(Math.max(1, stage), false, false) / (titans.killGoldOldUnit(Math.max(1, stage), false, false) / 100);
+const coinToGold = (stage) => titans.killGold(Math.max(1, stage), false, false) / (titans.killGoldOldUnit(Math.max(1, stage), false, false) / units.COIN_UNIT);   // 2026-11-18 은화 3차 ÷10 — 예전엔 /100 이 박혀 있었다
 /** 조각이 편성 최강 동료에게 가는 비율 — --focus 0 (전부 무작위, 현행) ~ 1 (전부 집중) */
 const SHARD_FOCUS = Number(flag("focus", 0.7)); // allies.ts SHARD_PARTY_FOCUS와 같은 값
 /** 조각 수급 배율 실험용 — --shardmult 2 등 */
@@ -420,7 +422,7 @@ for (const run of runs) {
   ].join(" · "));
   lines.push("");
   lines.push(`**${DAYS}일차** — Stage ${last.stage} · Lv ${last.level} · 누적 골드 ${fmt(run.cumulativeGold)} · DPS 벽 ${run.wallDays}일 · 개척 ${run.gateDays}회 · 환생 ${run.rebirths}회 · 성급 합 ${run.starsTotal} · 재련 ${run.final.reforgeRank}`);
-  lines.push(`**무과금 소환** — ${DAYS}일 누적 보석 ${run.final.redGems.toLocaleString()} → 10연 ${Math.floor(run.final.redGems / 900)}회 (단발 환산 ${Math.floor(run.final.redGems / 100)}회)`);
+  lines.push(`**무과금 소환** — ${DAYS}일 누적 보석 ${run.final.redGems.toLocaleString()} → 10연 ${Math.floor(run.final.redGems / 90)}회 (단발 환산 ${Math.floor(run.final.redGems / 10)}회)`);
   lines.push("");
 }
 

@@ -1,3 +1,4 @@
+import { silverFromOld } from "./economy/units";
 import { gearTierOfEnhance } from "./equipment/parts";
 import { setSkillDockLeft, skillDockLeft } from "./ui/skillDockPref";
 import { fullscreenMode, isFullscreen, toggleFullscreen } from "./ui/fullscreen";
@@ -183,8 +184,9 @@ function clientToCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
 function extractCoinValue(world: GameWorld, talents: CharacterProgress["talents"]): number {
   const stage = getStage(world.stageIndex);
   const survivalRatio = Math.min(1, world.stageElapsedMs / stage.durationMs);
-  return Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2
-    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24) * world.coinBonusMul * (hasTalent(talents, "gold-digger") ? TALENT_EFFECT.goldDiggerCoinMul : 1));   // coinBonusMul: 2택 사건 "통과" · 골드 디거 특성 (2026-10-13)
+  // 은화 ÷10 (2026-11-18) — 식은 옛 단위 그대로 두고 마지막에 나눈다(silverFromOld). 항마다 나누면 작은 항이 0 으로 잘렸다
+  return silverFromOld(Math.max(20, Math.floor(stage.baseReward * survivalRatio * 0.72 + world.maxCombo * 2 + world.supplies * 2
+    + world.enemyKills * 4 + world.perfectDodges * 6 + world.chests * 24) * world.coinBonusMul * (hasTalent(talents, "gold-digger") ? TALENT_EFFECT.goldDiggerCoinMul : 1)));   // coinBonusMul: 2택 사건 "통과" · 골드 디거 특성 (2026-10-13)
 }
 
 type AppMode = "profile" | "dodge" | "beat" | "forge" | "titans";
@@ -1078,7 +1080,7 @@ function App() {
           sound.playClear();
           haptic("success");
           const stage = getStage(world.stageIndex);
-          const reward =
+          const reward = silverFromOld(
             computeClearReward(
               stage.baseReward,
               world.barrierHp,
@@ -1086,7 +1088,7 @@ function App() {
               world.stageElapsedMs,
               stage.durationMs,
             ) + Math.min(40, world.maxCombo * 2) + world.supplies * 3
-              + world.enemyKills * 5 + world.perfectDodges * 8 + world.chests * 30 + world.expeditionSeals * 20;
+              + world.enemyKills * 5 + world.perfectDodges * 8 + world.chests * 30 + world.expeditionSeals * 20);
           setCoinGain(reward);
           sound.playCoin();
           // dodge 별점 — ★ 클리어 · ★★ 방어막 50% 이상 · ★★★ 방어막 90% 이상 + 콤보 10 (방어막이 유일한 생명, 2026-10-02).

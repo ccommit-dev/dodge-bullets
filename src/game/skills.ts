@@ -274,7 +274,7 @@ export function weaponForgeCost(level: number): { gold: number; stones: number }
   const n = Math.max(1, level);
   // 골드 증가 1.32 → 1.45 (2026-10-27 감사: +20 까지 258만으로 검(+15 약 1.6억)의 1/60 이라 같은 골드면 지팡이 · 창이 검의 2배 넘게 셌다)
   // 2026-11-10 단위 낮추기 2차: 시작값 1,500 → 15 (위 258만 · 1.6억은 예전 단위)
-  return { gold: Math.round(15 * Math.pow(1.45, n - 1)), stones: 2 + n * 2 };
+  return { gold: Math.max(1, Math.round(1.5 * Math.pow(1.45, n - 1))), stones: 2 + n * 2 };   // 2026-11-18 은화 ÷10 — 1.5 부터
 }
 /** 피해 배수 — 단계마다 +8% (20단계 ×2.6) */
 export function weaponForgeDamageMul(level: number): number { return 1 + 0.08 * Math.max(0, Math.min(WEAPON_FORGE_MAX, level)); }
