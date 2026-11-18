@@ -17,15 +17,17 @@
     min-height: 380px; max-height: none !important;
     /* 캐릭터 크게 — 주인공 · 몬스터 1.5배, 동료 1.3배. 동료 대열은 "동료 크기 × 0.68" 칸 격자라 전장 폭(366px)에 넷이 1.5배로 서면
        동료끼리 70% 겹쳤다(verify-formation 문턱 25%). 좁은 폰은 폭에 맞춰 줄인다.
-       2026-11-17 사용자: "동료가 작고 비슷함 — 크게 · 특징 있게" → 82 → 100px(그림 약 60 → 75px, 주인공 약 90px 보다는 작게). 세 줄 대열 + L0 −0.2칸에서 verify-formation 통과 */
-    --ally-size: min(100px, 25.6vw, max(82px, calc((100dvh - var(--hf-chrome, 212px)) * .215))) !important;   /* 낮은 폰(375×553)은 뒷줄 머리가 알림 줄에 닿았다(verify-hud-layout) — 전장 높이 × 0.215 까지, 최소 예전 82px */
+       2026-11-17 사용자: "동료가 작고 비슷함 — 크게 · 특징 있게" → 82 → 100px(그림 약 60 → 75px, 주인공 약 90px 보다는 작게).
+       2026-11-18 100 → 92px: 100 에선 걷는 중 겹침 중앙값 15~22%(82px 는 2~8%) · 70층 브론×오리온이 같은 줄에 서 최대 23~28% — 92 는 4번 모두 걷는 중 ≤ 18% · 70층 ≤ 10% (verify-formation, EXTRA_CSS 비교).
+       그래도 92 는 검 주인공일 때 원거리 동료가 겹침 밀어내기(--sep-dx)에 전장 왼쪽 벽(36px)까지 밀려 verify-hunt-motion(맨 앞 ≥ 40px)이 4번 중 2번 떨어졌다 → 88px(4번 모두 41px 이상 · 82px 는 47px 이상). 주인공 1.5배와 같은 폭을 나눠 쓴다 */
+    --ally-size: min(88px, 22.6vw, max(82px, calc((100dvh - var(--hf-chrome, 212px)) * .215))) !important;   /* 낮은 폰(375×553)은 뒷줄 머리가 알림 줄에 닿았다(verify-hud-layout) — 전장 높이 × 0.215 까지, 최소 예전 82px */
     --monster-size: min(115px, 29.5vw) !important;
     --boss-size: min(160px, 41vw) !important;
     --hero-size: clamp(99px, 27%, 120px) !important;
     /* 동료 대열을 세 줄로(SpriteArt lineFormation 의 칸 변수) — 큰 몸이 가로 한두 줄에 몰리면 겹쳤다. 전장이 위아래로 길어 뒷줄이 들어간다.
        앞줄: 주인공 · 근접 앞(R0) · L0(주인공 뒤, 그대로) / 가운데: L1(왼쪽) / 맨 뒷줄: L2 · L3. 근접 뒷줄(R1)은 앞줄과 가운데 사이보다 조금 더 뒤 —
        주인공이 근접이면 앞줄이 들려(--melee-lift) R0 · R1 이 붙어 31% 겹쳤다(variants45 mia×bronn) */
-    --fl-l0-col: -0.55;   /* 앞줄 L0 를 주인공 뒤로 더 — 세 번째 근접(L0)이 근접 앞줄(R0)과 같은 x 에 서서 위아래로 포갰다. −0.2 는 동료 100px(2026-11-17) 뒤 45 · 51층에서 23~28%로 오락가락, −0.4 도 3번 중 1번 26%, −0.55 는 3번 모두 ≤ 23% (verify-formation) */
+    --fl-l0-col: -0.4;   /* 앞줄 L0 를 주인공 뒤로 더 — 세 번째 근접(L0)이 근접 앞줄(R0)과 같은 x 에 서서 위아래로 포갰다(45 · 51층 23~28%, verify-formation). −0.55 는 원거리 L0 를 왼쪽 벽 쪽으로 밀어 verify-hunt-motion 여유를 줄였다 — −0.4 (2026-11-18) */
     --fl-l1-col: -0.66; --fl-l1-y: calc(var(--ally-size, 78px) * 0.98);
     --fl-l2-col: -0.3; --fl-l2-y: calc(var(--ally-size, 78px) * 1.9);
     --fl-l3-col: 0.6; --fl-l3-y: calc(var(--ally-size, 78px) * 1.9);
