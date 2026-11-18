@@ -38,8 +38,10 @@ await page.evaluate(() => {
     if (n.matches?.(".ally-cutin")) window.__cutSeen.push({ t: performance.now(), id: n.dataset.ally, pe: getComputedStyle(n).pointerEvents });
   } }).observe(document.querySelector(".titans-field") ?? document.body, { childList: true, subtree: true });
 });
-const scale = await page.evaluate(() => Object.fromEntries(["celes", "titan", "ari", "storm"].map((id) => [id, getComputedStyle(document.querySelector(`.titans-allies .ally-${id} .ally-body`) ?? document.body).scale])));
-ok("전장 몸집: 초월 1.2 · 신화 1.12 · 전설 1.05 · 영웅 그대로", scale.celes === "1.2" && scale.titan === "1.12" && scale.ari === "1.05" && (scale.storm === "none" || scale.storm === "1"), JSON.stringify(scale));
+// 2026-11-17: 몸집 = 등급(--rar-s) × 역할(--role-s, ui/huntFocus.css) — 등급 배율은 --rar-s 로 읽고, 실제 scale 이 두 값의 곱인지 따로 본다
+const scale = await page.evaluate(() => Object.fromEntries(["celes", "titan", "ari", "storm"].map((id) => { const art = document.querySelector(`.titans-allies .ally-${id}`); const cs = art ? getComputedStyle(art) : null; const num = (v) => (v && v.trim() ? Number(v) : 1); const body = art?.querySelector(".ally-body"); const s = body ? getComputedStyle(body).scale : "none"; return [id, { rar: num(cs?.getPropertyValue("--rar-s")), role: num(cs?.getPropertyValue("--role-s")), scale: s === "none" ? 1 : Number(s) }]; })));
+ok("전장 몸집 등급 배율: 초월 1.2 · 신화 1.12 · 전설 1.05 · 영웅 그대로", scale.celes.rar === 1.2 && scale.titan.rar === 1.12 && scale.ari.rar === 1.05 && scale.storm.rar === 1, JSON.stringify(scale));
+ok("전장 몸집 = 등급 × 역할", Object.values(scale).every((v) => Math.abs(v.scale - v.rar * v.role) < 0.002), JSON.stringify(scale));
 let shot = false;
 for (let i = 0; i < 120; i += 1) {
   await page.keyboard.press("Space"); await sleep(200);
