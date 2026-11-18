@@ -53,7 +53,7 @@ await sleep(500);
 // 코인 교환 카드(2026-10-22, 이벤트 코인 가격)는 verify-archer-play2 가 본다 — 여기선 보석 상품만
 r = await page.evaluate(() => ({ cards: [...document.querySelectorAll(".event-offer-card:not(.coin-offer)")].map((c) => ({ name: c.querySelector("h2")?.textContent, price: c.querySelector("button")?.textContent, gemIcon: !!c.querySelector("button .gem-mark"), left: c.querySelector("small")?.textContent, summary: c.querySelector("p")?.textContent })) }));
 ok("이벤트 상점 4종(2026-10-08 원정 인장 묶음 포함) · 보석 가격(상단 지갑과 같은 붉은 보석 아이콘) · 주간 한도 표기", r.cards.length === 4 && r.cards.every((c) => c.gemIcon && /\d+/.test(c.price ?? "") && /남음/.test(c.left ?? "")), JSON.stringify(r.cards.map((c) => c.price + "|" + c.left)));
-ok("수량이 진행도 비례 문구(골드 K/M)", r.cards.some((c) => /골드 [\d.]+[KM]/.test(c.summary ?? "")), r.cards[0]?.summary);
+ok("수량이 진행도 비례 문구(골드 숫자 — 은화 ÷10 뒤 K 아래일 수 있다)", r.cards.some((c) => /골드 [\d.,]+[KM]?(\s|$|·)/.test(c.summary ?? "")), r.cards[0]?.summary);
 const before = await prog();
 const beforeT = await titans();
 // 보스 토벌 보급품(💎90, 주 3회): 방지권 2 → forgeTicketsPending, 강화석 30, 골드
