@@ -25,7 +25,7 @@ await page.evaluate(() => new MutationObserver((ms) => { for (const m of ms) for
 for (let i = 0; i < 40 && !((await prog()).discovered ?? []).some((k) => k.startsWith("monster:")); i += 1) await sleep(250);
 // 첫 처치는 관찰자를 붙이기 전에 일어날 수 있어 저장으로 확인한다(팝업 문구는 도토리 · 사다리에서 본다)
 const p0 = await prog();
-ok("몬스터 첫 처치 → 발견 기록 + 보석 +20", (p0.discovered ?? []).some((k) => k.startsWith("monster:")) && p0.redGems >= 120, `${JSON.stringify(p0.discovered)} · 보석 ${p0.redGems}`);
+ok("몬스터 첫 처치 → 발견 기록 + 보석 +2 (시드 100 → 읽을 때 10)", (p0.discovered ?? []).some((k) => k.startsWith("monster:")) && p0.redGems >= 12, `${JSON.stringify(p0.discovered)} · 보석 ${p0.redGems}`);
 
 // 도토리 콘텐츠는 뺐다 (2026-10-26 사용자: "도토리 콘텐츠 삭제 · 오늘도 환생 자동 돈 버는 시스템으로") — 퀘스트가 그 자리를 잇고, 같은 날 2×2(퀘스트 왼쪽 아래 · 유물 4번째)
 const growthTabs = await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].map((b) => b.textContent.trim()).filter((t) => t && t !== "▾"));

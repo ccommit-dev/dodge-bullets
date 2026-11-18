@@ -32,10 +32,10 @@ const watchPops = async () => {};
 await seed(baseProgress({ sessionCount: 0, redGems: 0, discovered: [] }), { gold: 0, stage: 1, bestStage: 6, totalKills: 0, heroes: { mia: 1, leon: 1 }, lastActiveAt: now }, null);
 for (let i = 0; i < 20 && !(await page.$(".attendance-modal")); i += 1) await sleep(250);
 const day1 = await page.evaluate(() => document.querySelector(".attendance-modal .attendance-grid > div")?.textContent ?? "");
-ok("출석 판 DAY 1 칸 = 보석 1000", /1000/.test(day1), day1);
+ok("출석 판 DAY 1 칸 = 보석 100", /×100(?!\d)/.test(day1), day1);
 await page.evaluate(() => document.querySelector(".attendance-modal .cta:not(.cta-ghost)")?.click()); await sleep(1200);
 let p = await prog();
-ok("첫 출석 → 보석 +1000 · welcome-gift 기록(깜짝 선물 조건)", p.redGems >= 1000 && (p.claimedRewards ?? []).includes("welcome-gift"), `보석 ${p.redGems}`);
+ok("첫 출석 → 보석 +100 · welcome-gift 기록(깜짝 선물 조건)", p.redGems >= 100 && (p.claimedRewards ?? []).includes("welcome-gift"), `보석 ${p.redGems}`);
 const gemsAfterGift = p.redGems;
 await page.reload({ waitUntil: "networkidle0" }); await sleep(1800);
 p = await prog();
@@ -135,7 +135,7 @@ await page.evaluate(() => document.querySelector(".titans-boss-challenge")?.clic
 for (let i = 0; i < 120 && !pops.some((t) => /깜짝 선물/.test(t)); i += 1) await sleep(250);
 await sleep(600);
 p = await prog();
-ok("첫 대장 처치 → '깜짝 선물 · 붉은 보석 +500' · 받음 기록", pops.some((t) => /깜짝 선물/.test(t) && /500/.test(t)) && p.redGems >= 600 && (p.claimedRewards ?? []).includes("surprise-gift"), `보석 ${p.redGems}`);
+ok("첫 대장 처치 → '깜짝 선물 · 붉은 보석 +50' · 받음 기록", pops.some((t) => /깜짝 선물/.test(t) && /(^|\D)50(\D|$)/.test(t)) && p.redGems >= 60 && (p.claimedRewards ?? []).includes("surprise-gift"), `보석 ${p.redGems}`);
 
 // ── 7'. 자동 환생 — 마이페이지 스위치 → 사냥터로 돌아오면 조건을 채운 채라 바로 환생 ──
 await seed(baseProgress({ rebirthCount: 1, wallAreas: ["meadow"], titanBestStage: 30, autoRebirth: false, inheritanceCrystals: 0 }), { gold: 500, stage: 9, bestStage: 30, totalKills: 400, heroes: { mia: 40, leon: 40 }, lastActiveAt: now, acorns: { grid: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], allyAmmo: { mia: 4 }, best: 4, acc: 0 } });
@@ -183,7 +183,7 @@ for (let i = 0; i < 20 && !(await page.$(".attendance-modal")); i += 1) await sl
 const oldDay1 = await page.evaluate(() => document.querySelector(".attendance-modal .attendance-grid > div")?.textContent ?? "");
 await page.evaluate(() => document.querySelector(".attendance-modal .cta:not(.cta-ghost)")?.click()); await sleep(1200);
 p = await prog();
-ok("옛 계정 첫 출석: 판도 지급도 보석 20 · welcome-gift 없음", /×20/.test(oldDay1) && !/1000/.test(oldDay1) && p.redGems >= 20 && p.redGems < 1000 && !(p.claimedRewards ?? []).includes("welcome-gift"), `${oldDay1} · 보석 ${p.redGems}`);
+ok("옛 계정 첫 출석: 판도 지급도 보석 2 · welcome-gift 없음", /×2(?!\d)/.test(oldDay1) && !/×100(?!\d)/.test(oldDay1) && p.redGems >= 2 && p.redGems < 100 && !(p.claimedRewards ?? []).includes("welcome-gift"), `${oldDay1} · 보석 ${p.redGems}`);
 
 // (2026-11-16 동료 탭은 사냥터 3층 칸 — 최고 층만 3, 개척 지역 2 그대로)
 // ── 체험 출전 — 첫 10연 전설(아리)은 지역이 열리기 전엔 "열린 가장 센 동료의 2배"까지만 ──

@@ -65,7 +65,7 @@ await sleep(300);
 let p = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
 const att = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:attendance:v1:${h}`)), H);
 // 이미 진행한 계정 = 환영 보석 문턱(이벤트 칸 6 + 3 = 9층) 위 — 시드 12층(2026-11-16, 03dae08 뒤 6층 시드가 새 계정으로 읽혔다)
-ok("DAY 1 수령 → 이미 진행한 계정은 예전 첫날 보석 +20(1000 은 새 계정만, 2026-10-23) · 누적 1일", p.redGems - g0 === 20 && att.totalDays === 1, `gems +${p.redGems - g0} total ${att.totalDays}`);
+ok("DAY 1 수령 → 이미 진행한 계정은 예전 첫날 보석 +2(100 은 새 계정만, 2026-10-23 · 보석 ÷10) · 누적 1일", p.redGems - g0 === 2 && att.totalDays === 1, `gems +${p.redGems - g0} total ${att.totalDays}`);
 await closeIdle(); await sleep(300);
 
 // 2) 메뉴 항목 반응
@@ -127,7 +127,7 @@ ok("29일 받은 계정 → DAY 30 판이 뜬다", s.attendance.includes("DAY 30
 g0 = await gemsNow();
 await tap(".attendance-modal button", "DAY 30 보상 받기"); await sleep(900);
 p = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
-ok("DAY 30 → 용린 견갑 + 보석 160", p.ownedShoulders?.includes("dragon") && p.redGems - g0 === 160, `gems +${p.redGems - g0} ${JSON.stringify(p.ownedShoulders)}`);
+ok("DAY 30 → 용린 견갑 + 보석 16", p.ownedShoulders?.includes("dragon") && p.redGems - g0 === 16, `gems +${p.redGems - g0} ${JSON.stringify(p.ownedShoulders)}`);
 await closeIdle(); await sleep(300);
 await openMenu();
 s = await state();
