@@ -394,7 +394,12 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
   // 골드 단위 낮추기 (GOLD_UNIT_VERSION) — 옛 단위 저장의 가진 골드는 지금 층의 낮춤 배수로 한 번 바꾼다(같은 시간 사냥 몫). 새 단위 저장(goldUnit ≥ 판)은 그대로.
   // 동료 값 조정 환급(relevelAlly) · 번개 환급은 옛 곡선으로 센 옛 단위라 늘 지금 층 배수를 곱한다
   const stageMul = goldDeflator(Math.max(1, n(value.stage, 1, 99999)));
-  const heldGold = n(value.gold, 0) * ((value.goldUnit ?? 0) >= GOLD_UNIT_VERSION ? 1 : stageMul);
+  // 1판(goldUnit 1) 저장은 이미 1판 곡선으로 줄인 골드 — 2판 배수 ÷ 1판 배수만 더 곱한다. 남은 번개 환급도 같은 단위라 같이
+  const curStage = Math.max(1, n(value.stage, 1, 99999));
+  const unitIn = value.goldUnit ?? 0;
+  const v1To2 = goldDeflator(curStage) / goldDeflator(curStage, GOLD_CURVE_V1);
+  const heldMul = unitIn >= GOLD_UNIT_VERSION ? 1 : unitIn === 1 ? v1To2 : stageMul;
+  const heldGold = n(value.gold, 0) * heldMul;
   const goldAfterRebalance = Math.max(0, heldGold + rebalanceGold * stageMul);
   const oldLightning = n((value as { lightningLevel?: unknown }).lightningLevel, 0, 500);
   let oldLightningRefund = 0;
@@ -467,7 +472,7 @@ export function normalizeTitansSave(value: Partial<TitansSave> | null): TitansSa
     huntPicks: 0,
     acorns: normalizeAcorns((value as { acorns?: unknown }).acorns),
     // 번개 강화 삭제 (2026-10-28) — 옛 저장의 단계는 이번 판에 쓴 골드로 돌려준다(환생하면 어차피 0 이던 런 강화)
-    lightningRefund: n((value as { lightningRefund?: unknown }).lightningRefund, 0) + lightningGold,
+    lightningRefund: Math.floor(n((value as { lightningRefund?: unknown }).lightningRefund, 0) * (unitIn === 1 ? v1To2 : 1)) + lightningGold,
     quests: normalizeQuests((value as { quests?: unknown }).quests),
     urgent: normalizeUrgent((value as { urgent?: unknown }).urgent),
   };
@@ -508,16 +513,22 @@ export function monsterHp(stage: number, boss: boolean): number {
  * X ≥ 100 계정은 환생 뒤 20분~2시간에 4~19층 늦고 5시간에 5층쯤 늦다가 10시간에 따라잡는다. k 를 올리면(0.5) 어긋남이 줄고 숫자가 커진다(60층 처치 3.7만),
  * 내리면(0.3) 숫자가 더 줄고 어긋남이 커진다. costAnchor 는 50 근처가 어느 k 에서나 가장 덜 어긋난다
  */
-export const GOLD_CURVE = { anchorStage: 6, incomeK: 0.4, costAnchor: 50, costK: 0.4 };
-/** 사냥터 골드 단위 판 — 이보다 낮은 저장은 가진 골드를 그 층의 낮춤 배수로 한 번 바꾼다(같은 시간 사냥 몫이 그대로) */
-export const GOLD_UNIT_VERSION = 1;
+export const GOLD_CURVE = { anchorStage: 2, incomeK: 0.35, costAnchor: 15, costK: 0.35 };
+/**
+ * 2판 곡선(2026-11-18, 사용자 /goal "수치는 낮은게 핵심" → 고른 안 "더 낮춘다") — 기준 6층/50 · 0.4 → 2층/15 · 0.35.
+ * 처치 골드 20층 113 → 40 · 40층 1,057 → 282 · 60층 8,513 → 1,750. N0 = 15 ÷ 2층 처치 골드(6) ≈ 2.5마리로 1판(2.2)과 비슷하게 둬서 어긋남이 덜 커진다.
+ * 실측(gold-pace): 어긋남 평균 10.2% → 12.0% · 가장 느림 −24% → −28% · 가장 빠름 +28% 그대로. 새 계정 30일(verify-pace-lock)은 같다.
+ * 1판 값은 GOLD_CURVE_V1 — 1판 저장의 가진 골드를 바꿀 때만 쓴다
+ */
+export const GOLD_CURVE_V1 = { anchorStage: 6, incomeK: 0.4, costAnchor: 50, costK: 0.4 };
+/** 사냥터 골드 단위 판 — 이보다 낮은 저장은 가진 골드를 한 번 바꾼다(같은 시간 사냥 몫이 그대로). 0 → 지금 층 배수, 1 → 2판 배수 ÷ 1판 배수 */
+export const GOLD_UNIT_VERSION = 2;
 /** 원래 처치 골드 곡선(낮추기 전, 대장 · 황금 배율 없이) — 낮춤 배수의 기준 */
 function rawKillBase(stage: number): number {
   const s = Math.max(1, stage);
   return 5 * Math.pow(1.26, s - 1) * huntingArea(s).rewardMultiplier * abyssGoldBoost(s);
 }
-export function goldDeflator(stage: number): number {
-  const c = GOLD_CURVE;
+export function goldDeflator(stage: number, c: typeof GOLD_CURVE = GOLD_CURVE): number {
   if (stage <= c.anchorStage || c.incomeK >= 1) return 1;
   return Math.pow(rawKillBase(stage) / rawKillBase(c.anchorStage), c.incomeK - 1);
 }

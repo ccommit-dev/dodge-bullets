@@ -16,7 +16,7 @@ type Props = {
   level: number;
   stars: number;
   skin?: string;
-  /** 지금 편성 기준 DPS 표기 */
+  /** 지금 편성 기준 전투력 표기 — DPS ÷100 (ui/powerFormat) */
   dpsText: string;
   shards: number;
   nextStarCost: number | null;
@@ -46,7 +46,7 @@ export function AllyDetail({ hero, level, stars, skin, dpsText, shards, nextStar
       <dl className="ally-detail-stats">
         <div><dt>역할</dt><dd>{ROLE_LABEL[ALLY_ROLE[hero.id]]}</dd></div>
         <div><dt>속성</dt><dd>{ELEMENT_LABEL[ALLY_ELEMENT[hero.id]]}</dd></div>
-        <div><dt>DPS</dt><dd>{dpsText}</dd></div>
+        <div><dt>전투력</dt><dd>{dpsText}</dd></div>
         <div><dt>공격 간격</dt><dd>{hero.attackInterval.toFixed(1)}초</dd></div>
         <div><dt>성급</dt><dd>★{stars}/{cap} · ×{STAR_MULT[stars] ?? 1}</dd></div>
         <div><dt>승급 조각</dt><dd>{nextStarCost !== null ? `${shards}/${nextStarCost}` : "최대 성급"}</dd></div>

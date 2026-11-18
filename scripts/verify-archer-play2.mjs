@@ -43,14 +43,15 @@ ok("같은 날 다시 들어와도 한 번만", p.redGems - gemsAfterGift < 1000
 
 // ── 2. 번개 강화 삭제 (2026-10-28, 사용자: "번개장비는 뭔지모르겠어 삭제") — 카드가 없고 옛 단계는 쓴 골드로 돌려받는다 ──
 // 안내는 켠 뒤 1.2초부터 4초만 뜬다 — seed() 의 networkidle0 + 1.2초를 기다리면 느린 부하에서 이미 지나갔다(2026-10-28). 다시 불러오자마자 9초 본다
-await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(baseProgress()), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 100000, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
+await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(baseProgress()), [`dodgebullets:titans:${H}`]: JSON.stringify({ gold: 100000, goldUnit: 2, stage: 3, bestStage: 3, totalKills: 50, heroes: { mia: 5, leon: 5 }, lastActiveAt: now, lightningLevel: 2 }), [`dodgebullets:attendance:v1:${H}`]: JSON.stringify({ lastClaimDate: new Date().toLocaleDateString("sv-SE"), totalDays: 3, consecutiveDays: 3 }), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
 await page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {});
 const toastRefund = await (async () => { for (let i = 0; i < 60; i += 1) { const t = await page.evaluate(() => document.querySelector(".titans-toast")?.textContent ?? ""); if (/번개 강화를 없앴어요/.test(t)) return t; await sleep(150); } return ""; })();
 await closeModals(); await sleep(400);
 await page.evaluate(() => [...document.querySelectorAll(".titans-growth-tabs button")].find((b) => b.textContent.includes("장비"))?.click()); await sleep(500);
 const lcard = await page.evaluate(() => !!document.querySelector(".lightning-card") || [...document.querySelectorAll(".equipment-training-card strong")].some((e) => /번개/.test(e.textContent)));
 const t1 = await tit();
-ok("장비 탭에 번개 카드 없음 · 옛 Lv.2 는 쓴 골드 336 돌려받음 · 알림", !lcard && t1.gold >= 100000 + 150 + 186 && !("lightningLevel" in t1) && /번개 강화를 없앴어요/.test(toastRefund), `카드 ${lcard} · 골드 ${t1.gold} · ${toastRefund}`);
+const refundN = Number((/쓴 골드 ([\d,]+)/.exec(toastRefund ?? "")?.[1] ?? "0").replace(/,/g, ""));   // 옛 Lv.2 = 옛 단위 150 + 186 × 3층 배수(곡선 2판 289)
+ok("장비 탭에 번개 카드 없음 · 옛 Lv.2 는 쓴 골드(옛 336 × 층 배수) 돌려받음 · 알림", !lcard && refundN > 200 && refundN <= 336 && t1.gold >= 100000 + refundN && !("lightningLevel" in t1) && /번개 강화를 없앴어요/.test(toastRefund), `카드 ${lcard} · 골드 ${t1.gold} · ${toastRefund}`);
 
 // ── 8. 이벤트 코인 — 드롭 · 지갑 · 교환 ──
 await seed(baseProgress({ eventCoins: 0, enhancementMaterials: 0 }), { gold: 1000, stage: 2, bestStage: 6, totalKills: 30, heroes: { mia: 30, leon: 30 }, lastActiveAt: now });
@@ -149,7 +150,7 @@ await clickText("button", "사냥터로"); await sleep(1200);
 for (let i = 0; i < 40 && !pops.some((t) => /자동 환생/.test(t)); i += 1) await sleep(250);
 await sleep(1500);
 p = await prog(); const tr = await tit();
-ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +26(층 16 + 열쇠 10) · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 26 && tr.stage <= 2 && tr.gold >= 1700 /* 골드 단위 낮추기(2026-11-10) 뒤 30층 출발 골드 1,726 (옛 단위 5,992) */ && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
+ok("사냥터로 돌아오자 자동 환생: 2회 · 벽 기록 비움 · 결정 +26(층 16 + 열쇠 10) · 1층 · 출발 골드 · 도토리 유지", pops.some((t) => /자동 환생/.test(t)) && p.rebirthCount === 2 && (p.wallAreas ?? []).length === 0 && p.inheritanceCrystals === 26 && tr.stage <= 2 && tr.gold >= 700 /* 골드 곡선 2판(2026-11-18) 뒤 30층 출발 골드 719 (1판 1,726 · 옛 단위 5,992) */ && tr.acorns?.allyAmmo?.mia === 4, `${pops.filter((t) => /환생/.test(t)).join(" | ")} · 환생 ${p.rebirthCount} · 결정 ${p.inheritanceCrystals} · ${tr.stage}층 · 골드 ${tr.gold} · 도토리 ${JSON.stringify(tr.acorns?.allyAmmo)}`);
 const killsBefore = (await tit()).totalKills ?? 0;
 for (let i = 0; i < 60; i += 1) { await page.keyboard.press("Space"); await sleep(120); }
 ok("자동 환생 뒤 사냥이 다시 돈다(1층 몬스터를 다시 잡는다)", ((await tit()).totalKills ?? 0) > killsBefore, `${killsBefore} → ${(await tit()).totalKills}`);
@@ -192,11 +193,11 @@ await seed(baseProgress({ redGems: 0, claimedRewards: ["dodge-tutorial", "field-
 await closeModals(); await sleep(300);
 await clickText(".titans-bottom-nav button", "동료"); await sleep(600);
 for (let pg = 0; pg < 20; pg += 1) {   // 도감은 쪽으로 나뉜다 — 아리가 있는 쪽까지 넘긴다
-  if (await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].some((c) => /아리/.test(c.textContent) && /DPS/.test(c.textContent)))) break;
+  if (await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].some((c) => /아리/.test(c.textContent) && /전투력/.test(c.textContent)))) break;   // 2026-11-18 카드의 DPS → 전투력(÷100) 표시
   const more = await page.evaluate((pg) => { const next = document.querySelector(".ally-page-next"); if (!next || next.disabled) return false; next.click(); return true; }, pg); await sleep(250);
   if (!more) break;
 }
-const ariCard = await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].map((c) => c.textContent).find((t) => /아리/.test(t) && /DPS/.test(t)) ?? "");
+const ariCard = await page.evaluate(() => [...document.querySelectorAll(".ally-card, .titans-card")].map((c) => c.textContent).find((t) => /아리/.test(t) && /전투력/.test(t)) ?? "");
 ok("아리 카드에 '체험 ×0.xx(STAGE 16 개척 시 제 힘)'", /체험 ×0\.\d\d\(STAGE 16 개척 시 제 힘\)/.test(ariCard), ariCard.slice(0, 120));
 
 ok("페이지 오류 없음", errors.length === 0, errors.slice(0, 2).join(" / "));

@@ -29,7 +29,7 @@ type Inv = Pick<TitansSave["skillInventory"], "learned" | "levels"> & { copies?:
 export function skillGoldUpgradeCost(level: number): number {
   return Math.floor(deflateCost(240 * Math.pow(1.75, Math.max(0, level - 1))));   // 골드 단위 낮추기(model GOLD_CURVE)
 }
-export const SKILL_GOLD_DRAW_MIN = 25;   // 예전 500 — 골드 단위 낮추기(2026-11-10) 뒤에도 같은 Lv(1~6)에서만 걸리게: 새 1회 값 Lv6 24 · Lv7 30 (예전 328 · 574)
+export const SKILL_GOLD_DRAW_MIN = 10;   // 2026-11-18 골드 곡선 2판(model GOLD_CURVE): 1회 값 Lv1 6.5 · Lv3 9.7 · Lv4 11.8 · Lv7 10.7 · Lv10 12.8 — 낮은 Lv(1~3 · 5 · 6)만 걸리고 Lv10 이상은 카드 = 골드 강화(예전 25 는 Lv15 까지 걸려 카드가 1.2~2배 비쌌다)
 /**
  * 뽑기 값 (2026-10-28 아쉬운 점 "카드 값은 층마다 · 골드 강화는 레벨마다 올라 층에 따라 유불리") — 골드 뽑기는 층이 아니라 스킬 레벨 기준.
  * 기준 Lv = 골드 뽑기 풀에서 배운 스킬 중 가장 높은 Lv(다른 스킬을 낮게 두어 값을 깎을 수 없게). 1회 값 = 골드 강화(기준 Lv) × 1/풀 크기 ÷ 그 Lv 의 카드 수 —

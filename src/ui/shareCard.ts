@@ -9,6 +9,7 @@
 import { sheetFor } from "../titans/anim";
 import { assetUrl } from "../asset";
 import { isNativePlatform } from "../game/native";
+import { formatPower } from "./powerFormat";
 
 export type ShareCardAlly = { name: string; level?: number; src: string; cols: number; rows: number; row: number; wide: boolean };
 export type ShareCardItem = { name: string; sub?: string; src: string; /** 시트에서 한 칸만 — 견갑 시트처럼 가로로 늘어선 그림 */ crop?: { cols: number; col: number } };
@@ -201,8 +202,8 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
   ctx.fillStyle = "#94a3b8"; ctx.font = `700 28px ${FONT}`;
   ctx.fillText("통합 전투력", px + pw / 2, heroTop + 56);
   ctx.fillStyle = gold; ctx.shadowColor = gold; ctx.shadowBlur = 18;
-  fitText(ctx, input.power.toLocaleString(), pw - 40, 900, 78, 40);
-  ctx.fillText(input.power.toLocaleString(), px + pw / 2, heroTop + 134);
+  fitText(ctx, formatPower(input.power), pw - 40, 900, 78, 40);   // 화면과 같은 전투력 단위(÷100)
+  ctx.fillText(formatPower(input.power), px + pw / 2, heroTop + 134);
   ctx.shadowBlur = 0;
   // 기록 2×2
   const stats = (input.stats ?? []).slice(0, 4);

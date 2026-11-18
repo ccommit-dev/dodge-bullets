@@ -97,20 +97,24 @@ ok("모두 Lv25 = 끝판(50층 무렵) 사냥 골드 정도", maxAll >= hunt(45)
 // 골드 단위 (2026-11-10 · quests.questPay unit) — 지금 층 배수를 곱해도 같은 층 사냥 골드 대비 비는 옛 단위와 같다(반올림 차이만)
 {
   const lv = { levels: Q.QUESTS.map((_, i) => (i < 20 ? 12 : 0)) };
-  const rows = [10, 25, 40].map((st) => { const u = M.goldDeflator(st); const a = Q.questGoldPerSec(lv) / hunt(st), b = Q.questGoldPerSec(lv, u) / (M.killGold(st, false, false) * 0.7); return { st, u, a, b }; });
-  ok("지금 층 배수(goldDeflator)로 바꿔도 사냥 골드 대비 비가 같다 · 6층까지는 배수 1", rows.every((r) => Math.abs(r.b / r.a - 1) < 0.02) && M.goldDeflator(6) === 1 && rows[0].u < 1,
+  const rows = [10, 25, 40].map((st) => { const u = M.goldDeflator(st); const a = Q.questGoldPerSec(lv) / hunt(st), b = Q.questGoldPerSec(lv, u) / (M.killGoldOldUnit(st, false, false) * u * 0.7); return { st, u, a, b }; });   // 내림 전 값과 — 2판 곡선은 처치 골드가 작아 floor 오차가 컸다
+  ok("지금 층 배수(goldDeflator)로 바꿔도 사냥 골드 대비 비가 같다 · 기준 층까지는 배수 1", rows.every((r) => Math.abs(r.b / r.a - 1) < 0.03) && M.goldDeflator(M.GOLD_CURVE.anchorStage) === 1 && rows[0].u < 1,
     rows.map((r) => `${r.st}층 ×${r.u.toFixed(4)} ${(r.a * 100).toFixed(1)}% → ${(r.b * 100).toFixed(1)}%`).join(" · "));
   ok("값 · 보상은 단위를 곱한 뒤 최소 1", Q.questPay(0, 1, 1e-9) === 1 && Q.questCost(1, 0, 1e-9) === 1);
 }
 
-// 옛 저장의 골드 (2026-11-10 · model.GOLD_UNIT_VERSION) — 한 번만 그 층의 배수로 바꾼다. 6층까지는 그대로 · 다시 정리해도 그대로
+// 옛 저장의 골드 (2026-11-10 · model.GOLD_UNIT_VERSION) — 한 번만 그 층의 배수로 바꾼다. 기준 층까지는 그대로 · 다시 정리해도 그대로. 1판 저장은 2판 ÷ 1판 배수 (2026-11-18)
 {
   const old = M.normalizeTitansSave({ gold: 1_000_000_000, stage: 40, bestStage: 40 });
   const again = M.normalizeTitansSave(old);
-  const low = M.normalizeTitansSave({ gold: 5000, stage: 3 });
-  ok("옛 저장 골드 → 지금 층 배수로 한 번 · 다시 정리해도 그대로 · 6층까지는 그대로",
+  const low = M.normalizeTitansSave({ gold: 5000, stage: M.GOLD_CURVE.anchorStage });
+  const v1 = M.normalizeTitansSave({ gold: 1_000_000, stage: 40, bestStage: 40, goldUnit: 1 });
+  const v1again = M.normalizeTitansSave(v1);
+  const want = Math.floor(1_000_000 * M.goldDeflator(40) / M.goldDeflator(40, M.GOLD_CURVE_V1));
+  ok("옛 저장 골드 → 지금 층 배수로 한 번 · 다시 정리해도 그대로 · 기준 층까지는 그대로",
     old.goldUnit === M.GOLD_UNIT_VERSION && old.gold === Math.floor(1e9 * M.goldDeflator(40)) && again.gold === old.gold && low.gold === 5000 && M.defaultTitansSave().goldUnit === M.GOLD_UNIT_VERSION,
-    `10억 @40층 → ${old.gold} · 다시 ${again.gold} · 3층 5000 → ${low.gold}`);
+    `10억 @40층 → ${old.gold} · 다시 ${again.gold} · 기준 층 5000 → ${low.gold}`);
+  ok("1판 저장 골드 → 2판 ÷ 1판 배수로 한 번 · 다시 정리해도 그대로", v1.goldUnit === M.GOLD_UNIT_VERSION && v1.gold === want && v1again.gold === v1.gold && want < 1_000_000, `100만 @40층 → ${v1.gold} (기대 ${want}) · 다시 ${v1again.gold}`);
 }
 
 // ── 6. 아이콘 ──

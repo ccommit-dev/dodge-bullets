@@ -57,6 +57,7 @@ import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
+import { formatPower } from "./ui/powerFormat";
 
 type CharacterStatusProps = {
   insets: SafeInsets;
@@ -297,7 +298,7 @@ export function CharacterStatus({
             </em>
           )}
           <span>Lv.{progress.level} · 통합 전투력</span>
-          <strong>{summary.combatPower.toLocaleString()}</strong>
+          <strong>{formatPower(summary.combatPower)}</strong>
           <small>EXP {levelProgress.current}/{levelProgress.required}</small>
           <i className="character-exp"><b style={{ width: `${levelProgress.ratio * 100}%` }} /></i>
         </div>

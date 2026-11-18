@@ -166,6 +166,7 @@ import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAfforda
 import { SkillIcon } from "./ui/SkillIcon";
 import { LockIcon } from "./ui/LockIcon";
 import { ElementGlyph } from "./ui/ElementGlyph";
+import { formatPower } from "./ui/powerFormat";
 import { FilterChips } from "./ui/FilterChips";
 import "./ui/simple-lists.css";
 import "./ui/shop-style.css";   // 2026-11-09 꾸미기 진열 · 특별 탭 — 맨 뒤(ui-polish · simple-lists 의 상점 규칙을 덮는다)
@@ -3344,7 +3345,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     }));
     // 레벨업은 DPS 전후를 같이 (2026-10-22 "효과가 안 보이는 강화" 피하기)
     const stars = starMultiplier(effectiveStars(character.allyStars[id], Math.max(1, lv + quote.count)));
-    flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""} · DPS ${formatGold(heroDps(def, lv) * stars)} → ${formatGold(heroDps(def, lv + quote.count) * stars)}`);
+    flash(lv === 0 ? `${def.name} 소환!` : `${def.name} Lv.${lv + quote.count}${quote.count > 1 ? ` (+${quote.count})` : ""} · 전투력 ${formatPower(heroDps(def, lv) * stars)} → ${formatPower(heroDps(def, lv + quote.count) * stars)}`);
     if (lv === 0) discover("ally", id, def.name);
     if (lv === 0) {
       setAllyPulse((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
@@ -5232,7 +5233,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                       ? `보석 상점 전용 동료 · ${h.attackType}`
                       : locked
                         ? `${TIER_LABEL[rarity]} · ${h.attackType}`
-                        : `DPS ${formatGold(heroDps(h, lv || 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}${lv > 0 ? ` → ${formatGold(heroDps(h, lv + 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}` : ""}`}
+                        : `전투력 ${formatPower(heroDps(h, lv || 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}${lv > 0 ? ` → ${formatPower(heroDps(h, lv + 1) * mult * trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)))}` : ""}`}
                   </p>
                   {!(shopOnly && lv === 0) && <small className="ally-attack-line">{h.attackType}{(save.acorns.allyAmmo[h.id] ?? 0) > 0 ? ` · 도토리 Lv.${save.acorns.allyAmmo[h.id]}` : ""}{trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)) < 1 ? ` · 체험 ×${trialDpsMul(h, trialCeiling(fieldCeiling, save.bestStage)).toFixed(2)}(STAGE ${h.unlockStage} 개척 시 제 힘)` : ""}</small>}
                   {lv === 0 && !shopOnly && <small className="ally-draw-rate">뽑기 {(drawRate * 100).toFixed(drawRate < 0.001 ? 3 : 2)}% · 골드 소환 {formatGold(h.baseCost)}G</small>}
@@ -5256,7 +5257,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </div>
                 {/* 상세는 카드를 눌러 연다 (2026-11-05) — 옛 '상세 정보' 칸과 동료 고르기 줄을 없앴다 */}
                 {openCard === `ally:${h.id}` && lv > 0 && (
-                  <AllyDetail hero={h} level={lv} stars={stars} skin={character.equippedAllySkins?.[h.id]} dpsText={formatGold(heroDps(h, lv) * starMultiplier(Math.max(1, stars)))} shards={shards} nextStarCost={nextCost} inParty={inParty} />
+                  <AllyDetail hero={h} level={lv} stars={stars} skin={character.equippedAllySkins?.[h.id]} dpsText={formatPower(heroDps(h, lv) * starMultiplier(Math.max(1, stars)))} shards={shards} nextStarCost={nextCost} inParty={inParty} />
                 )}
                 <div className="ally-card-actions">
                   {openCard === `ally:${h.id}` && lv > 0 && bulkToggle}
@@ -6141,7 +6142,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                     <small>{ROLE_LABEL[ALLY_ROLE[h.id]]} · {ELEMENT_LABEL[ALLY_ELEMENT[h.id]]} · {h.attackType}</small>
                     <small>{h.feature}</small>
                     <AllySigInfo hero={h} compact />
-                    <small>DPS {h.baseDps.toLocaleString()} · ★{STAR_CAP[r.rarity]} (×{STAR_MULT[STAR_CAP[r.rarity]]}) · 중복 조각 +{GACHA.dupeShards[r.rarity]}</small>
+                    <small>전투력 {formatPower(h.baseDps)} · ★{STAR_CAP[r.rarity]} (×{STAR_MULT[STAR_CAP[r.rarity]]}) · 중복 조각 +{GACHA.dupeShards[r.rarity]}</small>
                   </span>
                 </div>
               );
@@ -6161,7 +6162,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   <p>{h.feature}{feat ? ` · 고유 특성 「${feat.label}」 ${feat.desc}` : ""}</p>
                   <AllySigInfo hero={h} />
                   <ul>
-                    <li>기본 DPS <b>{h.baseDps.toLocaleString()}</b></li>
+                    <li>기본 전투력 <b>{formatPower(h.baseDps)}</b></li>
                     <li>성급 상한 <b>★{STAR_CAP[r.rarity]}</b> (최대 ×{STAR_MULT[STAR_CAP[r.rarity]]})</li>
                     <li>중복 조각 <b>+{dupe}</b> · 파견 조각 <b>×{expMul}</b></li>
                     {/* 중복은 재료 — 지금 조각으로 다음 성급까지, 오르면 피해 배율 전 → 후 (2026-10-22 아처 키우기 6번) */}
