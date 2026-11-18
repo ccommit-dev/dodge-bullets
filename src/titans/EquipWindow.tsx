@@ -11,7 +11,8 @@ import type { Tier } from "./allyRoster";
 import { TIER_LABEL, TIER_RANK } from "./summonLevel";
 import "./equipWindow.css";
 
-export type EquipSlotId = "weapon" | "shoulder" | "helmet" | "armor" | "gloves" | "boots";
+/** mount — 2026-11-18 탈것 칸(인형 아래 가운데). 낀 탈것을 다시 누르면 내린다 */
+export type EquipSlotId = "weapon" | "shoulder" | "helmet" | "armor" | "gloves" | "boots" | "mount";
 export type EquipBagItem = { key: string; slot: EquipSlotId; label: string; level?: string; icon: string; on: boolean; pending?: boolean; title: string; className?: string; tier?: Tier };
 export type EquipSlotView = { id: EquipSlotId; label: string; icon: string | null; level?: string; tier?: Tier; active?: boolean };
 export type EquipStat = { key: string; label: string; value: string; title?: string };
@@ -31,7 +32,8 @@ export function EquipWindow({ slots, bag, hero, stats, footer, onEquip, onDenied
   onSlotChange?: (slot: EquipSlotId) => void;
   onEquip: (item: EquipBagItem) => void;
   onDenied?: (item: EquipBagItem, overSlot: EquipSlotId) => void;
-  onShop?: () => void;
+  /** 가방 끝 '＋ 상점' — 지금 고른 칸을 넘긴다(탈것이면 상점 탈것 칸으로) */
+  onShop?: (slot: EquipSlotId) => void;
 }) {
   const [bagSlot, setBagSlot] = useState<EquipSlotId>("weapon");
   const [byTier, setByTier] = useState(false);
@@ -82,6 +84,7 @@ export function EquipWindow({ slots, bag, hero, stats, footer, onEquip, onDenied
 
   const left = slots.filter((s) => s.id === "weapon" || s.id === "shoulder" || s.id === "helmet");
   const right = slots.filter((s) => s.id === "armor" || s.id === "gloves" || s.id === "boots");
+  const mount = slots.find((s) => s.id === "mount");
   const slotEl = (s: EquipSlotView) => {
     const accepts = !!drag && drag.item.slot === s.id;
     const denied = !!drag && drag.over === s.id && drag.item.slot !== s.id;
@@ -105,6 +108,7 @@ export function EquipWindow({ slots, bag, hero, stats, footer, onEquip, onDenied
         </div>
         <div className="equip-col">{right.map(slotEl)}</div>
       </div>
+      {mount && <div className="equip-mount-row">{slotEl(mount)}</div>}
       <div className="equip-bag-bar">
         <button type="button" className={`equip-sort ${byTier ? "on" : ""}`} aria-pressed={byTier} onClick={() => setByTier((v) => !v)}>등급순 정렬</button>
         {onForge && <button type="button" className="equip-forge-link" onClick={onForge}>대장간 강화</button>}
@@ -131,7 +135,7 @@ export function EquipWindow({ slots, bag, hero, stats, footer, onEquip, onDenied
         ))}
         {shown.length === 0 && <p className="equip-empty">낄 수 있는 장비가 없어요</p>}
         {onShop && bagSlot !== "weapon" && (
-          <button type="button" className="equip-shop-link" onClick={onShop}><b>＋</b><span>상점</span></button>
+          <button type="button" className="equip-shop-link" onClick={() => onShop(bagSlot)}><b>＋</b><span>상점</span></button>
         )}
       </div>
       {footer(bagSlot)}

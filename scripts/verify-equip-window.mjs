@@ -14,7 +14,7 @@ const errors = []; page.on("pageerror", (e) => errors.push(String(e.message).sli
 const seed = async (w, h) => {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.goto(BASE, { waitUntil: "networkidle0" });
-  const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 5000, sharedCoins: 500000, enhancementMaterials: 2000, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"], equippedWeaponKind: "sword", ownedShoulders: ["scout", "dragon"], equippedShoulder: "scout", expeditionWeaponForge: { spear: 8, bow: 3, staff: 2 }, gearEnhance: { helmet: 4 } };
+  const progress = { version: 5, onboardingStep: 4, level: 40, redGems: 5000, sharedCoins: 500000, enhancementMaterials: 2000, titanBestStage: 40, pioneeredArea: 5, idleClaimedAt: now, updatedAt: now, partyIds: ["mia"], partyCap: 4, sessionCount: 9, claimedRewards: ["dodge-tutorial", "welcome-gift"], equippedWeaponKind: "sword", ownedShoulders: ["scout", "dragon"], equippedShoulder: "scout", expeditionWeaponForge: { spear: 8, bow: 3, staff: 2 }, gearEnhance: { helmet: 4 }, mounts: { boar: 3, deer: 1 }, activeMount: "" };
   const titans = { stage: 12, bestStage: 40, gold: 2000000, heroes: { mia: 26 }, lastActiveAt: now };
   await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); location.href = "/"; }, {
     [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0",
@@ -43,7 +43,7 @@ await seed(390, 844);
 if (OUT) await page.screenshot({ path: `${OUT}/equip-window.png` });
 const pickSlot = async (id) => { await page.evaluate((id) => document.querySelector(`.equip-slot[data-equip-slot="${id}"]`).click(), id); await sleep(200); };
 const shape = await page.evaluate(() => ({ slots: [...document.querySelectorAll(".equip-slot")].map((e) => e.dataset.equipSlot), bag: [...document.querySelectorAll(".equip-item")].map((e) => e.textContent.trim()), e: [...document.querySelectorAll(".equip-item.on")].map((e) => e.dataset.item), hero: !!document.querySelector(".equip-hero .equipped-character"), over: (() => { const w = document.querySelector(".equip-window"); return w.scrollWidth - w.clientWidth; })(), clipped: [...document.querySelectorAll(".equip-item")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.dataset.item) }));
-ok("슬롯 6칸 · 주인공 · 가방은 고른 칸 것만(처음 무기 4) · E 표시", shape.slots.length === 6 && shape.hero && shape.bag.length === 4 && shape.e.join() === "sword", JSON.stringify(shape).slice(0, 240));
+ok("슬롯 7칸(6 + 탈것) · 주인공 · 가방은 고른 칸 것만(처음 무기 4) · E 표시", shape.slots.length === 7 && shape.slots.includes("mount") && shape.hero && shape.bag.length === 4 && shape.e.join() === "sword", JSON.stringify(shape).slice(0, 240));
 ok("가방 글자 안 잘림 · 판 넘침 없음", shape.clipped.length === 0 && shape.over <= 0, JSON.stringify({ clipped: shape.clipped, over: shape.over }));
 const scroll0 = await page.evaluate(() => document.querySelector(".titans-layer").scrollTop);
 const wSlot = await center('.equip-slot[data-equip-slot="weapon"]');
@@ -73,6 +73,21 @@ ok("낀 견갑을 다시 누르면 벗는다 · 칸이 빈다", (await saved()).
 await sleep(200);
 await pickSlot("weapon");
 const wStat = await page.evaluate(() => ({ slotIcon: document.querySelector('.equip-slot[data-equip-slot="weapon"] img')?.src?.slice(-24), stat: document.querySelector(".weapon-kind-stat")?.textContent ?? "", cards: document.querySelectorAll(".equipment-training-card").length, chips: document.querySelectorAll(".weapon-kind-chip").length }));
+// ── 탈것 칸 (2026-11-18, 사용자: "탈것도 장비성장 인벤토리에서 탈부착") — 끌어다 놓으면 타고, 낀 것을 다시 누르면 내린다 ──
+{
+  const mountOf = async () => JSON.parse(await page.evaluate((h) => localStorage.getItem(`dodgebullets:progression:v1:${h}`), H)).activeMount ?? "";
+  await pickSlot("mount");
+  const mbag = await page.evaluate(() => [...document.querySelectorAll(".equip-item")].map((e) => e.dataset.item));
+  ok("탈것 칸을 누르면 가방에 가진 탈것만(멧돼지 · 사슴)", mbag.join() === "mount:boar,mount:deer", mbag.join());
+  await dragTo('.equip-item[data-item="mount:boar"]', await center('.equip-slot[data-equip-slot="mount"]'));
+  let am = ""; for (let i = 0; i < 20 && am !== "boar"; i += 1) { await sleep(150); am = await mountOf(); }
+  const slotImg = await page.evaluate(() => document.querySelector('.equip-slot[data-equip-slot="mount"] img')?.getAttribute("src") ?? "");
+  ok("멧돼지를 탈것 칸에 끌어 놓으면 탄다 · 칸에 그림", am === "boar" && /mounts\/boar\.webp/.test(slotImg), `${am} · ${slotImg}`);
+  await page.evaluate(() => document.querySelector('.equip-item[data-item="mount:boar"]')?.click());
+  for (let i = 0; i < 20 && am !== ""; i += 1) { await sleep(150); am = await mountOf(); }
+  ok("탄 탈것을 다시 누르면 내린다 · 칸이 빈다", am === "" && !(await page.$('.equip-slot[data-equip-slot="mount"] img')), am);
+  await pickSlot("weapon");
+}
 ok("무기 칸 그림 · 설명이 바뀌고 훈련 카드 6장 그대로", /staff/.test(wStat.slotIcon ?? "") && /지팡이|스킬/.test(wStat.stat) && wStat.cards === 6 && wStat.chips === 4, JSON.stringify(wStat).slice(0, 220));
 for (const [w, h] of [[360, 640], [375, 553]]) {
   await seed(w, h);

@@ -4826,10 +4826,16 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               // 세트 파츠를 끼면 그 그림 · 같은 무기면 등급 테두리. 숙련 · 강화 효과는 끼든 말든 그대로
               return { id: part, label: GEAR_PART_DEF[part].name, icon: assetUrl(set ? gearItemIconPath(set) : `titans/gear/${part}-${Math.max(1, gearTierOfEnhance(enh))}.png`), level: enh > 0 ? `+${enh}` : undefined, active: !!set && gearItemKind(set) === wantedWeaponKind, tier: set ? setEquipTier(character.gearSetLevels[set] ?? 0) : partEquipTier(enh) };
             }),
+            (() => {
+              // 탈것 칸 (2026-11-18) — 탄 탈것 그림 · Lv · 등급(꾸미기 등급 = 보석 값)
+              const mid = isMountId(character.activeMount) ? character.activeMount : null;
+              return { id: "mount" as const, label: "탈것", icon: mid ? assetUrl(`titans/mounts/${mid}.webp`) : null, level: mid ? `Lv.${character.mounts[mid] ?? 1}` : undefined, tier: mid ? cosmeticTier(MOUNT_DEFS[mid].gemPrice) : undefined };
+            })(),
           ];
           const bag: EquipBagItem[] = [
             ...WEAPON_KINDS.map((k): EquipBagItem => ({ key: k, slot: "weapon", label: WEAPON_LABEL[k], level: `+${lvOf(k)}`, icon: assetUrl(weaponIconPath(k, lvOf(k))), on: wantedWeaponKind === k, pending: wantedWeaponKind === k && weaponKind !== k, title: `${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`, className: "weapon-kind-chip", tier: weaponEquipTier(lvOf(k)) })),
             ...(character.ownedShoulders ?? []).map((id): EquipBagItem => ({ key: id, slot: "shoulder", label: SHOULDER_DEFINITIONS[id].name.replace(" 견갑", ""), icon: shoulderIconUrl(id), on: equippedShoulder === id && !character.equippedGear.shoulder, title: `${SHOULDER_DEFINITIONS[id].name} · ${SHOULDER_DEFINITIONS[id].effect}`, tier: shoulderEquipTier(SHOULDER_DEFINITIONS[id].grade) })),
+            ...MOUNT_IDS.filter((mid) => (character.mounts[mid] ?? 0) > 0).map((mid): EquipBagItem => ({ key: `mount:${mid}`, slot: "mount", label: MOUNT_DEFS[mid].name.split(" ").pop() ?? MOUNT_DEFS[mid].name, level: `Lv.${character.mounts[mid]}`, icon: assetUrl(`titans/mounts/${mid}.webp`), on: character.activeMount === mid, title: `${MOUNT_DEFS[mid].name} · 사냥 골드 +${(mountGoldBonus(mid, character.mounts[mid] ?? 1) * 100).toFixed(1)}% · ${character.activeMount === mid ? "누르면 내림" : "끌어 놓거나 누르면 탄다"}`, tier: cosmeticTier(MOUNT_DEFS[mid].gemPrice) })),
             ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: gearItemSetLabel(id), icon: assetUrl(gearItemIconPath(id)), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id, character.gearSetLevels[id] ?? 0)}`, tier: setEquipTier(character.gearSetLevels[id] ?? 0) })),
           ];
           return (
@@ -4844,7 +4850,19 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} wornLevels={character.gearSetLevels} wornRunes={resonantRunes} />}
               footer={(slot) => (
                 <div className="equip-info">
-                  {slot === "weapon" ? (
+                  {slot === "mount" ? (() => {
+                    const mid = isMountId(character.activeMount) ? character.activeMount : null;
+                    if (!mid) return <><b>탈것 없음</b><small className="mount-info">가방의 탈것을 칸에 끌어다 놓거나 누르면 탄다 · 사냥 골드가 오른다</small></>;
+                    const lv = character.mounts[mid] ?? 1, cost = mountUpgradeCost(lv, mid);
+                    return (
+                      <div className="gear-set-enhance mount-enhance" data-mount-info={mid}>
+                        <span><b><em className={`tier-chip tier-${cosmeticTier(MOUNT_DEFS[mid].gemPrice)}`}>{TIER_LABEL[cosmeticTier(MOUNT_DEFS[mid].gemPrice)]}</em> {MOUNT_DEFS[mid].name} Lv.{lv}</b>
+                          <small className="mount-info">사냥 골드 +{(mountGoldBonus(mid, lv) * 100).toFixed(1)}%{MOUNT_DEFS[mid].idleBase > 0 ? ` · 방치 +${(mountIdleBonus(mid, lv) * 100).toFixed(1)}%` : ""}{cost !== null ? ` → 다음 +${(mountGoldBonus(mid, lv + 1) * 100).toFixed(1)}%` : " (최대)"}</small></span>
+                        {cost !== null ? <button type="button" className="mount-upgrade" disabled={character.enhancementMaterials < cost} onClick={() => void upgradeMount(mid)}>강화<small className="btn-cost">강화석 {cost}</small></button> : <button type="button" disabled>최대</button>}
+                        <button type="button" className="mount-unequip" onClick={() => void equipMount(mid)}>내리기</button>
+                      </div>
+                    );
+                  })() : slot === "weapon" ? (
                     <>
                       <b><em className={`tier-chip tier-${weaponEquipTier(wantedLv)}`}>{TIER_LABEL[weaponEquipTier(wantedLv)]}</em> {WEAPON_FORGE_NAME[wantedWeaponKind]} +{wantedLv}</b>
                       <small className="weapon-kind-stat">{lookPending ? <b className="look-pending">다음 몬스터부터 {WEAPON_LABEL[wantedWeaponKind]} · </b> : null}{weaponStatText(wantedWeaponKind)} · 기술 {WEAPON_TECH[wantedWeaponKind].name} — {WEAPON_TECH[wantedWeaponKind].desc}</small>
@@ -4914,6 +4932,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               )}
               onEquip={(item) => {
                 sfxUiTap();
+                if (item.slot === "mount") { const mid = item.key.replace(/^mount:/, ""); if (isMountId(mid)) void equipMount(mid); return; }   // 다시 누르면 내린다(equipMount 가 토글)
                 if (item.slot === "weapon") { equipWeapon(item.key as WeaponKind); return; }
                 if (isGearItemId(item.key)) {
                   const gid = item.key, gslot = gearItemSlot(gid), off = character.equippedGear[gslot] === gid;
@@ -4930,8 +4949,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 void updateCharacterProgress(userHash, (c) => { const eq = { ...c.equippedGear }; delete eq.shoulder; return { ...c, equippedShoulder: id, equippedGear: eq }; }).then((next) => { setCharacter(next); flash(id ? `${SHOULDER_DEFINITIONS[id].name} 장착 · 다음 몬스터부터` : "견갑 해제 · 다음 몬스터부터"); });
               }}
               onSlotChange={setEquipFocus}
-              onDenied={(item) => { sfxUiDenied(); const label = item.slot === "weapon" ? "무기" : item.slot === "shoulder" ? "견갑" : GEAR_PART_DEF[item.slot].name; flash(`${label}는 ${label} 칸에 놓으세요`); }}
-              onShop={() => { setTab("premium"); setPremiumCategory("gear"); }}
+              onDenied={(item) => { sfxUiDenied(); const label = item.slot === "weapon" ? "무기" : item.slot === "shoulder" ? "견갑" : item.slot === "mount" ? "탈것" : GEAR_PART_DEF[item.slot].name; flash(`${label}는 ${label} 칸에 놓으세요`); }}
+              onShop={(slot) => { setTab("premium"); setPremiumCategory(slot === "mount" ? "mount" : "gear"); }}
             />
           );
         })()}

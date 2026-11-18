@@ -30,3 +30,12 @@
 .equip-window .equip-bag-bar button:active { translate: 0 1px; box-shadow: none; }
 .equip-window .equip-empty { grid-column: 1 / -1; margin: 0; padding: 14px 4px; text-align: center; color: #e7cfa4; font-size: 13px; font-weight: 800; }
 @media (prefers-reduced-motion: reduce) { .equip-window .equip-pad { animation: none; } }
+
+/* 탈것 칸 (2026-11-18) — 인형 아래 가운데 한 칸, 다른 칸과 같은 판 */
+.equip-window .equip-mount-row { display: flex; justify-content: center; margin: 2px 0 6px; }
+.equip-window .equip-mount-row .equip-slot { width: min(96px, 26%); }
+.equip-window .equip-item.item-mount img, .equip-window .equip-slot.slot-mount img { object-fit: contain; }
+.equip-window .mount-enhance { flex-wrap: wrap; }
+.equip-window .mount-enhance > span { flex: 1 1 100%; }
+.equip-window .mount-enhance > button { flex: 1 1 0; }
+.equip-window .mount-enhance .mount-unequip { background: #e9dcc3 !important; color: #3b2415 !important; border-color: #3b2415 !important; }

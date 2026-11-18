@@ -35,6 +35,7 @@ const PIXEL_PATHS: [RegExp, string][] = [
   [/^titans\/anim\/(allies|monsters|monsters-hd|hero|hero-gear)\//, "titans/anim-px/$1/"],
   [/^titans\/gear\/(skins\/[\w-]+\/)?(weapon|spear|bow|staff)-(\d)\.png$/, "titans/gear-px/$1$2-$3.png"],
   [/^titans\/backgrounds\//, "titans/backgrounds-px/"],
+  [/^titans\/mounts\//, "titans/mounts-px/"],   // 탈것 아이콘(장비창) — scripts/make-mount-icons.mjs
 ];
 export function pixelPath(path: string): string {
   if (!isPixelArt()) return path;
