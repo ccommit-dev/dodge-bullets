@@ -1,4 +1,5 @@
-import { formatGold } from "../titans/model";
+import { formatGold, tapDamage, totalHeroDps } from "../titans/model";
+import { combatPower, totalSkillMastery, type CharacterProgress } from "../progression/model";
 
 /**
  * 전투력 표시 단위 (2026-11-18, 사용자 /goal "수치는 낮은게 핵심" → 고른 안 "전투력 표시만 줄인다").
@@ -6,6 +7,14 @@ import { formatGold } from "../titans/model";
  * 통합 전투력 917,446 → 9,174 · 동료 DPS 160.9K → 1.6K · 처음 동료 DPS 16 → 0.16.
  */
 export const POWER_UNIT = 100;
+
+/**
+ * 통합 전투력(계산 단위) — 마이페이지 · 장비창 칩 · 기록 카드가 같은 값을 쓴다(2026-11-18: 장비창은 기본 전투력 1,954 · 마이페이지는 9,174 로 달랐다).
+ * 진행도 전투력과 '탭 + 동료 DPS + 숙련 + 대장간' 중 큰 쪽
+ */
+export function unifiedPower(progress: CharacterProgress, heroes: Parameters<typeof totalHeroDps>[0], weaponMastery: number, mastery = totalSkillMastery(progress), forgeBest = progress.bestForgeLevel): number {
+  return Math.max(combatPower(progress), tapDamage(weaponMastery) + Math.floor(totalHeroDps(heroes)) + mastery * 3 + forgeBest * 12);
+}
 
 export function powerValue(raw: number): number {
   return Math.max(0, raw) / POWER_UNIT;

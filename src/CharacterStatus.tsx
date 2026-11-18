@@ -11,13 +11,10 @@ import { loadTitansSave } from "./titans/storage";
 import {
   HEROES,
   defaultTitansSave,
-  tapDamage,
-  totalHeroDps,
   type TitansSave,
 } from "./titans/model";
 import type { SafeInsets } from "./game/toss";
 import {
-  combatPower,
   progressToNextLevel,
   totalSkillMastery,
   type CharacterProgress,
@@ -57,7 +54,7 @@ import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
-import { formatPower } from "./ui/powerFormat";
+import { formatPower, unifiedPower } from "./ui/powerFormat";
 
 type CharacterStatusProps = {
   insets: SafeInsets;
@@ -136,13 +133,7 @@ export function CharacterStatus({
   const summary = useMemo(() => {
     const mastery = Math.max(beat ? skillTotal(beat.skills) : 0, totalSkillMastery(progress));
     const allies = HEROES.filter((hero) => titans.heroes[hero.id] > 0).length;
-    const power = Math.max(
-      combatPower(progress),
-      tapDamage(titans.equipmentTraining.weaponMastery) +
-        Math.floor(totalHeroDps(titans.heroes)) +
-        mastery * 3 +
-        forge.bestLevel * 12,
-    );
+    const power = unifiedPower(progress, titans.heroes, titans.equipmentTraining.weaponMastery, mastery, forge.bestLevel);   // ui/powerFormat — 장비창 칩과 같은 식
     return { mastery, allies, combatPower: power };
   }, [beat, forge.bestLevel, progress, titans]);
 

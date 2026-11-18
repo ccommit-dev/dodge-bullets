@@ -56,7 +56,7 @@ import { grantCharacterReward, loadCharacterProgress, QA_BUILD, qaGemsEnabled, t
 import { track as trackEvent } from "./analytics/events";
 import { loadBeatRpg } from "./game/storage";
 import { bestScoreOverall } from "./beat/rpg";
-import { combatPower, emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
+import { emptyCharacterProgress, type CharacterProgress, type ShoulderId } from "./progression/model";
 import {
   BEAT_SKILL_BY_SLOT,
   IDLE,
@@ -166,7 +166,7 @@ import { CURRENCY_LABEL, closestGoal, purchaseAdvice, shortfallLabel, topAfforda
 import { SkillIcon } from "./ui/SkillIcon";
 import { LockIcon } from "./ui/LockIcon";
 import { ElementGlyph } from "./ui/ElementGlyph";
-import { formatPower } from "./ui/powerFormat";
+import { formatPower, unifiedPower } from "./ui/powerFormat";
 import { FilterChips } from "./ui/FilterChips";
 import "./ui/simple-lists.css";
 import "./ui/shop-style.css";   // 2026-11-09 꾸미기 진열 · 특별 탭 — 맨 뒤(ui-polish · simple-lists 의 상점 규칙을 덮는다)
@@ -4844,7 +4844,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               bag={bag}
               stats={[
                 { key: "tap", label: "탭 피해", value: formatGold(Math.round(tapBaseNow())), title: "버프 · 치명 전 탭 한 번의 피해 — 무기 · 숙련 · 세트 · 패시브 · 사다리 · 결정 트리를 모두 곱한 값" },
-                { key: "power", label: "전투력", value: combatPower(character).toLocaleString(), title: "마이페이지 통합 전투력" },
+                { key: "power", label: "전투력", value: formatPower(unifiedPower(character, save.heroes, save.equipmentTraining.weaponMastery)), title: "마이페이지 통합 전투력과 같은 값(화면 단위 ÷100)" },
               ]}
               onForge={() => openContent("forge")}
               hero={<HeroFrameChar store={frameStore} mode="idle" weaponLevel={wantedLv} weaponKind={wantedWeaponKind} shoulder={equippedShoulder} character={character.activeCharacter} weaponSkin={character.equippedWeaponSkin} worn={character.equippedGear} wornLevels={character.gearSetLevels} wornRunes={resonantRunes} />}

@@ -62,3 +62,15 @@
 .skill-preset-card .preset-row button small { display: none !important; }
 .skill-preset-card .preset-row button { min-height: 32px !important; padding: 2px 10px !important; }
 .skill-preset-card > .party-panel-head small { display: none !important; }
+
+/* 낮은 화면(360×640 등) — 서랍이 32vh 라 판 한 줄 반이 보였다. 아이콘 · 단추를 줄여 판 높이 150 → 약 120 */
+@media (max-height: 700px) {
+  /* 서랍이 32vh(640 에서 205px) — 4열 · 납작한 시전 칸으로 한 화면에 판 두 줄 가까이 */
+  .titans-shop:has(> .skill-learn-card) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px !important; }
+  .hero-skill-combo .combo-step { min-height: 0 !important; padding: 3px 2px !important; gap: 1px !important; }
+  .hero-skill-combo .combo-step .skill-icon, .hero-skill-combo .combo-step .combo-empty { width: 28px !important; height: 28px !important; flex-basis: 28px !important; }
+  .hero-skill-combo .combo-step small { display: none !important; }
+  .titans-shop > .skill-learn-card:not(.is-open) > .skill-icon { width: 38px !important; height: 38px !important; }
+  .titans-shop > .titans-card.skill-learn-card:not(.is-open) { gap: 3px !important; padding: 5px 5px 6px !important; }
+  .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { min-height: 28px !important; }
+}
