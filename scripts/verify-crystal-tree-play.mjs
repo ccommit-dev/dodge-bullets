@@ -79,8 +79,8 @@ await toMyPage();
 for (let k = 0; k < 2; k += 1) { await page.evaluate(() => document.querySelector(".rebirth-button")?.click()); await sleep(700); }
 p = await prog(); const tr = await tit();
 ok("환생 → 5층부터 · 결정 +16 +10(열쇠 값) · 유물 · 트리 유지", p.rebirthCount === 2 && tr.stage === 5 && p.inheritanceCrystals === 66 && p.relics["ember-ring"] === 3 && p.crystalTree.start === 4, `stage ${tr.stage} · 결정 ${p.inheritanceCrystals} · gold ${tr.gold}`);
-// 출발 골드(model.rebirthStartGold 30) — 골드 단위 낮추기(2026-11-10) 뒤 옛 5,991 → 2,091(그 골드로 사던 초반 강화를 새 값으로 다시 산 값)
-ok("출발 골드에 건너뛴 1~4층 골드가 얹힌다", tr.gold > 2091, `${tr.gold}`);
+// 출발 골드(model.rebirthStartGold 30) — 골드 단위 낮추기(2026-11-10) 뒤 옛 5,991 → 2,091, 곡선 2판(2026-11-18) 뒤 719. 건너뛴 1~4층 골드가 그 위에 얹혀야 한다
+ok("출발 골드에 건너뛴 1~4층 골드가 얹힌다", tr.gold > 719, `${tr.gold} > 719`);
 const toast = await page.evaluate(() => document.querySelector(".mypage-toast")?.textContent ?? "");
 ok("환생 메시지에 '5층부터' · 결정 +26 · 진화 포인트 글자 없음", /5층부터/.test(toast) && /결정 \+26/.test(toast) && !/진화 포인트/.test(toast), toast);
 
