@@ -202,18 +202,21 @@ def shoulder(kind):
     """견갑 3판 (2026-11-19, 리소스 피드백 ④) — 옆에서 본 어깨판: 둥근 돔 + 아래로 겹쳐 내려오는 굽은 판 셋 · 판 끝 테 · 징 · 가죽 끈.
     1 · 2판은 판을 관(tube) 고리로 만들고 위에서 내려다봐 장비창에서 '초록 마카롱 · 감긴 고리'로 읽혔다"""
     S = SHOULDERS[kind]
+    dark = '#%02x%02x%02x' % tuple(int(int(S['main'][i:i + 2], 16) * 0.72) for i in (1, 3, 5))   # 아래 판은 한 단 어둡게 — 같은 색이면 돔과 한 덩어리로 보였다
     cap = C.ellipsoid(Vector((0, 0, 0.2)), (0.56, 0.5, 0.46))
     for v in [v for v in cap.verts if v.co.z < 0.1]:
         cap.verts.remove(v)
     ob('cap', cap, m('pl0', S['main']))
     ob('caprim', band(0.575, 0.59, 0.17, 0.09, -1.75, 1.75, th=0.05), metal_m(S['trim']))
+    ridge = [Vector((0, -0.5 * math.cos(a), 0.2 + 0.46 * math.sin(a) + 0.02)) for a in [math.radians(20 + 140 * j / 10) for j in range(11)]]
+    ob('ridge', C.tube(ridge, 0.045, seg=6), metal_m(S['trim']))   # 돔 가운데 등줄
     for k in (1, 2, 3):
         zt = 0.13 - 0.15 * k
         zb = zt - 0.2
         R0 = 0.55 + 0.035 * k
         R1 = R0 + 0.07
         p = 1.5 - 0.12 * k
-        ob(f'lame{k}', band(R0, R1, zt, zb, -p, p), m('pl', S['main']))
+        ob(f'lame{k}', band(R0, R1, zt, zb, -p, p), m('pl', dark))
         ob(f'edge{k}', band(R1 + 0.004, R1 + 0.012, zb + 0.04, zb, -p, p, th=0.05), metal_m(S['trim']))
         for j, a in enumerate((-0.75, 0.0, 0.75)):
             rr = (R0 + R1) / 2 + 0.01

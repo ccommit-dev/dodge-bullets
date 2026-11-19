@@ -122,4 +122,4 @@
 
 /* 스테이지를 떠날 때 배경 흐림 연출(App.css stage-parallax-out)이 filter 를 통째로 바꿔, 전환마다 배경 채도가 원래보다 높게(1.2) 번쩍였다 —
    같은 이름으로 다시 정의해 '한 발 뒤로' 규칙(채도 · 대비 낮춤)을 지킨 채 어둡게만 */
-@keyframes stage-parallax-out { to { background-position: 20% 68%; filter: saturate(.5) contrast(.78) brightness(.8) blur(.6px); } }
+@keyframes stage-parallax-out { to { background-position: 20% 68%; filter: saturate(.8) contrast(.92) brightness(.74); } }   /* 2026-11-19 정지 값(채도 .8 · 밝기 .86 · 흐림 없음)과 맞춤 — 옛 값이면 떠날 때마다 0.7초 다시 바랬다 */

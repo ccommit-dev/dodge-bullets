@@ -14,7 +14,12 @@ for (const [dir, cell, tag] of SETS) {
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".webp"))) {
     const id = f.replace(/\.webp$/, "");
     if (!rimmedMonster(id) || (only.length && !only.includes(id))) continue;
-    if (!existsSync(`${bak}/${f}`)) copyFileSync(`${dir}/${f}`, `${bak}/${f}`);
+    // 원본이 없으면 멈춘다 — public 시트는 2026-11-19 부터 이미 테두리빛이 구워져 있어 그걸 원본으로 삼으면 두 번 굽는다(art-gen/out 은 저장소에 없다 — 새로 받은 곳 · worktree).
+    // 원본은 assemble-anim2 가 남긴다. 처음 한 번(테두리빛 없는 시트)만 FIRST_RUN=1 로 public 을 원본으로 옮긴다
+    if (!existsSync(`${bak}/${f}`)) {
+      if (process.env.FIRST_RUN !== "1") throw new Error(`원본 없음: ${bak}/${f} — node scripts/assemble-anim2.mjs ${id} 를 먼저 돌려 원본을 남기세요`);
+      copyFileSync(`${dir}/${f}`, `${bak}/${f}`);
+    }
     const png = await addMonsterRim(`${bak}/${f}`, cell);
     await sharp(png).webp({ quality: 88, alphaQuality: 92, effort: 5 }).toFile(`${dir}/${f}`);
     console.log(tag, id);
