@@ -58,10 +58,22 @@
 .hero-skill-combo .combo-step { border-width: 3px !important; border-radius: 14px !important; }
 .hero-skill-combo .combo-step + .combo-step::before { display: none !important; }
 .hero-skill-combo .combo-step.locked { opacity: .7; }
-/* 프리셋은 칩 한 줄로 작게 */
-.skill-preset-card .preset-row button small { display: none !important; }
-.skill-preset-card .preset-row button { min-height: 32px !important; padding: 2px 10px !important; }
 .skill-preset-card > .party-panel-head small { display: none !important; }
+
+/* 2판 (2026-11-19, 사용자 "카드 소진과 골드 강화를 강화 단추 하나로 · 칸마다 가장 좋은 스킬 자동 장착") */
+/* 자동 장착 — 시전 칸 아래 큰 초록 단추 하나(숨어 있던 프리셋 3종 자리). 이미 가장 좋으면 크림색 */
+.skill-preset-card > .skill-auto-equip {
+  display: flex !important; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin: 8px 0 0 !important; padding: 4px 10px !important;
+  border: 3px solid #1d4e22 !important; border-radius: 14px !important; background: #2f9e44 !important; color: #fff !important;
+  font-size: 16px !important; font-weight: 900; box-shadow: 0 4px 0 #1d4e22 !important; cursor: pointer;
+}
+.skill-preset-card > .skill-auto-equip small { font-size: 13px !important; font-weight: 800; color: #fff !important; }
+.skill-preset-card > .skill-auto-equip.is-best { background: #f3e6c8 !important; color: #4a3020 !important; border-color: #c9a46a !important; box-shadow: 0 3px 0 #c9a46a !important; font-size: 14px !important; }
+.skill-preset-card > .skill-auto-equip.is-best small { color: #4a3020 !important; }
+.skill-preset-card > .skill-auto-equip:active { transform: translateY(2px); box-shadow: 0 2px 0 #1d4e22 !important; }
+/* 펼친 판의 학습 · 강화 단추 — 값(카드 n장 → Lv · 골드)은 이름 아래 한 줄 */
+.skill-learn-card.is-open .skill-card-actions > button { flex-direction: column; }
+.skill-learn-card.is-open .skill-card-actions > button small { display: block; font-size: 12px !important; font-weight: 800; line-height: 1.15; color: inherit !important; }   /* ui-polish '.skill-learn-card small' 회색이 초록 단추 위에 묻혔다 */
 
 /* 낮은 화면(360×640 등) — 서랍이 32vh 라 판 한 줄 반이 보였다. 아이콘 · 단추를 줄여 판 높이 150 → 약 120 */
 @media (max-height: 700px) {
@@ -73,4 +85,5 @@
   .titans-shop > .skill-learn-card:not(.is-open) > .skill-icon { width: 38px !important; height: 38px !important; }
   .titans-shop > .titans-card.skill-learn-card:not(.is-open) { gap: 3px !important; padding: 5px 5px 6px !important; }
   .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { min-height: 28px !important; }
+  .skill-preset-card > .skill-auto-equip { min-height: 34px; margin-top: 5px !important; font-size: 14px !important; }
 }

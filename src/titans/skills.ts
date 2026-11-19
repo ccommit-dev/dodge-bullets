@@ -171,12 +171,22 @@ export function autoSkillOrder(): TitanSkillId[] {
   return [...SKILLS].filter((s) => s.slot !== "passive").sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
 }
 
-/** 프리셋 — 슬롯별 후보 순서. 학습한 것 중 첫 번째가 장착된다 */
-export type SkillPreset = { id: string; name: string; desc: string; picks: Record<TitanSkillSlot, TitanSkillId[]> };
-export const SKILL_PRESETS: SkillPreset[] = [
-  // 은퇴 스킬(통나무 돌진·물수제비 스텝·급류 연타·붉은 달 난타·용암 북 울림·별빛 피날레·댐 수문 개방·북채 집중)은 뺐다 (2026-10-01)
-  { id: "balance", name: "균형형", desc: "탭·동료 고루 강화", picks: { starter: ["strike", "emberCut", "frostEdge"], linkA: ["crit", "stoneGuard"], linkB: ["clone", "thunderLink"], finisher: ["meteor", "voidFinish"], passive: ["steel", "elementalMastery", "guardianSoul"] } },
-  { id: "burst", name: "탭 폭발형", desc: "탭 연타 극대화", picks: { starter: ["emberCut", "strike", "frostEdge"], linkA: ["crit", "stoneGuard"], linkB: ["clone", "thunderLink"], finisher: ["voidFinish", "meteor"], passive: ["steel", "guardianSoul", "elementalMastery"] } },
-  { id: "party", name: "원정대형", desc: "동료 DPS와 보스 시간", picks: { starter: ["frostEdge", "strike", "emberCut"], linkA: ["stoneGuard", "crit"], linkB: ["thunderLink", "clone"], finisher: ["meteor", "voidFinish"], passive: ["elementalMastery", "guardianSoul", "steel"] } },
-
-];
+/**
+ * 자동 장착 (2026-11-19, 사용자 "칸마다 가장 좋은 스킬 자동 장착") — 프리셋 3종(균형 · 탭 폭발 · 원정대, 화면에선 이미 숨겨져 있었다)을 대신한다.
+ * 칸마다 배운 스킬 중 예상 보정(skillPreviewPct — 스킬 탭 '+N%' 와 같은 값)이 가장 큰 것. 같으면 지금 낀 것 → 높은 등급 → 높은 Lv.
+ * 닫힌 칸(open 이 false — 비트 숙련 0)과 배운 스킬이 없는 칸은 지금 장착을 그대로 둔다.
+ */
+const TIER_ORDER: readonly Tier[] = ["N", "R", "SR", "SSR", "UR", "LR"];
+type LoadoutInv = { learned: readonly TitanSkillId[]; levels: Partial<Record<TitanSkillId, number>>; equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> };
+export function bestSkillLoadout(inv: LoadoutInv, open: (slot: TitanSkillSlot) => boolean = () => true): Partial<Record<TitanSkillSlot, TitanSkillId>> {
+  const out: Partial<Record<TitanSkillSlot, TitanSkillId>> = { ...inv.equipped };
+  for (const slot of SLOT_ORDER) {
+    if (!open(slot)) continue;
+    const cands = SKILLS.filter((s) => s.slot === slot && inv.learned.includes(s.id));
+    if (!cands.length) continue;
+    const key = (id: TitanSkillId) => [skillPreviewPct(id, inv.levels[id] ?? 1), inv.equipped[slot] === id ? 1 : 0, TIER_ORDER.indexOf(SKILL_TIER[id]), inv.levels[id] ?? 1];
+    const better = (a: TitanSkillId, b: TitanSkillId) => { const ka = key(a), kb = key(b); for (let i = 0; i < ka.length; i += 1) if (ka[i] !== kb[i]) return ka[i] > kb[i]; return false; };
+    out[slot] = cands.map((s) => s.id).reduce((best, id) => (better(id, best) ? id : best));
+  }
+  return out;
+}

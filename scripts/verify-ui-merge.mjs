@@ -45,12 +45,12 @@ const skill = await page.evaluate(() => {
   };
 });
 ok("접힌 스킬 카드는 버튼이 꼭 하나", skill.n >= 10 && skill.btns.every((b) => b === 1), skill.btns.join(""));
-ok("낀 스킬에 카드가 있으면 그 버튼은 소진, 안 낀 스킬은 장착", /→ Lv/.test(skill.label["passive:단단한 앞니"] ?? "") && /^장착$/.test(skill.label["linkB:번개 결속"] ?? ""), JSON.stringify(skill.label).slice(0, 220));
+ok("낀 스킬 버튼은 강화(카드가 있으면 카드부터 — 2026-11-19 단추 하나), 안 낀 스킬은 장착", /^강화.*→ Lv/.test(skill.label["passive:단단한 앞니"] ?? "") && /^장착$/.test(skill.label["linkB:번개 결속"] ?? ""), JSON.stringify(skill.label).slice(0, 220));
 ok("카드가 있으면 접혀 있어도 꼬리표로 보인다 · 점선 테두리 없음", skill.badge && !skill.dashed);
 ok("시전 칸 다섯이 한 줄 · 넘치지 않음", (await rowsOf(".hero-skill-combo .combo-step")) === 1 && await page.evaluate(() => { const c = document.querySelector(".hero-skill-combo"); return c.scrollWidth <= c.clientWidth + 1; }));
 await page.evaluate(() => { const c = [...document.querySelectorAll(".skill-learn-card")].find((x) => x.querySelector(".skill-icon-steel")); c?.click(); }); await sleep(300);
 const openBtns = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card.is-open .skill-card-actions button")].filter((b) => b.getClientRects().length > 0).map((b) => b.textContent.trim()));
-ok("펼치면 해제 · 강화 · 소진이 다 보인다", openBtns.length === 3 && /해제/.test(openBtns[0]), openBtns.join(" / "));
+ok("펼치면 해제 · 강화 둘(카드 소진은 강화에 합침)", openBtns.length === 2 && /해제/.test(openBtns[0]) && /^강화/.test(openBtns[1]), openBtns.join(" / "));
 
 // 스킬 칸이 곧 필터 (2026-11-05) — 필터 줄 없음 · 칸을 누르면 그 칸 스킬만 · 다시 누르면 전체
 const slotBefore = await page.evaluate(() => ({ filter: document.querySelectorAll(".skill-filter").length, n: document.querySelectorAll(".skill-learn-card").length }));

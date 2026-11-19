@@ -48,7 +48,7 @@ import { AllyArt, MonsterArt, allyIdleCell, formationCells, monsterAssetFor, mon
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_LR_STAGE, FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
-import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_PRESETS, SKILL_TIER, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind, type SkillPreset } from "./titans/skills";
+import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_TIER, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, bestSkillLoadout, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind } from "./titans/skills";
 import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinIcon, weaponSkinStyle } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -4142,19 +4142,25 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     [save.skillInventory],
   ).toFixed(0);
 
-  /** 프리셋 — 슬롯마다 후보 순서 중 학습한 첫 스킬. 잠긴 슬롯(비트 숙련 0)은 건드리지 않고, 후보가 없으면 기존 장착을 유지 */
-  const applyPreset = (preset: SkillPreset) => {
+  /** 자동 장착 (2026-11-19, titans/skills.bestSkillLoadout) — 칸마다 배운 스킬 중 예상 보정이 가장 큰 것. 잠긴 칸(비트 숙련 0)은 그대로 */
+  const autoLoadout = useMemo(() => {
     const locks = slotLevels(character);
-    setSave((prev) => {
-      const equipped: Partial<Record<TitanSkillSlot, TitanSkillId>> = { ...prev.skillInventory.equipped };
-      for (const slot of SLOT_ORDER) {
-        if (locks[slot] <= 0 && !qaOpen) continue;
-        const pick = preset.picks[slot].find((id) => prev.skillInventory.learned.includes(id));
-        if (pick) equipped[slot] = pick;
-      }
-      return { ...prev, skillInventory: { ...prev.skillInventory, equipped } };
-    });
-    flash(`${preset.name} 프리셋 적용 — 학습한 스킬만 장착됐습니다`);
+    return bestSkillLoadout(save.skillInventory, (slot) => qaOpen || locks[slot] > 0);
+  }, [save.skillInventory, character, qaOpen]);
+  const autoChanged = SLOT_ORDER.filter((slot) => autoLoadout[slot] !== save.skillInventory.equipped[slot]);
+  const autoPreview = SLOT_ORDER.reduce((sum, slot) => { const id = autoLoadout[slot]; return id && save.skillInventory.learned.includes(id) ? sum + skillPreviewPct(id, save.skillInventory.levels[id]) : sum; }, 0).toFixed(0);
+  const autoEquipSkills = () => {
+    if (!autoChanged.length) { flash("이미 가장 좋은 스킬을 끼고 있습니다"); return; }
+    const locks = slotLevels(character);
+    setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, equipped: bestSkillLoadout(prev.skillInventory, (slot) => qaOpen || locks[slot] > 0) } }));
+    const first = autoLoadout[autoChanged[0]];
+    if (first) previewSkillEquip(first);
+    flash(`자동 장착 — ${autoChanged.length}칸 바꿈 · 스킬 보정 +${autoPreview}%`);
+  };
+  /** 강화 단추 하나 (2026-11-19, 사용자 "카드 소진과 골드 강화를 하나로") — 카드로 오를 Lv 이 있으면 카드부터(무료), 없으면 골드 1Lv */
+  const enhanceSkill = (id: TitanSkillId) => {
+    if (skillCardPlan(saveRef.current.skillInventory, id).used > 0) consumeSkillCard(id);
+    else upgradeSkill(id);
   };
 
   /** 추천 편성 (점검표 #4) — DPS 상위를 뽑되 원거리 2명을 보장해 엄호 사격 시너지를 켠다 */
@@ -5358,14 +5364,10 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 );
               })}
             </div>
-            <div className="preset-row">
-              {SKILL_PRESETS.map((preset) => (
-                <button key={preset.id} type="button" onClick={() => applyPreset(preset)} title={preset.desc}>
-                  <b>{preset.name}</b>
-                  <small>{preset.desc}</small>
-                </button>
-              ))}
-            </div>
+            {/* 자동 장착 (2026-11-19) — 숨겨져 있던 프리셋 3종 줄을 단추 하나로. 이미 가장 좋으면 흐린 '장착 중' */}
+            <button type="button" className={`skill-auto-equip ${autoChanged.length ? "is-ready" : "is-best"}`} data-changes={autoChanged.length} onClick={autoEquipSkills}>
+              {autoChanged.length ? <>자동 장착 <small>+{skillDpsPreview}% → +{autoPreview}%</small></> : <>가장 좋은 스킬 장착 중 <small>+{skillDpsPreview}%</small></>}
+            </button>
           </article>
         )}
         {/* 전체 스킬 — 등급 묶음(일반 → 초월, 2026-10-28 사용자: "복잡한 탭들 모두 삭제 · 전체 스킬 등급별"). 슬롯(시동기 · 연계 · 마무리 · 패시브)은 카드의 칩으로.
@@ -5394,10 +5396,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const cards = save.skillInventory.copies?.[sk.id] ?? 0;
             // 카드 값은 Lv 따라 1 · 2 · 3 · 5장(2026-10-28 skillGacha.skillCardsPerLevel) — 지금 카드로 오를 Lv · 다음 Lv 에 드는 카드
             const cardPlan = skillCardPlan(save.skillInventory, sk.id);
-            // 접힌 카드의 버튼은 지금 할 일 하나(2026-11-03, "난잡하지 않게") — 안 배움: 학습(못 배우면 카드로) · 안 낌: 장착 · 낌: 카드가 있으면 소진, 없으면 강화. 나머지는 카드를 펼치면
-            const canConsume = cards > 0 && (learned ? cardPlan.used > 0 : learnedInType < skillTypeCapacity);
+            // 접힌 카드의 버튼은 지금 할 일 하나(2026-11-03, "난잡하지 않게") — 안 배움: 학습 · 안 낌: 장착 · 낌: 강화. 나머지는 카드를 펼치면
+            // 단추 합치기(2026-11-19, 사용자 "카드 소진과 골드 강화를 강화 단추 하나로") — 학습은 카드가 있으면 카드 1장(SP · 코어 그대로), 없으면 SP · 코어.
+            // 강화는 카드로 오를 Lv 이 있으면 카드 전부(enhanceSkill), 없으면 골드 1Lv
+            const learnByCard = !learned && cards > 0 && learnedInType < skillTypeCapacity;
             const canLearn = learnedInType < skillTypeCapacity && skillPoints >= sk.learnSpCost && save.skillInventory.skillCores >= sk.learnCoreCost;
-            const mainAction: "equip" | "level" | "consume" = !learned ? (!canLearn && canConsume ? "consume" : "equip") : !equipped ? "equip" : canConsume ? "consume" : "level";
+            const enhanceByCard = learned && cardPlan.used > 0;
+            const maxed = learned && level >= sk.maxLevel;
+            const mainAction: "equip" | "level" = learned && equipped ? "level" : "equip";
             return <article key={sk.id} data-slot={sk.slot} data-tier={tier} title={`${TIER_LABEL[tier]} 스킬`} className={`titans-card skill-learn-card skill-outline rarity-${tier.toLowerCase()} tier-${tier} ${equipFx?.id === sk.id ? "equip-pop" : ""} ${skillSlotTab === sk.slot ? "slot-focus" : ""} element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
               <SkillIcon id={sk.id} />
               <div>
@@ -5414,15 +5420,14 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   {toNext !== null && ` · 다음까지 ${toNext}`}
                   {slotLevel > 0 && ` · 방치 효율 +${(slotLevel * IDLE.ratePerSlotLevel * 100).toFixed(1)}%p`}
                 </small>
-                {!learned && <small>학습 비용 SP {sk.learnSpCost} · 코어 {sk.learnCoreCost}{cards > 0 ? " · 또는 카드 1장" : ""} · {SLOT_LABEL[sk.slot]} {learnedInType}/{skillTypeCapacity}</small>}
-                {cards > 0 && <small className="skill-card-count">스킬 카드 {cards}장{learned ? (cardPlan.used > 0 ? ` · 소진하면 Lv.${cardPlan.toLevel}` : level < sk.maxLevel ? ` · 다음 Lv 에 ${cardPlan.nextNeed}장` : "") : ""}</small>}
+                {!learned && <small>학습 {learnByCard ? "카드 1장" : `SP ${sk.learnSpCost} · 코어 ${sk.learnCoreCost}`} · {SLOT_LABEL[sk.slot]} {learnedInType}/{skillTypeCapacity}</small>}
+                {cards > 0 && <small className="skill-card-count">스킬 카드 {cards}장{learned ? (enhanceByCard ? ` · 강화하면 카드로 Lv.${cardPlan.toLevel}` : !maxed ? ` · 다음 Lv 에 ${cardPlan.nextNeed}장(그 전엔 골드)` : "") : ""}</small>}
               </div>
               <div className="skill-card-actions">
-                <button type="button" className={`skill-equip-btn ${equipped ? "is-equipped" : learned ? "is-ready" : "is-learn"} ${mainAction === "equip" ? "is-main" : ""}`} disabled={!learned && (learnedInType >= skillTypeCapacity || skillPoints < sk.learnSpCost || save.skillInventory.skillCores < sk.learnCoreCost)} onClick={() => learned ? toggleSkill(sk.id) : void learnSkill(sk.id)}>
-                  {learned ? equipped ? "장착됨 · 해제" : eqDef && eqDef.id !== sk.id ? "교체" : "장착" : "학습"}
+                <button type="button" className={`skill-equip-btn ${equipped ? "is-equipped" : learned ? "is-ready" : "is-learn"} ${mainAction === "equip" ? "is-main" : ""}`} data-skill={sk.id} data-via={learned ? undefined : learnByCard ? "card" : "sp"} disabled={!learned && !learnByCard && !canLearn} onClick={() => learned ? toggleSkill(sk.id) : learnByCard ? consumeSkillCard(sk.id) : void learnSkill(sk.id)}>
+                  {learned ? equipped ? "장착됨 · 해제" : eqDef && eqDef.id !== sk.id ? "교체" : "장착" : <>학습{learnByCard && <small>카드 1장</small>}</>}
                 </button>
-                {learned && <button type="button" className={`skill-level-button ${mainAction === "level" ? "is-main" : ""}`} disabled={level >= sk.maxLevel || save.gold < upgradeCost} onClick={() => upgradeSkill(sk.id)}>{level >= sk.maxLevel ? "MAX" : `${formatGold(upgradeCost)}G 강화`}</button>}
-                {cards > 0 && (learned ? cardPlan.used > 0 : true) && <button type="button" className={`skill-card-consume ${mainAction === "consume" ? "is-main" : ""}`} data-skill={sk.id} disabled={!learned && learnedInType >= skillTypeCapacity} onClick={() => consumeSkillCard(sk.id)}>{learned ? `카드 ${cardPlan.used}장 → Lv.${cardPlan.toLevel}` : "카드로 학습"}</button>}
+                {learned && <button type="button" className={`skill-level-button skill-enhance ${mainAction === "level" ? "is-main" : ""}`} data-skill={sk.id} data-via={maxed ? "max" : enhanceByCard ? "card" : "gold"} disabled={maxed || (!enhanceByCard && save.gold < upgradeCost)} onClick={() => enhanceSkill(sk.id)}>{maxed ? "MAX" : <>강화<small>{enhanceByCard ? `카드 ${cardPlan.used}장 → Lv.${cardPlan.toLevel}` : `${formatGold(upgradeCost)}G`}</small></>}</button>}
               </div>
             </article>
           });

@@ -67,11 +67,11 @@ ok("#3 다음 목표 한 줄 (+ 우편함)", r.goals.length === 1 && r.goals[0].
 await clickText(".titans-tabs button", "스킬");
 await sleep(400);
 const before = await page.evaluate(() => document.querySelector(".skill-preset-card small")?.textContent);
-await clickText(".preset-row button", "탭 폭발형");
+await page.evaluate(() => document.querySelector(".skill-auto-equip")?.click());
 await sleep(500);
 r = await page.evaluate((h) => { const t = JSON.parse(localStorage.getItem(`dodgebullets:titans:${h}`)); return { eq: t.skillInventory.equipped, preview: document.querySelector(".skill-preset-card small")?.textContent }; }, H);
-// 탭 폭발형: 시동기 pierce(미학습)→strike, 연계A waterStep(미학습)→crit, 연계B bloodMoon(미학습)→clone — 학습한 것만 장착
-ok("#5 프리셋(탭 폭발형) 적용 → 미학습 제외 장착", Object.values(r.eq).includes("crit") && Object.values(r.eq).includes("clone") && Object.values(r.eq).every((id) => ["strike", "crit", "clone"].includes(id)), JSON.stringify(r.eq));
+// 자동 장착(2026-11-19, 프리셋 대신): 배운 strike · crit · clone 이 각 칸 유일한 후보 → 시동기 strike · 연계 A crit · 연계 B clone
+ok("#5 자동 장착 → 배운 스킬만 칸마다 장착", r.eq.starter === "strike" && r.eq.linkA === "crit" && r.eq.linkB === "clone" && Object.values(r.eq).every((id) => ["strike", "crit", "clone"].includes(id)), JSON.stringify(r.eq));
 ok("#5 예상 DPS 보정 갱신", /\+\d+%/.test(r.preview ?? "") && r.preview !== before, `${before} → ${r.preview}`);
 await clickText(".titans-bottom-nav button", "동료");
 await sleep(400);

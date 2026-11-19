@@ -109,12 +109,12 @@ for (const [dev, w, h] of DEVICES) {
   // 스킬 탭 — 카드 소진 · 카드로 학습
   await tapEl(".titans-tabs button", "스킬"); await sleep(700);
   const lv0 = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)).skillInventory.levels.strike, H);
-  const b1 = await tapEl('.skill-card-consume[data-skill="strike"]'); await sleep(200);
+  const b1 = await tapEl('.skill-enhance[data-skill="strike"]');   // 2026-11-19 강화 단추 하나 — 카드부터 await sleep(200);
   let lv1 = lv0; for (let i = 0; i < 20 && lv1 === lv0; i += 1) { await sleep(150); lv1 = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)).skillInventory.levels.strike, H); }
-  ok(`${dev} 스킬 탭 '카드 n장 소진' 탭 → 도토리 일격 Lv 오름`, b1 && lv1 > lv0, `Lv.${lv0} → Lv.${lv1}`);
-  const b2 = await tapEl('.skill-card-consume[data-skill="emberCut"]'); await sleep(200);
+  ok(`${dev} 스킬 탭 '강화'(카드부터) 탭 → 도토리 일격 Lv 오름`, b1 && lv1 > lv0, `Lv.${lv0} → Lv.${lv1}`);
+  const b2 = await tapEl('.skill-equip-btn[data-skill="emberCut"][data-via="card"]'); await sleep(200);
   let learned = false; for (let i = 0; i < 20 && !learned; i += 1) { await sleep(150); learned = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)).skillInventory.learned.includes("emberCut"), H); }
-  ok(`${dev} 스킬 탭 '카드로 학습' 탭 → 불꽃 장작 타 배움`, b2 && learned);
+  ok(`${dev} 스킬 탭 '학습'(카드 1장) 탭 → 불꽃 장작 타 배움`, b2 && learned);
   await shot("skill-cards");
   ok(`${dev} 손가락 탭 가로막힘 없음`, covered.length === 0, covered.join(" | "));
   ok(`${dev} 페이지 오류 없음`, errors.length === 0, errors.slice(0, 3).join(" / "));

@@ -170,7 +170,7 @@ ok("로스터 54명(월간 한정 1 포함) — 역할마다 8명 이상, 속성
 })(), allies.ALLY_IDS.join());
 ok("은퇴 동료는 로스터·뽑기·상점·스킨에 없다", model.RETIRED_ALLY_IDS.every((id) => !allies.ALLY_IDS.includes(id) && !model.HEROES.some((h) => h.id === id) && allies.SHOP_ALLY_GEM_COST[id] === undefined && gacha.gachaPool(60, 5).entries.every((e) => e.id !== id)));
 ok("은퇴 동료의 등급·상점가 표가 allies 와 같다 (환불 근거)", model.RETIRED_ALLY_IDS.every((id) => model.RETIRED_ALLY_RARITY[id] === allies.ALLY_RARITY[id]) && model.RETIRED_ALLY_SHOP_GEMS.mia_dark === 60 && model.RETIRED_ALLY_SHOP_GEMS.sera_light === 110);
-ok("스킬 12종 — 슬롯마다 2~3개, 은퇴 스킬은 프리셋에 없다", model.SKILLS.length === 12 && ["starter", "linkA", "linkB", "finisher", "passive"].every((slot) => { const n = model.SKILLS.filter((s) => s.slot === slot).length; return n >= 2 && n <= 3; }) && skills.SKILL_PRESETS.every((p) => Object.values(p.picks).flat().every((id) => model.SKILLS.some((s) => s.id === id))));
+ok("스킬 12종 — 슬롯마다 2~3개", model.SKILLS.length === 12 && ["starter", "linkA", "linkB", "finisher", "passive"].every((slot) => { const n = model.SKILLS.filter((s) => s.slot === slot).length; return n >= 2 && n <= 3; }));
 {
   // 예전 저장: 은퇴 동료 보유(카인 SSR Lv3 · 흑화 미아 SR 상점) + 은퇴 스킬 학습(pierce 3SP/1코어 · warcry 9SP/3코어)
   const old = model.normalizeTitansSave({ heroes: { mia: 5, cain: 3, mia_dark: 2 }, skillInventory: { learned: ["strike", "pierce", "warcry"], levels: { strike: 1, pierce: 2, warcry: 1 }, equipped: { starter: "pierce", finisher: "warcry" }, skillCores: 4 } });
@@ -184,7 +184,19 @@ const def = model.SKILLS.find((s) => s.id === "crit");
 ok("배속 ×2에서 버프 실시간 절반 (업타임 불변)", Math.abs(skills.buffDurationMs(def, 1, 2) * 2 - skills.buffDurationMs(def, 1, 1)) < 1e-6);
 ok("모든 스킬 프리뷰 % > 0 · 라벨 비어있지 않음", model.SKILLS.every((s) => skills.skillPreviewPct(s.id, 1) > 0 && skills.skillEffectLabel(s.id, 1).length > 3), model.SKILLS.map((s) => `${s.id}:${skills.skillPreviewPct(s.id, 1)}`).join(" "));
 ok("자동 시전 순서: 연계 → 시동기 → 마무리", (() => { const o = skills.autoSkillOrder(); const slotOf = (id) => model.SKILLS.find((s) => s.id === id).slot; return slotOf(o[0]) === "linkA" && slotOf(o[o.length - 1]) === "finisher" && !o.includes("steel"); })());
-ok("프리셋 3종이 5슬롯 전부 후보 보유 (슬롯당 2~3, 그 슬롯의 남은 스킬 전부)", skills.SKILL_PRESETS.every((p) => skills.SLOT_ORDER.every((slot) => p.picks[slot].length === model.SKILLS.filter((s) => s.slot === slot).length)));
+// 자동 장착 (2026-11-19, 프리셋 3종 대신) — 칸마다 배운 스킬 중 예상 보정이 가장 큰 것 · 닫힌 칸 · 배운 게 없는 칸은 그대로
+{
+  const allIds = model.SKILLS.map((s) => s.id);
+  const lv = (n) => Object.fromEntries(allIds.map((id) => [id, n]));
+  const best = skills.bestSkillLoadout({ learned: allIds, levels: lv(1), equipped: {} });
+  ok("자동 장착: 다 배우면 5칸 모두 그 칸 최고 보정 스킬", skills.SLOT_ORDER.every((slot) => { const id = best[slot]; const top = Math.max(...model.SKILLS.filter((s) => s.slot === slot).map((s) => skills.skillPreviewPct(s.id, 1))); return id && model.SKILLS.find((s) => s.id === id).slot === slot && skills.skillPreviewPct(id, 1) === top; }), JSON.stringify(best));
+  const starters = model.SKILLS.filter((s) => s.slot === "starter").map((s) => s.id);
+  const low = starters.find((id) => id !== best.starter);
+  const up = skills.bestSkillLoadout({ learned: allIds, levels: { ...lv(1), [low]: 20 }, equipped: { starter: best.starter } });
+  ok("자동 장착: Lv 을 많이 올린 스킬이 더 세면 그쪽으로 바꾼다", skills.skillPreviewPct(low, 20) > skills.skillPreviewPct(best.starter, 1) ? up.starter === low : up.starter === best.starter, `${low} Lv20 ${skills.skillPreviewPct(low, 20)} vs ${best.starter} Lv1 ${skills.skillPreviewPct(best.starter, 1)} → ${up.starter}`);
+  const shut = skills.bestSkillLoadout({ learned: allIds, levels: lv(1), equipped: { linkA: "stoneGuard" } }, (slot) => slot !== "linkA");
+  ok("자동 장착: 닫힌 칸은 지금 장착 그대로 · 배운 게 없는 칸은 비운 채", shut.linkA === "stoneGuard" && skills.bestSkillLoadout({ learned: ["strike"], levels: { strike: 1 }, equipped: {} }).finisher === undefined, JSON.stringify(shut));
+}
 const pt = skills.passiveTotals(["steel"], { passive: "steel" }, { steel: 5 });
 ok("passiveTotals: 장착 패시브만 합산", pt.tapDmg > 0.2 && pt.critChance === 0);
 

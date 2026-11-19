@@ -160,22 +160,27 @@ r = await page.evaluate(() => ({
   cards: document.querySelectorAll(".skill-learn-card").length,
   starters: document.querySelectorAll(".skill-learn-card[data-slot=starter]").length,
   effects: [...document.querySelectorAll(".skill-learn-card[data-slot=starter] .skill-effect")].map((e) => e.textContent),
-  presets: [...document.querySelectorAll(".preset-row button b")].map((b) => b.textContent),
+  presets: document.querySelectorAll(".preset-row").length,
+  auto: !!document.querySelector(".skill-preset-card > .skill-auto-equip"),
 }));
 ok("슬롯 탭 없음 · 장착 칸 묶음 5개(시동기 → 패시브) · 등급 글자 없음 · 카드 12장 모두 등급 윤곽선 · 시동기 3장", r.slotTabs === 0 && r.heads.join() === "시동기,연계 A,연계 B,마무리,패시브" && r.tierHeads === 0 && r.cards === 12 && r.outlines === 12 && r.starters === 3, `${r.heads.join("/")} cards=${r.cards} outlines=${r.outlines} tier=${r.tierHeads}`);
 ok("시전 순서 칸에 낀 스킬 이름(빈 칸은 '비어 있음')", r.comboNames.length === 5 && r.comboNames.every((n) => n.length > 0), r.comboNames.join(" · "));
 ok("카드에 효과 수치(탭 ×N · 쿨)", r.effects.every((e) => /탭 ×\d+/.test(e) && /쿨 \d+초/.test(e)), r.effects.join(" | "));
-ok("프리셋 3종 (균형형·탭 폭발형·원정대형)", r.presets.join() === "균형형,탭 폭발형,원정대형", r.presets.join());
+ok("프리셋 줄 없음 · 자동 장착 단추 하나(2026-11-19)", r.presets === 0 && r.auto, JSON.stringify({ presets: r.presets, auto: r.auto }));
 r = await page.evaluate(() => [...document.querySelectorAll(".skill-learn-card[data-slot=passive] .skill-effect")].map((e) => e.textContent));
 ok("패시브 3종 효과 수치 표기", r.length === 3 && r.some((e) => /탭 피해 \+/.test(e)) && r.some((e) => /보스 제한시간 \+/.test(e)), r.join(" | "));
 // 패시브 학습(단단한 앞니) → 학습 후 장착 상태
+// 컷인은 0.82초만 뜬다 — 저장 폴링 뒤에 보면 느린 판에서 이미 꺼져 있었다(2026-11-19, 묶음 · 부하 판 5번 중 3번). 클릭 전에 지켜보기를 걸어 '떴는지 · 클릭 뒤 몇 ms' 를 잰다
+const watchCutin = (sel) => page.evaluate((sel) => { window.__cutinMo?.disconnect(); const w = (window.__cutin = { t0: performance.now(), at: null }); const hit = () => { if (w.at == null && document.querySelector(sel)) w.at = Math.round(performance.now() - w.t0); }; window.__cutinMo = new MutationObserver(hit); window.__cutinMo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] }); }, sel);
+const cutinMs = () => page.evaluate(() => window.__cutin?.at ?? null);
+await watchCutin(".skill-cutin.cutin-passive");   // 패시브는 자동 시전이 없어 이 컷인은 학습 장착 연출뿐
 await page.evaluate(() => { const card = [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent)); card?.querySelector(".skill-card-actions button")?.click(); });
 // 고정 0.5초 대신 저장에 학습 · 장착이 남을 때까지(최대 4초) — 전체 검사 부하에서 한 번 빠졌다(2026-10-28)
 // 장착 순간 연출 (2026-10-28, "실제 장착시 바로 스킬 이펙트 화려하게") — 배우면 그 칸에 바로 끼워지고 카드 · 시전 칸이 빛나며 전장에 시전 컷인.
 // 해제 → 다시 끼우기로는 못 잰다: 실제 경제(test-phase 0)에선 연계 A 칸이 비트 숙련 0 이라 잠겨 다시 끼울 수 없다
 const equipFxNow = () => page.evaluate(() => ({ pop: !!document.querySelector(".skill-learn-card.equip-pop .skill-icon-steel, .skill-learn-card.equip-pop"), slotPop: !!document.querySelector(".hero-skill-combo .combo-step.equip-pop"), cutin: !!document.querySelector(".skill-cutin"), btn: [...document.querySelectorAll(".skill-learn-card")].find((c) => /단단한 앞니/.test(c.textContent))?.querySelector(".skill-equip-btn")?.textContent ?? "" }));
 let fx = null;
-for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.learned.includes("steel") && tt.skillInventory.equipped.passive === "steel") { fx = await equipFxNow(); break; } await sleep(100); }
+for (let i = 0; i < 40; i += 1) { const tt = await titans(); if (tt.skillInventory.learned.includes("steel") && tt.skillInventory.equipped.passive === "steel") { fx = await equipFxNow(); fx.cutinMs = await cutinMs(); fx.cutin = fx.cutinMs != null && fx.cutinMs < 1500; break; } await sleep(100); }
 t = await titans();
 ok("패시브 학습 → 장착 (SP·코어 차감)", t.skillInventory.learned.includes("steel") && t.skillInventory.equipped.passive === "steel");
 ok("배우면 바로 장착 연출: 카드 · 시전 칸이 빛나고 전장에 컷인 · 버튼 '장착됨'", !!fx && fx.pop && fx.slotPop && fx.cutin && /장착됨/.test(fx.btn), JSON.stringify(fx));
@@ -200,9 +205,10 @@ ok("급소 노리기 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명
   for (let k = 0; k < 20 && (await titans()).skillInventory.equipped.linkA === "crit"; k += 1) await sleep(100);
   const offBtn = await critBtn();
   await sleep(1300);   // 앞 연출(1.2초)이 다 꺼진 뒤 다시 끼운다
+  await watchCutin(".skill-cutin.cutin-linkA");
   await clickCrit();
   let fx2 = null;
-  for (let k = 0; k < 20; k += 1) { if ((await titans()).skillInventory.equipped.linkA === "crit") { fx2 = await page.evaluate(() => ({ pop: !!document.querySelector(".skill-learn-card.equip-pop .skill-icon-crit"), slotPop: !!document.querySelector(".hero-skill-combo .combo-step.equip-pop"), cutin: !!document.querySelector(".skill-cutin") })); break; } await sleep(100); }
+  for (let k = 0; k < 20; k += 1) { if ((await titans()).skillInventory.equipped.linkA === "crit") { fx2 = await page.evaluate(() => ({ pop: !!document.querySelector(".skill-learn-card.equip-pop .skill-icon-crit"), slotPop: !!document.querySelector(".hero-skill-combo .combo-step.equip-pop"), cutin: !!document.querySelector(".skill-cutin") })); fx2.cutinMs = await cutinMs(); fx2.cutin = fx2.cutinMs != null && fx2.cutinMs < 1500; break; } await sleep(100); }
   const onBtn = await critBtn();
   ok("해제 → 다시 끼우기: 버튼 '장착됨 · 해제' → '장착' → '장착됨' · 다시 끼우는 순간 카드 · 칸 빛 · 컷인", /장착됨/.test(before) && /^장착$/.test(offBtn.trim()) && /장착됨/.test(onBtn) && !!fx2 && fx2.pop && fx2.slotPop && fx2.cutin, JSON.stringify({ before, offBtn, onBtn, fx2 }));
 }
