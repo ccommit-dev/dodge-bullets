@@ -47,14 +47,16 @@ export type HuntingAreaDef = {
   ground: string;
   accent: string;
   background: string;
+  /** 바닥 그림(2026-11-19 리소스 피드백 ②) — art-gen/blender/hunt_ground.py → scripts/assemble-hunt-ground.mjs */
+  groundArt: string;
 };
 
 export const HUNTING_AREAS: HuntingAreaDef[] = [
-  { id: "meadow", name: "새벽 초원", stageFrom: 1, stageTo: 5, normalKinds: ["slime", "goblin"], bossName: "이끼 골렘", rewardMultiplier: 1, sky: "#155e75", ground: "#166534", accent: "#67e8f9", background: assetUrl("titans/backgrounds/meadow.webp") },
-  { id: "forest", name: "그림자 숲", stageFrom: 6, stageTo: 10, normalKinds: ["goblin", "wolf"], bossName: "월광 늑대왕", rewardMultiplier: 1.45, sky: "#1e3a5f", ground: "#14532d", accent: "#a7f3d0", background: assetUrl("titans/backgrounds/forest.webp") },
-  { id: "ruins", name: "붉은 폐허", stageFrom: 11, stageTo: 15, normalKinds: ["wolf", "ogre"], bossName: "고대 오우거", rewardMultiplier: 2.05, sky: "#7f1d1d", ground: "#451a03", accent: "#fdba74", background: assetUrl("titans/backgrounds/ruins.webp") },
-  { id: "volcano", name: "용암 협곡", stageFrom: 16, stageTo: 23, normalKinds: ["ogre", "dragon"], bossName: "화염 비룡", rewardMultiplier: 3.1, sky: "#7c2d12", ground: "#3f1d16", accent: "#fb7185", background: assetUrl("titans/backgrounds/volcano.webp") },
-  { id: "abyss", name: "심연의 성", stageFrom: 24, stageTo: 9999, normalKinds: ["dragon", "wolf", "ogre"], bossName: "심연의 타이탄", rewardMultiplier: 5, sky: "#312e81", ground: "#1e1b4b", accent: "#c4b5fd", background: assetUrl("titans/backgrounds/abyss.webp") },
+  { id: "meadow", name: "새벽 초원", stageFrom: 1, stageTo: 5, normalKinds: ["slime", "goblin"], bossName: "이끼 골렘", rewardMultiplier: 1, sky: "#155e75", ground: "#166534", accent: "#67e8f9", background: assetUrl("titans/backgrounds/meadow.webp"), groundArt: assetUrl("titans/backgrounds/ground-meadow.webp") },
+  { id: "forest", name: "그림자 숲", stageFrom: 6, stageTo: 10, normalKinds: ["goblin", "wolf"], bossName: "월광 늑대왕", rewardMultiplier: 1.45, sky: "#1e3a5f", ground: "#14532d", accent: "#a7f3d0", background: assetUrl("titans/backgrounds/forest.webp"), groundArt: assetUrl("titans/backgrounds/ground-forest.webp") },
+  { id: "ruins", name: "붉은 폐허", stageFrom: 11, stageTo: 15, normalKinds: ["wolf", "ogre"], bossName: "고대 오우거", rewardMultiplier: 2.05, sky: "#7f1d1d", ground: "#451a03", accent: "#fdba74", background: assetUrl("titans/backgrounds/ruins.webp"), groundArt: assetUrl("titans/backgrounds/ground-ruins.webp") },
+  { id: "volcano", name: "용암 협곡", stageFrom: 16, stageTo: 23, normalKinds: ["ogre", "dragon"], bossName: "화염 비룡", rewardMultiplier: 3.1, sky: "#7c2d12", ground: "#3f1d16", accent: "#fb7185", background: assetUrl("titans/backgrounds/volcano.webp"), groundArt: assetUrl("titans/backgrounds/ground-volcano.webp") },
+  { id: "abyss", name: "심연의 성", stageFrom: 24, stageTo: 9999, normalKinds: ["dragon", "wolf", "ogre"], bossName: "심연의 타이탄", rewardMultiplier: 5, sky: "#312e81", ground: "#1e1b4b", accent: "#c4b5fd", background: assetUrl("titans/backgrounds/abyss.webp"), groundArt: assetUrl("titans/backgrounds/ground-abyss.webp") },
 ];
 
 export function huntingArea(stage: number): HuntingAreaDef {

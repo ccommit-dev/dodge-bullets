@@ -78,9 +78,11 @@
 
   /* ── 무대 ── 배경은 한 발 뒤로(채도 · 대비 낮춤), 땅을 넓게 */
   /* 배경은 무대 뒤 그림 — 채도 · 대비를 낮추고 살짝 흐려(초점이 앞의 캐릭터로) 땅 쪽으로 옅게 녹인다 */
-  .titans-layer:not(.is-management-page) > .titans-field > .titans-background { filter: saturate(.5) contrast(.78) brightness(1.06) blur(.6px); }
+  /* 2026-11-19 리소스 피드백 ②: 채도 .5 · 흐림 .6px 은 화산이 분홍 회색으로 바랬다(10-21 사용자 요청은 '살짝 어둡게') — 흐림을 빼고 채도는 덜 빼고 살짝 어둡게.
+     흐림 필터는 패럴랙스 · 대장 흔들림마다 큰 판을 다시 그린다 */
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-background { filter: saturate(.8) contrast(.92) brightness(.86); }
   .titans-layer:not(.is-management-page) > .titans-field > .titans-background::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 246, 228, .18), rgba(255, 246, 228, 0) 45%, rgba(40, 24, 12, .18)); pointer-events: none; }
-  .titans-layer:not(.is-management-page) > .titans-field > .titans-ground { filter: saturate(.75) contrast(.9); }
+  .titans-layer:not(.is-management-page) > .titans-field > .titans-ground { filter: none; }   /* 바닥 그림이 발 자리 대비를 정해 두었다(hunt_ground.py) — 필터로 다시 누르지 않는다 */
 
   /* ── 성장 판 = 아래 서랍 ── 탭을 누르면 올라온다(TitansGame growthOpen), ▾ · 같은 탭으로 닫는다 */
   .titans-layer:not(.is-management-page) > .titans-growth-tabs { position: relative; z-index: 41; }
