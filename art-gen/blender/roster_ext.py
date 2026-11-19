@@ -24,7 +24,7 @@ NEW_ALLIES = {
     'toto': dict(FUR, hat='straw', hat_color='#e0c070', hat_color2='#a0503a', back='pack', back_color='#9a7a50', back_color2='#6e8a4a', weapon_l='dagger', weapon_color='#c8ccd2', role='melee'),   # 봇짐 멘 농부
     'bobo': dict(DARKF, hat='beanie', hat_color='#b0442f', hat_color2='#f2e6d0', face='mustache', face_color='#2e1c12', weapon_l='axe', weapon_color='#b8bcc2', role='melee'),   # 털실 모자 · 콧수염 나무꾼
     'kiki': dict(PALE, hat='cap', hat_color='#5a9ad0', hat_color2='#3a7ab0', over='feather', over_color='#f4e8c8', back='quiver', back_color='#8a5a2b', weapon_l='bow', role='bow'),   # 깃털 꽂은 꼬마 사수
-    'dodo': dict(GRAY, hat='wizard', hat_color='#6a7ab0', robe='#8a9ad0', face='glasses', face_color='#3a2a1e', weapon_r='wand', weapon_color='#a8d8ff', role='mage'),   # 안경 쓴 수습 마법사
+    'dodo': dict(GRAY, hat='wizard', hat_color='#d8a03a', robe='#8a9ad0', face='glasses', face_color='#3a2a1e', weapon_r='wand', weapon_color='#a8d8ff', role='mage'),   # 안경 쓴 수습 마법사
     'momo': dict(CREAM, hat='sprout', hat_color='#6ac04a', hat_color2='#4f8a3a', belt='#8a6a4a', weapon_r='staff', weapon_color='#c8f0a0', role='healer'),   # 새싹 약초꾼
     'pipi': dict(FUR, hat='headphones', hat_color='#30343c', hat_color2='#e8604a', scarf='#ffd34d', weapon_r='guitar', weapon_color='#e8a060', role='bard'),   # 헤드폰 기타
     'gugu': dict(DARKF, hat='miner', hat_color='#e0b030', hat_color2='#8a6a2a', belt='#5a4230', weapon_l='shovel', weapon_color='#a8acb2', role='melee'),   # 광부
@@ -48,7 +48,7 @@ NEW_ALLIES = {
     # ── SR 영웅 7 — 망토 · 금 장식 ──
     'storm': dict(SKYF, form=dict(body=(0.9, 1.16), head=0.96, ears='pointed', brows='fierce', tail='long'), hat='winghelm', hat_color='#4a6ad8', cape='#3a5ac8', weapon_l='lance', weapon_color='#bfe8ff', role='melee'),   # 날개 투구
     'frost': dict(SNOW, form=dict(body=(0.92, 1.12), ears='tufted', eyes='sharp'), hat='icecrown', hat_color='#a8e8ff', hat_color2='#5ab8f0', cape='#5ab8f0', weapon_l='sword', weapon_color='#dff6ff', role='melee'),   # 얼음 왕관
-    'blaze': dict(RUST, form=dict(body=(1.14, 0.95), brows='fierce', tail='fan'), hat='kabuto', hat_color='#b82a22', hat_color2='#ffd34d', armor='#a8302a', trim='#ffd34d', back='banner', back_color='#d8302a', back_color2='#3a2a22', weapon_l='axe', weapon_color='#ffb070', role='melee'),   # 초승달 투구 · 등 깃발
+    'blaze': dict(RUST, form=dict(body=(1.14, 0.95), brows='fierce', tail='fan'), hat='kabuto', hat_color='#3a3a44', hat_color2='#ffd34d', armor='#3a3a44', trim='#ffd34d', back='banner', back_color='#d8302a', back_color2='#3a2a22', weapon_l='axe', weapon_color='#ffb070', role='melee'),   # 초승달 투구 · 등 깃발
     'sage': dict(PALE, form=dict(body=(0.92, 0.88), head=1.08, ears='droop', eyes='sleepy'), hat='wizard', hat_color='#4a8a3a', robe='#6aaa4a', trim='#ffd34d', face='beard', face_color='#f6f2e8', belt='#3a5a2a', weapon_r='staff', weapon_color='#b8ff7a', role='healer'),   # 흰 수염 현자
     'hawk': dict(GOLDF, form=dict(body=(0.88, 1.14), ears='tufted', eyes='sharp', tail='plume'), hat='plume', hat_color='#8a4a22', hat_color2='#c8862a', cape='#c8862a', back='quiver', back_color='#6a3a1a', fletch='#c8862a', weapon_l='bow', role='bow'),   # 깃털 관
     'tide': dict(PALE, form=dict(body=(1.1, 1.0), head=1.04, ears='big', tail='fan'), hat='tricorn', hat_color='#2a4aa8', hat_color2='#ffd34d', robe='#3a6ad0', trim='#ffd34d', face='monocle', face_color='#f2c232', weapon_r='staff', weapon_color='#5ae0ff', role='mage'),   # 해군 제독

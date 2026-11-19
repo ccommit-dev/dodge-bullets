@@ -33,6 +33,10 @@
 | 입는 파츠 | `ART_STYLE=toon … hero_gear.py -- <kind> [--ride]` (오텀은 `--only=gloves`) | `assemble-anim2.mjs hero-gear` |
 | 손에 드는 무기 | `ART_STYLE=toon … gear_icons.py -- weapon-1 … staff-3` | `assemble-gear.mjs weapon spear bow staff` → `art-gen/weapon-skin-tint.mjs` |
 | 사냥터 배경 | — | `node scripts/style-backgrounds.mjs`(원본 `art-gen/backgrounds-src`: 잔결 지우기 → 28색 평면 → 색 경계 잉크선) |
+| 사냥터 바닥(2026-11-19) | `ART_STYLE=toon … hunt_ground.py -- all` | `node scripts/assemble-hunt-ground.mjs` → `backgrounds/ground-<지역>.webp` · `backgrounds-px`. 가운데 흙길(그림 세로 29~61%)이 발 자리 — 소품은 뒤 가장자리 · 아래 모서리만 |
+| 몬스터 테두리빛(2026-11-19) | — | `assemble-anim2` 가 적 시트(탈것 · 펫 빼고, 셀만)에 굽는다(`scripts/lib/monster-rim.mjs`). 지금 시트만 다시 굽기: `node scripts/monster-rim.mjs [id…]`(원본 `art-gen/out/monster-sheets-orig`) |
+| 무기 아이콘 · 견갑(2026-11-19) | `ART_STYLE=toon … gear_icons.py -- icons shoulders` | `assemble-gear.mjs icon- shoulder-… set-…-shoulder` → `titans/gear/icon/<kind>-<t>.png`(칸 아이콘 전용 · `weaponBadgePath`). 손에 드는 그림(`weaponIconPath`)과 따로 |
+| 비트 표지(2026-11-19) | `ART_STYLE=toon … beat_covers.py -- <id>`(픽셀 곡 둘은 `ART_STYLE=pixel`) — 표지마다 Blender 따로 | `node scripts/assemble-beat-covers.mjs` → `public/beat/covers/<id>.png` 256² |
 
 ## ③ 도트 — 설정 '그림체: 셀 · 도트'
 

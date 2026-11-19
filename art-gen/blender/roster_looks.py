@@ -36,7 +36,7 @@ LOOKS = {
     'birch': dict(eyes='dot', muzzle='wide', mark='spot', mark_color='#fff6e4'),   # 사슴뿔(이마 흰 점)
     # ── 영웅 ──
     'sera': dict(eyes='bead', cheek='blush', nose='pink'),
-    'garen': dict(eyes='sharp'),
+    'garen': dict(eyes='sharp', build='athletic'),
     'volt': dict(eyes='wide', mark='stripes', mark_color='#ffd34d'),             # 번쩍 놀란 눈 · 번개 줄
     'marina': dict(eyes='line', muzzle='round', nose='pink', cheek='blush'),
     'storm': dict(eyes='dot', teeth='gap', mark='stripes', mark_color='#2a3a7a'),
@@ -119,4 +119,4 @@ def apply(allies):
     for k, f in FORMS.items():
         allies[k].setdefault('form', f)
     for k, lk in LOOKS.items():
-        allies[k]['look'] = dict(BASE, element=ELEMENT[k], build=BUILD_BY_ROLE[allies[k].get('role', 'melee')], **lk)
+        allies[k]['look'] = dict(BASE, element=ELEMENT[k], **{'build': BUILD_BY_ROLE[allies[k].get('role', 'melee')], **lk})   # LOOKS 가 build 를 덮을 수 있다(가렌 2026-11-19)

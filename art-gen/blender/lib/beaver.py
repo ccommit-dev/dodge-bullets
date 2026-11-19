@@ -325,6 +325,15 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
         out.append(C.mesh_obj('g_handle', C.tube([g + Vector((0, 0, -0.04)), g + Vector((0, 0, 0.14))], 0.018, seg=12), wood, coll, outline=OUT * 0.6))
         out.append(C.mesh_obj('g_ring', C.torus(g + Vector((0, 0, 0.23)), 0.08, 0.016, rot=Euler((math.radians(90), 0, 0))), gold, coll, outline=OUT * 0.5))
         out.append(C.mesh_obj('g_lens', C.ellipsoid(g + Vector((0, 0, 0.23)), (0.07, 0.01, 0.07)), _accent('lens', color, rough=0.05, emit=color, es=1.0), coll))
+    # 굵기만 (2026-11-19 리소스 피드백 ⑤: 사냥터 88px 에서 무기가 가는 막대라 손에 든 게 거의 안 보였다) — 칼날 · 자루 · 손잡이를 무기 축(+Z)에 수직으로만 키운다
+    th = WEAPON_THICK.get(kind, 1.0)
+    if th != 1.0:
+        for o in out:
+            if not o.name.split('.')[0] in THICK_PARTS:
+                continue
+            for v in o.data.vertices:
+                v.co.x = g.x + (v.co.x - g.x) * th
+                v.co.y = g.y + (v.co.y - g.y) * th
     # 게임 크기(키 60~80px)에서 무기가 읽히게 그립 기준 1.35배 (2026-10-16 관문 — 미아 도끼·단검이 점처럼 보였다)
     s = WEAPON_SCALE.get(kind, 1.35)
     for o in out:
@@ -336,6 +345,8 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
 
 # 2026-10-19 애니메이션 2판: 칼은 목록에 없어 기본 1.35 였다 — 왼손으로 적 쪽에 내려치면 칸 오른쪽을 넘거나(비버 전원 배율 0.394) 땅에 꽂혔다(+10~20px).
 # 칼 1.1 · 창 0.9 에 임팩트 112~120° 면 둘 다 안 넘는다(pose_lab 실측)
+WEAPON_THICK = {'sword': 1.5, 'dagger': 1.5, 'axe': 1.4, 'spear': 1.6, 'lance': 1.4, 'trident': 1.4, 'shovel': 1.3, 'staff': 1.6, 'wand': 1.6}
+THICK_PARTS = ('grip', 'haft', 'blade', 'shaft', 'tip', 'guard')
 WEAPON_SCALE = {'hammer': 1.2, 'shield': 1.15, 'guitar': 1.15, 'spear': 1.05, 'lance': 0.9, 'sword': 1.1, 'trident': 1.1, 'shovel': 1.1, 'staff': 1.1, 'bow': 0.78}   # 긴 무기는 칸을 넘어 캐릭터 전체가 줄었다
 
 
