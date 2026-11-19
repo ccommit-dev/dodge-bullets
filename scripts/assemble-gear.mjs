@@ -33,7 +33,11 @@ for (const f of readdirSync(SRC).filter((x) => x.endsWith(".png")).sort()) {
   if (only.length && !only.some((o) => name.startsWith(o))) continue;
   const m = name.match(/^sword-(\d\d)$/);
   if (PX && m) continue;   // 대장간 검 단계 그림은 도트 없음
-  const dst = m ? `public/forge/swords/s${m[1]}.png` : `${GEAR}/${name}.png`;
+  // 무기 아이콘 전용(icon-<kind>-<t>, 2026-11-19 리소스 피드백 ④) → titans/gear/icon/<kind>-<t>.png — 손에 드는 그림(weapon-N 등)과 따로
+  const icon = name.match(/^icon-(\w+-\d)$/);
+  if (PX && icon) continue;
+  if (icon) mkdirSync(`${GEAR}/icon`, { recursive: true });
+  const dst = m ? `public/forge/swords/s${m[1]}.png` : icon ? `${GEAR}/icon/${icon[1]}.png` : `${GEAR}/${name}.png`;
   if (!existsSync(dst) && !m) await sharp({ create: { width: 256, height: 256, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toFile(dst);
   await place(`${SRC}/${f}`, dst);
   n += 1;

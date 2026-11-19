@@ -95,7 +95,7 @@ import { canHoldRunes, engraveRune, gearRuneEffects, nextRuneSocketAt, rollRuneO
 import { partEquipTier, setEquipTier, shoulderEquipTier, weaponEquipTier } from "./equipment/equipTier";
 import { gearSetEnhanceCost, GEAR_ITEM_PRICE, GEAR_SET_KINDS, GEAR_SET_NAME, GEAR_SET_PRICE, GEAR_SET_SLOTS, gearFullSetText, gearItemEffectText, gearItemIconPath, gearItemId, gearItemKind, gearItemName, gearItemSlot, gearSetEffects, gearSetSummary, isGearItemId, type GearItemId, gearItemSetLabel, isLimitedGear } from "./equipment/gearSets";
 import { QuestPanel } from "./titans/QuestPanel";
-import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponForgeBonus, weaponHuntLevel, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
+import { WEAPON_EFFECTS, WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, WEAPON_TECH, weaponBadgePath, weaponForgeBonus, weaponHuntLevel, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { SUMMON_LEVEL_PULLS, summonLevel, summonLevelProgress, TIERS, TIER_LABEL, TIER_RANK } from "./titans/summonLevel";
 import type { Tier as AllyRarity } from "./titans/allyRoster";
 import { RelicTabPanel } from "./titans/RelicTabPanel";
@@ -4828,7 +4828,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const lvOf = (k: WeaponKind) => weaponHuntLevel(k, drumLevel, character.expeditionWeaponForge ?? {});
           const wantedLv = lvOf(wantedWeaponKind);
           const slots: EquipSlotView[] = [
-            { id: "weapon", label: "무기", icon: assetUrl(weaponIconPath(wantedWeaponKind, wantedLv)), level: `+${wantedLv}`, tier: weaponEquipTier(wantedLv) },
+            { id: "weapon", label: "무기", icon: assetUrl(weaponBadgePath(wantedWeaponKind, wantedLv)), level: `+${wantedLv}`, tier: weaponEquipTier(wantedLv) },
             (() => {
               const set = character.equippedGear.shoulder;
               return set
@@ -4847,7 +4847,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             })(),
           ];
           const bag: EquipBagItem[] = [
-            ...WEAPON_KINDS.map((k): EquipBagItem => ({ key: k, slot: "weapon", label: WEAPON_LABEL[k], level: `+${lvOf(k)}`, icon: assetUrl(weaponIconPath(k, lvOf(k))), on: wantedWeaponKind === k, pending: wantedWeaponKind === k && weaponKind !== k, title: `${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`, className: "weapon-kind-chip", tier: weaponEquipTier(lvOf(k)) })),
+            ...WEAPON_KINDS.map((k): EquipBagItem => ({ key: k, slot: "weapon", label: WEAPON_LABEL[k], level: `+${lvOf(k)}`, icon: assetUrl(weaponBadgePath(k, lvOf(k))), on: wantedWeaponKind === k, pending: wantedWeaponKind === k && weaponKind !== k, title: `${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`, className: "weapon-kind-chip", tier: weaponEquipTier(lvOf(k)) })),
             ...(character.ownedShoulders ?? []).map((id): EquipBagItem => ({ key: id, slot: "shoulder", label: SHOULDER_DEFINITIONS[id].name.replace(" 견갑", ""), icon: shoulderIconUrl(id), on: equippedShoulder === id && !character.equippedGear.shoulder, title: `${SHOULDER_DEFINITIONS[id].name} · ${SHOULDER_DEFINITIONS[id].effect}`, tier: shoulderEquipTier(SHOULDER_DEFINITIONS[id].grade) })),
             ...MOUNT_IDS.filter((mid) => (character.mounts[mid] ?? 0) > 0).map((mid): EquipBagItem => ({ key: `mount:${mid}`, slot: "mount", label: MOUNT_DEFS[mid].name.split(" ").pop() ?? MOUNT_DEFS[mid].name, level: `Lv.${character.mounts[mid]}`, icon: assetUrl(`titans/mounts/${mid}.webp`), on: character.activeMount === mid, title: `${MOUNT_DEFS[mid].name} · 사냥 골드 +${(mountGoldBonus(mid, character.mounts[mid] ?? 1) * 100).toFixed(1)}% · ${character.activeMount === mid ? "누르면 내림" : "끌어 놓거나 누르면 탄다"}`, tier: cosmeticTier(MOUNT_DEFS[mid].gemPrice) })),
             ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: gearItemSetLabel(id), icon: assetUrl(gearItemIconPath(id)), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id, character.gearSetLevels[id] ?? 0)}`, tier: setEquipTier(character.gearSetLevels[id] ?? 0) })),
@@ -4984,7 +4984,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         {tab === "sword" && (
           <>
             <article key={autoTrainHit?.slot === "weapon" ? `w${autoTrainHit.seq}` : "w"} data-tier={weaponEquipTier(forgedWeaponLevel)} className={`titans-card equipment-training-card ${equipFocus === "weapon" ? "" : "is-other-slot"} ${autoTrainHit?.slot === "weapon" ? "auto-hit" : ""}`}>
-              <div className="training-item-icon weapon"><img src={assetUrl(weaponIconPath(weaponKind, forgedWeaponLevel))} alt="" aria-hidden="true" /></div>
+              <div className="training-item-icon weapon"><img src={assetUrl(weaponBadgePath(weaponKind, forgedWeaponLevel))} alt="" aria-hidden="true" /></div>
               <div>
                 <strong>무기 숙련 · Lv.{save.equipmentTraining.weaponMastery}</strong><p>탭 피해 {formatGold(tapDamage(save.equipmentTraining.weaponMastery + forgeBonus))} → {formatGold(tapDamage(save.equipmentTraining.weaponMastery + 1 + forgeBonus))}</p>
               </div>
@@ -5719,7 +5719,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const setPrice = missing.length === ids.length ? GEAR_SET_PRICE : missing.length * GEAR_ITEM_PRICE;
               return [
                 <article key={kind} className="titans-card gear-set-card gear-list-row" data-gear-set={kind}>
-                  <img src={assetUrl(weaponIconPath(kind, 8))} alt="" aria-hidden="true" />
+                  <img src={assetUrl(weaponBadgePath(kind, 8))} alt="" aria-hidden="true" />
                   <div><strong>{GEAR_SET_NAME[kind]} 세트 <em>{WEAPON_LABEL[kind]} 전용</em></strong><p>{gearFullSetText(kind)}</p></div>
                   {missing.length > 0 ? (
                     <button type="button" className="gear-set-buy" disabled={redGems < setPrice} onClick={() => void buyGear(ids, setPrice, `${GEAR_SET_NAME[kind]} 세트`)}>

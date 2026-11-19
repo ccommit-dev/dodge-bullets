@@ -81,7 +81,14 @@ export function weaponForgeBonus(kind: WeaponKind, swordLevel: number, forge: Pa
 export function weaponTier(level15: number): 1 | 2 | 3 {
   return level15 >= 10 ? 3 : level15 >= 5 ? 2 : 1;
 }
-/** 장비 그림 — 검은 weapon-N(기존 검 아이콘), 나머지는 <kind>-N */
+/** 장비 그림 — 검은 weapon-N(기존 검 아이콘), 나머지는 <kind>-N. **손에 드는 그림**(EquippedCharacter · 손잡이 점 WEAPON_GRIP)이라 세로로 곧다 */
 export function weaponIconPath(kind: WeaponKind, level15: number): string {
   return `titans/gear/${kind === "sword" ? "weapon" : kind}-${weaponTier(level15)}.png`;
+}
+/**
+ * 무기 아이콘(칸 · 가방 · 대장간 · 세트 줄) — 2026-11-19 리소스 피드백 ④: 손에 드는 그림을 칸에 그대로 넣으면 가는 세로 막대라 칸의 15%만 채웠다.
+ * 굵게(1.6배) · 45° 대각선 · 2단계 리본 · 3단계 금 날개(art-gen/blender/gear_icons.py icon-* → scripts/assemble-gear.mjs). 손에 드는 그림은 weaponIconPath 그대로
+ */
+export function weaponBadgePath(kind: WeaponKind, level15: number): string {
+  return `titans/gear/icon/${kind}-${weaponTier(level15)}.png`;
 }

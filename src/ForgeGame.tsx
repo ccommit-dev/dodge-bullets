@@ -1,6 +1,6 @@
 import { partEquipTier, weaponEquipTier } from "./equipment/equipTier";
 import { GEAR_ENHANCE_MAX, GEAR_PARTS, GEAR_PART_DEF, emptyGearLevels, gearEnhanceCost, gearTierOfEnhance, type GearLevels, type GearPart } from "./equipment/parts";
-import { WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, weaponIconPath, weaponStatText, type WeaponKind } from "./titans/weapons";
+import { WEAPON_FORGE_NAME, WEAPON_KINDS, WEAPON_LABEL, weaponBadgePath, weaponStatText, type WeaponKind } from "./titans/weapons";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { assetUrl } from "./asset";
 import type { SafeInsets } from "./game/toss";
@@ -677,7 +677,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             <div className="forge-weapon-kinds" role="group" aria-label="장착 무기">
               {WEAPON_KINDS.map((k) => (
                 <button key={k} type="button" data-tier={weaponEquipTier(k === "sword" ? save.level : Math.round((expForge[k] * 15) / 20))} className={equippedKind === k ? "on" : ""} aria-pressed={equippedKind === k} onClick={() => void equipKind(k)}>
-                  <img src={assetUrl(weaponIconPath(k, k === "sword" ? save.level : Math.round((expForge[k] * 15) / 20)))} alt="" aria-hidden="true" />
+                  <img src={assetUrl(weaponBadgePath(k, k === "sword" ? save.level : Math.round((expForge[k] * 15) / 20)))} alt="" aria-hidden="true" />
                   <b>{WEAPON_LABEL[k]}</b><small>+{k === "sword" ? save.level : expForge[k]}</small>
                 </button>
               ))}
@@ -837,7 +837,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
             </section>
           ) : effView === "weapons" ? (
             <section className="forge-expweapons">
-              <ForgeShowcase src={assetUrl(weaponIconPath(selWeapon, Math.round((expForge[selWeapon] * 15) / 20)))} level={expForge[selWeapon]} name={WEAPON_FORGE_NAME[selWeapon]} tier={(expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1) as 1 | 2 | 3} flash={gearFlash} />
+              <ForgeShowcase src={assetUrl(weaponBadgePath(selWeapon, Math.round((expForge[selWeapon] * 15) / 20)))} level={expForge[selWeapon]} name={WEAPON_FORGE_NAME[selWeapon]} tier={(expForge[selWeapon] >= 14 ? 3 : expForge[selWeapon] >= 7 ? 2 : 1) as 1 | 2 | 3} flash={gearFlash} />
               <p className="forge-note">성문 방어의 무기 — 높은 단계는 실패 · 파괴(+0) 확률이 있어요(방지권 {save.tickets}장이 파괴를 막음). 활은 주인공의 기본 사격과 <b>물리</b> 스킬 무기를, 지팡이는 <b>마법</b> 스킬 무기를 세게 한다.</p>
               {(equippedKind === "sword" ? [] : [equippedKind]).map((kind) => {
                 const lv = expForge[kind];
@@ -848,7 +848,7 @@ export function ForgeGame({ insets, userHash, onBack }: ForgeGameProps) {
                 const weapons = EXPEDITION_SKILLS.filter((d) => d.family === family).map((d) => d.weapon);
                 return (
                   <article key={riskHit?.key === `weapon-${kind}` ? `${kind}-${riskHit.seq}` : kind} className={`forge-expweapon ${kind} ${selWeapon === kind ? "on" : ""} ${riskHit?.key === `weapon-${kind}` ? `risk-${riskHit.kind}` : ""}`} onClick={() => setSelWeapon(kind)}>
-                    <img src={assetUrl(weaponIconPath(kind, Math.round((lv * 15) / 20)))} alt="" aria-hidden="true" />
+                    <img src={assetUrl(weaponBadgePath(kind, Math.round((lv * 15) / 20)))} alt="" aria-hidden="true" />
                     <div>
                       <strong>{WEAPON_FORGE_NAME[kind]} +{lv}</strong>
                       <p>{kind === "bow" ? "기본 사격 · " : ""}{weapons.join(" · ")}</p>
