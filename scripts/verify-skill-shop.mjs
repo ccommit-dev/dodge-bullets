@@ -60,7 +60,7 @@ ok("스킬 상점 390px 넘침 없음 · 13px 미만 없음", lay.sw <= 390 && l
 await page.evaluate(() => document.querySelector(".skill-shop-list")?.scrollIntoView({ block: "start" })); await sleep(300);
 await page.screenshot({ path: "art-gen/out/skill-shop.png" });
 
-// ── 5. 스킬 탭 — 배운 스킬(도토리 일격 Lv.1 · 카드 3+) 소진 → Lv 오름 · 안 배운 스킬은 '카드로 학습' ──
+// ── 5. 스킬 탭 — 배운 스킬(도토리 일격 Lv.1 · 카드 3+) 강화(카드부터) → Lv 오름 · 안 배운 스킬은 '학습'(카드 1장 · 그 칸에 바로 낌) ──
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("사냥터"))?.click()); await sleep(500);
 await page.evaluate(() => [...document.querySelectorAll(".titans-tabs button")].find((b) => b.textContent.includes("스킬"))?.click()); await sleep(600);
 const tA = await tit();
@@ -73,9 +73,11 @@ let expLv = 1, left = strikeCards; while (expLv < 20 && left >= per(expLv)) { le
 ok("배운 스킬 카드 소진 → 도토리 일격 Lv 이 카드 값(1 · 2 · 3 · 5장)대로 오르고 모자란 카드는 남는다", tB.skillInventory.levels.strike === expLv && (tB.skillInventory.copies?.strike ?? 0) === left, `카드 ${strikeCards} → Lv.${tB.skillInventory.levels.strike}(기대 ${expLv}) · 남음 ${tB.skillInventory.copies?.strike ?? 0}(기대 ${left})`);
 const learnTarget = await page.evaluate(() => { const b = [...document.querySelectorAll('.skill-equip-btn[data-via="card"]')].find((x) => !x.disabled); return b?.dataset.skill ?? null; });
 if (learnTarget) {
+  const learnSlot = await page.evaluate((id) => document.querySelector(`.skill-equip-btn[data-skill="${id}"]`)?.closest(".skill-learn-card")?.dataset.slot, learnTarget);
+  const slotWas = tB.skillInventory.equipped?.[learnSlot] ?? null;
   await page.evaluate((id) => document.querySelector(`.skill-equip-btn[data-skill="${id}"]`)?.click(), learnTarget);
   let tC = tB; for (let i = 0; i < 20 && !tC.skillInventory.learned.includes(learnTarget); i += 1) { await sleep(150); tC = await tit(); }
-  ok("안 배운 스킬 '학습'(카드가 있으면 카드 1장) → 배움(Lv.1) · 카드 1장 줄어듦 · SP · 코어는 그대로", tC.skillInventory.learned.includes(learnTarget) && tC.skillInventory.levels[learnTarget] === 1 && (tC.skillInventory.copies?.[learnTarget] ?? 0) === (tB.skillInventory.copies?.[learnTarget] ?? 0) - 1 && tC.skillInventory.skillCores === tB.skillInventory.skillCores, `${learnTarget}`);
+  ok("안 배운 스킬 '학습'(카드가 있으면 카드 1장) → 배움(Lv.1) · 카드 1장 줄어듦 · SP · 코어는 그대로 · 그 칸에 바로 낌(찬 칸이어도)", tC.skillInventory.equipped?.[learnSlot] === learnTarget && tC.skillInventory.learned.includes(learnTarget) && tC.skillInventory.levels[learnTarget] === 1 && (tC.skillInventory.copies?.[learnTarget] ?? 0) === (tB.skillInventory.copies?.[learnTarget] ?? 0) - 1 && tC.skillInventory.skillCores === tB.skillInventory.skillCores, `${learnTarget} · ${learnSlot} 칸 ${slotWas} → ${tC.skillInventory.equipped?.[learnSlot]}`);
 } else ok("안 배운 스킬에 카드로 배우는 '학습' 단추가 있다(카드 11장 중 새 스킬)", false, "단추 없음");
 const fx = await page.evaluate(() => !!document.querySelector(".skill-cutin, .skill-tier-fx, .equip-pop"));
 ok("카드를 쓰면 장착 연출(컷인 · 등급 빛)이 한 번 나온다", fx);

@@ -2928,7 +2928,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     setSave((prev) => {
       const again = consumeSkillCopies(prev.skillInventory, id);
       if (again.used <= 0) return prev;
-      const equipped = again.learnedNow && !prev.skillInventory.equipped[def.slot] ? { ...again.inv.equipped, [def.slot]: id } : again.inv.equipped;
+      // 카드로 배워도 SP 학습(learnSkill)처럼 그 칸에 바로 낀다(2026-11-19) — 예전엔 빈 칸일 때만 껴서, 찬 칸에선 장착 연출만 나오고 안 꼈다(학습 단추가 카드 우선이 되며 주 경로가 됐다)
+      const equipped = again.learnedNow ? { ...again.inv.equipped, [def.slot]: id } : again.inv.equipped;
       return { ...prev, skillInventory: { ...again.inv, equipped } };
     });
     previewSkillEquip(id);

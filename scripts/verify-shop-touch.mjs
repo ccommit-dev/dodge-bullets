@@ -106,7 +106,7 @@ for (const [dev, w, h] of DEVICES) {
   await page.evaluate(() => [...document.querySelectorAll(".reward-pop button, .reward-pop")].forEach((e) => e.click?.())); await sleep(300);
   await page.evaluate(() => document.querySelector(".relic-tab-panel")?.scrollIntoView({ block: "start" })); await sleep(200);
   await shot("relic-tab");
-  // 스킬 탭 — 카드 소진 · 카드로 학습
+  // 스킬 탭 — 강화(카드부터) · 학습(카드 1장, 2026-11-19 단추 하나)
   await tapEl(".titans-tabs button", "스킬"); await sleep(700);
   const lv0 = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:titans:${H}`)).skillInventory.levels.strike, H);
   const b1 = await tapEl('.skill-enhance[data-skill="strike"]');   // 2026-11-19 강화 단추 하나 — 카드부터 await sleep(200);
