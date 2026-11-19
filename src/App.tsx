@@ -59,6 +59,7 @@ import { appWidth } from "./ui/webFrame";
 import { ORIENTATION_LABEL, applyOrientation, loadOrientationPref, saveOrientationPref, type OrientationPref } from "./ui/orientation";
 import { shareCardExtras } from "./ui/shareCardData";
 import { applyLowFx, frameMonitor, lowFxOn, setLowFx } from "./ui/perfMode";
+import { governorEnabled, isSafeBoot, maxCanvasScale, scaleGovernor } from "./ui/perfGovernor";
 import { TITLES } from "./economy/gemCatalog";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
@@ -640,11 +641,15 @@ function App() {
     if (worldRef.current) applyInsetsToWorld(worldRef.current, next);
   }, []);
 
+  // 동적 해상도 (ui/perfGovernor ① — 첨부 엔진 차용 2026-11-19): 느린 기기는 캔버스 뒷면 배율을 1 까지 내리고, 빠르면 다시 올린다. 출시 빌드만
+  const scaleGovRef = useRef<ReturnType<typeof scaleGovernor> | null>(null);
   const fitCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!scaleGovRef.current && governorEnabled()) scaleGovRef.current = scaleGovernor("dodge", maxCanvasScale(), { startLow: isSafeBoot() });
+    scaleGovRef.current?.reset();
+    const dpr = scaleGovRef.current?.scale ?? maxCanvasScale();
     const width = appWidth();   // PC 웹이면 폰 폭 기둥 (ui/webFrame)
     const height = window.innerHeight;
 
@@ -894,6 +899,7 @@ function App() {
         if (!lastTsRef.current) lastTsRef.current = ts;
         // 저사양 모드 (ui/perfMode) — 전투 첫 3초가 느리면 캔버스 흐림 그림자를 끈다. 비트에서 켜졌어도 같이 적용
         if (stateRef.current === "playing" && watchDodgeFrames(ts - lastTsRef.current)) setLowFx(true);
+        if (stateRef.current === "playing" && scaleGovRef.current?.sample(ts - lastTsRef.current) != null) fitCanvas();
         applyLowFx(ctx);
         if (isPixelArt()) ctx.imageSmoothingEnabled = false;   // 도트 그림체 — 시트를 키울 때 번지지 않게(ui/artStyle)
         // 첫 스테이지 슬로모션 튜토리얼 (점검표 #6): 첫 원정의 처음 7초만 45% 속도로,

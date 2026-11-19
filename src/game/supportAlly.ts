@@ -6,6 +6,7 @@
  * 위력 0 이라 대장은 못 깎는다(웨이브만 돕는다). 세기는 등급 · 별: 기본 사격 한 발의 16%(N) … 38%(LR) × (1 + 별 × 6%), 1.5초마다 — 두 배였을 때 8스테이지 덜 자란 계정이 15스테이지를 0→4 판 깨 성장 벽이 무너졌다(verify-support-ally).
  * 그림은 사냥터와 같은 동료 시트(titans/anim/allies) — 주인공 뒤 34px, 주인공이 보는 쪽을 함께 본다(댐 방어전 주인공은 쏘는 쪽, 사용자 확정).
  */
+import { predecode } from "../ui/predecode";
 import { assetUrl } from "../asset";
 import { ANIM_LAYOUT } from "../titans/animLayout";
 import type { GameWorld, SupportAlly } from "./types";
@@ -38,7 +39,7 @@ const sheets = new Map<string, HTMLImageElement>();
 function sheetOf(id: string): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   let img = sheets.get(id);
-  if (!img) { img = new Image(); img.src = assetUrl(`titans/anim/allies/${id}.webp`); sheets.set(id, img); }
+  if (!img) { img = new Image(); img.src = assetUrl(`titans/anim/allies/${id}.webp`); sheets.set(id, predecode(img)); }
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 

@@ -1,4 +1,5 @@
 import { drawStickman } from "./player";
+import { predecode } from "../ui/predecode";
 import { drawSupportAlly } from "./supportAlly";
 import { getStage } from "./stages";
 import { ELEMENT_COLOR, ELEMENT_LABEL, SKILL_BY_ID, type Element } from "./skills";
@@ -49,7 +50,7 @@ const spriteCache = new Map<string, HTMLImageElement>();
 function sprite(path: string): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   let img = spriteCache.get(path);
-  if (!img) { img = new Image(); img.decoding = "async"; img.src = assetUrl(path); spriteCache.set(path, img); }
+  if (!img) { img = new Image(); img.decoding = "async"; img.src = assetUrl(path); predecode(img); spriteCache.set(path, img); }
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
@@ -102,7 +103,7 @@ const impactImgs: Record<string, HTMLImageElement> = {};
 function impactStrip(element: Element): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   const name = IMPACT_OF[element] ?? "blade";
-  if (!impactImgs[name]) { const img = new Image(); img.src = assetUrl(`titans/fx/impact-${name}.webp`); impactImgs[name] = img; }
+  if (!impactImgs[name]) { const img = new Image(); img.src = assetUrl(`titans/fx/impact-${name}.webp`); impactImgs[name] = predecode(img); }
   const img = impactImgs[name];
   return img.complete && img.naturalWidth > 0 ? img : null;
 }

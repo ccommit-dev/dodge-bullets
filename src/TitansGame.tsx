@@ -147,6 +147,7 @@ import { weeklyChallenges } from "./events/weekly";
 import { ROUTINE_HELP, ROUTINE_REWARD_GEMS, routineItems, routineRewardAvailable, type RoutineItem } from "./progression/routine";
 import { hubCards } from "./titans/hubCards";
 import { lowFxOn } from "./ui/perfMode";
+import { deviceLowTier, fxGovernor, governorEnabled, isSafeBoot } from "./ui/perfGovernor";
 import { CHEST_POINTS_FOR_CHEST, CHEST_POINTS_PER_OPEN, CHEST_TABLE, grantChest, openChest } from "./economy/chests";
 import { recommendNext, type RecommendAction, type WallInfo } from "./progression/recommend";
 import {
@@ -221,6 +222,8 @@ type ShopTab = "sword" | "quest" | "relic" | "hub" | "expedition" | "heroes" | "
  */
 const LANES_WIDE = { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, LANES_COMPACT = { lMin: -9, lMax: 3, rMin: 0, rMax: 7 };
 const WIDE_FIELD_MIN_H = 440;
+/** 스테이지 등장(대열이 왼쪽 밖에서 걸어 들어옴) 걷는 시간 배율 — spawn */
+const STAGE_WALK_SLOW = 1.3;
 /** 오른쪽 무리 깊이 − 왼쪽 무리 깊이 상한(전장 높이 %) — lanePair */
 const LANE_GAP_MAX = 14;
 function lanePair(wide: boolean): { laneL: number; laneR: number; wide: boolean } {
@@ -867,10 +870,24 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
    * 저사양 판정 (점검표 #12) — 코어 4개 이하 또는 메모리 3GB 이하면 이펙트·숫자
    * 동시 개수를 줄이고 대기 호흡 애니메이션을 끈다. 동료는 이미 출전 인원만 렌더한다.
    */
-  const lowFxRef = useRef<boolean>(
-    (navigator.hardwareConcurrency ?? 8) <= 4 ||
-      ((navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8) <= 3,
-  );
+  const lowFxRef = useRef<boolean>(deviceLowTier() || isSafeBoot());
+  // 효과 단계 조절기 (ui/perfGovernor ② — 첨부 엔진 차용 2026-11-19): 사냥터가 보이는 동안 1초 창으로 재서 느리면 줄이고, 빠르면 되살린다(되살리기 기다림은 두 배씩).
+  // 출시 빌드만 — 개발 서버는 jsxDEV 가 느리게 만들어 검사 판이 저사양으로 바뀐다
+  useEffect(() => {
+    if (!governorEnabled()) return;
+    const gov = fxGovernor("hunt", lowFxRef.current);
+    let raf = 0, last = 0;
+    const tick = (t: number) => {
+      raf = requestAnimationFrame(tick);
+      const dt = last ? t - last : 0;
+      last = t;
+      if (document.visibilityState !== "visible" || tabRef.current !== "sword") { last = 0; return; }   // 사냥터 탭 = "sword"
+      const next = gov.sample(dt);
+      if (next != null) lowFxRef.current = next;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     saveRef.current = save;
@@ -1006,7 +1023,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     // 걷는 속도 (2026-10-20, 사용자: "걷는 속도도 항상 같지 않게") — 종별 기준에 만남마다 0.7~1.3배(예전 0.88~1.12 는 늘 같아 보였다)
-    const durationMs = Math.round(speedBase * (.7 + Math.random() * .6));
+    // 스테이지 등장 걷기는 1.3배 느리게 (2026-11-19, 사용자: "스테이지 걸어오는 속도를 조금 늦춰줘") — 대열이 왼쪽 밖에서 걸어 들어올 때(relocate)만.
+    // 걷기 칸 속도(heroWalkRate = 시간/1250)도 같이 느려져 발이 미끄러지지 않는다. 같은 자리에서 다음 몬스터만 들어올 땐 그대로
+    const durationMs = Math.round(speedBase * (.7 + Math.random() * .6) * (relocate ? STAGE_WALK_SLOW : 1));
     if (relocate) heroWalkRateRef.current = durationMs / 1250;
     const monsterJit = Math.random() * 2;
     setEncounterMotion((prev) => !relocate ? { ...prev, durationMs, monsterRight: (rolledKind === "dragon" ? 2 : 8) + prev.monsterJit, partyMl: prev.partyMl } : ({

@@ -1,4 +1,5 @@
 import type { GameWorld, Player } from "./types";
+import { predecode } from "../ui/predecode";
 import { footFractions } from "../ui/heroFoot";
 import { assetUrl } from "../asset";
 import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
@@ -38,7 +39,7 @@ const expeditionHero: Partial<Record<"idle" | "walk", HTMLImageElement>> = {};
 const wearImages = new Map<string, HTMLImageElement>();
 function wearImage(key: string): HTMLImageElement {
   let img = wearImages.get(key);
-  if (!img) { img = new Image(); img.src = assetUrl(`titans/anim/hero-gear/${key}.webp`); wearImages.set(key, img); }
+  if (!img) { img = new Image(); img.src = assetUrl(`titans/anim/hero-gear/${key}.webp`); wearImages.set(key, predecode(img)); }
   return img;
 }
 
@@ -63,7 +64,7 @@ function getExpeditionHero(mode: "idle" | "walk"): HTMLImageElement | null {
     for (const m of HERO_ANIM ? (["idle", "walk"] as const) : (["idle"] as const)) {
       const img = new Image();
       img.src = assetUrl(HERO_ANIM ? `titans/anim/hero/hero-${m}.webp` : "titans/character/base/hero-idle.png");
-      expeditionHero[m] = img;
+      expeditionHero[m] = predecode(img);
     }
   }
   const want = HERO_ANIM ? expeditionHero[mode] : undefined;

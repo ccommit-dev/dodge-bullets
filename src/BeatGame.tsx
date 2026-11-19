@@ -61,6 +61,7 @@ import { loadCharacterProgress, qaGemsEnabled } from "./progression/storage";
 import { mergeBeatCosmetics } from "./beat/shop";
 import { WalletBar } from "./ui/WalletBar";
 import { applyLowFx, frameMonitor, setLowFx } from "./ui/perfMode";
+import { governorEnabled, isSafeBoot, maxCanvasScale, scaleGovernor } from "./ui/perfGovernor";
 import type { SafeInsets } from "./game/toss";
 import { grantCharacterReward, updateCharacterProgress } from "./progression/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
@@ -523,10 +524,14 @@ export function BeatGame({
     })();
   }, [userHash]);
 
+  // 동적 해상도 (ui/perfGovernor ① — 성문 방어와 같은 조절기, 따로 배운다)
+  const scaleGovRef = useRef<ReturnType<typeof scaleGovernor> | null>(null);
   const fit = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!scaleGovRef.current && governorEnabled()) scaleGovRef.current = scaleGovernor("beat", maxCanvasScale(), { startLow: isSafeBoot() });
+    scaleGovRef.current?.reset();
+    const dpr = scaleGovRef.current?.scale ?? maxCanvasScale();
     const width = appWidth();   // PC 웹이면 폰 폭 기둥 (ui/webFrame)
     const height = window.innerHeight;
     canvas.width = Math.floor(width * dpr);
@@ -623,6 +628,7 @@ export function BeatGame({
         if (!lastTsRef.current) lastTsRef.current = ts;
         // 저사양 모드 — 연주 중 첫 몇 초가 느리면 캔버스 흐림 그림자를 끈다 (ui/perfMode)
         if (uiRef.current === "playing" && watchFrames(ts - lastTsRef.current)) setLowFx(true);
+        if (uiRef.current === "playing" && scaleGovRef.current?.sample(ts - lastTsRef.current) != null) fit();
         applyLowFx(ctx);
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.05);
         lastTsRef.current = ts;

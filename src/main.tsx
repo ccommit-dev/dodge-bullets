@@ -7,6 +7,7 @@ import { installTapHaptics } from "./ui/haptics";
 import { installUiSfx } from "./ui/sfx";
 import { installWebFrame } from "./ui/webFrame";
 import { applyArtStyleClass } from "./ui/artStyle";
+import { bootGuard } from "./ui/perfGovernor";
 
 // 렌더보다 먼저 — 부팅 중 오류도 잡히도록
 installErrorLog();
@@ -17,6 +18,7 @@ installUiSfx();
 installWebFrame();
 
 applyArtStyleClass();   // 그림체(셀 · 도트) — 첫 그리기 전에 html.art-pixel (ui/artStyle)
+bootGuard();   // 앞 실행이 켜자마자 죽었으면 이번엔 낮은 단계에서 시작 (ui/perfGovernor ③)
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
