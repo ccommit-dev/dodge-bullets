@@ -13,6 +13,8 @@
 import sharp from "sharp";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { makeHeroPortrait } from "./make-hero-portrait.mjs";
+import { dirname } from "node:path";
+import { addMonsterRim, rimmedMonster } from "./lib/monster-rim.mjs";
 
 // 도트 그림체 (2026-11-17, /goal ③) — --pixel: render_anim2 ART_STYLE=pixel 이 쓴 낮은 해상도 원본(b3d2-px, PIXEL_RES 기본 89)을
 // 같은 칸 · 같은 배율 규칙으로 최근접 확대해 public/titans/anim-px 에 쓴다(무손실 webp). 앵커 · 배치 TS · 초상 · 아틀라스는 셀 그림(기본) 것을 그대로 쓴다
@@ -83,7 +85,8 @@ function fitScale(frames, k, cw, ch, px, py, m, floor = true) {
   return k;
 }
 /** 줄 = 동작 · 칸 = 프레임 격자 */
-async function grid(c, spec, k, dest) {
+/** post: 시트 버퍼 후처리(몬스터 테두리빛) — 원본(후처리 전)은 rimBak 경로에 남긴다(scripts/monster-rim.mjs 가 늘 원본에서 만든다) */
+async function grid(c, spec, k, dest, post = null, rimBak = null) {
   const [cw, ch] = spec.cell, rows = Object.keys(spec.actions).length;
   const px = cw * (spec.pivotX ?? 0.5), py = ch * spec.feet, ops = [];
   for (const [name, a] of Object.entries(spec.actions)) {
@@ -92,7 +95,8 @@ async function grid(c, spec, k, dest) {
     for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * cw, a.row * ch, cw, ch, px, py)));
   }
   const buf = await sharp(blank(cw * spec.cols, ch * rows)).composite(ops).png().toBuffer();
-  await sharp(buf).webp(WEBP({ quality: 88, alphaQuality: 92, effort: 5 })).toFile(dest);
+  if (post && rimBak) { mkdirSync(dirname(rimBak), { recursive: true }); await sharp(buf).webp(WEBP({ quality: 88, alphaQuality: 92, effort: 5 })).toFile(rimBak); }
+  await sharp(post ? await post(buf) : buf).webp(WEBP({ quality: 88, alphaQuality: 92, effort: 5 })).toFile(dest);
   return buf;
 }
 
@@ -178,14 +182,16 @@ const UNIT = 1024 / RS / 2.3;   // 렌더 해상도에서 캐릭터 1단위(도�
     // 탈것은 넷의 몸 크기를 같게 (2026-11-03) — 게임은 대기 줄만 쓰니 대기 칸으로만 재고 0.66(옛 세 탈것의 배율)에 맞춘다. 비룡 날개까지 다 재면 몸만 작아져 주인공과 안 맞았다
     const f0 = c.actions.idle[0], up0 = f0.pivot[1] - f0.box.y0;
     const k = id.startsWith("mount-") ? fitScale(c.actions.idle, 0.66 * RS, MW, MH, MW / 2, MH * M.feet, 4, false) : fitScale(allFrames(c), (MH * 0.76) / up0, MW, MH, MW / 2, MH * M.feet, 4, false);
-    await grid(c, M, k, `${PUB}/monsters/${id}.webp`);
+    // 적은 테두리빛(리소스 피드백 ③, lib/monster-rim) — 셀만 · 탈것 · 펫 빼고
+    const rim = !PX && rimmedMonster(id);
+    await grid(c, M, k, `${PUB}/monsters/${id}.webp`, rim ? (b) => addMonsterRim(b, MW) : null, rim ? `art-gen/out/monster-sheets-orig/anim/${id}.webp` : null);
     done.monsters.push(id);
     // 대장으로 나오는 종(성문 방어 장 대장·중간/비밀 대장)은 큰 칸(576²) 시트도 — 성문 방어 대장은 화면에 ~330px(실픽셀 ~1000) 로 그려 384 칸은 흐렸다.
     // 같은 렌더(1024)에서 배율만 키운다. 원래 원화(PNG)의 몸 높이 비율도 재 두어 게임이 화면 크기(밸런스 값)를 그대로 맞춘다
     if (BOSS_ARTS.includes(id)) {
       const HD = { ...M, cell: [576, 576] };
       mkdirSync(`${PUB}/monsters-hd`, { recursive: true });
-      await grid(c, HD, k * (576 / MW), `${PUB}/monsters-hd/${id}.webp`);
+      await grid(c, HD, k * (576 / MW), `${PUB}/monsters-hd/${id}.webp`, rim ? (b) => addMonsterRim(b, 576) : null, rim ? `art-gen/out/monster-sheets-orig/hd/${id}.webp` : null);
       const png = `public/titans/generated/monsters/${id}.png`;
       if (existsSync(png)) { const b = await bbox(png); const m = await sharp(png).metadata(); done.hd[id] = Math.round(((b.y1 - b.y0) / m.height) * 1000) / 1000; }
       else done.hd[id] = 0.85;

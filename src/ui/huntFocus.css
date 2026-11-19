@@ -21,7 +21,7 @@
        2026-11-18 100 → 92px: 100 에선 걷는 중 겹침 중앙값 15~22%(82px 는 2~8%) · 70층 브론×오리온이 같은 줄에 서 최대 23~28% — 92 는 4번 모두 걷는 중 ≤ 18% · 70층 ≤ 10% (verify-formation, EXTRA_CSS 비교).
        그래도 92 는 검 주인공일 때 원거리 동료가 겹침 밀어내기(--sep-dx)에 전장 왼쪽 벽(36px)까지 밀려 verify-hunt-motion(맨 앞 ≥ 40px)이 4번 중 2번 떨어졌다 → 88px(4번 모두 41px 이상 · 82px 는 47px 이상). 주인공 1.5배와 같은 폭을 나눠 쓴다 */
     --ally-size: min(88px, 22.6vw, max(82px, calc((100dvh - var(--hf-chrome, 212px)) * .215))) !important;   /* 낮은 폰(375×553)은 뒷줄 머리가 알림 줄에 닿았다(verify-hud-layout) — 전장 높이 × 0.215 까지, 최소 예전 82px */
-    --monster-size: min(115px, 29.5vw) !important;
+    --monster-size: min(130px, 33.5vw) !important;   /* 2026-11-19 리소스 피드백 ③ 115 → 130: 지옥견이 주인공과 같은 키라 위협감이 없었다. 배율(scale)이 아니라 크기 변수라 근접 자리 계산(--monster-size × 여백)도 같이 따라간다. 대장(160)은 밸런스 값이라 그대로 */
     --boss-size: min(160px, 41vw) !important;
     --hero-size: clamp(99px, 27%, 120px) !important;
     /* 동료 대열을 세 줄로(SpriteArt lineFormation 의 칸 변수) — 큰 몸이 가로 한두 줄에 몰리면 겹쳤다. 전장이 위아래로 길어 뒷줄이 들어간다.
