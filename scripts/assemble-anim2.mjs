@@ -280,7 +280,7 @@ if (want("hero")) {
       if (!frames) continue;
       if (frames.length !== s.frames) throw new Error(`hero ${mode}: ${frames.length} ≠ ${s.frames}`);
       const ops = [];
-      for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, PX + (s.width - FW) / 2, PY)));
+      for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, c.res, k, i * s.width, 0, s.width, FH, FX + (s.width - FW) / 2, PY)));
       const buf = await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer();
       await sharp(buf).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(`${PUB}/hero/hero-${mode}.webp`);
       out[mode] = anchorsOf(frames, s.width);
@@ -292,10 +292,10 @@ if (want("hero")) {
       if (!w) continue;
       const s = H.sheets.attack, frames = w.actions.attack;
       if (frames.length !== s.frames) throw new Error(`hero-${kind} attack: ${frames.length} ≠ ${s.frames}`);
-      const kk = fitScale(frames, k, s.width, FH, PX + (s.width - FW) / 2, PY, 3);
+      const kk = fitScale(frames, k, s.width, FH, FX + (s.width - FW) / 2, PY, 3);
       if (kk < k * 0.985) console.warn(`hero-${kind}: 칸을 넘는 칸이 있다 — 필요한 배율 ${kk.toFixed(3)} < ${k.toFixed(3)} (잘린다)`);
       const ops = [];
-      for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, w.res, k, i * s.width, 0, s.width, FH, PX + (s.width - FW) / 2, PY)));
+      for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, w.res, k, i * s.width, 0, s.width, FH, FX + (s.width - FW) / 2, PY)));
       const buf = await sharp(blank(s.width * s.frames, FH)).composite(ops).png().toBuffer();
       await sharp(buf).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(`${PUB}/hero/hero-attack-${kind}.webp`);
       weaponOut[kind] = anchorsOf(frames, s.width);
@@ -303,7 +303,7 @@ if (want("hero")) {
     }
     const fmt = (f) => "  { " + Object.entries(f).map(([n, a]) => `${n}: { x: ${a.x}, y: ${a.y}, rotation: ${a.rotation}, scale: ${a.scale}${a.behind ? ", behind: true" : ""} }`).join(", ") + " },";
     const b = idle[0].box;
-    const fig = { x0: r1(((PX + (b.x0 - idle[0].pivot[0]) * k) / FW) * 100), x1: r1(((PX + (b.x1 - idle[0].pivot[0]) * k) / FW) * 100), y0: r1(((PY - up0 * k) / FH) * 100), y1: 99.9 };
+    const fig = { x0: r1(((FX + (b.x0 - idle[0].pivot[0]) * k) / FW) * 100), x1: r1(((FX + (b.x1 - idle[0].pivot[0]) * k) / FW) * 100), y0: r1(((PY - up0 * k) / FH) * 100), y1: 99.9 };
     if (!PX) writeFileSync("src/equipment/heroAnchors.ts", `/** 주인공 손·몸 앵커 — scripts/assemble-anim2.mjs 가 쓴다 (손대지 말 것).
  * 2026-10-19 애니메이션 2판: Blender 3D 리그(art-gen/blender/anim2.py)의 뼈를 칸마다 카메라로 투영한 값(칸 %). 주인공은 무기만 들어(사용자 지시)
  * 실제로 쓰는 건 hand(무기)뿐이지만, 형식(EquipmentFrameAnchors)을 맞추려 다른 뼈도 적는다. 회전은 대기 0칸 대비 뼈가 돈 만큼 더한다 */
@@ -329,6 +329,54 @@ export const HERO_FIG = ${JSON.stringify(fig)};
     done.hero = true;
     console.log("hero k", k.toFixed(3), "fig", JSON.stringify(fig));
   }
+}
+
+// ── 플레이어블 캐릭터 스킨 (2026-11-19, art-gen/blender/hero_skins.py) ── `node scripts/assemble-anim2.mjs hero@obsidian [--pixel]`
+// 렌더 id hero@<스킨> · hero-<무기>@<스킨> · hero-ride@<스킨>. 몸 · 뼈는 기본 주인공과 같아 배율 k · 앵커(heroAnchors.ts · rideAnchors.ts)를 그대로 쓴다 —
+// 발 · 손 뼈가 기본과 1px 넘게 다르면 멈춘다(입는 파츠 · 무기가 어긋난다). 시트 이름은 예전 팔레트 스킨과 같다(anim.ts sheetFor · rideSheetFor)
+for (const id of only.filter((a) => /^hero@[a-z]+$/.test(a))) {
+  const skin = id.split("@")[1], base = await load("hero"), c = await load(id);
+  if (!base || !c) throw new Error(`${id}: 렌더가 없다 (기본 hero 와 ${id} 둘 다 필요)`);
+  const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, FX = H.feet[0] * FW, PY = H.feet[1] * FH;
+  const k = heroScale(base);
+  const same = (a, b, what) => {
+    for (const [mode, frames] of Object.entries(a.actions)) for (const [i, f] of frames.entries()) {
+      const g = b.actions[mode]?.[i];
+      if (!g) throw new Error(`${what} ${mode}#${i}: 기본에 없는 칸`);
+      const d = Math.hypot(f.pivot[0] - g.pivot[0], f.pivot[1] - g.pivot[1]);
+      const dh = f.parts && g.parts ? Math.hypot(f.parts.hand.x - g.parts.hand.x, f.parts.hand.y - g.parts.hand.y) : 0;
+      if (d * k > 1 || dh * k > 1) throw new Error(`${what} ${mode}#${i}: 발/손 뼈가 기본 주인공과 다르다(${(d * k).toFixed(1)} · ${(dh * k).toFixed(1)}px) — 몸 배율을 바꾸지 말 것`);
+    }
+  };
+  same(c, base, id);
+  const sheet = async (frames, res, w, py, dest, opts) => {
+    const ops = [];
+    for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, res, k, i * w, 0, w, FH, FX + (w - FW) / 2, py)));
+    await sharp(await sharp(blank(w * frames.length, FH)).composite(ops).png().toBuffer()).webp(PX ? { lossless: true, effort: 4 } : WEBP(opts)).toFile(dest);
+  };
+  const HI = { quality: 90, alphaQuality: 94, effort: 5 }, LO = { quality: 74, alphaQuality: 85, effort: 6 };
+  for (const [mode, s] of Object.entries(H.sheets)) {
+    const frames = c.actions[mode];
+    if (!frames) continue;
+    if (frames.length !== s.frames) throw new Error(`${id} ${mode}: ${frames.length} ≠ ${s.frames}`);
+    await sheet(frames, c.res, s.width, PY, `${PUB}/hero/hero-${mode}-${skin}.webp`, HI);
+  }
+  for (const kind of ["spear", "bow", "staff"]) {
+    const w = await load(`hero-${kind}@${skin}`), wb = await load(`hero-${kind}`);
+    if (!w) { console.warn(`${id}: hero-${kind}@${skin} 렌더 없음 — 무기 공격 시트 건너뜀`); continue; }
+    if (wb) same(w, wb, `hero-${kind}@${skin}`);
+    await sheet(w.actions.attack, w.res, H.sheets.attack.width, PY, `${PUB}/hero/hero-attack-${kind}-${skin}.webp`, HI);
+  }
+  const r = await load(`hero-ride@${skin}`), rb = await load("hero-ride");
+  if (r) {
+    if (rb) same(r, rb, `hero-ride@${skin}`);
+    for (const [name, frames] of Object.entries(r.actions)) {
+      const s = H.sheets[name.split("-")[0]];
+      if (frames.length !== s.frames) throw new Error(`hero-ride@${skin} ${name}: ${frames.length} ≠ ${s.frames}`);
+      await sheet(frames, r.res, s.width, H.ride.feetY * FH, `${PUB}/hero/hero-ride-${name}-${skin}.webp`, LO);
+    }
+  } else console.warn(`${id}: hero-ride@${skin} 렌더 없음 — 탈것 위 시트 건너뜀`);
+  console.log("skin", skin, "k", k.toFixed(4));
 }
 
 // ── 게임이 읽는 배치 + 시트가 있는 id ── (도트는 셀과 같은 배치 · 같은 id 라 쓰지 않는다)

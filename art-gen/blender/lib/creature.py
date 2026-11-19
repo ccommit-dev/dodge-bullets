@@ -525,7 +525,7 @@ def _build(name, cfg, coll=None):
         import random
         rnd = random.Random(sum(map(ord, name)))
         gm = _m('spotglow', cfg.get('accent', '#ff8a3d'), rough=0.35, emit=cfg.get('accent', '#ff8a3d'), es=2.2)
-        for k in range(cfg.get('spots', 14) if cfg.get('mstyle') else cfg.get('spots', 14) + 6):   # 몬스터 2판은 적은 수만(0 이면 없음)
+        for k in range(cfg.get('spots', 14) if (cfg.get('mstyle') or cfg.get('pet_kit')) else cfg.get('spots', 14) + 6):   # 몬스터 2판 · 펫 2판은 적은 수만(0 이면 없음)
             on_head = k % 3 == 0
             d = Vector((rnd.uniform(-1, 1), rnd.uniform(-0.3, 1), rnd.uniform(-0.6, 1))).normalized()
             p, n = C.on_ellipsoid(hc, hr, d) if on_head else C.on_ellipsoid(bc, br, d)
@@ -667,6 +667,10 @@ def _build(name, cfg, coll=None):
         for side in ('R', 'L'):
             h0 = Vector(bones[f'arm.{side}'][0]); h1 = Vector(bones[f'arm.{side}'][1])
             add(f'arm.{side}', C.mesh_obj(f'fore{side}', C.tube([h0, h1], [0.04, 0.02], seg=10), M['dark'], coll, outline=OUT * 0.7))
+    if cfg.get('pet_kit'):   # 펫 2판(2026-11-19) — 아기 얼굴 · 종별 소품(lib/pet_kit.py)
+        from lib import pet_kit as PK
+        lv = locals()
+        PK.dress(add, cfg, coll, M, kind, lv.get('hcf', lv.get('hc')), lv.get('hr_', lv.get('hr')), lv.get('bc'), lv.get('br'), bones)
     if cfg.get('crown'):
         gold = _m('gold', '#f2c232', rough=0.25, metal=0.85)
         hz = (cfg.get('head_z', 0.68) * H) if kind == 'biped' else (0.37 if kind == 'spider' else 0.75)

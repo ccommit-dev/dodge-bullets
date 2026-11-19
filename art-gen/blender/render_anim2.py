@@ -68,11 +68,18 @@ def run(who, only=None):
     outdir = os.path.join(OUT, who)
     os.makedirs(outdir, exist_ok=True)
     cam = RR.setup()
+    # 플레이어블 캐릭터 스킨(2026-11-19, hero_skins.py) — 'hero@obsidian' · 'hero-bow@obsidian' · 'hero-ride@obsidian'. 몸 · 뼈 · 자세는 기본 주인공 그대로
+    hero_cfg = R.HERO
+    if '@' in who:
+        import hero_skins as HS
+        who, skin = who.split('@', 1)
+        hero_cfg = HS.cfg_for(skin, R.HERO)
+        assert who == 'hero' or who == 'hero-ride' or (who.startswith('hero-') and who[5:] in A2.HERO_WEAPON_ATTACK), f'스킨은 주인공 렌더만: {who}'
     if who == 'hero':
-        rig = BV.build('hero', R.HERO)
+        rig = BV.build('hero', hero_cfg)
         render_actions(rig, A2.beaver_actions('melee', hero=True), BV.pose, outdir, cam, math.radians(RR.YAW), 1, HERO_PARTS2, only)
     elif who.startswith('hero-') and who[5:] in A2.HERO_WEAPON_ATTACK:   # 주인공 무기별 공격 시트(창 · 활 · 지팡이, 2026-10-27) — 공격 한 줄만
-        rig = BV.build('hero', R.HERO)
+        rig = BV.build('hero', hero_cfg)
         render_actions(rig, {'attack': A2.hero_weapon_attack(who[5:])}, BV.pose, outdir, cam, math.radians(RR.YAW), 1, HERO_PARTS2, only)
     elif who in R.ALLIES or who in R.SKINS:
         if who in R.SKINS:
@@ -90,11 +97,14 @@ def run(who, only=None):
         up = (seat[0], seat[1], seat[2] + 0.2)
         render_actions(rig, MT.actions(who), MT.pose, outdir, cam, math.radians(-RS.MOUNT_YAW), -1, {'saddle': ('body', seat, up)}, only)
     elif who == 'hero-ride':   # 탈것 위 주인공 — 앉은 자세 · 먼 다리 없음
-        rig = BV.build('hero', R.HERO)
+        rig = BV.build('hero', hero_cfg)
         RS.seat_hero(rig)
         render_actions(rig, RS.rider_actions(), BV.pose, outdir, cam, math.radians(RS.RIDER_YAW), 1, HERO_PARTS2, only)
     elif who in R.MONSTERS:
         cfg = R.MONSTERS[who]
+        if who.startswith('pet-'):   # 펫 2판(2026-11-19, pets_v2.py · lib/pet_kit.py) — 아기 얼굴 · 종별 소품
+            import pets_v2 as PV
+            cfg = PV.PETS.get(who, cfg)
         flip = who in R.FLIP_MONSTERS
         rig = CR.build(who, cfg)
         render_actions(rig, A2.monster_actions(cfg.get('kind', 'biped'), R.MON_POSES), CR.pose, outdir, cam, math.radians(RR.YAW if flip else -RR.YAW), 1 if flip else -1, None, only)
