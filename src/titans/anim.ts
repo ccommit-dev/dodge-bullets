@@ -4,7 +4,7 @@ import { HERO_ANIM, heroFrameMs, type HeroAnimMode } from "./spriteAnim";
 export const IDLE_SHEET = assetUrl("titans/character/base/hero-idle.png");
 export const ATTACK_SHEET = assetUrl("titans/character/base/hero-attack.png");
 
-/** 구매 캐릭터 스킨 — 기본 시트의 팔레트 파생 (scripts/make-character-skins.mjs) */
+/** 구매 캐릭터 스킨 — 2판 시트는 Blender 동물 옷(2026-11-19, art-gen/blender/hero_skins.py · lib/suit_kit.py), 1판 PNG 는 옛 팔레트 파생(scripts/make-character-skins.mjs) */
 export const CHARACTER_SKINS = ["default", "obsidian", "dawn", "ember", "frost"] as const;
 export type CharacterSkinId = (typeof CHARACTER_SKINS)[number];
 

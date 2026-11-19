@@ -497,6 +497,10 @@ def dress(add, cfg, coll):
     """build() 끝에서 부른다 — cfg 에 없는 키는 아무것도 짓지 않아 옛 동료 · 몬스터 그림은 그대로"""
     for b, o in marks(cfg, coll):
         add(b, o)
+    if cfg.get('suit'):   # 동물 옷 스킨(2026-11-19, lib/suit_kit.py · hero_skins.py)
+        from lib import suit_kit
+        for b, o in suit_kit.build(cfg, coll):
+            add(b, o)
     if cfg.get('over'):
         for o in over_new(cfg['over'], cfg, coll):
             add('head', o)

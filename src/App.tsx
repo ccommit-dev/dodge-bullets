@@ -31,6 +31,8 @@ import "./ui/huntFocus.css";   // 2026-11-17 사냥 화면 집중 — 큰 무대
 import "./ui/pixelMode.css";   // 2026-11-17 도트 그림체 — html.art-pixel 일 때 시트 · 배경을 번지지 않게 (맨 뒤)
 import "./ui/card-grid.css";   // 2026-11-18 카드 격자 · 출전 무대 — 등급색 정사각 카드 · 받침대 위 동료 · 오두막 무대 배경 (맨 뒤)
 import "./ui/skill-grid.css";   // 2026-11-18 스킬 탭 단순화 1판 — 3열 아이콘 판 · 접힌 판엔 이름 · Lv · 장착 · 카드 · 단추 하나 (맨 뒤)
+import "./ui/codexCompact.css";   // 2026-11-19 도감 촘촘하게 — 4열 · 꽉 찬 등급 타일 · 캐릭터 5장 초상 · 펫 · 칭호 (맨 뒤)
+import "./ui/costumes.css";   // 2026-11-19 동물 옷 스킨 — 옷을 입으면 투구 · 갑옷 · 견갑 그림은 옷 아래로
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";

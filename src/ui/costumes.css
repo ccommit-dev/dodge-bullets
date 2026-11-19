@@ -1,0 +1,4 @@
+/* 동물 옷 스킨 (2026-11-19, art-gen/blender/hero_skins.py · lib/suit_kit.py) — 두건 · 몸통 옷이 머리 · 몸을 덮는다.
+   입은 투구 · 갑옷 · 견갑 그림은 옷 아래로 숨긴다(능력치는 그대로). 장갑 · 장화 · 무기는 옷 밖이라 보인다.
+   사용자 참고 그림(같은 날): 옷을 입은 캐릭터는 옷과 무기만 보인다 */
+.equipped-character:is(.costume-obsidian, .costume-dawn, .costume-ember, .costume-frost) :is(.wear-helmet, .wear-armor, .wear-shoulder) { display: none; }

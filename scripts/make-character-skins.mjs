@@ -12,6 +12,13 @@
  */
 import sharp from "sharp";
 
+// 2026-11-19: 스킨 2판 시트(--anim2 · --pixel)는 Blender 동물 옷(art-gen/blender/hero_skins.py → assemble-anim2 hero@<스킨>)이다.
+// 이 팔레트 파생을 다시 돌리면 그 시트를 색만 바꾼 옛 그림으로 덮는다 — 1판(PNG)만 쓰거나 --force 로
+if ((process.argv.includes("--anim2") || process.argv.includes("--pixel")) && !process.argv.includes("--force")) {
+  console.error("스킨 2판 시트는 Blender 동물 옷입니다(hero_skins.py → assemble-anim2 hero@<스킨>). 덮으려면 --force");
+  process.exit(1);
+}
+
 const ANIM2 = process.argv.includes("--anim2");
 // 도트 그림체(2026-11-17, --pixel) — anim-px/hero 시트에서 같은 팔레트로, 무손실 webp(색 경계가 뭉개지지 않게)
 const PX = process.argv.includes("--pixel");

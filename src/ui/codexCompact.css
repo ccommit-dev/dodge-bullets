@@ -1,0 +1,59 @@
+/* 도감 촘촘하게 · 꽉 찬 등급 타일 (2026-11-19, 사용자: "동료, 칭호, 유물, 펫 등등의 도감 ui가 너무 크다 · 리소스 퀄이 안 좋아 동기부여가 안 돼"
+ * + 같은 날 참고 그림(장비 화면): 등급색으로 꽉 찬 둥근 정사각 · 굵은 짙은 외곽선 · 위 Lv 흰 글자 검은 테 — 원칙만 따르고 모습은 베끼지 않는다) — card-grid.css 뒤(맨 뒤)
+ * - 동료 · 유물 도감: 한 줄 3장 → 4장. 판은 연한 등급 빛(--t-tint) → 등급색(--t2 → --t) 채움 + 짙은 외곽선. 글자는 13px 그대로(verify-ia-move '도감 13px 미만 없음'), 막대 18 → 17px
+ * - 없는 것: 회색 판 · 그림자 그대로(채우지 않는다 — 가진 것만 빛난다)
+ * - 플레이어블 캐릭터: 큰 회색 판 3열에 작은 비버(34×46) → 5장 한 줄 초상. 잠긴 판은 짙은 회색 위 짙은 글자라 안 읽혔다 → 크림 판 · 그림만 흐리게 · 자물쇠
+ * - 펫: 판 여백 · 글자 줄이고 그림을 키운다(3열 그대로 — 간식 단추 글자가 4열엔 안 들어간다) · 칭호: 칩 높이만 줄인다 */
+
+/* ── 동료 · 유물 도감 ── */
+.codex-tier { gap: 5px; padding: 6px; border-width: 2.5px; border-radius: 12px; }
+.codex-tier-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.codex-sections .codex-card { gap: 2px !important; padding: 0 0 3px !important; }
+.codex-sections .codex-card .codex-card-art {
+  border: 2.5px solid #2a1a10 !important; border-radius: 11px !important;
+  background: linear-gradient(180deg, var(--t2, #e9dcc3) 0%, var(--t, #c9a46a) 100%) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35), inset 0 -5px 0 rgba(0, 0, 0, .14), 0 2px 0 #2a1a10 !important;
+}
+.codex-sections .codex-card.rarity-lr:not(.unowned) .codex-card-art { background: linear-gradient(160deg, #5eead4, #a78bfa 45%, #f0abfc 75%, #fde68a) !important; }
+.codex-sections .codex-card .codex-card-art :is(img, .ally-body) { filter: drop-shadow(0 2px 0 rgba(42, 26, 16, .35)); }
+.codex-sections .codex-card .codex-card-art :is(img, .titan-ally-art) { width: 92% !important; height: 92% !important; }
+.codex-sections .codex-card .codex-card-art .titan-ally-art { --ally-size: 92%; }
+.codex-sections .codex-card .relic-gem > img { width: 90% !important; height: 90% !important; }
+.codex-sections .codex-card > b { font-size: 13px !important; line-height: 1.15; letter-spacing: -.02em; }
+.codex-sections .codex-card .codex-card-role { font-size: 13px !important; line-height: 1.1; }
+.codex-sections .codex-card .codex-lv { left: auto; right: 3px; top: 2px; bottom: auto; padding: 0; background: none !important; color: #fff; font-size: 13px; font-weight: 900; line-height: 15px;
+  text-shadow: -1.5px 0 #2a1a10, 1.5px 0 #2a1a10, 0 -1.5px #2a1a10, 0 1.5px #2a1a10, 1px 1px #2a1a10, -1px -1px #2a1a10, 1px -1px #2a1a10, -1px 1px #2a1a10; }
+.codex-bar { height: 17px; margin: 0 1px; border-width: 1.5px; }
+.codex-bar > small { font-size: 13px !important; line-height: 14px; }
+.codex-tier-head, .codex-tier-head .tier-chip { font-size: 13px; }
+
+/* ── 플레이어블 캐릭터 — 5장 한 줄 초상 ── 대기 시트 0칸(1:2)에서 위 빈칸(약 31%)을 건너 몸만 보이게 */
+.character-skin-row { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 5px !important; margin: 6px 0 10px !important; }
+.character-skin-row .character-skin-chip { gap: 1px !important; padding: 4px 2px 5px !important; border-radius: 12px !important; border-width: 2px !important; background: #fff8e6 !important; color: #3b2415 !important; overflow: hidden; }
+.character-skin-row .character-skin-chip .skin-thumb {
+  width: 100% !important; height: auto !important; aspect-ratio: 1 / 1.05; border-radius: 9px; filter: none !important;
+  /* 몸(칸 높이의 약 31~97%)이 판 높이 95% 가 되게 시트 높이 144% · 비율 그대로(auto) — 첫 칸(1:2)이 판 가운데, 위 빈칸은 잘린다.
+     대기 시트 = 6칸 × (1:2). 너비로 450% → 한 칸이 판 폭의 75%. x −3.6% · y 93% 는 (판 − 그림) × p 로 푼 값(판 1:1.05) */
+  background-color: #f1e3c4 !important; background-repeat: no-repeat !important;
+  background-size: 450% auto !important; background-position: -3.6% 93% !important;
+}
+.character-skin-row .character-skin-chip b { font-size: 12px !important; line-height: 1.15; color: #3b2415 !important; }
+.character-skin-row .character-skin-chip small { font-size: 11px !important; line-height: 1.15; color: #6b5a45 !important; }
+.character-skin-row .character-skin-chip.active { background: #ffe38a !important; }
+.character-skin-row .character-skin-chip.active .skin-thumb { background-color: #ffd34d !important; }
+.character-skin-row .character-skin-chip.locked { background: #efe5d2 !important; }
+.character-skin-row .character-skin-chip.locked .skin-thumb { filter: grayscale(.55) opacity(.75) !important; }
+.character-skin-row .character-skin-chip.locked b::before { content: "🔒"; font-size: 10px; margin-right: 1px; }
+
+/* ── 펫 ── */
+.pet-grid { gap: 5px !important; }
+.pet-chip { padding: 5px 4px 6px !important; gap: 2px !important; }
+.pet-chip .pet-figure { width: 72px !important; height: 72px !important; }
+.pet-chip b { font-size: 12px !important; }
+.pet-chip span, .pet-chip small { font-size: 11px !important; line-height: 1.2; }
+.pet-feed { font-size: 11px !important; padding: 3px 6px !important; }
+.pet-note { font-size: 11px !important; margin: 4px 0 6px !important; }
+
+/* ── 칭호 ── */
+.title-row { gap: 5px !important; }
+.title-row .title-chip { padding: 4px 9px !important; font-size: 12px !important; }
