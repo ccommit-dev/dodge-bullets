@@ -44,8 +44,19 @@
 .titans-shop > .skill-learn-card.equipped:not(.is-open)::before {
   content: "장착"; position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 999px; background: #22a35a; color: #fff; font-size: 13px; font-weight: 900; line-height: 18px; z-index: 1;
 }
-/* 아직 안 배운 스킬 — 흐리게 */
-.titans-shop > .skill-learn-card:not(.is-open):not(:has(.skill-level-tag)) > .skill-icon { filter: grayscale(.85) opacity(.7); }
+/* 아직 안 배운 스킬 — 색은 두고 채도만 살짝 낮춘다(2026-11-19 리소스 피드백 ①: grayscale .85 + 투명 .7 이라 판 대부분이 회색이었다) */
+.titans-shop > .skill-learn-card:not(.is-open):not(:has(.skill-level-tag)) > .skill-icon { filter: saturate(.72); }
+/* 잠긴 칸 · 안 배움 — 판을 반투명 · 회색으로 누르지 않는다(idle.css 658 · 659 · 2149 를 덮음). 잠김은 아이콘 오른쪽 아래 자물쇠 표시 하나 */
+.titans-shop > .skill-learn-card:is(.slot-locked, .unlearned) { opacity: 1; }
+.titans-shop > .skill-learn-card.slot-locked .skill-icon { filter: none; }
+.titans-shop > .skill-learn-card.slot-locked:not(.is-open):not(:has(.skill-level-tag)) > .skill-icon { filter: saturate(.72); }
+.skill-learn-card > .skill-lock-badge {
+  position: absolute; z-index: 2; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #f3e6c8; border-radius: 50%;
+  background: #4a3020; color: #fde68a; box-shadow: 0 2px 0 rgba(59, 36, 21, .35); pointer-events: none;
+  left: calc(50% + 12px); top: 40px;
+}
+.skill-learn-card > .skill-lock-badge svg { width: 13px; height: 13px; }
+.skill-learn-card.is-open > .skill-lock-badge { display: none; }   /* 펼친 판은 칸 꼬리표가 자물쇠와 '연습실에서 열기'를 말한다 */
 /* 단추 하나 — 판 바닥에 꽉 */
 .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions { display: flex !important; flex-direction: row !important; width: 100%; margin-top: auto !important; }
 .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { flex: 1 1 0; min-width: 0 !important; min-height: 32px !important; padding: 2px 4px !important; border-radius: 10px !important; font-size: 13px !important; }
@@ -86,4 +97,6 @@
   .titans-shop > .titans-card.skill-learn-card:not(.is-open) { gap: 3px !important; padding: 5px 5px 6px !important; }
   .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { min-height: 28px !important; }
   .skill-preset-card > .skill-auto-equip { min-height: 34px; margin-top: 5px !important; font-size: 14px !important; }
+  .skill-learn-card > .skill-lock-badge { width: 20px; height: 20px; left: calc(50% + 8px); top: 26px; }
+  .skill-learn-card > .skill-lock-badge svg { width: 11px; height: 11px; }
 }

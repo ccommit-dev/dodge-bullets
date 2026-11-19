@@ -5407,6 +5407,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             const mainAction: "equip" | "level" = learned && equipped ? "level" : "equip";
             return <article key={sk.id} data-slot={sk.slot} data-tier={tier} title={`${TIER_LABEL[tier]} 스킬`} className={`titans-card skill-learn-card skill-outline rarity-${tier.toLowerCase()} tier-${tier} ${equipFx?.id === sk.id ? "equip-pop" : ""} ${skillSlotTab === sk.slot ? "slot-focus" : ""} element-${sk.element} ${equipped ? "equipped" : ""} ${slotShut ? "slot-locked" : ""} ${learned ? "" : "unlearned"} ${openCard === `skill:${sk.id}` ? "is-open" : ""}`} onClick={toggleCard(`skill:${sk.id}`)}>
               <SkillIcon id={sk.id} />
+              {/* 잠긴 칸 = 자물쇠 표시만(2026-11-19) — 예전엔 판 전체를 회색 · 반투명으로 눌러 비트 수련 전 유저가 회색 판만 봤다 */}
+              {slotShut && <i className="skill-lock-badge" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 7V5.2a3 3 0 0 1 6 0V7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><rect x="3" y="7" width="10" height="7.5" rx="1.8" fill="currentColor" /></svg></i>}
               <div>
                 <strong>
                   <em className="tier-chip">{TIER_LABEL[tier]}</em>{sk.name} <em className="skill-element-tag">{ELEMENT_LABEL_KR[sk.element]}</em><em className={`skill-slot-tag ${slotShut ? "locked" : ""}`} title={slotShut ? "연습실에서 열기" : undefined}>{slotShut && <LockIcon />}{SLOT_LABEL[sk.slot]}</em>
