@@ -148,6 +148,10 @@
 .titans-field.phase-stage-enter .titans-hero, .titans-field.party-entering .titans-hero { animation: party-walk-in var(--encounter-duration, 1.25s) cubic-bezier(.3, .4, .55, 1) both; }
 .titans-field.phase-stage-enter .titans-allies, .titans-field.party-entering .titans-allies { animation: party-walk-in var(--encounter-duration, 1.25s) .06s cubic-bezier(.3, .4, .55, 1) both; }
 @keyframes party-walk-in { from { transform: translateX(max(-80vw, -520px)); } to { transform: none; } }   /* 80vw — 걸음 한 바퀴(2걸음) ≈ 150px · 가장 오른쪽 근접 동료도 화면 밖에서 시작 */
+/* 걸어 들어오는 동안 동료는 처음부터 제 칸에 (2026-11-19) — 예전엔 칸(left · bottom) 전환이 걷는 시간 내내 이어져, 대열이 한 줄로 포갠 채(같은 x, 겹침 50~94%) 들어와
+   끝에서야 펼쳐졌다. 스테이지 등장 걷기를 1.3배 늦추자(TitansGame STAGE_WALK_SLOW) 포갠 시간이 길어져 verify-formation 걷는 중 겹침이 21~32% 로 넘쳤다.
+   대열은 화면 밖(−80vw)에서 출발하므로 칸 이동은 보이지 않는 첫 순간에 끝난다 — 비켜서기(translate)만 남긴다 */
+.titans-field.party-entering .titans-allies .titan-ally-art[data-party-slot] { transition: translate .2s ease; }
 /* 몬스터도 0.62초 미끄러짐(boss-enter-right) 없이 — 오른쪽 밖(right −40%)에서 걷는 시간 동안 right 전환으로만 들어온다 */
 .titans-field.phase-stage-enter .titans-monster { animation: none; }
 /* 퇴장도 가로로만 — 예전 22% 지점 4px 뛰어오름(translateY −4px)이 "y 로 움직인다"로 보였다(verify-walk-y F). 뒤에 정의해 App.css 키프레임을 덮는다 */

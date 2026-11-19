@@ -37,6 +37,9 @@ const measure = () => page.evaluate(() => {
   const halos = [...document.querySelectorAll(".titans-allies .ally-halo")].map((i) => getComputedStyle(i).display !== "none");
   return { vh: innerHeight, field, hp, stage, band: hp && stage ? Math.max(hp.bottom, stage.bottom) - Math.min(hp.y, stage.y) : 999,
     shopVisible: shop ? getComputedStyle(shop).visibility === "visible" : null, hero: r(".titans-hero .equipped-character"), heroSize: document.querySelector(".titans-hero .equipped-character")?.offsetWidth ?? 0,   // 레이아웃 폭 — 원근 배율(scale)은 빠진다
+    allySize: parseFloat(getComputedStyle(document.querySelector(".titans-field")).getPropertyValue("--ally-size")) || document.querySelector(".titans-allies .titan-ally-art")?.offsetWidth || 0,
+    heroOutline: (() => { const e = document.querySelector(".titans-hero .titans-hero-facing > .equipped-character"); return e ? getComputedStyle(e).filter : ""; })(),
+    heroPlate: (() => { const e = document.querySelector(".titans-hero .hero-marker b"); return e ? { fs: parseFloat(getComputedStyle(e).fontSize), text: e.textContent } : null; })(),
     bgFilter: bg ? getComputedStyle(bg).filter : "", auras, halos, over: document.documentElement.scrollWidth - innerWidth };
 });
 
@@ -49,7 +52,10 @@ for (const [w, h] of [[390, 844], [375, 667], [360, 640]]) {
   ok(`[${tag}] 위 HUD 띠 ≤ 44px`, m.band <= 44, `${Math.round(m.band)}px`);
   ok(`[${tag}] 성장 판은 닫힌 채 시작`, m.shopVisible === false, String(m.shopVisible));
   // 주인공 크기는 변수로 잰다 — 그린 상자는 원근(뒷줄일수록 작게, anim-plus.css)이 곱해져 6% 까지 작다
-  ok(`[${tag}] 주인공 ≥ 예전(66px)의 1.45배`, m.heroSize >= 66 * 1.45 - 1, `레이아웃 폭 ${m.heroSize}px · 그린 폭 ${Math.round(m.hero?.w ?? 0)}px`);
+  // 2026-11-19 사용자: "캐릭터가 동료 사이즈랑 비슷하게 사이즈 조정하되 칭호랑 윤곽선으로 내 캐릭터인 걸 명시" — 1.5배(≥ 96px)를 동료 크기 근처로.
+  //   주인공 상자(1:2 칸)는 동료 상자(정사각, 그림 약 72%)보다 그림이 꽉 차 상자 폭이 동료의 80~100% 면 보이는 몸이 비슷하다
+  ok(`[${tag}] 주인공 ≈ 동료 크기(동료 상자의 80~100%)`, m.allySize > 0 && m.heroSize >= m.allySize * 0.8 && m.heroSize <= m.allySize, `주인공 ${m.heroSize}px · 동료 ${m.allySize}px · 그린 폭 ${Math.round(m.hero?.w ?? 0)}px`);
+  ok(`[${tag}] 내 캐릭터 표시: 금색 윤곽선 · 명패 글자 ≥ 11px`, /drop-shadow/.test(m.heroOutline) && !!m.heroPlate && m.heroPlate.fs >= 11 && m.heroPlate.text.length > 0, `${m.heroOutline.slice(0, 40)} · ${JSON.stringify(m.heroPlate)}`);
   ok(`[${tag}] 배경 채도 · 대비 낮춤`, /saturate\(0\.[0-9]+\)/.test(m.bgFilter) && /contrast\(0\.[0-9]+\)/.test(m.bgFilter), m.bgFilter);
   ok(`[${tag}] 일반 전투엔 발판 고리 · 후광 숨김`, m.auras.length > 0 && m.auras.every((v) => !v) && m.halos.every((v) => !v), JSON.stringify({ a: m.auras, h: m.halos }));
   ok(`[${tag}] 가로 넘침 없음`, m.over <= 0, String(m.over));

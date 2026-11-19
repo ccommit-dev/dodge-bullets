@@ -23,7 +23,9 @@
     --ally-size: min(88px, 22.6vw, max(82px, calc((100dvh - var(--hf-chrome, 212px)) * .215))) !important;   /* 낮은 폰(375×553)은 뒷줄 머리가 알림 줄에 닿았다(verify-hud-layout) — 전장 높이 × 0.215 까지, 최소 예전 82px */
     --monster-size: min(130px, 33.5vw) !important;   /* 2026-11-19 리소스 피드백 ③ 115 → 130: 지옥견이 주인공과 같은 키라 위협감이 없었다. 배율(scale)이 아니라 크기 변수라 근접 자리 계산(--monster-size × 여백)도 같이 따라간다. 대장(160)은 밸런스 값이라 그대로 */
     --boss-size: min(160px, 41vw) !important;
-    --hero-size: clamp(99px, 27%, 120px) !important;
+    /* 2026-11-19 사용자: "캐릭터가 동료 사이즈랑 비슷하게 — 칭호랑 윤곽선으로 내 캐릭터인 걸 명시" → 1.5배(99~120, 그림 약 90px)를 동료 그림(62~66px)과 비슷하게.
+       그림 약 70px — 동료보다 아주 조금 크다. 누가 나인지는 크기 대신 머리 위 칭호 명패 · 금색 윤곽선(아래 .titans-hero 규칙)이 말한다 */
+    --hero-size: clamp(76px, 21%, 84px) !important;
     /* 동료 대열을 세 줄로(SpriteArt lineFormation 의 칸 변수) — 큰 몸이 가로 한두 줄에 몰리면 겹쳤다. 전장이 위아래로 길어 뒷줄이 들어간다.
        앞줄: 주인공 · 근접 앞(R0) · L0(주인공 뒤, 그대로) / 가운데: L1(왼쪽) / 맨 뒷줄: L2 · L3. 근접 뒷줄(R1)은 앞줄과 가운데 사이보다 조금 더 뒤 —
        주인공이 근접이면 앞줄이 들려(--melee-lift) R0 · R1 이 붙어 31% 겹쳤다(variants45 mia×bronn) */
@@ -39,7 +41,22 @@
   .titans-layer:not(.is-management-page) > .titans-field .titan-ally-art[data-role="healer"] { --role-s: 0.9; }
 
   /* 원거리(활 · 지팡이) 주인공은 몬스터와 30px 넘게 떨어져 선다(hunt-motion.css · verify-hunt-motion) — 주인공 +33px · 몬스터 +15px 커진 만큼 뒤로 */
-  .titans-layer:not(.is-management-page) > .titans-field.hero-ranged .titans-hero.is-engaged { left: calc(var(--hero-meet-left, 27%) + 8% - 34px); }
+  /* 2026-11-19 주인공이 99 → 77px 로 작아진 만큼 덜 물러선다(−34 → −22px) — 틈이 만남마다 ±5px 흔들려 −12px 은 29px · −18px 은 31~41px 로 verify-hunt-motion(> 30px) 문턱에 붙었다 */
+  .titans-layer:not(.is-management-page) > .titans-field.hero-ranged .titans-hero.is-engaged { left: calc(var(--hero-meet-left, 27%) + 8% - 22px); }
+
+  /* 내 캐릭터 표시 (2026-11-19) — 동료와 같은 크기가 되어 칭호 명패 + 금색 윤곽선으로 구분한다.
+     윤곽선은 몸 · 입은 파츠 · 무기를 한 덩어리로 감싸게 .titans-hero-facing 안 그림 층(.equipped-character)에 건다 — 치명 오라(.hero-crit-aura)는 facing 에 걸려 서로 덮지 않는다.
+     몬스터 테두리빛은 시트에 구웠지만(크림색) 주인공은 파츠가 따로 그려져 굽지 못한다 — 전장에 하나뿐이라 실행 중 drop-shadow — 네 방향 1.4px(흐린 빛 둘은 너무 옅었다) */
+  .titans-layer:not(.is-management-page) > .titans-field .titans-hero .titans-hero-facing > .equipped-character,
+  .titans-layer:not(.is-management-page) > .titans-field .titans-hero .titans-hero-facing > .ride-rider {
+    filter: drop-shadow(1.4px 0 0 #ffd54a) drop-shadow(-1.4px 0 0 #ffd54a) drop-shadow(0 1.4px 0 #ffd54a) drop-shadow(0 -1.4px 0 #ffd54a);
+  }
+  /* 저사양(.perf-low — 효과 단계 조절기 · 낮은 기기)은 칸마다 다시 그리는 필터 넷 대신 흐린 빛 하나 + 발밑 금 고리(예전 .hero-ring, App.css 에서 꺼 둔 것) */
+  .titans-layer.perf-low:not(.is-management-page) > .titans-field .titans-hero .titans-hero-facing > :is(.equipped-character, .ride-rider) { filter: drop-shadow(0 0 1.5px #ffd54a); }
+  .titans-layer.perf-low:not(.is-management-page) > .titans-field .titans-hero .hero-ring { display: block; width: 110%; background: radial-gradient(ellipse, rgba(255, 213, 74, .6), rgba(255, 213, 74, .15) 55%, transparent 72%); }
+  /* 명패 — 칭호가 없어도 읽히게(예전 8px × 0.6 배율 ≈ 5px 글자). 칭호면 칭호 색 글자 · 짙은 판, 아니면 금 판 */
+  .titans-layer:not(.is-management-page) > .titans-field .titans-hero .hero-marker b { font-size: 11px; transform: none; padding: 2px 7px; border: 1.5px solid #ffd54a; }
+  .titans-layer:not(.is-management-page) > .titans-field .titans-hero .hero-marker i { font-size: 9px; color: #ffd54a; margin-top: -2px; }
 
   /* ── 위 HUD ── 띠 하나(HP 막대 위에 STAGE 글자 · HP 숫자, 30px) + 하늘 자리의 작은 칩 두 줄. 예전 HP · 판 · 자동 사냥 줄 · 우편/알림 = 131px
      칩 순서는 예전과 같다(verify-urgent-ui): 띠 → [우편 딱지(남은 시간 글자까지) · ● 자동 사냥] → 오른쪽 다음 목표. 딱지는 손가락 폭 44px 이상 · 글자는 13px 이상(scan-readability) */
