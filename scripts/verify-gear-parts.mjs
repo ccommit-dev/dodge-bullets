@@ -17,7 +17,8 @@ await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile
 await page.goto(BASE, { waitUntil: "networkidle0" });
 const now = Date.now();
 const progress = { version: 5, level: 40, sharedCoins: 50_000, dodgeBestStage: 12, idleClaimedAt: now, updatedAt: now, onboardingStep: 4, partyIds: ["mia"], partyCap: 4, redGems: 0, enhancementMaterials: 20, claimedRewards: ["dodge-tutorial"], pioneeredArea: 3 };
-const titans = { gold: 100_000, stage: 9, bestStage: 9, heroes: { mia: 3 }, lastActiveAt: now };
+// 대장간은 사냥터 14층에 열린다(progression/ladder.ts, 2026-11-13 계단) — 9층 저장이면 모험의 대장간 카드가 잠겨 장비 탭에 못 갔다(2026-11-19)
+const titans = { gold: 100_000, stage: 14, bestStage: 14, heroes: { mia: 3 }, lastActiveAt: now };
 await page.goto(`${BASE}/favicon.png`, { waitUntil: "domcontentloaded" }); await page.evaluate((s) => { localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, { [`dodgebullets:progression:v1:${H}`]: JSON.stringify(progress), [`dodgebullets:titans:${H}`]: JSON.stringify(titans), "dodge-bullets:soundEnabled": "0", "dodgebullets:test-phase": "0" });
 await page.goto(BASE, { waitUntil: "networkidle0" }); await sleep(2500);
 await page.evaluate(() => { for (let k = 0; k < 4; k += 1) { const c = document.querySelector(".idle-claim"); if (c) { c.click(); continue; } const b = [...document.querySelectorAll("button")].filter((x) => /^(닫기|확인|나중에)$/.test(x.textContent.trim()))[0]; if (b) b.click(); } });
@@ -39,10 +40,12 @@ await page.evaluate(() => [...document.querySelectorAll(".forge-tabs button")].f
 const rows = await page.evaluate(() => [...document.querySelectorAll(".gear-forge-row strong")].map((e) => e.textContent));
 ok("대장간 '장비' 탭: 투구·갑옷·장갑·신발 4줄", rows.length === 4 && rows.every((r) => /\+0$/.test(r)), rows.join(" | "));
 const p0 = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);   // 대장간 첫 입장은 시작 코인을 준다 — 누르기 직전 값과 비교
+// 비용은 화면에 적힌 값으로 — 은화 단위를 낮추며(economy/units) 예전 800 이 1 이 됐다. 줄에 적힌 'nG · 강화석 m개' 만큼 줄어야 한다
+const cost = await page.evaluate(() => { const t = [...document.querySelectorAll('.gear-forge-row[data-gear-part="helmet"] small')].map((e) => e.textContent).join(" "); const m = /([\d.,]+)G · 강화석 (\d+)개/.exec(t); return m ? { coins: Number(m[1].replace(/,/g, "")), mats: Number(m[2]) } : null; });
 await page.evaluate(() => document.querySelector('.gear-forge-row[data-gear-part="helmet"] button')?.click()); await sleep(1500);
 const after = await page.evaluate(() => document.querySelector('.gear-forge-row[data-gear-part="helmet"] strong')?.textContent ?? "");
 const p1 = await page.evaluate((h) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${h}`)), H);
-ok("투구 강화 → +1 · 코인 800·강화석 1 사용 · 저장 gearEnhance.helmet = 1", /\+1$/.test(after) && p1.gearEnhance?.helmet === 1 && p1.sharedCoins === p0.sharedCoins - 800 && p1.enhancementMaterials === p0.enhancementMaterials - 1, `${after} · coins ${p1.sharedCoins} · mats ${p1.enhancementMaterials}`);
+ok("투구 강화 → +1 · 줄에 적힌 은화 · 강화석만큼 사용 · 저장 gearEnhance.helmet = 1", !!cost && /\+1$/.test(after) && p1.gearEnhance?.helmet === 1 && p1.sharedCoins === p0.sharedCoins - cost.coins && p1.enhancementMaterials === p0.enhancementMaterials - cost.mats, `${after} · 비용 ${JSON.stringify(cost)} · coins ${p0.sharedCoins}→${p1.sharedCoins} · mats ${p0.enhancementMaterials}→${p1.enhancementMaterials}`);
 await page.screenshot({ path: `${OUT}/forge-gear.png` });
 ok("페이지 오류 없음", errors.length === 0, errors.join(" / "));
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");
