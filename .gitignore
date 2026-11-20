@@ -48,3 +48,6 @@ art-gen/out/
 
 # Blender 스크립트 캐시
 art-gen/blender/**/__pycache__/
+
+# 온라인 서버 로컬 상태(wrangler dev)
+server/.wrangler/

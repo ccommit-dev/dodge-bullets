@@ -1,0 +1,13 @@
+{
+  "name": "dodge-bullets-online",
+  "private": true,
+  "description": "총피하기 온라인 서버 — 접속자 · 채팅 · 랭킹 (Cloudflare Workers + Durable Object). 게임 루트 빌드와 따로 설치한다(cd server && npm ci)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787 --persist-to .wrangler/state",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.156.0"
+  }
+}

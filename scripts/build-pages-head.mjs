@@ -9,7 +9,7 @@
 //   node scripts/build-pages-head.mjs              빌드 + 커밋 "build(pages): <HEAD> 트리로 빌드"
 //   node scripts/build-pages-head.mjs --no-commit  빌드만
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,9 +45,12 @@ try {
   rmSync(idx, { force: true });
   symlinkSync(join(ROOT, "node_modules"), join(dir, "node_modules"), "junction");
 
-  console.log(`build-pages-head: ${head} 트리로 빌드 → docs/game`);
+  // 온라인 서버 주소(2026-11-20) — server/PUBLIC_URL(HEAD 트리)이 있으면 사이트에만 넣는다. 안드로이드 · 토스 빌드엔 없어 온라인 판이 꺼진다(src/online/config.ts)
+  const urlFile = join(dir, "server", "PUBLIC_URL");
+  const ONLINE_URL = existsSync(urlFile) ? readFileSync(urlFile, "utf8").trim() : "";
+  console.log(`build-pages-head: ${head} 트리로 빌드 → docs/game${ONLINE_URL ? ` · 온라인 ${ONLINE_URL}` : " · 온라인 꺼짐(server/PUBLIC_URL 없음)"}`);
   const b = spawnSync(process.execPath, ["node_modules/vite/bin/vite.js", "build", "--outDir", OUT, "--emptyOutDir"], {
-    cwd: dir, stdio: "inherit", env: { ...process.env, GITHUB_PAGES: "true", VITE_QA_BUILD: "true" },
+    cwd: dir, stdio: "inherit", env: { ...process.env, GITHUB_PAGES: "true", VITE_QA_BUILD: "true", ...(ONLINE_URL ? { VITE_ONLINE_URL: ONLINE_URL } : {}) },
   });
   if (b.status !== 0) throw new Error("vite build 실패");
 } finally {

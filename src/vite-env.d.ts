@@ -7,6 +7,8 @@ declare module "*.css" {
 
 interface ImportMetaEnv {
   readonly VITE_COMMUNITY_URL?: string;
+  /** 온라인(접속자 · 채팅 · 랭킹) 서버 — 사이트 빌드만 넣는다(src/online/config.ts) */
+  readonly VITE_ONLINE_URL?: string;
   /** "true" 면 QA 빌드 — CI 디버그 APK · GitHub Pages 데모. 출시 빌드는 비워 둔다 (progression/storage.ts QA_BUILD) */
   readonly VITE_QA_BUILD?: string;
   /** 토스 미니앱 보상형 광고 그룹 ID (앱인토스 콘솔 발급). 비어 있으면 토스에서도 광고 자리를 숨긴다 */

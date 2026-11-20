@@ -8,6 +8,7 @@ import { installUiSfx } from "./ui/sfx";
 import { installWebFrame } from "./ui/webFrame";
 import { applyArtStyleClass } from "./ui/artStyle";
 import { bootGuard } from "./ui/perfGovernor";
+import { onlineUrl } from "./online/config";
 
 // 렌더보다 먼저 — 부팅 중 오류도 잡히도록
 installErrorLog();
@@ -24,3 +25,6 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>,
 );
+// 온라인(접속자 · 채팅 · 랭킹, src/online) — 서버 주소가 있을 때만 받아 띄운다(사이트 빌드만 · 개발은 localStorage 덮어쓰기). 없으면 받지도 않는다
+const online = onlineUrl();
+if (online) void import("./online/mount").then((m) => m.mountOnline(online)).catch(() => undefined);

@@ -1,0 +1,74 @@
+name: Deploy online server (Cloudflare Workers)
+
+# 총피하기 온라인 서버(접속자 · 채팅 · 랭킹) — server/ 가 바뀌면 Cloudflare Workers 에 배포한다.
+# 저장소 Settings → Secrets and variables → Actions 에 CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID 가 있어야 한다.
+# 없으면 실패 대신 건너뛴다(요약에 안내). 처음 한 번은 Actions 탭에서 'Run workflow' 로 돌려도 된다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/server.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: online-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Skip until Cloudflare secrets are set
+        if: env.CF_TOKEN == '' || env.CF_ACCOUNT == ''
+        run: |
+          echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID 시크릿이 없어 배포를 건너뜁니다(server/README.md)."
+          echo "### 온라인 서버 배포 건너뜀" >> "$GITHUB_STEP_SUMMARY"
+          echo "저장소 Settings → Secrets and variables → Actions 에 \`CLOUDFLARE_API_TOKEN\` · \`CLOUDFLARE_ACCOUNT_ID\` 를 넣은 뒤 이 워크플로를 다시 돌리세요." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install wrangler
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+
+      - name: Deploy
+        id: deploy
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          npx wrangler deploy 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Health check and summary
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        run: |
+          url="${{ steps.deploy.outputs.url }}"
+          echo "### 온라인 서버 배포됨" >> "$GITHUB_STEP_SUMMARY"
+          echo "주소: \`$url\` — 이 주소를 server/PUBLIC_URL 에 한 줄로 넣고 사이트를 다시 빌드하면 게임에 온라인 판이 켜집니다." >> "$GITHUB_STEP_SUMMARY"
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "$url/healthz"; then echo; echo "healthz ok" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            sleep 5
+          done
+          echo "healthz 응답 없음" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

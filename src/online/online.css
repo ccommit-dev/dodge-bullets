@@ -1,0 +1,74 @@
+/* 온라인 판 (2026-11-20) — 게임 크림 · 진갈색 결. 모바일은 화면 오른쪽, PC 웹은 460px 기둥 안쪽 오른쪽(html.web-frame). 글자 13px 이상 */
+.dbo-root { position: fixed; inset: 0; z-index: 9000; pointer-events: none; font-family: "Jua", system-ui, sans-serif; color: #3b2415; }
+html.web-frame .dbo-root { left: 50%; right: auto; width: min(100vw, 460px); transform: translateX(-50%); }
+.dbo-root * { box-sizing: border-box; }
+
+/* 오른쪽 가장자리 탭 — 사냥터 하늘 높이(지갑 줄 · 아래 탭 · 전장 발 자리를 피한다) */
+.dbo-tab { pointer-events: auto; position: absolute; right: 0; top: 30%; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 42px; padding: 7px 0 6px; border: 2px solid #3b2415; border-right: 0; border-radius: 12px 0 0 12px; background: #fff3dc;
+  box-shadow: -2px 3px 0 rgba(59, 36, 21, .25); color: #3b2415; font: inherit; cursor: pointer; }
+.dbo-tab b { font-size: 16px; line-height: 1; }
+.dbo-tab small { font-size: 13px; line-height: 1; letter-spacing: -.06em; }
+.dbo-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f9e44; box-shadow: 0 0 0 2px rgba(47, 158, 68, .25); }
+.dbo-root.is-offline .dbo-dot { background: #b0a090; box-shadow: none; }
+.dbo-new { position: absolute; left: -9px; top: -9px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e03131; color: #fff;
+  font: 13px/20px "Jua", sans-serif; font-style: normal; text-align: center; }
+.dbo-root.is-open .dbo-tab { visibility: hidden; }
+
+/* 판 — 오른쪽에서 밀려 나오는 시트 */
+.dbo-panel { pointer-events: auto; position: absolute; right: 6px; top: 72px; bottom: 96px; width: min(320px, calc(100% - 12px)); display: flex; flex-direction: column;
+  border: 3px solid #3b2415; border-radius: 16px; background: #fff3dc; box-shadow: 0 6px 0 rgba(59, 36, 21, .3);
+  transform: translateX(calc(100% + 12px)); transition: transform .22s cubic-bezier(.2, .8, .3, 1); visibility: hidden; overflow: hidden; }
+.dbo-root.is-open .dbo-panel { transform: none; visibility: visible; }
+.dbo-head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 6px 12px; border-bottom: 2px solid #e2cfa6; }
+.dbo-head strong { flex: 1 1 auto; font-size: 16px; white-space: nowrap; }
+.dbo-name { max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 9px; border: 2px solid #c9a46a; border-radius: 999px;
+  background: #fff8e6; color: #3b2415; font-family: inherit; font-size: 14px; line-height: 1.2; cursor: pointer; }
+.dbo-close { flex: 0 0 auto; width: 32px; height: 32px; border: 2px solid #3b2415; border-radius: 50%; background: #fff8e6; color: #3b2415; font: 20px/1 sans-serif; cursor: pointer; }
+.dbo-tabs { display: flex; gap: 4px; padding: 6px 8px; }
+.dbo-tabs button { flex: 1 1 0; min-height: 34px; border: 2px solid #c9a46a; border-radius: 10px; background: #fff8e6; color: #4a3020; font-family: inherit; font-size: 14px; cursor: pointer; }
+.dbo-tabs button.on { border-color: #1d4e22; background: #2f9e44; color: #fff; }
+.dbo-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 10px 8px; }
+.dbo-status { margin: 0; padding: 0 10px 8px; font-size: 13px; color: #6b4a26; }
+
+/* 랭킹 */
+.dbo-board h3 { margin: 6px 0 4px; font-size: 15px; }
+.dbo-board ol { margin: 0 0 8px; padding: 0; list-style: none; }
+.dbo-board li { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; font-size: 14px; }
+.dbo-board li:nth-child(odd) { background: #fbe9c6; }
+.dbo-board li.me { background: #d3f9d8; outline: 2px solid #2f9e44; }
+.dbo-rk { width: 22px; text-align: center; font-weight: 900; color: #7a4a1b; }
+.dbo-nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbo-val { font-weight: 900; }
+.dbo-empty { color: #6b4a26; font-size: 14px; }
+.dbo-note { margin: 4px 0 0; font-size: 13px; color: #6b4a26; }
+
+/* 채팅 */
+.dbo-view-chat { display: flex; flex-direction: column; padding-bottom: 6px; }
+.dbo-chat { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.dbo-chat li { padding: 3px 2px; font-size: 14px; line-height: 1.4; word-break: break-all; }
+.dbo-chat time { margin-right: 5px; color: #7a5a30; font-size: 13px; }
+.dbo-chat b { margin-right: 5px; color: #1d4e22; }
+.dbo-chat li.dbo-feed { color: #7a3a08; }
+.dbo-chat-form { display: flex; gap: 4px; padding-top: 6px; }
+.dbo-chat-form input { flex: 1 1 auto; min-width: 0; height: 38px; padding: 0 10px; border: 2px solid #c9a46a; border-radius: 10px; background: #fff; color: #3b2415; font-family: inherit; font-size: 15px; }
+.dbo-chat-form button { height: 38px; padding: 0 12px; border: 2px solid #1d4e22; border-radius: 10px; background: #2f9e44; color: #fff; font-family: inherit; font-size: 14px; cursor: pointer; }
+.dbo-chat-form button:disabled { opacity: .55; cursor: default; }
+
+/* 접속자 */
+.dbo-who { margin: 0; padding: 0; list-style: none; }
+.dbo-who li { display: flex; justify-content: space-between; gap: 8px; padding: 7px 6px; border-bottom: 1px dashed #e2cfa6; font-size: 15px; }
+.dbo-who li span { color: #7a4a1b; font-size: 14px; }
+.dbo-who li.me b::after { content: " (나)"; color: #1d6e2a; font-size: 13px; }
+
+/* 기록 소식 — 화면 위 가운데, 누르지 못하게(게임 조작 그대로) */
+.dbo-toasts { position: absolute; left: 50%; top: 64px; width: min(340px, calc(100% - 24px)); transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.dbo-toast { padding: 7px 12px; border: 2px solid #3b2415; border-radius: 12px; background: #fff3dc; box-shadow: 0 3px 0 rgba(59, 36, 21, .25);
+  font-size: 14px; text-align: center; animation: dbo-in .25s ease-out both; }
+@keyframes dbo-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+@media (max-height: 700px) {
+  .dbo-tab { top: 26%; width: 38px; }
+  .dbo-panel { top: 56px; bottom: 80px; }
+}
+@media (prefers-reduced-motion: reduce) { .dbo-panel { transition: none; } .dbo-toast { animation: none; } }
