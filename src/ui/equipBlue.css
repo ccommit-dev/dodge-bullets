@@ -1,0 +1,91 @@
+/* 장비창 3판 — 파란 무대 · 꽉 찬 등급 타일 (2026-11-20, 사용자: "느낌이 아직 너무 많이 다름 더 많이 차용" + 참고 장비 화면).
+ * 원칙만 따른다(모습 · 캐릭터 · 아이콘은 베끼지 않는다):
+ * - 판: 밝은 하늘색 → 짙은 파랑 세로 그라데이션 + 빛살, 짙은 남색 굵은 테. 크림 · 갈색 나무 판(ui-polish)을 덮는다
+ * - 주인공 무대: 가운데 동그란 빛(하늘색 원판 + 고리) — 캐릭터가 빛 위에 선다
+ * - 슬롯 · 가방 칸: 등급색으로 꽉 찬 둥근 정사각(--t2 → --t, ui/tiers.css 토큰) · 짙은 남색 3px 테 · 안쪽 흰 테 · 아래 그림자.
+ *   Lv · 강화(+n)는 오른쪽 위 흰 글자 남색 테, 칸 이름은 아래 남색 띠. 빈 칸은 반투명 남색 · 점선
+ * - 가방: 짙은 남색 판에 5열. 정렬 단추는 하늘색, 대장간은 주황
+ * 끌어다 놓기 · 장착 동작(EquipWindow.tsx)은 그대로 — 모양만. 맨 뒤 */
+.titans-layer .equip-window {
+  --eb-ink: #14234d;
+  border: 3px solid var(--eb-ink) !important; border-radius: 18px !important;
+  background:
+    repeating-conic-gradient(from 0deg at 50% 32%, rgba(255, 255, 255, .07) 0 10deg, transparent 10deg 24deg),
+    radial-gradient(circle at 50% 30%, #8fd6ff 0%, #3aa0f0 38%, #1f63d6 78%, #1a4fb8 100%) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25), 0 4px 0 rgba(10, 20, 60, .45) !important;
+}
+/* 무대 — 동그란 빛 원판 위에 */
+.titans-layer .equip-window .equip-hero {
+  border-radius: 16px !important;
+  background:
+    radial-gradient(ellipse 46% 13% at 50% 84%, rgba(255, 255, 255, .55), rgba(173, 230, 255, .35) 55%, transparent 72%),
+    radial-gradient(circle at 50% 52%, rgba(200, 240, 255, .55) 0%, rgba(120, 200, 255, .25) 38%, transparent 64%) !important;
+  box-shadow: none !important;
+}
+.titans-layer .equip-window .equip-pad { background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, .8), rgba(140, 220, 255, .35) 55%, transparent 72%) !important; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45), 0 0 22px rgba(180, 235, 255, .7) !important; }
+
+/* 슬롯 · 가방 칸 공통 — 꽉 찬 등급 타일 */
+.titans-layer .equip-window :is(.equip-slot, .equip-bag .equip-item) {
+  border: 3px solid var(--eb-ink) !important; border-radius: 13px !important;
+  background: linear-gradient(180deg, var(--t2, #9ad8ff) 0%, var(--t, #3b9ae8) 100%) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5), inset 0 -6px 0 rgba(0, 0, 0, .14), 0 3px 0 var(--eb-ink) !important;
+}
+.titans-layer .equip-window :is(.equip-slot, .equip-bag .equip-item):not([data-tier]) { --t: #3b9ae8; --t2: #9ad8ff; }
+.titans-layer .equip-window .equip-slot { width: 66px !important; height: 66px !important; padding: 0 0 10px !important; }
+.titans-layer .equip-window .equip-doll { grid-template-columns: 66px minmax(0, 1fr) 66px !important; }
+.titans-layer .equip-window .equip-slot img { width: 46px !important; height: 46px !important; filter: drop-shadow(0 2px 0 rgba(20, 35, 77, .55)) !important; }
+/* 강화 · Lv — 오른쪽 위 흰 글자, 남색 테 */
+.titans-layer .equip-window :is(.equip-slot em, .equip-bag .equip-item span em) {
+  color: #fff !important; font-weight: 900;
+  text-shadow: -1.5px 0 var(--eb-ink), 1.5px 0 var(--eb-ink), 0 -1.5px var(--eb-ink), 0 1.5px var(--eb-ink), 1px 1px var(--eb-ink), -1px -1px var(--eb-ink) !important;
+}
+.titans-layer .equip-window .equip-slot em { top: 1px !important; right: 4px !important; }
+/* 칸 이름 — 아래 남색 띠 */
+.titans-layer .equip-window .equip-slot small {
+  bottom: -1px !important; left: -1px !important; right: -1px !important; padding: 2px 0 1px; border-radius: 0 0 10px 10px;
+  background: var(--eb-ink); color: #fff !important; text-shadow: none !important; line-height: 1.05 !important;
+}
+.titans-layer .equip-window .equip-slot.is-empty {
+  background: rgba(20, 35, 77, .35) !important; border: 3px dashed rgba(255, 255, 255, .7) !important; box-shadow: none !important;
+}
+.titans-layer .equip-window .equip-slot.is-empty small { background: none; color: #fff !important; top: 50% !important; bottom: auto !important; translate: 0 -50%; }
+.titans-layer .equip-window .equip-slot.selected { outline: 3px solid #fde047; outline-offset: 1px; }
+/* 등급 이름표(::after, tiers.css — verify-tier-visuals 가 13px 로 읽는다) — 가운데 위 알약 → 왼쪽 위 모서리 꼬리표(참고 그림의 종류 표시 자리) */
+.titans-layer .equip-window :is(.equip-slot, .equip-item)[data-tier]::after { top: -8px !important; left: -6px !important; right: auto !important; border: 2px solid var(--eb-ink); box-shadow: none !important; z-index: 3; }
+/* +n 강화 — tiers.css 의 짙은 네모 바탕을 걷고 오른쪽 위 흰 글자로 */
+.titans-layer .equip-window .equip-slot[data-tier] > em, .titans-layer .equip-window .equip-slot > em { top: 2px !important; bottom: auto !important; right: 4px !important; padding: 0 !important; background: none !important; border-radius: 0 !important; line-height: 1.1 !important; }
+/* 일반(N) 은 회색이면 탁하다 — 연두 타일(등급 차례: 일반 연두 · 희귀 파랑 · 영웅 보라 · 전설 주황 · 신화 빨강 · 초월 무지개) */
+.titans-layer .equip-window :is(.equip-slot, .equip-bag .equip-item)[data-tier="N"] { --t: #3fae4a; --t2: #a6ec8f; }
+/* tiers.css 의 판(--tf-plate) · 테를 꽉 찬 타일이 덮는다 — 같은 특이도라 뒤에서 한 번 더 */
+.titans-layer .equip-window :is(.equip-slot, .equip-bag .equip-item)[data-tier]:not([data-tier="LR"]) { background: linear-gradient(180deg, var(--t2) 0%, var(--t) 100%) !important; border: 3px solid var(--t-deep, var(--eb-ink)) !important; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5), inset 0 -6px 0 rgba(0, 0, 0, .14), 0 3px 0 var(--eb-ink) !important; border-radius: 13px !important; }
+.titans-layer .equip-window .equip-slot[data-tier] > small, .titans-layer .equip-window .equip-bag .equip-item[data-tier] > span { background: var(--eb-ink) !important; }
+
+/* 능력치 칩 — 남색 알약 */
+.titans-layer .equip-window .equip-stat { background: rgba(20, 35, 77, .85) !important; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .35) !important; }
+.titans-layer .equip-window .equip-stat small { color: #bfe3ff !important; }
+
+/* 가방 — 짙은 남색 판 · 5열 */
+.titans-layer .equip-window .equip-bag {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 7px !important; padding: 8px !important;
+  background: #1c2f66 !important; border: 2px solid var(--eb-ink); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .35) !important;
+}
+.titans-layer .equip-window .equip-bag .equip-item { aspect-ratio: 1; padding: 0 0 2px !important; overflow: hidden; }
+.titans-layer .equip-window .equip-bag .equip-item img { width: 70% !important; height: 70% !important; filter: drop-shadow(0 2px 0 rgba(20, 35, 77, .55)) !important; }
+.titans-layer .equip-window .equip-bag .equip-item span {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 0; background: rgba(20, 35, 77, .82); color: #fff !important; text-align: center;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.titans-layer .equip-window .equip-bag .equip-item.on { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5), 0 0 0 3px #fde047, 0 3px 0 var(--eb-ink) !important; }
+.titans-layer .equip-window .equip-bag .equip-item.on::before { background: #22c55e !important; color: #fff !important; border: 2px solid var(--eb-ink); }
+.titans-layer .equip-window .equip-empty, .titans-layer .equip-window .equip-shop-link { color: #e0f2ff !important; }
+
+/* 단추 줄 — 정렬 하늘색 · 대장간 주황 */
+.titans-layer .equip-window .equip-bag-bar button { border: 3px solid var(--eb-ink) !important; border-radius: 11px !important; box-shadow: 0 3px 0 var(--eb-ink) !important; }
+.titans-layer .equip-window .equip-bag-bar .equip-sort { background: linear-gradient(180deg, #7ee8ff, #22b8ee) !important; color: var(--eb-ink) !important; }
+.titans-layer .equip-window .equip-bag-bar .equip-forge-link { background: linear-gradient(180deg, #ffd166, #f59e0b) !important; color: var(--eb-ink) !important; }
+
+/* 장비 설명 줄 — 파란 판 위 흰 글자 */
+.titans-layer .equip-window ~ .equip-info, .titans-layer .equip-window .equip-info { color: #fff; }
+/* 가방 칸은 overflow hidden(이름 띠) — 꼬리표를 칸 안 왼쪽 위로 */
+.titans-layer .equip-window .equip-bag .equip-item[data-tier]::after { top: 2px !important; left: 2px !important; }
+.titans-layer .equip-window .equip-bag .equip-item.on[data-tier]::after { left: auto !important; right: 2px !important; }
