@@ -8,6 +8,7 @@
 import sharp from "sharp";
 import { mkdirSync, readdirSync } from "node:fs";
 import { popRelicIcon, relicTable } from "./relic-icon-pop.mjs";
+import { sticker } from "./lib/sticker.mjs";
 
 const SRC = process.env.RELIC_SRC ?? "art-gen/out/b3d-relics";   // 시험 렌더는 RELIC_SRC · RELIC_DST 로 따로 (2026-11-20)
 const DST = process.env.RELIC_DST ?? "public/titans/relics";
@@ -24,6 +25,8 @@ for (const f of readdirSync(SRC).filter((x) => x.endsWith(".png")).sort()) {
   const trimmed = await sharp(`${SRC}/${f}`).trim({ threshold: 1 }).png().toBuffer();
   const fit = await sharp(trimmed).resize(Math.round(W * (1 - 2 * PAD)), Math.round(W * (1 - 2 * PAD)), { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
   let img = await sharp({ create: { width: W, height: W, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: fit, gravity: "center" }]).png().toBuffer();
+  // 스티커 외곽선(2026-11-20, lib/sticker) — 별빛 · 테두리 빛(pop)보다 먼저: 나중이면 빛 번짐까지 감싸 외곽선이 울퉁불퉁했다. 유물만, RELIC_STICKER=0 이면 끔
+  if (RELIC[name] && process.env.RELIC_STICKER !== "0") img = await sticker(img, { width: 6 });
   if (RELIC[name]) { img = await popRelicIcon(img, RELIC[name].family, RELIC[name].tier); popped += 1; }
   await sharp(img).png({ palette: true, quality: 92, compressionLevel: 9 }).toFile(f.startsWith("quest-") ? `public/titans/quests/${f.slice(6)}` : `${DST}/${f}`);
   n += 1;

@@ -1441,7 +1441,7 @@ for name in names:
         if _key:
             _key.data.energy *= 1.25
     C.ortho_camera((0.0, 0.0), scale, yaw_deg=0, elev_deg=elev)
-    C.FACET = 10
+    C.FACET = int(os.environ.get('RELIC_FACET', '10'))   # 0 = 매끈한 면(아이콘 3판 — 각진 면이 셀 계단에서 얼룩졌다)
     try:
         fn(None)
     finally:

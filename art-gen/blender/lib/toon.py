@@ -14,6 +14,7 @@ LIGHT = (-0.45, -0.62, 0.64)          # 화면 왼쪽 위 앞(카메라는 -Y �
 STEPS = ((0.0, 0.84), (0.36, 1.05), (0.66, 1.18))   # (법선 · 빛 각도 0~1, 밝기) — 그늘 · 중간 · 밝은 면. 예전 렌더는 조명이 바탕색보다 밝게 비춰 1 이 기준이면 어두웠다
 # 계단을 환경 변수로 덮는다(2026-11-20, 유물 · 칭호 아이콘) — "위치:밝기,…". 아이콘은 밝게 + 빛 받는 끝에 밝은 넷째 단(반짝임)을 둔다.
 # 캐릭터 렌더는 TOON_STEPS 를 안 넘겨 그대로
+SPEC = tuple(float(x) for x in os.environ['TOON_SPEC'].split(':')) if os.environ.get('TOON_SPEC') else None   # "문턱:세기" — 예: 0.9:0.85
 if os.environ.get('TOON_STEPS'):
     STEPS = tuple(tuple(float(x) for x in kv.split(':')) for kv in os.environ['TOON_STEPS'].split(','))
 OUTLINE_MUL = float(os.environ.get('TOON_OUTLINE', '2.2' if os.environ.get('ART_STYLE', '') == 'pixel' else '1.3'))   # 도트는 굵게 — 가는 칼날이 점선으로 끊겼다(89px)
@@ -64,9 +65,21 @@ def _toon_material(m):
     else:
         mix.inputs['A'].default_value = base.default_value
     nt.links.new(ramp.outputs['Color'], mix.inputs['B'])
+    color_out = mix.outputs['Result']
+    if SPEC:   # 흰 반짝임(2026-11-20 아이콘 3판) — 빛을 정면으로 받는 끝만 흰색 쪽으로(곱하기로는 짙은 색이 희어지지 않는다)
+        sr = N('ShaderNodeValToRGB'); sr.color_ramp.interpolation = 'CONSTANT'
+        se = sr.color_ramp.elements
+        se[0].position, se[0].color = 0.0, (0, 0, 0, 1)
+        se[1].position, se[1].color = SPEC[0], (SPEC[1], SPEC[1], SPEC[1], 1)
+        nt.links.new(mr.outputs['Result'], sr.inputs['Fac'])
+        wm = N('ShaderNodeMix'); wm.data_type = 'RGBA'; wm.blend_type = 'MIX'
+        nt.links.new(sr.outputs['Color'], wm.inputs['Factor'])
+        nt.links.new(color_out, wm.inputs['A'])
+        wm.inputs['B'].default_value = (1, 1, 1, 1)
+        color_out = wm.outputs['Result']
     em = N('ShaderNodeEmission')
     em.inputs['Strength'].default_value = 1.0
-    nt.links.new(mix.outputs['Result'], em.inputs['Color'])
+    nt.links.new(color_out, em.inputs['Color'])
     shader = em.outputs['Emission']
     es = b.inputs['Emission Strength']
     if es.is_linked or es.default_value > 0:

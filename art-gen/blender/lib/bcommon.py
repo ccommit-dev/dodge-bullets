@@ -7,9 +7,10 @@
 import bpy
 import bmesh
 import math
+import os
 from mathutils import Vector, Matrix, Euler
 
-INK = '#3b2415'
+INK = os.environ.get('INK_COLOR', '#3b2415')   # 아이콘은 거의 검정(2026-11-20 유물 · 칭호 3판 — 스티커 그림결)
 
 
 def reset():
