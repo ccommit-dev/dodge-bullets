@@ -50,13 +50,14 @@
 .titans-shop > .skill-learn-card:is(.slot-locked, .unlearned) { opacity: 1; }
 .titans-shop > .skill-learn-card.slot-locked .skill-icon { filter: none; }
 .titans-shop > .skill-learn-card.slot-locked:not(.is-open):not(:has(.skill-level-tag)) > .skill-icon { filter: saturate(.72); }
-.skill-learn-card > .skill-lock-badge {
-  position: absolute; z-index: 2; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #f3e6c8; border-radius: 50%;
-  background: #4a3020; color: #fde68a; box-shadow: 0 2px 0 rgba(59, 36, 21, .35); pointer-events: none;
-  left: calc(50% + 12px); top: 40px;
+/* 잠긴 칸 자물쇠 — JSX 가 아니라 가상 요소(2026-11-20): 카드 12장마다 JSX 4개(i · svg · path · rect)를 더했더니 개발 서버 jsxDEV 가
+   사냥터를 다시 그릴 때마다 늘어 장착 컷인이 약 0.8초 늦게 떴다(verify-gacha 1.5초 문턱). 위치는 카드(position relative) 기준 — 아이콘 오른쪽 아래.
+   펼친 판은 칸 꼬리표가 자물쇠와 '연습실에서 열기'를 말한다 */
+.titans-shop > .skill-learn-card.slot-locked:not(.is-open) > .skill-card-actions::before {
+  content: ""; position: absolute; z-index: 2; left: calc(50% + 12px); top: 40px; width: 24px; height: 24px; box-sizing: border-box;
+  border: 2px solid #f3e6c8; border-radius: 50%; box-shadow: 0 2px 0 rgba(59, 36, 21, .35); pointer-events: none;
+  background: #4a3020 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 7V5.2a3 3 0 0 1 6 0V7' fill='none' stroke='%23fde68a' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='3' y='7' width='10' height='7.5' rx='1.8' fill='%23fde68a'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
 }
-.skill-learn-card > .skill-lock-badge svg { width: 13px; height: 13px; }
-.skill-learn-card.is-open > .skill-lock-badge { display: none; }   /* 펼친 판은 칸 꼬리표가 자물쇠와 '연습실에서 열기'를 말한다 */
 /* 단추 하나 — 판 바닥에 꽉 */
 .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions { display: flex !important; flex-direction: row !important; width: 100%; margin-top: auto !important; }
 .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { flex: 1 1 0; min-width: 0 !important; min-height: 32px !important; padding: 2px 4px !important; border-radius: 10px !important; font-size: 13px !important; }
@@ -97,6 +98,5 @@
   .titans-shop > .titans-card.skill-learn-card:not(.is-open) { gap: 3px !important; padding: 5px 5px 6px !important; }
   .titans-shop > .skill-learn-card:not(.is-open) > .skill-card-actions > button.is-main { min-height: 28px !important; }
   .skill-preset-card > .skill-auto-equip { min-height: 34px; margin-top: 5px !important; font-size: 14px !important; }
-  .skill-learn-card > .skill-lock-badge { width: 20px; height: 20px; left: calc(50% + 8px); top: 26px; }
-  .skill-learn-card > .skill-lock-badge svg { width: 11px; height: 11px; }
+  .titans-shop > .skill-learn-card.slot-locked:not(.is-open) > .skill-card-actions::before { width: 20px; height: 20px; left: calc(50% + 8px); top: 26px; background-size: 11px 11px; }
 }
