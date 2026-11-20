@@ -36,6 +36,7 @@ import "./ui/costumes.css";   // 2026-11-19 동물 옷 스킨 — 옷을 입으�
 import "./ui/equipBlue.css";   // 2026-11-20 장비창 3판 — 파란 무대 · 꽉 찬 등급 타일 · 가방 5열 (맨 뒤)
 import "./ui/allyStage.css";   // 2026-11-20 동료 목록 = 파란 무대 · 남색 판 4열 카드 · 큰 노란 출전 단추 (맨 뒤)
 import "./ui/perkBlue.css";   // 2026-11-20 성문 방어 레벨 업 카드 2판 — 남색 카드 · 하늘 그림 판 · NEW 꼬리표 (맨 뒤)
+import "./ui/gachaBanner.css";   // 2026-11-20 동료 뽑기 배너 2판 — 자홍 점무늬 판 · 노란 리본 · 빛살 · 1회 노랑/10회 초록 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";

@@ -1,0 +1,47 @@
+/* 동료 뽑기 배너 2판 (2026-11-20, 사용자: "리소스 합성 ui 모두 다반영" → '뽑기 배너' 선택. 참고 게임 배너의 구도 · 원칙만 — 글자 · 모습은 베끼지 않는다)
+ * - 판: 크림 → 자홍 물방울 점무늬 판 · 굵은 남색 테
+ * - 머리: 픽업 등급 배지 → 큰 노란 리본 띠(양끝 접힌 꼬리)
+ * - 그림: 뒤로 노란 · 흰 빛살 폭발, 픽업 동료 둘을 크게
+ * - 단추: 1회 노랑 · 10회 초록, 굵은 남색 테 · 아래 그림자. 첫 10연 배지는 빨강
+ * 동작 · 글자(TitansGame gacha-stage-page)는 그대로. 맨 뒤 */
+.gacha-stage-page { --gb-ink: #14234d; }
+.gacha-stage-page .gacha-stage-hero {
+  border: 3px solid var(--gb-ink) !important; border-radius: 16px !important; overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .16) 1.6px, transparent 2.2px) 0 0 / 12px 12px,
+    linear-gradient(180deg, #a21caf 0%, #db2777 55%, #f97316 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .25), 0 4px 0 var(--gb-ink) !important;
+}
+/* 빛살 폭발 — 예전 무지개 원판 자리 */
+.gacha-stage-page .gacha-stage-hero::before {
+  inset: 6% 6% 26% !important; border-radius: 50% !important; opacity: 1 !important; filter: none !important;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .95) 0%, rgba(255, 236, 140, .75) 22%, transparent 55%),
+    repeating-conic-gradient(from 0deg, rgba(255, 230, 120, .85) 0 9deg, transparent 9deg 22deg) !important;
+  -webkit-mask: radial-gradient(circle, #000 52%, transparent 70%); mask: radial-gradient(circle, #000 52%, transparent 70%);
+}
+/* 픽업 배지 → 노란 리본 띠 */
+.gacha-stage-page .gacha-rarity-badge {
+  position: relative; z-index: 3; padding: 6px 26px !important; border: 3px solid var(--gb-ink) !important; border-radius: 6px !important;
+  background: linear-gradient(180deg, #ffe066, #f5b400) !important; color: var(--gb-ink) !important; font-size: 17px !important; letter-spacing: .04em !important;
+  box-shadow: 0 4px 0 var(--gb-ink) !important;
+}
+.gacha-stage-page .gacha-rarity-badge::before, .gacha-stage-page .gacha-rarity-badge::after {
+  content: ""; position: absolute; top: 6px; width: 16px; height: 100%; background: #d99400; border: 3px solid var(--gb-ink); z-index: -1;
+}
+.gacha-stage-page .gacha-rarity-badge::before { left: -13px; border-right: 0; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 45% 50%); }
+.gacha-stage-page .gacha-rarity-badge::after { right: -13px; border-left: 0; clip-path: polygon(0 0, 100% 0, 55% 50%, 100% 100%, 0 100%); }
+.gacha-stage-page .gacha-stage-hero h2 { color: #fff !important; text-shadow: -2px 0 var(--gb-ink), 2px 0 var(--gb-ink), 0 -2px var(--gb-ink), 0 3px var(--gb-ink) !important; }
+.gacha-stage-page .gacha-stage-hero small { color: #fff3c4 !important; text-shadow: 0 1px 0 var(--gb-ink); }
+.gacha-stage-page .gacha-pickup-showcase .titan-ally-art { filter: drop-shadow(0 4px 0 rgba(20, 35, 77, .45)); }
+/* 1회 노랑 · 10회 초록 */
+.gacha-stage-page .gacha-page-actions button {
+  border: 3px solid var(--gb-ink) !important; border-radius: 12px !important; color: var(--gb-ink) !important; box-shadow: 0 4px 0 var(--gb-ink) !important; text-shadow: none !important;
+}
+.gacha-stage-page .gacha-page-actions button:first-child { background: linear-gradient(180deg, #ffe066, #f5b400) !important; }
+.gacha-stage-page .gacha-page-actions button:nth-child(2) { background: linear-gradient(180deg, #b6f37a, #3fb83a) !important; }
+.gacha-stage-page .gacha-page-actions button :is(b, small) { color: var(--gb-ink) !important; }
+.gacha-stage-page .gacha-page-actions button:disabled { filter: grayscale(.6) brightness(.9); }
+.gacha-stage-page .gacha-page-actions .first-ten-badge { background: #e11d48 !important; color: #fff !important; border: 2px solid var(--gb-ink); }
+/* 월간 한정 띠도 같은 판으로 */
+.gacha-stage-page .limited-banner { border: 3px solid var(--gb-ink) !important; box-shadow: 0 4px 0 var(--gb-ink) !important; }
