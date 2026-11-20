@@ -1,0 +1,77 @@
+/* 동료 목록 = 파란 무대 (2026-11-20, 사용자: "리소스 합성 ui 모두 다반영" → '동료 목록 = 격납고 무대' 선택. 참고 게임 화면의 구도 · 원칙만 — 모습 · 글자는 베끼지 않는다)
+ * - 출전 무대(.party-stage): 오두막 나무 무대 → 밤하늘 파랑 무대 + 바닥 격자 빛, 동료마다 빛나는 둥근 발판(나무 그루터기 그림 대신 CSS 원판 · 고리)
+ * - 카드 격자: 짙은 남색 판 위 4열. 카드 = 위 그림 칸은 등급색으로 꽉 참(--t2 → --t, tiers.css) · 아래는 남색 띠에 흰 이름 · 별, 굵은 남색 테
+ * - 펼친 카드(큰 무대): 파란 빛 무대 · 둥근 발판 · 큰 노란 주 단추(출전) — 예전 초록 단추 · 오두막 그림
+ * 동작 · 단추 · 글자는 그대로(verify-ui-merge 접힌 카드 단추 하나 · tier-visuals 등급 이름 13px · card-fold) — 모양만. 맨 뒤 */
+.hub-sheet .titans-shop:has(.ally-roster-grid) { --as-ink: #14234d; }
+
+/* ── 출전 무대 ── */
+.hub-sheet .titans-shop:has(.ally-roster-grid) .party-stage {
+  border: 3px solid var(--as-ink) !important;
+  background:
+    linear-gradient(180deg, transparent 58%, rgba(120, 210, 255, .18) 58.5%, transparent 59.5%),
+    repeating-linear-gradient(90deg, transparent 0 34px, rgba(140, 220, 255, .14) 34px 35px),
+    radial-gradient(ellipse 70% 60% at 50% 30%, #3b8de0 0%, #1f4fa8 55%, #142c66 100%) !important;
+  box-shadow: inset 0 -30px 30px -18px rgba(5, 15, 45, .6), 0 3px 0 var(--as-ink) !important;
+}
+.hub-sheet .titans-shop:has(.ally-roster-grid) .party-stage-pedestal { display: none; }
+.hub-sheet .titans-shop:has(.ally-roster-grid) .party-stage-slot::before {
+  display: block !important; bottom: 10px; width: 78%; height: 18px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(220, 245, 255, .95), rgba(110, 200, 255, .55) 55%, rgba(60, 140, 230, .15) 80%, transparent);
+  box-shadow: 0 0 0 2px rgba(150, 225, 255, .8), 0 0 14px rgba(120, 210, 255, .8);
+}
+.hub-sheet .titans-shop:has(.ally-roster-grid) .party-stage-slot.empty::before { display: block !important; opacity: .35; }
+.hub-sheet .titans-shop:has(.ally-roster-grid) .party-stage-slot .titan-ally-art { margin-bottom: 16px; }
+.hub-sheet .titans-shop:has(.ally-roster-grid) .party-stage-empty { color: #e0f2ff !important; }
+
+/* ── 카드 격자 = 남색 판 4열 ── */
+.hub-sheet .titans-shop .ally-roster-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px !important; padding: 8px; border-radius: 14px;
+  background: #1c2f66; border: 3px solid #14234d; box-shadow: inset 0 2px 8px rgba(0, 0, 0, .35);
+}
+.hub-sheet .titans-shop .ally-roster-grid .titans-card.ally-card:not(.is-open) {
+  gap: 0 !important; padding: 0 0 5px !important; overflow: hidden;
+  border: 3px solid var(--t-deep, #14234d) !important; border-radius: 12px !important;
+  background: #24397a !important; box-shadow: 0 3px 0 #0c1736 !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .titans-card.ally-card.rarity-lr:not(.is-open) { border: 3px solid #4338ca !important; background: #24397a !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .titan-ally-art {
+  height: 70px !important; border-radius: 9px 9px 0 0 !important;   /* 테두리는 tiers.css 등급 틀 그대로(verify-tier-visuals 등급마다 틀) */
+  background: linear-gradient(180deg, var(--t2, #9ad8ff) 0%, var(--t, #3b9ae8) 100%) !important;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .14) !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.rarity-lr:not(.is-open) > .titan-ally-art { background: linear-gradient(160deg, #5eead4, #a78bfa 45%, #f0abfc 75%, #fde68a) !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.not-owned:not(.is-open) > .titan-ally-art { background: #3a4a78 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > .ally-card-badges { top: 0; left: 0; right: 0; height: 70px; }
+/* 이름 · 등급 · 별 — 남색 바탕 흰 글자 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div:not(.ally-card-actions):not(.titan-ally-art) { padding: 3px 3px 0 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-name,
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) > div > strong { color: #fff !important; letter-spacing: -.02em; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-stars { color: #fde047 !important; text-shadow: 0 1px 0 #0c1736; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions { padding: 0 4px; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-card-actions > button { border: 2px solid #0c1736 !important; box-shadow: 0 2px 0 #0c1736 !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.in-party:not(.is-open) { border-color: #22c55e !important; }
+.hub-sheet .titans-shop .ally-roster-grid > .ally-pager { color: #e0f2ff; }
+
+/* ── 펼친 카드 = 큰 파란 무대 ── */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open { border: 3px solid #14234d !important; background: #24397a !important; color: #fff; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage {
+  border: 3px solid #14234d !important;
+  background:
+    radial-gradient(ellipse 40% 12% at 50% 88%, rgba(230, 248, 255, .9), rgba(120, 205, 255, .45) 55%, transparent 75%),
+    radial-gradient(circle at 50% 46%, rgba(160, 225, 255, .55), transparent 58%),
+    repeating-linear-gradient(90deg, transparent 0 34px, rgba(140, 220, 255, .12) 34px 35px),
+    radial-gradient(ellipse 80% 70% at 50% 30%, #3b8de0, #1f4fa8 60%, #142c66) !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage::before {
+  background: none !important; width: 150px; height: 26px; bottom: 10px; border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(170, 230, 255, .85), 0 0 18px rgba(120, 210, 255, .9), inset 0 0 12px rgba(255, 255, 255, .6);
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-detail-stage > em { background: rgba(20, 35, 77, .85) !important; color: #fff !important; }
+/* 주 단추(출전) — 큰 노랑 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > .ally-party-toggle:not(.benched-action) {
+  border: 3px solid #14234d !important; background: linear-gradient(180deg, #ffe066, #f5b400) !important; color: #14234d !important; text-shadow: none; box-shadow: 0 4px 0 #14234d !important;
+}
+.hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > button:not(.ally-party-toggle) { border: 3px solid #14234d !important; box-shadow: 0 3px 0 #14234d !important; }
+/* 쪽 표시 — 남색 판 위라 흰 글자(예전 크림 판용 짙은 글자는 안 보였다) */
+.hub-sheet .titans-shop .ally-roster-grid > .ally-pager :is(span, small, b) { color: #e0f2ff !important; }

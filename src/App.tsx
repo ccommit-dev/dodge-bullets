@@ -34,6 +34,7 @@ import "./ui/skill-grid.css";   // 2026-11-18 스킬 탭 단순화 1판 — 3열
 import "./ui/codexCompact.css";   // 2026-11-19 도감 촘촘하게 — 4열 · 꽉 찬 등급 타일 · 캐릭터 5장 초상 · 펫 · 칭호 (맨 뒤)
 import "./ui/costumes.css";   // 2026-11-19 동물 옷 스킨 — 옷을 입으면 투구 · 갑옷 · 견갑 그림은 옷 아래로
 import "./ui/equipBlue.css";   // 2026-11-20 장비창 3판 — 파란 무대 · 꽉 찬 등급 타일 · 가방 5열 (맨 뒤)
+import "./ui/allyStage.css";   // 2026-11-20 동료 목록 = 파란 무대 · 남색 판 4열 카드 · 큰 노란 출전 단추 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
