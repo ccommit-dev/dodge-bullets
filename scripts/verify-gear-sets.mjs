@@ -2,6 +2,7 @@
  * 무기 세트 파츠 (2026-11-04, 사용자: "나머지 부위 파츠 · 무기 속성에 맞는 파츠 모두 생성 · 상점에서 팔게 · 장비 성장 인벤토리에서 탈부착")
  *   node scripts/verify-gear-sets.mjs [캡처 폴더]   (vite dev 서버 5173 필요)
  * 그림 20장 · 효과(같은 무기만) · 상점 구매(낱개 · 세트 할인 · 보석 부족) · 끌어다 끼기 · 다시 눌러 해제 · 다시 들어와도 남는다 · 옛 저장.
+ * 2026-11-20 합성(사용자: "파츠에 등급 + 3개 합성"): 가진 파츠를 다시 사면 여분 · 여분 2 + 가진 것 = 한 등급 위 · 효과 상승 · 모자라면 못 함 · 신화에서 끝 · 다시 들어와도 남음.
  */
 import { existsSync } from "node:fs";
 // 저장 심기는 게임 없는 favicon 페이지에서 — 떠 있는 게임이 비동기로 옛 저장을 써 심은 값을 덮었다(전체 실행에서만 드물게: 골드 31 · 표본 0 · 창을 심었는데 검, 2026-11-04)
@@ -59,11 +60,14 @@ if (OUT) await page.screenshot({ path: `${OUT}/gear-shop.png` });
 await page.evaluate(() => document.querySelector('.gear-piece[data-gear-item="sword-helmet"]').click()); await afterBuy(200);   // 시드 2000 은 읽을 때 보석 ÷10(판 2) → 200
 let p = await saved();
 ok("낱개 구매: 보석 -30 · 보유 · 빈 칸이면 바로 낀다", net(p) === 170 && p.ownedGear.includes("sword-helmet") && p.equippedGear.helmet === "sword-helmet", JSON.stringify({ g: p.redGems, o: p.ownedGear, e: p.equippedGear }));
-ok("산 부위는 다시 못 산다", await page.evaluate(() => document.querySelector('.gear-piece[data-gear-item="sword-helmet"]').disabled));
-await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="sword"] .gear-set-buy').click()); await afterBuy(170);
+// 2026-11-20 사용자 "파츠에 등급 + 3개 합성" — 가진 부위를 다시 사면 여분(합성 재료). 예전 단언 "산 부위는 다시 못 산다"를 바꿨다
+await page.evaluate(() => document.querySelector('.gear-piece[data-gear-item="sword-helmet"]').click()); await afterBuy(170);
 p = await saved();
-ok("남은 4개 구매 = 120(낱개 값)", net(p) === 50 && p.ownedGear.length === 5, JSON.stringify({ g: p.redGems, n: p.ownedGear.length }));
-ok("보석이 모자라면 못 산다(50 < 120 세트)", await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="spear"] .gear-set-buy').disabled));
+ok("가진 부위를 다시 사면 여분 +1 · 보석 -30 · 보유 목록은 그대로", net(p) === 140 && (p.gearCopies ?? {})["sword-helmet"] === 1 && p.ownedGear.filter((x) => x === "sword-helmet").length === 1, JSON.stringify({ g: p.redGems, c: p.gearCopies }));
+await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="sword"] .gear-set-buy').click()); await afterBuy(140);
+p = await saved();
+ok("남은 4개 구매 = 120(낱개 값)", net(p) === 20 && p.ownedGear.length === 5, JSON.stringify({ g: p.redGems, n: p.ownedGear.length }));
+ok("보석이 모자라면 못 산다(20 < 120 세트)", await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="spear"] .gear-set-buy').disabled));
 await seed({ redGems: 1200 });
 await openShop();
 await page.evaluate(() => document.querySelector('.gear-set-card[data-gear-set="bow"] .gear-set-buy').click()); await afterBuy(120);
@@ -102,6 +106,36 @@ await page.evaluate(() => document.querySelector('.equip-slot[data-equip-slot="b
 await page.evaluate(() => document.querySelector(".equip-shop-link")?.click()); await sleep(700);
 const toShop = await page.evaluate(() => ({ cards: document.querySelectorAll(".gear-set-card").length }));
 ok("가방의 상점 칸 → 상점 장비(지금 무기 먼저)", toShop.cards >= 1, JSON.stringify(toShop));
+
+// ── 합성 (2026-11-20) ──
+const mfx = await page.evaluate(async () => {
+  const m = await import("/src/equipment/gearSets.ts");
+  const owned = ["sword-helmet", "autumn-gloves"];
+  const r1 = m.mergeGear("sword-helmet", owned, {}, { "sword-helmet": 2 });
+  const short = m.mergeGear("sword-helmet", owned, {}, { "sword-helmet": 1 });
+  const top = m.mergeGear("sword-helmet", owned, { "sword-helmet": "UR" }, { "sword-helmet": 9 });
+  const lim = m.mergeGear("autumn-gloves", owned, {}, { "autumn-gloves": 5 });
+  const all = m.mergeAllGear(owned, {}, { "sword-helmet": 7 });
+  return { r1, short, top, lim, all, n1: m.gearSetEffects({ helmet: "sword-helmet" }, "sword", {}, {}).tapMul, r: m.gearSetEffects({ helmet: "sword-helmet" }, "sword", {}, { "sword-helmet": "R" }).tapMul, nTxt: m.gearItemEffectText("sword-helmet", 0), rTxt: m.gearItemEffectText("sword-helmet", 0, "R") };
+});
+ok("합성 규칙: 여분 2 → 한 등급 위 · 1개면 못 함 · 신화 끝 · 한정 제외 · 모두 합성 3번(7 → 1 남음)", mfx.r1?.tiers["sword-helmet"] === "R" && mfx.r1?.copies["sword-helmet"] === 0 && mfx.short === null && mfx.top === null && mfx.lim === null && mfx.all.merged === 3 && mfx.all.tiers["sword-helmet"] === "SSR" && mfx.all.copies["sword-helmet"] === 1, JSON.stringify(mfx).slice(0, 300));
+ok("일반 배율은 1(옛 저장 힘 그대로) · 희귀는 효과가 오른다", Math.abs(mfx.n1 - 1.025) < 1e-9 && mfx.r > mfx.n1 && mfx.nTxt !== mfx.rTxt, `${mfx.n1} → ${mfx.r} · ${mfx.nTxt} → ${mfx.rTxt}`);
+await seed({ ownedGear: ["sword-helmet", "spear-helmet"], equippedGear: { helmet: "sword-helmet" }, gearCopies: { "sword-helmet": 2, "spear-helmet": 1 } });
+await openEquip();
+await page.evaluate(() => document.querySelector('.equip-slot[data-equip-slot="helmet"]').click()); await sleep(250);
+const mb = await page.evaluate(() => ({ copies: document.querySelector('.equip-item[data-item="sword-helmet"] .equip-copies')?.textContent, dot: document.querySelector(".equip-merge-toggle")?.classList.contains("has-ready"), tier: document.querySelector('.equip-item[data-item="sword-helmet"]')?.dataset.tier }));
+ok("가방: 여분 ×2 표시 · 합성 단추에 점 · 아직 일반", mb.copies === "×2" && mb.dot && mb.tier === "N", JSON.stringify(mb));
+await page.evaluate(() => document.querySelector(".equip-merge-toggle")?.click()); await sleep(250);
+const mv = await page.evaluate(() => ({ rows: [...document.querySelectorAll(".equip-merge-row")].map((r) => [r.dataset.merge, r.classList.contains("ready"), r.querySelector(".equip-merge-go")?.disabled, r.querySelector(".result small")?.textContent]), bagHidden: document.querySelector(".equip-bag")?.hidden }));
+ok("합성 판: 검 투구 줄은 준비(→ 희귀) · 창 투구 줄은 모자라 꺼짐 · 가방은 숨김", JSON.stringify(mv.rows) === JSON.stringify([["sword-helmet", true, false, "희귀"], ["spear-helmet", false, true, "희귀"]]) && mv.bagHidden === true, JSON.stringify(mv));
+if (OUT) await page.screenshot({ path: `${OUT}/gear-merge.png` });
+await page.evaluate(() => document.querySelector('.equip-merge-row[data-merge="sword-helmet"] .equip-merge-go')?.click());
+for (let i = 0; i < 30 && ((await saved()).gearTiers ?? {})["sword-helmet"] !== "R"; i += 1) await sleep(60);
+p = await saved();
+ok("합성 누르면: 검 투구 희귀 · 여분 0 · 창 투구 여분 1 그대로", (p.gearTiers ?? {})["sword-helmet"] === "R" && !(p.gearCopies ?? {})["sword-helmet"] && (p.gearCopies ?? {})["spear-helmet"] === 1, JSON.stringify({ t: p.gearTiers, c: p.gearCopies }));
+await page.reload({ waitUntil: "networkidle0" }); await sleep(1800);
+p = await saved();
+ok("다시 들어와도 희귀로 남는다", (p.gearTiers ?? {})["sword-helmet"] === "R", JSON.stringify(p.gearTiers));
 
 // ── 옛 저장 ──
 await seed({});

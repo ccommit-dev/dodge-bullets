@@ -13,6 +13,7 @@ const dir = mkdtempSync(join(tmpdir(), "sys-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, [
   `export * as model from "${root}/src/titans/model";`,
+  `export * as gearSets from "${root}/src/equipment/gearSets";`,
   `export * as allies from "${root}/src/titans/allies";`,
   `export * as gacha from "${root}/src/titans/gacha";`,
   `export * as summon from "${root}/src/titans/summonLevel";`,
@@ -61,7 +62,7 @@ writeFileSync(entry, [
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { summon, parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { gearSets, summon, parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1602,6 +1603,17 @@ ok("모험가 스킬 그림 아이콘이 스킬마다 있다 (public/ui/skills/t
   const st = R.settleRelicShards({ "lava-heart": 4, "frost-horn": 1, "ember-ring": 6 }, { "lava-heart": 1 });
   ok("옛 저장의 넣다 만 조각(★ 를 못 채운 1~2개)은 남은 조각으로 — ★ 그대로", st.state["lava-heart"] === 3 && st.spare["lava-heart"] === 2 && !st.state["frost-horn"] && st.spare["frost-horn"] === 1 && st.state["ember-ring"] === 6 && R.relicStars(st.state, "lava-heart") === 1, JSON.stringify(st));
   ok("뽑기 확률은 들어간 조각 + 남은 조각 — 남은 조각으로 다 채운 유물은 0", R.relicDrawRates(R.relicMerged({ "lava-heart": 12 }, { "lava-heart": 3 }), "gem").find((x) => x.id === "lava-heart")?.rate === 0 && R.relicDrawRates(R.relicMerged({ "lava-heart": 12 }, {}), "gem").find((x) => x.id === "lava-heart")?.rate > 0);
+}
+
+// ── 장비 합성 (2026-11-20, 사용자 "파츠에 등급 + 3개 합성") — equipment/gearSets ──
+{
+  const G = gearSets, owned = ["sword-helmet", "spear-armor", "autumn-gloves"];
+  ok("합성: 가진 것 + 여분 2 → 한 등급 위(일반 → 희귀) · 여분 0", (() => { const r = G.mergeGear("sword-helmet", owned, {}, { "sword-helmet": 2 }); return r && r.tiers["sword-helmet"] === "R" && r.copies["sword-helmet"] === 0; })());
+  ok("합성: 여분 1개 · 안 가진 파츠 · 한정 장비 · 신화(끝)는 못 한다", G.mergeGear("sword-helmet", owned, {}, { "sword-helmet": 1 }) === null && G.mergeGear("bow-boots", owned, {}, { "bow-boots": 5 }) === null && G.mergeGear("autumn-gloves", owned, {}, { "autumn-gloves": 5 }) === null && G.mergeGear("sword-helmet", owned, { "sword-helmet": "UR" }, { "sword-helmet": 9 }) === null);
+  ok("모두 합성: 여분 9 → 네 번(일반 → 신화) · 1 남음", (() => { const a = G.mergeAllGear(owned, {}, { "sword-helmet": 9 }); return a.merged === 4 && a.tiers["sword-helmet"] === "UR" && a.copies["sword-helmet"] === 1; })());
+  ok("등급 배율: 일반은 정확히 1(옛 저장 힘 그대로) · 오를수록 크다", G.GEAR_TIER_MUL.N === 1 && G.GEAR_TIERS.every((t, i, a) => i === 0 || G.GEAR_TIER_MUL[t] > G.GEAR_TIER_MUL[a[i - 1]]) && Math.abs(G.gearItemPieceBonus("sword-helmet", 0) - G.gearItemPieceBonus("sword-helmet", 0, "N")) < 1e-12);
+  ok("정규화: 안 가진 파츠 · 한정 · 잘못된 등급 · 일반은 버린다", (() => { const t = G.normalizeGearTiers({ "sword-helmet": "SR", "bow-boots": "R", "autumn-gloves": "R", "spear-armor": "ZZ" }, owned); const c = G.normalizeGearCopies({ "sword-helmet": 3, "autumn-gloves": 2, "spear-armor": -1 }, owned); return JSON.stringify(t) === '{"sword-helmet":"SR"}' && JSON.stringify(c) === '{"sword-helmet":3}'; })());
+  ok("옛 저장(등급 · 여분 없음)을 불러오면 빈 값", (() => { const n = prog.normalizeCharacterProgress({ ownedGear: ["sword-helmet"] }); return JSON.stringify(n.gearTiers) === "{}" && JSON.stringify(n.gearCopies) === "{}"; })());
 }
 
 for (const [s, n, d] of results) console.log(s, n, d ? "— " + d : "");

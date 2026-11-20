@@ -21,7 +21,7 @@ import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
 import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
 import { MOUNT_IDS, MOUNT_MAX_LEVEL, isMountId, type MountId } from "../titans/mounts";
-import { normalizeEquippedGear, normalizeGearSetLevels, normalizeOwnedGear, type EquippedGear, type GearItemId, type GearSetLevels } from "../equipment/gearSets";
+import { normalizeEquippedGear, normalizeGearCopies, normalizeGearSetLevels, normalizeGearTiers, normalizeOwnedGear, type EquippedGear, type GearCopies, type GearItemId, type GearSetLevels, type GearTiers } from "../equipment/gearSets";
 import { normalizeGearRunes, normalizeRuneOffer, type GearRunes, type RuneOffer } from "../equipment/gearRunes";
 import { allyCollectionPower, petCollectionPower } from "./collection";
 import { emptyGateFund, GATE_FUND_TIERS, type GateFundState } from "../economy/gateFund";
@@ -149,6 +149,10 @@ export type CharacterProgress = {
   equippedGear: EquippedGear;
   /** 세트 파츠 강화 단계 (+10 까지) */
   gearSetLevels: GearSetLevels;
+  /** 세트 파츠 합성 등급 (2026-11-20, equipment/gearSets 합성) — 없으면 일반 */
+  gearTiers: GearTiers;
+  /** 같은 파츠 여분 — 2개 + 가진 것 = 한 등급 위 */
+  gearCopies: GearCopies;
   /** 세트 파츠 룬 홈 (2026-11-17, equipment/gearRunes) — 파츠마다 세 칸 · +3/+6/+9 에서 열린다 */
   gearRunes: GearRunes;
   /** 열어 둔 룬 후보 세 장 — 고르기 전까지 남는다(껐다 켜도 같은 후보) */
@@ -362,6 +366,8 @@ export function emptyCharacterProgress(): CharacterProgress {
     ownedGear: [],
     equippedGear: {},
     gearSetLevels: {},
+    gearTiers: {},
+    gearCopies: {},
     gearRunes: {},
     runeOffer: null,
     runeRolls: 0,
@@ -733,6 +739,8 @@ export function normalizeCharacterProgress(
     ownedGear: normalizeOwnedGear(raw.ownedGear),
     equippedGear: normalizeEquippedGear(raw.equippedGear, normalizeOwnedGear(raw.ownedGear)),
     gearSetLevels: normalizeGearSetLevels(raw.gearSetLevels, normalizeOwnedGear(raw.ownedGear)),
+    gearTiers: normalizeGearTiers(raw.gearTiers, normalizeOwnedGear(raw.ownedGear)),
+    gearCopies: normalizeGearCopies(raw.gearCopies, normalizeOwnedGear(raw.ownedGear)),
     gearRunes: normalizeGearRunes(raw.gearRunes, normalizeOwnedGear(raw.ownedGear)),
     runeOffer: normalizeRuneOffer(raw.runeOffer, normalizeOwnedGear(raw.ownedGear)),
     runeRolls: integer(raw.runeRolls, 0, 1e9),
