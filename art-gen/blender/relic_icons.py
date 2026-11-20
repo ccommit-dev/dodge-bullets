@@ -34,8 +34,20 @@ def _vivid_hex(c):
     return '#%02x%02x%02x' % (round(r * 255), round(g * 255), round(b * 255))
 
 
+def _bright_hex(c, k=1.32, floor=0.42):
+    """명도 ×k, 아주 짙은 색은 floor 까지 끌어올린다(색조 · 채도는 그대로)"""
+    import colorsys
+    h = c.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    hh, ss, vv = colorsys.rgb_to_hsv(r, g, b)
+    r, g, b = colorsys.hsv_to_rgb(hh, ss, min(1.0, max(vv * k, floor if ss > 0.15 else vv)))
+    return '#%02x%02x%02x' % (round(r * 255), round(g * 255), round(b * 255))
+
+
 def m(name, color, rough=0.75, metal=0.0, emit=None, es=0.0, matte=False):
     """matte — 선명 모드에서도 유광 코팅을 입히지 않는다. 각진 평면 바위는 면 전체가 면광원을 통째로 반사해 짙은 갈색이 크림색으로 떴다(산의 심장)"""
+    if os.environ.get('ART_STYLE', '') == 'toon' and isinstance(color, str):   # 셀 아이콘(2026-11-20) — 조명 대신 평면 계단이라 3D 용 짙은 색이 그대로 어두웠다(용암 심장). 명도를 올린다
+        color = _bright_hex(color)
     if VIVID and isinstance(color, str):
         color = _vivid_hex(color)
         emit = _vivid_hex(emit) if isinstance(emit, str) else emit
@@ -1441,6 +1453,10 @@ for name in names:
         o.parent = piv
     piv.rotation_euler = Euler((0, 0, math.radians(yaw)))
     bpy.context.view_layer.update()
+    # 셀 그림결(2026-11-19 사용자: 도감 리소스 퀄 · 참고 그림 — 캐릭터 · 펫과 같은 평면 3단 · 굵은 외곽선). ART_STYLE=toon 일 때만, 외곽선은 TOON_OUTLINE 배
+    if os.environ.get('ART_STYLE', '') == 'toon':
+        from lib import toon as TOON
+        TOON.apply(bpy.context.scene)
     bpy.context.scene.render.filepath = os.path.join(OUTDIR, f'{name}.png')
     bpy.ops.render.render(write_still=True)
     print('wrote', name, flush=True)

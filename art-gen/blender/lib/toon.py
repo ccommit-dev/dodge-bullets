@@ -12,6 +12,10 @@ import bpy
 
 LIGHT = (-0.45, -0.62, 0.64)          # 화면 왼쪽 위 앞(카메라는 -Y 에서 본다)
 STEPS = ((0.0, 0.84), (0.36, 1.05), (0.66, 1.18))   # (법선 · 빛 각도 0~1, 밝기) — 그늘 · 중간 · 밝은 면. 예전 렌더는 조명이 바탕색보다 밝게 비춰 1 이 기준이면 어두웠다
+# 계단을 환경 변수로 덮는다(2026-11-20, 유물 · 칭호 아이콘) — "위치:밝기,…". 아이콘은 밝게 + 빛 받는 끝에 밝은 넷째 단(반짝임)을 둔다.
+# 캐릭터 렌더는 TOON_STEPS 를 안 넘겨 그대로
+if os.environ.get('TOON_STEPS'):
+    STEPS = tuple(tuple(float(x) for x in kv.split(':')) for kv in os.environ['TOON_STEPS'].split(','))
 OUTLINE_MUL = float(os.environ.get('TOON_OUTLINE', '2.2' if os.environ.get('ART_STYLE', '') == 'pixel' else '1.3'))   # 도트는 굵게 — 가는 칼날이 점선으로 끊겼다(89px)
 SAMPLES = int(os.environ.get('TOON_SAMPLES', '16'))
 

@@ -43,7 +43,7 @@ import {
   type PetId,
 } from "./titans/pets";
 import { starMilestoneMultiplier, starMilestoneNext, totalStars } from "./progression/collection";
-import { TITLES } from "./economy/gemCatalog";
+import { TITLES, titleEmblem } from "./economy/gemCatalog";
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { shareCardExtras } from "./ui/shareCardData";
 import { sheetFor } from "./titans/anim";
@@ -379,7 +379,7 @@ export function CharacterStatus({
                         });
                       }}
                     >
-                      ✦ {def.name}
+                      <img className="title-emblem" src={titleEmblem(id)} alt="" aria-hidden="true" />{def.name}
                     </button>
                   );
                 })}

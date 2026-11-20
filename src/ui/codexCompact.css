@@ -57,3 +57,9 @@
 /* ── 칭호 ── */
 .title-row { gap: 5px !important; }
 .title-row .title-chip { padding: 4px 9px !important; font-size: 12px !important; }
+
+/* ── 칭호 엠블럼 (2026-11-20, art-gen/blender/title_emblems.py) ── 칩 앞 ✦ 글자 → 그림. 마이페이지 칩 · 머리 위 명패 · 상점 칭호 판 */
+.title-row .title-chip { display: inline-flex !important; align-items: center; gap: 5px; padding: 3px 10px 3px 4px !important; }
+.title-row .title-chip .title-emblem { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .35)); }
+.hero-marker b .title-emblem { width: 18px; height: 18px; margin: -4px 2px -4px -3px; vertical-align: middle; object-fit: contain; }
+.title-product .title-plate .title-emblem { width: 44px; height: 44px; object-fit: contain; flex: none; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .3)); }

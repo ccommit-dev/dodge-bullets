@@ -9,8 +9,8 @@ import sharp from "sharp";
 import { mkdirSync, readdirSync } from "node:fs";
 import { popRelicIcon, relicTable } from "./relic-icon-pop.mjs";
 
-const SRC = "art-gen/out/b3d-relics";
-const DST = "public/titans/relics";
+const SRC = process.env.RELIC_SRC ?? "art-gen/out/b3d-relics";   // 시험 렌더는 RELIC_SRC · RELIC_DST 로 따로 (2026-11-20)
+const DST = process.env.RELIC_DST ?? "public/titans/relics";
 const W = 256, PAD = 0.06;
 const RELIC = relicTable(".");
 const args = process.argv.slice(2);

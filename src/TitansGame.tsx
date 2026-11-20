@@ -49,7 +49,7 @@ import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_LR_STAGE, FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
 import { BUFF_LABEL, ELEMENT_LABEL_KR, SKILL_EFFECTS, SKILL_TIER, SLOT_LABEL, SLOT_ORDER, autoSkillOrder, bestSkillLoadout, buffDurationMs, passiveTotals, skillEffectLabel, skillLevelMult, skillPreviewPct, type BuffKind } from "./titans/skills";
-import { GEM_PACK, TITLES, WEAPON_SKINS, goldPackAmount, weaponSkinIcon, weaponSkinStyle } from "./economy/gemCatalog";
+import { GEM_PACK, TITLES, WEAPON_SKINS, titleEmblem, goldPackAmount, weaponSkinIcon, weaponSkinStyle } from "./economy/gemCatalog";
 import { loadTitansSave, saveTitansSave } from "./titans/storage";
 import { PROGRESSION_BALANCE } from "./progression/balance";
 import { grantCharacterReward, loadCharacterProgress, QA_BUILD, qaGemsEnabled, testModeEnabled, updateCharacterProgress } from "./progression/storage";
@@ -4414,7 +4414,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
         <div className={`titans-hero ${isMountId(character.activeMount) ? "has-mount" : ""} ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
           {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링.
               칭호가 있으면 명패가 칭호 색으로 커진다 — 이름표 · 명패에 같은 칭호가 두 번 나오던 것을 하나로 (2026-11-03, 사용자: "칭호 중복 2개 중 1개 제거") */}
-          <span className={`hero-marker ${TITLES[character.activeTitle ?? ""] || character.heroRank > 0 ? "has-title" : ""}`} aria-hidden="true" style={TITLES[character.activeTitle ?? ""] ? { "--title-color": TITLES[character.activeTitle ?? ""].color } as CSSProperties : character.heroRank > 0 ? { "--title-color": heroRankDef(character.heroRank).markColor } as CSSProperties : undefined} data-rank={character.heroRank}><b>{TITLES[character.activeTitle ?? ""] ? "✦ " : character.heroRank > 0 ? "★ " : ""}{TITLES[character.activeTitle ?? ""]?.name ?? (character.heroRank > 0 ? heroRankDef(character.heroRank).title : character.activeCharacter && character.activeCharacter !== "default" ? CHARACTER_LABEL[character.activeCharacter as CharacterSkinId] ?? "모험가" : "모험가")}</b><i>▼</i></span>
+          <span className={`hero-marker ${TITLES[character.activeTitle ?? ""] || character.heroRank > 0 ? "has-title" : ""}`} aria-hidden="true" style={TITLES[character.activeTitle ?? ""] ? { "--title-color": TITLES[character.activeTitle ?? ""].color } as CSSProperties : character.heroRank > 0 ? { "--title-color": heroRankDef(character.heroRank).markColor } as CSSProperties : undefined} data-rank={character.heroRank}><b>{TITLES[character.activeTitle ?? ""] ? <img className="title-emblem" src={titleEmblem(character.activeTitle ?? "")} alt="" /> : character.heroRank > 0 ? "★ " : ""}{TITLES[character.activeTitle ?? ""]?.name ?? (character.heroRank > 0 ? heroRankDef(character.heroRank).title : character.activeCharacter && character.activeCharacter !== "default" ? CHARACTER_LABEL[character.activeCharacter as CharacterSkinId] ?? "모험가" : "모험가")}</b><i>▼</i></span>
           <span className="hero-ring" aria-hidden="true" />
           {/* 시전 이름표 — 영웅을 따라다닌다 (예전엔 화면 가운데 컷인) */}
           {skillVisual && (() => {
@@ -5862,7 +5862,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               return (
                 <article key={titleId} className="titans-card premium-product-card gem-product title-product style-show" data-tier={cosmeticTier(def.gemCost)} style={{ "--title-c": def.color } as CSSProperties}>
                   {/* 칭호는 글자가 곧 상품 — 머리 위에 뜨는 모습 그대로 명판에 (예전: 색 바꾼 ✦ 하나, 이름 색은 ui-polish 의 !important 잉크에 덮였다) */}
-                  <span className="title-plate" aria-hidden="true"><i /><b>{def.name}</b><i /></span>
+                  <span className="title-plate" aria-hidden="true"><i /><img className="title-emblem" src={titleEmblem(titleId)} alt="" /><b>{def.name}</b><i /></span>
                   <div>
                     <strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(def.gemCost)]}</em>{def.name}</strong>
                     <p>{def.desc}</p>

@@ -8,6 +8,7 @@
  * 스케일해 초반엔 싸구려, 후반엔 유의미한 팩이 되는 것을 막는다 (데이터 기반).
  */
 import { killGold } from "../titans/model";
+import { assetUrl } from "../asset";
 import { weaponIconPath, type WeaponKind } from "../titans/weapons";
 import type { CharacterProgress } from "../progression/model";
 
@@ -67,6 +68,9 @@ export type TitleDef = {
   color: string;
   gemCost: number;
 };
+
+/** 칭호 엠블럼 (2026-11-20, art-gen/blender/title_emblems.py → scripts/assemble-titles.mjs) — 마이페이지 칭호 · 머리 위 명패 · 상점 칭호 카드 */
+export const titleEmblem = (id: string): string => assetUrl(`titans/titles/${id}.png`);
 
 export const TITLES: Record<string, TitleDef> = {
   "title-pioneer": {
