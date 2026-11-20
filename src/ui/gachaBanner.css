@@ -44,4 +44,4 @@
 .gacha-stage-page .gacha-page-actions button:disabled { filter: grayscale(.6) brightness(.9); }
 .gacha-stage-page .gacha-page-actions .first-ten-badge { background: #e11d48 !important; color: #fff !important; border: 2px solid var(--gb-ink); }
 /* 월간 한정 띠도 같은 판으로 */
-.gacha-stage-page .limited-banner { border: 3px solid var(--gb-ink) !important; box-shadow: 0 4px 0 var(--gb-ink) !important; }
+.gacha-stage-page .limited-banner { box-shadow: 0 0 0 3px var(--gb-ink), 0 6px 0 var(--gb-ink) !important; }   /* 테두리 대신 바깥 고리 — border 를 바꾸면 안쪽 크기가 줄어 동료 그림이 6px 넘쳤다(verify-anim-clip) */

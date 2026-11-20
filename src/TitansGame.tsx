@@ -222,7 +222,7 @@ type ShopTab = "sword" | "quest" | "relic" | "hub" | "expedition" | "heroes" | "
  */
 const LANES_WIDE = { lMin: -16, lMax: 6, rMin: -7, rMax: 9 }, LANES_COMPACT = { lMin: -9, lMax: 3, rMin: 0, rMax: 7 };
 const WIDE_FIELD_MIN_H = 440;
-/** 스테이지 등장(대열이 왼쪽 밖에서 걸어 들어옴) 걷는 시간 배율 — spawn */
+/** 스테이지 등장 걷기를 느려 보이게 하는 배율 — 시간이 아니라 보이는 속도(걸음 칸 · 걷는 거리 ÷ 1.3, fx-sprites.css party-walk-in). spawn · AllyArt walkRate */
 const STAGE_WALK_SLOW = 1.3;
 /** 오른쪽 무리 깊이 − 왼쪽 무리 깊이 상한(전장 높이 %) — lanePair */
 const LANE_GAP_MAX = 14;
@@ -1023,10 +1023,12 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const rolledKind = monsterKind(stage, asBoss, isChest);
     const speedBase = rolledKind === "wolf" ? 820 : rolledKind === "slime" ? 1180 : rolledKind === "ogre" ? 1550 : rolledKind === "dragon" ? 1080 : asBoss ? 1500 : 1250;
     // 걷는 속도 (2026-10-20, 사용자: "걷는 속도도 항상 같지 않게") — 종별 기준에 만남마다 0.7~1.3배(예전 0.88~1.12 는 늘 같아 보였다)
-    // 스테이지 등장 걷기는 1.3배 느리게 (2026-11-19, 사용자: "스테이지 걸어오는 속도를 조금 늦춰줘") — 대열이 왼쪽 밖에서 걸어 들어올 때(relocate)만.
-    // 걷기 칸 속도(heroWalkRate = 시간/1250)도 같이 느려져 발이 미끄러지지 않는다. 같은 자리에서 다음 몬스터만 들어올 땐 그대로
-    const durationMs = Math.round(speedBase * (.7 + Math.random() * .6) * (relocate ? STAGE_WALK_SLOW : 1));
-    if (relocate) heroWalkRateRef.current = durationMs / 1250;
+    // 스테이지 등장 걷기를 느려 '보이게' (2026-11-19 사용자: "스테이지 걸어오는 속도를 조금 늦춰줘" · 2026-11-20 고침).
+    // 11-19 판은 걷는 시간을 1.3배로 늘렸는데, 몬스터를 잡을 때마다 대열이 다시 걸어 들어와(stage-exit → relocate) 만남마다 0.4초씩
+    // 사냥 속도가 느려졌고, 걷는 동안엔 동료가 못 치니 탭을 연타하면 동료 공격이 덜 쌓여 상위 동료 시그니처가 거의 안 나왔다
+    // (verify-ally-desire 1.0: 5/5 · 1.3: 1/5, 옆 세션 실측). 이제 시간은 그대로 · 걷는 거리(party-walk-in)와 걸음 칸 속도만 ÷ 1.3
+    const durationMs = Math.round(speedBase * (.7 + Math.random() * .6));
+    if (relocate) heroWalkRateRef.current = (durationMs / 1250) * STAGE_WALK_SLOW;
     const monsterJit = Math.random() * 2;
     setEncounterMotion((prev) => !relocate ? { ...prev, durationMs, monsterRight: (rolledKind === "dragon" ? 2 : 8) + prev.monsterJit, partyMl: prev.partyMl } : ({
       // 바닥 스폰 배치: 주인공 16~19% · 근접 동료 14~24%(몬스터 왼쪽에 붙음) · 몬스터는 오른쪽 28~34%(폭 30% → 왼쪽 가장자리 36~42%)
@@ -4494,7 +4496,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               stage={save.stage}
               encounter={encounterMotion.seq}
               speed={save.battleSpeed}
-              walkRate={encounterMotion.durationMs / 1250}
+              walkRate={(encounterMotion.durationMs / 1250) * (partyApproach ? STAGE_WALK_SLOW : 1)}   /* 등장 걷기만 걸음을 느리게(거리도 ÷ 1.3) */
             />
           ))}
           {/* 맞은 동료 위 피해 숫자 (2026-10-27, titans/bossPressure) — 대장은 붉게 크게 */}
