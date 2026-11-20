@@ -37,8 +37,8 @@
   background-color: #f1e3c4 !important; background-repeat: no-repeat !important;
   background-size: 450% auto !important; background-position: -3.6% 93% !important;
 }
-.character-skin-row .character-skin-chip b { font-size: 12px !important; line-height: 1.15; color: #3b2415 !important; }
-.character-skin-row .character-skin-chip small { font-size: 11px !important; line-height: 1.15; color: #6b5a45 !important; }
+.character-skin-row .character-skin-chip b { font-size: 13px !important; line-height: 1.15; color: #3b2415 !important; }
+.character-skin-row .character-skin-chip small { font-size: 13px !important; line-height: 1.15; color: #6b5a45 !important; }
 .character-skin-row .character-skin-chip.active { background: #ffe38a !important; }
 .character-skin-row .character-skin-chip.active .skin-thumb { background-color: #ffd34d !important; }
 .character-skin-row .character-skin-chip.locked { background: #efe5d2 !important; }

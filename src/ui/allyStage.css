@@ -75,3 +75,6 @@
 .hub-sheet .titans-shop .ally-roster-grid .ally-card.is-open .ally-card-actions > button:not(.ally-party-toggle) { border: 3px solid #14234d !important; box-shadow: 0 3px 0 #14234d !important; }
 /* 쪽 표시 — 남색 판 위라 흰 글자(예전 크림 판용 짙은 글자는 안 보였다) */
 .hub-sheet .titans-shop .ally-roster-grid > .ally-pager :is(span, small, b) { color: #e0f2ff !important; }
+/* 별 — 빈 별이 남색 판 위에서 안 보였다(대비 1.3). 빈 별은 연한 남보라, 찬 별은 노랑 */
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-stars > i { color: #b6c3ee !important; }
+.hub-sheet .titans-shop .ally-roster-grid .ally-card:not(.is-open) .ally-stars > i.on { color: #fde047 !important; }
