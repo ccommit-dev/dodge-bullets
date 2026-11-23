@@ -1,5 +1,7 @@
 import { assetUrl } from "../asset";
 import { BRANCHES, STAGES, STAGES_PER_CHAPTER, branchUnlocked, stageUnlocked, type BranchDef, type BranchReward } from "./stages";
+import { MONSTER_VARIANTS, stageBossArt } from "./draw";
+import { bestiaryThumb } from "../titans/bestiary";
 
 /**
  * 원정 지도 (2026-10-06, 사용자: "일직선으로 가는게 아니라 루트가 좀 있었으면 좋겠음").
@@ -17,6 +19,18 @@ export function branchRewardLabel(r: BranchReward): string {
   if (r.shoulderShards) parts.push(`견갑 조각 ${r.shoulderShards}`);
   if (r.relicShards) parts.push(`유물 조각 ${r.relicShards}`);
   return parts.join(" · ");
+}
+
+/**
+ * 칸 얼굴 (2026-11-23, 사용자: "외에 아쉬운점 리소스 마저 수정") — 목록이 글자뿐이라 어떤 칸인지 그림으로 안 보였다.
+ * 대장 · 중간 보스 칸은 그 대장(stageBossArt), 나머지는 칸 종류의 대표 몬스터를 그 장 모습으로(draw.ts MONSTER_VARIANTS — 전투 그림과 같은 표)
+ */
+const SLOT_FACE: Record<string, keyof typeof MONSTER_VARIANTS> = { intro: "normal", swarm: "normal", mixed: "fan", elite: "ricochet", rush: "aimed", pincer: "aimed", siege: "fan", elitemix: "explosive" };
+export function stageFaceArt(index: number): string {
+  const st = STAGES[index], chapter = Math.floor(index / STAGES_PER_CHAPTER);
+  if (st.slotKind === "boss" || st.slotKind === "midboss") return stageBossArt(index);
+  const list = MONSTER_VARIANTS[SLOT_FACE[st.slotKind] ?? "normal"];
+  return list[Math.max(0, Math.min(list.length - 1, chapter))];
 }
 
 const KIND_LABEL: Record<BranchDef["kind"], string> = { treasure: "보물 동굴", elite: "정예 우회로", secret: "비밀 대장" };
@@ -59,6 +73,7 @@ export function RouteMap({ chapter, best, stars, branchStars, claimed, treasureL
               aria-label={`${chapter + 1}-${k + 1} ${stage.name}${stage.slotKind === "midboss" ? " · 중보스" : ""}${unlocked ? ` · 별 ${st}/3` : " · 잠김"}`}
             >
               <span className="pioneer-stage">{chapter + 1}-{k + 1}</span>
+              <img className="pioneer-face" src={assetUrl(bestiaryThumb(stageFaceArt(index)))} alt="" aria-hidden="true" loading="lazy" />
               <span className="pioneer-name">{stage.name}</span>
               <span className="pioneer-meta">
                 {/* 딱지는 대장 하나만(2026-11-16 정리: 한 목록에 중보스 · 도전 · 보물 · 정예①② · 비밀 · 대장 여섯 종류). 중보스는 aria-label 에 */}

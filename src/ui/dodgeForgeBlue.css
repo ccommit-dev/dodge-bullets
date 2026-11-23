@@ -1,0 +1,55 @@
+/* 성문 방어 출발 화면 · 대장간 = 파란 그림결 (2026-11-23, 사용자: "외에 아쉬운점 리소스 마저 수정").
+ * 두 화면만 갈색 나무 판 · 크림 칸으로 남아 상점 · 장비창 · 동료(blueTheme · equipBlue)와 따로 놀았다.
+ * 글자가 밝은 판은 짙은 남색으로(밝은 글자 그대로 읽힌다), 크림 칸은 흰 판 남색 테 · 남색 글자, 고른 칸은 노랑. 모양만 — 동작 · 글자 그대로. 맨 뒤 */
+:root { --df-ink: #14234d; --df-navy: #1d3570; --df-navy2: #24427f; --df-sky: #e6f2ff; }
+
+/* ── 성문 방어 출발 화면 ── */
+.game-overlay .overlay-content.exp-menu-content {
+  background: linear-gradient(180deg, #2a4c8f 0, var(--df-navy) 120px, #142a5a 100%) !important;
+  border-color: var(--df-ink) !important; box-shadow: 0 6px 0 rgba(8, 16, 40, .55) !important;
+}
+.exp-menu-content .brand { color: #ffd23f !important; }
+.exp-menu-content .title { color: #fff !important; text-shadow: 0 3px 0 var(--df-ink) !important; }
+.exp-menu-tabs > button { background: var(--df-ink) !important; color: #fff !important; border-color: #4a6db0 !important; }
+.exp-menu-tabs > button.on { background: linear-gradient(180deg, #ffe066, #f5b400) !important; color: var(--df-ink) !important; border-color: var(--df-ink) !important; }
+.exp-menu-content .pioneer-board { background: var(--df-sky) !important; border-color: var(--df-ink) !important; }
+.exp-menu-content .pioneer-heading, .exp-menu-content .pioneer-heading b, .exp-menu-content .chapter-title, .exp-menu-content .pioneer-star-hint { color: var(--df-ink) !important; }
+.exp-menu-content .chapter-tab { background: var(--df-navy2) !important; color: #fff !important; border-color: var(--df-ink) !important; }
+.exp-menu-content .chapter-tab.locked { background: #3a4f7a !important; color: #c9d6f0 !important; }
+.exp-menu-content .chapter-tab.on { background: linear-gradient(180deg, #ffe066, #f5b400) !important; color: var(--df-ink) !important; }
+.exp-menu-content .pioneer-row { background: #fff !important; color: var(--df-ink) !important; border-color: rgba(20, 35, 77, .45) !important; }
+.exp-menu-content .pioneer-row.next { border-color: var(--df-ink) !important; box-shadow: inset 0 0 0 2px #ffd23f, 0 2px 0 var(--df-ink) !important; }
+.exp-menu-content .pioneer-row .pioneer-stage { background: var(--df-ink) !important; color: #fff !important; }
+.exp-menu-content .pioneer-row .pioneer-name { color: var(--df-ink) !important; }
+.exp-menu-content .pioneer-row.far { background: #eef3fb !important; }
+/* 칸 얼굴(RouteMap stageFaceArt) — 번호 옆 둥근 하늘 판 */
+.exp-menu-content .pioneer-row .pioneer-face {
+  width: 28px; height: 28px; flex: 0 0 28px; object-fit: contain; border-radius: 50%; margin: -4px 2px -4px 0;
+  background: radial-gradient(circle at 50% 40%, #fff, #cfe3ff); box-shadow: inset 0 0 0 2px var(--df-ink);
+}
+.exp-menu-content .pioneer-row.stage-boss .pioneer-face, .exp-menu-content .pioneer-row.stage-midboss .pioneer-face { background: radial-gradient(circle at 50% 40%, #fff3c4, #ffc94d); }
+.exp-menu-content .pioneer-row.far .pioneer-face { filter: grayscale(.5) opacity(.75); }
+.exp-menu-content .day-event-row, .exp-menu-content .sweep-row { background: #fff !important; color: var(--df-ink) !important; border-color: var(--df-ink) !important; }
+.exp-menu-content .day-event-row b, .exp-menu-content .sweep-row b { color: var(--df-ink) !important; }
+.exp-menu-content .day-event-choices > button { background: var(--df-sky) !important; color: var(--df-ink) !important; border-color: var(--df-ink) !important; }
+.exp-menu-content .day-event-choices > button.on { background: linear-gradient(180deg, #ffe066, #f5b400) !important; }
+.exp-menu-content .day-event-choices > button :is(b, small) { color: var(--df-ink) !important; }
+.exp-menu-content .cta { border-color: var(--df-ink) !important; }
+.game-root .sound-toggle, .game-root .exit-toggle { background: var(--df-ink) !important; color: #fff !important; border-color: #4a6db0 !important; }
+
+/* ── 대장간 ── 무대 그림(배경)은 그대로, 판만 흰 판 남색 테 · 고른 칸 노랑 */
+.forge-layer :is(.forge-back, .forge-mastery, .forge-tabs, .forge-stats, .forge-weapon-kinds > button) { background: #fff !important; color: var(--df-ink) !important; border-color: var(--df-ink) !important; }
+.forge-layer .forge-tabs { background: rgba(255, 255, 255, .94) !important; }
+.forge-layer .forge-tabs > button { color: var(--df-ink) !important; }
+.forge-layer :is(.forge-tabs, .forge-weapon-kinds) > button.on { background: linear-gradient(180deg, #ffe066, #f5b400) !important; color: var(--df-ink) !important; }
+.forge-layer .forge-stats > div { background: #fff !important; color: var(--df-ink) !important; }
+.forge-layer .forge-stats :is(span, small, strong, b, em) { color: var(--df-ink) !important; }
+.forge-layer .forge-mastery :is(b, span, small, strong) { color: var(--df-ink) !important; }
+.forge-layer .forge-note { background: rgba(20, 35, 77, .82) !important; color: #e6eeff !important; }
+.forge-layer .forge-note b { color: #ffd23f !important; }
+.forge-layer .forge-stage { border: 2px solid var(--df-ink) !important; background: radial-gradient(circle at 50% 42%, rgba(80, 140, 255, .35), rgba(14, 26, 60, .88) 72%) !important; }
+.forge-layer .forge-sell { background: var(--df-ink) !important; color: #ffd23f !important; border-color: #4a6db0 !important; }
+.forge-layer .forge-button { border-color: var(--df-ink) !important; }
+/* 정비 탭 카드 — 반투명 판이 남색 위에 놓이면 회색 설명 글자가 대비 4.2 로 흐려졌다(scan-readability) → 단색 짙은 남색 · 밝은 회청 글자 */
+.exp-menu-content :is(.exp-weapon-card, .exp-chip-list li, .exp-supply-list li, .exp-daily-list li) { background: #0f1c3f !important; }
+.exp-menu-content :is(.exp-weapon-card, .exp-chip-list, .exp-supply-list, .exp-daily-list) em { color: #c3cfe3 !important; }
