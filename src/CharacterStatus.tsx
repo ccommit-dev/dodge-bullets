@@ -522,7 +522,8 @@ export function CharacterStatus({
             const on = earnedBadges.includes(badge.id);
             return (
               <div key={badge.id} className={`badge-chip mp-badge ${on ? "earned" : "locked"}`} title={badge.condition}>
-                <b aria-hidden="true">{on ? badge.icon : <LockIcon />}</b>
+                {/* 배지 그림(2026-11-23) — 잠겨도 무엇을 받는지 보이게 그림을 흐리게 두고 자물쇠만 얹는다 */}
+                <b aria-hidden="true" className={badge.art ? "has-art" : undefined}>{badge.art ? <><img src={assetUrl(badge.art)} alt="" loading="lazy" />{!on && <LockIcon />}</> : on ? badge.icon : <LockIcon />}</b>
                 <span><strong>{badge.name}</strong><small>{badge.condition}</small></span>
               </div>
             );

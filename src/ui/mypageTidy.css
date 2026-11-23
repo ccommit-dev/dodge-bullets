@@ -1,0 +1,18 @@
+/*
+ * 마이페이지 정리 (2026-11-23, 리소스 피드백 ⑤ "갖고 싶게 만드는 자리가 비어 있다").
+ *  - 초상: 84px 칸에 주인공 상자 36×72(대기 시트 위 31% 는 빈칸)라 비버가 엄지손톱만 했다 → 상자 70×140 · 발을 칸 아래에 붙여 칸을 채운다
+ *  - 잠긴 캐릭터: grayscale(.55) opacity(.75)(codexCompact.css)로 바래 무엇인지 안 보였다 → 색은 살리고 자물쇠 표시만
+ *  - 배지: 유니코드 기호(⚔ ♛ ➶ …)를 30px 원에 → 스티커 그림 48px(badges.ts art). 잠긴 배지는 그림을 흐리게 + 자물쇠
+ * App.tsx 맨 뒤에서 불러온다
+ */
+/* 칸 안 맞춤은 절대 위치로 — 격자 place-items 는 앞 층 규칙과 섞여 위에 붙었다(1차: 귀만 보임) */
+.character-equipment-preview { position: relative !important; padding: 0 !important; }
+.character-equipment-preview .character-equipment-facing { position: absolute !important; left: 50%; bottom: -14px; width: 70px !important; height: 140px !important; --hero-size: 70px; translate: -50% 0; }
+.character-equipment-preview .equipped-character { width: 70px !important; height: 140px !important; }
+
+.character-skin-row .character-skin-chip.locked .skin-thumb { filter: saturate(.85) brightness(.96) !important; }
+
+.character-page .mp-badge > b.has-art { position: relative; width: 48px; height: 48px; border-radius: 0; background: none !important; box-shadow: none !important; }
+.character-page .mp-badge > b.has-art > img:not(.lock-ico) { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 2px 0 rgba(59, 36, 21, .25)); }
+.character-page .mp-badge.locked > b.has-art > img:not(.lock-ico) { filter: grayscale(.7) opacity(.55); }
+.character-page .mp-badge > b.has-art > .lock-ico { position: absolute; right: -2px; bottom: -2px; width: 20px; height: 20px; }
