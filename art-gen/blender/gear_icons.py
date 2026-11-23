@@ -18,7 +18,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # 도트 그림체(2026-11-17, ART_STYLE=pixel) — 48² 로 픽셀마다 한 점 렌더 → assemble-gear --pixel 이 최근접으로 키워 public/titans/gear-px 에
 PIXEL = os.environ.get('ART_STYLE', '') == 'pixel'
 ICON_RES = int(os.environ.get('PIXEL_ICON_RES', '48')) if PIXEL else 512
-OUTDIR = os.path.join(ROOT, 'art-gen', 'out', 'b3d-gear-px' if PIXEL else 'b3d-gear')
+OUTDIR = os.environ.get('GEAR_OUT') or os.path.join(ROOT, 'art-gen', 'out', 'b3d-gear-px' if PIXEL else 'b3d-gear')   # 시험 렌더는 GEAR_OUT 으로 따로
+# 캐주얼 아이콘(2026-11-23, 사용자: 캐주얼 아이템 아이콘 팩 그림 "이 느낌으로 모두 수정") — 매끈한 면(GEAR_FACET=0) · 셀 4단 · 흰 반짝임 · 짙은 외곽선.
+# 렌더: ART_STYLE=toon GEAR_FACET=0 TOON_OUTLINE=2.6 INK_COLOR=#1a1424 TOON_STEPS=0:0.72,0.3:0.95,0.55:1.12,0.82:1.3 TOON_SPEC=0.955:0.8
+# 조립(assemble-gear)이 아이콘에만 스티커 외곽선(scripts/lib/sticker)을 두른다 — 손에 드는 무기 그림(weapon · spear · bow · staff-N)은 그대로
+GEAR_FACET = int(os.environ.get('GEAR_FACET', '10'))
 O = 0.022
 F = 1.0   # 무기 굵기 배율 — 아이콘 전용(icon-*)은 1.6(리소스 피드백 ④: 가는 세로 막대라 칸의 15%만 채웠다). 손에 드는 그림은 1.0 그대로
 
@@ -30,7 +34,21 @@ TIER = {
 }
 
 
+def _tame_light(c):
+    """캐주얼 아이콘(셀 밝은 단 1.3)에서 아주 밝은 색(쇠 · 흰 천)이 하얗게 날아갔다(기사 투구가 달걀로) — 명도 0.8 넘는 색만 0.8 쪽으로"""
+    import colorsys
+    h = c.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    hh, ss, vv = colorsys.rgb_to_hsv(r, g, b)
+    if vv <= 0.8:
+        return c
+    r, g, b = colorsys.hsv_to_rgb(hh, ss, 0.8 + (vv - 0.8) * 0.35)
+    return '#%02x%02x%02x' % (round(r * 255), round(g * 255), round(b * 255))
+
+
 def m(name, color, rough=0.75, metal=0.0, emit=None, es=0.0):
+    if GEAR_FACET == 0 and TOON.enabled() and isinstance(color, str) and emit is None and color.lower() not in ('#ffffff', '#fff3c4', '#fffaf0'):
+        color = _tame_light(color)
     return C.principled(f'gear_{name}_{color}_{metal}_{es}', color, rough=rough, metal=metal, coat=0.0, emit=emit, emit_strength=es)
 
 
@@ -248,7 +266,7 @@ def wings(at, s=1.0):
 def icon_weapon(arg):
     global F
     kind, t = arg
-    F = 1.6
+    F = float(os.environ.get('GEAR_ICON_F', '1.6'))   # 캐주얼 아이콘은 2.2 — 몽툭하게(조립에서 세로를 줄여 짧게도 본다: ICON_SQUASH)
     try:
         {'sword': sword, 'spear': spear, 'staff': staff, 'bow': bow}[kind](t)
     finally:
@@ -372,8 +390,13 @@ LIMITED_SETS = {'autumn': 'gloves'}
 def set_helmet(k):
     S = SETS[k]
     if k == 'sword':   # 통투구 — 눈 틈 · 숨구멍 · 금 십자 · 진홍 볏
-        dome = C.ellipsoid(Vector((0, 0, 0.02)), (0.46, 0.48, 0.62))
+        # 2026-11-23 캐주얼 아이콘: 길쭉한 타원이라 매끈하게 그리니 달걀로 읽혔다 → 넓고 낮은 통 · 바닥 평평 · 금 테
+        dome = C.ellipsoid(Vector((0, 0, 0.04)), (0.52, 0.52, 0.56))
+        for v in dome.verts:
+            if v.co.z < -0.34:
+                v.co.z = -0.34
         ob('dome', dome, metal_m(S['metal']))
+        ob('band', C.torus(Vector((0, 0, -0.31)), 0.5, 0.075), metal_m(S['trim']))
         ob('slit', C.box(Vector((0, -0.46, 0.1)), (0.62, 0.06, 0.09)), m('dark', '#1a1210', rough=0.9), 0)
         ob('crossv', C.box(Vector((0, -0.47, -0.08)), (0.08, 0.05, 0.62)), metal_m(S['trim']))
         ob('crossh', C.box(Vector((0, -0.47, 0.2)), (0.66, 0.05, 0.07)), metal_m(S['trim']))
@@ -391,6 +414,22 @@ def set_helmet(k):
             ob(f'cheek{sx}', C.ellipsoid(Vector((sx * 0.42, -0.1, -0.34)), (0.11, 0.22, 0.26), rot=Euler((0, sx * 0.2, 0))), metal_m(S['metal']))
         pts = spline([Vector((0, 0.3, 0.26)), Vector((0, 0.62, 0.1)), Vector((0, 0.72, -0.34))], 12)
         ob('tail', C.tube(pts, interp([0.07, 0.15, 0.03], len(pts)), seg=7), m('tail', S['main']))
+    elif k == 'bow' and os.environ.get('GEAR_FACET', '10') == '0':   # 사수 두건(2026-11-23 캐주얼) — 매끈하게 그리니 구멍 난 초록 공이었다.
+        # 입은 모습(hero_gear 두건)과 같은 물건으로: 뒤로 뾰족한 끝 · 얼굴 구멍 테 · 어깨 망토 · 깃털 둘
+        hood = C.ellipsoid(Vector((0, 0.04, 0.06)), (0.48, 0.5, 0.52))
+        for v in hood.verts:
+            if v.co.z > 0.24:
+                v.co.y += (v.co.z - 0.24) * 1.3
+                v.co.z += (v.co.z - 0.24) * 0.5
+        ob('hood', hood, m('hood', S['main'], rough=0.9))
+        ob('face', C.ellipsoid(Vector((0, -0.4, -0.02)), (0.3, 0.16, 0.32)), m('dark', '#1c2616', rough=0.95), 0)
+        ob('fold', C.torus(Vector((0, -0.38, -0.02)), 0.32, 0.075, rot=Euler((math.radians(84), 0, 0))), m('fold', S['dark'], rough=0.9))
+        ob('mantle', C.ellipsoid(Vector((0, 0.04, -0.46)), (0.66, 0.52, 0.17)), m('hood', S['main'], rough=0.9))
+        ob('clasp', C.ellipsoid(Vector((0, -0.46, -0.42)), (0.09, 0.05, 0.09)), metal_m(S['trim']))
+        fp = spline([Vector((0.36, -0.06, 0.18)), Vector((0.6, 0.02, 0.52)), Vector((0.62, 0.14, 0.88))], 12)
+        ob('feather', C.tube(fp, interp([0.05, 0.12, 0.015], len(fp)), seg=8), m('feather', '#f8e9c8'))
+        fp2 = spline([Vector((0.34, -0.02, 0.16)), Vector((0.5, 0.12, 0.42)), Vector((0.48, 0.28, 0.7))], 10)
+        ob('feather2', C.tube(fp2, interp([0.04, 0.09, 0.012], len(fp2)), seg=8), m('feather2', '#e8452c'))
     elif k == 'bow':   # 두건 — 부드러운 천 · 뒤로 늘어진 끝 · 얼굴 구멍 · 깃털
         hood = C.ellipsoid(Vector((0, 0.04, 0.02)), (0.52, 0.56, 0.58))
         ob('hood', hood, m('hood', S['main'], rough=0.9))
@@ -431,13 +470,15 @@ def set_armor(k):
         ob('emblem', C.ellipsoid(Vector((0, -0.34, 0.2)), (0.14, 0.04, 0.17), egg=-0.4), metal_m(S['trim']))
         for sx in (-1, 1):
             ob(f'wing{sx}', C.cone(Vector((sx * 0.52, 0, 0.42)), 0.13, 0.0, 0.34, seg=5, rot=Euler((0, sx * 1.15, 0))), metal_m(S['trim']))
-    elif k == 'bow':   # 가죽 조끼 — 초록 망토 깃 · 화살통 끈 · 끈 매듭
-        ob('chest', C.ellipsoid(Vector((0, 0, 0)), (0.44, 0.28, 0.58), egg=-0.1), m('leather', S['metal'], rough=0.85))
-        ob('collar', C.ellipsoid(Vector((0, 0.02, 0.5)), (0.58, 0.42, 0.2)), m('cloak', S['main'], rough=0.9))
-        strap = [Vector((-0.34, -0.26, 0.42)), Vector((0, -0.31, 0.04)), Vector((0.34, -0.25, -0.34))]
-        ob('strap', C.tube(strap, 0.05, seg=6), m('strap', '#3b2415'))
-        for j in range(3):
-            ob(f'lace{j}', C.box(Vector((0.02, -0.29, 0.28 - 0.2 * j)), (0.2, 0.03, 0.03)), m('lacec', S['trim']), 0)
+    elif k == 'bow':   # 사수 튜닉 — 초록 웃옷 · 화살통 끈 · 끈 매듭 · 허리띠 금 버클
+        # 2026-11-23 캐주얼 아이콘: 갈색 조끼 위에 초록 깃 원판이라 그루터기로 읽혔다 → 입은 모습(hero_gear 튜닉)처럼 초록 웃옷 · 어깨 · 금 버클
+        ob('chest', C.ellipsoid(Vector((0, 0, 0)), (0.46, 0.3, 0.6), egg=-0.12), m('tunic', S['main'], rough=0.85))
+        for sx in (-1, 1):
+            ob(f'sleeve{sx}', C.ellipsoid(Vector((sx * 0.46, 0, 0.32)), (0.2, 0.24, 0.24), rot=Euler((0, sx * 0.5, 0))), m('sleeve', S['dark'], rough=0.9))
+        ob('neckv', C.cone(Vector((0, -0.27, 0.42)), 0.16, 0.0, 0.22, seg=3, rot=Euler((math.radians(180), 0, 0))), m('dark', '#1c2616', rough=0.95), 0)
+        strap = spline([Vector((-0.34, -0.26, 0.42)), Vector((0, -0.33, 0.04)), Vector((0.34, -0.25, -0.34))], 10)
+        ob('strap', C.tube(strap, 0.06, seg=8), m('strap', S['metal']))
+        ob('buckle', C.box(Vector((0, -0.34, -0.38)), (0.16, 0.05, 0.12)), metal_m(S['trim']))
         ob('belt', C.torus(Vector((0, -0.02, -0.38)), 0.36, 0.05), m('belt', '#3b2415'))
         ob('leaf', C.ellipsoid(Vector((-0.22, -0.34, 0.46)), (0.11, 0.03, 0.07), rot=Euler((0, 0.5, 0))), m('leaf', S['trim']))
     else:   # 긴 로브 — 아래로 넓게 퍼지고 금 띠 · 큰 보석
@@ -604,6 +645,75 @@ for k in SETS:
     JOBS[f'set-{k}-gloves'] = (set_gloves, k, (-22, 20), 1.75)
     JOBS[f'set-{k}-boots'] = (set_boots, k, (-30, 18), 1.75)
     JOBS[f'set-{k}-shoulder'] = (set_shoulder, k, (0, 12), 2.0)
+# ── 합성 등급 그림 (2026-11-23, 사용자: 캐주얼 아이템 아이콘 팩 — 등급이 오를수록 커지고 화려하게) ──
+# 세트 파츠 등급 5단(일반 · 희귀 · 영웅 · 전설 · 신화)을 그림 3단으로: 일반 · 희귀 = 기본(set-<k>-<부위>.png),
+# 영웅 · 전설 = -2(앞면 금 테 보석 + 금 징 둘), 신화 = -3(큰 빛 보석 + 금 날개 + 징). 색 · 모양은 세트 그대로 — 무엇인지는 안 바뀌고 값어치만 오른다.
+# 붙일 자리는 앞(-Y)에서 쏜 광선이 닿는 표면이라 부위 모양이 달라도 몸에 붙는다. 반짝임 · 테두리 빛은 조립(assemble-gear)이 2D 로 더한다
+DRESS_Z = {'helmet': 0.6, 'armor': 0.64, 'gloves': 0.42, 'boots': 0.68, 'shoulder': 0.55}
+DRESS_GEM = {'sword': '#ff3b5c', 'spear': '#3fd0ff', 'bow': '#6dff5a', 'staff': '#ff5ad8'}
+
+
+def _mesh_bounds():
+    xs, ys, zs = [], [], []
+    for o in bpy.context.scene.objects:
+        if o.type != 'MESH':
+            continue
+        for c in o.bound_box:
+            w = o.matrix_world @ Vector(c)
+            xs.append(w.x); ys.append(w.y); zs.append(w.z)
+    return (min(xs), max(xs)), (min(ys), max(ys)), (min(zs), max(zs))
+
+
+def _front_hit(x, z):
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    ok, loc, nrm, _i, _o, _m = bpy.context.scene.ray_cast(dg, Vector((x, -6.0, z)), Vector((0, 1, 0)))
+    return (Vector(loc), Vector(nrm).normalized()) if ok else (None, None)
+
+
+def tier_dress(stage, slot, k):
+    (x0, x1), (y0, y1), (z0, z1) = _mesh_bounds()
+    W, H = x1 - x0, z1 - z0
+    cx, z = (x0 + x1) / 2, z0 + H * DRESS_Z.get(slot, 0.55)
+    loc, nrm = _front_hit(cx, z)
+    if loc is None:
+        loc, nrm = Vector((cx, y0, z)), Vector((0, -1, 0))
+    if nrm.y > -0.3:   # 옆이나 위를 보는 면이면 정면으로
+        nrm = Vector((0, -1, 0))
+    rot = nrm.to_track_quat('Z', 'Y').to_euler()
+    r = (0.135 if stage >= 3 else 0.105) * max(0.85, min(1.25, W / 0.95))
+    gc = DRESS_GEM.get(k, '#ff3b5c')
+    gold = metal_m('#ffd34d')
+    ob('dress_bezel', C.torus(loc + nrm * 0.02, r * 1.18, r * 0.3, seg=28, ring=10, rot=rot), gold)
+    ob('dress_gem', C.ellipsoid(loc + nrm * 0.04, (r, r, r * 0.55), rot=rot), m('dgem', gc, rough=0.2, emit=gc, es=1.4 if stage >= 3 else 0.7), O * 0.6)
+    ob('dress_glint', C.ellipsoid(loc + nrm * (0.04 + r * 0.5) + Vector((-r * 0.35, 0, r * 0.35)), (r * 0.22, r * 0.1, r * 0.22), rot=rot), m('glint', '#ffffff', emit='#ffffff', es=1.0), 0)
+    for sx in (-1, 1):   # 금 징 둘
+        sl, sn = _front_hit(cx + sx * r * 2.6, z - r * 0.4)
+        if sl is not None:
+            ob(f'dress_stud{sx}', C.ellipsoid(sl + sn * 0.015, (r * 0.38, r * 0.38, r * 0.38)), gold, O * 0.6)
+    if stage >= 3:   # 금 날개 — 몸 양옆 위쪽에서 바깥으로
+        s = max(0.85, min(1.3, H / 1.15))
+        ym, zt = (y0 + y1) / 2, z0 + H * 0.7
+        for side in (-1, 1):
+            base = (x1 if side > 0 else x0) - side * 0.14   # 몸 안쪽에서 시작 — 바깥으로 길면 칸에 맞추느라 물건이 작아졌다(2차 시험)
+            for j in range(3):   # 깃 셋을 부채꼴로 — 가늘면 막대로 읽혔다(1차 시험)
+                c = Vector((base + side * (0.11 + 0.07 * j) * s, ym + 0.08, zt + 0.1 * j * s))
+                ob(f'dwing{side}{j}', C.ellipsoid(c, ((0.2 - 0.035 * j) * s, 0.06, (0.11 - 0.012 * j) * s), rot=Euler((0, side * (-0.25 - 0.34 * j), 0))), m('dwing', '#ffd34d' if j == 0 else '#fff3c4'), O * 0.7)
+
+
+def dressed(arg):
+    fn, k, slot, stage = arg
+    fn(k)
+    tier_dress(stage, slot, k)
+
+
+for k in SETS:
+    if k in LIMITED_SETS:
+        continue
+    for slot, fn in (('helmet', set_helmet), ('armor', set_armor), ('gloves', set_gloves), ('boots', set_boots), ('shoulder', set_shoulder)):
+        base = JOBS[f'set-{k}-{slot}']
+        for stage in (2, 3):
+            JOBS[f'set-{k}-{slot}-{stage}'] = (dressed, (fn, k, slot, stage), base[2], base[3] * (1.04 if stage == 2 else 1.14))
 for kd in ('sword', 'spear', 'bow', 'staff'):
     for t in (1, 2, 3):
         JOBS[f'icon-{kd}-{t}'] = (icon_weapon, (kd, t), (0, 8), 2.6)
@@ -637,18 +747,20 @@ for name in names:
         bpy.context.scene.cycles.filter_width = 0.01
     C.lights()
     C.ortho_camera((0.0, 0.0), scale, yaw_deg=yaw, elev_deg=elev)
-    C.FACET = 10
+    C.FACET = GEAR_FACET
     try:
         fn(arg)
     finally:
         C.FACET = 0
-    turn = TURN.get(name.split('-')[-1] if name.startswith('set-') else name.split('-')[0], 0)
+    sname = name[:-2] if name.startswith('set-') and name[-2:] in ('-2', '-3') else name   # 합성 등급 그림(-2 · -3)도 같은 부위 각도
+    turn = TURN.get(sname.split('-')[-1] if sname.startswith('set-') else sname.split('-')[0], 0)
     if name.startswith('icon-'):
         piv = bpy.data.objects.new('pivot', None)
         bpy.context.scene.collection.objects.link(piv)
         for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.parent is None]:
             o.parent = piv
         piv.rotation_euler = Euler((0, math.radians(45), 0))   # 끝이 오른쪽 위
+        piv.scale = (1.0, 1.0, float(os.environ.get('ICON_SQUASH', '1.0')))   # 캐주얼 아이콘 0.8 — 길이만 줄여 몽툭하게(칸을 더 채운다)
         bpy.context.view_layer.update()
     elif turn:
         piv = bpy.data.objects.new('pivot', None)

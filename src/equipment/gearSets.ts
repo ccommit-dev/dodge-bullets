@@ -42,7 +42,15 @@ export function gearItemSlot(id: GearItemId): GearSetSlot { return id.split("-")
 export function gearItemName(id: GearItemId): string { return isLimitedGear(id) ? LIMITED_GEAR[id].name : `${GEAR_SET_NAME[gearItemKind(id)]} ${GEAR_SLOT_LABEL[gearItemSlot(id)]}`; }
 /** 장비창 가방 칸 이름 — 세트는 세트 이름, 한정은 '한정' */
 export function gearItemSetLabel(id: GearItemId): string { return isLimitedGear(id) ? "한정" : GEAR_SET_NAME[gearItemKind(id)]; }
-export function gearItemIconPath(id: GearItemId): string { return `titans/gear/set-${id}.png`; }
+/**
+ * 합성 등급 그림 (2026-11-23, 사용자: 캐주얼 아이템 아이콘 팩 — 등급이 오를수록 커지고 화려하게). 5등급을 그림 3단으로:
+ * 일반 · 희귀 = set-<id>.png · 영웅 · 전설 = -2(앞면 금 테 보석 · 금 징 · 별빛) · 신화 = -3(큰 빛 보석 · 금 날개 · 테두리 빛).
+ * 그림은 art-gen/blender/gear_icons.py tier_dress → scripts/assemble-gear.mjs. 한정 장비는 합성이 없어 늘 기본
+ */
+export function gearItemIconPath(id: GearItemId, tier: Tier = "N"): string {
+  const step = isLimitedGear(id) ? 1 : tier === "UR" || tier === "LR" ? 3 : tier === "SR" || tier === "SSR" ? 2 : 1;
+  return `titans/gear/set-${id}${step > 1 ? `-${step}` : ""}.png`;
+}
 export function gearItemEffectText(id: GearItemId, level = 0, tier: Tier = "N"): string { if (isLimitedGear(id)) return `${LIMITED_GEAR[id].allyName} 출전 중이면 대장 피해 +${pct(LIMITED_GEAR_BOSS_BONUS)}%`; const k = gearItemKind(id); return `${WEAPON_NAME[k]}을 들면 ${STAT_LABEL[k]} +${pct(gearItemPieceBonus(id, level, tier))}%`; }
 const WEAPON_NAME: Record<WeaponKind, string> = { sword: "검", spear: "창", bow: "활", staff: "지팡이" };
 const pct = (v: number) => (Math.round(v * 1000) / 10).toString();

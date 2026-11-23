@@ -4876,13 +4876,13 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             (() => {
               const set = character.equippedGear.shoulder;
               return set
-                ? { id: "shoulder" as const, label: "견갑", icon: assetUrl(gearItemIconPath(set)), active: gearItemKind(set) === wantedWeaponKind, tier: gearTierOf(character.gearTiers, set) }
+                ? { id: "shoulder" as const, label: "견갑", icon: assetUrl(gearItemIconPath(set, gearTierOf(character.gearTiers, set))), active: gearItemKind(set) === wantedWeaponKind, tier: gearTierOf(character.gearTiers, set) }
                 : { id: "shoulder" as const, label: "견갑", icon: equippedShoulder ? shoulderIconUrl(equippedShoulder) : null, tier: equippedShoulder ? shoulderEquipTier(SHOULDER_DEFINITIONS[equippedShoulder].grade) : undefined };
             })(),
             ...GEAR_PARTS.map((part): EquipSlotView => {
               const enh = character.gearEnhance?.[part] ?? 0, set = character.equippedGear[part];
               // 세트 파츠를 끼면 그 그림 · 같은 무기면 등급 테두리. 숙련 · 강화 효과는 끼든 말든 그대로
-              return { id: part, label: GEAR_PART_DEF[part].name, icon: assetUrl(set ? gearItemIconPath(set) : `titans/gear/${part}-${Math.max(1, gearTierOfEnhance(enh))}.png`), level: enh > 0 ? `+${enh}` : undefined, active: !!set && gearItemKind(set) === wantedWeaponKind, tier: set ? gearTierOf(character.gearTiers, set) : partEquipTier(enh) };
+              return { id: part, label: GEAR_PART_DEF[part].name, icon: assetUrl(set ? gearItemIconPath(set, gearTierOf(character.gearTiers, set)) : `titans/gear/${part}-${Math.max(1, gearTierOfEnhance(enh))}.png`), level: enh > 0 ? `+${enh}` : undefined, active: !!set && gearItemKind(set) === wantedWeaponKind, tier: set ? gearTierOf(character.gearTiers, set) : partEquipTier(enh) };
             }),
             (() => {
               // 탈것 칸 (2026-11-18) — 탄 탈것 그림 · Lv · 등급(꾸미기 등급 = 보석 값)
@@ -4894,7 +4894,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             ...WEAPON_KINDS.map((k): EquipBagItem => ({ key: k, slot: "weapon", label: WEAPON_LABEL[k], level: `+${lvOf(k)}`, icon: assetUrl(weaponBadgePath(k, lvOf(k))), on: wantedWeaponKind === k, pending: wantedWeaponKind === k && weaponKind !== k, title: `${weaponStatText(k)} · ${WEAPON_TECH[k].desc}`, className: "weapon-kind-chip", tier: weaponEquipTier(lvOf(k)) })),
             ...(character.ownedShoulders ?? []).map((id): EquipBagItem => ({ key: id, slot: "shoulder", label: SHOULDER_DEFINITIONS[id].name.replace(" 견갑", ""), icon: shoulderIconUrl(id), on: equippedShoulder === id && !character.equippedGear.shoulder, title: `${SHOULDER_DEFINITIONS[id].name} · ${SHOULDER_DEFINITIONS[id].effect}`, tier: shoulderEquipTier(SHOULDER_DEFINITIONS[id].grade) })),
             ...MOUNT_IDS.filter((mid) => (character.mounts[mid] ?? 0) > 0).map((mid): EquipBagItem => ({ key: `mount:${mid}`, slot: "mount", label: MOUNT_DEFS[mid].name.split(" ").pop() ?? MOUNT_DEFS[mid].name, level: `Lv.${character.mounts[mid]}`, icon: assetUrl(`titans/mounts/${mid}.webp`), on: character.activeMount === mid, title: `${MOUNT_DEFS[mid].name} · 사냥 골드 +${(mountGoldBonus(mid, character.mounts[mid] ?? 1) * 100).toFixed(1)}% · ${character.activeMount === mid ? "누르면 내림" : "끌어 놓거나 누르면 탄다"}`, tier: cosmeticTier(MOUNT_DEFS[mid].gemPrice) })),
-            ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: gearItemSetLabel(id), icon: assetUrl(gearItemIconPath(id)), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id, character.gearSetLevels[id] ?? 0, gearTierOf(character.gearTiers, id))}`, tier: gearTierOf(character.gearTiers, id), copies: isLimitedGear(id) ? undefined : character.gearCopies[id] ?? 0, mergeable: canMergeGear(id, character.ownedGear, character.gearTiers, character.gearCopies), nextTier: isLimitedGear(id) ? null : nextGearTier(gearTierOf(character.gearTiers, id)) })),
+            ...character.ownedGear.map((id): EquipBagItem => ({ key: id, slot: gearItemSlot(id), label: gearItemSetLabel(id), icon: assetUrl(gearItemIconPath(id, gearTierOf(character.gearTiers, id))), on: character.equippedGear[gearItemSlot(id)] === id, title: `${gearItemName(id)} · ${gearItemEffectText(id, character.gearSetLevels[id] ?? 0, gearTierOf(character.gearTiers, id))}`, tier: gearTierOf(character.gearTiers, id), copies: isLimitedGear(id) ? undefined : character.gearCopies[id] ?? 0, mergeable: canMergeGear(id, character.ownedGear, character.gearTiers, character.gearCopies), nextTier: isLimitedGear(id) ? null : nextGearTier(gearTierOf(character.gearTiers, id)), nextIcon: isLimitedGear(id) || !nextGearTier(gearTierOf(character.gearTiers, id)) ? undefined : assetUrl(gearItemIconPath(id, nextGearTier(gearTierOf(character.gearTiers, id)) ?? "N")) })),
           ];
           return (
             <EquipWindow
@@ -5776,7 +5776,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                   const owned = character.ownedGear.includes(id);
                   return (
                     <article key={id} data-tier={gearTierOf(character.gearTiers, id)} data-gear-kind={kind} className="titans-card gear-list-row gear-item-row">
-                      <img src={assetUrl(gearItemIconPath(id))} alt="" aria-hidden="true" />
+                      <img src={assetUrl(gearItemIconPath(id, gearTierOf(character.gearTiers, id)))} alt="" aria-hidden="true" />
                       <div><strong><em className="tier-chip">{TIER_LABEL[gearTierOf(character.gearTiers, id)]}</em> {gearItemName(id)}</strong><p>{gearItemEffectText(id, character.gearSetLevels[id] ?? 0, gearTierOf(character.gearTiers, id))}{owned ? ` · 여분 ${character.gearCopies[id] ?? 0}/${GEAR_MERGE_COPIES}` : ""}</p></div>
                       <button type="button" className={`gear-piece ${owned ? "owned" : ""}`} data-gear-item={id} disabled={redGems < GEAR_ITEM_PRICE || (owned && nextGearTier(gearTierOf(character.gearTiers, id)) === null)} title={owned ? `${gearItemName(id)} 여분 — ${GEAR_MERGE_COPIES}개 모으면 장비 성장에서 합성` : `${gearItemName(id)} · ${gearItemEffectText(id)}`} onClick={() => void buyGear([id], GEAR_ITEM_PRICE, gearItemName(id))}>
                         {owned ? <><small>여분</small><GemMark />{GEAR_ITEM_PRICE}</> : <><GemMark />{GEAR_ITEM_PRICE}</>}

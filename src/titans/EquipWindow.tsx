@@ -17,7 +17,9 @@ import "./equipWindow.css";
 export type EquipSlotId = "weapon" | "shoulder" | "helmet" | "armor" | "gloves" | "boots" | "mount";
 export type EquipBagItem = { key: string; slot: EquipSlotId; label: string; level?: string; icon: string; on: boolean; pending?: boolean; title: string; className?: string; tier?: Tier;
   /** 합성 재료(세트 파츠만) — 여분 수 · 지금 합성 가능 · 합성하면 될 등급(끝이면 없음) */
-  copies?: number; mergeable?: boolean; nextTier?: Tier | null };
+  copies?: number; mergeable?: boolean; nextTier?: Tier | null;
+  /** 합성 결과 칸 그림(2026-11-23) — 등급 그림이 바뀌는 단(영웅 · 신화)이면 바뀐 모습을 미리 보여 준다 */
+  nextIcon?: string };
 export type EquipSlotView = { id: EquipSlotId; label: string; icon: string | null; level?: string; tier?: Tier; active?: boolean };
 export type EquipStat = { key: string; label: string; value: string; title?: string };
 
@@ -137,7 +139,7 @@ export function EquipWindow({ slots, bag, hero, stats, footer, onEquip, onDenied
                 <span className="equip-merge-tile" data-tier={it.tier}><img src={it.icon} alt="" /></span><i aria-hidden="true">+</i>
                 {Array.from({ length: mergeNeed }, (_, k) => <span key={k} className={`equip-merge-tile ${k < have ? "" : "missing"}`} data-tier={it.tier}><img src={it.icon} alt="" />{k === mergeNeed - 1 && <small>{have}/{mergeNeed}</small>}</span>)}
                 <i aria-hidden="true">=</i>
-                {it.nextTier ? <span className="equip-merge-tile result" data-tier={it.nextTier}><img src={it.icon} alt="" /><small>{TIER_LABEL[it.nextTier]}</small></span> : <span className="equip-merge-tile result max"><small>최고</small></span>}
+                {it.nextTier ? <span className="equip-merge-tile result" data-tier={it.nextTier}><img src={it.nextIcon ?? it.icon} alt="" /><small>{TIER_LABEL[it.nextTier]}</small></span> : <span className="equip-merge-tile result max"><small>최고</small></span>}
                 <button type="button" className="equip-merge-go" disabled={!it.mergeable} onClick={() => onMerge(it.key)}>합성</button>
               </div>
             );

@@ -37,6 +37,7 @@
 | 사냥터 바닥(2026-11-19) | `ART_STYLE=toon … hunt_ground.py -- all` | `node scripts/assemble-hunt-ground.mjs` → `backgrounds/ground-<지역>.webp` · `backgrounds-px`. 가운데 흙길(그림 세로 29~61%)이 발 자리 — 소품은 뒤 가장자리 · 아래 모서리만 |
 | 몬스터 테두리빛(2026-11-19) | — | `assemble-anim2` 가 적 시트(탈것 · 펫 빼고, 셀만)에 굽는다(`scripts/lib/monster-rim.mjs`). 지금 시트만 다시 굽기: `node scripts/monster-rim.mjs [id…]`(원본 `art-gen/out/monster-sheets-orig`) |
 | 무기 아이콘 · 견갑(2026-11-19) | `ART_STYLE=toon … gear_icons.py -- icons shoulders` | `assemble-gear.mjs icon- shoulder-… set-…-shoulder` → `titans/gear/icon/<kind>-<t>.png`(칸 아이콘 전용 · `weaponBadgePath`). 손에 드는 그림(`weaponIconPath`)과 따로 |
+| 장비 아이콘 캐주얼 · 합성 등급 그림(2026-11-23) | `ART_STYLE=toon GEAR_FACET=0 GEAR_ICON_F=2.2 ICON_SQUASH=0.8 TOON_OUTLINE=2.6 INK_COLOR=#1a1424 TOON_STEPS=0:0.72,0.3:0.95,0.55:1.12,0.82:1.3 TOON_SPEC=0.955:0.8 GEAR_OUT=art-gen/out/b3d-gear-casual … gear_icons.py -- icons helmet-1 … shield-3 shoulder-<넷>` 과 `-- sets`(세트 20 × 기본 · -2 · -3 + 한정) | `GEAR_SRC=art-gen/out/b3d-gear-casual node scripts/assemble-gear.mjs` — 아이콘에만 스티커 외곽선 + 등급 테두리 빛 · 별빛(`relic-icon-pop`), 팔레트 PNG. 등급 그림은 `gearItemIconPath(id, tier)`(일반 · 희귀 기본, 영웅 · 전설 -2, 신화 -3). 손에 드는 무기 그림은 이 설정으로 렌더하지 않는다 |
 | 비트 표지(2026-11-19) | `ART_STYLE=toon … beat_covers.py -- <id>`(픽셀 곡 둘은 `ART_STYLE=pixel`) — 표지마다 Blender 따로 | `node scripts/assemble-beat-covers.mjs` → `public/beat/covers/<id>.png` 256² |
 
 ## ③ 도트 — 설정 '그림체: 셀 · 도트'
