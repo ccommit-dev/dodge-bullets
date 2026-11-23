@@ -190,6 +190,8 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   "flame-wyvern-clean": [0.19, 0.03], "abyss-titan": [0.17, 0.23], "thorn-boar-king": [0.19, 0.24], "ancient-treant": [0.22, 0.25], "ruin-sentinel": [0.17, 0.23], "magma-golem": [0.16, 0.21],
   "void-lich": [0.12, 0.24], "goblin-warlord": [0.10, 0.13], "spider-queen": [0.05, 0.08], minotaur: [0.15, 0.19], "fire-demon": [0.19, 0.04], "bone-dragon": [0.19, 0.04],
   "golden-lion-clean": [0.18, 0.23],
+  // Sketchfab 몬스터(2026-11-23, CC BY · docs/CREDITS.md) — scripts/monster-margins-from-png.mjs 실측(옛 종 값은 그대로 — 그 스크립트를 돌리면 전부 0.01 씩 다시 쓴다)
+  "sf-bat": [0.31, 0.29], "sf-mushy": [0.26, 0.26], "sf-plant": [0.25, 0.40], "sf-eyeplant": [0.23, 0.35], "sf-tentacle": [0.25, 0.28],
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */

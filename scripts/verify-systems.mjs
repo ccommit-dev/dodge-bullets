@@ -1373,7 +1373,12 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   const gateArts = [...variantArts, ...stages.STAGES.map((x) => x.bossArt).filter(Boolean), ...stages.BRANCH_STAGES.map((x) => x.bossArt).filter(Boolean)];
   const gateMissing = gateArts.filter((a) => !existsSync(root + "/public/titans/generated/monsters/" + a + ".png"));
   ok("성문 방어: 장별 변종(6종 × 5장) · 중간 보스 5 · 비밀 대장 5 그림이 모두 있다", variantArts.length >= 12 && gateMissing.length === 0, gateMissing.join(",") || variantArts.length + "종");
-  ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자)", bestiary.bestiaryEntries().length === 30, String(bestiary.bestiaryEntries().length));
+  // 2026-11-23 Sketchfab 몬스터 다섯(CC BY · 우리 셀 그림체로 다시 렌더) 을 지역 변종 끝에 더해 30 → 35
+  ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자) + Sketchfab 5 = 도감 35", bestiary.bestiaryEntries().length === 35, String(bestiary.bestiaryEntries().length));
+  { const sf = bestiary.SKETCHFAB_MONSTER_ARTS, need = (a) => [`public/titans/anim/monsters/${a}.webp`, `public/titans/anim-px/monsters/${a}.webp`, `public/titans/generated/monsters/${a}.png`, `public/titans/generated/monsters/${a}-hit.png`, `public/titans/generated/monsters/thumbs/${a}.webp`];
+    const miss = sf.flatMap((a) => need(a).filter((p) => !existsSync(root + "/" + p))), credits = existsSync(root + "/docs/CREDITS.md") ? readFileSync(root + "/docs/CREDITS.md", "utf8") : "";
+    const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Mushy Buddy", "Eyeball Plant", "Monster Plant", "RPG Monster - Bat", "Cute tentacle creature"].filter((n) => !credits.includes(n));
+    ok("Sketchfab 몬스터 5: 셀 · 도트 시트 · 정지 그림 · 피격 · 도감 썸네일 · 실측 여백 · 크레딧(작가 · CC BY)이 모두 있다", sf.length === 5 && miss.length === 0 && noMargin.length === 0 && noCredit.length === 0, [...miss, ...noMargin, ...noCredit].join(",")); }
   const nb = prog.normalizeCharacterProgress({ ...base, dodgeBranches: { "1-T": 3, "9-X": 2, "2-S": 7, junk: 1 } });
   ok("진행도 정규화: 갈림길 별 — 알려진 키만 · 0~3", nb.dodgeBranches["1-T"] === 3 && nb.dodgeBranches["2-S"] === 3 && !("9-X" in nb.dodgeBranches) && !("junk" in nb.dodgeBranches), JSON.stringify(nb.dodgeBranches));
 }

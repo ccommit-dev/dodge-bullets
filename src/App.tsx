@@ -75,6 +75,7 @@ import { applyLowFx, frameMonitor, lowFxOn, setLowFx } from "./ui/perfMode";
 import { governorEnabled, isSafeBoot, maxCanvasScale, scaleGovernor } from "./ui/perfGovernor";
 import { TITLES, WEAPON_SKINS, weaponSkinIcon } from "./economy/gemCatalog";
 import { weaponHuntLevel, weaponIconPath } from "./titans/weapons";
+import { CREDIT_LICENSE, SKETCHFAB_CREDITS } from "./ui/credits";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS, formatGold } from "./titans/model";
@@ -437,6 +438,7 @@ function App() {
   const [exitOpen, setExitOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsMore, setSettingsMore] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);   // 외부 그림 크레딧(2026-11-23, ui/credits)
   // 테스트 모드 — 빌드 라벨을 3초 안에 7번 탭하면 토글 (안드로이드 개발자 옵션식 숨은 제스처)
   // 출시 빌드(QA_BUILD false)에서는 제스처도 플래그도 없다 — 테스터 기기에 남은 qa-mode=1 도 무시
   // 테스트 모드 = 콘텐츠·스킬 칸 전부 해금 (2026-10-16) — QA 빌드는 기본 켜짐, 끄면 qa-mode="0" 이 남는다 (storage.qaUnlockAll)
@@ -1922,6 +1924,16 @@ function App() {
                   <span>이펙트</span>
                   <b>{fxLow ? "저사양" : "전체"}</b>
                 </button>
+                {/* 외부 그림 크레딧 (2026-11-23) — Sketchfab CC BY 모델(우리 그림체로 다시 렌더). CC BY 는 작가 표기가 조건이라 게임 안에서 볼 수 있게 */}
+                <button type="button" role="menuitem" className="settings-credits-toggle" aria-expanded={creditsOpen} onClick={() => setCreditsOpen((v) => !v)}>
+                  <span>외부 그림 크레딧</span><b>{creditsOpen ? "▴" : "▾"}</b>
+                </button>
+                {creditsOpen && (
+                  <div className="settings-credits" role="note">
+                    <small>{CREDIT_LICENSE}</small>
+                    {SKETCHFAB_CREDITS.map((c) => <p key={c.url}><b>{c.title}</b> · {c.author}<br /><small>{c.use} · {c.url.replace("https://", "")}</small></p>)}
+                  </div>
+                )}
                 {/* 전체 화면 (2026-10-14, 사용자: "가로모드 전체화면"): 브라우저 주소창·도구줄을 숨긴다. 지원 브라우저(안드로이드 크롬 등)에서만 보이고, 앱(Capacitor)은 이미 전체 화면 */}
                 {/* 인앱 브라우저(카카오톡 등)는 Fullscreen API 가 없다 → "브라우저로 열기"(카카오 openExternal · 안드로이드 크롬 intent) 또는 안내 (2026-10-14 보완) */}
                 {(() => {

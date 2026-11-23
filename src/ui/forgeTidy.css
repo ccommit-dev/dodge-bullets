@@ -6,6 +6,9 @@
  */
 .forge-stage { height: clamp(180px, 25vh, 230px) !important; min-height: 0 !important; margin: 8px 0 !important; }
 .forge-stage .sword-aura { width: min(44vw, 170px) !important; }
+/* 불티 — 옛 무대(371px)에 맞춘 280px 오르기라 줄인 무대 위로 64px 튀어 잘렸다(verify-anim-clip) → 190px(무대 180px 에서도 위끝 안) */
+.forge-stage .forge-embers i { animation-name: forge-ember-short; }
+@keyframes forge-ember-short { to { transform: translate(calc((var(--ember-i) - 5) * 3px), -190px); opacity: 0; } }
 
 /* 장비 강화 · 원정 무기(쇼케이스) — 정사각 그림을 무대 높이의 62% 로 */
 .forge-showcase { min-height: 0 !important; }

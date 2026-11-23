@@ -14,15 +14,15 @@ type NormalKind = Exclude<TitanMonsterKind, "boss">;
 /** 사냥터 지역 × 종류 → 변종 (첫째가 그 지역의 대표) */
 export const HUNT_VARIANTS: Record<string, Partial<Record<NormalKind, MonsterArtDef[]>>> = {
   meadow: {
-    slime: [{ art: "slime", name: "슬라임" }],
-    goblin: [{ art: "goblin", name: "고블린" }, { art: "goblin-shaman", name: "고블린 주술사" }],
+    slime: [{ art: "slime", name: "슬라임" }, { art: "sf-mushy", name: "버섯 방울이" }],
+    goblin: [{ art: "goblin", name: "고블린" }, { art: "goblin-shaman", name: "고블린 주술사" }, { art: "sf-eyeplant", name: "눈알 꽃" }],
   },
   forest: {
-    goblin: [{ art: "goblin-shaman", name: "고블린 주술사" }, { art: "goblin", name: "고블린" }],
-    wolf: [{ art: "frost-wolf", name: "서리 늑대" }, { art: "shadow-wolf-clean", name: "그림자 늑대" }],
+    goblin: [{ art: "goblin-shaman", name: "고블린 주술사" }, { art: "goblin", name: "고블린" }, { art: "sf-plant", name: "화분 파리지옥" }],
+    wolf: [{ art: "frost-wolf", name: "서리 늑대" }, { art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "sf-bat", name: "보라 박쥐" }],
   },
   ruins: {
-    wolf: [{ art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "skeleton-goblin", name: "해골 고블린" }],
+    wolf: [{ art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "skeleton-goblin", name: "해골 고블린" }, { art: "sf-tentacle", name: "말랑 불가사리" }],
     ogre: [{ art: "stone-troll", name: "바위 트롤" }, { art: "ogre", name: "오우거" }],
   },
   volcano: {
@@ -44,6 +44,10 @@ export const HUNT_BOSSES: Record<string, MonsterArtDef[]> = {
   volcano: [{ art: "flame-wyvern-clean", name: "화염 비룡" }, { art: "magma-golem", name: "용암 골렘" }, { art: "fire-demon", name: "화염 마신" }],
   abyss: [{ art: "abyss-titan", name: "심연의 타이탄" }, { art: "void-lich", name: "공허의 리치" }, { art: "bone-dragon", name: "해골 용" }],
 };
+
+/** Sketchfab 몬스터 다섯(2026-11-23, 사용자: "sketchfab 에서 받아 적용" — CC BY, 작가 · 원본은 docs/CREDITS.md).
+ * 받은 3D 모델을 우리 셀 그림체로 다시 렌더(art-gen/blender/sketchfab_monsters.py)해 지역 변종 끝에 붙였다 — 종류(체력 · 속도 · 보상)는 그대로라 밸런스 무관 */
+export const SKETCHFAB_MONSTER_ARTS = ["sf-mushy", "sf-eyeplant", "sf-plant", "sf-bat", "sf-tentacle"] as const;
 
 /** 사냥터 일반 몬스터 변종 — 같은 종류가 다음에 나올 때 다음 변종 */
 export function huntMonsterVariant(kind: NormalKind, area: HuntingAreaDef, stage: number): MonsterArtDef | null {
