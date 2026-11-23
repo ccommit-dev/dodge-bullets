@@ -1856,6 +1856,114 @@ IDLE2_JOBS = {
     'idle2-weekend-rift': (i_weekend_rift, (-8, 6), 1.6),
 }
 
+
+# ── 아래 내비 · 콘텐츠 아이콘 (2026-11-23, 사용자: "외에 아쉬운점 리소스 마저 수정") — 생성 그림 스프라이트(content-sprite-v1)를
+# 같은 스티커 그림결로. 비버가 든 칸(내 정보 · 동료)은 게임 셀 원화에서 잘라 쓰고(scripts/assemble-nav-icons.mjs) 여기선 물건만 짓는다
+def n_hunt(_):   # 사냥터 — 둥근 방패 앞에 엇갈린 검 둘
+    ob('shield', C.tube([Vector((0, 0.12, 0)), Vector((0, 0.02, 0))], 0.5, seg=24), m('shield', '#2f6fd0'))
+    ob('srim', C.torus(Vector((0, 0.0, 0)), 0.5, 0.06, seg=24, ring=6, rot=_FRONT), metal_m(GOLD))
+    ob('boss', C.ellipsoid(Vector((0, -0.04, 0)), (0.12, 0.06, 0.12)), metal_m(GOLD), O * 0.6)
+    for sx in (-1, 1):
+        rot = Euler((0, math.radians(sx * 42), 0))
+        d = rot.to_matrix() @ Vector((0, 0, 1))
+        base = Vector((0, -0.14 - 0.04 * (sx + 1), 0))
+        ob(f'blade{sx}', C.box(base + d * 0.22, (0.13, 0.04, 0.92), rot=rot), metal_m('#dbe4ee'))
+        ob(f'tip{sx}', C.cone(base + d * 0.74, 0.09, 0.0, 0.14, seg=4, rot=rot), metal_m('#dbe4ee'), O * 0.7)
+        ob(f'guard{sx}', C.box(base + d * -0.28, (0.36, 0.07, 0.07), rot=rot), metal_m(GOLD))
+        ob(f'grip{sx}', C.tube([base + d * -0.3, base + d * -0.52], 0.045, seg=8), m('grip', '#5a2e12'), O * 0.6)
+        ob(f'pom{sx}', C.ellipsoid(base + d * -0.56, (0.06, 0.06, 0.06)), metal_m(GOLD), O * 0.5)
+
+
+def n_dodge(_):   # 성문 방어 — 돌 성문 + 앞에 방패 문장
+    _gate()
+    ob('crest', C.ellipsoid(Vector((0, -0.12, -0.1)), (0.24, 0.06, 0.28)), m('crest', '#2f6fd0'), O * 0.8)
+    ob('crest_rim', C.torus(Vector((0, -0.14, -0.1)), 0.24, 0.035, seg=24, ring=5, rot=_FRONT), metal_m(GOLD), O * 0.5)
+    _spark('sp0', Vector((0.5, -0.3, 0.56)), 0.13)
+
+
+def n_beat(_):   # 비트 수련 — 북 + 북채 둘 + 음표
+    ob('drum', C.tube([Vector((0, 0, -0.42)), Vector((0, 0, 0.12))], 0.52, seg=24), m('drum', '#e11d48'))
+    ob('head', C.tube([Vector((0, 0, 0.12)), Vector((0, 0, 0.16))], 0.5, seg=24), m('skin', '#fff3dc'), O * 0.6)
+    for z in (0.12, -0.42):
+        ob(f'hoop{z}', C.torus(Vector((0, 0, z)), 0.53, 0.05, seg=24, ring=6), metal_m(GOLD), O * 0.6)
+    for k in range(6):   # 줄
+        a = k * math.pi / 3 + 0.3
+        ob(f'cord{k}', C.tube([Vector((0.53 * math.cos(a), 0.53 * math.sin(a), 0.1)), Vector((0.53 * math.cos(a + 0.5), 0.53 * math.sin(a + 0.5), -0.4))], 0.018, seg=5), m('cord', '#fff3dc'), 0)
+    for sx in (-1, 1):
+        ob(f'stick{sx}', C.tube([Vector((sx * 0.1, -0.1, 0.22)), Vector((sx * 0.6, -0.18, 0.66))], 0.035, seg=8), m('stick', '#c27c3a'), O * 0.7)
+        ob(f'tipb{sx}', C.ellipsoid(Vector((sx * 0.1, -0.1, 0.22)), (0.07, 0.07, 0.07)), m('tipb', '#fff3dc'), O * 0.5)
+    note = m('note', '#7c3aed', emit='#a78bfa', es=0.3)
+    ob('n_head', C.ellipsoid(Vector((0.5, -0.3, -0.06)), (0.1, 0.05, 0.08), rot=Euler((0, math.radians(-25), 0))), note, O * 0.6)
+    ob('n_stem', C.box(Vector((0.59, -0.3, 0.12)), (0.03, 0.03, 0.34)), note, O * 0.5)
+
+
+def n_forge(_):
+    i_anvil(_)
+
+
+def n_attendance(_):   # 출석 — 달력 + 초록 체크
+    ob('page', C.box(Vector((0, 0.02, -0.08)), (1.0, 0.1, 0.92), bevel=0.06), m('page', '#fff7e0'))
+    ob('top', C.box(Vector((0, -0.01, 0.34)), (1.02, 0.12, 0.26), bevel=0.05), m('top', '#e11d48'))
+    for sx in (-1, 1):
+        ob(f'ring{sx}', C.torus(Vector((sx * 0.26, -0.06, 0.48)), 0.07, 0.025, seg=12, ring=5), metal_m('#9aa8b8'), O * 0.5)
+    for r in range(2):
+        for c in range(4):
+            ob(f'cell{r}{c}', C.box(Vector((-0.33 + c * 0.22, -0.04, 0.04 - r * 0.22)), (0.15, 0.02, 0.14)), m('cell', '#f0d9a8'), 0)
+    chk = m('chk', '#22a35a', emit='#4ade80', es=0.2)
+    ob('chk_a', C.box(Vector((-0.06, -0.1, -0.36)), (0.22, 0.06, 0.1), rot=Euler((0, math.radians(45), 0))), chk, O * 0.7)
+    ob('chk_b', C.box(Vector((0.14, -0.1, -0.24)), (0.44, 0.06, 0.1), rot=Euler((0, math.radians(-50), 0))), chk, O * 0.7)
+
+
+def n_event(_):   # 모험 — 금 나침반
+    C.FACET = 0   # 둥근 몸 — RELIC_FACET 10 이면 관이 육각이 된다(다음 잡은 reset 으로 되돌아간다)
+    ob('body', C.tube([Vector((0, 0.08, 0)), Vector((0, -0.08, 0))], 0.6, seg=24), metal_m(GOLD))
+    ob('face', C.tube([Vector((0, -0.08, 0)), Vector((0, -0.1, 0))], 0.48, seg=24), m('face', '#fff7e0'), O * 0.6)
+    ob('loop', C.torus(Vector((0, 0, 0.7)), 0.1, 0.035, seg=16, ring=5, rot=_FRONT), metal_m(GOLD_D), O * 0.6)
+    for k in range(4):
+        a = k * math.pi / 2
+        ob(f'tick{k}', C.box(Vector((0.38 * math.cos(a), -0.11, 0.38 * math.sin(a))), (0.05, 0.02, 0.05)), m('tick', '#8a6a4a'), 0)
+    prism('n_red', [(-0.09, 0.0), (0.0, 0.38), (0.09, 0.0)][::-1], 0.04, m('red', '#e11d48'), y=-0.13, outline=O * 0.5)
+    prism('n_blue', [(0.09, 0.0), (0.0, -0.38), (-0.09, 0.0)][::-1], 0.04, m('blue', '#2f6fd0'), y=-0.13, outline=O * 0.5)
+    ob('pin', C.ellipsoid(Vector((0, -0.16, 0)), (0.05, 0.03, 0.05)), metal_m(GOLD), O * 0.4)
+
+
+def _cog(at, r, teeth, c, y=0.0, name='cog'):
+    pts = []
+    for i in range(teeth * 4):
+        a = i * 2 * math.pi / (teeth * 4)
+        rr = r if (i % 4) in (1, 2) else r * 0.78
+        pts.append((at.x + rr * math.cos(a), at.z + rr * math.sin(a)))
+    prism(name, pts[::-1], 0.18, metal_m(c), y=y)
+
+
+def n_settings(_):   # 설정 — 톱니바퀴
+    _cog(Vector((0, 0, 0)), 0.62, 8, '#9aa8b8')
+    saved = C.FACET
+    C.FACET = 0
+    ob('hub', C.tube([Vector((0, -0.08, 0)), Vector((0, -0.14, 0))], 0.28, seg=32), metal_m(GOLD), O * 0.6)
+    ob('hole', C.tube([Vector((0, -0.14, 0)), Vector((0, -0.16, 0))], 0.12, seg=32), m('hole', '#3b4a6b'), 0)
+    C.FACET = saved
+
+
+def n_shop(_):   # 상점 — 줄무늬 차양 가게
+    wood = m('wood', '#8a4f22')
+    ob('counter', C.box(Vector((0, 0, -0.42)), (1.0, 0.5, 0.42), bevel=0.04), wood)
+    for sx in (-1, 1):
+        ob(f'post{sx}', C.box(Vector((sx * 0.44, 0.1, 0.0)), (0.08, 0.08, 0.9)), wood)
+    for k in range(5):   # 차양 — 빨강 · 흰 줄
+        x = -0.48 + k * 0.24
+        ob(f'aw{k}', C.box(Vector((x, -0.06, 0.42)), (0.24, 0.5, 0.12), rot=Euler((math.radians(-18), 0, 0))), m(f'aw{k % 2}', '#e11d48' if k % 2 == 0 else '#fff7e0'))
+        ob(f'sc{k}', C.ellipsoid(Vector((x, -0.3, 0.32)), (0.12, 0.05, 0.08)), m(f'aw{k % 2}', '#e11d48' if k % 2 == 0 else '#fff7e0'), O * 0.6)
+    _ruby('r0', Vector((-0.24, -0.12, -0.1)), 0.24)
+    ob('coin', C.tube([Vector((0.06, -0.18, -0.12)), Vector((0.06, -0.24, -0.12))], 0.13, seg=20), metal_m(GOLD), O * 0.6)
+    ob('bag', C.ellipsoid(Vector((0.3, -0.06, -0.08)), (0.16, 0.14, 0.18), egg=0.3), m('sack', '#c9a06a'), O * 0.8)
+
+
+NAV_JOBS = {
+    'nav-hunt': (n_hunt, (-8, 6), 1.7), 'nav-dodge': (n_dodge, (-10, 6), 1.7), 'nav-beat': (n_beat, (-16, 18), 1.7), 'nav-forge': (n_forge, (-16, 10), 1.7),
+    'nav-attendance': (n_attendance, (-10, 8), 1.6), 'nav-event': (n_event, (-8, 6), 1.6), 'nav-settings': (n_settings, (-12, 8), 1.6), 'nav-shop': (n_shop, (-16, 10), 1.7),
+}
+
 QUEST_JOBS = {
     'quest-twigs': (q_twigs, (-14, 10), 1.7), 'quest-acorns': (q_acorns, (-14, 16), 1.6), 'quest-dam-patch': (q_dam_patch, (-20, 14), 1.7),
     'quest-river-patrol': (q_river_patrol, (-10, 12), 1.7), 'quest-log-haul': (q_log_haul, (-22, 14), 1.7), 'quest-village-guard': (q_village_guard, (-14, 10), 1.8),
@@ -1954,6 +2062,7 @@ JOBS.update(RELIC_JOBS_V4)
 JOBS.update(CUR_JOBS)
 JOBS.update(PKG_JOBS)
 JOBS.update(IDLE2_JOBS)
+JOBS.update(NAV_JOBS)
 RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard'] + list(RELIC_JOBS_V3) + list(RELIC_JOBS_V4)
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']
@@ -1969,6 +2078,8 @@ for a in argv:
         names += list(RELIC_JOBS_V4)
     elif a == 'quests2':
         names += [k for k in QUEST_JOBS if k[len('quest-'):] in ('reed-weave', 'mud-haul', 'fish-catch', 'lily-garden', 'bark-strip', 'lantern-light', 'stone-stack', 'stepping-stones', 'mill-wheel', 'honey-gather', 'raft-build', 'watchtower', 'tool-forge', 'market-trade', 'canal-dig', 'storehouse', 'river-lighthouse', 'festival', 'royal-banner', 'crystal-mine', 'star-reservoir', 'beaver-kingdom')]
+    elif a == 'nav':
+        names += list(NAV_JOBS)
     elif a == 'idle2':
         names += list(IDLE2_JOBS)
     elif a == 'pkg':
