@@ -1,0 +1,6 @@
+/* 빛 판 아이콘 (2026-11-23, 사용자: "스킬 ui 나 퀘스트 ui 아이콘은 이런 풍으로" — scripts/make-glow-tiles.mjs) — 그림 자체가 어두운 정사각 판 · 둥근 모서리라
+   예전 메달용 테두리 · 크림/남색 원 바탕을 걷고 그림이 칸을 꽉 채운다. 전장 명중 팝(field)은 예전 메달 그대로. 맨 뒤 */
+.skill-icon.has-art.glow-tile { padding: 0 !important; border: 0 !important; border-radius: 9px !important; background: #120f1c !important; box-shadow: 0 2px 0 rgba(10, 14, 30, .55) !important; overflow: hidden; }
+.skill-icon.has-art.glow-tile img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: inherit; }
+.quest-icon:has(> .quest-glow-tile) { padding: 0 !important; border: 0 !important; background: #120f1c !important; border-radius: 10px !important; overflow: hidden; }
+.quest-icon > .quest-glow-tile { width: 100% !important; height: 100% !important; object-fit: cover !important; filter: none !important; }

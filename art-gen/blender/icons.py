@@ -422,12 +422,13 @@ def clear():
 def render_icon(key, out):
     clear()
     el, draw = EMBLEM[key]
-    medal(el)
+    if not BARE:
+        medal(el)
     before = {o.name for o in bpy.data.objects}
     draw()
-    for o in bpy.data.objects:   # 상징을 메달 안쪽을 채우게 1.6배(메달 가운데 기준) — 처음 그림은 메달의 30% 만 차지했다
+    for o in bpy.data.objects:   # 상징을 메달 안쪽을 채우게 1.6배(메달 가운데 기준) — 처음 그림은 메달의 30% 만 차지했다. 메달 없이(BARE)는 칸을 채우게 1.9배
         if o.type == 'MESH' and o.name not in before:
-            o.scale = (1.6, 1.6, 1.6)
+            o.scale = (1.9, 1.9, 1.9) if BARE else (1.6, 1.6, 1.6)
     bpy.context.scene.render.filepath = out
     bpy.ops.render.render(write_still=True)
 
@@ -473,9 +474,11 @@ def render_arrow(key, out):
 
 C.reset()
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['hunt', 'dodge', 'arrows']
+# 메달 없이 상징만(2026-11-20, 사용자 참고 스킬 아이콘 — 어두운 정사각 판 · 속성색 빛은 scripts/make-glow-tiles.mjs 가 2D 로 입힌다). ICON_BARE=1 → b3d-icons/<set>-bare
+BARE = os.environ.get('ICON_BARE', '') == '1'
 C.lights(1.1)
 for setname in argv:
-    outdir = os.path.join(ROOT, 'art-gen', 'out', 'b3d-icons', setname)
+    outdir = os.path.join(ROOT, 'art-gen', 'out', 'b3d-icons', setname + ('-bare' if BARE else ''))
     os.makedirs(outdir, exist_ok=True)
     if setname == 'arrows':
         C.setup_render(res=(640, 152), samples=40)

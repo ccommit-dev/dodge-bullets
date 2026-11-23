@@ -4577,7 +4577,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             aria-hidden="true"
           >
             {s.kind === "impact" && <i className="fx-burst" />}
-            {s.kind === "impact" && s.skill && <SkillIcon id={s.skill} size={s.big ? 46 : 34} />}
+            {s.kind === "impact" && s.skill && <SkillIcon id={s.skill} size={s.big ? 46 : 34} field />}
             {(s.kind === "shot" || s.kind === "proj") && <i />}
           </span>
         ))}

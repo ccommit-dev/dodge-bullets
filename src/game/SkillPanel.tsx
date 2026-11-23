@@ -125,7 +125,7 @@ export function SkillPanel({
   const summary = skillSummary(levels);
   const open = openId ? SKILL_BY_ID[openId] : null;
 
-  const iconOf = (def: ExpeditionSkillDef) => assetUrl(`dodge/skills/${def.icon}.png`);
+  const iconOf = (def: ExpeditionSkillDef) => assetUrl(`dodge/skills-tile/${def.icon}.png`);   // 빛 판 아이콘(2026-11-23, make-glow-tiles dodge)
   const WEAPON_SHORT: Record<string, string> = { sword: "검", spear: "창", bow: "활", staff: "지팡이" };
 
   return (
@@ -341,7 +341,7 @@ export function SkillPanel({
                 onClick={() => onEquipWeapon(w.id)}
               >
                 {/* 카드는 무기 메달(dodge/skills/basic-<무기>.png, 2026-11-09 스킬 무기와 같은 그림체). 예전 선 그림은 34px 에서 뭉개졌다 */}
-                <img src={assetUrl(`dodge/skills/basic-${w.id}.png`)} alt="" aria-hidden="true" />
+                <img src={assetUrl(`dodge/skills-tile/basic-${w.id}.png`)} alt="" aria-hidden="true" />
                 <span>
                   <b>{w.name}</b>
                   <em>{unlocked ? w.desc : `${w.unlockStage}스테이지 클리어 시 해금`}</em>
@@ -385,7 +385,7 @@ export function SkillPanel({
       {weapon !== "none" && (
         <div className="exp-basic-row">
           {/* 기본 사격은 무기의 것 — 장착한 무기 아이콘으로 (활 문장 basic.png 는 지팡이를 끼면 거짓말이었다, 2026-10-01) */}
-          <img src={assetUrl(`dodge/skills/basic-${weapon}.png`)} alt="" aria-hidden="true" />
+          <img src={assetUrl(`dodge/skills-tile/basic-${weapon}.png`)} alt="" aria-hidden="true" />
           <span>
             <b>{weapon === "staff" ? "마력탄" : weapon === "sword" ? "검기" : weapon === "spear" ? "찌르기" : "기본 사격"} · {WEAPON_BY_ID[weapon]?.name ?? "무기"} +{basicLevel}</b>
             <em>피해 ×{basicDamageMul(basicLevel).toFixed(2)} · {(BASIC_SHOT_COOLDOWN * basicCooldownMul(basicLevel)).toFixed(2)}초마다 1발 · 강화는 대장간</em>

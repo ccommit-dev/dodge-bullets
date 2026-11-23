@@ -38,6 +38,7 @@ import "./ui/equipBlue.css";   // 2026-11-20 장비창 3판 — 파란 무대 ·
 import "./ui/allyStage.css";   // 2026-11-20 동료 목록 = 파란 무대 · 남색 판 4열 카드 · 큰 노란 출전 단추 (맨 뒤)
 import "./ui/perkBlue.css";   // 2026-11-20 성문 방어 레벨 업 카드 2판 — 남색 카드 · 하늘 그림 판 · NEW 꼬리표 (맨 뒤)
 import "./ui/gachaBanner.css";   // 2026-11-20 동료 뽑기 배너 2판 — 자홍 점무늬 판 · 노란 리본 · 빛살 · 1회 노랑/10회 초록 (맨 뒤)
+import "./ui/glowTiles.css";   // 2026-11-23 스킬 · 퀘스트 빛 판 아이콘 — 어두운 정사각 판 · 속성색 빛 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
@@ -2594,12 +2595,12 @@ function App() {
                 <b className="perk-name">{perk.label}</b>
                   <span className="perk-icon">
                     {PERK_SKILL_ICON[perk.id as PerkId]
-                      ? <img src={assetUrl(PERK_SKILL_ICON[perk.id as PerkId] === "basic" ? `dodge/weapons/icon-${progress.equippedWeaponKind}.png` : `dodge/skills/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={56} height={56} />
+                      ? <img src={assetUrl(PERK_SKILL_ICON[perk.id as PerkId] === "basic" ? `dodge/weapons/icon-${progress.equippedWeaponKind}.png` : `dodge/skills-tile/${PERK_SKILL_ICON[perk.id as PerkId]}.png`)} alt="" width={56} height={56} />
                       : PERK_ICON[perk.id as PerkId] === "exp"
                         ? <img src={assetUrl("ui/idle/exp-orb.png")} alt="" width={56} height={56} />
                         : PERK_ICON[perk.id as PerkId]
                           ? <RewardIcon kind={PERK_ICON[perk.id as PerkId] as RewardIconKind} size={56} />
-                          : <img src={assetUrl("dodge/skills/basic.png")} alt="" width={56} height={56} />}
+                          : <img src={assetUrl("dodge/skills-tile/basic.png")} alt="" width={56} height={56} />}
                   </span>
                 <span className="perk-pips" aria-label={`${RARITY_LABEL[perk.rarity]} 등급`}>{[0, 1, 2].map((k) => <i key={k} className={k < pips ? "on" : ""} />)}</span>
                 <span className="perk-copy">

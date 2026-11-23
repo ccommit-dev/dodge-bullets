@@ -60,7 +60,8 @@ export function QuestPanel({ state, gold, prog, done = [], onBuy, onBonus, unit 
           return (
             <li key={q.id} className={`quest-row ${locked ? "is-locked" : ""} ${prevLocked ? "is-hidden" : ""} ${done.includes(i) ? "paid" : ""}`} data-quest={q.id}>
               <span className="quest-icon">
-                <img src={assetUrl(`titans/quests/${q.id}.png`)} alt="" aria-hidden="true" />
+                {/* 빛 판 아이콘(2026-11-23, scripts/make-glow-tiles.mjs quests) */}
+                <img className="quest-glow-tile" src={assetUrl(`titans/quests-tile/${q.id}.png`)} alt="" aria-hidden="true" />
                 <b>Lv.{lv}</b>
               </span>
               <span className="quest-main">

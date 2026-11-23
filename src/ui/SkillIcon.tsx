@@ -36,18 +36,23 @@ const GLYPH: Record<TitanSkillId, string> = {
 export function skillIconUrl(id: TitanSkillId): string {
   return assetUrl(`ui/skills/titans/${id}.png`);
 }
+/** 빛 판 아이콘(2026-11-23, 사용자: "스킬 ui 아이콘은 이런 풍으로" — 어두운 정사각 판 · 속성색 빛 · 빛살 · 반짝이, scripts/make-glow-tiles.mjs) — 화면(스킬 판 · 상점 · 버프 칸)용 */
+export function skillTileUrl(id: TitanSkillId): string {
+  return assetUrl(`ui/skills/titans-tile/${id}.png`);
+}
 
-export function SkillIcon({ id, size }: { id: TitanSkillId; size?: number }) {
+/** field — 전장 위 명중 팝 · 등급 컷인: 예전 둥근 메달(투명 바탕). 어두운 네모 판이 몬스터 위로 날아가면 어색하다 */
+export function SkillIcon({ id, size, field = false }: { id: TitanSkillId; size?: number; field?: boolean }) {
   const [broken, setBroken] = useState(false);
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
-    <span className={`skill-icon skill-icon-${id} ${broken ? "" : "has-art"}`} aria-hidden="true" style={size ? { width: size, height: size, flexBasis: size } : undefined}>
+    <span className={`skill-icon skill-icon-${id} ${broken ? "" : "has-art"} ${field ? "" : "glow-tile"}`} aria-hidden="true" style={size ? { width: size, height: size, flexBasis: size } : undefined}>
       {broken ? (
         <svg viewBox="0 0 48 48">
           <path {...p} d={GLYPH[id]} />
         </svg>
       ) : (
-        <img src={skillIconUrl(id)} alt="" draggable={false} onError={() => setBroken(true)} />
+        <img src={field ? skillIconUrl(id) : skillTileUrl(id)} alt="" draggable={false} onError={() => setBroken(true)} />
       )}
     </span>
   );
