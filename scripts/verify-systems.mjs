@@ -1376,7 +1376,7 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   // 2026-11-23 Sketchfab 몬스터 다섯(CC BY · 우리 셀 그림체로 다시 렌더) 을 지역 변종 끝에 더해 30 → 35
   ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자) + Sketchfab 5 = 도감 35", bestiary.bestiaryEntries().length === 35, String(bestiary.bestiaryEntries().length));
   { const sf = bestiary.SKETCHFAB_MONSTER_ARTS, need = (a) => [`public/titans/anim/monsters/${a}.webp`, `public/titans/anim-px/monsters/${a}.webp`, `public/titans/generated/monsters/${a}.png`, `public/titans/generated/monsters/${a}-hit.png`, `public/titans/generated/monsters/thumbs/${a}.webp`];
-    const miss = sf.flatMap((a) => need(a).filter((p) => !existsSync(root + "/" + p))), credits = existsSync(root + "/docs/CREDITS.md") ? readFileSync(root + "/docs/CREDITS.md", "utf8") : "";
+    const miss = sf.flatMap((a) => need(a).filter((p) => !existsSync(root + "/" + p))), credits = readFileSync(root + "/src/ui/credits.ts", "utf8")   /* 게임 안 크레딧(설정 → 외부 그림 크레딧) — CC BY 작가 표기. docs/ 는 ci-local 이 빼서 읽지 않는다 */;
     const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Mushy Buddy", "Eyeball Plant", "Monster Plant", "RPG Monster - Bat", "Cute tentacle creature"].filter((n) => !credits.includes(n));
     ok("Sketchfab 몬스터 5: 셀 · 도트 시트 · 정지 그림 · 피격 · 도감 썸네일 · 실측 여백 · 크레딧(작가 · CC BY)이 모두 있다", sf.length === 5 && miss.length === 0 && noMargin.length === 0 && noCredit.length === 0, [...miss, ...noMargin, ...noCredit].join(",")); }
   const nb = prog.normalizeCharacterProgress({ ...base, dodgeBranches: { "1-T": 3, "9-X": 2, "2-S": 7, junk: 1 } });
