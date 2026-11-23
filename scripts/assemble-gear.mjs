@@ -29,6 +29,8 @@ function iconFinish(name) {
   if ((m = name.match(/^icon-([a-z]+)-(\d)$/))) return { pop: STEP_TIER[m[2]] ? [FAM[m[1]], STEP_TIER[m[2]]] : null };
   if ((m = name.match(/^(helmet|armor|gloves|boots|shield)-(\d)$/))) return { pop: STEP_TIER[m[2]] ? ["gold", STEP_TIER[m[2]]] : null };
   if ((m = name.match(/^shoulder-([a-z]+)$/))) return { pop: SHOULDER_POP[m[1]] ?? null };
+  // 대장간 검 16단계(2026-11-23 리소스 피드백 ④) — 무대 · 공유 카드 그림. 5~9 푸른 별빛 · 10~14 금 · 15 무지개 끝
+  if ((m = name.match(/^sword-(\d\d)$/))) { const lv = +m[1]; return { pop: lv >= 15 ? ["gold", "LR"] : lv >= 10 ? ["gold", "UR"] : lv >= 5 ? ["water", "SR"] : null }; }
   return null;
 }
 

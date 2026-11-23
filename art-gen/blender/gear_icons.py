@@ -342,35 +342,59 @@ def spear(t):
 
 
 def sword_lv(level):
-    """대장간 검 16단계 (예전 북 drum(level) 자리) — 0~4 나무 · 쇠, 5~9 푸른 강철, 10~15 황금 · 보석 · 빛 · 날개"""
+    """대장간 검 16단계 — 2026-11-23 캐주얼 2판(리소스 피드백 ④: 가는 막대에 단계 차이가 보석 한두 개뿐이었다).
+    단계마다 날 폭 · 길이 · 가드 · 보석 · 빛이 자란다 — 0~1 나무 · 2~4 쇠 · 5~9 푸른 강철(룬) · 10~14 황금(큰 보석 · 날개) · 15 왕관.
+    두껍고 뭉툭하게(날 두께 0.09) — 매끈한 면(GEAR_FACET=0) · 셀 4단 · 스티커 외곽선(assemble-gear)으로 칸 아이콘과 같은 그림결"""
     t = 1 if level < 5 else 2 if level < 10 else 3
     T = TIER[t]
-    blade_c = '#c8d2dc' if level < 2 else T['metal'] if t > 1 else '#d4dde6'
-    if level <= 1:
-        blade_c = '#c9a46a'   # 나무 검
-    blade = C.box(Vector((0, 0, 0.32)), (0.17 + 0.006 * level, 0.05, 0.95), bevel=0.0)
-    for v in blade.verts:
-        if v.co.z > 0.62:
-            v.co.x *= max(0.05, (0.8 - v.co.z) / 0.18)
-    es = 0.0 if level < 7 else 0.25 + 0.06 * (level - 7)
-    ob('blade', blade, m('blade', blade_c, rough=0.4, metal=0.0 if level <= 1 else 0.6, emit=blade_c if es else None, es=es))
-    ob('guard', C.box(Vector((0, 0, -0.18)), (0.52 + 0.02 * min(level, 10), 0.11, 0.09)), metal_m(T['trim']))
-    ob('grip', C.tube([Vector((0, 0, -0.2)), Vector((0, 0, -0.5))], 0.055, seg=8), m('grip', T['main']))
-    ob('pommel', C.ellipsoid(Vector((0, 0, -0.55)), (0.08, 0.08, 0.08)), metal_m(T['trim']))
-    if level >= 3:   # 가드 보석
-        cols = ['#4fd8ff', '#e8467c', '#9ad04a', '#ffd34d']
-        for k in range(min(3, 1 + (level - 3) // 3)):
-            gem(f'gem{k}', cols[(level + k) % 4], Vector((-0.16 + 0.16 * k, -0.07, -0.18)), 0.05)
-    if level >= 5:   # 칼날 홈(룬)
-        ob('fuller', C.box(Vector((0, -0.03, 0.3)), (0.04, 0.01, 0.6)), m('rune', '#7fd4ff' if t == 2 else '#ffd34d', emit='#7fd4ff' if t == 2 else '#ffd34d', es=0.9), 0)
-    if level >= 11:   # 가드 날개
+    wood = level <= 1
+    bw = 0.25 + 0.009 * level            # 날 폭 0.25 → 0.385
+    top = 0.80 + 0.012 * level           # 칼끝 높이
+    blade_c = '#d9a86a' if wood else '#c3ccd6' if t == 1 else '#8fc0ee' if t == 2 else '#ffd34d'
+    core_c = '#b98848' if wood else '#eef3f8' if t == 1 else '#dff3ff' if t == 2 else '#fff6c8'
+    es = 0.0 if level < 7 else 0.18 + 0.05 * (level - 7)
+    blade = C.box(Vector((0, 0, (top - 0.16) / 2 - 0.02)), (bw, 0.09, top + 0.16), bevel=0.0)
+    for v in blade.verts:   # 칼끝 — 위 22% 를 좁혀 뾰족하게(나무 검은 둥글게 덜)
+        z0 = top - (top + 0.16) * 0.22
+        if v.co.z > z0:
+            k = (v.co.z - z0) / max(0.01, top - z0)
+            v.co.x *= max(0.18 if wood else 0.04, 1 - k)
+    ob('blade', blade, m('blade', blade_c, rough=0.4, metal=0.0 if wood else 0.5, emit=blade_c if es else None, es=es))
+    # 가운데 줄 — 나무는 결, 쇠는 밝은 날 등, 5+ 는 빛나는 룬 홈
+    rune = level >= 5
+    ob('core', C.box(Vector((0, -0.05, top * 0.42)), (bw * 0.28, 0.012, top * 0.72)), m('core', ('#7fd4ff' if t == 2 else '#fff3a0') if rune else core_c, emit=('#7fd4ff' if t == 2 else '#ffe066') if rune else None, es=0.6 + 0.08 * (level - 5) if rune else 0.0), 0)
+    gw = 0.6 + 0.028 * min(level, 12)
+    guard_c = '#8a5a2b' if wood else '#7f8a96' if t == 1 else T['trim']
+    ob('guard', C.box(Vector((0, 0, -0.18)), (gw, 0.15, 0.13)), metal_m(guard_c) if not wood else m('guardw', guard_c))
+    if level >= 8:   # 가드 끝이 위로 말린다
         for sx in (-1, 1):
-            pts = spline([Vector((sx * 0.26, 0, -0.16)), Vector((sx * 0.5, 0, -0.02)), Vector((sx * 0.56, 0, 0.22))], 8)
-            ob(f'wing{sx}', C.tube(pts, interp([0.07, 0.05, 0.01], len(pts)), seg=6), metal_m('#ffd34d'))
+            ob(f'curl{sx}', C.ellipsoid(Vector((sx * gw / 2, 0, -0.1)), (0.08, 0.08, 0.11)), metal_m(T['trim']))
+    grip_c = '#6b4423' if t == 1 else T['main']
+    ob('grip', C.tube([Vector((0, 0, -0.22)), Vector((0, 0, -0.52))], 0.072, seg=10), m('grip', grip_c))
+    for k in range(3):   # 손잡이 감은 끈
+        ob(f'wrap{k}', C.torus(Vector((0, 0, -0.28 - 0.09 * k)), 0.075, 0.018, seg=14, ring=6), m('wrap', '#3b2415' if t == 1 else T['trim']), 0)
+    ob('pommel', C.ellipsoid(Vector((0, 0, -0.6)), (0.11, 0.11, 0.11)), metal_m(T['trim']) if not wood else m('pomw', '#b9783a'))
+    cols = ['#4fd8ff', '#e8467c', '#9ad04a', '#ffd34d']
+    if level >= 3:   # 가드 보석 — 3 · 6 · 9 단계에 하나씩
+        n = min(3, 1 + (level - 3) // 3)
+        xs = [0.0] if n == 1 else [-0.16, 0.16] if n == 2 else [-0.2, 0.0, 0.2]
+        for k, x in enumerate(xs):
+            gem(f'gem{k}', cols[(level + k) % 4], Vector((x, -0.09, -0.18)), 0.06 if level < 10 else 0.075)
+    if level >= 6:   # 손잡이 끝 보석
+        gem('pgem', cols[level % 4], Vector((0, -0.1, -0.6)), 0.055)
+    if level >= 10:   # 날 밑동 큰 보석 · 금 테
+        ob('bez', C.torus(Vector((0, -0.06, 0.02)), 0.1, 0.03, seg=20, ring=8, rot=Euler((math.radians(90), 0, 0))), metal_m('#ffd34d'))
+        gem('bgem', '#e8467c', Vector((0, -0.08, 0.02)), 0.085)
+    if level >= 11:   # 가드 날개 — 단계마다 커진다
+        s = 1.0 + 0.08 * (level - 11)
+        for sx in (-1, 1):
+            for j in range(3):
+                c = Vector((sx * (gw / 2 + (0.08 + 0.09 * j) * s), 0.02, -0.1 + 0.08 * j * s))
+                ob(f'wing{sx}{j}', C.ellipsoid(c, ((0.16 - 0.03 * j) * s, 0.05, (0.075 - 0.01 * j) * s), rot=Euler((0, sx * (-0.35 - 0.3 * j), 0))), m('dwing', '#ffd34d' if j == 0 else '#fff3c4'), O * 0.7)
     if level >= 15:   # 왕관 손잡이
         for k in range(5):
             a = 2 * math.pi * k / 5
-            ob(f'crown{k}', C.cone(Vector((0.07 * math.cos(a), 0.07 * math.sin(a), -0.6)), 0.03, 0.0, 0.1, seg=5, rot=Euler((math.radians(180), 0, 0))), metal_m('#ffd34d'), O * 0.5)
+            ob(f'crown{k}', C.cone(Vector((0.09 * math.cos(a), 0.09 * math.sin(a), -0.66)), 0.04, 0.0, 0.13, seg=6, rot=Euler((math.radians(180), 0, 0))), metal_m('#ffd34d'), O * 0.5)
 
 
 
