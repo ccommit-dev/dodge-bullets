@@ -194,3 +194,10 @@
 .relic-upgrade-all { display: inline-flex; align-items: center; justify-content: center; margin-top: 6px; min-height: 32px; padding: 0 14px; border: 2px solid #7c2d12; border-radius: 999px; background: linear-gradient(180deg, #fde68a, #f59e0b); color: #431407; font: 900 14px/1 "Jua", sans-serif; box-shadow: 0 3px 0 #b45309; cursor: pointer; }
 .relic-upgrade-all:active { transform: translateY(2px); box-shadow: 0 1px 0 #b45309; }
 @media (prefers-reduced-motion: reduce) { .relic-upgrade { animation: none; } }
+
+/* 빈 화면 2판 (2026-11-23, 리소스 피드백 ⑦ — 점선 상자 안 글 세 줄뿐이었다): 최고 등급 유물 셋을 흐린 실루엣으로 + 뽑기 바로가기 */
+.relic-tab-empty .relic-empty-show { display: flex; justify-content: center; gap: 10px; margin-bottom: 4px; }
+.relic-tab-empty .relic-empty-show > img { width: 56px; height: 56px; object-fit: contain; filter: grayscale(.35) brightness(.8) opacity(.85); }   /* RelicIcon 은 빛살 층까지 커져 판을 덮었다 — 그림만 */
+.relic-tab-empty .relic-empty-show > img:nth-child(2) { width: 68px; height: 68px; margin-top: -8px; filter: grayscale(.15) brightness(.9); }
+.relic-tab-empty .relic-empty-go { justify-self: center; margin-top: 6px; min-height: 40px; padding: 4px 18px; border: 2.5px solid #1d4e22; border-radius: 12px; background: #2f9e44; color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 3px 0 #1d4e22; cursor: pointer; }
+.relic-tab-empty .relic-empty-go:active { transform: translateY(2px); box-shadow: 0 1px 0 #1d4e22; }

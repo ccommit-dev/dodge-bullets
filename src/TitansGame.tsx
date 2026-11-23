@@ -4830,7 +4830,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           <button type="button" className="shop-advice-line advice-alert" onClick={() => setAdviceOpen(true)}><small>구매 추천{adviceTop.length > 1 ? ` · ${adviceTop.length}개` : ""}</small><b>{adviceTop[0].title}</b><i aria-hidden="true">›</i></button>
         )}
         {tab === "relic" && (
-          <RelicTabPanel relics={character.relics} spare={character.relicSpare} onUpgrade={(id) => void upgradeRelics(id)} onUpgradeAll={() => void upgradeRelics("all")} chance={perm.relicChance} onCodex={() => onOpenCodex?.("relic")} />
+          <RelicTabPanel relics={character.relics} spare={character.relicSpare} onUpgrade={(id) => void upgradeRelics(id)} onUpgradeAll={() => void upgradeRelics("all")} chance={perm.relicChance} onCodex={() => onOpenCodex?.("relic")} onShop={() => { setPremiumCategory("relic"); setTab("premium"); }} />
         )}
         {tab === "quest" && (
           <QuestPanel

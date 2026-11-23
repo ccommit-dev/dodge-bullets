@@ -42,6 +42,7 @@ import "./ui/glowTiles.css";   // 2026-11-23 스킬 · 퀘스트 빛 판 아이�
 import "./ui/forgeTidy.css";   // 2026-11-23 대장간 무대 정리 — 무대 높이 180~230px · 그림 60% (맨 뒤)
 import "./ui/mypageTidy.css";   // 2026-11-23 마이페이지 — 초상 칸 채우기 · 잠긴 캐릭터 색 · 배지 스티커 그림 (맨 뒤)
 import "./ui/iconUnify.css";   // 2026-11-23 그림결 통일 — 빛 판 · 이벤트 상점 그림 틀에 스티커와 같은 남색 테 (맨 뒤)
+import "./ui/huntTidy.css";   // 2026-11-23 사냥터 읽기 — 피해 숫자 16px · 남색 외곽 · 치명 버프 빛 은은하게 (맨 뒤)
 import "./ui/dodgeForgeBlue.css";   // 2026-11-23 성문 방어 출발 화면 · 대장간 = 파란 그림결 — 남색 판 · 흰 칸 남색 테 · 칸 얼굴 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";

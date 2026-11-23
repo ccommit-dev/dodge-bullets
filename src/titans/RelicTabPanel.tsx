@@ -1,4 +1,5 @@
 import { RelicIcon } from "./RelicIcon";
+import { assetUrl } from "../asset";
 import "./relicGacha.css";
 import {
   RELICS, RELIC_FAMILIES, RELIC_FAMILY_LABEL, RELIC_MAX_STAR, RELIC_SET, RELIC_SET_NEED, RELIC_SHARDS_PER_STAR, familyOwned, relicStars, relicStatText, relicUpgradable, setActive, setFull, type RelicId, type RelicState,
@@ -27,11 +28,15 @@ type Props = {
   chance: number;
   /** 도감(마이페이지 → 도감 → 유물) — 보유 · 미보유를 거기서 나눠 본다 */
   onCodex: () => void;
+  /** 상점 → 뽑기 → 유물 (2026-11-23 빈 화면 단추) — 없으면 단추를 숨긴다 */
+  onShop?: () => void;
 };
+/** 빈 화면에 보여 줄 최고 등급 유물 셋 — 모으면 무엇이 되는지(리소스 피드백 ⑦) */
+const EMPTY_SHOWCASE: RelicId[] = ["sun-core", "winter-crown", "king-scepter"];
 
 const NEED = RELIC_SHARDS_PER_STAR;
 
-export function RelicTabPanel({ relics, spare, onUpgrade, onUpgradeAll, chance, onCodex }: Props) {
+export function RelicTabPanel({ relics, spare, onUpgrade, onUpgradeAll, chance, onCodex, onShop }: Props) {
   const owned = RELICS.filter((r) => relicStars(relics, r.id) >= 1).length;
   const can = (id: RelicId) => relicUpgradable(relics, spare, id);
   const shown = (id: RelicId) => relicStars(relics, id) >= 1 || can(id);
@@ -54,8 +59,11 @@ export function RelicTabPanel({ relics, spare, onUpgrade, onUpgradeAll, chance, 
       </header>
       {owned === 0 && ready === 0 && (
         <p className="relic-tab-empty">
+          {/* 2026-11-23 (리소스 피드백 ⑦ "점선 상자 안 글 세 줄뿐") — 최고 등급 유물 셋을 흐린 실루엣으로 · 뽑기 바로가기 */}
+          <span className="relic-empty-show" aria-hidden="true">{EMPTY_SHOWCASE.map((id) => <img key={id} src={assetUrl(`titans/relics/${id}.png`)} alt="" loading="lazy" />)}</span>
           <b>아직 가진 유물이 없어요</b>
           <small>상점 → 뽑기 → 유물에서 뽑거나 대장을 다시 잡아 조각을 모으세요. 같은 유물 조각 {NEED}개면 얻고, {NEED}개씩 더 모아 강화해요</small>
+          {onShop && <button type="button" className="relic-empty-go" onClick={onShop}>유물 뽑기로 가기 ›</button>}
         </p>
       )}
       {/* 세트별 묶음을 없앴다 (2026-11-03, 사용자: "세트별 정렬 없애고 보유한것만") — 높은 등급부터 한 줄로. 세트는 효과가 있어서 위 칩으로만 남긴다 */}

@@ -1,0 +1,15 @@
+/*
+ * 사냥터 읽기 정리 (2026-11-23, 리소스 피드백 ⑥).
+ *  - 피해 숫자: 주인공 · 동료 몫이 13px 에 얇은 그림자라 풀밭 · 돌바닥 위에서 안 읽혔다 → 16px · 스티커처럼 남색 외곽(사방 그림자 — paint-order 는 WebView 마다 달라 안 쓴다)
+ *    치명 · 스킬 · 합산은 예전 크기 관계(더 크다)를 지킨다
+ *  - 치명 버프 빛(hero-crit-aura): 8 + 16px 금빛 두 겹이 늘 켜진 선택 테두리처럼 보였다 → 5 + 10px 로 은은하게(버프 표시는 남긴다)
+ * 대열 위치는 그대로다 — 큰 몸집 편성(셀레스 · 타이탄 · 아리 · 스톰)도 몸통 겹침 중앙 8% · 최대 10%(verify-formation 기준 25%)
+ * App.tsx 맨 뒤에서 불러온다
+ */
+.titans-field .titans-float { -webkit-font-smoothing: antialiased; text-shadow: 1.5px 0 0 #1d1833, -1.5px 0 0 #1d1833, 0 1.5px 0 #1d1833, 0 -1.5px 0 #1d1833, 1px 1px 0 #1d1833, -1px -1px 0 #1d1833, 1px -1px 0 #1d1833, -1px 1px 0 #1d1833, 0 3px 0 rgba(29, 24, 51, .55); }
+.titans-field .titans-float.src-hero, .titans-field .titans-float.src-ally { font-size: 16px; }
+.titans-field .titans-float.src-tap { font-size: 18px; }
+.titans-field .titans-float.crit { font-size: 23px; }
+.titans-field .titans-float.src-skill { font-size: 20px; }
+
+.titans-hero.hero-crit-aura .titans-hero-facing { filter: drop-shadow(0 0 5px rgba(253, 224, 71, .75)) drop-shadow(0 0 10px rgba(251, 146, 60, .35)); }
