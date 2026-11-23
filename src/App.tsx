@@ -41,6 +41,7 @@ import "./ui/gachaBanner.css";   // 2026-11-20 동료 뽑기 배너 2판 — 자
 import "./ui/glowTiles.css";   // 2026-11-23 스킬 · 퀘스트 빛 판 아이콘 — 어두운 정사각 판 · 속성색 빛 (맨 뒤)
 import "./ui/forgeTidy.css";   // 2026-11-23 대장간 무대 정리 — 무대 높이 180~230px · 그림 60% (맨 뒤)
 import "./ui/mypageTidy.css";   // 2026-11-23 마이페이지 — 초상 칸 채우기 · 잠긴 캐릭터 색 · 배지 스티커 그림 (맨 뒤)
+import "./ui/iconUnify.css";   // 2026-11-23 그림결 통일 — 빛 판 · 이벤트 상점 그림 틀에 스티커와 같은 남색 테 (맨 뒤)
 import "./ui/dodgeForgeBlue.css";   // 2026-11-23 성문 방어 출발 화면 · 대장간 = 파란 그림결 — 남색 판 · 흰 칸 남색 테 · 칸 얼굴 (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";

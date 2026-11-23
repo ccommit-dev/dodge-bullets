@@ -1,0 +1,12 @@
+/*
+ * 그림결 통일 (2026-11-23, 리소스 피드백 ③ "아이콘 그림결이 다섯 갈래").
+ * 스티커 아이콘(유물 · 칭호 · 재화 · 장비 · 패키지 · 콘텐츠)은 굵은 남색 외곽선이 틀이다. 다른 갈래도 같은 틀을 두르게:
+ *  - 빛 판(스킬 · 퀘스트, glowTiles.css — 그림은 그대로): 남색 고리 2.5px · 둥근 모서리 12px · 아래 그림자. 판 밖 고리라 칸 크기는 안 변한다(box-shadow)
+ *  - 이벤트 상점 그림 틀: 흰 원 + 금 테(ui-polish.css)가 메달로 따로 놀았다 → 둥근 네모 스티커 칸(크림 판 · 남색 테)
+ * App.tsx 맨 뒤에서 불러온다(glowTiles.css 다음)
+ */
+.skill-icon.has-art.glow-tile { border-radius: 12px !important; box-shadow: 0 0 0 2.5px #1d1833, 0 3px 0 2.5px rgba(29, 24, 51, .32) !important; }
+.quest-icon:has(> .quest-glow-tile) { border-radius: 12px !important; box-shadow: 0 0 0 2.5px #1d1833, 0 3px 0 2.5px rgba(29, 24, 51, .32) !important; }
+
+:is(.hub-sheet, .titans-layer) .event-offer-card .event-offer-art { border-radius: 14px !important; border: 2.5px solid #1d1833 !important; background: linear-gradient(180deg, #ffffff, var(--offer-tint, #ffe1a0)) !important; box-shadow: 0 3px 0 rgba(29, 24, 51, .3) !important; }   /* 특이도 0,3,0 — shop-style.css 는 TitansGame 이 나중에 불러 같은 특이도면 이겼다. 상품별 바탕색(--offer-tint)은 살린다 */
+:is(.hub-sheet, .titans-layer) .event-offer-card .event-offer-art .content-icon, :is(.hub-sheet, .titans-layer) .event-offer-card .event-offer-art .event-offer-img { width: 48px !important; height: 48px !important; filter: none !important; }
