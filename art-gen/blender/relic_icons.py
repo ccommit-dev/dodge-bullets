@@ -1652,6 +1652,210 @@ PKG_JOBS = {
     'pkg-pack-rebirth': (pkg_rebirth, (-14, 10), 1.7), 'pkg-dodge-x3': (pkg_x3, (-10, 6), 1.7), 'pkg-gate-fund': (pkg_fund, (-14, 10), 1.7),
 }
 
+
+# ── 콘텐츠 · 길잡이 아이콘 2판 (2026-11-23) — public/ui/idle 16장이 모두 갈색 나무 메달 생성 그림(연기 바탕 남음)이라
+# 새 재화 · 유물과 그림결이 갈렸다. 같은 스티커 그림결로 물건 하나씩. scripts/assemble-currency.mjs 가 같은 이름으로 덮는다
+def _padlock(at, s=1.0, open_=False, body='#f2c232'):
+    ob('lk_body', C.box(at + Vector((0, 0, -0.18 * s)), (0.62 * s, 0.3 * s, 0.5 * s), bevel=0.08 * s), metal_m(body))
+    sh = Euler((math.radians(90), 0, 0))
+    off = Vector((0.0, 0, 0.16 * s)) if open_ else Vector((0, 0, 0))
+    ob('lk_shackle', C.torus(at + Vector((0.18 * s if open_ else 0, 0, 0.1 * s)) + off, 0.2 * s, 0.06 * s, seg=24, ring=6, rot=sh), metal_m('#9aa8b8'))
+    if open_:
+        ob('lk_leg', C.tube([at + Vector((-0.02 * s, 0, 0.2 * s)), at + Vector((-0.02 * s, 0, 0.0))], 0.06 * s, seg=8), metal_m('#9aa8b8'), O * 0.6)
+    ob('lk_hole', C.ellipsoid(at + Vector((0, -0.16 * s, -0.14 * s)), (0.06 * s, 0.03 * s, 0.06 * s)), m('hole', '#1a1424'), 0)
+    ob('lk_slot', C.box(at + Vector((0, -0.16 * s, -0.25 * s)), (0.04 * s, 0.02 * s, 0.12 * s)), m('hole', '#1a1424'), 0)
+
+
+def _gate(door='#6e3c18'):
+    stone = m('stone', '#8a8f9c', matte=True)
+    ob('arch', C.torus(Vector((0, 0.05, 0.1)), 0.46, 0.14, seg=24, ring=6, rot=_FRONT), stone)
+    for sx in (-1, 1):
+        ob(f'post{sx}', C.box(Vector((sx * 0.46, 0.05, -0.3)), (0.28, 0.3, 0.8), bevel=0.03), stone)
+    ob('door', C.box(Vector((0, 0.08, -0.2)), (0.64, 0.1, 0.66)), m('door', door))
+    ob('door_t', C.ellipsoid(Vector((0, 0.08, 0.12)), (0.32, 0.05, 0.3)), m('door', door))
+    for x in (-0.16, 0.16):
+        ob(f'plank{x}', C.box(Vector((x, 0.02, -0.12)), (0.03, 0.02, 0.76)), m('door_d', '#4a2810'), 0)
+
+
+def i_anvil(_):   # 대장간 — 쇠모루 + 망치 + 불티
+    iron = metal_m('#5b6778')
+    ob('top', C.box(Vector((0, 0, 0.12)), (0.9, 0.38, 0.2), bevel=0.04), iron)
+    ob('horn', C.cone(Vector((-0.6, 0, 0.14)), 0.0, 0.14, 0.34, seg=10, rot=Euler((0, math.radians(90), 0))), iron)
+    ob('waist', C.box(Vector((0, 0, -0.14)), (0.36, 0.3, 0.36)), iron)
+    ob('foot', C.box(Vector((0, 0, -0.4)), (0.7, 0.4, 0.18), bevel=0.04), iron)
+    ob('glow', C.box(Vector((0.1, -0.05, 0.25)), (0.36, 0.2, 0.06), bevel=0.02), m('hot', '#ff7a1a', emit='#ffb347', es=1.0), O * 0.6)
+    rot = Euler((0, math.radians(-40), 0))
+    d = rot.to_matrix() @ Vector((0, 0, 1))
+    c = Vector((0.36, -0.2, 0.52))
+    ob('h_handle', C.tube([c + d * -0.42, c + d * 0.1], 0.05, seg=8), m('wood', '#7a4a22'), O * 0.7)
+    ob('h_head', C.box(c + d * 0.16, (0.36, 0.2, 0.18), bevel=0.03, rot=rot), metal_m('#9aa8b8'))
+    for k, (x, z, r) in enumerate(((-0.2, 0.5, 0.12), (0.62, 0.2, 0.09))):
+        _spark(f'sp{k}', Vector((x, -0.3, z)), r, '#ffb347')
+
+
+def i_exp_orb(_):   # 경험치 구슬 — 초록 빛 구슬 + 위 화살표
+    ob('orb', C.ellipsoid(Vector((0, 0, 0)), (0.56, 0.56, 0.56)), m('orb', '#16a34a', rough=0.15, emit='#4ade80', es=0.35))
+    ob('hl', C.ellipsoid(Vector((-0.2, -0.44, 0.22)), (0.1, 0.05, 0.14)), m('shine', '#ffffff', emit='#ffffff', es=1.0), 0)
+    prism('arrow', [(-0.24, -0.04), (0.0, 0.3), (0.24, -0.04), (0.1, -0.04), (0.1, -0.3), (-0.1, -0.3), (-0.1, -0.04)], 0.06, m('arrow', '#f0fdf4', emit='#ffffff', es=0.5), y=-0.56, outline=O * 0.5)
+    _spark('sp0', Vector((0.5, -0.4, 0.5)), 0.13)
+
+
+def i_expedition(_):   # 원정 — 펼친 보물 지도 + 점선 길 + 빨간 X
+    sheet = m('map', '#f6e2b0')
+    pts = [(-0.66, 0.42), (-0.22, 0.5), (0.22, 0.42), (0.66, 0.5), (0.66, -0.42), (0.22, -0.5), (-0.22, -0.42), (-0.66, -0.5)]
+    prism('map', pts[::-1], 0.04, sheet)
+    for k, x in enumerate((-0.22, 0.22)):
+        ob(f'fold{k}', C.box(Vector((x, -0.025, 0)), (0.015, 0.01, 0.9)), m('fold', '#d9bd85'), 0)
+    path = [Vector((-0.5, -0.04, -0.3)), Vector((-0.28, -0.04, -0.08)), Vector((-0.02, -0.04, -0.2)), Vector((0.18, -0.04, 0.06)), Vector((0.36, -0.04, 0.2))]
+    for k in range(len(path) - 1):
+        a, b_ = path[k], path[k + 1]
+        ob(f'dash{k}', C.tube([a + (b_ - a) * 0.2, a + (b_ - a) * 0.7], 0.025, seg=6), m('dash', '#8a5a2b'), 0)
+    xm = m('x', '#e11d48')
+    for a in (45, -45):
+        ob(f'x{a}', C.box(Vector((0.44, -0.06, 0.26)), (0.26, 0.03, 0.07), rot=Euler((0, math.radians(a), 0))), xm, O * 0.6)
+    ob('pin', C.ellipsoid(Vector((-0.5, -0.06, -0.3)), (0.07, 0.03, 0.07)), m('pin', '#2f7fe0'), O * 0.5)
+
+
+def i_gate_fund(_):
+    pkg_fund(_)
+
+
+def i_gate_locked(_):   # 잠긴 성문
+    _gate()
+    _padlock(Vector((0, -0.22, -0.18)), 0.62)
+
+
+def i_gate_supply(_):   # 성문 보급 — 나무 상자 + 빵 · 결정 · 금화
+    wood = m('crate', '#a8682c')
+    ob('crate', C.box(Vector((0, 0, -0.24)), (1.0, 0.7, 0.62), bevel=0.04), wood)
+    for z in (-0.4, -0.08):
+        ob(f'slat{z}', C.box(Vector((0, -0.36, z)), (1.02, 0.04, 0.06)), m('crate_d', '#7a4a1e'), O * 0.5)
+    for x in (-0.46, 0.46):
+        ob(f'corner{x}', C.box(Vector((x, -0.36, -0.24)), (0.08, 0.05, 0.64)), m('crate_d', '#7a4a1e'), O * 0.5)
+    ob('bread', C.ellipsoid(Vector((-0.24, -0.05, 0.16)), (0.26, 0.16, 0.14)), m('bread', '#e0a050'))
+    saved = C.FACET
+    C.FACET = 6
+    ob('crys', C.cone(Vector((0.12, 0.05, 0.24)), 0.12, 0.12, 0.36, seg=6), m('crys', '#3fb6f0', rough=0.22, emit='#7fd8ff', es=0.35))
+    ob('crys_t', C.cone(Vector((0.12, 0.05, 0.48)), 0.12, 0.0, 0.13, seg=6), m('crys_t', '#a8ecff', emit='#c8f4ff', es=0.45))
+    C.FACET = saved
+    ob('coin', C.tube([Vector((0.34, -0.12, 0.14)), Vector((0.34, -0.2, 0.14))], 0.16, seg=20), metal_m(GOLD))
+
+
+def i_idle_report(_):   # 방치 정산 — 판에 꽂은 보고서 + 체크
+    ob('board', C.box(Vector((0, 0.04, -0.04)), (0.8, 0.06, 1.04), bevel=0.05), m('board', '#a8682c'))
+    ob('paper', C.box(Vector((0, -0.01, -0.08)), (0.66, 0.02, 0.86)), m('paper', '#fff7e0'))
+    ob('clip', C.box(Vector((0, -0.04, 0.46)), (0.36, 0.08, 0.14), bevel=0.03), metal_m('#9aa8b8'))
+    chk = m('chk', '#22a35a')
+    for k, z in enumerate((0.22, -0.02, -0.26)):
+        ob(f'c{k}a', C.box(Vector((-0.24, -0.04, z - 0.02)), (0.12, 0.02, 0.05), rot=Euler((0, math.radians(45), 0))), chk, 0)
+        ob(f'c{k}b', C.box(Vector((-0.16, -0.04, z + 0.02)), (0.2, 0.02, 0.05), rot=Euler((0, math.radians(-50), 0))), chk, 0)
+        ob(f'l{k}', C.box(Vector((0.1, -0.035, z)), (0.3, 0.01, 0.04)), m('ink', '#8a6a4a'), 0)
+    ob('coin', C.tube([Vector((0.36, -0.1, -0.46)), Vector((0.36, -0.18, -0.46))], 0.16, seg=20), metal_m(GOLD))
+
+
+def i_journal(_):   # 원정 일지 — 책 + 책갈피 + 깃펜
+    ob('cover', C.box(Vector((0, 0.02, 0)), (0.86, 0.22, 1.0), bevel=0.05), m('cover', '#2f6fd0'))
+    ob('pages', C.box(Vector((0.04, 0.0, 0)), (0.78, 0.18, 0.92)), m('pages', '#fff7e0'))
+    ob('front', C.box(Vector((0, -0.1, 0)), (0.86, 0.04, 1.0), bevel=0.03), m('cover', '#2f6fd0'))
+    ob('emb', C.ellipsoid(Vector((0, -0.13, 0.08)), (0.16, 0.03, 0.16)), metal_m(GOLD), O * 0.6)
+    ob('bm', C.box(Vector((0.22, -0.02, -0.56)), (0.1, 0.02, 0.28)), m('bm', '#e11d48'), O * 0.6)
+    rot = Euler((0, math.radians(30), 0))
+    d = rot.to_matrix() @ Vector((0, 0, 1))
+    ob('quill', C.ellipsoid(Vector((0.42, -0.2, 0.2)), (0.08, 0.02, 0.42), rot=rot), m('quill', '#fefefe'), O * 0.7)
+    ob('nib', C.tube([Vector((0.42, -0.2, 0.2)) + d * -0.42, Vector((0.42, -0.2, 0.2)) + d * -0.6], [0.025, 0.0], seg=6), metal_m(GOLD), O * 0.5)
+
+
+def i_lock(_):   # 잠금
+    _padlock(Vector((0, 0, 0.1)), 1.0)
+
+
+def i_pioneer_flag(_):   # 개척 깃발 — 장대 + 휘날리는 깃 + 발자국
+    ob('pole', C.tube([Vector((-0.4, 0, -0.66)), Vector((-0.4, 0, 0.66))], 0.04, seg=8), m('pole', '#7a4a22'))
+    ob('knob', C.ellipsoid(Vector((-0.4, 0, 0.7)), (0.07, 0.07, 0.07)), metal_m(GOLD), O * 0.6)
+    pts = [(-0.38, 0.62), (0.0, 0.66), (0.3, 0.56), (0.6, 0.6), (0.5, 0.32), (0.6, 0.06), (0.3, 0.02), (0.0, 0.1), (-0.38, 0.06)]
+    prism('flag', pts[::-1], 0.04, m('flag', '#e11d48'))
+    pc = Vector((0.08, -0.04, 0.3))
+    paw = m('paw', '#fff7ed', emit='#fff7ed', es=0.2)
+    ob('pad', C.ellipsoid(pc + Vector((0, 0, -0.04)), (0.09, 0.02, 0.07)), paw, O * 0.4)
+    for k, (x, z) in enumerate(((-0.09, 0.07), (-0.03, 0.12), (0.03, 0.12), (0.09, 0.07))):
+        ob(f'toe{k}', C.ellipsoid(pc + Vector((x, 0, z)), (0.03, 0.02, 0.035)), paw, O * 0.3)
+    ob('mound', C.ellipsoid(Vector((-0.3, 0.05, -0.62)), (0.42, 0.3, 0.12)), m('mound', '#5fb34a'))
+
+
+def _portal(outer, mid, core):
+    for k, (r, w, c) in enumerate(((0.56, 0.1, outer), (0.4, 0.08, mid))):
+        ob(f'ring{k}', C.torus(Vector((0, 0.02 * k, 0)), r, w, seg=32, ring=6, rot=_FRONT), m(f'ring{k}', c, emit=c, es=0.4))
+    ob('core', C.ellipsoid(Vector((0, 0.08, 0)), (0.36, 0.04, 0.36)), m('core', core, emit=core, es=0.8), O * 0.5)
+    for k in range(3):   # 소용돌이 팔
+        a = k * 2 * math.pi / 3
+        pts = [Vector((0.08 * math.cos(a + t * 1.6) * (1 + t * 3.4), -0.02, 0.08 * math.sin(a + t * 1.6) * (1 + t * 3.4))) for t in (0, 0.25, 0.5, 0.75, 1.0)]
+        ob(f'arm{k}', C.tube(pts, interp([0.05, 0.04, 0.03, 0.02], len(pts)), seg=6), m('arm', '#ffffff', emit='#ffffff', es=0.7), 0)
+
+
+def i_rift(_):   # 차원 균열 — 보라 소용돌이 문
+    _portal('#7c3aed', '#a855f7', '#2e1065')
+    _spark('sp0', Vector((0.56, -0.3, 0.5)), 0.13, '#e9d5ff')
+
+
+def i_weekend_rift(_):   # 주말 균열 — 금 · 주황 소용돌이 문 + 해
+    _portal('#ea580c', '#f59e0b', '#7c2d12')
+    _spark('sp0', Vector((0.56, -0.3, 0.5)), 0.15, '#fff3a0')
+    _spark('sp1', Vector((-0.56, -0.3, -0.46)), 0.1, '#fff3a0')
+
+
+def i_shadow_seal(_):   # 그림자 인장 — 짙은 보라 메달 + 초승달(밝은 원을 메달색 원이 가린다 — 오목한 판은 면이 깨졌다) + 눈빛
+    shadow = m('shadow', '#3b1d6e')
+    ob('disc', C.tube([Vector((0, 0.08, 0)), Vector((0, -0.08, 0))], 0.62, seg=24), shadow)
+    ob('rim', C.torus(Vector((0, -0.085, 0)), 0.58, 0.06, seg=24, ring=6, rot=_FRONT), metal_m('#9aa8b8'))
+    saved = C.FACET
+    C.FACET = 0   # RELIC_FACET 10 이면 관이 육각이 되어 달이 각졌다
+    ob('moon', C.tube([Vector((-0.04, -0.08, 0.02)), Vector((-0.04, -0.13, 0.02))], 0.34, seg=32), m('moon', '#c4b5fd', emit='#ddd6fe', es=0.5), O * 0.5)
+    ob('cut', C.tube([Vector((0.1, -0.12, 0.08)), Vector((0.1, -0.15, 0.08))], 0.28, seg=32), shadow, 0)
+    C.FACET = saved
+    ob('eye', C.ellipsoid(Vector((0.14, -0.16, 0.04)), (0.07, 0.03, 0.05)), m('eye', '#f472b6', emit='#f9a8d4', es=1.0), 0)
+
+
+def i_star(_):   # 별 — 두툼한 금 별
+    pts = []
+    for i in range(10):
+        a = math.pi / 2 + i * math.pi / 5
+        r = 0.66 if i % 2 == 0 else 0.3
+        pts.append((r * math.cos(a), r * math.sin(a)))
+    prism('star', pts[::-1], 0.24, m('star', '#ffd23f', rough=0.3, emit='#ffe680', es=0.3))
+    prism('star_in', [(x * 0.55, z * 0.55) for x, z in pts[::-1]], 0.05, m('star_in', '#fff0a0', rough=0.3, emit='#fff6c0', es=0.45), y=-0.14, outline=O * 0.5)
+
+
+def i_tower(_):   # 성벽 등반 — 돌 탑 + 깃발
+    stone = m('stone', '#6b7280', matte=True)
+    ob('body', C.tube([Vector((0, 0, -0.66)), Vector((0, 0, 0.3))], [0.4, 0.32], seg=10), stone)
+    for k in range(6):
+        a = k * math.pi / 3
+        ob(f'cren{k}', C.box(Vector((0.34 * math.cos(a), 0.34 * math.sin(a), 0.4)), (0.16, 0.16, 0.18)), stone, O * 0.8)
+    ob('roof', C.cone(Vector((0, 0, 0.62)), 0.3, 0.0, 0.4, seg=10), m('roof', '#2f6fd0'))
+    ob('door', C.ellipsoid(Vector((0, -0.38, -0.5)), (0.13, 0.04, 0.18)), m('door', '#4a2810'), O * 0.6)
+    ob('win', C.ellipsoid(Vector((0, -0.34, 0.02)), (0.07, 0.03, 0.1)), m('win', '#ffd34d', emit='#ffd34d', es=0.8), O * 0.5)
+    ob('fpole', C.tube([Vector((0, 0, 0.8)), Vector((0, 0, 1.08))], 0.025, seg=6), m('pole', '#7a4a22'), O * 0.5)
+    prism('fl', [(0.0, 1.06), (0.26, 1.0), (0.0, 0.92)][::-1], 0.03, m('flag', '#e11d48'), outline=O * 0.5)
+
+
+def i_unlock_crest(_):   # 해금 문장 — 방패 + 열린 자물쇠 + 빛
+    sh = [(-0.56, 0.56), (0.56, 0.56), (0.56, 0.0), (0.0, -0.66), (-0.56, 0.0)]
+    prism('shield', sh[::-1], 0.14, m('shield', '#2f6fd0'))
+    prism('shield_rim', [(x * 1.1, z * 1.1 + 0.02) for x, z in sh[::-1]], 0.1, metal_m(GOLD), y=0.06)
+    _padlock(Vector((0, -0.16, 0.02)), 0.5, open_=True)
+    _spark('sp0', Vector((0.5, -0.3, 0.6)), 0.14)
+    _spark('sp1', Vector((-0.54, -0.3, -0.3)), 0.1)
+
+
+IDLE2_JOBS = {
+    'idle2-anvil': (i_anvil, (-16, 10), 1.7), 'idle2-exp-orb': (i_exp_orb, (-10, 8), 1.6), 'idle2-expedition': (i_expedition, (-8, 18), 1.6),
+    'idle2-gate-fund': (i_gate_fund, (-14, 10), 1.7), 'idle2-gate-locked': (i_gate_locked, (-10, 6), 1.7), 'idle2-gate-supply': (i_gate_supply, (-22, 16), 1.7),
+    'idle2-idle-report': (i_idle_report, (-12, 6), 1.7), 'idle2-journal': (i_journal, (-20, 8), 1.7), 'idle2-lock': (i_lock, (-14, 8), 1.6),
+    'idle2-pioneer-flag': (i_pioneer_flag, (-12, 6), 1.6), 'idle2-rift': (i_rift, (-8, 6), 1.6), 'idle2-shadow-seal': (i_shadow_seal, (-14, 6), 1.6),
+    'idle2-star': (i_star, (-12, 8), 1.6), 'idle2-tower': (i_tower, (-14, 10), 1.9), 'idle2-unlock-crest': (i_unlock_crest, (-10, 6), 1.6),
+    'idle2-weekend-rift': (i_weekend_rift, (-8, 6), 1.6),
+}
+
 QUEST_JOBS = {
     'quest-twigs': (q_twigs, (-14, 10), 1.7), 'quest-acorns': (q_acorns, (-14, 16), 1.6), 'quest-dam-patch': (q_dam_patch, (-20, 14), 1.7),
     'quest-river-patrol': (q_river_patrol, (-10, 12), 1.7), 'quest-log-haul': (q_log_haul, (-22, 14), 1.7), 'quest-village-guard': (q_village_guard, (-14, 10), 1.8),
@@ -1749,6 +1953,7 @@ RELIC_JOBS_V4 = {
 JOBS.update(RELIC_JOBS_V4)
 JOBS.update(CUR_JOBS)
 JOBS.update(PKG_JOBS)
+JOBS.update(IDLE2_JOBS)
 RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard'] + list(RELIC_JOBS_V3) + list(RELIC_JOBS_V4)
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']
@@ -1764,6 +1969,8 @@ for a in argv:
         names += list(RELIC_JOBS_V4)
     elif a == 'quests2':
         names += [k for k in QUEST_JOBS if k[len('quest-'):] in ('reed-weave', 'mud-haul', 'fish-catch', 'lily-garden', 'bark-strip', 'lantern-light', 'stone-stack', 'stepping-stones', 'mill-wheel', 'honey-gather', 'raft-build', 'watchtower', 'tool-forge', 'market-trade', 'canal-dig', 'storehouse', 'river-lighthouse', 'festival', 'royal-banner', 'crystal-mine', 'star-reservoir', 'beaver-kingdom')]
+    elif a == 'idle2':
+        names += list(IDLE2_JOBS)
     elif a == 'pkg':
         names += list(PKG_JOBS)
     elif a == 'tree':

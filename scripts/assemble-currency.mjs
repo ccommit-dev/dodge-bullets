@@ -1,5 +1,5 @@
 /**
- * 재화 · 보상 아이콘 2판 조립 (2026-11-23, 사용자: "리소스 관점에서 그외에 아쉬운 부분 전부")
+ * 재화 · 보상 · 콘텐츠 아이콘 2판 조립 (2026-11-23, 사용자: "리소스 관점에서 그외에 아쉬운 부분 전부")
  *   blender -b -P art-gen/blender/relic_icons.py -- cur2-gold … (ART_STYLE=toon · 유물 3판과 같은 셀 설정, RELIC_OUT 으로 따로)
  *   CUR_SRC=<렌더 폴더> node scripts/assemble-currency.mjs [--out=폴더]
  * 같은 파일 이름(public/ui/attendance · rewards, 128²)에 스티커 외곽선(lib/sticker 4px)으로 덮는다 — 코드 경로는 그대로.
@@ -18,6 +18,8 @@ const MAP = {
   "cur2-chest": ["attendance/event-chest"], "cur2-shoulder-shards": ["attendance/shoulder-shards"],
   "cur2-ally-shard": ["rewards/ally-shard"], "cur2-hood": ["rewards/ally-skin"], "cur2-hourglass": ["rewards/boost"],
   "cur2-hammer": ["rewards/forge-ticket"], "cur2-star": ["rewards/season-xp"], "cur2-weapon-fx": ["rewards/weapon-fx"],
+  // 콘텐츠 · 길잡이 아이콘(public/ui/idle, 2026-11-23) — 갈색 나무 메달 생성 그림 16장 → 물건 하나씩(relic_icons.py IDLE2_JOBS, -- idle2)
+  ...Object.fromEntries(["anvil", "exp-orb", "expedition", "gate-fund", "gate-locked", "gate-supply", "idle-report", "journal", "lock", "pioneer-flag", "rift", "shadow-seal", "star", "tower", "unlock-crest", "weekend-rift"].map((n) => [`idle2-${n}`, [`idle/${n}`]])),
 };
 for (const [src, dsts] of Object.entries(MAP)) {
   const file = `${SRC}/${src}.png`;
