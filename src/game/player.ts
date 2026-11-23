@@ -2,10 +2,10 @@ import type { GameWorld, Player } from "./types";
 import { predecode } from "../ui/predecode";
 import { footFractions } from "../ui/heroFoot";
 import { assetUrl } from "../asset";
-import { basicCooldown as basicCooldownOf, bowHand } from "./skillShots";
-import { drawRecurveBow } from "./arrowArt";
+import { WEAPON_ATTACK_POSE, WEAPON_GRIP } from "../ui/EquippedCharacter";
+import { weaponIconPath } from "../titans/weapons";
 import { HERO_FIG } from "../equipment/heroAnchors";
-import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
+import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, WALK_EQUIPMENT_ANCHORS, type EquipmentAnchor } from "../equipment/anchors";
 import { gearItemKind } from "../equipment/gearSets";
 import { WEAR_LAYERS } from "../equipment/wearLayers";
 import { HERO_ANIM, heroFrameMs, heroFrames } from "../titans/spriteAnim";
@@ -74,7 +74,7 @@ function getExpeditionHero(mode: "idle" | "walk"): HTMLImageElement | null {
 /**
  * 쏠 때 몸 동작 = 장착 무기의 공격 시트 (2026-10-27, 사용자: "활·지팡이 동작 — 몸 전체가 활을 당기거나 지팡이를 드는 동작", 사냥터와 같은 시트).
  * 검 hero-attack · 창/활/지팡이 hero-attack-<무기> (art-gen/blender anim2 HERO_WEAPON_ATTACK). 쏠 때마다(SHOOT_MS) 8칸이 한 번 돈다.
- * 받기 전엔 예전처럼 대기 시트 + 캔버스 기울임. 캔버스 무기(활 · 지팡이 · 검 · 창)는 손 앵커가 움직인 만큼 같이 옮긴다(발사 위치 bowHand 는 그대로)
+ * 받기 전엔 예전처럼 대기 시트 + 캔버스 기울임. 손에 든 무기는 칸마다 손 앵커에 장비 그림으로 든다(drawHeldWeapon — 발사 위치 bowHand 는 그대로)
  */
 const expeditionAttack: Partial<Record<string, HTMLImageElement>> = {};
 function getExpeditionAttack(kind: string): HTMLImageElement | null {
@@ -89,87 +89,36 @@ function getExpeditionAttack(kind: string): HTMLImageElement | null {
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
-/**
- * 주인공의 활 — 장착 무기와 무관하게 **늘 활**을 든다(장착 무기는 곁의 정령, draw.ts drawWeaponSpirit).
- * 2026-10-02 (사용자: "기본 활 모델이 볼품없음 · 기본 화살 애니메이션이 없음"): 0.44배 원화가 몸 한가운데 겹쳐 흰 선만 보였다 →
- * 바라보는 쪽 어깨 앞(bowHand)에 캔버스 리커브 활을 쥐고 가장 가까운 몬스터 쪽(world.aimAngle)으로 겨눈다.
- * 기본 사격 재사용(basicCooldownOf(world))이 차는 동안 시위를 당기며 메긴 화살이 보이고, 다 당기면 촉이 빛나고,
- * 쏘는 순간(shotFlashMs) 시위가 튕겨 떨리고 활이 반동하며 앞에서 번쩍인다. 기본 화살은 이 활 앞에서 나간다
- */
-function drawHeroBow(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player): void {
-  const hand = bowHand(world);
-  const L = p.radius * 2.5;   // ≈ 40px — 주인공(75px)의 절반 남짓, 가슴 높이
-  const release = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
-  const cd = Math.max(0.01, basicCooldownOf(world));
-  const charge = Math.min(1, 1 - Math.max(0, world.basicTimer) / cd);
-  const pull = release > 0 ? 0 : Math.max(0, Math.min(1, charge * 1.15));
-  ctx.save();
-  ctx.translate(hand.x, hand.y);
-  ctx.rotate(world.aimAngle);
-  ctx.translate(-5 * release, 0);   // 반동
-  if (p.anim === "hit") ctx.globalAlpha = 0.75;
-  drawRecurveBow(ctx, L, pull, release, release <= 0 && pull >= 1);
-  ctx.restore();
+/** 손에 든 무기 그림 캐시 — 사냥터와 같은 장비 그림(titans/gear/<kind>-N · 외형 skins/) */
+const heldWeaponImages = new Map<string, HTMLImageElement>();
+function heldWeaponImage(path: string): HTMLImageElement {
+  let img = heldWeaponImages.get(path);
+  if (!img) { img = new Image(); img.src = assetUrl(path); heldWeaponImages.set(path, predecode(img)); }
+  return img;
 }
 
 /**
- * 지팡이 (2026-10-08, 사용자: "활이나 지팡이로 마법을 쏠 때 애니메이션이 동작을 안 해") — 장착 무기가 지팡이면 활 대신
- * 지팡이를 조준 방향으로 들고, 재사용이 차는 동안 끝의 구슬이 커지며, 쏘는 순간(shotFlashMs) 구슬이 터지고 고리가 퍼진다.
+ * 손에 든 무기 (2026-11-23) — 사냥터 EquippedCharacter 와 같은 규칙. 몸 변환(발 기준 · 시트 본래 방향) 안에서 부른다.
+ *  - 자리: 손 앵커(상자 % — 공격 칸도 대기 칸 상자 좌표계, 사냥터 CSS 가 공격 시트를 125% 로 넓히는 것과 같다) + 왼쪽 여백 2%(unify.css margin-left)
+ *  - 크기: 대기 칸 상자 폭 × 1.9(unify.css .equipment-weapon-alt width 190%) × 앵커 배율
+ *  - 쥐는 점: WEAPON_GRIP(그림 안 손잡이 %), 그 점을 축으로 돈다. 공격 칸이면 창 · 활 · 지팡이는 WEAPON_ATTACK_POSE(절대 기울기 · 손잡이 높이 · 가로 배율), 검은 손뼈 회전 그대로
  */
-/** 검 · 창 (2026-10-27 무기 4종) — 조준 방향으로 들고, 쏘는 순간(shotFlashMs) 검은 크게 휘두르고 창은 앞으로 찌른다 */
-function drawHeroMelee(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player, kind: "sword" | "spear"): void {
-  const hand = bowHand(world);
-  const release = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
+function drawHeldWeapon(ctx: CanvasRenderingContext2D, world: GameWorld, hand: EquipmentAnchor, boxW: number, drawHeight: number, attackT: number): void {
+  const kind = world.rangedWeapon;
+  if (kind === "none") return;
+  const img = heldWeaponImage(world.weaponArt ?? weaponIconPath(kind, 0));
+  if (!img.complete || img.naturalWidth === 0) return;
+  const g = WEAPON_GRIP[kind];
+  const pose = attackT >= 0 && kind !== "sword" ? WEAPON_ATTACK_POSE[kind][Math.min(7, Math.floor(attackT * 8))] : null;
+  const rot = pose ? pose[0] : hand.rotation + g[2];
+  const gy = pose ? pose[1] : g[1];
+  const W = boxW * 1.9, H = (W * img.naturalHeight) / img.naturalWidth;
   ctx.save();
-  ctx.translate(hand.x, hand.y);
-  ctx.rotate(world.aimAngle + (kind === "sword" ? (release > 0 ? 0.9 * release - 0.45 : -0.5) : 0));
-  if (kind === "spear") ctx.translate(8 * release, 0);   // 찌르기
-  if (p.anim === "hit") ctx.globalAlpha = 0.75;
-  ctx.lineCap = "round";
-  if (kind === "sword") {
-    const L = p.radius * 2.2;
-    ctx.strokeStyle = "#7a4a22"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
-    ctx.strokeStyle = "#e8b23a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(3, -7); ctx.lineTo(3, 7); ctx.stroke();
-    ctx.fillStyle = "#e5edf5"; ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(5, -3.5); ctx.lineTo(L, -2); ctx.lineTo(L + 7, 0); ctx.lineTo(L, 2); ctx.lineTo(5, 3.5); ctx.closePath(); ctx.fill(); ctx.stroke();
-  } else {
-    const L = p.radius * 3;
-    ctx.strokeStyle = "#8a5a2b"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-L * 0.35, 0); ctx.lineTo(L * 0.75, 0); ctx.stroke();
-    ctx.fillStyle = "#e5e7eb"; ctx.strokeStyle = "#374151"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(L * 0.95, 0); ctx.lineTo(L * 0.72, -5); ctx.lineTo(L * 0.72, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#e8452c"; ctx.beginPath(); ctx.arc(L * 0.7, 3, 2.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawHeroStaff(ctx: CanvasRenderingContext2D, world: GameWorld, p: Player): void {
-  const hand = bowHand(world);
-  const L = p.radius * 2.6;
-  const release = world.shotFlashMs > 0 ? world.shotFlashMs / 160 : 0;
-  const cd = Math.max(0.01, basicCooldownOf(world));
-  const charge = Math.min(1, 1 - Math.max(0, world.basicTimer) / cd);
-  ctx.save();
-  ctx.translate(hand.x, hand.y);
-  ctx.rotate(world.aimAngle);
-  ctx.translate(-4 * release, 0);   // 반동
-  if (p.anim === "hit") ctx.globalAlpha = 0.75;
-  // 막대 — 조준선 위로 L 만큼
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "#5b3a1e"; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(-L * 0.35, 0); ctx.lineTo(L * 0.6, 0); ctx.stroke();
-  ctx.strokeStyle = "#d9a441"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(-L * 0.3, -1); ctx.lineTo(L * 0.55, -1); ctx.stroke();
-  // 구슬 — 재사용이 찰수록 크고 밝다. 쏘는 순간 터지며 고리가 퍼진다
-  const orb = 4 + charge * 3 + release * 5;
-  const g = ctx.createRadialGradient(L * 0.62, 0, 1, L * 0.62, 0, orb * 2.2);
-  g.addColorStop(0, "#ffffff"); g.addColorStop(0.35, "#93c5fd"); g.addColorStop(1, "rgba(59,130,246,0)");
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(L * 0.62, 0, orb * 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = release > 0 ? "#ffffff" : "#bfdbfe";
-  ctx.beginPath(); ctx.arc(L * 0.62, 0, orb * 0.7, 0, Math.PI * 2); ctx.fill();
-  if (release > 0) {
-    ctx.strokeStyle = `rgba(191,219,254,${0.9 * release})`; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(L * 0.62, 0, orb * 2.6 * (1.4 - release), 0, Math.PI * 2); ctx.stroke();
-  }
+  if (world.player.anim === "hit") ctx.globalAlpha *= 0.85;
+  ctx.translate((hand.x / 100 - 0.5) * boxW + 0.02 * boxW, (hand.y / 100 - 1) * drawHeight);
+  ctx.rotate((rot * Math.PI) / 180);
+  ctx.scale(hand.scale * (pose?.[2] ?? 1), hand.scale);
+  ctx.drawImage(img, (-g[0] / 100) * W, (-gy / 100) * H, W, H);
   ctx.restore();
 }
 
@@ -246,7 +195,6 @@ export function drawStickman(
   // 2026-10-16: 쏠 때도 같은 대기 시트 + 캔버스 기울임이었다 → 2026-10-27: 무기별 공격 시트가 있으면 쏘는 동안 그 시트(몸 전체가 당기고 · 들고 · 찌른다)
   const attackSheet = shooting && world.rangedWeapon !== "none" ? getExpeditionAttack(world.rangedWeapon) : null;
   const hero = attackSheet ?? idleHero;
-  let handShift = { x: 0, y: 0 };
   if (hero?.complete && hero.naturalWidth > 0) {
     // 검격 시트는 4프레임이다 (2400×887, 프레임 600). 프레임 수를 잘못 나누면 캐릭터가 경계에서 잘리고
     // 옆 프레임 캐릭터가 함께 그려진다 — naturalWidth / 4 로 자른다.
@@ -262,17 +210,11 @@ export function drawStickman(
     // 활 길이(반지름 2.5배)가 맞춰 둔 "주인공 75px" 에 가깝다 — 활 손은 skillShots BOW_HAND(가슴 앞 24 · −8, 2026-10-19). 판정 반지름은 그대로
     const drawHeight = (p.radius * HERO_FIG_RADII * 100) / (fig.y1 - fig.y0);
     const drawWidth = drawHeight * (frameWidth / hero.naturalHeight);
-    if (attackSheet) {   // 손 앵커(칸 %)가 대기 0칸에서 움직인 만큼 — 대기 칸 폭 기준과 공격 칸 폭 기준을 각각 화면 px 로
-      const a = attackAnchorsFor(world.rangedWeapon)[frame]?.hand, i0 = IDLE_EQUIPMENT_ANCHORS[0]?.hand;
-      const idleW = drawHeight * (heroFrameAspect("idle"));
-      if (a && i0) handShift = { x: p.facing * ((a.x / 100 - 0.5) * drawWidth - (i0.x / 100 - 0.5) * idleW), y: ((a.y - i0.y) / 100) * drawHeight };
-    }
-    // 발을 대기 0칸 자리에 — 대기 · 공격 칸만(걷기는 발이 번갈아 디딘다). 무기 그림(handShift)도 같이 옮긴다
+    // 발을 대기 0칸 자리에 — 대기 · 공격 칸만(걷기는 발이 번갈아 디딘다). 손에 든 무기는 몸 변환 안이라 같이 옮겨진다
     let footShift = 0;
     if (usedMode !== "walk" && p.anim !== "dead") {
       const fx = footXs(hero, frameCount)?.[frame], fx0 = footXs(expeditionHero.idle ?? null, heroFrames("idle"))?.[0];
       if (fx !== undefined && fx0 !== undefined) footShift = (fx0 - 0.5) * drawHeight * heroFrameAspect("idle") - (fx - 0.5) * drawWidth;
-      handShift = { x: handShift.x + p.facing * EXPEDITION_NATIVE_FACING * footShift, y: handShift.y };
     }
     if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dodgeHeroSheet?: string; __dodgeFootShift?: number }).__dodgeFootShift = footShift;
     if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __dodgeHeroSheet?: string }).__dodgeHeroSheet = attackSheet ? `attack-${world.rangedWeapon}:${frame}` : usedMode;
@@ -350,6 +292,14 @@ export function drawStickman(
       }
       ctx.globalAlpha = 1;
     }
+    // 손에 든 무기 (2026-11-23, 사용자: "댐방어전 애니메이션 어색") — 예전엔 캔버스 선 그림(검 · 창 · 활 · 지팡이)을 가슴 앞 고정 자리(bowHand)에서
+    // 조준 각도로 돌려 그렸다: 3D 몸과 그림결이 다르고, 쏠 때마다 몸이 휘두르는 동안 칼이 얼굴을 가로지르며 칸마다 튀었다.
+    // 이제 사냥터(EquippedCharacter)와 같은 장비 그림을 같은 손 앵커 · 손잡이 점 · 칸별 자세로 든다 — 몸 변환 안이라 기울임 · 눌림 · 발 보정도 같이 탄다.
+    // 화살 · 마력탄이 나가는 자리(bowHand)는 그대로다 — 판정 · 밸런스 무관
+    const handAnchors = attackSheet ? attackAnchorsFor(world.rangedWeapon) : usedMode === "walk" ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
+    const handA = p.anim !== "dead" && world.rangedWeapon !== "none" ? handAnchors[Math.min(frame, handAnchors.length - 1)]?.hand : undefined;
+    const held = handA ? () => drawHeldWeapon(ctx, world, handA, drawHeight * heroFrameAspect("idle"), drawHeight, attackSheet ? frame / Math.max(1, frameCount) : -1) : null;
+    if (held && handA?.behind) held();   // 먼 손이 머리 뒤인 칸 — 몸 뒤에
     ctx.drawImage(
       hero,
       frame * frameWidth,
@@ -379,14 +329,9 @@ export function drawStickman(
         ctx.restore();
       }
     }
-    // 파츠 오버레이는 걷었다 (2026-10-19, 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게") — 무기(활·지팡이)만 아래에서 그린다
+    // 파츠 오버레이는 걷었다 (2026-10-19, 사용자: "주인공 캐릭터는 무기 제외하고는 포함되지 않게") — 무기만 손에 든다
+    if (held && !handA?.behind) held();
         ctx.restore();
-    if (p.anim !== "dead") {
-      ctx.save();
-      ctx.translate(handShift.x, handShift.y);   // 공격 시트의 손을 따라간다(대기면 0)
-      if (world.rangedWeapon === "staff") drawHeroStaff(ctx, world, p); else if (world.rangedWeapon === "sword" || world.rangedWeapon === "spear") drawHeroMelee(ctx, world, p, world.rangedWeapon); else drawHeroBow(ctx, world, p);
-      ctx.restore();
-    }
 
     if (p.landingFxMs > 0) {
       const progress = 1 - p.landingFxMs / 180;

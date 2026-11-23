@@ -447,6 +447,8 @@ export type GameWorld = {
   rangedWeapon: RangedWeaponId;
   /** 낀 세트 파츠 — 그림만(효과는 사냥터 값) */
   wornGear?: EquippedGear;
+  /** 손에 든 무기 그림(asset 경로, 2026-11-23) — 사냥터와 같은 장비 그림 · 단계 · 외형. 없으면 그 무기 1단계 */
+  weaponArt?: string;
   /** 이번 판에 장착한 스킬 무기 (최대 4) — 런 시작부터 쏜다. 정령 자리 순서이기도 하다 (2026-10-02) */
   loadout: SkillWeaponId[];
   /** 대장간 활·지팡이 강화 단계 — 활: 기본 사격·물리 무기, 지팡이: 마법 무기 (2026-10-02) */

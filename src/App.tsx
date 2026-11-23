@@ -39,6 +39,7 @@ import "./ui/allyStage.css";   // 2026-11-20 동료 목록 = 파란 무대 · �
 import "./ui/perkBlue.css";   // 2026-11-20 성문 방어 레벨 업 카드 2판 — 남색 카드 · 하늘 그림 판 · NEW 꼬리표 (맨 뒤)
 import "./ui/gachaBanner.css";   // 2026-11-20 동료 뽑기 배너 2판 — 자홍 점무늬 판 · 노란 리본 · 빛살 · 1회 노랑/10회 초록 (맨 뒤)
 import "./ui/glowTiles.css";   // 2026-11-23 스킬 · 퀘스트 빛 판 아이콘 — 어두운 정사각 판 · 속성색 빛 (맨 뒤)
+import "./ui/forgeTidy.css";   // 2026-11-23 대장간 무대 정리 — 무대 높이 180~230px · 그림 60% (맨 뒤)
 import { haptic } from "./ui/haptics";
 import { subscribeAppVisibility } from "./ui/appLifecycle";
 import { assetUrl } from "./asset";
@@ -68,7 +69,8 @@ import { ORIENTATION_LABEL, applyOrientation, loadOrientationPref, saveOrientati
 import { shareCardExtras } from "./ui/shareCardData";
 import { applyLowFx, frameMonitor, lowFxOn, setLowFx } from "./ui/perfMode";
 import { governorEnabled, isSafeBoot, maxCanvasScale, scaleGovernor } from "./ui/perfGovernor";
-import { TITLES } from "./economy/gemCatalog";
+import { TITLES, WEAPON_SKINS, weaponSkinIcon } from "./economy/gemCatalog";
+import { weaponHuntLevel, weaponIconPath } from "./titans/weapons";
 import { sheetFor } from "./titans/anim";
 import { dodgeClearReward } from "./progression/balance";
 import { HUNTING_AREAS, formatGold } from "./titans/model";
@@ -291,6 +293,9 @@ function loadLoadout(world: GameWorld, levels: ShopLevels, p: CharacterProgress)
   const wdef = WEAPON_BY_ID[wk];
   world.rangedWeapon = wdef && !weaponUnlocked(wdef, p.dodgeBestStage) ? "sword" : wk;
   world.wornGear = p.equippedGear;
+  // 손에 든 무기 그림(2026-11-23, 사용자: "댐방어전 애니메이션 어색") — 캔버스 선 그림 대신 사냥터와 같은 장비 그림 · 단계 · 외형
+  { const kind = world.rangedWeapon, wl = weaponHuntLevel(kind, p.equippedWeaponLevel, p.expeditionWeaponForge);
+    world.weaponArt = p.equippedWeaponSkin && WEAPON_SKINS[p.equippedWeaponSkin] ? weaponSkinIcon(p.equippedWeaponSkin, kind, wl) : weaponIconPath(kind, wl); }
   // 동료 출격 (game/supportAlly.ts, 2026-11-11) — 편성에 있는 동료만. 같은 동료면 판 중 타이머 · 자리를 그대로 둔다
   const sid = p.supportAlly && p.partyIds.includes(p.supportAlly) ? p.supportAlly : null;
   if (!sid) world.supportAlly = null;

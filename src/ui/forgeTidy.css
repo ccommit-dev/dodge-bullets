@@ -1,0 +1,19 @@
+/*
+ * 대장간 무대 정리 (2026-11-23, 사용자: "ui 너무 난잡하거나 비정상적 크기 수정" — 검 · 보호구 · 장비 강화 캡처 넷).
+ * 무대가 화면 높이의 44%(844 에서 371px · 보호구 무대는 min-height 360px)라 강화 비용 · 강화 단추가 화면 밖으로 밀렸고,
+ * 그림이 무대를 꽉 채웠다(장비 220px · 견갑 230×306px · 검 280px 높이) → 무대 높이 180~230px, 그림은 무대 높이의 약 60%.
+ * 넓은 화면 규칙(App.css 640px+ 의 62vh)도 같이 덮는다. App.tsx 맨 뒤에서 불러온다
+ */
+.forge-stage { height: clamp(180px, 25vh, 230px) !important; min-height: 0 !important; margin: 8px 0 !important; }
+.forge-stage .sword-aura { width: min(44vw, 170px) !important; }
+
+/* 장비 강화 · 원정 무기(쇼케이스) — 정사각 그림을 무대 높이의 62% 로 */
+.forge-showcase { min-height: 0 !important; }
+.forge-showcase .showcase-item { width: clamp(112px, 16vh, 140px) !important; height: clamp(112px, 16vh, 140px) !important; max-width: none !important; }   /* % 크기는 격자 칸 폭이 그림에 기대 순환해 55px 로 줄었다 — px 로 못 박는다 */
+
+/* 검 강화 — 세로로 긴 원화(sNN)는 높이 72% · 폭 40% 안에서 */
+.forge-stage > img.forge-sword.painted { height: 72% !important; max-width: 40% !important; }
+.forge-stage > svg.forge-sword { height: 72% !important; }
+
+/* 보호구(견갑) — 새 견갑 아이콘은 정사각이다(unify.css 의 543/724 세로 비율은 옛 그림 것) */
+.armor-forge-stage > .shoulder-icon { width: auto !important; height: 64% !important; aspect-ratio: 1 !important; }
