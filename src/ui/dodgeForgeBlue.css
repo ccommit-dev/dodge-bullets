@@ -53,3 +53,6 @@
 /* 정비 탭 카드 — 반투명 판이 남색 위에 놓이면 회색 설명 글자가 대비 4.2 로 흐려졌다(scan-readability) → 단색 짙은 남색 · 밝은 회청 글자 */
 .exp-menu-content :is(.exp-weapon-card, .exp-chip-list li, .exp-supply-list li, .exp-daily-list li) { background: #0f1c3f !important; }
 .exp-menu-content :is(.exp-weapon-card, .exp-chip-list, .exp-supply-list, .exp-daily-list) em { color: #c3cfe3 !important; }
+/* 보급 탭 성문 기금 결제 카드 — 갈색 판 하나만 남아 있었다 */
+.exp-menu-content .exp-fund { background: #0f1c3f !important; border-color: #ffd23f !important; }
+.exp-menu-content .exp-fund :is(.exp-fund-more, .exp-fund-tiers) { background: #182b5c !important; }

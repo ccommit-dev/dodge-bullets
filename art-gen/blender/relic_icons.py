@@ -1964,6 +1964,116 @@ NAV_JOBS = {
     'nav-attendance': (n_attendance, (-10, 8), 1.6), 'nav-event': (n_event, (-8, 6), 1.6), 'nav-settings': (n_settings, (-12, 8), 1.6), 'nav-shop': (n_shop, (-16, 10), 1.7),
 }
 
+
+# ── 성문 방어 칩 · 보급 아이콘 (2026-11-23, 사용자: "외에 아쉬운점 리소스 마저 수정") — public/dodge/chips · supplies 9장이
+# 갈색 나무 생성 그림이라 남색 정비 판에서 흙빛 덩어리로 보였다. 칩 = 색 육각 토큰 + 문양 하나, 보급 = 물건 하나. assemble-currency.mjs 가 같은 이름으로
+def _chip_base(c, c2):
+    pts = [(0.62 * math.cos(math.radians(30 + 60 * i)), 0.62 * math.sin(math.radians(30 + 60 * i))) for i in range(6)]
+    prism('chip', pts[::-1], 0.2, m('chip', c))
+    prism('chip_in', [(x * 0.78, z * 0.78) for x, z in pts[::-1]], 0.04, m('chip_in', c2), y=-0.12, outline=O * 0.5)
+    for i in range(6):
+        a = math.radians(30 + 60 * i)
+        stud(f'st{i}', Vector((0.53 * math.cos(a), -0.12, 0.53 * math.sin(a))), 0.035)
+
+
+def _emb():
+    return m('emb', '#ffffff', emit='#ffffff', es=0.4)
+
+
+def c_focus(_):   # 조준 — 과녁 고리 + 십자
+    _chip_base('#2f6fd0', '#5b9bf0')
+    saved = C.FACET
+    C.FACET = 0
+    ob('ring', C.torus(Vector((0, -0.16, 0)), 0.26, 0.05, seg=32, ring=6, rot=_FRONT), _emb(), O * 0.5)
+    ob('dot', C.ellipsoid(Vector((0, -0.17, 0)), (0.07, 0.03, 0.07)), m('red', '#e11d48'), O * 0.4)
+    C.FACET = saved
+    for a in (0, 90):
+        ob(f'bar{a}', C.box(Vector((0, -0.16, 0)), (0.66, 0.03, 0.05), rot=Euler((0, math.radians(a), 0))), _emb(), O * 0.4)
+
+
+def c_barrage(_):   # 연사 — 나란히 날아가는 화살 셋
+    _chip_base('#ea580c', '#fb923c')
+    for k, z in enumerate((0.2, 0.0, -0.2)):
+        x0 = -0.3 + 0.06 * (k % 2)
+        ob(f'shaft{k}', C.box(Vector((x0 + 0.18, -0.16, z)), (0.42, 0.03, 0.04)), _emb(), O * 0.4)
+        prism(f'head{k}', [(x0 + 0.38, z + 0.07), (x0 + 0.52, z), (x0 + 0.38, z - 0.07)][::-1], 0.04, _emb(), y=-0.16, outline=O * 0.4)
+
+
+def c_ember(_):   # 잔열 — 불꽃
+    _chip_base('#c81e3a', '#f0506a')
+    flame(Vector((0, -0.18, -0.02)), 1.5)
+
+
+def c_rime(_):   # 서리 — 눈 결정
+    _chip_base('#0e8fc0', '#5cc8f0')
+    for a in (0, 60, 120):
+        ob(f'arm{a}', C.box(Vector((0, -0.16, 0)), (0.6, 0.03, 0.06), rot=Euler((0, math.radians(a), 0))), _emb(), O * 0.4)
+        for sx in (-1, 1):
+            r = Euler((0, math.radians(a), 0)).to_matrix()
+            tip = r @ Vector((sx * 0.2, 0, 0)) + Vector((0, -0.16, 0))
+            for b in (-45, 45):
+                ob(f'tw{a}{sx}{b}', C.box(tip, (0.12, 0.03, 0.035), rot=Euler((0, math.radians(a + b), 0))), _emb(), O * 0.3)
+
+
+def c_vitality(_):   # 활력 — 하트
+    _chip_base('#16a34a', '#4ade80')
+    heart = m('heart', '#fff1f2', emit='#ffffff', es=0.3)
+    for sx in (-1, 1):
+        ob(f'lobe{sx}', C.ellipsoid(Vector((sx * 0.12, -0.16, 0.08)), (0.15, 0.05, 0.15)), heart, O * 0.5)
+    prism('tip', [(-0.26, 0.06), (0.0, -0.28), (0.26, 0.06)][::-1], 0.08, heart, y=-0.16, outline=O * 0.5)
+
+
+def c_edge(_):   # 예기 — 번개
+    _chip_base('#6d28d9', '#a78bfa')
+    pts = [(0.06, 0.34), (-0.18, -0.02), (-0.02, -0.02), (-0.1, -0.34), (0.18, 0.06), (0.02, 0.06)]
+    prism('bolt', pts[::-1], 0.06, m('bolt', '#ffe066', emit='#ffe680', es=0.6), y=-0.16, outline=O * 0.6)
+
+
+def s_draft(_):   # 정예 선발 — 펼친 카드 셋(가운데 금 별)
+    cols = ('#2f6fd0', '#7c3aed', '#2f6fd0')
+    for k, a in enumerate((-22, 0, 22)):
+        rot = Euler((0, math.radians(a), 0))
+        d = rot.to_matrix() @ Vector((0, 0, 1))
+        ob(f'card{k}', C.box(d * 0.1 + Vector((0, 0.06 - 0.06 * (k == 1), 0)), (0.42, 0.04, 0.62), bevel=0.04, rot=rot), m(f'card{k}', '#ffffff'))
+        ob(f'face{k}', C.box(d * 0.1 + Vector((0, 0.03 - 0.06 * (k == 1), 0)), (0.34, 0.02, 0.52), bevel=0.02, rot=rot), m(f'cf{k}', cols[k]), O * 0.4)
+    pts = []
+    for i in range(10):
+        a = math.pi / 2 + i * math.pi / 5
+        r = 0.16 if i % 2 == 0 else 0.07
+        pts.append((r * math.cos(a), 0.1 + r * math.sin(a)))
+    prism('star', pts[::-1], 0.04, m('star', '#ffd23f', emit='#ffe680', es=0.4), y=-0.06, outline=O * 0.5)
+
+
+def s_insurance(_):   # 수호 부적 — 끈 달린 방패 부적
+    sh = [(-0.42, 0.44), (0.42, 0.44), (0.42, 0.0), (0.0, -0.52), (-0.42, 0.0)]
+    prism('amulet', sh[::-1], 0.14, m('amulet', '#16a34a'))
+    prism('rim', [(x * 1.12, z * 1.12 + 0.01) for x, z in sh[::-1]], 0.1, metal_m(GOLD), y=0.05)
+    heart = m('heart', '#fff1f2', emit='#ffffff', es=0.3)
+    for sx in (-1, 1):
+        ob(f'lobe{sx}', C.ellipsoid(Vector((sx * 0.1, -0.12, 0.12)), (0.12, 0.04, 0.12)), heart, O * 0.5)
+    prism('tip', [(-0.21, 0.1), (0.0, -0.16), (0.21, 0.1)][::-1], 0.06, heart, y=-0.12, outline=O * 0.5)
+    ob('cord', C.torus(Vector((0, 0.02, 0.62)), 0.14, 0.03, seg=16, ring=5, rot=_FRONT), m('cord', '#e11d48'), O * 0.5)
+
+
+def s_primed(_):   # 예비 화살통 — 화살 꽂힌 통
+    ob('quiver', C.tube([Vector((0, 0, -0.62)), Vector((0, 0, 0.18))], [0.24, 0.3], seg=16), m('leather', '#8a4f22'))
+    for z in (-0.4, 0.06):
+        ob(f'band{z}', C.torus(Vector((0, 0, z)), 0.27 + (z + 0.62) * 0.07, 0.035, seg=20, ring=5), metal_m(GOLD), O * 0.5)
+    for k, (x, a) in enumerate(((-0.12, -10), (0.0, 0), (0.12, 10))):
+        rot = Euler((0, math.radians(a), 0))
+        d = rot.to_matrix() @ Vector((0, 0, 1))
+        base = Vector((x, -0.02, 0.1))
+        ob(f'shaft{k}', C.tube([base, base + d * 0.5], 0.022, seg=6), m('shaft', '#e0b070'), O * 0.4)
+        prism(f'fl{k}', [(base.x + d.x * 0.46 - 0.07, base.z + d.z * 0.44), (base.x + d.x * 0.62, base.z + d.z * 0.62), (base.x + d.x * 0.46 + 0.07, base.z + d.z * 0.44)][::-1], 0.03, m('fletch', '#e11d48'), y=-0.04, outline=O * 0.4)
+    _spark('sp0', Vector((0.42, -0.3, 0.46)), 0.13)
+
+
+CHIP_JOBS = {
+    'chip2-focus': (c_focus, (-8, 4), 1.5), 'chip2-barrage': (c_barrage, (-8, 4), 1.5), 'chip2-ember': (c_ember, (-8, 4), 1.5),
+    'chip2-rime': (c_rime, (-8, 4), 1.5), 'chip2-vitality': (c_vitality, (-8, 4), 1.5), 'chip2-edge': (c_edge, (-8, 4), 1.5),
+    'sup2-draft': (s_draft, (-12, 6), 1.6), 'sup2-insurance': (s_insurance, (-10, 6), 1.6), 'sup2-primed': (s_primed, (-14, 8), 1.6),
+}
+
 QUEST_JOBS = {
     'quest-twigs': (q_twigs, (-14, 10), 1.7), 'quest-acorns': (q_acorns, (-14, 16), 1.6), 'quest-dam-patch': (q_dam_patch, (-20, 14), 1.7),
     'quest-river-patrol': (q_river_patrol, (-10, 12), 1.7), 'quest-log-haul': (q_log_haul, (-22, 14), 1.7), 'quest-village-guard': (q_village_guard, (-14, 10), 1.8),
@@ -2063,6 +2173,7 @@ JOBS.update(CUR_JOBS)
 JOBS.update(PKG_JOBS)
 JOBS.update(IDLE2_JOBS)
 JOBS.update(NAV_JOBS)
+JOBS.update(CHIP_JOBS)
 RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard'] + list(RELIC_JOBS_V3) + list(RELIC_JOBS_V4)
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']
@@ -2078,6 +2189,8 @@ for a in argv:
         names += list(RELIC_JOBS_V4)
     elif a == 'quests2':
         names += [k for k in QUEST_JOBS if k[len('quest-'):] in ('reed-weave', 'mud-haul', 'fish-catch', 'lily-garden', 'bark-strip', 'lantern-light', 'stone-stack', 'stepping-stones', 'mill-wheel', 'honey-gather', 'raft-build', 'watchtower', 'tool-forge', 'market-trade', 'canal-dig', 'storehouse', 'river-lighthouse', 'festival', 'royal-banner', 'crystal-mine', 'star-reservoir', 'beaver-kingdom')]
+    elif a == 'chip2':
+        names += list(CHIP_JOBS)
     elif a == 'nav':
         names += list(NAV_JOBS)
     elif a == 'idle2':

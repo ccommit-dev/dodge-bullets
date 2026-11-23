@@ -20,6 +20,9 @@ const MAP = {
   "cur2-hammer": ["rewards/forge-ticket"], "cur2-star": ["rewards/season-xp"], "cur2-weapon-fx": ["rewards/weapon-fx"],
   // 콘텐츠 · 길잡이 아이콘(public/ui/idle, 2026-11-23) — 갈색 나무 메달 생성 그림 16장 → 물건 하나씩(relic_icons.py IDLE2_JOBS, -- idle2)
   ...Object.fromEntries(["anvil", "exp-orb", "expedition", "gate-fund", "gate-locked", "gate-supply", "idle-report", "journal", "lock", "pioneer-flag", "rift", "shadow-seal", "star", "tower", "unlock-crest", "weekend-rift"].map((n) => [`idle2-${n}`, [`idle/${n}`]])),
+  // 성문 방어 칩 · 보급(public/dodge, CHIP_JOBS, -- chip2) — ../dodge 로 public/ui 밖에 쓴다
+  ...Object.fromEntries(["focus", "barrage", "ember", "rime", "vitality", "edge"].map((n) => [`chip2-${n}`, [`../dodge/chips/${n}`]])),
+  ...Object.fromEntries(["draft", "insurance", "primed"].map((n) => [`sup2-${n}`, [`../dodge/supplies/${n}`]])),
 };
 for (const [src, dsts] of Object.entries(MAP)) {
   const file = `${SRC}/${src}.png`;
