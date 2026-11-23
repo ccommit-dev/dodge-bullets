@@ -1082,9 +1082,12 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     // 모델 — 일제 사격은 **장착 무기의 시트**(같은 인물이 활을 당기는 / 지팡이를 드는 4프레임)로, 시트가 없으면
     // 대기 시트 위에 무기를 당기는 포즈(drawPhase)로 그린다. 시트에는 무기가 그려져 있으므로 그 위에 무기를 또 올리지 않는다
     const player = readFileSync(join(root, "src/game/player.ts"), "utf8");
-    // 2026-10-02: 활은 원화(0.44배 · 몸에 겹침) 대신 캔버스 리커브(arrowArt.drawRecurveBow)를 활 손(bowHand)에 쥔다
-    ok("주인공은 늘 활을 들고 조준 각(aimAngle)으로 겨누며 재사용 동안 시위를 당긴다 — 장착 무기는 정령",
-      player.includes("drawRecurveBow(") && player.includes("bowHand(world)") && player.includes("world.aimAngle") && player.includes("basicCooldownOf(world)") && !player.includes("attackHero ? null : getRangedWeapon"));
+    // 2026-10-02: 활은 원화(0.44배 · 몸에 겹침) 대신 캔버스 리커브(arrowArt.drawRecurveBow)를 활 손(bowHand)에 쥐었다.
+    // 2026-11-23 (사용자: "댐방어전 애니메이션 어색"): 캔버스 선 그림 무기는 3D 몸과 그림결이 다르고 쏠 때 얼굴을 가로질렀다 →
+    // 사냥터와 같은 장비 그림을 손 앵커 · 손잡이 점(WEAPON_GRIP) · 칸별 자세(WEAPON_ATTACK_POSE)로 든다. 발사 자리(skillShots.bowHand)는 그대로
+    const skillShotsSrc = readFileSync(join(root, "src/game/skillShots.ts"), "utf8");
+    ok("주인공은 장착 무기 그림을 손 앵커에 든다(사냥터와 같은 손잡이 점 · 칸별 자세) — 캔버스 선 무기 없음 · 발사 자리 bowHand 는 그대로",
+      player.includes("drawHeldWeapon(") && player.includes("WEAPON_GRIP[kind]") && player.includes("WEAPON_ATTACK_POSE[kind]") && player.includes("world.weaponArt") && !player.includes("drawRecurveBow(") && skillShotsSrc.includes("export function bowHand") && !player.includes("attackHero ? null : getRangedWeapon"));
     // 시트 기하 — 대기 원화와 같은 프레임 높이 · 같은 배율. 무기를 머리 위로 든 프레임은 bbox 가 커서 줄어들 수 있다(≥ 70%)
     const sharp = (await import("sharp")).default;
     const figureRatios = async (file) => {
