@@ -1480,6 +1480,178 @@ CUR_JOBS = {
     'cur2-star': (cur_star, (-14, 8), 1.7), 'cur2-shoulder-shards': (cur_shoulder_shards, (-16, 14), 1.6),
 }
 
+
+# ── 상점 패키지 그림 (2026-11-23, 사용자: "리소스 관점에서 그외에 아쉬운 부분 전부") ──
+# 패키지 칸이 상품마다 금화 · 보석 두 그림만 돌려 써서 무엇을 사는지 그림으로 안 보였다. 상품마다 물건 하나 — 같은 스티커 그림결.
+# → scripts/assemble-shop-icons.mjs → public/ui/shop/<상품 id>.png (src/ui/ProductIcon.tsx)
+def _ruby(name, at, s=1.0, tilt=0):
+    saved = C.FACET
+    C.FACET = 8
+    rot = Euler((0, math.radians(tilt), 0))
+    d = rot.to_matrix() @ Vector((0, 0, 1))
+    ob(f'{name}c', C.cone(at + d * (0.18 * s), 0.62 * s, 0.38 * s, 0.3 * s, seg=8, rot=rot), m('ruby', '#ff3048', rough=0.22, emit='#ff5a6a', es=0.3))
+    ob(f'{name}p', C.cone(at + d * (-0.3 * s), 0.0, 0.62 * s, 0.66 * s, seg=8, rot=rot), m('ruby_d', '#c8142c', rough=0.22, emit='#ff3048', es=0.25))
+    ob(f'{name}t', C.cone(at + d * (0.34 * s), 0.38 * s, 0.38 * s, 0.02 * s, seg=8, rot=rot), m('ruby_t', '#ff8a96', rough=0.2, emit='#ffb0b8', es=0.4), 0)
+    C.FACET = saved
+
+
+def _chevron(name, at, w, h, c=GOLD, y=-0.3):   # 오른쪽을 가리키는 꺾쇠 판
+    t = w * 0.5
+    pts = [(at.x - w / 2, at.z + h / 2), (at.x - w / 2 + t, at.z + h / 2), (at.x + w / 2, at.z), (at.x - w / 2 + t, at.z - h / 2), (at.x - w / 2, at.z - h / 2), (at.x + w / 2 - t, at.z)]
+    prism(name, pts, 0.1, m('chev', c, emit=c, es=0.3), y=y, outline=O * 0.6)
+
+
+def pkg_gems_s(_):
+    _ruby('r0', Vector((0.1, 0, 0.05)), 0.85)
+    _ruby('r1', Vector((-0.42, -0.2, -0.36)), 0.42, tilt=-18)
+    _spark('sp0', Vector((0.52, -0.4, 0.5)), 0.13)
+
+
+def pkg_gems_m(_):
+    _ruby('r0', Vector((0, 0.1, 0.22)), 0.6)
+    _ruby('r1', Vector((-0.4, -0.12, -0.24)), 0.55, tilt=-14)
+    _ruby('r2', Vector((0.4, -0.12, -0.26)), 0.55, tilt=14)
+    _spark('sp0', Vector((0.56, -0.4, 0.52)), 0.14)
+
+
+def pkg_gems_l(_):   # 보석 넘치는 상자
+    wood, wood2 = m('wood', '#6e3c18'), m('wood2', '#86491e')
+    ob('body', C.box(Vector((0, 0, -0.34)), (1.1, 0.62, 0.5), bevel=0.04), wood)
+    ob('lid', C.box(Vector((0, 0.36, 0.2)), (1.1, 0.12, 0.62), bevel=0.04, rot=Euler((math.radians(-14), 0, 0))), wood2)
+    for x in (-0.38, 0.38):
+        ob(f'band{x}', C.box(Vector((x, 0.0, -0.34)), (0.1, 0.66, 0.54), bevel=0.02), metal_m(GOLD))
+    ob('lock', C.box(Vector((0, -0.33, -0.2)), (0.2, 0.06, 0.22), bevel=0.02), metal_m(GOLD_D))
+    for k, (x, z, sc, t) in enumerate(((-0.3, 0.02, 0.36, -16), (0.3, 0.0, 0.36, 18), (0.0, 0.18, 0.42, 0), (-0.12, -0.04, 0.3, 8), (0.14, -0.06, 0.3, -10))):
+        _ruby(f'r{k}', Vector((x, -0.08 - 0.03 * k, z)), sc, tilt=t)
+    _spark('sp0', Vector((0.56, -0.4, 0.52)), 0.14)
+
+
+def pkg_daily(_):   # 오늘의 보급 — 바구니에 보석 · 결정 · 은화
+    ob('basket', C.tube([Vector((0, 0, -0.58)), Vector((0, 0, -0.06))], [0.44, 0.6], seg=20), m('wicker', '#b06a2a'))
+    for z in (-0.44, -0.28):
+        ob(f'weave{z}', C.torus(Vector((0, 0, z)), 0.5 + (z + 0.58) * 0.28, 0.035, seg=24, ring=5), m('wicker_d', '#7a4218'), O * 0.5)
+    ob('rim', C.torus(Vector((0, 0, -0.06)), 0.6, 0.07, seg=24, ring=6), m('wicker_d', '#8a4c1e'))
+    ob('handle', C.torus(Vector((0, 0.04, -0.06)), 0.5, 0.05, seg=24, ring=6, rot=Euler((math.radians(90), 0, 0))), m('wicker_d', '#8a4c1e'))
+    _ruby('r0', Vector((-0.24, -0.1, 0.1)), 0.32, tilt=-12)
+    saved = C.FACET
+    C.FACET = 6
+    ob('crys', C.cone(Vector((0.08, 0.02, 0.18)), 0.13, 0.13, 0.4, seg=6), m('crys', '#3fb6f0', rough=0.22, emit='#7fd8ff', es=0.35))
+    ob('crys_t', C.cone(Vector((0.08, 0.02, 0.45)), 0.13, 0.0, 0.14, seg=6), m('crys_t', '#a8ecff', emit='#c8f4ff', es=0.45))
+    C.FACET = saved
+    ob('coin', C.tube([Vector((0.32, -0.12, 0.08)), Vector((0.32, -0.2, 0.08))], 0.18, seg=20), metal_m('#cfd8e2'))
+    _spark('sp0', Vector((0.54, -0.4, 0.5)), 0.13)
+
+
+def pkg_weekend(_):   # 주말 보급 상자 — 리본 묶은 선물 상자
+    ob('box', C.box(Vector((0, 0, -0.24)), (0.96, 0.8, 0.72), bevel=0.05), m('box', '#2f7fe0'))
+    ob('lid', C.box(Vector((0, 0, 0.17)), (1.06, 0.9, 0.18), bevel=0.04), m('box_l', '#3b8ff0'))
+    rib = metal_m(GOLD)
+    ob('rib_v', C.box(Vector((0, -0.0, -0.14)), (0.16, 0.84, 0.94), bevel=0.02), rib, O * 0.7)
+    ob('rib_h', C.box(Vector((0, -0.0, -0.14)), (1.0, 0.84, 0.16), bevel=0.02), rib, O * 0.7)
+    for sx in (-1, 1):
+        ob(f'bow{sx}', C.torus(Vector((sx * 0.2, -0.05, 0.38)), 0.17, 0.06, seg=20, ring=6, rot=Euler((math.radians(90), math.radians(sx * 30), 0))), rib)
+    ob('knot', C.ellipsoid(Vector((0, -0.08, 0.32)), (0.09, 0.08, 0.08)), rib, O * 0.6)
+    _spark('sp0', Vector((0.56, -0.5, 0.52)), 0.14)
+
+
+def pkg_starter(_):   # 초급 모험가 세트 — 배낭 + 말아 묶은 담요
+    pack = m('pack', '#a0642c')
+    ob('body', C.ellipsoid(Vector((0, 0, -0.12)), (0.52, 0.34, 0.6)), pack)
+    ob('flap', C.ellipsoid(Vector((0, -0.12, 0.2)), (0.5, 0.26, 0.3)), m('flap', '#7a4a20'))
+    ob('pocket', C.box(Vector((0, -0.32, -0.3)), (0.56, 0.1, 0.36), bevel=0.06), m('flap', '#7a4a20'))
+    ob('buckle', C.box(Vector((0, -0.38, 0.06)), (0.14, 0.04, 0.14), bevel=0.02), metal_m(GOLD))
+    for sx in (-1, 1):
+        ob(f'strap{sx}', C.box(Vector((sx * 0.22, -0.32, -0.04)), (0.07, 0.04, 0.6)), m('strap', '#5a3214'), O * 0.6)
+    ob('roll', C.tube([Vector((-0.5, 0.06, 0.52)), Vector((0.5, 0.06, 0.52))], 0.15, seg=16), m('roll', '#2fa36b'))
+    for x in (-0.3, 0.3):
+        ob(f'tie{x}', C.torus(Vector((x, 0.06, 0.52)), 0.16, 0.03, seg=16, ring=5, rot=Euler((0, math.radians(90), 0))), m('strap', '#5a3214'), O * 0.5)
+    _spark('sp0', Vector((0.58, -0.4, 0.3)), 0.13)
+
+
+def pkg_noads(_):   # 광고 제거 — 화면 + 재생 표시에 빗금 고리
+    ob('tv', C.box(Vector((0, 0.05, 0.0)), (1.1, 0.3, 0.8), bevel=0.1), m('tv', '#3b4a6b'))
+    ob('screen', C.box(Vector((0, -0.11, 0.02)), (0.92, 0.04, 0.62), bevel=0.06), m('screen', '#7cc8ff', emit='#bfe6ff', es=0.3), O * 0.5)
+    prism('play', [(-0.12, 0.2), (0.2, 0.02), (-0.12, -0.16)], 0.04, m('play', '#ffffff', emit='#ffffff', es=0.5), y=-0.15, outline=O * 0.5)
+    noring = m('no', '#e11d48', emit='#ff4060', es=0.25)
+    ob('ring', C.torus(Vector((0, -0.24, 0.02)), 0.42, 0.07, seg=32, ring=6, rot=_FRONT), noring)
+    ob('slash', C.box(Vector((0, -0.24, 0.02)), (0.86, 0.06, 0.12), rot=Euler((0, math.radians(-45), 0))), noring)
+    for sx in (-1, 1):
+        ob(f'leg{sx}', C.box(Vector((sx * 0.32, 0.05, -0.5)), (0.1, 0.1, 0.22), rot=Euler((0, math.radians(sx * 20), 0))), m('tv', '#3b4a6b'))
+
+
+def pkg_patron(_):   # 원정 후원 계약 — 두루마리 계약서 + 밀랍 인장
+    ob('sheet', C.box(Vector((0, 0.02, 0.0)), (0.82, 0.04, 1.0)), m('paper', '#fff1cf'))
+    for z in (0.5, -0.5):
+        ob(f'roll{z}', C.tube([Vector((-0.5, 0, z)), Vector((0.5, 0, z))], 0.1, seg=16), m('paper_d', '#f0d49a'))
+        for sx in (-1, 1):
+            ob(f'knob{z}{sx}', C.ellipsoid(Vector((sx * 0.54, 0, z)), (0.07, 0.08, 0.08)), metal_m(GOLD), O * 0.6)
+    for k, z in enumerate((0.26, 0.12, -0.02)):
+        ob(f'line{k}', C.box(Vector((-0.04 + (0.08 if k == 2 else 0), -0.03, z)), (0.5 - (0.16 if k == 2 else 0), 0.01, 0.04)), m('ink', '#8a6a4a'), 0)
+    wax = m('wax', '#d8303a', rough=0.5)
+    ob('wax', C.ellipsoid(Vector((0.14, -0.06, -0.24)), (0.2, 0.06, 0.2)), wax)
+    for sx in (-1, 1):
+        ob(f'rib{sx}', C.box(Vector((0.14 + sx * 0.08, -0.03, -0.42)), (0.08, 0.02, 0.26), rot=Euler((0, math.radians(sx * 14), 0))), m('rib', '#2f7fe0'), O * 0.6)
+    _spark('sp0', Vector((-0.46, -0.3, -0.36)), 0.13)
+
+
+def pkg_wall(_):   # 벽 돌파 세트 — 금 간 벽돌 + 터지는 별
+    brick = m('brick', '#b4532a')
+    for r, z in enumerate((-0.42, -0.14, 0.14, 0.42)):
+        off = 0.0 if r % 2 == 0 else 0.22
+        for c in range(-2, 3):
+            x = c * 0.44 + off
+            if abs(x) > 0.7:
+                continue
+            ob(f'b{r}{c}', C.box(Vector((x, 0, z)), (0.4, 0.4, 0.24), bevel=0.03), brick, O * 0.8)
+    pts = []
+    for i in range(16):
+        a = math.pi / 2 + i * math.pi / 8
+        rr = 0.42 if i % 2 == 0 else 0.22
+        pts.append((0.08 + rr * math.cos(a), 0.0 + rr * math.sin(a)))
+    prism('burst', pts[::-1], 0.08, m('burst', '#ffd23f', emit='#ffe680', es=0.5), y=-0.26)
+    prism('burst_in', [(0.08 + (x - 0.08) * 0.5, z * 0.5) for x, z in pts[::-1]], 0.04, m('burst_in', '#fff6c0', emit='#ffffff', es=0.6), y=-0.32, outline=O * 0.4)
+
+
+def pkg_rebirth(_):   # 환생 세트 — 둥지 위 금이 간 황금 알 + 불꽃 깃
+    ob('nest', C.torus(Vector((0, 0, -0.46)), 0.42, 0.14, seg=24, ring=8), m('nest', '#8a5a2b'))
+    egg = metal_m('#f2c232')
+    ob('egg', C.ellipsoid(Vector((0, 0, -0.02)), (0.42, 0.4, 0.56), egg=0.25), egg)
+    crack = m('crack', '#fff3a0', emit='#fff3a0', es=1.0)
+    pts = [Vector((-0.3, -0.36, 0.08)), Vector((-0.14, -0.4, 0.18)), Vector((0.0, -0.41, 0.06)), Vector((0.14, -0.4, 0.2)), Vector((0.3, -0.36, 0.1))]
+    ob('crack', C.tube(pts, 0.03, seg=6), crack, 0)
+    for sx in (-1, 1):
+        flame(Vector((sx * 0.5, 0.0, -0.1)), 0.5)
+    _spark('sp0', Vector((0.5, -0.4, 0.52)), 0.14)
+
+
+def pkg_x3(_):   # 성문 방어 ×3 배속 — 돌 성문 + 꺾쇠 셋
+    stone = m('stone', '#8a8f9c', matte=True)
+    ob('arch', C.torus(Vector((0, 0.05, 0.06)), 0.46, 0.14, seg=24, ring=6, rot=_FRONT), stone)
+    for sx in (-1, 1):
+        ob(f'post{sx}', C.box(Vector((sx * 0.46, 0.05, -0.32)), (0.28, 0.3, 0.76), bevel=0.03), stone)
+    ob('door', C.box(Vector((0, 0.1, -0.22)), (0.64, 0.1, 0.62)), m('door', '#6e3c18'))
+    for k in range(3):
+        _chevron(f'ch{k}', Vector((-0.34 + k * 0.32, 0, -0.12)), 0.3, 0.46, '#ffd23f', y=-0.22)
+
+
+def pkg_fund(_):   # 성문 원정 기금 — 금화 자루 + 쏟아진 금화
+    sack = m('sack', '#c9a06a')
+    ob('sack', C.ellipsoid(Vector((0, 0, -0.18)), (0.52, 0.44, 0.5), egg=0.35), sack)
+    ob('neck', C.tube([Vector((0, 0, 0.26)), Vector((0, 0, 0.42))], [0.18, 0.24], seg=16), sack)
+    ob('tie', C.torus(Vector((0, 0, 0.28)), 0.19, 0.04, seg=16, ring=5), m('rope', '#7a4a22'), O * 0.6)
+    ob('emb', C.tube([Vector((0, -0.4, -0.16)), Vector((0, -0.46, -0.16))], 0.2, seg=20), metal_m(GOLD))
+    for k, (x, z) in enumerate(((-0.5, -0.56), (0.46, -0.6), (0.6, -0.42))):
+        ob(f'coin{k}', C.tube([Vector((x, -0.3, z)), Vector((x, -0.38, z))], 0.14, seg=16), metal_m(GOLD), O * 0.6)
+    _spark('sp0', Vector((-0.5, -0.4, 0.4)), 0.13)
+
+
+PKG_JOBS = {
+    'pkg-gems-80': (pkg_gems_s, (-14, 16), 1.6), 'pkg-gems-450': (pkg_gems_m, (-14, 16), 1.6), 'pkg-gems-1200': (pkg_gems_l, (-20, 18), 1.7),
+    'pkg-daily-deal': (pkg_daily, (-16, 18), 1.7), 'pkg-weekend-pack': (pkg_weekend, (-24, 18), 1.7), 'pkg-adventurer-starter': (pkg_starter, (-22, 10), 1.7),
+    'pkg-remove-ads': (pkg_noads, (-12, 6), 1.7), 'pkg-patron-30d': (pkg_patron, (-14, 6), 1.7), 'pkg-pack-wall': (pkg_wall, (-16, 8), 1.7),
+    'pkg-pack-rebirth': (pkg_rebirth, (-14, 10), 1.7), 'pkg-dodge-x3': (pkg_x3, (-10, 6), 1.7), 'pkg-gate-fund': (pkg_fund, (-14, 10), 1.7),
+}
+
 QUEST_JOBS = {
     'quest-twigs': (q_twigs, (-14, 10), 1.7), 'quest-acorns': (q_acorns, (-14, 16), 1.6), 'quest-dam-patch': (q_dam_patch, (-20, 14), 1.7),
     'quest-river-patrol': (q_river_patrol, (-10, 12), 1.7), 'quest-log-haul': (q_log_haul, (-22, 14), 1.7), 'quest-village-guard': (q_village_guard, (-14, 10), 1.8),
@@ -1576,6 +1748,7 @@ RELIC_JOBS_V4 = {
 }
 JOBS.update(RELIC_JOBS_V4)
 JOBS.update(CUR_JOBS)
+JOBS.update(PKG_JOBS)
 RELICS = ['ember-ring', 'flame-feather', 'lava-heart', 'frost-horn', 'snow-crystal', 'ice-lantern', 'golden-acorn', 'lucky-coin', 'beaver-crown', 'shard'] + list(RELIC_JOBS_V3) + list(RELIC_JOBS_V4)
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['relics', 'tree']
@@ -1591,6 +1764,8 @@ for a in argv:
         names += list(RELIC_JOBS_V4)
     elif a == 'quests2':
         names += [k for k in QUEST_JOBS if k[len('quest-'):] in ('reed-weave', 'mud-haul', 'fish-catch', 'lily-garden', 'bark-strip', 'lantern-light', 'stone-stack', 'stepping-stones', 'mill-wheel', 'honey-gather', 'raft-build', 'watchtower', 'tool-forge', 'market-trade', 'canal-dig', 'storehouse', 'river-lighthouse', 'festival', 'royal-banner', 'crystal-mine', 'star-reservoir', 'beaver-kingdom')]
+    elif a == 'pkg':
+        names += list(PKG_JOBS)
     elif a == 'tree':
         names += [k for k in JOBS if k.startswith('tree-')]
     else:

@@ -160,6 +160,7 @@ import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon, type ContentIconName } from "./ui/ContentIcon";
 import { RewardIcon, grantRewardKinds } from "./ui/RewardIcon";
 import { CurrencyIcon, GemMark } from "./ui/CurrencyIcon";
+import { ProductIcon } from "./ui/ProductIcon";
 import { WalletBar, formatWallet } from "./ui/WalletBar";
 import { bestiaryThumb, monsterArtKey } from "./titans/bestiary";
 import { BEAT_SHOP_ITEMS, beatItemIcon, equipBeatItem, equippedBeatItem, grantBeatItem, ownsBeatItem, type BeatShopItem } from "./beat/shop";
@@ -5927,7 +5928,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const left = sp.weeklyLimit - eventBuysThisWeek(character, sp.id, currentWeekKey());
               return (
                 <article className="titans-card premium-product-card gem-product seal-product">
-                  <img className="pack-icon" src={assetUrl("ui/idle/expedition.png")} alt="" aria-hidden="true" />
+                  <img className="pack-icon" src={assetUrl("ui/attendance/expedition-seal.png")} alt="" aria-hidden="true" />
                   <div>
                     <strong>성문 인장 묶음 <em>주 {sp.weeklyLimit}회</em></strong>
                     <p>성문 인장 +20 · 이번 주 {Math.max(0, left)}회 남음 <i className="feeds">→ 성문 방어 칩 · 스킬 무기</i></p>
@@ -6012,7 +6013,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           const lines = SHOP_COPY[product.id]?.lines ?? product.contents;
           const pkgIsOpen = product.id === "remove-ads" || pkgOpen === product.id;
           return <article key={product.id} className={`titans-card premium-product-card pkg-row ${pkgIsOpen ? "is-open" : ""}`} data-product={product.id} onClick={(e) => { if (!(e.target as Element).closest("button") && lines.length > 0 && product.id !== "remove-ads") setPkgOpen(pkgOpen === product.id ? null : product.id); }}>
-          <CurrencyIcon kind={product.id.startsWith("gems") ? "gem" : "gold"} />
+          <ProductIcon id={product.id} />
           <div><strong>{product.name} {product.badge && <em>{product.badge}</em>}{(() => {
             // 보석팩 보너스 — 기준 팩(80개) 가격 대비, 화면 가격으로 계산한 값만 (근거 없는 % 를 쓰지 않는다)
             const gems = purchaseGrant(product.id)?.gems ?? 0;

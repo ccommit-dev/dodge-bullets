@@ -4,3 +4,6 @@
 .skill-icon.has-art.glow-tile img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: inherit; }
 .quest-icon:has(> .quest-glow-tile) { padding: 0 !important; border: 0 !important; background: #120f1c !important; border-radius: 10px !important; overflow: hidden; }
 .quest-icon > .quest-glow-tile { width: 100% !important; height: 100% !important; object-fit: cover !important; filter: none !important; }
+
+/* 상점 패키지 그림(ProductIcon, 2026-11-23) — 물건 그림이라 재화 동그라미보다 조금 크게 · 그림자 대신 스티커 테 */
+.hub-sheet .premium-product-card.pkg-row > .product-icon { width: 46px !important; height: 46px !important; flex: 0 0 46px !important; filter: none !important; }
