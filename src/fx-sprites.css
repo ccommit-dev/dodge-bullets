@@ -44,9 +44,10 @@
    art-gen/blender/fx2.py → assemble-fx: hit-<속성>(작은 불꽃, 오른쪽으로 튐) · burst-<속성>(섬광 + 충격파 + 파편) · debris-rock(포물선 파편) · proj-<속성>(날아가는 탄) */
 .titans-fx.titans-fx-spark, .titans-fx.titans-fx-burst, .titans-fx.titans-fx-debris { overflow: hidden; border: 0; box-shadow: none; background: none; border-radius: 0; animation: none; filter: none; }
 .titans-fx.titans-fx-spark { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
-.titans-fx.titans-fx-burst { z-index: 7; width: 136px; height: 136px; margin: -68px 0 0 -68px; }
-/* 가운데 섬광을 옅게(마스크) — 큰 폭발이 0.2초 동안 몬스터를 통째로 가렸다 (2026-10-21). 섬광 · 충격파 · 파편은 둘레에서 보인다 */
-.titans-fx.titans-fx-burst, .skill-shot.shot-impact > .fx-burst { -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .28) 0 16%, rgba(0, 0, 0, .7) 30%, #000 46%); mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .28) 0 16%, rgba(0, 0, 0, .7) 30%, #000 46%); }
+.titans-fx.titans-fx-burst { z-index: 7; width: 112px; height: 112px; margin: -56px 0 0 -56px; }   /* 136 → 112 (2026-11-23 리소스 피드백 ②: 가시 고리가 몬스터 88~115px 를 통째로 덮었다). 시그니처(sig-ult)는 allyShowcase.css 배율로 그대로 크다 */
+/* 가운데 섬광을 옅게(마스크) — 큰 폭발이 0.2초 동안 몬스터를 통째로 가렸다 (2026-10-21). 섬광 · 충격파 · 파편은 둘레에서 보인다.
+   2026-11-23: 가운데 .28 도 섬광(첫 두 칸 흰 원)이 몸을 덮어 → 가운데 24% 는 비우고(.06) 둘레로 갈수록 진하게 */
+.titans-fx.titans-fx-burst, .skill-shot.shot-impact > .fx-burst { -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .06) 0 24%, rgba(0, 0, 0, .5) 34%, #000 48%); mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .06) 0 24%, rgba(0, 0, 0, .5) 34%, #000 48%); }
 .titans-fx.titans-fx-debris { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
 .titans-fx.titans-fx-spark::before, .titans-fx.titans-fx-burst::before, .titans-fx.titans-fx-debris::before {
   content: ""; position: absolute; left: 0; top: 0; width: 600%; height: 100%; background: url("/titans/fx/hit-blade.webp") 0 0 / 100% 100% no-repeat; animation: fx-strip6 .36s steps(6, end) forwards;
