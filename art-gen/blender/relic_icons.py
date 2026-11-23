@@ -1275,8 +1275,209 @@ def cur_stone(_):
     C.FACET = saved
 
 
+# ── 재화 · 보상 아이콘 2판 (2026-11-23, 사용자: "리소스 관점에서 그외에 아쉬운 부분 전부") ──
+# 예전 출석 · 보상 아이콘은 평면 도형 넷(골드 · 은화 · 보석 · 강화석)과 회색 연기 바탕이 남은 생성 그림이 섞여 그림결이 갈렸다.
+# 유물 3판과 같은 스티커 그림결(셀 · 굵은 남색 외곽선, scripts/assemble-currency.mjs)로 다시. 장비 견갑 그림 둘은 장비 쪽(gear_icons)
+def _spark(name, at, r, c='#fff6b0'):   # 네 갈래 반짝이 판(앞을 본다) — 원뿔은 앞에서 세모로 보였다
+    pts = []
+    for i in range(8):
+        a = math.pi / 2 + i * math.pi / 4
+        rr = r if i % 2 == 0 else r * 0.32
+        pts.append((at.x + rr * math.cos(a), at.z + rr * math.sin(a)))
+    prism(name, pts[::-1], 0.04, m('spark', c, emit=c, es=1.0), y=at.y, outline=O * 0.4)
+
+
+def _coin(c, rim, face, emblem):
+    ob('coin', C.tube([Vector((0, 0.08, 0)), Vector((0, -0.08, 0))], 0.66, seg=24), metal_m(c))
+    ob('rim', C.torus(Vector((0, -0.085, 0)), 0.6, 0.06, seg=24, ring=6, rot=_FRONT), metal_m(rim))
+    ob('face', C.tube([Vector((0, -0.08, 0)), Vector((0, -0.11, 0))], 0.48, seg=24), metal_m(face), O * 0.6)
+    emblem()
+    ob('shine', C.ellipsoid(Vector((-0.3, -0.15, 0.3)), (0.06, 0.02, 0.12), rot=Euler((0, math.radians(-40), 0))), m('shine', '#fffbe0', rough=0.3, emit='#fffbe0', es=0.8), 0)
+
+
+def cur_gold2(_):
+    def acorn():   # 도토리 새김 — 성장 재화가 도토리였던 흔적을 금화 얼굴에
+        ob('nut', C.ellipsoid(Vector((0, -0.13, -0.07)), (0.15, 0.05, 0.18), egg=-0.2), metal_m('#c98a12'), O * 0.6)
+        ob('cap', C.ellipsoid(Vector((0, -0.14, 0.08)), (0.19, 0.06, 0.09)), metal_m('#a86a0a'), O * 0.6)
+        ob('stem', C.tube([Vector((0, -0.14, 0.15)), Vector((0.04, -0.14, 0.25))], 0.03, seg=6), metal_m('#a86a0a'), O * 0.5)
+    _coin('#f2c232', '#d99a14', '#ffd95a', acorn)
+
+
+def cur_silver2(_):
+    def leaf():   # 잎 셋 새김
+        for k, (x, z, a) in enumerate(((-0.1, 0.04, -35), (0.1, 0.04, 35), (0, -0.1, 0))):
+            ob(f'leaf{k}', C.ellipsoid(Vector((x, -0.13, z)), (0.07, 0.04, 0.16), rot=Euler((0, math.radians(a), 0))), metal_m('#8f9cad'), O * 0.5)
+    _coin('#cfd8e2', '#8f9cad', '#eef3f8', leaf)
+
+
+def cur_gem2(_):
+    saved = C.FACET
+    C.FACET = 8
+    ob('crown', C.cone(Vector((0, 0, 0.18)), 0.62, 0.38, 0.3, seg=8), m('ruby', '#ff3048', rough=0.22, emit='#ff5a6a', es=0.3))
+    ob('pavilion', C.cone(Vector((0, 0, -0.3)), 0.0, 0.62, 0.66, seg=8), m('ruby_d', '#c8142c', rough=0.22, emit='#ff3048', es=0.25))
+    ob('table', C.cone(Vector((0, 0, 0.34)), 0.38, 0.38, 0.02, seg=8), m('ruby_t', '#ff8a96', rough=0.2, emit='#ffb0b8', es=0.4), 0)
+    C.FACET = saved
+    ob('glint', C.ellipsoid(Vector((-0.24, -0.42, 0.22)), (0.05, 0.02, 0.11)), m('shine', '#ffffff', emit='#ffffff', es=1.0), 0)
+
+
+def cur_stone2(_):   # 강화석 — 바위 받침에 푸른 결정 셋
+    saved = C.FACET
+    C.FACET = 6
+    ob('base', C.ellipsoid(Vector((0, 0.05, -0.5)), (0.66, 0.38, 0.14)), m('rock', '#8a7a6a', rough=0.95, matte=True))
+    for k, (x, h, r, tilt) in enumerate(((0, 1.0, 0.24, 0), (-0.3, 0.62, 0.16, -24), (0.3, 0.72, 0.17, 22))):
+        rot = Euler((0, math.radians(tilt), 0))
+        d = rot.to_matrix() @ Vector((0, 0, 1))
+        base = Vector((x, 0, -0.45))
+        ob(f'crys{k}', C.cone(base + d * (h * 0.35), r, r, h * 0.7, seg=6, rot=rot), m('crys', '#3fb6f0', rough=0.22, emit='#7fd8ff', es=0.35))
+        ob(f'tip{k}', C.cone(base + d * (h * 0.7 + r * 0.5), r, 0.0, r * 1.0, seg=6, rot=rot), m('crys_t', '#a8ecff', rough=0.2, emit='#c8f4ff', es=0.45))
+    C.FACET = saved
+
+
+def cur_seal(_):   # 원정 인장 — 붉은 밀랍 인장 + 파란 리본 둘
+    for sx in (-1, 1):
+        ob(f'rib{sx}', C.box(Vector((sx * 0.2, 0.08, -0.5)), (0.22, 0.04, 0.6), rot=Euler((0, math.radians(sx * 16), 0))), m('rib', '#2f7fe0'))
+    wax = m('wax', '#d8303a', rough=0.5)
+    ob('wax', C.ellipsoid(Vector((0, 0, 0.05)), (0.56, 0.16, 0.56)), wax)
+    for k in range(10):   # 밀랍 물결 가장자리
+        a = k * math.pi / 5
+        ob(f'drip{k}', C.ellipsoid(Vector((0.55 * math.cos(a), 0.0, 0.05 + 0.55 * math.sin(a))), (0.11, 0.12, 0.11)), wax, O * 0.6)
+    ob('press', C.tube([Vector((0, -0.12, 0.05)), Vector((0, -0.19, 0.05))], 0.36, seg=24), m('wax_d', '#a81c26', rough=0.5), O * 0.6)
+    pts = []
+    for i in range(10):   # 금 별 도장
+        a = math.pi / 2 + i * math.pi / 5
+        r = 0.22 if i % 2 == 0 else 0.1
+        pts.append((r * math.cos(a), 0.05 + r * math.sin(a)))
+    prism('mark', pts[::-1], 0.05, metal_m(GOLD), y=-0.21, outline=O * 0.5)
+
+
+def cur_orb(_):   # 스킬 핵 — 빛나는 보라 구슬 + 금 받침
+    ob('foot', C.tube([Vector((0, 0, -0.62)), Vector((0, 0, -0.44))], [0.34, 0.24], seg=20), metal_m(GOLD_D))
+    ob('cradle', C.torus(Vector((0, 0, -0.34)), 0.34, 0.07, seg=24, ring=6), metal_m(GOLD))
+    for k in range(3):
+        a = k * 2 * math.pi / 3 + math.pi / 2
+        ob(f'prong{k}', C.tube([Vector((0.34 * math.cos(a), 0.34 * math.sin(a), -0.34)), Vector((0.3 * math.cos(a), 0.3 * math.sin(a), 0.0))], 0.05, seg=8), metal_m(GOLD_D), O * 0.6)
+    ob('orb', C.ellipsoid(Vector((0, 0, 0.1)), (0.42, 0.42, 0.42)), m('orb', '#6d28d9', rough=0.15, emit='#8b5cf6', es=0.35))
+    ob('swirl', C.torus(Vector((0, -0.05, 0.1)), 0.28, 0.035, seg=24, ring=5, rot=Euler((math.radians(70), math.radians(25), 0))), m('swirl', '#e9d5ff', emit='#e9d5ff', es=0.6), O * 0.4)
+    ob('core', C.ellipsoid(Vector((-0.14, -0.34, 0.26)), (0.08, 0.05, 0.1)), m('core', '#ffffff', emit='#ffffff', es=1.2), 0)
+    _spark('sp0', Vector((0.46, -0.3, 0.46)), 0.13)
+
+
+def cur_chest(_):   # 보물 상자 — 짙은 나무 몸 · 금 띠 · 둥근 뚜껑 · 넘치는 보석 · 앞에 금화
+    wood, wood2 = m('wood', '#6e3c18'), m('wood2', '#86491e')
+    ob('body', C.box(Vector((0, 0, -0.22)), (1.05, 0.62, 0.56), bevel=0.04), wood)
+    ob('lid', C.tube([Vector((-0.53, 0, 0.06)), Vector((0.53, 0, 0.06))], 0.31, seg=20), wood2)
+    for x in (-0.36, 0.36):
+        ob(f'band{x}', C.box(Vector((x, 0.0, -0.22)), (0.1, 0.66, 0.6), bevel=0.02), metal_m(GOLD))
+        ob(f'lband{x}', C.tube([Vector((x - 0.05, 0, 0.06)), Vector((x + 0.05, 0, 0.06))], 0.33, seg=20), metal_m(GOLD), O * 0.6)
+    ob('lock', C.box(Vector((0, -0.33, -0.06)), (0.22, 0.06, 0.26), bevel=0.02), metal_m(GOLD_D))
+    jewel('cj', '#4fd8ff', Vector((0, -0.37, -0.04)), 0.06)
+    for k, (x, z, c) in enumerate(((-0.2, 0.4, '#ff3a6a'), (0.06, 0.44, '#3ad870'), (0.24, 0.36, '#4fa8ff'))):
+        gem(f'loot{k}', c, Vector((x, -0.1, z)), 0.11)
+    for k, (x, z) in enumerate(((-0.34, -0.56), (0.3, -0.58))):
+        ob(f'coin{k}', C.tube([Vector((x, -0.36, z)), Vector((x, -0.44, z))], 0.12, seg=16), metal_m(GOLD), O * 0.6)
+    _spark('sp0', Vector((0.5, -0.4, 0.5)), 0.13)
+
+
+def cur_ally_shard(_):   # 동료 조각 — 주황 수정 조각(위아래 뾰족) + 흰 발자국
+    saved = C.FACET
+    C.FACET = 6
+    rot = Euler((0, math.radians(-14), 0))
+    d = rot.to_matrix() @ Vector((0, 0, 1))
+    ob('top', C.cone(d * 0.25, 0.42, 0.0, 0.9, seg=6, rot=rot), m('shard', '#f97316', rough=0.25, emit='#fb923c', es=0.3))
+    ob('bot', C.cone(d * -0.42, 0.0, 0.42, 0.44, seg=6, rot=rot), m('shard_d', '#c2410c', rough=0.25, emit='#f97316', es=0.25))
+    C.FACET = saved
+    pc = Vector((0.0, -0.38, -0.02))
+    paw = m('paw', '#fff7ed', emit='#fff7ed', es=0.3)
+    ob('pad', C.ellipsoid(pc, (0.13, 0.04, 0.11)), paw, O * 0.5)
+    for k, (x, z) in enumerate(((-0.14, 0.13), (-0.05, 0.21), (0.05, 0.21), (0.14, 0.13))):
+        ob(f'toe{k}', C.ellipsoid(pc + Vector((x, -0.01, z)), (0.045, 0.03, 0.055)), paw, O * 0.4)
+    _spark('sp0', Vector((0.42, -0.3, 0.42)), 0.13)
+
+
+def cur_hourglass(_):   # 방치 가속 — 나무 뚜껑 · 금 기둥 모래시계
+    for z in (0.56, -0.56):
+        ob(f'cap{z}', C.tube([Vector((0, 0, z - 0.06)), Vector((0, 0, z + 0.06))], 0.44, seg=24), m('wood', '#6e3c18'))
+    glass = m('glass', '#5fb8e8', rough=0.1, emit='#8fd0f0', es=0.12)
+    ob('bulb_t', C.ellipsoid(Vector((0, 0, 0.25)), (0.3, 0.3, 0.27), egg=0.35), glass)
+    ob('bulb_b', C.ellipsoid(Vector((0, 0, -0.25)), (0.3, 0.3, 0.27), egg=-0.35), glass)
+    sand = m('sand', '#f59e0b', emit='#fbbf24', es=0.35)
+    ob('sand_b', C.ellipsoid(Vector((0, -0.08, -0.34)), (0.22, 0.2, 0.13)), sand, O * 0.5)
+    ob('sand_t', C.ellipsoid(Vector((0, -0.08, 0.15)), (0.13, 0.12, 0.08)), sand, O * 0.5)
+    ob('stream', C.tube([Vector((0, -0.08, 0.08)), Vector((0, -0.08, -0.24))], 0.025, seg=6), sand, 0)
+    for k in range(3):
+        a = k * 2 * math.pi / 3 - math.pi / 2 + 0.5
+        ob(f'post{k}', C.tube([Vector((0.38 * math.cos(a), 0.38 * math.sin(a), -0.5)), Vector((0.38 * math.cos(a), 0.38 * math.sin(a), 0.5))], 0.04, seg=8), metal_m(GOLD), O * 0.6)
+    _spark('sp0', Vector((0.46, -0.4, 0.4)), 0.13)
+
+
+def cur_hood(_):   # 동료 꾸미기 — 여우 두건을 쓴 비버 얼굴(옷 스킨과 같은 말)
+    hood = m('hood', '#ea580c')
+    ob('hood', C.ellipsoid(Vector((0, 0.04, 0)), (0.56, 0.5, 0.52)), hood)
+    ob('face', C.ellipsoid(Vector((0, -0.3, -0.08)), (0.36, 0.14, 0.32)), m('face', '#9a6236'), O * 0.6)
+    ob('muzzle', C.ellipsoid(Vector((0, -0.44, -0.2)), (0.16, 0.06, 0.1)), m('muzzle', '#f3d3a8'), O * 0.5)
+    ob('nose', C.ellipsoid(Vector((0, -0.5, -0.13)), (0.06, 0.04, 0.04)), m('nose', '#2a1a12'), 0)
+    for sx in (-1, 1):
+        rot = Euler((0, math.radians(sx * 22), 0))
+        ob(f'ear{sx}', C.cone(Vector((sx * 0.3, 0.02, 0.56)), 0.18, 0.0, 0.42, seg=6, rot=rot), hood)
+        ob(f'earin{sx}', C.cone(Vector((sx * 0.29, -0.08, 0.54)), 0.09, 0.0, 0.28, seg=6, rot=rot), m('ear_in', '#fff2e4'), 0)
+        ob(f'eye{sx}', C.ellipsoid(Vector((sx * 0.13, -0.42, 0.02)), (0.06, 0.03, 0.075)), m('eye', '#1a1424'), 0)
+        ob(f'eyehl{sx}', C.ellipsoid(Vector((sx * 0.13 - 0.02, -0.45, 0.05)), (0.02, 0.01, 0.025)), m('eyehl', '#ffffff', emit='#ffffff', es=1.0), 0)
+    ob('trim', C.torus(Vector((0, -0.28, -0.08)), 0.4, 0.07, seg=24, ring=6, rot=_FRONT), m('fur', '#fff2e4'))
+
+
+def cur_weapon_fx(_):   # 무기 빛 — 빛나는 칼날 + 별빛
+    rot = Euler((0, math.radians(40), 0))
+    d = rot.to_matrix() @ Vector((0, 0, 1))
+    ob('blade', C.box(d * 0.2, (0.18, 0.06, 1.0), rot=rot), m('blade', '#38bdf8', rough=0.2, emit='#7dd3fc', es=0.35))
+    ob('edge', C.box(d * 0.22 + Vector((0, -0.04, 0)), (0.06, 0.02, 0.9), rot=rot), m('edge', '#e0f2fe', emit='#ffffff', es=0.8), 0)
+    ob('guard', C.box(d * -0.32, (0.5, 0.1, 0.09), rot=rot), metal_m(GOLD))
+    ob('grip', C.tube([d * -0.36, d * -0.66], 0.055, seg=8), m('grip', '#5a2e12'), O * 0.6)
+    ob('pommel', C.ellipsoid(d * -0.7, (0.075, 0.075, 0.075)), metal_m(GOLD), O * 0.6)
+    for k, (x, z, r) in enumerate(((-0.4, 0.42, 0.16), (0.44, 0.0, 0.12), (-0.3, -0.42, 0.1))):
+        _spark(f'sp{k}', Vector((x, -0.1, z)), r)
+
+
+def cur_hammer(_):   # 대장간 쿠폰 — 망치 + 불티
+    rot = Euler((0, math.radians(35), 0))
+    d = rot.to_matrix() @ Vector((0, 0, 1))
+    ob('handle', C.tube([d * -0.72, d * 0.28], 0.075, seg=10), m('wood', '#7a4a22'))
+    ob('head', C.box(d * 0.36, (0.66, 0.34, 0.32), bevel=0.04, rot=rot), metal_m('#64748b'))
+    ob('band', C.box(d * 0.36, (0.2, 0.36, 0.34), bevel=0.02, rot=rot), metal_m(GOLD))
+    for k, (x, z, r) in enumerate(((0.46, -0.36, 0.15), (0.2, -0.58, 0.1))):
+        _spark(f'sp{k}', Vector((x, -0.1, z)), r, '#ffb347')
+
+
+def cur_star(_):   # 시즌 경험치 — 두툼한 별 배지 + 리본
+    for sx in (-1, 1):
+        ob(f'rib{sx}', C.box(Vector((sx * 0.2, 0.1, -0.5)), (0.2, 0.04, 0.5), rot=Euler((0, math.radians(sx * 16), 0))), m('rib', '#2f7fe0'))
+    pts = []
+    for i in range(10):
+        a = math.pi / 2 + i * math.pi / 5
+        r = 0.64 if i % 2 == 0 else 0.29
+        pts.append((r * math.cos(a), 0.06 + r * math.sin(a)))
+    prism('star', pts[::-1], 0.22, m('star', '#ffd23f', rough=0.3, emit='#ffe680', es=0.3))
+    prism('star_in', [(x * 0.55, 0.06 + (z - 0.06) * 0.55) for x, z in pts[::-1]], 0.05, m('star_in', '#fff0a0', rough=0.3, emit='#fff6c0', es=0.45), y=-0.13, outline=O * 0.5)
+
+
+def cur_shoulder_shards(_):   # 견갑 조각 — 둥근 푸른 쇠 판 조각 셋 + 금 테 · 박힌 못
+    saved = C.FACET
+    C.FACET = 8
+    for k, (x, z, a, c) in enumerate(((-0.28, -0.16, -22, '#3b5b8f'), (0.26, -0.2, 26, '#355286'), (0, 0.22, 0, '#4a6ea8'))):
+        rot = Euler((math.radians(-20), math.radians(a), 0))
+        ob(f'plate{k}', C.ellipsoid(Vector((x, 0, z)), (0.3, 0.14, 0.22), rot=rot), metal_m(c))
+        ob(f'trim{k}', C.ellipsoid(Vector((x, 0.02, z - 0.12)), (0.31, 0.12, 0.06), rot=rot), metal_m(GOLD), O * 0.5)
+        stud(f'stud{k}', Vector((x, -0.16, z + 0.04)), 0.045)
+    C.FACET = saved
+
+
 CUR_JOBS = {
     'cur-gold': (cur_gold, (-18, 8), 1.6), 'cur-gem': (cur_gem, (-14, 18), 1.6), 'cur-stone': (cur_stone, (-16, 10), 1.6),
+    # 2판(2026-11-23) — scripts/assemble-currency.mjs 가 public/ui/attendance · rewards 같은 이름으로
+    'cur2-gold': (cur_gold2, (-22, 10), 1.6), 'cur2-silver': (cur_silver2, (-22, 10), 1.6), 'cur2-gem': (cur_gem2, (-14, 18), 1.6),
+    'cur2-stone': (cur_stone2, (-16, 12), 1.7), 'cur2-seal': (cur_seal, (-14, 8), 1.7), 'cur2-orb': (cur_orb, (-12, 12), 1.6),
+    'cur2-chest': (cur_chest, (-24, 18), 1.7), 'cur2-ally-shard': (cur_ally_shard, (-14, 10), 1.6), 'cur2-hourglass': (cur_hourglass, (-16, 10), 1.6),
+    'cur2-hood': (cur_hood, (-20, 10), 1.7), 'cur2-weapon-fx': (cur_weapon_fx, (0, 6), 1.8), 'cur2-hammer': (cur_hammer, (-14, 8), 1.7),
+    'cur2-star': (cur_star, (-14, 8), 1.7), 'cur2-shoulder-shards': (cur_shoulder_shards, (-16, 14), 1.6),
 }
 
 QUEST_JOBS = {
