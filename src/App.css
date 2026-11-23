@@ -4895,11 +4895,11 @@ button.wallet-gem { cursor: pointer; padding-right: 24px; }
 /* ── 땅을 걷는 맵 (2026-10-12, 참고: 카피바라 키우기) — 배경은 위 지평선 띠, 아래는 평평한 흙 띠, 캐릭터는 흙 띠 안에 선다 ── */
 /* 바닥 그림 (2026-11-19, 리소스 피드백 ② "사냥터 바닥이 단색이다") — 단색 + 얼룩 넷 → 지역마다 셀 그림결 바닥 한 장(가운데 흙길 = 발 자리, 소품은 뒤 가장자리 · 아래 모서리).
    art-gen/blender/hunt_ground.py → scripts/assemble-hunt-ground.mjs. --ground-flat 은 그림 아래 색(그림이 늦게 뜰 때), --ground-edge 는 그림 위 가장자리 색(이음선 녹임) */
-.titans-field { --ground-top: 44%; --ground-flat: #a9d373; --ground-edge: #99c767; }
-.titans-field[data-area="forest"] { --ground-flat: #799b56; --ground-edge: #6a8d4d; }
-.titans-field[data-area="ruins"] { --ground-flat: #e4c497; --ground-edge: #dcc094; }
-.titans-field[data-area="volcano"] { --ground-flat: #86604c; --ground-edge: #795747; }
-.titans-field[data-area="abyss"] { --ground-flat: #8172a7; --ground-edge: #7f73a6; }
+.titans-field { --ground-top: 44%; --ground-flat: #a9d373; --ground-edge: #95b963; }
+.titans-field[data-area="forest"] { --ground-flat: #799b56; --ground-edge: #7a824a; }
+.titans-field[data-area="ruins"] { --ground-flat: #e4c497; --ground-edge: #d1b78b; }
+.titans-field[data-area="volcano"] { --ground-flat: #86604c; --ground-edge: #71564a; }
+.titans-field[data-area="abyss"] { --ground-flat: #8172a7; --ground-edge: #7f6da8; }
 .titans-field .titans-background { inset: 0 0 auto 0; height: var(--ground-top); background-image: var(--area-background); background-size: cover; background-position: center bottom; }
 .titans-ground { position: absolute; left: 0; right: 0; top: var(--ground-top); bottom: 0; z-index: 0; background-color: var(--ground-flat);
   background-image: var(--area-ground-art, none); background-size: cover; background-position: center top; background-repeat: no-repeat; }

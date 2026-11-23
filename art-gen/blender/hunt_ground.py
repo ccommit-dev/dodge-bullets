@@ -16,7 +16,7 @@ import sys
 import os
 import math
 import random
-from mathutils import Euler
+from mathutils import Euler, Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import bcommon as C
@@ -228,6 +228,86 @@ def lava_pool(x, y, cfg, rng, r=0.45):
     put('pool_hi', C.ellipsoid((x - r * 0.2, y + r * 0.05, 0.028), (r * 0.4, r * 0.18, 0.006), seg=12, rings=4), M(cfg['lava'][1], emit=cfg['lava'][1], strength=1.4))
 
 
+# ── Sketchfab 소품 (2026-11-23, 사용자: "sketchfab 에서 받아 맵에도 적용" — CC BY, 작가 · 주소는 docs/CREDITS.md · src/ui/credits.ts) ──
+# 원본 GLB 는 저장소 밖 art-gen/out/sketchfab — 없으면 건너뛴다(옛 바닥 그대로). 가져온 모델은 lib/toon 이 같은 셀 재질로 바꾸고, 잉크 외곽선을 두른다
+SF_DIR = os.path.join(ROOT, 'art-gen', 'out', 'sketchfab')
+SF_USED = set()   # 이 렌더에 실제로 쓴 파일(로그 — 크레딧 대조용)
+
+
+def sf_prop(file, u, v, h, keep=None, yaw=0.0, ink=0.022):
+    """file 의 메시 중 keep(이름 조각들, None 이면 전부 · 납작한 바닥판은 뺀다)만 남겨 높이 h(월드)로 줄여 (u, v) 바닥에 세운다"""
+    path = os.path.join(SF_DIR, file)
+    if not os.path.exists(path):
+        print('skip (no file)', file, flush=True)
+        return
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    bpy.context.view_layer.update()
+    meshes = [o for o in new if o.type == 'MESH']
+
+    def dims(o):
+        bb = [o.matrix_world @ Vector(c) for c in o.bound_box]
+        return Vector((max(p.x for p in bb) - min(p.x for p in bb), max(p.y for p in bb) - min(p.y for p in bb), max(p.z for p in bb) - min(p.z for p in bb))), bb
+    def ink_shell(o):
+        """작가가 넣은 검은 외곽선 껍질(바탕색 거의 검정 · 그림 없음) — Cycles 는 뒷면 숨김을 무시해 몸 전체를 검게 덮었다(그루터기)"""
+        ms = [s.material for s in o.material_slots if s.material]
+        if not ms:
+            return False
+        for m in ms:
+            b = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None) if m.use_nodes else None
+            if b is None or b.inputs['Base Color'].is_linked:
+                return False
+            c = b.inputs['Base Color'].default_value
+            if 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.04:
+                return False
+        return True
+    sel = []
+    for o in meshes:
+        if ink_shell(o):
+            continue
+        d, _ = dims(o)
+        if keep is not None and not any(k in o.name for k in keep):
+            continue
+        if keep is None and d.z < 0.2 * max(d.x, d.y):   # 디오라마 바닥판
+            continue
+        sel.append(o)
+    mws = {o: o.matrix_world.copy() for o in sel}
+    for o in new:
+        if o not in sel:
+            bpy.data.objects.remove(o, do_unlink=True)
+    if not sel:
+        print('skip (no match)', file, keep, flush=True)
+        return
+    for o in sel:
+        o.parent = None
+        o.matrix_world = mws[o]
+    bpy.context.view_layer.update()
+    pts = [p for o in sel for p in dims(o)[1]]
+    lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+    hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+    s = h / max(1e-6, hi.z - lo.z)
+    place = Matrix.Translation((u2x(u), v2y(v), 0.0)) @ Matrix.Rotation(math.radians(yaw), 4, 'Z') @ Matrix.Scale(s, 4) @ Matrix.Translation((-(lo.x + hi.x) / 2, -(lo.y + hi.y) / 2, -lo.z))
+    for o in sel:
+        o.matrix_world = place @ mws[o]
+    bpy.context.view_layer.update()
+    for o in sel:
+        sc = o.matrix_world.to_scale()
+        C.add_outline(o, ink / max(1e-6, (abs(sc.x) + abs(sc.y) + abs(sc.z)) / 3))
+    SF_USED.add(file)
+
+
+# 지역마다 놓을 소품 — 뒤 가장자리(v 0~0.1)와 아래 모서리(v 0.82~0.92)만, 발 자리(가운데)는 비운다. 옛 기둥 · 용암 웅덩이 자리는 피했다
+SF_PROPS = {
+    'meadow': [('p-stump.glb', 0.07, 0.05, 0.95, None, 20), ('p-nature.glb', 0.93, 0.04, 0.7, ['Clump7'], 0), ('p-nature.glb', 0.9, 0.87, 0.42, ['FlowerR1'], 0), ('p-nature.glb', 0.07, 0.88, 0.4, ['FlowerY1'], 0)],
+    'forest': [('p-fallentree.glb', 0.17, 0.05, 0.85, None, 12), ('p-mushrooms.glb', 0.91, 0.07, 0.9, None, -20), ('p-nature.glb', 0.05, 0.87, 0.5, ['MushrumC1'], 0), ('p-stump.glb', 0.94, 0.86, 0.7, None, -30)],
+    'ruins': [('p-cactus.glb', 0.22, 0.05, 1.0, ['cactus_8'], 0), ('p-cactus.glb', 0.8, 0.04, 0.85, ['cactus_4'], 0), ('p-rocks.glb', 0.12, 0.88, 0.55, ['Cliff_Rock_02'], 0)],
+    # 화산 — 화산암 묶음(p-rocks)은 원래 짙은 현무암이라 셀로 그리면 검은 덩어리였다 → 자연 묶음의 회갈색 바위 + 구리 · 붉은 광석 조각만
+    'volcano': [('p-nature.glb', 0.3, 0.04, 0.75, ['RB1'], 0), ('p-nature.glb', 0.7, 0.05, 0.6, ['RB2'], 30), ('p-rocks.glb', 0.07, 0.88, 0.3, ['Rock_Copper'], 0)],
+    'abyss': [('p-nature.glb', 0.07, 0.06, 0.9, ['Crystel1'], 0), ('p-mushrooms.glb', 0.92, 0.05, 0.8, None, 15), ('p-nature.glb', 0.93, 0.86, 0.75, ['Crystel2'], 0)],
+}
+
+
 def scatter(fn, n, rng, vmin, vmax, umin=-0.04, umax=1.04, avoid_calm=True, tries=60):
     placed = 0
     for _ in range(n * tries):
@@ -285,6 +365,10 @@ def build(area):
         scatter(lambda x, y: crystal(x, y, cfg, rng, rng.uniform(0.9, 1.3)), 7, rng, 0.0, 0.13, avoid_calm=False)
         scatter(lambda x, y: crystal(x, y, cfg, rng, 0.8), 4, rng, 0.66, 0.95)
         scatter(lambda x, y: crack(x, y, rng, n=5, col='#b48cff', emit='#b48cff', strength=0.5, w=0.025), 5, rng, 0.0, 1.0)
+    # Sketchfab 소품(2026-11-23) — HG_SF=0 이면 빼고 옛 바닥만
+    if os.environ.get('HG_SF', '1') != '0':
+        for file, u, v, h, keep, yaw in SF_PROPS.get(area, []):
+            sf_prop(file, u, v, h, keep, yaw)
 
 
 def render(area):

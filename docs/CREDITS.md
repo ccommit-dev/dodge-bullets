@@ -14,18 +14,20 @@
 | 몬스터 '화분 파리지옥' (숲 · 고블린 변종) | Monster Plant | Batuhan13 | https://sketchfab.com/3d-models/monster-plant-b7e677ebca4e4b6ea247fba10a356bd4 | m-plant.glb |
 | 몬스터 '눈알 꽃' (초원 · 고블린 변종) | Eyeball Plant | Snarkle Studios | https://sketchfab.com/3d-models/eyeball-plant-3c020ddcd129468ea065822cc12dfb22 | m-eyeplant.glb |
 | 몬스터 '말랑 불가사리' (폐허 · 늑대 변종) | Cute tentacle creature | endike | https://sketchfab.com/3d-models/cute-tentacle-creature-2aec23f475dc4c93a6353fa7052d15d2 | m-tentacle.glb |
+| 사냥터 바닥 덤불 · 꽃 · 버섯 · 결정 · 바위 | Low poly Stylized Nature Pack | Satendra Saraswat | https://sketchfab.com/3d-models/low-poly-stylized-nature-pack-9c773e846c6e4448b26b2cdecb2b91bf | p-nature.glb |
+| 사냥터 바닥 바위 · 광석 | [FREE] Lowpoly Volcanic Rocks [Asset Pack] | SimplePolygon | https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0 | p-rocks.glb |
+| 사냥터 바닥 빛나는 버섯(숲 · 심연) | Stylized mushrooms | QumoDone | https://sketchfab.com/3d-models/stylized-mushrooms-9d22e02ce2a548959b1c4c4c1d546842 | p-mushrooms.glb |
+| 사냥터 바닥 쓰러진 통나무(숲) | Cartoon fallen tree | neon_dust | https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6 | p-fallentree.glb |
+| 사냥터 바닥 그루터기(초원 · 숲) | Tree Stump stylized | makcutka250 | https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec | p-stump.glb |
+| 사냥터 바닥 선인장(폐허) | Cactus \| Pack | YadroGames | https://sketchfab.com/3d-models/cactus-pack-588596f1601d48e6ad4cb24b31c3f33c | p-cactus.glb |
 
-받았지만 아직 게임에 넣지 않은 것 — 넣을 때 위 표와 `src/ui/credits.ts` 로 옮긴다.
+바닥 소품 렌더는 `art-gen/blender/hunt_ground.py`(SF_PROPS — 지역마다 뒤 가장자리 · 아래 모서리, 발 자리는 비움)이다. 작가가 넣은 검은 외곽선 껍질 메시는 걸러 낸다.
 
-| 원본 | 작가 | 주소 | 파일 | 상태 |
+받았지만 쓰지 않은 것
+
+| 원본 | 작가 | 주소 | 파일 | 까닭 |
 |---|---|---|---|---|
-| Low poly Stylized Nature Pack | Satendra Saraswat | https://sketchfab.com/3d-models/low-poly-stylized-nature-pack-9c773e846c6e4448b26b2cdecb2b91bf | p-nature.glb | 맵 소품 예정 |
-| [FREE] Lowpoly Volcanic Rocks [Asset Pack] | SimplePolygon | https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0 | p-rocks.glb | 맵 소품 예정 |
-| Stylized mushrooms | QumoDone | https://sketchfab.com/3d-models/stylized-mushrooms-9d22e02ce2a548959b1c4c4c1d546842 | p-mushrooms.glb | 맵 소품 예정 |
-| Cartoon fallen tree | neon_dust | https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6 | p-fallentree.glb | 맵 소품 예정 |
-| Tree Stump stylized | makcutka250 | https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec | p-stump.glb | 맵 소품 예정 |
-| Cactus \| Pack | YadroGames | https://sketchfab.com/3d-models/cactus-pack-588596f1601d48e6ad4cb24b31c3f33c | p-cactus.glb | 맵 소품 예정 |
-| Slime 1 | 3DHaupt | https://sketchfab.com/3d-models/slime-1-8b44e345b4a94818837e953a06e571bf | m-slime.glb | 안 씀 — 눈 없는 초록 상자라 셀로 그리면 몬스터로 안 읽혔다 |
+| Slime 1 | 3DHaupt | https://sketchfab.com/3d-models/slime-1-8b44e345b4a94818837e953a06e571bf | m-slime.glb | 눈 없는 초록 상자라 셀로 그리면 몬스터로 안 읽혔다 |
 
 ## 고르는 규칙
 
