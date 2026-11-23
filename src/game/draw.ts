@@ -163,8 +163,9 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     const blend = s.basic ? Math.max(0, 1 - s.dist / 60) : 0;
     const sx = s.x + s.drawOx * blend, sy = s.y + s.drawOy * blend;
     // 궤적 — 속성색, 날아간 만큼 길어진다(최대 36px)
-    const tail = Math.min(36, s.dist * 0.5);
-    ctx.strokeStyle = color; ctx.lineWidth = s.element === "earth" ? 4 : 2.5; ctx.lineCap = "round";
+    // 2026-11-23 (리소스 피드백 ① "화살 · 마력탄이 가는 선이라 맞히는 순간이 약하다") — 그림만 굵게: 궤적 48px · 굵기 ×1.6, 물체 기본 사격 ×1.6 · 스킬 ×1.2. 판정(radius)은 그대로
+    const tail = Math.min(48, s.dist * 0.6);
+    ctx.strokeStyle = color; ctx.lineWidth = s.element === "earth" ? 6 : 4; ctx.lineCap = "round";
     ctx.globalAlpha = s.fade * 0.55;
     ctx.beginPath();
     ctx.moveTo(sx - Math.cos(ang) * tail, sy - Math.sin(ang) * tail);
@@ -173,6 +174,7 @@ function drawSkillShots(ctx: CanvasRenderingContext2D, world: GameWorld): void {
     ctx.globalAlpha = s.fade;
     // 화살 물체
     ctx.translate(sx, sy); ctx.rotate(ang);
+    { const k = s.basic ? 1.6 : 1.2; ctx.scale(k, k); }
     if (s.basic && world.rangedWeapon === "sword") {
       // 검기 (2026-10-27) — 초승달 모양 빛 베기
       const tint = s.element === "basic" ? "#e0f2fe" : color;
@@ -356,8 +358,9 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, world: GameWorld): v
     ctx.drawImage(img, (width - dw) / 2 - shift, (wide ? floorY + 12 : floorY + 40) - dh, dw, dh);
     // 옛 세로 그림은 어둡게 눌렀다 — 납작한 가로 띠는 밝은 그대로, 위쪽만 살짝 눌러 HUD 가 읽히게
     const dim = ctx.createLinearGradient(0, 0, 0, floorY);
-    dim.addColorStop(0, wide ? "rgba(8, 14, 28, 0.16)" : "rgba(8, 14, 28, 0.48)");
-    dim.addColorStop(1, wide ? "rgba(8, 14, 28, 0.02)" : "rgba(8, 14, 28, 0.48)");
+    // 2026-11-23 (리소스 피드백 ①): 굵은 선 · 밝은 성문 그림이 적과 시선을 다퉜다 → 가로 띠도 한 단 더 눌러 적 · 화살이 앞으로 나오게(위 .26 · 아래 .12). 캔버스 filter 는 폰에서 비싸 그러데이션으로만
+    dim.addColorStop(0, wide ? "rgba(8, 14, 28, 0.26)" : "rgba(8, 14, 28, 0.48)");
+    dim.addColorStop(1, wide ? "rgba(8, 14, 28, 0.12)" : "rgba(8, 14, 28, 0.48)");
     ctx.fillStyle = dim;
     ctx.fillRect(0, 0, width, floorY);
     ctx.restore();

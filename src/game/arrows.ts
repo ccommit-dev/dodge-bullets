@@ -278,12 +278,25 @@ export function homingChanceFor(stageIndex: number): number {
 }
 let currentHomingChance = 0.13;
 
+/**
+ * 적이 내려오기 시작하는 줄 (2026-11-23, 리소스 피드백 ① "댐 방어전 — 적이 상단 HUD 뒤에서만 보이다 사라진다").
+ * 예전엔 늘 화면 맨 위(safeTop)라 초반 적이 웨이브 줄 · 화살비 게이지(safeTop+104까지) 뒤에서 잡혔다(390×844 첫 15초 처치 높이 33~68px, HUD 끝 86).
+ * 화면이 밸런스 시뮬 기준(createWorld(390, 700) — 놀이 높이 586)보다 남는 만큼만 그 띠 아래로 내린다 →
+ * 낙하 거리는 시뮬보다 짧아지지 않는다(밸런스 그대로). 시뮬 · 낮은 화면은 0 이라 예전과 같다. 대장 · 운석은 그대로
+ */
+export const ENTRY_HUD_BAND = 104;
+export const ENTRY_REF_PLAY_H = 586;   // 시뮬 floorY(700 − 12 − 18 − HUD_BOTTOM_RESERVE 72 = 598) − safeTop 12 — verify-content 가 시뮬 월드에서 0 인지 본다
+export function enemyEntryTop(world: GameWorld): number {
+  return world.safeTop + Math.min(ENTRY_HUD_BAND, Math.max(0, world.floorY - world.safeTop - ENTRY_REF_PLAY_H));
+}
+
 function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
   const stage = getStage(world.stageIndex);
   currentHomingChance = homingChanceFor(world.stageIndex);
   const speed = (pattern.speed ?? 220) * stage.speedMul * world.tempo * TUNING.monsterSpeedMul;
   const arrow = acquire(world);
   if (!arrow) return;
+  const entryY = enemyEntryTop(world) - 20;   // 적이 들어오는 줄 — HUD 띠 아래(enemyEntryTop)
 
   const minX = world.safeLeft + 12;
   const maxX = world.width - world.safeRight - 12;
@@ -293,7 +306,7 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
     case "rest":
       return;
     case "rain": {
-      activate(arrow, minX + Math.random() * spanX, world.safeTop - 20, 0, speed);
+      activate(arrow, minX + Math.random() * spanX, entryY, 0, speed);
       break;
     }
     // 아래 세 패턴은 예전에 옆에서 왔다 — 화살은 **위에서 아래로만** (2026-10-01). 모양만 다르게: 측면 기습은 모서리에서 비스듬히,
@@ -303,35 +316,35 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
     case "side": {
       const fromLeft = Math.random() < 0.5;
       const x = fromLeft ? minX + spanX * (0.04 + Math.random() * 0.12) : maxX - spanX * (0.04 + Math.random() * 0.12);
-      activate(arrow, x, world.safeTop - 20, 0, speed * 0.95);
+      activate(arrow, x, entryY, 0, speed * 0.95);
       break;
     }
     case "cross": {
       if (Math.random() < 0.55) {
-        activate(arrow, minX + Math.random() * spanX, world.safeTop - 20, 0, speed);
+        activate(arrow, minX + Math.random() * spanX, entryY, 0, speed);
       } else {
         const fromLeft = Math.random() < 0.5;
         const x = fromLeft ? minX + spanX * (0.1 + Math.random() * 0.25) : maxX - spanX * (0.1 + Math.random() * 0.25);
-        activate(arrow, x, world.safeTop - 20, 0, speed * 0.9);
+        activate(arrow, x, entryY, 0, speed * 0.9);
       }
       break;
     }
     case "sweep": {
       const phase = ((world.stageElapsedMs / 1000) % 3) / 3;      // 3초에 한 번 왕복
       const t = phase < 0.5 ? phase * 2 : 2 - phase * 2;
-      activate(arrow, minX + spanX * t, world.safeTop - 20, 0, speed * 1.05);
+      activate(arrow, minX + spanX * t, entryY, 0, speed * 1.05);
       break;
     }
     case "burst": {
       const cx = minX + Math.random() * spanX;
-      activate(arrow, cx, world.safeTop - 20, 0, speed * 1.15);
+      activate(arrow, cx, entryY, 0, speed * 1.15);
       break;
     }
     case "aimed": {
       // 위쪽 어딘가에서 플레이어를 겨눈다 — 옆에서 오던 것을 위로 (2026-10-01)
       // 플레이어 머리 위에서 곧장 — "조준"은 나오는 자리가 플레이어를 따른다는 뜻
       const x = Math.max(minX, Math.min(maxX, world.player.x + world.player.vx * 0.28 + (Math.random() - 0.5) * 40));
-      activate(arrow, x, world.safeTop - 20, 0, speed, "aimed", 800);
+      activate(arrow, x, entryY, 0, speed, "aimed", 800);
       break;
     }
     case "fan": {
@@ -340,21 +353,21 @@ function spawnFromPattern(world: GameWorld, pattern: ArrowPattern): void {
       for (let i = -1; i <= 1; i++) {
         const target = i === -1 ? arrow : acquire(world);
         if (!target) continue;
-        activate(target, originX + i * 44, world.safeTop - 20 - Math.abs(i) * 18, 0, speed, "fan", 460);
+        activate(target, originX + i * 44, entryY - Math.abs(i) * 18, 0, speed, "fan", 460);
       }
       break;
     }
     case "ricochet": {
       // 위 모서리에서 비스듬히 떨어지며 벽에 튕긴다 — 위로 되튀지는 않는다 (2026-10-01)
       // 오우거 — 느리고 단단하게 곧장 (벽 튕김 없음)
-      activate(arrow, minX + Math.random() * spanX, world.safeTop - 20, 0, speed * 0.75, "ricochet", 500);
+      activate(arrow, minX + Math.random() * spanX, entryY, 0, speed * 0.75, "ricochet", 500);
       arrow.bounces = 0;
       break;
     }
     case "explosive": {
       // 드래곤 — 플레이어 머리 위 근처에서 곧장
       const originX = Math.max(minX, Math.min(maxX, world.player.x + (Math.random() - 0.5) * 80));
-      activate(arrow, originX, world.safeTop - 20, 0, speed * 0.86, "explosive", 560);
+      activate(arrow, originX, entryY, 0, speed * 0.86, "explosive", 560);
       break;
     }
   }

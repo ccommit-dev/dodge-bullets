@@ -59,6 +59,12 @@ ok("정규화: 잘못된 등급 값 제거", Object.keys(rpg.normalizeBeatRpg({ 
 /** 월드 한 걸음(1/60)이 되는 실제 dt — 진행 속도(TUNING.pace = 1/3) 이후 몬스터·방어막 테스트의 시간 단위 (2026-10-02) */
 const WSTEP = (1 / 60) / arrows.TUNING.pace;
 const mk = () => { const w = world.createWorld(390, 700, 1); world.applyStats(w, shop.statsFromLevels(shop.emptyShopLevels())); world.resetRun(w, 0); return w; };
+// 적이 들어오는 줄(2026-11-23, arrows.enemyEntryTop) — 시뮬 화면은 예전처럼 맨 위(밸런스 그대로), 키 큰 화면만 HUD 띠 아래로. 낙하 거리는 시뮬보다 짧아지지 않는다
+{
+  const sim = mk(), tall = world.createWorld(390, 844, 2);
+  const simTop = arrows.enemyEntryTop(sim), tallTop = arrows.enemyEntryTop(tall), simFall = sim.floorY - simTop, tallFall = tall.floorY - tallTop;
+  ok("적 들어오는 줄: 시뮬(390×700)은 safeTop 그대로 · 390×844 는 HUD 띠(104) 아래 · 낙하 거리 ≥ 시뮬", simTop === sim.safeTop && tallTop === tall.safeTop + arrows.ENTRY_HUD_BAND && tallFall >= simFall, `시뮬 ${simTop}/${simFall} · 844 ${tallTop}/${tallFall}`);
+}
 {
   const w = mk();
   ok("발판이 없다 (점프가 없으니 설 수 없다)", w.platforms.length === 0, String(w.platforms.length));
