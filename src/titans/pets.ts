@@ -10,7 +10,11 @@
  */
 import type { TitanMonsterKind } from "./model";
 
-export type PetId = TitanMonsterKind;
+/** 상점 펫 (2026-11-24, 사용자: "sketchfab … 동료 · 캐릭터" → "펫 4종 추가") — 몬스터의 아기가 아니라 도감 처치로는 안 나오고 상점(보석)에서만 데려온다.
+ * Sketchfab CC BY 모델을 셀 그림체로 다시 렌더(art-gen/blender/sketchfab_monsters.py · 크레딧 src/ui/credits.ts).
+ * 효과 · 값 · 가격은 같은 축의 기존 펫과 똑같다(장착은 1마리라 밸런스 불변) — 모습만 고르는 셈. 도감 전투력(+30)은 몬스터 펫만 센다 */
+export type ShopPetId = "cat" | "fox" | "penguin" | "frog";
+export type PetId = TitanMonsterKind | ShopPetId;
 
 export const PET_HATCH_KILLS = 1000;
 export const PET_MAX_LEVEL = 10;
@@ -36,9 +40,18 @@ export const PET_DEFS: Record<PetId, PetDef> = {
   ogre: { id: "ogre", name: "꼬마 오우거", passive: "materials", desc: "방치 강화석 증가", base: 0.2, perLevel: 0.04, unit: "%" },
   dragon: { id: "dragon", name: "새끼 용", passive: "capHours", desc: "방치 시간 캡 연장", base: 1, perLevel: 0.1, unit: "시간" },
   boss: { id: "boss", name: "타이탄의 그림자", passive: "multiplier", desc: "방치 배율 증가", base: 0.05, perLevel: 0.01, unit: "" },
+  // 상점 펫 — 값은 같은 축 기존 펫 그대로(고양이 = 슬라임 · 개구리 = 고블린 · 여우 = 늑대 · 펭귄 = 오우거)
+  cat: { id: "cat", name: "아기 고양이", passive: "gold", desc: "사냥 골드 증가", base: 0.05, perLevel: 0.01, unit: "%" },
+  frog: { id: "frog", name: "풀잎 개구리", passive: "shard", desc: "방치 조각 드랍 가속", base: 0.25, perLevel: 0.05, unit: "%" },
+  fox: { id: "fox", name: "꼬마 여우", passive: "bossTime", desc: "보스 제한시간 연장", base: 3, perLevel: 0.5, unit: "초" },
+  penguin: { id: "penguin", name: "아기 펭귄", passive: "materials", desc: "방치 강화석 증가", base: 0.2, perLevel: 0.04, unit: "%" },
 };
 
-export const PET_IDS: PetId[] = ["slime", "goblin", "wolf", "ogre", "dragon", "boss"];
+/** 몬스터 펫 — 도감 1,000 처치로 부화 · 도감 전투력 */
+export const HATCH_PET_IDS: TitanMonsterKind[] = ["slime", "goblin", "wolf", "ogre", "dragon", "boss"];
+export const SHOP_PET_IDS: ShopPetId[] = ["cat", "frog", "fox", "penguin"];
+export const PET_IDS: PetId[] = [...HATCH_PET_IDS, ...SHOP_PET_IDS];
+export function isShopPet(id: string): id is ShopPetId { return (SHOP_PET_IDS as string[]).includes(id); }
 
 /**
  * 사냥 돕기 (2026-10-28, 사용자: "동료 근처에서 사냥을 도와주는 펫 애니메이션") — 장착 펫이 주인공 곁에서 같이 걷고 PET_ATTACK_SEC 마다 몬스터에 덤빈다.
@@ -49,7 +62,7 @@ export function petAttackMul(level: number): number {
   return level <= 0 ? 0 : 0.8 + 0.08 * (Math.min(PET_MAX_LEVEL, level) - 1);
 }
 /** 상점 바로 부화 값(붉은 보석, 2026-10-28) — 도감 1,000 처치 대신. 효과가 큰 펫일수록 비싸다. 이미 부화했으면 팔지 않는다 */
-export const PET_GEM_PRICE: Record<PetId, number> = { slime: 30, goblin: 30, wolf: 42, ogre: 42, dragon: 60, boss: 80 };   // 보석 ÷10 (2026-11-18)
+export const PET_GEM_PRICE: Record<PetId, number> = { slime: 30, goblin: 30, wolf: 42, ogre: 42, dragon: 60, boss: 80, cat: 30, frog: 30, fox: 42, penguin: 42 };   // 보석 ÷10 (2026-11-18)
 
 /** 펫 효과값 — 레벨 0 = 미부화 (효과 없음) */
 export function petEffect(id: PetId, level: number): number {
@@ -81,5 +94,5 @@ export function pendingHatches(
   monsterKills: Record<TitanMonsterKind, number>,
   pets: Record<PetId, number>,
 ): PetId[] {
-  return PET_IDS.filter((id) => (pets[id] ?? 0) <= 0 && (monsterKills[id] ?? 0) >= PET_HATCH_KILLS);
+  return HATCH_PET_IDS.filter((id) => (pets[id] ?? 0) <= 0 && (monsterKills[id] ?? 0) >= PET_HATCH_KILLS);
 }

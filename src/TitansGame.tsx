@@ -44,7 +44,7 @@ import { ALLY_FEATURES, allyFeatureEffects } from "./titans/allyFeatures";
 import { bootsTierOf, glovesTierOf, shieldTierOf } from "./equipment/anchors";
 import { GachaFx } from "./ui/GachaFx";
 import { BOSS_ATTACK_GAP_MS, MOB_ATTACK_GAP_MS, bossHitFraction, bossPace, partyMaxHpLabel } from "./titans/bossPressure";
-import { AllyArt, MonsterArt, allyIdleCell, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
+import { AllyArt, MonsterArt, PetArt, allyIdleCell, formationCells, monsterAssetFor, monsterVisibleMargin } from "./titans/SpriteArt";
 import { useTween } from "./ui/useTween";
 import { ALLY_SKINS, skinPrice } from "./titans/skins";
 import { FIRST_LR_STAGE, FIRST_TEN_SSR, GACHA, gachaPool, pullOnce, pullTen, rateTable, type PullResult } from "./titans/gacha";
@@ -138,7 +138,7 @@ import { GOLDEN_ESCAPE_SEC, GoldenRush, HuntStamp, TechGauge } from "./titans/hu
 import { MOUNT_RIDE } from "./titans/mountRide";
 import { mountAnimStyle, mountCellStyle, mountFrameIndex, type MountAction } from "./titans/spriteAnim";
 import { MOUNT_DEFS, MOUNT_IDS, MOUNT_MAX_LEVEL, MOUNT_TRAITS, mountSeatShift, activeMountGold, isMountId, mountGoldBonus, mountIdleBonus, mountUpgradeCost, type MountId } from "./titans/mounts";
-import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
+import { PET_ATTACK_SEC, PET_DEFS, PET_GEM_PRICE, PET_IDS, activePetEffect, isShopPet, pendingHatches, petAttackMul, type PetId } from "./titans/pets";
 import { assetUrl } from "./asset";
 import { NOTIFY_ID, cancelLocalNotification, scheduleLocalNotification, weeklyDeadlineAt, setNotifyPromptAllowed } from "./game/native";
 import { dateKey, emptyEventSave, loadEventSave, updateEventSave, type EventSave } from "./events/eventSave";
@@ -3218,7 +3218,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     );
     setCharacter(next);
     setRedGems(next.redGems);
-    flash(`${PET_DEFS[pid].name} 부화! 주인공 곁에서 같이 사냥한다`);
+    flash(`${PET_DEFS[pid].name} ${isShopPet(pid) ? "데려왔다" : "부화"}! 주인공 곁에서 같이 사냥한다`);
   };
   const equipPetShop = async (pid: PetId) => {
     if ((character.pets[pid] ?? 0) <= 0) return;
@@ -4467,9 +4467,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {/* 탈것 (2026-11-03) — 주인공 아래에. 주인공만 위로 올린다(동료 대열은 그대로) */}
             {isMountId(character.activeMount) && <HeroMountLayer store={frameStore} art={MOUNT_DEFS[character.activeMount].art} action={rideAction} tier={cosmeticTier(MOUNT_DEFS[character.activeMount].gemPrice)} />}
             {/* 펫 (2026-10-28) — 주인공 뒤 발치에서 같이 걷고(주인공 상자 안이라 들어오고 나갈 때 같이 움직인다) 덤빌 땐 몬스터 쪽으로 뛴다. 예전엔 전장 왼쪽 위에 떠 있기만 했다 */}
-            {character.activePet && (character.pets[character.activePet as TitanMonsterKind] ?? 0) > 0 && (
-              <div key={`pet-${petAtk}`} style={petMove} data-pet-dx={String(petMove["--pet-dx" as keyof CSSProperties] ?? "")} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as TitanMonsterKind].name} aria-hidden="true">
-                <MonsterArt kind={character.activePet as TitanMonsterKind} area={area} boss={false} golden={false} state={petAtk > 0 ? "attack" : "idle"} pet />
+            {character.activePet && (character.pets[character.activePet as PetId] ?? 0) > 0 && (
+              <div key={`pet-${petAtk}`} style={petMove} data-pet-dx={String(petMove["--pet-dx" as keyof CSSProperties] ?? "")} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as PetId].name} aria-hidden="true">
+                <PetArt id={character.activePet as PetId} area={area} state={petAtk > 0 ? "attack" : "idle"} />
               </div>
             )}
             {powerUp > 0 && <i key={`pu-${powerUp}`} className="hero-powerup-burst" aria-hidden="true" />}
@@ -5749,7 +5749,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               const on = character.activePet === pid;
               return (
                 <article key={`pet-${pid}`} className="titans-card premium-product-card gem-product pet-product style-tile" data-pet={pid} data-tier={cosmeticTier(PET_GEM_PRICE[pid])}>
-                  <span className="pet-thumb" aria-hidden="true"><MonsterArt kind={pid} area={area} boss={false} golden={false} pet /></span>
+                  <span className="pet-thumb" aria-hidden="true"><PetArt id={pid} area={area} /></span>
                   <div><strong><em className="tier-chip">{TIER_LABEL[cosmeticTier(PET_GEM_PRICE[pid])]}</em>{def.name}</strong><p>{def.desc} · 같이 사냥(주인공 한 방 ×{petAttackMul(Math.max(1, lv)).toFixed(2)} · {PET_ATTACK_SEC}초마다){lv > 0 ? ` · Lv.${lv}` : ""}</p></div>
                   <button type="button" disabled={lv <= 0 && redGems < PET_GEM_PRICE[pid]} onClick={() => void (lv > 0 ? equipPetShop(pid) : buyPet(pid))}>
                     {lv > 0 ? (on ? "해제" : "장착") : <><GemMark />{PET_GEM_PRICE[pid]}</>}

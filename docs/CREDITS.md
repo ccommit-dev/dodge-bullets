@@ -20,6 +20,10 @@
 | 사냥터 바닥 쓰러진 통나무(숲) | Cartoon fallen tree | neon_dust | https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6 | p-fallentree.glb |
 | 사냥터 바닥 그루터기(초원 · 숲) | Tree Stump stylized | makcutka250 | https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec | p-stump.glb |
 | 사냥터 바닥 선인장(폐허) | Cactus \| Pack | YadroGames | https://sketchfab.com/3d-models/cactus-pack-588596f1601d48e6ad4cb24b31c3f33c | p-cactus.glb |
+| 상점 펫 '아기 고양이' | Toon Cat FREE | Omabuarts Studio | https://sketchfab.com/3d-models/toon-cat-free-b2bd1ee7858444bda366110a2d960386 | pet-cat.glb |
+| 상점 펫 '꼬마 여우' | PBR Low-poly Fox Character | Ida Faber | https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d | pet-fox.glb |
+| 상점 펫 '아기 펭귄' | Penguin plush | SunnyBuns | https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4 | pet-penguin.glb |
+| 상점 펫 '풀잎 개구리' | Frog | gooseg489 | https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050 | pet-frog.glb |
 
 바닥 소품 렌더는 `art-gen/blender/hunt_ground.py`(SF_PROPS — 지역마다 뒤 가장자리 · 아래 모서리, 발 자리는 비움)이다. 작가가 넣은 검은 외곽선 껍질 메시는 걸러 낸다.
 

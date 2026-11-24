@@ -5,6 +5,7 @@ import { ALLY_ELEMENT, ALLY_RARITY, ALLY_ROLE } from "./allies";
 import "./partyMotion.css";
 import type { HuntingAreaDef, TitanHeroId, TitanMonsterKind } from "./model";
 import { huntBossVariant, huntMonsterVariant } from "./bestiary";
+import { isShopPet, type PetId } from "./pets";
 import { ALLY_FRAME_SET, MONSTER_FRAME_SET } from "./frameSets";
 import { SKIN_FRAME_SET } from "./skinFrameSets";
 import { ALLY_ANIM_MS, allyAnimStyle, hasAllyAnim, hasMonsterAnim, monsterAnimStyle, type AllyAnimAction, type MonsterAnimAction } from "./spriteAnim";
@@ -281,6 +282,20 @@ export function MonsterArt({
       <img src={monsterAssetFor(kind, area, boss, golden, "attack", stage)} alt="" className={state === "attack" ? "on" : ""} aria-hidden="true" onError={(e) => { e.currentTarget.style.display = "none"; }} />
       <img src={monsterAssetFor(kind, area, boss, golden, "defeat", stage)} alt="" className={state === "defeat" ? "on" : ""} aria-hidden="true" />
       <span className="monster-asset-current" data-src={asset} hidden />
+    </div>
+  );
+}
+
+/**
+ * 펫 그림 (2026-11-24) — 몬스터 펫은 MonsterArt(pet-<kind> 시트), 상점 펫(고양이 · 여우 · 펭귄 · 개구리)은 몬스터가 없어 시트(pet-<id>)를 바로 쓴다.
+ * 상점 펫 시트도 몬스터 펫처럼 왼쪽을 보게 구웠다 — 전장 · 상점의 .titan-monster-art scaleX(-1) 이 오른쪽으로 돌린다
+ */
+export function PetArt({ id, area, state = "idle" }: { id: PetId; area: HuntingAreaDef; state?: MonsterFrameState }) {
+  if (!isShopPet(id)) return <MonsterArt kind={id} area={area} boss={false} golden={false} state={state} pet />;
+  const a: MonsterAnimAction = state === "attack" ? "attack" : state === "hit" || state === "defeat" ? "hit" : "idle";
+  return (
+    <div className={`titan-monster-art anim2 frame-${state} shop-pet`} data-pet-art={id}>
+      <i key={a} className={`monster-frames anim2 act-${a}`} style={monsterAnimStyle(`pet-${id}`, a)} aria-hidden="true" />
     </div>
   );
 }

@@ -33,7 +33,8 @@ const keysOf = (name) => { const a = roster.indexOf(`${name} = {`); let d = 0, i
 const rosterExt = existsSync("art-gen/blender/roster_ext.py") ? readFileSync("art-gen/blender/roster_ext.py", "utf8") : "";
 const NEW_ALLY_KEYS = [...rosterExt.matchAll(/^    '([a-z0-9_-]+)': dict\(/gm)].map((m) => m[1]);
 // Sketchfab 몬스터(2026-11-23, art-gen/blender/sketchfab_monsters.py) — roster.py 밖 렌더. meta.source === "sketchfab" 인 b3d2 폴더를 몬스터로 더한다
-const SKETCHFAB_MONSTERS = existsSync(SRC) ? readdirSync(SRC).filter((d) => d.startsWith("sf-") && existsSync(`${SRC}/${d}/meta.json`) && JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")).source === "sketchfab") : [];
+// 상점 펫(pet-cat · pet-fox · pet-penguin · pet-frog, 2026-11-24)도 같은 렌더라 sf- 말고 pet- 도 받는다(roster.py 의 pet-* 는 source 가 없어 안 겹친다)
+const SKETCHFAB_MONSTERS = existsSync(SRC) ? readdirSync(SRC).filter((d) => /^(sf|pet)-/.test(d) && existsSync(`${SRC}/${d}/meta.json`) && JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")).source === "sketchfab") : [];
 const ALLIES = [...keysOf("ALLIES"), ...NEW_ALLY_KEYS], SKINS = keysOf("SKINS"), MONSTERS = [...keysOf("MONSTERS"), ...SKETCHFAB_MONSTERS];
 const blank = (w, h) => ({ create: { width: Math.round(w), height: Math.round(h), channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
 

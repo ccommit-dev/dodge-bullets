@@ -48,6 +48,8 @@ writeFileSync(entry, [
   `export * as advice from "${root}/src/economy/purchaseAdvice";`,
   `export * as beatShop from "${root}/src/beat/shop";`,
   `export * as bestiary from "${root}/src/titans/bestiary";`,
+  `export * as pets from "${root}/src/titans/pets";`,
+  `export * as collection from "${root}/src/progression/collection";`,
   `export * as perfMode from "${root}/src/ui/perfMode";`,
   `export * as huntPerks from "${root}/src/titans/huntPerks";`,
   `export * as titansWeak from "${root}/src/titans/bossWeak";`,
@@ -62,7 +64,7 @@ writeFileSync(entry, [
 ].join("\n"));
 const out = join(dir, "bundle.mjs");
 await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, platform: "node", define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": "false", "import.meta.env.VITE_QA_BUILD": "undefined", "import.meta.env.VITE_TOSS_AD_GROUP_ID": "undefined", "import.meta.env.PROD": "true" } });
-const { gearSets, summon, parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, perfMode } = await import(pathToFileURL(out).href);
+const { gearSets, summon, parts, orientation, fullscreen, allySig, onboarding, huntPerks, titansWeak, allyFeatures, beatPerks, dodgeWeak, hub, sweep, dayEvents, talents, chests, model, allies, gacha, skills, idle, prog, events, gem, product, shadow, beatRpg, stages, analytics, bossPatterns, perks, ranking, ads, dodgeSkills, dodgeShop, dodgeShots, dodgeChips, dodgeOps, towerTickets, forgeModel, advice, beatShop, bestiary, pets, collection, perfMode } = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 
 const results = [];
@@ -1379,6 +1381,16 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     const miss = sf.flatMap((a) => need(a).filter((p) => !existsSync(root + "/" + p))), credits = readFileSync(root + "/src/ui/credits.ts", "utf8")   /* 게임 안 크레딧(설정 → 외부 그림 크레딧) — CC BY 작가 표기. docs/ 는 ci-local 이 빼서 읽지 않는다 */;
     const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Mushy Buddy", "Eyeball Plant", "Monster Plant", "RPG Monster - Bat", "Cute tentacle creature"].filter((n) => !credits.includes(n));
     ok("Sketchfab 몬스터 5: 셀 · 도트 시트 · 정지 그림 · 피격 · 도감 썸네일 · 실측 여백 · 크레딧(작가 · CC BY)이 모두 있다", sf.length === 5 && miss.length === 0 && noMargin.length === 0 && noCredit.length === 0, [...miss, ...noMargin, ...noCredit].join(",")); }
+  // 2026-11-24 상점 펫 4종(Sketchfab CC BY → 셀 렌더) — 값 · 가격은 같은 축 몬스터 펫 그대로, 도감 전투력은 몬스터 펫만(밸런스 불변)
+  { const twin = { cat: "slime", frog: "goblin", fox: "wolf", penguin: "ogre" };
+    const same = Object.entries(twin).every(([s, m]) => ["passive", "base", "perLevel", "unit"].every((k) => pets.PET_DEFS[s][k] === pets.PET_DEFS[m][k]) && pets.PET_GEM_PRICE[s] === pets.PET_GEM_PRICE[m]);
+    const sheets = pets.SHOP_PET_IDS.flatMap((id) => [`public/titans/anim/monsters/pet-${id}.webp`, `public/titans/anim-px/monsters/pet-${id}.webp`]).filter((p) => !existsSync(root + "/" + p));
+    const credits = readFileSync(root + "/src/ui/credits.ts", "utf8"), noCredit = ["Toon Cat FREE", "PBR Low-poly Fox Character", "Penguin plush", "Frog"].filter((n) => !credits.includes(n));
+    const allPets = prog.normalizeCharacterProgress({ ...base, pets: Object.fromEntries(pets.PET_IDS.map((id) => [id, 1])), activePet: "fox" });
+    const power = collection.petCollectionPower(allPets);
+    ok("상점 펫 4종: 같은 축 몬스터 펫과 값 · 가격 같음 · 셀/도트 시트 · 크레딧 · 저장 정규화(Lv · 장착) · 도감 전투력은 몬스터 펫 6마리만(180)",
+      pets.SHOP_PET_IDS.length === 4 && same && sheets.length === 0 && noCredit.length === 0 && allPets.pets.cat === 1 && allPets.pets.penguin === 1 && allPets.activePet === "fox" && power === 180 && pets.pendingHatches({ slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 }, allPets.pets).length === 0,
+      JSON.stringify({ same, sheets, noCredit, power, act: allPets.activePet })); }
   const nb = prog.normalizeCharacterProgress({ ...base, dodgeBranches: { "1-T": 3, "9-X": 2, "2-S": 7, junk: 1 } });
   ok("진행도 정규화: 갈림길 별 — 알려진 키만 · 0~3", nb.dodgeBranches["1-T"] === 3 && nb.dodgeBranches["2-S"] === 3 && !("9-X" in nb.dodgeBranches) && !("junk" in nb.dodgeBranches), JSON.stringify(nb.dodgeBranches));
 }

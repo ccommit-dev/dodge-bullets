@@ -91,11 +91,11 @@ ok("펫: 주인공 상자 안 발치에 있다(.titans-hero .hero-pet) · 옛 �
 ok("펫: 몬스터에 덤빈다(.hero-pet.pet-attack, 2.6초마다)", await seen(".hero-pet.pet-attack", 7000));
 await page.evaluate(() => [...document.querySelectorAll(".titans-bottom-nav button")].find((b) => b.textContent.includes("상점"))?.click()); await sleep(700);
 await page.evaluate(() => [...document.querySelectorAll(".hub-sheet-switch button")].find((b) => b.textContent.trim() === "꾸미기")?.click()); await sleep(250); await page.evaluate(() => [...document.querySelectorAll(".shop-sub-tabs button")].find((b) => b.textContent.trim() === "펫")?.click()); await sleep(500);
-const petShop = await page.evaluate(() => ({ n: document.querySelectorAll(".pet-product").length, wolf: document.querySelector(".pet-product[data-pet=wolf] button")?.textContent?.trim() }));
+const petShop = await page.evaluate(() => ({ n: document.querySelectorAll(".pet-product").length, wolf: document.querySelector(".pet-product[data-pet=wolf] button")?.textContent?.trim(), cat: /pet-cat.webp/.test(getComputedStyle(document.querySelector(".pet-product[data-pet=cat] .monster-frames") ?? document.body).backgroundImage) }));
 await page.evaluate(() => document.querySelector(".pet-product[data-pet=slime] button")?.click());
 await page.waitForFunction((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`))?.pets?.slime === 1, { polling: 100, timeout: 6000 }, H).catch(() => null);   // 고정 0.8초는 부하에서 모자랐다
 const pAfter = await page.evaluate((H) => JSON.parse(localStorage.getItem(`dodgebullets:progression:v1:${H}`)), H);
-ok("상점 펫: 6종 · 가진 펫은 장착/해제 · 산 펫은 바로 부화(Lv.1)", petShop.n === 6 && /해제|장착/.test(petShop.wolf ?? "") && pAfter.pets?.slime === 1, `${petShop.n}종 · 늑대 ${petShop.wolf} · 슬라임 Lv.${pAfter.pets?.slime}`);
+ok("상점 펫: 10종(몬스터 6 + 상점 4, 2026-11-24) · 고양이는 자기 시트(pet-cat) · 가진 펫은 장착/해제 · 산 펫은 바로 부화(Lv.1)", petShop.n === 10 && petShop.cat && /해제|장착/.test(petShop.wolf ?? "") && pAfter.pets?.slime === 1, `${petShop.n}종 · 고양이 시트 ${petShop.cat} · 늑대 ${petShop.wolf} · 슬라임 Lv.${pAfter.pets?.slime}`);
 
 ok("페이지 오류 없음", errors.length === 0, errors.join(" | "));
 console.log(fails ? `\n${fails} FAIL` : "\nALL PASS");

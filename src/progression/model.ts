@@ -19,7 +19,7 @@ import { KEY_CRYSTALS, emptyCrystalTree, normalizeCrystalTree, type CrystalTree 
 import { normalizeRelicPair, type RelicState } from "../titans/relics";
 import { normalizeDiscovered } from "../titans/discovery";
 import { ALLY_IDS, EXPEDITION_MAX, emptyAllyRecord, type Expedition } from "../titans/allies";
-import { PET_IDS, PET_MAX_LEVEL } from "../titans/pets";
+import { PET_IDS, PET_MAX_LEVEL, type PetId } from "../titans/pets";
 import { MOUNT_IDS, MOUNT_MAX_LEVEL, isMountId, type MountId } from "../titans/mounts";
 import { normalizeEquippedGear, normalizeGearCopies, normalizeGearSetLevels, normalizeGearTiers, normalizeOwnedGear, type EquippedGear, type GearCopies, type GearItemId, type GearSetLevels, type GearTiers } from "../equipment/gearSets";
 import { normalizeGearRunes, normalizeRuneOffer, type GearRunes, type RuneOffer } from "../equipment/gearRunes";
@@ -140,8 +140,8 @@ export type CharacterProgress = {
   weeklyShardPacks: { week: string; bought: Partial<Record<TitanHeroId, number>> };
   /** 콘텐츠별 오늘의 첫 클리어 날짜 (YYYY-MM-DD) — 첫 클리어 2배 판정 */
   firstClearDates: Record<"hunt" | "dodge" | "forge" | "beat", string>;
-  /** 펫 레벨 — 0=미부화, 종별 1,000처치로 부화(레벨 1). 환생에도 보존. */
-  pets: Record<TitanMonsterKind, number>;
+  /** 펫 레벨 — 0=미부화, 종별 1,000처치로 부화(레벨 1) · 상점 펫 4종은 보석으로만(2026-11-24). 환생에도 보존. */
+  pets: Record<PetId, number>;
   /** 장착 펫 ("" = 없음) — 1마리만 액티브 패시브 */
   activePet: string;
   /** 무기 세트 파츠 (2026-11-04, equipment/gearSets) — 산 것 · 부위별로 낀 것 */
@@ -361,7 +361,7 @@ export function emptyCharacterProgress(): CharacterProgress {
     activeCharacter: "default",
     weeklyShardPacks: { week: "", bought: {} },
     firstClearDates: { hunt: "", dodge: "", forge: "", beat: "" },
-    pets: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 },
+    pets: { slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0, cat: 0, frog: 0, fox: 0, penguin: 0 },
     activePet: "",
     ownedGear: [],
     equippedGear: {},
@@ -731,9 +731,13 @@ export function normalizeCharacterProgress(
       ogre: integer(raw.pets?.ogre, 0, PET_MAX_LEVEL),
       dragon: integer(raw.pets?.dragon, 0, PET_MAX_LEVEL),
       boss: integer(raw.pets?.boss, 0, PET_MAX_LEVEL),
+      cat: integer(raw.pets?.cat, 0, PET_MAX_LEVEL),
+      frog: integer(raw.pets?.frog, 0, PET_MAX_LEVEL),
+      fox: integer(raw.pets?.fox, 0, PET_MAX_LEVEL),
+      penguin: integer(raw.pets?.penguin, 0, PET_MAX_LEVEL),
     },
     activePet:
-      typeof raw.activePet === "string" && PET_IDS.includes(raw.activePet as TitanMonsterKind)
+      typeof raw.activePet === "string" && PET_IDS.includes(raw.activePet as PetId)
         ? raw.activePet
         : "",
     ownedGear: normalizeOwnedGear(raw.ownedGear),

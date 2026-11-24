@@ -6,7 +6,7 @@
  * 새 저장 데이터가 없다.
  */
 import { ALLY_IDS, ALLY_RARITY } from "../titans/allies";
-import { PET_IDS } from "../titans/pets";
+import { HATCH_PET_IDS } from "../titans/pets";
 import type { CharacterProgress } from "./model";
 
 /** 동료 도감 — 최초 획득 시 영구 전투력 (N 10 / R 20 / SR 50 / SSR 120 / UR 200 / LR 320) */
@@ -17,9 +17,9 @@ export function allyCollectionPower(progress: CharacterProgress): number {
   }, 0);
 }
 
-/** 펫 도감 — 부화 1마리당 영구 전투력 +30 (장착 여부 무관) */
+/** 펫 도감 — 부화 1마리당 영구 전투력 +30 (장착 여부 무관). 몬스터 펫 6종만 — 상점 펫 4종(2026-11-24)은 모습 고르기라 세지 않는다(밸런스 불변) */
 export function petCollectionPower(progress: CharacterProgress): number {
-  return PET_IDS.filter((id) => (progress.pets[id] ?? 0) > 0).length * 30;
+  return HATCH_PET_IDS.filter((id) => (progress.pets[id] ?? 0) > 0).length * 30;
 }
 
 export function totalStars(progress: CharacterProgress): number {

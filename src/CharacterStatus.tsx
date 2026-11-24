@@ -38,6 +38,7 @@ import {
   PET_DEFS,
   PET_HATCH_KILLS,
   PET_IDS,
+  isShopPet,
   petEffect,
   petFeedCost,
   type PetId,
@@ -47,7 +48,7 @@ import { TITLES, titleEmblem } from "./economy/gemCatalog";
 import { renderShareCard, shareCard } from "./ui/shareCard";
 import { shareCardExtras } from "./ui/shareCardData";
 import { sheetFor } from "./titans/anim";
-import { MonsterArt, monsterAssetFor } from "./titans/SpriteArt";
+import { PetArt, monsterAssetFor } from "./titans/SpriteArt";
 import { bestiaryEntries, bestiaryThumb } from "./titans/bestiary";
 import { assetUrl } from "./asset";
 import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
@@ -455,13 +456,15 @@ export function CharacterStatus({
         <p className="pet-note">
           몬스터 {PET_HATCH_KILLS.toLocaleString()}마리 처치(도감 최종 단계)마다 아기 버전이 부화합니다.
           부화만으로 전투력 +30, 장착한 1마리의 패시브가 추가로 적용됩니다.
+          고양이 · 개구리 · 여우 · 펭귄은 상점 → 펫에서 데려옵니다(효과는 같은 축 몬스터 펫과 같고 전투력 +30 은 없음).
         </p>
         <div className="pet-grid">
           {PET_IDS.map((id) => {
             const def = PET_DEFS[id];
             const level = progress.pets[id] ?? 0;
             const hatched = level > 0;
-            const kills = progress.monsterKills[id] ?? 0;
+            const shopOnly = isShopPet(id);   // 상점 펫(2026-11-24) — 처치로는 안 나온다
+            const kills = shopOnly ? 0 : progress.monsterKills[id] ?? 0;
             const cost = petFeedCost(level);
             const value = petEffect(id, level);
             const effectLabel =
@@ -479,10 +482,10 @@ export function CharacterStatus({
                   type="button"
                   className="pet-figure"
                   aria-disabled={!hatched}
-                  onClick={() => (hatched ? void equipPet(id) : setGrowthMessage(`아직 알 — 이 몬스터를 ${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치하면 부화합니다`))}
-                  title={hatched ? (active ? "장착 해제" : "장착") : `${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치`}
+                  onClick={() => (hatched ? void equipPet(id) : setGrowthMessage(shopOnly ? "상점 → 펫에서 보석으로 데려올 수 있습니다" : `아직 알 — 이 몬스터를 ${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치하면 부화합니다`))}
+                  title={hatched ? (active ? "장착 해제" : "장착") : shopOnly ? "상점에서 데려오기" : `${kills.toLocaleString()}/${PET_HATCH_KILLS.toLocaleString()} 처치`}
                 >
-                  <MonsterArt kind={id} area={HUNTING_AREAS[0]} boss={false} golden={false} pet />
+                  <PetArt id={id} area={HUNTING_AREAS[0]} />
                 </button>
                 <b>{hatched ? def.name : "???"}</b>
                 {hatched ? (
@@ -498,6 +501,8 @@ export function CharacterStatus({
                       {cost === null ? "MAX" : `간식 (강화석 ${cost})`}
                     </button>
                   </>
+                ) : shopOnly ? (
+                  <span>상점 → 펫</span>
                 ) : (
                   <>
                     <span>{kills.toLocaleString()} / {PET_HATCH_KILLS.toLocaleString()} 처치</span>

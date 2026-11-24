@@ -31,6 +31,13 @@ MODELS = {
     'sf-eyeplant': dict(file='m-eyeplant.glb', h=1.15, yaw=0, lift=0.0),
     'sf-tentacle': dict(file='m-tentacle.glb', h=0.95, yaw=0, lift=0.0),
     # sf-slime(m-slime.glb)은 눈 없는 초록 상자라 셀로 그리면 몬스터로 안 읽혀 뺐다(2026-11-23)
+    # 상점 펫 4종(2026-11-24, 사용자: "펫 4종 추가") — 펫 시트도 몬스터처럼 왼쪽을 보게 굽고 전장(.hero-pet)이 뒤집는다
+    # dx — 덤빔 · 젖힘 가로 이동 배율: 펫은 전장 CSS(hero-pet-pounce)가 뛰어 주니 칸 안 이동을 줄인다(크게 움직이면 조립 배율이 작아져 펫이 작아졌다)
+    'pet-cat': dict(file='pet-cat.glb', h=0.95, yaw=0, lift=0.0, dx=0.3),
+    'pet-fox': dict(file='pet-fox.glb', h=0.95, yaw=-40, lift=0.0, dx=0.3),   # 원본이 정면 — 왼쪽 3/4 로 더 돌린다
+    'pet-penguin': dict(file='pet-penguin.glb', h=0.95, yaw=0, lift=0.0, dx=0.3),
+    # 납작하고 넓어 키를 낮춘다 · 자체 동작(점프)은 쓰지 않는다 — 다리를 쭉 뻗는 칸이 조립 배율을 낮춰 개구리가 점만 했다(덤빔은 전장 CSS 가)
+    'pet-frog': dict(file='pet-frog.glb', h=0.6, yaw=180, lift=0.0, drop=('Icosphere',), dx=0.3, anim_in=()),   # 재질 없는 지름 2 도우미 구가 경계 상자를 키워 개구리가 점만 했다
 }
 INK_W = float(os.environ.get('SF_INK', '0.016'))   # 외곽선 굵기(캐릭터 단위) — 셀 OUTLINE_MUL 이 곱해진다
 
@@ -80,6 +87,9 @@ def build(mid):
     C.lights()
     cam = C.ortho_camera((0.0, RR.CENTER_Z), RR.ORTHO, elev_deg=8)
     objs = import_glb(os.path.join(SRC, spec['file']))
+    for o in [o for o in objs if o.name in spec.get('drop', ())]:   # 작가가 남긴 도우미 메시
+        objs.remove(o)
+        bpy.data.objects.remove(o, do_unlink=True)
     # 정규화 — 몸 높이 h · 바닥 z=0 · 가운데 x,y=0 (norm) → 자세 축(pose, 발 가운데 원점)
     norm = bpy.data.objects.new('norm', None)
     pose = bpy.data.objects.new('pose', None)
@@ -118,12 +128,16 @@ def render(mid):
     f0, f1 = (int(act.frame_range[0]), int(act.frame_range[1])) if act else (0, 0)
     meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab'}
     step = 0
+    spec = MODELS[mid]
     for action, frames in POSES.items():
         out = []
         for i, (tilt, dx, sz, sxy) in enumerate(frames):
-            if act and f1 > f0:   # 자체 동작을 칸마다 고르게 짚는다(대기 4칸이 한 바퀴)
+            if act and f1 > f0 and 'anim_in' in spec:   # 정한 줄에서만 자체 동작을 처음부터 끝까지(나머지 줄은 첫 장면)
+                scene.frame_set(f0 + int((f1 - f0) * (i / len(frames))) if action in spec['anim_in'] else f0)
+            elif act and f1 > f0:   # 자체 동작을 칸마다 고르게 짚는다(대기 4칸이 한 바퀴)
                 scene.frame_set(f0 + int((f1 - f0) * ((step % 4) / 4)))
             step += 1
+            dx *= spec.get('dx', 1.0)
             pose.location = (dx, 0, 0)
             pose.rotation_euler = (0, math.radians(tilt), base_yaw)
             pose.scale = (sxy, sxy, sz)
