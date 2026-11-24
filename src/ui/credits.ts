@@ -43,9 +43,14 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "Just a Hungry Cat", author: "Coco Jinjo", url: "https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1", use: "상점 동료 '밤고양이 감자'" },
   { title: "John, The Knight Duck (Armored)", author: "TheKnightDuck", url: "https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14", use: "상점 동료 '방패기사 덕'" },
   { title: "Low-Poly Squirrel Character (Game-Ready, Rigged)", author: "SomeNortherner", url: "https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb", use: "상점 동료 '도토리 다람쥐 레드'" },
+  // 유물 넷(2026-11-24, art-gen/blender/sketchfab_icons.py relics → assemble-relics 의 스티커 · 계열 빛 · 등급 별빛)
+  { title: "Stylized Wood Shield", author: "Brett Murphy", url: "https://sketchfab.com/3d-models/stylized-wood-shield-66058be8e4e749bf8ce234d94dd6d863", use: "유물 '참나무 방패'" },
+  { title: "Stylized Dagger", author: "xwhn", url: "https://sketchfab.com/3d-models/stylized-dagger-f742183b679f4964bcbf2b9381ed6c70", use: "유물 '불꽃 단검'" },
+  { title: "Stylized Treasure Map", author: "Izzy", url: "https://sketchfab.com/3d-models/stylized-treasure-map-cec61143abbc46bc99201b591942688b", use: "유물 '금박 지도'" },
+  { title: "Hand painted shovel", author: "Bohdan Lvov", url: "https://sketchfab.com/3d-models/hand-painted-shovel-04e4270e92b649c6b34273eac360081e", use: "유물 '청동 삽'" },
   // 상점 묶음 그림(2026-11-24, art-gen/blender/sketchfab_icons.py → public/ui/shop)
-  { title: "Stylized Crystal Gem pack - Handpainted", author: "ashkan.fancy", url: "https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658", use: "상점 붉은 보석 팩 · 강화석 상자 그림" },
-  { title: "Stylized Treasure Chest", author: "Tom Verbeeck", url: "https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e", use: "상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 그림" },
+  { title: "Stylized Crystal Gem pack - Handpainted", author: "ashkan.fancy", url: "https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658", use: "상점 붉은 보석 팩 · 강화석 상자 · 유물 '눈꽃 결정' · '혜성 조각' 그림" },
+  { title: "Stylized Treasure Chest", author: "Tom Verbeeck", url: "https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e", use: "상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 · 유물 '보물 상자' 그림" },
   { title: "Stylized Potion", author: "Moon Cube Studios (@KinanArts)", url: "https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7", use: "상점 방치 가속권 그림" },
 ];
 

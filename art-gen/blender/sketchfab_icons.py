@@ -275,6 +275,73 @@ def j_idle_boost():
     vivid(ms)
 
 
+# ── 유물 일곱(2026-11-24, 사용자: "유물 … 더 받아 6~8종 교체") — 결과는 art-gen/out/b3d-sfrelics/<유물 id>.png →
+#    RELIC_SRC=art-gen/out/b3d-sfrelics node scripts/assemble-relics.mjs <id…> (스티커 외곽선 · 계열 테두리 빛 · 등급 별빛은 조립이 더한다)
+#    조명은 relic_icons.py 와 같은 계열색 림 둘 + 위 반짝임(등급이 높을수록 세다)
+GEM_ICE, GEM_STAR = ('#3d8fd8', '#eafcff'), ('#6a3cc8', '#efd8ff')
+FAMILY_RIM = {'fire': '#ff6a1a', 'frost': '#6cd2ff', 'gold': '#ffc23a', 'wind': '#3ff0c4', 'earth': '#8fdc4a', 'star': '#c08bff', 'water': '#3aa8ff'}
+TIER_K = {'N': 0.85, 'R': 1.0, 'SR': 1.15, 'SSR': 1.3, 'UR': 1.45, 'LR': 1.6}
+
+
+def relic_table():
+    import re
+    with open(os.path.join(ROOT, 'src', 'titans', 'relics.ts'), encoding='utf-8') as f:
+        return {i: (fam, tier) for i, fam, tier in re.findall(r'def\("([a-z-]+)", "([a-z]+)", "([A-Z]+)"', f.read())}
+
+
+def rim_lights(fam, k):
+    col = FAMILY_RIM.get(fam, '#fff6e8')
+    for nm, loc, rot, e, sz in (('vrim_r', (2.4, 3.0, 2.0), (-62, 0, 145), 1700, 1.4), ('vrim_l', (-2.6, 2.8, 1.2), (-70, 0, -150), 1150, 1.2), ('vtop', (0.0, -1.2, 4.6), (12, 0, 0), 480, 1.2)):
+        L = bpy.data.lights.new(nm, 'AREA')
+        L.energy, L.size = e * k, sz
+        L.color = C.srgb(col if nm != 'vtop' else '#ffffff')[:3]
+        o = bpy.data.objects.new(nm, L)
+        bpy.context.scene.collection.objects.link(o)
+        o.location = loc
+        o.rotation_euler = Euler([math.radians(a) for a in rot])
+
+
+def r_comet_shard():   # 혜성 조각(별 · SR) — 보석 팩 원석 하나를 별빛 보라로, 비스듬히
+    gem((0, 0, -0.8), 1.55, rot=(0, -24, 30), col=GEM_STAR, piece=3)
+
+
+def r_snow_crystal():   # 눈꽃 결정(서리 · SR) — 결정 덩어리를 얼음빛으로
+    gem((0, 0, -0.8), 1.6, rot=(0, 0, 15), col=GEM_ICE, piece=0)
+
+
+def r_treasure_chest():   # 보물 상자(금 · UR) — 열린 상자에 금화 · 붉은 보석
+    m, e = coin_mat(), coin_mat()
+    e.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value = C.srgb('#c9780a')
+    root, rim, w, d = open_chest((0, 0, -0.75), 1.6, yaw=0)
+    z = -0.75 + rim
+    heap(0, z, w * 0.82, d * 0.75, 16, lambda at, r: coin(tuple(at), 0.17, rot=(r.uniform(-60, 60), r.uniform(-60, 60), 0), mat=m, edge=e), seed=13)
+    gem((0.05, -0.05, z + 0.12), 0.5, rot=(0, 10, 20), piece=4)
+
+
+def r_oak_shield():   # 참나무 방패(땅 · R)
+    placed('r-shield.glb', 1.75, (0, 0, -0.88), (0, 0, 180))   # 원본 앞면이 +Y — 돌려 앞면(나무 결 · 테)을 보인다
+
+
+def r_flame_dagger():   # 불꽃 단검(불 · R) — 칼날이 오른쪽 위로
+    placed('r-dagger.glb', 1.85, (0, 0, -0.92), (0, -38, 0))
+
+
+def r_gold_map():   # 금박 지도(금 · R) — 배경 판은 빼고 지도만
+    placed('r-map.glb', 1.95, (0, 0, -0.75), (72, 0, 0), keep='Treasure Map')
+
+
+def r_bronze_shovel():   # 청동 삽(땅 · R)
+    placed('r-shovel.glb', 1.85, (0, 0, -0.92), (0, -32, 0))
+
+
+RELIC_JOBS = {
+    'comet-shard': (r_comet_shard, 18, 2.0, -20), 'snow-crystal': (r_snow_crystal, 18, 2.0, -20), 'treasure-chest': (r_treasure_chest, 26, 2.7, -24),
+    'oak-shield': (r_oak_shield, 12, 2.0, -24), 'flame-dagger': (r_flame_dagger, 10, 2.0, -16), 'gold-map': (r_gold_map, 22, 2.0, -18),
+    'bronze-shovel': (r_bronze_shovel, 10, 2.0, -16),
+}
+RELIC_OUT = os.environ.get('SFI_RELIC_OUT') or os.path.join(ROOT, 'art-gen', 'out', 'b3d-sfrelics')
+
+
 # 이름: (일, 카메라 위 각도, 직교 크기, 돌림(°)) — 돌림은 모델 전체를 기둥에 달아 돌린다(ortho_camera 는 yaw 를 무시)
 JOBS = {
     'pkg-gems-80': (j_gems_80, 16, 2.0, -20),
@@ -329,6 +396,24 @@ if os.environ.get('SFI_PREVIEW') == '1':
             frame(18, 2.2, -20)
             shoot(f'preview-gem1-{k}')
 else:
+    rel = relic_table()
+    for name in (list(RELIC_JOBS) if 'relics' in argv else [a for a in argv if a in RELIC_JOBS]):
+        fn, elev, scale, yaw = RELIC_JOBS[name]
+        fam, tier = rel.get(name, ('gold', 'R'))
+        C.reset()
+        C.setup_render(res=(512, 512), samples=40)
+        C.lights()
+        rim_lights(fam, TIER_K.get(tier, 1.0))
+        fn()
+        frame(elev, scale, yaw)
+        os.makedirs(RELIC_OUT, exist_ok=True)
+        bpy.context.view_layer.update()
+        if os.environ.get('ART_STYLE', 'toon') == 'toon':
+            from lib import toon as TOON
+            TOON.apply(bpy.context.scene)
+        bpy.context.scene.render.filepath = os.path.join(RELIC_OUT, f'{name}.png')
+        bpy.ops.render.render(write_still=True)
+        print('wrote relic', name, flush=True)
     for name in (list(JOBS) if 'all' in argv else [a for a in argv if a in JOBS]):
         fn, elev, scale, yaw = JOBS[name]
         C.reset()

@@ -42,8 +42,12 @@
 | 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
 | 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |
 | 상점 동료 '도토리 다람쥐 레드' | Low-Poly Squirrel Character (Game-Ready, Rigged) | SomeNortherner | https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb | a-squirrel.glb |
-| 상점 붉은 보석 팩(8 · 45 · 120) · 강화석 상자 | Stylized Crystal Gem pack - Handpainted | ashkan.fancy | https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658 | i-gems.glb |
-| 상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 | Stylized Treasure Chest | Tom Verbeeck | https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e | i-chest.glb |
+| 유물 '참나무 방패' | Stylized Wood Shield | Brett Murphy | https://sketchfab.com/3d-models/stylized-wood-shield-66058be8e4e749bf8ce234d94dd6d863 | r-shield.glb |
+| 유물 '불꽃 단검' | Stylized Dagger | xwhn | https://sketchfab.com/3d-models/stylized-dagger-f742183b679f4964bcbf2b9381ed6c70 | r-dagger.glb |
+| 유물 '금박 지도' | Stylized Treasure Map | Izzy | https://sketchfab.com/3d-models/stylized-treasure-map-cec61143abbc46bc99201b591942688b | r-map.glb |
+| 유물 '청동 삽' | Hand painted shovel | Bohdan Lvov | https://sketchfab.com/3d-models/hand-painted-shovel-04e4270e92b649c6b34273eac360081e | r-shovel.glb |
+| 상점 붉은 보석 팩(8 · 45 · 120) · 강화석 상자 · 유물 '눈꽃 결정' · '혜성 조각' | Stylized Crystal Gem pack - Handpainted | ashkan.fancy | https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658 | i-gems.glb |
+| 상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 · 유물 '보물 상자' | Stylized Treasure Chest | Tom Verbeeck | https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e | i-chest.glb |
 | 상점 방치 가속권(24h · 광고) | Stylized Potion | Moon Cube Studios (@KinanArts) | https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7 | i-potion.glb |
 
 상점 묶음 그림은 `art-gen/blender/sketchfab_icons.py`(보석 팩은 수량대로 원석 → 결정 더미 → 넘치는 상자, 손그림 밝기만 살려 붉은 보석 · 하늘빛 강화석 색으로 다시 칠함) → `scripts/assemble-shop-icons.mjs`(PKG_SRC=art-gen/out/b3d-sficons).
