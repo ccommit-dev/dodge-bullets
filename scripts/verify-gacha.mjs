@@ -214,7 +214,8 @@ ok("급소 노리기 시전 → 버프 칩 '치명 +45%'", r.some((x) => /치명
 }
 
 // ── 3. 과금 정합: 후원 일일 보석 · 무료 지급 게이트(DEV) ──
-await seed({ ...baseProgress, patronUntil: now + 86400000 * 10, patronClaimedDate: "" }, baseTitans);
+// 몬스터 첫 발견 보석(+2, titans/discovery — 종류 키)이 부팅 대기 중 첫 처치로 끼면 보석 단언이 203 처럼 흔들렸다(2026-11-24, 2번 중 1번) — 다른 검사처럼 미리 심는다
+await seed({ ...baseProgress, patronUntil: now + 86400000 * 10, patronClaimedDate: "", discovered: ["monster:slime", "monster:goblin", "monster:wolf", "monster:ogre", "monster:dragon", "monster:boss"], discoverySeeded: true }, baseTitans);
 await closeModal();
 p = await prog();
 const patronToday = Math.floor(Date.now() / 86_400_000) % 2 === 0 ? 2 : 1;   // 후원 하루 보석 1 · 2 번갈아(productCatalog patronDailyGems)

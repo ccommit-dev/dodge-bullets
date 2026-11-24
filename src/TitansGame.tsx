@@ -3693,17 +3693,33 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
     const learnedInType = SKILLS.filter((skill) => skill.slot === def.slot && save.skillInventory.learned.includes(skill.id)).length;
     if (learnedInType >= skillTypeCapacity) { flash(`${def.slot} 보유 한도 ${skillTypeCapacity}개 · 캐릭터 레벨을 올리세요`); return; }
     if (save.skillInventory.skillCores < def.learnCoreCost || skillPoints < def.learnSpCost) { flash("스킬 포인트 또는 코어가 부족합니다"); return; }
+    // 화면 먼저 (2026-11-24, verify-gacha '배우면 바로 장착 컷인 1.5초' 가 1.85~2.2초로 실패) — 예전엔 진행도 저장(큐 → 읽기 → 옛 키 합치기 → 쓰기)이
+    // 끝난 뒤에야 배움 · 장착 · 컷인을 보였다. 저장은 이벤트 루프를 대여섯 번 건너는데, 전장 틱 렌더가 메인 스레드를 꽉 채우면 한 번에 ~110ms 씩 밀려
+    // 누른 뒤 2초 가까이 아무 반응이 없었다(토스 WebView 는 브리지 응답이 늦으면 더 길다). 이제 앞에서 확인한 값으로 바로 반영하고 저장은 뒤에서 —
+    // 저장이 거절하면(다른 화면이 그새 SP 를 썼다 · 저장소를 못 읽었다) 그때만 되돌린다. 빨리 두 번 눌러도 배움이 먼저 반영돼 두 번 깎이지 않는다
+    const prevInSlot = save.skillInventory.equipped[def.slot];
+    setSkillPoints((sp) => sp - def.learnSpCost);
+    setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, learned: [...prev.skillInventory.learned, id], levels: { ...prev.skillInventory.levels, [id]: 1 }, equipped: { ...prev.skillInventory.equipped, [def.slot]: id }, skillCores: prev.skillInventory.skillCores - def.learnCoreCost } }));
+    flash(`${def.name} 학습 완료`);
+    previewSkillEquip(id);   // 배우면 바로 그 칸에 끼워진다 — 장착 연출도 같이
     let paid = false;
     const progress = await updateCharacterProgress(userHash, (current) => {
       if (current.skillPoints < def.learnSpCost) return current;
       paid = true;
       return { ...current, skillPoints: current.skillPoints - def.learnSpCost, lastContent: "titans" };
+    }).catch(() => null);
+    if (progress && paid) { setSkillPoints(progress.skillPoints); return; }
+    // 되돌림 — 이 스킬만 빼고(그새 다른 변경은 둔다) 칸은 원래 것으로, 코어는 돌려준다
+    setSave((prev) => {
+      const inv = prev.skillInventory;
+      if (!inv.learned.includes(id)) return prev;
+      return { ...prev, skillInventory: { ...inv, learned: inv.learned.filter((x) => x !== id), levels: Object.fromEntries(Object.entries(inv.levels).filter(([k]) => k !== id)) as typeof inv.levels, equipped: inv.equipped[def.slot] === id ? { ...inv.equipped, [def.slot]: prevInSlot } : inv.equipped, skillCores: inv.skillCores + def.learnCoreCost } };
     });
-    if (!paid) return;
-    setSkillPoints(progress.skillPoints);
-    setSave((prev) => ({ ...prev, skillInventory: { ...prev.skillInventory, learned: [...prev.skillInventory.learned, id], levels: { ...prev.skillInventory.levels, [id]: 1 }, equipped: { ...prev.skillInventory.equipped, [def.slot]: id }, skillCores: prev.skillInventory.skillCores - def.learnCoreCost } }));
-    flash(`${def.name} 학습 완료`);
-    previewSkillEquip(id);   // 배우면 바로 그 칸에 끼워진다 — 장착 연출도 같이
+    if (progress) setSkillPoints(progress.skillPoints);
+    else setSkillPoints((sp) => sp + def.learnSpCost);
+    setEquipFx(null);
+    setSkillVisual((active) => (active === id ? null : active));
+    flash(progress ? "스킬 포인트가 부족합니다" : "저장소를 읽지 못해 배우지 못했습니다 — 다시 눌러 주세요");
   };
 
   /** 장착 미리보기 — 시전 연출만(컷인 · 등급 빛 · 원소 오라 · 소리). 피해 · 쿨타임 · 버프는 없다 */
