@@ -10,7 +10,7 @@ import sys
 import os
 import math
 import random
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import bcommon as C
@@ -43,6 +43,50 @@ SHAPES = {
     'bit2': dict(r=(0.24, 0.16, 0.15), sub=0, amp=0.18, seed=71),
     'bit3': dict(r=(0.16, 0.15, 0.18), sub=0, amp=0.24, seed=79),
 }
+
+# Sketchfab 바위(2026-11-24, 사용자: "sketchfab 에서 바꿀 수 있는 거 다") — 실루엣만 [FREE] Lowpoly Volcanic Rocks(SimplePolygon, CC BY,
+# art-gen/out/sketchfab/p-rocks.glb)의 바위 메시에서 가져오고, 색 · 덮개 · 불씨 결정 · 외곽선은 장 재질 그대로. ROCK_SF=0 이면 예전 절차 바위
+SF_FILE = os.path.join(ROOT, 'art-gen', 'out', 'sketchfab', 'p-rocks.glb')
+SF_ROCKS = {   # 모양 → (메시 이름 앞부분, 거꾸로 뒤집기). 파편(shard)은 떨어지는 쪽이 뾰족해야 읽혀 절차 바위 그대로(받은 묶음엔 뾰족한 돌이 없다)
+    'pebble': ('Rock_01', False), 'chunk': ('Rock_03', False), 'boulder': ('Rock_04', False),
+    'blast': ('Rock_02', False), 'bit0': ('Cliff_Rock_05', False), 'bit1': ('Cliff_Rock_06', False), 'bit2': ('Cliff_Rock_08', False), 'bit3': ('Cliff_Rock_09', False),
+}
+USE_SF = os.environ.get('ROCK_SF', '1') == '1' and os.path.exists(SF_FILE)
+
+
+def sf_rock_mesh(name, shape, rng):
+    """받은 바위 메시 → bmesh. 크기는 모양 반지름(r)에 축마다 맞추고 가운데를 원점에"""
+    prefix, flip = SF_ROCKS[name]
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=SF_FILE)
+    new = [o for o in bpy.data.objects if o not in before]
+    src = next(o for o in new if o.type == 'MESH' and o.name.startswith(prefix + '_'))
+    bpy.context.view_layer.update()
+    bm = bmesh.new()
+    bm.from_mesh(src.data)
+    bm.transform(src.matrix_world)
+    for o in new:
+        bpy.data.objects.remove(o, do_unlink=True)
+    if flip:
+        bmesh.ops.rotate(bm, verts=bm.verts, cent=Vector((0, 0, 0)), matrix=Matrix.Rotation(math.pi, 3, 'X'))
+    lo = Vector((min(v.co.x for v in bm.verts), min(v.co.y for v in bm.verts), min(v.co.z for v in bm.verts)))
+    hi = Vector((max(v.co.x for v in bm.verts), max(v.co.y for v in bm.verts), max(v.co.z for v in bm.verts)))
+    c, rx, ry, rz = (lo + hi) / 2, *shape['r']
+    for v in bm.verts:
+        v.co = Vector(((v.co.x - c.x) / max(1e-6, (hi.x - lo.x) / 2) * rx, (v.co.y - c.y) / max(1e-6, (hi.y - lo.y) / 2) * ry, (v.co.z - c.z) / max(1e-6, (hi.z - lo.z) / 2) * rz))
+    # 낮은 폴리 GLB 는 면마다 꼭짓점이 따로라(평면 음영 내보내기) 외곽선 껍질이 면마다 갈라졌다 — 붙인다
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.002)
+    for f in bm.faces:   # 원본 팔레트 UV · 재질 번호는 버리고 우리 재질 하나로
+        f.material_index = 0
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bm.normal_update()
+    bm.faces.index_update()
+    lay = bm.loops.layers.color.new('shade')
+    for f in bm.faces:
+        k = rng.uniform(0.78, 1.12)
+        for l in f.loops:
+            l[lay] = (k, k, k, 1.0)
+    return bm
 
 
 def rock_mat(name, color, dark, rough=0.9):
@@ -139,7 +183,7 @@ def build(ch, name):
     rng = random.Random(shape['seed'] * 7 + ch)
     body = rock_mat(f'rock{ch}', cfg['base'], cfg['dark'])
     cap = rock_mat(f'cap{ch}', cfg['cap'], cfg['base'], rough=0.95 if ch != 1 else 0.6)
-    bm = rock_mesh(shape, rng)
+    bm = sf_rock_mesh(name, shape, rng) if USE_SF and name in SF_ROCKS else rock_mesh(shape, rng)
     # 위를 향한 면은 덮개 재질(이끼 · 서리 · …) — 조각(bit)은 깨진 속이라 덮개가 없다
     caps = []
     if not name.startswith('bit'):

@@ -29,7 +29,7 @@
 | 대장 '서리 정령' (심연 대장) | Ice Elemental | InaLaAtzu | https://sketchfab.com/3d-models/ice-elemental-aad46bfde099472481b1536428a122ae | b-iceelemental.glb |
 | 대장 '얼음 골렘' (심연 대장) | Ice Golem | Caboose3d | https://sketchfab.com/3d-models/ice-golem-f7370eebe4cf4f81b49c83925c0d3d0c | b-icegolem.glb |
 | 사냥터 바닥 덤불 · 꽃 · 버섯 · 결정 · 바위 | Low poly Stylized Nature Pack | Satendra Saraswat | https://sketchfab.com/3d-models/low-poly-stylized-nature-pack-9c773e846c6e4448b26b2cdecb2b91bf | p-nature.glb |
-| 사냥터 바닥 바위 · 광석 | [FREE] Lowpoly Volcanic Rocks [Asset Pack] | SimplePolygon | https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0 | p-rocks.glb |
+| 사냥터 바닥 바위 · 광석 · 성문 방어 낙석 바위(art-gen/blender/rocks.py — 모양만, 색은 장 재질) | [FREE] Lowpoly Volcanic Rocks [Asset Pack] | SimplePolygon | https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0 | p-rocks.glb |
 | 사냥터 바닥 빛나는 버섯(숲 · 심연) | Stylized mushrooms | QumoDone | https://sketchfab.com/3d-models/stylized-mushrooms-9d22e02ce2a548959b1c4c4c1d546842 | p-mushrooms.glb |
 | 사냥터 바닥 쓰러진 통나무(숲) | Cartoon fallen tree | neon_dust | https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6 | p-fallentree.glb |
 | 사냥터 바닥 그루터기(초원 · 숲) | Tree Stump stylized | makcutka250 | https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec | p-stump.glb |
