@@ -24,7 +24,11 @@
 | 상점 펫 '꼬마 여우' | PBR Low-poly Fox Character | Ida Faber | https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d | pet-fox.glb |
 | 상점 펫 '아기 펭귄' | Penguin plush | SunnyBuns | https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4 | pet-penguin.glb |
 | 상점 펫 '풀잎 개구리' | Frog | gooseg489 | https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050 | pet-frog.glb |
+| 상점 붉은 보석 팩(8 · 45 · 120) · 강화석 상자 | Stylized Crystal Gem pack - Handpainted | ashkan.fancy | https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658 | i-gems.glb |
+| 상점 보석 120 · 황금 보급 상자 · 강화석 상자 | Stylized Treasure Chest | Tom Verbeeck | https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e | i-chest.glb |
+| 상점 방치 가속권(24h · 광고) | Stylized Potion | Moon Cube Studios (@KinanArts) | https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7 | i-potion.glb |
 
+상점 묶음 그림은 `art-gen/blender/sketchfab_icons.py`(보석 팩은 수량대로 원석 → 결정 더미 → 넘치는 상자, 손그림 밝기만 살려 붉은 보석 · 하늘빛 강화석 색으로 다시 칠함) → `scripts/assemble-shop-icons.mjs`(PKG_SRC=art-gen/out/b3d-sficons).
 바닥 소품 렌더는 `art-gen/blender/hunt_ground.py`(SF_PROPS — 지역마다 뒤 가장자리 · 아래 모서리, 발 자리는 비움)이다. 작가가 넣은 검은 외곽선 껍질 메시는 걸러 낸다.
 
 받았지만 쓰지 않은 것

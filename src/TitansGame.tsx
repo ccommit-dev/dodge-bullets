@@ -5900,9 +5900,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
                 </article>
               );
             })}
-            {/* 재화 팩 — 수량이 진행도 비례라 후반에도 유의미하다 */}
+            {/* 재화 팩 — 수량이 진행도 비례라 후반에도 유의미하다. 그림은 상자 · 물약(2026-11-24, Sketchfab CC BY → 셀 렌더 art-gen/blender/sketchfab_icons.py) */}
             {premiumCategory === "currency" && <><article className="titans-card premium-product-card gem-product">
-              <RewardIcon kind="gold" size={38} className="pack-icon" />
+              <img className="pack-icon" src={assetUrl("ui/shop/gold-pack.png")} alt="" aria-hidden="true" />
               <div>
                 <strong>황금 보급 상자</strong>
                 <p>사냥터 골드 +{formatGold(goldPackAmount(character))} · 최고 스테이지 비례 <i className="feeds">→ 동료 레벨 · 무기 훈련</i></p>
@@ -5912,7 +5912,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </button>
             </article>
             <article className="titans-card premium-product-card gem-product">
-              <RewardIcon kind="materials" size={38} className="pack-icon" />
+              <img className="pack-icon" src={assetUrl("ui/shop/material-pack.png")} alt="" aria-hidden="true" />
               <div>
                 <strong>강화석 상자</strong>
                 <p>강화석 +{GEM_PACK.materialPackAmount} · 대장간·펫 간식 재료 <i className="feeds">→ 북 강화 · 보호구</i></p>
@@ -5964,7 +5964,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {/* L 보상형 광고: 방치 가속 4h (1일 1회) — 미연동이면 카드 자체가 없다 */}
             {premiumCategory === "currency" && rewardedAvailability(character, "booster4h", new Date().toLocaleDateString("sv-SE")) !== "none" && (
               <article className="titans-card premium-product-card gem-product ad-product">
-                <CurrencyIcon kind="gem" />
+                <img className="pack-icon" src={assetUrl("ui/shop/idle-boost.png")} alt="" aria-hidden="true" />
                 <div>
                   <strong>방치 가속 {BOOSTER_AD_HOURS}h {character.adFree ? <em>광고 제거</em> : <em>광고</em>}</strong>
                   <p>{character.adFree ? "광고 없이 오늘 1회 자동 적용" : "30초 광고 시청 · 오늘 1회"}</p>
@@ -5973,7 +5973,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </article>
             )}
             {premiumCategory === "currency" && <article className="titans-card premium-product-card gem-product">
-              <RewardIcon kind="boost" size={38} className="pack-icon" />
+              <img className="pack-icon" src={assetUrl("ui/shop/idle-boost.png")} alt="" aria-hidden="true" />
               <div>
                 <strong>방치 가속권 24h {character.idleBoostUntil > Date.now() && <em>적용 중</em>}</strong>
                 <p>24시간 동안 방치 산출 2배 · 중첩 불가 <i className="feeds">→ 방치 정산 골드·경험치</i></p>

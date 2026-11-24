@@ -23,6 +23,10 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "PBR Low-poly Fox Character", author: "Ida Faber", url: "https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d", use: "펫 '꼬마 여우'" },
   { title: "Penguin plush", author: "SunnyBuns", url: "https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4", use: "펫 '아기 펭귄'" },
   { title: "Frog", author: "gooseg489", url: "https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050", use: "펫 '풀잎 개구리'" },
+  // 상점 묶음 그림(2026-11-24, art-gen/blender/sketchfab_icons.py → public/ui/shop)
+  { title: "Stylized Crystal Gem pack - Handpainted", author: "ashkan.fancy", url: "https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658", use: "상점 붉은 보석 팩 · 강화석 상자 그림" },
+  { title: "Stylized Treasure Chest", author: "Tom Verbeeck", url: "https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e", use: "상점 보석 120 · 황금 보급 상자 · 강화석 상자 그림" },
+  { title: "Stylized Potion", author: "Moon Cube Studios (@KinanArts)", url: "https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7", use: "상점 방치 가속권 그림" },
 ];
 
 export const CREDIT_LICENSE = "CC BY 4.0 — 우리 그림체(셀 음영 · 외곽선)로 다시 렌더해 바꿨다";
