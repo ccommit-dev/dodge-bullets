@@ -278,7 +278,7 @@ export const ALL_HEROES: TitanHeroDef[] = [
 
 // 동료 3배 (2026-10-27) — 새 40명. 열리는 층 · 힘은 allyRoster(기존 동료의 층별 곡선 × 등급 배율)
 ALL_HEROES.push(...NEW_ALLIES.map((d): TitanHeroDef => ({
-  id: d.id, name: d.name, role: d.feature, unlockStage: d.stage, baseCost: newAllyBaseCost(d), baseDps: newAllyBaseDps(d),
+  id: d.id, name: d.name, role: d.feature, unlockStage: d.shop ? 9999 : d.stage, baseCost: newAllyBaseCost(d), baseDps: newAllyBaseDps(d),
   hue: d.hue, feature: d.feature, attackType: d.attackType, attackInterval: d.attackInterval,
 })));
 

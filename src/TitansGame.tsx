@@ -5709,7 +5709,8 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             {/* 보석 소비형 상품 (LIVEOPS §3.3) — 확정 구매, 확률 없음 */}
             {premiumCategory === "ally" && HEROES.filter((h) => SHOP_ALLY_GEM_COST[h.id] !== undefined && save.heroes[h.id] === 0).map((h) => (
               <article key={h.id} className="titans-card premium-product-card gem-product shop-ally-product" data-shop-ally={h.id}>
-                <CurrencyIcon kind="gem" />
+                {/* 동료 얼굴(2026-11-24) — 예전엔 보석 그림이라 누구를 사는지 안 보였다. 상점 전용 넷(Sketchfab)도 여기서 */}
+                <span className="shop-ally-thumb" aria-hidden="true" style={{ "--ally-size": "64px" } as CSSProperties}><AllyArt id={h.id} /></span>
                 <div><strong>{h.name} <em>보석 전용 동료</em></strong><p>{h.feature}</p></div>
                 <button type="button" disabled={redGems < (SHOP_ALLY_GEM_COST[h.id] ?? 0)} onClick={() => void buyShopAlly(h.id)}><GemMark />{SHOP_ALLY_GEM_COST[h.id]}</button>
               </article>

@@ -17,6 +17,8 @@ export const NEW_ALLY_IDS = [
   "celes", "gaia", "inferno", "leviathan",
   // 월간 한정 (2026-11-16, titans/limitedAllies.ts) — 창이 열린 동안만 뽑기에 나온다
   "autumn",
+  // 상점 전용(2026-11-24, 사용자: "sketchfab … 동료 · 캐릭터" → "상점 전용 동료") — 보석으로만(allies SHOP_ALLY_GEM_COST), 뽑기 풀 밖
+  "bunny", "duck", "squirrel", "cat",
 ] as const;
 export type NewAllyId = (typeof NEW_ALLY_IDS)[number];
 
@@ -29,6 +31,8 @@ export type NewAllyDef = {
   id: NewAllyId; name: string; tier: Tier; role: Role; element: Element; stage: number; hue: number;
   attackType: string; attackInterval: number; feature: string;
   move: string; desc: string; fx?: Fx;
+  /** 상점 전용 — 층으로 열리지 않는다(unlockStage 9999). 힘은 stage · tier 곡선 그대로(같은 층 같은 등급과 같다) */
+  shop?: boolean;
 };
 
 export const NEW_ALLIES: readonly NewAllyDef[] = [
@@ -78,6 +82,12 @@ export const NEW_ALLIES: readonly NewAllyDef[] = [
   { id: "inferno", name: "지옥불 인페르노", tier: "LR", role: "melee", element: "fire", stage: 44, hue: 0, attackType: "지옥불 도끼", attackInterval: 1.05, feature: "모든 것을 태우는 도끼", move: "지옥불 폭풍", desc: "불길이 소용돌이친다" },
   { id: "leviathan", name: "해룡왕 리바이어선", tier: "LR", role: "melee", element: "water", stage: 52, hue: 190, attackType: "해룡 삼지창", attackInterval: 1.0, feature: "바다를 가르는 삼지창", move: "해룡 강림", desc: "거대한 해룡이 덮친다" },
   // ── 월간 한정 (2026-11-16, titans/limitedAllies.ts) — 대장 전용: 대장 ×1.2 · 일반 몬스터 ×0.82 (힘은 같은 층 신화 곡선 그대로) ──
+  // ── 상점 전용 넷 (2026-11-24) — Sketchfab CC BY 모델을 셀 그림체로 다시 렌더(art-gen/blender/sketchfab_monsters.py kind='ally', 크레딧 src/ui/credits.ts).
+  //    비버가 아닌 숲 친구들이라 뽑기에 섞지 않고 상점에서만 데려온다. 힘은 같은 층 · 같은 등급 곡선 그대로 ──
+  { id: "bunny", name: "솜털 토끼 보니", tier: "R", role: "healer", element: "wind", stage: 8, hue: 30, attackType: "당근 지팡이", attackInterval: 1.25, feature: "당근 약초로 파티 기술을 조금 서두른다", move: "당근 비", desc: "당근이 톡톡 떨어진다", fx: "halo", shop: true },
+  { id: "cat", name: "밤고양이 감자", tier: "R", role: "melee", element: "fire", stage: 9, hue: 250, attackType: "냥냥 펀치", attackInterval: 0.85, feature: "통통한 앞발로 연달아 친다", move: "냥냥 연타", desc: "앞발이 번쩍번쩍", fx: "slash", shop: true },
+  { id: "duck", name: "방패기사 덕", tier: "SR", role: "tank", element: "water", stage: 12, hue: 45, attackType: "방패 찌르기", attackInterval: 1.1, feature: "방패로 막고 검으로 찌른다", move: "방패 돌진", desc: "방패를 앞세워 몰아친다", fx: "slash", shop: true },
+  { id: "squirrel", name: "도토리 다람쥐 레드", tier: "SR", role: "ranged", element: "earth", stage: 14, hue: 15, attackType: "도토리 던지기", attackInterval: 0.9, feature: "도토리를 연달아 던진다", move: "도토리 폭탄", desc: "도토리가 터진다", fx: "arrow", shop: true },
   { id: "autumn", name: "단풍 사냥꾼 오텀", tier: "UR", role: "ranged", element: "earth", stage: 16, hue: 22, attackType: "단풍 화살", attackInterval: 1.0, feature: "대장 사냥 — 대장에게 ×1.2 · 일반 몬스터 ×0.82", move: "낙엽 화살비", desc: "붉은 낙엽이 화살이 되어 대장에게 쏟아진다", fx: "arrow" },
 ];
 

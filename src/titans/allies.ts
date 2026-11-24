@@ -47,6 +47,8 @@ export const STAR_SHARD_COST = [0, 20, 50, 120, 300] as const;
 export const SHOP_ALLY_GEM_COST: Partial<Record<TitanHeroId, number>> = {
   luna: 90,   // 보석 ÷10 (2026-11-18)
   volt: 45,
+  // 상점 전용 넷(2026-11-24, allyRoster shop) — 같은 등급 기존 상점 동료 값(희귀 30 · 영웅 45, volt 와 같은 영웅가)
+  bunny: 30, cat: 30, duck: 45, squirrel: 45,
   // 얼터너티브 동료(흑화 미아·성광 세라)는 은퇴 — 원본과 겹쳤다 (2026-10-01). 환불가는 model.RETIRED_ALLY_SHOP_GEMS
 };
 

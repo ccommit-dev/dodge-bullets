@@ -34,6 +34,8 @@ const rosterExt = existsSync("art-gen/blender/roster_ext.py") ? readFileSync("ar
 const NEW_ALLY_KEYS = [...rosterExt.matchAll(/^    '([a-z0-9_-]+)': dict\(/gm)].map((m) => m[1]);
 // Sketchfab 몬스터(2026-11-23, art-gen/blender/sketchfab_monsters.py) — roster.py 밖 렌더. meta.source === "sketchfab" 인 b3d2 폴더를 몬스터로 더한다
 // 상점 펫(pet-cat · pet-fox · pet-penguin · pet-frog, 2026-11-24)도 같은 렌더라 sf- 말고 pet- 도 받는다(roster.py 의 pet-* 는 source 가 없어 안 겹친다)
+// 상점 전용 동료(2026-11-24) — 같은 렌더(sketchfab_monsters.py kind='ally'), meta.kind === "ally" 인 폴더. 동료 시트 배치로 · 오른쪽을 보게 뒤집는다
+const SKETCHFAB_ALLIES = existsSync(SRC) ? readdirSync(SRC).filter((d) => existsSync(`${SRC}/${d}/meta.json`) && (() => { const m = JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")); return m.source === "sketchfab" && m.kind === "ally"; })()) : [];
 const SKETCHFAB_MONSTERS = existsSync(SRC) ? readdirSync(SRC).filter((d) => /^(sf|pet)-/.test(d) && existsSync(`${SRC}/${d}/meta.json`) && JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")).source === "sketchfab") : [];
 const ALLIES = [...keysOf("ALLIES"), ...NEW_ALLY_KEYS], SKINS = keysOf("SKINS"), MONSTERS = [...keysOf("MONSTERS"), ...SKETCHFAB_MONSTERS];
 const blank = (w, h) => ({ create: { width: Math.round(w), height: Math.round(h), channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
@@ -71,7 +73,8 @@ async function cellOps(f, res, k, cellX, cellY, cw, ch, px, py) {
   const R = Math.round, w = R(res * k);
   let buf = await sharp(f.file).resize(w, w, { kernel: KERNEL }).png().toBuffer();
   if (f.tint > 0) buf = await tint(buf, f.tint);
-  const ox = R(px - f.pivot[0] * k), oy = R(py - f.pivot[1] * k);
+  if (f.flip) buf = await sharp(buf).flop().png().toBuffer();   // Sketchfab 동료 — 칸마다 좌우를 뒤집어 오른쪽을 보게(2026-11-24)
+  const ox = R(px - (f.flip ? w - f.pivot[0] * k : f.pivot[0] * k)), oy = R(py - f.pivot[1] * k);
   const left = Math.max(0, -ox), top = Math.max(0, -oy), right = Math.min(w, cw - ox), bottom = Math.min(w, ch - oy);
   if (right <= left || bottom <= top) return [];
   return [{ input: await sharp(buf).extract({ left, top, width: right - left, height: bottom - top }).png().toBuffer(), left: cellX + ox + left, top: cellY + oy + top }];
@@ -385,6 +388,21 @@ for (const id of only.filter((a) => /^hero@[a-z]+$/.test(a))) {
 }
 
 // ── 게임이 읽는 배치 + 시트가 있는 id ── (도트는 셀과 같은 배치 · 같은 id 라 쓰지 않는다)
+// ── Sketchfab 상점 동료 (2026-11-24) ── 비버 동료와 같은 칸(360×274 · 발 0.87) · 몸 높이는 비버처럼 칸의 약 65%
+for (const id of SKETCHFAB_ALLIES) {
+  if (!want(id)) continue;
+  const c = await load(id);
+  if (!c) continue;
+  const AL = LAYOUT.ally, [CW, CH] = AL.cell, px = CW / 2, py = CH * AL.feet;
+  for (const f of allFrames(c)) f.flip = true;
+  const mirrored = allFrames(c).map((f) => ({ ...f, box: { ...f.box, x0: 2 * f.pivot[0] - f.box.x1, x1: 2 * f.pivot[0] - f.box.x0 } }));
+  const f0 = c.actions.idle[0], up0 = f0.pivot[1] - f0.box.y0;
+  const k = fitScale(mirrored, (CH * 0.655) / up0, CW, CH, px, py, 3, false);
+  await grid(c, AL, k, `${PUB}/allies/${id}.webp`);
+  done.allies.push(id);
+  console.log("sketchfab ally", id, "k", k.toFixed(3));
+}
+
 if (!PX) {
   const path = "src/titans/animLayout.ts";
   const cur = existsSync(path) ? readFileSync(path, "utf8") : "";

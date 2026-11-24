@@ -38,6 +38,10 @@
 | 상점 펫 '꼬마 여우' | PBR Low-poly Fox Character | Ida Faber | https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d | pet-fox.glb |
 | 상점 펫 '아기 펭귄' | Penguin plush | SunnyBuns | https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4 | pet-penguin.glb |
 | 상점 펫 '풀잎 개구리' | Frog | gooseg489 | https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050 | pet-frog.glb |
+| 상점 동료 '솜털 토끼 보니' | Cute Bunny | Minimoku | https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02 | a-bunny.glb |
+| 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
+| 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |
+| 상점 동료 '도토리 다람쥐 레드' | Low-Poly Squirrel Character (Game-Ready, Rigged) | SomeNortherner | https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb | a-squirrel.glb |
 | 상점 붉은 보석 팩(8 · 45 · 120) · 강화석 상자 | Stylized Crystal Gem pack - Handpainted | ashkan.fancy | https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658 | i-gems.glb |
 | 상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 | Stylized Treasure Chest | Tom Verbeeck | https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e | i-chest.glb |
 | 상점 방치 가속권(24h · 광고) | Stylized Potion | Moon Cube Studios (@KinanArts) | https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7 | i-potion.glb |
@@ -52,6 +56,9 @@
 | Slime 1 | 3DHaupt | https://sketchfab.com/3d-models/slime-1-8b44e345b4a94818837e953a06e571bf | m-slime.glb | 눈 없는 초록 상자라 셀로 그리면 몬스터로 안 읽혔다 |
 | Fire Elemental | Mateus Schwaab | https://sketchfab.com/3d-models/fire-elemental-237d96a17e5d47659667e74026a1ae2a | m-fireelemental.glb | 웅크린 몸이라 셀로 그리면 얼굴이 안 보였다(뒤로 젖혀도) — 대신 Lava Golem |
 | Big Guy | romasharf | https://sketchfab.com/3d-models/big-guy-ddcb274982ba4d7c94c6948ffcb1d3ec | b-bigguy.glb | 셀로 그리면 머리 없이 검게 나왔다 |
+| Mouse Warrior | Emily Blane | https://sketchfab.com/3d-models/mouse-warrior-f5843cae2392474181f7ffb25bfdaa17 | (받지 않음) | 설명에 "Concept made by Alex Beard" — 남의 캐릭터 디자인이라 뺐다 |
+| Mouse warrior | Allen Tseng | https://sketchfab.com/3d-models/mouse-warrior-53d5c94af4094720b50fc39a1317aca6 | (받지 않음) | 설명에 "concept art from Ray Teja" — 같은 까닭 |
+| Cartoon Cat | Baydinman | https://sketchfab.com/3d-models/cartoon-cat-4a738eaed9d34547a3f5a705a0e37c6a | (받지 않음) | 태그 cryptokitties — 다른 IP 모양일 수 있어 뺐다 |
 | Three-headed Beast | Chenchanchong | https://sketchfab.com/3d-models/three-headed-beast-739953b21079401ca3ef56f2b014c7a0 | (지움) | 재질 이름이 Hades_Kerberos — 남의 게임 캐릭터 팬아트일 수 있어 뺐다 |
 
 ## 고르는 규칙

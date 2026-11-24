@@ -54,6 +54,11 @@ MODELS = {
     'sf-werewolf': dict(file='b-werewolf.glb', h=1.6, yaw=-25, lift=0.0, action='Idle', boss=True),
     'sf-treefellow': dict(file='b-treefellow.glb', h=1.7, yaw=-60, lift=0.0, boss=True),
     # sf-stonegiant(b-bigguy.glb, Big Guy)은 셀로 그리면 머리 없이 검게 나와 뺐다
+    # 상점 전용 동료(2026-11-24, kind='ally') — 폴더 이름 = 동료 id(allyRoster NEW_ALLIES). 남의 콘셉트를 옮긴 모델 · 다른 IP 태그 모델은 뺐다
+    'bunny': dict(file='a-bunny.glb', h=1.0, yaw=-35, lift=0.0, kind='ally', dx=0.5, only='bunny1_'),
+    'squirrel': dict(file='a-squirrel.glb', h=1.0, yaw=162, lift=0.0, kind='ally', dx=0.5, arms=(0.36, 1.78, 72)),   # 뼈 없이 T 자세로 와서 팔을 어깨 축으로 내린다
+    'cat': dict(file='a-cat.glb', h=0.9, yaw=-30, lift=0.0, kind='ally', dx=0.5, only='Cat_'),   # 배경판 · 그릇 · 물고기는 뺀다
+    'duck': dict(file='a-duck.glb', h=1.0, yaw=-15, lift=0.0, kind='ally', dx=0.5, drop=('Plane004__0',)),   # 돌바닥 판은 뺀다
     'sf-insect': dict(file='b-insect.glb', h=1.2, yaw=90, lift=0.0, boss=True),
     'sf-magmahound': dict(file='b-magmahound.glb', h=1.3, yaw=0, lift=0.0, action='Idle', boss=True),
     'sf-iceelemental': dict(file='b-iceelemental.glb', h=1.7, yaw=0, lift=0.0, boss=True),
@@ -69,6 +74,15 @@ POSES = {
     'hit': [(12, 0.08, 0.94, 1.03), (6, 0.04, 0.97, 1.015)],
 }
 TINT = {'hit': [1.0, 0.55]}
+# 동료(kind='ally', 2026-11-24 상점 전용 동료) — 동료 시트 배치(anim-layout ally: 대기 6 · 걷기 6 · 덤빔 8 · 피격 4).
+# 몬스터처럼 왼쪽을 보게 굽고 조립(assemble-anim2)이 칸마다 좌우를 뒤집어 오른쪽을 보게 한다. 다섯째 값 = 들썩임(위로)
+ALLY_POSES = {
+    'idle': [(0, 0, 1.0, 1.0, 0), (0, 0, 0.99, 1.005, 0), (0, 0, 0.975, 1.012, 0), (0, 0, 0.965, 1.018, 0), (0, 0, 0.975, 1.012, 0), (0, 0, 0.99, 1.005, 0)],
+    'walk': [(-4, 0, 1.0, 1.0, 0.0), (-6, 0, 0.98, 1.01, 0.05), (-4, 0, 1.0, 1.0, 0.08), (-2, 0, 0.98, 1.01, 0.0), (-4, 0, 1.0, 1.0, 0.05), (-6, 0, 0.98, 1.01, 0.08)],
+    'attack': [(6, 0.03, 0.97, 1.02, 0), (12, 0.06, 0.94, 1.04, 0), (-8, -0.08, 1.03, 0.98, 0.02), (-18, -0.22, 1.05, 0.97, 0.03), (-14, -0.18, 1.02, 0.99, 0.02), (-8, -0.1, 1.0, 1.0, 0), (-3, -0.04, 1.0, 1.0, 0), (0, 0, 1.0, 1.0, 0)],
+    'hit': [(12, 0.08, 0.94, 1.03, 0), (8, 0.05, 0.96, 1.02, 0), (4, 0.02, 0.98, 1.01, 0), (0, 0, 1.0, 1.0, 0)],
+}
+ALLY_TINT = {'hit': [1.0, 0.7, 0.4, 0.0]}
 
 
 def import_glb(path):
@@ -98,6 +112,30 @@ def anim_owner(objs):
         if ad and ad.action:
             return ad.action
     return None
+
+
+def arms_down(objs, sx, sz, ang, blend=0.18):
+    """T 자세 팔 내리기(뼈 없는 GLB) — 월드 좌표에서 어깨(±sx, sz)보다 바깥 꼭짓점을 어깨를 축으로 ang° 아래로 돌린다.
+    어깨 근처(blend 폭)는 조금씩만 돌려 찢어지지 않게"""
+    from mathutils import Matrix
+    bpy.context.view_layer.update()
+    for o in objs:
+        if o.type != 'MESH':
+            continue
+        mw = o.matrix_world.copy()
+        inv = mw.inverted()
+        me = o.data
+        for v in me.vertices:
+            w = mw @ v.co
+            side = 1 if w.x > 0 else -1
+            d = abs(w.x) - sx
+            if d <= 0 or w.z < sz - 0.6:
+                continue
+            t = min(1.0, d / blend)
+            piv = Vector((side * sx, w.y, sz))
+            rot = Matrix.Rotation(math.radians(side * ang * t), 3, 'Y')
+            v.co = inv @ (piv + rot @ (w - piv))
+        me.update()
 
 
 def trim_parts(objs, frac):
@@ -133,11 +171,17 @@ def build(mid):
     C.lights()
     cam = C.ortho_camera((0.0, RR.CENTER_Z), RR.ORTHO, elev_deg=8)
     objs = import_glb(os.path.join(SRC, spec['file']))
+    if spec.get('only'):   # 한 파일에 여럿(토끼 둘) — 이름 앞부분이 맞는 메시만
+        for o in [o for o in objs if o.type == 'MESH' and not o.name.startswith(spec['only'])]:
+            objs.remove(o)
+            bpy.data.objects.remove(o, do_unlink=True)
     for o in [o for o in objs if o.name in spec.get('drop', ()) or (o.type == 'MESH' and o.name.startswith('Icosphere') and not o.data.materials)]:   # 작가가 남긴 도우미 메시
         objs.remove(o)
         bpy.data.objects.remove(o, do_unlink=True)
     if spec.get('trim'):
         objs = trim_parts(objs, spec['trim'])
+    if spec.get('arms'):
+        arms_down(objs, *spec['arms'])
     # 정규화 — 몸 높이 h · 바닥 z=0 · 가운데 x,y=0 (norm) → 자세 축(pose, 발 가운데 원점)
     norm = bpy.data.objects.new('norm', None)
     pose = bpy.data.objects.new('pose', None)
@@ -189,25 +233,29 @@ def render(mid):
     pivot = RR.px(scene, cam, (0, 0, 0))
     base_yaw = pose.rotation_euler.z
     f0, f1 = (int(act.frame_range[0]), int(act.frame_range[1])) if act else (0, 0)
-    meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab', 'boss': bool(MODELS[mid].get('boss'))}
-    step = 0
     spec = MODELS[mid]
-    for action, frames in POSES.items():
+    ally = spec.get('kind') == 'ally'
+    meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab', 'boss': bool(spec.get('boss')), 'kind': 'ally' if ally else 'monster'}
+    step = 0
+    tints = ALLY_TINT if ally else TINT
+    for action, frames in (ALLY_POSES if ally else POSES).items():
         out = []
-        for i, (tilt, dx, sz, sxy) in enumerate(frames):
+        for i, fr in enumerate(frames):
+            tilt, dx, sz, sxy = fr[:4]
+            dz = fr[4] if len(fr) > 4 else 0.0
             if act and f1 > f0 and 'anim_in' in spec:   # 정한 줄에서만 자체 동작을 처음부터 끝까지(나머지 줄은 첫 장면)
                 scene.frame_set(f0 + int((f1 - f0) * (i / len(frames))) if action in spec['anim_in'] else f0)
             elif act and f1 > f0:   # 자체 동작을 칸마다 고르게 짚는다(대기 4칸이 한 바퀴)
                 scene.frame_set(f0 + int((f1 - f0) * ((step % 4) / 4)))
             step += 1
             dx *= spec.get('dx', 1.0)
-            pose.location = (dx, 0, 0)
+            pose.location = (dx, 0, dz)
             pose.rotation_euler = (0, math.radians(tilt), base_yaw)
             pose.scale = (sxy, sxy, sz)
             bpy.context.view_layer.update()
             scene.render.filepath = os.path.join(outdir, f'{action}_{i}.png')
             bpy.ops.render.render(write_still=True)
-            out.append({'pivot': pivot, 'tint': TINT.get(action, [0] * 9)[i] if action in TINT else 0.0, 'weaponBehind': False})
+            out.append({'pivot': pivot, 'tint': tints[action][i] if action in tints else 0.0, 'weaponBehind': False})
         meta['actions'][action] = out
     with open(os.path.join(outdir, 'meta.json'), 'w') as fp:
         json.dump(meta, fp, indent=1)
