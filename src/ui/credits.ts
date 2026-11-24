@@ -11,6 +11,21 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "Monster Plant", author: "Batuhan13", url: "https://sketchfab.com/3d-models/monster-plant-b7e677ebca4e4b6ea247fba10a356bd4", use: "몬스터 '화분 파리지옥'" },
   { title: "Eyeball Plant", author: "Snarkle Studios", url: "https://sketchfab.com/3d-models/eyeball-plant-3c020ddcd129468ea065822cc12dfb22", use: "몬스터 '눈알 꽃'" },
   { title: "Cute tentacle creature", author: "endike", url: "https://sketchfab.com/3d-models/cute-tentacle-creature-2aec23f475dc4c93a6353fa7052d15d2", use: "몬스터 '말랑 불가사리'" },
+  // 2차 몬스터 일곱 · 대장 일곱(2026-11-24, 사용자: "sketchfab 에서 바꿀 수 있는 거 다" — 성문 방어 장별 적 그림에도 쓴다)
+  { title: "Kino – Cute Cyclops Monster", author: "BenAissa_Karim", url: "https://sketchfab.com/3d-models/kino-cute-cyclops-monster-aa66111d23cb41f49da7705631e1ade9", use: "몬스터 '외눈 말랑이'" },
+  { title: "Sand Golem", author: "Yury Misiyuk", url: "https://sketchfab.com/3d-models/sand-golem-41346d6cff3646809ee8af11da9882ef", use: "몬스터 '모래 골렘'" },
+  { title: "Lava Golem", author: "Lucas Coutinho", url: "https://sketchfab.com/3d-models/lava-golem-76e7424f81ac4fb1b1c72613e049fbe5", use: "몬스터 '불씨 골렘'" },
+  { title: "Stylized Red/Black dragon_baby", author: "BBangzip", url: "https://sketchfab.com/3d-models/stylized-redblack-dragon-baby-1d3cc450c8914665bf950c4fe06fc127", use: "몬스터 '아기 홍룡'" },
+  { title: "Stylized Blue dragon baby", author: "BBangzip", url: "https://sketchfab.com/3d-models/stylized-blue-dragon-baby-350ca0b2199a4af18bde907dec7433a4", use: "몬스터 '아기 청룡'" },
+  { title: "Cute ghost", author: "P3D", url: "https://sketchfab.com/3d-models/cute-ghost-2c8c03bb0e5049529e653f9011a8fc90", use: "몬스터 '꼬마 유령'" },
+  { title: "Magical Golem - FREE 3D Game Asset", author: "Kostas3D", url: "https://sketchfab.com/3d-models/magical-golem-free-3d-game-asset-faf1961b1ca24c83987c19244e309286", use: "몬스터 '마법 골렘'" },
+  { title: "Mushroom Boss - game ready with animations", author: "iamjohnhult", url: "https://sketchfab.com/3d-models/mushroom-boss-game-ready-with-animations-ee611e4925e94a98baa4cfd3d89d3449", use: "대장 '버섯 대왕'" },
+  { title: "Werewolf Stylized Animated", author: "imitate", url: "https://sketchfab.com/3d-models/werewolf-stylized-animated-16cefdf83e5e457eb6e53f1fbd97edb5", use: "대장 '푸른 늑대인간'" },
+  { title: "Treefellow", author: "paburoviii", url: "https://sketchfab.com/3d-models/treefellow-05b311c607564274a26b3c26f4318066", use: "대장 '떠도는 고목'" },
+  { title: "Stylized insect monster PBR low-poly game ready", author: "Vladies", url: "https://sketchfab.com/3d-models/stylized-insect-monster-pbr-low-poly-game-ready-ecfe06377ddd4059bb12b50f5d3af5f1", use: "대장 '모래 갑충'" },
+  { title: "Infernal Magma Hound - Free Lava Creature Asset", author: "Yury Misiyuk", url: "https://sketchfab.com/3d-models/infernal-magma-hound-free-lava-creature-asset-bd8290074df34eb99f174edb176fcc46", use: "대장 '용암 사냥개'" },
+  { title: "Ice Elemental", author: "InaLaAtzu", url: "https://sketchfab.com/3d-models/ice-elemental-aad46bfde099472481b1536428a122ae", use: "대장 '서리 정령'" },
+  { title: "Ice Golem", author: "Caboose3d", url: "https://sketchfab.com/3d-models/ice-golem-f7370eebe4cf4f81b49c83925c0d3d0c", use: "대장 '얼음 골렘'" },
   // 사냥터 바닥 소품(art-gen/blender/hunt_ground.py SF_PROPS)
   { title: "Low poly Stylized Nature Pack", author: "Satendra Saraswat", url: "https://sketchfab.com/3d-models/low-poly-stylized-nature-pack-9c773e846c6e4448b26b2cdecb2b91bf", use: "사냥터 바닥 덤불 · 꽃 · 버섯 · 결정 · 바위" },
   { title: "[FREE] Lowpoly Volcanic Rocks [Asset Pack]", author: "SimplePolygon", url: "https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0", use: "사냥터 바닥 바위 · 광석" },
@@ -25,7 +40,7 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "Frog", author: "gooseg489", url: "https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050", use: "펫 '풀잎 개구리'" },
   // 상점 묶음 그림(2026-11-24, art-gen/blender/sketchfab_icons.py → public/ui/shop)
   { title: "Stylized Crystal Gem pack - Handpainted", author: "ashkan.fancy", url: "https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658", use: "상점 붉은 보석 팩 · 강화석 상자 그림" },
-  { title: "Stylized Treasure Chest", author: "Tom Verbeeck", url: "https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e", use: "상점 보석 120 · 황금 보급 상자 · 강화석 상자 그림" },
+  { title: "Stylized Treasure Chest", author: "Tom Verbeeck", url: "https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e", use: "상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 그림" },
   { title: "Stylized Potion", author: "Moon Cube Studios (@KinanArts)", url: "https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7", use: "상점 방치 가속권 그림" },
 ];
 

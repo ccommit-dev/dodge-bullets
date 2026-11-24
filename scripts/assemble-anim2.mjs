@@ -107,7 +107,9 @@ const only = process.argv.slice(2).filter((a) => a !== "--pixel");
 const want = (id) => !only.length || only.includes(id);
 const done = { allies: [], monsters: [], hero: false, hd: {} };
 /** 대장으로 나오는 종 — 성문 방어 장 대장(draw.ts BOSS_SPRITE) + 중간·비밀 대장(stages.ts art) */
-const BOSS_ARTS = ["moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan", "ancient-treant", "bone-dragon", "fire-demon", "goblin-warlord", "magma-golem", "minotaur", "ruin-sentinel", "spider-queen", "thorn-boar-king", "void-lich"];
+// Sketchfab 대장(2026-11-24, meta.boss) 도 큰 칸 시트를 — 사냥터 대장은 화면에 크게 그린다
+const SKETCHFAB_BOSSES = SKETCHFAB_MONSTERS.filter((d) => JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")).boss === true);
+const BOSS_ARTS = [...SKETCHFAB_BOSSES, "moss-golem-clean", "moon-wolf-king-clean", "wolf-king-clean", "flame-wyvern-clean", "abyss-titan", "ancient-treant", "bone-dragon", "fire-demon", "goblin-warlord", "magma-golem", "minotaur", "ruin-sentinel", "spider-queen", "thorn-boar-king", "void-lich"];
 const UNIT = 1024 / RS / 2.3;   // 렌더 해상도에서 캐릭터 1단위(도트는 PX_RES)   // 렌더 1024px 에서 캐릭터 1단위
 
 // ── 비버(동료·스킨) ── 몸(머리 꼭대기 z≈0.95)이 칸 높이의 65.5% — 1판과 같은 비율. 전원 같은 배율

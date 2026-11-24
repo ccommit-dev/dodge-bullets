@@ -390,13 +390,14 @@ const MONSTER_SPRITE: Record<Arrow["kind"], string> = {
  * 장마다 같은 종족의 지역 변종 (2026-10-06, 사용자: "몬스터 종류가 너무 적음") — 몸집·움직임(종류)은 그대로라
  * 오우거 계열은 튕기고 비룡 계열은 터진다는 것을 그림으로 읽는다. 장 0 새벽 초원 · 1 달빛 숲 · 2 왕실 폐허 · 3 용암 협곡 · 4 심연의 성
  */
+// Sketchfab 몬스터(2026-11-24, 사용자: "sketchfab 에서 바꿀 수 있는 거 다") — 장마다 같은 그림이 되풀이되던 칸을 사냥터 지역 변종(sf-*)으로 바꿨다. 종류(움직임 · 탄)는 그대로
 export const MONSTER_VARIANTS: Record<Arrow["kind"], string[]> = {
-  normal: ["slime", "slime", "skeleton-goblin", "magma-imp", "void-imp"],
-  aimed: ["shadow-wolf-clean", "frost-wolf", "shadow-wolf-clean", "hellhound", "frost-wolf"],
-  fan: ["goblin", "goblin-shaman", "skeleton-goblin", "goblin-shaman", "skeleton-goblin"],
-  ricochet: ["ogre", "ogre", "stone-troll", "stone-troll", "armored-ogre"],
-  explosive: ["dragon", "dragon", "dragon", "lava-drake", "storm-drake"],
-  homing: ["moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean"],
+  normal: ["slime", "sf-mushy", "skeleton-goblin", "magma-imp", "void-imp"],
+  aimed: ["shadow-wolf-clean", "frost-wolf", "sf-tentacle", "hellhound", "sf-cyclops"],
+  fan: ["goblin", "sf-plant", "skeleton-goblin", "goblin-shaman", "sf-eyeplant"],
+  ricochet: ["ogre", "sf-magicgolem", "sf-sandgolem", "sf-lavagolem", "armored-ogre"],
+  explosive: ["dragon", "sf-bat", "dragon", "sf-dragon-red", "sf-dragon-blue"],
+  homing: ["moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "sf-ghost"],
 };
 function monsterSpriteFor(kind: Arrow["kind"], chapter: number): string {
   const list = MONSTER_VARIANTS[kind];

@@ -203,6 +203,7 @@ def open_chest(at=(0, 0, 0), size=1.5, lid=-105, yaw=0):
     # 경첩: 뒤쪽 위(+Y 끝 · 뚜껑 바닥 높이 0.336 — 원본 좌표)
     hinge.location = (0, hi.y, 0.336)
     hinge.parent = root
+    bpy.context.view_layer.update()   # 경첩 월드 행렬을 먼저 맞춘다 — 안 하면 뚜껑이 경첩 자리만큼 떠 있었다(닫힌 상자에서 보임)
     for o in objs:
         if o.type == 'MESH' and o.name.startswith('Top_'):
             mw = o.matrix_world.copy()
@@ -265,6 +266,10 @@ def j_material_pack():
     _chest_with(lambda z, w, d: (gem((0, 0, z - 0.05), 0.75, rot=(0, 0, 20), col=GEM_BLUE, piece=0), heap(0, z, w, d, 6, lambda at, r: gem(tuple(at), r.uniform(0.36, 0.48), rot=(r.uniform(-30, 30), r.uniform(-30, 30), r.uniform(0, 180)), col=GEM_BLUE, piece=r.randint(1, 6)), seed=11)))
 
 
+def j_chest_closed():   # 닫힌 상자 — 성문 방어 보상 상자(ui/attendance/event-chest) · 비버 상자 아이콘(2026-11-24)
+    open_chest((0, 0, -0.62), 1.7, lid=0)
+
+
 def j_idle_boost():
     h, ms = placed('i-potion.glb', 1.75, (0, 0, -0.85), (0, 0, 0), axis='z')
     vivid(ms)
@@ -278,6 +283,7 @@ JOBS = {
     'pkg-gold-pack': (j_gold_pack, 26, 2.7, -24),
     'pkg-material-pack': (j_material_pack, 26, 2.7, -24),
     'pkg-idle-boost': (j_idle_boost, 10, 2.0, -20),
+    'pkg-chest-closed': (j_chest_closed, 20, 2.4, -24),
 }
 
 

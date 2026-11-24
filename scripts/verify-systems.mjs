@@ -1376,11 +1376,15 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   const gateMissing = gateArts.filter((a) => !existsSync(root + "/public/titans/generated/monsters/" + a + ".png"));
   ok("성문 방어: 장별 변종(6종 × 5장) · 중간 보스 5 · 비밀 대장 5 그림이 모두 있다", variantArts.length >= 12 && gateMissing.length === 0, gateMissing.join(",") || variantArts.length + "종");
   // 2026-11-23 Sketchfab 몬스터 다섯(CC BY · 우리 셀 그림체로 다시 렌더) 을 지역 변종 끝에 더해 30 → 35
-  ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자) + Sketchfab 5 = 도감 35", bestiary.bestiaryEntries().length === 35, String(bestiary.bestiaryEntries().length));
+  // 2026-11-24 Sketchfab 2차 — 일반 일곱 · 대장 일곱 더해 35 → 49
+  ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자) + Sketchfab 5 + 2차 일반 7 · 대장 7 = 도감 49", bestiary.bestiaryEntries().length === 49, String(bestiary.bestiaryEntries().length));
   { const sf = bestiary.SKETCHFAB_MONSTER_ARTS, need = (a) => [`public/titans/anim/monsters/${a}.webp`, `public/titans/anim-px/monsters/${a}.webp`, `public/titans/generated/monsters/${a}.png`, `public/titans/generated/monsters/${a}-hit.png`, `public/titans/generated/monsters/thumbs/${a}.webp`];
     const miss = sf.flatMap((a) => need(a).filter((p) => !existsSync(root + "/" + p))), credits = readFileSync(root + "/src/ui/credits.ts", "utf8")   /* 게임 안 크레딧(설정 → 외부 그림 크레딧) — CC BY 작가 표기. docs/ 는 ci-local 이 빼서 읽지 않는다 */;
-    const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Mushy Buddy", "Eyeball Plant", "Monster Plant", "RPG Monster - Bat", "Cute tentacle creature"].filter((n) => !credits.includes(n));
-    ok("Sketchfab 몬스터 5: 셀 · 도트 시트 · 정지 그림 · 피격 · 도감 썸네일 · 실측 여백 · 크레딧(작가 · CC BY)이 모두 있다", sf.length === 5 && miss.length === 0 && noMargin.length === 0 && noCredit.length === 0, [...miss, ...noMargin, ...noCredit].join(",")); }
+    const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Mushy Buddy", "Eyeball Plant", "Monster Plant", "RPG Monster - Bat", "Cute tentacle creature",
+      "Kino – Cute Cyclops Monster", "Sand Golem", "Lava Golem", "Stylized Red/Black dragon_baby", "Stylized Blue dragon baby", "Cute ghost", "Magical Golem - FREE 3D Game Asset",
+      "Mushroom Boss - game ready with animations", "Werewolf Stylized Animated", "Treefellow", "Stylized insect monster PBR low-poly game ready", "Infernal Magma Hound - Free Lava Creature Asset", "Ice Elemental", "Ice Golem"].filter((n) => !credits.includes(n));
+    const noHd = bestiary.SKETCHFAB_BOSS_ARTS.filter((a) => !existsSync(root + "/public/titans/anim/monsters-hd/" + a + ".webp") || !new RegExp('"' + a + '":0\.').test(readFileSync(root + "/src/titans/animLayout.ts", "utf8")));
+    ok("Sketchfab 몬스터 19(1차 5 · 2차 일반 7 · 대장 7): 셀 · 도트 시트 · 정지 그림 · 피격 · 도감 썸네일 · 실측 여백 · 크레딧 · 대장은 큰 칸 시트 + MONSTER_HD", sf.length === 19 && miss.length === 0 && noMargin.length === 0 && noCredit.length === 0 && noHd.length === 0, [...miss, ...noMargin, ...noCredit, ...noHd.map((a) => "hd:" + a)].join(",")); }
   // 2026-11-24 상점 펫 4종(Sketchfab CC BY → 셀 렌더) — 값 · 가격은 같은 축 몬스터 펫 그대로, 도감 전투력은 몬스터 펫만(밸런스 불변)
   { const twin = { cat: "slime", frog: "goblin", fox: "wolf", penguin: "ogre" };
     const same = Object.entries(twin).every(([s, m]) => ["passive", "base", "perLevel", "unit"].every((k) => pets.PET_DEFS[s][k] === pets.PET_DEFS[m][k]) && pets.PET_GEM_PRICE[s] === pets.PET_GEM_PRICE[m]);

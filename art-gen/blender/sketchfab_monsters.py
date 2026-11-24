@@ -38,6 +38,26 @@ MODELS = {
     'pet-penguin': dict(file='pet-penguin.glb', h=0.95, yaw=0, lift=0.0, dx=0.3),
     # 납작하고 넓어 키를 낮춘다 · 자체 동작(점프)은 쓰지 않는다 — 다리를 쭉 뻗는 칸이 조립 배율을 낮춰 개구리가 점만 했다(덤빔은 전장 CSS 가)
     'pet-frog': dict(file='pet-frog.glb', h=0.6, yaw=180, lift=0.0, drop=('Icosphere',), dx=0.3, anim_in=()),   # 재질 없는 지름 2 도우미 구가 경계 상자를 키워 개구리가 점만 했다
+    # 2차 몬스터 7종(2026-11-24, 사용자: "sketchfab 에서 바꿀 수 있는 거 다") — 화산 · 심연 · 폐허 · 초원 변종
+    # action — 모델에 동작이 여럿이면 대기로 쓸 것. 아기 용 두 파일은 한 장면에 두 마리(…_another)라 한 마리만 남긴다
+    # pitch — 뒤로 젖히기(°, 웅크린 모델의 얼굴을 보이게) · trim — 한 메시에 붙은 곁 장식(호박 등)을 떨어진 조각으로 나눠 가운데 몸만 남김
+    # sf-fireelem(m-fireelemental.glb)은 웅크린 몸이라 셀로 그리면 얼굴이 안 보여 뺐다(뒤로 젖혀도 머리 없는 몸통) — 대신 용암 골렘
+    'sf-lavagolem': dict(file='m-lavagolem.glb', h=1.3, yaw=0, lift=0.0, drop=('Icosphere',), action='Golem.Idle'),
+    'sf-dragon-red': dict(file='m-babydragon-red.glb', h=1.15, yaw=70, lift=0.0, drop=('Icosphere', 'Icosphere.001', 'Object_9'), action='idle'),
+    'sf-dragon-blue': dict(file='m-babydragon-blue.glb', h=1.0, yaw=-100, lift=0.0, drop=('Icosphere', 'Icosphere.001', 'Object_30'), action='idle'),
+    'sf-ghost': dict(file='m-ghost.glb', h=1.15, yaw=-15, lift=0.04, drop=('Ground_M_Ground_0', 'Ghost.002_Outline_0'), trim=0.45),   # 바닥판 · 작가 외곽선 껍질은 뺀다(외곽선은 우리 잉크)
+    'sf-magicgolem': dict(file='m-magicgolem.glb', h=1.35, yaw=45, lift=0.0),
+    'sf-sandgolem': dict(file='m-sandgolem.glb', h=1.45, yaw=45, lift=0.0),
+    'sf-cyclops': dict(file='m-cyclops.glb', h=1.1, yaw=-35, lift=0.0, pitch=-10),   # 네모난 몸이 상자처럼 읽혀(QA boxiness) 더 돌리고 살짝 젖힌다
+    # 대장 8종(2026-11-24, 사용자: "대장(보스) 15종 … 모두 다 새로 받아서") — boss=True 면 meta.boss 를 적어 assemble-anim2 가 큰 칸(576²) 시트도 만든다
+    'sf-mushking': dict(file='b-mushroom.glb', h=1.6, yaw=-30, lift=0.0, action='Idle', boss=True),
+    'sf-werewolf': dict(file='b-werewolf.glb', h=1.6, yaw=-25, lift=0.0, action='Idle', boss=True),
+    'sf-treefellow': dict(file='b-treefellow.glb', h=1.7, yaw=-60, lift=0.0, boss=True),
+    # sf-stonegiant(b-bigguy.glb, Big Guy)은 셀로 그리면 머리 없이 검게 나와 뺐다
+    'sf-insect': dict(file='b-insect.glb', h=1.2, yaw=90, lift=0.0, boss=True),
+    'sf-magmahound': dict(file='b-magmahound.glb', h=1.3, yaw=0, lift=0.0, action='Idle', boss=True),
+    'sf-iceelemental': dict(file='b-iceelemental.glb', h=1.7, yaw=0, lift=0.0, boss=True),
+    'sf-icegolem': dict(file='b-icegolem.glb', h=1.6, yaw=0, lift=0.0, boss=True),
 }
 INK_W = float(os.environ.get('SF_INK', '0.016'))   # 외곽선 굵기(캐릭터 단위) — 셀 OUTLINE_MUL 이 곱해진다
 
@@ -80,6 +100,32 @@ def anim_owner(objs):
     return None
 
 
+def trim_parts(objs, frac):
+    """메시를 떨어진 조각으로 나누고, 전체 가운데(가로)에서 반폭 × frac 보다 먼 조각을 지운다 — 몸 곁에 붙은 소품(호박) 떼기"""
+    meshes = [o for o in objs if o.type == 'MESH']
+    others = [o for o in objs if o.type != 'MESH']   # 지운 조각을 다시 만지면 ReferenceError
+    parts = []
+    for m in meshes:
+        bpy.ops.object.select_all(action='DESELECT')
+        m.select_set(True)
+        bpy.context.view_layer.objects.active = m
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.separate(type='LOOSE')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        parts += [o for o in bpy.context.selected_objects if o.type == 'MESH']
+    lo, hi = mesh_bounds(parts)
+    cx, cy, half = (lo.x + hi.x) / 2, (lo.y + hi.y) / 2, max(hi.x - lo.x, hi.y - lo.y) / 2
+    keep = []
+    for o in parts:
+        a, b = mesh_bounds([o])
+        if math.hypot((a.x + b.x) / 2 - cx, (a.y + b.y) / 2 - cy) > half * frac:
+            bpy.data.objects.remove(o, do_unlink=True)
+        else:
+            keep.append(o)
+    return others + keep
+
+
 def build(mid):
     spec = MODELS[mid]
     C.reset()
@@ -87,9 +133,11 @@ def build(mid):
     C.lights()
     cam = C.ortho_camera((0.0, RR.CENTER_Z), RR.ORTHO, elev_deg=8)
     objs = import_glb(os.path.join(SRC, spec['file']))
-    for o in [o for o in objs if o.name in spec.get('drop', ())]:   # 작가가 남긴 도우미 메시
+    for o in [o for o in objs if o.name in spec.get('drop', ()) or (o.type == 'MESH' and o.name.startswith('Icosphere') and not o.data.materials)]:   # 작가가 남긴 도우미 메시
         objs.remove(o)
         bpy.data.objects.remove(o, do_unlink=True)
+    if spec.get('trim'):
+        objs = trim_parts(objs, spec['trim'])
     # 정규화 — 몸 높이 h · 바닥 z=0 · 가운데 x,y=0 (norm) → 자세 축(pose, 발 가운데 원점)
     norm = bpy.data.objects.new('norm', None)
     pose = bpy.data.objects.new('pose', None)
@@ -102,7 +150,14 @@ def build(mid):
     s = spec['h'] / max(1e-6, hi.z - lo.z)
     norm.scale = (s, s, s)
     norm.location = (-s * (lo.x + hi.x) / 2, -s * (lo.y + hi.y) / 2, -s * lo.z + spec['lift'])
-    norm.parent = pose
+    if spec.get('pitch'):   # 발 가운데를 축으로 뒤로 젖힌다 — norm(발 가운데가 원점) 과 pose(돌림) 사이에 하나 더
+        tilt = bpy.data.objects.new('tilt', None)
+        bpy.context.scene.collection.objects.link(tilt)
+        norm.parent = tilt
+        tilt.rotation_euler = (math.radians(spec['pitch']), 0, 0)
+        tilt.parent = pose
+    else:
+        norm.parent = pose
     pose.rotation_euler = (0, 0, math.radians(-RR.YAW + spec['yaw']))
     bpy.context.view_layer.update()
     # 외곽선 — 캐릭터와 같은 잉크 껍질. 굵기는 월드 단위로 맞춘다(오브젝트 배율로 나눔)
@@ -110,6 +165,14 @@ def build(mid):
         if o.type == 'MESH' and not o.modifiers.get('outline'):
             sc = o.matrix_world.to_scale()
             C.add_outline(o, INK_W / max(1e-6, (abs(sc.x) + abs(sc.y) + abs(sc.z)) / 3))
+    if spec.get('action'):   # 이름으로 동작 고르기(남긴 메시의 뼈대에 붙은 것 — 다른 동작은 쓰지 않는다)
+        want = bpy.data.actions.get(spec['action'])
+        for o in objs:
+            if o.type == 'ARMATURE' and o.animation_data and want:
+                o.animation_data.action = want
+                if hasattr(o.animation_data, 'action_slot') and want.slots:
+                    o.animation_data.action_slot = want.slots[0]
+        return cam, pose, want
     act = anim_owner(objs)
     return cam, pose, act
 
@@ -126,7 +189,7 @@ def render(mid):
     pivot = RR.px(scene, cam, (0, 0, 0))
     base_yaw = pose.rotation_euler.z
     f0, f1 = (int(act.frame_range[0]), int(act.frame_range[1])) if act else (0, 0)
-    meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab'}
+    meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab', 'boss': bool(MODELS[mid].get('boss'))}
     step = 0
     spec = MODELS[mid]
     for action, frames in POSES.items():

@@ -193,6 +193,10 @@ const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
   "golden-lion-clean": [0.18, 0.23],
   // Sketchfab 몬스터(2026-11-23, CC BY · docs/CREDITS.md) — scripts/monster-margins-from-png.mjs 실측(옛 종 값은 그대로 — 그 스크립트를 돌리면 전부 0.01 씩 다시 쓴다)
   "sf-bat": [0.31, 0.29], "sf-mushy": [0.26, 0.26], "sf-plant": [0.25, 0.40], "sf-eyeplant": [0.23, 0.35], "sf-tentacle": [0.25, 0.28],
+  // 2차 일곱(2026-11-24) — 대기 첫 칸 실측
+  "sf-cyclops": [0.28, 0.14], "sf-sandgolem": [0.16, 0.18], "sf-lavagolem": [0.21, 0.20], "sf-dragon-red": [0.16, 0.14], "sf-dragon-blue": [0.06, 0.02], "sf-ghost": [0.17, 0.17], "sf-magicgolem": [0.22, 0.23],
+  // Sketchfab 대장 일곱(2026-11-24) — 대기 첫 칸 실측
+  "sf-mushking": [0.30, 0.33], "sf-werewolf": [0.18, 0.14], "sf-treefellow": [0.33, 0.34], "sf-insect": [0.10, 0.10], "sf-magmahound": [0.24, 0.15], "sf-iceelemental": [0.23, 0.22], "sf-icegolem": [0.20, 0.15],
 };
 /** 오른쪽을 보고 생성된 원화 — 전장에서 좌우 반전해 주인공(왼쪽)을 보게 한다 (2026-10-08 사용자: "몬스터는 왼쪽, 대장 포함").
  *  patch-margins.cjs 가 위의 표를 통째로 다시 쓰므로 표 **아래**에 둔다. 20차(bv5 ¾ 앞·좌) 가 들어오면 목록을 비운다 */

@@ -5573,7 +5573,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               <section className="shop-chest-page" aria-label="비버 상자">
                 {/* 비버 상자 줄 (economy/chests, P2): 성벽 10층 · 균열 3회 · 10연에서 오고, 열면 포인트 → 100점에 상자 1 */}
                 <div className="hub-chests" data-chests={character.chests}>
-                  <img className="nav-icon-svg" src={assetUrl("ui/idle/gate-supply.png")} alt="" aria-hidden="true" />
+                  <img className="nav-icon-svg" src={assetUrl("ui/shop/chest-closed.png")} alt="" aria-hidden="true" />{/* 비버 상자 그림 — Sketchfab 보물 상자(2026-11-24). 예전엔 성문 보급 상품 그림을 빌려 썼다 */}
                   <span>
                     <b>비버 상자 {character.chests}개</b>
                     <small>포인트 {character.chestPoints}/{CHEST_POINTS_FOR_CHEST} · {CHEST_TABLE.map((d) => `${d.label.split(" (")[0]} ${d.percent}%`).join(" · ")}</small>
