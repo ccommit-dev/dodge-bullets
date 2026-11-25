@@ -1,12 +1,6 @@
 import { HERO_RIDE_ANCHORS } from "./rideAnchors";
 import { HERO_ATTACK_ANCHORS, HERO_IDLE_ANCHORS, HERO_WALK_ANCHORS, HERO_WEAPON_ATTACK_ANCHORS } from "./heroAnchors";
 import { CHAR_ANCHORS } from "./charAnchors";
-import { BEAVER_ATTACK_ANCHORS, BEAVER_IDLE_ANCHORS, BEAVER_WALK_ANCHORS, BEAVER_WEAPON_ATTACK_ANCHORS } from "./beaverAnchors";
-import { BEAVER_RIDE_ANCHORS } from "./beaverRideAnchors";
-
-/** 옛 비버 몸 캐릭터(2026-11-25) — 기본 주인공이 받은 모델(Happy Beaver)로 바뀐 뒤에도 스킨 넷(hero_skins 동물 옷)은 옛 비버 몸 시트라 옛 앵커를 쓴다 */
-export const LEGACY_BEAVER_SKINS: readonly string[] = ["obsidian", "dawn", "ember", "frost"];
-const legacy = (character?: string) => character !== undefined && LEGACY_BEAVER_SKINS.includes(character);
 
 /** behind — 그 칸에서는 무기를 몸 뒤에 그린다(애니메이션 2판 주인공 예비 칸: 먼 손이 머리 뒤라 앞에 그리면 얼굴을 덮었다) */
 export type EquipmentAnchor = { x: number; y: number; rotation: number; scale: number; behind?: boolean };
@@ -62,17 +56,15 @@ export const ATTACK_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = HERO_ATTACK_ANC
 export function attackAnchorsFor(kind: string | undefined, character?: string): EquipmentFrameAnchors[] {
   const c = character ? CHAR_ANCHORS[character] : undefined;   // 3D 캐릭터(2026-11-25) — 남의 리그라 손 자리가 자기 표에 있다
   if (c) return (kind === "spear" || kind === "bow" || kind === "staff" ? c.weapon[kind] : undefined) ?? c.attack;
-  if (legacy(character)) return (kind === "spear" || kind === "bow" || kind === "staff" ? BEAVER_WEAPON_ATTACK_ANCHORS[kind] : undefined) ?? BEAVER_ATTACK_ANCHORS;
   return (kind === "spear" || kind === "bow" || kind === "staff" ? HERO_WEAPON_ATTACK_ANCHORS[kind] : undefined) ?? HERO_ATTACK_ANCHORS;
 }
 /** 대기 · 걷기 칸 앵커 — 3D 캐릭터면 자기 표(charAnchors.ts), 아니면 비버 주인공 표 */
-export function idleAnchorsFor(character?: string): EquipmentFrameAnchors[] { return legacy(character) ? BEAVER_IDLE_ANCHORS : (character ? CHAR_ANCHORS[character]?.idle : undefined) ?? HERO_IDLE_ANCHORS; }
-export function walkAnchorsFor(character?: string): EquipmentFrameAnchors[] { return legacy(character) ? BEAVER_WALK_ANCHORS : (character ? CHAR_ANCHORS[character]?.walk : undefined) ?? HERO_WALK_ANCHORS; }
+export function idleAnchorsFor(character?: string): EquipmentFrameAnchors[] { return (character ? CHAR_ANCHORS[character]?.idle : undefined) ?? HERO_IDLE_ANCHORS; }
+export function walkAnchorsFor(character?: string): EquipmentFrameAnchors[] { return (character ? CHAR_ANCHORS[character]?.walk : undefined) ?? HERO_WALK_ANCHORS; }
 /** 걷기 칸(애니메이션 2판, 2026-10-19) — 걸어 들어올 때 무기가 걷는 손을 따라간다 */
 export const WALK_EQUIPMENT_ANCHORS: EquipmentFrameAnchors[] = HERO_WALK_ANCHORS;
 /** 탈것 위 칸 (2026-11-05) — 앉은 자세. 공격은 무기별 */
-export function rideAnchorsFor(mode: string, kind: string | undefined, character?: string): EquipmentFrameAnchors[] {
+export function rideAnchorsFor(mode: string, kind: string | undefined): EquipmentFrameAnchors[] {
   const key = mode === "attack" && (kind === "spear" || kind === "bow" || kind === "staff") ? `attack-${kind}` : mode;
-  const T = legacy(character) ? BEAVER_RIDE_ANCHORS : HERO_RIDE_ANCHORS;
-  return T[key] ?? T.idle;
+  return HERO_RIDE_ANCHORS[key] ?? HERO_RIDE_ANCHORS.idle;
 }

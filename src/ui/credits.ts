@@ -34,8 +34,6 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "Low-Poly Squirrel Character (Game-Ready, Rigged)", author: "SomeNortherner", url: "https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb", use: "상점 동료 '도토리 다람쥐 레드'" },
   // 보석 주인공 캐릭터(2026-11-25, art-gen/blender/lib/sf_rig.py · render_anim2 char@fox — 비버 자세 값을 여우 뼈에 옮겨 렌더)
   { title: "Cartoon Character", author: "MartinDL", url: "https://sketchfab.com/3d-models/cartoon-character-c951392387944060966ac6e8e5cfd2e3", use: "주인공 캐릭터 '여우 모험가'" },
-  // 기본 주인공(2026-11-25, 사용자: "기본 비버 주인공을 받은 모델로" — render_anim2 HERO_MODEL=hb · lib/sf_rig.py)
-  { title: "Happy Beaver", author: "Mayk Santos", url: "https://sketchfab.com/3d-models/happy-beaver-a43fc138613c4de3aeb138ce02b79890", use: "기본 주인공 '모험가' 비버" },
 ];
 
 export const CREDIT_LICENSE = "CC BY 4.0 — 우리 그림체(셀 음영 · 외곽선)로 다시 렌더해 바꿨다";
