@@ -44,8 +44,6 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "Cartoon Wolf", author: "CGulia", url: "https://sketchfab.com/3d-models/cartoon-wolf-9bb48adc8e7a428084abd0742999778b", use: "펫 '아기 늑대'" },
   { title: "Low Poly Goblin", author: "BaGaDa41", url: "https://sketchfab.com/3d-models/low-poly-goblin-78145db3e9a44120bacc3afaa5eb87f6", use: "펫 '꼬마 고블린'" },
   { title: "Chubby Ghost", author: "Elyse Darby", url: "https://sketchfab.com/3d-models/chubby-ghost-753c85362d7446169f1b30d6a2c26d34", use: "펫 '타이탄의 그림자'" },
-  // 비버 동료 그림 교체 1차(2026-11-25, 일반 등급 여덟 — sketchfab_monsters.py sfa-* → 조립이 그 동료 시트로)
-  { title: "Quirky Series - FREE Animals Pack", author: "Omabuarts Studio", url: "https://sketchfab.com/3d-models/quirky-series-free-animals-pack-19e91ef86cd0448f9cbb5d6c538dade2", use: "동료 여덟 그림(키키 참새 · 토토 도마뱀 · 나나 청어 · 시시 뱀 · 구구 사향쥐 · 모모 푸두 · 피피 원숭이 · 도도 오징어)" },
   // 상점 전용 동료 넷(2026-11-24, allyRoster shop — 렌더 sketchfab_monsters.py kind='ally', 칸마다 좌우를 뒤집어 오른쪽을 본다)
   { title: "Cute Bunny", author: "Minimoku", url: "https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02", use: "상점 동료 '솜털 토끼 보니'" },
   { title: "Just a Hungry Cat", author: "Coco Jinjo", url: "https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1", use: "상점 동료 '밤고양이 감자'" },

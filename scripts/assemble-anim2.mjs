@@ -36,9 +36,6 @@ const NEW_ALLY_KEYS = [...rosterExt.matchAll(/^    '([a-z0-9_-]+)': dict\(/gm)].
 // 상점 펫(pet-cat · pet-fox · pet-penguin · pet-frog, 2026-11-24)도 같은 렌더라 sf- 말고 pet- 도 받는다(roster.py 의 pet-* 는 source 가 없어 안 겹친다)
 // 상점 전용 동료(2026-11-24) — 같은 렌더(sketchfab_monsters.py kind='ally'), meta.kind === "ally" 인 폴더. 동료 시트 배치로 · 오른쪽을 보게 뒤집는다
 const SKETCHFAB_ALLIES = existsSync(SRC) ? readdirSync(SRC).filter((d) => existsSync(`${SRC}/${d}/meta.json`) && (() => { const m = JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")); return m.source === "sketchfab" && m.kind === "ally"; })()) : [];
-// 비버 동료 그림 교체(2026-11-25) — sfa-<id> 폴더의 meta.ally 가 그 동료 시트를 쓴다. 비버 조립은 이 동료를 건너뛰어 다시 덮지 않는다
-const allyTarget = (d) => JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")).ally || d;
-const REPLACED_ALLIES = new Set(SKETCHFAB_ALLIES.map(allyTarget).filter((id, i) => id !== SKETCHFAB_ALLIES[i]));
 const SKETCHFAB_MONSTERS = existsSync(SRC) ? readdirSync(SRC).filter((d) => /^(sf|pet)-/.test(d) && existsSync(`${SRC}/${d}/meta.json`) && JSON.parse(readFileSync(`${SRC}/${d}/meta.json`, "utf8")).source === "sketchfab") : [];
 const ALLIES = [...keysOf("ALLIES"), ...NEW_ALLY_KEYS], SKINS = keysOf("SKINS"), MONSTERS = [...keysOf("MONSTERS"), ...SKETCHFAB_MONSTERS];
 const blank = (w, h) => ({ create: { width: Math.round(w), height: Math.round(h), channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
@@ -125,7 +122,6 @@ const UNIT = 1024 / RS / 2.3;   // 렌더 해상도에서 캐릭터 1단위(도�
   let kB = K;
   const beavers = {};
   for (const id of [...ALLIES, ...SKINS]) {
-    if (REPLACED_ALLIES.has(id)) continue;   // Sketchfab 로 바꾼 동료 — 비버 렌더로 다시 덮지 않는다
     const c = await load(id); if (!c) continue;
     beavers[id] = c;
     kB = Math.min(kB, fitScale(allFrames(c), K, CW, CH, CW / 2, CH * A.feet, 3));
@@ -394,19 +390,17 @@ for (const id of only.filter((a) => /^hero@[a-z]+$/.test(a))) {
 // ── 게임이 읽는 배치 + 시트가 있는 id ── (도트는 셀과 같은 배치 · 같은 id 라 쓰지 않는다)
 // ── Sketchfab 상점 동료 (2026-11-24) ── 비버 동료와 같은 칸(360×274 · 발 0.87) · 몸 높이는 비버처럼 칸의 약 65%
 for (const id of SKETCHFAB_ALLIES) {
-  const out = allyTarget(id);   // 바꾼 비버 동료면 그 동료 id(sfa-toto → toto)
-  if (!want(id) && !want(out)) continue;
+  if (!want(id)) continue;
   const c = await load(id);
   if (!c) continue;
   const AL = LAYOUT.ally, [CW, CH] = AL.cell, px = CW / 2, py = CH * AL.feet;
   for (const f of allFrames(c)) f.flip = true;
   const mirrored = allFrames(c).map((f) => ({ ...f, box: { ...f.box, x0: 2 * f.pivot[0] - f.box.x1, x1: 2 * f.pivot[0] - f.box.x0 } }));
   const f0 = c.actions.idle[0], up0 = f0.pivot[1] - f0.box.y0;
-  const size = JSON.parse(readFileSync(`${SRC}/${id}/meta.json`, "utf8")).size ?? 1;   // 땅딸막한 동물은 비버 높이 비율이면 커 보여 모델마다 줄인다
-  const k = fitScale(mirrored, (CH * 0.655 * size) / up0, CW, CH, px, py, 3, false);
-  await grid(c, AL, k, `${PUB}/allies/${out}.webp`);
-  done.allies.push(out);
-  console.log("sketchfab ally", id, "→", out, "k", k.toFixed(3));
+  const k = fitScale(mirrored, (CH * 0.655) / up0, CW, CH, px, py, 3, false);
+  await grid(c, AL, k, `${PUB}/allies/${id}.webp`);
+  done.allies.push(id);
+  console.log("sketchfab ally", id, "k", k.toFixed(3));
 }
 
 if (!PX) {

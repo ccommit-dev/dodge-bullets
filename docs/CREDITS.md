@@ -43,7 +43,6 @@
 | 펫 '아기 늑대' | Cartoon Wolf | CGulia | https://sketchfab.com/3d-models/cartoon-wolf-9bb48adc8e7a428084abd0742999778b | pet-wolf.glb |
 | 펫 '꼬마 고블린' | Low Poly Goblin | BaGaDa41 | https://sketchfab.com/3d-models/low-poly-goblin-78145db3e9a44120bacc3afaa5eb87f6 | pet-goblin.glb |
 | 펫 '타이탄의 그림자' | Chubby Ghost | Elyse Darby | https://sketchfab.com/3d-models/chubby-ghost-753c85362d7446169f1b30d6a2c26d34 | pet-ghost.glb |
-| 동료 여덟 그림(키키 참새 · 토토 도마뱀 · 나나 청어 · 시시 뱀 · 구구 사향쥐 · 모모 푸두 · 피피 원숭이 · 도도 오징어) — 비버 동료 그림 교체 1차 | Quirky Series - FREE Animals Pack | Omabuarts Studio | https://sketchfab.com/3d-models/quirky-series-free-animals-pack-19e91ef86cd0448f9cbb5d6c538dade2 | q-pack.glb |
 | 상점 동료 '솜털 토끼 보니' | Cute Bunny | Minimoku | https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02 | a-bunny.glb |
 | 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
 | 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |
