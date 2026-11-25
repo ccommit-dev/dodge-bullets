@@ -59,6 +59,18 @@ MODELS = {
     'squirrel': dict(file='a-squirrel.glb', h=1.0, yaw=162, lift=0.0, kind='ally', dx=0.5, arms=(0.36, 1.78, 72)),   # 뼈 없이 T 자세로 와서 팔을 어깨 축으로 내린다
     'cat': dict(file='a-cat.glb', h=0.9, yaw=-30, lift=0.0, kind='ally', dx=0.5, only='Cat_'),   # 배경판 · 그릇 · 물고기는 뺀다
     'duck': dict(file='a-duck.glb', h=1.0, yaw=-15, lift=0.0, kind='ally', dx=0.5, drop=('Plane004__0',)),   # 돌바닥 판은 뺀다
+    # 비버 동료 그림 교체 1차(2026-11-25, 사용자: "기존 비버 동료 그림 교체") — Quirky Series FREE Animals Pack(Omabuarts Studio, CC BY).
+    # 한 파일에 여덟 동물이 쇼케이스 · LOD 로 여러 벌 — 원점 줄(Scene 동작이 대기)의 한 벌만 keep 으로 남긴다. 폴더는 sfa-<동료 id>,
+    # 조립이 meta.ally 이름으로 public/titans/anim/allies/<id>.webp 를 쓰고 비버 조립은 그 동료를 건너뛴다.
+    # size — 조립의 몸 높이 배율(땅딸막한 동물은 비버와 같은 높이 비율이면 훨씬 커 보였다) · 길쭉한 도마뱀 · 청어는 h 를 낮춰 덤빌 때 카메라 밖으로 안 나가게
+    'sfa-kiki': dict(file='q-pack.glb', h=0.9, yaw=0, lift=0.0, kind='ally', size=0.85, ally='kiki', dx=0.5, keep=('Object_18',)),     # 참새 — 새총 키키
+    'sfa-toto': dict(file='q-pack.glb', h=0.5, yaw=0, lift=0.0, kind='ally', size=1, ally='toto', dx=0.5, keep=('Object_32',)),    # 도마뱀 — 견습 토토
+    'sfa-nana': dict(file='q-pack.glb', h=0.55, yaw=0, lift=0.0, kind='ally', size=1, ally='nana', dx=0.5, keep=('Object_47',)),    # 청어 — 물길잡이 나나
+    'sfa-sisi': dict(file='q-pack.glb', h=0.85, yaw=-60, lift=0.0, kind='ally', size=0.9, ally='sisi', dx=0.5, keep=('Object_61',)),    # 타이판 뱀 — 불씨 시시
+    'sfa-gugu': dict(file='q-pack.glb', h=0.85, yaw=-45, lift=0.0, kind='ally', size=0.72, ally='gugu', dx=0.5, keep=('Object_77',)),    # 사향쥐 — 삽질꾼 구구
+    'sfa-momo': dict(file='q-pack.glb', h=1.0, yaw=-45, lift=0.0, kind='ally', size=0.9, ally='momo', dx=0.5, keep=('Object_92',)),     # 푸두 사슴 — 약초꾼 모모
+    'sfa-pipi': dict(file='q-pack.glb', h=1.0, yaw=0, lift=0.0, kind='ally', size=0.82, ally='pipi', dx=0.5, keep=('Object_108',)),    # 콜로부스 원숭이 — 북치기 피피
+    'sfa-dodo': dict(file='q-pack.glb', h=1.0, yaw=0, lift=0.0, kind='ally', size=1, ally='dodo', dx=0.5, keep=('Object_132',)),    # 오징어 — 견습 마법사 도도
     'sf-insect': dict(file='b-insect.glb', h=1.2, yaw=90, lift=0.0, boss=True),
     'sf-magmahound': dict(file='b-magmahound.glb', h=1.3, yaw=0, lift=0.0, action='Idle', boss=True),
     'sf-iceelemental': dict(file='b-iceelemental.glb', h=1.7, yaw=0, lift=0.0, boss=True),
@@ -178,6 +190,10 @@ def build(mid):
     C.lights()
     cam = C.ortho_camera((0.0, RR.CENTER_Z), RR.ORTHO, elev_deg=8)
     objs = import_glb(os.path.join(SRC, spec['file']))
+    if spec.get('keep'):   # 쇼케이스 파일(같은 동물이 LOD · 동작별로 여러 벌) — 이 메시 오브젝트만 남긴다
+        for o in [o for o in objs if o.type == 'MESH' and o.name not in spec['keep']]:
+            objs.remove(o)
+            bpy.data.objects.remove(o, do_unlink=True)
     if spec.get('only'):   # 한 파일에 여럿(토끼 둘) — 이름 앞부분이 맞는 메시만
         for o in [o for o in objs if o.type == 'MESH' and not o.name.startswith(spec['only'])]:
             objs.remove(o)
@@ -242,7 +258,7 @@ def render(mid):
     f0, f1 = (int(act.frame_range[0]), int(act.frame_range[1])) if act else (0, 0)
     spec = MODELS[mid]
     ally = spec.get('kind') == 'ally'
-    meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab', 'boss': bool(spec.get('boss')), 'kind': 'ally' if ally else 'monster'}
+    meta = {'res': RR.RES, 'actions': {}, 'source': 'sketchfab', 'boss': bool(spec.get('boss')), 'kind': 'ally' if ally else 'monster', 'ally': spec.get('ally'), 'size': spec.get('size', 1.0)}
     step = 0
     tints = ALLY_TINT if ally else TINT
     for action, frames in (ALLY_POSES if ally else POSES).items():
