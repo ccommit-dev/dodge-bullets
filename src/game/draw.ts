@@ -395,8 +395,8 @@ export const MONSTER_VARIANTS: Record<Arrow["kind"], string[]> = {
   normal: ["slime", "sf-mushy", "skeleton-goblin", "magma-imp", "void-imp"],
   aimed: ["shadow-wolf-clean", "frost-wolf", "sf-tentacle", "hellhound", "sf-cyclops"],
   fan: ["goblin", "sf-plant", "skeleton-goblin", "goblin-shaman", "sf-eyeplant"],
-  ricochet: ["ogre", "sf-magicgolem", "sf-sandgolem", "sf-lavagolem", "armored-ogre"],
-  explosive: ["dragon", "sf-bat", "dragon", "sf-dragon-red", "sf-dragon-blue"],
+  ricochet: ["ogre", "ogre", "stone-troll", "stone-troll", "armored-ogre"],   // 2026-11-25 셀 그림 통일 — Sketchfab 골렘 셋을 빼고 원래 칸으로
+  explosive: ["dragon", "sf-bat", "dragon", "sf-dragon-red", "storm-drake"],   // 아기 청룡(사실적인 질감)은 원래 폭풍 드레이크로
   homing: ["moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "moon-wolf-king-clean", "sf-ghost"],
 };
 function monsterSpriteFor(kind: Arrow["kind"], chapter: number): string {

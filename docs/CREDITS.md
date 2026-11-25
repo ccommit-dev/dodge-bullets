@@ -15,19 +15,8 @@
 | 몬스터 '눈알 꽃' (초원 · 고블린 변종) | Eyeball Plant | Snarkle Studios | https://sketchfab.com/3d-models/eyeball-plant-3c020ddcd129468ea065822cc12dfb22 | m-eyeplant.glb |
 | 몬스터 '말랑 불가사리' (폐허 · 늑대 변종) | Cute tentacle creature | endike | https://sketchfab.com/3d-models/cute-tentacle-creature-2aec23f475dc4c93a6353fa7052d15d2 | m-tentacle.glb |
 | 몬스터 '외눈 말랑이' (초원 · 슬라임 변종) | Kino – Cute Cyclops Monster | BenAissa_Karim | https://sketchfab.com/3d-models/kino-cute-cyclops-monster-aa66111d23cb41f49da7705631e1ade9 | m-cyclops.glb |
-| 몬스터 '모래 골렘' (폐허 · 오우거 변종) | Sand Golem | Yury Misiyuk | https://sketchfab.com/3d-models/sand-golem-41346d6cff3646809ee8af11da9882ef | m-sandgolem.glb |
-| 몬스터 '불씨 골렘' (화산 · 오우거 변종) | Lava Golem | Lucas Coutinho | https://sketchfab.com/3d-models/lava-golem-76e7424f81ac4fb1b1c72613e049fbe5 | m-lavagolem.glb |
 | 몬스터 '아기 홍룡' (화산 · 용 변종) | Stylized Red/Black dragon_baby | BBangzip | https://sketchfab.com/3d-models/stylized-redblack-dragon-baby-1d3cc450c8914665bf950c4fe06fc127 | m-babydragon-red.glb |
-| 몬스터 '아기 청룡' (심연 · 용 변종) | Stylized Blue dragon baby | BBangzip | https://sketchfab.com/3d-models/stylized-blue-dragon-baby-350ca0b2199a4af18bde907dec7433a4 | m-babydragon-blue.glb |
 | 몬스터 '꼬마 유령' (심연 · 늑대 변종 — 호박 장식은 뺌) | Cute ghost | P3D | https://sketchfab.com/3d-models/cute-ghost-2c8c03bb0e5049529e653f9011a8fc90 | m-ghost.glb |
-| 몬스터 '마법 골렘' (심연 · 오우거 변종) | Magical Golem - FREE 3D Game Asset | Kostas3D | https://sketchfab.com/3d-models/magical-golem-free-3d-game-asset-faf1961b1ca24c83987c19244e309286 | m-magicgolem.glb |
-| 대장 '버섯 대왕' (초원 대장) | Mushroom Boss - game ready with animations | iamjohnhult | https://sketchfab.com/3d-models/mushroom-boss-game-ready-with-animations-ee611e4925e94a98baa4cfd3d89d3449 | b-mushroom.glb |
-| 대장 '푸른 늑대인간' (숲 대장) | Werewolf Stylized Animated | imitate | https://sketchfab.com/3d-models/werewolf-stylized-animated-16cefdf83e5e457eb6e53f1fbd97edb5 | b-werewolf.glb |
-| 대장 '떠도는 고목' (숲 대장) | Treefellow | paburoviii | https://sketchfab.com/3d-models/treefellow-05b311c607564274a26b3c26f4318066 | b-treefellow.glb |
-| 대장 '모래 갑충' (폐허 대장) | Stylized insect monster PBR low-poly game ready | Vladies | https://sketchfab.com/3d-models/stylized-insect-monster-pbr-low-poly-game-ready-ecfe06377ddd4059bb12b50f5d3af5f1 | b-insect.glb |
-| 대장 '용암 사냥개' (화산 대장) | Infernal Magma Hound - Free Lava Creature Asset | Yury Misiyuk | https://sketchfab.com/3d-models/infernal-magma-hound-free-lava-creature-asset-bd8290074df34eb99f174edb176fcc46 | b-magmahound.glb |
-| 대장 '서리 정령' (심연 대장) | Ice Elemental | InaLaAtzu | https://sketchfab.com/3d-models/ice-elemental-aad46bfde099472481b1536428a122ae | b-iceelemental.glb |
-| 대장 '얼음 골렘' (심연 대장) | Ice Golem | Caboose3d | https://sketchfab.com/3d-models/ice-golem-f7370eebe4cf4f81b49c83925c0d3d0c | b-icegolem.glb |
 | 사냥터 바닥 덤불 · 꽃 · 버섯 · 결정 · 바위 | Low poly Stylized Nature Pack | Satendra Saraswat | https://sketchfab.com/3d-models/low-poly-stylized-nature-pack-9c773e846c6e4448b26b2cdecb2b91bf | p-nature.glb |
 | 사냥터 바닥 바위 · 광석 · 성문 방어 낙석 바위(art-gen/blender/rocks.py — 모양만, 색은 장 재질) | [FREE] Lowpoly Volcanic Rocks [Asset Pack] | SimplePolygon | https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0 | p-rocks.glb |
 | 사냥터 바닥 빛나는 버섯(숲 · 심연) | Stylized mushrooms | QumoDone | https://sketchfab.com/3d-models/stylized-mushrooms-9d22e02ce2a548959b1c4c4c1d546842 | p-mushrooms.glb |

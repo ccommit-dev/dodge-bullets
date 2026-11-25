@@ -23,37 +23,37 @@ export const HUNT_VARIANTS: Record<string, Partial<Record<NormalKind, MonsterArt
   },
   ruins: {
     wolf: [{ art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "skeleton-goblin", name: "해골 고블린" }, { art: "sf-tentacle", name: "말랑 불가사리" }],
-    ogre: [{ art: "stone-troll", name: "바위 트롤" }, { art: "ogre", name: "오우거" }, { art: "sf-sandgolem", name: "모래 골렘" }],
+    ogre: [{ art: "stone-troll", name: "바위 트롤" }, { art: "ogre", name: "오우거" }],
   },
   volcano: {
-    ogre: [{ art: "ogre", name: "오우거" }, { art: "magma-imp", name: "용암 임프" }, { art: "sf-lavagolem", name: "불씨 골렘" }],
+    ogre: [{ art: "ogre", name: "오우거" }, { art: "magma-imp", name: "용암 임프" }],
     dragon: [{ art: "lava-drake", name: "용암 드레이크" }, { art: "hellhound", name: "지옥견" }, { art: "sf-dragon-red", name: "아기 홍룡" }],
   },
   abyss: {
-    dragon: [{ art: "storm-drake", name: "폭풍 드레이크" }, { art: "dragon", name: "보라 비룡" }, { art: "sf-dragon-blue", name: "아기 청룡" }],
+    dragon: [{ art: "storm-drake", name: "폭풍 드레이크" }, { art: "dragon", name: "보라 비룡" }],
     wolf: [{ art: "hellhound", name: "지옥견" }, { art: "void-imp", name: "공허 임프" }, { art: "sf-ghost", name: "꼬마 유령" }],
-    ogre: [{ art: "armored-ogre", name: "철갑 오우거" }, { art: "ogre", name: "오우거" }, { art: "sf-magicgolem", name: "마법 골렘" }],
+    ogre: [{ art: "armored-ogre", name: "철갑 오우거" }, { art: "ogre", name: "오우거" }],
   },
 };
 
 /** 사냥터 지역 보스 — 대표 · 중간 보스 · 숨은 대장 (원정 장과 같은 얼굴들) */
 export const HUNT_BOSSES: Record<string, MonsterArtDef[]> = {
-  // Sketchfab 대장(2026-11-24, 사용자: "대장(보스) … 새로 받아서") — 지역마다 돌림 끝에 붙였다. 대장 체력 · 보상은 층이 정해 그림만 늘어난다
-  meadow: [{ art: "moss-golem-clean", name: "이끼 골렘" }, { art: "thorn-boar-king", name: "가시 멧돼지 왕" }, { art: "goblin-warlord", name: "고블린 대족장" }, { art: "sf-mushking", name: "버섯 대왕" }],
-  forest: [{ art: "moon-wolf-king-clean", name: "월광 늑대왕" }, { art: "ancient-treant", name: "고목 수호자" }, { art: "spider-queen", name: "독거미 여왕" }, { art: "sf-werewolf", name: "푸른 늑대인간" }, { art: "sf-treefellow", name: "떠도는 고목" }],
-  ruins: [{ art: "wolf-king-clean", name: "고대 오우거" }, { art: "ruin-sentinel", name: "폐허의 파수 기사" }, { art: "minotaur", name: "미노타우로스" }, { art: "sf-insect", name: "모래 갑충" }],
-  volcano: [{ art: "flame-wyvern-clean", name: "화염 비룡" }, { art: "magma-golem", name: "용암 골렘" }, { art: "fire-demon", name: "화염 마신" }, { art: "sf-magmahound", name: "용암 사냥개" }],
-  abyss: [{ art: "abyss-titan", name: "심연의 타이탄" }, { art: "void-lich", name: "공허의 리치" }, { art: "bone-dragon", name: "해골 용" }, { art: "sf-iceelemental", name: "서리 정령" }, { art: "sf-icegolem", name: "얼음 골렘" }],
+  // Sketchfab 대장(2026-11-24, 사용자: "대장(보스) … 새로 받아서") — 지역마다 돌림 끝에 붙였다. 대장 체력 · 보상은 층이 정해 그림만 늘어난다 → 2026-11-25 "셀 그림으로 통일"로 일곱 모두 뺐다(사진 같은 질감이 셀 대장과 따로 놀았다)
+  meadow: [{ art: "moss-golem-clean", name: "이끼 골렘" }, { art: "thorn-boar-king", name: "가시 멧돼지 왕" }, { art: "goblin-warlord", name: "고블린 대족장" }],
+  forest: [{ art: "moon-wolf-king-clean", name: "월광 늑대왕" }, { art: "ancient-treant", name: "고목 수호자" }, { art: "spider-queen", name: "독거미 여왕" }],
+  ruins: [{ art: "wolf-king-clean", name: "고대 오우거" }, { art: "ruin-sentinel", name: "폐허의 파수 기사" }, { art: "minotaur", name: "미노타우로스" }],
+  volcano: [{ art: "flame-wyvern-clean", name: "화염 비룡" }, { art: "magma-golem", name: "용암 골렘" }, { art: "fire-demon", name: "화염 마신" }],
+  abyss: [{ art: "abyss-titan", name: "심연의 타이탄" }, { art: "void-lich", name: "공허의 리치" }, { art: "bone-dragon", name: "해골 용" }],
 };
 
 /** Sketchfab 몬스터 다섯(2026-11-23, 사용자: "sketchfab 에서 받아 적용" — CC BY, 작가 · 원본은 docs/CREDITS.md).
  * 받은 3D 모델을 우리 셀 그림체로 다시 렌더(art-gen/blender/sketchfab_monsters.py)해 지역 변종 끝에 붙였다 — 종류(체력 · 속도 · 보상)는 그대로라 밸런스 무관 */
 export const SKETCHFAB_MONSTER_ARTS = ["sf-mushy", "sf-eyeplant", "sf-plant", "sf-bat", "sf-tentacle",
   // 2차 일곱(2026-11-24, 사용자: "sketchfab 에서 바꿀 수 있는 거 다") — 화산 · 심연 · 폐허 · 초원 변종
-  "sf-cyclops", "sf-sandgolem", "sf-lavagolem", "sf-dragon-red", "sf-dragon-blue", "sf-ghost", "sf-magicgolem",
-  // 대장 일곱(큰 칸 시트 monsters-hd 도)
-  "sf-mushking", "sf-werewolf", "sf-treefellow", "sf-insect", "sf-magmahound", "sf-iceelemental", "sf-icegolem"] as const;
-export const SKETCHFAB_BOSS_ARTS = ["sf-mushking", "sf-werewolf", "sf-treefellow", "sf-insect", "sf-magmahound", "sf-iceelemental", "sf-icegolem"] as const;
+  "sf-cyclops", "sf-dragon-red", "sf-ghost",
+  // 2026-11-25 "셀 그림으로 통일" — 사실적인 질감이 남은 골렘 셋 · 아기 청룡 · 대장 일곱은 뺐다(셀 몬스터로 되돌림)
+] as const;
+export const SKETCHFAB_BOSS_ARTS: readonly string[] = [];
 
 /** 사냥터 일반 몬스터 변종 — 같은 종류가 다음에 나올 때 다음 변종 */
 export function huntMonsterVariant(kind: NormalKind, area: HuntingAreaDef, stage: number): MonsterArtDef | null {
