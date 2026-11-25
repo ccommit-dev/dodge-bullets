@@ -6,11 +6,13 @@ import bpy
 import sys
 import os
 import math
-from mathutils import Vector, Euler
+from mathutils import Vector, Euler, Matrix
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import bcommon as C
 from lib.beaver import weapon, spline, interp
+from lib import toon as TOON   # 셀 그림결(ART_STYLE=toon) — 무기 · 장비 아이콘과 같은 캐주얼 환경으로 렌더(2026-11-25)
+import gear_icons as GI   # 무기 모델 — 손 무기 · 무기 아이콘과 같은 물건(2026-11-25)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 O = 0.018   # 외곽선
@@ -371,6 +373,254 @@ def magic_staff(c, deg=-12):
     ob('ms_band', C.torus(c + d * 0.1, 0.045, 0.014, seg=24, rot=R), _gold(), O * 0.4)
 
 
+# ── 스킬 아이콘 2판 (2026-11-25, 사용자: 스킬 아이콘 "기술마다 동작이 보이게" · 주인공/스킬/무기/파츠를 "제일 신경써서") ──
+# 원칙: 물건 하나 + 동작 자국 하나. 40px 스킬 칸에서는 실루엣 하나만 읽힌다(예전: 북 + 도토리 · 통나무 + 별처럼 작은 물건 둘셋).
+# 무기는 gear_icons 모델 그대로(손 무기 · 무기 아이콘과 같은 물건), 동작 자국(베기 호 · 찌르기 줄 · 불꼬리 · 오름 화살표)은 3D 빛 띠로 —
+# 메달(ui/skills/titans)과 빛 판(titans-tile)이 한 렌더에서 나온다. 북(옛 무기)은 쓰지 않는다
+def _since(before):
+    return [o for o in bpy.data.objects if o.type == 'MESH' and o.name not in before]
+
+
+def _bake(objs, M):
+    for o in objs:
+        o.data.transform(M)
+        o.data.update()
+
+
+def gi_weapon(kind, t, at, deg, s=1.0, f=1.6):
+    """무기 아이콘과 같은 무기 모델 — at 자리 · deg 화면 기울기(0 위, + 시계방향) · s 배율. 굵기 f 는 무기 아이콘(1.6)"""
+    before = {o.name for o in bpy.data.objects}
+    saved, GI.F, C.FACET = C.FACET, f, 0
+    try:
+        {'sword': GI.sword, 'spear': GI.spear, 'bow': GI.bow, 'staff': GI.staff}[kind](t)
+    finally:
+        GI.F, C.FACET = 1.0, saved
+    _bake(_since(before), Matrix.Translation(Vector(at)) @ Matrix.Rotation(math.radians(deg), 4, 'Y') @ Matrix.Scale(s, 4))
+
+
+def slash(c, r, a0, a1, w=0.08, core='#ffffff', edge='#8ad8ff', y=-0.5, n=28):
+    """베기 자국 — 원호를 따라 가운데가 굵고 양 끝이 가는 빛 띠(흰 심 + 속성색 테). 각은 화면 기준(0 오른쪽 · 90 위)"""
+    pts = [Vector(c) + Vector((r * math.cos(math.radians(a0 + (a1 - a0) * k / (n - 1))), y, r * math.sin(math.radians(a0 + (a1 - a0) * k / (n - 1))))) for k in range(n)]
+    taper = [math.sin(math.pi * k / (n - 1)) ** 0.7 * (0.55 + 0.45 * k / (n - 1)) for k in range(n)]   # 끝(나중 쪽)이 조금 더 굵다 — 휘두르는 방향
+    ob('slash_edge', C.tube([p + Vector((0, 0.03, 0)) for p in pts], [w * 1.6 * t for t in taper], seg=10), mat('sl_edge', edge, 0.3, emit=edge, es=1.6), 0)
+    ob('slash_core', C.tube(pts, [w * t for t in taper], seg=10), mat('sl_core', core, 0.3, emit=core, es=2.4), 0)
+
+
+def chevron(c, s=1.0, color='#ffd34d'):
+    """오름 화살표(강화) — 굵은 ^ 모양"""
+    c = Vector(c)
+    pts = [c + Vector((-0.24 * s, 0, -0.12 * s)), c + Vector((0, 0, 0.12 * s)), c + Vector((0.24 * s, 0, -0.12 * s))]
+    ob('chev', C.tube(pts, 0.065 * s, seg=12), mat('chev', color, 0.3, emit=color, es=1.0))
+
+
+def trail(head, tail, w=0.16, outer='#ff7a2a', inner='#fff0a0', n=16):
+    """불꼬리 — 머리(굵다)에서 꼬리(가늘다)로. 바깥 주황 + 안 노랑"""
+    head, tail = Vector(head), Vector(tail)
+    pts = [tail.lerp(head, k / (n - 1)) for k in range(n)]
+    ob('trail_o', C.tube([p + Vector((0, 0.06, 0)) for p in pts], [w * (k / (n - 1)) ** 0.8 for k in range(n)], seg=12), mat('tr_o', outer, 0.3, emit=outer, es=1.8), 0)
+    ob('trail_i', C.tube([p + Vector((0, 0.02, 0)) for p in pts], [w * 0.55 * (k / (n - 1)) ** 0.8 for k in range(n)], seg=12), mat('tr_i', inner, 0.3, emit=inner, es=2.6), 0)
+
+
+def acorn2(c, s=1.0, deg=0.0):
+    """도토리를 통째로 기울인다 — acorn(rot) 은 부품마다 제자리에서 돌아 모자가 열매에서 미끄러졌다(자루처럼 보였다)"""
+    before = {o.name for o in bpy.data.objects}
+    acorn(Vector((0, 0, 0)), s)
+    _bake(_since(before), Matrix.Translation(Vector(c)) @ Matrix.Rotation(math.radians(deg), 4, 'Y'))
+
+
+def dam_wall(c, s=1.0):
+    """비버 댐 — 통나무 셋을 엇갈려 쌓은 벽(방벽)"""
+    c = Vector(c)
+    for k, (dx, dz) in enumerate(((0.0, -0.3), (0.08, 0.0), (-0.04, 0.3))):
+        log(c + Vector((dx * s, -0.02 * k, dz * s)), 1.05 * s)
+
+
+EMBLEM_V2 = {
+    # 도토리 일격 — 무기(검)로 한 번 크게 벤다: 검 + 흰 베기 호
+    'strike': ('blade', lambda: (gi_weapon('sword', 2, (-0.06, 0, -0.04), 42, 0.8), slash((0.0, 0, 0.0), 0.6, 165, -25, 0.11, edge='#7a9cff'))),
+    # 불꽃 장작 타 — 불붙은 베기: 진홍 검 + 주황 불 호
+    'emberCut': ('fire', lambda: (gi_weapon('sword', 3, (-0.06, 0, -0.04), 42, 0.8), slash((0.0, 0, 0.0), 0.6, 165, -25, 0.12, core='#fff0a0', edge='#ff4a10'), flames(Vector((0.5, -0.55, -0.42)), 0.55, color='#ff6a1f'))),
+    # 댐 방벽 함성 — 동료 전원 강화: 통나무 댐 + 위로 오르는 금빛 화살표
+    'stoneGuard': ('earth', lambda: (dam_wall((0, 0, -0.2), 0.72), chevron((0, -0.4, 0.42), 0.9), chevron((0, -0.4, 0.66), 0.7))),
+    # 도토리 유성우 — 불꼬리 끌며 떨어지는 큰 도토리
+    'meteor': ('fire', lambda: (trail((0.12, -0.1, -0.1), (-0.66, -0.1, 0.66), 0.24), acorn2((0.16, -0.32, -0.16), 1.35, 40))),
+}
+
+def ring(c, r, w=0.035, color='#ff4a4a', es=0.6, outline=None):
+    """화면에 바로 보이는 고리(XZ 평면)"""
+    return ob('ring', C.torus(Vector(c), r, w, seg=48, rot=Euler((math.radians(90), 0, 0))), mat('ring', color, 0.35, emit=color, es=es), O * 0.6 if outline is None else outline)
+
+
+def bar(a, b, w=0.035, color='#ffffff', es=1.0, outline=0):
+    return ob('bar', C.tube([Vector(a), Vector(b)], w, seg=8), mat('bar', color, 0.3, emit=color, es=es), outline)
+
+
+def arcs(c, r0, n=3, gap=0.12, a0=-50, a1=50, w=0.04, color='#ffe14a', both=True):
+    """퍼지는 소리 · 빛 물결 — 가운데 둘레에 커지는 호 n 개(both 면 좌우 둘 다)"""
+    c = Vector(c)
+    for side in ((1, -1) if both else (1,)):
+        for k in range(n):
+            r = r0 + gap * k
+            pts = [c + Vector((side * r * math.cos(math.radians(a0 + (a1 - a0) * j / 15)), -0.45, r * math.sin(math.radians(a0 + (a1 - a0) * j / 15)))) for j in range(16)]
+            ob('arc', C.tube(pts, [w * (0.6 + 0.4 * math.sin(math.pi * j / 15)) for j in range(16)], seg=8), mat('arc', color, 0.3, emit=color, es=1.6), 0)
+
+
+def ghostify(objs, color):
+    """불씨 분신 — 같은 무기를 빛나는 한 색으로(재질 · 외곽선 바꿈)"""
+    gm = mat('ghost', color, 0.3, emit=color, es=1.4)
+    for o in objs:
+        o.data.materials.clear()
+        o.data.materials.append(gm)
+        for md in [m for m in o.modifiers if m.name == 'outline']:
+            o.modifiers.remove(md)
+
+
+def gi_ghost(kind, t, at, deg, s, color):
+    before = {o.name for o in bpy.data.objects}
+    gi_weapon(kind, t, at, deg, s)
+    ghostify(_since(before), color)
+
+
+def stone(c, s=1.0):
+    ob('stone', C.ellipsoid(Vector(c), (0.26 * s, 0.2 * s, 0.1 * s), rot=Euler((0, math.radians(-12), 0))), mat('stone', '#9aa3ad', 0.8))
+
+
+def ripple(c, rx, color='#8ad8ff'):
+    """물결 — 납작한 타원 고리(물 위에서 본 동그라미)"""
+    o = ob('ripple', C.torus(Vector((0, 0, 0)), rx, 0.03, seg=48), mat('ripple', color, 0.3, emit=color, es=1.0), 0)
+    o.data.transform(Matrix.Translation(Vector(c)) @ Matrix.Rotation(math.radians(72), 4, 'X'))
+
+
+def link(c, s=1.0, deg=0.0, color='#e8b23a'):
+    """사슬 고리 — 길쭉한 고리"""
+    o = ob('link', C.torus(Vector((0, 0, 0)), 0.2 * s, 0.055 * s, seg=40, rot=Euler((math.radians(90), 0, 0))), mat('gold', color, 0.3, 0.8))
+    o.data.transform(Matrix.Translation(Vector(c)) @ Matrix.Rotation(math.radians(deg), 4, 'Y') @ Matrix.Diagonal((0.7, 1, 1.25, 1)))
+
+
+def crown(c, s=1.0):
+    c = Vector(c)
+    ob('crown_band', C.tube([c + Vector((0, 0, -0.06 * s)), c + Vector((0, 0, 0.04 * s))], 0.2 * s, seg=32), mat('gold', '#e8b23a', 0.3, 0.8))
+    for k in range(5):
+        x = (k - 2) * 0.09 * s
+        ob(f'crown_tip{k}', C.cone(c + Vector((x, -0.17 * s, 0.05 * s)), 0.05 * s, 0.0, 0.14 * s, seg=8), mat('gold', '#e8b23a', 0.3, 0.8), O * 0.6)
+    ob('crown_gem', C.ellipsoid(c + Vector((0, -0.2 * s, -0.01 * s)), (0.04 * s, 0.02, 0.04 * s)), mat('gem', '#e8467c', 0.2, emit='#e8467c', es=0.8), O * 0.5)
+
+
+def fire_jet(a, b, w0=0.06, w1=0.3, color='#ff6a1f'):
+    """불줄기 — a(가늘다)에서 b(넓다)로 퍼지는 불 · 안쪽 노랑"""
+    a, b = Vector(a), Vector(b)
+    pts = [a.lerp(b, k / 15) for k in range(16)]
+    ob('jet_o', C.tube([p + Vector((0, 0.05, 0)) for p in pts], [w0 + (w1 - w0) * (k / 15) ** 0.9 for k in range(16)], seg=14), mat('jet_o', color, 0.3, emit=color, es=1.8), 0)
+    ob('jet_i', C.tube(pts[:13], [(w0 + (w1 - w0) * (k / 15) ** 0.9) * 0.5 for k in range(13)], seg=12), mat('jet_i', '#fff0a0', 0.3, emit='#fff0a0', es=2.6), 0)
+
+
+def streak(a, b, w=0.08, core='#ffffff', edge='#e8443a', n=16):
+    """곧은 베기 자국 — 양 끝이 가늘고 가운데가 굵은 빛 줄(흰 심 + 색 테)"""
+    a, b = Vector(a), Vector(b)
+    pts = [a.lerp(b, k / (n - 1)) for k in range(n)]
+    taper = [math.sin(math.pi * k / (n - 1)) ** 0.6 for k in range(n)]
+    ob('streak_e', C.tube([p + Vector((0, 0.03, 0)) for p in pts], [w * 1.7 * t for t in taper], seg=10), mat('st_e', edge, 0.3, emit=edge, es=1.6), 0)
+    ob('streak_c', C.tube(pts, [w * t for t in taper], seg=10), mat('st_c', core, 0.3, emit=core, es=2.4), 0)
+
+
+def hourglass(c, s=1.0):
+    c = Vector(c)
+    glass = mat('glass', '#d8f4ff', 0.1, emit='#d8f4ff', es=0.25)
+    ob('hg_top', C.cone(c + Vector((0, 0, 0.02 * s)), 0.02 * s, 0.22 * s, 0.3 * s, seg=24), glass)
+    ob('hg_bot', C.cone(c + Vector((0, 0, -0.32 * s)), 0.22 * s, 0.02 * s, 0.3 * s, seg=24), glass)
+    ob('hg_sand', C.cone(c + Vector((0, -0.01, -0.3 * s)), 0.18 * s, 0.0, 0.14 * s, seg=24), mat('sand', '#f2c25a', 0.6))
+    for z in (0.34, -0.34):
+        ob('hg_cap', C.tube([c + Vector((0, 0, (z - 0.03) * s)), c + Vector((0, 0, (z + 0.03) * s))], 0.27 * s, seg=24), mat('wood', '#8a5a2b', 0.6))
+    for x in (-0.24, 0.24):
+        ob('hg_post', C.tube([c + Vector((x * s, -0.06 * s, -0.32 * s)), c + Vector((x * s, -0.06 * s, 0.32 * s))], 0.03 * s, seg=8), mat('wood', '#8a5a2b', 0.6), O * 0.6)
+
+
+EMBLEM_V2.update({
+    # 통나무 관통 — 창이 통나무를 꿰뚫는다(자루는 통나무 뒤, 촉이 앞으로 나온다)
+    'pierce': ('blade', lambda: (
+        gi_weapon('spear', 2, (0.0, 0.05, 0.0), 52, 0.78),
+        log(Vector((-0.04, -0.3, -0.02)), 0.95, math.radians(-38)),
+        bar((-0.55, -0.5, -0.5), (-0.3, -0.5, -0.32), 0.03),
+        bar((-0.62, -0.5, -0.32), (-0.42, -0.5, -0.18), 0.025))),
+    # 얼음 물방울 — 물방울이 얼어 서리 가시가 돋는다
+    'frostEdge': ('wind', lambda: (
+        droplet(Vector((0, -0.2, -0.04)), 1.9, '#8ad8ff'),
+        crystal(Vector((-0.34, -0.36, -0.14)), 0.7, '#e0faff', 0.7),
+        crystal(Vector((0.36, -0.36, -0.1)), 0.6, '#e0faff', -0.6))),
+    # 급소 노리기 — 과녁 한가운데를 창끝이 찌른다 + 반짝
+    'crit': ('wind', lambda: (
+        ring((0.08, -0.1, 0.08), 0.38, 0.04, '#ff4a4a'),
+        ring((0.08, -0.1, 0.08), 0.16, 0.035, '#ff4a4a'),
+        gi_weapon('spear', 2, (-0.2, 0.05, -0.22), 45, 0.62),
+        star(Vector((0.08, -0.4, 0.08)), 0.38, '#fff6b8'))),
+    # 물수제비 스텝 — 납작한 돌이 물결 셋을 튕기며 건너간다
+    'waterStep': ('wind', lambda: (
+        ripple((-0.42, -0.1, -0.42), 0.16),
+        ripple((-0.05, -0.1, -0.3), 0.2),
+        ripple((0.36, -0.1, -0.16), 0.24),
+        stone((0.36, -0.35, 0.22), 1.15),
+        slash((-0.05, 0, -0.2), 0.42, 160, 40, 0.03, core='#e0faff', edge='#3fd0c0'))),
+    # 급류 연타 — 검 + 겹겹 베기 호 셋(빠른 연타)
+    'galeChain': ('wind', lambda: (
+        gi_weapon('sword', 2, (-0.1, 0, -0.06), 42, 0.72),
+        slash((0.0, 0, 0.0), 0.46, 160, -10, 0.06, edge='#3fd0c0'),
+        slash((0.0, 0, 0.0), 0.57, 150, -20, 0.07, edge='#3fd0c0'),
+        slash((0.0, 0, 0.0), 0.68, 140, -30, 0.06, edge='#3fd0c0'))),
+    # 불씨 분신 공격 — 검 하나 + 뒤에 불빛 분신 검
+    'clone': ('fire', lambda: (
+        gi_ghost('sword', 2, (0.16, 0.25, 0.04), 30, 0.74, '#ff8a3a'),
+        gi_weapon('sword', 2, (-0.12, 0, -0.06), 42, 0.74))),
+    # 번개 결속 — 금 사슬 고리 둘을 번개가 묶는다
+    'thunderLink': ('light', lambda: (
+        link((-0.32, 0.1, -0.04), 0.72, 50, '#c8d2dc'),
+        link((0.32, 0.1, -0.04), 0.72, -50, '#c8d2dc'),
+        bolt_shape(Vector((0, -0.4, 0)), 2.1))),
+    # 붉은 달 연격 — 붉은 초승달 앞으로 엇갈린 베기 둘
+    'bloodMoon': ('blade', lambda: (
+        moon(Vector((0.08, 0.0, 0.04)), 1.5),
+        slash((-0.32, 0, 0.32), 0.62, -20, -70, 0.07, core='#fff0f0', edge='#e8443a'),
+        slash((0.32, 0, 0.32), 0.62, 200, 250, 0.07, core='#fff0f0', edge='#e8443a'))),
+    # 용암 숨결 — 불줄기가 대장(왕관)을 삼킨다(대장 전용)
+    'dragonBreath': ('fire', lambda: (
+        crown((0.3, 0.05, -0.28), 1.7),
+        fire_jet((-0.66, -0.3, 0.5), (0.12, -0.3, -0.06), 0.05, 0.32),
+        flames(Vector((0.02, -0.5, 0.02)), 0.6, color='#ff6a1f'))),
+    # 별빛 함성 일격 — 큰 별 + 좌우로 퍼지는 함성 물결
+    'warcry': ('light', lambda: (
+        star(Vector((0, -0.2, 0.0)), 1.25),
+        arcs((0, 0, 0.0), 0.56, 3, 0.11, -40, 40, 0.035, '#fff3a0'))),
+    # 댐 수문 개방 — 댐 가운데로 물줄기가 쏟아진다
+    'tidalBurst': ('wind', lambda: (
+        dam_wall((0, 0.1, 0.12), 0.62),
+        trail((0.0, -0.35, -0.5), (0.0, -0.35, 0.18), 0.28, outer='#2f86e0', inner='#bfe6ff'),
+        droplet(Vector((-0.34, -0.45, -0.42)), 0.55, '#4ab0ff'),
+        droplet(Vector((0.34, -0.45, -0.46)), 0.5, '#4ab0ff'))),
+    # 가시덤불 처형 — 가시 고리 위로 붉은 X 베기
+    'voidFinish': ('blade', lambda: (
+        thorns(Vector((0, 0.05, 0)), 1.4),
+        streak((-0.5, -0.5, 0.5), (0.5, -0.5, -0.5), 0.09, '#fff0f0', '#c8203a'),
+        streak((0.5, -0.52, 0.5), (-0.5, -0.52, -0.5), 0.09, '#fff0f0', '#c8203a'))),
+    # 단단한 앞니 — 쇠처럼 번쩍이는 앞니
+    'steel': ('earth', lambda: (
+        teeth(Vector((0, -0.2, -0.04)), 1.3),
+        star(Vector((0.3, -0.45, 0.24)), 0.3, '#ffffff'))),
+    # 무기 집중 — 세운 검 끝에 모이는 집중 고리
+    'focus': ('blade', lambda: (
+        gi_weapon('sword', 2, (0.0, 0, -0.2), 0, 0.88),
+        ring((0.0, -0.35, 0.4), 0.2, 0.04, '#9ab4ff', 1.8, 0),
+        ring((0.0, -0.35, 0.4), 0.36, 0.032, '#9ab4ff', 1.8, 0),
+        star(Vector((0.0, -0.45, 0.4)), 0.22, '#ffffff'))),
+    # 댐지기의 혼 — 모래시계(대장 제한시간 연장) 위로 푸른 혼불
+    'guardianSoul': ('earth', lambda: (
+        hourglass((0, 0, -0.08), 1.25),
+        flames(Vector((0, -0.42, 0.42)), 0.75, color='#7fe8ff'))),
+    # 숲의 공명 — 잎사귀 + 퍼지는 공명 물결
+    'elementalMastery': ('light', lambda: (
+        leaf(Vector((0, -0.2, 0)), 1.45),
+        arcs((0, 0, 0.0), 0.56, 2, 0.12, -45, 45, 0.035, '#bff5e6'))),
+})
+
+
 EMBLEM = {
     # 사냥터 스킬 20 — (원소, 그리기)
     'strike': ('blade', lambda: (drum(Vector((0.04, -0.2, -0.12)), 1.0), acorn(Vector((-0.22, -0.32, 0.3)), 0.7))),
@@ -413,6 +663,9 @@ EMBLEM = {
 }
 
 
+EMBLEM.update({k: v for k, v in EMBLEM_V2.items() if os.environ.get('ICON_V2', '1') == '1'})
+
+
 def clear():
     for o in list(bpy.data.objects):
         if o.type == 'MESH':
@@ -426,9 +679,15 @@ def render_icon(key, out):
         medal(el)
     before = {o.name for o in bpy.data.objects}
     draw()
+    # 2판 메달: 상징의 가장 먼 점(화면 평면)이 메달 안쪽 원판(0.84) 안에 들게 배율을 맞춘다 — 번개 · 함성 물결이 고리 밖으로 넘쳤다
+    rmax = max([math.hypot(v.co.x, v.co.z) for o in bpy.data.objects if o.type == 'MESH' and o.name not in before for v in o.data.vertices] or [0.5])
+    fit = min(1.3, 0.74 / max(rmax, 1e-3))
     for o in bpy.data.objects:   # 상징을 메달 안쪽을 채우게 1.6배(메달 가운데 기준) — 처음 그림은 메달의 30% 만 차지했다. 메달 없이(BARE)는 칸을 채우게 1.9배
         if o.type == 'MESH' and o.name not in before:
-            o.scale = (1.9, 1.9, 1.9) if BARE else (1.6, 1.6, 1.6)
+            k = (1.2 if BARE else fit) if key in EMBLEM_V2 and os.environ.get('ICON_V2', '1') == '1' else (1.9 if BARE else 1.6)   # 2판 상징은 처음부터 크게 그려 메달 고리 밖으로 넘쳤다
+            o.scale = (k, k, k)
+    if TOON.enabled():   # 무기 · 장비 아이콘과 같은 셀 4단 · 반짝임 · 짙은 외곽선(ART_STYLE=toon + TOON_* · INK_COLOR)
+        TOON.apply(bpy.context.scene)
     bpy.context.scene.render.filepath = out
     bpy.ops.render.render(write_still=True)
 
@@ -494,6 +753,8 @@ for setname in argv:
         co = bpy.data.objects.new('cam', cam); bpy.context.scene.collection.objects.link(co)
         co.location = (0, -6, 0.0); co.rotation_euler = Euler((math.radians(90), 0, 0)); bpy.context.scene.camera = co
         keys = [k for k in EMBLEM if (k.startswith('d-') if setname == 'dodge' else not k.startswith('d-'))]
+        if os.environ.get('ICON_ONLY'):   # 시험 렌더 — 쉼표로 고른 id 만
+            keys = [k for k in keys if k in os.environ['ICON_ONLY'].split(',')]
         for k in keys:
             render_icon(k, os.path.join(outdir, f"{k[2:] if k.startswith('d-') else k}.png"))
         bpy.data.objects.remove(co, do_unlink=True)

@@ -745,64 +745,66 @@ for lv in range(16):
     JOBS[f'drum-{lv:02d}'] = (drum, lv, (-24, 22), 2.3)
     JOBS[f'sword-{lv:02d}'] = (sword_lv, lv, (25, 15), 2.0)
 
-argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['gear', 'drums']
-names = []
-for a in argv:
-    if a == 'gear':
-        names += [k for k in JOBS if not k.startswith('drum-') and not k.startswith('sword-') and not k.startswith('set-') and not k.startswith('icon-')]
-    elif a == 'drums':
-        names += [k for k in JOBS if k.startswith('drum-')]
-    elif a == 'icons':
-        names += [k for k in JOBS if k.startswith('icon-')]
-    elif a == 'shoulders':
-        names += [k for k in JOBS if k.startswith('shoulder-') or k.endswith('-shoulder')]
-    elif a == 'swords':
-        names += [k for k in JOBS if k.startswith('sword-')]
-    else:
-        names.append(a)
-if 'sets' in argv:   # 세트 파츠만: gear_icons.py -- sets
-    names = [k for k in JOBS if k.startswith('set-')]
-os.makedirs(OUTDIR, exist_ok=True)
-for name in names:
-    fn, arg, (yaw, elev), scale = JOBS[name]
-    C.reset()
-    C.setup_render(res=(ICON_RES, ICON_RES), samples=40)
-    if PIXEL:
-        bpy.context.scene.cycles.filter_width = 0.01
-    C.lights()
-    C.ortho_camera((0.0, 0.0), scale, yaw_deg=yaw, elev_deg=elev)
-    C.FACET = GEAR_FACET
-    # 손에 드는 무기 굵기(2026-11-25, 사용자: 손 무기를 아이콘과 같은 물건으로 "제일 신경써서") — GEAR_HAND_F(기본 1.0). 길이 · 손잡이 높이는 그대로라 WEAPON_GRIP(%) 이 맞는다
-    hand = name.split('-')[0] in ('weapon', 'spear', 'bow', 'staff') and name.split('-')[-1].isdigit() and not name.startswith('icon-')
-    if hand:
-        F = float(os.environ.get('GEAR_HAND_F', '1.0'))
-    try:
-        fn(arg)
-    finally:
-        C.FACET = 0
+# 다른 스크립트(icons.py — 스킬 아이콘이 같은 무기 모델을 쓴다, 2026-11-25)가 불러 쓸 때는 렌더하지 않는다
+if __name__ == '__main__':
+    argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['gear', 'drums']
+    names = []
+    for a in argv:
+        if a == 'gear':
+            names += [k for k in JOBS if not k.startswith('drum-') and not k.startswith('sword-') and not k.startswith('set-') and not k.startswith('icon-')]
+        elif a == 'drums':
+            names += [k for k in JOBS if k.startswith('drum-')]
+        elif a == 'icons':
+            names += [k for k in JOBS if k.startswith('icon-')]
+        elif a == 'shoulders':
+            names += [k for k in JOBS if k.startswith('shoulder-') or k.endswith('-shoulder')]
+        elif a == 'swords':
+            names += [k for k in JOBS if k.startswith('sword-')]
+        else:
+            names.append(a)
+    if 'sets' in argv:   # 세트 파츠만: gear_icons.py -- sets
+        names = [k for k in JOBS if k.startswith('set-')]
+    os.makedirs(OUTDIR, exist_ok=True)
+    for name in names:
+        fn, arg, (yaw, elev), scale = JOBS[name]
+        C.reset()
+        C.setup_render(res=(ICON_RES, ICON_RES), samples=40)
+        if PIXEL:
+            bpy.context.scene.cycles.filter_width = 0.01
+        C.lights()
+        C.ortho_camera((0.0, 0.0), scale, yaw_deg=yaw, elev_deg=elev)
+        C.FACET = GEAR_FACET
+        # 손에 드는 무기 굵기(2026-11-25, 사용자: 손 무기를 아이콘과 같은 물건으로 "제일 신경써서") — GEAR_HAND_F(기본 1.0). 길이 · 손잡이 높이는 그대로라 WEAPON_GRIP(%) 이 맞는다
+        hand = name.split('-')[0] in ('weapon', 'spear', 'bow', 'staff') and name.split('-')[-1].isdigit() and not name.startswith('icon-')
         if hand:
-            F = 1.0
-    sname = name[:-2] if name.startswith('set-') and name[-2:] in ('-2', '-3') else name   # 합성 등급 그림(-2 · -3)도 같은 부위 각도
-    turn = TURN.get(sname.split('-')[-1] if sname.startswith('set-') else sname.split('-')[0], 0)
-    if name.startswith('icon-'):
-        piv = bpy.data.objects.new('pivot', None)
-        bpy.context.scene.collection.objects.link(piv)
-        for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.parent is None]:
-            o.parent = piv
-        piv.rotation_euler = Euler((0, math.radians(45), 0))   # 끝이 오른쪽 위
-        piv.scale = (1.0, 1.0, float(os.environ.get('ICON_SQUASH', '1.0')))   # 캐주얼 아이콘 0.8 — 길이만 줄여 몽툭하게(칸을 더 채운다)
-        bpy.context.view_layer.update()
-    elif turn:
-        piv = bpy.data.objects.new('pivot', None)
-        bpy.context.scene.collection.objects.link(piv)
-        for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.parent is None]:
-            o.parent = piv
-        rx, ry, rz = turn[1], (turn[2] if len(turn) > 2 else 0), turn[0]   # (옆으로 도는 각, 앞으로 숙이는 각[, 기울기])
-        piv.rotation_euler = Euler((math.radians(rx), math.radians(ry), math.radians(rz)))
-        bpy.context.view_layer.update()
-    if TOON.enabled():   # 셀 그림결(ART_STYLE=toon, 2026-11-17) — 사냥터에서 주인공 손에 드는 무기 그림도 같은 결로
-        TOON.apply(bpy.context.scene)
-    bpy.context.scene.render.filepath = os.path.join(OUTDIR, f'{name}.png')
-    bpy.ops.render.render(write_still=True)
-    print('wrote', name, flush=True)
-print('DONE')
+            F = float(os.environ.get('GEAR_HAND_F', '1.0'))
+        try:
+            fn(arg)
+        finally:
+            C.FACET = 0
+            if hand:
+                F = 1.0
+        sname = name[:-2] if name.startswith('set-') and name[-2:] in ('-2', '-3') else name   # 합성 등급 그림(-2 · -3)도 같은 부위 각도
+        turn = TURN.get(sname.split('-')[-1] if sname.startswith('set-') else sname.split('-')[0], 0)
+        if name.startswith('icon-'):
+            piv = bpy.data.objects.new('pivot', None)
+            bpy.context.scene.collection.objects.link(piv)
+            for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.parent is None]:
+                o.parent = piv
+            piv.rotation_euler = Euler((0, math.radians(45), 0))   # 끝이 오른쪽 위
+            piv.scale = (1.0, 1.0, float(os.environ.get('ICON_SQUASH', '1.0')))   # 캐주얼 아이콘 0.8 — 길이만 줄여 몽툭하게(칸을 더 채운다)
+            bpy.context.view_layer.update()
+        elif turn:
+            piv = bpy.data.objects.new('pivot', None)
+            bpy.context.scene.collection.objects.link(piv)
+            for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.parent is None]:
+                o.parent = piv
+            rx, ry, rz = turn[1], (turn[2] if len(turn) > 2 else 0), turn[0]   # (옆으로 도는 각, 앞으로 숙이는 각[, 기울기])
+            piv.rotation_euler = Euler((math.radians(rx), math.radians(ry), math.radians(rz)))
+            bpy.context.view_layer.update()
+        if TOON.enabled():   # 셀 그림결(ART_STYLE=toon, 2026-11-17) — 사냥터에서 주인공 손에 드는 무기 그림도 같은 결로
+            TOON.apply(bpy.context.scene)
+        bpy.context.scene.render.filepath = os.path.join(OUTDIR, f'{name}.png')
+        bpy.ops.render.render(write_still=True)
+        print('wrote', name, flush=True)
+    print('DONE')
