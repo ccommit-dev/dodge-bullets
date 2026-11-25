@@ -38,12 +38,6 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "PBR Low-poly Fox Character", author: "Ida Faber", url: "https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d", use: "펫 '꼬마 여우'" },
   { title: "Penguin plush", author: "SunnyBuns", url: "https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4", use: "펫 '아기 펭귄'" },
   { title: "Frog", author: "gooseg489", url: "https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050", use: "펫 '풀잎 개구리'" },
-  // 몬스터 펫 다섯(2026-11-25, sketchfab_monsters.py pet-* → assemble-anim2 · 셀/도트 시트) — 꼬마 오우거는 그대로
-  { title: "Slime low-poly", author: "Parado10", url: "https://sketchfab.com/3d-models/slime-low-poly-446d179577354f9794dde57f98943adc", use: "펫 '아기 슬라임'" },
-  { title: "Cute Pet Dragon Baby", author: "outcast945", url: "https://sketchfab.com/3d-models/cute-pet-dragon-baby-17c80b80927044a4bf95c15ed8407bcb", use: "펫 '새끼 용'" },
-  { title: "Cartoon Wolf", author: "CGulia", url: "https://sketchfab.com/3d-models/cartoon-wolf-9bb48adc8e7a428084abd0742999778b", use: "펫 '아기 늑대'" },
-  { title: "Low Poly Goblin", author: "BaGaDa41", url: "https://sketchfab.com/3d-models/low-poly-goblin-78145db3e9a44120bacc3afaa5eb87f6", use: "펫 '꼬마 고블린'" },
-  { title: "Chubby Ghost", author: "Elyse Darby", url: "https://sketchfab.com/3d-models/chubby-ghost-753c85362d7446169f1b30d6a2c26d34", use: "펫 '타이탄의 그림자'" },
   // 상점 전용 동료 넷(2026-11-24, allyRoster shop — 렌더 sketchfab_monsters.py kind='ally', 칸마다 좌우를 뒤집어 오른쪽을 본다)
   { title: "Cute Bunny", author: "Minimoku", url: "https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02", use: "상점 동료 '솜털 토끼 보니'" },
   { title: "Just a Hungry Cat", author: "Coco Jinjo", url: "https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1", use: "상점 동료 '밤고양이 감자'" },

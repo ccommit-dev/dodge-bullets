@@ -63,13 +63,6 @@ MODELS = {
     'sf-magmahound': dict(file='b-magmahound.glb', h=1.3, yaw=0, lift=0.0, action='Idle', boss=True),
     'sf-iceelemental': dict(file='b-iceelemental.glb', h=1.7, yaw=0, lift=0.0, boss=True),
     'sf-icegolem': dict(file='b-icegolem.glb', h=1.6, yaw=0, lift=0.0, boss=True),
-    # 몬스터 펫 다섯(2026-11-25, 사용자: "유물이나 icon 탈것, 펫 등등 리소스 3d 모델 찾아다가 다시 반영") — 상점 펫과 같은 길.
-    # pet-ogre 는 맞는 모델이 AI 생성뿐이라 그대로 둔다. pet-boss(타이탄의 그림자)는 통통한 유령
-    'pet-slime': dict(file='pet-slime.glb', h=0.8, yaw=0, lift=0.0, dx=0.3),
-    'pet-dragon': dict(file='pet-dragon.glb', h=0.95, yaw=0, lift=0.0, dx=0.3),
-    'pet-wolf': dict(file='pet-wolf.glb', h=0.95, yaw=0, lift=0.0, dx=0.3),
-    'pet-goblin': dict(file='pet-goblin.glb', h=0.95, yaw=0, lift=0.0, dx=0.3),
-    'pet-boss': dict(file='pet-ghost.glb', h=0.95, yaw=0, lift=0.04, dx=0.3),
 }
 INK_W = float(os.environ.get('SF_INK', '0.016'))   # 외곽선 굵기(캐릭터 단위) — 셀 OUTLINE_MUL 이 곱해진다
 
