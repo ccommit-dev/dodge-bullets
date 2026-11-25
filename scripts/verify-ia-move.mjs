@@ -48,7 +48,8 @@ await page.evaluate(() => document.querySelector(".hub-sheet-close")?.click()); 
 await clickText(".titans-bottom-nav button", "동료"); await sleep(500);
 ok("동료 머리 = 제목만(뽑기 · 도감 · 상세 칸 없음)", (await texts(".hub-sheet-switch button")).length === 0 && (await texts(".hub-sheet-title")).join() === "동료", (await texts(".hub-sheet-switch button")).join());
 const roster = await page.evaluate(() => [...document.querySelectorAll(".ally-card")].map((c) => c.dataset.ally));
-ok("동료 목록 = 보유 2명 + 다음 소환 1명", roster.length === 3 && roster.includes("mia") && roster.includes("leon"), roster.join());
+// 2026-11-25: 안 가진 상점 전용 동료(보석)도 잠금 카드로 맨 뒤에 — 앞 셋은 보유 2명 + 다음 소환 1명 그대로
+ok("동료 목록 = 보유 2명 + 다음 소환 1명, 그 뒤 상점 전용 잠금 카드", roster.slice(0, 3).length === 3 && roster.slice(0, 3).includes("mia") && roster.slice(0, 3).includes("leon") && roster.length > 3 && roster.length <= 6, roster.join());
 await shot("ally-party");
 await page.evaluate(() => document.querySelector('.ally-card[data-ally="mia"]')?.click()); await sleep(600);
 const detail = await page.evaluate(() => { const d = document.querySelector(".ally-detail"); const sheet = d?.querySelector("[style*='titans/anim/allies'], .ally-detail-art *"); const anim = [...(d?.querySelectorAll(".ally-detail-art *") ?? [])].map((e) => getComputedStyle(e)).find((c) => /titans\/anim\/allies/.test(c.backgroundImage)); return { id: d?.dataset.allyDetail, stats: [...(d?.querySelectorAll(".ally-detail-stats dt") ?? [])].map((x) => x.textContent), sig: !!d?.querySelector(".ally-sig"), sheet: !!sheet, bg: anim?.backgroundImage.slice(0, 80), name: anim?.animationName }; });

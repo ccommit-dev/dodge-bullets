@@ -4016,7 +4016,11 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   const rosterHeroes = useMemo(() => {
     const next = HEROES.filter((h) => h.unlockStage < 9999 && save.heroes[h.id] <= 0 && SHOP_ALLY_GEM_COST[h.id] === undefined).sort((a, b) => a.baseCost - b.baseCost)[0];
     // 미아는 첫 소환 안내(coach)가 가리키는 카드라 아직 없으면 늘 보인다
-    return HEROES.filter((h) => save.heroes[h.id] > 0 || h.id === next?.id || h.id === "mia");
+    // 상점 전용 동료(보석, 2026-11-24 사용자: "새 동료가 동료 탭에도 보이게")도 안 가졌을 때 잠금 카드로 — 카드 단추가 보석 구매(buyShopAlly)다
+    // 순서: 가진 동료 · 다음 소환(미아) 먼저, 안 가진 상점 동료는 맨 뒤 — 앞쪽에 끼면 '다음 소환' 카드가 둘째 쪽으로 밀렸다
+    const shopLocked = (h: (typeof HEROES)[number]) => SHOP_ALLY_GEM_COST[h.id] !== undefined && !(save.heroes[h.id] > 0);
+    const shown = HEROES.filter((h) => save.heroes[h.id] > 0 || h.id === next?.id || h.id === "mia" || SHOP_ALLY_GEM_COST[h.id] !== undefined);
+    return [...shown.filter((h) => !shopLocked(h)), ...shown.filter(shopLocked)];
   }, [save.heroes]);
   const openAllyDraw = () => { setPremiumCategory("ally"); setTab("premium"); };
   // retention-5: 뽑기 페이지에서 픽업 회전 D-2 이하면 보석 1,200 제안(천장 절반) — 창은 회전 종료까지
