@@ -68,6 +68,26 @@ def run(who, only=None):
     outdir = os.path.join(OUT, who)
     os.makedirs(outdir, exist_ok=True)
     cam = RR.setup()
+    # 기본 주인공 모델(2026-11-25, 사용자: "기본 비버 주인공을 받은 모델로" → Happy Beaver) — HERO_MODEL=<sf_rig 캐릭터 id> 이면
+    # hero · hero-<무기> · hero-ride 를 그 모델로 굽는다. 자세 값(anim2 · ride_seat)은 비버와 같고, 앉은 다리는 seat 로 무릎을 굽힌다.
+    # 조립(assemble-anim2 hero)은 meta.model 이 있으면 몸 높이를 렌더에서 잰다
+    HM = os.environ.get('HERO_MODEL')
+    if HM and '@' not in who and (who in ('hero', 'hero-ride') or (who.startswith('hero-') and who[5:] in A2.HERO_WEAPON_ATTACK)):
+        from lib import sf_rig as SR
+        rig = SR.build(HM)
+        if who == 'hero':
+            acts, yaw = A2.beaver_actions('melee', hero=True), RR.YAW
+        elif who == 'hero-ride':
+            acts, yaw = {k: [dict(P, seat=1.0) for P in v] for k, v in RS.rider_actions().items()}, RS.RIDER_YAW
+        else:
+            acts, yaw = {'attack': A2.hero_weapon_attack(who[5:])}, RR.YAW
+        render_actions(rig, acts, SR.pose, outdir, cam, math.radians(yaw), 1, SR.parts(rig), only)
+        mp = os.path.join(outdir, 'meta.json')
+        meta = json.load(open(mp, encoding='utf-8'))
+        meta['model'] = HM
+        json.dump(meta, open(mp, 'w', encoding='utf-8'), indent=1)
+        print('DONE', who)
+        return
     # Sketchfab 플레이어블 캐릭터(2026-11-25, lib/sf_rig.py) — 'char@fox' · 'char-spear@fox' 등. 남의 리그라 몸 · 손 자리가 비버와 달라
     # 조립(assemble-anim2 char@<id>)이 자기 배율 · 자기 앵커 표(src/equipment/charAnchors.ts)를 쓴다. 탈것 위 시트는 없다(타지 않는다)
     if who.startswith('char') and '@' in who:

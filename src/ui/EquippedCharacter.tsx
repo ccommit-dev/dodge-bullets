@@ -4,7 +4,7 @@ import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
 import { WEAPON_SKINS, weaponSkinIcon, weaponSkinStyle } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, idleAnchorsFor, rideAnchorsFor, walkAnchorsFor } from "../equipment/anchors";
+import { attackAnchorsFor, idleAnchorsFor, LEGACY_BEAVER_SKINS, rideAnchorsFor, walkAnchorsFor } from "../equipment/anchors";
 import { isModelCharacter, rideSheetFor, sheetFor } from "../titans/anim";
 import { HERO_ANIM, heroFrames, type HeroAnimMode } from "../titans/spriteAnim";
 import { gearItemKind, type EquippedGear } from "../equipment/gearSets";
@@ -92,7 +92,9 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   // 3D 캐릭터(2026-11-25, 여우 모험가 — anim.isModelCharacter)는 앉은 시트가 없어 타지 않고, 입는 파츠(비버 뼈 자리에 맞춘 그림)는 그리지 않는다. 무기만 자기 손 앵커로
   const model = isModelCharacter(character);
   const riding = ridingProp && !model;
-  const worn = model ? undefined : wornProp;
+  // 입는 파츠(hero-gear)는 옛 비버 몸에 맞춰 구운 그림 — 2026-11-25 기본 주인공이 받은 모델(Happy Beaver)로 바뀌어 얼굴 · 몸을 덮었다.
+  // 새 몸에 맞춘 그림을 다시 만들 때까지 옛 비버 몸 스킨 넷에서만 입힌다
+  const worn = LEGACY_BEAVER_SKINS.includes(character) ? wornProp : undefined;
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   // 강화가 눈에 보이게 (2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영") — 그림은 3장뿐이라 단계 사이를 빛 · 크기로 잇는다.
   // 0~15 를 여섯 칸(+3 흰 빛 · +6 하늘 · +9 보라 · +12 주황 + 반짝임 · +15 금 + 반짝임), 칸마다 무기 2.5% 크게. 빛은 ui/upgradeGlow.css
@@ -100,7 +102,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
   // 공격 칸은 무기별 시트의 손 앵커(창 · 활 · 지팡이 — 2026-10-27), 검은 기본
-  const anchors = riding ? rideAnchorsFor(mode, weaponKind) : mode === "attack" ? attackAnchorsFor(weaponKind, character) : mode === "walk" && HERO_ANIM ? walkAnchorsFor(character) : idleAnchorsFor(character);
+  const anchors = riding ? rideAnchorsFor(mode, weaponKind, character) : mode === "attack" ? attackAnchorsFor(weaponKind, character) : mode === "walk" && HERO_ANIM ? walkAnchorsFor(character) : idleAnchorsFor(character);
   const anchor = anchors[Math.min(index, anchors.length - 1)];
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다
@@ -178,7 +180,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
         // 앉으면 먼 다리가 없고 내린 다리는 몸 뼈를 따라간다
         if (riding && name === "bootL") return null;
         const follow = riding && name === "bootR" ? "chest" : part;
-        const id = worn[slot], cur = anchor[follow], base = (riding ? rideAnchorsFor("idle", weaponKind) : IDLE_EQUIPMENT_ANCHORS)[0][follow];
+        const id = worn[slot], cur = anchor[follow], base = (riding ? rideAnchorsFor("idle", weaponKind, character) : idleAnchorsFor(character))[0][follow];
         const lv = (id && wornLevels?.[id]) || 0;
         return id && cur && base ? <img key={name} className={`equipment-wear wear-${name}`} data-wear={id} data-enh={lv >= 9 ? 3 : lv >= 6 ? 2 : lv >= 3 ? 1 : 0} data-res={(id && wornRunes?.[id]) || undefined} src={assetUrl(`titans/anim/hero-gear/${gearItemKind(id)}-${riding ? "ride-" : ""}${name}.webp`)} style={wearStyle(cur, base, mode === "attack")} alt="" aria-hidden="true" /> : null;
       })}

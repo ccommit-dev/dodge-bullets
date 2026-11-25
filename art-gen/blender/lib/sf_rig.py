@@ -28,6 +28,17 @@ CHARS = {
                    leg_l='thigh.L_21', shin_l='shin.L_20', leg_r='thigh.R_23', shin_r='shin.R_22',
                    tail=('Tail_29', 'Tail.001_28', 'Tail.002_27', 'Tail.003_26')),
     ),
+    # Mayk Santos "Happy Beaver"(CC BY) — 기본 주인공(2026-11-25, 사용자: "기본 비버 주인공을 받은 모델로" → 4번). FBX 를 바꾼 glTF 라
+    # 쉬는 자세가 Y 위 · 앞 +Z 로 누운 T 자세(불러온 장면 자세는 두 손 든 모습) → 쉬는 자세로 되돌리고 X 축 +90° 로 세운다(fix_rx).
+    # 손 뼈가 손끝 너머 1.5 까지 길어 쥐는 점은 손 뼈 머리에서 grip 만큼만. 팔은 수평에서 18° 내려와 있다(down 72)
+    'hb': dict(
+        file='sfh-beaver4.glb', h=1.0, drop=('Icosphere',), down=72.0, fix_rx=90.0, grip=0.14,
+        bones=dict(root='_rootJoint', hips='coluna_01', body='Bone.001_02', chest='Bone.001_02', head='Bone.003_08',
+                   arm_l='Bone.001_R.005_00', fore_l='Bone.001_R.006_010', hand_l='Bone.001_R.007_011',
+                   arm_r='Bone.001_R.001_04', fore_r='Bone.001_R.002_05', hand_r='Bone.001_R.003_06',
+                   leg_l='Bone_L.001_017', shin_l='Bone_L.002_018', leg_r='Bone_R.001_021', shin_r='Bone_R.002_022',
+                   tail=('Bone.005_012', 'Bone.007_013', 'Bone.006_014', 'Bone.008_015')),
+    ),
 }
 
 
@@ -60,7 +71,15 @@ def build(char_id):
     for o in [arm] + meshes:
         o.select_set(True)
     bpy.context.view_layer.objects.active = arm
+    for pbn in arm.pose.bones:   # 불러온 장면 자세(glTF 노드 TRS)를 걷고 쉬는 자세로 — 굳힐 때 뼈 · 메시가 같은 자세여야 한다
+        pbn.matrix_basis = Matrix()
+    bpy.context.view_layer.update()
     bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+    if cfg.get('fix_rx'):   # 누운 쉬는 자세를 세운다 — 원점 둘레로 X 축 회전
+        R = Matrix.Rotation(math.radians(cfg['fix_rx']), 4, 'X')
+        for o in [arm] + meshes:
+            o.matrix_world = R @ o.matrix_world
+        bpy.context.view_layer.update()
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     for o in [o for o in objs if o.type == 'EMPTY']:
         bpy.data.objects.remove(o, do_unlink=True)
@@ -152,9 +171,14 @@ def pose(rig, P):
     pb[B['body']].scale = (1 / math.sqrt(sq), sq, 1 / math.sqrt(sq))   # 뼈 로컬 Y = 위(척추 뼈가 위를 향한다)
     pb[B['head']].rotation_quaternion = _rot_local(arm, B['head'], _R(X, P.get('head', 0)) @ _R(Z, P.get('head_turn', 0)))
     pb[B['head']].scale = (math.sqrt(sq), 1 / sq, math.sqrt(sq))
-    # 다리 — 앞으로 +
-    pb[B['leg_l']].rotation_quaternion = _rot_local(arm, B['leg_l'], _R(X, -P.get('leg_l', 0)))
-    pb[B['leg_r']].rotation_quaternion = _rot_local(arm, B['leg_r'], _R(X, -P.get('leg_r', 0)))
+    # 다리 — 앞으로 +. 앉은 자세(seat — 탈것 위)는 넓적다리를 앞으로 들고 무릎을 굽힌다
+    seat = P.get('seat', 0.0)
+    pb[B['leg_l']].rotation_quaternion = _rot_local(arm, B['leg_l'], _R(X, -(P.get('leg_l', 0) + 80 * seat)) @ _R(Y, -14 * seat))
+    pb[B['leg_r']].rotation_quaternion = _rot_local(arm, B['leg_r'], _R(X, -(P.get('leg_r', 0) + 80 * seat)) @ _R(Y, 14 * seat))
+    if seat:
+        for s_ in ('l', 'r'):
+            sh = B[f'shin_{s_}']
+            pb[sh].rotation_quaternion = _rot_local(arm, sh, _R(X, 75 * seat))
     # 꼬리 — 사슬에 나눠 흔든다(옆으로, 여우 꼬리는 위아래보다 좌우가 산다)
     tail = B.get('tail') or ()
     for i, t in enumerate(tail):
@@ -200,7 +224,12 @@ def parts(rig):
     def up(p, v=(0, 0, 0.2)):
         return tuple(Vector(p) + Vector(v))
 
-    hl, hr = tuple(bones[B['hand_l']].tail_local), tuple(bones[B['hand_r']].tail_local)   # 손끝 쪽(발바닥 같은 손)이 쥐는 점
+    def grip(b):   # 쥐는 점 — 손 뼈 끝. 손 뼈가 손끝 너머로 긴 리그(cfg grip)는 손 뼈 머리에서 grip 만큼
+        h, t = bones[b].head_local, bones[b].tail_local
+        g = rig.cfg.get('grip')
+        return tuple(h + (t - h).normalized() * g) if g else tuple(t)
+
+    hl, hr = grip(B['hand_l']), grip(B['hand_r'])
     return {
         'hand': (B['hand_l'], hl, tuple(Vector(hl) + hand_rest_up(rig, 'l'))),
         'offHand': (B['hand_r'], hr, tuple(Vector(hr) + hand_rest_up(rig, 'r'))),

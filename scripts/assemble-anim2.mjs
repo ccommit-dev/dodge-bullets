@@ -59,7 +59,14 @@ async function load(id) {
       actions[name].push({ file, ...frames[i], box: await bbox(file) });
     }
   }
-  return { id, res: meta.res, actions };
+  // 받은 모델 주인공(2026-11-25, render_anim2 HERO_MODEL → meta.model) — 몸 높이(발 → 머리 꼭대기, 렌더 px)를 대기 0칸에서 잰다.
+  // 도트는 89px 렌더라 1px 이 1% — 셀 렌더에서 재고 해상도 비로 나눈다(두 그림체 키가 같게)
+  let up0;
+  if (meta.model && actions.idle) {
+    if (PX) { const d = dir.replace(SRC, "art-gen/out/b3d2"), m = JSON.parse(readFileSync(`${d}/meta.json`, "utf8")); up0 = (m.actions.idle[0].pivot[1] - (await bbox(`${d}/idle_0.png`)).y0) / RS; }
+    else up0 = actions.idle[0].pivot[1] - actions.idle[0].box.y0;
+  }
+  return { id, res: meta.res, model: meta.model, up0, actions };
 }
 const allFrames = (c) => Object.values(c.actions).flat();
 /** 피격 번쩍임 — t 0~1 */
@@ -215,9 +222,11 @@ export const MOUNT_SEAT: Record<string, readonly [number, number]> = ${JSON.stri
 
 // ── 주인공 ── 시트 셋(대기·걷기·공격) + 손 뼈 앵커(무기만 든다 — 2026-10-19)
 /** 주인공 배율 — 서 있는 시트 기준(탈것 위 시트 · 입는 파츠도 같은 값) */
+/** 받은 모델 주인공의 대기 인물 키(칸 높이 비) — 옛 비버 주인공은 69% 목표가 공격 칸 맞춤으로 깎여 실제 47%(귀 · 털 뭉치까지)였다. 화면 속 크기를 그대로 두려고 50% */
+const MODEL_FIG = 0.5;
 function heroScale(c) {
   const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, FX = H.feet[0] * FW, PY = H.feet[1] * FH;
-  let k = (FH * 0.69) / (435.35 / RS);
+  let k = (FH * (c.model ? MODEL_FIG : 0.69)) / (c.up0 ?? 435.35 / RS);
   for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, FX + (s.width - FW) / 2, PY, 3));
   return k;
 }
@@ -270,8 +279,8 @@ if (want("hero")) {
     const FX = H.feet[0] * FW, PY = H.feet[1] * FH;
     const idle = c.actions.idle;
     // 몸 높이는 값으로 고정 (2026-11-03) — 털 뭉치(roster.HERO marks)까지 재면 배율이 15% 깎여 게임 속 주인공이 작아진다. 머리 꼭대기까지 렌더 435.35px(1024²)
-    const up0 = 435.35 / RS;
-    let k = (FH * 0.69) / up0;   // 대기 인물(왕관 꼭대기~발)이 칸 높이의 69% (FIG_IDLE · verify-systems)
+    const up0 = c.up0 ?? 435.35 / RS;   // 받은 모델(meta.model)은 렌더에서 잰 키
+    let k = (FH * (c.model ? MODEL_FIG : 0.69)) / up0;   // 대기 인물(왕관 꼭대기~발)이 칸 높이의 69% (FIG_IDLE · verify-systems)
     for (const [mode, s] of Object.entries(H.sheets)) if (c.actions[mode]) k = Math.min(k, fitScale(c.actions[mode], k, s.width, FH, FX + (s.width - FW) / 2, PY, 3));
     mkdirSync(`${PUB}/hero`, { recursive: true });
     const r1 = (v) => Math.round(v * 10) / 10;
