@@ -2,6 +2,12 @@
 
 게임 안에서는 설정 → 더 보기 → **외부 그림 크레딧**에서 볼 수 있다(`src/ui/credits.ts` — 이 문서와 같이 고친다).
 
+## Quaternius — Ultimate Monsters (CC0, 2026-11-25 받음)
+
+몬스터 · 대장 · 펫 그림 전부를 이 한 묶음(50종, 같은 팔레트 · 같은 비율 · 대기/공격/피격 동작 포함)으로 바꿨다 — 사용자 "새로운 리소스들로 풍 균일하게". 여러 작가 모델을 섞을 때 그림결이 갈렸다.
+받은 곳 https://quaternius.com/packs/ultimatemonsters.html (구글 드라이브 glTF 폴더 셋) → `art-gen/out/quaternius/{flying,blob,big}/glTF/` (저장소 밖). 렌더 `art-gen/blender/qt_monsters.py`(MODELS 가 게임 그림 id → 모델 짝).
+이전 Sketchfab 몬스터 여덟 · 상점 펫 넷은 이 묶음으로 바뀌어 아래 표에서 뺐다.
+
 ## Sketchfab 3D 모델 (2026-11-23 받음)
 
 모두 **CC BY 4.0**(작가 표기 · 상업 이용 허용)이다. 원본을 그대로 쓰지 않고 우리 셀 그림체(평면 음영 · 잉크 외곽선 · 테두리빛)로 다시 렌더했다 — CC BY 의 "변경 표시" 요건.
@@ -9,24 +15,12 @@
 
 | 게임 안 | 원본 | 작가 | 주소 | 파일 |
 |---|---|---|---|---|
-| 몬스터 '보라 박쥐' (숲 · 늑대 변종) | RPG Monster - Bat ( free download ) | SEMA Game Studio | https://sketchfab.com/3d-models/rpg-monster-bat-free-download-ace4909297244470ae9769f308014d50 | m-bat.glb |
-| 몬스터 '버섯 방울이' (초원 · 슬라임 변종) | Mushy Buddy | Mossycrossings | https://sketchfab.com/3d-models/mushy-buddy-669e6965b975416eac05cf1625b21f16 | m-mushy.glb |
-| 몬스터 '화분 파리지옥' (숲 · 고블린 변종) | Monster Plant | Batuhan13 | https://sketchfab.com/3d-models/monster-plant-b7e677ebca4e4b6ea247fba10a356bd4 | m-plant.glb |
-| 몬스터 '눈알 꽃' (초원 · 고블린 변종) | Eyeball Plant | Snarkle Studios | https://sketchfab.com/3d-models/eyeball-plant-3c020ddcd129468ea065822cc12dfb22 | m-eyeplant.glb |
-| 몬스터 '말랑 불가사리' (폐허 · 늑대 변종) | Cute tentacle creature | endike | https://sketchfab.com/3d-models/cute-tentacle-creature-2aec23f475dc4c93a6353fa7052d15d2 | m-tentacle.glb |
-| 몬스터 '외눈 말랑이' (초원 · 슬라임 변종) | Kino – Cute Cyclops Monster | BenAissa_Karim | https://sketchfab.com/3d-models/kino-cute-cyclops-monster-aa66111d23cb41f49da7705631e1ade9 | m-cyclops.glb |
-| 몬스터 '아기 홍룡' (화산 · 용 변종) | Stylized Red/Black dragon_baby | BBangzip | https://sketchfab.com/3d-models/stylized-redblack-dragon-baby-1d3cc450c8914665bf950c4fe06fc127 | m-babydragon-red.glb |
-| 몬스터 '꼬마 유령' (심연 · 늑대 변종 — 호박 장식은 뺌) | Cute ghost | P3D | https://sketchfab.com/3d-models/cute-ghost-2c8c03bb0e5049529e653f9011a8fc90 | m-ghost.glb |
 | 사냥터 바닥 덤불 · 꽃 · 버섯 · 결정 · 바위 | Low poly Stylized Nature Pack | Satendra Saraswat | https://sketchfab.com/3d-models/low-poly-stylized-nature-pack-9c773e846c6e4448b26b2cdecb2b91bf | p-nature.glb |
 | 사냥터 바닥 바위 · 광석 · 성문 방어 낙석 바위(art-gen/blender/rocks.py — 모양만, 색은 장 재질) | [FREE] Lowpoly Volcanic Rocks [Asset Pack] | SimplePolygon | https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0 | p-rocks.glb |
 | 사냥터 바닥 빛나는 버섯(숲 · 심연) | Stylized mushrooms | QumoDone | https://sketchfab.com/3d-models/stylized-mushrooms-9d22e02ce2a548959b1c4c4c1d546842 | p-mushrooms.glb |
 | 사냥터 바닥 쓰러진 통나무(숲) | Cartoon fallen tree | neon_dust | https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6 | p-fallentree.glb |
 | 사냥터 바닥 그루터기(초원 · 숲) | Tree Stump stylized | makcutka250 | https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec | p-stump.glb |
 | 사냥터 바닥 선인장(폐허) | Cactus \| Pack | YadroGames | https://sketchfab.com/3d-models/cactus-pack-588596f1601d48e6ad4cb24b31c3f33c | p-cactus.glb |
-| 상점 펫 '아기 고양이' | Toon Cat FREE | Omabuarts Studio | https://sketchfab.com/3d-models/toon-cat-free-b2bd1ee7858444bda366110a2d960386 | pet-cat.glb |
-| 상점 펫 '꼬마 여우' | PBR Low-poly Fox Character | Ida Faber | https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d | pet-fox.glb |
-| 상점 펫 '아기 펭귄' | Penguin plush | SunnyBuns | https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4 | pet-penguin.glb |
-| 상점 펫 '풀잎 개구리' | Frog | gooseg489 | https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050 | pet-frog.glb |
 | 상점 동료 '솜털 토끼 보니' | Cute Bunny | Minimoku | https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02 | a-bunny.glb |
 | 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
 | 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |

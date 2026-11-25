@@ -185,16 +185,16 @@ export type MonsterFrameState = "idle" | "hit" | "attack" | "defeat";   // attac
  *  2026-11-17 몬스터 · 대장 그림결 2판 — scripts/monster-margins-from-png.mjs 가 전투 시트 대기 첫 칸으로 다시 잼.
  *  오른쪽을 보게 렌더한 4종(FLIP_MONSTERS)은 화면에서 뒤집히므로 좌우를 바꿔 넣었다 */
 const MONSTER_VISIBLE_MARGIN: Record<string, [number, number]> = {
-  slime: [0.09, 0.09], goblin: [0.10, 0.13], "shadow-wolf-clean": [0.18, 0.23], ogre: [0.16, 0.24], dragon: [0.19, 0.04], "magma-imp": [0.12, 0.14],
-  "void-imp": [0.24, 0.22], "goblin-shaman": [0.10, 0.12], "skeleton-goblin": [0.15, 0.16], "frost-wolf": [0.18, 0.23], hellhound: [0.18, 0.23], "stone-troll": [0.17, 0.21],
-  "armored-ogre": [0.16, 0.24], "lava-drake": [0.19, 0.04], "storm-drake": [0.19, 0.04], "moss-golem-clean": [0.16, 0.18], "moon-wolf-king-clean": [0.18, 0.23], "wolf-king-clean": [0.18, 0.22],
-  "flame-wyvern-clean": [0.19, 0.03], "abyss-titan": [0.17, 0.23], "thorn-boar-king": [0.19, 0.24], "ancient-treant": [0.22, 0.25], "ruin-sentinel": [0.17, 0.23], "magma-golem": [0.16, 0.21],
-  "void-lich": [0.12, 0.24], "goblin-warlord": [0.10, 0.13], "spider-queen": [0.05, 0.08], minotaur: [0.15, 0.19], "fire-demon": [0.19, 0.04], "bone-dragon": [0.19, 0.04],
-  "golden-lion-clean": [0.18, 0.23],
+  slime: [0.23, 0.24], goblin: [0.25, 0.25], "shadow-wolf-clean": [0.21, 0.30], ogre: [0.22, 0.16], dragon: [0.29, 0.10], "magma-imp": [0.21, 0.11],
+  "void-imp": [0.23, 0.15], "goblin-shaman": [0.25, 0.23], "skeleton-goblin": [0.22, 0.18], "frost-wolf": [0.22, 0.20], hellhound: [0.23, 0.19], "stone-troll": [0.29, 0.10],
+  "armored-ogre": [0.27, 0.22], "lava-drake": [0.26, 0.19], "storm-drake": [0.30, 0.13], "moss-golem-clean": [0.30, 0.12], "moon-wolf-king-clean": [0.20, 0.18], "wolf-king-clean": [0.22, 0.15],
+  "flame-wyvern-clean": [0.09, 0.20], "abyss-titan": [0.22, 0.14], "thorn-boar-king": [0.14, 0.19], "ancient-treant": [0.25, 0.17], "ruin-sentinel": [0.27, 0.28], "magma-golem": [0.32, 0.15],
+  "void-lich": [0.22, 0.27], "goblin-warlord": [0.25, 0.23], "spider-queen": [0.29, 0.09], minotaur: [0.23, 0.16], "fire-demon": [0.07, 0.18], "bone-dragon": [0.25, 0.23],
+  "golden-lion-clean": [0.26, 0.15],
   // Sketchfab 몬스터(2026-11-23, CC BY · docs/CREDITS.md) — scripts/monster-margins-from-png.mjs 실측(옛 종 값은 그대로 — 그 스크립트를 돌리면 전부 0.01 씩 다시 쓴다)
-  "sf-bat": [0.31, 0.29], "sf-mushy": [0.26, 0.26], "sf-plant": [0.25, 0.40], "sf-eyeplant": [0.23, 0.35], "sf-tentacle": [0.25, 0.28],
+  "sf-bat": [0.21, 0.27], "sf-mushy": [0.24, 0.24], "sf-plant": [0.22, 0.16], "sf-eyeplant": [0.23, 0.22], "sf-tentacle": [0.20, 0.10],
   // 2차 일곱(2026-11-24) — 대기 첫 칸 실측
-  "sf-cyclops": [0.28, 0.14], "sf-sandgolem": [0.16, 0.18], "sf-lavagolem": [0.21, 0.20], "sf-dragon-red": [0.16, 0.14], "sf-dragon-blue": [0.06, 0.02], "sf-ghost": [0.17, 0.17], "sf-magicgolem": [0.22, 0.23],
+  "sf-cyclops": [0.20, 0.22], "sf-sandgolem": [0.16, 0.18], "sf-lavagolem": [0.21, 0.20], "sf-dragon-red": [0.16, 0.04], "sf-dragon-blue": [0.06, 0.02], "sf-ghost": [0.21, 0.27], "sf-magicgolem": [0.22, 0.23],
   // Sketchfab 대장 일곱(2026-11-24) — 대기 첫 칸 실측
   "sf-mushking": [0.30, 0.33], "sf-werewolf": [0.18, 0.14], "sf-treefellow": [0.33, 0.34], "sf-insect": [0.10, 0.10], "sf-magmahound": [0.24, 0.15], "sf-iceelemental": [0.23, 0.22], "sf-icegolem": [0.20, 0.15],
 };

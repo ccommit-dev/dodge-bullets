@@ -51,31 +51,31 @@ export const CHAPTERS: ChapterDef[] = [
     name: "새벽 초원", debut: ["rain", "side", "fan"], pool: ["rain", "side", "fan", "cross", "aimed"], boss: "이끼 골렘",
     names: ["외곽 초소 돌파", "슬라임 늪지", "고블린 매복로", "늑대 사냥터", "이끼 망루", "초원 돌진로", "갈림길 협공", "초소 포위전", "정찰대 습격", "이끼 골렘의 언덕"],
     hint: "슬라임·고블린·그림자 늑대가 초원으로 몰려온다",
-    midboss: { name: "가시 멧돼지 왕", art: "thorn-boar-king" }, branchNames: { treasure: "고블린 보물 동굴", elite: ["가시덤불 샛길", "멧돼지 사냥로"], secret: "대족장의 숨은 진지" }, secretBoss: { name: "고블린 대족장", art: "goblin-warlord" },
+    midboss: { name: "가시 덩이 왕", art: "thorn-boar-king" }, branchNames: { treasure: "고블린 보물 동굴", elite: ["가시덤불 샛길", "멧돼지 사냥로"], secret: "대족장의 숨은 진지" }, secretBoss: { name: "고블린 대족장", art: "goblin-warlord" },
   },
   {
     name: "달빛 숲", debut: ["ricochet", "sweep"], pool: ["rain", "side", "fan", "cross", "aimed", "ricochet", "sweep"], boss: "달빛 늑대왕",
     names: ["달빛 숲 입구", "반딧불 늪", "오우거 벌목장", "은빛 늑대굴", "고목 수호자", "숲길 추격전", "덩굴 협공", "달빛 포위전", "그림자 사냥단", "달빛 늑대왕의 둥지"],
     hint: "단단한 오우거와 휘감아 오는 달빛 늑대 — 흙·얼음 무기가 빛난다",
-    midboss: { name: "고목 수호자", art: "ancient-treant" }, branchNames: { treasure: "반딧불 보물 굴", elite: ["거미줄 오솔길", "독안개 골짜기"], secret: "여왕의 거미굴" }, secretBoss: { name: "독거미 여왕", art: "spider-queen" },
+    midboss: { name: "버섯 대왕", art: "ancient-treant" }, branchNames: { treasure: "반딧불 보물 굴", elite: ["거미줄 오솔길", "독안개 골짜기"], secret: "여왕벌의 벌집" }, secretBoss: { name: "여왕벌", art: "spider-queen" },
   },
   {
     name: "왕실 폐허", debut: ["explosive", "burst"], pool: ["rain", "side", "fan", "cross", "aimed", "ricochet", "sweep", "explosive", "burst"], boss: "늑대 왕",
     names: ["무너진 성벽", "폐허의 떼", "왕실 사격장 탈환", "정예 근위대", "폐허의 감시자", "회랑 돌파", "탑 사이 협공", "왕궁 포위전", "근위 정예 습격", "늑대 왕의 왕좌"],
     hint: "돔에 닿으면 터지는 폭염 비룡 — 물살 작살로 먼저 꺼라",
-    midboss: { name: "폐허의 파수 기사", art: "ruin-sentinel" }, branchNames: { treasure: "왕실 보물고", elite: ["무너진 지하 회랑", "미궁의 문"], secret: "미노타우로스의 미궁" }, secretBoss: { name: "미노타우로스", art: "minotaur" },
+    midboss: { name: "폐허의 가면 정령", art: "ruin-sentinel" }, branchNames: { treasure: "왕실 보물고", elite: ["무너진 지하 회랑", "미궁의 문"], secret: "광폭 토끼의 굴" }, secretBoss: { name: "광폭 토끼", art: "minotaur" },
   },
   {
     name: "용암 협곡", debut: ["burst", "explosive"], pool: ["side", "fan", "cross", "aimed", "ricochet", "sweep", "explosive", "burst"], boss: "화염 비룡",
     names: ["붉은 협곡 입구", "화염 떼", "비룡 둥지", "용암 정예", "화산 감시탑", "용암 돌진로", "협곡 협공", "분화구 포위전", "비룡 편대", "화염 비룡의 분화구"],
     hint: "모든 몬스터가 빨라진다 — 장착 무기 넷을 고르게 세워라",
-    midboss: { name: "용암 골렘", art: "magma-golem" }, branchNames: { treasure: "흑요석 광맥", elite: ["끓는 용암 다리", "유황 계곡"], secret: "마신의 제단" }, secretBoss: { name: "화염 마신", art: "fire-demon" },
+    midboss: { name: "용암 해파리", art: "magma-golem" }, branchNames: { treasure: "흑요석 광맥", elite: ["끓는 용암 다리", "유황 계곡"], secret: "마신의 제단" }, secretBoss: { name: "화염 마신", art: "fire-demon" },
   },
   {
     name: "심연의 성", debut: ["aimed", "ricochet"], pool: ["rain", "side", "fan", "cross", "aimed", "ricochet", "sweep", "explosive", "burst"], boss: "심연의 타이탄",
     names: ["심연의 문", "어둠의 떼", "검은 성문 탈출", "심연 정예", "공허의 파수꾼", "심연 돌진로", "성채 협공", "심연 포위전", "종말의 전위대", "심연의 타이탄"],
     hint: "가장 깊은 곳 — 대장간 강화와 스킬 무기 레벨이 모두 필요하다",
-    midboss: { name: "공허의 리치", art: "void-lich" }, branchNames: { treasure: "잊힌 왕의 금고", elite: ["뼈의 계단", "망령의 회랑"], secret: "해골 용의 무덤" }, secretBoss: { name: "해골 용", art: "bone-dragon" },
+    midboss: { name: "공허의 물고기", art: "void-lich" }, branchNames: { treasure: "잊힌 왕의 금고", elite: ["뼈의 계단", "망령의 회랑"], secret: "심해 어인의 동굴" }, secretBoss: { name: "심해 어인", art: "bone-dragon" },
   },
 ];
 

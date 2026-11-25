@@ -567,8 +567,8 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   for (let i = 0; i < 2000; i += 1) worldMod.gainRunXp(w, 1);
   ok("런 XP: tempo 는 1.25 에서 멈춘다 (레벨이 아무리 올라도)", w.tempo === 1.25 && w.runLevel >= 6);
   const sp = await import(pathToFileURL(out).href).then((m) => m.spriteArt);
-  // 2026-11-17 몬스터 그림결 2판 — 전투 시트 첫 칸 실측(monster-margins-from-png): 보라 비룡은 머리 쪽(왼) 0.19 · 날개가 뒤로 퍼진 쪽(오른) 0.04
-  ok("몬스터 보이는 여백: 보라 비룡 머리 쪽 15~23% · 날개 쪽 2~8% (2판 시트 첫 칸, 렌더마다 ±1% 흔들려 범위로) · -hit 그림도 같은 값, 모르는 원화는 15/15", (() => { const [a, b] = sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png"); return a >= 0.15 && a <= 0.23 && b >= 0.02 && b <= 0.08; })() && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
+  // 2026-11-17 몬스터 그림결 2판 — 전투 시트 첫 칸 실측(monster-margins-from-png) → 11-25 Quaternius 아기 비룡: 머리 쪽 0.29 · 날개 쪽 0.10
+  ok("몬스터 보이는 여백: 아기 비룡(11-25 Quaternius) 머리 쪽 25~33% · 날개 쪽 6~14% (시트 첫 칸, 렌더마다 ±1% 흔들려 범위로) · -hit 그림도 같은 값, 모르는 원화는 15/15", (() => { const [a, b] = sp.monsterVisibleMargin("/titans/generated/monsters/dragon-hit.png"); return a >= 0.25 && a <= 0.33 && b >= 0.06 && b <= 0.14; })() && JSON.stringify(sp.monsterVisibleMargin("x/unknown.png")) === "[0.15,0.15]");
 }
 
 // ── 콘텐츠 역할 분리 P1 ──
@@ -1382,15 +1382,14 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
   ok("몬스터 ×3: 렌더 원화 11 → 31 (일반 5→15 · 대장 5→15 · 황금 사자) + Sketchfab 5 + 2차 일반 3(11-25 셀 통일로 골렘 셋 · 청룡 · 대장 일곱 뺌) = 도감 38", bestiary.bestiaryEntries().length === 38, String(bestiary.bestiaryEntries().length));
   { const sf = bestiary.SKETCHFAB_MONSTER_ARTS, need = (a) => [`public/titans/anim/monsters/${a}.webp`, `public/titans/anim-px/monsters/${a}.webp`, `public/titans/generated/monsters/${a}.png`, `public/titans/generated/monsters/${a}-hit.png`, `public/titans/generated/monsters/thumbs/${a}.webp`];
     const miss = sf.flatMap((a) => need(a).filter((p) => !existsSync(root + "/" + p))), credits = readFileSync(root + "/src/ui/credits.ts", "utf8")   /* 게임 안 크레딧(설정 → 외부 그림 크레딧) — CC BY 작가 표기. docs/ 는 ci-local 이 빼서 읽지 않는다 */;
-    const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Mushy Buddy", "Eyeball Plant", "Monster Plant", "RPG Monster - Bat", "Cute tentacle creature",
-      "Kino – Cute Cyclops Monster", "Stylized Red/Black dragon_baby", "Cute ghost"].filter((n) => !credits.includes(n));
+    const noMargin = sf.filter((a) => { const m = spMod.monsterVisibleMargin(a + ".png"); return m[0] === 0.15 && m[1] === 0.15; }), noCredit = ["Quaternius"].filter((n) => !credits.includes(n));
     const noHd = bestiary.SKETCHFAB_BOSS_ARTS.filter((a) => !existsSync(root + "/public/titans/anim/monsters-hd/" + a + ".webp") || !new RegExp('"' + a + '":0\.').test(readFileSync(root + "/src/titans/animLayout.ts", "utf8")));
     ok("Sketchfab 몬스터 8(1차 5 · 2차 일반 3 — 11-25 셀 통일로 사실적인 열하나 뺌): 셀 · 도트 시트 · 정지 그림 · 피격 · 도감 썸네일 · 실측 여백 · 크레딧", sf.length === 8 && miss.length === 0 && noMargin.length === 0 && noCredit.length === 0 && noHd.length === 0, [...miss, ...noMargin, ...noCredit, ...noHd.map((a) => "hd:" + a)].join(",")); }
   // 2026-11-24 상점 펫 4종(Sketchfab CC BY → 셀 렌더) — 값 · 가격은 같은 축 몬스터 펫 그대로, 도감 전투력은 몬스터 펫만(밸런스 불변)
   { const twin = { cat: "slime", frog: "goblin", fox: "wolf", penguin: "ogre" };
     const same = Object.entries(twin).every(([s, m]) => ["passive", "base", "perLevel", "unit"].every((k) => pets.PET_DEFS[s][k] === pets.PET_DEFS[m][k]) && pets.PET_GEM_PRICE[s] === pets.PET_GEM_PRICE[m]);
     const sheets = pets.SHOP_PET_IDS.flatMap((id) => [`public/titans/anim/monsters/pet-${id}.webp`, `public/titans/anim-px/monsters/pet-${id}.webp`]).filter((p) => !existsSync(root + "/" + p));
-    const credits = readFileSync(root + "/src/ui/credits.ts", "utf8"), noCredit = ["Toon Cat FREE", "PBR Low-poly Fox Character", "Penguin plush", "Frog"].filter((n) => !credits.includes(n));
+    const credits = readFileSync(root + "/src/ui/credits.ts", "utf8"), noCredit = ["Quaternius"].filter((n) => !credits.includes(n));   /* 11-25 몬스터 · 펫 전부 Quaternius 묶음(qt_monsters.py) */
     const allPets = prog.normalizeCharacterProgress({ ...base, pets: Object.fromEntries(pets.PET_IDS.map((id) => [id, 1])), activePet: "fox" });
     const power = collection.petCollectionPower(allPets);
     ok("상점 펫 4종: 같은 축 몬스터 펫과 값 · 가격 같음 · 셀/도트 시트 · 크레딧 · 저장 정규화(Lv · 장착) · 도감 전투력은 몬스터 펫 6마리만(180)",

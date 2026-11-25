@@ -37,14 +37,14 @@ export const PET_DEFS: Record<PetId, PetDef> = {
   slime: { id: "slime", name: "아기 슬라임", passive: "gold", desc: "사냥 골드 증가", base: 0.05, perLevel: 0.01, unit: "%" },
   goblin: { id: "goblin", name: "꼬마 고블린", passive: "shard", desc: "방치 조각 드랍 가속", base: 0.25, perLevel: 0.05, unit: "%" },
   wolf: { id: "wolf", name: "아기 늑대", passive: "bossTime", desc: "보스 제한시간 연장", base: 3, perLevel: 0.5, unit: "초" },
-  ogre: { id: "ogre", name: "꼬마 오우거", passive: "materials", desc: "방치 강화석 증가", base: 0.2, perLevel: 0.04, unit: "%" },
+  ogre: { id: "ogre", name: "꼬마 설인", passive: "materials", desc: "방치 강화석 증가", base: 0.2, perLevel: 0.04, unit: "%" },
   dragon: { id: "dragon", name: "새끼 용", passive: "capHours", desc: "방치 시간 캡 연장", base: 1, perLevel: 0.1, unit: "시간" },
   boss: { id: "boss", name: "타이탄의 그림자", passive: "multiplier", desc: "방치 배율 증가", base: 0.05, perLevel: 0.01, unit: "" },
   // 상점 펫 — 값은 같은 축 기존 펫 그대로(고양이 = 슬라임 · 개구리 = 고블린 · 여우 = 늑대 · 펭귄 = 오우거)
   cat: { id: "cat", name: "아기 고양이", passive: "gold", desc: "사냥 골드 증가", base: 0.05, perLevel: 0.01, unit: "%" },
-  frog: { id: "frog", name: "풀잎 개구리", passive: "shard", desc: "방치 조각 드랍 가속", base: 0.25, perLevel: 0.05, unit: "%" },
-  fox: { id: "fox", name: "꼬마 여우", passive: "bossTime", desc: "보스 제한시간 연장", base: 3, perLevel: 0.5, unit: "초" },
-  penguin: { id: "penguin", name: "아기 펭귄", passive: "materials", desc: "방치 강화석 증가", base: 0.2, perLevel: 0.04, unit: "%" },
+  frog: { id: "frog", name: "노랑 개구리", passive: "shard", desc: "방치 조각 드랍 가속", base: 0.25, perLevel: 0.05, unit: "%" },
+  fox: { id: "fox", name: "꼬마 병아리", passive: "bossTime", desc: "보스 제한시간 연장", base: 3, perLevel: 0.5, unit: "초" },
+  penguin: { id: "penguin", name: "통통 새", passive: "materials", desc: "방치 강화석 증가", base: 0.2, perLevel: 0.04, unit: "%" },
 };
 
 /** 몬스터 펫 — 도감 1,000 처치로 부화 · 도감 전투력 */

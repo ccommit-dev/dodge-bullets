@@ -14,36 +14,36 @@ type NormalKind = Exclude<TitanMonsterKind, "boss">;
 /** 사냥터 지역 × 종류 → 변종 (첫째가 그 지역의 대표) */
 export const HUNT_VARIANTS: Record<string, Partial<Record<NormalKind, MonsterArtDef[]>>> = {
   meadow: {
-    slime: [{ art: "slime", name: "슬라임" }, { art: "sf-mushy", name: "버섯 방울이" }, { art: "sf-cyclops", name: "외눈 말랑이" }],
-    goblin: [{ art: "goblin", name: "고블린" }, { art: "goblin-shaman", name: "고블린 주술사" }, { art: "sf-eyeplant", name: "눈알 꽃" }],
+    slime: [{ art: "slime", name: "슬라임" }, { art: "sf-mushy", name: "버섯 방울이" }, { art: "sf-cyclops", name: "더듬이 말랑이" }],
+    goblin: [{ art: "goblin", name: "고블린" }, { art: "goblin-shaman", name: "고블린 주술사" }, { art: "sf-eyeplant", name: "더듬이 외계인" }],
   },
   forest: {
-    goblin: [{ art: "goblin-shaman", name: "고블린 주술사" }, { art: "goblin", name: "고블린" }, { art: "sf-plant", name: "화분 파리지옥" }],
-    wolf: [{ art: "frost-wolf", name: "서리 늑대" }, { art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "sf-bat", name: "보라 박쥐" }],
+    goblin: [{ art: "goblin-shaman", name: "고블린 주술사" }, { art: "goblin", name: "고블린" }, { art: "sf-plant", name: "꼬마 선인장" }],
+    wolf: [{ art: "frost-wolf", name: "서리 설인" }, { art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "sf-bat", name: "보라 박쥐" }],
   },
   ruins: {
-    wolf: [{ art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "skeleton-goblin", name: "해골 고블린" }, { art: "sf-tentacle", name: "말랑 불가사리" }],
-    ogre: [{ art: "stone-troll", name: "바위 트롤" }, { art: "ogre", name: "오우거" }],
+    wolf: [{ art: "shadow-wolf-clean", name: "그림자 늑대" }, { art: "skeleton-goblin", name: "해골 고블린" }, { art: "sf-tentacle", name: "꼬마 오징어" }],
+    ogre: [{ art: "stone-troll", name: "돌 꼬마" }, { art: "ogre", name: "오우거" }],
   },
   volcano: {
     ogre: [{ art: "ogre", name: "오우거" }, { art: "magma-imp", name: "용암 임프" }],
-    dragon: [{ art: "lava-drake", name: "용암 드레이크" }, { art: "hellhound", name: "지옥견" }, { art: "sf-dragon-red", name: "아기 홍룡" }],
+    dragon: [{ art: "lava-drake", name: "보라 회오리" }, { art: "hellhound", name: "불꽃 공룡" }, { art: "sf-dragon-red", name: "불꽃 꼬마 악마" }],
   },
   abyss: {
-    dragon: [{ art: "storm-drake", name: "폭풍 드레이크" }, { art: "dragon", name: "보라 비룡" }],
-    wolf: [{ art: "hellhound", name: "지옥견" }, { art: "void-imp", name: "공허 임프" }, { art: "sf-ghost", name: "꼬마 유령" }],
-    ogre: [{ art: "armored-ogre", name: "철갑 오우거" }, { art: "ogre", name: "오우거" }],
+    dragon: [{ art: "storm-drake", name: "폭풍 물방울" }, { art: "dragon", name: "아기 비룡" }],
+    wolf: [{ art: "hellhound", name: "불꽃 공룡" }, { art: "void-imp", name: "공허 임프" }, { art: "sf-ghost", name: "꼬마 유령" }],
+    ogre: [{ art: "armored-ogre", name: "선인장 무사" }, { art: "ogre", name: "오우거" }],
   },
 };
 
 /** 사냥터 지역 보스 — 대표 · 중간 보스 · 숨은 대장 (원정 장과 같은 얼굴들) */
 export const HUNT_BOSSES: Record<string, MonsterArtDef[]> = {
   // Sketchfab 대장(2026-11-24, 사용자: "대장(보스) … 새로 받아서") — 지역마다 돌림 끝에 붙였다. 대장 체력 · 보상은 층이 정해 그림만 늘어난다 → 2026-11-25 "셀 그림으로 통일"로 일곱 모두 뺐다(사진 같은 질감이 셀 대장과 따로 놀았다)
-  meadow: [{ art: "moss-golem-clean", name: "이끼 골렘" }, { art: "thorn-boar-king", name: "가시 멧돼지 왕" }, { art: "goblin-warlord", name: "고블린 대족장" }],
-  forest: [{ art: "moon-wolf-king-clean", name: "월광 늑대왕" }, { art: "ancient-treant", name: "고목 수호자" }, { art: "spider-queen", name: "독거미 여왕" }],
-  ruins: [{ art: "wolf-king-clean", name: "고대 오우거" }, { art: "ruin-sentinel", name: "폐허의 파수 기사" }, { art: "minotaur", name: "미노타우로스" }],
-  volcano: [{ art: "flame-wyvern-clean", name: "화염 비룡" }, { art: "magma-golem", name: "용암 골렘" }, { art: "fire-demon", name: "화염 마신" }],
-  abyss: [{ art: "abyss-titan", name: "심연의 타이탄" }, { art: "void-lich", name: "공허의 리치" }, { art: "bone-dragon", name: "해골 용" }],
+  meadow: [{ art: "moss-golem-clean", name: "이끼 골렘" }, { art: "thorn-boar-king", name: "가시 덩이 왕" }, { art: "goblin-warlord", name: "고블린 대족장" }],
+  forest: [{ art: "moon-wolf-king-clean", name: "월광 원숭이왕" }, { art: "ancient-treant", name: "버섯 대왕" }, { art: "spider-queen", name: "여왕벌" }],
+  ruins: [{ art: "wolf-king-clean", name: "고대 오우거" }, { art: "ruin-sentinel", name: "폐허의 가면 정령" }, { art: "minotaur", name: "광폭 토끼" }],
+  volcano: [{ art: "flame-wyvern-clean", name: "화염 비룡" }, { art: "magma-golem", name: "용암 해파리" }, { art: "fire-demon", name: "화염 마신" }],
+  abyss: [{ art: "abyss-titan", name: "심연의 타이탄" }, { art: "void-lich", name: "공허의 물고기" }, { art: "bone-dragon", name: "심해 어인" }],
 };
 
 /** Sketchfab 몬스터 다섯(2026-11-23, 사용자: "sketchfab 에서 받아 적용" — CC BY, 작가 · 원본은 docs/CREDITS.md).
