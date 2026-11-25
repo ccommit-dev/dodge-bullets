@@ -5,7 +5,7 @@ export const IDLE_SHEET = assetUrl("titans/character/base/hero-idle.png");
 export const ATTACK_SHEET = assetUrl("titans/character/base/hero-attack.png");
 
 /** 구매 캐릭터 스킨 — 2판 시트는 Blender 동물 옷(2026-11-19, art-gen/blender/hero_skins.py · lib/suit_kit.py), 1판 PNG 는 옛 팔레트 파생(scripts/make-character-skins.mjs) */
-export const CHARACTER_SKINS = ["default", "obsidian", "dawn", "ember", "frost"] as const;
+export const CHARACTER_SKINS = ["default", "obsidian", "dawn", "ember", "frost", "fox"] as const;
 export type CharacterSkinId = (typeof CHARACTER_SKINS)[number];
 
 export const CHARACTER_LABEL: Record<CharacterSkinId, string> = {
@@ -15,9 +15,18 @@ export const CHARACTER_LABEL: Record<CharacterSkinId, string> = {
   // I 코스튬 — make-character-skins.mjs가 기본 시트에서 파생한 실제 시트 (skins/hero-*-<id>.png)
   ember: "붉은 잔영",
   frost: "서리 무희",
+  // 3D 캐릭터(2026-11-25) — Sketchfab 모델(MartinDL "Cartoon Character", CC BY)을 비버 풍 처리해 렌더(art-gen/blender/lib/sf_rig.py · char@fox)
+  fox: "여우 모험가",
 };
 
-const isSkin = (character: string) => character === "obsidian" || character === "dawn" || character === "ember" || character === "frost";
+/** 보석으로 사는 3D 캐릭터 (2026-11-25, 사용자: "주인공 캐릭터 상품 추가" → "보석으로 판매") — 실결제 상품(char-*)이 아니다. 외형 전용 · 패시브 없음.
+ * 남의 리그라 손 앵커가 따로(equipment/charAnchors.ts) · 탈것 위 시트 없음(타지 않는다 — 탈것 효과는 그대로) · 입는 파츠는 그리지 않는다 */
+export const CHARACTER_GEM_COST: Partial<Record<CharacterSkinId, number>> = { fox: 60 };
+export const isModelCharacter = (character: string | undefined): boolean => character !== undefined && CHARACTER_GEM_COST[character as CharacterSkinId] !== undefined;
+/** 주인공이 탈것 위에 앉아 보이는가 — 3D 캐릭터는 앉은 시트가 없어 걸어 다닌다 */
+export const ridesVisually = (character: string | undefined, mounted: boolean): boolean => mounted && !isModelCharacter(character);
+
+const isSkin = (character: string) => character === "obsidian" || character === "dawn" || character === "ember" || character === "frost" || isModelCharacter(character);
 /** 주인공 시트 — 애니메이션 2판(2026-10-19)이면 대기 6 · 걷기 6 · 공격 8칸 webp(스킨은 make-character-skins --anim2 파생), 아니면 1판 4칸 PNG */
 /** 무기별 공격 시트가 있는 무기 (2026-10-27, 사용자: "활·지팡이 동작 — 몸 전체가 활을 당기거나 지팡이를 드는 동작") — 창 찌르기 · 활 당기기 · 지팡이 들어 내뻗기.
  * art-gen/blender/anim2.py HERO_WEAPON_ATTACK → render_anim2 hero-<무기> → assemble-anim2 → hero-attack-<무기>[-스킨].webp. 검은 hero-attack */

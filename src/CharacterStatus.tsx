@@ -51,7 +51,7 @@ import { sheetFor } from "./titans/anim";
 import { PetArt, monsterAssetFor } from "./titans/SpriteArt";
 import { bestiaryEntries, bestiaryThumb } from "./titans/bestiary";
 import { assetUrl } from "./asset";
-import { CHARACTER_LABEL, CHARACTER_SKINS } from "./titans/anim";
+import { CHARACTER_GEM_COST, CHARACTER_LABEL, CHARACTER_SKINS, ridesVisually, type CharacterSkinId } from "./titans/anim";
 import { THEMES, WEAPON_FX } from "./economy/cosmetics";
 import { EquippedCharacter } from "./ui/EquippedCharacter";
 import { ContentIcon } from "./ui/ContentIcon";
@@ -95,6 +95,9 @@ export function CharacterStatus({
   const [titans, setTitans] = useState<TitansSave>(() => defaultTitansSave());
   const [previewFrame, setPreviewFrame] = useState(0);
   const [growthMessage, setGrowthMessage] = useState("");
+  const riding = ridesVisually(progress.activeCharacter, isMountId(progress.activeMount));
+  /** 보석 캐릭터 구매 확인 — 한 번 누르면 값 안내, 같은 칩을 한 번 더 누르면 산다(2026-11-25 여우 모험가) */
+  const [confirmChar, setConfirmChar] = useState<CharacterSkinId | null>(null);
   // 결과 문구는 화면 아래 토스트로 2.8초 (2026-10-21, 사용자: "마이페이지 동작을 안하네") — 예전엔 위 카드 맨 아래 한 줄이라
   // 도감 · 펫 · 배지 탭(길이 1,400px)에서 누르면 결과가 화면 밖에 떠 아무 반응이 없어 보였다
   useEffect(() => {
@@ -275,9 +278,10 @@ export function CharacterStatus({
 
       <section className="character-hero-card">
         <div className="character-equipment-preview">
-          <div className={`character-equipment-facing ${isMountId(progress.activeMount) ? "is-riding" : ""}`} style={isMountId(progress.activeMount) ? (() => { const [dx, dy] = mountSeatShift(MOUNT_DEFS[progress.activeMount].art); return { "--seat-dx": `${dx}%`, "--seat-dy": `${dy}%` } as CSSProperties; })() : undefined}>
-            {isMountId(progress.activeMount) && <div className="hero-mount status-mount" aria-hidden="true"><i style={mountAnimStyle(MOUNT_DEFS[progress.activeMount].art, "idle")} /></div>}
-            <EquippedCharacter riding={isMountId(progress.activeMount)} worn={progress.equippedGear} wornLevels={progress.gearSetLevels} mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} gear={{ shield: shieldTierOf(progress.dodgeBestStage), gloves: glovesTierOf(titans.equipmentTraining.weaponMastery), boots: bootsTierOf(progress.towerBestFloor) }} />
+          {/* 3D 캐릭터(여우 모험가)는 탈것 위 시트가 없어 타지 않는다(anim.ridesVisually) — 탈것 그림도 깔지 않는다 */}
+          <div className={`character-equipment-facing ${riding ? "is-riding" : ""}`} style={riding && isMountId(progress.activeMount) ? (() => { const [dx, dy] = mountSeatShift(MOUNT_DEFS[progress.activeMount].art); return { "--seat-dx": `${dx}%`, "--seat-dy": `${dy}%` } as CSSProperties; })() : undefined}>
+            {riding && isMountId(progress.activeMount) && <div className="hero-mount status-mount" aria-hidden="true"><i style={mountAnimStyle(MOUNT_DEFS[progress.activeMount].art, "idle")} /></div>}
+            <EquippedCharacter riding={riding} worn={progress.equippedGear} wornLevels={progress.gearSetLevels} mode="idle" frame={previewFrame} weaponLevel={progress.equippedWeaponLevel} shoulder={progress.equippedShoulder} evolution={progress.evolutionPath} character={progress.activeCharacter} weaponSkin={progress.equippedWeaponSkin} gear={{ shield: shieldTierOf(progress.dodgeBestStage), gloves: glovesTierOf(titans.equipmentTraining.weaponMastery), boots: bootsTierOf(progress.towerBestFloor) }} />
           </div>
         </div>
         <div className="character-identity">
@@ -335,7 +339,28 @@ export function CharacterStatus({
                 className={`character-skin-chip ${active ? "active" : ""} ${owned ? "" : "locked"}`}
                 onClick={() => {
                   if (!owned) {
-                    setGrowthMessage("보석 상점에서 구매할 수 있는 캐릭터입니다.");
+                    const gemCost = CHARACTER_GEM_COST[skin];
+                    if (gemCost === undefined) {
+                      setGrowthMessage("보석 상점에서 구매할 수 있는 캐릭터입니다.");
+                      return;
+                    }
+                    // 3D 캐릭터(여우 모험가) — 보석으로 바로 산다. 실결제 상품이 아니라 환불 회수(payments revokePurchase) 대상이 아니다
+                    if (progress.redGems < gemCost) {
+                      setGrowthMessage(`보석 ${gemCost}개가 필요합니다 (보유 ${progress.redGems}개)`);
+                      return;
+                    }
+                    if (confirmChar !== skin) {
+                      setConfirmChar(skin);
+                      setGrowthMessage(`${CHARACTER_LABEL[skin]} — 보석 ${gemCost}개. 한 번 더 누르면 구매합니다`);
+                      return;
+                    }
+                    setConfirmChar(null);
+                    void updateCharacterProgress(userHash, (current) =>
+                      current.ownedCharacters.includes(skin) || current.redGems < gemCost ? current : { ...current, redGems: current.redGems - gemCost, ownedCharacters: [...current.ownedCharacters, skin], activeCharacter: skin },
+                    ).then((next) => {
+                      onProgressChange(next);
+                      setGrowthMessage(next.ownedCharacters.includes(skin) ? `${CHARACTER_LABEL[skin]} 구매 · 장착` : "보석이 부족합니다");
+                    });
                     return;
                   }
                   void updateCharacterProgress(userHash, (current) => ({ ...current, activeCharacter: skin })).then((next) => {
@@ -348,7 +373,7 @@ export function CharacterStatus({
                 <i className="skin-thumb" style={{ backgroundImage: `url(${sheetFor(skin, "idle")})`, backgroundSize: `${heroFrames("idle") * 100}% 100%` }} aria-hidden="true" />
                 <b>{CHARACTER_LABEL[skin]}</b>
                 <small>
-                  {[skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : owned ? "패시브 없음" : "", owned ? "" : "미보유"].filter(Boolean).join(" · ")}
+                  {[skin === "obsidian" ? "방치 효율 +1%p" : skin === "dawn" ? "방치 캡 +30분" : owned ? "패시브 없음" : "", owned ? "" : CHARACTER_GEM_COST[skin] !== undefined ? `보석 ${CHARACTER_GEM_COST[skin]}` : "미보유"].filter(Boolean).join(" · ")}
                 </small>
               </button>
             );

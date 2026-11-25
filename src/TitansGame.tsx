@@ -7,7 +7,7 @@ import { activeLimited, limitedAllyHitMul, limitedDaysLeft, limitedGearBossMul }
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { qaUnlockOpen, subscribeQaUnlock } from "./progression/qaUnlock";
 import { heroFrameMs, heroFrames } from "./titans/spriteAnim";
-import { heroPortrait } from "./titans/anim";
+import { heroPortrait, ridesVisually } from "./titans/anim";
 import type { SafeInsets } from "./game/toss";
 import {
   ATTACK_CLIP_MS,
@@ -857,7 +857,9 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
   /** 이번 만남 걷는 시간 ÷ 기준 1250ms — 주인공 걷기 칸도 그만큼 느리게/빠르게 (발이 미끄러지지 않게) */
   const heroWalkRateRef = useRef(1);
   // 탈것은 스테이지를 넘어가는 동안(뛰어나가고 · 들어오는 칸)에도 달린다 — 맨몸은 그 구간에 대기 그림 그대로라 칸 속도를 바꾸지 않는다
-  const rideMoving = partyApproach || (isMountId(character.activeMount) && (battlePhase === "stage-exit" || battlePhase === "stage-enter"));
+  // 탈것 위에 앉아 보이는가 — 3D 캐릭터(여우 모험가, 2026-11-25)는 앉은 시트가 없어 걸어 다닌다(탈것 효과는 그대로)
+  const heroRides = ridesVisually(character.activeCharacter, isMountId(character.activeMount));
+  const rideMoving = partyApproach || (heroRides && (battlePhase === "stage-exit" || battlePhase === "stage-enter"));
   useEffect(() => { heroWalkRef.current = rideMoving; }, [rideMoving]);
   const battlePhaseRef = useRef<BattlePhase>("combat");
   const battleTimers = useRef<number[]>([]);
@@ -2536,7 +2538,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
       later(() => setMonsterAction("attack"), prep);
       later(() => {
         // 일반 몬스터는 1.5초마다 덤벼 매번 막으면 절반을 방어 자세로 보낸다 — 1.6초에 한 번만
-        if (isMountId(characterRef.current.activeMount) && performance.now() > rideGuardUntilRef.current + 1100) {
+        if (ridesVisually(characterRef.current.activeCharacter, isMountId(characterRef.current.activeMount)) && performance.now() > rideGuardUntilRef.current + 1100) {
           const until = performance.now() + heroFrameMs("guard") * heroFrames("guard");
           rideGuardUntilRef.current = until;
           setFrameIdx(0);
@@ -4457,7 +4459,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
             </div>
           );
         })()}
-        <div className={`titans-hero ${isMountId(character.activeMount) ? "has-mount" : ""} ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
+        <div className={`titans-hero ${heroRides ? "has-mount" : ""} ${formationEngaged ? "is-engaged" : ""} ${partyApproach ? "is-approaching" : ""} ${animMode} ${skillVisual ? `skill-${skillVisual}` : ""} ${now < buffs.hasteUntil ? "hero-haste" : ""} ${now < buffs.critUntil ? "hero-crit-aura" : ""} ${now < buffs.cloneUntil ? "hero-clone" : ""}`} style={{ "--hero-fig-top": `${HERO_FIG.y0}%` } as CSSProperties}>
           {/* 주인공 표시 — 동료와 같은 크기가 되면서 누가 나인지 읽히지 않았다: 머리 위 명패 + 발밑 링.
               칭호가 있으면 명패가 칭호 색으로 커진다 — 이름표 · 명패에 같은 칭호가 두 번 나오던 것을 하나로 (2026-11-03, 사용자: "칭호 중복 2개 중 1개 제거") */}
           <span className={`hero-marker ${TITLES[character.activeTitle ?? ""] || character.heroRank > 0 ? "has-title" : ""}`} aria-hidden="true" style={TITLES[character.activeTitle ?? ""] ? { "--title-color": TITLES[character.activeTitle ?? ""].color } as CSSProperties : character.heroRank > 0 ? { "--title-color": heroRankDef(character.heroRank).markColor } as CSSProperties : undefined} data-rank={character.heroRank}><b>{TITLES[character.activeTitle ?? ""] ? <img className="title-emblem" src={titleEmblem(character.activeTitle ?? "")} alt="" /> : character.heroRank > 0 ? "★ " : ""}{TITLES[character.activeTitle ?? ""]?.name ?? (character.heroRank > 0 ? heroRankDef(character.heroRank).title : character.activeCharacter && character.activeCharacter !== "default" ? CHARACTER_LABEL[character.activeCharacter as CharacterSkinId] ?? "모험가" : "모험가")}</b><i>▼</i></span>
@@ -4485,7 +4487,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
           })()}
           <div className={`titans-hero-facing facing-${animMode}`}>
             {/* 탈것 (2026-11-03) — 주인공 아래에. 주인공만 위로 올린다(동료 대열은 그대로) */}
-            {isMountId(character.activeMount) && <HeroMountLayer store={frameStore} art={MOUNT_DEFS[character.activeMount].art} action={rideAction} tier={cosmeticTier(MOUNT_DEFS[character.activeMount].gemPrice)} />}
+            {heroRides && isMountId(character.activeMount) && <HeroMountLayer store={frameStore} art={MOUNT_DEFS[character.activeMount].art} action={rideAction} tier={cosmeticTier(MOUNT_DEFS[character.activeMount].gemPrice)} />}
             {/* 펫 (2026-10-28) — 주인공 뒤 발치에서 같이 걷고(주인공 상자 안이라 들어오고 나갈 때 같이 움직인다) 덤빌 땐 몬스터 쪽으로 뛴다. 예전엔 전장 왼쪽 위에 떠 있기만 했다 */}
             {character.activePet && (character.pets[character.activePet as PetId] ?? 0) > 0 && (
               <div key={`pet-${petAtk}`} style={petMove} data-pet-dx={String(petMove["--pet-dx" as keyof CSSProperties] ?? "")} className={`hero-pet titans-pet-${character.activePet} ${petAtk > 0 ? "pet-attack" : ""}`} title={PET_DEFS[character.activePet as PetId].name} aria-hidden="true">
@@ -4493,7 +4495,7 @@ export function TitansGame({ insets, userHash, forgedWeaponLevel: drumLevel = 0,
               </div>
             )}
             {powerUp > 0 && <i key={`pu-${powerUp}`} className="hero-powerup-burst" aria-hidden="true" />}
-            <HeroFrameChar store={frameStore} ride={isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={isMountId(character.activeMount)} footFix={!isMountId(character.activeMount)} mode={isMountId(character.activeMount) ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} wornLevels={character.gearSetLevels} wornRunes={resonantRunes} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
+            <HeroFrameChar store={frameStore} ride={heroRides && isMountId(character.activeMount) ? { art: MOUNT_DEFS[character.activeMount].art, action: rideAction } : undefined} riding={heroRides} footFix={!heroRides} mode={heroRides ? rideAction : animMode === "attack" ? "attack" : partyApproach ? "walk" : "idle"} worn={character.equippedGear} wornLevels={character.gearSetLevels} wornRunes={resonantRunes} weaponLevel={forgedWeaponLevel} weaponKind={weaponKind} shoulder={appliedLook ? appliedLook.shoulder : equippedShoulder} character={character.activeCharacter} weaponSkin={appliedLook ? appliedLook.weaponSkin : character.equippedWeaponSkin} armorLevel={armorLevel} gear={heroGear} />
           </div>
         </div>
 

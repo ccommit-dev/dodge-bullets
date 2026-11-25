@@ -4,8 +4,8 @@ import { weaponIconPath } from "../titans/weapons";
 import { assetUrl } from "../asset";
 import { WEAPON_SKINS, weaponSkinIcon, weaponSkinStyle } from "../economy/gemCatalog";
 import type { EvolutionPath, ShoulderId } from "../progression/model";
-import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, rideAnchorsFor, WALK_EQUIPMENT_ANCHORS } from "../equipment/anchors";
-import { rideSheetFor, sheetFor } from "../titans/anim";
+import { attackAnchorsFor, IDLE_EQUIPMENT_ANCHORS, idleAnchorsFor, rideAnchorsFor, walkAnchorsFor } from "../equipment/anchors";
+import { isModelCharacter, rideSheetFor, sheetFor } from "../titans/anim";
 import { HERO_ANIM, heroFrames, type HeroAnimMode } from "../titans/spriteAnim";
 import { gearItemKind, type EquippedGear } from "../equipment/gearSets";
 import type { EquipmentAnchor } from "../equipment/anchors";
@@ -88,7 +88,11 @@ function gripStyle(g: [number, number, number], rotation: number, scale: number,
   return { translate: `-${g[0]}% -${g[1]}%`, transform: `rotate(${rotation + g[2]}deg) scale(${scale * sx}, ${scale})`, transformOrigin: `${g[0]}% ${g[1]}%`, "--grip-x": `-${g[0]}%`, "--grip-y": `-${g[1]}%` } as CSSProperties;
 }
 
-export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn, wornLevels, wornRunes, riding = false, footFix = false }: Props) {
+export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "novice", character = "default", weaponSkin = "", className = "", armorLevel = 0, weaponKind = "sword", worn: wornProp, wornLevels, wornRunes, riding: ridingProp = false, footFix = false }: Props) {
+  // 3D 캐릭터(2026-11-25, 여우 모험가 — anim.isModelCharacter)는 앉은 시트가 없어 타지 않고, 입는 파츠(비버 뼈 자리에 맞춘 그림)는 그리지 않는다. 무기만 자기 손 앵커로
+  const model = isModelCharacter(character);
+  const riding = ridingProp && !model;
+  const worn = model ? undefined : wornProp;
   const weaponTier = Math.max(1, Math.min(3, weaponLevel >= 10 ? 3 : weaponLevel >= 5 ? 2 : 1)) as 1 | 2 | 3;
   // 강화가 눈에 보이게 (2026-11-17, 사용자: "아이템이 업그레이드 될 때마다 성능이 게임에 반영") — 그림은 3장뿐이라 단계 사이를 빛 · 크기로 잇는다.
   // 0~15 를 여섯 칸(+3 흰 빛 · +6 하늘 · +9 보라 · +12 주황 + 반짝임 · +15 금 + 반짝임), 칸마다 무기 2.5% 크게. 빛은 ui/upgradeGlow.css
@@ -96,7 +100,7 @@ export function EquippedCharacter({ mode, frame, weaponLevel = 0, evolution = "n
   const frames = heroFrames(mode);
   const index = ((Math.floor(frame) % frames) + frames) % frames;
   // 공격 칸은 무기별 시트의 손 앵커(창 · 활 · 지팡이 — 2026-10-27), 검은 기본
-  const anchors = riding ? rideAnchorsFor(mode, weaponKind) : mode === "attack" ? attackAnchorsFor(weaponKind) : mode === "walk" && HERO_ANIM ? WALK_EQUIPMENT_ANCHORS : IDLE_EQUIPMENT_ANCHORS;
+  const anchors = riding ? rideAnchorsFor(mode, weaponKind) : mode === "attack" ? attackAnchorsFor(weaponKind, character) : mode === "walk" && HERO_ANIM ? walkAnchorsFor(character) : idleAnchorsFor(character);
   const anchor = anchors[Math.min(index, anchors.length - 1)];
   const armorTier = armorTierOf(armorLevel);
   // 스킨은 기본 시트의 팔레트 파생이라 프레임 규격·앵커가 그대로 맞는다

@@ -387,6 +387,63 @@ for (const id of only.filter((a) => /^hero@[a-z]+$/.test(a))) {
   console.log("skin", skin, "k", k.toFixed(4));
 }
 
+// ── Sketchfab 플레이어블 캐릭터 (2026-11-25, art-gen/blender/lib/sf_rig.py) ── `node scripts/assemble-anim2.mjs char@fox [--pixel]`
+// 렌더 id char@<id> · char-<무기>@<id>(render_anim2). 남의 리그라 몸 · 손 자리가 비버와 다르다 — 스킨처럼 기본 주인공 배율 · 앵커를 빌리지 않고
+// 자기 배율(대기 인물 = 칸 높이 69%, 비버 주인공과 같은 키) · 자기 앵커 표(src/equipment/charAnchors.ts)를 쓴다. 시트 이름은 스킨과 같은 꼴(anim.ts sheetFor)
+const CHAR_ANCHORS_TS = "src/equipment/charAnchors.ts";
+for (const id of only.filter((a) => /^char@[a-z]+$/.test(a))) {
+  const cid = id.split("@")[1], c = await load(id);
+  if (!c) throw new Error(`${id}: 렌더가 없다`);
+  const H = LAYOUT.hero, FH = H.cellHeight, FW = H.sheets.idle.width, FX = H.feet[0] * FW, PY = H.feet[1] * FH;
+  // 배율은 셀 렌더(1024²)에서 정해 도트에도 같은 키로 — 89px 렌더의 경계 상자는 1px 이 1% 라 따로 재면 두 그림체 키가 달라진다
+  const t = PX ? await (async () => { const d = `art-gen/out/b3d2/${id}`, m = JSON.parse(readFileSync(`${d}/meta.json`, "utf8")); return { pivot: m.actions.idle[0].pivot, box: await bbox(`${d}/idle_0.png`) }; })() : { pivot: c.actions.idle[0].pivot, box: c.actions.idle[0].box };
+  // 키 = 비버 주인공 대기 0칸의 실제 그림 높이(셀 시트 첫 칸 알파 상자 — 털 뭉치까지, HERO_FIG 는 왕관까지라 낮게 잡혀 여우가 작았다)
+  const beaverH = await (async () => { const f = "public/titans/anim/hero/hero-idle.webp", m = await sharp(f).metadata(), w = Math.round(m.width / H.sheets.idle.frames); const tmp = await sharp(f).extract({ left: 0, top: 0, width: w, height: m.height }).png().toBuffer(); const { data, info } = await sharp(tmp).ensureAlpha().raw().toBuffer({ resolveWithObject: true }); let y0 = info.height, y1 = -1; for (let y = 0; y < info.height; y += 1) for (let x = 0; x < info.width; x += 1) if (data[(y * info.width + x) * 4 + 3] > 24) { if (y < y0) y0 = y; if (y > y1) y1 = y; } return ((y1 - y0) / m.height) * FH; })();
+  let k = (beaverH / (t.box.y1 - t.box.y0)) * RS;
+  const fitAll = [c, ...(await Promise.all(["spear", "bow", "staff"].map((w) => load(`char-${w}@${cid}`)))).filter(Boolean)];
+  for (const r of fitAll) for (const [mode, s] of Object.entries(H.sheets)) if (r.actions[mode]) k = Math.min(k, fitScale(r.actions[mode], k, s.width, FH, FX + (s.width - FW) / 2, PY, 3));
+  const r1 = (v) => Math.round(v * 10) / 10, idle0 = c.actions.idle[0];
+  // 앵커 기준값은 기본 주인공과 같다(대기 0칸 회전 · 크기) — 칸마다 뼈가 돈 만큼만 더한다(assemble 주인공 블록 anchorsOf 와 같은 셈)
+  const BASE = { hand: [20, 0.32], shoulderLeft: [-6, 0.55], shoulderRight: [10, 0.58], head: [-4, 0.62], chest: [0, 0.52], offHand: [0, 0.42], feet: [0, 0.5], footL: [0, 0.5], footR: [0, 0.5] };
+  const anchorsOf = (frames, w) => frames.map((f) => Object.fromEntries(Object.entries(BASE).map(([name, [rot0, sc]]) => {
+    const p = f.parts[name], p0 = idle0.parts[name];
+    const x = FX + (w - FW) / 2 + (p.x - f.pivot[0]) * k, y = PY + (p.y - f.pivot[1]) * k;
+    return [name, { x: r1((x / w) * 100), y: r1((y / FH) * 100), rotation: r1(rot0 + (p.rot - p0.rot)), scale: sc, ...(name === "hand" && f.weaponBehind ? { behind: true } : {}) }];
+  })));
+  const sheet = async (frames, res, w, dest) => {
+    const ops = [];
+    for (const [i, f] of frames.entries()) ops.push(...(await cellOps(f, res, k, i * w, 0, w, FH, FX + (w - FW) / 2, PY)));
+    await sharp(await sharp(blank(w * frames.length, FH)).composite(ops).png().toBuffer()).webp(WEBP({ quality: 90, alphaQuality: 94, effort: 5 })).toFile(dest);
+  };
+  mkdirSync(`${PUB}/hero`, { recursive: true });
+  const set = { weapon: {} };
+  for (const [mode, s] of Object.entries(H.sheets)) {
+    const frames = c.actions[mode];
+    if (!frames) continue;
+    if (frames.length !== s.frames) throw new Error(`${id} ${mode}: ${frames.length} ≠ ${s.frames}`);
+    await sheet(frames, c.res, s.width, `${PUB}/hero/hero-${mode}-${cid}.webp`);
+    set[mode] = anchorsOf(frames, s.width);
+  }
+  for (const kind of ["spear", "bow", "staff"]) {
+    const w = await load(`char-${kind}@${cid}`);
+    if (!w) { console.warn(`${id}: char-${kind}@${cid} 렌더 없음 — 무기 공격 시트 건너뜀(검 시트를 쓴다)`); continue; }
+    await sheet(w.actions.attack, w.res, H.sheets.attack.width, `${PUB}/hero/hero-attack-${kind}-${cid}.webp`);
+    set.weapon[kind] = anchorsOf(w.actions.attack, H.sheets.attack.width);
+  }
+  if (!PX) {   // 앵커 표는 셀 조립에서만 — 여러 캐릭터가 한 파일을 나눠 쓴다(이 캐릭터 줄만 바꾼다)
+    const prev = existsSync(CHAR_ANCHORS_TS) ? JSON.parse(readFileSync(CHAR_ANCHORS_TS, "utf8").split("/*JSON*/")[1] ?? "{}") : {};
+    prev[cid] = set;
+    writeFileSync(CHAR_ANCHORS_TS, `/** Sketchfab 플레이어블 캐릭터 손·몸 앵커 — scripts/assemble-anim2.mjs char@<id> 가 쓴다 (손대지 말 것).
+ * 2026-11-25: 남의 리그(art-gen/blender/lib/sf_rig.py)의 뼈를 칸마다 카메라로 투영한 값(칸 %) — 형식은 heroAnchors.ts 와 같다. 무기만 hand 를 따라간다 */
+import type { EquipmentFrameAnchors } from "./anchors";
+
+export type CharAnchorSet = { idle: EquipmentFrameAnchors[]; walk: EquipmentFrameAnchors[]; attack: EquipmentFrameAnchors[]; weapon: Partial<Record<"spear" | "bow" | "staff", EquipmentFrameAnchors[]>> };
+export const CHAR_ANCHORS: Record<string, CharAnchorSet> = /*JSON*/${JSON.stringify(prev)}/*JSON*/;
+`);
+  }
+  console.log("char", cid, "k", k.toFixed(4));
+}
+
 // ── 게임이 읽는 배치 + 시트가 있는 id ── (도트는 셀과 같은 배치 · 같은 id 라 쓰지 않는다)
 // ── Sketchfab 상점 동료 (2026-11-24) ── 비버 동료와 같은 칸(360×274 · 발 0.87) · 몸 높이는 비버처럼 칸의 약 65%
 for (const id of SKETCHFAB_ALLIES) {

@@ -68,6 +68,20 @@ def run(who, only=None):
     outdir = os.path.join(OUT, who)
     os.makedirs(outdir, exist_ok=True)
     cam = RR.setup()
+    # Sketchfab 플레이어블 캐릭터(2026-11-25, lib/sf_rig.py) — 'char@fox' · 'char-spear@fox' 등. 남의 리그라 몸 · 손 자리가 비버와 달라
+    # 조립(assemble-anim2 char@<id>)이 자기 배율 · 자기 앵커 표(src/equipment/charAnchors.ts)를 쓴다. 탈것 위 시트는 없다(타지 않는다)
+    if who.startswith('char') and '@' in who:
+        from lib import sf_rig as SR
+        kind, cid = who.split('@', 1)
+        rig = SR.build(cid)
+        if kind == 'char':
+            acts = A2.beaver_actions('melee', hero=True)
+        else:
+            assert kind.startswith('char-') and kind[5:] in A2.HERO_WEAPON_ATTACK, f'모르는 캐릭터 렌더: {who}'
+            acts = {'attack': A2.hero_weapon_attack(kind[5:])}
+        render_actions(rig, acts, SR.pose, outdir, cam, math.radians(RR.YAW), 1, SR.parts(rig), only)
+        print('DONE', who)
+        return
     # 플레이어블 캐릭터 스킨(2026-11-19, hero_skins.py) — 'hero@obsidian' · 'hero-bow@obsidian' · 'hero-ride@obsidian'. 몸 · 뼈 · 자세는 기본 주인공 그대로
     hero_cfg = R.HERO
     if '@' in who:
