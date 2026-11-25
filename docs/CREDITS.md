@@ -38,6 +38,11 @@
 | 상점 펫 '꼬마 여우' | PBR Low-poly Fox Character | Ida Faber | https://sketchfab.com/3d-models/pbr-low-poly-fox-character-88ed6191446749b9a9e24b995bcb5e1d | pet-fox.glb |
 | 상점 펫 '아기 펭귄' | Penguin plush | SunnyBuns | https://sketchfab.com/3d-models/penguin-plush-228fddb7362f42e2a349b84cbe8191b4 | pet-penguin.glb |
 | 상점 펫 '풀잎 개구리' | Frog | gooseg489 | https://sketchfab.com/3d-models/frog-b3fb06508c5649fd8ecb30d79e2b9050 | pet-frog.glb |
+| 펫 '아기 슬라임' | Slime low-poly | Parado10 | https://sketchfab.com/3d-models/slime-low-poly-446d179577354f9794dde57f98943adc | pet-slime.glb |
+| 펫 '새끼 용' | Cute Pet Dragon Baby | outcast945 | https://sketchfab.com/3d-models/cute-pet-dragon-baby-17c80b80927044a4bf95c15ed8407bcb | pet-dragon.glb |
+| 펫 '아기 늑대' | Cartoon Wolf | CGulia | https://sketchfab.com/3d-models/cartoon-wolf-9bb48adc8e7a428084abd0742999778b | pet-wolf.glb |
+| 펫 '꼬마 고블린' | Low Poly Goblin | BaGaDa41 | https://sketchfab.com/3d-models/low-poly-goblin-78145db3e9a44120bacc3afaa5eb87f6 | pet-goblin.glb |
+| 펫 '타이탄의 그림자' | Chubby Ghost | Elyse Darby | https://sketchfab.com/3d-models/chubby-ghost-753c85362d7446169f1b30d6a2c26d34 | pet-ghost.glb |
 | 상점 동료 '솜털 토끼 보니' | Cute Bunny | Minimoku | https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02 | a-bunny.glb |
 | 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
 | 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |
