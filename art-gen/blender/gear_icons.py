@@ -772,10 +772,16 @@ for name in names:
     C.lights()
     C.ortho_camera((0.0, 0.0), scale, yaw_deg=yaw, elev_deg=elev)
     C.FACET = GEAR_FACET
+    # 손에 드는 무기 굵기(2026-11-25, 사용자: 손 무기를 아이콘과 같은 물건으로 "제일 신경써서") — GEAR_HAND_F(기본 1.0). 길이 · 손잡이 높이는 그대로라 WEAPON_GRIP(%) 이 맞는다
+    hand = name.split('-')[0] in ('weapon', 'spear', 'bow', 'staff') and name.split('-')[-1].isdigit() and not name.startswith('icon-')
+    if hand:
+        F = float(os.environ.get('GEAR_HAND_F', '1.0'))
     try:
         fn(arg)
     finally:
         C.FACET = 0
+        if hand:
+            F = 1.0
     sname = name[:-2] if name.startswith('set-') and name[-2:] in ('-2', '-3') else name   # 합성 등급 그림(-2 · -3)도 같은 부위 각도
     turn = TURN.get(sname.split('-')[-1] if sname.startswith('set-') else sname.split('-')[0], 0)
     if name.startswith('icon-'):
