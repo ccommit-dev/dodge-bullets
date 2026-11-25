@@ -1397,11 +1397,11 @@ ok("진행도 정규화: weeklyEventBuys·forgeTicketsPending 보존", (() => { 
     ok("상점 펫 4종: 같은 축 몬스터 펫과 값 · 가격 같음 · 셀/도트 시트 · 크레딧 · 저장 정규화(Lv · 장착) · 도감 전투력은 몬스터 펫 6마리만(180)",
       pets.SHOP_PET_IDS.length === 4 && same && sheets.length === 0 && noCredit.length === 0 && allPets.pets.cat === 1 && allPets.pets.penguin === 1 && allPets.activePet === "fox" && power === 180 && pets.pendingHatches({ slime: 0, goblin: 0, wolf: 0, ogre: 0, dragon: 0, boss: 0 }, allPets.pets).length === 0,
       JSON.stringify({ same, sheets, noCredit, power, act: allPets.activePet })); }
-  // 2026-11-24 상점 묶음 그림(Sketchfab 보석 · 상자 · 물약 → 셀 렌더) — 파일 · 게임 안 크레딧 · 재화 탭이 새 그림을 쓴다
-  { const files = ["gems-80", "gems-450", "gems-1200", "gold-pack", "material-pack", "idle-boost"].map((n) => `public/ui/shop/${n}.png`).filter((p) => !existsSync(root + "/" + p));
-    const credits = readFileSync(root + "/src/ui/credits.ts", "utf8"), noCredit = ["Stylized Crystal Gem pack - Handpainted", "Stylized Treasure Chest", "Stylized Potion"].filter((n) => !credits.includes(n));
+  // 2026-11-24 상점 묶음 그림 → 2026-11-25 셀 그림으로 되돌림(사용자 "아트 풍 일정" → "셀 그림으로 통일") — 파일 · 재화 탭 연결은 그대로, 받은 모델 크레딧은 뺐다
+  { const files = ["gems-80", "gems-450", "gems-1200", "gold-pack", "material-pack", "idle-boost", "chest-closed"].map((n) => `public/ui/shop/${n}.png`).filter((p) => !existsSync(root + "/" + p));
+    const credits = readFileSync(root + "/src/ui/credits.ts", "utf8"), stale = ["Stylized Crystal Gem pack - Handpainted", "Stylized Treasure Chest", "Stylized Potion", "Stylized Wood Shield", "Golden crown"].filter((n) => credits.includes(n));
     const tg = readFileSync(root + "/src/TitansGame.tsx", "utf8"), wired = ["ui/shop/gold-pack.png", "ui/shop/material-pack.png", "ui/shop/idle-boost.png"].filter((n) => !tg.includes(n));
-    ok("상점 묶음 그림: 보석 팩 3 · 황금 보급 상자 · 강화석 상자 · 방치 가속권 그림 · 크레딧 · 재화 탭 연결", files.length === 0 && noCredit.length === 0 && wired.length === 0, [...files, ...noCredit, ...wired].join(",")); }
+    ok("상점 묶음 · 유물 그림: 셀 그림 파일 · 재화 탭 연결 · 안 쓰는 Sketchfab 크레딧 없음", files.length === 0 && stale.length === 0 && wired.length === 0, [...files, ...stale, ...wired].join(",")); }
   const nb = prog.normalizeCharacterProgress({ ...base, dodgeBranches: { "1-T": 3, "9-X": 2, "2-S": 7, junk: 1 } });
   ok("진행도 정규화: 갈림길 별 — 알려진 키만 · 0~3", nb.dodgeBranches["1-T"] === 3 && nb.dodgeBranches["2-S"] === 3 && !("9-X" in nb.dodgeBranches) && !("junk" in nb.dodgeBranches), JSON.stringify(nb.dodgeBranches));
 }

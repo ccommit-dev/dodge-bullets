@@ -42,24 +42,8 @@
 | 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
 | 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |
 | 상점 동료 '도토리 다람쥐 레드' | Low-Poly Squirrel Character (Game-Ready, Rigged) | SomeNortherner | https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb | a-squirrel.glb |
-| 유물 '참나무 방패' | Stylized Wood Shield | Brett Murphy | https://sketchfab.com/3d-models/stylized-wood-shield-66058be8e4e749bf8ce234d94dd6d863 | r-shield.glb |
-| 유물 '불꽃 단검' | Stylized Dagger | xwhn | https://sketchfab.com/3d-models/stylized-dagger-f742183b679f4964bcbf2b9381ed6c70 | r-dagger.glb |
-| 유물 '금박 지도' | Stylized Treasure Map | Izzy | https://sketchfab.com/3d-models/stylized-treasure-map-cec61143abbc46bc99201b591942688b | r-map.glb |
-| 유물 '청동 삽' | Hand painted shovel | Bohdan Lvov | https://sketchfab.com/3d-models/hand-painted-shovel-04e4270e92b649c6b34273eac360081e | r-shovel.glb |
-| 유물 '해류 나침반' | Low Poly Stylized Compass | pau.raurellgomis | https://sketchfab.com/3d-models/low-poly-stylized-compass-8de466ea26ab43cdadcf67d86344052a | r-compass.glb |
-| 유물 '조개 껍데기' | Low Poly Clam Shell | gabrielmendesm | https://sketchfab.com/3d-models/low-poly-clam-shell-708f83d6fce940c5827cfd6ce942004d | r-clam.glb |
-| 유물 '서리 뿔피리' | Viking Horn Stylized | Mamba_Negra | https://sketchfab.com/3d-models/viking-horn-stylized-43413df1e06f4129b31c3e3dd989ae1f | r-horn.glb |
-| 유물 '불씨 반지' | Ring Stylized | Gabrieltim3D | https://sketchfab.com/3d-models/ring-stylized-f57bd7f5c3804bdd926642175287f1d2 | r-ring.glb |
-| 유물 '바람개비' | Colorful pinwheel | CiboBlu | https://sketchfab.com/3d-models/colorful-pinwheel-13c59b5341df4989888a219436d173dc | r-pinwheel.glb |
-| 유물 '점토 인형' | Toy haniwa, Japan | kofun | https://sketchfab.com/3d-models/toy-haniwa-japan-856079b4564049ee9e0f81d3d2fa7021 | r-haniwa.glb |
-| 유물 '달 조개' | pearl shell | abdullahpowerfull | https://sketchfab.com/3d-models/pearl-shell-902012feb9364cb5bdc44676e5c079a1 | r-pearlshell.glb |
-| 유물 '비버 왕관' | Golden crown | Pieter Ferreira | https://sketchfab.com/3d-models/golden-crown-5689a9525a2c425d93f7d483b93d8cfa | r-crown-gold.glb |
-| 유물 '왕의 홀' | Ruby Scepter | Cre-8 | https://sketchfab.com/3d-models/ruby-scepter-fc714bca404c4d9e99896d663e8b15e9 | r-scepter.glb |
-| 상점 붉은 보석 팩(8 · 45 · 120) · 강화석 상자 · 유물 '눈꽃 결정' · '혜성 조각' | Stylized Crystal Gem pack - Handpainted | ashkan.fancy | https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658 | i-gems.glb |
-| 상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 · 유물 '보물 상자' | Stylized Treasure Chest | Tom Verbeeck | https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e | i-chest.glb |
-| 상점 방치 가속권(24h · 광고) | Stylized Potion | Moon Cube Studios (@KinanArts) | https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7 | i-potion.glb |
 
-상점 묶음 그림은 `art-gen/blender/sketchfab_icons.py`(보석 팩은 수량대로 원석 → 결정 더미 → 넘치는 상자, 손그림 밝기만 살려 붉은 보석 · 하늘빛 강화석 색으로 다시 칠함) → `scripts/assemble-shop-icons.mjs`(PKG_SRC=art-gen/out/b3d-sficons).
+유물 · 상점 묶음 그림(보석 팩 · 재화 탭 상자 · 물약 · 비버 상자 · 성문 방어 보상 상자)은 2026-11-25 사용자 "아트 풍 일정" → "셀 그림으로 통일"로 원래 셀 그림으로 되돌렸다. 받은 모델(r-*.glb · i-*.glb)과 `art-gen/blender/sketchfab_icons.py` 는 남겨 두었지만 게임에는 쓰지 않는다 — 작가 목록은 git 이력(320ca5a2 · 1f89f798 · 5a2de5a3)에 있다.
 바닥 소품 렌더는 `art-gen/blender/hunt_ground.py`(SF_PROPS — 지역마다 뒤 가장자리 · 아래 모서리, 발 자리는 비움)이다. 작가가 넣은 검은 외곽선 껍질 메시는 걸러 낸다.
 
 받았지만 쓰지 않은 것
