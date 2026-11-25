@@ -46,6 +46,15 @@
 | 유물 '불꽃 단검' | Stylized Dagger | xwhn | https://sketchfab.com/3d-models/stylized-dagger-f742183b679f4964bcbf2b9381ed6c70 | r-dagger.glb |
 | 유물 '금박 지도' | Stylized Treasure Map | Izzy | https://sketchfab.com/3d-models/stylized-treasure-map-cec61143abbc46bc99201b591942688b | r-map.glb |
 | 유물 '청동 삽' | Hand painted shovel | Bohdan Lvov | https://sketchfab.com/3d-models/hand-painted-shovel-04e4270e92b649c6b34273eac360081e | r-shovel.glb |
+| 유물 '해류 나침반' | Low Poly Stylized Compass | pau.raurellgomis | https://sketchfab.com/3d-models/low-poly-stylized-compass-8de466ea26ab43cdadcf67d86344052a | r-compass.glb |
+| 유물 '조개 껍데기' | Low Poly Clam Shell | gabrielmendesm | https://sketchfab.com/3d-models/low-poly-clam-shell-708f83d6fce940c5827cfd6ce942004d | r-clam.glb |
+| 유물 '서리 뿔피리' | Viking Horn Stylized | Mamba_Negra | https://sketchfab.com/3d-models/viking-horn-stylized-43413df1e06f4129b31c3e3dd989ae1f | r-horn.glb |
+| 유물 '불씨 반지' | Ring Stylized | Gabrieltim3D | https://sketchfab.com/3d-models/ring-stylized-f57bd7f5c3804bdd926642175287f1d2 | r-ring.glb |
+| 유물 '바람개비' | Colorful pinwheel | CiboBlu | https://sketchfab.com/3d-models/colorful-pinwheel-13c59b5341df4989888a219436d173dc | r-pinwheel.glb |
+| 유물 '점토 인형' | Toy haniwa, Japan | kofun | https://sketchfab.com/3d-models/toy-haniwa-japan-856079b4564049ee9e0f81d3d2fa7021 | r-haniwa.glb |
+| 유물 '달 조개' | pearl shell | abdullahpowerfull | https://sketchfab.com/3d-models/pearl-shell-902012feb9364cb5bdc44676e5c079a1 | r-pearlshell.glb |
+| 유물 '비버 왕관' | Golden crown | Pieter Ferreira | https://sketchfab.com/3d-models/golden-crown-5689a9525a2c425d93f7d483b93d8cfa | r-crown-gold.glb |
+| 유물 '왕의 홀' | Ruby Scepter | Cre-8 | https://sketchfab.com/3d-models/ruby-scepter-fc714bca404c4d9e99896d663e8b15e9 | r-scepter.glb |
 | 상점 붉은 보석 팩(8 · 45 · 120) · 강화석 상자 · 유물 '눈꽃 결정' · '혜성 조각' | Stylized Crystal Gem pack - Handpainted | ashkan.fancy | https://sketchfab.com/3d-models/stylized-crystal-gem-pack-handpainted-9aa1af6e18b24c99af00e850f9fd2658 | i-gems.glb |
 | 상점 보석 120 · 황금 보급 상자 · 강화석 상자 · 비버 상자 · 성문 방어 보상 상자 · 유물 '보물 상자' | Stylized Treasure Chest | Tom Verbeeck | https://sketchfab.com/3d-models/stylized-treasure-chest-dbeae8db89eb433f832d0ef48f12480e | i-chest.glb |
 | 상점 방치 가속권(24h · 광고) | Stylized Potion | Moon Cube Studios (@KinanArts) | https://sketchfab.com/3d-models/stylized-potion-78d411a585144c4f91ca51d876982ed7 | i-potion.glb |
@@ -64,6 +73,17 @@
 | Mouse warrior | Allen Tseng | https://sketchfab.com/3d-models/mouse-warrior-53d5c94af4094720b50fc39a1317aca6 | (받지 않음) | 설명에 "concept art from Ray Teja" — 같은 까닭 |
 | Cartoon Cat | Baydinman | https://sketchfab.com/3d-models/cartoon-cat-4a738eaed9d34547a3f5a705a0e37c6a | (받지 않음) | 태그 cryptokitties — 다른 IP 모양일 수 있어 뺐다 |
 | Three-headed Beast | Chenchanchong | https://sketchfab.com/3d-models/three-headed-beast-739953b21079401ca3ef56f2b014c7a0 | (지움) | 재질 이름이 Hades_Kerberos — 남의 게임 캐릭터 팬아트일 수 있어 뺐다 |
+| Low-Poly Acorn | Ovenproofmeteor | https://sketchfab.com/3d-models/low-poly-acorn-abf32903cae743b6a5c46e5d3ae96138 | r-acorn.glb | '황금 열매'로 금빛을 입히면 모자가 묻혀 덩어리로 보였다 |
+| Stylized Gold Coin | Keyotine | https://sketchfab.com/3d-models/stylized-gold-coin-dc0b9491f7ea40ffaca034f0a4036d93 | r-coin-gold.glb | 달러($) 문양 — 게임 세계와 안 맞는다 |
+| Pirate Gold Coins - Hand-Painted | Efthalía Estasmalteadas | https://sketchfab.com/3d-models/pirate-gold-coins-hand-painted-60c38b94e08342aca0e419a43f2676c8 | r-coin-pirate.glb | 해골 문양 — '구리 동전'에 안 맞는다 |
+| Harp | GRVKiN | https://sketchfab.com/3d-models/harp-5ac529c229ed4f4fafd156f6a819b89e | r-harp.glb | 어둡고 가는 선이 많아 유물 칸 크기에서 안 읽혔다 |
+| Stylized Old Fishing Rod Low Poly | alexi.smnd | https://sketchfab.com/3d-models/stylized-old-fishing-rod-low-poly-82973c905293422b8c47e0bf82170757 | r-rod.glb | 가늘어 작게 줄면 안 읽혔다 |
+| Arrow 2 | web_beast | https://sketchfab.com/3d-models/arrow-2-b71242cd60584efdaaff5180c174f51a | r-arrow.glb | 가늘어 작게 줄면 안 읽혔다 |
+| High Poly Stylized Feather - Free Download | Laurie Annis | https://sketchfab.com/3d-models/high-poly-stylized-feather-free-download-1ed3b855d5e74e6489b9e9805ce9c2c5 | r-feather.glb | 깃 부분이 외곽선 껍질과 한 메시라 셀로 그리면 검은 덩어리였다 |
+| Royal Crown | Incg5764 | https://sketchfab.com/3d-models/royal-crown-2d7c97ee437e42f2a93b85bb64bffa2b | r-crown-royal.glb | 얼음빛으로 칠하니 지금 '겨울 왕관'(얼음 가시)보다 뜻이 약했다 |
+| Free Low Poly Crown | warcool | https://sketchfab.com/3d-models/free-low-poly-crown-fe698c2b67d54695bfa49b890a9c7250 | r-crown-low.glb | 산호색으로 칠해도 지금 '산호 왕관'(산호 가지)보다 뜻이 약했다 |
+| Simple Stylized Lantern (HandPainted) | mojoGameDev | https://sketchfab.com/3d-models/simple-stylized-lantern-handpainted-7d6c859014ca42e5af0c093c2ecafa33 | r-lantern.glb | 흰 상자처럼 보여 지금 '얼음 등불'보다 못했다 |
+| Cute Bronze Bell | Incg5764 | https://sketchfab.com/3d-models/cute-bronze-bell-9bece9fd423f4704b7460b85fad0634c | r-bell.glb | 지금 '폭풍 종'(번개)보다 뜻이 약했다 |
 
 ## 고르는 규칙
 

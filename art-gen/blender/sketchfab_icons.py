@@ -339,6 +339,57 @@ RELIC_JOBS = {
     'oak-shield': (r_oak_shield, 12, 2.0, -24), 'flame-dagger': (r_flame_dagger, 10, 2.0, -16), 'gold-map': (r_gold_map, 22, 2.0, -18),
     'bronze-shovel': (r_bronze_shovel, 10, 2.0, -16),
 }
+
+
+# ── 유물 2차(2026-11-25, 사용자: "유물이나 icon 탈것, 펫 등등 리소스 3d 모델 찾아다가 다시 반영") — 원본 GLB 는 art-gen/out/sketchfab/r-*.glb,
+#    작가 · 라이선스는 docs/CREDITS.md. 열아홉을 시험 렌더해 지금 그림과 나란히 견주고 더 잘 읽히는 열만 남겼다 — 하프 · 낚싯대 · 화살은 가늘고 어두워
+#    작게 줄면 안 읽혔고, 겨울 · 산호 왕관 · 얼음 등불 · 폭풍 종은 지금 그림의 뜻(얼음 가시 · 산호 가지 · 번개)이 사라졌다. 구리 동전은 해골 문양이라, 황금 열매(도토리)는 금빛으로 칠하면 모자가 묻혀 덩어리로 보여 뺐다.
+ICE = ('#1f4f8a', '#e6f8ff')
+
+
+def r2_tide_compass():   # 해류 나침반(물 · SSR) — 눕혀 있는 나침반을 세워 판이 보이게
+    placed('r-compass.glb', 1.85, (0, 0, -0.75), (72, 0, 0))
+
+
+def r2_clam_shell():   # 조개 껍데기(물 · N)
+    placed('r-clam.glb', 1.7, (0, 0, -0.85))
+
+
+def r2_frost_horn():   # 서리 뿔피리(서리 · R) — 바이킹 뿔을 얼음빛으로
+    _, ms = placed('r-horn.glb', 1.9, (0, 0, -0.6), (0, -18, 0))
+    tint(ms, *ICE)
+
+
+def r2_ember_ring():   # 불씨 반지(불 · R) — 붉은 보석 금반지
+    placed('r-ring.glb', 1.75, (0, 0, -0.88))
+
+
+def r2_pinwheel():   # 바람개비(바람 · R)
+    placed('r-pinwheel.glb', 1.85, (0, 0, -0.92))
+
+
+def r2_clay_doll():   # 점토 인형(땅 · N) — 하니와 장난감
+    placed('r-haniwa.glb', 1.7, (0, 0, -0.85))
+
+
+def r2_moon_shell():   # 달 조개(별 · R) — 진주 조개를 세운다
+    placed('r-pearlshell.glb', 1.8, (0, 0, -0.7), (68, 0, 0))
+
+
+def r2_beaver_crown():   # 비버 왕관(금 · SSR)
+    placed('r-crown-gold.glb', 1.75, (0, 0, -0.62))
+
+
+def r2_king_scepter():   # 왕의 홀(금 · LR) — 루비 홀을 비스듬히
+    placed('r-scepter.glb', 1.95, (0, 0, -0.95), (0, 24, 0))
+
+
+RELIC_JOBS.update({
+    'tide-compass': (r2_tide_compass, 16, 2.0, -16), 'clam-shell': (r2_clam_shell, 18, 2.0, -12),
+    'frost-horn': (r2_frost_horn, 14, 2.1, -10), 'ember-ring': (r2_ember_ring, 14, 2.0, 70), 'pinwheel': (r2_pinwheel, 10, 2.0, -18),
+    'clay-doll': (r2_clay_doll, 12, 2.0, 160), 'moon-shell': (r2_moon_shell, 14, 2.0, -12), 'beaver-crown': (r2_beaver_crown, 22, 2.0, -20),
+    'king-scepter': (r2_king_scepter, 10, 2.1, -10),
+})
 RELIC_OUT = os.environ.get('SFI_RELIC_OUT') or os.path.join(ROOT, 'art-gen', 'out', 'b3d-sfrelics')
 
 
