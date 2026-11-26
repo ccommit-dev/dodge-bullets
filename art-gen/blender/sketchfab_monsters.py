@@ -54,11 +54,7 @@ MODELS = {
     'sf-werewolf': dict(file='b-werewolf.glb', h=1.6, yaw=-25, lift=0.0, action='Idle', boss=True),
     'sf-treefellow': dict(file='b-treefellow.glb', h=1.7, yaw=-60, lift=0.0, boss=True),
     # sf-stonegiant(b-bigguy.glb, Big Guy)은 셀로 그리면 머리 없이 검게 나와 뺐다
-    # 상점 전용 동료(2026-11-24, kind='ally') — 폴더 이름 = 동료 id(allyRoster NEW_ALLIES). 남의 콘셉트를 옮긴 모델 · 다른 IP 태그 모델은 뺐다
-    'bunny': dict(file='a-bunny.glb', h=1.0, yaw=-35, lift=0.0, kind='ally', dx=0.5, only='bunny1_'),
-    'squirrel': dict(file='a-squirrel.glb', h=1.0, yaw=162, lift=0.0, kind='ally', dx=0.5, arms=(0.36, 1.78, 72)),   # 뼈 없이 T 자세로 와서 팔을 어깨 축으로 내린다
-    'cat': dict(file='a-cat.glb', h=0.9, yaw=-30, lift=0.0, kind='ally', dx=0.5, only='Cat_'),   # 배경판 · 그릇 · 물고기는 뺀다
-    'duck': dict(file='a-duck.glb', h=1.0, yaw=-15, lift=0.0, kind='ally', dx=0.5, drop=('Plane004__0',)),   # 돌바닥 판은 뺀다
+    # 상점 동료 넷(bunny · squirrel · cat · duck)은 2026-11-26 비버 몸 + 동물 옷(roster_ext · lib/suit_kit, render_anim2)으로 바뀌어 뺐다 — 여기서 다시 굽으면 b3d2/<id> 를 Sketchfab 그림으로 덮는다
     'sf-insect': dict(file='b-insect.glb', h=1.2, yaw=90, lift=0.0, boss=True),
     'sf-magmahound': dict(file='b-magmahound.glb', h=1.3, yaw=0, lift=0.0, action='Idle', boss=True),
     'sf-iceelemental': dict(file='b-iceelemental.glb', h=1.7, yaw=0, lift=0.0, boss=True),

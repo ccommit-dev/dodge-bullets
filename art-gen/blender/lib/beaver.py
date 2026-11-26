@@ -325,6 +325,24 @@ def weapon(kind, at, coll, color='#cfd6df', accent='#8a5a2b'):
         out.append(C.mesh_obj('g_handle', C.tube([g + Vector((0, 0, -0.04)), g + Vector((0, 0, 0.14))], 0.018, seg=12), wood, coll, outline=OUT * 0.6))
         out.append(C.mesh_obj('g_ring', C.torus(g + Vector((0, 0, 0.23)), 0.08, 0.016, rot=Euler((math.radians(90), 0, 0))), gold, coll, outline=OUT * 0.5))
         out.append(C.mesh_obj('g_lens', C.ellipsoid(g + Vector((0, 0, 0.23)), (0.07, 0.01, 0.07)), _accent('lens', color, rough=0.05, emit=color, es=1.0), coll))
+    elif kind == 'carrot':   # 당근 지팡이(상점 동료 보니, 2026-11-26) — 아래 뾰족한 끝을 쥐고 위로 굵어지는 주황 몸 · 홈 · 초록 잎 셋
+        orange = _accent('carrot', '#ff8a2a', rough=0.5)
+        out.append(C.mesh_obj('carrot', C.cone(g + Vector((0, 0, 0.13)), 0.0, 0.075, 0.36, seg=16, rot=Euler((math.pi, 0, 0))), orange, coll, outline=OUT * 0.7))
+        for k, z in enumerate((0.06, 0.14, 0.22)):
+            out.append(C.mesh_obj(f'carrot_ring{k}', C.torus(g + Vector((0, 0, z)), 0.02 + 0.045 * (z + 0.05) / 0.36, 0.006, seg=24), _accent('carrotln', '#d8661a', rough=0.6), coll))
+        for k in range(3):
+            a = (k - 1) * 0.45
+            out.append(C.mesh_obj(f'carrot_leaf{k}', C.ellipsoid(g + Vector((math.sin(a) * 0.05, 0, 0.36 + math.cos(a) * 0.06)), (0.025, 0.012, 0.075), rot=Euler((0, a, 0))), _accent('leaf', '#5ac83a', rough=0.5), coll, outline=OUT * 0.5))
+    elif kind == 'slingshot':   # 새총(상점 동료 레드, 2026-11-26) — Y 자 나무 · 고무줄 · 도토리 한 알
+        out.append(C.mesh_obj('ss_grip', C.tube([g + Vector((0, 0, -0.06)), g + Vector((0, 0, 0.1))], 0.022, seg=10), wood, coll, outline=OUT * 0.6))
+        tips = [g + Vector((sx * 0.08, 0, 0.24)) for sx in (-1, 1)]
+        for k, t in enumerate(tips):
+            out.append(C.mesh_obj(f'ss_prong{k}', C.tube([g + Vector((0, 0, 0.1)), t], 0.02, seg=10), wood, coll, outline=OUT * 0.6))
+        pouch = g + Vector((0, 0.05, 0.2))
+        for k, t in enumerate(tips):
+            out.append(C.mesh_obj(f'ss_band{k}', C.tube([t, pouch], 0.008, seg=6), _accent('band', '#d8403a', rough=0.5), coll))
+        out.append(C.mesh_obj('ss_acorn', C.ellipsoid(pouch + Vector((0, 0.01, -0.01)), (0.035, 0.035, 0.042), egg=-0.3), _accent('nut', '#c8783a', rough=0.45), coll, outline=OUT * 0.5))
+        out.append(C.mesh_obj('ss_cap', C.ellipsoid(pouch + Vector((0, 0.01, 0.02)), (0.04, 0.04, 0.02)), _accent('cap', '#7a4a26', rough=0.7), coll, outline=OUT * 0.4))
     # 굵기만 (2026-11-19 리소스 피드백 ⑤: 사냥터 88px 에서 무기가 가는 막대라 손에 든 게 거의 안 보였다) — 칼날 · 자루 · 손잡이를 무기 축(+Z)에 수직으로만 키운다
     th = WEAPON_THICK.get(kind, 1.0)
     if th != 1.0:

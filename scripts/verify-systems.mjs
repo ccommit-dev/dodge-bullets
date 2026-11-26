@@ -167,7 +167,7 @@ ok("슬롯 내 효과 중복 없음 (clone=dragonBreath 해소)", slotSets.every
 ok("meteor = 가장 강한 단발 마무리, voidFinish = 처형 (마무리 둘의 역할이 다르다)", skills.SKILL_EFFECTS.meteor.kind === "hit" && skills.SKILL_EFFECTS.voidFinish.kind === "execute");
 // ── 정리 (2026-10-01): 역할이 겹치는 동료 7·스킬 8 은퇴. 로스터에서 빠지고, 보유분은 환불로 바뀐다
 // 2026-10-27 동료 3배 — 기존 13명 + 새 40명 = 53명(은퇴 제외) · 2026-11-16 월간 한정 오텀 +1 = 54명(titans/limitedAllies — 창 밖엔 뽑기에서 빠지지만 얻은 동료는 로스터에 남는다). 역할마다 8명 이상 · 속성 넷 · 6등급 모두
-ok("로스터 58명(월간 한정 1 · 상점 전용 Sketchfab 4 포함, 2026-11-24) — 역할마다 8명 이상, 속성 넷 · 6등급 전부 · 상점 넷은 뽑기 풀 밖", (() => {
+ok("로스터 58명(월간 한정 1 · 상점 전용 4 포함 — 11-26 부터 비버 몸 + 동물 옷) — 역할마다 8명 이상, 속성 넷 · 6등급 전부 · 상점 넷은 뽑기 풀 밖", (() => {
   const roles = allies.ALLY_IDS.map((id) => allies.ALLY_ROLE[id]); const el = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_ELEMENT[id])); const tiers = new Set(allies.ALLY_IDS.map((id) => allies.ALLY_RARITY[id]));
   const shop4 = ["bunny", "cat", "duck", "squirrel"], pool = gacha.gachaPool(60, 5).entries.map((e) => e.id);
   if (!shop4.every((id) => allies.SHOP_ALLY_GEM_COST[id] > 0 && !pool.includes(id) && model.HEROES.find((h) => h.id === id)?.unlockStage === 9999)) return false;

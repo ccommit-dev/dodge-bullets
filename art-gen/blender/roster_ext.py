@@ -67,6 +67,12 @@ NEW_ALLIES = {
     'leviathan': dict(TEAL, form=dict(body=(1.0, 1.28), eyes='sharp'), aura='double', aura_color='#3ae0ff', hat='crown', hat_color='#3ae0ff', band='#1a6ad8', over='finears', over_color='#5ae8ff', back='fin', back_color='#2ab8d8', tail_fx='fish', tail_color='#3ae0ff', weapon_l='trident', weapon_color='#7af0ff', role='melee'),   # 바다 왕 — 지느러미 귀 · 등지느러미 · 물고기 꼬리
     # ── 월간 한정 (2026-11-16, src/titans/limitedAllies.ts) — 신화 등급 장식(후광 고리 · 큰 날개)에 단풍 테마 ──
     'autumn': dict(RUST, form=dict(body=(0.9, 1.18), ears='tufted', eyes='sharp', tail='plume'), hat='leaf', hat_color='#e0602a', hat_color2='#a8401c', scarf='#f2c232', back='leafwings', back_color='#e0602a', back_color2='#f2a23a', wing_len=0.5, aura='ring', aura_color='#f29a2a', weapon_l='bow', weapon_color='#8a5a2b', role='bow'),   # 단풍 사냥꾼 — 큰 단풍잎 모자 · 낙엽 날개
+    # ── 상점 전용 넷 (2026-11-26, 사용자: "동료들 캐릭터랑 풍 비슷한 리소스로 마저 수정") — Sketchfab 동물(sketchfab_monsters kind='ally')은
+    # 그림결 · 몸 비율이 비버 동료와 따로 놀았다. 같은 비버 몸에 동물 옷(lib/suit_kit — 주인공 스킨과 같은 두건 옷)을 입힌다. 고양이 · 다람쥐는 옷 꼬리만(비버 노 꼬리 숨김)
+    'bunny': dict(PALE, form=dict(ears='none', eyes='sleepy'), suit='bunny', suit_extras=True, hat_color='#f6efe6', suit_light='#ffffff', suit_accent='#ff9ab8', weapon_r='carrot', role='healer'),   # 희귀 바람 치유 — 솜털 토끼 옷 · 접힌 한쪽 귀 · 귀 꽃 · 볼 홍조 · 당근 지팡이
+    'cat': dict(GRAY, form=dict(ears='none', eyes='sharp', tail='none'), suit='cat', suit_extras=True, hat_color='#3c3870', suit_light='#f2e6d0', suit_accent='#ffd34d', role='melee'),   # 희귀 불 근접 — 밤고양이 옷 · 수염 · 방울 목걸이 · 큰 앞발 장갑(젤리) 냥냥 펀치
+    'duck': dict(PALE, form=dict(ears='none', brows='fierce'), suit='duck', suit_extras=True, hat_color='#ffd84a', suit_light='#fff6d8', suit_accent='#3a7ad8', trim='#f2c232', weapon_r='sword', weapon_l='shield', weapon_l_color='#3a7ad8', role='tank'),   # 영웅 물 탱커 — 오리 옷 · 파란 방패 · 검
+    'squirrel': dict(RUST, form=dict(ears='none', tail='none'), suit='squirrel', suit_extras=True, hat_color='#c8562a', suit_light='#fff0dc', suit_accent='#7a4a26', trim='#f2c232', weapon_l='slingshot', role='bow'),   # 영웅 흙 원거리 — 붉은 다람쥐 옷 · 말린 꼬리 · 두건 도토리 · 볼주머니 · 도토리 새총
 }
 
 # 주 무기를 weapon_l(적 쪽 손)에 바로 적은 줄은 색도 weapon_l_color 로 옮긴다(anim2.main_left 는 weapon_r 가 있을 때만 바꾼다)

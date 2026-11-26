@@ -15,11 +15,6 @@ export const SKETCHFAB_CREDITS: readonly ModelCredit[] = [
   { title: "Cartoon fallen tree", author: "neon_dust", url: "https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6", use: "사냥터 바닥 쓰러진 통나무(숲)" },
   { title: "Tree Stump stylized", author: "makcutka250", url: "https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec", use: "사냥터 바닥 그루터기(초원 · 숲)" },
   { title: "Cactus | Pack", author: "YadroGames", url: "https://sketchfab.com/3d-models/cactus-pack-588596f1601d48e6ad4cb24b31c3f33c", use: "사냥터 바닥 선인장(폐허)" },
-  // 상점 전용 동료 넷(2026-11-24, allyRoster shop — 렌더 sketchfab_monsters.py kind='ally', 칸마다 좌우를 뒤집어 오른쪽을 본다)
-  { title: "Cute Bunny", author: "Minimoku", url: "https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02", use: "상점 동료 '솜털 토끼 보니'" },
-  { title: "Just a Hungry Cat", author: "Coco Jinjo", url: "https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1", use: "상점 동료 '밤고양이 감자'" },
-  { title: "John, The Knight Duck (Armored)", author: "TheKnightDuck", url: "https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14", use: "상점 동료 '방패기사 덕'" },
-  { title: "Low-Poly Squirrel Character (Game-Ready, Rigged)", author: "SomeNortherner", url: "https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb", use: "상점 동료 '도토리 다람쥐 레드'" },
   // 보석 주인공 캐릭터(2026-11-25, art-gen/blender/lib/sf_rig.py · render_anim2 char@fox — 비버 자세 값을 여우 뼈에 옮겨 렌더)
   { title: "Cartoon Character", author: "MartinDL", url: "https://sketchfab.com/3d-models/cartoon-character-c951392387944060966ac6e8e5cfd2e3", use: "주인공 캐릭터 '여우 모험가'" },
 ];

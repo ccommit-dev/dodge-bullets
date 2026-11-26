@@ -21,10 +21,6 @@
 | 사냥터 바닥 쓰러진 통나무(숲) | Cartoon fallen tree | neon_dust | https://sketchfab.com/3d-models/cartoon-fallen-tree-85be5e12759d460cb5f1f0d7a4c109b6 | p-fallentree.glb |
 | 사냥터 바닥 그루터기(초원 · 숲) | Tree Stump stylized | makcutka250 | https://sketchfab.com/3d-models/tree-stump-stylized-adb24e49311b48e69a95c3a5324817ec | p-stump.glb |
 | 사냥터 바닥 선인장(폐허) | Cactus \| Pack | YadroGames | https://sketchfab.com/3d-models/cactus-pack-588596f1601d48e6ad4cb24b31c3f33c | p-cactus.glb |
-| 상점 동료 '솜털 토끼 보니' | Cute Bunny | Minimoku | https://sketchfab.com/3d-models/cute-bunny-7d30845d69c4474ebeddd177df6b7f02 | a-bunny.glb |
-| 상점 동료 '밤고양이 감자' | Just a Hungry Cat | Coco Jinjo | https://sketchfab.com/3d-models/just-a-hungry-cat-97913cc5c44e4e6793385b988aac97c1 | a-cat.glb |
-| 상점 동료 '방패기사 덕' | John, The Knight Duck (Armored) | TheKnightDuck | https://sketchfab.com/3d-models/john-the-knight-duck-armored-f976354f020949bf8cd0380ea0837b14 | a-duck.glb |
-| 상점 동료 '도토리 다람쥐 레드' | Low-Poly Squirrel Character (Game-Ready, Rigged) | SomeNortherner | https://sketchfab.com/3d-models/low-poly-squirrel-character-game-ready-rigged-7983c9e011ad427fab0c428ff84b3ddb | a-squirrel.glb |
 | 주인공 캐릭터 '여우 모험가' (보석 상품 — 비버 풍 처리 · 무기는 게임이 손에 얹음) | Cartoon Character | MartinDL | https://sketchfab.com/3d-models/cartoon-character-c951392387944060966ac6e8e5cfd2e3 | sfh-fox.glb |
 
 유물 · 상점 묶음 그림(보석 팩 · 재화 탭 상자 · 물약 · 비버 상자 · 성문 방어 보상 상자)은 2026-11-25 사용자 "아트 풍 일정" → "셀 그림으로 통일"로 원래 셀 그림으로 되돌렸다. 받은 모델(r-*.glb · i-*.glb)과 `art-gen/blender/sketchfab_icons.py` 는 남겨 두었지만 게임에는 쓰지 않는다 — 작가 목록은 git 이력(320ca5a2 · 1f89f798 · 5a2de5a3)에 있다.
